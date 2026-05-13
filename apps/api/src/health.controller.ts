@@ -1,16 +1,17 @@
 import { Controller, Get } from "@nestjs/common";
 
+type HealthResponse = {
+  service: "api";
+  status: "ok";
+};
+
 @Controller("health")
 export class HealthController {
   @Get()
-  getHealth() {
+  getHealth(): HealthResponse {
     return {
-      data: {
-        service: "api",
-        status: "ok",
-      },
-      requestId: "bootstrap",
+      service: "api",
+      status: "ok",
     };
   }
 }
-

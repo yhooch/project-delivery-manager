@@ -14,17 +14,32 @@
     "lint": "eslint .",
     "format": "prettier --write .",
     "typecheck": "corepack pnpm -r typecheck",
-    "test": "corepack pnpm -r test"
+    "test": "corepack pnpm -r test",
+    "test:e2e": "playwright test"
   },
   "pnpm": {
-    "onlyBuiltDependencies": ["@nestjs/core", "esbuild", "sharp"]
+    "onlyBuiltDependencies": [
+      "@nestjs/core",
+      "@parcel/watcher",
+      "@prisma/engines",
+      "@swc/core",
+      "argon2",
+      "esbuild",
+      "prisma",
+      "sharp"
+    ]
   },
   "devDependencies": {
     "@eslint/js": "10.0.1",
+    "@playwright/test": "^1.60.0",
+    "@testing-library/jest-dom": "^6.9.1",
+    "@testing-library/react": "^16.3.2",
+    "@testing-library/user-event": "^14.6.1",
     "@types/node": "25.7.0",
     "@types/react": "19.2.14",
     "@types/react-dom": "19.2.3",
     "eslint": "10.3.0",
+    "jsdom": "^29.1.1",
     "prettier": "3.8.3",
     "tsx": "4.21.0",
     "typescript": "6.0.3",

@@ -4,8 +4,8 @@
     "declaration": true,
     "noEmit": false,
     "outDir": "dist",
+    "rewriteRelativeImportExtensions": true,
     "sourceMap": true
   },
   "exclude": ["dist", "node_modules", "**/*.spec.ts", "**/*.test.ts"]
 }
-

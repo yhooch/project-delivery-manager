@@ -13,6 +13,7 @@
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
     "lint": "eslint .",
+    "openapi:generate": "tsx src/openapi-cli.ts",
     "test": "vitest run --passWithNoTests",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
@@ -22,4 +23,3 @@
   },
   "devDependencies": {}
 }
-

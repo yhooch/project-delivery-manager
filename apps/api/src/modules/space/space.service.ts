@@ -1,0 +1,393 @@
+import { HttpStatus, Inject, Injectable } from "@nestjs/common";
+import {
+  type AddSpaceMemberRequest,
+  type CreateSpaceRequest,
+  type PageResult,
+  type Space,
+  type SpaceMemberWithUser,
+  type SpaceOverview,
+  type SpaceRole,
+  type SpaceSummary,
+  type UpdateSpaceMemberRequest,
+  type UpdateSpaceRequest,
+} from "@project-delivery/shared";
+import { ulid } from "ulid";
+
+import { ApiException } from "../../http/api-exception";
+import {
+  USER_REPOSITORY,
+  type UserRepository,
+} from "../identity/identity.repository";
+import type { IdentityUser } from "../identity/identity.types";
+import {
+  ORGANIZATION_REPOSITORY,
+  type OrganizationRepository,
+} from "../organization/organization.repository";
+import { WorkflowDefaultInitializerService } from "../workflow/workflow-default-initializer.service";
+import {
+  SPACE_REPOSITORY,
+  type SpaceRepository,
+} from "./space.repository";
+import type { SpaceListInput, SpaceMemberListInput } from "./space.types";
+
+const DEFAULT_STALE_THRESHOLD_DAYS = 3;
+const SPACE_MANAGER_ROLES = new Set<SpaceRole>(["SPACE_ADMIN", "PM"]);
+
+@Injectable()
+export class SpaceService {
+  constructor(
+    @Inject(SPACE_REPOSITORY)
+    private readonly spaces: SpaceRepository,
+    @Inject(ORGANIZATION_REPOSITORY)
+    private readonly organizations: OrganizationRepository,
+    @Inject(USER_REPOSITORY)
+    private readonly users: UserRepository,
+    @Inject(WorkflowDefaultInitializerService)
+    private readonly workflowInitializer: WorkflowDefaultInitializerService,
+  ) {}
+
+  async list(
+    actorUserId: string,
+    organizationId: string,
+    input: SpaceListInput,
+  ): Promise<PageResult<SpaceSummary>> {
+    const access = await this.requireOrganizationAccess(actorUserId, organizationId);
+    const canListAllSpaces = access.role === "OWNER" || access.role === "ADMIN";
+    const result = await this.spaces.listByOrganizationId(
+      organizationId,
+      input,
+      canListAllSpaces ? undefined : actorUserId,
+    );
+
+    return {
+      items: result.items,
+      page: input.page,
+      pageSize: input.pageSize,
+      total: result.total,
+    };
+  }
+
+  async create(
+    actorUserId: string,
+    organizationId: string,
+    input: CreateSpaceRequest,
+  ): Promise<Space> {
+    await this.requireOrganizationManager(actorUserId, organizationId);
+    const ownerId = input.ownerId ?? actorUserId;
+    await this.requireActiveOrganizationMember(organizationId, ownerId);
+
+    const code = input.code ?? generateSpaceCode(input.name);
+    const existing = await this.spaces.findByCode(organizationId, code);
+
+    if (existing) {
+      throw new ApiException(
+        "CONFLICT",
+        "Space code already exists in organization",
+        HttpStatus.CONFLICT,
+      );
+    }
+
+    const created = await this.spaces.createWithAdmin({
+      id: ulid(),
+      adminMemberId: ulid(),
+      organizationId,
+      name: input.name,
+      code,
+      description: input.description,
+      ownerId,
+      staleThresholdDays:
+        input.staleThresholdDays ?? DEFAULT_STALE_THRESHOLD_DAYS,
+      actorUserId,
+    });
+
+    await this.workflowInitializer.initializeDefaultWorkflowsForSpace({
+      actorUserId,
+      organizationId,
+      spaceId: created.space.id,
+    });
+
+    return created.space;
+  }
+
+  async get(actorUserId: string, spaceId: string): Promise<Space> {
+    const access = await this.requireSpaceAccess(actorUserId, spaceId);
+
+    return access.space;
+  }
+
+  async update(
+    actorUserId: string,
+    spaceId: string,
+    input: UpdateSpaceRequest,
+  ): Promise<Space> {
+    const access = await this.requireSpaceManager(actorUserId, spaceId);
+
+    if (input.ownerId) {
+      await this.requireActiveOrganizationMember(
+        access.space.organizationId,
+        input.ownerId,
+      );
+    }
+
+    if (input.code && input.code !== access.space.code) {
+      const existing = await this.spaces.findByCode(
+        access.space.organizationId,
+        input.code,
+      );
+
+      if (existing && existing.id !== access.space.id) {
+        throw new ApiException(
+          "CONFLICT",
+          "Space code already exists in organization",
+          HttpStatus.CONFLICT,
+        );
+      }
+    }
+
+    const updated = await this.spaces.update({
+      spaceId,
+      name: input.name,
+      code: input.code,
+      description: input.description,
+      ownerId: input.ownerId,
+      status: input.status,
+      staleThresholdDays: input.staleThresholdDays,
+      updatedById: actorUserId,
+    });
+
+    if (!updated) {
+      throwSpaceNotFound();
+    }
+
+    return updated;
+  }
+
+  async listMembers(
+    actorUserId: string,
+    spaceId: string,
+    input: SpaceMemberListInput,
+  ): Promise<PageResult<SpaceMemberWithUser>> {
+    await this.requireSpaceAccess(actorUserId, spaceId);
+
+    return this.spaces.listMembers(spaceId, input);
+  }
+
+  async addMember(
+    actorUserId: string,
+    spaceId: string,
+    input: AddSpaceMemberRequest,
+  ): Promise<SpaceMemberWithUser> {
+    const access = await this.requireSpaceManager(actorUserId, spaceId);
+    const user = await this.resolveActiveUser(input);
+    await this.requireActiveOrganizationMember(access.space.organizationId, user.id);
+
+    const existingMember = await this.spaces.findMemberByUserId(
+      spaceId,
+      user.id,
+    );
+
+    if (existingMember) {
+      throw new ApiException(
+        "CONFLICT",
+        "Space member already exists",
+        HttpStatus.CONFLICT,
+      );
+    }
+
+    return this.spaces.addMember({
+      id: ulid(),
+      organizationId: access.space.organizationId,
+      spaceId,
+      userId: user.id,
+      role: input.role,
+      createdById: actorUserId,
+    });
+  }
+
+  async updateMember(
+    actorUserId: string,
+    spaceId: string,
+    memberId: string,
+    input: UpdateSpaceMemberRequest,
+  ): Promise<SpaceMemberWithUser> {
+    await this.requireSpaceManager(actorUserId, spaceId);
+    const member = await this.spaces.findMemberById(spaceId, memberId);
+
+    if (!member) {
+      throwSpaceMemberNotFound();
+    }
+
+    const updated = await this.spaces.updateMember({
+      memberId,
+      spaceId,
+      role: input.role,
+      status: input.status,
+      updatedById: actorUserId,
+    });
+
+    if (!updated) {
+      throwSpaceMemberNotFound();
+    }
+
+    return updated;
+  }
+
+  async getOverview(
+    actorUserId: string,
+    spaceId: string,
+  ): Promise<SpaceOverview> {
+    const access = await this.requireSpaceAccess(actorUserId, spaceId);
+    const [stats, currentVersion, defaultWorkflows] = await Promise.all([
+      this.spaces.getOverviewStats(spaceId),
+      this.spaces.findCurrentVersion(spaceId),
+      this.spaces.listDefaultWorkflows(spaceId),
+    ]);
+
+    return {
+      space: access.space,
+      currentVersion,
+      stats,
+      defaultWorkflows,
+    };
+  }
+
+  private async requireOrganizationAccess(
+    userId: string,
+    organizationId: string,
+  ) {
+    const access = await this.organizations.findAccessibleById(
+      userId,
+      organizationId,
+    );
+
+    if (!access) {
+      throwOrganizationAccessDenied();
+    }
+
+    return access;
+  }
+
+  private async requireOrganizationManager(
+    userId: string,
+    organizationId: string,
+  ) {
+    const access = await this.requireOrganizationAccess(userId, organizationId);
+
+    if (access.role !== "OWNER" && access.role !== "ADMIN") {
+      throwOrganizationAccessDenied();
+    }
+
+    return access;
+  }
+
+  private async requireSpaceAccess(userId: string, spaceId: string) {
+    const access = await this.spaces.findAccessibleById(userId, spaceId);
+
+    if (!access) {
+      throwSpaceAccessDenied();
+    }
+
+    return access;
+  }
+
+  private async requireSpaceManager(userId: string, spaceId: string) {
+    const access = await this.requireSpaceAccess(userId, spaceId);
+
+    if (!SPACE_MANAGER_ROLES.has(access.role)) {
+      throwSpaceAccessDenied();
+    }
+
+    return access;
+  }
+
+  private async requireActiveOrganizationMember(
+    organizationId: string,
+    userId: string,
+  ) {
+    const member = await this.organizations.findMemberByUserId(
+      organizationId,
+      userId,
+    );
+
+    if (!member || member.status !== "ACTIVE") {
+      throw new ApiException(
+        "SPACE_MEMBER_MUST_BELONG_TO_ORGANIZATION",
+        "Space member must belong to the same organization",
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+
+    return member;
+  }
+
+  private async resolveActiveUser(
+    input: AddSpaceMemberRequest,
+  ): Promise<IdentityUser> {
+    const userById = input.userId
+      ? await this.users.findById(input.userId)
+      : undefined;
+    const userByUsername = input.username
+      ? await this.users.findByUsername(normalizeUsername(input.username))
+      : undefined;
+
+    if (userById && userByUsername && userById.id !== userByUsername.id) {
+      throw new ApiException(
+        "VALIDATION_ERROR",
+        "username and userId refer to different users",
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+
+    const user = userById ?? userByUsername;
+
+    if (!user || user.status !== "ACTIVE") {
+      throw new ApiException("NOT_FOUND", "User not found", HttpStatus.NOT_FOUND);
+    }
+
+    return user;
+  }
+}
+
+function generateSpaceCode(name: string): string {
+  const normalized = name
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9_-]+/gu, "-")
+    .replace(/^-+|-+$/gu, "")
+    .slice(0, 20);
+  const base = normalized.length >= 2 ? normalized : "space";
+
+  return `${base}-${ulid().slice(0, 8).toLowerCase()}`.slice(0, 32);
+}
+
+function normalizeUsername(username: string): string {
+  return username.toLowerCase();
+}
+
+function throwOrganizationAccessDenied(): never {
+  throw new ApiException(
+    "ORGANIZATION_ACCESS_DENIED",
+    "Organization access denied",
+    HttpStatus.FORBIDDEN,
+  );
+}
+
+function throwSpaceAccessDenied(): never {
+  throw new ApiException(
+    "SPACE_ACCESS_DENIED",
+    "Space access denied",
+    HttpStatus.FORBIDDEN,
+  );
+}
+
+function throwSpaceNotFound(): never {
+  throw new ApiException("SPACE_NOT_FOUND", "Space not found", HttpStatus.NOT_FOUND);
+}
+
+function throwSpaceMemberNotFound(): never {
+  throw new ApiException(
+    "SPACE_MEMBER_NOT_FOUND",
+    "Space member not found",
+    HttpStatus.NOT_FOUND,
+  );
+}

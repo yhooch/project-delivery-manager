@@ -1,0 +1,824 @@
+{
+  "metadata": {
+    "title": "Project Delivery Manager",
+    "description": "A lightweight workspace for delivery teams."
+  },
+  "common": {
+    "language": {
+      "label": "Switch language",
+      "zh-CN": {
+        "shortLabel": "ZH",
+        "ariaLabel": "Switch to Chinese"
+      },
+      "en-US": {
+        "shortLabel": "EN",
+        "ariaLabel": "Switch to English"
+      }
+    },
+    "theme": {
+      "label": "Switch theme",
+      "system": {
+        "label": "System",
+        "ariaLabel": "Use system theme"
+      },
+      "light": {
+        "label": "Light",
+        "ariaLabel": "Use light theme"
+      },
+      "dark": {
+        "label": "Dark",
+        "ariaLabel": "Use dark theme"
+      }
+    }
+  },
+  "auth": {
+    "brand": {
+      "name": "Project Delivery Manager",
+      "shortName": "PDM",
+      "subtitle": "Delivery workspace"
+    },
+    "login": {
+      "eyebrow": "Account access",
+      "title": "Sign in to the workspace",
+      "description": "Use your account to enter the app shell. Organization, space, and capability boundaries come from the backend session.",
+      "alternatePrompt": "No account yet?",
+      "link": "Create one",
+      "form": {
+        "title": "Sign in",
+        "description": "Successful sign-in opens the app shell.",
+        "submit": "Sign in",
+        "submitting": "Signing in"
+      }
+    },
+    "register": {
+      "eyebrow": "First access",
+      "title": "Create an account",
+      "description": "Registration opens the app shell immediately. If no organization is available, onboarding is shown.",
+      "alternatePrompt": "Already have an account?",
+      "link": "Sign in",
+      "form": {
+        "title": "Register",
+        "description": "Username and password validation reuse the shared contract.",
+        "submit": "Create account",
+        "submitting": "Creating"
+      }
+    },
+    "facts": {
+      "contract": {
+        "dt": "Contract source",
+        "dd": "Form schemas reference the shared package"
+      },
+      "session": {
+        "dt": "Session source",
+        "dd": "App state follows /auth/session"
+      },
+      "preference": {
+        "dt": "Preference sync",
+        "dd": "Language and theme persist after sign-in"
+      }
+    }
+  },
+  "forms": {
+    "auth": {
+      "fields": {
+        "username": {
+          "label": "Username",
+          "error": "Enter a 3 to 32 character username with letters, numbers, underscores, or hyphens."
+        },
+        "password": {
+          "label": "Password",
+          "error": "Enter a password with at least 8 characters."
+        },
+        "confirmPassword": {
+          "label": "Confirm password",
+          "error": "Confirm that both passwords match and are at least 8 characters."
+        }
+      }
+    },
+    "organization": {
+      "fields": {
+        "name": {
+          "label": "Organization name",
+          "error": "Enter an organization name up to 120 characters."
+        },
+        "code": {
+          "label": "Organization code",
+          "error": "Use 2 to 32 characters with letters, numbers, underscores, or hyphens."
+        }
+      }
+    }
+  },
+  "errors": {
+    "api": {
+      "BAD_REQUEST": "The request is invalid. Check the input and try again.",
+      "UNAUTHORIZED": "Your session has expired. Sign in again.",
+      "FORBIDDEN": "Your account cannot perform this action.",
+      "NOT_FOUND": "The requested resource is unavailable.",
+      "CONFLICT": "The data already exists or conflicts with the current state.",
+      "VALIDATION_ERROR": "The submitted content did not pass validation.",
+      "INVALID_CREDENTIALS": "The username or password is incorrect.",
+      "RATE_LIMITED": "Too many attempts. Try again later.",
+      "ORGANIZATION_NOT_FOUND": "The organization is unavailable.",
+      "ORGANIZATION_ACCESS_DENIED": "Your account cannot access this organization.",
+      "CROSS_ORGANIZATION_ACCESS_DENIED": "Cross-organization access is not allowed.",
+      "ORGANIZATION_MEMBER_NOT_FOUND": "The organization member is unavailable.",
+      "SPACE_NOT_FOUND": "The space is unavailable.",
+      "SPACE_ACCESS_DENIED": "Your account cannot access this space.",
+      "SPACE_MEMBER_NOT_FOUND": "The space member is unavailable.",
+      "SPACE_MEMBER_MUST_BELONG_TO_ORGANIZATION": "The space member must belong to the organization first.",
+      "LAST_ORGANIZATION_OWNER_REQUIRED": "The organization must keep at least one owner.",
+      "WORKFLOW_NOT_FOUND": "The workflow is unavailable.",
+      "WORKFLOW_VERSION_NOT_FOUND": "The workflow version is unavailable.",
+      "WORKFLOW_VERSION_ALREADY_PUBLISHED": "The workflow version has already been published.",
+      "WORKFLOW_PUBLISH_VALIDATION_FAILED": "Workflow publish validation failed.",
+      "WORK_ITEM_NOT_FOUND": "The work item is unavailable.",
+      "REQUIREMENT_NOT_FOUND": "The requirement is unavailable.",
+      "TARGET_REQUIRED_FOR_ATTACHMENT": "An attachment must be linked to a target.",
+      "ATTACHMENT_TARGET_NOT_FOUND": "The attachment target is unavailable.",
+      "DRAFT_REQUIREMENT_REQUIRED": "Only draft requirements can be processed.",
+      "INTAKE_ITEM_NOT_FOUND": "The intake item is unavailable.",
+      "INTAKE_ITEM_NOT_ACCEPTED": "The intake item has not been accepted.",
+      "INTAKE_ITEM_ALREADY_CONVERTED": "The intake item has already been converted.",
+      "UNKNOWN": "The operation failed. Try again later."
+    }
+  },
+  "shell": {
+    "brand": {
+      "name": "Project Delivery Manager",
+      "shortName": "PDM",
+      "subtitle": "Delivery workspace"
+    },
+    "nav": {
+      "label": "Primary navigation",
+      "dashboard": {
+        "label": "Overview"
+      },
+      "intake": {
+        "label": "Intake"
+      },
+      "workItems": {
+        "label": "Work items"
+      },
+      "workflow": {
+        "label": "Workflow"
+      },
+      "settings": {
+        "label": "Settings"
+      }
+    },
+    "status": {
+      "label": "Session status",
+      "loading": "Initializing",
+      "unauthenticated": "Signed out",
+      "signedIn": "{username}"
+    },
+    "topbar": {
+      "eyebrow": "Workspace",
+      "title": "Delivery operations"
+    },
+    "search": {
+      "label": "Command search",
+      "placeholder": "Search requirements, work items, or members"
+    },
+    "notifications": {
+      "label": "Notifications",
+      "ariaLabel": "Open notifications"
+    },
+    "organizationSwitcher": {
+      "label": "Switch organization",
+      "empty": "No organization",
+      "signedOut": "Signed out"
+    },
+    "spaceSwitcher": {
+      "label": "Switch space",
+      "empty": "No space",
+      "signedOut": "Signed out"
+    },
+    "logout": {
+      "label": "Sign out",
+      "ariaLabel": "Sign out"
+    }
+  },
+  "onboarding": {
+    "empty": {
+      "title": "No organization is available",
+      "description": "Create an organization to start, or wait for an administrator to add you to an existing one."
+    },
+    "waiting": {
+      "title": "Waiting for an administrator",
+      "description": "The current session does not grant organization creation. Wait for an administrator to add your account.",
+      "compactTitle": "Another path",
+      "compactDescription": "If your team already has an organization, ask an administrator to add your account."
+    },
+    "createOrganization": {
+      "title": "Create organization",
+      "description": "After creation, the session refreshes and the backend returns the default organization.",
+      "submit": "Create organization",
+      "submitting": "Creating"
+    }
+  },
+  "versions": {
+    "page": {
+      "eyebrow": "Space versions",
+      "title": "Version management",
+      "unknownSpace": "Current space"
+    },
+    "actions": {
+      "refresh": "Refresh"
+    },
+    "filters": {
+      "label": "Version filters",
+      "status": "Status",
+      "allStatuses": "All statuses",
+      "owner": "Owner",
+      "allOwners": "All owners"
+    },
+    "status": {
+      "PLANNED": "Planned",
+      "IN_PROGRESS": "In progress",
+      "RELEASED": "Released",
+      "ARCHIVED": "Archived"
+    },
+    "states": {
+      "loading": {
+        "title": "Loading versions",
+        "description": "Reading versions, members, and stable stats for this space."
+      },
+      "unauthenticated": {
+        "title": "Sign-in required",
+        "description": "Sign in before viewing space versions."
+      },
+      "loadingList": "Loading version list",
+      "empty": {
+        "title": "No versions yet",
+        "description": "Create the first version to maintain targets, dates, and stats here."
+      },
+      "noSelection": {
+        "title": "No version selected",
+        "description": "Select a version on the left to edit its base fields."
+      }
+    },
+    "list": {
+      "title": "Version list",
+      "subtitle": "{count} versions in the current result",
+      "requirements": "{count} requirements",
+      "noReleaseDate": "No release date"
+    },
+    "create": {
+      "title": "Create version",
+      "description": "Version names stay unique within a space.",
+      "submit": "Create version",
+      "submitting": "Creating"
+    },
+    "detail": {
+      "title": "Version details",
+      "description": "Maintain base fields and view the M1 stable stats.",
+      "viewRequirements": "View requirements",
+      "submit": "Save version",
+      "submitting": "Saving"
+    },
+    "form": {
+      "name": "Version name",
+      "status": "Status",
+      "target": "Target",
+      "description": "Description",
+      "owner": "Owner",
+      "unassigned": "Unassigned",
+      "startDate": "Start time",
+      "targetDate": "Target time",
+      "releaseDate": "Release time",
+      "readonly": "Current role is read-only"
+    },
+    "stats": {
+      "label": "Version stats",
+      "requirements": "Requirements",
+      "tasks": "Tasks",
+      "bugs": "Bugs",
+      "blocked": "Blocked"
+    }
+  },
+  "requirements": {
+    "page": {
+      "eyebrow": "Space requirements",
+      "title": "Requirement documents",
+      "unknownSpace": "Current space"
+    },
+    "actions": {
+      "refresh": "Refresh",
+      "createDraft": "New draft",
+      "creatingDraft": "Creating",
+      "myDrafts": "My drafts"
+    },
+    "filters": {
+      "label": "Requirement filters",
+      "version": "Version",
+      "allVersions": "All versions",
+      "owner": "Owner",
+      "allOwners": "All owners",
+      "status": "Status",
+      "allStatuses": "All statuses",
+      "includeDrafts": "Include my drafts"
+    },
+    "status": {
+      "DRAFT": "Draft",
+      "CONFIRMED": "Confirmed",
+      "ARCHIVED": "Archived"
+    },
+    "priority": {
+      "LOW": "Low",
+      "MEDIUM": "Medium",
+      "HIGH": "High",
+      "URGENT": "Urgent"
+    },
+    "statusCategory": {
+      "NOT_STARTED": "Not started",
+      "IN_PROGRESS": "In progress",
+      "WAITING": "Waiting",
+      "VERIFYING": "Verifying",
+      "DONE": "Done",
+      "TERMINATED": "Terminated"
+    },
+    "states": {
+      "loading": {
+        "title": "Loading requirements",
+        "description": "Reading requirements, versions, and member information."
+      },
+      "unauthenticated": {
+        "title": "Sign-in required",
+        "description": "Sign in before viewing space requirements."
+      },
+      "loadFailed": {
+        "title": "Unable to load requirement",
+        "description": "The requirement is unavailable or this account cannot access it."
+      },
+      "loadingList": "Loading requirement list",
+      "empty": {
+        "title": "No requirements yet",
+        "description": "Empty drafts are hidden by default. Create a draft or open the My drafts entry."
+      }
+    },
+    "list": {
+      "title": "Requirement list",
+      "subtitle": "{count} requirements in the current result",
+      "columns": {
+        "title": "Title",
+        "version": "Version",
+        "owner": "Owner",
+        "priority": "Priority",
+        "status": "Status",
+        "related": "Related tasks/Bugs"
+      },
+      "untitledDraft": "Untitled draft",
+      "noVersion": "No version",
+      "noOwner": "Unassigned",
+      "noPriority": "Not set",
+      "relatedCounts": "Tasks {tasks} / Bugs {bugs}",
+      "draftRule": "Empty drafts are hidden by default. Draft filtering only returns drafts created by the current account.",
+      "updated": "Refreshed at {date}"
+    },
+    "detail": {
+      "eyebrow": "Requirement details",
+      "untitledDraft": "Untitled draft",
+      "backToList": "Back to list",
+      "formTitle": "Base information",
+      "formDescription": "Saving moves a draft to confirmed. Archived requirements cannot be edited.",
+      "save": "Save requirement",
+      "saving": "Saving",
+      "archive": "Archive",
+      "archiving": "Archiving",
+      "metaTitle": "Current information",
+      "metaDescription": "Displayed from backend results without expanding permission boundaries.",
+      "attachments": "Attachments"
+    },
+    "form": {
+      "title": "Title",
+      "summary": "Summary",
+      "version": "Version",
+      "owner": "Owner",
+      "priority": "Priority",
+      "noVersion": "Unchanged or no version",
+      "noOwner": "Unchanged or unassigned",
+      "noPriority": "Not set",
+      "readonly": "Current state or role is read-only"
+    },
+    "editor": {
+      "title": "Body editor",
+      "description": "Supports body text, tables, task lists, links, code blocks, and image attachments.",
+      "contentText": "Body",
+      "ariaLabel": "Requirement body editor",
+      "toolbarLabel": "Body editor toolbar",
+      "placeholder": "Write background, scope, acceptance points, or paste an image.",
+      "draftUploadOnly": "Image upload is only available for draft requirements. Confirmed requirements can still edit text.",
+      "linkPrompt": "Enter link URL",
+      "unknownFile": "Unnamed file",
+      "uploading": "Uploading image",
+      "retry": "Retry",
+      "toolbar": {
+        "bold": "Bold",
+        "italic": "Italic",
+        "strike": "Strikethrough",
+        "bulletList": "Bulleted list",
+        "orderedList": "Numbered list",
+        "taskList": "Task list",
+        "codeBlock": "Code block",
+        "blockquote": "Quote",
+        "link": "Link",
+        "insertTable": "Insert table",
+        "addColumn": "Add column",
+        "addRow": "Add row",
+        "deleteTable": "Delete table",
+        "uploadImage": "Upload image",
+        "undo": "Undo",
+        "redo": "Redo"
+      },
+      "uploadErrors": {
+        "ATTACHMENT_LIMIT_EXCEEDED": "This object can have at most 20 attachments.",
+        "DRAFT_REQUIRED": "Images can only be uploaded to draft requirements. Return to a draft before retrying.",
+        "FILE_TOO_LARGE": "A single file cannot exceed 20MB.",
+        "TARGET_NOT_FOUND": "The attachment target is unavailable or this account cannot access it.",
+        "UNSUPPORTED_MIME_TYPE": "Only PNG, JPEG, GIF, WebP, or SVG images are supported.",
+        "UPLOAD_FAILED": "Upload failed. Check the network and retry.",
+        "VALIDATION_FAILED": "Attachment validation failed. Choose an image that matches the limits."
+      }
+    },
+    "relatedWorkItems": {
+      "title": "Related tasks/Bugs",
+      "description": "M1 reserves this display area. M2/M3 will connect real tasks and bugs.",
+      "tasks": "Tasks",
+      "bugs": "Bugs",
+      "emptyTitle": "No related work items",
+      "emptyDescription": "A stable empty state is reserved for related tasks and bugs.",
+      "noStatus": "No status"
+    }
+  },
+  "dashboard": {
+    "session": {
+      "loading": {
+        "title": "Initializing session",
+        "description": "Reading the backend session, organizations, and capability boundaries."
+      },
+      "unauthenticated": {
+        "title": "Sign-in required",
+        "description": "Sign in or create an account to enter the app shell.",
+        "login": "Sign in",
+        "register": "Register"
+      }
+    },
+    "page": {
+      "eyebrow": "Operations overview",
+      "title": "Delivery operations",
+      "scope": "Current organization",
+      "scopeWithOrganization": "Current organization: {organization}",
+      "refresh": "Updated just now"
+    },
+    "metrics": {
+      "label": "Key metrics",
+      "requirements": {
+        "label": "Needs clarification",
+        "value": "18",
+        "delta": "Up 4 from last week"
+      },
+      "sla": {
+        "label": "Average response",
+        "value": "2.4h",
+        "delta": "Within target"
+      },
+      "activeWork": {
+        "label": "Active work items",
+        "value": "42",
+        "delta": "Closed 9 this week"
+      },
+      "deliverySignal": {
+        "label": "Delivery signal",
+        "value": "91%",
+        "delta": "Risk is controlled"
+      }
+    },
+    "queue": {
+      "title": "Today queue",
+      "subtitle": "Workspace placeholder for upcoming business modules.",
+      "badge": "Infrastructure",
+      "columns": {
+        "item": "Item",
+        "owner": "Owner",
+        "state": "State",
+        "due": "Time"
+      },
+      "rows": {
+        "triage": {
+          "item": "Shared API contract wiring",
+          "owner": "Platform",
+          "state": "Pending",
+          "due": "Today"
+        },
+        "handoff": {
+          "item": "Organization context injection",
+          "owner": "Web",
+          "state": "Reserved",
+          "due": "This week"
+        },
+        "review": {
+          "item": "Page permission boundary",
+          "owner": "Web",
+          "state": "Reserved",
+          "due": "This week"
+        },
+        "blocked": {
+          "item": "Audit event mount point",
+          "owner": "Platform",
+          "state": "Waiting",
+          "due": "Later"
+        }
+      }
+    },
+    "activity": {
+      "title": "Recent activity",
+      "subtitle": "Shell-level event stream placeholder.",
+      "rows": {
+        "intake": {
+          "title": "Intake navigation reserved",
+          "meta": "Ready for later business pages"
+        },
+        "workflow": {
+          "title": "Workflow entry reserved",
+          "meta": "Waiting for business modules"
+        },
+        "comment": {
+          "title": "Notification control placed",
+          "meta": "Ready for live events later"
+        }
+      }
+    },
+    "signals": {
+      "title": "Delivery signals",
+      "subtitle": "Base layout for aggregated status.",
+      "badge": "Scannable",
+      "rows": {
+        "scope": {
+          "label": "Scope stability",
+          "description": "Requirement change entry is isolated",
+          "value": "88"
+        },
+        "risk": {
+          "label": "Risk exposure",
+          "description": "Awaiting the real risk data source",
+          "value": "Low"
+        },
+        "quality": {
+          "label": "Quality gates",
+          "description": "Test and release checks are reserved",
+          "value": "3"
+        }
+      }
+    }
+  },
+  "organizationMembers": {
+    "title": "Organization members",
+    "description": "Organization members are the source for space members and owners.",
+    "memberCount": "{count} members",
+    "readOnly": "Your organization role can view members but cannot add or change them.",
+    "loading": "Loading members",
+    "empty": "No organization members",
+    "table": {
+      "label": "Organization member list",
+      "member": "Member",
+      "role": "Organization role",
+      "status": "Status"
+    },
+    "actions": {
+      "changeRole": "Change organization role for {username}",
+      "changeStatus": "Change organization status for {username}"
+    },
+    "roles": {
+      "OWNER": "Owner",
+      "ADMIN": "Admin",
+      "MEMBER": "Member"
+    },
+    "status": {
+      "ACTIVE": "Active",
+      "DISABLED": "Disabled"
+    },
+    "add": {
+      "title": "Add organization member",
+      "username": "Username",
+      "usernameError": "Enter a valid username or user ID.",
+      "role": "Organization role",
+      "roles": {
+        "OWNER": "Owner",
+        "ADMIN": "Admin",
+        "MEMBER": "Member"
+      },
+      "submit": "Add member",
+      "submitting": "Adding"
+    }
+  },
+  "spaces": {
+    "workspace": {
+      "session": {
+        "loading": {
+          "title": "Initializing session",
+          "description": "Reading organizations, spaces, and permission boundaries."
+        },
+        "unauthenticated": {
+          "title": "Sign-in required",
+          "description": "Sign in or create an account to manage organization members and project spaces.",
+          "login": "Sign in",
+          "register": "Register"
+        }
+      },
+      "missingOrganization": {
+        "title": "Current organization not found",
+        "description": "Switch to an accessible organization to continue."
+      },
+      "page": {
+        "eyebrow": "M1 space management",
+        "title": "Organization and spaces",
+        "noSpace": "No space selected"
+      }
+    },
+    "list": {
+      "title": "Spaces",
+      "description": "Spaces load from the current organization. Details and overview are isolated after switching.",
+      "spaceCount": "{count} spaces",
+      "readOnly": "Your organization role can view spaces but cannot create them.",
+      "loading": "Loading spaces",
+      "empty": "No spaces",
+      "selected": "Current space",
+      "switch": "Switch",
+      "notMember": "Not joined",
+      "table": {
+        "label": "Space list"
+      }
+    },
+    "create": {
+      "title": "Create space",
+      "fields": {
+        "name": {
+          "label": "Space name",
+          "error": "Enter a space name up to 120 characters."
+        },
+        "code": {
+          "label": "Space code",
+          "error": "Use 2 to 32 characters with letters, numbers, underscores, or hyphens."
+        },
+        "description": {
+          "label": "Description",
+          "error": "Description can be up to 2000 characters."
+        },
+        "owner": {
+          "label": "Owner",
+          "default": "Default to current user"
+        },
+        "staleThresholdDays": {
+          "label": "Long stale threshold days",
+          "error": "Enter an integer from 1 to 30."
+        }
+      },
+      "submit": "Create space",
+      "submitting": "Creating"
+    },
+    "settings": {
+      "title": "Space settings",
+      "description": "Maintain space details and the long stale threshold.",
+      "noSpace": "Select a space to view settings.",
+      "loading": "Loading space settings",
+      "readOnly": "Your space role can view settings but cannot save changes.",
+      "fields": {
+        "name": {
+          "label": "Space name",
+          "error": "Enter a space name up to 120 characters."
+        },
+        "code": {
+          "label": "Space code",
+          "error": "Use 2 to 32 characters with letters, numbers, underscores, or hyphens."
+        },
+        "description": {
+          "label": "Description",
+          "error": "Description can be up to 2000 characters."
+        },
+        "owner": {
+          "label": "Owner",
+          "default": "No change"
+        },
+        "status": {
+          "label": "Space status"
+        },
+        "staleThresholdDays": {
+          "label": "Long stale threshold days",
+          "error": "Enter an integer from 1 to 30."
+        }
+      },
+      "status": {
+        "ACTIVE": "Active",
+        "DISABLED": "Disabled"
+      },
+      "submit": "Save settings",
+      "submitting": "Saving"
+    },
+    "members": {
+      "title": "Space members",
+      "description": "A space member must already belong to the current organization.",
+      "memberCount": "{count} members",
+      "readOnly": "Your space role can view members but cannot add or change them.",
+      "loading": "Loading members",
+      "empty": "No space members",
+      "noSpace": {
+        "title": "No space selected",
+        "description": "Select or create a space to manage space members."
+      },
+      "table": {
+        "label": "Space member list",
+        "member": "Member",
+        "role": "Space role",
+        "status": "Status"
+      },
+      "actions": {
+        "changeRole": "Change space role for {username}",
+        "changeStatus": "Change space status for {username}"
+      },
+      "roles": {
+        "SPACE_ADMIN": "Space admin",
+        "PM": "Project manager",
+        "DEVELOPER": "Developer",
+        "TESTER": "Tester",
+        "REQUIREMENT": "Requirement",
+        "MEMBER": "Member",
+        "VIEWER": "Viewer"
+      },
+      "status": {
+        "ACTIVE": "Active",
+        "DISABLED": "Disabled"
+      },
+      "add": {
+        "title": "Add space member",
+        "user": "Organization member",
+        "userPlaceholder": "Select organization member",
+        "userError": "Select an organization member.",
+        "noCandidates": "No organization members can be added.",
+        "role": "Space role",
+        "roles": {
+          "SPACE_ADMIN": "Space admin",
+          "PM": "Project manager",
+          "DEVELOPER": "Developer",
+          "TESTER": "Tester",
+          "REQUIREMENT": "Requirement",
+          "MEMBER": "Member",
+          "VIEWER": "Viewer"
+        },
+        "submit": "Add member",
+        "submitting": "Adding"
+      }
+    }
+  },
+  "spaceOverview": {
+    "title": "Space overview",
+    "description": "Base metrics and default workflows for {space}.",
+    "loadingValue": "Loading",
+    "noSpace": {
+      "title": "Select a space",
+      "description": "Overview, members, and settings load independently for the selected space."
+    },
+    "links": {
+      "versions": "Versions",
+      "requirements": "Requirements"
+    },
+    "stats": {
+      "label": "Space metrics",
+      "versions": "Versions",
+      "requirements": "Requirements",
+      "tasks": "Tasks",
+      "bugs": "Bugs",
+      "blocked": "Blocked",
+      "overdue": "Overdue"
+    },
+    "currentVersion": {
+      "title": "Current version",
+      "empty": "No current version."
+    },
+    "workItems": {
+      "title": "Tasks and bugs",
+      "empty": "M1 only shows empty states and counts. Real tasks and bugs will be connected in M2/M3."
+    },
+    "workflows": {
+      "title": "Default workflows",
+      "counts": "{states} states / {actions} actions",
+      "meta": "{code} / {workItemType}",
+      "empty": "No default workflows."
+    },
+    "workflowCodes": {
+      "DEVELOPMENT_TASK": "Development task",
+      "GENERAL_TASK": "General task",
+      "BUG": "Bug"
+    },
+    "workItemTypes": {
+      "TASK": "Task",
+      "BUG": "Bug"
+    },
+    "versionStatus": {
+      "PLANNED": "Planned",
+      "IN_PROGRESS": "In progress",
+      "RELEASED": "Released",
+      "ARCHIVED": "Archived"
+    }
+  }
+}

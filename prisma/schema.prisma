@@ -1,0 +1,590 @@
+generator client {
+  provider   = "prisma-client"
+  output     = "../apps/api/src/generated/prisma"
+  engineType = "binary"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum UserStatus {
+  ACTIVE
+  DISABLED
+}
+
+enum SessionRevocationReason {
+  LOGOUT
+  ROTATED
+  EXPIRED
+  ADMIN
+}
+
+enum OrganizationStatus {
+  ACTIVE
+  DISABLED
+}
+
+enum OrganizationRole {
+  OWNER
+  ADMIN
+  MEMBER
+}
+
+enum OrganizationMemberStatus {
+  ACTIVE
+  DISABLED
+}
+
+enum Locale {
+  zh_CN
+  en_US
+}
+
+enum ThemeMode {
+  SYSTEM
+  LIGHT
+  DARK
+}
+
+enum SpaceStatus {
+  ACTIVE
+  DISABLED
+}
+
+enum SpaceMemberStatus {
+  ACTIVE
+  DISABLED
+}
+
+enum SpaceRole {
+  SPACE_ADMIN
+  PM
+  DEVELOPER
+  TESTER
+  REQUIREMENT
+  MEMBER
+  VIEWER
+}
+
+enum VersionStatus {
+  PLANNED
+  IN_PROGRESS
+  RELEASED
+  ARCHIVED
+}
+
+enum RequirementStatus {
+  DRAFT
+  CONFIRMED
+  ARCHIVED
+}
+
+enum ContentFormat {
+  TIPTAP_JSON
+}
+
+enum Priority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
+enum StatusCategory {
+  NOT_STARTED
+  IN_PROGRESS
+  WAITING
+  VERIFYING
+  DONE
+  TERMINATED
+}
+
+enum TargetType {
+  SPACE
+  VERSION
+  REQUIREMENT
+  INTAKE_ITEM
+  WORK_ITEM
+}
+
+enum AttachmentTargetType {
+  REQUIREMENT
+  WORK_ITEM
+}
+
+enum ObjectParticipantTargetType {
+  REQUIREMENT
+  INTAKE_ITEM
+  WORK_ITEM
+}
+
+enum ObjectParticipantRelation {
+  CREATOR
+  ASSIGNEE
+  REPORTER
+  COMMENTER
+  RELATED
+}
+
+enum WorkflowActorRelation {
+  ASSIGNEE
+  REPORTER
+  CREATOR
+  SPACE_OWNER
+}
+
+enum WorkflowDefinitionStatus {
+  DRAFT
+  ACTIVE
+  DISABLED
+}
+
+enum WorkflowVersionStatus {
+  DRAFT
+  PUBLISHED
+  DISABLED
+}
+
+enum WorkItemType {
+  TASK
+  BUG
+}
+
+enum ActionFormFieldType {
+  TEXT
+  TEXTAREA
+  SELECT
+  USER
+  DATE
+  NUMBER
+}
+
+model User {
+  id           String     @id @db.Char(26)
+  username     String     @unique @db.VarChar(32)
+  passwordHash String     @map("password_hash")
+  name         String     @db.VarChar(120)
+  avatar       String?    @db.VarChar(500)
+  status       UserStatus @default(ACTIVE)
+  locale       Locale     @default(zh_CN)
+  themeMode    ThemeMode  @default(SYSTEM) @map("theme_mode")
+  lastLoginAt  DateTime?  @map("last_login_at")
+  createdAt    DateTime   @default(now()) @map("created_at")
+  updatedAt    DateTime   @updatedAt @map("updated_at")
+  createdById  String?    @map("created_by_id") @db.Char(26)
+  updatedById  String?    @map("updated_by_id") @db.Char(26)
+  deletedAt    DateTime?  @map("deleted_at")
+
+  sessions                  Session[]
+  organizations             Organization[]       @relation("OrganizationOwner")
+  memberships               OrganizationMember[]
+  ownedSpaces               Space[]              @relation("SpaceOwner")
+  spaceMemberships          SpaceMember[]
+  ownedVersions             Version[]            @relation("VersionOwner")
+  ownedRequirements         Requirement[]        @relation("RequirementOwner")
+  uploadedAttachments       Attachment[]         @relation("AttachmentUploader")
+  publishedWorkflowVersions WorkflowVersion[]    @relation("WorkflowVersionPublisher")
+  objectParticipants        ObjectParticipant[]
+
+  @@map("users")
+}
+
+model Session {
+  id               String                   @id @db.Char(26)
+  userId           String                   @map("user_id") @db.Char(26)
+  tokenHash        String                   @map("token_hash") @db.VarChar(128)
+  expiresAt        DateTime                 @map("expires_at")
+  revokedAt        DateTime?                @map("revoked_at")
+  revocationReason SessionRevocationReason? @map("revocation_reason")
+  lastAccessedAt   DateTime                 @default(now()) @map("last_accessed_at")
+  userAgent        String?                  @map("user_agent") @db.VarChar(500)
+  ip               String?                  @db.VarChar(64)
+  createdAt        DateTime                 @default(now()) @map("created_at")
+  updatedAt        DateTime                 @updatedAt @map("updated_at")
+  createdById      String?                  @map("created_by_id") @db.Char(26)
+  updatedById      String?                  @map("updated_by_id") @db.Char(26)
+  deletedAt        DateTime?                @map("deleted_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([tokenHash])
+  @@index([expiresAt])
+  @@map("sessions")
+}
+
+model Organization {
+  id          String             @id @db.Char(26)
+  name        String             @db.VarChar(120)
+  code        String             @db.VarChar(32)
+  ownerId     String?            @map("owner_id") @db.Char(26)
+  status      OrganizationStatus @default(ACTIVE)
+  createdAt   DateTime           @default(now()) @map("created_at")
+  updatedAt   DateTime           @updatedAt @map("updated_at")
+  createdById String?            @map("created_by_id") @db.Char(26)
+  updatedById String?            @map("updated_by_id") @db.Char(26)
+  deletedAt   DateTime?          @map("deleted_at")
+
+  owner               User?                @relation("OrganizationOwner", fields: [ownerId], references: [id])
+  members             OrganizationMember[]
+  spaces              Space[]
+  spaceMembers        SpaceMember[]
+  versions            Version[]
+  requirements        Requirement[]
+  attachments         Attachment[]
+  workflowDefinitions WorkflowDefinition[]
+  workflowBindings    WorkflowBinding[]
+  objectParticipants  ObjectParticipant[]
+
+  @@index([ownerId])
+  @@index([code])
+  @@map("organizations")
+}
+
+model OrganizationMember {
+  id             String                   @id @db.Char(26)
+  organizationId String                   @map("organization_id") @db.Char(26)
+  userId         String                   @map("user_id") @db.Char(26)
+  role           OrganizationRole
+  status         OrganizationMemberStatus @default(ACTIVE)
+  createdAt      DateTime                 @default(now()) @map("created_at")
+  updatedAt      DateTime                 @updatedAt @map("updated_at")
+  createdById    String?                  @map("created_by_id") @db.Char(26)
+  updatedById    String?                  @map("updated_by_id") @db.Char(26)
+  deletedAt      DateTime?                @map("deleted_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId])
+  @@index([userId])
+  @@map("organization_members")
+}
+
+model Space {
+  id                 String      @id @db.Char(26)
+  organizationId     String      @map("organization_id") @db.Char(26)
+  name               String      @db.VarChar(120)
+  code               String      @db.VarChar(32)
+  description        String?     @db.VarChar(2000)
+  ownerId            String?     @map("owner_id") @db.Char(26)
+  status             SpaceStatus @default(ACTIVE)
+  staleThresholdDays Int         @default(3) @map("stale_threshold_days")
+  createdAt          DateTime    @default(now()) @map("created_at")
+  updatedAt          DateTime    @updatedAt @map("updated_at")
+  createdById        String?     @map("created_by_id") @db.Char(26)
+  updatedById        String?     @map("updated_by_id") @db.Char(26)
+  deletedAt          DateTime?   @map("deleted_at")
+
+  organization        Organization         @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  owner               User?                @relation("SpaceOwner", fields: [ownerId], references: [id], onDelete: SetNull)
+  members             SpaceMember[]
+  versions            Version[]
+  requirements        Requirement[]
+  attachments         Attachment[]
+  workflowDefinitions WorkflowDefinition[]
+  workflowBindings    WorkflowBinding[]
+  objectParticipants  ObjectParticipant[]
+
+  @@index([organizationId])
+  @@index([ownerId])
+  @@index([code])
+  @@map("spaces")
+}
+
+model SpaceMember {
+  id             String            @id @db.Char(26)
+  organizationId String            @map("organization_id") @db.Char(26)
+  spaceId        String            @map("space_id") @db.Char(26)
+  userId         String            @map("user_id") @db.Char(26)
+  role           SpaceRole
+  status         SpaceMemberStatus @default(ACTIVE)
+  createdAt      DateTime          @default(now()) @map("created_at")
+  updatedAt      DateTime          @updatedAt @map("updated_at")
+  createdById    String?           @map("created_by_id") @db.Char(26)
+  updatedById    String?           @map("updated_by_id") @db.Char(26)
+  deletedAt      DateTime?         @map("deleted_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  space        Space        @relation(fields: [spaceId], references: [id], onDelete: Cascade)
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId])
+  @@index([spaceId])
+  @@index([userId])
+  @@map("space_members")
+}
+
+model Version {
+  id               String        @id @db.Char(26)
+  organizationId   String        @map("organization_id") @db.Char(26)
+  spaceId          String        @map("space_id") @db.Char(26)
+  name             String        @db.VarChar(120)
+  target           String?       @db.VarChar(2000)
+  description      String?       @db.VarChar(2000)
+  ownerId          String?       @map("owner_id") @db.Char(26)
+  status           VersionStatus @default(PLANNED)
+  startDate        DateTime?     @map("start_date")
+  targetDate       DateTime?     @map("target_date")
+  releaseDate      DateTime?     @map("release_date")
+  requirementCount Int           @default(0) @map("requirement_count")
+  taskCount         Int           @default(0) @map("task_count")
+  bugCount         Int           @default(0) @map("bug_count")
+  blockedCount     Int           @default(0) @map("blocked_count")
+  createdAt        DateTime      @default(now()) @map("created_at")
+  updatedAt        DateTime      @updatedAt @map("updated_at")
+  createdById      String?       @map("created_by_id") @db.Char(26)
+  updatedById      String?       @map("updated_by_id") @db.Char(26)
+  deletedAt        DateTime?     @map("deleted_at")
+
+  organization Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  space        Space         @relation(fields: [spaceId], references: [id], onDelete: Cascade)
+  owner        User?         @relation("VersionOwner", fields: [ownerId], references: [id], onDelete: SetNull)
+  requirements Requirement[]
+
+  @@index([organizationId])
+  @@index([spaceId])
+  @@index([ownerId])
+  @@index([status])
+  @@map("versions")
+}
+
+model Requirement {
+  id                   String            @id @db.Char(26)
+  organizationId       String            @map("organization_id") @db.Char(26)
+  spaceId              String            @map("space_id") @db.Char(26)
+  versionId            String?           @map("version_id") @db.Char(26)
+  title                String            @default("") @db.VarChar(200)
+  summary              String?           @db.VarChar(2000)
+  contentJson          Json              @default("{}") @map("content_json")
+  contentText          String?           @map("content_text") @db.Text
+  contentMarkdownCache String?           @map("content_markdown_cache") @db.Text
+  contentFormat        ContentFormat     @default(TIPTAP_JSON) @map("content_format")
+  status               RequirementStatus @default(DRAFT)
+  priority             Priority?
+  ownerId              String?           @map("owner_id") @db.Char(26)
+  createdAt            DateTime          @default(now()) @map("created_at")
+  updatedAt            DateTime          @updatedAt @map("updated_at")
+  createdById          String?           @map("created_by_id") @db.Char(26)
+  updatedById          String?           @map("updated_by_id") @db.Char(26)
+  deletedAt            DateTime?         @map("deleted_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  space        Space        @relation(fields: [spaceId], references: [id], onDelete: Cascade)
+  version      Version?     @relation(fields: [versionId], references: [id], onDelete: SetNull)
+  owner        User?        @relation("RequirementOwner", fields: [ownerId], references: [id], onDelete: SetNull)
+
+  @@index([organizationId])
+  @@index([spaceId])
+  @@index([versionId])
+  @@index([ownerId])
+  @@index([status])
+  @@map("requirements")
+}
+
+model Attachment {
+  id             String               @id @db.Char(26)
+  organizationId String               @map("organization_id") @db.Char(26)
+  spaceId        String               @map("space_id") @db.Char(26)
+  targetType     AttachmentTargetType @map("target_type")
+  targetId       String               @map("target_id") @db.Char(26)
+  fileName       String               @map("file_name") @db.VarChar(500)
+  fileKey        String               @map("file_key") @db.VarChar(1000)
+  mimeType       String               @map("mime_type") @db.VarChar(255)
+  size           Int
+  uploadedById   String?              @map("uploaded_by_id") @db.Char(26)
+  createdAt      DateTime             @default(now()) @map("created_at")
+  updatedAt      DateTime             @updatedAt @map("updated_at")
+  createdById    String?              @map("created_by_id") @db.Char(26)
+  updatedById    String?              @map("updated_by_id") @db.Char(26)
+  deletedAt      DateTime?            @map("deleted_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  space        Space        @relation(fields: [spaceId], references: [id], onDelete: Cascade)
+  uploadedBy   User?        @relation("AttachmentUploader", fields: [uploadedById], references: [id], onDelete: SetNull)
+
+  @@index([organizationId])
+  @@index([spaceId])
+  @@index([targetType, targetId])
+  @@index([uploadedById])
+  @@map("attachments")
+}
+
+model WorkflowDefinition {
+  id             String                   @id @db.Char(26)
+  organizationId String                   @map("organization_id") @db.Char(26)
+  spaceId        String                   @map("space_id") @db.Char(26)
+  code           String                   @db.VarChar(80)
+  name           String                   @db.VarChar(120)
+  description    String?                  @db.VarChar(2000)
+  status         WorkflowDefinitionStatus @default(DRAFT)
+  createdAt      DateTime                 @default(now()) @map("created_at")
+  updatedAt      DateTime                 @updatedAt @map("updated_at")
+  createdById    String?                  @map("created_by_id") @db.Char(26)
+  updatedById    String?                  @map("updated_by_id") @db.Char(26)
+  deletedAt      DateTime?                @map("deleted_at")
+
+  organization Organization      @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  space        Space             @relation(fields: [spaceId], references: [id], onDelete: Cascade)
+  versions     WorkflowVersion[]
+  bindings     WorkflowBinding[]
+
+  @@index([organizationId])
+  @@index([spaceId])
+  @@index([code])
+  @@map("workflow_definitions")
+}
+
+model WorkflowVersion {
+  id                   String                @id @db.Char(26)
+  workflowDefinitionId String                @map("workflow_definition_id") @db.Char(26)
+  version              Int
+  status               WorkflowVersionStatus @default(DRAFT)
+  publishedAt          DateTime?             @map("published_at")
+  publishedById        String?               @map("published_by_id") @db.Char(26)
+  createdAt            DateTime              @default(now()) @map("created_at")
+  updatedAt            DateTime              @updatedAt @map("updated_at")
+  createdById          String?               @map("created_by_id") @db.Char(26)
+  updatedById          String?               @map("updated_by_id") @db.Char(26)
+  deletedAt            DateTime?             @map("deleted_at")
+
+  workflowDefinition WorkflowDefinition @relation(fields: [workflowDefinitionId], references: [id], onDelete: Cascade)
+  publishedBy        User?              @relation("WorkflowVersionPublisher", fields: [publishedById], references: [id], onDelete: SetNull)
+  states             WorkflowState[]
+  actions            WorkflowAction[]
+  bindings           WorkflowBinding[]
+
+  @@index([workflowDefinitionId])
+  @@index([status])
+  @@index([publishedById])
+  @@map("workflow_versions")
+}
+
+model WorkflowState {
+  id                String         @id @db.Char(26)
+  workflowVersionId String         @map("workflow_version_id") @db.Char(26)
+  code              String         @db.VarChar(80)
+  name              String         @db.VarChar(120)
+  category          StatusCategory
+  isStart           Boolean        @default(false) @map("is_start")
+  isEnd             Boolean        @default(false) @map("is_end")
+  sortOrder         Int            @default(0) @map("sort_order")
+  createdAt         DateTime       @default(now()) @map("created_at")
+  updatedAt         DateTime       @updatedAt @map("updated_at")
+  createdById       String?        @map("created_by_id") @db.Char(26)
+  updatedById       String?        @map("updated_by_id") @db.Char(26)
+  deletedAt         DateTime?      @map("deleted_at")
+
+  workflowVersion WorkflowVersion  @relation(fields: [workflowVersionId], references: [id], onDelete: Cascade)
+  outgoingActions WorkflowAction[] @relation("WorkflowActionFromState")
+  incomingActions WorkflowAction[] @relation("WorkflowActionToState")
+
+  @@index([workflowVersionId])
+  @@index([category])
+  @@map("workflow_states")
+}
+
+model WorkflowAction {
+  id                String                  @id @db.Char(26)
+  workflowVersionId String                  @map("workflow_version_id") @db.Char(26)
+  fromStateId       String                  @map("from_state_id") @db.Char(26)
+  toStateId         String                  @map("to_state_id") @db.Char(26)
+  code              String                  @db.VarChar(80)
+  name              String                  @db.VarChar(120)
+  allowedSpaceRoles SpaceRole[]             @default([]) @map("allowed_space_roles")
+  actorRelations    WorkflowActorRelation[] @default([]) @map("actor_relations")
+  requiresComment   Boolean                 @default(false) @map("requires_comment")
+  sortOrder         Int                     @default(0) @map("sort_order")
+  createdAt         DateTime                @default(now()) @map("created_at")
+  updatedAt         DateTime                @updatedAt @map("updated_at")
+  createdById       String?                 @map("created_by_id") @db.Char(26)
+  updatedById       String?                 @map("updated_by_id") @db.Char(26)
+  deletedAt         DateTime?               @map("deleted_at")
+
+  workflowVersion WorkflowVersion   @relation(fields: [workflowVersionId], references: [id], onDelete: Cascade)
+  fromState       WorkflowState     @relation("WorkflowActionFromState", fields: [fromStateId], references: [id], onDelete: Cascade)
+  toState         WorkflowState     @relation("WorkflowActionToState", fields: [toStateId], references: [id], onDelete: Cascade)
+  formFields      ActionFormField[]
+
+  @@index([workflowVersionId])
+  @@index([fromStateId])
+  @@index([toStateId])
+  @@map("workflow_actions")
+}
+
+model ActionFormField {
+  id          String              @id @db.Char(26)
+  actionId    String              @map("action_id") @db.Char(26)
+  key         String              @db.VarChar(80)
+  label       String              @db.VarChar(120)
+  fieldType   ActionFormFieldType @map("field_type")
+  required    Boolean             @default(false)
+  options     String[]            @default([])
+  sortOrder   Int                 @default(0) @map("sort_order")
+  createdAt   DateTime            @default(now()) @map("created_at")
+  updatedAt   DateTime            @updatedAt @map("updated_at")
+  createdById String?             @map("created_by_id") @db.Char(26)
+  updatedById String?             @map("updated_by_id") @db.Char(26)
+  deletedAt   DateTime?           @map("deleted_at")
+
+  action WorkflowAction @relation(fields: [actionId], references: [id], onDelete: Cascade)
+
+  @@index([actionId])
+  @@map("action_form_fields")
+}
+
+model WorkflowBinding {
+  id                   String        @id @db.Char(26)
+  organizationId       String        @map("organization_id") @db.Char(26)
+  spaceId              String        @map("space_id") @db.Char(26)
+  workflowDefinitionId String        @map("workflow_definition_id") @db.Char(26)
+  workflowVersionId    String        @map("workflow_version_id") @db.Char(26)
+  targetType           TargetType    @default(WORK_ITEM) @map("target_type")
+  workItemType         WorkItemType? @map("work_item_type")
+  priority             Priority?
+  isDefault            Boolean       @default(false) @map("is_default")
+  createdAt            DateTime      @default(now()) @map("created_at")
+  updatedAt            DateTime      @updatedAt @map("updated_at")
+  createdById          String?       @map("created_by_id") @db.Char(26)
+  updatedById          String?       @map("updated_by_id") @db.Char(26)
+  deletedAt            DateTime?     @map("deleted_at")
+
+  organization       Organization       @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  space              Space              @relation(fields: [spaceId], references: [id], onDelete: Cascade)
+  workflowDefinition WorkflowDefinition @relation(fields: [workflowDefinitionId], references: [id], onDelete: Cascade)
+  workflowVersion    WorkflowVersion    @relation(fields: [workflowVersionId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId])
+  @@index([spaceId])
+  @@index([workflowDefinitionId])
+  @@index([workflowVersionId])
+  @@index([targetType, workItemType])
+  @@map("workflow_bindings")
+}
+
+model ObjectParticipant {
+  id             String                      @id @db.Char(26)
+  organizationId String                      @map("organization_id") @db.Char(26)
+  spaceId        String                      @map("space_id") @db.Char(26)
+  targetType     ObjectParticipantTargetType @map("target_type")
+  targetId       String                      @map("target_id") @db.Char(26)
+  userId         String                      @map("user_id") @db.Char(26)
+  relationType   ObjectParticipantRelation   @map("relation_type")
+  createdAt      DateTime                    @default(now()) @map("created_at")
+  updatedAt      DateTime                    @updatedAt @map("updated_at")
+  createdById    String?                     @map("created_by_id") @db.Char(26)
+  updatedById    String?                     @map("updated_by_id") @db.Char(26)
+  deletedAt      DateTime?                   @map("deleted_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  space        Space        @relation(fields: [spaceId], references: [id], onDelete: Cascade)
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId])
+  @@index([spaceId])
+  @@index([userId])
+  @@index([spaceId, userId])
+  @@index([spaceId, targetType, targetId])
+  @@map("object_participants")
+}

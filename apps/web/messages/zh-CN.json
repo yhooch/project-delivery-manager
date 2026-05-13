@@ -1,0 +1,824 @@
+{
+  "metadata": {
+    "title": "项目交付管理",
+    "description": "面向交付团队的轻量工作台。"
+  },
+  "common": {
+    "language": {
+      "label": "切换语言",
+      "zh-CN": {
+        "shortLabel": "中",
+        "ariaLabel": "切换到中文"
+      },
+      "en-US": {
+        "shortLabel": "EN",
+        "ariaLabel": "切换到英文"
+      }
+    },
+    "theme": {
+      "label": "切换主题",
+      "system": {
+        "label": "跟随系统",
+        "ariaLabel": "使用系统主题"
+      },
+      "light": {
+        "label": "亮色",
+        "ariaLabel": "使用亮色主题"
+      },
+      "dark": {
+        "label": "深色",
+        "ariaLabel": "使用深色主题"
+      }
+    }
+  },
+  "auth": {
+    "brand": {
+      "name": "项目交付管理",
+      "shortName": "PDM",
+      "subtitle": "交付工作台"
+    },
+    "login": {
+      "eyebrow": "账号访问",
+      "title": "登录工作台",
+      "description": "使用账号进入应用壳，随后由后端 session 返回组织、空间和能力边界。",
+      "alternatePrompt": "还没有账号？",
+      "link": "去注册",
+      "form": {
+        "title": "登录",
+        "description": "登录成功后进入应用壳。",
+        "submit": "登录",
+        "submitting": "登录中"
+      }
+    },
+    "register": {
+      "eyebrow": "首次进入",
+      "title": "注册账号",
+      "description": "注册成功后直接进入应用壳；如果尚无组织，会显示 onboarding 空态。",
+      "alternatePrompt": "已有账号？",
+      "link": "去登录",
+      "form": {
+        "title": "注册",
+        "description": "用户名和密码校验复用 shared 契约。",
+        "submit": "创建账号",
+        "submitting": "创建中"
+      }
+    },
+    "facts": {
+      "contract": {
+        "dt": "契约来源",
+        "dd": "表单 schema 引用 shared 包"
+      },
+      "session": {
+        "dt": "会话来源",
+        "dd": "应用状态以 /auth/session 为准"
+      },
+      "preference": {
+        "dt": "偏好同步",
+        "dd": "登录后语言和主题会持久化"
+      }
+    }
+  },
+  "forms": {
+    "auth": {
+      "fields": {
+        "username": {
+          "label": "用户名",
+          "error": "请输入 3 到 32 位用户名，仅支持字母、数字、下划线或短横线。"
+        },
+        "password": {
+          "label": "密码",
+          "error": "请输入至少 8 位密码。"
+        },
+        "confirmPassword": {
+          "label": "确认密码",
+          "error": "请确认两次输入的密码一致，且不少于 8 位。"
+        }
+      }
+    },
+    "organization": {
+      "fields": {
+        "name": {
+          "label": "组织名称",
+          "error": "请输入组织名称，最长 120 个字符。"
+        },
+        "code": {
+          "label": "组织代码",
+          "error": "组织代码需为 2 到 32 位，仅支持字母、数字、下划线或短横线。"
+        }
+      }
+    }
+  },
+  "errors": {
+    "api": {
+      "BAD_REQUEST": "请求参数不正确，请检查后重试。",
+      "UNAUTHORIZED": "登录状态已失效，请重新登录。",
+      "FORBIDDEN": "当前账号没有执行此操作的权限。",
+      "NOT_FOUND": "请求的资源不存在或已不可用。",
+      "CONFLICT": "数据已存在或与当前状态冲突。",
+      "VALIDATION_ERROR": "提交内容未通过校验，请检查表单。",
+      "INVALID_CREDENTIALS": "用户名或密码不正确。",
+      "RATE_LIMITED": "操作过于频繁，请稍后再试。",
+      "ORGANIZATION_NOT_FOUND": "组织不存在或已不可用。",
+      "ORGANIZATION_ACCESS_DENIED": "当前账号无法访问该组织。",
+      "CROSS_ORGANIZATION_ACCESS_DENIED": "不能跨组织访问该资源。",
+      "ORGANIZATION_MEMBER_NOT_FOUND": "组织成员不存在或已不可用。",
+      "SPACE_NOT_FOUND": "空间不存在或已不可用。",
+      "SPACE_ACCESS_DENIED": "当前账号无法访问该空间。",
+      "SPACE_MEMBER_NOT_FOUND": "空间成员不存在或已不可用。",
+      "SPACE_MEMBER_MUST_BELONG_TO_ORGANIZATION": "空间成员必须先属于组织。",
+      "LAST_ORGANIZATION_OWNER_REQUIRED": "组织必须保留至少一名所有者。",
+      "WORKFLOW_NOT_FOUND": "流程不存在或已不可用。",
+      "WORKFLOW_VERSION_NOT_FOUND": "流程版本不存在或已不可用。",
+      "WORKFLOW_VERSION_ALREADY_PUBLISHED": "流程版本已发布，不能重复发布。",
+      "WORKFLOW_PUBLISH_VALIDATION_FAILED": "流程发布校验失败。",
+      "WORK_ITEM_NOT_FOUND": "工作项不存在或已不可用。",
+      "REQUIREMENT_NOT_FOUND": "需求不存在或已不可用。",
+      "TARGET_REQUIRED_FOR_ATTACHMENT": "附件必须关联目标对象。",
+      "ATTACHMENT_TARGET_NOT_FOUND": "附件关联的目标不存在。",
+      "DRAFT_REQUIREMENT_REQUIRED": "只能处理草稿需求。",
+      "INTAKE_ITEM_NOT_FOUND": "入口事项不存在或已不可用。",
+      "INTAKE_ITEM_NOT_ACCEPTED": "入口事项尚未接受。",
+      "INTAKE_ITEM_ALREADY_CONVERTED": "入口事项已转换。",
+      "UNKNOWN": "操作失败，请稍后重试。"
+    }
+  },
+  "shell": {
+    "brand": {
+      "name": "项目交付管理",
+      "shortName": "PDM",
+      "subtitle": "交付工作台"
+    },
+    "nav": {
+      "label": "主导航",
+      "dashboard": {
+        "label": "总览"
+      },
+      "intake": {
+        "label": "需求入口"
+      },
+      "workItems": {
+        "label": "工作项"
+      },
+      "workflow": {
+        "label": "流程"
+      },
+      "settings": {
+        "label": "设置"
+      }
+    },
+    "status": {
+      "label": "会话状态",
+      "loading": "正在初始化",
+      "unauthenticated": "未登录",
+      "signedIn": "{username}"
+    },
+    "topbar": {
+      "eyebrow": "工作台",
+      "title": "交付运行视图"
+    },
+    "search": {
+      "label": "命令搜索",
+      "placeholder": "搜索需求、工作项或成员"
+    },
+    "notifications": {
+      "label": "通知",
+      "ariaLabel": "打开通知"
+    },
+    "organizationSwitcher": {
+      "label": "切换组织",
+      "empty": "暂无组织",
+      "signedOut": "未登录"
+    },
+    "spaceSwitcher": {
+      "label": "切换空间",
+      "empty": "暂无空间",
+      "signedOut": "未登录"
+    },
+    "logout": {
+      "label": "登出",
+      "ariaLabel": "退出登录"
+    }
+  },
+  "onboarding": {
+    "empty": {
+      "title": "还没有可用组织",
+      "description": "你可以创建一个组织开始使用，或等待管理员把你添加到已有组织。"
+    },
+    "waiting": {
+      "title": "等待管理员添加",
+      "description": "当前 session 未授予创建组织能力，请等待组织管理员添加成员权限。",
+      "compactTitle": "另一种路径",
+      "compactDescription": "如果团队已有组织，请让管理员添加你的账号。"
+    },
+    "createOrganization": {
+      "title": "创建组织",
+      "description": "创建成功后会刷新 session，并由后端返回默认组织。",
+      "submit": "创建组织",
+      "submitting": "创建中"
+    }
+  },
+  "versions": {
+    "page": {
+      "eyebrow": "空间版本",
+      "title": "版本管理",
+      "unknownSpace": "当前空间"
+    },
+    "actions": {
+      "refresh": "刷新"
+    },
+    "filters": {
+      "label": "版本筛选",
+      "status": "状态",
+      "allStatuses": "全部状态",
+      "owner": "负责人",
+      "allOwners": "全部负责人"
+    },
+    "status": {
+      "PLANNED": "计划中",
+      "IN_PROGRESS": "进行中",
+      "RELEASED": "已发布",
+      "ARCHIVED": "已归档"
+    },
+    "states": {
+      "loading": {
+        "title": "正在加载版本",
+        "description": "正在读取当前空间的版本、成员和统计字段。"
+      },
+      "unauthenticated": {
+        "title": "需要登录",
+        "description": "登录后才能查看空间版本。"
+      },
+      "loadingList": "正在加载版本列表",
+      "empty": {
+        "title": "暂无版本",
+        "description": "创建第一个版本后，可在这里维护目标、时间和统计。"
+      },
+      "noSelection": {
+        "title": "未选择版本",
+        "description": "选择左侧版本后可编辑基础字段。"
+      }
+    },
+    "list": {
+      "title": "版本列表",
+      "subtitle": "当前结果 {count} 个版本",
+      "requirements": "{count} 个需求",
+      "noReleaseDate": "未设置发布时间"
+    },
+    "create": {
+      "title": "创建版本",
+      "description": "版本名称在同一空间内保持唯一。",
+      "submit": "创建版本",
+      "submitting": "创建中"
+    },
+    "detail": {
+      "title": "版本详情",
+      "description": "维护版本基础字段，并查看 M1 稳定统计。",
+      "viewRequirements": "查看需求",
+      "submit": "保存版本",
+      "submitting": "保存中"
+    },
+    "form": {
+      "name": "版本名称",
+      "status": "状态",
+      "target": "目标",
+      "description": "描述",
+      "owner": "负责人",
+      "unassigned": "未分配",
+      "startDate": "开始时间",
+      "targetDate": "目标时间",
+      "releaseDate": "发布时间",
+      "readonly": "当前角色只能查看"
+    },
+    "stats": {
+      "label": "版本统计",
+      "requirements": "需求",
+      "tasks": "任务",
+      "bugs": "Bug",
+      "blocked": "阻塞"
+    }
+  },
+  "requirements": {
+    "page": {
+      "eyebrow": "空间需求",
+      "title": "需求文档",
+      "unknownSpace": "当前空间"
+    },
+    "actions": {
+      "refresh": "刷新",
+      "createDraft": "新建草稿",
+      "creatingDraft": "创建中",
+      "myDrafts": "本人草稿"
+    },
+    "filters": {
+      "label": "需求筛选",
+      "version": "版本",
+      "allVersions": "全部版本",
+      "owner": "负责人",
+      "allOwners": "全部负责人",
+      "status": "状态",
+      "allStatuses": "全部状态",
+      "includeDrafts": "包含本人草稿"
+    },
+    "status": {
+      "DRAFT": "草稿",
+      "CONFIRMED": "已确认",
+      "ARCHIVED": "已归档"
+    },
+    "priority": {
+      "LOW": "低",
+      "MEDIUM": "中",
+      "HIGH": "高",
+      "URGENT": "紧急"
+    },
+    "statusCategory": {
+      "NOT_STARTED": "未开始",
+      "IN_PROGRESS": "进行中",
+      "WAITING": "等待中",
+      "VERIFYING": "验证中",
+      "DONE": "已完成",
+      "TERMINATED": "已终止"
+    },
+    "states": {
+      "loading": {
+        "title": "正在加载需求",
+        "description": "正在读取需求、版本和成员信息。"
+      },
+      "unauthenticated": {
+        "title": "需要登录",
+        "description": "登录后才能查看空间需求。"
+      },
+      "loadFailed": {
+        "title": "无法加载需求",
+        "description": "需求不存在或当前账号无权访问。"
+      },
+      "loadingList": "正在加载需求列表",
+      "empty": {
+        "title": "暂无需求",
+        "description": "默认会隐藏空草稿；可新建草稿或打开本人草稿入口。"
+      }
+    },
+    "list": {
+      "title": "需求列表",
+      "subtitle": "当前结果 {count} 条需求",
+      "columns": {
+        "title": "标题",
+        "version": "版本",
+        "owner": "负责人",
+        "priority": "优先级",
+        "status": "状态",
+        "related": "关联任务/Bug"
+      },
+      "untitledDraft": "未命名草稿",
+      "noVersion": "未关联版本",
+      "noOwner": "未分配",
+      "noPriority": "未设置",
+      "relatedCounts": "任务 {tasks} / Bug {bugs}",
+      "draftRule": "默认隐藏空草稿；草稿筛选仅返回当前账号创建的草稿。",
+      "updated": "刷新时间：{date}"
+    },
+    "detail": {
+      "eyebrow": "需求详情",
+      "untitledDraft": "未命名草稿",
+      "backToList": "返回列表",
+      "formTitle": "基础信息",
+      "formDescription": "保存后草稿会进入已确认状态；归档后不可继续编辑。",
+      "save": "保存需求",
+      "saving": "保存中",
+      "archive": "归档",
+      "archiving": "归档中",
+      "metaTitle": "当前信息",
+      "metaDescription": "按后端返回结果展示，不扩大权限边界。",
+      "attachments": "附件数"
+    },
+    "form": {
+      "title": "标题",
+      "summary": "摘要",
+      "version": "版本",
+      "owner": "负责人",
+      "priority": "优先级",
+      "noVersion": "不变或未关联",
+      "noOwner": "不变或未分配",
+      "noPriority": "未设置",
+      "readonly": "当前状态或角色只能查看"
+    },
+    "editor": {
+      "title": "正文编辑",
+      "description": "支持正文、表格、任务列表、链接、代码块和图片附件。",
+      "contentText": "正文",
+      "ariaLabel": "需求正文编辑器",
+      "toolbarLabel": "正文编辑工具栏",
+      "placeholder": "输入需求背景、范围、验收要点或粘贴图片。",
+      "draftUploadOnly": "图片上传仅支持草稿需求；已确认需求可继续编辑文字内容。",
+      "linkPrompt": "输入链接地址",
+      "unknownFile": "未命名文件",
+      "uploading": "正在上传图片",
+      "retry": "重试",
+      "toolbar": {
+        "bold": "加粗",
+        "italic": "斜体",
+        "strike": "删除线",
+        "bulletList": "项目符号列表",
+        "orderedList": "编号列表",
+        "taskList": "任务列表",
+        "codeBlock": "代码块",
+        "blockquote": "引用",
+        "link": "链接",
+        "insertTable": "插入表格",
+        "addColumn": "添加列",
+        "addRow": "添加行",
+        "deleteTable": "删除表格",
+        "uploadImage": "上传图片",
+        "undo": "撤销",
+        "redo": "重做"
+      },
+      "uploadErrors": {
+        "ATTACHMENT_LIMIT_EXCEEDED": "当前对象最多只能上传 20 个附件。",
+        "DRAFT_REQUIRED": "图片只能上传到草稿需求，请先回到草稿再重试。",
+        "FILE_TOO_LARGE": "单个文件不能超过 20MB。",
+        "TARGET_NOT_FOUND": "附件目标不存在或当前账号无权访问。",
+        "UNSUPPORTED_MIME_TYPE": "仅支持 PNG、JPEG、GIF、WebP 或 SVG 图片。",
+        "UPLOAD_FAILED": "上传失败，请检查网络后重试。",
+        "VALIDATION_FAILED": "附件校验失败，请重新选择符合限制的图片。"
+      }
+    },
+    "relatedWorkItems": {
+      "title": "关联任务/Bug",
+      "description": "M1 保留展示位置，M2/M3 接入真实任务和 Bug。",
+      "tasks": "任务",
+      "bugs": "Bug",
+      "emptyTitle": "暂无关联工作项",
+      "emptyDescription": "需求已预留关联任务和 Bug 的稳定空态。",
+      "noStatus": "暂无状态"
+    }
+  },
+  "dashboard": {
+    "session": {
+      "loading": {
+        "title": "正在初始化会话",
+        "description": "正在读取后端 session、组织列表和能力边界。"
+      },
+      "unauthenticated": {
+        "title": "需要登录",
+        "description": "登录或注册后即可进入应用壳。",
+        "login": "登录",
+        "register": "注册"
+      }
+    },
+    "page": {
+      "eyebrow": "运行概览",
+      "title": "交付运行视图",
+      "scope": "当前组织",
+      "scopeWithOrganization": "当前组织：{organization}",
+      "refresh": "刚刚更新"
+    },
+    "metrics": {
+      "label": "关键指标",
+      "requirements": {
+        "label": "待澄清需求",
+        "value": "18",
+        "delta": "较上周增加 4"
+      },
+      "sla": {
+        "label": "平均响应",
+        "value": "2.4h",
+        "delta": "稳定在目标内"
+      },
+      "activeWork": {
+        "label": "进行中工作项",
+        "value": "42",
+        "delta": "本周关闭 9"
+      },
+      "deliverySignal": {
+        "label": "交付信号",
+        "value": "91%",
+        "delta": "风险可控"
+      }
+    },
+    "queue": {
+      "title": "今日队列",
+      "subtitle": "用于承载后续业务模块的工作台占位。",
+      "badge": "基础设施",
+      "columns": {
+        "item": "事项",
+        "owner": "负责人",
+        "state": "状态",
+        "due": "时间"
+      },
+      "rows": {
+        "triage": {
+          "item": "统一 API 契约接入",
+          "owner": "平台",
+          "state": "待对接",
+          "due": "今日"
+        },
+        "handoff": {
+          "item": "组织上下文注入",
+          "owner": "Web",
+          "state": "预留",
+          "due": "本周"
+        },
+        "review": {
+          "item": "页面级权限边界",
+          "owner": "Web",
+          "state": "预留",
+          "due": "本周"
+        },
+        "blocked": {
+          "item": "审计事件挂载点",
+          "owner": "平台",
+          "state": "等待",
+          "due": "稍后"
+        }
+      }
+    },
+    "activity": {
+      "title": "最近活动",
+      "subtitle": "壳层事件流占位。",
+      "rows": {
+        "intake": {
+          "title": "需求入口导航已预留",
+          "meta": "用于后续业务页接入"
+        },
+        "workflow": {
+          "title": "流程配置入口已预留",
+          "meta": "等待业务模块落地"
+        },
+        "comment": {
+          "title": "通知控件已放置",
+          "meta": "后续接入实时事件"
+        }
+      }
+    },
+    "signals": {
+      "title": "交付信号",
+      "subtitle": "聚合状态栏的基础布局。",
+      "badge": "可扫描",
+      "rows": {
+        "scope": {
+          "label": "范围稳定度",
+          "description": "需求变更入口已隔离",
+          "value": "88"
+        },
+        "risk": {
+          "label": "风险暴露",
+          "description": "等待真实风险数据源",
+          "value": "低"
+        },
+        "quality": {
+          "label": "质量门禁",
+          "description": "预留测试和发布检查点",
+          "value": "3"
+        }
+      }
+    }
+  },
+  "organizationMembers": {
+    "title": "组织成员",
+    "description": "组织成员是空间成员和负责人选择的来源。",
+    "memberCount": "{count} 位成员",
+    "readOnly": "当前组织角色只能查看成员，不能添加或修改成员。",
+    "loading": "正在加载成员",
+    "empty": "暂无组织成员",
+    "table": {
+      "label": "组织成员列表",
+      "member": "成员",
+      "role": "组织角色",
+      "status": "状态"
+    },
+    "actions": {
+      "changeRole": "修改 {username} 的组织角色",
+      "changeStatus": "修改 {username} 的组织状态"
+    },
+    "roles": {
+      "OWNER": "所有者",
+      "ADMIN": "管理员",
+      "MEMBER": "成员"
+    },
+    "status": {
+      "ACTIVE": "启用",
+      "DISABLED": "禁用"
+    },
+    "add": {
+      "title": "添加组织成员",
+      "username": "用户名",
+      "usernameError": "请输入有效用户名或用户 ID。",
+      "role": "组织角色",
+      "roles": {
+        "OWNER": "所有者",
+        "ADMIN": "管理员",
+        "MEMBER": "成员"
+      },
+      "submit": "添加成员",
+      "submitting": "添加中"
+    }
+  },
+  "spaces": {
+    "workspace": {
+      "session": {
+        "loading": {
+          "title": "正在初始化会话",
+          "description": "正在读取组织、空间和权限边界。"
+        },
+        "unauthenticated": {
+          "title": "需要登录",
+          "description": "登录或注册后即可管理组织成员和项目空间。",
+          "login": "登录",
+          "register": "注册"
+        }
+      },
+      "missingOrganization": {
+        "title": "未找到当前组织",
+        "description": "请切换到可访问的组织后继续。"
+      },
+      "page": {
+        "eyebrow": "M1 空间管理",
+        "title": "组织与空间",
+        "noSpace": "未选择空间"
+      }
+    },
+    "list": {
+      "title": "空间列表",
+      "description": "按当前组织加载空间，空间切换后隔离详情与总览数据。",
+      "spaceCount": "{count} 个空间",
+      "readOnly": "当前组织角色只能查看空间，不能创建空间。",
+      "loading": "正在加载空间",
+      "empty": "暂无空间",
+      "selected": "当前空间",
+      "switch": "切换",
+      "notMember": "未加入",
+      "table": {
+        "label": "空间列表"
+      }
+    },
+    "create": {
+      "title": "创建空间",
+      "fields": {
+        "name": {
+          "label": "空间名称",
+          "error": "请输入空间名称，最长 120 个字符。"
+        },
+        "code": {
+          "label": "空间代码",
+          "error": "空间代码需为 2 到 32 位，仅支持字母、数字、下划线或短横线。"
+        },
+        "description": {
+          "label": "描述",
+          "error": "描述最多 2000 个字符。"
+        },
+        "owner": {
+          "label": "负责人",
+          "default": "默认当前用户"
+        },
+        "staleThresholdDays": {
+          "label": "长期停滞阈值（天）",
+          "error": "请输入 1 到 30 之间的整数。"
+        }
+      },
+      "submit": "创建空间",
+      "submitting": "创建中"
+    },
+    "settings": {
+      "title": "空间设置",
+      "description": "维护空间基础信息和长期停滞阈值。",
+      "noSpace": "选择空间后可查看设置。",
+      "loading": "正在加载空间设置",
+      "readOnly": "当前空间角色只能查看设置，不能保存修改。",
+      "fields": {
+        "name": {
+          "label": "空间名称",
+          "error": "请输入空间名称，最长 120 个字符。"
+        },
+        "code": {
+          "label": "空间代码",
+          "error": "空间代码需为 2 到 32 位，仅支持字母、数字、下划线或短横线。"
+        },
+        "description": {
+          "label": "描述",
+          "error": "描述最多 2000 个字符。"
+        },
+        "owner": {
+          "label": "负责人",
+          "default": "不变"
+        },
+        "status": {
+          "label": "空间状态"
+        },
+        "staleThresholdDays": {
+          "label": "长期停滞阈值（天）",
+          "error": "请输入 1 到 30 之间的整数。"
+        }
+      },
+      "status": {
+        "ACTIVE": "启用",
+        "DISABLED": "禁用"
+      },
+      "submit": "保存设置",
+      "submitting": "保存中"
+    },
+    "members": {
+      "title": "空间成员",
+      "description": "空间成员必须先属于当前组织。",
+      "memberCount": "{count} 位成员",
+      "readOnly": "当前空间角色只能查看成员，不能添加或修改成员。",
+      "loading": "正在加载成员",
+      "empty": "暂无空间成员",
+      "noSpace": {
+        "title": "未选择空间",
+        "description": "选择或创建空间后可管理空间成员。"
+      },
+      "table": {
+        "label": "空间成员列表",
+        "member": "成员",
+        "role": "空间角色",
+        "status": "状态"
+      },
+      "actions": {
+        "changeRole": "修改 {username} 的空间角色",
+        "changeStatus": "修改 {username} 的空间状态"
+      },
+      "roles": {
+        "SPACE_ADMIN": "空间管理员",
+        "PM": "项目经理",
+        "DEVELOPER": "开发",
+        "TESTER": "测试",
+        "REQUIREMENT": "需求",
+        "MEMBER": "成员",
+        "VIEWER": "只读"
+      },
+      "status": {
+        "ACTIVE": "启用",
+        "DISABLED": "禁用"
+      },
+      "add": {
+        "title": "添加空间成员",
+        "user": "组织成员",
+        "userPlaceholder": "选择组织成员",
+        "userError": "请选择一个组织成员。",
+        "noCandidates": "没有可添加的组织成员。",
+        "role": "空间角色",
+        "roles": {
+          "SPACE_ADMIN": "空间管理员",
+          "PM": "项目经理",
+          "DEVELOPER": "开发",
+          "TESTER": "测试",
+          "REQUIREMENT": "需求",
+          "MEMBER": "成员",
+          "VIEWER": "只读"
+        },
+        "submit": "添加成员",
+        "submitting": "添加中"
+      }
+    }
+  },
+  "spaceOverview": {
+    "title": "空间总览",
+    "description": "{space} 的基础统计和默认流程。",
+    "loadingValue": "加载中",
+    "noSpace": {
+      "title": "选择一个空间",
+      "description": "空间总览、成员和设置会按所选空间独立加载。"
+    },
+    "links": {
+      "versions": "版本",
+      "requirements": "需求"
+    },
+    "stats": {
+      "label": "空间统计",
+      "versions": "版本",
+      "requirements": "需求",
+      "tasks": "任务",
+      "bugs": "Bug",
+      "blocked": "阻塞",
+      "overdue": "逾期"
+    },
+    "currentVersion": {
+      "title": "当前版本",
+      "empty": "暂无当前版本。"
+    },
+    "workItems": {
+      "title": "任务与 Bug",
+      "empty": "M1 仅展示空态和计数，占位等待 M2/M3 接入真实任务与 Bug。"
+    },
+    "workflows": {
+      "title": "默认流程",
+      "counts": "{states} 状态 / {actions} 动作",
+      "meta": "{code} / {workItemType}",
+      "empty": "暂无默认流程。"
+    },
+    "workflowCodes": {
+      "DEVELOPMENT_TASK": "开发任务",
+      "GENERAL_TASK": "通用任务",
+      "BUG": "Bug"
+    },
+    "workItemTypes": {
+      "TASK": "任务",
+      "BUG": "Bug"
+    },
+    "versionStatus": {
+      "PLANNED": "计划中",
+      "IN_PROGRESS": "进行中",
+      "RELEASED": "已发布",
+      "ARCHIVED": "已归档"
+    }
+  }
+}
