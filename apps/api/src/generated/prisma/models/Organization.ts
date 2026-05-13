@@ -232,6 +232,11 @@ export type OrganizationWhereInput = {
   workflowDefinitions?: Prisma.WorkflowDefinitionListRelationFilter
   workflowBindings?: Prisma.WorkflowBindingListRelationFilter
   objectParticipants?: Prisma.ObjectParticipantListRelationFilter
+  intakeItems?: Prisma.IntakeItemListRelationFilter
+  workItems?: Prisma.WorkItemListRelationFilter
+  auditLogs?: Prisma.AuditLogListRelationFilter
+  comments?: Prisma.CommentListRelationFilter
+  timelineEvents?: Prisma.TimelineEventListRelationFilter
 }
 
 export type OrganizationOrderByWithRelationInput = {
@@ -255,6 +260,11 @@ export type OrganizationOrderByWithRelationInput = {
   workflowDefinitions?: Prisma.WorkflowDefinitionOrderByRelationAggregateInput
   workflowBindings?: Prisma.WorkflowBindingOrderByRelationAggregateInput
   objectParticipants?: Prisma.ObjectParticipantOrderByRelationAggregateInput
+  intakeItems?: Prisma.IntakeItemOrderByRelationAggregateInput
+  workItems?: Prisma.WorkItemOrderByRelationAggregateInput
+  auditLogs?: Prisma.AuditLogOrderByRelationAggregateInput
+  comments?: Prisma.CommentOrderByRelationAggregateInput
+  timelineEvents?: Prisma.TimelineEventOrderByRelationAggregateInput
 }
 
 export type OrganizationWhereUniqueInput = Prisma.AtLeast<{
@@ -281,6 +291,11 @@ export type OrganizationWhereUniqueInput = Prisma.AtLeast<{
   workflowDefinitions?: Prisma.WorkflowDefinitionListRelationFilter
   workflowBindings?: Prisma.WorkflowBindingListRelationFilter
   objectParticipants?: Prisma.ObjectParticipantListRelationFilter
+  intakeItems?: Prisma.IntakeItemListRelationFilter
+  workItems?: Prisma.WorkItemListRelationFilter
+  auditLogs?: Prisma.AuditLogListRelationFilter
+  comments?: Prisma.CommentListRelationFilter
+  timelineEvents?: Prisma.TimelineEventListRelationFilter
 }, "id">
 
 export type OrganizationOrderByWithAggregationInput = {
@@ -335,6 +350,11 @@ export type OrganizationCreateInput = {
   workflowDefinitions?: Prisma.WorkflowDefinitionCreateNestedManyWithoutOrganizationInput
   workflowBindings?: Prisma.WorkflowBindingCreateNestedManyWithoutOrganizationInput
   objectParticipants?: Prisma.ObjectParticipantCreateNestedManyWithoutOrganizationInput
+  intakeItems?: Prisma.IntakeItemCreateNestedManyWithoutOrganizationInput
+  workItems?: Prisma.WorkItemCreateNestedManyWithoutOrganizationInput
+  auditLogs?: Prisma.AuditLogCreateNestedManyWithoutOrganizationInput
+  comments?: Prisma.CommentCreateNestedManyWithoutOrganizationInput
+  timelineEvents?: Prisma.TimelineEventCreateNestedManyWithoutOrganizationInput
 }
 
 export type OrganizationUncheckedCreateInput = {
@@ -357,6 +377,11 @@ export type OrganizationUncheckedCreateInput = {
   workflowDefinitions?: Prisma.WorkflowDefinitionUncheckedCreateNestedManyWithoutOrganizationInput
   workflowBindings?: Prisma.WorkflowBindingUncheckedCreateNestedManyWithoutOrganizationInput
   objectParticipants?: Prisma.ObjectParticipantUncheckedCreateNestedManyWithoutOrganizationInput
+  intakeItems?: Prisma.IntakeItemUncheckedCreateNestedManyWithoutOrganizationInput
+  workItems?: Prisma.WorkItemUncheckedCreateNestedManyWithoutOrganizationInput
+  auditLogs?: Prisma.AuditLogUncheckedCreateNestedManyWithoutOrganizationInput
+  comments?: Prisma.CommentUncheckedCreateNestedManyWithoutOrganizationInput
+  timelineEvents?: Prisma.TimelineEventUncheckedCreateNestedManyWithoutOrganizationInput
 }
 
 export type OrganizationUpdateInput = {
@@ -379,6 +404,11 @@ export type OrganizationUpdateInput = {
   workflowDefinitions?: Prisma.WorkflowDefinitionUpdateManyWithoutOrganizationNestedInput
   workflowBindings?: Prisma.WorkflowBindingUpdateManyWithoutOrganizationNestedInput
   objectParticipants?: Prisma.ObjectParticipantUpdateManyWithoutOrganizationNestedInput
+  intakeItems?: Prisma.IntakeItemUpdateManyWithoutOrganizationNestedInput
+  workItems?: Prisma.WorkItemUpdateManyWithoutOrganizationNestedInput
+  auditLogs?: Prisma.AuditLogUpdateManyWithoutOrganizationNestedInput
+  comments?: Prisma.CommentUpdateManyWithoutOrganizationNestedInput
+  timelineEvents?: Prisma.TimelineEventUpdateManyWithoutOrganizationNestedInput
 }
 
 export type OrganizationUncheckedUpdateInput = {
@@ -401,6 +431,11 @@ export type OrganizationUncheckedUpdateInput = {
   workflowDefinitions?: Prisma.WorkflowDefinitionUncheckedUpdateManyWithoutOrganizationNestedInput
   workflowBindings?: Prisma.WorkflowBindingUncheckedUpdateManyWithoutOrganizationNestedInput
   objectParticipants?: Prisma.ObjectParticipantUncheckedUpdateManyWithoutOrganizationNestedInput
+  intakeItems?: Prisma.IntakeItemUncheckedUpdateManyWithoutOrganizationNestedInput
+  workItems?: Prisma.WorkItemUncheckedUpdateManyWithoutOrganizationNestedInput
+  auditLogs?: Prisma.AuditLogUncheckedUpdateManyWithoutOrganizationNestedInput
+  comments?: Prisma.CommentUncheckedUpdateManyWithoutOrganizationNestedInput
+  timelineEvents?: Prisma.TimelineEventUncheckedUpdateManyWithoutOrganizationNestedInput
 }
 
 export type OrganizationCreateManyInput = {
@@ -611,6 +646,34 @@ export type OrganizationUpdateOneRequiredWithoutRequirementsNestedInput = {
   update?: Prisma.XOR<Prisma.XOR<Prisma.OrganizationUpdateToOneWithWhereWithoutRequirementsInput, Prisma.OrganizationUpdateWithoutRequirementsInput>, Prisma.OrganizationUncheckedUpdateWithoutRequirementsInput>
 }
 
+export type OrganizationCreateNestedOneWithoutIntakeItemsInput = {
+  create?: Prisma.XOR<Prisma.OrganizationCreateWithoutIntakeItemsInput, Prisma.OrganizationUncheckedCreateWithoutIntakeItemsInput>
+  connectOrCreate?: Prisma.OrganizationCreateOrConnectWithoutIntakeItemsInput
+  connect?: Prisma.OrganizationWhereUniqueInput
+}
+
+export type OrganizationUpdateOneRequiredWithoutIntakeItemsNestedInput = {
+  create?: Prisma.XOR<Prisma.OrganizationCreateWithoutIntakeItemsInput, Prisma.OrganizationUncheckedCreateWithoutIntakeItemsInput>
+  connectOrCreate?: Prisma.OrganizationCreateOrConnectWithoutIntakeItemsInput
+  upsert?: Prisma.OrganizationUpsertWithoutIntakeItemsInput
+  connect?: Prisma.OrganizationWhereUniqueInput
+  update?: Prisma.XOR<Prisma.XOR<Prisma.OrganizationUpdateToOneWithWhereWithoutIntakeItemsInput, Prisma.OrganizationUpdateWithoutIntakeItemsInput>, Prisma.OrganizationUncheckedUpdateWithoutIntakeItemsInput>
+}
+
+export type OrganizationCreateNestedOneWithoutWorkItemsInput = {
+  create?: Prisma.XOR<Prisma.OrganizationCreateWithoutWorkItemsInput, Prisma.OrganizationUncheckedCreateWithoutWorkItemsInput>
+  connectOrCreate?: Prisma.OrganizationCreateOrConnectWithoutWorkItemsInput
+  connect?: Prisma.OrganizationWhereUniqueInput
+}
+
+export type OrganizationUpdateOneRequiredWithoutWorkItemsNestedInput = {
+  create?: Prisma.XOR<Prisma.OrganizationCreateWithoutWorkItemsInput, Prisma.OrganizationUncheckedCreateWithoutWorkItemsInput>
+  connectOrCreate?: Prisma.OrganizationCreateOrConnectWithoutWorkItemsInput
+  upsert?: Prisma.OrganizationUpsertWithoutWorkItemsInput
+  connect?: Prisma.OrganizationWhereUniqueInput
+  update?: Prisma.XOR<Prisma.XOR<Prisma.OrganizationUpdateToOneWithWhereWithoutWorkItemsInput, Prisma.OrganizationUpdateWithoutWorkItemsInput>, Prisma.OrganizationUncheckedUpdateWithoutWorkItemsInput>
+}
+
 export type OrganizationCreateNestedOneWithoutAttachmentsInput = {
   create?: Prisma.XOR<Prisma.OrganizationCreateWithoutAttachmentsInput, Prisma.OrganizationUncheckedCreateWithoutAttachmentsInput>
   connectOrCreate?: Prisma.OrganizationCreateOrConnectWithoutAttachmentsInput
@@ -667,6 +730,48 @@ export type OrganizationUpdateOneRequiredWithoutObjectParticipantsNestedInput = 
   update?: Prisma.XOR<Prisma.XOR<Prisma.OrganizationUpdateToOneWithWhereWithoutObjectParticipantsInput, Prisma.OrganizationUpdateWithoutObjectParticipantsInput>, Prisma.OrganizationUncheckedUpdateWithoutObjectParticipantsInput>
 }
 
+export type OrganizationCreateNestedOneWithoutCommentsInput = {
+  create?: Prisma.XOR<Prisma.OrganizationCreateWithoutCommentsInput, Prisma.OrganizationUncheckedCreateWithoutCommentsInput>
+  connectOrCreate?: Prisma.OrganizationCreateOrConnectWithoutCommentsInput
+  connect?: Prisma.OrganizationWhereUniqueInput
+}
+
+export type OrganizationUpdateOneRequiredWithoutCommentsNestedInput = {
+  create?: Prisma.XOR<Prisma.OrganizationCreateWithoutCommentsInput, Prisma.OrganizationUncheckedCreateWithoutCommentsInput>
+  connectOrCreate?: Prisma.OrganizationCreateOrConnectWithoutCommentsInput
+  upsert?: Prisma.OrganizationUpsertWithoutCommentsInput
+  connect?: Prisma.OrganizationWhereUniqueInput
+  update?: Prisma.XOR<Prisma.XOR<Prisma.OrganizationUpdateToOneWithWhereWithoutCommentsInput, Prisma.OrganizationUpdateWithoutCommentsInput>, Prisma.OrganizationUncheckedUpdateWithoutCommentsInput>
+}
+
+export type OrganizationCreateNestedOneWithoutTimelineEventsInput = {
+  create?: Prisma.XOR<Prisma.OrganizationCreateWithoutTimelineEventsInput, Prisma.OrganizationUncheckedCreateWithoutTimelineEventsInput>
+  connectOrCreate?: Prisma.OrganizationCreateOrConnectWithoutTimelineEventsInput
+  connect?: Prisma.OrganizationWhereUniqueInput
+}
+
+export type OrganizationUpdateOneRequiredWithoutTimelineEventsNestedInput = {
+  create?: Prisma.XOR<Prisma.OrganizationCreateWithoutTimelineEventsInput, Prisma.OrganizationUncheckedCreateWithoutTimelineEventsInput>
+  connectOrCreate?: Prisma.OrganizationCreateOrConnectWithoutTimelineEventsInput
+  upsert?: Prisma.OrganizationUpsertWithoutTimelineEventsInput
+  connect?: Prisma.OrganizationWhereUniqueInput
+  update?: Prisma.XOR<Prisma.XOR<Prisma.OrganizationUpdateToOneWithWhereWithoutTimelineEventsInput, Prisma.OrganizationUpdateWithoutTimelineEventsInput>, Prisma.OrganizationUncheckedUpdateWithoutTimelineEventsInput>
+}
+
+export type OrganizationCreateNestedOneWithoutAuditLogsInput = {
+  create?: Prisma.XOR<Prisma.OrganizationCreateWithoutAuditLogsInput, Prisma.OrganizationUncheckedCreateWithoutAuditLogsInput>
+  connectOrCreate?: Prisma.OrganizationCreateOrConnectWithoutAuditLogsInput
+  connect?: Prisma.OrganizationWhereUniqueInput
+}
+
+export type OrganizationUpdateOneRequiredWithoutAuditLogsNestedInput = {
+  create?: Prisma.XOR<Prisma.OrganizationCreateWithoutAuditLogsInput, Prisma.OrganizationUncheckedCreateWithoutAuditLogsInput>
+  connectOrCreate?: Prisma.OrganizationCreateOrConnectWithoutAuditLogsInput
+  upsert?: Prisma.OrganizationUpsertWithoutAuditLogsInput
+  connect?: Prisma.OrganizationWhereUniqueInput
+  update?: Prisma.XOR<Prisma.XOR<Prisma.OrganizationUpdateToOneWithWhereWithoutAuditLogsInput, Prisma.OrganizationUpdateWithoutAuditLogsInput>, Prisma.OrganizationUncheckedUpdateWithoutAuditLogsInput>
+}
+
 export type OrganizationCreateWithoutOwnerInput = {
   id: string
   name: string
@@ -686,6 +791,11 @@ export type OrganizationCreateWithoutOwnerInput = {
   workflowDefinitions?: Prisma.WorkflowDefinitionCreateNestedManyWithoutOrganizationInput
   workflowBindings?: Prisma.WorkflowBindingCreateNestedManyWithoutOrganizationInput
   objectParticipants?: Prisma.ObjectParticipantCreateNestedManyWithoutOrganizationInput
+  intakeItems?: Prisma.IntakeItemCreateNestedManyWithoutOrganizationInput
+  workItems?: Prisma.WorkItemCreateNestedManyWithoutOrganizationInput
+  auditLogs?: Prisma.AuditLogCreateNestedManyWithoutOrganizationInput
+  comments?: Prisma.CommentCreateNestedManyWithoutOrganizationInput
+  timelineEvents?: Prisma.TimelineEventCreateNestedManyWithoutOrganizationInput
 }
 
 export type OrganizationUncheckedCreateWithoutOwnerInput = {
@@ -707,6 +817,11 @@ export type OrganizationUncheckedCreateWithoutOwnerInput = {
   workflowDefinitions?: Prisma.WorkflowDefinitionUncheckedCreateNestedManyWithoutOrganizationInput
   workflowBindings?: Prisma.WorkflowBindingUncheckedCreateNestedManyWithoutOrganizationInput
   objectParticipants?: Prisma.ObjectParticipantUncheckedCreateNestedManyWithoutOrganizationInput
+  intakeItems?: Prisma.IntakeItemUncheckedCreateNestedManyWithoutOrganizationInput
+  workItems?: Prisma.WorkItemUncheckedCreateNestedManyWithoutOrganizationInput
+  auditLogs?: Prisma.AuditLogUncheckedCreateNestedManyWithoutOrganizationInput
+  comments?: Prisma.CommentUncheckedCreateNestedManyWithoutOrganizationInput
+  timelineEvents?: Prisma.TimelineEventUncheckedCreateNestedManyWithoutOrganizationInput
 }
 
 export type OrganizationCreateOrConnectWithoutOwnerInput = {
@@ -770,6 +885,11 @@ export type OrganizationCreateWithoutMembersInput = {
   workflowDefinitions?: Prisma.WorkflowDefinitionCreateNestedManyWithoutOrganizationInput
   workflowBindings?: Prisma.WorkflowBindingCreateNestedManyWithoutOrganizationInput
   objectParticipants?: Prisma.ObjectParticipantCreateNestedManyWithoutOrganizationInput
+  intakeItems?: Prisma.IntakeItemCreateNestedManyWithoutOrganizationInput
+  workItems?: Prisma.WorkItemCreateNestedManyWithoutOrganizationInput
+  auditLogs?: Prisma.AuditLogCreateNestedManyWithoutOrganizationInput
+  comments?: Prisma.CommentCreateNestedManyWithoutOrganizationInput
+  timelineEvents?: Prisma.TimelineEventCreateNestedManyWithoutOrganizationInput
 }
 
 export type OrganizationUncheckedCreateWithoutMembersInput = {
@@ -791,6 +911,11 @@ export type OrganizationUncheckedCreateWithoutMembersInput = {
   workflowDefinitions?: Prisma.WorkflowDefinitionUncheckedCreateNestedManyWithoutOrganizationInput
   workflowBindings?: Prisma.WorkflowBindingUncheckedCreateNestedManyWithoutOrganizationInput
   objectParticipants?: Prisma.ObjectParticipantUncheckedCreateNestedManyWithoutOrganizationInput
+  intakeItems?: Prisma.IntakeItemUncheckedCreateNestedManyWithoutOrganizationInput
+  workItems?: Prisma.WorkItemUncheckedCreateNestedManyWithoutOrganizationInput
+  auditLogs?: Prisma.AuditLogUncheckedCreateNestedManyWithoutOrganizationInput
+  comments?: Prisma.CommentUncheckedCreateNestedManyWithoutOrganizationInput
+  timelineEvents?: Prisma.TimelineEventUncheckedCreateNestedManyWithoutOrganizationInput
 }
 
 export type OrganizationCreateOrConnectWithoutMembersInput = {
@@ -828,6 +953,11 @@ export type OrganizationUpdateWithoutMembersInput = {
   workflowDefinitions?: Prisma.WorkflowDefinitionUpdateManyWithoutOrganizationNestedInput
   workflowBindings?: Prisma.WorkflowBindingUpdateManyWithoutOrganizationNestedInput
   objectParticipants?: Prisma.ObjectParticipantUpdateManyWithoutOrganizationNestedInput
+  intakeItems?: Prisma.IntakeItemUpdateManyWithoutOrganizationNestedInput
+  workItems?: Prisma.WorkItemUpdateManyWithoutOrganizationNestedInput
+  auditLogs?: Prisma.AuditLogUpdateManyWithoutOrganizationNestedInput
+  comments?: Prisma.CommentUpdateManyWithoutOrganizationNestedInput
+  timelineEvents?: Prisma.TimelineEventUpdateManyWithoutOrganizationNestedInput
 }
 
 export type OrganizationUncheckedUpdateWithoutMembersInput = {
@@ -849,6 +979,11 @@ export type OrganizationUncheckedUpdateWithoutMembersInput = {
   workflowDefinitions?: Prisma.WorkflowDefinitionUncheckedUpdateManyWithoutOrganizationNestedInput
   workflowBindings?: Prisma.WorkflowBindingUncheckedUpdateManyWithoutOrganizationNestedInput
   objectParticipants?: Prisma.ObjectParticipantUncheckedUpdateManyWithoutOrganizationNestedInput
+  intakeItems?: Prisma.IntakeItemUncheckedUpdateManyWithoutOrganizationNestedInput
+  workItems?: Prisma.WorkItemUncheckedUpdateManyWithoutOrganizationNestedInput
+  auditLogs?: Prisma.AuditLogUncheckedUpdateManyWithoutOrganizationNestedInput
+  comments?: Prisma.CommentUncheckedUpdateManyWithoutOrganizationNestedInput
+  timelineEvents?: Prisma.TimelineEventUncheckedUpdateManyWithoutOrganizationNestedInput
 }
 
 export type OrganizationCreateWithoutSpacesInput = {
@@ -870,6 +1005,11 @@ export type OrganizationCreateWithoutSpacesInput = {
   workflowDefinitions?: Prisma.WorkflowDefinitionCreateNestedManyWithoutOrganizationInput
   workflowBindings?: Prisma.WorkflowBindingCreateNestedManyWithoutOrganizationInput
   objectParticipants?: Prisma.ObjectParticipantCreateNestedManyWithoutOrganizationInput
+  intakeItems?: Prisma.IntakeItemCreateNestedManyWithoutOrganizationInput
+  workItems?: Prisma.WorkItemCreateNestedManyWithoutOrganizationInput
+  auditLogs?: Prisma.AuditLogCreateNestedManyWithoutOrganizationInput
+  comments?: Prisma.CommentCreateNestedManyWithoutOrganizationInput
+  timelineEvents?: Prisma.TimelineEventCreateNestedManyWithoutOrganizationInput
 }
 
 export type OrganizationUncheckedCreateWithoutSpacesInput = {
@@ -891,6 +1031,11 @@ export type OrganizationUncheckedCreateWithoutSpacesInput = {
   workflowDefinitions?: Prisma.WorkflowDefinitionUncheckedCreateNestedManyWithoutOrganizationInput
   workflowBindings?: Prisma.WorkflowBindingUncheckedCreateNestedManyWithoutOrganizationInput
   objectParticipants?: Prisma.ObjectParticipantUncheckedCreateNestedManyWithoutOrganizationInput
+  intakeItems?: Prisma.IntakeItemUncheckedCreateNestedManyWithoutOrganizationInput
+  workItems?: Prisma.WorkItemUncheckedCreateNestedManyWithoutOrganizationInput
+  auditLogs?: Prisma.AuditLogUncheckedCreateNestedManyWithoutOrganizationInput
+  comments?: Prisma.CommentUncheckedCreateNestedManyWithoutOrganizationInput
+  timelineEvents?: Prisma.TimelineEventUncheckedCreateNestedManyWithoutOrganizationInput
 }
 
 export type OrganizationCreateOrConnectWithoutSpacesInput = {
@@ -928,6 +1073,11 @@ export type OrganizationUpdateWithoutSpacesInput = {
   workflowDefinitions?: Prisma.WorkflowDefinitionUpdateManyWithoutOrganizationNestedInput
   workflowBindings?: Prisma.WorkflowBindingUpdateManyWithoutOrganizationNestedInput
   objectParticipants?: Prisma.ObjectParticipantUpdateManyWithoutOrganizationNestedInput
+  intakeItems?: Prisma.IntakeItemUpdateManyWithoutOrganizationNestedInput
+  workItems?: Prisma.WorkItemUpdateManyWithoutOrganizationNestedInput
+  auditLogs?: Prisma.AuditLogUpdateManyWithoutOrganizationNestedInput
+  comments?: Prisma.CommentUpdateManyWithoutOrganizationNestedInput
+  timelineEvents?: Prisma.TimelineEventUpdateManyWithoutOrganizationNestedInput
 }
 
 export type OrganizationUncheckedUpdateWithoutSpacesInput = {
@@ -949,6 +1099,11 @@ export type OrganizationUncheckedUpdateWithoutSpacesInput = {
   workflowDefinitions?: Prisma.WorkflowDefinitionUncheckedUpdateManyWithoutOrganizationNestedInput
   workflowBindings?: Prisma.WorkflowBindingUncheckedUpdateManyWithoutOrganizationNestedInput
   objectParticipants?: Prisma.ObjectParticipantUncheckedUpdateManyWithoutOrganizationNestedInput
+  intakeItems?: Prisma.IntakeItemUncheckedUpdateManyWithoutOrganizationNestedInput
+  workItems?: Prisma.WorkItemUncheckedUpdateManyWithoutOrganizationNestedInput
+  auditLogs?: Prisma.AuditLogUncheckedUpdateManyWithoutOrganizationNestedInput
+  comments?: Prisma.CommentUncheckedUpdateManyWithoutOrganizationNestedInput
+  timelineEvents?: Prisma.TimelineEventUncheckedUpdateManyWithoutOrganizationNestedInput
 }
 
 export type OrganizationCreateWithoutSpaceMembersInput = {
@@ -970,6 +1125,11 @@ export type OrganizationCreateWithoutSpaceMembersInput = {
   workflowDefinitions?: Prisma.WorkflowDefinitionCreateNestedManyWithoutOrganizationInput
   workflowBindings?: Prisma.WorkflowBindingCreateNestedManyWithoutOrganizationInput
   objectParticipants?: Prisma.ObjectParticipantCreateNestedManyWithoutOrganizationInput
+  intakeItems?: Prisma.IntakeItemCreateNestedManyWithoutOrganizationInput
+  workItems?: Prisma.WorkItemCreateNestedManyWithoutOrganizationInput
+  auditLogs?: Prisma.AuditLogCreateNestedManyWithoutOrganizationInput
+  comments?: Prisma.CommentCreateNestedManyWithoutOrganizationInput
+  timelineEvents?: Prisma.TimelineEventCreateNestedManyWithoutOrganizationInput
 }
 
 export type OrganizationUncheckedCreateWithoutSpaceMembersInput = {
@@ -991,6 +1151,11 @@ export type OrganizationUncheckedCreateWithoutSpaceMembersInput = {
   workflowDefinitions?: Prisma.WorkflowDefinitionUncheckedCreateNestedManyWithoutOrganizationInput
   workflowBindings?: Prisma.WorkflowBindingUncheckedCreateNestedManyWithoutOrganizationInput
   objectParticipants?: Prisma.ObjectParticipantUncheckedCreateNestedManyWithoutOrganizationInput
+  intakeItems?: Prisma.IntakeItemUncheckedCreateNestedManyWithoutOrganizationInput
+  workItems?: Prisma.WorkItemUncheckedCreateNestedManyWithoutOrganizationInput
+  auditLogs?: Prisma.AuditLogUncheckedCreateNestedManyWithoutOrganizationInput
+  comments?: Prisma.CommentUncheckedCreateNestedManyWithoutOrganizationInput
+  timelineEvents?: Prisma.TimelineEventUncheckedCreateNestedManyWithoutOrganizationInput
 }
 
 export type OrganizationCreateOrConnectWithoutSpaceMembersInput = {
@@ -1028,6 +1193,11 @@ export type OrganizationUpdateWithoutSpaceMembersInput = {
   workflowDefinitions?: Prisma.WorkflowDefinitionUpdateManyWithoutOrganizationNestedInput
   workflowBindings?: Prisma.WorkflowBindingUpdateManyWithoutOrganizationNestedInput
   objectParticipants?: Prisma.ObjectParticipantUpdateManyWithoutOrganizationNestedInput
+  intakeItems?: Prisma.IntakeItemUpdateManyWithoutOrganizationNestedInput
+  workItems?: Prisma.WorkItemUpdateManyWithoutOrganizationNestedInput
+  auditLogs?: Prisma.AuditLogUpdateManyWithoutOrganizationNestedInput
+  comments?: Prisma.CommentUpdateManyWithoutOrganizationNestedInput
+  timelineEvents?: Prisma.TimelineEventUpdateManyWithoutOrganizationNestedInput
 }
 
 export type OrganizationUncheckedUpdateWithoutSpaceMembersInput = {
@@ -1049,6 +1219,11 @@ export type OrganizationUncheckedUpdateWithoutSpaceMembersInput = {
   workflowDefinitions?: Prisma.WorkflowDefinitionUncheckedUpdateManyWithoutOrganizationNestedInput
   workflowBindings?: Prisma.WorkflowBindingUncheckedUpdateManyWithoutOrganizationNestedInput
   objectParticipants?: Prisma.ObjectParticipantUncheckedUpdateManyWithoutOrganizationNestedInput
+  intakeItems?: Prisma.IntakeItemUncheckedUpdateManyWithoutOrganizationNestedInput
+  workItems?: Prisma.WorkItemUncheckedUpdateManyWithoutOrganizationNestedInput
+  auditLogs?: Prisma.AuditLogUncheckedUpdateManyWithoutOrganizationNestedInput
+  comments?: Prisma.CommentUncheckedUpdateManyWithoutOrganizationNestedInput
+  timelineEvents?: Prisma.TimelineEventUncheckedUpdateManyWithoutOrganizationNestedInput
 }
 
 export type OrganizationCreateWithoutVersionsInput = {
@@ -1070,6 +1245,11 @@ export type OrganizationCreateWithoutVersionsInput = {
   workflowDefinitions?: Prisma.WorkflowDefinitionCreateNestedManyWithoutOrganizationInput
   workflowBindings?: Prisma.WorkflowBindingCreateNestedManyWithoutOrganizationInput
   objectParticipants?: Prisma.ObjectParticipantCreateNestedManyWithoutOrganizationInput
+  intakeItems?: Prisma.IntakeItemCreateNestedManyWithoutOrganizationInput
+  workItems?: Prisma.WorkItemCreateNestedManyWithoutOrganizationInput
+  auditLogs?: Prisma.AuditLogCreateNestedManyWithoutOrganizationInput
+  comments?: Prisma.CommentCreateNestedManyWithoutOrganizationInput
+  timelineEvents?: Prisma.TimelineEventCreateNestedManyWithoutOrganizationInput
 }
 
 export type OrganizationUncheckedCreateWithoutVersionsInput = {
@@ -1091,6 +1271,11 @@ export type OrganizationUncheckedCreateWithoutVersionsInput = {
   workflowDefinitions?: Prisma.WorkflowDefinitionUncheckedCreateNestedManyWithoutOrganizationInput
   workflowBindings?: Prisma.WorkflowBindingUncheckedCreateNestedManyWithoutOrganizationInput
   objectParticipants?: Prisma.ObjectParticipantUncheckedCreateNestedManyWithoutOrganizationInput
+  intakeItems?: Prisma.IntakeItemUncheckedCreateNestedManyWithoutOrganizationInput
+  workItems?: Prisma.WorkItemUncheckedCreateNestedManyWithoutOrganizationInput
+  auditLogs?: Prisma.AuditLogUncheckedCreateNestedManyWithoutOrganizationInput
+  comments?: Prisma.CommentUncheckedCreateNestedManyWithoutOrganizationInput
+  timelineEvents?: Prisma.TimelineEventUncheckedCreateNestedManyWithoutOrganizationInput
 }
 
 export type OrganizationCreateOrConnectWithoutVersionsInput = {
@@ -1128,6 +1313,11 @@ export type OrganizationUpdateWithoutVersionsInput = {
   workflowDefinitions?: Prisma.WorkflowDefinitionUpdateManyWithoutOrganizationNestedInput
   workflowBindings?: Prisma.WorkflowBindingUpdateManyWithoutOrganizationNestedInput
   objectParticipants?: Prisma.ObjectParticipantUpdateManyWithoutOrganizationNestedInput
+  intakeItems?: Prisma.IntakeItemUpdateManyWithoutOrganizationNestedInput
+  workItems?: Prisma.WorkItemUpdateManyWithoutOrganizationNestedInput
+  auditLogs?: Prisma.AuditLogUpdateManyWithoutOrganizationNestedInput
+  comments?: Prisma.CommentUpdateManyWithoutOrganizationNestedInput
+  timelineEvents?: Prisma.TimelineEventUpdateManyWithoutOrganizationNestedInput
 }
 
 export type OrganizationUncheckedUpdateWithoutVersionsInput = {
@@ -1149,6 +1339,11 @@ export type OrganizationUncheckedUpdateWithoutVersionsInput = {
   workflowDefinitions?: Prisma.WorkflowDefinitionUncheckedUpdateManyWithoutOrganizationNestedInput
   workflowBindings?: Prisma.WorkflowBindingUncheckedUpdateManyWithoutOrganizationNestedInput
   objectParticipants?: Prisma.ObjectParticipantUncheckedUpdateManyWithoutOrganizationNestedInput
+  intakeItems?: Prisma.IntakeItemUncheckedUpdateManyWithoutOrganizationNestedInput
+  workItems?: Prisma.WorkItemUncheckedUpdateManyWithoutOrganizationNestedInput
+  auditLogs?: Prisma.AuditLogUncheckedUpdateManyWithoutOrganizationNestedInput
+  comments?: Prisma.CommentUncheckedUpdateManyWithoutOrganizationNestedInput
+  timelineEvents?: Prisma.TimelineEventUncheckedUpdateManyWithoutOrganizationNestedInput
 }
 
 export type OrganizationCreateWithoutRequirementsInput = {
@@ -1170,6 +1365,11 @@ export type OrganizationCreateWithoutRequirementsInput = {
   workflowDefinitions?: Prisma.WorkflowDefinitionCreateNestedManyWithoutOrganizationInput
   workflowBindings?: Prisma.WorkflowBindingCreateNestedManyWithoutOrganizationInput
   objectParticipants?: Prisma.ObjectParticipantCreateNestedManyWithoutOrganizationInput
+  intakeItems?: Prisma.IntakeItemCreateNestedManyWithoutOrganizationInput
+  workItems?: Prisma.WorkItemCreateNestedManyWithoutOrganizationInput
+  auditLogs?: Prisma.AuditLogCreateNestedManyWithoutOrganizationInput
+  comments?: Prisma.CommentCreateNestedManyWithoutOrganizationInput
+  timelineEvents?: Prisma.TimelineEventCreateNestedManyWithoutOrganizationInput
 }
 
 export type OrganizationUncheckedCreateWithoutRequirementsInput = {
@@ -1191,6 +1391,11 @@ export type OrganizationUncheckedCreateWithoutRequirementsInput = {
   workflowDefinitions?: Prisma.WorkflowDefinitionUncheckedCreateNestedManyWithoutOrganizationInput
   workflowBindings?: Prisma.WorkflowBindingUncheckedCreateNestedManyWithoutOrganizationInput
   objectParticipants?: Prisma.ObjectParticipantUncheckedCreateNestedManyWithoutOrganizationInput
+  intakeItems?: Prisma.IntakeItemUncheckedCreateNestedManyWithoutOrganizationInput
+  workItems?: Prisma.WorkItemUncheckedCreateNestedManyWithoutOrganizationInput
+  auditLogs?: Prisma.AuditLogUncheckedCreateNestedManyWithoutOrganizationInput
+  comments?: Prisma.CommentUncheckedCreateNestedManyWithoutOrganizationInput
+  timelineEvents?: Prisma.TimelineEventUncheckedCreateNestedManyWithoutOrganizationInput
 }
 
 export type OrganizationCreateOrConnectWithoutRequirementsInput = {
@@ -1228,6 +1433,11 @@ export type OrganizationUpdateWithoutRequirementsInput = {
   workflowDefinitions?: Prisma.WorkflowDefinitionUpdateManyWithoutOrganizationNestedInput
   workflowBindings?: Prisma.WorkflowBindingUpdateManyWithoutOrganizationNestedInput
   objectParticipants?: Prisma.ObjectParticipantUpdateManyWithoutOrganizationNestedInput
+  intakeItems?: Prisma.IntakeItemUpdateManyWithoutOrganizationNestedInput
+  workItems?: Prisma.WorkItemUpdateManyWithoutOrganizationNestedInput
+  auditLogs?: Prisma.AuditLogUpdateManyWithoutOrganizationNestedInput
+  comments?: Prisma.CommentUpdateManyWithoutOrganizationNestedInput
+  timelineEvents?: Prisma.TimelineEventUpdateManyWithoutOrganizationNestedInput
 }
 
 export type OrganizationUncheckedUpdateWithoutRequirementsInput = {
@@ -1249,6 +1459,251 @@ export type OrganizationUncheckedUpdateWithoutRequirementsInput = {
   workflowDefinitions?: Prisma.WorkflowDefinitionUncheckedUpdateManyWithoutOrganizationNestedInput
   workflowBindings?: Prisma.WorkflowBindingUncheckedUpdateManyWithoutOrganizationNestedInput
   objectParticipants?: Prisma.ObjectParticipantUncheckedUpdateManyWithoutOrganizationNestedInput
+  intakeItems?: Prisma.IntakeItemUncheckedUpdateManyWithoutOrganizationNestedInput
+  workItems?: Prisma.WorkItemUncheckedUpdateManyWithoutOrganizationNestedInput
+  auditLogs?: Prisma.AuditLogUncheckedUpdateManyWithoutOrganizationNestedInput
+  comments?: Prisma.CommentUncheckedUpdateManyWithoutOrganizationNestedInput
+  timelineEvents?: Prisma.TimelineEventUncheckedUpdateManyWithoutOrganizationNestedInput
+}
+
+export type OrganizationCreateWithoutIntakeItemsInput = {
+  id: string
+  name: string
+  code: string
+  status?: $Enums.OrganizationStatus
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  createdById?: string | null
+  updatedById?: string | null
+  deletedAt?: Date | string | null
+  owner?: Prisma.UserCreateNestedOneWithoutOrganizationsInput
+  members?: Prisma.OrganizationMemberCreateNestedManyWithoutOrganizationInput
+  spaces?: Prisma.SpaceCreateNestedManyWithoutOrganizationInput
+  spaceMembers?: Prisma.SpaceMemberCreateNestedManyWithoutOrganizationInput
+  versions?: Prisma.VersionCreateNestedManyWithoutOrganizationInput
+  requirements?: Prisma.RequirementCreateNestedManyWithoutOrganizationInput
+  attachments?: Prisma.AttachmentCreateNestedManyWithoutOrganizationInput
+  workflowDefinitions?: Prisma.WorkflowDefinitionCreateNestedManyWithoutOrganizationInput
+  workflowBindings?: Prisma.WorkflowBindingCreateNestedManyWithoutOrganizationInput
+  objectParticipants?: Prisma.ObjectParticipantCreateNestedManyWithoutOrganizationInput
+  workItems?: Prisma.WorkItemCreateNestedManyWithoutOrganizationInput
+  auditLogs?: Prisma.AuditLogCreateNestedManyWithoutOrganizationInput
+  comments?: Prisma.CommentCreateNestedManyWithoutOrganizationInput
+  timelineEvents?: Prisma.TimelineEventCreateNestedManyWithoutOrganizationInput
+}
+
+export type OrganizationUncheckedCreateWithoutIntakeItemsInput = {
+  id: string
+  name: string
+  code: string
+  ownerId?: string | null
+  status?: $Enums.OrganizationStatus
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  createdById?: string | null
+  updatedById?: string | null
+  deletedAt?: Date | string | null
+  members?: Prisma.OrganizationMemberUncheckedCreateNestedManyWithoutOrganizationInput
+  spaces?: Prisma.SpaceUncheckedCreateNestedManyWithoutOrganizationInput
+  spaceMembers?: Prisma.SpaceMemberUncheckedCreateNestedManyWithoutOrganizationInput
+  versions?: Prisma.VersionUncheckedCreateNestedManyWithoutOrganizationInput
+  requirements?: Prisma.RequirementUncheckedCreateNestedManyWithoutOrganizationInput
+  attachments?: Prisma.AttachmentUncheckedCreateNestedManyWithoutOrganizationInput
+  workflowDefinitions?: Prisma.WorkflowDefinitionUncheckedCreateNestedManyWithoutOrganizationInput
+  workflowBindings?: Prisma.WorkflowBindingUncheckedCreateNestedManyWithoutOrganizationInput
+  objectParticipants?: Prisma.ObjectParticipantUncheckedCreateNestedManyWithoutOrganizationInput
+  workItems?: Prisma.WorkItemUncheckedCreateNestedManyWithoutOrganizationInput
+  auditLogs?: Prisma.AuditLogUncheckedCreateNestedManyWithoutOrganizationInput
+  comments?: Prisma.CommentUncheckedCreateNestedManyWithoutOrganizationInput
+  timelineEvents?: Prisma.TimelineEventUncheckedCreateNestedManyWithoutOrganizationInput
+}
+
+export type OrganizationCreateOrConnectWithoutIntakeItemsInput = {
+  where: Prisma.OrganizationWhereUniqueInput
+  create: Prisma.XOR<Prisma.OrganizationCreateWithoutIntakeItemsInput, Prisma.OrganizationUncheckedCreateWithoutIntakeItemsInput>
+}
+
+export type OrganizationUpsertWithoutIntakeItemsInput = {
+  update: Prisma.XOR<Prisma.OrganizationUpdateWithoutIntakeItemsInput, Prisma.OrganizationUncheckedUpdateWithoutIntakeItemsInput>
+  create: Prisma.XOR<Prisma.OrganizationCreateWithoutIntakeItemsInput, Prisma.OrganizationUncheckedCreateWithoutIntakeItemsInput>
+  where?: Prisma.OrganizationWhereInput
+}
+
+export type OrganizationUpdateToOneWithWhereWithoutIntakeItemsInput = {
+  where?: Prisma.OrganizationWhereInput
+  data: Prisma.XOR<Prisma.OrganizationUpdateWithoutIntakeItemsInput, Prisma.OrganizationUncheckedUpdateWithoutIntakeItemsInput>
+}
+
+export type OrganizationUpdateWithoutIntakeItemsInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  name?: Prisma.StringFieldUpdateOperationsInput | string
+  code?: Prisma.StringFieldUpdateOperationsInput | string
+  status?: Prisma.EnumOrganizationStatusFieldUpdateOperationsInput | $Enums.OrganizationStatus
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  createdById?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  updatedById?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  deletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  owner?: Prisma.UserUpdateOneWithoutOrganizationsNestedInput
+  members?: Prisma.OrganizationMemberUpdateManyWithoutOrganizationNestedInput
+  spaces?: Prisma.SpaceUpdateManyWithoutOrganizationNestedInput
+  spaceMembers?: Prisma.SpaceMemberUpdateManyWithoutOrganizationNestedInput
+  versions?: Prisma.VersionUpdateManyWithoutOrganizationNestedInput
+  requirements?: Prisma.RequirementUpdateManyWithoutOrganizationNestedInput
+  attachments?: Prisma.AttachmentUpdateManyWithoutOrganizationNestedInput
+  workflowDefinitions?: Prisma.WorkflowDefinitionUpdateManyWithoutOrganizationNestedInput
+  workflowBindings?: Prisma.WorkflowBindingUpdateManyWithoutOrganizationNestedInput
+  objectParticipants?: Prisma.ObjectParticipantUpdateManyWithoutOrganizationNestedInput
+  workItems?: Prisma.WorkItemUpdateManyWithoutOrganizationNestedInput
+  auditLogs?: Prisma.AuditLogUpdateManyWithoutOrganizationNestedInput
+  comments?: Prisma.CommentUpdateManyWithoutOrganizationNestedInput
+  timelineEvents?: Prisma.TimelineEventUpdateManyWithoutOrganizationNestedInput
+}
+
+export type OrganizationUncheckedUpdateWithoutIntakeItemsInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  name?: Prisma.StringFieldUpdateOperationsInput | string
+  code?: Prisma.StringFieldUpdateOperationsInput | string
+  ownerId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  status?: Prisma.EnumOrganizationStatusFieldUpdateOperationsInput | $Enums.OrganizationStatus
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  createdById?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  updatedById?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  deletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  members?: Prisma.OrganizationMemberUncheckedUpdateManyWithoutOrganizationNestedInput
+  spaces?: Prisma.SpaceUncheckedUpdateManyWithoutOrganizationNestedInput
+  spaceMembers?: Prisma.SpaceMemberUncheckedUpdateManyWithoutOrganizationNestedInput
+  versions?: Prisma.VersionUncheckedUpdateManyWithoutOrganizationNestedInput
+  requirements?: Prisma.RequirementUncheckedUpdateManyWithoutOrganizationNestedInput
+  attachments?: Prisma.AttachmentUncheckedUpdateManyWithoutOrganizationNestedInput
+  workflowDefinitions?: Prisma.WorkflowDefinitionUncheckedUpdateManyWithoutOrganizationNestedInput
+  workflowBindings?: Prisma.WorkflowBindingUncheckedUpdateManyWithoutOrganizationNestedInput
+  objectParticipants?: Prisma.ObjectParticipantUncheckedUpdateManyWithoutOrganizationNestedInput
+  workItems?: Prisma.WorkItemUncheckedUpdateManyWithoutOrganizationNestedInput
+  auditLogs?: Prisma.AuditLogUncheckedUpdateManyWithoutOrganizationNestedInput
+  comments?: Prisma.CommentUncheckedUpdateManyWithoutOrganizationNestedInput
+  timelineEvents?: Prisma.TimelineEventUncheckedUpdateManyWithoutOrganizationNestedInput
+}
+
+export type OrganizationCreateWithoutWorkItemsInput = {
+  id: string
+  name: string
+  code: string
+  status?: $Enums.OrganizationStatus
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  createdById?: string | null
+  updatedById?: string | null
+  deletedAt?: Date | string | null
+  owner?: Prisma.UserCreateNestedOneWithoutOrganizationsInput
+  members?: Prisma.OrganizationMemberCreateNestedManyWithoutOrganizationInput
+  spaces?: Prisma.SpaceCreateNestedManyWithoutOrganizationInput
+  spaceMembers?: Prisma.SpaceMemberCreateNestedManyWithoutOrganizationInput
+  versions?: Prisma.VersionCreateNestedManyWithoutOrganizationInput
+  requirements?: Prisma.RequirementCreateNestedManyWithoutOrganizationInput
+  attachments?: Prisma.AttachmentCreateNestedManyWithoutOrganizationInput
+  workflowDefinitions?: Prisma.WorkflowDefinitionCreateNestedManyWithoutOrganizationInput
+  workflowBindings?: Prisma.WorkflowBindingCreateNestedManyWithoutOrganizationInput
+  objectParticipants?: Prisma.ObjectParticipantCreateNestedManyWithoutOrganizationInput
+  intakeItems?: Prisma.IntakeItemCreateNestedManyWithoutOrganizationInput
+  auditLogs?: Prisma.AuditLogCreateNestedManyWithoutOrganizationInput
+  comments?: Prisma.CommentCreateNestedManyWithoutOrganizationInput
+  timelineEvents?: Prisma.TimelineEventCreateNestedManyWithoutOrganizationInput
+}
+
+export type OrganizationUncheckedCreateWithoutWorkItemsInput = {
+  id: string
+  name: string
+  code: string
+  ownerId?: string | null
+  status?: $Enums.OrganizationStatus
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  createdById?: string | null
+  updatedById?: string | null
+  deletedAt?: Date | string | null
+  members?: Prisma.OrganizationMemberUncheckedCreateNestedManyWithoutOrganizationInput
+  spaces?: Prisma.SpaceUncheckedCreateNestedManyWithoutOrganizationInput
+  spaceMembers?: Prisma.SpaceMemberUncheckedCreateNestedManyWithoutOrganizationInput
+  versions?: Prisma.VersionUncheckedCreateNestedManyWithoutOrganizationInput
+  requirements?: Prisma.RequirementUncheckedCreateNestedManyWithoutOrganizationInput
+  attachments?: Prisma.AttachmentUncheckedCreateNestedManyWithoutOrganizationInput
+  workflowDefinitions?: Prisma.WorkflowDefinitionUncheckedCreateNestedManyWithoutOrganizationInput
+  workflowBindings?: Prisma.WorkflowBindingUncheckedCreateNestedManyWithoutOrganizationInput
+  objectParticipants?: Prisma.ObjectParticipantUncheckedCreateNestedManyWithoutOrganizationInput
+  intakeItems?: Prisma.IntakeItemUncheckedCreateNestedManyWithoutOrganizationInput
+  auditLogs?: Prisma.AuditLogUncheckedCreateNestedManyWithoutOrganizationInput
+  comments?: Prisma.CommentUncheckedCreateNestedManyWithoutOrganizationInput
+  timelineEvents?: Prisma.TimelineEventUncheckedCreateNestedManyWithoutOrganizationInput
+}
+
+export type OrganizationCreateOrConnectWithoutWorkItemsInput = {
+  where: Prisma.OrganizationWhereUniqueInput
+  create: Prisma.XOR<Prisma.OrganizationCreateWithoutWorkItemsInput, Prisma.OrganizationUncheckedCreateWithoutWorkItemsInput>
+}
+
+export type OrganizationUpsertWithoutWorkItemsInput = {
+  update: Prisma.XOR<Prisma.OrganizationUpdateWithoutWorkItemsInput, Prisma.OrganizationUncheckedUpdateWithoutWorkItemsInput>
+  create: Prisma.XOR<Prisma.OrganizationCreateWithoutWorkItemsInput, Prisma.OrganizationUncheckedCreateWithoutWorkItemsInput>
+  where?: Prisma.OrganizationWhereInput
+}
+
+export type OrganizationUpdateToOneWithWhereWithoutWorkItemsInput = {
+  where?: Prisma.OrganizationWhereInput
+  data: Prisma.XOR<Prisma.OrganizationUpdateWithoutWorkItemsInput, Prisma.OrganizationUncheckedUpdateWithoutWorkItemsInput>
+}
+
+export type OrganizationUpdateWithoutWorkItemsInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  name?: Prisma.StringFieldUpdateOperationsInput | string
+  code?: Prisma.StringFieldUpdateOperationsInput | string
+  status?: Prisma.EnumOrganizationStatusFieldUpdateOperationsInput | $Enums.OrganizationStatus
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  createdById?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  updatedById?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  deletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  owner?: Prisma.UserUpdateOneWithoutOrganizationsNestedInput
+  members?: Prisma.OrganizationMemberUpdateManyWithoutOrganizationNestedInput
+  spaces?: Prisma.SpaceUpdateManyWithoutOrganizationNestedInput
+  spaceMembers?: Prisma.SpaceMemberUpdateManyWithoutOrganizationNestedInput
+  versions?: Prisma.VersionUpdateManyWithoutOrganizationNestedInput
+  requirements?: Prisma.RequirementUpdateManyWithoutOrganizationNestedInput
+  attachments?: Prisma.AttachmentUpdateManyWithoutOrganizationNestedInput
+  workflowDefinitions?: Prisma.WorkflowDefinitionUpdateManyWithoutOrganizationNestedInput
+  workflowBindings?: Prisma.WorkflowBindingUpdateManyWithoutOrganizationNestedInput
+  objectParticipants?: Prisma.ObjectParticipantUpdateManyWithoutOrganizationNestedInput
+  intakeItems?: Prisma.IntakeItemUpdateManyWithoutOrganizationNestedInput
+  auditLogs?: Prisma.AuditLogUpdateManyWithoutOrganizationNestedInput
+  comments?: Prisma.CommentUpdateManyWithoutOrganizationNestedInput
+  timelineEvents?: Prisma.TimelineEventUpdateManyWithoutOrganizationNestedInput
+}
+
+export type OrganizationUncheckedUpdateWithoutWorkItemsInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  name?: Prisma.StringFieldUpdateOperationsInput | string
+  code?: Prisma.StringFieldUpdateOperationsInput | string
+  ownerId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  status?: Prisma.EnumOrganizationStatusFieldUpdateOperationsInput | $Enums.OrganizationStatus
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  createdById?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  updatedById?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  deletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  members?: Prisma.OrganizationMemberUncheckedUpdateManyWithoutOrganizationNestedInput
+  spaces?: Prisma.SpaceUncheckedUpdateManyWithoutOrganizationNestedInput
+  spaceMembers?: Prisma.SpaceMemberUncheckedUpdateManyWithoutOrganizationNestedInput
+  versions?: Prisma.VersionUncheckedUpdateManyWithoutOrganizationNestedInput
+  requirements?: Prisma.RequirementUncheckedUpdateManyWithoutOrganizationNestedInput
+  attachments?: Prisma.AttachmentUncheckedUpdateManyWithoutOrganizationNestedInput
+  workflowDefinitions?: Prisma.WorkflowDefinitionUncheckedUpdateManyWithoutOrganizationNestedInput
+  workflowBindings?: Prisma.WorkflowBindingUncheckedUpdateManyWithoutOrganizationNestedInput
+  objectParticipants?: Prisma.ObjectParticipantUncheckedUpdateManyWithoutOrganizationNestedInput
+  intakeItems?: Prisma.IntakeItemUncheckedUpdateManyWithoutOrganizationNestedInput
+  auditLogs?: Prisma.AuditLogUncheckedUpdateManyWithoutOrganizationNestedInput
+  comments?: Prisma.CommentUncheckedUpdateManyWithoutOrganizationNestedInput
+  timelineEvents?: Prisma.TimelineEventUncheckedUpdateManyWithoutOrganizationNestedInput
 }
 
 export type OrganizationCreateWithoutAttachmentsInput = {
@@ -1270,6 +1725,11 @@ export type OrganizationCreateWithoutAttachmentsInput = {
   workflowDefinitions?: Prisma.WorkflowDefinitionCreateNestedManyWithoutOrganizationInput
   workflowBindings?: Prisma.WorkflowBindingCreateNestedManyWithoutOrganizationInput
   objectParticipants?: Prisma.ObjectParticipantCreateNestedManyWithoutOrganizationInput
+  intakeItems?: Prisma.IntakeItemCreateNestedManyWithoutOrganizationInput
+  workItems?: Prisma.WorkItemCreateNestedManyWithoutOrganizationInput
+  auditLogs?: Prisma.AuditLogCreateNestedManyWithoutOrganizationInput
+  comments?: Prisma.CommentCreateNestedManyWithoutOrganizationInput
+  timelineEvents?: Prisma.TimelineEventCreateNestedManyWithoutOrganizationInput
 }
 
 export type OrganizationUncheckedCreateWithoutAttachmentsInput = {
@@ -1291,6 +1751,11 @@ export type OrganizationUncheckedCreateWithoutAttachmentsInput = {
   workflowDefinitions?: Prisma.WorkflowDefinitionUncheckedCreateNestedManyWithoutOrganizationInput
   workflowBindings?: Prisma.WorkflowBindingUncheckedCreateNestedManyWithoutOrganizationInput
   objectParticipants?: Prisma.ObjectParticipantUncheckedCreateNestedManyWithoutOrganizationInput
+  intakeItems?: Prisma.IntakeItemUncheckedCreateNestedManyWithoutOrganizationInput
+  workItems?: Prisma.WorkItemUncheckedCreateNestedManyWithoutOrganizationInput
+  auditLogs?: Prisma.AuditLogUncheckedCreateNestedManyWithoutOrganizationInput
+  comments?: Prisma.CommentUncheckedCreateNestedManyWithoutOrganizationInput
+  timelineEvents?: Prisma.TimelineEventUncheckedCreateNestedManyWithoutOrganizationInput
 }
 
 export type OrganizationCreateOrConnectWithoutAttachmentsInput = {
@@ -1328,6 +1793,11 @@ export type OrganizationUpdateWithoutAttachmentsInput = {
   workflowDefinitions?: Prisma.WorkflowDefinitionUpdateManyWithoutOrganizationNestedInput
   workflowBindings?: Prisma.WorkflowBindingUpdateManyWithoutOrganizationNestedInput
   objectParticipants?: Prisma.ObjectParticipantUpdateManyWithoutOrganizationNestedInput
+  intakeItems?: Prisma.IntakeItemUpdateManyWithoutOrganizationNestedInput
+  workItems?: Prisma.WorkItemUpdateManyWithoutOrganizationNestedInput
+  auditLogs?: Prisma.AuditLogUpdateManyWithoutOrganizationNestedInput
+  comments?: Prisma.CommentUpdateManyWithoutOrganizationNestedInput
+  timelineEvents?: Prisma.TimelineEventUpdateManyWithoutOrganizationNestedInput
 }
 
 export type OrganizationUncheckedUpdateWithoutAttachmentsInput = {
@@ -1349,6 +1819,11 @@ export type OrganizationUncheckedUpdateWithoutAttachmentsInput = {
   workflowDefinitions?: Prisma.WorkflowDefinitionUncheckedUpdateManyWithoutOrganizationNestedInput
   workflowBindings?: Prisma.WorkflowBindingUncheckedUpdateManyWithoutOrganizationNestedInput
   objectParticipants?: Prisma.ObjectParticipantUncheckedUpdateManyWithoutOrganizationNestedInput
+  intakeItems?: Prisma.IntakeItemUncheckedUpdateManyWithoutOrganizationNestedInput
+  workItems?: Prisma.WorkItemUncheckedUpdateManyWithoutOrganizationNestedInput
+  auditLogs?: Prisma.AuditLogUncheckedUpdateManyWithoutOrganizationNestedInput
+  comments?: Prisma.CommentUncheckedUpdateManyWithoutOrganizationNestedInput
+  timelineEvents?: Prisma.TimelineEventUncheckedUpdateManyWithoutOrganizationNestedInput
 }
 
 export type OrganizationCreateWithoutWorkflowDefinitionsInput = {
@@ -1370,6 +1845,11 @@ export type OrganizationCreateWithoutWorkflowDefinitionsInput = {
   attachments?: Prisma.AttachmentCreateNestedManyWithoutOrganizationInput
   workflowBindings?: Prisma.WorkflowBindingCreateNestedManyWithoutOrganizationInput
   objectParticipants?: Prisma.ObjectParticipantCreateNestedManyWithoutOrganizationInput
+  intakeItems?: Prisma.IntakeItemCreateNestedManyWithoutOrganizationInput
+  workItems?: Prisma.WorkItemCreateNestedManyWithoutOrganizationInput
+  auditLogs?: Prisma.AuditLogCreateNestedManyWithoutOrganizationInput
+  comments?: Prisma.CommentCreateNestedManyWithoutOrganizationInput
+  timelineEvents?: Prisma.TimelineEventCreateNestedManyWithoutOrganizationInput
 }
 
 export type OrganizationUncheckedCreateWithoutWorkflowDefinitionsInput = {
@@ -1391,6 +1871,11 @@ export type OrganizationUncheckedCreateWithoutWorkflowDefinitionsInput = {
   attachments?: Prisma.AttachmentUncheckedCreateNestedManyWithoutOrganizationInput
   workflowBindings?: Prisma.WorkflowBindingUncheckedCreateNestedManyWithoutOrganizationInput
   objectParticipants?: Prisma.ObjectParticipantUncheckedCreateNestedManyWithoutOrganizationInput
+  intakeItems?: Prisma.IntakeItemUncheckedCreateNestedManyWithoutOrganizationInput
+  workItems?: Prisma.WorkItemUncheckedCreateNestedManyWithoutOrganizationInput
+  auditLogs?: Prisma.AuditLogUncheckedCreateNestedManyWithoutOrganizationInput
+  comments?: Prisma.CommentUncheckedCreateNestedManyWithoutOrganizationInput
+  timelineEvents?: Prisma.TimelineEventUncheckedCreateNestedManyWithoutOrganizationInput
 }
 
 export type OrganizationCreateOrConnectWithoutWorkflowDefinitionsInput = {
@@ -1428,6 +1913,11 @@ export type OrganizationUpdateWithoutWorkflowDefinitionsInput = {
   attachments?: Prisma.AttachmentUpdateManyWithoutOrganizationNestedInput
   workflowBindings?: Prisma.WorkflowBindingUpdateManyWithoutOrganizationNestedInput
   objectParticipants?: Prisma.ObjectParticipantUpdateManyWithoutOrganizationNestedInput
+  intakeItems?: Prisma.IntakeItemUpdateManyWithoutOrganizationNestedInput
+  workItems?: Prisma.WorkItemUpdateManyWithoutOrganizationNestedInput
+  auditLogs?: Prisma.AuditLogUpdateManyWithoutOrganizationNestedInput
+  comments?: Prisma.CommentUpdateManyWithoutOrganizationNestedInput
+  timelineEvents?: Prisma.TimelineEventUpdateManyWithoutOrganizationNestedInput
 }
 
 export type OrganizationUncheckedUpdateWithoutWorkflowDefinitionsInput = {
@@ -1449,6 +1939,11 @@ export type OrganizationUncheckedUpdateWithoutWorkflowDefinitionsInput = {
   attachments?: Prisma.AttachmentUncheckedUpdateManyWithoutOrganizationNestedInput
   workflowBindings?: Prisma.WorkflowBindingUncheckedUpdateManyWithoutOrganizationNestedInput
   objectParticipants?: Prisma.ObjectParticipantUncheckedUpdateManyWithoutOrganizationNestedInput
+  intakeItems?: Prisma.IntakeItemUncheckedUpdateManyWithoutOrganizationNestedInput
+  workItems?: Prisma.WorkItemUncheckedUpdateManyWithoutOrganizationNestedInput
+  auditLogs?: Prisma.AuditLogUncheckedUpdateManyWithoutOrganizationNestedInput
+  comments?: Prisma.CommentUncheckedUpdateManyWithoutOrganizationNestedInput
+  timelineEvents?: Prisma.TimelineEventUncheckedUpdateManyWithoutOrganizationNestedInput
 }
 
 export type OrganizationCreateWithoutWorkflowBindingsInput = {
@@ -1470,6 +1965,11 @@ export type OrganizationCreateWithoutWorkflowBindingsInput = {
   attachments?: Prisma.AttachmentCreateNestedManyWithoutOrganizationInput
   workflowDefinitions?: Prisma.WorkflowDefinitionCreateNestedManyWithoutOrganizationInput
   objectParticipants?: Prisma.ObjectParticipantCreateNestedManyWithoutOrganizationInput
+  intakeItems?: Prisma.IntakeItemCreateNestedManyWithoutOrganizationInput
+  workItems?: Prisma.WorkItemCreateNestedManyWithoutOrganizationInput
+  auditLogs?: Prisma.AuditLogCreateNestedManyWithoutOrganizationInput
+  comments?: Prisma.CommentCreateNestedManyWithoutOrganizationInput
+  timelineEvents?: Prisma.TimelineEventCreateNestedManyWithoutOrganizationInput
 }
 
 export type OrganizationUncheckedCreateWithoutWorkflowBindingsInput = {
@@ -1491,6 +1991,11 @@ export type OrganizationUncheckedCreateWithoutWorkflowBindingsInput = {
   attachments?: Prisma.AttachmentUncheckedCreateNestedManyWithoutOrganizationInput
   workflowDefinitions?: Prisma.WorkflowDefinitionUncheckedCreateNestedManyWithoutOrganizationInput
   objectParticipants?: Prisma.ObjectParticipantUncheckedCreateNestedManyWithoutOrganizationInput
+  intakeItems?: Prisma.IntakeItemUncheckedCreateNestedManyWithoutOrganizationInput
+  workItems?: Prisma.WorkItemUncheckedCreateNestedManyWithoutOrganizationInput
+  auditLogs?: Prisma.AuditLogUncheckedCreateNestedManyWithoutOrganizationInput
+  comments?: Prisma.CommentUncheckedCreateNestedManyWithoutOrganizationInput
+  timelineEvents?: Prisma.TimelineEventUncheckedCreateNestedManyWithoutOrganizationInput
 }
 
 export type OrganizationCreateOrConnectWithoutWorkflowBindingsInput = {
@@ -1528,6 +2033,11 @@ export type OrganizationUpdateWithoutWorkflowBindingsInput = {
   attachments?: Prisma.AttachmentUpdateManyWithoutOrganizationNestedInput
   workflowDefinitions?: Prisma.WorkflowDefinitionUpdateManyWithoutOrganizationNestedInput
   objectParticipants?: Prisma.ObjectParticipantUpdateManyWithoutOrganizationNestedInput
+  intakeItems?: Prisma.IntakeItemUpdateManyWithoutOrganizationNestedInput
+  workItems?: Prisma.WorkItemUpdateManyWithoutOrganizationNestedInput
+  auditLogs?: Prisma.AuditLogUpdateManyWithoutOrganizationNestedInput
+  comments?: Prisma.CommentUpdateManyWithoutOrganizationNestedInput
+  timelineEvents?: Prisma.TimelineEventUpdateManyWithoutOrganizationNestedInput
 }
 
 export type OrganizationUncheckedUpdateWithoutWorkflowBindingsInput = {
@@ -1549,6 +2059,11 @@ export type OrganizationUncheckedUpdateWithoutWorkflowBindingsInput = {
   attachments?: Prisma.AttachmentUncheckedUpdateManyWithoutOrganizationNestedInput
   workflowDefinitions?: Prisma.WorkflowDefinitionUncheckedUpdateManyWithoutOrganizationNestedInput
   objectParticipants?: Prisma.ObjectParticipantUncheckedUpdateManyWithoutOrganizationNestedInput
+  intakeItems?: Prisma.IntakeItemUncheckedUpdateManyWithoutOrganizationNestedInput
+  workItems?: Prisma.WorkItemUncheckedUpdateManyWithoutOrganizationNestedInput
+  auditLogs?: Prisma.AuditLogUncheckedUpdateManyWithoutOrganizationNestedInput
+  comments?: Prisma.CommentUncheckedUpdateManyWithoutOrganizationNestedInput
+  timelineEvents?: Prisma.TimelineEventUncheckedUpdateManyWithoutOrganizationNestedInput
 }
 
 export type OrganizationCreateWithoutObjectParticipantsInput = {
@@ -1570,6 +2085,11 @@ export type OrganizationCreateWithoutObjectParticipantsInput = {
   attachments?: Prisma.AttachmentCreateNestedManyWithoutOrganizationInput
   workflowDefinitions?: Prisma.WorkflowDefinitionCreateNestedManyWithoutOrganizationInput
   workflowBindings?: Prisma.WorkflowBindingCreateNestedManyWithoutOrganizationInput
+  intakeItems?: Prisma.IntakeItemCreateNestedManyWithoutOrganizationInput
+  workItems?: Prisma.WorkItemCreateNestedManyWithoutOrganizationInput
+  auditLogs?: Prisma.AuditLogCreateNestedManyWithoutOrganizationInput
+  comments?: Prisma.CommentCreateNestedManyWithoutOrganizationInput
+  timelineEvents?: Prisma.TimelineEventCreateNestedManyWithoutOrganizationInput
 }
 
 export type OrganizationUncheckedCreateWithoutObjectParticipantsInput = {
@@ -1591,6 +2111,11 @@ export type OrganizationUncheckedCreateWithoutObjectParticipantsInput = {
   attachments?: Prisma.AttachmentUncheckedCreateNestedManyWithoutOrganizationInput
   workflowDefinitions?: Prisma.WorkflowDefinitionUncheckedCreateNestedManyWithoutOrganizationInput
   workflowBindings?: Prisma.WorkflowBindingUncheckedCreateNestedManyWithoutOrganizationInput
+  intakeItems?: Prisma.IntakeItemUncheckedCreateNestedManyWithoutOrganizationInput
+  workItems?: Prisma.WorkItemUncheckedCreateNestedManyWithoutOrganizationInput
+  auditLogs?: Prisma.AuditLogUncheckedCreateNestedManyWithoutOrganizationInput
+  comments?: Prisma.CommentUncheckedCreateNestedManyWithoutOrganizationInput
+  timelineEvents?: Prisma.TimelineEventUncheckedCreateNestedManyWithoutOrganizationInput
 }
 
 export type OrganizationCreateOrConnectWithoutObjectParticipantsInput = {
@@ -1628,6 +2153,11 @@ export type OrganizationUpdateWithoutObjectParticipantsInput = {
   attachments?: Prisma.AttachmentUpdateManyWithoutOrganizationNestedInput
   workflowDefinitions?: Prisma.WorkflowDefinitionUpdateManyWithoutOrganizationNestedInput
   workflowBindings?: Prisma.WorkflowBindingUpdateManyWithoutOrganizationNestedInput
+  intakeItems?: Prisma.IntakeItemUpdateManyWithoutOrganizationNestedInput
+  workItems?: Prisma.WorkItemUpdateManyWithoutOrganizationNestedInput
+  auditLogs?: Prisma.AuditLogUpdateManyWithoutOrganizationNestedInput
+  comments?: Prisma.CommentUpdateManyWithoutOrganizationNestedInput
+  timelineEvents?: Prisma.TimelineEventUpdateManyWithoutOrganizationNestedInput
 }
 
 export type OrganizationUncheckedUpdateWithoutObjectParticipantsInput = {
@@ -1649,6 +2179,371 @@ export type OrganizationUncheckedUpdateWithoutObjectParticipantsInput = {
   attachments?: Prisma.AttachmentUncheckedUpdateManyWithoutOrganizationNestedInput
   workflowDefinitions?: Prisma.WorkflowDefinitionUncheckedUpdateManyWithoutOrganizationNestedInput
   workflowBindings?: Prisma.WorkflowBindingUncheckedUpdateManyWithoutOrganizationNestedInput
+  intakeItems?: Prisma.IntakeItemUncheckedUpdateManyWithoutOrganizationNestedInput
+  workItems?: Prisma.WorkItemUncheckedUpdateManyWithoutOrganizationNestedInput
+  auditLogs?: Prisma.AuditLogUncheckedUpdateManyWithoutOrganizationNestedInput
+  comments?: Prisma.CommentUncheckedUpdateManyWithoutOrganizationNestedInput
+  timelineEvents?: Prisma.TimelineEventUncheckedUpdateManyWithoutOrganizationNestedInput
+}
+
+export type OrganizationCreateWithoutCommentsInput = {
+  id: string
+  name: string
+  code: string
+  status?: $Enums.OrganizationStatus
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  createdById?: string | null
+  updatedById?: string | null
+  deletedAt?: Date | string | null
+  owner?: Prisma.UserCreateNestedOneWithoutOrganizationsInput
+  members?: Prisma.OrganizationMemberCreateNestedManyWithoutOrganizationInput
+  spaces?: Prisma.SpaceCreateNestedManyWithoutOrganizationInput
+  spaceMembers?: Prisma.SpaceMemberCreateNestedManyWithoutOrganizationInput
+  versions?: Prisma.VersionCreateNestedManyWithoutOrganizationInput
+  requirements?: Prisma.RequirementCreateNestedManyWithoutOrganizationInput
+  attachments?: Prisma.AttachmentCreateNestedManyWithoutOrganizationInput
+  workflowDefinitions?: Prisma.WorkflowDefinitionCreateNestedManyWithoutOrganizationInput
+  workflowBindings?: Prisma.WorkflowBindingCreateNestedManyWithoutOrganizationInput
+  objectParticipants?: Prisma.ObjectParticipantCreateNestedManyWithoutOrganizationInput
+  intakeItems?: Prisma.IntakeItemCreateNestedManyWithoutOrganizationInput
+  workItems?: Prisma.WorkItemCreateNestedManyWithoutOrganizationInput
+  auditLogs?: Prisma.AuditLogCreateNestedManyWithoutOrganizationInput
+  timelineEvents?: Prisma.TimelineEventCreateNestedManyWithoutOrganizationInput
+}
+
+export type OrganizationUncheckedCreateWithoutCommentsInput = {
+  id: string
+  name: string
+  code: string
+  ownerId?: string | null
+  status?: $Enums.OrganizationStatus
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  createdById?: string | null
+  updatedById?: string | null
+  deletedAt?: Date | string | null
+  members?: Prisma.OrganizationMemberUncheckedCreateNestedManyWithoutOrganizationInput
+  spaces?: Prisma.SpaceUncheckedCreateNestedManyWithoutOrganizationInput
+  spaceMembers?: Prisma.SpaceMemberUncheckedCreateNestedManyWithoutOrganizationInput
+  versions?: Prisma.VersionUncheckedCreateNestedManyWithoutOrganizationInput
+  requirements?: Prisma.RequirementUncheckedCreateNestedManyWithoutOrganizationInput
+  attachments?: Prisma.AttachmentUncheckedCreateNestedManyWithoutOrganizationInput
+  workflowDefinitions?: Prisma.WorkflowDefinitionUncheckedCreateNestedManyWithoutOrganizationInput
+  workflowBindings?: Prisma.WorkflowBindingUncheckedCreateNestedManyWithoutOrganizationInput
+  objectParticipants?: Prisma.ObjectParticipantUncheckedCreateNestedManyWithoutOrganizationInput
+  intakeItems?: Prisma.IntakeItemUncheckedCreateNestedManyWithoutOrganizationInput
+  workItems?: Prisma.WorkItemUncheckedCreateNestedManyWithoutOrganizationInput
+  auditLogs?: Prisma.AuditLogUncheckedCreateNestedManyWithoutOrganizationInput
+  timelineEvents?: Prisma.TimelineEventUncheckedCreateNestedManyWithoutOrganizationInput
+}
+
+export type OrganizationCreateOrConnectWithoutCommentsInput = {
+  where: Prisma.OrganizationWhereUniqueInput
+  create: Prisma.XOR<Prisma.OrganizationCreateWithoutCommentsInput, Prisma.OrganizationUncheckedCreateWithoutCommentsInput>
+}
+
+export type OrganizationUpsertWithoutCommentsInput = {
+  update: Prisma.XOR<Prisma.OrganizationUpdateWithoutCommentsInput, Prisma.OrganizationUncheckedUpdateWithoutCommentsInput>
+  create: Prisma.XOR<Prisma.OrganizationCreateWithoutCommentsInput, Prisma.OrganizationUncheckedCreateWithoutCommentsInput>
+  where?: Prisma.OrganizationWhereInput
+}
+
+export type OrganizationUpdateToOneWithWhereWithoutCommentsInput = {
+  where?: Prisma.OrganizationWhereInput
+  data: Prisma.XOR<Prisma.OrganizationUpdateWithoutCommentsInput, Prisma.OrganizationUncheckedUpdateWithoutCommentsInput>
+}
+
+export type OrganizationUpdateWithoutCommentsInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  name?: Prisma.StringFieldUpdateOperationsInput | string
+  code?: Prisma.StringFieldUpdateOperationsInput | string
+  status?: Prisma.EnumOrganizationStatusFieldUpdateOperationsInput | $Enums.OrganizationStatus
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  createdById?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  updatedById?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  deletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  owner?: Prisma.UserUpdateOneWithoutOrganizationsNestedInput
+  members?: Prisma.OrganizationMemberUpdateManyWithoutOrganizationNestedInput
+  spaces?: Prisma.SpaceUpdateManyWithoutOrganizationNestedInput
+  spaceMembers?: Prisma.SpaceMemberUpdateManyWithoutOrganizationNestedInput
+  versions?: Prisma.VersionUpdateManyWithoutOrganizationNestedInput
+  requirements?: Prisma.RequirementUpdateManyWithoutOrganizationNestedInput
+  attachments?: Prisma.AttachmentUpdateManyWithoutOrganizationNestedInput
+  workflowDefinitions?: Prisma.WorkflowDefinitionUpdateManyWithoutOrganizationNestedInput
+  workflowBindings?: Prisma.WorkflowBindingUpdateManyWithoutOrganizationNestedInput
+  objectParticipants?: Prisma.ObjectParticipantUpdateManyWithoutOrganizationNestedInput
+  intakeItems?: Prisma.IntakeItemUpdateManyWithoutOrganizationNestedInput
+  workItems?: Prisma.WorkItemUpdateManyWithoutOrganizationNestedInput
+  auditLogs?: Prisma.AuditLogUpdateManyWithoutOrganizationNestedInput
+  timelineEvents?: Prisma.TimelineEventUpdateManyWithoutOrganizationNestedInput
+}
+
+export type OrganizationUncheckedUpdateWithoutCommentsInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  name?: Prisma.StringFieldUpdateOperationsInput | string
+  code?: Prisma.StringFieldUpdateOperationsInput | string
+  ownerId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  status?: Prisma.EnumOrganizationStatusFieldUpdateOperationsInput | $Enums.OrganizationStatus
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  createdById?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  updatedById?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  deletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  members?: Prisma.OrganizationMemberUncheckedUpdateManyWithoutOrganizationNestedInput
+  spaces?: Prisma.SpaceUncheckedUpdateManyWithoutOrganizationNestedInput
+  spaceMembers?: Prisma.SpaceMemberUncheckedUpdateManyWithoutOrganizationNestedInput
+  versions?: Prisma.VersionUncheckedUpdateManyWithoutOrganizationNestedInput
+  requirements?: Prisma.RequirementUncheckedUpdateManyWithoutOrganizationNestedInput
+  attachments?: Prisma.AttachmentUncheckedUpdateManyWithoutOrganizationNestedInput
+  workflowDefinitions?: Prisma.WorkflowDefinitionUncheckedUpdateManyWithoutOrganizationNestedInput
+  workflowBindings?: Prisma.WorkflowBindingUncheckedUpdateManyWithoutOrganizationNestedInput
+  objectParticipants?: Prisma.ObjectParticipantUncheckedUpdateManyWithoutOrganizationNestedInput
+  intakeItems?: Prisma.IntakeItemUncheckedUpdateManyWithoutOrganizationNestedInput
+  workItems?: Prisma.WorkItemUncheckedUpdateManyWithoutOrganizationNestedInput
+  auditLogs?: Prisma.AuditLogUncheckedUpdateManyWithoutOrganizationNestedInput
+  timelineEvents?: Prisma.TimelineEventUncheckedUpdateManyWithoutOrganizationNestedInput
+}
+
+export type OrganizationCreateWithoutTimelineEventsInput = {
+  id: string
+  name: string
+  code: string
+  status?: $Enums.OrganizationStatus
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  createdById?: string | null
+  updatedById?: string | null
+  deletedAt?: Date | string | null
+  owner?: Prisma.UserCreateNestedOneWithoutOrganizationsInput
+  members?: Prisma.OrganizationMemberCreateNestedManyWithoutOrganizationInput
+  spaces?: Prisma.SpaceCreateNestedManyWithoutOrganizationInput
+  spaceMembers?: Prisma.SpaceMemberCreateNestedManyWithoutOrganizationInput
+  versions?: Prisma.VersionCreateNestedManyWithoutOrganizationInput
+  requirements?: Prisma.RequirementCreateNestedManyWithoutOrganizationInput
+  attachments?: Prisma.AttachmentCreateNestedManyWithoutOrganizationInput
+  workflowDefinitions?: Prisma.WorkflowDefinitionCreateNestedManyWithoutOrganizationInput
+  workflowBindings?: Prisma.WorkflowBindingCreateNestedManyWithoutOrganizationInput
+  objectParticipants?: Prisma.ObjectParticipantCreateNestedManyWithoutOrganizationInput
+  intakeItems?: Prisma.IntakeItemCreateNestedManyWithoutOrganizationInput
+  workItems?: Prisma.WorkItemCreateNestedManyWithoutOrganizationInput
+  auditLogs?: Prisma.AuditLogCreateNestedManyWithoutOrganizationInput
+  comments?: Prisma.CommentCreateNestedManyWithoutOrganizationInput
+}
+
+export type OrganizationUncheckedCreateWithoutTimelineEventsInput = {
+  id: string
+  name: string
+  code: string
+  ownerId?: string | null
+  status?: $Enums.OrganizationStatus
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  createdById?: string | null
+  updatedById?: string | null
+  deletedAt?: Date | string | null
+  members?: Prisma.OrganizationMemberUncheckedCreateNestedManyWithoutOrganizationInput
+  spaces?: Prisma.SpaceUncheckedCreateNestedManyWithoutOrganizationInput
+  spaceMembers?: Prisma.SpaceMemberUncheckedCreateNestedManyWithoutOrganizationInput
+  versions?: Prisma.VersionUncheckedCreateNestedManyWithoutOrganizationInput
+  requirements?: Prisma.RequirementUncheckedCreateNestedManyWithoutOrganizationInput
+  attachments?: Prisma.AttachmentUncheckedCreateNestedManyWithoutOrganizationInput
+  workflowDefinitions?: Prisma.WorkflowDefinitionUncheckedCreateNestedManyWithoutOrganizationInput
+  workflowBindings?: Prisma.WorkflowBindingUncheckedCreateNestedManyWithoutOrganizationInput
+  objectParticipants?: Prisma.ObjectParticipantUncheckedCreateNestedManyWithoutOrganizationInput
+  intakeItems?: Prisma.IntakeItemUncheckedCreateNestedManyWithoutOrganizationInput
+  workItems?: Prisma.WorkItemUncheckedCreateNestedManyWithoutOrganizationInput
+  auditLogs?: Prisma.AuditLogUncheckedCreateNestedManyWithoutOrganizationInput
+  comments?: Prisma.CommentUncheckedCreateNestedManyWithoutOrganizationInput
+}
+
+export type OrganizationCreateOrConnectWithoutTimelineEventsInput = {
+  where: Prisma.OrganizationWhereUniqueInput
+  create: Prisma.XOR<Prisma.OrganizationCreateWithoutTimelineEventsInput, Prisma.OrganizationUncheckedCreateWithoutTimelineEventsInput>
+}
+
+export type OrganizationUpsertWithoutTimelineEventsInput = {
+  update: Prisma.XOR<Prisma.OrganizationUpdateWithoutTimelineEventsInput, Prisma.OrganizationUncheckedUpdateWithoutTimelineEventsInput>
+  create: Prisma.XOR<Prisma.OrganizationCreateWithoutTimelineEventsInput, Prisma.OrganizationUncheckedCreateWithoutTimelineEventsInput>
+  where?: Prisma.OrganizationWhereInput
+}
+
+export type OrganizationUpdateToOneWithWhereWithoutTimelineEventsInput = {
+  where?: Prisma.OrganizationWhereInput
+  data: Prisma.XOR<Prisma.OrganizationUpdateWithoutTimelineEventsInput, Prisma.OrganizationUncheckedUpdateWithoutTimelineEventsInput>
+}
+
+export type OrganizationUpdateWithoutTimelineEventsInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  name?: Prisma.StringFieldUpdateOperationsInput | string
+  code?: Prisma.StringFieldUpdateOperationsInput | string
+  status?: Prisma.EnumOrganizationStatusFieldUpdateOperationsInput | $Enums.OrganizationStatus
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  createdById?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  updatedById?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  deletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  owner?: Prisma.UserUpdateOneWithoutOrganizationsNestedInput
+  members?: Prisma.OrganizationMemberUpdateManyWithoutOrganizationNestedInput
+  spaces?: Prisma.SpaceUpdateManyWithoutOrganizationNestedInput
+  spaceMembers?: Prisma.SpaceMemberUpdateManyWithoutOrganizationNestedInput
+  versions?: Prisma.VersionUpdateManyWithoutOrganizationNestedInput
+  requirements?: Prisma.RequirementUpdateManyWithoutOrganizationNestedInput
+  attachments?: Prisma.AttachmentUpdateManyWithoutOrganizationNestedInput
+  workflowDefinitions?: Prisma.WorkflowDefinitionUpdateManyWithoutOrganizationNestedInput
+  workflowBindings?: Prisma.WorkflowBindingUpdateManyWithoutOrganizationNestedInput
+  objectParticipants?: Prisma.ObjectParticipantUpdateManyWithoutOrganizationNestedInput
+  intakeItems?: Prisma.IntakeItemUpdateManyWithoutOrganizationNestedInput
+  workItems?: Prisma.WorkItemUpdateManyWithoutOrganizationNestedInput
+  auditLogs?: Prisma.AuditLogUpdateManyWithoutOrganizationNestedInput
+  comments?: Prisma.CommentUpdateManyWithoutOrganizationNestedInput
+}
+
+export type OrganizationUncheckedUpdateWithoutTimelineEventsInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  name?: Prisma.StringFieldUpdateOperationsInput | string
+  code?: Prisma.StringFieldUpdateOperationsInput | string
+  ownerId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  status?: Prisma.EnumOrganizationStatusFieldUpdateOperationsInput | $Enums.OrganizationStatus
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  createdById?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  updatedById?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  deletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  members?: Prisma.OrganizationMemberUncheckedUpdateManyWithoutOrganizationNestedInput
+  spaces?: Prisma.SpaceUncheckedUpdateManyWithoutOrganizationNestedInput
+  spaceMembers?: Prisma.SpaceMemberUncheckedUpdateManyWithoutOrganizationNestedInput
+  versions?: Prisma.VersionUncheckedUpdateManyWithoutOrganizationNestedInput
+  requirements?: Prisma.RequirementUncheckedUpdateManyWithoutOrganizationNestedInput
+  attachments?: Prisma.AttachmentUncheckedUpdateManyWithoutOrganizationNestedInput
+  workflowDefinitions?: Prisma.WorkflowDefinitionUncheckedUpdateManyWithoutOrganizationNestedInput
+  workflowBindings?: Prisma.WorkflowBindingUncheckedUpdateManyWithoutOrganizationNestedInput
+  objectParticipants?: Prisma.ObjectParticipantUncheckedUpdateManyWithoutOrganizationNestedInput
+  intakeItems?: Prisma.IntakeItemUncheckedUpdateManyWithoutOrganizationNestedInput
+  workItems?: Prisma.WorkItemUncheckedUpdateManyWithoutOrganizationNestedInput
+  auditLogs?: Prisma.AuditLogUncheckedUpdateManyWithoutOrganizationNestedInput
+  comments?: Prisma.CommentUncheckedUpdateManyWithoutOrganizationNestedInput
+}
+
+export type OrganizationCreateWithoutAuditLogsInput = {
+  id: string
+  name: string
+  code: string
+  status?: $Enums.OrganizationStatus
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  createdById?: string | null
+  updatedById?: string | null
+  deletedAt?: Date | string | null
+  owner?: Prisma.UserCreateNestedOneWithoutOrganizationsInput
+  members?: Prisma.OrganizationMemberCreateNestedManyWithoutOrganizationInput
+  spaces?: Prisma.SpaceCreateNestedManyWithoutOrganizationInput
+  spaceMembers?: Prisma.SpaceMemberCreateNestedManyWithoutOrganizationInput
+  versions?: Prisma.VersionCreateNestedManyWithoutOrganizationInput
+  requirements?: Prisma.RequirementCreateNestedManyWithoutOrganizationInput
+  attachments?: Prisma.AttachmentCreateNestedManyWithoutOrganizationInput
+  workflowDefinitions?: Prisma.WorkflowDefinitionCreateNestedManyWithoutOrganizationInput
+  workflowBindings?: Prisma.WorkflowBindingCreateNestedManyWithoutOrganizationInput
+  objectParticipants?: Prisma.ObjectParticipantCreateNestedManyWithoutOrganizationInput
+  intakeItems?: Prisma.IntakeItemCreateNestedManyWithoutOrganizationInput
+  workItems?: Prisma.WorkItemCreateNestedManyWithoutOrganizationInput
+  comments?: Prisma.CommentCreateNestedManyWithoutOrganizationInput
+  timelineEvents?: Prisma.TimelineEventCreateNestedManyWithoutOrganizationInput
+}
+
+export type OrganizationUncheckedCreateWithoutAuditLogsInput = {
+  id: string
+  name: string
+  code: string
+  ownerId?: string | null
+  status?: $Enums.OrganizationStatus
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  createdById?: string | null
+  updatedById?: string | null
+  deletedAt?: Date | string | null
+  members?: Prisma.OrganizationMemberUncheckedCreateNestedManyWithoutOrganizationInput
+  spaces?: Prisma.SpaceUncheckedCreateNestedManyWithoutOrganizationInput
+  spaceMembers?: Prisma.SpaceMemberUncheckedCreateNestedManyWithoutOrganizationInput
+  versions?: Prisma.VersionUncheckedCreateNestedManyWithoutOrganizationInput
+  requirements?: Prisma.RequirementUncheckedCreateNestedManyWithoutOrganizationInput
+  attachments?: Prisma.AttachmentUncheckedCreateNestedManyWithoutOrganizationInput
+  workflowDefinitions?: Prisma.WorkflowDefinitionUncheckedCreateNestedManyWithoutOrganizationInput
+  workflowBindings?: Prisma.WorkflowBindingUncheckedCreateNestedManyWithoutOrganizationInput
+  objectParticipants?: Prisma.ObjectParticipantUncheckedCreateNestedManyWithoutOrganizationInput
+  intakeItems?: Prisma.IntakeItemUncheckedCreateNestedManyWithoutOrganizationInput
+  workItems?: Prisma.WorkItemUncheckedCreateNestedManyWithoutOrganizationInput
+  comments?: Prisma.CommentUncheckedCreateNestedManyWithoutOrganizationInput
+  timelineEvents?: Prisma.TimelineEventUncheckedCreateNestedManyWithoutOrganizationInput
+}
+
+export type OrganizationCreateOrConnectWithoutAuditLogsInput = {
+  where: Prisma.OrganizationWhereUniqueInput
+  create: Prisma.XOR<Prisma.OrganizationCreateWithoutAuditLogsInput, Prisma.OrganizationUncheckedCreateWithoutAuditLogsInput>
+}
+
+export type OrganizationUpsertWithoutAuditLogsInput = {
+  update: Prisma.XOR<Prisma.OrganizationUpdateWithoutAuditLogsInput, Prisma.OrganizationUncheckedUpdateWithoutAuditLogsInput>
+  create: Prisma.XOR<Prisma.OrganizationCreateWithoutAuditLogsInput, Prisma.OrganizationUncheckedCreateWithoutAuditLogsInput>
+  where?: Prisma.OrganizationWhereInput
+}
+
+export type OrganizationUpdateToOneWithWhereWithoutAuditLogsInput = {
+  where?: Prisma.OrganizationWhereInput
+  data: Prisma.XOR<Prisma.OrganizationUpdateWithoutAuditLogsInput, Prisma.OrganizationUncheckedUpdateWithoutAuditLogsInput>
+}
+
+export type OrganizationUpdateWithoutAuditLogsInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  name?: Prisma.StringFieldUpdateOperationsInput | string
+  code?: Prisma.StringFieldUpdateOperationsInput | string
+  status?: Prisma.EnumOrganizationStatusFieldUpdateOperationsInput | $Enums.OrganizationStatus
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  createdById?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  updatedById?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  deletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  owner?: Prisma.UserUpdateOneWithoutOrganizationsNestedInput
+  members?: Prisma.OrganizationMemberUpdateManyWithoutOrganizationNestedInput
+  spaces?: Prisma.SpaceUpdateManyWithoutOrganizationNestedInput
+  spaceMembers?: Prisma.SpaceMemberUpdateManyWithoutOrganizationNestedInput
+  versions?: Prisma.VersionUpdateManyWithoutOrganizationNestedInput
+  requirements?: Prisma.RequirementUpdateManyWithoutOrganizationNestedInput
+  attachments?: Prisma.AttachmentUpdateManyWithoutOrganizationNestedInput
+  workflowDefinitions?: Prisma.WorkflowDefinitionUpdateManyWithoutOrganizationNestedInput
+  workflowBindings?: Prisma.WorkflowBindingUpdateManyWithoutOrganizationNestedInput
+  objectParticipants?: Prisma.ObjectParticipantUpdateManyWithoutOrganizationNestedInput
+  intakeItems?: Prisma.IntakeItemUpdateManyWithoutOrganizationNestedInput
+  workItems?: Prisma.WorkItemUpdateManyWithoutOrganizationNestedInput
+  comments?: Prisma.CommentUpdateManyWithoutOrganizationNestedInput
+  timelineEvents?: Prisma.TimelineEventUpdateManyWithoutOrganizationNestedInput
+}
+
+export type OrganizationUncheckedUpdateWithoutAuditLogsInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  name?: Prisma.StringFieldUpdateOperationsInput | string
+  code?: Prisma.StringFieldUpdateOperationsInput | string
+  ownerId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  status?: Prisma.EnumOrganizationStatusFieldUpdateOperationsInput | $Enums.OrganizationStatus
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  createdById?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  updatedById?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  deletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  members?: Prisma.OrganizationMemberUncheckedUpdateManyWithoutOrganizationNestedInput
+  spaces?: Prisma.SpaceUncheckedUpdateManyWithoutOrganizationNestedInput
+  spaceMembers?: Prisma.SpaceMemberUncheckedUpdateManyWithoutOrganizationNestedInput
+  versions?: Prisma.VersionUncheckedUpdateManyWithoutOrganizationNestedInput
+  requirements?: Prisma.RequirementUncheckedUpdateManyWithoutOrganizationNestedInput
+  attachments?: Prisma.AttachmentUncheckedUpdateManyWithoutOrganizationNestedInput
+  workflowDefinitions?: Prisma.WorkflowDefinitionUncheckedUpdateManyWithoutOrganizationNestedInput
+  workflowBindings?: Prisma.WorkflowBindingUncheckedUpdateManyWithoutOrganizationNestedInput
+  objectParticipants?: Prisma.ObjectParticipantUncheckedUpdateManyWithoutOrganizationNestedInput
+  intakeItems?: Prisma.IntakeItemUncheckedUpdateManyWithoutOrganizationNestedInput
+  workItems?: Prisma.WorkItemUncheckedUpdateManyWithoutOrganizationNestedInput
+  comments?: Prisma.CommentUncheckedUpdateManyWithoutOrganizationNestedInput
+  timelineEvents?: Prisma.TimelineEventUncheckedUpdateManyWithoutOrganizationNestedInput
 }
 
 export type OrganizationCreateManyOwnerInput = {
@@ -1682,6 +2577,11 @@ export type OrganizationUpdateWithoutOwnerInput = {
   workflowDefinitions?: Prisma.WorkflowDefinitionUpdateManyWithoutOrganizationNestedInput
   workflowBindings?: Prisma.WorkflowBindingUpdateManyWithoutOrganizationNestedInput
   objectParticipants?: Prisma.ObjectParticipantUpdateManyWithoutOrganizationNestedInput
+  intakeItems?: Prisma.IntakeItemUpdateManyWithoutOrganizationNestedInput
+  workItems?: Prisma.WorkItemUpdateManyWithoutOrganizationNestedInput
+  auditLogs?: Prisma.AuditLogUpdateManyWithoutOrganizationNestedInput
+  comments?: Prisma.CommentUpdateManyWithoutOrganizationNestedInput
+  timelineEvents?: Prisma.TimelineEventUpdateManyWithoutOrganizationNestedInput
 }
 
 export type OrganizationUncheckedUpdateWithoutOwnerInput = {
@@ -1703,6 +2603,11 @@ export type OrganizationUncheckedUpdateWithoutOwnerInput = {
   workflowDefinitions?: Prisma.WorkflowDefinitionUncheckedUpdateManyWithoutOrganizationNestedInput
   workflowBindings?: Prisma.WorkflowBindingUncheckedUpdateManyWithoutOrganizationNestedInput
   objectParticipants?: Prisma.ObjectParticipantUncheckedUpdateManyWithoutOrganizationNestedInput
+  intakeItems?: Prisma.IntakeItemUncheckedUpdateManyWithoutOrganizationNestedInput
+  workItems?: Prisma.WorkItemUncheckedUpdateManyWithoutOrganizationNestedInput
+  auditLogs?: Prisma.AuditLogUncheckedUpdateManyWithoutOrganizationNestedInput
+  comments?: Prisma.CommentUncheckedUpdateManyWithoutOrganizationNestedInput
+  timelineEvents?: Prisma.TimelineEventUncheckedUpdateManyWithoutOrganizationNestedInput
 }
 
 export type OrganizationUncheckedUpdateManyWithoutOwnerInput = {
@@ -1732,6 +2637,11 @@ export type OrganizationCountOutputType = {
   workflowDefinitions: number
   workflowBindings: number
   objectParticipants: number
+  intakeItems: number
+  workItems: number
+  auditLogs: number
+  comments: number
+  timelineEvents: number
 }
 
 export type OrganizationCountOutputTypeSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
@@ -1744,6 +2654,11 @@ export type OrganizationCountOutputTypeSelect<ExtArgs extends runtime.Types.Exte
   workflowDefinitions?: boolean | OrganizationCountOutputTypeCountWorkflowDefinitionsArgs
   workflowBindings?: boolean | OrganizationCountOutputTypeCountWorkflowBindingsArgs
   objectParticipants?: boolean | OrganizationCountOutputTypeCountObjectParticipantsArgs
+  intakeItems?: boolean | OrganizationCountOutputTypeCountIntakeItemsArgs
+  workItems?: boolean | OrganizationCountOutputTypeCountWorkItemsArgs
+  auditLogs?: boolean | OrganizationCountOutputTypeCountAuditLogsArgs
+  comments?: boolean | OrganizationCountOutputTypeCountCommentsArgs
+  timelineEvents?: boolean | OrganizationCountOutputTypeCountTimelineEventsArgs
 }
 
 /**
@@ -1819,6 +2734,41 @@ export type OrganizationCountOutputTypeCountObjectParticipantsArgs<ExtArgs exten
   where?: Prisma.ObjectParticipantWhereInput
 }
 
+/**
+ * OrganizationCountOutputType without action
+ */
+export type OrganizationCountOutputTypeCountIntakeItemsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  where?: Prisma.IntakeItemWhereInput
+}
+
+/**
+ * OrganizationCountOutputType without action
+ */
+export type OrganizationCountOutputTypeCountWorkItemsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  where?: Prisma.WorkItemWhereInput
+}
+
+/**
+ * OrganizationCountOutputType without action
+ */
+export type OrganizationCountOutputTypeCountAuditLogsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  where?: Prisma.AuditLogWhereInput
+}
+
+/**
+ * OrganizationCountOutputType without action
+ */
+export type OrganizationCountOutputTypeCountCommentsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  where?: Prisma.CommentWhereInput
+}
+
+/**
+ * OrganizationCountOutputType without action
+ */
+export type OrganizationCountOutputTypeCountTimelineEventsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  where?: Prisma.TimelineEventWhereInput
+}
+
 
 export type OrganizationSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
   id?: boolean
@@ -1841,6 +2791,11 @@ export type OrganizationSelect<ExtArgs extends runtime.Types.Extensions.Internal
   workflowDefinitions?: boolean | Prisma.Organization$workflowDefinitionsArgs<ExtArgs>
   workflowBindings?: boolean | Prisma.Organization$workflowBindingsArgs<ExtArgs>
   objectParticipants?: boolean | Prisma.Organization$objectParticipantsArgs<ExtArgs>
+  intakeItems?: boolean | Prisma.Organization$intakeItemsArgs<ExtArgs>
+  workItems?: boolean | Prisma.Organization$workItemsArgs<ExtArgs>
+  auditLogs?: boolean | Prisma.Organization$auditLogsArgs<ExtArgs>
+  comments?: boolean | Prisma.Organization$commentsArgs<ExtArgs>
+  timelineEvents?: boolean | Prisma.Organization$timelineEventsArgs<ExtArgs>
   _count?: boolean | Prisma.OrganizationCountOutputTypeDefaultArgs<ExtArgs>
 }, ExtArgs["result"]["organization"]>
 
@@ -1897,6 +2852,11 @@ export type OrganizationInclude<ExtArgs extends runtime.Types.Extensions.Interna
   workflowDefinitions?: boolean | Prisma.Organization$workflowDefinitionsArgs<ExtArgs>
   workflowBindings?: boolean | Prisma.Organization$workflowBindingsArgs<ExtArgs>
   objectParticipants?: boolean | Prisma.Organization$objectParticipantsArgs<ExtArgs>
+  intakeItems?: boolean | Prisma.Organization$intakeItemsArgs<ExtArgs>
+  workItems?: boolean | Prisma.Organization$workItemsArgs<ExtArgs>
+  auditLogs?: boolean | Prisma.Organization$auditLogsArgs<ExtArgs>
+  comments?: boolean | Prisma.Organization$commentsArgs<ExtArgs>
+  timelineEvents?: boolean | Prisma.Organization$timelineEventsArgs<ExtArgs>
   _count?: boolean | Prisma.OrganizationCountOutputTypeDefaultArgs<ExtArgs>
 }
 export type OrganizationIncludeCreateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
@@ -1919,6 +2879,11 @@ export type $OrganizationPayload<ExtArgs extends runtime.Types.Extensions.Intern
     workflowDefinitions: Prisma.$WorkflowDefinitionPayload<ExtArgs>[]
     workflowBindings: Prisma.$WorkflowBindingPayload<ExtArgs>[]
     objectParticipants: Prisma.$ObjectParticipantPayload<ExtArgs>[]
+    intakeItems: Prisma.$IntakeItemPayload<ExtArgs>[]
+    workItems: Prisma.$WorkItemPayload<ExtArgs>[]
+    auditLogs: Prisma.$AuditLogPayload<ExtArgs>[]
+    comments: Prisma.$CommentPayload<ExtArgs>[]
+    timelineEvents: Prisma.$TimelineEventPayload<ExtArgs>[]
   }
   scalars: runtime.Types.Extensions.GetPayloadResult<{
     id: string
@@ -2335,6 +3300,11 @@ export interface Prisma__OrganizationClient<T, Null = never, ExtArgs extends run
   workflowDefinitions<T extends Prisma.Organization$workflowDefinitionsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Organization$workflowDefinitionsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$WorkflowDefinitionPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   workflowBindings<T extends Prisma.Organization$workflowBindingsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Organization$workflowBindingsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$WorkflowBindingPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   objectParticipants<T extends Prisma.Organization$objectParticipantsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Organization$objectParticipantsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$ObjectParticipantPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
+  intakeItems<T extends Prisma.Organization$intakeItemsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Organization$intakeItemsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$IntakeItemPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
+  workItems<T extends Prisma.Organization$workItemsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Organization$workItemsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$WorkItemPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
+  auditLogs<T extends Prisma.Organization$auditLogsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Organization$auditLogsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$AuditLogPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
+  comments<T extends Prisma.Organization$commentsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Organization$commentsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$CommentPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
+  timelineEvents<T extends Prisma.Organization$timelineEventsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Organization$timelineEventsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$TimelineEventPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   /**
    * Attaches callbacks for the resolution and/or rejection of the Promise.
    * @param onfulfilled The callback to execute when the Promise is resolved.
@@ -3007,6 +3977,126 @@ export type Organization$objectParticipantsArgs<ExtArgs extends runtime.Types.Ex
   take?: number
   skip?: number
   distinct?: Prisma.ObjectParticipantScalarFieldEnum | Prisma.ObjectParticipantScalarFieldEnum[]
+}
+
+/**
+ * Organization.intakeItems
+ */
+export type Organization$intakeItemsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  /**
+   * Select specific fields to fetch from the IntakeItem
+   */
+  select?: Prisma.IntakeItemSelect<ExtArgs> | null
+  /**
+   * Omit specific fields from the IntakeItem
+   */
+  omit?: Prisma.IntakeItemOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.IntakeItemInclude<ExtArgs> | null
+  where?: Prisma.IntakeItemWhereInput
+  orderBy?: Prisma.IntakeItemOrderByWithRelationInput | Prisma.IntakeItemOrderByWithRelationInput[]
+  cursor?: Prisma.IntakeItemWhereUniqueInput
+  take?: number
+  skip?: number
+  distinct?: Prisma.IntakeItemScalarFieldEnum | Prisma.IntakeItemScalarFieldEnum[]
+}
+
+/**
+ * Organization.workItems
+ */
+export type Organization$workItemsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  /**
+   * Select specific fields to fetch from the WorkItem
+   */
+  select?: Prisma.WorkItemSelect<ExtArgs> | null
+  /**
+   * Omit specific fields from the WorkItem
+   */
+  omit?: Prisma.WorkItemOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.WorkItemInclude<ExtArgs> | null
+  where?: Prisma.WorkItemWhereInput
+  orderBy?: Prisma.WorkItemOrderByWithRelationInput | Prisma.WorkItemOrderByWithRelationInput[]
+  cursor?: Prisma.WorkItemWhereUniqueInput
+  take?: number
+  skip?: number
+  distinct?: Prisma.WorkItemScalarFieldEnum | Prisma.WorkItemScalarFieldEnum[]
+}
+
+/**
+ * Organization.auditLogs
+ */
+export type Organization$auditLogsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  /**
+   * Select specific fields to fetch from the AuditLog
+   */
+  select?: Prisma.AuditLogSelect<ExtArgs> | null
+  /**
+   * Omit specific fields from the AuditLog
+   */
+  omit?: Prisma.AuditLogOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.AuditLogInclude<ExtArgs> | null
+  where?: Prisma.AuditLogWhereInput
+  orderBy?: Prisma.AuditLogOrderByWithRelationInput | Prisma.AuditLogOrderByWithRelationInput[]
+  cursor?: Prisma.AuditLogWhereUniqueInput
+  take?: number
+  skip?: number
+  distinct?: Prisma.AuditLogScalarFieldEnum | Prisma.AuditLogScalarFieldEnum[]
+}
+
+/**
+ * Organization.comments
+ */
+export type Organization$commentsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  /**
+   * Select specific fields to fetch from the Comment
+   */
+  select?: Prisma.CommentSelect<ExtArgs> | null
+  /**
+   * Omit specific fields from the Comment
+   */
+  omit?: Prisma.CommentOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.CommentInclude<ExtArgs> | null
+  where?: Prisma.CommentWhereInput
+  orderBy?: Prisma.CommentOrderByWithRelationInput | Prisma.CommentOrderByWithRelationInput[]
+  cursor?: Prisma.CommentWhereUniqueInput
+  take?: number
+  skip?: number
+  distinct?: Prisma.CommentScalarFieldEnum | Prisma.CommentScalarFieldEnum[]
+}
+
+/**
+ * Organization.timelineEvents
+ */
+export type Organization$timelineEventsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  /**
+   * Select specific fields to fetch from the TimelineEvent
+   */
+  select?: Prisma.TimelineEventSelect<ExtArgs> | null
+  /**
+   * Omit specific fields from the TimelineEvent
+   */
+  omit?: Prisma.TimelineEventOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.TimelineEventInclude<ExtArgs> | null
+  where?: Prisma.TimelineEventWhereInput
+  orderBy?: Prisma.TimelineEventOrderByWithRelationInput | Prisma.TimelineEventOrderByWithRelationInput[]
+  cursor?: Prisma.TimelineEventWhereUniqueInput
+  take?: number
+  skip?: number
+  distinct?: Prisma.TimelineEventScalarFieldEnum | Prisma.TimelineEventScalarFieldEnum[]
 }
 
 /**

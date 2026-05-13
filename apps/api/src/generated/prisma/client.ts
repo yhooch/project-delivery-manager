@@ -80,6 +80,21 @@ export type Version = Prisma.VersionModel
  */
 export type Requirement = Prisma.RequirementModel
 /**
+ * Model IntakeItem
+ * 
+ */
+export type IntakeItem = Prisma.IntakeItemModel
+/**
+ * Model WorkItem
+ * 
+ */
+export type WorkItem = Prisma.WorkItemModel
+/**
+ * Model BugDetail
+ * 
+ */
+export type BugDetail = Prisma.BugDetailModel
+/**
  * Model Attachment
  * 
  */
@@ -119,3 +134,18 @@ export type WorkflowBinding = Prisma.WorkflowBindingModel
  * 
  */
 export type ObjectParticipant = Prisma.ObjectParticipantModel
+/**
+ * Model Comment
+ * 
+ */
+export type Comment = Prisma.CommentModel
+/**
+ * Model TimelineEvent
+ * 
+ */
+export type TimelineEvent = Prisma.TimelineEventModel
+/**
+ * Model AuditLog
+ * 
+ */
+export type AuditLog = Prisma.AuditLogModel

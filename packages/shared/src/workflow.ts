@@ -8,6 +8,7 @@ import {
 import {
   ActionFormFieldTypeSchema,
   PrioritySchema,
+  SpaceRoleSchema,
   StatusCategorySchema,
   WorkflowActorRelationSchema,
   WorkflowDefinitionStatusSchema,
@@ -38,6 +39,8 @@ export const WorkflowActionSummarySchema = z
     name: z.string().min(1).max(120),
     fromStateId: UlidSchema,
     toStateId: UlidSchema,
+    allowedSpaceRoles: z.array(SpaceRoleSchema),
+    actorRelations: z.array(WorkflowActorRelationSchema),
     requiresComment: z.boolean(),
     formFields: z.array(ActionFormFieldSummarySchema),
     order: z.number().int().min(0),
@@ -165,7 +168,16 @@ export type UpdateWorkflowDefinitionRequest = z.infer<
   typeof UpdateWorkflowDefinitionRequestSchema
 >;
 
-export const CreateWorkflowVersionRequestSchema = EmptyObjectSchema;
+export const CreateWorkflowVersionRequestSchema = z
+  .object({
+    sourceWorkflowVersionId: UlidSchema.optional(),
+  })
+  .strict();
+
+export type CreateWorkflowVersionRequest = z.infer<
+  typeof CreateWorkflowVersionRequestSchema
+>;
+
 export const UpdateWorkflowVersionRequestSchema = z
   .object({
     status: WorkflowVersionStatusSchema.optional(),
@@ -195,6 +207,7 @@ export const CreateWorkflowActionRequestSchema = z
     fromStateId: UlidSchema,
     toStateId: UlidSchema,
     requiresComment: z.boolean().optional(),
+    allowedSpaceRoles: z.array(SpaceRoleSchema).optional(),
     actorRelations: z.array(WorkflowActorRelationSchema).optional(),
     order: z.number().int().min(0).optional(),
   })
@@ -256,10 +269,8 @@ export const DeleteWorkflowStateResponseSchema = EmptyObjectSchema;
 export const CreateWorkflowActionResponseSchema = WorkflowActionSummarySchema;
 export const UpdateWorkflowActionResponseSchema = WorkflowActionSummarySchema;
 export const DeleteWorkflowActionResponseSchema = EmptyObjectSchema;
-export const CreateActionFormFieldResponseSchema =
-  ActionFormFieldSummarySchema;
-export const UpdateActionFormFieldResponseSchema =
-  ActionFormFieldSummarySchema;
+export const CreateActionFormFieldResponseSchema = ActionFormFieldSummarySchema;
+export const UpdateActionFormFieldResponseSchema = ActionFormFieldSummarySchema;
 export const DeleteActionFormFieldResponseSchema = EmptyObjectSchema;
 export const ListWorkflowBindingsQuerySchema = PageQuerySchema.extend({
   workItemType: WorkItemTypeSchema.optional(),
@@ -270,7 +281,8 @@ export const ListDefaultWorkflowSummariesQuerySchema = PageQuerySchema;
 export const ListDefaultWorkflowSummariesResponseSchema = pageResultSchema(
   DefaultWorkflowSummarySchema,
 );
-export const ListWorkflowBindingsResponseSchema =
-  pageResultSchema(WorkflowBindingSchema);
+export const ListWorkflowBindingsResponseSchema = pageResultSchema(
+  WorkflowBindingSchema,
+);
 export const CreateWorkflowBindingResponseSchema = WorkflowBindingSchema;
 export const UpdateWorkflowBindingResponseSchema = WorkflowBindingSchema;

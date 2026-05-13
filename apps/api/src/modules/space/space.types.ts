@@ -1,5 +1,8 @@
 import type {
   DefaultWorkflowSummary,
+  GetMyWorkbenchViewResponse,
+  GetSpaceExceptionsViewResponse,
+  GetSpaceOverviewViewResponse,
   PageResult,
   RecordStatus,
   Space,
@@ -8,6 +11,8 @@ import type {
   SpaceOverviewStats,
   SpaceRole,
   SpaceSummary,
+  SpaceExceptionsViewQuery,
+  WorkbenchViewQuery,
   VersionSummary,
 } from "@project-delivery/shared";
 
@@ -91,3 +96,40 @@ export type SpaceOverviewData = {
   stats: SpaceOverviewStats;
   defaultWorkflows: DefaultWorkflowSummary[];
 };
+
+export type MyWorkbenchViewInput = Pick<
+  WorkbenchViewQuery,
+  "page" | "pageSize" | "versionId"
+> & {
+  actorUserId: string;
+  organizationId: string;
+  spaceId?: string;
+};
+
+export type SpaceOverviewViewInput = {
+  actorUserId: string;
+  role: SpaceRole;
+  space: Space;
+  versionId?: string;
+};
+
+export type SpaceExceptionsViewInput = Pick<
+  SpaceExceptionsViewQuery,
+  | "assigneeId"
+  | "exceptionType"
+  | "page"
+  | "pageSize"
+  | "statusCategory"
+  | "versionId"
+  | "workItemType"
+> & {
+  actorUserId: string;
+  role: SpaceRole;
+  space: Space;
+};
+
+export type MyWorkbenchViewResult = GetMyWorkbenchViewResponse;
+
+export type SpaceOverviewViewResult = GetSpaceOverviewViewResponse;
+
+export type SpaceExceptionsViewResult = GetSpaceExceptionsViewResponse;

@@ -1,10 +1,12 @@
 import { HttpStatus, Inject, Injectable } from "@nestjs/common";
 import {
   type CreateVersionRequest,
+  type GetVersionBoardViewResponse,
   type PageResult,
   type SpaceRole,
   type UpdateVersionRequest,
   type Version,
+  type VersionBoardViewQuery,
 } from "@project-delivery/shared";
 import { ulid } from "ulid";
 
@@ -24,6 +26,12 @@ import {
 import type { VersionListInput } from "./version.types";
 
 const SPACE_MANAGER_ROLES = new Set<SpaceRole>(["SPACE_ADMIN", "PM"]);
+const SPACE_VERSION_BOARD_READ_ALL_ROLES = new Set<SpaceRole>([
+  "SPACE_ADMIN",
+  "PM",
+  "TESTER",
+  "VIEWER",
+]);
 
 @Injectable()
 export class VersionService {
@@ -88,6 +96,44 @@ export class VersionService {
     await this.requireSpaceAccess(actorUserId, version.spaceId);
 
     return version;
+  }
+
+  async getBoard(
+    actorUserId: string,
+    versionId: string,
+    input: VersionBoardViewQuery,
+  ): Promise<GetVersionBoardViewResponse> {
+    const version = await this.versions.findById(versionId);
+
+    if (!version) {
+      throwVersionNotFound();
+    }
+
+    this.assertBoardScope(version, input);
+    const access = await this.requireSpaceAccess(actorUserId, version.spaceId);
+    const board = await this.versions.listBoard({
+      ...input,
+      actorUserId,
+      organizationId: version.organizationId,
+      spaceId: version.spaceId,
+      staleThresholdDays: access.space.settings.staleThresholdDays,
+      versionId,
+      visibility: canReadAllVersionBoardItems(access.role)
+        ? "SPACE"
+        : "PARTICIPANT",
+    });
+
+    return {
+      filters: {
+        assigneeId: input.assigneeId,
+        organizationId: version.organizationId,
+        spaceId: version.spaceId,
+        statusCategory: input.statusCategory,
+        versionId,
+        workItemType: input.workItemType,
+      },
+      ...board,
+    };
   }
 
   async update(
@@ -200,6 +246,24 @@ export class VersionService {
       );
     }
   }
+
+  private assertBoardScope(version: Version, input: VersionBoardViewQuery) {
+    if (input.organizationId && input.organizationId !== version.organizationId) {
+      throw new ApiException(
+        "CROSS_ORGANIZATION_ACCESS_DENIED",
+        "Version belongs to a different organization",
+        HttpStatus.FORBIDDEN,
+      );
+    }
+
+    if (input.spaceId && input.spaceId !== version.spaceId) {
+      throwSpaceAccessDenied();
+    }
+  }
+}
+
+function canReadAllVersionBoardItems(role: SpaceRole) {
+  return SPACE_VERSION_BOARD_READ_ALL_ROLES.has(role);
 }
 
 function parseOptionalDate(value: string | undefined, field: string) {

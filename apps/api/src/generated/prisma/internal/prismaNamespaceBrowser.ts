@@ -59,6 +59,9 @@ export const ModelName = {
   SpaceMember: 'SpaceMember',
   Version: 'Version',
   Requirement: 'Requirement',
+  IntakeItem: 'IntakeItem',
+  WorkItem: 'WorkItem',
+  BugDetail: 'BugDetail',
   Attachment: 'Attachment',
   WorkflowDefinition: 'WorkflowDefinition',
   WorkflowVersion: 'WorkflowVersion',
@@ -66,7 +69,10 @@ export const ModelName = {
   WorkflowAction: 'WorkflowAction',
   ActionFormField: 'ActionFormField',
   WorkflowBinding: 'WorkflowBinding',
-  ObjectParticipant: 'ObjectParticipant'
+  ObjectParticipant: 'ObjectParticipant',
+  Comment: 'Comment',
+  TimelineEvent: 'TimelineEvent',
+  AuditLog: 'AuditLog'
 } as const
 
 export type ModelName = (typeof ModelName)[keyof typeof ModelName]
@@ -243,6 +249,85 @@ export const RequirementScalarFieldEnum = {
 export type RequirementScalarFieldEnum = (typeof RequirementScalarFieldEnum)[keyof typeof RequirementScalarFieldEnum]
 
 
+export const IntakeItemScalarFieldEnum = {
+  id: 'id',
+  organizationId: 'organizationId',
+  spaceId: 'spaceId',
+  versionId: 'versionId',
+  requirementId: 'requirementId',
+  title: 'title',
+  description: 'description',
+  sourceType: 'sourceType',
+  sourceObject: 'sourceObject',
+  reporterId: 'reporterId',
+  assigneeId: 'assigneeId',
+  priority: 'priority',
+  status: 'status',
+  acceptedAt: 'acceptedAt',
+  convertedAt: 'convertedAt',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt',
+  createdById: 'createdById',
+  updatedById: 'updatedById',
+  deletedAt: 'deletedAt'
+} as const
+
+export type IntakeItemScalarFieldEnum = (typeof IntakeItemScalarFieldEnum)[keyof typeof IntakeItemScalarFieldEnum]
+
+
+export const WorkItemScalarFieldEnum = {
+  id: 'id',
+  organizationId: 'organizationId',
+  spaceId: 'spaceId',
+  versionId: 'versionId',
+  requirementId: 'requirementId',
+  intakeItemId: 'intakeItemId',
+  type: 'type',
+  title: 'title',
+  description: 'description',
+  priority: 'priority',
+  assigneeId: 'assigneeId',
+  reporterId: 'reporterId',
+  workflowVersionId: 'workflowVersionId',
+  currentStateId: 'currentStateId',
+  statusCategory: 'statusCategory',
+  dueDate: 'dueDate',
+  lastStatusChangedAt: 'lastStatusChangedAt',
+  lastActionAt: 'lastActionAt',
+  blockedReason: 'blockedReason',
+  blockedAt: 'blockedAt',
+  closedAt: 'closedAt',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt',
+  createdById: 'createdById',
+  updatedById: 'updatedById',
+  deletedAt: 'deletedAt'
+} as const
+
+export type WorkItemScalarFieldEnum = (typeof WorkItemScalarFieldEnum)[keyof typeof WorkItemScalarFieldEnum]
+
+
+export const BugDetailScalarFieldEnum = {
+  workItemId: 'workItemId',
+  severity: 'severity',
+  stepsToReproduce: 'stepsToReproduce',
+  expectedResult: 'expectedResult',
+  actualResult: 'actualResult',
+  fixNote: 'fixNote',
+  regressionResult: 'regressionResult',
+  regressionById: 'regressionById',
+  regressionAt: 'regressionAt',
+  relatedTaskId: 'relatedTaskId',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt',
+  createdById: 'createdById',
+  updatedById: 'updatedById',
+  deletedAt: 'deletedAt'
+} as const
+
+export type BugDetailScalarFieldEnum = (typeof BugDetailScalarFieldEnum)[keyof typeof BugDetailScalarFieldEnum]
+
+
 export const AttachmentScalarFieldEnum = {
   id: 'id',
   organizationId: 'organizationId',
@@ -396,6 +481,67 @@ export const ObjectParticipantScalarFieldEnum = {
 export type ObjectParticipantScalarFieldEnum = (typeof ObjectParticipantScalarFieldEnum)[keyof typeof ObjectParticipantScalarFieldEnum]
 
 
+export const CommentScalarFieldEnum = {
+  id: 'id',
+  organizationId: 'organizationId',
+  spaceId: 'spaceId',
+  targetType: 'targetType',
+  targetId: 'targetId',
+  authorId: 'authorId',
+  body: 'body',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt',
+  createdById: 'createdById',
+  updatedById: 'updatedById',
+  deletedAt: 'deletedAt'
+} as const
+
+export type CommentScalarFieldEnum = (typeof CommentScalarFieldEnum)[keyof typeof CommentScalarFieldEnum]
+
+
+export const TimelineEventScalarFieldEnum = {
+  id: 'id',
+  organizationId: 'organizationId',
+  spaceId: 'spaceId',
+  targetType: 'targetType',
+  targetId: 'targetId',
+  eventType: 'eventType',
+  actorId: 'actorId',
+  title: 'title',
+  detail: 'detail',
+  before: 'before',
+  after: 'after',
+  metadata: 'metadata',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt',
+  createdById: 'createdById',
+  updatedById: 'updatedById',
+  deletedAt: 'deletedAt'
+} as const
+
+export type TimelineEventScalarFieldEnum = (typeof TimelineEventScalarFieldEnum)[keyof typeof TimelineEventScalarFieldEnum]
+
+
+export const AuditLogScalarFieldEnum = {
+  id: 'id',
+  organizationId: 'organizationId',
+  spaceId: 'spaceId',
+  actorId: 'actorId',
+  actionType: 'actionType',
+  targetType: 'targetType',
+  targetId: 'targetId',
+  requestId: 'requestId',
+  ip: 'ip',
+  userAgent: 'userAgent',
+  before: 'before',
+  after: 'after',
+  metadata: 'metadata',
+  createdAt: 'createdAt'
+} as const
+
+export type AuditLogScalarFieldEnum = (typeof AuditLogScalarFieldEnum)[keyof typeof AuditLogScalarFieldEnum]
+
+
 export const SortOrder = {
   asc: 'asc',
   desc: 'desc'
@@ -409,6 +555,14 @@ export const JsonNullValueInput = {
 } as const
 
 export type JsonNullValueInput = (typeof JsonNullValueInput)[keyof typeof JsonNullValueInput]
+
+
+export const NullableJsonNullValueInput = {
+  DbNull: DbNull,
+  JsonNull: JsonNull
+} as const
+
+export type NullableJsonNullValueInput = (typeof NullableJsonNullValueInput)[keyof typeof NullableJsonNullValueInput]
 
 
 export const QueryMode = {

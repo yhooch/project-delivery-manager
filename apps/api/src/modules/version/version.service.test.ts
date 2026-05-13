@@ -1,0 +1,313 @@
+import { describe, expect, it } from "vitest";
+
+import type {
+  OrganizationMemberWithUser,
+  Space,
+  SpaceMemberWithUser,
+  SpaceRole,
+  Version,
+} from "@project-delivery/shared";
+import type { OrganizationRepository } from "../organization/organization.repository";
+import type { SpaceRepository } from "../space/space.repository";
+import type { SpaceAccess } from "../space/space.types";
+import type { VersionRepository } from "./version.repository";
+import { VersionService } from "./version.service";
+import type {
+  CreateVersionInput,
+  UpdateVersionInput,
+  VersionBoardInput,
+  VersionBoardResult,
+  VersionListInput,
+  VersionListResult,
+} from "./version.types";
+
+const ORGANIZATION_ID = "01H00000000000000000000000";
+const OTHER_ORGANIZATION_ID = "01H0000000000000000000000Z";
+const SPACE_ID = "01H00000000000000000000001";
+const OTHER_SPACE_ID = "01H0000000000000000000000Y";
+const ACTOR_ID = "01H00000000000000000000002";
+const VERSION_ID = "01H00000000000000000000003";
+const ASSIGNEE_ID = "01H00000000000000000000004";
+
+describe("VersionService board view", () => {
+  it("returns the version board with canonical filters and space-wide visibility", async () => {
+    const subject = createSubject("TESTER");
+
+    subject.versions.items.set(VERSION_ID, makeVersion());
+
+    const result = await subject.service.getBoard(ACTOR_ID, VERSION_ID, {
+      assigneeId: ASSIGNEE_ID,
+      organizationId: ORGANIZATION_ID,
+      page: 2,
+      pageSize: 10,
+      statusCategory: "IN_PROGRESS",
+      workItemType: "BUG",
+    });
+
+    expect(result.filters).toEqual({
+      assigneeId: ASSIGNEE_ID,
+      organizationId: ORGANIZATION_ID,
+      spaceId: SPACE_ID,
+      statusCategory: "IN_PROGRESS",
+      versionId: VERSION_ID,
+      workItemType: "BUG",
+    });
+    expect(result.items).toMatchObject({
+      page: 2,
+      pageSize: 10,
+      total: 0,
+    });
+    expect(subject.versions.boardInput).toMatchObject({
+      actorUserId: ACTOR_ID,
+      assigneeId: ASSIGNEE_ID,
+      organizationId: ORGANIZATION_ID,
+      spaceId: SPACE_ID,
+      staleThresholdDays: 5,
+      statusCategory: "IN_PROGRESS",
+      versionId: VERSION_ID,
+      visibility: "SPACE",
+      workItemType: "BUG",
+    });
+  });
+
+  it("uses participant visibility for roles without space-wide read access", async () => {
+    const subject = createSubject("DEVELOPER");
+
+    subject.versions.items.set(VERSION_ID, makeVersion());
+
+    await subject.service.getBoard(ACTOR_ID, VERSION_ID, {
+      page: 1,
+      pageSize: 20,
+    });
+
+    expect(subject.versions.boardInput?.visibility).toBe("PARTICIPANT");
+  });
+
+  it("rejects query scope that does not match the version", async () => {
+    const subject = createSubject("PM");
+
+    subject.versions.items.set(VERSION_ID, makeVersion());
+
+    await expect(
+      subject.service.getBoard(ACTOR_ID, VERSION_ID, {
+        organizationId: OTHER_ORGANIZATION_ID,
+        page: 1,
+        pageSize: 20,
+      }),
+    ).rejects.toMatchObject({
+      code: "CROSS_ORGANIZATION_ACCESS_DENIED",
+    });
+
+    await expect(
+      subject.service.getBoard(ACTOR_ID, VERSION_ID, {
+        page: 1,
+        pageSize: 20,
+        spaceId: OTHER_SPACE_ID,
+      }),
+    ).rejects.toMatchObject({
+      code: "SPACE_ACCESS_DENIED",
+    });
+  });
+});
+
+function createSubject(role: SpaceRole) {
+  const versions = new FakeVersionRepository();
+  const spaces = new FakeSpaceRepository(role);
+  const organizations = new FakeOrganizationRepository();
+
+  return {
+    organizations,
+    service: new VersionService(
+      versions,
+      spaces as unknown as SpaceRepository,
+      organizations as unknown as OrganizationRepository,
+    ),
+    spaces,
+    versions,
+  };
+}
+
+class FakeVersionRepository implements VersionRepository {
+  readonly items = new Map<string, Version>();
+  boardInput?: VersionBoardInput;
+
+  async create(input: CreateVersionInput): Promise<Version> {
+    const version = makeVersion({
+      id: input.id,
+      name: input.name,
+      ownerId: input.ownerId,
+      status: input.status ?? "PLANNED",
+    });
+
+    this.items.set(version.id, version);
+
+    return version;
+  }
+
+  async findById(versionId: string): Promise<Version | undefined> {
+    return this.items.get(versionId);
+  }
+
+  async findByName(
+    spaceId: string,
+    name: string,
+  ): Promise<{ id: string } | undefined> {
+    const version = [...this.items.values()].find(
+      (item) => item.spaceId === spaceId && item.name === name,
+    );
+
+    return version ? { id: version.id } : undefined;
+  }
+
+  async listBySpaceId(
+    spaceId: string,
+    input: VersionListInput,
+  ): Promise<VersionListResult> {
+    const items = [...this.items.values()].filter(
+      (item) => item.spaceId === spaceId,
+    );
+
+    return {
+      items,
+      page: input.page,
+      pageSize: input.pageSize,
+      total: items.length,
+    };
+  }
+
+  async listBoard(input: VersionBoardInput): Promise<VersionBoardResult> {
+    this.boardInput = input;
+
+    return {
+      columns: [
+        { statusCategory: "NOT_STARTED", title: "Not started", total: 0 },
+        { statusCategory: "IN_PROGRESS", title: "In progress", total: 0 },
+        { statusCategory: "WAITING", title: "Waiting", total: 0 },
+        { statusCategory: "VERIFYING", title: "Verifying", total: 0 },
+        { statusCategory: "DONE", title: "Done", total: 0 },
+        { statusCategory: "TERMINATED", title: "Terminated", total: 0 },
+      ],
+      items: {
+        items: [],
+        page: input.page,
+        pageSize: input.pageSize,
+        total: 0,
+      },
+    };
+  }
+
+  async update(input: UpdateVersionInput): Promise<Version | undefined> {
+    const version = this.items.get(input.versionId);
+
+    if (!version) {
+      return undefined;
+    }
+
+    const updated = {
+      ...version,
+      name: input.name ?? version.name,
+      status: input.status ?? version.status,
+    };
+
+    this.items.set(updated.id, updated);
+
+    return updated;
+  }
+}
+
+class FakeSpaceRepository {
+  constructor(private readonly role: SpaceRole) {}
+
+  async findAccessibleById(
+    userId: string,
+    spaceId: string,
+  ): Promise<SpaceAccess | undefined> {
+    if (userId !== ACTOR_ID || spaceId !== SPACE_ID) {
+      return undefined;
+    }
+
+    return {
+      role: this.role,
+      space: makeSpace(),
+    };
+  }
+
+  async findMemberByUserId(
+    spaceId: string,
+    userId: string,
+  ): Promise<SpaceMemberWithUser | undefined> {
+    if (spaceId !== SPACE_ID) {
+      return undefined;
+    }
+
+    return {
+      id: `${userId}M`,
+      organizationId: ORGANIZATION_ID,
+      role: this.role,
+      spaceId,
+      status: "ACTIVE",
+      user: {
+        id: userId,
+        name: userId,
+        status: "ACTIVE",
+        username: userId.toLowerCase(),
+      },
+      userId,
+    };
+  }
+}
+
+class FakeOrganizationRepository {
+  async findMemberByUserId(
+    organizationId: string,
+    userId: string,
+  ): Promise<OrganizationMemberWithUser | undefined> {
+    if (organizationId !== ORGANIZATION_ID) {
+      return undefined;
+    }
+
+    return {
+      id: `${userId}O`,
+      organizationId,
+      role: "MEMBER",
+      status: "ACTIVE",
+      user: {
+        id: userId,
+        name: userId,
+        status: "ACTIVE",
+        username: userId.toLowerCase(),
+      },
+      userId,
+    };
+  }
+}
+
+function makeVersion(overrides: Partial<Version> = {}): Version {
+  return {
+    id: VERSION_ID,
+    name: "Version Board",
+    organizationId: ORGANIZATION_ID,
+    spaceId: SPACE_ID,
+    stats: {
+      blockedCount: 0,
+      bugCount: 0,
+      requirementCount: 0,
+      taskCount: 0,
+    },
+    status: "PLANNED",
+    ...overrides,
+  };
+}
+
+function makeSpace(): Space {
+  return {
+    code: "BOARD",
+    id: SPACE_ID,
+    name: "Board Space",
+    organizationId: ORGANIZATION_ID,
+    settings: {
+      staleThresholdDays: 5,
+    },
+    status: "ACTIVE",
+  };
+}

@@ -47,7 +47,6 @@ import {
   CreateSpaceRequestSchema,
   CreateSpaceResponseSchema,
   GetSpaceResponseSchema,
-  GetSpaceOverviewResponseSchema,
   ListSpaceMembersQuerySchema,
   ListSpaceMembersResponseSchema,
   ListSpacesQuerySchema,
@@ -82,9 +81,12 @@ import {
   CreateIntakeItemRequestSchema,
   CreateIntakeItemResponseSchema,
   DeferIntakeItemResponseSchema,
+  GetIntakeItemResponseSchema,
   IntakeItemListQuerySchema,
   ListIntakeItemsResponseSchema,
   RejectIntakeItemResponseSchema,
+  UpdateIntakeItemRequestSchema,
+  UpdateIntakeItemResponseSchema,
 } from "./intake.ts";
 import {
   BugListQuerySchema,
@@ -162,6 +164,16 @@ import {
   UpdateUserPreferencesRequestSchema,
   UpdateUserPreferencesResponseSchema,
 } from "./user.ts";
+import {
+  GetMyWorkbenchViewResponseSchema,
+  GetSpaceExceptionsViewResponseSchema,
+  GetSpaceOverviewViewResponseSchema,
+  GetVersionBoardViewResponseSchema,
+  SpaceExceptionsViewQuerySchema,
+  SpaceOverviewViewQuerySchema,
+  VersionBoardViewQuerySchema,
+  WorkbenchViewQuerySchema,
+} from "./view.ts";
 
 export type HttpMethod = "get" | "post" | "patch" | "delete";
 
@@ -204,11 +216,7 @@ const spaceErrors = [
   "SPACE_MEMBER_MUST_BELONG_TO_ORGANIZATION",
   "SPACE_MEMBER_NOT_FOUND",
 ];
-const createVersionErrors = [
-  ...spaceErrors,
-  "VALIDATION_ERROR",
-  "CONFLICT",
-];
+const createVersionErrors = [...spaceErrors, "VALIDATION_ERROR", "CONFLICT"];
 const versionByIdErrors = [...spaceErrors, "NOT_FOUND", "VALIDATION_ERROR"];
 const workflowErrors = [
   ...spaceErrors,
@@ -216,6 +224,21 @@ const workflowErrors = [
   "WORKFLOW_VERSION_NOT_FOUND",
   "WORKFLOW_PUBLISH_VALIDATION_FAILED",
 ];
+const executeActionErrors = [
+  ...workflowErrors,
+  "WORK_ITEM_NOT_FOUND",
+  "WORKFLOW_ACTION_NOT_AVAILABLE",
+  "WORKFLOW_ACTION_STATE_CONFLICT",
+  "WORKFLOW_ACTION_PERMISSION_DENIED",
+  "WORKFLOW_ACTION_FORM_INVALID",
+  "WORKFLOW_ACTION_COMMENT_REQUIRED",
+  "WORKFLOW_VERSION_INVALID",
+  "SPACE_MEMBER_INVALID",
+];
+const intakeItemErrors = [...spaceErrors, "INTAKE_ITEM_NOT_FOUND"];
+const workItemErrors = [...spaceErrors, "WORK_ITEM_NOT_FOUND"];
+const attachmentTargetErrors = [...spaceErrors, "ATTACHMENT_TARGET_NOT_FOUND"];
+const viewErrors = [...spaceErrors, "VALIDATION_ERROR"];
 
 function endpoint(contract: ApiEndpointContract): ApiEndpointContract {
   return contract;
@@ -316,7 +339,12 @@ export const apiContracts = [
     querySchema: EmptyObjectSchema,
     requestSchema: CreateOrganizationRequestSchema,
     responseSchema: CreateOrganizationResponseSchema,
-    errorCodes: ["UNAUTHORIZED", "RATE_LIMITED", "VALIDATION_ERROR", "CONFLICT"],
+    errorCodes: [
+      "UNAUTHORIZED",
+      "RATE_LIMITED",
+      "VALIDATION_ERROR",
+      "CONFLICT",
+    ],
   }),
   endpoint({
     operationId: "getOrganization",
@@ -427,16 +455,40 @@ export const apiContracts = [
     errorCodes: spaceErrors,
   }),
   endpoint({
+    operationId: "getMyWorkbenchView",
+    method: "get",
+    path: "/views/my-workbench",
+    tags: ["views"],
+    summary: "Get M4 my workbench view",
+    pathSchema: EmptyObjectSchema,
+    querySchema: WorkbenchViewQuerySchema,
+    requestSchema: EmptyObjectSchema,
+    responseSchema: GetMyWorkbenchViewResponseSchema,
+    errorCodes: viewErrors,
+  }),
+  endpoint({
     operationId: "getSpaceOverview",
     method: "get",
     path: "/views/spaces/{spaceId}/overview",
     tags: ["views"],
-    summary: "Get M1 space overview baseline",
+    summary: "Get M4 space overview view",
     pathSchema: SpaceIdPathParamsSchema,
-    querySchema: EmptyObjectSchema,
+    querySchema: SpaceOverviewViewQuerySchema,
     requestSchema: EmptyObjectSchema,
-    responseSchema: GetSpaceOverviewResponseSchema,
-    errorCodes: spaceErrors,
+    responseSchema: GetSpaceOverviewViewResponseSchema,
+    errorCodes: viewErrors,
+  }),
+  endpoint({
+    operationId: "getSpaceExceptionsView",
+    method: "get",
+    path: "/views/spaces/{spaceId}/exceptions",
+    tags: ["views"],
+    summary: "Get M4 space exceptions view",
+    pathSchema: SpaceIdPathParamsSchema,
+    querySchema: SpaceExceptionsViewQuerySchema,
+    requestSchema: EmptyObjectSchema,
+    responseSchema: GetSpaceExceptionsViewResponseSchema,
+    errorCodes: viewErrors,
   }),
   endpoint({
     operationId: "listSpaceMembers",
@@ -509,6 +561,18 @@ export const apiContracts = [
     requestSchema: EmptyObjectSchema,
     responseSchema: GetVersionResponseSchema,
     errorCodes: versionByIdErrors,
+  }),
+  endpoint({
+    operationId: "getVersionBoardView",
+    method: "get",
+    path: "/views/versions/{versionId}/board",
+    tags: ["views"],
+    summary: "Get M4 version board view",
+    pathSchema: VersionIdPathParamsSchema,
+    querySchema: VersionBoardViewQuerySchema,
+    requestSchema: EmptyObjectSchema,
+    responseSchema: GetVersionBoardViewResponseSchema,
+    errorCodes: [...versionByIdErrors, "VALIDATION_ERROR"],
   }),
   endpoint({
     operationId: "updateVersion",
@@ -600,6 +664,30 @@ export const apiContracts = [
     errorCodes: spaceErrors,
   }),
   endpoint({
+    operationId: "getIntakeItem",
+    method: "get",
+    path: "/intake-items/{id}",
+    tags: ["intake"],
+    summary: "Get intake item",
+    pathSchema: IdPathParamsSchema,
+    querySchema: EmptyObjectSchema,
+    requestSchema: EmptyObjectSchema,
+    responseSchema: GetIntakeItemResponseSchema,
+    errorCodes: intakeItemErrors,
+  }),
+  endpoint({
+    operationId: "updateIntakeItem",
+    method: "patch",
+    path: "/intake-items/{id}",
+    tags: ["intake"],
+    summary: "Update intake item",
+    pathSchema: IdPathParamsSchema,
+    querySchema: EmptyObjectSchema,
+    requestSchema: UpdateIntakeItemRequestSchema,
+    responseSchema: UpdateIntakeItemResponseSchema,
+    errorCodes: [...intakeItemErrors, "VALIDATION_ERROR"],
+  }),
+  endpoint({
     operationId: "acceptIntakeItem",
     method: "post",
     path: "/intake-items/{id}/accept",
@@ -609,7 +697,7 @@ export const apiContracts = [
     querySchema: EmptyObjectSchema,
     requestSchema: EmptyObjectSchema,
     responseSchema: AcceptIntakeItemResponseSchema,
-    errorCodes: [...spaceErrors, "INTAKE_ITEM_NOT_FOUND"],
+    errorCodes: intakeItemErrors,
   }),
   endpoint({
     operationId: "deferIntakeItem",
@@ -621,7 +709,7 @@ export const apiContracts = [
     querySchema: EmptyObjectSchema,
     requestSchema: EmptyObjectSchema,
     responseSchema: DeferIntakeItemResponseSchema,
-    errorCodes: [...spaceErrors, "INTAKE_ITEM_NOT_FOUND"],
+    errorCodes: intakeItemErrors,
   }),
   endpoint({
     operationId: "rejectIntakeItem",
@@ -633,7 +721,7 @@ export const apiContracts = [
     querySchema: EmptyObjectSchema,
     requestSchema: EmptyObjectSchema,
     responseSchema: RejectIntakeItemResponseSchema,
-    errorCodes: [...spaceErrors, "INTAKE_ITEM_NOT_FOUND"],
+    errorCodes: intakeItemErrors,
   }),
   endpoint({
     operationId: "convertIntakeItemToWorkItems",
@@ -646,8 +734,7 @@ export const apiContracts = [
     requestSchema: ConvertIntakeItemToWorkItemsRequestSchema,
     responseSchema: ConvertIntakeItemToWorkItemsResponseSchema,
     errorCodes: [
-      ...spaceErrors,
-      "INTAKE_ITEM_NOT_FOUND",
+      ...intakeItemErrors,
       "INTAKE_ITEM_NOT_ACCEPTED",
       "INTAKE_ITEM_ALREADY_CONVERTED",
     ],
@@ -686,7 +773,7 @@ export const apiContracts = [
     querySchema: EmptyObjectSchema,
     requestSchema: EmptyObjectSchema,
     responseSchema: GetWorkItemResponseSchema,
-    errorCodes: [...spaceErrors, "WORK_ITEM_NOT_FOUND"],
+    errorCodes: workItemErrors,
   }),
   endpoint({
     operationId: "updateWorkItem",
@@ -698,7 +785,7 @@ export const apiContracts = [
     querySchema: EmptyObjectSchema,
     requestSchema: UpdateWorkItemRequestSchema,
     responseSchema: UpdateWorkItemResponseSchema,
-    errorCodes: [...spaceErrors, "WORK_ITEM_NOT_FOUND"],
+    errorCodes: [...workItemErrors, "VALIDATION_ERROR"],
   }),
   endpoint({
     operationId: "listBugs",
@@ -734,7 +821,7 @@ export const apiContracts = [
     querySchema: EmptyObjectSchema,
     requestSchema: EmptyObjectSchema,
     responseSchema: GetBugResponseSchema,
-    errorCodes: [...spaceErrors, "WORK_ITEM_NOT_FOUND"],
+    errorCodes: workItemErrors,
   }),
   endpoint({
     operationId: "updateBug",
@@ -746,7 +833,7 @@ export const apiContracts = [
     querySchema: EmptyObjectSchema,
     requestSchema: UpdateBugRequestSchema,
     responseSchema: UpdateBugResponseSchema,
-    errorCodes: [...spaceErrors, "WORK_ITEM_NOT_FOUND"],
+    errorCodes: [...workItemErrors, "VALIDATION_ERROR"],
   }),
   endpoint({
     operationId: "listWorkflows",
@@ -1000,7 +1087,7 @@ export const apiContracts = [
     querySchema: EmptyObjectSchema,
     requestSchema: ExecuteActionRequestSchema,
     responseSchema: GetWorkItemResponseSchema,
-    errorCodes: [...workflowErrors, "WORK_ITEM_NOT_FOUND"],
+    errorCodes: executeActionErrors,
   }),
   endpoint({
     operationId: "listTimeline",
@@ -1024,7 +1111,7 @@ export const apiContracts = [
     querySchema: WorkItemTimelineQuerySchema,
     requestSchema: EmptyObjectSchema,
     responseSchema: TimelineResponseSchema,
-    errorCodes: [...spaceErrors, "WORK_ITEM_NOT_FOUND"],
+    errorCodes: workItemErrors,
   }),
   endpoint({
     operationId: "listComments",
@@ -1073,9 +1160,8 @@ export const apiContracts = [
     requestSchema: PresignAttachmentRequestSchema,
     responseSchema: PresignAttachmentResponseSchema,
     errorCodes: [
-      ...spaceErrors,
+      ...attachmentTargetErrors,
       "TARGET_REQUIRED_FOR_ATTACHMENT",
-      "ATTACHMENT_TARGET_NOT_FOUND",
       "DRAFT_REQUIREMENT_REQUIRED",
     ],
   }),
@@ -1090,8 +1176,7 @@ export const apiContracts = [
     requestSchema: CreateAttachmentRequestSchema,
     responseSchema: CreateAttachmentResponseSchema,
     errorCodes: [
-      ...spaceErrors,
-      "ATTACHMENT_TARGET_NOT_FOUND",
+      ...attachmentTargetErrors,
       "DRAFT_REQUIREMENT_REQUIRED",
       "VALIDATION_ERROR",
     ],
@@ -1106,6 +1191,6 @@ export const apiContracts = [
     querySchema: EmptyObjectSchema,
     requestSchema: EmptyObjectSchema,
     responseSchema: GetAttachmentDownloadUrlResponseSchema,
-    errorCodes: [...spaceErrors, "ATTACHMENT_TARGET_NOT_FOUND"],
+    errorCodes: attachmentTargetErrors,
   }),
 ] as const satisfies readonly ApiEndpointContract[];

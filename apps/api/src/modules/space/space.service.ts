@@ -2,14 +2,19 @@ import { HttpStatus, Inject, Injectable } from "@nestjs/common";
 import {
   type AddSpaceMemberRequest,
   type CreateSpaceRequest,
+  type GetMyWorkbenchViewResponse,
+  type GetSpaceExceptionsViewResponse,
+  type GetSpaceOverviewViewResponse,
   type PageResult,
   type Space,
   type SpaceMemberWithUser,
-  type SpaceOverview,
+  type SpaceExceptionsViewQuery,
+  type SpaceOverviewViewQuery,
   type SpaceRole,
   type SpaceSummary,
   type UpdateSpaceMemberRequest,
   type UpdateSpaceRequest,
+  type WorkbenchViewQuery,
 } from "@project-delivery/shared";
 import { ulid } from "ulid";
 
@@ -235,20 +240,83 @@ export class SpaceService {
   async getOverview(
     actorUserId: string,
     spaceId: string,
-  ): Promise<SpaceOverview> {
+    query: SpaceOverviewViewQuery = {},
+  ): Promise<GetSpaceOverviewViewResponse> {
     const access = await this.requireSpaceAccess(actorUserId, spaceId);
-    const [stats, currentVersion, defaultWorkflows] = await Promise.all([
-      this.spaces.getOverviewStats(spaceId),
-      this.spaces.findCurrentVersion(spaceId),
-      this.spaces.listDefaultWorkflows(spaceId),
-    ]);
 
-    return {
+    if (
+      query.organizationId &&
+      query.organizationId !== access.space.organizationId
+    ) {
+      throwSpaceAccessDenied();
+    }
+
+    return this.spaces.getSpaceOverviewView({
+      actorUserId,
+      role: access.role,
       space: access.space,
-      currentVersion,
-      stats,
-      defaultWorkflows,
-    };
+      versionId: query.versionId,
+    });
+  }
+
+  async getExceptions(
+    actorUserId: string,
+    spaceId: string,
+    query: SpaceExceptionsViewQuery,
+  ): Promise<GetSpaceExceptionsViewResponse> {
+    const access = await this.requireSpaceAccess(actorUserId, spaceId);
+
+    if (
+      query.organizationId &&
+      query.organizationId !== access.space.organizationId
+    ) {
+      throwSpaceAccessDenied();
+    }
+
+    return this.spaces.getSpaceExceptionsView({
+      actorUserId,
+      role: access.role,
+      space: access.space,
+      page: query.page,
+      pageSize: query.pageSize,
+      versionId: query.versionId,
+      assigneeId: query.assigneeId,
+      statusCategory: query.statusCategory,
+      workItemType: query.workItemType,
+      exceptionType: query.exceptionType,
+    });
+  }
+
+  async getMyWorkbench(
+    actorUserId: string,
+    query: WorkbenchViewQuery,
+  ): Promise<GetMyWorkbenchViewResponse> {
+    if (!query.organizationId) {
+      throw new ApiException(
+        "VALIDATION_ERROR",
+        "organizationId is required",
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+
+    await this.requireOrganizationAccess(actorUserId, query.organizationId);
+
+    if (query.spaceId) {
+      const access = await this.requireSpaceAccess(actorUserId, query.spaceId);
+
+      if (access.space.organizationId !== query.organizationId) {
+        throwSpaceAccessDenied();
+      }
+    }
+
+    return this.spaces.getMyWorkbenchView({
+      actorUserId,
+      organizationId: query.organizationId,
+      page: query.page,
+      pageSize: query.pageSize,
+      spaceId: query.spaceId,
+      versionId: query.versionId,
+    });
   }
 
   private async requireOrganizationAccess(

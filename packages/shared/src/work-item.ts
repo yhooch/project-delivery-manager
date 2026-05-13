@@ -41,9 +41,15 @@ export const WorkItemSchema = z
 
 export type WorkItem = z.infer<typeof WorkItemSchema>;
 
+export const WorkItemDetailSchema = WorkItemSchema.extend({
+  permissions: PermissionSnapshotSchema,
+}).strict();
+
+export type WorkItemDetail = z.infer<typeof WorkItemDetailSchema>;
+
 export const CreateWorkItemRequestSchema = z
   .object({
-    type: WorkItemTypeSchema.default("TASK"),
+    type: z.literal("TASK").default("TASK"),
     versionId: UlidSchema.optional(),
     requirementId: UlidSchema.optional(),
     intakeItemId: UlidSchema.optional(),
@@ -84,6 +90,7 @@ export const BugDetailSchema = z
     regressionResult: z.string().max(8000).optional(),
     regressionBy: UlidSchema.optional(),
     regressionAt: IsoDateTimeSchema.optional(),
+    relatedTaskId: UlidSchema.optional(),
   })
   .strict();
 
@@ -103,6 +110,7 @@ export const CreateBugRequestSchema = CreateWorkItemRequestSchema.omit({
   stepsToReproduce: z.string().max(8000).optional(),
   expectedResult: z.string().max(8000).optional(),
   actualResult: z.string().max(8000).optional(),
+  relatedTaskId: UlidSchema.optional(),
 });
 
 export type CreateBugRequest = z.infer<typeof CreateBugRequestSchema>;
@@ -114,13 +122,19 @@ export const UpdateBugRequestSchema = UpdateWorkItemRequestSchema.extend({
   actualResult: z.string().max(8000).optional(),
   fixNote: z.string().max(8000).optional(),
   regressionResult: z.string().max(8000).optional(),
+  regressionBy: UlidSchema.optional(),
+  regressionAt: IsoDateTimeSchema.optional(),
+  relatedTaskId: UlidSchema.optional(),
 });
 
 export type UpdateBugRequest = z.infer<typeof UpdateBugRequestSchema>;
 
 export const WorkItemListQuerySchema = PageQuerySchema.extend({
+  type: z.literal("TASK").optional(),
   versionId: UlidSchema.optional(),
   requirementId: UlidSchema.optional(),
+  intakeItemId: UlidSchema.optional(),
+  reporterId: UlidSchema.optional(),
   assigneeId: UlidSchema.optional(),
   statusCategory: StatusCategorySchema.optional(),
   priority: PrioritySchema.optional(),
@@ -128,10 +142,21 @@ export const WorkItemListQuerySchema = PageQuerySchema.extend({
 
 export const ListWorkItemsResponseSchema = pageResultSchema(WorkItemSchema);
 export const CreateWorkItemResponseSchema = WorkItemSchema;
-export const GetWorkItemResponseSchema = WorkItemSchema;
+export const GetWorkItemResponseSchema = WorkItemDetailSchema;
 export const UpdateWorkItemResponseSchema = WorkItemSchema;
 
-export const BugListQuerySchema = WorkItemListQuerySchema;
+export const BugListQuerySchema = PageQuerySchema.extend({
+  type: z.literal("BUG").optional(),
+  versionId: UlidSchema.optional(),
+  requirementId: UlidSchema.optional(),
+  intakeItemId: UlidSchema.optional(),
+  reporterId: UlidSchema.optional(),
+  assigneeId: UlidSchema.optional(),
+  statusCategory: StatusCategorySchema.optional(),
+  priority: PrioritySchema.optional(),
+  severity: BugSeveritySchema.optional(),
+  relatedTaskId: UlidSchema.optional(),
+});
 export const ListBugsResponseSchema = pageResultSchema(BugViewSchema);
 export const CreateBugResponseSchema = BugViewSchema;
 export const GetBugResponseSchema = BugViewSchema;

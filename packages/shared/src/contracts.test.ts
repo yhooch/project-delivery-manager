@@ -2,11 +2,35 @@ import { describe, expect, it } from "vitest";
 import {
   ApiErrorCodeSchema,
   AppSessionSchema,
+  AttachmentListQuerySchema,
+  BugListQuerySchema,
+  BugViewSchema,
+  CommentQuerySchema,
+  CreateBugRequestSchema,
+  CreateIntakeItemRequestSchema,
+  CreateWorkflowActionRequestSchema,
+  CreateWorkflowVersionRequestSchema,
+  CreateWorkItemRequestSchema,
+  ExecuteActionRequestSchema,
+  GetMyWorkbenchViewResponseSchema,
+  GetSpaceOverviewViewResponseSchema,
+  GetWorkItemResponseSchema,
+  IntakeItemSchema,
+  IntakeSourceTypeSchema,
+  PermissionSnapshotSchema,
   apiContracts,
   PresignAttachmentRequestSchema,
   RequirementSchema,
+  TimelineQuerySchema,
+  UpdateBugRequestSchema,
+  UpdateIntakeItemRequestSchema,
   UpdateRequirementRequestSchema,
   VersionSchema,
+  ViewExceptionTypeSchema,
+  ViewWorkItemSummarySchema,
+  WorkbenchActionTodoSchema,
+  WorkbenchViewQuerySchema,
+  WorkflowActionSummarySchema,
   generateOpenApiDocument,
 } from "./index.ts";
 
@@ -24,10 +48,525 @@ describe("shared contracts", () => {
         "TARGET_REQUIRED_FOR_ATTACHMENT",
         "ATTACHMENT_TARGET_NOT_FOUND",
         "DRAFT_REQUIREMENT_REQUIRED",
+        "INTAKE_ITEM_NOT_FOUND",
         "INTAKE_ITEM_NOT_ACCEPTED",
         "INTAKE_ITEM_ALREADY_CONVERTED",
+        "WORK_ITEM_NOT_FOUND",
+        "WORKFLOW_ACTION_NOT_AVAILABLE",
+        "WORKFLOW_ACTION_STATE_CONFLICT",
+        "WORKFLOW_ACTION_PERMISSION_DENIED",
+        "WORKFLOW_ACTION_FORM_INVALID",
+        "WORKFLOW_ACTION_COMMENT_REQUIRED",
+        "WORKFLOW_VERSION_INVALID",
+        "SPACE_MEMBER_INVALID",
       ]),
     );
+  });
+
+  it("only uses declared shared error codes in endpoint contracts", () => {
+    const declaredErrorCodes = new Set<string>(ApiErrorCodeSchema.options);
+
+    for (const contract of apiContracts) {
+      for (const errorCode of contract.errorCodes) {
+        expect(declaredErrorCodes.has(errorCode)).toBe(true);
+      }
+    }
+  });
+
+  it("covers M2 intake source, assignee and edit contracts", () => {
+    expect(IntakeSourceTypeSchema.options).toEqual(
+      expect.arrayContaining([
+        "REQUIREMENT_CHANGE",
+        "DEFECT_PROBLEM",
+        "PROJECT_PLAN",
+        "MEETING_DECISION",
+        "AD_HOC",
+        "IMPLEMENTATION",
+        "OPERATIONS",
+        "RELEASE",
+        "EXTERNAL_COLLABORATION",
+      ]),
+    );
+
+    expect(
+      CreateIntakeItemRequestSchema.parse({
+        title: "Clarify release scope",
+        description: "Need PM triage",
+        sourceType: "MEETING_DECISION",
+        sourceObject: {
+          meetingId: "weekly-2026-05-13",
+        },
+        assigneeId: "01ARZ3NDEKTSV4RRFFQ69G5FAV",
+      }),
+    ).toMatchObject({
+      sourceType: "MEETING_DECISION",
+      assigneeId: "01ARZ3NDEKTSV4RRFFQ69G5FAV",
+    });
+
+    expect(
+      UpdateIntakeItemRequestSchema.parse({
+        sourceType: "REQUIREMENT_CHANGE",
+        sourceObject: {
+          requirementId: "01FRZ3NDEKTSV4RRFFQ69G5FAE",
+        },
+        assigneeId: "01BRZ3NDEKTSV4RRFFQ69G5FAA",
+      }),
+    ).toMatchObject({ sourceType: "REQUIREMENT_CHANGE" });
+
+    expect(
+      IntakeItemSchema.parse({
+        id: "01HRZ3NDEKTSV4RRFFQ69G5FAH",
+        organizationId: "01BRZ3NDEKTSV4RRFFQ69G5FAA",
+        spaceId: "01DRZ3NDEKTSV4RRFFQ69G5FAC",
+        title: "Follow up changed requirement",
+        sourceType: "REQUIREMENT_CHANGE",
+        sourceObject: {
+          requirementId: "01FRZ3NDEKTSV4RRFFQ69G5FAE",
+        },
+        status: "PENDING",
+        priority: "HIGH",
+        reporterId: "01ARZ3NDEKTSV4RRFFQ69G5FAV",
+        assigneeId: "01BRZ3NDEKTSV4RRFFQ69G5FAA",
+      }),
+    ).toMatchObject({
+      reporterId: "01ARZ3NDEKTSV4RRFFQ69G5FAV",
+      assigneeId: "01BRZ3NDEKTSV4RRFFQ69G5FAA",
+    });
+  });
+
+  it("keeps M2 work item creation task-only and requires detail permissions", () => {
+    expect(
+      CreateWorkItemRequestSchema.parse({
+        title: "Implement task",
+      }),
+    ).toMatchObject({ type: "TASK" });
+
+    expect(() =>
+      CreateWorkItemRequestSchema.parse({
+        type: "BUG",
+        title: "Wrong entry",
+      }),
+    ).toThrow();
+
+    expect(
+      GetWorkItemResponseSchema.parse({
+        id: "01GRZ3NDEKTSV4RRFFQ69G5FAG",
+        type: "TASK",
+        organizationId: "01BRZ3NDEKTSV4RRFFQ69G5FAA",
+        spaceId: "01DRZ3NDEKTSV4RRFFQ69G5FAC",
+        title: "Implement task",
+        priority: "MEDIUM",
+        reporterId: "01ARZ3NDEKTSV4RRFFQ69G5FAV",
+        workflowVersionId: "01JRZ3NDEKTSV4RRFFQ69G5FAJ",
+        currentStateId: "01KRZ3NDEKTSV4RRFFQ69G5FAK",
+        statusCategory: "NOT_STARTED",
+        lastStatusChangedAt: "2026-05-13T00:00:00.000Z",
+        permissions: {
+          canEdit: true,
+          canComment: true,
+          canUploadAttachment: true,
+          availableActions: [],
+        },
+      }),
+    ).toMatchObject({
+      permissions: {
+        canEdit: true,
+        availableActions: [],
+      },
+    });
+  });
+
+  it("covers M3 bug detail fields and related task filtering", () => {
+    expect(
+      CreateBugRequestSchema.parse({
+        title: "Login regression",
+        severity: "CRITICAL",
+        stepsToReproduce: "Open the login page and submit a valid account.",
+        expectedResult: "The user lands on the workspace.",
+        actualResult: "The page returns a 500 response.",
+        relatedTaskId: "01MRZ3NDEKTSV4RRFFQ69G5FAM",
+      }),
+    ).toMatchObject({
+      relatedTaskId: "01MRZ3NDEKTSV4RRFFQ69G5FAM",
+      severity: "CRITICAL",
+    });
+
+    expect(
+      UpdateBugRequestSchema.parse({
+        severity: "MAJOR",
+        fixNote: "Guard the null session branch.",
+        regressionResult: "Regression passed on staging.",
+        regressionBy: "01NRZ3NDEKTSV4RRFFQ69G5FAN",
+        regressionAt: "2026-05-13T00:00:00.000Z",
+        relatedTaskId: "01MRZ3NDEKTSV4RRFFQ69G5FAM",
+      }),
+    ).toMatchObject({
+      regressionBy: "01NRZ3NDEKTSV4RRFFQ69G5FAN",
+      relatedTaskId: "01MRZ3NDEKTSV4RRFFQ69G5FAM",
+    });
+
+    expect(
+      BugListQuerySchema.parse({
+        severity: "BLOCKER",
+        relatedTaskId: "01MRZ3NDEKTSV4RRFFQ69G5FAM",
+      }),
+    ).toMatchObject({
+      relatedTaskId: "01MRZ3NDEKTSV4RRFFQ69G5FAM",
+      severity: "BLOCKER",
+    });
+
+    expect(
+      BugViewSchema.parse({
+        id: "01PRZ3NDEKTSV4RRFFQ69G5FAP",
+        type: "BUG",
+        organizationId: "01BRZ3NDEKTSV4RRFFQ69G5FAA",
+        spaceId: "01DRZ3NDEKTSV4RRFFQ69G5FAC",
+        title: "Login regression",
+        priority: "HIGH",
+        reporterId: "01ARZ3NDEKTSV4RRFFQ69G5FAV",
+        workflowVersionId: "01JRZ3NDEKTSV4RRFFQ69G5FAJ",
+        currentStateId: "01KRZ3NDEKTSV4RRFFQ69G5FAK",
+        statusCategory: "IN_PROGRESS",
+        lastStatusChangedAt: "2026-05-13T00:00:00.000Z",
+        bugDetail: {
+          workItemId: "01PRZ3NDEKTSV4RRFFQ69G5FAP",
+          severity: "CRITICAL",
+          stepsToReproduce: "Submit login.",
+          expectedResult: "Success.",
+          actualResult: "Failure.",
+          fixNote: "Patch merged.",
+          regressionResult: "Passed.",
+          regressionBy: "01NRZ3NDEKTSV4RRFFQ69G5FAN",
+          regressionAt: "2026-05-13T01:00:00.000Z",
+          relatedTaskId: "01MRZ3NDEKTSV4RRFFQ69G5FAM",
+        },
+      }),
+    ).toMatchObject({
+      bugDetail: {
+        relatedTaskId: "01MRZ3NDEKTSV4RRFFQ69G5FAM",
+        severity: "CRITICAL",
+      },
+    });
+  });
+
+  it("covers M3 workflow action permissions and draft copy contracts", () => {
+    const action = WorkflowActionSummarySchema.parse({
+      id: "01QRZ3NDEKTSV4RRFFQ69G5FAQ",
+      code: "start_fix",
+      name: "Start fix",
+      fromStateId: "01KRZ3NDEKTSV4RRFFQ69G5FAK",
+      toStateId: "01RRZ3NDEKTSV4RRFFQ69G5FAR",
+      allowedSpaceRoles: ["PM", "DEVELOPER"],
+      actorRelations: ["ASSIGNEE"],
+      requiresComment: true,
+      formFields: [
+        {
+          id: "01SRZ3NDEKTSV4RRFFQ69G5FAS",
+          key: "fixNote",
+          label: "Fix note",
+          fieldType: "TEXTAREA",
+          required: true,
+          order: 0,
+        },
+      ],
+      order: 1,
+    });
+
+    expect(
+      PermissionSnapshotSchema.parse({
+        canEdit: true,
+        canComment: true,
+        canUploadAttachment: true,
+        availableActions: [action],
+      }).availableActions,
+    ).toEqual([action]);
+
+    expect(
+      CreateWorkflowActionRequestSchema.parse({
+        code: "start_fix",
+        name: "Start fix",
+        fromStateId: "01KRZ3NDEKTSV4RRFFQ69G5FAK",
+        toStateId: "01RRZ3NDEKTSV4RRFFQ69G5FAR",
+        allowedSpaceRoles: ["PM", "DEVELOPER"],
+        actorRelations: ["ASSIGNEE"],
+        requiresComment: true,
+      }),
+    ).toMatchObject({
+      allowedSpaceRoles: ["PM", "DEVELOPER"],
+      actorRelations: ["ASSIGNEE"],
+      requiresComment: true,
+    });
+
+    expect(
+      CreateWorkflowVersionRequestSchema.parse({
+        sourceWorkflowVersionId: "01JRZ3NDEKTSV4RRFFQ69G5FAJ",
+      }),
+    ).toEqual({
+      sourceWorkflowVersionId: "01JRZ3NDEKTSV4RRFFQ69G5FAJ",
+    });
+
+    expect(
+      ExecuteActionRequestSchema.parse({
+        comment: "Starting fix.",
+        formValues: {
+          fixNote: "Guard null session.",
+        },
+      }),
+    ).toMatchObject({
+      comment: "Starting fix.",
+      formValues: {
+        fixNote: "Guard null session.",
+      },
+    });
+  });
+
+  it("freezes M4 view filters, exception signals and action todo contracts", () => {
+    expect(ViewExceptionTypeSchema.options).toEqual([
+      "overdue",
+      "blocked",
+      "pending_confirm",
+      "pending_regression",
+      "stale",
+    ]);
+
+    expect(
+      WorkbenchViewQuerySchema.parse({
+        organizationId: "01BRZ3NDEKTSV4RRFFQ69G5FAA",
+        spaceId: "01DRZ3NDEKTSV4RRFFQ69G5FAC",
+        versionId: "01ERZ3NDEKTSV4RRFFQ69G5FAD",
+        assigneeId: "01ARZ3NDEKTSV4RRFFQ69G5FAV",
+        statusCategory: "WAITING",
+        workItemType: "BUG",
+        exceptionType: "blocked",
+      }),
+    ).toMatchObject({
+      page: 1,
+      pageSize: 20,
+      organizationId: "01BRZ3NDEKTSV4RRFFQ69G5FAA",
+      exceptionType: "blocked",
+      workItemType: "BUG",
+    });
+    expect(() =>
+      WorkbenchViewQuerySchema.parse({
+        spaceId: "01DRZ3NDEKTSV4RRFFQ69G5FAC",
+      }),
+    ).toThrow();
+
+    const currentStatus = {
+      workflowVersionId: "01JRZ3NDEKTSV4RRFFQ69G5FAJ",
+      currentStateId: "01KRZ3NDEKTSV4RRFFQ69G5FAK",
+      stateCode: "waiting_pm_confirm",
+      stateName: "Waiting PM confirm",
+      statusCategory: "WAITING",
+      lastStatusChangedAt: "2026-05-13T00:00:00.000Z",
+      exceptionHints: {
+        blocked: false,
+        pendingConfirm: true,
+        pendingRegression: false,
+      },
+    };
+
+    const workItem = ViewWorkItemSummarySchema.parse({
+      id: "01GRZ3NDEKTSV4RRFFQ69G5FAG",
+      type: "BUG",
+      organizationId: "01BRZ3NDEKTSV4RRFFQ69G5FAA",
+      spaceId: "01DRZ3NDEKTSV4RRFFQ69G5FAC",
+      versionId: "01ERZ3NDEKTSV4RRFFQ69G5FAD",
+      title: "Confirm fixed login regression",
+      priority: "HIGH",
+      assigneeId: "01ARZ3NDEKTSV4RRFFQ69G5FAV",
+      reporterId: "01ARZ3NDEKTSV4RRFFQ69G5FAV",
+      dueDate: "2026-05-14T00:00:00.000Z",
+      currentStatus,
+      exceptionSignals: [
+        {
+          type: "pending_confirm",
+          evidenceSource: "WORKFLOW_STATE",
+          reason: "Workflow state explicitly requires PM confirmation.",
+          currentStateId: "01KRZ3NDEKTSV4RRFFQ69G5FAK",
+        },
+      ],
+    });
+
+    expect(workItem.currentStatus.exceptionHints.pendingConfirm).toBe(true);
+    expect(workItem.exceptionSignals[0]?.type).toBe("pending_confirm");
+
+    const todo = WorkbenchActionTodoSchema.parse({
+      id: "01GRZ3NDEKTSV4RRFFQ69G5FAG:01QRZ3NDEKTSV4RRFFQ69G5FAQ",
+      workItem,
+      currentStatus,
+      availableAction: {
+        id: "01QRZ3NDEKTSV4RRFFQ69G5FAQ",
+        code: "confirm_fix",
+        name: "Confirm fix",
+        fromStateId: "01KRZ3NDEKTSV4RRFFQ69G5FAK",
+        toStateId: "01RRZ3NDEKTSV4RRFFQ69G5FAR",
+        allowedSpaceRoles: ["PM"],
+        actorRelations: ["REPORTER"],
+        requiresComment: true,
+        formFields: [],
+        order: 1,
+      },
+      actionTarget: {
+        workItemId: "01GRZ3NDEKTSV4RRFFQ69G5FAG",
+        actionId: "01QRZ3NDEKTSV4RRFFQ69G5FAQ",
+        executePath:
+          "/work-items/01GRZ3NDEKTSV4RRFFQ69G5FAG/actions/01QRZ3NDEKTSV4RRFFQ69G5FAQ/execute",
+      },
+      reason: {
+        code: "REPORTED_BY_ME",
+        description: "The workflow action is waiting for my confirmation.",
+      },
+    });
+
+    expect(todo.availableAction.code).toBe("confirm_fix");
+    expect(todo.actionTarget.actionId).toBe("01QRZ3NDEKTSV4RRFFQ69G5FAQ");
+    expect(todo.reason.code).toBe("REPORTED_BY_ME");
+
+    const activity = {
+      id: "01TRZ3NDEKTSV4RRFFQ69G5FAT",
+      organizationId: "01BRZ3NDEKTSV4RRFFQ69G5FAA",
+      spaceId: "01DRZ3NDEKTSV4RRFFQ69G5FAC",
+      target: {
+        type: "WORK_ITEM",
+        id: "01GRZ3NDEKTSV4RRFFQ69G5FAG",
+        title: "Confirm fixed login regression",
+      },
+      eventType: "ACTION_EXECUTED",
+      actor: {
+        id: "01ARZ3NDEKTSV4RRFFQ69G5FAV",
+        username: "pm",
+        name: "PM",
+      },
+      title: "Fix submitted",
+      detail: "Developer submitted the fix for confirmation.",
+      createdAt: "2026-05-13T02:00:00.000Z",
+    };
+
+    const emptyWorkItems = {
+      items: [],
+      page: 1,
+      pageSize: 20,
+      total: 0,
+    };
+    const oneWorkItem = {
+      items: [workItem],
+      page: 1,
+      pageSize: 20,
+      total: 1,
+    };
+
+    const workbench = GetMyWorkbenchViewResponseSchema.parse({
+      filters: {
+        organizationId: "01BRZ3NDEKTSV4RRFFQ69G5FAA",
+        spaceId: "01DRZ3NDEKTSV4RRFFQ69G5FAC",
+      },
+      stats: {
+        assignedWorkItemCount: 1,
+        actionTodoCount: 1,
+        overdueCount: 0,
+        blockedCount: 0,
+        pendingConfirmCount: 1,
+        pendingRegressionCount: 0,
+        staleCount: 0,
+      },
+      sections: {
+        myTodos: { title: "My todos", total: 1, items: oneWorkItem },
+        assignedTasks: { title: "My tasks", total: 0, items: emptyWorkItems },
+        assignedBugs: { title: "My bugs", total: 1, items: oneWorkItem },
+        actionTodos: {
+          title: "Action todos",
+          total: 1,
+          items: {
+            items: [todo],
+            page: 1,
+            pageSize: 20,
+            total: 1,
+          },
+        },
+        pendingConfirm: {
+          title: "Pending confirm",
+          total: 1,
+          items: oneWorkItem,
+        },
+        dueSoon: { title: "Due soon", total: 1, items: oneWorkItem },
+        blocked: { title: "Blocked", total: 0, items: emptyWorkItems },
+        recentActivities: {
+          title: "Recent activities",
+          total: 1,
+          items: {
+            items: [activity],
+            page: 1,
+            pageSize: 20,
+            total: 1,
+          },
+        },
+      },
+    });
+
+    expect(
+      workbench.sections.actionTodos.items.items[0]?.availableAction.code,
+    ).toBe("confirm_fix");
+    expect(
+      workbench.sections.recentActivities.items.items[0]?.eventType,
+    ).toBe("ACTION_EXECUTED");
+
+    const overview = GetSpaceOverviewViewResponseSchema.parse({
+      space: {
+        id: "01DRZ3NDEKTSV4RRFFQ69G5FAC",
+        organizationId: "01BRZ3NDEKTSV4RRFFQ69G5FAA",
+        name: "Space A",
+        code: "space-a",
+        status: "ACTIVE",
+        settings: {
+          staleThresholdDays: 3,
+        },
+      },
+      stats: {
+        versionCount: 1,
+        requirementCount: 1,
+        taskCount: 1,
+        completedTaskCount: 0,
+        bugCount: 1,
+        openBugCount: 1,
+        blockedCount: 0,
+        overdueCount: 0,
+      },
+      defaultWorkflows: [],
+      recentActivities: {
+        items: [activity],
+        page: 1,
+        pageSize: 20,
+        total: 1,
+      },
+    });
+
+    expect(overview.recentActivities?.items[0]?.target.type).toBe(
+      "WORK_ITEM",
+    );
+  });
+
+  it("supports M2 comments, attachments and timeline target queries", () => {
+    expect(
+      CommentQuerySchema.parse({
+        targetType: "INTAKE_ITEM",
+        targetId: "01HRZ3NDEKTSV4RRFFQ69G5FAH",
+      }),
+    ).toMatchObject({ targetType: "INTAKE_ITEM" });
+
+    expect(
+      AttachmentListQuerySchema.parse({
+        targetType: "WORK_ITEM",
+        targetId: "01GRZ3NDEKTSV4RRFFQ69G5FAG",
+      }),
+    ).toMatchObject({ targetType: "WORK_ITEM" });
+
+    expect(
+      TimelineQuerySchema.parse({
+        targetType: "WORK_ITEM",
+        targetId: "01GRZ3NDEKTSV4RRFFQ69G5FAG",
+      }),
+    ).toMatchObject({ targetType: "WORK_ITEM" });
   });
 
   it("accepts the no-organization app session empty state", () => {
@@ -201,11 +740,84 @@ describe("shared contracts", () => {
       document.paths["/intake-items/{id}/convert-to-work-items"]?.post
         ?.operationId,
     ).toBe("convertIntakeItemToWorkItems");
-    expect(document.paths["/views/spaces/{spaceId}/overview"]?.get?.operationId).toBe(
-      "getSpaceOverview",
+    expect(document.paths["/intake-items/{id}"]?.get?.operationId).toBe(
+      "getIntakeItem",
     );
-    expect(document.paths["/attachments/presign"]?.post?.["x-error-codes"]).toContain(
-      "DRAFT_REQUIREMENT_REQUIRED",
+    expect(document.paths["/intake-items/{id}"]?.patch?.operationId).toBe(
+      "updateIntakeItem",
     );
+    expect(document.paths["/work-items/{workItemId}"]?.get?.operationId).toBe(
+      "getWorkItem",
+    );
+    expect(document.paths["/spaces/{spaceId}/bugs"]?.post?.operationId).toBe(
+      "createBug",
+    );
+    expect(document.paths["/spaces/{spaceId}/bugs"]?.get?.parameters).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ name: "severity", in: "query" }),
+        expect.objectContaining({ name: "relatedTaskId", in: "query" }),
+      ]),
+    );
+    expect(document.paths["/workflows/{workflowId}"]?.get?.operationId).toBe(
+      "getWorkflow",
+    );
+    expect(
+      document.paths["/workflow-versions/{workflowVersionId}"]?.get
+        ?.operationId,
+    ).toBe("getWorkflowVersion");
+    expect(
+      document.paths["/spaces/{spaceId}/workflow-bindings"]?.get?.operationId,
+    ).toBe("listWorkflowBindings");
+    expect(
+      document.paths["/work-items/{workItemId}/actions/{actionId}/execute"]
+        ?.post?.["x-error-codes"],
+    ).toEqual(
+      expect.arrayContaining([
+        "WORKFLOW_ACTION_NOT_AVAILABLE",
+        "WORKFLOW_ACTION_PERMISSION_DENIED",
+        "WORKFLOW_ACTION_FORM_INVALID",
+        "WORKFLOW_ACTION_COMMENT_REQUIRED",
+        "WORKFLOW_VERSION_INVALID",
+        "SPACE_MEMBER_INVALID",
+      ]),
+    );
+    expect(
+      document.paths["/views/spaces/{spaceId}/overview"]?.get?.operationId,
+    ).toBe("getSpaceOverview");
+    expect(document.paths["/views/my-workbench"]?.get?.operationId).toBe(
+      "getMyWorkbenchView",
+    );
+    expect(document.paths["/views/my-workbench"]?.get?.parameters).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          name: "organizationId",
+          in: "query",
+          required: true,
+        }),
+        expect.objectContaining({ name: "spaceId", in: "query" }),
+        expect.objectContaining({ name: "versionId", in: "query" }),
+        expect.objectContaining({ name: "assigneeId", in: "query" }),
+        expect.objectContaining({ name: "statusCategory", in: "query" }),
+        expect.objectContaining({ name: "workItemType", in: "query" }),
+        expect.objectContaining({ name: "exceptionType", in: "query" }),
+      ]),
+    );
+    expect(
+      document.paths["/views/versions/{versionId}/board"]?.get?.operationId,
+    ).toBe("getVersionBoardView");
+    expect(
+      document.paths["/views/spaces/{spaceId}/exceptions"]?.get?.parameters,
+    ).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ name: "versionId", in: "query" }),
+        expect.objectContaining({ name: "assigneeId", in: "query" }),
+        expect.objectContaining({ name: "statusCategory", in: "query" }),
+        expect.objectContaining({ name: "workItemType", in: "query" }),
+        expect.objectContaining({ name: "exceptionType", in: "query" }),
+      ]),
+    );
+    expect(
+      document.paths["/attachments/presign"]?.post?.["x-error-codes"],
+    ).toContain("DRAFT_REQUIREMENT_REQUIRED");
   });
 });

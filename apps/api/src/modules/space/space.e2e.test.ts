@@ -3,6 +3,7 @@ import { Test } from "@nestjs/testing";
 import {
   AppSessionSchema,
   type DefaultWorkflowSummary,
+  type GetSpaceExceptionsViewResponse,
   type Organization,
   type OrganizationMember,
   type OrganizationMemberWithUser,
@@ -64,11 +65,14 @@ import type {
   AddSpaceMemberInput,
   CreateSpaceInput,
   CreatedSpaceWithAdmin,
+  MyWorkbenchViewInput,
   SpaceAccess,
+  SpaceExceptionsViewInput,
   SpaceListInput,
   SpaceListResult,
   SpaceMemberListInput,
   SpaceMemberListResult,
+  SpaceOverviewViewInput,
   UpdateSpaceInput,
   UpdateSpaceMemberInput,
 } from "./space.types";
@@ -179,7 +183,86 @@ describe("space API", () => {
             (item) => item.code,
           ),
         ).toEqual(["DEVELOPMENT_TASK", "GENERAL_TASK", "BUG"]);
+        expect(overview.filters).toMatchObject({
+          organizationId: organization.id,
+          spaceId: space.id,
+        });
+        expect(overview.recentActivities).toMatchObject({
+          page: 1,
+          pageSize: 20,
+          total: 0,
+        });
       });
+
+    await ownerAgent
+      .get(`/api/v1/views/my-workbench?organizationId=${organization.id}`)
+      .expect(200)
+      .expect(({ body }) => {
+        expect(body.data.filters.organizationId).toBe(organization.id);
+        expect(body.data.sections).toHaveProperty("myTodos");
+        expect(body.data.sections).toHaveProperty("actionTodos");
+      });
+  });
+
+  it("exposes the space exceptions view to read-only members", async () => {
+    const ownerAgent = await registeredAgent("m4d_exception_owner", "203.0.113.160");
+    const viewerAgent = await registeredAgent(
+      "m4d_exception_viewer",
+      "203.0.113.161",
+    );
+    const outsiderAgent = await registeredAgent(
+      "m4d_exception_outsider",
+      "203.0.113.162",
+    );
+    const organization = (
+      await createOrganization(ownerAgent, "M4D Exceptions", "m4d-exceptions")
+    ).body.data as Organization;
+    await addOrganizationMember(ownerAgent, organization.id, {
+      username: "m4d_exception_viewer",
+      role: "MEMBER",
+    }).expect(200);
+    const space = (
+      await createSpace(ownerAgent, organization.id, {
+        name: "Exception Space",
+        code: "exception-space",
+        staleThresholdDays: 5,
+      })
+    ).body.data as Space;
+    await addSpaceMember(ownerAgent, space.id, {
+      username: "m4d_exception_viewer",
+      role: "VIEWER",
+    }).expect(200);
+
+    await viewerAgent
+      .get(
+        `/api/v1/views/spaces/${space.id}/exceptions?organizationId=${organization.id}&exceptionType=stale`,
+      )
+      .expect(200)
+      .expect(({ body }) => {
+        const data = body.data as GetSpaceExceptionsViewResponse;
+
+        expect(data.filters).toMatchObject({
+          organizationId: organization.id,
+          spaceId: space.id,
+          exceptionType: "stale",
+        });
+        expect(data.counts).toEqual([
+          { exceptionType: "overdue", count: 0 },
+          { exceptionType: "blocked", count: 0 },
+          { exceptionType: "pending_confirm", count: 0 },
+          { exceptionType: "pending_regression", count: 0 },
+          { exceptionType: "stale", count: 0 },
+        ]);
+        expect(data.items).toMatchObject({
+          page: 1,
+          pageSize: 20,
+          total: 0,
+        });
+      });
+
+    await outsiderAgent
+      .get(`/api/v1/views/spaces/${space.id}/exceptions`)
+      .expect(403);
   });
 
   it("enforces code uniqueness inside one organization and allows reuse across organizations", async () => {
@@ -1014,6 +1097,145 @@ class InMemorySpaceRepository implements SpaceRepository {
     );
 
     return member ? this.toMemberWithUser(member) : undefined;
+  }
+
+  async getMyWorkbenchView(input: MyWorkbenchViewInput) {
+    const emptyWorkItems = {
+      items: [],
+      page: input.page,
+      pageSize: input.pageSize,
+      total: 0,
+    };
+    const emptyActionTodos = {
+      items: [],
+      page: input.page,
+      pageSize: input.pageSize,
+      total: 0,
+    };
+
+    return {
+      filters: {
+        organizationId: input.organizationId,
+        spaceId: input.spaceId,
+        versionId: input.versionId,
+      },
+      stats: {
+        assignedWorkItemCount: 0,
+        actionTodoCount: 0,
+        overdueCount: 0,
+        blockedCount: 0,
+        pendingConfirmCount: 0,
+        pendingRegressionCount: 0,
+        staleCount: 0,
+      },
+      sections: {
+        myTodos: {
+          title: "我的待办",
+          total: 0,
+          items: emptyWorkItems,
+        },
+        assignedTasks: {
+          title: "我负责的任务",
+          total: 0,
+          items: emptyWorkItems,
+        },
+        assignedBugs: {
+          title: "我负责的 Bug",
+          total: 0,
+          items: emptyWorkItems,
+        },
+        actionTodos: {
+          title: "待我处理的流程动作",
+          total: 0,
+          items: emptyActionTodos,
+        },
+        pendingConfirm: {
+          title: "待我确认",
+          total: 0,
+          items: emptyWorkItems,
+        },
+        dueSoon: {
+          title: "即将到期",
+          total: 0,
+          items: emptyWorkItems,
+        },
+        blocked: {
+          title: "阻塞中",
+          total: 0,
+          items: emptyWorkItems,
+        },
+        recentActivities: {
+          title: "最近动态",
+          total: 0,
+          items: {
+            items: [],
+            page: input.page,
+            pageSize: input.pageSize,
+            total: 0,
+          },
+        },
+      },
+      actionTodos: emptyActionTodos,
+    };
+  }
+
+  async getSpaceOverviewView(input: SpaceOverviewViewInput) {
+    const [stats, currentVersion, defaultWorkflows] = await Promise.all([
+      this.getOverviewStats(input.space.id),
+      this.findCurrentVersion(input.space.id),
+      this.listDefaultWorkflows(input.space.id),
+    ]);
+
+    return {
+      space: input.space,
+      currentVersion,
+      stats,
+      defaultWorkflows,
+      filters: {
+        organizationId: input.space.organizationId,
+        spaceId: input.space.id,
+        versionId: input.versionId,
+      },
+      statusCounts: [],
+      workItemTypeCounts: [],
+      exceptionCounts: [],
+      recentActivities: {
+        items: [],
+        page: 1,
+        pageSize: 20,
+        total: 0,
+      },
+      staleThresholdDays: input.space.settings.staleThresholdDays,
+    };
+  }
+
+  async getSpaceExceptionsView(
+    input: SpaceExceptionsViewInput,
+  ): Promise<GetSpaceExceptionsViewResponse> {
+    return {
+      filters: {
+        organizationId: input.space.organizationId,
+        spaceId: input.space.id,
+        versionId: input.versionId,
+        assigneeId: input.assigneeId,
+        statusCategory: input.statusCategory,
+        workItemType: input.workItemType,
+        exceptionType: input.exceptionType,
+      },
+      counts: [
+        { exceptionType: "overdue", count: 0 },
+        { exceptionType: "blocked", count: 0 },
+        { exceptionType: "pending_confirm", count: 0 },
+        { exceptionType: "pending_regression", count: 0 },
+        { exceptionType: "stale", count: 0 },
+      ],
+      items: {
+        items: [],
+        page: input.page,
+        pageSize: input.pageSize,
+        total: 0,
+      },
+    };
   }
 
   async getOverviewStats(_spaceId: string): Promise<SpaceOverviewStats> {

@@ -10,11 +10,17 @@ import type {
   AddSpaceMemberInput,
   CreateSpaceInput,
   CreatedSpaceWithAdmin,
+  MyWorkbenchViewInput,
+  MyWorkbenchViewResult,
+  SpaceExceptionsViewInput,
+  SpaceExceptionsViewResult,
   SpaceAccess,
   SpaceListInput,
   SpaceListResult,
   SpaceMemberListInput,
   SpaceMemberListResult,
+  SpaceOverviewViewInput,
+  SpaceOverviewViewResult,
   UpdateSpaceInput,
   UpdateSpaceMemberInput,
 } from "./space.types";
@@ -40,6 +46,13 @@ export type SpaceRepository = {
     spaceId: string,
     userId: string,
   ): Promise<SpaceMemberWithUser | undefined>;
+  getMyWorkbenchView(input: MyWorkbenchViewInput): Promise<MyWorkbenchViewResult>;
+  getSpaceExceptionsView(
+    input: SpaceExceptionsViewInput,
+  ): Promise<SpaceExceptionsViewResult>;
+  getSpaceOverviewView(
+    input: SpaceOverviewViewInput,
+  ): Promise<SpaceOverviewViewResult>;
   getOverviewStats(spaceId: string): Promise<SpaceOverviewStats>;
   findCurrentVersion(spaceId: string): Promise<VersionSummary | undefined>;
   listByOrganizationId(

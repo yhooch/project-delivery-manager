@@ -1,13 +1,18 @@
 import {
   AttachmentMaxCountPerTarget,
   AttachmentMaxSizeBytes,
+  AttachmentListQuerySchema,
   AttachmentMimeTypeSchema,
   CreateAttachmentResponseSchema,
   GetAttachmentDownloadUrlResponseSchema,
+  ListAttachmentsResponseSchema,
   PresignAttachmentResponseSchema,
   type Attachment,
+  type AttachmentTargetType,
   type AttachmentMimeType,
+  type PageResult,
 } from "@project-delivery/shared";
+import { z } from "zod";
 
 import { ApiClientError, apiClient, type ApiRequestInit } from "./api-client";
 
@@ -27,6 +32,7 @@ export type UploadObject = (
 ) => Promise<void>;
 
 export type AttachmentUploadErrorCode =
+  | "ACCESS_DENIED"
   | "ATTACHMENT_LIMIT_EXCEEDED"
   | "DRAFT_REQUIRED"
   | "FILE_TOO_LARGE"
@@ -53,10 +59,51 @@ export type UploadRequirementImageInput = {
   requirementId: string;
 };
 
+export type UploadAttachmentInput = {
+  existingAttachmentCount: number;
+  file: File;
+  imageOnly?: boolean;
+  targetId: string;
+  targetType: AttachmentTargetType;
+};
+
+export type ListAttachmentsInput = z.input<typeof AttachmentListQuerySchema> & {
+  organizationId?: string;
+  spaceId: string;
+};
+
+export type AttachmentUploadFailure = {
+  code: AttachmentUploadErrorCode;
+  fileName: string;
+  retryable: boolean;
+};
+
 export type UploadRequirementImageResult = {
   attachment: Attachment;
   imageUrl: string;
 };
+
+export type UploadAttachmentResult = {
+  attachment: Attachment;
+  downloadUrl: string;
+};
+
+export const attachmentUploadFailureSchema = z
+  .object({
+    code: z.enum([
+      "ACCESS_DENIED",
+      "ATTACHMENT_LIMIT_EXCEEDED",
+      "DRAFT_REQUIRED",
+      "FILE_TOO_LARGE",
+      "TARGET_NOT_FOUND",
+      "UNSUPPORTED_MIME_TYPE",
+      "UPLOAD_FAILED",
+      "VALIDATION_FAILED",
+    ]),
+    fileName: z.string().min(1),
+    retryable: z.boolean(),
+  })
+  .strict();
 
 const defaultApi: AttachmentApiTransport = apiClient;
 const defaultUploadObject: UploadObject = async (uploadUrl, file, mimeType) => {
@@ -82,15 +129,38 @@ export async function uploadRequirementImage(
   api: AttachmentApiTransport = defaultApi,
   uploadObject: UploadObject = defaultUploadObject,
 ): Promise<UploadRequirementImageResult> {
-  const mimeType = validateRequirementImageFile(input);
+  const result = await uploadAttachment(
+    {
+      existingAttachmentCount: input.existingAttachmentCount,
+      file: input.file,
+      imageOnly: true,
+      targetId: input.requirementId,
+      targetType: "REQUIREMENT",
+    },
+    api,
+    uploadObject,
+  );
+
+  return {
+    attachment: result.attachment,
+    imageUrl: result.attachment.previewUrl ?? result.downloadUrl,
+  };
+}
+
+export async function uploadAttachment(
+  input: UploadAttachmentInput,
+  api: AttachmentApiTransport = defaultApi,
+  uploadObject: UploadObject = defaultUploadObject,
+): Promise<UploadAttachmentResult> {
+  const mimeType = validateAttachmentFile(input);
 
   try {
     const presignResponse = await api.post<unknown>("/attachments/presign", {
       fileName: input.file.name,
       mimeType,
       size: input.file.size,
-      targetId: input.requirementId,
-      targetType: "REQUIREMENT",
+      targetId: input.targetId,
+      targetType: input.targetType,
     });
     const presign = PresignAttachmentResponseSchema.parse(presignResponse.data);
 
@@ -101,8 +171,8 @@ export async function uploadRequirementImage(
       fileName: input.file.name,
       mimeType,
       size: input.file.size,
-      targetId: input.requirementId,
-      targetType: "REQUIREMENT",
+      targetId: input.targetId,
+      targetType: input.targetType,
     });
     const attachment = CreateAttachmentResponseSchema.parse(
       attachmentResponse.data,
@@ -116,15 +186,41 @@ export async function uploadRequirementImage(
 
     return {
       attachment,
-      imageUrl: attachment.previewUrl ?? download.downloadUrl,
+      downloadUrl: download.downloadUrl,
     };
   } catch (error) {
     throw mapAttachmentUploadError(error);
   }
 }
 
+export async function listAttachments(
+  input: ListAttachmentsInput,
+  api: AttachmentApiTransport = defaultApi,
+): Promise<PageResult<Attachment>> {
+  const { organizationId: _organizationId, spaceId: _spaceId, ...query } =
+    input;
+  const filters = AttachmentListQuerySchema.parse(query);
+  const response = await api.get<unknown>("/attachments", {
+    query: filters,
+  });
+
+  return ListAttachmentsResponseSchema.parse(response.data);
+}
+
 export function validateRequirementImageFile(
   input: UploadRequirementImageInput,
+): AttachmentMimeType {
+  return validateAttachmentFile({
+    existingAttachmentCount: input.existingAttachmentCount,
+    file: input.file,
+    imageOnly: true,
+    targetId: input.requirementId,
+    targetType: "REQUIREMENT",
+  });
+}
+
+export function validateAttachmentFile(
+  input: UploadAttachmentInput,
 ): AttachmentMimeType {
   if (input.existingAttachmentCount >= AttachmentMaxCountPerTarget) {
     throw new AttachmentUploadError("ATTACHMENT_LIMIT_EXCEEDED");
@@ -136,11 +232,27 @@ export function validateRequirementImageFile(
 
   const parsedMimeType = AttachmentMimeTypeSchema.safeParse(input.file.type);
 
-  if (!parsedMimeType.success || !isImageMimeType(parsedMimeType.data)) {
+  if (
+    !parsedMimeType.success ||
+    (input.imageOnly === true && !isImageMimeType(parsedMimeType.data))
+  ) {
     throw new AttachmentUploadError("UNSUPPORTED_MIME_TYPE");
   }
 
   return parsedMimeType.data;
+}
+
+export function createAttachmentUploadFailure(
+  file: File,
+  error: unknown,
+): AttachmentUploadFailure {
+  const uploadError = mapAttachmentUploadError(error);
+
+  return attachmentUploadFailureSchema.parse({
+    code: uploadError.code,
+    fileName: file.name,
+    retryable: uploadError.retryable,
+  });
 }
 
 function isImageMimeType(mimeType: AttachmentMimeType): boolean {
@@ -161,6 +273,12 @@ function mapAttachmentUploadError(error: unknown): AttachmentUploadError {
   }
 
   if (error instanceof ApiClientError) {
+    if (
+      error.error.code === "FORBIDDEN" ||
+      error.error.code === "SPACE_ACCESS_DENIED"
+    ) {
+      return new AttachmentUploadError("ACCESS_DENIED");
+    }
     if (error.error.code === "DRAFT_REQUIREMENT_REQUIRED") {
       return new AttachmentUploadError("DRAFT_REQUIRED");
     }

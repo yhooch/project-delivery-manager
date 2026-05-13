@@ -104,6 +104,19 @@ export const IntakeStatusSchema = z.enum([
 ]);
 export type IntakeStatus = z.infer<typeof IntakeStatusSchema>;
 
+export const IntakeSourceTypeSchema = z.enum([
+  "REQUIREMENT_CHANGE",
+  "DEFECT_PROBLEM",
+  "PROJECT_PLAN",
+  "MEETING_DECISION",
+  "AD_HOC",
+  "IMPLEMENTATION",
+  "OPERATIONS",
+  "RELEASE",
+  "EXTERNAL_COLLABORATION",
+]);
+export type IntakeSourceType = z.infer<typeof IntakeSourceTypeSchema>;
+
 export const WorkflowDefinitionStatusSchema = z.enum([
   "DRAFT",
   "ACTIVE",
@@ -163,3 +176,12 @@ export const BugSeveritySchema = z.enum([
   "TRIVIAL",
 ]);
 export type BugSeverity = z.infer<typeof BugSeveritySchema>;
+
+export const ViewExceptionTypeSchema = z.enum([
+  "overdue",
+  "blocked",
+  "pending_confirm",
+  "pending_regression",
+  "stale",
+]);
+export type ViewExceptionType = z.infer<typeof ViewExceptionTypeSchema>;

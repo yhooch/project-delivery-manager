@@ -1,0 +1,555 @@
+import { describe, expect, it } from "vitest";
+
+import type {
+  BugView,
+  OrganizationMemberWithUser,
+  Space,
+  SpaceMemberWithUser,
+  SpaceRole,
+} from "@project-delivery/shared";
+import type { OrganizationRepository } from "../organization/organization.repository";
+import type { SpaceRepository } from "../space/space.repository";
+import type { SpaceAccess } from "../space/space.types";
+import type { WorkflowActionExecutionService } from "../workflow/workflow-action-execution.service";
+import { BugService } from "./bug.service";
+import type { BugRepository } from "./bug.repository";
+import type {
+  BugLinkedUsers,
+  BugListInput,
+  BugWorkflowSelection,
+  CreateAuditLogInput,
+  CreateBugInput,
+  UpdateBugInput,
+} from "./bug.types";
+
+const ORGANIZATION_ID = "01H00000000000000000000000";
+const SPACE_ID = "01H00000000000000000000001";
+const ACTOR_ID = "01H00000000000000000000002";
+const VIEWER_ID = "01H00000000000000000000003";
+const ASSIGNEE_ID = "01H00000000000000000000004";
+const VERSION_ID = "01H00000000000000000000005";
+const REQUIREMENT_ID = "01H00000000000000000000006";
+const INTAKE_ITEM_ID = "01H00000000000000000000007";
+const WORKFLOW_VERSION_ID = "01H00000000000000000000008";
+const CURRENT_STATE_ID = "01H00000000000000000000009";
+const BUG_ID = "01H0000000000000000000000A";
+const RELATED_TASK_ID = "01H0000000000000000000000B";
+const RELATED_USER_ID = "01H0000000000000000000000C";
+
+describe("BugService", () => {
+  it("creates BUG work items with bug_details, default workflow and participants", async () => {
+    const subject = createSubject("DEVELOPER");
+
+    subject.bugs.workflowSelection = {
+      currentStateId: CURRENT_STATE_ID,
+      statusCategory: "NOT_STARTED",
+      workflowVersionId: WORKFLOW_VERSION_ID,
+    };
+    subject.bugs.versionRefs.set(VERSION_ID, {
+      versionOwnerId: RELATED_USER_ID,
+    });
+    subject.bugs.requirementRefs.set(REQUIREMENT_ID, {
+      requirementOwnerId: RELATED_USER_ID,
+    });
+    subject.bugs.intakeRefs.set(INTAKE_ITEM_ID, {
+      intakeAssigneeId: ASSIGNEE_ID,
+      intakeReporterId: ACTOR_ID,
+    });
+    subject.bugs.relatedTaskRefs.set(RELATED_TASK_ID, {
+      relatedTaskAssigneeId: ASSIGNEE_ID,
+      relatedTaskCreatorId: RELATED_USER_ID,
+      relatedTaskReporterId: ACTOR_ID,
+    });
+    subject.spaces.addMember(ASSIGNEE_ID, "DEVELOPER");
+    subject.organizations.addMember(ASSIGNEE_ID);
+
+    const created = await subject.service.create(
+      ACTOR_ID,
+      SPACE_ID,
+      {
+        actualResult: "500",
+        assigneeId: ASSIGNEE_ID,
+        expectedResult: "200",
+        intakeItemId: INTAKE_ITEM_ID,
+        priority: "HIGH",
+        relatedTaskId: RELATED_TASK_ID,
+        requirementId: REQUIREMENT_ID,
+        severity: "CRITICAL",
+        stepsToReproduce: "Submit login form",
+        title: "Login regression",
+        versionId: VERSION_ID,
+      },
+      {
+        requestId: "create-request",
+      },
+    );
+
+    expect(created).toMatchObject({
+      currentStateId: CURRENT_STATE_ID,
+      priority: "HIGH",
+      statusCategory: "NOT_STARTED",
+      type: "BUG",
+      workflowVersionId: WORKFLOW_VERSION_ID,
+      bugDetail: {
+        actualResult: "500",
+        expectedResult: "200",
+        relatedTaskId: RELATED_TASK_ID,
+        severity: "CRITICAL",
+        stepsToReproduce: "Submit login form",
+      },
+    });
+    expect(created.bugDetail.workItemId).toBe(created.id);
+    expect(subject.bugs.createdInput).toMatchObject({
+      currentStateId: CURRENT_STATE_ID,
+      organizationId: ORGANIZATION_ID,
+      reporterId: ACTOR_ID,
+      severity: "CRITICAL",
+      statusCategory: "NOT_STARTED",
+      workflowVersionId: WORKFLOW_VERSION_ID,
+    });
+    expect(subject.bugs.createdInput?.relatedUserIds.sort()).toEqual([
+      ACTOR_ID,
+      ASSIGNEE_ID,
+      RELATED_USER_ID,
+    ]);
+    expect(subject.bugs.auditLogs).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          actionType: "CREATE",
+          requestId: "create-request",
+          targetType: "BUG",
+        }),
+      ]),
+    );
+  });
+
+  it("uses space-wide visibility for TESTER and participant visibility for developers", async () => {
+    const testerSubject = createSubject("TESTER");
+
+    await testerSubject.service.list(ACTOR_ID, SPACE_ID, {
+      page: 1,
+      pageSize: 20,
+    });
+
+    expect(testerSubject.bugs.listInput?.visibility).toBe("SPACE");
+
+    const developerSubject = createSubject("DEVELOPER");
+
+    await developerSubject.service.list(ACTOR_ID, SPACE_ID, {
+      page: 1,
+      pageSize: 20,
+    });
+
+    expect(developerSubject.bugs.listInput?.visibility).toBe("PARTICIPANT");
+  });
+
+  it("rejects VIEWER writes and records an access denied audit log", async () => {
+    const subject = createSubject("VIEWER", VIEWER_ID);
+
+    await expect(
+      subject.service.create(
+        VIEWER_ID,
+        SPACE_ID,
+        {
+          priority: "MEDIUM",
+          severity: "MAJOR",
+          title: "viewer write",
+        },
+        {
+          requestId: "viewer-denied",
+        },
+      ),
+    ).rejects.toMatchObject({
+      code: "SPACE_ACCESS_DENIED",
+    });
+
+    expect(subject.bugs.auditLogs).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          actionType: "ACCESS_DENIED",
+          requestId: "viewer-denied",
+          targetId: SPACE_ID,
+          targetType: "SPACE",
+        }),
+      ]),
+    );
+  });
+
+  it("rejects relatedTaskId when the task is missing, a Bug or from another space", async () => {
+    const subject = createSubject("DEVELOPER");
+
+    subject.bugs.workflowSelection = {
+      currentStateId: CURRENT_STATE_ID,
+      statusCategory: "NOT_STARTED",
+      workflowVersionId: WORKFLOW_VERSION_ID,
+    };
+
+    await expect(
+      subject.service.create(ACTOR_ID, SPACE_ID, {
+        priority: "MEDIUM",
+        relatedTaskId: RELATED_TASK_ID,
+        severity: "MAJOR",
+        title: "bad relation",
+      }),
+    ).rejects.toMatchObject({
+      code: "WORK_ITEM_NOT_FOUND",
+    });
+  });
+
+  it("updates bug details, related participants and assignee change timeline input", async () => {
+    const subject = createSubject("DEVELOPER");
+
+    subject.bugs.items.set(
+      BUG_ID,
+      makeBug({
+        assigneeId: ACTOR_ID,
+        requirementId: REQUIREMENT_ID,
+        versionId: VERSION_ID,
+        bugDetail: {
+          workItemId: BUG_ID,
+          severity: "MAJOR",
+        },
+      }),
+    );
+    subject.bugs.participantKeys.add(`${BUG_ID}:${ACTOR_ID}`);
+    subject.bugs.versionRefs.set(VERSION_ID, {
+      versionOwnerId: RELATED_USER_ID,
+    });
+    subject.bugs.requirementRefs.set(REQUIREMENT_ID, {
+      requirementOwnerId: RELATED_USER_ID,
+    });
+    subject.bugs.relatedTaskRefs.set(RELATED_TASK_ID, {
+      relatedTaskAssigneeId: ASSIGNEE_ID,
+      relatedTaskCreatorId: RELATED_USER_ID,
+      relatedTaskReporterId: ACTOR_ID,
+    });
+    subject.spaces.addMember(ASSIGNEE_ID, "DEVELOPER");
+    subject.organizations.addMember(ASSIGNEE_ID);
+
+    const updated = await subject.service.update(
+      ACTOR_ID,
+      BUG_ID,
+      {
+        assigneeId: ASSIGNEE_ID,
+        fixNote: "Guard null session",
+        relatedTaskId: RELATED_TASK_ID,
+        severity: "CRITICAL",
+      },
+      {
+        requestId: "update-request",
+      },
+    );
+
+    expect(updated).toMatchObject({
+      assigneeId: ASSIGNEE_ID,
+      bugDetail: {
+        fixNote: "Guard null session",
+        relatedTaskId: RELATED_TASK_ID,
+        severity: "CRITICAL",
+      },
+    });
+    expect(subject.bugs.updatedInput).toMatchObject({
+      assigneeChanged: true,
+      assigneeId: ASSIGNEE_ID,
+      relatedTaskId: RELATED_TASK_ID,
+      severity: "CRITICAL",
+      shouldReplaceAssigneeParticipants: true,
+      shouldReplaceRelatedParticipants: true,
+    });
+    expect(subject.bugs.updatedInput?.timelineAfter).toMatchObject({
+      assigneeId: ASSIGNEE_ID,
+      fixNote: "Guard null session",
+      relatedTaskId: RELATED_TASK_ID,
+      severity: "CRITICAL",
+    });
+    expect(subject.bugs.updatedInput?.relatedUserIds.sort()).toEqual([
+      ACTOR_ID,
+      ASSIGNEE_ID,
+      RELATED_USER_ID,
+    ]);
+    expect(subject.bugs.auditLogs).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          actionType: "UPDATE",
+          requestId: "update-request",
+          targetId: BUG_ID,
+          targetType: "BUG",
+        }),
+      ]),
+    );
+  });
+});
+
+function createSubject(role: SpaceRole, actorUserId = ACTOR_ID) {
+  const bugs = new FakeBugRepository();
+  const spaces = new FakeSpaceRepository();
+  const organizations = new FakeOrganizationRepository();
+
+  spaces.addAccess(actorUserId, role);
+  spaces.addMember(actorUserId, role);
+  organizations.addMember(actorUserId);
+
+  return {
+    bugs,
+    organizations,
+    service: new BugService(
+      bugs,
+      spaces as unknown as SpaceRepository,
+      organizations as unknown as OrganizationRepository,
+      createPermissionResolver(role) as unknown as WorkflowActionExecutionService,
+    ),
+    spaces,
+  };
+}
+
+function createPermissionResolver(role: SpaceRole) {
+  const canWrite = role !== "VIEWER";
+
+  return {
+    async resolvePermissionSnapshot() {
+      return {
+        availableActions: [],
+        canComment: canWrite,
+        canEdit: canWrite,
+        canUploadAttachment: canWrite,
+      };
+    },
+  };
+}
+
+class FakeBugRepository implements BugRepository {
+  createdInput?: CreateBugInput;
+  updatedInput?: UpdateBugInput;
+  listInput?: BugListInput;
+  workflowSelection?: BugWorkflowSelection;
+  readonly auditLogs: CreateAuditLogInput[] = [];
+  readonly items = new Map<string, BugView>();
+  readonly participantKeys = new Set<string>();
+  readonly versionRefs = new Map<string, BugLinkedUsers>();
+  readonly requirementRefs = new Map<string, BugLinkedUsers>();
+  readonly intakeRefs = new Map<string, BugLinkedUsers>();
+  readonly relatedTaskRefs = new Map<string, BugLinkedUsers>();
+
+  async create(input: CreateBugInput) {
+    this.createdInput = input;
+    const item = makeBug({
+      assigneeId: input.assigneeId,
+      currentStateId: input.currentStateId,
+      description: input.description,
+      dueDate: input.dueDate?.toISOString(),
+      id: input.id,
+      intakeItemId: input.intakeItemId,
+      lastStatusChangedAt: input.lastStatusChangedAt.toISOString(),
+      priority: input.priority,
+      reporterId: input.reporterId,
+      requirementId: input.requirementId,
+      statusCategory: input.statusCategory,
+      title: input.title,
+      versionId: input.versionId,
+      workflowVersionId: input.workflowVersionId,
+      bugDetail: {
+        actualResult: input.actualResult,
+        expectedResult: input.expectedResult,
+        relatedTaskId: input.relatedTaskId,
+        severity: input.severity,
+        stepsToReproduce: input.stepsToReproduce,
+        workItemId: input.id,
+      },
+    });
+
+    this.items.set(item.id, item);
+    return item;
+  }
+
+  async createAuditLog(input: CreateAuditLogInput) {
+    this.auditLogs.push(input);
+  }
+
+  async findBugById(bugId: string) {
+    return this.items.get(bugId);
+  }
+
+  async findSpaceAuditContext(spaceId: string) {
+    return {
+      organizationId: ORGANIZATION_ID,
+      spaceId,
+    };
+  }
+
+  async findVersionInSpace(_spaceId: string, versionId: string) {
+    return this.versionRefs.get(versionId);
+  }
+
+  async findRequirementInSpace(_spaceId: string, requirementId: string) {
+    return this.requirementRefs.get(requirementId);
+  }
+
+  async findIntakeItemInSpace(_spaceId: string, intakeItemId: string) {
+    return this.intakeRefs.get(intakeItemId);
+  }
+
+  async findRelatedTaskInSpace(_spaceId: string, relatedTaskId: string) {
+    return this.relatedTaskRefs.get(relatedTaskId);
+  }
+
+  async isParticipant(_spaceId: string, bugId: string, userId: string) {
+    return this.participantKeys.has(`${bugId}:${userId}`);
+  }
+
+  async listBySpaceId(_spaceId: string, input: BugListInput) {
+    this.listInput = input;
+    return {
+      items: [],
+      page: input.page,
+      pageSize: input.pageSize,
+      total: 0,
+    };
+  }
+
+  async resolveBugWorkflow(_spaceId: string, _workflowVersionId?: string) {
+    return this.workflowSelection;
+  }
+
+  async update(input: UpdateBugInput) {
+    this.updatedInput = input;
+    const existing = this.items.get(input.workItemId);
+
+    if (!existing) {
+      return undefined;
+    }
+
+    const updated = makeBug({
+      ...existing,
+      assigneeId: input.assigneeId ?? existing.assigneeId,
+      blockedAt:
+        input.blockedAt === null
+          ? undefined
+          : (input.blockedAt?.toISOString() ?? existing.blockedAt),
+      blockedReason:
+        input.blockedReason === null
+          ? undefined
+          : (input.blockedReason ?? existing.blockedReason),
+      bugDetail: {
+        ...existing.bugDetail,
+        actualResult: input.actualResult ?? existing.bugDetail.actualResult,
+        expectedResult: input.expectedResult ?? existing.bugDetail.expectedResult,
+        fixNote: input.fixNote ?? existing.bugDetail.fixNote,
+        regressionAt:
+          input.regressionAt?.toISOString() ?? existing.bugDetail.regressionAt,
+        regressionBy: input.regressionById ?? existing.bugDetail.regressionBy,
+        regressionResult:
+          input.regressionResult ?? existing.bugDetail.regressionResult,
+        relatedTaskId: input.relatedTaskId ?? existing.bugDetail.relatedTaskId,
+        severity: input.severity ?? existing.bugDetail.severity,
+        stepsToReproduce:
+          input.stepsToReproduce ?? existing.bugDetail.stepsToReproduce,
+      },
+      dueDate: input.dueDate?.toISOString() ?? existing.dueDate,
+      priority: input.priority ?? existing.priority,
+      requirementId: input.requirementId ?? existing.requirementId,
+      title: input.title ?? existing.title,
+      versionId: input.versionId ?? existing.versionId,
+    });
+
+    this.items.set(updated.id, updated);
+    return updated;
+  }
+}
+
+class FakeSpaceRepository {
+  readonly access = new Map<string, SpaceAccess>();
+  readonly members = new Map<string, SpaceMemberWithUser>();
+
+  addAccess(userId: string, role: SpaceRole) {
+    this.access.set(`${userId}:${SPACE_ID}`, {
+      role,
+      space: makeSpace(),
+    });
+  }
+
+  addMember(userId: string, role: SpaceRole) {
+    this.members.set(`${SPACE_ID}:${userId}`, {
+      id: `${userId.slice(0, 25)}M`,
+      organizationId: ORGANIZATION_ID,
+      role,
+      spaceId: SPACE_ID,
+      status: "ACTIVE",
+      user: {
+        id: userId,
+        name: userId,
+        status: "ACTIVE",
+        username: userId.toLowerCase(),
+      },
+      userId,
+    });
+  }
+
+  async findAccessibleById(userId: string, spaceId: string) {
+    return this.access.get(`${userId}:${spaceId}`);
+  }
+
+  async findMemberByUserId(spaceId: string, userId: string) {
+    return this.members.get(`${spaceId}:${userId}`);
+  }
+}
+
+class FakeOrganizationRepository {
+  readonly members = new Map<string, OrganizationMemberWithUser>();
+
+  addMember(userId: string) {
+    this.members.set(`${ORGANIZATION_ID}:${userId}`, {
+      id: `${userId.slice(0, 25)}O`,
+      organizationId: ORGANIZATION_ID,
+      role: "MEMBER",
+      status: "ACTIVE",
+      user: {
+        id: userId,
+        name: userId,
+        status: "ACTIVE",
+        username: userId.toLowerCase(),
+      },
+      userId,
+    });
+  }
+
+  async findMemberByUserId(organizationId: string, userId: string) {
+    return this.members.get(`${organizationId}:${userId}`);
+  }
+}
+
+function makeSpace(): Space {
+  return {
+    code: "TEST",
+    id: SPACE_ID,
+    name: "Test Space",
+    organizationId: ORGANIZATION_ID,
+    status: "ACTIVE",
+    settings: {
+      staleThresholdDays: 3,
+    },
+  };
+}
+
+function makeBug(overrides: Partial<BugView> = {}): BugView {
+  const id = overrides.id ?? BUG_ID;
+
+  return {
+    currentStateId: CURRENT_STATE_ID,
+    id,
+    lastStatusChangedAt: "2026-05-13T00:00:00.000Z",
+    organizationId: ORGANIZATION_ID,
+    priority: "MEDIUM",
+    reporterId: ACTOR_ID,
+    spaceId: SPACE_ID,
+    statusCategory: "NOT_STARTED",
+    title: "Existing bug",
+    type: "BUG",
+    workflowVersionId: WORKFLOW_VERSION_ID,
+    ...overrides,
+    bugDetail: {
+      workItemId: id,
+      severity: "MAJOR",
+      ...overrides.bugDetail,
+    },
+  };
+}

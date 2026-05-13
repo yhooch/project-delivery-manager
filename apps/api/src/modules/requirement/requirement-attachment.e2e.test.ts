@@ -49,6 +49,8 @@ import {
 import type {
   CreateVersionInput,
   UpdateVersionInput,
+  VersionBoardInput,
+  VersionBoardResult,
   VersionListInput,
   VersionListResult,
 } from "../version/version.types";
@@ -1093,6 +1095,25 @@ class InMemoryVersionRepository implements VersionRepository {
     };
   }
 
+  async listBoard(input: VersionBoardInput): Promise<VersionBoardResult> {
+    return {
+      columns: [
+        { statusCategory: "NOT_STARTED", title: "Not started", total: 0 },
+        { statusCategory: "IN_PROGRESS", title: "In progress", total: 0 },
+        { statusCategory: "WAITING", title: "Waiting", total: 0 },
+        { statusCategory: "VERIFYING", title: "Verifying", total: 0 },
+        { statusCategory: "DONE", title: "Done", total: 0 },
+        { statusCategory: "TERMINATED", title: "Terminated", total: 0 },
+      ],
+      items: {
+        items: [],
+        page: input.page,
+        pageSize: input.pageSize,
+        total: 0,
+      },
+    };
+  }
+
   async update(input: UpdateVersionInput): Promise<Version | undefined> {
     const version = this.versions.get(input.versionId);
 
@@ -1329,6 +1350,29 @@ class InMemoryAttachmentRepository implements AttachmentRepository {
 
   async findById(attachmentId: string): Promise<Attachment | undefined> {
     return this.records.get(attachmentId);
+  }
+
+  async listByTarget(input: {
+    page: number;
+    pageSize: number;
+    targetId: string;
+    targetType: AttachmentTargetType;
+  }) {
+    const matching = [...this.records.values()].filter(
+      (attachment) =>
+        attachment.targetType === input.targetType &&
+        attachment.targetId === input.targetId,
+    );
+
+    return {
+      items: matching.slice(
+        (input.page - 1) * input.pageSize,
+        input.page * input.pageSize,
+      ),
+      page: input.page,
+      pageSize: input.pageSize,
+      total: matching.length,
+    };
   }
 
   seedTarget(

@@ -15,12 +15,17 @@ import { GlobalExceptionFilter } from "./http/global-exception.filter";
 import { RequestIdMiddleware } from "./http/request-id.middleware";
 import { AuthModule } from "./modules/auth/auth.module";
 import { AttachmentModule } from "./modules/attachment/attachment.module";
+import { BugModule } from "./modules/bug/bug.module";
 import { SessionParsingMiddleware } from "./modules/auth/session-parsing.middleware";
+import { CommentModule } from "./modules/comment/comment.module";
+import { IntakeModule } from "./modules/intake/intake.module";
 import { OrganizationModule } from "./modules/organization/organization.module";
 import { RequirementModule } from "./modules/requirement/requirement.module";
 import { SpaceModule } from "./modules/space/space.module";
+import { TimelineModule } from "./modules/timeline/timeline.module";
 import { VersionModule } from "./modules/version/version.module";
 import { WorkflowModule } from "./modules/workflow/workflow.module";
+import { WorkItemModule } from "./modules/workitem/workitem.module";
 import { PrismaModule } from "./prisma/prisma.module";
 
 @Module({
@@ -35,7 +40,12 @@ import { PrismaModule } from "./prisma/prisma.module";
     SpaceModule,
     VersionModule,
     RequirementModule,
+    IntakeModule,
+    WorkItemModule,
+    BugModule,
     AttachmentModule,
+    CommentModule,
+    TimelineModule,
     WorkflowModule,
     PrismaModule,
   ],

@@ -14,14 +14,17 @@ import {
 } from "@nestjs/common";
 import {
   CreateVersionRequestSchema,
+  type GetVersionBoardViewResponse,
   ListVersionsQuerySchema,
   SpaceIdPathParamsSchema,
   UpdateVersionRequestSchema,
   VersionIdPathParamsSchema,
+  VersionBoardViewQuerySchema,
   type CreateVersionRequest,
   type PageResult,
   type UpdateVersionRequest,
   type Version,
+  type VersionBoardViewQuery,
   type VersionStatus,
 } from "@project-delivery/shared";
 
@@ -86,6 +89,19 @@ export class VersionController {
     const session = this.currentUser.requireSession(request);
 
     return this.versions.get(session.userId, params.versionId);
+  }
+
+  @Get("views/versions/:versionId/board")
+  async getBoard(
+    @Param(new ZodValidationPipe(VersionIdPathParamsSchema))
+    params: { versionId: string },
+    @Query(new ZodValidationPipe(VersionBoardViewQuerySchema))
+    query: VersionBoardViewQuery,
+    @Req() request: RequestWithContext,
+  ): Promise<GetVersionBoardViewResponse> {
+    const session = this.currentUser.requireSession(request);
+
+    return this.versions.getBoard(session.userId, params.versionId, query);
   }
 
   @Patch("versions/:versionId")

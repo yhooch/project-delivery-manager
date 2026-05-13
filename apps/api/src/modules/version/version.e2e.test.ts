@@ -41,6 +41,8 @@ import {
 import type {
   CreateVersionInput,
   UpdateVersionInput,
+  VersionBoardInput,
+  VersionBoardResult,
   VersionListInput,
   VersionListResult,
 } from "./version.types";
@@ -838,6 +840,25 @@ class InMemoryVersionRepository implements VersionRepository {
       page: input.page,
       pageSize: input.pageSize,
       total: items.length,
+    };
+  }
+
+  async listBoard(input: VersionBoardInput): Promise<VersionBoardResult> {
+    return {
+      columns: [
+        { statusCategory: "NOT_STARTED", title: "Not started", total: 0 },
+        { statusCategory: "IN_PROGRESS", title: "In progress", total: 0 },
+        { statusCategory: "WAITING", title: "Waiting", total: 0 },
+        { statusCategory: "VERIFYING", title: "Verifying", total: 0 },
+        { statusCategory: "DONE", title: "Done", total: 0 },
+        { statusCategory: "TERMINATED", title: "Terminated", total: 0 },
+      ],
+      items: {
+        items: [],
+        page: input.page,
+        pageSize: input.pageSize,
+        total: 0,
+      },
     };
   }
 

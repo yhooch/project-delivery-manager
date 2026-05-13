@@ -1,6 +1,6 @@
 import { setRequestLocale } from "next-intl/server";
 
-import { SpaceManagementWorkspace } from "../../../components/space/space-management-workspace";
+import { DashboardWorkspace } from "../../../components/dashboard/dashboard-workspace";
 import type { Locale } from "../../../i18n/locales";
 
 type DashboardPageProps = {
@@ -13,5 +13,5 @@ export default async function DashboardPage({ params }: DashboardPageProps) {
   const { locale } = await params;
   setRequestLocale(locale);
 
-  return <SpaceManagementWorkspace />;
+  return <DashboardWorkspace />;
 }

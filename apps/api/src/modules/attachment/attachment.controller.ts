@@ -7,16 +7,20 @@ import {
   Inject,
   Param,
   Post,
+  Query,
   Req,
   UseGuards,
 } from "@nestjs/common";
 import {
+  AttachmentListQuerySchema,
   AttachmentIdPathParamsSchema,
   CreateAttachmentRequestSchema,
   PresignAttachmentRequestSchema,
   type Attachment,
+  type AttachmentTargetType,
   type CreateAttachmentRequest,
   type GetAttachmentDownloadUrlResponse,
+  type PageResult,
   type PresignAttachmentRequest,
   type PresignAttachmentResponse,
 } from "@project-delivery/shared";
@@ -62,6 +66,24 @@ export class AttachmentController {
     const session = this.currentUser.requireSession(request);
 
     return this.attachments.create(session.userId, body);
+  }
+
+  @Get()
+  async list(
+    @Query(new ZodValidationPipe(AttachmentListQuerySchema))
+    query: {
+      page: number;
+      pageSize: number;
+      sortBy?: string;
+      sortOrder?: "asc" | "desc";
+      targetId: string;
+      targetType: AttachmentTargetType;
+    },
+    @Req() request: RequestWithContext,
+  ): Promise<PageResult<Attachment>> {
+    const session = this.currentUser.requireSession(request);
+
+    return this.attachments.list(session.userId, query);
   }
 
   @Get(":attachmentId/download-url")

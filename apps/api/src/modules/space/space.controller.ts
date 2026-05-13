@@ -15,6 +15,8 @@ import {
 import {
   AddSpaceMemberRequestSchema,
   CreateSpaceRequestSchema,
+  SpaceExceptionsViewQuerySchema,
+  SpaceOverviewViewQuerySchema,
   ListSpaceMembersQuerySchema,
   ListSpacesQuerySchema,
   MemberIdPathParamsSchema,
@@ -22,17 +24,23 @@ import {
   SpaceIdPathParamsSchema,
   UpdateSpaceMemberRequestSchema,
   UpdateSpaceRequestSchema,
+  WorkbenchViewQuerySchema,
   type AddSpaceMemberRequest,
   type CreateSpaceRequest,
+  type GetMyWorkbenchViewResponse,
+  type GetSpaceExceptionsViewResponse,
+  type GetSpaceOverviewViewResponse,
   type PageResult,
   type RecordStatus,
   type Space,
   type SpaceMemberWithUser,
-  type SpaceOverview,
+  type SpaceExceptionsViewQuery,
+  type SpaceOverviewViewQuery,
   type SpaceRole,
   type SpaceSummary,
   type UpdateSpaceMemberRequest,
   type UpdateSpaceRequest,
+  type WorkbenchViewQuery,
 } from "@project-delivery/shared";
 
 import type { RequestWithContext } from "../../http/request-context";
@@ -116,11 +124,37 @@ export class SpaceController {
   async overview(
     @Param(new ZodValidationPipe(SpaceIdPathParamsSchema))
     params: { spaceId: string },
+    @Query(new ZodValidationPipe(SpaceOverviewViewQuerySchema))
+    query: SpaceOverviewViewQuery,
     @Req() request: RequestWithContext,
-  ): Promise<SpaceOverview> {
+  ): Promise<GetSpaceOverviewViewResponse> {
     const session = this.currentUser.requireSession(request);
 
-    return this.spaces.getOverview(session.userId, params.spaceId);
+    return this.spaces.getOverview(session.userId, params.spaceId, query);
+  }
+
+  @Get("views/spaces/:spaceId/exceptions")
+  async exceptions(
+    @Param(new ZodValidationPipe(SpaceIdPathParamsSchema))
+    params: { spaceId: string },
+    @Query(new ZodValidationPipe(SpaceExceptionsViewQuerySchema))
+    query: SpaceExceptionsViewQuery,
+    @Req() request: RequestWithContext,
+  ): Promise<GetSpaceExceptionsViewResponse> {
+    const session = this.currentUser.requireSession(request);
+
+    return this.spaces.getExceptions(session.userId, params.spaceId, query);
+  }
+
+  @Get("views/my-workbench")
+  async myWorkbench(
+    @Query(new ZodValidationPipe(WorkbenchViewQuerySchema))
+    query: WorkbenchViewQuery,
+    @Req() request: RequestWithContext,
+  ): Promise<GetMyWorkbenchViewResponse> {
+    const session = this.currentUser.requireSession(request);
+
+    return this.spaces.getMyWorkbench(session.userId, query);
   }
 
   @Get("spaces/:spaceId/members")

@@ -80,6 +80,26 @@ enum RequirementStatus {
   ARCHIVED
 }
 
+enum IntakeStatus {
+  PENDING
+  ACCEPTED
+  DEFERRED
+  REJECTED
+  CONVERTED
+}
+
+enum IntakeSourceType {
+  REQUIREMENT_CHANGE
+  DEFECT_PROBLEM
+  PROJECT_PLAN
+  MEETING_DECISION
+  AD_HOC
+  IMPLEMENTATION
+  OPERATIONS
+  RELEASE
+  EXTERNAL_COLLABORATION
+}
+
 enum ContentFormat {
   TIPTAP_JSON
 }
@@ -110,6 +130,12 @@ enum TargetType {
 
 enum AttachmentTargetType {
   REQUIREMENT
+  WORK_ITEM
+}
+
+enum CommentTargetType {
+  REQUIREMENT
+  INTAKE_ITEM
   WORK_ITEM
 }
 
@@ -151,6 +177,26 @@ enum WorkItemType {
   BUG
 }
 
+enum BugSeverity {
+  BLOCKER
+  CRITICAL
+  MAJOR
+  MINOR
+  TRIVIAL
+}
+
+enum TimelineEventType {
+  CREATED
+  UPDATED
+  STATUS_CHANGED
+  ACTION_EXECUTED
+  ASSIGNEE_CHANGED
+  COMMENTED
+  ATTACHMENT_ADDED
+  CLOSED
+  REOPENED
+}
+
 enum ActionFormFieldType {
   TEXT
   TEXTAREA
@@ -186,6 +232,14 @@ model User {
   uploadedAttachments       Attachment[]         @relation("AttachmentUploader")
   publishedWorkflowVersions WorkflowVersion[]    @relation("WorkflowVersionPublisher")
   objectParticipants        ObjectParticipant[]
+  reportedIntakeItems       IntakeItem[]         @relation("IntakeItemReporter")
+  assignedIntakeItems       IntakeItem[]         @relation("IntakeItemAssignee")
+  reportedWorkItems         WorkItem[]           @relation("WorkItemReporter")
+  assignedWorkItems         WorkItem[]           @relation("WorkItemAssignee")
+  regressedBugDetails       BugDetail[]          @relation("BugDetailRegressionBy")
+  authoredComments          Comment[]            @relation("CommentAuthor")
+  actedTimelineEvents       TimelineEvent[]      @relation("TimelineEventActor")
+  actedAuditLogs            AuditLog[]           @relation("AuditLogActor")
 
   @@map("users")
 }
@@ -236,6 +290,11 @@ model Organization {
   workflowDefinitions WorkflowDefinition[]
   workflowBindings    WorkflowBinding[]
   objectParticipants  ObjectParticipant[]
+  intakeItems         IntakeItem[]
+  workItems           WorkItem[]
+  auditLogs           AuditLog[]
+  comments            Comment[]
+  timelineEvents      TimelineEvent[]
 
   @@index([ownerId])
   @@index([code])
@@ -286,6 +345,11 @@ model Space {
   workflowDefinitions WorkflowDefinition[]
   workflowBindings    WorkflowBinding[]
   objectParticipants  ObjectParticipant[]
+  intakeItems         IntakeItem[]
+  workItems           WorkItem[]
+  auditLogs           AuditLog[]
+  comments            Comment[]
+  timelineEvents      TimelineEvent[]
 
   @@index([organizationId])
   @@index([ownerId])
@@ -329,7 +393,7 @@ model Version {
   targetDate       DateTime?     @map("target_date")
   releaseDate      DateTime?     @map("release_date")
   requirementCount Int           @default(0) @map("requirement_count")
-  taskCount         Int           @default(0) @map("task_count")
+  taskCount        Int           @default(0) @map("task_count")
   bugCount         Int           @default(0) @map("bug_count")
   blockedCount     Int           @default(0) @map("blocked_count")
   createdAt        DateTime      @default(now()) @map("created_at")
@@ -342,6 +406,8 @@ model Version {
   space        Space         @relation(fields: [spaceId], references: [id], onDelete: Cascade)
   owner        User?         @relation("VersionOwner", fields: [ownerId], references: [id], onDelete: SetNull)
   requirements Requirement[]
+  intakeItems  IntakeItem[]
+  workItems    WorkItem[]
 
   @@index([organizationId])
   @@index([spaceId])
@@ -374,6 +440,8 @@ model Requirement {
   space        Space        @relation(fields: [spaceId], references: [id], onDelete: Cascade)
   version      Version?     @relation(fields: [versionId], references: [id], onDelete: SetNull)
   owner        User?        @relation("RequirementOwner", fields: [ownerId], references: [id], onDelete: SetNull)
+  intakeItems  IntakeItem[]
+  workItems    WorkItem[]
 
   @@index([organizationId])
   @@index([spaceId])
@@ -381,6 +449,138 @@ model Requirement {
   @@index([ownerId])
   @@index([status])
   @@map("requirements")
+}
+
+model IntakeItem {
+  id             String           @id @db.Char(26)
+  organizationId String           @map("organization_id") @db.Char(26)
+  spaceId        String           @map("space_id") @db.Char(26)
+  versionId      String?          @map("version_id") @db.Char(26)
+  requirementId  String?          @map("requirement_id") @db.Char(26)
+  title          String           @db.VarChar(200)
+  description    String?          @db.VarChar(8000)
+  sourceType     IntakeSourceType @map("source_type")
+  sourceObject   Json?            @map("source_object")
+  reporterId     String           @map("reporter_id") @db.Char(26)
+  assigneeId     String?          @map("assignee_id") @db.Char(26)
+  priority       Priority?
+  status         IntakeStatus     @default(PENDING)
+  acceptedAt     DateTime?        @map("accepted_at")
+  convertedAt    DateTime?        @map("converted_at")
+  createdAt      DateTime         @default(now()) @map("created_at")
+  updatedAt      DateTime         @updatedAt @map("updated_at")
+  createdById    String?          @map("created_by_id") @db.Char(26)
+  updatedById    String?          @map("updated_by_id") @db.Char(26)
+  deletedAt      DateTime?        @map("deleted_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  space        Space        @relation(fields: [spaceId], references: [id], onDelete: Cascade)
+  version      Version?     @relation(fields: [versionId], references: [id], onDelete: SetNull)
+  requirement  Requirement? @relation(fields: [requirementId], references: [id], onDelete: SetNull)
+  reporter     User         @relation("IntakeItemReporter", fields: [reporterId], references: [id], onDelete: Restrict)
+  assignee     User?        @relation("IntakeItemAssignee", fields: [assigneeId], references: [id], onDelete: SetNull)
+  workItems    WorkItem[]
+
+  @@index([organizationId])
+  @@index([spaceId])
+  @@index([versionId])
+  @@index([requirementId])
+  @@index([reporterId])
+  @@index([assigneeId])
+  @@index([status])
+  @@index([priority])
+  @@index([sourceType])
+  @@index([spaceId, status])
+  @@index([spaceId, assigneeId])
+  @@map("intake_items")
+}
+
+model WorkItem {
+  id                  String         @id @db.Char(26)
+  organizationId      String         @map("organization_id") @db.Char(26)
+  spaceId             String         @map("space_id") @db.Char(26)
+  versionId           String?        @map("version_id") @db.Char(26)
+  requirementId       String?        @map("requirement_id") @db.Char(26)
+  intakeItemId        String?        @map("intake_item_id") @db.Char(26)
+  type                WorkItemType   @default(TASK)
+  title               String         @db.VarChar(200)
+  description         String?        @db.VarChar(8000)
+  priority            Priority       @default(MEDIUM)
+  assigneeId          String?        @map("assignee_id") @db.Char(26)
+  reporterId          String         @map("reporter_id") @db.Char(26)
+  workflowVersionId   String         @map("workflow_version_id") @db.Char(26)
+  currentStateId      String         @map("current_state_id") @db.Char(26)
+  statusCategory      StatusCategory @map("status_category")
+  dueDate             DateTime?      @map("due_date")
+  lastStatusChangedAt DateTime       @map("last_status_changed_at")
+  lastActionAt        DateTime?      @map("last_action_at")
+  blockedReason       String?        @map("blocked_reason") @db.VarChar(1000)
+  blockedAt           DateTime?      @map("blocked_at")
+  closedAt            DateTime?      @map("closed_at")
+  createdAt           DateTime       @default(now()) @map("created_at")
+  updatedAt           DateTime       @updatedAt @map("updated_at")
+  createdById         String?        @map("created_by_id") @db.Char(26)
+  updatedById         String?        @map("updated_by_id") @db.Char(26)
+  deletedAt           DateTime?      @map("deleted_at")
+
+  organization      Organization    @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  space             Space           @relation(fields: [spaceId], references: [id], onDelete: Cascade)
+  version           Version?        @relation(fields: [versionId], references: [id], onDelete: SetNull)
+  requirement       Requirement?    @relation(fields: [requirementId], references: [id], onDelete: SetNull)
+  intakeItem        IntakeItem?     @relation(fields: [intakeItemId], references: [id], onDelete: SetNull)
+  assignee          User?           @relation("WorkItemAssignee", fields: [assigneeId], references: [id], onDelete: SetNull)
+  reporter          User            @relation("WorkItemReporter", fields: [reporterId], references: [id], onDelete: Restrict)
+  workflowVersion   WorkflowVersion @relation(fields: [workflowVersionId], references: [id], onDelete: Restrict)
+  currentState      WorkflowState   @relation(fields: [currentStateId], references: [id], onDelete: Restrict)
+  bugDetail         BugDetail?      @relation("BugDetailWorkItem")
+  relatedBugDetails BugDetail[]     @relation("BugDetailRelatedTask")
+
+  @@index([organizationId])
+  @@index([spaceId])
+  @@index([versionId])
+  @@index([requirementId])
+  @@index([intakeItemId])
+  @@index([reporterId])
+  @@index([assigneeId])
+  @@index([workflowVersionId])
+  @@index([currentStateId])
+  @@index([type])
+  @@index([statusCategory])
+  @@index([priority])
+  @@index([dueDate])
+  @@index([lastStatusChangedAt])
+  @@index([spaceId, intakeItemId])
+  @@index([spaceId, assigneeId])
+  @@index([spaceId, statusCategory])
+  @@index([spaceId, type])
+  @@map("work_items")
+}
+
+model BugDetail {
+  workItemId       String      @id @map("work_item_id") @db.Char(26)
+  severity         BugSeverity
+  stepsToReproduce String?     @map("steps_to_reproduce") @db.VarChar(8000)
+  expectedResult   String?     @map("expected_result") @db.VarChar(8000)
+  actualResult     String?     @map("actual_result") @db.VarChar(8000)
+  fixNote          String?     @map("fix_note") @db.VarChar(8000)
+  regressionResult String?     @map("regression_result") @db.VarChar(8000)
+  regressionById   String?     @map("regression_by_id") @db.Char(26)
+  regressionAt     DateTime?   @map("regression_at")
+  relatedTaskId    String?     @map("related_task_id") @db.Char(26)
+  createdAt        DateTime    @default(now()) @map("created_at")
+  updatedAt        DateTime    @updatedAt @map("updated_at")
+  createdById      String?     @map("created_by_id") @db.Char(26)
+  updatedById      String?     @map("updated_by_id") @db.Char(26)
+  deletedAt        DateTime?   @map("deleted_at")
+
+  workItem     WorkItem  @relation("BugDetailWorkItem", fields: [workItemId], references: [id], onDelete: Cascade)
+  regressionBy User?     @relation("BugDetailRegressionBy", fields: [regressionById], references: [id], onDelete: SetNull)
+  relatedTask  WorkItem? @relation("BugDetailRelatedTask", fields: [relatedTaskId], references: [id], onDelete: SetNull)
+
+  @@index([severity])
+  @@index([regressionById])
+  @@index([relatedTaskId])
+  @@map("bug_details")
 }
 
 model Attachment {
@@ -454,6 +654,7 @@ model WorkflowVersion {
   states             WorkflowState[]
   actions            WorkflowAction[]
   bindings           WorkflowBinding[]
+  workItems          WorkItem[]
 
   @@index([workflowDefinitionId])
   @@index([status])
@@ -479,6 +680,7 @@ model WorkflowState {
   workflowVersion WorkflowVersion  @relation(fields: [workflowVersionId], references: [id], onDelete: Cascade)
   outgoingActions WorkflowAction[] @relation("WorkflowActionFromState")
   incomingActions WorkflowAction[] @relation("WorkflowActionToState")
+  workItems       WorkItem[]
 
   @@index([workflowVersionId])
   @@index([category])
@@ -587,4 +789,104 @@ model ObjectParticipant {
   @@index([spaceId, userId])
   @@index([spaceId, targetType, targetId])
   @@map("object_participants")
+}
+
+model Comment {
+  id             String            @id @db.Char(26)
+  organizationId String            @map("organization_id") @db.Char(26)
+  spaceId        String            @map("space_id") @db.Char(26)
+  targetType     CommentTargetType @map("target_type")
+  targetId       String            @map("target_id") @db.Char(26)
+  authorId       String            @map("author_id") @db.Char(26)
+  body           String            @db.VarChar(8000)
+  createdAt      DateTime          @default(now()) @map("created_at")
+  updatedAt      DateTime          @updatedAt @map("updated_at")
+  createdById    String?           @map("created_by_id") @db.Char(26)
+  updatedById    String?           @map("updated_by_id") @db.Char(26)
+  deletedAt      DateTime?         @map("deleted_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  space        Space        @relation(fields: [spaceId], references: [id], onDelete: Cascade)
+  author       User         @relation("CommentAuthor", fields: [authorId], references: [id], onDelete: Restrict)
+
+  @@index([organizationId])
+  @@index([spaceId])
+  @@index([authorId])
+  @@index([createdAt])
+  @@index([targetType, targetId])
+  @@index([spaceId, targetType, targetId])
+  @@index([spaceId, targetType, targetId, createdAt])
+  @@index([spaceId, authorId, createdAt])
+  @@index([organizationId, spaceId, targetType, targetId, createdAt], map: "comments_org_space_target_created_idx")
+  @@index([organizationId, authorId, createdAt], map: "comments_org_author_created_idx")
+  @@map("comments")
+}
+
+model TimelineEvent {
+  id             String            @id @db.Char(26)
+  organizationId String            @map("organization_id") @db.Char(26)
+  spaceId        String            @map("space_id") @db.Char(26)
+  targetType     TargetType        @map("target_type")
+  targetId       String            @map("target_id") @db.Char(26)
+  eventType      TimelineEventType @map("event_type")
+  actorId        String            @map("actor_id") @db.Char(26)
+  title          String            @db.VarChar(200)
+  detail         String?           @db.Text
+  before         Json?
+  after          Json?
+  metadata       Json?
+  createdAt      DateTime          @default(now()) @map("created_at")
+  updatedAt      DateTime          @updatedAt @map("updated_at")
+  createdById    String?           @map("created_by_id") @db.Char(26)
+  updatedById    String?           @map("updated_by_id") @db.Char(26)
+  deletedAt      DateTime?         @map("deleted_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  space        Space        @relation(fields: [spaceId], references: [id], onDelete: Cascade)
+  actor        User         @relation("TimelineEventActor", fields: [actorId], references: [id], onDelete: Restrict)
+
+  @@index([organizationId])
+  @@index([spaceId])
+  @@index([actorId])
+  @@index([createdAt])
+  @@index([targetType, targetId])
+  @@index([spaceId, targetType, targetId])
+  @@index([spaceId, targetType, targetId, createdAt])
+  @@index([spaceId, actorId, createdAt])
+  @@index([organizationId, spaceId, targetType, targetId, createdAt], map: "timeline_events_org_space_target_created_idx")
+  @@index([organizationId, actorId, createdAt], map: "timeline_events_org_actor_created_idx")
+  @@index([eventType])
+  @@map("timeline_events")
+}
+
+model AuditLog {
+  id             String   @id @db.Char(26)
+  organizationId String   @map("organization_id") @db.Char(26)
+  spaceId        String?  @map("space_id") @db.Char(26)
+  actorId        String?  @map("actor_id") @db.Char(26)
+  actionType     String   @map("action_type") @db.VarChar(80)
+  targetType     String   @map("target_type") @db.VarChar(80)
+  targetId       String   @map("target_id") @db.Char(26)
+  requestId      String?  @map("request_id") @db.VarChar(128)
+  ip             String?  @db.VarChar(64)
+  userAgent      String?  @map("user_agent") @db.VarChar(500)
+  before         Json?
+  after          Json?
+  metadata       Json?
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  space        Space?       @relation(fields: [spaceId], references: [id], onDelete: SetNull)
+  actor        User?        @relation("AuditLogActor", fields: [actorId], references: [id], onDelete: SetNull)
+
+  @@index([organizationId])
+  @@index([spaceId])
+  @@index([actorId])
+  @@index([actionType])
+  @@index([requestId])
+  @@index([createdAt])
+  @@index([targetType, targetId])
+  @@index([organizationId, requestId], map: "audit_logs_org_request_idx")
+  @@index([organizationId, spaceId, targetType, targetId, createdAt], map: "audit_logs_org_space_target_created_idx")
+  @@map("audit_logs")
 }

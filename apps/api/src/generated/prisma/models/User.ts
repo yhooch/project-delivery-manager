@@ -264,6 +264,14 @@ export type UserWhereInput = {
   uploadedAttachments?: Prisma.AttachmentListRelationFilter
   publishedWorkflowVersions?: Prisma.WorkflowVersionListRelationFilter
   objectParticipants?: Prisma.ObjectParticipantListRelationFilter
+  reportedIntakeItems?: Prisma.IntakeItemListRelationFilter
+  assignedIntakeItems?: Prisma.IntakeItemListRelationFilter
+  reportedWorkItems?: Prisma.WorkItemListRelationFilter
+  assignedWorkItems?: Prisma.WorkItemListRelationFilter
+  regressedBugDetails?: Prisma.BugDetailListRelationFilter
+  authoredComments?: Prisma.CommentListRelationFilter
+  actedTimelineEvents?: Prisma.TimelineEventListRelationFilter
+  actedAuditLogs?: Prisma.AuditLogListRelationFilter
 }
 
 export type UserOrderByWithRelationInput = {
@@ -291,6 +299,14 @@ export type UserOrderByWithRelationInput = {
   uploadedAttachments?: Prisma.AttachmentOrderByRelationAggregateInput
   publishedWorkflowVersions?: Prisma.WorkflowVersionOrderByRelationAggregateInput
   objectParticipants?: Prisma.ObjectParticipantOrderByRelationAggregateInput
+  reportedIntakeItems?: Prisma.IntakeItemOrderByRelationAggregateInput
+  assignedIntakeItems?: Prisma.IntakeItemOrderByRelationAggregateInput
+  reportedWorkItems?: Prisma.WorkItemOrderByRelationAggregateInput
+  assignedWorkItems?: Prisma.WorkItemOrderByRelationAggregateInput
+  regressedBugDetails?: Prisma.BugDetailOrderByRelationAggregateInput
+  authoredComments?: Prisma.CommentOrderByRelationAggregateInput
+  actedTimelineEvents?: Prisma.TimelineEventOrderByRelationAggregateInput
+  actedAuditLogs?: Prisma.AuditLogOrderByRelationAggregateInput
 }
 
 export type UserWhereUniqueInput = Prisma.AtLeast<{
@@ -321,6 +337,14 @@ export type UserWhereUniqueInput = Prisma.AtLeast<{
   uploadedAttachments?: Prisma.AttachmentListRelationFilter
   publishedWorkflowVersions?: Prisma.WorkflowVersionListRelationFilter
   objectParticipants?: Prisma.ObjectParticipantListRelationFilter
+  reportedIntakeItems?: Prisma.IntakeItemListRelationFilter
+  assignedIntakeItems?: Prisma.IntakeItemListRelationFilter
+  reportedWorkItems?: Prisma.WorkItemListRelationFilter
+  assignedWorkItems?: Prisma.WorkItemListRelationFilter
+  regressedBugDetails?: Prisma.BugDetailListRelationFilter
+  authoredComments?: Prisma.CommentListRelationFilter
+  actedTimelineEvents?: Prisma.TimelineEventListRelationFilter
+  actedAuditLogs?: Prisma.AuditLogListRelationFilter
 }, "id" | "username">
 
 export type UserOrderByWithAggregationInput = {
@@ -388,6 +412,14 @@ export type UserCreateInput = {
   uploadedAttachments?: Prisma.AttachmentCreateNestedManyWithoutUploadedByInput
   publishedWorkflowVersions?: Prisma.WorkflowVersionCreateNestedManyWithoutPublishedByInput
   objectParticipants?: Prisma.ObjectParticipantCreateNestedManyWithoutUserInput
+  reportedIntakeItems?: Prisma.IntakeItemCreateNestedManyWithoutReporterInput
+  assignedIntakeItems?: Prisma.IntakeItemCreateNestedManyWithoutAssigneeInput
+  reportedWorkItems?: Prisma.WorkItemCreateNestedManyWithoutReporterInput
+  assignedWorkItems?: Prisma.WorkItemCreateNestedManyWithoutAssigneeInput
+  regressedBugDetails?: Prisma.BugDetailCreateNestedManyWithoutRegressionByInput
+  authoredComments?: Prisma.CommentCreateNestedManyWithoutAuthorInput
+  actedTimelineEvents?: Prisma.TimelineEventCreateNestedManyWithoutActorInput
+  actedAuditLogs?: Prisma.AuditLogCreateNestedManyWithoutActorInput
 }
 
 export type UserUncheckedCreateInput = {
@@ -415,6 +447,14 @@ export type UserUncheckedCreateInput = {
   uploadedAttachments?: Prisma.AttachmentUncheckedCreateNestedManyWithoutUploadedByInput
   publishedWorkflowVersions?: Prisma.WorkflowVersionUncheckedCreateNestedManyWithoutPublishedByInput
   objectParticipants?: Prisma.ObjectParticipantUncheckedCreateNestedManyWithoutUserInput
+  reportedIntakeItems?: Prisma.IntakeItemUncheckedCreateNestedManyWithoutReporterInput
+  assignedIntakeItems?: Prisma.IntakeItemUncheckedCreateNestedManyWithoutAssigneeInput
+  reportedWorkItems?: Prisma.WorkItemUncheckedCreateNestedManyWithoutReporterInput
+  assignedWorkItems?: Prisma.WorkItemUncheckedCreateNestedManyWithoutAssigneeInput
+  regressedBugDetails?: Prisma.BugDetailUncheckedCreateNestedManyWithoutRegressionByInput
+  authoredComments?: Prisma.CommentUncheckedCreateNestedManyWithoutAuthorInput
+  actedTimelineEvents?: Prisma.TimelineEventUncheckedCreateNestedManyWithoutActorInput
+  actedAuditLogs?: Prisma.AuditLogUncheckedCreateNestedManyWithoutActorInput
 }
 
 export type UserUpdateInput = {
@@ -442,6 +482,14 @@ export type UserUpdateInput = {
   uploadedAttachments?: Prisma.AttachmentUpdateManyWithoutUploadedByNestedInput
   publishedWorkflowVersions?: Prisma.WorkflowVersionUpdateManyWithoutPublishedByNestedInput
   objectParticipants?: Prisma.ObjectParticipantUpdateManyWithoutUserNestedInput
+  reportedIntakeItems?: Prisma.IntakeItemUpdateManyWithoutReporterNestedInput
+  assignedIntakeItems?: Prisma.IntakeItemUpdateManyWithoutAssigneeNestedInput
+  reportedWorkItems?: Prisma.WorkItemUpdateManyWithoutReporterNestedInput
+  assignedWorkItems?: Prisma.WorkItemUpdateManyWithoutAssigneeNestedInput
+  regressedBugDetails?: Prisma.BugDetailUpdateManyWithoutRegressionByNestedInput
+  authoredComments?: Prisma.CommentUpdateManyWithoutAuthorNestedInput
+  actedTimelineEvents?: Prisma.TimelineEventUpdateManyWithoutActorNestedInput
+  actedAuditLogs?: Prisma.AuditLogUpdateManyWithoutActorNestedInput
 }
 
 export type UserUncheckedUpdateInput = {
@@ -469,6 +517,14 @@ export type UserUncheckedUpdateInput = {
   uploadedAttachments?: Prisma.AttachmentUncheckedUpdateManyWithoutUploadedByNestedInput
   publishedWorkflowVersions?: Prisma.WorkflowVersionUncheckedUpdateManyWithoutPublishedByNestedInput
   objectParticipants?: Prisma.ObjectParticipantUncheckedUpdateManyWithoutUserNestedInput
+  reportedIntakeItems?: Prisma.IntakeItemUncheckedUpdateManyWithoutReporterNestedInput
+  assignedIntakeItems?: Prisma.IntakeItemUncheckedUpdateManyWithoutAssigneeNestedInput
+  reportedWorkItems?: Prisma.WorkItemUncheckedUpdateManyWithoutReporterNestedInput
+  assignedWorkItems?: Prisma.WorkItemUncheckedUpdateManyWithoutAssigneeNestedInput
+  regressedBugDetails?: Prisma.BugDetailUncheckedUpdateManyWithoutRegressionByNestedInput
+  authoredComments?: Prisma.CommentUncheckedUpdateManyWithoutAuthorNestedInput
+  actedTimelineEvents?: Prisma.TimelineEventUncheckedUpdateManyWithoutActorNestedInput
+  actedAuditLogs?: Prisma.AuditLogUncheckedUpdateManyWithoutActorNestedInput
 }
 
 export type UserCreateManyInput = {
@@ -717,6 +773,82 @@ export type UserUpdateOneWithoutOwnedRequirementsNestedInput = {
   update?: Prisma.XOR<Prisma.XOR<Prisma.UserUpdateToOneWithWhereWithoutOwnedRequirementsInput, Prisma.UserUpdateWithoutOwnedRequirementsInput>, Prisma.UserUncheckedUpdateWithoutOwnedRequirementsInput>
 }
 
+export type UserCreateNestedOneWithoutReportedIntakeItemsInput = {
+  create?: Prisma.XOR<Prisma.UserCreateWithoutReportedIntakeItemsInput, Prisma.UserUncheckedCreateWithoutReportedIntakeItemsInput>
+  connectOrCreate?: Prisma.UserCreateOrConnectWithoutReportedIntakeItemsInput
+  connect?: Prisma.UserWhereUniqueInput
+}
+
+export type UserCreateNestedOneWithoutAssignedIntakeItemsInput = {
+  create?: Prisma.XOR<Prisma.UserCreateWithoutAssignedIntakeItemsInput, Prisma.UserUncheckedCreateWithoutAssignedIntakeItemsInput>
+  connectOrCreate?: Prisma.UserCreateOrConnectWithoutAssignedIntakeItemsInput
+  connect?: Prisma.UserWhereUniqueInput
+}
+
+export type UserUpdateOneRequiredWithoutReportedIntakeItemsNestedInput = {
+  create?: Prisma.XOR<Prisma.UserCreateWithoutReportedIntakeItemsInput, Prisma.UserUncheckedCreateWithoutReportedIntakeItemsInput>
+  connectOrCreate?: Prisma.UserCreateOrConnectWithoutReportedIntakeItemsInput
+  upsert?: Prisma.UserUpsertWithoutReportedIntakeItemsInput
+  connect?: Prisma.UserWhereUniqueInput
+  update?: Prisma.XOR<Prisma.XOR<Prisma.UserUpdateToOneWithWhereWithoutReportedIntakeItemsInput, Prisma.UserUpdateWithoutReportedIntakeItemsInput>, Prisma.UserUncheckedUpdateWithoutReportedIntakeItemsInput>
+}
+
+export type UserUpdateOneWithoutAssignedIntakeItemsNestedInput = {
+  create?: Prisma.XOR<Prisma.UserCreateWithoutAssignedIntakeItemsInput, Prisma.UserUncheckedCreateWithoutAssignedIntakeItemsInput>
+  connectOrCreate?: Prisma.UserCreateOrConnectWithoutAssignedIntakeItemsInput
+  upsert?: Prisma.UserUpsertWithoutAssignedIntakeItemsInput
+  disconnect?: Prisma.UserWhereInput | boolean
+  delete?: Prisma.UserWhereInput | boolean
+  connect?: Prisma.UserWhereUniqueInput
+  update?: Prisma.XOR<Prisma.XOR<Prisma.UserUpdateToOneWithWhereWithoutAssignedIntakeItemsInput, Prisma.UserUpdateWithoutAssignedIntakeItemsInput>, Prisma.UserUncheckedUpdateWithoutAssignedIntakeItemsInput>
+}
+
+export type UserCreateNestedOneWithoutAssignedWorkItemsInput = {
+  create?: Prisma.XOR<Prisma.UserCreateWithoutAssignedWorkItemsInput, Prisma.UserUncheckedCreateWithoutAssignedWorkItemsInput>
+  connectOrCreate?: Prisma.UserCreateOrConnectWithoutAssignedWorkItemsInput
+  connect?: Prisma.UserWhereUniqueInput
+}
+
+export type UserCreateNestedOneWithoutReportedWorkItemsInput = {
+  create?: Prisma.XOR<Prisma.UserCreateWithoutReportedWorkItemsInput, Prisma.UserUncheckedCreateWithoutReportedWorkItemsInput>
+  connectOrCreate?: Prisma.UserCreateOrConnectWithoutReportedWorkItemsInput
+  connect?: Prisma.UserWhereUniqueInput
+}
+
+export type UserUpdateOneWithoutAssignedWorkItemsNestedInput = {
+  create?: Prisma.XOR<Prisma.UserCreateWithoutAssignedWorkItemsInput, Prisma.UserUncheckedCreateWithoutAssignedWorkItemsInput>
+  connectOrCreate?: Prisma.UserCreateOrConnectWithoutAssignedWorkItemsInput
+  upsert?: Prisma.UserUpsertWithoutAssignedWorkItemsInput
+  disconnect?: Prisma.UserWhereInput | boolean
+  delete?: Prisma.UserWhereInput | boolean
+  connect?: Prisma.UserWhereUniqueInput
+  update?: Prisma.XOR<Prisma.XOR<Prisma.UserUpdateToOneWithWhereWithoutAssignedWorkItemsInput, Prisma.UserUpdateWithoutAssignedWorkItemsInput>, Prisma.UserUncheckedUpdateWithoutAssignedWorkItemsInput>
+}
+
+export type UserUpdateOneRequiredWithoutReportedWorkItemsNestedInput = {
+  create?: Prisma.XOR<Prisma.UserCreateWithoutReportedWorkItemsInput, Prisma.UserUncheckedCreateWithoutReportedWorkItemsInput>
+  connectOrCreate?: Prisma.UserCreateOrConnectWithoutReportedWorkItemsInput
+  upsert?: Prisma.UserUpsertWithoutReportedWorkItemsInput
+  connect?: Prisma.UserWhereUniqueInput
+  update?: Prisma.XOR<Prisma.XOR<Prisma.UserUpdateToOneWithWhereWithoutReportedWorkItemsInput, Prisma.UserUpdateWithoutReportedWorkItemsInput>, Prisma.UserUncheckedUpdateWithoutReportedWorkItemsInput>
+}
+
+export type UserCreateNestedOneWithoutRegressedBugDetailsInput = {
+  create?: Prisma.XOR<Prisma.UserCreateWithoutRegressedBugDetailsInput, Prisma.UserUncheckedCreateWithoutRegressedBugDetailsInput>
+  connectOrCreate?: Prisma.UserCreateOrConnectWithoutRegressedBugDetailsInput
+  connect?: Prisma.UserWhereUniqueInput
+}
+
+export type UserUpdateOneWithoutRegressedBugDetailsNestedInput = {
+  create?: Prisma.XOR<Prisma.UserCreateWithoutRegressedBugDetailsInput, Prisma.UserUncheckedCreateWithoutRegressedBugDetailsInput>
+  connectOrCreate?: Prisma.UserCreateOrConnectWithoutRegressedBugDetailsInput
+  upsert?: Prisma.UserUpsertWithoutRegressedBugDetailsInput
+  disconnect?: Prisma.UserWhereInput | boolean
+  delete?: Prisma.UserWhereInput | boolean
+  connect?: Prisma.UserWhereUniqueInput
+  update?: Prisma.XOR<Prisma.XOR<Prisma.UserUpdateToOneWithWhereWithoutRegressedBugDetailsInput, Prisma.UserUpdateWithoutRegressedBugDetailsInput>, Prisma.UserUncheckedUpdateWithoutRegressedBugDetailsInput>
+}
+
 export type UserCreateNestedOneWithoutUploadedAttachmentsInput = {
   create?: Prisma.XOR<Prisma.UserCreateWithoutUploadedAttachmentsInput, Prisma.UserUncheckedCreateWithoutUploadedAttachmentsInput>
   connectOrCreate?: Prisma.UserCreateOrConnectWithoutUploadedAttachmentsInput
@@ -763,6 +895,50 @@ export type UserUpdateOneRequiredWithoutObjectParticipantsNestedInput = {
   update?: Prisma.XOR<Prisma.XOR<Prisma.UserUpdateToOneWithWhereWithoutObjectParticipantsInput, Prisma.UserUpdateWithoutObjectParticipantsInput>, Prisma.UserUncheckedUpdateWithoutObjectParticipantsInput>
 }
 
+export type UserCreateNestedOneWithoutAuthoredCommentsInput = {
+  create?: Prisma.XOR<Prisma.UserCreateWithoutAuthoredCommentsInput, Prisma.UserUncheckedCreateWithoutAuthoredCommentsInput>
+  connectOrCreate?: Prisma.UserCreateOrConnectWithoutAuthoredCommentsInput
+  connect?: Prisma.UserWhereUniqueInput
+}
+
+export type UserUpdateOneRequiredWithoutAuthoredCommentsNestedInput = {
+  create?: Prisma.XOR<Prisma.UserCreateWithoutAuthoredCommentsInput, Prisma.UserUncheckedCreateWithoutAuthoredCommentsInput>
+  connectOrCreate?: Prisma.UserCreateOrConnectWithoutAuthoredCommentsInput
+  upsert?: Prisma.UserUpsertWithoutAuthoredCommentsInput
+  connect?: Prisma.UserWhereUniqueInput
+  update?: Prisma.XOR<Prisma.XOR<Prisma.UserUpdateToOneWithWhereWithoutAuthoredCommentsInput, Prisma.UserUpdateWithoutAuthoredCommentsInput>, Prisma.UserUncheckedUpdateWithoutAuthoredCommentsInput>
+}
+
+export type UserCreateNestedOneWithoutActedTimelineEventsInput = {
+  create?: Prisma.XOR<Prisma.UserCreateWithoutActedTimelineEventsInput, Prisma.UserUncheckedCreateWithoutActedTimelineEventsInput>
+  connectOrCreate?: Prisma.UserCreateOrConnectWithoutActedTimelineEventsInput
+  connect?: Prisma.UserWhereUniqueInput
+}
+
+export type UserUpdateOneRequiredWithoutActedTimelineEventsNestedInput = {
+  create?: Prisma.XOR<Prisma.UserCreateWithoutActedTimelineEventsInput, Prisma.UserUncheckedCreateWithoutActedTimelineEventsInput>
+  connectOrCreate?: Prisma.UserCreateOrConnectWithoutActedTimelineEventsInput
+  upsert?: Prisma.UserUpsertWithoutActedTimelineEventsInput
+  connect?: Prisma.UserWhereUniqueInput
+  update?: Prisma.XOR<Prisma.XOR<Prisma.UserUpdateToOneWithWhereWithoutActedTimelineEventsInput, Prisma.UserUpdateWithoutActedTimelineEventsInput>, Prisma.UserUncheckedUpdateWithoutActedTimelineEventsInput>
+}
+
+export type UserCreateNestedOneWithoutActedAuditLogsInput = {
+  create?: Prisma.XOR<Prisma.UserCreateWithoutActedAuditLogsInput, Prisma.UserUncheckedCreateWithoutActedAuditLogsInput>
+  connectOrCreate?: Prisma.UserCreateOrConnectWithoutActedAuditLogsInput
+  connect?: Prisma.UserWhereUniqueInput
+}
+
+export type UserUpdateOneWithoutActedAuditLogsNestedInput = {
+  create?: Prisma.XOR<Prisma.UserCreateWithoutActedAuditLogsInput, Prisma.UserUncheckedCreateWithoutActedAuditLogsInput>
+  connectOrCreate?: Prisma.UserCreateOrConnectWithoutActedAuditLogsInput
+  upsert?: Prisma.UserUpsertWithoutActedAuditLogsInput
+  disconnect?: Prisma.UserWhereInput | boolean
+  delete?: Prisma.UserWhereInput | boolean
+  connect?: Prisma.UserWhereUniqueInput
+  update?: Prisma.XOR<Prisma.XOR<Prisma.UserUpdateToOneWithWhereWithoutActedAuditLogsInput, Prisma.UserUpdateWithoutActedAuditLogsInput>, Prisma.UserUncheckedUpdateWithoutActedAuditLogsInput>
+}
+
 export type UserCreateWithoutSessionsInput = {
   id: string
   username: string
@@ -787,6 +963,14 @@ export type UserCreateWithoutSessionsInput = {
   uploadedAttachments?: Prisma.AttachmentCreateNestedManyWithoutUploadedByInput
   publishedWorkflowVersions?: Prisma.WorkflowVersionCreateNestedManyWithoutPublishedByInput
   objectParticipants?: Prisma.ObjectParticipantCreateNestedManyWithoutUserInput
+  reportedIntakeItems?: Prisma.IntakeItemCreateNestedManyWithoutReporterInput
+  assignedIntakeItems?: Prisma.IntakeItemCreateNestedManyWithoutAssigneeInput
+  reportedWorkItems?: Prisma.WorkItemCreateNestedManyWithoutReporterInput
+  assignedWorkItems?: Prisma.WorkItemCreateNestedManyWithoutAssigneeInput
+  regressedBugDetails?: Prisma.BugDetailCreateNestedManyWithoutRegressionByInput
+  authoredComments?: Prisma.CommentCreateNestedManyWithoutAuthorInput
+  actedTimelineEvents?: Prisma.TimelineEventCreateNestedManyWithoutActorInput
+  actedAuditLogs?: Prisma.AuditLogCreateNestedManyWithoutActorInput
 }
 
 export type UserUncheckedCreateWithoutSessionsInput = {
@@ -813,6 +997,14 @@ export type UserUncheckedCreateWithoutSessionsInput = {
   uploadedAttachments?: Prisma.AttachmentUncheckedCreateNestedManyWithoutUploadedByInput
   publishedWorkflowVersions?: Prisma.WorkflowVersionUncheckedCreateNestedManyWithoutPublishedByInput
   objectParticipants?: Prisma.ObjectParticipantUncheckedCreateNestedManyWithoutUserInput
+  reportedIntakeItems?: Prisma.IntakeItemUncheckedCreateNestedManyWithoutReporterInput
+  assignedIntakeItems?: Prisma.IntakeItemUncheckedCreateNestedManyWithoutAssigneeInput
+  reportedWorkItems?: Prisma.WorkItemUncheckedCreateNestedManyWithoutReporterInput
+  assignedWorkItems?: Prisma.WorkItemUncheckedCreateNestedManyWithoutAssigneeInput
+  regressedBugDetails?: Prisma.BugDetailUncheckedCreateNestedManyWithoutRegressionByInput
+  authoredComments?: Prisma.CommentUncheckedCreateNestedManyWithoutAuthorInput
+  actedTimelineEvents?: Prisma.TimelineEventUncheckedCreateNestedManyWithoutActorInput
+  actedAuditLogs?: Prisma.AuditLogUncheckedCreateNestedManyWithoutActorInput
 }
 
 export type UserCreateOrConnectWithoutSessionsInput = {
@@ -855,6 +1047,14 @@ export type UserUpdateWithoutSessionsInput = {
   uploadedAttachments?: Prisma.AttachmentUpdateManyWithoutUploadedByNestedInput
   publishedWorkflowVersions?: Prisma.WorkflowVersionUpdateManyWithoutPublishedByNestedInput
   objectParticipants?: Prisma.ObjectParticipantUpdateManyWithoutUserNestedInput
+  reportedIntakeItems?: Prisma.IntakeItemUpdateManyWithoutReporterNestedInput
+  assignedIntakeItems?: Prisma.IntakeItemUpdateManyWithoutAssigneeNestedInput
+  reportedWorkItems?: Prisma.WorkItemUpdateManyWithoutReporterNestedInput
+  assignedWorkItems?: Prisma.WorkItemUpdateManyWithoutAssigneeNestedInput
+  regressedBugDetails?: Prisma.BugDetailUpdateManyWithoutRegressionByNestedInput
+  authoredComments?: Prisma.CommentUpdateManyWithoutAuthorNestedInput
+  actedTimelineEvents?: Prisma.TimelineEventUpdateManyWithoutActorNestedInput
+  actedAuditLogs?: Prisma.AuditLogUpdateManyWithoutActorNestedInput
 }
 
 export type UserUncheckedUpdateWithoutSessionsInput = {
@@ -881,6 +1081,14 @@ export type UserUncheckedUpdateWithoutSessionsInput = {
   uploadedAttachments?: Prisma.AttachmentUncheckedUpdateManyWithoutUploadedByNestedInput
   publishedWorkflowVersions?: Prisma.WorkflowVersionUncheckedUpdateManyWithoutPublishedByNestedInput
   objectParticipants?: Prisma.ObjectParticipantUncheckedUpdateManyWithoutUserNestedInput
+  reportedIntakeItems?: Prisma.IntakeItemUncheckedUpdateManyWithoutReporterNestedInput
+  assignedIntakeItems?: Prisma.IntakeItemUncheckedUpdateManyWithoutAssigneeNestedInput
+  reportedWorkItems?: Prisma.WorkItemUncheckedUpdateManyWithoutReporterNestedInput
+  assignedWorkItems?: Prisma.WorkItemUncheckedUpdateManyWithoutAssigneeNestedInput
+  regressedBugDetails?: Prisma.BugDetailUncheckedUpdateManyWithoutRegressionByNestedInput
+  authoredComments?: Prisma.CommentUncheckedUpdateManyWithoutAuthorNestedInput
+  actedTimelineEvents?: Prisma.TimelineEventUncheckedUpdateManyWithoutActorNestedInput
+  actedAuditLogs?: Prisma.AuditLogUncheckedUpdateManyWithoutActorNestedInput
 }
 
 export type UserCreateWithoutOrganizationsInput = {
@@ -907,6 +1115,14 @@ export type UserCreateWithoutOrganizationsInput = {
   uploadedAttachments?: Prisma.AttachmentCreateNestedManyWithoutUploadedByInput
   publishedWorkflowVersions?: Prisma.WorkflowVersionCreateNestedManyWithoutPublishedByInput
   objectParticipants?: Prisma.ObjectParticipantCreateNestedManyWithoutUserInput
+  reportedIntakeItems?: Prisma.IntakeItemCreateNestedManyWithoutReporterInput
+  assignedIntakeItems?: Prisma.IntakeItemCreateNestedManyWithoutAssigneeInput
+  reportedWorkItems?: Prisma.WorkItemCreateNestedManyWithoutReporterInput
+  assignedWorkItems?: Prisma.WorkItemCreateNestedManyWithoutAssigneeInput
+  regressedBugDetails?: Prisma.BugDetailCreateNestedManyWithoutRegressionByInput
+  authoredComments?: Prisma.CommentCreateNestedManyWithoutAuthorInput
+  actedTimelineEvents?: Prisma.TimelineEventCreateNestedManyWithoutActorInput
+  actedAuditLogs?: Prisma.AuditLogCreateNestedManyWithoutActorInput
 }
 
 export type UserUncheckedCreateWithoutOrganizationsInput = {
@@ -933,6 +1149,14 @@ export type UserUncheckedCreateWithoutOrganizationsInput = {
   uploadedAttachments?: Prisma.AttachmentUncheckedCreateNestedManyWithoutUploadedByInput
   publishedWorkflowVersions?: Prisma.WorkflowVersionUncheckedCreateNestedManyWithoutPublishedByInput
   objectParticipants?: Prisma.ObjectParticipantUncheckedCreateNestedManyWithoutUserInput
+  reportedIntakeItems?: Prisma.IntakeItemUncheckedCreateNestedManyWithoutReporterInput
+  assignedIntakeItems?: Prisma.IntakeItemUncheckedCreateNestedManyWithoutAssigneeInput
+  reportedWorkItems?: Prisma.WorkItemUncheckedCreateNestedManyWithoutReporterInput
+  assignedWorkItems?: Prisma.WorkItemUncheckedCreateNestedManyWithoutAssigneeInput
+  regressedBugDetails?: Prisma.BugDetailUncheckedCreateNestedManyWithoutRegressionByInput
+  authoredComments?: Prisma.CommentUncheckedCreateNestedManyWithoutAuthorInput
+  actedTimelineEvents?: Prisma.TimelineEventUncheckedCreateNestedManyWithoutActorInput
+  actedAuditLogs?: Prisma.AuditLogUncheckedCreateNestedManyWithoutActorInput
 }
 
 export type UserCreateOrConnectWithoutOrganizationsInput = {
@@ -975,6 +1199,14 @@ export type UserUpdateWithoutOrganizationsInput = {
   uploadedAttachments?: Prisma.AttachmentUpdateManyWithoutUploadedByNestedInput
   publishedWorkflowVersions?: Prisma.WorkflowVersionUpdateManyWithoutPublishedByNestedInput
   objectParticipants?: Prisma.ObjectParticipantUpdateManyWithoutUserNestedInput
+  reportedIntakeItems?: Prisma.IntakeItemUpdateManyWithoutReporterNestedInput
+  assignedIntakeItems?: Prisma.IntakeItemUpdateManyWithoutAssigneeNestedInput
+  reportedWorkItems?: Prisma.WorkItemUpdateManyWithoutReporterNestedInput
+  assignedWorkItems?: Prisma.WorkItemUpdateManyWithoutAssigneeNestedInput
+  regressedBugDetails?: Prisma.BugDetailUpdateManyWithoutRegressionByNestedInput
+  authoredComments?: Prisma.CommentUpdateManyWithoutAuthorNestedInput
+  actedTimelineEvents?: Prisma.TimelineEventUpdateManyWithoutActorNestedInput
+  actedAuditLogs?: Prisma.AuditLogUpdateManyWithoutActorNestedInput
 }
 
 export type UserUncheckedUpdateWithoutOrganizationsInput = {
@@ -1001,6 +1233,14 @@ export type UserUncheckedUpdateWithoutOrganizationsInput = {
   uploadedAttachments?: Prisma.AttachmentUncheckedUpdateManyWithoutUploadedByNestedInput
   publishedWorkflowVersions?: Prisma.WorkflowVersionUncheckedUpdateManyWithoutPublishedByNestedInput
   objectParticipants?: Prisma.ObjectParticipantUncheckedUpdateManyWithoutUserNestedInput
+  reportedIntakeItems?: Prisma.IntakeItemUncheckedUpdateManyWithoutReporterNestedInput
+  assignedIntakeItems?: Prisma.IntakeItemUncheckedUpdateManyWithoutAssigneeNestedInput
+  reportedWorkItems?: Prisma.WorkItemUncheckedUpdateManyWithoutReporterNestedInput
+  assignedWorkItems?: Prisma.WorkItemUncheckedUpdateManyWithoutAssigneeNestedInput
+  regressedBugDetails?: Prisma.BugDetailUncheckedUpdateManyWithoutRegressionByNestedInput
+  authoredComments?: Prisma.CommentUncheckedUpdateManyWithoutAuthorNestedInput
+  actedTimelineEvents?: Prisma.TimelineEventUncheckedUpdateManyWithoutActorNestedInput
+  actedAuditLogs?: Prisma.AuditLogUncheckedUpdateManyWithoutActorNestedInput
 }
 
 export type UserCreateWithoutMembershipsInput = {
@@ -1027,6 +1267,14 @@ export type UserCreateWithoutMembershipsInput = {
   uploadedAttachments?: Prisma.AttachmentCreateNestedManyWithoutUploadedByInput
   publishedWorkflowVersions?: Prisma.WorkflowVersionCreateNestedManyWithoutPublishedByInput
   objectParticipants?: Prisma.ObjectParticipantCreateNestedManyWithoutUserInput
+  reportedIntakeItems?: Prisma.IntakeItemCreateNestedManyWithoutReporterInput
+  assignedIntakeItems?: Prisma.IntakeItemCreateNestedManyWithoutAssigneeInput
+  reportedWorkItems?: Prisma.WorkItemCreateNestedManyWithoutReporterInput
+  assignedWorkItems?: Prisma.WorkItemCreateNestedManyWithoutAssigneeInput
+  regressedBugDetails?: Prisma.BugDetailCreateNestedManyWithoutRegressionByInput
+  authoredComments?: Prisma.CommentCreateNestedManyWithoutAuthorInput
+  actedTimelineEvents?: Prisma.TimelineEventCreateNestedManyWithoutActorInput
+  actedAuditLogs?: Prisma.AuditLogCreateNestedManyWithoutActorInput
 }
 
 export type UserUncheckedCreateWithoutMembershipsInput = {
@@ -1053,6 +1301,14 @@ export type UserUncheckedCreateWithoutMembershipsInput = {
   uploadedAttachments?: Prisma.AttachmentUncheckedCreateNestedManyWithoutUploadedByInput
   publishedWorkflowVersions?: Prisma.WorkflowVersionUncheckedCreateNestedManyWithoutPublishedByInput
   objectParticipants?: Prisma.ObjectParticipantUncheckedCreateNestedManyWithoutUserInput
+  reportedIntakeItems?: Prisma.IntakeItemUncheckedCreateNestedManyWithoutReporterInput
+  assignedIntakeItems?: Prisma.IntakeItemUncheckedCreateNestedManyWithoutAssigneeInput
+  reportedWorkItems?: Prisma.WorkItemUncheckedCreateNestedManyWithoutReporterInput
+  assignedWorkItems?: Prisma.WorkItemUncheckedCreateNestedManyWithoutAssigneeInput
+  regressedBugDetails?: Prisma.BugDetailUncheckedCreateNestedManyWithoutRegressionByInput
+  authoredComments?: Prisma.CommentUncheckedCreateNestedManyWithoutAuthorInput
+  actedTimelineEvents?: Prisma.TimelineEventUncheckedCreateNestedManyWithoutActorInput
+  actedAuditLogs?: Prisma.AuditLogUncheckedCreateNestedManyWithoutActorInput
 }
 
 export type UserCreateOrConnectWithoutMembershipsInput = {
@@ -1095,6 +1351,14 @@ export type UserUpdateWithoutMembershipsInput = {
   uploadedAttachments?: Prisma.AttachmentUpdateManyWithoutUploadedByNestedInput
   publishedWorkflowVersions?: Prisma.WorkflowVersionUpdateManyWithoutPublishedByNestedInput
   objectParticipants?: Prisma.ObjectParticipantUpdateManyWithoutUserNestedInput
+  reportedIntakeItems?: Prisma.IntakeItemUpdateManyWithoutReporterNestedInput
+  assignedIntakeItems?: Prisma.IntakeItemUpdateManyWithoutAssigneeNestedInput
+  reportedWorkItems?: Prisma.WorkItemUpdateManyWithoutReporterNestedInput
+  assignedWorkItems?: Prisma.WorkItemUpdateManyWithoutAssigneeNestedInput
+  regressedBugDetails?: Prisma.BugDetailUpdateManyWithoutRegressionByNestedInput
+  authoredComments?: Prisma.CommentUpdateManyWithoutAuthorNestedInput
+  actedTimelineEvents?: Prisma.TimelineEventUpdateManyWithoutActorNestedInput
+  actedAuditLogs?: Prisma.AuditLogUpdateManyWithoutActorNestedInput
 }
 
 export type UserUncheckedUpdateWithoutMembershipsInput = {
@@ -1121,6 +1385,14 @@ export type UserUncheckedUpdateWithoutMembershipsInput = {
   uploadedAttachments?: Prisma.AttachmentUncheckedUpdateManyWithoutUploadedByNestedInput
   publishedWorkflowVersions?: Prisma.WorkflowVersionUncheckedUpdateManyWithoutPublishedByNestedInput
   objectParticipants?: Prisma.ObjectParticipantUncheckedUpdateManyWithoutUserNestedInput
+  reportedIntakeItems?: Prisma.IntakeItemUncheckedUpdateManyWithoutReporterNestedInput
+  assignedIntakeItems?: Prisma.IntakeItemUncheckedUpdateManyWithoutAssigneeNestedInput
+  reportedWorkItems?: Prisma.WorkItemUncheckedUpdateManyWithoutReporterNestedInput
+  assignedWorkItems?: Prisma.WorkItemUncheckedUpdateManyWithoutAssigneeNestedInput
+  regressedBugDetails?: Prisma.BugDetailUncheckedUpdateManyWithoutRegressionByNestedInput
+  authoredComments?: Prisma.CommentUncheckedUpdateManyWithoutAuthorNestedInput
+  actedTimelineEvents?: Prisma.TimelineEventUncheckedUpdateManyWithoutActorNestedInput
+  actedAuditLogs?: Prisma.AuditLogUncheckedUpdateManyWithoutActorNestedInput
 }
 
 export type UserCreateWithoutOwnedSpacesInput = {
@@ -1147,6 +1419,14 @@ export type UserCreateWithoutOwnedSpacesInput = {
   uploadedAttachments?: Prisma.AttachmentCreateNestedManyWithoutUploadedByInput
   publishedWorkflowVersions?: Prisma.WorkflowVersionCreateNestedManyWithoutPublishedByInput
   objectParticipants?: Prisma.ObjectParticipantCreateNestedManyWithoutUserInput
+  reportedIntakeItems?: Prisma.IntakeItemCreateNestedManyWithoutReporterInput
+  assignedIntakeItems?: Prisma.IntakeItemCreateNestedManyWithoutAssigneeInput
+  reportedWorkItems?: Prisma.WorkItemCreateNestedManyWithoutReporterInput
+  assignedWorkItems?: Prisma.WorkItemCreateNestedManyWithoutAssigneeInput
+  regressedBugDetails?: Prisma.BugDetailCreateNestedManyWithoutRegressionByInput
+  authoredComments?: Prisma.CommentCreateNestedManyWithoutAuthorInput
+  actedTimelineEvents?: Prisma.TimelineEventCreateNestedManyWithoutActorInput
+  actedAuditLogs?: Prisma.AuditLogCreateNestedManyWithoutActorInput
 }
 
 export type UserUncheckedCreateWithoutOwnedSpacesInput = {
@@ -1173,6 +1453,14 @@ export type UserUncheckedCreateWithoutOwnedSpacesInput = {
   uploadedAttachments?: Prisma.AttachmentUncheckedCreateNestedManyWithoutUploadedByInput
   publishedWorkflowVersions?: Prisma.WorkflowVersionUncheckedCreateNestedManyWithoutPublishedByInput
   objectParticipants?: Prisma.ObjectParticipantUncheckedCreateNestedManyWithoutUserInput
+  reportedIntakeItems?: Prisma.IntakeItemUncheckedCreateNestedManyWithoutReporterInput
+  assignedIntakeItems?: Prisma.IntakeItemUncheckedCreateNestedManyWithoutAssigneeInput
+  reportedWorkItems?: Prisma.WorkItemUncheckedCreateNestedManyWithoutReporterInput
+  assignedWorkItems?: Prisma.WorkItemUncheckedCreateNestedManyWithoutAssigneeInput
+  regressedBugDetails?: Prisma.BugDetailUncheckedCreateNestedManyWithoutRegressionByInput
+  authoredComments?: Prisma.CommentUncheckedCreateNestedManyWithoutAuthorInput
+  actedTimelineEvents?: Prisma.TimelineEventUncheckedCreateNestedManyWithoutActorInput
+  actedAuditLogs?: Prisma.AuditLogUncheckedCreateNestedManyWithoutActorInput
 }
 
 export type UserCreateOrConnectWithoutOwnedSpacesInput = {
@@ -1215,6 +1503,14 @@ export type UserUpdateWithoutOwnedSpacesInput = {
   uploadedAttachments?: Prisma.AttachmentUpdateManyWithoutUploadedByNestedInput
   publishedWorkflowVersions?: Prisma.WorkflowVersionUpdateManyWithoutPublishedByNestedInput
   objectParticipants?: Prisma.ObjectParticipantUpdateManyWithoutUserNestedInput
+  reportedIntakeItems?: Prisma.IntakeItemUpdateManyWithoutReporterNestedInput
+  assignedIntakeItems?: Prisma.IntakeItemUpdateManyWithoutAssigneeNestedInput
+  reportedWorkItems?: Prisma.WorkItemUpdateManyWithoutReporterNestedInput
+  assignedWorkItems?: Prisma.WorkItemUpdateManyWithoutAssigneeNestedInput
+  regressedBugDetails?: Prisma.BugDetailUpdateManyWithoutRegressionByNestedInput
+  authoredComments?: Prisma.CommentUpdateManyWithoutAuthorNestedInput
+  actedTimelineEvents?: Prisma.TimelineEventUpdateManyWithoutActorNestedInput
+  actedAuditLogs?: Prisma.AuditLogUpdateManyWithoutActorNestedInput
 }
 
 export type UserUncheckedUpdateWithoutOwnedSpacesInput = {
@@ -1241,6 +1537,14 @@ export type UserUncheckedUpdateWithoutOwnedSpacesInput = {
   uploadedAttachments?: Prisma.AttachmentUncheckedUpdateManyWithoutUploadedByNestedInput
   publishedWorkflowVersions?: Prisma.WorkflowVersionUncheckedUpdateManyWithoutPublishedByNestedInput
   objectParticipants?: Prisma.ObjectParticipantUncheckedUpdateManyWithoutUserNestedInput
+  reportedIntakeItems?: Prisma.IntakeItemUncheckedUpdateManyWithoutReporterNestedInput
+  assignedIntakeItems?: Prisma.IntakeItemUncheckedUpdateManyWithoutAssigneeNestedInput
+  reportedWorkItems?: Prisma.WorkItemUncheckedUpdateManyWithoutReporterNestedInput
+  assignedWorkItems?: Prisma.WorkItemUncheckedUpdateManyWithoutAssigneeNestedInput
+  regressedBugDetails?: Prisma.BugDetailUncheckedUpdateManyWithoutRegressionByNestedInput
+  authoredComments?: Prisma.CommentUncheckedUpdateManyWithoutAuthorNestedInput
+  actedTimelineEvents?: Prisma.TimelineEventUncheckedUpdateManyWithoutActorNestedInput
+  actedAuditLogs?: Prisma.AuditLogUncheckedUpdateManyWithoutActorNestedInput
 }
 
 export type UserCreateWithoutSpaceMembershipsInput = {
@@ -1267,6 +1571,14 @@ export type UserCreateWithoutSpaceMembershipsInput = {
   uploadedAttachments?: Prisma.AttachmentCreateNestedManyWithoutUploadedByInput
   publishedWorkflowVersions?: Prisma.WorkflowVersionCreateNestedManyWithoutPublishedByInput
   objectParticipants?: Prisma.ObjectParticipantCreateNestedManyWithoutUserInput
+  reportedIntakeItems?: Prisma.IntakeItemCreateNestedManyWithoutReporterInput
+  assignedIntakeItems?: Prisma.IntakeItemCreateNestedManyWithoutAssigneeInput
+  reportedWorkItems?: Prisma.WorkItemCreateNestedManyWithoutReporterInput
+  assignedWorkItems?: Prisma.WorkItemCreateNestedManyWithoutAssigneeInput
+  regressedBugDetails?: Prisma.BugDetailCreateNestedManyWithoutRegressionByInput
+  authoredComments?: Prisma.CommentCreateNestedManyWithoutAuthorInput
+  actedTimelineEvents?: Prisma.TimelineEventCreateNestedManyWithoutActorInput
+  actedAuditLogs?: Prisma.AuditLogCreateNestedManyWithoutActorInput
 }
 
 export type UserUncheckedCreateWithoutSpaceMembershipsInput = {
@@ -1293,6 +1605,14 @@ export type UserUncheckedCreateWithoutSpaceMembershipsInput = {
   uploadedAttachments?: Prisma.AttachmentUncheckedCreateNestedManyWithoutUploadedByInput
   publishedWorkflowVersions?: Prisma.WorkflowVersionUncheckedCreateNestedManyWithoutPublishedByInput
   objectParticipants?: Prisma.ObjectParticipantUncheckedCreateNestedManyWithoutUserInput
+  reportedIntakeItems?: Prisma.IntakeItemUncheckedCreateNestedManyWithoutReporterInput
+  assignedIntakeItems?: Prisma.IntakeItemUncheckedCreateNestedManyWithoutAssigneeInput
+  reportedWorkItems?: Prisma.WorkItemUncheckedCreateNestedManyWithoutReporterInput
+  assignedWorkItems?: Prisma.WorkItemUncheckedCreateNestedManyWithoutAssigneeInput
+  regressedBugDetails?: Prisma.BugDetailUncheckedCreateNestedManyWithoutRegressionByInput
+  authoredComments?: Prisma.CommentUncheckedCreateNestedManyWithoutAuthorInput
+  actedTimelineEvents?: Prisma.TimelineEventUncheckedCreateNestedManyWithoutActorInput
+  actedAuditLogs?: Prisma.AuditLogUncheckedCreateNestedManyWithoutActorInput
 }
 
 export type UserCreateOrConnectWithoutSpaceMembershipsInput = {
@@ -1335,6 +1655,14 @@ export type UserUpdateWithoutSpaceMembershipsInput = {
   uploadedAttachments?: Prisma.AttachmentUpdateManyWithoutUploadedByNestedInput
   publishedWorkflowVersions?: Prisma.WorkflowVersionUpdateManyWithoutPublishedByNestedInput
   objectParticipants?: Prisma.ObjectParticipantUpdateManyWithoutUserNestedInput
+  reportedIntakeItems?: Prisma.IntakeItemUpdateManyWithoutReporterNestedInput
+  assignedIntakeItems?: Prisma.IntakeItemUpdateManyWithoutAssigneeNestedInput
+  reportedWorkItems?: Prisma.WorkItemUpdateManyWithoutReporterNestedInput
+  assignedWorkItems?: Prisma.WorkItemUpdateManyWithoutAssigneeNestedInput
+  regressedBugDetails?: Prisma.BugDetailUpdateManyWithoutRegressionByNestedInput
+  authoredComments?: Prisma.CommentUpdateManyWithoutAuthorNestedInput
+  actedTimelineEvents?: Prisma.TimelineEventUpdateManyWithoutActorNestedInput
+  actedAuditLogs?: Prisma.AuditLogUpdateManyWithoutActorNestedInput
 }
 
 export type UserUncheckedUpdateWithoutSpaceMembershipsInput = {
@@ -1361,6 +1689,14 @@ export type UserUncheckedUpdateWithoutSpaceMembershipsInput = {
   uploadedAttachments?: Prisma.AttachmentUncheckedUpdateManyWithoutUploadedByNestedInput
   publishedWorkflowVersions?: Prisma.WorkflowVersionUncheckedUpdateManyWithoutPublishedByNestedInput
   objectParticipants?: Prisma.ObjectParticipantUncheckedUpdateManyWithoutUserNestedInput
+  reportedIntakeItems?: Prisma.IntakeItemUncheckedUpdateManyWithoutReporterNestedInput
+  assignedIntakeItems?: Prisma.IntakeItemUncheckedUpdateManyWithoutAssigneeNestedInput
+  reportedWorkItems?: Prisma.WorkItemUncheckedUpdateManyWithoutReporterNestedInput
+  assignedWorkItems?: Prisma.WorkItemUncheckedUpdateManyWithoutAssigneeNestedInput
+  regressedBugDetails?: Prisma.BugDetailUncheckedUpdateManyWithoutRegressionByNestedInput
+  authoredComments?: Prisma.CommentUncheckedUpdateManyWithoutAuthorNestedInput
+  actedTimelineEvents?: Prisma.TimelineEventUncheckedUpdateManyWithoutActorNestedInput
+  actedAuditLogs?: Prisma.AuditLogUncheckedUpdateManyWithoutActorNestedInput
 }
 
 export type UserCreateWithoutOwnedVersionsInput = {
@@ -1387,6 +1723,14 @@ export type UserCreateWithoutOwnedVersionsInput = {
   uploadedAttachments?: Prisma.AttachmentCreateNestedManyWithoutUploadedByInput
   publishedWorkflowVersions?: Prisma.WorkflowVersionCreateNestedManyWithoutPublishedByInput
   objectParticipants?: Prisma.ObjectParticipantCreateNestedManyWithoutUserInput
+  reportedIntakeItems?: Prisma.IntakeItemCreateNestedManyWithoutReporterInput
+  assignedIntakeItems?: Prisma.IntakeItemCreateNestedManyWithoutAssigneeInput
+  reportedWorkItems?: Prisma.WorkItemCreateNestedManyWithoutReporterInput
+  assignedWorkItems?: Prisma.WorkItemCreateNestedManyWithoutAssigneeInput
+  regressedBugDetails?: Prisma.BugDetailCreateNestedManyWithoutRegressionByInput
+  authoredComments?: Prisma.CommentCreateNestedManyWithoutAuthorInput
+  actedTimelineEvents?: Prisma.TimelineEventCreateNestedManyWithoutActorInput
+  actedAuditLogs?: Prisma.AuditLogCreateNestedManyWithoutActorInput
 }
 
 export type UserUncheckedCreateWithoutOwnedVersionsInput = {
@@ -1413,6 +1757,14 @@ export type UserUncheckedCreateWithoutOwnedVersionsInput = {
   uploadedAttachments?: Prisma.AttachmentUncheckedCreateNestedManyWithoutUploadedByInput
   publishedWorkflowVersions?: Prisma.WorkflowVersionUncheckedCreateNestedManyWithoutPublishedByInput
   objectParticipants?: Prisma.ObjectParticipantUncheckedCreateNestedManyWithoutUserInput
+  reportedIntakeItems?: Prisma.IntakeItemUncheckedCreateNestedManyWithoutReporterInput
+  assignedIntakeItems?: Prisma.IntakeItemUncheckedCreateNestedManyWithoutAssigneeInput
+  reportedWorkItems?: Prisma.WorkItemUncheckedCreateNestedManyWithoutReporterInput
+  assignedWorkItems?: Prisma.WorkItemUncheckedCreateNestedManyWithoutAssigneeInput
+  regressedBugDetails?: Prisma.BugDetailUncheckedCreateNestedManyWithoutRegressionByInput
+  authoredComments?: Prisma.CommentUncheckedCreateNestedManyWithoutAuthorInput
+  actedTimelineEvents?: Prisma.TimelineEventUncheckedCreateNestedManyWithoutActorInput
+  actedAuditLogs?: Prisma.AuditLogUncheckedCreateNestedManyWithoutActorInput
 }
 
 export type UserCreateOrConnectWithoutOwnedVersionsInput = {
@@ -1455,6 +1807,14 @@ export type UserUpdateWithoutOwnedVersionsInput = {
   uploadedAttachments?: Prisma.AttachmentUpdateManyWithoutUploadedByNestedInput
   publishedWorkflowVersions?: Prisma.WorkflowVersionUpdateManyWithoutPublishedByNestedInput
   objectParticipants?: Prisma.ObjectParticipantUpdateManyWithoutUserNestedInput
+  reportedIntakeItems?: Prisma.IntakeItemUpdateManyWithoutReporterNestedInput
+  assignedIntakeItems?: Prisma.IntakeItemUpdateManyWithoutAssigneeNestedInput
+  reportedWorkItems?: Prisma.WorkItemUpdateManyWithoutReporterNestedInput
+  assignedWorkItems?: Prisma.WorkItemUpdateManyWithoutAssigneeNestedInput
+  regressedBugDetails?: Prisma.BugDetailUpdateManyWithoutRegressionByNestedInput
+  authoredComments?: Prisma.CommentUpdateManyWithoutAuthorNestedInput
+  actedTimelineEvents?: Prisma.TimelineEventUpdateManyWithoutActorNestedInput
+  actedAuditLogs?: Prisma.AuditLogUpdateManyWithoutActorNestedInput
 }
 
 export type UserUncheckedUpdateWithoutOwnedVersionsInput = {
@@ -1481,6 +1841,14 @@ export type UserUncheckedUpdateWithoutOwnedVersionsInput = {
   uploadedAttachments?: Prisma.AttachmentUncheckedUpdateManyWithoutUploadedByNestedInput
   publishedWorkflowVersions?: Prisma.WorkflowVersionUncheckedUpdateManyWithoutPublishedByNestedInput
   objectParticipants?: Prisma.ObjectParticipantUncheckedUpdateManyWithoutUserNestedInput
+  reportedIntakeItems?: Prisma.IntakeItemUncheckedUpdateManyWithoutReporterNestedInput
+  assignedIntakeItems?: Prisma.IntakeItemUncheckedUpdateManyWithoutAssigneeNestedInput
+  reportedWorkItems?: Prisma.WorkItemUncheckedUpdateManyWithoutReporterNestedInput
+  assignedWorkItems?: Prisma.WorkItemUncheckedUpdateManyWithoutAssigneeNestedInput
+  regressedBugDetails?: Prisma.BugDetailUncheckedUpdateManyWithoutRegressionByNestedInput
+  authoredComments?: Prisma.CommentUncheckedUpdateManyWithoutAuthorNestedInput
+  actedTimelineEvents?: Prisma.TimelineEventUncheckedUpdateManyWithoutActorNestedInput
+  actedAuditLogs?: Prisma.AuditLogUncheckedUpdateManyWithoutActorNestedInput
 }
 
 export type UserCreateWithoutOwnedRequirementsInput = {
@@ -1507,6 +1875,14 @@ export type UserCreateWithoutOwnedRequirementsInput = {
   uploadedAttachments?: Prisma.AttachmentCreateNestedManyWithoutUploadedByInput
   publishedWorkflowVersions?: Prisma.WorkflowVersionCreateNestedManyWithoutPublishedByInput
   objectParticipants?: Prisma.ObjectParticipantCreateNestedManyWithoutUserInput
+  reportedIntakeItems?: Prisma.IntakeItemCreateNestedManyWithoutReporterInput
+  assignedIntakeItems?: Prisma.IntakeItemCreateNestedManyWithoutAssigneeInput
+  reportedWorkItems?: Prisma.WorkItemCreateNestedManyWithoutReporterInput
+  assignedWorkItems?: Prisma.WorkItemCreateNestedManyWithoutAssigneeInput
+  regressedBugDetails?: Prisma.BugDetailCreateNestedManyWithoutRegressionByInput
+  authoredComments?: Prisma.CommentCreateNestedManyWithoutAuthorInput
+  actedTimelineEvents?: Prisma.TimelineEventCreateNestedManyWithoutActorInput
+  actedAuditLogs?: Prisma.AuditLogCreateNestedManyWithoutActorInput
 }
 
 export type UserUncheckedCreateWithoutOwnedRequirementsInput = {
@@ -1533,6 +1909,14 @@ export type UserUncheckedCreateWithoutOwnedRequirementsInput = {
   uploadedAttachments?: Prisma.AttachmentUncheckedCreateNestedManyWithoutUploadedByInput
   publishedWorkflowVersions?: Prisma.WorkflowVersionUncheckedCreateNestedManyWithoutPublishedByInput
   objectParticipants?: Prisma.ObjectParticipantUncheckedCreateNestedManyWithoutUserInput
+  reportedIntakeItems?: Prisma.IntakeItemUncheckedCreateNestedManyWithoutReporterInput
+  assignedIntakeItems?: Prisma.IntakeItemUncheckedCreateNestedManyWithoutAssigneeInput
+  reportedWorkItems?: Prisma.WorkItemUncheckedCreateNestedManyWithoutReporterInput
+  assignedWorkItems?: Prisma.WorkItemUncheckedCreateNestedManyWithoutAssigneeInput
+  regressedBugDetails?: Prisma.BugDetailUncheckedCreateNestedManyWithoutRegressionByInput
+  authoredComments?: Prisma.CommentUncheckedCreateNestedManyWithoutAuthorInput
+  actedTimelineEvents?: Prisma.TimelineEventUncheckedCreateNestedManyWithoutActorInput
+  actedAuditLogs?: Prisma.AuditLogUncheckedCreateNestedManyWithoutActorInput
 }
 
 export type UserCreateOrConnectWithoutOwnedRequirementsInput = {
@@ -1575,6 +1959,14 @@ export type UserUpdateWithoutOwnedRequirementsInput = {
   uploadedAttachments?: Prisma.AttachmentUpdateManyWithoutUploadedByNestedInput
   publishedWorkflowVersions?: Prisma.WorkflowVersionUpdateManyWithoutPublishedByNestedInput
   objectParticipants?: Prisma.ObjectParticipantUpdateManyWithoutUserNestedInput
+  reportedIntakeItems?: Prisma.IntakeItemUpdateManyWithoutReporterNestedInput
+  assignedIntakeItems?: Prisma.IntakeItemUpdateManyWithoutAssigneeNestedInput
+  reportedWorkItems?: Prisma.WorkItemUpdateManyWithoutReporterNestedInput
+  assignedWorkItems?: Prisma.WorkItemUpdateManyWithoutAssigneeNestedInput
+  regressedBugDetails?: Prisma.BugDetailUpdateManyWithoutRegressionByNestedInput
+  authoredComments?: Prisma.CommentUpdateManyWithoutAuthorNestedInput
+  actedTimelineEvents?: Prisma.TimelineEventUpdateManyWithoutActorNestedInput
+  actedAuditLogs?: Prisma.AuditLogUpdateManyWithoutActorNestedInput
 }
 
 export type UserUncheckedUpdateWithoutOwnedRequirementsInput = {
@@ -1601,6 +1993,774 @@ export type UserUncheckedUpdateWithoutOwnedRequirementsInput = {
   uploadedAttachments?: Prisma.AttachmentUncheckedUpdateManyWithoutUploadedByNestedInput
   publishedWorkflowVersions?: Prisma.WorkflowVersionUncheckedUpdateManyWithoutPublishedByNestedInput
   objectParticipants?: Prisma.ObjectParticipantUncheckedUpdateManyWithoutUserNestedInput
+  reportedIntakeItems?: Prisma.IntakeItemUncheckedUpdateManyWithoutReporterNestedInput
+  assignedIntakeItems?: Prisma.IntakeItemUncheckedUpdateManyWithoutAssigneeNestedInput
+  reportedWorkItems?: Prisma.WorkItemUncheckedUpdateManyWithoutReporterNestedInput
+  assignedWorkItems?: Prisma.WorkItemUncheckedUpdateManyWithoutAssigneeNestedInput
+  regressedBugDetails?: Prisma.BugDetailUncheckedUpdateManyWithoutRegressionByNestedInput
+  authoredComments?: Prisma.CommentUncheckedUpdateManyWithoutAuthorNestedInput
+  actedTimelineEvents?: Prisma.TimelineEventUncheckedUpdateManyWithoutActorNestedInput
+  actedAuditLogs?: Prisma.AuditLogUncheckedUpdateManyWithoutActorNestedInput
+}
+
+export type UserCreateWithoutReportedIntakeItemsInput = {
+  id: string
+  username: string
+  passwordHash: string
+  name: string
+  avatar?: string | null
+  status?: $Enums.UserStatus
+  locale?: $Enums.Locale
+  themeMode?: $Enums.ThemeMode
+  lastLoginAt?: Date | string | null
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  createdById?: string | null
+  updatedById?: string | null
+  deletedAt?: Date | string | null
+  sessions?: Prisma.SessionCreateNestedManyWithoutUserInput
+  organizations?: Prisma.OrganizationCreateNestedManyWithoutOwnerInput
+  memberships?: Prisma.OrganizationMemberCreateNestedManyWithoutUserInput
+  ownedSpaces?: Prisma.SpaceCreateNestedManyWithoutOwnerInput
+  spaceMemberships?: Prisma.SpaceMemberCreateNestedManyWithoutUserInput
+  ownedVersions?: Prisma.VersionCreateNestedManyWithoutOwnerInput
+  ownedRequirements?: Prisma.RequirementCreateNestedManyWithoutOwnerInput
+  uploadedAttachments?: Prisma.AttachmentCreateNestedManyWithoutUploadedByInput
+  publishedWorkflowVersions?: Prisma.WorkflowVersionCreateNestedManyWithoutPublishedByInput
+  objectParticipants?: Prisma.ObjectParticipantCreateNestedManyWithoutUserInput
+  assignedIntakeItems?: Prisma.IntakeItemCreateNestedManyWithoutAssigneeInput
+  reportedWorkItems?: Prisma.WorkItemCreateNestedManyWithoutReporterInput
+  assignedWorkItems?: Prisma.WorkItemCreateNestedManyWithoutAssigneeInput
+  regressedBugDetails?: Prisma.BugDetailCreateNestedManyWithoutRegressionByInput
+  authoredComments?: Prisma.CommentCreateNestedManyWithoutAuthorInput
+  actedTimelineEvents?: Prisma.TimelineEventCreateNestedManyWithoutActorInput
+  actedAuditLogs?: Prisma.AuditLogCreateNestedManyWithoutActorInput
+}
+
+export type UserUncheckedCreateWithoutReportedIntakeItemsInput = {
+  id: string
+  username: string
+  passwordHash: string
+  name: string
+  avatar?: string | null
+  status?: $Enums.UserStatus
+  locale?: $Enums.Locale
+  themeMode?: $Enums.ThemeMode
+  lastLoginAt?: Date | string | null
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  createdById?: string | null
+  updatedById?: string | null
+  deletedAt?: Date | string | null
+  sessions?: Prisma.SessionUncheckedCreateNestedManyWithoutUserInput
+  organizations?: Prisma.OrganizationUncheckedCreateNestedManyWithoutOwnerInput
+  memberships?: Prisma.OrganizationMemberUncheckedCreateNestedManyWithoutUserInput
+  ownedSpaces?: Prisma.SpaceUncheckedCreateNestedManyWithoutOwnerInput
+  spaceMemberships?: Prisma.SpaceMemberUncheckedCreateNestedManyWithoutUserInput
+  ownedVersions?: Prisma.VersionUncheckedCreateNestedManyWithoutOwnerInput
+  ownedRequirements?: Prisma.RequirementUncheckedCreateNestedManyWithoutOwnerInput
+  uploadedAttachments?: Prisma.AttachmentUncheckedCreateNestedManyWithoutUploadedByInput
+  publishedWorkflowVersions?: Prisma.WorkflowVersionUncheckedCreateNestedManyWithoutPublishedByInput
+  objectParticipants?: Prisma.ObjectParticipantUncheckedCreateNestedManyWithoutUserInput
+  assignedIntakeItems?: Prisma.IntakeItemUncheckedCreateNestedManyWithoutAssigneeInput
+  reportedWorkItems?: Prisma.WorkItemUncheckedCreateNestedManyWithoutReporterInput
+  assignedWorkItems?: Prisma.WorkItemUncheckedCreateNestedManyWithoutAssigneeInput
+  regressedBugDetails?: Prisma.BugDetailUncheckedCreateNestedManyWithoutRegressionByInput
+  authoredComments?: Prisma.CommentUncheckedCreateNestedManyWithoutAuthorInput
+  actedTimelineEvents?: Prisma.TimelineEventUncheckedCreateNestedManyWithoutActorInput
+  actedAuditLogs?: Prisma.AuditLogUncheckedCreateNestedManyWithoutActorInput
+}
+
+export type UserCreateOrConnectWithoutReportedIntakeItemsInput = {
+  where: Prisma.UserWhereUniqueInput
+  create: Prisma.XOR<Prisma.UserCreateWithoutReportedIntakeItemsInput, Prisma.UserUncheckedCreateWithoutReportedIntakeItemsInput>
+}
+
+export type UserCreateWithoutAssignedIntakeItemsInput = {
+  id: string
+  username: string
+  passwordHash: string
+  name: string
+  avatar?: string | null
+  status?: $Enums.UserStatus
+  locale?: $Enums.Locale
+  themeMode?: $Enums.ThemeMode
+  lastLoginAt?: Date | string | null
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  createdById?: string | null
+  updatedById?: string | null
+  deletedAt?: Date | string | null
+  sessions?: Prisma.SessionCreateNestedManyWithoutUserInput
+  organizations?: Prisma.OrganizationCreateNestedManyWithoutOwnerInput
+  memberships?: Prisma.OrganizationMemberCreateNestedManyWithoutUserInput
+  ownedSpaces?: Prisma.SpaceCreateNestedManyWithoutOwnerInput
+  spaceMemberships?: Prisma.SpaceMemberCreateNestedManyWithoutUserInput
+  ownedVersions?: Prisma.VersionCreateNestedManyWithoutOwnerInput
+  ownedRequirements?: Prisma.RequirementCreateNestedManyWithoutOwnerInput
+  uploadedAttachments?: Prisma.AttachmentCreateNestedManyWithoutUploadedByInput
+  publishedWorkflowVersions?: Prisma.WorkflowVersionCreateNestedManyWithoutPublishedByInput
+  objectParticipants?: Prisma.ObjectParticipantCreateNestedManyWithoutUserInput
+  reportedIntakeItems?: Prisma.IntakeItemCreateNestedManyWithoutReporterInput
+  reportedWorkItems?: Prisma.WorkItemCreateNestedManyWithoutReporterInput
+  assignedWorkItems?: Prisma.WorkItemCreateNestedManyWithoutAssigneeInput
+  regressedBugDetails?: Prisma.BugDetailCreateNestedManyWithoutRegressionByInput
+  authoredComments?: Prisma.CommentCreateNestedManyWithoutAuthorInput
+  actedTimelineEvents?: Prisma.TimelineEventCreateNestedManyWithoutActorInput
+  actedAuditLogs?: Prisma.AuditLogCreateNestedManyWithoutActorInput
+}
+
+export type UserUncheckedCreateWithoutAssignedIntakeItemsInput = {
+  id: string
+  username: string
+  passwordHash: string
+  name: string
+  avatar?: string | null
+  status?: $Enums.UserStatus
+  locale?: $Enums.Locale
+  themeMode?: $Enums.ThemeMode
+  lastLoginAt?: Date | string | null
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  createdById?: string | null
+  updatedById?: string | null
+  deletedAt?: Date | string | null
+  sessions?: Prisma.SessionUncheckedCreateNestedManyWithoutUserInput
+  organizations?: Prisma.OrganizationUncheckedCreateNestedManyWithoutOwnerInput
+  memberships?: Prisma.OrganizationMemberUncheckedCreateNestedManyWithoutUserInput
+  ownedSpaces?: Prisma.SpaceUncheckedCreateNestedManyWithoutOwnerInput
+  spaceMemberships?: Prisma.SpaceMemberUncheckedCreateNestedManyWithoutUserInput
+  ownedVersions?: Prisma.VersionUncheckedCreateNestedManyWithoutOwnerInput
+  ownedRequirements?: Prisma.RequirementUncheckedCreateNestedManyWithoutOwnerInput
+  uploadedAttachments?: Prisma.AttachmentUncheckedCreateNestedManyWithoutUploadedByInput
+  publishedWorkflowVersions?: Prisma.WorkflowVersionUncheckedCreateNestedManyWithoutPublishedByInput
+  objectParticipants?: Prisma.ObjectParticipantUncheckedCreateNestedManyWithoutUserInput
+  reportedIntakeItems?: Prisma.IntakeItemUncheckedCreateNestedManyWithoutReporterInput
+  reportedWorkItems?: Prisma.WorkItemUncheckedCreateNestedManyWithoutReporterInput
+  assignedWorkItems?: Prisma.WorkItemUncheckedCreateNestedManyWithoutAssigneeInput
+  regressedBugDetails?: Prisma.BugDetailUncheckedCreateNestedManyWithoutRegressionByInput
+  authoredComments?: Prisma.CommentUncheckedCreateNestedManyWithoutAuthorInput
+  actedTimelineEvents?: Prisma.TimelineEventUncheckedCreateNestedManyWithoutActorInput
+  actedAuditLogs?: Prisma.AuditLogUncheckedCreateNestedManyWithoutActorInput
+}
+
+export type UserCreateOrConnectWithoutAssignedIntakeItemsInput = {
+  where: Prisma.UserWhereUniqueInput
+  create: Prisma.XOR<Prisma.UserCreateWithoutAssignedIntakeItemsInput, Prisma.UserUncheckedCreateWithoutAssignedIntakeItemsInput>
+}
+
+export type UserUpsertWithoutReportedIntakeItemsInput = {
+  update: Prisma.XOR<Prisma.UserUpdateWithoutReportedIntakeItemsInput, Prisma.UserUncheckedUpdateWithoutReportedIntakeItemsInput>
+  create: Prisma.XOR<Prisma.UserCreateWithoutReportedIntakeItemsInput, Prisma.UserUncheckedCreateWithoutReportedIntakeItemsInput>
+  where?: Prisma.UserWhereInput
+}
+
+export type UserUpdateToOneWithWhereWithoutReportedIntakeItemsInput = {
+  where?: Prisma.UserWhereInput
+  data: Prisma.XOR<Prisma.UserUpdateWithoutReportedIntakeItemsInput, Prisma.UserUncheckedUpdateWithoutReportedIntakeItemsInput>
+}
+
+export type UserUpdateWithoutReportedIntakeItemsInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  username?: Prisma.StringFieldUpdateOperationsInput | string
+  passwordHash?: Prisma.StringFieldUpdateOperationsInput | string
+  name?: Prisma.StringFieldUpdateOperationsInput | string
+  avatar?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  status?: Prisma.EnumUserStatusFieldUpdateOperationsInput | $Enums.UserStatus
+  locale?: Prisma.EnumLocaleFieldUpdateOperationsInput | $Enums.Locale
+  themeMode?: Prisma.EnumThemeModeFieldUpdateOperationsInput | $Enums.ThemeMode
+  lastLoginAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  createdById?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  updatedById?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  deletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  sessions?: Prisma.SessionUpdateManyWithoutUserNestedInput
+  organizations?: Prisma.OrganizationUpdateManyWithoutOwnerNestedInput
+  memberships?: Prisma.OrganizationMemberUpdateManyWithoutUserNestedInput
+  ownedSpaces?: Prisma.SpaceUpdateManyWithoutOwnerNestedInput
+  spaceMemberships?: Prisma.SpaceMemberUpdateManyWithoutUserNestedInput
+  ownedVersions?: Prisma.VersionUpdateManyWithoutOwnerNestedInput
+  ownedRequirements?: Prisma.RequirementUpdateManyWithoutOwnerNestedInput
+  uploadedAttachments?: Prisma.AttachmentUpdateManyWithoutUploadedByNestedInput
+  publishedWorkflowVersions?: Prisma.WorkflowVersionUpdateManyWithoutPublishedByNestedInput
+  objectParticipants?: Prisma.ObjectParticipantUpdateManyWithoutUserNestedInput
+  assignedIntakeItems?: Prisma.IntakeItemUpdateManyWithoutAssigneeNestedInput
+  reportedWorkItems?: Prisma.WorkItemUpdateManyWithoutReporterNestedInput
+  assignedWorkItems?: Prisma.WorkItemUpdateManyWithoutAssigneeNestedInput
+  regressedBugDetails?: Prisma.BugDetailUpdateManyWithoutRegressionByNestedInput
+  authoredComments?: Prisma.CommentUpdateManyWithoutAuthorNestedInput
+  actedTimelineEvents?: Prisma.TimelineEventUpdateManyWithoutActorNestedInput
+  actedAuditLogs?: Prisma.AuditLogUpdateManyWithoutActorNestedInput
+}
+
+export type UserUncheckedUpdateWithoutReportedIntakeItemsInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  username?: Prisma.StringFieldUpdateOperationsInput | string
+  passwordHash?: Prisma.StringFieldUpdateOperationsInput | string
+  name?: Prisma.StringFieldUpdateOperationsInput | string
+  avatar?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  status?: Prisma.EnumUserStatusFieldUpdateOperationsInput | $Enums.UserStatus
+  locale?: Prisma.EnumLocaleFieldUpdateOperationsInput | $Enums.Locale
+  themeMode?: Prisma.EnumThemeModeFieldUpdateOperationsInput | $Enums.ThemeMode
+  lastLoginAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  createdById?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  updatedById?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  deletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  sessions?: Prisma.SessionUncheckedUpdateManyWithoutUserNestedInput
+  organizations?: Prisma.OrganizationUncheckedUpdateManyWithoutOwnerNestedInput
+  memberships?: Prisma.OrganizationMemberUncheckedUpdateManyWithoutUserNestedInput
+  ownedSpaces?: Prisma.SpaceUncheckedUpdateManyWithoutOwnerNestedInput
+  spaceMemberships?: Prisma.SpaceMemberUncheckedUpdateManyWithoutUserNestedInput
+  ownedVersions?: Prisma.VersionUncheckedUpdateManyWithoutOwnerNestedInput
+  ownedRequirements?: Prisma.RequirementUncheckedUpdateManyWithoutOwnerNestedInput
+  uploadedAttachments?: Prisma.AttachmentUncheckedUpdateManyWithoutUploadedByNestedInput
+  publishedWorkflowVersions?: Prisma.WorkflowVersionUncheckedUpdateManyWithoutPublishedByNestedInput
+  objectParticipants?: Prisma.ObjectParticipantUncheckedUpdateManyWithoutUserNestedInput
+  assignedIntakeItems?: Prisma.IntakeItemUncheckedUpdateManyWithoutAssigneeNestedInput
+  reportedWorkItems?: Prisma.WorkItemUncheckedUpdateManyWithoutReporterNestedInput
+  assignedWorkItems?: Prisma.WorkItemUncheckedUpdateManyWithoutAssigneeNestedInput
+  regressedBugDetails?: Prisma.BugDetailUncheckedUpdateManyWithoutRegressionByNestedInput
+  authoredComments?: Prisma.CommentUncheckedUpdateManyWithoutAuthorNestedInput
+  actedTimelineEvents?: Prisma.TimelineEventUncheckedUpdateManyWithoutActorNestedInput
+  actedAuditLogs?: Prisma.AuditLogUncheckedUpdateManyWithoutActorNestedInput
+}
+
+export type UserUpsertWithoutAssignedIntakeItemsInput = {
+  update: Prisma.XOR<Prisma.UserUpdateWithoutAssignedIntakeItemsInput, Prisma.UserUncheckedUpdateWithoutAssignedIntakeItemsInput>
+  create: Prisma.XOR<Prisma.UserCreateWithoutAssignedIntakeItemsInput, Prisma.UserUncheckedCreateWithoutAssignedIntakeItemsInput>
+  where?: Prisma.UserWhereInput
+}
+
+export type UserUpdateToOneWithWhereWithoutAssignedIntakeItemsInput = {
+  where?: Prisma.UserWhereInput
+  data: Prisma.XOR<Prisma.UserUpdateWithoutAssignedIntakeItemsInput, Prisma.UserUncheckedUpdateWithoutAssignedIntakeItemsInput>
+}
+
+export type UserUpdateWithoutAssignedIntakeItemsInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  username?: Prisma.StringFieldUpdateOperationsInput | string
+  passwordHash?: Prisma.StringFieldUpdateOperationsInput | string
+  name?: Prisma.StringFieldUpdateOperationsInput | string
+  avatar?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  status?: Prisma.EnumUserStatusFieldUpdateOperationsInput | $Enums.UserStatus
+  locale?: Prisma.EnumLocaleFieldUpdateOperationsInput | $Enums.Locale
+  themeMode?: Prisma.EnumThemeModeFieldUpdateOperationsInput | $Enums.ThemeMode
+  lastLoginAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  createdById?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  updatedById?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  deletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  sessions?: Prisma.SessionUpdateManyWithoutUserNestedInput
+  organizations?: Prisma.OrganizationUpdateManyWithoutOwnerNestedInput
+  memberships?: Prisma.OrganizationMemberUpdateManyWithoutUserNestedInput
+  ownedSpaces?: Prisma.SpaceUpdateManyWithoutOwnerNestedInput
+  spaceMemberships?: Prisma.SpaceMemberUpdateManyWithoutUserNestedInput
+  ownedVersions?: Prisma.VersionUpdateManyWithoutOwnerNestedInput
+  ownedRequirements?: Prisma.RequirementUpdateManyWithoutOwnerNestedInput
+  uploadedAttachments?: Prisma.AttachmentUpdateManyWithoutUploadedByNestedInput
+  publishedWorkflowVersions?: Prisma.WorkflowVersionUpdateManyWithoutPublishedByNestedInput
+  objectParticipants?: Prisma.ObjectParticipantUpdateManyWithoutUserNestedInput
+  reportedIntakeItems?: Prisma.IntakeItemUpdateManyWithoutReporterNestedInput
+  reportedWorkItems?: Prisma.WorkItemUpdateManyWithoutReporterNestedInput
+  assignedWorkItems?: Prisma.WorkItemUpdateManyWithoutAssigneeNestedInput
+  regressedBugDetails?: Prisma.BugDetailUpdateManyWithoutRegressionByNestedInput
+  authoredComments?: Prisma.CommentUpdateManyWithoutAuthorNestedInput
+  actedTimelineEvents?: Prisma.TimelineEventUpdateManyWithoutActorNestedInput
+  actedAuditLogs?: Prisma.AuditLogUpdateManyWithoutActorNestedInput
+}
+
+export type UserUncheckedUpdateWithoutAssignedIntakeItemsInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  username?: Prisma.StringFieldUpdateOperationsInput | string
+  passwordHash?: Prisma.StringFieldUpdateOperationsInput | string
+  name?: Prisma.StringFieldUpdateOperationsInput | string
+  avatar?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  status?: Prisma.EnumUserStatusFieldUpdateOperationsInput | $Enums.UserStatus
+  locale?: Prisma.EnumLocaleFieldUpdateOperationsInput | $Enums.Locale
+  themeMode?: Prisma.EnumThemeModeFieldUpdateOperationsInput | $Enums.ThemeMode
+  lastLoginAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  createdById?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  updatedById?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  deletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  sessions?: Prisma.SessionUncheckedUpdateManyWithoutUserNestedInput
+  organizations?: Prisma.OrganizationUncheckedUpdateManyWithoutOwnerNestedInput
+  memberships?: Prisma.OrganizationMemberUncheckedUpdateManyWithoutUserNestedInput
+  ownedSpaces?: Prisma.SpaceUncheckedUpdateManyWithoutOwnerNestedInput
+  spaceMemberships?: Prisma.SpaceMemberUncheckedUpdateManyWithoutUserNestedInput
+  ownedVersions?: Prisma.VersionUncheckedUpdateManyWithoutOwnerNestedInput
+  ownedRequirements?: Prisma.RequirementUncheckedUpdateManyWithoutOwnerNestedInput
+  uploadedAttachments?: Prisma.AttachmentUncheckedUpdateManyWithoutUploadedByNestedInput
+  publishedWorkflowVersions?: Prisma.WorkflowVersionUncheckedUpdateManyWithoutPublishedByNestedInput
+  objectParticipants?: Prisma.ObjectParticipantUncheckedUpdateManyWithoutUserNestedInput
+  reportedIntakeItems?: Prisma.IntakeItemUncheckedUpdateManyWithoutReporterNestedInput
+  reportedWorkItems?: Prisma.WorkItemUncheckedUpdateManyWithoutReporterNestedInput
+  assignedWorkItems?: Prisma.WorkItemUncheckedUpdateManyWithoutAssigneeNestedInput
+  regressedBugDetails?: Prisma.BugDetailUncheckedUpdateManyWithoutRegressionByNestedInput
+  authoredComments?: Prisma.CommentUncheckedUpdateManyWithoutAuthorNestedInput
+  actedTimelineEvents?: Prisma.TimelineEventUncheckedUpdateManyWithoutActorNestedInput
+  actedAuditLogs?: Prisma.AuditLogUncheckedUpdateManyWithoutActorNestedInput
+}
+
+export type UserCreateWithoutAssignedWorkItemsInput = {
+  id: string
+  username: string
+  passwordHash: string
+  name: string
+  avatar?: string | null
+  status?: $Enums.UserStatus
+  locale?: $Enums.Locale
+  themeMode?: $Enums.ThemeMode
+  lastLoginAt?: Date | string | null
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  createdById?: string | null
+  updatedById?: string | null
+  deletedAt?: Date | string | null
+  sessions?: Prisma.SessionCreateNestedManyWithoutUserInput
+  organizations?: Prisma.OrganizationCreateNestedManyWithoutOwnerInput
+  memberships?: Prisma.OrganizationMemberCreateNestedManyWithoutUserInput
+  ownedSpaces?: Prisma.SpaceCreateNestedManyWithoutOwnerInput
+  spaceMemberships?: Prisma.SpaceMemberCreateNestedManyWithoutUserInput
+  ownedVersions?: Prisma.VersionCreateNestedManyWithoutOwnerInput
+  ownedRequirements?: Prisma.RequirementCreateNestedManyWithoutOwnerInput
+  uploadedAttachments?: Prisma.AttachmentCreateNestedManyWithoutUploadedByInput
+  publishedWorkflowVersions?: Prisma.WorkflowVersionCreateNestedManyWithoutPublishedByInput
+  objectParticipants?: Prisma.ObjectParticipantCreateNestedManyWithoutUserInput
+  reportedIntakeItems?: Prisma.IntakeItemCreateNestedManyWithoutReporterInput
+  assignedIntakeItems?: Prisma.IntakeItemCreateNestedManyWithoutAssigneeInput
+  reportedWorkItems?: Prisma.WorkItemCreateNestedManyWithoutReporterInput
+  regressedBugDetails?: Prisma.BugDetailCreateNestedManyWithoutRegressionByInput
+  authoredComments?: Prisma.CommentCreateNestedManyWithoutAuthorInput
+  actedTimelineEvents?: Prisma.TimelineEventCreateNestedManyWithoutActorInput
+  actedAuditLogs?: Prisma.AuditLogCreateNestedManyWithoutActorInput
+}
+
+export type UserUncheckedCreateWithoutAssignedWorkItemsInput = {
+  id: string
+  username: string
+  passwordHash: string
+  name: string
+  avatar?: string | null
+  status?: $Enums.UserStatus
+  locale?: $Enums.Locale
+  themeMode?: $Enums.ThemeMode
+  lastLoginAt?: Date | string | null
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  createdById?: string | null
+  updatedById?: string | null
+  deletedAt?: Date | string | null
+  sessions?: Prisma.SessionUncheckedCreateNestedManyWithoutUserInput
+  organizations?: Prisma.OrganizationUncheckedCreateNestedManyWithoutOwnerInput
+  memberships?: Prisma.OrganizationMemberUncheckedCreateNestedManyWithoutUserInput
+  ownedSpaces?: Prisma.SpaceUncheckedCreateNestedManyWithoutOwnerInput
+  spaceMemberships?: Prisma.SpaceMemberUncheckedCreateNestedManyWithoutUserInput
+  ownedVersions?: Prisma.VersionUncheckedCreateNestedManyWithoutOwnerInput
+  ownedRequirements?: Prisma.RequirementUncheckedCreateNestedManyWithoutOwnerInput
+  uploadedAttachments?: Prisma.AttachmentUncheckedCreateNestedManyWithoutUploadedByInput
+  publishedWorkflowVersions?: Prisma.WorkflowVersionUncheckedCreateNestedManyWithoutPublishedByInput
+  objectParticipants?: Prisma.ObjectParticipantUncheckedCreateNestedManyWithoutUserInput
+  reportedIntakeItems?: Prisma.IntakeItemUncheckedCreateNestedManyWithoutReporterInput
+  assignedIntakeItems?: Prisma.IntakeItemUncheckedCreateNestedManyWithoutAssigneeInput
+  reportedWorkItems?: Prisma.WorkItemUncheckedCreateNestedManyWithoutReporterInput
+  regressedBugDetails?: Prisma.BugDetailUncheckedCreateNestedManyWithoutRegressionByInput
+  authoredComments?: Prisma.CommentUncheckedCreateNestedManyWithoutAuthorInput
+  actedTimelineEvents?: Prisma.TimelineEventUncheckedCreateNestedManyWithoutActorInput
+  actedAuditLogs?: Prisma.AuditLogUncheckedCreateNestedManyWithoutActorInput
+}
+
+export type UserCreateOrConnectWithoutAssignedWorkItemsInput = {
+  where: Prisma.UserWhereUniqueInput
+  create: Prisma.XOR<Prisma.UserCreateWithoutAssignedWorkItemsInput, Prisma.UserUncheckedCreateWithoutAssignedWorkItemsInput>
+}
+
+export type UserCreateWithoutReportedWorkItemsInput = {
+  id: string
+  username: string
+  passwordHash: string
+  name: string
+  avatar?: string | null
+  status?: $Enums.UserStatus
+  locale?: $Enums.Locale
+  themeMode?: $Enums.ThemeMode
+  lastLoginAt?: Date | string | null
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  createdById?: string | null
+  updatedById?: string | null
+  deletedAt?: Date | string | null
+  sessions?: Prisma.SessionCreateNestedManyWithoutUserInput
+  organizations?: Prisma.OrganizationCreateNestedManyWithoutOwnerInput
+  memberships?: Prisma.OrganizationMemberCreateNestedManyWithoutUserInput
+  ownedSpaces?: Prisma.SpaceCreateNestedManyWithoutOwnerInput
+  spaceMemberships?: Prisma.SpaceMemberCreateNestedManyWithoutUserInput
+  ownedVersions?: Prisma.VersionCreateNestedManyWithoutOwnerInput
+  ownedRequirements?: Prisma.RequirementCreateNestedManyWithoutOwnerInput
+  uploadedAttachments?: Prisma.AttachmentCreateNestedManyWithoutUploadedByInput
+  publishedWorkflowVersions?: Prisma.WorkflowVersionCreateNestedManyWithoutPublishedByInput
+  objectParticipants?: Prisma.ObjectParticipantCreateNestedManyWithoutUserInput
+  reportedIntakeItems?: Prisma.IntakeItemCreateNestedManyWithoutReporterInput
+  assignedIntakeItems?: Prisma.IntakeItemCreateNestedManyWithoutAssigneeInput
+  assignedWorkItems?: Prisma.WorkItemCreateNestedManyWithoutAssigneeInput
+  regressedBugDetails?: Prisma.BugDetailCreateNestedManyWithoutRegressionByInput
+  authoredComments?: Prisma.CommentCreateNestedManyWithoutAuthorInput
+  actedTimelineEvents?: Prisma.TimelineEventCreateNestedManyWithoutActorInput
+  actedAuditLogs?: Prisma.AuditLogCreateNestedManyWithoutActorInput
+}
+
+export type UserUncheckedCreateWithoutReportedWorkItemsInput = {
+  id: string
+  username: string
+  passwordHash: string
+  name: string
+  avatar?: string | null
+  status?: $Enums.UserStatus
+  locale?: $Enums.Locale
+  themeMode?: $Enums.ThemeMode
+  lastLoginAt?: Date | string | null
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  createdById?: string | null
+  updatedById?: string | null
+  deletedAt?: Date | string | null
+  sessions?: Prisma.SessionUncheckedCreateNestedManyWithoutUserInput
+  organizations?: Prisma.OrganizationUncheckedCreateNestedManyWithoutOwnerInput
+  memberships?: Prisma.OrganizationMemberUncheckedCreateNestedManyWithoutUserInput
+  ownedSpaces?: Prisma.SpaceUncheckedCreateNestedManyWithoutOwnerInput
+  spaceMemberships?: Prisma.SpaceMemberUncheckedCreateNestedManyWithoutUserInput
+  ownedVersions?: Prisma.VersionUncheckedCreateNestedManyWithoutOwnerInput
+  ownedRequirements?: Prisma.RequirementUncheckedCreateNestedManyWithoutOwnerInput
+  uploadedAttachments?: Prisma.AttachmentUncheckedCreateNestedManyWithoutUploadedByInput
+  publishedWorkflowVersions?: Prisma.WorkflowVersionUncheckedCreateNestedManyWithoutPublishedByInput
+  objectParticipants?: Prisma.ObjectParticipantUncheckedCreateNestedManyWithoutUserInput
+  reportedIntakeItems?: Prisma.IntakeItemUncheckedCreateNestedManyWithoutReporterInput
+  assignedIntakeItems?: Prisma.IntakeItemUncheckedCreateNestedManyWithoutAssigneeInput
+  assignedWorkItems?: Prisma.WorkItemUncheckedCreateNestedManyWithoutAssigneeInput
+  regressedBugDetails?: Prisma.BugDetailUncheckedCreateNestedManyWithoutRegressionByInput
+  authoredComments?: Prisma.CommentUncheckedCreateNestedManyWithoutAuthorInput
+  actedTimelineEvents?: Prisma.TimelineEventUncheckedCreateNestedManyWithoutActorInput
+  actedAuditLogs?: Prisma.AuditLogUncheckedCreateNestedManyWithoutActorInput
+}
+
+export type UserCreateOrConnectWithoutReportedWorkItemsInput = {
+  where: Prisma.UserWhereUniqueInput
+  create: Prisma.XOR<Prisma.UserCreateWithoutReportedWorkItemsInput, Prisma.UserUncheckedCreateWithoutReportedWorkItemsInput>
+}
+
+export type UserUpsertWithoutAssignedWorkItemsInput = {
+  update: Prisma.XOR<Prisma.UserUpdateWithoutAssignedWorkItemsInput, Prisma.UserUncheckedUpdateWithoutAssignedWorkItemsInput>
+  create: Prisma.XOR<Prisma.UserCreateWithoutAssignedWorkItemsInput, Prisma.UserUncheckedCreateWithoutAssignedWorkItemsInput>
+  where?: Prisma.UserWhereInput
+}
+
+export type UserUpdateToOneWithWhereWithoutAssignedWorkItemsInput = {
+  where?: Prisma.UserWhereInput
+  data: Prisma.XOR<Prisma.UserUpdateWithoutAssignedWorkItemsInput, Prisma.UserUncheckedUpdateWithoutAssignedWorkItemsInput>
+}
+
+export type UserUpdateWithoutAssignedWorkItemsInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  username?: Prisma.StringFieldUpdateOperationsInput | string
+  passwordHash?: Prisma.StringFieldUpdateOperationsInput | string
+  name?: Prisma.StringFieldUpdateOperationsInput | string
+  avatar?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  status?: Prisma.EnumUserStatusFieldUpdateOperationsInput | $Enums.UserStatus
+  locale?: Prisma.EnumLocaleFieldUpdateOperationsInput | $Enums.Locale
+  themeMode?: Prisma.EnumThemeModeFieldUpdateOperationsInput | $Enums.ThemeMode
+  lastLoginAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  createdById?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  updatedById?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  deletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  sessions?: Prisma.SessionUpdateManyWithoutUserNestedInput
+  organizations?: Prisma.OrganizationUpdateManyWithoutOwnerNestedInput
+  memberships?: Prisma.OrganizationMemberUpdateManyWithoutUserNestedInput
+  ownedSpaces?: Prisma.SpaceUpdateManyWithoutOwnerNestedInput
+  spaceMemberships?: Prisma.SpaceMemberUpdateManyWithoutUserNestedInput
+  ownedVersions?: Prisma.VersionUpdateManyWithoutOwnerNestedInput
+  ownedRequirements?: Prisma.RequirementUpdateManyWithoutOwnerNestedInput
+  uploadedAttachments?: Prisma.AttachmentUpdateManyWithoutUploadedByNestedInput
+  publishedWorkflowVersions?: Prisma.WorkflowVersionUpdateManyWithoutPublishedByNestedInput
+  objectParticipants?: Prisma.ObjectParticipantUpdateManyWithoutUserNestedInput
+  reportedIntakeItems?: Prisma.IntakeItemUpdateManyWithoutReporterNestedInput
+  assignedIntakeItems?: Prisma.IntakeItemUpdateManyWithoutAssigneeNestedInput
+  reportedWorkItems?: Prisma.WorkItemUpdateManyWithoutReporterNestedInput
+  regressedBugDetails?: Prisma.BugDetailUpdateManyWithoutRegressionByNestedInput
+  authoredComments?: Prisma.CommentUpdateManyWithoutAuthorNestedInput
+  actedTimelineEvents?: Prisma.TimelineEventUpdateManyWithoutActorNestedInput
+  actedAuditLogs?: Prisma.AuditLogUpdateManyWithoutActorNestedInput
+}
+
+export type UserUncheckedUpdateWithoutAssignedWorkItemsInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  username?: Prisma.StringFieldUpdateOperationsInput | string
+  passwordHash?: Prisma.StringFieldUpdateOperationsInput | string
+  name?: Prisma.StringFieldUpdateOperationsInput | string
+  avatar?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  status?: Prisma.EnumUserStatusFieldUpdateOperationsInput | $Enums.UserStatus
+  locale?: Prisma.EnumLocaleFieldUpdateOperationsInput | $Enums.Locale
+  themeMode?: Prisma.EnumThemeModeFieldUpdateOperationsInput | $Enums.ThemeMode
+  lastLoginAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  createdById?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  updatedById?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  deletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  sessions?: Prisma.SessionUncheckedUpdateManyWithoutUserNestedInput
+  organizations?: Prisma.OrganizationUncheckedUpdateManyWithoutOwnerNestedInput
+  memberships?: Prisma.OrganizationMemberUncheckedUpdateManyWithoutUserNestedInput
+  ownedSpaces?: Prisma.SpaceUncheckedUpdateManyWithoutOwnerNestedInput
+  spaceMemberships?: Prisma.SpaceMemberUncheckedUpdateManyWithoutUserNestedInput
+  ownedVersions?: Prisma.VersionUncheckedUpdateManyWithoutOwnerNestedInput
+  ownedRequirements?: Prisma.RequirementUncheckedUpdateManyWithoutOwnerNestedInput
+  uploadedAttachments?: Prisma.AttachmentUncheckedUpdateManyWithoutUploadedByNestedInput
+  publishedWorkflowVersions?: Prisma.WorkflowVersionUncheckedUpdateManyWithoutPublishedByNestedInput
+  objectParticipants?: Prisma.ObjectParticipantUncheckedUpdateManyWithoutUserNestedInput
+  reportedIntakeItems?: Prisma.IntakeItemUncheckedUpdateManyWithoutReporterNestedInput
+  assignedIntakeItems?: Prisma.IntakeItemUncheckedUpdateManyWithoutAssigneeNestedInput
+  reportedWorkItems?: Prisma.WorkItemUncheckedUpdateManyWithoutReporterNestedInput
+  regressedBugDetails?: Prisma.BugDetailUncheckedUpdateManyWithoutRegressionByNestedInput
+  authoredComments?: Prisma.CommentUncheckedUpdateManyWithoutAuthorNestedInput
+  actedTimelineEvents?: Prisma.TimelineEventUncheckedUpdateManyWithoutActorNestedInput
+  actedAuditLogs?: Prisma.AuditLogUncheckedUpdateManyWithoutActorNestedInput
+}
+
+export type UserUpsertWithoutReportedWorkItemsInput = {
+  update: Prisma.XOR<Prisma.UserUpdateWithoutReportedWorkItemsInput, Prisma.UserUncheckedUpdateWithoutReportedWorkItemsInput>
+  create: Prisma.XOR<Prisma.UserCreateWithoutReportedWorkItemsInput, Prisma.UserUncheckedCreateWithoutReportedWorkItemsInput>
+  where?: Prisma.UserWhereInput
+}
+
+export type UserUpdateToOneWithWhereWithoutReportedWorkItemsInput = {
+  where?: Prisma.UserWhereInput
+  data: Prisma.XOR<Prisma.UserUpdateWithoutReportedWorkItemsInput, Prisma.UserUncheckedUpdateWithoutReportedWorkItemsInput>
+}
+
+export type UserUpdateWithoutReportedWorkItemsInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  username?: Prisma.StringFieldUpdateOperationsInput | string
+  passwordHash?: Prisma.StringFieldUpdateOperationsInput | string
+  name?: Prisma.StringFieldUpdateOperationsInput | string
+  avatar?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  status?: Prisma.EnumUserStatusFieldUpdateOperationsInput | $Enums.UserStatus
+  locale?: Prisma.EnumLocaleFieldUpdateOperationsInput | $Enums.Locale
+  themeMode?: Prisma.EnumThemeModeFieldUpdateOperationsInput | $Enums.ThemeMode
+  lastLoginAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  createdById?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  updatedById?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  deletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  sessions?: Prisma.SessionUpdateManyWithoutUserNestedInput
+  organizations?: Prisma.OrganizationUpdateManyWithoutOwnerNestedInput
+  memberships?: Prisma.OrganizationMemberUpdateManyWithoutUserNestedInput
+  ownedSpaces?: Prisma.SpaceUpdateManyWithoutOwnerNestedInput
+  spaceMemberships?: Prisma.SpaceMemberUpdateManyWithoutUserNestedInput
+  ownedVersions?: Prisma.VersionUpdateManyWithoutOwnerNestedInput
+  ownedRequirements?: Prisma.RequirementUpdateManyWithoutOwnerNestedInput
+  uploadedAttachments?: Prisma.AttachmentUpdateManyWithoutUploadedByNestedInput
+  publishedWorkflowVersions?: Prisma.WorkflowVersionUpdateManyWithoutPublishedByNestedInput
+  objectParticipants?: Prisma.ObjectParticipantUpdateManyWithoutUserNestedInput
+  reportedIntakeItems?: Prisma.IntakeItemUpdateManyWithoutReporterNestedInput
+  assignedIntakeItems?: Prisma.IntakeItemUpdateManyWithoutAssigneeNestedInput
+  assignedWorkItems?: Prisma.WorkItemUpdateManyWithoutAssigneeNestedInput
+  regressedBugDetails?: Prisma.BugDetailUpdateManyWithoutRegressionByNestedInput
+  authoredComments?: Prisma.CommentUpdateManyWithoutAuthorNestedInput
+  actedTimelineEvents?: Prisma.TimelineEventUpdateManyWithoutActorNestedInput
+  actedAuditLogs?: Prisma.AuditLogUpdateManyWithoutActorNestedInput
+}
+
+export type UserUncheckedUpdateWithoutReportedWorkItemsInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  username?: Prisma.StringFieldUpdateOperationsInput | string
+  passwordHash?: Prisma.StringFieldUpdateOperationsInput | string
+  name?: Prisma.StringFieldUpdateOperationsInput | string
+  avatar?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  status?: Prisma.EnumUserStatusFieldUpdateOperationsInput | $Enums.UserStatus
+  locale?: Prisma.EnumLocaleFieldUpdateOperationsInput | $Enums.Locale
+  themeMode?: Prisma.EnumThemeModeFieldUpdateOperationsInput | $Enums.ThemeMode
+  lastLoginAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  createdById?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  updatedById?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  deletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  sessions?: Prisma.SessionUncheckedUpdateManyWithoutUserNestedInput
+  organizations?: Prisma.OrganizationUncheckedUpdateManyWithoutOwnerNestedInput
+  memberships?: Prisma.OrganizationMemberUncheckedUpdateManyWithoutUserNestedInput
+  ownedSpaces?: Prisma.SpaceUncheckedUpdateManyWithoutOwnerNestedInput
+  spaceMemberships?: Prisma.SpaceMemberUncheckedUpdateManyWithoutUserNestedInput
+  ownedVersions?: Prisma.VersionUncheckedUpdateManyWithoutOwnerNestedInput
+  ownedRequirements?: Prisma.RequirementUncheckedUpdateManyWithoutOwnerNestedInput
+  uploadedAttachments?: Prisma.AttachmentUncheckedUpdateManyWithoutUploadedByNestedInput
+  publishedWorkflowVersions?: Prisma.WorkflowVersionUncheckedUpdateManyWithoutPublishedByNestedInput
+  objectParticipants?: Prisma.ObjectParticipantUncheckedUpdateManyWithoutUserNestedInput
+  reportedIntakeItems?: Prisma.IntakeItemUncheckedUpdateManyWithoutReporterNestedInput
+  assignedIntakeItems?: Prisma.IntakeItemUncheckedUpdateManyWithoutAssigneeNestedInput
+  assignedWorkItems?: Prisma.WorkItemUncheckedUpdateManyWithoutAssigneeNestedInput
+  regressedBugDetails?: Prisma.BugDetailUncheckedUpdateManyWithoutRegressionByNestedInput
+  authoredComments?: Prisma.CommentUncheckedUpdateManyWithoutAuthorNestedInput
+  actedTimelineEvents?: Prisma.TimelineEventUncheckedUpdateManyWithoutActorNestedInput
+  actedAuditLogs?: Prisma.AuditLogUncheckedUpdateManyWithoutActorNestedInput
+}
+
+export type UserCreateWithoutRegressedBugDetailsInput = {
+  id: string
+  username: string
+  passwordHash: string
+  name: string
+  avatar?: string | null
+  status?: $Enums.UserStatus
+  locale?: $Enums.Locale
+  themeMode?: $Enums.ThemeMode
+  lastLoginAt?: Date | string | null
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  createdById?: string | null
+  updatedById?: string | null
+  deletedAt?: Date | string | null
+  sessions?: Prisma.SessionCreateNestedManyWithoutUserInput
+  organizations?: Prisma.OrganizationCreateNestedManyWithoutOwnerInput
+  memberships?: Prisma.OrganizationMemberCreateNestedManyWithoutUserInput
+  ownedSpaces?: Prisma.SpaceCreateNestedManyWithoutOwnerInput
+  spaceMemberships?: Prisma.SpaceMemberCreateNestedManyWithoutUserInput
+  ownedVersions?: Prisma.VersionCreateNestedManyWithoutOwnerInput
+  ownedRequirements?: Prisma.RequirementCreateNestedManyWithoutOwnerInput
+  uploadedAttachments?: Prisma.AttachmentCreateNestedManyWithoutUploadedByInput
+  publishedWorkflowVersions?: Prisma.WorkflowVersionCreateNestedManyWithoutPublishedByInput
+  objectParticipants?: Prisma.ObjectParticipantCreateNestedManyWithoutUserInput
+  reportedIntakeItems?: Prisma.IntakeItemCreateNestedManyWithoutReporterInput
+  assignedIntakeItems?: Prisma.IntakeItemCreateNestedManyWithoutAssigneeInput
+  reportedWorkItems?: Prisma.WorkItemCreateNestedManyWithoutReporterInput
+  assignedWorkItems?: Prisma.WorkItemCreateNestedManyWithoutAssigneeInput
+  authoredComments?: Prisma.CommentCreateNestedManyWithoutAuthorInput
+  actedTimelineEvents?: Prisma.TimelineEventCreateNestedManyWithoutActorInput
+  actedAuditLogs?: Prisma.AuditLogCreateNestedManyWithoutActorInput
+}
+
+export type UserUncheckedCreateWithoutRegressedBugDetailsInput = {
+  id: string
+  username: string
+  passwordHash: string
+  name: string
+  avatar?: string | null
+  status?: $Enums.UserStatus
+  locale?: $Enums.Locale
+  themeMode?: $Enums.ThemeMode
+  lastLoginAt?: Date | string | null
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  createdById?: string | null
+  updatedById?: string | null
+  deletedAt?: Date | string | null
+  sessions?: Prisma.SessionUncheckedCreateNestedManyWithoutUserInput
+  organizations?: Prisma.OrganizationUncheckedCreateNestedManyWithoutOwnerInput
+  memberships?: Prisma.OrganizationMemberUncheckedCreateNestedManyWithoutUserInput
+  ownedSpaces?: Prisma.SpaceUncheckedCreateNestedManyWithoutOwnerInput
+  spaceMemberships?: Prisma.SpaceMemberUncheckedCreateNestedManyWithoutUserInput
+  ownedVersions?: Prisma.VersionUncheckedCreateNestedManyWithoutOwnerInput
+  ownedRequirements?: Prisma.RequirementUncheckedCreateNestedManyWithoutOwnerInput
+  uploadedAttachments?: Prisma.AttachmentUncheckedCreateNestedManyWithoutUploadedByInput
+  publishedWorkflowVersions?: Prisma.WorkflowVersionUncheckedCreateNestedManyWithoutPublishedByInput
+  objectParticipants?: Prisma.ObjectParticipantUncheckedCreateNestedManyWithoutUserInput
+  reportedIntakeItems?: Prisma.IntakeItemUncheckedCreateNestedManyWithoutReporterInput
+  assignedIntakeItems?: Prisma.IntakeItemUncheckedCreateNestedManyWithoutAssigneeInput
+  reportedWorkItems?: Prisma.WorkItemUncheckedCreateNestedManyWithoutReporterInput
+  assignedWorkItems?: Prisma.WorkItemUncheckedCreateNestedManyWithoutAssigneeInput
+  authoredComments?: Prisma.CommentUncheckedCreateNestedManyWithoutAuthorInput
+  actedTimelineEvents?: Prisma.TimelineEventUncheckedCreateNestedManyWithoutActorInput
+  actedAuditLogs?: Prisma.AuditLogUncheckedCreateNestedManyWithoutActorInput
+}
+
+export type UserCreateOrConnectWithoutRegressedBugDetailsInput = {
+  where: Prisma.UserWhereUniqueInput
+  create: Prisma.XOR<Prisma.UserCreateWithoutRegressedBugDetailsInput, Prisma.UserUncheckedCreateWithoutRegressedBugDetailsInput>
+}
+
+export type UserUpsertWithoutRegressedBugDetailsInput = {
+  update: Prisma.XOR<Prisma.UserUpdateWithoutRegressedBugDetailsInput, Prisma.UserUncheckedUpdateWithoutRegressedBugDetailsInput>
+  create: Prisma.XOR<Prisma.UserCreateWithoutRegressedBugDetailsInput, Prisma.UserUncheckedCreateWithoutRegressedBugDetailsInput>
+  where?: Prisma.UserWhereInput
+}
+
+export type UserUpdateToOneWithWhereWithoutRegressedBugDetailsInput = {
+  where?: Prisma.UserWhereInput
+  data: Prisma.XOR<Prisma.UserUpdateWithoutRegressedBugDetailsInput, Prisma.UserUncheckedUpdateWithoutRegressedBugDetailsInput>
+}
+
+export type UserUpdateWithoutRegressedBugDetailsInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  username?: Prisma.StringFieldUpdateOperationsInput | string
+  passwordHash?: Prisma.StringFieldUpdateOperationsInput | string
+  name?: Prisma.StringFieldUpdateOperationsInput | string
+  avatar?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  status?: Prisma.EnumUserStatusFieldUpdateOperationsInput | $Enums.UserStatus
+  locale?: Prisma.EnumLocaleFieldUpdateOperationsInput | $Enums.Locale
+  themeMode?: Prisma.EnumThemeModeFieldUpdateOperationsInput | $Enums.ThemeMode
+  lastLoginAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  createdById?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  updatedById?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  deletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  sessions?: Prisma.SessionUpdateManyWithoutUserNestedInput
+  organizations?: Prisma.OrganizationUpdateManyWithoutOwnerNestedInput
+  memberships?: Prisma.OrganizationMemberUpdateManyWithoutUserNestedInput
+  ownedSpaces?: Prisma.SpaceUpdateManyWithoutOwnerNestedInput
+  spaceMemberships?: Prisma.SpaceMemberUpdateManyWithoutUserNestedInput
+  ownedVersions?: Prisma.VersionUpdateManyWithoutOwnerNestedInput
+  ownedRequirements?: Prisma.RequirementUpdateManyWithoutOwnerNestedInput
+  uploadedAttachments?: Prisma.AttachmentUpdateManyWithoutUploadedByNestedInput
+  publishedWorkflowVersions?: Prisma.WorkflowVersionUpdateManyWithoutPublishedByNestedInput
+  objectParticipants?: Prisma.ObjectParticipantUpdateManyWithoutUserNestedInput
+  reportedIntakeItems?: Prisma.IntakeItemUpdateManyWithoutReporterNestedInput
+  assignedIntakeItems?: Prisma.IntakeItemUpdateManyWithoutAssigneeNestedInput
+  reportedWorkItems?: Prisma.WorkItemUpdateManyWithoutReporterNestedInput
+  assignedWorkItems?: Prisma.WorkItemUpdateManyWithoutAssigneeNestedInput
+  authoredComments?: Prisma.CommentUpdateManyWithoutAuthorNestedInput
+  actedTimelineEvents?: Prisma.TimelineEventUpdateManyWithoutActorNestedInput
+  actedAuditLogs?: Prisma.AuditLogUpdateManyWithoutActorNestedInput
+}
+
+export type UserUncheckedUpdateWithoutRegressedBugDetailsInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  username?: Prisma.StringFieldUpdateOperationsInput | string
+  passwordHash?: Prisma.StringFieldUpdateOperationsInput | string
+  name?: Prisma.StringFieldUpdateOperationsInput | string
+  avatar?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  status?: Prisma.EnumUserStatusFieldUpdateOperationsInput | $Enums.UserStatus
+  locale?: Prisma.EnumLocaleFieldUpdateOperationsInput | $Enums.Locale
+  themeMode?: Prisma.EnumThemeModeFieldUpdateOperationsInput | $Enums.ThemeMode
+  lastLoginAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  createdById?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  updatedById?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  deletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  sessions?: Prisma.SessionUncheckedUpdateManyWithoutUserNestedInput
+  organizations?: Prisma.OrganizationUncheckedUpdateManyWithoutOwnerNestedInput
+  memberships?: Prisma.OrganizationMemberUncheckedUpdateManyWithoutUserNestedInput
+  ownedSpaces?: Prisma.SpaceUncheckedUpdateManyWithoutOwnerNestedInput
+  spaceMemberships?: Prisma.SpaceMemberUncheckedUpdateManyWithoutUserNestedInput
+  ownedVersions?: Prisma.VersionUncheckedUpdateManyWithoutOwnerNestedInput
+  ownedRequirements?: Prisma.RequirementUncheckedUpdateManyWithoutOwnerNestedInput
+  uploadedAttachments?: Prisma.AttachmentUncheckedUpdateManyWithoutUploadedByNestedInput
+  publishedWorkflowVersions?: Prisma.WorkflowVersionUncheckedUpdateManyWithoutPublishedByNestedInput
+  objectParticipants?: Prisma.ObjectParticipantUncheckedUpdateManyWithoutUserNestedInput
+  reportedIntakeItems?: Prisma.IntakeItemUncheckedUpdateManyWithoutReporterNestedInput
+  assignedIntakeItems?: Prisma.IntakeItemUncheckedUpdateManyWithoutAssigneeNestedInput
+  reportedWorkItems?: Prisma.WorkItemUncheckedUpdateManyWithoutReporterNestedInput
+  assignedWorkItems?: Prisma.WorkItemUncheckedUpdateManyWithoutAssigneeNestedInput
+  authoredComments?: Prisma.CommentUncheckedUpdateManyWithoutAuthorNestedInput
+  actedTimelineEvents?: Prisma.TimelineEventUncheckedUpdateManyWithoutActorNestedInput
+  actedAuditLogs?: Prisma.AuditLogUncheckedUpdateManyWithoutActorNestedInput
 }
 
 export type UserCreateWithoutUploadedAttachmentsInput = {
@@ -1627,6 +2787,14 @@ export type UserCreateWithoutUploadedAttachmentsInput = {
   ownedRequirements?: Prisma.RequirementCreateNestedManyWithoutOwnerInput
   publishedWorkflowVersions?: Prisma.WorkflowVersionCreateNestedManyWithoutPublishedByInput
   objectParticipants?: Prisma.ObjectParticipantCreateNestedManyWithoutUserInput
+  reportedIntakeItems?: Prisma.IntakeItemCreateNestedManyWithoutReporterInput
+  assignedIntakeItems?: Prisma.IntakeItemCreateNestedManyWithoutAssigneeInput
+  reportedWorkItems?: Prisma.WorkItemCreateNestedManyWithoutReporterInput
+  assignedWorkItems?: Prisma.WorkItemCreateNestedManyWithoutAssigneeInput
+  regressedBugDetails?: Prisma.BugDetailCreateNestedManyWithoutRegressionByInput
+  authoredComments?: Prisma.CommentCreateNestedManyWithoutAuthorInput
+  actedTimelineEvents?: Prisma.TimelineEventCreateNestedManyWithoutActorInput
+  actedAuditLogs?: Prisma.AuditLogCreateNestedManyWithoutActorInput
 }
 
 export type UserUncheckedCreateWithoutUploadedAttachmentsInput = {
@@ -1653,6 +2821,14 @@ export type UserUncheckedCreateWithoutUploadedAttachmentsInput = {
   ownedRequirements?: Prisma.RequirementUncheckedCreateNestedManyWithoutOwnerInput
   publishedWorkflowVersions?: Prisma.WorkflowVersionUncheckedCreateNestedManyWithoutPublishedByInput
   objectParticipants?: Prisma.ObjectParticipantUncheckedCreateNestedManyWithoutUserInput
+  reportedIntakeItems?: Prisma.IntakeItemUncheckedCreateNestedManyWithoutReporterInput
+  assignedIntakeItems?: Prisma.IntakeItemUncheckedCreateNestedManyWithoutAssigneeInput
+  reportedWorkItems?: Prisma.WorkItemUncheckedCreateNestedManyWithoutReporterInput
+  assignedWorkItems?: Prisma.WorkItemUncheckedCreateNestedManyWithoutAssigneeInput
+  regressedBugDetails?: Prisma.BugDetailUncheckedCreateNestedManyWithoutRegressionByInput
+  authoredComments?: Prisma.CommentUncheckedCreateNestedManyWithoutAuthorInput
+  actedTimelineEvents?: Prisma.TimelineEventUncheckedCreateNestedManyWithoutActorInput
+  actedAuditLogs?: Prisma.AuditLogUncheckedCreateNestedManyWithoutActorInput
 }
 
 export type UserCreateOrConnectWithoutUploadedAttachmentsInput = {
@@ -1695,6 +2871,14 @@ export type UserUpdateWithoutUploadedAttachmentsInput = {
   ownedRequirements?: Prisma.RequirementUpdateManyWithoutOwnerNestedInput
   publishedWorkflowVersions?: Prisma.WorkflowVersionUpdateManyWithoutPublishedByNestedInput
   objectParticipants?: Prisma.ObjectParticipantUpdateManyWithoutUserNestedInput
+  reportedIntakeItems?: Prisma.IntakeItemUpdateManyWithoutReporterNestedInput
+  assignedIntakeItems?: Prisma.IntakeItemUpdateManyWithoutAssigneeNestedInput
+  reportedWorkItems?: Prisma.WorkItemUpdateManyWithoutReporterNestedInput
+  assignedWorkItems?: Prisma.WorkItemUpdateManyWithoutAssigneeNestedInput
+  regressedBugDetails?: Prisma.BugDetailUpdateManyWithoutRegressionByNestedInput
+  authoredComments?: Prisma.CommentUpdateManyWithoutAuthorNestedInput
+  actedTimelineEvents?: Prisma.TimelineEventUpdateManyWithoutActorNestedInput
+  actedAuditLogs?: Prisma.AuditLogUpdateManyWithoutActorNestedInput
 }
 
 export type UserUncheckedUpdateWithoutUploadedAttachmentsInput = {
@@ -1721,6 +2905,14 @@ export type UserUncheckedUpdateWithoutUploadedAttachmentsInput = {
   ownedRequirements?: Prisma.RequirementUncheckedUpdateManyWithoutOwnerNestedInput
   publishedWorkflowVersions?: Prisma.WorkflowVersionUncheckedUpdateManyWithoutPublishedByNestedInput
   objectParticipants?: Prisma.ObjectParticipantUncheckedUpdateManyWithoutUserNestedInput
+  reportedIntakeItems?: Prisma.IntakeItemUncheckedUpdateManyWithoutReporterNestedInput
+  assignedIntakeItems?: Prisma.IntakeItemUncheckedUpdateManyWithoutAssigneeNestedInput
+  reportedWorkItems?: Prisma.WorkItemUncheckedUpdateManyWithoutReporterNestedInput
+  assignedWorkItems?: Prisma.WorkItemUncheckedUpdateManyWithoutAssigneeNestedInput
+  regressedBugDetails?: Prisma.BugDetailUncheckedUpdateManyWithoutRegressionByNestedInput
+  authoredComments?: Prisma.CommentUncheckedUpdateManyWithoutAuthorNestedInput
+  actedTimelineEvents?: Prisma.TimelineEventUncheckedUpdateManyWithoutActorNestedInput
+  actedAuditLogs?: Prisma.AuditLogUncheckedUpdateManyWithoutActorNestedInput
 }
 
 export type UserCreateWithoutPublishedWorkflowVersionsInput = {
@@ -1747,6 +2939,14 @@ export type UserCreateWithoutPublishedWorkflowVersionsInput = {
   ownedRequirements?: Prisma.RequirementCreateNestedManyWithoutOwnerInput
   uploadedAttachments?: Prisma.AttachmentCreateNestedManyWithoutUploadedByInput
   objectParticipants?: Prisma.ObjectParticipantCreateNestedManyWithoutUserInput
+  reportedIntakeItems?: Prisma.IntakeItemCreateNestedManyWithoutReporterInput
+  assignedIntakeItems?: Prisma.IntakeItemCreateNestedManyWithoutAssigneeInput
+  reportedWorkItems?: Prisma.WorkItemCreateNestedManyWithoutReporterInput
+  assignedWorkItems?: Prisma.WorkItemCreateNestedManyWithoutAssigneeInput
+  regressedBugDetails?: Prisma.BugDetailCreateNestedManyWithoutRegressionByInput
+  authoredComments?: Prisma.CommentCreateNestedManyWithoutAuthorInput
+  actedTimelineEvents?: Prisma.TimelineEventCreateNestedManyWithoutActorInput
+  actedAuditLogs?: Prisma.AuditLogCreateNestedManyWithoutActorInput
 }
 
 export type UserUncheckedCreateWithoutPublishedWorkflowVersionsInput = {
@@ -1773,6 +2973,14 @@ export type UserUncheckedCreateWithoutPublishedWorkflowVersionsInput = {
   ownedRequirements?: Prisma.RequirementUncheckedCreateNestedManyWithoutOwnerInput
   uploadedAttachments?: Prisma.AttachmentUncheckedCreateNestedManyWithoutUploadedByInput
   objectParticipants?: Prisma.ObjectParticipantUncheckedCreateNestedManyWithoutUserInput
+  reportedIntakeItems?: Prisma.IntakeItemUncheckedCreateNestedManyWithoutReporterInput
+  assignedIntakeItems?: Prisma.IntakeItemUncheckedCreateNestedManyWithoutAssigneeInput
+  reportedWorkItems?: Prisma.WorkItemUncheckedCreateNestedManyWithoutReporterInput
+  assignedWorkItems?: Prisma.WorkItemUncheckedCreateNestedManyWithoutAssigneeInput
+  regressedBugDetails?: Prisma.BugDetailUncheckedCreateNestedManyWithoutRegressionByInput
+  authoredComments?: Prisma.CommentUncheckedCreateNestedManyWithoutAuthorInput
+  actedTimelineEvents?: Prisma.TimelineEventUncheckedCreateNestedManyWithoutActorInput
+  actedAuditLogs?: Prisma.AuditLogUncheckedCreateNestedManyWithoutActorInput
 }
 
 export type UserCreateOrConnectWithoutPublishedWorkflowVersionsInput = {
@@ -1815,6 +3023,14 @@ export type UserUpdateWithoutPublishedWorkflowVersionsInput = {
   ownedRequirements?: Prisma.RequirementUpdateManyWithoutOwnerNestedInput
   uploadedAttachments?: Prisma.AttachmentUpdateManyWithoutUploadedByNestedInput
   objectParticipants?: Prisma.ObjectParticipantUpdateManyWithoutUserNestedInput
+  reportedIntakeItems?: Prisma.IntakeItemUpdateManyWithoutReporterNestedInput
+  assignedIntakeItems?: Prisma.IntakeItemUpdateManyWithoutAssigneeNestedInput
+  reportedWorkItems?: Prisma.WorkItemUpdateManyWithoutReporterNestedInput
+  assignedWorkItems?: Prisma.WorkItemUpdateManyWithoutAssigneeNestedInput
+  regressedBugDetails?: Prisma.BugDetailUpdateManyWithoutRegressionByNestedInput
+  authoredComments?: Prisma.CommentUpdateManyWithoutAuthorNestedInput
+  actedTimelineEvents?: Prisma.TimelineEventUpdateManyWithoutActorNestedInput
+  actedAuditLogs?: Prisma.AuditLogUpdateManyWithoutActorNestedInput
 }
 
 export type UserUncheckedUpdateWithoutPublishedWorkflowVersionsInput = {
@@ -1841,6 +3057,14 @@ export type UserUncheckedUpdateWithoutPublishedWorkflowVersionsInput = {
   ownedRequirements?: Prisma.RequirementUncheckedUpdateManyWithoutOwnerNestedInput
   uploadedAttachments?: Prisma.AttachmentUncheckedUpdateManyWithoutUploadedByNestedInput
   objectParticipants?: Prisma.ObjectParticipantUncheckedUpdateManyWithoutUserNestedInput
+  reportedIntakeItems?: Prisma.IntakeItemUncheckedUpdateManyWithoutReporterNestedInput
+  assignedIntakeItems?: Prisma.IntakeItemUncheckedUpdateManyWithoutAssigneeNestedInput
+  reportedWorkItems?: Prisma.WorkItemUncheckedUpdateManyWithoutReporterNestedInput
+  assignedWorkItems?: Prisma.WorkItemUncheckedUpdateManyWithoutAssigneeNestedInput
+  regressedBugDetails?: Prisma.BugDetailUncheckedUpdateManyWithoutRegressionByNestedInput
+  authoredComments?: Prisma.CommentUncheckedUpdateManyWithoutAuthorNestedInput
+  actedTimelineEvents?: Prisma.TimelineEventUncheckedUpdateManyWithoutActorNestedInput
+  actedAuditLogs?: Prisma.AuditLogUncheckedUpdateManyWithoutActorNestedInput
 }
 
 export type UserCreateWithoutObjectParticipantsInput = {
@@ -1867,6 +3091,14 @@ export type UserCreateWithoutObjectParticipantsInput = {
   ownedRequirements?: Prisma.RequirementCreateNestedManyWithoutOwnerInput
   uploadedAttachments?: Prisma.AttachmentCreateNestedManyWithoutUploadedByInput
   publishedWorkflowVersions?: Prisma.WorkflowVersionCreateNestedManyWithoutPublishedByInput
+  reportedIntakeItems?: Prisma.IntakeItemCreateNestedManyWithoutReporterInput
+  assignedIntakeItems?: Prisma.IntakeItemCreateNestedManyWithoutAssigneeInput
+  reportedWorkItems?: Prisma.WorkItemCreateNestedManyWithoutReporterInput
+  assignedWorkItems?: Prisma.WorkItemCreateNestedManyWithoutAssigneeInput
+  regressedBugDetails?: Prisma.BugDetailCreateNestedManyWithoutRegressionByInput
+  authoredComments?: Prisma.CommentCreateNestedManyWithoutAuthorInput
+  actedTimelineEvents?: Prisma.TimelineEventCreateNestedManyWithoutActorInput
+  actedAuditLogs?: Prisma.AuditLogCreateNestedManyWithoutActorInput
 }
 
 export type UserUncheckedCreateWithoutObjectParticipantsInput = {
@@ -1893,6 +3125,14 @@ export type UserUncheckedCreateWithoutObjectParticipantsInput = {
   ownedRequirements?: Prisma.RequirementUncheckedCreateNestedManyWithoutOwnerInput
   uploadedAttachments?: Prisma.AttachmentUncheckedCreateNestedManyWithoutUploadedByInput
   publishedWorkflowVersions?: Prisma.WorkflowVersionUncheckedCreateNestedManyWithoutPublishedByInput
+  reportedIntakeItems?: Prisma.IntakeItemUncheckedCreateNestedManyWithoutReporterInput
+  assignedIntakeItems?: Prisma.IntakeItemUncheckedCreateNestedManyWithoutAssigneeInput
+  reportedWorkItems?: Prisma.WorkItemUncheckedCreateNestedManyWithoutReporterInput
+  assignedWorkItems?: Prisma.WorkItemUncheckedCreateNestedManyWithoutAssigneeInput
+  regressedBugDetails?: Prisma.BugDetailUncheckedCreateNestedManyWithoutRegressionByInput
+  authoredComments?: Prisma.CommentUncheckedCreateNestedManyWithoutAuthorInput
+  actedTimelineEvents?: Prisma.TimelineEventUncheckedCreateNestedManyWithoutActorInput
+  actedAuditLogs?: Prisma.AuditLogUncheckedCreateNestedManyWithoutActorInput
 }
 
 export type UserCreateOrConnectWithoutObjectParticipantsInput = {
@@ -1935,6 +3175,14 @@ export type UserUpdateWithoutObjectParticipantsInput = {
   ownedRequirements?: Prisma.RequirementUpdateManyWithoutOwnerNestedInput
   uploadedAttachments?: Prisma.AttachmentUpdateManyWithoutUploadedByNestedInput
   publishedWorkflowVersions?: Prisma.WorkflowVersionUpdateManyWithoutPublishedByNestedInput
+  reportedIntakeItems?: Prisma.IntakeItemUpdateManyWithoutReporterNestedInput
+  assignedIntakeItems?: Prisma.IntakeItemUpdateManyWithoutAssigneeNestedInput
+  reportedWorkItems?: Prisma.WorkItemUpdateManyWithoutReporterNestedInput
+  assignedWorkItems?: Prisma.WorkItemUpdateManyWithoutAssigneeNestedInput
+  regressedBugDetails?: Prisma.BugDetailUpdateManyWithoutRegressionByNestedInput
+  authoredComments?: Prisma.CommentUpdateManyWithoutAuthorNestedInput
+  actedTimelineEvents?: Prisma.TimelineEventUpdateManyWithoutActorNestedInput
+  actedAuditLogs?: Prisma.AuditLogUpdateManyWithoutActorNestedInput
 }
 
 export type UserUncheckedUpdateWithoutObjectParticipantsInput = {
@@ -1961,6 +3209,470 @@ export type UserUncheckedUpdateWithoutObjectParticipantsInput = {
   ownedRequirements?: Prisma.RequirementUncheckedUpdateManyWithoutOwnerNestedInput
   uploadedAttachments?: Prisma.AttachmentUncheckedUpdateManyWithoutUploadedByNestedInput
   publishedWorkflowVersions?: Prisma.WorkflowVersionUncheckedUpdateManyWithoutPublishedByNestedInput
+  reportedIntakeItems?: Prisma.IntakeItemUncheckedUpdateManyWithoutReporterNestedInput
+  assignedIntakeItems?: Prisma.IntakeItemUncheckedUpdateManyWithoutAssigneeNestedInput
+  reportedWorkItems?: Prisma.WorkItemUncheckedUpdateManyWithoutReporterNestedInput
+  assignedWorkItems?: Prisma.WorkItemUncheckedUpdateManyWithoutAssigneeNestedInput
+  regressedBugDetails?: Prisma.BugDetailUncheckedUpdateManyWithoutRegressionByNestedInput
+  authoredComments?: Prisma.CommentUncheckedUpdateManyWithoutAuthorNestedInput
+  actedTimelineEvents?: Prisma.TimelineEventUncheckedUpdateManyWithoutActorNestedInput
+  actedAuditLogs?: Prisma.AuditLogUncheckedUpdateManyWithoutActorNestedInput
+}
+
+export type UserCreateWithoutAuthoredCommentsInput = {
+  id: string
+  username: string
+  passwordHash: string
+  name: string
+  avatar?: string | null
+  status?: $Enums.UserStatus
+  locale?: $Enums.Locale
+  themeMode?: $Enums.ThemeMode
+  lastLoginAt?: Date | string | null
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  createdById?: string | null
+  updatedById?: string | null
+  deletedAt?: Date | string | null
+  sessions?: Prisma.SessionCreateNestedManyWithoutUserInput
+  organizations?: Prisma.OrganizationCreateNestedManyWithoutOwnerInput
+  memberships?: Prisma.OrganizationMemberCreateNestedManyWithoutUserInput
+  ownedSpaces?: Prisma.SpaceCreateNestedManyWithoutOwnerInput
+  spaceMemberships?: Prisma.SpaceMemberCreateNestedManyWithoutUserInput
+  ownedVersions?: Prisma.VersionCreateNestedManyWithoutOwnerInput
+  ownedRequirements?: Prisma.RequirementCreateNestedManyWithoutOwnerInput
+  uploadedAttachments?: Prisma.AttachmentCreateNestedManyWithoutUploadedByInput
+  publishedWorkflowVersions?: Prisma.WorkflowVersionCreateNestedManyWithoutPublishedByInput
+  objectParticipants?: Prisma.ObjectParticipantCreateNestedManyWithoutUserInput
+  reportedIntakeItems?: Prisma.IntakeItemCreateNestedManyWithoutReporterInput
+  assignedIntakeItems?: Prisma.IntakeItemCreateNestedManyWithoutAssigneeInput
+  reportedWorkItems?: Prisma.WorkItemCreateNestedManyWithoutReporterInput
+  assignedWorkItems?: Prisma.WorkItemCreateNestedManyWithoutAssigneeInput
+  regressedBugDetails?: Prisma.BugDetailCreateNestedManyWithoutRegressionByInput
+  actedTimelineEvents?: Prisma.TimelineEventCreateNestedManyWithoutActorInput
+  actedAuditLogs?: Prisma.AuditLogCreateNestedManyWithoutActorInput
+}
+
+export type UserUncheckedCreateWithoutAuthoredCommentsInput = {
+  id: string
+  username: string
+  passwordHash: string
+  name: string
+  avatar?: string | null
+  status?: $Enums.UserStatus
+  locale?: $Enums.Locale
+  themeMode?: $Enums.ThemeMode
+  lastLoginAt?: Date | string | null
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  createdById?: string | null
+  updatedById?: string | null
+  deletedAt?: Date | string | null
+  sessions?: Prisma.SessionUncheckedCreateNestedManyWithoutUserInput
+  organizations?: Prisma.OrganizationUncheckedCreateNestedManyWithoutOwnerInput
+  memberships?: Prisma.OrganizationMemberUncheckedCreateNestedManyWithoutUserInput
+  ownedSpaces?: Prisma.SpaceUncheckedCreateNestedManyWithoutOwnerInput
+  spaceMemberships?: Prisma.SpaceMemberUncheckedCreateNestedManyWithoutUserInput
+  ownedVersions?: Prisma.VersionUncheckedCreateNestedManyWithoutOwnerInput
+  ownedRequirements?: Prisma.RequirementUncheckedCreateNestedManyWithoutOwnerInput
+  uploadedAttachments?: Prisma.AttachmentUncheckedCreateNestedManyWithoutUploadedByInput
+  publishedWorkflowVersions?: Prisma.WorkflowVersionUncheckedCreateNestedManyWithoutPublishedByInput
+  objectParticipants?: Prisma.ObjectParticipantUncheckedCreateNestedManyWithoutUserInput
+  reportedIntakeItems?: Prisma.IntakeItemUncheckedCreateNestedManyWithoutReporterInput
+  assignedIntakeItems?: Prisma.IntakeItemUncheckedCreateNestedManyWithoutAssigneeInput
+  reportedWorkItems?: Prisma.WorkItemUncheckedCreateNestedManyWithoutReporterInput
+  assignedWorkItems?: Prisma.WorkItemUncheckedCreateNestedManyWithoutAssigneeInput
+  regressedBugDetails?: Prisma.BugDetailUncheckedCreateNestedManyWithoutRegressionByInput
+  actedTimelineEvents?: Prisma.TimelineEventUncheckedCreateNestedManyWithoutActorInput
+  actedAuditLogs?: Prisma.AuditLogUncheckedCreateNestedManyWithoutActorInput
+}
+
+export type UserCreateOrConnectWithoutAuthoredCommentsInput = {
+  where: Prisma.UserWhereUniqueInput
+  create: Prisma.XOR<Prisma.UserCreateWithoutAuthoredCommentsInput, Prisma.UserUncheckedCreateWithoutAuthoredCommentsInput>
+}
+
+export type UserUpsertWithoutAuthoredCommentsInput = {
+  update: Prisma.XOR<Prisma.UserUpdateWithoutAuthoredCommentsInput, Prisma.UserUncheckedUpdateWithoutAuthoredCommentsInput>
+  create: Prisma.XOR<Prisma.UserCreateWithoutAuthoredCommentsInput, Prisma.UserUncheckedCreateWithoutAuthoredCommentsInput>
+  where?: Prisma.UserWhereInput
+}
+
+export type UserUpdateToOneWithWhereWithoutAuthoredCommentsInput = {
+  where?: Prisma.UserWhereInput
+  data: Prisma.XOR<Prisma.UserUpdateWithoutAuthoredCommentsInput, Prisma.UserUncheckedUpdateWithoutAuthoredCommentsInput>
+}
+
+export type UserUpdateWithoutAuthoredCommentsInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  username?: Prisma.StringFieldUpdateOperationsInput | string
+  passwordHash?: Prisma.StringFieldUpdateOperationsInput | string
+  name?: Prisma.StringFieldUpdateOperationsInput | string
+  avatar?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  status?: Prisma.EnumUserStatusFieldUpdateOperationsInput | $Enums.UserStatus
+  locale?: Prisma.EnumLocaleFieldUpdateOperationsInput | $Enums.Locale
+  themeMode?: Prisma.EnumThemeModeFieldUpdateOperationsInput | $Enums.ThemeMode
+  lastLoginAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  createdById?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  updatedById?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  deletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  sessions?: Prisma.SessionUpdateManyWithoutUserNestedInput
+  organizations?: Prisma.OrganizationUpdateManyWithoutOwnerNestedInput
+  memberships?: Prisma.OrganizationMemberUpdateManyWithoutUserNestedInput
+  ownedSpaces?: Prisma.SpaceUpdateManyWithoutOwnerNestedInput
+  spaceMemberships?: Prisma.SpaceMemberUpdateManyWithoutUserNestedInput
+  ownedVersions?: Prisma.VersionUpdateManyWithoutOwnerNestedInput
+  ownedRequirements?: Prisma.RequirementUpdateManyWithoutOwnerNestedInput
+  uploadedAttachments?: Prisma.AttachmentUpdateManyWithoutUploadedByNestedInput
+  publishedWorkflowVersions?: Prisma.WorkflowVersionUpdateManyWithoutPublishedByNestedInput
+  objectParticipants?: Prisma.ObjectParticipantUpdateManyWithoutUserNestedInput
+  reportedIntakeItems?: Prisma.IntakeItemUpdateManyWithoutReporterNestedInput
+  assignedIntakeItems?: Prisma.IntakeItemUpdateManyWithoutAssigneeNestedInput
+  reportedWorkItems?: Prisma.WorkItemUpdateManyWithoutReporterNestedInput
+  assignedWorkItems?: Prisma.WorkItemUpdateManyWithoutAssigneeNestedInput
+  regressedBugDetails?: Prisma.BugDetailUpdateManyWithoutRegressionByNestedInput
+  actedTimelineEvents?: Prisma.TimelineEventUpdateManyWithoutActorNestedInput
+  actedAuditLogs?: Prisma.AuditLogUpdateManyWithoutActorNestedInput
+}
+
+export type UserUncheckedUpdateWithoutAuthoredCommentsInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  username?: Prisma.StringFieldUpdateOperationsInput | string
+  passwordHash?: Prisma.StringFieldUpdateOperationsInput | string
+  name?: Prisma.StringFieldUpdateOperationsInput | string
+  avatar?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  status?: Prisma.EnumUserStatusFieldUpdateOperationsInput | $Enums.UserStatus
+  locale?: Prisma.EnumLocaleFieldUpdateOperationsInput | $Enums.Locale
+  themeMode?: Prisma.EnumThemeModeFieldUpdateOperationsInput | $Enums.ThemeMode
+  lastLoginAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  createdById?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  updatedById?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  deletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  sessions?: Prisma.SessionUncheckedUpdateManyWithoutUserNestedInput
+  organizations?: Prisma.OrganizationUncheckedUpdateManyWithoutOwnerNestedInput
+  memberships?: Prisma.OrganizationMemberUncheckedUpdateManyWithoutUserNestedInput
+  ownedSpaces?: Prisma.SpaceUncheckedUpdateManyWithoutOwnerNestedInput
+  spaceMemberships?: Prisma.SpaceMemberUncheckedUpdateManyWithoutUserNestedInput
+  ownedVersions?: Prisma.VersionUncheckedUpdateManyWithoutOwnerNestedInput
+  ownedRequirements?: Prisma.RequirementUncheckedUpdateManyWithoutOwnerNestedInput
+  uploadedAttachments?: Prisma.AttachmentUncheckedUpdateManyWithoutUploadedByNestedInput
+  publishedWorkflowVersions?: Prisma.WorkflowVersionUncheckedUpdateManyWithoutPublishedByNestedInput
+  objectParticipants?: Prisma.ObjectParticipantUncheckedUpdateManyWithoutUserNestedInput
+  reportedIntakeItems?: Prisma.IntakeItemUncheckedUpdateManyWithoutReporterNestedInput
+  assignedIntakeItems?: Prisma.IntakeItemUncheckedUpdateManyWithoutAssigneeNestedInput
+  reportedWorkItems?: Prisma.WorkItemUncheckedUpdateManyWithoutReporterNestedInput
+  assignedWorkItems?: Prisma.WorkItemUncheckedUpdateManyWithoutAssigneeNestedInput
+  regressedBugDetails?: Prisma.BugDetailUncheckedUpdateManyWithoutRegressionByNestedInput
+  actedTimelineEvents?: Prisma.TimelineEventUncheckedUpdateManyWithoutActorNestedInput
+  actedAuditLogs?: Prisma.AuditLogUncheckedUpdateManyWithoutActorNestedInput
+}
+
+export type UserCreateWithoutActedTimelineEventsInput = {
+  id: string
+  username: string
+  passwordHash: string
+  name: string
+  avatar?: string | null
+  status?: $Enums.UserStatus
+  locale?: $Enums.Locale
+  themeMode?: $Enums.ThemeMode
+  lastLoginAt?: Date | string | null
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  createdById?: string | null
+  updatedById?: string | null
+  deletedAt?: Date | string | null
+  sessions?: Prisma.SessionCreateNestedManyWithoutUserInput
+  organizations?: Prisma.OrganizationCreateNestedManyWithoutOwnerInput
+  memberships?: Prisma.OrganizationMemberCreateNestedManyWithoutUserInput
+  ownedSpaces?: Prisma.SpaceCreateNestedManyWithoutOwnerInput
+  spaceMemberships?: Prisma.SpaceMemberCreateNestedManyWithoutUserInput
+  ownedVersions?: Prisma.VersionCreateNestedManyWithoutOwnerInput
+  ownedRequirements?: Prisma.RequirementCreateNestedManyWithoutOwnerInput
+  uploadedAttachments?: Prisma.AttachmentCreateNestedManyWithoutUploadedByInput
+  publishedWorkflowVersions?: Prisma.WorkflowVersionCreateNestedManyWithoutPublishedByInput
+  objectParticipants?: Prisma.ObjectParticipantCreateNestedManyWithoutUserInput
+  reportedIntakeItems?: Prisma.IntakeItemCreateNestedManyWithoutReporterInput
+  assignedIntakeItems?: Prisma.IntakeItemCreateNestedManyWithoutAssigneeInput
+  reportedWorkItems?: Prisma.WorkItemCreateNestedManyWithoutReporterInput
+  assignedWorkItems?: Prisma.WorkItemCreateNestedManyWithoutAssigneeInput
+  regressedBugDetails?: Prisma.BugDetailCreateNestedManyWithoutRegressionByInput
+  authoredComments?: Prisma.CommentCreateNestedManyWithoutAuthorInput
+  actedAuditLogs?: Prisma.AuditLogCreateNestedManyWithoutActorInput
+}
+
+export type UserUncheckedCreateWithoutActedTimelineEventsInput = {
+  id: string
+  username: string
+  passwordHash: string
+  name: string
+  avatar?: string | null
+  status?: $Enums.UserStatus
+  locale?: $Enums.Locale
+  themeMode?: $Enums.ThemeMode
+  lastLoginAt?: Date | string | null
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  createdById?: string | null
+  updatedById?: string | null
+  deletedAt?: Date | string | null
+  sessions?: Prisma.SessionUncheckedCreateNestedManyWithoutUserInput
+  organizations?: Prisma.OrganizationUncheckedCreateNestedManyWithoutOwnerInput
+  memberships?: Prisma.OrganizationMemberUncheckedCreateNestedManyWithoutUserInput
+  ownedSpaces?: Prisma.SpaceUncheckedCreateNestedManyWithoutOwnerInput
+  spaceMemberships?: Prisma.SpaceMemberUncheckedCreateNestedManyWithoutUserInput
+  ownedVersions?: Prisma.VersionUncheckedCreateNestedManyWithoutOwnerInput
+  ownedRequirements?: Prisma.RequirementUncheckedCreateNestedManyWithoutOwnerInput
+  uploadedAttachments?: Prisma.AttachmentUncheckedCreateNestedManyWithoutUploadedByInput
+  publishedWorkflowVersions?: Prisma.WorkflowVersionUncheckedCreateNestedManyWithoutPublishedByInput
+  objectParticipants?: Prisma.ObjectParticipantUncheckedCreateNestedManyWithoutUserInput
+  reportedIntakeItems?: Prisma.IntakeItemUncheckedCreateNestedManyWithoutReporterInput
+  assignedIntakeItems?: Prisma.IntakeItemUncheckedCreateNestedManyWithoutAssigneeInput
+  reportedWorkItems?: Prisma.WorkItemUncheckedCreateNestedManyWithoutReporterInput
+  assignedWorkItems?: Prisma.WorkItemUncheckedCreateNestedManyWithoutAssigneeInput
+  regressedBugDetails?: Prisma.BugDetailUncheckedCreateNestedManyWithoutRegressionByInput
+  authoredComments?: Prisma.CommentUncheckedCreateNestedManyWithoutAuthorInput
+  actedAuditLogs?: Prisma.AuditLogUncheckedCreateNestedManyWithoutActorInput
+}
+
+export type UserCreateOrConnectWithoutActedTimelineEventsInput = {
+  where: Prisma.UserWhereUniqueInput
+  create: Prisma.XOR<Prisma.UserCreateWithoutActedTimelineEventsInput, Prisma.UserUncheckedCreateWithoutActedTimelineEventsInput>
+}
+
+export type UserUpsertWithoutActedTimelineEventsInput = {
+  update: Prisma.XOR<Prisma.UserUpdateWithoutActedTimelineEventsInput, Prisma.UserUncheckedUpdateWithoutActedTimelineEventsInput>
+  create: Prisma.XOR<Prisma.UserCreateWithoutActedTimelineEventsInput, Prisma.UserUncheckedCreateWithoutActedTimelineEventsInput>
+  where?: Prisma.UserWhereInput
+}
+
+export type UserUpdateToOneWithWhereWithoutActedTimelineEventsInput = {
+  where?: Prisma.UserWhereInput
+  data: Prisma.XOR<Prisma.UserUpdateWithoutActedTimelineEventsInput, Prisma.UserUncheckedUpdateWithoutActedTimelineEventsInput>
+}
+
+export type UserUpdateWithoutActedTimelineEventsInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  username?: Prisma.StringFieldUpdateOperationsInput | string
+  passwordHash?: Prisma.StringFieldUpdateOperationsInput | string
+  name?: Prisma.StringFieldUpdateOperationsInput | string
+  avatar?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  status?: Prisma.EnumUserStatusFieldUpdateOperationsInput | $Enums.UserStatus
+  locale?: Prisma.EnumLocaleFieldUpdateOperationsInput | $Enums.Locale
+  themeMode?: Prisma.EnumThemeModeFieldUpdateOperationsInput | $Enums.ThemeMode
+  lastLoginAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  createdById?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  updatedById?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  deletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  sessions?: Prisma.SessionUpdateManyWithoutUserNestedInput
+  organizations?: Prisma.OrganizationUpdateManyWithoutOwnerNestedInput
+  memberships?: Prisma.OrganizationMemberUpdateManyWithoutUserNestedInput
+  ownedSpaces?: Prisma.SpaceUpdateManyWithoutOwnerNestedInput
+  spaceMemberships?: Prisma.SpaceMemberUpdateManyWithoutUserNestedInput
+  ownedVersions?: Prisma.VersionUpdateManyWithoutOwnerNestedInput
+  ownedRequirements?: Prisma.RequirementUpdateManyWithoutOwnerNestedInput
+  uploadedAttachments?: Prisma.AttachmentUpdateManyWithoutUploadedByNestedInput
+  publishedWorkflowVersions?: Prisma.WorkflowVersionUpdateManyWithoutPublishedByNestedInput
+  objectParticipants?: Prisma.ObjectParticipantUpdateManyWithoutUserNestedInput
+  reportedIntakeItems?: Prisma.IntakeItemUpdateManyWithoutReporterNestedInput
+  assignedIntakeItems?: Prisma.IntakeItemUpdateManyWithoutAssigneeNestedInput
+  reportedWorkItems?: Prisma.WorkItemUpdateManyWithoutReporterNestedInput
+  assignedWorkItems?: Prisma.WorkItemUpdateManyWithoutAssigneeNestedInput
+  regressedBugDetails?: Prisma.BugDetailUpdateManyWithoutRegressionByNestedInput
+  authoredComments?: Prisma.CommentUpdateManyWithoutAuthorNestedInput
+  actedAuditLogs?: Prisma.AuditLogUpdateManyWithoutActorNestedInput
+}
+
+export type UserUncheckedUpdateWithoutActedTimelineEventsInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  username?: Prisma.StringFieldUpdateOperationsInput | string
+  passwordHash?: Prisma.StringFieldUpdateOperationsInput | string
+  name?: Prisma.StringFieldUpdateOperationsInput | string
+  avatar?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  status?: Prisma.EnumUserStatusFieldUpdateOperationsInput | $Enums.UserStatus
+  locale?: Prisma.EnumLocaleFieldUpdateOperationsInput | $Enums.Locale
+  themeMode?: Prisma.EnumThemeModeFieldUpdateOperationsInput | $Enums.ThemeMode
+  lastLoginAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  createdById?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  updatedById?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  deletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  sessions?: Prisma.SessionUncheckedUpdateManyWithoutUserNestedInput
+  organizations?: Prisma.OrganizationUncheckedUpdateManyWithoutOwnerNestedInput
+  memberships?: Prisma.OrganizationMemberUncheckedUpdateManyWithoutUserNestedInput
+  ownedSpaces?: Prisma.SpaceUncheckedUpdateManyWithoutOwnerNestedInput
+  spaceMemberships?: Prisma.SpaceMemberUncheckedUpdateManyWithoutUserNestedInput
+  ownedVersions?: Prisma.VersionUncheckedUpdateManyWithoutOwnerNestedInput
+  ownedRequirements?: Prisma.RequirementUncheckedUpdateManyWithoutOwnerNestedInput
+  uploadedAttachments?: Prisma.AttachmentUncheckedUpdateManyWithoutUploadedByNestedInput
+  publishedWorkflowVersions?: Prisma.WorkflowVersionUncheckedUpdateManyWithoutPublishedByNestedInput
+  objectParticipants?: Prisma.ObjectParticipantUncheckedUpdateManyWithoutUserNestedInput
+  reportedIntakeItems?: Prisma.IntakeItemUncheckedUpdateManyWithoutReporterNestedInput
+  assignedIntakeItems?: Prisma.IntakeItemUncheckedUpdateManyWithoutAssigneeNestedInput
+  reportedWorkItems?: Prisma.WorkItemUncheckedUpdateManyWithoutReporterNestedInput
+  assignedWorkItems?: Prisma.WorkItemUncheckedUpdateManyWithoutAssigneeNestedInput
+  regressedBugDetails?: Prisma.BugDetailUncheckedUpdateManyWithoutRegressionByNestedInput
+  authoredComments?: Prisma.CommentUncheckedUpdateManyWithoutAuthorNestedInput
+  actedAuditLogs?: Prisma.AuditLogUncheckedUpdateManyWithoutActorNestedInput
+}
+
+export type UserCreateWithoutActedAuditLogsInput = {
+  id: string
+  username: string
+  passwordHash: string
+  name: string
+  avatar?: string | null
+  status?: $Enums.UserStatus
+  locale?: $Enums.Locale
+  themeMode?: $Enums.ThemeMode
+  lastLoginAt?: Date | string | null
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  createdById?: string | null
+  updatedById?: string | null
+  deletedAt?: Date | string | null
+  sessions?: Prisma.SessionCreateNestedManyWithoutUserInput
+  organizations?: Prisma.OrganizationCreateNestedManyWithoutOwnerInput
+  memberships?: Prisma.OrganizationMemberCreateNestedManyWithoutUserInput
+  ownedSpaces?: Prisma.SpaceCreateNestedManyWithoutOwnerInput
+  spaceMemberships?: Prisma.SpaceMemberCreateNestedManyWithoutUserInput
+  ownedVersions?: Prisma.VersionCreateNestedManyWithoutOwnerInput
+  ownedRequirements?: Prisma.RequirementCreateNestedManyWithoutOwnerInput
+  uploadedAttachments?: Prisma.AttachmentCreateNestedManyWithoutUploadedByInput
+  publishedWorkflowVersions?: Prisma.WorkflowVersionCreateNestedManyWithoutPublishedByInput
+  objectParticipants?: Prisma.ObjectParticipantCreateNestedManyWithoutUserInput
+  reportedIntakeItems?: Prisma.IntakeItemCreateNestedManyWithoutReporterInput
+  assignedIntakeItems?: Prisma.IntakeItemCreateNestedManyWithoutAssigneeInput
+  reportedWorkItems?: Prisma.WorkItemCreateNestedManyWithoutReporterInput
+  assignedWorkItems?: Prisma.WorkItemCreateNestedManyWithoutAssigneeInput
+  regressedBugDetails?: Prisma.BugDetailCreateNestedManyWithoutRegressionByInput
+  authoredComments?: Prisma.CommentCreateNestedManyWithoutAuthorInput
+  actedTimelineEvents?: Prisma.TimelineEventCreateNestedManyWithoutActorInput
+}
+
+export type UserUncheckedCreateWithoutActedAuditLogsInput = {
+  id: string
+  username: string
+  passwordHash: string
+  name: string
+  avatar?: string | null
+  status?: $Enums.UserStatus
+  locale?: $Enums.Locale
+  themeMode?: $Enums.ThemeMode
+  lastLoginAt?: Date | string | null
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  createdById?: string | null
+  updatedById?: string | null
+  deletedAt?: Date | string | null
+  sessions?: Prisma.SessionUncheckedCreateNestedManyWithoutUserInput
+  organizations?: Prisma.OrganizationUncheckedCreateNestedManyWithoutOwnerInput
+  memberships?: Prisma.OrganizationMemberUncheckedCreateNestedManyWithoutUserInput
+  ownedSpaces?: Prisma.SpaceUncheckedCreateNestedManyWithoutOwnerInput
+  spaceMemberships?: Prisma.SpaceMemberUncheckedCreateNestedManyWithoutUserInput
+  ownedVersions?: Prisma.VersionUncheckedCreateNestedManyWithoutOwnerInput
+  ownedRequirements?: Prisma.RequirementUncheckedCreateNestedManyWithoutOwnerInput
+  uploadedAttachments?: Prisma.AttachmentUncheckedCreateNestedManyWithoutUploadedByInput
+  publishedWorkflowVersions?: Prisma.WorkflowVersionUncheckedCreateNestedManyWithoutPublishedByInput
+  objectParticipants?: Prisma.ObjectParticipantUncheckedCreateNestedManyWithoutUserInput
+  reportedIntakeItems?: Prisma.IntakeItemUncheckedCreateNestedManyWithoutReporterInput
+  assignedIntakeItems?: Prisma.IntakeItemUncheckedCreateNestedManyWithoutAssigneeInput
+  reportedWorkItems?: Prisma.WorkItemUncheckedCreateNestedManyWithoutReporterInput
+  assignedWorkItems?: Prisma.WorkItemUncheckedCreateNestedManyWithoutAssigneeInput
+  regressedBugDetails?: Prisma.BugDetailUncheckedCreateNestedManyWithoutRegressionByInput
+  authoredComments?: Prisma.CommentUncheckedCreateNestedManyWithoutAuthorInput
+  actedTimelineEvents?: Prisma.TimelineEventUncheckedCreateNestedManyWithoutActorInput
+}
+
+export type UserCreateOrConnectWithoutActedAuditLogsInput = {
+  where: Prisma.UserWhereUniqueInput
+  create: Prisma.XOR<Prisma.UserCreateWithoutActedAuditLogsInput, Prisma.UserUncheckedCreateWithoutActedAuditLogsInput>
+}
+
+export type UserUpsertWithoutActedAuditLogsInput = {
+  update: Prisma.XOR<Prisma.UserUpdateWithoutActedAuditLogsInput, Prisma.UserUncheckedUpdateWithoutActedAuditLogsInput>
+  create: Prisma.XOR<Prisma.UserCreateWithoutActedAuditLogsInput, Prisma.UserUncheckedCreateWithoutActedAuditLogsInput>
+  where?: Prisma.UserWhereInput
+}
+
+export type UserUpdateToOneWithWhereWithoutActedAuditLogsInput = {
+  where?: Prisma.UserWhereInput
+  data: Prisma.XOR<Prisma.UserUpdateWithoutActedAuditLogsInput, Prisma.UserUncheckedUpdateWithoutActedAuditLogsInput>
+}
+
+export type UserUpdateWithoutActedAuditLogsInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  username?: Prisma.StringFieldUpdateOperationsInput | string
+  passwordHash?: Prisma.StringFieldUpdateOperationsInput | string
+  name?: Prisma.StringFieldUpdateOperationsInput | string
+  avatar?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  status?: Prisma.EnumUserStatusFieldUpdateOperationsInput | $Enums.UserStatus
+  locale?: Prisma.EnumLocaleFieldUpdateOperationsInput | $Enums.Locale
+  themeMode?: Prisma.EnumThemeModeFieldUpdateOperationsInput | $Enums.ThemeMode
+  lastLoginAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  createdById?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  updatedById?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  deletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  sessions?: Prisma.SessionUpdateManyWithoutUserNestedInput
+  organizations?: Prisma.OrganizationUpdateManyWithoutOwnerNestedInput
+  memberships?: Prisma.OrganizationMemberUpdateManyWithoutUserNestedInput
+  ownedSpaces?: Prisma.SpaceUpdateManyWithoutOwnerNestedInput
+  spaceMemberships?: Prisma.SpaceMemberUpdateManyWithoutUserNestedInput
+  ownedVersions?: Prisma.VersionUpdateManyWithoutOwnerNestedInput
+  ownedRequirements?: Prisma.RequirementUpdateManyWithoutOwnerNestedInput
+  uploadedAttachments?: Prisma.AttachmentUpdateManyWithoutUploadedByNestedInput
+  publishedWorkflowVersions?: Prisma.WorkflowVersionUpdateManyWithoutPublishedByNestedInput
+  objectParticipants?: Prisma.ObjectParticipantUpdateManyWithoutUserNestedInput
+  reportedIntakeItems?: Prisma.IntakeItemUpdateManyWithoutReporterNestedInput
+  assignedIntakeItems?: Prisma.IntakeItemUpdateManyWithoutAssigneeNestedInput
+  reportedWorkItems?: Prisma.WorkItemUpdateManyWithoutReporterNestedInput
+  assignedWorkItems?: Prisma.WorkItemUpdateManyWithoutAssigneeNestedInput
+  regressedBugDetails?: Prisma.BugDetailUpdateManyWithoutRegressionByNestedInput
+  authoredComments?: Prisma.CommentUpdateManyWithoutAuthorNestedInput
+  actedTimelineEvents?: Prisma.TimelineEventUpdateManyWithoutActorNestedInput
+}
+
+export type UserUncheckedUpdateWithoutActedAuditLogsInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  username?: Prisma.StringFieldUpdateOperationsInput | string
+  passwordHash?: Prisma.StringFieldUpdateOperationsInput | string
+  name?: Prisma.StringFieldUpdateOperationsInput | string
+  avatar?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  status?: Prisma.EnumUserStatusFieldUpdateOperationsInput | $Enums.UserStatus
+  locale?: Prisma.EnumLocaleFieldUpdateOperationsInput | $Enums.Locale
+  themeMode?: Prisma.EnumThemeModeFieldUpdateOperationsInput | $Enums.ThemeMode
+  lastLoginAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  createdById?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  updatedById?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  deletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  sessions?: Prisma.SessionUncheckedUpdateManyWithoutUserNestedInput
+  organizations?: Prisma.OrganizationUncheckedUpdateManyWithoutOwnerNestedInput
+  memberships?: Prisma.OrganizationMemberUncheckedUpdateManyWithoutUserNestedInput
+  ownedSpaces?: Prisma.SpaceUncheckedUpdateManyWithoutOwnerNestedInput
+  spaceMemberships?: Prisma.SpaceMemberUncheckedUpdateManyWithoutUserNestedInput
+  ownedVersions?: Prisma.VersionUncheckedUpdateManyWithoutOwnerNestedInput
+  ownedRequirements?: Prisma.RequirementUncheckedUpdateManyWithoutOwnerNestedInput
+  uploadedAttachments?: Prisma.AttachmentUncheckedUpdateManyWithoutUploadedByNestedInput
+  publishedWorkflowVersions?: Prisma.WorkflowVersionUncheckedUpdateManyWithoutPublishedByNestedInput
+  objectParticipants?: Prisma.ObjectParticipantUncheckedUpdateManyWithoutUserNestedInput
+  reportedIntakeItems?: Prisma.IntakeItemUncheckedUpdateManyWithoutReporterNestedInput
+  assignedIntakeItems?: Prisma.IntakeItemUncheckedUpdateManyWithoutAssigneeNestedInput
+  reportedWorkItems?: Prisma.WorkItemUncheckedUpdateManyWithoutReporterNestedInput
+  assignedWorkItems?: Prisma.WorkItemUncheckedUpdateManyWithoutAssigneeNestedInput
+  regressedBugDetails?: Prisma.BugDetailUncheckedUpdateManyWithoutRegressionByNestedInput
+  authoredComments?: Prisma.CommentUncheckedUpdateManyWithoutAuthorNestedInput
+  actedTimelineEvents?: Prisma.TimelineEventUncheckedUpdateManyWithoutActorNestedInput
 }
 
 
@@ -1979,6 +3691,14 @@ export type UserCountOutputType = {
   uploadedAttachments: number
   publishedWorkflowVersions: number
   objectParticipants: number
+  reportedIntakeItems: number
+  assignedIntakeItems: number
+  reportedWorkItems: number
+  assignedWorkItems: number
+  regressedBugDetails: number
+  authoredComments: number
+  actedTimelineEvents: number
+  actedAuditLogs: number
 }
 
 export type UserCountOutputTypeSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
@@ -1992,6 +3712,14 @@ export type UserCountOutputTypeSelect<ExtArgs extends runtime.Types.Extensions.I
   uploadedAttachments?: boolean | UserCountOutputTypeCountUploadedAttachmentsArgs
   publishedWorkflowVersions?: boolean | UserCountOutputTypeCountPublishedWorkflowVersionsArgs
   objectParticipants?: boolean | UserCountOutputTypeCountObjectParticipantsArgs
+  reportedIntakeItems?: boolean | UserCountOutputTypeCountReportedIntakeItemsArgs
+  assignedIntakeItems?: boolean | UserCountOutputTypeCountAssignedIntakeItemsArgs
+  reportedWorkItems?: boolean | UserCountOutputTypeCountReportedWorkItemsArgs
+  assignedWorkItems?: boolean | UserCountOutputTypeCountAssignedWorkItemsArgs
+  regressedBugDetails?: boolean | UserCountOutputTypeCountRegressedBugDetailsArgs
+  authoredComments?: boolean | UserCountOutputTypeCountAuthoredCommentsArgs
+  actedTimelineEvents?: boolean | UserCountOutputTypeCountActedTimelineEventsArgs
+  actedAuditLogs?: boolean | UserCountOutputTypeCountActedAuditLogsArgs
 }
 
 /**
@@ -2074,6 +3802,62 @@ export type UserCountOutputTypeCountObjectParticipantsArgs<ExtArgs extends runti
   where?: Prisma.ObjectParticipantWhereInput
 }
 
+/**
+ * UserCountOutputType without action
+ */
+export type UserCountOutputTypeCountReportedIntakeItemsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  where?: Prisma.IntakeItemWhereInput
+}
+
+/**
+ * UserCountOutputType without action
+ */
+export type UserCountOutputTypeCountAssignedIntakeItemsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  where?: Prisma.IntakeItemWhereInput
+}
+
+/**
+ * UserCountOutputType without action
+ */
+export type UserCountOutputTypeCountReportedWorkItemsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  where?: Prisma.WorkItemWhereInput
+}
+
+/**
+ * UserCountOutputType without action
+ */
+export type UserCountOutputTypeCountAssignedWorkItemsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  where?: Prisma.WorkItemWhereInput
+}
+
+/**
+ * UserCountOutputType without action
+ */
+export type UserCountOutputTypeCountRegressedBugDetailsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  where?: Prisma.BugDetailWhereInput
+}
+
+/**
+ * UserCountOutputType without action
+ */
+export type UserCountOutputTypeCountAuthoredCommentsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  where?: Prisma.CommentWhereInput
+}
+
+/**
+ * UserCountOutputType without action
+ */
+export type UserCountOutputTypeCountActedTimelineEventsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  where?: Prisma.TimelineEventWhereInput
+}
+
+/**
+ * UserCountOutputType without action
+ */
+export type UserCountOutputTypeCountActedAuditLogsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  where?: Prisma.AuditLogWhereInput
+}
+
 
 export type UserSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
   id?: boolean
@@ -2100,6 +3884,14 @@ export type UserSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = r
   uploadedAttachments?: boolean | Prisma.User$uploadedAttachmentsArgs<ExtArgs>
   publishedWorkflowVersions?: boolean | Prisma.User$publishedWorkflowVersionsArgs<ExtArgs>
   objectParticipants?: boolean | Prisma.User$objectParticipantsArgs<ExtArgs>
+  reportedIntakeItems?: boolean | Prisma.User$reportedIntakeItemsArgs<ExtArgs>
+  assignedIntakeItems?: boolean | Prisma.User$assignedIntakeItemsArgs<ExtArgs>
+  reportedWorkItems?: boolean | Prisma.User$reportedWorkItemsArgs<ExtArgs>
+  assignedWorkItems?: boolean | Prisma.User$assignedWorkItemsArgs<ExtArgs>
+  regressedBugDetails?: boolean | Prisma.User$regressedBugDetailsArgs<ExtArgs>
+  authoredComments?: boolean | Prisma.User$authoredCommentsArgs<ExtArgs>
+  actedTimelineEvents?: boolean | Prisma.User$actedTimelineEventsArgs<ExtArgs>
+  actedAuditLogs?: boolean | Prisma.User$actedAuditLogsArgs<ExtArgs>
   _count?: boolean | Prisma.UserCountOutputTypeDefaultArgs<ExtArgs>
 }, ExtArgs["result"]["user"]>
 
@@ -2166,6 +3958,14 @@ export type UserInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = 
   uploadedAttachments?: boolean | Prisma.User$uploadedAttachmentsArgs<ExtArgs>
   publishedWorkflowVersions?: boolean | Prisma.User$publishedWorkflowVersionsArgs<ExtArgs>
   objectParticipants?: boolean | Prisma.User$objectParticipantsArgs<ExtArgs>
+  reportedIntakeItems?: boolean | Prisma.User$reportedIntakeItemsArgs<ExtArgs>
+  assignedIntakeItems?: boolean | Prisma.User$assignedIntakeItemsArgs<ExtArgs>
+  reportedWorkItems?: boolean | Prisma.User$reportedWorkItemsArgs<ExtArgs>
+  assignedWorkItems?: boolean | Prisma.User$assignedWorkItemsArgs<ExtArgs>
+  regressedBugDetails?: boolean | Prisma.User$regressedBugDetailsArgs<ExtArgs>
+  authoredComments?: boolean | Prisma.User$authoredCommentsArgs<ExtArgs>
+  actedTimelineEvents?: boolean | Prisma.User$actedTimelineEventsArgs<ExtArgs>
+  actedAuditLogs?: boolean | Prisma.User$actedAuditLogsArgs<ExtArgs>
   _count?: boolean | Prisma.UserCountOutputTypeDefaultArgs<ExtArgs>
 }
 export type UserIncludeCreateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {}
@@ -2184,6 +3984,14 @@ export type $UserPayload<ExtArgs extends runtime.Types.Extensions.InternalArgs =
     uploadedAttachments: Prisma.$AttachmentPayload<ExtArgs>[]
     publishedWorkflowVersions: Prisma.$WorkflowVersionPayload<ExtArgs>[]
     objectParticipants: Prisma.$ObjectParticipantPayload<ExtArgs>[]
+    reportedIntakeItems: Prisma.$IntakeItemPayload<ExtArgs>[]
+    assignedIntakeItems: Prisma.$IntakeItemPayload<ExtArgs>[]
+    reportedWorkItems: Prisma.$WorkItemPayload<ExtArgs>[]
+    assignedWorkItems: Prisma.$WorkItemPayload<ExtArgs>[]
+    regressedBugDetails: Prisma.$BugDetailPayload<ExtArgs>[]
+    authoredComments: Prisma.$CommentPayload<ExtArgs>[]
+    actedTimelineEvents: Prisma.$TimelineEventPayload<ExtArgs>[]
+    actedAuditLogs: Prisma.$AuditLogPayload<ExtArgs>[]
   }
   scalars: runtime.Types.Extensions.GetPayloadResult<{
     id: string
@@ -2604,6 +4412,14 @@ export interface Prisma__UserClient<T, Null = never, ExtArgs extends runtime.Typ
   uploadedAttachments<T extends Prisma.User$uploadedAttachmentsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.User$uploadedAttachmentsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$AttachmentPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   publishedWorkflowVersions<T extends Prisma.User$publishedWorkflowVersionsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.User$publishedWorkflowVersionsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$WorkflowVersionPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   objectParticipants<T extends Prisma.User$objectParticipantsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.User$objectParticipantsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$ObjectParticipantPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
+  reportedIntakeItems<T extends Prisma.User$reportedIntakeItemsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.User$reportedIntakeItemsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$IntakeItemPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
+  assignedIntakeItems<T extends Prisma.User$assignedIntakeItemsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.User$assignedIntakeItemsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$IntakeItemPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
+  reportedWorkItems<T extends Prisma.User$reportedWorkItemsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.User$reportedWorkItemsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$WorkItemPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
+  assignedWorkItems<T extends Prisma.User$assignedWorkItemsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.User$assignedWorkItemsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$WorkItemPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
+  regressedBugDetails<T extends Prisma.User$regressedBugDetailsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.User$regressedBugDetailsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$BugDetailPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
+  authoredComments<T extends Prisma.User$authoredCommentsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.User$authoredCommentsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$CommentPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
+  actedTimelineEvents<T extends Prisma.User$actedTimelineEventsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.User$actedTimelineEventsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$TimelineEventPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
+  actedAuditLogs<T extends Prisma.User$actedAuditLogsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.User$actedAuditLogsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$AuditLogPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   /**
    * Attaches callbacks for the resolution and/or rejection of the Promise.
    * @param onfulfilled The callback to execute when the Promise is resolved.
@@ -3277,6 +5093,198 @@ export type User$objectParticipantsArgs<ExtArgs extends runtime.Types.Extensions
   take?: number
   skip?: number
   distinct?: Prisma.ObjectParticipantScalarFieldEnum | Prisma.ObjectParticipantScalarFieldEnum[]
+}
+
+/**
+ * User.reportedIntakeItems
+ */
+export type User$reportedIntakeItemsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  /**
+   * Select specific fields to fetch from the IntakeItem
+   */
+  select?: Prisma.IntakeItemSelect<ExtArgs> | null
+  /**
+   * Omit specific fields from the IntakeItem
+   */
+  omit?: Prisma.IntakeItemOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.IntakeItemInclude<ExtArgs> | null
+  where?: Prisma.IntakeItemWhereInput
+  orderBy?: Prisma.IntakeItemOrderByWithRelationInput | Prisma.IntakeItemOrderByWithRelationInput[]
+  cursor?: Prisma.IntakeItemWhereUniqueInput
+  take?: number
+  skip?: number
+  distinct?: Prisma.IntakeItemScalarFieldEnum | Prisma.IntakeItemScalarFieldEnum[]
+}
+
+/**
+ * User.assignedIntakeItems
+ */
+export type User$assignedIntakeItemsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  /**
+   * Select specific fields to fetch from the IntakeItem
+   */
+  select?: Prisma.IntakeItemSelect<ExtArgs> | null
+  /**
+   * Omit specific fields from the IntakeItem
+   */
+  omit?: Prisma.IntakeItemOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.IntakeItemInclude<ExtArgs> | null
+  where?: Prisma.IntakeItemWhereInput
+  orderBy?: Prisma.IntakeItemOrderByWithRelationInput | Prisma.IntakeItemOrderByWithRelationInput[]
+  cursor?: Prisma.IntakeItemWhereUniqueInput
+  take?: number
+  skip?: number
+  distinct?: Prisma.IntakeItemScalarFieldEnum | Prisma.IntakeItemScalarFieldEnum[]
+}
+
+/**
+ * User.reportedWorkItems
+ */
+export type User$reportedWorkItemsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  /**
+   * Select specific fields to fetch from the WorkItem
+   */
+  select?: Prisma.WorkItemSelect<ExtArgs> | null
+  /**
+   * Omit specific fields from the WorkItem
+   */
+  omit?: Prisma.WorkItemOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.WorkItemInclude<ExtArgs> | null
+  where?: Prisma.WorkItemWhereInput
+  orderBy?: Prisma.WorkItemOrderByWithRelationInput | Prisma.WorkItemOrderByWithRelationInput[]
+  cursor?: Prisma.WorkItemWhereUniqueInput
+  take?: number
+  skip?: number
+  distinct?: Prisma.WorkItemScalarFieldEnum | Prisma.WorkItemScalarFieldEnum[]
+}
+
+/**
+ * User.assignedWorkItems
+ */
+export type User$assignedWorkItemsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  /**
+   * Select specific fields to fetch from the WorkItem
+   */
+  select?: Prisma.WorkItemSelect<ExtArgs> | null
+  /**
+   * Omit specific fields from the WorkItem
+   */
+  omit?: Prisma.WorkItemOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.WorkItemInclude<ExtArgs> | null
+  where?: Prisma.WorkItemWhereInput
+  orderBy?: Prisma.WorkItemOrderByWithRelationInput | Prisma.WorkItemOrderByWithRelationInput[]
+  cursor?: Prisma.WorkItemWhereUniqueInput
+  take?: number
+  skip?: number
+  distinct?: Prisma.WorkItemScalarFieldEnum | Prisma.WorkItemScalarFieldEnum[]
+}
+
+/**
+ * User.regressedBugDetails
+ */
+export type User$regressedBugDetailsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  /**
+   * Select specific fields to fetch from the BugDetail
+   */
+  select?: Prisma.BugDetailSelect<ExtArgs> | null
+  /**
+   * Omit specific fields from the BugDetail
+   */
+  omit?: Prisma.BugDetailOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.BugDetailInclude<ExtArgs> | null
+  where?: Prisma.BugDetailWhereInput
+  orderBy?: Prisma.BugDetailOrderByWithRelationInput | Prisma.BugDetailOrderByWithRelationInput[]
+  cursor?: Prisma.BugDetailWhereUniqueInput
+  take?: number
+  skip?: number
+  distinct?: Prisma.BugDetailScalarFieldEnum | Prisma.BugDetailScalarFieldEnum[]
+}
+
+/**
+ * User.authoredComments
+ */
+export type User$authoredCommentsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  /**
+   * Select specific fields to fetch from the Comment
+   */
+  select?: Prisma.CommentSelect<ExtArgs> | null
+  /**
+   * Omit specific fields from the Comment
+   */
+  omit?: Prisma.CommentOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.CommentInclude<ExtArgs> | null
+  where?: Prisma.CommentWhereInput
+  orderBy?: Prisma.CommentOrderByWithRelationInput | Prisma.CommentOrderByWithRelationInput[]
+  cursor?: Prisma.CommentWhereUniqueInput
+  take?: number
+  skip?: number
+  distinct?: Prisma.CommentScalarFieldEnum | Prisma.CommentScalarFieldEnum[]
+}
+
+/**
+ * User.actedTimelineEvents
+ */
+export type User$actedTimelineEventsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  /**
+   * Select specific fields to fetch from the TimelineEvent
+   */
+  select?: Prisma.TimelineEventSelect<ExtArgs> | null
+  /**
+   * Omit specific fields from the TimelineEvent
+   */
+  omit?: Prisma.TimelineEventOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.TimelineEventInclude<ExtArgs> | null
+  where?: Prisma.TimelineEventWhereInput
+  orderBy?: Prisma.TimelineEventOrderByWithRelationInput | Prisma.TimelineEventOrderByWithRelationInput[]
+  cursor?: Prisma.TimelineEventWhereUniqueInput
+  take?: number
+  skip?: number
+  distinct?: Prisma.TimelineEventScalarFieldEnum | Prisma.TimelineEventScalarFieldEnum[]
+}
+
+/**
+ * User.actedAuditLogs
+ */
+export type User$actedAuditLogsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  /**
+   * Select specific fields to fetch from the AuditLog
+   */
+  select?: Prisma.AuditLogSelect<ExtArgs> | null
+  /**
+   * Omit specific fields from the AuditLog
+   */
+  omit?: Prisma.AuditLogOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.AuditLogInclude<ExtArgs> | null
+  where?: Prisma.AuditLogWhereInput
+  orderBy?: Prisma.AuditLogOrderByWithRelationInput | Prisma.AuditLogOrderByWithRelationInput[]
+  cursor?: Prisma.AuditLogWhereUniqueInput
+  take?: number
+  skip?: number
+  distinct?: Prisma.AuditLogScalarFieldEnum | Prisma.AuditLogScalarFieldEnum[]
 }
 
 /**

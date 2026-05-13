@@ -2,12 +2,18 @@ import {
   AttachmentMaxCountPerTarget,
   AttachmentMaxSizeBytes,
   type Attachment,
+  type PageResult,
 } from "@project-delivery/shared";
 import { describe, expect, it, vi } from "vitest";
 
+import { ApiClientError } from "./api-client";
 import {
   AttachmentUploadError,
+  createAttachmentUploadFailure,
+  listAttachments,
+  uploadAttachment,
   uploadRequirementImage,
+  validateAttachmentFile,
   validateRequirementImageFile,
   type AttachmentApiTransport,
 } from "./attachment-service";
@@ -39,6 +45,15 @@ function createAttachmentFixture(): Attachment {
     targetId: requirementId,
     targetType: "REQUIREMENT",
     uploadedById: "01ARZ3NDEKTSV4RRFFQ69G5FB2",
+  };
+}
+
+function createPage(items: Attachment[]): PageResult<Attachment> {
+  return {
+    items,
+    page: 1,
+    pageSize: 20,
+    total: items.length,
   };
 }
 
@@ -108,16 +123,120 @@ describe("attachment service", () => {
     expect(api.get).toHaveBeenCalledWith(`/attachments/${attachmentId}/download-url`);
   });
 
+  it("uploads WORK_ITEM attachments with the same presign and register flow", async () => {
+    const api = createApi();
+    const uploadObject = vi.fn(async () => undefined);
+    const file = new File(["note"], "note.md", {
+      type: "text/markdown",
+    });
+    const workItemId = "01ARZ3NDEKTSV4RRFFQ69G5FB3";
+    const workItemAttachment = {
+      ...createAttachmentFixture(),
+      fileName: "note.md",
+      mimeType: "text/markdown",
+      size: file.size,
+      targetId: workItemId,
+      targetType: "WORK_ITEM",
+    } satisfies Attachment;
+    const workItemApi = {
+      ...api,
+      post: vi.fn(async (path: string) => {
+        if (path === "/attachments/presign") {
+          return {
+            data: {
+              expiresInSeconds: 600,
+              fileKey,
+              uploadUrl,
+            } as unknown,
+          };
+        }
+
+        return {
+          data: workItemAttachment as unknown,
+        };
+      }) as AttachmentApiTransport["post"],
+    };
+
+    await expect(
+      uploadAttachment(
+        {
+          existingAttachmentCount: 0,
+          file,
+          targetId: workItemId,
+          targetType: "WORK_ITEM",
+        },
+        workItemApi,
+        uploadObject,
+      ),
+    ).resolves.toEqual({
+      attachment: workItemAttachment,
+      downloadUrl,
+    });
+
+    expect(workItemApi.post).toHaveBeenNthCalledWith(1, "/attachments/presign", {
+      fileName: "note.md",
+      mimeType: "text/markdown",
+      size: file.size,
+      targetId: workItemId,
+      targetType: "WORK_ITEM",
+    });
+    expect(workItemApi.post).toHaveBeenNthCalledWith(2, "/attachments", {
+      fileKey,
+      fileName: "note.md",
+      mimeType: "text/markdown",
+      size: file.size,
+      targetId: workItemId,
+      targetType: "WORK_ITEM",
+    });
+  });
+
+  it("lists attachments by target with a required space context", async () => {
+    const page = createPage([createAttachmentFixture()]);
+    const get = vi.fn(async () => ({
+      data: page as unknown,
+    })) as AttachmentApiTransport["get"];
+    const api = {
+      ...createApi(),
+      get,
+    } as AttachmentApiTransport;
+
+    await expect(
+      listAttachments(
+        {
+          organizationId,
+          page: 1,
+          pageSize: 20,
+          spaceId,
+          targetId: requirementId,
+          targetType: "REQUIREMENT",
+        },
+        api,
+      ),
+    ).resolves.toEqual(page);
+
+    expect(get).toHaveBeenCalledWith("/attachments", {
+      query: {
+        page: 1,
+        pageSize: 20,
+        targetId: requirementId,
+        targetType: "REQUIREMENT",
+      },
+    });
+  });
+
   it("treats the M1 pseudo object-storage origin as an accepted local upload", async () => {
     const api = createApi();
     const fetchSpy = vi.fn();
     vi.stubGlobal("fetch", fetchSpy);
 
-    await uploadRequirementImage({
-      existingAttachmentCount: 0,
-      file: createImageFile(),
-      requirementId,
-    }, api);
+    await uploadRequirementImage(
+      {
+        existingAttachmentCount: 0,
+        file: createImageFile(),
+        requirementId,
+      },
+      api,
+    );
 
     expect(fetchSpy).not.toHaveBeenCalled();
     vi.unstubAllGlobals();
@@ -166,6 +285,14 @@ describe("attachment service", () => {
         code: "ATTACHMENT_LIMIT_EXCEEDED",
       }),
     );
+    expect(
+      validateAttachmentFile({
+        existingAttachmentCount: 0,
+        file: textFile,
+        targetId: requirementId,
+        targetType: "WORK_ITEM",
+      }),
+    ).toBe("text/plain");
   });
 
   it("keeps failed object uploads retryable and does not register the attachment", async () => {
@@ -190,5 +317,26 @@ describe("attachment service", () => {
     } satisfies Partial<AttachmentUploadError>);
 
     expect(api.post).toHaveBeenCalledTimes(1);
+  });
+
+  it("maps upload failures into retryable localized form state", () => {
+    const file = createImageFile();
+    const failure = createAttachmentUploadFailure(
+      file,
+      new ApiClientError(
+        {
+          code: "SPACE_ACCESS_DENIED",
+          message: "No access",
+          requestId: "req_attachment",
+        },
+        new Response(null, { status: 403 }),
+      ),
+    );
+
+    expect(failure).toEqual({
+      code: "ACCESS_DENIED",
+      fileName: "wireframe.png",
+      retryable: false,
+    });
   });
 });

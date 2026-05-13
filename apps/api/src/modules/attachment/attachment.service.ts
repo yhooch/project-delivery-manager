@@ -6,8 +6,10 @@ import {
   AttachmentMimeTypeSchema,
   PresignedUploadUrlExpiresInSeconds,
   type Attachment,
+  type AttachmentTargetType,
   type CreateAttachmentRequest,
   type GetAttachmentDownloadUrlResponse,
+  type PageResult,
   type PresignAttachmentRequest,
   type PresignAttachmentResponse,
   type Requirement,
@@ -24,6 +26,7 @@ import {
   SPACE_REPOSITORY,
   type SpaceRepository,
 } from "../space/space.repository";
+import { TargetResolverService } from "../target/target-resolver.service";
 import {
   ATTACHMENT_REPOSITORY,
   type AttachmentRepository,
@@ -47,6 +50,8 @@ export class AttachmentService {
     private readonly requirements: RequirementRepository,
     @Inject(SPACE_REPOSITORY)
     private readonly spaces: SpaceRepository,
+    @Inject(TargetResolverService)
+    private readonly targets: TargetResolverService,
   ) {}
 
   async presign(
@@ -54,7 +59,7 @@ export class AttachmentService {
     input: PresignAttachmentRequest,
   ): Promise<PresignAttachmentResponse> {
     this.assertFileConstraints(input);
-    await this.requireWritableDraftRequirementTarget(actorUserId, input);
+    await this.requireWritableAttachmentTarget(actorUserId, input);
     await this.assertAttachmentCountLimit(input.targetType, input.targetId);
 
     const fileKey = createFileKey(input.targetType, input.targetId, input.fileName);
@@ -79,7 +84,7 @@ export class AttachmentService {
       );
     }
 
-    const target = await this.requireWritableDraftRequirementTarget(
+    const target = await this.requireWritableAttachmentTarget(
       actorUserId,
       input,
     );
@@ -96,6 +101,28 @@ export class AttachmentService {
       mimeType: input.mimeType,
       size: input.size,
       uploadedById: actorUserId,
+    });
+  }
+
+  async list(
+    actorUserId: string,
+    input: {
+      page: number;
+      pageSize: number;
+      targetId: string;
+      targetType: AttachmentTargetType;
+    },
+  ): Promise<PageResult<Attachment>> {
+    const target = await this.requireReadableAttachmentTarget(
+      actorUserId,
+      input,
+    );
+
+    return this.attachments.listByTarget({
+      page: input.page,
+      pageSize: input.pageSize,
+      targetId: target.targetId,
+      targetType: target.targetType,
     });
   }
 
@@ -118,6 +145,13 @@ export class AttachmentService {
       throwAttachmentTargetNotFound();
     }
 
+    if (attachment.targetType === "WORK_ITEM") {
+      await this.requireReadableWorkItemAttachmentTarget(actorUserId, {
+        targetId: attachment.targetId,
+        targetType: attachment.targetType,
+      });
+    }
+
     return {
       downloadUrl: createObjectUrl(
         "download",
@@ -132,13 +166,9 @@ export class AttachmentService {
     actorUserId: string,
     input: {
       targetId: string;
-      targetType: "REQUIREMENT" | "WORK_ITEM";
+      targetType: "REQUIREMENT";
     },
   ): Promise<AttachmentTargetContext> {
-    if (input.targetType !== "REQUIREMENT") {
-      throwAttachmentTargetNotFound();
-    }
-
     const requirement = await this.requireAccessibleRequirementTarget(
       actorUserId,
       input.targetId,
@@ -170,6 +200,104 @@ export class AttachmentService {
     };
   }
 
+  private async requireWritableAttachmentTarget(
+    actorUserId: string,
+    input: {
+      targetId: string;
+      targetType: AttachmentTargetType;
+    },
+  ): Promise<AttachmentTargetContext> {
+    if (input.targetType === "REQUIREMENT") {
+      return this.requireWritableDraftRequirementTarget(actorUserId, {
+        targetId: input.targetId,
+        targetType: "REQUIREMENT",
+      });
+    }
+
+    return this.requireWritableWorkItemAttachmentTarget(actorUserId, {
+      targetId: input.targetId,
+      targetType: "WORK_ITEM",
+    });
+  }
+
+  private async requireReadableAttachmentTarget(
+    actorUserId: string,
+    input: {
+      targetId: string;
+      targetType: AttachmentTargetType;
+    },
+  ): Promise<AttachmentTargetContext> {
+    if (input.targetType === "REQUIREMENT") {
+      const requirement = await this.requireAccessibleRequirementTarget(
+        actorUserId,
+        input.targetId,
+      );
+
+      return {
+        organizationId: requirement.organizationId,
+        spaceId: requirement.spaceId,
+        targetType: "REQUIREMENT",
+        targetId: requirement.id,
+      };
+    }
+
+    return this.requireReadableWorkItemAttachmentTarget(actorUserId, {
+      targetId: input.targetId,
+      targetType: "WORK_ITEM",
+    });
+  }
+
+  private async requireReadableWorkItemAttachmentTarget(
+    actorUserId: string,
+    input: {
+      targetId: string;
+      targetType: "WORK_ITEM";
+    },
+  ): Promise<AttachmentTargetContext> {
+    const target = await this.targets.resolve(
+      actorUserId,
+      input.targetType,
+      input.targetId,
+      {
+        hideInaccessible: true,
+        notFoundCode: "ATTACHMENT_TARGET_NOT_FOUND",
+      },
+    );
+
+    return {
+      organizationId: target.organizationId,
+      spaceId: target.spaceId,
+      targetType: "WORK_ITEM",
+      targetId: target.targetId,
+    };
+  }
+
+  private async requireWritableWorkItemAttachmentTarget(
+    actorUserId: string,
+    input: {
+      targetId: string;
+      targetType: "WORK_ITEM";
+    },
+  ): Promise<AttachmentTargetContext> {
+    const target = await this.targets.resolve(
+      actorUserId,
+      input.targetType,
+      input.targetId,
+      {
+        access: "write",
+        hideInaccessible: true,
+        notFoundCode: "ATTACHMENT_TARGET_NOT_FOUND",
+      },
+    );
+
+    return {
+      organizationId: target.organizationId,
+      spaceId: target.spaceId,
+      targetType: "WORK_ITEM",
+      targetId: target.targetId,
+    };
+  }
+
   private async requireAccessibleRequirementTarget(
     actorUserId: string,
     requirementId: string,
@@ -193,7 +321,7 @@ export class AttachmentService {
   }
 
   private async assertAttachmentCountLimit(
-    targetType: "REQUIREMENT" | "WORK_ITEM",
+    targetType: AttachmentTargetType,
     targetId: string,
   ) {
     const count = await this.attachments.countByTarget(targetType, targetId);

@@ -117,6 +117,32 @@ export const RequirementStatus = {
 export type RequirementStatus = (typeof RequirementStatus)[keyof typeof RequirementStatus]
 
 
+export const IntakeStatus = {
+  PENDING: 'PENDING',
+  ACCEPTED: 'ACCEPTED',
+  DEFERRED: 'DEFERRED',
+  REJECTED: 'REJECTED',
+  CONVERTED: 'CONVERTED'
+} as const
+
+export type IntakeStatus = (typeof IntakeStatus)[keyof typeof IntakeStatus]
+
+
+export const IntakeSourceType = {
+  REQUIREMENT_CHANGE: 'REQUIREMENT_CHANGE',
+  DEFECT_PROBLEM: 'DEFECT_PROBLEM',
+  PROJECT_PLAN: 'PROJECT_PLAN',
+  MEETING_DECISION: 'MEETING_DECISION',
+  AD_HOC: 'AD_HOC',
+  IMPLEMENTATION: 'IMPLEMENTATION',
+  OPERATIONS: 'OPERATIONS',
+  RELEASE: 'RELEASE',
+  EXTERNAL_COLLABORATION: 'EXTERNAL_COLLABORATION'
+} as const
+
+export type IntakeSourceType = (typeof IntakeSourceType)[keyof typeof IntakeSourceType]
+
+
 export const ContentFormat = {
   TIPTAP_JSON: 'TIPTAP_JSON'
 } as const
@@ -163,6 +189,15 @@ export const AttachmentTargetType = {
 } as const
 
 export type AttachmentTargetType = (typeof AttachmentTargetType)[keyof typeof AttachmentTargetType]
+
+
+export const CommentTargetType = {
+  REQUIREMENT: 'REQUIREMENT',
+  INTAKE_ITEM: 'INTAKE_ITEM',
+  WORK_ITEM: 'WORK_ITEM'
+} as const
+
+export type CommentTargetType = (typeof CommentTargetType)[keyof typeof CommentTargetType]
 
 
 export const ObjectParticipantTargetType = {
@@ -219,6 +254,32 @@ export const WorkItemType = {
 } as const
 
 export type WorkItemType = (typeof WorkItemType)[keyof typeof WorkItemType]
+
+
+export const BugSeverity = {
+  BLOCKER: 'BLOCKER',
+  CRITICAL: 'CRITICAL',
+  MAJOR: 'MAJOR',
+  MINOR: 'MINOR',
+  TRIVIAL: 'TRIVIAL'
+} as const
+
+export type BugSeverity = (typeof BugSeverity)[keyof typeof BugSeverity]
+
+
+export const TimelineEventType = {
+  CREATED: 'CREATED',
+  UPDATED: 'UPDATED',
+  STATUS_CHANGED: 'STATUS_CHANGED',
+  ACTION_EXECUTED: 'ACTION_EXECUTED',
+  ASSIGNEE_CHANGED: 'ASSIGNEE_CHANGED',
+  COMMENTED: 'COMMENTED',
+  ATTACHMENT_ADDED: 'ATTACHMENT_ADDED',
+  CLOSED: 'CLOSED',
+  REOPENED: 'REOPENED'
+} as const
+
+export type TimelineEventType = (typeof TimelineEventType)[keyof typeof TimelineEventType]
 
 
 export const ActionFormFieldType = {

@@ -3,6 +3,8 @@ import type { Version } from "@project-delivery/shared";
 import type {
   CreateVersionInput,
   UpdateVersionInput,
+  VersionBoardInput,
+  VersionBoardResult,
   VersionListInput,
   VersionListResult,
 } from "./version.types";
@@ -20,5 +22,6 @@ export type VersionRepository = {
     spaceId: string,
     input: VersionListInput,
   ): Promise<VersionListResult>;
+  listBoard(input: VersionBoardInput): Promise<VersionBoardResult>;
   update(input: UpdateVersionInput): Promise<Version | undefined>;
 };

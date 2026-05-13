@@ -11,5 +11,6 @@ export * from "./space.ts";
 export * from "./timeline.ts";
 export * from "./user.ts";
 export * from "./version.ts";
+export * from "./view.ts";
 export * from "./work-item.ts";
 export * from "./workflow.ts";

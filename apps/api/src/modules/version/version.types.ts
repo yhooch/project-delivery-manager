@@ -1,7 +1,12 @@
 import type {
+  GetVersionBoardViewResponse,
   PageResult,
+  StatusCategory,
   Version,
+  VersionBoardViewQuery,
   VersionStatus,
+  ViewWorkItemSummary,
+  WorkItemType,
 } from "@project-delivery/shared";
 
 export type VersionListInput = {
@@ -14,6 +19,52 @@ export type VersionListInput = {
 };
 
 export type VersionListResult = PageResult<Version>;
+
+export type VersionBoardVisibility = "SPACE" | "PARTICIPANT";
+
+export type VersionBoardInput = VersionBoardViewQuery & {
+  actorUserId: string;
+  organizationId: string;
+  spaceId: string;
+  versionId: string;
+  staleThresholdDays: number;
+  visibility: VersionBoardVisibility;
+};
+
+export type VersionBoardResult = Pick<
+  GetVersionBoardViewResponse,
+  "columns" | "items"
+>;
+
+export type VersionBoardWorkItemRecord = {
+  id: string;
+  type: WorkItemType;
+  organizationId: string;
+  spaceId: string;
+  versionId: string | null;
+  requirementId: string | null;
+  intakeItemId: string | null;
+  title: string;
+  priority: ViewWorkItemSummary["priority"];
+  assigneeId: string | null;
+  reporterId: string;
+  workflowVersionId: string;
+  currentStateId: string;
+  statusCategory: StatusCategory;
+  dueDate: Date | null;
+  lastStatusChangedAt: Date;
+  lastActionAt: Date | null;
+  blockedReason: string | null;
+  blockedAt: Date | null;
+  currentState: {
+    code: string;
+    name: string;
+    category: StatusCategory;
+  };
+  bugDetail: {
+    regressionAt: Date | null;
+  } | null;
+};
 
 export type CreateVersionInput = {
   id: string;
