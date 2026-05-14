@@ -48,7 +48,9 @@ test.describe("UI 空间设置与组织管理", () => {
 
     const spaceMemberList = page.getByTestId("space-settings-members-list");
     await expect(spaceMemberList).toBeVisible({ timeout: 10_000 });
-    await expect(spaceMemberList.getByText(user.username)).toBeVisible();
+    await expect(
+      spaceMemberList.getByText(user.username, { exact: true }),
+    ).toBeVisible();
     await expect(
       page.getByTestId("space-settings-add-member-button"),
     ).toBeVisible();
