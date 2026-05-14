@@ -63,7 +63,7 @@ pg_ctl -D "$PGDATA" -o "-p $PGPORT -k /tmp" -l "$PGLOG" start
 createdb -h /tmp -p "$PGPORT" -U postgres "$PGDATABASE"
 
 export DATABASE_URL="postgresql://postgres@127.0.0.1:$PGPORT/$PGDATABASE"
-corepack pnpm exec prisma migrate deploy --schema prisma/schema.prisma
+corepack pnpm --filter @project-delivery/api exec prisma migrate deploy --config ../../prisma.config.ts
 corepack pnpm --filter @project-delivery/api prisma:generate
 ```
 
@@ -160,8 +160,8 @@ corepack pnpm test:e2e
 涉及 schema、接口或 DTO 变更时必须执行：
 
 ```bash
-corepack pnpm exec prisma validate --schema prisma/schema.prisma
-corepack pnpm exec prisma migrate status --schema prisma/schema.prisma
+corepack pnpm --filter @project-delivery/api exec prisma validate --config ../../prisma.config.ts
+corepack pnpm --filter @project-delivery/api exec prisma migrate status --config ../../prisma.config.ts
 corepack pnpm --filter @project-delivery/api prisma:generate
 corepack pnpm --filter @project-delivery/shared openapi:generate
 ```

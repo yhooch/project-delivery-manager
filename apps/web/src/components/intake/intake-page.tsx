@@ -198,11 +198,11 @@ export function IntakePage() {
       setItems((current) =>
         current.map((item) => (item.id === updated.id ? updated : item)),
       );
-      setActive(updated);
+      setActive((current) => (current?.id === updated.id ? updated : current));
       void loadItems();
     } catch (error) {
       setItems(original);
-      setActive(active);
+      setActive((current) => (current?.id === active.id ? active : current));
       setActionErrorKey(getApiErrorMessageKey(error));
     } finally {
       setActionInFlight(null);

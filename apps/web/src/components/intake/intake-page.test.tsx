@@ -1,4 +1,11 @@
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import {
+  act,
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const { translatorCache } = vi.hoisted(() => ({
@@ -251,6 +258,56 @@ describe("IntakePage", () => {
         spaceId: "SPC_01",
       }),
     );
+  });
+
+  it("keeps the detail drawer closed when Escape is pressed during accept", async () => {
+    const original = makeIntake({
+      id: "01ARZ3NDEKTSV4RRFFQ69G5F03",
+      title: "Close while accepting",
+      status: "PENDING",
+    });
+    let resolveAccept: (
+      value: import("@project-delivery/shared").IntakeItem,
+    ) => void = () => undefined;
+
+    listIntakeItemsMock.mockResolvedValueOnce({ items: [original], total: 1 });
+    acceptIntakeItemMock.mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          resolveAccept = resolve;
+        }),
+    );
+    listIntakeItemsMock.mockResolvedValueOnce({
+      items: [{ ...original, status: "ACCEPTED" }],
+      total: 1,
+    });
+
+    render(<IntakePage />);
+
+    fireEvent.click(await screen.findByText("Close while accepting"));
+    fireEvent.click(
+      await screen.findByRole("button", {
+        name: "intakeItems.statusActions.accept",
+      }),
+    );
+    expect(
+      await screen.findByTestId("intake-convert-button"),
+    ).toBeInTheDocument();
+
+    fireEvent.keyDown(window, { key: "Escape" });
+    await waitFor(() =>
+      expect(
+        screen.queryByTestId("intake-detail-sheet"),
+      ).not.toBeInTheDocument(),
+    );
+
+    await act(async () => {
+      resolveAccept({ ...original, status: "ACCEPTED" });
+      await Promise.resolve();
+    });
+
+    await waitFor(() => expect(listIntakeItemsMock).toHaveBeenCalledTimes(2));
+    expect(screen.queryByTestId("intake-detail-sheet")).not.toBeInTheDocument();
   });
 
   it("renders the noSpace empty state when session has no defaultSpaceId", async () => {
