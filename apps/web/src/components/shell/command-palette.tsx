@@ -1,0 +1,456 @@
+"use client";
+
+import {
+  AlertTriangle,
+  Bug as BugIcon,
+  CheckCircle2,
+  FileText,
+  GitBranch,
+  Inbox,
+  LayoutDashboard,
+  Loader2,
+  Plus,
+  ShieldAlert,
+  Sun,
+  Target,
+  Workflow,
+} from "lucide-react";
+import { useTranslations } from "next-intl";
+import { useEffect, useMemo, useState } from "react";
+
+import { listBugs } from "../../lib/bug-service";
+import { listIntakeItems } from "../../lib/intake-service";
+import { listRequirements } from "../../lib/requirement-service";
+import { listWorkItems } from "../../lib/work-item-service";
+
+import {
+  CommandDialog,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+  CommandSeparator,
+  CommandShortcut,
+} from "../ui/command";
+import { useSession } from "../providers/session-provider";
+import { useTheme } from "../providers/theme-provider";
+import { useRouter } from "../../i18n/routing";
+
+let openExternal: ((open?: boolean) => void) | null = null;
+
+export function openCommandPalette() {
+  openExternal?.(true);
+}
+
+export function useCommandPaletteShortcut() {
+  useEffect(() => {
+    const handler = (event: KeyboardEvent) => {
+      const target = event.target as HTMLElement | null;
+      const tag = target?.tagName;
+      const isInput =
+        tag === "INPUT" || tag === "TEXTAREA" || target?.isContentEditable;
+
+      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "k") {
+        event.preventDefault();
+        openExternal?.();
+        return;
+      }
+
+      if (isInput) return;
+
+      if (event.key.toLowerCase() === "g") {
+        const sequenceHandler = (next: KeyboardEvent) => {
+          window.removeEventListener("keydown", sequenceHandler);
+          if (next.key.toLowerCase() === "i") {
+            window.location.assign("/");
+          }
+        };
+        window.addEventListener("keydown", sequenceHandler, { once: true });
+      }
+    };
+
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, []);
+}
+
+type SearchResult = {
+  id: string;
+  type: "TASK" | "BUG" | "REQUIREMENT" | "INTAKE";
+  code: string;
+  title: string;
+  href: string;
+};
+
+const typeIcon: Record<SearchResult["type"], typeof CheckCircle2> = {
+  TASK: CheckCircle2,
+  BUG: BugIcon,
+  REQUIREMENT: FileText,
+  INTAKE: Target,
+};
+
+const typeIconColor: Record<SearchResult["type"], string> = {
+  TASK: "text-primary/80",
+  BUG: "text-destructive/80",
+  REQUIREMENT: "text-info/80",
+  INTAKE: "text-muted-foreground",
+};
+
+function deriveCode(prefix: string, id: string) {
+  return `${prefix}-${id.slice(-6).toUpperCase()}`;
+}
+
+const PAGE_SIZE = 25;
+
+export function CommandPalette() {
+  const t = useTranslations("shell.command");
+  const [open, setOpen] = useState(false);
+  const [query, setQuery] = useState("");
+  const [results, setResults] = useState<SearchResult[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [hasFetched, setHasFetched] = useState(false);
+  const router = useRouter();
+  const { setTheme } = useTheme();
+  const { session, spacesForCurrentOrganization, switchSpace } = useSession();
+
+  const spaceId = session?.defaultSpaceId;
+  const organizationId = session?.defaultOrganizationId;
+
+  useEffect(() => {
+    openExternal = (next) => setOpen(next ?? true);
+    return () => {
+      openExternal = null;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!open) {
+      setQuery("");
+    }
+  }, [open]);
+
+  // Pre-fetch the first page of each entity type when the palette opens.
+  // cmdk filters in-memory based on each CommandItem's `value` prop.
+  useEffect(() => {
+    if (!open || !spaceId || hasFetched) return;
+
+    let cancelled = false;
+    setIsLoading(true);
+
+    void (async () => {
+      try {
+        const [tasks, bugs, requirements, intake] = await Promise.allSettled([
+          listWorkItems({
+            spaceId,
+            organizationId,
+            page: 1,
+            pageSize: PAGE_SIZE,
+          }),
+          listBugs({
+            spaceId,
+            organizationId,
+            page: 1,
+            pageSize: PAGE_SIZE,
+          }),
+          listRequirements({
+            spaceId,
+            organizationId,
+            page: 1,
+            pageSize: PAGE_SIZE,
+            includeDrafts: true,
+          }),
+          listIntakeItems({
+            spaceId,
+            organizationId,
+            page: 1,
+            pageSize: PAGE_SIZE,
+          }),
+        ]);
+
+        if (cancelled) return;
+
+        const merged: SearchResult[] = [];
+        if (tasks.status === "fulfilled") {
+          for (const item of tasks.value.items) {
+            merged.push({
+              id: item.id,
+              type: "TASK",
+              code: deriveCode("TASK", item.id),
+              title: item.title,
+              href: "/work-items",
+            });
+          }
+        }
+        if (bugs.status === "fulfilled") {
+          for (const item of bugs.value.items) {
+            // Per design: bugId === workItemId
+            merged.push({
+              id: item.id,
+              type: "BUG",
+              code: deriveCode("BUG", item.id),
+              title: item.title,
+              href: "/bugs",
+            });
+          }
+        }
+        if (requirements.status === "fulfilled") {
+          for (const item of requirements.value.items) {
+            merged.push({
+              id: item.id,
+              type: "REQUIREMENT",
+              code: deriveCode("REQ", item.id),
+              title: item.title || t("untitled"),
+              href: `/requirements/${item.id}`,
+            });
+          }
+        }
+        if (intake.status === "fulfilled") {
+          for (const item of intake.value.items) {
+            merged.push({
+              id: item.id,
+              type: "INTAKE",
+              code: deriveCode("INK", item.id),
+              title: item.title,
+              href: "/intake-items",
+            });
+          }
+        }
+
+        setResults(merged);
+        setHasFetched(true);
+      } finally {
+        if (!cancelled) setIsLoading(false);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [open, spaceId, organizationId, hasFetched, t]);
+
+  // Reset cache if user switches space.
+  useEffect(() => {
+    setHasFetched(false);
+    setResults([]);
+  }, [spaceId]);
+
+  const navigate = (href: string) => {
+    setOpen(false);
+    router.push(href);
+  };
+
+  const grouped = useMemo(() => {
+    const out: Record<SearchResult["type"], SearchResult[]> = {
+      TASK: [],
+      BUG: [],
+      REQUIREMENT: [],
+      INTAKE: [],
+    };
+    for (const r of results) out[r.type].push(r);
+    return out;
+  }, [results]);
+
+  const showSearchView = query.trim().length >= 2 && spaceId;
+
+  return (
+    <CommandDialog open={open} onOpenChange={setOpen}>
+      <CommandInput
+        placeholder={t("placeholder")}
+        value={query}
+        onValueChange={setQuery}
+      />
+      <CommandList>
+        {showSearchView ? (
+          <>
+            {isLoading && results.length === 0 ? (
+              <div className="flex items-center justify-center gap-2 px-3 py-6 text-xs text-muted-foreground">
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                <span>{t("searching")}</span>
+              </div>
+            ) : (
+              <>
+                <CommandEmpty>{t("empty")}</CommandEmpty>
+                {grouped.TASK.length > 0 && (
+                  <SearchGroup
+                    heading={t("results.tasks")}
+                    items={grouped.TASK}
+                    onSelect={navigate}
+                  />
+                )}
+                {grouped.BUG.length > 0 && (
+                  <SearchGroup
+                    heading={t("results.bugs")}
+                    items={grouped.BUG}
+                    onSelect={navigate}
+                  />
+                )}
+                {grouped.REQUIREMENT.length > 0 && (
+                  <SearchGroup
+                    heading={t("results.requirements")}
+                    items={grouped.REQUIREMENT}
+                    onSelect={navigate}
+                  />
+                )}
+                {grouped.INTAKE.length > 0 && (
+                  <SearchGroup
+                    heading={t("results.intake")}
+                    items={grouped.INTAKE}
+                    onSelect={navigate}
+                  />
+                )}
+              </>
+            )}
+          </>
+        ) : (
+          <>
+            <CommandEmpty>{t("empty")}</CommandEmpty>
+
+            <CommandGroup heading={t("navigation")}>
+              <CommandItem onSelect={() => navigate("/")}>
+                <Inbox className="text-muted-foreground" />
+                <span>{t("nav.workbench")}</span>
+                <CommandShortcut>G I</CommandShortcut>
+              </CommandItem>
+              <CommandItem onSelect={() => navigate("/overview")}>
+                <LayoutDashboard className="text-muted-foreground" />
+                <span>{t("nav.overview")}</span>
+              </CommandItem>
+              <CommandItem onSelect={() => navigate("/versions")}>
+                <GitBranch className="text-muted-foreground" />
+                <span>{t("nav.versions")}</span>
+                <CommandShortcut>G V</CommandShortcut>
+              </CommandItem>
+              <CommandItem onSelect={() => navigate("/work-items")}>
+                <CheckCircle2 className="text-muted-foreground" />
+                <span>{t("nav.tasks")}</span>
+              </CommandItem>
+              <CommandItem onSelect={() => navigate("/bugs")}>
+                <ShieldAlert className="text-muted-foreground" />
+                <span>{t("nav.bugs")}</span>
+                <CommandShortcut>G B</CommandShortcut>
+              </CommandItem>
+              <CommandItem onSelect={() => navigate("/exceptions")}>
+                <AlertTriangle className="text-muted-foreground" />
+                <span>{t("nav.exceptions")}</span>
+              </CommandItem>
+              <CommandItem onSelect={() => navigate("/requirements")}>
+                <FileText className="text-muted-foreground" />
+                <span>{t("nav.requirements")}</span>
+                <CommandShortcut>G R</CommandShortcut>
+              </CommandItem>
+              <CommandItem onSelect={() => navigate("/intake-items")}>
+                <Target className="text-muted-foreground" />
+                <span>{t("nav.intake")}</span>
+              </CommandItem>
+              <CommandItem onSelect={() => navigate("/workflow")}>
+                <Workflow className="text-muted-foreground" />
+                <span>{t("nav.workflow")}</span>
+              </CommandItem>
+            </CommandGroup>
+
+            {spacesForCurrentOrganization.length > 0 && (
+              <>
+                <CommandSeparator />
+                <CommandGroup heading={t("switchSpace")}>
+                  {spacesForCurrentOrganization.map((space) => (
+                    <CommandItem
+                      key={space.id}
+                      onSelect={() => {
+                        setOpen(false);
+                        void switchSpace(space.id);
+                      }}
+                    >
+                      <span className="font-mono text-[10px] text-muted-foreground">
+                        #
+                      </span>
+                      <span>{space.name}</span>
+                    </CommandItem>
+                  ))}
+                </CommandGroup>
+              </>
+            )}
+
+            <CommandSeparator />
+            <CommandGroup heading={t("create")}>
+              <CommandItem onSelect={() => navigate("/work-items?new=task")}>
+                <Plus className="text-muted-foreground" />
+                <span>{t("createTask")}</span>
+              </CommandItem>
+              <CommandItem onSelect={() => navigate("/bugs?new=bug")}>
+                <Plus className="text-muted-foreground" />
+                <span>{t("createBug")}</span>
+              </CommandItem>
+              <CommandItem onSelect={() => navigate("/requirements?new=requirement")}>
+                <Plus className="text-muted-foreground" />
+                <span>{t("createRequirement")}</span>
+              </CommandItem>
+            </CommandGroup>
+
+            <CommandSeparator />
+            <CommandGroup heading={t("preferences")}>
+              <CommandItem
+                onSelect={() => {
+                  setOpen(false);
+                  setTheme("light");
+                }}
+              >
+                <Sun className="text-muted-foreground" />
+                <span>{t("themeLight")}</span>
+              </CommandItem>
+              <CommandItem
+                onSelect={() => {
+                  setOpen(false);
+                  setTheme("dark");
+                }}
+              >
+                <Sun className="text-muted-foreground" />
+                <span>{t("themeDark")}</span>
+              </CommandItem>
+              <CommandItem
+                onSelect={() => {
+                  setOpen(false);
+                  setTheme("system");
+                }}
+              >
+                <Sun className="text-muted-foreground" />
+                <span>{t("themeSystem")}</span>
+              </CommandItem>
+            </CommandGroup>
+          </>
+        )}
+      </CommandList>
+    </CommandDialog>
+  );
+}
+
+function SearchGroup({
+  heading,
+  items,
+  onSelect,
+}: {
+  heading: string;
+  items: SearchResult[];
+  onSelect: (href: string) => void;
+}) {
+  return (
+    <CommandGroup heading={heading}>
+      {items.map((item) => {
+        const Icon = typeIcon[item.type];
+        return (
+          <CommandItem
+            key={item.id}
+            value={`${item.code} ${item.title}`}
+            onSelect={() => onSelect(item.href)}
+          >
+            <Icon className={typeIconColor[item.type]} />
+            <span className="font-mono text-[10px] text-muted-foreground">
+              {item.code}
+            </span>
+            <span className="truncate">{item.title}</span>
+          </CommandItem>
+        );
+      })}
+    </CommandGroup>
+  );
+}

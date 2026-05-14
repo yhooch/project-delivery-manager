@@ -1,6 +1,7 @@
 import "../globals.css";
 
 import type { Metadata } from "next";
+import { Inter, JetBrains_Mono } from "next/font/google";
 import Script from "next/script";
 import { NextIntlClientProvider } from "next-intl";
 import { getTranslations, setRequestLocale } from "next-intl/server";
@@ -11,6 +12,18 @@ import { SessionProvider } from "../../components/providers/session-provider";
 import { ThemeProvider } from "../../components/providers/theme-provider";
 import { isLocale, locales } from "../../i18n/locales";
 import { themeInitScript } from "../../lib/theme-script";
+
+const inter = Inter({
+  subsets: ["latin"],
+  variable: "--font-inter",
+  display: "swap",
+});
+
+const jetbrainsMono = JetBrains_Mono({
+  subsets: ["latin"],
+  variable: "--font-jetbrains-mono",
+  display: "swap",
+});
 
 type LocaleLayoutProps = {
   children: ReactNode;
@@ -53,13 +66,17 @@ export default async function LocaleLayout({
   setRequestLocale(locale);
 
   return (
-    <html lang={locale} suppressHydrationWarning>
+    <html
+      lang={locale}
+      className={`${inter.variable} ${jetbrainsMono.variable}`}
+      suppressHydrationWarning
+    >
       <head>
         <Script id="theme-init" strategy="beforeInteractive">
           {themeInitScript}
         </Script>
       </head>
-      <body>
+      <body className="font-sans antialiased">
         <NextIntlClientProvider>
           <ThemeProvider>
             <SessionProvider>{children}</SessionProvider>

@@ -1,78 +1,53 @@
 "use client";
 
-import { Bell, Search, ShieldCheck } from "lucide-react";
+import { Loader2 } from "lucide-react";
 import { useTranslations } from "next-intl";
-import type { ReactNode } from "react";
+import { useEffect, type ReactNode } from "react";
 
-import { LanguageSwitch } from "./language-switch";
-import { LogoutButton } from "./logout-button";
-import { OrganizationSwitcher } from "./organization-switcher";
-import { SidebarNav } from "./sidebar-nav";
-import { SpaceSwitcher } from "./space-switcher";
-import { ThemeSwitch } from "./theme-switch";
 import { useSession } from "../providers/session-provider";
+
+import { CommandPalette, useCommandPaletteShortcut } from "./command-palette";
+import { Sidebar } from "./sidebar";
+import { TopBar } from "./top-bar";
+import { OnboardingEmpty } from "./onboarding-empty";
 
 type AppShellProps = {
   children: ReactNode;
 };
 
 export function AppShell({ children }: AppShellProps) {
+  const { status, session } = useSession();
   const t = useTranslations("shell");
-  const { session, status } = useSession();
-  const statusValue =
-    status === "authenticated" && session
-      ? t("status.signedIn", { username: session.user.username })
-      : t(`status.${status}`);
+  useCommandPaletteShortcut();
+
+  useEffect(() => {
+    document.title = t("documentTitle");
+  }, [t]);
+
+  if (status === "loading") {
+    return (
+      <div className="flex h-screen items-center justify-center bg-background">
+        <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
+
+  if (status === "unauthenticated" || !session) {
+    return null;
+  }
+
+  const hasOrganization = session.organizations.length > 0;
 
   return (
-    <div className="app-shell">
-      <aside className="app-shell__sidebar">
-        <div className="brand-lockup" aria-label={t("brand.name")}>
-          <div className="brand-lockup__mark" aria-hidden="true">
-            {t("brand.shortName")}
-          </div>
-          <div className="brand-lockup__text">
-            <span className="brand-lockup__name">{t("brand.name")}</span>
-            <span className="brand-lockup__meta">{t("brand.subtitle")}</span>
-          </div>
-        </div>
-        <SidebarNav />
-        <div className="sidebar-status">
-          <ShieldCheck aria-hidden="true" size={16} strokeWidth={2} />
-          <div>
-            <span className="sidebar-status__label">{t("status.label")}</span>
-            <span className="sidebar-status__value">{statusValue}</span>
-          </div>
-        </div>
-      </aside>
-      <div className="app-shell__workspace">
-        <header className="topbar">
-          <div className="topbar__title-group">
-            <span className="topbar__eyebrow">{t("topbar.eyebrow")}</span>
-            <h1 className="topbar__title">{t("topbar.title")}</h1>
-          </div>
-          <div className="topbar__tools">
-            <OrganizationSwitcher />
-            <SpaceSwitcher />
-            <div className="command-search" aria-label={t("search.label")}>
-              <Search aria-hidden="true" size={16} strokeWidth={2} />
-              <span>{t("search.placeholder")}</span>
-            </div>
-            <button
-              aria-label={t("notifications.ariaLabel")}
-              className="icon-button"
-              title={t("notifications.label")}
-              type="button"
-            >
-              <Bell aria-hidden="true" size={17} strokeWidth={2} />
-            </button>
-            <LanguageSwitch />
-            <ThemeSwitch />
-            <LogoutButton />
-          </div>
-        </header>
-        <main className="app-shell__content">{children}</main>
+    <div className="flex h-screen overflow-hidden bg-background">
+      <Sidebar />
+      <div className="flex flex-1 flex-col overflow-hidden">
+        <TopBar />
+        <main className="flex-1 overflow-auto bg-background">
+          {hasOrganization ? children : <OnboardingEmpty />}
+        </main>
       </div>
+      <CommandPalette />
     </div>
   );
 }

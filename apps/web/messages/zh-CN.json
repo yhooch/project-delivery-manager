@@ -1131,6 +1131,164 @@
         "CLOSED": "关闭",
         "REOPENED": "重新打开"
       }
+    },
+    "dialog": {
+      "create": {
+        "title": "新建 Bug",
+        "description": "记录缺陷，并填写复现步骤与严重程度。"
+      },
+      "fields": {
+        "title": "标题",
+        "titleError": "请填写不超过 200 字的 Bug 标题。",
+        "steps": "复现步骤",
+        "severity": "严重程度",
+        "priority": "优先级",
+        "version": "版本",
+        "noVersion": "未指定版本",
+        "assignee": "负责人",
+        "unassigned": "未分配",
+        "dueDate": "截止时间"
+      },
+      "actions": {
+        "cancel": "取消",
+        "submit": "创建 Bug",
+        "submitting": "创建中"
+      }
+    }
+  },
+  "tasks": {
+    "page": {
+      "description": "当前空间下的全部任务。按状态筛选并打开详情侧栏。"
+    },
+    "actions": {
+      "filter": "筛选",
+      "create": "新建任务",
+      "retry": "重试"
+    },
+    "search": {
+      "placeholder": "按标题或编号搜索"
+    },
+    "buckets": {
+      "all": "全部"
+    },
+    "states": {
+      "noSpace": {
+        "title": "未选择空间",
+        "description": "请选择一个有权限的空间以查看任务列表。"
+      },
+      "empty": {
+        "title": "暂无任务",
+        "description": "当前筛选下没有任务。请调整筛选或新建任务。"
+      },
+      "error": {
+        "title": "加载失败"
+      }
+    },
+    "dialog": {
+      "create": {
+        "title": "新建任务",
+        "description": "在当前空间创建任务，使用默认初始流程状态。"
+      },
+      "fields": {
+        "title": "标题",
+        "titleError": "请填写不超过 200 字的任务标题。",
+        "description": "描述",
+        "version": "版本",
+        "noVersion": "未指定版本",
+        "assignee": "负责人",
+        "unassigned": "未分配",
+        "priority": "优先级",
+        "dueDate": "截止时间"
+      },
+      "actions": {
+        "cancel": "取消",
+        "submit": "创建任务",
+        "submitting": "创建中"
+      }
+    }
+  },
+  "intake": {
+    "page": {
+      "description": "事项池用于汇集待处理的工作。请先决定是否纳入、关联版本，必要时拆解为一个或多个任务。",
+      "create": "新建事项"
+    },
+    "filters": {
+      "all": "全部",
+      "pending": "待处理",
+      "accepted": "已纳入",
+      "deferred": "已搁置",
+      "converted": "已拆解"
+    },
+    "actions": {
+      "retry": "重试"
+    },
+    "states": {
+      "loading": "正在加载事项池…",
+      "unauthenticated": {
+        "title": "需要登录",
+        "description": "请先登录后再查看空间事项池。"
+      },
+      "noSpace": {
+        "title": "未选择空间",
+        "description": "请选择一个有权限的空间以查看事项池。"
+      },
+      "error": {
+        "title": "加载失败"
+      },
+      "empty": {
+        "title": "暂无事项",
+        "description": "当前筛选下没有事项。请调整筛选或新建事项。"
+      }
+    },
+    "detail": {
+      "actions": "操作",
+      "convert": "拆解为任务",
+      "viewTasks": "查看关联任务",
+      "reporter": "提交人",
+      "acceptedAt": "纳入时间",
+      "version": "版本",
+      "noVersion": "未关联",
+      "descriptionTitle": "描述",
+      "descriptionEmpty": "该事项暂无描述。"
+    },
+    "dialog": {
+      "create": {
+        "title": "新建事项",
+        "description": "记录待处理的想法、变更或后续事项，便于后续筛选与拆解。"
+      },
+      "convert": {
+        "title": "拆解为任务",
+        "description": "将已纳入的事项拆解为一个或多个任务。",
+        "intakeLabel": "事项",
+        "tasksLabel": "任务列表",
+        "addTask": "添加任务",
+        "removeTask": "移除任务",
+        "taskTitlePlaceholder": "任务标题",
+        "taskTitleError": "请填写不超过 200 字的任务标题。",
+        "taskAssignee": "任务负责人",
+        "taskPriority": "任务优先级",
+        "unassigned": "未分配",
+        "submit": "创建任务",
+        "submitting": "创建中"
+      },
+      "fields": {
+        "title": "标题",
+        "titleError": "请填写不超过 200 字的事项标题。",
+        "description": "描述",
+        "sourceType": "来源类型",
+        "version": "版本",
+        "noVersion": "未指定版本",
+        "requirement": "关联需求",
+        "noRequirement": "未关联需求",
+        "untitledRequirement": "未命名需求",
+        "priority": "优先级",
+        "noPriority": "未设置"
+      },
+      "actions": {
+        "cancel": "取消",
+        "submit": "创建事项",
+        "submitting": "创建中"
+      }
     }
   },
   "workItems": {
@@ -1501,6 +1659,38 @@
         "ATTACHMENT_ADDED": "新增附件",
         "CLOSED": "关闭",
         "REOPENED": "重新打开"
+      }
+    }
+  },
+  "workbench": {
+    "title": "我的工作台",
+    "subtitle": "聚合待办、待处理动作、临近截止和最近动态。",
+    "viewAll": "查看全部",
+    "errorTitle": "工作台加载失败",
+    "summary": {
+      "todo": "我的待办",
+      "dueSoon": "临近截止",
+      "blocked": "阻塞事项",
+      "pendingConfirm": "待确认"
+    },
+    "sections": {
+      "todo": "我的待办",
+      "actions": "待处理动作",
+      "dueSoon": "临近截止",
+      "recent": "最近动态"
+    },
+    "empty": {
+      "todo": "暂无我的待办。",
+      "actions": "暂无待处理动作。",
+      "dueSoon": "暂无临近截止事项。",
+      "recent": "暂无最近动态。",
+      "signIn": {
+        "title": "尚未登录",
+        "description": "登录后可查看你的交付工作台。"
+      },
+      "noOrganization": {
+        "title": "暂无组织",
+        "description": "请先创建或加入一个组织。"
       }
     }
   },
@@ -1912,6 +2102,56 @@
     "publishIssues": {
       "unknownCode": "问题",
       "unknownMessage": "发布校验失败。"
+    },
+    "page": {
+      "description": "维护任务与 Bug 的轻量状态机；已发布版本不可直接编辑，需新建版本承接变更。",
+      "newWorkflow": "新建流程",
+      "configure": "配置",
+      "copyAsNewVersion": "复制为新版本",
+      "noSpace": {
+        "title": "未选择空间",
+        "description": "请先在顶部切换到一个项目空间，再管理流程配置。"
+      },
+      "empty": {
+        "title": "暂无流程定义",
+        "description": "当前空间还没有任何流程定义。"
+      }
+    },
+    "dialog": {
+      "create": {
+        "title": "新建流程",
+        "description": "为当前空间创建一个新的流程定义。可在创建后再添加版本和动作。",
+        "fields": {
+          "name": "流程名称",
+          "namePlaceholder": "例如：开发任务流程",
+          "code": "流程编码",
+          "codePlaceholder": "可选；只能包含字母、数字、下划线和短横线",
+          "codeHint": "留空时由系统按名称生成默认编码。",
+          "description": "说明",
+          "descriptionPlaceholder": "可选：简要描述此流程的用途"
+        },
+        "submit": "创建",
+        "submitting": "创建中…",
+        "cancel": "取消"
+      },
+      "configure": {
+        "title": "编辑流程",
+        "description": "修改流程的名称和说明。状态、动作和绑定请在版本管理中调整。",
+        "fields": {
+          "name": "流程名称",
+          "description": "说明"
+        },
+        "submit": "保存",
+        "submitting": "保存中…",
+        "cancel": "取消"
+      },
+      "copyVersion": {
+        "title": "复制为新版本",
+        "description": "基于当前流程创建一个新的草稿版本。新版本会复制最新版本的状态与动作配置。",
+        "submit": "创建草稿版本",
+        "submitting": "创建中…",
+        "cancel": "取消"
+      }
     }
   },
   "spaceOverview": {
@@ -2176,6 +2416,200 @@
       "pending_confirm": "待确认",
       "pending_regression": "待回归",
       "stale": "长期未流转"
+    }
+  },
+  "taskDetail": {
+    "tabs": {
+      "detail": "详情",
+      "comments": "评论",
+      "attachments": "附件",
+      "timeline": "时间线",
+      "links": "关联"
+    },
+    "fields": {
+      "assignee": "负责人",
+      "reporter": "提交人",
+      "priority": "优先级",
+      "version": "版本",
+      "due": "截止",
+      "createdAt": "创建于",
+      "updated": "最近更新"
+    },
+    "actions": {
+      "label": "可执行动作",
+      "empty": "暂无可执行动作",
+      "loading": "加载动作中…",
+      "executing": "执行中…",
+      "errorTitle": "动作执行失败",
+      "loadErrorTitle": "加载动作失败",
+      "retry": "重试"
+    },
+    "comments": {
+      "placeholder": "添加评论…",
+      "submit": "发表",
+      "submitting": "发送中…",
+      "loading": "加载评论中…",
+      "errorTitle": "加载评论失败",
+      "submitErrorTitle": "发送评论失败",
+      "emptyTitle": "暂无评论",
+      "emptyDescription": "成为第一个发表评论的人",
+      "retry": "重试"
+    },
+    "attachments": {
+      "loading": "加载附件中…",
+      "errorTitle": "加载附件失败",
+      "emptyTitle": "暂无附件",
+      "emptyDescription": "上传文件以共享给其他成员",
+      "uploadAction": "上传附件",
+      "uploadTodo": "上传功能开发中",
+      "retry": "重试",
+      "size": "大小",
+      "uploadedBy": "上传者"
+    },
+    "timeline": {
+      "loading": "加载时间线中…",
+      "errorTitle": "加载时间线失败",
+      "emptyTitle": "暂无时间线事件",
+      "emptyDescription": "工作项产生动作或评论后会显示在这里",
+      "retry": "重试"
+    },
+    "blocked": {
+      "label": "阻塞中"
+    },
+    "description": {
+      "title": "描述",
+      "empty": "暂无描述"
+    },
+    "missingApi": {
+      "title": "该接口待补"
+    },
+    "empty": "选择一个工作项以查看详情"
+  },
+  "spaceSettings": {
+    "page": {
+      "description": "管理空间名称、成员与异常阈值等配置。",
+      "noSpace": {
+        "title": "未选择空间",
+        "description": "请先在顶部切换到一个项目空间。"
+      }
+    },
+    "actions": {
+      "save": "保存",
+      "saving": "保存中"
+    },
+    "basic": {
+      "title": "基础信息",
+      "fields": {
+        "name": "空间名称",
+        "code": "空间编码"
+      }
+    },
+    "threshold": {
+      "title": "异常阈值",
+      "fields": {
+        "staleDays": "长时间未流转阈值（自然日）"
+      },
+      "hint": "合法范围 1 到 30。修改后异常视图的“长时间未流转”会按新阈值刷新。"
+    },
+    "members": {
+      "title": "空间成员",
+      "add": "添加成员",
+      "empty": "暂无空间成员",
+      "statusDisabled": "已禁用",
+      "actions": {
+        "changeRole": "修改 {username} 的空间角色",
+        "changeStatus": "修改 {username} 的空间状态"
+      },
+      "roles": {
+        "SPACE_ADMIN": "空间管理员",
+        "PM": "项目经理",
+        "DEVELOPER": "开发",
+        "TESTER": "测试",
+        "REQUIREMENT": "需求负责人",
+        "MEMBER": "成员",
+        "VIEWER": "只读"
+      }
+    },
+    "dialog": {
+      "addMember": {
+        "title": "添加空间成员",
+        "description": "从组织现有成员中选择用户，并指定其在当前空间的角色。",
+        "fields": {
+          "username": "用户名",
+          "usernamePlaceholder": "输入用户名搜索",
+          "role": "空间角色",
+          "noMatch": "没有匹配的组织成员。请先确认其已加入组织。"
+        },
+        "submit": "添加",
+        "submitting": "添加中…",
+        "cancel": "取消"
+      },
+      "editRole": {
+        "title": "修改空间角色",
+        "description": "调整 {username} 在当前空间的角色。",
+        "fields": {
+          "role": "空间角色"
+        },
+        "submit": "保存",
+        "submitting": "保存中…",
+        "cancel": "取消"
+      },
+      "disableMember": {
+        "errorTitle": "禁用失败"
+      }
+    }
+  },
+  "organization": {
+    "page": {
+      "description": "管理组织资料与组织成员。组织 OWNER/ADMIN 可创建项目空间。",
+      "noOrganization": {
+        "title": "未选择组织",
+        "description": "请先在顶部切换到一个组织。"
+      }
+    },
+    "info": {
+      "title": "组织信息",
+      "fields": {
+        "name": "组织名称",
+        "code": "组织编码"
+      },
+      "readOnlyNote": "暂不支持在此处修改组织资料。"
+    },
+    "members": {
+      "title": "组织成员",
+      "add": "添加成员",
+      "empty": "暂无组织成员",
+      "ownerProtectionNote": "系统会自动保护至少一个 OWNER 不可移除。",
+      "actions": {
+        "remove": "移除 {username}"
+      }
+    },
+    "dialog": {
+      "addMember": {
+        "title": "添加组织成员",
+        "description": "通过用户名邀请已注册账号加入当前组织，并指定组织角色。",
+        "fields": {
+          "username": "用户名",
+          "usernamePlaceholder": "请输入用户名",
+          "role": "组织角色"
+        },
+        "roles": {
+          "OWNER": "所有者",
+          "ADMIN": "管理员",
+          "MEMBER": "成员"
+        },
+        "submit": "添加",
+        "submitting": "添加中…",
+        "cancel": "取消"
+      },
+      "removeMember": {
+        "title": "移除组织成员",
+        "description": "确定要移除 {username} 吗？该成员会被禁用并无法再访问组织资源。",
+        "lastOwnerWarning": "至少需要保留一名 OWNER，无法移除最后一个所有者。",
+        "submit": "确认移除",
+        "submitting": "处理中…",
+        "cancel": "取消"
+      }
     }
   }
 }

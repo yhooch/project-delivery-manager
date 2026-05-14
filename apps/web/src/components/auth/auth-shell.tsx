@@ -1,9 +1,11 @@
+"use client";
+
 import { useTranslations } from "next-intl";
 import type { ReactNode } from "react";
 
 import { Link } from "../../i18n/routing";
-import { LanguageSwitch } from "../shell/language-switch";
-import { ThemeSwitch } from "../shell/theme-switch";
+import { LanguageToggle } from "../shell/language-toggle";
+import { ThemeToggle } from "../shell/theme-toggle";
 
 type AuthMode = "login" | "register";
 
@@ -14,55 +16,38 @@ type AuthShellProps = {
 
 export function AuthShell({ children, mode }: AuthShellProps) {
   const t = useTranslations("auth");
-  const alternateMode = mode === "login" ? "register" : "login";
   const alternateHref = mode === "login" ? "/register" : "/login";
 
   return (
-    <main className="auth-page">
-      <header className="auth-topbar">
-        <Link className="brand-lockup brand-lockup--auth" href="/">
-          <div className="brand-lockup__mark" aria-hidden="true">
-            {t("brand.shortName")}
+    <div className="relative flex min-h-screen flex-col bg-background">
+      <header className="flex items-center justify-between px-5 py-4">
+        <div className="flex items-center gap-2">
+          <div className="flex h-7 w-7 items-center justify-center rounded-md bg-primary text-[12px] font-bold text-primary-foreground">
+            PD
           </div>
-          <div className="brand-lockup__text">
-            <span className="brand-lockup__name">{t("brand.name")}</span>
-            <span className="brand-lockup__meta">{t("brand.subtitle")}</span>
-          </div>
-        </Link>
-        <div className="auth-topbar__tools">
-          <LanguageSwitch />
-          <ThemeSwitch />
+          <span className="text-sm font-semibold tracking-tight">
+            {t("brand.name")}
+          </span>
+        </div>
+        <div className="flex items-center gap-1">
+          <LanguageToggle />
+          <ThemeToggle />
         </div>
       </header>
 
-      <section className="auth-layout" aria-labelledby="auth-title">
-        <div className="auth-copy">
-          <p className="page-heading__eyebrow">{t(`${mode}.eyebrow`)}</p>
-          <h1 id="auth-title">{t(`${mode}.title`)}</h1>
-          <p>{t(`${mode}.description`)}</p>
-          <dl className="auth-facts">
-            <div>
-              <dt>{t("facts.contract.dt")}</dt>
-              <dd>{t("facts.contract.dd")}</dd>
-            </div>
-            <div>
-              <dt>{t("facts.session.dt")}</dt>
-              <dd>{t("facts.session.dd")}</dd>
-            </div>
-            <div>
-              <dt>{t("facts.preference.dt")}</dt>
-              <dd>{t("facts.preference.dd")}</dd>
-            </div>
-          </dl>
-        </div>
-        <div className="auth-card">
-          {children}
-          <div className="auth-card__footer">
-            <span>{t(`${mode}.alternatePrompt`)}</span>
-            <Link href={alternateHref}>{t(`${alternateMode}.link`)}</Link>
-          </div>
-        </div>
-      </section>
-    </main>
+      <main className="flex flex-1 items-center justify-center px-4 py-10">
+        <div className="w-full max-w-sm">{children}</div>
+      </main>
+
+      <footer className="px-5 py-4 text-center text-[11px] text-muted-foreground">
+        <span>{t(`${mode}.alternatePrompt`)} </span>
+        <Link
+          href={alternateHref}
+          className="font-medium text-primary hover:underline"
+        >
+          {t(`${mode}.link`)}
+        </Link>
+      </footer>
+    </div>
   );
 }

@@ -662,6 +662,14 @@
       "emptyTitle": "No related work items",
       "emptyDescription": "A stable empty state is reserved for related tasks and bugs.",
       "noStatus": "No status"
+    },
+    "dialog": {
+      "create": {
+        "title": "New requirement",
+        "description": "A draft requirement is created and opened in the editor.",
+        "submit": "Create requirement",
+        "submitting": "Creating"
+      }
     }
   },
   "intakeItems": {
@@ -1131,6 +1139,164 @@
         "CLOSED": "Closed",
         "REOPENED": "Reopened"
       }
+    },
+    "dialog": {
+      "create": {
+        "title": "New bug",
+        "description": "Capture the defect with reproduction steps and severity."
+      },
+      "fields": {
+        "title": "Title",
+        "titleError": "Enter a bug title up to 200 characters.",
+        "steps": "Steps to reproduce",
+        "severity": "Severity",
+        "priority": "Priority",
+        "version": "Version",
+        "noVersion": "No version",
+        "assignee": "Assignee",
+        "unassigned": "Unassigned",
+        "dueDate": "Due date"
+      },
+      "actions": {
+        "cancel": "Cancel",
+        "submit": "Create bug",
+        "submitting": "Creating"
+      }
+    }
+  },
+  "tasks": {
+    "page": {
+      "description": "All tasks in the current space. Filter by status and open the detail drawer."
+    },
+    "actions": {
+      "filter": "Filter",
+      "create": "New task",
+      "retry": "Retry"
+    },
+    "search": {
+      "placeholder": "Search by title or code"
+    },
+    "buckets": {
+      "all": "All"
+    },
+    "states": {
+      "noSpace": {
+        "title": "No space selected",
+        "description": "Pick an accessible space to see its task list."
+      },
+      "empty": {
+        "title": "No tasks",
+        "description": "No tasks match the current filters. Adjust filters or create a task."
+      },
+      "error": {
+        "title": "Failed to load"
+      }
+    },
+    "dialog": {
+      "create": {
+        "title": "New task",
+        "description": "Create a task in the current space. Workflow stays at the default initial state."
+      },
+      "fields": {
+        "title": "Title",
+        "titleError": "Enter a task title up to 200 characters.",
+        "description": "Description",
+        "version": "Version",
+        "noVersion": "No version",
+        "assignee": "Assignee",
+        "unassigned": "Unassigned",
+        "priority": "Priority",
+        "dueDate": "Due date"
+      },
+      "actions": {
+        "cancel": "Cancel",
+        "submit": "Create task",
+        "submitting": "Creating"
+      }
+    }
+  },
+  "intake": {
+    "page": {
+      "description": "A pool for incoming work. Decide whether to accept, assign a version, and split into one or more tasks when needed.",
+      "create": "New intake item"
+    },
+    "filters": {
+      "all": "All",
+      "pending": "Pending",
+      "accepted": "Accepted",
+      "deferred": "Deferred",
+      "converted": "Converted"
+    },
+    "actions": {
+      "retry": "Retry"
+    },
+    "states": {
+      "loading": "Loading intake pool…",
+      "unauthenticated": {
+        "title": "Sign-in required",
+        "description": "Sign in before viewing the space intake pool."
+      },
+      "noSpace": {
+        "title": "No space selected",
+        "description": "Select an accessible space to view the intake pool."
+      },
+      "error": {
+        "title": "Failed to load"
+      },
+      "empty": {
+        "title": "No intake items",
+        "description": "No items match the current filter. Adjust the filter or create a new item."
+      }
+    },
+    "detail": {
+      "actions": "Actions",
+      "convert": "Split into tasks",
+      "viewTasks": "View related tasks",
+      "reporter": "Reporter",
+      "acceptedAt": "Accepted at",
+      "version": "Version",
+      "noVersion": "Unlinked",
+      "descriptionTitle": "Description",
+      "descriptionEmpty": "This item has no description yet."
+    },
+    "dialog": {
+      "create": {
+        "title": "New intake item",
+        "description": "Capture an incoming idea, change request, or follow-up to triage later."
+      },
+      "convert": {
+        "title": "Split into tasks",
+        "description": "Break down this accepted intake into one or more tasks.",
+        "intakeLabel": "Intake item",
+        "tasksLabel": "Tasks",
+        "addTask": "Add task",
+        "removeTask": "Remove task",
+        "taskTitlePlaceholder": "Task title",
+        "taskTitleError": "Enter a task title up to 200 characters.",
+        "taskAssignee": "Task assignee",
+        "taskPriority": "Task priority",
+        "unassigned": "Unassigned",
+        "submit": "Create tasks",
+        "submitting": "Creating"
+      },
+      "fields": {
+        "title": "Title",
+        "titleError": "Enter an intake title up to 200 characters.",
+        "description": "Description",
+        "sourceType": "Source type",
+        "version": "Version",
+        "noVersion": "No version",
+        "requirement": "Linked requirement",
+        "noRequirement": "No requirement",
+        "untitledRequirement": "Untitled requirement",
+        "priority": "Priority",
+        "noPriority": "Not set"
+      },
+      "actions": {
+        "cancel": "Cancel",
+        "submit": "Create item",
+        "submitting": "Creating"
+      }
     }
   },
   "workItems": {
@@ -1501,6 +1667,38 @@
         "ATTACHMENT_ADDED": "Attachment added",
         "CLOSED": "Closed",
         "REOPENED": "Reopened"
+      }
+    }
+  },
+  "workbench": {
+    "title": "My workbench",
+    "subtitle": "Review assigned work, action todos, due soon items, and recent activity.",
+    "viewAll": "View all",
+    "errorTitle": "Failed to load workbench",
+    "summary": {
+      "todo": "My todos",
+      "dueSoon": "Due soon",
+      "blocked": "Blocked",
+      "pendingConfirm": "Pending confirm"
+    },
+    "sections": {
+      "todo": "My todos",
+      "actions": "Action todos",
+      "dueSoon": "Due soon",
+      "recent": "Recent activity"
+    },
+    "empty": {
+      "todo": "No assigned todos.",
+      "actions": "No action todos.",
+      "dueSoon": "No due soon items.",
+      "recent": "No recent activity.",
+      "signIn": {
+        "title": "Not signed in",
+        "description": "Sign in to view your delivery workbench."
+      },
+      "noOrganization": {
+        "title": "No organization",
+        "description": "Create or join an organization first."
       }
     }
   },
@@ -1912,6 +2110,56 @@
     "publishIssues": {
       "unknownCode": "Issue",
       "unknownMessage": "Publish validation failed."
+    },
+    "page": {
+      "description": "Maintain lightweight state machines for tasks and bugs. Published versions are read-only; create a new version to capture changes.",
+      "newWorkflow": "New workflow",
+      "configure": "Configure",
+      "copyAsNewVersion": "Copy as new version",
+      "noSpace": {
+        "title": "No space selected",
+        "description": "Switch to a project space first to manage workflow configuration."
+      },
+      "empty": {
+        "title": "No workflow definitions",
+        "description": "This space does not have any workflow definitions yet."
+      }
+    },
+    "dialog": {
+      "create": {
+        "title": "New workflow",
+        "description": "Create a new workflow definition for the current space. You can add versions and actions afterwards.",
+        "fields": {
+          "name": "Workflow name",
+          "namePlaceholder": "e.g. Development task workflow",
+          "code": "Workflow code",
+          "codePlaceholder": "Optional; letters, digits, underscore and dash only",
+          "codeHint": "Leave blank to auto-generate from the name.",
+          "description": "Description",
+          "descriptionPlaceholder": "Optional: briefly describe the workflow purpose"
+        },
+        "submit": "Create",
+        "submitting": "Creating…",
+        "cancel": "Cancel"
+      },
+      "configure": {
+        "title": "Edit workflow",
+        "description": "Update the workflow name and description. Manage states, actions, and bindings inside version management.",
+        "fields": {
+          "name": "Workflow name",
+          "description": "Description"
+        },
+        "submit": "Save",
+        "submitting": "Saving…",
+        "cancel": "Cancel"
+      },
+      "copyVersion": {
+        "title": "Copy as new version",
+        "description": "Create a new draft version. The new draft will be initialized from the latest version's states and actions.",
+        "submit": "Create draft version",
+        "submitting": "Creating…",
+        "cancel": "Cancel"
+      }
     }
   },
   "spaceOverview": {
@@ -2176,6 +2424,200 @@
       "pending_confirm": "Pending confirmation",
       "pending_regression": "Pending regression",
       "stale": "Stale"
+    }
+  },
+  "taskDetail": {
+    "tabs": {
+      "detail": "Detail",
+      "comments": "Comments",
+      "attachments": "Attachments",
+      "timeline": "Timeline",
+      "links": "Links"
+    },
+    "fields": {
+      "assignee": "Assignee",
+      "reporter": "Reporter",
+      "priority": "Priority",
+      "version": "Version",
+      "due": "Due",
+      "createdAt": "Created",
+      "updated": "Updated"
+    },
+    "actions": {
+      "label": "Available actions",
+      "empty": "No actions available",
+      "loading": "Loading actions…",
+      "executing": "Executing…",
+      "errorTitle": "Action failed",
+      "loadErrorTitle": "Failed to load actions",
+      "retry": "Retry"
+    },
+    "comments": {
+      "placeholder": "Add a comment…",
+      "submit": "Post",
+      "submitting": "Posting…",
+      "loading": "Loading comments…",
+      "errorTitle": "Failed to load comments",
+      "submitErrorTitle": "Failed to post comment",
+      "emptyTitle": "No comments yet",
+      "emptyDescription": "Be the first to leave a comment",
+      "retry": "Retry"
+    },
+    "attachments": {
+      "loading": "Loading attachments…",
+      "errorTitle": "Failed to load attachments",
+      "emptyTitle": "No attachments",
+      "emptyDescription": "Upload files to share with the team",
+      "uploadAction": "Upload",
+      "uploadTodo": "Upload feature coming soon",
+      "retry": "Retry",
+      "size": "Size",
+      "uploadedBy": "Uploaded by"
+    },
+    "timeline": {
+      "loading": "Loading timeline…",
+      "errorTitle": "Failed to load timeline",
+      "emptyTitle": "No timeline events",
+      "emptyDescription": "Actions and comments on this item will show up here",
+      "retry": "Retry"
+    },
+    "blocked": {
+      "label": "Blocked"
+    },
+    "description": {
+      "title": "Description",
+      "empty": "No description"
+    },
+    "missingApi": {
+      "title": "API not yet available"
+    },
+    "empty": "Select an item to view details"
+  },
+  "spaceSettings": {
+    "page": {
+      "description": "Manage space name, members, and exception thresholds.",
+      "noSpace": {
+        "title": "No space selected",
+        "description": "Switch to a project space first to manage settings."
+      }
+    },
+    "actions": {
+      "save": "Save",
+      "saving": "Saving"
+    },
+    "basic": {
+      "title": "Basic info",
+      "fields": {
+        "name": "Space name",
+        "code": "Space code"
+      }
+    },
+    "threshold": {
+      "title": "Exception thresholds",
+      "fields": {
+        "staleDays": "Long stale threshold (days)"
+      },
+      "hint": "Valid range 1 to 30. Updates refresh the \"long stale\" view with the new threshold."
+    },
+    "members": {
+      "title": "Space members",
+      "add": "Add member",
+      "empty": "No space members",
+      "statusDisabled": "Disabled",
+      "actions": {
+        "changeRole": "Change space role for {username}",
+        "changeStatus": "Change space status for {username}"
+      },
+      "roles": {
+        "SPACE_ADMIN": "Space admin",
+        "PM": "Project manager",
+        "DEVELOPER": "Developer",
+        "TESTER": "Tester",
+        "REQUIREMENT": "Requirement owner",
+        "MEMBER": "Member",
+        "VIEWER": "Viewer"
+      }
+    },
+    "dialog": {
+      "addMember": {
+        "title": "Add space member",
+        "description": "Pick a user from the organization and assign their role in this space.",
+        "fields": {
+          "username": "Username",
+          "usernamePlaceholder": "Type a username to search",
+          "role": "Space role",
+          "noMatch": "No matching organization member. Make sure they have joined the organization first."
+        },
+        "submit": "Add",
+        "submitting": "Adding…",
+        "cancel": "Cancel"
+      },
+      "editRole": {
+        "title": "Change space role",
+        "description": "Update the space role for {username}.",
+        "fields": {
+          "role": "Space role"
+        },
+        "submit": "Save",
+        "submitting": "Saving…",
+        "cancel": "Cancel"
+      },
+      "disableMember": {
+        "errorTitle": "Failed to disable member"
+      }
+    }
+  },
+  "organization": {
+    "page": {
+      "description": "Manage organization profile and members. Organization OWNER/ADMIN can create project spaces.",
+      "noOrganization": {
+        "title": "No organization selected",
+        "description": "Switch to an organization first."
+      }
+    },
+    "info": {
+      "title": "Organization info",
+      "fields": {
+        "name": "Organization name",
+        "code": "Organization code"
+      },
+      "readOnlyNote": "Editing organization profile is not yet supported here."
+    },
+    "members": {
+      "title": "Organization members",
+      "add": "Add member",
+      "empty": "No organization members",
+      "ownerProtectionNote": "The system protects at least one OWNER from being removed.",
+      "actions": {
+        "remove": "Remove {username}"
+      }
+    },
+    "dialog": {
+      "addMember": {
+        "title": "Add organization member",
+        "description": "Invite a registered account by username and assign their organization role.",
+        "fields": {
+          "username": "Username",
+          "usernamePlaceholder": "Enter the username",
+          "role": "Organization role"
+        },
+        "roles": {
+          "OWNER": "Owner",
+          "ADMIN": "Admin",
+          "MEMBER": "Member"
+        },
+        "submit": "Add",
+        "submitting": "Adding…",
+        "cancel": "Cancel"
+      },
+      "removeMember": {
+        "title": "Remove organization member",
+        "description": "Remove {username}? They will be disabled and lose access to organization resources.",
+        "lastOwnerWarning": "At least one OWNER is required. The last owner cannot be removed.",
+        "submit": "Confirm remove",
+        "submitting": "Working…",
+        "cancel": "Cancel"
+      }
     }
   }
 }
