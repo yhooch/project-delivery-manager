@@ -134,6 +134,7 @@ export function RequirementsPage() {
       <Button
         size="sm"
         className="text-xs"
+        data-testid="requirements-create-button"
         onClick={() => {
           void handleCreateDraft();
         }}
@@ -184,9 +185,9 @@ export function RequirementsPage() {
     );
   } else {
     body = (
-      <ul className="divide-y divide-border">
+      <ul data-testid="requirements-list" className="divide-y divide-border">
         {filtered.map((req) => (
-          <li key={req.id}>
+          <li key={req.id} data-testid={`requirements-row-${req.id}`}>
             <Link
               href={`/requirements/${req.id}`}
               className="flex w-full items-start gap-3 px-6 py-3 text-left transition-colors hover:bg-muted/40 cursor-pointer"
@@ -247,7 +248,7 @@ export function RequirementsPage() {
   }
 
   return (
-    <div className="flex h-full flex-col">
+    <div data-testid="requirements-page" className="flex h-full flex-col">
       <PageHeader
         eyebrow={tNav("group.document")}
         title={tNav("requirements")}

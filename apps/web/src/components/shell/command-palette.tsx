@@ -36,6 +36,13 @@ import {
 import { useSession } from "../providers/session-provider";
 import { useTheme } from "../providers/theme-provider";
 import { useRouter } from "../../i18n/routing";
+import {
+  buildLiveKey,
+  pruneStaleRecent,
+  readRecent,
+  writeRecent,
+  type RecentEntry,
+} from "./recent-opens";
 
 let openExternal: ((open?: boolean) => void) | null = null;
 
@@ -75,13 +82,7 @@ export function useCommandPaletteShortcut() {
   }, []);
 }
 
-type SearchResult = {
-  id: string;
-  type: "TASK" | "BUG" | "REQUIREMENT" | "INTAKE";
-  code: string;
-  title: string;
-  href: string;
-};
+type SearchResult = RecentEntry;
 
 const typeIcon: Record<SearchResult["type"], typeof CheckCircle2> = {
   TASK: CheckCircle2,
@@ -102,47 +103,6 @@ function deriveCode(prefix: string, id: string) {
 }
 
 const PAGE_SIZE = 25;
-const RECENT_STORAGE_KEY = "pdm:command-palette:recent";
-const RECENT_MAX = 10;
-
-function readRecent(): SearchResult[] {
-  if (typeof window === "undefined") return [];
-  try {
-    const raw = window.localStorage.getItem(RECENT_STORAGE_KEY);
-    if (!raw) return [];
-    const parsed = JSON.parse(raw) as unknown;
-    if (!Array.isArray(parsed)) return [];
-    return parsed
-      .filter(
-        (item): item is SearchResult =>
-          item !== null &&
-          typeof item === "object" &&
-          typeof (item as SearchResult).id === "string" &&
-          typeof (item as SearchResult).type === "string" &&
-          typeof (item as SearchResult).code === "string" &&
-          typeof (item as SearchResult).title === "string" &&
-          typeof (item as SearchResult).href === "string",
-      )
-      .slice(0, RECENT_MAX);
-  } catch {
-    return [];
-  }
-}
-
-function writeRecent(entry: SearchResult): SearchResult[] {
-  if (typeof window === "undefined") return [];
-  try {
-    const current = readRecent();
-    const next = [
-      entry,
-      ...current.filter((item) => item.id !== entry.id),
-    ].slice(0, RECENT_MAX);
-    window.localStorage.setItem(RECENT_STORAGE_KEY, JSON.stringify(next));
-    return next;
-  } catch {
-    return [];
-  }
-}
 
 export function CommandPalette() {
   const t = useTranslations("shell.command");
@@ -285,7 +245,8 @@ export function CommandPalette() {
   };
 
   const navigateAndRemember = (item: SearchResult) => {
-    writeRecent(item);
+    const next = writeRecent(item);
+    setRecent(next);
     navigate(item.href);
   };
 
@@ -300,11 +261,27 @@ export function CommandPalette() {
     return out;
   }, [results]);
 
+  // Once an entity fetch completes, soft-delete any recent entry whose
+  // underlying item is no longer surfaced by its service (e.g. it has been
+  // deleted). We only prune when the palette is open AND we have a fresh
+  // fetch in hand — otherwise we'd wipe the list every time the cache
+  // hasn't loaded yet.
+  useEffect(() => {
+    if (!open || !hasFetched) return;
+    const liveKeys = new Set<string>();
+    for (const r of results) liveKeys.add(buildLiveKey(r.type, r.id));
+    setRecent((prev) => {
+      const { next, changed } = pruneStaleRecent(prev, liveKeys);
+      return changed ? next : prev;
+    });
+  }, [open, hasFetched, results]);
+
   const showSearchView = query.trim().length >= 2 && spaceId;
 
   return (
     <CommandDialog open={open} onOpenChange={setOpen}>
       <CommandInput
+        data-testid="command-palette-input"
         placeholder={t("placeholder")}
         value={query}
         onValueChange={setQuery}
@@ -322,6 +299,8 @@ export function CommandPalette() {
                 <CommandEmpty>{t("empty")}</CommandEmpty>
                 {grouped.TASK.length > 0 && (
                   <SearchGroup
+                    testId="command-palette-group-tasks"
+                    itemTestIdPrefix="command-palette-item-task"
                     heading={t("results.tasks")}
                     items={grouped.TASK}
                     onSelect={navigateAndRemember}
@@ -329,6 +308,8 @@ export function CommandPalette() {
                 )}
                 {grouped.BUG.length > 0 && (
                   <SearchGroup
+                    testId="command-palette-group-bugs"
+                    itemTestIdPrefix="command-palette-item-bug"
                     heading={t("results.bugs")}
                     items={grouped.BUG}
                     onSelect={navigateAndRemember}
@@ -336,6 +317,8 @@ export function CommandPalette() {
                 )}
                 {grouped.REQUIREMENT.length > 0 && (
                   <SearchGroup
+                    testId="command-palette-group-requirements"
+                    itemTestIdPrefix="command-palette-item-requirement"
                     heading={t("results.requirements")}
                     items={grouped.REQUIREMENT}
                     onSelect={navigateAndRemember}
@@ -343,10 +326,24 @@ export function CommandPalette() {
                 )}
                 {grouped.INTAKE.length > 0 && (
                   <SearchGroup
+                    testId="command-palette-group-intake"
+                    itemTestIdPrefix="command-palette-item-intake"
                     heading={t("results.intake")}
                     items={grouped.INTAKE}
                     onSelect={navigateAndRemember}
                   />
+                )}
+                {/* In search view, real results take priority; "recent" sinks
+                    to the bottom as a fallback shortcut row. */}
+                {recent.length > 0 && (
+                  <>
+                    <CommandSeparator />
+                    <SearchGroup
+                      heading={t("recent")}
+                      items={recent}
+                      onSelect={navigateAndRemember}
+                    />
+                  </>
                 )}
               </>
             )}
@@ -355,6 +352,8 @@ export function CommandPalette() {
           <>
             <CommandEmpty>{t("empty")}</CommandEmpty>
 
+            {/* Default view: recently opened is the most-used action, so it
+                sits above navigation / switchSpace / create / preferences. */}
             {recent.length > 0 ? (
               <>
                 <SearchGroup
@@ -488,18 +487,25 @@ function SearchGroup({
   heading,
   items,
   onSelect,
+  testId,
+  itemTestIdPrefix,
 }: {
   heading: string;
   items: SearchResult[];
   onSelect: (item: SearchResult) => void;
+  testId?: string;
+  itemTestIdPrefix?: string;
 }) {
   return (
-    <CommandGroup heading={heading}>
+    <CommandGroup heading={heading} data-testid={testId}>
       {items.map((item) => {
         const Icon = typeIcon[item.type];
         return (
           <CommandItem
             key={item.id}
+            data-testid={
+              itemTestIdPrefix ? `${itemTestIdPrefix}-${item.id}` : undefined
+            }
             value={`${item.code} ${item.title}`}
             onSelect={() => onSelect(item)}
           >

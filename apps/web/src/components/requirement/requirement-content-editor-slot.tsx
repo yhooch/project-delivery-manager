@@ -54,6 +54,8 @@ import {
   sanitizeTiptapDocument,
   type RequirementContentEditorValue,
 } from "../../lib/requirement-editor-content";
+import { cn } from "../../lib/utils";
+import { Button } from "../ui/button";
 
 export {
   createContentEditorValue,
@@ -390,15 +392,28 @@ export function RequirementContentEditorSlot({
   const hasUploadError = uploads.some((item) => item.status === "failed");
 
   return (
-    <section className="editor-slot" aria-labelledby="requirement-editor-title">
-      <div className="editor-slot__header">
-        <div>
-          <h3 id="requirement-editor-title">{t("title")}</h3>
-          <p>{t("description")}</p>
-        </div>
+    <section
+      className="flex flex-col gap-3"
+      aria-labelledby="requirement-editor-title"
+    >
+      <div className="flex flex-col gap-0.5">
+        <h3
+          id="requirement-editor-title"
+          className="text-sm font-semibold text-foreground"
+        >
+          {t("title")}
+        </h3>
+        <p className="text-xs text-muted-foreground">{t("description")}</p>
       </div>
-      <div className="tiptap-editor" aria-busy={isUploading(uploads)}>
-        <div className="tiptap-toolbar" role="toolbar" aria-label={t("toolbarLabel")}>
+      <div
+        className="flex flex-col gap-2"
+        aria-busy={isUploading(uploads)}
+      >
+        <div
+          className="flex flex-wrap items-center gap-1 rounded-md border border-border/60 bg-background/60 px-2 py-1"
+          role="toolbar"
+          aria-label={t("toolbarLabel")}
+        >
           <ToolbarButton
             active={editor?.isActive("bold") ?? false}
             disabled={!editor || disabled}
@@ -527,40 +542,61 @@ export function RequirementContentEditorSlot({
         <EditorContent editor={editor} />
       </div>
       {!canUploadImages && !disabled ? (
-        <p className="editor-slot__hint">{t("draftUploadOnly")}</p>
+        <p className="text-xs text-muted-foreground">{t("draftUploadOnly")}</p>
       ) : null}
       {uploads.length > 0 ? (
         <div
-          className={`upload-status-list${
-            hasUploadError ? " upload-status-list--error" : ""
-          }`}
+          className={cn(
+            "flex flex-col gap-2 rounded-md border bg-card px-3 py-2",
+            hasUploadError
+              ? "border-destructive/40 bg-destructive/5"
+              : "border-border/60",
+          )}
           aria-live="polite"
         >
           {uploads.map((item) => (
-            <div className="upload-status" key={item.id}>
-              <div className="upload-status__icon">
+            <div
+              className="flex items-center gap-3 text-sm"
+              key={item.id}
+            >
+              <div
+                className={cn(
+                  "flex h-7 w-7 shrink-0 items-center justify-center rounded-md",
+                  item.status === "uploading"
+                    ? "bg-muted text-muted-foreground"
+                    : "bg-destructive/10 text-destructive",
+                )}
+              >
                 {item.status === "uploading" ? (
-                  <Loader2 aria-hidden="true" size={16} strokeWidth={2} />
+                  <Loader2
+                    aria-hidden="true"
+                    className="animate-spin"
+                    size={16}
+                    strokeWidth={2}
+                  />
                 ) : (
                   <XCircle aria-hidden="true" size={16} strokeWidth={2} />
                 )}
               </div>
-              <div>
-                <strong>{item.file.name || t("unknownFile")}</strong>
-                <span>
+              <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+                <strong className="truncate text-sm font-medium text-foreground">
+                  {item.file.name || t("unknownFile")}
+                </strong>
+                <span className="text-xs text-muted-foreground">
                   {item.status === "uploading"
                     ? t("uploading")
                     : t(`uploadErrors.${item.errorCode ?? "UPLOAD_FAILED"}`)}
                 </span>
               </div>
               {item.status === "failed" && item.retryable ? (
-                <button
-                  className="button button--secondary upload-status__retry"
+                <Button
                   onClick={() => void retryUpload(item)}
+                  size="sm"
                   type="button"
+                  variant="secondary"
                 >
                   {t("retry")}
-                </button>
+                </Button>
               ) : null}
             </div>
           ))}
@@ -584,22 +620,32 @@ function ToolbarButton({
   onClick: () => void;
 }) {
   return (
-    <button
+    <Button
       aria-label={label}
       aria-pressed={active}
-      className="tiptap-toolbar__button"
+      className={cn(
+        "h-7 w-7 text-muted-foreground hover:text-foreground",
+        active && "bg-accent text-accent-foreground hover:bg-accent",
+      )}
       disabled={disabled}
       onClick={onClick}
+      size="icon-sm"
       title={label}
       type="button"
+      variant="ghost"
     >
       <Icon aria-hidden="true" size={17} strokeWidth={2} />
-    </button>
+    </Button>
   );
 }
 
 function ToolbarDivider() {
-  return <span className="tiptap-toolbar__divider" aria-hidden="true" />;
+  return (
+    <span
+      className="mx-1 h-4 w-px bg-border/60"
+      aria-hidden="true"
+    />
+  );
 }
 
 function createUploadingItem(file: File): UploadItem {

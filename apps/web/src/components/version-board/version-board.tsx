@@ -19,7 +19,7 @@ import { useLocale, useTranslations } from "next-intl";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { getApiErrorMessageKey } from "../../lib/api-error-messages";
-import type { WorkItemViewModel } from "../../lib/v2/mock-data";
+import type { WorkItemViewModel } from "../../lib/v2/work-item-view-model";
 import { cn } from "../../lib/utils";
 import { useSession } from "../providers/session-provider";
 import { listVersions } from "../../lib/version-service";

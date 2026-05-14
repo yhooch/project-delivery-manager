@@ -2,7 +2,7 @@
 
 import { Bug, CheckCircle2 } from "lucide-react";
 
-import type { WorkItemViewModel } from "../../lib/v2/mock-data";
+import type { WorkItemViewModel } from "../../lib/v2/work-item-view-model";
 import { cn } from "../../lib/utils";
 
 import { Avatar, AvatarFallback } from "../ui/avatar";
@@ -25,6 +25,8 @@ export function WorkItemRow({ item, onSelect }: WorkItemRowProps) {
   return (
     <button
       type="button"
+      data-testid={`work-item-row-${item.id}`}
+      data-work-item-id={item.id}
       onClick={() => onSelect(item)}
       className="group flex w-full items-center gap-3 px-4 py-2 text-left transition-colors hover:bg-muted/40 cursor-pointer"
     >

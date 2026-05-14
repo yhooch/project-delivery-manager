@@ -48,7 +48,7 @@ export function CreateOrganizationDialog({ open, onOpenChange }: Props) {
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent>
+      <DialogContent data-testid="create-org-dialog">
         <DialogHeader>
           <DialogTitle>{t("title")}</DialogTitle>
           <DialogDescription>{t("description")}</DialogDescription>
@@ -58,6 +58,7 @@ export function CreateOrganizationDialog({ open, onOpenChange }: Props) {
             <Label htmlFor="org-name">{t("nameLabel")}</Label>
             <Input
               id="org-name"
+              data-testid="create-org-name-input"
               value={name}
               required
               minLength={2}
@@ -70,6 +71,7 @@ export function CreateOrganizationDialog({ open, onOpenChange }: Props) {
             <Label htmlFor="org-code">{t("codeLabel")}</Label>
             <Input
               id="org-code"
+              data-testid="create-org-code-input"
               value={code}
               onChange={(event) => setCode(event.target.value)}
               placeholder={t("codePlaceholder")}
@@ -77,7 +79,10 @@ export function CreateOrganizationDialog({ open, onOpenChange }: Props) {
             />
           </div>
           {error && (
-            <div className="rounded-md border border-destructive/40 bg-destructive/10 px-2.5 py-1.5 text-xs text-destructive">
+            <div
+              data-testid="create-org-error"
+              className="rounded-md border border-destructive/40 bg-destructive/10 px-2.5 py-1.5 text-xs text-destructive"
+            >
               {error}
             </div>
           )}
@@ -90,7 +95,11 @@ export function CreateOrganizationDialog({ open, onOpenChange }: Props) {
             >
               {t("cancel")}
             </Button>
-            <Button type="submit" disabled={submitting || name.trim().length < 2}>
+            <Button
+              type="submit"
+              data-testid="create-org-submit"
+              disabled={submitting || name.trim().length < 2}
+            >
               {submitting ? t("submitting") : t("submit")}
             </Button>
           </DialogFooter>

@@ -1,6 +1,6 @@
 import { setRequestLocale } from "next-intl/server";
 
-import { WorkItemLanding } from "../../../../components/work-item/work-item-landing";
+import { TasksPage } from "../../../../components/work-item/tasks-page";
 import type { Locale } from "../../../../i18n/locales";
 
 type WorkItemsPageProps = {
@@ -13,5 +13,5 @@ export default async function WorkItemsPage({ params }: WorkItemsPageProps) {
   const { locale } = await params;
   setRequestLocale(locale);
 
-  return <WorkItemLanding />;
+  return <TasksPage />;
 }

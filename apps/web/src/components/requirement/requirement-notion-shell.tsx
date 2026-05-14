@@ -21,7 +21,7 @@ export function RequirementNotionShell({ children }: RequirementNotionShellProps
   const tReq = useTranslations("requirements");
 
   return (
-    <div className="flex h-full flex-col">
+    <div data-testid="requirement-detail-page" className="flex h-full flex-col">
       <header className="sticky top-0 z-10 border-b border-border bg-background/85 px-6 py-3 backdrop-blur supports-[backdrop-filter]:bg-background/70">
         <div className="mx-auto flex max-w-[1080px] items-center gap-2 text-xs text-muted-foreground">
           <Link

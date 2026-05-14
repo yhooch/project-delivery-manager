@@ -10,7 +10,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { getApiErrorMessageKey } from "../../lib/api-error-messages";
 import { useSpaceMembers, useVersions } from "../../lib/v2/lookups";
-import type { WorkItemViewModel } from "../../lib/v2/mock-data";
+import type { WorkItemViewModel } from "../../lib/v2/work-item-view-model";
 import { listWorkItems } from "../../lib/work-item-service";
 import type {
   SpaceMemberWithUser,
@@ -135,6 +135,7 @@ export function TasksPage() {
           <Button
             size="sm"
             className="text-xs"
+            data-testid="tasks-create-button"
             onClick={() => setCreateOpen(true)}
           >
             <Plus className="h-3 w-3" />
@@ -147,7 +148,7 @@ export function TasksPage() {
 
   if (sessionStatus === "loading") {
     return (
-      <div className="flex h-full flex-col">
+      <div data-testid="tasks-page" className="flex h-full flex-col">
         {header}
         <ListSkeleton />
       </div>
@@ -156,7 +157,7 @@ export function TasksPage() {
 
   if (!spaceId) {
     return (
-      <div className="flex h-full flex-col">
+      <div data-testid="tasks-page" className="flex h-full flex-col">
         {header}
         <EmptyState
           title={t("states.noSpace.title")}
@@ -167,7 +168,7 @@ export function TasksPage() {
   }
 
   return (
-    <div className="flex h-full flex-col">
+    <div data-testid="tasks-page" className="flex h-full flex-col">
       {header}
 
       <div className="flex items-center gap-3 border-b border-border px-6 py-3">
@@ -216,9 +217,9 @@ export function TasksPage() {
             description={t("states.empty.description")}
           />
         ) : (
-          <ul className="divide-y divide-border">
+          <ul data-testid="tasks-list" className="divide-y divide-border">
             {filtered.map((item) => (
-              <li key={item.id}>
+              <li key={item.id} data-testid={`tasks-row-${item.id}`}>
                 <WorkItemRow item={item} onSelect={open} />
               </li>
             ))}

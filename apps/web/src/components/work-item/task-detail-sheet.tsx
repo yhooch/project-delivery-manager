@@ -35,7 +35,7 @@ import { executeAction } from "../../lib/action-service";
 import { createComment, listComments } from "../../lib/comment-service";
 import { listTimeline } from "../../lib/timeline-service";
 import { cn } from "../../lib/utils";
-import { type WorkItemViewModel } from "../../lib/v2/mock-data";
+import { type WorkItemViewModel } from "../../lib/v2/work-item-view-model";
 import { useSpaceMembers, useVersions } from "../../lib/v2/lookups";
 import { getWorkItem } from "../../lib/work-item-service";
 
@@ -147,7 +147,7 @@ export function TaskDetailSheet({
   if (!item) {
     return (
       <Sheet open={open} onOpenChange={onOpenChange}>
-        <SheetContent>
+        <SheetContent data-testid="task-detail-sheet" data-state-empty="true">
           <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
             {t("empty")}
           </div>
@@ -191,7 +191,11 @@ function TaskDetailSheetBody({
   const lookup = useSpaceMembers(spaceId, organizationId);
 
   return (
-    <SheetContent className="flex flex-col gap-0 p-0">
+    <SheetContent
+      data-testid="task-detail-sheet"
+      data-task-id={item.id}
+      className="flex flex-col gap-0 p-0"
+    >
       <SheetHeader className="px-5 py-4">
         <div className="flex items-center gap-2 text-[11px] font-mono text-muted-foreground">
           {isBug ? (
@@ -254,20 +258,38 @@ function TaskDetailSheetBody({
 
       <Tabs defaultValue="detail" className="flex flex-1 flex-col overflow-hidden">
         <TabsList className="px-5">
-          <TabsTrigger value="detail">{t("tabs.detail")}</TabsTrigger>
-          <TabsTrigger value="comments" className="gap-1.5">
+          <TabsTrigger value="detail" data-testid="task-detail-tab">
+            {t("tabs.detail")}
+          </TabsTrigger>
+          <TabsTrigger
+            value="comments"
+            className="gap-1.5"
+            data-testid="task-comments-tab"
+          >
             <MessageSquare className="h-3 w-3" />
             {t("tabs.comments")}
           </TabsTrigger>
-          <TabsTrigger value="attachments" className="gap-1.5">
+          <TabsTrigger
+            value="attachments"
+            className="gap-1.5"
+            data-testid="task-attachments-tab"
+          >
             <Paperclip className="h-3 w-3" />
             {t("tabs.attachments")}
           </TabsTrigger>
-          <TabsTrigger value="timeline" className="gap-1.5">
+          <TabsTrigger
+            value="timeline"
+            className="gap-1.5"
+            data-testid="task-timeline-tab"
+          >
             <Clock className="h-3 w-3" />
             {t("tabs.timeline")}
           </TabsTrigger>
-          <TabsTrigger value="links" className="gap-1.5">
+          <TabsTrigger
+            value="links"
+            className="gap-1.5"
+            data-testid="task-links-tab"
+          >
             <Link2 className="h-3 w-3" />
             {t("tabs.links")}
           </TabsTrigger>
@@ -616,11 +638,13 @@ function LinksPanel({
       value: truncateId(detail.intakeItemId),
     });
   }
-  links.push({
-    icon: User2,
-    label: t("fields.reporter"),
-    value: reporter.name,
-  });
+  if (detail.reporterId) {
+    links.push({
+      icon: User2,
+      label: t("fields.reporter"),
+      value: reporter.name,
+    });
+  }
 
   if (links.length === 0) {
     return <EmptyState title={t("missingApi.title")} />;
@@ -740,7 +764,7 @@ function CommentsTab({
             description={t("comments.emptyDescription")}
           />
         ) : (
-          <ul className="space-y-4 px-5 py-4">
+          <ul data-testid="task-comments-list" className="space-y-4 px-5 py-4">
             {comments.map((comment) => {
               const member = lookup.getMember(comment.author.id);
               const name = member?.user.name ?? comment.author.name;
@@ -748,7 +772,11 @@ function CommentsTab({
               const avatar = member?.user.avatar ?? comment.author.avatar;
 
               return (
-                <li key={comment.id} className="flex gap-3">
+                <li
+                  key={comment.id}
+                  data-testid="task-comments-item"
+                  className="flex gap-3"
+                >
                   <Avatar className="h-7 w-7">
                     {avatar && <AvatarImage src={avatar} alt={name} />}
                     <AvatarFallback>{initial}</AvatarFallback>
@@ -775,8 +803,12 @@ function CommentsTab({
           {t("comments.submitErrorTitle")}: {submitError}
         </p>
       )}
-      <div className="flex items-center gap-2 border-t border-border px-5 py-3">
+      <div
+        data-testid="task-comments-panel"
+        className="flex items-center gap-2 border-t border-border px-5 py-3"
+      >
         <Input
+          data-testid="task-comments-input"
           placeholder={t("comments.placeholder")}
           className="flex-1"
           value={draft}
@@ -791,6 +823,7 @@ function CommentsTab({
         />
         <Button
           size="sm"
+          data-testid="task-comments-submit"
           disabled={submitting || draft.trim().length === 0}
           onClick={() => {
             void handleSubmit();

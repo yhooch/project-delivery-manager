@@ -18,7 +18,10 @@ export function OnboardingEmpty() {
 
   return (
     <>
-      <div className="flex h-full items-center justify-center px-4">
+      <div
+        data-testid="onboarding-empty"
+        className="flex h-full items-center justify-center px-4"
+      >
         <div className="max-w-md text-center">
           <div className="mx-auto mb-5 flex h-12 w-12 items-center justify-center rounded-xl bg-primary/15 text-primary">
             <Building2 className="h-6 w-6" />
@@ -29,6 +32,7 @@ export function OnboardingEmpty() {
             <Button
               size="lg"
               className="mt-5"
+              data-testid="onboarding-create-org-button"
               onClick={() => setCreateOpen(true)}
             >
               <Plus className="h-4 w-4" />

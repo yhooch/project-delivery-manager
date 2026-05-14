@@ -324,6 +324,7 @@
     }
   },
   "shell": {
+    "documentTitle": "Project Delivery Manager",
     "brand": {
       "name": "Project Delivery Manager",
       "shortName": "PDM",
@@ -331,24 +332,24 @@
     },
     "nav": {
       "label": "Primary navigation",
-      "dashboard": {
-        "label": "Overview"
+      "appName": "Project Delivery Manager",
+      "group": {
+        "work": "Work",
+        "deliver": "Delivery",
+        "document": "Documents",
+        "configure": "Configuration"
       },
-      "intake": {
-        "label": "Intake"
-      },
-      "workItems": {
-        "label": "Work items"
-      },
-      "bugs": {
-        "label": "Bugs"
-      },
-      "workflow": {
-        "label": "Workflow"
-      },
-      "settings": {
-        "label": "Settings"
-      }
+      "workbench": "My workbench",
+      "overview": "Space overview",
+      "versions": "Versions",
+      "tasks": "Tasks",
+      "bugs": "Bugs",
+      "exceptions": "Exceptions",
+      "requirements": "Requirements",
+      "intake": "Intake",
+      "workflow": "Workflow",
+      "spaceSettings": "Space settings",
+      "organization": "Organization"
     },
     "status": {
       "label": "Session status",
@@ -359,6 +360,10 @@
     "topbar": {
       "eyebrow": "Workspace",
       "title": "Delivery operations"
+    },
+    "topBar": {
+      "commandLabel": "Open command menu",
+      "commandPlaceholder": "Search or type a command"
     },
     "search": {
       "label": "Command search",
@@ -382,6 +387,12 @@
       "label": "Sign out",
       "ariaLabel": "Sign out"
     },
+    "user": {
+      "openMenu": "Open user menu",
+      "profile": "Profile",
+      "preferences": "Preferences",
+      "logout": "Sign out"
+    },
     "command": {
       "placeholder": "Type a command or search tasks, bugs, requirements, intake",
       "empty": "No results",
@@ -390,6 +401,14 @@
       "recent": "Recently opened",
       "navigation": "Navigation",
       "switchSpace": "Switch space",
+      "create": "Create",
+      "createTask": "New task",
+      "createBug": "New bug",
+      "createRequirement": "New requirement",
+      "preferences": "Preferences",
+      "themeLight": "Light theme",
+      "themeDark": "Dark theme",
+      "themeSystem": "Match system",
       "results": {
         "tasks": "Tasks",
         "bugs": "Bugs",
@@ -407,6 +426,24 @@
         "intake": "Intake",
         "workflow": "Workflow"
       }
+    },
+    "onboarding": {
+      "title": "No organization is available",
+      "description": "Create an organization to start, or wait for an administrator to add you to an existing one.",
+      "createCta": "Create organization",
+      "waitingHint": "If your team already has an organization, ask an administrator to add your account."
+    },
+    "createOrg": {
+      "title": "Create organization",
+      "description": "After creation, the session refreshes and the backend returns the default organization.",
+      "nameLabel": "Organization name",
+      "namePlaceholder": "Example: Delivery Team",
+      "codeLabel": "Organization code",
+      "codePlaceholder": "Example: delivery-team",
+      "cancel": "Cancel",
+      "submit": "Create organization",
+      "submitting": "Creating",
+      "error": "Failed to create organization. Try again later."
     }
   },
   "onboarding": {
@@ -535,17 +572,69 @@
       }
     }
   },
+  "versionBoard": {
+    "title": "Version board",
+    "subtitle": "Review tasks and bugs for the selected version by status.",
+    "selectVersion": "Select version",
+    "filterAll": "All assignees",
+    "filterTask": "Task filter",
+    "newWorkItem": "New work item",
+    "columns": {
+      "NOT_STARTED": "Not started",
+      "IN_PROGRESS": "In progress",
+      "WAITING": "Waiting",
+      "VERIFYING": "Verifying",
+      "DONE": "Done",
+      "TERMINATED": "Terminated"
+    },
+    "badges": {
+      "blocked": "Blocked",
+      "overdue": "Overdue"
+    },
+    "states": {
+      "noSession": {
+        "title": "Sign-in required",
+        "description": "Sign in before viewing the version board."
+      },
+      "noSpace": {
+        "title": "No space selected",
+        "description": "Select an accessible space before viewing the version board."
+      },
+      "error": {
+        "title": "Unable to load version board"
+      },
+      "loadingVersions": "Loading versions",
+      "noVersion": {
+        "title": "No versions",
+        "description": "This space has no versions available for the board."
+      },
+      "pickVersion": {
+        "title": "Select a version",
+        "description": "Choose a version to load its task and bug board."
+      },
+      "loadingBoard": "Loading board"
+    }
+  },
   "requirements": {
     "page": {
       "eyebrow": "Space requirements",
       "title": "Requirement documents",
-      "unknownSpace": "Current space"
+      "unknownSpace": "Current space",
+      "description": "Manage requirement drafts, confirmed requirements, and linked work items for this space.",
+      "filter": "Filter",
+      "create": "New draft"
     },
     "actions": {
       "refresh": "Refresh",
       "createDraft": "New draft",
       "creatingDraft": "Creating",
-      "myDrafts": "My drafts"
+      "myDrafts": "My drafts",
+      "retry": "Retry"
+    },
+    "dialog": {
+      "create": {
+        "submitting": "Creating"
+      }
     },
     "filters": {
       "label": "Requirement filters",
@@ -555,7 +644,12 @@
       "allOwners": "All owners",
       "status": "Status",
       "allStatuses": "All statuses",
-      "includeDrafts": "Include my drafts"
+      "includeDrafts": "Include my drafts",
+      "active": "Active",
+      "draft": "Draft",
+      "confirmed": "Confirmed",
+      "archived": "Archived",
+      "all": "All"
     },
     "status": {
       "DRAFT": "Draft",
@@ -589,6 +683,12 @@
         "title": "Unable to load requirement",
         "description": "The requirement is unavailable or this account cannot access it."
       },
+      "loadingShort": "Loading requirements",
+      "noSpace": {
+        "title": "No space selected",
+        "description": "Select an accessible space before viewing requirements."
+      },
+      "errorTitle": "Unable to load requirements",
       "loadingList": "Loading requirement list",
       "empty": {
         "title": "No requirements yet",
@@ -606,6 +706,7 @@
         "status": "Status",
         "related": "Related tasks/Bugs"
       },
+      "untitled": "Untitled requirement",
       "untitledDraft": "Untitled draft",
       "noVersion": "No version",
       "noOwner": "Unassigned",
@@ -616,6 +717,7 @@
     },
     "detail": {
       "eyebrow": "Requirement details",
+      "breadcrumbCurrent": "Detail",
       "untitledDraft": "Untitled draft",
       "backToList": "Back to list",
       "formTitle": "Base information",
@@ -626,7 +728,12 @@
       "archiving": "Archiving",
       "metaTitle": "Current information",
       "metaDescription": "Displayed from backend results without expanding permission boundaries.",
-      "attachments": "Attachments"
+      "attachments": "Attachments",
+      "summaryPlaceholder": "Add a one-line summary for this requirement (optional)",
+      "fields": {
+        "status": "Status",
+        "id": "ID"
+      }
     },
     "form": {
       "title": "Title",
@@ -929,11 +1036,20 @@
     "page": {
       "eyebrow": "Space bugs",
       "title": "Bug list",
-      "unknownSpace": "Current space"
+      "unknownSpace": "Current space",
+      "description": "Track defects, severity, and regression status for this space."
     },
     "actions": {
       "refresh": "Refresh",
-      "close": "Close"
+      "close": "Close",
+      "filter": "Filter",
+      "create": "New bug",
+      "retry": "Retry"
+    },
+    "buckets": {
+      "all": "All",
+      "open": "Open",
+      "regression": "Regression"
     },
     "filters": {
       "label": "Bug filters",
@@ -986,6 +1102,9 @@
         "title": "No space selected",
         "description": "Select an accessible space before viewing bugs."
       },
+      "error": {
+        "title": "Unable to load bugs"
+      },
       "loadingList": "Loading bug list",
       "loadingDetail": "Loading bug details",
       "loadingResources": "Loading comments, attachments, and timeline",
@@ -1019,6 +1138,9 @@
       "unassigned": "Unassigned",
       "noDueDate": "Not set",
       "updated": "Refreshed at {date}"
+    },
+    "badges": {
+      "overdue": "Overdue"
     },
     "create": {
       "title": "Create bug",
@@ -2197,7 +2319,8 @@
   "spaceOverview": {
     "page": {
       "eyebrow": "Space overview",
-      "title": "Space health"
+      "title": "Space health",
+      "description": "Review version progress, task status, bug status, and exception counts for this space."
     },
     "title": "Space overview",
     "description": "Base metrics and default workflows for {space}.",
@@ -2230,7 +2353,8 @@
     },
     "links": {
       "versions": "Versions",
-      "requirements": "Requirements"
+      "requirements": "Requirements",
+      "versionBoard": "Version board"
     },
     "stats": {
       "label": "Space metrics",
@@ -2239,8 +2363,10 @@
       "tasks": "Tasks",
       "bugs": "Bugs",
       "blocked": "Blocked",
-      "overdue": "Overdue"
+      "overdue": "Overdue",
+      "exceptionsTotal": "Total exceptions"
     },
+    "errorTitle": "Unable to load space overview",
     "currentVersion": {
       "title": "Current version",
       "description": "Owner and key dates for the current version.",
@@ -2260,6 +2386,9 @@
       "requirements": "Requirements",
       "taskProgress": "Task progress",
       "bugStatus": "Bug status",
+      "versionProgress": "Version progress",
+      "taskProgressWithPct": "Task progress {pct}%",
+      "bugClosedWithPct": "Bug closed {pct}%",
       "blockedAndOverdue": "Blocked and overdue",
       "blockedAndOverdueValue": "{blocked} blocked / {overdue} overdue"
     },
@@ -2324,7 +2453,8 @@
     "page": {
       "eyebrow": "M4 exception view",
       "title": "Space exceptions",
-      "unknownSpace": "Unknown space"
+      "unknownSpace": "Unknown space",
+      "description": "Review overdue, blocked, pending confirmation, pending regression, and stale items in one view."
     },
     "actions": {
       "refresh": "Refresh",
@@ -2379,12 +2509,17 @@
         "title": "No space access",
         "description": "Your account is not a member of this space."
       },
+      "noSpaceSelected": {
+        "title": "No space selected",
+        "description": "Select an accessible space before viewing exceptions."
+      },
       "loadingList": "Loading exceptions",
       "empty": {
         "title": "No exceptions",
         "description": "No overdue, blocked, pending confirmation, pending regression, or stale work items match this space and filters."
       }
     },
+    "errorTitle": "Unable to load exception view",
     "evidenceSource": {
       "DUE_DATE": "Due date",
       "BLOCKED_FIELD": "Blocked field",

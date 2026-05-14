@@ -12,7 +12,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { getApiErrorMessageKey } from "../../lib/api-error-messages";
 import { listBugs } from "../../lib/bug-service";
 import { useSpaceMembers, useVersions } from "../../lib/v2/lookups";
-import type { WorkItemViewModel } from "../../lib/v2/mock-data";
+import type { WorkItemViewModel } from "../../lib/v2/work-item-view-model";
 import { cn } from "../../lib/utils";
 import type {
   SpaceMemberWithUser,

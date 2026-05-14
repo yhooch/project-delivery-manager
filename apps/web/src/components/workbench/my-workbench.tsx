@@ -19,7 +19,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { getApiErrorMessageKey } from "../../lib/api-error-messages";
 import { cn } from "../../lib/utils";
-import type { WorkItemViewModel } from "../../lib/v2/mock-data";
+import type { WorkItemViewModel } from "../../lib/v2/work-item-view-model";
 import { getMyWorkbenchView } from "../../lib/view-service";
 import { useSession } from "../providers/session-provider";
 

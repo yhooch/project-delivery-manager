@@ -1,6 +1,6 @@
 import { setRequestLocale } from "next-intl/server";
 
-import { WorkflowLanding } from "../../../../components/workflow/workflow-landing";
+import { WorkflowPage } from "../../../../components/workflow/workflow-page";
 import type { Locale } from "../../../../i18n/locales";
 
 type WorkflowPageProps = {
@@ -9,9 +9,9 @@ type WorkflowPageProps = {
   }>;
 };
 
-export default async function WorkflowPage({ params }: WorkflowPageProps) {
+export default async function WorkflowRoutePage({ params }: WorkflowPageProps) {
   const { locale } = await params;
   setRequestLocale(locale);
 
-  return <WorkflowLanding />;
+  return <WorkflowPage />;
 }

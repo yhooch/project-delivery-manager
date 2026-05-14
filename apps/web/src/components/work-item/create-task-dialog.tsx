@@ -135,7 +135,7 @@ export function CreateTaskDialog({
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent>
+      <DialogContent data-testid="create-task-dialog">
         <DialogHeader>
           <DialogTitle>{t("create.title")}</DialogTitle>
           <DialogDescription>{t("create.description")}</DialogDescription>
@@ -155,6 +155,7 @@ export function CreateTaskDialog({
             <Label htmlFor="create-task-title">{t("fields.title")}</Label>
             <Input
               id="create-task-title"
+              data-testid="create-task-title-input"
               value={title}
               onChange={(event) => {
                 setTitle(event.target.value);
@@ -263,7 +264,12 @@ export function CreateTaskDialog({
             >
               {t("actions.cancel")}
             </Button>
-            <Button type="submit" size="sm" disabled={submitting}>
+            <Button
+              type="submit"
+              size="sm"
+              data-testid="create-task-submit"
+              disabled={submitting}
+            >
               {submitting ? t("actions.submitting") : t("actions.submit")}
             </Button>
           </DialogFooter>

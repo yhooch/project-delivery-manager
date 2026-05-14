@@ -16,4 +16,28 @@ export default defineConfig({
       ),
     },
   },
+  test: {
+    // Use jsdom only for component (.test.tsx) tests; keep node env
+    // for the existing pure-logic lib tests so we don't regress speed
+    // or behaviour of the 79 existing cases.
+    projects: [
+      {
+        extends: true,
+        test: {
+          name: "node",
+          include: ["src/**/*.test.ts"],
+          environment: "node",
+        },
+      },
+      {
+        extends: true,
+        test: {
+          name: "jsdom",
+          include: ["src/**/*.test.tsx"],
+          environment: "jsdom",
+          setupFiles: ["./vitest.setup.ts"],
+        },
+      },
+    ],
+  },
 });

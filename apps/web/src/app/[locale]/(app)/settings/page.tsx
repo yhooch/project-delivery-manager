@@ -1,6 +1,6 @@
 import { setRequestLocale } from "next-intl/server";
 
-import { SpaceManagementWorkspace } from "../../../../components/space/space-management-workspace";
+import { SpaceSettingsPage } from "../../../../components/space/settings-page";
 import type { Locale } from "../../../../i18n/locales";
 
 type SettingsPageProps = {
@@ -13,5 +13,5 @@ export default async function SettingsPage({ params }: SettingsPageProps) {
   const { locale } = await params;
   setRequestLocale(locale);
 
-  return <SpaceManagementWorkspace />;
+  return <SpaceSettingsPage />;
 }

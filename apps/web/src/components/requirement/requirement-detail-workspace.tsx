@@ -5,6 +5,7 @@ import type {
   Priority,
   Requirement,
   RequirementRelatedWorkItemSummary,
+  RequirementStatus,
   SpaceMemberWithUser,
   SpaceRole,
   UpdateRequirementRequest,
@@ -14,15 +15,19 @@ import {
   Archive,
   Bug,
   CircleAlert,
-  GitBranch,
+  FileText,
   Loader2,
+  Paperclip,
   Save,
   Split,
+  User2,
+  Flag,
+  GitBranch as GitBranchIcon,
+  Hash,
 } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { useEffect, useMemo, useState, type FormEvent } from "react";
+import { useEffect, useMemo, useState, type FormEvent, type ReactNode } from "react";
 
-import { Link } from "../../i18n/routing";
 import { getApiErrorMessageKey } from "../../lib/api-error-messages";
 import {
   archiveRequirement,
@@ -31,7 +36,10 @@ import {
   listRequirementVersions,
   updateRequirement,
 } from "../../lib/requirement-service";
+import { cn } from "../../lib/utils";
 import { useSession } from "../providers/session-provider";
+import { Badge, type BadgeProps } from "../ui/badge";
+import { Button } from "../ui/button";
 import {
   RequirementContentEditorSlot,
   createContentEditorValue,
@@ -44,6 +52,25 @@ const REQUIREMENT_WRITER_ROLES = new Set<SpaceRole>([
   "PM",
   "REQUIREMENT",
 ]);
+
+const STATUS_VARIANT: Record<RequirementStatus, BadgeProps["variant"]> = {
+  DRAFT: "outline",
+  CONFIRMED: "primary",
+  ARCHIVED: "default",
+};
+
+const STATUS_DOT: Record<RequirementStatus, string> = {
+  DRAFT: "bg-muted-foreground/50",
+  CONFIRMED: "bg-primary",
+  ARCHIVED: "bg-muted-foreground/30",
+};
+
+const PRIORITY_VARIANT: Record<Priority, BadgeProps["variant"]> = {
+  LOW: "outline",
+  MEDIUM: "info",
+  HIGH: "warning",
+  URGENT: "destructive",
+};
 
 type RequirementDetailWorkspaceProps = {
   requirementId: string;
@@ -246,272 +273,362 @@ export function RequirementDetailWorkspace({
     );
   }
 
+  const titleValue = form.title;
+  const titlePlaceholder = t("detail.untitledDraft");
+  const ownerLabel = formatOwnerName(requirement.ownerId, members);
+  const versionLabel = formatVersionName(requirement.versionId, versions);
+  const shortId = requirement.id.slice(-8).toUpperCase();
+
   return (
-    <div className="workbench-page">
-      <section className="page-heading" aria-labelledby="requirement-heading">
-        <div>
-          <p className="page-heading__eyebrow">{t("detail.eyebrow")}</p>
-          <h2 className="page-heading__title" id="requirement-heading">
-            {requirement.title || t("detail.untitledDraft")}
-          </h2>
+    <form className="flex flex-col gap-6" onSubmit={onSave}>
+      {/* Notion-style action toolbar (replaces m1 panel header buttons) */}
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+          <FileText className="h-3.5 w-3.5" aria-hidden="true" />
+          <span>{t("detail.eyebrow")}</span>
         </div>
-        <div className="page-heading__meta">
-          <span>{t(`status.${requirement.status}`)}</span>
-          <Link
-            className="button button--secondary"
-            href={`/spaces/${requirement.spaceId}/requirements`}
+        <div className="flex items-center gap-2">
+          {!canEditRequirement ? (
+            <span className="text-[11px] text-muted-foreground">
+              {t("form.readonly")}
+            </span>
+          ) : null}
+          <Button
+            disabled={!canEditRequirement || isArchiving}
+            onClick={() => void onArchive()}
+            size="sm"
+            type="button"
+            variant="ghost"
           >
-            <GitBranch aria-hidden="true" size={16} strokeWidth={2} />
-            {t("detail.backToList")}
-          </Link>
+            <Archive aria-hidden="true" />
+            {isArchiving ? t("detail.archiving") : t("detail.archive")}
+          </Button>
+          <Button
+            disabled={!canEditRequirement || isSaving}
+            size="sm"
+            type="submit"
+          >
+            <Save aria-hidden="true" />
+            {isSaving ? t("detail.saving") : t("detail.save")}
+          </Button>
         </div>
-      </section>
+      </div>
 
-      {errorKey ? <div className="form-alert">{tRoot(errorKey)}</div> : null}
+      {errorKey ? (
+        <div
+          className="rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive"
+          role="alert"
+        >
+          {tRoot(errorKey)}
+        </div>
+      ) : null}
 
-      <form className="requirement-detail-layout" onSubmit={onSave}>
-        <section className="panel panel--wide" aria-labelledby="requirement-form-title">
-          <div className="panel__header">
-            <div>
-              <h3 id="requirement-form-title">{t("detail.formTitle")}</h3>
-              <p>{t("detail.formDescription")}</p>
-            </div>
-          </div>
-          <div className="business-form">
-            <label className="field">
-              <span>{t("form.title")}</span>
-              <input
-                disabled={!canEditRequirement}
-                maxLength={200}
-                onChange={(event) =>
-                  setForm((current) => ({
-                    ...current,
-                    title: event.target.value,
-                  }))
-                }
-                required
-                value={form.title}
-              />
-            </label>
-            <label className="field">
-              <span>{t("form.summary")}</span>
-              <textarea
-                disabled={!canEditRequirement}
-                maxLength={2000}
-                onChange={(event) =>
-                  setForm((current) => ({
-                    ...current,
-                    summary: event.target.value,
-                  }))
-                }
-                rows={3}
-                value={form.summary}
-              />
-            </label>
-            <div className="form-grid form-grid--three">
-              <label className="field">
-                <span>{t("form.version")}</span>
-                <select
-                  disabled={!canEditRequirement}
-                  onChange={(event) =>
-                    setForm((current) => ({
-                      ...current,
-                      versionId: event.target.value,
-                    }))
-                  }
-                  value={form.versionId}
-                >
-                  <option value="">{t("form.noVersion")}</option>
-                  {versions.map((version) => (
-                    <option key={version.id} value={version.id}>
-                      {version.name}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label className="field">
-                <span>{t("form.owner")}</span>
-                <select
-                  disabled={!canEditRequirement}
-                  onChange={(event) =>
-                    setForm((current) => ({
-                      ...current,
-                      ownerId: event.target.value,
-                    }))
-                  }
-                  value={form.ownerId}
-                >
-                  <option value="">{t("form.noOwner")}</option>
-                  {members.map((member) => (
-                    <option key={member.userId} value={member.userId}>
-                      {formatMember(member)}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label className="field">
-                <span>{t("form.priority")}</span>
-                <select
-                  disabled={!canEditRequirement}
-                  onChange={(event) =>
-                    setForm((current) => ({
-                      ...current,
-                      priority: event.target.value as Priority | "",
-                    }))
-                  }
-                  value={form.priority}
-                >
-                  <option value="">{t("form.noPriority")}</option>
-                  {PRIORITIES.map((priority) => (
-                    <option key={priority} value={priority}>
-                      {t(`priority.${priority}`)}
-                    </option>
-                  ))}
-                </select>
-              </label>
-            </div>
-            <RequirementContentEditorSlot
-              attachmentCount={requirement.attachments?.length ?? 0}
-              canUploadImages={
-                canEditRequirement && requirement.status === "DRAFT"
-              }
+      {/* Big Notion-style title */}
+      <div className="flex flex-col gap-2 pt-2">
+        <input
+          aria-label={t("form.title")}
+          className={cn(
+            "w-full border-0 bg-transparent p-0 text-4xl font-bold tracking-tight text-foreground outline-none",
+            "placeholder:text-muted-foreground/40",
+            "focus-visible:outline-none focus-visible:ring-0",
+            "disabled:cursor-not-allowed disabled:opacity-70",
+            "md:text-[2.5rem] md:leading-[1.15]",
+          )}
+          disabled={!canEditRequirement}
+          maxLength={200}
+          onChange={(event) =>
+            setForm((current) => ({
+              ...current,
+              title: event.target.value,
+            }))
+          }
+          placeholder={titlePlaceholder}
+          required
+          value={titleValue}
+        />
+
+        {/* Notion-style property strip */}
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-2 pt-1 text-xs">
+          <PropertyItem icon={<StatusDot status={requirement.status} />} label={t("detail.fields.status")}>
+            <Badge variant={STATUS_VARIANT[requirement.status]}>
+              {t(`status.${requirement.status}`)}
+            </Badge>
+          </PropertyItem>
+
+          <PropertyItem icon={<Hash className="h-3.5 w-3.5" />} label={t("detail.fields.id")}>
+            <span className="font-mono text-[11px] text-foreground/80">
+              {shortId}
+            </span>
+          </PropertyItem>
+
+          <PropertyItem icon={<GitBranchIcon className="h-3.5 w-3.5" />} label={t("form.version")}>
+            <PropertySelect
+              ariaLabel={t("form.version")}
               disabled={!canEditRequirement}
-              onAttachmentUploaded={(attachment) =>
-                setRequirement((current) =>
-                  current
-                    ? {
-                        ...current,
-                        attachments: appendAttachmentRef(
-                          current.attachments,
-                          attachment,
-                        ),
-                      }
-                    : current,
-                )
+              onChange={(value) =>
+                setForm((current) => ({ ...current, versionId: value }))
               }
-              onChange={(content) =>
+              placeholder={t("form.noVersion")}
+              value={form.versionId}
+              displayValue={versionLabel ?? null}
+            >
+              <option value="">{t("form.noVersion")}</option>
+              {versions.map((version) => (
+                <option key={version.id} value={version.id}>
+                  {version.name}
+                </option>
+              ))}
+            </PropertySelect>
+          </PropertyItem>
+
+          <PropertyItem icon={<User2 className="h-3.5 w-3.5" />} label={t("form.owner")}>
+            <PropertySelect
+              ariaLabel={t("form.owner")}
+              disabled={!canEditRequirement}
+              onChange={(value) =>
+                setForm((current) => ({ ...current, ownerId: value }))
+              }
+              placeholder={t("form.noOwner")}
+              value={form.ownerId}
+              displayValue={ownerLabel ?? null}
+            >
+              <option value="">{t("form.noOwner")}</option>
+              {members.map((member) => (
+                <option key={member.userId} value={member.userId}>
+                  {formatMember(member)}
+                </option>
+              ))}
+            </PropertySelect>
+          </PropertyItem>
+
+          <PropertyItem icon={<Flag className="h-3.5 w-3.5" />} label={t("form.priority")}>
+            <PropertySelect
+              ariaLabel={t("form.priority")}
+              disabled={!canEditRequirement}
+              onChange={(value) =>
                 setForm((current) => ({
                   ...current,
-                  content,
+                  priority: value as Priority | "",
                 }))
               }
-              requirementId={requirement.id}
-              value={form.content}
-            />
-            <div className="form-actions">
-              <button
-                className="button button--primary"
-                disabled={!canEditRequirement || isSaving}
-                type="submit"
-              >
-                <Save aria-hidden="true" size={16} strokeWidth={2} />
-                {isSaving ? t("detail.saving") : t("detail.save")}
-              </button>
-              <button
-                className="button button--secondary"
-                disabled={!canEditRequirement || isArchiving}
-                onClick={() => void onArchive()}
-                type="button"
-              >
-                <Archive aria-hidden="true" size={16} strokeWidth={2} />
-                {isArchiving ? t("detail.archiving") : t("detail.archive")}
-              </button>
-              {!canEditRequirement ? (
-                <span className="form-actions__hint">{t("form.readonly")}</span>
-              ) : null}
-            </div>
-          </div>
-        </section>
+              placeholder={t("form.noPriority")}
+              value={form.priority}
+              displayValue={
+                form.priority ? (
+                  <Badge variant={PRIORITY_VARIANT[form.priority]}>
+                    {t(`priority.${form.priority}`)}
+                  </Badge>
+                ) : null
+              }
+            >
+              <option value="">{t("form.noPriority")}</option>
+              {PRIORITIES.map((priority) => (
+                <option key={priority} value={priority}>
+                  {t(`priority.${priority}`)}
+                </option>
+              ))}
+            </PropertySelect>
+          </PropertyItem>
 
-        <aside className="detail-aside">
-          <section className="panel" aria-labelledby="requirement-meta-title">
-            <div className="panel__header">
-              <div>
-                <h3 id="requirement-meta-title">{t("detail.metaTitle")}</h3>
-                <p>{t("detail.metaDescription")}</p>
-              </div>
-            </div>
-            <dl className="definition-list">
-              <div>
-                <dt>{t("list.columns.version")}</dt>
-                <dd>
-                  {formatVersionName(requirement.versionId, versions) ??
-                    t("list.noVersion")}
-                </dd>
-              </div>
-              <div>
-                <dt>{t("list.columns.owner")}</dt>
-                <dd>
-                  {formatOwnerName(requirement.ownerId, members) ??
-                    t("list.noOwner")}
-                </dd>
-              </div>
-              <div>
-                <dt>{t("list.columns.priority")}</dt>
-                <dd>
-                  {requirement.priority
-                    ? t(`priority.${requirement.priority}`)
-                    : t("list.noPriority")}
-                </dd>
-              </div>
-              <div>
-                <dt>{t("detail.attachments")}</dt>
-                <dd>{requirement.attachments?.length ?? 0}</dd>
-              </div>
-            </dl>
-          </section>
-          <RelatedWorkItemsPanel requirement={requirement} t={t} />
-        </aside>
-      </form>
+          <PropertyItem icon={<Paperclip className="h-3.5 w-3.5" />} label={t("detail.attachments")}>
+            <span className="text-foreground/80">
+              {requirement.attachments?.length ?? 0}
+            </span>
+          </PropertyItem>
+        </div>
+      </div>
+
+      {/* Summary as an inline textarea — soft hairline, no panel */}
+      <div className="border-t border-border/60 pt-4">
+        <label className="block">
+          <span className="sr-only">{t("form.summary")}</span>
+          <textarea
+            className={cn(
+              "w-full resize-y border-0 bg-transparent p-0 text-base leading-relaxed text-foreground/90 outline-none",
+              "placeholder:text-muted-foreground/50",
+              "focus-visible:outline-none focus-visible:ring-0",
+              "disabled:cursor-not-allowed disabled:opacity-70",
+            )}
+            disabled={!canEditRequirement}
+            maxLength={2000}
+            onChange={(event) =>
+              setForm((current) => ({
+                ...current,
+                summary: event.target.value,
+              }))
+            }
+            placeholder={t("detail.summaryPlaceholder")}
+            rows={2}
+            value={form.summary}
+          />
+        </label>
+      </div>
+
+      {/* Block-level editor — no card, no border around it */}
+      <div className="pt-1">
+        <RequirementContentEditorSlot
+          attachmentCount={requirement.attachments?.length ?? 0}
+          canUploadImages={canEditRequirement && requirement.status === "DRAFT"}
+          disabled={!canEditRequirement}
+          onAttachmentUploaded={(attachment) =>
+            setRequirement((current) =>
+              current
+                ? {
+                    ...current,
+                    attachments: appendAttachmentRef(
+                      current.attachments,
+                      attachment,
+                    ),
+                  }
+                : current,
+            )
+          }
+          onChange={(content) =>
+            setForm((current) => ({
+              ...current,
+              content,
+            }))
+          }
+          requirementId={requirement.id}
+          value={form.content}
+        />
+      </div>
+
+      {/* Related work items — minimal, flat section */}
+      <RelatedWorkItemsSection requirement={requirement} t={t} />
+    </form>
+  );
+}
+
+type PropertyItemProps = {
+  icon: ReactNode;
+  label: string;
+  children: ReactNode;
+};
+
+function PropertyItem({ icon, label, children }: PropertyItemProps) {
+  return (
+    <div className="flex items-center gap-1.5">
+      <span className="flex items-center gap-1 text-muted-foreground">
+        {icon}
+        <span>{label}</span>
+      </span>
+      <span className="flex items-center text-foreground/90">{children}</span>
     </div>
   );
 }
 
-type RelatedWorkItemsPanelProps = {
+type PropertySelectProps = {
+  ariaLabel: string;
+  disabled?: boolean;
+  onChange: (value: string) => void;
+  placeholder: string;
+  value: string;
+  displayValue: ReactNode;
+  children: ReactNode;
+};
+
+/**
+ * Notion-style inline selector: shows a compact label/badge that visually
+ * blends with the property strip, but is backed by a native <select> so we
+ * keep accessibility and keyboard support without adding new dependencies.
+ */
+function PropertySelect({
+  ariaLabel,
+  disabled,
+  onChange,
+  placeholder,
+  value,
+  displayValue,
+  children,
+}: PropertySelectProps) {
+  return (
+    <span className="relative inline-flex items-center">
+      <span
+        className={cn(
+          "inline-flex items-center gap-1 rounded-md px-1.5 py-0.5",
+          !disabled && "hover:bg-muted",
+          disabled && "opacity-80",
+        )}
+      >
+        {displayValue ?? (
+          <span className="text-muted-foreground/80">{placeholder}</span>
+        )}
+      </span>
+      <select
+        aria-label={ariaLabel}
+        className={cn(
+          "absolute inset-0 cursor-pointer opacity-0",
+          disabled && "pointer-events-none",
+        )}
+        disabled={disabled}
+        onChange={(event) => onChange(event.target.value)}
+        value={value}
+      >
+        {children}
+      </select>
+    </span>
+  );
+}
+
+function StatusDot({ status }: { status: RequirementStatus }) {
+  return (
+    <span
+      aria-hidden="true"
+      className={cn("h-2 w-2 shrink-0 rounded-full", STATUS_DOT[status])}
+    />
+  );
+}
+
+type RelatedWorkItemsSectionProps = {
   requirement: Requirement;
   t: ReturnType<typeof useTranslations>;
 };
 
-function RelatedWorkItemsPanel({ requirement, t }: RelatedWorkItemsPanelProps) {
+function RelatedWorkItemsSection({
+  requirement,
+  t,
+}: RelatedWorkItemsSectionProps) {
   const related = requirement.relatedWorkItems;
+  const isEmpty = related.tasks.length === 0 && related.bugs.length === 0;
 
   return (
-    <section className="panel" aria-labelledby="related-work-items-title">
-      <div className="panel__header">
-        <div>
-          <h3 id="related-work-items-title">{t("relatedWorkItems.title")}</h3>
-          <p>{t("relatedWorkItems.description")}</p>
+    <section
+      aria-labelledby="related-work-items-title"
+      className="flex flex-col gap-3 border-t border-border/60 pt-6"
+    >
+      <header className="flex items-baseline justify-between gap-2">
+        <h2
+          className="text-sm font-semibold text-foreground"
+          id="related-work-items-title"
+        >
+          {t("relatedWorkItems.title")}
+        </h2>
+        <div className="flex items-center gap-3 text-xs text-muted-foreground">
+          <span>
+            {t("relatedWorkItems.tasks")}{" "}
+            <strong className="text-foreground">{related.taskCount}</strong>
+          </span>
+          <span>
+            {t("relatedWorkItems.bugs")}{" "}
+            <strong className="text-foreground">{related.bugCount}</strong>
+          </span>
         </div>
-      </div>
-      <div className="compact-metric-grid compact-metric-grid--two">
-        <div className="compact-metric">
-          <span>{t("relatedWorkItems.tasks")}</span>
-          <strong>{related.taskCount}</strong>
-        </div>
-        <div className="compact-metric">
-          <span>{t("relatedWorkItems.bugs")}</span>
-          <strong>{related.bugCount}</strong>
-        </div>
-      </div>
-      {related.tasks.length === 0 && related.bugs.length === 0 ? (
-        <div className="empty-state empty-state--compact">
-          <strong>{t("relatedWorkItems.emptyTitle")}</strong>
-          <span>{t("relatedWorkItems.emptyDescription")}</span>
-        </div>
+      </header>
+
+      {isEmpty ? (
+        <p className="text-xs text-muted-foreground">
+          {t("relatedWorkItems.emptyDescription")}
+        </p>
       ) : (
-        <div className="related-list">
+        <ul className="flex flex-col divide-y divide-border/50 rounded-md border border-border/50 bg-background">
           {related.tasks.map((item) => (
-            <RelatedWorkItemRow
-              icon="task"
-              item={item}
-              key={item.id}
-              t={t}
-            />
+            <RelatedWorkItemRow icon="task" item={item} key={item.id} t={t} />
           ))}
           {related.bugs.map((item) => (
             <RelatedWorkItemRow icon="bug" item={item} key={item.id} t={t} />
           ))}
-        </div>
+        </ul>
       )}
     </section>
   );
@@ -529,17 +646,19 @@ function RelatedWorkItemRow({
   const Icon = icon === "bug" ? Bug : Split;
 
   return (
-    <div className="related-list__item">
-      <Icon aria-hidden="true" size={16} strokeWidth={2} />
-      <div>
-        <span>{item.title}</span>
-        <small>
-          {item.statusCategory
-            ? t(`statusCategory.${item.statusCategory}`)
-            : t("relatedWorkItems.noStatus")}
-        </small>
-      </div>
-    </div>
+    <li className="flex items-center gap-2.5 px-3 py-2 text-sm">
+      <Icon
+        aria-hidden="true"
+        className="h-3.5 w-3.5 shrink-0 text-muted-foreground"
+        strokeWidth={2}
+      />
+      <span className="flex-1 truncate text-foreground/90">{item.title}</span>
+      <span className="shrink-0 text-xs text-muted-foreground">
+        {item.statusCategory
+          ? t(`statusCategory.${item.statusCategory}`)
+          : t("relatedWorkItems.noStatus")}
+      </span>
+    </li>
   );
 }
 
@@ -555,12 +674,19 @@ function StatePanel({
   const Icon = icon === "loading" ? Loader2 : CircleAlert;
 
   return (
-    <section className="state-panel" aria-live="polite">
-      <div className="state-panel__icon">
-        <Icon aria-hidden="true" size={18} strokeWidth={2} />
+    <section
+      aria-live="polite"
+      className="flex flex-col items-center justify-center gap-3 rounded-lg border border-border/60 bg-background/40 px-6 py-12 text-center"
+    >
+      <div className="flex h-9 w-9 items-center justify-center rounded-full bg-muted text-muted-foreground">
+        <Icon
+          aria-hidden="true"
+          className={cn("h-4 w-4", icon === "loading" && "animate-spin")}
+          strokeWidth={2}
+        />
       </div>
-      <h2>{title}</h2>
-      <p>{description}</p>
+      <h2 className="text-sm font-semibold text-foreground">{title}</h2>
+      <p className="max-w-md text-xs text-muted-foreground">{description}</p>
     </section>
   );
 }

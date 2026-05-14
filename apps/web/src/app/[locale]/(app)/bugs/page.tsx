@@ -1,6 +1,6 @@
 import { setRequestLocale } from "next-intl/server";
 
-import { BugLanding } from "../../../../components/bug/bug-landing";
+import { BugsPage } from "../../../../components/bug/bugs-page";
 import type { Locale } from "../../../../i18n/locales";
 
 type BugsPageProps = {
@@ -9,9 +9,9 @@ type BugsPageProps = {
   }>;
 };
 
-export default async function BugsPage({ params }: BugsPageProps) {
+export default async function BugsRoutePage({ params }: BugsPageProps) {
   const { locale } = await params;
   setRequestLocale(locale);
 
-  return <BugLanding />;
+  return <BugsPage />;
 }

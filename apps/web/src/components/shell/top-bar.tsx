@@ -21,6 +21,7 @@ export function TopBar() {
       <div className="flex flex-1 justify-center">
         <button
           type="button"
+          data-testid="command-palette-trigger"
           onClick={openCommandPalette}
           aria-label={t("commandLabel")}
           className="group flex h-7 w-full max-w-md items-center gap-2 rounded-md border border-border bg-background px-2.5 text-xs text-muted-foreground transition-colors hover:border-input hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 cursor-pointer"

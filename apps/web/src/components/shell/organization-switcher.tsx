@@ -14,7 +14,11 @@ export function OrganizationSwitcher() {
 
   if (status !== "authenticated" || !session) {
     return (
-      <div className="organization-switcher organization-switcher--static">
+      <div
+        data-testid="org-switcher"
+        data-org-switcher-state="signed-out"
+        className="organization-switcher organization-switcher--static"
+      >
         <Building2 aria-hidden="true" size={16} strokeWidth={2} />
         <span>{t("signedOut")}</span>
       </div>
@@ -23,9 +27,15 @@ export function OrganizationSwitcher() {
 
   if (session.organizations.length <= 1) {
     return (
-      <div className="organization-switcher organization-switcher--static">
+      <div
+        data-testid="org-switcher"
+        data-org-switcher-state="static"
+        className="organization-switcher organization-switcher--static"
+      >
         <Building2 aria-hidden="true" size={16} strokeWidth={2} />
-        <span>{currentOrganization?.name ?? t("empty")}</span>
+        <span data-testid="org-switcher-current-name">
+          {currentOrganization?.name ?? t("empty")}
+        </span>
       </div>
     );
   }
@@ -41,10 +51,15 @@ export function OrganizationSwitcher() {
   }
 
   return (
-    <label className="organization-switcher">
+    <label
+      data-testid="org-switcher"
+      data-org-switcher-state="select"
+      className="organization-switcher"
+    >
       <Building2 aria-hidden="true" size={16} strokeWidth={2} />
       <span className="sr-only">{t("label")}</span>
       <select
+        data-testid="org-switcher-select"
         aria-label={t("label")}
         disabled={isPending}
         onChange={(event) => void onChange(event.target.value)}
