@@ -91,12 +91,12 @@ export async function registerLoginCreateOrgAndSpace({
 
   // 3) Pull cookie back out of the browser context so we can drive the API.
   const cookies = await page.context().cookies();
-  const cookieHeader = cookies
-    .map((c) => `${c.name}=${c.value}`)
-    .join("; ");
+  const cookieHeader = cookies.map((c) => `${c.name}=${c.value}`).join("; ");
 
   if (!cookieHeader.includes("=")) {
-    throw new Error("UI E2E: 浏览器上下文未携带任何会话 cookie，无法初始化空间。");
+    throw new Error(
+      "UI E2E: 浏览器上下文未携带任何会话 cookie，无法初始化空间。",
+    );
   }
 
   const apiContext = await request.newContext({
@@ -195,12 +195,7 @@ function buildUiForwardedFor(runId: string): string {
     hash = (hash * 31 + char.charCodeAt(0)) >>> 0;
   }
 
-  return [
-    10,
-    (hash >>> 16) & 255,
-    (hash >>> 8) & 255,
-    hash & 255,
-  ].join(".");
+  return [10, (hash >>> 16) & 255, (hash >>> 8) & 255, hash & 255].join(".");
 }
 
 /**
@@ -229,31 +224,210 @@ export async function openCommandPalette(page: Page): Promise<void> {
 export async function createTaskForUi(
   user: UiTestUser,
   title: string,
+  options: {
+    dueDate?: string;
+    priority?: "LOW" | "MEDIUM" | "HIGH" | "URGENT";
+    versionId?: string;
+    workflowVersionId?: string;
+  } = {},
 ): Promise<{ id: string; title: string }> {
-  const response = await user.context.post(
-    apiPath(`/spaces/${user.spaceId}/work-items`),
+  const data = await postUiData<{ id?: string; title?: string }>(
+    user,
+    `/spaces/${user.spaceId}/work-items`,
     {
-      data: {
-        title,
-        type: "TASK",
-        priority: "MEDIUM",
-      },
-      headers: {
-        ...unsafeRequestHeaders(),
-        ...authenticatedRequestHeaders(user.cookie),
-      },
+      dueDate: options.dueDate,
+      priority: options.priority ?? "MEDIUM",
+      title,
+      type: "TASK",
+      versionId: options.versionId,
+      workflowVersionId: options.workflowVersionId,
     },
+    "POST /spaces/:id/work-items",
   );
-  if (!response.ok()) {
-    throw new Error(
-      `UI E2E: POST /spaces/:id/work-items 返回 ${response.status()}，无法预置任务。`,
-    );
-  }
-  const body = (await response.json()) as {
-    data?: { id?: string; title?: string };
-  };
-  if (!body?.data?.id) {
+
+  if (!data.id) {
     throw new Error("UI E2E: 创建任务响应缺少 data.id。");
   }
-  return { id: body.data.id, title: body.data.title ?? title };
+  return { id: data.id, title: data.title ?? title };
+}
+
+export async function createBugForUi(
+  user: UiTestUser,
+  title: string,
+  options: {
+    dueDate?: string;
+    priority?: "LOW" | "MEDIUM" | "HIGH" | "URGENT";
+    severity?: "BLOCKER" | "CRITICAL" | "MAJOR" | "MINOR" | "TRIVIAL";
+    versionId?: string;
+  } = {},
+): Promise<{ id: string; title: string }> {
+  const data = await postUiData<{ id?: string; title?: string }>(
+    user,
+    `/spaces/${user.spaceId}/bugs`,
+    {
+      dueDate: options.dueDate,
+      priority: options.priority ?? "HIGH",
+      severity: options.severity ?? "MAJOR",
+      stepsToReproduce: "UI E2E 预置缺陷复现步骤",
+      title,
+      versionId: options.versionId,
+    },
+    "POST /spaces/:id/bugs",
+  );
+
+  if (!data.id) {
+    throw new Error("UI E2E: 创建 Bug 响应缺少 data.id。");
+  }
+  return { id: data.id, title: data.title ?? title };
+}
+
+export async function createIntakeForUi(
+  user: UiTestUser,
+  title: string,
+  options: {
+    priority?: "LOW" | "MEDIUM" | "HIGH" | "URGENT";
+    sourceType?:
+      | "REQUIREMENT_CHANGE"
+      | "DEFECT_PROBLEM"
+      | "PROJECT_PLAN"
+      | "MEETING_DECISION"
+      | "AD_HOC";
+    versionId?: string;
+  } = {},
+): Promise<{ id: string; title: string }> {
+  const data = await postUiData<{ id?: string; title?: string }>(
+    user,
+    `/spaces/${user.spaceId}/intake-items`,
+    {
+      description: "UI E2E 预置需求池条目",
+      priority: options.priority ?? "MEDIUM",
+      sourceType: options.sourceType ?? "AD_HOC",
+      title,
+      versionId: options.versionId,
+    },
+    "POST /spaces/:id/intake-items",
+  );
+
+  if (!data.id) {
+    throw new Error("UI E2E: 创建需求池条目响应缺少 data.id。");
+  }
+  return { id: data.id, title: data.title ?? title };
+}
+
+export async function acceptIntakeForUi(
+  user: UiTestUser,
+  intakeItemId: string,
+): Promise<void> {
+  await postUiData(
+    user,
+    `/intake-items/${intakeItemId}/accept`,
+    {},
+    "POST /intake-items/:id/accept",
+  );
+}
+
+export async function createVersionForUi(
+  user: UiTestUser,
+  name: string,
+): Promise<{ id: string; name: string }> {
+  const data = await postUiData<{ id?: string; name?: string }>(
+    user,
+    `/spaces/${user.spaceId}/versions`,
+    {
+      name,
+      status: "IN_PROGRESS",
+      target: "UI E2E 全量页面覆盖",
+    },
+    "POST /spaces/:id/versions",
+  );
+
+  if (!data.id) {
+    throw new Error("UI E2E: 创建版本响应缺少 data.id。");
+  }
+  return { id: data.id, name: data.name ?? name };
+}
+
+export async function createRequirementDraftForUi(
+  user: UiTestUser,
+  options: { versionId?: string } = {},
+): Promise<{ id: string }> {
+  const data = await postUiData<{ id?: string }>(
+    user,
+    `/spaces/${user.spaceId}/requirements`,
+    {
+      versionId: options.versionId,
+    },
+    "POST /spaces/:id/requirements",
+  );
+
+  if (!data.id) {
+    throw new Error("UI E2E: 创建需求 DRAFT 响应缺少 data.id。");
+  }
+  return { id: data.id };
+}
+
+export async function listWorkflowDefinitionsForUi(
+  user: UiTestUser,
+): Promise<Array<{ id: string; code?: string; name?: string }>> {
+  const data = await getUiData<{
+    items?: Array<{ id: string; code?: string; name?: string }>;
+  }>(
+    user,
+    `/spaces/${user.spaceId}/workflows?page=1&pageSize=100`,
+    "GET /spaces/:id/workflows",
+  );
+
+  return data.items ?? [];
+}
+
+async function getUiData<TData>(
+  user: UiTestUser,
+  path: string,
+  label: string,
+): Promise<TData> {
+  const response = await user.context.get(apiPath(path), {
+    headers: uiAuthHeaders(user),
+  });
+  return readUiDataResponse<TData>(response, label);
+}
+
+async function postUiData<TData = unknown>(
+  user: UiTestUser,
+  path: string,
+  data: unknown,
+  label: string,
+): Promise<TData> {
+  const response = await user.context.post(apiPath(path), {
+    data,
+    headers: uiAuthHeaders(user),
+  });
+  return readUiDataResponse<TData>(response, label);
+}
+
+async function readUiDataResponse<TData>(
+  response: {
+    json: () => Promise<unknown>;
+    ok: () => boolean;
+    status: () => number;
+    text: () => Promise<string>;
+  },
+  label: string,
+): Promise<TData> {
+  if (!response.ok()) {
+    throw new Error(
+      `UI E2E: ${label} 返回 ${response.status()}：${await response.text()}`,
+    );
+  }
+  const body = (await response.json()) as { data?: TData };
+  if (body.data === undefined) {
+    throw new Error(`UI E2E: ${label} 响应缺少 data。`);
+  }
+  return body.data;
+}
+
+function uiAuthHeaders(user: UiTestUser): Record<string, string> {
+  return {
+    ...unsafeRequestHeaders(),
+    ...authenticatedRequestHeaders(user.cookie),
+  };
 }

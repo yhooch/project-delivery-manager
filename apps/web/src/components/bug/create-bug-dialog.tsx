@@ -151,13 +151,17 @@ export function CreateBugDialog({
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent>
+      <DialogContent data-testid="create-bug-dialog">
         <DialogHeader>
           <DialogTitle>{t("create.title")}</DialogTitle>
           <DialogDescription>{t("create.description")}</DialogDescription>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit} className="flex flex-col gap-3" noValidate>
+        <form
+          onSubmit={handleSubmit}
+          className="flex flex-col gap-3"
+          noValidate
+        >
           {errorKey && (
             <div
               role="alert"
@@ -171,6 +175,7 @@ export function CreateBugDialog({
             <Label htmlFor="create-bug-title">{t("fields.title")}</Label>
             <Input
               id="create-bug-title"
+              data-testid="create-bug-title-input"
               value={title}
               onChange={(event) => {
                 setTitle(event.target.value);
@@ -193,6 +198,7 @@ export function CreateBugDialog({
             <Label htmlFor="create-bug-steps">{t("fields.steps")}</Label>
             <Textarea
               id="create-bug-steps"
+              data-testid="create-bug-steps-input"
               value={steps}
               onChange={(event) => setSteps(event.target.value)}
               maxLength={8000}
@@ -207,6 +213,7 @@ export function CreateBugDialog({
               </Label>
               <select
                 id="create-bug-severity"
+                data-testid="create-bug-severity-select"
                 value={severity}
                 onChange={(event) =>
                   setSeverity(event.target.value as BugSeverity)
@@ -226,6 +233,7 @@ export function CreateBugDialog({
               </Label>
               <select
                 id="create-bug-priority"
+                data-testid="create-bug-priority-select"
                 value={priority}
                 onChange={(event) =>
                   setPriority(event.target.value as Priority)
@@ -243,6 +251,7 @@ export function CreateBugDialog({
               <Label htmlFor="create-bug-version">{t("fields.version")}</Label>
               <select
                 id="create-bug-version"
+                data-testid="create-bug-version-select"
                 value={versionId}
                 onChange={(event) => setVersionId(event.target.value)}
                 className="h-8 w-full rounded-md border border-input bg-background px-2 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
@@ -261,6 +270,7 @@ export function CreateBugDialog({
               </Label>
               <select
                 id="create-bug-assignee"
+                data-testid="create-bug-assignee-select"
                 value={assigneeId}
                 onChange={(event) => setAssigneeId(event.target.value)}
                 className="h-8 w-full rounded-md border border-input bg-background px-2 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
@@ -277,6 +287,7 @@ export function CreateBugDialog({
               <Label htmlFor="create-bug-duedate">{t("fields.dueDate")}</Label>
               <Input
                 id="create-bug-duedate"
+                data-testid="create-bug-duedate-input"
                 type="date"
                 value={dueDate}
                 onChange={(event) => setDueDate(event.target.value)}
@@ -294,7 +305,12 @@ export function CreateBugDialog({
             >
               {t("actions.cancel")}
             </Button>
-            <Button type="submit" size="sm" disabled={submitting}>
+            <Button
+              type="submit"
+              size="sm"
+              data-testid="create-bug-submit"
+              disabled={submitting}
+            >
               {submitting ? t("actions.submitting") : t("actions.submit")}
             </Button>
           </DialogFooter>

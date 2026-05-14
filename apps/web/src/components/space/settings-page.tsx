@@ -1,9 +1,6 @@
 "use client";
 
-import type {
-  Space,
-  SpaceMemberWithUser,
-} from "@project-delivery/shared";
+import type { Space, SpaceMemberWithUser } from "@project-delivery/shared";
 import { Plus, ShieldCheck, Trash2 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import {
@@ -35,15 +32,16 @@ import { PageHeader } from "../v2/page-header";
 import { AddSpaceMemberDialog } from "./add-space-member-dialog";
 import { EditSpaceMemberRoleDialog } from "./edit-space-member-role-dialog";
 
-const roleVariant: Record<string, "primary" | "info" | "warning" | "default"> = {
-  SPACE_ADMIN: "primary",
-  PM: "info",
-  DEVELOPER: "default",
-  TESTER: "warning",
-  REQUIREMENT: "info",
-  MEMBER: "default",
-  VIEWER: "default",
-};
+const roleVariant: Record<string, "primary" | "info" | "warning" | "default"> =
+  {
+    SPACE_ADMIN: "primary",
+    PM: "info",
+    DEVELOPER: "default",
+    TESTER: "warning",
+    REQUIREMENT: "info",
+    MEMBER: "default",
+    VIEWER: "default",
+  };
 
 export function SpaceSettingsPage() {
   const t = useTranslations("spaceSettings");
@@ -71,7 +69,9 @@ export function SpaceSettingsPage() {
   >(null);
 
   const organizationId =
-    space?.organizationId ?? currentSpace?.organizationId ?? session?.defaultOrganizationId;
+    space?.organizationId ??
+    currentSpace?.organizationId ??
+    session?.defaultOrganizationId;
 
   const existingUserIds = useMemo(
     () => new Set(members.map((member) => member.userId)),
@@ -119,7 +119,11 @@ export function SpaceSettingsPage() {
     setIsSavingBasic(true);
     setSaveErrorKey(null);
     const previous = space;
-    const optimistic: Space = { ...space, name: name.trim(), code: code.trim() };
+    const optimistic: Space = {
+      ...space,
+      name: name.trim(),
+      code: code.trim(),
+    };
     setSpace(optimistic);
 
     try {
@@ -213,7 +217,7 @@ export function SpaceSettingsPage() {
 
   if (status === "loading") {
     return (
-      <div className="flex h-full flex-col">
+      <div data-testid="space-settings-page" className="flex h-full flex-col">
         {headerNode}
         <div className="flex-1 overflow-y-auto px-6 py-6">
           <ListSkeleton rows={6} />
@@ -224,7 +228,7 @@ export function SpaceSettingsPage() {
 
   if (!spaceId) {
     return (
-      <div className="flex h-full flex-col">
+      <div data-testid="space-settings-page" className="flex h-full flex-col">
         {headerNode}
         <div className="flex-1 overflow-y-auto px-6 py-6">
           <EmptyState
@@ -238,13 +242,10 @@ export function SpaceSettingsPage() {
 
   if (errorKey) {
     return (
-      <div className="flex h-full flex-col">
+      <div data-testid="space-settings-page" className="flex h-full flex-col">
         {headerNode}
         <div className="flex-1 overflow-y-auto px-6 py-6">
-          <ErrorState
-            message={tRoot(errorKey)}
-            onRetry={() => void load()}
-          />
+          <ErrorState message={tRoot(errorKey)} onRetry={() => void load()} />
         </div>
       </div>
     );
@@ -252,7 +253,7 @@ export function SpaceSettingsPage() {
 
   if (isLoading || !space) {
     return (
-      <div className="flex h-full flex-col">
+      <div data-testid="space-settings-page" className="flex h-full flex-col">
         {headerNode}
         <div className="flex-1 overflow-y-auto px-6 py-6">
           <ListSkeleton rows={6} />
@@ -262,7 +263,7 @@ export function SpaceSettingsPage() {
   }
 
   return (
-    <div className="flex h-full flex-col">
+    <div data-testid="space-settings-page" className="flex h-full flex-col">
       {headerNode}
 
       <div className="flex-1 overflow-y-auto px-6 py-6">
@@ -287,6 +288,7 @@ export function SpaceSettingsPage() {
                   <Label htmlFor="space-name">{t("basic.fields.name")}</Label>
                   <Input
                     id="space-name"
+                    data-testid="space-settings-name-input"
                     value={name}
                     maxLength={120}
                     onChange={(event) => setName(event.target.value)}
@@ -297,6 +299,7 @@ export function SpaceSettingsPage() {
                   <Label htmlFor="space-code">{t("basic.fields.code")}</Label>
                   <Input
                     id="space-code"
+                    data-testid="space-settings-code-input"
                     value={code}
                     maxLength={32}
                     onChange={(event) => setCode(event.target.value)}
@@ -309,6 +312,7 @@ export function SpaceSettingsPage() {
                   size="sm"
                   type="submit"
                   className="text-xs"
+                  data-testid="space-settings-basic-submit"
                   disabled={isSavingBasic}
                 >
                   {isSavingBasic ? t("actions.saving") : t("actions.save")}
@@ -325,9 +329,12 @@ export function SpaceSettingsPage() {
             <div className="px-5 py-4">
               <div className="flex items-end gap-3">
                 <div className="flex flex-col gap-1.5">
-                  <Label htmlFor="stale-threshold">{t("threshold.fields.staleDays")}</Label>
+                  <Label htmlFor="stale-threshold">
+                    {t("threshold.fields.staleDays")}
+                  </Label>
                   <Input
                     id="stale-threshold"
+                    data-testid="space-settings-threshold-input"
                     type="number"
                     min={1}
                     max={30}
@@ -340,6 +347,7 @@ export function SpaceSettingsPage() {
                   size="sm"
                   className="text-xs"
                   type="button"
+                  data-testid="space-settings-threshold-submit"
                   onClick={() => void onSaveThreshold()}
                   disabled={isSavingThreshold}
                 >
@@ -359,6 +367,7 @@ export function SpaceSettingsPage() {
               <Button
                 size="sm"
                 className="text-xs"
+                data-testid="space-settings-add-member-button"
                 disabled={!organizationId}
                 onClick={() => setIsAddMemberOpen(true)}
               >
@@ -377,10 +386,14 @@ export function SpaceSettingsPage() {
             {members.length === 0 ? (
               <EmptyState title={t("members.empty")} />
             ) : (
-              <ul className="divide-y divide-border">
+              <ul
+                data-testid="space-settings-members-list"
+                className="divide-y divide-border"
+              >
                 {members.map((member) => (
                   <li
                     key={member.id}
+                    data-testid={`space-settings-member-${member.id}`}
                     className={cn(
                       "flex items-center gap-3 px-5 py-2.5",
                       member.status === "DISABLED" && "opacity-60",
@@ -410,6 +423,7 @@ export function SpaceSettingsPage() {
                     <Button
                       variant="ghost"
                       size="icon-sm"
+                      data-testid={`space-settings-member-edit-${member.id}`}
                       disabled={
                         pendingMemberId === member.id ||
                         member.status === "DISABLED"
@@ -424,6 +438,7 @@ export function SpaceSettingsPage() {
                     <Button
                       variant="ghost"
                       size="icon-sm"
+                      data-testid={`space-settings-member-disable-${member.id}`}
                       disabled={
                         pendingMemberId === member.id ||
                         member.status === "DISABLED"

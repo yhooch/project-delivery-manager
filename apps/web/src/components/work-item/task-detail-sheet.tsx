@@ -45,12 +45,7 @@ import { Badge } from "../ui/badge";
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
 import { Kbd } from "../ui/kbd";
-import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-} from "../ui/sheet";
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from "../ui/sheet";
 import { StatusBadge } from "../ui/status-badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../ui/tabs";
 import { EmptyState, ErrorState, LoadingState } from "../v2/states";
@@ -210,7 +205,10 @@ function TaskDetailSheetBody({
           {item.title}
         </SheetTitle>
         <div className="mt-3 flex flex-wrap items-center gap-2">
-          <StatusBadge category={item.statusCategory} label={item.statusLabel} />
+          <StatusBadge
+            category={item.statusCategory}
+            label={item.statusLabel}
+          />
           <Badge
             variant="outline"
             className={cn("gap-1", priorityColor[item.priority])}
@@ -255,14 +253,21 @@ function TaskDetailSheetBody({
           <div className="flex items-start gap-2">
             <AlertCircle className="mt-0.5 h-3.5 w-3.5 shrink-0 text-warning" />
             <div className="text-xs">
-              <span className="font-medium text-warning">{t("blocked.label")}</span>
-              <span className="ml-2 text-foreground/80">{item.blockedReason}</span>
+              <span className="font-medium text-warning">
+                {t("blocked.label")}
+              </span>
+              <span className="ml-2 text-foreground/80">
+                {item.blockedReason}
+              </span>
             </div>
           </div>
         </div>
       )}
 
-      <Tabs defaultValue="detail" className="flex flex-1 flex-col overflow-hidden">
+      <Tabs
+        defaultValue="detail"
+        className="flex flex-1 flex-col overflow-hidden"
+      >
         <TabsList className="px-5">
           <TabsTrigger value="detail" data-testid="task-detail-tab">
             {t("tabs.detail")}
@@ -303,6 +308,7 @@ function TaskDetailSheetBody({
 
         <TabsContent
           value="detail"
+          data-testid="task-detail-panel"
           className="mt-0 flex-1 overflow-y-auto px-5 py-4"
         >
           <DetailTab item={item} lookup={lookup} t={t} />
@@ -322,6 +328,7 @@ function TaskDetailSheetBody({
 
         <TabsContent
           value="attachments"
+          data-testid="task-attachments-panel"
           className="mt-0 flex-1 overflow-y-auto"
         >
           <AttachmentsTab
@@ -337,7 +344,11 @@ function TaskDetailSheetBody({
           />
         </TabsContent>
 
-        <TabsContent value="timeline" className="mt-0 flex-1 overflow-y-auto">
+        <TabsContent
+          value="timeline"
+          data-testid="task-timeline-panel"
+          className="mt-0 flex-1 overflow-y-auto"
+        >
           <TimelineTab
             item={item}
             spaceId={spaceId}
@@ -349,6 +360,7 @@ function TaskDetailSheetBody({
 
         <TabsContent
           value="links"
+          data-testid="task-links-panel"
           className="mt-0 flex-1 overflow-y-auto px-5 py-4"
         >
           <LinksPanel
@@ -551,8 +563,16 @@ function DetailTab({
   return (
     <>
       <div className="grid grid-cols-2 gap-x-6 gap-y-3 text-[13px]">
-        <FieldRow icon={User2} label={t("fields.assignee")} value={assignee.name} />
-        <FieldRow icon={User2} label={t("fields.reporter")} value={assignee.name} />
+        <FieldRow
+          icon={User2}
+          label={t("fields.assignee")}
+          value={assignee.name}
+        />
+        <FieldRow
+          icon={User2}
+          label={t("fields.reporter")}
+          value={assignee.name}
+        />
         <FieldRow
           icon={GitBranch}
           label={t("fields.version")}
@@ -593,12 +613,10 @@ function LinksPanel({
   t: ReturnType<typeof useTranslations<"taskDetail">>;
   tApiError: ReturnType<typeof useTranslations>;
 }) {
-  const [detail, setDetail] = useState<
-    | (Pick<
-        import("@project-delivery/shared").WorkItemDetail,
-        "versionId" | "requirementId" | "intakeItemId" | "reporterId"
-      > | null)
-  >(null);
+  const [detail, setDetail] = useState<Pick<
+    import("@project-delivery/shared").WorkItemDetail,
+    "versionId" | "requirementId" | "intakeItemId" | "reporterId"
+  > | null>(null);
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const { getMember } = useSpaceMembers(spaceId, organizationId);
@@ -686,14 +704,11 @@ function LinksPanel({
   }
 
   return (
-    <div className="flex flex-col gap-2">
+    <div data-testid="task-links-list" className="flex flex-col gap-2">
       {links.map((link, idx) => (
-        <FieldRow
-          key={`${link.label}-${idx}`}
-          icon={link.icon}
-          label={link.label}
-          value={link.value}
-        />
+        <div key={`${link.label}-${idx}`} data-testid="task-links-item">
+          <FieldRow icon={link.icon} label={link.label} value={link.value} />
+        </div>
       ))}
     </div>
   );
@@ -996,6 +1011,7 @@ function AttachmentsTab({
             <input
               ref={fileInputRef}
               type="file"
+              data-testid="task-attachments-file-input"
               className="hidden"
               onChange={handleFileChange}
               disabled={uploading || !spaceId}
@@ -1004,6 +1020,7 @@ function AttachmentsTab({
               size="sm"
               variant="outline"
               className="h-7 text-xs"
+              data-testid="task-attachments-upload-button"
               disabled={uploading || !spaceId}
               onClick={() => fileInputRef.current?.click()}
             >
@@ -1048,7 +1065,10 @@ function AttachmentsTab({
             description={t("attachments.emptyDescription")}
           />
         ) : (
-          <ul className="divide-y divide-border">
+          <ul
+            data-testid="task-attachments-list"
+            className="divide-y divide-border"
+          >
             {attachments.map((attachment) => {
               const uploader = displayUser(
                 attachment.uploadedById,
@@ -1058,6 +1078,7 @@ function AttachmentsTab({
               return (
                 <li
                   key={attachment.id}
+                  data-testid="task-attachments-item"
                   className="flex items-center gap-3 px-5 py-2.5"
                 >
                   <Paperclip className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
@@ -1072,7 +1093,9 @@ function AttachmentsTab({
                       <span>
                         {t("attachments.uploadedBy")}: {uploader.name}
                       </span>
-                      <span>{formatDateTime(attachment.createdAt, "default")}</span>
+                      <span>
+                        {formatDateTime(attachment.createdAt, "default")}
+                      </span>
                     </div>
                   </div>
                 </li>
@@ -1162,13 +1185,17 @@ function TimelineTab({
   }
 
   return (
-    <ul className="space-y-3 px-5 py-4">
+    <ul data-testid="task-timeline-list" className="space-y-3 px-5 py-4">
       {events.map((event) => {
         const initial =
           event.actor.name.trim().slice(0, 1).toUpperCase() || "?";
 
         return (
-          <li key={event.id} className="flex gap-3">
+          <li
+            key={event.id}
+            data-testid="task-timeline-item"
+            className="flex gap-3"
+          >
             <Avatar className="h-7 w-7">
               {event.actor.avatar && (
                 <AvatarImage src={event.actor.avatar} alt={event.actor.name} />

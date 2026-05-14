@@ -34,7 +34,13 @@ import { TaskDetailSheet } from "../work-item/task-detail-sheet";
 import { PageHeader } from "../v2/page-header";
 import { EmptyState, ErrorState, LoadingState } from "../v2/states";
 
-type Tone = "destructive" | "warning" | "info" | "success" | "primary" | "default";
+type Tone =
+  | "destructive"
+  | "warning"
+  | "info"
+  | "success"
+  | "primary"
+  | "default";
 
 const tabs: {
   key: ViewExceptionType;
@@ -189,7 +195,12 @@ export function ExceptionsPage() {
   });
 
   const headerActions = (
-    <Button variant="outline" size="sm" className="text-xs">
+    <Button
+      variant="outline"
+      size="sm"
+      className="text-xs"
+      data-testid="exceptions-threshold-button"
+    >
       <Settings2 className="h-3 w-3" />
       {t("threshold.title")}
     </Button>
@@ -199,7 +210,7 @@ export function ExceptionsPage() {
 
   if (!session) {
     return (
-      <div className="flex h-full flex-col">
+      <div data-testid="exceptions-page" className="flex h-full flex-col">
         <PageHeader
           eyebrow={tNav("group.deliver")}
           title={tNav("exceptions")}
@@ -217,7 +228,7 @@ export function ExceptionsPage() {
 
   if (!spaceId) {
     return (
-      <div className="flex h-full flex-col">
+      <div data-testid="exceptions-page" className="flex h-full flex-col">
         <PageHeader
           eyebrow={tNav("group.deliver")}
           title={tNav("exceptions")}
@@ -235,7 +246,7 @@ export function ExceptionsPage() {
 
   if (isLoading && !view) {
     return (
-      <div className="flex h-full flex-col">
+      <div data-testid="exceptions-page" className="flex h-full flex-col">
         <PageHeader
           eyebrow={tNav("group.deliver")}
           title={tNav("exceptions")}
@@ -251,7 +262,7 @@ export function ExceptionsPage() {
 
   if (errorKey) {
     return (
-      <div className="flex h-full flex-col">
+      <div data-testid="exceptions-page" className="flex h-full flex-col">
         <PageHeader
           eyebrow={tNav("group.deliver")}
           title={tNav("exceptions")}
@@ -275,7 +286,7 @@ export function ExceptionsPage() {
   };
 
   return (
-    <div className="flex h-full flex-col">
+    <div data-testid="exceptions-page" className="flex h-full flex-col">
       <PageHeader
         eyebrow={tNav("group.deliver")}
         title={tNav("exceptions")}
@@ -292,7 +303,12 @@ export function ExceptionsPage() {
           {grouped.map((tab) => {
             const Icon = tab.icon;
             return (
-              <TabsTrigger key={tab.key} value={tab.key} className="gap-1.5">
+              <TabsTrigger
+                key={tab.key}
+                value={tab.key}
+                className="gap-1.5"
+                data-testid={`exceptions-tab-${tab.key}`}
+              >
                 <Icon className={cn("h-3 w-3", toneClass[tab.tone])} />
                 {tRoot(`m4Views.exceptionType.${tab.key}`)}
                 <span className="rounded bg-muted px-1.5 py-0.5 font-mono text-[10px] text-muted-foreground">
@@ -307,6 +323,7 @@ export function ExceptionsPage() {
           <TabsContent
             key={tab.key}
             value={tab.key}
+            data-testid={`exceptions-panel-${tab.key}`}
             className="mt-0 flex-1 overflow-y-auto"
           >
             {tab.items.length === 0 ? (
@@ -315,7 +332,10 @@ export function ExceptionsPage() {
                 description={t("states.empty.description")}
               />
             ) : (
-              <ul className="divide-y divide-border">
+              <ul
+                data-testid={`exceptions-list-${tab.key}`}
+                className="divide-y divide-border"
+              >
                 {tab.items.map((item) => {
                   const mock = toMockWorkItem(locale)(item.workItem);
                   const matchedSignal = item.exceptions.find(
@@ -324,7 +344,10 @@ export function ExceptionsPage() {
                   const exceptionDetail = matchedSignal?.reason;
 
                   return (
-                    <li key={item.workItem.id}>
+                    <li
+                      key={item.workItem.id}
+                      data-testid={`exceptions-row-${tab.key}-${item.workItem.id}`}
+                    >
                       <button
                         type="button"
                         onClick={() => handleSelect(item)}

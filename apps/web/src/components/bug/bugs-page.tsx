@@ -15,10 +15,7 @@ import { useListKeyboardNav } from "../../lib/hooks/use-list-keyboard-nav";
 import { useSpaceMembers, useVersions } from "../../lib/v2/lookups";
 import type { WorkItemViewModel } from "../../lib/v2/work-item-view-model";
 import { cn } from "../../lib/utils";
-import type {
-  SpaceMemberWithUser,
-  Version,
-} from "@project-delivery/shared";
+import type { SpaceMemberWithUser, Version } from "@project-delivery/shared";
 
 import { Avatar, AvatarFallback } from "../ui/avatar";
 import { Badge } from "../ui/badge";
@@ -129,12 +126,17 @@ export function BugsPage() {
 
   const buckets = useMemo(
     () => [
-      { label: t("buckets.all"), key: "all" as FilterKey, count: mockItems.length },
+      {
+        label: t("buckets.all"),
+        key: "all" as FilterKey,
+        count: mockItems.length,
+      },
       {
         label: t("buckets.open"),
         key: "open" as FilterKey,
         count: mockItems.filter(
-          (b) => b.statusCategory !== "DONE" && b.statusCategory !== "TERMINATED",
+          (b) =>
+            b.statusCategory !== "DONE" && b.statusCategory !== "TERMINATED",
         ).length,
       },
       {
@@ -153,13 +155,19 @@ export function BugsPage() {
       description={t("page.description")}
       actions={
         <>
-          <Button variant="outline" size="sm" className="text-xs">
+          <Button
+            variant="outline"
+            size="sm"
+            className="text-xs"
+            data-testid="bugs-filter-button"
+          >
             <Filter className="h-3 w-3" />
             {t("actions.filter")}
           </Button>
           <Button
             size="sm"
             className="text-xs"
+            data-testid="bugs-create-button"
             onClick={() => setCreateOpen(true)}
           >
             <Plus className="h-3 w-3" />
@@ -172,7 +180,7 @@ export function BugsPage() {
 
   if (sessionStatus === "loading") {
     return (
-      <div className="flex h-full flex-col">
+      <div data-testid="bugs-page" className="flex h-full flex-col">
         {header}
         <ListSkeleton />
       </div>
@@ -181,7 +189,7 @@ export function BugsPage() {
 
   if (!spaceId) {
     return (
-      <div className="flex h-full flex-col">
+      <div data-testid="bugs-page" className="flex h-full flex-col">
         {header}
         <EmptyState
           title={t("states.noSpace.title")}
@@ -192,7 +200,7 @@ export function BugsPage() {
   }
 
   return (
-    <div className="flex h-full flex-col">
+    <div data-testid="bugs-page" className="flex h-full flex-col">
       {header}
 
       <div className="flex items-center gap-1 border-b border-border px-6 py-3">
@@ -200,6 +208,7 @@ export function BugsPage() {
           <button
             key={b.key}
             type="button"
+            data-testid={`bugs-filter-${b.key}`}
             onClick={() => setFilter(b.key)}
             className={cn(
               "flex h-7 items-center gap-1.5 rounded-md px-2.5 text-[12px] transition-colors cursor-pointer",
@@ -234,9 +243,9 @@ export function BugsPage() {
             description={t("states.empty.description")}
           />
         ) : (
-          <ul className="divide-y divide-border">
+          <ul data-testid="bugs-list" className="divide-y divide-border">
             {filtered.map((bug) => (
-              <li key={bug.id}>
+              <li key={bug.id} data-testid={`bugs-row-${bug.id}`}>
                 <button
                   type="button"
                   onClick={() => {
@@ -319,7 +328,8 @@ function toMockBug(
 ): MockBugItem {
   const code = deriveBugCode(bug.id);
   const member = bug.assigneeId ? lookups.getMember(bug.assigneeId) : undefined;
-  const assigneeName = member?.user.name ?? member?.user.username ?? bug.assigneeId ?? "";
+  const assigneeName =
+    member?.user.name ?? member?.user.username ?? bug.assigneeId ?? "";
   const initial = deriveInitial(assigneeName);
   const version = bug.versionId ? lookups.getVersion(bug.versionId) : undefined;
   const dueDate = bug.dueDate ? formatDate(bug.dueDate) : undefined;

@@ -73,6 +73,6 @@ done
 
 log "Running prisma migrate deploy against ${DATABASE_URL_DEFAULT/${E2E_PG_PASSWORD}/********}"
 DATABASE_URL="${DATABASE_URL}" \
-  corepack pnpm exec prisma migrate deploy --schema prisma/schema.prisma
+  corepack pnpm --filter @project-delivery/api exec prisma migrate deploy --config ../../prisma.config.ts
 
 log "Database ready."

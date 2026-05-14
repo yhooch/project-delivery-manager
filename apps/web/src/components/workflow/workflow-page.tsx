@@ -4,7 +4,12 @@ import type {
   WorkflowDefinition,
   WorkflowDefinitionStatus,
 } from "@project-delivery/shared";
-import { Pencil, Plus, Settings2, Workflow as WorkflowIcon } from "lucide-react";
+import {
+  Pencil,
+  Plus,
+  Settings2,
+  Workflow as WorkflowIcon,
+} from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useState } from "react";
 
@@ -21,7 +26,10 @@ import { PageHeader } from "../v2/page-header";
 
 import { CreateWorkflowDialog } from "./create-workflow-dialog";
 
-const statusVariant: Record<WorkflowDefinitionStatus, "success" | "warning" | "default"> = {
+const statusVariant: Record<
+  WorkflowDefinitionStatus,
+  "success" | "warning" | "default"
+> = {
   ACTIVE: "success",
   DRAFT: "warning",
   DISABLED: "default",
@@ -39,7 +47,8 @@ export function WorkflowPage() {
   const tRoot = useTranslations();
   const { currentSpace, session, status } = useSession();
   const spaceId = session?.defaultSpaceId ?? currentSpace?.id;
-  const organizationId = currentSpace?.organizationId ?? session?.defaultOrganizationId;
+  const organizationId =
+    currentSpace?.organizationId ?? session?.defaultOrganizationId;
 
   const [workflows, setWorkflows] = useState<WorkflowDefinition[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -77,13 +86,10 @@ export function WorkflowPage() {
     void loadWorkflows();
   }, [loadWorkflows, spaceId, status]);
 
-  const handleCopyAsNewVersion = useCallback(
-    (workflow: WorkflowDefinition) => {
-      setActionErrorKey(null);
-      setDialog({ kind: "copyVersion", workflow });
-    },
-    [],
-  );
+  const handleCopyAsNewVersion = useCallback((workflow: WorkflowDefinition) => {
+    setActionErrorKey(null);
+    setDialog({ kind: "copyVersion", workflow });
+  }, []);
 
   const headerNode = (
     <PageHeader
@@ -94,6 +100,7 @@ export function WorkflowPage() {
         <Button
           size="sm"
           className="text-xs"
+          data-testid="workflow-create-button"
           onClick={() => setDialog({ kind: "create" })}
           disabled={!spaceId}
         >
@@ -136,6 +143,7 @@ export function WorkflowPage() {
         {workflows.map((wf) => (
           <article
             key={wf.id}
+            data-testid={`workflow-card-${wf.id}`}
             className={cn(
               "group relative flex flex-col gap-3 rounded-lg border border-border bg-card p-4 transition-colors hover:border-primary/40",
             )}
@@ -203,7 +211,7 @@ export function WorkflowPage() {
   }
 
   return (
-    <div className="flex h-full flex-col">
+    <div data-testid="workflow-page" className="flex h-full flex-col">
       {headerNode}
       <div className="flex-1 overflow-y-auto px-6 py-5">
         {actionErrorKey ? (

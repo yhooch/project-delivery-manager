@@ -149,13 +149,17 @@ export function CreateIntakeDialog({
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent>
+      <DialogContent data-testid="create-intake-dialog">
         <DialogHeader>
           <DialogTitle>{t("create.title")}</DialogTitle>
           <DialogDescription>{t("create.description")}</DialogDescription>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit} className="flex flex-col gap-3" noValidate>
+        <form
+          onSubmit={handleSubmit}
+          className="flex flex-col gap-3"
+          noValidate
+        >
           {errorKey && (
             <div
               role="alert"
@@ -169,6 +173,7 @@ export function CreateIntakeDialog({
             <Label htmlFor="create-intake-title">{t("fields.title")}</Label>
             <Input
               id="create-intake-title"
+              data-testid="create-intake-title-input"
               value={title}
               onChange={(event) => {
                 setTitle(event.target.value);
@@ -193,6 +198,7 @@ export function CreateIntakeDialog({
             </Label>
             <Textarea
               id="create-intake-description"
+              data-testid="create-intake-description-input"
               value={description}
               onChange={(event) => setDescription(event.target.value)}
               maxLength={8000}
@@ -207,6 +213,7 @@ export function CreateIntakeDialog({
               </Label>
               <select
                 id="create-intake-source"
+                data-testid="create-intake-source-select"
                 value={sourceType}
                 onChange={(event) =>
                   setSourceType(event.target.value as IntakeSourceType)
@@ -226,6 +233,7 @@ export function CreateIntakeDialog({
               </Label>
               <select
                 id="create-intake-priority"
+                data-testid="create-intake-priority-select"
                 value={priority}
                 onChange={(event) =>
                   setPriority(event.target.value as Priority | "")
@@ -246,6 +254,7 @@ export function CreateIntakeDialog({
               </Label>
               <select
                 id="create-intake-version"
+                data-testid="create-intake-version-select"
                 value={versionId}
                 onChange={(event) => setVersionId(event.target.value)}
                 className="h-8 w-full rounded-md border border-input bg-background px-2 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
@@ -264,6 +273,7 @@ export function CreateIntakeDialog({
               </Label>
               <select
                 id="create-intake-requirement"
+                data-testid="create-intake-requirement-select"
                 value={requirementId}
                 onChange={(event) => setRequirementId(event.target.value)}
                 className="h-8 w-full rounded-md border border-input bg-background px-2 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
@@ -288,7 +298,12 @@ export function CreateIntakeDialog({
             >
               {t("actions.cancel")}
             </Button>
-            <Button type="submit" size="sm" disabled={submitting}>
+            <Button
+              type="submit"
+              size="sm"
+              data-testid="create-intake-submit"
+              disabled={submitting}
+            >
               {submitting ? t("actions.submitting") : t("actions.submit")}
             </Button>
           </DialogFooter>

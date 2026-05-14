@@ -33,12 +33,7 @@ import { useSession } from "../providers/session-provider";
 import { Avatar, AvatarFallback } from "../ui/avatar";
 import { Badge } from "../ui/badge";
 import { Button } from "../ui/button";
-import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-} from "../ui/sheet";
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from "../ui/sheet";
 import { StatusBadge } from "../ui/status-badge";
 import { PageHeader } from "../v2/page-header";
 import {
@@ -226,6 +221,7 @@ export function IntakePage() {
     <Button
       size="sm"
       className="text-xs"
+      data-testid="intake-create-button"
       onClick={() => setCreateOpen(true)}
       type="button"
     >
@@ -272,9 +268,9 @@ export function IntakePage() {
     );
   } else {
     body = (
-      <ul className="divide-y divide-border">
+      <ul data-testid="intake-list" className="divide-y divide-border">
         {filtered.map((item) => (
-          <li key={item.id}>
+          <li key={item.id} data-testid={`intake-row-${item.id}`}>
             <button
               type="button"
               onClick={() => setActive(item)}
@@ -320,7 +316,7 @@ export function IntakePage() {
   }
 
   return (
-    <div className="flex h-full flex-col">
+    <div data-testid="intake-page" className="flex h-full flex-col">
       <PageHeader
         eyebrow={tNav("group.document")}
         title={tNav("intake")}
@@ -334,6 +330,7 @@ export function IntakePage() {
             <button
               key={b.key}
               type="button"
+              data-testid={`intake-filter-${b.key}`}
               onClick={() => setFilter(b.key)}
               className={cn(
                 "flex h-7 items-center gap-1.5 rounded-md px-2.5 text-[12px] transition-colors cursor-pointer",
@@ -354,7 +351,10 @@ export function IntakePage() {
       <div className="flex-1 overflow-y-auto">{body}</div>
 
       <Sheet open={Boolean(active)} onOpenChange={handleCloseDrawer}>
-        <SheetContent className="flex flex-col gap-0 p-0">
+        <SheetContent
+          className="flex flex-col gap-0 p-0"
+          data-testid="intake-detail-sheet"
+        >
           {active && (
             <>
               <SheetHeader className="px-5 py-4">
@@ -394,6 +394,7 @@ export function IntakePage() {
                       <Button
                         size="sm"
                         className="h-7 text-xs"
+                        data-testid="intake-accept-button"
                         disabled={actionInFlight !== null}
                         onClick={() => void handleStatusAction("accept")}
                         type="button"
@@ -406,6 +407,7 @@ export function IntakePage() {
                         size="sm"
                         variant="secondary"
                         className="h-7 text-xs"
+                        data-testid="intake-defer-button"
                         disabled={actionInFlight !== null}
                         onClick={() => void handleStatusAction("defer")}
                         type="button"
@@ -418,6 +420,7 @@ export function IntakePage() {
                         size="sm"
                         variant="destructive"
                         className="h-7 text-xs"
+                        data-testid="intake-reject-button"
                         disabled={actionInFlight !== null}
                         onClick={() => void handleStatusAction("reject")}
                         type="button"
@@ -432,6 +435,7 @@ export function IntakePage() {
                     <Button
                       size="sm"
                       className="h-7 text-xs"
+                      data-testid="intake-convert-button"
                       onClick={openConvertDialog}
                       type="button"
                     >
@@ -444,6 +448,7 @@ export function IntakePage() {
                       size="sm"
                       variant="outline"
                       className="h-7 text-xs"
+                      data-testid="intake-view-converted-tasks-button"
                       onClick={openConvertDialog}
                       type="button"
                     >

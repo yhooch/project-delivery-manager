@@ -42,7 +42,8 @@ export function OrganizationPage() {
   const tShell = useTranslations("shell.nav");
   const tRoot = useTranslations();
   const { currentOrganization, session, status } = useSession();
-  const organizationId = session?.defaultOrganizationId ?? currentOrganization?.id;
+  const organizationId =
+    session?.defaultOrganizationId ?? currentOrganization?.id;
 
   const [members, setMembers] = useState<OrganizationMemberWithUser[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -119,7 +120,7 @@ export function OrganizationPage() {
 
   if (status === "loading") {
     return (
-      <div className="flex h-full flex-col">
+      <div data-testid="organization-page" className="flex h-full flex-col">
         {headerNode}
         <div className="flex-1 overflow-y-auto px-6 py-6">
           <ListSkeleton rows={4} />
@@ -130,7 +131,7 @@ export function OrganizationPage() {
 
   if (!organizationId || !currentOrganization) {
     return (
-      <div className="flex h-full flex-col">
+      <div data-testid="organization-page" className="flex h-full flex-col">
         {headerNode}
         <div className="flex-1 overflow-y-auto px-6 py-6">
           <EmptyState
@@ -163,6 +164,7 @@ export function OrganizationPage() {
           return (
             <li
               key={member.id}
+              data-testid={`organization-member-${member.id}`}
               className={cn(
                 "flex items-center gap-3 px-5 py-2.5",
                 member.status === "DISABLED" && "opacity-60",
@@ -188,6 +190,7 @@ export function OrganizationPage() {
               <Button
                 variant="ghost"
                 size="icon-sm"
+                data-testid={`organization-member-remove-${member.id}`}
                 disabled={
                   isLastActiveOwner ||
                   member.status === "DISABLED" ||
@@ -208,7 +211,7 @@ export function OrganizationPage() {
   }
 
   return (
-    <div className="flex h-full flex-col">
+    <div data-testid="organization-page" className="flex h-full flex-col">
       {headerNode}
 
       <div className="flex-1 overflow-y-auto px-6 py-6">
@@ -248,6 +251,7 @@ export function OrganizationPage() {
               <Button
                 size="sm"
                 className="text-xs"
+                data-testid="organization-add-member-button"
                 onClick={() => setIsAddMemberOpen(true)}
               >
                 <Plus className="h-3 w-3" />
@@ -292,7 +296,7 @@ export function OrganizationPage() {
         }}
         open={removeMember !== null}
       >
-        <DialogContent>
+        <DialogContent data-testid="organization-remove-member-dialog">
           <DialogHeader>
             <DialogTitle>
               {tRoot("organization.dialog.removeMember.title")}
@@ -318,6 +322,7 @@ export function OrganizationPage() {
           <DialogFooter>
             <Button
               className="text-xs"
+              data-testid="organization-remove-member-cancel"
               disabled={pendingMemberId !== null}
               onClick={() => setRemoveMember(null)}
               size="sm"
@@ -328,6 +333,7 @@ export function OrganizationPage() {
             </Button>
             <Button
               className="text-xs"
+              data-testid="organization-remove-member-submit"
               disabled={
                 pendingMemberId !== null ||
                 !removeMember ||

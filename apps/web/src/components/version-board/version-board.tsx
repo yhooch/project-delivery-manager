@@ -161,7 +161,12 @@ export function VersionBoard() {
       {versions.length > 0 && (
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="outline" size="sm" className="text-xs">
+            <Button
+              variant="outline"
+              size="sm"
+              className="text-xs"
+              data-testid="version-board-version-trigger"
+            >
               {currentVersion?.name ?? t("selectVersion")}
               <ChevronDown className="h-3 w-3" />
             </Button>
@@ -170,6 +175,7 @@ export function VersionBoard() {
             {versions.map((v) => (
               <DropdownMenuItem
                 key={v.id}
+                data-testid={`version-board-version-option-${v.id}`}
                 onSelect={() => setVersionId(v.id)}
                 className="gap-2"
               >
@@ -253,6 +259,7 @@ export function VersionBoard() {
         {grouped.map(({ category, items, total }) => (
           <div
             key={category}
+            data-testid={`version-board-column-${category}`}
             className="flex h-full w-[280px] shrink-0 flex-col rounded-lg border border-border bg-card/30"
           >
             <header className="flex shrink-0 items-center gap-2 border-b border-border px-3 py-2.5">
@@ -288,6 +295,7 @@ export function VersionBoard() {
                   <button
                     key={item.id}
                     type="button"
+                    data-testid={`version-board-card-${item.id}`}
                     onClick={() => openItem(item)}
                     className="group block w-full rounded-md border border-border bg-card p-2.5 text-left shadow-sm transition-all hover:border-primary/40 hover:shadow-md cursor-pointer"
                   >
@@ -311,13 +319,17 @@ export function VersionBoard() {
                       {item.title}
                     </div>
                     <div className="mt-2 flex items-center gap-2">
-                      {item.exceptionSignals.some((s) => s.type === "blocked") && (
+                      {item.exceptionSignals.some(
+                        (s) => s.type === "blocked",
+                      ) && (
                         <Badge variant="warning" className="gap-1 text-[9px]">
                           <AlertCircle className="h-2 w-2" />
                           {t("badges.blocked")}
                         </Badge>
                       )}
-                      {item.exceptionSignals.some((s) => s.type === "overdue") && (
+                      {item.exceptionSignals.some(
+                        (s) => s.type === "overdue",
+                      ) && (
                         <Badge variant="destructive" className="text-[9px]">
                           {t("badges.overdue")}
                         </Badge>
@@ -339,7 +351,7 @@ export function VersionBoard() {
   }
 
   return (
-    <div className="flex h-full flex-col">
+    <div data-testid="version-board-page" className="flex h-full flex-col">
       <PageHeader
         eyebrow={tShell("group.deliver")}
         title={t("title")}

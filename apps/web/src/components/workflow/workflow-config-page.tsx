@@ -150,7 +150,8 @@ export function WorkflowConfigPage({ workflowId }: WorkflowConfigPageProps) {
   const tRoot = useTranslations();
   const { currentSpace, session, status } = useSession();
   const spaceId = session?.defaultSpaceId ?? currentSpace?.id;
-  const organizationId = currentSpace?.organizationId ?? session?.defaultOrganizationId;
+  const organizationId =
+    currentSpace?.organizationId ?? session?.defaultOrganizationId;
 
   const [workflow, setWorkflow] = useState<WorkflowDefinition | null>(null);
   const [versions, setVersions] = useState<WorkflowVersion[]>([]);
@@ -163,7 +164,9 @@ export function WorkflowConfigPage({ workflowId }: WorkflowConfigPageProps) {
   const [versionErrorKey, setVersionErrorKey] = useState<string | null>(null);
   const [actionErrorKey, setActionErrorKey] = useState<string | null>(null);
   const [publishIssues, setPublishIssues] = useState<PublishIssue[]>([]);
-  const [busy, setBusy] = useState<"none" | "publish" | "disable" | "copy">("none");
+  const [busy, setBusy] = useState<"none" | "publish" | "disable" | "copy">(
+    "none",
+  );
   const [dialog, setDialog] = useState<DialogState>({ kind: "closed" });
 
   const loadShell = useCallback(async () => {
@@ -413,12 +416,7 @@ export function WorkflowConfigPage({ workflowId }: WorkflowConfigPageProps) {
       description={workflow?.description ?? t("description")}
       actions={
         <div className="flex items-center gap-2">
-          <Button
-            asChild
-            className="h-7 text-xs"
-            size="sm"
-            variant="ghost"
-          >
+          <Button asChild className="h-7 text-xs" size="sm" variant="ghost">
             <Link href="/workflow">
               <ArrowLeft className="h-3 w-3" />
               {t("backToList")}
@@ -431,7 +429,7 @@ export function WorkflowConfigPage({ workflowId }: WorkflowConfigPageProps) {
 
   if (status === "loading" || (isLoadingShell && !workflow)) {
     return (
-      <div className="flex h-full flex-col">
+      <div data-testid="workflow-config-page" className="flex h-full flex-col">
         {headerNode}
         <div className="flex-1 px-6 py-5">
           <ListSkeleton rows={4} />
@@ -442,17 +440,20 @@ export function WorkflowConfigPage({ workflowId }: WorkflowConfigPageProps) {
 
   if (shellErrorKey) {
     return (
-      <div className="flex h-full flex-col">
+      <div data-testid="workflow-config-page" className="flex h-full flex-col">
         {headerNode}
         <div className="flex-1 px-6 py-5">
-          <ErrorState message={tRoot(shellErrorKey)} onRetry={() => void loadShell()} />
+          <ErrorState
+            message={tRoot(shellErrorKey)}
+            onRetry={() => void loadShell()}
+          />
         </div>
       </div>
     );
   }
 
   return (
-    <div className="flex h-full flex-col">
+    <div data-testid="workflow-config-page" className="flex h-full flex-col">
       {headerNode}
       <div className="flex-1 overflow-y-auto px-6 py-5">
         <div className="mb-4 flex flex-wrap items-center gap-2 rounded-lg border border-border bg-card px-3 py-2">
@@ -499,7 +500,9 @@ export function WorkflowConfigPage({ workflowId }: WorkflowConfigPageProps) {
               size="sm"
             >
               <Send className="h-3 w-3" />
-              {busy === "publish" ? t("toolbar.publishing") : t("toolbar.publish")}
+              {busy === "publish"
+                ? t("toolbar.publishing")
+                : t("toolbar.publish")}
             </Button>
             <Button
               className="h-7 text-xs"
@@ -512,7 +515,9 @@ export function WorkflowConfigPage({ workflowId }: WorkflowConfigPageProps) {
               variant="outline"
             >
               <X className="h-3 w-3" />
-              {busy === "disable" ? t("toolbar.disabling") : t("toolbar.disable")}
+              {busy === "disable"
+                ? t("toolbar.disabling")
+                : t("toolbar.disable")}
             </Button>
             <Button
               className="h-7 text-xs"
@@ -585,7 +590,9 @@ export function WorkflowConfigPage({ workflowId }: WorkflowConfigPageProps) {
                 setDialog({ actionId: action.id, kind: "createField" })
               }
               onDelete={(action) => void handleDeleteAction(action)}
-              onDeleteField={(action, field) => void handleDeleteField(action, field)}
+              onDeleteField={(action, field) =>
+                void handleDeleteField(action, field)
+              }
               onEdit={(action) => setDialog({ action, kind: "editAction" })}
               onEditField={(action, field) =>
                 setDialog({ actionId: action.id, field, kind: "editField" })
@@ -693,7 +700,10 @@ function Label({
   htmlFor?: string;
 }) {
   return (
-    <label className="text-xs font-medium text-muted-foreground" htmlFor={htmlFor}>
+    <label
+      className="text-xs font-medium text-muted-foreground"
+      htmlFor={htmlFor}
+    >
       {children}
     </label>
   );
