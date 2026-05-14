@@ -28,15 +28,16 @@ import {
 import { Input } from "../ui/input";
 import { Label } from "../ui/label";
 
-const SPACE_ROLE_OPTIONS: SpaceRole[] = [
+const SPACE_ROLE_OPTIONS = [
   "SPACE_ADMIN",
   "PM",
   "DEVELOPER",
   "TESTER",
   "REQUIREMENT",
   "MEMBER",
-  "VIEWER",
-];
+] satisfies SpaceRole[];
+type WorkflowActionAllowedRole = (typeof SPACE_ROLE_OPTIONS)[number];
+const SPACE_ROLE_OPTION_SET = new Set<SpaceRole>(SPACE_ROLE_OPTIONS);
 
 const ACTOR_RELATION_OPTIONS: WorkflowActorRelation[] = [
   "ASSIGNEE",
@@ -86,7 +87,7 @@ export function WorkflowActionDialog({
   const [toStateId, setToStateId] = useState<string>("");
   const [order, setOrder] = useState<string>("0");
   const [requiresComment, setRequiresComment] = useState(false);
-  const [allowedRoles, setAllowedRoles] = useState<SpaceRole[]>([]);
+  const [allowedRoles, setAllowedRoles] = useState<WorkflowActionAllowedRole[]>([]);
   const [actorRelations, setActorRelations] = useState<WorkflowActorRelation[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorKey, setErrorKey] = useState<string | null>(null);
@@ -104,7 +105,11 @@ export function WorkflowActionDialog({
       setToStateId(mode.action.toStateId);
       setOrder(String(mode.action.order));
       setRequiresComment(mode.action.requiresComment);
-      setAllowedRoles([...mode.action.allowedSpaceRoles]);
+      setAllowedRoles(
+        mode.action.allowedSpaceRoles.filter((role): role is WorkflowActionAllowedRole =>
+          SPACE_ROLE_OPTION_SET.has(role),
+        ),
+      );
       setActorRelations([...mode.action.actorRelations]);
     } else {
       setName("");

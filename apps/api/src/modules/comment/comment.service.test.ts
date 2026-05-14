@@ -54,6 +54,30 @@ describe("CommentService", () => {
       }),
     );
   });
+
+  it("does not create comments when WORK_ITEM visibility resolution rejects", async () => {
+    const actorUserId = ulid();
+    const workItemId = ulid();
+    const comments = {
+      create: vi.fn(),
+      listByTarget: vi.fn(),
+    } as unknown as CommentRepository;
+    const targets = {
+      resolve: vi.fn(async () => {
+        throw new Error("not visible");
+      }),
+    } as unknown as TargetResolverService;
+    const service = new CommentService(comments, targets);
+
+    await expect(
+      service.create(actorUserId, {
+        targetType: "WORK_ITEM",
+        targetId: workItemId,
+        body: "Looks good",
+      }),
+    ).rejects.toThrow("not visible");
+    expect(comments.create).not.toHaveBeenCalled();
+  });
 });
 
 function fakeComment(id: string, targetId: string): Comment {

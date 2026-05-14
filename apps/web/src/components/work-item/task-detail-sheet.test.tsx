@@ -332,6 +332,36 @@ describe("TaskDetailSheet", () => {
     expect(await screen.findByText("Hello world")).toBeInTheDocument();
   });
 
+  it("hides the comment composer when PermissionSnapshot.canComment is false", async () => {
+    getWorkItemMock.mockResolvedValueOnce(
+      makeDetailResponse({
+        permissions: {
+          canEdit: true,
+          canComment: false,
+          canUploadAttachment: true,
+          availableActions: [],
+        },
+      }),
+    );
+    listCommentsMock.mockResolvedValueOnce({ items: [], total: 0 });
+
+    render(
+      <TaskDetailSheet
+        item={makeViewModel()}
+        open
+        onOpenChange={() => {}}
+      />,
+    );
+
+    await activateTab(/comments/i);
+
+    expect(
+      await screen.findByTestId("task-comments-readonly"),
+    ).toHaveTextContent("taskDetail.comments.readonly");
+    expect(screen.queryByTestId("task-comments-input")).not.toBeInTheDocument();
+    expect(createCommentMock).not.toHaveBeenCalled();
+  });
+
   it("renders attachments from listAttachments on the attachments tab", async () => {
     listAttachmentsMock.mockResolvedValueOnce({
       items: [
@@ -401,6 +431,41 @@ describe("TaskDetailSheet", () => {
         targetType: "WORK_ITEM",
       }),
     );
+  });
+
+  it("hides the attachment upload entry when PermissionSnapshot.canUploadAttachment is false", async () => {
+    getWorkItemMock.mockResolvedValueOnce(
+      makeDetailResponse({
+        permissions: {
+          canEdit: true,
+          canComment: true,
+          canUploadAttachment: false,
+          availableActions: [],
+        },
+      }),
+    );
+    listAttachmentsMock.mockResolvedValueOnce({ items: [], total: 0 });
+
+    render(
+      <TaskDetailSheet
+        item={makeViewModel()}
+        open
+        onOpenChange={() => {}}
+      />,
+    );
+
+    await activateTab(/attachments/i);
+
+    expect(
+      await screen.findByTestId("task-attachments-readonly"),
+    ).toHaveTextContent("taskDetail.attachments.readonly");
+    expect(
+      screen.queryByRole("button", {
+        name: /taskDetail\.attachments\.uploadAction/,
+      }),
+    ).not.toBeInTheDocument();
+    expect(document.body.querySelector('input[type="file"]')).toBeNull();
+    expect(uploadAttachmentMock).not.toHaveBeenCalled();
   });
 
   it("renders timeline events from listTimeline on the timeline tab", async () => {
@@ -555,4 +620,3 @@ describe("TaskDetailSheet", () => {
     expect(screen.queryByText("Cached fallback")).not.toBeInTheDocument();
   });
 });
-

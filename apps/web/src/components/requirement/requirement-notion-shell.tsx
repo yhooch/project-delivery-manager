@@ -33,9 +33,7 @@ export function RequirementNotionShell({ children }: RequirementNotionShellProps
           </Link>
           <span className="text-muted-foreground/60">/</span>
           <span className="truncate text-foreground/90">
-            {tReq("detail.breadcrumbCurrent", {
-              default: "Detail",
-            })}
+            {tReq("detail.breadcrumbCurrent")}
           </span>
         </div>
       </header>

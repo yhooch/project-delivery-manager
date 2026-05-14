@@ -2,6 +2,7 @@
 
 import type {
   ActionFormFieldSummary,
+  WorkflowBinding,
   WorkflowActionSummary,
   WorkflowDefinition,
   WorkflowState,
@@ -20,6 +21,7 @@ import {
   deleteWorkflowState,
   getWorkflow,
   getWorkflowVersion,
+  listWorkflowBindings,
   listWorkflowVersions,
   publishWorkflowVersion,
   updateWorkflowVersion,
@@ -33,6 +35,10 @@ import { PageHeader } from "../v2/page-header";
 
 import { WorkflowActionDialog } from "./workflow-action-dialog";
 import { WorkflowActionList } from "./workflow-action-list";
+import {
+  WorkflowBindingDialog,
+  WorkflowBindingList,
+} from "./workflow-binding-list";
 import { WorkflowFormFieldDialog } from "./workflow-form-field-dialog";
 import { WorkflowStateDialog } from "./workflow-state-dialog";
 import { WorkflowStateList } from "./workflow-state-list";
@@ -48,22 +54,31 @@ type DialogState =
   | { kind: "createAction" }
   | { kind: "editAction"; action: WorkflowActionSummary }
   | { kind: "createField"; actionId: string }
-  | { kind: "editField"; actionId: string; field: ActionFormFieldSummary };
+  | { kind: "editField"; actionId: string; field: ActionFormFieldSummary }
+  | { kind: "createBinding" }
+  | { kind: "editBinding"; binding: WorkflowBinding };
 
 type PublishIssue =
   | "noStates"
+  | "multipleStartStates"
   | "noStartState"
   | "noEndState"
+  | "missingOutgoingAction"
   | "missingFromState"
-  | "missingToState";
+  | "missingToState"
+  | "unreachableState";
 
 function validateForPublish(version: WorkflowVersion): PublishIssue[] {
   const issues: PublishIssue[] = [];
   if (version.states.length === 0) {
     issues.push("noStates");
   }
-  if (!version.states.some((state) => state.isStart)) {
+  const startStates = version.states.filter((state) => state.isStart);
+  if (startStates.length === 0) {
     issues.push("noStartState");
+  }
+  if (startStates.length > 1) {
+    issues.push("multipleStartStates");
   }
   if (!version.states.some((state) => state.isEnd)) {
     issues.push("noEndState");
@@ -79,6 +94,41 @@ function validateForPublish(version: WorkflowVersion): PublishIssue[] {
     if (!stateIds.has(action.toStateId)) {
       issues.push("missingToState");
       break;
+    }
+  }
+  const outgoingStateIds = new Set(
+    version.actions
+      .filter((action) => stateIds.has(action.fromStateId))
+      .map((action) => action.fromStateId),
+  );
+  if (
+    version.states.some(
+      (state) => !state.isEnd && !outgoingStateIds.has(state.id),
+    )
+  ) {
+    issues.push("missingOutgoingAction");
+  }
+  if (startStates.length === 1) {
+    const reachable = new Set<string>();
+    const queue = [startStates[0]!.id];
+    while (queue.length > 0) {
+      const stateId = queue.shift();
+      if (!stateId || reachable.has(stateId)) {
+        continue;
+      }
+      reachable.add(stateId);
+      for (const action of version.actions) {
+        if (
+          action.fromStateId === stateId &&
+          stateIds.has(action.toStateId) &&
+          !reachable.has(action.toStateId)
+        ) {
+          queue.push(action.toStateId);
+        }
+      }
+    }
+    if (version.states.some((state) => !reachable.has(state.id))) {
+      issues.push("unreachableState");
     }
   }
   return issues;
@@ -104,6 +154,7 @@ export function WorkflowConfigPage({ workflowId }: WorkflowConfigPageProps) {
 
   const [workflow, setWorkflow] = useState<WorkflowDefinition | null>(null);
   const [versions, setVersions] = useState<WorkflowVersion[]>([]);
+  const [bindings, setBindings] = useState<WorkflowBinding[]>([]);
   const [selectedVersionId, setSelectedVersionId] = useState<string>("");
   const [version, setVersion] = useState<WorkflowVersion | null>(null);
   const [isLoadingShell, setIsLoadingShell] = useState(false);
@@ -122,9 +173,16 @@ export function WorkflowConfigPage({ workflowId }: WorkflowConfigPageProps) {
     setIsLoadingShell(true);
     setShellErrorKey(null);
     try {
-      const [definition, versionPage] = await Promise.all([
+      const [definition, versionPage, bindingPage] = await Promise.all([
         getWorkflow({ organizationId, spaceId, workflowId }),
         listWorkflowVersions({
+          organizationId,
+          page: 1,
+          pageSize: 100,
+          spaceId,
+          workflowId,
+        }),
+        listWorkflowBindings({
           organizationId,
           page: 1,
           pageSize: 100,
@@ -137,6 +195,7 @@ export function WorkflowConfigPage({ workflowId }: WorkflowConfigPageProps) {
       );
       setWorkflow(definition);
       setVersions(sortedVersions);
+      setBindings(bindingPage.items);
       setSelectedVersionId((current) => {
         if (current && sortedVersions.some((item) => item.id === current)) {
           return current;
@@ -202,6 +261,25 @@ export function WorkflowConfigPage({ workflowId }: WorkflowConfigPageProps) {
       void loadVersion(selectedVersionId);
     }
   }, [loadVersion, selectedVersionId]);
+
+  const handleRefreshBindings = useCallback(async () => {
+    if (!spaceId) {
+      return;
+    }
+    setActionErrorKey(null);
+    try {
+      const bindingPage = await listWorkflowBindings({
+        organizationId,
+        page: 1,
+        pageSize: 100,
+        spaceId,
+        workflowId,
+      });
+      setBindings(bindingPage.items);
+    } catch (error) {
+      setActionErrorKey(getApiErrorMessageKey(error));
+    }
+  }, [organizationId, spaceId, workflowId]);
 
   async function handlePublish() {
     if (!version || !spaceId) {
@@ -515,6 +593,12 @@ export function WorkflowConfigPage({ workflowId }: WorkflowConfigPageProps) {
               readOnly={isReadOnly}
               states={version.states}
             />
+            <WorkflowBindingList
+              bindings={bindings}
+              currentVersion={version}
+              onCreate={() => setDialog({ kind: "createBinding" })}
+              onEdit={(binding) => setDialog({ binding, kind: "editBinding" })}
+            />
           </div>
         ) : (
           <p className="px-6 py-8 text-center text-xs text-muted-foreground">
@@ -575,6 +659,24 @@ export function WorkflowConfigPage({ workflowId }: WorkflowConfigPageProps) {
                 handleRefreshVersion();
               }}
               open
+            />
+          ) : null}
+          {dialog.kind === "createBinding" || dialog.kind === "editBinding" ? (
+            <WorkflowBindingDialog
+              context={{ organizationId, spaceId }}
+              mode={
+                dialog.kind === "editBinding"
+                  ? { binding: dialog.binding, kind: "edit" }
+                  : { kind: "create" }
+              }
+              onClose={() => setDialog({ kind: "closed" })}
+              onSuccess={() => {
+                setDialog({ kind: "closed" });
+                void handleRefreshBindings();
+              }}
+              open
+              workflowId={workflowId}
+              workflowVersionId={version.id}
             />
           ) : null}
         </>

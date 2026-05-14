@@ -62,13 +62,6 @@ const priorityColor: Record<WorkItemViewModel["priority"], string> = {
   URGENT: "text-destructive",
 };
 
-const priorityLabel: Record<WorkItemViewModel["priority"], string> = {
-  LOW: "低",
-  MEDIUM: "中",
-  HIGH: "高",
-  URGENT: "紧急",
-};
-
 type Props = {
   item: WorkItemViewModel | null;
   open: boolean;
@@ -189,6 +182,12 @@ function TaskDetailSheetBody({
 }: BodyProps) {
   const isBug = item.type === "BUG";
   const lookup = useSpaceMembers(spaceId, organizationId);
+  const permissionState = useWorkItemPermissions({
+    itemId: item.id,
+    organizationId,
+    spaceId,
+    tApiError,
+  });
 
   return (
     <SheetContent
@@ -225,7 +224,7 @@ function TaskDetailSheetBody({
                 item.priority === "LOW" && "bg-muted-foreground",
               )}
             />
-            {priorityLabel[item.priority]}
+            {t(`priority.${item.priority}`)}
           </Badge>
           {item.dueDate && (
             <Badge
@@ -242,7 +241,14 @@ function TaskDetailSheetBody({
         </div>
       </SheetHeader>
 
-      <ActionBar item={item} spaceId={spaceId} organizationId={organizationId} t={t} tApiError={tApiError} />
+      <ActionBar
+        item={item}
+        spaceId={spaceId}
+        organizationId={organizationId}
+        permissionState={permissionState}
+        t={t}
+        tApiError={tApiError}
+      />
 
       {item.isBlocked && item.blockedReason && (
         <div className="border-b border-border bg-warning/10 px-5 py-2.5">
@@ -308,6 +314,7 @@ function TaskDetailSheetBody({
             spaceId={spaceId}
             organizationId={organizationId}
             lookup={lookup}
+            canComment={permissionState.permissions?.canComment === true}
             t={t}
             tApiError={tApiError}
           />
@@ -322,6 +329,9 @@ function TaskDetailSheetBody({
             spaceId={spaceId}
             organizationId={organizationId}
             lookup={lookup}
+            canUploadAttachment={
+              permissionState.permissions?.canUploadAttachment === true
+            }
             t={t}
             tApiError={tApiError}
           />
@@ -354,32 +364,32 @@ function TaskDetailSheetBody({
   );
 }
 
-// ---------------------------------------------------------------------------
-// Action bar
-// ---------------------------------------------------------------------------
+type WorkItemPermissionState = {
+  error: string | null;
+  fetchPermissions: () => Promise<void>;
+  loading: boolean;
+  permissions: PermissionSnapshot | null;
+  setPermissions: (permissions: PermissionSnapshot) => void;
+};
 
-function ActionBar({
-  item,
-  spaceId,
+function useWorkItemPermissions({
+  itemId,
   organizationId,
-  t,
+  spaceId,
   tApiError,
 }: {
-  item: WorkItemViewModel;
-  spaceId?: string;
+  itemId: string;
   organizationId?: string;
-  t: ReturnType<typeof useTranslations<"taskDetail">>;
+  spaceId?: string;
   tApiError: ReturnType<typeof useTranslations>;
-}) {
+}): WorkItemPermissionState {
   const [permissions, setPermissions] = useState<PermissionSnapshot | null>(
     null,
   );
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [executingId, setExecutingId] = useState<string | null>(null);
-  const [executeError, setExecuteError] = useState<string | null>(null);
 
-  const fetchDetail = useCallback(async () => {
+  const fetchPermissions = useCallback(async () => {
     setLoading(true);
     setError(null);
 
@@ -387,7 +397,7 @@ function ActionBar({
       const detail = await getWorkItem({
         organizationId,
         spaceId,
-        workItemId: item.id,
+        workItemId: itemId,
       });
       setPermissions(detail.permissions);
     } catch (err) {
@@ -396,11 +406,36 @@ function ActionBar({
     } finally {
       setLoading(false);
     }
-  }, [item.id, organizationId, spaceId, tApiError]);
+  }, [itemId, organizationId, spaceId, tApiError]);
 
   useEffect(() => {
-    void fetchDetail();
-  }, [fetchDetail]);
+    void fetchPermissions();
+  }, [fetchPermissions]);
+
+  return { error, fetchPermissions, loading, permissions, setPermissions };
+}
+
+// ---------------------------------------------------------------------------
+// Action bar
+// ---------------------------------------------------------------------------
+
+function ActionBar({
+  item,
+  spaceId,
+  organizationId,
+  permissionState,
+  t,
+  tApiError,
+}: {
+  item: WorkItemViewModel;
+  spaceId?: string;
+  organizationId?: string;
+  permissionState: WorkItemPermissionState;
+  t: ReturnType<typeof useTranslations<"taskDetail">>;
+  tApiError: ReturnType<typeof useTranslations>;
+}) {
+  const [executingId, setExecutingId] = useState<string | null>(null);
+  const [executeError, setExecuteError] = useState<string | null>(null);
 
   const handleExecute = async (action: WorkflowActionSummary) => {
     if (!spaceId) return;
@@ -418,7 +453,7 @@ function ActionBar({
         },
         { formValues: {} },
       );
-      setPermissions(detail.permissions);
+      permissionState.setPermissions(detail.permissions);
     } catch (err) {
       const key = getApiErrorMessageKey(err);
       setExecuteError(tApiError(key));
@@ -427,7 +462,7 @@ function ActionBar({
     }
   };
 
-  const actions = permissions?.availableActions ?? [];
+  const actions = permissionState.permissions?.availableActions ?? [];
 
   return (
     <div className="flex flex-col gap-1.5 border-b border-border bg-muted/30 px-5 py-2.5">
@@ -436,18 +471,18 @@ function ActionBar({
           {t("actions.label")}
         </span>
         <div className="ml-auto flex flex-wrap items-center justify-end gap-1.5">
-          {loading ? (
+          {permissionState.loading ? (
             <span className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
               <Loader2 className="h-3 w-3 animate-spin" />
               {t("actions.loading")}
             </span>
-          ) : error ? (
+          ) : permissionState.error ? (
             <Button
               size="sm"
               variant="outline"
               className="h-7 text-xs"
               onClick={() => {
-                void fetchDetail();
+                void permissionState.fetchPermissions();
               }}
             >
               {t("actions.retry")}
@@ -481,9 +516,9 @@ function ActionBar({
           )}
         </div>
       </div>
-      {error && (
+      {permissionState.error && (
         <p className="text-[11px] text-destructive">
-          {t("actions.loadErrorTitle")}: {error}
+          {t("actions.loadErrorTitle")}: {permissionState.error}
         </p>
       )}
       {executeError && (
@@ -673,6 +708,7 @@ function CommentsTab({
   spaceId,
   organizationId,
   lookup,
+  canComment,
   t,
   tApiError,
 }: {
@@ -680,6 +716,7 @@ function CommentsTab({
   spaceId?: string;
   organizationId?: string;
   lookup: ReturnType<typeof useSpaceMembers>;
+  canComment: boolean;
   t: ReturnType<typeof useTranslations<"taskDetail">>;
   tApiError: ReturnType<typeof useTranslations>;
 }) {
@@ -720,7 +757,7 @@ function CommentsTab({
 
   const handleSubmit = async () => {
     const body = draft.trim();
-    if (!body || !spaceId) return;
+    if (!body || !spaceId || !canComment) return;
 
     setSubmitting(true);
     setSubmitError(null);
@@ -803,43 +840,52 @@ function CommentsTab({
           {t("comments.submitErrorTitle")}: {submitError}
         </p>
       )}
-      <div
-        data-testid="task-comments-panel"
-        className="flex items-center gap-2 border-t border-border px-5 py-3"
-      >
-        <Input
-          data-testid="task-comments-input"
-          placeholder={t("comments.placeholder")}
-          className="flex-1"
-          value={draft}
-          disabled={submitting}
-          onChange={(event) => setDraft(event.target.value)}
-          onKeyDown={(event) => {
-            if (event.key === "Enter" && (event.metaKey || event.ctrlKey)) {
-              event.preventDefault();
-              void handleSubmit();
-            }
-          }}
-        />
-        <Button
-          size="sm"
-          data-testid="task-comments-submit"
-          disabled={submitting || draft.trim().length === 0}
-          onClick={() => {
-            void handleSubmit();
-          }}
+      {canComment ? (
+        <div
+          data-testid="task-comments-panel"
+          className="flex items-center gap-2 border-t border-border px-5 py-3"
         >
-          {submitting ? (
-            <Loader2 className="h-3 w-3 animate-spin" />
-          ) : (
-            <Send className="h-3 w-3" />
-          )}
-          {submitting ? t("comments.submitting") : t("comments.submit")}
-          <Kbd className="ml-1 bg-primary-foreground/20 text-primary-foreground border-primary-foreground/30">
-            ⌘⏎
-          </Kbd>
-        </Button>
-      </div>
+          <Input
+            data-testid="task-comments-input"
+            placeholder={t("comments.placeholder")}
+            className="flex-1"
+            value={draft}
+            disabled={submitting}
+            onChange={(event) => setDraft(event.target.value)}
+            onKeyDown={(event) => {
+              if (event.key === "Enter" && (event.metaKey || event.ctrlKey)) {
+                event.preventDefault();
+                void handleSubmit();
+              }
+            }}
+          />
+          <Button
+            size="sm"
+            data-testid="task-comments-submit"
+            disabled={submitting || draft.trim().length === 0}
+            onClick={() => {
+              void handleSubmit();
+            }}
+          >
+            {submitting ? (
+              <Loader2 className="h-3 w-3 animate-spin" />
+            ) : (
+              <Send className="h-3 w-3" />
+            )}
+            {submitting ? t("comments.submitting") : t("comments.submit")}
+            <Kbd className="ml-1 bg-primary-foreground/20 text-primary-foreground border-primary-foreground/30">
+              ⌘⏎
+            </Kbd>
+          </Button>
+        </div>
+      ) : (
+        <p
+          data-testid="task-comments-readonly"
+          className="border-t border-border px-5 py-3 text-[11px] text-muted-foreground"
+        >
+          {t("comments.readonly")}
+        </p>
+      )}
     </div>
   );
 }
@@ -853,6 +899,7 @@ function AttachmentsTab({
   spaceId,
   organizationId,
   lookup,
+  canUploadAttachment,
   t,
   tApiError,
 }: {
@@ -860,6 +907,7 @@ function AttachmentsTab({
   spaceId?: string;
   organizationId?: string;
   lookup: ReturnType<typeof useSpaceMembers>;
+  canUploadAttachment: boolean;
   t: ReturnType<typeof useTranslations<"taskDetail">>;
   tApiError: ReturnType<typeof useTranslations>;
 }) {
@@ -905,6 +953,9 @@ function AttachmentsTab({
       if (!file) {
         return;
       }
+      if (!canUploadAttachment) {
+        return;
+      }
       setUploadError(null);
       setUploading(true);
       try {
@@ -925,7 +976,13 @@ function AttachmentsTab({
         setUploading(false);
       }
     },
-    [attachments.length, fetchAttachments, item.id, tApiError],
+    [
+      attachments.length,
+      canUploadAttachment,
+      fetchAttachments,
+      item.id,
+      tApiError,
+    ],
   );
 
   return (
@@ -934,29 +991,38 @@ function AttachmentsTab({
         <span className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
           {t("tabs.attachments")}
         </span>
-        <div className="flex items-center gap-2">
-          <input
-            ref={fileInputRef}
-            type="file"
-            className="hidden"
-            onChange={handleFileChange}
-            disabled={uploading || !spaceId}
-          />
-          <Button
-            size="sm"
-            variant="outline"
-            className="h-7 text-xs"
-            disabled={uploading || !spaceId}
-            onClick={() => fileInputRef.current?.click()}
+        {canUploadAttachment ? (
+          <div className="flex items-center gap-2">
+            <input
+              ref={fileInputRef}
+              type="file"
+              className="hidden"
+              onChange={handleFileChange}
+              disabled={uploading || !spaceId}
+            />
+            <Button
+              size="sm"
+              variant="outline"
+              className="h-7 text-xs"
+              disabled={uploading || !spaceId}
+              onClick={() => fileInputRef.current?.click()}
+            >
+              {uploading ? (
+                <Loader2 className="h-3 w-3 animate-spin" />
+              ) : (
+                <Paperclip className="h-3 w-3" />
+              )}
+              {t("attachments.uploadAction")}
+            </Button>
+          </div>
+        ) : (
+          <span
+            data-testid="task-attachments-readonly"
+            className="text-[11px] text-muted-foreground"
           >
-            {uploading ? (
-              <Loader2 className="h-3 w-3 animate-spin" />
-            ) : (
-              <Paperclip className="h-3 w-3" />
-            )}
-            {t("attachments.uploadAction")}
-          </Button>
-        </div>
+            {t("attachments.readonly")}
+          </span>
+        )}
       </div>
       {uploadError && (
         <p className="border-b border-border bg-destructive/10 px-5 py-2 text-[11px] text-destructive">

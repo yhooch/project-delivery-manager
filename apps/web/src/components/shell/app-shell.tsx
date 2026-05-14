@@ -4,7 +4,9 @@ import { Loader2 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useEffect, type ReactNode } from "react";
 
+import { Link } from "../../i18n/routing";
 import { useSession } from "../providers/session-provider";
+import { Button } from "../ui/button";
 
 import { CommandPalette, useCommandPaletteShortcut } from "./command-palette";
 import { Sidebar } from "./sidebar";
@@ -33,7 +35,24 @@ export function AppShell({ children }: AppShellProps) {
   }
 
   if (status === "unauthenticated" || !session) {
-    return null;
+    return (
+      <div className="flex h-screen items-center justify-center bg-background px-4">
+        <section
+          aria-live="polite"
+          className="flex max-w-sm flex-col items-center gap-3 text-center"
+        >
+          <h1 className="text-base font-semibold text-foreground">
+            {t("unauthenticated.title")}
+          </h1>
+          <p className="text-sm text-muted-foreground">
+            {t("unauthenticated.description")}
+          </p>
+          <Button asChild size="sm">
+            <Link href="/login">{t("unauthenticated.action")}</Link>
+          </Button>
+        </section>
+      </div>
+    );
   }
 
   const hasOrganization = session.organizations.length > 0;

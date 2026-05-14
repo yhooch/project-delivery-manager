@@ -68,6 +68,41 @@ describe("AttachmentService", () => {
       }),
     );
   });
+
+  it("does not create attachments when WORK_ITEM visibility resolution rejects", async () => {
+    const actorUserId = ulid();
+    const workItemId = ulid();
+    const fileKey = `attachments/work_item/${workItemId}/${ulid()}-spec.pdf`;
+    const attachments = {
+      countByTarget: vi.fn(async () => 0),
+      create: vi.fn(),
+      findById: vi.fn(),
+      listByTarget: vi.fn(),
+    } as unknown as AttachmentRepository;
+    const targets = {
+      resolve: vi.fn(async () => {
+        throw new Error("not visible");
+      }),
+    } as unknown as TargetResolverService;
+    const service = new AttachmentService(
+      attachments,
+      {} as RequirementRepository,
+      {} as SpaceRepository,
+      targets,
+    );
+
+    await expect(
+      service.create(actorUserId, {
+        targetType: "WORK_ITEM",
+        targetId: workItemId,
+        fileName: "spec.pdf",
+        fileKey,
+        mimeType: "application/pdf",
+        size: 1024,
+      }),
+    ).rejects.toThrow("not visible");
+    expect(attachments.create).not.toHaveBeenCalled();
+  });
 });
 
 function fakeAttachment(id: string, fileKey: string): Attachment {

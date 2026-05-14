@@ -13,6 +13,11 @@ export type RecentEntry = {
 
 export const RECENT_STORAGE_KEY = "pdm:command-palette:recent";
 
+export type RecentScope = {
+  organizationId?: string;
+  spaceId?: string;
+};
+
 // Cap at 6 entries: 5-7 is the visual sweet spot before the group starts
 // crowding navigation / create / preferences out of the default view.
 export const RECENT_MAX = 6;
@@ -37,6 +42,18 @@ function entryKey(entry: Pick<RecentEntry, "id" | "type">): string {
   return `${entry.type}:${entry.id}`;
 }
 
+export function createRecentStorageKey(scope?: RecentScope): string {
+  if (!scope?.organizationId && !scope?.spaceId) {
+    return RECENT_STORAGE_KEY;
+  }
+
+  return [
+    RECENT_STORAGE_KEY,
+    scope.organizationId ?? "no-organization",
+    scope.spaceId ?? "no-space",
+  ].join(":");
+}
+
 /**
  * Read the persisted recent list from localStorage.
  * - Filters out malformed entries silently.
@@ -44,10 +61,10 @@ function entryKey(entry: Pick<RecentEntry, "id" | "type">): string {
  *   (which represents the most recent access).
  * - Caps at RECENT_MAX.
  */
-export function readRecent(): RecentEntry[] {
+export function readRecent(scope?: RecentScope): RecentEntry[] {
   if (typeof window === "undefined") return [];
   try {
-    const raw = window.localStorage.getItem(RECENT_STORAGE_KEY);
+    const raw = window.localStorage.getItem(createRecentStorageKey(scope));
     if (!raw) return [];
     const parsed = JSON.parse(raw) as unknown;
     if (!Array.isArray(parsed)) return [];
@@ -72,16 +89,22 @@ export function readRecent(): RecentEntry[] {
  * Persist a new "just opened" entry, deduplicating by `${type}:${id}` and
  * capping the list at RECENT_MAX. Returns the new list.
  */
-export function writeRecent(entry: RecentEntry): RecentEntry[] {
+export function writeRecent(
+  entry: RecentEntry,
+  scope?: RecentScope,
+): RecentEntry[] {
   if (typeof window === "undefined") return [];
   try {
-    const current = readRecent();
+    const current = readRecent(scope);
     const key = entryKey(entry);
     const next = [entry, ...current.filter((item) => entryKey(item) !== key)].slice(
       0,
       RECENT_MAX,
     );
-    window.localStorage.setItem(RECENT_STORAGE_KEY, JSON.stringify(next));
+    window.localStorage.setItem(
+      createRecentStorageKey(scope),
+      JSON.stringify(next),
+    );
     return next;
   } catch {
     return [];
@@ -100,13 +123,17 @@ export function writeRecent(entry: RecentEntry): RecentEntry[] {
 export function pruneStaleRecent(
   current: RecentEntry[],
   liveKeys: ReadonlySet<string> | null,
+  scope?: RecentScope,
 ): { next: RecentEntry[]; changed: boolean } {
   if (liveKeys === null) return { next: current, changed: false };
   const next = current.filter((item) => liveKeys.has(entryKey(item)));
   const changed = next.length !== current.length;
   if (changed && typeof window !== "undefined") {
     try {
-      window.localStorage.setItem(RECENT_STORAGE_KEY, JSON.stringify(next));
+      window.localStorage.setItem(
+        createRecentStorageKey(scope),
+        JSON.stringify(next),
+      );
     } catch {
       // ignore quota / disabled storage errors
     }

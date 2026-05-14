@@ -26,6 +26,12 @@ const REQUIREMENT_DRAFT_READER_ROLES = new Set<SpaceRole>([
   "PM",
   "REQUIREMENT",
 ]);
+const WORK_ITEM_READ_ALL_ROLES = new Set<SpaceRole>([
+  "SPACE_ADMIN",
+  "PM",
+  "TESTER",
+  "VIEWER",
+]);
 
 @Injectable()
 export class TargetResolverService {
@@ -66,6 +72,18 @@ export class TargetResolverService {
     if (
       target.isDraftRequirement &&
       !REQUIREMENT_DRAFT_READER_ROLES.has(access.role)
+    ) {
+      throwTargetNotFound(targetType, options.notFoundCode);
+    }
+
+    if (
+      target.targetType === "WORK_ITEM" &&
+      !WORK_ITEM_READ_ALL_ROLES.has(access.role) &&
+      !(await this.isWorkItemParticipant(
+        target.spaceId,
+        target.targetId,
+        actorUserId,
+      ))
     ) {
       throwTargetNotFound(targetType, options.notFoundCode);
     }
@@ -223,6 +241,27 @@ export class TargetResolverService {
           title: nonEmptyTitle(workItem.title),
         }
       : undefined;
+  }
+
+  private async isWorkItemParticipant(
+    spaceId: string,
+    workItemId: string,
+    userId: string,
+  ): Promise<boolean> {
+    const participant = await this.prisma.client.objectParticipant.findFirst({
+      select: {
+        id: true,
+      },
+      where: {
+        deletedAt: null,
+        spaceId,
+        targetId: workItemId,
+        targetType: "WORK_ITEM",
+        userId,
+      },
+    });
+
+    return Boolean(participant);
   }
 }
 

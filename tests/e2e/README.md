@@ -2,10 +2,10 @@
 
 End-to-end suites driven by Playwright. The folder mixes two flavours:
 
-| Flavour | Files | Default behaviour |
-| ------- | ----- | ----------------- |
-| API E2E (HTTP only) | `m0-main-flow.api.spec.ts`, `m3-main-flow.api.spec.ts`, `m4-mvp-main-flow.api.spec.ts` | skipped unless the matching `E2E_M{0,3,4}_ENABLED=1` and `E2E_DB_READY=1` are exported and the API/Web probes succeed |
-| UI E2E (browser) | `ui-smoke.spec.ts`, `ui-command-palette.spec.ts`, `ui-org-switcher.spec.ts`, `ui-requirements-create.spec.ts`, `ui-tasks-create.spec.ts`, `ui-task-comments.spec.ts` | skipped unless `E2E_UI_ENABLED=1` AND `E2E_DB_READY=1` AND both probes succeed (see `support/ui-env.ts`) |
+| Flavour             | Files                                                                                                                                                                | Default behaviour                                                                                                     |
+| ------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------- |
+| API E2E (HTTP only) | `m0-main-flow.api.spec.ts`, `m3-main-flow.api.spec.ts`, `m4-mvp-main-flow.api.spec.ts`                                                                               | skipped unless the matching `E2E_M{0,3,4}_ENABLED=1` and `E2E_DB_READY=1` are exported and the API/Web probes succeed |
+| UI E2E (browser)    | `ui-smoke.spec.ts`, `ui-command-palette.spec.ts`, `ui-org-switcher.spec.ts`, `ui-requirements-create.spec.ts`, `ui-tasks-create.spec.ts`, `ui-task-comments.spec.ts` | skipped unless `E2E_UI_ENABLED=1` AND `E2E_DB_READY=1` AND both probes succeed (see `support/ui-env.ts`)              |
 
 Running the UI suite for real requires a fully wired stack: Postgres + migrated
 schema + API on `:3001` + Web on `:3000`. The orchestrator script below
@@ -38,8 +38,10 @@ That single command does, in order:
    for `GET /api/v1/health` to return 200.
 4. Launches the Web app (`@project-delivery/web dev --port 3000`) in the
    background and waits for `GET /` to return 2xx/3xx.
-5. Runs `corepack pnpm test:e2e` with `E2E_UI_ENABLED=1 E2E_DB_READY=1` exported
-   so the UI specs actually execute (any extra args are forwarded, e.g.
+5. Runs `corepack pnpm test:e2e` with `E2E_M0_ENABLED=1`,
+   `E2E_M3_ENABLED=1`, `E2E_M4_ENABLED=1`, `E2E_UI_ENABLED=1` and
+   `E2E_DB_READY=1` exported so API and UI specs actually execute (any extra
+   args are forwarded, e.g.
    `corepack pnpm test:e2e:full tests/e2e/ui-smoke.spec.ts`).
 6. On exit (success, failure, Ctrl-C) — a `trap` runs
    `scripts/e2e/down.sh`, which kills the API/Web process groups and
@@ -51,11 +53,11 @@ patterns and the directory itself is treated as scratch). Inspect
 
 ## Manual control
 
-| Command                            | What it does                                          |
-| ---------------------------------- | ----------------------------------------------------- |
-| `corepack pnpm e2e:up`             | Just step 1 + 2 (Postgres + migrations)               |
-| `corepack pnpm e2e:down`           | Tear everything down (containers + recorded PIDs)     |
-| `E2E_KEEP_UP=1 corepack pnpm test:e2e:full` | Skip teardown so you can poke the running stack |
+| Command                                     | What it does                                      |
+| ------------------------------------------- | ------------------------------------------------- |
+| `corepack pnpm e2e:up`                      | Just step 1 + 2 (Postgres + migrations)           |
+| `corepack pnpm e2e:down`                    | Tear everything down (containers + recorded PIDs) |
+| `E2E_KEEP_UP=1 corepack pnpm test:e2e:full` | Skip teardown so you can poke the running stack   |
 
 ## Honoured environment variables
 
@@ -64,6 +66,7 @@ most useful overrides:
 
 - `E2E_PG_PORT` / `E2E_PG_USER` / `E2E_PG_PASSWORD` / `E2E_PG_DB`
 - `PORT` (API) / `WEB_PORT`
+- `API_PROXY_TARGET` (Web rewrite target, default `http://127.0.0.1:$PORT`)
 - `E2E_WAIT_API_SECS` (default 90), `E2E_WAIT_WEB_SECS` (default 120),
   `E2E_WAIT_DB_SECS` (default 60)
 - `DATABASE_URL` (overrides the value otherwise derived from the four PG vars)

@@ -44,7 +44,7 @@ test.describe("UI 需求 DRAFT 创建跳转", () => {
     await page.getByTestId("requirements-create-button").click();
 
     // After creating a DRAFT the router navigates to /requirements/[id].
-    await expect(page).toHaveURL(/\/requirements\/[a-z0-9-]+$/u, {
+    await expect(page).toHaveURL(/\/requirements\/[a-zA-Z0-9-]+$/u, {
       timeout: 15_000,
     });
 

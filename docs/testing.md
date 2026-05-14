@@ -8,7 +8,10 @@
 corepack pnpm test
 ```
 
-根脚本会执行各 workspace 的 `test` 脚本。当前约定是 Vitest；没有测试文件的 workspace 使用 `--passWithNoTests`，因此不会因为暂未补测试而失败。
+根脚本会执行各 workspace 的 `test` 脚本。当前启用 `test` 脚本的
+workspace（API、Web、shared）都有测试文件，因此不再使用
+`--passWithNoTests`；如果新增无测试 workspace，不要直接加空跑测试脚本，
+应先补最小测试，或暂不声明 `test` 脚本。
 
 ## M0 E2E
 
@@ -19,6 +22,8 @@ corepack pnpm test:e2e
 ```
 
 E2E 使用 Playwright，测试文件位于 `tests/e2e/`。默认情况下，M0 主链路会跳过，避免在 API、Web 或测试数据库尚未准备好时产生假失败。
+`corepack pnpm test:e2e:full` 会自动启动一次性测试环境并启用
+M0/M3/M4/UI 主链路。
 
 Playwright API request 不会自动像浏览器页面一样带上来源信息。M0 E2E 会在 `POST` / `PATCH` 等 unsafe methods 上带 `Origin` 与 `Referer`，默认取 `E2E_WEB_URL` 的 origin，用于满足 API 的写请求 Origin 防护。
 
@@ -70,7 +75,8 @@ M0 E2E 会在以下情况明确跳过并返回成功：
 - 未设置 `E2E_DB_READY=1`。
 - API health 不可访问。
 - 设置了 `E2E_REQUIRE_WEB=1` 但 Web 不可访问。
-- 并行开发中的 M0 API 端点尚未实现或未挂载，返回 `404` 或 `501`。
+
+已纳入 M0 的 API 端点返回 `404` 或 `501` 会失败，用于防止路由误删后仍然绿灯。
 
 ### 覆盖的 M0 骨架步骤
 
@@ -83,6 +89,17 @@ M0 E2E 会在以下情况明确跳过并返回成功：
 - 登出后受保护接口拒绝访问：`GET /auth/session` 应返回 `401` 或 `403`
 
 测试请求和响应会使用 `packages/shared/src` 中的契约 schema 做基础校验。
+
+## M3 E2E
+
+M3 主链路测试位于 `tests/e2e/m3-main-flow.api.spec.ts`。它使用独立的
+`E2E_M3_ENABLED=1` 开关，不依赖 `E2E_M0_ENABLED`；`test:e2e:full` 会默认启用它。
+
+覆盖范围包含流程动作、Bug、时间线、权限、空间/租户隔离、审计日志，
+并补充了两个验收链路：
+
+- 需求图片附件：创建需求草稿、获取上传预签名 URL、登记图片附件、列表回读、需求详情回读和下载 URL。
+- 事项拆解多任务：创建并接受 intake item，一次转换为两个任务，校验任务关联 intake/需求/版本/负责人，并验证重复转换被拒绝。
 
 ## M4/MVP E2E
 

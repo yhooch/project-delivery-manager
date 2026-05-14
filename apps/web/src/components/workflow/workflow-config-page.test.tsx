@@ -7,6 +7,7 @@ import {
 } from "@testing-library/react";
 import type {
   WorkflowActionSummary,
+  WorkflowBinding,
   WorkflowDefinition,
   WorkflowState,
   WorkflowVersion,
@@ -79,6 +80,9 @@ const {
   createActionFormFieldMock,
   updateActionFormFieldMock,
   deleteActionFormFieldMock,
+  listWorkflowBindingsMock,
+  createWorkflowBindingMock,
+  updateWorkflowBindingMock,
 } = vi.hoisted(() => ({
   getWorkflowMock: vi.fn(),
   listWorkflowVersionsMock: vi.fn(),
@@ -95,6 +99,9 @@ const {
   createActionFormFieldMock: vi.fn(),
   updateActionFormFieldMock: vi.fn(),
   deleteActionFormFieldMock: vi.fn(),
+  listWorkflowBindingsMock: vi.fn(),
+  createWorkflowBindingMock: vi.fn(),
+  updateWorkflowBindingMock: vi.fn(),
 }));
 
 vi.mock("../../lib/workflow-service", () => ({
@@ -113,6 +120,9 @@ vi.mock("../../lib/workflow-service", () => ({
   createActionFormField: createActionFormFieldMock,
   updateActionFormField: updateActionFormFieldMock,
   deleteActionFormField: deleteActionFormFieldMock,
+  listWorkflowBindings: listWorkflowBindingsMock,
+  createWorkflowBinding: createWorkflowBindingMock,
+  updateWorkflowBinding: updateWorkflowBindingMock,
 }));
 
 import { WorkflowConfigPage } from "./workflow-config-page";
@@ -124,6 +134,7 @@ const stateOpenId = "01ARZ3NDEKTSV4RRFFQ69G5ST1";
 const stateDoneId = "01ARZ3NDEKTSV4RRFFQ69G5ST2";
 const actionId = "01ARZ3NDEKTSV4RRFFQ69G5AC1";
 const fieldId = "01ARZ3NDEKTSV4RRFFQ69G5FD1";
+const bindingId = "01ARZ3NDEKTSV4RRFFQ69G5BD1";
 
 function makeWorkflow(): WorkflowDefinition {
   return {
@@ -215,12 +226,41 @@ function makePublishedVersion(): WorkflowVersion {
   };
 }
 
+function makeBinding(overrides: Partial<WorkflowBinding> = {}): WorkflowBinding {
+  return {
+    id: bindingId,
+    isDefault: true,
+    organizationId: "ORG_01",
+    priority: "HIGH",
+    spaceId: "SPC_01",
+    workflowId,
+    workflowVersionId: draftVersionId,
+    workItemType: "BUG",
+    ...overrides,
+  };
+}
+
 function setupVersions(versions: WorkflowVersion[]) {
   listWorkflowVersionsMock.mockResolvedValue({
     items: versions,
     page: 1,
     pageSize: 20,
     total: versions.length,
+  });
+}
+
+function setupBindings(bindings: WorkflowBinding[]) {
+  listWorkflowBindingsMock.mockImplementation((input: { workflowId?: string }) => {
+    const items = input.workflowId
+      ? bindings.filter((binding) => binding.workflowId === input.workflowId)
+      : bindings;
+
+    return Promise.resolve({
+      items,
+      page: 1,
+      pageSize: 100,
+      total: items.length,
+    });
   });
 }
 
@@ -240,6 +280,10 @@ beforeEach(() => {
   createActionFormFieldMock.mockReset();
   updateActionFormFieldMock.mockReset();
   deleteActionFormFieldMock.mockReset();
+  listWorkflowBindingsMock.mockReset();
+  createWorkflowBindingMock.mockReset();
+  updateWorkflowBindingMock.mockReset();
+  setupBindings([]);
   sessionMock.current = {
     session: {
       defaultOrganizationId: "ORG_01",
@@ -281,6 +325,34 @@ describe("WorkflowConfigPage", () => {
 
     expect(screen.getByTestId("workflow-action-list")).toBeInTheDocument();
     expect(screen.getByTestId(`workflow-action-row-${actionId}`)).toBeInTheDocument();
+  });
+
+  it("renders workflow bindings for the selected workflow", async () => {
+    getWorkflowMock.mockResolvedValueOnce(makeWorkflow());
+    setupVersions([makeDraftVersion()]);
+    setupBindings([
+      makeBinding(),
+      makeBinding({
+        id: "01ARZ3NDEKTSV4RRFFQ69G5BD2",
+        workflowId: "01ARZ3NDEKTSV4RRFFQ69G5FW9",
+      }),
+    ]);
+    getWorkflowVersionMock.mockResolvedValueOnce(makeDraftVersion());
+
+    render(<WorkflowConfigPage workflowId={workflowId} />);
+
+    expect(await screen.findByTestId("workflow-binding-table")).toBeInTheDocument();
+    expect(listWorkflowBindingsMock).toHaveBeenCalledWith({
+      organizationId: "ORG_01",
+      page: 1,
+      pageSize: 100,
+      spaceId: "SPC_01",
+      workflowId,
+    });
+    expect(screen.getByTestId(`workflow-binding-row-${bindingId}`)).toBeInTheDocument();
+    expect(
+      screen.queryByTestId("workflow-binding-row-01ARZ3NDEKTSV4RRFFQ69G5BD2"),
+    ).not.toBeInTheDocument();
   });
 
   it("re-fetches the version when the dropdown changes", async () => {
@@ -380,6 +452,139 @@ describe("WorkflowConfigPage", () => {
     await screen.findByTestId("workflow-config-publish-issues");
     expect(
       screen.getByText("workflow.config.publishValidation.issues.noStartState"),
+    ).toBeInTheDocument();
+    expect(publishWorkflowVersionMock).not.toHaveBeenCalled();
+  });
+
+  it("blocks publish when more than one start state exists", async () => {
+    getWorkflowMock.mockResolvedValueOnce(makeWorkflow());
+    const broken = makeDraftVersion({
+      states: [
+        makeState(),
+        makeState({
+          category: "DONE",
+          code: "DONE",
+          id: stateDoneId,
+          isEnd: true,
+          isStart: true,
+          name: "Done",
+          order: 1,
+        }),
+      ],
+    });
+    setupVersions([broken]);
+    getWorkflowVersionMock.mockResolvedValueOnce(broken);
+
+    render(<WorkflowConfigPage workflowId={workflowId} />);
+
+    const publish = await screen.findByTestId("workflow-config-publish");
+    await waitFor(() => expect(publish).not.toBeDisabled());
+
+    fireEvent.click(publish);
+
+    await screen.findByTestId("workflow-config-publish-issues");
+    expect(
+      screen.getByText(
+        "workflow.config.publishValidation.issues.multipleStartStates",
+      ),
+    ).toBeInTheDocument();
+    expect(publishWorkflowVersionMock).not.toHaveBeenCalled();
+  });
+
+  it("blocks publish when a non-end state has no outgoing action", async () => {
+    getWorkflowMock.mockResolvedValueOnce(makeWorkflow());
+    const reviewStateId = "01ARZ3NDEKTSV4RRFFQ69G5ST3";
+    const broken = makeDraftVersion({
+      actions: [makeAction({ toStateId: reviewStateId })],
+      states: [
+        makeState(),
+        makeState({
+          category: "VERIFYING",
+          code: "REVIEW",
+          id: reviewStateId,
+          isEnd: false,
+          isStart: false,
+          name: "Review",
+          order: 1,
+        }),
+        makeState({
+          category: "DONE",
+          code: "DONE",
+          id: stateDoneId,
+          isEnd: true,
+          isStart: false,
+          name: "Done",
+          order: 2,
+        }),
+      ],
+    });
+    setupVersions([broken]);
+    getWorkflowVersionMock.mockResolvedValueOnce(broken);
+
+    render(<WorkflowConfigPage workflowId={workflowId} />);
+
+    const publish = await screen.findByTestId("workflow-config-publish");
+    await waitFor(() => expect(publish).not.toBeDisabled());
+
+    fireEvent.click(publish);
+
+    await screen.findByTestId("workflow-config-publish-issues");
+    expect(
+      screen.getByText(
+        "workflow.config.publishValidation.issues.missingOutgoingAction",
+      ),
+    ).toBeInTheDocument();
+    expect(publishWorkflowVersionMock).not.toHaveBeenCalled();
+  });
+
+  it("blocks publish when a state is unreachable from the start state", async () => {
+    getWorkflowMock.mockResolvedValueOnce(makeWorkflow());
+    const reviewStateId = "01ARZ3NDEKTSV4RRFFQ69G5ST3";
+    const broken = makeDraftVersion({
+      actions: [
+        makeAction(),
+        makeAction({
+          code: "FINISH_REVIEW",
+          fromStateId: reviewStateId,
+          id: "01ARZ3NDEKTSV4RRFFQ69G5AC2",
+          toStateId: stateDoneId,
+        }),
+      ],
+      states: [
+        makeState(),
+        makeState({
+          category: "DONE",
+          code: "DONE",
+          id: stateDoneId,
+          isEnd: true,
+          isStart: false,
+          name: "Done",
+          order: 1,
+        }),
+        makeState({
+          category: "VERIFYING",
+          code: "REVIEW",
+          id: reviewStateId,
+          isEnd: false,
+          isStart: false,
+          name: "Review",
+          order: 2,
+        }),
+      ],
+    });
+    setupVersions([broken]);
+    getWorkflowVersionMock.mockResolvedValueOnce(broken);
+
+    render(<WorkflowConfigPage workflowId={workflowId} />);
+
+    const publish = await screen.findByTestId("workflow-config-publish");
+    await waitFor(() => expect(publish).not.toBeDisabled());
+
+    fireEvent.click(publish);
+
+    await screen.findByTestId("workflow-config-publish-issues");
+    expect(
+      screen.getByText("workflow.config.publishValidation.issues.unreachableState"),
     ).toBeInTheDocument();
     expect(publishWorkflowVersionMock).not.toHaveBeenCalled();
   });
@@ -575,5 +780,90 @@ describe("WorkflowConfigPage", () => {
     expect(
       await screen.findByText("workflow.config.actionDialog.create.title"),
     ).toBeInTheDocument();
+  });
+
+  it("creates a workflow binding for the current version", async () => {
+    getWorkflowMock.mockResolvedValue(makeWorkflow());
+    setupVersions([makeDraftVersion()]);
+    getWorkflowVersionMock.mockResolvedValue(makeDraftVersion());
+    createWorkflowBindingMock.mockResolvedValueOnce(makeBinding());
+
+    render(<WorkflowConfigPage workflowId={workflowId} />);
+
+    const create = await screen.findByRole("button", {
+      name: /workflow\.config\.bindings\.create/,
+    });
+    fireEvent.click(create);
+
+    fireEvent.change(
+      screen.getByLabelText("workflow.config.bindingDialog.fields.workItemType"),
+      { target: { value: "BUG" } },
+    );
+    fireEvent.change(
+      screen.getByLabelText("workflow.config.bindingDialog.fields.priority"),
+      { target: { value: "HIGH" } },
+    );
+    fireEvent.click(
+      screen.getByLabelText("workflow.config.bindingDialog.fields.isDefault"),
+    );
+    fireEvent.click(
+      screen.getByRole("button", {
+        name: /workflow\.config\.bindingDialog\.submit/,
+      }),
+    );
+
+    await waitFor(() =>
+      expect(createWorkflowBindingMock).toHaveBeenCalledWith(
+        { organizationId: "ORG_01", spaceId: "SPC_01" },
+        {
+          isDefault: true,
+          priority: "HIGH",
+          workflowId,
+          workflowVersionId: draftVersionId,
+          workItemType: "BUG",
+        },
+      ),
+    );
+  });
+
+  it("updates an existing workflow binding to the current version", async () => {
+    getWorkflowMock.mockResolvedValue(makeWorkflow());
+    setupVersions([makeDraftVersion()]);
+    setupBindings([makeBinding({ workflowVersionId: publishedVersionId })]);
+    getWorkflowVersionMock.mockResolvedValue(makeDraftVersion());
+    updateWorkflowBindingMock.mockResolvedValueOnce(
+      makeBinding({ priority: undefined }),
+    );
+
+    render(<WorkflowConfigPage workflowId={workflowId} />);
+
+    await screen.findByTestId(`workflow-binding-row-${bindingId}`);
+    fireEvent.click(
+      screen.getByRole("button", {
+        name: /workflow\.config\.bindings\.actions\.edit/,
+      }),
+    );
+
+    fireEvent.change(
+      screen.getByLabelText("workflow.config.bindingDialog.fields.priority"),
+      { target: { value: "" } },
+    );
+    fireEvent.click(
+      screen.getByRole("button", {
+        name: /workflow\.config\.bindingDialog\.submit/,
+      }),
+    );
+
+    await waitFor(() =>
+      expect(updateWorkflowBindingMock).toHaveBeenCalledWith(
+        { bindingId, organizationId: "ORG_01", spaceId: "SPC_01" },
+        {
+          isDefault: true,
+          workflowId,
+          workflowVersionId: draftVersionId,
+          workItemType: "BUG",
+        },
+      ),
+    );
   });
 });

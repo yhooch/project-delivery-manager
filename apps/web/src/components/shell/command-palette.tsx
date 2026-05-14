@@ -136,6 +136,10 @@ export function CommandPalette() {
 
   const spaceId = session?.defaultSpaceId;
   const organizationId = session?.defaultOrganizationId;
+  const recentScope = useMemo(
+    () => ({ organizationId, spaceId }),
+    [organizationId, spaceId],
+  );
 
   useEffect(() => {
     openExternal = (next) => setOpen(next ?? true);
@@ -148,9 +152,9 @@ export function CommandPalette() {
     if (!open) {
       setQuery("");
     } else {
-      setRecent(readRecent());
+      setRecent(readRecent(recentScope));
     }
-  }, [open]);
+  }, [open, recentScope]);
 
   // Pre-fetch the first page of each entity type when the palette opens.
   // cmdk filters in-memory based on each CommandItem's `value` prop.
@@ -251,11 +255,12 @@ export function CommandPalette() {
     };
   }, [open, spaceId, organizationId, hasFetched, t]);
 
-  // Reset cache if user switches space.
+  // Reset in-memory fetch state if user switches organization / space.
   useEffect(() => {
     setHasFetched(false);
     setResults([]);
-  }, [spaceId]);
+    setRecent([]);
+  }, [organizationId, spaceId]);
 
   const navigate = (href: string) => {
     setOpen(false);
@@ -263,7 +268,7 @@ export function CommandPalette() {
   };
 
   const navigateAndRemember = (item: SearchResult) => {
-    const next = writeRecent(item);
+    const next = writeRecent(item, recentScope);
     setRecent(next);
     navigate(item.href);
   };
@@ -289,10 +294,10 @@ export function CommandPalette() {
     const liveKeys = new Set<string>();
     for (const r of results) liveKeys.add(buildLiveKey(r.type, r.id));
     setRecent((prev) => {
-      const { next, changed } = pruneStaleRecent(prev, liveKeys);
+      const { next, changed } = pruneStaleRecent(prev, liveKeys, recentScope);
       return changed ? next : prev;
     });
-  }, [open, hasFetched, results]);
+  }, [open, hasFetched, recentScope, results]);
 
   const showSearchView = query.trim().length >= 2 && spaceId;
 

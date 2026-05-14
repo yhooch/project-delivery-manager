@@ -54,8 +54,12 @@ export async function registerLoginCreateOrgAndSpace({
   const orgCode = `o${runId}`.slice(0, 32);
   const spaceName = `Space ${runId}`;
   const spaceCode = `s${runId}`.slice(0, 32);
+  const forwardedFor = buildUiForwardedFor(runId);
 
   // 1) Register via the UI -------------------------------------------------
+  await page.setExtraHTTPHeaders({
+    "x-forwarded-for": forwardedFor,
+  });
   await page.goto(`${e2eEnv.webBaseURL}/zh-CN/register`);
   await page.fill("#register-username", username);
   await page.fill("#register-password", password);
@@ -183,6 +187,20 @@ export async function disposeUiUser(user: UiTestUser): Promise<void> {
 export function shortRunId(): string {
   const random = Math.random().toString(36).slice(2, 6);
   return `ui${Date.now().toString(36)}${random}`.slice(0, 24);
+}
+
+function buildUiForwardedFor(runId: string): string {
+  let hash = 0;
+  for (const char of runId) {
+    hash = (hash * 31 + char.charCodeAt(0)) >>> 0;
+  }
+
+  return [
+    10,
+    (hash >>> 16) & 255,
+    (hash >>> 8) & 255,
+    hash & 255,
+  ].join(".");
 }
 
 /**

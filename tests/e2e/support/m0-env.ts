@@ -90,10 +90,6 @@ export function missingStaticPrerequisite(): string | undefined {
   return undefined;
 }
 
-export function isEndpointMissing(response: ResponseStatus): boolean {
-  return response.status() === 404 || response.status() === 501;
-}
-
 export function isProtectedResourceRejected(response: ResponseStatus): boolean {
   return response.status() === 401 || response.status() === 403;
 }

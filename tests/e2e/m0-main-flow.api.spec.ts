@@ -19,7 +19,6 @@ import {
   buildRunId,
   cookieHeaderFromSetCookieHeaders,
   e2eEnv,
-  isEndpointMissing,
   isProtectedResourceRejected,
   missingStaticPrerequisite,
   probeApi,
@@ -69,7 +68,6 @@ test.describe("M0 主链路 E2E 骨架", () => {
         },
       );
 
-      skipWhenEndpointMissing(response, "POST /auth/register");
       await expectSuccessfulResponse(response, "POST /auth/register");
 
       const body = apiResponseSchema(RegisterResponseSchema).parse(
@@ -98,7 +96,6 @@ test.describe("M0 主链路 E2E 骨架", () => {
       headers: unsafeRequestHeaders(),
     });
 
-    skipWhenEndpointMissing(response, "POST /auth/login");
     await expectSuccessfulResponse(response, "POST /auth/login");
 
     const body = apiResponseSchema(LoginResponseSchema).parse(
@@ -122,7 +119,6 @@ test.describe("M0 主链路 E2E 骨架", () => {
       headers: authenticatedRequestHeaders(requireSessionCookieHeader()),
     });
 
-    skipWhenEndpointMissing(response, "GET /auth/session");
     await expectSuccessfulResponse(response, "GET /auth/session");
 
     const body = apiResponseSchema(GetAuthSessionResponseSchema).parse(
@@ -141,7 +137,6 @@ test.describe("M0 主链路 E2E 骨架", () => {
       headers: unsafeAuthenticatedRequestHeaders(requireSessionCookieHeader()),
     });
 
-    skipWhenEndpointMissing(response, "POST /organizations");
     await expectSuccessfulResponse(response, "POST /organizations");
 
     const body = apiResponseSchema(CreateOrganizationResponseSchema).parse(
@@ -166,7 +161,6 @@ test.describe("M0 主链路 E2E 骨架", () => {
       headers: unsafeAuthenticatedRequestHeaders(requireSessionCookieHeader()),
     });
 
-    skipWhenEndpointMissing(response, "PATCH /users/me/preferences");
     await expectSuccessfulResponse(response, "PATCH /users/me/preferences");
 
     const body = apiResponseSchema(UpdateUserPreferencesResponseSchema).parse(
@@ -190,7 +184,6 @@ test.describe("M0 主链路 E2E 骨架", () => {
       headers: unsafeAuthenticatedRequestHeaders(requireSessionCookieHeader()),
     });
 
-    skipWhenEndpointMissing(response, "POST /auth/logout");
     await expectSuccessfulResponse(response, "POST /auth/logout");
 
     apiResponseSchema(LogoutResponseSchema).parse(await response.json());
@@ -204,7 +197,6 @@ test.describe("M0 主链路 E2E 骨架", () => {
       headers: authenticatedRequestHeaders(requireSessionCookieHeader()),
     });
 
-    skipWhenEndpointMissing(response, "GET /auth/session");
     expect(
       isProtectedResourceRejected(response),
       `GET /auth/session 应返回 401/403，实际为 ${response.status()}`,
@@ -255,16 +247,6 @@ async function resolveEnvironmentSkipReason(): Promise<string | undefined> {
   }
 
   return undefined;
-}
-
-function skipWhenEndpointMissing(
-  response: { status: () => number },
-  label: string,
-): void {
-  test.skip(
-    isEndpointMissing(response),
-    `${label} 尚未实现或未挂载，保留 M0 E2E 骨架并跳过该步骤。`,
-  );
 }
 
 async function expectSuccessfulResponse(

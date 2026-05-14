@@ -161,6 +161,33 @@ describe("WorkflowActionExecutionService", () => {
     });
   });
 
+  it("rejects VIEWER execution even when a legacy action lists VIEWER", async () => {
+    const subject = createSubject("VIEWER");
+    subject.repository.actions.set(
+      START_ACTION_ID,
+      makeAction({
+        actorRelations: [],
+        allowedSpaceRoles: ["VIEWER"],
+      }),
+    );
+
+    await expect(
+      subject.service.executeAction(ACTOR_ID, WORK_ITEM_ID, START_ACTION_ID, {
+        formValues: {},
+      }),
+    ).rejects.toMatchObject({
+      code: "WORKFLOW_ACTION_PERMISSION_DENIED",
+    });
+    await expect(
+      subject.service.resolvePermissionSnapshot(ACTOR_ID, WORK_ITEM_ID),
+    ).resolves.toMatchObject({
+      availableActions: [],
+      canComment: false,
+      canEdit: false,
+      canUploadAttachment: false,
+    });
+  });
+
   it("rejects missing required form fields", async () => {
     const subject = createSubject("DEVELOPER");
     subject.repository.actions.set(

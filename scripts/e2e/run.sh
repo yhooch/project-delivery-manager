@@ -6,7 +6,7 @@
 #   1. up.sh          -> docker compose up postgres + prisma migrate deploy
 #   2. start API      -> background, wait for /api/v1/health to return 200
 #   3. start Web      -> background, wait for / to return 2xx/3xx
-#   4. playwright     -> E2E_UI_ENABLED=1 E2E_DB_READY=1 corepack pnpm test:e2e
+#   4. playwright     -> E2E_M0/M3/M4/UI_ENABLED=1 E2E_DB_READY=1 corepack pnpm test:e2e
 #   5. down.sh        -> trap on EXIT, always tears everything down
 #
 # Any extra args are forwarded to `pnpm test:e2e` (e.g. -g "smoke",
@@ -16,6 +16,7 @@
 #   E2E_PG_PORT / E2E_PG_USER / E2E_PG_PASSWORD / E2E_PG_DB
 #   PORT                  API listen port (default 3001)
 #   WEB_PORT              Web listen port (default 3000)
+#   API_PROXY_TARGET      Web rewrite target (default http://127.0.0.1:$PORT)
 #   E2E_WAIT_API_SECS     max seconds to wait for API health (default 90)
 #   E2E_WAIT_WEB_SECS     max seconds to wait for Web         (default 120)
 #   E2E_KEEP_UP=1         skip teardown so you can poke the stack manually
@@ -45,8 +46,12 @@ export NODE_ENV="${NODE_ENV:-test}"
 export PORT
 export SESSION_COOKIE_NAME="${SESSION_COOKIE_NAME:-pdm_session}"
 export WEB_APP_URL="${WEB_APP_URL:-http://127.0.0.1:${WEB_PORT}}"
+export API_PROXY_TARGET="${API_PROXY_TARGET:-http://127.0.0.1:${PORT}}"
 export E2E_API_URL="${E2E_API_URL:-http://127.0.0.1:${PORT}/api/v1}"
 export E2E_WEB_URL="${E2E_WEB_URL:-http://127.0.0.1:${WEB_PORT}}"
+export E2E_M0_ENABLED="${E2E_M0_ENABLED:-1}"
+export E2E_M3_ENABLED="${E2E_M3_ENABLED:-1}"
+export E2E_M4_ENABLED="${E2E_M4_ENABLED:-1}"
 export E2E_UI_ENABLED="${E2E_UI_ENABLED:-1}"
 export E2E_DB_READY="${E2E_DB_READY:-1}"
 
@@ -170,12 +175,14 @@ start_background "Web server" "${WEB_PID_FILE}" "${WEB_LOG_FILE}" -- \
   env \
     PORT="${WEB_PORT}" \
     NODE_ENV=development \
+    API_PROXY_TARGET="${API_PROXY_TARGET}" \
   corepack pnpm --dir "${REPO_ROOT}" --filter @project-delivery/web dev --port "${WEB_PORT}"
 
 wait_for_http "Web app" "${E2E_WEB_URL}/" "${E2E_WAIT_WEB_SECS}" "${WEB_LOG_FILE}"
 
 # --- 4. Playwright ----------------------------------------------------------
 log "Step 4/4: running Playwright E2E suite."
+log "  E2E_M0_ENABLED=${E2E_M0_ENABLED} E2E_M3_ENABLED=${E2E_M3_ENABLED} E2E_M4_ENABLED=${E2E_M4_ENABLED}"
 log "  E2E_UI_ENABLED=${E2E_UI_ENABLED} E2E_DB_READY=${E2E_DB_READY}"
 log "  E2E_API_URL=${E2E_API_URL} E2E_WEB_URL=${E2E_WEB_URL}"
 

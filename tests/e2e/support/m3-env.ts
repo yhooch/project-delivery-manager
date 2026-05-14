@@ -63,12 +63,13 @@ import {
   buildRunId,
   cookieHeaderFromSetCookieHeaders,
   e2eEnv,
-  missingStaticPrerequisite,
   probeApi,
   probeWeb,
   unsafeAuthenticatedRequestHeaders,
   unsafeRequestHeaders,
 } from "./m0-env";
+
+const TRUE_VALUES = new Set(["1", "true", "yes", "on"]);
 
 type ApiSchema<T> = z.ZodType<T>;
 
@@ -665,7 +666,7 @@ export function patch(
   });
 }
 
-async function expectData<T>(
+export async function expectData<T>(
   response: APIResponse,
   schema: ApiSchema<T>,
   label: string,
@@ -680,9 +681,12 @@ async function expectData<T>(
 }
 
 async function resolveM3EnvironmentSkipReason(): Promise<string | undefined> {
-  const staticReason = missingStaticPrerequisite();
-  if (staticReason) {
-    return staticReason.replaceAll("M0 E2E", "M3 E2E");
+  if (!readBoolean(process.env.E2E_M3_ENABLED)) {
+    return "M3 E2E 默认跳过；设置 E2E_M3_ENABLED=1 后才会执行自动化主链路。";
+  }
+
+  if (!e2eEnv.dbReady) {
+    return "M3 E2E 需要已迁移的可丢弃测试数据库；确认 API 使用测试库后设置 E2E_DB_READY=1。";
   }
 
   const apiProbe = await probeApi();
@@ -698,6 +702,10 @@ async function resolveM3EnvironmentSkipReason(): Promise<string | undefined> {
   }
 
   return undefined;
+}
+
+function readBoolean(value: string | undefined): boolean {
+  return TRUE_VALUES.has(value?.toLowerCase() ?? "");
 }
 
 function unsafeRequestHeadersForIp(ip: string): Record<string, string> {

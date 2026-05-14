@@ -40,6 +40,8 @@ export type WorkflowConfigListInput = {
 };
 
 export type WorkflowBindingListInput = WorkflowConfigListInput & {
+  workflowId?: string;
+  workflowVersionId?: string;
   workItemType?: WorkItemType;
   priority?: Priority;
   isDefault?: boolean;

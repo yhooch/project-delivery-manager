@@ -53,4 +53,27 @@ describe("TimelineService", () => {
       targetType: "WORK_ITEM",
     });
   });
+
+  it("does not list timelines when WORK_ITEM visibility resolution rejects", async () => {
+    const actorUserId = ulid();
+    const workItemId = ulid();
+    const timelines = {
+      create: vi.fn(),
+      listByTarget: vi.fn(),
+    } as unknown as TimelineRepository;
+    const targets = {
+      resolve: vi.fn(async () => {
+        throw new Error("not visible");
+      }),
+    } as unknown as TargetResolverService;
+    const service = new TimelineService(timelines, targets);
+
+    await expect(
+      service.listWorkItem(actorUserId, workItemId, {
+        page: 1,
+        pageSize: 10,
+      }),
+    ).rejects.toThrow("not visible");
+    expect(timelines.listByTarget).not.toHaveBeenCalled();
+  });
 });

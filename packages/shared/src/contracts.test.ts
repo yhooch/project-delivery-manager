@@ -297,6 +297,16 @@ describe("shared contracts", () => {
       requiresComment: true,
     });
 
+    expect(() =>
+      CreateWorkflowActionRequestSchema.parse({
+        code: "viewer_fix",
+        name: "Viewer fix",
+        fromStateId: "01KRZ3NDEKTSV4RRFFQ69G5FAK",
+        toStateId: "01RRZ3NDEKTSV4RRFFQ69G5FAR",
+        allowedSpaceRoles: ["VIEWER"],
+      }),
+    ).toThrow();
+
     expect(
       CreateWorkflowVersionRequestSchema.parse({
         sourceWorkflowVersionId: "01JRZ3NDEKTSV4RRFFQ69G5FAJ",

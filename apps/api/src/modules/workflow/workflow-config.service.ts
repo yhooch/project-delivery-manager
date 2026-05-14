@@ -119,6 +119,14 @@ type VersionWithDefinition = {
 };
 
 const WORKFLOW_MANAGER_ROLES = new Set<SpaceRole>(["SPACE_ADMIN", "PM"]);
+const WORKFLOW_ACTION_EXECUTOR_ROLES = new Set<SpaceRole>([
+  "SPACE_ADMIN",
+  "PM",
+  "DEVELOPER",
+  "TESTER",
+  "REQUIREMENT",
+  "MEMBER",
+]);
 const STATUS_CATEGORIES = new Set<StatusCategory>([
   "NOT_STARTED",
   "IN_PROGRESS",
@@ -627,6 +635,7 @@ export class WorkflowConfigService {
     this.assertUniqueActionCode(version, input.code);
     assertStateBelongsToVersion(version, input.fromStateId, "fromStateId");
     assertStateBelongsToVersion(version, input.toStateId, "toStateId");
+    assertAllowedActionSpaceRoles(input.allowedSpaceRoles);
 
     const created = await this.workflows.createAction({
       actorRelations: input.actorRelations ?? [],
@@ -681,6 +690,7 @@ export class WorkflowConfigService {
     if (input.toStateId) {
       assertStateBelongsToVersion(version, input.toStateId, "toStateId");
     }
+    assertAllowedActionSpaceRoles(input.allowedSpaceRoles);
 
     const updated = await this.workflows.updateAction({
       actionId,
@@ -1560,6 +1570,28 @@ function assertStateBelongsToVersion(
     HttpStatus.BAD_REQUEST,
     {
       field,
+    },
+  );
+}
+
+function assertAllowedActionSpaceRoles(
+  roles: readonly SpaceRole[] | undefined,
+) {
+  const invalidRole = roles?.find(
+    (role) => !WORKFLOW_ACTION_EXECUTOR_ROLES.has(role),
+  );
+
+  if (!invalidRole) {
+    return;
+  }
+
+  throw new ApiException(
+    "VALIDATION_ERROR",
+    "allowedSpaceRoles cannot grant workflow actions to read-only roles",
+    HttpStatus.BAD_REQUEST,
+    {
+      field: "allowedSpaceRoles",
+      role: invalidRole,
     },
   );
 }

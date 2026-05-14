@@ -157,6 +157,27 @@ describe("WorkflowConfigService", () => {
     });
   });
 
+  it("rejects VIEWER in workflow action allowedSpaceRoles at service boundary", async () => {
+    const { service } = createSubject("PM");
+    const input = {
+      code: "VIEWER_ACTION",
+      name: "Viewer action",
+      fromStateId: PENDING_STATE_ID,
+      toStateId: DONE_STATE_ID,
+      allowedSpaceRoles: ["VIEWER"],
+    } as unknown as Parameters<WorkflowConfigService["createAction"]>[2];
+
+    await expect(
+      service.createAction(ACTOR_ID, WORKFLOW_VERSION_ID, input, REQUEST_META),
+    ).rejects.toMatchObject({
+      code: "VALIDATION_ERROR",
+      details: {
+        field: "allowedSpaceRoles",
+        role: "VIEWER",
+      },
+    });
+  });
+
   it("writes ACCESS_DENIED audit for viewer workflow writes", async () => {
     const { repository, service } = createSubject("VIEWER", {
       actorUserId: VIEWER_ID,
@@ -797,6 +818,10 @@ class InMemoryWorkflowConfigRepository implements WorkflowConfigRepository {
     const items = [...this.bindings.values()].filter(
       (binding) =>
         binding.spaceId === spaceId &&
+        (!input.workflowId ||
+          binding.workflowDefinitionId === input.workflowId) &&
+        (!input.workflowVersionId ||
+          binding.workflowVersionId === input.workflowVersionId) &&
         (!input.workItemType || binding.workItemType === input.workItemType) &&
         (!input.priority || binding.priority === input.priority) &&
         (input.isDefault === undefined || binding.isDefault === input.isDefault),

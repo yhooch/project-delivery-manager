@@ -357,6 +357,11 @@
       "unauthenticated": "Signed out",
       "signedIn": "{username}"
     },
+    "unauthenticated": {
+      "title": "Sign-in required",
+      "description": "Sign in to continue to the workspace.",
+      "action": "Go to sign in"
+    },
     "topbar": {
       "eyebrow": "Workspace",
       "title": "Delivery operations"
@@ -795,7 +800,7 @@
       "noVersion": "Unchanged or no version",
       "noOwner": "Unchanged or unassigned",
       "noPriority": "Not set",
-      "readonly": "Current state or role is read-only"
+      "readonly": "Current permission is read-only"
     },
     "editor": {
       "title": "Body editor",
@@ -2348,10 +2353,13 @@
         "title": "Resolve the following before publishing:",
         "issues": {
           "noStates": "At least one state is required.",
+          "multipleStartStates": "Exactly one start state is allowed.",
           "noStartState": "A start state is required (mark at least one state as start).",
           "noEndState": "An end state is required (mark at least one state as end).",
+          "missingOutgoingAction": "Every non-end state needs at least one outgoing action.",
           "missingFromState": "An action references a 'from state' that does not exist.",
-          "missingToState": "An action references a 'to state' that does not exist."
+          "missingToState": "An action references a 'to state' that does not exist.",
+          "unreachableState": "A state cannot be reached from the start state."
         }
       },
       "states": {
@@ -2477,6 +2485,46 @@
           "options": "Options",
           "optionsPlaceholder": "One option per line",
           "optionsHint": "Only used for 'Select' field type."
+        },
+        "submit": "Save",
+        "submitting": "Saving…",
+        "cancel": "Cancel"
+      },
+      "bindings": {
+        "title": "Bindings",
+        "description": "Bind work item type and priority to the current version v{version} · {status}.",
+        "create": "New binding",
+        "empty": "No bindings for this workflow.",
+        "anyPriority": "Any priority",
+        "currentVersion": "Current v{version}",
+        "otherVersion": "Other version",
+        "defaultYes": "Default",
+        "defaultNo": "No",
+        "columns": {
+          "workItemType": "Work item type",
+          "priority": "Priority",
+          "version": "Version",
+          "default": "Default",
+          "actions": "Actions"
+        },
+        "actions": {
+          "edit": "Edit binding"
+        }
+      },
+      "bindingDialog": {
+        "create": {
+          "title": "New binding",
+          "description": "Bind work item type, priority, and default flag to the current workflow version."
+        },
+        "edit": {
+          "title": "Edit binding",
+          "description": "Update binding conditions and point it to the current workflow version."
+        },
+        "fields": {
+          "workItemType": "Work item type",
+          "priority": "Priority",
+          "anyPriority": "Any priority",
+          "isDefault": "Default binding"
         },
         "submit": "Save",
         "submitting": "Saving…",
@@ -2822,6 +2870,12 @@
       "requirement": "Linked requirement",
       "intake": "Source intake"
     },
+    "priority": {
+      "LOW": "Low",
+      "MEDIUM": "Medium",
+      "HIGH": "High",
+      "URGENT": "Urgent"
+    },
     "actions": {
       "label": "Available actions",
       "empty": "No actions available",
@@ -2840,6 +2894,7 @@
       "submitErrorTitle": "Failed to post comment",
       "emptyTitle": "No comments yet",
       "emptyDescription": "Be the first to leave a comment",
+      "readonly": "Current permission cannot post comments",
       "retry": "Retry"
     },
     "attachments": {
@@ -2849,6 +2904,7 @@
       "emptyDescription": "Upload files to share with the team",
       "uploadAction": "Upload",
       "uploadTodo": "Upload feature coming soon",
+      "readonly": "Current permission cannot upload attachments",
       "retry": "Retry",
       "size": "Size",
       "uploadedBy": "Uploaded by"

@@ -18,6 +18,13 @@ import type {
 
 export const ORGANIZATION_REPOSITORY = Symbol("ORGANIZATION_REPOSITORY");
 
+export class LastOrganizationOwnerRequiredError extends Error {
+  constructor() {
+    super("At least one active organization OWNER is required");
+    this.name = "LastOrganizationOwnerRequiredError";
+  }
+}
+
 export type OrganizationRepository = {
   createWithOwner(
     input: CreateOrganizationInput,

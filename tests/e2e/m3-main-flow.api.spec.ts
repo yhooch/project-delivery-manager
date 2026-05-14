@@ -1,6 +1,19 @@
 import { expect, test } from "@playwright/test";
 
 import {
+  AcceptIntakeItemResponseSchema,
+  ConvertIntakeItemToWorkItemsResponseSchema,
+  CreateAttachmentResponseSchema,
+  CreateIntakeItemResponseSchema,
+  CreateRequirementDraftResponseSchema,
+  GetAttachmentDownloadUrlResponseSchema,
+  GetRequirementResponseSchema,
+  ListAttachmentsResponseSchema,
+  ListWorkItemsResponseSchema,
+  PresignAttachmentResponseSchema,
+} from "../../packages/shared/src/index";
+
+import {
   addOrganizationMember,
   addSpaceMember,
   buildM3RunId,
@@ -14,6 +27,7 @@ import {
   defaultWorkflowVersion,
   executeAction,
   expectRejected,
+  expectData,
   findAction,
   findAuditLogs,
   get,
@@ -53,8 +67,16 @@ test.describe("M3 自动化主链路与回归用例", () => {
 
     const organization = await createOrganization(owner, runId);
     const space = await createSpace(owner, organization.id, runId, "main");
-    const otherSpace = await createSpace(owner, organization.id, runId, "other");
-    const outsiderOrganization = await createOrganization(outsider, `${runId}x`);
+    const otherSpace = await createSpace(
+      owner,
+      organization.id,
+      runId,
+      "other",
+    );
+    const outsiderOrganization = await createOrganization(
+      outsider,
+      `${runId}x`,
+    );
 
     for (const user of [pm, developer, tester, viewer, orgOnly]) {
       await addOrganizationMember(owner, organization.id, user.username);
@@ -73,6 +95,13 @@ test.describe("M3 自动化主链路与回归用例", () => {
       version.id,
       runId,
     );
+    const draftRequirement = await expectData(
+      await post(pm, `/spaces/${space.id}/requirements`, {
+        versionId: version.id,
+      }),
+      CreateRequirementDraftResponseSchema,
+      "POST /spaces/:spaceId/requirements for attachment draft",
+    );
     const developmentWorkflow = await defaultWorkflowVersion(
       pm,
       space.id,
@@ -80,7 +109,9 @@ test.describe("M3 自动化主链路与回归用例", () => {
     );
     const bugWorkflow = await defaultWorkflowVersion(pm, space.id, "BUG");
 
-    expect(developmentWorkflow.states.some((state) => state.isStart)).toBe(true);
+    expect(developmentWorkflow.states.some((state) => state.isStart)).toBe(
+      true,
+    );
     expect(developmentWorkflow.actions.map((action) => action.code)).toEqual(
       expect.arrayContaining([
         "START_PROGRESS",
@@ -101,6 +132,8 @@ test.describe("M3 自动化主链路与回归用例", () => {
         "REOPEN_DEFECT",
       ]),
     );
+
+    await assertRequirementImageUploadChain(pm, draftRequirement.id);
 
     const task = await createTask(pm, space.id, {
       assigneeId: developer.id,
@@ -177,8 +210,11 @@ test.describe("M3 自动化主链路与回归用例", () => {
     expect(currentTask.statusCategory).toBe("WAITING");
 
     const testerTaskDetail = await getWorkItem(tester, task.id);
-    expect(testerTaskDetail.permissions.availableActions.map((action) => action.code))
-      .toEqual(expect.arrayContaining(["START_TEST"]));
+    expect(
+      testerTaskDetail.permissions.availableActions.map(
+        (action) => action.code,
+      ),
+    ).toEqual(expect.arrayContaining(["START_TEST"]));
     currentTask = await executeAction(
       tester,
       task.id,
@@ -190,6 +226,16 @@ test.describe("M3 自动化主链路与回归用例", () => {
       findAction(currentTask, "PASS_TEST"),
     );
     expect(currentTask.statusCategory).toBe("DONE");
+
+    await assertIntakeMultiTaskBreakdown({
+      actor: pm,
+      assignee: developer,
+      requirementId: requirement.id,
+      runId,
+      spaceId: space.id,
+      versionId: version.id,
+      workflowVersionId: developmentWorkflow.id,
+    });
 
     const commentWorkflow = await createCommentRequiredWorkflow(
       pm,
@@ -396,9 +442,192 @@ async function executeBugAction(
   formValues: Record<string, unknown> = {},
 ) {
   const detail = await getBug(actor, bug.id);
-  const updated = await executeAction(actor, bug.id, findAction(detail, actionCode), {
-    formValues,
-  });
+  const updated = await executeAction(
+    actor,
+    bug.id,
+    findAction(detail, actionCode),
+    {
+      formValues,
+    },
+  );
 
   return getBug(actor, updated.id);
+}
+
+async function assertRequirementImageUploadChain(
+  actor: M3User,
+  requirementId: string,
+) {
+  const file = {
+    fileName: `requirement-image-${requirementId}.png`,
+    mimeType: "image/png",
+    size: 512,
+    targetId: requirementId,
+    targetType: "REQUIREMENT",
+  } as const;
+  const presigned = await expectData(
+    await post(actor, "/attachments/presign", file),
+    PresignAttachmentResponseSchema,
+    "POST /attachments/presign for requirement image",
+  );
+
+  expect(presigned.fileKey).toContain(`/requirement/${requirementId}/`);
+  expect(presigned.uploadUrl).toContain(encodeURIComponent(presigned.fileKey));
+
+  const attachment = await expectData(
+    await post(actor, "/attachments", {
+      ...file,
+      fileKey: presigned.fileKey,
+    }),
+    CreateAttachmentResponseSchema,
+    "POST /attachments for requirement image",
+  );
+
+  expect(attachment).toMatchObject({
+    fileKey: presigned.fileKey,
+    fileName: file.fileName,
+    mimeType: file.mimeType,
+    size: file.size,
+    targetId: requirementId,
+    targetType: "REQUIREMENT",
+  });
+
+  const attachments = await expectData(
+    await get(
+      actor,
+      `/attachments?targetType=REQUIREMENT&targetId=${requirementId}&pageSize=20`,
+    ),
+    ListAttachmentsResponseSchema,
+    "GET /attachments for requirement image",
+  );
+  expect(attachments.items.map((item) => item.id)).toContain(attachment.id);
+
+  const requirement = await expectData(
+    await get(actor, `/requirements/${requirementId}`),
+    GetRequirementResponseSchema,
+    "GET /requirements/:requirementId after image attachment",
+  );
+  expect(requirement.attachments?.map((item) => item.id)).toContain(
+    attachment.id,
+  );
+
+  const downloadUrl = await expectData(
+    await get(actor, `/attachments/${attachment.id}/download-url`),
+    GetAttachmentDownloadUrlResponseSchema,
+    "GET /attachments/:attachmentId/download-url",
+  );
+  expect(downloadUrl.downloadUrl).toContain(
+    encodeURIComponent(presigned.fileKey),
+  );
+}
+
+async function assertIntakeMultiTaskBreakdown(input: {
+  actor: M3User;
+  assignee: M3User;
+  requirementId: string;
+  runId: string;
+  spaceId: string;
+  versionId: string;
+  workflowVersionId: string;
+}) {
+  const intake = await expectData(
+    await post(input.actor, `/spaces/${input.spaceId}/intake-items`, {
+      assigneeId: input.assignee.id,
+      description: "由需求拆解为多个开发任务",
+      priority: "HIGH",
+      requirementId: input.requirementId,
+      sourceObject: {
+        requirementId: input.requirementId,
+      },
+      sourceType: "REQUIREMENT_CHANGE",
+      title: `M3 Intake ${input.runId}`,
+      versionId: input.versionId,
+    }),
+    CreateIntakeItemResponseSchema,
+    "POST /spaces/:spaceId/intake-items",
+  );
+
+  const accepted = await expectData(
+    await post(input.actor, `/intake-items/${intake.id}/accept`, {}),
+    AcceptIntakeItemResponseSchema,
+    "POST /intake-items/:id/accept",
+  );
+  expect(accepted.status).toBe("ACCEPTED");
+
+  const converted = await expectData(
+    await post(
+      input.actor,
+      `/intake-items/${intake.id}/convert-to-work-items`,
+      {
+        tasks: [
+          {
+            assigneeId: input.assignee.id,
+            description: "拆解任务一",
+            priority: "HIGH",
+            requirementId: input.requirementId,
+            title: `M3 Split Task A ${input.runId}`,
+            versionId: input.versionId,
+            workflowVersionId: input.workflowVersionId,
+          },
+          {
+            assigneeId: input.assignee.id,
+            description: "拆解任务二",
+            priority: "MEDIUM",
+            requirementId: input.requirementId,
+            title: `M3 Split Task B ${input.runId}`,
+            versionId: input.versionId,
+            workflowVersionId: input.workflowVersionId,
+          },
+        ],
+      },
+    ),
+    ConvertIntakeItemToWorkItemsResponseSchema,
+    "POST /intake-items/:id/convert-to-work-items",
+  );
+  expect(converted.intakeItemId).toBe(intake.id);
+  expect(converted.workItems).toHaveLength(2);
+  expect(converted.workItems.map((item) => item.title)).toEqual(
+    expect.arrayContaining([
+      `M3 Split Task A ${input.runId}`,
+      `M3 Split Task B ${input.runId}`,
+    ]),
+  );
+  expect(
+    converted.workItems.every(
+      (item) =>
+        item.intakeItemId === intake.id &&
+        item.requirementId === input.requirementId &&
+        item.versionId === input.versionId &&
+        item.assigneeId === input.assignee.id,
+    ),
+  ).toBe(true);
+
+  const listed = await expectData(
+    await get(
+      input.actor,
+      `/spaces/${input.spaceId}/work-items?intakeItemId=${intake.id}&pageSize=20`,
+    ),
+    ListWorkItemsResponseSchema,
+    "GET /spaces/:spaceId/work-items by intakeItemId",
+  );
+  expect(listed.items.map((item) => item.id)).toEqual(
+    expect.arrayContaining(converted.workItems.map((item) => item.id)),
+  );
+
+  await expectRejected(
+    await post(
+      input.actor,
+      `/intake-items/${intake.id}/convert-to-work-items`,
+      {
+        tasks: [
+          {
+            title: `M3 Split Task C ${input.runId}`,
+            workflowVersionId: input.workflowVersionId,
+          },
+        ],
+      },
+    ),
+    "已转换事项不能重复拆解",
+    [409],
+  );
 }

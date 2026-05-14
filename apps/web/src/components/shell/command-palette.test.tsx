@@ -73,8 +73,12 @@ vi.mock("../../lib/intake-service", () => ({
 }));
 
 import { CommandPalette, openCommandPalette } from "./command-palette";
+import { createRecentStorageKey } from "./recent-opens";
 
-const RECENT_KEY = "pdm:command-palette:recent";
+const RECENT_KEY = createRecentStorageKey({
+  organizationId: "ORG_01",
+  spaceId: "SPC_01",
+});
 
 beforeEach(() => {
   listWorkItemsMock.mockReset();
@@ -187,6 +191,34 @@ describe("CommandPalette", () => {
     expect(
       await screen.findByText("Recently visited task"),
     ).toBeInTheDocument();
+  });
+
+  it("does not leak recent entries across organization or space scopes", async () => {
+    window.localStorage.setItem(
+      createRecentStorageKey({
+        organizationId: "ORG_OLD",
+        spaceId: "SPC_OLD",
+      }),
+      JSON.stringify([
+        {
+          id: "01ARZ3NDEKTSV4RRFFQ69G5FT1",
+          type: "TASK",
+          code: "TASK-OLD",
+          title: "Previous organization task",
+          href: "/work-items",
+        },
+      ]),
+    );
+
+    render(<CommandPalette />);
+    openCommandPalette();
+
+    expect(
+      await screen.findByText("shell.command.navigation"),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByText("Previous organization task"),
+    ).not.toBeInTheDocument();
   });
 
   it("ignores malformed recent entries from localStorage", async () => {

@@ -77,6 +77,98 @@ describe("TargetResolverService", () => {
     });
   });
 
+  it("hides WORK_ITEM targets from same-space non-participants without read-all roles", async () => {
+    const actorUserId = ulid();
+    const workItemId = ulid();
+    const spaceId = ulid();
+    const organizationId = ulid();
+    const { objectParticipantFindFirst, resolver, spaces, workItemFindFirst } =
+      createResolver();
+
+    workItemFindFirst.mockResolvedValue({
+      id: workItemId,
+      organizationId,
+      spaceId,
+      title: "Work item",
+    });
+    objectParticipantFindFirst.mockResolvedValue(undefined);
+    vi.mocked(spaces.findAccessibleById).mockResolvedValue({
+      role: "DEVELOPER",
+      space: {
+        id: spaceId,
+        organizationId,
+        name: "Space",
+        code: "SPACE",
+        status: "ACTIVE",
+        settings: {
+          staleThresholdDays: 3,
+        },
+      },
+    });
+
+    await expect(
+      resolver.resolve(actorUserId, "WORK_ITEM", workItemId, {
+        access: "write",
+      }),
+    ).rejects.toMatchObject({
+      code: "WORK_ITEM_NOT_FOUND",
+      status: HttpStatus.NOT_FOUND,
+    });
+    expect(objectParticipantFindFirst).toHaveBeenCalledWith({
+      select: {
+        id: true,
+      },
+      where: {
+        deletedAt: null,
+        spaceId,
+        targetId: workItemId,
+        targetType: "WORK_ITEM",
+        userId: actorUserId,
+      },
+    });
+  });
+
+  it("allows WORK_ITEM targets for same-space participants", async () => {
+    const actorUserId = ulid();
+    const workItemId = ulid();
+    const spaceId = ulid();
+    const organizationId = ulid();
+    const { objectParticipantFindFirst, resolver, spaces, workItemFindFirst } =
+      createResolver();
+
+    workItemFindFirst.mockResolvedValue({
+      id: workItemId,
+      organizationId,
+      spaceId,
+      title: "Work item",
+    });
+    objectParticipantFindFirst.mockResolvedValue({ id: ulid() });
+    vi.mocked(spaces.findAccessibleById).mockResolvedValue({
+      role: "DEVELOPER",
+      space: {
+        id: spaceId,
+        organizationId,
+        name: "Space",
+        code: "SPACE",
+        status: "ACTIVE",
+        settings: {
+          staleThresholdDays: 3,
+        },
+      },
+    });
+
+    await expect(
+      resolver.resolve(actorUserId, "WORK_ITEM", workItemId, {
+        access: "write",
+      }),
+    ).resolves.toMatchObject({
+      canWrite: true,
+      role: "DEVELOPER",
+      targetId: workItemId,
+      targetType: "WORK_ITEM",
+    });
+  });
+
   it("hides draft requirements from read-only roles", async () => {
     const requirementId = ulid();
     const spaceId = ulid();
@@ -121,6 +213,7 @@ describe("TargetResolverService", () => {
 });
 
 function createResolver() {
+  const objectParticipantFindFirst = vi.fn();
   const workItemFindFirst = vi.fn();
   const prisma = {
     client: {
@@ -132,6 +225,9 @@ function createResolver() {
       },
       version: {
         findFirst: vi.fn(),
+      },
+      objectParticipant: {
+        findFirst: objectParticipantFindFirst,
       },
       workItem: {
         findFirst: workItemFindFirst,
@@ -163,6 +259,7 @@ function createResolver() {
 
   return {
     prisma,
+    objectParticipantFindFirst,
     requirements,
     resolver: new TargetResolverService(prisma, requirements, spaces),
     spaces,

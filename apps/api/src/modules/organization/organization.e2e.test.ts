@@ -31,6 +31,7 @@ import type {
   UpdateUserPreferencesInput,
 } from "../identity/identity.types";
 import {
+  LastOrganizationOwnerRequiredError,
   ORGANIZATION_REPOSITORY,
   type OrganizationRepository,
 } from "./organization.repository";
@@ -287,6 +288,66 @@ describe("organization and AppSession API", () => {
       .expect(403)
       .expect(({ body }) => {
         expect(body.code).toBe("ORGANIZATION_ACCESS_DENIED");
+      });
+  });
+
+  it("denies organization access and management after the organization is disabled", async () => {
+    const ownerAgent = await registeredAgent(
+      "m1c_disabled_owner",
+      "203.0.113.146",
+    );
+    await registeredAgent("m1c_disabled_member", "203.0.113.147");
+    const organization = (
+      await createOrganization(ownerAgent, "M1C Disabled", "m1c-disabled")
+    ).body.data as Organization;
+
+    await updateOrganization(ownerAgent, organization.id, {
+      status: "DISABLED",
+    }).expect(200);
+
+    await ownerAgent
+      .get(`/api/v1/organizations/${organization.id}`)
+      .expect(403)
+      .expect(({ body }) => {
+        expect(body.code).toBe("ORGANIZATION_ACCESS_DENIED");
+      });
+    await listOrganizationMembers(ownerAgent, organization.id)
+      .expect(403)
+      .expect(({ body }) => {
+        expect(body.code).toBe("ORGANIZATION_ACCESS_DENIED");
+      });
+    await addOrganizationMember(ownerAgent, organization.id, {
+      username: "m1c_disabled_member",
+      role: "MEMBER",
+    })
+      .expect(403)
+      .expect(({ body }) => {
+        expect(body.code).toBe("ORGANIZATION_ACCESS_DENIED");
+      });
+    await ownerAgent
+      .get("/api/v1/organizations")
+      .expect(200)
+      .expect(({ body }) => {
+        expect(body.data.items).not.toEqual(
+          expect.arrayContaining([
+            expect.objectContaining({
+              id: organization.id,
+            }),
+          ]),
+        );
+      });
+    await ownerAgent
+      .get("/api/v1/auth/session")
+      .expect(200)
+      .expect(({ body }) => {
+        const appSession = AppSessionSchema.parse(body.data);
+        expect(appSession.organizations).not.toEqual(
+          expect.arrayContaining([
+            expect.objectContaining({
+              id: organization.id,
+            }),
+          ]),
+        );
       });
   });
 
@@ -647,6 +708,17 @@ describe("organization and AppSession API", () => {
       .delete(`/api/v1/organizations/${organizationId}/members/${memberId}`)
       .set("Origin", ORIGIN);
   }
+
+  function updateOrganization(
+    agent: request.Agent,
+    organizationId: string,
+    body: { name?: string; code?: string; status?: RecordStatus },
+  ) {
+    return agent
+      .patch(`/api/v1/organizations/${organizationId}`)
+      .set("Origin", ORIGIN)
+      .send(body);
+  }
 });
 
 class InMemoryUserRepository implements UserRepository {
@@ -851,7 +923,7 @@ class InMemoryOrganizationRepository implements OrganizationRepository {
     );
     const organization = this.organizations.get(organizationId);
 
-    return member && organization
+    return member && organization?.status === "ACTIVE"
       ? {
           organization,
           role: member.role,
@@ -935,14 +1007,19 @@ class InMemoryOrganizationRepository implements OrganizationRepository {
           throw new Error(`Missing organization ${member.organizationId}`);
         }
 
-        return {
-          id: organization.id,
-          name: organization.name,
-          code: organization.code,
-          role: member.role,
-          status: organization.status as RecordStatus,
-        };
-      });
+        return organization.status === "ACTIVE"
+          ? {
+              id: organization.id,
+              name: organization.name,
+              code: organization.code,
+              role: member.role,
+              status: organization.status as RecordStatus,
+            }
+          : undefined;
+      })
+      .filter((summary): summary is SessionOrganizationSummary =>
+        Boolean(summary),
+      );
   }
 
   async listSessionSpaceSummaries(
@@ -962,6 +1039,12 @@ class InMemoryOrganizationRepository implements OrganizationRepository {
       return false;
     }
 
+    const member = this.members[index];
+
+    if (this.isLastActiveOwner(member)) {
+      throw new LastOrganizationOwnerRequiredError();
+    }
+
     this.members.splice(index, 1);
     return true;
   }
@@ -979,8 +1062,20 @@ class InMemoryOrganizationRepository implements OrganizationRepository {
       return undefined;
     }
 
-    member.role = input.role ?? member.role;
-    member.status = input.status ?? member.status;
+    const nextRole = input.role ?? member.role;
+    const nextStatus = input.status ?? member.status;
+
+    if (
+      member.role === "OWNER" &&
+      member.status === "ACTIVE" &&
+      (nextRole !== "OWNER" || nextStatus !== "ACTIVE") &&
+      this.isLastActiveOwner(member)
+    ) {
+      throw new LastOrganizationOwnerRequiredError();
+    }
+
+    member.role = nextRole;
+    member.status = nextStatus;
 
     return this.toMemberWithUser(member);
   }
@@ -1011,8 +1106,24 @@ class InMemoryOrganizationRepository implements OrganizationRepository {
           throw new Error(`Missing organization ${member.organizationId}`);
         }
 
-        return organization;
-      });
+        return organization.status === "ACTIVE" ? organization : undefined;
+      })
+      .filter((organization): organization is Organization =>
+        Boolean(organization),
+      );
+  }
+
+  private isLastActiveOwner(member: OrganizationMember): boolean {
+    return (
+      member.role === "OWNER" &&
+      member.status === "ACTIVE" &&
+      this.members.filter(
+        (item) =>
+          item.organizationId === member.organizationId &&
+          item.role === "OWNER" &&
+          item.status === "ACTIVE",
+      ).length <= 1
+    );
   }
 
   private toMemberWithUser(

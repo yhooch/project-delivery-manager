@@ -186,6 +186,15 @@ export const UpdateWorkflowVersionRequestSchema = z
 
 export const PublishWorkflowVersionRequestSchema = EmptyObjectSchema;
 
+const WorkflowActionAllowedSpaceRoleSchema = z.enum([
+  "SPACE_ADMIN",
+  "PM",
+  "DEVELOPER",
+  "TESTER",
+  "REQUIREMENT",
+  "MEMBER",
+]);
+
 export const CreateWorkflowStateRequestSchema = z
   .object({
     code: z.string().min(1).max(80),
@@ -207,7 +216,7 @@ export const CreateWorkflowActionRequestSchema = z
     fromStateId: UlidSchema,
     toStateId: UlidSchema,
     requiresComment: z.boolean().optional(),
-    allowedSpaceRoles: z.array(SpaceRoleSchema).optional(),
+    allowedSpaceRoles: z.array(WorkflowActionAllowedSpaceRoleSchema).optional(),
     actorRelations: z.array(WorkflowActorRelationSchema).optional(),
     order: z.number().int().min(0).optional(),
   })
@@ -277,6 +286,8 @@ export const CreateActionFormFieldResponseSchema = ActionFormFieldSummarySchema;
 export const UpdateActionFormFieldResponseSchema = ActionFormFieldSummarySchema;
 export const DeleteActionFormFieldResponseSchema = EmptyObjectSchema;
 export const ListWorkflowBindingsQuerySchema = PageQuerySchema.extend({
+  workflowId: UlidSchema.optional(),
+  workflowVersionId: UlidSchema.optional(),
   workItemType: WorkItemTypeSchema.optional(),
   priority: PrioritySchema.optional(),
   isDefault: z.coerce.boolean().optional(),

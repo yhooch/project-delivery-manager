@@ -1,5 +1,6 @@
 import { Inject, Injectable } from "@nestjs/common";
 
+import type { Prisma } from "../../generated/prisma/client";
 import { PrismaService } from "../../prisma/prisma.service";
 import {
   toOrganization,
@@ -7,7 +8,10 @@ import {
   toOrganizationMemberWithUser,
   toOrganizationRole,
 } from "./organization.mappers";
-import type { OrganizationRepository } from "./organization.repository";
+import {
+  LastOrganizationOwnerRequiredError,
+  type OrganizationRepository,
+} from "./organization.repository";
 import type {
   CreateOrganizationInput,
   CreatedOrganizationWithOwner,
@@ -110,6 +114,7 @@ export class PrismaOrganizationRepository implements OrganizationRepository {
         userId,
         organization: {
           deletedAt: null,
+          status: "ACTIVE",
         },
       },
     });
@@ -176,6 +181,7 @@ export class PrismaOrganizationRepository implements OrganizationRepository {
       userId,
       organization: {
         deletedAt: null,
+        status: "ACTIVE" as const,
       },
     };
     const [members, total] = await this.prisma.client.$transaction([
@@ -255,6 +261,7 @@ export class PrismaOrganizationRepository implements OrganizationRepository {
         userId,
         organization: {
           deletedAt: null,
+          status: "ACTIVE",
         },
       },
     });
@@ -311,19 +318,42 @@ export class PrismaOrganizationRepository implements OrganizationRepository {
   }
 
   async removeMember(input: RemoveOrganizationMemberInput): Promise<boolean> {
-    const result = await this.prisma.client.organizationMember.updateMany({
-      data: {
-        deletedAt: new Date(),
-        updatedById: input.removedById,
-      },
-      where: {
-        deletedAt: null,
-        id: input.memberId,
-        organizationId: input.organizationId,
-      },
-    });
+    return this.prisma.client.$transaction(async (tx) => {
+      await lockOrganizationMembers(tx, input.organizationId);
+      const member = await tx.organizationMember.findFirst({
+        select: {
+          role: true,
+          status: true,
+        },
+        where: {
+          deletedAt: null,
+          id: input.memberId,
+          organizationId: input.organizationId,
+        },
+      });
 
-    return result.count > 0;
+      if (!member) {
+        return false;
+      }
+
+      if (isEffectiveOwner(member)) {
+        await assertAnotherActiveOwnerExists(tx, input.organizationId);
+      }
+
+      const result = await tx.organizationMember.updateMany({
+        data: {
+          deletedAt: new Date(),
+          updatedById: input.removedById,
+        },
+        where: {
+          deletedAt: null,
+          id: input.memberId,
+          organizationId: input.organizationId,
+        },
+      });
+
+      return result.count > 0;
+    });
   }
 
   async updateMember(input: {
@@ -334,11 +364,10 @@ export class PrismaOrganizationRepository implements OrganizationRepository {
     updatedById: string;
   }) {
     const updated = await this.prisma.client.$transaction(async (tx) => {
-      const result = await tx.organizationMember.updateMany({
-        data: {
-          role: input.role,
-          status: input.status,
-          updatedById: input.updatedById,
+      await lockOrganizationMembers(tx, input.organizationId);
+      const member = await tx.organizationMember.findFirst({
+        include: {
+          user: true,
         },
         where: {
           deletedAt: null,
@@ -347,9 +376,30 @@ export class PrismaOrganizationRepository implements OrganizationRepository {
         },
       });
 
-      if (result.count === 0) {
+      if (!member) {
         return undefined;
       }
+
+      const nextRole = input.role ?? member.role;
+      const nextStatus = input.status ?? member.status;
+
+      if (
+        isEffectiveOwner(member) &&
+        (nextRole !== "OWNER" || nextStatus !== "ACTIVE")
+      ) {
+        await assertAnotherActiveOwnerExists(tx, input.organizationId);
+      }
+
+      await tx.organizationMember.update({
+        data: {
+          role: input.role,
+          status: input.status,
+          updatedById: input.updatedById,
+        },
+        where: {
+          id: input.memberId,
+        },
+      });
 
       return tx.organizationMember.findFirst({
         include: {
@@ -393,4 +443,41 @@ export class PrismaOrganizationRepository implements OrganizationRepository {
 
     return updated ? toOrganization(updated) : undefined;
   }
+}
+
+async function lockOrganizationMembers(
+  tx: Prisma.TransactionClient,
+  organizationId: string,
+) {
+  await tx.$queryRaw`
+    SELECT id
+    FROM organization_members
+    WHERE organization_id = ${organizationId}
+    FOR UPDATE
+  `;
+}
+
+async function assertAnotherActiveOwnerExists(
+  tx: Prisma.TransactionClient,
+  organizationId: string,
+) {
+  const activeOwnerCount = await tx.organizationMember.count({
+    where: {
+      deletedAt: null,
+      organizationId,
+      role: "OWNER",
+      status: "ACTIVE",
+    },
+  });
+
+  if (activeOwnerCount <= 1) {
+    throw new LastOrganizationOwnerRequiredError();
+  }
+}
+
+function isEffectiveOwner(member: {
+  role: string;
+  status: string;
+}): boolean {
+  return member.role === "OWNER" && member.status === "ACTIVE";
 }

@@ -117,10 +117,15 @@ export function RequirementDetailWorkspace({
     currentSpace?.organizationId ??
     session?.defaultOrganizationId;
   const spaceId = requirement?.spaceId ?? currentSpace?.id;
-  const canEditRequirement =
+  const fallbackCanEditRequirement =
     requirement?.status !== "ARCHIVED" &&
     currentSpace !== undefined &&
     REQUIREMENT_WRITER_ROLES.has(currentSpace.role);
+  const canEditRequirement =
+    requirement?.permissions?.canEdit ?? fallbackCanEditRequirement;
+  const canUploadRequirementImages =
+    requirement?.permissions?.canUploadAttachment ??
+    (fallbackCanEditRequirement && requirement?.status === "DRAFT");
   const requestKey = useMemo(
     () =>
       [
@@ -483,7 +488,7 @@ export function RequirementDetailWorkspace({
       <div className="pt-1">
         <RequirementContentEditorSlot
           attachmentCount={requirement.attachments?.length ?? 0}
-          canUploadImages={canEditRequirement && requirement.status === "DRAFT"}
+          canUploadImages={canEditRequirement && canUploadRequirementImages}
           disabled={!canEditRequirement}
           onAttachmentUploaded={(attachment) =>
             setRequirement((current) =>

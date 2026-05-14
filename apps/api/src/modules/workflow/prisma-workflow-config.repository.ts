@@ -184,7 +184,7 @@ export class PrismaWorkflowConfigRepository
   async listVersions(workflowId: string, input: WorkflowConfigListInput) {
     const where = {
       deletedAt: null,
-      workflowId,
+      workflowDefinitionId: workflowId,
     };
     const [items, total] = await this.prisma.client.$transaction([
       this.prisma.client.workflowVersion.findMany({
@@ -750,6 +750,8 @@ export class PrismaWorkflowConfigRepository
       priority: input.priority,
       spaceId,
       targetType: "WORK_ITEM",
+      workflowDefinitionId: input.workflowId,
+      workflowVersionId: input.workflowVersionId,
       workItemType: input.workItemType,
     };
     const [items, total] = await this.prisma.client.$transaction([

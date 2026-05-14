@@ -357,6 +357,11 @@
       "unauthenticated": "未登录",
       "signedIn": "{username}"
     },
+    "unauthenticated": {
+      "title": "需要登录",
+      "description": "登录后才能继续访问工作台。",
+      "action": "前往登录"
+    },
     "topbar": {
       "eyebrow": "工作台",
       "title": "交付运行视图"
@@ -795,7 +800,7 @@
       "noVersion": "不变或未关联",
       "noOwner": "不变或未分配",
       "noPriority": "未设置",
-      "readonly": "当前状态或角色只能查看"
+      "readonly": "当前权限只能查看"
     },
     "editor": {
       "title": "正文编辑",
@@ -2340,10 +2345,13 @@
         "title": "发布前请先解决以下问题：",
         "issues": {
           "noStates": "至少需要 1 个状态",
+          "multipleStartStates": "只能有 1 个起始状态",
           "noStartState": "缺少起始状态（请将至少 1 个状态标记为起始）",
           "noEndState": "缺少结束状态（请将至少 1 个状态标记为结束）",
+          "missingOutgoingAction": "每个非结束状态都需要至少 1 条出边动作",
           "missingFromState": "存在动作的「来源状态」不在状态列表中",
-          "missingToState": "存在动作的「目标状态」不在状态列表中"
+          "missingToState": "存在动作的「目标状态」不在状态列表中",
+          "unreachableState": "存在无法从起始状态到达的状态"
         }
       },
       "states": {
@@ -2469,6 +2477,46 @@
           "options": "选项",
           "optionsPlaceholder": "每行一个选项",
           "optionsHint": "仅在「下拉选择」类型下生效。"
+        },
+        "submit": "保存",
+        "submitting": "保存中…",
+        "cancel": "取消"
+      },
+      "bindings": {
+        "title": "绑定",
+        "description": "将工作项类型和优先级绑定到当前版本 v{version} · {status}。",
+        "create": "新增绑定",
+        "empty": "此流程暂无绑定。",
+        "anyPriority": "任意优先级",
+        "currentVersion": "当前 v{version}",
+        "otherVersion": "其他版本",
+        "defaultYes": "默认",
+        "defaultNo": "否",
+        "columns": {
+          "workItemType": "工作项类型",
+          "priority": "优先级",
+          "version": "版本",
+          "default": "默认",
+          "actions": "操作"
+        },
+        "actions": {
+          "edit": "编辑绑定"
+        }
+      },
+      "bindingDialog": {
+        "create": {
+          "title": "新增绑定",
+          "description": "将工作项类型、优先级和默认标记绑定到当前流程版本。"
+        },
+        "edit": {
+          "title": "编辑绑定",
+          "description": "更新绑定条件，并重新指向当前流程版本。"
+        },
+        "fields": {
+          "workItemType": "工作项类型",
+          "priority": "优先级",
+          "anyPriority": "任意优先级",
+          "isDefault": "默认绑定"
         },
         "submit": "保存",
         "submitting": "保存中…",
@@ -2814,6 +2862,12 @@
       "requirement": "关联需求",
       "intake": "来源事项"
     },
+    "priority": {
+      "LOW": "低",
+      "MEDIUM": "中",
+      "HIGH": "高",
+      "URGENT": "紧急"
+    },
     "actions": {
       "label": "可执行动作",
       "empty": "暂无可执行动作",
@@ -2832,6 +2886,7 @@
       "submitErrorTitle": "发送评论失败",
       "emptyTitle": "暂无评论",
       "emptyDescription": "成为第一个发表评论的人",
+      "readonly": "当前权限不能发表评论",
       "retry": "重试"
     },
     "attachments": {
@@ -2841,6 +2896,7 @@
       "emptyDescription": "上传文件以共享给其他成员",
       "uploadAction": "上传附件",
       "uploadTodo": "上传功能开发中",
+      "readonly": "当前权限不能上传附件",
       "retry": "重试",
       "size": "大小",
       "uploadedBy": "上传者"

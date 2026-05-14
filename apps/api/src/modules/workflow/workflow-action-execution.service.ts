@@ -649,6 +649,10 @@ function hasActionPermission(
   action: ExecutableWorkflowAction,
   access: WorkflowActionActorSpaceAccess,
 ) {
+  if (access.role === "VIEWER") {
+    return false;
+  }
+
   return (
     action.allowedSpaceRoles.includes(access.role) ||
     action.actorRelations.some((relation) => {
