@@ -1,11 +1,11 @@
 "use client";
 
 import { Monitor, Moon, Sun } from "lucide-react";
-import { useTheme } from "next-themes";
 import { useTranslations } from "next-intl";
 import { useEffect, useState } from "react";
 
 import { toThemeMode } from "../../lib/preferences";
+import { useTheme } from "../providers/theme-provider";
 import { useSession } from "../providers/session-provider";
 
 const themeOptions = ["system", "light", "dark"] as const;

@@ -7,7 +7,6 @@ import type {
   UpdateUserPreferencesRequest,
 } from "@project-delivery/shared";
 import { useLocale } from "next-intl";
-import { useTheme } from "next-themes";
 import {
   createContext,
   useCallback,
@@ -41,6 +40,7 @@ import type {
   LoginFormValues,
   RegisterFormValues,
 } from "../../lib/auth-forms";
+import { useTheme } from "./theme-provider";
 
 type SessionStatus = "loading" | "authenticated" | "unauthenticated";
 
