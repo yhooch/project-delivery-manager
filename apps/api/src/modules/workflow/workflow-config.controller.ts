@@ -25,6 +25,7 @@ import {
   IdPathParamsSchema,
   ListWorkflowBindingsQuerySchema,
   ListWorkflowsQuerySchema,
+  ListWorkflowVersionsQuerySchema,
   PublishWorkflowVersionRequestSchema,
   SpaceIdPathParamsSchema,
   UpdateActionFormFieldRequestSchema,
@@ -62,6 +63,7 @@ import {
 } from "./workflow-config.service";
 
 type ListWorkflowsQuery = z.infer<typeof ListWorkflowsQuerySchema>;
+type ListWorkflowVersionsQuery = z.infer<typeof ListWorkflowVersionsQuerySchema>;
 type ListWorkflowBindingsQuery = z.infer<
   typeof ListWorkflowBindingsQuerySchema
 >;
@@ -169,6 +171,23 @@ export class WorkflowConfigController {
       params.workflowId,
       body,
       requestMetadata(request),
+    );
+  }
+
+  @Get("workflows/:workflowId/versions")
+  async listVersions(
+    @Param(new ZodValidationPipe(WorkflowIdPathParamsSchema))
+    params: { workflowId: string },
+    @Query(new ZodValidationPipe(ListWorkflowVersionsQuerySchema))
+    query: ListWorkflowVersionsQuery,
+    @Req() request: RequestWithContext,
+  ): Promise<PageResult<WorkflowVersion>> {
+    const session = this.currentUser.requireSession(request);
+
+    return this.workflows.listVersions(
+      session.userId,
+      params.workflowId,
+      query,
     );
   }
 

@@ -128,6 +128,7 @@ export function RegisterForm() {
           disabled={isSubmitting}
           size="lg"
           className="mt-2 w-full"
+          data-testid="register-submit"
         >
           {isSubmitting ? t("form.submitting") : t("form.submit")}
           {!isSubmitting && <ArrowRight className="h-3.5 w-3.5" />}

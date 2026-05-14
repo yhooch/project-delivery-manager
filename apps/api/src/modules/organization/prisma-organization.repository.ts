@@ -16,6 +16,7 @@ import type {
   OrganizationListResult,
   OrganizationSummaryWithRole,
   SpaceSummaryWithRole,
+  UpdateOrganizationInput,
 } from "./organization.types";
 
 @Injectable()
@@ -346,5 +347,33 @@ export class PrismaOrganizationRepository implements OrganizationRepository {
     });
 
     return updated ? toOrganizationMemberWithUser(updated) : undefined;
+  }
+
+  async updateOrganization(input: UpdateOrganizationInput) {
+    const result = await this.prisma.client.organization.updateMany({
+      data: {
+        name: input.name,
+        code: input.code,
+        status: input.status,
+        updatedById: input.updatedById,
+      },
+      where: {
+        deletedAt: null,
+        id: input.organizationId,
+      },
+    });
+
+    if (result.count === 0) {
+      return undefined;
+    }
+
+    const updated = await this.prisma.client.organization.findFirst({
+      where: {
+        deletedAt: null,
+        id: input.organizationId,
+      },
+    });
+
+    return updated ? toOrganization(updated) : undefined;
   }
 }

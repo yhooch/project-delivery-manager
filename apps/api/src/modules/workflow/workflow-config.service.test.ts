@@ -447,6 +447,18 @@ class InMemoryWorkflowConfigRepository implements WorkflowConfigRepository {
     return page(items, input);
   }
 
+  async listVersions(
+    workflowId: string,
+    input: WorkflowConfigListInput,
+  ): Promise<PageResult<WorkflowVersionRecord>> {
+    const items = [...this.versions.values()]
+      .filter((version) => version.workflowDefinitionId === workflowId)
+      .sort((left, right) => right.version - left.version)
+      .map((version) => this.versionRecord(version.id)!);
+
+    return page(items, input);
+  }
+
   async createDefinition(input: CreateWorkflowDefinitionInput) {
     const definition: WorkflowDefinitionRecord = {
       code: input.code,

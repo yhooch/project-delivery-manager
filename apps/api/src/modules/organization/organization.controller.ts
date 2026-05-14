@@ -20,12 +20,14 @@ import {
   MemberIdPathParamsSchema,
   OrganizationIdPathParamsSchema,
   UpdateOrganizationMemberRequestSchema,
+  UpdateOrganizationRequestSchema,
   type AddOrganizationMemberRequest,
   type CreateOrganizationRequest,
   type Organization,
   type OrganizationMemberWithUser,
   type PageResult,
   type UpdateOrganizationMemberRequest,
+  type UpdateOrganizationRequest,
 } from "@project-delivery/shared";
 
 import type { RequestWithContext } from "../../http/request-context";
@@ -144,5 +146,23 @@ export class OrganizationController {
   ): Promise<Organization> {
     const session = this.currentUser.requireSession(request);
     return this.organizations.get(session.userId, params.organizationId);
+  }
+
+  @Patch(":organizationId")
+  @HttpCode(HttpStatus.OK)
+  @UseGuards(WriteOriginGuard)
+  async update(
+    @Param(new ZodValidationPipe(OrganizationIdPathParamsSchema))
+    params: { organizationId: string },
+    @Body(new ZodValidationPipe(UpdateOrganizationRequestSchema))
+    body: UpdateOrganizationRequest,
+    @Req() request: RequestWithContext,
+  ): Promise<Organization> {
+    const session = this.currentUser.requireSession(request);
+    return this.organizations.update(
+      session.userId,
+      params.organizationId,
+      body,
+    );
   }
 }

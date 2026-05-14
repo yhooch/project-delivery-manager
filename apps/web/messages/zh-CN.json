@@ -381,6 +381,32 @@
     "logout": {
       "label": "登出",
       "ariaLabel": "退出登录"
+    },
+    "command": {
+      "placeholder": "输入命令或搜索任务、Bug、需求、事项",
+      "empty": "未匹配到任何结果",
+      "searching": "搜索中…",
+      "untitled": "未命名",
+      "recent": "最近打开",
+      "navigation": "导航",
+      "switchSpace": "切换空间",
+      "results": {
+        "tasks": "任务",
+        "bugs": "Bug",
+        "requirements": "需求",
+        "intake": "事项"
+      },
+      "nav": {
+        "workbench": "我的工作台",
+        "overview": "空间总览",
+        "versions": "版本",
+        "tasks": "任务",
+        "bugs": "Bug",
+        "exceptions": "异常视图",
+        "requirements": "需求",
+        "intake": "事项池",
+        "workflow": "流程配置"
+      }
     }
   },
   "onboarding": {
@@ -2147,7 +2173,13 @@
       },
       "copyVersion": {
         "title": "复制为新版本",
-        "description": "基于当前流程创建一个新的草稿版本。新版本会复制最新版本的状态与动作配置。",
+        "description": "基于当前流程创建一个新的草稿版本。可选择一个已发布版本作为源进行复制。",
+        "fields": {
+          "sourceVersion": "源版本",
+          "emptySource": "空白草稿（不复制）",
+          "versionOption": "版本 {version} · {status}",
+          "hint": "默认选择最近一个已发布版本；选择空白草稿则不复制任何状态/动作。"
+        },
         "submit": "创建草稿版本",
         "submitting": "创建中…",
         "cancel": "取消"
@@ -2433,7 +2465,9 @@
       "version": "版本",
       "due": "截止",
       "createdAt": "创建于",
-      "updated": "最近更新"
+      "updated": "最近更新",
+      "requirement": "关联需求",
+      "intake": "来源事项"
     },
     "actions": {
       "label": "可执行动作",

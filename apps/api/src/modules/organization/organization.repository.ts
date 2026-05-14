@@ -1,3 +1,5 @@
+import type { Organization } from "@project-delivery/shared";
+
 import type {
   AddOrganizationMemberInput,
   CreateOrganizationInput,
@@ -9,6 +11,7 @@ import type {
   OrganizationMemberListResult,
   OrganizationSummaryWithRole,
   SpaceSummaryWithRole,
+  UpdateOrganizationInput,
   UpdateOrganizationMemberInput,
 } from "./organization.types";
 
@@ -48,4 +51,7 @@ export type OrganizationRepository = {
   updateMember(
     input: UpdateOrganizationMemberInput,
   ): Promise<OrganizationMemberListResult["items"][number] | undefined>;
+  updateOrganization(
+    input: UpdateOrganizationInput,
+  ): Promise<Organization | undefined>;
 };

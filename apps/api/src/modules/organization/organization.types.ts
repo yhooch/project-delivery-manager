@@ -70,3 +70,11 @@ export type UpdateOrganizationMemberInput = {
   status?: RecordStatus;
   updatedById: string;
 };
+
+export type UpdateOrganizationInput = {
+  organizationId: string;
+  name?: string;
+  code?: string;
+  status?: RecordStatus;
+  updatedById: string;
+};

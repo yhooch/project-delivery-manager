@@ -2,7 +2,6 @@ import "../globals.css";
 
 import type { Metadata } from "next";
 import { Inter, JetBrains_Mono } from "next/font/google";
-import Script from "next/script";
 import { NextIntlClientProvider } from "next-intl";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { notFound } from "next/navigation";
@@ -11,7 +10,6 @@ import type { ReactNode } from "react";
 import { SessionProvider } from "../../components/providers/session-provider";
 import { ThemeProvider } from "../../components/providers/theme-provider";
 import { isLocale, locales } from "../../i18n/locales";
-import { themeInitScript } from "../../lib/theme-script";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -71,11 +69,6 @@ export default async function LocaleLayout({
       className={`${inter.variable} ${jetbrainsMono.variable}`}
       suppressHydrationWarning
     >
-      <head>
-        <Script id="theme-init" strategy="beforeInteractive">
-          {themeInitScript}
-        </Script>
-      </head>
       <body className="font-sans antialiased">
         <NextIntlClientProvider>
           <ThemeProvider>

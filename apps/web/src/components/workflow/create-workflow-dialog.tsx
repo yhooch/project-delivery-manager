@@ -1,11 +1,19 @@
 "use client";
 
-import type { WorkflowDefinition } from "@project-delivery/shared";
+import type {
+  WorkflowDefinition,
+  WorkflowVersion,
+} from "@project-delivery/shared";
 import { useTranslations } from "next-intl";
 import { useEffect, useState, type FormEvent } from "react";
 
 import { getApiErrorMessageKey } from "../../lib/api-error-messages";
-import { createWorkflow, updateWorkflow } from "../../lib/workflow-service";
+import {
+  createWorkflow,
+  createWorkflowVersion,
+  listWorkflowVersions,
+  updateWorkflow,
+} from "../../lib/workflow-service";
 
 import { Button } from "../ui/button";
 import {
@@ -27,7 +35,8 @@ type WorkflowSpaceContext = {
 
 type Mode =
   | { kind: "create" }
-  | { kind: "edit"; workflow: WorkflowDefinition };
+  | { kind: "edit"; workflow: WorkflowDefinition }
+  | { kind: "copyVersion"; workflow: WorkflowDefinition };
 
 export type CreateWorkflowDialogProps = {
   context: WorkflowSpaceContext;
@@ -51,6 +60,9 @@ export function CreateWorkflowDialog({
   const [description, setDescription] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorKey, setErrorKey] = useState<string | null>(null);
+  const [versions, setVersions] = useState<WorkflowVersion[]>([]);
+  const [sourceVersionId, setSourceVersionId] = useState<string>("");
+  const [isLoadingVersions, setIsLoadingVersions] = useState(false);
 
   useEffect(() => {
     if (!open) {
@@ -69,11 +81,46 @@ export function CreateWorkflowDialog({
       setCode("");
       setDescription("");
     }
-  }, [mode, open]);
+
+    if (mode.kind === "copyVersion") {
+      setIsLoadingVersions(true);
+      setVersions([]);
+      setSourceVersionId("");
+      void listWorkflowVersions({
+        organizationId: context.organizationId,
+        page: 1,
+        pageSize: 50,
+        spaceId: context.spaceId,
+        workflowId: mode.workflow.id,
+      })
+        .then((page) => {
+          setVersions(page.items);
+          const published = page.items.find(
+            (version) => version.status === "PUBLISHED",
+          );
+          setSourceVersionId(published?.id ?? page.items[0]?.id ?? "");
+        })
+        .catch((error) => {
+          setErrorKey(getApiErrorMessageKey(error));
+        })
+        .finally(() => {
+          setIsLoadingVersions(false);
+        });
+    }
+  }, [context.organizationId, context.spaceId, mode, open]);
 
   const isEdit = mode.kind === "edit";
-  const titleKey = isEdit ? "configure.title" : "create.title";
-  const descriptionKey = isEdit ? "configure.description" : "create.description";
+  const isCopyVersion = mode.kind === "copyVersion";
+  const titleKey = isCopyVersion
+    ? "copyVersion.title"
+    : isEdit
+      ? "configure.title"
+      : "create.title";
+  const descriptionKey = isCopyVersion
+    ? "copyVersion.description"
+    : isEdit
+      ? "configure.description"
+      : "create.description";
 
   function handleOpenChange(next: boolean) {
     if (!next) {
@@ -84,14 +131,27 @@ export function CreateWorkflowDialog({
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
-    const trimmedName = name.trim();
-    const trimmedCode = code.trim();
-    const trimmedDescription = description.trim();
-
     setIsSubmitting(true);
     setErrorKey(null);
 
     try {
+      if (mode.kind === "copyVersion") {
+        await createWorkflowVersion(
+          {
+            organizationId: context.organizationId,
+            spaceId: context.spaceId,
+            workflowId: mode.workflow.id,
+          },
+          sourceVersionId ? { sourceWorkflowVersionId: sourceVersionId } : {},
+        );
+        onSuccess(mode.workflow);
+        return;
+      }
+
+      const trimmedName = name.trim();
+      const trimmedCode = code.trim();
+      const trimmedDescription = description.trim();
+
       let result: WorkflowDefinition;
 
       if (mode.kind === "edit") {
@@ -144,25 +204,58 @@ export function CreateWorkflowDialog({
         </DialogHeader>
 
         <form className="flex flex-col gap-4" noValidate onSubmit={handleSubmit}>
-          <div className="flex flex-col gap-1.5">
-            <Label htmlFor="workflow-dialog-name">
-              {t(isEdit ? "configure.fields.name" : "create.fields.name")}
-            </Label>
-            <Input
-              autoFocus
-              id="workflow-dialog-name"
-              maxLength={120}
-              minLength={1}
-              onChange={(event) => setName(event.target.value)}
-              placeholder={
-                isEdit ? undefined : t("create.fields.namePlaceholder")
-              }
-              required
-              value={name}
-            />
-          </div>
+          {isCopyVersion ? (
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="workflow-dialog-source-version">
+                {t("copyVersion.fields.sourceVersion")}
+              </Label>
+              <select
+                aria-label={t("copyVersion.fields.sourceVersion")}
+                className="rounded-md border border-input bg-background px-3 py-2 text-xs"
+                disabled={isLoadingVersions}
+                id="workflow-dialog-source-version"
+                onChange={(event) => setSourceVersionId(event.target.value)}
+                value={sourceVersionId}
+              >
+                <option value="">
+                  {t("copyVersion.fields.emptySource")}
+                </option>
+                {versions.map((version) => (
+                  <option key={version.id} value={version.id}>
+                    {t("copyVersion.fields.versionOption", {
+                      version: version.version,
+                      status: version.status,
+                    })}
+                  </option>
+                ))}
+              </select>
+              <p className="text-[11px] text-muted-foreground">
+                {t("copyVersion.fields.hint")}
+              </p>
+            </div>
+          ) : null}
 
-          {!isEdit ? (
+          {!isCopyVersion ? (
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="workflow-dialog-name">
+                {t(isEdit ? "configure.fields.name" : "create.fields.name")}
+              </Label>
+              <Input
+                autoFocus
+                id="workflow-dialog-name"
+                maxLength={120}
+                minLength={1}
+                onChange={(event) => setName(event.target.value)}
+                placeholder={
+                  isEdit ? undefined : t("create.fields.namePlaceholder")
+                }
+                required
+                value={name}
+              />
+            </div>
+          ) : null}
+
+          {!isEdit && !isCopyVersion ? (
             <div className="flex flex-col gap-1.5">
               <Label htmlFor="workflow-dialog-code">
                 {t("create.fields.code")}
@@ -181,24 +274,26 @@ export function CreateWorkflowDialog({
             </div>
           ) : null}
 
-          <div className="flex flex-col gap-1.5">
-            <Label htmlFor="workflow-dialog-description">
-              {t(
-                isEdit
-                  ? "configure.fields.description"
-                  : "create.fields.description",
-              )}
-            </Label>
-            <Textarea
-              id="workflow-dialog-description"
-              maxLength={2000}
-              onChange={(event) => setDescription(event.target.value)}
-              placeholder={
-                isEdit ? undefined : t("create.fields.descriptionPlaceholder")
-              }
-              value={description}
-            />
-          </div>
+          {!isCopyVersion ? (
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="workflow-dialog-description">
+                {t(
+                  isEdit
+                    ? "configure.fields.description"
+                    : "create.fields.description",
+                )}
+              </Label>
+              <Textarea
+                id="workflow-dialog-description"
+                maxLength={2000}
+                onChange={(event) => setDescription(event.target.value)}
+                placeholder={
+                  isEdit ? undefined : t("create.fields.descriptionPlaceholder")
+                }
+                value={description}
+              />
+            </div>
+          ) : null}
 
           {errorKey ? (
             <div
@@ -218,17 +313,40 @@ export function CreateWorkflowDialog({
               type="button"
               variant="outline"
             >
-              {t(isEdit ? "configure.cancel" : "create.cancel")}
+              {t(
+                isCopyVersion
+                  ? "copyVersion.cancel"
+                  : isEdit
+                    ? "configure.cancel"
+                    : "create.cancel",
+              )}
             </Button>
             <Button
               className="text-xs"
-              disabled={isSubmitting || name.trim().length === 0}
+              disabled={
+                isSubmitting ||
+                (isCopyVersion
+                  ? isLoadingVersions
+                  : name.trim().length === 0)
+              }
               size="sm"
               type="submit"
             >
               {isSubmitting
-                ? t(isEdit ? "configure.submitting" : "create.submitting")
-                : t(isEdit ? "configure.submit" : "create.submit")}
+                ? t(
+                    isCopyVersion
+                      ? "copyVersion.submitting"
+                      : isEdit
+                        ? "configure.submitting"
+                        : "create.submitting",
+                  )
+                : t(
+                    isCopyVersion
+                      ? "copyVersion.submit"
+                      : isEdit
+                        ? "configure.submit"
+                        : "create.submit",
+                  )}
             </Button>
           </DialogFooter>
         </form>

@@ -11,8 +11,13 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { getApiErrorMessageKey } from "../../lib/api-error-messages";
 import { listBugs } from "../../lib/bug-service";
-import type { MockWorkItem } from "../../lib/v2/mock-data";
+import { useSpaceMembers, useVersions } from "../../lib/v2/lookups";
+import type { WorkItemViewModel } from "../../lib/v2/mock-data";
 import { cn } from "../../lib/utils";
+import type {
+  SpaceMemberWithUser,
+  Version,
+} from "@project-delivery/shared";
 
 import { Avatar, AvatarFallback } from "../ui/avatar";
 import { Badge } from "../ui/badge";
@@ -36,7 +41,7 @@ const severityColor: Record<BugSeverity, string> = {
 
 type FilterKey = "all" | "open" | "regression";
 
-type MockBugItem = MockWorkItem & { severity: BugSeverity };
+type MockBugItem = WorkItemViewModel & { severity: BugSeverity };
 
 export function BugsPage() {
   const tNav = useTranslations("shell.nav");
@@ -47,11 +52,14 @@ export function BugsPage() {
 
   const { currentSpace, status: sessionStatus } = useSession();
   const spaceId = currentSpace?.id;
+  const organizationId = currentSpace?.organizationId;
+  const { getMember } = useSpaceMembers(spaceId, organizationId);
+  const { getVersion } = useVersions(spaceId, organizationId);
 
   const [items, setItems] = useState<BugView[]>([]);
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [activeItem, setActiveItem] = useState<MockWorkItem | null>(null);
+  const [activeItem, setActiveItem] = useState<WorkItemViewModel | null>(null);
   const [sheetOpen, setSheetOpen] = useState(false);
   const [filter, setFilter] = useState<FilterKey>("all");
   const [createOpen, setCreateOpen] = useState(false);
@@ -84,8 +92,14 @@ export function BugsPage() {
   }, [fetchBugs, spaceId]);
 
   const mockItems = useMemo<MockBugItem[]>(
-    () => items.map((bug) => toMockBug(bug, tStatus)),
-    [items, tStatus],
+    () =>
+      items.map((bug) =>
+        toMockBug(bug, tStatus, {
+          getMember,
+          getVersion,
+        }),
+      ),
+    [getMember, getVersion, items, tStatus],
   );
 
   const filtered = useMemo(() => {
@@ -280,12 +294,21 @@ export function BugsPage() {
   );
 }
 
+type BugLookupHelpers = {
+  getMember: (userId: string) => SpaceMemberWithUser | undefined;
+  getVersion: (versionId: string) => Version | undefined;
+};
+
 function toMockBug(
   bug: BugView,
   tStatus: (key: StatusCategory) => string,
+  lookups: BugLookupHelpers,
 ): MockBugItem {
   const code = deriveBugCode(bug.id);
-  const initial = deriveInitial(bug.assigneeId);
+  const member = bug.assigneeId ? lookups.getMember(bug.assigneeId) : undefined;
+  const assigneeName = member?.user.name ?? member?.user.username ?? bug.assigneeId ?? "";
+  const initial = deriveInitial(assigneeName);
+  const version = bug.versionId ? lookups.getVersion(bug.versionId) : undefined;
   const dueDate = bug.dueDate ? formatDate(bug.dueDate) : undefined;
   const isOverdue = bug.dueDate
     ? new Date(bug.dueDate).getTime() < Date.now() &&
@@ -302,8 +325,8 @@ function toMockBug(
     statusCategory: bug.statusCategory,
     statusLabel: tStatus(bug.statusCategory),
     priority: bug.priority,
-    assignee: { name: bug.assigneeId ?? "", initial },
-    versionName: undefined,
+    assignee: { name: assigneeName, initial },
+    versionName: version?.name,
     dueDate,
     isOverdue,
     isBlocked,
@@ -318,11 +341,15 @@ function deriveBugCode(id: string): string {
   return `BUG-${tail}`;
 }
 
-function deriveInitial(id?: string): string {
-  if (!id) {
+function deriveInitial(value?: string): string {
+  if (!value) {
     return "?";
   }
-  return id.slice(-1).toUpperCase();
+  const trimmed = value.trim();
+  if (!trimmed) {
+    return "?";
+  }
+  return trimmed.charAt(0).toUpperCase();
 }
 
 function formatDate(iso: string): string {

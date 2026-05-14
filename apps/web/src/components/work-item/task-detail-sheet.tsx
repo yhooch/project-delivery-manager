@@ -22,16 +22,21 @@ import {
   User2,
 } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import type React from "react";
 
 import { getApiErrorMessageKey } from "../../lib/api-error-messages";
-import { listAttachments } from "../../lib/attachment-service";
+import {
+  AttachmentUploadError,
+  listAttachments,
+  uploadAttachment,
+} from "../../lib/attachment-service";
 import { executeAction } from "../../lib/action-service";
 import { createComment, listComments } from "../../lib/comment-service";
 import { listTimeline } from "../../lib/timeline-service";
 import { cn } from "../../lib/utils";
-import { type MockWorkItem } from "../../lib/v2/mock-data";
-import { useSpaceMembers } from "../../lib/v2/lookups";
+import { type WorkItemViewModel } from "../../lib/v2/mock-data";
+import { useSpaceMembers, useVersions } from "../../lib/v2/lookups";
 import { getWorkItem } from "../../lib/work-item-service";
 
 import { useSession } from "../providers/session-provider";
@@ -50,14 +55,14 @@ import { StatusBadge } from "../ui/status-badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../ui/tabs";
 import { EmptyState, ErrorState, LoadingState } from "../v2/states";
 
-const priorityColor: Record<MockWorkItem["priority"], string> = {
+const priorityColor: Record<WorkItemViewModel["priority"], string> = {
   LOW: "text-muted-foreground",
   MEDIUM: "text-info",
   HIGH: "text-warning",
   URGENT: "text-destructive",
 };
 
-const priorityLabel: Record<MockWorkItem["priority"], string> = {
+const priorityLabel: Record<WorkItemViewModel["priority"], string> = {
   LOW: "低",
   MEDIUM: "中",
   HIGH: "高",
@@ -65,7 +70,7 @@ const priorityLabel: Record<MockWorkItem["priority"], string> = {
 };
 
 type Props = {
-  item: MockWorkItem | null;
+  item: WorkItemViewModel | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
   /** Optional override; falls back to current session space. */
@@ -166,7 +171,7 @@ export function TaskDetailSheet({
 }
 
 type BodyProps = {
-  item: MockWorkItem;
+  item: WorkItemViewModel;
   spaceId?: string;
   organizationId?: string;
   currentUserId?: string;
@@ -312,9 +317,15 @@ function TaskDetailSheetBody({
 
         <TabsContent
           value="links"
-          className="mt-0 flex-1 overflow-y-auto px-5 py-8 text-center text-sm text-muted-foreground"
+          className="mt-0 flex-1 overflow-y-auto px-5 py-4"
         >
-          <EmptyState title={t("missingApi.title")} />
+          <LinksPanel
+            item={item}
+            spaceId={spaceId}
+            organizationId={organizationId}
+            t={t}
+            tApiError={tApiError}
+          />
         </TabsContent>
       </Tabs>
     </SheetContent>
@@ -332,7 +343,7 @@ function ActionBar({
   t,
   tApiError,
 }: {
-  item: MockWorkItem;
+  item: WorkItemViewModel;
   spaceId?: string;
   organizationId?: string;
   t: ReturnType<typeof useTranslations<"taskDetail">>;
@@ -471,11 +482,11 @@ function DetailTab({
   lookup,
   t,
 }: {
-  item: MockWorkItem;
+  item: WorkItemViewModel;
   lookup: ReturnType<typeof useSpaceMembers>;
   t: ReturnType<typeof useTranslations<"taskDetail">>;
 }) {
-  // The MockWorkItem.assignee.name currently holds the user-id (see toMockWorkItem).
+  // The WorkItemViewModel.assignee.name currently holds the user-id (see toMockWorkItem).
   // Resolve it through the cache when possible.
   const assigneeId = item.assignee.name || undefined;
   const assignee = displayUser(assigneeId, lookup.getMember);
@@ -509,6 +520,127 @@ function DetailTab({
 }
 
 // ---------------------------------------------------------------------------
+// Links / relations tab
+// ---------------------------------------------------------------------------
+
+function LinksPanel({
+  item,
+  spaceId,
+  organizationId,
+  t,
+  tApiError,
+}: {
+  item: WorkItemViewModel;
+  spaceId?: string;
+  organizationId?: string;
+  t: ReturnType<typeof useTranslations<"taskDetail">>;
+  tApiError: ReturnType<typeof useTranslations>;
+}) {
+  const [detail, setDetail] = useState<
+    | (Pick<
+        import("@project-delivery/shared").WorkItemDetail,
+        "versionId" | "requirementId" | "intakeItemId" | "reporterId"
+      > | null)
+  >(null);
+  const [loading, setLoading] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const { getMember } = useSpaceMembers(spaceId, organizationId);
+  const { getVersion } = useVersions(spaceId, organizationId);
+
+  useEffect(() => {
+    let cancelled = false;
+    setLoading(true);
+    setErrorMessage(null);
+
+    void (async () => {
+      try {
+        const result = await getWorkItem({
+          organizationId,
+          spaceId,
+          workItemId: item.id,
+        });
+        if (cancelled) return;
+        setDetail({
+          versionId: result.versionId,
+          requirementId: result.requirementId,
+          intakeItemId: result.intakeItemId,
+          reporterId: result.reporterId,
+        });
+      } catch (err) {
+        if (cancelled) return;
+        setErrorMessage(tApiError(getApiErrorMessageKey(err)));
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [item.id, organizationId, spaceId, tApiError]);
+
+  if (loading) {
+    return <LoadingState />;
+  }
+  if (errorMessage) {
+    return <ErrorState message={errorMessage} />;
+  }
+  if (!detail) {
+    return <EmptyState title={t("missingApi.title")} />;
+  }
+
+  const versionName = detail.versionId
+    ? (getVersion(detail.versionId)?.name ?? truncateId(detail.versionId))
+    : undefined;
+  const reporter = displayUser(detail.reporterId, getMember);
+
+  const links: { icon: typeof GitBranch; label: string; value: string }[] = [];
+  if (versionName) {
+    links.push({
+      icon: GitBranch,
+      label: t("fields.version"),
+      value: versionName,
+    });
+  }
+  if (detail.requirementId) {
+    links.push({
+      icon: Link2,
+      label: t("fields.requirement"),
+      value: truncateId(detail.requirementId),
+    });
+  }
+  if (detail.intakeItemId) {
+    links.push({
+      icon: Link2,
+      label: t("fields.intake"),
+      value: truncateId(detail.intakeItemId),
+    });
+  }
+  links.push({
+    icon: User2,
+    label: t("fields.reporter"),
+    value: reporter.name,
+  });
+
+  if (links.length === 0) {
+    return <EmptyState title={t("missingApi.title")} />;
+  }
+
+  return (
+    <div className="flex flex-col gap-2">
+      {links.map((link, idx) => (
+        <FieldRow
+          key={`${link.label}-${idx}`}
+          icon={link.icon}
+          label={link.label}
+          value={link.value}
+        />
+      ))}
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
 // Comments tab
 // ---------------------------------------------------------------------------
 
@@ -520,7 +652,7 @@ function CommentsTab({
   t,
   tApiError,
 }: {
-  item: MockWorkItem;
+  item: WorkItemViewModel;
   spaceId?: string;
   organizationId?: string;
   lookup: ReturnType<typeof useSpaceMembers>;
@@ -691,7 +823,7 @@ function AttachmentsTab({
   t,
   tApiError,
 }: {
-  item: MockWorkItem;
+  item: WorkItemViewModel;
   spaceId?: string;
   organizationId?: string;
   lookup: ReturnType<typeof useSpaceMembers>;
@@ -701,6 +833,9 @@ function AttachmentsTab({
   const [attachments, setAttachments] = useState<Attachment[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [uploadError, setUploadError] = useState<string | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   const fetchAttachments = useCallback(async () => {
     if (!spaceId) {
@@ -730,22 +865,71 @@ function AttachmentsTab({
     void fetchAttachments();
   }, [fetchAttachments]);
 
+  const handleFileChange = useCallback(
+    async (event: React.ChangeEvent<HTMLInputElement>) => {
+      const file = event.target.files?.[0];
+      event.target.value = "";
+      if (!file) {
+        return;
+      }
+      setUploadError(null);
+      setUploading(true);
+      try {
+        await uploadAttachment({
+          existingAttachmentCount: attachments.length,
+          file,
+          targetId: item.id,
+          targetType: "WORK_ITEM",
+        });
+        await fetchAttachments();
+      } catch (err) {
+        if (err instanceof AttachmentUploadError) {
+          setUploadError(tApiError(`api.error.attachment.${err.code}`));
+        } else {
+          setUploadError(tApiError(getApiErrorMessageKey(err)));
+        }
+      } finally {
+        setUploading(false);
+      }
+    },
+    [attachments.length, fetchAttachments, item.id, tApiError],
+  );
+
   return (
     <div className="flex h-full flex-col">
       <div className="flex items-center justify-between border-b border-border px-5 py-2.5">
         <span className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
           {t("tabs.attachments")}
         </span>
-        <Button
-          size="sm"
-          variant="outline"
-          className="h-7 text-xs"
-          onClick={() => alert(t("attachments.uploadTodo"))}
-        >
-          <Paperclip className="h-3 w-3" />
-          {t("attachments.uploadAction")}
-        </Button>
+        <div className="flex items-center gap-2">
+          <input
+            ref={fileInputRef}
+            type="file"
+            className="hidden"
+            onChange={handleFileChange}
+            disabled={uploading || !spaceId}
+          />
+          <Button
+            size="sm"
+            variant="outline"
+            className="h-7 text-xs"
+            disabled={uploading || !spaceId}
+            onClick={() => fileInputRef.current?.click()}
+          >
+            {uploading ? (
+              <Loader2 className="h-3 w-3 animate-spin" />
+            ) : (
+              <Paperclip className="h-3 w-3" />
+            )}
+            {t("attachments.uploadAction")}
+          </Button>
+        </div>
       </div>
+      {uploadError && (
+        <p className="border-b border-border bg-destructive/10 px-5 py-2 text-[11px] text-destructive">
+          {uploadError}
+        </p>
+      )}
       <div className="flex-1 overflow-y-auto">
         {loading ? (
           <LoadingState label={t("attachments.loading")} />
@@ -813,7 +997,7 @@ function TimelineTab({
   t,
   tApiError,
 }: {
-  item: MockWorkItem;
+  item: WorkItemViewModel;
   spaceId?: string;
   organizationId?: string;
   t: ReturnType<typeof useTranslations<"taskDetail">>;

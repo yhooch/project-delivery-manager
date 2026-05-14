@@ -19,7 +19,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { getApiErrorMessageKey } from "../../lib/api-error-messages";
 import { cn } from "../../lib/utils";
-import type { MockWorkItem } from "../../lib/v2/mock-data";
+import type { WorkItemViewModel } from "../../lib/v2/mock-data";
 import { getSpaceExceptionsView } from "../../lib/view-service";
 import { toMockWorkItem } from "../workbench/my-workbench";
 import { useSession } from "../providers/session-provider";
@@ -65,7 +65,7 @@ export function ExceptionsPage() {
   const [view, setView] = useState<GetSpaceExceptionsViewResponse | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [errorKey, setErrorKey] = useState<string | null>(null);
-  const [active, setActive] = useState<MockWorkItem | null>(null);
+  const [active, setActive] = useState<WorkItemViewModel | null>(null);
   const [open, setOpen] = useState(false);
 
   const organizationId = session?.defaultOrganizationId;

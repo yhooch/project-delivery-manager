@@ -1,6 +1,7 @@
 import { setRequestLocale } from "next-intl/server";
 
 import { RequirementDetailWorkspace } from "../../../../../components/requirement/requirement-detail-workspace";
+import { RequirementNotionShell } from "../../../../../components/requirement/requirement-notion-shell";
 import type { Locale } from "../../../../../i18n/locales";
 
 type RequirementDetailPageProps = {
@@ -16,5 +17,9 @@ export default async function RequirementDetailPage({
   const { locale, requirementId } = await params;
   setRequestLocale(locale);
 
-  return <RequirementDetailWorkspace requirementId={requirementId} />;
+  return (
+    <RequirementNotionShell>
+      <RequirementDetailWorkspace requirementId={requirementId} />
+    </RequirementNotionShell>
+  );
 }

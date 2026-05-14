@@ -381,6 +381,32 @@
     "logout": {
       "label": "Sign out",
       "ariaLabel": "Sign out"
+    },
+    "command": {
+      "placeholder": "Type a command or search tasks, bugs, requirements, intake",
+      "empty": "No results",
+      "searching": "Searching…",
+      "untitled": "Untitled",
+      "recent": "Recently opened",
+      "navigation": "Navigation",
+      "switchSpace": "Switch space",
+      "results": {
+        "tasks": "Tasks",
+        "bugs": "Bugs",
+        "requirements": "Requirements",
+        "intake": "Intake"
+      },
+      "nav": {
+        "workbench": "My workbench",
+        "overview": "Space overview",
+        "versions": "Versions",
+        "tasks": "Tasks",
+        "bugs": "Bugs",
+        "exceptions": "Exceptions",
+        "requirements": "Requirements",
+        "intake": "Intake",
+        "workflow": "Workflow"
+      }
     }
   },
   "onboarding": {
@@ -2155,7 +2181,13 @@
       },
       "copyVersion": {
         "title": "Copy as new version",
-        "description": "Create a new draft version. The new draft will be initialized from the latest version's states and actions.",
+        "description": "Create a new draft version. Pick a published source to seed the states and actions, or start blank.",
+        "fields": {
+          "sourceVersion": "Source version",
+          "emptySource": "Blank draft (no copy)",
+          "versionOption": "Version {version} · {status}",
+          "hint": "Defaults to the latest published version. Choose blank to skip copying any state or action."
+        },
         "submit": "Create draft version",
         "submitting": "Creating…",
         "cancel": "Cancel"
@@ -2441,7 +2473,9 @@
       "version": "Version",
       "due": "Due",
       "createdAt": "Created",
-      "updated": "Updated"
+      "updated": "Updated",
+      "requirement": "Linked requirement",
+      "intake": "Source intake"
     },
     "actions": {
       "label": "Available actions",

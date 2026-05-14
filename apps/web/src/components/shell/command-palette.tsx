@@ -102,6 +102,47 @@ function deriveCode(prefix: string, id: string) {
 }
 
 const PAGE_SIZE = 25;
+const RECENT_STORAGE_KEY = "pdm:command-palette:recent";
+const RECENT_MAX = 10;
+
+function readRecent(): SearchResult[] {
+  if (typeof window === "undefined") return [];
+  try {
+    const raw = window.localStorage.getItem(RECENT_STORAGE_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw) as unknown;
+    if (!Array.isArray(parsed)) return [];
+    return parsed
+      .filter(
+        (item): item is SearchResult =>
+          item !== null &&
+          typeof item === "object" &&
+          typeof (item as SearchResult).id === "string" &&
+          typeof (item as SearchResult).type === "string" &&
+          typeof (item as SearchResult).code === "string" &&
+          typeof (item as SearchResult).title === "string" &&
+          typeof (item as SearchResult).href === "string",
+      )
+      .slice(0, RECENT_MAX);
+  } catch {
+    return [];
+  }
+}
+
+function writeRecent(entry: SearchResult): SearchResult[] {
+  if (typeof window === "undefined") return [];
+  try {
+    const current = readRecent();
+    const next = [
+      entry,
+      ...current.filter((item) => item.id !== entry.id),
+    ].slice(0, RECENT_MAX);
+    window.localStorage.setItem(RECENT_STORAGE_KEY, JSON.stringify(next));
+    return next;
+  } catch {
+    return [];
+  }
+}
 
 export function CommandPalette() {
   const t = useTranslations("shell.command");
@@ -110,6 +151,7 @@ export function CommandPalette() {
   const [results, setResults] = useState<SearchResult[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [hasFetched, setHasFetched] = useState(false);
+  const [recent, setRecent] = useState<SearchResult[]>([]);
   const router = useRouter();
   const { setTheme } = useTheme();
   const { session, spacesForCurrentOrganization, switchSpace } = useSession();
@@ -127,6 +169,8 @@ export function CommandPalette() {
   useEffect(() => {
     if (!open) {
       setQuery("");
+    } else {
+      setRecent(readRecent());
     }
   }, [open]);
 
@@ -240,6 +284,11 @@ export function CommandPalette() {
     router.push(href);
   };
 
+  const navigateAndRemember = (item: SearchResult) => {
+    writeRecent(item);
+    navigate(item.href);
+  };
+
   const grouped = useMemo(() => {
     const out: Record<SearchResult["type"], SearchResult[]> = {
       TASK: [],
@@ -275,28 +324,28 @@ export function CommandPalette() {
                   <SearchGroup
                     heading={t("results.tasks")}
                     items={grouped.TASK}
-                    onSelect={navigate}
+                    onSelect={navigateAndRemember}
                   />
                 )}
                 {grouped.BUG.length > 0 && (
                   <SearchGroup
                     heading={t("results.bugs")}
                     items={grouped.BUG}
-                    onSelect={navigate}
+                    onSelect={navigateAndRemember}
                   />
                 )}
                 {grouped.REQUIREMENT.length > 0 && (
                   <SearchGroup
                     heading={t("results.requirements")}
                     items={grouped.REQUIREMENT}
-                    onSelect={navigate}
+                    onSelect={navigateAndRemember}
                   />
                 )}
                 {grouped.INTAKE.length > 0 && (
                   <SearchGroup
                     heading={t("results.intake")}
                     items={grouped.INTAKE}
-                    onSelect={navigate}
+                    onSelect={navigateAndRemember}
                   />
                 )}
               </>
@@ -305,6 +354,17 @@ export function CommandPalette() {
         ) : (
           <>
             <CommandEmpty>{t("empty")}</CommandEmpty>
+
+            {recent.length > 0 ? (
+              <>
+                <SearchGroup
+                  heading={t("recent")}
+                  items={recent}
+                  onSelect={navigateAndRemember}
+                />
+                <CommandSeparator />
+              </>
+            ) : null}
 
             <CommandGroup heading={t("navigation")}>
               <CommandItem onSelect={() => navigate("/")}>
@@ -431,7 +491,7 @@ function SearchGroup({
 }: {
   heading: string;
   items: SearchResult[];
-  onSelect: (href: string) => void;
+  onSelect: (item: SearchResult) => void;
 }) {
   return (
     <CommandGroup heading={heading}>
@@ -441,7 +501,7 @@ function SearchGroup({
           <CommandItem
             key={item.id}
             value={`${item.code} ${item.title}`}
-            onSelect={() => onSelect(item.href)}
+            onSelect={() => onSelect(item)}
           >
             <Icon className={typeIconColor[item.type]} />
             <span className="font-mono text-[10px] text-muted-foreground">

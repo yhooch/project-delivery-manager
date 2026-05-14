@@ -9,10 +9,7 @@ import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useState } from "react";
 
 import { getApiErrorMessageKey } from "../../lib/api-error-messages";
-import {
-  createWorkflowVersion,
-  listWorkflows,
-} from "../../lib/workflow-service";
+import { listWorkflows } from "../../lib/workflow-service";
 import { cn } from "../../lib/utils";
 import { useSession } from "../providers/session-provider";
 
@@ -32,7 +29,8 @@ const statusVariant: Record<WorkflowDefinitionStatus, "success" | "warning" | "d
 type WorkflowDialogState =
   | { kind: "closed" }
   | { kind: "create" }
-  | { kind: "edit"; workflow: WorkflowDefinition };
+  | { kind: "edit"; workflow: WorkflowDefinition }
+  | { kind: "copyVersion"; workflow: WorkflowDefinition };
 
 export function WorkflowPage() {
   const t = useTranslations("workflow");
@@ -46,7 +44,6 @@ export function WorkflowPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [errorKey, setErrorKey] = useState<string | null>(null);
   const [dialog, setDialog] = useState<WorkflowDialogState>({ kind: "closed" });
-  const [pendingCopyId, setPendingCopyId] = useState<string | null>(null);
   const [actionErrorKey, setActionErrorKey] = useState<string | null>(null);
 
   const loadWorkflows = useCallback(async () => {
@@ -80,31 +77,11 @@ export function WorkflowPage() {
   }, [loadWorkflows, spaceId, status]);
 
   const handleCopyAsNewVersion = useCallback(
-    async (workflow: WorkflowDefinition) => {
-      if (!spaceId) {
-        return;
-      }
-
-      setPendingCopyId(workflow.id);
+    (workflow: WorkflowDefinition) => {
       setActionErrorKey(null);
-
-      try {
-        await createWorkflowVersion(
-          {
-            organizationId,
-            spaceId,
-            workflowId: workflow.id,
-          },
-          {},
-        );
-        await loadWorkflows();
-      } catch (error) {
-        setActionErrorKey(getApiErrorMessageKey(error));
-      } finally {
-        setPendingCopyId(null);
-      }
+      setDialog({ kind: "copyVersion", workflow });
     },
-    [loadWorkflows, organizationId, spaceId],
+    [],
   );
 
   const headerNode = (
@@ -191,12 +168,9 @@ export function WorkflowPage() {
                   variant="ghost"
                   size="sm"
                   className="h-7 text-xs"
-                  disabled={pendingCopyId === wf.id}
-                  onClick={() => void handleCopyAsNewVersion(wf)}
+                  onClick={() => handleCopyAsNewVersion(wf)}
                 >
-                  {pendingCopyId === wf.id
-                    ? t("dialog.copyVersion.submitting")
-                    : t("page.copyAsNewVersion")}
+                  {t("page.copyAsNewVersion")}
                 </Button>
                 <Button
                   variant="outline"
@@ -236,7 +210,9 @@ export function WorkflowPage() {
           mode={
             dialog.kind === "edit"
               ? { kind: "edit", workflow: dialog.workflow }
-              : { kind: "create" }
+              : dialog.kind === "copyVersion"
+                ? { kind: "copyVersion", workflow: dialog.workflow }
+                : { kind: "create" }
           }
           onClose={() => setDialog({ kind: "closed" })}
           onSuccess={() => {

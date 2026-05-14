@@ -256,6 +256,10 @@ export const ListWorkflowsQuerySchema = PageQuerySchema;
 export const ListWorkflowsResponseSchema = pageResultSchema(
   WorkflowDefinitionSchema,
 );
+export const ListWorkflowVersionsQuerySchema = PageQuerySchema;
+export const ListWorkflowVersionsResponseSchema = pageResultSchema(
+  WorkflowVersionSchema,
+);
 export const CreateWorkflowDefinitionResponseSchema = WorkflowDefinitionSchema;
 export const GetWorkflowDefinitionResponseSchema = WorkflowDefinitionSchema;
 export const UpdateWorkflowDefinitionResponseSchema = WorkflowDefinitionSchema;

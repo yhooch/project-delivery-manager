@@ -9,8 +9,13 @@ import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { getApiErrorMessageKey } from "../../lib/api-error-messages";
-import type { MockWorkItem } from "../../lib/v2/mock-data";
+import { useSpaceMembers, useVersions } from "../../lib/v2/lookups";
+import type { WorkItemViewModel } from "../../lib/v2/mock-data";
 import { listWorkItems } from "../../lib/work-item-service";
+import type {
+  SpaceMemberWithUser,
+  Version,
+} from "@project-delivery/shared";
 
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
@@ -32,11 +37,14 @@ export function TasksPage() {
 
   const { currentSpace, status: sessionStatus } = useSession();
   const spaceId = currentSpace?.id;
+  const organizationId = currentSpace?.organizationId;
+  const { getMember } = useSpaceMembers(spaceId, organizationId);
+  const { getVersion } = useVersions(spaceId, organizationId);
 
   const [items, setItems] = useState<WorkItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [activeItem, setActiveItem] = useState<MockWorkItem | null>(null);
+  const [activeItem, setActiveItem] = useState<WorkItemViewModel | null>(null);
   const [sheetOpen, setSheetOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<StatusFilterKey>("all");
@@ -82,8 +90,14 @@ export function TasksPage() {
   );
 
   const mockItems = useMemo(
-    () => items.map((item) => toMockWorkItem(item, tStatus)),
-    [items, tStatus],
+    () =>
+      items.map((item) =>
+        toMockWorkItem(item, tStatus, {
+          getMember,
+          getVersion,
+        }),
+      ),
+    [getMember, getVersion, items, tStatus],
   );
 
   const filtered = useMemo(() => {
@@ -102,7 +116,7 @@ export function TasksPage() {
     });
   }, [mockItems, query, statusFilter]);
 
-  const open = (item: MockWorkItem) => {
+  const open = (item: WorkItemViewModel) => {
     setActiveItem(item);
     setSheetOpen(true);
   };
@@ -232,12 +246,21 @@ export function TasksPage() {
   );
 }
 
+type LookupHelpers = {
+  getMember: (userId: string) => SpaceMemberWithUser | undefined;
+  getVersion: (versionId: string) => Version | undefined;
+};
+
 function toMockWorkItem(
   item: WorkItem,
   tStatus: (key: StatusCategory) => string,
-): MockWorkItem {
+  lookups: LookupHelpers,
+): WorkItemViewModel {
   const code = deriveCode(item.id, item.type);
-  const initial = deriveInitial(item.assigneeId);
+  const member = item.assigneeId ? lookups.getMember(item.assigneeId) : undefined;
+  const assigneeName = member?.user.name ?? member?.user.username ?? item.assigneeId ?? "";
+  const initial = deriveInitial(assigneeName);
+  const version = item.versionId ? lookups.getVersion(item.versionId) : undefined;
   const dueDate = item.dueDate ? formatDate(item.dueDate) : undefined;
   const isOverdue = item.dueDate
     ? new Date(item.dueDate).getTime() < Date.now() &&
@@ -254,8 +277,8 @@ function toMockWorkItem(
     statusCategory: item.statusCategory,
     statusLabel: tStatus(item.statusCategory),
     priority: item.priority,
-    assignee: { name: item.assigneeId ?? "", initial },
-    versionName: undefined,
+    assignee: { name: assigneeName, initial },
+    versionName: version?.name,
     dueDate,
     isOverdue,
     isBlocked,
@@ -269,11 +292,15 @@ function deriveCode(id: string, type: "TASK" | "BUG"): string {
   return `${type}-${tail}`;
 }
 
-function deriveInitial(id?: string): string {
-  if (!id) {
+function deriveInitial(value?: string): string {
+  if (!value) {
     return "?";
   }
-  return id.slice(-1).toUpperCase();
+  const trimmed = value.trim();
+  if (!trimmed) {
+    return "?";
+  }
+  return trimmed.charAt(0).toUpperCase();
 }
 
 function formatDate(iso: string): string {

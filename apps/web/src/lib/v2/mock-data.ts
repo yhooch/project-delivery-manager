@@ -1,11 +1,11 @@
 import type { StatusCategory } from "@project-delivery/shared";
 
 /**
- * 前端展示用的工作项视图模型。
- * 真实 API 返回 `ViewWorkItemSummary | WorkItem | BugView` 时通过 `toMockWorkItem(locale)` 转换为该形状供详情抽屉等组件使用。
- * 名称含 "Mock" 是历史原因（最初做切片时用 mock 数据），后续可重命名为 `WorkItemViewModel`。
+ * Frontend view-model for work items (tasks + bugs).
+ * Real API responses `ViewWorkItemSummary | WorkItem | BugView` are mapped to this shape
+ * via `toWorkItemViewModel(locale)` for use by list rows, detail drawer, board cards, etc.
  */
-export type MockWorkItem = {
+export type WorkItemViewModel = {
   id: string;
   code: string;
   type: "TASK" | "BUG";

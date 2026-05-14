@@ -151,6 +151,21 @@ export class WorkflowConfigService {
     };
   }
 
+  async listVersions(
+    actorUserId: string,
+    workflowId: string,
+    input: WorkflowConfigListInput,
+  ): Promise<PageResult<WorkflowVersion>> {
+    const definition = await this.requireDefinition(workflowId);
+    await this.requireSpaceAccess(actorUserId, definition.spaceId);
+    const result = await this.workflows.listVersions(workflowId, input);
+
+    return {
+      ...result,
+      items: result.items.map(toWorkflowVersion),
+    };
+  }
+
   async createDefinition(
     actorUserId: string,
     spaceId: string,

@@ -41,6 +41,7 @@ export function ThemeToggle() {
           size="icon-sm"
           aria-label={t("label")}
           title={t("label")}
+          data-testid="theme-toggle"
         >
           <Icon className="h-3.5 w-3.5" />
         </Button>

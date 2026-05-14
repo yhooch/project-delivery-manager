@@ -20,6 +20,8 @@ import {
   ListWorkflowBindingsResponseSchema,
   ListWorkflowsQuerySchema,
   ListWorkflowsResponseSchema,
+  ListWorkflowVersionsQuerySchema,
+  ListWorkflowVersionsResponseSchema,
   PublishWorkflowVersionRequestSchema,
   PublishWorkflowVersionResponseSchema,
   UpdateActionFormFieldRequestSchema,
@@ -68,6 +70,10 @@ export type WorkflowSpaceContext = {
 
 export type ListWorkflowsInput = z.input<typeof ListWorkflowsQuerySchema> &
   WorkflowSpaceContext;
+export type ListWorkflowVersionsInput = z.input<
+  typeof ListWorkflowVersionsQuerySchema
+> &
+  WorkflowIdentityInput;
 export type ListWorkflowBindingsInput = z.input<
   typeof ListWorkflowBindingsQuerySchema
 > &
@@ -186,6 +192,27 @@ export async function updateWorkflow(
   const response = await api.patch<unknown>(`/workflows/${workflowId}`, body);
 
   return UpdateWorkflowDefinitionResponseSchema.parse(response.data);
+}
+
+export async function listWorkflowVersions(
+  input: ListWorkflowVersionsInput,
+  api: WorkflowApiTransport = defaultApi,
+): Promise<PageResult<WorkflowVersion>> {
+  const {
+    organizationId: _organizationId,
+    spaceId: _spaceId,
+    workflowId,
+    ...filters
+  } = input;
+  const query = ListWorkflowVersionsQuerySchema.parse(filters);
+  const response = await api.get<unknown>(
+    `/workflows/${workflowId}/versions`,
+    {
+      query,
+    },
+  );
+
+  return ListWorkflowVersionsResponseSchema.parse(response.data);
 }
 
 export async function createWorkflowVersion(

@@ -250,6 +250,10 @@ export type WorkflowConfigRepository = {
     spaceId: string,
     input: WorkflowConfigListInput,
   ): Promise<PageResult<WorkflowDefinitionRecord>>;
+  listVersions(
+    workflowId: string,
+    input: WorkflowConfigListInput,
+  ): Promise<PageResult<WorkflowVersionRecord>>;
   publishVersion(
     input: PublishWorkflowVersionInput,
   ): Promise<WorkflowVersionRecord | undefined>;

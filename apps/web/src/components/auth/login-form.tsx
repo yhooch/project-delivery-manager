@@ -110,6 +110,7 @@ export function LoginForm() {
           disabled={isSubmitting}
           size="lg"
           className="mt-2 w-full"
+          data-testid="login-submit"
         >
           {isSubmitting ? t("form.submitting") : t("form.submit")}
           {!isSubmitting && <ArrowRight className="h-3.5 w-3.5" />}

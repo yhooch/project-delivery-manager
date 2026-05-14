@@ -2,14 +2,14 @@
 
 import { Bug, CheckCircle2 } from "lucide-react";
 
-import type { MockWorkItem } from "../../lib/v2/mock-data";
+import type { WorkItemViewModel } from "../../lib/v2/mock-data";
 import { cn } from "../../lib/utils";
 
 import { Avatar, AvatarFallback } from "../ui/avatar";
 import { Badge } from "../ui/badge";
 import { StatusBadge } from "../ui/status-badge";
 
-const priorityDot: Record<MockWorkItem["priority"], string> = {
+const priorityDot: Record<WorkItemViewModel["priority"], string> = {
   LOW: "bg-muted-foreground/40",
   MEDIUM: "bg-info",
   HIGH: "bg-warning",
@@ -17,8 +17,8 @@ const priorityDot: Record<MockWorkItem["priority"], string> = {
 };
 
 export type WorkItemRowProps = {
-  item: MockWorkItem;
-  onSelect: (item: MockWorkItem) => void;
+  item: WorkItemViewModel;
+  onSelect: (item: WorkItemViewModel) => void;
 };
 
 export function WorkItemRow({ item, onSelect }: WorkItemRowProps) {

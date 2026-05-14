@@ -7,6 +7,7 @@ import {
   type PageResult,
   type RecordStatus,
   type UpdateOrganizationMemberRequest,
+  type UpdateOrganizationRequest,
 } from "@project-delivery/shared";
 import { ulid } from "ulid";
 
@@ -189,6 +190,43 @@ export class OrganizationService {
       throw new ApiException(
         "ORGANIZATION_MEMBER_NOT_FOUND",
         "Organization member not found",
+        HttpStatus.NOT_FOUND,
+      );
+    }
+
+    return updated;
+  }
+
+  async update(
+    actorUserId: string,
+    organizationId: string,
+    input: UpdateOrganizationRequest,
+  ): Promise<Organization> {
+    await this.requireOrganizationManager(actorUserId, organizationId);
+
+    if (input.code) {
+      const existing = await this.organizations.findByCode(input.code);
+      if (existing && existing.id !== organizationId) {
+        throw new ApiException(
+          "CONFLICT",
+          "Organization code already in use",
+          HttpStatus.CONFLICT,
+        );
+      }
+    }
+
+    const updated = await this.organizations.updateOrganization({
+      organizationId,
+      name: input.name,
+      code: input.code,
+      status: input.status,
+      updatedById: actorUserId,
+    });
+
+    if (!updated) {
+      throw new ApiException(
+        "NOT_FOUND",
+        "Organization not found",
         HttpStatus.NOT_FOUND,
       );
     }

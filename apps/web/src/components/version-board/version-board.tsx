@@ -19,7 +19,7 @@ import { useLocale, useTranslations } from "next-intl";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { getApiErrorMessageKey } from "../../lib/api-error-messages";
-import type { MockWorkItem } from "../../lib/v2/mock-data";
+import type { WorkItemViewModel } from "../../lib/v2/mock-data";
 import { cn } from "../../lib/utils";
 import { useSession } from "../providers/session-provider";
 import { listVersions } from "../../lib/version-service";
@@ -57,7 +57,7 @@ const COLUMN_DOT: Record<StatusCategory, string> = {
   TERMINATED: "bg-muted-foreground/60",
 };
 
-const priorityDotColor: Record<MockWorkItem["priority"], string> = {
+const priorityDotColor: Record<WorkItemViewModel["priority"], string> = {
   LOW: "bg-muted-foreground/40",
   MEDIUM: "bg-info",
   HIGH: "bg-warning",
@@ -79,7 +79,7 @@ export function VersionBoard() {
   const [isLoadingVersions, setIsLoadingVersions] = useState(false);
   const [isLoadingBoard, setIsLoadingBoard] = useState(false);
   const [errorKey, setErrorKey] = useState<string | null>(null);
-  const [activeItem, setActiveItem] = useState<MockWorkItem | null>(null);
+  const [activeItem, setActiveItem] = useState<WorkItemViewModel | null>(null);
   const [sheetOpen, setSheetOpen] = useState(false);
 
   const fetchVersions = useCallback(async () => {

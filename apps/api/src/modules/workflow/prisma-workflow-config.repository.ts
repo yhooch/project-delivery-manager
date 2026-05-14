@@ -181,6 +181,32 @@ export class PrismaWorkflowConfigRepository
     };
   }
 
+  async listVersions(workflowId: string, input: WorkflowConfigListInput) {
+    const where = {
+      deletedAt: null,
+      workflowId,
+    };
+    const [items, total] = await this.prisma.client.$transaction([
+      this.prisma.client.workflowVersion.findMany({
+        include: VERSION_INCLUDE,
+        orderBy: { version: "desc" as const },
+        skip: (input.page - 1) * input.pageSize,
+        take: input.pageSize,
+        where,
+      }),
+      this.prisma.client.workflowVersion.count({
+        where,
+      }),
+    ]);
+
+    return {
+      items: items.map(toVersionRecord),
+      page: input.page,
+      pageSize: input.pageSize,
+      total,
+    };
+  }
+
   async createDefinition(input: CreateWorkflowDefinitionInput) {
     const definition = await this.prisma.client.workflowDefinition.create({
       data: {

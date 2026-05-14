@@ -19,7 +19,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { getApiErrorMessageKey } from "../../lib/api-error-messages";
 import { cn } from "../../lib/utils";
-import type { MockWorkItem } from "../../lib/v2/mock-data";
+import type { WorkItemViewModel } from "../../lib/v2/mock-data";
 import { getMyWorkbenchView } from "../../lib/view-service";
 import { useSession } from "../providers/session-provider";
 
@@ -31,7 +31,7 @@ import { StatusBadge } from "../ui/status-badge";
 import { EmptyState, ErrorState, ListSkeleton } from "../v2/states";
 import { TaskDetailSheet } from "../work-item/task-detail-sheet";
 
-const priorityDotColor: Record<MockWorkItem["priority"], string> = {
+const priorityDotColor: Record<WorkItemViewModel["priority"], string> = {
   LOW: "bg-muted-foreground/40",
   MEDIUM: "bg-info",
   HIGH: "bg-warning",
@@ -46,7 +46,7 @@ export function MyWorkbench() {
   const [view, setView] = useState<GetMyWorkbenchViewResponse | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [errorKey, setErrorKey] = useState<string | null>(null);
-  const [activeItem, setActiveItem] = useState<MockWorkItem | null>(null);
+  const [activeItem, setActiveItem] = useState<WorkItemViewModel | null>(null);
   const [sheetOpen, setSheetOpen] = useState(false);
 
   const organizationId = session?.defaultOrganizationId;
@@ -112,7 +112,7 @@ export function MyWorkbench() {
     };
   }, [organizationId, spaceId]);
 
-  const openItem = (item: MockWorkItem) => {
+  const openItem = (item: WorkItemViewModel) => {
     setActiveItem(item);
     setSheetOpen(true);
   };
@@ -140,8 +140,9 @@ export function MyWorkbench() {
   const todoCount = view?.sections.myTodos.total ?? todoItems.length;
   const actionCount = view?.sections.actionTodos.total ?? actionItems.length;
   const dueSoonCount = view?.sections.dueSoon.total ?? dueSoonItems.length;
-  const blockedCount = stats?.blockedCount ?? 0;
-  const pendingConfirmCount = stats?.pendingConfirmCount ?? 0;
+  // Show "—" if backend view did not include stats (graceful degradation).
+  const blockedCount: number | undefined = stats?.blockedCount;
+  const pendingConfirmCount: number | undefined = stats?.pendingConfirmCount;
 
   if (!session) {
     return (
@@ -332,7 +333,7 @@ function SummaryChip({
 }: {
   icon: LucideIcon;
   tone: SummaryTone;
-  value: number;
+  value: number | undefined;
   label: string;
 }) {
   return (
@@ -341,7 +342,9 @@ function SummaryChip({
         <Icon className="h-4 w-4" />
       </div>
       <div className="flex flex-col">
-        <span className="text-lg font-semibold leading-none">{value}</span>
+        <span className="text-lg font-semibold leading-none">
+          {typeof value === "number" ? value : "—"}
+        </span>
         <span className="mt-1 text-[11px] text-muted-foreground">{label}</span>
       </div>
     </div>
@@ -388,8 +391,8 @@ function ItemList({
   items,
   onSelect,
 }: {
-  items: MockWorkItem[];
-  onSelect: (item: MockWorkItem) => void;
+  items: WorkItemViewModel[];
+  onSelect: (item: WorkItemViewModel) => void;
 }) {
   return (
     <ul className="divide-y divide-border">
@@ -461,7 +464,7 @@ const STATUS_LABEL_EN: Record<StatusCategory, string> = {
 export function toMockWorkItem(locale: string) {
   const labels = locale.startsWith("zh") ? STATUS_LABEL_ZH : STATUS_LABEL_EN;
 
-  return (item: ViewWorkItemSummary): MockWorkItem => {
+  return (item: ViewWorkItemSummary): WorkItemViewModel => {
     const code = `${item.type === "BUG" ? "BUG" : "TASK"}-${item.id.slice(-6).toUpperCase()}`;
     const isOverdue = item.exceptionSignals.some(
       (signal) => signal.type === "overdue",

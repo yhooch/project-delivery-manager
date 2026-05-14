@@ -830,6 +830,22 @@ class InMemoryOrganizationRepository implements OrganizationRepository {
     return this.toMemberWithUser(member);
   }
 
+  async updateOrganization(input: {
+    organizationId: string;
+    name?: string;
+    code?: string;
+    status?: RecordStatus;
+  }): Promise<Organization | undefined> {
+    const organization = this.organizations.get(input.organizationId);
+    if (!organization) {
+      return undefined;
+    }
+    if (input.name !== undefined) organization.name = input.name;
+    if (input.code !== undefined) organization.code = input.code;
+    if (input.status !== undefined) organization.status = input.status;
+    return organization;
+  }
+
   private accessibleOrganizations(userId: string): Organization[] {
     return this.members
       .filter((member) => member.userId === userId && member.status === "ACTIVE")

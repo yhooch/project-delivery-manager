@@ -2,6 +2,7 @@ import type {
   AddOrganizationMemberRequest,
   AddSpaceMemberRequest,
   CreateSpaceRequest,
+  Organization,
   PageResult,
   OrganizationMemberWithUser,
   RecordStatus,
@@ -11,6 +12,7 @@ import type {
   SpaceRole,
   SpaceSummary,
   UpdateOrganizationMemberRequest,
+  UpdateOrganizationRequest,
   UpdateSpaceMemberRequest,
   UpdateSpaceRequest,
 } from "@project-delivery/shared";
@@ -72,6 +74,19 @@ export async function updateOrganizationMember(
 ): Promise<OrganizationMemberWithUser> {
   const response = await api.patch<OrganizationMemberWithUser>(
     `/organizations/${organizationId}/members/${memberId}`,
+    input,
+  );
+
+  return response.data;
+}
+
+export async function updateOrganization(
+  organizationId: string,
+  input: UpdateOrganizationRequest,
+  api: WorkspaceApiTransport = defaultApi,
+): Promise<Organization> {
+  const response = await api.patch<Organization>(
+    `/organizations/${organizationId}`,
     input,
   );
 

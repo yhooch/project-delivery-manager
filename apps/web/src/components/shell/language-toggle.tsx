@@ -38,6 +38,7 @@ export function LanguageToggle() {
           size="icon-sm"
           aria-label={t("label")}
           title={t("label")}
+          data-testid="language-toggle"
         >
           <Languages className="h-3.5 w-3.5" />
         </Button>
