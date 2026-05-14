@@ -167,7 +167,10 @@ export function MyWorkbench() {
 
   if (!session) {
     return (
-      <div className="mx-auto flex max-w-6xl flex-col gap-6 px-6 py-6">
+      <div
+        data-testid="workbench-page"
+        className="mx-auto flex max-w-6xl flex-col gap-6 px-6 py-6"
+      >
         <EmptyState
           title={t("empty.signIn.title")}
           description={t("empty.signIn.description")}
@@ -178,7 +181,10 @@ export function MyWorkbench() {
 
   if (!organizationId) {
     return (
-      <div className="mx-auto flex max-w-6xl flex-col gap-6 px-6 py-6">
+      <div
+        data-testid="workbench-page"
+        className="mx-auto flex max-w-6xl flex-col gap-6 px-6 py-6"
+      >
         <EmptyState
           title={t("empty.noOrganization.title")}
           description={t("empty.noOrganization.description")}
@@ -189,7 +195,10 @@ export function MyWorkbench() {
 
   if (errorKey) {
     return (
-      <div className="mx-auto flex max-w-6xl flex-col gap-6 px-6 py-6">
+      <div
+        data-testid="workbench-page"
+        className="mx-auto flex max-w-6xl flex-col gap-6 px-6 py-6"
+      >
         <ErrorState
           title={t("errorTitle")}
           message={tRoot(errorKey)}
@@ -200,7 +209,10 @@ export function MyWorkbench() {
   }
 
   return (
-    <div className="mx-auto flex max-w-6xl flex-col gap-6 px-6 py-6">
+    <div
+      data-testid="workbench-page"
+      className="mx-auto flex max-w-6xl flex-col gap-6 px-6 py-6"
+    >
       <div className="flex items-end justify-between">
         <div>
           <div className="text-[11px] font-medium uppercase tracking-wider text-primary">
@@ -218,7 +230,10 @@ export function MyWorkbench() {
       </div>
 
       {/* Summary chips */}
-      <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+      <div
+        data-testid="workbench-summary"
+        className="grid grid-cols-2 gap-3 md:grid-cols-4"
+      >
         <SummaryChip
           icon={Inbox}
           tone="primary"

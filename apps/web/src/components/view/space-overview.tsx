@@ -129,7 +129,7 @@ export function SpaceOverview() {
 
   if (!session) {
     return (
-      <div className="flex h-full flex-col">
+      <div data-testid="space-overview-page" className="flex h-full flex-col">
         <PageHeader
           eyebrow={tNav("group.deliver")}
           title={tNav("overview")}
@@ -147,7 +147,7 @@ export function SpaceOverview() {
 
   if (!spaceId) {
     return (
-      <div className="flex h-full flex-col">
+      <div data-testid="space-overview-page" className="flex h-full flex-col">
         <PageHeader
           eyebrow={tNav("group.deliver")}
           title={tNav("overview")}
@@ -191,7 +191,7 @@ export function SpaceOverview() {
     : t("currentVersion.noDate");
 
   return (
-    <div className="flex h-full flex-col">
+    <div data-testid="space-overview-page" className="flex h-full flex-col">
       <PageHeader
         eyebrow={currentSpace?.name ?? tNav("group.deliver")}
         title={tNav("overview")}
@@ -259,7 +259,10 @@ export function SpaceOverview() {
             </section>
 
             {/* KPI grid */}
-            <section className="grid grid-cols-2 gap-3 md:grid-cols-4">
+            <section
+              data-testid="space-overview-kpi-grid"
+              className="grid grid-cols-2 gap-3 md:grid-cols-4"
+            >
               <KpiCard
                 icon={FileText}
                 tone="info"

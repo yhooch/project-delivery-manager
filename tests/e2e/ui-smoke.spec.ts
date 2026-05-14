@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+import { expect, test } from "./support/ui-test";
 
 import { e2eEnv } from "./support/m0-env";
 import { buildUiRunId, skipWhenUiEnvironmentUnavailable } from "./support/ui-env";

@@ -68,6 +68,7 @@ vi.mock("../../lib/v2/lookups", () => ({
 
 // Service mocks (hoisted so factories can wire them).
 const {
+  getBugMock,
   getWorkItemMock,
   executeActionMock,
   listCommentsMock,
@@ -76,6 +77,7 @@ const {
   uploadAttachmentMock,
   listTimelineMock,
 } = vi.hoisted(() => ({
+  getBugMock: vi.fn(),
   getWorkItemMock: vi.fn(),
   executeActionMock: vi.fn(),
   listCommentsMock: vi.fn(),
@@ -88,6 +90,9 @@ const {
 vi.mock("../../lib/work-item-service", () => ({
   getWorkItem: getWorkItemMock,
   listWorkItems: vi.fn(),
+}));
+vi.mock("../../lib/bug-service", () => ({
+  getBug: getBugMock,
 }));
 vi.mock("../../lib/action-service", () => ({
   executeAction: executeActionMock,
@@ -182,9 +187,26 @@ function makeDetailResponse(
   };
 }
 
+function makeBugResponse(overrides: Record<string, unknown> = {}) {
+  return {
+    ...makeDetailResponse({
+      type: "BUG",
+      ...overrides,
+    }),
+    bugDetail: {
+      actualResult: "Actual",
+      expectedResult: "Expected",
+      severity: "MAJOR",
+      stepsToReproduce: "Steps",
+      workItemId: "01ARZ3NDEKTSV4RRFFQ69G5FA1",
+    },
+  };
+}
+
 beforeEach(() => {
   memberMap.clear();
   versionMap.clear();
+  getBugMock.mockReset();
   getWorkItemMock.mockReset();
   executeActionMock.mockReset();
   listCommentsMock.mockReset();
@@ -194,6 +216,7 @@ beforeEach(() => {
   listTimelineMock.mockReset();
 
   // Default success values to prevent fallbacks from masking failures.
+  getBugMock.mockResolvedValue(makeBugResponse());
   getWorkItemMock.mockResolvedValue(makeDetailResponse());
   listCommentsMock.mockResolvedValue({ items: [], total: 0 });
   listAttachmentsMock.mockResolvedValue({ items: [], total: 0 });
@@ -245,6 +268,37 @@ describe("TaskDetailSheet", () => {
     await waitFor(() => expect(getWorkItemMock).toHaveBeenCalled());
     expect(
       await screen.findByText("taskDetail.actions.empty"),
+    ).toBeInTheDocument();
+  });
+
+  it("loads bug permissions through the bug detail endpoint", async () => {
+    getBugMock.mockResolvedValueOnce(
+      makeBugResponse({
+        permissions: {
+          canEdit: true,
+          canComment: true,
+          canUploadAttachment: true,
+          availableActions: [makeAction({ id: "01B1", name: "Confirm bug" })],
+        },
+      }),
+    );
+
+    render(
+      <TaskDetailSheet
+        item={makeViewModel({ type: "BUG", title: "Bug detail" })}
+        open
+        onOpenChange={() => {}}
+      />,
+    );
+
+    await waitFor(() => expect(getBugMock).toHaveBeenCalledWith({
+      bugId: "01ARZ3NDEKTSV4RRFFQ69G5FA1",
+      organizationId: "ORG_01",
+      spaceId: "SPC_01",
+    }));
+    expect(getWorkItemMock).not.toHaveBeenCalled();
+    expect(
+      await screen.findByRole("button", { name: "Confirm bug" }),
     ).toBeInTheDocument();
   });
 
@@ -570,6 +624,28 @@ describe("TaskDetailSheet", () => {
     await activateTab(/links/i);
     await waitFor(() => expect(getWorkItemMock).toHaveBeenCalled());
     expect(await screen.findByText("Sprint 2026.5")).toBeInTheDocument();
+  });
+
+  it("loads bug relation data from the bug detail endpoint on the links tab", async () => {
+    versionMap.set("01ARZ3NDEKTSV4RRFFQ69G5FV1", { name: "Bugfix train" });
+    getBugMock.mockResolvedValue(
+      makeBugResponse({
+        versionId: "01ARZ3NDEKTSV4RRFFQ69G5FV1",
+      }),
+    );
+
+    render(
+      <TaskDetailSheet
+        item={makeViewModel({ type: "BUG", title: "Linked bug" })}
+        open
+        onOpenChange={() => {}}
+      />,
+    );
+
+    await activateTab(/links/i);
+    await waitFor(() => expect(getBugMock).toHaveBeenCalled());
+    expect(getWorkItemMock).not.toHaveBeenCalled();
+    expect(await screen.findByText("Bugfix train")).toBeInTheDocument();
   });
 
   it("renders the empty placeholder when item is null", () => {

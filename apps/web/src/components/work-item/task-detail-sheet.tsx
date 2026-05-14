@@ -5,6 +5,7 @@ import type {
   Comment,
   PermissionSnapshot,
   TimelineEvent,
+  WorkItemDetail,
   WorkflowActionSummary,
 } from "@project-delivery/shared";
 import {
@@ -32,6 +33,7 @@ import {
   uploadAttachment,
 } from "../../lib/attachment-service";
 import { executeAction } from "../../lib/action-service";
+import { getBug } from "../../lib/bug-service";
 import { createComment, listComments } from "../../lib/comment-service";
 import { listTimeline } from "../../lib/timeline-service";
 import { cn } from "../../lib/utils";
@@ -45,7 +47,13 @@ import { Badge } from "../ui/badge";
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
 import { Kbd } from "../ui/kbd";
-import { Sheet, SheetContent, SheetHeader, SheetTitle } from "../ui/sheet";
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+} from "../ui/sheet";
 import { StatusBadge } from "../ui/status-badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../ui/tabs";
 import { EmptyState, ErrorState, LoadingState } from "../v2/states";
@@ -116,6 +124,38 @@ function formatDateTime(value: string, locale: string): string {
   }
 }
 
+type SheetDetail = Pick<
+  WorkItemDetail,
+  "versionId" | "requirementId" | "intakeItemId" | "reporterId"
+> & {
+  permissions?: PermissionSnapshot;
+};
+
+async function loadSheetDetail({
+  item,
+  organizationId,
+  spaceId,
+}: {
+  item: Pick<WorkItemViewModel, "id" | "type">;
+  organizationId?: string;
+  spaceId?: string;
+}): Promise<SheetDetail> {
+  if (item.type === "BUG") {
+    const bug = await getBug({
+      bugId: item.id,
+      organizationId,
+      spaceId: spaceId ?? "",
+    });
+    return bug;
+  }
+
+  return getWorkItem({
+    organizationId,
+    spaceId,
+    workItemId: item.id,
+  });
+}
+
 export function TaskDetailSheet({
   item,
   open,
@@ -136,6 +176,10 @@ export function TaskDetailSheet({
     return (
       <Sheet open={open} onOpenChange={onOpenChange}>
         <SheetContent data-testid="task-detail-sheet" data-state-empty="true">
+          <SheetHeader className="sr-only">
+            <SheetTitle>{t("emptyTitle")}</SheetTitle>
+            <SheetDescription>{t("emptyDescription")}</SheetDescription>
+          </SheetHeader>
           <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
             {t("empty")}
           </div>
@@ -178,7 +222,7 @@ function TaskDetailSheetBody({
   const isBug = item.type === "BUG";
   const lookup = useSpaceMembers(spaceId, organizationId);
   const permissionState = useWorkItemPermissions({
-    itemId: item.id,
+    item,
     organizationId,
     spaceId,
     tApiError,
@@ -204,6 +248,9 @@ function TaskDetailSheetBody({
         <SheetTitle className="mt-1 text-base leading-snug">
           {item.title}
         </SheetTitle>
+        <SheetDescription className="sr-only">
+          {isBug ? t("sheetDescription.bug") : t("sheetDescription.task")}
+        </SheetDescription>
         <div className="mt-3 flex flex-wrap items-center gap-2">
           <StatusBadge
             category={item.statusCategory}
@@ -381,16 +428,16 @@ type WorkItemPermissionState = {
   fetchPermissions: () => Promise<void>;
   loading: boolean;
   permissions: PermissionSnapshot | null;
-  setPermissions: (permissions: PermissionSnapshot) => void;
+  setPermissions: (permissions: PermissionSnapshot | null) => void;
 };
 
 function useWorkItemPermissions({
-  itemId,
+  item,
   organizationId,
   spaceId,
   tApiError,
 }: {
-  itemId: string;
+  item: Pick<WorkItemViewModel, "id" | "type">;
   organizationId?: string;
   spaceId?: string;
   tApiError: ReturnType<typeof useTranslations>;
@@ -406,19 +453,15 @@ function useWorkItemPermissions({
     setError(null);
 
     try {
-      const detail = await getWorkItem({
-        organizationId,
-        spaceId,
-        workItemId: itemId,
-      });
-      setPermissions(detail.permissions);
+      const detail = await loadSheetDetail({ item, organizationId, spaceId });
+      setPermissions(detail.permissions ?? null);
     } catch (err) {
       const key = getApiErrorMessageKey(err);
       setError(tApiError(key));
     } finally {
       setLoading(false);
     }
-  }, [itemId, organizationId, spaceId, tApiError]);
+  }, [item, organizationId, spaceId, tApiError]);
 
   useEffect(() => {
     void fetchPermissions();
@@ -614,7 +657,7 @@ function LinksPanel({
   tApiError: ReturnType<typeof useTranslations>;
 }) {
   const [detail, setDetail] = useState<Pick<
-    import("@project-delivery/shared").WorkItemDetail,
+    WorkItemDetail,
     "versionId" | "requirementId" | "intakeItemId" | "reporterId"
   > | null>(null);
   const [loading, setLoading] = useState(false);
@@ -629,11 +672,7 @@ function LinksPanel({
 
     void (async () => {
       try {
-        const result = await getWorkItem({
-          organizationId,
-          spaceId,
-          workItemId: item.id,
-        });
+        const result = await loadSheetDetail({ item, organizationId, spaceId });
         if (cancelled) return;
         setDetail({
           versionId: result.versionId,
@@ -652,7 +691,7 @@ function LinksPanel({
     return () => {
       cancelled = true;
     };
-  }, [item.id, organizationId, spaceId, tApiError]);
+  }, [item, organizationId, spaceId, tApiError]);
 
   if (loading) {
     return <LoadingState />;

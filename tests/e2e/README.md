@@ -5,7 +5,7 @@ End-to-end suites driven by Playwright. The folder mixes two flavours:
 | Flavour             | Files                                                                                                                                                                                                                                                                                                                          | Default behaviour                                                                                                     |
 | ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------- |
 | API E2E (HTTP only) | `m0-main-flow.api.spec.ts`, `m3-main-flow.api.spec.ts`, `m4-mvp-main-flow.api.spec.ts`                                                                                                                                                                                                                                         | skipped unless the matching `E2E_M{0,3,4}_ENABLED=1` and `E2E_DB_READY=1` are exported and the API/Web probes succeed |
-| UI E2E (browser)    | `ui-smoke.spec.ts`, `ui-command-palette.spec.ts`, `ui-org-switcher.spec.ts`, `ui-requirements-create.spec.ts`, `ui-tasks-create.spec.ts`, `ui-task-comments.spec.ts`, `ui-bugs-flow.spec.ts`, `ui-intake-flow.spec.ts`, `ui-version-exceptions-flow.spec.ts`, `ui-settings-organization.spec.ts`, `ui-workflow-config.spec.ts` | skipped unless `E2E_UI_ENABLED=1` AND `E2E_DB_READY=1` AND both probes succeed (see `support/ui-env.ts`)              |
+| UI E2E (browser)    | `ui-smoke.spec.ts`, `ui-command-palette.spec.ts`, `ui-org-switcher.spec.ts`, `ui-workbench-overview.spec.ts`, `ui-requirements-create.spec.ts`, `ui-tasks-create.spec.ts`, `ui-task-comments.spec.ts`, `ui-bugs-flow.spec.ts`, `ui-intake-flow.spec.ts`, `ui-version-exceptions-flow.spec.ts`, `ui-settings-organization.spec.ts`, `ui-workflow-config.spec.ts` | skipped unless `E2E_UI_ENABLED=1` AND `E2E_DB_READY=1` AND both probes succeed (see `support/ui-env.ts`)              |
 
 Running the UI suite for real requires a fully wired stack: Postgres + migrated
 schema + API on `:3001` + Web on `:3000`. The orchestrator script below
@@ -83,3 +83,11 @@ most useful overrides:
 - The UI specs themselves are **not modified** by this orchestrator; they
   continue to self-skip unless their preconditions are satisfied. The
   orchestrator's job is purely to satisfy those preconditions in one go.
+- UI specs must import `test`/`expect` from `support/ui-test.ts`, not directly
+  from `@playwright/test`. The shared fixture fails on unexpected HTTP
+  `4xx/5xx`, `requestfailed`, `console.error`, `console.warning`, and
+  `pageerror` events, with only browser metadata/source-map noise and the
+  initial unauthenticated `GET /api/v1/auth/session` 401 before the first
+  successful session/register/login response whitelisted. Do not rely only on
+  container visibility; assert the backing API contract that makes the UI state
+  meaningful.

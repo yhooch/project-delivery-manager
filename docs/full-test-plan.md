@@ -21,6 +21,14 @@
 
 以下 79 个 shared API operation 必须全部被本计划矩阵覆盖；若后续新增、删除或改名，应同步更新本节、功能矩阵和自动化测试。
 
+覆盖要求不是仅在文档中列名。每个 operation 都必须至少满足以下一种可执行证明：
+
+- 有 API E2E 或 service/component test 直接调用对应前端 service 或后端 endpoint，并校验 shared response schema 或关键业务断言。
+- 有 UI E2E 触发对应接口，并通过网络断言校验接口路径、状态码和关键响应结果。
+- 因安全、上传时效、性能或第三方环境限制暂不能自动化时，必须在验收记录中标注手工步骤、测试数据、执行人、执行时间和风险等级。
+
+任何新增或改名 operation 必须同步更新本计划；`packages/shared` 测试会校验 `apiContracts` 中的 operationId 均出现在本文件中。
+
 | 域                          | operationId                                                                                                                                                                                                            |
 | --------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | auth/user                   | `register`、`login`、`logout`、`getAuthSession`、`updateUserPreferences`、`changePassword`                                                                                                                             |
@@ -184,6 +192,17 @@ corepack pnpm --filter @project-delivery/shared openapi:generate
 - Dialog/Sheet 关闭后焦点回到触发按钮。
 - 所有禁用按钮同时有视觉禁用和 `aria-disabled` 或原生 disabled。
 
+### P1 UI 运行期错误门禁
+
+所有真实 UI E2E 不得只断言页面容器或抽屉可见；必须通过 `tests/e2e/support/ui-test.ts` 默认收集当前用例触发的运行期错误：
+
+- Playwright `response` 中未列入白名单的 HTTP `4xx/5xx` 必须导致用例失败。
+- Playwright `requestfailed` 必须导致用例失败，除非用例显式验证该失败路径。
+- Playwright `console.error`、`console.warning` 和 `pageerror` 必须导致用例失败；只允许浏览器元数据、source map、成功认证前的初始 `/api/v1/auth/session` 401 等非业务基线噪声白名单。
+- 关键详情抽屉必须断言其事实源接口返回成功，例如任务详情使用 `GET /work-items/:workItemId`，Bug 详情使用 `GET /bugs/:bugId`。
+- 组件复用场景必须断言复用边界：Bug 抽屉可以复用评论、附件、时间线和流程动作的 `WORK_ITEM` 目标，但不得用 `GET /work-items/:bugId` 加载 Bug 详情或权限快照。
+- 后续新增 UI E2E spec 必须从 `./support/ui-test` 导入 `test/expect`，不得直接从 `@playwright/test` 导入，以免绕过运行期错误门禁。
+
 ## 全量功能测试矩阵
 
 ### M0 认证、Session 与工程基础
@@ -327,11 +346,11 @@ corepack pnpm --filter @project-delivery/shared openapi:generate
 
 | ID     | 场景       | 验证点                                               | 层级       |
 | ------ | ---------- | ---------------------------------------------------- | ---------- |
-| BUG-01 | 创建 Bug   | 独立入口创建 `BUG`，`bugId === workItemId`           | API E2E/UI |
+| BUG-01 | 创建 Bug   | 独立入口创建 `BUG`，`bugId === workItemId`；前端打开详情时以 `/bugs/:bugId` 读取 Bug 详情，不因主键相同误用 `/work-items/:bugId` | API E2E/UI |
 | BUG-02 | Bug 字段   | 严重程度、复现步骤、期望结果、实际结果保存和回读     | API/UI     |
 | BUG-03 | Bug 列表   | 按版本、负责人、状态、严重程度、关联任务筛选         | API/UI     |
 | BUG-04 | 更新 Bug   | 修复说明、回归结论、回归人、回归时间、关联任务可更新 | API/UI     |
-| BUG-05 | 类型校验   | `/bugs/:id` 必须对应 `type=BUG` 的 work item         | API        |
+| BUG-05 | 类型校验   | `/bugs/:id` 必须对应 `type=BUG` 的 work item；`/work-items/:id` 保持任务详情语义，不承担 Bug 详情读取 | API/UI     |
 | BUG-06 | 确认缺陷   | TESTER/PM/SPACE_ADMIN 可确认，选择修复负责人         | API/UI     |
 | BUG-07 | 拒绝缺陷   | 必填拒绝原因，进入已拒绝                             | API/UI     |
 | BUG-08 | 开始修复   | 负责人/DEVELOPER/PM/SPACE_ADMIN 可执行               | API/UI     |
@@ -341,6 +360,7 @@ corepack pnpm --filter @project-delivery/shared openapi:generate
 | BUG-12 | 关闭缺陷   | TESTER/PM/SPACE_ADMIN 可关闭                         | API/UI     |
 | BUG-13 | 重新打开   | 已关闭 Bug 可按权限重新打开，必填重开原因            | API/UI     |
 | BUG-14 | 关联一致性 | Bug 的版本、需求、相关任务与工作项一致可追溯         | API/UI     |
+| BUG-15 | 详情抽屉契约 | Bug 详情抽屉的权限快照和关联 Tab 走 `getBug`；评论、附件、时间线和流程动作仍以 `WORK_ITEM` 目标复用 | Unit/UI E2E |
 
 ### 流程配置与动作执行
 
@@ -400,14 +420,14 @@ corepack pnpm --filter @project-delivery/shared openapi:generate
 
 | ID      | 场景             | 验证点                                                      | 层级       |
 | ------- | ---------------- | ----------------------------------------------------------- | ---------- |
-| VIEW-01 | 我的工作台组织级 | `organizationId` 必填，不传 `spaceId` 返回组织内可见待办    | API E2E/UI |
-| VIEW-02 | 我的工作台空间级 | 传 `spaceId` 后按空间收窄                                   | API E2E/UI |
+| VIEW-01 | 我的工作台组织级 | `organizationId` 必填，不传 `spaceId` 返回组织内可见待办    | API E2E/UI E2E |
+| VIEW-02 | 我的工作台空间级 | 传 `spaceId` 后按空间收窄                                   | API E2E/UI E2E |
 | VIEW-03 | 我的任务/Bug     | 展示分配给自己的任务和 Bug                                  | API/UI     |
 | VIEW-04 | 待处理动作       | 展示待自己执行的流程动作                                    | API/UI     |
 | VIEW-05 | 即将到期         | dueDate 近期待办正确归类                                    | API/UI     |
 | VIEW-06 | 阻塞中           | 阻塞状态按流程状态事实源归类                                | API/UI     |
 | VIEW-07 | 最近动态         | 最近时间线按组织/空间上下文展示                             | API/UI     |
-| VIEW-08 | 空间总览         | 版本进度、KPI、异常分布、最近时间线                         | API/UI     |
+| VIEW-08 | 空间总览         | 版本进度、KPI、异常分布、最近时间线                         | API/UI E2E |
 | VIEW-09 | 版本看板         | 6 个系统状态列，任务/Bug 按状态分类归列                     | API E2E/UI |
 | VIEW-10 | 看板筛选         | 按负责人、状态归类筛选                                      | API/UI     |
 | VIEW-11 | 看板刷新         | 动作执行后卡片列变化正确                                    | API E2E/UI |
@@ -433,20 +453,20 @@ corepack pnpm --filter @project-delivery/shared openapi:generate
 | UI-08 | 最近打开            | localStorage 持久化、复合去重、倒序、上限 5-7，空时不展示          | UI            |
 | UI-09 | 全局快捷键          | G+I/G+V/G+R/G+B 在非输入状态跳转                                   | UI            |
 | UI-10 | 列表键盘导航        | J/K 选择、Enter 打开、Esc 关闭、焦点回收                           | UI/Manual     |
-| UI-11 | 工作台页面          | KPI chip、三组任务、最近动态、缺字段降级为 `-`                     | UI            |
+| UI-11 | 工作台页面          | KPI chip、三组任务、最近动态、缺字段降级为 `-`                     | UI E2E        |
 | UI-12 | 任务页              | 分桶筛选、创建 dialog、行点击抽屉、加载/错误/空态                  | UI E2E        |
-| UI-13 | Bug 页              | 分桶筛选、创建 dialog、行点击抽屉、Bug 字段展示                    | UI            |
+| UI-13 | Bug 页              | 分桶筛选、创建 dialog、行点击抽屉、Bug 字段展示；打开抽屉时断言 `GET /bugs/:bugId` 2xx 且没有 `GET /work-items/:bugId` 404 | UI E2E        |
 | UI-14 | 事项池页            | 纳入/暂缓/拒绝/拆解任务 dialog、加载/错误/空态                     | UI            |
 | UI-15 | 需求列表页          | 状态筛选、新建 DRAFT、跳转详情                                     | UI E2E        |
 | UI-16 | 需求详情页          | Notion 风外壳、属性条、Tiptap、图片上传                            | UI E2E/Manual |
 | UI-17 | 版本看板页          | 版本下拉、6 列、顶栏新建任务、列内加号预填版本                     | UI E2E        |
 | UI-18 | 异常视图页          | 5 Tab、每类空态/错误/数据态                                        | UI            |
-| UI-19 | 空间总览页          | KPI、版本进度、异常分布、最近时间线                                | UI            |
+| UI-19 | 空间总览页          | KPI、版本进度、异常分布、最近时间线                                | UI E2E        |
 | UI-20 | 流程列表页          | 新建、编辑元数据、复制版本、配置跳转                               | UI            |
 | UI-21 | 流程配置全页        | 状态/动作/字段编辑、发布校验、只读态、返回                         | UI E2E        |
 | UI-22 | 空间设置页          | 基础信息、阈值、成员新增/编辑角色                                  | UI            |
 | UI-23 | 组织页              | 组织信息、成员新增/改角色/移除、最后 OWNER 禁用态                  | UI            |
-| UI-24 | 详情抽屉            | 动作、评论、附件、时间线、关联 Tab，权限按钮显隐                   | UI E2E        |
+| UI-24 | 详情抽屉            | 动作、评论、附件、时间线、关联 Tab，权限按钮显隐；按对象类型断言详情事实源接口正确且无未预期 `4xx/5xx` | UI E2E        |
 | UI-25 | Loading/Error/Empty | 所有 11 个 MVP 页面都有稳定加载、错误重试、空态                    | UI            |
 | UI-26 | data-testid         | E2E selector 使用 kebab-case 业务语义，不依赖中英文文案            | Review        |
 
@@ -564,7 +584,7 @@ corepack pnpm --filter @project-delivery/shared openapi:generate
 
 ## 自动化测试增补建议
 
-当前仓库已有 shared/API/Web vitest，以及 14 个 Playwright spec 文件 / 21 个 Playwright 用例，其中 UI E2E 为 11 个 spec / 12 个用例。已补齐 Bug、需求池、版本看板、异常页、空间设置、组织管理和流程配置页的基础 UI 主链路；为达到本计划“全量功能点无遗漏”的发布目标，仍建议补齐以下自动化用例：
+当前仓库已有 shared/API/Web vitest，以及 15 个 Playwright spec 文件 / 22 个 Playwright 用例，其中 UI E2E 为 12 个 spec / 13 个用例。已补齐工作台、空间总览、Bug、需求池、版本看板、异常页、空间设置、组织管理和流程配置页的基础 UI 主链路，并已将 UI 运行期错误门禁推广到所有 UI 主链路；为达到本计划“全量功能点无遗漏”的发布目标，仍建议补齐以下自动化用例：
 
 - API E2E：M1 组织/空间/版本/需求完整链路，独立覆盖最后 OWNER、空间成员必须属于组织、需求图片、空 DRAFT 隐藏。
 - API E2E：M2 事项池 CRUD、纳入/暂缓/拒绝、一拆多、重复拆解拒绝。
@@ -572,6 +592,7 @@ corepack pnpm --filter @project-delivery/shared openapi:generate
 - API E2E：附件 MIME/大小/数量/下载 URL 权限与时效。
 - API E2E：审计日志关键写操作和 ACCESS_DENIED 追溯。
 - UI E2E：需求图片粘贴上传和失败重试。
+- CI：定期执行 `corepack pnpm test:e2e:full`，确保所有 UI 主链路的运行期门禁真实执行。
 - UI E2E：版本看板顶栏/列内新建任务并校验版本预填。
 - UI E2E：异常阈值修改后 stale 列表刷新。
 - UI E2E：流程配置全页发布/停用实际执行、表单字段新增/编辑/删除。

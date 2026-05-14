@@ -1453,6 +1453,7 @@
       }
     },
     "detail": {
+      "sheetDescription": "Review intake details, status actions, source metadata, and description.",
       "actions": "Actions",
       "convert": "Split into tasks",
       "viewTasks": "View related tasks",
@@ -2852,6 +2853,12 @@
     }
   },
   "taskDetail": {
+    "emptyTitle": "Work item details",
+    "emptyDescription": "Select a task or bug to review details, actions, comments, attachments, timeline, and links in the drawer.",
+    "sheetDescription": {
+      "task": "Review task details, workflow actions, comments, attachments, timeline, and links.",
+      "bug": "Review bug details, workflow actions, comments, attachments, timeline, and links."
+    },
     "tabs": {
       "detail": "Detail",
       "comments": "Comments",

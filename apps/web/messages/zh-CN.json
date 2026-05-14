@@ -1445,6 +1445,7 @@
       }
     },
     "detail": {
+      "sheetDescription": "查看事项详情、状态动作、来源信息和描述。",
       "actions": "操作",
       "convert": "拆解为任务",
       "viewTasks": "查看关联任务",
@@ -2844,6 +2845,12 @@
     }
   },
   "taskDetail": {
+    "emptyTitle": "工作项详情",
+    "emptyDescription": "选择任务或缺陷后，会在抽屉中查看详情、动作、评论、附件、时间线和关联信息。",
+    "sheetDescription": {
+      "task": "查看任务详情、流程动作、评论、附件、时间线和关联信息。",
+      "bug": "查看缺陷详情、流程动作、评论、附件、时间线和关联信息。"
+    },
     "tabs": {
       "detail": "详情",
       "comments": "评论",

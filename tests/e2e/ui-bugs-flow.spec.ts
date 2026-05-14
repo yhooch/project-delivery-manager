@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+import { expect, test, type Request } from "./support/ui-test";
 
 import { e2eEnv } from "./support/m0-env";
 import {
@@ -54,7 +54,23 @@ test.describe("UI Bug 页面主链路", () => {
       .getByTestId("create-bug-severity-select")
       .selectOption("CRITICAL");
     await page.getByTestId("create-bug-priority-select").selectOption("URGENT");
+
+    const createBugResponsePromise = page.waitForResponse(
+      (response) =>
+        response.request().method() === "POST" &&
+        response.url().includes("/api/v1/spaces/") &&
+        response.url().endsWith("/bugs"),
+    );
     await page.getByTestId("create-bug-submit").click();
+    const createBugResponse = await createBugResponsePromise;
+    expect(createBugResponse.ok()).toBeTruthy();
+    const createBugPayload = (await createBugResponse.json()) as {
+      data?: { id?: string };
+    };
+    const bugId = createBugPayload.data?.id;
+    if (!bugId) {
+      throw new Error("Bug 创建响应必须返回 data.id");
+    }
 
     await expect(dialog).toBeHidden({ timeout: 10_000 });
 
@@ -62,11 +78,33 @@ test.describe("UI Bug 页面主链路", () => {
     await expect(list).toBeVisible({ timeout: 10_000 });
     const row = list.locator("button", { hasText: title });
     await expect(row).toBeVisible({ timeout: 10_000 });
+
+    const forbiddenWorkItemDetailRequests: string[] = [];
+    const onRequest = (request: Request) => {
+      const requestUrl = request.url();
+      if (
+        request.method() === "GET" &&
+        requestUrl.match(new RegExp(`/api/v1/work-items/${bugId}(?:[?#]|$)`))
+      ) {
+        forbiddenWorkItemDetailRequests.push(requestUrl);
+      }
+    };
+    page.on("request", onRequest);
+
+    const bugDetailResponsePromise = page.waitForResponse(
+      (response) =>
+        response.request().method() === "GET" &&
+        response.url().match(new RegExp(`/api/v1/bugs/${bugId}(?:[?#]|$)`)) !==
+          null,
+    );
+
     await row.click();
 
     const sheet = page.getByTestId("task-detail-sheet");
     await expect(sheet).toBeVisible({ timeout: 10_000 });
     await expect(sheet.getByText(title, { exact: false })).toBeVisible();
+    const bugDetailResponse = await bugDetailResponsePromise;
+    expect(bugDetailResponse.ok()).toBeTruthy();
 
     await page.getByTestId("task-attachments-tab").click();
     await expect(page.getByTestId("task-attachments-panel")).toBeVisible();
@@ -74,5 +112,11 @@ test.describe("UI Bug 页面主链路", () => {
     await expect(page.getByTestId("task-timeline-panel")).toBeVisible();
     await page.getByTestId("task-links-tab").click();
     await expect(page.getByTestId("task-links-panel")).toBeVisible();
+
+    page.off("request", onRequest);
+    expect(
+      forbiddenWorkItemDetailRequests,
+      "Bug 详情不得使用任务详情接口 GET /work-items/:bugId",
+    ).toEqual([]);
   });
 });

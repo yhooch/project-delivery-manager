@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { readFileSync } from "node:fs";
 import {
   ApiErrorCodeSchema,
   AppSessionSchema,
@@ -70,6 +71,17 @@ describe("shared contracts", () => {
       for (const errorCode of contract.errorCodes) {
         expect(declaredErrorCodes.has(errorCode)).toBe(true);
       }
+    }
+  });
+
+  it("keeps every endpoint operation visible in the full test plan", () => {
+    const fullTestPlan = readFileSync(
+      new URL("../../../docs/full-test-plan.md", import.meta.url),
+      "utf8",
+    );
+
+    for (const contract of apiContracts) {
+      expect(fullTestPlan).toContain(`\`${contract.operationId}\``);
     }
   });
 

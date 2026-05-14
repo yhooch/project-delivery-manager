@@ -33,7 +33,13 @@ import { useSession } from "../providers/session-provider";
 import { Avatar, AvatarFallback } from "../ui/avatar";
 import { Badge } from "../ui/badge";
 import { Button } from "../ui/button";
-import { Sheet, SheetContent, SheetHeader, SheetTitle } from "../ui/sheet";
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+} from "../ui/sheet";
 import { StatusBadge } from "../ui/status-badge";
 import { PageHeader } from "../v2/page-header";
 import {
@@ -367,6 +373,9 @@ export function IntakePage() {
                 <SheetTitle className="mt-1 text-base leading-snug">
                   {active.title}
                 </SheetTitle>
+                <SheetDescription className="sr-only">
+                  {t("detail.sheetDescription")}
+                </SheetDescription>
                 <div className="mt-3 flex flex-wrap items-center gap-2">
                   <StatusBadge
                     category={intakeStatusToCategory[active.status]}
