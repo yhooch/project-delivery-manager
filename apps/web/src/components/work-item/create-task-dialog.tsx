@@ -26,6 +26,7 @@ type CreateTaskDialogProps = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   spaceId: string;
+  initialVersionId?: string;
   onCreated?: () => void;
 };
 
@@ -35,6 +36,7 @@ export function CreateTaskDialog({
   open,
   onOpenChange,
   spaceId,
+  initialVersionId,
   onCreated,
 }: CreateTaskDialogProps) {
   const t = useTranslations("tasks.dialog");
@@ -43,7 +45,7 @@ export function CreateTaskDialog({
 
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
-  const [versionId, setVersionId] = useState("");
+  const [versionId, setVersionId] = useState(initialVersionId ?? "");
   const [assigneeId, setAssigneeId] = useState("");
   const [priority, setPriority] = useState<Priority>("MEDIUM");
   const [dueDate, setDueDate] = useState("");
@@ -53,6 +55,12 @@ export function CreateTaskDialog({
 
   const [versions, setVersions] = useState<Version[]>([]);
   const [members, setMembers] = useState<SpaceMemberWithUser[]>([]);
+
+  useEffect(() => {
+    if (open) {
+      setVersionId(initialVersionId ?? "");
+    }
+  }, [open, initialVersionId]);
 
   useEffect(() => {
     if (!open || !spaceId) {
@@ -85,7 +93,7 @@ export function CreateTaskDialog({
   function reset() {
     setTitle("");
     setDescription("");
-    setVersionId("");
+    setVersionId(initialVersionId ?? "");
     setAssigneeId("");
     setPriority("MEDIUM");
     setDueDate("");

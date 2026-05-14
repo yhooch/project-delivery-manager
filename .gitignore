@@ -7,10 +7,12 @@ build/
 coverage/
 playwright-report/
 test-results/
+.e2e-run/
 
 .env
 .env.*
 !.env.example
+!.env.e2e.example
 
 *.log
 *.tsbuildinfo

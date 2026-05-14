@@ -35,6 +35,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "../ui/dropdown-menu";
+import { CreateTaskDialog } from "../work-item/create-task-dialog";
 import { TaskDetailSheet } from "../work-item/task-detail-sheet";
 import { EmptyState, ErrorState, LoadingState } from "../v2/states";
 import { PageHeader } from "../v2/page-header";
@@ -81,6 +82,7 @@ export function VersionBoard() {
   const [errorKey, setErrorKey] = useState<string | null>(null);
   const [activeItem, setActiveItem] = useState<WorkItemViewModel | null>(null);
   const [sheetOpen, setSheetOpen] = useState(false);
+  const [createDialogOpen, setCreateDialogOpen] = useState(false);
 
   const fetchVersions = useCallback(async () => {
     if (!spaceId) return;
@@ -191,7 +193,9 @@ export function VersionBoard() {
       <Button
         size="sm"
         className="text-xs"
-        onClick={() => alert("TODO")}
+        data-testid="version-board-new-work-item"
+        disabled={!spaceId}
+        onClick={() => setCreateDialogOpen(true)}
       >
         <Plus className="h-3 w-3" />
         {t("newWorkItem")}
@@ -265,7 +269,9 @@ export function VersionBoard() {
                 variant="ghost"
                 size="icon-sm"
                 className="ml-auto h-5 w-5"
-                onClick={() => alert("TODO")}
+                data-testid={`version-board-column-add-${category}`}
+                disabled={!spaceId}
+                onClick={() => setCreateDialogOpen(true)}
               >
                 <Plus className="h-3 w-3" />
               </Button>
@@ -346,6 +352,17 @@ export function VersionBoard() {
         open={sheetOpen}
         onOpenChange={setSheetOpen}
       />
+      {spaceId && (
+        <CreateTaskDialog
+          open={createDialogOpen}
+          onOpenChange={setCreateDialogOpen}
+          spaceId={spaceId}
+          initialVersionId={versionId ?? undefined}
+          onCreated={() => {
+            void fetchBoard();
+          }}
+        />
+      )}
     </div>
   );
 }

@@ -1153,6 +1153,7 @@ class InMemoryRequirementRepository implements RequirementRepository {
   private readonly records = new Map<string, InternalRequirement>();
 
   async createDraft(input: CreateRequirementDraftInput): Promise<Requirement> {
+    const now = new Date().toISOString();
     const requirement: InternalRequirement = {
       id: input.id,
       organizationId: input.organizationId,
@@ -1165,6 +1166,9 @@ class InMemoryRequirementRepository implements RequirementRepository {
       attachments: [],
       relatedWorkItems: emptyRelatedWorkItems(),
       createdById: input.createdById,
+      authorId: input.createdById,
+      createdAt: now,
+      updatedAt: now,
     };
     this.records.set(requirement.id, requirement);
     this.ensureParticipant(requirement.id, input.createdById, "CREATOR");
@@ -1216,6 +1220,7 @@ class InMemoryRequirementRepository implements RequirementRepository {
     requirement.versionId = input.versionId ?? requirement.versionId;
     requirement.priority = input.priority ?? requirement.priority;
     requirement.status = "CONFIRMED";
+    requirement.updatedAt = new Date().toISOString();
     if (input.shouldUpdateOwner) {
       requirement.ownerId = input.ownerId;
       if (input.ownerId) {
@@ -1235,6 +1240,7 @@ class InMemoryRequirementRepository implements RequirementRepository {
     }
 
     requirement.status = "ARCHIVED";
+    requirement.updatedAt = new Date().toISOString();
     return this.toPublic(requirement);
   }
 

@@ -1,5 +1,10 @@
 import { z } from "zod";
-import { PageQuerySchema, UlidSchema, pageResultSchema } from "./common.ts";
+import {
+  EmptyObjectSchema,
+  PageQuerySchema,
+  UlidSchema,
+  pageResultSchema,
+} from "./common.ts";
 import { OrganizationRoleSchema, RecordStatusSchema } from "./enums.ts";
 import { UsernameSchema } from "./user.ts";
 
@@ -126,3 +131,4 @@ export const AddOrganizationMemberResponseSchema =
   OrganizationMemberWithUserSchema;
 export const UpdateOrganizationMemberResponseSchema =
   OrganizationMemberWithUserSchema;
+export const RemoveOrganizationMemberResponseSchema = EmptyObjectSchema;

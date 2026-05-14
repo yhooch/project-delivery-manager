@@ -11,6 +11,7 @@ import {
   createSpace,
   listOrganizationMembers,
   listSpaces,
+  removeOrganizationMember,
   updateSpaceMember,
   type WorkspaceApiTransport,
 } from "./space-service";
@@ -24,6 +25,7 @@ function createApi(
   overrides: Partial<Record<keyof WorkspaceApiTransport, unknown>>,
 ): WorkspaceApiTransport {
   return {
+    delete: vi.fn(),
     get: vi.fn(),
     patch: vi.fn(),
     post: vi.fn(),
@@ -103,6 +105,20 @@ describe("space service", () => {
       {
         query: { page: 1, pageSize: 200 },
       },
+    );
+  });
+
+  it("issues a DELETE to remove an organization member", async () => {
+    const api = createApi({
+      delete: vi.fn(async () => ({ data: {} })),
+    });
+
+    await expect(
+      removeOrganizationMember(organizationId, memberId, api),
+    ).resolves.toBeUndefined();
+
+    expect(api.delete).toHaveBeenCalledWith(
+      `/organizations/${organizationId}/members/${memberId}`,
     );
   });
 

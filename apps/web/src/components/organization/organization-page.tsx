@@ -8,7 +8,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { getApiErrorMessageKey } from "../../lib/api-error-messages";
 import {
   listOrganizationMembers,
-  updateOrganizationMember,
+  removeOrganizationMember,
 } from "../../lib/space-service";
 import { cn } from "../../lib/utils";
 import { useSession } from "../providers/session-provider";
@@ -97,13 +97,9 @@ export function OrganizationPage() {
     setMemberActionErrorKey(null);
 
     try {
-      const updated = await updateOrganizationMember(
-        organizationId,
-        removeMember.id,
-        { status: "DISABLED" },
-      );
+      await removeOrganizationMember(organizationId, removeMember.id);
       setMembers((current) =>
-        current.map((item) => (item.id === updated.id ? updated : item)),
+        current.filter((item) => item.id !== removeMember.id),
       );
       setRemoveMember(null);
     } catch (error) {

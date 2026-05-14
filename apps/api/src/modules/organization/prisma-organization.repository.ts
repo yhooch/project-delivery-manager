@@ -15,6 +15,7 @@ import type {
   OrganizationListInput,
   OrganizationListResult,
   OrganizationSummaryWithRole,
+  RemoveOrganizationMemberInput,
   SpaceSummaryWithRole,
   UpdateOrganizationInput,
 } from "./organization.types";
@@ -307,6 +308,22 @@ export class PrismaOrganizationRepository implements OrganizationRepository {
       role: member.role,
       status: member.space.status,
     }));
+  }
+
+  async removeMember(input: RemoveOrganizationMemberInput): Promise<boolean> {
+    const result = await this.prisma.client.organizationMember.updateMany({
+      data: {
+        deletedAt: new Date(),
+        updatedById: input.removedById,
+      },
+      where: {
+        deletedAt: null,
+        id: input.memberId,
+        organizationId: input.organizationId,
+      },
+    });
+
+    return result.count > 0;
   }
 
   async updateMember(input: {

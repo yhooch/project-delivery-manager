@@ -1,5 +1,6 @@
 import { z } from "zod";
 import {
+  IsoDateTimeSchema,
   PageQuerySchema,
   UlidSchema,
   pageResultSchema,
@@ -70,9 +71,12 @@ export const RequirementSchema = z
     status: RequirementStatusSchema,
     priority: PrioritySchema.optional(),
     ownerId: UlidSchema.optional(),
+    authorId: UlidSchema.optional(),
     attachments: z.array(AttachmentRefSchema).optional(),
     permissions: PermissionSnapshotSchema.optional(),
     relatedWorkItems: RequirementRelatedWorkItemsSchema,
+    createdAt: IsoDateTimeSchema,
+    updatedAt: IsoDateTimeSchema,
   })
   .strict();
 

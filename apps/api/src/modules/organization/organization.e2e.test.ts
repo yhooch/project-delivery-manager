@@ -43,6 +43,7 @@ import type {
   OrganizationListResult,
   OrganizationMemberListInput,
   OrganizationMemberListResult,
+  RemoveOrganizationMemberInput,
   UpdateOrganizationMemberInput,
 } from "./organization.types";
 
@@ -344,6 +345,135 @@ describe("organization and AppSession API", () => {
       });
   });
 
+  it("removes an organization member when an admin issues DELETE", async () => {
+    const ownerAgent = await registeredAgent("m1c_rm_owner", "203.0.113.60");
+    const memberAgent = await registeredAgent("m1c_rm_member", "203.0.113.61");
+    const organization = (
+      await createOrganization(ownerAgent, "M1C Remove", "m1c-remove")
+    ).body.data as Organization;
+    const memberUser = users.getByUsername("m1c_rm_member");
+
+    await addOrganizationMember(ownerAgent, organization.id, {
+      username: "m1c_rm_member",
+      role: "MEMBER",
+    }).expect(200);
+
+    const memberBefore = organizations.members.find(
+      (item) =>
+        item.organizationId === organization.id &&
+        item.userId === memberUser?.id,
+    );
+
+    await removeOrganizationMember(
+      ownerAgent,
+      organization.id,
+      memberBefore?.id ?? "",
+    )
+      .expect(200)
+      .expect(({ body }) => {
+        expect(body.data).toEqual({});
+      });
+
+    const memberAfter = organizations.members.find(
+      (item) =>
+        item.organizationId === organization.id &&
+        item.userId === memberUser?.id,
+    );
+    expect(memberAfter).toBeUndefined();
+
+    await listOrganizationMembers(ownerAgent, organization.id)
+      .expect(200)
+      .expect(({ body }) => {
+        expect(body.data.total).toBe(1);
+        expect(
+          body.data.items.map(
+            (item: OrganizationMemberWithUser) => item.user.username,
+          ),
+        ).toEqual(["m1c_rm_owner"]);
+      });
+
+    await memberAgent
+      .get(`/api/v1/organizations/${organization.id}/members`)
+      .expect(403)
+      .expect(({ body }) => {
+        expect(body.code).toBe("ORGANIZATION_ACCESS_DENIED");
+      });
+  });
+
+  it("rejects removing the last active OWNER", async () => {
+    const ownerAgent = await registeredAgent(
+      "m1c_rm_last_owner",
+      "203.0.113.62",
+    );
+    await registeredAgent("m1c_rm_second_owner", "203.0.113.63");
+    const organization = (
+      await createOrganization(
+        ownerAgent,
+        "M1C Remove Last",
+        "m1c-remove-last",
+      )
+    ).body.data as Organization;
+    const ownerMember = organizations.members.find(
+      (member) => member.organizationId === organization.id,
+    );
+
+    await removeOrganizationMember(
+      ownerAgent,
+      organization.id,
+      ownerMember?.id ?? "",
+    )
+      .expect(409)
+      .expect(({ body }) => {
+        expect(body.code).toBe("LAST_ORGANIZATION_OWNER_REQUIRED");
+      });
+
+    expect(
+      organizations.members.find(
+        (member) =>
+          member.organizationId === organization.id && member.role === "OWNER",
+      ),
+    ).toBeDefined();
+
+    await addOrganizationMember(ownerAgent, organization.id, {
+      username: "m1c_rm_second_owner",
+      role: "OWNER",
+    }).expect(200);
+
+    await removeOrganizationMember(
+      ownerAgent,
+      organization.id,
+      ownerMember?.id ?? "",
+    )
+      .expect(200)
+      .expect(({ body }) => {
+        expect(body.data).toEqual({});
+      });
+  });
+
+  it("returns ORGANIZATION_MEMBER_NOT_FOUND for an unknown member id", async () => {
+    const ownerAgent = await registeredAgent(
+      "m1c_rm_missing_owner",
+      "203.0.113.64",
+    );
+    const organization = (
+      await createOrganization(
+        ownerAgent,
+        "M1C Remove Missing",
+        "m1c-remove-missing",
+      )
+    ).body.data as Organization;
+
+    await removeOrganizationMember(
+      ownerAgent,
+      organization.id,
+      "01ARZ3NDEKTSV4RRFFQ69G5FAV",
+    )
+      .expect(404)
+      .expect(({ body }) => {
+        expect(body.code).toBe("ORGANIZATION_MEMBER_NOT_FOUND");
+      });
+  });
+
   it("scopes organization member lists to the requested organization", async () => {
     const ownerA = await registeredAgent("m1c_iso_owner_a", "203.0.113.48");
     const ownerB = await registeredAgent("m1c_iso_owner_b", "203.0.113.49");
@@ -506,6 +636,16 @@ describe("organization and AppSession API", () => {
     organizationId: string,
   ) {
     return agent.get(`/api/v1/organizations/${organizationId}/members`);
+  }
+
+  function removeOrganizationMember(
+    agent: request.Agent,
+    organizationId: string,
+    memberId: string,
+  ) {
+    return agent
+      .delete(`/api/v1/organizations/${organizationId}/members/${memberId}`)
+      .set("Origin", ORIGIN);
   }
 });
 
@@ -809,6 +949,21 @@ class InMemoryOrganizationRepository implements OrganizationRepository {
     _userId: string,
   ): Promise<SessionSpaceSummary[]> {
     return [];
+  }
+
+  async removeMember(input: RemoveOrganizationMemberInput): Promise<boolean> {
+    const index = this.members.findIndex(
+      (item) =>
+        item.organizationId === input.organizationId &&
+        item.id === input.memberId,
+    );
+
+    if (index === -1) {
+      return false;
+    }
+
+    this.members.splice(index, 1);
+    return true;
   }
 
   async updateMember(

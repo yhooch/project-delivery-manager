@@ -229,6 +229,7 @@ model User {
   spaceMemberships          SpaceMember[]
   ownedVersions             Version[]            @relation("VersionOwner")
   ownedRequirements         Requirement[]        @relation("RequirementOwner")
+  authoredRequirements      Requirement[]        @relation("RequirementAuthor")
   uploadedAttachments       Attachment[]         @relation("AttachmentUploader")
   publishedWorkflowVersions WorkflowVersion[]    @relation("WorkflowVersionPublisher")
   objectParticipants        ObjectParticipant[]
@@ -430,6 +431,7 @@ model Requirement {
   status               RequirementStatus @default(DRAFT)
   priority             Priority?
   ownerId              String?           @map("owner_id") @db.Char(26)
+  authorId             String?           @map("author_id") @db.Char(26)
   createdAt            DateTime          @default(now()) @map("created_at")
   updatedAt            DateTime          @updatedAt @map("updated_at")
   createdById          String?           @map("created_by_id") @db.Char(26)
@@ -440,6 +442,7 @@ model Requirement {
   space        Space        @relation(fields: [spaceId], references: [id], onDelete: Cascade)
   version      Version?     @relation(fields: [versionId], references: [id], onDelete: SetNull)
   owner        User?        @relation("RequirementOwner", fields: [ownerId], references: [id], onDelete: SetNull)
+  author       User?        @relation("RequirementAuthor", fields: [authorId], references: [id], onDelete: SetNull)
   intakeItems  IntakeItem[]
   workItems    WorkItem[]
 
@@ -447,6 +450,7 @@ model Requirement {
   @@index([spaceId])
   @@index([versionId])
   @@index([ownerId])
+  @@index([authorId])
   @@index([status])
   @@map("requirements")
 }

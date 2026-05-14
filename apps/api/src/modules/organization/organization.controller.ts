@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   HttpCode,
   HttpStatus,
@@ -136,6 +137,27 @@ export class OrganizationController {
       params.memberId,
       body,
     );
+  }
+
+  @Delete(":organizationId/members/:memberId")
+  @HttpCode(HttpStatus.OK)
+  @UseGuards(WriteOriginGuard)
+  async removeMember(
+    @Param(
+      new ZodValidationPipe(
+        OrganizationIdPathParamsSchema.merge(MemberIdPathParamsSchema),
+      ),
+    )
+    params: { memberId: string; organizationId: string },
+    @Req() request: RequestWithContext,
+  ): Promise<Record<string, never>> {
+    const session = this.currentUser.requireSession(request);
+    await this.organizations.removeMember(
+      session.userId,
+      params.organizationId,
+      params.memberId,
+    );
+    return {};
   }
 
   @Get(":organizationId")

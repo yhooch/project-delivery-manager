@@ -261,6 +261,7 @@ export type UserWhereInput = {
   spaceMemberships?: Prisma.SpaceMemberListRelationFilter
   ownedVersions?: Prisma.VersionListRelationFilter
   ownedRequirements?: Prisma.RequirementListRelationFilter
+  authoredRequirements?: Prisma.RequirementListRelationFilter
   uploadedAttachments?: Prisma.AttachmentListRelationFilter
   publishedWorkflowVersions?: Prisma.WorkflowVersionListRelationFilter
   objectParticipants?: Prisma.ObjectParticipantListRelationFilter
@@ -296,6 +297,7 @@ export type UserOrderByWithRelationInput = {
   spaceMemberships?: Prisma.SpaceMemberOrderByRelationAggregateInput
   ownedVersions?: Prisma.VersionOrderByRelationAggregateInput
   ownedRequirements?: Prisma.RequirementOrderByRelationAggregateInput
+  authoredRequirements?: Prisma.RequirementOrderByRelationAggregateInput
   uploadedAttachments?: Prisma.AttachmentOrderByRelationAggregateInput
   publishedWorkflowVersions?: Prisma.WorkflowVersionOrderByRelationAggregateInput
   objectParticipants?: Prisma.ObjectParticipantOrderByRelationAggregateInput
@@ -334,6 +336,7 @@ export type UserWhereUniqueInput = Prisma.AtLeast<{
   spaceMemberships?: Prisma.SpaceMemberListRelationFilter
   ownedVersions?: Prisma.VersionListRelationFilter
   ownedRequirements?: Prisma.RequirementListRelationFilter
+  authoredRequirements?: Prisma.RequirementListRelationFilter
   uploadedAttachments?: Prisma.AttachmentListRelationFilter
   publishedWorkflowVersions?: Prisma.WorkflowVersionListRelationFilter
   objectParticipants?: Prisma.ObjectParticipantListRelationFilter
@@ -409,6 +412,7 @@ export type UserCreateInput = {
   spaceMemberships?: Prisma.SpaceMemberCreateNestedManyWithoutUserInput
   ownedVersions?: Prisma.VersionCreateNestedManyWithoutOwnerInput
   ownedRequirements?: Prisma.RequirementCreateNestedManyWithoutOwnerInput
+  authoredRequirements?: Prisma.RequirementCreateNestedManyWithoutAuthorInput
   uploadedAttachments?: Prisma.AttachmentCreateNestedManyWithoutUploadedByInput
   publishedWorkflowVersions?: Prisma.WorkflowVersionCreateNestedManyWithoutPublishedByInput
   objectParticipants?: Prisma.ObjectParticipantCreateNestedManyWithoutUserInput
@@ -444,6 +448,7 @@ export type UserUncheckedCreateInput = {
   spaceMemberships?: Prisma.SpaceMemberUncheckedCreateNestedManyWithoutUserInput
   ownedVersions?: Prisma.VersionUncheckedCreateNestedManyWithoutOwnerInput
   ownedRequirements?: Prisma.RequirementUncheckedCreateNestedManyWithoutOwnerInput
+  authoredRequirements?: Prisma.RequirementUncheckedCreateNestedManyWithoutAuthorInput
   uploadedAttachments?: Prisma.AttachmentUncheckedCreateNestedManyWithoutUploadedByInput
   publishedWorkflowVersions?: Prisma.WorkflowVersionUncheckedCreateNestedManyWithoutPublishedByInput
   objectParticipants?: Prisma.ObjectParticipantUncheckedCreateNestedManyWithoutUserInput
@@ -479,6 +484,7 @@ export type UserUpdateInput = {
   spaceMemberships?: Prisma.SpaceMemberUpdateManyWithoutUserNestedInput
   ownedVersions?: Prisma.VersionUpdateManyWithoutOwnerNestedInput
   ownedRequirements?: Prisma.RequirementUpdateManyWithoutOwnerNestedInput
+  authoredRequirements?: Prisma.RequirementUpdateManyWithoutAuthorNestedInput
   uploadedAttachments?: Prisma.AttachmentUpdateManyWithoutUploadedByNestedInput
   publishedWorkflowVersions?: Prisma.WorkflowVersionUpdateManyWithoutPublishedByNestedInput
   objectParticipants?: Prisma.ObjectParticipantUpdateManyWithoutUserNestedInput
@@ -514,6 +520,7 @@ export type UserUncheckedUpdateInput = {
   spaceMemberships?: Prisma.SpaceMemberUncheckedUpdateManyWithoutUserNestedInput
   ownedVersions?: Prisma.VersionUncheckedUpdateManyWithoutOwnerNestedInput
   ownedRequirements?: Prisma.RequirementUncheckedUpdateManyWithoutOwnerNestedInput
+  authoredRequirements?: Prisma.RequirementUncheckedUpdateManyWithoutAuthorNestedInput
   uploadedAttachments?: Prisma.AttachmentUncheckedUpdateManyWithoutUploadedByNestedInput
   publishedWorkflowVersions?: Prisma.WorkflowVersionUncheckedUpdateManyWithoutPublishedByNestedInput
   objectParticipants?: Prisma.ObjectParticipantUncheckedUpdateManyWithoutUserNestedInput
@@ -763,6 +770,12 @@ export type UserCreateNestedOneWithoutOwnedRequirementsInput = {
   connect?: Prisma.UserWhereUniqueInput
 }
 
+export type UserCreateNestedOneWithoutAuthoredRequirementsInput = {
+  create?: Prisma.XOR<Prisma.UserCreateWithoutAuthoredRequirementsInput, Prisma.UserUncheckedCreateWithoutAuthoredRequirementsInput>
+  connectOrCreate?: Prisma.UserCreateOrConnectWithoutAuthoredRequirementsInput
+  connect?: Prisma.UserWhereUniqueInput
+}
+
 export type UserUpdateOneWithoutOwnedRequirementsNestedInput = {
   create?: Prisma.XOR<Prisma.UserCreateWithoutOwnedRequirementsInput, Prisma.UserUncheckedCreateWithoutOwnedRequirementsInput>
   connectOrCreate?: Prisma.UserCreateOrConnectWithoutOwnedRequirementsInput
@@ -771,6 +784,16 @@ export type UserUpdateOneWithoutOwnedRequirementsNestedInput = {
   delete?: Prisma.UserWhereInput | boolean
   connect?: Prisma.UserWhereUniqueInput
   update?: Prisma.XOR<Prisma.XOR<Prisma.UserUpdateToOneWithWhereWithoutOwnedRequirementsInput, Prisma.UserUpdateWithoutOwnedRequirementsInput>, Prisma.UserUncheckedUpdateWithoutOwnedRequirementsInput>
+}
+
+export type UserUpdateOneWithoutAuthoredRequirementsNestedInput = {
+  create?: Prisma.XOR<Prisma.UserCreateWithoutAuthoredRequirementsInput, Prisma.UserUncheckedCreateWithoutAuthoredRequirementsInput>
+  connectOrCreate?: Prisma.UserCreateOrConnectWithoutAuthoredRequirementsInput
+  upsert?: Prisma.UserUpsertWithoutAuthoredRequirementsInput
+  disconnect?: Prisma.UserWhereInput | boolean
+  delete?: Prisma.UserWhereInput | boolean
+  connect?: Prisma.UserWhereUniqueInput
+  update?: Prisma.XOR<Prisma.XOR<Prisma.UserUpdateToOneWithWhereWithoutAuthoredRequirementsInput, Prisma.UserUpdateWithoutAuthoredRequirementsInput>, Prisma.UserUncheckedUpdateWithoutAuthoredRequirementsInput>
 }
 
 export type UserCreateNestedOneWithoutReportedIntakeItemsInput = {
@@ -960,6 +983,7 @@ export type UserCreateWithoutSessionsInput = {
   spaceMemberships?: Prisma.SpaceMemberCreateNestedManyWithoutUserInput
   ownedVersions?: Prisma.VersionCreateNestedManyWithoutOwnerInput
   ownedRequirements?: Prisma.RequirementCreateNestedManyWithoutOwnerInput
+  authoredRequirements?: Prisma.RequirementCreateNestedManyWithoutAuthorInput
   uploadedAttachments?: Prisma.AttachmentCreateNestedManyWithoutUploadedByInput
   publishedWorkflowVersions?: Prisma.WorkflowVersionCreateNestedManyWithoutPublishedByInput
   objectParticipants?: Prisma.ObjectParticipantCreateNestedManyWithoutUserInput
@@ -994,6 +1018,7 @@ export type UserUncheckedCreateWithoutSessionsInput = {
   spaceMemberships?: Prisma.SpaceMemberUncheckedCreateNestedManyWithoutUserInput
   ownedVersions?: Prisma.VersionUncheckedCreateNestedManyWithoutOwnerInput
   ownedRequirements?: Prisma.RequirementUncheckedCreateNestedManyWithoutOwnerInput
+  authoredRequirements?: Prisma.RequirementUncheckedCreateNestedManyWithoutAuthorInput
   uploadedAttachments?: Prisma.AttachmentUncheckedCreateNestedManyWithoutUploadedByInput
   publishedWorkflowVersions?: Prisma.WorkflowVersionUncheckedCreateNestedManyWithoutPublishedByInput
   objectParticipants?: Prisma.ObjectParticipantUncheckedCreateNestedManyWithoutUserInput
@@ -1044,6 +1069,7 @@ export type UserUpdateWithoutSessionsInput = {
   spaceMemberships?: Prisma.SpaceMemberUpdateManyWithoutUserNestedInput
   ownedVersions?: Prisma.VersionUpdateManyWithoutOwnerNestedInput
   ownedRequirements?: Prisma.RequirementUpdateManyWithoutOwnerNestedInput
+  authoredRequirements?: Prisma.RequirementUpdateManyWithoutAuthorNestedInput
   uploadedAttachments?: Prisma.AttachmentUpdateManyWithoutUploadedByNestedInput
   publishedWorkflowVersions?: Prisma.WorkflowVersionUpdateManyWithoutPublishedByNestedInput
   objectParticipants?: Prisma.ObjectParticipantUpdateManyWithoutUserNestedInput
@@ -1078,6 +1104,7 @@ export type UserUncheckedUpdateWithoutSessionsInput = {
   spaceMemberships?: Prisma.SpaceMemberUncheckedUpdateManyWithoutUserNestedInput
   ownedVersions?: Prisma.VersionUncheckedUpdateManyWithoutOwnerNestedInput
   ownedRequirements?: Prisma.RequirementUncheckedUpdateManyWithoutOwnerNestedInput
+  authoredRequirements?: Prisma.RequirementUncheckedUpdateManyWithoutAuthorNestedInput
   uploadedAttachments?: Prisma.AttachmentUncheckedUpdateManyWithoutUploadedByNestedInput
   publishedWorkflowVersions?: Prisma.WorkflowVersionUncheckedUpdateManyWithoutPublishedByNestedInput
   objectParticipants?: Prisma.ObjectParticipantUncheckedUpdateManyWithoutUserNestedInput
@@ -1112,6 +1139,7 @@ export type UserCreateWithoutOrganizationsInput = {
   spaceMemberships?: Prisma.SpaceMemberCreateNestedManyWithoutUserInput
   ownedVersions?: Prisma.VersionCreateNestedManyWithoutOwnerInput
   ownedRequirements?: Prisma.RequirementCreateNestedManyWithoutOwnerInput
+  authoredRequirements?: Prisma.RequirementCreateNestedManyWithoutAuthorInput
   uploadedAttachments?: Prisma.AttachmentCreateNestedManyWithoutUploadedByInput
   publishedWorkflowVersions?: Prisma.WorkflowVersionCreateNestedManyWithoutPublishedByInput
   objectParticipants?: Prisma.ObjectParticipantCreateNestedManyWithoutUserInput
@@ -1146,6 +1174,7 @@ export type UserUncheckedCreateWithoutOrganizationsInput = {
   spaceMemberships?: Prisma.SpaceMemberUncheckedCreateNestedManyWithoutUserInput
   ownedVersions?: Prisma.VersionUncheckedCreateNestedManyWithoutOwnerInput
   ownedRequirements?: Prisma.RequirementUncheckedCreateNestedManyWithoutOwnerInput
+  authoredRequirements?: Prisma.RequirementUncheckedCreateNestedManyWithoutAuthorInput
   uploadedAttachments?: Prisma.AttachmentUncheckedCreateNestedManyWithoutUploadedByInput
   publishedWorkflowVersions?: Prisma.WorkflowVersionUncheckedCreateNestedManyWithoutPublishedByInput
   objectParticipants?: Prisma.ObjectParticipantUncheckedCreateNestedManyWithoutUserInput
@@ -1196,6 +1225,7 @@ export type UserUpdateWithoutOrganizationsInput = {
   spaceMemberships?: Prisma.SpaceMemberUpdateManyWithoutUserNestedInput
   ownedVersions?: Prisma.VersionUpdateManyWithoutOwnerNestedInput
   ownedRequirements?: Prisma.RequirementUpdateManyWithoutOwnerNestedInput
+  authoredRequirements?: Prisma.RequirementUpdateManyWithoutAuthorNestedInput
   uploadedAttachments?: Prisma.AttachmentUpdateManyWithoutUploadedByNestedInput
   publishedWorkflowVersions?: Prisma.WorkflowVersionUpdateManyWithoutPublishedByNestedInput
   objectParticipants?: Prisma.ObjectParticipantUpdateManyWithoutUserNestedInput
@@ -1230,6 +1260,7 @@ export type UserUncheckedUpdateWithoutOrganizationsInput = {
   spaceMemberships?: Prisma.SpaceMemberUncheckedUpdateManyWithoutUserNestedInput
   ownedVersions?: Prisma.VersionUncheckedUpdateManyWithoutOwnerNestedInput
   ownedRequirements?: Prisma.RequirementUncheckedUpdateManyWithoutOwnerNestedInput
+  authoredRequirements?: Prisma.RequirementUncheckedUpdateManyWithoutAuthorNestedInput
   uploadedAttachments?: Prisma.AttachmentUncheckedUpdateManyWithoutUploadedByNestedInput
   publishedWorkflowVersions?: Prisma.WorkflowVersionUncheckedUpdateManyWithoutPublishedByNestedInput
   objectParticipants?: Prisma.ObjectParticipantUncheckedUpdateManyWithoutUserNestedInput
@@ -1264,6 +1295,7 @@ export type UserCreateWithoutMembershipsInput = {
   spaceMemberships?: Prisma.SpaceMemberCreateNestedManyWithoutUserInput
   ownedVersions?: Prisma.VersionCreateNestedManyWithoutOwnerInput
   ownedRequirements?: Prisma.RequirementCreateNestedManyWithoutOwnerInput
+  authoredRequirements?: Prisma.RequirementCreateNestedManyWithoutAuthorInput
   uploadedAttachments?: Prisma.AttachmentCreateNestedManyWithoutUploadedByInput
   publishedWorkflowVersions?: Prisma.WorkflowVersionCreateNestedManyWithoutPublishedByInput
   objectParticipants?: Prisma.ObjectParticipantCreateNestedManyWithoutUserInput
@@ -1298,6 +1330,7 @@ export type UserUncheckedCreateWithoutMembershipsInput = {
   spaceMemberships?: Prisma.SpaceMemberUncheckedCreateNestedManyWithoutUserInput
   ownedVersions?: Prisma.VersionUncheckedCreateNestedManyWithoutOwnerInput
   ownedRequirements?: Prisma.RequirementUncheckedCreateNestedManyWithoutOwnerInput
+  authoredRequirements?: Prisma.RequirementUncheckedCreateNestedManyWithoutAuthorInput
   uploadedAttachments?: Prisma.AttachmentUncheckedCreateNestedManyWithoutUploadedByInput
   publishedWorkflowVersions?: Prisma.WorkflowVersionUncheckedCreateNestedManyWithoutPublishedByInput
   objectParticipants?: Prisma.ObjectParticipantUncheckedCreateNestedManyWithoutUserInput
@@ -1348,6 +1381,7 @@ export type UserUpdateWithoutMembershipsInput = {
   spaceMemberships?: Prisma.SpaceMemberUpdateManyWithoutUserNestedInput
   ownedVersions?: Prisma.VersionUpdateManyWithoutOwnerNestedInput
   ownedRequirements?: Prisma.RequirementUpdateManyWithoutOwnerNestedInput
+  authoredRequirements?: Prisma.RequirementUpdateManyWithoutAuthorNestedInput
   uploadedAttachments?: Prisma.AttachmentUpdateManyWithoutUploadedByNestedInput
   publishedWorkflowVersions?: Prisma.WorkflowVersionUpdateManyWithoutPublishedByNestedInput
   objectParticipants?: Prisma.ObjectParticipantUpdateManyWithoutUserNestedInput
@@ -1382,6 +1416,7 @@ export type UserUncheckedUpdateWithoutMembershipsInput = {
   spaceMemberships?: Prisma.SpaceMemberUncheckedUpdateManyWithoutUserNestedInput
   ownedVersions?: Prisma.VersionUncheckedUpdateManyWithoutOwnerNestedInput
   ownedRequirements?: Prisma.RequirementUncheckedUpdateManyWithoutOwnerNestedInput
+  authoredRequirements?: Prisma.RequirementUncheckedUpdateManyWithoutAuthorNestedInput
   uploadedAttachments?: Prisma.AttachmentUncheckedUpdateManyWithoutUploadedByNestedInput
   publishedWorkflowVersions?: Prisma.WorkflowVersionUncheckedUpdateManyWithoutPublishedByNestedInput
   objectParticipants?: Prisma.ObjectParticipantUncheckedUpdateManyWithoutUserNestedInput
@@ -1416,6 +1451,7 @@ export type UserCreateWithoutOwnedSpacesInput = {
   spaceMemberships?: Prisma.SpaceMemberCreateNestedManyWithoutUserInput
   ownedVersions?: Prisma.VersionCreateNestedManyWithoutOwnerInput
   ownedRequirements?: Prisma.RequirementCreateNestedManyWithoutOwnerInput
+  authoredRequirements?: Prisma.RequirementCreateNestedManyWithoutAuthorInput
   uploadedAttachments?: Prisma.AttachmentCreateNestedManyWithoutUploadedByInput
   publishedWorkflowVersions?: Prisma.WorkflowVersionCreateNestedManyWithoutPublishedByInput
   objectParticipants?: Prisma.ObjectParticipantCreateNestedManyWithoutUserInput
@@ -1450,6 +1486,7 @@ export type UserUncheckedCreateWithoutOwnedSpacesInput = {
   spaceMemberships?: Prisma.SpaceMemberUncheckedCreateNestedManyWithoutUserInput
   ownedVersions?: Prisma.VersionUncheckedCreateNestedManyWithoutOwnerInput
   ownedRequirements?: Prisma.RequirementUncheckedCreateNestedManyWithoutOwnerInput
+  authoredRequirements?: Prisma.RequirementUncheckedCreateNestedManyWithoutAuthorInput
   uploadedAttachments?: Prisma.AttachmentUncheckedCreateNestedManyWithoutUploadedByInput
   publishedWorkflowVersions?: Prisma.WorkflowVersionUncheckedCreateNestedManyWithoutPublishedByInput
   objectParticipants?: Prisma.ObjectParticipantUncheckedCreateNestedManyWithoutUserInput
@@ -1500,6 +1537,7 @@ export type UserUpdateWithoutOwnedSpacesInput = {
   spaceMemberships?: Prisma.SpaceMemberUpdateManyWithoutUserNestedInput
   ownedVersions?: Prisma.VersionUpdateManyWithoutOwnerNestedInput
   ownedRequirements?: Prisma.RequirementUpdateManyWithoutOwnerNestedInput
+  authoredRequirements?: Prisma.RequirementUpdateManyWithoutAuthorNestedInput
   uploadedAttachments?: Prisma.AttachmentUpdateManyWithoutUploadedByNestedInput
   publishedWorkflowVersions?: Prisma.WorkflowVersionUpdateManyWithoutPublishedByNestedInput
   objectParticipants?: Prisma.ObjectParticipantUpdateManyWithoutUserNestedInput
@@ -1534,6 +1572,7 @@ export type UserUncheckedUpdateWithoutOwnedSpacesInput = {
   spaceMemberships?: Prisma.SpaceMemberUncheckedUpdateManyWithoutUserNestedInput
   ownedVersions?: Prisma.VersionUncheckedUpdateManyWithoutOwnerNestedInput
   ownedRequirements?: Prisma.RequirementUncheckedUpdateManyWithoutOwnerNestedInput
+  authoredRequirements?: Prisma.RequirementUncheckedUpdateManyWithoutAuthorNestedInput
   uploadedAttachments?: Prisma.AttachmentUncheckedUpdateManyWithoutUploadedByNestedInput
   publishedWorkflowVersions?: Prisma.WorkflowVersionUncheckedUpdateManyWithoutPublishedByNestedInput
   objectParticipants?: Prisma.ObjectParticipantUncheckedUpdateManyWithoutUserNestedInput
@@ -1568,6 +1607,7 @@ export type UserCreateWithoutSpaceMembershipsInput = {
   ownedSpaces?: Prisma.SpaceCreateNestedManyWithoutOwnerInput
   ownedVersions?: Prisma.VersionCreateNestedManyWithoutOwnerInput
   ownedRequirements?: Prisma.RequirementCreateNestedManyWithoutOwnerInput
+  authoredRequirements?: Prisma.RequirementCreateNestedManyWithoutAuthorInput
   uploadedAttachments?: Prisma.AttachmentCreateNestedManyWithoutUploadedByInput
   publishedWorkflowVersions?: Prisma.WorkflowVersionCreateNestedManyWithoutPublishedByInput
   objectParticipants?: Prisma.ObjectParticipantCreateNestedManyWithoutUserInput
@@ -1602,6 +1642,7 @@ export type UserUncheckedCreateWithoutSpaceMembershipsInput = {
   ownedSpaces?: Prisma.SpaceUncheckedCreateNestedManyWithoutOwnerInput
   ownedVersions?: Prisma.VersionUncheckedCreateNestedManyWithoutOwnerInput
   ownedRequirements?: Prisma.RequirementUncheckedCreateNestedManyWithoutOwnerInput
+  authoredRequirements?: Prisma.RequirementUncheckedCreateNestedManyWithoutAuthorInput
   uploadedAttachments?: Prisma.AttachmentUncheckedCreateNestedManyWithoutUploadedByInput
   publishedWorkflowVersions?: Prisma.WorkflowVersionUncheckedCreateNestedManyWithoutPublishedByInput
   objectParticipants?: Prisma.ObjectParticipantUncheckedCreateNestedManyWithoutUserInput
@@ -1652,6 +1693,7 @@ export type UserUpdateWithoutSpaceMembershipsInput = {
   ownedSpaces?: Prisma.SpaceUpdateManyWithoutOwnerNestedInput
   ownedVersions?: Prisma.VersionUpdateManyWithoutOwnerNestedInput
   ownedRequirements?: Prisma.RequirementUpdateManyWithoutOwnerNestedInput
+  authoredRequirements?: Prisma.RequirementUpdateManyWithoutAuthorNestedInput
   uploadedAttachments?: Prisma.AttachmentUpdateManyWithoutUploadedByNestedInput
   publishedWorkflowVersions?: Prisma.WorkflowVersionUpdateManyWithoutPublishedByNestedInput
   objectParticipants?: Prisma.ObjectParticipantUpdateManyWithoutUserNestedInput
@@ -1686,6 +1728,7 @@ export type UserUncheckedUpdateWithoutSpaceMembershipsInput = {
   ownedSpaces?: Prisma.SpaceUncheckedUpdateManyWithoutOwnerNestedInput
   ownedVersions?: Prisma.VersionUncheckedUpdateManyWithoutOwnerNestedInput
   ownedRequirements?: Prisma.RequirementUncheckedUpdateManyWithoutOwnerNestedInput
+  authoredRequirements?: Prisma.RequirementUncheckedUpdateManyWithoutAuthorNestedInput
   uploadedAttachments?: Prisma.AttachmentUncheckedUpdateManyWithoutUploadedByNestedInput
   publishedWorkflowVersions?: Prisma.WorkflowVersionUncheckedUpdateManyWithoutPublishedByNestedInput
   objectParticipants?: Prisma.ObjectParticipantUncheckedUpdateManyWithoutUserNestedInput
@@ -1720,6 +1763,7 @@ export type UserCreateWithoutOwnedVersionsInput = {
   ownedSpaces?: Prisma.SpaceCreateNestedManyWithoutOwnerInput
   spaceMemberships?: Prisma.SpaceMemberCreateNestedManyWithoutUserInput
   ownedRequirements?: Prisma.RequirementCreateNestedManyWithoutOwnerInput
+  authoredRequirements?: Prisma.RequirementCreateNestedManyWithoutAuthorInput
   uploadedAttachments?: Prisma.AttachmentCreateNestedManyWithoutUploadedByInput
   publishedWorkflowVersions?: Prisma.WorkflowVersionCreateNestedManyWithoutPublishedByInput
   objectParticipants?: Prisma.ObjectParticipantCreateNestedManyWithoutUserInput
@@ -1754,6 +1798,7 @@ export type UserUncheckedCreateWithoutOwnedVersionsInput = {
   ownedSpaces?: Prisma.SpaceUncheckedCreateNestedManyWithoutOwnerInput
   spaceMemberships?: Prisma.SpaceMemberUncheckedCreateNestedManyWithoutUserInput
   ownedRequirements?: Prisma.RequirementUncheckedCreateNestedManyWithoutOwnerInput
+  authoredRequirements?: Prisma.RequirementUncheckedCreateNestedManyWithoutAuthorInput
   uploadedAttachments?: Prisma.AttachmentUncheckedCreateNestedManyWithoutUploadedByInput
   publishedWorkflowVersions?: Prisma.WorkflowVersionUncheckedCreateNestedManyWithoutPublishedByInput
   objectParticipants?: Prisma.ObjectParticipantUncheckedCreateNestedManyWithoutUserInput
@@ -1804,6 +1849,7 @@ export type UserUpdateWithoutOwnedVersionsInput = {
   ownedSpaces?: Prisma.SpaceUpdateManyWithoutOwnerNestedInput
   spaceMemberships?: Prisma.SpaceMemberUpdateManyWithoutUserNestedInput
   ownedRequirements?: Prisma.RequirementUpdateManyWithoutOwnerNestedInput
+  authoredRequirements?: Prisma.RequirementUpdateManyWithoutAuthorNestedInput
   uploadedAttachments?: Prisma.AttachmentUpdateManyWithoutUploadedByNestedInput
   publishedWorkflowVersions?: Prisma.WorkflowVersionUpdateManyWithoutPublishedByNestedInput
   objectParticipants?: Prisma.ObjectParticipantUpdateManyWithoutUserNestedInput
@@ -1838,6 +1884,7 @@ export type UserUncheckedUpdateWithoutOwnedVersionsInput = {
   ownedSpaces?: Prisma.SpaceUncheckedUpdateManyWithoutOwnerNestedInput
   spaceMemberships?: Prisma.SpaceMemberUncheckedUpdateManyWithoutUserNestedInput
   ownedRequirements?: Prisma.RequirementUncheckedUpdateManyWithoutOwnerNestedInput
+  authoredRequirements?: Prisma.RequirementUncheckedUpdateManyWithoutAuthorNestedInput
   uploadedAttachments?: Prisma.AttachmentUncheckedUpdateManyWithoutUploadedByNestedInput
   publishedWorkflowVersions?: Prisma.WorkflowVersionUncheckedUpdateManyWithoutPublishedByNestedInput
   objectParticipants?: Prisma.ObjectParticipantUncheckedUpdateManyWithoutUserNestedInput
@@ -1872,6 +1919,7 @@ export type UserCreateWithoutOwnedRequirementsInput = {
   ownedSpaces?: Prisma.SpaceCreateNestedManyWithoutOwnerInput
   spaceMemberships?: Prisma.SpaceMemberCreateNestedManyWithoutUserInput
   ownedVersions?: Prisma.VersionCreateNestedManyWithoutOwnerInput
+  authoredRequirements?: Prisma.RequirementCreateNestedManyWithoutAuthorInput
   uploadedAttachments?: Prisma.AttachmentCreateNestedManyWithoutUploadedByInput
   publishedWorkflowVersions?: Prisma.WorkflowVersionCreateNestedManyWithoutPublishedByInput
   objectParticipants?: Prisma.ObjectParticipantCreateNestedManyWithoutUserInput
@@ -1906,6 +1954,7 @@ export type UserUncheckedCreateWithoutOwnedRequirementsInput = {
   ownedSpaces?: Prisma.SpaceUncheckedCreateNestedManyWithoutOwnerInput
   spaceMemberships?: Prisma.SpaceMemberUncheckedCreateNestedManyWithoutUserInput
   ownedVersions?: Prisma.VersionUncheckedCreateNestedManyWithoutOwnerInput
+  authoredRequirements?: Prisma.RequirementUncheckedCreateNestedManyWithoutAuthorInput
   uploadedAttachments?: Prisma.AttachmentUncheckedCreateNestedManyWithoutUploadedByInput
   publishedWorkflowVersions?: Prisma.WorkflowVersionUncheckedCreateNestedManyWithoutPublishedByInput
   objectParticipants?: Prisma.ObjectParticipantUncheckedCreateNestedManyWithoutUserInput
@@ -1922,6 +1971,81 @@ export type UserUncheckedCreateWithoutOwnedRequirementsInput = {
 export type UserCreateOrConnectWithoutOwnedRequirementsInput = {
   where: Prisma.UserWhereUniqueInput
   create: Prisma.XOR<Prisma.UserCreateWithoutOwnedRequirementsInput, Prisma.UserUncheckedCreateWithoutOwnedRequirementsInput>
+}
+
+export type UserCreateWithoutAuthoredRequirementsInput = {
+  id: string
+  username: string
+  passwordHash: string
+  name: string
+  avatar?: string | null
+  status?: $Enums.UserStatus
+  locale?: $Enums.Locale
+  themeMode?: $Enums.ThemeMode
+  lastLoginAt?: Date | string | null
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  createdById?: string | null
+  updatedById?: string | null
+  deletedAt?: Date | string | null
+  sessions?: Prisma.SessionCreateNestedManyWithoutUserInput
+  organizations?: Prisma.OrganizationCreateNestedManyWithoutOwnerInput
+  memberships?: Prisma.OrganizationMemberCreateNestedManyWithoutUserInput
+  ownedSpaces?: Prisma.SpaceCreateNestedManyWithoutOwnerInput
+  spaceMemberships?: Prisma.SpaceMemberCreateNestedManyWithoutUserInput
+  ownedVersions?: Prisma.VersionCreateNestedManyWithoutOwnerInput
+  ownedRequirements?: Prisma.RequirementCreateNestedManyWithoutOwnerInput
+  uploadedAttachments?: Prisma.AttachmentCreateNestedManyWithoutUploadedByInput
+  publishedWorkflowVersions?: Prisma.WorkflowVersionCreateNestedManyWithoutPublishedByInput
+  objectParticipants?: Prisma.ObjectParticipantCreateNestedManyWithoutUserInput
+  reportedIntakeItems?: Prisma.IntakeItemCreateNestedManyWithoutReporterInput
+  assignedIntakeItems?: Prisma.IntakeItemCreateNestedManyWithoutAssigneeInput
+  reportedWorkItems?: Prisma.WorkItemCreateNestedManyWithoutReporterInput
+  assignedWorkItems?: Prisma.WorkItemCreateNestedManyWithoutAssigneeInput
+  regressedBugDetails?: Prisma.BugDetailCreateNestedManyWithoutRegressionByInput
+  authoredComments?: Prisma.CommentCreateNestedManyWithoutAuthorInput
+  actedTimelineEvents?: Prisma.TimelineEventCreateNestedManyWithoutActorInput
+  actedAuditLogs?: Prisma.AuditLogCreateNestedManyWithoutActorInput
+}
+
+export type UserUncheckedCreateWithoutAuthoredRequirementsInput = {
+  id: string
+  username: string
+  passwordHash: string
+  name: string
+  avatar?: string | null
+  status?: $Enums.UserStatus
+  locale?: $Enums.Locale
+  themeMode?: $Enums.ThemeMode
+  lastLoginAt?: Date | string | null
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  createdById?: string | null
+  updatedById?: string | null
+  deletedAt?: Date | string | null
+  sessions?: Prisma.SessionUncheckedCreateNestedManyWithoutUserInput
+  organizations?: Prisma.OrganizationUncheckedCreateNestedManyWithoutOwnerInput
+  memberships?: Prisma.OrganizationMemberUncheckedCreateNestedManyWithoutUserInput
+  ownedSpaces?: Prisma.SpaceUncheckedCreateNestedManyWithoutOwnerInput
+  spaceMemberships?: Prisma.SpaceMemberUncheckedCreateNestedManyWithoutUserInput
+  ownedVersions?: Prisma.VersionUncheckedCreateNestedManyWithoutOwnerInput
+  ownedRequirements?: Prisma.RequirementUncheckedCreateNestedManyWithoutOwnerInput
+  uploadedAttachments?: Prisma.AttachmentUncheckedCreateNestedManyWithoutUploadedByInput
+  publishedWorkflowVersions?: Prisma.WorkflowVersionUncheckedCreateNestedManyWithoutPublishedByInput
+  objectParticipants?: Prisma.ObjectParticipantUncheckedCreateNestedManyWithoutUserInput
+  reportedIntakeItems?: Prisma.IntakeItemUncheckedCreateNestedManyWithoutReporterInput
+  assignedIntakeItems?: Prisma.IntakeItemUncheckedCreateNestedManyWithoutAssigneeInput
+  reportedWorkItems?: Prisma.WorkItemUncheckedCreateNestedManyWithoutReporterInput
+  assignedWorkItems?: Prisma.WorkItemUncheckedCreateNestedManyWithoutAssigneeInput
+  regressedBugDetails?: Prisma.BugDetailUncheckedCreateNestedManyWithoutRegressionByInput
+  authoredComments?: Prisma.CommentUncheckedCreateNestedManyWithoutAuthorInput
+  actedTimelineEvents?: Prisma.TimelineEventUncheckedCreateNestedManyWithoutActorInput
+  actedAuditLogs?: Prisma.AuditLogUncheckedCreateNestedManyWithoutActorInput
+}
+
+export type UserCreateOrConnectWithoutAuthoredRequirementsInput = {
+  where: Prisma.UserWhereUniqueInput
+  create: Prisma.XOR<Prisma.UserCreateWithoutAuthoredRequirementsInput, Prisma.UserUncheckedCreateWithoutAuthoredRequirementsInput>
 }
 
 export type UserUpsertWithoutOwnedRequirementsInput = {
@@ -1956,6 +2080,7 @@ export type UserUpdateWithoutOwnedRequirementsInput = {
   ownedSpaces?: Prisma.SpaceUpdateManyWithoutOwnerNestedInput
   spaceMemberships?: Prisma.SpaceMemberUpdateManyWithoutUserNestedInput
   ownedVersions?: Prisma.VersionUpdateManyWithoutOwnerNestedInput
+  authoredRequirements?: Prisma.RequirementUpdateManyWithoutAuthorNestedInput
   uploadedAttachments?: Prisma.AttachmentUpdateManyWithoutUploadedByNestedInput
   publishedWorkflowVersions?: Prisma.WorkflowVersionUpdateManyWithoutPublishedByNestedInput
   objectParticipants?: Prisma.ObjectParticipantUpdateManyWithoutUserNestedInput
@@ -1990,6 +2115,88 @@ export type UserUncheckedUpdateWithoutOwnedRequirementsInput = {
   ownedSpaces?: Prisma.SpaceUncheckedUpdateManyWithoutOwnerNestedInput
   spaceMemberships?: Prisma.SpaceMemberUncheckedUpdateManyWithoutUserNestedInput
   ownedVersions?: Prisma.VersionUncheckedUpdateManyWithoutOwnerNestedInput
+  authoredRequirements?: Prisma.RequirementUncheckedUpdateManyWithoutAuthorNestedInput
+  uploadedAttachments?: Prisma.AttachmentUncheckedUpdateManyWithoutUploadedByNestedInput
+  publishedWorkflowVersions?: Prisma.WorkflowVersionUncheckedUpdateManyWithoutPublishedByNestedInput
+  objectParticipants?: Prisma.ObjectParticipantUncheckedUpdateManyWithoutUserNestedInput
+  reportedIntakeItems?: Prisma.IntakeItemUncheckedUpdateManyWithoutReporterNestedInput
+  assignedIntakeItems?: Prisma.IntakeItemUncheckedUpdateManyWithoutAssigneeNestedInput
+  reportedWorkItems?: Prisma.WorkItemUncheckedUpdateManyWithoutReporterNestedInput
+  assignedWorkItems?: Prisma.WorkItemUncheckedUpdateManyWithoutAssigneeNestedInput
+  regressedBugDetails?: Prisma.BugDetailUncheckedUpdateManyWithoutRegressionByNestedInput
+  authoredComments?: Prisma.CommentUncheckedUpdateManyWithoutAuthorNestedInput
+  actedTimelineEvents?: Prisma.TimelineEventUncheckedUpdateManyWithoutActorNestedInput
+  actedAuditLogs?: Prisma.AuditLogUncheckedUpdateManyWithoutActorNestedInput
+}
+
+export type UserUpsertWithoutAuthoredRequirementsInput = {
+  update: Prisma.XOR<Prisma.UserUpdateWithoutAuthoredRequirementsInput, Prisma.UserUncheckedUpdateWithoutAuthoredRequirementsInput>
+  create: Prisma.XOR<Prisma.UserCreateWithoutAuthoredRequirementsInput, Prisma.UserUncheckedCreateWithoutAuthoredRequirementsInput>
+  where?: Prisma.UserWhereInput
+}
+
+export type UserUpdateToOneWithWhereWithoutAuthoredRequirementsInput = {
+  where?: Prisma.UserWhereInput
+  data: Prisma.XOR<Prisma.UserUpdateWithoutAuthoredRequirementsInput, Prisma.UserUncheckedUpdateWithoutAuthoredRequirementsInput>
+}
+
+export type UserUpdateWithoutAuthoredRequirementsInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  username?: Prisma.StringFieldUpdateOperationsInput | string
+  passwordHash?: Prisma.StringFieldUpdateOperationsInput | string
+  name?: Prisma.StringFieldUpdateOperationsInput | string
+  avatar?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  status?: Prisma.EnumUserStatusFieldUpdateOperationsInput | $Enums.UserStatus
+  locale?: Prisma.EnumLocaleFieldUpdateOperationsInput | $Enums.Locale
+  themeMode?: Prisma.EnumThemeModeFieldUpdateOperationsInput | $Enums.ThemeMode
+  lastLoginAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  createdById?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  updatedById?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  deletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  sessions?: Prisma.SessionUpdateManyWithoutUserNestedInput
+  organizations?: Prisma.OrganizationUpdateManyWithoutOwnerNestedInput
+  memberships?: Prisma.OrganizationMemberUpdateManyWithoutUserNestedInput
+  ownedSpaces?: Prisma.SpaceUpdateManyWithoutOwnerNestedInput
+  spaceMemberships?: Prisma.SpaceMemberUpdateManyWithoutUserNestedInput
+  ownedVersions?: Prisma.VersionUpdateManyWithoutOwnerNestedInput
+  ownedRequirements?: Prisma.RequirementUpdateManyWithoutOwnerNestedInput
+  uploadedAttachments?: Prisma.AttachmentUpdateManyWithoutUploadedByNestedInput
+  publishedWorkflowVersions?: Prisma.WorkflowVersionUpdateManyWithoutPublishedByNestedInput
+  objectParticipants?: Prisma.ObjectParticipantUpdateManyWithoutUserNestedInput
+  reportedIntakeItems?: Prisma.IntakeItemUpdateManyWithoutReporterNestedInput
+  assignedIntakeItems?: Prisma.IntakeItemUpdateManyWithoutAssigneeNestedInput
+  reportedWorkItems?: Prisma.WorkItemUpdateManyWithoutReporterNestedInput
+  assignedWorkItems?: Prisma.WorkItemUpdateManyWithoutAssigneeNestedInput
+  regressedBugDetails?: Prisma.BugDetailUpdateManyWithoutRegressionByNestedInput
+  authoredComments?: Prisma.CommentUpdateManyWithoutAuthorNestedInput
+  actedTimelineEvents?: Prisma.TimelineEventUpdateManyWithoutActorNestedInput
+  actedAuditLogs?: Prisma.AuditLogUpdateManyWithoutActorNestedInput
+}
+
+export type UserUncheckedUpdateWithoutAuthoredRequirementsInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  username?: Prisma.StringFieldUpdateOperationsInput | string
+  passwordHash?: Prisma.StringFieldUpdateOperationsInput | string
+  name?: Prisma.StringFieldUpdateOperationsInput | string
+  avatar?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  status?: Prisma.EnumUserStatusFieldUpdateOperationsInput | $Enums.UserStatus
+  locale?: Prisma.EnumLocaleFieldUpdateOperationsInput | $Enums.Locale
+  themeMode?: Prisma.EnumThemeModeFieldUpdateOperationsInput | $Enums.ThemeMode
+  lastLoginAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  createdById?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  updatedById?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  deletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  sessions?: Prisma.SessionUncheckedUpdateManyWithoutUserNestedInput
+  organizations?: Prisma.OrganizationUncheckedUpdateManyWithoutOwnerNestedInput
+  memberships?: Prisma.OrganizationMemberUncheckedUpdateManyWithoutUserNestedInput
+  ownedSpaces?: Prisma.SpaceUncheckedUpdateManyWithoutOwnerNestedInput
+  spaceMemberships?: Prisma.SpaceMemberUncheckedUpdateManyWithoutUserNestedInput
+  ownedVersions?: Prisma.VersionUncheckedUpdateManyWithoutOwnerNestedInput
+  ownedRequirements?: Prisma.RequirementUncheckedUpdateManyWithoutOwnerNestedInput
   uploadedAttachments?: Prisma.AttachmentUncheckedUpdateManyWithoutUploadedByNestedInput
   publishedWorkflowVersions?: Prisma.WorkflowVersionUncheckedUpdateManyWithoutPublishedByNestedInput
   objectParticipants?: Prisma.ObjectParticipantUncheckedUpdateManyWithoutUserNestedInput
@@ -2025,6 +2232,7 @@ export type UserCreateWithoutReportedIntakeItemsInput = {
   spaceMemberships?: Prisma.SpaceMemberCreateNestedManyWithoutUserInput
   ownedVersions?: Prisma.VersionCreateNestedManyWithoutOwnerInput
   ownedRequirements?: Prisma.RequirementCreateNestedManyWithoutOwnerInput
+  authoredRequirements?: Prisma.RequirementCreateNestedManyWithoutAuthorInput
   uploadedAttachments?: Prisma.AttachmentCreateNestedManyWithoutUploadedByInput
   publishedWorkflowVersions?: Prisma.WorkflowVersionCreateNestedManyWithoutPublishedByInput
   objectParticipants?: Prisma.ObjectParticipantCreateNestedManyWithoutUserInput
@@ -2059,6 +2267,7 @@ export type UserUncheckedCreateWithoutReportedIntakeItemsInput = {
   spaceMemberships?: Prisma.SpaceMemberUncheckedCreateNestedManyWithoutUserInput
   ownedVersions?: Prisma.VersionUncheckedCreateNestedManyWithoutOwnerInput
   ownedRequirements?: Prisma.RequirementUncheckedCreateNestedManyWithoutOwnerInput
+  authoredRequirements?: Prisma.RequirementUncheckedCreateNestedManyWithoutAuthorInput
   uploadedAttachments?: Prisma.AttachmentUncheckedCreateNestedManyWithoutUploadedByInput
   publishedWorkflowVersions?: Prisma.WorkflowVersionUncheckedCreateNestedManyWithoutPublishedByInput
   objectParticipants?: Prisma.ObjectParticipantUncheckedCreateNestedManyWithoutUserInput
@@ -2098,6 +2307,7 @@ export type UserCreateWithoutAssignedIntakeItemsInput = {
   spaceMemberships?: Prisma.SpaceMemberCreateNestedManyWithoutUserInput
   ownedVersions?: Prisma.VersionCreateNestedManyWithoutOwnerInput
   ownedRequirements?: Prisma.RequirementCreateNestedManyWithoutOwnerInput
+  authoredRequirements?: Prisma.RequirementCreateNestedManyWithoutAuthorInput
   uploadedAttachments?: Prisma.AttachmentCreateNestedManyWithoutUploadedByInput
   publishedWorkflowVersions?: Prisma.WorkflowVersionCreateNestedManyWithoutPublishedByInput
   objectParticipants?: Prisma.ObjectParticipantCreateNestedManyWithoutUserInput
@@ -2132,6 +2342,7 @@ export type UserUncheckedCreateWithoutAssignedIntakeItemsInput = {
   spaceMemberships?: Prisma.SpaceMemberUncheckedCreateNestedManyWithoutUserInput
   ownedVersions?: Prisma.VersionUncheckedCreateNestedManyWithoutOwnerInput
   ownedRequirements?: Prisma.RequirementUncheckedCreateNestedManyWithoutOwnerInput
+  authoredRequirements?: Prisma.RequirementUncheckedCreateNestedManyWithoutAuthorInput
   uploadedAttachments?: Prisma.AttachmentUncheckedCreateNestedManyWithoutUploadedByInput
   publishedWorkflowVersions?: Prisma.WorkflowVersionUncheckedCreateNestedManyWithoutPublishedByInput
   objectParticipants?: Prisma.ObjectParticipantUncheckedCreateNestedManyWithoutUserInput
@@ -2182,6 +2393,7 @@ export type UserUpdateWithoutReportedIntakeItemsInput = {
   spaceMemberships?: Prisma.SpaceMemberUpdateManyWithoutUserNestedInput
   ownedVersions?: Prisma.VersionUpdateManyWithoutOwnerNestedInput
   ownedRequirements?: Prisma.RequirementUpdateManyWithoutOwnerNestedInput
+  authoredRequirements?: Prisma.RequirementUpdateManyWithoutAuthorNestedInput
   uploadedAttachments?: Prisma.AttachmentUpdateManyWithoutUploadedByNestedInput
   publishedWorkflowVersions?: Prisma.WorkflowVersionUpdateManyWithoutPublishedByNestedInput
   objectParticipants?: Prisma.ObjectParticipantUpdateManyWithoutUserNestedInput
@@ -2216,6 +2428,7 @@ export type UserUncheckedUpdateWithoutReportedIntakeItemsInput = {
   spaceMemberships?: Prisma.SpaceMemberUncheckedUpdateManyWithoutUserNestedInput
   ownedVersions?: Prisma.VersionUncheckedUpdateManyWithoutOwnerNestedInput
   ownedRequirements?: Prisma.RequirementUncheckedUpdateManyWithoutOwnerNestedInput
+  authoredRequirements?: Prisma.RequirementUncheckedUpdateManyWithoutAuthorNestedInput
   uploadedAttachments?: Prisma.AttachmentUncheckedUpdateManyWithoutUploadedByNestedInput
   publishedWorkflowVersions?: Prisma.WorkflowVersionUncheckedUpdateManyWithoutPublishedByNestedInput
   objectParticipants?: Prisma.ObjectParticipantUncheckedUpdateManyWithoutUserNestedInput
@@ -2261,6 +2474,7 @@ export type UserUpdateWithoutAssignedIntakeItemsInput = {
   spaceMemberships?: Prisma.SpaceMemberUpdateManyWithoutUserNestedInput
   ownedVersions?: Prisma.VersionUpdateManyWithoutOwnerNestedInput
   ownedRequirements?: Prisma.RequirementUpdateManyWithoutOwnerNestedInput
+  authoredRequirements?: Prisma.RequirementUpdateManyWithoutAuthorNestedInput
   uploadedAttachments?: Prisma.AttachmentUpdateManyWithoutUploadedByNestedInput
   publishedWorkflowVersions?: Prisma.WorkflowVersionUpdateManyWithoutPublishedByNestedInput
   objectParticipants?: Prisma.ObjectParticipantUpdateManyWithoutUserNestedInput
@@ -2295,6 +2509,7 @@ export type UserUncheckedUpdateWithoutAssignedIntakeItemsInput = {
   spaceMemberships?: Prisma.SpaceMemberUncheckedUpdateManyWithoutUserNestedInput
   ownedVersions?: Prisma.VersionUncheckedUpdateManyWithoutOwnerNestedInput
   ownedRequirements?: Prisma.RequirementUncheckedUpdateManyWithoutOwnerNestedInput
+  authoredRequirements?: Prisma.RequirementUncheckedUpdateManyWithoutAuthorNestedInput
   uploadedAttachments?: Prisma.AttachmentUncheckedUpdateManyWithoutUploadedByNestedInput
   publishedWorkflowVersions?: Prisma.WorkflowVersionUncheckedUpdateManyWithoutPublishedByNestedInput
   objectParticipants?: Prisma.ObjectParticipantUncheckedUpdateManyWithoutUserNestedInput
@@ -2329,6 +2544,7 @@ export type UserCreateWithoutAssignedWorkItemsInput = {
   spaceMemberships?: Prisma.SpaceMemberCreateNestedManyWithoutUserInput
   ownedVersions?: Prisma.VersionCreateNestedManyWithoutOwnerInput
   ownedRequirements?: Prisma.RequirementCreateNestedManyWithoutOwnerInput
+  authoredRequirements?: Prisma.RequirementCreateNestedManyWithoutAuthorInput
   uploadedAttachments?: Prisma.AttachmentCreateNestedManyWithoutUploadedByInput
   publishedWorkflowVersions?: Prisma.WorkflowVersionCreateNestedManyWithoutPublishedByInput
   objectParticipants?: Prisma.ObjectParticipantCreateNestedManyWithoutUserInput
@@ -2363,6 +2579,7 @@ export type UserUncheckedCreateWithoutAssignedWorkItemsInput = {
   spaceMemberships?: Prisma.SpaceMemberUncheckedCreateNestedManyWithoutUserInput
   ownedVersions?: Prisma.VersionUncheckedCreateNestedManyWithoutOwnerInput
   ownedRequirements?: Prisma.RequirementUncheckedCreateNestedManyWithoutOwnerInput
+  authoredRequirements?: Prisma.RequirementUncheckedCreateNestedManyWithoutAuthorInput
   uploadedAttachments?: Prisma.AttachmentUncheckedCreateNestedManyWithoutUploadedByInput
   publishedWorkflowVersions?: Prisma.WorkflowVersionUncheckedCreateNestedManyWithoutPublishedByInput
   objectParticipants?: Prisma.ObjectParticipantUncheckedCreateNestedManyWithoutUserInput
@@ -2402,6 +2619,7 @@ export type UserCreateWithoutReportedWorkItemsInput = {
   spaceMemberships?: Prisma.SpaceMemberCreateNestedManyWithoutUserInput
   ownedVersions?: Prisma.VersionCreateNestedManyWithoutOwnerInput
   ownedRequirements?: Prisma.RequirementCreateNestedManyWithoutOwnerInput
+  authoredRequirements?: Prisma.RequirementCreateNestedManyWithoutAuthorInput
   uploadedAttachments?: Prisma.AttachmentCreateNestedManyWithoutUploadedByInput
   publishedWorkflowVersions?: Prisma.WorkflowVersionCreateNestedManyWithoutPublishedByInput
   objectParticipants?: Prisma.ObjectParticipantCreateNestedManyWithoutUserInput
@@ -2436,6 +2654,7 @@ export type UserUncheckedCreateWithoutReportedWorkItemsInput = {
   spaceMemberships?: Prisma.SpaceMemberUncheckedCreateNestedManyWithoutUserInput
   ownedVersions?: Prisma.VersionUncheckedCreateNestedManyWithoutOwnerInput
   ownedRequirements?: Prisma.RequirementUncheckedCreateNestedManyWithoutOwnerInput
+  authoredRequirements?: Prisma.RequirementUncheckedCreateNestedManyWithoutAuthorInput
   uploadedAttachments?: Prisma.AttachmentUncheckedCreateNestedManyWithoutUploadedByInput
   publishedWorkflowVersions?: Prisma.WorkflowVersionUncheckedCreateNestedManyWithoutPublishedByInput
   objectParticipants?: Prisma.ObjectParticipantUncheckedCreateNestedManyWithoutUserInput
@@ -2486,6 +2705,7 @@ export type UserUpdateWithoutAssignedWorkItemsInput = {
   spaceMemberships?: Prisma.SpaceMemberUpdateManyWithoutUserNestedInput
   ownedVersions?: Prisma.VersionUpdateManyWithoutOwnerNestedInput
   ownedRequirements?: Prisma.RequirementUpdateManyWithoutOwnerNestedInput
+  authoredRequirements?: Prisma.RequirementUpdateManyWithoutAuthorNestedInput
   uploadedAttachments?: Prisma.AttachmentUpdateManyWithoutUploadedByNestedInput
   publishedWorkflowVersions?: Prisma.WorkflowVersionUpdateManyWithoutPublishedByNestedInput
   objectParticipants?: Prisma.ObjectParticipantUpdateManyWithoutUserNestedInput
@@ -2520,6 +2740,7 @@ export type UserUncheckedUpdateWithoutAssignedWorkItemsInput = {
   spaceMemberships?: Prisma.SpaceMemberUncheckedUpdateManyWithoutUserNestedInput
   ownedVersions?: Prisma.VersionUncheckedUpdateManyWithoutOwnerNestedInput
   ownedRequirements?: Prisma.RequirementUncheckedUpdateManyWithoutOwnerNestedInput
+  authoredRequirements?: Prisma.RequirementUncheckedUpdateManyWithoutAuthorNestedInput
   uploadedAttachments?: Prisma.AttachmentUncheckedUpdateManyWithoutUploadedByNestedInput
   publishedWorkflowVersions?: Prisma.WorkflowVersionUncheckedUpdateManyWithoutPublishedByNestedInput
   objectParticipants?: Prisma.ObjectParticipantUncheckedUpdateManyWithoutUserNestedInput
@@ -2565,6 +2786,7 @@ export type UserUpdateWithoutReportedWorkItemsInput = {
   spaceMemberships?: Prisma.SpaceMemberUpdateManyWithoutUserNestedInput
   ownedVersions?: Prisma.VersionUpdateManyWithoutOwnerNestedInput
   ownedRequirements?: Prisma.RequirementUpdateManyWithoutOwnerNestedInput
+  authoredRequirements?: Prisma.RequirementUpdateManyWithoutAuthorNestedInput
   uploadedAttachments?: Prisma.AttachmentUpdateManyWithoutUploadedByNestedInput
   publishedWorkflowVersions?: Prisma.WorkflowVersionUpdateManyWithoutPublishedByNestedInput
   objectParticipants?: Prisma.ObjectParticipantUpdateManyWithoutUserNestedInput
@@ -2599,6 +2821,7 @@ export type UserUncheckedUpdateWithoutReportedWorkItemsInput = {
   spaceMemberships?: Prisma.SpaceMemberUncheckedUpdateManyWithoutUserNestedInput
   ownedVersions?: Prisma.VersionUncheckedUpdateManyWithoutOwnerNestedInput
   ownedRequirements?: Prisma.RequirementUncheckedUpdateManyWithoutOwnerNestedInput
+  authoredRequirements?: Prisma.RequirementUncheckedUpdateManyWithoutAuthorNestedInput
   uploadedAttachments?: Prisma.AttachmentUncheckedUpdateManyWithoutUploadedByNestedInput
   publishedWorkflowVersions?: Prisma.WorkflowVersionUncheckedUpdateManyWithoutPublishedByNestedInput
   objectParticipants?: Prisma.ObjectParticipantUncheckedUpdateManyWithoutUserNestedInput
@@ -2633,6 +2856,7 @@ export type UserCreateWithoutRegressedBugDetailsInput = {
   spaceMemberships?: Prisma.SpaceMemberCreateNestedManyWithoutUserInput
   ownedVersions?: Prisma.VersionCreateNestedManyWithoutOwnerInput
   ownedRequirements?: Prisma.RequirementCreateNestedManyWithoutOwnerInput
+  authoredRequirements?: Prisma.RequirementCreateNestedManyWithoutAuthorInput
   uploadedAttachments?: Prisma.AttachmentCreateNestedManyWithoutUploadedByInput
   publishedWorkflowVersions?: Prisma.WorkflowVersionCreateNestedManyWithoutPublishedByInput
   objectParticipants?: Prisma.ObjectParticipantCreateNestedManyWithoutUserInput
@@ -2667,6 +2891,7 @@ export type UserUncheckedCreateWithoutRegressedBugDetailsInput = {
   spaceMemberships?: Prisma.SpaceMemberUncheckedCreateNestedManyWithoutUserInput
   ownedVersions?: Prisma.VersionUncheckedCreateNestedManyWithoutOwnerInput
   ownedRequirements?: Prisma.RequirementUncheckedCreateNestedManyWithoutOwnerInput
+  authoredRequirements?: Prisma.RequirementUncheckedCreateNestedManyWithoutAuthorInput
   uploadedAttachments?: Prisma.AttachmentUncheckedCreateNestedManyWithoutUploadedByInput
   publishedWorkflowVersions?: Prisma.WorkflowVersionUncheckedCreateNestedManyWithoutPublishedByInput
   objectParticipants?: Prisma.ObjectParticipantUncheckedCreateNestedManyWithoutUserInput
@@ -2717,6 +2942,7 @@ export type UserUpdateWithoutRegressedBugDetailsInput = {
   spaceMemberships?: Prisma.SpaceMemberUpdateManyWithoutUserNestedInput
   ownedVersions?: Prisma.VersionUpdateManyWithoutOwnerNestedInput
   ownedRequirements?: Prisma.RequirementUpdateManyWithoutOwnerNestedInput
+  authoredRequirements?: Prisma.RequirementUpdateManyWithoutAuthorNestedInput
   uploadedAttachments?: Prisma.AttachmentUpdateManyWithoutUploadedByNestedInput
   publishedWorkflowVersions?: Prisma.WorkflowVersionUpdateManyWithoutPublishedByNestedInput
   objectParticipants?: Prisma.ObjectParticipantUpdateManyWithoutUserNestedInput
@@ -2751,6 +2977,7 @@ export type UserUncheckedUpdateWithoutRegressedBugDetailsInput = {
   spaceMemberships?: Prisma.SpaceMemberUncheckedUpdateManyWithoutUserNestedInput
   ownedVersions?: Prisma.VersionUncheckedUpdateManyWithoutOwnerNestedInput
   ownedRequirements?: Prisma.RequirementUncheckedUpdateManyWithoutOwnerNestedInput
+  authoredRequirements?: Prisma.RequirementUncheckedUpdateManyWithoutAuthorNestedInput
   uploadedAttachments?: Prisma.AttachmentUncheckedUpdateManyWithoutUploadedByNestedInput
   publishedWorkflowVersions?: Prisma.WorkflowVersionUncheckedUpdateManyWithoutPublishedByNestedInput
   objectParticipants?: Prisma.ObjectParticipantUncheckedUpdateManyWithoutUserNestedInput
@@ -2785,6 +3012,7 @@ export type UserCreateWithoutUploadedAttachmentsInput = {
   spaceMemberships?: Prisma.SpaceMemberCreateNestedManyWithoutUserInput
   ownedVersions?: Prisma.VersionCreateNestedManyWithoutOwnerInput
   ownedRequirements?: Prisma.RequirementCreateNestedManyWithoutOwnerInput
+  authoredRequirements?: Prisma.RequirementCreateNestedManyWithoutAuthorInput
   publishedWorkflowVersions?: Prisma.WorkflowVersionCreateNestedManyWithoutPublishedByInput
   objectParticipants?: Prisma.ObjectParticipantCreateNestedManyWithoutUserInput
   reportedIntakeItems?: Prisma.IntakeItemCreateNestedManyWithoutReporterInput
@@ -2819,6 +3047,7 @@ export type UserUncheckedCreateWithoutUploadedAttachmentsInput = {
   spaceMemberships?: Prisma.SpaceMemberUncheckedCreateNestedManyWithoutUserInput
   ownedVersions?: Prisma.VersionUncheckedCreateNestedManyWithoutOwnerInput
   ownedRequirements?: Prisma.RequirementUncheckedCreateNestedManyWithoutOwnerInput
+  authoredRequirements?: Prisma.RequirementUncheckedCreateNestedManyWithoutAuthorInput
   publishedWorkflowVersions?: Prisma.WorkflowVersionUncheckedCreateNestedManyWithoutPublishedByInput
   objectParticipants?: Prisma.ObjectParticipantUncheckedCreateNestedManyWithoutUserInput
   reportedIntakeItems?: Prisma.IntakeItemUncheckedCreateNestedManyWithoutReporterInput
@@ -2869,6 +3098,7 @@ export type UserUpdateWithoutUploadedAttachmentsInput = {
   spaceMemberships?: Prisma.SpaceMemberUpdateManyWithoutUserNestedInput
   ownedVersions?: Prisma.VersionUpdateManyWithoutOwnerNestedInput
   ownedRequirements?: Prisma.RequirementUpdateManyWithoutOwnerNestedInput
+  authoredRequirements?: Prisma.RequirementUpdateManyWithoutAuthorNestedInput
   publishedWorkflowVersions?: Prisma.WorkflowVersionUpdateManyWithoutPublishedByNestedInput
   objectParticipants?: Prisma.ObjectParticipantUpdateManyWithoutUserNestedInput
   reportedIntakeItems?: Prisma.IntakeItemUpdateManyWithoutReporterNestedInput
@@ -2903,6 +3133,7 @@ export type UserUncheckedUpdateWithoutUploadedAttachmentsInput = {
   spaceMemberships?: Prisma.SpaceMemberUncheckedUpdateManyWithoutUserNestedInput
   ownedVersions?: Prisma.VersionUncheckedUpdateManyWithoutOwnerNestedInput
   ownedRequirements?: Prisma.RequirementUncheckedUpdateManyWithoutOwnerNestedInput
+  authoredRequirements?: Prisma.RequirementUncheckedUpdateManyWithoutAuthorNestedInput
   publishedWorkflowVersions?: Prisma.WorkflowVersionUncheckedUpdateManyWithoutPublishedByNestedInput
   objectParticipants?: Prisma.ObjectParticipantUncheckedUpdateManyWithoutUserNestedInput
   reportedIntakeItems?: Prisma.IntakeItemUncheckedUpdateManyWithoutReporterNestedInput
@@ -2937,6 +3168,7 @@ export type UserCreateWithoutPublishedWorkflowVersionsInput = {
   spaceMemberships?: Prisma.SpaceMemberCreateNestedManyWithoutUserInput
   ownedVersions?: Prisma.VersionCreateNestedManyWithoutOwnerInput
   ownedRequirements?: Prisma.RequirementCreateNestedManyWithoutOwnerInput
+  authoredRequirements?: Prisma.RequirementCreateNestedManyWithoutAuthorInput
   uploadedAttachments?: Prisma.AttachmentCreateNestedManyWithoutUploadedByInput
   objectParticipants?: Prisma.ObjectParticipantCreateNestedManyWithoutUserInput
   reportedIntakeItems?: Prisma.IntakeItemCreateNestedManyWithoutReporterInput
@@ -2971,6 +3203,7 @@ export type UserUncheckedCreateWithoutPublishedWorkflowVersionsInput = {
   spaceMemberships?: Prisma.SpaceMemberUncheckedCreateNestedManyWithoutUserInput
   ownedVersions?: Prisma.VersionUncheckedCreateNestedManyWithoutOwnerInput
   ownedRequirements?: Prisma.RequirementUncheckedCreateNestedManyWithoutOwnerInput
+  authoredRequirements?: Prisma.RequirementUncheckedCreateNestedManyWithoutAuthorInput
   uploadedAttachments?: Prisma.AttachmentUncheckedCreateNestedManyWithoutUploadedByInput
   objectParticipants?: Prisma.ObjectParticipantUncheckedCreateNestedManyWithoutUserInput
   reportedIntakeItems?: Prisma.IntakeItemUncheckedCreateNestedManyWithoutReporterInput
@@ -3021,6 +3254,7 @@ export type UserUpdateWithoutPublishedWorkflowVersionsInput = {
   spaceMemberships?: Prisma.SpaceMemberUpdateManyWithoutUserNestedInput
   ownedVersions?: Prisma.VersionUpdateManyWithoutOwnerNestedInput
   ownedRequirements?: Prisma.RequirementUpdateManyWithoutOwnerNestedInput
+  authoredRequirements?: Prisma.RequirementUpdateManyWithoutAuthorNestedInput
   uploadedAttachments?: Prisma.AttachmentUpdateManyWithoutUploadedByNestedInput
   objectParticipants?: Prisma.ObjectParticipantUpdateManyWithoutUserNestedInput
   reportedIntakeItems?: Prisma.IntakeItemUpdateManyWithoutReporterNestedInput
@@ -3055,6 +3289,7 @@ export type UserUncheckedUpdateWithoutPublishedWorkflowVersionsInput = {
   spaceMemberships?: Prisma.SpaceMemberUncheckedUpdateManyWithoutUserNestedInput
   ownedVersions?: Prisma.VersionUncheckedUpdateManyWithoutOwnerNestedInput
   ownedRequirements?: Prisma.RequirementUncheckedUpdateManyWithoutOwnerNestedInput
+  authoredRequirements?: Prisma.RequirementUncheckedUpdateManyWithoutAuthorNestedInput
   uploadedAttachments?: Prisma.AttachmentUncheckedUpdateManyWithoutUploadedByNestedInput
   objectParticipants?: Prisma.ObjectParticipantUncheckedUpdateManyWithoutUserNestedInput
   reportedIntakeItems?: Prisma.IntakeItemUncheckedUpdateManyWithoutReporterNestedInput
@@ -3089,6 +3324,7 @@ export type UserCreateWithoutObjectParticipantsInput = {
   spaceMemberships?: Prisma.SpaceMemberCreateNestedManyWithoutUserInput
   ownedVersions?: Prisma.VersionCreateNestedManyWithoutOwnerInput
   ownedRequirements?: Prisma.RequirementCreateNestedManyWithoutOwnerInput
+  authoredRequirements?: Prisma.RequirementCreateNestedManyWithoutAuthorInput
   uploadedAttachments?: Prisma.AttachmentCreateNestedManyWithoutUploadedByInput
   publishedWorkflowVersions?: Prisma.WorkflowVersionCreateNestedManyWithoutPublishedByInput
   reportedIntakeItems?: Prisma.IntakeItemCreateNestedManyWithoutReporterInput
@@ -3123,6 +3359,7 @@ export type UserUncheckedCreateWithoutObjectParticipantsInput = {
   spaceMemberships?: Prisma.SpaceMemberUncheckedCreateNestedManyWithoutUserInput
   ownedVersions?: Prisma.VersionUncheckedCreateNestedManyWithoutOwnerInput
   ownedRequirements?: Prisma.RequirementUncheckedCreateNestedManyWithoutOwnerInput
+  authoredRequirements?: Prisma.RequirementUncheckedCreateNestedManyWithoutAuthorInput
   uploadedAttachments?: Prisma.AttachmentUncheckedCreateNestedManyWithoutUploadedByInput
   publishedWorkflowVersions?: Prisma.WorkflowVersionUncheckedCreateNestedManyWithoutPublishedByInput
   reportedIntakeItems?: Prisma.IntakeItemUncheckedCreateNestedManyWithoutReporterInput
@@ -3173,6 +3410,7 @@ export type UserUpdateWithoutObjectParticipantsInput = {
   spaceMemberships?: Prisma.SpaceMemberUpdateManyWithoutUserNestedInput
   ownedVersions?: Prisma.VersionUpdateManyWithoutOwnerNestedInput
   ownedRequirements?: Prisma.RequirementUpdateManyWithoutOwnerNestedInput
+  authoredRequirements?: Prisma.RequirementUpdateManyWithoutAuthorNestedInput
   uploadedAttachments?: Prisma.AttachmentUpdateManyWithoutUploadedByNestedInput
   publishedWorkflowVersions?: Prisma.WorkflowVersionUpdateManyWithoutPublishedByNestedInput
   reportedIntakeItems?: Prisma.IntakeItemUpdateManyWithoutReporterNestedInput
@@ -3207,6 +3445,7 @@ export type UserUncheckedUpdateWithoutObjectParticipantsInput = {
   spaceMemberships?: Prisma.SpaceMemberUncheckedUpdateManyWithoutUserNestedInput
   ownedVersions?: Prisma.VersionUncheckedUpdateManyWithoutOwnerNestedInput
   ownedRequirements?: Prisma.RequirementUncheckedUpdateManyWithoutOwnerNestedInput
+  authoredRequirements?: Prisma.RequirementUncheckedUpdateManyWithoutAuthorNestedInput
   uploadedAttachments?: Prisma.AttachmentUncheckedUpdateManyWithoutUploadedByNestedInput
   publishedWorkflowVersions?: Prisma.WorkflowVersionUncheckedUpdateManyWithoutPublishedByNestedInput
   reportedIntakeItems?: Prisma.IntakeItemUncheckedUpdateManyWithoutReporterNestedInput
@@ -3241,6 +3480,7 @@ export type UserCreateWithoutAuthoredCommentsInput = {
   spaceMemberships?: Prisma.SpaceMemberCreateNestedManyWithoutUserInput
   ownedVersions?: Prisma.VersionCreateNestedManyWithoutOwnerInput
   ownedRequirements?: Prisma.RequirementCreateNestedManyWithoutOwnerInput
+  authoredRequirements?: Prisma.RequirementCreateNestedManyWithoutAuthorInput
   uploadedAttachments?: Prisma.AttachmentCreateNestedManyWithoutUploadedByInput
   publishedWorkflowVersions?: Prisma.WorkflowVersionCreateNestedManyWithoutPublishedByInput
   objectParticipants?: Prisma.ObjectParticipantCreateNestedManyWithoutUserInput
@@ -3275,6 +3515,7 @@ export type UserUncheckedCreateWithoutAuthoredCommentsInput = {
   spaceMemberships?: Prisma.SpaceMemberUncheckedCreateNestedManyWithoutUserInput
   ownedVersions?: Prisma.VersionUncheckedCreateNestedManyWithoutOwnerInput
   ownedRequirements?: Prisma.RequirementUncheckedCreateNestedManyWithoutOwnerInput
+  authoredRequirements?: Prisma.RequirementUncheckedCreateNestedManyWithoutAuthorInput
   uploadedAttachments?: Prisma.AttachmentUncheckedCreateNestedManyWithoutUploadedByInput
   publishedWorkflowVersions?: Prisma.WorkflowVersionUncheckedCreateNestedManyWithoutPublishedByInput
   objectParticipants?: Prisma.ObjectParticipantUncheckedCreateNestedManyWithoutUserInput
@@ -3325,6 +3566,7 @@ export type UserUpdateWithoutAuthoredCommentsInput = {
   spaceMemberships?: Prisma.SpaceMemberUpdateManyWithoutUserNestedInput
   ownedVersions?: Prisma.VersionUpdateManyWithoutOwnerNestedInput
   ownedRequirements?: Prisma.RequirementUpdateManyWithoutOwnerNestedInput
+  authoredRequirements?: Prisma.RequirementUpdateManyWithoutAuthorNestedInput
   uploadedAttachments?: Prisma.AttachmentUpdateManyWithoutUploadedByNestedInput
   publishedWorkflowVersions?: Prisma.WorkflowVersionUpdateManyWithoutPublishedByNestedInput
   objectParticipants?: Prisma.ObjectParticipantUpdateManyWithoutUserNestedInput
@@ -3359,6 +3601,7 @@ export type UserUncheckedUpdateWithoutAuthoredCommentsInput = {
   spaceMemberships?: Prisma.SpaceMemberUncheckedUpdateManyWithoutUserNestedInput
   ownedVersions?: Prisma.VersionUncheckedUpdateManyWithoutOwnerNestedInput
   ownedRequirements?: Prisma.RequirementUncheckedUpdateManyWithoutOwnerNestedInput
+  authoredRequirements?: Prisma.RequirementUncheckedUpdateManyWithoutAuthorNestedInput
   uploadedAttachments?: Prisma.AttachmentUncheckedUpdateManyWithoutUploadedByNestedInput
   publishedWorkflowVersions?: Prisma.WorkflowVersionUncheckedUpdateManyWithoutPublishedByNestedInput
   objectParticipants?: Prisma.ObjectParticipantUncheckedUpdateManyWithoutUserNestedInput
@@ -3393,6 +3636,7 @@ export type UserCreateWithoutActedTimelineEventsInput = {
   spaceMemberships?: Prisma.SpaceMemberCreateNestedManyWithoutUserInput
   ownedVersions?: Prisma.VersionCreateNestedManyWithoutOwnerInput
   ownedRequirements?: Prisma.RequirementCreateNestedManyWithoutOwnerInput
+  authoredRequirements?: Prisma.RequirementCreateNestedManyWithoutAuthorInput
   uploadedAttachments?: Prisma.AttachmentCreateNestedManyWithoutUploadedByInput
   publishedWorkflowVersions?: Prisma.WorkflowVersionCreateNestedManyWithoutPublishedByInput
   objectParticipants?: Prisma.ObjectParticipantCreateNestedManyWithoutUserInput
@@ -3427,6 +3671,7 @@ export type UserUncheckedCreateWithoutActedTimelineEventsInput = {
   spaceMemberships?: Prisma.SpaceMemberUncheckedCreateNestedManyWithoutUserInput
   ownedVersions?: Prisma.VersionUncheckedCreateNestedManyWithoutOwnerInput
   ownedRequirements?: Prisma.RequirementUncheckedCreateNestedManyWithoutOwnerInput
+  authoredRequirements?: Prisma.RequirementUncheckedCreateNestedManyWithoutAuthorInput
   uploadedAttachments?: Prisma.AttachmentUncheckedCreateNestedManyWithoutUploadedByInput
   publishedWorkflowVersions?: Prisma.WorkflowVersionUncheckedCreateNestedManyWithoutPublishedByInput
   objectParticipants?: Prisma.ObjectParticipantUncheckedCreateNestedManyWithoutUserInput
@@ -3477,6 +3722,7 @@ export type UserUpdateWithoutActedTimelineEventsInput = {
   spaceMemberships?: Prisma.SpaceMemberUpdateManyWithoutUserNestedInput
   ownedVersions?: Prisma.VersionUpdateManyWithoutOwnerNestedInput
   ownedRequirements?: Prisma.RequirementUpdateManyWithoutOwnerNestedInput
+  authoredRequirements?: Prisma.RequirementUpdateManyWithoutAuthorNestedInput
   uploadedAttachments?: Prisma.AttachmentUpdateManyWithoutUploadedByNestedInput
   publishedWorkflowVersions?: Prisma.WorkflowVersionUpdateManyWithoutPublishedByNestedInput
   objectParticipants?: Prisma.ObjectParticipantUpdateManyWithoutUserNestedInput
@@ -3511,6 +3757,7 @@ export type UserUncheckedUpdateWithoutActedTimelineEventsInput = {
   spaceMemberships?: Prisma.SpaceMemberUncheckedUpdateManyWithoutUserNestedInput
   ownedVersions?: Prisma.VersionUncheckedUpdateManyWithoutOwnerNestedInput
   ownedRequirements?: Prisma.RequirementUncheckedUpdateManyWithoutOwnerNestedInput
+  authoredRequirements?: Prisma.RequirementUncheckedUpdateManyWithoutAuthorNestedInput
   uploadedAttachments?: Prisma.AttachmentUncheckedUpdateManyWithoutUploadedByNestedInput
   publishedWorkflowVersions?: Prisma.WorkflowVersionUncheckedUpdateManyWithoutPublishedByNestedInput
   objectParticipants?: Prisma.ObjectParticipantUncheckedUpdateManyWithoutUserNestedInput
@@ -3545,6 +3792,7 @@ export type UserCreateWithoutActedAuditLogsInput = {
   spaceMemberships?: Prisma.SpaceMemberCreateNestedManyWithoutUserInput
   ownedVersions?: Prisma.VersionCreateNestedManyWithoutOwnerInput
   ownedRequirements?: Prisma.RequirementCreateNestedManyWithoutOwnerInput
+  authoredRequirements?: Prisma.RequirementCreateNestedManyWithoutAuthorInput
   uploadedAttachments?: Prisma.AttachmentCreateNestedManyWithoutUploadedByInput
   publishedWorkflowVersions?: Prisma.WorkflowVersionCreateNestedManyWithoutPublishedByInput
   objectParticipants?: Prisma.ObjectParticipantCreateNestedManyWithoutUserInput
@@ -3579,6 +3827,7 @@ export type UserUncheckedCreateWithoutActedAuditLogsInput = {
   spaceMemberships?: Prisma.SpaceMemberUncheckedCreateNestedManyWithoutUserInput
   ownedVersions?: Prisma.VersionUncheckedCreateNestedManyWithoutOwnerInput
   ownedRequirements?: Prisma.RequirementUncheckedCreateNestedManyWithoutOwnerInput
+  authoredRequirements?: Prisma.RequirementUncheckedCreateNestedManyWithoutAuthorInput
   uploadedAttachments?: Prisma.AttachmentUncheckedCreateNestedManyWithoutUploadedByInput
   publishedWorkflowVersions?: Prisma.WorkflowVersionUncheckedCreateNestedManyWithoutPublishedByInput
   objectParticipants?: Prisma.ObjectParticipantUncheckedCreateNestedManyWithoutUserInput
@@ -3629,6 +3878,7 @@ export type UserUpdateWithoutActedAuditLogsInput = {
   spaceMemberships?: Prisma.SpaceMemberUpdateManyWithoutUserNestedInput
   ownedVersions?: Prisma.VersionUpdateManyWithoutOwnerNestedInput
   ownedRequirements?: Prisma.RequirementUpdateManyWithoutOwnerNestedInput
+  authoredRequirements?: Prisma.RequirementUpdateManyWithoutAuthorNestedInput
   uploadedAttachments?: Prisma.AttachmentUpdateManyWithoutUploadedByNestedInput
   publishedWorkflowVersions?: Prisma.WorkflowVersionUpdateManyWithoutPublishedByNestedInput
   objectParticipants?: Prisma.ObjectParticipantUpdateManyWithoutUserNestedInput
@@ -3663,6 +3913,7 @@ export type UserUncheckedUpdateWithoutActedAuditLogsInput = {
   spaceMemberships?: Prisma.SpaceMemberUncheckedUpdateManyWithoutUserNestedInput
   ownedVersions?: Prisma.VersionUncheckedUpdateManyWithoutOwnerNestedInput
   ownedRequirements?: Prisma.RequirementUncheckedUpdateManyWithoutOwnerNestedInput
+  authoredRequirements?: Prisma.RequirementUncheckedUpdateManyWithoutAuthorNestedInput
   uploadedAttachments?: Prisma.AttachmentUncheckedUpdateManyWithoutUploadedByNestedInput
   publishedWorkflowVersions?: Prisma.WorkflowVersionUncheckedUpdateManyWithoutPublishedByNestedInput
   objectParticipants?: Prisma.ObjectParticipantUncheckedUpdateManyWithoutUserNestedInput
@@ -3688,6 +3939,7 @@ export type UserCountOutputType = {
   spaceMemberships: number
   ownedVersions: number
   ownedRequirements: number
+  authoredRequirements: number
   uploadedAttachments: number
   publishedWorkflowVersions: number
   objectParticipants: number
@@ -3709,6 +3961,7 @@ export type UserCountOutputTypeSelect<ExtArgs extends runtime.Types.Extensions.I
   spaceMemberships?: boolean | UserCountOutputTypeCountSpaceMembershipsArgs
   ownedVersions?: boolean | UserCountOutputTypeCountOwnedVersionsArgs
   ownedRequirements?: boolean | UserCountOutputTypeCountOwnedRequirementsArgs
+  authoredRequirements?: boolean | UserCountOutputTypeCountAuthoredRequirementsArgs
   uploadedAttachments?: boolean | UserCountOutputTypeCountUploadedAttachmentsArgs
   publishedWorkflowVersions?: boolean | UserCountOutputTypeCountPublishedWorkflowVersionsArgs
   objectParticipants?: boolean | UserCountOutputTypeCountObjectParticipantsArgs
@@ -3778,6 +4031,13 @@ export type UserCountOutputTypeCountOwnedVersionsArgs<ExtArgs extends runtime.Ty
  * UserCountOutputType without action
  */
 export type UserCountOutputTypeCountOwnedRequirementsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  where?: Prisma.RequirementWhereInput
+}
+
+/**
+ * UserCountOutputType without action
+ */
+export type UserCountOutputTypeCountAuthoredRequirementsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   where?: Prisma.RequirementWhereInput
 }
 
@@ -3881,6 +4141,7 @@ export type UserSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = r
   spaceMemberships?: boolean | Prisma.User$spaceMembershipsArgs<ExtArgs>
   ownedVersions?: boolean | Prisma.User$ownedVersionsArgs<ExtArgs>
   ownedRequirements?: boolean | Prisma.User$ownedRequirementsArgs<ExtArgs>
+  authoredRequirements?: boolean | Prisma.User$authoredRequirementsArgs<ExtArgs>
   uploadedAttachments?: boolean | Prisma.User$uploadedAttachmentsArgs<ExtArgs>
   publishedWorkflowVersions?: boolean | Prisma.User$publishedWorkflowVersionsArgs<ExtArgs>
   objectParticipants?: boolean | Prisma.User$objectParticipantsArgs<ExtArgs>
@@ -3955,6 +4216,7 @@ export type UserInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = 
   spaceMemberships?: boolean | Prisma.User$spaceMembershipsArgs<ExtArgs>
   ownedVersions?: boolean | Prisma.User$ownedVersionsArgs<ExtArgs>
   ownedRequirements?: boolean | Prisma.User$ownedRequirementsArgs<ExtArgs>
+  authoredRequirements?: boolean | Prisma.User$authoredRequirementsArgs<ExtArgs>
   uploadedAttachments?: boolean | Prisma.User$uploadedAttachmentsArgs<ExtArgs>
   publishedWorkflowVersions?: boolean | Prisma.User$publishedWorkflowVersionsArgs<ExtArgs>
   objectParticipants?: boolean | Prisma.User$objectParticipantsArgs<ExtArgs>
@@ -3981,6 +4243,7 @@ export type $UserPayload<ExtArgs extends runtime.Types.Extensions.InternalArgs =
     spaceMemberships: Prisma.$SpaceMemberPayload<ExtArgs>[]
     ownedVersions: Prisma.$VersionPayload<ExtArgs>[]
     ownedRequirements: Prisma.$RequirementPayload<ExtArgs>[]
+    authoredRequirements: Prisma.$RequirementPayload<ExtArgs>[]
     uploadedAttachments: Prisma.$AttachmentPayload<ExtArgs>[]
     publishedWorkflowVersions: Prisma.$WorkflowVersionPayload<ExtArgs>[]
     objectParticipants: Prisma.$ObjectParticipantPayload<ExtArgs>[]
@@ -4409,6 +4672,7 @@ export interface Prisma__UserClient<T, Null = never, ExtArgs extends runtime.Typ
   spaceMemberships<T extends Prisma.User$spaceMembershipsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.User$spaceMembershipsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$SpaceMemberPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   ownedVersions<T extends Prisma.User$ownedVersionsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.User$ownedVersionsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$VersionPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   ownedRequirements<T extends Prisma.User$ownedRequirementsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.User$ownedRequirementsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$RequirementPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
+  authoredRequirements<T extends Prisma.User$authoredRequirementsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.User$authoredRequirementsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$RequirementPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   uploadedAttachments<T extends Prisma.User$uploadedAttachmentsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.User$uploadedAttachmentsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$AttachmentPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   publishedWorkflowVersions<T extends Prisma.User$publishedWorkflowVersionsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.User$publishedWorkflowVersionsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$WorkflowVersionPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   objectParticipants<T extends Prisma.User$objectParticipantsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.User$objectParticipantsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$ObjectParticipantPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
@@ -5003,6 +5267,30 @@ export type User$ownedVersionsArgs<ExtArgs extends runtime.Types.Extensions.Inte
  * User.ownedRequirements
  */
 export type User$ownedRequirementsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  /**
+   * Select specific fields to fetch from the Requirement
+   */
+  select?: Prisma.RequirementSelect<ExtArgs> | null
+  /**
+   * Omit specific fields from the Requirement
+   */
+  omit?: Prisma.RequirementOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.RequirementInclude<ExtArgs> | null
+  where?: Prisma.RequirementWhereInput
+  orderBy?: Prisma.RequirementOrderByWithRelationInput | Prisma.RequirementOrderByWithRelationInput[]
+  cursor?: Prisma.RequirementWhereUniqueInput
+  take?: number
+  skip?: number
+  distinct?: Prisma.RequirementScalarFieldEnum | Prisma.RequirementScalarFieldEnum[]
+}
+
+/**
+ * User.authoredRequirements
+ */
+export type User$authoredRequirementsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   /**
    * Select specific fields to fetch from the Requirement
    */

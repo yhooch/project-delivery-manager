@@ -197,6 +197,55 @@ export class OrganizationService {
     return updated;
   }
 
+  async removeMember(
+    actorUserId: string,
+    organizationId: string,
+    memberId: string,
+  ): Promise<void> {
+    await this.requireOrganizationManager(actorUserId, organizationId);
+
+    const member = await this.organizations.findMemberById(
+      organizationId,
+      memberId,
+    );
+
+    if (!member) {
+      throw new ApiException(
+        "ORGANIZATION_MEMBER_NOT_FOUND",
+        "Organization member not found",
+        HttpStatus.NOT_FOUND,
+      );
+    }
+
+    if (isEffectiveOwner(member)) {
+      const activeOwnerCount = await this.organizations.countActiveOwners(
+        organizationId,
+      );
+
+      if (activeOwnerCount <= 1) {
+        throw new ApiException(
+          "LAST_ORGANIZATION_OWNER_REQUIRED",
+          "At least one active organization OWNER is required",
+          HttpStatus.CONFLICT,
+        );
+      }
+    }
+
+    const removed = await this.organizations.removeMember({
+      memberId,
+      organizationId,
+      removedById: actorUserId,
+    });
+
+    if (!removed) {
+      throw new ApiException(
+        "ORGANIZATION_MEMBER_NOT_FOUND",
+        "Organization member not found",
+        HttpStatus.NOT_FOUND,
+      );
+    }
+  }
+
   async update(
     actorUserId: string,
     organizationId: string,

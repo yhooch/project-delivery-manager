@@ -1,0 +1,33 @@
+# Disposable PostgreSQL instance dedicated to running the UI E2E suite.
+# Kept fully separate from any developer database so a `docker compose down -v`
+# at the end of the run reliably wipes state and never touches dev data.
+#
+# Defaults can be overridden via env vars when invoking compose:
+#   E2E_PG_PORT (host port, default 55432)
+#   E2E_PG_USER (default e2e)
+#   E2E_PG_PASSWORD (default e2e)
+#   E2E_PG_DB (default project_delivery_manager_e2e)
+
+services:
+  postgres-e2e:
+    image: postgres:16-alpine
+    container_name: crm-manager-e2e-postgres
+    restart: "no"
+    environment:
+      POSTGRES_USER: ${E2E_PG_USER:-e2e}
+      POSTGRES_PASSWORD: ${E2E_PG_PASSWORD:-e2e}
+      POSTGRES_DB: ${E2E_PG_DB:-project_delivery_manager_e2e}
+    ports:
+      - "${E2E_PG_PORT:-55432}:5432"
+    tmpfs:
+      # Run the data dir in memory so the container is fast and disposable.
+      - /var/lib/postgresql/data
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - >-
+          pg_isready -U "${E2E_PG_USER:-e2e}" -d "${E2E_PG_DB:-project_delivery_manager_e2e}"
+      interval: 2s
+      timeout: 3s
+      retries: 30
+      start_period: 3s

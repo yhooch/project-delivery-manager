@@ -20,6 +20,7 @@ import type {
 import { apiClient, type ApiRequestInit } from "./api-client";
 
 export type WorkspaceApiTransport = {
+  delete<TData>(path: string, init?: ApiRequestInit): Promise<{ data: TData }>;
   get<TData>(path: string, init?: ApiRequestInit): Promise<{ data: TData }>;
   patch<TData>(
     path: string,
@@ -91,6 +92,16 @@ export async function updateOrganization(
   );
 
   return response.data;
+}
+
+export async function removeOrganizationMember(
+  organizationId: string,
+  memberId: string,
+  api: WorkspaceApiTransport = defaultApi,
+): Promise<void> {
+  await api.delete<Record<string, never>>(
+    `/organizations/${organizationId}/members/${memberId}`,
+  );
 }
 
 export async function listSpaces(

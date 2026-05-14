@@ -679,6 +679,8 @@ describe("shared contracts", () => {
         tasks: [],
         bugs: [],
       },
+      createdAt: "2026-05-13T00:00:00.000Z",
+      updatedAt: "2026-05-13T00:00:00.000Z",
     });
 
     expect(version.stats.requirementCount).toBe(1);

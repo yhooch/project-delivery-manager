@@ -71,6 +71,12 @@ export type UpdateOrganizationMemberInput = {
   updatedById: string;
 };
 
+export type RemoveOrganizationMemberInput = {
+  memberId: string;
+  organizationId: string;
+  removedById: string;
+};
+
 export type UpdateOrganizationInput = {
   organizationId: string;
   name?: string;

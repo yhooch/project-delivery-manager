@@ -24,6 +24,7 @@ function createRequirementFixture(
       content: [{ type: "paragraph" }],
       type: "doc",
     },
+    createdAt: "2026-05-13T00:00:00.000Z",
     id: requirementId,
     organizationId,
     relatedWorkItems: {
@@ -35,6 +36,7 @@ function createRequirementFixture(
     spaceId,
     status: "DRAFT",
     title: "",
+    updatedAt: "2026-05-13T00:00:00.000Z",
     versionId,
     ...overrides,
   };

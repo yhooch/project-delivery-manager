@@ -27,6 +27,7 @@ export class PrismaRequirementRepository implements RequirementRepository {
           organizationId: input.organizationId,
           spaceId: input.spaceId,
           versionId: input.versionId,
+          authorId: input.createdById,
           createdById: input.createdById,
           updatedById: input.createdById,
         },

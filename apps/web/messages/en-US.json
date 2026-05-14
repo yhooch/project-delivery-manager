@@ -732,7 +732,10 @@
       "summaryPlaceholder": "Add a one-line summary for this requirement (optional)",
       "fields": {
         "status": "Status",
-        "id": "ID"
+        "id": "ID",
+        "author": "Author",
+        "lastModified": "Last modified",
+        "unknownAuthor": "Unknown"
       }
     },
     "form": {
@@ -2781,7 +2784,7 @@
       },
       "removeMember": {
         "title": "Remove organization member",
-        "description": "Remove {username}? They will be disabled and lose access to organization resources.",
+        "description": "Remove {username}? They will be removed from the organization and lose access to all resources.",
         "lastOwnerWarning": "At least one OWNER is required. The last owner cannot be removed.",
         "submit": "Confirm remove",
         "submitting": "Working…",

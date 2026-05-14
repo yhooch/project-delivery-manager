@@ -15,9 +15,11 @@ import {
   Archive,
   Bug,
   CircleAlert,
+  Clock,
   FileText,
   Loader2,
   Paperclip,
+  PenLine,
   Save,
   Split,
   User2,
@@ -25,7 +27,7 @@ import {
   GitBranch as GitBranchIcon,
   Hash,
 } from "lucide-react";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { useEffect, useMemo, useState, type FormEvent, type ReactNode } from "react";
 
 import { getApiErrorMessageKey } from "../../lib/api-error-messages";
@@ -90,6 +92,7 @@ export function RequirementDetailWorkspace({
 }: RequirementDetailWorkspaceProps) {
   const t = useTranslations("requirements");
   const tRoot = useTranslations();
+  const locale = useLocale();
   const { session, status } = useSession();
   const [requirement, setRequirement] = useState<Requirement | null>(null);
   const [versions, setVersions] = useState<Version[]>([]);
@@ -276,8 +279,10 @@ export function RequirementDetailWorkspace({
   const titleValue = form.title;
   const titlePlaceholder = t("detail.untitledDraft");
   const ownerLabel = formatOwnerName(requirement.ownerId, members);
+  const authorLabel = formatOwnerName(requirement.authorId, members);
   const versionLabel = formatVersionName(requirement.versionId, versions);
   const shortId = requirement.id.slice(-8).toUpperCase();
+  const lastModifiedLabel = formatTimestamp(requirement.updatedAt, locale);
 
   return (
     <form className="flex flex-col gap-6" onSubmit={onSave}>
@@ -428,6 +433,16 @@ export function RequirementDetailWorkspace({
                 </option>
               ))}
             </PropertySelect>
+          </PropertyItem>
+
+          <PropertyItem icon={<PenLine className="h-3.5 w-3.5" />} label={t("detail.fields.author")}>
+            <span className="text-foreground/80">
+              {authorLabel ?? t("detail.fields.unknownAuthor")}
+            </span>
+          </PropertyItem>
+
+          <PropertyItem icon={<Clock className="h-3.5 w-3.5" />} label={t("detail.fields.lastModified")}>
+            <span className="text-foreground/80">{lastModifiedLabel}</span>
           </PropertyItem>
 
           <PropertyItem icon={<Paperclip className="h-3.5 w-3.5" />} label={t("detail.attachments")}>
@@ -774,4 +789,21 @@ function formatVersionName(versionId: string | undefined, versions: Version[]) {
   }
 
   return versions.find((version) => version.id === versionId)?.name ?? versionId;
+}
+
+function formatTimestamp(value: string, locale: string): string {
+  const date = new Date(value);
+
+  if (Number.isNaN(date.getTime())) {
+    return value;
+  }
+
+  try {
+    return new Intl.DateTimeFormat(locale, {
+      dateStyle: "medium",
+      timeStyle: "short",
+    }).format(date);
+  } catch {
+    return date.toISOString();
+  }
 }

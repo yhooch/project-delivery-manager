@@ -6,10 +6,12 @@ import type {
 } from "@project-delivery/shared";
 
 type PrismaRequirementRecord = {
+  authorId: string | null;
   contentFormat: "TIPTAP_JSON";
   contentJson: unknown;
   contentMarkdownCache: string | null;
   contentText: string | null;
+  createdAt: Date;
   id: string;
   organizationId: string;
   ownerId: string | null;
@@ -18,6 +20,7 @@ type PrismaRequirementRecord = {
   status: RequirementStatus;
   summary: string | null;
   title: string;
+  updatedAt: Date;
   versionId: string | null;
 };
 
@@ -47,6 +50,7 @@ export function toRequirement(
     status: record.status,
     priority: record.priority ?? undefined,
     ownerId: record.ownerId ?? undefined,
+    authorId: record.authorId ?? undefined,
     attachments: attachments.map(toAttachmentRef),
     relatedWorkItems: {
       taskCount: 0,
@@ -54,6 +58,8 @@ export function toRequirement(
       tasks: [],
       bugs: [],
     },
+    createdAt: record.createdAt.toISOString(),
+    updatedAt: record.updatedAt.toISOString(),
   };
 }
 

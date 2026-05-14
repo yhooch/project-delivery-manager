@@ -239,6 +239,7 @@ export const RequirementScalarFieldEnum = {
   status: 'status',
   priority: 'priority',
   ownerId: 'ownerId',
+  authorId: 'authorId',
   createdAt: 'createdAt',
   updatedAt: 'updatedAt',
   createdById: 'createdById',

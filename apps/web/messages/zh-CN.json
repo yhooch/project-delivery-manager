@@ -732,7 +732,10 @@
       "summaryPlaceholder": "为该需求写一句话摘要（可选）",
       "fields": {
         "status": "状态",
-        "id": "ID"
+        "id": "ID",
+        "author": "作者",
+        "lastModified": "最后修改时间",
+        "unknownAuthor": "未知"
       }
     },
     "form": {
@@ -2773,7 +2776,7 @@
       },
       "removeMember": {
         "title": "移除组织成员",
-        "description": "确定要移除 {username} 吗？该成员会被禁用并无法再访问组织资源。",
+        "description": "确定要移除 {username} 吗？该成员会从组织中移除并无法再访问任何资源。",
         "lastOwnerWarning": "至少需要保留一名 OWNER，无法移除最后一个所有者。",
         "submit": "确认移除",
         "submitting": "处理中…",

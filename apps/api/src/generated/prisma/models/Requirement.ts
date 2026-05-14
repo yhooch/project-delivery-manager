@@ -37,6 +37,7 @@ export type RequirementMinAggregateOutputType = {
   status: $Enums.RequirementStatus | null
   priority: $Enums.Priority | null
   ownerId: string | null
+  authorId: string | null
   createdAt: Date | null
   updatedAt: Date | null
   createdById: string | null
@@ -57,6 +58,7 @@ export type RequirementMaxAggregateOutputType = {
   status: $Enums.RequirementStatus | null
   priority: $Enums.Priority | null
   ownerId: string | null
+  authorId: string | null
   createdAt: Date | null
   updatedAt: Date | null
   createdById: string | null
@@ -78,6 +80,7 @@ export type RequirementCountAggregateOutputType = {
   status: number
   priority: number
   ownerId: number
+  authorId: number
   createdAt: number
   updatedAt: number
   createdById: number
@@ -100,6 +103,7 @@ export type RequirementMinAggregateInputType = {
   status?: true
   priority?: true
   ownerId?: true
+  authorId?: true
   createdAt?: true
   updatedAt?: true
   createdById?: true
@@ -120,6 +124,7 @@ export type RequirementMaxAggregateInputType = {
   status?: true
   priority?: true
   ownerId?: true
+  authorId?: true
   createdAt?: true
   updatedAt?: true
   createdById?: true
@@ -141,6 +146,7 @@ export type RequirementCountAggregateInputType = {
   status?: true
   priority?: true
   ownerId?: true
+  authorId?: true
   createdAt?: true
   updatedAt?: true
   createdById?: true
@@ -235,6 +241,7 @@ export type RequirementGroupByOutputType = {
   status: $Enums.RequirementStatus
   priority: $Enums.Priority | null
   ownerId: string | null
+  authorId: string | null
   createdAt: Date
   updatedAt: Date
   createdById: string | null
@@ -277,6 +284,7 @@ export type RequirementWhereInput = {
   status?: Prisma.EnumRequirementStatusFilter<"Requirement"> | $Enums.RequirementStatus
   priority?: Prisma.EnumPriorityNullableFilter<"Requirement"> | $Enums.Priority | null
   ownerId?: Prisma.StringNullableFilter<"Requirement"> | string | null
+  authorId?: Prisma.StringNullableFilter<"Requirement"> | string | null
   createdAt?: Prisma.DateTimeFilter<"Requirement"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"Requirement"> | Date | string
   createdById?: Prisma.StringNullableFilter<"Requirement"> | string | null
@@ -286,6 +294,7 @@ export type RequirementWhereInput = {
   space?: Prisma.XOR<Prisma.SpaceScalarRelationFilter, Prisma.SpaceWhereInput>
   version?: Prisma.XOR<Prisma.VersionNullableScalarRelationFilter, Prisma.VersionWhereInput> | null
   owner?: Prisma.XOR<Prisma.UserNullableScalarRelationFilter, Prisma.UserWhereInput> | null
+  author?: Prisma.XOR<Prisma.UserNullableScalarRelationFilter, Prisma.UserWhereInput> | null
   intakeItems?: Prisma.IntakeItemListRelationFilter
   workItems?: Prisma.WorkItemListRelationFilter
 }
@@ -304,6 +313,7 @@ export type RequirementOrderByWithRelationInput = {
   status?: Prisma.SortOrder
   priority?: Prisma.SortOrderInput | Prisma.SortOrder
   ownerId?: Prisma.SortOrderInput | Prisma.SortOrder
+  authorId?: Prisma.SortOrderInput | Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
   createdById?: Prisma.SortOrderInput | Prisma.SortOrder
@@ -313,6 +323,7 @@ export type RequirementOrderByWithRelationInput = {
   space?: Prisma.SpaceOrderByWithRelationInput
   version?: Prisma.VersionOrderByWithRelationInput
   owner?: Prisma.UserOrderByWithRelationInput
+  author?: Prisma.UserOrderByWithRelationInput
   intakeItems?: Prisma.IntakeItemOrderByRelationAggregateInput
   workItems?: Prisma.WorkItemOrderByRelationAggregateInput
 }
@@ -334,6 +345,7 @@ export type RequirementWhereUniqueInput = Prisma.AtLeast<{
   status?: Prisma.EnumRequirementStatusFilter<"Requirement"> | $Enums.RequirementStatus
   priority?: Prisma.EnumPriorityNullableFilter<"Requirement"> | $Enums.Priority | null
   ownerId?: Prisma.StringNullableFilter<"Requirement"> | string | null
+  authorId?: Prisma.StringNullableFilter<"Requirement"> | string | null
   createdAt?: Prisma.DateTimeFilter<"Requirement"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"Requirement"> | Date | string
   createdById?: Prisma.StringNullableFilter<"Requirement"> | string | null
@@ -343,6 +355,7 @@ export type RequirementWhereUniqueInput = Prisma.AtLeast<{
   space?: Prisma.XOR<Prisma.SpaceScalarRelationFilter, Prisma.SpaceWhereInput>
   version?: Prisma.XOR<Prisma.VersionNullableScalarRelationFilter, Prisma.VersionWhereInput> | null
   owner?: Prisma.XOR<Prisma.UserNullableScalarRelationFilter, Prisma.UserWhereInput> | null
+  author?: Prisma.XOR<Prisma.UserNullableScalarRelationFilter, Prisma.UserWhereInput> | null
   intakeItems?: Prisma.IntakeItemListRelationFilter
   workItems?: Prisma.WorkItemListRelationFilter
 }, "id">
@@ -361,6 +374,7 @@ export type RequirementOrderByWithAggregationInput = {
   status?: Prisma.SortOrder
   priority?: Prisma.SortOrderInput | Prisma.SortOrder
   ownerId?: Prisma.SortOrderInput | Prisma.SortOrder
+  authorId?: Prisma.SortOrderInput | Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
   createdById?: Prisma.SortOrderInput | Prisma.SortOrder
@@ -388,6 +402,7 @@ export type RequirementScalarWhereWithAggregatesInput = {
   status?: Prisma.EnumRequirementStatusWithAggregatesFilter<"Requirement"> | $Enums.RequirementStatus
   priority?: Prisma.EnumPriorityNullableWithAggregatesFilter<"Requirement"> | $Enums.Priority | null
   ownerId?: Prisma.StringNullableWithAggregatesFilter<"Requirement"> | string | null
+  authorId?: Prisma.StringNullableWithAggregatesFilter<"Requirement"> | string | null
   createdAt?: Prisma.DateTimeWithAggregatesFilter<"Requirement"> | Date | string
   updatedAt?: Prisma.DateTimeWithAggregatesFilter<"Requirement"> | Date | string
   createdById?: Prisma.StringNullableWithAggregatesFilter<"Requirement"> | string | null
@@ -414,6 +429,7 @@ export type RequirementCreateInput = {
   space: Prisma.SpaceCreateNestedOneWithoutRequirementsInput
   version?: Prisma.VersionCreateNestedOneWithoutRequirementsInput
   owner?: Prisma.UserCreateNestedOneWithoutOwnedRequirementsInput
+  author?: Prisma.UserCreateNestedOneWithoutAuthoredRequirementsInput
   intakeItems?: Prisma.IntakeItemCreateNestedManyWithoutRequirementInput
   workItems?: Prisma.WorkItemCreateNestedManyWithoutRequirementInput
 }
@@ -432,6 +448,7 @@ export type RequirementUncheckedCreateInput = {
   status?: $Enums.RequirementStatus
   priority?: $Enums.Priority | null
   ownerId?: string | null
+  authorId?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
   createdById?: string | null
@@ -460,6 +477,7 @@ export type RequirementUpdateInput = {
   space?: Prisma.SpaceUpdateOneRequiredWithoutRequirementsNestedInput
   version?: Prisma.VersionUpdateOneWithoutRequirementsNestedInput
   owner?: Prisma.UserUpdateOneWithoutOwnedRequirementsNestedInput
+  author?: Prisma.UserUpdateOneWithoutAuthoredRequirementsNestedInput
   intakeItems?: Prisma.IntakeItemUpdateManyWithoutRequirementNestedInput
   workItems?: Prisma.WorkItemUpdateManyWithoutRequirementNestedInput
 }
@@ -478,6 +496,7 @@ export type RequirementUncheckedUpdateInput = {
   status?: Prisma.EnumRequirementStatusFieldUpdateOperationsInput | $Enums.RequirementStatus
   priority?: Prisma.NullableEnumPriorityFieldUpdateOperationsInput | $Enums.Priority | null
   ownerId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  authorId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   createdById?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -501,6 +520,7 @@ export type RequirementCreateManyInput = {
   status?: $Enums.RequirementStatus
   priority?: $Enums.Priority | null
   ownerId?: string | null
+  authorId?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
   createdById?: string | null
@@ -539,6 +559,7 @@ export type RequirementUncheckedUpdateManyInput = {
   status?: Prisma.EnumRequirementStatusFieldUpdateOperationsInput | $Enums.RequirementStatus
   priority?: Prisma.NullableEnumPriorityFieldUpdateOperationsInput | $Enums.Priority | null
   ownerId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  authorId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   createdById?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -570,6 +591,7 @@ export type RequirementCountOrderByAggregateInput = {
   status?: Prisma.SortOrder
   priority?: Prisma.SortOrder
   ownerId?: Prisma.SortOrder
+  authorId?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
   createdById?: Prisma.SortOrder
@@ -590,6 +612,7 @@ export type RequirementMaxOrderByAggregateInput = {
   status?: Prisma.SortOrder
   priority?: Prisma.SortOrder
   ownerId?: Prisma.SortOrder
+  authorId?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
   createdById?: Prisma.SortOrder
@@ -610,6 +633,7 @@ export type RequirementMinOrderByAggregateInput = {
   status?: Prisma.SortOrder
   priority?: Prisma.SortOrder
   ownerId?: Prisma.SortOrder
+  authorId?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
   createdById?: Prisma.SortOrder
@@ -629,10 +653,24 @@ export type RequirementCreateNestedManyWithoutOwnerInput = {
   connect?: Prisma.RequirementWhereUniqueInput | Prisma.RequirementWhereUniqueInput[]
 }
 
+export type RequirementCreateNestedManyWithoutAuthorInput = {
+  create?: Prisma.XOR<Prisma.RequirementCreateWithoutAuthorInput, Prisma.RequirementUncheckedCreateWithoutAuthorInput> | Prisma.RequirementCreateWithoutAuthorInput[] | Prisma.RequirementUncheckedCreateWithoutAuthorInput[]
+  connectOrCreate?: Prisma.RequirementCreateOrConnectWithoutAuthorInput | Prisma.RequirementCreateOrConnectWithoutAuthorInput[]
+  createMany?: Prisma.RequirementCreateManyAuthorInputEnvelope
+  connect?: Prisma.RequirementWhereUniqueInput | Prisma.RequirementWhereUniqueInput[]
+}
+
 export type RequirementUncheckedCreateNestedManyWithoutOwnerInput = {
   create?: Prisma.XOR<Prisma.RequirementCreateWithoutOwnerInput, Prisma.RequirementUncheckedCreateWithoutOwnerInput> | Prisma.RequirementCreateWithoutOwnerInput[] | Prisma.RequirementUncheckedCreateWithoutOwnerInput[]
   connectOrCreate?: Prisma.RequirementCreateOrConnectWithoutOwnerInput | Prisma.RequirementCreateOrConnectWithoutOwnerInput[]
   createMany?: Prisma.RequirementCreateManyOwnerInputEnvelope
+  connect?: Prisma.RequirementWhereUniqueInput | Prisma.RequirementWhereUniqueInput[]
+}
+
+export type RequirementUncheckedCreateNestedManyWithoutAuthorInput = {
+  create?: Prisma.XOR<Prisma.RequirementCreateWithoutAuthorInput, Prisma.RequirementUncheckedCreateWithoutAuthorInput> | Prisma.RequirementCreateWithoutAuthorInput[] | Prisma.RequirementUncheckedCreateWithoutAuthorInput[]
+  connectOrCreate?: Prisma.RequirementCreateOrConnectWithoutAuthorInput | Prisma.RequirementCreateOrConnectWithoutAuthorInput[]
+  createMany?: Prisma.RequirementCreateManyAuthorInputEnvelope
   connect?: Prisma.RequirementWhereUniqueInput | Prisma.RequirementWhereUniqueInput[]
 }
 
@@ -650,6 +688,20 @@ export type RequirementUpdateManyWithoutOwnerNestedInput = {
   deleteMany?: Prisma.RequirementScalarWhereInput | Prisma.RequirementScalarWhereInput[]
 }
 
+export type RequirementUpdateManyWithoutAuthorNestedInput = {
+  create?: Prisma.XOR<Prisma.RequirementCreateWithoutAuthorInput, Prisma.RequirementUncheckedCreateWithoutAuthorInput> | Prisma.RequirementCreateWithoutAuthorInput[] | Prisma.RequirementUncheckedCreateWithoutAuthorInput[]
+  connectOrCreate?: Prisma.RequirementCreateOrConnectWithoutAuthorInput | Prisma.RequirementCreateOrConnectWithoutAuthorInput[]
+  upsert?: Prisma.RequirementUpsertWithWhereUniqueWithoutAuthorInput | Prisma.RequirementUpsertWithWhereUniqueWithoutAuthorInput[]
+  createMany?: Prisma.RequirementCreateManyAuthorInputEnvelope
+  set?: Prisma.RequirementWhereUniqueInput | Prisma.RequirementWhereUniqueInput[]
+  disconnect?: Prisma.RequirementWhereUniqueInput | Prisma.RequirementWhereUniqueInput[]
+  delete?: Prisma.RequirementWhereUniqueInput | Prisma.RequirementWhereUniqueInput[]
+  connect?: Prisma.RequirementWhereUniqueInput | Prisma.RequirementWhereUniqueInput[]
+  update?: Prisma.RequirementUpdateWithWhereUniqueWithoutAuthorInput | Prisma.RequirementUpdateWithWhereUniqueWithoutAuthorInput[]
+  updateMany?: Prisma.RequirementUpdateManyWithWhereWithoutAuthorInput | Prisma.RequirementUpdateManyWithWhereWithoutAuthorInput[]
+  deleteMany?: Prisma.RequirementScalarWhereInput | Prisma.RequirementScalarWhereInput[]
+}
+
 export type RequirementUncheckedUpdateManyWithoutOwnerNestedInput = {
   create?: Prisma.XOR<Prisma.RequirementCreateWithoutOwnerInput, Prisma.RequirementUncheckedCreateWithoutOwnerInput> | Prisma.RequirementCreateWithoutOwnerInput[] | Prisma.RequirementUncheckedCreateWithoutOwnerInput[]
   connectOrCreate?: Prisma.RequirementCreateOrConnectWithoutOwnerInput | Prisma.RequirementCreateOrConnectWithoutOwnerInput[]
@@ -661,6 +713,20 @@ export type RequirementUncheckedUpdateManyWithoutOwnerNestedInput = {
   connect?: Prisma.RequirementWhereUniqueInput | Prisma.RequirementWhereUniqueInput[]
   update?: Prisma.RequirementUpdateWithWhereUniqueWithoutOwnerInput | Prisma.RequirementUpdateWithWhereUniqueWithoutOwnerInput[]
   updateMany?: Prisma.RequirementUpdateManyWithWhereWithoutOwnerInput | Prisma.RequirementUpdateManyWithWhereWithoutOwnerInput[]
+  deleteMany?: Prisma.RequirementScalarWhereInput | Prisma.RequirementScalarWhereInput[]
+}
+
+export type RequirementUncheckedUpdateManyWithoutAuthorNestedInput = {
+  create?: Prisma.XOR<Prisma.RequirementCreateWithoutAuthorInput, Prisma.RequirementUncheckedCreateWithoutAuthorInput> | Prisma.RequirementCreateWithoutAuthorInput[] | Prisma.RequirementUncheckedCreateWithoutAuthorInput[]
+  connectOrCreate?: Prisma.RequirementCreateOrConnectWithoutAuthorInput | Prisma.RequirementCreateOrConnectWithoutAuthorInput[]
+  upsert?: Prisma.RequirementUpsertWithWhereUniqueWithoutAuthorInput | Prisma.RequirementUpsertWithWhereUniqueWithoutAuthorInput[]
+  createMany?: Prisma.RequirementCreateManyAuthorInputEnvelope
+  set?: Prisma.RequirementWhereUniqueInput | Prisma.RequirementWhereUniqueInput[]
+  disconnect?: Prisma.RequirementWhereUniqueInput | Prisma.RequirementWhereUniqueInput[]
+  delete?: Prisma.RequirementWhereUniqueInput | Prisma.RequirementWhereUniqueInput[]
+  connect?: Prisma.RequirementWhereUniqueInput | Prisma.RequirementWhereUniqueInput[]
+  update?: Prisma.RequirementUpdateWithWhereUniqueWithoutAuthorInput | Prisma.RequirementUpdateWithWhereUniqueWithoutAuthorInput[]
+  updateMany?: Prisma.RequirementUpdateManyWithWhereWithoutAuthorInput | Prisma.RequirementUpdateManyWithWhereWithoutAuthorInput[]
   deleteMany?: Prisma.RequirementScalarWhereInput | Prisma.RequirementScalarWhereInput[]
 }
 
@@ -852,6 +918,7 @@ export type RequirementCreateWithoutOwnerInput = {
   organization: Prisma.OrganizationCreateNestedOneWithoutRequirementsInput
   space: Prisma.SpaceCreateNestedOneWithoutRequirementsInput
   version?: Prisma.VersionCreateNestedOneWithoutRequirementsInput
+  author?: Prisma.UserCreateNestedOneWithoutAuthoredRequirementsInput
   intakeItems?: Prisma.IntakeItemCreateNestedManyWithoutRequirementInput
   workItems?: Prisma.WorkItemCreateNestedManyWithoutRequirementInput
 }
@@ -869,6 +936,7 @@ export type RequirementUncheckedCreateWithoutOwnerInput = {
   contentFormat?: $Enums.ContentFormat
   status?: $Enums.RequirementStatus
   priority?: $Enums.Priority | null
+  authorId?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
   createdById?: string | null
@@ -885,6 +953,62 @@ export type RequirementCreateOrConnectWithoutOwnerInput = {
 
 export type RequirementCreateManyOwnerInputEnvelope = {
   data: Prisma.RequirementCreateManyOwnerInput | Prisma.RequirementCreateManyOwnerInput[]
+  skipDuplicates?: boolean
+}
+
+export type RequirementCreateWithoutAuthorInput = {
+  id: string
+  title?: string
+  summary?: string | null
+  contentJson?: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  contentText?: string | null
+  contentMarkdownCache?: string | null
+  contentFormat?: $Enums.ContentFormat
+  status?: $Enums.RequirementStatus
+  priority?: $Enums.Priority | null
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  createdById?: string | null
+  updatedById?: string | null
+  deletedAt?: Date | string | null
+  organization: Prisma.OrganizationCreateNestedOneWithoutRequirementsInput
+  space: Prisma.SpaceCreateNestedOneWithoutRequirementsInput
+  version?: Prisma.VersionCreateNestedOneWithoutRequirementsInput
+  owner?: Prisma.UserCreateNestedOneWithoutOwnedRequirementsInput
+  intakeItems?: Prisma.IntakeItemCreateNestedManyWithoutRequirementInput
+  workItems?: Prisma.WorkItemCreateNestedManyWithoutRequirementInput
+}
+
+export type RequirementUncheckedCreateWithoutAuthorInput = {
+  id: string
+  organizationId: string
+  spaceId: string
+  versionId?: string | null
+  title?: string
+  summary?: string | null
+  contentJson?: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  contentText?: string | null
+  contentMarkdownCache?: string | null
+  contentFormat?: $Enums.ContentFormat
+  status?: $Enums.RequirementStatus
+  priority?: $Enums.Priority | null
+  ownerId?: string | null
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  createdById?: string | null
+  updatedById?: string | null
+  deletedAt?: Date | string | null
+  intakeItems?: Prisma.IntakeItemUncheckedCreateNestedManyWithoutRequirementInput
+  workItems?: Prisma.WorkItemUncheckedCreateNestedManyWithoutRequirementInput
+}
+
+export type RequirementCreateOrConnectWithoutAuthorInput = {
+  where: Prisma.RequirementWhereUniqueInput
+  create: Prisma.XOR<Prisma.RequirementCreateWithoutAuthorInput, Prisma.RequirementUncheckedCreateWithoutAuthorInput>
+}
+
+export type RequirementCreateManyAuthorInputEnvelope = {
+  data: Prisma.RequirementCreateManyAuthorInput | Prisma.RequirementCreateManyAuthorInput[]
   skipDuplicates?: boolean
 }
 
@@ -921,11 +1045,28 @@ export type RequirementScalarWhereInput = {
   status?: Prisma.EnumRequirementStatusFilter<"Requirement"> | $Enums.RequirementStatus
   priority?: Prisma.EnumPriorityNullableFilter<"Requirement"> | $Enums.Priority | null
   ownerId?: Prisma.StringNullableFilter<"Requirement"> | string | null
+  authorId?: Prisma.StringNullableFilter<"Requirement"> | string | null
   createdAt?: Prisma.DateTimeFilter<"Requirement"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"Requirement"> | Date | string
   createdById?: Prisma.StringNullableFilter<"Requirement"> | string | null
   updatedById?: Prisma.StringNullableFilter<"Requirement"> | string | null
   deletedAt?: Prisma.DateTimeNullableFilter<"Requirement"> | Date | string | null
+}
+
+export type RequirementUpsertWithWhereUniqueWithoutAuthorInput = {
+  where: Prisma.RequirementWhereUniqueInput
+  update: Prisma.XOR<Prisma.RequirementUpdateWithoutAuthorInput, Prisma.RequirementUncheckedUpdateWithoutAuthorInput>
+  create: Prisma.XOR<Prisma.RequirementCreateWithoutAuthorInput, Prisma.RequirementUncheckedCreateWithoutAuthorInput>
+}
+
+export type RequirementUpdateWithWhereUniqueWithoutAuthorInput = {
+  where: Prisma.RequirementWhereUniqueInput
+  data: Prisma.XOR<Prisma.RequirementUpdateWithoutAuthorInput, Prisma.RequirementUncheckedUpdateWithoutAuthorInput>
+}
+
+export type RequirementUpdateManyWithWhereWithoutAuthorInput = {
+  where: Prisma.RequirementScalarWhereInput
+  data: Prisma.XOR<Prisma.RequirementUpdateManyMutationInput, Prisma.RequirementUncheckedUpdateManyWithoutAuthorInput>
 }
 
 export type RequirementCreateWithoutOrganizationInput = {
@@ -946,6 +1087,7 @@ export type RequirementCreateWithoutOrganizationInput = {
   space: Prisma.SpaceCreateNestedOneWithoutRequirementsInput
   version?: Prisma.VersionCreateNestedOneWithoutRequirementsInput
   owner?: Prisma.UserCreateNestedOneWithoutOwnedRequirementsInput
+  author?: Prisma.UserCreateNestedOneWithoutAuthoredRequirementsInput
   intakeItems?: Prisma.IntakeItemCreateNestedManyWithoutRequirementInput
   workItems?: Prisma.WorkItemCreateNestedManyWithoutRequirementInput
 }
@@ -963,6 +1105,7 @@ export type RequirementUncheckedCreateWithoutOrganizationInput = {
   status?: $Enums.RequirementStatus
   priority?: $Enums.Priority | null
   ownerId?: string | null
+  authorId?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
   createdById?: string | null
@@ -1016,6 +1159,7 @@ export type RequirementCreateWithoutSpaceInput = {
   organization: Prisma.OrganizationCreateNestedOneWithoutRequirementsInput
   version?: Prisma.VersionCreateNestedOneWithoutRequirementsInput
   owner?: Prisma.UserCreateNestedOneWithoutOwnedRequirementsInput
+  author?: Prisma.UserCreateNestedOneWithoutAuthoredRequirementsInput
   intakeItems?: Prisma.IntakeItemCreateNestedManyWithoutRequirementInput
   workItems?: Prisma.WorkItemCreateNestedManyWithoutRequirementInput
 }
@@ -1033,6 +1177,7 @@ export type RequirementUncheckedCreateWithoutSpaceInput = {
   status?: $Enums.RequirementStatus
   priority?: $Enums.Priority | null
   ownerId?: string | null
+  authorId?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
   createdById?: string | null
@@ -1086,6 +1231,7 @@ export type RequirementCreateWithoutVersionInput = {
   organization: Prisma.OrganizationCreateNestedOneWithoutRequirementsInput
   space: Prisma.SpaceCreateNestedOneWithoutRequirementsInput
   owner?: Prisma.UserCreateNestedOneWithoutOwnedRequirementsInput
+  author?: Prisma.UserCreateNestedOneWithoutAuthoredRequirementsInput
   intakeItems?: Prisma.IntakeItemCreateNestedManyWithoutRequirementInput
   workItems?: Prisma.WorkItemCreateNestedManyWithoutRequirementInput
 }
@@ -1103,6 +1249,7 @@ export type RequirementUncheckedCreateWithoutVersionInput = {
   status?: $Enums.RequirementStatus
   priority?: $Enums.Priority | null
   ownerId?: string | null
+  authorId?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
   createdById?: string | null
@@ -1157,6 +1304,7 @@ export type RequirementCreateWithoutIntakeItemsInput = {
   space: Prisma.SpaceCreateNestedOneWithoutRequirementsInput
   version?: Prisma.VersionCreateNestedOneWithoutRequirementsInput
   owner?: Prisma.UserCreateNestedOneWithoutOwnedRequirementsInput
+  author?: Prisma.UserCreateNestedOneWithoutAuthoredRequirementsInput
   workItems?: Prisma.WorkItemCreateNestedManyWithoutRequirementInput
 }
 
@@ -1174,6 +1322,7 @@ export type RequirementUncheckedCreateWithoutIntakeItemsInput = {
   status?: $Enums.RequirementStatus
   priority?: $Enums.Priority | null
   ownerId?: string | null
+  authorId?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
   createdById?: string | null
@@ -1217,6 +1366,7 @@ export type RequirementUpdateWithoutIntakeItemsInput = {
   space?: Prisma.SpaceUpdateOneRequiredWithoutRequirementsNestedInput
   version?: Prisma.VersionUpdateOneWithoutRequirementsNestedInput
   owner?: Prisma.UserUpdateOneWithoutOwnedRequirementsNestedInput
+  author?: Prisma.UserUpdateOneWithoutAuthoredRequirementsNestedInput
   workItems?: Prisma.WorkItemUpdateManyWithoutRequirementNestedInput
 }
 
@@ -1234,6 +1384,7 @@ export type RequirementUncheckedUpdateWithoutIntakeItemsInput = {
   status?: Prisma.EnumRequirementStatusFieldUpdateOperationsInput | $Enums.RequirementStatus
   priority?: Prisma.NullableEnumPriorityFieldUpdateOperationsInput | $Enums.Priority | null
   ownerId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  authorId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   createdById?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -1261,6 +1412,7 @@ export type RequirementCreateWithoutWorkItemsInput = {
   space: Prisma.SpaceCreateNestedOneWithoutRequirementsInput
   version?: Prisma.VersionCreateNestedOneWithoutRequirementsInput
   owner?: Prisma.UserCreateNestedOneWithoutOwnedRequirementsInput
+  author?: Prisma.UserCreateNestedOneWithoutAuthoredRequirementsInput
   intakeItems?: Prisma.IntakeItemCreateNestedManyWithoutRequirementInput
 }
 
@@ -1278,6 +1430,7 @@ export type RequirementUncheckedCreateWithoutWorkItemsInput = {
   status?: $Enums.RequirementStatus
   priority?: $Enums.Priority | null
   ownerId?: string | null
+  authorId?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
   createdById?: string | null
@@ -1321,6 +1474,7 @@ export type RequirementUpdateWithoutWorkItemsInput = {
   space?: Prisma.SpaceUpdateOneRequiredWithoutRequirementsNestedInput
   version?: Prisma.VersionUpdateOneWithoutRequirementsNestedInput
   owner?: Prisma.UserUpdateOneWithoutOwnedRequirementsNestedInput
+  author?: Prisma.UserUpdateOneWithoutAuthoredRequirementsNestedInput
   intakeItems?: Prisma.IntakeItemUpdateManyWithoutRequirementNestedInput
 }
 
@@ -1338,6 +1492,7 @@ export type RequirementUncheckedUpdateWithoutWorkItemsInput = {
   status?: Prisma.EnumRequirementStatusFieldUpdateOperationsInput | $Enums.RequirementStatus
   priority?: Prisma.NullableEnumPriorityFieldUpdateOperationsInput | $Enums.Priority | null
   ownerId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  authorId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   createdById?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -1359,6 +1514,28 @@ export type RequirementCreateManyOwnerInput = {
   contentFormat?: $Enums.ContentFormat
   status?: $Enums.RequirementStatus
   priority?: $Enums.Priority | null
+  authorId?: string | null
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  createdById?: string | null
+  updatedById?: string | null
+  deletedAt?: Date | string | null
+}
+
+export type RequirementCreateManyAuthorInput = {
+  id: string
+  organizationId: string
+  spaceId: string
+  versionId?: string | null
+  title?: string
+  summary?: string | null
+  contentJson?: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  contentText?: string | null
+  contentMarkdownCache?: string | null
+  contentFormat?: $Enums.ContentFormat
+  status?: $Enums.RequirementStatus
+  priority?: $Enums.Priority | null
+  ownerId?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
   createdById?: string | null
@@ -1384,6 +1561,7 @@ export type RequirementUpdateWithoutOwnerInput = {
   organization?: Prisma.OrganizationUpdateOneRequiredWithoutRequirementsNestedInput
   space?: Prisma.SpaceUpdateOneRequiredWithoutRequirementsNestedInput
   version?: Prisma.VersionUpdateOneWithoutRequirementsNestedInput
+  author?: Prisma.UserUpdateOneWithoutAuthoredRequirementsNestedInput
   intakeItems?: Prisma.IntakeItemUpdateManyWithoutRequirementNestedInput
   workItems?: Prisma.WorkItemUpdateManyWithoutRequirementNestedInput
 }
@@ -1401,6 +1579,7 @@ export type RequirementUncheckedUpdateWithoutOwnerInput = {
   contentFormat?: Prisma.EnumContentFormatFieldUpdateOperationsInput | $Enums.ContentFormat
   status?: Prisma.EnumRequirementStatusFieldUpdateOperationsInput | $Enums.RequirementStatus
   priority?: Prisma.NullableEnumPriorityFieldUpdateOperationsInput | $Enums.Priority | null
+  authorId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   createdById?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -1423,6 +1602,74 @@ export type RequirementUncheckedUpdateManyWithoutOwnerInput = {
   contentFormat?: Prisma.EnumContentFormatFieldUpdateOperationsInput | $Enums.ContentFormat
   status?: Prisma.EnumRequirementStatusFieldUpdateOperationsInput | $Enums.RequirementStatus
   priority?: Prisma.NullableEnumPriorityFieldUpdateOperationsInput | $Enums.Priority | null
+  authorId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  createdById?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  updatedById?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  deletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+}
+
+export type RequirementUpdateWithoutAuthorInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  title?: Prisma.StringFieldUpdateOperationsInput | string
+  summary?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  contentJson?: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  contentText?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  contentMarkdownCache?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  contentFormat?: Prisma.EnumContentFormatFieldUpdateOperationsInput | $Enums.ContentFormat
+  status?: Prisma.EnumRequirementStatusFieldUpdateOperationsInput | $Enums.RequirementStatus
+  priority?: Prisma.NullableEnumPriorityFieldUpdateOperationsInput | $Enums.Priority | null
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  createdById?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  updatedById?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  deletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  organization?: Prisma.OrganizationUpdateOneRequiredWithoutRequirementsNestedInput
+  space?: Prisma.SpaceUpdateOneRequiredWithoutRequirementsNestedInput
+  version?: Prisma.VersionUpdateOneWithoutRequirementsNestedInput
+  owner?: Prisma.UserUpdateOneWithoutOwnedRequirementsNestedInput
+  intakeItems?: Prisma.IntakeItemUpdateManyWithoutRequirementNestedInput
+  workItems?: Prisma.WorkItemUpdateManyWithoutRequirementNestedInput
+}
+
+export type RequirementUncheckedUpdateWithoutAuthorInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  organizationId?: Prisma.StringFieldUpdateOperationsInput | string
+  spaceId?: Prisma.StringFieldUpdateOperationsInput | string
+  versionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  title?: Prisma.StringFieldUpdateOperationsInput | string
+  summary?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  contentJson?: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  contentText?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  contentMarkdownCache?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  contentFormat?: Prisma.EnumContentFormatFieldUpdateOperationsInput | $Enums.ContentFormat
+  status?: Prisma.EnumRequirementStatusFieldUpdateOperationsInput | $Enums.RequirementStatus
+  priority?: Prisma.NullableEnumPriorityFieldUpdateOperationsInput | $Enums.Priority | null
+  ownerId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  createdById?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  updatedById?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  deletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  intakeItems?: Prisma.IntakeItemUncheckedUpdateManyWithoutRequirementNestedInput
+  workItems?: Prisma.WorkItemUncheckedUpdateManyWithoutRequirementNestedInput
+}
+
+export type RequirementUncheckedUpdateManyWithoutAuthorInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  organizationId?: Prisma.StringFieldUpdateOperationsInput | string
+  spaceId?: Prisma.StringFieldUpdateOperationsInput | string
+  versionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  title?: Prisma.StringFieldUpdateOperationsInput | string
+  summary?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  contentJson?: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  contentText?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  contentMarkdownCache?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  contentFormat?: Prisma.EnumContentFormatFieldUpdateOperationsInput | $Enums.ContentFormat
+  status?: Prisma.EnumRequirementStatusFieldUpdateOperationsInput | $Enums.RequirementStatus
+  priority?: Prisma.NullableEnumPriorityFieldUpdateOperationsInput | $Enums.Priority | null
+  ownerId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   createdById?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -1443,6 +1690,7 @@ export type RequirementCreateManyOrganizationInput = {
   status?: $Enums.RequirementStatus
   priority?: $Enums.Priority | null
   ownerId?: string | null
+  authorId?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
   createdById?: string | null
@@ -1468,6 +1716,7 @@ export type RequirementUpdateWithoutOrganizationInput = {
   space?: Prisma.SpaceUpdateOneRequiredWithoutRequirementsNestedInput
   version?: Prisma.VersionUpdateOneWithoutRequirementsNestedInput
   owner?: Prisma.UserUpdateOneWithoutOwnedRequirementsNestedInput
+  author?: Prisma.UserUpdateOneWithoutAuthoredRequirementsNestedInput
   intakeItems?: Prisma.IntakeItemUpdateManyWithoutRequirementNestedInput
   workItems?: Prisma.WorkItemUpdateManyWithoutRequirementNestedInput
 }
@@ -1485,6 +1734,7 @@ export type RequirementUncheckedUpdateWithoutOrganizationInput = {
   status?: Prisma.EnumRequirementStatusFieldUpdateOperationsInput | $Enums.RequirementStatus
   priority?: Prisma.NullableEnumPriorityFieldUpdateOperationsInput | $Enums.Priority | null
   ownerId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  authorId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   createdById?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -1507,6 +1757,7 @@ export type RequirementUncheckedUpdateManyWithoutOrganizationInput = {
   status?: Prisma.EnumRequirementStatusFieldUpdateOperationsInput | $Enums.RequirementStatus
   priority?: Prisma.NullableEnumPriorityFieldUpdateOperationsInput | $Enums.Priority | null
   ownerId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  authorId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   createdById?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -1527,6 +1778,7 @@ export type RequirementCreateManySpaceInput = {
   status?: $Enums.RequirementStatus
   priority?: $Enums.Priority | null
   ownerId?: string | null
+  authorId?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
   createdById?: string | null
@@ -1552,6 +1804,7 @@ export type RequirementUpdateWithoutSpaceInput = {
   organization?: Prisma.OrganizationUpdateOneRequiredWithoutRequirementsNestedInput
   version?: Prisma.VersionUpdateOneWithoutRequirementsNestedInput
   owner?: Prisma.UserUpdateOneWithoutOwnedRequirementsNestedInput
+  author?: Prisma.UserUpdateOneWithoutAuthoredRequirementsNestedInput
   intakeItems?: Prisma.IntakeItemUpdateManyWithoutRequirementNestedInput
   workItems?: Prisma.WorkItemUpdateManyWithoutRequirementNestedInput
 }
@@ -1569,6 +1822,7 @@ export type RequirementUncheckedUpdateWithoutSpaceInput = {
   status?: Prisma.EnumRequirementStatusFieldUpdateOperationsInput | $Enums.RequirementStatus
   priority?: Prisma.NullableEnumPriorityFieldUpdateOperationsInput | $Enums.Priority | null
   ownerId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  authorId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   createdById?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -1591,6 +1845,7 @@ export type RequirementUncheckedUpdateManyWithoutSpaceInput = {
   status?: Prisma.EnumRequirementStatusFieldUpdateOperationsInput | $Enums.RequirementStatus
   priority?: Prisma.NullableEnumPriorityFieldUpdateOperationsInput | $Enums.Priority | null
   ownerId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  authorId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   createdById?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -1611,6 +1866,7 @@ export type RequirementCreateManyVersionInput = {
   status?: $Enums.RequirementStatus
   priority?: $Enums.Priority | null
   ownerId?: string | null
+  authorId?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
   createdById?: string | null
@@ -1636,6 +1892,7 @@ export type RequirementUpdateWithoutVersionInput = {
   organization?: Prisma.OrganizationUpdateOneRequiredWithoutRequirementsNestedInput
   space?: Prisma.SpaceUpdateOneRequiredWithoutRequirementsNestedInput
   owner?: Prisma.UserUpdateOneWithoutOwnedRequirementsNestedInput
+  author?: Prisma.UserUpdateOneWithoutAuthoredRequirementsNestedInput
   intakeItems?: Prisma.IntakeItemUpdateManyWithoutRequirementNestedInput
   workItems?: Prisma.WorkItemUpdateManyWithoutRequirementNestedInput
 }
@@ -1653,6 +1910,7 @@ export type RequirementUncheckedUpdateWithoutVersionInput = {
   status?: Prisma.EnumRequirementStatusFieldUpdateOperationsInput | $Enums.RequirementStatus
   priority?: Prisma.NullableEnumPriorityFieldUpdateOperationsInput | $Enums.Priority | null
   ownerId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  authorId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   createdById?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -1675,6 +1933,7 @@ export type RequirementUncheckedUpdateManyWithoutVersionInput = {
   status?: Prisma.EnumRequirementStatusFieldUpdateOperationsInput | $Enums.RequirementStatus
   priority?: Prisma.NullableEnumPriorityFieldUpdateOperationsInput | $Enums.Priority | null
   ownerId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  authorId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   createdById?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -1736,6 +1995,7 @@ export type RequirementSelect<ExtArgs extends runtime.Types.Extensions.InternalA
   status?: boolean
   priority?: boolean
   ownerId?: boolean
+  authorId?: boolean
   createdAt?: boolean
   updatedAt?: boolean
   createdById?: boolean
@@ -1745,6 +2005,7 @@ export type RequirementSelect<ExtArgs extends runtime.Types.Extensions.InternalA
   space?: boolean | Prisma.SpaceDefaultArgs<ExtArgs>
   version?: boolean | Prisma.Requirement$versionArgs<ExtArgs>
   owner?: boolean | Prisma.Requirement$ownerArgs<ExtArgs>
+  author?: boolean | Prisma.Requirement$authorArgs<ExtArgs>
   intakeItems?: boolean | Prisma.Requirement$intakeItemsArgs<ExtArgs>
   workItems?: boolean | Prisma.Requirement$workItemsArgs<ExtArgs>
   _count?: boolean | Prisma.RequirementCountOutputTypeDefaultArgs<ExtArgs>
@@ -1764,6 +2025,7 @@ export type RequirementSelectCreateManyAndReturn<ExtArgs extends runtime.Types.E
   status?: boolean
   priority?: boolean
   ownerId?: boolean
+  authorId?: boolean
   createdAt?: boolean
   updatedAt?: boolean
   createdById?: boolean
@@ -1773,6 +2035,7 @@ export type RequirementSelectCreateManyAndReturn<ExtArgs extends runtime.Types.E
   space?: boolean | Prisma.SpaceDefaultArgs<ExtArgs>
   version?: boolean | Prisma.Requirement$versionArgs<ExtArgs>
   owner?: boolean | Prisma.Requirement$ownerArgs<ExtArgs>
+  author?: boolean | Prisma.Requirement$authorArgs<ExtArgs>
 }, ExtArgs["result"]["requirement"]>
 
 export type RequirementSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
@@ -1789,6 +2052,7 @@ export type RequirementSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.E
   status?: boolean
   priority?: boolean
   ownerId?: boolean
+  authorId?: boolean
   createdAt?: boolean
   updatedAt?: boolean
   createdById?: boolean
@@ -1798,6 +2062,7 @@ export type RequirementSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.E
   space?: boolean | Prisma.SpaceDefaultArgs<ExtArgs>
   version?: boolean | Prisma.Requirement$versionArgs<ExtArgs>
   owner?: boolean | Prisma.Requirement$ownerArgs<ExtArgs>
+  author?: boolean | Prisma.Requirement$authorArgs<ExtArgs>
 }, ExtArgs["result"]["requirement"]>
 
 export type RequirementSelectScalar = {
@@ -1814,6 +2079,7 @@ export type RequirementSelectScalar = {
   status?: boolean
   priority?: boolean
   ownerId?: boolean
+  authorId?: boolean
   createdAt?: boolean
   updatedAt?: boolean
   createdById?: boolean
@@ -1821,12 +2087,13 @@ export type RequirementSelectScalar = {
   deletedAt?: boolean
 }
 
-export type RequirementOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "organizationId" | "spaceId" | "versionId" | "title" | "summary" | "contentJson" | "contentText" | "contentMarkdownCache" | "contentFormat" | "status" | "priority" | "ownerId" | "createdAt" | "updatedAt" | "createdById" | "updatedById" | "deletedAt", ExtArgs["result"]["requirement"]>
+export type RequirementOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "organizationId" | "spaceId" | "versionId" | "title" | "summary" | "contentJson" | "contentText" | "contentMarkdownCache" | "contentFormat" | "status" | "priority" | "ownerId" | "authorId" | "createdAt" | "updatedAt" | "createdById" | "updatedById" | "deletedAt", ExtArgs["result"]["requirement"]>
 export type RequirementInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   organization?: boolean | Prisma.OrganizationDefaultArgs<ExtArgs>
   space?: boolean | Prisma.SpaceDefaultArgs<ExtArgs>
   version?: boolean | Prisma.Requirement$versionArgs<ExtArgs>
   owner?: boolean | Prisma.Requirement$ownerArgs<ExtArgs>
+  author?: boolean | Prisma.Requirement$authorArgs<ExtArgs>
   intakeItems?: boolean | Prisma.Requirement$intakeItemsArgs<ExtArgs>
   workItems?: boolean | Prisma.Requirement$workItemsArgs<ExtArgs>
   _count?: boolean | Prisma.RequirementCountOutputTypeDefaultArgs<ExtArgs>
@@ -1836,12 +2103,14 @@ export type RequirementIncludeCreateManyAndReturn<ExtArgs extends runtime.Types.
   space?: boolean | Prisma.SpaceDefaultArgs<ExtArgs>
   version?: boolean | Prisma.Requirement$versionArgs<ExtArgs>
   owner?: boolean | Prisma.Requirement$ownerArgs<ExtArgs>
+  author?: boolean | Prisma.Requirement$authorArgs<ExtArgs>
 }
 export type RequirementIncludeUpdateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   organization?: boolean | Prisma.OrganizationDefaultArgs<ExtArgs>
   space?: boolean | Prisma.SpaceDefaultArgs<ExtArgs>
   version?: boolean | Prisma.Requirement$versionArgs<ExtArgs>
   owner?: boolean | Prisma.Requirement$ownerArgs<ExtArgs>
+  author?: boolean | Prisma.Requirement$authorArgs<ExtArgs>
 }
 
 export type $RequirementPayload<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
@@ -1851,6 +2120,7 @@ export type $RequirementPayload<ExtArgs extends runtime.Types.Extensions.Interna
     space: Prisma.$SpacePayload<ExtArgs>
     version: Prisma.$VersionPayload<ExtArgs> | null
     owner: Prisma.$UserPayload<ExtArgs> | null
+    author: Prisma.$UserPayload<ExtArgs> | null
     intakeItems: Prisma.$IntakeItemPayload<ExtArgs>[]
     workItems: Prisma.$WorkItemPayload<ExtArgs>[]
   }
@@ -1868,6 +2138,7 @@ export type $RequirementPayload<ExtArgs extends runtime.Types.Extensions.Interna
     status: $Enums.RequirementStatus
     priority: $Enums.Priority | null
     ownerId: string | null
+    authorId: string | null
     createdAt: Date
     updatedAt: Date
     createdById: string | null
@@ -2271,6 +2542,7 @@ export interface Prisma__RequirementClient<T, Null = never, ExtArgs extends runt
   space<T extends Prisma.SpaceDefaultArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.SpaceDefaultArgs<ExtArgs>>): Prisma.Prisma__SpaceClient<runtime.Types.Result.GetResult<Prisma.$SpacePayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | Null, Null, ExtArgs, GlobalOmitOptions>
   version<T extends Prisma.Requirement$versionArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Requirement$versionArgs<ExtArgs>>): Prisma.Prisma__VersionClient<runtime.Types.Result.GetResult<Prisma.$VersionPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
   owner<T extends Prisma.Requirement$ownerArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Requirement$ownerArgs<ExtArgs>>): Prisma.Prisma__UserClient<runtime.Types.Result.GetResult<Prisma.$UserPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
+  author<T extends Prisma.Requirement$authorArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Requirement$authorArgs<ExtArgs>>): Prisma.Prisma__UserClient<runtime.Types.Result.GetResult<Prisma.$UserPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
   intakeItems<T extends Prisma.Requirement$intakeItemsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Requirement$intakeItemsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$IntakeItemPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   workItems<T extends Prisma.Requirement$workItemsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Requirement$workItemsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$WorkItemPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   /**
@@ -2315,6 +2587,7 @@ export interface RequirementFieldRefs {
   readonly status: Prisma.FieldRef<"Requirement", 'RequirementStatus'>
   readonly priority: Prisma.FieldRef<"Requirement", 'Priority'>
   readonly ownerId: Prisma.FieldRef<"Requirement", 'String'>
+  readonly authorId: Prisma.FieldRef<"Requirement", 'String'>
   readonly createdAt: Prisma.FieldRef<"Requirement", 'DateTime'>
   readonly updatedAt: Prisma.FieldRef<"Requirement", 'DateTime'>
   readonly createdById: Prisma.FieldRef<"Requirement", 'String'>
@@ -2743,6 +3016,25 @@ export type Requirement$versionArgs<ExtArgs extends runtime.Types.Extensions.Int
  * Requirement.owner
  */
 export type Requirement$ownerArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  /**
+   * Select specific fields to fetch from the User
+   */
+  select?: Prisma.UserSelect<ExtArgs> | null
+  /**
+   * Omit specific fields from the User
+   */
+  omit?: Prisma.UserOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.UserInclude<ExtArgs> | null
+  where?: Prisma.UserWhereInput
+}
+
+/**
+ * Requirement.author
+ */
+export type Requirement$authorArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   /**
    * Select specific fields to fetch from the User
    */

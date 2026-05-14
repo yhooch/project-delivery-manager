@@ -552,6 +552,7 @@ function requirement(overrides: { spaceId?: string } = {}) {
     attachments: [],
     contentFormat: "TIPTAP_JSON" as const,
     contentJson: {},
+    createdAt: "2026-05-13T00:00:00.000Z",
     id: REQUIREMENT_ID,
     organizationId: ORGANIZATION_ID,
     relatedWorkItems: {
@@ -563,5 +564,6 @@ function requirement(overrides: { spaceId?: string } = {}) {
     spaceId: overrides.spaceId ?? SPACE_ID,
     status: "CONFIRMED" as const,
     title: "Requirement",
+    updatedAt: "2026-05-13T00:00:00.000Z",
   };
 }
