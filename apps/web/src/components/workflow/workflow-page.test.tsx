@@ -19,7 +19,18 @@ vi.mock("next-intl", () => ({
 
 vi.mock("../../i18n/routing", () => ({
   routing: { defaultLocale: "zh-CN", locales: ["zh-CN", "en-US"] },
-  Link: ({ children }: { children: React.ReactNode }) => children,
+  Link: ({
+    children,
+    href,
+    ...rest
+  }: {
+    children: React.ReactNode;
+    href: string;
+  } & React.AnchorHTMLAttributes<HTMLAnchorElement>) => (
+    <a href={href} {...rest}>
+      {children}
+    </a>
+  ),
   getPathname: () => "/",
   redirect: () => undefined,
   usePathname: () => "/",
@@ -198,6 +209,41 @@ describe("WorkflowPage", () => {
     expect(
       screen.getByTestId("workflow-dialog-open").getAttribute("data-mode"),
     ).toBe("create");
+  });
+
+  it("renders configure as an anchor link to the workflow detail page", async () => {
+    listWorkflowsMock.mockResolvedValueOnce({
+      items: [makeWorkflow()],
+      total: 1,
+    });
+
+    render(<WorkflowPage />);
+
+    expect(await screen.findByText("Bug Default")).toBeInTheDocument();
+    const configure = screen.getByTestId(
+      "workflow-card-configure-01ARZ3NDEKTSV4RRFFQ69G5FW1",
+    );
+    expect(configure.tagName).toBe("A");
+    expect(configure.getAttribute("href")).toBe(
+      "/workflow/01ARZ3NDEKTSV4RRFFQ69G5FW1",
+    );
+  });
+
+  it("opens the edit dialog when 编辑 is clicked on a workflow card", async () => {
+    listWorkflowsMock.mockResolvedValueOnce({
+      items: [makeWorkflow()],
+      total: 1,
+    });
+
+    render(<WorkflowPage />);
+
+    expect(await screen.findByText("Bug Default")).toBeInTheDocument();
+    fireEvent.click(
+      screen.getByRole("button", { name: /workflow\.page\.edit/ }),
+    );
+
+    const dialog = await screen.findByTestId("workflow-dialog-open");
+    expect(dialog.getAttribute("data-mode")).toBe("edit");
   });
 
   it("opens the dialog in copyVersion mode when 复制为新版本 is clicked on a workflow", async () => {

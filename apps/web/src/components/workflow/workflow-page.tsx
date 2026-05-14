@@ -4,10 +4,11 @@ import type {
   WorkflowDefinition,
   WorkflowDefinitionStatus,
 } from "@project-delivery/shared";
-import { Plus, Settings2, Workflow as WorkflowIcon } from "lucide-react";
+import { Pencil, Plus, Settings2, Workflow as WorkflowIcon } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useState } from "react";
 
+import { Link } from "../../i18n/routing";
 import { getApiErrorMessageKey } from "../../lib/api-error-messages";
 import { listWorkflows } from "../../lib/workflow-service";
 import { cn } from "../../lib/utils";
@@ -173,13 +174,25 @@ export function WorkflowPage() {
                   {t("page.copyAsNewVersion")}
                 </Button>
                 <Button
-                  variant="outline"
+                  variant="ghost"
                   size="sm"
                   className="h-7 text-xs"
                   onClick={() => setDialog({ kind: "edit", workflow: wf })}
                 >
-                  <Settings2 className="h-3 w-3" />
-                  {t("page.configure")}
+                  <Pencil className="h-3 w-3" />
+                  {t("page.edit")}
+                </Button>
+                <Button
+                  asChild
+                  variant="outline"
+                  size="sm"
+                  className="h-7 text-xs"
+                  data-testid={`workflow-card-configure-${wf.id}`}
+                >
+                  <Link href={`/workflow/${wf.id}`}>
+                    <Settings2 className="h-3 w-3" />
+                    {t("page.configure")}
+                  </Link>
                 </Button>
               </div>
             </div>

@@ -2258,6 +2258,7 @@
       "description": "维护任务与 Bug 的轻量状态机；已发布版本不可直接编辑，需新建版本承接变更。",
       "newWorkflow": "新建流程",
       "configure": "配置",
+      "edit": "编辑",
       "copyAsNewVersion": "复制为新版本",
       "noSpace": {
         "title": "未选择空间",
@@ -2266,6 +2267,162 @@
       "empty": {
         "title": "暂无流程定义",
         "description": "当前空间还没有任何流程定义。"
+      }
+    },
+    "config": {
+      "loading": "加载中…",
+      "description": "查看版本、编辑状态/动作/字段、发布或停用流程版本。",
+      "backToList": "返回流程列表",
+      "noVersionSelected": "请先选择版本，或为该流程创建草稿版本。",
+      "readonlyHint": "已发布版本不可修改，如需变更请新建版本。",
+      "toolbar": {
+        "versionLabel": "版本",
+        "versionOption": "v{version} · {status}",
+        "noVersions": "暂无版本",
+        "publish": "发布",
+        "publishing": "发布中…",
+        "disable": "停用",
+        "disabling": "停用中…",
+        "copyDraft": "复制为新版本",
+        "copying": "创建中…"
+      },
+      "publishValidation": {
+        "title": "发布前请先解决以下问题：",
+        "issues": {
+          "noStates": "至少需要 1 个状态",
+          "noStartState": "缺少起始状态（请将至少 1 个状态标记为起始）",
+          "noEndState": "缺少结束状态（请将至少 1 个状态标记为结束）",
+          "missingFromState": "存在动作的「来源状态」不在状态列表中",
+          "missingToState": "存在动作的「目标状态」不在状态列表中"
+        }
+      },
+      "states": {
+        "title": "状态",
+        "description": "维护流程的生命周期状态及其系统分类。",
+        "create": "新增状态",
+        "empty": "此版本暂无状态。",
+        "columns": {
+          "code": "编码",
+          "name": "名称",
+          "category": "分类",
+          "flags": "标记",
+          "order": "排序",
+          "actions": "操作"
+        },
+        "flags": {
+          "isStart": "起始",
+          "isEnd": "结束"
+        },
+        "actions": {
+          "edit": "编辑状态",
+          "delete": "删除状态"
+        }
+      },
+      "actions": {
+        "title": "动作",
+        "description": "配置状态流转、允许角色、参与关系与评论要求。",
+        "create": "新增动作",
+        "empty": "此版本暂无动作。",
+        "transition": "{from} → {to}",
+        "flags": {
+          "requiresComment": "需要评论",
+          "roles": "角色 {count}",
+          "order": "排序 {order}"
+        },
+        "actions": {
+          "edit": "编辑动作",
+          "delete": "删除动作",
+          "toggleFields": "展开/收起表单字段"
+        }
+      },
+      "fields": {
+        "title": "动作表单字段",
+        "create": "新增字段",
+        "empty": "此动作暂无字段。",
+        "columns": {
+          "key": "键",
+          "label": "名称",
+          "fieldType": "类型",
+          "required": "必填",
+          "options": "选项",
+          "order": "排序",
+          "actions": "操作"
+        },
+        "flags": {
+          "required": "必填"
+        },
+        "actions": {
+          "edit": "编辑字段",
+          "delete": "删除字段"
+        }
+      },
+      "stateDialog": {
+        "create": {
+          "title": "新增状态",
+          "description": "新建一个生命周期状态。"
+        },
+        "edit": {
+          "title": "编辑状态",
+          "description": "修改状态的标识、分类、排序和起止标记。"
+        },
+        "fields": {
+          "name": "名称",
+          "code": "编码",
+          "category": "分类",
+          "order": "排序",
+          "isStart": "起始状态",
+          "isEnd": "结束状态"
+        },
+        "submit": "保存",
+        "submitting": "保存中…",
+        "cancel": "取消"
+      },
+      "actionDialog": {
+        "create": {
+          "title": "新增动作",
+          "description": "为版本添加一个新的状态流转动作。"
+        },
+        "edit": {
+          "title": "编辑动作",
+          "description": "修改动作的来源/目标状态、角色和参与关系。"
+        },
+        "fields": {
+          "name": "名称",
+          "code": "编码",
+          "fromState": "来源状态",
+          "toState": "目标状态",
+          "statePlaceholder": "请选择状态",
+          "order": "排序",
+          "requiresComment": "需要评论",
+          "allowedRoles": "允许的空间角色",
+          "actorRelations": "参与关系"
+        },
+        "submit": "保存",
+        "submitting": "保存中…",
+        "cancel": "取消"
+      },
+      "fieldDialog": {
+        "create": {
+          "title": "新增字段",
+          "description": "为动作添加一个新的表单字段。"
+        },
+        "edit": {
+          "title": "编辑字段",
+          "description": "修改字段的键、名称、类型和选项。"
+        },
+        "fields": {
+          "label": "名称",
+          "key": "键",
+          "fieldType": "类型",
+          "order": "排序",
+          "required": "必填",
+          "options": "选项",
+          "optionsPlaceholder": "每行一个选项",
+          "optionsHint": "仅在「下拉选择」类型下生效。"
+        },
+        "submit": "保存",
+        "submitting": "保存中…",
+        "cancel": "取消"
       }
     },
     "dialog": {

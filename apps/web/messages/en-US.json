@@ -2266,6 +2266,7 @@
       "description": "Maintain lightweight state machines for tasks and bugs. Published versions are read-only; create a new version to capture changes.",
       "newWorkflow": "New workflow",
       "configure": "Configure",
+      "edit": "Edit",
       "copyAsNewVersion": "Copy as new version",
       "noSpace": {
         "title": "No space selected",
@@ -2274,6 +2275,162 @@
       "empty": {
         "title": "No workflow definitions",
         "description": "This space does not have any workflow definitions yet."
+      }
+    },
+    "config": {
+      "loading": "Loading…",
+      "description": "View versions, edit states/actions/fields, publish or disable workflow versions.",
+      "backToList": "Back to list",
+      "noVersionSelected": "Select a version, or create a draft for this workflow.",
+      "readonlyHint": "Published versions are read-only. Create a new version to apply changes.",
+      "toolbar": {
+        "versionLabel": "Version",
+        "versionOption": "v{version} · {status}",
+        "noVersions": "No versions",
+        "publish": "Publish",
+        "publishing": "Publishing…",
+        "disable": "Disable",
+        "disabling": "Disabling…",
+        "copyDraft": "Copy as new version",
+        "copying": "Creating…"
+      },
+      "publishValidation": {
+        "title": "Resolve the following before publishing:",
+        "issues": {
+          "noStates": "At least one state is required.",
+          "noStartState": "A start state is required (mark at least one state as start).",
+          "noEndState": "An end state is required (mark at least one state as end).",
+          "missingFromState": "An action references a 'from state' that does not exist.",
+          "missingToState": "An action references a 'to state' that does not exist."
+        }
+      },
+      "states": {
+        "title": "States",
+        "description": "Maintain lifecycle states and their system categories.",
+        "create": "New state",
+        "empty": "No states in this version.",
+        "columns": {
+          "code": "Code",
+          "name": "Name",
+          "category": "Category",
+          "flags": "Flags",
+          "order": "Order",
+          "actions": "Actions"
+        },
+        "flags": {
+          "isStart": "Start",
+          "isEnd": "End"
+        },
+        "actions": {
+          "edit": "Edit state",
+          "delete": "Delete state"
+        }
+      },
+      "actions": {
+        "title": "Actions",
+        "description": "Configure transitions, allowed roles, actor relations, and comment requirements.",
+        "create": "New action",
+        "empty": "No actions in this version.",
+        "transition": "{from} → {to}",
+        "flags": {
+          "requiresComment": "Requires comment",
+          "roles": "Roles {count}",
+          "order": "Order {order}"
+        },
+        "actions": {
+          "edit": "Edit action",
+          "delete": "Delete action",
+          "toggleFields": "Toggle form fields"
+        }
+      },
+      "fields": {
+        "title": "Action form fields",
+        "create": "New field",
+        "empty": "No fields for this action.",
+        "columns": {
+          "key": "Key",
+          "label": "Label",
+          "fieldType": "Type",
+          "required": "Required",
+          "options": "Options",
+          "order": "Order",
+          "actions": "Actions"
+        },
+        "flags": {
+          "required": "Required"
+        },
+        "actions": {
+          "edit": "Edit field",
+          "delete": "Delete field"
+        }
+      },
+      "stateDialog": {
+        "create": {
+          "title": "New state",
+          "description": "Create a new lifecycle state."
+        },
+        "edit": {
+          "title": "Edit state",
+          "description": "Update the state identity, category, order, and start/end flags."
+        },
+        "fields": {
+          "name": "Name",
+          "code": "Code",
+          "category": "Category",
+          "order": "Order",
+          "isStart": "Start state",
+          "isEnd": "End state"
+        },
+        "submit": "Save",
+        "submitting": "Saving…",
+        "cancel": "Cancel"
+      },
+      "actionDialog": {
+        "create": {
+          "title": "New action",
+          "description": "Add a new state transition to this version."
+        },
+        "edit": {
+          "title": "Edit action",
+          "description": "Update the action's from/to states, allowed roles, and actor relations."
+        },
+        "fields": {
+          "name": "Name",
+          "code": "Code",
+          "fromState": "From state",
+          "toState": "To state",
+          "statePlaceholder": "Select state",
+          "order": "Order",
+          "requiresComment": "Requires comment",
+          "allowedRoles": "Allowed space roles",
+          "actorRelations": "Actor relations"
+        },
+        "submit": "Save",
+        "submitting": "Saving…",
+        "cancel": "Cancel"
+      },
+      "fieldDialog": {
+        "create": {
+          "title": "New field",
+          "description": "Add a new form field to this action."
+        },
+        "edit": {
+          "title": "Edit field",
+          "description": "Update the field key, label, type, and options."
+        },
+        "fields": {
+          "label": "Label",
+          "key": "Key",
+          "fieldType": "Type",
+          "order": "Order",
+          "required": "Required",
+          "options": "Options",
+          "optionsPlaceholder": "One option per line",
+          "optionsHint": "Only used for 'Select' field type."
+        },
+        "submit": "Save",
+        "submitting": "Saving…",
+        "cancel": "Cancel"
       }
     },
     "dialog": {
