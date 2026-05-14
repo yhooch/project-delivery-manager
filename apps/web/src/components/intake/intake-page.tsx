@@ -20,6 +20,7 @@ import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { getApiErrorMessageKey } from "../../lib/api-error-messages";
+import { useListKeyboardNav } from "../../lib/hooks/use-list-keyboard-nav";
 import {
   acceptIntakeItem,
   deferIntakeItem,
@@ -148,6 +149,18 @@ export function IntakePage() {
     ],
     [items, t],
   );
+
+  useListKeyboardNav<IntakeItem>({
+    items: filtered,
+    activeId: active?.id,
+    getId: (item) => item.id,
+    onSelect: setActive,
+    onOpen: setActive,
+    onClose: () => {
+      setActive(null);
+      setActionErrorKey(null);
+    },
+  });
 
   function handleCloseDrawer(open: boolean) {
     if (!open) {

@@ -11,6 +11,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { getApiErrorMessageKey } from "../../lib/api-error-messages";
 import { listBugs } from "../../lib/bug-service";
+import { useListKeyboardNav } from "../../lib/hooks/use-list-keyboard-nav";
 import { useSpaceMembers, useVersions } from "../../lib/v2/lookups";
 import type { WorkItemViewModel } from "../../lib/v2/work-item-view-model";
 import { cn } from "../../lib/utils";
@@ -113,6 +114,18 @@ export function BugsPage() {
     }
     return mockItems;
   }, [filter, mockItems]);
+
+  useListKeyboardNav<MockBugItem>({
+    items: filtered,
+    activeId: activeItem?.id,
+    getId: (item) => item.id,
+    onSelect: setActiveItem,
+    onOpen: (item) => {
+      setActiveItem(item);
+      setSheetOpen(true);
+    },
+    onClose: () => setSheetOpen(false),
+  });
 
   const buckets = useMemo(
     () => [

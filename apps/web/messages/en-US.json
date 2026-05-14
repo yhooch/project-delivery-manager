@@ -376,7 +376,16 @@
     "organizationSwitcher": {
       "label": "Switch organization",
       "empty": "No organization",
-      "signedOut": "Signed out"
+      "signedOut": "Signed out",
+      "trigger": "Switch organization / space",
+      "organizationsHeading": "Organizations",
+      "spacesHeading": "Project spaces",
+      "noSpaces": "No project space in current organization.",
+      "createOrganization": "Create organization",
+      "createSpace": "Create project space",
+      "switchingOrg": "Switching organization…",
+      "switchingSpace": "Switching space…",
+      "currentBadge": "Current"
     },
     "spaceSwitcher": {
       "label": "Switch space",
@@ -391,7 +400,46 @@
       "openMenu": "Open user menu",
       "profile": "Profile",
       "preferences": "Preferences",
+      "changePassword": "Change password",
       "logout": "Sign out"
+    },
+    "changePassword": {
+      "title": "Change password",
+      "description": "Enter your current password and set a new one.",
+      "fields": {
+        "oldPassword": "Current password",
+        "newPassword": "New password",
+        "confirmPassword": "Confirm new password"
+      },
+      "placeholders": {
+        "oldPassword": "Enter current password",
+        "newPassword": "At least 8 characters",
+        "confirmPassword": "Enter new password again"
+      },
+      "submit": "Save",
+      "submitting": "Saving…",
+      "cancel": "Cancel",
+      "success": "Password updated.",
+      "errors": {
+        "mismatch": "The two new passwords do not match.",
+        "sameAsOld": "New password must differ from the current one.",
+        "invalidCredentials": "Current password is incorrect.",
+        "generic": "Failed to update password. Please try again later."
+      }
+    },
+    "createSpace": {
+      "title": "Create project space",
+      "description": "The space will belong to the current organization. The three default workflows are copied and published automatically.",
+      "nameLabel": "Space name",
+      "namePlaceholder": "e.g. Delivery Project A",
+      "codeLabel": "Space code",
+      "codePlaceholder": "e.g. delivery-a",
+      "descriptionLabel": "Description",
+      "descriptionPlaceholder": "Optional. Brief purpose of the space.",
+      "cancel": "Cancel",
+      "submit": "Create project space",
+      "submitting": "Creating…",
+      "error": "Failed to create project space. Please try again later."
     },
     "command": {
       "placeholder": "Type a command or search tasks, bugs, requirements, intake",
@@ -1836,12 +1884,14 @@
       "todo": "My todos",
       "actions": "Action todos",
       "dueSoon": "Due soon",
+      "blocked": "Blocked",
       "recent": "Recent activity"
     },
     "empty": {
       "todo": "No assigned todos.",
       "actions": "No action todos.",
       "dueSoon": "No due soon items.",
+      "blocked": "No blocked work items.",
       "recent": "No recent activity.",
       "signIn": {
         "title": "Not signed in",

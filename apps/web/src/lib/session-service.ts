@@ -1,5 +1,7 @@
 import type {
   AppSession,
+  ChangePasswordRequest,
+  ChangePasswordResponse,
   CreateOrganizationRequest,
   GetAuthSessionResponse,
   LoginRequest,
@@ -118,6 +120,18 @@ export async function updateUserPreferences(
 ): Promise<UpdateUserPreferencesResponse> {
   const response = await api.patch<UpdateUserPreferencesResponse>(
     "/users/me/preferences",
+    input,
+  );
+
+  return response.data;
+}
+
+export async function changePassword(
+  input: ChangePasswordRequest,
+  api: SessionApiTransport = defaultApi,
+): Promise<ChangePasswordResponse> {
+  const response = await api.patch<ChangePasswordResponse>(
+    "/users/me/password",
     input,
   );
 

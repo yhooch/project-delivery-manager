@@ -1,4 +1,5 @@
 import {
+  ChangePasswordRequestSchema,
   CreateOrganizationRequestSchema,
   LoginRequestSchema,
   OrganizationCodeSchema,
@@ -25,6 +26,17 @@ export const createOrganizationFormSchema = CreateOrganizationRequestSchema.exte
   },
 );
 
+export const changePasswordFormSchema = ChangePasswordRequestSchema.refine(
+  (input) => input.newPassword === input.confirmPassword,
+  {
+    message: "passwordMismatch",
+    path: ["confirmPassword"],
+  },
+).refine((input) => input.oldPassword !== input.newPassword, {
+  message: "sameAsOld",
+  path: ["newPassword"],
+});
+
 export type RegisterFormValues = z.infer<typeof registerFormSchema>;
 export type LoginFormValues = z.infer<typeof loginFormSchema>;
 export type CreateOrganizationFormInput = z.input<
@@ -33,6 +45,7 @@ export type CreateOrganizationFormInput = z.input<
 export type CreateOrganizationFormValues = z.output<
   typeof createOrganizationFormSchema
 >;
+export type ChangePasswordFormValues = z.infer<typeof changePasswordFormSchema>;
 
 export function validateRegisterForm(input: unknown) {
   return registerFormSchema.safeParse(input);

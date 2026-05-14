@@ -69,8 +69,26 @@ export function useCommandPaletteShortcut() {
       if (event.key.toLowerCase() === "g") {
         const sequenceHandler = (next: KeyboardEvent) => {
           window.removeEventListener("keydown", sequenceHandler);
-          if (next.key.toLowerCase() === "i") {
-            window.location.assign("/");
+          // Ignore the chord if the user is typing in a form field by the
+          // time the second key fires.
+          const nextTarget = next.target as HTMLElement | null;
+          const nextTag = nextTarget?.tagName;
+          if (
+            nextTag === "INPUT" ||
+            nextTag === "TEXTAREA" ||
+            nextTarget?.isContentEditable
+          ) {
+            return;
+          }
+          const routes: Record<string, string> = {
+            i: "/",
+            v: "/versions",
+            r: "/requirements",
+            b: "/bugs",
+          };
+          const route = routes[next.key.toLowerCase()];
+          if (route) {
+            window.location.assign(route);
           }
         };
         window.addEventListener("keydown", sequenceHandler, { once: true });

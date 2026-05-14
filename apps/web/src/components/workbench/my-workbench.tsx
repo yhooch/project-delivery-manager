@@ -2,7 +2,9 @@
 
 import type {
   GetMyWorkbenchViewResponse,
+  SpaceMemberWithUser,
   StatusCategory,
+  Version,
   ViewWorkItemSummary,
 } from "@project-delivery/shared";
 import {
@@ -19,6 +21,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { getApiErrorMessageKey } from "../../lib/api-error-messages";
 import { cn } from "../../lib/utils";
+import { useSpaceMembers, useVersions } from "../../lib/v2/lookups";
 import type { WorkItemViewModel } from "../../lib/v2/work-item-view-model";
 import { getMyWorkbenchView } from "../../lib/view-service";
 import { useSession } from "../providers/session-provider";
@@ -51,6 +54,9 @@ export function MyWorkbench() {
 
   const organizationId = session?.defaultOrganizationId;
   const spaceId = session?.defaultSpaceId;
+  // Lookups: hooks return empty results gracefully when spaceId is undefined.
+  const { getMember } = useSpaceMembers(spaceId, organizationId);
+  const { getVersion } = useVersions(spaceId, organizationId);
 
   const fetchView = useCallback(async () => {
     if (!organizationId) {
@@ -120,19 +126,32 @@ export function MyWorkbench() {
   const greetingName = session?.user.name ?? t("title");
 
   const todoItems = useMemo(
-    () => (view?.sections.myTodos.items.items ?? []).map(toMockWorkItem(locale)),
-    [view, locale],
+    () =>
+      (view?.sections.myTodos.items.items ?? []).map(
+        toMockWorkItem(locale, { getMember, getVersion }),
+      ),
+    [view, locale, getMember, getVersion],
   );
   const actionItems = useMemo(
     () =>
       (view?.sections.actionTodos.items.items ?? []).map((todo) =>
-        toMockWorkItem(locale)(todo.workItem),
+        toMockWorkItem(locale, { getMember, getVersion })(todo.workItem),
       ),
-    [view, locale],
+    [view, locale, getMember, getVersion],
   );
   const dueSoonItems = useMemo(
-    () => (view?.sections.dueSoon.items.items ?? []).map(toMockWorkItem(locale)),
-    [view, locale],
+    () =>
+      (view?.sections.dueSoon.items.items ?? []).map(
+        toMockWorkItem(locale, { getMember, getVersion }),
+      ),
+    [view, locale, getMember, getVersion],
+  );
+  const blockedItems = useMemo(
+    () =>
+      (view?.sections.blocked?.items.items ?? []).map(
+        toMockWorkItem(locale, { getMember, getVersion }),
+      ),
+    [view, locale, getMember, getVersion],
   );
   const recentEvents = view?.sections.recentActivities.items.items ?? [];
 
@@ -140,6 +159,8 @@ export function MyWorkbench() {
   const todoCount = view?.sections.myTodos.total ?? todoItems.length;
   const actionCount = view?.sections.actionTodos.total ?? actionItems.length;
   const dueSoonCount = view?.sections.dueSoon.total ?? dueSoonItems.length;
+  const blockedSectionCount =
+    view?.sections.blocked?.total ?? blockedItems.length;
   // Show "—" if backend view did not include stats (graceful degradation).
   const blockedCount: number | undefined = stats?.blockedCount;
   const pendingConfirmCount: number | undefined = stats?.pendingConfirmCount;
@@ -251,6 +272,15 @@ export function MyWorkbench() {
             isLoading={isLoading && !view}
           >
             <ItemList items={dueSoonItems} onSelect={openItem} />
+          </Section>
+
+          <Section
+            title={t("sections.blocked")}
+            count={blockedSectionCount}
+            empty={t("empty.blocked")}
+            isLoading={isLoading && !view}
+          >
+            <ItemList items={blockedItems} onSelect={openItem} />
           </Section>
         </div>
 
@@ -461,7 +491,15 @@ const STATUS_LABEL_EN: Record<StatusCategory, string> = {
   TERMINATED: "Terminated",
 };
 
-export function toMockWorkItem(locale: string) {
+export type WorkbenchLookupHelpers = {
+  getMember: (userId: string) => SpaceMemberWithUser | undefined;
+  getVersion: (versionId: string) => Version | undefined;
+};
+
+export function toMockWorkItem(
+  locale: string,
+  lookups?: WorkbenchLookupHelpers,
+) {
   const labels = locale.startsWith("zh") ? STATUS_LABEL_ZH : STATUS_LABEL_EN;
 
   return (item: ViewWorkItemSummary): WorkItemViewModel => {
@@ -481,6 +519,20 @@ export function toMockWorkItem(locale: string) {
       ? formatTimeAgo(item.lastActionAt, locale)
       : undefined;
 
+    const member = item.assigneeId
+      ? lookups?.getMember(item.assigneeId)
+      : undefined;
+    const assigneeName =
+      member?.user.name ?? member?.user.username ?? item.assigneeId ?? "—";
+    const version = item.versionId
+      ? lookups?.getVersion(item.versionId)
+      : undefined;
+    // Fall back to the legacy short-id form when lookups are cold so the badge
+    // still shows _something_ for the user instead of disappearing entirely.
+    const versionName = item.versionId
+      ? version?.name ?? item.versionId.slice(-4)
+      : undefined;
+
     return {
       id: item.id,
       code,
@@ -490,10 +542,10 @@ export function toMockWorkItem(locale: string) {
       statusLabel: labels[item.currentStatus.statusCategory] ?? item.currentStatus.stateName,
       priority: item.priority,
       assignee: {
-        name: item.assigneeId ?? "—",
-        initial: initialOf(item.assigneeId ?? "?"),
+        name: assigneeName,
+        initial: initialOf(assigneeName),
       },
-      versionName: item.versionId ? item.versionId.slice(-4) : undefined,
+      versionName,
       dueDate,
       isOverdue,
       isBlocked: Boolean(blockedSignal),

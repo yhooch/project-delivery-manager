@@ -15,6 +15,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { Link, useRouter } from "../../i18n/routing";
 import { getApiErrorMessageKey } from "../../lib/api-error-messages";
+import { useListKeyboardNav } from "../../lib/hooks/use-list-keyboard-nav";
 import {
   createRequirementDraft,
   listRequirements,
@@ -54,6 +55,7 @@ export function RequirementsPage() {
   const [errorKey, setErrorKey] = useState<string | null>(null);
   const [filter, setFilter] = useState<FilterKey>("active");
   const [isCreating, setIsCreating] = useState(false);
+  const [activeId, setActiveId] = useState<string | undefined>(undefined);
 
   const loadItems = useCallback(async () => {
     if (!spaceId) {
@@ -102,6 +104,14 @@ export function RequirementsPage() {
     { label: t("filters.archived"), key: "ARCHIVED" },
     { label: t("filters.all"), key: "all" },
   ];
+
+  useListKeyboardNav<Requirement>({
+    items: filtered,
+    activeId,
+    getId: (item) => item.id,
+    onSelect: (item) => setActiveId(item.id),
+    onOpen: (item) => router.push(`/requirements/${item.id}`),
+  });
 
   async function handleCreateDraft() {
     if (!spaceId || isCreating) {
@@ -190,7 +200,10 @@ export function RequirementsPage() {
           <li key={req.id} data-testid={`requirements-row-${req.id}`}>
             <Link
               href={`/requirements/${req.id}`}
-              className="flex w-full items-start gap-3 px-6 py-3 text-left transition-colors hover:bg-muted/40 cursor-pointer"
+              className={cn(
+                "flex w-full items-start gap-3 px-6 py-3 text-left transition-colors hover:bg-muted/40 cursor-pointer",
+                activeId === req.id && "bg-muted/40",
+              )}
             >
               {req.status === "ARCHIVED" ? (
                 <Archive className="mt-0.5 h-3.5 w-3.5 shrink-0 text-muted-foreground" />

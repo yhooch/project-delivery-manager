@@ -376,7 +376,16 @@
     "organizationSwitcher": {
       "label": "切换组织",
       "empty": "暂无组织",
-      "signedOut": "未登录"
+      "signedOut": "未登录",
+      "trigger": "切换组织 / 空间",
+      "organizationsHeading": "组织",
+      "spacesHeading": "项目空间",
+      "noSpaces": "当前组织下暂无项目空间。",
+      "createOrganization": "创建组织",
+      "createSpace": "创建项目空间",
+      "switchingOrg": "切换组织中…",
+      "switchingSpace": "切换空间中…",
+      "currentBadge": "当前"
     },
     "spaceSwitcher": {
       "label": "切换空间",
@@ -391,7 +400,46 @@
       "openMenu": "打开用户菜单",
       "profile": "个人资料",
       "preferences": "偏好设置",
+      "changePassword": "修改密码",
       "logout": "退出登录"
+    },
+    "changePassword": {
+      "title": "修改密码",
+      "description": "请输入当前密码并设置新密码。",
+      "fields": {
+        "oldPassword": "当前密码",
+        "newPassword": "新密码",
+        "confirmPassword": "确认新密码"
+      },
+      "placeholders": {
+        "oldPassword": "输入当前密码",
+        "newPassword": "至少 8 位",
+        "confirmPassword": "再次输入新密码"
+      },
+      "submit": "保存",
+      "submitting": "保存中…",
+      "cancel": "取消",
+      "success": "密码已更新",
+      "errors": {
+        "mismatch": "两次输入的新密码不一致。",
+        "sameAsOld": "新密码不能与当前密码相同。",
+        "invalidCredentials": "当前密码不正确。",
+        "generic": "更新失败，请稍后重试。"
+      }
+    },
+    "createSpace": {
+      "title": "创建项目空间",
+      "description": "项目空间将归属当前组织。创建后会自动复制并发布三套默认流程。",
+      "nameLabel": "空间名称",
+      "namePlaceholder": "例如：交付项目 A",
+      "codeLabel": "空间代码",
+      "codePlaceholder": "例如：delivery-a",
+      "descriptionLabel": "描述",
+      "descriptionPlaceholder": "可选，简述空间用途",
+      "cancel": "取消",
+      "submit": "创建项目空间",
+      "submitting": "创建中…",
+      "error": "创建项目空间失败，请稍后重试。"
     },
     "command": {
       "placeholder": "输入命令或搜索任务、Bug、需求、事项",
@@ -1828,12 +1876,14 @@
       "todo": "我的待办",
       "actions": "待处理动作",
       "dueSoon": "临近截止",
+      "blocked": "阻塞中",
       "recent": "最近动态"
     },
     "empty": {
       "todo": "暂无我的待办。",
       "actions": "暂无待处理动作。",
       "dueSoon": "暂无临近截止事项。",
+      "blocked": "暂无阻塞工作项。",
       "recent": "暂无最近动态。",
       "signIn": {
         "title": "尚未登录",

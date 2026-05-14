@@ -47,6 +47,24 @@ vi.mock("../../lib/view-service", () => ({
   getMyWorkbenchView: getMyWorkbenchViewMock,
 }));
 
+// Lookups: stubbed inert so the component renders without hitting member/version
+// services. The component falls back to assigneeId / version-id tails when no
+// lookup hits, which is the legacy behaviour these tests already exercise.
+vi.mock("../../lib/v2/lookups", () => ({
+  useSpaceMembers: () => ({
+    members: [],
+    loading: false,
+    error: null,
+    getMember: () => undefined,
+  }),
+  useVersions: () => ({
+    versions: [],
+    loading: false,
+    error: null,
+    getVersion: () => undefined,
+  }),
+}));
+
 // Mock the task-detail-sheet so it doesn't render full Radix tree.
 vi.mock("../work-item/task-detail-sheet", () => ({
   TaskDetailSheet: () => null,
@@ -115,12 +133,14 @@ function makeWorkbenchResponse(
     todos?: ReturnType<typeof makeWorkItemSummary>[];
     dueSoon?: ReturnType<typeof makeWorkItemSummary>[];
     actionTodos?: Array<{ workItem: ReturnType<typeof makeWorkItemSummary> }>;
+    blocked?: ReturnType<typeof makeWorkItemSummary>[];
     recent?: ReturnType<typeof makeRecentActivity>[];
   } = {},
 ) {
   const todos = options.todos ?? [];
   const dueSoon = options.dueSoon ?? [];
   const actionTodos = options.actionTodos ?? [];
+  const blocked = options.blocked ?? [];
   const recent = options.recent ?? [];
 
   const base = {
@@ -141,7 +161,7 @@ function makeWorkbenchResponse(
       },
       pendingConfirm: makeWorkbenchSection([]),
       dueSoon: makeWorkbenchSection(dueSoon),
-      blocked: makeWorkbenchSection([]),
+      blocked: makeWorkbenchSection(blocked),
       recentActivities: {
         title: "Recent",
         total: recent.length,
@@ -229,7 +249,7 @@ describe("MyWorkbench", () => {
     expect(dashes.length).toBeGreaterThanOrEqual(2);
   });
 
-  it("renders three task sections (todo, actions, dueSoon) with their items", async () => {
+  it("renders four task sections (todo, actions, dueSoon, blocked) with their items", async () => {
     getMyWorkbenchViewMock.mockResolvedValueOnce(
       makeWorkbenchResponse({
         todos: [
@@ -252,6 +272,12 @@ describe("MyWorkbench", () => {
             }),
           },
         ],
+        blocked: [
+          makeWorkItemSummary({
+            id: "01ARZ3NDEKTSV4RRFFQ69G5F04",
+            title: "Blocked item",
+          }),
+        ],
       }),
     );
 
@@ -260,11 +286,27 @@ describe("MyWorkbench", () => {
     expect(await screen.findByText("Todo item one")).toBeInTheDocument();
     expect(screen.getByText("Due soon item")).toBeInTheDocument();
     expect(screen.getByText("Action todo item")).toBeInTheDocument();
+    expect(screen.getByText("Blocked item")).toBeInTheDocument();
 
     // Section titles rendered.
     expect(screen.getByText("workbench.sections.todo")).toBeInTheDocument();
     expect(screen.getByText("workbench.sections.actions")).toBeInTheDocument();
     expect(screen.getByText("workbench.sections.dueSoon")).toBeInTheDocument();
+    expect(screen.getByText("workbench.sections.blocked")).toBeInTheDocument();
+  });
+
+  it("renders the empty blocked section hint when no blocked items returned", async () => {
+    getMyWorkbenchViewMock.mockResolvedValueOnce(makeWorkbenchResponse());
+
+    render(<MyWorkbench />);
+
+    await waitFor(() =>
+      expect(getMyWorkbenchViewMock).toHaveBeenCalledTimes(1),
+    );
+
+    expect(
+      await screen.findByText("workbench.empty.blocked"),
+    ).toBeInTheDocument();
   });
 
   it("renders recent activities in the side panel", async () => {

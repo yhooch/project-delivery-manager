@@ -9,6 +9,7 @@ import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { getApiErrorMessageKey } from "../../lib/api-error-messages";
+import { useListKeyboardNav } from "../../lib/hooks/use-list-keyboard-nav";
 import { useSpaceMembers, useVersions } from "../../lib/v2/lookups";
 import type { WorkItemViewModel } from "../../lib/v2/work-item-view-model";
 import { listWorkItems } from "../../lib/work-item-service";
@@ -120,6 +121,15 @@ export function TasksPage() {
     setActiveItem(item);
     setSheetOpen(true);
   };
+
+  useListKeyboardNav<WorkItemViewModel>({
+    items: filtered,
+    activeId: activeItem?.id,
+    getId: (item) => item.id,
+    onSelect: setActiveItem,
+    onOpen: open,
+    onClose: () => setSheetOpen(false),
+  });
 
   const header = (
     <PageHeader

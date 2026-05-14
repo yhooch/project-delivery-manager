@@ -18,6 +18,7 @@ import { useLocale, useTranslations } from "next-intl";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { getApiErrorMessageKey } from "../../lib/api-error-messages";
+import { useListKeyboardNav } from "../../lib/hooks/use-list-keyboard-nav";
 import { cn } from "../../lib/utils";
 import type { WorkItemViewModel } from "../../lib/v2/work-item-view-model";
 import { getSpaceExceptionsView } from "../../lib/view-service";
@@ -67,6 +68,7 @@ export function ExceptionsPage() {
   const [errorKey, setErrorKey] = useState<string | null>(null);
   const [active, setActive] = useState<WorkItemViewModel | null>(null);
   const [open, setOpen] = useState(false);
+  const [tabValue, setTabValue] = useState<ViewExceptionType>(tabs[0].key);
 
   const organizationId = session?.defaultOrganizationId;
   const spaceId = session?.defaultSpaceId;
@@ -152,6 +154,40 @@ export function ExceptionsPage() {
     });
   }, [view]);
 
+  const visibleItems = useMemo(
+    () => grouped.find((tab) => tab.key === tabValue)?.items ?? [],
+    [grouped, tabValue],
+  );
+
+  const buildExceptionViewModel = useCallback(
+    (item: SpaceExceptionItem): WorkItemViewModel => {
+      const mock = toMockWorkItem(locale)(item.workItem);
+      const blockedSignal = item.exceptions.find(
+        (signal) => signal.type === "blocked",
+      );
+      return {
+        ...mock,
+        isBlocked: mock.isBlocked || Boolean(blockedSignal),
+        blockedReason: mock.blockedReason ?? blockedSignal?.reason,
+      };
+    },
+    [locale],
+  );
+
+  useListKeyboardNav<SpaceExceptionItem>({
+    items: visibleItems,
+    activeId: active?.id,
+    getId: (item) => item.workItem.id,
+    onSelect: (item) => {
+      setActive(buildExceptionViewModel(item));
+    },
+    onOpen: (item) => {
+      setActive(buildExceptionViewModel(item));
+      setOpen(true);
+    },
+    onClose: () => setOpen(false),
+  });
+
   const headerActions = (
     <Button variant="outline" size="sm" className="text-xs">
       <Settings2 className="h-3 w-3" />
@@ -234,16 +270,7 @@ export function ExceptionsPage() {
   }
 
   const handleSelect = (item: SpaceExceptionItem) => {
-    const mock = toMockWorkItem(locale)(item.workItem);
-    const blockedSignal = item.exceptions.find(
-      (signal) => signal.type === "blocked",
-    );
-
-    setActive({
-      ...mock,
-      isBlocked: mock.isBlocked || Boolean(blockedSignal),
-      blockedReason: mock.blockedReason ?? blockedSignal?.reason,
-    });
+    setActive(buildExceptionViewModel(item));
     setOpen(true);
   };
 
@@ -257,7 +284,8 @@ export function ExceptionsPage() {
       />
 
       <Tabs
-        defaultValue={tabs[0].key}
+        value={tabValue}
+        onValueChange={(next) => setTabValue(next as ViewExceptionType)}
         className="flex flex-1 flex-col overflow-hidden"
       >
         <TabsList className="px-6">
