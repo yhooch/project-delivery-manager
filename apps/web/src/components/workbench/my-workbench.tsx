@@ -132,13 +132,15 @@ export function MyWorkbench() {
       ),
     [view, locale, getMember, getVersion],
   );
-  const actionItems = useMemo(
-    () =>
-      (view?.sections.actionTodos.items.items ?? []).map((todo) =>
-        toMockWorkItem(locale, { getMember, getVersion })(todo.workItem),
-      ),
-    [view, locale, getMember, getVersion],
-  );
+  const actionItems = useMemo(() => {
+    const toWorkItem = toMockWorkItem(locale, { getMember, getVersion });
+
+    return (view?.sections.actionTodos.items.items ?? []).map((todo) => ({
+      ...toWorkItem(todo.workItem),
+      contextLabel: todo.availableAction.name,
+      listKey: todo.id,
+    }));
+  }, [view, locale, getMember, getVersion]);
   const dueSoonItems = useMemo(
     () =>
       (view?.sections.dueSoon.items.items ?? []).map(
@@ -442,7 +444,7 @@ function ItemList({
   return (
     <ul className="divide-y divide-border">
       {items.map((item) => (
-        <li key={item.id}>
+        <li key={item.listKey ?? item.id}>
           <button
             type="button"
             onClick={() => onSelect(item)}
@@ -460,6 +462,14 @@ function ItemList({
             <span className="flex-1 truncate text-[13px] font-medium">
               {item.title}
             </span>
+            {item.contextLabel ? (
+              <Badge
+                variant="outline"
+                className="hidden max-w-36 truncate md:inline-flex"
+              >
+                {item.contextLabel}
+              </Badge>
+            ) : null}
             <StatusBadge category={item.statusCategory} label={item.statusLabel} withDot={false} />
             {item.versionName && (
               <Badge variant="outline" className="hidden md:inline-flex">

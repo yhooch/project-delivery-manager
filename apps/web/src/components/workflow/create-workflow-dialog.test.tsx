@@ -1,0 +1,187 @@
+import {
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from "@testing-library/react";
+import type {
+  WorkflowDefinition,
+  WorkflowVersion,
+} from "@project-delivery/shared";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+
+const { translatorCache } = vi.hoisted(() => ({
+  translatorCache: new Map<string, (key: string) => string>(),
+}));
+
+vi.mock("next-intl", () => ({
+  useTranslations: (namespace?: string) => {
+    const key = namespace ?? "__root__";
+    let fn = translatorCache.get(key);
+    if (!fn) {
+      fn = (k: string) => (namespace ? `${namespace}.${k}` : k);
+      translatorCache.set(key, fn);
+    }
+    return fn;
+  },
+}));
+
+const {
+  createWorkflowMock,
+  createWorkflowVersionMock,
+  listWorkflowVersionsMock,
+  updateWorkflowMock,
+} = vi.hoisted(() => ({
+  createWorkflowMock: vi.fn(),
+  createWorkflowVersionMock: vi.fn(),
+  listWorkflowVersionsMock: vi.fn(),
+  updateWorkflowMock: vi.fn(),
+}));
+
+vi.mock("../../lib/workflow-service", () => ({
+  createWorkflow: createWorkflowMock,
+  createWorkflowVersion: createWorkflowVersionMock,
+  listWorkflowVersions: listWorkflowVersionsMock,
+  updateWorkflow: updateWorkflowMock,
+}));
+
+import { CreateWorkflowDialog } from "./create-workflow-dialog";
+
+const organizationId = "01ARZ3NDEKTSV4RRFFQ69G5FO1";
+const spaceId = "01ARZ3NDEKTSV4RRFFQ69G5FS1";
+const workflowId = "01ARZ3NDEKTSV4RRFFQ69G5FW1";
+const draftVersionId = "01ARZ3NDEKTSV4RRFFQ69G5VD1";
+const publishedVersionId = "01ARZ3NDEKTSV4RRFFQ69G5VP1";
+
+function makeWorkflow(): WorkflowDefinition {
+  return {
+    code: "BUG_FLOW",
+    id: workflowId,
+    name: "Bug Flow",
+    organizationId,
+    spaceId,
+    status: "ACTIVE",
+  };
+}
+
+function makeVersion(
+  overrides: Partial<WorkflowVersion> = {},
+): WorkflowVersion {
+  return {
+    actions: [],
+    id: draftVersionId,
+    states: [],
+    status: "DRAFT",
+    version: 1,
+    workflowId,
+    ...overrides,
+  };
+}
+
+function renderCopyDialog(onSuccess = vi.fn()) {
+  render(
+    <CreateWorkflowDialog
+      context={{ organizationId, spaceId }}
+      mode={{ kind: "copyVersion", workflow: makeWorkflow() }}
+      onClose={vi.fn()}
+      onSuccess={onSuccess}
+      open
+    />,
+  );
+}
+
+beforeEach(() => {
+  createWorkflowMock.mockReset();
+  createWorkflowVersionMock.mockReset();
+  listWorkflowVersionsMock.mockReset();
+  updateWorkflowMock.mockReset();
+});
+
+afterEach(() => {
+  cleanup();
+});
+
+describe("CreateWorkflowDialog", () => {
+  it("uses the published workflow version as the copy source", async () => {
+    listWorkflowVersionsMock.mockResolvedValueOnce({
+      items: [
+        makeVersion(),
+        makeVersion({
+          id: publishedVersionId,
+          publishedAt: "2026-05-14T10:00:00.000Z",
+          status: "PUBLISHED",
+          version: 2,
+        }),
+      ],
+      page: 1,
+      pageSize: 50,
+      total: 2,
+    });
+    createWorkflowVersionMock.mockResolvedValueOnce(
+      makeVersion({ id: "01ARZ3NDEKTSV4RRFFQ69G5VN1", version: 3 }),
+    );
+
+    renderCopyDialog();
+
+    await waitFor(() =>
+      expect(listWorkflowVersionsMock).toHaveBeenCalledWith({
+        organizationId,
+        page: 1,
+        pageSize: 50,
+        spaceId,
+        workflowId,
+      }),
+    );
+    const sourceSelect = screen.getByLabelText(
+      "workflow.dialog.copyVersion.fields.sourceVersion",
+    ) as HTMLSelectElement;
+    await waitFor(() => expect(sourceSelect.value).toBe(publishedVersionId));
+    expect([...sourceSelect.options].map((option) => option.value)).toEqual([
+      "",
+      publishedVersionId,
+    ]);
+
+    fireEvent.click(
+      screen.getByRole("button", {
+        name: "workflow.dialog.copyVersion.submit",
+      }),
+    );
+
+    await waitFor(() =>
+      expect(createWorkflowVersionMock).toHaveBeenCalledWith(
+        { organizationId, spaceId, workflowId },
+        { sourceWorkflowVersionId: publishedVersionId },
+      ),
+    );
+  });
+
+  it("creates a blank draft when no published source exists", async () => {
+    listWorkflowVersionsMock.mockResolvedValueOnce({
+      items: [makeVersion()],
+      page: 1,
+      pageSize: 50,
+      total: 1,
+    });
+    createWorkflowVersionMock.mockResolvedValueOnce(
+      makeVersion({ id: "01ARZ3NDEKTSV4RRFFQ69G5VN2", version: 2 }),
+    );
+
+    renderCopyDialog();
+
+    await waitFor(() => expect(listWorkflowVersionsMock).toHaveBeenCalled());
+
+    fireEvent.click(
+      screen.getByRole("button", {
+        name: "workflow.dialog.copyVersion.submit",
+      }),
+    );
+
+    await waitFor(() =>
+      expect(createWorkflowVersionMock).toHaveBeenCalledWith(
+        { organizationId, spaceId, workflowId },
+        {},
+      ),
+    );
+  });
+});

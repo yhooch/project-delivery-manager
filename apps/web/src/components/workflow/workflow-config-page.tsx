@@ -336,7 +336,7 @@ export function WorkflowConfigPage({ workflowId }: WorkflowConfigPageProps) {
   }
 
   async function handleCopyDraft() {
-    if (!spaceId || !version) {
+    if (!spaceId || !version || version.status !== "PUBLISHED") {
       return;
     }
     setActionErrorKey(null);
@@ -522,7 +522,9 @@ export function WorkflowConfigPage({ workflowId }: WorkflowConfigPageProps) {
             <Button
               className="h-7 text-xs"
               data-testid="workflow-config-copy-draft"
-              disabled={!version || busy !== "none"}
+              disabled={
+                !version || version.status !== "PUBLISHED" || busy !== "none"
+              }
               onClick={handleCopyDraft}
               size="sm"
               variant="outline"

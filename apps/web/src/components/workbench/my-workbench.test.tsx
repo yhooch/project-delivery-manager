@@ -119,6 +119,32 @@ function makeRecentActivity(overrides: Record<string, unknown> = {}) {
   };
 }
 
+function makeActionTodo(
+  workItem: ReturnType<typeof makeWorkItemSummary>,
+  overrides: Record<string, unknown> = {},
+) {
+  const actionId =
+    (overrides.actionId as string | undefined) ?? "01ARZ3NDEKTSV4RRFFQ69G5AC1";
+
+  return {
+    id: `${workItem.id}:${actionId}`,
+    workItem,
+    availableAction: {
+      actorRelations: ["ASSIGNEE"],
+      allowedSpaceRoles: ["DEVELOPER"],
+      code: "START",
+      formFields: [],
+      fromStateId: "01ARZ3NDEKTSV4RRFFQ69G5FCS",
+      id: actionId,
+      name: "Start work",
+      order: 0,
+      requiresComment: false,
+      toStateId: "01ARZ3NDEKTSV4RRFFQ69G5FCT",
+    },
+    ...overrides,
+  };
+}
+
 function makeWorkbenchSection(items: ReturnType<typeof makeWorkItemSummary>[]) {
   return {
     title: "Section",
@@ -132,7 +158,7 @@ function makeWorkbenchResponse(
     withStats?: boolean;
     todos?: ReturnType<typeof makeWorkItemSummary>[];
     dueSoon?: ReturnType<typeof makeWorkItemSummary>[];
-    actionTodos?: Array<{ workItem: ReturnType<typeof makeWorkItemSummary> }>;
+    actionTodos?: ReturnType<typeof makeActionTodo>[];
     blocked?: ReturnType<typeof makeWorkItemSummary>[];
     recent?: ReturnType<typeof makeRecentActivity>[];
   } = {},
@@ -265,12 +291,12 @@ describe("MyWorkbench", () => {
           }),
         ],
         actionTodos: [
-          {
-            workItem: makeWorkItemSummary({
+          makeActionTodo(
+            makeWorkItemSummary({
               id: "01ARZ3NDEKTSV4RRFFQ69G5F03",
               title: "Action todo item",
             }),
-          },
+          ),
         ],
         blocked: [
           makeWorkItemSummary({
@@ -293,6 +319,66 @@ describe("MyWorkbench", () => {
     expect(screen.getByText("workbench.sections.actions")).toBeInTheDocument();
     expect(screen.getByText("workbench.sections.dueSoon")).toBeInTheDocument();
     expect(screen.getByText("workbench.sections.blocked")).toBeInTheDocument();
+  });
+
+  it("keeps action todos distinct when one work item has multiple available actions", async () => {
+    const consoleError = vi
+      .spyOn(console, "error")
+      .mockImplementation(() => undefined);
+    const workItem = makeWorkItemSummary({
+      id: "01ARZ3NDEKTSV4RRFFQ69G5F05",
+      title: "Multi-action item",
+    });
+
+    getMyWorkbenchViewMock.mockResolvedValueOnce(
+      makeWorkbenchResponse({
+        actionTodos: [
+          makeActionTodo(workItem, {
+            actionId: "01ARZ3NDEKTSV4RRFFQ69G5A01",
+            availableAction: {
+              actorRelations: ["ASSIGNEE"],
+              allowedSpaceRoles: ["DEVELOPER"],
+              code: "START_REVIEW",
+              formFields: [],
+              fromStateId: "01ARZ3NDEKTSV4RRFFQ69G5FCS",
+              id: "01ARZ3NDEKTSV4RRFFQ69G5A01",
+              name: "Start review",
+              order: 0,
+              requiresComment: false,
+              toStateId: "01ARZ3NDEKTSV4RRFFQ69G5FCT",
+            },
+          }),
+          makeActionTodo(workItem, {
+            actionId: "01ARZ3NDEKTSV4RRFFQ69G5A02",
+            availableAction: {
+              actorRelations: ["ASSIGNEE"],
+              allowedSpaceRoles: ["DEVELOPER"],
+              code: "ESCALATE",
+              formFields: [],
+              fromStateId: "01ARZ3NDEKTSV4RRFFQ69G5FCS",
+              id: "01ARZ3NDEKTSV4RRFFQ69G5A02",
+              name: "Escalate",
+              order: 1,
+              requiresComment: false,
+              toStateId: "01ARZ3NDEKTSV4RRFFQ69G5FCT",
+            },
+          }),
+        ],
+      }),
+    );
+
+    render(<MyWorkbench />);
+
+    expect(await screen.findAllByText("Multi-action item")).toHaveLength(2);
+    expect(screen.getByText("Start review")).toBeInTheDocument();
+    expect(screen.getByText("Escalate")).toBeInTheDocument();
+    expect(
+      consoleError.mock.calls.filter((call) =>
+        call.some((arg) => String(arg).includes("same key")),
+      ),
+    ).toHaveLength(0);
+
+    consoleError.mockRestore();
   });
 
   it("renders the empty blocked section hint when no blocked items returned", async () => {

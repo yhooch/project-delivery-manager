@@ -222,7 +222,7 @@ export function WorkflowActionDialog({
                 id="workflow-action-dialog-code"
                 maxLength={80}
                 onChange={(event) => setCode(event.target.value)}
-                pattern="[A-Za-z0-9_-]+"
+                pattern="[A-Za-z0-9_\\-]+"
                 required
                 value={code}
               />

@@ -2,9 +2,11 @@ import type { StatusCategory } from "@project-delivery/shared";
 
 export type WorkItemViewModel = {
   id: string;
+  listKey?: string;
   code: string;
   type: "TASK" | "BUG";
   title: string;
+  contextLabel?: string;
   statusCategory: StatusCategory;
   statusLabel: string;
   priority: "LOW" | "MEDIUM" | "HIGH" | "URGENT";

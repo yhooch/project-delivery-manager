@@ -94,11 +94,11 @@ export function CreateWorkflowDialog({
         workflowId: mode.workflow.id,
       })
         .then((page) => {
-          setVersions(page.items);
-          const published = page.items.find(
+          const publishedVersions = page.items.filter(
             (version) => version.status === "PUBLISHED",
           );
-          setSourceVersionId(published?.id ?? page.items[0]?.id ?? "");
+          setVersions(publishedVersions);
+          setSourceVersionId(publishedVersions[0]?.id ?? "");
         })
         .catch((error) => {
           setErrorKey(getApiErrorMessageKey(error));
@@ -264,7 +264,7 @@ export function CreateWorkflowDialog({
                 id="workflow-dialog-code"
                 maxLength={80}
                 onChange={(event) => setCode(event.target.value)}
-                pattern="[A-Za-z0-9_-]*"
+                pattern="[A-Za-z0-9_\\-]*"
                 placeholder={t("create.fields.codePlaceholder")}
                 value={code}
               />

@@ -667,6 +667,21 @@ describe("WorkflowConfigPage", () => {
     );
   });
 
+  it("disables copy-as-new-version for an editable draft version", async () => {
+    getWorkflowMock.mockResolvedValue(makeWorkflow());
+    setupVersions([makeDraftVersion()]);
+    getWorkflowVersionMock.mockResolvedValue(makeDraftVersion());
+
+    render(<WorkflowConfigPage workflowId={workflowId} />);
+
+    const copy = await screen.findByTestId("workflow-config-copy-draft");
+    await waitFor(() => expect(copy).toBeDisabled());
+
+    fireEvent.click(copy);
+
+    expect(createWorkflowVersionMock).not.toHaveBeenCalled();
+  });
+
   it("calls deleteWorkflowState when state delete is clicked on a draft version", async () => {
     getWorkflowMock.mockResolvedValue(makeWorkflow());
     setupVersions([makeDraftVersion()]);
