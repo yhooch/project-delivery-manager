@@ -75,6 +75,12 @@ type Props = {
   organizationId?: string;
   /** Optional override; falls back to current session user id. */
   currentUserId?: string;
+  /**
+   * Fired after the user mutates the item (executes a workflow action or
+   * posts a comment). Callers use this to refresh upstream lists/board
+   * views once the sheet detail mutates. Safe to omit.
+   */
+  onChanged?: () => void;
 };
 
 /**
@@ -163,6 +169,7 @@ export function TaskDetailSheet({
   spaceId: spaceIdProp,
   organizationId: organizationIdProp,
   currentUserId: currentUserIdProp,
+  onChanged,
 }: Props) {
   const t = useTranslations("taskDetail");
   const tApiError = useTranslations();
@@ -197,6 +204,7 @@ export function TaskDetailSheet({
         currentUserId={currentUserId}
         t={t}
         tApiError={tApiError}
+        onChanged={onChanged}
       />
     </Sheet>
   );
@@ -209,6 +217,7 @@ type BodyProps = {
   currentUserId?: string;
   t: ReturnType<typeof useTranslations<"taskDetail">>;
   tApiError: ReturnType<typeof useTranslations>;
+  onChanged?: () => void;
 };
 
 function TaskDetailSheetBody({
@@ -218,6 +227,7 @@ function TaskDetailSheetBody({
   currentUserId: _currentUserId,
   t,
   tApiError,
+  onChanged,
 }: BodyProps) {
   const isBug = item.type === "BUG";
   const lookup = useSpaceMembers(spaceId, organizationId);
@@ -293,6 +303,7 @@ function TaskDetailSheetBody({
         permissionState={permissionState}
         t={t}
         tApiError={tApiError}
+        onChanged={onChanged}
       />
 
       {item.isBlocked && item.blockedReason && (
@@ -370,6 +381,7 @@ function TaskDetailSheetBody({
             canComment={permissionState.permissions?.canComment === true}
             t={t}
             tApiError={tApiError}
+            onChanged={onChanged}
           />
         </TabsContent>
 
@@ -481,6 +493,7 @@ function ActionBar({
   permissionState,
   t,
   tApiError,
+  onChanged,
 }: {
   item: WorkItemViewModel;
   spaceId?: string;
@@ -488,6 +501,7 @@ function ActionBar({
   permissionState: WorkItemPermissionState;
   t: ReturnType<typeof useTranslations<"taskDetail">>;
   tApiError: ReturnType<typeof useTranslations>;
+  onChanged?: () => void;
 }) {
   const [executingId, setExecutingId] = useState<string | null>(null);
   const [executeError, setExecuteError] = useState<string | null>(null);
@@ -509,6 +523,7 @@ function ActionBar({
         { formValues: {} },
       );
       permissionState.setPermissions(detail.permissions);
+      onChanged?.();
     } catch (err) {
       const key = getApiErrorMessageKey(err);
       setExecuteError(tApiError(key));
@@ -765,6 +780,7 @@ function CommentsTab({
   canComment,
   t,
   tApiError,
+  onChanged,
 }: {
   item: WorkItemViewModel;
   spaceId?: string;
@@ -773,6 +789,7 @@ function CommentsTab({
   canComment: boolean;
   t: ReturnType<typeof useTranslations<"taskDetail">>;
   tApiError: ReturnType<typeof useTranslations>;
+  onChanged?: () => void;
 }) {
   const [comments, setComments] = useState<Comment[]>([]);
   const [loading, setLoading] = useState(false);
@@ -826,6 +843,7 @@ function CommentsTab({
       });
       setComments((prev) => [...prev, created]);
       setDraft("");
+      onChanged?.();
     } catch (err) {
       const key = getApiErrorMessageKey(err);
       setSubmitError(tApiError(key));

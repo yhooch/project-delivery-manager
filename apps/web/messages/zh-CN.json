@@ -626,12 +626,59 @@
     }
   },
   "versionBoard": {
-    "title": "版本看板",
-    "subtitle": "按状态归类查看当前版本的任务与 Bug。",
+    "title": "版本",
+    "subtitle": "查看版本目标、关联需求、任务/Bug 看板和版本时间线。",
     "selectVersion": "选择版本",
     "filterAll": "全部负责人",
     "filterTask": "任务筛选",
     "newWorkItem": "新建工作项",
+    "actions": {
+      "editVersion": "编辑版本",
+      "newVersion": "新建版本"
+    },
+    "tabs": {
+      "board": "任务/Bug 看板",
+      "requirements": "关联需求",
+      "timeline": "时间线"
+    },
+    "hero": {
+      "ariaLabel": "版本概览",
+      "owner": "负责人",
+      "ownerNone": "未指派",
+      "dateStart": "起始",
+      "dateTarget": "目标",
+      "dateRelease": "发布",
+      "statusUnknown": "未知",
+      "kpi": {
+        "requirementCount": "需求",
+        "taskCount": "任务",
+        "bugCount": "Bug",
+        "blockedCount": "阻塞"
+      }
+    },
+    "status": {
+      "PLANNED": "计划中",
+      "IN_PROGRESS": "进行中",
+      "RELEASED": "已发布",
+      "ARCHIVED": "已归档"
+    },
+    "filters": {
+      "assignee": {
+        "label": "负责人",
+        "all": "全部负责人"
+      },
+      "status": {
+        "label": "状态归类",
+        "all": "全部状态"
+      },
+      "type": {
+        "label": "类型",
+        "all": "全部类型",
+        "TASK": "任务",
+        "BUG": "Bug"
+      },
+      "clear": "清空筛选"
+    },
     "columns": {
       "NOT_STARTED": "未开始",
       "IN_PROGRESS": "进行中",
@@ -643,6 +690,63 @@
     "badges": {
       "blocked": "阻塞",
       "overdue": "逾期"
+    },
+    "requirements": {
+      "empty": {
+        "title": "暂无关联需求",
+        "description": "当前版本还没有任何关联需求。"
+      },
+      "loading": "正在加载关联需求",
+      "errorTitle": "无法加载关联需求"
+    },
+    "timeline": {
+      "empty": {
+        "title": "暂无时间线",
+        "description": "版本相关变更会展示在这里。"
+      },
+      "loading": "正在加载时间线",
+      "errorTitle": "无法加载时间线",
+      "unknownActor": "未知用户",
+      "event": {
+        "CREATED": "创建",
+        "UPDATED": "更新",
+        "STATUS_CHANGED": "状态变更",
+        "ACTION_EXECUTED": "流程动作",
+        "ASSIGNEE_CHANGED": "负责人变更",
+        "COMMENTED": "评论",
+        "ATTACHMENT_ADDED": "新增附件",
+        "CLOSED": "关闭",
+        "REOPENED": "重新打开"
+      }
+    },
+    "create": {
+      "title": "新建版本",
+      "fields": {
+        "name": "版本名称",
+        "nameError": "版本名称不能为空",
+        "target": "版本目标",
+        "description": "版本描述",
+        "owner": "负责人",
+        "status": "状态",
+        "startDate": "起始时间",
+        "targetDate": "目标时间",
+        "releaseDate": "发布时间"
+      },
+      "placeholders": {
+        "name": "例如 v1.2.0",
+        "target": "本版本要达成的目标",
+        "description": "可选的补充说明",
+        "owner": "未指派"
+      },
+      "submit": "创建版本",
+      "submitting": "创建中…",
+      "cancel": "取消"
+    },
+    "edit": {
+      "title": "编辑版本",
+      "submit": "保存修改",
+      "submitting": "保存中…",
+      "cancel": "取消"
     },
     "states": {
       "noSession": {

@@ -626,12 +626,59 @@
     }
   },
   "versionBoard": {
-    "title": "Version board",
-    "subtitle": "Review tasks and bugs for the selected version by status.",
+    "title": "Versions",
+    "subtitle": "Goals, requirements, work-item board and timeline for the selected version.",
     "selectVersion": "Select version",
     "filterAll": "All assignees",
     "filterTask": "Task filter",
     "newWorkItem": "New work item",
+    "actions": {
+      "editVersion": "Edit version",
+      "newVersion": "New version"
+    },
+    "tabs": {
+      "board": "Task / Bug board",
+      "requirements": "Requirements",
+      "timeline": "Timeline"
+    },
+    "hero": {
+      "ariaLabel": "Version overview",
+      "owner": "Owner",
+      "ownerNone": "Unassigned",
+      "dateStart": "Start",
+      "dateTarget": "Target",
+      "dateRelease": "Release",
+      "statusUnknown": "Unknown",
+      "kpi": {
+        "requirementCount": "requirements",
+        "taskCount": "tasks",
+        "bugCount": "bugs",
+        "blockedCount": "blocked"
+      }
+    },
+    "status": {
+      "PLANNED": "Planned",
+      "IN_PROGRESS": "In progress",
+      "RELEASED": "Released",
+      "ARCHIVED": "Archived"
+    },
+    "filters": {
+      "assignee": {
+        "label": "Assignee",
+        "all": "All assignees"
+      },
+      "status": {
+        "label": "Status",
+        "all": "All statuses"
+      },
+      "type": {
+        "label": "Type",
+        "all": "All types",
+        "TASK": "Tasks",
+        "BUG": "Bugs"
+      },
+      "clear": "Clear filters"
+    },
     "columns": {
       "NOT_STARTED": "Not started",
       "IN_PROGRESS": "In progress",
@@ -643,6 +690,63 @@
     "badges": {
       "blocked": "Blocked",
       "overdue": "Overdue"
+    },
+    "requirements": {
+      "empty": {
+        "title": "No linked requirements",
+        "description": "No requirements are linked to this version yet."
+      },
+      "loading": "Loading requirements",
+      "errorTitle": "Unable to load requirements"
+    },
+    "timeline": {
+      "empty": {
+        "title": "No timeline events",
+        "description": "Version-related changes will appear here."
+      },
+      "loading": "Loading timeline",
+      "errorTitle": "Unable to load timeline",
+      "unknownActor": "Unknown user",
+      "event": {
+        "CREATED": "Created",
+        "UPDATED": "Updated",
+        "STATUS_CHANGED": "Status changed",
+        "ACTION_EXECUTED": "Workflow action",
+        "ASSIGNEE_CHANGED": "Assignee changed",
+        "COMMENTED": "Commented",
+        "ATTACHMENT_ADDED": "Attachment added",
+        "CLOSED": "Closed",
+        "REOPENED": "Reopened"
+      }
+    },
+    "create": {
+      "title": "New version",
+      "fields": {
+        "name": "Name",
+        "nameError": "Version name is required",
+        "target": "Goal",
+        "description": "Description",
+        "owner": "Owner",
+        "status": "Status",
+        "startDate": "Start date",
+        "targetDate": "Target date",
+        "releaseDate": "Release date"
+      },
+      "placeholders": {
+        "name": "e.g. v1.2.0",
+        "target": "What this version aims to deliver",
+        "description": "Optional notes",
+        "owner": "Unassigned"
+      },
+      "submit": "Create version",
+      "submitting": "Creating…",
+      "cancel": "Cancel"
+    },
+    "edit": {
+      "title": "Edit version",
+      "submit": "Save changes",
+      "submitting": "Saving…",
+      "cancel": "Cancel"
     },
     "states": {
       "noSession": {
