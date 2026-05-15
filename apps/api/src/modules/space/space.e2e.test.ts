@@ -17,7 +17,11 @@ import {
   type SpaceOverviewStats,
   type SpaceRole,
   type SpaceSummary,
+  type StatusCategory,
   type VersionSummary,
+  type ViewStatusCount,
+  type ViewWorkItemTypeCount,
+  type WorkItemType,
 } from "@project-delivery/shared";
 import request from "supertest";
 import { ulid } from "ulid";
@@ -206,6 +210,62 @@ describe("space API", () => {
         expect(body.data.filters.organizationId).toBe(organization.id);
         expect(body.data.sections).toHaveProperty("myTodos");
         expect(body.data.sections).toHaveProperty("actionTodos");
+      });
+  });
+
+  it("aggregates overview status counts separately for tasks and bugs", async () => {
+    const ownerAgent = await registeredAgent(
+      "m4d_overview_owner",
+      "203.0.113.170",
+    );
+    const organization = (
+      await createOrganization(ownerAgent, "M4D Overview", "m4d-overview")
+    ).body.data as Organization;
+    const space = (
+      await createSpace(ownerAgent, organization.id, {
+        name: "Overview Space",
+        code: "overview-space",
+      })
+    ).body.data as Space;
+
+    spaces.recordOverviewWorkItems(
+      {
+        spaceId: space.id,
+        type: "TASK",
+        statusCategory: "IN_PROGRESS",
+      },
+      {
+        spaceId: space.id,
+        type: "TASK",
+        statusCategory: "IN_PROGRESS",
+      },
+      {
+        spaceId: space.id,
+        type: "BUG",
+        statusCategory: "WAITING",
+      },
+    );
+
+    await ownerAgent
+      .get(`/api/v1/views/spaces/${space.id}/overview`)
+      .expect(200)
+      .expect(({ body }) => {
+        const overview = body.data;
+
+        expect(overview.statusCounts).toEqual([
+          { statusCategory: "IN_PROGRESS", count: 2 },
+          { statusCategory: "WAITING", count: 1 },
+        ]);
+        expect(overview.taskStatusCounts).toEqual([
+          { statusCategory: "IN_PROGRESS", count: 2 },
+        ]);
+        expect(overview.bugStatusCounts).toEqual([
+          { statusCategory: "WAITING", count: 1 },
+        ]);
+        expect(overview.workItemTypeCounts).toEqual([
+          { workItemType: "TASK", count: 2 },
+          { workItemType: "BUG", count: 1 },
+        ]);
       });
   });
 
@@ -1022,9 +1082,16 @@ class InMemoryOrganizationRepository implements OrganizationRepository {
   }
 }
 
+type OverviewWorkItemSeed = {
+  spaceId: string;
+  type: WorkItemType;
+  statusCategory: StatusCategory;
+};
+
 class InMemorySpaceRepository implements SpaceRepository {
   readonly members: SpaceMember[] = [];
   private readonly defaultWorkflows = new Map<string, DefaultWorkflowSummary[]>();
+  private readonly overviewWorkItems: OverviewWorkItemSeed[] = [];
   private readonly spaces = new Map<string, Space>();
 
   constructor(
@@ -1221,6 +1288,9 @@ class InMemorySpaceRepository implements SpaceRepository {
       this.findCurrentVersion(input.space.id),
       this.listDefaultWorkflows(input.space.id),
     ]);
+    const overviewWorkItems = this.overviewWorkItems.filter(
+      (item) => item.spaceId === input.space.id,
+    );
 
     return {
       space: input.space,
@@ -1232,10 +1302,14 @@ class InMemorySpaceRepository implements SpaceRepository {
         spaceId: input.space.id,
         versionId: input.versionId,
       },
-      statusCounts: [],
-      taskStatusCounts: [],
-      bugStatusCounts: [],
-      workItemTypeCounts: [],
+      statusCounts: groupOverviewStatusCounts(overviewWorkItems),
+      taskStatusCounts: groupOverviewStatusCounts(
+        overviewWorkItems.filter((item) => item.type === "TASK"),
+      ),
+      bugStatusCounts: groupOverviewStatusCounts(
+        overviewWorkItems.filter((item) => item.type === "BUG"),
+      ),
+      workItemTypeCounts: groupOverviewWorkItemTypeCounts(overviewWorkItems),
       exceptionCounts: [],
       recentActivities: {
         items: [],
@@ -1276,14 +1350,25 @@ class InMemorySpaceRepository implements SpaceRepository {
     };
   }
 
-  async getOverviewStats(_spaceId: string): Promise<SpaceOverviewStats> {
+  async getOverviewStats(spaceId: string): Promise<SpaceOverviewStats> {
+    const overviewWorkItems = this.overviewWorkItems.filter(
+      (item) => item.spaceId === spaceId,
+    );
+
     return {
       versionCount: 0,
       requirementCount: 0,
-      taskCount: 0,
-      completedTaskCount: 0,
-      bugCount: 0,
-      openBugCount: 0,
+      taskCount: overviewWorkItems.filter((item) => item.type === "TASK").length,
+      completedTaskCount: overviewWorkItems.filter(
+        (item) => item.type === "TASK" && item.statusCategory === "DONE",
+      ).length,
+      bugCount: overviewWorkItems.filter((item) => item.type === "BUG").length,
+      openBugCount: overviewWorkItems.filter(
+        (item) =>
+          item.type === "BUG" &&
+          item.statusCategory !== "DONE" &&
+          item.statusCategory !== "TERMINATED",
+      ).length,
       blockedCount: 0,
       overdueCount: 0,
     };
@@ -1412,6 +1497,10 @@ class InMemorySpaceRepository implements SpaceRepository {
     this.defaultWorkflows.set(spaceId, summaries);
   }
 
+  recordOverviewWorkItems(...items: OverviewWorkItemSeed[]): void {
+    this.overviewWorkItems.push(...items);
+  }
+
   private toMemberWithUser(member: SpaceMember): SpaceMemberWithUser {
     const user = this.users.getById(member.userId);
 
@@ -1505,6 +1594,48 @@ function createDefaultWorkflowSummaries(): DefaultWorkflowSummary[] {
     },
   ];
 }
+
+function groupOverviewStatusCounts(
+  items: OverviewWorkItemSeed[],
+): ViewStatusCount[] {
+  const counts = new Map<StatusCategory, number>();
+
+  for (const item of items) {
+    counts.set(item.statusCategory, (counts.get(item.statusCategory) ?? 0) + 1);
+  }
+
+  return STATUS_CATEGORY_ORDER.flatMap((statusCategory) => {
+    const count = counts.get(statusCategory);
+
+    return count === undefined ? [] : [{ statusCategory, count }];
+  });
+}
+
+function groupOverviewWorkItemTypeCounts(
+  items: OverviewWorkItemSeed[],
+): ViewWorkItemTypeCount[] {
+  const counts = new Map<WorkItemType, number>();
+
+  for (const item of items) {
+    counts.set(item.type, (counts.get(item.type) ?? 0) + 1);
+  }
+
+  return WORK_ITEM_TYPE_ORDER.flatMap((workItemType) => {
+    const count = counts.get(workItemType);
+
+    return count === undefined ? [] : [{ workItemType, count }];
+  });
+}
+
+const STATUS_CATEGORY_ORDER: StatusCategory[] = [
+  "NOT_STARTED",
+  "IN_PROGRESS",
+  "WAITING",
+  "VERIFYING",
+  "DONE",
+  "TERMINATED",
+];
+const WORK_ITEM_TYPE_ORDER: WorkItemType[] = ["TASK", "BUG"];
 
 function toSpaceSummary(space: Space): SpaceSummary {
   return {

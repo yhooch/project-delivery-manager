@@ -16,6 +16,7 @@ import { updateVersion } from "../../lib/version-service";
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
@@ -120,11 +121,23 @@ export function EditVersionDialog({
     };
   }, [open, spaceId]);
 
+  function reset() {
+    setName("");
+    setTarget("");
+    setDescription("");
+    setOwnerId("");
+    setStatus("PLANNED");
+    setStartDate("");
+    setTargetDate("");
+    setReleaseDate("");
+    setNameError(false);
+    setErrorKey(null);
+    setSubmitting(false);
+  }
+
   function handleOpenChange(next: boolean) {
     if (!next) {
-      setErrorKey(null);
-      setNameError(false);
-      setSubmitting(false);
+      reset();
     }
     onOpenChange(next);
   }
@@ -171,6 +184,9 @@ export function EditVersionDialog({
       <DialogContent data-testid="edit-version-dialog">
         <DialogHeader>
           <DialogTitle>{t("title")}</DialogTitle>
+          <DialogDescription className="sr-only">
+            {t("description")}
+          </DialogDescription>
         </DialogHeader>
 
         <form

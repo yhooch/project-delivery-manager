@@ -16,6 +16,7 @@ import { createVersion } from "../../lib/version-service";
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
@@ -160,6 +161,9 @@ export function CreateVersionDialog({
       <DialogContent data-testid="create-version-dialog">
         <DialogHeader>
           <DialogTitle>{t("title")}</DialogTitle>
+          <DialogDescription className="sr-only">
+            {t("description")}
+          </DialogDescription>
         </DialogHeader>
 
         <form

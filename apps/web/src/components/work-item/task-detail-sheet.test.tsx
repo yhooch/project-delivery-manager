@@ -228,6 +228,27 @@ afterEach(() => {
 });
 
 describe("TaskDetailSheet", () => {
+  it.each([
+    ["TASK", "taskDetail.sheetDescription.task"],
+    ["BUG", "taskDetail.sheetDescription.bug"],
+  ] as const)(
+    "wires an accessible sheet description for %s details",
+    (type, descriptionKey) => {
+      render(
+        <TaskDetailSheet
+          item={makeViewModel({ type })}
+          open
+          onOpenChange={() => {}}
+        />,
+      );
+
+      const sheet = screen.getByTestId("task-detail-sheet");
+      const description = screen.getByText(descriptionKey);
+      expect(description).toHaveClass("sr-only");
+      expect(sheet).toHaveAttribute("aria-describedby", description.id);
+    },
+  );
+
   it("renders the action bar buttons from PermissionSnapshot.availableActions", async () => {
     getWorkItemMock.mockResolvedValueOnce(
       makeDetailResponse({
@@ -652,6 +673,10 @@ describe("TaskDetailSheet", () => {
     render(
       <TaskDetailSheet item={null} open onOpenChange={() => {}} />,
     );
+    const sheet = screen.getByTestId("task-detail-sheet");
+    const description = screen.getByText("taskDetail.emptyDescription");
+
+    expect(sheet).toHaveAttribute("aria-describedby", description.id);
     expect(screen.getByText("taskDetail.empty")).toBeInTheDocument();
   });
 

@@ -561,6 +561,16 @@ describe("shared contracts", () => {
         overdueCount: 0,
       },
       defaultWorkflows: [],
+      statusCounts: [
+        { statusCategory: "IN_PROGRESS", count: 1 },
+        { statusCategory: "WAITING", count: 1 },
+      ],
+      taskStatusCounts: [{ statusCategory: "IN_PROGRESS", count: 1 }],
+      bugStatusCounts: [{ statusCategory: "WAITING", count: 1 }],
+      workItemTypeCounts: [
+        { workItemType: "TASK", count: 1 },
+        { workItemType: "BUG", count: 1 },
+      ],
       recentActivities: {
         items: [activity],
         page: 1,
@@ -572,6 +582,17 @@ describe("shared contracts", () => {
     expect(overview.recentActivities?.items[0]?.target.type).toBe(
       "WORK_ITEM",
     );
+    expect(overview.taskStatusCounts?.[0]).toEqual({
+      statusCategory: "IN_PROGRESS",
+      count: 1,
+    });
+    expect(overview.bugStatusCounts?.[0]).toEqual({
+      statusCategory: "WAITING",
+      count: 1,
+    });
+    expect(
+      overview.workItemTypeCounts?.map((item) => item.workItemType),
+    ).toEqual(["TASK", "BUG"]);
   });
 
   it("supports M2 comments, attachments and timeline target queries", () => {

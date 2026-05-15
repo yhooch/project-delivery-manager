@@ -721,6 +721,7 @@
     },
     "create": {
       "title": "New version",
+      "description": "Create a version by setting its name, goal, owner, and dates.",
       "fields": {
         "name": "Name",
         "nameError": "Version name is required",
@@ -744,6 +745,7 @@
     },
     "edit": {
       "title": "Edit version",
+      "description": "Update this version's base information, owner, status, and dates.",
       "submit": "Save changes",
       "submitting": "Saving…",
       "cancel": "Cancel"
