@@ -169,41 +169,135 @@ describe("TargetResolverService", () => {
     });
   });
 
+  it("allows TESTER to read only Bug or testing WORK_ITEM targets without participation", async () => {
+    const actorUserId = ulid();
+    const workItemId = ulid();
+    const spaceId = ulid();
+    const organizationId = ulid();
+    const { objectParticipantFindFirst, resolver, spaces, workItemFindFirst } =
+      createResolver();
+
+    objectParticipantFindFirst.mockResolvedValue(undefined);
+    vi.mocked(spaces.findAccessibleById).mockResolvedValue({
+      role: "TESTER",
+      space: makeSpace(spaceId, organizationId),
+    });
+    workItemFindFirst.mockResolvedValue({
+      id: workItemId,
+      organizationId,
+      spaceId,
+      statusCategory: "NOT_STARTED",
+      title: "Task",
+      type: "TASK",
+      currentState: {
+        code: "PENDING",
+        name: "待处理",
+      },
+    });
+
+    await expect(
+      resolver.resolve(actorUserId, "WORK_ITEM", workItemId),
+    ).rejects.toMatchObject({
+      code: "WORK_ITEM_NOT_FOUND",
+    });
+
+    workItemFindFirst.mockResolvedValue({
+      id: workItemId,
+      organizationId,
+      spaceId,
+      statusCategory: "VERIFYING",
+      title: "Task",
+      type: "TASK",
+      currentState: {
+        code: "QA_VERIFY",
+        name: "QA verify",
+      },
+    });
+
+    await expect(
+      resolver.resolve(actorUserId, "WORK_ITEM", workItemId),
+    ).resolves.toMatchObject({
+      role: "TESTER",
+      targetId: workItemId,
+    });
+  });
+
+  it("hides REQUIREMENT targets from same-space non-participants without requirement read-all roles", async () => {
+    const actorUserId = ulid();
+    const requirementId = ulid();
+    const spaceId = ulid();
+    const organizationId = ulid();
+    const { objectParticipantFindFirst, requirements, resolver, spaces } =
+      createResolver();
+
+    vi.mocked(requirements.findById).mockResolvedValue(
+      makeRequirement(requirementId, spaceId, organizationId, "CONFIRMED"),
+    );
+    objectParticipantFindFirst.mockResolvedValue(undefined);
+    vi.mocked(spaces.findAccessibleById).mockResolvedValue({
+      role: "DEVELOPER",
+      space: makeSpace(spaceId, organizationId),
+    });
+
+    await expect(
+      resolver.resolve(actorUserId, "REQUIREMENT", requirementId),
+    ).rejects.toMatchObject({
+      code: "REQUIREMENT_NOT_FOUND",
+    });
+
+    objectParticipantFindFirst.mockResolvedValue({ id: ulid() });
+
+    await expect(
+      resolver.resolve(actorUserId, "REQUIREMENT", requirementId),
+    ).resolves.toMatchObject({
+      targetId: requirementId,
+      targetType: "REQUIREMENT",
+    });
+  });
+
+  it("hides INTAKE_ITEM targets from same-space non-participants without read-all roles", async () => {
+    const actorUserId = ulid();
+    const intakeItemId = ulid();
+    const spaceId = ulid();
+    const organizationId = ulid();
+    const {
+      intakeItemFindFirst,
+      objectParticipantFindFirst,
+      resolver,
+      spaces,
+    } = createResolver();
+
+    intakeItemFindFirst.mockResolvedValue({
+      id: intakeItemId,
+      organizationId,
+      spaceId,
+      title: "Intake",
+    });
+    objectParticipantFindFirst.mockResolvedValue(undefined);
+    vi.mocked(spaces.findAccessibleById).mockResolvedValue({
+      role: "DEVELOPER",
+      space: makeSpace(spaceId, organizationId),
+    });
+
+    await expect(
+      resolver.resolve(actorUserId, "INTAKE_ITEM", intakeItemId),
+    ).rejects.toMatchObject({
+      code: "INTAKE_ITEM_NOT_FOUND",
+    });
+  });
+
   it("hides draft requirements from read-only roles", async () => {
     const requirementId = ulid();
     const spaceId = ulid();
     const organizationId = ulid();
     const { requirements, resolver, spaces } = createResolver();
 
-    vi.mocked(requirements.findById).mockResolvedValue({
-      id: requirementId,
-      organizationId,
-      spaceId,
-      title: "",
-      contentJson: {},
-      contentFormat: "TIPTAP_JSON",
-      status: "DRAFT",
-      relatedWorkItems: {
-        taskCount: 0,
-        bugCount: 0,
-        tasks: [],
-        bugs: [],
-      },
-      createdAt: "2026-05-13T00:00:00.000Z",
-      updatedAt: "2026-05-13T00:00:00.000Z",
-    });
+    vi.mocked(requirements.findById).mockResolvedValue(
+      makeRequirement(requirementId, spaceId, organizationId, "DRAFT"),
+    );
     vi.mocked(spaces.findAccessibleById).mockResolvedValue({
       role: "VIEWER",
-      space: {
-        id: spaceId,
-        organizationId,
-        name: "Space",
-        code: "SPACE",
-        status: "ACTIVE",
-        settings: {
-          staleThresholdDays: 3,
-        },
-      },
+      space: makeSpace(spaceId, organizationId),
     });
 
     await expect(
@@ -213,12 +307,13 @@ describe("TargetResolverService", () => {
 });
 
 function createResolver() {
+  const intakeItemFindFirst = vi.fn();
   const objectParticipantFindFirst = vi.fn();
   const workItemFindFirst = vi.fn();
   const prisma = {
     client: {
       intakeItem: {
-        findFirst: vi.fn(),
+        findFirst: intakeItemFindFirst,
       },
       space: {
         findFirst: vi.fn(),
@@ -258,11 +353,50 @@ function createResolver() {
   } as unknown as SpaceRepository;
 
   return {
+    intakeItemFindFirst,
     prisma,
     objectParticipantFindFirst,
     requirements,
     resolver: new TargetResolverService(prisma, requirements, spaces),
     spaces,
     workItemFindFirst,
+  };
+}
+
+function makeSpace(spaceId: string, organizationId: string) {
+  return {
+    id: spaceId,
+    organizationId,
+    name: "Space",
+    code: "SPACE",
+    status: "ACTIVE" as const,
+    settings: {
+      staleThresholdDays: 3,
+    },
+  };
+}
+
+function makeRequirement(
+  requirementId: string,
+  spaceId: string,
+  organizationId: string,
+  status: "CONFIRMED" | "DRAFT",
+) {
+  return {
+    id: requirementId,
+    organizationId,
+    spaceId,
+    title: status === "DRAFT" ? "" : "Requirement",
+    contentJson: {},
+    contentFormat: "TIPTAP_JSON" as const,
+    status,
+    relatedWorkItems: {
+      taskCount: 0,
+      bugCount: 0,
+      tasks: [],
+      bugs: [],
+    },
+    createdAt: "2026-05-13T00:00:00.000Z",
+    updatedAt: "2026-05-13T00:00:00.000Z",
   };
 }

@@ -84,20 +84,26 @@ vi.mock("./create-task-dialog", () => ({
 vi.mock("./task-detail-sheet", () => ({
   TaskDetailSheet: ({
     item,
+    onChanged,
     open,
   }: {
     item: { id: string; title: string } | null;
+    onChanged?: () => void;
     open: boolean;
   }) =>
     open && item ? (
       <div data-testid="task-detail-sheet-open">
         <span data-testid="task-detail-sheet-item-id">{item.id}</span>
         <span data-testid="task-detail-sheet-item-title">{item.title}</span>
+        <button type="button" onClick={onChanged}>
+          detail changed
+        </button>
       </div>
     ) : null,
 }));
 
 import { TasksPage } from "./tasks-page";
+import { createRecentStorageKey } from "../shell/recent-opens";
 
 // -----------------------------------------------------------------------------
 // Fixtures
@@ -135,6 +141,7 @@ beforeEach(() => {
     currentSpace: { id: "SPC_01", organizationId: "ORG_01", name: "Space A" },
     status: "authenticated" as const,
   };
+  window.localStorage.clear();
 });
 
 afterEach(() => {
@@ -224,6 +231,56 @@ describe("TasksPage", () => {
     expect(screen.getByTestId("task-detail-sheet-item-title").textContent).toBe(
       "Click me",
     );
+  });
+
+  it("records directly opened tasks in recent opens", async () => {
+    listWorkItemsMock.mockResolvedValueOnce({
+      items: [
+        makeTask({
+          id: "01ARZ3NDEKTSV4RRFFQ69G5FRC",
+          title: "Remember me",
+        }),
+      ],
+      total: 1,
+    });
+
+    render(<TasksPage />);
+
+    fireEvent.click(await screen.findByText("Remember me"));
+
+    const stored = JSON.parse(
+      window.localStorage.getItem(
+        createRecentStorageKey({
+          organizationId: "ORG_01",
+          spaceId: "SPC_01",
+        }),
+      ) ?? "[]",
+    ) as Array<{ href: string; title: string; type: string }>;
+    expect(stored[0]).toMatchObject({
+      href: "/work-items",
+      title: "Remember me",
+      type: "TASK",
+    });
+  });
+
+  it("refetches tasks when the detail sheet reports a change", async () => {
+    listWorkItemsMock
+      .mockResolvedValueOnce({
+        items: [makeTask({ title: "Before action" })],
+        total: 1,
+      })
+      .mockResolvedValueOnce({
+        items: [makeTask({ title: "After action" })],
+        total: 1,
+      });
+
+    render(<TasksPage />);
+
+    fireEvent.click(await screen.findByText("Before action"));
+    fireEvent.click(screen.getByRole("button", { name: "detail changed" }));
+
+    await waitFor(() => expect(listWorkItemsMock).toHaveBeenCalledTimes(2));
+    expect(await screen.findByText("After action")).toBeInTheDocument();
   });
 
   it("renders the empty state when there are no tasks", async () => {

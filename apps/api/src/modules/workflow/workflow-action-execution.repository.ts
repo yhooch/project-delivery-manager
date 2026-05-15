@@ -17,6 +17,10 @@ export type ExecutableWorkItem = WorkItem & {
   bugDetail?: ExecutableBugDetail;
   closedAt?: string;
   createdById?: string;
+  currentState?: {
+    code: string;
+    name: string;
+  };
 };
 
 export type ExecutableBugDetail = Omit<BugDetail, "regressionBy"> & {

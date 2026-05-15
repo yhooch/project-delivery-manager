@@ -1,6 +1,7 @@
 import { HttpStatus, Inject, Injectable } from "@nestjs/common";
 import type {
   ApiErrorCode,
+  ObjectParticipantTargetType,
   SpaceRole,
   TargetType,
 } from "@project-delivery/shared";
@@ -15,21 +16,30 @@ import {
   SPACE_REPOSITORY,
   type SpaceRepository,
 } from "../space/space.repository";
+import {
+  canReadAllSpaceWorkItems,
+  isTesterVisibleWorkItem,
+} from "../workitem/workitem-visibility";
 import type {
   ResolvedTargetContext,
   ResolveTargetOptions,
   TargetRecord,
 } from "./target.types";
 
-const REQUIREMENT_DRAFT_READER_ROLES = new Set<SpaceRole>([
+const REQUIREMENT_READ_ALL_ROLES = new Set<SpaceRole>([
   "SPACE_ADMIN",
   "PM",
   "REQUIREMENT",
 ]);
-const WORK_ITEM_READ_ALL_ROLES = new Set<SpaceRole>([
+const REQUIREMENT_NON_DRAFT_READ_ALL_ROLES = new Set<SpaceRole>([
   "SPACE_ADMIN",
   "PM",
-  "TESTER",
+  "VIEWER",
+  "REQUIREMENT",
+]);
+const INTAKE_ITEM_READ_ALL_ROLES = new Set<SpaceRole>([
+  "SPACE_ADMIN",
+  "PM",
   "VIEWER",
 ]);
 
@@ -69,22 +79,7 @@ export class TargetResolverService {
       throwSpaceAccessDenied();
     }
 
-    if (
-      target.isDraftRequirement &&
-      !REQUIREMENT_DRAFT_READER_ROLES.has(access.role)
-    ) {
-      throwTargetNotFound(targetType, options.notFoundCode);
-    }
-
-    if (
-      target.targetType === "WORK_ITEM" &&
-      !WORK_ITEM_READ_ALL_ROLES.has(access.role) &&
-      !(await this.isWorkItemParticipant(
-        target.spaceId,
-        target.targetId,
-        actorUserId,
-      ))
-    ) {
+    if (!(await this.canReadTarget(actorUserId, target, access.role))) {
       throwTargetNotFound(targetType, options.notFoundCode);
     }
 
@@ -221,10 +216,18 @@ export class TargetResolverService {
   ): Promise<TargetRecord | undefined> {
     const workItem = await this.prisma.client.workItem.findFirst({
       select: {
+        currentState: {
+          select: {
+            code: true,
+            name: true,
+          },
+        },
         id: true,
         organizationId: true,
         spaceId: true,
+        statusCategory: true,
         title: true,
+        type: true,
       },
       where: {
         deletedAt: null,
@@ -239,13 +242,76 @@ export class TargetResolverService {
           targetId: workItem.id,
           targetType: "WORK_ITEM",
           title: nonEmptyTitle(workItem.title),
+          workItemType: workItem.type,
+          statusCategory: workItem.statusCategory,
+          currentState: workItem.currentState,
         }
       : undefined;
   }
 
-  private async isWorkItemParticipant(
+  private async canReadTarget(
+    actorUserId: string,
+    target: TargetRecord,
+    role: SpaceRole,
+  ) {
+    switch (target.targetType) {
+      case "SPACE":
+      case "VERSION":
+        return true;
+      case "WORK_ITEM":
+        if (canReadAllSpaceWorkItems(role)) {
+          return true;
+        }
+        if (
+          role === "TESTER" &&
+          target.workItemType &&
+          isTesterVisibleWorkItem({
+            type: target.workItemType,
+            statusCategory: target.statusCategory,
+            currentState: target.currentState,
+          })
+        ) {
+          return true;
+        }
+        return this.isObjectParticipant(
+          target.spaceId,
+          target.targetType,
+          target.targetId,
+          actorUserId,
+        );
+      case "REQUIREMENT":
+        if (REQUIREMENT_READ_ALL_ROLES.has(role)) {
+          return true;
+        }
+        if (
+          !target.isDraftRequirement &&
+          REQUIREMENT_NON_DRAFT_READ_ALL_ROLES.has(role)
+        ) {
+          return true;
+        }
+        return this.isObjectParticipant(
+          target.spaceId,
+          target.targetType,
+          target.targetId,
+          actorUserId,
+        );
+      case "INTAKE_ITEM":
+        if (INTAKE_ITEM_READ_ALL_ROLES.has(role)) {
+          return true;
+        }
+        return this.isObjectParticipant(
+          target.spaceId,
+          target.targetType,
+          target.targetId,
+          actorUserId,
+        );
+    }
+  }
+
+  private async isObjectParticipant(
     spaceId: string,
-    workItemId: string,
+    targetType: ObjectParticipantTargetType,
+    targetId: string,
     userId: string,
   ): Promise<boolean> {
     const participant = await this.prisma.client.objectParticipant.findFirst({
@@ -255,8 +321,8 @@ export class TargetResolverService {
       where: {
         deletedAt: null,
         spaceId,
-        targetId: workItemId,
-        targetType: "WORK_ITEM",
+        targetId,
+        targetType,
         userId,
       },
     });

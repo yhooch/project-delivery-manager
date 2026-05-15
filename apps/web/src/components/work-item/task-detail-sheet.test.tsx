@@ -1,4 +1,11 @@
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import {
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -188,10 +195,11 @@ function makeDetailResponse(
 }
 
 function makeBugResponse(overrides: Record<string, unknown> = {}) {
+  const { bugDetail: bugDetailOverride, ...baseOverrides } = overrides;
   return {
     ...makeDetailResponse({
       type: "BUG",
-      ...overrides,
+      ...baseOverrides,
     }),
     bugDetail: {
       actualResult: "Actual",
@@ -199,6 +207,7 @@ function makeBugResponse(overrides: Record<string, unknown> = {}) {
       severity: "MAJOR",
       stepsToReproduce: "Steps",
       workItemId: "01ARZ3NDEKTSV4RRFFQ69G5FA1",
+      ...(bugDetailOverride as Record<string, unknown> | undefined),
     },
   };
 }
@@ -292,6 +301,81 @@ describe("TaskDetailSheet", () => {
     ).toBeInTheDocument();
   });
 
+  it("renders workflow action fields and submits the populated payload", async () => {
+    const onChanged = vi.fn();
+    const action = makeAction({
+      id: "01ARZ3NDEKTSV4RRFFQ69G5FC1",
+      name: "Resolve",
+      requiresComment: true,
+      formFields: [
+        {
+          id: "01ARZ3NDEKTSV4RRFFQ69G5FF1",
+          key: "resolution",
+          label: "Resolution",
+          fieldType: "TEXT",
+          required: true,
+          order: 1,
+        },
+      ],
+    });
+    getWorkItemMock.mockResolvedValueOnce(
+      makeDetailResponse({
+        permissions: {
+          canEdit: true,
+          canComment: true,
+          canUploadAttachment: true,
+          availableActions: [action],
+        },
+      }),
+    );
+    executeActionMock.mockResolvedValueOnce(
+      makeDetailResponse({
+        permissions: {
+          canEdit: true,
+          canComment: true,
+          canUploadAttachment: true,
+          availableActions: [],
+        },
+        statusCategory: "DONE",
+      }),
+    );
+
+    render(
+      <TaskDetailSheet
+        item={makeViewModel()}
+        open
+        onOpenChange={() => {}}
+        onChanged={onChanged}
+      />,
+    );
+
+    fireEvent.click(await screen.findByRole("button", { name: "Resolve" }));
+    fireEvent.change(screen.getByTestId("task-action-field-resolution"), {
+      target: { value: "fixed" },
+    });
+    fireEvent.change(screen.getByTestId("task-action-comment"), {
+      target: { value: "Looks good" },
+    });
+
+    const form = screen.getByTestId("task-action-form");
+    fireEvent.click(within(form).getByRole("button", { name: "Resolve" }));
+
+    await waitFor(() => expect(executeActionMock).toHaveBeenCalledTimes(1));
+    expect(executeActionMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        actionId: "01ARZ3NDEKTSV4RRFFQ69G5FC1",
+        spaceId: "SPC_01",
+        workItemId: "01ARZ3NDEKTSV4RRFFQ69G5FA1",
+      }),
+      {
+        comment: "Looks good",
+        formValues: { resolution: "fixed" },
+      },
+    );
+    await waitFor(() => expect(getWorkItemMock).toHaveBeenCalledTimes(2));
+    expect(onChanged).toHaveBeenCalledTimes(1);
+  });
+
   it("loads bug permissions through the bug detail endpoint", async () => {
     getBugMock.mockResolvedValueOnce(
       makeBugResponse({
@@ -358,6 +442,31 @@ describe("TaskDetailSheet", () => {
     expect(
       await screen.findByText("First comment from API"),
     ).toBeInTheDocument();
+  });
+
+  it("renders real work item detail fields from getWorkItem", async () => {
+    memberMap.set("01ARZ3NDEKTSV4RRFFQ69G5FR1", {
+      user: { name: "Reporter Name" },
+    });
+    getWorkItemMock.mockResolvedValueOnce(
+      makeDetailResponse({
+        description: "Real detail description",
+        reporterId: "01ARZ3NDEKTSV4RRFFQ69G5FR1",
+      }),
+    );
+
+    render(
+      <TaskDetailSheet
+        item={makeViewModel({ title: "List title" })}
+        open
+        onOpenChange={() => {}}
+      />,
+    );
+
+    expect(
+      await screen.findByText("Real detail description"),
+    ).toBeInTheDocument();
+    expect(screen.getByText("Reporter Name")).toBeInTheDocument();
   });
 
   it("submits a new comment via createComment when send button is clicked", async () => {
@@ -644,7 +753,11 @@ describe("TaskDetailSheet", () => {
 
     await activateTab(/links/i);
     await waitFor(() => expect(getWorkItemMock).toHaveBeenCalled());
-    expect(await screen.findByText("Sprint 2026.5")).toBeInTheDocument();
+    expect(
+      within(await screen.findByTestId("task-links-list")).getByText(
+        "Sprint 2026.5",
+      ),
+    ).toBeInTheDocument();
   });
 
   it("loads bug relation data from the bug detail endpoint on the links tab", async () => {
@@ -666,7 +779,47 @@ describe("TaskDetailSheet", () => {
     await activateTab(/links/i);
     await waitFor(() => expect(getBugMock).toHaveBeenCalled());
     expect(getWorkItemMock).not.toHaveBeenCalled();
-    expect(await screen.findByText("Bugfix train")).toBeInTheDocument();
+    expect(
+      within(await screen.findByTestId("task-links-list")).getByText(
+        "Bugfix train",
+      ),
+    ).toBeInTheDocument();
+  });
+
+  it("renders bug-specific detail fields from getBug", async () => {
+    getBugMock.mockResolvedValueOnce(
+      makeBugResponse({
+        bugDetail: {
+          actualResult: "Actual crash",
+          expectedResult: "Expected save",
+          fixNote: "Patched validation",
+          regressionAt: "2026-05-14T10:00:00.000Z",
+          regressionBy: "01ARZ3NDEKTSV4RRFFQ69G5FU1",
+          regressionResult: "Regression passed",
+          severity: "CRITICAL",
+          stepsToReproduce: "Open form and submit",
+          workItemId: "01ARZ3NDEKTSV4RRFFQ69G5FA1",
+        },
+      }),
+    );
+    memberMap.set("01ARZ3NDEKTSV4RRFFQ69G5FU1", {
+      user: { name: "QA Owner" },
+    });
+
+    render(
+      <TaskDetailSheet
+        item={makeViewModel({ type: "BUG", title: "Bug detail" })}
+        open
+        onOpenChange={() => {}}
+      />,
+    );
+
+    expect(await screen.findByText("Open form and submit")).toBeInTheDocument();
+    expect(screen.getByText("Expected save")).toBeInTheDocument();
+    expect(screen.getByText("Actual crash")).toBeInTheDocument();
+    expect(screen.getByText("Patched validation")).toBeInTheDocument();
+    expect(screen.getByText("Regression passed")).toBeInTheDocument();
+    expect(screen.getByText("QA Owner")).toBeInTheDocument();
   });
 
   it("renders the empty placeholder when item is null", () => {

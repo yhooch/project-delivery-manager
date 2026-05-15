@@ -64,8 +64,41 @@ export class PrismaRequirementRepository implements RequirementRepository {
       : undefined;
   }
 
+  async isParticipant(spaceId: string, requirementId: string, userId: string) {
+    const participant = await this.prisma.client.objectParticipant.findFirst({
+      select: {
+        id: true,
+      },
+      where: {
+        deletedAt: null,
+        spaceId,
+        targetId: requirementId,
+        targetType: "REQUIREMENT",
+        userId,
+      },
+    });
+
+    return Boolean(participant);
+  }
+
   async listBySpaceId(spaceId: string, input: RequirementListInput) {
     const where = buildListWhere(spaceId, input);
+    const participantIds =
+      input.visibility === "ALL"
+        ? []
+        : await this.listParticipantRequirementIds(spaceId, input.actorUserId);
+
+    applyVisibility(where, input, participantIds);
+
+    if (isKnownEmptyIdFilter(where.id)) {
+      return {
+        items: [],
+        page: input.page,
+        pageSize: input.pageSize,
+        total: 0,
+      };
+    }
+
     const [requirements, total] = await this.prisma.client.$transaction([
       this.prisma.client.requirement.findMany({
         orderBy: {
@@ -246,6 +279,23 @@ export class PrismaRequirementRepository implements RequirementRepository {
 
     return result;
   }
+
+  private async listParticipantRequirementIds(spaceId: string, userId: string) {
+    const participants = await this.prisma.client.objectParticipant.findMany({
+      distinct: ["targetId"],
+      select: {
+        targetId: true,
+      },
+      where: {
+        deletedAt: null,
+        spaceId,
+        targetType: "REQUIREMENT",
+        userId,
+      },
+    });
+
+    return participants.map((participant) => participant.targetId);
+  }
 }
 
 function buildListWhere(
@@ -256,45 +306,76 @@ function buildListWhere(
     deletedAt: null,
     ownerId: input.ownerId,
     spaceId,
-    status: input.status,
     versionId: input.versionId,
   };
 
-  if (input.status === "DRAFT") {
-    where.createdById = input.actorUserId;
-    return where;
-  }
-
   if (input.status) {
+    where.status = input.status;
     return where;
   }
 
-  if (input.includeDrafts) {
-    where.OR = [
-      {
-        status: {
-          not: "DRAFT",
-        },
-      },
-      {
-        status: "DRAFT",
-        createdById: input.actorUserId,
-      },
-    ];
-    return where;
+  if (!input.includeDrafts) {
+    where.status = {
+      not: "DRAFT",
+    };
   }
 
-  where.NOT = {
-    AND: [
-      {
-        status: "DRAFT",
-      },
-      {
-        title: "",
-      },
-    ],
-  };
   return where;
+}
+
+function applyVisibility(
+  where: Prisma.RequirementWhereInput,
+  input: RequirementListInput,
+  participantIds: string[],
+) {
+  if (input.visibility === "ALL") {
+    return;
+  }
+
+  if (input.visibility === "PARTICIPANT") {
+    where.id = {
+      in: participantIds,
+    };
+    return;
+  }
+
+  where.AND = [
+    ...toArray(where.AND),
+    {
+      OR: [
+        {
+          status: {
+            not: "DRAFT",
+          },
+        },
+        {
+          id: {
+            in: participantIds,
+          },
+        },
+      ],
+    },
+  ];
+}
+
+function isKnownEmptyIdFilter(
+  value: Prisma.RequirementWhereInput["id"],
+): boolean {
+  return (
+    typeof value === "object" &&
+    value !== null &&
+    "in" in value &&
+    Array.isArray(value.in) &&
+    value.in.length === 0
+  );
+}
+
+function toArray<T>(value: T | T[] | undefined): T[] {
+  if (!value) {
+    return [];
+  }
+
+  return Array.isArray(value) ? value : [value];
 }
 
 async function ensureParticipant(

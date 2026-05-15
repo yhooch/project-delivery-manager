@@ -25,6 +25,7 @@ import type { WorkItemViewModel } from "../../lib/v2/work-item-view-model";
 import { getSpaceExceptionsView } from "../../lib/view-service";
 import { toMockWorkItem } from "../workbench/my-workbench";
 import { useSession } from "../providers/session-provider";
+import { recordRecentOpen } from "../shell/recent-opens";
 
 import { Avatar, AvatarFallback } from "../ui/avatar";
 import { Badge } from "../ui/badge";
@@ -73,6 +74,7 @@ const toneClass: Record<Tone, string> = {
 export function ExceptionsPage() {
   const t = useTranslations("spaceExceptions");
   const tNav = useTranslations("shell.nav");
+  const tStatusCategory = useTranslations("workItems.statusCategory");
   const tRoot = useTranslations();
   const locale = useLocale();
   const { currentSpace, session } = useSession();
@@ -200,7 +202,9 @@ export function ExceptionsPage() {
 
   const buildExceptionViewModel = useCallback(
     (item: SpaceExceptionItem): WorkItemViewModel => {
-      const mock = toMockWorkItem(locale)(item.workItem);
+      const mock = toMockWorkItem(locale, undefined, tStatusCategory)(
+        item.workItem,
+      );
       const blockedSignal = item.exceptions.find(
         (signal) => signal.type === "blocked",
       );
@@ -210,7 +214,33 @@ export function ExceptionsPage() {
         blockedReason: mock.blockedReason ?? blockedSignal?.reason,
       };
     },
-    [locale],
+    [locale, tStatusCategory],
+  );
+
+  const rememberWorkItem = useCallback(
+    (item: WorkItemViewModel) => {
+      recordRecentOpen(
+        {
+          id: item.id,
+          type: item.type,
+          code: item.code,
+          title: item.title,
+          href: item.type === "BUG" ? "/bugs" : "/work-items",
+        },
+        { organizationId, spaceId },
+      );
+    },
+    [organizationId, spaceId],
+  );
+
+  const openExceptionItem = useCallback(
+    (item: SpaceExceptionItem) => {
+      const next = buildExceptionViewModel(item);
+      rememberWorkItem(next);
+      setActive(next);
+      setOpen(true);
+    },
+    [buildExceptionViewModel, rememberWorkItem],
   );
 
   useListKeyboardNav<SpaceExceptionItem>({
@@ -220,10 +250,8 @@ export function ExceptionsPage() {
     onSelect: (item) => {
       setActive(buildExceptionViewModel(item));
     },
-    onOpen: (item) => {
-      setActive(buildExceptionViewModel(item));
-      setOpen(true);
-    },
+    onOpen: openExceptionItem,
+    onEdit: openExceptionItem,
     onClose: () => setOpen(false),
   });
 
@@ -322,8 +350,7 @@ export function ExceptionsPage() {
   }
 
   const handleSelect = (item: SpaceExceptionItem) => {
-    setActive(buildExceptionViewModel(item));
-    setOpen(true);
+    openExceptionItem(item);
   };
 
   return (
@@ -378,7 +405,7 @@ export function ExceptionsPage() {
                 className="divide-y divide-border"
               >
                 {tab.items.map((item) => {
-                  const mock = toMockWorkItem(locale)(item.workItem);
+                  const mock = buildExceptionViewModel(item);
                   const matchedSignal = item.exceptions.find(
                     (signal) => signal.type === tab.key,
                   );
@@ -443,7 +470,14 @@ export function ExceptionsPage() {
         ))}
       </Tabs>
 
-      <TaskDetailSheet item={active} open={open} onOpenChange={setOpen} />
+      <TaskDetailSheet
+        item={active}
+        open={open}
+        onOpenChange={setOpen}
+        onChanged={() => {
+          void fetchView();
+        }}
+      />
 
       {spaceId && (
         <ThresholdEditorDialog

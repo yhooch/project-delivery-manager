@@ -241,11 +241,9 @@ export class BugService {
       : [];
     const dueDate = parseOptionalDate(input.dueDate, "dueDate");
     const regressionAt = parseOptionalDate(input.regressionAt, "regressionAt");
-    const blockedPatch = buildBlockedPatch(bug, input);
     const timeline = buildTimelineDiff(bug, {
       actualResult: input.actualResult,
       assigneeId: input.assigneeId,
-      blockedReason: blockedPatch.blockedReason,
       description: input.description,
       dueDate: dueDate?.toISOString(),
       expectedResult: input.expectedResult,
@@ -270,8 +268,6 @@ export class BugService {
       actualResult: input.actualResult,
       assigneeChanged,
       assigneeId: input.assigneeId,
-      blockedAt: blockedPatch.blockedAt,
-      blockedReason: blockedPatch.blockedReason,
       description: input.description,
       dueDate,
       expectedResult: input.expectedResult,
@@ -735,38 +731,11 @@ function parseOptionalDate(value: string | undefined, field: string) {
   return date;
 }
 
-function buildBlockedPatch(
-  existing: BugView,
-  input: UpdateBugRequest,
-): {
-  blockedAt?: Date | null;
-  blockedReason?: string | null;
-} {
-  if (input.blockedReason === undefined) {
-    return {};
-  }
-
-  const blockedReason =
-    input.blockedReason.trim().length > 0 ? input.blockedReason : null;
-
-  if ((existing.blockedReason ?? null) === blockedReason) {
-    return {
-      blockedReason,
-    };
-  }
-
-  return {
-    blockedAt: blockedReason ? new Date() : null,
-    blockedReason,
-  };
-}
-
 function buildTimelineDiff(
   existing: BugView,
   next: {
     actualResult?: string;
     assigneeId?: string;
-    blockedReason?: string | null;
     description?: string;
     dueDate?: string;
     expectedResult?: string;
@@ -808,13 +777,6 @@ function buildTimelineDiff(
     "dueDate",
     existing.dueDate ?? null,
     next.dueDate,
-  );
-  addTimelineChange(
-    before,
-    after,
-    "blockedReason",
-    existing.blockedReason ?? null,
-    next.blockedReason,
   );
   addTimelineChange(
     before,

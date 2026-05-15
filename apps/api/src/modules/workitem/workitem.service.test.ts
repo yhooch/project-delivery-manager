@@ -90,7 +90,7 @@ describe("WorkItemService", () => {
     ]);
   });
 
-  it("uses space-wide visibility for PM/TESTER/VIEWER and participant visibility for other roles", async () => {
+  it("uses scoped visibility for TESTER and participant visibility for other roles", async () => {
     const pmSubject = createSubject("PM");
 
     await pmSubject.service.list(ACTOR_ID, SPACE_ID, {
@@ -107,7 +107,7 @@ describe("WorkItemService", () => {
       pageSize: 20,
     });
 
-    expect(testerSubject.workItems.listInput?.visibility).toBe("SPACE");
+    expect(testerSubject.workItems.listInput?.visibility).toBe("TESTER");
 
     const developerSubject = createSubject("DEVELOPER");
 
@@ -119,6 +119,21 @@ describe("WorkItemService", () => {
     expect(developerSubject.workItems.listInput?.visibility).toBe(
       "PARTICIPANT",
     );
+  });
+
+  it("hides non-testing TASK details from non-participant TESTER users", async () => {
+    const subject = createSubject("TESTER");
+    subject.workItems.items.set(WORK_ITEM_ID, makeWorkItem());
+
+    await expect(subject.service.get(ACTOR_ID, WORK_ITEM_ID)).rejects.toMatchObject({
+      code: "WORK_ITEM_NOT_FOUND",
+    });
+
+    subject.workItems.testerVisibleIds.add(WORK_ITEM_ID);
+
+    await expect(subject.service.get(ACTOR_ID, WORK_ITEM_ID)).resolves.toMatchObject({
+      id: WORK_ITEM_ID,
+    });
   });
 
   it("returns read-only permissions for VIEWER details", async () => {
@@ -175,7 +190,6 @@ describe("WorkItemService", () => {
 
     const updated = await subject.service.update(ACTOR_ID, WORK_ITEM_ID, {
       assigneeId: ASSIGNEE_ID,
-      blockedReason: "Waiting for dependency",
       dueDate: "2026-06-10T00:00:00.000Z",
       priority: "URGENT",
       requirementId: REQUIREMENT_ID,
@@ -194,7 +208,6 @@ describe("WorkItemService", () => {
       shouldReplaceAssigneeParticipants: true,
       shouldReplaceRelatedParticipants: true,
     });
-    expect(subject.workItems.updatedInput?.blockedAt).toBeInstanceOf(Date);
     expect(subject.workItems.updatedInput?.relatedUserIds.sort()).toEqual([
       VIEWER_ID,
       RELATED_USER_ID,
@@ -206,10 +219,33 @@ describe("WorkItemService", () => {
     expect(subject.workItems.updatedInput).not.toHaveProperty("statusCategory");
     expect(subject.workItems.updatedInput?.timelineAfter).toMatchObject({
       assigneeId: ASSIGNEE_ID,
-      blockedReason: "Waiting for dependency",
       dueDate: "2026-06-10T00:00:00.000Z",
       priority: "URGENT",
     });
+  });
+
+  it("does not allow unchecked update input to change blocked state fields", async () => {
+    const subject = createSubject("DEVELOPER");
+    subject.workItems.items.set(
+      WORK_ITEM_ID,
+      makeWorkItem({
+        blockedAt: "2026-05-14T00:00:00.000Z",
+        blockedReason: "Existing blocker",
+      }),
+    );
+    subject.workItems.participantKeys.add(`${WORK_ITEM_ID}:${ACTOR_ID}`);
+
+    const updated = await subject.service.update(ACTOR_ID, WORK_ITEM_ID, {
+      blockedReason: "New blocker",
+    } as unknown as Parameters<WorkItemService["update"]>[2]);
+
+    expect(updated.blockedReason).toBe("Existing blocker");
+    expect(updated.blockedAt).toBe("2026-05-14T00:00:00.000Z");
+    expect(subject.workItems.updatedInput).not.toHaveProperty("blockedReason");
+    expect(subject.workItems.updatedInput).not.toHaveProperty("blockedAt");
+    expect(subject.workItems.updatedInput?.timelineAfter).not.toHaveProperty(
+      "blockedReason",
+    );
   });
 });
 
@@ -257,6 +293,7 @@ class FakeWorkItemRepository implements WorkItemRepository {
   workflowSelection?: WorkItemWorkflowSelection;
   readonly items = new Map<string, WorkItem>();
   readonly participantKeys = new Set<string>();
+  readonly testerVisibleIds = new Set<string>();
   readonly versionRefs = new Map<string, WorkItemLinkedUsers>();
   readonly requirementRefs = new Map<string, WorkItemLinkedUsers>();
   readonly intakeRefs = new Map<string, WorkItemLinkedUsers>();
@@ -303,6 +340,10 @@ class FakeWorkItemRepository implements WorkItemRepository {
     return this.participantKeys.has(`${workItemId}:${userId}`);
   }
 
+  async isTesterVisible(_spaceId: string, workItemId: string) {
+    return this.testerVisibleIds.has(workItemId);
+  }
+
   async listBySpaceId(_spaceId: string, input: WorkItemListInput) {
     this.listInput = input;
     return {
@@ -328,13 +369,6 @@ class FakeWorkItemRepository implements WorkItemRepository {
     const updated = makeWorkItem({
       ...existing,
       assigneeId: input.assigneeId ?? existing.assigneeId,
-      blockedAt: input.blockedAt
-        ? input.blockedAt.toISOString()
-        : existing.blockedAt,
-      blockedReason:
-        input.blockedReason === null
-          ? undefined
-          : (input.blockedReason ?? existing.blockedReason),
       dueDate: input.dueDate?.toISOString() ?? existing.dueDate,
       priority: input.priority ?? existing.priority,
       requirementId: input.requirementId ?? existing.requirementId,

@@ -37,6 +37,7 @@ const sessionMock = vi.hoisted(() => ({
       id: "ORG_01",
       name: "Acme Corp",
       code: "ACME",
+      role: "OWNER",
     },
     status: "authenticated" as const,
   } as { session: unknown; currentOrganization: unknown; status: string },
@@ -52,6 +53,8 @@ const { listOrganizationMembersMock, removeOrganizationMemberMock } = vi.hoisted
   }),
 );
 vi.mock("../../lib/space-service", () => ({
+  canManageOrganization: (role: string | undefined) =>
+    role === "OWNER" || role === "ADMIN",
   listOrganizationMembers: listOrganizationMembersMock,
   removeOrganizationMember: removeOrganizationMemberMock,
 }));
@@ -90,6 +93,7 @@ beforeEach(() => {
       id: "ORG_01",
       name: "Acme Corp",
       code: "ACME",
+      role: "OWNER",
     },
     status: "authenticated" as const,
   };
@@ -273,6 +277,42 @@ describe("OrganizationPage", () => {
     await waitFor(() =>
       expect(screen.queryByText("Mallory")).not.toBeInTheDocument(),
     );
+  });
+
+  it("renders read-only controls for non OWNER/ADMIN organization roles", async () => {
+    sessionMock.current = {
+      session: {
+        defaultOrganizationId: "ORG_01",
+      },
+      currentOrganization: {
+        id: "ORG_01",
+        name: "Acme Corp",
+        code: "ACME",
+        role: "MEMBER",
+      },
+      status: "authenticated" as const,
+    };
+    listOrganizationMembersMock.mockResolvedValueOnce({
+      items: [
+        makeOrgMember({
+          id: "OM_MEMBER",
+          role: "MEMBER",
+          user: { id: "U_MEMBER", name: "Mallory", username: "mallory" },
+        }),
+      ],
+      total: 1,
+    });
+
+    render(<OrganizationPage />);
+
+    expect(await screen.findByText("Mallory")).toBeInTheDocument();
+    expect(screen.getByTestId("organization-readonly-notice")).toHaveTextContent(
+      "organization.members.readOnly",
+    );
+    expect(screen.getByTestId("organization-add-member-button")).toBeDisabled();
+    expect(
+      screen.queryByTestId("organization-member-remove-OM_MEMBER"),
+    ).not.toBeInTheDocument();
   });
 
   it("renders the noOrganization empty state when there is no current organization", async () => {

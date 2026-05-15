@@ -97,8 +97,11 @@ export function CreateWorkflowDialog({
           const publishedVersions = page.items.filter(
             (version) => version.status === "PUBLISHED",
           );
+          const latestPublishedVersion = [...publishedVersions].sort(
+            (a, b) => b.version - a.version,
+          )[0];
           setVersions(publishedVersions);
-          setSourceVersionId(publishedVersions[0]?.id ?? "");
+          setSourceVersionId(latestPublishedVersion?.id ?? "");
         })
         .catch((error) => {
           setErrorKey(getApiErrorMessageKey(error));
@@ -136,13 +139,18 @@ export function CreateWorkflowDialog({
 
     try {
       if (mode.kind === "copyVersion") {
+        if (!sourceVersionId) {
+          setErrorKey("errors.api.WORKFLOW_VERSION_NOT_FOUND");
+          setIsSubmitting(false);
+          return;
+        }
         await createWorkflowVersion(
           {
             organizationId: context.organizationId,
             spaceId: context.spaceId,
             workflowId: mode.workflow.id,
           },
-          sourceVersionId ? { sourceWorkflowVersionId: sourceVersionId } : {},
+          { sourceWorkflowVersionId: sourceVersionId },
         );
         onSuccess(mode.workflow);
         return;
@@ -217,8 +225,8 @@ export function CreateWorkflowDialog({
                 onChange={(event) => setSourceVersionId(event.target.value)}
                 value={sourceVersionId}
               >
-                <option value="">
-                  {t("copyVersion.fields.emptySource")}
+                <option value="" disabled>
+                  {t("copyVersion.fields.sourceVersion")}
                 </option>
                 {versions.map((version) => (
                   <option key={version.id} value={version.id}>
@@ -326,7 +334,7 @@ export function CreateWorkflowDialog({
               disabled={
                 isSubmitting ||
                 (isCopyVersion
-                  ? isLoadingVersions
+                  ? isLoadingVersions || !sourceVersionId
                   : name.trim().length === 0)
               }
               size="sm"

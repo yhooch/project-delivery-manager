@@ -12,7 +12,6 @@ import {
   type PageResult,
   type PresignAttachmentRequest,
   type PresignAttachmentResponse,
-  type Requirement,
   type SpaceRole,
 } from "@project-delivery/shared";
 import { ulid } from "ulid";
@@ -22,10 +21,6 @@ import {
   REQUIREMENT_REPOSITORY,
   type RequirementRepository,
 } from "../requirement/requirement.repository";
-import {
-  SPACE_REPOSITORY,
-  type SpaceRepository,
-} from "../space/space.repository";
 import { TargetResolverService } from "../target/target-resolver.service";
 import {
   ATTACHMENT_REPOSITORY,
@@ -48,8 +43,6 @@ export class AttachmentService {
     private readonly attachments: AttachmentRepository,
     @Inject(REQUIREMENT_REPOSITORY)
     private readonly requirements: RequirementRepository,
-    @Inject(SPACE_REPOSITORY)
-    private readonly spaces: SpaceRepository,
     @Inject(TargetResolverService)
     private readonly targets: TargetResolverService,
   ) {}
@@ -136,21 +129,10 @@ export class AttachmentService {
       throwAttachmentTargetNotFound();
     }
 
-    const access = await this.spaces.findAccessibleById(
-      actorUserId,
-      attachment.spaceId,
-    );
-
-    if (!access) {
-      throwAttachmentTargetNotFound();
-    }
-
-    if (attachment.targetType === "WORK_ITEM") {
-      await this.requireReadableWorkItemAttachmentTarget(actorUserId, {
-        targetId: attachment.targetId,
-        targetType: attachment.targetType,
-      });
-    }
+    await this.requireReadableAttachmentTarget(actorUserId, {
+      targetId: attachment.targetId,
+      targetType: attachment.targetType,
+    });
 
     return {
       downloadUrl: createObjectUrl(
@@ -169,19 +151,22 @@ export class AttachmentService {
       targetType: "REQUIREMENT";
     },
   ): Promise<AttachmentTargetContext> {
-    const requirement = await this.requireAccessibleRequirementTarget(
+    const target = await this.targets.resolve(
       actorUserId,
+      input.targetType,
       input.targetId,
+      {
+        access: "write",
+        hideInaccessible: true,
+        notFoundCode: "ATTACHMENT_TARGET_NOT_FOUND",
+      },
     );
-    const access = await this.spaces.findAccessibleById(
-      actorUserId,
-      requirement.spaceId,
-    );
+    const requirement = await this.requirements.findById(target.targetId);
 
-    if (!access) {
+    if (!requirement) {
       throwAttachmentTargetNotFound();
     }
-    if (!REQUIREMENT_WRITER_ROLES.has(access.role)) {
+    if (!REQUIREMENT_WRITER_ROLES.has(target.role)) {
       throwSpaceAccessDenied();
     }
     if (requirement.status !== "DRAFT") {
@@ -193,10 +178,10 @@ export class AttachmentService {
     }
 
     return {
-      organizationId: requirement.organizationId,
-      spaceId: requirement.spaceId,
+      organizationId: target.organizationId,
+      spaceId: target.spaceId,
       targetType: "REQUIREMENT",
-      targetId: requirement.id,
+      targetId: target.targetId,
     };
   }
 
@@ -214,7 +199,7 @@ export class AttachmentService {
       });
     }
 
-    return this.requireWritableWorkItemAttachmentTarget(actorUserId, {
+    return this.requireWritableResolvedAttachmentTarget(actorUserId, {
       targetId: input.targetId,
       targetType: "WORK_ITEM",
     });
@@ -225,33 +210,6 @@ export class AttachmentService {
     input: {
       targetId: string;
       targetType: AttachmentTargetType;
-    },
-  ): Promise<AttachmentTargetContext> {
-    if (input.targetType === "REQUIREMENT") {
-      const requirement = await this.requireAccessibleRequirementTarget(
-        actorUserId,
-        input.targetId,
-      );
-
-      return {
-        organizationId: requirement.organizationId,
-        spaceId: requirement.spaceId,
-        targetType: "REQUIREMENT",
-        targetId: requirement.id,
-      };
-    }
-
-    return this.requireReadableWorkItemAttachmentTarget(actorUserId, {
-      targetId: input.targetId,
-      targetType: "WORK_ITEM",
-    });
-  }
-
-  private async requireReadableWorkItemAttachmentTarget(
-    actorUserId: string,
-    input: {
-      targetId: string;
-      targetType: "WORK_ITEM";
     },
   ): Promise<AttachmentTargetContext> {
     const target = await this.targets.resolve(
@@ -267,16 +225,16 @@ export class AttachmentService {
     return {
       organizationId: target.organizationId,
       spaceId: target.spaceId,
-      targetType: "WORK_ITEM",
+      targetType: input.targetType,
       targetId: target.targetId,
     };
   }
 
-  private async requireWritableWorkItemAttachmentTarget(
+  private async requireWritableResolvedAttachmentTarget(
     actorUserId: string,
     input: {
       targetId: string;
-      targetType: "WORK_ITEM";
+      targetType: AttachmentTargetType;
     },
   ): Promise<AttachmentTargetContext> {
     const target = await this.targets.resolve(
@@ -293,31 +251,9 @@ export class AttachmentService {
     return {
       organizationId: target.organizationId,
       spaceId: target.spaceId,
-      targetType: "WORK_ITEM",
+      targetType: input.targetType,
       targetId: target.targetId,
     };
-  }
-
-  private async requireAccessibleRequirementTarget(
-    actorUserId: string,
-    requirementId: string,
-  ): Promise<Requirement> {
-    const requirement = await this.requirements.findById(requirementId);
-
-    if (!requirement) {
-      throwAttachmentTargetNotFound();
-    }
-
-    const access = await this.spaces.findAccessibleById(
-      actorUserId,
-      requirement.spaceId,
-    );
-
-    if (!access) {
-      throwAttachmentTargetNotFound();
-    }
-
-    return requirement;
   }
 
   private async assertAttachmentCountLimit(

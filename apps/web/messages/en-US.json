@@ -341,6 +341,7 @@
       },
       "workbench": "My workbench",
       "overview": "Space overview",
+      "spaces": "Project spaces",
       "versions": "Versions",
       "tasks": "Tasks",
       "bugs": "Bugs",
@@ -1992,16 +1993,25 @@
       "blocked": "Blocked",
       "pendingConfirm": "Pending confirm"
     },
+    "time": {
+      "justNow": "just now"
+    },
     "sections": {
       "todo": "My todos",
+      "assignedTasks": "Tasks I own",
+      "assignedBugs": "Bugs I own",
       "actions": "Action todos",
+      "pendingConfirm": "Pending my confirmation",
       "dueSoon": "Due soon",
       "blocked": "Blocked",
       "recent": "Recent activity"
     },
     "empty": {
       "todo": "No assigned todos.",
+      "assignedTasks": "No tasks assigned to you.",
+      "assignedBugs": "No bugs assigned to you.",
       "actions": "No action todos.",
+      "pendingConfirm": "No items pending your confirmation.",
       "dueSoon": "No due soon items.",
       "blocked": "No blocked work items.",
       "recent": "No recent activity.",
@@ -2084,6 +2094,8 @@
       "description": "Spaces load from the current organization. Details and overview are isolated after switching.",
       "spaceCount": "{count} spaces",
       "readOnly": "Your organization role can view spaces but cannot create them.",
+      "refresh": "Refresh",
+      "errorTitle": "Failed to load spaces",
       "loading": "Loading spaces",
       "empty": "No spaces",
       "selected": "Current space",
@@ -3163,6 +3175,7 @@
       "title": "Organization members",
       "add": "Add member",
       "empty": "No organization members",
+      "readOnly": "Your organization role can view members but cannot add or remove them.",
       "ownerProtectionNote": "The system protects at least one OWNER from being removed.",
       "actions": {
         "remove": "Remove {username}"

@@ -6,6 +6,7 @@ import {
   toVersion,
   toVersionBoardWorkItemSummary,
 } from "./version.mappers";
+import { testerVisibleWorkItemWhere } from "../workitem/workitem-visibility";
 import type { VersionRepository } from "./version.repository";
 import type {
   CreateVersionInput,
@@ -311,6 +312,26 @@ export class PrismaVersionRepository implements VersionRepository {
       };
     }
 
+    if (input.visibility === "TESTER") {
+      const visibleIds = await this.listParticipantWorkItemIds(
+        input.spaceId,
+        input.actorUserId,
+      );
+      const visibilityOr: Prisma.WorkItemWhereInput[] = [
+        testerVisibleWorkItemWhere(),
+      ];
+
+      if (visibleIds.length > 0) {
+        visibilityOr.push({
+          id: {
+            in: visibleIds,
+          },
+        });
+      }
+
+      where.AND = [...toArray(where.AND), { OR: visibilityOr }];
+    }
+
     return where;
   }
 
@@ -403,4 +424,12 @@ function toBoardColumns(
     title: BOARD_STATUS_TITLES[statusCategory],
     total: countByStatus.get(statusCategory) ?? 0,
   }));
+}
+
+function toArray<T>(value: T | T[] | undefined): T[] {
+  if (!value) {
+    return [];
+  }
+
+  return Array.isArray(value) ? value : [value];
 }

@@ -547,7 +547,7 @@ export function SpaceOverview() {
 
             {/* Requirements / versions inline KPIs */}
             <section
-              data-testid="space-overview-inline-kpis"
+              data-testid="space-overview-kpi-grid"
               className="grid grid-cols-1 gap-3 md:grid-cols-2"
             >
               <Link

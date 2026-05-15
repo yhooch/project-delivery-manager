@@ -18,6 +18,10 @@ import { Prisma } from "../../generated/prisma/client";
 import { PrismaService } from "../../prisma/prisma.service";
 import { toTimelineEvent } from "../timeline/timeline.mappers";
 import {
+  canReadAllSpaceWorkItems,
+  testerVisibleWorkItemWhere,
+} from "../workitem/workitem-visibility";
+import {
   buildSpaceExceptionSignals,
   elapsedDays,
   isBlockedRecord,
@@ -51,12 +55,6 @@ import type {
 } from "./space.types";
 
 const DEFAULT_WORKFLOW_CODES = ["DEVELOPMENT_TASK", "GENERAL_TASK", "BUG"];
-const READ_ALL_WORK_ITEM_ROLES = new Set<SpaceRole>([
-  "SPACE_ADMIN",
-  "PM",
-  "TESTER",
-  "VIEWER",
-]);
 const TERMINAL_STATUS_CATEGORIES: StatusCategory[] = ["DONE", "TERMINATED"];
 const DUE_SOON_DAYS = 7;
 
@@ -860,10 +858,13 @@ export class PrismaSpaceRepository implements SpaceRepository {
       staleThresholdDays: record.space.staleThresholdDays,
     }));
     const readAllSpaceIds = accesses
-      .filter((access) => READ_ALL_WORK_ITEM_ROLES.has(access.role))
+      .filter((access) => canReadAllSpaceWorkItems(access.role))
+      .map((access) => access.spaceId);
+    const testerSpaceIds = accesses
+      .filter((access) => access.role === "TESTER")
       .map((access) => access.spaceId);
     const participantSpaceIds = accesses
-      .filter((access) => !READ_ALL_WORK_ITEM_ROLES.has(access.role))
+      .filter((access) => !canReadAllSpaceWorkItems(access.role))
       .map((access) => access.spaceId);
     const participantWorkItemIds =
       participantSpaceIds.length === 0
@@ -872,6 +873,10 @@ export class PrismaSpaceRepository implements SpaceRepository {
             input.actorUserId,
             participantSpaceIds,
           );
+    const testerWorkItemIds =
+      testerSpaceIds.length === 0
+        ? []
+        : await this.listTesterVisibleWorkItemIds(testerSpaceIds);
 
     return {
       accessBySpaceId: new Map(
@@ -882,6 +887,8 @@ export class PrismaSpaceRepository implements SpaceRepository {
       participantWorkItemIds,
       readAllSpaceIds,
       spaceIds: accesses.map((access) => access.spaceId),
+      testerSpaceIds,
+      testerWorkItemIds,
     };
   }
 
@@ -905,6 +912,24 @@ export class PrismaSpaceRepository implements SpaceRepository {
     });
 
     return participants.map((participant) => participant.targetId);
+  }
+
+  private async listTesterVisibleWorkItemIds(spaceIds: string[]) {
+    const items = await this.prisma.client.workItem.findMany({
+      distinct: ["id"],
+      select: {
+        id: true,
+      },
+      where: {
+        deletedAt: null,
+        spaceId: {
+          in: spaceIds,
+        },
+        ...testerVisibleWorkItemWhere(),
+      },
+    });
+
+    return items.map((item) => item.id);
   }
 
   private async pageWorkItemSummaries(
@@ -1382,6 +1407,8 @@ type ViewAccessContext = {
   participantWorkItemIds: string[];
   readAllSpaceIds: string[];
   spaceIds: string[];
+  testerSpaceIds: string[];
+  testerWorkItemIds: string[];
 };
 
 type ViewWorkItemRecord = {
@@ -1456,6 +1483,19 @@ function buildVisibleWorkItemWhere(
     });
   }
 
+  if (context.testerSpaceIds.length > 0) {
+    visibilityOr.push({
+      AND: [
+        {
+          spaceId: {
+            in: context.testerSpaceIds,
+          },
+        },
+        testerVisibleWorkItemWhere(),
+      ],
+    });
+  }
+
   if (context.participantWorkItemIds.length > 0) {
     visibilityOr.push({
       id: {
@@ -1505,6 +1545,15 @@ function buildTimelineWhere(
     visibilityOr.push({
       targetId: {
         in: context.participantWorkItemIds,
+      },
+      targetType: "WORK_ITEM",
+    });
+  }
+
+  if (context.testerWorkItemIds.length > 0) {
+    visibilityOr.push({
+      targetId: {
+        in: context.testerWorkItemIds,
       },
       targetType: "WORK_ITEM",
     });

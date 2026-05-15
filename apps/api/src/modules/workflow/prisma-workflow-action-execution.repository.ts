@@ -65,6 +65,12 @@ class PrismaWorkflowActionExecutionTransaction
     const workItem = await this.tx.workItem.findFirst({
       include: {
         bugDetail: true,
+        currentState: {
+          select: {
+            code: true,
+            name: true,
+          },
+        },
       },
       where: {
         deletedAt: null,
@@ -356,6 +362,10 @@ type PrismaWorkItemRecord = Parameters<typeof toWorkItem>[0] & {
   bugDetail?: PrismaBugDetailRecord | null;
   closedAt: Date | null;
   createdById: string | null;
+  currentState?: {
+    code: string;
+    name: string;
+  } | null;
 };
 
 type PrismaBugDetailRecord = {
@@ -412,6 +422,7 @@ function toExecutableWorkItem(record: PrismaWorkItemRecord): ExecutableWorkItem 
       : undefined,
     closedAt: record.closedAt?.toISOString(),
     createdById: record.createdById ?? undefined,
+    currentState: record.currentState ?? undefined,
   };
 }
 

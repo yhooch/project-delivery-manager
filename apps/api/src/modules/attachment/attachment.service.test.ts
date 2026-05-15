@@ -3,7 +3,6 @@ import { ulid } from "ulid";
 import { describe, expect, it, vi } from "vitest";
 
 import type { RequirementRepository } from "../requirement/requirement.repository";
-import type { SpaceRepository } from "../space/space.repository";
 import type { TargetResolverService } from "../target/target-resolver.service";
 import type { AttachmentRepository } from "./attachment.repository";
 import { AttachmentService } from "./attachment.service";
@@ -35,7 +34,6 @@ describe("AttachmentService", () => {
     const service = new AttachmentService(
       attachments,
       {} as RequirementRepository,
-      {} as SpaceRepository,
       targets,
     );
 
@@ -87,7 +85,6 @@ describe("AttachmentService", () => {
     const service = new AttachmentService(
       attachments,
       {} as RequirementRepository,
-      {} as SpaceRepository,
       targets,
     );
 

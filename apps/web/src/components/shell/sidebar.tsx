@@ -5,6 +5,7 @@ import {
   CheckCircle2,
   Cog,
   FileText,
+  FolderKanban,
   GitBranch,
   Inbox,
   LayoutDashboard,
@@ -65,6 +66,11 @@ export function Sidebar() {
           href: "/overview",
           label: tShell("overview"),
           icon: LayoutDashboard,
+        },
+        {
+          href: "/spaces",
+          label: tShell("spaces"),
+          icon: FolderKanban,
         },
         {
           href: "/versions",

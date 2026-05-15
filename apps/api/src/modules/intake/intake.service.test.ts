@@ -426,6 +426,7 @@ function createSubject(input: {
     findTaskById: vi.fn(),
     findVersionInSpace: vi.fn(),
     isParticipant: vi.fn(),
+    isTesterVisible: vi.fn(async () => false),
     listBySpaceId: vi.fn(),
     resolveTaskWorkflow: vi.fn(async () => ({
       currentStateId: CURRENT_STATE_ID,

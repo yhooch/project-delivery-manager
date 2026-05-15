@@ -1,4 +1,4 @@
-import { cleanup, render, screen, waitFor } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const { translatorCache } = vi.hoisted(() => ({
@@ -67,10 +67,27 @@ vi.mock("../../lib/v2/lookups", () => ({
 
 // Mock the task-detail-sheet so it doesn't render full Radix tree.
 vi.mock("../work-item/task-detail-sheet", () => ({
-  TaskDetailSheet: () => null,
+  TaskDetailSheet: ({
+    item,
+    onChanged,
+    open,
+  }: {
+    item: { id: string; title: string } | null;
+    onChanged?: () => void;
+    open: boolean;
+  }) =>
+    open && item ? (
+      <div data-testid="task-detail-sheet-open">
+        <span>{item.title}</span>
+        <button type="button" onClick={onChanged}>
+          detail changed
+        </button>
+      </div>
+    ) : null,
 }));
 
 import { MyWorkbench } from "./my-workbench";
+import { createRecentStorageKey } from "../shell/recent-opens";
 
 const ACTOR = {
   id: "01ARZ3NDEKTSV4RRFFQ69G5FU1",
@@ -157,15 +174,21 @@ function makeWorkbenchResponse(
   options: {
     withStats?: boolean;
     todos?: ReturnType<typeof makeWorkItemSummary>[];
+    assignedTasks?: ReturnType<typeof makeWorkItemSummary>[];
+    assignedBugs?: ReturnType<typeof makeWorkItemSummary>[];
     dueSoon?: ReturnType<typeof makeWorkItemSummary>[];
     actionTodos?: ReturnType<typeof makeActionTodo>[];
+    pendingConfirm?: ReturnType<typeof makeWorkItemSummary>[];
     blocked?: ReturnType<typeof makeWorkItemSummary>[];
     recent?: ReturnType<typeof makeRecentActivity>[];
   } = {},
 ) {
   const todos = options.todos ?? [];
+  const assignedTasks = options.assignedTasks ?? [];
+  const assignedBugs = options.assignedBugs ?? [];
   const dueSoon = options.dueSoon ?? [];
   const actionTodos = options.actionTodos ?? [];
+  const pendingConfirm = options.pendingConfirm ?? [];
   const blocked = options.blocked ?? [];
   const recent = options.recent ?? [];
 
@@ -173,8 +196,8 @@ function makeWorkbenchResponse(
     filters: {},
     sections: {
       myTodos: makeWorkbenchSection(todos),
-      assignedTasks: makeWorkbenchSection([]),
-      assignedBugs: makeWorkbenchSection([]),
+      assignedTasks: makeWorkbenchSection(assignedTasks),
+      assignedBugs: makeWorkbenchSection(assignedBugs),
       actionTodos: {
         title: "Action todos",
         total: actionTodos.length,
@@ -185,7 +208,7 @@ function makeWorkbenchResponse(
           pageSize: 25,
         },
       },
-      pendingConfirm: makeWorkbenchSection([]),
+      pendingConfirm: makeWorkbenchSection(pendingConfirm),
       dueSoon: makeWorkbenchSection(dueSoon),
       blocked: makeWorkbenchSection(blocked),
       recentActivities: {
@@ -221,6 +244,7 @@ beforeEach(() => {
     },
     currentSpace: { id: "SPC_01", organizationId: "ORG_01", name: "Space A" },
   };
+  window.localStorage.clear();
 });
 
 afterEach(() => {
@@ -275,13 +299,26 @@ describe("MyWorkbench", () => {
     expect(dashes.length).toBeGreaterThanOrEqual(2);
   });
 
-  it("renders four task sections (todo, actions, dueSoon, blocked) with their items", async () => {
+  it("renders all workbench sections with their items", async () => {
     getMyWorkbenchViewMock.mockResolvedValueOnce(
       makeWorkbenchResponse({
         todos: [
           makeWorkItemSummary({
             id: "01ARZ3NDEKTSV4RRFFQ69G5F01",
             title: "Todo item one",
+          }),
+        ],
+        assignedTasks: [
+          makeWorkItemSummary({
+            id: "01ARZ3NDEKTSV4RRFFQ69G5F11",
+            title: "Assigned task item",
+          }),
+        ],
+        assignedBugs: [
+          makeWorkItemSummary({
+            id: "01ARZ3NDEKTSV4RRFFQ69G5F12",
+            title: "Assigned bug item",
+            type: "BUG",
           }),
         ],
         dueSoon: [
@@ -298,6 +335,12 @@ describe("MyWorkbench", () => {
             }),
           ),
         ],
+        pendingConfirm: [
+          makeWorkItemSummary({
+            id: "01ARZ3NDEKTSV4RRFFQ69G5F13",
+            title: "Pending confirm item",
+          }),
+        ],
         blocked: [
           makeWorkItemSummary({
             id: "01ARZ3NDEKTSV4RRFFQ69G5F04",
@@ -310,13 +353,25 @@ describe("MyWorkbench", () => {
     render(<MyWorkbench />);
 
     expect(await screen.findByText("Todo item one")).toBeInTheDocument();
+    expect(screen.getByText("Assigned task item")).toBeInTheDocument();
+    expect(screen.getByText("Assigned bug item")).toBeInTheDocument();
     expect(screen.getByText("Due soon item")).toBeInTheDocument();
     expect(screen.getByText("Action todo item")).toBeInTheDocument();
+    expect(screen.getByText("Pending confirm item")).toBeInTheDocument();
     expect(screen.getByText("Blocked item")).toBeInTheDocument();
 
     // Section titles rendered.
     expect(screen.getByText("workbench.sections.todo")).toBeInTheDocument();
+    expect(
+      screen.getByText("workbench.sections.assignedTasks"),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText("workbench.sections.assignedBugs"),
+    ).toBeInTheDocument();
     expect(screen.getByText("workbench.sections.actions")).toBeInTheDocument();
+    expect(
+      screen.getByText("workbench.sections.pendingConfirm"),
+    ).toBeInTheDocument();
     expect(screen.getByText("workbench.sections.dueSoon")).toBeInTheDocument();
     expect(screen.getByText("workbench.sections.blocked")).toBeInTheDocument();
   });
@@ -393,6 +448,43 @@ describe("MyWorkbench", () => {
     expect(
       await screen.findByText("workbench.empty.blocked"),
     ).toBeInTheDocument();
+  });
+
+  it("records direct workbench opens and refetches after detail changes", async () => {
+    getMyWorkbenchViewMock
+      .mockResolvedValueOnce(
+        makeWorkbenchResponse({
+          todos: [
+            makeWorkItemSummary({
+              id: "01ARZ3NDEKTSV4RRFFQ69G5FRC",
+              title: "Remember workbench item",
+            }),
+          ],
+        }),
+      )
+      .mockResolvedValueOnce(makeWorkbenchResponse());
+
+    render(<MyWorkbench />);
+
+    fireEvent.click(await screen.findByText("Remember workbench item"));
+
+    const stored = JSON.parse(
+      window.localStorage.getItem(
+        createRecentStorageKey({
+          organizationId: "ORG_01",
+          spaceId: "SPC_01",
+        }),
+      ) ?? "[]",
+    ) as Array<{ href: string; title: string; type: string }>;
+    expect(stored[0]).toMatchObject({
+      href: "/work-items",
+      title: "Remember workbench item",
+      type: "TASK",
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "detail changed" }));
+
+    await waitFor(() => expect(getMyWorkbenchViewMock).toHaveBeenCalledTimes(2));
   });
 
   it("renders recent activities in the side panel", async () => {

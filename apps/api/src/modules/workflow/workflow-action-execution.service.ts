@@ -10,6 +10,10 @@ import type {
 
 import { ApiException } from "../../http/api-exception";
 import { toWorkItemDetail } from "../workitem/workitem.mappers";
+import {
+  canReadAllSpaceWorkItems,
+  isTesterVisibleWorkItem,
+} from "../workitem/workitem-visibility";
 import type {
   CreateWorkflowActionAuditLogInput,
   ExecutableWorkflowAction,
@@ -27,12 +31,6 @@ import {
 const ULID_PATTERN = /^[0-9A-HJKMNP-TV-Z]{26}$/u;
 const BLOCK_ACTION_CODES = new Set(["MARK_BLOCKED"]);
 const UNBLOCK_ACTION_CODES = new Set(["RESOLVE_BLOCKED"]);
-const READ_ALL_WORK_ITEM_ROLES = new Set([
-  "SPACE_ADMIN",
-  "PM",
-  "TESTER",
-  "VIEWER",
-]);
 const BUG_FIX_NOTE_KEYS = new Set(["fixNote", "fixSummary"]);
 const BUG_REGRESSION_RESULT_KEYS = new Set([
   "regressionResult",
@@ -391,8 +389,8 @@ async function validateWorkItemVisibility(
   access: WorkflowActionActorSpaceAccess,
 ) {
   if (
-    READ_ALL_WORK_ITEM_ROLES.has(access.role) ||
-    (access.role === "TESTER" && workItem.type === "BUG")
+    canReadAllSpaceWorkItems(access.role) ||
+    (access.role === "TESTER" && isTesterVisibleWorkItem(workItem))
   ) {
     return;
   }

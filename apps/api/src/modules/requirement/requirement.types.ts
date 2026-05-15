@@ -6,6 +6,11 @@ import type {
   SaveRequirementRequest,
 } from "@project-delivery/shared";
 
+export type RequirementListVisibility =
+  | "ALL"
+  | "NON_DRAFT_OR_PARTICIPANT_DRAFT"
+  | "PARTICIPANT";
+
 export type RequirementListInput = {
   actorUserId: string;
   includeDrafts?: boolean;
@@ -16,6 +21,7 @@ export type RequirementListInput = {
   sortOrder?: "asc" | "desc";
   status?: RequirementStatus;
   versionId?: string;
+  visibility: RequirementListVisibility;
 };
 
 export type RequirementListResult = PageResult<Requirement>;

@@ -25,6 +25,7 @@ import { useSpaceMembers, useVersions } from "../../lib/v2/lookups";
 import type { WorkItemViewModel } from "../../lib/v2/work-item-view-model";
 import { getMyWorkbenchView } from "../../lib/view-service";
 import { useSession } from "../providers/session-provider";
+import { recordRecentOpen } from "../shell/recent-opens";
 
 import { Avatar, AvatarFallback } from "../ui/avatar";
 import { Badge } from "../ui/badge";
@@ -43,6 +44,7 @@ const priorityDotColor: Record<WorkItemViewModel["priority"], string> = {
 
 export function MyWorkbench() {
   const t = useTranslations("workbench");
+  const tStatusCategory = useTranslations("workItems.statusCategory");
   const tRoot = useTranslations();
   const locale = useLocale();
   const { session, currentSpace } = useSession();
@@ -119,6 +121,16 @@ export function MyWorkbench() {
   }, [organizationId, spaceId]);
 
   const openItem = (item: WorkItemViewModel) => {
+    recordRecentOpen(
+      {
+        id: item.id,
+        type: item.type,
+        code: item.code,
+        title: item.title,
+        href: item.type === "BUG" ? "/bugs" : "/work-items",
+      },
+      { organizationId, spaceId },
+    );
     setActiveItem(item);
     setSheetOpen(true);
   };
@@ -128,38 +140,69 @@ export function MyWorkbench() {
   const todoItems = useMemo(
     () =>
       (view?.sections.myTodos.items.items ?? []).map(
-        toMockWorkItem(locale, { getMember, getVersion }),
+        toMockWorkItem(locale, { getMember, getVersion }, tStatusCategory),
       ),
-    [view, locale, getMember, getVersion],
+    [view, locale, getMember, getVersion, tStatusCategory],
+  );
+  const assignedTaskItems = useMemo(
+    () =>
+      (view?.sections.assignedTasks.items.items ?? []).map(
+        toMockWorkItem(locale, { getMember, getVersion }, tStatusCategory),
+      ),
+    [view, locale, getMember, getVersion, tStatusCategory],
+  );
+  const assignedBugItems = useMemo(
+    () =>
+      (view?.sections.assignedBugs.items.items ?? []).map(
+        toMockWorkItem(locale, { getMember, getVersion }, tStatusCategory),
+      ),
+    [view, locale, getMember, getVersion, tStatusCategory],
   );
   const actionItems = useMemo(() => {
-    const toWorkItem = toMockWorkItem(locale, { getMember, getVersion });
+    const toWorkItem = toMockWorkItem(
+      locale,
+      { getMember, getVersion },
+      tStatusCategory,
+    );
 
     return (view?.sections.actionTodos.items.items ?? []).map((todo) => ({
       ...toWorkItem(todo.workItem),
       contextLabel: todo.availableAction.name,
       listKey: todo.id,
     }));
-  }, [view, locale, getMember, getVersion]);
+  }, [view, locale, getMember, getVersion, tStatusCategory]);
+  const pendingConfirmItems = useMemo(
+    () =>
+      (view?.sections.pendingConfirm.items.items ?? []).map(
+        toMockWorkItem(locale, { getMember, getVersion }, tStatusCategory),
+      ),
+    [view, locale, getMember, getVersion, tStatusCategory],
+  );
   const dueSoonItems = useMemo(
     () =>
       (view?.sections.dueSoon.items.items ?? []).map(
-        toMockWorkItem(locale, { getMember, getVersion }),
+        toMockWorkItem(locale, { getMember, getVersion }, tStatusCategory),
       ),
-    [view, locale, getMember, getVersion],
+    [view, locale, getMember, getVersion, tStatusCategory],
   );
   const blockedItems = useMemo(
     () =>
       (view?.sections.blocked?.items.items ?? []).map(
-        toMockWorkItem(locale, { getMember, getVersion }),
+        toMockWorkItem(locale, { getMember, getVersion }, tStatusCategory),
       ),
-    [view, locale, getMember, getVersion],
+    [view, locale, getMember, getVersion, tStatusCategory],
   );
   const recentEvents = view?.sections.recentActivities.items.items ?? [];
 
   const stats = view?.stats;
   const todoCount = view?.sections.myTodos.total ?? todoItems.length;
+  const assignedTaskCount =
+    view?.sections.assignedTasks.total ?? assignedTaskItems.length;
+  const assignedBugCount =
+    view?.sections.assignedBugs.total ?? assignedBugItems.length;
   const actionCount = view?.sections.actionTodos.total ?? actionItems.length;
+  const pendingConfirmSectionCount =
+    view?.sections.pendingConfirm.total ?? pendingConfirmItems.length;
   const dueSoonCount = view?.sections.dueSoon.total ?? dueSoonItems.length;
   const blockedSectionCount =
     view?.sections.blocked?.total ?? blockedItems.length;
@@ -263,7 +306,7 @@ export function MyWorkbench() {
       </div>
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1fr_320px]">
-        <div className="flex flex-col gap-6">
+        <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
           <Section
             title={t("sections.todo")}
             count={todoCount}
@@ -274,12 +317,39 @@ export function MyWorkbench() {
           </Section>
 
           <Section
+            title={t("sections.assignedTasks")}
+            count={assignedTaskCount}
+            empty={t("empty.assignedTasks")}
+            isLoading={isLoading && !view}
+          >
+            <ItemList items={assignedTaskItems} onSelect={openItem} />
+          </Section>
+
+          <Section
+            title={t("sections.assignedBugs")}
+            count={assignedBugCount}
+            empty={t("empty.assignedBugs")}
+            isLoading={isLoading && !view}
+          >
+            <ItemList items={assignedBugItems} onSelect={openItem} />
+          </Section>
+
+          <Section
             title={t("sections.actions")}
             count={actionCount}
             empty={t("empty.actions")}
             isLoading={isLoading && !view}
           >
             <ItemList items={actionItems} onSelect={openItem} />
+          </Section>
+
+          <Section
+            title={t("sections.pendingConfirm")}
+            count={pendingConfirmSectionCount}
+            empty={t("empty.pendingConfirm")}
+            isLoading={isLoading && !view}
+          >
+            <ItemList items={pendingConfirmItems} onSelect={openItem} />
           </Section>
 
           <Section
@@ -344,7 +414,7 @@ export function MyWorkbench() {
                       )}
                     </div>
                     <div className="mt-0.5 text-[10px] text-muted-foreground">
-                      {formatTimeAgo(event.createdAt, locale)}
+                      {formatTimeAgo(event.createdAt, locale, t("time.justNow"))}
                     </div>
                   </div>
                 </li>
@@ -358,6 +428,9 @@ export function MyWorkbench() {
         item={activeItem}
         open={sheetOpen}
         onOpenChange={setSheetOpen}
+        onChanged={() => {
+          void fetchView();
+        }}
       />
     </div>
   );
@@ -524,6 +597,7 @@ export type WorkbenchLookupHelpers = {
 export function toMockWorkItem(
   locale: string,
   lookups?: WorkbenchLookupHelpers,
+  statusLabel?: (category: StatusCategory) => string,
 ) {
   const labels = locale.startsWith("zh") ? STATUS_LABEL_ZH : STATUS_LABEL_EN;
 
@@ -564,7 +638,10 @@ export function toMockWorkItem(
       type: item.type,
       title: item.title,
       statusCategory: item.currentStatus.statusCategory,
-      statusLabel: labels[item.currentStatus.statusCategory] ?? item.currentStatus.stateName,
+      statusLabel:
+        statusLabel?.(item.currentStatus.statusCategory) ??
+        labels[item.currentStatus.statusCategory] ??
+        item.currentStatus.stateName,
       priority: item.priority,
       assignee: {
         name: assigneeName,
@@ -590,7 +667,7 @@ function initialOf(value: string) {
   return trimmed.slice(0, 1).toUpperCase();
 }
 
-function formatTimeAgo(value: string, locale: string) {
+function formatTimeAgo(value: string, locale: string, justNow?: string) {
   const date = new Date(value);
 
   if (Number.isNaN(date.getTime())) {
@@ -601,7 +678,7 @@ function formatTimeAgo(value: string, locale: string) {
   const diffMin = Math.round(diffMs / 60_000);
 
   if (Math.abs(diffMin) < 1) {
-    return locale.startsWith("zh") ? "刚刚" : "just now";
+    return justNow ?? (locale.startsWith("zh") ? "刚刚" : "just now");
   }
 
   const rtf = new Intl.RelativeTimeFormat(locale, { numeric: "auto" });

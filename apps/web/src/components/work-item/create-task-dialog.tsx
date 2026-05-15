@@ -1,10 +1,18 @@
 "use client";
 
-import type { Priority, SpaceMemberWithUser, Version } from "@project-delivery/shared";
+import type {
+  IntakeItem,
+  Priority,
+  Requirement,
+  SpaceMemberWithUser,
+  Version,
+} from "@project-delivery/shared";
 import { useTranslations } from "next-intl";
 import { useEffect, useState } from "react";
 
 import { getApiErrorMessageKey } from "../../lib/api-error-messages";
+import { listIntakeItems } from "../../lib/intake-service";
+import { listRequirements } from "../../lib/requirement-service";
 import { listSpaceMembers } from "../../lib/space-service";
 import { listVersions } from "../../lib/version-service";
 import { createWorkItem } from "../../lib/work-item-service";
@@ -46,6 +54,8 @@ export function CreateTaskDialog({
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [versionId, setVersionId] = useState(initialVersionId ?? "");
+  const [requirementId, setRequirementId] = useState("");
+  const [intakeItemId, setIntakeItemId] = useState("");
   const [assigneeId, setAssigneeId] = useState("");
   const [priority, setPriority] = useState<Priority>("MEDIUM");
   const [dueDate, setDueDate] = useState("");
@@ -54,6 +64,8 @@ export function CreateTaskDialog({
   const [errorKey, setErrorKey] = useState<string | null>(null);
 
   const [versions, setVersions] = useState<Version[]>([]);
+  const [requirements, setRequirements] = useState<Requirement[]>([]);
+  const [intakeItems, setIntakeItems] = useState<IntakeItem[]>([]);
   const [members, setMembers] = useState<SpaceMemberWithUser[]>([]);
 
   useEffect(() => {
@@ -71,14 +83,19 @@ export function CreateTaskDialog({
 
     void (async () => {
       try {
-        const [versionPage, memberPage] = await Promise.all([
-          listVersions({ spaceId, page: 1, pageSize: 100 }),
-          listSpaceMembers(spaceId),
-        ]);
+        const [versionPage, requirementPage, intakePage, memberPage] =
+          await Promise.all([
+            listVersions({ spaceId, page: 1, pageSize: 100 }),
+            listRequirements({ spaceId, page: 1, pageSize: 100 }),
+            listIntakeItems({ spaceId, page: 1, pageSize: 100 }),
+            listSpaceMembers(spaceId),
+          ]);
         if (cancelled) {
           return;
         }
         setVersions(versionPage.items);
+        setRequirements(requirementPage.items);
+        setIntakeItems(intakePage.items);
         setMembers(memberPage.items);
       } catch {
         // swallow option load errors; dropdowns simply stay empty
@@ -94,6 +111,8 @@ export function CreateTaskDialog({
     setTitle("");
     setDescription("");
     setVersionId(initialVersionId ?? "");
+    setRequirementId("");
+    setIntakeItemId("");
     setAssigneeId("");
     setPriority("MEDIUM");
     setDueDate("");
@@ -128,6 +147,8 @@ export function CreateTaskDialog({
           description: description.trim() || undefined,
           priority,
           versionId: versionId || undefined,
+          requirementId: requirementId || undefined,
+          intakeItemId: intakeItemId || undefined,
           assigneeId: assigneeId || undefined,
           dueDate: dueDate ? new Date(dueDate).toISOString() : undefined,
         },
@@ -143,7 +164,10 @@ export function CreateTaskDialog({
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent data-testid="create-task-dialog">
+      <DialogContent
+        data-testid="create-task-dialog"
+        className="max-h-[90vh] overflow-y-auto"
+      >
         <DialogHeader>
           <DialogTitle>{t("create.title")}</DialogTitle>
           <DialogDescription>{t("create.description")}</DialogDescription>
@@ -208,6 +232,49 @@ export function CreateTaskDialog({
                 {versions.map((version) => (
                   <option key={version.id} value={version.id}>
                     {version.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="create-task-requirement">
+                {tRoot("workItems.form.requirement")}
+              </Label>
+              <select
+                id="create-task-requirement"
+                data-testid="create-task-requirement-select"
+                value={requirementId}
+                onChange={(event) => setRequirementId(event.target.value)}
+                className="h-8 w-full rounded-md border border-input bg-background px-2 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              >
+                <option value="">
+                  {tRoot("workItems.form.noRequirement")}
+                </option>
+                {requirements.map((requirement) => (
+                  <option key={requirement.id} value={requirement.id}>
+                    {requirement.title ||
+                      tRoot("intake.dialog.fields.untitledRequirement")}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="create-task-intake">
+                {tRoot("workItems.trace.intakeItem")}
+              </Label>
+              <select
+                id="create-task-intake"
+                data-testid="create-task-intake-select"
+                value={intakeItemId}
+                onChange={(event) => setIntakeItemId(event.target.value)}
+                className="h-8 w-full rounded-md border border-input bg-background px-2 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              >
+                <option value="">
+                  {tRoot("workItems.trace.noIntakeItem")}
+                </option>
+                {intakeItems.map((intakeItem) => (
+                  <option key={intakeItem.id} value={intakeItem.id}>
+                    {intakeItem.title}
                   </option>
                 ))}
               </select>

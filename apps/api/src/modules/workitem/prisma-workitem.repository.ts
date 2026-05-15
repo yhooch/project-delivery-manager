@@ -11,6 +11,7 @@ import type {
   UpdateWorkItemInput,
   WorkItemListInput,
 } from "./workitem.types";
+import { testerVisibleWorkItemWhere } from "./workitem-visibility";
 
 @Injectable()
 export class PrismaWorkItemRepository implements WorkItemRepository {
@@ -40,6 +41,26 @@ export class PrismaWorkItemRepository implements WorkItemRepository {
       where.id = {
         in: visibleIds,
       };
+    }
+
+    if (input.visibility === "TESTER") {
+      const visibleIds = await this.listParticipantWorkItemIds(
+        spaceId,
+        input.actorUserId,
+      );
+      const visibilityOr: Prisma.WorkItemWhereInput[] = [
+        testerVisibleWorkItemWhere(),
+      ];
+
+      if (visibleIds.length > 0) {
+        visibilityOr.push({
+          id: {
+            in: visibleIds,
+          },
+        });
+      }
+
+      where.AND = [...toArray(where.AND), { OR: visibilityOr }];
     }
 
     const [items, total] = await this.prisma.client.$transaction([
@@ -190,12 +211,6 @@ export class PrismaWorkItemRepository implements WorkItemRepository {
       if (input.dueDate !== undefined) {
         data.dueDate = input.dueDate;
       }
-      if (input.blockedReason !== undefined) {
-        data.blockedReason = input.blockedReason;
-      }
-      if (input.blockedAt !== undefined) {
-        data.blockedAt = input.blockedAt;
-      }
 
       const result = await tx.workItem.updateMany({
         data,
@@ -295,6 +310,22 @@ export class PrismaWorkItemRepository implements WorkItemRepository {
     });
 
     return Boolean(participant);
+  }
+
+  async isTesterVisible(spaceId: string, workItemId: string) {
+    const workItem = await this.prisma.client.workItem.findFirst({
+      select: {
+        id: true,
+      },
+      where: {
+        deletedAt: null,
+        id: workItemId,
+        spaceId,
+        ...testerVisibleWorkItemWhere(),
+      },
+    });
+
+    return Boolean(workItem);
   }
 
   async findVersionInSpace(spaceId: string, versionId: string) {
@@ -586,4 +617,12 @@ function hasOwn(target: Record<string, unknown>, key: string) {
 
 function unique(values: readonly string[]) {
   return Array.from(new Set(values.filter(Boolean)));
+}
+
+function toArray<T>(value: T | T[] | undefined): T[] {
+  if (!value) {
+    return [];
+  }
+
+  return Array.isArray(value) ? value : [value];
 }

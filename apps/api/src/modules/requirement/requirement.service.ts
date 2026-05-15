@@ -26,12 +26,21 @@ import {
   REQUIREMENT_REPOSITORY,
   type RequirementRepository,
 } from "./requirement.repository";
-import type { RequirementListInput } from "./requirement.types";
+import type {
+  RequirementListInput,
+  RequirementListVisibility,
+} from "./requirement.types";
 
 const REQUIREMENT_WRITER_ROLES = new Set<SpaceRole>([
   "SPACE_ADMIN",
   "PM",
   "REQUIREMENT",
+]);
+const REQUIREMENT_NON_DRAFT_READ_ALL_ROLES = new Set<SpaceRole>([
+  "SPACE_ADMIN",
+  "PM",
+  "REQUIREMENT",
+  "VIEWER",
 ]);
 
 @Injectable()
@@ -50,7 +59,7 @@ export class RequirementService {
   async list(
     actorUserId: string,
     spaceId: string,
-    input: Omit<RequirementListInput, "actorUserId">,
+    input: Omit<RequirementListInput, "actorUserId" | "visibility">,
   ): Promise<PageResult<Requirement>> {
     const access = await this.requireSpaceAccess(actorUserId, spaceId);
 
@@ -68,6 +77,7 @@ export class RequirementService {
     return this.requirements.listBySpaceId(spaceId, {
       ...input,
       actorUserId,
+      visibility: resolveRequirementListVisibility(access.role),
     });
   }
 
@@ -95,10 +105,7 @@ export class RequirementService {
     const requirement = await this.requireExistingRequirement(requirementId);
     const access = await this.requireSpaceAccess(actorUserId, requirement.spaceId);
 
-    if (
-      requirement.status === "DRAFT" &&
-      !REQUIREMENT_WRITER_ROLES.has(access.role)
-    ) {
+    if (!(await this.canReadRequirement(actorUserId, requirement, access.role))) {
       throwRequirementNotFound();
     }
 
@@ -186,6 +193,29 @@ export class RequirementService {
     return access;
   }
 
+  private async canReadRequirement(
+    actorUserId: string,
+    requirement: Requirement,
+    role: SpaceRole,
+  ) {
+    if (REQUIREMENT_WRITER_ROLES.has(role)) {
+      return true;
+    }
+
+    if (
+      requirement.status !== "DRAFT" &&
+      REQUIREMENT_NON_DRAFT_READ_ALL_ROLES.has(role)
+    ) {
+      return true;
+    }
+
+    return this.requirements.isParticipant(
+      requirement.spaceId,
+      requirement.id,
+      actorUserId,
+    );
+  }
+
   private async requireVersionInSpace(spaceId: string, versionId: string) {
     const version = await this.versions.findById(versionId);
 
@@ -252,6 +282,20 @@ function isArchiveRequest(
   input: UpdateRequirementRequest,
 ): input is Extract<UpdateRequirementRequest, { status: "ARCHIVED" }> {
   return "status" in input && input.status === "ARCHIVED";
+}
+
+function resolveRequirementListVisibility(
+  role: SpaceRole,
+): RequirementListVisibility {
+  if (REQUIREMENT_WRITER_ROLES.has(role)) {
+    return "ALL";
+  }
+
+  if (REQUIREMENT_NON_DRAFT_READ_ALL_ROLES.has(role)) {
+    return "NON_DRAFT_OR_PARTICIPANT_DRAFT";
+  }
+
+  return "PARTICIPANT";
 }
 
 function throwSpaceAccessDenied(): never {

@@ -12,6 +12,7 @@ export type RecentEntry = {
 };
 
 export const RECENT_STORAGE_KEY = "pdm:command-palette:recent";
+export const RECENT_CHANGED_EVENT = "pdm:command-palette:recent-changed";
 
 export type RecentScope = {
   organizationId?: string;
@@ -109,6 +110,23 @@ export function writeRecent(
   } catch {
     return [];
   }
+}
+
+export function recordRecentOpen(
+  entry: RecentEntry,
+  scope?: RecentScope,
+): RecentEntry[] {
+  const next = writeRecent(entry, scope);
+
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(
+      new CustomEvent(RECENT_CHANGED_EVENT, {
+        detail: { storageKey: createRecentStorageKey(scope) },
+      }),
+    );
+  }
+
+  return next;
 }
 
 /**

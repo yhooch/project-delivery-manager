@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { EmptyObjectSchema } from "./common.ts";
+import { EmptyObjectSchema, UlidSchema } from "./common.ts";
 import { PasswordSchema, UserPreferencesSchema, UsernameSchema } from "./user.ts";
 import { OrganizationRoleSchema, RecordStatusSchema, SpaceRoleSchema } from "./enums.ts";
 
@@ -24,6 +24,15 @@ export type LoginRequest = z.infer<typeof LoginRequestSchema>;
 
 export const LogoutRequestSchema = EmptyObjectSchema;
 export type LogoutRequest = z.infer<typeof LogoutRequestSchema>;
+
+export const GetAuthSessionQuerySchema = z
+  .object({
+    recentOrganizationId: UlidSchema.optional(),
+    recentSpaceId: UlidSchema.optional(),
+  })
+  .strict();
+
+export type GetAuthSessionQuery = z.infer<typeof GetAuthSessionQuerySchema>;
 
 export const ChangePasswordRequestSchema = z
   .object({

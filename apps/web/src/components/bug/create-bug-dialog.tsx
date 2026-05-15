@@ -3,16 +3,20 @@
 import type {
   BugSeverity,
   Priority,
+  Requirement,
   SpaceMemberWithUser,
   Version,
+  WorkItem,
 } from "@project-delivery/shared";
 import { useTranslations } from "next-intl";
 import { useEffect, useState } from "react";
 
 import { getApiErrorMessageKey } from "../../lib/api-error-messages";
 import { createBug } from "../../lib/bug-service";
+import { listRequirements } from "../../lib/requirement-service";
 import { listSpaceMembers } from "../../lib/space-service";
 import { listVersions } from "../../lib/version-service";
+import { listWorkItems } from "../../lib/work-item-service";
 
 import {
   Dialog,
@@ -56,8 +60,12 @@ export function CreateBugDialog({
 
   const [title, setTitle] = useState("");
   const [steps, setSteps] = useState("");
+  const [expectedResult, setExpectedResult] = useState("");
+  const [actualResult, setActualResult] = useState("");
   const [severity, setSeverity] = useState<BugSeverity>("MAJOR");
   const [versionId, setVersionId] = useState("");
+  const [requirementId, setRequirementId] = useState("");
+  const [relatedTaskId, setRelatedTaskId] = useState("");
   const [assigneeId, setAssigneeId] = useState("");
   const [priority, setPriority] = useState<Priority>("MEDIUM");
   const [dueDate, setDueDate] = useState("");
@@ -66,6 +74,8 @@ export function CreateBugDialog({
   const [errorKey, setErrorKey] = useState<string | null>(null);
 
   const [versions, setVersions] = useState<Version[]>([]);
+  const [requirements, setRequirements] = useState<Requirement[]>([]);
+  const [tasks, setTasks] = useState<WorkItem[]>([]);
   const [members, setMembers] = useState<SpaceMemberWithUser[]>([]);
 
   useEffect(() => {
@@ -77,14 +87,19 @@ export function CreateBugDialog({
 
     void (async () => {
       try {
-        const [versionPage, memberPage] = await Promise.all([
-          listVersions({ spaceId, page: 1, pageSize: 100 }),
-          listSpaceMembers(spaceId),
-        ]);
+        const [versionPage, requirementPage, taskPage, memberPage] =
+          await Promise.all([
+            listVersions({ spaceId, page: 1, pageSize: 100 }),
+            listRequirements({ spaceId, page: 1, pageSize: 100 }),
+            listWorkItems({ spaceId, page: 1, pageSize: 100, type: "TASK" }),
+            listSpaceMembers(spaceId),
+          ]);
         if (cancelled) {
           return;
         }
         setVersions(versionPage.items);
+        setRequirements(requirementPage.items);
+        setTasks(taskPage.items);
         setMembers(memberPage.items);
       } catch {
         // swallow option load errors
@@ -99,8 +114,12 @@ export function CreateBugDialog({
   function reset() {
     setTitle("");
     setSteps("");
+    setExpectedResult("");
+    setActualResult("");
     setSeverity("MAJOR");
     setVersionId("");
+    setRequirementId("");
+    setRelatedTaskId("");
     setAssigneeId("");
     setPriority("MEDIUM");
     setDueDate("");
@@ -133,9 +152,13 @@ export function CreateBugDialog({
         {
           title: trimmed,
           stepsToReproduce: steps.trim() || undefined,
+          expectedResult: expectedResult.trim() || undefined,
+          actualResult: actualResult.trim() || undefined,
           severity,
           priority,
           versionId: versionId || undefined,
+          requirementId: requirementId || undefined,
+          relatedTaskId: relatedTaskId || undefined,
           assigneeId: assigneeId || undefined,
           dueDate: dueDate ? new Date(dueDate).toISOString() : undefined,
         },
@@ -151,7 +174,10 @@ export function CreateBugDialog({
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent data-testid="create-bug-dialog">
+      <DialogContent
+        data-testid="create-bug-dialog"
+        className="max-h-[90vh] overflow-y-auto"
+      >
         <DialogHeader>
           <DialogTitle>{t("create.title")}</DialogTitle>
           <DialogDescription>{t("create.description")}</DialogDescription>
@@ -208,6 +234,35 @@ export function CreateBugDialog({
 
           <div className="grid grid-cols-2 gap-3">
             <div className="flex flex-col gap-1.5">
+              <Label htmlFor="create-bug-expected">
+                {tRoot("bugs.form.expectedResult")}
+              </Label>
+              <Textarea
+                id="create-bug-expected"
+                data-testid="create-bug-expected-input"
+                value={expectedResult}
+                onChange={(event) => setExpectedResult(event.target.value)}
+                maxLength={8000}
+                rows={3}
+              />
+            </div>
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="create-bug-actual">
+                {tRoot("bugs.form.actualResult")}
+              </Label>
+              <Textarea
+                id="create-bug-actual"
+                data-testid="create-bug-actual-input"
+                value={actualResult}
+                onChange={(event) => setActualResult(event.target.value)}
+                maxLength={8000}
+                rows={3}
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div className="flex flex-col gap-1.5">
               <Label htmlFor="create-bug-severity">
                 {t("fields.severity")}
               </Label>
@@ -260,6 +315,45 @@ export function CreateBugDialog({
                 {versions.map((version) => (
                   <option key={version.id} value={version.id}>
                     {version.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="create-bug-requirement">
+                {tRoot("bugs.form.requirement")}
+              </Label>
+              <select
+                id="create-bug-requirement"
+                data-testid="create-bug-requirement-select"
+                value={requirementId}
+                onChange={(event) => setRequirementId(event.target.value)}
+                className="h-8 w-full rounded-md border border-input bg-background px-2 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              >
+                <option value="">{tRoot("bugs.form.noRequirement")}</option>
+                {requirements.map((requirement) => (
+                  <option key={requirement.id} value={requirement.id}>
+                    {requirement.title ||
+                      tRoot("intake.dialog.fields.untitledRequirement")}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="create-bug-related-task">
+                {tRoot("bugs.form.relatedTask")}
+              </Label>
+              <select
+                id="create-bug-related-task"
+                data-testid="create-bug-related-task-select"
+                value={relatedTaskId}
+                onChange={(event) => setRelatedTaskId(event.target.value)}
+                className="h-8 w-full rounded-md border border-input bg-background px-2 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              >
+                <option value="">{tRoot("bugs.form.noRelatedTask")}</option>
+                {tasks.map((task) => (
+                  <option key={task.id} value={task.id}>
+                    {task.title}
                   </option>
                 ))}
               </select>

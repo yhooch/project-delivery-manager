@@ -18,6 +18,7 @@ import {
 import {
   ChangePasswordRequestSchema,
   ChangePasswordResponseSchema,
+  GetAuthSessionQuerySchema,
   GetAuthSessionResponseSchema,
   LoginRequestSchema,
   LoginResponseSchema,
@@ -295,7 +296,7 @@ export const apiContracts = [
     tags: ["auth"],
     summary: "Get app shell session",
     pathSchema: EmptyObjectSchema,
-    querySchema: EmptyObjectSchema,
+    querySchema: GetAuthSessionQuerySchema,
     requestSchema: EmptyObjectSchema,
     responseSchema: GetAuthSessionResponseSchema,
     errorCodes: ["UNAUTHORIZED"],

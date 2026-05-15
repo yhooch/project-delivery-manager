@@ -12,6 +12,7 @@ import {
   CreateWorkflowVersionRequestSchema,
   CreateWorkItemRequestSchema,
   ExecuteActionRequestSchema,
+  GetAuthSessionQuerySchema,
   GetMyWorkbenchViewResponseSchema,
   GetSpaceOverviewViewResponseSchema,
   GetWorkItemResponseSchema,
@@ -24,6 +25,7 @@ import {
   TimelineQuerySchema,
   UpdateBugRequestSchema,
   UpdateIntakeItemRequestSchema,
+  UpdateWorkItemRequestSchema,
   UpdateRequirementRequestSchema,
   VersionSchema,
   ViewExceptionTypeSchema,
@@ -192,6 +194,20 @@ describe("shared contracts", () => {
         availableActions: [],
       },
     });
+  });
+
+  it("keeps work item lifecycle fields out of ordinary PATCH bodies", () => {
+    expect(() =>
+      UpdateWorkItemRequestSchema.parse({
+        blockedReason: "Waiting for dependency",
+      }),
+    ).toThrow();
+
+    expect(() =>
+      UpdateBugRequestSchema.parse({
+        blockedReason: "Waiting for dependency",
+      }),
+    ).toThrow();
   });
 
   it("covers M3 bug detail fields and related task filtering", () => {
@@ -619,6 +635,16 @@ describe("shared contracts", () => {
   });
 
   it("accepts the no-organization app session empty state", () => {
+    expect(
+      GetAuthSessionQuerySchema.parse({
+        recentOrganizationId: "01BRZ3NDEKTSV4RRFFQ69G5FAA",
+        recentSpaceId: "01DRZ3NDEKTSV4RRFFQ69G5FAC",
+      }),
+    ).toEqual({
+      recentOrganizationId: "01BRZ3NDEKTSV4RRFFQ69G5FAA",
+      recentSpaceId: "01DRZ3NDEKTSV4RRFFQ69G5FAC",
+    });
+
     const session = AppSessionSchema.parse({
       user: {
         id: "01ARZ3NDEKTSV4RRFFQ69G5FAV",
@@ -786,6 +812,12 @@ describe("shared contracts", () => {
     expect(operationCount).toBe(apiContracts.length);
     expect(document.paths["/auth/session"]?.get?.operationId).toBe(
       "getAuthSession",
+    );
+    expect(document.paths["/auth/session"]?.get?.parameters).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ name: "recentOrganizationId", in: "query" }),
+        expect.objectContaining({ name: "recentSpaceId", in: "query" }),
+      ]),
     );
     expect(
       document.paths["/intake-items/{id}/convert-to-work-items"]?.post

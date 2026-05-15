@@ -29,6 +29,7 @@ import {
 } from "../../lib/intake-service";
 import { cn } from "../../lib/utils";
 import { useSession } from "../providers/session-provider";
+import { recordRecentOpen } from "../shell/recent-opens";
 
 import { Avatar, AvatarFallback } from "../ui/avatar";
 import { Badge } from "../ui/badge";
@@ -78,6 +79,11 @@ export function IntakePage() {
   const tRoot = useTranslations();
   const { session, status: sessionStatus } = useSession();
   const spaceId = session?.defaultSpaceId;
+  const organizationId = session?.defaultOrganizationId;
+  const recentScope = useMemo(
+    () => ({ organizationId, spaceId }),
+    [organizationId, spaceId],
+  );
 
   const [items, setItems] = useState<IntakeItem[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -151,12 +157,39 @@ export function IntakePage() {
     [items, t],
   );
 
+  const openItem = useCallback(
+    (item: IntakeItem) => {
+      recordRecentOpen(
+        {
+          id: item.id,
+          type: "INTAKE",
+          code: formatItemCode(item.id),
+          title: item.title,
+          href: "/intake-items",
+        },
+        recentScope,
+      );
+      setActive(item);
+    },
+    [recentScope],
+  );
+
   useListKeyboardNav<IntakeItem>({
     items: filtered,
     activeId: active?.id,
     getId: (item) => item.id,
     onSelect: setActive,
-    onOpen: setActive,
+    onOpen: openItem,
+    onEdit: openItem,
+    onSubmit: (item) => {
+      if (item.status === "PENDING") {
+        void handleStatusAction("accept", item);
+      } else if (item.status === "ACCEPTED") {
+        setActive(item);
+        setConvertTarget(item);
+        setConvertOpen(true);
+      }
+    },
     onClose: () => {
       setActive(null);
       setActionErrorKey(null);
@@ -170,8 +203,11 @@ export function IntakePage() {
     }
   }
 
-  async function handleStatusAction(action: StatusActionKind) {
-    if (!active || !spaceId) {
+  async function handleStatusAction(
+    action: StatusActionKind,
+    target: IntakeItem | null = active,
+  ) {
+    if (!target || !spaceId) {
       return;
     }
 
@@ -185,15 +221,15 @@ export function IntakePage() {
         : action === "defer"
           ? "DEFERRED"
           : "REJECTED";
-    const optimistic: IntakeItem = { ...active, status: optimisticStatus };
+    const optimistic: IntakeItem = { ...target, status: optimisticStatus };
 
     setItems((current) =>
-      current.map((item) => (item.id === active.id ? optimistic : item)),
+      current.map((item) => (item.id === target.id ? optimistic : item)),
     );
     setActive(optimistic);
 
     try {
-      const context = { intakeItemId: active.id, spaceId };
+      const context = { intakeItemId: target.id, spaceId };
       const updated =
         action === "accept"
           ? await acceptIntakeItem(context)
@@ -208,7 +244,7 @@ export function IntakePage() {
       void loadItems();
     } catch (error) {
       setItems(original);
-      setActive((current) => (current?.id === active.id ? active : current));
+      setActive((current) => (current?.id === target.id ? target : current));
       setActionErrorKey(getApiErrorMessageKey(error));
     } finally {
       setActionInFlight(null);
@@ -279,7 +315,7 @@ export function IntakePage() {
           <li key={item.id} data-testid={`intake-row-${item.id}`}>
             <button
               type="button"
-              onClick={() => setActive(item)}
+              onClick={() => openItem(item)}
               className="flex w-full items-center gap-3 px-6 py-2.5 text-left transition-colors hover:bg-muted/40 cursor-pointer"
             >
               <span
@@ -458,7 +494,7 @@ export function IntakePage() {
                       variant="outline"
                       className="h-7 text-xs"
                       data-testid="intake-view-converted-tasks-button"
-                      onClick={openConvertDialog}
+                      disabled
                       type="button"
                     >
                       <CheckCircle2 className="h-3 w-3" />

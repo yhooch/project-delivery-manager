@@ -24,6 +24,7 @@ import { useSession } from "../providers/session-provider";
 import { EmptyState, ErrorState, ListSkeleton } from "../v2/states";
 import { PageHeader } from "../v2/page-header";
 import { WorkItemRow } from "../v2/work-item-row";
+import { recordRecentOpen } from "../shell/recent-opens";
 
 import { CreateTaskDialog } from "./create-task-dialog";
 import { TaskDetailSheet } from "./task-detail-sheet";
@@ -39,6 +40,10 @@ export function TasksPage() {
   const { currentSpace, status: sessionStatus } = useSession();
   const spaceId = currentSpace?.id;
   const organizationId = currentSpace?.organizationId;
+  const recentScope = useMemo(
+    () => ({ organizationId, spaceId }),
+    [organizationId, spaceId],
+  );
   const { getMember } = useSpaceMembers(spaceId, organizationId);
   const { getVersion } = useVersions(spaceId, organizationId);
 
@@ -117,17 +122,35 @@ export function TasksPage() {
     });
   }, [mockItems, query, statusFilter]);
 
-  const open = (item: WorkItemViewModel) => {
+  const open = useCallback(
+    (item: WorkItemViewModel) => {
+      recordRecentOpen(
+        {
+          id: item.id,
+          type: "TASK",
+          code: item.code,
+          title: item.title,
+          href: "/work-items",
+        },
+        recentScope,
+      );
+      setActiveItem(item);
+      setSheetOpen(true);
+    },
+    [recentScope],
+  );
+
+  const select = (item: WorkItemViewModel) => {
     setActiveItem(item);
-    setSheetOpen(true);
   };
 
   useListKeyboardNav<WorkItemViewModel>({
     items: filtered,
     activeId: activeItem?.id,
     getId: (item) => item.id,
-    onSelect: setActiveItem,
+    onSelect: select,
     onOpen: open,
+    onEdit: open,
     onClose: () => setSheetOpen(false),
   });
 
@@ -241,6 +264,9 @@ export function TasksPage() {
         item={activeItem}
         open={sheetOpen}
         onOpenChange={setSheetOpen}
+        onChanged={() => {
+          void fetchTasks();
+        }}
       />
 
       {spaceId && (

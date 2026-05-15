@@ -25,13 +25,7 @@ import {
 import { WorkflowActionExecutionService } from "../workflow/workflow-action-execution.service";
 import type { WorkItemLinkedUsers, WorkItemListInput } from "./workitem.types";
 import { toWorkItemDetail } from "./workitem.mappers";
-
-const SPACE_WORK_ITEM_READ_ALL_ROLES = new Set<SpaceRole>([
-  "SPACE_ADMIN",
-  "PM",
-  "TESTER",
-  "VIEWER",
-]);
+import { canReadAllSpaceWorkItems } from "./workitem-visibility";
 
 @Injectable()
 export class WorkItemService {
@@ -58,7 +52,7 @@ export class WorkItemService {
     return this.workItems.listBySpaceId(spaceId, {
       ...input,
       actorUserId,
-      visibility: canReadAllSpaceWorkItems(access.role) ? "SPACE" : "PARTICIPANT",
+      visibility: resolveWorkItemVisibility(access.role),
     });
   }
 
@@ -184,10 +178,8 @@ export class WorkItemService {
         })
       : [];
     const dueDate = parseOptionalDate(input.dueDate, "dueDate");
-    const blockedPatch = buildBlockedPatch(workItem, input);
     const timeline = buildTimelineDiff(workItem, {
       assigneeId: input.assigneeId,
-      blockedReason: blockedPatch.blockedReason,
       description: input.description,
       dueDate: dueDate?.toISOString(),
       priority: input.priority,
@@ -199,8 +191,6 @@ export class WorkItemService {
     const updated = await this.workItems.update({
       workItemId,
       assigneeId: input.assigneeId,
-      blockedAt: blockedPatch.blockedAt,
-      blockedReason: blockedPatch.blockedReason,
       description: input.description,
       dueDate,
       priority: input.priority,
@@ -229,6 +219,10 @@ export class WorkItemService {
 
     if (
       !canReadAllSpaceWorkItems(access.role) &&
+      !(
+        access.role === "TESTER" &&
+        (await this.workItems.isTesterVisible(workItem.spaceId, workItem.id))
+      ) &&
       !(await this.workItems.isParticipant(
         workItem.spaceId,
         workItem.id,
@@ -433,8 +427,16 @@ export class WorkItemService {
   }
 }
 
-function canReadAllSpaceWorkItems(role: SpaceRole) {
-  return SPACE_WORK_ITEM_READ_ALL_ROLES.has(role);
+function resolveWorkItemVisibility(role: SpaceRole): WorkItemListInput["visibility"] {
+  if (canReadAllSpaceWorkItems(role)) {
+    return "SPACE";
+  }
+
+  if (role === "TESTER") {
+    return "TESTER";
+  }
+
+  return "PARTICIPANT";
 }
 
 function parseOptionalDate(value: string | undefined, field: string) {
@@ -455,37 +457,10 @@ function parseOptionalDate(value: string | undefined, field: string) {
   return date;
 }
 
-function buildBlockedPatch(
-  existing: WorkItem,
-  input: UpdateWorkItemRequest,
-): {
-  blockedAt?: Date | null;
-  blockedReason?: string | null;
-} {
-  if (input.blockedReason === undefined) {
-    return {};
-  }
-
-  const blockedReason =
-    input.blockedReason.trim().length > 0 ? input.blockedReason : null;
-
-  if ((existing.blockedReason ?? null) === blockedReason) {
-    return {
-      blockedReason,
-    };
-  }
-
-  return {
-    blockedAt: blockedReason ? new Date() : null,
-    blockedReason,
-  };
-}
-
 function buildTimelineDiff(
   existing: WorkItem,
   next: {
     assigneeId?: string;
-    blockedReason?: string | null;
     description?: string;
     dueDate?: string;
     priority?: WorkItem["priority"];
@@ -519,13 +494,6 @@ function buildTimelineDiff(
     "dueDate",
     existing.dueDate ?? null,
     next.dueDate,
-  );
-  addTimelineChange(
-    before,
-    after,
-    "blockedReason",
-    existing.blockedReason ?? null,
-    next.blockedReason,
   );
   addTimelineChange(
     before,

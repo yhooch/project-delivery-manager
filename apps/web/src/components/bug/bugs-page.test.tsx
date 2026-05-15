@@ -68,20 +68,26 @@ vi.mock("./create-bug-dialog", () => ({
 vi.mock("../work-item/task-detail-sheet", () => ({
   TaskDetailSheet: ({
     item,
+    onChanged,
     open,
   }: {
     item: { id: string; title: string } | null;
+    onChanged?: () => void;
     open: boolean;
   }) =>
     open && item ? (
       <div data-testid="task-detail-sheet-open">
         <span data-testid="task-detail-sheet-item-id">{item.id}</span>
         <span data-testid="task-detail-sheet-item-title">{item.title}</span>
+        <button type="button" onClick={onChanged}>
+          detail changed
+        </button>
       </div>
     ) : null,
 }));
 
 import { BugsPage } from "./bugs-page";
+import { createRecentStorageKey } from "../shell/recent-opens";
 
 const ASSIGNEE_ID = "01ARZ3NDEKTSV4RRFFQ69G5FB1";
 const VERSION_ID = "01ARZ3NDEKTSV4RRFFQ69G5FD1";
@@ -114,6 +120,7 @@ beforeEach(() => {
     currentSpace: { id: "SPC_01", organizationId: "ORG_01", name: "Space A" },
     status: "authenticated" as const,
   };
+  window.localStorage.clear();
 });
 
 afterEach(() => {
@@ -156,12 +163,29 @@ describe("BugsPage", () => {
     expect(zeros.length).toBeGreaterThanOrEqual(1);
   });
 
-  it("filters by open bucket (excluding DONE and TERMINATED)", async () => {
+  it("renders workflow-state buckets for the bug lifecycle", async () => {
+    listBugsMock.mockResolvedValueOnce({
+      items: [],
+      total: 0,
+    });
+
+    render(<BugsPage />);
+
+    await waitFor(() => expect(listBugsMock).toHaveBeenCalledTimes(1));
+    expect(screen.getByTestId("bugs-filter-pendingConfirm")).toBeInTheDocument();
+    expect(screen.getByTestId("bugs-filter-pendingFix")).toBeInTheDocument();
+    expect(screen.getByTestId("bugs-filter-fixing")).toBeInTheDocument();
+    expect(screen.getByTestId("bugs-filter-pendingRegression")).toBeInTheDocument();
+    expect(screen.getByTestId("bugs-filter-regressionPassed")).toBeInTheDocument();
+    expect(screen.getByTestId("bugs-filter-closed")).toBeInTheDocument();
+  });
+
+  it("filters by fixing bucket (IN_PROGRESS)", async () => {
     listBugsMock.mockResolvedValueOnce({
       items: [
         makeBug({
           id: "01ARZ3NDEKTSV4RRFFQ69G5F01",
-          title: "Open bug",
+          title: "Fixing bug",
           statusCategory: "IN_PROGRESS",
         }),
         makeBug({
@@ -180,19 +204,17 @@ describe("BugsPage", () => {
 
     render(<BugsPage />);
 
-    expect(await screen.findByText("Open bug")).toBeInTheDocument();
+    expect(await screen.findByText("Fixing bug")).toBeInTheDocument();
     expect(screen.getByText("Closed bug")).toBeInTheDocument();
     expect(screen.getByText("Terminated bug")).toBeInTheDocument();
 
-    fireEvent.click(
-      screen.getByRole("button", { name: /bugs\.buckets\.open/ }),
-    );
-    expect(screen.getByText("Open bug")).toBeInTheDocument();
+    fireEvent.click(screen.getByTestId("bugs-filter-fixing"));
+    expect(screen.getByText("Fixing bug")).toBeInTheDocument();
     expect(screen.queryByText("Closed bug")).not.toBeInTheDocument();
     expect(screen.queryByText("Terminated bug")).not.toBeInTheDocument();
   });
 
-  it("filters by regression bucket (only VERIFYING)", async () => {
+  it("filters by pending regression bucket (VERIFYING)", async () => {
     listBugsMock.mockResolvedValueOnce({
       items: [
         makeBug({
@@ -212,9 +234,7 @@ describe("BugsPage", () => {
     render(<BugsPage />);
 
     expect(await screen.findByText("In progress bug")).toBeInTheDocument();
-    fireEvent.click(
-      screen.getByRole("button", { name: /bugs\.buckets\.regression/ }),
-    );
+    fireEvent.click(screen.getByTestId("bugs-filter-pendingRegression"));
     expect(screen.queryByText("In progress bug")).not.toBeInTheDocument();
     expect(screen.getByText("Regression bug")).toBeInTheDocument();
   });
@@ -234,6 +254,56 @@ describe("BugsPage", () => {
     expect(
       screen.getByTestId("task-detail-sheet-item-title").textContent,
     ).toBe("Click bug");
+  });
+
+  it("records directly opened bugs in recent opens", async () => {
+    listBugsMock.mockResolvedValueOnce({
+      items: [
+        makeBug({
+          id: "01ARZ3NDEKTSV4RRFFQ69G5FRC",
+          title: "Remember bug",
+        }),
+      ],
+      total: 1,
+    });
+
+    render(<BugsPage />);
+
+    fireEvent.click(await screen.findByText("Remember bug"));
+
+    const stored = JSON.parse(
+      window.localStorage.getItem(
+        createRecentStorageKey({
+          organizationId: "ORG_01",
+          spaceId: "SPC_01",
+        }),
+      ) ?? "[]",
+    ) as Array<{ href: string; title: string; type: string }>;
+    expect(stored[0]).toMatchObject({
+      href: "/bugs",
+      title: "Remember bug",
+      type: "BUG",
+    });
+  });
+
+  it("refetches the bug list when the detail sheet reports a change", async () => {
+    listBugsMock
+      .mockResolvedValueOnce({
+        items: [makeBug({ title: "Before action" })],
+        total: 1,
+      })
+      .mockResolvedValueOnce({
+        items: [makeBug({ title: "After action" })],
+        total: 1,
+      });
+
+    render(<BugsPage />);
+
+    fireEvent.click(await screen.findByText("Before action"));
+    fireEvent.click(screen.getByRole("button", { name: "detail changed" }));
+
+    await waitFor(() => expect(listBugsMock).toHaveBeenCalledTimes(2));
+    expect(await screen.findByText("After action")).toBeInTheDocument();
   });
 
   it("renders the empty state when there are no bugs", async () => {

@@ -7,6 +7,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { getApiErrorMessageKey } from "../../lib/api-error-messages";
 import {
+  canManageOrganization,
   listOrganizationMembers,
   removeOrganizationMember,
 } from "../../lib/space-service";
@@ -44,6 +45,7 @@ export function OrganizationPage() {
   const { currentOrganization, session, status } = useSession();
   const organizationId =
     session?.defaultOrganizationId ?? currentOrganization?.id;
+  const canManageMembers = canManageOrganization(currentOrganization?.role);
 
   const [members, setMembers] = useState<OrganizationMemberWithUser[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -90,7 +92,7 @@ export function OrganizationPage() {
   }, [load, organizationId, status]);
 
   async function onConfirmRemove() {
-    if (!removeMember || !organizationId) {
+    if (!removeMember || !organizationId || !canManageMembers) {
       return;
     }
 
@@ -160,6 +162,8 @@ export function OrganizationPage() {
             member.role === "OWNER" &&
             member.status === "ACTIVE" &&
             activeOwnerCount <= 1;
+          const displayName = getOrganizationMemberDisplayName(member);
+          const username = getOrganizationMemberUsername(member);
 
           return (
             <li
@@ -171,38 +175,41 @@ export function OrganizationPage() {
               )}
             >
               <Avatar className="h-7 w-7">
-                <AvatarFallback>{member.user.name.slice(0, 1)}</AvatarFallback>
+                <AvatarFallback>{initialOf(displayName)}</AvatarFallback>
               </Avatar>
               <div className="flex-1">
                 <div className="flex items-center gap-1.5 text-[13px] font-medium">
-                  {member.user.name}
+                  {displayName}
                   {member.role === "OWNER" && (
                     <Crown className="h-3 w-3 text-warning" />
                   )}
                 </div>
                 <div className="font-mono text-[11px] text-muted-foreground">
-                  @{member.user.username}
+                  <span aria-hidden="true">@</span>
+                  <span>{username}</span>
                 </div>
               </div>
               <Badge variant={roleVariant[member.role] ?? "default"}>
                 {member.role}
               </Badge>
-              <Button
-                variant="ghost"
-                size="icon-sm"
-                data-testid={`organization-member-remove-${member.id}`}
-                disabled={
-                  isLastActiveOwner ||
-                  member.status === "DISABLED" ||
-                  pendingMemberId === member.id
-                }
-                onClick={() => setRemoveMember(member)}
-                aria-label={t("members.actions.remove", {
-                  username: member.user.username,
-                })}
-              >
-                <Trash2 className="h-3.5 w-3.5 text-muted-foreground" />
-              </Button>
+              {canManageMembers ? (
+                <Button
+                  variant="ghost"
+                  size="icon-sm"
+                  data-testid={`organization-member-remove-${member.id}`}
+                  disabled={
+                    isLastActiveOwner ||
+                    member.status === "DISABLED" ||
+                    pendingMemberId === member.id
+                  }
+                  onClick={() => setRemoveMember(member)}
+                  aria-label={t("members.actions.remove", {
+                    username,
+                  })}
+                >
+                  <Trash2 className="h-3.5 w-3.5 text-muted-foreground" />
+                </Button>
+              ) : null}
             </li>
           );
         })}
@@ -252,12 +259,25 @@ export function OrganizationPage() {
                 size="sm"
                 className="text-xs"
                 data-testid="organization-add-member-button"
-                onClick={() => setIsAddMemberOpen(true)}
+                disabled={!canManageMembers}
+                onClick={() => {
+                  if (canManageMembers) {
+                    setIsAddMemberOpen(true);
+                  }
+                }}
               >
                 <Plus className="h-3 w-3" />
                 {t("members.add")}
               </Button>
             </header>
+            {!canManageMembers ? (
+              <div
+                className="border-b border-border bg-muted/30 px-5 py-2 text-xs text-muted-foreground"
+                data-testid="organization-readonly-notice"
+              >
+                {t("members.readOnly")}
+              </div>
+            ) : null}
             {memberActionErrorKey ? (
               <div
                 className="border-b border-destructive/40 bg-destructive/10 px-5 py-2 text-xs text-destructive"
@@ -274,19 +294,21 @@ export function OrganizationPage() {
         </div>
       </div>
 
-      <AddOrgMemberDialog
-        onClose={() => setIsAddMemberOpen(false)}
-        onSuccess={(member) => {
-          setIsAddMemberOpen(false);
-          setMembers((current) => {
-            const filtered = current.filter((item) => item.id !== member.id);
-            return [...filtered, member];
-          });
-          void load();
-        }}
-        open={isAddMemberOpen}
-        organizationId={organizationId}
-      />
+      {canManageMembers ? (
+        <AddOrgMemberDialog
+          onClose={() => setIsAddMemberOpen(false)}
+          onSuccess={(member) => {
+            setIsAddMemberOpen(false);
+            setMembers((current) => {
+              const filtered = current.filter((item) => item.id !== member.id);
+              return [...filtered, member];
+            });
+            void load();
+          }}
+          open={isAddMemberOpen}
+          organizationId={organizationId}
+        />
+      ) : null}
 
       <Dialog
         onOpenChange={(open) => {
@@ -337,6 +359,7 @@ export function OrganizationPage() {
               disabled={
                 pendingMemberId !== null ||
                 !removeMember ||
+                !canManageMembers ||
                 (removeMember.role === "OWNER" && activeOwnerCount <= 1)
               }
               onClick={() => void onConfirmRemove()}
@@ -353,4 +376,17 @@ export function OrganizationPage() {
       </Dialog>
     </div>
   );
+}
+
+function getOrganizationMemberDisplayName(member: OrganizationMemberWithUser) {
+  return member.user.name?.trim() || member.user.username?.trim() || member.userId;
+}
+
+function getOrganizationMemberUsername(member: OrganizationMemberWithUser) {
+  return member.user.username?.trim() || member.user.name?.trim() || member.userId;
+}
+
+function initialOf(value: string) {
+  const trimmed = value.trim();
+  return trimmed.length > 0 ? trimmed.slice(0, 1).toUpperCase() : "?";
 }

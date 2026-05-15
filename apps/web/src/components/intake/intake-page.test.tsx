@@ -74,6 +74,7 @@ vi.mock("./convert-intake-dialog", () => ({
 }));
 
 import { IntakePage } from "./intake-page";
+import { createRecentStorageKey } from "../shell/recent-opens";
 
 function makeIntake(overrides: Record<string, unknown> = {}) {
   return {
@@ -103,6 +104,7 @@ beforeEach(() => {
     },
     status: "authenticated" as const,
   };
+  window.localStorage.clear();
 });
 
 afterEach(() => {
@@ -260,6 +262,63 @@ describe("IntakePage", () => {
     );
   });
 
+  it("records directly opened intake items in recent opens", async () => {
+    listIntakeItemsMock.mockResolvedValueOnce({
+      items: [
+        makeIntake({
+          id: "01ARZ3NDEKTSV4RRFFQ69G5FRC",
+          title: "Remember intake",
+        }),
+      ],
+      total: 1,
+    });
+
+    render(<IntakePage />);
+
+    fireEvent.click(await screen.findByText("Remember intake"));
+
+    const stored = JSON.parse(
+      window.localStorage.getItem(
+        createRecentStorageKey({
+          organizationId: "ORG_01",
+          spaceId: "SPC_01",
+        }),
+      ) ?? "[]",
+    ) as Array<{ href: string; title: string; type: string }>;
+    expect(stored[0]).toMatchObject({
+      href: "/intake-items",
+      title: "Remember intake",
+      type: "INTAKE",
+    });
+  });
+
+  it("runs the primary intake action with S for the active row", async () => {
+    const original = makeIntake({
+      id: "01ARZ3NDEKTSV4RRFFQ69G5FS1",
+      title: "Keyboard accept",
+      status: "PENDING",
+    });
+    listIntakeItemsMock.mockResolvedValueOnce({ items: [original], total: 1 });
+    acceptIntakeItemMock.mockResolvedValueOnce({ ...original, status: "ACCEPTED" });
+    listIntakeItemsMock.mockResolvedValueOnce({
+      items: [{ ...original, status: "ACCEPTED" }],
+      total: 1,
+    });
+
+    render(<IntakePage />);
+
+    await screen.findByText("Keyboard accept");
+    fireEvent.keyDown(window, { key: "j" });
+    fireEvent.keyDown(window, { key: "s" });
+
+    await waitFor(() =>
+      expect(acceptIntakeItemMock).toHaveBeenCalledWith({
+        intakeItemId: "01ARZ3NDEKTSV4RRFFQ69G5FS1",
+        spaceId: "SPC_01",
+      }),
+    );
+  });
+
   it("keeps the detail drawer closed when Escape is pressed during accept", async () => {
     const original = makeIntake({
       id: "01ARZ3NDEKTSV4RRFFQ69G5F03",
@@ -308,6 +367,32 @@ describe("IntakePage", () => {
 
     await waitFor(() => expect(listIntakeItemsMock).toHaveBeenCalledTimes(2));
     expect(screen.queryByTestId("intake-detail-sheet")).not.toBeInTheDocument();
+  });
+
+  it("does not reopen the conversion dialog for converted intake items", async () => {
+    listIntakeItemsMock.mockResolvedValueOnce({
+      items: [
+        makeIntake({
+          id: "01ARZ3NDEKTSV4RRFFQ69G5F04",
+          title: "Already converted",
+          status: "CONVERTED",
+        }),
+      ],
+      total: 1,
+    });
+
+    render(<IntakePage />);
+
+    fireEvent.click(await screen.findByText("Already converted"));
+    const viewTasks = await screen.findByTestId(
+      "intake-view-converted-tasks-button",
+    );
+
+    expect(viewTasks).toBeDisabled();
+    fireEvent.click(viewTasks);
+    expect(
+      screen.queryByTestId("convert-intake-dialog-open"),
+    ).not.toBeInTheDocument();
   });
 
   it("renders the noSpace empty state when session has no defaultSpaceId", async () => {

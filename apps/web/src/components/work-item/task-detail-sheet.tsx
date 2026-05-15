@@ -1,7 +1,9 @@
 "use client";
 
 import type {
+  ActionFormFieldSummary,
   Attachment,
+  BugView,
   Comment,
   PermissionSnapshot,
   TimelineEvent,
@@ -27,6 +29,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import type React from "react";
 
 import { getApiErrorMessageKey } from "../../lib/api-error-messages";
+import { toExecuteActionRequest } from "../../lib/action-forms";
 import {
   AttachmentUploadError,
   listAttachments,
@@ -47,6 +50,7 @@ import { Badge } from "../ui/badge";
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
 import { Kbd } from "../ui/kbd";
+import { Label } from "../ui/label";
 import {
   Sheet,
   SheetContent,
@@ -56,6 +60,7 @@ import {
 } from "../ui/sheet";
 import { StatusBadge } from "../ui/status-badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../ui/tabs";
+import { Textarea } from "../ui/textarea";
 import { EmptyState, ErrorState, LoadingState } from "../v2/states";
 
 const priorityColor: Record<WorkItemViewModel["priority"], string> = {
@@ -130,10 +135,7 @@ function formatDateTime(value: string, locale: string): string {
   }
 }
 
-type SheetDetail = Pick<
-  WorkItemDetail,
-  "versionId" | "requirementId" | "intakeItemId" | "reporterId"
-> & {
+type SheetDetail = (WorkItemDetail | BugView) & {
   permissions?: PermissionSnapshot;
 };
 
@@ -231,12 +233,32 @@ function TaskDetailSheetBody({
 }: BodyProps) {
   const isBug = item.type === "BUG";
   const lookup = useSpaceMembers(spaceId, organizationId);
+  const { getVersion } = useVersions(spaceId, organizationId);
   const permissionState = useWorkItemPermissions({
     item,
     organizationId,
     spaceId,
     tApiError,
   });
+  const detail = permissionState.detail;
+  const priority = detail?.priority ?? item.priority;
+  const statusCategory = detail?.statusCategory ?? item.statusCategory;
+  const statusLabel = detail
+    ? tApiError(
+        `${isBug ? "bugs" : "workItems"}.statusCategory.${statusCategory}`,
+      )
+    : item.statusLabel;
+  const versionName =
+    detail?.versionId
+      ? (getVersion(detail.versionId)?.name ?? truncateId(detail.versionId))
+      : item.versionName;
+  const dueDate = detail?.dueDate
+    ? formatDateTime(detail.dueDate, "default")
+    : item.dueDate;
+  const isBlocked = detail
+    ? statusCategory === "WAITING" || Boolean(detail.blockedAt)
+    : item.isBlocked;
+  const blockedReason = detail?.blockedReason ?? item.blockedReason;
 
   return (
     <SheetContent
@@ -253,35 +275,35 @@ function TaskDetailSheetBody({
           )}
           <span>{item.code}</span>
           <ChevronRight className="h-3 w-3" />
-          <span className="truncate">{item.versionName}</span>
+          <span className="truncate">{versionName}</span>
         </div>
         <SheetTitle className="mt-1 text-base leading-snug">
-          {item.title}
+          {detail?.title ?? item.title}
         </SheetTitle>
         <SheetDescription className="sr-only">
           {isBug ? t("sheetDescription.bug") : t("sheetDescription.task")}
         </SheetDescription>
         <div className="mt-3 flex flex-wrap items-center gap-2">
           <StatusBadge
-            category={item.statusCategory}
-            label={item.statusLabel}
+            category={statusCategory}
+            label={statusLabel}
           />
           <Badge
             variant="outline"
-            className={cn("gap-1", priorityColor[item.priority])}
+            className={cn("gap-1", priorityColor[priority])}
           >
             <span
               className={cn(
                 "h-1.5 w-1.5 rounded-full",
-                item.priority === "URGENT" && "bg-destructive",
-                item.priority === "HIGH" && "bg-warning",
-                item.priority === "MEDIUM" && "bg-info",
-                item.priority === "LOW" && "bg-muted-foreground",
+                priority === "URGENT" && "bg-destructive",
+                priority === "HIGH" && "bg-warning",
+                priority === "MEDIUM" && "bg-info",
+                priority === "LOW" && "bg-muted-foreground",
               )}
             />
-            {t(`priority.${item.priority}`)}
+            {t(`priority.${priority}`)}
           </Badge>
-          {item.dueDate && (
+          {dueDate && (
             <Badge
               variant="outline"
               className={cn(
@@ -290,7 +312,7 @@ function TaskDetailSheetBody({
               )}
             >
               <Clock className="h-2.5 w-2.5" />
-              {t("fields.due")} {item.dueDate}
+              {t("fields.due")} {dueDate}
             </Badge>
           )}
         </div>
@@ -301,12 +323,13 @@ function TaskDetailSheetBody({
         spaceId={spaceId}
         organizationId={organizationId}
         permissionState={permissionState}
+        lookup={lookup}
         t={t}
         tApiError={tApiError}
         onChanged={onChanged}
       />
 
-      {item.isBlocked && item.blockedReason && (
+      {isBlocked && blockedReason && (
         <div className="border-b border-border bg-warning/10 px-5 py-2.5">
           <div className="flex items-start gap-2">
             <AlertCircle className="mt-0.5 h-3.5 w-3.5 shrink-0 text-warning" />
@@ -315,7 +338,7 @@ function TaskDetailSheetBody({
                 {t("blocked.label")}
               </span>
               <span className="ml-2 text-foreground/80">
-                {item.blockedReason}
+                {blockedReason}
               </span>
             </div>
           </div>
@@ -369,7 +392,14 @@ function TaskDetailSheetBody({
           data-testid="task-detail-panel"
           className="mt-0 flex-1 overflow-y-auto px-5 py-4"
         >
-          <DetailTab item={item} lookup={lookup} t={t} />
+          <DetailTab
+            item={item}
+            detail={detail}
+            lookup={lookup}
+            t={t}
+            tRoot={tApiError}
+            versionName={versionName}
+          />
         </TabsContent>
 
         <TabsContent value="comments" className="mt-0 flex-1 overflow-hidden">
@@ -423,11 +453,16 @@ function TaskDetailSheetBody({
           className="mt-0 flex-1 overflow-y-auto px-5 py-4"
         >
           <LinksPanel
-            item={item}
+            detail={detail}
+            detailError={permissionState.error}
+            detailLoading={permissionState.loading}
             spaceId={spaceId}
             organizationId={organizationId}
             t={t}
             tApiError={tApiError}
+            onRetry={() => {
+              void permissionState.fetchPermissions();
+            }}
           />
         </TabsContent>
       </Tabs>
@@ -436,6 +471,7 @@ function TaskDetailSheetBody({
 }
 
 type WorkItemPermissionState = {
+  detail: SheetDetail | null;
   error: string | null;
   fetchPermissions: () => Promise<void>;
   loading: boolean;
@@ -454,6 +490,7 @@ function useWorkItemPermissions({
   spaceId?: string;
   tApiError: ReturnType<typeof useTranslations>;
 }): WorkItemPermissionState {
+  const [detail, setDetail] = useState<SheetDetail | null>(null);
   const [permissions, setPermissions] = useState<PermissionSnapshot | null>(
     null,
   );
@@ -466,6 +503,7 @@ function useWorkItemPermissions({
 
     try {
       const detail = await loadSheetDetail({ item, organizationId, spaceId });
+      setDetail(detail);
       setPermissions(detail.permissions ?? null);
     } catch (err) {
       const key = getApiErrorMessageKey(err);
@@ -479,7 +517,14 @@ function useWorkItemPermissions({
     void fetchPermissions();
   }, [fetchPermissions]);
 
-  return { error, fetchPermissions, loading, permissions, setPermissions };
+  return {
+    detail,
+    error,
+    fetchPermissions,
+    loading,
+    permissions,
+    setPermissions,
+  };
 }
 
 // ---------------------------------------------------------------------------
@@ -491,6 +536,7 @@ function ActionBar({
   spaceId,
   organizationId,
   permissionState,
+  lookup,
   t,
   tApiError,
   onChanged,
@@ -499,15 +545,52 @@ function ActionBar({
   spaceId?: string;
   organizationId?: string;
   permissionState: WorkItemPermissionState;
+  lookup: ReturnType<typeof useSpaceMembers>;
   t: ReturnType<typeof useTranslations<"taskDetail">>;
   tApiError: ReturnType<typeof useTranslations>;
   onChanged?: () => void;
 }) {
   const [executingId, setExecutingId] = useState<string | null>(null);
   const [executeError, setExecuteError] = useState<string | null>(null);
+  const [selectedAction, setSelectedAction] =
+    useState<WorkflowActionSummary | null>(null);
+  const [commentDraft, setCommentDraft] = useState("");
+  const [formDraft, setFormDraft] = useState<Record<string, string>>({});
 
-  const handleExecute = async (action: WorkflowActionSummary) => {
+  const resetActionForm = useCallback(() => {
+    setSelectedAction(null);
+    setCommentDraft("");
+    setFormDraft({});
+  }, []);
+
+  const beginAction = (action: WorkflowActionSummary) => {
+    setExecuteError(null);
+
+    if (!action.requiresComment && action.formFields.length === 0) {
+      void handleExecute(action, { formValues: {} });
+      return;
+    }
+
+    setSelectedAction(action);
+    setCommentDraft("");
+    setFormDraft(
+      Object.fromEntries(action.formFields.map((field) => [field.key, ""])),
+    );
+  };
+
+  const handleExecute = async (
+    action: WorkflowActionSummary,
+    input: { comment?: string; formValues: Record<string, unknown> },
+  ) => {
     if (!spaceId) return;
+
+    let payload;
+    try {
+      payload = toExecuteActionRequest(action, input);
+    } catch {
+      setExecuteError(tApiError("errors.api.WORKFLOW_ACTION_FORM_INVALID"));
+      return;
+    }
 
     setExecutingId(action.id);
     setExecuteError(null);
@@ -520,9 +603,11 @@ function ActionBar({
           spaceId,
           workItemId: item.id,
         },
-        { formValues: {} },
+        payload,
       );
       permissionState.setPermissions(detail.permissions);
+      await permissionState.fetchPermissions();
+      resetActionForm();
       onChanged?.();
     } catch (err) {
       const key = getApiErrorMessageKey(err);
@@ -533,6 +618,16 @@ function ActionBar({
   };
 
   const actions = permissionState.permissions?.availableActions ?? [];
+  const selectedActionStillAvailable = Boolean(
+    selectedAction &&
+      actions.some((action) => action.id === selectedAction.id),
+  );
+
+  useEffect(() => {
+    if (selectedAction && !selectedActionStillAvailable) {
+      resetActionForm();
+    }
+  }, [resetActionForm, selectedAction, selectedActionStillAvailable]);
 
   return (
     <div className="flex flex-col gap-1.5 border-b border-border bg-muted/30 px-5 py-2.5">
@@ -570,7 +665,7 @@ function ActionBar({
                 className="h-7 text-xs"
                 disabled={executingId !== null}
                 onClick={() => {
-                  void handleExecute(action);
+                  beginAction(action);
                 }}
               >
                 {executingId === action.id ? (
@@ -586,6 +681,28 @@ function ActionBar({
           )}
         </div>
       </div>
+      {selectedAction && selectedActionStillAvailable && (
+        <ActionExecutionForm
+          action={selectedAction}
+          commentDraft={commentDraft}
+          executing={executingId === selectedAction.id}
+          formDraft={formDraft}
+          lookup={lookup}
+          onCancel={resetActionForm}
+          onCommentChange={setCommentDraft}
+          onFieldChange={(key, value) => {
+            setFormDraft((current) => ({ ...current, [key]: value }));
+          }}
+          onSubmit={() => {
+            void handleExecute(selectedAction, {
+              comment: commentDraft,
+              formValues: formDraft,
+            });
+          }}
+          t={t}
+          tRoot={tApiError}
+        />
+      )}
       {permissionState.error && (
         <p className="text-[11px] text-destructive">
           {t("actions.loadErrorTitle")}: {permissionState.error}
@@ -600,23 +717,213 @@ function ActionBar({
   );
 }
 
+function ActionExecutionForm({
+  action,
+  commentDraft,
+  executing,
+  formDraft,
+  lookup,
+  onCancel,
+  onCommentChange,
+  onFieldChange,
+  onSubmit,
+  t,
+  tRoot,
+}: {
+  action: WorkflowActionSummary;
+  commentDraft: string;
+  executing: boolean;
+  formDraft: Record<string, string>;
+  lookup: ReturnType<typeof useSpaceMembers>;
+  onCancel: () => void;
+  onCommentChange: (value: string) => void;
+  onFieldChange: (key: string, value: string) => void;
+  onSubmit: () => void;
+  t: ReturnType<typeof useTranslations<"taskDetail">>;
+  tRoot: ReturnType<typeof useTranslations>;
+}) {
+  return (
+    <div
+      data-testid="task-action-form"
+      className="rounded-md border border-border bg-background p-3"
+    >
+      <div className="grid gap-3 sm:grid-cols-2">
+        {action.formFields.map((field) => (
+          <ActionFormFieldControl
+            key={field.id}
+            field={field}
+            lookup={lookup}
+            value={formDraft[field.key] ?? ""}
+            onChange={(value) => onFieldChange(field.key, value)}
+          />
+        ))}
+        {action.requiresComment && (
+          <div className="flex flex-col gap-1.5 sm:col-span-2">
+            <Label htmlFor={`task-action-comment-${action.id}`}>
+              {tRoot("tasks.workflowActions.comment")}
+            </Label>
+            <Textarea
+              id={`task-action-comment-${action.id}`}
+              data-testid="task-action-comment"
+              value={commentDraft}
+              maxLength={4000}
+              rows={3}
+              placeholder={t("comments.placeholder")}
+              disabled={executing}
+              onChange={(event) => onCommentChange(event.target.value)}
+            />
+          </div>
+        )}
+      </div>
+      <div className="mt-3 flex justify-end gap-2">
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          className="h-7 text-xs"
+          disabled={executing}
+          onClick={onCancel}
+        >
+          {tRoot("tasks.dialog.actions.cancel")}
+        </Button>
+        <Button
+          type="button"
+          size="sm"
+          className="h-7 text-xs"
+          disabled={executing}
+          onClick={onSubmit}
+        >
+          {executing ? (
+            <>
+              <Loader2 className="h-3 w-3 animate-spin" />
+              {t("actions.executing")}
+            </>
+          ) : (
+            action.name
+          )}
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+function ActionFormFieldControl({
+  field,
+  lookup,
+  onChange,
+  value,
+}: {
+  field: ActionFormFieldSummary;
+  lookup: ReturnType<typeof useSpaceMembers>;
+  onChange: (value: string) => void;
+  value: string;
+}) {
+  const id = `task-action-field-${field.id}`;
+  const label = field.required ? `${field.label} *` : field.label;
+
+  if (field.fieldType === "TEXTAREA") {
+    return (
+      <div className="flex flex-col gap-1.5 sm:col-span-2">
+        <Label htmlFor={id}>{label}</Label>
+        <Textarea
+          id={id}
+          data-testid={`task-action-field-${field.key}`}
+          value={value}
+          rows={3}
+          onChange={(event) => onChange(event.target.value)}
+        />
+      </div>
+    );
+  }
+
+  if (field.fieldType === "SELECT") {
+    return (
+      <div className="flex flex-col gap-1.5">
+        <Label htmlFor={id}>{label}</Label>
+        <select
+          id={id}
+          data-testid={`task-action-field-${field.key}`}
+          value={value}
+          onChange={(event) => onChange(event.target.value)}
+          className="h-8 w-full rounded-md border border-input bg-background px-2 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        >
+          <option value="" />
+          {(field.options ?? []).map((option) => (
+            <option key={option} value={option}>
+              {option}
+            </option>
+          ))}
+        </select>
+      </div>
+    );
+  }
+
+  if (field.fieldType === "USER" && lookup.members.length > 0) {
+    return (
+      <div className="flex flex-col gap-1.5">
+        <Label htmlFor={id}>{label}</Label>
+        <select
+          id={id}
+          data-testid={`task-action-field-${field.key}`}
+          value={value}
+          onChange={(event) => onChange(event.target.value)}
+          className="h-8 w-full rounded-md border border-input bg-background px-2 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        >
+          <option value="" />
+          {lookup.members.map((member) => (
+            <option key={member.userId} value={member.userId}>
+              {member.user.name || member.user.username}
+            </option>
+          ))}
+        </select>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex flex-col gap-1.5">
+      <Label htmlFor={id}>{label}</Label>
+      <Input
+        id={id}
+        data-testid={`task-action-field-${field.key}`}
+        type={
+          field.fieldType === "DATE"
+            ? "date"
+            : field.fieldType === "NUMBER"
+              ? "number"
+              : "text"
+        }
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+      />
+    </div>
+  );
+}
+
 // ---------------------------------------------------------------------------
 // Detail tab
 // ---------------------------------------------------------------------------
 
 function DetailTab({
   item,
+  detail,
   lookup,
   t,
+  tRoot,
+  versionName,
 }: {
   item: WorkItemViewModel;
+  detail: SheetDetail | null;
   lookup: ReturnType<typeof useSpaceMembers>;
   t: ReturnType<typeof useTranslations<"taskDetail">>;
+  tRoot: ReturnType<typeof useTranslations>;
+  versionName?: string;
 }) {
-  // The WorkItemViewModel.assignee.name currently holds the user-id (see toMockWorkItem).
-  // Resolve it through the cache when possible.
-  const assigneeId = item.assignee.name || undefined;
+  const assigneeId = (detail?.assigneeId ?? item.assignee.name) || undefined;
   const assignee = displayUser(assigneeId, lookup.getMember);
+  const reporter = displayUser(detail?.reporterId, lookup.getMember);
+  const updatedAt = detail?.lastActionAt ?? detail?.lastStatusChangedAt;
+  const bugDetail = isBugSheetDetail(detail) ? detail.bugDetail : null;
 
   return (
     <>
@@ -629,17 +936,21 @@ function DetailTab({
         <FieldRow
           icon={User2}
           label={t("fields.reporter")}
-          value={assignee.name}
+          value={reporter.name}
         />
         <FieldRow
           icon={GitBranch}
           label={t("fields.version")}
-          value={item.versionName ?? "—"}
+          value={versionName ?? "—"}
         />
         <FieldRow
           icon={Clock}
           label={t("fields.updated")}
-          value={item.updatedAgo ?? "—"}
+          value={
+            updatedAt
+              ? formatDateTime(updatedAt, "default")
+              : item.updatedAgo ?? "—"
+          }
         />
       </div>
       <div className="mt-6 space-y-3">
@@ -647,10 +958,87 @@ function DetailTab({
           {t("description.title")}
         </h3>
         <p className="text-sm leading-relaxed text-muted-foreground">
-          {t("description.empty")}
+          {detail?.description?.trim() || t("description.empty")}
         </p>
       </div>
+      {bugDetail && (
+        <div className="mt-6 space-y-3">
+          <h3 className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
+            {tRoot("bugs.bugFields.title")}
+          </h3>
+          <DetailTextBlock
+            label={tRoot("bugs.bugFields.stepsToReproduce")}
+            value={bugDetail.stepsToReproduce}
+            empty={tRoot("bugs.bugFields.empty")}
+          />
+          <DetailTextBlock
+            label={tRoot("bugs.bugFields.expectedResult")}
+            value={bugDetail.expectedResult}
+            empty={tRoot("bugs.bugFields.empty")}
+          />
+          <DetailTextBlock
+            label={tRoot("bugs.bugFields.actualResult")}
+            value={bugDetail.actualResult}
+            empty={tRoot("bugs.bugFields.empty")}
+          />
+          <DetailTextBlock
+            label={tRoot("bugs.bugFields.fixNote")}
+            value={bugDetail.fixNote}
+            empty={tRoot("bugs.bugFields.empty")}
+          />
+          <DetailTextBlock
+            label={tRoot("bugs.bugFields.regressionResult")}
+            value={bugDetail.regressionResult}
+            empty={tRoot("bugs.bugFields.empty")}
+          />
+          <div className="grid grid-cols-2 gap-x-6 gap-y-3 text-[13px]">
+            <FieldRow
+              icon={User2}
+              label={tRoot("bugs.form.regressionBy")}
+              value={
+                bugDetail.regressionBy
+                  ? displayUser(bugDetail.regressionBy, lookup.getMember).name
+                  : tRoot("bugs.bugFields.empty")
+              }
+            />
+            <FieldRow
+              icon={Clock}
+              label={tRoot("bugs.form.regressionAt")}
+              value={
+                bugDetail.regressionAt
+                  ? formatDateTime(bugDetail.regressionAt, "default")
+                  : tRoot("bugs.bugFields.empty")
+              }
+            />
+          </div>
+        </div>
+      )}
     </>
+  );
+}
+
+function isBugSheetDetail(detail: SheetDetail | null): detail is BugView {
+  return Boolean(detail && detail.type === "BUG" && "bugDetail" in detail);
+}
+
+function DetailTextBlock({
+  empty,
+  label,
+  value,
+}: {
+  empty: string;
+  label: string;
+  value?: string;
+}) {
+  return (
+    <div>
+      <div className="text-[11px] uppercase tracking-wider text-muted-foreground">
+        {label}
+      </div>
+      <p className="mt-1 whitespace-pre-wrap text-sm leading-relaxed text-foreground/90">
+        {value?.trim() || empty}
+      </p>
+    </div>
   );
 }
 
@@ -659,60 +1047,32 @@ function DetailTab({
 // ---------------------------------------------------------------------------
 
 function LinksPanel({
-  item,
+  detail,
+  detailError,
+  detailLoading,
   spaceId,
   organizationId,
   t,
   tApiError,
+  onRetry,
 }: {
-  item: WorkItemViewModel;
+  detail: SheetDetail | null;
+  detailError: string | null;
+  detailLoading: boolean;
   spaceId?: string;
   organizationId?: string;
   t: ReturnType<typeof useTranslations<"taskDetail">>;
   tApiError: ReturnType<typeof useTranslations>;
+  onRetry: () => void;
 }) {
-  const [detail, setDetail] = useState<Pick<
-    WorkItemDetail,
-    "versionId" | "requirementId" | "intakeItemId" | "reporterId"
-  > | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const { getMember } = useSpaceMembers(spaceId, organizationId);
   const { getVersion } = useVersions(spaceId, organizationId);
 
-  useEffect(() => {
-    let cancelled = false;
-    setLoading(true);
-    setErrorMessage(null);
-
-    void (async () => {
-      try {
-        const result = await loadSheetDetail({ item, organizationId, spaceId });
-        if (cancelled) return;
-        setDetail({
-          versionId: result.versionId,
-          requirementId: result.requirementId,
-          intakeItemId: result.intakeItemId,
-          reporterId: result.reporterId,
-        });
-      } catch (err) {
-        if (cancelled) return;
-        setErrorMessage(tApiError(getApiErrorMessageKey(err)));
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    })();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [item, organizationId, spaceId, tApiError]);
-
-  if (loading) {
+  if (detailLoading && !detail) {
     return <LoadingState />;
   }
-  if (errorMessage) {
-    return <ErrorState message={errorMessage} />;
+  if (detailError) {
+    return <ErrorState message={detailError} onRetry={onRetry} />;
   }
   if (!detail) {
     return <EmptyState title={t("missingApi.title")} />;
@@ -743,6 +1103,13 @@ function LinksPanel({
       icon: Link2,
       label: t("fields.intake"),
       value: truncateId(detail.intakeItemId),
+    });
+  }
+  if (isBugSheetDetail(detail) && detail.bugDetail.relatedTaskId) {
+    links.push({
+      icon: Link2,
+      label: tApiError("bugs.form.relatedTask"),
+      value: truncateId(detail.bugDetail.relatedTaskId),
     });
   }
   if (detail.reporterId) {

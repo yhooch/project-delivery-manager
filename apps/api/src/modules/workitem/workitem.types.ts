@@ -8,7 +8,7 @@ import type {
 
 export type WorkItemListInput = {
   actorUserId: string;
-  visibility: "SPACE" | "PARTICIPANT";
+  visibility: "SPACE" | "PARTICIPANT" | "TESTER";
   page: number;
   pageSize: number;
   sortBy?: string;
@@ -68,8 +68,6 @@ export type UpdateWorkItemInput = {
   priority?: Priority;
   assigneeId?: string;
   dueDate?: Date;
-  blockedReason?: string | null;
-  blockedAt?: Date | null;
   relatedUserIds: string[];
   shouldReplaceRelatedParticipants: boolean;
   shouldReplaceAssigneeParticipants: boolean;

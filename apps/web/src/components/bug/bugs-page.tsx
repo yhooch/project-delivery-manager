@@ -22,6 +22,7 @@ import { Badge } from "../ui/badge";
 import { Button } from "../ui/button";
 import { StatusBadge } from "../ui/status-badge";
 import { useSession } from "../providers/session-provider";
+import { recordRecentOpen } from "../shell/recent-opens";
 import { EmptyState, ErrorState, ListSkeleton } from "../v2/states";
 import { PageHeader } from "../v2/page-header";
 
@@ -37,7 +38,32 @@ const severityColor: Record<BugSeverity, string> = {
   TRIVIAL: "bg-muted text-muted-foreground",
 };
 
-type FilterKey = "all" | "open" | "regression";
+type FilterKey =
+  | "all"
+  | "pendingConfirm"
+  | "pendingFix"
+  | "fixing"
+  | "pendingRegression"
+  | "regressionPassed"
+  | "closed";
+
+const bugBucketStatus: Exclude<FilterKey, "all">[] = [
+  "pendingConfirm",
+  "pendingFix",
+  "fixing",
+  "pendingRegression",
+  "regressionPassed",
+  "closed",
+];
+
+const bugBucketCategory: Record<Exclude<FilterKey, "all">, StatusCategory> = {
+  pendingConfirm: "NOT_STARTED",
+  pendingFix: "WAITING",
+  fixing: "IN_PROGRESS",
+  pendingRegression: "VERIFYING",
+  regressionPassed: "DONE",
+  closed: "TERMINATED",
+};
 
 type MockBugItem = WorkItemViewModel & { severity: BugSeverity };
 
@@ -51,6 +77,10 @@ export function BugsPage() {
   const { currentSpace, status: sessionStatus } = useSession();
   const spaceId = currentSpace?.id;
   const organizationId = currentSpace?.organizationId;
+  const recentScope = useMemo(
+    () => ({ organizationId, spaceId }),
+    [organizationId, spaceId],
+  );
   const { getMember } = useSpaceMembers(spaceId, organizationId);
   const { getVersion } = useVersions(spaceId, organizationId);
 
@@ -101,26 +131,39 @@ export function BugsPage() {
   );
 
   const filtered = useMemo(() => {
-    if (filter === "open") {
+    if (filter !== "all") {
       return mockItems.filter(
-        (b) => b.statusCategory !== "DONE" && b.statusCategory !== "TERMINATED",
+        (bug) => bug.statusCategory === bugBucketCategory[filter],
       );
-    }
-    if (filter === "regression") {
-      return mockItems.filter((b) => b.statusCategory === "VERIFYING");
     }
     return mockItems;
   }, [filter, mockItems]);
+
+  const openBug = useCallback(
+    (bug: MockBugItem) => {
+      recordRecentOpen(
+        {
+          id: bug.id,
+          type: "BUG",
+          code: bug.code,
+          title: bug.title,
+          href: "/bugs",
+        },
+        recentScope,
+      );
+      setActiveItem(bug);
+      setSheetOpen(true);
+    },
+    [recentScope],
+  );
 
   useListKeyboardNav<MockBugItem>({
     items: filtered,
     activeId: activeItem?.id,
     getId: (item) => item.id,
     onSelect: setActiveItem,
-    onOpen: (item) => {
-      setActiveItem(item);
-      setSheetOpen(true);
-    },
+    onOpen: openBug,
+    onEdit: openBug,
     onClose: () => setSheetOpen(false),
   });
 
@@ -131,21 +174,15 @@ export function BugsPage() {
         key: "all" as FilterKey,
         count: mockItems.length,
       },
-      {
-        label: t("buckets.open"),
-        key: "open" as FilterKey,
+      ...bugBucketStatus.map((key) => ({
+        label: tStatus(bugBucketCategory[key]),
+        key,
         count: mockItems.filter(
-          (b) =>
-            b.statusCategory !== "DONE" && b.statusCategory !== "TERMINATED",
+          (bug) => bug.statusCategory === bugBucketCategory[key],
         ).length,
-      },
-      {
-        label: t("buckets.regression"),
-        key: "regression" as FilterKey,
-        count: mockItems.filter((b) => b.statusCategory === "VERIFYING").length,
-      },
+      })),
     ],
-    [mockItems, t],
+    [mockItems, t, tStatus],
   );
 
   const header = (
@@ -248,10 +285,7 @@ export function BugsPage() {
               <li key={bug.id} data-testid={`bugs-row-${bug.id}`}>
                 <button
                   type="button"
-                  onClick={() => {
-                    setActiveItem(bug);
-                    setSheetOpen(true);
-                  }}
+                  onClick={() => openBug(bug)}
                   className="flex w-full items-center gap-3 px-6 py-2.5 text-left transition-colors hover:bg-muted/40 cursor-pointer"
                 >
                   <Bug className="h-3.5 w-3.5 shrink-0 text-destructive/80" />
@@ -300,6 +334,9 @@ export function BugsPage() {
         item={activeItem}
         open={sheetOpen}
         onOpenChange={setSheetOpen}
+        onChanged={() => {
+          void fetchBugs();
+        }}
       />
 
       {spaceId && (

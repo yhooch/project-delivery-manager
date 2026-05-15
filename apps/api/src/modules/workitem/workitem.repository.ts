@@ -31,6 +31,7 @@ export type WorkItemRepository = {
     workItemId: string,
     userId: string,
   ): Promise<boolean>;
+  isTesterVisible(spaceId: string, workItemId: string): Promise<boolean>;
   listBySpaceId(
     spaceId: string,
     input: WorkItemListInput,

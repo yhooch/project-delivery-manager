@@ -73,7 +73,7 @@ export const UpdateWorkItemRequestSchema = z
     priority: PrioritySchema.optional(),
     assigneeId: UlidSchema.optional(),
     dueDate: IsoDateTimeSchema.optional(),
-    blockedReason: z.string().max(1000).optional(),
+    blockedReason: z.never().optional(),
   })
   .strict();
 

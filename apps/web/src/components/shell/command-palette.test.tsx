@@ -17,19 +17,25 @@ vi.mock("next-intl", () => ({
   useLocale: () => "zh-CN",
 }));
 
+const routerPushMock = vi.hoisted(() => vi.fn());
 vi.mock("../../i18n/routing", () => ({
   routing: { defaultLocale: "zh-CN", locales: ["zh-CN", "en-US"] },
   Link: ({ children }: { children: React.ReactNode }) => children,
   getPathname: () => "/",
   redirect: () => undefined,
   usePathname: () => "/",
-  useRouter: () => ({ push: vi.fn(), replace: vi.fn() }),
+  useRouter: () => ({ push: routerPushMock, replace: vi.fn() }),
 }));
 
+const themeSetMock = vi.hoisted(() => vi.fn());
 const sessionMock = vi.hoisted(() => ({
   current: {
     session: {
-      user: { id: "USR_01", name: "User" },
+      user: {
+        id: "USR_01",
+        name: "User",
+        preferences: { locale: "zh-CN", themeMode: "SYSTEM" },
+      },
       defaultOrganizationId: "ORG_01",
       defaultSpaceId: "SPC_01",
     },
@@ -37,6 +43,7 @@ const sessionMock = vi.hoisted(() => ({
       { id: "SPC_01", organizationId: "ORG_01", name: "Space A" },
       { id: "SPC_02", organizationId: "ORG_01", name: "Space B" },
     ],
+    persistPreferences: vi.fn(),
     switchSpace: vi.fn(),
   },
 }));
@@ -45,7 +52,7 @@ vi.mock("../providers/session-provider", () => ({
 }));
 
 vi.mock("../providers/theme-provider", () => ({
-  useTheme: () => ({ setTheme: vi.fn() }),
+  useTheme: () => ({ setTheme: themeSetMock }),
 }));
 
 const {
@@ -85,6 +92,8 @@ beforeEach(() => {
   listBugsMock.mockReset();
   listRequirementsMock.mockReset();
   listIntakeItemsMock.mockReset();
+  routerPushMock.mockReset();
+  themeSetMock.mockReset();
   listWorkItemsMock.mockResolvedValue({
     items: [
       {
@@ -115,7 +124,11 @@ beforeEach(() => {
   });
   sessionMock.current = {
     session: {
-      user: { id: "USR_01", name: "User" },
+      user: {
+        id: "USR_01",
+        name: "User",
+        preferences: { locale: "zh-CN", themeMode: "SYSTEM" },
+      },
       defaultOrganizationId: "ORG_01",
       defaultSpaceId: "SPC_01",
     },
@@ -123,6 +136,7 @@ beforeEach(() => {
       { id: "SPC_01", organizationId: "ORG_01", name: "Space A" },
       { id: "SPC_02", organizationId: "ORG_01", name: "Space B" },
     ],
+    persistPreferences: vi.fn(),
     switchSpace: vi.fn(),
   };
   if (typeof window !== "undefined") {
@@ -191,6 +205,39 @@ describe("CommandPalette", () => {
     expect(
       await screen.findByText("Recently visited task"),
     ).toBeInTheDocument();
+  });
+
+  it("keeps direct-open recent entries when the prefetched page is incomplete", async () => {
+    listWorkItemsMock.mockResolvedValueOnce({
+      items: [
+        {
+          id: "01ARZ3NDEKTSV4RRFFQ69G5FT1",
+          title: "Task A",
+        },
+      ],
+      total: 100,
+    });
+    window.localStorage.setItem(
+      RECENT_KEY,
+      JSON.stringify([
+        {
+          id: "01ARZ3NDEKTSV4RRFFQ69G5FZZ",
+          type: "TASK",
+          code: "TASK-MISS",
+          title: "Directly opened old task",
+          href: "/work-items",
+        },
+      ]),
+    );
+
+    render(<CommandPalette />);
+    openCommandPalette();
+
+    expect(
+      await screen.findByText("Directly opened old task"),
+    ).toBeInTheDocument();
+    await waitFor(() => expect(listWorkItemsMock).toHaveBeenCalledTimes(1));
+    expect(screen.getByText("Directly opened old task")).toBeInTheDocument();
   });
 
   it("does not leak recent entries across organization or space scopes", async () => {
@@ -302,5 +349,17 @@ describe("CommandPalette", () => {
     });
     // At least one requirement uses the untitled fallback string.
     expect(screen.getByText("shell.command.untitled")).toBeInTheDocument();
+  });
+
+  it("persists theme preference when selecting a theme command", async () => {
+    render(<CommandPalette />);
+    openCommandPalette();
+
+    fireEvent.click(await screen.findByText("shell.command.themeDark"));
+
+    expect(themeSetMock).toHaveBeenCalledWith("dark");
+    expect(sessionMock.current.persistPreferences).toHaveBeenCalledWith({
+      themeMode: "DARK",
+    });
   });
 });

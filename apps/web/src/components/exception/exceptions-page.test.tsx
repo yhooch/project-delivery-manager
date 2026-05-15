@@ -65,19 +65,25 @@ vi.mock("../../lib/space-service", () => ({
 vi.mock("../work-item/task-detail-sheet", () => ({
   TaskDetailSheet: ({
     item,
+    onChanged,
     open,
   }: {
     item: { id: string; title: string } | null;
+    onChanged?: () => void;
     open: boolean;
   }) =>
     open && item ? (
       <div data-testid="task-detail-sheet-open">
         <span data-testid="task-detail-sheet-item-title">{item.title}</span>
+        <button type="button" onClick={onChanged}>
+          detail changed
+        </button>
       </div>
     ) : null,
 }));
 
 import { ExceptionsPage } from "./exceptions-page";
+import { createRecentStorageKey } from "../shell/recent-opens";
 
 function makeWorkItem(overrides: Record<string, unknown> = {}) {
   return {
@@ -145,6 +151,7 @@ beforeEach(() => {
       status: "ACTIVE",
     },
   };
+  window.localStorage.clear();
 });
 
 afterEach(() => {
@@ -273,6 +280,45 @@ describe("ExceptionsPage", () => {
     expect(
       screen.getByTestId("task-detail-sheet-item-title").textContent,
     ).toBe("Click exception");
+  });
+
+  it("records exception row opens and refetches when detail changes", async () => {
+    getSpaceExceptionsViewMock
+      .mockResolvedValueOnce(
+        makeViewResponse([
+          makeException(
+            makeWorkItem({
+              id: "01ARZ3NDEKTSV4RRFFQ69G5FRC",
+              title: "Remember exception",
+            }),
+          ),
+        ]),
+      )
+      .mockResolvedValueOnce(makeViewResponse([]));
+
+    render(<ExceptionsPage />);
+
+    fireEvent.click(await screen.findByText("Remember exception"));
+
+    const stored = JSON.parse(
+      window.localStorage.getItem(
+        createRecentStorageKey({
+          organizationId: "ORG_01",
+          spaceId: "SPC_01",
+        }),
+      ) ?? "[]",
+    ) as Array<{ href: string; title: string; type: string }>;
+    expect(stored[0]).toMatchObject({
+      href: "/work-items",
+      title: "Remember exception",
+      type: "TASK",
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "detail changed" }));
+
+    await waitFor(() =>
+      expect(getSpaceExceptionsViewMock).toHaveBeenCalledTimes(2),
+    );
   });
 
   it("renders the unauthenticated empty state when there is no session", async () => {

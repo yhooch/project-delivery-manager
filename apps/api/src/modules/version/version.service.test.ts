@@ -31,7 +31,7 @@ const ASSIGNEE_ID = "01H00000000000000000000004";
 
 describe("VersionService board view", () => {
   it("returns the version board with canonical filters and space-wide visibility", async () => {
-    const subject = createSubject("TESTER");
+    const subject = createSubject("PM");
 
     subject.versions.items.set(VERSION_ID, makeVersion());
 
@@ -81,6 +81,19 @@ describe("VersionService board view", () => {
     });
 
     expect(subject.versions.boardInput?.visibility).toBe("PARTICIPANT");
+  });
+
+  it("uses tester-scoped visibility for TESTER board reads", async () => {
+    const subject = createSubject("TESTER");
+
+    subject.versions.items.set(VERSION_ID, makeVersion());
+
+    await subject.service.getBoard(ACTOR_ID, VERSION_ID, {
+      page: 1,
+      pageSize: 20,
+    });
+
+    expect(subject.versions.boardInput?.visibility).toBe("TESTER");
   });
 
   it("rejects query scope that does not match the version", async () => {

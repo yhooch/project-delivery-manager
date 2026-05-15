@@ -341,6 +341,7 @@
       },
       "workbench": "我的工作台",
       "overview": "空间总览",
+      "spaces": "项目空间",
       "versions": "版本",
       "tasks": "任务",
       "bugs": "Bug",
@@ -792,6 +793,9 @@
     },
     "dialog": {
       "create": {
+        "title": "新建需求",
+        "description": "创建需求草稿并打开编辑器。",
+        "submit": "创建需求",
         "submitting": "创建中"
       }
     },
@@ -1984,16 +1988,25 @@
       "blocked": "阻塞事项",
       "pendingConfirm": "待确认"
     },
+    "time": {
+      "justNow": "刚刚"
+    },
     "sections": {
       "todo": "我的待办",
+      "assignedTasks": "我负责的任务",
+      "assignedBugs": "我负责的 Bug",
       "actions": "待处理动作",
+      "pendingConfirm": "待我确认",
       "dueSoon": "临近截止",
       "blocked": "阻塞中",
       "recent": "最近动态"
     },
     "empty": {
       "todo": "暂无我的待办。",
+      "assignedTasks": "暂无你负责的任务。",
+      "assignedBugs": "暂无你负责的 Bug。",
       "actions": "暂无待处理动作。",
+      "pendingConfirm": "暂无待你确认的事项。",
       "dueSoon": "暂无临近截止事项。",
       "blocked": "暂无阻塞工作项。",
       "recent": "暂无最近动态。",
@@ -2076,6 +2089,8 @@
       "description": "按当前组织加载空间，空间切换后隔离详情与总览数据。",
       "spaceCount": "{count} 个空间",
       "readOnly": "当前组织角色只能查看空间，不能创建空间。",
+      "refresh": "刷新",
+      "errorTitle": "空间列表加载失败",
       "loading": "正在加载空间",
       "empty": "暂无空间",
       "selected": "当前空间",
@@ -3155,6 +3170,7 @@
       "title": "组织成员",
       "add": "添加成员",
       "empty": "暂无组织成员",
+      "readOnly": "当前组织角色只能查看成员，不能添加或移除成员。",
       "ownerProtectionNote": "系统会自动保护至少一个 OWNER 不可移除。",
       "actions": {
         "remove": "移除 {username}"

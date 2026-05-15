@@ -20,7 +20,7 @@ export type VersionListInput = {
 
 export type VersionListResult = PageResult<Version>;
 
-export type VersionBoardVisibility = "SPACE" | "PARTICIPANT";
+export type VersionBoardVisibility = "SPACE" | "PARTICIPANT" | "TESTER";
 
 export type VersionBoardInput = VersionBoardViewQuery & {
   actorUserId: string;

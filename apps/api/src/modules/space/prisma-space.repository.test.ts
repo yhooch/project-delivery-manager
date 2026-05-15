@@ -22,6 +22,8 @@ type RepositoryInternals = {
     participantWorkItemIds: string[];
     readAllSpaceIds: string[];
     spaceIds: string[];
+    testerSpaceIds: string[];
+    testerWorkItemIds: string[];
   }>;
 };
 
@@ -106,7 +108,9 @@ describe("PrismaSpaceRepository", () => {
       participantWorkItemIds: [],
       readAllSpaceIds: [spaceId],
       spaceIds: [spaceId],
-    }));
+      testerSpaceIds: [],
+      testerWorkItemIds: [],
+	    }));
     internals.findCurrentVersion = vi.fn(async () => undefined);
     internals.findVersionById = vi.fn(async () => undefined);
     internals.listDefaultWorkflows = vi.fn(async () => []);

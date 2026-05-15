@@ -311,6 +311,38 @@ describe("requirement and attachment API", () => {
     await viewerAgent.get(`/api/v1/requirements/${requirement.id}`).expect(200);
   });
 
+  it("does not leak titled DRAFT requirements to non-participant space members", async () => {
+    const { agent, developerAgent, space } = await setupRequirementSpace(
+      "m1g_draft_visibility",
+      "PM",
+    );
+    const draft = (
+      await createRequirement(agent, space.id, {}).expect(200)
+    ).body.data as Requirement;
+    requirements.setDraftTitle(draft.id, "已命名草稿");
+
+    await listRequirements(agent, space.id, { status: "DRAFT" })
+      .expect(200)
+      .expect(({ body }) => {
+        expect(body.data.items.map((item: Requirement) => item.id)).toEqual([
+          draft.id,
+        ]);
+      });
+    await listRequirements(developerAgent, space.id, { status: "DRAFT" })
+      .expect(200)
+      .expect(({ body }) => {
+        expect(body.data.total).toBe(0);
+      });
+    await listRequirements(developerAgent, space.id, { includeDrafts: true })
+      .expect(200)
+      .expect(({ body }) => {
+        expect(body.data.items.some((item: Requirement) => item.id === draft.id)).toBe(
+          false,
+        );
+      });
+    await developerAgent.get(`/api/v1/requirements/${draft.id}`).expect(404);
+  });
+
   it("presigns, registers, and downloads requirement attachments", async () => {
     const { agent, viewerAgent, requirementUser, space } =
       await setupRequirementSpace("m1g_attachment_success", "REQUIREMENT");
@@ -355,7 +387,7 @@ describe("requirement and attachment API", () => {
       uploadedById: requirementUser.id,
     });
 
-    await viewerAgent
+    await agent
       .get(`/api/v1/attachments/${attachment.id}/download-url`)
       .expect(200)
       .expect(({ body }) => {
@@ -363,6 +395,12 @@ describe("requirement and attachment API", () => {
         expect(body.data.downloadUrl).toContain(
           "https://object-storage.local/download/",
         );
+      });
+    await viewerAgent
+      .get(`/api/v1/attachments/${attachment.id}/download-url`)
+      .expect(404)
+      .expect(({ body }) => {
+        expect(body.code).toBe("ATTACHMENT_TARGET_NOT_FOUND");
       });
   });
 
@@ -476,10 +514,15 @@ describe("requirement and attachment API", () => {
       `${prefix}_assignee`,
       `${prefix}.4`,
     );
+    const developerAgent = await registeredAgent(
+      `${prefix}_developer`,
+      `${prefix}.5`,
+    );
     const requirementUser = getUser(`${prefix}_writer`);
     const viewer = getUser(`${prefix}_viewer`);
     const outsider = getUser(`${prefix}_outsider`);
     const assignee = getUser(`${prefix}_assignee`);
+    const developer = getUser(`${prefix}_developer`);
     const organization = organizations.createTestOrganization(
       requirementUser.id,
       `${prefix} Org`,
@@ -488,6 +531,7 @@ describe("requirement and attachment API", () => {
     organizations.addTestMember(organization.id, viewer.id, "MEMBER");
     organizations.addTestMember(organization.id, assignee.id, "MEMBER");
     organizations.addTestMember(organization.id, outsider.id, "MEMBER");
+    organizations.addTestMember(organization.id, developer.id, "MEMBER");
     const space = spaces.createTestSpace(
       organization.id,
       requirementUser.id,
@@ -496,6 +540,7 @@ describe("requirement and attachment API", () => {
     spaces.updateTestMemberRole(space.id, requirementUser.id, writerRole);
     spaces.addTestMember(organization.id, space.id, viewer.id, "VIEWER");
     spaces.addTestMember(organization.id, space.id, assignee.id, "PM");
+    spaces.addTestMember(organization.id, space.id, developer.id, "DEVELOPER");
     const version = versions.createTestVersion(
       organization.id,
       space.id,
@@ -505,6 +550,7 @@ describe("requirement and attachment API", () => {
 
     return {
       agent,
+      developerAgent,
       viewerAgent,
       outsiderAgent,
       requirementUser,
@@ -1182,6 +1228,17 @@ class InMemoryRequirementRepository implements RequirementRepository {
     return requirement ? this.toPublic(requirement) : undefined;
   }
 
+  async isParticipant(
+    _spaceId: string,
+    requirementId: string,
+    userId: string,
+  ): Promise<boolean> {
+    return this.participants.some(
+      (participant) =>
+        participant.targetId === requirementId && participant.userId === userId,
+    );
+  }
+
   async listBySpaceId(
     spaceId: string,
     input: RequirementListInput,
@@ -1191,7 +1248,8 @@ class InMemoryRequirementRepository implements RequirementRepository {
         requirement.spaceId === spaceId &&
         (!input.versionId || requirement.versionId === input.versionId) &&
         (!input.ownerId || requirement.ownerId === input.ownerId) &&
-        this.matchesStatusFilter(requirement, input),
+        this.matchesStatusFilter(requirement, input) &&
+        this.matchesVisibility(requirement, input),
     );
 
     return {
@@ -1250,27 +1308,47 @@ class InMemoryRequirementRepository implements RequirementRepository {
       .map(({ relationType, userId }) => ({ relationType, userId }));
   }
 
+  setDraftTitle(requirementId: string, title: string): void {
+    const requirement = this.records.get(requirementId);
+
+    if (requirement?.status === "DRAFT") {
+      requirement.title = title;
+    }
+  }
+
   private matchesStatusFilter(
     requirement: InternalRequirement,
     input: RequirementListInput,
   ): boolean {
-    if (input.status === "DRAFT") {
-      return (
-        requirement.status === "DRAFT" &&
-        requirement.createdById === input.actorUserId
-      );
-    }
     if (input.status) {
       return requirement.status === input.status;
     }
     if (input.includeDrafts) {
-      return (
-        requirement.status !== "DRAFT" ||
-        requirement.createdById === input.actorUserId
-      );
+      return true;
     }
 
-    return !(requirement.status === "DRAFT" && requirement.title === "");
+    return requirement.status !== "DRAFT";
+  }
+
+  private matchesVisibility(
+    requirement: InternalRequirement,
+    input: RequirementListInput,
+  ): boolean {
+    if (input.visibility === "ALL") {
+      return true;
+    }
+
+    const isParticipant = this.participants.some(
+      (participant) =>
+        participant.targetId === requirement.id &&
+        participant.userId === input.actorUserId,
+    );
+
+    if (input.visibility === "PARTICIPANT") {
+      return isParticipant;
+    }
+
+    return requirement.status !== "DRAFT" || isParticipant;
   }
 
   private ensureParticipant(

@@ -23,15 +23,10 @@ import {
   VERSION_REPOSITORY,
   type VersionRepository,
 } from "./version.repository";
-import type { VersionListInput } from "./version.types";
+import type { VersionBoardVisibility, VersionListInput } from "./version.types";
+import { canReadAllSpaceWorkItems } from "../workitem/workitem-visibility";
 
 const SPACE_MANAGER_ROLES = new Set<SpaceRole>(["SPACE_ADMIN", "PM"]);
-const SPACE_VERSION_BOARD_READ_ALL_ROLES = new Set<SpaceRole>([
-  "SPACE_ADMIN",
-  "PM",
-  "TESTER",
-  "VIEWER",
-]);
 
 @Injectable()
 export class VersionService {
@@ -118,9 +113,7 @@ export class VersionService {
       spaceId: version.spaceId,
       staleThresholdDays: access.space.settings.staleThresholdDays,
       versionId,
-      visibility: canReadAllVersionBoardItems(access.role)
-        ? "SPACE"
-        : "PARTICIPANT",
+      visibility: resolveVersionBoardVisibility(access.role),
     });
 
     return {
@@ -262,8 +255,16 @@ export class VersionService {
   }
 }
 
-function canReadAllVersionBoardItems(role: SpaceRole) {
-  return SPACE_VERSION_BOARD_READ_ALL_ROLES.has(role);
+function resolveVersionBoardVisibility(role: SpaceRole): VersionBoardVisibility {
+  if (canReadAllSpaceWorkItems(role)) {
+    return "SPACE";
+  }
+
+  if (role === "TESTER") {
+    return "TESTER";
+  }
+
+  return "PARTICIPANT";
 }
 
 function parseOptionalDate(value: string | undefined, field: string) {

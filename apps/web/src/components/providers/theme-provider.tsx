@@ -6,9 +6,12 @@ import {
   useContext,
   useEffect,
   useMemo,
-  useState,
   type ReactNode,
 } from "react";
+import {
+  ThemeProvider as NextThemesProvider,
+  useTheme as useNextThemes,
+} from "next-themes";
 
 import type { NextThemeMode } from "../../lib/preferences";
 
@@ -26,104 +29,82 @@ type ThemeProviderProps = {
 
 const STORAGE_KEY = "theme";
 const THEMES = new Set<NextThemeMode>(["system", "light", "dark"]);
+const SCRIPT_PROPS = {
+  "data-next-themes": "init",
+};
+const CLIENT_SCRIPT_PROPS = {
+  ...SCRIPT_PROPS,
+  type: "text/plain",
+};
 
-const ThemeContext = createContext<ThemeContextValue | null>(null);
+const ThemeProviderContext = createContext(false);
 
 export function ThemeProvider({ children }: ThemeProviderProps) {
-  const [theme, setThemeState] = useState<NextThemeMode>("system");
-  const [resolvedTheme, setResolvedTheme] = useState<ResolvedTheme>("light");
-
-  useEffect(() => {
-    const storedTheme = readStoredTheme();
-    setThemeState(storedTheme);
-    setResolvedTheme(resolveTheme(storedTheme));
-  }, []);
-
-  useEffect(() => {
-    const apply = () => {
-      const nextResolvedTheme = resolveTheme(theme);
-      setResolvedTheme(nextResolvedTheme);
-      applyThemeClass(nextResolvedTheme);
-    };
-
-    apply();
-
-    if (theme !== "system") {
-      return;
-    }
-
-    const media = window.matchMedia("(prefers-color-scheme: dark)");
-    media.addEventListener("change", apply);
-
-    return () => {
-      media.removeEventListener("change", apply);
-    };
-  }, [theme]);
-
-  useEffect(() => {
-    const onStorage = (event: StorageEvent) => {
-      if (event.key !== STORAGE_KEY) {
-        return;
-      }
-
-      setThemeState(normalizeTheme(event.newValue));
-    };
-
-    window.addEventListener("storage", onStorage);
-
-    return () => {
-      window.removeEventListener("storage", onStorage);
-    };
-  }, []);
-
-  const setTheme = useCallback((nextTheme: NextThemeMode) => {
-    setThemeState(nextTheme);
-    window.localStorage.setItem(STORAGE_KEY, nextTheme);
-  }, []);
-
-  const value = useMemo<ThemeContextValue>(
-    () => ({ resolvedTheme, setTheme, theme }),
-    [resolvedTheme, setTheme, theme],
-  );
-
   return (
-    <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>
+    <ThemeProviderContext.Provider value>
+      <NextThemesProvider
+        attribute="class"
+        defaultTheme="system"
+        enableSystem
+        scriptProps={getScriptProps()}
+        storageKey={STORAGE_KEY}
+      >
+        <ThemeValueGuard />
+        {children}
+      </NextThemesProvider>
+    </ThemeProviderContext.Provider>
   );
+}
+
+function getScriptProps() {
+  // React-created scripts never execute on client navigations, and React 19
+  // warns for executable script tags. Keep the SSR initializer executable.
+  if (typeof window === "undefined") return SCRIPT_PROPS;
+  return CLIENT_SCRIPT_PROPS;
 }
 
 export function useTheme() {
-  const value = useContext(ThemeContext);
+  const hasProvider = useContext(ThemeProviderContext);
+  const nextTheme = useNextThemes();
 
-  if (!value) {
+  if (!hasProvider) {
     throw new Error("useTheme must be used within ThemeProvider");
   }
 
-  return value;
+  const setTheme = useCallback(
+    (theme: NextThemeMode) => {
+      nextTheme.setTheme(theme);
+    },
+    [nextTheme.setTheme],
+  );
+
+  return useMemo<ThemeContextValue>(
+    () => ({
+      resolvedTheme: normalizeResolvedTheme(nextTheme.resolvedTheme),
+      setTheme,
+      theme: normalizeTheme(nextTheme.theme),
+    }),
+    [nextTheme.resolvedTheme, nextTheme.theme, setTheme],
+  );
 }
 
-function readStoredTheme(): NextThemeMode {
-  return normalizeTheme(window.localStorage.getItem(STORAGE_KEY));
-}
-
-function normalizeTheme(value: string | null): NextThemeMode {
-  if (THEMES.has(value as NextThemeMode)) {
-    return value as NextThemeMode;
-  }
-
+function normalizeTheme(value: string | undefined): NextThemeMode {
+  if (THEMES.has(value as NextThemeMode)) return value as NextThemeMode;
   return "system";
 }
 
-function resolveTheme(theme: NextThemeMode): ResolvedTheme {
-  if (theme === "system") {
-    return window.matchMedia("(prefers-color-scheme: dark)").matches
-      ? "dark"
-      : "light";
-  }
-
-  return theme;
+function normalizeResolvedTheme(value: string | undefined): ResolvedTheme {
+  return value === "dark" ? "dark" : "light";
 }
 
-function applyThemeClass(theme: ResolvedTheme): void {
-  document.documentElement.classList.toggle("dark", theme === "dark");
-  document.documentElement.style.colorScheme = theme;
+function ThemeValueGuard() {
+  const { setTheme, theme } = useNextThemes();
+
+  useEffect(() => {
+    if (theme && !THEMES.has(theme as NextThemeMode)) {
+      setTheme("system");
+    }
+  }, [setTheme, theme]);
+
+  return null;
 }

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import type { SpaceRole, WorkItem } from "@project-delivery/shared";
+import type { SpaceRole } from "@project-delivery/shared";
 import { WorkflowActionExecutionService } from "./workflow-action-execution.service";
 import type {
   CreateWorkflowActionAuditLogInput,
@@ -354,9 +354,36 @@ describe("WorkflowActionExecutionService", () => {
     });
   });
 
-  it("allows TESTER to see work items before action permission checks", async () => {
+  it("hides non-testing TASK action execution from non-participant TESTER users", async () => {
     const subject = createSubject("TESTER", {
       assigneeId: undefined,
+    });
+    subject.repository.participantKeys.clear();
+    subject.repository.actions.set(
+      START_ACTION_ID,
+      makeAction({
+        actorRelations: [],
+        allowedSpaceRoles: ["TESTER"],
+        id: START_ACTION_ID,
+      }),
+    );
+
+    await expect(
+      subject.service.executeAction(ACTOR_ID, WORK_ITEM_ID, START_ACTION_ID, {
+        formValues: {},
+      }),
+    ).rejects.toMatchObject({
+      code: "WORK_ITEM_NOT_FOUND",
+    });
+  });
+
+  it("allows TESTER to execute actions on non-participant testing TASKs", async () => {
+    const subject = createSubject("TESTER", {
+      assigneeId: undefined,
+      currentState: {
+        code: "READY_FOR_TEST",
+        name: "待提测",
+      },
     });
     subject.repository.participantKeys.clear();
     subject.repository.actions.set(
@@ -557,7 +584,7 @@ describe("WorkflowActionExecutionService", () => {
 
 function createSubject(
   actorRole: SpaceRole,
-  workItemOverrides: Partial<WorkItem> = {},
+  workItemOverrides: Partial<ExecutableWorkItem> = {},
 ) {
   const repository = new FakeWorkflowActionExecutionRepository();
 

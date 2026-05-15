@@ -211,12 +211,6 @@ export class PrismaBugRepository implements BugRepository {
       if (input.dueDate !== undefined) {
         data.dueDate = input.dueDate;
       }
-      if (input.blockedReason !== undefined) {
-        data.blockedReason = input.blockedReason;
-      }
-      if (input.blockedAt !== undefined) {
-        data.blockedAt = input.blockedAt;
-      }
 
       const result = await tx.workItem.updateMany({
         data,

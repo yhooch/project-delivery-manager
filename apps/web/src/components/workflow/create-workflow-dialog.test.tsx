@@ -103,7 +103,8 @@ afterEach(() => {
 });
 
 describe("CreateWorkflowDialog", () => {
-  it("uses the published workflow version as the copy source", async () => {
+  it("uses the latest published workflow version as the copy source", async () => {
+    const newerPublishedVersionId = "01ARZ3NDEKTSV4RRFFQ69G5VP2";
     listWorkflowVersionsMock.mockResolvedValueOnce({
       items: [
         makeVersion(),
@@ -113,10 +114,16 @@ describe("CreateWorkflowDialog", () => {
           status: "PUBLISHED",
           version: 2,
         }),
+        makeVersion({
+          id: newerPublishedVersionId,
+          publishedAt: "2026-05-15T10:00:00.000Z",
+          status: "PUBLISHED",
+          version: 3,
+        }),
       ],
       page: 1,
       pageSize: 50,
-      total: 2,
+      total: 3,
     });
     createWorkflowVersionMock.mockResolvedValueOnce(
       makeVersion({ id: "01ARZ3NDEKTSV4RRFFQ69G5VN1", version: 3 }),
@@ -136,10 +143,11 @@ describe("CreateWorkflowDialog", () => {
     const sourceSelect = screen.getByLabelText(
       "workflow.dialog.copyVersion.fields.sourceVersion",
     ) as HTMLSelectElement;
-    await waitFor(() => expect(sourceSelect.value).toBe(publishedVersionId));
+    await waitFor(() => expect(sourceSelect.value).toBe(newerPublishedVersionId));
     expect([...sourceSelect.options].map((option) => option.value)).toEqual([
       "",
       publishedVersionId,
+      newerPublishedVersionId,
     ]);
 
     fireEvent.click(
@@ -151,37 +159,29 @@ describe("CreateWorkflowDialog", () => {
     await waitFor(() =>
       expect(createWorkflowVersionMock).toHaveBeenCalledWith(
         { organizationId, spaceId, workflowId },
-        { sourceWorkflowVersionId: publishedVersionId },
+        { sourceWorkflowVersionId: newerPublishedVersionId },
       ),
     );
   });
 
-  it("creates a blank draft when no published source exists", async () => {
+  it("does not submit when no published source exists", async () => {
     listWorkflowVersionsMock.mockResolvedValueOnce({
       items: [makeVersion()],
       page: 1,
       pageSize: 50,
       total: 1,
     });
-    createWorkflowVersionMock.mockResolvedValueOnce(
-      makeVersion({ id: "01ARZ3NDEKTSV4RRFFQ69G5VN2", version: 2 }),
-    );
 
     renderCopyDialog();
 
     await waitFor(() => expect(listWorkflowVersionsMock).toHaveBeenCalled());
+    const submit = screen.getByRole("button", {
+      name: "workflow.dialog.copyVersion.submit",
+    });
+    expect(submit).toBeDisabled();
 
-    fireEvent.click(
-      screen.getByRole("button", {
-        name: "workflow.dialog.copyVersion.submit",
-      }),
-    );
+    fireEvent.click(submit);
 
-    await waitFor(() =>
-      expect(createWorkflowVersionMock).toHaveBeenCalledWith(
-        { organizationId, spaceId, workflowId },
-        {},
-      ),
-    );
+    expect(createWorkflowVersionMock).not.toHaveBeenCalled();
   });
 });

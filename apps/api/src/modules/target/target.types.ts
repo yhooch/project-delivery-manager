@@ -1,7 +1,9 @@
 import type {
   ApiErrorCode,
+  StatusCategory,
   SpaceRole,
   TargetType,
+  WorkItemType,
 } from "@project-delivery/shared";
 
 export type TargetAccessMode = "read" | "write";
@@ -29,4 +31,10 @@ export type TargetRecord = {
   targetType: TargetType;
   title?: string;
   isDraftRequirement?: boolean;
+  statusCategory?: StatusCategory;
+  workItemType?: WorkItemType;
+  currentState?: {
+    code: string;
+    name: string;
+  };
 };

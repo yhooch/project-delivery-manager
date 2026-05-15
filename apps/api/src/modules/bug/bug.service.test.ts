@@ -421,14 +421,6 @@ class FakeBugRepository implements BugRepository {
     const updated = makeBug({
       ...existing,
       assigneeId: input.assigneeId ?? existing.assigneeId,
-      blockedAt:
-        input.blockedAt === null
-          ? undefined
-          : (input.blockedAt?.toISOString() ?? existing.blockedAt),
-      blockedReason:
-        input.blockedReason === null
-          ? undefined
-          : (input.blockedReason ?? existing.blockedReason),
       bugDetail: {
         ...existing.bugDetail,
         actualResult: input.actualResult ?? existing.bugDetail.actualResult,

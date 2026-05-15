@@ -31,6 +31,7 @@ import { Link } from "../../i18n/routing";
 import type { WorkItemViewModel } from "../../lib/v2/work-item-view-model";
 import { cn } from "../../lib/utils";
 import { useSession } from "../providers/session-provider";
+import { recordRecentOpen } from "../shell/recent-opens";
 import { listRequirements } from "../../lib/requirement-service";
 import { listTimeline } from "../../lib/timeline-service";
 import { listVersions } from "../../lib/version-service";
@@ -364,7 +365,18 @@ export function VersionPage() {
   // -------------------------------------------------------------------------
 
   const openItem = (summary: ViewWorkItemSummary) => {
-    setActiveItem(toMockWorkItem(locale)(summary));
+    const item = toMockWorkItem(locale)(summary);
+    recordRecentOpen(
+      {
+        id: item.id,
+        type: item.type,
+        code: item.code,
+        title: item.title,
+        href: item.type === "BUG" ? "/bugs" : "/work-items",
+      },
+      { organizationId, spaceId },
+    );
+    setActiveItem(item);
     setSheetOpen(true);
   };
 

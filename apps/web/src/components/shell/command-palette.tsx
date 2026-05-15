@@ -20,6 +20,7 @@ import { useEffect, useMemo, useState } from "react";
 
 import { listBugs } from "../../lib/bug-service";
 import { listIntakeItems } from "../../lib/intake-service";
+import { toThemeMode, type NextThemeMode } from "../../lib/preferences";
 import { listRequirements } from "../../lib/requirement-service";
 import { listWorkItems } from "../../lib/work-item-service";
 
@@ -38,8 +39,10 @@ import { useTheme } from "../providers/theme-provider";
 import { useRouter } from "../../i18n/routing";
 import {
   buildLiveKey,
+  createRecentStorageKey,
   pruneStaleRecent,
   readRecent,
+  RECENT_CHANGED_EVENT,
   writeRecent,
   type RecentEntry,
 } from "./recent-opens";
@@ -51,6 +54,8 @@ export function openCommandPalette() {
 }
 
 export function useCommandPaletteShortcut() {
+  const router = useRouter();
+
   useEffect(() => {
     const handler = (event: KeyboardEvent) => {
       const target = event.target as HTMLElement | null;
@@ -88,7 +93,7 @@ export function useCommandPaletteShortcut() {
           };
           const route = routes[next.key.toLowerCase()];
           if (route) {
-            window.location.assign(route);
+            router.push(route);
           }
         };
         window.addEventListener("keydown", sequenceHandler, { once: true });
@@ -97,7 +102,7 @@ export function useCommandPaletteShortcut() {
 
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
-  }, []);
+  }, [router]);
 }
 
 type SearchResult = RecentEntry;
@@ -129,16 +134,26 @@ export function CommandPalette() {
   const [results, setResults] = useState<SearchResult[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [hasFetched, setHasFetched] = useState(false);
+  const [canPruneRecent, setCanPruneRecent] = useState(false);
   const [recent, setRecent] = useState<SearchResult[]>([]);
   const router = useRouter();
   const { setTheme } = useTheme();
-  const { session, spacesForCurrentOrganization, switchSpace } = useSession();
+  const {
+    persistPreferences,
+    session,
+    spacesForCurrentOrganization,
+    switchSpace,
+  } = useSession();
 
   const spaceId = session?.defaultSpaceId;
   const organizationId = session?.defaultOrganizationId;
   const recentScope = useMemo(
     () => ({ organizationId, spaceId }),
     [organizationId, spaceId],
+  );
+  const recentStorageKey = useMemo(
+    () => createRecentStorageKey(recentScope),
+    [recentScope],
   );
 
   useEffect(() => {
@@ -155,6 +170,23 @@ export function CommandPalette() {
       setRecent(readRecent(recentScope));
     }
   }, [open, recentScope]);
+
+  useEffect(() => {
+    const onRecentChanged = (event: Event) => {
+      const detail = (event as CustomEvent<{ storageKey?: string }>).detail;
+      if (detail?.storageKey && detail.storageKey !== recentStorageKey) {
+        return;
+      }
+
+      setRecent(readRecent(recentScope));
+    };
+
+    window.addEventListener(RECENT_CHANGED_EVENT, onRecentChanged);
+
+    return () => {
+      window.removeEventListener(RECENT_CHANGED_EVENT, onRecentChanged);
+    };
+  }, [recentScope, recentStorageKey]);
 
   // Pre-fetch the first page of each entity type when the palette opens.
   // cmdk filters in-memory based on each CommandItem's `value` prop.
@@ -197,7 +229,9 @@ export function CommandPalette() {
         if (cancelled) return;
 
         const merged: SearchResult[] = [];
+        let canPrune = true;
         if (tasks.status === "fulfilled") {
+          canPrune = canPrune && tasks.value.items.length >= tasks.value.total;
           for (const item of tasks.value.items) {
             merged.push({
               id: item.id,
@@ -207,8 +241,11 @@ export function CommandPalette() {
               href: "/work-items",
             });
           }
+        } else {
+          canPrune = false;
         }
         if (bugs.status === "fulfilled") {
+          canPrune = canPrune && bugs.value.items.length >= bugs.value.total;
           for (const item of bugs.value.items) {
             // Per design: bugId === workItemId
             merged.push({
@@ -219,8 +256,13 @@ export function CommandPalette() {
               href: "/bugs",
             });
           }
+        } else {
+          canPrune = false;
         }
         if (requirements.status === "fulfilled") {
+          canPrune =
+            canPrune &&
+            requirements.value.items.length >= requirements.value.total;
           for (const item of requirements.value.items) {
             merged.push({
               id: item.id,
@@ -230,8 +272,11 @@ export function CommandPalette() {
               href: `/requirements/${item.id}`,
             });
           }
+        } else {
+          canPrune = false;
         }
         if (intake.status === "fulfilled") {
+          canPrune = canPrune && intake.value.items.length >= intake.value.total;
           for (const item of intake.value.items) {
             merged.push({
               id: item.id,
@@ -241,9 +286,12 @@ export function CommandPalette() {
               href: "/intake-items",
             });
           }
+        } else {
+          canPrune = false;
         }
 
         setResults(merged);
+        setCanPruneRecent(canPrune);
         setHasFetched(true);
       } finally {
         if (!cancelled) setIsLoading(false);
@@ -258,6 +306,7 @@ export function CommandPalette() {
   // Reset in-memory fetch state if user switches organization / space.
   useEffect(() => {
     setHasFetched(false);
+    setCanPruneRecent(false);
     setResults([]);
     setRecent([]);
   }, [organizationId, spaceId]);
@@ -271,6 +320,14 @@ export function CommandPalette() {
     const next = writeRecent(item, recentScope);
     setRecent(next);
     navigate(item.href);
+  };
+
+  const selectTheme = (theme: NextThemeMode) => {
+    setOpen(false);
+    setTheme(theme);
+    if (session) {
+      void persistPreferences({ themeMode: toThemeMode(theme) });
+    }
   };
 
   const grouped = useMemo(() => {
@@ -290,14 +347,14 @@ export function CommandPalette() {
   // fetch in hand — otherwise we'd wipe the list every time the cache
   // hasn't loaded yet.
   useEffect(() => {
-    if (!open || !hasFetched) return;
+    if (!open || !hasFetched || !canPruneRecent) return;
     const liveKeys = new Set<string>();
     for (const r of results) liveKeys.add(buildLiveKey(r.type, r.id));
     setRecent((prev) => {
       const { next, changed } = pruneStaleRecent(prev, liveKeys, recentScope);
       return changed ? next : prev;
     });
-  }, [open, hasFetched, recentScope, results]);
+  }, [canPruneRecent, open, hasFetched, recentScope, results]);
 
   const showSearchView = query.trim().length >= 2 && spaceId;
 
@@ -473,8 +530,7 @@ export function CommandPalette() {
             <CommandGroup heading={t("preferences")}>
               <CommandItem
                 onSelect={() => {
-                  setOpen(false);
-                  setTheme("light");
+                  selectTheme("light");
                 }}
               >
                 <Sun className="text-muted-foreground" />
@@ -482,8 +538,7 @@ export function CommandPalette() {
               </CommandItem>
               <CommandItem
                 onSelect={() => {
-                  setOpen(false);
-                  setTheme("dark");
+                  selectTheme("dark");
                 }}
               >
                 <Sun className="text-muted-foreground" />
@@ -491,8 +546,7 @@ export function CommandPalette() {
               </CommandItem>
               <CommandItem
                 onSelect={() => {
-                  setOpen(false);
-                  setTheme("system");
+                  selectTheme("system");
                 }}
               >
                 <Sun className="text-muted-foreground" />

@@ -117,6 +117,7 @@ export function SpaceSettingsPage() {
   const filteredMembers = useMemo(() => {
     const query = memberSearch.trim().toLowerCase();
     return members.filter((member) => {
+      const identity = getSpaceMemberIdentity(member);
       if (memberRoleFilter !== "ALL" && member.role !== memberRoleFilter) {
         return false;
       }
@@ -124,8 +125,8 @@ export function SpaceSettingsPage() {
         return true;
       }
       return (
-        member.user.username.toLowerCase().includes(query) ||
-        member.user.name.toLowerCase().includes(query)
+        identity.username.toLowerCase().includes(query) ||
+        identity.displayName.toLowerCase().includes(query)
       );
     });
   }, [memberRoleFilter, memberSearch, members]);
@@ -629,6 +630,7 @@ export function SpaceSettingsPage() {
                 {filteredMembers.map((member) => {
                   const isOwner =
                     ownerMember?.userId === member.userId && Boolean(space.ownerId);
+                  const identity = getSpaceMemberIdentity(member);
                   return (
                     <li
                       key={member.id}
@@ -640,12 +642,12 @@ export function SpaceSettingsPage() {
                     >
                       <Avatar className="h-7 w-7">
                         <AvatarFallback>
-                          {member.user.name.slice(0, 1)}
+                          {initialOf(identity.displayName)}
                         </AvatarFallback>
                       </Avatar>
                       <div className="flex-1">
                         <div className="flex items-center gap-1.5 text-[13px] font-medium">
-                          {member.user.name}
+                          {identity.displayName}
                           {isOwner && (
                             <Badge variant="primary" className="text-[10px]">
                               {t("members.ownerBadge")}
@@ -653,7 +655,12 @@ export function SpaceSettingsPage() {
                           )}
                         </div>
                         <div className="font-mono text-[11px] text-muted-foreground">
-                          @{member.user.username}
+                          <span aria-hidden="true">@</span>
+                          <span
+                            data-testid={`space-settings-member-username-${member.id}`}
+                          >
+                            {identity.username}
+                          </span>
                         </div>
                       </div>
                       <Badge variant={roleVariant[member.role] ?? "default"}>
@@ -675,7 +682,7 @@ export function SpaceSettingsPage() {
                         }
                         onClick={() => setEditRoleMember(member)}
                         aria-label={t("members.actions.changeRole", {
-                          username: member.user.username,
+                          username: identity.username,
                         })}
                       >
                         <ShieldCheck className="h-3.5 w-3.5 text-muted-foreground" />
@@ -691,7 +698,7 @@ export function SpaceSettingsPage() {
                         }
                         onClick={() => void onDisableMember(member)}
                         aria-label={t("members.actions.changeStatus", {
-                          username: member.user.username,
+                          username: identity.username,
                         })}
                       >
                         <Trash2 className="h-3.5 w-3.5 text-muted-foreground" />
@@ -737,4 +744,18 @@ export function SpaceSettingsPage() {
       />
     </div>
   );
+}
+
+function getSpaceMemberIdentity(member: SpaceMemberWithUser) {
+  const username =
+    member.user.username?.trim() || member.user.name?.trim() || member.userId;
+  const displayName =
+    member.user.name?.trim() || member.user.username?.trim() || member.userId;
+
+  return { displayName, username };
+}
+
+function initialOf(value: string) {
+  const trimmed = value.trim();
+  return trimmed.length > 0 ? trimmed.slice(0, 1).toUpperCase() : "?";
 }

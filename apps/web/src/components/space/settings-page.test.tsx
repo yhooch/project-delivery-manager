@@ -176,7 +176,7 @@ describe("SpaceSettingsPage", () => {
 
     // Member row.
     expect(screen.getByText("Alice")).toBeInTheDocument();
-    expect(screen.getByText("@alice")).toBeInTheDocument();
+    expect(screen.getByText("alice", { exact: true })).toBeInTheDocument();
   });
 
   it("renders the overview card with organization, member count, and role", async () => {

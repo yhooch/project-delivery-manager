@@ -11,6 +11,11 @@ import { useEffect, useRef } from "react";
  * - `j` / `ArrowDown` → highlight next item (calls `onSelect`).
  * - `k` / `ArrowUp`   → highlight previous item (calls `onSelect`).
  * - `Enter`           → open the highlighted item (calls `onOpen`).
+ * - `e`               → edit/open the highlighted item (calls `onEdit`, or
+ *   falls back to `onOpen`).
+ * - `a`               → open the assign affordance when provided.
+ * - `s`               → run the primary submit/action affordance when
+ *   provided.
  * - `Escape`          → close the detail drawer (calls `onClose`).
  *
  * If no item is currently highlighted (`activeId` not in `items`), the first
@@ -23,6 +28,9 @@ export type UseListKeyboardNavOptions<T> = {
   getId: (item: T) => string;
   onSelect: (item: T) => void;
   onOpen?: (item: T) => void;
+  onEdit?: (item: T) => void;
+  onAssign?: (item: T) => void;
+  onSubmit?: (item: T) => void;
   onClose?: () => void;
   enabled?: boolean;
 };
@@ -68,6 +76,9 @@ export function useListKeyboardNav<T>(
       const isDown = key === "j" || key === "ArrowDown";
       const isUp = key === "k" || key === "ArrowUp";
       const isEnter = key === "Enter";
+      const isEdit = key.toLowerCase() === "e";
+      const isAssign = key.toLowerCase() === "a";
+      const isSubmit = key.toLowerCase() === "s";
       const isEscape = key === "Escape";
 
       if (isEscape) {
@@ -105,16 +116,28 @@ export function useListKeyboardNav<T>(
         return;
       }
 
-      if (isEnter) {
-        if (!current.onOpen || !current.activeId) {
+      if (isEnter || isEdit || isAssign || isSubmit) {
+        if (!current.activeId) {
           return;
         }
         const activeItem = items.find(
           (item) => current.getId(item) === current.activeId,
         );
-        if (activeItem) {
+        if (!activeItem) {
+          return;
+        }
+
+        const action = isEnter
+          ? current.onOpen
+          : isEdit
+            ? current.onEdit ?? current.onOpen
+            : isAssign
+              ? current.onAssign
+              : current.onSubmit;
+
+        if (action) {
           event.preventDefault();
-          current.onOpen(activeItem);
+          action(activeItem);
         }
       }
     };

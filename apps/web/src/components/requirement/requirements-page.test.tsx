@@ -26,10 +26,22 @@ vi.mock("../../i18n/routing", () => ({
   Link: ({
     children,
     href,
+    onClick,
   }: {
     children: React.ReactNode;
     href: string;
-  }) => <a href={href}>{children}</a>,
+    onClick?: () => void;
+  }) => (
+    <a
+      href={href}
+      onClick={(event) => {
+        event.preventDefault();
+        onClick?.();
+      }}
+    >
+      {children}
+    </a>
+  ),
   getPathname: () => "/",
   redirect: () => undefined,
   usePathname: () => "/",
@@ -59,6 +71,7 @@ vi.mock("../../lib/requirement-service", () => ({
 }));
 
 import { RequirementsPage } from "./requirements-page";
+import { createRecentStorageKey } from "../shell/recent-opens";
 
 function makeRequirement(overrides: Record<string, unknown> = {}) {
   return {
@@ -86,6 +99,7 @@ beforeEach(() => {
     },
     status: "authenticated" as const,
   };
+  window.localStorage.clear();
 });
 
 afterEach(() => {
@@ -216,6 +230,50 @@ describe("RequirementsPage", () => {
         "/requirements/01ARZ3NDEKTSV4RRFFQ69G5FNEW",
       ),
     );
+    const stored = JSON.parse(
+      window.localStorage.getItem(
+        createRecentStorageKey({
+          organizationId: "ORG_01",
+          spaceId: "SPC_01",
+        }),
+      ) ?? "[]",
+    ) as Array<{ href: string; title: string; type: string }>;
+    expect(stored[0]).toMatchObject({
+      href: "/requirements/01ARZ3NDEKTSV4RRFFQ69G5FNEW",
+      title: "Authentication refresh",
+      type: "REQUIREMENT",
+    });
+  });
+
+  it("records directly opened requirements in recent opens", async () => {
+    listRequirementsMock.mockResolvedValueOnce({
+      items: [
+        makeRequirement({
+          id: "01ARZ3NDEKTSV4RRFFQ69G5FRC",
+          title: "Remember requirement",
+          status: "CONFIRMED",
+        }),
+      ],
+      total: 1,
+    });
+
+    render(<RequirementsPage />);
+
+    fireEvent.click(await screen.findByText("Remember requirement"));
+
+    const stored = JSON.parse(
+      window.localStorage.getItem(
+        createRecentStorageKey({
+          organizationId: "ORG_01",
+          spaceId: "SPC_01",
+        }),
+      ) ?? "[]",
+    ) as Array<{ href: string; title: string; type: string }>;
+    expect(stored[0]).toMatchObject({
+      href: "/requirements/01ARZ3NDEKTSV4RRFFQ69G5FRC",
+      title: "Remember requirement",
+      type: "REQUIREMENT",
+    });
   });
 
   it("renders the noSpace empty state when session has no defaultSpaceId", async () => {

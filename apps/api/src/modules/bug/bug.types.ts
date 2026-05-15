@@ -79,8 +79,6 @@ export type UpdateBugInput = {
   priority?: Priority;
   assigneeId?: string;
   dueDate?: Date;
-  blockedReason?: string | null;
-  blockedAt?: Date | null;
   severity?: BugSeverity;
   stepsToReproduce?: string;
   expectedResult?: string;

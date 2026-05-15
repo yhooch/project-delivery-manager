@@ -22,6 +22,7 @@ import {
 } from "../../lib/requirement-service";
 import { cn } from "../../lib/utils";
 import { useSession } from "../providers/session-provider";
+import { recordRecentOpen } from "../shell/recent-opens";
 
 import { Avatar, AvatarFallback } from "../ui/avatar";
 import { Badge, type BadgeProps } from "../ui/badge";
@@ -49,6 +50,11 @@ export function RequirementsPage() {
   const router = useRouter();
   const { session, status: sessionStatus } = useSession();
   const spaceId = session?.defaultSpaceId;
+  const organizationId = session?.defaultOrganizationId;
+  const recentScope = useMemo(
+    () => ({ organizationId, spaceId }),
+    [organizationId, spaceId],
+  );
 
   const [items, setItems] = useState<Requirement[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -105,12 +111,37 @@ export function RequirementsPage() {
     { label: t("filters.all"), key: "all" },
   ];
 
+  const rememberRequirement = useCallback(
+    (item: Requirement) => {
+      recordRecentOpen(
+        {
+          id: item.id,
+          type: "REQUIREMENT",
+          code: formatRequirementCode(item.id),
+          title: item.title || t("list.untitled"),
+          href: `/requirements/${item.id}`,
+        },
+        recentScope,
+      );
+    },
+    [recentScope, t],
+  );
+
+  const openRequirement = useCallback(
+    (item: Requirement) => {
+      rememberRequirement(item);
+      router.push(`/requirements/${item.id}`);
+    },
+    [rememberRequirement, router],
+  );
+
   useListKeyboardNav<Requirement>({
     items: filtered,
     activeId,
     getId: (item) => item.id,
     onSelect: (item) => setActiveId(item.id),
-    onOpen: (item) => router.push(`/requirements/${item.id}`),
+    onOpen: openRequirement,
+    onEdit: openRequirement,
   });
 
   async function handleCreateDraft() {
@@ -122,6 +153,7 @@ export function RequirementsPage() {
 
     try {
       const draft = await createRequirementDraft({ spaceId }, {});
+      rememberRequirement(draft);
       router.push(`/requirements/${draft.id}`);
     } catch (error) {
       setErrorKey(getApiErrorMessageKey(error));
@@ -200,6 +232,7 @@ export function RequirementsPage() {
           <li key={req.id} data-testid={`requirements-row-${req.id}`}>
             <Link
               href={`/requirements/${req.id}`}
+              onClick={() => rememberRequirement(req)}
               className={cn(
                 "flex w-full items-start gap-3 px-6 py-3 text-left transition-colors hover:bg-muted/40 cursor-pointer",
                 activeId === req.id && "bg-muted/40",

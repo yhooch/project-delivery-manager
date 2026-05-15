@@ -13,6 +13,11 @@ export const REQUIREMENT_REPOSITORY = Symbol("REQUIREMENT_REPOSITORY");
 export type RequirementRepository = {
   createDraft(input: CreateRequirementDraftInput): Promise<Requirement>;
   findById(requirementId: string): Promise<Requirement | undefined>;
+  isParticipant(
+    spaceId: string,
+    requirementId: string,
+    userId: string,
+  ): Promise<boolean>;
   listBySpaceId(
     spaceId: string,
     input: RequirementListInput,
