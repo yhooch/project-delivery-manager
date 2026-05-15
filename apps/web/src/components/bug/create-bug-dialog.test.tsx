@@ -157,4 +157,31 @@ describe("CreateBugDialog", () => {
 
     expect(descriptionInput.value).toBe("");
   });
+
+  it("shows an option load error, disables submit, and retries", async () => {
+    listWorkItemsMock.mockRejectedValueOnce(new Error("network"));
+
+    render(
+      <CreateBugDialog
+        open
+        onOpenChange={() => {}}
+        organizationId={organizationId}
+        spaceId={spaceId}
+      />,
+    );
+
+    expect(await screen.findByTestId("create-bug-options-error")).toHaveTextContent(
+      "common.states.optionsLoadFailed",
+    );
+    expect(screen.getByTestId("create-bug-submit")).toBeDisabled();
+
+    fireEvent.click(screen.getByTestId("create-bug-options-retry"));
+
+    await screen.findByText("Requirement 1");
+    await screen.findByText("Task 1");
+    await waitFor(() =>
+      expect(screen.getByTestId("create-bug-submit")).not.toBeDisabled(),
+    );
+    expect(listWorkItemsMock).toHaveBeenCalledTimes(2);
+  });
 });

@@ -283,4 +283,31 @@ describe("EditBugDialog", () => {
       }),
     );
   });
+
+  it("shows an option load error, disables submit, and retries", async () => {
+    listVersionsMock.mockRejectedValueOnce(new Error("network"));
+
+    render(
+      <EditBugDialog
+        bug={makeBug()}
+        open
+        onOpenChange={vi.fn()}
+        organizationId={organizationId}
+        spaceId={spaceId}
+      />,
+    );
+
+    expect(await screen.findByTestId("edit-bug-options-error")).toHaveTextContent(
+      "common.states.optionsLoadFailed",
+    );
+    expect(screen.getByTestId("edit-bug-submit")).toBeDisabled();
+
+    fireEvent.click(screen.getByTestId("edit-bug-options-retry"));
+
+    await screen.findByText("v2");
+    await waitFor(() =>
+      expect(screen.getByTestId("edit-bug-submit")).not.toBeDisabled(),
+    );
+    expect(listVersionsMock).toHaveBeenCalledTimes(2);
+  });
 });

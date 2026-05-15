@@ -151,7 +151,7 @@ describe("ConvertIntakeDialog", () => {
     );
 
     expect(await screen.findByDisplayValue("Checkout scope")).toBeInTheDocument();
-    await waitFor(() => expect(listWorkflowBindingsMock).toHaveBeenCalled());
+    await screen.findByText(/General task/);
 
     fireEvent.change(screen.getByTestId("convert-task-due-date-0"), {
       target: { value: "2026-06-01" },
@@ -205,5 +205,36 @@ describe("ConvertIntakeDialog", () => {
     });
     expect(submit).toBeDisabled();
     expect(convertIntakeItemToWorkItemsMock).not.toHaveBeenCalled();
+  });
+
+  it("shows an option load error, disables submit, and retries", async () => {
+    listWorkflowBindingsMock.mockRejectedValueOnce(new Error("network"));
+
+    render(
+      <ConvertIntakeDialog
+        open
+        onOpenChange={vi.fn()}
+        organizationId={organizationId}
+        spaceId={spaceId}
+        intakeItem={makeIntake()}
+      />,
+    );
+
+    expect(
+      await screen.findByTestId("convert-intake-options-error"),
+    ).toHaveTextContent("common.states.optionsLoadFailed");
+    expect(
+      screen.getByRole("button", { name: "intake.dialog.convert.submit" }),
+    ).toBeDisabled();
+
+    fireEvent.click(screen.getByTestId("convert-intake-options-retry"));
+
+    await screen.findByText(/General task/);
+    await waitFor(() =>
+      expect(
+        screen.getByRole("button", { name: "intake.dialog.convert.submit" }),
+      ).not.toBeDisabled(),
+    );
+    expect(listWorkflowBindingsMock).toHaveBeenCalledTimes(2);
   });
 });

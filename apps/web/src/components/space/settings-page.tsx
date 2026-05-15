@@ -18,6 +18,7 @@ import {
 
 import { ApiClientError } from "../../lib/api-client";
 import { getApiErrorMessageKey } from "../../lib/api-error-messages";
+import { canManageSpace } from "../../lib/permission-gates";
 import {
   getSpace,
   listSpaceMembers,
@@ -60,10 +61,6 @@ const roleVariant: Record<string, "primary" | "info" | "warning" | "default"> =
     MEMBER: "default",
     VIEWER: "default",
   };
-
-function canManageSpace(role: SpaceRole | undefined): boolean {
-  return role === "SPACE_ADMIN" || role === "PM";
-}
 
 export function SpaceSettingsPage() {
   const t = useTranslations("spaceSettings");

@@ -671,10 +671,12 @@ describe("VersionPage", () => {
         expect.objectContaining({ scroll: false }),
       ),
     );
-    expect(getVersionBoardViewMock).toHaveBeenCalledWith(
-      expect.objectContaining({
-        versionId: "01ARZ3NDEKTSV4RRFFQ69G5FV1",
-      }),
+    await waitFor(() =>
+      expect(getVersionBoardViewMock).toHaveBeenCalledWith(
+        expect.objectContaining({
+          versionId: "01ARZ3NDEKTSV4RRFFQ69G5FV1",
+        }),
+      ),
     );
   });
 

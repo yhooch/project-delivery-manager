@@ -24,7 +24,9 @@
     "states": {
       "loading": "加载中…",
       "errorTitle": "加载失败",
-      "retry": "重试"
+      "retry": "重试",
+      "optionsLoading": "正在加载可选项…",
+      "optionsLoadFailed": "可选项加载失败，请重试后再提交。"
     },
     "theme": {
       "label": "切换主题",
@@ -857,6 +859,11 @@
         "description": "默认会隐藏空草稿；可新建草稿或打开本人草稿入口。"
       }
     },
+    "pagination": {
+      "summary": "已显示 {from}-{to} / 共 {total} 条",
+      "loadMore": "加载更多",
+      "loadingMore": "加载中"
+    },
     "list": {
       "title": "需求列表",
       "subtitle": "当前结果 {count} 条需求",
@@ -983,6 +990,7 @@
       "refresh": "刷新",
       "close": "关闭"
     },
+    "noDueDate": "未设置",
     "filters": {
       "label": "事项筛选",
       "status": "状态",
@@ -1292,6 +1300,11 @@
         "description": "从列表选择 Bug 后会打开详情抽屉。"
       }
     },
+    "pagination": {
+      "summary": "已显示 {from}-{to} / 共 {total} 条",
+      "loadMore": "加载更多",
+      "loadingMore": "加载中"
+    },
     "list": {
       "title": "Bug 列表",
       "subtitle": "当前结果 {count} 个 Bug",
@@ -1516,6 +1529,11 @@
         "title": "加载失败"
       }
     },
+    "pagination": {
+      "summary": "已显示 {from}-{to} / 共 {total} 条",
+      "loadMore": "加载更多",
+      "loadingMore": "加载中"
+    },
     "dialog": {
       "create": {
         "title": "新建任务",
@@ -1582,6 +1600,11 @@
         "title": "暂无事项",
         "description": "当前筛选下没有事项。请调整筛选或新建事项。"
       }
+    },
+    "pagination": {
+      "summary": "已显示 {from}-{to} / 共 {total} 条",
+      "loadMore": "加载更多",
+      "loadingMore": "加载中"
     },
     "detail": {
       "sheetDescription": "查看事项详情、状态动作、来源信息和描述。",

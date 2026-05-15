@@ -101,6 +101,13 @@ describe("shared contracts", () => {
       expect(contract).toBeDefined();
       return contract?.errorCodes ?? [];
     };
+    const targetResolverErrorCodes = [
+      "SPACE_NOT_FOUND",
+      "REQUIREMENT_NOT_FOUND",
+      "INTAKE_ITEM_NOT_FOUND",
+      "WORK_ITEM_NOT_FOUND",
+      "NOT_FOUND",
+    ];
 
     expect(errorCodesFor("createWorkItem")).toEqual(
       expect.arrayContaining([
@@ -170,6 +177,15 @@ describe("shared contracts", () => {
         "ATTACHMENT_TARGET_NOT_FOUND",
         "VALIDATION_ERROR",
       ]),
+    );
+    expect(errorCodesFor("listTimeline")).toEqual(
+      expect.arrayContaining(targetResolverErrorCodes),
+    );
+    expect(errorCodesFor("listComments")).toEqual(
+      expect.arrayContaining(targetResolverErrorCodes),
+    );
+    expect(errorCodesFor("createComment")).toEqual(
+      expect.arrayContaining(targetResolverErrorCodes),
     );
   });
 
@@ -1045,6 +1061,20 @@ describe("shared contracts", () => {
       expect.arrayContaining([
         expect.objectContaining({ name: "severity", in: "query" }),
         expect.objectContaining({ name: "relatedTaskId", in: "query" }),
+      ]),
+    );
+    expect(document.paths["/bugs/{id}"]).toBeUndefined();
+    expect(document.paths["/bugs/{bugId}"]?.get?.operationId).toBe("getBug");
+    expect(document.paths["/bugs/{bugId}"]?.patch?.operationId).toBe(
+      "updateBug",
+    );
+    expect(document.paths["/bugs/{bugId}"]?.get?.parameters).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          name: "bugId",
+          in: "path",
+          required: true,
+        }),
       ]),
     );
     expect(document.paths["/workflows/{workflowId}"]?.get?.operationId).toBe(

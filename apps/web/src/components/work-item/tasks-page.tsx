@@ -15,6 +15,7 @@ import {
   useCallback,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type ReactNode,
 } from "react";
@@ -25,6 +26,7 @@ import {
   useFocusReturn,
   useListKeyboardNav,
 } from "../../lib/hooks/use-list-keyboard-nav";
+import { canCreateTasks } from "../../lib/permission-gates";
 import { listRequirements } from "../../lib/requirement-service";
 import { useSpaceMembers, useVersions } from "../../lib/v2/lookups";
 import type { WorkItemViewModel } from "../../lib/v2/work-item-view-model";
@@ -56,6 +58,8 @@ const STATUS_FILTERS: StatusCategory[] = [
   "TERMINATED",
 ];
 const PRIORITY_FILTERS: Priority[] = ["LOW", "MEDIUM", "HIGH", "URGENT"];
+const LIST_PAGE_SIZE = 100;
+const INITIAL_PAGE_INFO = { page: 1, pageSize: LIST_PAGE_SIZE, total: 0 };
 
 export function TasksPage() {
   const tNav = useTranslations("shell.nav");
@@ -91,6 +95,7 @@ export function TasksPage() {
 
   const [items, setItems] = useState<WorkItem[]>([]);
   const [loading, setLoading] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [activeItem, setActiveItem] = useState<WorkItemViewModel | null>(null);
   const [sheetOpen, setSheetOpen] = useState(false);
@@ -102,6 +107,7 @@ export function TasksPage() {
   }));
   const [filterOpen, setFilterOpen] = useState(false);
   const [requirements, setRequirements] = useState<Requirement[]>([]);
+  const [pageInfo, setPageInfo] = useState(INITIAL_PAGE_INFO);
   const [createOpen, setCreateOpen] = useState(false);
   const [hasLoadedItems, setHasLoadedItems] = useState(false);
   const [handledDeepLinkKey, setHandledDeepLinkKey] = useState<string | null>(
@@ -112,6 +118,22 @@ export function TasksPage() {
     currentSpace?.role,
     currentSpace?.status,
   );
+  const listScopeKey = useMemo(
+    () => createTaskListScopeKey({ filters, organizationId, spaceId }),
+    [filters, organizationId, spaceId],
+  );
+  const contextKey = useMemo(
+    () => `${organizationId ?? ""}:${spaceId ?? ""}`,
+    [organizationId, spaceId],
+  );
+  const latestListScopeKeyRef = useRef(listScopeKey);
+  const listRequestIdRef = useRef(0);
+  const previousContextKeyRef = useRef(contextKey);
+  latestListScopeKeyRef.current = listScopeKey;
+  const loadedCount = items.length;
+  const paginationFrom = loadedCount > 0 ? 1 : 0;
+  const paginationTo = Math.min(loadedCount, pageInfo.total);
+  const hasMoreItems = loadedCount < pageInfo.total;
 
   const setFilter = useCallback(
     (key: keyof TaskListFilterState, value: string) => {
@@ -120,40 +142,98 @@ export function TasksPage() {
     [],
   );
 
-  const fetchTasks = useCallback(async () => {
+  const fetchTasks = useCallback(async (
+    page = 1,
+    mode: "replace" | "append" = "replace",
+  ) => {
     if (!spaceId) {
       return;
     }
 
-    setLoading(true);
-    setHasLoadedItems(false);
+    const requestId = listRequestIdRef.current + 1;
+    listRequestIdRef.current = requestId;
+    const requestScopeKey = listScopeKey;
+    const append = mode === "append";
+
+    if (append) {
+      setLoadingMore(true);
+    } else {
+      setLoading(true);
+      setHasLoadedItems(false);
+    }
     setErrorMessage(null);
 
     try {
       const result = await listWorkItems({
         organizationId,
+        page,
+        pageSize: LIST_PAGE_SIZE,
         spaceId,
         type: "TASK",
         ...filters,
       });
-      setItems(result.items);
+      if (
+        listRequestIdRef.current !== requestId ||
+        latestListScopeKeyRef.current !== requestScopeKey
+      ) {
+        return;
+      }
+      setItems((current) =>
+        append ? [...current, ...result.items] : result.items,
+      );
+      setPageInfo({
+        page: result.page ?? page,
+        pageSize: result.pageSize ?? LIST_PAGE_SIZE,
+        total: result.total ?? result.items.length,
+      });
     } catch (error) {
-      const key = getApiErrorMessageKey(error);
-      setErrorMessage(tApiError(key));
+      if (
+        listRequestIdRef.current === requestId &&
+        latestListScopeKeyRef.current === requestScopeKey
+      ) {
+        const key = getApiErrorMessageKey(error);
+        setErrorMessage(tApiError(key));
+      }
     } finally {
-      setLoading(false);
-      setHasLoadedItems(true);
+      if (
+        listRequestIdRef.current === requestId &&
+        latestListScopeKeyRef.current === requestScopeKey
+      ) {
+        if (append) {
+          setLoadingMore(false);
+        } else {
+          setLoading(false);
+        }
+        setHasLoadedItems(true);
+      }
     }
-  }, [filters, organizationId, spaceId, tApiError]);
+  }, [filters, listScopeKey, organizationId, spaceId, tApiError]);
 
   useEffect(() => {
     if (spaceId) {
-      void fetchTasks();
+      void fetchTasks(1, "replace");
     } else {
+      listRequestIdRef.current += 1;
       setItems([]);
+      setPageInfo(INITIAL_PAGE_INFO);
+      setLoading(false);
+      setLoadingMore(false);
       setHasLoadedItems(false);
     }
   }, [fetchTasks, spaceId]);
+
+  useEffect(() => {
+    if (previousContextKeyRef.current === contextKey) {
+      return;
+    }
+    previousContextKeyRef.current = contextKey;
+    setActiveItem(null);
+    setSheetOpen(false);
+    setCreateOpen(false);
+    setFilterOpen(false);
+    setRequirements([]);
+    setHandledDeepLinkKey(null);
+  }, [contextKey]);
 
   useEffect(() => {
     if (!filterOpen || !spaceId) {
@@ -390,6 +470,35 @@ export function TasksPage() {
       }
     />
   );
+  const paginationFooter =
+    pageInfo.total > 0 ? (
+      <div className="flex items-center justify-between gap-3 border-t border-border px-4 py-3 text-xs text-muted-foreground sm:px-6">
+        <span data-testid="tasks-pagination-summary">
+          {t("pagination.summary", {
+            from: paginationFrom,
+            to: paginationTo,
+            total: pageInfo.total,
+          })}
+        </span>
+        {hasMoreItems ? (
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="h-7 text-xs"
+            data-testid="tasks-load-more"
+            disabled={loadingMore}
+            onClick={() => {
+              void fetchTasks(pageInfo.page + 1, "append");
+            }}
+          >
+            {loadingMore
+              ? t("pagination.loadingMore")
+              : t("pagination.loadMore")}
+          </Button>
+        ) : null}
+      </div>
+    ) : null;
 
   if (sessionStatus === "loading") {
     return (
@@ -548,32 +657,38 @@ export function TasksPage() {
             }}
           />
         ) : filtered.length === 0 ? (
-          <EmptyState
-            title={t("states.empty.title")}
-            description={t("states.empty.description")}
-          />
+          <>
+            <EmptyState
+              title={t("states.empty.title")}
+              description={t("states.empty.description")}
+            />
+            {paginationFooter}
+          </>
         ) : (
-          <ul
-            data-testid="tasks-list"
-            role="listbox"
-            className="divide-y divide-border"
-          >
-            {filtered.map((item) => (
-              <li
-                key={item.id}
-                data-testid="tasks-row"
-                data-id={item.id}
-                role="option"
-                aria-selected={activeItem?.id === item.id}
-              >
-                <WorkItemRow
-                  item={item}
-                  onSelect={open}
-                  selected={activeItem?.id === item.id}
-                />
-              </li>
-            ))}
-          </ul>
+          <>
+            <ul
+              data-testid="tasks-list"
+              role="listbox"
+              className="divide-y divide-border"
+            >
+              {filtered.map((item) => (
+                <li
+                  key={item.id}
+                  data-testid="tasks-row"
+                  data-id={item.id}
+                  role="option"
+                  aria-selected={activeItem?.id === item.id}
+                >
+                  <WorkItemRow
+                    item={item}
+                    onSelect={open}
+                    selected={activeItem?.id === item.id}
+                  />
+                </li>
+              ))}
+            </ul>
+            {paginationFooter}
+          </>
         )}
       </div>
 
@@ -584,7 +699,7 @@ export function TasksPage() {
         organizationId={organizationId}
         spaceId={spaceId}
         onChanged={() => {
-          void fetchTasks();
+          void fetchTasks(1, "replace");
         }}
       />
 
@@ -594,19 +709,12 @@ export function TasksPage() {
           onOpenChange={setCreateOpen}
           spaceId={spaceId}
           onCreated={() => {
-            void fetchTasks();
+            void fetchTasks(1, "replace");
           }}
         />
       )}
     </div>
   );
-}
-
-function canCreateTasks(
-  role: string | undefined,
-  status: string | undefined,
-): boolean {
-  return (role === "SPACE_ADMIN" || role === "PM") && status !== "DISABLED";
 }
 
 function FilterField({
@@ -705,4 +813,26 @@ function normalizeStatusCategory(
   return STATUS_FILTERS.includes(normalized as StatusCategory)
     ? (normalized as StatusCategory)
     : undefined;
+}
+
+function createTaskListScopeKey({
+  filters,
+  organizationId,
+  spaceId,
+}: {
+  filters: TaskListFilterState;
+  organizationId?: string;
+  spaceId?: string;
+}): string {
+  return [
+    organizationId ?? "",
+    spaceId ?? "",
+    filters.assigneeId ?? "",
+    filters.intakeItemId ?? "",
+    filters.priority ?? "",
+    filters.reporterId ?? "",
+    filters.requirementId ?? "",
+    filters.statusCategory ?? "",
+    filters.versionId ?? "",
+  ].join("\u001f");
 }

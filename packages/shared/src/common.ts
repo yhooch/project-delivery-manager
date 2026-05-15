@@ -156,6 +156,12 @@ export const WorkItemIdPathParamsSchema = z
   })
   .strict();
 
+export const BugIdPathParamsSchema = z
+  .object({
+    bugId: UlidSchema,
+  })
+  .strict();
+
 export const MemberIdPathParamsSchema = z
   .object({
     memberId: UlidSchema,

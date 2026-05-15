@@ -14,8 +14,8 @@ import {
 } from "@nestjs/common";
 import {
   BugListQuerySchema,
+  BugIdPathParamsSchema,
   CreateBugRequestSchema,
-  IdPathParamsSchema,
   SpaceIdPathParamsSchema,
   UpdateBugRequestSchema,
   type BugSeverity,
@@ -98,23 +98,27 @@ export class BugController {
     );
   }
 
-  @Get("bugs/:id")
+  @Get("bugs/:bugId")
   async get(
-    @Param(new ZodValidationPipe(IdPathParamsSchema))
-    params: { id: string },
+    @Param(new ZodValidationPipe(BugIdPathParamsSchema))
+    params: { bugId: string },
     @Req() request: RequestWithContext,
   ): Promise<BugView> {
     const session = this.currentUser.requireSession(request);
 
-    return this.bugs.get(session.userId, params.id, getAuditMetadata(request));
+    return this.bugs.get(
+      session.userId,
+      params.bugId,
+      getAuditMetadata(request),
+    );
   }
 
-  @Patch("bugs/:id")
+  @Patch("bugs/:bugId")
   @HttpCode(HttpStatus.OK)
   @UseGuards(WriteOriginGuard)
   async update(
-    @Param(new ZodValidationPipe(IdPathParamsSchema))
-    params: { id: string },
+    @Param(new ZodValidationPipe(BugIdPathParamsSchema))
+    params: { bugId: string },
     @Body(new ZodValidationPipe(UpdateBugRequestSchema))
     body: UpdateBugRequest,
     @Req() request: RequestWithContext,
@@ -123,7 +127,7 @@ export class BugController {
 
     return this.bugs.update(
       session.userId,
-      params.id,
+      params.bugId,
       body,
       getAuditMetadata(request),
     );

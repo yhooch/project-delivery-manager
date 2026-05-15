@@ -1,4 +1,5 @@
 import {
+  act,
   cleanup,
   fireEvent,
   render,
@@ -424,6 +425,57 @@ describe("WorkflowConfigPage", () => {
         workflowVersionId: publishedVersionId,
       }),
     );
+  });
+
+  it("ignores stale version responses when the selected version changes quickly", async () => {
+    let resolveDraft: (value: WorkflowVersion) => void = () => {};
+    getWorkflowMock.mockResolvedValueOnce(makeWorkflow());
+    setupVersions([makePublishedVersion(), makeDraftVersion()]);
+    getWorkflowVersionMock.mockImplementation(
+      (input: { workflowVersionId: string }) => {
+        if (input.workflowVersionId === draftVersionId) {
+          return new Promise<WorkflowVersion>((resolve) => {
+            resolveDraft = resolve;
+          });
+        }
+        return Promise.resolve(makePublishedVersion());
+      },
+    );
+
+    render(<WorkflowConfigPage workflowId={workflowId} />);
+
+    const select = (await screen.findByTestId(
+      "workflow-config-version-select",
+    )) as HTMLSelectElement;
+
+    await waitFor(() =>
+      expect(getWorkflowVersionMock).toHaveBeenCalledWith({
+        organizationId: "ORG_01",
+        spaceId: "SPC_01",
+        workflowVersionId: draftVersionId,
+      }),
+    );
+
+    fireEvent.change(select, { target: { value: publishedVersionId } });
+
+    await waitFor(() =>
+      expect(getWorkflowVersionMock).toHaveBeenCalledWith({
+        organizationId: "ORG_01",
+        spaceId: "SPC_01",
+        workflowVersionId: publishedVersionId,
+      }),
+    );
+    expect(
+      await screen.findByTestId("workflow-config-version-status"),
+    ).toHaveTextContent("workflow.versionStatus.PUBLISHED");
+
+    await act(async () => {
+      resolveDraft(makeDraftVersion());
+    });
+
+    expect(
+      screen.getByTestId("workflow-config-version-status"),
+    ).toHaveTextContent("workflow.versionStatus.PUBLISHED");
   });
 
   it("disables write buttons and shows the readonly hint for a published version", async () => {

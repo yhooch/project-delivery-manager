@@ -1,4 +1,5 @@
 import {
+  act,
   cleanup,
   fireEvent,
   render,
@@ -380,6 +381,93 @@ describe("WorkflowPage", () => {
 
     const dialog = await screen.findByTestId("workflow-dialog-open");
     expect(dialog.getAttribute("data-mode")).toBe("copyVersion");
+  });
+
+  it("ignores stale list responses and closes dialogs when the space changes", async () => {
+    type WorkflowListResult = {
+      items: ReturnType<typeof makeWorkflow>[];
+      total: number;
+    };
+    const resolvers: Record<string, (value: WorkflowListResult) => void> = {};
+    listWorkflowsMock.mockImplementation(
+      (input: { spaceId: string }) =>
+        new Promise<WorkflowListResult>((resolve) => {
+          resolvers[input.spaceId] = resolve;
+        }),
+    );
+
+    const { rerender } = render(<WorkflowPage />);
+
+    await waitFor(() =>
+      expect(listWorkflowsMock).toHaveBeenCalledWith({
+        organizationId: "ORG_01",
+        page: 1,
+        pageSize: 100,
+        spaceId: "SPC_01",
+      }),
+    );
+
+    fireEvent.click(
+      screen.getByRole("button", { name: /workflow\.page\.newWorkflow/ }),
+    );
+    expect(
+      await screen.findByTestId("workflow-dialog-open"),
+    ).toBeInTheDocument();
+
+    sessionMock.current = {
+      session: {
+        defaultOrganizationId: "ORG_01",
+        defaultSpaceId: "SPC_02",
+      },
+      currentSpace: {
+        id: "SPC_02",
+        organizationId: "ORG_01",
+        name: "Space B",
+        role: "SPACE_ADMIN",
+      },
+      status: "authenticated" as const,
+    };
+    rerender(<WorkflowPage />);
+
+    await waitFor(() =>
+      expect(
+        screen.queryByTestId("workflow-dialog-open"),
+      ).not.toBeInTheDocument(),
+    );
+    await waitFor(() =>
+      expect(listWorkflowsMock).toHaveBeenCalledWith({
+        organizationId: "ORG_01",
+        page: 1,
+        pageSize: 100,
+        spaceId: "SPC_02",
+      }),
+    );
+
+    await act(async () => {
+      resolvers.SPC_02?.({
+        items: [
+          makeWorkflow({
+            id: "01ARZ3NDEKTSV4RRFFQ69G5FW2",
+            code: "SPACE_B",
+            name: "Space B Workflow",
+            spaceId: "SPC_02",
+          }),
+        ],
+        total: 1,
+      });
+    });
+
+    expect(await screen.findByText("Space B Workflow")).toBeInTheDocument();
+
+    await act(async () => {
+      resolvers.SPC_01?.({
+        items: [makeWorkflow({ name: "Old Space Workflow" })],
+        total: 1,
+      });
+    });
+
+    expect(screen.queryByText("Old Space Workflow")).not.toBeInTheDocument();
+    expect(screen.getByText("Space B Workflow")).toBeInTheDocument();
   });
 
   it("renders the noSpace empty state when session has no space", async () => {

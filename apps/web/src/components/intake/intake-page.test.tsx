@@ -10,7 +10,10 @@ import {
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const { translatorCache } = vi.hoisted(() => ({
-  translatorCache: new Map<string, (key: string) => string>(),
+  translatorCache: new Map<
+    string,
+    (key: string, values?: Record<string, unknown>) => string
+  >(),
 }));
 const { routerPushMock } = vi.hoisted(() => ({
   routerPushMock: vi.fn(),
@@ -23,7 +26,14 @@ vi.mock("next-intl", () => ({
     const key = namespace ?? "__root__";
     let fn = translatorCache.get(key);
     if (!fn) {
-      fn = (k: string) => (namespace ? `${namespace}.${k}` : k);
+      fn = (k: string, values?: Record<string, unknown>) => {
+        if (namespace === "intakeItems" && k === "relatedTasks.meta") {
+          return `${values?.dueDate ?? ""} · ${values?.priority ?? ""} · ${
+            values?.status ?? ""
+          }`;
+        }
+        return namespace ? `${namespace}.${k}` : k;
+      };
       translatorCache.set(key, fn);
     }
     return fn;
@@ -192,6 +202,8 @@ vi.mock("./convert-intake-dialog", () => ({
 
 import { IntakePage } from "./intake-page";
 import { createRecentStorageKey } from "../shell/recent-opens";
+import enMessages from "../../../messages/en-US.json";
+import zhMessages from "../../../messages/zh-CN.json";
 
 function makeIntake(overrides: Record<string, unknown> = {}) {
   return {
@@ -279,6 +291,11 @@ afterEach(() => {
 });
 
 describe("IntakePage", () => {
+  it("has noDueDate copy in both locales for related task metadata", () => {
+    expect(zhMessages.intakeItems.noDueDate).toBe("未设置");
+    expect(enMessages.intakeItems.noDueDate).toBe("Not set");
+  });
+
   it("opens an intake item detail drawer from the id query", async () => {
     searchParamsMock.current = new URLSearchParams(
       "id=01ARZ3NDEKTSV4RRFFQ69G5FID",
@@ -762,6 +779,28 @@ describe("IntakePage", () => {
     expect(
       await screen.findByText("commented on the intake item"),
     ).toBeInTheDocument();
+  });
+
+  it("renders noDueDate fallback for related tasks without a due date", async () => {
+    const intake = makeIntake({
+      id: "01ARZ3NDEKTSV4RRFFQ69G5FND",
+      title: "No due date intake",
+      status: "ACCEPTED",
+    });
+    listIntakeItemsMock.mockResolvedValueOnce({ items: [intake], total: 1 });
+    listWorkItemsMock.mockResolvedValueOnce({
+      items: [makeTask({ dueDate: undefined, title: "No due task" })],
+      page: 1,
+      pageSize: 5,
+      total: 1,
+    });
+
+    render(<IntakePage />);
+
+    fireEvent.click(await screen.findByText("No due date intake"));
+
+    expect(await screen.findByText("No due task")).toBeInTheDocument();
+    expect(screen.getByText(/intakeItems\.noDueDate/u)).toBeInTheDocument();
   });
 
   it("updates the active intake item and list after editing", async () => {

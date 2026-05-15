@@ -1,5 +1,4 @@
 import type {
-  Locale,
   ThemeMode,
   UpdateUserPreferencesRequest,
 } from "@project-delivery/shared";
@@ -38,8 +37,4 @@ export function mergePreferences(
     locale: patch.locale ?? current.locale,
     themeMode: patch.themeMode ?? current.themeMode,
   };
-}
-
-export function isSupportedLocale(locale: string): locale is Locale {
-  return locale === "zh-CN" || locale === "en-US";
 }

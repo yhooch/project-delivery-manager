@@ -12,10 +12,13 @@ import {
   Workflow as WorkflowIcon,
 } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import { Link, useRouter } from "../../i18n/routing";
 import { getApiErrorMessageKey } from "../../lib/api-error-messages";
+import {
+  canManageWorkflow as canManageWorkflowForRole,
+} from "../../lib/permission-gates";
 import {
   listWorkflowBindings,
   listWorkflows,
@@ -30,8 +33,6 @@ import { EmptyState, ErrorState, ListSkeleton } from "../v2/states";
 import { PageHeader } from "../v2/page-header";
 
 import { CreateWorkflowDialog } from "./create-workflow-dialog";
-
-const WORKFLOW_MANAGER_ROLES = new Set(["SPACE_ADMIN", "PM"]);
 
 const statusVariant: Record<
   WorkflowDefinitionStatus,
@@ -122,7 +123,11 @@ export function WorkflowPage() {
   const spaceId = session?.defaultSpaceId ?? currentSpace?.id;
   const organizationId =
     currentSpace?.organizationId ?? session?.defaultOrganizationId;
-  const canManageWorkflow = WORKFLOW_MANAGER_ROLES.has(currentSpace?.role ?? "");
+  const canManageWorkflow = canManageWorkflowForRole(currentSpace?.role);
+  const workflowContextKey = `${status}:${organizationId ?? ""}:${spaceId ?? ""}`;
+  const workflowContextKeyRef = useRef(workflowContextKey);
+  workflowContextKeyRef.current = workflowContextKey;
+  const workflowRequestRef = useRef(0);
 
   const [workflows, setWorkflows] = useState<WorkflowDefinition[]>([]);
   const [workflowMetadata, setWorkflowMetadata] = useState<
@@ -138,6 +143,12 @@ export function WorkflowPage() {
       return;
     }
 
+    const requestId = ++workflowRequestRef.current;
+    const requestContextKey = workflowContextKey;
+    const isCurrentRequest = () =>
+      workflowRequestRef.current === requestId &&
+      workflowContextKeyRef.current === requestContextKey;
+
     setIsLoading(true);
     setErrorKey(null);
 
@@ -148,19 +159,40 @@ export function WorkflowPage() {
         pageSize: 100,
         spaceId,
       });
+      if (!isCurrentRequest()) {
+        return;
+      }
       const metadata = await loadWorkflowCardMetadata({
         organizationId,
         spaceId,
         workflows: page.items,
       });
+      if (!isCurrentRequest()) {
+        return;
+      }
       setWorkflows(page.items);
       setWorkflowMetadata(metadata);
     } catch (error) {
+      if (!isCurrentRequest()) {
+        return;
+      }
       setErrorKey(getApiErrorMessageKey(error));
     } finally {
-      setIsLoading(false);
+      if (isCurrentRequest()) {
+        setIsLoading(false);
+      }
     }
-  }, [organizationId, spaceId]);
+  }, [organizationId, spaceId, workflowContextKey]);
+
+  useEffect(() => {
+    workflowRequestRef.current += 1;
+    setWorkflows([]);
+    setWorkflowMetadata({});
+    setIsLoading(false);
+    setErrorKey(null);
+    setActionErrorKey(null);
+    setDialog({ kind: "closed" });
+  }, [workflowContextKey]);
 
   useEffect(() => {
     if (status !== "authenticated" || !spaceId) {

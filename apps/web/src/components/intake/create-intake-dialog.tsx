@@ -41,6 +41,7 @@ type CreateIntakeDialogProps = {
 const SOURCE_TYPES: IntakeSourceType[] = IntakeSourceTypeSchema.options;
 
 const PRIORITIES: Priority[] = ["LOW", "MEDIUM", "HIGH", "URGENT"];
+type OptionsLoadState = "idle" | "loading" | "ready" | "failed";
 
 export function CreateIntakeDialog({
   open,
@@ -64,10 +65,16 @@ export function CreateIntakeDialog({
   const [titleError, setTitleError] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [errorKey, setErrorKey] = useState<string | null>(null);
+  const [optionsLoadState, setOptionsLoadState] =
+    useState<OptionsLoadState>("idle");
+  const [optionsReloadKey, setOptionsReloadKey] = useState(0);
 
   const [versions, setVersions] = useState<Version[]>([]);
   const [requirements, setRequirements] = useState<Requirement[]>([]);
   const [members, setMembers] = useState<SpaceMemberWithUser[]>([]);
+
+  const optionFieldsDisabled = submitting || optionsLoadState !== "ready";
+  const submitDisabled = submitting || optionsLoadState !== "ready";
 
   useEffect(() => {
     if (!open || !spaceId) {
@@ -75,6 +82,7 @@ export function CreateIntakeDialog({
     }
 
     let cancelled = false;
+    setOptionsLoadState("loading");
 
     void (async () => {
       try {
@@ -89,15 +97,18 @@ export function CreateIntakeDialog({
         setVersions(versionPage.items);
         setRequirements(requirementPage.items);
         setMembers(memberPage.items);
+        setOptionsLoadState("ready");
       } catch {
-        // swallow option load errors
+        if (!cancelled) {
+          setOptionsLoadState("failed");
+        }
       }
     })();
 
     return () => {
       cancelled = true;
     };
-  }, [open, spaceId]);
+  }, [open, optionsReloadKey, spaceId]);
 
   function reset() {
     setTitle("");
@@ -110,7 +121,14 @@ export function CreateIntakeDialog({
     setPriority("");
     setTitleError(false);
     setErrorKey(null);
+    setOptionsLoadState("idle");
+    setOptionsReloadKey(0);
     setSubmitting(false);
+  }
+
+  function retryOptionsLoad() {
+    setOptionsLoadState("loading");
+    setOptionsReloadKey((value) => value + 1);
   }
 
   function handleOpenChange(next: boolean) {
@@ -214,6 +232,13 @@ export function CreateIntakeDialog({
           </div>
 
           <div className="grid grid-cols-2 gap-3">
+            <OptionsLoadNotice
+              status={optionsLoadState}
+              onRetry={retryOptionsLoad}
+              t={tRoot}
+              errorTestId="create-intake-options-error"
+              retryTestId="create-intake-options-retry"
+            />
             <div className="flex flex-col gap-1.5">
               <Label htmlFor="create-intake-source">
                 {t("fields.sourceType")}
@@ -264,6 +289,7 @@ export function CreateIntakeDialog({
                 data-testid="create-intake-version-select"
                 value={versionId}
                 onChange={(event) => setVersionId(event.target.value)}
+                disabled={optionFieldsDisabled}
                 className="h-8 w-full rounded-md border border-input bg-background px-2 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               >
                 <option value="">{t("fields.noVersion")}</option>
@@ -283,6 +309,7 @@ export function CreateIntakeDialog({
                 data-testid="create-intake-requirement-select"
                 value={requirementId}
                 onChange={(event) => setRequirementId(event.target.value)}
+                disabled={optionFieldsDisabled}
                 className="h-8 w-full rounded-md border border-input bg-background px-2 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               >
                 <option value="">{t("fields.noRequirement")}</option>
@@ -302,6 +329,7 @@ export function CreateIntakeDialog({
                 data-testid="create-intake-assignee-select"
                 value={assigneeId}
                 onChange={(event) => setAssigneeId(event.target.value)}
+                disabled={optionFieldsDisabled}
                 className="h-8 w-full rounded-md border border-input bg-background px-2 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               >
                 <option value="">{t("fields.unassigned")}</option>
@@ -341,7 +369,7 @@ export function CreateIntakeDialog({
               type="submit"
               size="sm"
               data-testid="create-intake-submit"
-              disabled={submitting}
+              disabled={submitDisabled}
             >
               {submitting ? t("actions.submitting") : t("actions.submit")}
             </Button>
@@ -349,5 +377,53 @@ export function CreateIntakeDialog({
         </form>
       </DialogContent>
     </Dialog>
+  );
+}
+
+function OptionsLoadNotice({
+  errorTestId,
+  onRetry,
+  retryTestId,
+  status,
+  t,
+}: {
+  errorTestId: string;
+  onRetry: () => void;
+  retryTestId: string;
+  status: OptionsLoadState;
+  t: (key: string) => string;
+}) {
+  if (status === "idle" || status === "ready") {
+    return null;
+  }
+
+  if (status === "loading") {
+    return (
+      <div
+        role="status"
+        className="col-span-2 rounded-md border border-border bg-muted/40 px-3 py-2 text-xs text-muted-foreground"
+      >
+        {t("common.states.optionsLoading")}
+      </div>
+    );
+  }
+
+  return (
+    <div
+      role="alert"
+      data-testid={errorTestId}
+      className="col-span-2 flex items-center justify-between gap-3 rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-xs text-destructive"
+    >
+      <span>{t("common.states.optionsLoadFailed")}</span>
+      <Button
+        type="button"
+        variant="outline"
+        size="sm"
+        onClick={onRetry}
+        data-testid={retryTestId}
+      >
+        {t("common.states.retry")}
+      </Button>
+    </div>
   );
 }

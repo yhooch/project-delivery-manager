@@ -1,4 +1,5 @@
 import {
+  act,
   cleanup,
   fireEvent,
   render,
@@ -310,6 +311,173 @@ describe("TasksPage", () => {
     expect(screen.getByText("v1.0.0 release")).toBeInTheDocument();
     // The avatar fallback shows the initial of the resolved name.
     expect(screen.getByText("A")).toBeInTheDocument();
+  });
+
+  it("ignores stale task list responses after switching space", async () => {
+    let resolveOld: (value: unknown) => void = () => undefined;
+    let resolveNew: (value: unknown) => void = () => undefined;
+    listWorkItemsMock.mockImplementation(
+      (input: { spaceId: string }) =>
+        new Promise((resolve) => {
+          if (input.spaceId === "SPC_01") {
+            resolveOld = resolve;
+          } else {
+            resolveNew = resolve;
+          }
+        }),
+    );
+
+    const { rerender } = render(<TasksPage />);
+
+    await waitFor(() =>
+      expect(listWorkItemsMock).toHaveBeenCalledWith(
+        expect.objectContaining({ spaceId: "SPC_01" }),
+      ),
+    );
+
+    sessionMock.current = {
+      currentSpace: {
+        id: "SPC_02",
+        organizationId: "ORG_02",
+        name: "Space B",
+        role: "PM",
+        status: "ACTIVE",
+      },
+      status: "authenticated" as const,
+    };
+    rerender(<TasksPage />);
+
+    await waitFor(() =>
+      expect(listWorkItemsMock).toHaveBeenCalledWith(
+        expect.objectContaining({ spaceId: "SPC_02" }),
+      ),
+    );
+
+    await act(async () => {
+      resolveNew({
+        items: [
+          makeTask({
+            id: "01ARZ3NDEKTSV4RRFFQ69G5N02",
+            organizationId: "ORG_02",
+            spaceId: "SPC_02",
+            title: "New space task",
+          }),
+        ],
+        page: 1,
+        pageSize: 100,
+        total: 1,
+      });
+      await Promise.resolve();
+    });
+
+    expect(await screen.findByText("New space task")).toBeInTheDocument();
+
+    await act(async () => {
+      resolveOld({
+        items: [makeTask({ title: "Old space task" })],
+        page: 1,
+        pageSize: 100,
+        total: 1,
+      });
+      await Promise.resolve();
+    });
+
+    expect(screen.getByText("New space task")).toBeInTheDocument();
+    expect(screen.queryByText("Old space task")).not.toBeInTheDocument();
+  });
+
+  it("loads the next task page and appends rows", async () => {
+    listWorkItemsMock
+      .mockResolvedValueOnce({
+        items: [
+          makeTask({
+            id: "01ARZ3NDEKTSV4RRFFQ69G5P01",
+            title: "First page task",
+          }),
+        ],
+        page: 1,
+        pageSize: 1,
+        total: 2,
+      })
+      .mockResolvedValueOnce({
+        items: [
+          makeTask({
+            id: "01ARZ3NDEKTSV4RRFFQ69G5P02",
+            title: "Second page task",
+          }),
+        ],
+        page: 2,
+        pageSize: 1,
+        total: 2,
+      });
+
+    render(<TasksPage />);
+
+    expect(await screen.findByText("First page task")).toBeInTheDocument();
+    expect(screen.getByTestId("tasks-pagination-summary")).toHaveTextContent(
+      "tasks.pagination.summary",
+    );
+
+    fireEvent.click(
+      screen.getByRole("button", { name: "tasks.pagination.loadMore" }),
+    );
+
+    await waitFor(() =>
+      expect(listWorkItemsMock).toHaveBeenLastCalledWith(
+        expect.objectContaining({
+          page: 2,
+          pageSize: 100,
+          spaceId: "SPC_01",
+        }),
+      ),
+    );
+    expect(await screen.findByText("Second page task")).toBeInTheDocument();
+    expect(screen.getByText("First page task")).toBeInTheDocument();
+  });
+
+  it("keeps loading more reachable when local search hides the loaded page", async () => {
+    listWorkItemsMock
+      .mockResolvedValueOnce({
+        items: [
+          makeTask({
+            id: "01ARZ3NDEKTSV4RRFFQ69G5S01",
+            title: "Current page task",
+          }),
+        ],
+        page: 1,
+        pageSize: 1,
+        total: 2,
+      })
+      .mockResolvedValueOnce({
+        items: [
+          makeTask({
+            id: "01ARZ3NDEKTSV4RRFFQ69G5S02",
+            title: "Needle task",
+          }),
+        ],
+        page: 2,
+        pageSize: 1,
+        total: 2,
+      });
+
+    render(<TasksPage />);
+
+    expect(await screen.findByText("Current page task")).toBeInTheDocument();
+    fireEvent.change(screen.getByPlaceholderText("tasks.search.placeholder"), {
+      target: { value: "needle" },
+    });
+
+    expect(screen.getByText("tasks.states.empty.title")).toBeInTheDocument();
+    fireEvent.click(
+      screen.getByRole("button", { name: "tasks.pagination.loadMore" }),
+    );
+
+    await waitFor(() =>
+      expect(listWorkItemsMock).toHaveBeenLastCalledWith(
+        expect.objectContaining({ page: 2, pageSize: 100 }),
+      ),
+    );
+    expect(await screen.findByText("Needle task")).toBeInTheDocument();
   });
 
   it("uses a neutral assignee fallback when no member is cached", async () => {

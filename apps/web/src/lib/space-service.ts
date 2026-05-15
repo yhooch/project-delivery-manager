@@ -208,10 +208,6 @@ export function canManageOrganization(role: string | undefined) {
   return role === "OWNER" || role === "ADMIN";
 }
 
-export function canManageSpace(role: SpaceRole | undefined) {
-  return role === "SPACE_ADMIN" || role === "PM";
-}
-
 export function isActiveStatus(status: RecordStatus | undefined) {
   return status === "ACTIVE";
 }

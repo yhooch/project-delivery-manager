@@ -2,6 +2,7 @@ import { z } from "zod";
 import {
   ActionFormFieldIdPathParamsSchema,
   AttachmentIdPathParamsSchema,
+  BugIdPathParamsSchema,
   EmptyObjectSchema,
   IdPathParamsSchema,
   MemberIdPathParamsSchema,
@@ -258,6 +259,11 @@ const linkedTargetErrors = [
   "REQUIREMENT_NOT_FOUND",
   "INTAKE_ITEM_NOT_FOUND",
 ];
+const targetErrors = [
+  "SPACE_NOT_FOUND",
+  ...linkedTargetErrors,
+  "WORK_ITEM_NOT_FOUND",
+];
 const intakeItemErrors = [
   ...spaceErrors,
   "INTAKE_ITEM_NOT_FOUND",
@@ -279,6 +285,9 @@ const workItemReferenceErrors = [
   "WORKFLOW_VERSION_NOT_FOUND",
 ];
 const bugReferenceErrors = workItemReferenceErrors;
+const targetEndpointErrors = Array.from(
+  new Set([...spaceErrors, ...targetErrors, "VALIDATION_ERROR"]),
+);
 const attachmentTargetErrors = [
   ...spaceErrors,
   "ATTACHMENT_TARGET_NOT_FOUND",
@@ -891,10 +900,10 @@ export const apiContracts = [
   endpoint({
     operationId: "getBug",
     method: "get",
-    path: "/bugs/{id}",
+    path: "/bugs/{bugId}",
     tags: ["bugs"],
     summary: "Get bug detail",
-    pathSchema: IdPathParamsSchema,
+    pathSchema: BugIdPathParamsSchema,
     querySchema: EmptyObjectSchema,
     requestSchema: EmptyObjectSchema,
     responseSchema: GetBugResponseSchema,
@@ -903,10 +912,10 @@ export const apiContracts = [
   endpoint({
     operationId: "updateBug",
     method: "patch",
-    path: "/bugs/{id}",
+    path: "/bugs/{bugId}",
     tags: ["bugs"],
     summary: "Update bug detail",
-    pathSchema: IdPathParamsSchema,
+    pathSchema: BugIdPathParamsSchema,
     querySchema: EmptyObjectSchema,
     requestSchema: UpdateBugRequestSchema,
     responseSchema: UpdateBugResponseSchema,
@@ -1188,7 +1197,7 @@ export const apiContracts = [
     querySchema: TimelineQuerySchema,
     requestSchema: EmptyObjectSchema,
     responseSchema: TimelineResponseSchema,
-    errorCodes: spaceErrors,
+    errorCodes: targetEndpointErrors,
   }),
   endpoint({
     operationId: "listWorkItemTimeline",
@@ -1212,7 +1221,7 @@ export const apiContracts = [
     querySchema: CommentQuerySchema,
     requestSchema: EmptyObjectSchema,
     responseSchema: ListCommentsResponseSchema,
-    errorCodes: spaceErrors,
+    errorCodes: targetEndpointErrors,
   }),
   endpoint({
     operationId: "createComment",
@@ -1224,7 +1233,7 @@ export const apiContracts = [
     querySchema: EmptyObjectSchema,
     requestSchema: CreateCommentRequestSchema,
     responseSchema: CreateCommentResponseSchema,
-    errorCodes: spaceErrors,
+    errorCodes: targetEndpointErrors,
   }),
   endpoint({
     operationId: "listAttachments",

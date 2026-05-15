@@ -34,6 +34,7 @@ import {
   useFocusReturn,
   useListKeyboardNav,
 } from "../../lib/hooks/use-list-keyboard-nav";
+import { canManageSpace } from "../../lib/permission-gates";
 import { usePathname, useRouter } from "../../i18n/routing";
 import { getSpace } from "../../lib/space-service";
 import { cn } from "../../lib/utils";
@@ -66,10 +67,6 @@ import { PageHeader } from "../v2/page-header";
 import { EmptyState, ErrorState, LoadingState } from "../v2/states";
 
 import { ThresholdEditorDialog } from "./threshold-editor-dialog";
-
-function canManageSpaceThreshold(role: string | undefined): boolean {
-  return role === "SPACE_ADMIN" || role === "PM";
-}
 
 type Tone =
   | "destructive"
@@ -168,7 +165,7 @@ export function ExceptionsPage() {
 
   const organizationId = session?.defaultOrganizationId;
   const spaceId = session?.defaultSpaceId;
-  const canEditThreshold = canManageSpaceThreshold(currentSpace?.role);
+  const canEditThreshold = canManageSpace(currentSpace?.role);
   const { members, getMember } = useSpaceMembers(spaceId, organizationId);
   const {
     versions,

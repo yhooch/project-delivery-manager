@@ -24,7 +24,9 @@
     "states": {
       "loading": "Loading…",
       "errorTitle": "Failed to load",
-      "retry": "Retry"
+      "retry": "Retry",
+      "optionsLoading": "Loading options…",
+      "optionsLoadFailed": "Options failed to load. Retry before submitting."
     },
     "theme": {
       "label": "Switch theme",
@@ -857,6 +859,11 @@
         "description": "Empty drafts are hidden by default. Create a draft or open the My drafts entry."
       }
     },
+    "pagination": {
+      "summary": "Showing {from}-{to} of {total}",
+      "loadMore": "Load more",
+      "loadingMore": "Loading"
+    },
     "list": {
       "title": "Requirement list",
       "subtitle": "{count} requirements in the current result",
@@ -983,6 +990,7 @@
       "refresh": "Refresh",
       "close": "Close"
     },
+    "noDueDate": "Not set",
     "filters": {
       "label": "Intake filters",
       "status": "Status",
@@ -1292,6 +1300,11 @@
         "description": "Select a bug from the list to open the detail drawer."
       }
     },
+    "pagination": {
+      "summary": "Showing {from}-{to} of {total}",
+      "loadMore": "Load more",
+      "loadingMore": "Loading"
+    },
     "list": {
       "title": "Bug list",
       "subtitle": "{count} bugs in the current result",
@@ -1516,6 +1529,11 @@
         "title": "Failed to load"
       }
     },
+    "pagination": {
+      "summary": "Showing {from}-{to} of {total}",
+      "loadMore": "Load more",
+      "loadingMore": "Loading"
+    },
     "dialog": {
       "create": {
         "title": "New task",
@@ -1582,6 +1600,11 @@
         "title": "No intake items",
         "description": "No items match the current filter. Adjust the filter or create a new item."
       }
+    },
+    "pagination": {
+      "summary": "Showing {from}-{to} of {total}",
+      "loadMore": "Load more",
+      "loadingMore": "Loading"
     },
     "detail": {
       "sheetDescription": "Review intake details, status actions, source metadata, and description.",

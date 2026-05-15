@@ -282,21 +282,6 @@ export function getVersionById(
   return versions.find((version) => version.id === versionId);
 }
 
-/**
- * Test-only helper — clears all in-memory caches.
- * 不在 production code path 中使用；存在以便单测复位状态。
- */
-export function __resetLookupCaches(): void {
-  memberCache.clear();
-  versionCache.clear();
-  relationTitleCache.clear();
-  workflowVersionCache.clear();
-  memberInflight.clear();
-  versionInflight.clear();
-  relationTitleInflight.clear();
-  workflowVersionInflight.clear();
-}
-
 export type SpaceMembersHookResult = {
   members: SpaceMemberWithUser[];
   loading: boolean;

@@ -24,6 +24,11 @@ import { useEffect, useMemo, useState } from "react";
 import { listBugs } from "../../lib/bug-service";
 import { formatDisplayCode } from "../../lib/display-code";
 import { listIntakeItems } from "../../lib/intake-service";
+import {
+  canCreateBugs,
+  canCreateTasks,
+  canWriteRequirements,
+} from "../../lib/permission-gates";
 import { toThemeMode, type NextThemeMode } from "../../lib/preferences";
 import { listRequirements } from "../../lib/requirement-service";
 import { canManageOrganization } from "../../lib/space-service";
@@ -692,33 +697,6 @@ export function CommandPalette() {
         )}
       </CommandList>
     </CommandDialog>
-  );
-}
-
-function canCreateTasks(
-  role: string | undefined,
-  status: string | undefined,
-): boolean {
-  return status !== "DISABLED" && (role === "SPACE_ADMIN" || role === "PM");
-}
-
-function canCreateBugs(
-  role: string | undefined,
-  status: string | undefined,
-): boolean {
-  return (
-    status !== "DISABLED" &&
-    (role === "SPACE_ADMIN" || role === "PM" || role === "TESTER")
-  );
-}
-
-function canWriteRequirements(
-  role: string | undefined,
-  status: string | undefined,
-): boolean {
-  return (
-    status !== "DISABLED" &&
-    (role === "SPACE_ADMIN" || role === "PM" || role === "REQUIREMENT")
   );
 }
 

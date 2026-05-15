@@ -10,11 +10,14 @@ import type {
 } from "@project-delivery/shared";
 import { ArrowLeft, GitBranch, Plus, Send, X } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { Link } from "../../i18n/routing";
 import { ApiClientError } from "../../lib/api-client";
 import { getApiErrorMessageKey } from "../../lib/api-error-messages";
+import {
+  canManageWorkflow as canManageWorkflowForRole,
+} from "../../lib/permission-gates";
 import {
   createWorkflowVersion,
   deleteActionFormField,
@@ -43,8 +46,6 @@ import {
 import { WorkflowFormFieldDialog } from "./workflow-form-field-dialog";
 import { WorkflowStateDialog } from "./workflow-state-dialog";
 import { WorkflowStateList } from "./workflow-state-list";
-
-const WORKFLOW_MANAGER_ROLES = new Set(["SPACE_ADMIN", "PM"]);
 
 export type WorkflowConfigPageProps = {
   workflowId: string;
@@ -178,7 +179,17 @@ export function WorkflowConfigPage({ workflowId }: WorkflowConfigPageProps) {
   const spaceId = session?.defaultSpaceId ?? currentSpace?.id;
   const organizationId =
     currentSpace?.organizationId ?? session?.defaultOrganizationId;
-  const canManageWorkflow = WORKFLOW_MANAGER_ROLES.has(currentSpace?.role ?? "");
+  const canManageWorkflow = canManageWorkflowForRole(currentSpace?.role);
+  const workflowConfigContextKey = `${status}:${organizationId ?? ""}:${
+    spaceId ?? ""
+  }:${workflowId}`;
+  const workflowConfigContextKeyRef = useRef(workflowConfigContextKey);
+  workflowConfigContextKeyRef.current = workflowConfigContextKey;
+  const shellRequestRef = useRef(0);
+  const versionRequestRef = useRef(0);
+  const bindingRequestRef = useRef(0);
+  const actionRequestRef = useRef(0);
+  const selectedVersionContextRef = useRef("");
 
   const [workflow, setWorkflow] = useState<WorkflowDefinition | null>(null);
   const [versions, setVersions] = useState<WorkflowVersion[]>([]);
@@ -203,6 +214,12 @@ export function WorkflowConfigPage({ workflowId }: WorkflowConfigPageProps) {
     if (!spaceId) {
       return;
     }
+    const requestId = ++shellRequestRef.current;
+    const requestContextKey = workflowConfigContextKey;
+    const isCurrentRequest = () =>
+      shellRequestRef.current === requestId &&
+      workflowConfigContextKeyRef.current === requestContextKey;
+
     setIsLoadingShell(true);
     setShellErrorKey(null);
     try {
@@ -226,28 +243,47 @@ export function WorkflowConfigPage({ workflowId }: WorkflowConfigPageProps) {
       const sortedVersions = [...versionPage.items].sort(
         (a, b) => b.version - a.version,
       );
+      if (!isCurrentRequest()) {
+        return;
+      }
       setWorkflow(definition);
       setVersions(sortedVersions);
       setBindings(bindingPage.items);
       setSelectedVersionId((current) => {
-        if (current && sortedVersions.some((item) => item.id === current)) {
+        const canKeepCurrent =
+          selectedVersionContextRef.current === requestContextKey &&
+          current.length > 0 &&
+          sortedVersions.some((item) => item.id === current);
+        selectedVersionContextRef.current = requestContextKey;
+        if (canKeepCurrent) {
           return current;
         }
         const draft = sortedVersions.find((item) => item.status === "DRAFT");
         return draft?.id ?? sortedVersions[0]?.id ?? "";
       });
     } catch (error) {
+      if (!isCurrentRequest()) {
+        return;
+      }
       setShellErrorKey(getApiErrorMessageKey(error));
     } finally {
-      setIsLoadingShell(false);
+      if (isCurrentRequest()) {
+        setIsLoadingShell(false);
+      }
     }
-  }, [organizationId, spaceId, workflowId]);
+  }, [organizationId, spaceId, workflowConfigContextKey, workflowId]);
 
   const loadVersion = useCallback(
     async (versionId: string) => {
       if (!spaceId || !versionId) {
         return;
       }
+      const requestId = ++versionRequestRef.current;
+      const requestContextKey = workflowConfigContextKey;
+      const isCurrentRequest = () =>
+        versionRequestRef.current === requestId &&
+        workflowConfigContextKeyRef.current === requestContextKey;
+
       setIsLoadingVersion(true);
       setVersionErrorKey(null);
       try {
@@ -256,15 +292,45 @@ export function WorkflowConfigPage({ workflowId }: WorkflowConfigPageProps) {
           spaceId,
           workflowVersionId: versionId,
         });
+        if (!isCurrentRequest()) {
+          return;
+        }
         setVersion(result);
       } catch (error) {
+        if (!isCurrentRequest()) {
+          return;
+        }
         setVersionErrorKey(getApiErrorMessageKey(error));
       } finally {
-        setIsLoadingVersion(false);
+        if (isCurrentRequest()) {
+          setIsLoadingVersion(false);
+        }
       }
     },
-    [organizationId, spaceId],
+    [organizationId, spaceId, workflowConfigContextKey],
   );
+
+  useEffect(() => {
+    shellRequestRef.current += 1;
+    versionRequestRef.current += 1;
+    bindingRequestRef.current += 1;
+    actionRequestRef.current += 1;
+    selectedVersionContextRef.current = "";
+    setWorkflow(null);
+    setVersions([]);
+    setBindings([]);
+    setSelectedVersionId("");
+    setVersion(null);
+    setIsLoadingShell(false);
+    setIsLoadingVersion(false);
+    setShellErrorKey(null);
+    setVersionErrorKey(null);
+    setActionErrorKey(null);
+    setPublishIssues([]);
+    setPublishServerIssues([]);
+    setBusy("none");
+    setDialog({ kind: "closed" });
+  }, [workflowConfigContextKey]);
 
   useEffect(() => {
     if (status !== "authenticated" || !spaceId) {
@@ -274,14 +340,24 @@ export function WorkflowConfigPage({ workflowId }: WorkflowConfigPageProps) {
   }, [loadShell, spaceId, status]);
 
   useEffect(() => {
-    if (!selectedVersionId) {
+    actionRequestRef.current += 1;
+    setBusy("none");
+    setDialog({ kind: "closed" });
+    setActionErrorKey(null);
+    if (
+      !selectedVersionId ||
+      selectedVersionContextRef.current !== workflowConfigContextKey
+    ) {
+      versionRequestRef.current += 1;
       setVersion(null);
+      setVersionErrorKey(null);
+      setIsLoadingVersion(false);
       return;
     }
     setPublishIssues([]);
     setPublishServerIssues([]);
     void loadVersion(selectedVersionId);
-  }, [loadVersion, selectedVersionId]);
+  }, [loadVersion, selectedVersionId, workflowConfigContextKey]);
 
   const isReadOnly = useMemo(() => {
     if (!version) {
@@ -319,6 +395,12 @@ export function WorkflowConfigPage({ workflowId }: WorkflowConfigPageProps) {
     if (!spaceId) {
       return;
     }
+    const requestId = ++bindingRequestRef.current;
+    const requestContextKey = workflowConfigContextKey;
+    const isCurrentRequest = () =>
+      bindingRequestRef.current === requestId &&
+      workflowConfigContextKeyRef.current === requestContextKey;
+
     setActionErrorKey(null);
     try {
       const bindingPage = await listWorkflowBindings({
@@ -328,11 +410,17 @@ export function WorkflowConfigPage({ workflowId }: WorkflowConfigPageProps) {
         spaceId,
         workflowId,
       });
+      if (!isCurrentRequest()) {
+        return;
+      }
       setBindings(bindingPage.items);
     } catch (error) {
+      if (!isCurrentRequest()) {
+        return;
+      }
       setActionErrorKey(getApiErrorMessageKey(error));
     }
-  }, [organizationId, spaceId, workflowId]);
+  }, [organizationId, spaceId, workflowConfigContextKey, workflowId]);
 
   async function handlePublish() {
     if (!version || !spaceId) {
@@ -348,19 +436,32 @@ export function WorkflowConfigPage({ workflowId }: WorkflowConfigPageProps) {
     setPublishServerIssues([]);
     setActionErrorKey(null);
     setBusy("publish");
+    const requestId = ++actionRequestRef.current;
+    const requestContextKey = workflowConfigContextKey;
+    const isCurrentRequest = () =>
+      actionRequestRef.current === requestId &&
+      workflowConfigContextKeyRef.current === requestContextKey;
     try {
       const updated = await publishWorkflowVersion({
         organizationId,
         spaceId,
         workflowVersionId: version.id,
       });
+      if (!isCurrentRequest()) {
+        return;
+      }
       setVersion(updated);
       await loadShell();
     } catch (error) {
+      if (!isCurrentRequest()) {
+        return;
+      }
       setActionErrorKey(getApiErrorMessageKey(error));
       setPublishServerIssues(extractPublishIssueDetails(error));
     } finally {
-      setBusy("none");
+      if (isCurrentRequest()) {
+        setBusy("none");
+      }
     }
   }
 
@@ -370,6 +471,11 @@ export function WorkflowConfigPage({ workflowId }: WorkflowConfigPageProps) {
     }
     setActionErrorKey(null);
     setBusy("disable");
+    const requestId = ++actionRequestRef.current;
+    const requestContextKey = workflowConfigContextKey;
+    const isCurrentRequest = () =>
+      actionRequestRef.current === requestId &&
+      workflowConfigContextKeyRef.current === requestContextKey;
     try {
       const updated = await updateWorkflowVersion(
         {
@@ -379,12 +485,20 @@ export function WorkflowConfigPage({ workflowId }: WorkflowConfigPageProps) {
         },
         { status: "DISABLED" },
       );
+      if (!isCurrentRequest()) {
+        return;
+      }
       setVersion(updated);
       await loadShell();
     } catch (error) {
+      if (!isCurrentRequest()) {
+        return;
+      }
       setActionErrorKey(getApiErrorMessageKey(error));
     } finally {
-      setBusy("none");
+      if (isCurrentRequest()) {
+        setBusy("none");
+      }
     }
   }
 
@@ -394,17 +508,31 @@ export function WorkflowConfigPage({ workflowId }: WorkflowConfigPageProps) {
     }
     setActionErrorKey(null);
     setBusy("copy");
+    const requestId = ++actionRequestRef.current;
+    const requestContextKey = workflowConfigContextKey;
+    const isCurrentRequest = () =>
+      actionRequestRef.current === requestId &&
+      workflowConfigContextKeyRef.current === requestContextKey;
     try {
       const draft = await createWorkflowVersion(
         { organizationId, spaceId, workflowId },
         { sourceWorkflowVersionId: version.id },
       );
+      if (!isCurrentRequest()) {
+        return;
+      }
+      selectedVersionContextRef.current = requestContextKey;
       setSelectedVersionId(draft.id);
       await loadShell();
     } catch (error) {
+      if (!isCurrentRequest()) {
+        return;
+      }
       setActionErrorKey(getApiErrorMessageKey(error));
     } finally {
-      setBusy("none");
+      if (isCurrentRequest()) {
+        setBusy("none");
+      }
     }
   }
 
@@ -416,14 +544,25 @@ export function WorkflowConfigPage({ workflowId }: WorkflowConfigPageProps) {
       return;
     }
     setActionErrorKey(null);
+    const requestId = ++actionRequestRef.current;
+    const requestContextKey = workflowConfigContextKey;
+    const isCurrentRequest = () =>
+      actionRequestRef.current === requestId &&
+      workflowConfigContextKeyRef.current === requestContextKey;
     try {
       await deleteWorkflowState({
         organizationId,
         spaceId,
         stateId: state.id,
       });
+      if (!isCurrentRequest()) {
+        return;
+      }
       handleRefreshVersion();
     } catch (error) {
+      if (!isCurrentRequest()) {
+        return;
+      }
       setActionErrorKey(getApiErrorMessageKey(error));
     }
   }
@@ -436,14 +575,25 @@ export function WorkflowConfigPage({ workflowId }: WorkflowConfigPageProps) {
       return;
     }
     setActionErrorKey(null);
+    const requestId = ++actionRequestRef.current;
+    const requestContextKey = workflowConfigContextKey;
+    const isCurrentRequest = () =>
+      actionRequestRef.current === requestId &&
+      workflowConfigContextKeyRef.current === requestContextKey;
     try {
       await deleteWorkflowAction({
         actionId: action.id,
         organizationId,
         spaceId,
       });
+      if (!isCurrentRequest()) {
+        return;
+      }
       handleRefreshVersion();
     } catch (error) {
+      if (!isCurrentRequest()) {
+        return;
+      }
       setActionErrorKey(getApiErrorMessageKey(error));
     }
   }
@@ -459,14 +609,25 @@ export function WorkflowConfigPage({ workflowId }: WorkflowConfigPageProps) {
       return;
     }
     setActionErrorKey(null);
+    const requestId = ++actionRequestRef.current;
+    const requestContextKey = workflowConfigContextKey;
+    const isCurrentRequest = () =>
+      actionRequestRef.current === requestId &&
+      workflowConfigContextKeyRef.current === requestContextKey;
     try {
       await deleteActionFormField({
         fieldId: field.id,
         organizationId,
         spaceId,
       });
+      if (!isCurrentRequest()) {
+        return;
+      }
       handleRefreshVersion();
     } catch (error) {
+      if (!isCurrentRequest()) {
+        return;
+      }
       setActionErrorKey(getApiErrorMessageKey(error));
     }
   }
@@ -528,7 +689,10 @@ export function WorkflowConfigPage({ workflowId }: WorkflowConfigPageProps) {
             className="rounded-md border border-input bg-background px-2 py-1 text-xs"
             data-testid="workflow-config-version-select"
             id="workflow-config-version-select"
-            onChange={(event) => setSelectedVersionId(event.target.value)}
+            onChange={(event) => {
+              selectedVersionContextRef.current = workflowConfigContextKey;
+              setSelectedVersionId(event.target.value);
+            }}
             value={selectedVersionId}
           >
             {versions.length === 0 ? (

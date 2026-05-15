@@ -50,6 +50,7 @@ const SEVERITIES: BugSeverity[] = [
   "MINOR",
   "TRIVIAL",
 ];
+type OptionsLoadState = "idle" | "loading" | "ready" | "failed";
 
 export function EditBugDialog({
   bug,
@@ -85,11 +86,17 @@ export function EditBugDialog({
   const [titleError, setTitleError] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [errorKey, setErrorKey] = useState<string | null>(null);
+  const [optionsLoadState, setOptionsLoadState] =
+    useState<OptionsLoadState>("idle");
+  const [optionsReloadKey, setOptionsReloadKey] = useState(0);
 
   const [versions, setVersions] = useState<Version[]>([]);
   const [requirements, setRequirements] = useState<Requirement[]>([]);
   const [tasks, setTasks] = useState<WorkItem[]>([]);
   const [members, setMembers] = useState<SpaceMemberWithUser[]>([]);
+
+  const optionFieldsDisabled = submitting || optionsLoadState !== "ready";
+  const submitDisabled = submitting || optionsLoadState !== "ready";
 
   useEffect(() => {
     if (!open || !bug) {
@@ -123,6 +130,7 @@ export function EditBugDialog({
     }
 
     let cancelled = false;
+    setOptionsLoadState("loading");
 
     void (async () => {
       try {
@@ -151,12 +159,10 @@ export function EditBugDialog({
         setRequirements(requirementPage.items);
         setTasks(taskPage.items);
         setMembers(memberPage.items);
+        setOptionsLoadState("ready");
       } catch {
         if (!cancelled) {
-          setVersions([]);
-          setRequirements([]);
-          setTasks([]);
-          setMembers([]);
+          setOptionsLoadState("failed");
         }
       }
     })();
@@ -164,15 +170,22 @@ export function EditBugDialog({
     return () => {
       cancelled = true;
     };
-  }, [open, organizationId, spaceId]);
+  }, [open, organizationId, optionsReloadKey, spaceId]);
 
   function handleOpenChange(next: boolean) {
     if (!next) {
       setErrorKey(null);
       setTitleError(false);
+      setOptionsLoadState("idle");
+      setOptionsReloadKey(0);
       setSubmitting(false);
     }
     onOpenChange(next);
+  }
+
+  function retryOptionsLoad() {
+    setOptionsLoadState("loading");
+    setOptionsReloadKey((value) => value + 1);
   }
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
@@ -327,6 +340,14 @@ export function EditBugDialog({
             </div>
           </div>
 
+          <OptionsLoadNotice
+            status={optionsLoadState}
+            onRetry={retryOptionsLoad}
+            t={tRoot}
+            errorTestId="edit-bug-options-error"
+            retryTestId="edit-bug-options-retry"
+          />
+
           <div className="grid grid-cols-2 gap-3">
             <div className="flex flex-col gap-1.5">
               <Label htmlFor="edit-bug-fix-note">
@@ -363,6 +384,7 @@ export function EditBugDialog({
                 data-testid="edit-bug-regression-by-select"
                 value={regressionBy}
                 onChange={(event) => setRegressionBy(event.target.value)}
+                disabled={optionFieldsDisabled}
                 className="h-8 w-full rounded-md border border-input bg-background px-2 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               >
                 <option value="">{tForm("unassigned")}</option>
@@ -428,6 +450,7 @@ export function EditBugDialog({
                 data-testid="edit-bug-version-select"
                 value={versionId}
                 onChange={(event) => setVersionId(event.target.value)}
+                disabled={optionFieldsDisabled}
                 className="h-8 w-full rounded-md border border-input bg-background px-2 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               >
                 <option value="">{tRoot("bugs.form.noVersion")}</option>
@@ -447,6 +470,7 @@ export function EditBugDialog({
                 data-testid="edit-bug-requirement-select"
                 value={requirementId}
                 onChange={(event) => setRequirementId(event.target.value)}
+                disabled={optionFieldsDisabled}
                 className="h-8 w-full rounded-md border border-input bg-background px-2 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               >
                 <option value="">{tRoot("bugs.form.noRequirement")}</option>
@@ -467,6 +491,7 @@ export function EditBugDialog({
                 data-testid="edit-bug-related-task-select"
                 value={relatedTaskId}
                 onChange={(event) => setRelatedTaskId(event.target.value)}
+                disabled={optionFieldsDisabled}
                 className="h-8 w-full rounded-md border border-input bg-background px-2 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               >
                 <option value="">{tRoot("bugs.form.noRelatedTask")}</option>
@@ -483,6 +508,7 @@ export function EditBugDialog({
                 data-testid="edit-bug-assignee-select"
                 value={assigneeId}
                 onChange={(event) => setAssigneeId(event.target.value)}
+                disabled={optionFieldsDisabled}
                 className="h-8 w-full rounded-md border border-input bg-background px-2 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               >
                 <option value="">{t("fields.unassigned")}</option>
@@ -519,7 +545,7 @@ export function EditBugDialog({
               type="submit"
               size="sm"
               data-testid="edit-bug-submit"
-              disabled={submitting}
+              disabled={submitDisabled}
             >
               {submitting ? tEdit("submitting") : tEdit("submit")}
             </Button>
@@ -527,6 +553,54 @@ export function EditBugDialog({
         </form>
       </DialogContent>
     </Dialog>
+  );
+}
+
+function OptionsLoadNotice({
+  errorTestId,
+  onRetry,
+  retryTestId,
+  status,
+  t,
+}: {
+  errorTestId: string;
+  onRetry: () => void;
+  retryTestId: string;
+  status: OptionsLoadState;
+  t: (key: string) => string;
+}) {
+  if (status === "idle" || status === "ready") {
+    return null;
+  }
+
+  if (status === "loading") {
+    return (
+      <div
+        role="status"
+        className="col-span-2 rounded-md border border-border bg-muted/40 px-3 py-2 text-xs text-muted-foreground"
+      >
+        {t("common.states.optionsLoading")}
+      </div>
+    );
+  }
+
+  return (
+    <div
+      role="alert"
+      data-testid={errorTestId}
+      className="col-span-2 flex items-center justify-between gap-3 rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-xs text-destructive"
+    >
+      <span>{t("common.states.optionsLoadFailed")}</span>
+      <Button
+        type="button"
+        variant="outline"
+        size="sm"
+        onClick={onRetry}
+        data-testid={retryTestId}
+      >
+        {t("common.states.retry")}
+      </Button>
+    </div>
   );
 }
 

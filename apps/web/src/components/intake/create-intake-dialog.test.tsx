@@ -106,4 +106,25 @@ describe("CreateIntakeDialog", () => {
       }),
     );
   });
+
+  it("shows an option load error, disables submit, and retries", async () => {
+    listSpaceMembersMock.mockRejectedValueOnce(new Error("network"));
+
+    render(
+      <CreateIntakeDialog open onOpenChange={vi.fn()} spaceId={spaceId} />,
+    );
+
+    expect(
+      await screen.findByTestId("create-intake-options-error"),
+    ).toHaveTextContent("common.states.optionsLoadFailed");
+    expect(screen.getByTestId("create-intake-submit")).toBeDisabled();
+
+    fireEvent.click(screen.getByTestId("create-intake-options-retry"));
+
+    await screen.findByText("Alice");
+    await waitFor(() =>
+      expect(screen.getByTestId("create-intake-submit")).not.toBeDisabled(),
+    );
+    expect(listSpaceMembersMock).toHaveBeenCalledTimes(2);
+  });
 });

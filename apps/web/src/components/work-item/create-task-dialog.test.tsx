@@ -119,4 +119,31 @@ describe("CreateTaskDialog", () => {
       }),
     );
   });
+
+  it("shows an option load error, disables submit, and retries", async () => {
+    listRequirementsMock.mockRejectedValueOnce(new Error("network"));
+
+    render(
+      <CreateTaskDialog
+        open
+        onOpenChange={() => {}}
+        organizationId={organizationId}
+        spaceId={spaceId}
+      />,
+    );
+
+    expect(await screen.findByTestId("create-task-options-error")).toHaveTextContent(
+      "common.states.optionsLoadFailed",
+    );
+    expect(screen.getByTestId("create-task-submit")).toBeDisabled();
+
+    fireEvent.click(screen.getByTestId("create-task-options-retry"));
+
+    await screen.findByText("Requirement 1");
+    await screen.findByText("Intake 1");
+    await waitFor(() =>
+      expect(screen.getByTestId("create-task-submit")).not.toBeDisabled(),
+    );
+    expect(listRequirementsMock).toHaveBeenCalledTimes(2);
+  });
 });

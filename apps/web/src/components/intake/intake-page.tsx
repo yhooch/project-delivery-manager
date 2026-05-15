@@ -31,7 +31,7 @@ import {
 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useSearchParams } from "next/navigation";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { useRouter } from "../../i18n/routing";
 import { getApiErrorMessageKey } from "../../lib/api-error-messages";
@@ -101,6 +101,8 @@ const SOURCE_TYPES: IntakeSourceType[] = [
 ];
 
 const PRIORITY_FILTERS: Priority[] = ["LOW", "MEDIUM", "HIGH", "URGENT"];
+const LIST_PAGE_SIZE = 100;
+const INITIAL_PAGE_INFO = { page: 1, pageSize: LIST_PAGE_SIZE, total: 0 };
 
 const intakeStatusToCategory: Record<IntakeStatus, StatusCategory> = {
   PENDING: "NOT_STARTED",
@@ -151,6 +153,7 @@ export function IntakePage() {
 
   const [items, setItems] = useState<IntakeItem[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [errorKey, setErrorKey] = useState<string | null>(null);
   const [filter, setFilter] = useState<FilterKey>("all");
   const [listFilters, setListFilters] = useState<IntakeListFilterState>({});
@@ -163,6 +166,7 @@ export function IntakePage() {
   const [actionErrorKey, setActionErrorKey] = useState<string | null>(null);
   const [createOpen, setCreateOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
+  const [pageInfo, setPageInfo] = useState(INITIAL_PAGE_INFO);
   const [hasLoadedItems, setHasLoadedItems] = useState(false);
   const [convertOpen, setConvertOpen] = useState(false);
   const [convertTarget, setConvertTarget] = useState<IntakeItem | null>(null);
@@ -172,6 +176,28 @@ export function IntakePage() {
     null,
   );
   const { captureFocus, restoreFocus } = useFocusReturn();
+  const listScopeKey = useMemo(
+    () =>
+      createIntakeListScopeKey({
+        filter,
+        listFilters,
+        organizationId,
+        spaceId,
+      }),
+    [filter, listFilters, organizationId, spaceId],
+  );
+  const contextKey = useMemo(
+    () => `${organizationId ?? ""}:${spaceId ?? ""}`,
+    [organizationId, spaceId],
+  );
+  const latestListScopeKeyRef = useRef(listScopeKey);
+  const listRequestIdRef = useRef(0);
+  const previousContextKeyRef = useRef(contextKey);
+  latestListScopeKeyRef.current = listScopeKey;
+  const loadedCount = items.length;
+  const paginationFrom = loadedCount > 0 ? 1 : 0;
+  const paginationTo = Math.min(loadedCount, pageInfo.total);
+  const hasMoreItems = loadedCount < pageInfo.total;
 
   const setListFilter = useCallback(
     (key: keyof IntakeListFilterState, value: string) => {
@@ -180,39 +206,104 @@ export function IntakePage() {
     [],
   );
 
-  const loadItems = useCallback(async () => {
+  const loadItems = useCallback(async (
+    page = 1,
+    mode: "replace" | "append" = "replace",
+  ) => {
     if (!spaceId) {
       return;
     }
 
-    setIsLoading(true);
-    setHasLoadedItems(false);
+    const requestId = listRequestIdRef.current + 1;
+    listRequestIdRef.current = requestId;
+    const requestScopeKey = listScopeKey;
+    const append = mode === "append";
+
+    if (append) {
+      setIsLoadingMore(true);
+    } else {
+      setIsLoading(true);
+      setHasLoadedItems(false);
+    }
     setErrorKey(null);
 
     try {
-      const page = await listIntakeItems({
+      const result = await listIntakeItems({
         organizationId,
-        page: 1,
-        pageSize: 100,
+        page,
+        pageSize: LIST_PAGE_SIZE,
         spaceId,
         status: filter === "all" ? undefined : filter,
         ...listFilters,
       });
-      setItems(page.items);
+      if (
+        listRequestIdRef.current !== requestId ||
+        latestListScopeKeyRef.current !== requestScopeKey
+      ) {
+        return;
+      }
+      setItems((current) =>
+        append ? [...current, ...result.items] : result.items,
+      );
+      setPageInfo({
+        page: result.page ?? page,
+        pageSize: result.pageSize ?? LIST_PAGE_SIZE,
+        total: result.total ?? result.items.length,
+      });
     } catch (error) {
-      setErrorKey(getApiErrorMessageKey(error));
+      if (
+        listRequestIdRef.current === requestId &&
+        latestListScopeKeyRef.current === requestScopeKey
+      ) {
+        setErrorKey(getApiErrorMessageKey(error));
+      }
     } finally {
-      setIsLoading(false);
-      setHasLoadedItems(true);
+      if (
+        listRequestIdRef.current === requestId &&
+        latestListScopeKeyRef.current === requestScopeKey
+      ) {
+        if (append) {
+          setIsLoadingMore(false);
+        } else {
+          setIsLoading(false);
+        }
+        setHasLoadedItems(true);
+      }
     }
-  }, [filter, listFilters, organizationId, spaceId]);
+  }, [filter, listFilters, listScopeKey, organizationId, spaceId]);
 
   useEffect(() => {
     if (sessionStatus !== "authenticated" || !spaceId) {
+      if (sessionStatus !== "loading") {
+        listRequestIdRef.current += 1;
+        setItems([]);
+        setPageInfo(INITIAL_PAGE_INFO);
+        setIsLoading(false);
+        setIsLoadingMore(false);
+        setHasLoadedItems(false);
+      }
       return;
     }
-    void loadItems();
+    void loadItems(1, "replace");
   }, [loadItems, sessionStatus, spaceId]);
+
+  useEffect(() => {
+    if (previousContextKeyRef.current === contextKey) {
+      return;
+    }
+    previousContextKeyRef.current = contextKey;
+    setActive(null);
+    setActionInFlight(null);
+    setActionErrorKey(null);
+    setCreateOpen(false);
+    setEditOpen(false);
+    setConvertOpen(false);
+    setConvertTarget(null);
+    setFilterOpen(false);
+    setRequirements([]);
+    setTimelineRefreshVersion(0);
+    setHandledDeepLinkKey(null);
+  }, [contextKey]);
 
   useEffect(() => {
     if (!filterOpen || !spaceId) {
@@ -427,7 +518,7 @@ export function IntakePage() {
         current.map((item) => (item.id === updated.id ? updated : item)),
       );
       setActive((current) => (current?.id === updated.id ? updated : current));
-      void loadItems();
+      void loadItems(1, "replace");
     } catch (error) {
       setItems(original);
       setActive((current) => (current?.id === target.id ? target : current));
@@ -471,7 +562,7 @@ export function IntakePage() {
       });
     }
 
-    void loadItems();
+    void loadItems(1, "replace");
   }
 
   async function handleViewConvertedTasks(target: IntakeItem | null = active) {
@@ -531,6 +622,35 @@ export function IntakePage() {
       )}
     </>
   ) : null;
+  const paginationFooter =
+    pageInfo.total > 0 ? (
+      <div className="flex items-center justify-between gap-3 border-t border-border px-4 py-3 text-xs text-muted-foreground sm:px-6">
+        <span data-testid="intake-pagination-summary">
+          {t("pagination.summary", {
+            from: paginationFrom,
+            to: paginationTo,
+            total: pageInfo.total,
+          })}
+        </span>
+        {hasMoreItems ? (
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="h-7 text-xs"
+            data-testid="intake-load-more"
+            disabled={isLoadingMore}
+            onClick={() => {
+              void loadItems(pageInfo.page + 1, "append");
+            }}
+          >
+            {isLoadingMore
+              ? t("pagination.loadingMore")
+              : t("pagination.loadMore")}
+          </Button>
+        ) : null}
+      </div>
+    ) : null;
 
   let body: React.ReactNode;
 
@@ -557,86 +677,92 @@ export function IntakePage() {
       <ErrorState
         title={t("states.error.title")}
         message={tRoot(errorKey)}
-        onRetry={() => void loadItems()}
+        onRetry={() => void loadItems(1, "replace")}
         retryLabel={t("actions.retry")}
       />
     );
   } else if (filtered.length === 0) {
     body = (
-      <EmptyState
-        title={t("states.empty.title")}
-        description={t("states.empty.description")}
-      />
+      <>
+        <EmptyState
+          title={t("states.empty.title")}
+          description={t("states.empty.description")}
+        />
+        {paginationFooter}
+      </>
     );
   } else {
     body = (
-      <ul
-        data-testid="intake-list"
-        role="listbox"
-        className="divide-y divide-border"
-      >
-        {filtered.map((item) => (
-          <li
-            key={item.id}
-            data-testid="intake-row"
-            data-id={item.id}
-            role="option"
-            aria-selected={active?.id === item.id}
-          >
-            <button
-              type="button"
-              onClick={() => openItem(item)}
-              data-selected={active?.id === item.id}
-              className={cn(
-                "flex w-full min-w-0 items-center gap-3 border-l-2 px-4 py-2.5 text-left transition-colors cursor-pointer sm:px-6",
-                active?.id === item.id
-                  ? "border-primary bg-primary/10"
-                  : "border-transparent hover:bg-muted/40",
-              )}
+      <>
+        <ul
+          data-testid="intake-list"
+          role="listbox"
+          className="divide-y divide-border"
+        >
+          {filtered.map((item) => (
+            <li
+              key={item.id}
+              data-testid="intake-row"
+              data-id={item.id}
+              role="option"
+              aria-selected={active?.id === item.id}
             >
-              <span
+              <button
+                type="button"
+                onClick={() => openItem(item)}
+                data-selected={active?.id === item.id}
                 className={cn(
-                  "h-1.5 w-1.5 shrink-0 rounded-full",
-                  priorityDot[item.priority ?? "MEDIUM"],
+                  "flex w-full min-w-0 items-center gap-3 border-l-2 px-4 py-2.5 text-left transition-colors cursor-pointer sm:px-6",
+                  active?.id === item.id
+                    ? "border-primary bg-primary/10"
+                    : "border-transparent hover:bg-muted/40",
                 )}
-              />
-              <Target className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
-              <span className="font-mono text-[11px] text-muted-foreground">
-                {formatItemCode(item.id)}
-              </span>
-              <span className="min-w-0 flex-1 truncate text-[13px] font-medium">
-                {item.title}
-              </span>
-              <Badge variant="outline" className="hidden md:inline-flex">
-                {tIntakeItems(`sourceType.${item.sourceType}`)}
-              </Badge>
-              <span className="shrink-0">
-                <StatusBadge
-                  category={intakeStatusToCategory[item.status]}
-                  label={tIntakeItems(`status.${item.status}`)}
-                  withDot={false}
+              >
+                <span
+                  className={cn(
+                    "h-1.5 w-1.5 shrink-0 rounded-full",
+                    priorityDot[item.priority ?? "MEDIUM"],
+                  )}
                 />
-              </span>
-              {item.versionId && (
-                <span className="hidden gap-1 text-[11px] text-muted-foreground md:inline-flex">
-                  <GitBranch className="h-2.5 w-2.5" />
-                  {displayVersionName(item.versionId, getVersion)}
+                <Target className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+                <span className="font-mono text-[11px] text-muted-foreground">
+                  {formatItemCode(item.id)}
                 </span>
-              )}
-              {item.assigneeId && (
-                <span className="hidden max-w-28 truncate text-[11px] text-muted-foreground lg:inline-block">
-                  {displayUserName(item.assigneeId, getMember)}
+                <span className="min-w-0 flex-1 truncate text-[13px] font-medium">
+                  {item.title}
                 </span>
-              )}
-              <Avatar className="h-5 w-5 shrink-0">
-                <AvatarFallback className="text-[9px]">
-                  {initialOf(displayUserName(item.reporterId, getMember))}
-                </AvatarFallback>
-              </Avatar>
-            </button>
-          </li>
-        ))}
-      </ul>
+                <Badge variant="outline" className="hidden md:inline-flex">
+                  {tIntakeItems(`sourceType.${item.sourceType}`)}
+                </Badge>
+                <span className="shrink-0">
+                  <StatusBadge
+                    category={intakeStatusToCategory[item.status]}
+                    label={tIntakeItems(`status.${item.status}`)}
+                    withDot={false}
+                  />
+                </span>
+                {item.versionId && (
+                  <span className="hidden gap-1 text-[11px] text-muted-foreground md:inline-flex">
+                    <GitBranch className="h-2.5 w-2.5" />
+                    {displayVersionName(item.versionId, getVersion)}
+                  </span>
+                )}
+                {item.assigneeId && (
+                  <span className="hidden max-w-28 truncate text-[11px] text-muted-foreground lg:inline-block">
+                    {displayUserName(item.assigneeId, getMember)}
+                  </span>
+                )}
+                <Avatar className="h-5 w-5 shrink-0">
+                  <AvatarFallback className="text-[9px]">
+                    {initialOf(displayUserName(item.reporterId, getMember))}
+                  </AvatarFallback>
+                </Avatar>
+              </button>
+            </li>
+          ))}
+        </ul>
+        {paginationFooter}
+      </>
     );
   }
 
@@ -992,7 +1118,7 @@ export function IntakePage() {
           onOpenChange={setCreateOpen}
           spaceId={spaceId}
           onCreated={() => {
-            void loadItems();
+            void loadItems(1, "replace");
           }}
         />
       )}
@@ -1041,6 +1167,31 @@ function FilterField({
   );
 }
 
+function createIntakeListScopeKey({
+  filter,
+  listFilters,
+  organizationId,
+  spaceId,
+}: {
+  filter: FilterKey;
+  listFilters: IntakeListFilterState;
+  organizationId?: string;
+  spaceId?: string;
+}): string {
+  return [
+    organizationId ?? "",
+    spaceId ?? "",
+    filter,
+    listFilters.assigneeId ?? "",
+    listFilters.priority ?? "",
+    listFilters.reporterId ?? "",
+    listFilters.requirementId ?? "",
+    listFilters.sourceType ?? "",
+    listFilters.status ?? "",
+    listFilters.versionId ?? "",
+  ].join("\u001f");
+}
+
 function RelatedTasksSection({
   intakeItem,
   organizationId,
@@ -1061,11 +1212,22 @@ function RelatedTasksSection({
   const [tasks, setTasks] = useState<WorkItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [errorKey, setErrorKey] = useState<string | null>(null);
+  const taskScopeKey = useMemo(
+    () => `${organizationId ?? ""}:${spaceId ?? ""}:${intakeItem.id}`,
+    [intakeItem.id, organizationId, spaceId],
+  );
+  const latestTaskScopeKeyRef = useRef(taskScopeKey);
+  const taskRequestIdRef = useRef(0);
+  latestTaskScopeKeyRef.current = taskScopeKey;
 
   const fetchTasks = useCallback(async () => {
     if (!spaceId) {
       return;
     }
+
+    const requestId = taskRequestIdRef.current + 1;
+    taskRequestIdRef.current = requestId;
+    const requestScopeKey = taskScopeKey;
 
     setLoading(true);
     setErrorKey(null);
@@ -1078,13 +1240,29 @@ function RelatedTasksSection({
         pageSize: 5,
         spaceId,
       });
+      if (
+        taskRequestIdRef.current !== requestId ||
+        latestTaskScopeKeyRef.current !== requestScopeKey
+      ) {
+        return;
+      }
       setTasks(result.items);
     } catch (error) {
-      setErrorKey(getApiErrorMessageKey(error));
+      if (
+        taskRequestIdRef.current === requestId &&
+        latestTaskScopeKeyRef.current === requestScopeKey
+      ) {
+        setErrorKey(getApiErrorMessageKey(error));
+      }
     } finally {
-      setLoading(false);
+      if (
+        taskRequestIdRef.current === requestId &&
+        latestTaskScopeKeyRef.current === requestScopeKey
+      ) {
+        setLoading(false);
+      }
     }
-  }, [intakeItem.id, organizationId, spaceId]);
+  }, [intakeItem.id, organizationId, spaceId, taskScopeKey]);
 
   useEffect(() => {
     void fetchTasks();

@@ -17,6 +17,7 @@ import {
   useCallback,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type ReactNode,
 } from "react";
@@ -32,6 +33,7 @@ import {
   useFocusReturn,
   useListKeyboardNav,
 } from "../../lib/hooks/use-list-keyboard-nav";
+import { canCreateBugs } from "../../lib/permission-gates";
 import { listRequirements } from "../../lib/requirement-service";
 import {
   useSpaceMembers,
@@ -132,6 +134,8 @@ const SEVERITY_FILTERS: BugSeverity[] = [
   "MINOR",
   "TRIVIAL",
 ];
+const LIST_PAGE_SIZE = 100;
+const INITIAL_PAGE_INFO = { page: 1, pageSize: LIST_PAGE_SIZE, total: 0 };
 
 type BugItemViewModel = WorkItemViewModel & {
   lifecycleBucket: Exclude<BugLifecycleBucket, "all">;
@@ -160,6 +164,7 @@ export function BugsPage() {
 
   const [items, setItems] = useState<BugView[]>([]);
   const [loading, setLoading] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [activeItem, setActiveItem] = useState<WorkItemViewModel | null>(null);
   const [sheetOpen, setSheetOpen] = useState(false);
@@ -169,6 +174,7 @@ export function BugsPage() {
   const [filterOpen, setFilterOpen] = useState(false);
   const [requirements, setRequirements] = useState<Requirement[]>([]);
   const [relatedTasks, setRelatedTasks] = useState<WorkItem[]>([]);
+  const [pageInfo, setPageInfo] = useState(INITIAL_PAGE_INFO);
   const [createOpen, setCreateOpen] = useState(false);
   const [editingBug, setEditingBug] = useState<BugView | null>(null);
   const [detailRevision, setDetailRevision] = useState(0);
@@ -198,6 +204,22 @@ export function BugsPage() {
       : filters.statusCategory
         ? (bugBucketByCategory[filters.statusCategory] ?? "all")
         : "all";
+  const listScopeKey = useMemo(
+    () => createBugListScopeKey({ filters, organizationId, spaceId }),
+    [filters, organizationId, spaceId],
+  );
+  const contextKey = useMemo(
+    () => `${organizationId ?? ""}:${spaceId ?? ""}`,
+    [organizationId, spaceId],
+  );
+  const latestListScopeKeyRef = useRef(listScopeKey);
+  const listRequestIdRef = useRef(0);
+  const previousContextKeyRef = useRef(contextKey);
+  latestListScopeKeyRef.current = listScopeKey;
+  const loadedCount = items.length;
+  const paginationFrom = loadedCount > 0 ? 1 : 0;
+  const paginationTo = Math.min(loadedCount, pageInfo.total);
+  const hasMoreItems = loadedCount < pageInfo.total;
 
   const setFilter = useCallback(
     (key: keyof BugListFilterState, value: string) => {
@@ -206,40 +228,102 @@ export function BugsPage() {
     [],
   );
 
-  const fetchBugs = useCallback(async () => {
+  const fetchBugs = useCallback(async (
+    page = 1,
+    mode: "replace" | "append" = "replace",
+  ) => {
     if (!spaceId) {
       return;
     }
 
-    setLoading(true);
-    setHasLoadedItems(false);
+    const requestId = listRequestIdRef.current + 1;
+    listRequestIdRef.current = requestId;
+    const requestScopeKey = listScopeKey;
+    const append = mode === "append";
+
+    if (append) {
+      setLoadingMore(true);
+    } else {
+      setLoading(true);
+      setHasLoadedItems(false);
+    }
     setErrorMessage(null);
 
     try {
       const result = await listBugs({
         organizationId,
+        page,
+        pageSize: LIST_PAGE_SIZE,
         spaceId,
         type: "BUG",
         ...filters,
       });
-      setItems(result.items);
+      if (
+        listRequestIdRef.current !== requestId ||
+        latestListScopeKeyRef.current !== requestScopeKey
+      ) {
+        return;
+      }
+      setItems((current) =>
+        append ? [...current, ...result.items] : result.items,
+      );
+      setPageInfo({
+        page: result.page ?? page,
+        pageSize: result.pageSize ?? LIST_PAGE_SIZE,
+        total: result.total ?? result.items.length,
+      });
     } catch (error) {
-      const key = getApiErrorMessageKey(error);
-      setErrorMessage(tApiError(key));
+      if (
+        listRequestIdRef.current === requestId &&
+        latestListScopeKeyRef.current === requestScopeKey
+      ) {
+        const key = getApiErrorMessageKey(error);
+        setErrorMessage(tApiError(key));
+      }
     } finally {
-      setLoading(false);
-      setHasLoadedItems(true);
+      if (
+        listRequestIdRef.current === requestId &&
+        latestListScopeKeyRef.current === requestScopeKey
+      ) {
+        if (append) {
+          setLoadingMore(false);
+        } else {
+          setLoading(false);
+        }
+        setHasLoadedItems(true);
+      }
     }
-  }, [filters, organizationId, spaceId, tApiError]);
+  }, [filters, listScopeKey, organizationId, spaceId, tApiError]);
 
   useEffect(() => {
     if (spaceId) {
-      void fetchBugs();
+      void fetchBugs(1, "replace");
     } else {
+      listRequestIdRef.current += 1;
       setItems([]);
+      setPageInfo(INITIAL_PAGE_INFO);
+      setLoading(false);
+      setLoadingMore(false);
       setHasLoadedItems(false);
     }
   }, [fetchBugs, spaceId]);
+
+  useEffect(() => {
+    if (previousContextKeyRef.current === contextKey) {
+      return;
+    }
+    previousContextKeyRef.current = contextKey;
+    setActiveItem(null);
+    setSheetOpen(false);
+    setEditingBug(null);
+    setCreateOpen(false);
+    setFilterOpen(false);
+    setRequirements([]);
+    setRelatedTasks([]);
+    setDetailRevision((revision) => revision + 1);
+    setHandledDeepLinkKey(null);
+    setBucketFilter("all");
+  }, [contextKey]);
 
   useEffect(() => {
     if (!filterOpen || !spaceId) {
@@ -371,7 +455,7 @@ export function BugsPage() {
         }),
       );
       setDetailRevision((revision) => revision + 1);
-      void fetchBugs();
+      void fetchBugs(1, "replace");
     },
     [fetchBugs, getMember, getVersion, tStatus, workflowStateLookup.getState],
   );
@@ -527,6 +611,35 @@ export function BugsPage() {
       }
     />
   );
+  const paginationFooter =
+    pageInfo.total > 0 ? (
+      <div className="flex items-center justify-between gap-3 border-t border-border px-4 py-3 text-xs text-muted-foreground sm:px-6">
+        <span data-testid="bugs-pagination-summary">
+          {t("pagination.summary", {
+            from: paginationFrom,
+            to: paginationTo,
+            total: pageInfo.total,
+          })}
+        </span>
+        {hasMoreItems ? (
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="h-7 text-xs"
+            data-testid="bugs-load-more"
+            disabled={loadingMore}
+            onClick={() => {
+              void fetchBugs(pageInfo.page + 1, "append");
+            }}
+          >
+            {loadingMore
+              ? t("pagination.loadingMore")
+              : t("pagination.loadMore")}
+          </Button>
+        ) : null}
+      </div>
+    ) : null;
 
   if (sessionStatus === "loading") {
     return (
@@ -720,103 +833,109 @@ export function BugsPage() {
             }}
           />
         ) : filtered.length === 0 ? (
-          <EmptyState
-            title={t("states.empty.title")}
-            description={t("states.empty.description")}
-          />
+          <>
+            <EmptyState
+              title={t("states.empty.title")}
+              description={t("states.empty.description")}
+            />
+            {paginationFooter}
+          </>
         ) : (
-          <ul
-            data-testid="bugs-list"
-            role="listbox"
-            className="divide-y divide-border"
-          >
-            {filtered.map((bug) => (
-              <li
-                key={bug.id}
-                data-testid="bugs-row"
-                data-id={bug.id}
-                role="option"
-                aria-selected={activeItem?.id === bug.id}
-              >
-                <div
-                  className={cn(
-                    "flex min-w-0 items-center gap-2 border-l-2 px-4 py-2.5 transition-colors sm:px-6",
-                    activeItem?.id === bug.id
-                      ? "border-primary bg-primary/10"
-                      : "border-transparent hover:bg-muted/40",
-                  )}
+          <>
+            <ul
+              data-testid="bugs-list"
+              role="listbox"
+              className="divide-y divide-border"
+            >
+              {filtered.map((bug) => (
+                <li
+                  key={bug.id}
+                  data-testid="bugs-row"
+                  data-id={bug.id}
+                  role="option"
+                  aria-selected={activeItem?.id === bug.id}
                 >
-                  <button
-                    type="button"
-                    onClick={() => openBug(bug)}
-                    data-selected={activeItem?.id === bug.id}
-                    className="flex min-w-0 flex-1 items-center gap-3 text-left cursor-pointer"
+                  <div
+                    className={cn(
+                      "flex min-w-0 items-center gap-2 border-l-2 px-4 py-2.5 transition-colors sm:px-6",
+                      activeItem?.id === bug.id
+                        ? "border-primary bg-primary/10"
+                        : "border-transparent hover:bg-muted/40",
+                    )}
                   >
-                    <Bug className="h-3.5 w-3.5 shrink-0 text-destructive/80" />
-                    <span className="font-mono text-[11px] text-muted-foreground">
-                      {bug.code}
-                    </span>
-                    <span className="min-w-0 flex-1 truncate text-[13px] font-medium">
-                      {bug.title}
-                    </span>
-                    <span
-                      className={cn(
-                        "hidden shrink-0 rounded px-1.5 py-0.5 text-[10px] font-medium sm:inline-flex",
-                        severityColor[bug.severity],
-                      )}
-                    >
-                      {tSeverity(bug.severity)}
-                    </span>
-                    <span className="shrink-0">
-                      <StatusBadge
-                        category={bug.statusCategory}
-                        label={bug.statusLabel}
-                        withDot={false}
-                      />
-                    </span>
-                    {bug.versionName && (
-                      <Badge
-                        variant="outline"
-                        className="hidden md:inline-flex"
-                      >
-                        {bug.versionName}
-                      </Badge>
-                    )}
-                    {bug.isOverdue && (
-                      <Badge variant="destructive" className="text-[10px]">
-                        {t("badges.overdue")}
-                      </Badge>
-                    )}
-                    <Avatar className="h-5 w-5 shrink-0">
-                      <AvatarFallback className="text-[9px]">
-                        {bug.assignee.initial}
-                      </AvatarFallback>
-                    </Avatar>
-                  </button>
-                  {canEditBug(
-                    items.find((item) => item.id === bug.id),
-                    currentSpace?.role,
-                    currentSpace?.status,
-                  ) && (
-                    <Button
+                    <button
                       type="button"
-                      variant="ghost"
-                      size="icon"
-                      className="h-7 w-7 shrink-0"
-                      data-testid="bugs-edit-button"
-                      data-id={bug.id}
-                      aria-label={t("actions.edit")}
-                      onClick={() => {
-                        openEditBugFromViewModel(bug);
-                      }}
+                      onClick={() => openBug(bug)}
+                      data-selected={activeItem?.id === bug.id}
+                      className="flex min-w-0 flex-1 items-center gap-3 text-left cursor-pointer"
                     >
-                      <Pencil className="h-3 w-3" />
-                    </Button>
-                  )}
-                </div>
-              </li>
-            ))}
-          </ul>
+                      <Bug className="h-3.5 w-3.5 shrink-0 text-destructive/80" />
+                      <span className="font-mono text-[11px] text-muted-foreground">
+                        {bug.code}
+                      </span>
+                      <span className="min-w-0 flex-1 truncate text-[13px] font-medium">
+                        {bug.title}
+                      </span>
+                      <span
+                        className={cn(
+                          "hidden shrink-0 rounded px-1.5 py-0.5 text-[10px] font-medium sm:inline-flex",
+                          severityColor[bug.severity],
+                        )}
+                      >
+                        {tSeverity(bug.severity)}
+                      </span>
+                      <span className="shrink-0">
+                        <StatusBadge
+                          category={bug.statusCategory}
+                          label={bug.statusLabel}
+                          withDot={false}
+                        />
+                      </span>
+                      {bug.versionName && (
+                        <Badge
+                          variant="outline"
+                          className="hidden md:inline-flex"
+                        >
+                          {bug.versionName}
+                        </Badge>
+                      )}
+                      {bug.isOverdue && (
+                        <Badge variant="destructive" className="text-[10px]">
+                          {t("badges.overdue")}
+                        </Badge>
+                      )}
+                      <Avatar className="h-5 w-5 shrink-0">
+                        <AvatarFallback className="text-[9px]">
+                          {bug.assignee.initial}
+                        </AvatarFallback>
+                      </Avatar>
+                    </button>
+                    {canEditBug(
+                      items.find((item) => item.id === bug.id),
+                      currentSpace?.role,
+                      currentSpace?.status,
+                    ) && (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        className="h-7 w-7 shrink-0"
+                        data-testid="bugs-edit-button"
+                        data-id={bug.id}
+                        aria-label={t("actions.edit")}
+                        onClick={() => {
+                          openEditBugFromViewModel(bug);
+                        }}
+                      >
+                        <Pencil className="h-3 w-3" />
+                      </Button>
+                    )}
+                  </div>
+                </li>
+              ))}
+            </ul>
+            {paginationFooter}
+          </>
         )}
       </div>
 
@@ -829,7 +948,7 @@ export function BugsPage() {
         spaceId={spaceId}
         onChanged={() => {
           setDetailRevision((revision) => revision + 1);
-          void fetchBugs();
+          void fetchBugs(1, "replace");
         }}
       />
 
@@ -839,7 +958,7 @@ export function BugsPage() {
           onOpenChange={setCreateOpen}
           spaceId={spaceId}
           onCreated={() => {
-            void fetchBugs();
+            void fetchBugs(1, "replace");
           }}
         />
       )}
@@ -867,16 +986,6 @@ function canWriteBugs(
   status: string | undefined,
 ): boolean {
   return Boolean(role) && role !== "VIEWER" && status !== "DISABLED";
-}
-
-function canCreateBugs(
-  role: string | undefined,
-  status: string | undefined,
-): boolean {
-  return (
-    (role === "SPACE_ADMIN" || role === "PM" || role === "TESTER") &&
-    status !== "DISABLED"
-  );
 }
 
 function canEditBug(
@@ -1021,4 +1130,27 @@ function normalizeStatusCategory(
   return normalized && STATUS_FILTERS.includes(normalized as StatusCategory)
     ? (normalized as StatusCategory)
     : undefined;
+}
+
+function createBugListScopeKey({
+  filters,
+  organizationId,
+  spaceId,
+}: {
+  filters: BugListFilterState;
+  organizationId?: string;
+  spaceId?: string;
+}): string {
+  return [
+    organizationId ?? "",
+    spaceId ?? "",
+    filters.assigneeId ?? "",
+    filters.priority ?? "",
+    filters.relatedTaskId ?? "",
+    filters.reporterId ?? "",
+    filters.requirementId ?? "",
+    filters.severity ?? "",
+    filters.statusCategory ?? "",
+    filters.versionId ?? "",
+  ].join("\u001f");
 }

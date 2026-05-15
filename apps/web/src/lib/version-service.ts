@@ -1,12 +1,10 @@
 import {
   CreateVersionResponseSchema,
   GetVersionResponseSchema,
-  ListSpaceMembersResponseSchema,
   ListVersionsResponseSchema,
   UpdateVersionResponseSchema,
   type CreateVersionRequest,
   type PageResult,
-  type SpaceMemberWithUser,
   type UpdateVersionRequest,
   type Version,
   type VersionStatus,
@@ -45,12 +43,6 @@ type VersionIdentityInput = {
 
 type WriteVersionInput = {
   organizationId?: string;
-  spaceId: string;
-};
-
-type ListAssignableMembersInput = {
-  organizationId?: string;
-  pageSize?: number;
   spaceId: string;
 };
 
@@ -105,23 +97,4 @@ export async function updateVersion(
   const response = await api.patch<Version>(`/versions/${versionId}`, input);
 
   return UpdateVersionResponseSchema.parse(response.data);
-}
-
-export async function listVersionAssignableMembers(
-  input: ListAssignableMembersInput,
-  api: VersionApiTransport = defaultApi,
-): Promise<PageResult<SpaceMemberWithUser>> {
-  const { organizationId: _organizationId, pageSize = 100, spaceId } = input;
-  const response = await api.get<PageResult<SpaceMemberWithUser>>(
-    `/spaces/${spaceId}/members`,
-    {
-      query: {
-        page: 1,
-        pageSize,
-        status: "ACTIVE",
-      },
-    },
-  );
-
-  return ListSpaceMembersResponseSchema.parse(response.data);
 }
