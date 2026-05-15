@@ -24,7 +24,7 @@ function renderEditor(
 ) {
   const onChange = vi.fn();
 
-  render(
+  const result = render(
     <RequirementContentEditorSlot
       onChange={onChange}
       value={makeValue({
@@ -40,7 +40,7 @@ function renderEditor(
     />,
   );
 
-  return { onChange };
+  return { ...result, onChange };
 }
 
 function selectEditorText(text: string) {
@@ -118,6 +118,18 @@ afterEach(() => {
 });
 
 describe("RequirementContentEditorSlot link extension", () => {
+  it("renders the editor with the stable styled surface wrapper", async () => {
+    const { container } = renderEditor();
+
+    await screen.findByText("Example link");
+
+    const editorSurface = container.querySelector(".tiptap-editor");
+
+    expect(editorSurface).not.toBeNull();
+    expect(editorSurface).toHaveClass("resize-y", "overflow-auto");
+    expect(editorSurface?.querySelector(".ProseMirror")).not.toBeNull();
+  });
+
   it("renders initial link marks with external link attributes", async () => {
     renderEditor({
       value: makeValue({

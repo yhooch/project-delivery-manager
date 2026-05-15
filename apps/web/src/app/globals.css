@@ -226,3 +226,137 @@
     font-weight: 600;
   }
 }
+
+@layer components {
+  .tiptap-editor {
+    min-height: 18rem;
+    border: 1px solid hsl(var(--border) / 0.72);
+    border-radius: calc(var(--radius) - 2px);
+    background: hsl(var(--background));
+    color: hsl(var(--foreground));
+    outline: none;
+    overflow: auto;
+    resize: vertical;
+    transition:
+      border-color 150ms ease,
+      box-shadow 150ms ease,
+      background-color 150ms ease;
+  }
+
+  .tiptap-editor:focus-within {
+    border-color: hsl(var(--ring));
+    box-shadow: 0 0 0 2px hsl(var(--ring) / 0.22);
+  }
+
+  .tiptap-editor .ProseMirror,
+  .tiptap-editor__surface {
+    min-height: 18rem;
+    color: hsl(var(--foreground));
+    outline: none;
+    padding: 1rem;
+  }
+
+  .tiptap-editor .ProseMirror p.is-editor-empty:first-child::before,
+  .tiptap-editor__surface p.is-editor-empty:first-child::before {
+    color: hsl(var(--muted-foreground));
+    content: attr(data-placeholder);
+    float: left;
+    height: 0;
+    opacity: 0.78;
+    pointer-events: none;
+  }
+
+  .tiptap-editor .ProseMirror > * + *,
+  .tiptap-editor__surface > * + * {
+    margin-top: 0.75rem;
+  }
+
+  .tiptap-editor .ProseMirror h1,
+  .tiptap-editor__surface h1 {
+    font-size: 1.75rem;
+    line-height: 1.2;
+  }
+
+  .tiptap-editor .ProseMirror h2,
+  .tiptap-editor__surface h2 {
+    font-size: 1.35rem;
+    line-height: 1.25;
+  }
+
+  .tiptap-editor .ProseMirror h3,
+  .tiptap-editor__surface h3 {
+    font-size: 1.1rem;
+    line-height: 1.3;
+  }
+
+  .tiptap-editor .ProseMirror ul,
+  .tiptap-editor .ProseMirror ol,
+  .tiptap-editor__surface ul,
+  .tiptap-editor__surface ol {
+    padding-left: 1.25rem;
+  }
+
+  .tiptap-editor .ProseMirror ul,
+  .tiptap-editor__surface ul {
+    list-style: disc;
+  }
+
+  .tiptap-editor .ProseMirror ol,
+  .tiptap-editor__surface ol {
+    list-style: decimal;
+  }
+
+  .tiptap-editor .ProseMirror blockquote,
+  .tiptap-editor__surface blockquote {
+    border-left: 3px solid hsl(var(--border));
+    color: hsl(var(--muted-foreground));
+    padding-left: 0.875rem;
+  }
+
+  .tiptap-code-block {
+    overflow-x: auto;
+    border-radius: calc(var(--radius) - 2px);
+    background: hsl(var(--muted));
+    color: hsl(var(--foreground));
+    font-family: var(--font-mono);
+    font-size: 0.85rem;
+    padding: 0.75rem;
+  }
+
+  .tiptap-editor .ProseMirror a,
+  .tiptap-editor__surface a {
+    color: hsl(var(--primary));
+    text-decoration: underline;
+    text-underline-offset: 2px;
+  }
+
+  .tiptap-image {
+    display: block;
+    max-width: 100%;
+    height: auto;
+    border-radius: calc(var(--radius) - 2px);
+  }
+
+  .tiptap-editor .ProseMirror table,
+  .tiptap-editor__surface table {
+    width: 100%;
+    border-collapse: collapse;
+    table-layout: fixed;
+  }
+
+  .tiptap-editor .ProseMirror th,
+  .tiptap-editor .ProseMirror td,
+  .tiptap-editor__surface th,
+  .tiptap-editor__surface td {
+    min-width: 4rem;
+    border: 1px solid hsl(var(--border));
+    padding: 0.4rem 0.5rem;
+    vertical-align: top;
+  }
+
+  .tiptap-editor .ProseMirror th,
+  .tiptap-editor__surface th {
+    background: hsl(var(--muted));
+    font-weight: 600;
+  }
+}

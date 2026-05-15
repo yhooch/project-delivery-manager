@@ -540,7 +540,10 @@ export function RequirementContentEditorSlot({
           ref={fileInputRef}
           type="file"
         />
-        <EditorContent editor={editor} />
+        <EditorContent
+          className="tiptap-editor resize-y overflow-auto"
+          editor={editor}
+        />
       </div>
       {!canUploadImages && !disabled ? (
         <p className="text-xs text-muted-foreground">{t("draftUploadOnly")}</p>
