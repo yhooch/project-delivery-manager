@@ -467,6 +467,37 @@ describe("WorkflowConfigPage", () => {
     expect(disable).toBeDisabled();
   });
 
+  it("allows PM to manage a draft workflow version", async () => {
+    sessionMock.current = {
+      ...sessionMock.current,
+      currentSpace: {
+        ...sessionMock.current.currentSpace,
+        role: "PM",
+      },
+    };
+    getWorkflowMock.mockResolvedValueOnce(makeWorkflow());
+    setupVersions([makeDraftVersion()]);
+    getWorkflowVersionMock.mockResolvedValueOnce(makeDraftVersion());
+
+    render(<WorkflowConfigPage workflowId={workflowId} />);
+
+    const publish = await screen.findByTestId("workflow-config-publish");
+    await waitFor(() => expect(publish).not.toBeDisabled());
+    expect(
+      screen.queryByTestId("workflow-config-readonly-hint"),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.getByRole("button", {
+        name: /workflow\.config\.states\.create/,
+      }),
+    ).not.toBeDisabled();
+    expect(
+      screen.getByRole("button", {
+        name: /workflow\.config\.actions\.create/,
+      }),
+    ).not.toBeDisabled();
+  });
+
   it("blocks publish when start state is missing and lists the issue", async () => {
     getWorkflowMock.mockResolvedValueOnce(makeWorkflow());
     const broken = makeDraftVersion({
@@ -961,6 +992,13 @@ describe("WorkflowConfigPage", () => {
   });
 
   it("creates a workflow binding for the current version", async () => {
+    sessionMock.current = {
+      ...sessionMock.current,
+      currentSpace: {
+        ...sessionMock.current.currentSpace,
+        role: "PM",
+      },
+    };
     getWorkflowMock.mockResolvedValue(makeWorkflow());
     setupVersions([makePublishedVersion()]);
     getWorkflowVersionMock.mockResolvedValue(makePublishedVersion());

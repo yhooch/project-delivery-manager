@@ -26,7 +26,7 @@ import {
 } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
 import { useSearchParams } from "next/navigation";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { getApiErrorMessageKey } from "../../lib/api-error-messages";
 import { ApiClientError } from "../../lib/api-client";
@@ -233,6 +233,10 @@ export function VersionPage() {
   const [timeline, setTimeline] = useState<TimelineEvent[]>([]);
   const [isLoadingTimeline, setIsLoadingTimeline] = useState(false);
   const [timelineErrorKey, setTimelineErrorKey] = useState<string | null>(null);
+  const versionsRequestSeq = useRef(0);
+  const boardRequestSeq = useRef(0);
+  const requirementsRequestSeq = useRef(0);
+  const timelineRequestSeq = useRef(0);
 
   // ----- tab + dialog state -----
   const [activeTab, setActiveTab] = useState<
@@ -245,6 +249,21 @@ export function VersionPage() {
   const [createVersionDialogOpen, setCreateVersionDialogOpen] = useState(false);
   const [editVersionDialogOpen, setEditVersionDialogOpen] = useState(false);
   const { captureFocus, restoreFocus } = useFocusReturn();
+
+  useEffect(() => {
+    versionsRequestSeq.current += 1;
+    boardRequestSeq.current += 1;
+    requirementsRequestSeq.current += 1;
+    timelineRequestSeq.current += 1;
+    setVersions([]);
+    setVersionId(null);
+    setBoard(null);
+    setRequirements([]);
+    setTimeline([]);
+    setErrorKey(null);
+    setRequirementsErrorKey(null);
+    setTimelineErrorKey(null);
+  }, [organizationId, spaceId]);
 
   // -------------------------------------------------------------------------
   // Data loaders
@@ -272,7 +291,15 @@ export function VersionPage() {
   );
 
   const fetchVersions = useCallback(async () => {
-    if (!spaceId) return;
+    if (!spaceId) {
+      versionsRequestSeq.current += 1;
+      setVersions([]);
+      setVersionId(null);
+      setIsLoadingVersions(false);
+      return;
+    }
+    const requestId = versionsRequestSeq.current + 1;
+    versionsRequestSeq.current = requestId;
     setIsLoadingVersions(true);
     setErrorKey(null);
     try {
@@ -282,6 +309,7 @@ export function VersionPage() {
         page: 1,
         pageSize: 100,
       });
+      if (versionsRequestSeq.current !== requestId) return;
       setVersions(page.items);
       setVersionId((current) => {
         if (versionIdParam && page.items.some((v) => v.id === versionIdParam)) {
@@ -291,9 +319,12 @@ export function VersionPage() {
         return page.items[0]?.id ?? null;
       });
     } catch (error) {
+      if (versionsRequestSeq.current !== requestId) return;
       setErrorKey(getApiErrorMessageKey(error));
     } finally {
-      setIsLoadingVersions(false);
+      if (versionsRequestSeq.current === requestId) {
+        setIsLoadingVersions(false);
+      }
     }
   }, [organizationId, spaceId, versionIdParam]);
 
@@ -312,7 +343,15 @@ export function VersionPage() {
   }, [versionIdParam, versions]);
 
   const fetchBoard = useCallback(async () => {
-    if (!versionId) return;
+    if (!versionId) {
+      boardRequestSeq.current += 1;
+      setBoard(null);
+      setIsLoadingBoard(false);
+      return;
+    }
+    const requestId = boardRequestSeq.current + 1;
+    boardRequestSeq.current = requestId;
+    setBoard(null);
     setIsLoadingBoard(true);
     setErrorKey(null);
     try {
@@ -326,11 +365,15 @@ export function VersionPage() {
         statusCategory: filters.statusCategory ?? undefined,
         workItemType: filters.workItemType ?? undefined,
       });
+      if (boardRequestSeq.current !== requestId) return;
       setBoard(next);
     } catch (error) {
+      if (boardRequestSeq.current !== requestId) return;
       setErrorKey(getApiErrorMessageKey(error));
     } finally {
-      setIsLoadingBoard(false);
+      if (boardRequestSeq.current === requestId) {
+        setIsLoadingBoard(false);
+      }
     }
   }, [
     filters.assigneeId,
@@ -346,7 +389,15 @@ export function VersionPage() {
   }, [fetchBoard, versionId]);
 
   const fetchRequirements = useCallback(async () => {
-    if (!versionId || !spaceId) return;
+    if (!versionId || !spaceId) {
+      requirementsRequestSeq.current += 1;
+      setRequirements([]);
+      setIsLoadingRequirements(false);
+      return;
+    }
+    const requestId = requirementsRequestSeq.current + 1;
+    requirementsRequestSeq.current = requestId;
+    setRequirements([]);
     setIsLoadingRequirements(true);
     setRequirementsErrorKey(null);
     try {
@@ -357,16 +408,28 @@ export function VersionPage() {
         page: 1,
         pageSize: 100,
       });
+      if (requirementsRequestSeq.current !== requestId) return;
       setRequirements(page.items);
     } catch (error) {
+      if (requirementsRequestSeq.current !== requestId) return;
       setRequirementsErrorKey(getApiErrorMessageKey(error));
     } finally {
-      setIsLoadingRequirements(false);
+      if (requirementsRequestSeq.current === requestId) {
+        setIsLoadingRequirements(false);
+      }
     }
   }, [organizationId, spaceId, versionId]);
 
   const fetchTimeline = useCallback(async () => {
-    if (!versionId || !spaceId) return;
+    if (!versionId || !spaceId) {
+      timelineRequestSeq.current += 1;
+      setTimeline([]);
+      setIsLoadingTimeline(false);
+      return;
+    }
+    const requestId = timelineRequestSeq.current + 1;
+    timelineRequestSeq.current = requestId;
+    setTimeline([]);
     setIsLoadingTimeline(true);
     setTimelineErrorKey(null);
     try {
@@ -378,8 +441,10 @@ export function VersionPage() {
         page: 1,
         pageSize: 50,
       });
+      if (timelineRequestSeq.current !== requestId) return;
       setTimeline(page.items);
     } catch (error) {
+      if (timelineRequestSeq.current !== requestId) return;
       // Per spec: if the backend reports the version timeline as unavailable
       // (e.g. 404 / NOT_FOUND / NOT_IMPLEMENTED) we fall back to the empty
       // state rather than a hard error, so the page stays usable.
@@ -390,7 +455,9 @@ export function VersionPage() {
         setTimelineErrorKey(getApiErrorMessageKey(error));
       }
     } finally {
-      setIsLoadingTimeline(false);
+      if (timelineRequestSeq.current === requestId) {
+        setIsLoadingTimeline(false);
+      }
     }
   }, [organizationId, spaceId, versionId]);
 
@@ -1118,7 +1185,10 @@ function BoardColumns({
   t: ReturnType<typeof useTranslations<"versionBoard">>;
 }) {
   return (
-    <div className="grid min-h-full min-w-0 grid-cols-1 gap-3 px-4 py-4 md:grid-cols-2 xl:h-full xl:grid-cols-6">
+    <div
+      data-testid="version-board-columns"
+      className="grid min-h-full min-w-0 grid-cols-1 gap-3 px-4 py-4 md:grid-cols-2 xl:h-full xl:grid-cols-6"
+    >
       {grouped.map(({ category, items, total }) => (
         <div
           key={category}

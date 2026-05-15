@@ -44,6 +44,8 @@ import { WorkflowFormFieldDialog } from "./workflow-form-field-dialog";
 import { WorkflowStateDialog } from "./workflow-state-dialog";
 import { WorkflowStateList } from "./workflow-state-list";
 
+const WORKFLOW_MANAGER_ROLES = new Set(["SPACE_ADMIN", "PM"]);
+
 export type WorkflowConfigPageProps = {
   workflowId: string;
 };
@@ -176,7 +178,7 @@ export function WorkflowConfigPage({ workflowId }: WorkflowConfigPageProps) {
   const spaceId = session?.defaultSpaceId ?? currentSpace?.id;
   const organizationId =
     currentSpace?.organizationId ?? session?.defaultOrganizationId;
-  const canManageWorkflow = currentSpace?.role === "SPACE_ADMIN";
+  const canManageWorkflow = WORKFLOW_MANAGER_ROLES.has(currentSpace?.role ?? "");
 
   const [workflow, setWorkflow] = useState<WorkflowDefinition | null>(null);
   const [versions, setVersions] = useState<WorkflowVersion[]>([]);

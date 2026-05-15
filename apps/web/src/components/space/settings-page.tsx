@@ -11,6 +11,7 @@ import {
   useCallback,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type FormEvent,
 } from "react";
@@ -99,6 +100,7 @@ export function SpaceSettingsPage() {
   const [memberRoleFilter, setMemberRoleFilter] = useState<SpaceRole | "ALL">(
     "ALL",
   );
+  const loadSequenceRef = useRef(0);
 
   const organizationId =
     space?.organizationId ??
@@ -133,7 +135,13 @@ export function SpaceSettingsPage() {
   }, [memberRoleFilter, memberSearch, members]);
 
   const load = useCallback(async () => {
+    const sequence = ++loadSequenceRef.current;
+
     if (!spaceId) {
+      setSpace(null);
+      setMembers([]);
+      setIsLoading(false);
+      setErrorKey(null);
       return;
     }
 
@@ -145,6 +153,7 @@ export function SpaceSettingsPage() {
         getSpace(spaceId),
         listSpaceMembers(spaceId),
       ]);
+      if (loadSequenceRef.current !== sequence) return;
       setSpace(nextSpace);
       setName(nextSpace.name);
       setCode(nextSpace.code);
@@ -154,10 +163,35 @@ export function SpaceSettingsPage() {
       setThresholdError(null);
       setMembers(memberPage.items);
     } catch (error) {
+      if (loadSequenceRef.current !== sequence) return;
       setErrorKey(getApiErrorMessageKey(error));
     } finally {
-      setIsLoading(false);
+      if (loadSequenceRef.current === sequence) {
+        setIsLoading(false);
+      }
     }
+  }, [spaceId]);
+
+  useEffect(() => {
+    loadSequenceRef.current += 1;
+    setSpace(null);
+    setMembers([]);
+    setName("");
+    setCode("");
+    setDescription("");
+    setOwnerId("");
+    setThreshold("3");
+    setIsLoading(false);
+    setErrorKey(null);
+    setSaveErrorKey(null);
+    setCodeError(null);
+    setThresholdError(null);
+    setIsAddMemberOpen(false);
+    setEditRoleMember(null);
+    setPendingMemberId(null);
+    setMemberActionErrorKey(null);
+    setMemberSearch("");
+    setMemberRoleFilter("ALL");
   }, [spaceId]);
 
   useEffect(() => {
@@ -357,6 +391,7 @@ export function SpaceSettingsPage() {
   const ownerMember = space.ownerId
     ? members.find((member) => member.userId === space.ownerId)
     : undefined;
+  const emptyValue = tRoot("common.emptyValue");
 
   return (
     <div
@@ -408,7 +443,7 @@ export function SpaceSettingsPage() {
                   <div className="flex min-w-0 gap-1.5">
                     <dt>{t("overview.organizationLabel")}：</dt>
                     <dd className="min-w-0 truncate font-medium text-foreground/80">
-                      {currentOrganization?.name ?? "—"}
+                      {currentOrganization?.name ?? emptyValue}
                     </dd>
                   </div>
                   <div className="flex min-w-0 gap-1.5">
@@ -422,7 +457,7 @@ export function SpaceSettingsPage() {
                     <dd className="font-medium text-foreground/80">
                       {currentSpace?.role
                         ? t(`members.roles.${currentSpace.role}`)
-                        : "—"}
+                        : emptyValue}
                     </dd>
                   </div>
                 </dl>

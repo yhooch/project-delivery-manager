@@ -417,7 +417,10 @@ describe("PrismaSpaceRepository", () => {
       expect(where).toContain(versionId);
       expect(where).toContain("WAITING");
       expect(where).toContain("BUG");
-      expect(where).toContain("regression");
+      expect(where).toContain("pending_regression");
+      expect(where).toContain("regressionAt");
+      expect(where).toContain("notIn");
+      expect(where).not.toContain("REGRESSION_PASSED");
     }
     expect(result.filters).toMatchObject({
       organizationId,

@@ -41,6 +41,7 @@ import {
 } from "react";
 
 import { getApiErrorMessageKey } from "../../lib/api-error-messages";
+import { formatDisplayCode } from "../../lib/display-code";
 import {
   archiveRequirement,
   deleteRequirementDraft,
@@ -472,7 +473,7 @@ export function RequirementDetailWorkspace({
   const ownerLabel = formatOwnerName(requirement.ownerId, members);
   const authorLabel = formatOwnerName(requirement.authorId, members);
   const versionLabel = formatVersionName(requirement.versionId, versions);
-  const shortId = requirement.id.slice(-8).toUpperCase();
+  const shortId = formatDisplayCode("REQ", requirement.id);
   const lastModifiedLabel = formatTimestamp(requirement.updatedAt, locale);
   const canDiscardDraft =
     canEditRequirement &&

@@ -20,6 +20,7 @@ import {
 } from "react";
 
 import { getApiErrorMessageKey } from "../../lib/api-error-messages";
+import { formatDisplayCode } from "../../lib/display-code";
 import {
   useFocusReturn,
   useListKeyboardNav,
@@ -631,7 +632,7 @@ function toMockWorkItem(
   tStatus: (key: StatusCategory) => string,
   lookups: LookupHelpers,
 ): WorkItemViewModel {
-  const code = deriveCode(item.id, item.type);
+  const code = formatDisplayCode(item.type, item.id);
   const member = item.assigneeId
     ? lookups.getMember(item.assigneeId)
     : undefined;
@@ -665,10 +666,6 @@ function toMockWorkItem(
     blockedReason: item.blockedReason,
     updatedAgo: undefined,
   };
-}
-
-function deriveCode(_id: string, type: "TASK" | "BUG"): string {
-  return type;
 }
 
 function deriveInitial(value?: string): string {

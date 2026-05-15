@@ -668,6 +668,29 @@ describe("IntakePage", () => {
       ],
       total: 1,
     });
+    listTimelineMock.mockResolvedValueOnce({
+      items: [
+        {
+          id: "01ARZ3NDEKTSV4RRFFQ69G5FTL2",
+          organizationId: "ORG_01",
+          spaceId: "SPC_01",
+          target: {
+            id: "01ARZ3NDEKTSV4RRFFQ69G5FDT",
+            type: "INTAKE_ITEM",
+            title: "Detail resources",
+          },
+          eventType: "COMMENT_CREATED",
+          actor: {
+            id: "01ARZ3NDEKTSV4RRFFQ69G5FU2",
+            username: "bob",
+            name: "Bob",
+          },
+          title: "commented on the intake item",
+          createdAt: "2026-05-13T00:00:00.000Z",
+        },
+      ],
+      total: 1,
+    });
     createCommentMock.mockResolvedValueOnce({
       id: "01ARZ3NDEKTSV4RRFFQ69G5FC2",
       organizationId: "ORG_01",
@@ -731,6 +754,10 @@ describe("IntakePage", () => {
       }),
     );
     expect(await screen.findByText("New intake comment")).toBeInTheDocument();
+    await waitFor(() => expect(listTimelineMock).toHaveBeenCalledTimes(2));
+    expect(
+      await screen.findByText("commented on the intake item"),
+    ).toBeInTheDocument();
   });
 
   it("updates the active intake item and list after editing", async () => {
@@ -1207,6 +1234,71 @@ describe("IntakePage", () => {
     expect(screen.queryByTestId("intake-defer-button")).not.toBeInTheDocument();
     expect(
       screen.queryByTestId("intake-reject-button"),
+    ).not.toBeInTheDocument();
+  });
+
+  it("hides management actions for non-admin non-PM space roles", async () => {
+    sessionMock.current = {
+      session: {
+        defaultOrganizationId: "ORG_01",
+        defaultSpaceId: "SPC_01",
+        spaces: [
+          {
+            id: "SPC_01",
+            organizationId: "ORG_01",
+            role: "DEVELOPER",
+          },
+        ],
+      },
+      currentSpace: {
+        id: "SPC_01",
+        organizationId: "ORG_01",
+        role: "DEVELOPER",
+      },
+      status: "authenticated" as const,
+    };
+    listIntakeItemsMock.mockResolvedValueOnce({
+      items: [
+        makeIntake({
+          id: "01ARZ3NDEKTSV4RRFFQ69G5FDV",
+          title: "Developer pending intake",
+          status: "PENDING",
+        }),
+        makeIntake({
+          id: "01ARZ3NDEKTSV4RRFFQ69G5FDA",
+          title: "Developer accepted intake",
+          status: "ACCEPTED",
+        }),
+      ],
+      total: 2,
+    });
+
+    render(<IntakePage />);
+
+    fireEvent.click(await screen.findByText("Developer pending intake"));
+
+    expect(
+      screen.queryByTestId("intake-create-button"),
+    ).not.toBeInTheDocument();
+    expect(screen.queryByTestId("intake-edit-button")).not.toBeInTheDocument();
+    expect(
+      screen.queryByTestId("intake-accept-button"),
+    ).not.toBeInTheDocument();
+    expect(screen.queryByTestId("intake-defer-button")).not.toBeInTheDocument();
+    expect(
+      screen.queryByTestId("intake-reject-button"),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByTestId("intake-comment-input"),
+    ).not.toBeInTheDocument();
+    expect(
+      await screen.findByTestId("intake-comments-readonly"),
+    ).toBeInTheDocument();
+
+    fireEvent.click(screen.getByText("Developer accepted intake"));
+
+    expect(
+      screen.queryByTestId("intake-convert-button"),
     ).not.toBeInTheDocument();
   });
 

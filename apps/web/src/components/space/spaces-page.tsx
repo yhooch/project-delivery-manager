@@ -18,6 +18,7 @@ import {
   useCallback,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type ReactNode,
 } from "react";
@@ -63,6 +64,7 @@ export function SpacesPage() {
   const [switchErrorKey, setSwitchErrorKey] = useState<string | null>(null);
   const [pendingSpaceId, setPendingSpaceId] = useState<string | null>(null);
   const [createOpen, setCreateOpen] = useState(false);
+  const loadSequenceRef = useRef(0);
 
   const membershipBySpaceId = useMemo(
     () =>
@@ -71,7 +73,12 @@ export function SpacesPage() {
   );
 
   const load = useCallback(async () => {
+    const sequence = ++loadSequenceRef.current;
+
     if (!organizationId) {
+      setSpaces([]);
+      setIsLoading(false);
+      setErrorKey(null);
       return;
     }
 
@@ -80,12 +87,25 @@ export function SpacesPage() {
 
     try {
       const page = await listSpaces(organizationId);
+      if (loadSequenceRef.current !== sequence) return;
       setSpaces(page.items);
     } catch (error) {
+      if (loadSequenceRef.current !== sequence) return;
       setErrorKey(getApiErrorMessageKey(error));
     } finally {
-      setIsLoading(false);
+      if (loadSequenceRef.current === sequence) {
+        setIsLoading(false);
+      }
     }
+  }, [organizationId]);
+
+  useEffect(() => {
+    loadSequenceRef.current += 1;
+    setSpaces([]);
+    setIsLoading(false);
+    setErrorKey(null);
+    setSwitchErrorKey(null);
+    setPendingSpaceId(null);
   }, [organizationId]);
 
   useEffect(() => {

@@ -31,6 +31,8 @@ import { PageHeader } from "../v2/page-header";
 
 import { CreateWorkflowDialog } from "./create-workflow-dialog";
 
+const WORKFLOW_MANAGER_ROLES = new Set(["SPACE_ADMIN", "PM"]);
+
 const statusVariant: Record<
   WorkflowDefinitionStatus,
   "success" | "warning" | "default"
@@ -120,7 +122,7 @@ export function WorkflowPage() {
   const spaceId = session?.defaultSpaceId ?? currentSpace?.id;
   const organizationId =
     currentSpace?.organizationId ?? session?.defaultOrganizationId;
-  const canManageWorkflow = currentSpace?.role === "SPACE_ADMIN";
+  const canManageWorkflow = WORKFLOW_MANAGER_ROLES.has(currentSpace?.role ?? "");
 
   const [workflows, setWorkflows] = useState<WorkflowDefinition[]>([]);
   const [workflowMetadata, setWorkflowMetadata] = useState<

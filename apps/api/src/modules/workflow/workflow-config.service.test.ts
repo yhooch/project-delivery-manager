@@ -290,19 +290,71 @@ describe("WorkflowConfigService", () => {
     });
   });
 
-  it("rejects PM workflow configuration writes", async () => {
+  it("allows PM workflow configuration writes", async () => {
     const { repository, service } = createSubject("PM");
 
-    await expect(
-      service.createVersion(ACTOR_ID, WORKFLOW_ID, {}, REQUEST_META),
-    ).rejects.toMatchObject({
-      code: "SPACE_ACCESS_DENIED",
+    const created = await service.createDefinition(
+      ACTOR_ID,
+      SPACE_ID,
+      {
+        code: "CUSTOM_PM_FLOW",
+        name: "PM 自定义流程",
+      },
+      REQUEST_META,
+    );
+
+    expect(created).toMatchObject({
+      code: "CUSTOM_PM_FLOW",
+      status: "DRAFT",
+    });
+
+    const draft = await service.createVersion(
+      ACTOR_ID,
+      WORKFLOW_ID,
+      {},
+      REQUEST_META,
+    );
+
+    expect(draft).toMatchObject({
+      status: "DRAFT",
+      workflowId: WORKFLOW_ID,
+    });
+
+    repository.definitions.set(WORKFLOW_ID, {
+      ...repository.definitions.get(WORKFLOW_ID)!,
+      status: "DRAFT",
+    });
+
+    const published = await service.publishVersion(
+      ACTOR_ID,
+      WORKFLOW_VERSION_ID,
+      REQUEST_META,
+    );
+
+    expect(published.status).toBe("PUBLISHED");
+
+    const binding = await service.createBinding(
+      ACTOR_ID,
+      SPACE_ID,
+      {
+        isDefault: true,
+        workflowId: WORKFLOW_ID,
+        workflowVersionId: WORKFLOW_VERSION_ID,
+        workItemType: "TASK",
+      },
+      REQUEST_META,
+    );
+
+    expect(binding).toMatchObject({
+      isDefault: true,
+      workflowId: WORKFLOW_ID,
+      workflowVersionId: WORKFLOW_VERSION_ID,
+      workItemType: "TASK",
     });
     expect(repository.auditLogs.at(-1)).toMatchObject({
-      actionType: "ACCESS_DENIED",
+      actionType: "CREATE",
       metadata: expect.objectContaining({
-        deniedOperation: "createWorkflowVersion",
-        role: "PM",
+        operation: "createWorkflowBinding",
       }),
     });
   });

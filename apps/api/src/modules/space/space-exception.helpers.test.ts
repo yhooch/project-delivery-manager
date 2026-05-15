@@ -168,10 +168,26 @@ describe("space exception helpers", () => {
           type: "BUG",
         }),
       ),
-    ).toBe(true);
+    ).toBe(false);
+    expect(
+      isPendingRegressionRecord(
+        workItem({
+          bugDetail: {
+            deletedAt: null,
+            regressionAt: null,
+          },
+          currentState: {
+            code: "REGRESSION_PASSED",
+            name: "回归通过",
+          },
+          statusCategory: "DONE",
+          type: "BUG",
+        }),
+      ),
+    ).toBe(false);
   });
 
-  it("recognizes Chinese regression state tokens for unregressed bugs", () => {
+  it("recognizes exact Chinese pending regression state for unregressed bugs", () => {
     expect(
       isPendingRegressionRecord(
         workItem({
@@ -203,7 +219,32 @@ describe("space exception helpers", () => {
           type: "BUG",
         }),
       ),
-    ).toBe(true);
+    ).toBe(false);
+  });
+
+  it("does not emit pending regression signals for regression passed bugs", () => {
+    const signals = buildSpaceExceptionSignals(
+      workItem({
+        bugDetail: {
+          deletedAt: null,
+          regressionAt: null,
+        },
+        currentState: {
+          code: "REGRESSION_PASSED",
+          name: "回归通过",
+        },
+        statusCategory: "DONE",
+        type: "BUG",
+      }),
+      {
+        now,
+        staleThresholdDays: 5,
+      },
+    );
+
+    expect(signals.some((signal) => signal.type === "pending_regression")).toBe(
+      false,
+    );
   });
 
   it("marks items stale from lastStatusChangedAt when they reach the space threshold", () => {

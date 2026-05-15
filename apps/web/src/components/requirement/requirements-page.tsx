@@ -23,6 +23,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { Link, usePathname, useRouter } from "../../i18n/routing";
 import { getApiErrorMessageKey } from "../../lib/api-error-messages";
+import { formatDisplayCode } from "../../lib/display-code";
 import { useListKeyboardNav } from "../../lib/hooks/use-list-keyboard-nav";
 import {
   createRequirementDraft,
@@ -529,8 +530,8 @@ export function RequirementsPage() {
   );
 }
 
-function formatRequirementCode(_id: string): string {
-  return "REQ";
+function formatRequirementCode(id: string): string {
+  return formatDisplayCode("REQ", id);
 }
 
 function toRequirementListQuery(filter: FilterKey): {

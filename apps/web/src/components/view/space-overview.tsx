@@ -25,7 +25,7 @@ import {
 } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
 import { useSearchParams } from "next/navigation";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import { getApiErrorMessageKey } from "../../lib/api-error-messages";
 import { useVersions } from "../../lib/v2/lookups";
@@ -113,14 +113,18 @@ export function SpaceOverview() {
   const [view, setView] = useState<GetSpaceOverviewViewResponse | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [errorKey, setErrorKey] = useState<string | null>(null);
+  const requestSeq = useRef(0);
 
   const { versions } = useVersions(spaceId, organizationId);
 
   const fetchView = useCallback(
-    async (signal?: AbortSignal) => {
+    async () => {
       if (!spaceId) {
         return;
       }
+      const requestId = requestSeq.current + 1;
+      requestSeq.current = requestId;
+      setView(null);
       setIsLoading(true);
       setErrorKey(null);
       try {
@@ -129,13 +133,13 @@ export function SpaceOverview() {
           organizationId,
           versionId: versionIdParam,
         });
-        if (signal?.aborted) return;
+        if (requestSeq.current !== requestId) return;
         setView(next);
       } catch (error) {
-        if (signal?.aborted) return;
+        if (requestSeq.current !== requestId) return;
         setErrorKey(getApiErrorMessageKey(error));
       } finally {
-        if (!signal?.aborted) setIsLoading(false);
+        if (requestSeq.current === requestId) setIsLoading(false);
       }
     },
     [organizationId, spaceId, versionIdParam],
@@ -143,12 +147,15 @@ export function SpaceOverview() {
 
   useEffect(() => {
     if (!spaceId) {
+      requestSeq.current += 1;
       setView(null);
+      setIsLoading(false);
       return;
     }
-    const controller = new AbortController();
-    void fetchView(controller.signal);
-    return () => controller.abort();
+    void fetchView();
+    return () => {
+      requestSeq.current += 1;
+    };
   }, [fetchView, spaceId]);
 
   const setVersionFilter = useCallback(

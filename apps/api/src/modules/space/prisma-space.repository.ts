@@ -63,10 +63,14 @@ const TERMINAL_STATUS_CATEGORIES: StatusCategory[] = ["DONE", "TERMINATED"];
 const DUE_SOON_DAYS = 7;
 const BLOCKED_STATE_TOKENS = ["blocked", "阻塞"] as const;
 const PENDING_CONFIRM_STATE_TOKENS = ["confirm", "待确认", "确认"] as const;
-const PENDING_REGRESSION_STATE_TOKENS = [
-  "regression",
+const PENDING_REGRESSION_STATE_CODES = [
+  "pending_regression",
+  "ready_for_regression",
+] as const;
+const PENDING_REGRESSION_STATE_NAMES = [
+  "Pending regression",
+  "Ready for regression",
   "待回归",
-  "回归",
 ] as const;
 const RECENT_ACTIVITY_TARGET_TYPES = [
   "WORK_ITEM",
@@ -1992,17 +1996,50 @@ function blockedWorkItemWhere(): Prisma.WorkItemWhereInput {
 
 function pendingRegressionWhere(): Prisma.WorkItemWhereInput {
   return {
+    statusCategory: {
+      notIn: TERMINAL_STATUS_CATEGORIES,
+    },
     type: "BUG",
     AND: [
       {
         bugDetail: {
           is: {
             deletedAt: null,
+            regressionAt: null,
           },
         },
       },
-      workflowStateTokenWhere(PENDING_REGRESSION_STATE_TOKENS),
+      workflowStateExactWhere(
+        PENDING_REGRESSION_STATE_CODES,
+        PENDING_REGRESSION_STATE_NAMES,
+      ),
     ],
+  };
+}
+
+function workflowStateExactWhere(
+  codes: readonly string[],
+  names: readonly string[],
+): Prisma.WorkItemWhereInput {
+  return {
+    currentState: {
+      is: {
+        OR: [
+          ...codes.map((code) => ({
+            code: {
+              equals: code,
+              mode: "insensitive" as const,
+            },
+          })),
+          ...names.map((name) => ({
+            name: {
+              equals: name,
+              mode: "insensitive" as const,
+            },
+          })),
+        ],
+      },
+    },
   };
 }
 

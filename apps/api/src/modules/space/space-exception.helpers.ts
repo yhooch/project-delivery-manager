@@ -12,10 +12,14 @@ export const SPACE_EXCEPTION_TYPES: readonly ViewExceptionType[] = [
   "stale",
 ];
 const PENDING_CONFIRM_STATE_TOKENS = ["confirm", "待确认", "确认"] as const;
-const PENDING_REGRESSION_STATE_TOKENS = [
-  "regression",
+const PENDING_REGRESSION_STATE_CODES = [
+  "pending_regression",
+  "ready_for_regression",
+] as const;
+const PENDING_REGRESSION_STATE_NAMES = [
+  "Pending regression",
+  "Ready for regression",
   "待回归",
-  "回归",
 ] as const;
 const BLOCKED_STATE_TOKENS = ["blocked", "阻塞"] as const;
 
@@ -130,12 +134,17 @@ export function isPendingConfirmRecord(record: SpaceExceptionWorkItemRecord) {
 export function isPendingRegressionRecord(record: SpaceExceptionWorkItemRecord) {
   return (
     record.type === "BUG" &&
-    Boolean(record.bugDetail && !record.bugDetail.deletedAt) &&
-    (includesAnyToken(
+    !isTerminalStatusCategory(record.statusCategory) &&
+    Boolean(
+      record.bugDetail &&
+        !record.bugDetail.deletedAt &&
+        !record.bugDetail.regressionAt,
+    ) &&
+    (matchesAnyValue(
       record.currentState.code,
-      PENDING_REGRESSION_STATE_TOKENS,
+      PENDING_REGRESSION_STATE_CODES,
     ) ||
-      includesAnyToken(record.currentState.name, PENDING_REGRESSION_STATE_TOKENS))
+      matchesAnyValue(record.currentState.name, PENDING_REGRESSION_STATE_NAMES))
   );
 }
 
@@ -153,4 +162,10 @@ function includesToken(value: string, token: string) {
 
 function includesAnyToken(value: string, tokens: readonly string[]) {
   return tokens.some((token) => includesToken(value, token));
+}
+
+function matchesAnyValue(value: string, values: readonly string[]) {
+  return values.some(
+    (candidate) => value.toLowerCase() === candidate.toLowerCase(),
+  );
 }

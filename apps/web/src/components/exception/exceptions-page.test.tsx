@@ -485,6 +485,56 @@ describe("ExceptionsPage", () => {
     );
   });
 
+  it("clears old exception rows while filters are reloading", async () => {
+    let resolveSecond: (
+      value: ReturnType<typeof makeViewResponse>,
+    ) => void = () => {};
+    getSpaceExceptionsViewMock
+      .mockResolvedValueOnce(
+        makeViewResponse([
+          makeException(
+            makeWorkItem({
+              id: "01ARZ3NDEKTSV4RRFFQ69G5F20",
+              title: "Old exception row",
+            }),
+          ),
+        ]),
+      )
+      .mockImplementationOnce(
+        () =>
+          new Promise((resolve) => {
+            resolveSecond = resolve;
+          }),
+      );
+
+    render(<ExceptionsPage />);
+
+    expect(await screen.findByText("Old exception row")).toBeInTheDocument();
+
+    fireEvent.click(
+      screen.getByTestId(
+        "exceptions-filter-assigneeId-01ARZ3NDEKTSV4RRFFQ69G5FB1",
+      ),
+    );
+
+    await waitFor(() =>
+      expect(screen.queryByText("Old exception row")).not.toBeInTheDocument(),
+    );
+
+    resolveSecond(
+      makeViewResponse([
+        makeException(
+          makeWorkItem({
+            id: "01ARZ3NDEKTSV4RRFFQ69G5F21",
+            title: "New exception row",
+          }),
+        ),
+      ]),
+    );
+
+    expect(await screen.findByText("New exception row")).toBeInTheDocument();
+  });
+
   it("renders stale and evidence metadata for exception rows", async () => {
     getSpaceExceptionsViewMock.mockResolvedValueOnce(
       makeViewResponse(

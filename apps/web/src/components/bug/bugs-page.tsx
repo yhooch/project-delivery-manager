@@ -22,6 +22,7 @@ import {
 } from "react";
 
 import { getApiErrorMessageKey } from "../../lib/api-error-messages";
+import { formatDisplayCode } from "../../lib/display-code";
 import {
   getBug,
   listBugs,
@@ -905,7 +906,7 @@ function toMockBug(
   tStatus: (key: StatusCategory) => string,
   lookups: BugLookupHelpers,
 ): MockBugItem {
-  const code = deriveBugCode(bug.id);
+  const code = formatDisplayCode("BUG", bug.id);
   const member = bug.assigneeId ? lookups.getMember(bug.assigneeId) : undefined;
   const assigneeName = member?.user.name ?? member?.user.username ?? "";
   const initial = deriveInitial(assigneeName);
@@ -959,10 +960,6 @@ function resolveBugLifecycleBucket(
   }
 
   return bugBucketByCategory[bug.statusCategory] ?? "pendingConfirm";
-}
-
-function deriveBugCode(_id: string): string {
-  return "BUG";
 }
 
 function deriveInitial(value?: string): string {

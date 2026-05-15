@@ -1,4 +1,5 @@
 import {
+  act,
   cleanup,
   fireEvent,
   render,
@@ -318,5 +319,99 @@ describe("SpacesPage", () => {
     render(<SpacesPage />);
 
     expect(await screen.findByText("spaces.list.empty")).toBeInTheDocument();
+  });
+
+  it("ignores a stale spaces response after switching organizations", async () => {
+    let resolveOldOrganization: (value: unknown) => void = () => {};
+    let resolveNewOrganization: (value: unknown) => void = () => {};
+    listSpacesMock.mockImplementation((organizationId: string) => {
+      return new Promise((resolve) => {
+        if (organizationId === "ORG_01") {
+          resolveOldOrganization = resolve;
+        } else {
+          resolveNewOrganization = resolve;
+        }
+      });
+    });
+
+    const { rerender } = render(<SpacesPage />);
+
+    await waitFor(() => expect(listSpacesMock).toHaveBeenCalledWith("ORG_01"));
+
+    sessionMock.current = {
+      session: {
+        defaultOrganizationId: "ORG_02",
+        defaultSpaceId: "SPC_20",
+        capabilities: {
+          canCreateOrganization: true,
+          canCreateSpace: true,
+        },
+      },
+      currentOrganization: {
+        id: "ORG_02",
+        name: "Globex Corp",
+        code: "GLOBEX",
+        role: "OWNER",
+        status: "ACTIVE",
+      },
+      currentSpace: {
+        id: "SPC_20",
+        organizationId: "ORG_02",
+        name: "Fresh Space",
+        code: "FRESH",
+        role: "SPACE_ADMIN",
+        status: "ACTIVE",
+      },
+      spacesForCurrentOrganization: [
+        {
+          id: "SPC_20",
+          organizationId: "ORG_02",
+          name: "Fresh Space",
+          code: "FRESH",
+          role: "SPACE_ADMIN",
+          status: "ACTIVE",
+        },
+      ],
+      status: "authenticated" as const,
+      switchSpace: switchSpaceMock,
+    };
+    rerender(<SpacesPage />);
+
+    await waitFor(() => expect(listSpacesMock).toHaveBeenCalledWith("ORG_02"));
+
+    await act(async () => {
+      resolveNewOrganization({
+        items: [
+          makeSpace({
+            id: "SPC_20",
+            organizationId: "ORG_02",
+            name: "Fresh Space",
+            code: "FRESH",
+          }),
+        ],
+        total: 1,
+      });
+    });
+
+    expect(await screen.findByText("Fresh Space")).toBeInTheDocument();
+
+    await act(async () => {
+      resolveOldOrganization({
+        items: [
+          makeSpace({
+            id: "SPC_01",
+            organizationId: "ORG_01",
+            name: "Stale Space",
+            code: "STALE",
+          }),
+        ],
+        total: 1,
+      });
+    });
+
+    await waitFor(() =>
+      expect(screen.queryByText("Stale Space")).not.toBeInTheDocument(),
+    );
+    expect(screen.getByText("Fresh Space")).toBeInTheDocument();
   });
 });

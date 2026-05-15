@@ -20,9 +20,10 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { getApiErrorMessageKey } from "../../lib/api-error-messages";
+import { formatDisplayCode } from "../../lib/display-code";
 import { cn } from "../../lib/utils";
 import {
   getMembers,
@@ -90,6 +91,7 @@ export function MyWorkbench() {
   const [view, setView] = useState<GetMyWorkbenchViewResponse | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [errorKey, setErrorKey] = useState<string | null>(null);
+  const requestSeq = useRef(0);
   const [activeItem, setActiveItem] = useState<WorkItemViewModel | null>(null);
   const [activeItemContext, setActiveItemContext] = useState<{
     organizationId?: string;
@@ -128,11 +130,15 @@ export function MyWorkbench() {
   );
 
   useEffect(() => {
-    if (!organizationId || selectedSpaceId || workItemSummaries.length === 0) {
+    if (!organizationId || selectedSpaceId) {
       setOrganizationLookups({
         membersBySpaceId: new Map(),
         versionsBySpaceId: new Map(),
       });
+      return;
+    }
+
+    if (workItemSummaries.length === 0) {
       return;
     }
 
@@ -206,9 +212,7 @@ export function MyWorkbench() {
 
   useEffect(() => {
     setSelectedSpaceId(undefined);
-    setFilters((current) =>
-      Object.keys(current).length > 0 ? {} : current,
-    );
+    setFilters((current) => (Object.keys(current).length > 0 ? {} : current));
   }, [organizationId]);
 
   const availableMembers = useMemo(() => {
@@ -277,6 +281,9 @@ export function MyWorkbench() {
       return;
     }
 
+    const requestId = requestSeq.current + 1;
+    requestSeq.current = requestId;
+    setView(null);
     setIsLoading(true);
     setErrorKey(null);
 
@@ -286,23 +293,35 @@ export function MyWorkbench() {
         organizationId,
         spaceId: selectedSpaceId,
       });
+      if (requestSeq.current !== requestId) {
+        return;
+      }
       setView(next);
     } catch (error) {
+      if (requestSeq.current !== requestId) {
+        return;
+      }
       setErrorKey(getApiErrorMessageKey(error));
     } finally {
-      setIsLoading(false);
+      if (requestSeq.current === requestId) {
+        setIsLoading(false);
+      }
     }
   }, [filters, organizationId, selectedSpaceId]);
 
   useEffect(() => {
     if (!organizationId) {
+      requestSeq.current += 1;
       setView(null);
+      setIsLoading(false);
       return;
     }
 
-    let active = true;
+    const requestId = requestSeq.current + 1;
+    requestSeq.current = requestId;
 
     async function load() {
+      setView(null);
       setIsLoading(true);
       setErrorKey(null);
 
@@ -313,15 +332,15 @@ export function MyWorkbench() {
           spaceId: selectedSpaceId,
         });
 
-        if (active) {
+        if (requestSeq.current === requestId) {
           setView(next);
         }
       } catch (error) {
-        if (active) {
+        if (requestSeq.current === requestId) {
           setErrorKey(getApiErrorMessageKey(error));
         }
       } finally {
-        if (active) {
+        if (requestSeq.current === requestId) {
           setIsLoading(false);
         }
       }
@@ -330,7 +349,9 @@ export function MyWorkbench() {
     void load();
 
     return () => {
-      active = false;
+      if (requestSeq.current === requestId) {
+        requestSeq.current += 1;
+      }
     };
   }, [filters, organizationId, selectedSpaceId]);
 
@@ -450,32 +471,6 @@ export function MyWorkbench() {
         ),
       ),
     [view, locale, lookupHelpers, tStatusCategory, t],
-  );
-  const myWorkbenchItems = useMemo(
-    () =>
-      mergeTodoGroupItems({
-        actionItems,
-        assignedBugItems,
-        assignedTaskItems,
-        assignedBugLabel: t("sections.assignedBugs"),
-        assignedTaskLabel: t("sections.assignedTasks"),
-        todoItems,
-      }),
-    [
-      actionItems,
-      assignedBugItems,
-      assignedTaskItems,
-      t,
-      todoItems,
-    ],
-  );
-  const riskItems = useMemo(
-    () =>
-      mergeLabeledUniqueItems([
-        { items: blockedItems, label: t("sections.blocked") },
-        { items: dueSoonItems, label: t("sections.dueSoon") },
-      ]),
-    [blockedItems, dueSoonItems, t],
   );
   const recentEvents = view?.sections.recentActivities.items.items ?? [];
 
@@ -610,11 +605,40 @@ export function MyWorkbench() {
         <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
           <Section
             title={t("sections.todo")}
-            count={myWorkbenchItems.length}
+            count={todoCount}
             empty={t("empty.todo")}
             isLoading={isLoading && !view}
           >
-            <ItemList items={myWorkbenchItems} onSelect={openItem} />
+            <ItemList items={todoItems} onSelect={openItem} />
+          </Section>
+
+          <Section
+            title={t("sections.assignedTasks")}
+            count={
+              view?.sections.assignedTasks.total ?? assignedTaskItems.length
+            }
+            empty={t("empty.assignedTasks")}
+            isLoading={isLoading && !view}
+          >
+            <ItemList items={assignedTaskItems} onSelect={openItem} />
+          </Section>
+
+          <Section
+            title={t("sections.assignedBugs")}
+            count={view?.sections.assignedBugs.total ?? assignedBugItems.length}
+            empty={t("empty.assignedBugs")}
+            isLoading={isLoading && !view}
+          >
+            <ItemList items={assignedBugItems} onSelect={openItem} />
+          </Section>
+
+          <Section
+            title={t("sections.actions")}
+            count={view?.sections.actionTodos.total ?? actionItems.length}
+            empty={t("empty.actions")}
+            isLoading={isLoading && !view}
+          >
+            <ItemList items={actionItems} onSelect={openItem} />
           </Section>
 
           <Section
@@ -627,12 +651,21 @@ export function MyWorkbench() {
           </Section>
 
           <Section
-            title={t("sections.risk")}
-            count={riskItems.length}
-            empty={t("empty.risk")}
+            title={t("sections.dueSoon")}
+            count={dueSoonCount}
+            empty={t("empty.dueSoon")}
             isLoading={isLoading && !view}
           >
-            <ItemList items={riskItems} onSelect={openItem} />
+            <ItemList items={dueSoonItems} onSelect={openItem} />
+          </Section>
+
+          <Section
+            title={t("sections.blocked")}
+            count={blockedSectionCount}
+            empty={t("empty.blocked")}
+            isLoading={isLoading && !view}
+          >
+            <ItemList items={blockedItems} onSelect={openItem} />
           </Section>
         </div>
 
@@ -815,9 +848,7 @@ function WorkbenchFilters({
         value={filters.statusCategory ?? ""}
         onChange={(value) => onChange("statusCategory", value)}
       >
-        <option value="">
-          {tRoot("m4Views.filters.allStatusCategories")}
-        </option>
+        <option value="">{tRoot("m4Views.filters.allStatusCategories")}</option>
         {M4_STATUS_CATEGORY_OPTIONS.map((option) => (
           <option key={option.value} value={option.value}>
             {tRoot(option.labelKey)}
@@ -1040,99 +1071,6 @@ function ItemList({
   );
 }
 
-function mergeTodoGroupItems({
-  actionItems,
-  assignedBugItems,
-  assignedBugLabel,
-  assignedTaskItems,
-  assignedTaskLabel,
-  todoItems,
-}: {
-  actionItems: WorkbenchItemViewModel[];
-  assignedBugItems: WorkbenchItemViewModel[];
-  assignedBugLabel: string;
-  assignedTaskItems: WorkbenchItemViewModel[];
-  assignedTaskLabel: string;
-  todoItems: WorkbenchItemViewModel[];
-}): WorkbenchItemViewModel[] {
-  const actionWorkItemIds = new Set(actionItems.map((item) => item.id));
-  const seenWorkItemIds = new Set<string>();
-  const result: WorkbenchItemViewModel[] = [];
-
-  for (const item of todoItems) {
-    if (actionWorkItemIds.has(item.id) || seenWorkItemIds.has(item.id)) {
-      continue;
-    }
-
-    seenWorkItemIds.add(item.id);
-    result.push(item);
-  }
-
-  for (const { items, label } of [
-    { items: assignedTaskItems, label: assignedTaskLabel },
-    { items: assignedBugItems, label: assignedBugLabel },
-  ]) {
-    for (const item of items) {
-      if (actionWorkItemIds.has(item.id) || seenWorkItemIds.has(item.id)) {
-        continue;
-      }
-
-      seenWorkItemIds.add(item.id);
-      result.push({
-        ...item,
-        contextLabel: mergeContextLabels(item.contextLabel, label),
-      });
-    }
-  }
-
-  return [...result, ...actionItems];
-}
-
-function mergeLabeledUniqueItems(
-  groups: { items: WorkbenchItemViewModel[]; label: string }[],
-): WorkbenchItemViewModel[] {
-  const byId = new Map<string, WorkbenchItemViewModel>();
-
-  for (const { items, label } of groups) {
-    for (const item of items) {
-      const existing = byId.get(item.id);
-
-      if (!existing) {
-        byId.set(item.id, {
-          ...item,
-          contextLabel: mergeContextLabels(item.contextLabel, label),
-          listKey: `${item.id}:risk`,
-        });
-        continue;
-      }
-
-      byId.set(item.id, {
-        ...existing,
-        contextLabel: mergeContextLabels(existing.contextLabel, label),
-      });
-    }
-  }
-
-  return Array.from(byId.values());
-}
-
-function mergeContextLabels(
-  current: string | undefined,
-  next: string,
-): string {
-  if (!current) {
-    return next;
-  }
-
-  const labels = current.split(" · ");
-
-  if (labels.includes(next)) {
-    return current;
-  }
-
-  return [...labels, next].join(" · ");
-}
-
 export type WorkbenchLookupHelpers = {
   getMember: (
     userId: string,
@@ -1171,7 +1109,10 @@ export function toMockWorkItem(
   unknownVersionLabel?: string,
 ) {
   return (item: ViewWorkItemSummary): WorkItemViewModel => {
-    const code = `${item.type === "BUG" ? "BUG" : "TASK"}-${item.id.slice(-6).toUpperCase()}`;
+    const code = formatDisplayCode(
+      item.type === "BUG" ? "BUG" : "TASK",
+      item.id,
+    );
     const isOverdue = item.exceptionSignals.some(
       (signal) => signal.type === "overdue",
     );

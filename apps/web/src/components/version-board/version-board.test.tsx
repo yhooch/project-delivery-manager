@@ -501,6 +501,24 @@ describe("VersionPage", () => {
     expect(await screen.findByText("Login UI")).toBeInTheDocument();
   });
 
+  it("keeps the board responsive without forcing six columns on mobile", async () => {
+    listVersionsMock.mockResolvedValueOnce({
+      items: [makeVersion()],
+      total: 1,
+    });
+    getVersionBoardViewMock.mockResolvedValueOnce(makeBoardResponse([]));
+
+    render(<VersionPage />);
+
+    const columns = await screen.findByTestId("version-board-columns");
+    expect(columns.className).toContain("grid-cols-1");
+    expect(columns.className).toContain("md:grid-cols-2");
+    expect(columns.className).toContain("xl:grid-cols-6");
+    expect(screen.getByTestId("version-board-page").className).toContain(
+      "min-w-0",
+    );
+  });
+
   it("selects the version from the URL before falling back to the first one", async () => {
     searchParamsMock.current = new URLSearchParams({
       versionId: "01ARZ3NDEKTSV4RRFFQ69G5FV2",
@@ -708,25 +726,57 @@ describe("VersionPage", () => {
   });
 
   it("refetches the board when a filter is applied", async () => {
+    let resolveSecond: (
+      value: ReturnType<typeof makeBoardResponse>,
+    ) => void = () => {};
     listVersionsMock.mockResolvedValueOnce({
       items: [makeVersion()],
       total: 1,
     });
-    getVersionBoardViewMock.mockResolvedValue(makeBoardResponse([]));
+    getVersionBoardViewMock
+      .mockResolvedValueOnce(
+        makeBoardResponse([
+          makeSummary({
+            id: "01ARZ3NDEKTSV4RRFFQ69G5F10",
+            title: "Old filtered card",
+          }),
+        ]),
+      )
+      .mockImplementationOnce(
+        () =>
+          new Promise((resolve) => {
+            resolveSecond = resolve;
+          }),
+      );
 
     render(<VersionPage />);
 
     await waitFor(() =>
       expect(getVersionBoardViewMock).toHaveBeenCalledTimes(1),
     );
+    expect(await screen.findByText("Old filtered card")).toBeInTheDocument();
 
     fireEvent.click(await screen.findByTestId("version-board-filter-type-BUG"));
 
     await waitFor(() =>
       expect(getVersionBoardViewMock).toHaveBeenCalledTimes(2),
     );
+    await waitFor(() =>
+      expect(screen.queryByText("Old filtered card")).not.toBeInTheDocument(),
+    );
     const secondCallArgs = getVersionBoardViewMock.mock.calls[1]![0];
     expect(secondCallArgs).toMatchObject({ workItemType: "BUG" });
+
+    resolveSecond(
+      makeBoardResponse([
+        makeSummary({
+          id: "01ARZ3NDEKTSV4RRFFQ69G5F11",
+          title: "New filtered card",
+          type: "BUG",
+        }),
+      ]),
+    );
+    expect(await screen.findByText("New filtered card")).toBeInTheDocument();
   });
 
   it("clears filters when the clear-filter button is pressed", async () => {

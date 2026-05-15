@@ -417,6 +417,136 @@ describe("TaskDetailSheet", () => {
     expect(onChanged).toHaveBeenCalledTimes(1);
   });
 
+  it("shows field-level errors before executing invalid action forms", async () => {
+    const action = makeAction({
+      formFields: [
+        {
+          fieldType: "SELECT",
+          id: "01ARZ3NDEKTSV4RRFFQ69G5FC2",
+          key: "resolution",
+          label: "Resolution",
+          options: ["fixed"],
+          order: 1,
+          required: true,
+        },
+      ],
+      id: "01ARZ3NDEKTSV4RRFFQ69G5FC1",
+      name: "Resolve",
+      requiresComment: true,
+    });
+    getWorkItemMock.mockResolvedValueOnce(
+      makeDetailResponse({
+        permissions: {
+          canEdit: true,
+          canComment: true,
+          canUploadAttachment: true,
+          availableActions: [action],
+        },
+      }),
+    );
+
+    render(
+      <TaskDetailSheet
+        item={makeViewModel()}
+        open
+        onOpenChange={() => {}}
+        onChanged={() => {}}
+      />,
+    );
+
+    fireEvent.click(await screen.findByRole("button", { name: "Resolve" }));
+    const form = screen.getByTestId("task-action-form");
+    fireEvent.click(within(form).getByRole("button", { name: "Resolve" }));
+
+    const resolutionField = screen.getByTestId("task-action-field");
+    const commentField = screen.getByTestId("task-action-comment");
+    expect(resolutionField).toHaveAttribute("aria-invalid", "true");
+    expect(commentField).toHaveAttribute("aria-invalid", "true");
+    expect(
+      screen.getByText("taskDetail.actions.fieldError"),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText("taskDetail.actions.commentError"),
+    ).toBeInTheDocument();
+    expect(executeActionMock).not.toHaveBeenCalled();
+  });
+
+  it("refreshes the open timeline after a workflow action succeeds", async () => {
+    const action = makeAction({ id: "01ACT_REFRESH", name: "Complete" });
+    getWorkItemMock.mockResolvedValueOnce(
+      makeDetailResponse({
+        permissions: {
+          canEdit: true,
+          canComment: true,
+          canUploadAttachment: true,
+          availableActions: [action],
+        },
+      }),
+    );
+    executeActionMock.mockResolvedValueOnce(
+      makeDetailResponse({
+        permissions: {
+          canEdit: true,
+          canComment: true,
+          canUploadAttachment: true,
+          availableActions: [],
+        },
+      }),
+    );
+    listTimelineMock
+      .mockResolvedValueOnce({
+        items: [
+          {
+            id: "01TL_BEFORE",
+            organizationId: "ORG_01",
+            spaceId: "SPC_01",
+            target: {
+              type: "WORK_ITEM",
+              id: "01ARZ3NDEKTSV4RRFFQ69G5FA1",
+              title: "Task",
+            },
+            eventType: "WORK_ITEM_CREATED",
+            actor: { id: "USR_01", username: "tester", name: "Tester" },
+            title: "created the task",
+            createdAt: "2026-05-10T00:00:00.000Z",
+          },
+        ],
+        total: 1,
+      })
+      .mockResolvedValueOnce({
+        items: [
+          {
+            id: "01TL_AFTER",
+            organizationId: "ORG_01",
+            spaceId: "SPC_01",
+            target: {
+              type: "WORK_ITEM",
+              id: "01ARZ3NDEKTSV4RRFFQ69G5FA1",
+              title: "Task",
+            },
+            eventType: "WORKFLOW_ACTION_EXECUTED",
+            actor: { id: "USR_01", username: "tester", name: "Tester" },
+            title: "completed the task",
+            createdAt: "2026-05-13T00:00:00.000Z",
+          },
+        ],
+        total: 1,
+      });
+
+    render(
+      <TaskDetailSheet item={makeViewModel()} open onOpenChange={() => {}} />,
+    );
+
+    await activateTab(/timeline/i);
+    expect(await screen.findByText("created the task")).toBeInTheDocument();
+
+    fireEvent.click(await screen.findByRole("button", { name: "Complete" }));
+
+    await waitFor(() => expect(executeActionMock).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(listTimelineMock).toHaveBeenCalledTimes(2));
+    expect(await screen.findByText("completed the task")).toBeInTheDocument();
+  });
+
   it("loads bug permissions through the bug detail endpoint", async () => {
     getBugMock.mockResolvedValueOnce(
       makeBugResponse({
@@ -916,6 +1046,66 @@ describe("TaskDetailSheet", () => {
     expect(await screen.findByText("Hello world")).toBeInTheDocument();
   });
 
+  it("loads a fresh timeline after creating a comment", async () => {
+    listCommentsMock.mockResolvedValueOnce({ items: [], total: 0 });
+    createCommentMock.mockResolvedValueOnce({
+      id: "01ARZ3NDEKTSV4RRFFQ69G5FC2",
+      organizationId: "ORG_01",
+      spaceId: "SPC_01",
+      targetType: "WORK_ITEM",
+      targetId: "01ARZ3NDEKTSV4RRFFQ69G5FA1",
+      author: {
+        id: "01ARZ3NDEKTSV4RRFFQ69G5FU1",
+        username: "tester",
+        name: "Tester",
+      },
+      body: "Timeline comment",
+      createdAt: "2026-05-13T00:00:00.000Z",
+    });
+    listTimelineMock.mockResolvedValueOnce({
+      items: [
+        {
+          id: "01TL_COMMENT",
+          organizationId: "ORG_01",
+          spaceId: "SPC_01",
+          target: {
+            type: "WORK_ITEM",
+            id: "01ARZ3NDEKTSV4RRFFQ69G5FA1",
+            title: "Task",
+          },
+          eventType: "COMMENT_CREATED",
+          actor: { id: "USR_01", username: "tester", name: "Tester" },
+          title: "commented on the task",
+          createdAt: "2026-05-13T00:00:00.000Z",
+        },
+      ],
+      total: 1,
+    });
+
+    render(
+      <TaskDetailSheet item={makeViewModel()} open onOpenChange={() => {}} />,
+    );
+
+    await activateTab(/comments/i);
+    fireEvent.change(
+      await screen.findByPlaceholderText("taskDetail.comments.placeholder"),
+      { target: { value: "Timeline comment" } },
+    );
+    fireEvent.click(
+      screen.getByRole("button", {
+        name: /taskDetail\.comments\.submit/,
+      }),
+    );
+
+    await waitFor(() => expect(createCommentMock).toHaveBeenCalledTimes(1));
+    await activateTab(/timeline/i);
+
+    await waitFor(() => expect(listTimelineMock).toHaveBeenCalledTimes(1));
+    expect(
+      await screen.findByText("commented on the task"),
+    ).toBeInTheDocument();
+  });
+
   it("hides the comment composer when PermissionSnapshot.canComment is false", async () => {
     getWorkItemMock.mockResolvedValueOnce(
       makeDetailResponse({
@@ -1060,6 +1250,71 @@ describe("TaskDetailSheet", () => {
         targetType: "WORK_ITEM",
       }),
     );
+  });
+
+  it("refreshes the open timeline after an attachment upload succeeds", async () => {
+    listTimelineMock
+      .mockResolvedValueOnce({
+        items: [
+          {
+            id: "01TL_ATTACHMENT_BEFORE",
+            organizationId: "ORG_01",
+            spaceId: "SPC_01",
+            target: {
+              type: "WORK_ITEM",
+              id: "01ARZ3NDEKTSV4RRFFQ69G5FA1",
+              title: "Task",
+            },
+            eventType: "WORK_ITEM_CREATED",
+            actor: { id: "USR_01", username: "tester", name: "Tester" },
+            title: "created the task",
+            createdAt: "2026-05-10T00:00:00.000Z",
+          },
+        ],
+        total: 1,
+      })
+      .mockResolvedValueOnce({
+        items: [
+          {
+            id: "01TL_ATTACHMENT_AFTER",
+            organizationId: "ORG_01",
+            spaceId: "SPC_01",
+            target: {
+              type: "WORK_ITEM",
+              id: "01ARZ3NDEKTSV4RRFFQ69G5FA1",
+              title: "Task",
+            },
+            eventType: "ATTACHMENT_CREATED",
+            actor: { id: "USR_01", username: "tester", name: "Tester" },
+            title: "uploaded an attachment",
+            createdAt: "2026-05-13T00:00:00.000Z",
+          },
+        ],
+        total: 1,
+      });
+    listAttachmentsMock.mockResolvedValue({ items: [], total: 0 });
+    uploadAttachmentMock.mockResolvedValueOnce(undefined);
+
+    render(
+      <TaskDetailSheet item={makeViewModel()} open onOpenChange={() => {}} />,
+    );
+
+    await activateTab(/timeline/i);
+    expect(await screen.findByText("created the task")).toBeInTheDocument();
+    await activateTab(/attachments/i);
+
+    const fileInput = document.body.querySelector(
+      'input[type="file"]',
+    ) as HTMLInputElement;
+    const file = new File(["hello"], "hello.txt", { type: "text/plain" });
+    fireEvent.change(fileInput, { target: { files: [file] } });
+
+    await waitFor(() => expect(uploadAttachmentMock).toHaveBeenCalledTimes(1));
+    await activateTab(/timeline/i);
+    await waitFor(() => expect(listTimelineMock).toHaveBeenCalledTimes(2));
+    expect(
+      await screen.findByText("uploaded an attachment"),
+    ).toBeInTheDocument();
   });
 
   it.each([

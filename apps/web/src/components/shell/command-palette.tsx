@@ -22,6 +22,7 @@ import { useTranslations } from "next-intl";
 import { useEffect, useMemo, useState } from "react";
 
 import { listBugs } from "../../lib/bug-service";
+import { formatDisplayCode } from "../../lib/display-code";
 import { listIntakeItems } from "../../lib/intake-service";
 import { toThemeMode, type NextThemeMode } from "../../lib/preferences";
 import { listRequirements } from "../../lib/requirement-service";
@@ -124,10 +125,6 @@ const typeIconColor: Record<SearchResult["type"], string> = {
   INTAKE: "text-muted-foreground",
 };
 
-function deriveCode(prefix: string, id: string) {
-  return `${prefix}-${id.slice(-6).toUpperCase()}`;
-}
-
 function getDetailHref(item: Pick<SearchResult, "id" | "href" | "type">) {
   if (item.type === "TASK") {
     return `/work-items?workItemId=${encodeURIComponent(item.id)}`;
@@ -172,10 +169,20 @@ export function CommandPalette() {
   const canManageOrganization =
     currentOrganization?.role === "OWNER" ||
     currentOrganization?.role === "ADMIN";
-  const hasCurrentSpace = Boolean(
+  const effectiveCurrentSpace =
     currentSpace ??
-    spacesForCurrentOrganization.find((space) => space.id === spaceId),
+    spacesForCurrentOrganization.find((space) => space.id === spaceId);
+  const hasCurrentSpace = Boolean(effectiveCurrentSpace);
+  const canCreateWorkItemInCurrentSpace = canWriteWorkItems(
+    effectiveCurrentSpace?.role,
+    effectiveCurrentSpace?.status,
   );
+  const canCreateRequirementInCurrentSpace = canWriteRequirements(
+    effectiveCurrentSpace?.role,
+    effectiveCurrentSpace?.status,
+  );
+  const hasCreateCommands =
+    canCreateWorkItemInCurrentSpace || canCreateRequirementInCurrentSpace;
   const recentScope = useMemo(
     () => ({ organizationId, spaceId }),
     [organizationId, spaceId],
@@ -265,7 +272,7 @@ export function CommandPalette() {
             merged.push({
               id: item.id,
               type: "TASK",
-              code: deriveCode("TASK", item.id),
+              code: formatDisplayCode("TASK", item.id),
               title: item.title,
               href: getDetailHref({
                 id: item.id,
@@ -284,7 +291,7 @@ export function CommandPalette() {
             merged.push({
               id: item.id,
               type: "BUG",
-              code: deriveCode("BUG", item.id),
+              code: formatDisplayCode("BUG", item.id),
               title: item.title,
               href: getDetailHref({ id: item.id, type: "BUG", href: "/bugs" }),
             });
@@ -300,7 +307,7 @@ export function CommandPalette() {
             merged.push({
               id: item.id,
               type: "REQUIREMENT",
-              code: deriveCode("REQ", item.id),
+              code: formatDisplayCode("REQ", item.id),
               title: item.title || t("untitled"),
               href: `/requirements/${item.id}`,
             });
@@ -315,7 +322,7 @@ export function CommandPalette() {
             merged.push({
               id: item.id,
               type: "INTAKE",
-              code: deriveCode("INK", item.id),
+              code: formatDisplayCode("INK", item.id),
               title: item.title,
               href: getDetailHref({
                 id: item.id,
@@ -574,23 +581,38 @@ export function CommandPalette() {
               </>
             )}
 
-            <CommandSeparator />
-            <CommandGroup heading={t("create")}>
-              <CommandItem onSelect={() => navigate("/work-items?new=task")}>
-                <Plus className="text-muted-foreground" />
-                <span>{t("createTask")}</span>
-              </CommandItem>
-              <CommandItem onSelect={() => navigate("/bugs?new=bug")}>
-                <Plus className="text-muted-foreground" />
-                <span>{t("createBug")}</span>
-              </CommandItem>
-              <CommandItem
-                onSelect={() => navigate("/requirements?new=requirement")}
-              >
-                <Plus className="text-muted-foreground" />
-                <span>{t("createRequirement")}</span>
-              </CommandItem>
-            </CommandGroup>
+            {hasCreateCommands && (
+              <>
+                <CommandSeparator />
+                <CommandGroup
+                  heading={t("create")}
+                  data-testid="command-palette-create-group"
+                >
+                  {canCreateWorkItemInCurrentSpace && (
+                    <>
+                      <CommandItem
+                        onSelect={() => navigate("/work-items?new=task")}
+                      >
+                        <Plus className="text-muted-foreground" />
+                        <span>{t("createTask")}</span>
+                      </CommandItem>
+                      <CommandItem onSelect={() => navigate("/bugs?new=bug")}>
+                        <Plus className="text-muted-foreground" />
+                        <span>{t("createBug")}</span>
+                      </CommandItem>
+                    </>
+                  )}
+                  {canCreateRequirementInCurrentSpace && (
+                    <CommandItem
+                      onSelect={() => navigate("/requirements?new=requirement")}
+                    >
+                      <Plus className="text-muted-foreground" />
+                      <span>{t("createRequirement")}</span>
+                    </CommandItem>
+                  )}
+                </CommandGroup>
+              </>
+            )}
 
             <CommandSeparator />
             <CommandGroup heading={t("preferences")}>
@@ -623,6 +645,23 @@ export function CommandPalette() {
         )}
       </CommandList>
     </CommandDialog>
+  );
+}
+
+function canWriteWorkItems(
+  role: string | undefined,
+  status: string | undefined,
+): boolean {
+  return Boolean(role) && role !== "VIEWER" && status !== "DISABLED";
+}
+
+function canWriteRequirements(
+  role: string | undefined,
+  status: string | undefined,
+): boolean {
+  return (
+    status !== "DISABLED" &&
+    (role === "SPACE_ADMIN" || role === "PM" || role === "REQUIREMENT")
   );
 }
 

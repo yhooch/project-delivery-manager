@@ -154,4 +154,34 @@ describe("OrganizationSwitcher", () => {
       screen.getByText("shell.organizationSwitcher.roles.ADMIN"),
     ).toBeInTheDocument();
   });
+
+  it("hides create-space for an ADMIN current organization when capability is false", () => {
+    sessionMock.current = {
+      ...sessionMock.current,
+      currentOrganization: {
+        code: "beta",
+        id: "ORG_BETA",
+        name: "Beta",
+        role: "ADMIN",
+        status: "ACTIVE",
+      },
+      session: {
+        ...sessionMock.current.session,
+        capabilities: {
+          ...sessionMock.current.session.capabilities,
+          canCreateSpace: false,
+        },
+        defaultOrganizationId: "ORG_BETA",
+      },
+    };
+
+    render(<OrganizationSwitcher />);
+
+    expect(
+      screen.queryByTestId("org-switcher-create-space"),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.getByText("shell.organizationSwitcher.roles.ADMIN"),
+    ).toBeInTheDocument();
+  });
 });

@@ -4,6 +4,7 @@
     "description": "A lightweight workspace for delivery teams."
   },
   "common": {
+    "emptyValue": "—",
     "actions": {
       "close": "Close"
     },
@@ -2057,7 +2058,7 @@
   },
   "workbench": {
     "title": "My workbench",
-    "subtitle": "Review assigned work, action todos, due soon items, and recent activity.",
+    "subtitle": "Review todos, workflow actions, due-soon items, blockers, and recent activity.",
     "viewAll": "View all",
     "errorTitle": "Failed to load workbench",
     "versionFallback": "Unknown version",
@@ -2076,7 +2077,7 @@
       "todo": "My todos",
       "assignedTasks": "Tasks I own",
       "assignedBugs": "Bugs I own",
-      "actions": "Action todos",
+      "actions": "Workflow actions for me",
       "pendingConfirm": "Pending my confirmation",
       "risk": "Risks / exceptions",
       "dueSoon": "Due soon",
@@ -3123,6 +3124,8 @@
       "loading": "Loading actions…",
       "executing": "Executing…",
       "errorTitle": "Action failed",
+      "fieldError": "Enter a valid value.",
+      "commentError": "Enter a comment.",
       "loadErrorTitle": "Failed to load actions",
       "retry": "Retry"
     },

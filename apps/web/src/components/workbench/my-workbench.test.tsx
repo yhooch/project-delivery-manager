@@ -536,34 +536,33 @@ describe("MyWorkbench", () => {
     ).toBeInTheDocument();
     expect(
       screen.getByRole("heading", {
+        name: "workbench.sections.assignedTasks",
+      }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", {
+        name: "workbench.sections.assignedBugs",
+      }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", { name: "workbench.sections.actions" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", {
         name: "workbench.sections.pendingConfirm",
       }),
     ).toBeInTheDocument();
     expect(
-      screen.getByRole("heading", { name: "workbench.sections.risk" }),
+      screen.getByRole("heading", { name: "workbench.sections.dueSoon" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", { name: "workbench.sections.blocked" }),
     ).toBeInTheDocument();
     expect(
       screen.getByRole("heading", { name: "workbench.sections.recent" }),
     ).toBeInTheDocument();
-
     expect(
-      screen.queryByRole("heading", { name: "workbench.sections.actions" }),
-    ).not.toBeInTheDocument();
-    expect(
-      screen.queryByRole("heading", {
-        name: "workbench.sections.assignedTasks",
-      }),
-    ).not.toBeInTheDocument();
-    expect(
-      screen.queryByRole("heading", {
-        name: "workbench.sections.assignedBugs",
-      }),
-    ).not.toBeInTheDocument();
-    expect(
-      screen.queryByRole("heading", { name: "workbench.sections.dueSoon" }),
-    ).not.toBeInTheDocument();
-    expect(
-      screen.queryByRole("heading", { name: "workbench.sections.blocked" }),
+      screen.queryByRole("heading", { name: "workbench.sections.risk" }),
     ).not.toBeInTheDocument();
   });
 
@@ -680,7 +679,7 @@ describe("MyWorkbench", () => {
     consoleError.mockRestore();
   });
 
-  it("renders the empty risk section hint when no risk items are returned", async () => {
+  it("renders independent empty hints when no due-soon or blocked items are returned", async () => {
     getMyWorkbenchViewMock.mockResolvedValueOnce(makeWorkbenchResponse());
 
     render(<MyWorkbench />);
@@ -690,8 +689,57 @@ describe("MyWorkbench", () => {
     );
 
     expect(
-      await screen.findByText("workbench.empty.risk"),
+      await screen.findByText("workbench.empty.dueSoon"),
     ).toBeInTheDocument();
+    expect(
+      await screen.findByText("workbench.empty.blocked"),
+    ).toBeInTheDocument();
+  });
+
+  it("clears stale workbench data while switching spaces", async () => {
+    let resolveSecond: (
+      value: ReturnType<typeof makeWorkbenchResponse>,
+    ) => void = () => {};
+    getMyWorkbenchViewMock
+      .mockResolvedValueOnce(
+        makeWorkbenchResponse({
+          todos: [
+            makeWorkItemSummary({
+              id: "01ARZ3NDEKTSV4RRFFQ69G5FS1",
+              title: "Old space item",
+            }),
+          ],
+        }),
+      )
+      .mockImplementationOnce(
+        () =>
+          new Promise((resolve) => {
+            resolveSecond = resolve;
+          }),
+      );
+
+    render(<MyWorkbench />);
+
+    expect(await screen.findByText("Old space item")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByTestId("workbench-space-filter-SPC_02"));
+
+    await waitFor(() =>
+      expect(screen.queryByText("Old space item")).not.toBeInTheDocument(),
+    );
+
+    resolveSecond(
+      makeWorkbenchResponse({
+        todos: [
+          makeWorkItemSummary({
+            id: "01ARZ3NDEKTSV4RRFFQ69G5FS2",
+            spaceId: "SPC_02",
+            title: "New space item",
+          }),
+        ],
+      }),
+    );
+    expect(await screen.findByText("New space item")).toBeInTheDocument();
   });
 
   it("records direct workbench opens and refetches after detail changes", async () => {

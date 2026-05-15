@@ -1,6 +1,12 @@
 "use client";
 
-import { Building2, Check, ChevronsUpDown, FolderKanban, Plus } from "lucide-react";
+import {
+  Building2,
+  Check,
+  ChevronsUpDown,
+  FolderKanban,
+  Plus,
+} from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useState } from "react";
 
@@ -53,17 +59,25 @@ export function OrganizationSwitcher() {
     );
   }
 
-  const canCreateOrganization = Boolean(session.capabilities?.canCreateOrganization);
+  const canCreateOrganization = Boolean(
+    session.capabilities?.canCreateOrganization,
+  );
   const canCreateSpace = Boolean(
+    session.capabilities?.canCreateSpace &&
     currentOrganization?.status === "ACTIVE" &&
-      canManageOrganization(currentOrganization.role),
+    canManageOrganization(currentOrganization.role),
   );
   const hasMultipleOrgs = session.organizations.length > 1;
   const hasAnySpaces = spacesForCurrentOrganization.length > 0;
 
   // Static fallback: only when user has no actions at all (no other orgs,
   // no spaces to switch between, and no creation capabilities).
-  if (!hasMultipleOrgs && !hasAnySpaces && !canCreateOrganization && !canCreateSpace) {
+  if (
+    !hasMultipleOrgs &&
+    !hasAnySpaces &&
+    !canCreateOrganization &&
+    !canCreateSpace
+  ) {
     return (
       <div
         data-testid="org-switcher"

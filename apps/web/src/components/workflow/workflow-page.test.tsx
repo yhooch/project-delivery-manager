@@ -301,6 +301,35 @@ describe("WorkflowPage", () => {
     ).toBe("create");
   });
 
+  it("allows PM to create and edit workflow configuration", async () => {
+    sessionMock.current = {
+      ...sessionMock.current,
+      currentSpace: {
+        ...sessionMock.current.currentSpace,
+        role: "PM",
+      },
+    };
+    listWorkflowsMock.mockResolvedValueOnce({
+      items: [makeWorkflow()],
+      total: 1,
+    });
+
+    render(<WorkflowPage />);
+
+    expect(await screen.findByText("Bug Default")).toBeInTheDocument();
+
+    const create = screen.getByTestId("workflow-create-button");
+    expect(create).not.toBeDisabled();
+
+    const edit = screen.getByRole("button", { name: /workflow\.page\.edit/ });
+    expect(edit).not.toBeDisabled();
+
+    const copy = screen.getByRole("button", {
+      name: "workflow.page.copyAsNewVersion",
+    });
+    expect(copy).not.toBeDisabled();
+  });
+
   it("renders configure as an anchor link to the workflow detail page", async () => {
     listWorkflowsMock.mockResolvedValueOnce({
       items: [makeWorkflow()],

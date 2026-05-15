@@ -36,6 +36,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "../../i18n/routing";
 import { getApiErrorMessageKey } from "../../lib/api-error-messages";
 import { createComment, listComments } from "../../lib/comment-service";
+import { formatDisplayCode } from "../../lib/display-code";
 import {
   useFocusReturn,
   useListKeyboardNav,
@@ -132,9 +133,7 @@ export function IntakePage() {
   const organizationId = session?.defaultOrganizationId;
   const sessionSpace = session?.spaces?.find((space) => space.id === spaceId);
   const currentSpaceRole = currentSpace?.role ?? sessionSpace?.role;
-  const canWriteIntake = currentSpaceRole
-    ? currentSpaceRole !== "VIEWER"
-    : false;
+  const canWriteIntake = canManageIntake(currentSpaceRole);
   const recentScope = useMemo(
     () => ({ organizationId, spaceId }),
     [organizationId, spaceId],
@@ -160,6 +159,7 @@ export function IntakePage() {
   const [convertOpen, setConvertOpen] = useState(false);
   const [convertTarget, setConvertTarget] = useState<IntakeItem | null>(null);
   const [requirements, setRequirements] = useState<Requirement[]>([]);
+  const [timelineRefreshVersion, setTimelineRefreshVersion] = useState(0);
   const [handledDeepLinkKey, setHandledDeepLinkKey] = useState<string | null>(
     null,
   );
@@ -956,6 +956,9 @@ export function IntakePage() {
                   intakeItem={active}
                   organizationId={organizationId}
                   spaceId={spaceId}
+                  onTimelineRefresh={() =>
+                    setTimelineRefreshVersion((version) => version + 1)
+                  }
                   t={t}
                   tIntakeItems={tIntakeItems}
                   tRoot={tRoot}
@@ -963,6 +966,7 @@ export function IntakePage() {
                 <IntakeTimelineSection
                   intakeItem={active}
                   organizationId={organizationId}
+                  refreshVersion={timelineRefreshVersion}
                   spaceId={spaceId}
                   t={t}
                   tIntakeItems={tIntakeItems}
@@ -1159,6 +1163,7 @@ function IntakeCommentsSection({
   canComment,
   getMember,
   intakeItem,
+  onTimelineRefresh,
   organizationId,
   spaceId,
   t,
@@ -1168,6 +1173,7 @@ function IntakeCommentsSection({
   canComment: boolean;
   getMember: (userId: string) => SpaceMemberWithUser | undefined;
   intakeItem: IntakeItem;
+  onTimelineRefresh?: () => void;
   organizationId?: string;
   spaceId?: string;
   t: ReturnType<typeof useTranslations<"intake">>;
@@ -1227,6 +1233,7 @@ function IntakeCommentsSection({
       });
       setComments((current) => [...current, created]);
       setDraft("");
+      onTimelineRefresh?.();
     } catch (error) {
       setSubmitErrorKey(getApiErrorMessageKey(error));
     } finally {
@@ -1351,6 +1358,7 @@ function IntakeCommentsSection({
 function IntakeTimelineSection({
   intakeItem,
   organizationId,
+  refreshVersion,
   spaceId,
   t,
   tIntakeItems,
@@ -1358,6 +1366,7 @@ function IntakeTimelineSection({
 }: {
   intakeItem: IntakeItem;
   organizationId?: string;
+  refreshVersion: number;
   spaceId?: string;
   t: ReturnType<typeof useTranslations<"intake">>;
   tIntakeItems: ReturnType<typeof useTranslations<"intakeItems">>;
@@ -1392,7 +1401,7 @@ function IntakeTimelineSection({
 
   useEffect(() => {
     void fetchEvents();
-  }, [fetchEvents]);
+  }, [fetchEvents, refreshVersion]);
 
   return (
     <section className="mt-6" data-testid="intake-timeline-section">
@@ -1515,8 +1524,8 @@ function formatDateTime(value: string): string {
   }
 }
 
-function formatItemCode(_id: string): string {
-  return "INTAKE";
+function formatItemCode(id: string): string {
+  return formatDisplayCode("INTAKE", id);
 }
 
 function initialOf(id: string): string {
@@ -1533,6 +1542,10 @@ function canSubmitIntakeItem(
       item.status === "DEFERRED" ||
       item.status === "ACCEPTED")
   );
+}
+
+function canManageIntake(role: string | undefined): boolean {
+  return role === "SPACE_ADMIN" || role === "PM";
 }
 
 function normalizeSearchParam(value: string | null): string | undefined {

@@ -6,7 +6,7 @@ import type {
 } from "@project-delivery/shared";
 import { Ban, Crown, Plus, ShieldCheck } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { getApiErrorMessageKey } from "../../lib/api-error-messages";
 import {
@@ -74,6 +74,7 @@ export function OrganizationPage() {
   const [memberActionErrorKey, setMemberActionErrorKey] = useState<
     string | null
   >(null);
+  const loadSequenceRef = useRef(0);
 
   const activeOwnerCount = useMemo(
     () =>
@@ -111,7 +112,12 @@ export function OrganizationPage() {
   ]);
 
   const load = useCallback(async () => {
+    const sequence = ++loadSequenceRef.current;
+
     if (!organizationId) {
+      setMembers([]);
+      setIsLoading(false);
+      setErrorKey(null);
       return;
     }
 
@@ -120,12 +126,28 @@ export function OrganizationPage() {
 
     try {
       const page = await listOrganizationMembers(organizationId);
+      if (loadSequenceRef.current !== sequence) return;
       setMembers(page.items);
     } catch (error) {
+      if (loadSequenceRef.current !== sequence) return;
       setErrorKey(getApiErrorMessageKey(error));
     } finally {
-      setIsLoading(false);
+      if (loadSequenceRef.current === sequence) {
+        setIsLoading(false);
+      }
     }
+  }, [organizationId]);
+
+  useEffect(() => {
+    loadSequenceRef.current += 1;
+    setMembers([]);
+    setIsLoading(false);
+    setErrorKey(null);
+    setIsAddMemberOpen(false);
+    setDisableMember(null);
+    setEditRoleMember(null);
+    setPendingMemberId(null);
+    setMemberActionErrorKey(null);
   }, [organizationId]);
 
   useEffect(() => {
@@ -208,7 +230,7 @@ export function OrganizationPage() {
 
   const headerNode = (
     <PageHeader
-      eyebrow={currentOrganization?.name ?? "—"}
+      eyebrow={currentOrganization?.name ?? tRoot("common.emptyValue")}
       title={tShell("organization")}
       description={t("page.description")}
     />

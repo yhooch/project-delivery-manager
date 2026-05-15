@@ -449,6 +449,56 @@ describe("SpaceOverview", () => {
     );
   });
 
+  it("clears old overview data while the selected version is reloading", async () => {
+    let resolveSecond: (value: ReturnType<typeof makeOverview>) => void =
+      () => {};
+    getSpaceOverviewViewMock
+      .mockResolvedValueOnce(
+        makeOverview({
+          currentVersion: {
+            id: "V_OLD",
+            name: "Old overview version",
+            target: "Old target",
+            targetDate: "2026-06-01T00:00:00.000Z",
+            status: "IN_PROGRESS",
+          },
+        }),
+      )
+      .mockImplementationOnce(
+        () =>
+          new Promise((resolve) => {
+            resolveSecond = resolve;
+          }),
+      );
+
+    const { rerender } = render(<SpaceOverview />);
+
+    expect(await screen.findByText("Old overview version")).toBeInTheDocument();
+
+    searchParamsMock.current = new URLSearchParams({ versionId: "V_NEW" });
+    rerender(<SpaceOverview />);
+
+    await waitFor(() =>
+      expect(
+        screen.queryByText("Old overview version"),
+      ).not.toBeInTheDocument(),
+    );
+
+    resolveSecond(
+      makeOverview({
+        currentVersion: {
+          id: "V_NEW",
+          name: "New overview version",
+          target: "New target",
+          targetDate: "2026-07-01T00:00:00.000Z",
+          status: "IN_PROGRESS",
+        },
+      }),
+    );
+
+    expect(await screen.findByText("New overview version")).toBeInTheDocument();
+  });
+
   it("triggers a manual refetch when the refresh button is clicked", async () => {
     getSpaceOverviewViewMock.mockResolvedValue(makeOverview());
 

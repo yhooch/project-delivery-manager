@@ -34,6 +34,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import type React from "react";
 
 import { getApiErrorMessageKey } from "../../lib/api-error-messages";
+import { ApiClientError } from "../../lib/api-client";
 import { toExecuteActionRequest } from "../../lib/action-forms";
 import {
   AttachmentUploadError,
@@ -310,6 +311,10 @@ function TaskDetailSheetBody({
     ? statusCategory === "WAITING" || Boolean(detail.blockedAt)
     : item.isBlocked;
   const blockedReason = detail?.blockedReason ?? item.blockedReason;
+  const [timelineRefreshVersion, setTimelineRefreshVersion] = useState(0);
+  const refreshTimeline = useCallback(() => {
+    setTimelineRefreshVersion((version) => version + 1);
+  }, []);
 
   return (
     <SheetContent
@@ -375,6 +380,7 @@ function TaskDetailSheetBody({
         t={t}
         tApiError={tApiError}
         onChanged={onChanged}
+        onTimelineRefresh={refreshTimeline}
       />
 
       {isBlocked && blockedReason && (
@@ -464,7 +470,10 @@ function TaskDetailSheetBody({
             canComment={permissionState.permissions?.canComment === true}
             t={t}
             tApiError={tApiError}
-            onChanged={onChanged}
+            onChanged={() => {
+              refreshTimeline();
+              onChanged?.();
+            }}
           />
         </TabsContent>
 
@@ -483,6 +492,7 @@ function TaskDetailSheetBody({
             }
             t={t}
             tApiError={tApiError}
+            onTimelineRefresh={refreshTimeline}
           />
         </TabsContent>
 
@@ -497,6 +507,7 @@ function TaskDetailSheetBody({
             organizationId={organizationId}
             t={t}
             tApiError={tApiError}
+            refreshVersion={timelineRefreshVersion}
           />
         </TabsContent>
 
@@ -671,6 +682,7 @@ function ActionBar({
   t,
   tApiError,
   onChanged,
+  onTimelineRefresh,
 }: {
   item: WorkItemViewModel;
   spaceId?: string;
@@ -680,6 +692,7 @@ function ActionBar({
   t: ReturnType<typeof useTranslations<"taskDetail">>;
   tApiError: ReturnType<typeof useTranslations>;
   onChanged?: () => void;
+  onTimelineRefresh?: () => void;
 }) {
   const [executingId, setExecutingId] = useState<string | null>(null);
   const [executeError, setExecuteError] = useState<string | null>(null);
@@ -687,15 +700,20 @@ function ActionBar({
     useState<WorkflowActionSummary | null>(null);
   const [commentDraft, setCommentDraft] = useState("");
   const [formDraft, setFormDraft] = useState<Record<string, string>>({});
+  const [formErrors, setFormErrors] = useState<ActionFormErrors>(
+    createEmptyActionFormErrors,
+  );
 
   const resetActionForm = useCallback(() => {
     setSelectedAction(null);
     setCommentDraft("");
     setFormDraft({});
+    setFormErrors(createEmptyActionFormErrors());
   }, []);
 
   const beginAction = (action: WorkflowActionSummary) => {
     setExecuteError(null);
+    setFormErrors(createEmptyActionFormErrors());
 
     if (!action.requiresComment && action.formFields.length === 0) {
       void handleExecute(action, { formValues: {} });
@@ -714,6 +732,13 @@ function ActionBar({
     input: { comment?: string; formValues: Record<string, unknown> },
   ) => {
     if (!spaceId) return;
+
+    const nextFormErrors = collectActionFormErrors(action, input);
+    if (hasActionFormErrors(nextFormErrors)) {
+      setFormErrors(nextFormErrors);
+      setExecuteError(tApiError("errors.api.WORKFLOW_ACTION_FORM_INVALID"));
+      return;
+    }
 
     let payload;
     try {
@@ -739,9 +764,14 @@ function ActionBar({
       permissionState.setPermissions(detail.permissions);
       await permissionState.fetchPermissions();
       resetActionForm();
+      onTimelineRefresh?.();
       onChanged?.();
     } catch (err) {
       const key = getApiErrorMessageKey(err);
+      const fieldKey = getApiErrorField(err);
+      if (fieldKey) {
+        setFormErrors(markActionFormFieldError(action, fieldKey));
+      }
       setExecuteError(tApiError(key));
     } finally {
       setExecutingId(null);
@@ -816,12 +846,17 @@ function ActionBar({
           action={selectedAction}
           commentDraft={commentDraft}
           executing={executingId === selectedAction.id}
+          formErrors={formErrors}
           formDraft={formDraft}
           lookup={lookup}
           onCancel={resetActionForm}
-          onCommentChange={setCommentDraft}
+          onCommentChange={(value) => {
+            setCommentDraft(value);
+            setFormErrors(clearActionFormCommentError);
+          }}
           onFieldChange={(key, value) => {
             setFormDraft((current) => ({ ...current, [key]: value }));
+            setFormErrors((current) => clearActionFormFieldError(current, key));
           }}
           onSubmit={() => {
             void handleExecute(selectedAction, {
@@ -851,6 +886,7 @@ function ActionExecutionForm({
   action,
   commentDraft,
   executing,
+  formErrors,
   formDraft,
   lookup,
   onCancel,
@@ -863,6 +899,7 @@ function ActionExecutionForm({
   action: WorkflowActionSummary;
   commentDraft: string;
   executing: boolean;
+  formErrors: ActionFormErrors;
   formDraft: Record<string, string>;
   lookup: ReturnType<typeof useSpaceMembers>;
   onCancel: () => void;
@@ -881,6 +918,9 @@ function ActionExecutionForm({
         {action.formFields.map((field) => (
           <ActionFormFieldControl
             key={field.id}
+            errorMessage={
+              formErrors.fields[field.key] ? t("actions.fieldError") : undefined
+            }
             field={field}
             lookup={lookup}
             value={formDraft[field.key] ?? ""}
@@ -894,6 +934,12 @@ function ActionExecutionForm({
             </Label>
             <Textarea
               id={`task-action-comment-${action.id}`}
+              aria-describedby={
+                formErrors.comment
+                  ? `task-action-comment-${action.id}-error`
+                  : undefined
+              }
+              aria-invalid={formErrors.comment ? true : undefined}
               data-testid="task-action-comment"
               value={commentDraft}
               maxLength={4000}
@@ -902,6 +948,14 @@ function ActionExecutionForm({
               disabled={executing}
               onChange={(event) => onCommentChange(event.target.value)}
             />
+            {formErrors.comment ? (
+              <p
+                id={`task-action-comment-${action.id}-error`}
+                className="text-[11px] text-destructive"
+              >
+                {t("actions.commentError")}
+              </p>
+            ) : null}
           </div>
         )}
       </div>
@@ -938,11 +992,13 @@ function ActionExecutionForm({
 }
 
 function ActionFormFieldControl({
+  errorMessage,
   field,
   lookup,
   onChange,
   value,
 }: {
+  errorMessage?: string;
   field: ActionFormFieldSummary;
   lookup: ReturnType<typeof useSpaceMembers>;
   onChange: (value: string) => void;
@@ -950,6 +1006,12 @@ function ActionFormFieldControl({
 }) {
   const id = `task-action-field-${field.id}`;
   const label = field.required ? `${field.label} *` : field.label;
+  const errorId = `${id}-error`;
+  const error = errorMessage ? (
+    <p id={errorId} className="text-[11px] text-destructive">
+      {errorMessage}
+    </p>
+  ) : null;
 
   if (field.fieldType === "TEXTAREA") {
     return (
@@ -957,12 +1019,18 @@ function ActionFormFieldControl({
         <Label htmlFor={id}>{label}</Label>
         <Textarea
           id={id}
+          aria-describedby={errorMessage ? errorId : undefined}
+          aria-invalid={errorMessage ? true : undefined}
           data-testid="task-action-field"
           data-field-key={field.key}
           value={value}
           rows={3}
+          className={cn(
+            errorMessage && "border-destructive focus-visible:ring-destructive",
+          )}
           onChange={(event) => onChange(event.target.value)}
         />
+        {error}
       </div>
     );
   }
@@ -973,11 +1041,16 @@ function ActionFormFieldControl({
         <Label htmlFor={id}>{label}</Label>
         <select
           id={id}
+          aria-describedby={errorMessage ? errorId : undefined}
+          aria-invalid={errorMessage ? true : undefined}
           data-testid="task-action-field"
           data-field-key={field.key}
           value={value}
           onChange={(event) => onChange(event.target.value)}
-          className="h-8 w-full rounded-md border border-input bg-background px-2 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          className={cn(
+            "h-8 w-full rounded-md border border-input bg-background px-2 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+            errorMessage && "border-destructive focus-visible:ring-destructive",
+          )}
         >
           <option value="" />
           {(field.options ?? []).map((option) => (
@@ -986,6 +1059,7 @@ function ActionFormFieldControl({
             </option>
           ))}
         </select>
+        {error}
       </div>
     );
   }
@@ -996,11 +1070,16 @@ function ActionFormFieldControl({
         <Label htmlFor={id}>{label}</Label>
         <select
           id={id}
+          aria-describedby={errorMessage ? errorId : undefined}
+          aria-invalid={errorMessage ? true : undefined}
           data-testid="task-action-field"
           data-field-key={field.key}
           value={value}
           onChange={(event) => onChange(event.target.value)}
-          className="h-8 w-full rounded-md border border-input bg-background px-2 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          className={cn(
+            "h-8 w-full rounded-md border border-input bg-background px-2 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+            errorMessage && "border-destructive focus-visible:ring-destructive",
+          )}
         >
           <option value="" />
           {lookup.members.map((member) => (
@@ -1009,6 +1088,7 @@ function ActionFormFieldControl({
             </option>
           ))}
         </select>
+        {error}
       </div>
     );
   }
@@ -1018,6 +1098,8 @@ function ActionFormFieldControl({
       <Label htmlFor={id}>{label}</Label>
       <Input
         id={id}
+        aria-describedby={errorMessage ? errorId : undefined}
+        aria-invalid={errorMessage ? true : undefined}
         data-testid="task-action-field"
         data-field-key={field.key}
         type={
@@ -1028,10 +1110,119 @@ function ActionFormFieldControl({
               : "text"
         }
         value={value}
+        className={cn(
+          errorMessage && "border-destructive focus-visible:ring-destructive",
+        )}
         onChange={(event) => onChange(event.target.value)}
       />
+      {error}
     </div>
   );
+}
+
+type ActionFormErrors = {
+  comment: boolean;
+  fields: Record<string, boolean>;
+};
+
+function createEmptyActionFormErrors(): ActionFormErrors {
+  return {
+    comment: false,
+    fields: {},
+  };
+}
+
+function hasActionFormErrors(errors: ActionFormErrors): boolean {
+  return errors.comment || Object.keys(errors.fields).length > 0;
+}
+
+function collectActionFormErrors(
+  action: WorkflowActionSummary,
+  input: { comment?: string; formValues: Record<string, unknown> },
+): ActionFormErrors {
+  const errors = createEmptyActionFormErrors();
+
+  if (action.requiresComment && isBlankActionFormValue(input.comment)) {
+    errors.comment = true;
+  }
+
+  action.formFields.forEach((field) => {
+    if (field.required && isBlankActionFormValue(input.formValues[field.key])) {
+      errors.fields[field.key] = true;
+    }
+  });
+
+  return errors;
+}
+
+function markActionFormFieldError(
+  action: WorkflowActionSummary,
+  fieldKey: string,
+): ActionFormErrors {
+  const errors = createEmptyActionFormErrors();
+
+  if (fieldKey === "comment") {
+    errors.comment = true;
+    return errors;
+  }
+
+  if (action.formFields.some((field) => field.key === fieldKey)) {
+    errors.fields[fieldKey] = true;
+  }
+
+  return errors;
+}
+
+function clearActionFormCommentError(
+  errors: ActionFormErrors,
+): ActionFormErrors {
+  if (!errors.comment) return errors;
+
+  return {
+    ...errors,
+    comment: false,
+  };
+}
+
+function clearActionFormFieldError(
+  errors: ActionFormErrors,
+  fieldKey: string,
+): ActionFormErrors {
+  if (!errors.fields[fieldKey]) return errors;
+
+  const { [fieldKey]: _removed, ...fields } = errors.fields;
+
+  return {
+    ...errors,
+    fields,
+  };
+}
+
+function isBlankActionFormValue(value: unknown): boolean {
+  return (
+    value === undefined ||
+    value === null ||
+    (typeof value === "string" && value.trim().length === 0)
+  );
+}
+
+function getApiErrorField(error: unknown): string | undefined {
+  if (!(error instanceof ApiClientError)) {
+    return undefined;
+  }
+
+  const details = error.error.details;
+
+  if (
+    details &&
+    typeof details === "object" &&
+    "field" in details &&
+    typeof details.field === "string"
+  ) {
+    return details.field;
+  }
+
+  return undefined;
 }
 
 // ---------------------------------------------------------------------------
@@ -1816,6 +2007,7 @@ function AttachmentsTab({
   canUploadAttachment,
   t,
   tApiError,
+  onTimelineRefresh,
 }: {
   item: WorkItemViewModel;
   spaceId?: string;
@@ -1824,6 +2016,7 @@ function AttachmentsTab({
   canUploadAttachment: boolean;
   t: ReturnType<typeof useTranslations<"taskDetail">>;
   tApiError: ReturnType<typeof useTranslations>;
+  onTimelineRefresh?: () => void;
 }) {
   const [attachments, setAttachments] = useState<Attachment[]>([]);
   const [loading, setLoading] = useState(false);
@@ -1887,6 +2080,7 @@ function AttachmentsTab({
           targetType: "WORK_ITEM",
         });
         await fetchAttachments();
+        onTimelineRefresh?.();
       } catch (err) {
         if (err instanceof AttachmentUploadError) {
           setUploadError(
@@ -1904,6 +2098,7 @@ function AttachmentsTab({
       canUploadAttachment,
       fetchAttachments,
       item.id,
+      onTimelineRefresh,
       tApiError,
     ],
   );
@@ -2121,12 +2316,14 @@ function TimelineTab({
   organizationId,
   t,
   tApiError,
+  refreshVersion,
 }: {
   item: WorkItemViewModel;
   spaceId?: string;
   organizationId?: string;
   t: ReturnType<typeof useTranslations<"taskDetail">>;
   tApiError: ReturnType<typeof useTranslations>;
+  refreshVersion: number;
 }) {
   const [events, setEvents] = useState<TimelineEvent[]>([]);
   const [loading, setLoading] = useState(false);
@@ -2158,7 +2355,7 @@ function TimelineTab({
 
   useEffect(() => {
     void fetchEvents();
-  }, [fetchEvents]);
+  }, [fetchEvents, refreshVersion]);
 
   if (loading) {
     return <LoadingState label={t("timeline.loading")} />;

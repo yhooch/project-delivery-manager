@@ -25,7 +25,7 @@ import {
 } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
 import { useSearchParams } from "next/navigation";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { getApiErrorMessageKey } from "../../lib/api-error-messages";
 import {
@@ -153,6 +153,7 @@ export function ExceptionsPage() {
     useState<ExceptionFilterValues>(requestedFilters);
   const [thresholdValue, setThresholdValue] = useState<number | null>(null);
   const [thresholdOpen, setThresholdOpen] = useState(false);
+  const requestSeq = useRef(0);
   const { captureFocus, restoreFocus } = useFocusReturn();
 
   const organizationId = session?.defaultOrganizationId;
@@ -171,9 +172,15 @@ export function ExceptionsPage() {
 
   const fetchView = useCallback(async () => {
     if (!spaceId) {
+      requestSeq.current += 1;
+      setView(null);
+      setIsLoading(false);
       return;
     }
 
+    const requestId = requestSeq.current + 1;
+    requestSeq.current = requestId;
+    setView(null);
     setIsLoading(true);
     setErrorKey(null);
 
@@ -189,11 +196,19 @@ export function ExceptionsPage() {
         page: 1,
         pageSize: 200,
       });
+      if (requestSeq.current !== requestId) {
+        return;
+      }
       setView(next);
     } catch (error) {
+      if (requestSeq.current !== requestId) {
+        return;
+      }
       setErrorKey(getApiErrorMessageKey(error));
     } finally {
-      setIsLoading(false);
+      if (requestSeq.current === requestId) {
+        setIsLoading(false);
+      }
     }
   }, [
     filters.assigneeId,
@@ -230,13 +245,17 @@ export function ExceptionsPage() {
 
   useEffect(() => {
     if (!spaceId) {
+      requestSeq.current += 1;
       setView(null);
+      setIsLoading(false);
       return;
     }
 
-    let isActive = true;
+    const requestId = requestSeq.current + 1;
+    requestSeq.current = requestId;
 
     async function load() {
+      setView(null);
       setIsLoading(true);
       setErrorKey(null);
 
@@ -253,15 +272,15 @@ export function ExceptionsPage() {
           pageSize: 200,
         });
 
-        if (isActive) {
+        if (requestSeq.current === requestId) {
           setView(next);
         }
       } catch (error) {
-        if (isActive) {
+        if (requestSeq.current === requestId) {
           setErrorKey(getApiErrorMessageKey(error));
         }
       } finally {
-        if (isActive) {
+        if (requestSeq.current === requestId) {
           setIsLoading(false);
         }
       }
@@ -270,7 +289,9 @@ export function ExceptionsPage() {
     void load();
 
     return () => {
-      isActive = false;
+      if (requestSeq.current === requestId) {
+        requestSeq.current += 1;
+      }
     };
   }, [
     filters.assigneeId,
