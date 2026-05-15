@@ -10,6 +10,7 @@ import { PrismaService } from "../../prisma/prisma.service";
 import { toAttachment } from "./attachment.mappers";
 import {
   AttachmentLimitExceededError,
+  AttachmentTargetNotFoundError,
   type AttachmentRepository,
 } from "./attachment.repository";
 import type { CreateAttachmentInput } from "./attachment.types";
@@ -33,7 +34,16 @@ export class PrismaAttachmentRepository implements AttachmentRepository {
 
   async create(input: CreateAttachmentInput) {
     const attachment = await this.prisma.client.$transaction(async (tx) => {
-      await lockAttachmentTarget(tx, input.targetType, input.targetId);
+      const targetExists = await lockAttachmentTarget(
+        tx,
+        input.targetType,
+        input.targetId,
+      );
+
+      if (!targetExists) {
+        throw new AttachmentTargetNotFoundError();
+      }
+
       const currentCount = await tx.attachment.count({
         where: {
           deletedAt: null,
@@ -140,23 +150,24 @@ async function lockAttachmentTarget(
   tx: Prisma.TransactionClient,
   targetType: AttachmentTargetType,
   targetId: string,
-) {
+): Promise<boolean> {
   if (targetType === "WORK_ITEM") {
-    await tx.$queryRaw`
+    const rows = await tx.$queryRaw<Array<{ id: string }>>`
       SELECT id
       FROM work_items
       WHERE id = ${targetId}
         AND deleted_at IS NULL
       FOR UPDATE
     `;
-    return;
+    return rows.length > 0;
   }
 
-  await tx.$queryRaw`
+  const rows = await tx.$queryRaw<Array<{ id: string }>>`
     SELECT id
     FROM requirements
     WHERE id = ${targetId}
       AND deleted_at IS NULL
     FOR UPDATE
   `;
+  return rows.length > 0;
 }

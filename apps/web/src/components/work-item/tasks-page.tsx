@@ -9,7 +9,7 @@ import type {
   WorkItem,
 } from "@project-delivery/shared";
 import { Filter, Plus, Search } from "lucide-react";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { useSearchParams } from "next/navigation";
 import {
   useCallback,
@@ -68,6 +68,7 @@ export function TasksPage() {
   const tPriority = useTranslations("workItems.priority");
   const tFilters = useTranslations("workItems.filters");
   const tApiError = useTranslations();
+  const locale = useLocale();
   const searchParams = useSearchParams();
 
   const { currentSpace, status: sessionStatus } = useSession();
@@ -279,12 +280,17 @@ export function TasksPage() {
   const taskViewModels = useMemo(
     () =>
       items.map((item) =>
-        toTaskViewModel(item, tStatus, {
-          getMember,
-          getVersion,
-        }),
+        toTaskViewModel(
+          item,
+          tStatus,
+          {
+            getMember,
+            getVersion,
+          },
+          locale,
+        ),
       ),
-    [getMember, getVersion, items, tStatus],
+    [getMember, getVersion, items, locale, tStatus],
   );
 
   const filtered = useMemo(() => {
@@ -391,7 +397,14 @@ export function TasksPage() {
     })
       .then((item) => {
         if (!cancelled) {
-          open(toTaskViewModel(item, tStatus, { getMember, getVersion }));
+          open(
+            toTaskViewModel(
+              item,
+              tStatus,
+              { getMember, getVersion },
+              locale,
+            ),
+          );
           setHandledDeepLinkKey(key);
         }
       })
@@ -415,6 +428,7 @@ export function TasksPage() {
     requestedWorkItemId,
     spaceId,
     taskViewModels,
+    locale,
     tStatus,
   ]);
 
@@ -741,6 +755,7 @@ function toTaskViewModel(
   item: WorkItem,
   tStatus: (key: StatusCategory) => string,
   lookups: LookupHelpers,
+  locale: string,
 ): WorkItemViewModel {
   const code = formatDisplayCode(item.type, item.id);
   const member = item.assigneeId
@@ -751,7 +766,7 @@ function toTaskViewModel(
   const version = item.versionId
     ? lookups.getVersion(item.versionId)
     : undefined;
-  const dueDate = item.dueDate ? formatDate(item.dueDate) : undefined;
+  const dueDate = item.dueDate ? formatDate(item.dueDate, locale) : undefined;
   const isOverdue = item.dueDate
     ? new Date(item.dueDate).getTime() < Date.now() &&
       item.statusCategory !== "DONE" &&
@@ -789,15 +804,17 @@ function deriveInitial(value?: string): string {
   return trimmed.charAt(0).toUpperCase();
 }
 
-function formatDate(iso: string): string {
+function formatDate(iso: string, locale: string): string | undefined {
   try {
     const date = new Date(iso);
     if (Number.isNaN(date.getTime())) {
-      return iso;
+      return undefined;
     }
-    return `${date.getMonth() + 1}/${date.getDate()}`;
+    return new Intl.DateTimeFormat(locale, { dateStyle: "medium" }).format(
+      date,
+    );
   } catch {
-    return iso;
+    return undefined;
   }
 }
 

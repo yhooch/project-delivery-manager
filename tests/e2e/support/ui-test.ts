@@ -99,9 +99,22 @@ function ignoreRequestFailure(request: Request): boolean {
     return true;
   }
 
-  const pathname = new URL(url).pathname;
+  const parsed = new URL(url);
+  const pathname = parsed.pathname;
 
-  return isBrowserMetadataRequest(pathname) || isSourceMapRequest(pathname);
+  return (
+    isBrowserMetadataRequest(pathname) ||
+    isSourceMapRequest(pathname) ||
+    isAbortedNextRscRequest(request, parsed)
+  );
+}
+
+function isAbortedNextRscRequest(request: Request, url: URL): boolean {
+  return (
+    request.method() === "GET" &&
+    url.searchParams.has("_rsc") &&
+    request.failure()?.errorText === "net::ERR_ABORTED"
+  );
 }
 
 function ignoreConsole(

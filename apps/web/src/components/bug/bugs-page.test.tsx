@@ -258,6 +258,25 @@ describe("BugsPage", () => {
     expect(screen.getAllByText("B").length).toBeGreaterThanOrEqual(1);
   });
 
+  it("formats bug due dates with the active locale instead of showing raw ISO", async () => {
+    const dueDate = "2026-05-15T00:00:00.000Z";
+    listBugsMock.mockResolvedValueOnce({
+      items: [makeBug({ dueDate, title: "Localized bug due date" })],
+      total: 1,
+    });
+
+    render(<BugsPage />);
+
+    const expected = new Intl.DateTimeFormat("zh-CN", {
+      dateStyle: "medium",
+    }).format(new Date(dueDate));
+    expect(
+      await screen.findByText("Localized bug due date"),
+    ).toBeInTheDocument();
+    expect(screen.getByText(expected)).toBeInTheDocument();
+    expect(screen.queryByText(dueDate)).not.toBeInTheDocument();
+  });
+
   it("uses a neutral assignee fallback when no member is cached", async () => {
     listBugsMock.mockResolvedValueOnce({
       items: [makeBug({ title: "No-member bug" })],

@@ -6,25 +6,48 @@ import {
   createSpaceFormSchema,
   toAddOrganizationMemberRequest,
   toAddSpaceMemberRequest,
+  toCreateSpaceRequest,
+  toUpdateSpaceRequest,
 } from "./space-forms";
 
 describe("space forms", () => {
   it("normalizes optional create space fields through the shared schema", () => {
-    const result = createSpaceFormSchema.safeParse({
+    const request = toCreateSpaceRequest({
       code: "",
       description: "",
-      name: "Core",
+      name: "  Core  ",
       ownerId: "",
       staleThresholdDays: "3",
     });
 
-    expect(result.success).toBe(true);
-    expect(result.success ? result.data : null).toMatchObject({
+    expect(request).toEqual({
       name: "Core",
       staleThresholdDays: 3,
     });
-    expect(result.success ? result.data.code : null).toBeUndefined();
-    expect(result.success ? result.data.ownerId : null).toBeUndefined();
+
+    expect(
+      createSpaceFormSchema.safeParse({
+        code: "",
+        description: "",
+        name: "   ",
+      }).success,
+    ).toBe(false);
+  });
+
+  it("normalizes update space fields without preserving blank optionals", () => {
+    expect(
+      toUpdateSpaceRequest({
+        code: "  CORE  ",
+        description: "   ",
+        name: "  Core space  ",
+        ownerId: "",
+        staleThresholdDays: "7",
+      }),
+    ).toEqual({
+      code: "CORE",
+      name: "Core space",
+      staleThresholdDays: 7,
+    });
   });
 
   it("requires a user identifier when adding organization members", () => {

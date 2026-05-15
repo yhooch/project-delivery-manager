@@ -99,6 +99,12 @@ const AGGREGATE_STATS_READ_ALL_ROLES = new Set<SpaceRole>([
   "PM",
   "VIEWER",
 ]);
+const REQUIREMENT_AGGREGATE_STATS_READ_ALL_ROLES = new Set<SpaceRole>([
+  "SPACE_ADMIN",
+  "PM",
+  "VIEWER",
+  "REQUIREMENT",
+]);
 
 @Injectable()
 export class PrismaSpaceRepository implements SpaceRepository {
@@ -1993,7 +1999,9 @@ function buildVisibleRequirementWhere(
   },
 ): Prisma.RequirementWhereInput {
   const readAllSpaceIds = context.accesses
-    .filter((access) => AGGREGATE_STATS_READ_ALL_ROLES.has(access.role))
+    .filter((access) =>
+      REQUIREMENT_AGGREGATE_STATS_READ_ALL_ROLES.has(access.role),
+    )
     .map((access) => access.spaceId);
   const visibilityOr: Prisma.RequirementWhereInput[] = [];
 

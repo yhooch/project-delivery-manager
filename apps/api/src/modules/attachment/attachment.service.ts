@@ -31,6 +31,7 @@ import {
 import { TargetResolverService } from "../target/target-resolver.service";
 import {
   AttachmentLimitExceededError,
+  AttachmentTargetNotFoundError,
   ATTACHMENT_REPOSITORY,
   type AttachmentRepository,
 } from "./attachment.repository";
@@ -101,7 +102,7 @@ export class AttachmentService {
     );
     await this.assertAttachmentCountLimit(input.targetType, input.targetId);
 
-    const created = await this.createAttachmentOrThrowLimitExceeded({
+    const created = await this.createAttachmentOrThrowPublicError({
       id: ulid(),
       organizationId: target.organizationId,
       spaceId: target.spaceId,
@@ -306,7 +307,7 @@ export class AttachmentService {
     }
   }
 
-  private async createAttachmentOrThrowLimitExceeded(
+  private async createAttachmentOrThrowPublicError(
     input: Parameters<AttachmentRepository["create"]>[0],
   ) {
     try {
@@ -314,6 +315,9 @@ export class AttachmentService {
     } catch (error) {
       if (error instanceof AttachmentLimitExceededError) {
         throwAttachmentLimitExceeded();
+      }
+      if (error instanceof AttachmentTargetNotFoundError) {
+        throwAttachmentTargetNotFound();
       }
 
       throw error;

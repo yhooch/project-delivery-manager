@@ -28,7 +28,10 @@ import { WorkflowActionExecutionService } from "../workflow/workflow-action-exec
 import type { WorkItemLinkedUsers, WorkItemListInput } from "./workitem.types";
 import { toWorkItemDetail } from "./workitem.mappers";
 import { canReadAllSpaceWorkItems } from "./workitem-visibility";
-import { canManageDeliveryObject } from "./delivery-object-permissions";
+import {
+  canCreateTaskDeliveryObject,
+  canManageDeliveryObject,
+} from "./delivery-object-permissions";
 
 @Injectable()
 export class WorkItemService {
@@ -67,7 +70,7 @@ export class WorkItemService {
     input: CreateWorkItemRequest,
     metadata: RequestMetadata = {},
   ): Promise<WorkItem> {
-    const access = await this.requireSpaceWriter(actorUserId, spaceId);
+    const access = await this.requireSpaceAccess(actorUserId, spaceId);
 
     if (input.type !== "TASK") {
       throw new ApiException(
@@ -75,6 +78,10 @@ export class WorkItemService {
         "Only TASK work items can be created in M2",
         HttpStatus.BAD_REQUEST,
       );
+    }
+
+    if (!canCreateTaskDeliveryObject(access.role)) {
+      throwSpaceAccessDenied();
     }
 
     if (input.assigneeId) {
@@ -283,16 +290,6 @@ export class WorkItemService {
     const access = await this.spaces.findAccessibleById(userId, spaceId);
 
     if (!access) {
-      throwSpaceAccessDenied();
-    }
-
-    return access;
-  }
-
-  private async requireSpaceWriter(userId: string, spaceId: string) {
-    const access = await this.requireSpaceAccess(userId, spaceId);
-
-    if (access.role === "VIEWER") {
       throwSpaceAccessDenied();
     }
 

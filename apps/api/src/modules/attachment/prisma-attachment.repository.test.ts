@@ -4,6 +4,7 @@ import { describe, expect, it, vi } from "vitest";
 import type { PrismaService } from "../../prisma/prisma.service";
 import {
   AttachmentLimitExceededError,
+  AttachmentTargetNotFoundError,
   type AttachmentRepository,
 } from "./attachment.repository";
 import { PrismaAttachmentRepository } from "./prisma-attachment.repository";
@@ -76,9 +77,43 @@ describe("PrismaAttachmentRepository", () => {
     expect(tx.attachment.create).not.toHaveBeenCalled();
     expect(tx.timelineEvent.create).not.toHaveBeenCalled();
   });
+
+  it.each(["WORK_ITEM", "REQUIREMENT"] as const)(
+    "rejects creation when the locked transaction finds no live %s target",
+    async (targetType) => {
+      const input = createAttachmentInput({ targetType });
+      const tx = {
+        $queryRaw: vi.fn(async () => []),
+        attachment: {
+          count: vi.fn(),
+          create: vi.fn(),
+        },
+        timelineEvent: {
+          create: vi.fn(),
+        },
+      };
+      const prisma = {
+        client: {
+          $transaction: vi.fn(async (callback: (client: typeof tx) => unknown) =>
+            callback(tx),
+          ),
+        },
+      } as unknown as PrismaService;
+      const repository = new PrismaAttachmentRepository(prisma);
+
+      await expect(repository.create(input)).rejects.toBeInstanceOf(
+        AttachmentTargetNotFoundError,
+      );
+      expect(tx.attachment.count).not.toHaveBeenCalled();
+      expect(tx.attachment.create).not.toHaveBeenCalled();
+      expect(tx.timelineEvent.create).not.toHaveBeenCalled();
+    },
+  );
 });
 
-function createAttachmentInput(): Parameters<AttachmentRepository["create"]>[0] {
+function createAttachmentInput(
+  overrides: Partial<Parameters<AttachmentRepository["create"]>[0]> = {},
+): Parameters<AttachmentRepository["create"]>[0] {
   return {
     id: "01H00000000000000000000000",
     organizationId: "01H00000000000000000000001",
@@ -90,5 +125,6 @@ function createAttachmentInput(): Parameters<AttachmentRepository["create"]>[0] 
     mimeType: "application/pdf",
     size: 1024,
     uploadedById: "01H00000000000000000000004",
+    ...overrides,
   };
 }

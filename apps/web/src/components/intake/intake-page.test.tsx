@@ -637,12 +637,30 @@ describe("IntakePage", () => {
   it("loads related tasks, comments, timeline, and posts a new intake comment", async () => {
     const intake = makeIntake({
       id: "01ARZ3NDEKTSV4RRFFQ69G5FDT",
+      acceptedAt: "2026-05-11T00:00:00.000Z",
       title: "Detail resources",
       status: "ACCEPTED",
     });
+    const acceptedAtLabel = new Intl.DateTimeFormat("zh-CN", {
+      dateStyle: "short",
+      timeStyle: "short",
+    }).format(new Date("2026-05-11T00:00:00.000Z"));
+    const relatedTaskDueDate = "2026-06-01T00:00:00.000Z";
+    const relatedTaskDueDateLabel = new Intl.DateTimeFormat("zh-CN", {
+      dateStyle: "medium",
+    }).format(new Date(relatedTaskDueDate));
+    const existingEventTimeLabel = new Intl.DateTimeFormat("zh-CN", {
+      dateStyle: "short",
+      timeStyle: "short",
+    }).format(new Date("2026-05-12T00:00:00.000Z"));
     listIntakeItemsMock.mockResolvedValueOnce({ items: [intake], total: 1 });
     listWorkItemsMock.mockResolvedValueOnce({
-      items: [makeTask({ title: "Related task from API" })],
+      items: [
+        makeTask({
+          dueDate: relatedTaskDueDate,
+          title: "Related task from API",
+        }),
+      ],
       page: 1,
       pageSize: 5,
       total: 1,
@@ -734,9 +752,20 @@ describe("IntakePage", () => {
     expect(
       await screen.findByText("Related task from API"),
     ).toBeInTheDocument();
+    expect(screen.getByText(acceptedAtLabel)).toBeInTheDocument();
+    expect(
+      screen.getByText(new RegExp(relatedTaskDueDateLabel, "u")),
+    ).toBeInTheDocument();
     expect(
       await screen.findByText("Existing intake comment"),
     ).toBeInTheDocument();
+    expect(screen.getAllByText(existingEventTimeLabel).length).toBeGreaterThan(
+      0,
+    );
+    expect(
+      screen.queryByText("2026-05-12T00:00:00.000Z"),
+    ).not.toBeInTheDocument();
+    expect(screen.queryByText(relatedTaskDueDate)).not.toBeInTheDocument();
     expect(
       await screen.findByText("created the intake item"),
     ).toBeInTheDocument();
@@ -762,7 +791,7 @@ describe("IntakePage", () => {
     );
 
     fireEvent.change(screen.getByTestId("intake-comment-input"), {
-      target: { value: "New intake comment" },
+      target: { value: "  New intake comment  " },
     });
     fireEvent.click(screen.getByTestId("intake-comment-submit"));
 

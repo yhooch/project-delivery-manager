@@ -4,15 +4,23 @@ import {
   CreateSpaceRequestSchema,
   type AddOrganizationMemberRequest,
   type AddSpaceMemberRequest,
+  type CreateSpaceRequest,
   type OrganizationRole,
   type SpaceRole,
   OrganizationRoleSchema,
   SpaceCodeSchema,
   SpaceRoleSchema,
   UlidSchema,
+  type UpdateSpaceRequest,
   UpdateSpaceRequestSchema,
 } from "@project-delivery/shared";
 import { z } from "zod";
+
+const requiredString = (maxLength: number) =>
+  z.preprocess(
+    (value) => (typeof value === "string" ? value.trim() : value),
+    z.string().min(1).max(maxLength),
+  );
 
 const optionalString = (maxLength: number) =>
   z.preprocess(
@@ -41,6 +49,7 @@ const optionalThresholdDays = z.preprocess((value) => {
 export const createSpaceFormSchema = CreateSpaceRequestSchema.extend({
   code: optionalSpaceCode,
   description: optionalString(2000),
+  name: requiredString(120),
   ownerId: optionalUlid,
   staleThresholdDays: optionalThresholdDays,
 });
@@ -51,12 +60,29 @@ export type CreateSpaceFormValues = z.output<typeof createSpaceFormSchema>;
 export const updateSpaceFormSchema = UpdateSpaceRequestSchema.extend({
   code: optionalSpaceCode,
   description: optionalString(2000),
+  name: optionalString(120),
   ownerId: optionalUlid,
   staleThresholdDays: optionalThresholdDays,
 });
 
 export type UpdateSpaceFormInput = z.input<typeof updateSpaceFormSchema>;
 export type UpdateSpaceFormValues = z.output<typeof updateSpaceFormSchema>;
+
+export function toCreateSpaceRequest(
+  input: CreateSpaceFormInput,
+): CreateSpaceRequest {
+  return CreateSpaceRequestSchema.parse(
+    stripUndefinedFields(createSpaceFormSchema.parse(input)),
+  );
+}
+
+export function toUpdateSpaceRequest(
+  input: UpdateSpaceFormInput,
+): UpdateSpaceRequest {
+  return UpdateSpaceRequestSchema.parse(
+    stripUndefinedFields(updateSpaceFormSchema.parse(input)),
+  );
+}
 
 export type AddOrganizationMemberFormInput = {
   role: OrganizationRole;
@@ -158,4 +184,10 @@ function normalizeOptionalText(value: unknown): string | undefined {
   const trimmed = value.trim();
 
   return trimmed.length > 0 ? trimmed : undefined;
+}
+
+function stripUndefinedFields<T extends Record<string, unknown>>(input: T): T {
+  return Object.fromEntries(
+    Object.entries(input).filter(([, value]) => value !== undefined),
+  ) as T;
 }

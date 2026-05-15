@@ -725,13 +725,22 @@ describe("MyWorkbench", () => {
 
     render(<MyWorkbench />);
 
-    expect(await screen.findByText("Old space item")).toBeInTheDocument();
+    const oldItem = await screen.findByText("Old space item");
+    expect(oldItem).toBeInTheDocument();
+
+    fireEvent.click(oldItem);
+    expect(await screen.findByTestId("task-detail-sheet-open")).toHaveTextContent(
+      "Old space item",
+    );
 
     fireEvent.click(screen.getByTestId("workbench-space-filter-SPC_02"));
 
     await waitFor(() =>
       expect(screen.queryByText("Old space item")).not.toBeInTheDocument(),
     );
+    expect(
+      screen.queryByTestId("task-detail-sheet-open"),
+    ).not.toBeInTheDocument();
 
     resolveSecond(
       makeWorkbenchResponse({

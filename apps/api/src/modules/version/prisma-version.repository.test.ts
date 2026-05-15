@@ -2,6 +2,11 @@ import { describe, expect, it, vi } from "vitest";
 
 import type { PrismaService } from "../../prisma/prisma.service";
 import { PrismaVersionRepository } from "./prisma-version.repository";
+import type { VersionStatsScope } from "./version.types";
+
+type VersionStatsScopeWithRequirementVisibility = VersionStatsScope & {
+  requirementStatsVisibility?: "SPACE";
+};
 
 describe("PrismaVersionRepository", () => {
   it("writes VERSION timeline events when creating and updating versions", async () => {
@@ -211,6 +216,127 @@ describe("PrismaVersionRepository", () => {
                 },
               },
             ],
+          },
+        ],
+      },
+    });
+  });
+
+  it("counts all requirements for REQUIREMENT stats while scoping work items to participants", async () => {
+    const version = makeVersionRecord();
+    const workItemId = "01H00000000000000000000011";
+    const requirementId = "01H00000000000000000000012";
+    const requirementGroupBy = vi.fn(async () => [
+      { versionId: version.id, _count: { _all: 2 } },
+    ]);
+    const workItemGroupBy = vi
+      .fn()
+      .mockResolvedValueOnce([
+        { versionId: version.id, type: "TASK", _count: { _all: 1 } },
+      ])
+      .mockResolvedValueOnce([]);
+    const objectParticipantFindMany = vi.fn(async () => [
+      {
+        targetId: workItemId,
+        targetType: "WORK_ITEM",
+      },
+      {
+        targetId: requirementId,
+        targetType: "REQUIREMENT",
+      },
+    ]);
+    const prisma = {
+      client: {
+        objectParticipant: {
+          findMany: objectParticipantFindMany,
+        },
+        requirement: {
+          groupBy: requirementGroupBy,
+        },
+        version: {
+          findFirst: vi.fn(async () => version),
+        },
+        workItem: {
+          groupBy: workItemGroupBy,
+        },
+      },
+    } as unknown as PrismaService;
+    const repository = new PrismaVersionRepository(prisma);
+
+    const statsScope: VersionStatsScopeWithRequirementVisibility = {
+      actorUserId: "01H00000000000000000000013",
+      requirementStatsVisibility: "SPACE",
+      spaceId: version.spaceId,
+      visibility: "PARTICIPANT",
+    };
+
+    const result = await repository.findById(version.id, statsScope);
+
+    expect(result?.stats).toEqual({
+      blockedCount: 0,
+      bugCount: 0,
+      requirementCount: 2,
+      taskCount: 1,
+    });
+    expect(objectParticipantFindMany).toHaveBeenCalledWith({
+      distinct: ["targetType", "targetId"],
+      select: {
+        targetId: true,
+        targetType: true,
+      },
+      where: {
+        deletedAt: null,
+        spaceId: version.spaceId,
+        targetType: {
+          in: ["WORK_ITEM", "REQUIREMENT"],
+        },
+        userId: "01H00000000000000000000013",
+      },
+    });
+    expect(requirementGroupBy).toHaveBeenCalledWith({
+      by: ["versionId"],
+      _count: {
+        _all: true,
+      },
+      where: {
+        deletedAt: null,
+        spaceId: version.spaceId,
+        versionId: {
+          in: [version.id],
+        },
+      },
+    });
+    expect(workItemGroupBy).toHaveBeenNthCalledWith(1, {
+      by: ["versionId", "type"],
+      _count: {
+        _all: true,
+      },
+      where: {
+        AND: [
+          {
+            deletedAt: null,
+            spaceId: version.spaceId,
+            versionId: {
+              in: [version.id],
+            },
+            OR: [
+              {
+                type: "TASK",
+              },
+              {
+                bugDetail: {
+                  is: {
+                    deletedAt: null,
+                  },
+                },
+                type: "BUG",
+              },
+            ],
+          },
+          {
+            id: {
+              in: [workItemId],
+            },
           },
         ],
       },

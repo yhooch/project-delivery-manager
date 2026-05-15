@@ -17,6 +17,16 @@ import type {
   VersionStatsScope,
 } from "./version.types";
 
+type RequirementStatsVisibility = "SPACE";
+
+type VersionStatsScopeWithRequirementVisibility = VersionStatsScope & {
+  requirementStatsVisibility?: RequirementStatsVisibility;
+};
+
+type VersionListInputWithRequirementVisibility = VersionListInput & {
+  requirementStatsVisibility?: RequirementStatsVisibility;
+};
+
 const BOARD_STATUS_CATEGORIES = [
   "NOT_STARTED",
   "IN_PROGRESS",
@@ -109,6 +119,7 @@ export class PrismaVersionRepository implements VersionRepository {
     spaceId: string,
     input: VersionListInput,
   ): Promise<VersionListResult> {
+    const statsInput = input as VersionListInputWithRequirementVisibility;
     const where = {
       deletedAt: null,
       ownerId: input.ownerId,
@@ -132,6 +143,7 @@ export class PrismaVersionRepository implements VersionRepository {
       versions.map((version) => version.id),
       {
         actorUserId: input.actorUserId,
+        requirementStatsVisibility: statsInput.requirementStatsVisibility,
         spaceId,
         visibility: input.visibility,
       },
@@ -289,7 +301,7 @@ export class PrismaVersionRepository implements VersionRepository {
 
   private async toVersionWithStats(
     version: Parameters<typeof toVersion>[0],
-    statsScope?: VersionStatsScope,
+    statsScope?: VersionStatsScopeWithRequirementVisibility,
   ) {
     const stats = await this.countStatsByVersionIds([version.id], statsScope);
 
@@ -298,7 +310,7 @@ export class PrismaVersionRepository implements VersionRepository {
 
   private async countStatsByVersionIds(
     versionIds: string[],
-    statsScope?: VersionStatsScope,
+    statsScope?: VersionStatsScopeWithRequirementVisibility,
   ) {
     const stats = new Map<
       string,
@@ -627,7 +639,7 @@ function versionStatsWorkItemWhere(
 
 function versionStatsRequirementWhere(
   versionIds: string[],
-  statsScope?: VersionStatsScope,
+  statsScope?: VersionStatsScopeWithRequirementVisibility,
   participantRequirementIds: string[] = [],
 ): Prisma.RequirementWhereInput {
   const baseWhere: Prisma.RequirementWhereInput = {
@@ -638,7 +650,11 @@ function versionStatsRequirementWhere(
     },
   };
 
-  if (!statsScope || statsScope.visibility === "SPACE") {
+  if (
+    !statsScope ||
+    statsScope.visibility === "SPACE" ||
+    statsScope.requirementStatsVisibility === "SPACE"
+  ) {
     return baseWhere;
   }
 

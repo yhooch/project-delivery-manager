@@ -37,7 +37,7 @@ const RELATED_USER_ID = "01H0000000000000000000000B";
 
 describe("WorkItemService", () => {
   it("creates TASK work items with the default workflow start state and participants", async () => {
-    const subject = createSubject("DEVELOPER");
+    const subject = createSubject("PM");
 
     subject.workItems.workflowSelection = {
       currentStateId: CURRENT_STATE_ID,
@@ -106,6 +106,33 @@ describe("WorkItemService", () => {
         targetType: "WORK_ITEM",
       }),
     );
+  });
+
+  it("allows SPACE_ADMIN users to create TASK work items", async () => {
+    const subject = createSubject("SPACE_ADMIN");
+
+    subject.workItems.workflowSelection = {
+      currentStateId: CURRENT_STATE_ID,
+      statusCategory: "NOT_STARTED",
+      workflowVersionId: WORKFLOW_VERSION_ID,
+    };
+
+    await expect(
+      subject.service.create(ACTOR_ID, SPACE_ID, {
+        priority: "MEDIUM",
+        title: "admin task",
+        type: "TASK",
+      }),
+    ).resolves.toMatchObject({
+      reporterId: ACTOR_ID,
+      title: "admin task",
+      type: "TASK",
+    });
+    expect(subject.workItems.createdInput).toMatchObject({
+      createdById: ACTOR_ID,
+      reporterId: ACTOR_ID,
+      spaceId: SPACE_ID,
+    });
   });
 
   it("uses scoped visibility for TESTER and participant visibility for other roles", async () => {
@@ -181,6 +208,30 @@ describe("WorkItemService", () => {
       code: "SPACE_ACCESS_DENIED",
     });
   });
+
+  it.each(["DEVELOPER", "TESTER", "MEMBER"] as const)(
+    "rejects %s direct TASK creation",
+    async (role) => {
+      const subject = createSubject(role);
+
+      subject.workItems.workflowSelection = {
+        currentStateId: CURRENT_STATE_ID,
+        statusCategory: "NOT_STARTED",
+        workflowVersionId: WORKFLOW_VERSION_ID,
+      };
+
+      await expect(
+        subject.service.create(ACTOR_ID, SPACE_ID, {
+          priority: "MEDIUM",
+          title: `${role} task`,
+          type: "TASK",
+        }),
+      ).rejects.toMatchObject({
+        code: "SPACE_ACCESS_DENIED",
+      });
+      expect(subject.workItems.createdInput).toBeUndefined();
+    },
+  );
 
   it("updates editable fields without changing workflow state fields", async () => {
     const subject = createSubject("PM");

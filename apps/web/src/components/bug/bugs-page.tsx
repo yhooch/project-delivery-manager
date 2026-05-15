@@ -11,7 +11,7 @@ import type {
   WorkItem,
 } from "@project-delivery/shared";
 import { Bug, Filter, Pencil, Plus } from "lucide-react";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { useSearchParams } from "next/navigation";
 import {
   useCallback,
@@ -150,6 +150,7 @@ export function BugsPage() {
   const tSeverity = useTranslations("bugs.severity");
   const tFilters = useTranslations("bugs.filters");
   const tApiError = useTranslations();
+  const locale = useLocale();
   const searchParams = useSearchParams();
 
   const { currentSpace, status: sessionStatus } = useSession();
@@ -373,13 +374,25 @@ export function BugsPage() {
   const bugViewModels = useMemo<BugItemViewModel[]>(
     () =>
       items.map((bug) =>
-        toBugViewModel(bug, tStatus, {
-          getMember,
-          getVersion,
-          getWorkflowState: workflowStateLookup.getState,
-        }),
+        toBugViewModel(
+          bug,
+          tStatus,
+          {
+            getMember,
+            getVersion,
+            getWorkflowState: workflowStateLookup.getState,
+          },
+          locale,
+        ),
       ),
-    [getMember, getVersion, items, tStatus, workflowStateLookup.getState],
+    [
+      getMember,
+      getVersion,
+      items,
+      locale,
+      tStatus,
+      workflowStateLookup.getState,
+    ],
   );
 
   const filtered = useMemo(() => {
@@ -448,16 +461,28 @@ export function BugsPage() {
         current.map((item) => (item.id === updated.id ? updated : item)),
       );
       setActiveItem(
-        toBugViewModel(updated, tStatus, {
-          getMember,
-          getVersion,
-          getWorkflowState: workflowStateLookup.getState,
-        }),
+        toBugViewModel(
+          updated,
+          tStatus,
+          {
+            getMember,
+            getVersion,
+            getWorkflowState: workflowStateLookup.getState,
+          },
+          locale,
+        ),
       );
       setDetailRevision((revision) => revision + 1);
       void fetchBugs(1, "replace");
     },
-    [fetchBugs, getMember, getVersion, tStatus, workflowStateLookup.getState],
+    [
+      fetchBugs,
+      getMember,
+      getVersion,
+      locale,
+      tStatus,
+      workflowStateLookup.getState,
+    ],
   );
 
   useEffect(() => {
@@ -509,11 +534,16 @@ export function BugsPage() {
       .then((bug) => {
         if (!cancelled) {
           openBug(
-            toBugViewModel(bug, tStatus, {
-              getMember,
-              getVersion,
-              getWorkflowState: workflowStateLookup.getState,
-            }),
+            toBugViewModel(
+              bug,
+              tStatus,
+              {
+                getMember,
+                getVersion,
+                getWorkflowState: workflowStateLookup.getState,
+              },
+              locale,
+            ),
           );
           setHandledDeepLinkKey(key);
         }
@@ -533,6 +563,7 @@ export function BugsPage() {
     handledDeepLinkKey,
     hasLoadedItems,
     loading,
+    locale,
     openBug,
     organizationId,
     requestedBugId,
@@ -904,6 +935,18 @@ export function BugsPage() {
                           {t("badges.overdue")}
                         </Badge>
                       )}
+                      {bug.dueDate && (
+                        <span
+                          className={cn(
+                            "hidden shrink-0 text-[11px] md:inline-block",
+                            bug.isOverdue
+                              ? "text-destructive"
+                              : "text-muted-foreground",
+                          )}
+                        >
+                          {bug.dueDate}
+                        </span>
+                      )}
                       <Avatar className="h-5 w-5 shrink-0">
                         <AvatarFallback className="text-[9px]">
                           {bug.assignee.initial}
@@ -1024,13 +1067,14 @@ function toBugViewModel(
   bug: BugView,
   tStatus: (key: StatusCategory) => string,
   lookups: BugLookupHelpers,
+  locale: string,
 ): BugItemViewModel {
   const code = formatDisplayCode("BUG", bug.id);
   const member = bug.assigneeId ? lookups.getMember(bug.assigneeId) : undefined;
   const assigneeName = member?.user.name ?? member?.user.username ?? "";
   const initial = deriveInitial(assigneeName);
   const version = bug.versionId ? lookups.getVersion(bug.versionId) : undefined;
-  const dueDate = bug.dueDate ? formatDate(bug.dueDate) : undefined;
+  const dueDate = bug.dueDate ? formatDate(bug.dueDate, locale) : undefined;
   const isOverdue = bug.dueDate
     ? new Date(bug.dueDate).getTime() < Date.now() &&
       bug.statusCategory !== "DONE" &&
@@ -1092,15 +1136,17 @@ function deriveInitial(value?: string): string {
   return trimmed.charAt(0).toUpperCase();
 }
 
-function formatDate(iso: string): string {
+function formatDate(iso: string, locale: string): string | undefined {
   try {
     const date = new Date(iso);
     if (Number.isNaN(date.getTime())) {
-      return iso;
+      return undefined;
     }
-    return `${date.getMonth() + 1}/${date.getDate()}`;
+    return new Intl.DateTimeFormat(locale, { dateStyle: "medium" }).format(
+      date,
+    );
   } catch {
-    return iso;
+    return undefined;
   }
 }
 

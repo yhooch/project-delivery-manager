@@ -17,6 +17,12 @@ export class AttachmentLimitExceededError extends Error {
   }
 }
 
+export class AttachmentTargetNotFoundError extends Error {
+  constructor() {
+    super("Attachment target not found");
+  }
+}
+
 export type AttachmentRepository = {
   countByTarget(
     targetType: AttachmentTargetType,

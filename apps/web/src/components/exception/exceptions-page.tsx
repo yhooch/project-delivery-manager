@@ -148,6 +148,11 @@ export function ExceptionsPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [errorKey, setErrorKey] = useState<string | null>(null);
   const [active, setActive] = useState<WorkItemViewModel | null>(null);
+  const [activeContext, setActiveContext] = useState<{
+    contextKey: string;
+    organizationId?: string;
+    spaceId?: string;
+  } | null>(null);
   const [open, setOpen] = useState(false);
   const [tabValue, setTabValue] = useState<ViewExceptionType>(
     requestedExceptionType,
@@ -165,6 +170,7 @@ export function ExceptionsPage() {
 
   const organizationId = session?.defaultOrganizationId;
   const spaceId = session?.defaultSpaceId;
+  const exceptionsContextKey = `${organizationId ?? ""}:${spaceId ?? ""}`;
   const canEditThreshold = canManageSpace(currentSpace?.role);
   const { members, getMember } = useSpaceMembers(spaceId, organizationId);
   const {
@@ -172,6 +178,13 @@ export function ExceptionsPage() {
     getVersion,
     loading: versionsLoading,
   } = useVersions(spaceId, organizationId);
+
+  useEffect(() => {
+    setOpen(false);
+    setActive(null);
+    setActiveContext(null);
+    setThresholdOpen(false);
+  }, [organizationId, spaceId]);
 
   const effectiveFilters = useMemo<ExceptionFilterValues>(() => {
     if (
@@ -389,9 +402,21 @@ export function ExceptionsPage() {
       const next = buildExceptionViewModel(item);
       rememberWorkItem(next);
       setActive(next);
+      setActiveContext({
+        contextKey: exceptionsContextKey,
+        organizationId,
+        spaceId,
+      });
       setOpen(true);
     },
-    [buildExceptionViewModel, captureFocus, rememberWorkItem],
+    [
+      buildExceptionViewModel,
+      captureFocus,
+      exceptionsContextKey,
+      organizationId,
+      rememberWorkItem,
+      spaceId,
+    ],
   );
 
   const handleSheetOpenChange = useCallback(
@@ -410,6 +435,11 @@ export function ExceptionsPage() {
     getId: (item) => item.workItem.id,
     onSelect: (item) => {
       setActive(buildExceptionViewModel(item));
+      setActiveContext({
+        contextKey: exceptionsContextKey,
+        organizationId,
+        spaceId,
+      });
     },
     onOpen: openExceptionItem,
     onEdit: openExceptionItem,
@@ -615,6 +645,9 @@ export function ExceptionsPage() {
   const handleSelect = (item: SpaceExceptionItem) => {
     openExceptionItem(item);
   };
+  const detailSheetOpen =
+    open && activeContext?.contextKey === exceptionsContextKey;
+  const detailSheetItem = detailSheetOpen ? active : null;
 
   return (
     <div data-testid="exceptions-page" className="flex h-full min-w-0 flex-col">
@@ -786,9 +819,11 @@ export function ExceptionsPage() {
       </Tabs>
 
       <TaskDetailSheet
-        item={active}
-        open={open}
+        item={detailSheetItem}
+        open={detailSheetOpen}
         onOpenChange={handleSheetOpenChange}
+        spaceId={activeContext?.spaceId}
+        organizationId={activeContext?.organizationId}
         onChanged={() => {
           void fetchView();
         }}

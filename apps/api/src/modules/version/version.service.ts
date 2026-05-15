@@ -33,6 +33,13 @@ import type {
 import { canReadAllSpaceWorkItems } from "../workitem/workitem-visibility";
 
 const SPACE_MANAGER_ROLES = new Set<SpaceRole>(["SPACE_ADMIN", "PM"]);
+const REQUIREMENT_STATS_READ_ALL_ROLES = new Set<SpaceRole>(["REQUIREMENT"]);
+
+type RequirementStatsVisibility = "SPACE";
+
+type WithRequirementStatsVisibility<T> = T & {
+  requirementStatsVisibility?: RequirementStatsVisibility;
+};
 
 @Injectable()
 export class VersionService {
@@ -54,11 +61,17 @@ export class VersionService {
   ): Promise<PageResult<Version>> {
     const access = await this.requireSpaceAccess(actorUserId, spaceId);
 
-    return this.versions.listBySpaceId(spaceId, {
-      ...input,
-      actorUserId,
-      visibility: resolveVersionStatsVisibility(access.role),
-    });
+    return this.versions.listBySpaceId(
+      spaceId,
+      withRequirementStatsVisibility(
+        {
+          ...input,
+          actorUserId,
+          visibility: resolveVersionStatsVisibility(access.role),
+        },
+        access.role,
+      ),
+    );
   }
 
   async create(
@@ -305,17 +318,31 @@ export class VersionService {
     }
 
     return (
-      (await this.versions.findById(version.id, {
-        actorUserId,
-        spaceId: version.spaceId,
-        visibility,
-      })) ?? version
+      (await this.versions.findById(
+        version.id,
+        withRequirementStatsVisibility(
+          {
+            actorUserId,
+            spaceId: version.spaceId,
+            visibility,
+          },
+          role,
+        ),
+      )) ?? version
     );
   }
 }
 
 function resolveVersionBoardVisibility(role: SpaceRole): VersionBoardVisibility {
-  return resolveVersionStatsVisibility(role);
+  if (canReadAllSpaceWorkItems(role)) {
+    return "SPACE";
+  }
+
+  if (role === "TESTER") {
+    return "TESTER";
+  }
+
+  return "PARTICIPANT";
 }
 
 function resolveVersionStatsVisibility(role: SpaceRole): VersionStatsVisibility {
@@ -328,6 +355,20 @@ function resolveVersionStatsVisibility(role: SpaceRole): VersionStatsVisibility 
   }
 
   return "PARTICIPANT";
+}
+
+function withRequirementStatsVisibility<T>(
+  input: T,
+  role: SpaceRole,
+): WithRequirementStatsVisibility<T> {
+  if (!REQUIREMENT_STATS_READ_ALL_ROLES.has(role)) {
+    return input as WithRequirementStatsVisibility<T>;
+  }
+
+  return {
+    ...input,
+    requirementStatsVisibility: "SPACE",
+  };
 }
 
 function parseOptionalDate(value: string | undefined, field: string) {

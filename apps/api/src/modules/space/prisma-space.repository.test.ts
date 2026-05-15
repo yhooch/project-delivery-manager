@@ -447,6 +447,118 @@ describe("PrismaSpaceRepository", () => {
     });
   });
 
+  it("counts space requirements for REQUIREMENT role overview without work item read-all access", async () => {
+    const organizationId = "01RRZ3NDEKTSV4RRFFQ69G5FO1";
+    const spaceId = "01RRZ3NDEKTSV4RRFFQ69G5FS1";
+    const versionId = "01RRZ3NDEKTSV4RRFFQ69G5FV1";
+    const actorUserId = "01RRZ3NDEKTSV4RRFFQ69G5FU1";
+    const space: Space = {
+      id: spaceId,
+      code: "requirement-role",
+      name: "Requirement Role",
+      organizationId,
+      settings: {
+        staleThresholdDays: 3,
+      },
+      status: "ACTIVE",
+    };
+    const visibleWorkItemWhere = {
+      deletedAt: null,
+      id: {
+        in: [],
+      },
+      organizationId,
+      spaceId: {
+        in: [spaceId],
+      },
+      type: {
+        in: ["TASK", "BUG"],
+      },
+      versionId,
+    };
+    const requirementCount = vi.fn(async () => 2);
+    const workItemCount = vi.fn(async () => 0);
+    const prisma = {
+      client: {
+        requirement: {
+          count: requirementCount,
+        },
+        version: {
+          count: vi.fn(async () => 1),
+        },
+        workItem: {
+          count: workItemCount,
+          groupBy: vi.fn(async () => []),
+        },
+      },
+    } as unknown as PrismaService;
+    const repository = new PrismaSpaceRepository(prisma);
+    const internals = repository as unknown as RepositoryInternals;
+    const access = {
+      organizationId,
+      role: "REQUIREMENT",
+      spaceId,
+      staleThresholdDays: 3,
+    };
+
+    internals.resolveViewAccessContext = vi.fn(async () => ({
+      accessBySpaceId: new Map([[spaceId, access]]),
+      accesses: [access],
+      participantIntakeItemIds: [],
+      participantRequirementIds: [],
+      participantSpaceIds: [spaceId],
+      participantWorkItemIds: [],
+      readAllSpaceIds: [],
+      requirementNonDraftReadAllSpaceIds: [spaceId],
+      requirementReadAllSpaceIds: [spaceId],
+      intakeItemReadAllSpaceIds: [],
+      spaceIds: [spaceId],
+      testerSpaceIds: [],
+      testerWorkItemIds: [],
+    }));
+    internals.findCurrentVersion = vi.fn(async () => undefined);
+    internals.findVersionById = vi.fn(async () => undefined);
+    internals.listDefaultWorkflows = vi.fn(async () => []);
+    internals.pageRecentActivities = vi.fn(async () => ({
+      items: [],
+      page: 1,
+      pageSize: 20,
+      total: 0,
+    }));
+    internals.getExceptionCounts = vi.fn(async () => []);
+
+    const overview = await repository.getSpaceOverviewView({
+      actorUserId,
+      role: "REQUIREMENT",
+      space,
+      versionId,
+    });
+
+    expect(overview.stats.requirementCount).toBe(2);
+    expect(requirementCount).toHaveBeenCalledWith({
+      where: {
+        deletedAt: null,
+        organizationId,
+        OR: [
+          {
+            spaceId: {
+              in: [spaceId],
+            },
+          },
+        ],
+        spaceId: {
+          in: [spaceId],
+        },
+        versionId,
+      },
+    });
+    expect(workItemCount).toHaveBeenNthCalledWith(1, {
+      where: {
+        AND: [visibleWorkItemWhere, { type: "TASK" }],
+      },
+    });
+  });
+
   it("scopes current version stats in overview for restricted roles", async () => {
     const organizationId = "01CRZ3NDEKTSV4RRFFQ69G5FO1";
     const spaceId = "01CRZ3NDEKTSV4RRFFQ69G5FS1";

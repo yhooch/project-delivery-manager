@@ -205,6 +205,7 @@ export function VersionPage() {
   const { session, currentSpace } = useSession();
   const organizationId = session?.defaultOrganizationId;
   const spaceId = session?.defaultSpaceId ?? currentSpace?.id;
+  const versionContextKey = `${organizationId ?? ""}:${spaceId ?? ""}`;
   const canManageVersions = canManageVersionEntries(
     currentSpace?.role,
     currentSpace?.status,
@@ -250,6 +251,11 @@ export function VersionPage() {
     "board" | "requirements" | "timeline"
   >("board");
   const [activeItem, setActiveItem] = useState<WorkItemViewModel | null>(null);
+  const [activeItemContext, setActiveItemContext] = useState<{
+    contextKey: string;
+    organizationId?: string;
+    spaceId?: string;
+  } | null>(null);
   const [sheetOpen, setSheetOpen] = useState(false);
   const [createWorkItemDialogOpen, setCreateWorkItemDialogOpen] =
     useState(false);
@@ -271,6 +277,12 @@ export function VersionPage() {
     setErrorKey(null);
     setRequirementsErrorKey(null);
     setTimelineErrorKey(null);
+    setActiveItem(null);
+    setActiveItemContext(null);
+    setSheetOpen(false);
+    setCreateWorkItemDialogOpen(false);
+    setCreateVersionDialogOpen(false);
+    setEditVersionDialogOpen(false);
   }, [organizationId, spaceId]);
 
   // -------------------------------------------------------------------------
@@ -574,6 +586,11 @@ export function VersionPage() {
       { organizationId, spaceId },
     );
     setActiveItem(item);
+    setActiveItemContext({
+      contextKey: versionContextKey,
+      organizationId,
+      spaceId,
+    });
     setSheetOpen(true);
   };
 
@@ -940,6 +957,10 @@ export function VersionPage() {
 
   // -------------------------------------------------------------------------
 
+  const detailSheetOpen =
+    sheetOpen && activeItemContext?.contextKey === versionContextKey;
+  const detailSheetItem = detailSheetOpen ? activeItem : null;
+
   return (
     <div
       data-testid="version-board-page"
@@ -954,9 +975,11 @@ export function VersionPage() {
       />
       <div className="flex min-w-0 flex-1 flex-col overflow-hidden">{body}</div>
       <TaskDetailSheet
-        item={activeItem}
-        open={sheetOpen}
+        item={detailSheetItem}
+        open={detailSheetOpen}
         onOpenChange={handleSheetOpenChange}
+        spaceId={activeItemContext?.spaceId}
+        organizationId={activeItemContext?.organizationId}
         onChanged={() => {
           refreshVersionContext();
         }}

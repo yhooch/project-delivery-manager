@@ -545,6 +545,112 @@ describe("RequirementsPage", () => {
     );
   });
 
+  it("clears version and owner filters when the organization or space changes", async () => {
+    const oldVersionId = "01ARZ3NDEKTSV4RRFFQ69G5FD1";
+    const oldOwnerId = "01ARZ3NDEKTSV4RRFFQ69G5FU1";
+    const nextVersionId = "01ARZ3NDEKTSV4RRFFQ69G5FD2";
+    const nextOwnerId = "01ARZ3NDEKTSV4RRFFQ69G5FU2";
+
+    listRequirementVersionsMock
+      .mockResolvedValueOnce({
+        items: [{ id: oldVersionId, name: "M1" }],
+        total: 1,
+      })
+      .mockResolvedValueOnce({
+        items: [{ id: nextVersionId, name: "M2" }],
+        total: 1,
+      });
+    listRequirementAssignableMembersMock
+      .mockResolvedValueOnce({
+        items: [
+          {
+            id: "MEMBER_01",
+            organizationId: "ORG_01",
+            spaceId: "SPC_01",
+            userId: oldOwnerId,
+            role: "PM",
+            status: "ACTIVE",
+            user: {
+              id: oldOwnerId,
+              username: "oldpm",
+              name: "Old PM",
+              status: "ACTIVE",
+            },
+          },
+        ],
+        total: 1,
+      })
+      .mockResolvedValueOnce({
+        items: [
+          {
+            id: "MEMBER_02",
+            organizationId: "ORG_02",
+            spaceId: "SPC_02",
+            userId: nextOwnerId,
+            role: "PM",
+            status: "ACTIVE",
+            user: {
+              id: nextOwnerId,
+              username: "nextpm",
+              name: "Next PM",
+              status: "ACTIVE",
+            },
+          },
+        ],
+        total: 1,
+      });
+    listRequirementsMock.mockResolvedValue({ items: [], total: 0 });
+
+    const { rerender } = render(<RequirementsPage />);
+
+    await waitFor(() => expect(listRequirementVersionsMock).toHaveBeenCalled());
+    fireEvent.click(
+      screen.getByRole("button", { name: "requirements.page.filter" }),
+    );
+    fireEvent.change(screen.getByLabelText("requirements.filters.version"), {
+      target: { value: oldVersionId },
+    });
+    fireEvent.change(screen.getByLabelText("requirements.filters.owner"), {
+      target: { value: oldOwnerId },
+    });
+
+    await waitFor(() =>
+      expect(listRequirementsMock).toHaveBeenLastCalledWith(
+        expect.objectContaining({
+          ownerId: oldOwnerId,
+          versionId: oldVersionId,
+        }),
+      ),
+    );
+
+    sessionMock.current = {
+      session: {
+        defaultOrganizationId: "ORG_02",
+        defaultSpaceId: "SPC_02",
+      },
+      currentSpace: {
+        id: "SPC_02",
+        organizationId: "ORG_02",
+        name: "Next Space",
+        role: "PM",
+        status: "ACTIVE",
+      },
+      status: "authenticated" as const,
+    };
+    rerender(<RequirementsPage />);
+
+    await waitFor(() => {
+      const lastCallIndex = listRequirementsMock.mock.calls.length - 1;
+      const [query] = listRequirementsMock.mock.calls[lastCallIndex];
+      expect(query).toMatchObject({
+        organizationId: "ORG_02",
+        spaceId: "SPC_02",
+      });
+      expect(query.ownerId).toBeUndefined();
+      expect(query.versionId).toBeUndefined();
+    });
+  });
+
   it("creates a draft and navigates to its detail page when the user clicks 创建", async () => {
     listRequirementsMock.mockResolvedValueOnce({ items: [], total: 0 });
     createRequirementDraftMock.mockResolvedValueOnce(

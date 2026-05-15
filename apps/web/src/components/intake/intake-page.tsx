@@ -29,12 +29,13 @@ import {
   Target,
   Users,
 } from "lucide-react";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { useRouter } from "../../i18n/routing";
 import { getApiErrorMessageKey } from "../../lib/api-error-messages";
+import { toCreateCommentRequest } from "../../lib/comment-forms";
 import { createComment, listComments } from "../../lib/comment-service";
 import { formatDisplayCode } from "../../lib/display-code";
 import {
@@ -127,6 +128,7 @@ export function IntakePage() {
   const tNav = useTranslations("shell.nav");
   const tIntakeItems = useTranslations("intakeItems");
   const tRoot = useTranslations();
+  const locale = useLocale();
   const router = useRouter();
   const searchParams = useSearchParams();
   const requestedIntakeItemId = normalizeSearchParam(searchParams.get("id"));
@@ -1055,7 +1057,11 @@ export function IntakePage() {
                   <FieldRow
                     icon={Clock}
                     label={t("detail.acceptedAt")}
-                    value={active.acceptedAt ?? "—"}
+                    value={formatOptionalDateTime(
+                      active.acceptedAt,
+                      locale,
+                      tRoot("common.emptyValue"),
+                    )}
                   />
                   <FieldRow
                     icon={GitBranch}
@@ -1082,6 +1088,7 @@ export function IntakePage() {
                   spaceId={spaceId}
                   t={t}
                   tIntakeItems={tIntakeItems}
+                  locale={locale}
                   tRoot={tRoot}
                 />
                 <IntakeCommentsSection
@@ -1093,6 +1100,7 @@ export function IntakePage() {
                   onTimelineRefresh={() =>
                     setTimelineRefreshVersion((version) => version + 1)
                   }
+                  locale={locale}
                   t={t}
                   tIntakeItems={tIntakeItems}
                   tRoot={tRoot}
@@ -1102,6 +1110,7 @@ export function IntakePage() {
                   organizationId={organizationId}
                   refreshVersion={timelineRefreshVersion}
                   spaceId={spaceId}
+                  locale={locale}
                   t={t}
                   tIntakeItems={tIntakeItems}
                   tRoot={tRoot}
@@ -1194,6 +1203,7 @@ function createIntakeListScopeKey({
 
 function RelatedTasksSection({
   intakeItem,
+  locale,
   organizationId,
   routerPush,
   spaceId,
@@ -1202,6 +1212,7 @@ function RelatedTasksSection({
   tRoot,
 }: {
   intakeItem: IntakeItem;
+  locale: string;
   organizationId?: string;
   routerPush: (href: string) => void;
   spaceId?: string;
@@ -1329,7 +1340,11 @@ function RelatedTasksSection({
                 </span>
                 <span className="hidden shrink-0 text-[11px] text-muted-foreground sm:inline">
                   {tIntakeItems("relatedTasks.meta", {
-                    dueDate: task.dueDate ?? tIntakeItems("noDueDate"),
+                    dueDate: formatOptionalDate(
+                      task.dueDate,
+                      locale,
+                      tIntakeItems("noDueDate"),
+                    ),
                     priority: tRoot(`workItems.priority.${task.priority}`),
                     status: tRoot(
                       `workItems.statusCategory.${task.statusCategory}`,
@@ -1349,6 +1364,7 @@ function IntakeCommentsSection({
   canComment,
   getMember,
   intakeItem,
+  locale,
   onTimelineRefresh,
   organizationId,
   spaceId,
@@ -1359,6 +1375,7 @@ function IntakeCommentsSection({
   canComment: boolean;
   getMember: (userId: string) => SpaceMemberWithUser | undefined;
   intakeItem: IntakeItem;
+  locale: string;
   onTimelineRefresh?: () => void;
   organizationId?: string;
   spaceId?: string;
@@ -1401,8 +1418,7 @@ function IntakeCommentsSection({
   }, [fetchComments]);
 
   const handleSubmit = async () => {
-    const body = draft.trim();
-    if (!body || !spaceId || !canComment) {
+    if (!draft.trim() || !spaceId || !canComment) {
       return;
     }
 
@@ -1410,12 +1426,15 @@ function IntakeCommentsSection({
     setSubmitErrorKey(null);
 
     try {
-      const created = await createComment({
-        body,
-        organizationId,
-        spaceId,
+      const request = toCreateCommentRequest({
+        body: draft,
         targetId: intakeItem.id,
         targetType: "INTAKE_ITEM",
+      });
+      const created = await createComment({
+        ...request,
+        organizationId,
+        spaceId,
       });
       setComments((current) => [...current, created]);
       setDraft("");
@@ -1477,7 +1496,11 @@ function IntakeCommentsSection({
                     <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
                       <span className="text-sm font-medium">{name}</span>
                       <span className="text-[11px] text-muted-foreground">
-                        {formatDateTime(comment.createdAt)}
+                        {formatOptionalDateTime(
+                          comment.createdAt,
+                          locale,
+                          tRoot("common.emptyValue"),
+                        )}
                       </span>
                     </div>
                     <p className="mt-1 whitespace-pre-wrap text-sm leading-relaxed text-foreground/90">
@@ -1543,6 +1566,7 @@ function IntakeCommentsSection({
 
 function IntakeTimelineSection({
   intakeItem,
+  locale,
   organizationId,
   refreshVersion,
   spaceId,
@@ -1551,6 +1575,7 @@ function IntakeTimelineSection({
   tRoot,
 }: {
   intakeItem: IntakeItem;
+  locale: string;
   organizationId?: string;
   refreshVersion: number;
   spaceId?: string;
@@ -1644,7 +1669,11 @@ function IntakeTimelineSection({
                     )}
                   </div>
                   <div className="mt-0.5 text-[11px] text-muted-foreground">
-                    {formatDateTime(event.createdAt)}
+                    {formatOptionalDateTime(
+                      event.createdAt,
+                      locale,
+                      tRoot("common.emptyValue"),
+                    )}
                   </div>
                 </div>
               </li>
@@ -1693,20 +1722,60 @@ function displayVersionName(
   return getVersion(versionId)?.name ?? "—";
 }
 
-function formatDateTime(value: string): string {
+function formatOptionalDate(
+  value: string | null | undefined,
+  locale: string,
+  emptyValue: string,
+): string {
+  if (!value) {
+    return emptyValue;
+  }
+
+  return formatDate(value, locale) ?? emptyValue;
+}
+
+function formatOptionalDateTime(
+  value: string | null | undefined,
+  locale: string,
+  emptyValue: string,
+): string {
+  if (!value) {
+    return emptyValue;
+  }
+
+  return formatDateTime(value, locale) ?? emptyValue;
+}
+
+function formatDate(value: string, locale: string): string | undefined {
   try {
     const date = new Date(value);
 
     if (Number.isNaN(date.getTime())) {
-      return value;
+      return undefined;
     }
 
-    return new Intl.DateTimeFormat("default", {
+    return new Intl.DateTimeFormat(locale, { dateStyle: "medium" }).format(
+      date,
+    );
+  } catch {
+    return undefined;
+  }
+}
+
+function formatDateTime(value: string, locale: string): string | undefined {
+  try {
+    const date = new Date(value);
+
+    if (Number.isNaN(date.getTime())) {
+      return undefined;
+    }
+
+    return new Intl.DateTimeFormat(locale, {
       dateStyle: "short",
       timeStyle: "short",
     }).format(date);
   } catch {
-    return value;
+    return undefined;
   }
 }
 

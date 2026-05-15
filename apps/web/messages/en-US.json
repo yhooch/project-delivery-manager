@@ -3038,7 +3038,6 @@
       "emptyTitle": "No attachments",
       "emptyDescription": "Upload files to share with the team",
       "uploadAction": "Upload",
-      "uploadTodo": "Upload feature coming soon",
       "readonly": "Current permission cannot upload attachments",
       "retry": "Retry",
       "size": "Size",

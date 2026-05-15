@@ -19,13 +19,13 @@ import {
 import { ApiClientError } from "../../lib/api-client";
 import { getApiErrorMessageKey } from "../../lib/api-error-messages";
 import { canManageSpace } from "../../lib/permission-gates";
+import { toUpdateSpaceRequest } from "../../lib/space-forms";
 import {
   getSpace,
   listSpaceMembers,
   updateSpace,
   updateSpaceMember,
 } from "../../lib/space-service";
-import { parseThresholdDays } from "../../lib/threshold-normalizer";
 import { cn } from "../../lib/utils";
 import { useSession } from "../providers/session-provider";
 
@@ -210,30 +210,27 @@ export function SpaceSettingsPage() {
     setSaveErrorKey(null);
     setCodeError(null);
 
-    const nextName = name.trim();
-    const nextCode = code.trim();
-    const trimmedDescription = description.trim();
-    const nextDescription =
-      trimmedDescription.length > 0 ? trimmedDescription : undefined;
-    const nextOwnerId = ownerId.length > 0 ? ownerId : undefined;
+    let request: ReturnType<typeof toUpdateSpaceRequest>;
+    try {
+      request = toUpdateSpaceRequest({ code, description, name, ownerId });
+    } catch (error) {
+      setSaveErrorKey(getApiErrorMessageKey(error));
+      setIsSavingBasic(false);
+      return;
+    }
 
     const previous = space;
     const optimistic: Space = {
       ...space,
-      name: nextName,
-      code: nextCode,
-      description: nextDescription,
-      ownerId: nextOwnerId,
+      name: request.name ?? space.name,
+      code: request.code ?? space.code,
+      description: request.description,
+      ownerId: request.ownerId,
     };
     setSpace(optimistic);
 
     try {
-      const updated = await updateSpace(spaceId, {
-        name: nextName,
-        code: nextCode,
-        description: nextDescription,
-        ownerId: nextOwnerId,
-      });
+      const updated = await updateSpace(spaceId, request);
       setSpace(updated);
       setName(updated.name);
       setCode(updated.code);
@@ -264,8 +261,15 @@ export function SpaceSettingsPage() {
     if (!space || !spaceId || !writeAllowed) {
       return;
     }
-    const numeric = parseThresholdDays(threshold);
-    if (numeric === null) {
+    let request: ReturnType<typeof toUpdateSpaceRequest>;
+    try {
+      request = toUpdateSpaceRequest({ staleThresholdDays: threshold });
+    } catch {
+      setThresholdError("threshold.error");
+      return;
+    }
+    const numeric = request.staleThresholdDays;
+    if (numeric === undefined) {
       setThresholdError("threshold.error");
       return;
     }
@@ -281,9 +285,7 @@ export function SpaceSettingsPage() {
     setSpace(optimistic);
 
     try {
-      const updated = await updateSpace(spaceId, {
-        staleThresholdDays: numeric,
-      });
+      const updated = await updateSpace(spaceId, request);
       setSpace(updated);
       setThreshold(String(updated.settings.staleThresholdDays));
     } catch (error) {

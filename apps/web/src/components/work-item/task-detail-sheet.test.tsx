@@ -659,6 +659,95 @@ describe("TaskDetailSheet", () => {
     ).toBeInTheDocument();
   });
 
+  it("ignores stale comments responses after switching items", async () => {
+    const firstComments = createDeferred<{
+      items: Array<Record<string, unknown>>;
+      total: number;
+    }>();
+    const secondComments = createDeferred<{
+      items: Array<Record<string, unknown>>;
+      total: number;
+    }>();
+    listCommentsMock
+      .mockReturnValueOnce(firstComments.promise)
+      .mockReturnValueOnce(secondComments.promise);
+
+    const { rerender } = render(
+      <TaskDetailSheet
+        item={makeViewModel({ id: "TASK_A", title: "List first task" })}
+        open
+        onOpenChange={() => {}}
+      />,
+    );
+
+    await activateTab(/comments/i);
+    await waitFor(() => expect(listCommentsMock).toHaveBeenCalledTimes(1));
+
+    rerender(
+      <TaskDetailSheet
+        item={makeViewModel({ id: "TASK_B", title: "List second task" })}
+        open
+        onOpenChange={() => {}}
+      />,
+    );
+
+    await waitFor(() => expect(listCommentsMock).toHaveBeenCalledTimes(2));
+    expect(
+      await screen.findByText("taskDetail.comments.loading"),
+    ).toBeInTheDocument();
+
+    await act(async () => {
+      secondComments.resolve({
+        items: [
+          {
+            id: "COMMENT_B",
+            organizationId: "ORG_01",
+            spaceId: "SPC_01",
+            targetType: "WORK_ITEM",
+            targetId: "TASK_B",
+            author: {
+              id: "USR_02",
+              username: "bob",
+              name: "Bob",
+            },
+            body: "Fresh second comment",
+            createdAt: "2026-05-13T00:00:00.000Z",
+          },
+        ],
+        total: 1,
+      });
+      await secondComments.promise;
+    });
+
+    expect(await screen.findByText("Fresh second comment")).toBeInTheDocument();
+
+    await act(async () => {
+      firstComments.resolve({
+        items: [
+          {
+            id: "COMMENT_A",
+            organizationId: "ORG_01",
+            spaceId: "SPC_01",
+            targetType: "WORK_ITEM",
+            targetId: "TASK_A",
+            author: {
+              id: "USR_01",
+              username: "alice",
+              name: "Alice",
+            },
+            body: "Stale first comment",
+            createdAt: "2026-05-12T00:00:00.000Z",
+          },
+        ],
+        total: 1,
+      });
+      await firstComments.promise;
+    });
+
+    expect(screen.queryByText("Stale first comment")).not.toBeInTheDocument();
+    expect(screen.getByText("Fresh second comment")).toBeInTheDocument();
+  });
+
   it("renders real work item detail fields from getWorkItem", async () => {
     memberMap.set("01ARZ3NDEKTSV4RRFFQ69G5FR1", {
       user: { name: "Reporter Name" },

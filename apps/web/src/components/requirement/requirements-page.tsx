@@ -100,26 +100,37 @@ export function RequirementsPage() {
   >(null);
   const [createDenied, setCreateDenied] = useState(false);
   const requestedNew = normalizeSearchParam(searchParams.get("new"));
+  const contextKey = useMemo(
+    () => `${organizationId ?? ""}:${spaceId ?? ""}`,
+    [organizationId, spaceId],
+  );
+  const previousContextKeyRef = useRef(contextKey);
+  const isContextChanging = previousContextKeyRef.current !== contextKey;
+  const effectiveSelectedVersionId = isContextChanging
+    ? ""
+    : selectedVersionId;
+  const effectiveSelectedOwnerId = isContextChanging ? "" : selectedOwnerId;
   const listScopeKey = useMemo(
     () =>
       createRequirementListScopeKey({
         filter,
         organizationId,
-        ownerId: selectedOwnerId,
+        ownerId: effectiveSelectedOwnerId,
         spaceId,
-        versionId: selectedVersionId,
+        versionId: effectiveSelectedVersionId,
       }),
-    [filter, organizationId, selectedOwnerId, selectedVersionId, spaceId],
-  );
-  const contextKey = useMemo(
-    () => `${organizationId ?? ""}:${spaceId ?? ""}`,
-    [organizationId, spaceId],
+    [
+      effectiveSelectedOwnerId,
+      effectiveSelectedVersionId,
+      filter,
+      organizationId,
+      spaceId,
+    ],
   );
   const latestListScopeKeyRef = useRef(listScopeKey);
   const listRequestIdRef = useRef(0);
   const latestFilterOptionsScopeKeyRef = useRef(contextKey);
   const filterOptionsRequestIdRef = useRef(0);
-  const previousContextKeyRef = useRef(contextKey);
   latestListScopeKeyRef.current = listScopeKey;
   latestFilterOptionsScopeKeyRef.current = contextKey;
   const loadedCount = items.length;
@@ -154,8 +165,8 @@ export function RequirementsPage() {
         page,
         pageSize: LIST_PAGE_SIZE,
         ...toRequirementListQuery(filter),
-        ownerId: optionalFilterValue(selectedOwnerId),
-        versionId: optionalFilterValue(selectedVersionId),
+        ownerId: optionalFilterValue(effectiveSelectedOwnerId),
+        versionId: optionalFilterValue(effectiveSelectedVersionId),
       });
       if (
         listRequestIdRef.current !== requestId ||
@@ -191,11 +202,11 @@ export function RequirementsPage() {
       }
     }
   }, [
+    effectiveSelectedOwnerId,
+    effectiveSelectedVersionId,
     filter,
     listScopeKey,
     organizationId,
-    selectedOwnerId,
-    selectedVersionId,
     spaceId,
   ]);
 
@@ -262,8 +273,28 @@ export function RequirementsPage() {
     setCreateDenied(false);
     setVersions([]);
     setMembers([]);
+    setSelectedVersionId("");
+    setSelectedOwnerId("");
     setHandledCreateLinkKey(null);
   }, [contextKey]);
+
+  useEffect(() => {
+    setSelectedVersionId((current) => {
+      if (!current || versions.some((version) => version.id === current)) {
+        return current;
+      }
+      return "";
+    });
+  }, [versions]);
+
+  useEffect(() => {
+    setSelectedOwnerId((current) => {
+      if (!current || members.some((member) => member.userId === current)) {
+        return current;
+      }
+      return "";
+    });
+  }, [members]);
 
   const filtered = useMemo(() => {
     if (filter === "active") {
@@ -678,7 +709,7 @@ export function RequirementsPage() {
                   aria-label={t("filters.version")}
                   className="h-7 rounded-md border border-border bg-background px-2 text-xs text-foreground"
                   onChange={(event) => setSelectedVersionId(event.target.value)}
-                  value={selectedVersionId}
+                  value={effectiveSelectedVersionId}
                 >
                   <option value="">{t("filters.allVersions")}</option>
                   {versions.map((version) => (
@@ -694,7 +725,7 @@ export function RequirementsPage() {
                   aria-label={t("filters.owner")}
                   className="h-7 rounded-md border border-border bg-background px-2 text-xs text-foreground"
                   onChange={(event) => setSelectedOwnerId(event.target.value)}
-                  value={selectedOwnerId}
+                  value={effectiveSelectedOwnerId}
                 >
                   <option value="">{t("filters.allOwners")}</option>
                   {members.map((member) => (

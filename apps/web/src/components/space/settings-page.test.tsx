@@ -113,6 +113,8 @@ vi.mock("./edit-space-member-role-dialog", () => ({
 
 import { SpaceSettingsPage } from "./settings-page";
 
+const OWNER_ID = "01ARZ3NDEKTSV4RRFFQ69G5F01";
+
 function makeSpace(overrides: Record<string, unknown> = {}) {
   return {
     id: "SPC_01",
@@ -130,13 +132,13 @@ function makeSpace(overrides: Record<string, unknown> = {}) {
 function makeMember(overrides: Record<string, unknown> = {}) {
   return {
     id: "SPM_01",
-    userId: "USR_01",
+    userId: OWNER_ID,
     role: "DEVELOPER",
     status: "ACTIVE",
     spaceId: "SPC_01",
     organizationId: "ORG_01",
     user: {
-      id: "USR_01",
+      id: OWNER_ID,
       name: "Alice",
       username: "alice",
     },
@@ -317,7 +319,7 @@ describe("SpaceSettingsPage", () => {
     updateSpaceMock.mockResolvedValueOnce(
       makeSpace({
         description: "Team space",
-        ownerId: "USR_01",
+        ownerId: OWNER_ID,
       }),
     );
 
@@ -329,7 +331,7 @@ describe("SpaceSettingsPage", () => {
     const owner = await screen.findByTestId("space-settings-owner-input");
 
     fireEvent.change(description, { target: { value: "Team space" } });
-    fireEvent.change(owner, { target: { value: "USR_01" } });
+    fireEvent.change(owner, { target: { value: OWNER_ID } });
 
     fireEvent.click(screen.getByTestId("space-settings-basic-submit"));
 
@@ -338,7 +340,7 @@ describe("SpaceSettingsPage", () => {
       name: "Space A",
       code: "SPC-A",
       description: "Team space",
-      ownerId: "USR_01",
+      ownerId: OWNER_ID,
     });
     expect(refreshSessionMock).toHaveBeenCalledWith("ORG_01", "SPC_01");
   });

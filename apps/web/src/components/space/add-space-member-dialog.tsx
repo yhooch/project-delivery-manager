@@ -9,6 +9,7 @@ import { useTranslations } from "next-intl";
 import { useEffect, useMemo, useState, type FormEvent } from "react";
 
 import { getApiErrorMessageKey } from "../../lib/api-error-messages";
+import { toAddSpaceMemberRequest } from "../../lib/space-forms";
 import {
   addSpaceMember,
   listOrganizationMembers,
@@ -130,10 +131,10 @@ export function AddSpaceMemberDialog({
     setErrorKey(null);
 
     try {
-      const member = await addSpaceMember(spaceId, {
-        userId: selectedUserId,
-        role,
-      });
+      const member = await addSpaceMember(
+        spaceId,
+        toAddSpaceMemberRequest({ role, userId: selectedUserId }),
+      );
       onSuccess(member);
     } catch (error) {
       setErrorKey(getApiErrorMessageKey(error));

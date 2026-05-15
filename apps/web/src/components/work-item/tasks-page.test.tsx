@@ -313,6 +313,23 @@ describe("TasksPage", () => {
     expect(screen.getByText("A")).toBeInTheDocument();
   });
 
+  it("formats task due dates with the active locale instead of showing raw ISO", async () => {
+    const dueDate = "2026-05-15T00:00:00.000Z";
+    listWorkItemsMock.mockResolvedValueOnce({
+      items: [makeTask({ dueDate, title: "Localized due date" })],
+      total: 1,
+    });
+
+    render(<TasksPage />);
+
+    const expected = new Intl.DateTimeFormat("zh-CN", {
+      dateStyle: "medium",
+    }).format(new Date(dueDate));
+    expect(await screen.findByText("Localized due date")).toBeInTheDocument();
+    expect(screen.getByText(expected)).toBeInTheDocument();
+    expect(screen.queryByText(dueDate)).not.toBeInTheDocument();
+  });
+
   it("ignores stale task list responses after switching space", async () => {
     let resolveOld: (value: unknown) => void = () => undefined;
     let resolveNew: (value: unknown) => void = () => undefined;

@@ -186,6 +186,18 @@ function getWorkItemPermissionRequestKey({
   return `${item.type}:${item.id}:${organizationId ?? ""}:${spaceId ?? ""}`;
 }
 
+function getWorkItemSubresourceRequestKey({
+  item,
+  organizationId,
+  spaceId,
+}: {
+  item: Pick<WorkItemViewModel, "id" | "type">;
+  organizationId?: string;
+  spaceId?: string;
+}): string {
+  return `${item.type}:${item.id}:${organizationId ?? ""}:${spaceId ?? ""}`;
+}
+
 async function loadSheetDetail({
   item,
   organizationId,
@@ -1832,20 +1844,62 @@ function CommentsTab({
   tApiError: ReturnType<typeof useTranslations>;
   onChanged?: () => void;
 }) {
-  const [comments, setComments] = useState<Comment[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const requestKey = getWorkItemSubresourceRequestKey({
+    item,
+    organizationId,
+    spaceId,
+  });
+  const latestRequestKeyRef = useRef(requestKey);
+  const requestSeqRef = useRef(0);
+  latestRequestKeyRef.current = requestKey;
+  const [commentsState, setCommentsState] = useState(() => ({
+    comments: [] as Comment[],
+    error: null as string | null,
+    loading: false,
+    requestKey,
+  }));
   const [draft, setDraft] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
 
+  const currentCommentsState =
+    commentsState.requestKey === requestKey
+      ? commentsState
+      : {
+          comments: [] as Comment[],
+          error: null,
+          loading: Boolean(spaceId),
+          requestKey,
+        };
+  const comments = currentCommentsState.comments;
+  const loading = currentCommentsState.loading;
+  const error = currentCommentsState.error;
+
   const fetchComments = useCallback(async () => {
+    const nextRequestKey = requestKey;
+    requestSeqRef.current += 1;
+    const requestSeq = requestSeqRef.current;
+
     if (!spaceId) {
+      setCommentsState({
+        comments: [],
+        error: null,
+        loading: false,
+        requestKey: nextRequestKey,
+      });
       return;
     }
 
-    setLoading(true);
-    setError(null);
+    setCommentsState({
+      comments: [],
+      error: null,
+      loading: true,
+      requestKey: nextRequestKey,
+    });
+
+    const isLatestRequest = () =>
+      requestSeqRef.current === requestSeq &&
+      latestRequestKeyRef.current === nextRequestKey;
 
     try {
       const result = await listComments({
@@ -1854,22 +1908,48 @@ function CommentsTab({
         targetId: item.id,
         targetType: "WORK_ITEM",
       });
-      setComments(result.items);
+      if (!isLatestRequest()) return;
+      setCommentsState({
+        comments: result.items,
+        error: null,
+        loading: false,
+        requestKey: nextRequestKey,
+      });
     } catch (err) {
+      if (!isLatestRequest()) return;
       const key = getApiErrorMessageKey(err);
-      setError(tApiError(key));
+      setCommentsState({
+        comments: [],
+        error: tApiError(key),
+        loading: false,
+        requestKey: nextRequestKey,
+      });
     } finally {
-      setLoading(false);
+      if (isLatestRequest()) {
+        setCommentsState((current) =>
+          current.requestKey === nextRequestKey
+            ? { ...current, loading: false }
+            : current,
+        );
+      }
     }
-  }, [item.id, organizationId, spaceId, tApiError]);
+  }, [item.id, organizationId, requestKey, spaceId, tApiError]);
 
   useEffect(() => {
     void fetchComments();
   }, [fetchComments]);
 
+  useEffect(() => {
+    setDraft("");
+    setSubmitError(null);
+    setSubmitting(false);
+  }, [requestKey]);
+
   const handleSubmit = async () => {
     const body = draft.trim();
     if (!body || !spaceId || !canComment) return;
+    const submitRequestKey = requestKey;
+    const targetId = item.id;
 
     setSubmitting(true);
     setSubmitError(null);
@@ -1879,17 +1959,25 @@ function CommentsTab({
         body,
         organizationId,
         spaceId,
-        targetId: item.id,
+        targetId,
         targetType: "WORK_ITEM",
       });
-      setComments((prev) => [...prev, created]);
+      if (latestRequestKeyRef.current !== submitRequestKey) return;
+      setCommentsState((current) =>
+        current.requestKey === submitRequestKey
+          ? { ...current, comments: [...current.comments, created] }
+          : current,
+      );
       setDraft("");
       onChanged?.();
     } catch (err) {
+      if (latestRequestKeyRef.current !== submitRequestKey) return;
       const key = getApiErrorMessageKey(err);
       setSubmitError(tApiError(key));
     } finally {
-      setSubmitting(false);
+      if (latestRequestKeyRef.current === submitRequestKey) {
+        setSubmitting(false);
+      }
     }
   };
 
@@ -2026,9 +2114,20 @@ function AttachmentsTab({
   tApiError: ReturnType<typeof useTranslations>;
   onTimelineRefresh?: () => void;
 }) {
-  const [attachments, setAttachments] = useState<Attachment[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const requestKey = getWorkItemSubresourceRequestKey({
+    item,
+    organizationId,
+    spaceId,
+  });
+  const latestRequestKeyRef = useRef(requestKey);
+  const requestSeqRef = useRef(0);
+  latestRequestKeyRef.current = requestKey;
+  const [attachmentsState, setAttachmentsState] = useState(() => ({
+    attachments: [] as Attachment[],
+    error: null as string | null,
+    loading: false,
+    requestKey,
+  }));
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [attachmentActionError, setAttachmentActionError] = useState<
     string | null
@@ -2039,13 +2138,44 @@ function AttachmentsTab({
   );
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
+  const currentAttachmentsState =
+    attachmentsState.requestKey === requestKey
+      ? attachmentsState
+      : {
+          attachments: [] as Attachment[],
+          error: null,
+          loading: Boolean(spaceId),
+          requestKey,
+        };
+  const attachments = currentAttachmentsState.attachments;
+  const loading = currentAttachmentsState.loading;
+  const error = currentAttachmentsState.error;
+
   const fetchAttachments = useCallback(async () => {
+    const nextRequestKey = requestKey;
+    requestSeqRef.current += 1;
+    const requestSeq = requestSeqRef.current;
+
     if (!spaceId) {
+      setAttachmentsState({
+        attachments: [],
+        error: null,
+        loading: false,
+        requestKey: nextRequestKey,
+      });
       return;
     }
 
-    setLoading(true);
-    setError(null);
+    setAttachmentsState({
+      attachments: [],
+      error: null,
+      loading: true,
+      requestKey: nextRequestKey,
+    });
+
+    const isLatestRequest = () =>
+      requestSeqRef.current === requestSeq &&
+      latestRequestKeyRef.current === nextRequestKey;
 
     try {
       const result = await listAttachments({
@@ -2054,18 +2184,43 @@ function AttachmentsTab({
         targetId: item.id,
         targetType: "WORK_ITEM",
       });
-      setAttachments(result.items);
+      if (!isLatestRequest()) return;
+      setAttachmentsState({
+        attachments: result.items,
+        error: null,
+        loading: false,
+        requestKey: nextRequestKey,
+      });
     } catch (err) {
+      if (!isLatestRequest()) return;
       const key = getApiErrorMessageKey(err);
-      setError(tApiError(key));
+      setAttachmentsState({
+        attachments: [],
+        error: tApiError(key),
+        loading: false,
+        requestKey: nextRequestKey,
+      });
     } finally {
-      setLoading(false);
+      if (isLatestRequest()) {
+        setAttachmentsState((current) =>
+          current.requestKey === nextRequestKey
+            ? { ...current, loading: false }
+            : current,
+        );
+      }
     }
-  }, [item.id, organizationId, spaceId, tApiError]);
+  }, [item.id, organizationId, requestKey, spaceId, tApiError]);
 
   useEffect(() => {
     void fetchAttachments();
   }, [fetchAttachments]);
+
+  useEffect(() => {
+    setUploadError(null);
+    setAttachmentActionError(null);
+    setUploading(false);
+    setOpeningAttachmentId(null);
+  }, [requestKey]);
 
   const handleFileChange = useCallback(
     async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -2077,6 +2232,7 @@ function AttachmentsTab({
       if (!canUploadAttachment) {
         return;
       }
+      const uploadRequestKey = requestKey;
       setUploadError(null);
       setAttachmentActionError(null);
       setUploading(true);
@@ -2087,9 +2243,17 @@ function AttachmentsTab({
           targetId: item.id,
           targetType: "WORK_ITEM",
         });
+        if (latestRequestKeyRef.current !== uploadRequestKey) {
+          return;
+        }
         await fetchAttachments();
-        onTimelineRefresh?.();
+        if (latestRequestKeyRef.current === uploadRequestKey) {
+          onTimelineRefresh?.();
+        }
       } catch (err) {
+        if (latestRequestKeyRef.current !== uploadRequestKey) {
+          return;
+        }
         if (err instanceof AttachmentUploadError) {
           setUploadError(
             tApiError(`forms.attachments.uploadErrors.${err.code}`),
@@ -2098,7 +2262,9 @@ function AttachmentsTab({
           setUploadError(tApiError(getApiErrorMessageKey(err)));
         }
       } finally {
-        setUploading(false);
+        if (latestRequestKeyRef.current === uploadRequestKey) {
+          setUploading(false);
+        }
       }
     },
     [
@@ -2107,6 +2273,7 @@ function AttachmentsTab({
       fetchAttachments,
       item.id,
       onTimelineRefresh,
+      requestKey,
       tApiError,
     ],
   );
@@ -2117,6 +2284,7 @@ function AttachmentsTab({
         return;
       }
 
+      const actionRequestKey = requestKey;
       const actionId = `${action}:${attachment.id}`;
       setAttachmentActionError(null);
       setOpeningAttachmentId(actionId);
@@ -2128,19 +2296,28 @@ function AttachmentsTab({
           spaceId,
         });
 
+        if (latestRequestKeyRef.current !== actionRequestKey) {
+          return;
+        }
+
         if (action === "preview") {
           window.open(result.downloadUrl, "_blank", "noopener,noreferrer");
         } else {
           triggerAttachmentDownload(result.downloadUrl, attachment.fileName);
         }
       } catch (err) {
+        if (latestRequestKeyRef.current !== actionRequestKey) {
+          return;
+        }
         const key = getApiErrorMessageKey(err);
         setAttachmentActionError(tApiError(key));
       } finally {
-        setOpeningAttachmentId(null);
+        if (latestRequestKeyRef.current === actionRequestKey) {
+          setOpeningAttachmentId(null);
+        }
       }
     },
-    [organizationId, spaceId, tApiError],
+    [organizationId, requestKey, spaceId, tApiError],
   );
 
   return (
@@ -2333,17 +2510,59 @@ function TimelineTab({
   tApiError: ReturnType<typeof useTranslations>;
   refreshVersion: number;
 }) {
-  const [events, setEvents] = useState<TimelineEvent[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const requestKey = getWorkItemSubresourceRequestKey({
+    item,
+    organizationId,
+    spaceId,
+  });
+  const latestRequestKeyRef = useRef(requestKey);
+  const requestSeqRef = useRef(0);
+  latestRequestKeyRef.current = requestKey;
+  const [timelineState, setTimelineState] = useState(() => ({
+    error: null as string | null,
+    events: [] as TimelineEvent[],
+    loading: false,
+    requestKey,
+  }));
+
+  const currentTimelineState =
+    timelineState.requestKey === requestKey
+      ? timelineState
+      : {
+          error: null,
+          events: [] as TimelineEvent[],
+          loading: Boolean(spaceId),
+          requestKey,
+        };
+  const events = currentTimelineState.events;
+  const loading = currentTimelineState.loading;
+  const error = currentTimelineState.error;
 
   const fetchEvents = useCallback(async () => {
+    const nextRequestKey = requestKey;
+    requestSeqRef.current += 1;
+    const requestSeq = requestSeqRef.current;
+
     if (!spaceId) {
+      setTimelineState({
+        error: null,
+        events: [],
+        loading: false,
+        requestKey: nextRequestKey,
+      });
       return;
     }
 
-    setLoading(true);
-    setError(null);
+    setTimelineState({
+      error: null,
+      events: [],
+      loading: true,
+      requestKey: nextRequestKey,
+    });
+
+    const isLatestRequest = () =>
+      requestSeqRef.current === requestSeq &&
+      latestRequestKeyRef.current === nextRequestKey;
 
     try {
       const result = await listTimeline({
@@ -2352,14 +2571,32 @@ function TimelineTab({
         targetId: item.id,
         targetType: "WORK_ITEM",
       });
-      setEvents(result.items);
+      if (!isLatestRequest()) return;
+      setTimelineState({
+        error: null,
+        events: result.items,
+        loading: false,
+        requestKey: nextRequestKey,
+      });
     } catch (err) {
+      if (!isLatestRequest()) return;
       const key = getApiErrorMessageKey(err);
-      setError(tApiError(key));
+      setTimelineState({
+        error: tApiError(key),
+        events: [],
+        loading: false,
+        requestKey: nextRequestKey,
+      });
     } finally {
-      setLoading(false);
+      if (isLatestRequest()) {
+        setTimelineState((current) =>
+          current.requestKey === nextRequestKey
+            ? { ...current, loading: false }
+            : current,
+        );
+      }
     }
-  }, [item.id, organizationId, spaceId, tApiError]);
+  }, [item.id, organizationId, requestKey, spaceId, tApiError]);
 
   useEffect(() => {
     void fetchEvents();

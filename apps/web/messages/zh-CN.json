@@ -3038,7 +3038,6 @@
       "emptyTitle": "暂无附件",
       "emptyDescription": "上传文件以共享给其他成员",
       "uploadAction": "上传附件",
-      "uploadTodo": "上传功能开发中",
       "readonly": "当前权限不能上传附件",
       "retry": "重试",
       "size": "大小",

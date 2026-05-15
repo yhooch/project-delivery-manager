@@ -5,6 +5,7 @@ import { useState, type FormEvent } from "react";
 
 import { useSession } from "../providers/session-provider";
 import { getApiErrorMessageKey } from "../../lib/api-error-messages";
+import { toCreateSpaceRequest } from "../../lib/space-forms";
 import { createSpace } from "../../lib/space-service";
 
 import { Button } from "../ui/button";
@@ -51,13 +52,10 @@ export function CreateSpaceDialog({ open, onOpenChange, organizationId }: Props)
     setSubmitting(true);
     setErrorKey(null);
     try {
-      const trimmedCode = code.trim();
-      const trimmedDescription = description.trim();
-      const space = await createSpace(organizationId, {
-        name: trimmedName,
-        ...(trimmedCode ? { code: trimmedCode } : {}),
-        ...(trimmedDescription ? { description: trimmedDescription } : {}),
-      });
+      const space = await createSpace(
+        organizationId,
+        toCreateSpaceRequest({ code, description, name }),
+      );
       await refreshSession(organizationId, space.id);
       resetForm();
       onOpenChange(false);

@@ -108,6 +108,9 @@ export function MyWorkbench() {
   const [activeWorkbenchItemKey, setActiveWorkbenchItemKey] = useState<
     string | undefined
   >(undefined);
+  const [activeWorkbenchContextKey, setActiveWorkbenchContextKey] = useState<
+    string | undefined
+  >(undefined);
   const [sheetOpen, setSheetOpen] = useState(false);
   const [selectedSpaceId, setSelectedSpaceId] = useState<string | undefined>(
     undefined,
@@ -124,6 +127,7 @@ export function MyWorkbench() {
   const { captureFocus, restoreFocus } = useFocusReturn();
 
   const organizationId = session?.defaultOrganizationId;
+  const workbenchContextKey = `${organizationId ?? ""}:${selectedSpaceId ?? ""}`;
   const selectedSpace = spacesForCurrentOrganization.find(
     (space) => space.id === selectedSpaceId,
   );
@@ -227,6 +231,14 @@ export function MyWorkbench() {
     setSelectedSpaceId(undefined);
     setFilters((current) => (Object.keys(current).length > 0 ? {} : current));
   }, [organizationId]);
+
+  useEffect(() => {
+    setSheetOpen(false);
+    setActiveItem(null);
+    setActiveItemContext(null);
+    setActiveWorkbenchItemKey(undefined);
+    setActiveWorkbenchContextKey(undefined);
+  }, [organizationId, selectedSpaceId]);
 
   const availableMembers = useMemo(() => {
     if (selectedSpaceId) {
@@ -424,6 +436,7 @@ export function MyWorkbench() {
         { organizationId: itemOrganizationId, spaceId: itemSpaceId },
       );
       setActiveWorkbenchItemKey(getWorkbenchItemKey(item));
+      setActiveWorkbenchContextKey(workbenchContextKey);
       setActiveItem(item);
       setActiveItemContext({
         organizationId: itemOrganizationId,
@@ -431,7 +444,7 @@ export function MyWorkbench() {
       });
       setSheetOpen(true);
     },
-    [captureFocus, organizationId, selectedSpaceId],
+    [captureFocus, organizationId, selectedSpaceId, workbenchContextKey],
   );
 
   const closeDetailSheet = useCallback(() => {
@@ -613,6 +626,9 @@ export function MyWorkbench() {
   const blockedCount = stats?.blockedCount ?? blockedSectionCount;
   const pendingConfirmCount =
     stats?.pendingConfirmCount ?? pendingConfirmSectionCount;
+  const detailSheetOpen =
+    sheetOpen && activeWorkbenchContextKey === workbenchContextKey;
+  const detailSheetItem = detailSheetOpen ? activeItem : null;
 
   if (!session) {
     return (
@@ -898,8 +914,8 @@ export function MyWorkbench() {
       </div>
 
       <TaskDetailSheet
-        item={activeItem}
-        open={sheetOpen}
+        item={detailSheetItem}
+        open={detailSheetOpen}
         onOpenChange={handleDetailSheetOpenChange}
         spaceId={activeItemContext?.spaceId ?? selectedSpaceId}
         organizationId={activeItemContext?.organizationId ?? organizationId}
