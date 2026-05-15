@@ -1,29 +1,94 @@
-import { cleanup, render, screen, waitFor } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const { translatorCache } = vi.hoisted(() => ({
-  translatorCache: new Map<string, (key: string) => string>(),
+  translatorCache: new Map<
+    string,
+    (key: string, vars?: Record<string, unknown>) => string
+  >(),
 }));
 vi.mock("next-intl", () => ({
   useTranslations: (namespace?: string) => {
-    const key = namespace ?? "__root__";
-    let fn = translatorCache.get(key);
+    const cacheKey = namespace ?? "__root__";
+    let fn = translatorCache.get(cacheKey);
     if (!fn) {
-      fn = (k: string) => (namespace ? `${namespace}.${k}` : k);
-      translatorCache.set(key, fn);
+      fn = (k: string, vars?: Record<string, unknown>) => {
+        const base = namespace ? `${namespace}.${k}` : k;
+        if (vars && Object.keys(vars).length > 0) {
+          const parts = Object.entries(vars)
+            .map(([vk, vv]) => `${vk}=${String(vv)}`)
+            .join(",");
+          return `${base}(${parts})`;
+        }
+        return base;
+      };
+      translatorCache.set(cacheKey, fn);
     }
     return fn;
   },
   useLocale: () => "zh-CN",
 }));
 
+vi.mock("../ui/dropdown-menu", async () => {
+  const React = await import("react");
+  type AnyProps = Record<string, unknown> & {
+    children?: React.ReactNode;
+    onSelect?: (event: { preventDefault: () => void }) => void;
+    asChild?: boolean;
+  };
+  return {
+    DropdownMenu: ({ children }: AnyProps) =>
+      React.createElement("div", null, children),
+    DropdownMenuTrigger: ({ children }: AnyProps) =>
+      React.createElement(React.Fragment, null, children),
+    DropdownMenuContent: ({ children }: AnyProps) =>
+      React.createElement("div", { role: "menu" }, children),
+    DropdownMenuLabel: ({ children }: AnyProps) =>
+      React.createElement("span", null, children),
+    DropdownMenuSeparator: () => React.createElement("hr"),
+    DropdownMenuItem: ({ children, onSelect, ...rest }: AnyProps) =>
+      React.createElement(
+        "button",
+        {
+          type: "button",
+          onClick: () => onSelect?.({ preventDefault: () => {} }),
+          ...rest,
+        },
+        children,
+      ),
+  };
+});
+
+const routerMock = vi.hoisted(() => ({
+  replace: vi.fn(),
+  push: vi.fn(),
+}));
 vi.mock("../../i18n/routing", () => ({
   routing: { defaultLocale: "zh-CN", locales: ["zh-CN", "en-US"] },
-  Link: ({ children }: { children: React.ReactNode }) => children,
-  getPathname: () => "/",
+  Link: ({
+    children,
+    href,
+    ...rest
+  }: {
+    children: React.ReactNode;
+    href: string;
+    [key: string]: unknown;
+  }) => (
+    <a href={String(href)} {...rest}>
+      {children}
+    </a>
+  ),
+  getPathname: () => "/overview",
   redirect: () => undefined,
-  usePathname: () => "/",
-  useRouter: () => ({ push: vi.fn(), replace: vi.fn() }),
+  usePathname: () => "/overview",
+  useRouter: () => routerMock,
+}));
+
+const searchParamsMock = vi.hoisted(() => ({
+  current: new URLSearchParams(),
+}));
+vi.mock("next/navigation", () => ({
+  useSearchParams: () => searchParamsMock.current,
 }));
 
 const sessionMock = vi.hoisted(() => ({
@@ -46,11 +111,32 @@ vi.mock("../../lib/view-service", () => ({
   getSpaceOverviewView: getSpaceOverviewViewMock,
 }));
 
+const versionsMock = vi.hoisted(() => ({
+  current: [] as { id: string; name: string }[],
+}));
+vi.mock("../../lib/v2/lookups", () => ({
+  useVersions: () => ({
+    versions: versionsMock.current,
+    loading: false,
+    error: null,
+    getVersion: (id: string) => versionsMock.current.find((v) => v.id === id),
+  }),
+}));
+
 import { SpaceOverview } from "./space-overview";
 
 function makeOverview(overrides: Record<string, unknown> = {}) {
   return {
+    space: {
+      id: "SPC_01",
+      organizationId: "ORG_01",
+      name: "Space A",
+      code: "SPACEA",
+      status: "ACTIVE",
+      settings: { staleThresholdDays: 5 },
+    },
     stats: {
+      versionCount: 3,
       requirementCount: 12,
       taskCount: 20,
       completedTaskCount: 5,
@@ -64,7 +150,14 @@ function makeOverview(overrides: Record<string, unknown> = {}) {
       name: "v1.0.0",
       target: "Public beta launch",
       targetDate: "2026-06-01T00:00:00.000Z",
+      status: "IN_PROGRESS",
     },
+    defaultWorkflows: [],
+    statusCounts: [
+      { statusCategory: "NOT_STARTED", count: 5 },
+      { statusCategory: "IN_PROGRESS", count: 7 },
+      { statusCategory: "DONE", count: 8 },
+    ],
     exceptionCounts: [
       { exceptionType: "overdue", count: 4 },
       { exceptionType: "blocked", count: 2 },
@@ -73,20 +166,27 @@ function makeOverview(overrides: Record<string, unknown> = {}) {
       items: [
         {
           id: "01ARZ3NDEKTSV4RRFFQ69G5FE1",
+          organizationId: "ORG_01",
+          spaceId: "SPC_01",
           actor: { name: "Charlie", username: "charlie", id: "U1" },
-          target: { type: "WORK_ITEM", id: "W1", title: "TASK-ABC123" },
-          eventType: "WORK_ITEM_UPDATED",
+          target: { type: "WORK_ITEM", id: "WI_01", title: "TASK-ABC123" },
+          eventType: "UPDATED",
           title: "edited",
           createdAt: "2026-05-13T22:00:00.000Z",
         },
       ],
     },
+    staleThresholdDays: 5,
     ...overrides,
   };
 }
 
 beforeEach(() => {
   getSpaceOverviewViewMock.mockReset();
+  routerMock.replace.mockReset();
+  routerMock.push.mockReset();
+  searchParamsMock.current = new URLSearchParams();
+  versionsMock.current = [];
   sessionMock.current = {
     session: {
       defaultOrganizationId: "ORG_01",
@@ -101,7 +201,7 @@ afterEach(() => {
 });
 
 describe("SpaceOverview", () => {
-  it("renders KPI cards, version block, recent activity and exception counts", async () => {
+  it("renders all major sections with API data", async () => {
     getSpaceOverviewViewMock.mockResolvedValueOnce(makeOverview());
 
     render(<SpaceOverview />);
@@ -110,23 +210,55 @@ describe("SpaceOverview", () => {
       expect(getSpaceOverviewViewMock).toHaveBeenCalledTimes(1),
     );
 
-    // Active version card.
+    // Current version hero.
     expect(await screen.findByText("v1.0.0")).toBeInTheDocument();
     expect(screen.getByText("Public beta launch")).toBeInTheDocument();
-
-    // KPI cards: requirementCount = 12, task = 5/20, bug = 3/8, exceptions = 6.
-    expect(screen.getByText("12")).toBeInTheDocument();
-    expect(screen.getByText("5/20")).toBeInTheDocument();
-    expect(screen.getByText("3/8")).toBeInTheDocument();
-    // total exceptions = 4 + 2 = 6.
-    expect(screen.getByText("6")).toBeInTheDocument();
-
-    // Exception type rows render with translation keys.
     expect(
-      screen.getByText("m4Views.exceptionType.overdue"),
+      screen.getByTestId("space-overview-current-version"),
     ).toBeInTheDocument();
 
-    // Recent activity actor name shows up.
+    // Stale threshold meta strip.
+    expect(screen.getByTestId("space-overview-stale")).toHaveTextContent("5");
+
+    // Task progress / bug status tiles render numbers.
+    expect(screen.getByTestId("space-overview-task-progress")).toHaveTextContent(
+      "5/20",
+    );
+    expect(screen.getByTestId("space-overview-bug-status")).toHaveTextContent(
+      "3/8",
+    );
+
+    // Status distribution chips render counts.
+    expect(
+      screen.getByTestId("space-overview-status-NOT_STARTED"),
+    ).toHaveTextContent("5");
+    expect(
+      screen.getByTestId("space-overview-status-IN_PROGRESS"),
+    ).toHaveTextContent("7");
+    expect(screen.getByTestId("space-overview-status-DONE")).toHaveTextContent(
+      "8",
+    );
+
+    // All 5 exception chips render (missing ones default to 0).
+    expect(
+      screen.getByTestId("space-overview-exception-overdue"),
+    ).toHaveTextContent("4");
+    expect(
+      screen.getByTestId("space-overview-exception-blocked"),
+    ).toHaveTextContent("2");
+    expect(
+      screen.getByTestId("space-overview-exception-pending_confirm"),
+    ).toHaveTextContent("0");
+
+    // Inline KPI links.
+    expect(
+      screen.getByTestId("space-overview-requirements-link"),
+    ).toHaveTextContent("12");
+    expect(
+      screen.getByTestId("space-overview-versions-link"),
+    ).toHaveTextContent("3");
+
+    // Timeline actor.
     expect(screen.getByText("Charlie")).toBeInTheDocument();
   });
 
@@ -135,7 +267,9 @@ describe("SpaceOverview", () => {
       makeOverview({
         exceptionCounts: [],
         recentActivities: { items: [] },
+        statusCounts: [],
         stats: {
+          versionCount: 0,
           requirementCount: 0,
           taskCount: 0,
           completedTaskCount: 0,
@@ -158,6 +292,9 @@ describe("SpaceOverview", () => {
     ).toBeInTheDocument();
     expect(
       screen.getByText("spaceOverview.timeline.empty"),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText("spaceOverview.statusCounts.empty"),
     ).toBeInTheDocument();
   });
 
@@ -186,7 +323,9 @@ describe("SpaceOverview", () => {
       await screen.findByText("spaceOverview.states.loading.title"),
     ).toBeInTheDocument();
 
-    resolve(makeOverview({ exceptionCounts: [], recentActivities: { items: [] } }));
+    resolve(
+      makeOverview({ exceptionCounts: [], recentActivities: { items: [] } }),
+    );
     await waitFor(() =>
       expect(
         screen.getByText("spaceOverview.exceptions.empty"),
@@ -223,5 +362,69 @@ describe("SpaceOverview", () => {
       await screen.findByText("spaceOverview.noSpace.title"),
     ).toBeInTheDocument();
     expect(getSpaceOverviewViewMock).not.toHaveBeenCalled();
+  });
+
+  it("passes versionId from search params into the fetch and syncs URL on change", async () => {
+    searchParamsMock.current = new URLSearchParams({ versionId: "V_01" });
+    versionsMock.current = [
+      { id: "V_01", name: "v0.1" },
+      { id: "V_02", name: "v0.2" },
+    ];
+    getSpaceOverviewViewMock.mockResolvedValue(makeOverview());
+
+    render(<SpaceOverview />);
+
+    await waitFor(() =>
+      expect(getSpaceOverviewViewMock).toHaveBeenCalledWith(
+        expect.objectContaining({ versionId: "V_01" }),
+      ),
+    );
+
+    // Filter trigger reflects the selected version.
+    expect(
+      screen.getByTestId("space-overview-version-filter"),
+    ).toHaveTextContent("v0.1");
+
+    // Selecting another version replaces the search param.
+    fireEvent.click(screen.getByTestId("space-overview-version-filter"));
+    const opt = await screen.findByTestId("space-overview-version-filter-V_02");
+    fireEvent.click(opt);
+
+    await waitFor(() =>
+      expect(routerMock.replace).toHaveBeenCalledWith(
+        expect.stringContaining("versionId=V_02"),
+        expect.objectContaining({ scroll: false }),
+      ),
+    );
+  });
+
+  it("triggers a manual refetch when the refresh button is clicked", async () => {
+    getSpaceOverviewViewMock.mockResolvedValue(makeOverview());
+
+    render(<SpaceOverview />);
+
+    await waitFor(() =>
+      expect(getSpaceOverviewViewMock).toHaveBeenCalledTimes(1),
+    );
+
+    fireEvent.click(screen.getByTestId("space-overview-refresh"));
+    await waitFor(() =>
+      expect(getSpaceOverviewViewMock).toHaveBeenCalledTimes(2),
+    );
+  });
+
+  it("builds exception drill-down links carrying the current versionId", async () => {
+    searchParamsMock.current = new URLSearchParams({ versionId: "V_99" });
+    getSpaceOverviewViewMock.mockResolvedValue(makeOverview());
+
+    render(<SpaceOverview />);
+
+    const overdueLink = await screen.findByTestId(
+      "space-overview-exception-overdue",
+    );
+    expect(overdueLink.getAttribute("href")).toContain(
+      "exceptionType=overdue",
+    );
+    expect(overdueLink.getAttribute("href")).toContain("versionId=V_99");
   });
 });
