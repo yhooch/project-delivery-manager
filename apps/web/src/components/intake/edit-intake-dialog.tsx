@@ -5,8 +5,10 @@ import type {
   IntakeSourceType,
   Priority,
   Requirement,
+  SpaceMemberWithUser,
   Version,
 } from "@project-delivery/shared";
+import { IntakeSourceTypeSchema } from "@project-delivery/shared";
 import { useTranslations } from "next-intl";
 import { useEffect, useState } from "react";
 
@@ -14,6 +16,7 @@ import { getApiErrorMessageKey } from "../../lib/api-error-messages";
 import { toUpdateIntakeItemRequest } from "../../lib/intake-forms";
 import { updateIntakeItem } from "../../lib/intake-service";
 import { listRequirements } from "../../lib/requirement-service";
+import { listSpaceMembers } from "../../lib/space-service";
 import { listVersions } from "../../lib/version-service";
 
 import { Button } from "../ui/button";
@@ -37,17 +40,7 @@ type EditIntakeDialogProps = {
   onUpdated?: (item: IntakeItem) => void;
 };
 
-const SOURCE_TYPES: IntakeSourceType[] = [
-  "REQUIREMENT_CHANGE",
-  "DEFECT_PROBLEM",
-  "PROJECT_PLAN",
-  "MEETING_DECISION",
-  "AD_HOC",
-  "IMPLEMENTATION",
-  "OPERATIONS",
-  "RELEASE",
-  "EXTERNAL_COLLABORATION",
-];
+const SOURCE_TYPES: IntakeSourceType[] = IntakeSourceTypeSchema.options;
 
 const PRIORITIES: Priority[] = ["LOW", "MEDIUM", "HIGH", "URGENT"];
 
@@ -68,6 +61,8 @@ export function EditIntakeDialog({
   const [sourceType, setSourceType] = useState<IntakeSourceType>("AD_HOC");
   const [versionId, setVersionId] = useState("");
   const [requirementId, setRequirementId] = useState("");
+  const [assigneeId, setAssigneeId] = useState("");
+  const [sourceObject, setSourceObject] = useState("");
   const [priority, setPriority] = useState<Priority | "">("");
   const [titleError, setTitleError] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -75,6 +70,7 @@ export function EditIntakeDialog({
 
   const [versions, setVersions] = useState<Version[]>([]);
   const [requirements, setRequirements] = useState<Requirement[]>([]);
+  const [members, setMembers] = useState<SpaceMemberWithUser[]>([]);
 
   useEffect(() => {
     if (!open || !intakeItem) {
@@ -86,6 +82,12 @@ export function EditIntakeDialog({
     setSourceType(intakeItem.sourceType);
     setVersionId(intakeItem.versionId ?? "");
     setRequirementId(intakeItem.requirementId ?? "");
+    setAssigneeId(intakeItem.assigneeId ?? "");
+    setSourceObject(
+      intakeItem.sourceObject
+        ? JSON.stringify(intakeItem.sourceObject, null, 2)
+        : "",
+    );
     setPriority(intakeItem.priority ?? "");
     setTitleError(false);
     setErrorKey(null);
@@ -101,15 +103,17 @@ export function EditIntakeDialog({
 
     void (async () => {
       try {
-        const [versionPage, requirementPage] = await Promise.all([
+        const [versionPage, requirementPage, memberPage] = await Promise.all([
           listVersions({ spaceId, page: 1, pageSize: 100 }),
           listRequirements({ spaceId, page: 1, pageSize: 100 }),
+          listSpaceMembers(spaceId),
         ]);
         if (cancelled) {
           return;
         }
         setVersions(versionPage.items);
         setRequirements(requirementPage.items);
+        setMembers(memberPage.items);
       } catch {
         // Option load failures should not block editing the base fields.
       }
@@ -126,6 +130,8 @@ export function EditIntakeDialog({
     setSourceType("AD_HOC");
     setVersionId("");
     setRequirementId("");
+    setAssigneeId("");
+    setSourceObject("");
     setPriority("");
     setTitleError(false);
     setErrorKey(null);
@@ -161,8 +167,10 @@ export function EditIntakeDialog({
           title: trimmed,
           description,
           sourceType,
+          sourceObject,
           versionId,
           requirementId,
+          assigneeId,
           priority,
         }),
       );
@@ -277,9 +285,7 @@ export function EditIntakeDialog({
               </select>
             </div>
             <div className="flex flex-col gap-1.5">
-              <Label htmlFor="edit-intake-version">
-                {t("fields.version")}
-              </Label>
+              <Label htmlFor="edit-intake-version">{t("fields.version")}</Label>
               <select
                 id="edit-intake-version"
                 data-testid="edit-intake-version-select"
@@ -314,6 +320,38 @@ export function EditIntakeDialog({
                 ))}
               </select>
             </div>
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="edit-intake-assignee">
+                {t("fields.assignee")}
+              </Label>
+              <select
+                id="edit-intake-assignee"
+                data-testid="edit-intake-assignee-select"
+                value={assigneeId}
+                onChange={(event) => setAssigneeId(event.target.value)}
+                className="h-8 w-full rounded-md border border-input bg-background px-2 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              >
+                <option value="">{t("fields.unassigned")}</option>
+                {members.map((member) => (
+                  <option key={member.userId} value={member.userId}>
+                    {member.user.name || member.user.username}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="flex flex-col gap-1.5 sm:col-span-2">
+              <Label htmlFor="edit-intake-source-object">
+                {t("fields.sourceObject")}
+              </Label>
+              <Textarea
+                id="edit-intake-source-object"
+                data-testid="edit-intake-source-object-input"
+                value={sourceObject}
+                onChange={(event) => setSourceObject(event.target.value)}
+                maxLength={2000}
+                rows={2}
+              />
+            </div>
           </div>
 
           <DialogFooter className="mt-2">
@@ -332,9 +370,7 @@ export function EditIntakeDialog({
               data-testid="edit-intake-submit"
               disabled={submitting}
             >
-              {submitting
-                ? t("actions.saving")
-                : t("actions.save")}
+              {submitting ? t("actions.saving") : t("actions.save")}
             </Button>
           </DialogFooter>
         </form>

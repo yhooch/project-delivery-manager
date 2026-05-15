@@ -87,6 +87,7 @@ export function SpaceSettingsPage() {
   const [isSavingThreshold, setIsSavingThreshold] = useState(false);
   const [saveErrorKey, setSaveErrorKey] = useState<string | null>(null);
   const [codeError, setCodeError] = useState<string | null>(null);
+  const [thresholdError, setThresholdError] = useState<string | null>(null);
   const [isAddMemberOpen, setIsAddMemberOpen] = useState(false);
   const [editRoleMember, setEditRoleMember] =
     useState<SpaceMemberWithUser | null>(null);
@@ -150,6 +151,7 @@ export function SpaceSettingsPage() {
       setDescription(nextSpace.description ?? "");
       setOwnerId(nextSpace.ownerId ?? "");
       setThreshold(String(nextSpace.settings.staleThresholdDays));
+      setThresholdError(null);
       setMembers(memberPage.items);
     } catch (error) {
       setErrorKey(getApiErrorMessageKey(error));
@@ -227,14 +229,15 @@ export function SpaceSettingsPage() {
     if (!space || !spaceId || !writeAllowed) {
       return;
     }
-    const numeric = Number.parseInt(threshold, 10);
-    if (!Number.isFinite(numeric) || numeric < 1 || numeric > 30) {
-      setSaveErrorKey("errors.api.VALIDATION_ERROR");
+    const numeric = parseThresholdDays(threshold);
+    if (numeric === null) {
+      setThresholdError("threshold.error");
       return;
     }
 
     setIsSavingThreshold(true);
     setSaveErrorKey(null);
+    setThresholdError(null);
     const previous = space;
     const optimistic: Space = {
       ...space,
@@ -535,14 +538,32 @@ export function SpaceSettingsPage() {
                   <Input
                     id="stale-threshold"
                     data-testid="space-settings-threshold-input"
-                    type="number"
-                    min={1}
-                    max={30}
+                    type="text"
+                    inputMode="numeric"
+                    pattern="[0-9]*"
                     value={threshold}
-                    onChange={(event) => setThreshold(event.target.value)}
+                    onChange={(event) => {
+                      setThreshold(event.target.value);
+                      if (thresholdError) setThresholdError(null);
+                    }}
                     className="w-32"
+                    aria-invalid={thresholdError ? "true" : undefined}
+                    aria-describedby={
+                      thresholdError
+                        ? "space-settings-threshold-error"
+                        : "space-settings-threshold-hint"
+                    }
                     disabled={!writeAllowed}
                   />
+                  {thresholdError ? (
+                    <p
+                      id="space-settings-threshold-error"
+                      data-testid="space-settings-threshold-error"
+                      className="text-[11px] text-destructive"
+                    >
+                      {t(thresholdError)}
+                    </p>
+                  ) : null}
                 </div>
                 <Button
                   size="sm"
@@ -560,7 +581,10 @@ export function SpaceSettingsPage() {
                   </span>
                 )}
               </div>
-              <p className="mt-2 text-[11px] text-muted-foreground">
+              <p
+                id="space-settings-threshold-hint"
+                className="mt-2 text-[11px] text-muted-foreground"
+              >
                 {t("threshold.hint")}
               </p>
             </div>
@@ -753,6 +777,22 @@ function getSpaceMemberIdentity(member: SpaceMemberWithUser) {
     member.user.name?.trim() || member.user.username?.trim() || member.userId;
 
   return { displayName, username };
+}
+
+function parseThresholdDays(value: string): number | null {
+  const trimmed = value.trim();
+
+  if (!/^\d+$/.test(trimmed)) {
+    return null;
+  }
+
+  const parsed = Number(trimmed);
+
+  if (!Number.isInteger(parsed) || parsed < 1 || parsed > 30) {
+    return null;
+  }
+
+  return parsed;
 }
 
 function initialOf(value: string) {

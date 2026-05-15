@@ -1,4 +1,10 @@
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import {
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const { translatorCache } = vi.hoisted(() => ({
@@ -39,6 +45,27 @@ const sessionMock = vi.hoisted(() => ({
       defaultOrganizationId: "ORG_01",
       defaultSpaceId: "SPC_01",
     },
+    currentOrganization: {
+      id: "ORG_01",
+      name: "Org A",
+      role: "OWNER",
+      status: "ACTIVE",
+    },
+    currentSpace: {
+      id: "SPC_01",
+      organizationId: "ORG_01",
+      name: "Space A",
+      role: "MEMBER",
+      status: "ACTIVE",
+    } as
+      | {
+          id: string;
+          organizationId: string;
+          name: string;
+          role: string;
+          status: string;
+        }
+      | undefined,
     spacesForCurrentOrganization: [
       { id: "SPC_01", organizationId: "ORG_01", name: "Space A" },
       { id: "SPC_02", organizationId: "ORG_01", name: "Space B" },
@@ -132,6 +159,19 @@ beforeEach(() => {
       defaultOrganizationId: "ORG_01",
       defaultSpaceId: "SPC_01",
     },
+    currentOrganization: {
+      id: "ORG_01",
+      name: "Org A",
+      role: "OWNER",
+      status: "ACTIVE",
+    },
+    currentSpace: {
+      id: "SPC_01",
+      organizationId: "ORG_01",
+      name: "Space A",
+      role: "MEMBER",
+      status: "ACTIVE",
+    },
     spacesForCurrentOrganization: [
       { id: "SPC_01", organizationId: "ORG_01", name: "Space A" },
       { id: "SPC_02", organizationId: "ORG_01", name: "Space B" },
@@ -159,9 +199,60 @@ describe("CommandPalette", () => {
     expect(screen.getByText("shell.command.switchSpace")).toBeInTheDocument();
     expect(screen.getByText("shell.command.create")).toBeInTheDocument();
     expect(screen.getByText("shell.command.preferences")).toBeInTheDocument();
+    expect(screen.getByText("shell.command.nav.spaces")).toBeInTheDocument();
+    expect(
+      screen.getByText("shell.command.nav.spaceSettings"),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText("shell.command.nav.organization"),
+    ).toBeInTheDocument();
     // Switch-space items render space names.
     expect(screen.getByText("Space A")).toBeInTheDocument();
     expect(screen.getByText("Space B")).toBeInTheDocument();
+  });
+
+  it("navigates to added default navigation destinations", async () => {
+    render(<CommandPalette />);
+    openCommandPalette();
+
+    fireEvent.click(await screen.findByTestId("command-palette-nav-settings"));
+    expect(routerPushMock).toHaveBeenCalledWith("/settings");
+
+    openCommandPalette();
+    fireEvent.click(
+      await screen.findByTestId("command-palette-nav-organization"),
+    );
+    expect(routerPushMock).toHaveBeenCalledWith("/organization");
+  });
+
+  it("gates settings by current space and organization by OWNER/ADMIN role", async () => {
+    sessionMock.current = {
+      ...sessionMock.current,
+      currentOrganization: {
+        id: "ORG_01",
+        name: "Org A",
+        role: "MEMBER",
+        status: "ACTIVE",
+      },
+      currentSpace: undefined,
+      spacesForCurrentOrganization: [],
+    };
+
+    render(<CommandPalette />);
+    openCommandPalette();
+
+    expect(
+      await screen.findByText("shell.command.navigation"),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByTestId("command-palette-nav-spaces"),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByTestId("command-palette-nav-settings"),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByTestId("command-palette-nav-organization"),
+    ).not.toBeInTheDocument();
   });
 
   it("does not show the switchSpace group when there are no spaces", async () => {
@@ -327,7 +418,9 @@ describe("CommandPalette", () => {
     // Search view groups by category — heading keys appear when their group
     // has at least one item.
     await waitFor(() => {
-      expect(screen.getByText("shell.command.results.tasks")).toBeInTheDocument();
+      expect(
+        screen.getByText("shell.command.results.tasks"),
+      ).toBeInTheDocument();
     });
     expect(screen.getByText("Task A")).toBeInTheDocument();
     // Navigation group should NOT be visible while in search view.

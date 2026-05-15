@@ -431,7 +431,8 @@ function createSubject(role: SpaceRole, actorUserId = ACTOR_ID) {
 }
 
 function createPermissionResolver(role: SpaceRole) {
-  const canWrite = role !== "VIEWER";
+  const canAct = role !== "VIEWER";
+  const canDirectEdit = role === "SPACE_ADMIN" || role === "PM";
 
   return {
     resolvedWorkItemIds: [] as string[],
@@ -452,9 +453,9 @@ function createPermissionResolver(role: SpaceRole) {
             toStateId: "01H0000000000000000000000E",
           },
         ],
-        canComment: canWrite,
-        canEdit: canWrite,
-        canUploadAttachment: canWrite,
+        canComment: canAct,
+        canEdit: canDirectEdit,
+        canUploadAttachment: canAct,
       };
     },
     async resolvePermissionSnapshotForKnownVisibleWorkItem(
@@ -477,9 +478,9 @@ function createPermissionResolver(role: SpaceRole) {
             toStateId: "01H0000000000000000000000E",
           },
         ],
-        canComment: canWrite,
-        canEdit: canWrite,
-        canUploadAttachment: canWrite,
+        canComment: canAct,
+        canEdit: canDirectEdit,
+        canUploadAttachment: canAct,
       };
     },
   };

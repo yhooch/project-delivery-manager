@@ -64,22 +64,25 @@ const memberMap = new Map<
 const versionMap = new Map<string, { name: string }>();
 const relationTitleMap = new Map<string, string>();
 vi.mock("../../lib/v2/lookups", () => ({
-  useRelationTitle: (
-    type: string,
-    id: string | undefined,
-  ) => ({
+  useRelationTitle: (type: string, id: string | undefined) => ({
     title: id ? relationTitleMap.get(`${type}:${id}`) : undefined,
     loading: false,
     error: null,
   }),
   useSpaceMembers: () => ({
-    members: [],
+    members: Array.from(memberMap.entries()).map(([userId, member]) => ({
+      userId,
+      ...member,
+    })),
     loading: false,
     error: null,
     getMember: (id: string) => memberMap.get(id),
   }),
   useVersions: () => ({
-    versions: [],
+    versions: Array.from(versionMap.entries()).map(([id, version]) => ({
+      id,
+      ...version,
+    })),
     loading: false,
     error: null,
     getVersion: (id: string) => versionMap.get(id),
@@ -97,6 +100,8 @@ const {
   listAttachmentsMock,
   uploadAttachmentMock,
   listTimelineMock,
+  updateWorkItemMock,
+  listRequirementsMock,
 } = vi.hoisted(() => ({
   getBugMock: vi.fn(),
   getWorkItemMock: vi.fn(),
@@ -107,11 +112,17 @@ const {
   listAttachmentsMock: vi.fn(),
   uploadAttachmentMock: vi.fn(),
   listTimelineMock: vi.fn(),
+  updateWorkItemMock: vi.fn(),
+  listRequirementsMock: vi.fn(),
 }));
 
 vi.mock("../../lib/work-item-service", () => ({
   getWorkItem: getWorkItemMock,
   listWorkItems: vi.fn(),
+  updateWorkItem: updateWorkItemMock,
+}));
+vi.mock("../../lib/requirement-service", () => ({
+  listRequirements: listRequirementsMock,
 }));
 vi.mock("../../lib/bug-service", () => ({
   getBug: getBugMock,
@@ -144,6 +155,7 @@ vi.mock("../../lib/timeline-service", () => ({
 }));
 
 import type { WorkItemViewModel } from "../../lib/v2/work-item-view-model";
+import { AttachmentUploadError } from "../../lib/attachment-service";
 import { TaskDetailSheet } from "./task-detail-sheet";
 
 // -----------------------------------------------------------------------------
@@ -248,6 +260,8 @@ beforeEach(() => {
   listAttachmentsMock.mockReset();
   uploadAttachmentMock.mockReset();
   listTimelineMock.mockReset();
+  updateWorkItemMock.mockReset();
+  listRequirementsMock.mockReset();
 
   // Default success values to prevent fallbacks from masking failures.
   getBugMock.mockResolvedValue(makeBugResponse());
@@ -259,6 +273,8 @@ beforeEach(() => {
   listCommentsMock.mockResolvedValue({ items: [], total: 0 });
   listAttachmentsMock.mockResolvedValue({ items: [], total: 0 });
   listTimelineMock.mockResolvedValue({ items: [], total: 0 });
+  updateWorkItemMock.mockResolvedValue(makeDetailResponse());
+  listRequirementsMock.mockResolvedValue({ items: [], total: 0 });
 });
 
 afterEach(() => {
@@ -490,6 +506,122 @@ describe("TaskDetailSheet", () => {
       await screen.findByText("Real detail description"),
     ).toBeInTheDocument();
     expect(screen.getByText("Reporter Name")).toBeInTheDocument();
+  });
+
+  it("updates editable task fields when PermissionSnapshot.canEdit is true", async () => {
+    const onChanged = vi.fn();
+    const assigneeId = "01ARZ3NDEKTSV4RRFFQ69G5FAS";
+    const versionId = "01ARZ3NDEKTSV4RRFFQ69G5FV1";
+    const requirementId = "01ARZ3NDEKTSV4RRFFQ69G5FRQ";
+    memberMap.set(assigneeId, {
+      user: { name: "Alice Owner" },
+    });
+    versionMap.set(versionId, { name: "Release 1" });
+    listRequirementsMock.mockResolvedValueOnce({
+      items: [{ id: requirementId, title: "Requirement B" }],
+      total: 1,
+    });
+    getWorkItemMock
+      .mockResolvedValueOnce(
+        makeDetailResponse({
+          description: "Before",
+          dueDate: "2026-06-01T00:00:00.000Z",
+          permissions: {
+            canEdit: true,
+            canComment: true,
+            canUploadAttachment: true,
+            availableActions: [],
+          },
+        }),
+      )
+      .mockResolvedValueOnce(
+        makeDetailResponse({
+          assigneeId,
+          description: "After",
+          dueDate: "2026-06-02T00:00:00.000Z",
+          priority: "HIGH",
+          requirementId,
+          title: "Edited task",
+          versionId,
+        }),
+      );
+
+    render(
+      <TaskDetailSheet
+        item={makeViewModel()}
+        open
+        onOpenChange={() => {}}
+        onChanged={onChanged}
+      />,
+    );
+
+    fireEvent.click(await screen.findByTestId("task-edit-button"));
+    expect(await screen.findByText("Requirement B")).toBeInTheDocument();
+
+    fireEvent.change(screen.getByTestId("task-edit-title-input"), {
+      target: { value: "  Edited task  " },
+    });
+    fireEvent.change(screen.getByTestId("task-edit-description-input"), {
+      target: { value: "  After  " },
+    });
+    fireEvent.change(screen.getByTestId("task-edit-priority-select"), {
+      target: { value: "HIGH" },
+    });
+    fireEvent.change(screen.getByTestId("task-edit-assignee-select"), {
+      target: { value: assigneeId },
+    });
+    fireEvent.change(screen.getByTestId("task-edit-version-select"), {
+      target: { value: versionId },
+    });
+    fireEvent.change(screen.getByTestId("task-edit-requirement-select"), {
+      target: { value: requirementId },
+    });
+    fireEvent.change(screen.getByTestId("task-edit-due-date-input"), {
+      target: { value: "2026-06-02" },
+    });
+    fireEvent.click(screen.getByTestId("task-edit-submit"));
+
+    await waitFor(() => expect(updateWorkItemMock).toHaveBeenCalledTimes(1));
+    expect(updateWorkItemMock).toHaveBeenCalledWith(
+      {
+        organizationId: "ORG_01",
+        spaceId: "SPC_01",
+        workItemId: "01ARZ3NDEKTSV4RRFFQ69G5FA1",
+      },
+      expect.objectContaining({
+        assigneeId,
+        description: "After",
+        dueDate: expect.any(String),
+        priority: "HIGH",
+        requirementId,
+        title: "Edited task",
+        versionId,
+      }),
+    );
+    await waitFor(() => expect(getWorkItemMock).toHaveBeenCalledTimes(2));
+    expect(onChanged).toHaveBeenCalledTimes(1);
+    expect(await screen.findByText("Edited task")).toBeInTheDocument();
+    expect(screen.queryByTestId("task-edit-form")).not.toBeInTheDocument();
+  });
+
+  it("does not show task field editing when PermissionSnapshot.canEdit is false", async () => {
+    getWorkItemMock.mockResolvedValueOnce(
+      makeDetailResponse({
+        permissions: {
+          canEdit: false,
+          canComment: true,
+          canUploadAttachment: true,
+          availableActions: [],
+        },
+      }),
+    );
+
+    render(
+      <TaskDetailSheet item={makeViewModel()} open onOpenChange={() => {}} />,
+    );
+
+    await waitFor(() => expect(getWorkItemMock).toHaveBeenCalled());
+    expect(screen.queryByTestId("task-edit-button")).not.toBeInTheDocument();
   });
 
   it("clears loaded detail and permissions when switching items", async () => {
@@ -782,6 +914,37 @@ describe("TaskDetailSheet", () => {
       }),
     );
   });
+
+  it.each([
+    "FILE_TOO_LARGE",
+    "UNSUPPORTED_MIME_TYPE",
+    "ATTACHMENT_LIMIT_EXCEEDED",
+  ] as const)(
+    "renders localized attachment upload limit error %s",
+    async (code) => {
+      listAttachmentsMock.mockResolvedValue({ items: [], total: 0 });
+      uploadAttachmentMock.mockRejectedValueOnce(
+        new AttachmentUploadError(code),
+      );
+
+      render(
+        <TaskDetailSheet item={makeViewModel()} open onOpenChange={() => {}} />,
+      );
+
+      await activateTab(/attachments/i);
+      await waitFor(() => expect(listAttachmentsMock).toHaveBeenCalled());
+
+      const fileInput = document.body.querySelector(
+        'input[type="file"]',
+      ) as HTMLInputElement;
+      const file = new File(["hello"], "hello.txt", { type: "text/plain" });
+      fireEvent.change(fileInput, { target: { files: [file] } });
+
+      expect(
+        await screen.findByText(`forms.attachments.uploadErrors.${code}`),
+      ).toBeInTheDocument();
+    },
+  );
 
   it("hides the attachment upload entry when PermissionSnapshot.canUploadAttachment is false", async () => {
     getWorkItemMock.mockResolvedValueOnce(

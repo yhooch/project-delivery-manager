@@ -1,8 +1,10 @@
 "use client";
 
 import type {
+  RecordStatus,
   Requirement,
   RequirementStatus,
+  SpaceRole,
   SpaceMemberWithUser,
   Version,
 } from "@project-delivery/shared";
@@ -58,9 +60,15 @@ export function RequirementsPage() {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  const { session, status: sessionStatus } = useSession();
+  const { currentSpace, session, status: sessionStatus } = useSession();
   const spaceId = session?.defaultSpaceId;
   const organizationId = session?.defaultOrganizationId;
+  const sessionSpace =
+    currentSpace ?? session?.spaces?.find((space) => space.id === spaceId);
+  const canCreateRequirement = canWriteRequirements(
+    sessionSpace?.role,
+    sessionSpace?.status,
+  );
   const recentScope = useMemo(
     () => ({ organizationId, spaceId }),
     [organizationId, spaceId],
@@ -80,6 +88,7 @@ export function RequirementsPage() {
   const [handledCreateLinkKey, setHandledCreateLinkKey] = useState<
     string | null
   >(null);
+  const [createDenied, setCreateDenied] = useState(false);
   const requestedNew = normalizeSearchParam(searchParams.get("new"));
 
   const loadItems = useCallback(async () => {
@@ -140,7 +149,9 @@ export function RequirementsPage() {
 
   const filtered = useMemo(() => {
     if (filter === "active") {
-      return items.filter((r) => r.status !== "ARCHIVED" && r.status !== "DRAFT");
+      return items.filter(
+        (r) => r.status !== "ARCHIVED" && r.status !== "DRAFT",
+      );
     }
     return items;
   }, [filter, items]);
@@ -149,7 +160,8 @@ export function RequirementsPage() {
     [versions],
   );
   const memberNameByUserId = useMemo(
-    () => new Map(members.map((member) => [member.userId, formatMember(member)])),
+    () =>
+      new Map(members.map((member) => [member.userId, formatMember(member)])),
     [members],
   );
 
@@ -198,8 +210,13 @@ export function RequirementsPage() {
     if (!spaceId || isCreating) {
       return;
     }
+    if (!canCreateRequirement) {
+      setCreateDenied(true);
+      return;
+    }
     setIsCreating(true);
     setErrorKey(null);
+    setCreateDenied(false);
 
     try {
       const draft = await createRequirementDraft({ spaceId }, {});
@@ -209,7 +226,7 @@ export function RequirementsPage() {
       setErrorKey(getApiErrorMessageKey(error));
       setIsCreating(false);
     }
-  }, [isCreating, rememberRequirement, router, spaceId]);
+  }, [canCreateRequirement, isCreating, rememberRequirement, router, spaceId]);
 
   const clearCreateLinkQuery = useCallback(() => {
     const params = new URLSearchParams(searchParams.toString());
@@ -236,8 +253,13 @@ export function RequirementsPage() {
 
     setHandledCreateLinkKey(key);
     clearCreateLinkQuery();
+    if (!canCreateRequirement) {
+      setCreateDenied(true);
+      return;
+    }
     void handleCreateDraft();
   }, [
+    canCreateRequirement,
     clearCreateLinkQuery,
     handledCreateLinkKey,
     handleCreateDraft,
@@ -278,7 +300,8 @@ export function RequirementsPage() {
           void handleCreateDraft();
         }}
         type="button"
-        disabled={!spaceId || isCreating}
+        disabled={!spaceId || isCreating || !canCreateRequirement}
+        title={!canCreateRequirement ? t("page.createReadonly") : undefined}
       >
         <Plus className="h-3 w-3" />
         {isCreating ? t("dialog.create.submitting") : t("page.create")}
@@ -359,7 +382,10 @@ export function RequirementsPage() {
                 {t(`status.${req.status}`)}
               </Badge>
               {req.versionId && (
-                <Badge variant="outline" className="hidden gap-1 md:inline-flex">
+                <Badge
+                  variant="outline"
+                  className="hidden gap-1 md:inline-flex"
+                >
                   <GitBranch className="h-2.5 w-2.5" />
                   {formatVersionLabel(req.versionId, versionNameById)}
                 </Badge>
@@ -381,7 +407,9 @@ export function RequirementsPage() {
               <Avatar className="h-5 w-5 shrink-0">
                 <AvatarFallback className="text-[9px]">
                   {req.ownerId
-                    ? initialOf(formatOwnerLabel(req.ownerId, memberNameByUserId))
+                    ? initialOf(
+                        formatOwnerLabel(req.ownerId, memberNameByUserId),
+                      )
                     : "·"}
                 </AvatarFallback>
               </Avatar>
@@ -400,6 +428,16 @@ export function RequirementsPage() {
         description={t("page.description")}
         actions={headerActions}
       />
+
+      {sessionStatus === "authenticated" && spaceId && createDenied ? (
+        <div
+          role="alert"
+          data-testid="requirements-create-readonly-notice"
+          className="border-b border-warning/30 bg-warning/10 px-6 py-2 text-xs text-warning"
+        >
+          {t("page.createReadonly")}
+        </div>
+      ) : null}
 
       {sessionStatus === "authenticated" && spaceId && !errorKey && (
         <div className="border-b border-border px-6 py-3">
@@ -479,9 +517,10 @@ function formatRequirementCode(id: string): string {
   return `REQ-${shortenId(id)}`.toUpperCase();
 }
 
-function toRequirementListQuery(
-  filter: FilterKey,
-): { includeDrafts?: boolean; status?: RequirementStatus } {
+function toRequirementListQuery(filter: FilterKey): {
+  includeDrafts?: boolean;
+  status?: RequirementStatus;
+} {
   if (filter === "DRAFT") {
     return {
       includeDrafts: true,
@@ -511,6 +550,16 @@ function optionalFilterValue(value: string): string | undefined {
 function normalizeSearchParam(value: string | null): string | undefined {
   const normalized = value?.trim();
   return normalized ? normalized : undefined;
+}
+
+function canWriteRequirements(
+  role: SpaceRole | undefined,
+  status: RecordStatus | undefined,
+): boolean {
+  return (
+    status !== "DISABLED" &&
+    (role === "SPACE_ADMIN" || role === "PM" || role === "REQUIREMENT")
+  );
 }
 
 function formatMember(member: SpaceMemberWithUser): string {

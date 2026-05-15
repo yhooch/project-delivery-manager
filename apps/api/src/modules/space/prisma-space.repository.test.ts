@@ -35,6 +35,93 @@ type RepositoryInternals = {
 };
 
 describe("PrismaSpaceRepository", () => {
+  it("returns operational summary fields for organization space lists", async () => {
+    const organizationId = "01ARZ3NDEKTSV4RRFFQ69G5FO1";
+    const spaceId = "01ARZ3NDEKTSV4RRFFQ69G5FS1";
+    const ownerId = "01ARZ3NDEKTSV4RRFFQ69G5FU1";
+    const versionId = "01ARZ3NDEKTSV4RRFFQ69G5FV1";
+    const spaceRecord = {
+      id: spaceId,
+      code: "delivery",
+      description: null,
+      name: "Delivery",
+      organizationId,
+      ownerId,
+      owner: {
+        id: ownerId,
+        username: "owner_user",
+        name: "Owner",
+        avatar: null,
+        status: "ACTIVE",
+      },
+      staleThresholdDays: 3,
+      status: "ACTIVE",
+      updatedAt: new Date("2026-05-14T10:00:00.000Z"),
+    };
+    const currentVersion = {
+      id: versionId,
+      bugCount: 1,
+      blockedCount: 1,
+      name: "M1",
+      organizationId,
+      ownerId: null,
+      releaseDate: null,
+      requirementCount: 2,
+      spaceId,
+      startDate: null,
+      status: "IN_PROGRESS",
+      target: null,
+      targetDate: null,
+      taskCount: 3,
+      updatedAt: new Date("2026-05-14T09:00:00.000Z"),
+    };
+    const workItemGroupBy = vi
+      .fn()
+      .mockResolvedValueOnce([{ _count: { _all: 2 }, spaceId }])
+      .mockResolvedValueOnce([{ _count: { _all: 1 }, spaceId }])
+      .mockResolvedValueOnce([{ _count: { _all: 1 }, spaceId }]);
+    const prisma = {
+      client: {
+        $transaction: vi.fn(async (queries: Array<Promise<unknown>>) =>
+          Promise.all(queries),
+        ),
+        space: {
+          findMany: vi.fn(async () => [spaceRecord]),
+          count: vi.fn(async () => 1),
+        },
+        version: {
+          findMany: vi.fn(async () => [currentVersion]),
+        },
+        workItem: {
+          groupBy: workItemGroupBy,
+        },
+      },
+    } as unknown as PrismaService;
+    const repository = new PrismaSpaceRepository(prisma);
+
+    const page = await repository.listByOrganizationId(organizationId, {
+      page: 1,
+      pageSize: 20,
+    });
+
+    expect(page.items[0]).toMatchObject({
+      id: spaceId,
+      owner: {
+        id: ownerId,
+        username: "owner_user",
+      },
+      currentVersion: {
+        id: versionId,
+        name: "M1",
+      },
+      unfinishedTaskCount: 2,
+      openBugCount: 1,
+      blockedCount: 1,
+      updatedAt: "2026-05-14T10:00:00.000Z",
+    });
+    expect(workItemGroupBy).toHaveBeenCalledTimes(3);
+  });
+
   it("groups overview status counts by all visible items and then by task/bug type", async () => {
     const organizationId = "01ARZ3NDEKTSV4RRFFQ69G5FO1";
     const spaceId = "01ARZ3NDEKTSV4RRFFQ69G5FS1";

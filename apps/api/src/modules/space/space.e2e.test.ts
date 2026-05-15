@@ -1693,5 +1693,9 @@ function toSpaceSummary(space: Space): SpaceSummary {
     description: space.description,
     ownerId: space.ownerId,
     status: space.status,
+    unfinishedTaskCount: 0,
+    openBugCount: 0,
+    blockedCount: 0,
+    updatedAt: "2026-05-13T00:00:00.000Z",
   };
 }

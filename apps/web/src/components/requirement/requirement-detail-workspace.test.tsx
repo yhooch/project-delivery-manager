@@ -146,7 +146,10 @@ beforeEach(() => {
 
   deleteRequirementDraftMock.mockResolvedValue({});
   listRequirementVersionsMock.mockResolvedValue({ items: [], total: 0 });
-  listRequirementAssignableMembersMock.mockResolvedValue({ items: [], total: 0 });
+  listRequirementAssignableMembersMock.mockResolvedValue({
+    items: [],
+    total: 0,
+  });
   updateRequirementMock.mockResolvedValue(makeRequirement());
 });
 
@@ -297,5 +300,79 @@ describe("RequirementDetailWorkspace", () => {
     expect(routerPushMock).toHaveBeenCalledWith("/requirements");
 
     confirmSpy.mockRestore();
+  });
+
+  it("keeps an empty draft when leaving and choosing keep", async () => {
+    getRequirementMock.mockResolvedValueOnce(
+      makeRequirement({
+        title: "",
+        summary: undefined,
+        contentJson: {},
+        contentText: "",
+        contentMarkdownCache: "",
+        status: "DRAFT",
+      }),
+    );
+
+    render(
+      <>
+        <RequirementDetailWorkspace requirementId="01ARZ3NDEKTSV4RRFFQ69G5FA1" />
+        <a data-testid="leave-requirement-detail" href="/requirements">
+          leave
+        </a>
+      </>,
+    );
+
+    await screen.findByRole("button", {
+      name: "requirements.detail.discardDraft",
+    });
+    fireEvent.click(screen.getByTestId("leave-requirement-detail"));
+
+    expect(
+      await screen.findByTestId("requirement-empty-draft-leave-dialog"),
+    ).toBeInTheDocument();
+    fireEvent.click(screen.getByTestId("requirement-empty-draft-keep"));
+
+    expect(deleteRequirementDraftMock).not.toHaveBeenCalled();
+    expect(routerPushMock).toHaveBeenCalledWith("/requirements");
+  });
+
+  it("deletes an empty draft when leaving and choosing delete", async () => {
+    getRequirementMock.mockResolvedValueOnce(
+      makeRequirement({
+        title: "",
+        summary: undefined,
+        contentJson: {},
+        contentText: "",
+        contentMarkdownCache: "",
+        status: "DRAFT",
+      }),
+    );
+
+    render(
+      <>
+        <RequirementDetailWorkspace requirementId="01ARZ3NDEKTSV4RRFFQ69G5FA1" />
+        <a data-testid="leave-requirement-detail" href="/requirements">
+          leave
+        </a>
+      </>,
+    );
+
+    await screen.findByRole("button", {
+      name: "requirements.detail.discardDraft",
+    });
+    fireEvent.click(screen.getByTestId("leave-requirement-detail"));
+    fireEvent.click(
+      await screen.findByTestId("requirement-empty-draft-delete"),
+    );
+
+    await waitFor(() =>
+      expect(deleteRequirementDraftMock).toHaveBeenCalledWith({
+        organizationId: "ORG_01",
+        requirementId: "01ARZ3NDEKTSV4RRFFQ69G5FA1",
+        spaceId: "SPC_01",
+      }),
+    );
+    expect(routerPushMock).toHaveBeenCalledWith("/requirements");
   });
 });

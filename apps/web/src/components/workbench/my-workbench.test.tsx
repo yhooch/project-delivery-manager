@@ -1,4 +1,10 @@
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import {
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const { translatorCache } = vi.hoisted(() => ({
@@ -93,10 +99,16 @@ vi.mock("../../lib/view-service", () => ({
   getMyWorkbenchView: getMyWorkbenchViewMock,
 }));
 
-// Lookups: stubbed inert so the component renders without hitting member/version
-// services. The component falls back to assigneeId / version-id tails when no
-// lookup hits, which is the legacy behaviour these tests already exercise.
+const { getMembersMock, getVersionsMock } = vi.hoisted(() => ({
+  getMembersMock: vi.fn(),
+  getVersionsMock: vi.fn(),
+}));
+
+// Lookups: hooks stay inert for selected-space mode. Organization-level tests
+// exercise the exported async helpers used for grouped prefetch.
 vi.mock("../../lib/v2/lookups", () => ({
+  getMembers: getMembersMock,
+  getVersions: getVersionsMock,
   useSpaceMembers: () => ({
     members: [],
     loading: false,
@@ -282,6 +294,10 @@ function makeWorkbenchResponse(
 
 beforeEach(() => {
   getMyWorkbenchViewMock.mockReset();
+  getMembersMock.mockReset();
+  getMembersMock.mockResolvedValue([]);
+  getVersionsMock.mockReset();
+  getVersionsMock.mockResolvedValue([]);
   sessionMock.current = {
     session: {
       user: { id: "USR_01", name: "Test User" },
@@ -346,7 +362,9 @@ describe("MyWorkbench", () => {
     );
 
     // Four KPI labels rendered (the chip is just a div, so we just verify text).
-    expect(await screen.findByText("workbench.summary.todo")).toBeInTheDocument();
+    expect(
+      await screen.findByText("workbench.summary.todo"),
+    ).toBeInTheDocument();
     expect(screen.getByText("workbench.summary.dueSoon")).toBeInTheDocument();
     expect(screen.getByText("workbench.summary.blocked")).toBeInTheDocument();
     expect(
@@ -449,6 +467,59 @@ describe("MyWorkbench", () => {
     ).toBeInTheDocument();
     expect(screen.getByText("workbench.sections.dueSoon")).toBeInTheDocument();
     expect(screen.getByText("workbench.sections.blocked")).toBeInTheDocument();
+  });
+
+  it("preloads organization-level version names by item space without leaking ID tails", async () => {
+    getVersionsMock.mockImplementation(async (spaceId: string) =>
+      spaceId === "SPC_02"
+        ? [{ id: "VERSION_ULID_TAIL_9XYZ", name: "Release train" }]
+        : [],
+    );
+    getMyWorkbenchViewMock.mockResolvedValueOnce(
+      makeWorkbenchResponse({
+        todos: [
+          makeWorkItemSummary({
+            id: "01ARZ3NDEKTSV4RRFFQ69G5F21",
+            spaceId: "SPC_02",
+            title: "Cross-space version item",
+            versionId: "VERSION_ULID_TAIL_9XYZ",
+          }),
+        ],
+      }),
+    );
+
+    render(<MyWorkbench />);
+
+    expect(
+      await screen.findByText("Cross-space version item"),
+    ).toBeInTheDocument();
+    expect(await screen.findByText("Release train")).toBeInTheDocument();
+    expect(screen.queryByText("9XYZ")).not.toBeInTheDocument();
+    expect(getVersionsMock).toHaveBeenCalledWith("SPC_02", "ORG_01");
+  });
+
+  it("uses a readable version fallback instead of a raw ID tail when lookups miss", async () => {
+    getVersionsMock.mockResolvedValue([]);
+    getMyWorkbenchViewMock.mockResolvedValueOnce(
+      makeWorkbenchResponse({
+        todos: [
+          makeWorkItemSummary({
+            id: "01ARZ3NDEKTSV4RRFFQ69G5F22",
+            spaceId: "SPC_02",
+            title: "Unknown version item",
+            versionId: "VERSION_ULID_TAIL_9XYZ",
+          }),
+        ],
+      }),
+    );
+
+    render(<MyWorkbench />);
+
+    expect(await screen.findByText("Unknown version item")).toBeInTheDocument();
+    expect(
+      await screen.findByText("workbench.versionFallback"),
+    ).toBeInTheDocument();
+    expect(screen.queryByText("9XYZ")).not.toBeInTheDocument();
   });
 
   it("keeps action todos distinct when one work item has multiple available actions", async () => {
@@ -559,7 +630,9 @@ describe("MyWorkbench", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "detail changed" }));
 
-    await waitFor(() => expect(getMyWorkbenchViewMock).toHaveBeenCalledTimes(2));
+    await waitFor(() =>
+      expect(getMyWorkbenchViewMock).toHaveBeenCalledTimes(2),
+    );
   });
 
   it("renders recent activities in the side panel", async () => {
@@ -622,9 +695,7 @@ describe("MyWorkbench", () => {
 
     render(<MyWorkbench />);
 
-    expect(
-      await screen.findByText("workbench.errorTitle"),
-    ).toBeInTheDocument();
+    expect(await screen.findByText("workbench.errorTitle")).toBeInTheDocument();
   });
 
   it("renders the no-organization empty state when there is no defaultOrganizationId", async () => {

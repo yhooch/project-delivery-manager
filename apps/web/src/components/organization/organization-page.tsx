@@ -4,15 +4,15 @@ import type {
   OrganizationMemberWithUser,
   RecordStatus,
 } from "@project-delivery/shared";
-import { Crown, Plus, ShieldCheck, Trash2 } from "lucide-react";
+import { Ban, Crown, Plus, ShieldCheck } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { getApiErrorMessageKey } from "../../lib/api-error-messages";
 import {
   canManageOrganization,
+  disableOrganizationMember,
   listOrganizationMembers,
-  removeOrganizationMember,
   updateOrganization,
 } from "../../lib/space-service";
 import { cn } from "../../lib/utils";
@@ -42,19 +42,17 @@ const roleVariant: Record<string, "primary" | "info" | "default"> = {
   ADMIN: "info",
   MEMBER: "default",
 };
-const organizationStatusOptions: readonly RecordStatus[] = ["ACTIVE", "DISABLED"];
+const organizationStatusOptions: readonly RecordStatus[] = [
+  "ACTIVE",
+  "DISABLED",
+];
 
 export function OrganizationPage() {
   const t = useTranslations("organization");
   const tShell = useTranslations("shell.nav");
   const tRoot = useTranslations();
-  const {
-    currentOrganization,
-    currentSpace,
-    refreshSession,
-    session,
-    status,
-  } = useSession();
+  const { currentOrganization, currentSpace, refreshSession, session, status } =
+    useSession();
   const organizationId =
     session?.defaultOrganizationId ?? currentOrganization?.id;
   const canManageMembers = canManageOrganization(currentOrganization?.role);
@@ -68,7 +66,7 @@ export function OrganizationPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [errorKey, setErrorKey] = useState<string | null>(null);
   const [isAddMemberOpen, setIsAddMemberOpen] = useState(false);
-  const [removeMember, setRemoveMember] =
+  const [disableMember, setDisableMember] =
     useState<OrganizationMemberWithUser | null>(null);
   const [editRoleMember, setEditRoleMember] =
     useState<OrganizationMemberWithUser | null>(null);
@@ -87,9 +85,9 @@ export function OrganizationPage() {
 
   const hasProfileChanges = Boolean(
     currentOrganization &&
-      (orgName.trim() !== currentOrganization.name ||
-        orgCode.trim() !== currentOrganization.code ||
-        orgStatus !== currentOrganization.status),
+    (orgName.trim() !== currentOrganization.name ||
+      orgCode.trim() !== currentOrganization.code ||
+      orgStatus !== currentOrganization.status),
   );
 
   useEffect(() => {
@@ -137,20 +135,23 @@ export function OrganizationPage() {
     void load();
   }, [load, organizationId, status]);
 
-  async function onConfirmRemove() {
-    if (!removeMember || !organizationId || !canManageMembers) {
+  async function onConfirmDisable() {
+    if (!disableMember || !organizationId || !canManageMembers) {
       return;
     }
 
-    setPendingMemberId(removeMember.id);
+    setPendingMemberId(disableMember.id);
     setMemberActionErrorKey(null);
 
     try {
-      await removeOrganizationMember(organizationId, removeMember.id);
-      setMembers((current) =>
-        current.filter((item) => item.id !== removeMember.id),
+      const updated = await disableOrganizationMember(
+        organizationId,
+        disableMember.id,
       );
-      setRemoveMember(null);
+      setMembers((current) =>
+        current.map((item) => (item.id === updated.id ? updated : item)),
+      );
+      setDisableMember(null);
     } catch (error) {
       setMemberActionErrorKey(getApiErrorMessageKey(error));
     } finally {
@@ -177,7 +178,9 @@ export function OrganizationPage() {
       const updated = await updateOrganization(organizationId, {
         ...(nextName !== currentOrganization.name ? { name: nextName } : {}),
         ...(nextCode !== currentOrganization.code ? { code: nextCode } : {}),
-        ...(orgStatus !== currentOrganization.status ? { status: orgStatus } : {}),
+        ...(orgStatus !== currentOrganization.status
+          ? { status: orgStatus }
+          : {}),
       });
       await refreshSession(updated.id, currentSpace?.id);
     } catch (error) {
@@ -283,6 +286,12 @@ export function OrganizationPage() {
               <Badge variant={roleVariant[member.role] ?? "default"}>
                 {t(`members.roles.${member.role}`)}
               </Badge>
+              <Badge
+                data-testid={`organization-member-status-${member.id}`}
+                variant={member.status === "DISABLED" ? "warning" : "outline"}
+              >
+                {t(`members.status.${member.status}`)}
+              </Badge>
               {canManageMembers ? (
                 <>
                   <Button
@@ -303,18 +312,18 @@ export function OrganizationPage() {
                   <Button
                     variant="ghost"
                     size="icon-sm"
-                    data-testid={`organization-member-remove-${member.id}`}
+                    data-testid={`organization-member-disable-${member.id}`}
                     disabled={
                       isLastActiveOwner ||
                       member.status === "DISABLED" ||
                       pendingMemberId === member.id
                     }
-                    onClick={() => setRemoveMember(member)}
-                    aria-label={t("members.actions.remove", {
+                    onClick={() => setDisableMember(member)}
+                    aria-label={t("members.actions.disable", {
                       username,
                     })}
                   >
-                    <Trash2 className="h-3.5 w-3.5 text-muted-foreground" />
+                    <Ban className="h-3.5 w-3.5 text-muted-foreground" />
                   </Button>
                 </>
               ) : null}
@@ -422,7 +431,9 @@ export function OrganizationPage() {
               </div>
             </div>
             <div className="border-t border-border bg-muted/30 px-5 py-2.5 text-[11px] text-muted-foreground">
-              {canManageMembers ? t("info.editableNote") : t("info.readOnlyNote")}
+              {canManageMembers
+                ? t("info.editableNote")
+                : t("info.readOnlyNote")}
             </div>
           </section>
 
@@ -476,7 +487,9 @@ export function OrganizationPage() {
             onSuccess={(member) => {
               setIsAddMemberOpen(false);
               setMembers((current) => {
-                const filtered = current.filter((item) => item.id !== member.id);
+                const filtered = current.filter(
+                  (item) => item.id !== member.id,
+                );
                 return [...filtered, member];
               });
               void load();
@@ -504,63 +517,63 @@ export function OrganizationPage() {
       <Dialog
         onOpenChange={(open) => {
           if (!open) {
-            setRemoveMember(null);
+            setDisableMember(null);
           }
         }}
-        open={removeMember !== null}
+        open={disableMember !== null}
       >
-        <DialogContent data-testid="organization-remove-member-dialog">
+        <DialogContent data-testid="organization-disable-member-dialog">
           <DialogHeader>
             <DialogTitle>
-              {tRoot("organization.dialog.removeMember.title")}
+              {tRoot("organization.dialog.disableMember.title")}
             </DialogTitle>
             <DialogDescription>
-              {tRoot("organization.dialog.removeMember.description", {
-                username: removeMember?.user.username ?? "",
+              {tRoot("organization.dialog.disableMember.description", {
+                username: disableMember?.user.username ?? "",
               })}
             </DialogDescription>
           </DialogHeader>
 
-          {removeMember &&
-          removeMember.role === "OWNER" &&
+          {disableMember &&
+          disableMember.role === "OWNER" &&
           activeOwnerCount <= 1 ? (
             <div
               className="rounded-md border border-warning/40 bg-warning/10 px-3 py-2 text-xs text-warning"
               role="alert"
             >
-              {tRoot("organization.dialog.removeMember.lastOwnerWarning")}
+              {tRoot("organization.dialog.disableMember.lastOwnerWarning")}
             </div>
           ) : null}
 
           <DialogFooter>
             <Button
               className="text-xs"
-              data-testid="organization-remove-member-cancel"
+              data-testid="organization-disable-member-cancel"
               disabled={pendingMemberId !== null}
-              onClick={() => setRemoveMember(null)}
+              onClick={() => setDisableMember(null)}
               size="sm"
               type="button"
               variant="outline"
             >
-              {tRoot("organization.dialog.removeMember.cancel")}
+              {tRoot("organization.dialog.disableMember.cancel")}
             </Button>
             <Button
               className="text-xs"
-              data-testid="organization-remove-member-submit"
+              data-testid="organization-disable-member-submit"
               disabled={
                 pendingMemberId !== null ||
-                !removeMember ||
+                !disableMember ||
                 !canManageMembers ||
-                (removeMember.role === "OWNER" && activeOwnerCount <= 1)
+                (disableMember.role === "OWNER" && activeOwnerCount <= 1)
               }
-              onClick={() => void onConfirmRemove()}
+              onClick={() => void onConfirmDisable()}
               size="sm"
               type="button"
               variant="destructive"
             >
               {pendingMemberId !== null
-                ? tRoot("organization.dialog.removeMember.submitting")
-                : tRoot("organization.dialog.removeMember.submit")}
+                ? tRoot("organization.dialog.disableMember.submitting")
+                : tRoot("organization.dialog.disableMember.submit")}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -570,11 +583,15 @@ export function OrganizationPage() {
 }
 
 function getOrganizationMemberDisplayName(member: OrganizationMemberWithUser) {
-  return member.user.name?.trim() || member.user.username?.trim() || member.userId;
+  return (
+    member.user.name?.trim() || member.user.username?.trim() || member.userId
+  );
 }
 
 function getOrganizationMemberUsername(member: OrganizationMemberWithUser) {
-  return member.user.username?.trim() || member.user.name?.trim() || member.userId;
+  return (
+    member.user.username?.trim() || member.user.name?.trim() || member.userId
+  );
 }
 
 function initialOf(value: string) {

@@ -1,6 +1,7 @@
 "use client";
 
 import type {
+  WorkflowBinding,
   WorkflowDefinition,
   WorkflowDefinitionStatus,
 } from "@project-delivery/shared";
@@ -15,7 +16,11 @@ import { useCallback, useEffect, useState } from "react";
 
 import { Link, useRouter } from "../../i18n/routing";
 import { getApiErrorMessageKey } from "../../lib/api-error-messages";
-import { listWorkflows } from "../../lib/workflow-service";
+import {
+  listWorkflowBindings,
+  listWorkflows,
+  listWorkflowVersions,
+} from "../../lib/workflow-service";
 import { cn } from "../../lib/utils";
 import { useSession } from "../providers/session-provider";
 
@@ -35,6 +40,70 @@ const statusVariant: Record<
   DISABLED: "default",
 };
 
+type WorkflowCardMetadata = {
+  defaultWorkItemTypes: WorkflowBinding["workItemType"][];
+  targetWorkItemTypes: WorkflowBinding["workItemType"][];
+  versionCount: number;
+};
+
+const emptyWorkflowCardMetadata: WorkflowCardMetadata = {
+  defaultWorkItemTypes: [],
+  targetWorkItemTypes: [],
+  versionCount: 0,
+};
+
+function collectWorkItemTypes(
+  bindings: WorkflowBinding[],
+  predicate: (binding: WorkflowBinding) => boolean = () => true,
+) {
+  return [
+    ...new Set(
+      bindings.filter(predicate).map((binding) => binding.workItemType),
+    ),
+  ].sort();
+}
+
+async function loadWorkflowCardMetadata(input: {
+  organizationId?: string;
+  spaceId: string;
+  workflows: WorkflowDefinition[];
+}): Promise<Record<string, WorkflowCardMetadata>> {
+  const entries = await Promise.all(
+    input.workflows.map(async (workflow) => {
+      const [versionPage, bindingPage] = await Promise.all([
+        listWorkflowVersions({
+          organizationId: input.organizationId,
+          page: 1,
+          pageSize: 1,
+          spaceId: input.spaceId,
+          workflowId: workflow.id,
+        }),
+        listWorkflowBindings({
+          organizationId: input.organizationId,
+          page: 1,
+          pageSize: 100,
+          spaceId: input.spaceId,
+          workflowId: workflow.id,
+        }),
+      ]);
+
+      return [
+        workflow.id,
+        {
+          defaultWorkItemTypes: collectWorkItemTypes(
+            bindingPage.items,
+            (binding) => binding.isDefault,
+          ),
+          targetWorkItemTypes: collectWorkItemTypes(bindingPage.items),
+          versionCount: versionPage.total,
+        },
+      ] as const;
+    }),
+  );
+
+  return Object.fromEntries(entries);
+}
+
 type WorkflowDialogState =
   | { kind: "closed" }
   | { kind: "create" }
@@ -45,6 +114,7 @@ export function WorkflowPage() {
   const t = useTranslations("workflow");
   const tShell = useTranslations("shell.nav");
   const tRoot = useTranslations();
+  const tWorkItemType = useTranslations("workflow.workItemType");
   const router = useRouter();
   const { currentSpace, session, status } = useSession();
   const spaceId = session?.defaultSpaceId ?? currentSpace?.id;
@@ -53,6 +123,9 @@ export function WorkflowPage() {
   const canManageWorkflow = currentSpace?.role === "SPACE_ADMIN";
 
   const [workflows, setWorkflows] = useState<WorkflowDefinition[]>([]);
+  const [workflowMetadata, setWorkflowMetadata] = useState<
+    Record<string, WorkflowCardMetadata>
+  >({});
   const [isLoading, setIsLoading] = useState(false);
   const [errorKey, setErrorKey] = useState<string | null>(null);
   const [dialog, setDialog] = useState<WorkflowDialogState>({ kind: "closed" });
@@ -73,7 +146,13 @@ export function WorkflowPage() {
         pageSize: 100,
         spaceId,
       });
+      const metadata = await loadWorkflowCardMetadata({
+        organizationId,
+        spaceId,
+        workflows: page.items,
+      });
       setWorkflows(page.items);
+      setWorkflowMetadata(metadata);
     } catch (error) {
       setErrorKey(getApiErrorMessageKey(error));
     } finally {
@@ -142,74 +221,115 @@ export function WorkflowPage() {
   } else {
     body = (
       <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
-        {workflows.map((wf) => (
-          <article
-            key={wf.id}
-            data-testid={`workflow-card-${wf.id}`}
-            className={cn(
-              "group relative flex flex-col gap-3 rounded-lg border border-border bg-card p-4 transition-colors hover:border-primary/40",
-            )}
-          >
-            <div className="flex items-start gap-3">
-              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary">
-                <WorkflowIcon className="h-4 w-4" />
-              </div>
-              <div className="min-w-0 flex-1">
-                <div className="flex items-center gap-2">
-                  <h3 className="truncate text-sm font-semibold">{wf.name}</h3>
-                </div>
-                <div className="mt-0.5 flex items-center gap-2 font-mono text-[11px] text-muted-foreground">
-                  <span>{wf.code}</span>
-                </div>
-              </div>
-              <Badge variant={statusVariant[wf.status]}>
-                {t(`definitionStatus.${wf.status}`)}
-              </Badge>
-            </div>
+        {workflows.map((wf) => {
+          const metadata = workflowMetadata[wf.id] ?? emptyWorkflowCardMetadata;
+          const targetTypes = metadata.targetWorkItemTypes
+            .map((type) => tWorkItemType(type))
+            .join(", ");
+          const defaultTypes = metadata.defaultWorkItemTypes
+            .map((type) => tWorkItemType(type))
+            .join(", ");
 
-            {wf.description ? (
-              <p className="line-clamp-2 text-[12px] text-muted-foreground">
-                {wf.description}
-              </p>
-            ) : null}
-
-            <div className="flex items-center justify-end border-t border-border pt-3">
-              <div className="flex items-center gap-1.5">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="h-7 text-xs"
-                  onClick={() => handleCopyAsNewVersion(wf)}
-                  disabled={!canManageWorkflow}
-                >
-                  {t("page.copyAsNewVersion")}
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="h-7 text-xs"
-                  onClick={() => setDialog({ kind: "edit", workflow: wf })}
-                  disabled={!canManageWorkflow}
-                >
-                  <Pencil className="h-3 w-3" />
-                  {t("page.edit")}
-                </Button>
-                <Button
-                  asChild
-                  variant="outline"
-                  size="sm"
-                  className="h-7 text-xs"
-                  data-testid={`workflow-card-configure-${wf.id}`}
-                >
-                  <Link href={`/workflow/${wf.id}`}>
-                    <Settings2 className="h-3 w-3" />
-                    {t("page.configure")}
-                  </Link>
-                </Button>
+          return (
+            <article
+              key={wf.id}
+              data-testid={`workflow-card-${wf.id}`}
+              className={cn(
+                "group relative flex flex-col gap-3 rounded-lg border border-border bg-card p-4 transition-colors hover:border-primary/40",
+              )}
+            >
+              <div className="flex items-start gap-3">
+                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary">
+                  <WorkflowIcon className="h-4 w-4" />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-2">
+                    <h3 className="truncate text-sm font-semibold">
+                      {wf.name}
+                    </h3>
+                  </div>
+                  <div className="mt-0.5 flex items-center gap-2 font-mono text-[11px] text-muted-foreground">
+                    <span>{wf.code}</span>
+                  </div>
+                </div>
+                <Badge variant={statusVariant[wf.status]}>
+                  {t(`definitionStatus.${wf.status}`)}
+                </Badge>
               </div>
-            </div>
-          </article>
-        ))}
+
+              {wf.description ? (
+                <p className="line-clamp-2 text-[12px] text-muted-foreground">
+                  {wf.description}
+                </p>
+              ) : null}
+
+              <div
+                className="flex flex-wrap items-center gap-1.5"
+                data-testid={`workflow-card-summary-${wf.id}`}
+              >
+                <Badge variant="outline">
+                  {t("config.toolbar.versionCount", {
+                    count: metadata.versionCount,
+                  })}
+                </Badge>
+                <Badge variant="outline">
+                  {metadata.targetWorkItemTypes.length > 0
+                    ? t("config.toolbar.targetTypes", { types: targetTypes })
+                    : t("config.toolbar.noTargetTypes")}
+                </Badge>
+                <Badge
+                  variant={
+                    metadata.defaultWorkItemTypes.length > 0
+                      ? "success"
+                      : "outline"
+                  }
+                >
+                  {metadata.defaultWorkItemTypes.length > 0
+                    ? t("config.toolbar.defaultBindings", {
+                        types: defaultTypes,
+                      })
+                    : t("config.toolbar.noDefaultBinding")}
+                </Badge>
+              </div>
+
+              <div className="flex items-center justify-end border-t border-border pt-3">
+                <div className="flex items-center gap-1.5">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-7 text-xs"
+                    onClick={() => handleCopyAsNewVersion(wf)}
+                    disabled={!canManageWorkflow}
+                  >
+                    {t("page.copyAsNewVersion")}
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-7 text-xs"
+                    onClick={() => setDialog({ kind: "edit", workflow: wf })}
+                    disabled={!canManageWorkflow}
+                  >
+                    <Pencil className="h-3 w-3" />
+                    {t("page.edit")}
+                  </Button>
+                  <Button
+                    asChild
+                    variant="outline"
+                    size="sm"
+                    className="h-7 text-xs"
+                    data-testid={`workflow-card-configure-${wf.id}`}
+                  >
+                    <Link href={`/workflow/${wf.id}`}>
+                      <Settings2 className="h-3 w-3" />
+                      {t("page.configure")}
+                    </Link>
+                  </Button>
+                </div>
+              </div>
+            </article>
+          );
+        })}
       </div>
     );
   }

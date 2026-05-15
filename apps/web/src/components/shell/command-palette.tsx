@@ -4,12 +4,15 @@ import {
   AlertTriangle,
   Bug as BugIcon,
   CheckCircle2,
+  Cog,
   FileText,
+  FolderKanban,
   GitBranch,
   Inbox,
   LayoutDashboard,
   Loader2,
   Plus,
+  Settings2,
   ShieldAlert,
   Sun,
   Target,
@@ -156,6 +159,8 @@ export function CommandPalette() {
   const router = useRouter();
   const { setTheme } = useTheme();
   const {
+    currentOrganization,
+    currentSpace,
     persistPreferences,
     session,
     spacesForCurrentOrganization,
@@ -164,6 +169,13 @@ export function CommandPalette() {
 
   const spaceId = session?.defaultSpaceId;
   const organizationId = session?.defaultOrganizationId;
+  const canManageOrganization =
+    currentOrganization?.role === "OWNER" ||
+    currentOrganization?.role === "ADMIN";
+  const hasCurrentSpace = Boolean(
+    currentSpace ??
+    spacesForCurrentOrganization.find((space) => space.id === spaceId),
+  );
   const recentScope = useMemo(
     () => ({ organizationId, spaceId }),
     [organizationId, spaceId],
@@ -255,7 +267,11 @@ export function CommandPalette() {
               type: "TASK",
               code: deriveCode("TASK", item.id),
               title: item.title,
-              href: getDetailHref({ id: item.id, type: "TASK", href: "/work-items" }),
+              href: getDetailHref({
+                id: item.id,
+                type: "TASK",
+                href: "/work-items",
+              }),
             });
           }
         } else {
@@ -293,7 +309,8 @@ export function CommandPalette() {
           canPrune = false;
         }
         if (intake.status === "fulfilled") {
-          canPrune = canPrune && intake.value.items.length >= intake.value.total;
+          canPrune =
+            canPrune && intake.value.items.length >= intake.value.total;
           for (const item of intake.value.items) {
             merged.push({
               id: item.id,
@@ -477,6 +494,13 @@ export function CommandPalette() {
                 <LayoutDashboard className="text-muted-foreground" />
                 <span>{t("nav.overview")}</span>
               </CommandItem>
+              <CommandItem
+                data-testid="command-palette-nav-spaces"
+                onSelect={() => navigate("/spaces")}
+              >
+                <FolderKanban className="text-muted-foreground" />
+                <span>{t("nav.spaces")}</span>
+              </CommandItem>
               <CommandItem onSelect={() => navigate("/versions")}>
                 <GitBranch className="text-muted-foreground" />
                 <span>{t("nav.versions")}</span>
@@ -508,6 +532,24 @@ export function CommandPalette() {
                 <Workflow className="text-muted-foreground" />
                 <span>{t("nav.workflow")}</span>
               </CommandItem>
+              {hasCurrentSpace && (
+                <CommandItem
+                  data-testid="command-palette-nav-settings"
+                  onSelect={() => navigate("/settings")}
+                >
+                  <Settings2 className="text-muted-foreground" />
+                  <span>{t("nav.spaceSettings")}</span>
+                </CommandItem>
+              )}
+              {canManageOrganization && (
+                <CommandItem
+                  data-testid="command-palette-nav-organization"
+                  onSelect={() => navigate("/organization")}
+                >
+                  <Cog className="text-muted-foreground" />
+                  <span>{t("nav.organization")}</span>
+                </CommandItem>
+              )}
             </CommandGroup>
 
             {spacesForCurrentOrganization.length > 0 && (
@@ -542,7 +584,9 @@ export function CommandPalette() {
                 <Plus className="text-muted-foreground" />
                 <span>{t("createBug")}</span>
               </CommandItem>
-              <CommandItem onSelect={() => navigate("/requirements?new=requirement")}>
+              <CommandItem
+                onSelect={() => navigate("/requirements?new=requirement")}
+              >
                 <Plus className="text-muted-foreground" />
                 <span>{t("createRequirement")}</span>
               </CommandItem>

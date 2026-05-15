@@ -1,4 +1,10 @@
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import {
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -17,6 +23,32 @@ vi.mock("next-intl", () => ({
   },
   useLocale: () => "zh-CN",
 }));
+
+vi.mock("../ui/dropdown-menu", async () => {
+  const React = await import("react");
+  type AnyProps = Record<string, unknown> & {
+    children?: React.ReactNode;
+    onSelect?: (event: { preventDefault: () => void }) => void;
+  };
+  return {
+    DropdownMenu: ({ children }: AnyProps) =>
+      React.createElement("div", null, children),
+    DropdownMenuTrigger: ({ children }: AnyProps) =>
+      React.createElement(React.Fragment, null, children),
+    DropdownMenuContent: ({ children }: AnyProps) =>
+      React.createElement("div", { role: "menu" }, children),
+    DropdownMenuItem: ({ children, onSelect, ...rest }: AnyProps) =>
+      React.createElement(
+        "button",
+        {
+          type: "button",
+          onClick: () => onSelect?.({ preventDefault: () => {} }),
+          ...rest,
+        },
+        children,
+      ),
+  };
+});
 
 const routerMock = vi.hoisted(() => ({
   replace: vi.fn(),
@@ -73,6 +105,39 @@ vi.mock("../../lib/space-service", () => ({
   updateSpace: updateSpaceMock,
 }));
 
+vi.mock("../../lib/v2/lookups", () => ({
+  useSpaceMembers: () => ({
+    members: [
+      {
+        id: "SPM_01",
+        userId: "01ARZ3NDEKTSV4RRFFQ69G5FB1",
+        user: {
+          id: "01ARZ3NDEKTSV4RRFFQ69G5FB1",
+          name: "Alice",
+          username: "alice",
+        },
+      },
+    ],
+    loading: false,
+    error: null,
+    getMember: (userId: string) =>
+      userId === "01ARZ3NDEKTSV4RRFFQ69G5FB1"
+        ? {
+            id: "SPM_01",
+            userId,
+            user: { id: userId, name: "Alice", username: "alice" },
+          }
+        : undefined,
+  }),
+  useVersions: () => ({
+    versions: [{ id: "V_01", name: "Version 1" }],
+    loading: false,
+    error: null,
+    getVersion: (versionId: string) =>
+      versionId === "V_01" ? { id: "V_01", name: "Version 1" } : undefined,
+  }),
+}));
+
 vi.mock("../work-item/task-detail-sheet", () => ({
   TaskDetailSheet: ({
     item,
@@ -117,10 +182,29 @@ function makeWorkItem(overrides: Record<string, unknown> = {}) {
   };
 }
 
-function makeException(workItem: ReturnType<typeof makeWorkItem>, type = "overdue") {
+type TestExceptionSignal = {
+  blockedReason?: string;
+  dueDate?: string;
+  evidenceSource?: string;
+  lastStatusChangedAt?: string;
+  reason?: string;
+  staleDays?: number;
+  staleThresholdDays?: number;
+  type: string;
+};
+
+function makeException(
+  workItem: ReturnType<typeof makeWorkItem>,
+  type = "overdue",
+): {
+  exceptions: TestExceptionSignal[];
+  workItem: ReturnType<typeof makeWorkItem>;
+} {
   return {
     workItem,
-    exceptions: [{ type, reason: type === "blocked" ? "Waiting on API" : undefined }],
+    exceptions: [
+      { type, reason: type === "blocked" ? "Waiting on API" : undefined },
+    ],
   };
 }
 
@@ -135,8 +219,18 @@ function makeViewResponse(
       ...filters,
     },
     counts: [
-      { exceptionType: "overdue", count: items.filter((i) => i.exceptions.some((e) => e.type === "overdue")).length },
-      { exceptionType: "blocked", count: items.filter((i) => i.exceptions.some((e) => e.type === "blocked")).length },
+      {
+        exceptionType: "overdue",
+        count: items.filter((i) =>
+          i.exceptions.some((e) => e.type === "overdue"),
+        ).length,
+      },
+      {
+        exceptionType: "blocked",
+        count: items.filter((i) =>
+          i.exceptions.some((e) => e.type === "blocked"),
+        ).length,
+      },
       { exceptionType: "pending_confirm", count: 0 },
       { exceptionType: "pending_regression", count: 0 },
       { exceptionType: "stale", count: 0 },
@@ -183,13 +277,19 @@ afterEach(() => {
 describe("ExceptionsPage", () => {
   it("consumes exceptionType and versionId from the URL and sends them to the API", async () => {
     searchParamsMock.current = new URLSearchParams({
+      assigneeId: "01ARZ3NDEKTSV4RRFFQ69G5FB1",
       exceptionType: "pendingRegression",
+      statusCategory: "WAITING",
       versionId: "V_01",
+      workItemType: "BUG",
     });
     getSpaceExceptionsViewMock.mockResolvedValueOnce(
       makeViewResponse([], {
         exceptionType: "pending_regression",
+        assigneeId: "01ARZ3NDEKTSV4RRFFQ69G5FB1",
+        statusCategory: "WAITING",
         versionId: "V_01",
+        workItemType: "BUG",
       }),
     );
 
@@ -199,7 +299,10 @@ describe("ExceptionsPage", () => {
       expect(getSpaceExceptionsViewMock).toHaveBeenCalledWith(
         expect.objectContaining({
           exceptionType: "pending_regression",
+          assigneeId: "01ARZ3NDEKTSV4RRFFQ69G5FB1",
+          statusCategory: "WAITING",
           versionId: "V_01",
+          workItemType: "BUG",
           pageSize: 200,
         }),
       ),
@@ -209,7 +312,12 @@ describe("ExceptionsPage", () => {
   it("renders the overdue tab with the work item title and tabs list", async () => {
     getSpaceExceptionsViewMock.mockResolvedValueOnce(
       makeViewResponse([
-        makeException(makeWorkItem({ id: "01ARZ3NDEKTSV4RRFFQ69G5F01", title: "Crash overdue" })),
+        makeException(
+          makeWorkItem({
+            id: "01ARZ3NDEKTSV4RRFFQ69G5F01",
+            title: "Crash overdue",
+          }),
+        ),
       ]),
     );
 
@@ -220,8 +328,12 @@ describe("ExceptionsPage", () => {
     );
     expect(await screen.findByText("Crash overdue")).toBeInTheDocument();
     // Tab triggers render with translation keys.
-    expect(screen.getByText("m4Views.exceptionType.overdue")).toBeInTheDocument();
-    expect(screen.getByText("m4Views.exceptionType.blocked")).toBeInTheDocument();
+    expect(
+      screen.getByText("m4Views.exceptionType.overdue"),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText("m4Views.exceptionType.blocked"),
+    ).toBeInTheDocument();
   });
 
   it("renders the empty state on the active tab when there are no items", async () => {
@@ -229,9 +341,7 @@ describe("ExceptionsPage", () => {
 
     render(<ExceptionsPage />);
 
-    await waitFor(() =>
-      expect(getSpaceExceptionsViewMock).toHaveBeenCalled(),
-    );
+    await waitFor(() => expect(getSpaceExceptionsViewMock).toHaveBeenCalled());
     expect(
       await screen.findByText("spaceExceptions.states.empty.title"),
     ).toBeInTheDocument();
@@ -248,7 +358,9 @@ describe("ExceptionsPage", () => {
   });
 
   it("shows the loadingList state while the view fetch is pending", async () => {
-    let resolve: (value: ReturnType<typeof makeViewResponse>) => void = () => {};
+    let resolve: (
+      value: ReturnType<typeof makeViewResponse>,
+    ) => void = () => {};
     getSpaceExceptionsViewMock.mockImplementationOnce(
       () =>
         new Promise((r) => {
@@ -286,14 +398,14 @@ describe("ExceptionsPage", () => {
     getSpaceExceptionsViewMock.mockResolvedValueOnce(
       makeViewResponse(
         [
-        makeException(
-          makeWorkItem({
-            id: "01ARZ3NDEKTSV4RRFFQ69G5F02",
-            title: "Blocked only",
-            exceptionSignals: [{ type: "blocked", reason: "Waiting on API" }],
-          }),
-          "blocked",
-        ),
+          makeException(
+            makeWorkItem({
+              id: "01ARZ3NDEKTSV4RRFFQ69G5F02",
+              title: "Blocked only",
+              exceptionSignals: [{ type: "blocked", reason: "Waiting on API" }],
+            }),
+            "blocked",
+          ),
         ],
         { exceptionType: "blocked" },
       ),
@@ -320,6 +432,108 @@ describe("ExceptionsPage", () => {
     );
   });
 
+  it("syncs assignee, status, and work item type filters to the URL and API query", async () => {
+    getSpaceExceptionsViewMock.mockResolvedValue(makeViewResponse([]));
+
+    render(<ExceptionsPage />);
+
+    await waitFor(() =>
+      expect(getSpaceExceptionsViewMock).toHaveBeenCalledTimes(1),
+    );
+
+    fireEvent.click(
+      screen.getByTestId(
+        "exceptions-filter-assigneeId-01ARZ3NDEKTSV4RRFFQ69G5FB1",
+      ),
+    );
+
+    await waitFor(() =>
+      expect(getSpaceExceptionsViewMock).toHaveBeenLastCalledWith(
+        expect.objectContaining({
+          assigneeId: "01ARZ3NDEKTSV4RRFFQ69G5FB1",
+        }),
+      ),
+    );
+    expect(routerMock.replace).toHaveBeenLastCalledWith(
+      expect.stringContaining("assigneeId=01ARZ3NDEKTSV4RRFFQ69G5FB1"),
+      expect.objectContaining({ scroll: false }),
+    );
+
+    fireEvent.click(
+      screen.getByTestId("exceptions-filter-statusCategory-WAITING"),
+    );
+
+    await waitFor(() =>
+      expect(getSpaceExceptionsViewMock).toHaveBeenLastCalledWith(
+        expect.objectContaining({
+          assigneeId: "01ARZ3NDEKTSV4RRFFQ69G5FB1",
+          statusCategory: "WAITING",
+        }),
+      ),
+    );
+
+    fireEvent.click(screen.getByTestId("exceptions-filter-workItemType-BUG"));
+
+    await waitFor(() =>
+      expect(getSpaceExceptionsViewMock).toHaveBeenLastCalledWith(
+        expect.objectContaining({
+          assigneeId: "01ARZ3NDEKTSV4RRFFQ69G5FB1",
+          statusCategory: "WAITING",
+          workItemType: "BUG",
+        }),
+      ),
+    );
+  });
+
+  it("renders stale and evidence metadata for exception rows", async () => {
+    getSpaceExceptionsViewMock.mockResolvedValueOnce(
+      makeViewResponse(
+        [
+          {
+            workItem: makeWorkItem({
+              id: "01ARZ3NDEKTSV4RRFFQ69G5F09",
+              title: "Stale with metadata",
+              exceptionSignals: [
+                {
+                  type: "stale",
+                  reason: "No status change",
+                  evidenceSource: "LAST_STATUS_CHANGED_AT",
+                  staleDays: 8,
+                  staleThresholdDays: 3,
+                  lastStatusChangedAt: "2026-05-01T00:00:00.000Z",
+                },
+              ],
+            }),
+            exceptions: [
+              {
+                type: "stale",
+                reason: "No status change",
+                evidenceSource: "LAST_STATUS_CHANGED_AT",
+                staleDays: 8,
+                staleThresholdDays: 3,
+                lastStatusChangedAt: "2026-05-01T00:00:00.000Z",
+              },
+            ],
+          },
+        ],
+        { exceptionType: "stale" },
+      ),
+    );
+    searchParamsMock.current = new URLSearchParams({
+      exceptionType: "stale",
+    });
+
+    render(<ExceptionsPage />);
+
+    expect(await screen.findByText("Stale with metadata")).toBeInTheDocument();
+    expect(
+      screen.getByText(/spaceExceptions\.list\.staleMeta/),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(/spaceExceptions\.list\.sourceMeta/),
+    ).toBeInTheDocument();
+  });
+
   it("opens the task detail sheet when an exception row is clicked", async () => {
     getSpaceExceptionsViewMock.mockResolvedValueOnce(
       makeViewResponse([
@@ -341,9 +555,9 @@ describe("ExceptionsPage", () => {
     expect(
       await screen.findByTestId("task-detail-sheet-open"),
     ).toBeInTheDocument();
-    expect(
-      screen.getByTestId("task-detail-sheet-item-title").textContent,
-    ).toBe("Click exception");
+    expect(screen.getByTestId("task-detail-sheet-item-title").textContent).toBe(
+      "Click exception",
+    );
   });
 
   it("records exception row opens and refetches when detail changes", async () => {
@@ -435,19 +649,37 @@ describe("ExceptionsPage", () => {
       "exceptions-threshold-dialog-input",
     );
     fireEvent.change(input, { target: { value: "7" } });
-    fireEvent.click(
-      screen.getByTestId("exceptions-threshold-dialog-submit"),
-    );
+    fireEvent.click(screen.getByTestId("exceptions-threshold-dialog-submit"));
 
     await waitFor(() => expect(updateSpaceMock).toHaveBeenCalledTimes(1));
     expect(updateSpaceMock).toHaveBeenCalledWith("SPC_01", {
       staleThresholdDays: 7,
     });
     await waitFor(() =>
-      expect(
-        getSpaceExceptionsViewMock.mock.calls.length,
-      ).toBeGreaterThan(initialFetchCalls),
+      expect(getSpaceExceptionsViewMock.mock.calls.length).toBeGreaterThan(
+        initialFetchCalls,
+      ),
     );
+  });
+
+  it("rejects non-integer threshold values in the dialog", async () => {
+    getSpaceExceptionsViewMock.mockResolvedValue(makeViewResponse([]));
+
+    render(<ExceptionsPage />);
+
+    const button = await screen.findByTestId("exceptions-threshold-button");
+    fireEvent.click(button);
+
+    const input = await screen.findByTestId(
+      "exceptions-threshold-dialog-input",
+    );
+    fireEvent.change(input, { target: { value: "1.5" } });
+    fireEvent.click(screen.getByTestId("exceptions-threshold-dialog-submit"));
+
+    expect(
+      await screen.findByText("spaceExceptions.threshold.field.error"),
+    ).toBeInTheDocument();
+    expect(updateSpaceMock).not.toHaveBeenCalled();
   });
 
   it("disables the threshold button when the current space role cannot manage", async () => {

@@ -45,7 +45,13 @@ describe("M4 view filter forms", () => {
     ).toEqual(["assigneeId", "statusCategory", "workItemType"]);
     expect(
       getM4ViewFilterControls("space-exceptions").map((control) => control.id),
-    ).toContain("exceptionType");
+    ).toEqual([
+      "versionId",
+      "assigneeId",
+      "statusCategory",
+      "workItemType",
+      "exceptionType",
+    ]);
   });
 
   it("normalizes empty and ALL values before parsing shared query schemas", () => {
@@ -101,15 +107,21 @@ describe("M4 view filter forms", () => {
     expect(
       toSpaceExceptionsViewQuery({
         exceptionType: "blocked",
+        assigneeId,
         organizationId,
+        statusCategory: "WAITING",
         versionId,
+        workItemType: "BUG",
       }),
     ).toEqual({
+      assigneeId,
       exceptionType: "blocked",
       organizationId,
       page: 1,
       pageSize: 20,
+      statusCategory: "WAITING",
       versionId,
+      workItemType: "BUG",
     });
   });
 });

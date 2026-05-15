@@ -3,15 +3,24 @@
 import type {
   GetSpaceExceptionsViewResponse,
   SpaceExceptionItem,
+  StatusCategory,
+  ViewExceptionSignal,
   ViewExceptionType,
+  WorkItemType,
 } from "@project-delivery/shared";
 import {
   Bug,
   CheckCircle2,
+  ChevronDown,
   Clock,
+  Filter,
+  GitBranch,
+  Layers2,
   PauseCircle,
   Settings2,
   Timer,
+  Users,
+  XCircle,
   type LucideIcon,
 } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
@@ -24,6 +33,11 @@ import { usePathname, useRouter } from "../../i18n/routing";
 import { getSpace } from "../../lib/space-service";
 import { cn } from "../../lib/utils";
 import type { WorkItemViewModel } from "../../lib/v2/work-item-view-model";
+import { useSpaceMembers, useVersions } from "../../lib/v2/lookups";
+import {
+  getM4ViewFilterControls,
+  type M4ViewFilterControlModel,
+} from "../../lib/view-forms";
 import { getSpaceExceptionsView } from "../../lib/view-service";
 import { toMockWorkItem } from "../workbench/my-workbench";
 import { useSession } from "../providers/session-provider";
@@ -32,6 +46,12 @@ import { recordRecentOpen } from "../shell/recent-opens";
 import { Avatar, AvatarFallback } from "../ui/avatar";
 import { Badge } from "../ui/badge";
 import { Button } from "../ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "../ui/dropdown-menu";
 import { StatusBadge } from "../ui/status-badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../ui/tabs";
 import { TaskDetailSheet } from "../work-item/task-detail-sheet";
@@ -83,6 +103,18 @@ const toneClass: Record<Tone, string> = {
   default: "text-muted-foreground",
 };
 
+const exceptionFilterControls: M4ViewFilterControlModel[] =
+  getM4ViewFilterControls("space-exceptions").filter(
+    (control) => control.id !== "exceptionType",
+  );
+
+type ExceptionFilterValues = {
+  assigneeId?: string;
+  statusCategory?: StatusCategory;
+  versionId?: string;
+  workItemType?: WorkItemType;
+};
+
 export function ExceptionsPage() {
   const t = useTranslations("spaceExceptions");
   const tNav = useTranslations("shell.nav");
@@ -95,24 +127,43 @@ export function ExceptionsPage() {
   const { currentSpace, session } = useSession();
   const requestedExceptionType =
     normalizeExceptionType(searchParams.get("exceptionType")) ?? tabs[0].key;
-  const versionIdParam = normalizeSearchParam(searchParams.get("versionId"));
+  const requestedFilters = useMemo<ExceptionFilterValues>(
+    () => ({
+      assigneeId: normalizeSearchParam(searchParams.get("assigneeId")),
+      statusCategory: normalizeStatusCategory(
+        searchParams.get("statusCategory"),
+      ),
+      versionId: normalizeSearchParam(searchParams.get("versionId")),
+      workItemType: normalizeWorkItemType(searchParams.get("workItemType")),
+    }),
+    [searchParams],
+  );
   const [view, setView] = useState<GetSpaceExceptionsViewResponse | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [errorKey, setErrorKey] = useState<string | null>(null);
   const [active, setActive] = useState<WorkItemViewModel | null>(null);
   const [open, setOpen] = useState(false);
-  const [tabValue, setTabValue] =
-    useState<ViewExceptionType>(requestedExceptionType);
+  const [tabValue, setTabValue] = useState<ViewExceptionType>(
+    requestedExceptionType,
+  );
+  const [filters, setFilters] =
+    useState<ExceptionFilterValues>(requestedFilters);
   const [thresholdValue, setThresholdValue] = useState<number | null>(null);
   const [thresholdOpen, setThresholdOpen] = useState(false);
 
   const organizationId = session?.defaultOrganizationId;
   const spaceId = session?.defaultSpaceId;
   const canEditThreshold = canManageSpaceThreshold(currentSpace?.role);
+  const { members, getMember } = useSpaceMembers(spaceId, organizationId);
+  const { versions, getVersion } = useVersions(spaceId, organizationId);
 
   useEffect(() => {
     setTabValue(requestedExceptionType);
   }, [requestedExceptionType]);
+
+  useEffect(() => {
+    setFilters(requestedFilters);
+  }, [requestedFilters]);
 
   const fetchView = useCallback(async () => {
     if (!spaceId) {
@@ -126,7 +177,10 @@ export function ExceptionsPage() {
       const next = await getSpaceExceptionsView({
         spaceId,
         organizationId,
-        versionId: versionIdParam,
+        versionId: filters.versionId,
+        assigneeId: filters.assigneeId,
+        statusCategory: filters.statusCategory,
+        workItemType: filters.workItemType,
         exceptionType: tabValue,
         page: 1,
         pageSize: 200,
@@ -137,7 +191,15 @@ export function ExceptionsPage() {
     } finally {
       setIsLoading(false);
     }
-  }, [organizationId, spaceId, tabValue, versionIdParam]);
+  }, [
+    filters.assigneeId,
+    filters.statusCategory,
+    filters.versionId,
+    filters.workItemType,
+    organizationId,
+    spaceId,
+    tabValue,
+  ]);
 
   useEffect(() => {
     if (!spaceId) {
@@ -178,7 +240,10 @@ export function ExceptionsPage() {
         const next = await getSpaceExceptionsView({
           spaceId: spaceId!,
           organizationId,
-          versionId: versionIdParam,
+          versionId: filters.versionId,
+          assigneeId: filters.assigneeId,
+          statusCategory: filters.statusCategory,
+          workItemType: filters.workItemType,
           exceptionType: tabValue,
           page: 1,
           pageSize: 200,
@@ -203,7 +268,15 @@ export function ExceptionsPage() {
     return () => {
       isActive = false;
     };
-  }, [organizationId, spaceId, tabValue, versionIdParam]);
+  }, [
+    filters.assigneeId,
+    filters.statusCategory,
+    filters.versionId,
+    filters.workItemType,
+    organizationId,
+    spaceId,
+    tabValue,
+  ]);
 
   const grouped = useMemo(() => {
     const viewExceptionType = view?.filters?.exceptionType ?? tabValue;
@@ -230,9 +303,11 @@ export function ExceptionsPage() {
 
   const buildExceptionViewModel = useCallback(
     (item: SpaceExceptionItem): WorkItemViewModel => {
-      const mock = toMockWorkItem(locale, undefined, tStatusCategory)(
-        item.workItem,
-      );
+      const mock = toMockWorkItem(
+        locale,
+        { getMember, getVersion },
+        tStatusCategory,
+      )(item.workItem);
       const blockedSignal = item.exceptions.find(
         (signal) => signal.type === "blocked",
       );
@@ -242,7 +317,7 @@ export function ExceptionsPage() {
         blockedReason: mock.blockedReason ?? blockedSignal?.reason,
       };
     },
-    [locale, tStatusCategory],
+    [getMember, getVersion, locale, tStatusCategory],
   );
 
   const rememberWorkItem = useCallback(
@@ -304,17 +379,70 @@ export function ExceptionsPage() {
   );
 
   const pageDescription = t("page.description");
-  const handleTabChange = useCallback(
-    (next: string) => {
-      const nextType = normalizeExceptionType(next) ?? tabs[0].key;
-      setTabValue(nextType);
+  const hasActiveFilters = Boolean(
+    filters.versionId ||
+    filters.assigneeId ||
+    filters.statusCategory ||
+    filters.workItemType,
+  );
+  const replaceQueryParam = useCallback(
+    (key: keyof ExceptionFilterValues | "exceptionType", value?: string) => {
       const params = new URLSearchParams(searchParams.toString());
-      params.set("exceptionType", nextType);
+      if (value) {
+        params.set(key, value);
+      } else {
+        params.delete(key);
+      }
       const query = params.toString();
       const target = query ? `${pathname}?${query}` : pathname;
       router.replace(target as never, { scroll: false });
     },
     [pathname, router, searchParams],
+  );
+  const handleFilterChange = useCallback(
+    (key: keyof ExceptionFilterValues, value?: string) => {
+      const nextFilters = {
+        ...filters,
+        [key]:
+          key === "statusCategory"
+            ? normalizeStatusCategory(value ?? null)
+            : key === "workItemType"
+              ? normalizeWorkItemType(value ?? null)
+              : normalizeSearchParam(value ?? null),
+      };
+      setFilters(nextFilters);
+      const params = new URLSearchParams(searchParams.toString());
+      for (const control of exceptionFilterControls) {
+        const nextValue = getExceptionFilterValue(nextFilters, control.id);
+        if (nextValue) {
+          params.set(control.id, nextValue);
+        } else {
+          params.delete(control.id);
+        }
+      }
+      const query = params.toString();
+      const target = query ? `${pathname}?${query}` : pathname;
+      router.replace(target as never, { scroll: false });
+    },
+    [filters, pathname, router, searchParams],
+  );
+  const clearFilters = useCallback(() => {
+    setFilters({});
+    const params = new URLSearchParams(searchParams.toString());
+    for (const control of exceptionFilterControls) {
+      params.delete(control.id);
+    }
+    const query = params.toString();
+    const target = query ? `${pathname}?${query}` : pathname;
+    router.replace(target as never, { scroll: false });
+  }, [pathname, router, searchParams]);
+  const handleTabChange = useCallback(
+    (next: string) => {
+      const nextType = normalizeExceptionType(next) ?? tabs[0].key;
+      setTabValue(nextType);
+      replaceQueryParam("exceptionType", nextType);
+    },
+    [replaceQueryParam],
   );
 
   if (!session) {
@@ -407,25 +535,37 @@ export function ExceptionsPage() {
         onValueChange={handleTabChange}
         className="flex flex-1 flex-col overflow-hidden"
       >
-        <TabsList className="px-6">
-          {grouped.map((tab) => {
-            const Icon = tab.icon;
-            return (
-              <TabsTrigger
-                key={tab.key}
-                value={tab.key}
-                className="gap-1.5"
-                data-testid={`exceptions-tab-${tab.key}`}
-              >
-                <Icon className={cn("h-3 w-3", toneClass[tab.tone])} />
-                {tRoot(`m4Views.exceptionType.${tab.key}`)}
-                <span className="rounded bg-muted px-1.5 py-0.5 font-mono text-[10px] text-muted-foreground">
-                  {tab.count}
-                </span>
-              </TabsTrigger>
-            );
-          })}
-        </TabsList>
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border px-6 py-2">
+          <TabsList>
+            {grouped.map((tab) => {
+              const Icon = tab.icon;
+              return (
+                <TabsTrigger
+                  key={tab.key}
+                  value={tab.key}
+                  className="gap-1.5"
+                  data-testid={`exceptions-tab-${tab.key}`}
+                >
+                  <Icon className={cn("h-3 w-3", toneClass[tab.tone])} />
+                  {tRoot(`m4Views.exceptionType.${tab.key}`)}
+                  <span className="rounded bg-muted px-1.5 py-0.5 font-mono text-[10px] text-muted-foreground">
+                    {tab.count}
+                  </span>
+                </TabsTrigger>
+              );
+            })}
+          </TabsList>
+
+          <ExceptionFilterToolbar
+            filters={filters}
+            members={members}
+            versions={versions}
+            hasActiveFilters={hasActiveFilters}
+            onChange={handleFilterChange}
+            onClear={clearFilters}
+            tRoot={tRoot}
+          />
+        </div>
 
         {grouped.map((tab) => (
           <TabsContent
@@ -450,6 +590,12 @@ export function ExceptionsPage() {
                     (signal) => signal.type === tab.key,
                   );
                   const exceptionDetail = matchedSignal?.reason;
+                  const exceptionMeta = buildExceptionMeta(
+                    matchedSignal,
+                    locale,
+                    t,
+                    tRoot,
+                  );
                   const isSelected = active?.id === item.workItem.id;
 
                   return (
@@ -478,14 +624,23 @@ export function ExceptionsPage() {
                         <span className="flex-1 truncate text-[13px] font-medium">
                           {mock.title}
                         </span>
-                        {exceptionDetail && (
-                          <span
-                            className={cn(
-                              "hidden text-[11px] md:inline-block",
-                              toneClass[tab.tone],
-                            )}
-                          >
-                            {exceptionDetail}
+                        {(exceptionDetail || exceptionMeta.length > 0) && (
+                          <span className="hidden min-w-0 max-w-[280px] flex-col items-end gap-0.5 text-right md:flex">
+                            {exceptionDetail ? (
+                              <span
+                                className={cn(
+                                  "max-w-full truncate text-[11px]",
+                                  toneClass[tab.tone],
+                                )}
+                              >
+                                {exceptionDetail}
+                              </span>
+                            ) : null}
+                            {exceptionMeta.length > 0 ? (
+                              <span className="max-w-full truncate text-[10px] text-muted-foreground">
+                                {exceptionMeta.join(" · ")}
+                              </span>
+                            ) : null}
                           </span>
                         )}
                         <StatusBadge
@@ -542,12 +697,246 @@ export function ExceptionsPage() {
   );
 }
 
-function normalizeExceptionType(value: string | null): ViewExceptionType | null {
+function ExceptionFilterToolbar({
+  filters,
+  hasActiveFilters,
+  members,
+  onChange,
+  onClear,
+  tRoot,
+  versions,
+}: {
+  filters: ExceptionFilterValues;
+  hasActiveFilters: boolean;
+  members: ReturnType<typeof useSpaceMembers>["members"];
+  onChange: (key: keyof ExceptionFilterValues, value?: string) => void;
+  onClear: () => void;
+  tRoot: ReturnType<typeof useTranslations>;
+  versions: ReturnType<typeof useVersions>["versions"];
+}) {
+  return (
+    <div className="flex flex-wrap items-center gap-2">
+      {exceptionFilterControls.map((control) => {
+        const value = getExceptionFilterValue(filters, control.id);
+        const Icon = getExceptionFilterIcon(control.id);
+        const options = getExceptionFilterOptions({
+          controlId: control.id,
+          members,
+          tRoot,
+          versions,
+        });
+        const selectedLabel =
+          options.find((option) => option.value === value)?.label ??
+          tRoot(control.allLabelKey ?? control.labelKey);
+
+        return (
+          <DropdownMenu key={control.id}>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="outline"
+                size="sm"
+                className="text-xs"
+                data-testid={`exceptions-filter-${control.id}`}
+              >
+                <Icon className="h-3 w-3" />
+                <span className="max-w-[140px] truncate">{selectedLabel}</span>
+                <ChevronDown className="h-3 w-3" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start" className="w-52">
+              <DropdownMenuItem
+                data-testid={`exceptions-filter-${control.id}-all`}
+                onSelect={() =>
+                  onChange(control.id as keyof ExceptionFilterValues)
+                }
+              >
+                {tRoot(control.allLabelKey ?? control.labelKey)}
+              </DropdownMenuItem>
+              {options.map((option) => (
+                <DropdownMenuItem
+                  key={option.value}
+                  data-testid={`exceptions-filter-${control.id}-${option.value}`}
+                  onSelect={() =>
+                    onChange(
+                      control.id as keyof ExceptionFilterValues,
+                      option.value,
+                    )
+                  }
+                  className="gap-2"
+                >
+                  <span className="flex-1 truncate">{option.label}</span>
+                </DropdownMenuItem>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        );
+      })}
+
+      {hasActiveFilters ? (
+        <Button
+          variant="ghost"
+          size="sm"
+          className="text-xs"
+          data-testid="exceptions-filter-clear"
+          onClick={onClear}
+        >
+          <XCircle className="h-3 w-3" />
+          {tRoot("m4Views.filters.clear")}
+        </Button>
+      ) : null}
+    </div>
+  );
+}
+
+function getExceptionFilterValue(
+  filters: ExceptionFilterValues,
+  controlId: string,
+): string | undefined {
+  if (controlId === "versionId") return filters.versionId;
+  if (controlId === "assigneeId") return filters.assigneeId;
+  if (controlId === "statusCategory") return filters.statusCategory;
+  if (controlId === "workItemType") return filters.workItemType;
+  return undefined;
+}
+
+function getExceptionFilterIcon(controlId: string): LucideIcon {
+  if (controlId === "versionId") return GitBranch;
+  if (controlId === "assigneeId") return Users;
+  if (controlId === "workItemType") return Layers2;
+  return Filter;
+}
+
+function getExceptionFilterOptions({
+  controlId,
+  members,
+  tRoot,
+  versions,
+}: {
+  controlId: string;
+  members: ReturnType<typeof useSpaceMembers>["members"];
+  tRoot: ReturnType<typeof useTranslations>;
+  versions: ReturnType<typeof useVersions>["versions"];
+}): Array<{ label: string; value: string }> {
+  if (controlId === "versionId") {
+    return versions.map((version) => ({
+      label: version.name,
+      value: version.id,
+    }));
+  }
+
+  if (controlId === "assigneeId") {
+    return members.map((member) => ({
+      label: member.user.name || member.user.username || member.userId,
+      value: member.userId,
+    }));
+  }
+
+  const control = exceptionFilterControls.find((item) => item.id === controlId);
+  return (control?.options ?? []).map((option) => ({
+    label: tRoot(option.labelKey),
+    value: option.value,
+  }));
+}
+
+function buildExceptionMeta(
+  signal: ViewExceptionSignal | undefined,
+  locale: string,
+  t: ReturnType<typeof useTranslations<"spaceExceptions">>,
+  tRoot: ReturnType<typeof useTranslations>,
+): string[] {
+  if (!signal) {
+    return [];
+  }
+
+  const meta: string[] = [];
+
+  if (
+    signal.type === "stale" &&
+    typeof signal.staleDays === "number" &&
+    typeof signal.staleThresholdDays === "number"
+  ) {
+    meta.push(
+      t("list.staleMeta", {
+        count: signal.staleDays,
+        threshold: signal.staleThresholdDays,
+      }),
+    );
+  }
+
+  if (signal.dueDate) {
+    meta.push(t("list.dueMeta", { date: formatDate(signal.dueDate, locale) }));
+  }
+
+  if (signal.lastStatusChangedAt) {
+    meta.push(
+      t("list.lastChangedMeta", {
+        date: formatDate(signal.lastStatusChangedAt, locale),
+      }),
+    );
+  }
+
+  if (signal.blockedReason && signal.blockedReason !== signal.reason) {
+    meta.push(signal.blockedReason);
+  }
+
+  if (signal.evidenceSource) {
+    meta.push(
+      t("list.sourceMeta", {
+        source: tRoot(
+          `spaceExceptions.evidenceSource.${signal.evidenceSource}`,
+        ),
+      }),
+    );
+  }
+
+  return Array.from(new Set(meta.filter(Boolean)));
+}
+
+function formatDate(value: string, locale: string): string {
+  const date = new Date(value);
+
+  if (Number.isNaN(date.getTime())) {
+    return value;
+  }
+
+  return new Intl.DateTimeFormat(locale, { dateStyle: "medium" }).format(date);
+}
+
+function normalizeExceptionType(
+  value: string | null,
+): ViewExceptionType | null {
   if (!value) {
     return null;
   }
 
   return exceptionTypeAliases[value] ?? null;
+}
+
+function normalizeStatusCategory(
+  value: string | null,
+): StatusCategory | undefined {
+  const normalized = normalizeSearchParam(value);
+  if (
+    normalized === "NOT_STARTED" ||
+    normalized === "IN_PROGRESS" ||
+    normalized === "WAITING" ||
+    normalized === "VERIFYING" ||
+    normalized === "DONE" ||
+    normalized === "TERMINATED"
+  ) {
+    return normalized;
+  }
+
+  return undefined;
+}
+
+function normalizeWorkItemType(value: string | null): WorkItemType | undefined {
+  const normalized = normalizeSearchParam(value);
+  if (normalized === "TASK" || normalized === "BUG") {
+    return normalized;
+  }
+
+  return undefined;
 }
 
 function normalizeSearchParam(value: string | null): string | undefined {

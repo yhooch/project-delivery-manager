@@ -3,6 +3,7 @@
 import {
   AlertTriangle,
   CheckCircle2,
+  ChevronDown,
   Cog,
   FileText,
   FolderKanban,
@@ -31,6 +32,7 @@ type NavItem = {
 };
 
 type NavGroup = {
+  key: string;
   label: string;
   items: NavItem[];
 };
@@ -43,16 +45,14 @@ type SidebarProps = {
 export function Sidebar({ className, onNavigate }: SidebarProps) {
   const tShell = useTranslations("shell.nav");
   const pathname = usePathname();
-  const { currentOrganization, currentSpace } = useSession();
+  const { currentOrganization } = useSession();
 
   const isAdmin =
     currentOrganization?.role === "OWNER" ||
     currentOrganization?.role === "ADMIN";
-  const isSpaceManager =
-    currentSpace?.role === "SPACE_ADMIN" || currentSpace?.role === "PM";
-
   const groups: NavGroup[] = [
     {
+      key: "work",
       label: tShell("group.work"),
       items: [
         {
@@ -65,6 +65,7 @@ export function Sidebar({ className, onNavigate }: SidebarProps) {
       ],
     },
     {
+      key: "deliver",
       label: tShell("group.deliver"),
       items: [
         {
@@ -102,6 +103,7 @@ export function Sidebar({ className, onNavigate }: SidebarProps) {
       ],
     },
     {
+      key: "document",
       label: tShell("group.document"),
       items: [
         {
@@ -117,10 +119,8 @@ export function Sidebar({ className, onNavigate }: SidebarProps) {
         },
       ],
     },
-  ];
-
-  if (isSpaceManager) {
-    groups.push({
+    {
+      key: "configure",
       label: tShell("group.configure"),
       items: [
         {
@@ -134,8 +134,8 @@ export function Sidebar({ className, onNavigate }: SidebarProps) {
           icon: Settings2,
         },
       ],
-    });
-  }
+    },
+  ];
 
   return (
     <aside
@@ -156,7 +156,11 @@ export function Sidebar({ className, onNavigate }: SidebarProps) {
 
       <nav className="flex flex-1 flex-col gap-3 overflow-y-auto p-2">
         {groups.map((group) => (
-          <div key={group.label} className="flex flex-col gap-0.5">
+          <div
+            key={group.key}
+            className="flex flex-col gap-0.5"
+            data-testid={`sidebar-nav-group-${group.key}`}
+          >
             <div className="px-2 pt-1 text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
               {group.label}
             </div>
@@ -198,22 +202,50 @@ export function Sidebar({ className, onNavigate }: SidebarProps) {
             </ul>
           </div>
         ))}
-      </nav>
 
-      {isAdmin && (
-        <div className="shrink-0 border-t border-border p-2">
-          <Link
-            href="/organization"
-            onClick={onNavigate}
-            className={cn(
-              "flex h-7 items-center gap-2 rounded-md px-2 text-[12px] text-muted-foreground transition-colors hover:bg-muted/50 hover:text-foreground",
-            )}
+        {isAdmin && (
+          <details
+            className="group flex flex-col gap-0.5 border-t border-border pt-2"
+            data-testid="sidebar-organization-section"
+            open
           >
-            <Cog className="h-3.5 w-3.5" />
-            <span className="flex-1 truncate">{tShell("organization")}</span>
-          </Link>
-        </div>
-      )}
+            <summary className="flex h-7 cursor-pointer list-none items-center gap-2 rounded-md px-2 text-[10px] font-medium uppercase tracking-wider text-muted-foreground transition-colors hover:bg-muted/50 hover:text-foreground [&::-webkit-details-marker]:hidden">
+              <Cog className="h-3.5 w-3.5 shrink-0" />
+              <span className="flex-1 truncate">
+                {tShell("group.organization")}
+              </span>
+              <ChevronDown className="h-3 w-3 shrink-0 transition-transform group-open:rotate-180" />
+            </summary>
+            <ul className="mt-0.5 flex flex-col gap-px">
+              <li>
+                <Link
+                  href="/organization"
+                  onClick={onNavigate}
+                  className={cn(
+                    "flex h-7 items-center gap-2 rounded-md px-2 text-[13px] transition-colors",
+                    pathname === "/organization" ||
+                      pathname.startsWith("/organization/")
+                      ? "bg-muted text-foreground font-medium"
+                      : "text-muted-foreground hover:bg-muted/50 hover:text-foreground",
+                  )}
+                >
+                  <Cog
+                    className={cn(
+                      "h-3.5 w-3.5 shrink-0",
+                      (pathname === "/organization" ||
+                        pathname.startsWith("/organization/")) &&
+                        "text-primary",
+                    )}
+                  />
+                  <span className="flex-1 truncate">
+                    {tShell("organization")}
+                  </span>
+                </Link>
+              </li>
+            </ul>
+          </details>
+        )}
+      </nav>
     </aside>
   );
 }

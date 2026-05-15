@@ -6,6 +6,8 @@ import type {
   BugView,
   Comment,
   PermissionSnapshot,
+  Priority,
+  Requirement,
   TimelineEvent,
   WorkItemDetail,
   WorkflowActionSummary,
@@ -23,6 +25,7 @@ import {
   Loader2,
   MessageSquare,
   Paperclip,
+  Pencil,
   Send,
   User2,
 } from "lucide-react";
@@ -41,6 +44,7 @@ import {
 import { executeAction } from "../../lib/action-service";
 import { getBug } from "../../lib/bug-service";
 import { createComment, listComments } from "../../lib/comment-service";
+import { listRequirements } from "../../lib/requirement-service";
 import { listTimeline } from "../../lib/timeline-service";
 import { cn } from "../../lib/utils";
 import { type WorkItemViewModel } from "../../lib/v2/work-item-view-model";
@@ -49,7 +53,8 @@ import {
   useSpaceMembers,
   useVersions,
 } from "../../lib/v2/lookups";
-import { getWorkItem } from "../../lib/work-item-service";
+import { toUpdateTaskRequest } from "../../lib/work-item-forms";
+import { getWorkItem, updateWorkItem } from "../../lib/work-item-service";
 
 import { useSession } from "../providers/session-provider";
 import { Avatar, AvatarFallback, AvatarImage } from "../ui/avatar";
@@ -76,6 +81,8 @@ const priorityColor: Record<WorkItemViewModel["priority"], string> = {
   HIGH: "text-warning",
   URGENT: "text-destructive",
 };
+
+const TASK_PRIORITIES: Priority[] = ["LOW", "MEDIUM", "HIGH", "URGENT"];
 
 type Props = {
   item: WorkItemViewModel | null;
@@ -144,6 +151,22 @@ function formatDateTime(value: string, locale: string): string {
     }).format(date);
   } catch {
     return value;
+  }
+}
+
+function toDateInputValue(value: string | undefined): string {
+  if (!value) {
+    return "";
+  }
+
+  try {
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) {
+      return "";
+    }
+    return date.toISOString().slice(0, 10);
+  } catch {
+    return "";
   }
 }
 
@@ -419,9 +442,16 @@ function TaskDetailSheetBody({
             item={item}
             detail={detail}
             lookup={lookup}
+            canEdit={!isBug && permissionState.permissions?.canEdit === true}
+            organizationId={organizationId}
+            spaceId={spaceId}
             t={t}
             tRoot={tApiError}
             versionName={versionName}
+            onSaved={async () => {
+              await permissionState.fetchPermissions();
+              onChanged?.();
+            }}
           />
         </TabsContent>
 
@@ -1009,16 +1039,24 @@ function ActionFormFieldControl({
 // ---------------------------------------------------------------------------
 
 function DetailTab({
+  canEdit,
   item,
   detail,
   lookup,
+  onSaved,
+  organizationId,
+  spaceId,
   t,
   tRoot,
   versionName,
 }: {
+  canEdit: boolean;
   item: WorkItemViewModel;
   detail: SheetDetail | null;
   lookup: ReturnType<typeof useSpaceMembers>;
+  onSaved: () => Promise<void>;
+  organizationId?: string;
+  spaceId?: string;
   t: ReturnType<typeof useTranslations<"taskDetail">>;
   tRoot: ReturnType<typeof useTranslations>;
   versionName?: string;
@@ -1028,9 +1066,296 @@ function DetailTab({
   const reporter = displayUser(detail?.reporterId, lookup.getMember);
   const updatedAt = detail?.lastActionAt ?? detail?.lastStatusChangedAt;
   const bugDetail = isBugSheetDetail(detail) ? detail.bugDetail : null;
+  const { versions } = useVersions(spaceId, organizationId);
+  const [editing, setEditing] = useState(false);
+  const [requirements, setRequirements] = useState<Requirement[]>([]);
+  const [title, setTitle] = useState("");
+  const [description, setDescription] = useState("");
+  const [priority, setPriority] = useState<Priority>("MEDIUM");
+  const [editAssigneeId, setEditAssigneeId] = useState("");
+  const [editVersionId, setEditVersionId] = useState("");
+  const [editRequirementId, setEditRequirementId] = useState("");
+  const [dueDate, setDueDate] = useState("");
+  const [titleError, setTitleError] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
+
+  useEffect(() => {
+    setTitle(detail?.title ?? item.title);
+    setDescription(detail?.description ?? "");
+    setPriority(detail?.priority ?? item.priority);
+    setEditAssigneeId(detail?.assigneeId ?? "");
+    setEditVersionId(detail?.versionId ?? "");
+    setEditRequirementId(detail?.requirementId ?? "");
+    setDueDate(toDateInputValue(detail?.dueDate));
+    setTitleError(false);
+    setSaveError(null);
+  }, [
+    detail?.assigneeId,
+    detail?.description,
+    detail?.dueDate,
+    detail?.priority,
+    detail?.requirementId,
+    detail?.title,
+    detail?.versionId,
+    item.priority,
+    item.title,
+  ]);
+
+  useEffect(() => {
+    if (!editing || !spaceId) {
+      return;
+    }
+
+    let cancelled = false;
+
+    void listRequirements({
+      organizationId,
+      page: 1,
+      pageSize: 100,
+      spaceId,
+    })
+      .then((result) => {
+        if (!cancelled) {
+          setRequirements(result.items);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setRequirements([]);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [editing, organizationId, spaceId]);
+
+  const submitEdit = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!detail || !spaceId || !canEdit) {
+      return;
+    }
+
+    const trimmedTitle = title.trim();
+    if (!trimmedTitle) {
+      setTitleError(true);
+      return;
+    }
+
+    setSaving(true);
+    setSaveError(null);
+
+    try {
+      await updateWorkItem(
+        {
+          organizationId,
+          spaceId,
+          workItemId: detail.id,
+        },
+        toUpdateTaskRequest({
+          assigneeId: editAssigneeId,
+          description,
+          dueDate: dueDate ? new Date(`${dueDate}T00:00:00`).toISOString() : "",
+          priority,
+          requirementId: editRequirementId,
+          title: trimmedTitle,
+          versionId: editVersionId,
+        }),
+      );
+      await onSaved();
+      setEditing(false);
+    } catch (err) {
+      const key = getApiErrorMessageKey(err);
+      setSaveError(tRoot(key));
+    } finally {
+      setSaving(false);
+    }
+  };
 
   return (
     <>
+      {canEdit && detail && (
+        <div className="mb-4 flex justify-end">
+          <Button
+            type="button"
+            size="sm"
+            variant={editing ? "secondary" : "outline"}
+            className="h-7 text-xs"
+            data-testid="task-edit-button"
+            onClick={() => setEditing((current) => !current)}
+          >
+            <Pencil className="h-3 w-3" />
+            {editing ? t("edit.cancel") : t("edit.button")}
+          </Button>
+        </div>
+      )}
+      {editing && detail && (
+        <form
+          data-testid="task-edit-form"
+          className="mb-5 rounded-md border border-border bg-muted/20 p-3"
+          onSubmit={submitEdit}
+          noValidate
+        >
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div className="flex flex-col gap-1.5 sm:col-span-2">
+              <Label htmlFor="task-edit-title">{t("edit.title")}</Label>
+              <Input
+                id="task-edit-title"
+                data-testid="task-edit-title-input"
+                value={title}
+                maxLength={200}
+                disabled={saving}
+                aria-invalid={titleError}
+                onChange={(event) => {
+                  setTitle(event.target.value);
+                  if (titleError) {
+                    setTitleError(false);
+                  }
+                }}
+              />
+              {titleError && (
+                <span className="text-[11px] text-destructive" role="alert">
+                  {t("edit.titleError")}
+                </span>
+              )}
+            </div>
+            <div className="flex flex-col gap-1.5 sm:col-span-2">
+              <Label htmlFor="task-edit-description">
+                {t("description.title")}
+              </Label>
+              <Textarea
+                id="task-edit-description"
+                data-testid="task-edit-description-input"
+                value={description}
+                maxLength={8000}
+                rows={3}
+                disabled={saving}
+                onChange={(event) => setDescription(event.target.value)}
+              />
+            </div>
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="task-edit-priority">{t("fields.priority")}</Label>
+              <select
+                id="task-edit-priority"
+                data-testid="task-edit-priority-select"
+                value={priority}
+                disabled={saving}
+                onChange={(event) =>
+                  setPriority(event.target.value as Priority)
+                }
+                className="h-8 w-full rounded-md border border-input bg-background px-2 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              >
+                {TASK_PRIORITIES.map((nextPriority) => (
+                  <option key={nextPriority} value={nextPriority}>
+                    {t(`priority.${nextPriority}`)}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="task-edit-assignee">{t("fields.assignee")}</Label>
+              <select
+                id="task-edit-assignee"
+                data-testid="task-edit-assignee-select"
+                value={editAssigneeId}
+                disabled={saving}
+                onChange={(event) => setEditAssigneeId(event.target.value)}
+                className="h-8 w-full rounded-md border border-input bg-background px-2 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              >
+                <option value="">{t("edit.unassigned")}</option>
+                {lookup.members.map((member) => (
+                  <option key={member.userId} value={member.userId}>
+                    {member.user.name || member.user.username}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="task-edit-version">{t("fields.version")}</Label>
+              <select
+                id="task-edit-version"
+                data-testid="task-edit-version-select"
+                value={editVersionId}
+                disabled={saving}
+                onChange={(event) => setEditVersionId(event.target.value)}
+                className="h-8 w-full rounded-md border border-input bg-background px-2 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              >
+                <option value="">{t("edit.noVersion")}</option>
+                {versions.map((version) => (
+                  <option key={version.id} value={version.id}>
+                    {version.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="task-edit-requirement">
+                {t("fields.requirement")}
+              </Label>
+              <select
+                id="task-edit-requirement"
+                data-testid="task-edit-requirement-select"
+                value={editRequirementId}
+                disabled={saving}
+                onChange={(event) => setEditRequirementId(event.target.value)}
+                className="h-8 w-full rounded-md border border-input bg-background px-2 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              >
+                <option value="">{t("edit.noRequirement")}</option>
+                {requirements.map((requirement) => (
+                  <option key={requirement.id} value={requirement.id}>
+                    {requirement.title || requirement.id}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="task-edit-due-date">{t("fields.due")}</Label>
+              <Input
+                id="task-edit-due-date"
+                data-testid="task-edit-due-date-input"
+                type="date"
+                value={dueDate}
+                disabled={saving}
+                onChange={(event) => setDueDate(event.target.value)}
+              />
+            </div>
+          </div>
+          {saveError && (
+            <p className="mt-3 text-[11px] text-destructive" role="alert">
+              {saveError}
+            </p>
+          )}
+          <div className="mt-3 flex justify-end gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="h-7 text-xs"
+              disabled={saving}
+              onClick={() => setEditing(false)}
+            >
+              {t("edit.cancel")}
+            </Button>
+            <Button
+              type="submit"
+              size="sm"
+              className="h-7 text-xs"
+              data-testid="task-edit-submit"
+              disabled={saving}
+            >
+              {saving ? (
+                <>
+                  <Loader2 className="h-3 w-3 animate-spin" />
+                  {t("edit.saving")}
+                </>
+              ) : (
+                t("edit.save")
+              )}
+            </Button>
+          </div>
+        </form>
+      )}
       <div className="grid grid-cols-2 gap-x-6 gap-y-3 text-[13px]">
         <FieldRow
           icon={User2}
@@ -1549,7 +1874,9 @@ function AttachmentsTab({
         await fetchAttachments();
       } catch (err) {
         if (err instanceof AttachmentUploadError) {
-          setUploadError(tApiError(`api.error.attachment.${err.code}`));
+          setUploadError(
+            tApiError(`forms.attachments.uploadErrors.${err.code}`),
+          );
         } else {
           setUploadError(tApiError(getApiErrorMessageKey(err)));
         }

@@ -36,6 +36,10 @@ const FIELD_TYPE_OPTIONS: ActionFormFieldType[] = [
   "NUMBER",
 ];
 
+type SelectOptionsErrorKey =
+  | "errors.optionsRequired"
+  | "errors.optionsDuplicate";
+
 export type WorkflowFormFieldDialogMode =
   | { kind: "create" }
   | { kind: "edit"; field: ActionFormFieldSummary };
@@ -94,6 +98,11 @@ export function WorkflowFormFieldDialog({
   }, [mode, open]);
 
   const isEdit = mode.kind === "edit";
+  const selectOptions = parseSelectOptions(optionsText);
+  const selectOptionsErrorKey =
+    fieldType === "SELECT"
+      ? getSelectOptionsErrorKey(selectOptions)
+      : null;
 
   function handleOpenChange(next: boolean) {
     if (!next) {
@@ -109,14 +118,14 @@ export function WorkflowFormFieldDialog({
       const trimmedLabel = label.trim();
       const trimmedKey = keyValue.trim();
       const parsedOrder = Number.parseInt(order, 10);
-      const orderValue = Number.isFinite(parsedOrder) ? Math.max(0, parsedOrder) : 0;
-      const options =
-        fieldType === "SELECT"
-          ? optionsText
-              .split(/\r?\n/)
-              .map((item) => item.trim())
-              .filter((item) => item.length > 0)
-          : undefined;
+      const orderValue = Number.isFinite(parsedOrder)
+        ? Math.max(0, parsedOrder)
+        : 0;
+      const options = fieldType === "SELECT" ? selectOptions : undefined;
+
+      if (selectOptionsErrorKey) {
+        return;
+      }
 
       if (mode.kind === "edit") {
         await updateActionFormField(
@@ -160,7 +169,10 @@ export function WorkflowFormFieldDialog({
   }
 
   const canSubmit =
-    label.trim().length > 0 && keyValue.trim().length > 0 && !isSubmitting;
+    label.trim().length > 0 &&
+    keyValue.trim().length > 0 &&
+    !selectOptionsErrorKey &&
+    !isSubmitting;
 
   return (
     <Dialog onOpenChange={handleOpenChange} open={open}>
@@ -259,6 +271,11 @@ export function WorkflowFormFieldDialog({
               <p className="text-[11px] text-muted-foreground">
                 {t("fields.optionsHint")}
               </p>
+              {selectOptionsErrorKey ? (
+                <p className="text-[11px] text-destructive" role="alert">
+                  {t(selectOptionsErrorKey)}
+                </p>
+              ) : null}
             </div>
           ) : null}
 
@@ -295,4 +312,23 @@ export function WorkflowFormFieldDialog({
       </DialogContent>
     </Dialog>
   );
+}
+
+function parseSelectOptions(value: string): string[] {
+  return value
+    .split(/\r?\n/)
+    .map((item) => item.trim())
+    .filter((item) => item.length > 0);
+}
+
+function getSelectOptionsErrorKey(
+  options: string[],
+): SelectOptionsErrorKey | null {
+  if (options.length === 0) {
+    return "errors.optionsRequired";
+  }
+
+  return new Set(options).size === options.length
+    ? null
+    : "errors.optionsDuplicate";
 }

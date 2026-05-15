@@ -1,9 +1,26 @@
 "use client";
 
 import type { SpaceSummary } from "@project-delivery/shared";
-import { ArrowUpRight, FolderKanban, Plus, RotateCw } from "lucide-react";
-import { useTranslations } from "next-intl";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import {
+  ArrowUpRight,
+  Bug,
+  CircleAlert,
+  Clock3,
+  FolderKanban,
+  GitBranch,
+  ListChecks,
+  Plus,
+  RotateCw,
+  User2,
+} from "lucide-react";
+import { useLocale, useTranslations } from "next-intl";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+  type ReactNode,
+} from "react";
 
 import { getApiErrorMessageKey } from "../../lib/api-error-messages";
 import { canManageOrganization, listSpaces } from "../../lib/space-service";
@@ -20,8 +37,10 @@ const statusVariant: Record<string, "primary" | "warning" | "default"> = {
 };
 
 export function SpacesPage() {
+  const locale = useLocale();
   const t = useTranslations("spaces");
   const tShell = useTranslations("shell");
+  const tVersionStatus = useTranslations("versionBoard.status");
   const tRoot = useTranslations();
   const {
     currentOrganization,
@@ -47,9 +66,7 @@ export function SpacesPage() {
 
   const membershipBySpaceId = useMemo(
     () =>
-      new Map(
-        spacesForCurrentOrganization.map((space) => [space.id, space]),
-      ),
+      new Map(spacesForCurrentOrganization.map((space) => [space.id, space])),
     [spacesForCurrentOrganization],
   );
 
@@ -119,7 +136,9 @@ export function SpacesPage() {
             disabled={isLoading}
             onClick={() => void load()}
           >
-            <RotateCw className={`h-3 w-3 ${isLoading ? "animate-spin" : ""}`} />
+            <RotateCw
+              className={`h-3 w-3 ${isLoading ? "animate-spin" : ""}`}
+            />
             {t("list.refresh")}
           </Button>
           {canCreateSpace ? (
@@ -249,6 +268,75 @@ export function SpacesPage() {
                     {space.description}
                   </p>
                 ) : null}
+                <div
+                  data-testid={`spaces-operational-fields-${space.id}`}
+                  className="mt-2 grid gap-x-4 gap-y-1.5 text-[11px] text-muted-foreground sm:grid-cols-2 lg:grid-cols-3"
+                >
+                  <SpaceMetaItem
+                    icon={<User2 className="h-3 w-3" aria-hidden="true" />}
+                    label={t("list.fields.owner")}
+                    testId={`spaces-owner-${space.id}`}
+                    value={formatOwnerLabel(space, t("list.emptyValue"))}
+                  />
+                  <SpaceMetaItem
+                    icon={<GitBranch className="h-3 w-3" aria-hidden="true" />}
+                    label={t("list.fields.currentVersion")}
+                    testId={`spaces-current-version-${space.id}`}
+                    value={
+                      space.currentVersion ? (
+                        <span className="inline-flex min-w-0 items-center gap-1">
+                          <span className="truncate">
+                            {space.currentVersion.name}
+                          </span>
+                          <Badge variant="outline">
+                            {tVersionStatus(space.currentVersion.status)}
+                          </Badge>
+                        </span>
+                      ) : (
+                        t("list.emptyValue")
+                      )
+                    }
+                  />
+                  <SpaceMetaItem
+                    icon={<ListChecks className="h-3 w-3" aria-hidden="true" />}
+                    label={t("list.fields.unfinishedTaskCount")}
+                    testId={`spaces-unfinished-tasks-${space.id}`}
+                    value={formatNullableCount(
+                      space.unfinishedTaskCount,
+                      t("list.emptyValue"),
+                    )}
+                  />
+                  <SpaceMetaItem
+                    icon={<Bug className="h-3 w-3" aria-hidden="true" />}
+                    label={t("list.fields.openBugCount")}
+                    testId={`spaces-open-bugs-${space.id}`}
+                    value={formatNullableCount(
+                      space.openBugCount,
+                      t("list.emptyValue"),
+                    )}
+                  />
+                  <SpaceMetaItem
+                    icon={
+                      <CircleAlert className="h-3 w-3" aria-hidden="true" />
+                    }
+                    label={t("list.fields.blockedCount")}
+                    testId={`spaces-blocked-${space.id}`}
+                    value={formatNullableCount(
+                      space.blockedCount,
+                      t("list.emptyValue"),
+                    )}
+                  />
+                  <SpaceMetaItem
+                    icon={<Clock3 className="h-3 w-3" aria-hidden="true" />}
+                    label={t("list.fields.updatedAt")}
+                    testId={`spaces-updated-at-${space.id}`}
+                    value={formatUpdatedAt(
+                      space.updatedAt,
+                      locale,
+                      t("list.emptyValue"),
+                    )}
+                  />
+                </div>
               </div>
               <Button
                 variant={isCurrent ? "outline" : "default"}
@@ -323,4 +411,68 @@ export function SpacesPage() {
       ) : null}
     </div>
   );
+}
+
+function SpaceMetaItem({
+  icon,
+  label,
+  testId,
+  value,
+}: {
+  icon: ReactNode;
+  label: string;
+  testId: string;
+  value: ReactNode;
+}) {
+  return (
+    <div className="flex min-w-0 items-center gap-1.5" data-testid={testId}>
+      <span className="flex shrink-0 items-center gap-1">
+        {icon}
+        <span>{label}</span>
+      </span>
+      <span className="min-w-0 truncate font-medium text-foreground/80">
+        {value}
+      </span>
+    </div>
+  );
+}
+
+function formatOwnerLabel(space: SpaceSummary, fallback: string): string {
+  return (
+    space.owner?.name?.trim() ||
+    space.owner?.username?.trim() ||
+    space.ownerId?.trim() ||
+    fallback
+  );
+}
+
+function formatNullableCount(
+  value: number | null | undefined,
+  fallback: string,
+): string {
+  return typeof value === "number" ? String(value) : fallback;
+}
+
+function formatUpdatedAt(
+  value: string | null | undefined,
+  locale: string,
+  fallback: string,
+): string {
+  if (!value) {
+    return fallback;
+  }
+
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return fallback;
+  }
+
+  try {
+    return new Intl.DateTimeFormat(locale, {
+      dateStyle: "medium",
+      timeStyle: "short",
+    }).format(date);
+  } catch {
+    return fallback;
+  }
 }

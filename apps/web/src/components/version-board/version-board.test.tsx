@@ -147,10 +147,22 @@ const sessionMock = vi.hoisted(() => ({
       defaultOrganizationId: "ORG_01",
       defaultSpaceId: "SPC_01",
     },
-    currentSpace: { id: "SPC_01", organizationId: "ORG_01", name: "Space A" },
+    currentSpace: {
+      id: "SPC_01",
+      organizationId: "ORG_01",
+      name: "Space A",
+      role: "PM",
+      status: "ACTIVE",
+    },
   } as {
     session: { defaultOrganizationId: string; defaultSpaceId?: string } | null;
-    currentSpace: { id: string; organizationId: string; name: string } | null;
+    currentSpace: {
+      id: string;
+      organizationId: string;
+      name: string;
+      role: string;
+      status: string;
+    } | null;
   },
 }));
 vi.mock("../providers/session-provider", () => ({
@@ -422,7 +434,13 @@ beforeEach(() => {
       defaultOrganizationId: "ORG_01",
       defaultSpaceId: "SPC_01",
     },
-    currentSpace: { id: "SPC_01", organizationId: "ORG_01", name: "Space A" },
+    currentSpace: {
+      id: "SPC_01",
+      organizationId: "ORG_01",
+      name: "Space A",
+      role: "PM",
+      status: "ACTIVE",
+    },
   };
   // Default safe stubs — individual tests override as needed.
   listRequirementsMock.mockResolvedValue({
@@ -505,9 +523,9 @@ describe("VersionPage", () => {
         }),
       ),
     );
-    expect(screen.getByTestId("version-board-version-trigger")).toHaveTextContent(
-      "v2.0.0",
-    );
+    expect(
+      screen.getByTestId("version-board-version-trigger"),
+    ).toHaveTextContent("v2.0.0");
   });
 
   it("falls back to em-dash for missing release date", async () => {
@@ -527,9 +545,9 @@ describe("VersionPage", () => {
     expect(
       (await screen.findByTestId("version-hero-date-release")).textContent,
     ).toBe("—");
-    expect(
-      screen.getByTestId("version-hero-date-target").textContent,
-    ).toBe("—");
+    expect(screen.getByTestId("version-hero-date-target").textContent).toBe(
+      "—",
+    );
   });
 
   it("renders the noVersion empty state when versions list is empty", async () => {
@@ -573,9 +591,9 @@ describe("VersionPage", () => {
     expect(
       await screen.findByTestId("task-detail-sheet-open"),
     ).toBeInTheDocument();
-    expect(
-      screen.getByTestId("task-detail-sheet-item-title").textContent,
-    ).toBe("Card open");
+    expect(screen.getByTestId("task-detail-sheet-item-title").textContent).toBe(
+      "Card open",
+    );
   });
 
   it("refetches the board when TaskDetailSheet.onChanged fires", async () => {
@@ -699,9 +717,7 @@ describe("VersionPage", () => {
       expect(getVersionBoardViewMock).toHaveBeenCalledTimes(1),
     );
 
-    fireEvent.click(
-      await screen.findByTestId("version-board-filter-type-BUG"),
-    );
+    fireEvent.click(await screen.findByTestId("version-board-filter-type-BUG"));
 
     await waitFor(() =>
       expect(getVersionBoardViewMock).toHaveBeenCalledTimes(2),
@@ -788,6 +804,78 @@ describe("VersionPage", () => {
       makeVersion({ name: "v1.0.0 updated" }),
     );
     await waitFor(() => expect(listVersionsMock).toHaveBeenCalledTimes(2));
+  });
+
+  it("keeps version mutation entries read-only for VIEWER space role", async () => {
+    sessionMock.current = {
+      session: {
+        defaultOrganizationId: "ORG_01",
+        defaultSpaceId: "SPC_01",
+      },
+      currentSpace: {
+        id: "SPC_01",
+        organizationId: "ORG_01",
+        name: "Space A",
+        role: "VIEWER",
+        status: "ACTIVE",
+      },
+    };
+    listVersionsMock.mockResolvedValueOnce({
+      items: [makeVersion()],
+      total: 1,
+    });
+    getVersionBoardViewMock.mockResolvedValueOnce(makeBoardResponse([]));
+
+    render(<VersionPage />);
+
+    await waitFor(() => expect(listVersionsMock).toHaveBeenCalledTimes(1));
+    expect(screen.getByTestId("version-page-new-version")).toBeDisabled();
+    expect(screen.getByTestId("version-page-edit-version")).toBeDisabled();
+    expect(screen.getByTestId("version-board-new-work-item")).toBeDisabled();
+
+    fireEvent.click(screen.getByTestId("version-page-new-version"));
+    fireEvent.click(screen.getByTestId("version-board-new-work-item"));
+
+    expect(
+      screen.queryByTestId("create-version-dialog-open"),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByTestId("create-task-dialog-open"),
+    ).not.toBeInTheDocument();
+  });
+
+  it("allows product writer roles to create work items but not versions", async () => {
+    sessionMock.current = {
+      session: {
+        defaultOrganizationId: "ORG_01",
+        defaultSpaceId: "SPC_01",
+      },
+      currentSpace: {
+        id: "SPC_01",
+        organizationId: "ORG_01",
+        name: "Space A",
+        role: "DEVELOPER",
+        status: "ACTIVE",
+      },
+    };
+    listVersionsMock.mockResolvedValueOnce({
+      items: [makeVersion()],
+      total: 1,
+    });
+    getVersionBoardViewMock.mockResolvedValueOnce(makeBoardResponse([]));
+
+    render(<VersionPage />);
+
+    await waitFor(() => expect(listVersionsMock).toHaveBeenCalledTimes(1));
+    expect(screen.getByTestId("version-page-new-version")).toBeDisabled();
+    expect(screen.getByTestId("version-page-edit-version")).toBeDisabled();
+
+    const newWorkItem = screen.getByTestId("version-board-new-work-item");
+    expect(newWorkItem).not.toBeDisabled();
+    fireEvent.click(newWorkItem);
+    expect(
+      await screen.findByTestId("create-task-dialog-open"),
+    ).toBeInTheDocument();
   });
 
   it("renders the noSpace empty state when session lacks a space", async () => {

@@ -347,7 +347,8 @@
         "work": "Work",
         "deliver": "Deliver",
         "document": "Document",
-        "configure": "Configure"
+        "configure": "Configure",
+        "organization": "Organization"
       },
       "workbench": "My workbench",
       "overview": "Space overview",
@@ -501,7 +502,10 @@
         "exceptions": "Exceptions",
         "requirements": "Requirements",
         "intake": "Intake",
-        "workflow": "Workflow"
+        "workflow": "Workflow",
+        "spaces": "Project spaces",
+        "spaceSettings": "Space settings",
+        "organization": "Organization settings"
       }
     },
     "onboarding": {
@@ -656,9 +660,11 @@
     "filterAll": "All assignees",
     "filterTask": "Task filter",
     "newWorkItem": "New work item",
+    "newWorkItemReadonly": "Your space role cannot create work items.",
     "actions": {
       "editVersion": "Edit version",
-      "newVersion": "New version"
+      "newVersion": "New version",
+      "manageReadonly": "Requires space admin or project manager role."
     },
     "tabs": {
       "board": "Task / Bug board",
@@ -805,7 +811,8 @@
       "unknownSpace": "Current space",
       "description": "Manage requirement drafts, confirmed requirements, and linked work items for this space.",
       "filter": "Filter",
-      "create": "New draft"
+      "create": "New draft",
+      "createReadonly": "Your space role cannot create requirement drafts."
     },
     "actions": {
       "refresh": "Refresh",
@@ -912,6 +919,14 @@
       "discardDraft": "Discard draft",
       "discardingDraft": "Deleting",
       "discardDraftConfirm": "Delete this empty draft? This cannot be undone.",
+      "emptyDraftLeave": {
+        "title": "Keep or delete this empty draft?",
+        "description": "This requirement draft is still empty. Before leaving, you can keep it or delete it.",
+        "keep": "Keep",
+        "delete": "Delete",
+        "deleting": "Deleting",
+        "browserWarning": "This empty draft has not been handled."
+      },
       "metaTitle": "Current information",
       "metaDescription": "Displayed from backend results without expanding permission boundaries.",
       "attachments": "Attachments",
@@ -1492,6 +1507,7 @@
       "fields": {
         "title": "Title",
         "titleError": "Enter a bug title up to 200 characters.",
+        "description": "Description",
         "steps": "Steps to reproduce",
         "severity": "Severity",
         "priority": "Priority",
@@ -1569,9 +1585,20 @@
       "pending": "Pending",
       "accepted": "Accepted",
       "deferred": "Deferred",
-      "converted": "Converted"
+      "converted": "Converted",
+      "version": "Version",
+      "allVersions": "All versions",
+      "requirement": "Requirement",
+      "allRequirements": "All requirements",
+      "priority": "Priority",
+      "allPriorities": "All priorities",
+      "sourceType": "Source type",
+      "allSourceTypes": "All source types",
+      "assignee": "Owner",
+      "allAssignees": "All owners"
     },
     "actions": {
+      "filter": "Filter",
       "retry": "Retry"
     },
     "states": {
@@ -1636,11 +1663,14 @@
         "titleError": "Enter an intake title up to 200 characters.",
         "description": "Description",
         "sourceType": "Source type",
+        "sourceObject": "Source object JSON",
         "version": "Version",
         "noVersion": "No version",
         "requirement": "Linked requirement",
         "noRequirement": "No requirement",
         "untitledRequirement": "Untitled requirement",
+        "assignee": "Owner",
+        "unassigned": "Unassigned",
         "priority": "Priority",
         "noPriority": "Not set"
       },
@@ -2029,6 +2059,7 @@
     "subtitle": "Review assigned work, action todos, due soon items, and recent activity.",
     "viewAll": "View all",
     "errorTitle": "Failed to load workbench",
+    "versionFallback": "Unknown version",
     "summary": {
       "todo": "My todos",
       "dueSoon": "Due soon",
@@ -2140,9 +2171,18 @@
       "errorTitle": "Failed to load spaces",
       "loading": "Loading spaces",
       "empty": "No spaces",
+      "emptyValue": "—",
       "selected": "Current space",
       "switch": "Switch",
       "notMember": "Not joined",
+      "fields": {
+        "owner": "Owner",
+        "currentVersion": "Current active version",
+        "unfinishedTaskCount": "Unfinished tasks",
+        "openBugCount": "Unclosed bugs",
+        "blockedCount": "Blocked",
+        "updatedAt": "Recently updated"
+      },
       "table": {
         "label": "Space list"
       }
@@ -2476,7 +2516,16 @@
     },
     "publishIssues": {
       "unknownCode": "Issue",
-      "unknownMessage": "Publish validation failed."
+      "unknownMessage": "Publish validation failed.",
+      "codes": {
+        "START_STATE_COUNT_INVALID": "Workflow version must have exactly one start state.",
+        "END_STATE_REQUIRED": "Workflow version must have at least one end state.",
+        "STATE_CATEGORY_REQUIRED": "Workflow state must have a system category.",
+        "ACTION_SOURCE_STATE_NOT_FOUND": "Workflow action source state must exist.",
+        "ACTION_TARGET_STATE_NOT_FOUND": "Workflow action target state must exist.",
+        "NON_END_STATE_ACTION_REQUIRED": "Non-end workflow state must have at least one outgoing action.",
+        "ISOLATED_STATE": "Workflow state must be reachable and connected."
+      }
     },
     "page": {
       "description": "Maintain lightweight state machines for tasks and bugs. Published versions are read-only; create a new version to capture changes.",
@@ -2503,6 +2552,11 @@
         "versionLabel": "Version",
         "versionOption": "v{version} · {status}",
         "noVersions": "No versions",
+        "versionCount": "{count} versions",
+        "targetTypes": "Targets: {types}",
+        "noTargetTypes": "No target types",
+        "defaultBindings": "Default: {types}",
+        "noDefaultBinding": "No default binding",
         "publish": "Publish",
         "publishing": "Publishing…",
         "disable": "Disable",
@@ -2646,6 +2700,10 @@
           "options": "Options",
           "optionsPlaceholder": "One option per line",
           "optionsHint": "Only used for 'Select' field type."
+        },
+        "errors": {
+          "optionsRequired": "Add at least one option for a select field.",
+          "optionsDuplicate": "Select field options must be unique."
         },
         "submit": "Save",
         "submitting": "Saving…",
@@ -2971,7 +3029,8 @@
       "workItemType": "Work item type",
       "allWorkItemTypes": "All work item types",
       "exceptionType": "Exception type",
-      "allExceptionTypes": "All exception types"
+      "allExceptionTypes": "All exception types",
+      "clear": "Clear filters"
     },
     "empty": {
       "column": {
@@ -3101,6 +3160,17 @@
       "title": "Description",
       "empty": "No description"
     },
+    "edit": {
+      "button": "Edit fields",
+      "title": "Title",
+      "titleError": "Enter a task title up to 200 characters.",
+      "save": "Save",
+      "saving": "Saving…",
+      "cancel": "Cancel",
+      "unassigned": "Unassigned",
+      "noVersion": "No version",
+      "noRequirement": "No requirement"
+    },
     "missingApi": {
       "title": "API not yet available"
     },
@@ -3152,6 +3222,7 @@
       "fields": {
         "staleDays": "Long stale threshold (days)"
       },
+      "error": "Enter an integer from 1 to 30.",
       "hint": "Valid range 1 to 30. Updates refresh the \"long stale\" view with the new threshold."
     },
     "members": {
@@ -3237,16 +3308,20 @@
       "title": "Organization members",
       "add": "Add member",
       "empty": "No organization members",
-      "readOnly": "Your organization role can view members but cannot add, remove, or change roles.",
-      "ownerProtectionNote": "The system protects at least one owner from being removed or downgraded.",
+      "readOnly": "Your organization role can view members but cannot add, disable, or change roles.",
+      "ownerProtectionNote": "The system protects at least one owner from being disabled or downgraded.",
       "roles": {
         "OWNER": "Owner",
         "ADMIN": "Admin",
         "MEMBER": "Member"
       },
+      "status": {
+        "ACTIVE": "Active",
+        "DISABLED": "Disabled"
+      },
       "actions": {
         "changeRole": "Change organization role for {username}",
-        "remove": "Remove {username}"
+        "disable": "Disable {username}"
       }
     },
     "dialog": {
@@ -3278,11 +3353,11 @@
         "submitting": "Saving…",
         "cancel": "Cancel"
       },
-      "removeMember": {
-        "title": "Remove organization member",
-        "description": "Remove {username}? They will be removed from the organization and lose access to all resources.",
-        "lastOwnerWarning": "At least one OWNER is required. The last owner cannot be removed.",
-        "submit": "Confirm remove",
+      "disableMember": {
+        "title": "Disable organization member",
+        "description": "Disable {username}? They will no longer be able to access organization resources.",
+        "lastOwnerWarning": "At least one OWNER is required. The last owner cannot be disabled.",
+        "submit": "Confirm disable",
         "submitting": "Working…",
         "cancel": "Cancel"
       }

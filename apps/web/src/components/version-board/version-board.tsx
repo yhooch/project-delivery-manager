@@ -2,7 +2,9 @@
 
 import type {
   GetVersionBoardViewResponse,
+  RecordStatus,
   Requirement,
+  SpaceRole,
   StatusCategory,
   TimelineEvent,
   Version,
@@ -162,6 +164,20 @@ function normalizeSearchParam(value: string | null): string | undefined {
   return trimmed ? trimmed : undefined;
 }
 
+function canManageVersionEntries(
+  role: SpaceRole | undefined,
+  status: RecordStatus | undefined,
+): boolean {
+  return status !== "DISABLED" && (role === "SPACE_ADMIN" || role === "PM");
+}
+
+function canWriteWorkItems(
+  role: SpaceRole | undefined,
+  status: RecordStatus | undefined,
+): boolean {
+  return Boolean(role) && role !== "VIEWER" && status !== "DISABLED";
+}
+
 // ---------------------------------------------------------------------------
 // Page component
 // ---------------------------------------------------------------------------
@@ -182,6 +198,14 @@ export function VersionPage() {
   const { session, currentSpace } = useSession();
   const organizationId = session?.defaultOrganizationId;
   const spaceId = session?.defaultSpaceId ?? currentSpace?.id;
+  const canManageVersions = canManageVersionEntries(
+    currentSpace?.role,
+    currentSpace?.status,
+  );
+  const canCreateWorkItem = canWriteWorkItems(
+    currentSpace?.role,
+    currentSpace?.status,
+  );
   const versionIdParam = normalizeSearchParam(searchParams.get("versionId"));
 
   const { members, getMember } = useSpaceMembers(spaceId, organizationId);
@@ -258,10 +282,7 @@ export function VersionPage() {
       });
       setVersions(page.items);
       setVersionId((current) => {
-        if (
-          versionIdParam &&
-          page.items.some((v) => v.id === versionIdParam)
-        ) {
+        if (versionIdParam && page.items.some((v) => v.id === versionIdParam)) {
           return versionIdParam;
         }
         if (current && page.items.some((v) => v.id === current)) return current;
@@ -430,15 +451,16 @@ export function VersionPage() {
   const handleVersionCreated = (created: Version) => {
     // Optimistically prepend so the dropdown reflects the new version even if
     // the refresh has not yet returned, then refresh authoritative data.
-    setVersions((prev) => [created, ...prev.filter((v) => v.id !== created.id)]);
+    setVersions((prev) => [
+      created,
+      ...prev.filter((v) => v.id !== created.id),
+    ]);
     selectVersion(created.id);
     void fetchVersions();
   };
 
   const handleVersionUpdated = (updated: Version) => {
-    setVersions((prev) =>
-      prev.map((v) => (v.id === updated.id ? updated : v)),
-    );
+    setVersions((prev) => prev.map((v) => (v.id === updated.id ? updated : v)));
     void fetchVersions();
   };
 
@@ -451,10 +473,7 @@ export function VersionPage() {
     ? getMember(currentVersion.ownerId)
     : undefined;
   const ownerName =
-    owner?.user.name ??
-    owner?.user.username ??
-    currentVersion?.ownerId ??
-    "";
+    owner?.user.name ?? owner?.user.username ?? currentVersion?.ownerId ?? "";
 
   const headerMeta = currentVersion ? (
     <div
@@ -587,7 +606,8 @@ export function VersionPage() {
         size="sm"
         className="text-xs"
         data-testid="version-page-edit-version"
-        disabled={!currentVersion || !spaceId}
+        disabled={!currentVersion || !spaceId || !canManageVersions}
+        title={!canManageVersions ? t("actions.manageReadonly") : undefined}
         onClick={() => setEditVersionDialogOpen(true)}
       >
         <Pencil className="h-3 w-3" />
@@ -597,7 +617,8 @@ export function VersionPage() {
         size="sm"
         className="text-xs"
         data-testid="version-page-new-version"
-        disabled={!spaceId}
+        disabled={!spaceId || !canManageVersions}
+        title={!canManageVersions ? t("actions.manageReadonly") : undefined}
         onClick={() => setCreateVersionDialogOpen(true)}
       >
         <Plus className="h-3 w-3" />
@@ -687,6 +708,7 @@ export function VersionPage() {
                 getMember={getMember}
                 t={t}
                 spaceId={spaceId}
+                canCreateWorkItem={canCreateWorkItem}
                 onNewWorkItem={() => setCreateWorkItemDialogOpen(true)}
               />
             )}
@@ -729,10 +751,7 @@ export function VersionPage() {
             />
           </TabsContent>
 
-          <TabsContent
-            value="timeline"
-            className="mt-0 flex-1 overflow-y-auto"
-          >
+          <TabsContent value="timeline" className="mt-0 flex-1 overflow-y-auto">
             <TimelineTab
               loading={isLoadingTimeline}
               errorKey={timelineErrorKey}
@@ -771,17 +790,19 @@ export function VersionPage() {
           void fetchBoard();
         }}
       />
-      {spaceId && (
+      {spaceId && canCreateWorkItem ? (
+        <CreateTaskDialog
+          open={createWorkItemDialogOpen}
+          onOpenChange={setCreateWorkItemDialogOpen}
+          spaceId={spaceId}
+          initialVersionId={versionId ?? undefined}
+          onCreated={() => {
+            void fetchBoard();
+          }}
+        />
+      ) : null}
+      {spaceId && canManageVersions ? (
         <>
-          <CreateTaskDialog
-            open={createWorkItemDialogOpen}
-            onOpenChange={setCreateWorkItemDialogOpen}
-            spaceId={spaceId}
-            initialVersionId={versionId ?? undefined}
-            onCreated={() => {
-              void fetchBoard();
-            }}
-          />
           <CreateVersionDialog
             open={createVersionDialogOpen}
             onOpenChange={setCreateVersionDialogOpen}
@@ -798,7 +819,7 @@ export function VersionPage() {
             onUpdated={handleVersionUpdated}
           />
         </>
-      )}
+      ) : null}
     </div>
   );
 }
@@ -818,15 +839,19 @@ function BoardToolbar({
   getMember,
   t,
   spaceId,
+  canCreateWorkItem,
   onNewWorkItem,
 }: {
   filters: BoardFilters;
-  setFilters: (next: BoardFilters | ((prev: BoardFilters) => BoardFilters)) => void;
+  setFilters: (
+    next: BoardFilters | ((prev: BoardFilters) => BoardFilters),
+  ) => void;
   hasActiveFilter: boolean;
   members: ReturnType<typeof useSpaceMembers>["members"];
   getMember: ReturnType<typeof useSpaceMembers>["getMember"];
   t: ReturnType<typeof useTranslations<"versionBoard">>;
   spaceId?: string;
+  canCreateWorkItem: boolean;
   onNewWorkItem: () => void;
 }) {
   const assigneeLabel = filters.assigneeId
@@ -987,7 +1012,8 @@ function BoardToolbar({
         size="sm"
         className="text-xs"
         data-testid="version-board-new-work-item"
-        disabled={!spaceId}
+        disabled={!spaceId || !canCreateWorkItem}
+        title={!canCreateWorkItem ? t("newWorkItemReadonly") : undefined}
         onClick={onNewWorkItem}
       >
         <Plus className="h-3 w-3" />
@@ -1037,7 +1063,11 @@ function BoardColumns({
   openItem,
   t,
 }: {
-  grouped: { category: StatusCategory; items: ViewWorkItemSummary[]; total: number }[];
+  grouped: {
+    category: StatusCategory;
+    items: ViewWorkItemSummary[];
+    total: number;
+  }[];
   locale: string;
   openItem: (summary: ViewWorkItemSummary) => void;
   t: ReturnType<typeof useTranslations<"versionBoard">>;
@@ -1097,13 +1127,17 @@ function BoardColumns({
                     {item.title}
                   </div>
                   <div className="mt-2 flex items-center gap-2">
-                    {item.exceptionSignals.some((s) => s.type === "blocked") && (
+                    {item.exceptionSignals.some(
+                      (s) => s.type === "blocked",
+                    ) && (
                       <Badge variant="warning" className="gap-1 text-[9px]">
                         <AlertCircle className="h-2 w-2" />
                         {t("badges.blocked")}
                       </Badge>
                     )}
-                    {item.exceptionSignals.some((s) => s.type === "overdue") && (
+                    {item.exceptionSignals.some(
+                      (s) => s.type === "overdue",
+                    ) && (
                       <Badge variant="destructive" className="text-[9px]">
                         {t("badges.overdue")}
                       </Badge>
@@ -1236,7 +1270,9 @@ function TimelineTab({
   events: TimelineEvent[];
   locale: string;
   tRoot: ReturnType<typeof useTranslations>;
-  tTimelineEvent: ReturnType<typeof useTranslations<"versionBoard.timeline.event">>;
+  tTimelineEvent: ReturnType<
+    typeof useTranslations<"versionBoard.timeline.event">
+  >;
   t: ReturnType<typeof useTranslations<"versionBoard">>;
   onRetry: () => void;
 }) {

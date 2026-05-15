@@ -1,15 +1,27 @@
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import {
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const { translatorCache } = vi.hoisted(() => ({
-  translatorCache: new Map<string, (key: string) => string>(),
+  translatorCache: new Map<
+    string,
+    (key: string, values?: Record<string, unknown>) => string
+  >(),
 }));
 vi.mock("next-intl", () => ({
   useTranslations: (namespace?: string) => {
     const key = namespace ?? "__root__";
     let fn = translatorCache.get(key);
     if (!fn) {
-      fn = (k: string) => (namespace ? `${namespace}.${k}` : k);
+      fn = (k: string, values?: Record<string, unknown>) => {
+        const valueSuffix = values ? ` ${JSON.stringify(values)}` : "";
+        return `${namespace ? `${namespace}.${k}` : k}${valueSuffix}`;
+      };
       translatorCache.set(key, fn);
     }
     return fn;
@@ -56,11 +68,19 @@ vi.mock("../providers/session-provider", () => ({
   useSession: () => sessionMock.current,
 }));
 
-const { listWorkflowsMock } = vi.hoisted(() => ({
+const {
+  listWorkflowBindingsMock,
+  listWorkflowsMock,
+  listWorkflowVersionsMock,
+} = vi.hoisted(() => ({
+  listWorkflowBindingsMock: vi.fn(),
   listWorkflowsMock: vi.fn(),
+  listWorkflowVersionsMock: vi.fn(),
 }));
 vi.mock("../../lib/workflow-service", () => ({
+  listWorkflowBindings: listWorkflowBindingsMock,
   listWorkflows: listWorkflowsMock,
+  listWorkflowVersions: listWorkflowVersionsMock,
 }));
 
 // Mock the create dialog so we just observe open/mode/onSuccess.
@@ -111,8 +131,25 @@ function makeWorkflow(overrides: Record<string, unknown> = {}) {
   } as unknown as import("@project-delivery/shared").WorkflowDefinition;
 }
 
+function makeBinding(overrides: Record<string, unknown> = {}) {
+  return {
+    id: "01BINDING000000000000000001",
+    organizationId: "ORG_01",
+    spaceId: "SPC_01",
+    workflowId: "01ARZ3NDEKTSV4RRFFQ69G5FW1",
+    workItemType: "TASK",
+    workflowVersionId: "01VERSION00000000000000001",
+    isDefault: false,
+    ...overrides,
+  } as unknown as import("@project-delivery/shared").WorkflowBinding;
+}
+
 beforeEach(() => {
+  listWorkflowBindingsMock.mockReset();
   listWorkflowsMock.mockReset();
+  listWorkflowVersionsMock.mockReset();
+  listWorkflowBindingsMock.mockResolvedValue({ items: [], total: 0 });
+  listWorkflowVersionsMock.mockResolvedValue({ items: [], total: 0 });
   dialogStateMock.current = { open: false, mode: "" };
   sessionMock.current = {
     session: {
@@ -136,9 +173,7 @@ afterEach(() => {
 describe("WorkflowPage", () => {
   it("renders workflow cards with name, code, description and status badge", async () => {
     listWorkflowsMock.mockResolvedValueOnce({
-      items: [
-        makeWorkflow({ name: "Story Workflow", code: "STORY_DEFAULT" }),
-      ],
+      items: [makeWorkflow({ name: "Story Workflow", code: "STORY_DEFAULT" })],
       total: 1,
     });
 
@@ -153,6 +188,51 @@ describe("WorkflowPage", () => {
     expect(
       screen.getByText("workflow.definitionStatus.ACTIVE"),
     ).toBeInTheDocument();
+  });
+
+  it("renders version count, target work item types and default bindings on workflow cards", async () => {
+    listWorkflowsMock.mockResolvedValueOnce({
+      items: [makeWorkflow()],
+      total: 1,
+    });
+    listWorkflowVersionsMock.mockResolvedValueOnce({ items: [], total: 3 });
+    listWorkflowBindingsMock.mockResolvedValueOnce({
+      items: [
+        makeBinding({ isDefault: true, workItemType: "TASK" }),
+        makeBinding({ id: "01BINDING000000000000000002", workItemType: "BUG" }),
+      ],
+      total: 2,
+    });
+
+    render(<WorkflowPage />);
+
+    const summary = await screen.findByTestId(
+      "workflow-card-summary-01ARZ3NDEKTSV4RRFFQ69G5FW1",
+    );
+
+    expect(listWorkflowVersionsMock).toHaveBeenCalledWith({
+      organizationId: "ORG_01",
+      page: 1,
+      pageSize: 1,
+      spaceId: "SPC_01",
+      workflowId: "01ARZ3NDEKTSV4RRFFQ69G5FW1",
+    });
+    expect(listWorkflowBindingsMock).toHaveBeenCalledWith({
+      organizationId: "ORG_01",
+      page: 1,
+      pageSize: 100,
+      spaceId: "SPC_01",
+      workflowId: "01ARZ3NDEKTSV4RRFFQ69G5FW1",
+    });
+    expect(summary).toHaveTextContent(
+      'workflow.config.toolbar.versionCount {"count":3}',
+    );
+    expect(summary).toHaveTextContent(
+      'workflow.config.toolbar.targetTypes {"types":"workflow.workItemType.BUG, workflow.workItemType.TASK"}',
+    );
+    expect(summary).toHaveTextContent(
+      'workflow.config.toolbar.defaultBindings {"types":"workflow.workItemType.TASK"}',
+    );
   });
 
   it("renders the empty state when there are no workflows", async () => {
@@ -179,7 +259,10 @@ describe("WorkflowPage", () => {
   });
 
   it("shows the loading skeleton while listWorkflows is pending", async () => {
-    let resolve: (value: { items: unknown[]; total: number }) => void = () => {};
+    let resolve: (value: {
+      items: unknown[];
+      total: number;
+    }) => void = () => {};
     listWorkflowsMock.mockImplementationOnce(
       () =>
         new Promise((r) => {
@@ -196,9 +279,7 @@ describe("WorkflowPage", () => {
 
     resolve({ items: [], total: 0 });
     await waitFor(() =>
-      expect(
-        screen.getByText("workflow.page.empty.title"),
-      ).toBeInTheDocument(),
+      expect(screen.getByText("workflow.page.empty.title")).toBeInTheDocument(),
     );
   });
 

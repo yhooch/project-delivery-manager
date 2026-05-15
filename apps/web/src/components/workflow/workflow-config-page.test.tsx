@@ -130,6 +130,8 @@ vi.mock("../../lib/workflow-service", () => ({
   updateWorkflowBinding: updateWorkflowBindingMock,
 }));
 
+import { ApiClientError } from "../../lib/api-client";
+
 import { WorkflowConfigPage } from "./workflow-config-page";
 
 const workflowId = "01ARZ3NDEKTSV4RRFFQ69G5FW1";
@@ -360,6 +362,15 @@ describe("WorkflowConfigPage", () => {
       workflowId,
     });
     expect(screen.getByTestId(`workflow-binding-row-${bindingId}`)).toBeInTheDocument();
+    expect(screen.getByTestId("workflow-config-list-summary")).toHaveTextContent(
+      "workflow.config.toolbar.versionCount",
+    );
+    expect(screen.getByTestId("workflow-config-list-summary")).toHaveTextContent(
+      "workflow.config.toolbar.targetTypes",
+    );
+    expect(screen.getByTestId("workflow-config-list-summary")).toHaveTextContent(
+      "workflow.config.toolbar.defaultBindings",
+    );
     expect(
       screen.queryByTestId("workflow-binding-row-01ARZ3NDEKTSV4RRFFQ69G5BD2"),
     ).not.toBeInTheDocument();
@@ -648,6 +659,47 @@ describe("WorkflowConfigPage", () => {
     );
   });
 
+  it("renders backend publish validation issue details when publish rejects", async () => {
+    getWorkflowMock.mockResolvedValue(makeWorkflow());
+    setupVersions([makeDraftVersion()]);
+    getWorkflowVersionMock.mockResolvedValueOnce(makeDraftVersion());
+    publishWorkflowVersionMock.mockRejectedValueOnce(
+      new ApiClientError(
+        {
+          code: "WORKFLOW_PUBLISH_VALIDATION_FAILED",
+          details: {
+            issues: [
+              {
+                code: "CUSTOM_BACKEND_CHECK",
+                message: "A backend-only publish check failed.",
+                stateId: stateOpenId,
+              },
+            ],
+          },
+          message: "Workflow publish validation failed",
+          requestId: "REQ_01",
+        },
+        { status: 400 } as Response,
+      ),
+    );
+
+    render(<WorkflowConfigPage workflowId={workflowId} />);
+
+    const publish = await screen.findByTestId("workflow-config-publish");
+    await waitFor(() => expect(publish).not.toBeDisabled());
+
+    fireEvent.click(publish);
+
+    expect(
+      await screen.findByText("errors.api.WORKFLOW_PUBLISH_VALIDATION_FAILED"),
+    ).toBeInTheDocument();
+    expect(
+      await screen.findByTestId("workflow-config-publish-server-issues"),
+    ).toHaveTextContent(
+      `CUSTOM_BACKEND_CHECK: A backend-only publish check failed. (${stateOpenId})`,
+    );
+  });
+
   it("disables a published version via updateWorkflowVersion", async () => {
     getWorkflowMock.mockResolvedValue(makeWorkflow());
     setupVersions([makePublishedVersion()]);
@@ -792,6 +844,84 @@ describe("WorkflowConfigPage", () => {
     expect(
       await screen.findByText("workflow.config.fieldDialog.create.title"),
     ).toBeInTheDocument();
+  });
+
+  it("requires non-empty unique options when creating a select action field", async () => {
+    getWorkflowMock.mockResolvedValue(makeWorkflow());
+    setupVersions([makeDraftVersion()]);
+    getWorkflowVersionMock.mockResolvedValue(makeDraftVersion());
+    createActionFormFieldMock.mockResolvedValueOnce({
+      fieldType: "SELECT",
+      id: "01ARZ3NDEKTSV4RRFFQ69G5FD2",
+      key: "resolution",
+      label: "Resolution",
+      options: ["Fixed", "Won't fix"],
+      order: 0,
+      required: true,
+    });
+
+    render(<WorkflowConfigPage workflowId={workflowId} />);
+
+    const toggle = await screen.findByRole("button", {
+      name: /workflow\.config\.actions\.actions\.toggleFields/,
+    });
+    fireEvent.click(toggle);
+    fireEvent.click(
+      screen.getByRole("button", {
+        name: /workflow\.config\.fields\.create/,
+      }),
+    );
+
+    fireEvent.change(
+      await screen.findByLabelText("workflow.config.fieldDialog.fields.label"),
+      { target: { value: "Resolution" } },
+    );
+    fireEvent.change(
+      screen.getByLabelText("workflow.config.fieldDialog.fields.key"),
+      { target: { value: "resolution" } },
+    );
+    fireEvent.change(
+      screen.getByLabelText("workflow.config.fieldDialog.fields.fieldType"),
+      { target: { value: "SELECT" } },
+    );
+
+    const submit = screen.getByRole("button", {
+      name: /workflow\.config\.fieldDialog\.submit/,
+    });
+    expect(submit).toBeDisabled();
+    expect(
+      screen.getByText("workflow.config.fieldDialog.errors.optionsRequired"),
+    ).toBeInTheDocument();
+
+    fireEvent.change(
+      screen.getByLabelText("workflow.config.fieldDialog.fields.options"),
+      { target: { value: "Fixed\nFixed" } },
+    );
+    expect(submit).toBeDisabled();
+    expect(
+      screen.getByText("workflow.config.fieldDialog.errors.optionsDuplicate"),
+    ).toBeInTheDocument();
+
+    fireEvent.change(
+      screen.getByLabelText("workflow.config.fieldDialog.fields.options"),
+      { target: { value: "  Fixed  \n\n  Won't fix  " } },
+    );
+    expect(submit).not.toBeDisabled();
+    fireEvent.click(submit);
+
+    await waitFor(() =>
+      expect(createActionFormFieldMock).toHaveBeenCalledWith(
+        { actionId, organizationId: "ORG_01", spaceId: "SPC_01" },
+        {
+          fieldType: "SELECT",
+          key: "resolution",
+          label: "Resolution",
+          options: ["Fixed", "Won't fix"],
+          order: 0,
+          required: false,
+        },
+      ),
+    );
   });
 
   it("opens the state edit dialog when a state row edit button is clicked", async () => {

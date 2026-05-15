@@ -21,6 +21,7 @@ import {
   PermissionSnapshotSchema,
   apiContracts,
   PresignAttachmentRequestSchema,
+  ListSpacesResponseSchema,
   RequirementSchema,
   TimelineQuerySchema,
   UpdateBugRequestSchema,
@@ -784,6 +785,59 @@ describe("shared contracts", () => {
     expect(requirement.relatedWorkItems.taskCount).toBe(0);
   });
 
+  it("covers project space list operational summary fields", () => {
+    const spaces = ListSpacesResponseSchema.parse({
+      items: [
+        {
+          id: "01DRZ3NDEKTSV4RRFFQ69G5FAC",
+          organizationId: "01BRZ3NDEKTSV4RRFFQ69G5FAA",
+          name: "Space A",
+          code: "space-a",
+          ownerId: "01ARZ3NDEKTSV4RRFFQ69G5FAV",
+          owner: {
+            id: "01ARZ3NDEKTSV4RRFFQ69G5FAV",
+            username: "pm_user",
+            name: "PM",
+            status: "ACTIVE",
+          },
+          status: "ACTIVE",
+          currentVersion: {
+            id: "01ERZ3NDEKTSV4RRFFQ69G5FAD",
+            organizationId: "01BRZ3NDEKTSV4RRFFQ69G5FAA",
+            spaceId: "01DRZ3NDEKTSV4RRFFQ69G5FAC",
+            name: "M1",
+            status: "IN_PROGRESS",
+            stats: {
+              requirementCount: 1,
+              taskCount: 2,
+              bugCount: 1,
+              blockedCount: 1,
+            },
+          },
+          unfinishedTaskCount: 2,
+          openBugCount: 1,
+          blockedCount: 1,
+          updatedAt: "2026-05-13T00:00:00.000Z",
+        },
+      ],
+      page: 1,
+      pageSize: 20,
+      total: 1,
+    });
+
+    expect(spaces.items[0]).toMatchObject({
+      owner: {
+        name: "PM",
+      },
+      currentVersion: {
+        name: "M1",
+      },
+      unfinishedTaskCount: 2,
+      openBugCount: 1,
+      blockedCount: 1,
+    });
+  });
+
   it("accepts both requirement save and archive request semantics", () => {
     expect(
       UpdateRequirementRequestSchema.parse({
@@ -864,6 +918,12 @@ describe("shared contracts", () => {
     expect(document.paths["/work-items/{workItemId}"]?.get?.operationId).toBe(
       "getWorkItem",
     );
+    expect(
+      document.paths["/requirements/{requirementId}"]?.delete?.operationId,
+    ).toBe("deleteRequirementDraft");
+    expect(
+      document.paths["/requirements/{requirementId}"]?.delete?.requestBody,
+    ).toBeUndefined();
     expect(document.paths["/spaces/{spaceId}/bugs"]?.post?.operationId).toBe(
       "createBug",
     );

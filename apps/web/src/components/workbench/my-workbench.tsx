@@ -22,7 +22,12 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { getApiErrorMessageKey } from "../../lib/api-error-messages";
 import { cn } from "../../lib/utils";
-import { useSpaceMembers, useVersions } from "../../lib/v2/lookups";
+import {
+  getMembers,
+  getVersions,
+  useSpaceMembers,
+  useVersions,
+} from "../../lib/v2/lookups";
 import type { WorkItemViewModel } from "../../lib/v2/work-item-view-model";
 import { getMyWorkbenchView } from "../../lib/view-service";
 import { Link } from "../../i18n/routing";
@@ -79,6 +84,13 @@ export function MyWorkbench() {
   const [selectedSpaceId, setSelectedSpaceId] = useState<string | undefined>(
     undefined,
   );
+  const [organizationLookups, setOrganizationLookups] = useState<{
+    membersBySpaceId: Map<string, SpaceMemberWithUser[]>;
+    versionsBySpaceId: Map<string, Version[]>;
+  }>({
+    membersBySpaceId: new Map(),
+    versionsBySpaceId: new Map(),
+  });
 
   const organizationId = session?.defaultOrganizationId;
   const selectedSpace = spacesForCurrentOrganization.find(
@@ -87,6 +99,88 @@ export function MyWorkbench() {
   // Lookups: hooks return empty results gracefully when spaceId is undefined.
   const { getMember } = useSpaceMembers(selectedSpaceId, organizationId);
   const { getVersion } = useVersions(selectedSpaceId, organizationId);
+
+  const workItemSummaries = useMemo(
+    () => collectWorkbenchWorkItems(view),
+    [view],
+  );
+
+  useEffect(() => {
+    if (!organizationId || selectedSpaceId || workItemSummaries.length === 0) {
+      setOrganizationLookups({
+        membersBySpaceId: new Map(),
+        versionsBySpaceId: new Map(),
+      });
+      return;
+    }
+
+    const spaceIds = Array.from(
+      new Set(workItemSummaries.map((item) => item.spaceId)),
+    );
+    let active = true;
+
+    void Promise.all(
+      spaceIds.map(async (spaceId) => {
+        const [members, versions] = await Promise.all([
+          getMembers(spaceId, organizationId),
+          getVersions(spaceId, organizationId),
+        ]);
+        return { members, spaceId, versions };
+      }),
+    )
+      .then((entries) => {
+        if (!active) {
+          return;
+        }
+
+        setOrganizationLookups({
+          membersBySpaceId: new Map(
+            entries.map((entry) => [entry.spaceId, entry.members]),
+          ),
+          versionsBySpaceId: new Map(
+            entries.map((entry) => [entry.spaceId, entry.versions]),
+          ),
+        });
+      })
+      .catch(() => {
+        if (active) {
+          setOrganizationLookups({
+            membersBySpaceId: new Map(),
+            versionsBySpaceId: new Map(),
+          });
+        }
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [organizationId, selectedSpaceId, workItemSummaries]);
+
+  const lookupHelpers = useMemo<WorkbenchLookupHelpers>(
+    () => ({
+      getMember: (userId, itemSpaceId) => {
+        if (selectedSpaceId) {
+          return getMember(userId);
+        }
+
+        const spaceMembers = itemSpaceId
+          ? organizationLookups.membersBySpaceId.get(itemSpaceId)
+          : undefined;
+        return spaceMembers?.find((member) => member.userId === userId);
+      },
+      getVersion: (versionId, itemSpaceId) => {
+        if (selectedSpaceId) {
+          return getVersion(versionId);
+        }
+
+        const spaceVersions = itemSpaceId
+          ? organizationLookups.versionsBySpaceId.get(itemSpaceId)
+          : undefined;
+        return spaceVersions?.find((version) => version.id === versionId);
+      },
+    }),
+    [getMember, getVersion, organizationLookups, selectedSpaceId],
+  );
 
   useEffect(() => {
     setSelectedSpaceId(undefined);
@@ -181,43 +275,47 @@ export function MyWorkbench() {
       (view?.sections.myTodos.items.items ?? []).map(
         toWorkbenchItem(
           locale,
-          { getMember, getVersion },
+          lookupHelpers,
           tStatusCategory,
           t("time.justNow"),
+          t("versionFallback"),
         ),
       ),
-    [view, locale, getMember, getVersion, tStatusCategory, t],
+    [view, locale, lookupHelpers, tStatusCategory, t],
   );
   const assignedTaskItems = useMemo(
     () =>
       (view?.sections.assignedTasks.items.items ?? []).map(
         toWorkbenchItem(
           locale,
-          { getMember, getVersion },
+          lookupHelpers,
           tStatusCategory,
           t("time.justNow"),
+          t("versionFallback"),
         ),
       ),
-    [view, locale, getMember, getVersion, tStatusCategory, t],
+    [view, locale, lookupHelpers, tStatusCategory, t],
   );
   const assignedBugItems = useMemo(
     () =>
       (view?.sections.assignedBugs.items.items ?? []).map(
         toWorkbenchItem(
           locale,
-          { getMember, getVersion },
+          lookupHelpers,
           tStatusCategory,
           t("time.justNow"),
+          t("versionFallback"),
         ),
       ),
-    [view, locale, getMember, getVersion, tStatusCategory, t],
+    [view, locale, lookupHelpers, tStatusCategory, t],
   );
   const actionItems = useMemo(() => {
     const toWorkItem = toWorkbenchItem(
       locale,
-      { getMember, getVersion },
+      lookupHelpers,
       tStatusCategory,
       t("time.justNow"),
+      t("versionFallback"),
     );
 
     return (view?.sections.actionTodos.items.items ?? []).map((todo) => ({
@@ -225,42 +323,45 @@ export function MyWorkbench() {
       contextLabel: todo.availableAction.name,
       listKey: todo.id,
     }));
-  }, [view, locale, getMember, getVersion, tStatusCategory, t]);
+  }, [view, locale, lookupHelpers, tStatusCategory, t]);
   const pendingConfirmItems = useMemo(
     () =>
       (view?.sections.pendingConfirm.items.items ?? []).map(
         toWorkbenchItem(
           locale,
-          { getMember, getVersion },
+          lookupHelpers,
           tStatusCategory,
           t("time.justNow"),
+          t("versionFallback"),
         ),
       ),
-    [view, locale, getMember, getVersion, tStatusCategory, t],
+    [view, locale, lookupHelpers, tStatusCategory, t],
   );
   const dueSoonItems = useMemo(
     () =>
       (view?.sections.dueSoon.items.items ?? []).map(
         toWorkbenchItem(
           locale,
-          { getMember, getVersion },
+          lookupHelpers,
           tStatusCategory,
           t("time.justNow"),
+          t("versionFallback"),
         ),
       ),
-    [view, locale, getMember, getVersion, tStatusCategory, t],
+    [view, locale, lookupHelpers, tStatusCategory, t],
   );
   const blockedItems = useMemo(
     () =>
       (view?.sections.blocked?.items.items ?? []).map(
         toWorkbenchItem(
           locale,
-          { getMember, getVersion },
+          lookupHelpers,
           tStatusCategory,
           t("time.justNow"),
+          t("versionFallback"),
         ),
       ),
-    [view, locale, getMember, getVersion, tStatusCategory, t],
+    [view, locale, lookupHelpers, tStatusCategory, t],
   );
   const recentEvents = view?.sections.recentActivities.items.items ?? [];
 
@@ -472,9 +573,7 @@ export function MyWorkbench() {
               ))}
             </div>
           ) : recentEvents.length === 0 ? (
-            <p className="text-xs text-muted-foreground">
-              {t("empty.recent")}
-            </p>
+            <p className="text-xs text-muted-foreground">{t("empty.recent")}</p>
           ) : (
             <ul className="space-y-3">
               {recentEvents.map((event) => (
@@ -498,7 +597,11 @@ export function MyWorkbench() {
                       )}
                     </div>
                     <div className="mt-0.5 text-[10px] text-muted-foreground">
-                      {formatTimeAgo(event.createdAt, locale, t("time.justNow"))}
+                      {formatTimeAgo(
+                        event.createdAt,
+                        locale,
+                        t("time.justNow"),
+                      )}
                     </div>
                   </div>
                 </li>
@@ -552,7 +655,9 @@ function WorkbenchSpaceFilter({
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="min-w-[200px]">
-        <DropdownMenuLabel>{tRoot("dashboard.filters.space")}</DropdownMenuLabel>
+        <DropdownMenuLabel>
+          {tRoot("dashboard.filters.space")}
+        </DropdownMenuLabel>
         <DropdownMenuSeparator />
         <DropdownMenuItem
           data-testid="workbench-space-filter-all"
@@ -596,7 +701,12 @@ function SummaryChip({
 }) {
   return (
     <div className="flex items-center gap-3 rounded-lg border border-border bg-card/40 px-4 py-3">
-      <div className={cn("flex h-9 w-9 items-center justify-center rounded-lg", toneClass[tone])}>
+      <div
+        className={cn(
+          "flex h-9 w-9 items-center justify-center rounded-lg",
+          toneClass[tone],
+        )}
+      >
         <Icon className="h-4 w-4" />
       </div>
       <div className="flex flex-col">
@@ -661,7 +771,12 @@ function ItemList({
             onClick={() => onSelect(item)}
             className="group flex w-full items-center gap-3 px-4 py-2 text-left transition-colors hover:bg-muted/40 cursor-pointer"
           >
-            <span className={cn("h-1.5 w-1.5 shrink-0 rounded-full", priorityDotColor[item.priority])} />
+            <span
+              className={cn(
+                "h-1.5 w-1.5 shrink-0 rounded-full",
+                priorityDotColor[item.priority],
+              )}
+            />
             {item.type === "BUG" ? (
               <Bug className="h-3.5 w-3.5 shrink-0 text-destructive/80" />
             ) : (
@@ -681,7 +796,11 @@ function ItemList({
                 {item.contextLabel}
               </Badge>
             ) : null}
-            <StatusBadge category={item.statusCategory} label={item.statusLabel} withDot={false} />
+            <StatusBadge
+              category={item.statusCategory}
+              label={item.statusLabel}
+              withDot={false}
+            />
             {item.versionName && (
               <Badge variant="outline" className="hidden md:inline-flex">
                 {item.versionName}
@@ -710,8 +829,11 @@ function ItemList({
 }
 
 export type WorkbenchLookupHelpers = {
-  getMember: (userId: string) => SpaceMemberWithUser | undefined;
-  getVersion: (versionId: string) => Version | undefined;
+  getMember: (
+    userId: string,
+    spaceId?: string,
+  ) => SpaceMemberWithUser | undefined;
+  getVersion: (versionId: string, spaceId?: string) => Version | undefined;
 };
 
 function toWorkbenchItem(
@@ -719,8 +841,15 @@ function toWorkbenchItem(
   lookups?: WorkbenchLookupHelpers,
   statusLabel?: (category: StatusCategory) => string,
   justNowLabel?: string,
+  unknownVersionLabel?: string,
 ) {
-  const toViewModel = toMockWorkItem(locale, lookups, statusLabel, justNowLabel);
+  const toViewModel = toMockWorkItem(
+    locale,
+    lookups,
+    statusLabel,
+    justNowLabel,
+    unknownVersionLabel,
+  );
 
   return (item: ViewWorkItemSummary): WorkbenchItemViewModel => ({
     ...toViewModel(item),
@@ -734,6 +863,7 @@ export function toMockWorkItem(
   lookups?: WorkbenchLookupHelpers,
   statusLabel?: (category: StatusCategory) => string,
   justNowLabel?: string,
+  unknownVersionLabel?: string,
 ) {
   return (item: ViewWorkItemSummary): WorkItemViewModel => {
     const code = `${item.type === "BUG" ? "BUG" : "TASK"}-${item.id.slice(-6).toUpperCase()}`;
@@ -753,17 +883,19 @@ export function toMockWorkItem(
       : undefined;
 
     const member = item.assigneeId
-      ? lookups?.getMember(item.assigneeId)
+      ? lookups?.getMember(item.assigneeId, item.spaceId)
       : undefined;
     const assigneeName =
-      member?.user.name ?? member?.user.username ?? item.assigneeId ?? "—";
+      getEmbeddedAssigneeName(item) ??
+      member?.user.name ??
+      member?.user.username ??
+      item.assigneeId ??
+      "—";
     const version = item.versionId
-      ? lookups?.getVersion(item.versionId)
+      ? lookups?.getVersion(item.versionId, item.spaceId)
       : undefined;
-    // Fall back to the legacy short-id form when lookups are cold so the badge
-    // still shows _something_ for the user instead of disappearing entirely.
     const versionName = item.versionId
-      ? version?.name ?? item.versionId.slice(-4)
+      ? (getEmbeddedVersionName(item) ?? version?.name ?? unknownVersionLabel)
       : undefined;
 
     return {
@@ -788,6 +920,60 @@ export function toMockWorkItem(
       updatedAgo,
     };
   };
+}
+
+function collectWorkbenchWorkItems(
+  view: GetMyWorkbenchViewResponse | null,
+): ViewWorkItemSummary[] {
+  if (!view) {
+    return [];
+  }
+
+  return [
+    ...view.sections.myTodos.items.items,
+    ...view.sections.assignedTasks.items.items,
+    ...view.sections.assignedBugs.items.items,
+    ...view.sections.actionTodos.items.items.map((todo) => todo.workItem),
+    ...view.sections.pendingConfirm.items.items,
+    ...view.sections.dueSoon.items.items,
+    ...view.sections.blocked.items.items,
+  ];
+}
+
+type ViewWorkItemSummaryWithEmbeddedLookups = ViewWorkItemSummary & {
+  assignee?: { name?: string; username?: string };
+  assigneeName?: string;
+  version?: { name?: string };
+  versionName?: string;
+};
+
+function getEmbeddedAssigneeName(
+  item: ViewWorkItemSummary,
+): string | undefined {
+  const embedded = item as ViewWorkItemSummaryWithEmbeddedLookups;
+  return firstNonEmpty(
+    embedded.assigneeName,
+    embedded.assignee?.name,
+    embedded.assignee?.username,
+  );
+}
+
+function getEmbeddedVersionName(item: ViewWorkItemSummary): string | undefined {
+  const embedded = item as ViewWorkItemSummaryWithEmbeddedLookups;
+  return firstNonEmpty(embedded.versionName, embedded.version?.name);
+}
+
+function firstNonEmpty(
+  ...values: Array<string | null | undefined>
+): string | undefined {
+  for (const value of values) {
+    const trimmed = value?.trim();
+    if (trimmed) {
+      return trimmed;
+    }
+  }
+
+  return undefined;
 }
 
 function initialOf(value: string) {

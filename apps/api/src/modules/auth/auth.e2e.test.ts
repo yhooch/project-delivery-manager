@@ -169,12 +169,12 @@ describe("auth and session API", () => {
         confirmPassword: "password-123",
       })
       .expect(200);
-    await agent.get("/api/v1/demo/protected").expect(200);
+    await agent.get("/api/v1/auth/session").expect(200);
 
     await post(agent, "/api/v1/auth/logout", "203.0.113.17")
       .send({})
       .expect(200);
-    await agent.get("/api/v1/demo/protected").expect(401);
+    await agent.get("/api/v1/auth/session").expect(401);
   });
 
   it("rate limits repeated login failures by username and IP", async () => {
@@ -231,10 +231,10 @@ describe("auth and session API", () => {
       themeMode: "DARK",
     });
     await agent
-      .get("/api/v1/demo/protected")
+      .get("/api/v1/auth/session")
       .expect(200)
       .expect(({ body }) => {
-        expect(body.data.preferences).toEqual({
+        expect(body.data.user.preferences).toEqual({
           locale: "en-US",
           themeMode: "DARK",
         });

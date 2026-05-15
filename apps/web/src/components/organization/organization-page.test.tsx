@@ -1,4 +1,10 @@
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import {
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const { translatorCache } = vi.hoisted(() => ({
@@ -57,21 +63,21 @@ vi.mock("../providers/session-provider", () => ({
 }));
 
 const {
+  disableOrganizationMemberMock,
   listOrganizationMembersMock,
-  removeOrganizationMemberMock,
   updateOrganizationMock,
   updateOrganizationMemberMock,
 } = vi.hoisted(() => ({
-    listOrganizationMembersMock: vi.fn(),
-    removeOrganizationMemberMock: vi.fn(),
-    updateOrganizationMock: vi.fn(),
-    updateOrganizationMemberMock: vi.fn(),
-  }));
+  disableOrganizationMemberMock: vi.fn(),
+  listOrganizationMembersMock: vi.fn(),
+  updateOrganizationMock: vi.fn(),
+  updateOrganizationMemberMock: vi.fn(),
+}));
 vi.mock("../../lib/space-service", () => ({
   canManageOrganization: (role: string | undefined) =>
     role === "OWNER" || role === "ADMIN",
+  disableOrganizationMember: disableOrganizationMemberMock,
   listOrganizationMembers: listOrganizationMembersMock,
-  removeOrganizationMember: removeOrganizationMemberMock,
   updateOrganization: updateOrganizationMock,
   updateOrganizationMember: updateOrganizationMemberMock,
 }));
@@ -101,7 +107,7 @@ function makeOrgMember(overrides: Record<string, unknown> = {}) {
 
 beforeEach(() => {
   listOrganizationMembersMock.mockReset();
-  removeOrganizationMemberMock.mockReset();
+  disableOrganizationMemberMock.mockReset();
   sessionMock.refreshSession.mockReset();
   updateOrganizationMock.mockReset();
   updateOrganizationMemberMock.mockReset();
@@ -152,9 +158,7 @@ describe("OrganizationPage", () => {
       "organization.info.fields.name",
     );
     expect((nameInput as HTMLInputElement).value).toBe("Acme Corp");
-    const codeInput = screen.getByLabelText(
-      "organization.info.fields.code",
-    );
+    const codeInput = screen.getByLabelText("organization.info.fields.code");
     expect((codeInput as HTMLInputElement).value).toBe("ACME");
     expect(screen.getByTestId("organization-profile-status")).toHaveValue(
       "ACTIVE",
@@ -169,6 +173,9 @@ describe("OrganizationPage", () => {
     expect(
       screen.getByText("organization.members.roles.MEMBER"),
     ).toBeInTheDocument();
+    expect(
+      screen.getAllByText("organization.members.status.ACTIVE").length,
+    ).toBeGreaterThan(0);
   });
 
   it("allows OWNER/ADMIN to update organization profile and refreshes session", async () => {
@@ -183,9 +190,7 @@ describe("OrganizationPage", () => {
 
     render(<OrganizationPage />);
 
-    await waitFor(() =>
-      expect(listOrganizationMembersMock).toHaveBeenCalled(),
-    );
+    await waitFor(() => expect(listOrganizationMembersMock).toHaveBeenCalled());
     fireEvent.change(screen.getByTestId("organization-profile-name"), {
       target: { value: "  Acme Labs  " },
     });
@@ -201,7 +206,10 @@ describe("OrganizationPage", () => {
         code: "ACME-LABS",
       }),
     );
-    expect(sessionMock.refreshSession).toHaveBeenCalledWith("ORG_01", undefined);
+    expect(sessionMock.refreshSession).toHaveBeenCalledWith(
+      "ORG_01",
+      undefined,
+    );
   });
 
   it("renders the empty member message when there are no members", async () => {
@@ -209,9 +217,7 @@ describe("OrganizationPage", () => {
 
     render(<OrganizationPage />);
 
-    await waitFor(() =>
-      expect(listOrganizationMembersMock).toHaveBeenCalled(),
-    );
+    await waitFor(() => expect(listOrganizationMembersMock).toHaveBeenCalled());
     expect(
       await screen.findByText("organization.members.empty"),
     ).toBeInTheDocument();
@@ -229,7 +235,10 @@ describe("OrganizationPage", () => {
   });
 
   it("renders a skeleton loading state while members are loading", async () => {
-    let resolve: (value: { items: unknown[]; total: number }) => void = () => {};
+    let resolve: (value: {
+      items: unknown[];
+      total: number;
+    }) => void = () => {};
     listOrganizationMembersMock.mockImplementationOnce(
       () =>
         new Promise((r) => {
@@ -239,12 +248,10 @@ describe("OrganizationPage", () => {
 
     const { container } = render(<OrganizationPage />);
 
-    await waitFor(() =>
-      expect(listOrganizationMembersMock).toHaveBeenCalled(),
+    await waitFor(() => expect(listOrganizationMembersMock).toHaveBeenCalled());
+    expect(container.querySelectorAll(".animate-pulse").length).toBeGreaterThan(
+      0,
     );
-    expect(
-      container.querySelectorAll(".animate-pulse").length,
-    ).toBeGreaterThan(0);
 
     resolve({ items: [], total: 0 });
     await waitFor(() =>
@@ -259,9 +266,7 @@ describe("OrganizationPage", () => {
 
     render(<OrganizationPage />);
 
-    await waitFor(() =>
-      expect(listOrganizationMembersMock).toHaveBeenCalled(),
-    );
+    await waitFor(() => expect(listOrganizationMembersMock).toHaveBeenCalled());
 
     fireEvent.click(
       screen.getByRole("button", { name: "organization.members.add" }),
@@ -271,7 +276,7 @@ describe("OrganizationPage", () => {
     ).toBeInTheDocument();
   });
 
-  it("disables the remove button for the last active OWNER", async () => {
+  it("disables the member disable button for the last active OWNER", async () => {
     listOrganizationMembersMock.mockResolvedValueOnce({
       items: [
         makeOrgMember({
@@ -286,10 +291,10 @@ describe("OrganizationPage", () => {
     render(<OrganizationPage />);
 
     expect(await screen.findByText("Owner")).toBeInTheDocument();
-    const removeBtn = screen.getByRole("button", {
-      name: "organization.members.actions.remove",
+    const disableBtn = screen.getByRole("button", {
+      name: "organization.members.actions.disable",
     });
-    expect(removeBtn).toBeDisabled();
+    expect(disableBtn).toBeDisabled();
   });
 
   it("updates an organization member role", async () => {
@@ -394,11 +399,15 @@ describe("OrganizationPage", () => {
     expect(updateOrganizationMemberMock).not.toHaveBeenCalled();
   });
 
-  it("calls removeOrganizationMember after the user confirms removal", async () => {
+  it("disables an organization member after the user confirms", async () => {
     const memberRow = makeOrgMember({
       id: "OM_MEMBER",
       role: "MEMBER",
       user: { id: "U_MEMBER", name: "Mallory", username: "mallory" },
+    });
+    const disabledMember = makeOrgMember({
+      ...memberRow,
+      status: "DISABLED",
     });
     listOrganizationMembersMock.mockResolvedValueOnce({
       items: [
@@ -411,34 +420,36 @@ describe("OrganizationPage", () => {
       ],
       total: 2,
     });
-    removeOrganizationMemberMock.mockResolvedValueOnce(undefined);
+    disableOrganizationMemberMock.mockResolvedValueOnce(disabledMember);
 
     render(<OrganizationPage />);
 
     expect(await screen.findByText("Mallory")).toBeInTheDocument();
 
-    const removeButtons = screen.getAllByRole("button", {
-      name: "organization.members.actions.remove",
+    const disableButtons = screen.getAllByRole("button", {
+      name: "organization.members.actions.disable",
     });
     // First button (OWNER) is disabled (last active owner); second one
     // (MEMBER) should be enabled — click it to open the confirm dialog.
-    const memberRemove = removeButtons[1];
-    expect(memberRemove).toBeDefined();
-    fireEvent.click(memberRemove!);
+    const memberDisable = disableButtons[1];
+    expect(memberDisable).toBeDefined();
+    fireEvent.click(memberDisable!);
 
     const confirm = await screen.findByRole("button", {
-      name: "organization.dialog.removeMember.submit",
+      name: "organization.dialog.disableMember.submit",
     });
     fireEvent.click(confirm);
 
     await waitFor(() =>
-      expect(removeOrganizationMemberMock).toHaveBeenCalledWith(
+      expect(disableOrganizationMemberMock).toHaveBeenCalledWith(
         "ORG_01",
         "OM_MEMBER",
       ),
     );
     await waitFor(() =>
-      expect(screen.queryByText("Mallory")).not.toBeInTheDocument(),
+      expect(
+        screen.getByTestId("organization-member-status-OM_MEMBER"),
+      ).toHaveTextContent("organization.members.status.DISABLED"),
     );
   });
 
@@ -472,16 +483,16 @@ describe("OrganizationPage", () => {
     render(<OrganizationPage />);
 
     expect(await screen.findByText("Mallory")).toBeInTheDocument();
-    expect(screen.getByTestId("organization-readonly-notice")).toHaveTextContent(
-      "organization.members.readOnly",
-    );
+    expect(
+      screen.getByTestId("organization-readonly-notice"),
+    ).toHaveTextContent("organization.members.readOnly");
     expect(screen.getByTestId("organization-add-member-button")).toBeDisabled();
     expect(screen.getByTestId("organization-profile-name")).toHaveAttribute(
       "readonly",
     );
     expect(screen.getByTestId("organization-profile-status")).toBeDisabled();
     expect(
-      screen.queryByTestId("organization-member-remove-OM_MEMBER"),
+      screen.queryByTestId("organization-member-disable-OM_MEMBER"),
     ).not.toBeInTheDocument();
     expect(
       screen.queryByTestId("organization-member-edit-role-OM_MEMBER"),

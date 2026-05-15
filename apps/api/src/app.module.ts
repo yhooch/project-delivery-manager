@@ -7,7 +7,6 @@ import {
 import { ConfigModule } from "@nestjs/config";
 import { APP_FILTER, APP_INTERCEPTOR } from "@nestjs/core";
 
-import { DemoController } from "./demo.controller";
 import { HealthController } from "./health.controller";
 import { validateEnv } from "./config/env";
 import { ApiResponseInterceptor } from "./http/api-response.interceptor";
@@ -29,7 +28,7 @@ import { WorkItemModule } from "./modules/workitem/workitem.module";
 import { PrismaModule } from "./prisma/prisma.module";
 
 @Module({
-  controllers: [DemoController, HealthController],
+  controllers: [HealthController],
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,

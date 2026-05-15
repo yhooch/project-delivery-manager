@@ -59,6 +59,7 @@ export function CreateBugDialog({
   const tRoot = useTranslations();
 
   const [title, setTitle] = useState("");
+  const [description, setDescription] = useState("");
   const [steps, setSteps] = useState("");
   const [expectedResult, setExpectedResult] = useState("");
   const [actualResult, setActualResult] = useState("");
@@ -113,6 +114,7 @@ export function CreateBugDialog({
 
   function reset() {
     setTitle("");
+    setDescription("");
     setSteps("");
     setExpectedResult("");
     setActualResult("");
@@ -151,6 +153,7 @@ export function CreateBugDialog({
         { spaceId },
         {
           title: trimmed,
+          description: description.trim() || undefined,
           stepsToReproduce: steps.trim() || undefined,
           expectedResult: expectedResult.trim() || undefined,
           actualResult: actualResult.trim() || undefined,
@@ -218,6 +221,20 @@ export function CreateBugDialog({
                 {t("fields.titleError")}
               </span>
             )}
+          </div>
+
+          <div className="flex flex-col gap-1.5">
+            <Label htmlFor="create-bug-description">
+              {t("fields.description")}
+            </Label>
+            <Textarea
+              id="create-bug-description"
+              data-testid="create-bug-description-input"
+              value={description}
+              onChange={(event) => setDescription(event.target.value)}
+              maxLength={8000}
+              rows={3}
+            />
           </div>
 
           <div className="flex flex-col gap-1.5">

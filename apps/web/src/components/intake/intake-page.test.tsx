@@ -5,6 +5,7 @@ import {
   render,
   screen,
   waitFor,
+  within,
 } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -75,6 +76,9 @@ const {
   rejectIntakeItemMock,
   updateIntakeItemMock,
   listWorkItemsMock,
+  listCommentsMock,
+  createCommentMock,
+  listTimelineMock,
 } = vi.hoisted(() => ({
   listIntakeItemsMock: vi.fn(),
   acceptIntakeItemMock: vi.fn(),
@@ -83,6 +87,9 @@ const {
   rejectIntakeItemMock: vi.fn(),
   updateIntakeItemMock: vi.fn(),
   listWorkItemsMock: vi.fn(),
+  listCommentsMock: vi.fn(),
+  createCommentMock: vi.fn(),
+  listTimelineMock: vi.fn(),
 }));
 vi.mock("../../lib/intake-service", () => ({
   listIntakeItems: listIntakeItemsMock,
@@ -95,13 +102,25 @@ vi.mock("../../lib/intake-service", () => ({
 vi.mock("../../lib/work-item-service", () => ({
   listWorkItems: listWorkItemsMock,
 }));
-
-const { listRequirementsMock, listVersionsMock } = vi.hoisted(() => ({
-  listRequirementsMock: vi.fn(),
-  listVersionsMock: vi.fn(),
+vi.mock("../../lib/comment-service", () => ({
+  listComments: listCommentsMock,
+  createComment: createCommentMock,
 }));
+vi.mock("../../lib/timeline-service", () => ({
+  listTimeline: listTimelineMock,
+}));
+
+const { listRequirementsMock, listSpaceMembersMock, listVersionsMock } =
+  vi.hoisted(() => ({
+    listRequirementsMock: vi.fn(),
+    listSpaceMembersMock: vi.fn(),
+    listVersionsMock: vi.fn(),
+  }));
 vi.mock("../../lib/requirement-service", () => ({
   listRequirements: listRequirementsMock,
+}));
+vi.mock("../../lib/space-service", () => ({
+  listSpaceMembers: listSpaceMembersMock,
 }));
 vi.mock("../../lib/version-service", () => ({
   listVersions: listVersionsMock,
@@ -138,8 +157,35 @@ vi.mock("./create-intake-dialog", () => ({
     open ? <div data-testid="create-intake-dialog-open" /> : null,
 }));
 vi.mock("./convert-intake-dialog", () => ({
-  ConvertIntakeDialog: ({ open }: { open: boolean }) =>
-    open ? <div data-testid="convert-intake-dialog-open" /> : null,
+  ConvertIntakeDialog: ({
+    intakeItem,
+    onConverted,
+    onOpenChange,
+    open,
+  }: {
+    intakeItem?: { id: string } | null;
+    onConverted?: (result: {
+      intakeItemId: string;
+      workItems: unknown[];
+    }) => void;
+    onOpenChange?: (open: boolean) => void;
+    open: boolean;
+  }) =>
+    open ? (
+      <div data-testid="convert-intake-dialog-open">
+        <button
+          type="button"
+          onClick={() => {
+            if (intakeItem) {
+              onConverted?.({ intakeItemId: intakeItem.id, workItems: [] });
+            }
+            onOpenChange?.(false);
+          }}
+        >
+          converted
+        </button>
+      </div>
+    ) : null,
 }));
 
 import { IntakePage } from "./intake-page";
@@ -187,10 +233,17 @@ beforeEach(() => {
   rejectIntakeItemMock.mockReset();
   updateIntakeItemMock.mockReset();
   listWorkItemsMock.mockReset();
+  listCommentsMock.mockReset();
+  createCommentMock.mockReset();
+  listTimelineMock.mockReset();
   listRequirementsMock.mockReset();
+  listSpaceMembersMock.mockReset();
   listVersionsMock.mockReset();
   listRequirementsMock.mockResolvedValue({ items: [], total: 0 });
+  listSpaceMembersMock.mockResolvedValue({ items: [], total: 0 });
   listVersionsMock.mockResolvedValue({ items: [], total: 0 });
+  listCommentsMock.mockResolvedValue({ items: [], total: 0 });
+  listTimelineMock.mockResolvedValue({ items: [], total: 0 });
   memberMap.clear();
   versionMap.clear();
   routerPushMock.mockReset();
@@ -259,9 +312,7 @@ describe("IntakePage", () => {
 
     render(<IntakePage />);
 
-    await waitFor(() =>
-      expect(listIntakeItemsMock).toHaveBeenCalledTimes(1),
-    );
+    await waitFor(() => expect(listIntakeItemsMock).toHaveBeenCalledTimes(1));
     expect(await screen.findByText("Idea: bulk export")).toBeInTheDocument();
     // Source type badge.
     expect(
@@ -332,7 +383,10 @@ describe("IntakePage", () => {
   });
 
   it("shows the loading state while listIntakeItems is pending", async () => {
-    let resolve: (value: { items: unknown[]; total: number }) => void = () => {};
+    let resolve: (value: {
+      items: unknown[];
+      total: number;
+    }) => void = () => {};
     listIntakeItemsMock.mockImplementationOnce(
       () =>
         new Promise((r) => {
@@ -343,15 +397,13 @@ describe("IntakePage", () => {
     const { container } = render(<IntakePage />);
 
     await waitFor(() => expect(listIntakeItemsMock).toHaveBeenCalled());
-    expect(
-      container.querySelectorAll(".animate-pulse").length,
-    ).toBeGreaterThan(0);
+    expect(container.querySelectorAll(".animate-pulse").length).toBeGreaterThan(
+      0,
+    );
 
     resolve({ items: [], total: 0 });
     await waitFor(() =>
-      expect(
-        screen.getByText("intake.states.empty.title"),
-      ).toBeInTheDocument(),
+      expect(screen.getByText("intake.states.empty.title")).toBeInTheDocument(),
     );
   });
 
@@ -432,6 +484,86 @@ describe("IntakePage", () => {
     expect(screen.getByText("Rejected one")).toBeInTheDocument();
   });
 
+  it("sends version, requirement, priority, source type, and assignee filters to the backend", async () => {
+    const versionId = "01ARZ3NDEKTSV4RRFFQ69G5FV1";
+    const requirementId = "01ARZ3NDEKTSV4RRFFQ69G5FR1";
+    const assigneeId = "01ARZ3NDEKTSV4RRFFQ69G5FA1";
+    versionMap.set(versionId, { name: "M2" });
+    memberMap.set(assigneeId, {
+      user: { name: "Alice", username: "alice" },
+    });
+    listRequirementsMock.mockResolvedValueOnce({
+      items: [{ id: requirementId, title: "Requirement A" }],
+      total: 1,
+    });
+    listIntakeItemsMock.mockResolvedValue({
+      items: [makeIntake({ title: "Filtered intake" })],
+      total: 1,
+    });
+
+    render(<IntakePage />);
+
+    await screen.findByText("Filtered intake");
+    fireEvent.click(screen.getByTestId("intake-filter-button"));
+    expect(await screen.findByText("Requirement A")).toBeInTheDocument();
+
+    fireEvent.change(screen.getByTestId("intake-filter-version"), {
+      target: { value: versionId },
+    });
+    await waitFor(() =>
+      expect(listIntakeItemsMock).toHaveBeenLastCalledWith(
+        expect.objectContaining({ versionId }),
+      ),
+    );
+
+    fireEvent.change(screen.getByTestId("intake-filter-requirement"), {
+      target: { value: requirementId },
+    });
+    await waitFor(() =>
+      expect(listIntakeItemsMock).toHaveBeenLastCalledWith(
+        expect.objectContaining({ requirementId, versionId }),
+      ),
+    );
+
+    fireEvent.change(screen.getByTestId("intake-filter-priority"), {
+      target: { value: "HIGH" },
+    });
+    await waitFor(() =>
+      expect(listIntakeItemsMock).toHaveBeenLastCalledWith(
+        expect.objectContaining({ priority: "HIGH", requirementId, versionId }),
+      ),
+    );
+
+    fireEvent.change(screen.getByTestId("intake-filter-source"), {
+      target: { value: "MEETING_DECISION" },
+    });
+    await waitFor(() =>
+      expect(listIntakeItemsMock).toHaveBeenLastCalledWith(
+        expect.objectContaining({
+          priority: "HIGH",
+          requirementId,
+          sourceType: "MEETING_DECISION",
+          versionId,
+        }),
+      ),
+    );
+
+    fireEvent.change(screen.getByTestId("intake-filter-assignee"), {
+      target: { value: assigneeId },
+    });
+    await waitFor(() =>
+      expect(listIntakeItemsMock).toHaveBeenLastCalledWith(
+        expect.objectContaining({
+          assigneeId,
+          priority: "HIGH",
+          requirementId,
+          sourceType: "MEETING_DECISION",
+          versionId,
+        }),
+      ),
+    );
+  });
+
   it("opens the create intake dialog when the 创建 button is clicked", async () => {
     listIntakeItemsMock.mockResolvedValueOnce({ items: [], total: 0 });
 
@@ -439,9 +571,7 @@ describe("IntakePage", () => {
 
     await waitFor(() => expect(listIntakeItemsMock).toHaveBeenCalled());
 
-    fireEvent.click(
-      screen.getByRole("button", { name: "intake.page.create" }),
-    );
+    fireEvent.click(screen.getByRole("button", { name: "intake.page.create" }));
     expect(
       await screen.findByTestId("create-intake-dialog-open"),
     ).toBeInTheDocument();
@@ -454,7 +584,10 @@ describe("IntakePage", () => {
       status: "PENDING",
     });
     listIntakeItemsMock.mockResolvedValueOnce({ items: [original], total: 1 });
-    acceptIntakeItemMock.mockResolvedValueOnce({ ...original, status: "ACCEPTED" });
+    acceptIntakeItemMock.mockResolvedValueOnce({
+      ...original,
+      status: "ACCEPTED",
+    });
     // The component re-loads after accept; provide a fresh page.
     listIntakeItemsMock.mockResolvedValueOnce({
       items: [{ ...original, status: "ACCEPTED" }],
@@ -479,6 +612,126 @@ describe("IntakePage", () => {
     );
   });
 
+  it("loads related tasks, comments, timeline, and posts a new intake comment", async () => {
+    const intake = makeIntake({
+      id: "01ARZ3NDEKTSV4RRFFQ69G5FDT",
+      title: "Detail resources",
+      status: "ACCEPTED",
+    });
+    listIntakeItemsMock.mockResolvedValueOnce({ items: [intake], total: 1 });
+    listWorkItemsMock.mockResolvedValueOnce({
+      items: [makeTask({ title: "Related task from API" })],
+      page: 1,
+      pageSize: 5,
+      total: 1,
+    });
+    listCommentsMock.mockResolvedValueOnce({
+      items: [
+        {
+          id: "01ARZ3NDEKTSV4RRFFQ69G5FC1",
+          organizationId: "ORG_01",
+          spaceId: "SPC_01",
+          targetType: "INTAKE_ITEM",
+          targetId: "01ARZ3NDEKTSV4RRFFQ69G5FDT",
+          author: {
+            id: "01ARZ3NDEKTSV4RRFFQ69G5FU1",
+            username: "alice",
+            name: "Alice",
+          },
+          body: "Existing intake comment",
+          createdAt: "2026-05-12T00:00:00.000Z",
+        },
+      ],
+      total: 1,
+    });
+    listTimelineMock.mockResolvedValueOnce({
+      items: [
+        {
+          id: "01ARZ3NDEKTSV4RRFFQ69G5FTL",
+          organizationId: "ORG_01",
+          spaceId: "SPC_01",
+          target: {
+            id: "01ARZ3NDEKTSV4RRFFQ69G5FDT",
+            type: "INTAKE_ITEM",
+            title: "Detail resources",
+          },
+          eventType: "CREATED",
+          actor: {
+            id: "01ARZ3NDEKTSV4RRFFQ69G5FU1",
+            username: "alice",
+            name: "Alice",
+          },
+          title: "created the intake item",
+          createdAt: "2026-05-12T00:00:00.000Z",
+        },
+      ],
+      total: 1,
+    });
+    createCommentMock.mockResolvedValueOnce({
+      id: "01ARZ3NDEKTSV4RRFFQ69G5FC2",
+      organizationId: "ORG_01",
+      spaceId: "SPC_01",
+      targetType: "INTAKE_ITEM",
+      targetId: "01ARZ3NDEKTSV4RRFFQ69G5FDT",
+      author: {
+        id: "01ARZ3NDEKTSV4RRFFQ69G5FU2",
+        username: "bob",
+        name: "Bob",
+      },
+      body: "New intake comment",
+      createdAt: "2026-05-13T00:00:00.000Z",
+    });
+
+    render(<IntakePage />);
+
+    fireEvent.click(await screen.findByText("Detail resources"));
+
+    expect(
+      await screen.findByText("Related task from API"),
+    ).toBeInTheDocument();
+    expect(
+      await screen.findByText("Existing intake comment"),
+    ).toBeInTheDocument();
+    expect(
+      await screen.findByText("created the intake item"),
+    ).toBeInTheDocument();
+    expect(listWorkItemsMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        intakeItemId: "01ARZ3NDEKTSV4RRFFQ69G5FDT",
+        page: 1,
+        pageSize: 5,
+        spaceId: "SPC_01",
+      }),
+    );
+    expect(listCommentsMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        targetId: "01ARZ3NDEKTSV4RRFFQ69G5FDT",
+        targetType: "INTAKE_ITEM",
+      }),
+    );
+    expect(listTimelineMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        targetId: "01ARZ3NDEKTSV4RRFFQ69G5FDT",
+        targetType: "INTAKE_ITEM",
+      }),
+    );
+
+    fireEvent.change(screen.getByTestId("intake-comment-input"), {
+      target: { value: "New intake comment" },
+    });
+    fireEvent.click(screen.getByTestId("intake-comment-submit"));
+
+    await waitFor(() => expect(createCommentMock).toHaveBeenCalledTimes(1));
+    expect(createCommentMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        body: "New intake comment",
+        targetId: "01ARZ3NDEKTSV4RRFFQ69G5FDT",
+        targetType: "INTAKE_ITEM",
+      }),
+    );
+    expect(await screen.findByText("New intake comment")).toBeInTheDocument();
+  });
+
   it("updates the active intake item and list after editing", async () => {
     const original = makeIntake({
       id: "01ARZ3NDEKTSV4RRFFQ69G5FE1",
@@ -487,11 +740,23 @@ describe("IntakePage", () => {
       sourceType: "AD_HOC",
       priority: "MEDIUM",
     });
+    const assigneeId = "01ARZ3NDEKTSV4RRFFQ69G5FA1";
+    listSpaceMembersMock.mockResolvedValueOnce({
+      items: [
+        {
+          userId: assigneeId,
+          user: { name: "Alice", username: "alice" },
+        },
+      ],
+      total: 1,
+    });
     const updated = {
       ...original,
+      assigneeId,
       title: "Edited intake",
       description: "Edited description",
       priority: "HIGH",
+      sourceObject: { meetingId: "m-1" },
     };
     listIntakeItemsMock.mockResolvedValueOnce({ items: [original], total: 1 });
     updateIntakeItemMock.mockResolvedValueOnce(updated);
@@ -511,6 +776,13 @@ describe("IntakePage", () => {
     fireEvent.change(screen.getByTestId("edit-intake-priority-select"), {
       target: { value: "HIGH" },
     });
+    await screen.findByText("Alice");
+    fireEvent.change(screen.getByTestId("edit-intake-assignee-select"), {
+      target: { value: assigneeId },
+    });
+    fireEvent.change(screen.getByTestId("edit-intake-source-object-input"), {
+      target: { value: '{ "meetingId": "m-1" }' },
+    });
     fireEvent.click(screen.getByTestId("edit-intake-submit"));
 
     await waitFor(() =>
@@ -520,15 +792,19 @@ describe("IntakePage", () => {
           spaceId: "SPC_01",
         },
         expect.objectContaining({
+          assigneeId,
           description: "Edited description",
           priority: "HIGH",
+          sourceObject: { meetingId: "m-1" },
           sourceType: "AD_HOC",
           title: "Edited intake",
         }),
       ),
     );
     await waitFor(() =>
-      expect(screen.queryByTestId("edit-intake-dialog")).not.toBeInTheDocument(),
+      expect(
+        screen.queryByTestId("edit-intake-dialog"),
+      ).not.toBeInTheDocument(),
     );
 
     expect(screen.getAllByText("Edited intake").length).toBeGreaterThanOrEqual(
@@ -640,7 +916,10 @@ describe("IntakePage", () => {
       status: "PENDING",
     });
     listIntakeItemsMock.mockResolvedValueOnce({ items: [original], total: 1 });
-    acceptIntakeItemMock.mockResolvedValueOnce({ ...original, status: "ACCEPTED" });
+    acceptIntakeItemMock.mockResolvedValueOnce({
+      ...original,
+      status: "ACCEPTED",
+    });
     listIntakeItemsMock.mockResolvedValueOnce({
       items: [{ ...original, status: "ACCEPTED" }],
       total: 1,
@@ -660,11 +939,80 @@ describe("IntakePage", () => {
     );
   });
 
+  it("keeps A as an explicit disabled no-op on the intake list", async () => {
+    listIntakeItemsMock.mockResolvedValueOnce({
+      items: [
+        makeIntake({
+          id: "01ARZ3NDEKTSV4RRFFQ69G5FA0",
+          title: "No assign shortcut",
+        }),
+      ],
+      total: 1,
+    });
+
+    render(<IntakePage />);
+
+    await screen.findByText("No assign shortcut");
+    fireEvent.keyDown(window, { key: "j" });
+
+    const assignEvent = new KeyboardEvent("keydown", {
+      key: "a",
+      cancelable: true,
+    });
+    window.dispatchEvent(assignEvent);
+
+    expect(assignEvent.defaultPrevented).toBe(false);
+    expect(
+      screen.queryByTestId("convert-intake-dialog-open"),
+    ).not.toBeInTheDocument();
+    expect(acceptIntakeItemMock).not.toHaveBeenCalled();
+    expect(rejectIntakeItemMock).not.toHaveBeenCalled();
+  });
+
+  it("allows deferred intake items to be accepted or rejected without showing defer again", async () => {
+    const original = makeIntake({
+      id: "01ARZ3NDEKTSV4RRFFQ69G5FDF",
+      title: "Deferred follow-up",
+      status: "DEFERRED",
+    });
+    listIntakeItemsMock.mockResolvedValueOnce({ items: [original], total: 1 });
+    acceptIntakeItemMock.mockResolvedValueOnce({
+      ...original,
+      status: "ACCEPTED",
+    });
+    listIntakeItemsMock.mockResolvedValueOnce({
+      items: [{ ...original, status: "ACCEPTED" }],
+      total: 1,
+    });
+
+    render(<IntakePage />);
+
+    fireEvent.click(await screen.findByText("Deferred follow-up"));
+
+    expect(
+      await screen.findByTestId("intake-accept-button"),
+    ).toBeInTheDocument();
+    expect(screen.getByTestId("intake-reject-button")).toBeInTheDocument();
+    expect(screen.queryByTestId("intake-defer-button")).not.toBeInTheDocument();
+
+    fireEvent.keyDown(window, { key: "s" });
+
+    await waitFor(() =>
+      expect(acceptIntakeItemMock).toHaveBeenCalledWith({
+        intakeItemId: "01ARZ3NDEKTSV4RRFFQ69G5FDF",
+        spaceId: "SPC_01",
+      }),
+    );
+  });
+
   it("marks the keyboard-selected intake row as aria-selected", async () => {
     listIntakeItemsMock.mockResolvedValueOnce({
       items: [
         makeIntake({ id: "01ARZ3NDEKTSV4RRFFQ69G5F01", title: "First intake" }),
-        makeIntake({ id: "01ARZ3NDEKTSV4RRFFQ69G5F02", title: "Second intake" }),
+        makeIntake({
+          id: "01ARZ3NDEKTSV4RRFFQ69G5F02",
+          title: "Second intake",
+        }),
       ],
       total: 2,
     });
@@ -676,10 +1024,7 @@ describe("IntakePage", () => {
 
     const rows = screen.getAllByTestId("intake-row");
     expect(rows[0]).toHaveAttribute("aria-selected", "true");
-    expect(rows[0]).toHaveAttribute(
-      "data-id",
-      "01ARZ3NDEKTSV4RRFFQ69G5F01",
-    );
+    expect(rows[0]).toHaveAttribute("data-id", "01ARZ3NDEKTSV4RRFFQ69G5F01");
     expect(rows[1]).toHaveAttribute("aria-selected", "false");
   });
 
@@ -733,6 +1078,36 @@ describe("IntakePage", () => {
     expect(screen.queryByTestId("intake-detail-sheet")).not.toBeInTheDocument();
   });
 
+  it("marks the active intake as converted after task breakdown succeeds", async () => {
+    const original = makeIntake({
+      id: "01ARZ3NDEKTSV4RRFFQ69G5FCV",
+      title: "Breakdown target",
+      status: "ACCEPTED",
+    });
+    listIntakeItemsMock
+      .mockResolvedValueOnce({ items: [original], total: 1 })
+      .mockResolvedValueOnce({
+        items: [{ ...original, status: "CONVERTED" }],
+        total: 1,
+      });
+
+    render(<IntakePage />);
+
+    fireEvent.click(await screen.findByText("Breakdown target"));
+    fireEvent.click(await screen.findByTestId("intake-convert-button"));
+    const convertDialog = await screen.findByTestId(
+      "convert-intake-dialog-open",
+    );
+    fireEvent.click(within(convertDialog).getByText("converted"));
+
+    expect(
+      await screen.findByTestId("intake-view-converted-tasks-button"),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByTestId("intake-convert-button"),
+    ).not.toBeInTheDocument();
+  });
+
   it("opens converted intake related tasks from the detail drawer", async () => {
     listIntakeItemsMock.mockResolvedValueOnce({
       items: [
@@ -744,12 +1119,19 @@ describe("IntakePage", () => {
       ],
       total: 1,
     });
-    listWorkItemsMock.mockResolvedValueOnce({
-      items: [makeTask()],
-      page: 1,
-      pageSize: 2,
-      total: 1,
-    });
+    listWorkItemsMock
+      .mockResolvedValueOnce({
+        items: [],
+        page: 1,
+        pageSize: 5,
+        total: 0,
+      })
+      .mockResolvedValueOnce({
+        items: [makeTask()],
+        page: 1,
+        pageSize: 2,
+        total: 1,
+      });
 
     render(<IntakePage />);
 
@@ -811,10 +1193,16 @@ describe("IntakePage", () => {
 
     fireEvent.click(await screen.findByText("Read only intake"));
 
-    expect(screen.queryByTestId("intake-create-button")).not.toBeInTheDocument();
-    expect(screen.queryByTestId("intake-accept-button")).not.toBeInTheDocument();
+    expect(
+      screen.queryByTestId("intake-create-button"),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByTestId("intake-accept-button"),
+    ).not.toBeInTheDocument();
     expect(screen.queryByTestId("intake-defer-button")).not.toBeInTheDocument();
-    expect(screen.queryByTestId("intake-reject-button")).not.toBeInTheDocument();
+    expect(
+      screen.queryByTestId("intake-reject-button"),
+    ).not.toBeInTheDocument();
   });
 
   it("renders the noSpace empty state when session has no defaultSpaceId", async () => {

@@ -347,7 +347,8 @@
         "work": "工作",
         "deliver": "推进",
         "document": "沉淀",
-        "configure": "配置"
+        "configure": "配置",
+        "organization": "组织"
       },
       "workbench": "我的工作台",
       "overview": "空间总览",
@@ -501,7 +502,10 @@
         "exceptions": "异常",
         "requirements": "需求",
         "intake": "事项池",
-        "workflow": "流程配置"
+        "workflow": "流程配置",
+        "spaces": "项目空间",
+        "spaceSettings": "空间设置",
+        "organization": "组织设置"
       }
     },
     "onboarding": {
@@ -656,9 +660,11 @@
     "filterAll": "全部负责人",
     "filterTask": "任务筛选",
     "newWorkItem": "新建工作项",
+    "newWorkItemReadonly": "当前空间角色不能新建工作项。",
     "actions": {
       "editVersion": "编辑版本",
-      "newVersion": "新建版本"
+      "newVersion": "新建版本",
+      "manageReadonly": "需要空间管理员或项目经理角色。"
     },
     "tabs": {
       "board": "任务/Bug 看板",
@@ -805,7 +811,8 @@
       "unknownSpace": "当前空间",
       "description": "管理当前空间的需求草稿、确认状态和关联工作项。",
       "filter": "筛选",
-      "create": "新建草稿"
+      "create": "新建草稿",
+      "createReadonly": "当前空间角色不能新建需求草稿。"
     },
     "actions": {
       "refresh": "刷新",
@@ -915,6 +922,14 @@
       "discardDraft": "放弃草稿",
       "discardingDraft": "正在删除",
       "discardDraftConfirm": "确认删除这个空草稿？删除后无法恢复。",
+      "emptyDraftLeave": {
+        "title": "保留还是删除空草稿？",
+        "description": "这个需求草稿仍为空。离开详情页前，可以保留草稿，也可以删除它。",
+        "keep": "保留",
+        "delete": "删除",
+        "deleting": "删除中",
+        "browserWarning": "这个空草稿尚未处理。"
+      },
       "metaTitle": "当前信息",
       "metaDescription": "按后端返回结果展示，不扩大权限边界。",
       "attachments": "附件数",
@@ -1487,6 +1502,7 @@
       "fields": {
         "title": "标题",
         "titleError": "请填写不超过 200 字的 Bug 标题。",
+        "description": "说明",
         "steps": "复现步骤",
         "severity": "严重程度",
         "priority": "优先级",
@@ -1564,9 +1580,20 @@
       "pending": "待处理",
       "accepted": "已纳入",
       "deferred": "已搁置",
-      "converted": "已拆解"
+      "converted": "已拆解",
+      "version": "版本",
+      "allVersions": "全部版本",
+      "requirement": "需求",
+      "allRequirements": "全部需求",
+      "priority": "优先级",
+      "allPriorities": "全部优先级",
+      "sourceType": "来源类型",
+      "allSourceTypes": "全部来源",
+      "assignee": "负责人",
+      "allAssignees": "全部负责人"
     },
     "actions": {
+      "filter": "筛选",
       "retry": "重试"
     },
     "states": {
@@ -1631,11 +1658,14 @@
         "titleError": "请填写不超过 200 字的事项标题。",
         "description": "描述",
         "sourceType": "来源类型",
+        "sourceObject": "来源对象 JSON",
         "version": "版本",
         "noVersion": "未指定版本",
         "requirement": "关联需求",
         "noRequirement": "未关联需求",
         "untitledRequirement": "未命名需求",
+        "assignee": "负责人",
+        "unassigned": "未分配",
         "priority": "优先级",
         "noPriority": "未设置"
       },
@@ -2024,6 +2054,7 @@
     "subtitle": "聚合待办、待处理动作、临近截止和最近动态。",
     "viewAll": "查看全部",
     "errorTitle": "工作台加载失败",
+    "versionFallback": "版本未命名",
     "summary": {
       "todo": "我的待办",
       "dueSoon": "临近截止",
@@ -2135,9 +2166,18 @@
       "errorTitle": "空间列表加载失败",
       "loading": "正在加载空间",
       "empty": "暂无空间",
+      "emptyValue": "—",
       "selected": "当前空间",
       "switch": "切换",
       "notMember": "未加入",
+      "fields": {
+        "owner": "负责人",
+        "currentVersion": "当前活跃版本",
+        "unfinishedTaskCount": "未完成任务",
+        "openBugCount": "未关闭 Bug",
+        "blockedCount": "阻塞",
+        "updatedAt": "最近更新"
+      },
       "table": {
         "label": "空间列表"
       }
@@ -2471,7 +2511,16 @@
     },
     "publishIssues": {
       "unknownCode": "问题",
-      "unknownMessage": "发布校验失败。"
+      "unknownMessage": "发布校验失败。",
+      "codes": {
+        "START_STATE_COUNT_INVALID": "流程版本必须且只能有 1 个起始状态。",
+        "END_STATE_REQUIRED": "流程版本至少需要 1 个结束状态。",
+        "STATE_CATEGORY_REQUIRED": "流程状态必须设置系统分类。",
+        "ACTION_SOURCE_STATE_NOT_FOUND": "流程动作的来源状态必须存在。",
+        "ACTION_TARGET_STATE_NOT_FOUND": "流程动作的目标状态必须存在。",
+        "NON_END_STATE_ACTION_REQUIRED": "非结束状态至少需要 1 条出边动作。",
+        "ISOLATED_STATE": "流程状态必须可从起始状态到达并连接到流程图。"
+      }
     },
     "page": {
       "description": "维护任务与 Bug 的轻量状态机；已发布版本不可直接编辑，需新建版本承接变更。",
@@ -2498,6 +2547,11 @@
         "versionLabel": "版本",
         "versionOption": "v{version} · {status}",
         "noVersions": "暂无版本",
+        "versionCount": "{count} 个版本",
+        "targetTypes": "目标：{types}",
+        "noTargetTypes": "暂无目标类型",
+        "defaultBindings": "默认：{types}",
+        "noDefaultBinding": "暂无默认绑定",
         "publish": "发布",
         "publishing": "发布中…",
         "disable": "停用",
@@ -2641,6 +2695,10 @@
           "options": "选项",
           "optionsPlaceholder": "每行一个选项",
           "optionsHint": "仅在「下拉选择」类型下生效。"
+        },
+        "errors": {
+          "optionsRequired": "下拉选择字段至少需要 1 个选项。",
+          "optionsDuplicate": "下拉选择字段的选项不能重复。"
         },
         "submit": "保存",
         "submitting": "保存中…",
@@ -2966,7 +3024,8 @@
       "workItemType": "工作项类型",
       "allWorkItemTypes": "全部工作项类型",
       "exceptionType": "异常类型",
-      "allExceptionTypes": "全部异常类型"
+      "allExceptionTypes": "全部异常类型",
+      "clear": "清除筛选"
     },
     "empty": {
       "column": {
@@ -3096,6 +3155,17 @@
       "title": "描述",
       "empty": "暂无描述"
     },
+    "edit": {
+      "button": "编辑字段",
+      "title": "标题",
+      "titleError": "请填写不超过 200 字的任务标题。",
+      "save": "保存",
+      "saving": "保存中…",
+      "cancel": "取消",
+      "unassigned": "未分配",
+      "noVersion": "无版本",
+      "noRequirement": "无需求"
+    },
     "missingApi": {
       "title": "该接口待补"
     },
@@ -3147,6 +3217,7 @@
       "fields": {
         "staleDays": "长时间未流转阈值（自然日）"
       },
+      "error": "请输入 1 到 30 之间的整数。",
       "hint": "合法范围 1 到 30。修改后异常视图的“长时间未流转”会按新阈值刷新。"
     },
     "members": {
@@ -3232,16 +3303,20 @@
       "title": "组织成员",
       "add": "添加成员",
       "empty": "暂无组织成员",
-      "readOnly": "当前组织角色只能查看成员，不能添加、移除或调整角色。",
-      "ownerProtectionNote": "系统会自动保护至少一个所有者不可移除或降级。",
+      "readOnly": "当前组织角色只能查看成员，不能添加、禁用或调整角色。",
+      "ownerProtectionNote": "系统会自动保护至少一个所有者不可禁用或降级。",
       "roles": {
         "OWNER": "所有者",
         "ADMIN": "管理员",
         "MEMBER": "成员"
       },
+      "status": {
+        "ACTIVE": "启用",
+        "DISABLED": "禁用"
+      },
       "actions": {
         "changeRole": "修改 {username} 的组织角色",
-        "remove": "移除 {username}"
+        "disable": "禁用 {username}"
       }
     },
     "dialog": {
@@ -3273,11 +3348,11 @@
         "submitting": "保存中…",
         "cancel": "取消"
       },
-      "removeMember": {
-        "title": "移除组织成员",
-        "description": "确定要移除 {username} 吗？该成员会从组织中移除并无法再访问任何资源。",
-        "lastOwnerWarning": "至少需要保留一名 OWNER，无法移除最后一个所有者。",
-        "submit": "确认移除",
+      "disableMember": {
+        "title": "禁用组织成员",
+        "description": "确定要禁用 {username} 吗？该成员将无法继续访问组织资源。",
+        "lastOwnerWarning": "至少需要保留一名 OWNER，无法禁用最后一个所有者。",
+        "submit": "确认禁用",
         "submitting": "处理中…",
         "cancel": "取消"
       }

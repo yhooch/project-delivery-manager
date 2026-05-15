@@ -9,10 +9,10 @@ import { describe, expect, it, vi } from "vitest";
 import {
   addSpaceMember,
   createSpace,
+  disableOrganizationMember,
   listOrganizationMembers,
   listSpaceMembers,
   listSpaces,
-  removeOrganizationMember,
   updateSpaceMember,
   type WorkspaceApiTransport,
 } from "./space-service";
@@ -82,10 +82,14 @@ describe("space service", () => {
     });
 
     await expect(
-      createSpace(organizationId, {
-        name: "Core",
-        staleThresholdDays: 3,
-      }, api),
+      createSpace(
+        organizationId,
+        {
+          name: "Core",
+          staleThresholdDays: 3,
+        },
+        api,
+      ),
     ).resolves.toBe(space);
     await expect(listSpaces(organizationId, api)).resolves.toEqual({
       items: [space],
@@ -129,17 +133,33 @@ describe("space service", () => {
     });
   });
 
-  it("issues a DELETE to remove an organization member", async () => {
+  it("disables an organization member with a PATCH status update", async () => {
+    const member = {
+      id: memberId,
+      organizationId,
+      role: "MEMBER",
+      status: "DISABLED",
+      user: {
+        id: userId,
+        name: "Demo User",
+        status: "ACTIVE",
+        username: "demo",
+      },
+      userId,
+    } as OrganizationMemberWithUser;
     const api = createApi({
-      delete: vi.fn(async () => ({ data: {} })),
+      patch: vi.fn(async () => ({ data: member })),
     });
 
     await expect(
-      removeOrganizationMember(organizationId, memberId, api),
-    ).resolves.toBeUndefined();
+      disableOrganizationMember(organizationId, memberId, api),
+    ).resolves.toBe(member);
 
-    expect(api.delete).toHaveBeenCalledWith(
+    expect(api.patch).toHaveBeenCalledWith(
       `/organizations/${organizationId}/members/${memberId}`,
+      {
+        status: "DISABLED",
+      },
     );
   });
 

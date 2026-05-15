@@ -72,7 +72,9 @@ export function TasksPage() {
   const requestedIntakeItemId = normalizeSearchParam(
     searchParams.get("intakeItemId"),
   );
-  const requestedVersionId = normalizeSearchParam(searchParams.get("versionId"));
+  const requestedVersionId = normalizeSearchParam(
+    searchParams.get("versionId"),
+  );
   const requestedStatusCategory = normalizeStatusCategory(
     searchParams.get("statusCategory"),
   );
@@ -284,7 +286,11 @@ export function TasksPage() {
     }
 
     let cancelled = false;
-    void getWorkItem({ organizationId, spaceId, workItemId: requestedWorkItemId })
+    void getWorkItem({
+      organizationId,
+      spaceId,
+      workItemId: requestedWorkItemId,
+    })
       .then((item) => {
         if (!cancelled) {
           open(toMockWorkItem(item, tStatus, { getMember, getVersion }));
@@ -325,6 +331,8 @@ export function TasksPage() {
     onSelect: select,
     onOpen: open,
     onEdit: open,
+    canAssign: () => false,
+    canSubmit: () => false,
     onClose: () => setSheetOpen(false),
   });
 

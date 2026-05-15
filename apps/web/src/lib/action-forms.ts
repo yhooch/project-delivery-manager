@@ -98,11 +98,40 @@ function createTextSchema(required: boolean) {
 }
 
 function createSelectSchema(field: ActionFormFieldSummary) {
-  const options = field.options ?? [];
-  const optionSchema =
-    options.length > 0
-      ? z.string().refine((value) => options.includes(value))
-      : z.string().min(1);
+  const options = normalizeSelectOptions(field.options);
+  const unavailableMessage = `Select field "${field.label}" is required but has no configured options.`;
+
+  if (options.length === 0) {
+    const unavailableSchema = z.any().superRefine((_value, ctx) => {
+      ctx.addIssue({
+        code: "custom",
+        message: unavailableMessage,
+      });
+    });
+
+    if (field.required) {
+      return z.preprocess(
+        (value) => normalizeRequiredText(value),
+        unavailableSchema,
+      );
+    }
+
+    return z.preprocess(
+      (value) => normalizeOptionalText(value),
+      z.any().superRefine((value, ctx) => {
+        if (value !== undefined) {
+          ctx.addIssue({
+            code: "custom",
+            message: unavailableMessage,
+          });
+        }
+      }),
+    );
+  }
+
+  const optionSchema = z.string().refine((value) => options.includes(value), {
+    message: `Select a valid option for "${field.label}".`,
+  });
 
   if (field.required) {
     return z.preprocess((value) => normalizeRequiredText(value), optionSchema);
@@ -193,6 +222,14 @@ function normalizeOptionalText(value: unknown): string | undefined {
   const trimmed = value.trim();
 
   return trimmed.length > 0 ? trimmed : undefined;
+}
+
+function normalizeSelectOptions(options: string[] | undefined): string[] {
+  return [
+    ...new Set(
+      (options ?? []).map((option) => option.trim()).filter(Boolean),
+    ),
+  ];
 }
 
 function normalizeNumberInput(value: unknown): unknown {

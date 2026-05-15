@@ -77,7 +77,7 @@ afterEach(() => {
 });
 
 describe("CreateBugDialog", () => {
-  it("submits requirement, related task, expected and actual fields", async () => {
+  it("submits description, requirement, related task, expected and actual fields", async () => {
     render(
       <CreateBugDialog
         open
@@ -91,6 +91,9 @@ describe("CreateBugDialog", () => {
 
     fireEvent.change(screen.getByTestId("create-bug-title-input"), {
       target: { value: "Linked bug" },
+    });
+    fireEvent.change(screen.getByTestId("create-bug-description-input"), {
+      target: { value: "  Checkout fails intermittently  " },
     });
     fireEvent.change(screen.getByTestId("create-bug-expected-input"), {
       target: { value: "Expected result" },
@@ -111,11 +114,37 @@ describe("CreateBugDialog", () => {
       { spaceId },
       expect.objectContaining({
         actualResult: "Actual result",
+        description: "Checkout fails intermittently",
         expectedResult: "Expected result",
         relatedTaskId,
         requirementId,
         title: "Linked bug",
       }),
     );
+  });
+
+  it("resets the description field when closed", () => {
+    render(
+      <CreateBugDialog
+        open
+        onOpenChange={() => {}}
+        spaceId={spaceId}
+      />,
+    );
+
+    const descriptionInput = screen.getByTestId(
+      "create-bug-description-input",
+    ) as HTMLTextAreaElement;
+    fireEvent.change(descriptionInput, {
+      target: { value: "Transient checkout error" },
+    });
+
+    expect(descriptionInput.value).toBe("Transient checkout error");
+
+    fireEvent.click(
+      screen.getByRole("button", { name: "bugs.dialog.actions.cancel" }),
+    );
+
+    expect(descriptionInput.value).toBe("");
   });
 });

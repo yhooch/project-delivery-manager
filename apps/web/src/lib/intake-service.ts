@@ -58,6 +58,7 @@ export type IntakeListFilterState = {
   assigneeId?: string;
   priority?: Priority;
   reporterId?: string;
+  requirementId?: string;
   sourceType?: IntakeSourceType;
   status?: IntakeStatus;
   versionId?: string;
@@ -118,7 +119,10 @@ export async function updateIntakeItem(
     spaceId: _spaceId,
   } = context;
   const body = UpdateIntakeItemRequestSchema.parse(input);
-  const response = await api.patch<unknown>(`/intake-items/${intakeItemId}`, body);
+  const response = await api.patch<unknown>(
+    `/intake-items/${intakeItemId}`,
+    body,
+  );
 
   return UpdateIntakeItemResponseSchema.parse(response.data);
 }

@@ -1,4 +1,10 @@
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import {
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -53,13 +59,17 @@ vi.mock("../providers/session-provider", () => ({
   useSession: () => sessionMock.current,
 }));
 
-const { getSpaceMock, listSpaceMembersMock, updateSpaceMock, updateSpaceMemberMock } =
-  vi.hoisted(() => ({
-    getSpaceMock: vi.fn(),
-    listSpaceMembersMock: vi.fn(),
-    updateSpaceMock: vi.fn(),
-    updateSpaceMemberMock: vi.fn(),
-  }));
+const {
+  getSpaceMock,
+  listSpaceMembersMock,
+  updateSpaceMock,
+  updateSpaceMemberMock,
+} = vi.hoisted(() => ({
+  getSpaceMock: vi.fn(),
+  listSpaceMembersMock: vi.fn(),
+  updateSpaceMock: vi.fn(),
+  updateSpaceMemberMock: vi.fn(),
+}));
 vi.mock("../../lib/space-service", () => ({
   getSpace: getSpaceMock,
   listSpaceMembers: listSpaceMembersMock,
@@ -157,16 +167,16 @@ describe("SpaceSettingsPage", () => {
   it("renders space basic fields and the member list when load succeeds", async () => {
     getSpaceMock.mockResolvedValueOnce(makeSpace());
     listSpaceMembersMock.mockResolvedValueOnce({
-      items: [makeMember({ user: { id: "U1", name: "Alice", username: "alice" } })],
+      items: [
+        makeMember({ user: { id: "U1", name: "Alice", username: "alice" } }),
+      ],
       total: 1,
     });
 
     render(<SpaceSettingsPage />);
 
     await waitFor(() => expect(getSpaceMock).toHaveBeenCalledTimes(1));
-    await waitFor(() =>
-      expect(listSpaceMembersMock).toHaveBeenCalledTimes(1),
-    );
+    await waitFor(() => expect(listSpaceMembersMock).toHaveBeenCalledTimes(1));
 
     // Name input populated.
     const nameInput = await screen.findByLabelText(
@@ -189,9 +199,7 @@ describe("SpaceSettingsPage", () => {
     render(<SpaceSettingsPage />);
 
     await waitFor(() =>
-      expect(
-        screen.getByTestId("space-settings-overview"),
-      ).toBeInTheDocument(),
+      expect(screen.getByTestId("space-settings-overview")).toBeInTheDocument(),
     );
     expect(screen.getByText("Acme Org")).toBeInTheDocument();
     expect(
@@ -205,9 +213,7 @@ describe("SpaceSettingsPage", () => {
 
     render(<SpaceSettingsPage />);
 
-    await waitFor(() =>
-      expect(listSpaceMembersMock).toHaveBeenCalledTimes(1),
-    );
+    await waitFor(() => expect(listSpaceMembersMock).toHaveBeenCalledTimes(1));
     expect(
       await screen.findByText("spaceSettings.members.empty"),
     ).toBeInTheDocument();
@@ -244,9 +250,9 @@ describe("SpaceSettingsPage", () => {
     const { container } = render(<SpaceSettingsPage />);
 
     await waitFor(() => expect(getSpaceMock).toHaveBeenCalled());
-    expect(
-      container.querySelectorAll(".animate-pulse").length,
-    ).toBeGreaterThan(0);
+    expect(container.querySelectorAll(".animate-pulse").length).toBeGreaterThan(
+      0,
+    );
 
     resolveSpace(makeSpace());
     resolveMembers({ items: [], total: 0 });
@@ -263,9 +269,7 @@ describe("SpaceSettingsPage", () => {
 
     render(<SpaceSettingsPage />);
 
-    await waitFor(() =>
-      expect(listSpaceMembersMock).toHaveBeenCalledTimes(1),
-    );
+    await waitFor(() => expect(listSpaceMembersMock).toHaveBeenCalledTimes(1));
 
     fireEvent.click(
       screen.getByRole("button", { name: /spaceSettings\.members\.add/ }),
@@ -312,16 +316,12 @@ describe("SpaceSettingsPage", () => {
     const description = await screen.findByTestId(
       "space-settings-description-input",
     );
-    const owner = await screen.findByTestId(
-      "space-settings-owner-input",
-    );
+    const owner = await screen.findByTestId("space-settings-owner-input");
 
     fireEvent.change(description, { target: { value: "Team space" } });
     fireEvent.change(owner, { target: { value: "USR_01" } });
 
-    fireEvent.click(
-      screen.getByTestId("space-settings-basic-submit"),
-    );
+    fireEvent.click(screen.getByTestId("space-settings-basic-submit"));
 
     await waitFor(() => expect(updateSpaceMock).toHaveBeenCalledTimes(1));
     expect(updateSpaceMock).toHaveBeenCalledWith("SPC_01", {
@@ -341,15 +341,29 @@ describe("SpaceSettingsPage", () => {
 
     render(<SpaceSettingsPage />);
 
-    const codeInput = await screen.findByTestId(
-      "space-settings-code-input",
-    );
+    const codeInput = await screen.findByTestId("space-settings-code-input");
     fireEvent.change(codeInput, { target: { value: "OTHER-CODE" } });
     fireEvent.click(screen.getByTestId("space-settings-basic-submit"));
 
     expect(
       await screen.findByTestId("space-settings-code-error"),
     ).toHaveTextContent("spaceSettings.basic.codeConflict");
+  });
+
+  it("rejects non-integer stale threshold values before saving", async () => {
+    getSpaceMock.mockResolvedValueOnce(makeSpace());
+    listSpaceMembersMock.mockResolvedValueOnce({ items: [], total: 0 });
+
+    render(<SpaceSettingsPage />);
+
+    const input = await screen.findByTestId("space-settings-threshold-input");
+    fireEvent.change(input, { target: { value: "30abc" } });
+    fireEvent.click(screen.getByTestId("space-settings-threshold-submit"));
+
+    expect(
+      await screen.findByTestId("space-settings-threshold-error"),
+    ).toHaveTextContent("spaceSettings.threshold.error");
+    expect(updateSpaceMock).not.toHaveBeenCalled();
   });
 
   it("filters the member list by the search input", async () => {
@@ -376,10 +390,7 @@ describe("SpaceSettingsPage", () => {
     expect(screen.getByText("Bob")).toBeInTheDocument();
 
     const user = userEvent.setup();
-    await user.type(
-      screen.getByTestId("space-settings-member-search"),
-      "bob",
-    );
+    await user.type(screen.getByTestId("space-settings-member-search"), "bob");
 
     await waitFor(() =>
       expect(screen.queryByText("Alice")).not.toBeInTheDocument(),
@@ -401,9 +412,7 @@ describe("SpaceSettingsPage", () => {
     render(<SpaceSettingsPage />);
 
     await waitFor(() =>
-      expect(
-        screen.getByTestId("space-settings-basic-submit"),
-      ).toBeDisabled(),
+      expect(screen.getByTestId("space-settings-basic-submit")).toBeDisabled(),
     );
     expect(
       screen.getByTestId("space-settings-threshold-submit"),
@@ -411,8 +420,6 @@ describe("SpaceSettingsPage", () => {
     expect(
       screen.getByTestId("space-settings-add-member-button"),
     ).toBeDisabled();
-    expect(
-      screen.getByTestId("space-settings-name-input"),
-    ).toBeDisabled();
+    expect(screen.getByTestId("space-settings-name-input")).toBeDisabled();
   });
 });

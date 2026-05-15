@@ -51,9 +51,9 @@ describe("API infrastructure", () => {
     expect(response.body.requestId).toMatch(/^[0-9A-HJKMNP-TV-Z]{26}$/u);
   });
 
-  it("rejects protected demo route without session context", async () => {
+  it("rejects protected auth session route without session context", async () => {
     const response = await request(app.getHttpServer())
-      .get("/api/v1/demo/protected")
+      .get("/api/v1/auth/session")
       .set("x-request-id", "auth-request-id")
       .expect(401);
 

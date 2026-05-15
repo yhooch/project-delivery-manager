@@ -99,14 +99,17 @@ export async function updateOrganization(
   return response.data;
 }
 
-export async function removeOrganizationMember(
+export async function disableOrganizationMember(
   organizationId: string,
   memberId: string,
   api: WorkspaceApiTransport = defaultApi,
-): Promise<void> {
-  await api.delete<Record<string, never>>(
+): Promise<OrganizationMemberWithUser> {
+  const response = await api.patch<OrganizationMemberWithUser>(
     `/organizations/${organizationId}/members/${memberId}`,
+    { status: "DISABLED" },
   );
+
+  return response.data;
 }
 
 export async function listSpaces(
@@ -150,10 +153,7 @@ export async function updateSpace(
   input: UpdateSpaceRequest,
   api: WorkspaceApiTransport = defaultApi,
 ): Promise<Space> {
-  const response = await api.patch<Space>(
-    `/spaces/${spaceId}`,
-    input,
-  );
+  const response = await api.patch<Space>(`/spaces/${spaceId}`, input);
 
   return response.data;
 }

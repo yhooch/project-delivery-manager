@@ -1,4 +1,10 @@
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import {
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const { translatorCache } = vi.hoisted(() => ({
@@ -24,6 +30,7 @@ vi.mock("next-intl", () => ({
     }
     return fn;
   },
+  useLocale: () => "en-US",
 }));
 
 const switchSpaceMock = vi.hoisted(() => vi.fn());
@@ -82,9 +89,9 @@ const { listSpacesMock } = vi.hoisted(() => ({
   listSpacesMock: vi.fn(),
 }));
 vi.mock("../../lib/space-service", async () => {
-  const actual = await vi.importActual<typeof import("../../lib/space-service")>(
-    "../../lib/space-service",
-  );
+  const actual = await vi.importActual<
+    typeof import("../../lib/space-service")
+  >("../../lib/space-service");
   return {
     ...actual,
     listSpaces: listSpacesMock,
@@ -105,8 +112,31 @@ function makeSpace(overrides: Record<string, unknown> = {}) {
     name: "Space A",
     code: "SPC-A",
     description: "Delivery space",
-    ownerId: undefined,
+    ownerId: "USR_PM",
+    owner: {
+      id: "USR_PM",
+      name: "PM User",
+      status: "ACTIVE",
+      username: "pm",
+    },
+    currentVersion: {
+      id: "VER_01",
+      organizationId: "ORG_01",
+      spaceId: "SPC_01",
+      name: "M1",
+      status: "IN_PROGRESS",
+      stats: {
+        requirementCount: 1,
+        taskCount: 2,
+        bugCount: 1,
+        blockedCount: 1,
+      },
+    },
+    unfinishedTaskCount: 5,
+    openBugCount: 2,
+    blockedCount: 1,
     status: "ACTIVE",
+    updatedAt: "2026-05-14T08:30:00.000Z",
     ...overrides,
   } as unknown as import("@project-delivery/shared").SpaceSummary;
 }
@@ -189,6 +219,68 @@ describe("SpacesPage", () => {
     await waitFor(() => expect(switchSpaceMock).toHaveBeenCalledWith("SPC_02"));
   });
 
+  it("renders operational summary fields with fallbacks", async () => {
+    listSpacesMock.mockResolvedValueOnce({
+      items: [
+        makeSpace(),
+        makeSpace({
+          id: "SPC_03",
+          name: "Space C",
+          code: "SPC-C",
+          owner: undefined,
+          ownerId: undefined,
+          currentVersion: undefined,
+          unfinishedTaskCount: undefined,
+          openBugCount: undefined,
+          blockedCount: undefined,
+          updatedAt: undefined,
+        }),
+      ],
+      total: 2,
+    });
+
+    render(<SpacesPage />);
+
+    expect(await screen.findByText("Space A")).toBeInTheDocument();
+    expect(screen.getByTestId("spaces-owner-SPC_01")).toHaveTextContent(
+      "spaces.list.fields.ownerPM User",
+    );
+    expect(
+      screen.getByTestId("spaces-current-version-SPC_01"),
+    ).toHaveTextContent(
+      "spaces.list.fields.currentVersionM1versionBoard.status.IN_PROGRESS",
+    );
+    expect(
+      screen.getByTestId("spaces-unfinished-tasks-SPC_01"),
+    ).toHaveTextContent("spaces.list.fields.unfinishedTaskCount5");
+    expect(screen.getByTestId("spaces-open-bugs-SPC_01")).toHaveTextContent(
+      "spaces.list.fields.openBugCount2",
+    );
+    expect(screen.getByTestId("spaces-blocked-SPC_01")).toHaveTextContent(
+      "spaces.list.fields.blockedCount1",
+    );
+    expect(
+      screen.getByTestId("spaces-updated-at-SPC_01").textContent,
+    ).toContain("2026");
+
+    expect(screen.getByTestId("spaces-owner-SPC_03")).toHaveTextContent(
+      "spaces.list.fields.ownerspaces.list.emptyValue",
+    );
+    expect(
+      screen.getByTestId("spaces-current-version-SPC_03"),
+    ).toHaveTextContent(
+      "spaces.list.fields.currentVersionspaces.list.emptyValue",
+    );
+    expect(
+      screen.getByTestId("spaces-unfinished-tasks-SPC_03"),
+    ).toHaveTextContent(
+      "spaces.list.fields.unfinishedTaskCountspaces.list.emptyValue",
+    );
+    expect(screen.getByTestId("spaces-updated-at-SPC_03")).toHaveTextContent(
+      "spaces.list.fields.updatedAtspaces.list.emptyValue",
+    );
+  });
+
   it("renders read-only copy and no create action for non-admin organization roles", async () => {
     sessionMock.current = {
       ...sessionMock.current,
@@ -215,7 +307,9 @@ describe("SpacesPage", () => {
     expect(screen.getByTestId("spaces-readonly-notice")).toHaveTextContent(
       "spaces.list.readOnly",
     );
-    expect(screen.queryByTestId("spaces-create-button")).not.toBeInTheDocument();
+    expect(
+      screen.queryByTestId("spaces-create-button"),
+    ).not.toBeInTheDocument();
   });
 
   it("renders an empty state when the organization has no spaces", async () => {

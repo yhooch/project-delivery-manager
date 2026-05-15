@@ -88,10 +88,13 @@ describe("M4 view service", () => {
     await expect(
       getSpaceExceptionsView(
         {
+          assigneeId,
           exceptionType: "blocked",
           organizationId,
           spaceId,
+          statusCategory: "WAITING",
           versionId,
+          workItemType: "BUG",
         },
         exceptionsApi,
       ),
@@ -120,11 +123,14 @@ describe("M4 view service", () => {
       `/views/spaces/${spaceId}/exceptions`,
       {
         query: {
+          assigneeId,
           exceptionType: "blocked",
           organizationId,
           page: 1,
           pageSize: 20,
+          statusCategory: "WAITING",
           versionId,
+          workItemType: "BUG",
         },
       },
     );

@@ -188,6 +188,42 @@ describe("WorkflowActionExecutionService", () => {
     });
   });
 
+  it.each(["DEVELOPER", "TESTER", "MEMBER"] as const)(
+    "keeps %s workflow actions available but direct edit snapshot false",
+    async (role) => {
+      const subject = createSubject(role);
+      subject.repository.actions.set(
+        START_ACTION_ID,
+        makeAction({
+          allowedSpaceRoles: [role],
+        }),
+      );
+
+      await expect(
+        subject.service.resolvePermissionSnapshot(ACTOR_ID, WORK_ITEM_ID),
+      ).resolves.toMatchObject({
+        availableActions: [
+          {
+            code: "START_PROGRESS",
+          },
+        ],
+        canComment: true,
+        canEdit: false,
+        canUploadAttachment: true,
+      });
+    },
+  );
+
+  it("marks PM snapshots editable because direct TASK/BUG patches allow managers", async () => {
+    const subject = createSubject("PM");
+
+    await expect(
+      subject.service.resolvePermissionSnapshot(ACTOR_ID, WORK_ITEM_ID),
+    ).resolves.toMatchObject({
+      canEdit: true,
+    });
+  });
+
   it("rejects missing required form fields", async () => {
     const subject = createSubject("DEVELOPER");
     subject.repository.actions.set(

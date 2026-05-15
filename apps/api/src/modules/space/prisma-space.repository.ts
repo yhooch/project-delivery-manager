@@ -11,6 +11,7 @@ import type {
   ViewExceptionSignal,
   ViewExceptionType,
   ViewWorkItemSummary,
+  VersionSummary,
   WorkbenchActionReasonCode,
   WorkbenchActionTodo,
   WorkflowActionSummary,
@@ -248,6 +249,9 @@ export class PrismaSpaceRepository implements SpaceRepository {
     };
     const [spaces, total] = await this.prisma.client.$transaction([
       this.prisma.client.space.findMany({
+        include: {
+          owner: true,
+        },
         orderBy: {
           createdAt: "asc",
         },
@@ -260,10 +264,99 @@ export class PrismaSpaceRepository implements SpaceRepository {
       }),
     ]);
 
+    if (spaces.length === 0) {
+      return {
+        items: [],
+        total,
+      };
+    }
+
+    const spaceIds = spaces.map((space) => space.id);
+    const baseWorkItemWhere = {
+      deletedAt: null,
+      organizationId,
+      spaceId: {
+        in: spaceIds,
+      },
+    } satisfies Prisma.WorkItemWhereInput;
+    const nonTerminalWorkItemWhere = andWorkItemWhere(baseWorkItemWhere, {
+      statusCategory: {
+        notIn: TERMINAL_STATUS_CATEGORIES,
+      },
+    });
+    const [
+      unfinishedTaskCounts,
+      openBugCounts,
+      blockedCounts,
+      currentVersionBySpaceId,
+    ] = await Promise.all([
+      this.countWorkItemsBySpaceId(
+        andWorkItemWhere(nonTerminalWorkItemWhere, {
+          type: "TASK",
+        }),
+      ),
+      this.countWorkItemsBySpaceId(
+        andWorkItemWhere(nonTerminalWorkItemWhere, {
+          type: "BUG",
+        }),
+      ),
+      this.countWorkItemsBySpaceId(
+        andWorkItemWhere(nonTerminalWorkItemWhere, blockedWorkItemWhere()),
+      ),
+      this.listCurrentVersionsBySpaceId(organizationId, spaceIds),
+    ]);
+
     return {
-      items: spaces.map((space) => toSpaceSummary(space)),
+      items: spaces.map((space) =>
+        toSpaceSummary(space, {
+          blockedCount: blockedCounts.get(space.id) ?? 0,
+          currentVersion: currentVersionBySpaceId.get(space.id),
+          openBugCount: openBugCounts.get(space.id) ?? 0,
+          unfinishedTaskCount: unfinishedTaskCounts.get(space.id) ?? 0,
+        }),
+      ),
       total,
     };
+  }
+
+  private async countWorkItemsBySpaceId(where: Prisma.WorkItemWhereInput) {
+    const groups = await this.prisma.client.workItem.groupBy({
+      by: ["spaceId"],
+      _count: {
+        _all: true,
+      },
+      where,
+    });
+
+    return new Map(groups.map((group) => [group.spaceId, group._count._all]));
+  }
+
+  private async listCurrentVersionsBySpaceId(
+    organizationId: string,
+    spaceIds: string[],
+  ) {
+    const versions = await this.prisma.client.version.findMany({
+      orderBy: {
+        updatedAt: "desc",
+      },
+      where: {
+        deletedAt: null,
+        organizationId,
+        spaceId: {
+          in: spaceIds,
+        },
+        status: "IN_PROGRESS",
+      },
+    });
+    const currentVersionBySpaceId = new Map<string, VersionSummary>();
+
+    for (const version of versions) {
+      if (!currentVersionBySpaceId.has(version.spaceId)) {
+        currentVersionBySpaceId.set(version.spaceId, toVersionSummary(version));
+      }
+    }
+
+    return currentVersionBySpaceId;
   }
 
   async listMembers(

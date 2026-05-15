@@ -10,6 +10,7 @@ import type {
 
 import { ApiException } from "../../http/api-exception";
 import { toWorkItemDetail } from "../workitem/workitem.mappers";
+import { canManageDeliveryObject } from "../workitem/delivery-object-permissions";
 import {
   canReadAllSpaceWorkItems,
   isTesterVisibleWorkItem,
@@ -131,7 +132,7 @@ export class WorkflowActionExecutionService {
         access,
       );
 
-      return toPermissionSnapshot(access, availableActions);
+      return toPermissionSnapshot(workItem, access, availableActions);
     });
   }
 
@@ -327,7 +328,7 @@ export class WorkflowActionExecutionService {
         );
         const detail = toWorkItemDetail(
           updated,
-          toPermissionSnapshot(access, availableActions),
+          toPermissionSnapshot(updated, access, availableActions),
         );
         const after = buildAuditSnapshot(updated);
 
@@ -754,6 +755,7 @@ function toWorkflowActionSummary(
 }
 
 function toPermissionSnapshot(
+  workItem: ExecutableWorkItem,
   access: WorkflowActionActorSpaceAccess,
   availableActions: WorkflowActionSummary[],
 ): PermissionSnapshot {
@@ -762,9 +764,13 @@ function toPermissionSnapshot(
   return {
     availableActions,
     canComment: canWrite,
-    canEdit: canWrite,
+    canEdit: canManageDeliveryObject(access.role) && isDirectlyEditable(workItem),
     canUploadAttachment: canWrite,
   };
+}
+
+function isDirectlyEditable(workItem: ExecutableWorkItem): boolean {
+  return workItem.type === "TASK" || workItem.type === "BUG";
 }
 
 function buildTimelineBefore(workItem: ExecutableWorkItem) {

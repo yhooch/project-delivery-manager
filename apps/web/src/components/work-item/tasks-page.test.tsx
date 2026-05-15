@@ -94,11 +94,13 @@ vi.mock("../../lib/v2/lookups", () => ({
 
 // Service mocks. NOTE: vi.mock is hoisted, so the mock fn must be created
 // via vi.hoisted to be available when the factory runs.
-const { getWorkItemMock, listRequirementsMock, listWorkItemsMock } = vi.hoisted(() => ({
-  getWorkItemMock: vi.fn(),
-  listRequirementsMock: vi.fn(),
-  listWorkItemsMock: vi.fn(),
-}));
+const { getWorkItemMock, listRequirementsMock, listWorkItemsMock } = vi.hoisted(
+  () => ({
+    getWorkItemMock: vi.fn(),
+    listRequirementsMock: vi.fn(),
+    listWorkItemsMock: vi.fn(),
+  }),
+);
 vi.mock("../../lib/work-item-service", () => ({
   listWorkItems: listWorkItemsMock,
   getWorkItem: getWorkItemMock,
@@ -222,7 +224,9 @@ describe("TasksPage", () => {
 
     render(<TasksPage />);
 
-    expect(await screen.findByText("Converted intake task")).toBeInTheDocument();
+    expect(
+      await screen.findByText("Converted intake task"),
+    ).toBeInTheDocument();
     await waitFor(() =>
       expect(listWorkItemsMock).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -282,9 +286,9 @@ describe("TasksPage", () => {
     expect(
       await screen.findByTestId("task-detail-sheet-open"),
     ).toBeInTheDocument();
-    expect(screen.getByTestId("task-detail-sheet-item-title")).toHaveTextContent(
-      "Deep linked task",
-    );
+    expect(
+      screen.getByTestId("task-detail-sheet-item-title"),
+    ).toHaveTextContent("Deep linked task");
   });
 
   it("renders task rows with real assignee name from the member lookup", async () => {
@@ -521,11 +525,38 @@ describe("TasksPage", () => {
 
     const rows = screen.getAllByTestId("tasks-row");
     expect(rows[0]).toHaveAttribute("aria-selected", "true");
-    expect(rows[0]).toHaveAttribute(
-      "data-id",
-      "01ARZ3NDEKTSV4RRFFQ69G5F01",
-    );
+    expect(rows[0]).toHaveAttribute("data-id", "01ARZ3NDEKTSV4RRFFQ69G5F01");
     expect(rows[1]).toHaveAttribute("aria-selected", "false");
+  });
+
+  it("keeps A and S keyboard shortcuts as explicit disabled no-ops on the task list", async () => {
+    listWorkItemsMock.mockResolvedValueOnce({
+      items: [makeTask({ title: "Shortcut target" })],
+      total: 1,
+    });
+
+    render(<TasksPage />);
+
+    await screen.findByText("Shortcut target");
+    fireEvent.keyDown(window, { key: "j" });
+
+    const assignEvent = new KeyboardEvent("keydown", {
+      key: "a",
+      cancelable: true,
+    });
+    const submitEvent = new KeyboardEvent("keydown", {
+      key: "s",
+      cancelable: true,
+    });
+    window.dispatchEvent(assignEvent);
+    window.dispatchEvent(submitEvent);
+
+    expect(assignEvent.defaultPrevented).toBe(false);
+    expect(submitEvent.defaultPrevented).toBe(false);
+    expect(
+      screen.queryByTestId("task-detail-sheet-open"),
+    ).not.toBeInTheDocument();
+    expect(listWorkItemsMock).toHaveBeenCalledTimes(1);
   });
 
   it("refetches tasks when the detail sheet reports a change", async () => {

@@ -1,4 +1,10 @@
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import {
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 // -----------------------------------------------------------------------------
@@ -63,6 +69,13 @@ const sessionMock = vi.hoisted(() => ({
       defaultOrganizationId: "ORG_01",
       defaultSpaceId: "SPC_01",
     },
+    currentSpace: {
+      id: "SPC_01",
+      organizationId: "ORG_01",
+      name: "Space",
+      role: "PM",
+      status: "ACTIVE",
+    },
     status: "authenticated" as const,
   },
 }));
@@ -126,6 +139,13 @@ beforeEach(() => {
       defaultOrganizationId: "ORG_01",
       defaultSpaceId: "SPC_01",
     },
+    currentSpace: {
+      id: "SPC_01",
+      organizationId: "ORG_01",
+      name: "Space",
+      role: "PM",
+      status: "ACTIVE",
+    },
     status: "authenticated" as const,
   };
   searchParamsMock.current = new URLSearchParams();
@@ -158,6 +178,34 @@ describe("RequirementsPage", () => {
     expect(routerReplaceMock).toHaveBeenCalledWith("/requirements", {
       scroll: false,
     });
+  });
+
+  it("does not auto-create a draft from the query without requirement write role", async () => {
+    sessionMock.current = {
+      ...sessionMock.current,
+      currentSpace: {
+        id: "SPC_01",
+        organizationId: "ORG_01",
+        name: "Space",
+        role: "DEVELOPER",
+        status: "ACTIVE",
+      },
+    };
+    searchParamsMock.current = new URLSearchParams("new=requirement");
+    listRequirementsMock.mockResolvedValueOnce({ items: [], total: 0 });
+
+    render(<RequirementsPage />);
+
+    await waitFor(() =>
+      expect(routerReplaceMock).toHaveBeenCalledWith("/requirements", {
+        scroll: false,
+      }),
+    );
+    expect(createRequirementDraftMock).not.toHaveBeenCalled();
+    expect(
+      await screen.findByTestId("requirements-create-readonly-notice"),
+    ).toHaveTextContent("requirements.page.createReadonly");
+    expect(screen.getByTestId("requirements-create-button")).toBeDisabled();
   });
 
   it("renders requirement rows with title and status badge", async () => {
@@ -202,9 +250,7 @@ describe("RequirementsPage", () => {
 
     render(<RequirementsPage />);
 
-    await waitFor(() =>
-      expect(listRequirementsMock).toHaveBeenCalledTimes(1),
-    );
+    await waitFor(() => expect(listRequirementsMock).toHaveBeenCalledTimes(1));
     expect(listRequirementsMock).toHaveBeenCalledWith(
       expect.objectContaining({
         page: 1,
@@ -216,7 +262,9 @@ describe("RequirementsPage", () => {
       includeDrafts: true,
     });
     expect(await screen.findByText("Onboarding redesign")).toBeInTheDocument();
-    expect(screen.getByText("requirements.status.CONFIRMED")).toBeInTheDocument();
+    expect(
+      screen.getByText("requirements.status.CONFIRMED"),
+    ).toBeInTheDocument();
     expect(await screen.findByText("M1 Release")).toBeInTheDocument();
     expect(await screen.findByText("PM User (pm)")).toBeInTheDocument();
     // The list renders with the testid.
@@ -245,7 +293,10 @@ describe("RequirementsPage", () => {
   });
 
   it("shows a loading skeleton while the requirements request is pending", async () => {
-    let resolveList: (value: { items: unknown[]; total: number }) => void = () => {};
+    let resolveList: (value: {
+      items: unknown[];
+      total: number;
+    }) => void = () => {};
     listRequirementsMock.mockImplementationOnce(
       () =>
         new Promise((resolve) => {
@@ -257,7 +308,9 @@ describe("RequirementsPage", () => {
 
     await waitFor(() => expect(listRequirementsMock).toHaveBeenCalled());
     // ListSkeleton renders animate-pulse rows; the list itself is not yet present.
-    expect(container.querySelectorAll(".animate-pulse").length).toBeGreaterThan(0);
+    expect(container.querySelectorAll(".animate-pulse").length).toBeGreaterThan(
+      0,
+    );
     expect(screen.queryByTestId("requirements-list")).not.toBeInTheDocument();
 
     // Resolve so afterEach cleanup doesn't fight pending state.
@@ -369,7 +422,9 @@ describe("RequirementsPage", () => {
 
     render(<RequirementsPage />);
 
-    expect(await screen.findByText("Confirmed requirement")).toBeInTheDocument();
+    expect(
+      await screen.findByText("Confirmed requirement"),
+    ).toBeInTheDocument();
 
     fireEvent.click(
       screen.getByRole("button", { name: "requirements.filters.all" }),
@@ -419,7 +474,9 @@ describe("RequirementsPage", () => {
 
     await waitFor(() => expect(listRequirementVersionsMock).toHaveBeenCalled());
 
-    fireEvent.click(screen.getByRole("button", { name: "requirements.page.filter" }));
+    fireEvent.click(
+      screen.getByRole("button", { name: "requirements.page.filter" }),
+    );
     fireEvent.change(screen.getByLabelText("requirements.filters.version"), {
       target: { value: versionId },
     });
@@ -476,6 +533,31 @@ describe("RequirementsPage", () => {
     });
   });
 
+  it("does not create a draft from the button for VIEWER role", async () => {
+    sessionMock.current = {
+      ...sessionMock.current,
+      currentSpace: {
+        id: "SPC_01",
+        organizationId: "ORG_01",
+        name: "Space",
+        role: "VIEWER",
+        status: "ACTIVE",
+      },
+    };
+    listRequirementsMock.mockResolvedValueOnce({ items: [], total: 0 });
+
+    render(<RequirementsPage />);
+
+    await waitFor(() => expect(listRequirementsMock).toHaveBeenCalled());
+    const createButton = screen.getByTestId("requirements-create-button");
+    expect(createButton).toBeDisabled();
+
+    fireEvent.click(createButton);
+
+    expect(createRequirementDraftMock).not.toHaveBeenCalled();
+    expect(routerPushMock).not.toHaveBeenCalled();
+  });
+
   it("records directly opened requirements in recent opens", async () => {
     listRequirementsMock.mockResolvedValueOnce({
       items: [
@@ -513,6 +595,8 @@ describe("RequirementsPage", () => {
         defaultOrganizationId: "ORG_01",
         defaultSpaceId: undefined as unknown as string,
       },
+      currentSpace:
+        undefined as unknown as typeof sessionMock.current.currentSpace,
       status: "authenticated" as const,
     };
 

@@ -60,8 +60,8 @@ export function ThresholdEditorDialog({
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
-    const parsed = Number.parseInt(value, 10);
-    if (!Number.isFinite(parsed) || parsed < 1 || parsed > 30) {
+    const parsed = parseThresholdDays(value);
+    if (parsed === null) {
       setValidationError("field.error");
       return;
     }
@@ -101,9 +101,9 @@ export function ThresholdEditorDialog({
             <Input
               id="exceptions-threshold-input"
               data-testid="exceptions-threshold-dialog-input"
-              type="number"
-              min={1}
-              max={30}
+              type="text"
+              inputMode="numeric"
+              pattern="[0-9]*"
               value={value}
               onChange={(event) => {
                 setValue(event.target.value);
@@ -156,4 +156,20 @@ export function ThresholdEditorDialog({
       </DialogContent>
     </Dialog>
   );
+}
+
+function parseThresholdDays(value: string): number | null {
+  const trimmed = value.trim();
+
+  if (!/^\d+$/.test(trimmed)) {
+    return null;
+  }
+
+  const parsed = Number(trimmed);
+
+  if (!Number.isInteger(parsed) || parsed < 1 || parsed > 30) {
+    return null;
+  }
+
+  return parsed;
 }

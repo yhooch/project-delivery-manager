@@ -184,4 +184,30 @@ describe("action forms", () => {
       }).success,
     ).toBe(false);
   });
+
+  it("rejects required select fields without configured options", () => {
+    const config = createAction([
+      createField({
+        fieldType: "SELECT",
+        key: "resolution",
+        label: "Resolution",
+        options: [],
+        required: true,
+      }),
+    ]);
+
+    const result = createActionExecutionFormSchema(config).safeParse({
+      formValues: {
+        resolution: "FIXED",
+      },
+    });
+
+    expect(result.success).toBe(false);
+    if (result.success) {
+      return;
+    }
+    expect(result.error.issues[0]?.message).toBe(
+      'Select field "Resolution" is required but has no configured options.',
+    );
+  });
 });

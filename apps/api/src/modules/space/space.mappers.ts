@@ -25,9 +25,11 @@ type PrismaSpaceRecord = {
   id: string;
   name: string;
   organizationId: string;
+  owner?: PrismaSpaceMemberUserRecord | null;
   ownerId: string | null;
   staleThresholdDays: number;
   status: "ACTIVE" | "DISABLED";
+  updatedAt: Date;
 };
 
 type PrismaSpaceMemberRecord = {
@@ -87,6 +89,13 @@ type PrismaDefaultWorkflowRecord = {
   };
 };
 
+type SpaceSummaryOperationalFields = {
+  blockedCount?: number;
+  currentVersion?: VersionSummary;
+  openBugCount?: number;
+  unfinishedTaskCount?: number;
+};
+
 export function toSpace(record: PrismaSpaceRecord): Space {
   return {
     id: record.id,
@@ -102,7 +111,10 @@ export function toSpace(record: PrismaSpaceRecord): Space {
   };
 }
 
-export function toSpaceSummary(record: PrismaSpaceRecord): SpaceSummary {
+export function toSpaceSummary(
+  record: PrismaSpaceRecord,
+  operationalFields: SpaceSummaryOperationalFields = {},
+): SpaceSummary {
   return {
     id: record.id,
     organizationId: record.organizationId,
@@ -110,7 +122,13 @@ export function toSpaceSummary(record: PrismaSpaceRecord): SpaceSummary {
     code: record.code,
     description: record.description ?? undefined,
     ownerId: record.ownerId ?? undefined,
+    owner: record.owner ? toUserSummary(record.owner) : undefined,
     status: toRecordStatus(record.status),
+    currentVersion: operationalFields.currentVersion,
+    unfinishedTaskCount: operationalFields.unfinishedTaskCount ?? 0,
+    openBugCount: operationalFields.openBugCount ?? 0,
+    blockedCount: operationalFields.blockedCount ?? 0,
+    updatedAt: record.updatedAt.toISOString(),
   };
 }
 

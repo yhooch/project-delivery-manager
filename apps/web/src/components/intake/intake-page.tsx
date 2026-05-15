@@ -1,21 +1,31 @@
 "use client";
 
 import type {
+  Comment,
   IntakeItem,
+  IntakeSourceType,
   IntakeStatus,
   Priority,
+  Requirement,
   SpaceMemberWithUser,
   StatusCategory,
+  TimelineEvent,
   Version,
+  WorkItem,
 } from "@project-delivery/shared";
 import {
   ArrowRight,
   CheckCircle2,
   ChevronRight,
   Clock,
+  Filter,
   GitBranch,
+  Link2,
+  Loader2,
+  MessageSquare,
   Pencil,
   Plus,
+  Send,
   Target,
   Users,
 } from "lucide-react";
@@ -25,6 +35,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { useRouter } from "../../i18n/routing";
 import { getApiErrorMessageKey } from "../../lib/api-error-messages";
+import { createComment, listComments } from "../../lib/comment-service";
 import { useListKeyboardNav } from "../../lib/hooks/use-list-keyboard-nav";
 import {
   acceptIntakeItem,
@@ -32,7 +43,10 @@ import {
   getIntakeItem,
   listIntakeItems,
   rejectIntakeItem,
+  type IntakeListFilterState,
 } from "../../lib/intake-service";
+import { listRequirements } from "../../lib/requirement-service";
+import { listTimeline } from "../../lib/timeline-service";
 import { cn } from "../../lib/utils";
 import { useSpaceMembers, useVersions } from "../../lib/v2/lookups";
 import { listWorkItems } from "../../lib/work-item-service";
@@ -42,6 +56,7 @@ import { recordRecentOpen } from "../shell/recent-opens";
 import { Avatar, AvatarFallback } from "../ui/avatar";
 import { Badge } from "../ui/badge";
 import { Button } from "../ui/button";
+import { Input } from "../ui/input";
 import {
   Sheet,
   SheetContent,
@@ -68,6 +83,20 @@ const priorityDot: Record<Priority, string> = {
   HIGH: "bg-warning",
   URGENT: "bg-destructive",
 };
+
+const SOURCE_TYPES: IntakeSourceType[] = [
+  "REQUIREMENT_CHANGE",
+  "DEFECT_PROBLEM",
+  "PROJECT_PLAN",
+  "MEETING_DECISION",
+  "AD_HOC",
+  "IMPLEMENTATION",
+  "OPERATIONS",
+  "RELEASE",
+  "EXTERNAL_COLLABORATION",
+];
+
+const PRIORITY_FILTERS: Priority[] = ["LOW", "MEDIUM", "HIGH", "URGENT"];
 
 const intakeStatusToCategory: Record<IntakeStatus, StatusCategory> = {
   PENDING: "NOT_STARTED",
@@ -100,18 +129,22 @@ export function IntakePage() {
   const organizationId = session?.defaultOrganizationId;
   const sessionSpace = session?.spaces?.find((space) => space.id === spaceId);
   const currentSpaceRole = currentSpace?.role ?? sessionSpace?.role;
-  const canWriteIntake = currentSpaceRole ? currentSpaceRole !== "VIEWER" : true;
+  const canWriteIntake = currentSpaceRole
+    ? currentSpaceRole !== "VIEWER"
+    : true;
   const recentScope = useMemo(
     () => ({ organizationId, spaceId }),
     [organizationId, spaceId],
   );
-  const { getMember } = useSpaceMembers(spaceId, organizationId);
-  const { getVersion } = useVersions(spaceId, organizationId);
+  const { members, getMember } = useSpaceMembers(spaceId, organizationId);
+  const { versions, getVersion } = useVersions(spaceId, organizationId);
 
   const [items, setItems] = useState<IntakeItem[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [errorKey, setErrorKey] = useState<string | null>(null);
   const [filter, setFilter] = useState<FilterKey>("all");
+  const [listFilters, setListFilters] = useState<IntakeListFilterState>({});
+  const [filterOpen, setFilterOpen] = useState(false);
   const [active, setActive] = useState<IntakeItem | null>(null);
   const [actionInFlight, setActionInFlight] = useState<StatusActionKind | null>(
     null,
@@ -123,8 +156,16 @@ export function IntakePage() {
   const [hasLoadedItems, setHasLoadedItems] = useState(false);
   const [convertOpen, setConvertOpen] = useState(false);
   const [convertTarget, setConvertTarget] = useState<IntakeItem | null>(null);
+  const [requirements, setRequirements] = useState<Requirement[]>([]);
   const [handledDeepLinkKey, setHandledDeepLinkKey] = useState<string | null>(
     null,
+  );
+
+  const setListFilter = useCallback(
+    (key: keyof IntakeListFilterState, value: string) => {
+      setListFilters((current) => ({ ...current, [key]: value || undefined }));
+    },
+    [],
   );
 
   const loadItems = useCallback(async () => {
@@ -143,6 +184,7 @@ export function IntakePage() {
         pageSize: 100,
         spaceId,
         status: filter === "all" ? undefined : filter,
+        ...listFilters,
       });
       setItems(page.items);
     } catch (error) {
@@ -151,7 +193,7 @@ export function IntakePage() {
       setIsLoading(false);
       setHasLoadedItems(true);
     }
-  }, [filter, organizationId, spaceId]);
+  }, [filter, listFilters, organizationId, spaceId]);
 
   useEffect(() => {
     if (sessionStatus !== "authenticated" || !spaceId) {
@@ -159,6 +201,35 @@ export function IntakePage() {
     }
     void loadItems();
   }, [loadItems, sessionStatus, spaceId]);
+
+  useEffect(() => {
+    if (!filterOpen || !spaceId) {
+      return;
+    }
+
+    let cancelled = false;
+
+    void listRequirements({
+      organizationId,
+      page: 1,
+      pageSize: 100,
+      spaceId,
+    })
+      .then((result) => {
+        if (!cancelled) {
+          setRequirements(result.items);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setRequirements([]);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [filterOpen, organizationId, spaceId]);
 
   const filtered = items;
 
@@ -271,12 +342,13 @@ export function IntakePage() {
     onSelect: setActive,
     onOpen: openItem,
     onEdit: openItem,
+    canAssign: () => false,
     canSubmit: (item) => canSubmitIntakeItem(item, canWriteIntake),
     onSubmit: (item) => {
       if (!canWriteIntake) {
         return;
       }
-      if (item.status === "PENDING") {
+      if (item.status === "PENDING" || item.status === "DEFERRED") {
         void handleStatusAction("accept", item);
       } else if (item.status === "ACCEPTED") {
         setActive(item);
@@ -361,6 +433,28 @@ export function IntakePage() {
     setActive((current) => (current?.id === updated.id ? updated : current));
   }
 
+  function handleConvertedIntakeItem(result: {
+    intakeItemId: string;
+    workItems: WorkItem[];
+  }) {
+    const target =
+      convertTarget?.id === result.intakeItemId
+        ? convertTarget
+        : active?.id === result.intakeItemId
+          ? active
+          : items.find((item) => item.id === result.intakeItemId);
+
+    if (target) {
+      handleUpdatedIntakeItem({
+        ...target,
+        convertedAt: new Date().toISOString(),
+        status: "CONVERTED",
+      });
+    }
+
+    void loadItems();
+  }
+
   async function handleViewConvertedTasks(target: IntakeItem | null = active) {
     if (!target || !spaceId || target.status !== "CONVERTED") {
       return;
@@ -389,17 +483,33 @@ export function IntakePage() {
     }
   }
 
-  const headerActions = canWriteIntake ? (
-    <Button
-      size="sm"
-      className="text-xs"
-      data-testid="intake-create-button"
-      onClick={() => setCreateOpen(true)}
-      type="button"
-    >
-      <Plus className="h-3 w-3" />
-      {t("page.create")}
-    </Button>
+  const headerActions = spaceId ? (
+    <>
+      <Button
+        size="sm"
+        variant={filterOpen ? "secondary" : "outline"}
+        className="text-xs"
+        data-testid="intake-filter-button"
+        aria-expanded={filterOpen}
+        onClick={() => setFilterOpen((open) => !open)}
+        type="button"
+      >
+        <Filter className="h-3 w-3" />
+        {t("actions.filter")}
+      </Button>
+      {canWriteIntake && (
+        <Button
+          size="sm"
+          className="text-xs"
+          data-testid="intake-create-button"
+          onClick={() => setCreateOpen(true)}
+          type="button"
+        >
+          <Plus className="h-3 w-3" />
+          {t("page.create")}
+        </Button>
+      )}
+    </>
   ) : null;
 
   let body: React.ReactNode;
@@ -542,6 +652,99 @@ export function IntakePage() {
         </div>
       )}
 
+      {sessionStatus === "authenticated" && spaceId && filterOpen && (
+        <div
+          data-testid="intake-filter-panel"
+          className="grid gap-3 border-b border-border bg-muted/20 px-6 py-3 md:grid-cols-5"
+        >
+          <FilterField label={t("filters.version")}>
+            <select
+              data-testid="intake-filter-version"
+              value={listFilters.versionId ?? ""}
+              onChange={(event) =>
+                setListFilter("versionId", event.target.value)
+              }
+              className="h-8 w-full rounded-md border border-input bg-background px-2 text-sm"
+            >
+              <option value="">{t("filters.allVersions")}</option>
+              {versions.map((version) => (
+                <option key={version.id} value={version.id}>
+                  {version.name}
+                </option>
+              ))}
+            </select>
+          </FilterField>
+          <FilterField label={t("filters.requirement")}>
+            <select
+              data-testid="intake-filter-requirement"
+              value={listFilters.requirementId ?? ""}
+              onChange={(event) =>
+                setListFilter("requirementId", event.target.value)
+              }
+              className="h-8 w-full rounded-md border border-input bg-background px-2 text-sm"
+            >
+              <option value="">{t("filters.allRequirements")}</option>
+              {requirements.map((requirement) => (
+                <option key={requirement.id} value={requirement.id}>
+                  {requirement.title || requirement.id}
+                </option>
+              ))}
+            </select>
+          </FilterField>
+          <FilterField label={t("filters.priority")}>
+            <select
+              data-testid="intake-filter-priority"
+              value={listFilters.priority ?? ""}
+              onChange={(event) =>
+                setListFilter("priority", event.target.value)
+              }
+              className="h-8 w-full rounded-md border border-input bg-background px-2 text-sm"
+            >
+              <option value="">{t("filters.allPriorities")}</option>
+              {PRIORITY_FILTERS.map((priority) => (
+                <option key={priority} value={priority}>
+                  {tIntakeItems(`priority.${priority}`)}
+                </option>
+              ))}
+            </select>
+          </FilterField>
+          <FilterField label={t("filters.sourceType")}>
+            <select
+              data-testid="intake-filter-source"
+              value={listFilters.sourceType ?? ""}
+              onChange={(event) =>
+                setListFilter("sourceType", event.target.value)
+              }
+              className="h-8 w-full rounded-md border border-input bg-background px-2 text-sm"
+            >
+              <option value="">{t("filters.allSourceTypes")}</option>
+              {SOURCE_TYPES.map((sourceType) => (
+                <option key={sourceType} value={sourceType}>
+                  {tIntakeItems(`sourceType.${sourceType}`)}
+                </option>
+              ))}
+            </select>
+          </FilterField>
+          <FilterField label={t("filters.assignee")}>
+            <select
+              data-testid="intake-filter-assignee"
+              value={listFilters.assigneeId ?? ""}
+              onChange={(event) =>
+                setListFilter("assigneeId", event.target.value)
+              }
+              className="h-8 w-full rounded-md border border-input bg-background px-2 text-sm"
+            >
+              <option value="">{t("filters.allAssignees")}</option>
+              {members.map((member) => (
+                <option key={member.userId} value={member.userId}>
+                  {member.user.name || member.user.username}
+                </option>
+              ))}
+            </select>
+          </FilterField>
+        </div>
+      )}
+
       <div className="flex-1 overflow-y-auto">{body}</div>
 
       <Sheet open={Boolean(active)} onOpenChange={handleCloseDrawer}>
@@ -600,48 +803,52 @@ export function IntakePage() {
                       {t("detail.edit")}
                     </Button>
                   )}
-                  {canWriteIntake && active.status === "PENDING" && (
-                    <>
-                      <Button
-                        size="sm"
-                        className="h-7 text-xs"
-                        data-testid="intake-accept-button"
-                        disabled={actionInFlight !== null}
-                        onClick={() => void handleStatusAction("accept")}
-                        type="button"
-                      >
-                        {actionInFlight === "accept"
-                          ? tIntakeItems("statusActions.accepting")
-                          : tIntakeItems("statusActions.accept")}
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="secondary"
-                        className="h-7 text-xs"
-                        data-testid="intake-defer-button"
-                        disabled={actionInFlight !== null}
-                        onClick={() => void handleStatusAction("defer")}
-                        type="button"
-                      >
-                        {actionInFlight === "defer"
-                          ? tIntakeItems("statusActions.deferring")
-                          : tIntakeItems("statusActions.defer")}
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="destructive"
-                        className="h-7 text-xs"
-                        data-testid="intake-reject-button"
-                        disabled={actionInFlight !== null}
-                        onClick={() => void handleStatusAction("reject")}
-                        type="button"
-                      >
-                        {actionInFlight === "reject"
-                          ? tIntakeItems("statusActions.rejecting")
-                          : tIntakeItems("statusActions.reject")}
-                      </Button>
-                    </>
-                  )}
+                  {canWriteIntake &&
+                    (active.status === "PENDING" ||
+                      active.status === "DEFERRED") && (
+                      <>
+                        <Button
+                          size="sm"
+                          className="h-7 text-xs"
+                          data-testid="intake-accept-button"
+                          disabled={actionInFlight !== null}
+                          onClick={() => void handleStatusAction("accept")}
+                          type="button"
+                        >
+                          {actionInFlight === "accept"
+                            ? tIntakeItems("statusActions.accepting")
+                            : tIntakeItems("statusActions.accept")}
+                        </Button>
+                        {active.status === "PENDING" && (
+                          <Button
+                            size="sm"
+                            variant="secondary"
+                            className="h-7 text-xs"
+                            data-testid="intake-defer-button"
+                            disabled={actionInFlight !== null}
+                            onClick={() => void handleStatusAction("defer")}
+                            type="button"
+                          >
+                            {actionInFlight === "defer"
+                              ? tIntakeItems("statusActions.deferring")
+                              : tIntakeItems("statusActions.defer")}
+                          </Button>
+                        )}
+                        <Button
+                          size="sm"
+                          variant="destructive"
+                          className="h-7 text-xs"
+                          data-testid="intake-reject-button"
+                          disabled={actionInFlight !== null}
+                          onClick={() => void handleStatusAction("reject")}
+                          type="button"
+                        >
+                          {actionInFlight === "reject"
+                            ? tIntakeItems("statusActions.rejecting")
+                            : tIntakeItems("statusActions.reject")}
+                        </Button>
+                      </>
+                    )}
                   {canWriteIntake && active.status === "ACCEPTED" && (
                     <Button
                       size="sm"
@@ -716,6 +923,33 @@ export function IntakePage() {
                     {active.description ?? t("detail.descriptionEmpty")}
                   </p>
                 </div>
+                <RelatedTasksSection
+                  intakeItem={active}
+                  organizationId={organizationId}
+                  routerPush={(href) => router.push(href)}
+                  spaceId={spaceId}
+                  t={t}
+                  tIntakeItems={tIntakeItems}
+                  tRoot={tRoot}
+                />
+                <IntakeCommentsSection
+                  canComment={canWriteIntake}
+                  getMember={getMember}
+                  intakeItem={active}
+                  organizationId={organizationId}
+                  spaceId={spaceId}
+                  t={t}
+                  tIntakeItems={tIntakeItems}
+                  tRoot={tRoot}
+                />
+                <IntakeTimelineSection
+                  intakeItem={active}
+                  organizationId={organizationId}
+                  spaceId={spaceId}
+                  t={t}
+                  tIntakeItems={tIntakeItems}
+                  tRoot={tRoot}
+                />
               </div>
             </>
           )}
@@ -754,12 +988,457 @@ export function IntakePage() {
           }}
           spaceId={spaceId}
           intakeItem={convertTarget}
-          onConverted={() => {
-            void loadItems();
-          }}
+          onConverted={handleConvertedIntakeItem}
         />
       )}
     </div>
+  );
+}
+
+function FilterField({
+  children,
+  label,
+}: {
+  children: React.ReactNode;
+  label: string;
+}) {
+  return (
+    <label className="flex min-w-0 flex-col gap-1 text-[11px] font-medium text-muted-foreground">
+      <span>{label}</span>
+      {children}
+    </label>
+  );
+}
+
+function RelatedTasksSection({
+  intakeItem,
+  organizationId,
+  routerPush,
+  spaceId,
+  t,
+  tIntakeItems,
+  tRoot,
+}: {
+  intakeItem: IntakeItem;
+  organizationId?: string;
+  routerPush: (href: string) => void;
+  spaceId?: string;
+  t: ReturnType<typeof useTranslations<"intake">>;
+  tIntakeItems: ReturnType<typeof useTranslations<"intakeItems">>;
+  tRoot: ReturnType<typeof useTranslations>;
+}) {
+  const [tasks, setTasks] = useState<WorkItem[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [errorKey, setErrorKey] = useState<string | null>(null);
+
+  const fetchTasks = useCallback(async () => {
+    if (!spaceId) {
+      return;
+    }
+
+    setLoading(true);
+    setErrorKey(null);
+
+    try {
+      const result = await listWorkItems({
+        intakeItemId: intakeItem.id,
+        organizationId,
+        page: 1,
+        pageSize: 5,
+        spaceId,
+      });
+      setTasks(result.items);
+    } catch (error) {
+      setErrorKey(getApiErrorMessageKey(error));
+    } finally {
+      setLoading(false);
+    }
+  }, [intakeItem.id, organizationId, spaceId]);
+
+  useEffect(() => {
+    void fetchTasks();
+  }, [fetchTasks]);
+
+  const openList = () => {
+    routerPush(buildWorkItemsHref({ intakeItemId: intakeItem.id }));
+  };
+
+  return (
+    <section className="mt-6" data-testid="intake-related-tasks-section">
+      <div className="mb-2 flex items-center justify-between gap-2">
+        <h3 className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
+          {tIntakeItems("relatedTasks.title")}
+        </h3>
+        <Button
+          type="button"
+          size="sm"
+          variant="outline"
+          className="h-7 text-xs"
+          data-testid="intake-related-tasks-open-list"
+          onClick={openList}
+        >
+          <Link2 className="h-3 w-3" />
+          {tIntakeItems("relatedTasks.openTaskList")}
+        </Button>
+      </div>
+      {loading ? (
+        <LoadingState className="h-28" label={tRoot("common.states.loading")} />
+      ) : errorKey ? (
+        <ErrorState
+          className="h-28"
+          message={tRoot(errorKey)}
+          onRetry={() => {
+            void fetchTasks();
+          }}
+          retryLabel={t("actions.retry")}
+        />
+      ) : tasks.length === 0 ? (
+        <EmptyState
+          className="h-32"
+          icon={<Link2 className="h-4 w-4" />}
+          title={tIntakeItems("relatedTasks.empty.title")}
+          description={tIntakeItems("relatedTasks.empty.description")}
+        />
+      ) : (
+        <ul
+          className="divide-y divide-border rounded-md border border-border"
+          data-testid="intake-related-tasks-list"
+        >
+          {tasks.map((task) => (
+            <li key={task.id}>
+              <button
+                type="button"
+                data-testid="intake-related-task-item"
+                className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm transition-colors hover:bg-muted/50 cursor-pointer"
+                onClick={() =>
+                  routerPush(buildWorkItemsHref({ workItemId: task.id }))
+                }
+              >
+                <CheckCircle2 className="h-3.5 w-3.5 shrink-0 text-primary" />
+                <span className="min-w-0 flex-1 truncate font-medium">
+                  {task.title}
+                </span>
+                <span className="hidden shrink-0 text-[11px] text-muted-foreground sm:inline">
+                  {tIntakeItems("relatedTasks.meta", {
+                    dueDate: task.dueDate ?? tIntakeItems("noDueDate"),
+                    priority: tRoot(`workItems.priority.${task.priority}`),
+                    status: tRoot(
+                      `workItems.statusCategory.${task.statusCategory}`,
+                    ),
+                  })}
+                </span>
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
+  );
+}
+
+function IntakeCommentsSection({
+  canComment,
+  getMember,
+  intakeItem,
+  organizationId,
+  spaceId,
+  t,
+  tIntakeItems,
+  tRoot,
+}: {
+  canComment: boolean;
+  getMember: (userId: string) => SpaceMemberWithUser | undefined;
+  intakeItem: IntakeItem;
+  organizationId?: string;
+  spaceId?: string;
+  t: ReturnType<typeof useTranslations<"intake">>;
+  tIntakeItems: ReturnType<typeof useTranslations<"intakeItems">>;
+  tRoot: ReturnType<typeof useTranslations>;
+}) {
+  const [comments, setComments] = useState<Comment[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [errorKey, setErrorKey] = useState<string | null>(null);
+  const [draft, setDraft] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+  const [submitErrorKey, setSubmitErrorKey] = useState<string | null>(null);
+
+  const fetchComments = useCallback(async () => {
+    if (!spaceId) {
+      return;
+    }
+
+    setLoading(true);
+    setErrorKey(null);
+
+    try {
+      const result = await listComments({
+        organizationId,
+        spaceId,
+        targetId: intakeItem.id,
+        targetType: "INTAKE_ITEM",
+      });
+      setComments(result.items);
+    } catch (error) {
+      setErrorKey(getApiErrorMessageKey(error));
+    } finally {
+      setLoading(false);
+    }
+  }, [intakeItem.id, organizationId, spaceId]);
+
+  useEffect(() => {
+    void fetchComments();
+  }, [fetchComments]);
+
+  const handleSubmit = async () => {
+    const body = draft.trim();
+    if (!body || !spaceId || !canComment) {
+      return;
+    }
+
+    setSubmitting(true);
+    setSubmitErrorKey(null);
+
+    try {
+      const created = await createComment({
+        body,
+        organizationId,
+        spaceId,
+        targetId: intakeItem.id,
+        targetType: "INTAKE_ITEM",
+      });
+      setComments((current) => [...current, created]);
+      setDraft("");
+    } catch (error) {
+      setSubmitErrorKey(getApiErrorMessageKey(error));
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <section className="mt-6" data-testid="intake-comments-section">
+      <h3 className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
+        {tIntakeItems("comments.title")}
+      </h3>
+      <div className="mt-2 rounded-md border border-border">
+        {loading ? (
+          <LoadingState
+            className="h-28"
+            label={tRoot("common.states.loading")}
+          />
+        ) : errorKey ? (
+          <ErrorState
+            className="h-28"
+            message={tRoot(errorKey)}
+            onRetry={() => {
+              void fetchComments();
+            }}
+            retryLabel={t("actions.retry")}
+          />
+        ) : comments.length === 0 ? (
+          <EmptyState
+            className="h-28"
+            icon={<MessageSquare className="h-4 w-4" />}
+            title={tIntakeItems("comments.empty.title")}
+            description={tIntakeItems("comments.empty.description")}
+          />
+        ) : (
+          <ul
+            className="divide-y divide-border"
+            data-testid="intake-comments-list"
+          >
+            {comments.map((comment) => {
+              const member = getMember(comment.author.id);
+              const name = member?.user.name ?? comment.author.name;
+              const initial = initialOf(name);
+
+              return (
+                <li
+                  key={comment.id}
+                  data-testid="intake-comment-item"
+                  className="flex gap-3 px-3 py-3"
+                >
+                  <Avatar className="h-7 w-7">
+                    <AvatarFallback>{initial}</AvatarFallback>
+                  </Avatar>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                      <span className="text-sm font-medium">{name}</span>
+                      <span className="text-[11px] text-muted-foreground">
+                        {formatDateTime(comment.createdAt)}
+                      </span>
+                    </div>
+                    <p className="mt-1 whitespace-pre-wrap text-sm leading-relaxed text-foreground/90">
+                      {comment.body}
+                    </p>
+                  </div>
+                </li>
+              );
+            })}
+          </ul>
+        )}
+        {submitErrorKey && (
+          <p className="border-t border-border bg-destructive/10 px-3 py-2 text-[11px] text-destructive">
+            {tRoot(submitErrorKey)}
+          </p>
+        )}
+        {canComment ? (
+          <div className="flex gap-2 border-t border-border p-3">
+            <Input
+              data-testid="intake-comment-input"
+              value={draft}
+              placeholder={tIntakeItems("comments.body")}
+              disabled={submitting}
+              onChange={(event) => setDraft(event.target.value)}
+              onKeyDown={(event) => {
+                if (event.key === "Enter" && (event.metaKey || event.ctrlKey)) {
+                  event.preventDefault();
+                  void handleSubmit();
+                }
+              }}
+            />
+            <Button
+              type="button"
+              size="sm"
+              data-testid="intake-comment-submit"
+              disabled={submitting || draft.trim().length === 0}
+              onClick={() => {
+                void handleSubmit();
+              }}
+            >
+              {submitting ? (
+                <Loader2 className="h-3 w-3 animate-spin" />
+              ) : (
+                <Send className="h-3 w-3" />
+              )}
+              {submitting
+                ? tIntakeItems("comments.submitting")
+                : tIntakeItems("comments.submit")}
+            </Button>
+          </div>
+        ) : (
+          <p
+            data-testid="intake-comments-readonly"
+            className="border-t border-border px-3 py-2 text-[11px] text-muted-foreground"
+          >
+            {tRoot("intakeItems.permissions.commentReadonly")}
+          </p>
+        )}
+      </div>
+    </section>
+  );
+}
+
+function IntakeTimelineSection({
+  intakeItem,
+  organizationId,
+  spaceId,
+  t,
+  tIntakeItems,
+  tRoot,
+}: {
+  intakeItem: IntakeItem;
+  organizationId?: string;
+  spaceId?: string;
+  t: ReturnType<typeof useTranslations<"intake">>;
+  tIntakeItems: ReturnType<typeof useTranslations<"intakeItems">>;
+  tRoot: ReturnType<typeof useTranslations>;
+}) {
+  const [events, setEvents] = useState<TimelineEvent[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [errorKey, setErrorKey] = useState<string | null>(null);
+
+  const fetchEvents = useCallback(async () => {
+    if (!spaceId) {
+      return;
+    }
+
+    setLoading(true);
+    setErrorKey(null);
+
+    try {
+      const result = await listTimeline({
+        organizationId,
+        spaceId,
+        targetId: intakeItem.id,
+        targetType: "INTAKE_ITEM",
+      });
+      setEvents(result.items);
+    } catch (error) {
+      setErrorKey(getApiErrorMessageKey(error));
+    } finally {
+      setLoading(false);
+    }
+  }, [intakeItem.id, organizationId, spaceId]);
+
+  useEffect(() => {
+    void fetchEvents();
+  }, [fetchEvents]);
+
+  return (
+    <section className="mt-6" data-testid="intake-timeline-section">
+      <h3 className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
+        {tIntakeItems("timeline.title")}
+      </h3>
+      <div className="mt-2 rounded-md border border-border">
+        {loading ? (
+          <LoadingState
+            className="h-28"
+            label={tRoot("common.states.loading")}
+          />
+        ) : errorKey ? (
+          <ErrorState
+            className="h-28"
+            message={tRoot(errorKey)}
+            onRetry={() => {
+              void fetchEvents();
+            }}
+            retryLabel={t("actions.retry")}
+          />
+        ) : events.length === 0 ? (
+          <EmptyState
+            className="h-28"
+            icon={<Clock className="h-4 w-4" />}
+            title={tIntakeItems("timeline.empty.title")}
+            description={tIntakeItems("timeline.empty.description")}
+          />
+        ) : (
+          <ul
+            className="divide-y divide-border"
+            data-testid="intake-timeline-list"
+          >
+            {events.map((event) => (
+              <li
+                key={event.id}
+                data-testid="intake-timeline-item"
+                className="flex gap-3 px-3 py-3"
+              >
+                <Avatar className="h-7 w-7">
+                  <AvatarFallback>{initialOf(event.actor.name)}</AvatarFallback>
+                </Avatar>
+                <div className="min-w-0 flex-1 text-[13px]">
+                  <div>
+                    <span className="font-medium">{event.actor.name}</span>
+                    <span className="text-muted-foreground">
+                      {" "}
+                      {event.title}{" "}
+                    </span>
+                    {event.detail && (
+                      <span className="font-mono text-[12px] text-foreground">
+                        {event.detail}
+                      </span>
+                    )}
+                  </div>
+                  <div className="mt-0.5 text-[11px] text-muted-foreground">
+                    {formatDateTime(event.createdAt)}
+                  </div>
+                </div>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+    </section>
   );
 }
 
@@ -807,6 +1486,23 @@ function displayVersionName(
   return getVersion(versionId)?.name ?? shortenId(versionId);
 }
 
+function formatDateTime(value: string): string {
+  try {
+    const date = new Date(value);
+
+    if (Number.isNaN(date.getTime())) {
+      return value;
+    }
+
+    return new Intl.DateTimeFormat("default", {
+      dateStyle: "short",
+      timeStyle: "short",
+    }).format(date);
+  } catch {
+    return value;
+  }
+}
+
 function formatItemCode(id: string): string {
   return `INK-${shortenId(id)}`.toUpperCase();
 }
@@ -815,8 +1511,16 @@ function initialOf(id: string): string {
   return id.trim().charAt(0).toUpperCase() || "?";
 }
 
-function canSubmitIntakeItem(item: IntakeItem, canWriteIntake: boolean): boolean {
-  return canWriteIntake && (item.status === "PENDING" || item.status === "ACCEPTED");
+function canSubmitIntakeItem(
+  item: IntakeItem,
+  canWriteIntake: boolean,
+): boolean {
+  return (
+    canWriteIntake &&
+    (item.status === "PENDING" ||
+      item.status === "DEFERRED" ||
+      item.status === "ACCEPTED")
+  );
 }
 
 function normalizeSearchParam(value: string | null): string | undefined {

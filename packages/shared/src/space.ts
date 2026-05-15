@@ -1,5 +1,6 @@
 import { z } from "zod";
 import {
+  IsoDateTimeSchema,
   PageQuerySchema,
   UlidSchema,
   pageResultSchema,
@@ -47,6 +48,13 @@ export const SpaceSummarySchema = SpaceSchema.pick({
   description: true,
   ownerId: true,
   status: true,
+}).extend({
+  owner: OrganizationMemberUserSummarySchema.optional(),
+  currentVersion: VersionSummarySchema.optional(),
+  unfinishedTaskCount: z.number().int().min(0),
+  openBugCount: z.number().int().min(0),
+  blockedCount: z.number().int().min(0),
+  updatedAt: IsoDateTimeSchema,
 });
 
 export type SpaceSummary = z.infer<typeof SpaceSummarySchema>;

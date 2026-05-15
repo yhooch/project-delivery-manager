@@ -13,6 +13,7 @@ import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { Link } from "../../i18n/routing";
+import { ApiClientError } from "../../lib/api-client";
 import { getApiErrorMessageKey } from "../../lib/api-error-messages";
 import {
   createWorkflowVersion,
@@ -67,6 +68,28 @@ type PublishIssue =
   | "missingFromState"
   | "missingToState"
   | "unreachableState";
+
+type BackendPublishIssue = {
+  actionId?: string;
+  code?: string;
+  message?: string;
+  stateId?: string;
+};
+
+const backendPublishIssueMessageKeys = {
+  ACTION_SOURCE_STATE_NOT_FOUND:
+    "workflow.publishIssues.codes.ACTION_SOURCE_STATE_NOT_FOUND",
+  ACTION_TARGET_STATE_NOT_FOUND:
+    "workflow.publishIssues.codes.ACTION_TARGET_STATE_NOT_FOUND",
+  END_STATE_REQUIRED: "workflow.publishIssues.codes.END_STATE_REQUIRED",
+  ISOLATED_STATE: "workflow.publishIssues.codes.ISOLATED_STATE",
+  NON_END_STATE_ACTION_REQUIRED:
+    "workflow.publishIssues.codes.NON_END_STATE_ACTION_REQUIRED",
+  START_STATE_COUNT_INVALID:
+    "workflow.publishIssues.codes.START_STATE_COUNT_INVALID",
+  STATE_CATEGORY_REQUIRED:
+    "workflow.publishIssues.codes.STATE_CATEGORY_REQUIRED",
+} as const;
 
 function validateForPublish(version: WorkflowVersion): PublishIssue[] {
   const issues: PublishIssue[] = [];
@@ -147,6 +170,7 @@ export function WorkflowConfigPage({ workflowId }: WorkflowConfigPageProps) {
   const t = useTranslations("workflow.config");
   const tStatus = useTranslations("workflow.versionStatus");
   const tShell = useTranslations("shell.nav");
+  const tWorkItemType = useTranslations("workflow.workItemType");
   const tRoot = useTranslations();
   const { currentSpace, session, status } = useSession();
   const spaceId = session?.defaultSpaceId ?? currentSpace?.id;
@@ -165,6 +189,9 @@ export function WorkflowConfigPage({ workflowId }: WorkflowConfigPageProps) {
   const [versionErrorKey, setVersionErrorKey] = useState<string | null>(null);
   const [actionErrorKey, setActionErrorKey] = useState<string | null>(null);
   const [publishIssues, setPublishIssues] = useState<PublishIssue[]>([]);
+  const [publishServerIssues, setPublishServerIssues] = useState<
+    BackendPublishIssue[]
+  >([]);
   const [busy, setBusy] = useState<"none" | "publish" | "disable" | "copy">(
     "none",
   );
@@ -250,6 +277,7 @@ export function WorkflowConfigPage({ workflowId }: WorkflowConfigPageProps) {
       return;
     }
     setPublishIssues([]);
+    setPublishServerIssues([]);
     void loadVersion(selectedVersionId);
   }, [loadVersion, selectedVersionId]);
 
@@ -262,6 +290,21 @@ export function WorkflowConfigPage({ workflowId }: WorkflowConfigPageProps) {
 
   const canBindCurrentVersion = Boolean(
     canManageWorkflow && version?.status === "PUBLISHED",
+  );
+  const bindingWorkItemTypes = useMemo(
+    () => [...new Set(bindings.map((binding) => binding.workItemType))].sort(),
+    [bindings],
+  );
+  const defaultBindingWorkItemTypes = useMemo(
+    () =>
+      [
+        ...new Set(
+          bindings
+            .filter((binding) => binding.isDefault)
+            .map((binding) => binding.workItemType),
+        ),
+      ].sort(),
+    [bindings],
   );
 
   const handleRefreshVersion = useCallback(() => {
@@ -296,9 +339,11 @@ export function WorkflowConfigPage({ workflowId }: WorkflowConfigPageProps) {
     const issues = validateForPublish(version);
     if (issues.length > 0) {
       setPublishIssues(issues);
+      setPublishServerIssues([]);
       return;
     }
     setPublishIssues([]);
+    setPublishServerIssues([]);
     setActionErrorKey(null);
     setBusy("publish");
     try {
@@ -311,6 +356,7 @@ export function WorkflowConfigPage({ workflowId }: WorkflowConfigPageProps) {
       await loadShell();
     } catch (error) {
       setActionErrorKey(getApiErrorMessageKey(error));
+      setPublishServerIssues(extractPublishIssueDetails(error));
     } finally {
       setBusy("none");
     }
@@ -494,6 +540,36 @@ export function WorkflowConfigPage({ workflowId }: WorkflowConfigPageProps) {
               {tStatus(version.status)}
             </Badge>
           ) : null}
+          <div
+            className="flex flex-wrap items-center gap-1"
+            data-testid="workflow-config-list-summary"
+          >
+            <Badge variant="outline">
+              {t("toolbar.versionCount", { count: versions.length })}
+            </Badge>
+            <Badge variant="outline">
+              {bindingWorkItemTypes.length > 0
+                ? t("toolbar.targetTypes", {
+                    types: bindingWorkItemTypes
+                      .map((type) => tWorkItemType(type))
+                      .join(", "),
+                  })
+                : t("toolbar.noTargetTypes")}
+            </Badge>
+            <Badge
+              variant={
+                defaultBindingWorkItemTypes.length > 0 ? "success" : "outline"
+              }
+            >
+              {defaultBindingWorkItemTypes.length > 0
+                ? t("toolbar.defaultBindings", {
+                    types: defaultBindingWorkItemTypes
+                      .map((type) => tWorkItemType(type))
+                      .join(", "),
+                  })
+                : t("toolbar.noDefaultBinding")}
+            </Badge>
+          </div>
           <div className="ml-auto flex flex-wrap items-center gap-1.5">
             <Button
               className="h-7 text-xs"
@@ -579,7 +655,19 @@ export function WorkflowConfigPage({ workflowId }: WorkflowConfigPageProps) {
             className="mb-3 rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-xs text-destructive"
             role="alert"
           >
-            {tRoot(actionErrorKey)}
+            <p>{tRoot(actionErrorKey)}</p>
+            {publishServerIssues.length > 0 ? (
+              <ul
+                className="mt-1 list-inside list-disc"
+                data-testid="workflow-config-publish-server-issues"
+              >
+                {publishServerIssues.map((issue, index) => (
+                  <li key={`${issue.code ?? "issue"}-${index}`}>
+                    {formatBackendPublishIssue(issue, tRoot)}
+                  </li>
+                ))}
+              </ul>
+            ) : null}
           </div>
         ) : null}
 
@@ -707,6 +795,69 @@ export function WorkflowConfigPage({ workflowId }: WorkflowConfigPageProps) {
       ) : null}
     </div>
   );
+}
+
+function extractPublishIssueDetails(error: unknown): BackendPublishIssue[] {
+  if (!(error instanceof ApiClientError)) {
+    return [];
+  }
+
+  const details = error.error.details;
+  if (!isRecord(details) || !Array.isArray(details.issues)) {
+    return [];
+  }
+
+  return details.issues
+    .map((issue): BackendPublishIssue | null => {
+      if (typeof issue === "string") {
+        return { message: issue };
+      }
+
+      if (!isRecord(issue)) {
+        return null;
+      }
+
+      return {
+        actionId: getStringValue(issue.actionId),
+        code: getStringValue(issue.code),
+        message: getStringValue(issue.message),
+        stateId: getStringValue(issue.stateId),
+      };
+    })
+    .filter((issue): issue is BackendPublishIssue => issue !== null);
+}
+
+function formatBackendPublishIssue(
+  issue: BackendPublishIssue,
+  tRoot: ReturnType<typeof useTranslations>,
+): string {
+  const code = issue.code?.trim();
+  const messageKey =
+    code &&
+    backendPublishIssueMessageKeys[
+      code as keyof typeof backendPublishIssueMessageKeys
+    ];
+  const message =
+    messageKey
+      ? tRoot(messageKey)
+      : issue.message?.trim() || tRoot("workflow.publishIssues.unknownMessage");
+  const targetId = issue.stateId ?? issue.actionId;
+
+  if (!code) {
+    return targetId ? `${message} (${targetId})` : message;
+  }
+
+  return targetId ? `${code}: ${message} (${targetId})` : `${code}: ${message}`;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null;
+}
+
+function getStringValue(value: unknown): string | undefined {
+  return typeof value === "string" && value.trim().length > 0
+    ? value
+    : undefined;
 }
 
 function Label({

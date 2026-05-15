@@ -17,7 +17,7 @@ describe("bug forms", () => {
     const result = createBugFormSchema.safeParse({
       actualResult: "  Received a 500  ",
       assigneeId: "",
-      description: "",
+      description: "  Payment service returns an intermittent 500  ",
       expectedResult: "  Checkout succeeds  ",
       priority: "",
       relatedTaskId,
@@ -31,6 +31,7 @@ describe("bug forms", () => {
     expect(result.success).toBe(true);
     expect(result.success ? result.data : null).toMatchObject({
       actualResult: "Received a 500",
+      description: "Payment service returns an intermittent 500",
       expectedResult: "Checkout succeeds",
       priority: "MEDIUM",
       relatedTaskId,
@@ -41,14 +42,22 @@ describe("bug forms", () => {
       versionId,
     });
     expect(result.success ? result.data.assigneeId : null).toBeUndefined();
-    expect(result.success ? result.data.description : null).toBeUndefined();
+    expect(
+      createBugFormSchema.safeParse({
+        description: "",
+        severity: "MAJOR",
+        title: "Bug without description",
+      }).success,
+    ).toBe(true);
 
     expect(
       toCreateBugRequest({
         severity: "CRITICAL",
+        description: "  Browser console shows a null token  ",
         title: "Crash on checkout",
       }),
     ).toEqual({
+      description: "Browser console shows a null token",
       priority: "MEDIUM",
       severity: "CRITICAL",
       title: "Crash on checkout",
