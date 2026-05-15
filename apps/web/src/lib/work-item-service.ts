@@ -7,7 +7,7 @@ import {
   UpdateWorkItemResponseSchema,
   WorkItemListQuerySchema,
   type CreateWorkItemRequest,
-  type PageResult,
+  type ListWorkItemsResponse,
   type Priority,
   type StatusCategory,
   type UpdateWorkItemRequest,
@@ -63,7 +63,7 @@ const defaultApi: WorkItemApiTransport = apiClient;
 export async function listWorkItems(
   input: ListWorkItemsInput,
   api: WorkItemApiTransport = defaultApi,
-): Promise<PageResult<WorkItem>> {
+): Promise<ListWorkItemsResponse> {
   const { organizationId: _organizationId, spaceId, ...filters } = input;
   const query = WorkItemListQuerySchema.parse({
     ...filters,
@@ -86,7 +86,10 @@ export async function createWorkItem(
     ...input,
     type: "TASK",
   });
-  const response = await api.post<unknown>(`/spaces/${spaceId}/work-items`, body);
+  const response = await api.post<unknown>(
+    `/spaces/${spaceId}/work-items`,
+    body,
+  );
 
   return CreateWorkItemResponseSchema.parse(response.data);
 }

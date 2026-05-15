@@ -20,7 +20,7 @@ import {
   SpaceIdPathParamsSchema,
   UpdateRequirementRequestSchema,
   type CreateRequirementDraftRequest,
-  type PageResult,
+  type ListRequirementsResponse,
   type Requirement,
   type RequirementStatus,
   type UpdateRequirementRequest,
@@ -60,7 +60,7 @@ export class RequirementController {
       versionId?: string;
     },
     @Req() request: RequestWithContext,
-  ): Promise<PageResult<Requirement>> {
+  ): Promise<ListRequirementsResponse> {
     const session = this.currentUser.requireSession(request);
 
     return this.requirements.list(session.userId, params.spaceId, query);

@@ -118,7 +118,24 @@ export const IntakeItemListQuerySchema = PageQuerySchema.extend({
   assigneeId: UlidSchema.optional(),
 });
 
-export const ListIntakeItemsResponseSchema = pageResultSchema(IntakeItemSchema);
+export const IntakeStatusCountSchema = z
+  .object({
+    status: IntakeStatusSchema,
+    count: z.number().int().min(0),
+  })
+  .strict();
+
+export type IntakeStatusCount = z.infer<typeof IntakeStatusCountSchema>;
+
+export const ListIntakeItemsResponseSchema = pageResultSchema(
+  IntakeItemSchema,
+).extend({
+  statusCounts: z.array(IntakeStatusCountSchema).optional(),
+});
+
+export type ListIntakeItemsResponse = z.infer<
+  typeof ListIntakeItemsResponseSchema
+>;
 export const CreateIntakeItemResponseSchema = IntakeItemSchema;
 export const GetIntakeItemResponseSchema = IntakeItemSchema;
 export const UpdateIntakeItemResponseSchema = IntakeItemSchema;

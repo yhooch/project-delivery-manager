@@ -1,7 +1,6 @@
 import type {
-  PageResult,
+  ListRequirementsResponse,
   Priority,
-  Requirement,
   RequirementStatus,
   SaveRequirementRequest,
 } from "@project-delivery/shared";
@@ -24,7 +23,7 @@ export type RequirementListInput = {
   visibility: RequirementListVisibility;
 };
 
-export type RequirementListResult = PageResult<Requirement>;
+export type RequirementListResult = ListRequirementsResponse;
 
 export type CreateRequirementDraftInput = {
   id: string;

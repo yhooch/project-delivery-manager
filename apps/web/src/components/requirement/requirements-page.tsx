@@ -2,6 +2,7 @@
 
 import type {
   Requirement,
+  RequirementStatusCount,
   RequirementStatus,
   SpaceMemberWithUser,
   Version,
@@ -93,6 +94,9 @@ export function RequirementsPage() {
   const [selectedVersionId, setSelectedVersionId] = useState("");
   const [selectedOwnerId, setSelectedOwnerId] = useState("");
   const [pageInfo, setPageInfo] = useState(INITIAL_PAGE_INFO);
+  const [statusCounts, setStatusCounts] = useState<RequirementStatusCount[]>(
+    [],
+  );
   const [isCreating, setIsCreating] = useState(false);
   const [activeId, setActiveId] = useState<string | undefined>(undefined);
   const [handledCreateLinkKey, setHandledCreateLinkKey] = useState<
@@ -106,9 +110,7 @@ export function RequirementsPage() {
   );
   const previousContextKeyRef = useRef(contextKey);
   const isContextChanging = previousContextKeyRef.current !== contextKey;
-  const effectiveSelectedVersionId = isContextChanging
-    ? ""
-    : selectedVersionId;
+  const effectiveSelectedVersionId = isContextChanging ? "" : selectedVersionId;
   const effectiveSelectedOwnerId = isContextChanging ? "" : selectedOwnerId;
   const listScopeKey = useMemo(
     () =>
@@ -138,77 +140,78 @@ export function RequirementsPage() {
   const paginationTo = Math.min(loadedCount, pageInfo.total);
   const hasMoreItems = loadedCount < pageInfo.total;
 
-  const loadItems = useCallback(async (
-    page = 1,
-    mode: "replace" | "append" = "replace",
-  ) => {
-    if (!spaceId) {
-      return;
-    }
-
-    const requestId = listRequestIdRef.current + 1;
-    listRequestIdRef.current = requestId;
-    const requestScopeKey = listScopeKey;
-    const append = mode === "append";
-
-    if (append) {
-      setIsLoadingMore(true);
-    } else {
-      setIsLoading(true);
-    }
-    setErrorKey(null);
-
-    try {
-      const result = await listRequirements({
-        organizationId,
-        spaceId,
-        page,
-        pageSize: LIST_PAGE_SIZE,
-        ...toRequirementListQuery(filter),
-        ownerId: optionalFilterValue(effectiveSelectedOwnerId),
-        versionId: optionalFilterValue(effectiveSelectedVersionId),
-      });
-      if (
-        listRequestIdRef.current !== requestId ||
-        latestListScopeKeyRef.current !== requestScopeKey
-      ) {
+  const loadItems = useCallback(
+    async (page = 1, mode: "replace" | "append" = "replace") => {
+      if (!spaceId) {
         return;
       }
-      setItems((current) =>
-        append ? [...current, ...result.items] : result.items,
-      );
-      setPageInfo({
-        page: result.page ?? page,
-        pageSize: result.pageSize ?? LIST_PAGE_SIZE,
-        total: result.total ?? result.items.length,
-      });
-    } catch (error) {
-      if (
-        listRequestIdRef.current === requestId &&
-        latestListScopeKeyRef.current === requestScopeKey
-      ) {
-        setErrorKey(getApiErrorMessageKey(error));
+
+      const requestId = listRequestIdRef.current + 1;
+      listRequestIdRef.current = requestId;
+      const requestScopeKey = listScopeKey;
+      const append = mode === "append";
+
+      if (append) {
+        setIsLoadingMore(true);
+      } else {
+        setIsLoading(true);
       }
-    } finally {
-      if (
-        listRequestIdRef.current === requestId &&
-        latestListScopeKeyRef.current === requestScopeKey
-      ) {
-        if (append) {
-          setIsLoadingMore(false);
-        } else {
-          setIsLoading(false);
+      setErrorKey(null);
+
+      try {
+        const result = await listRequirements({
+          organizationId,
+          spaceId,
+          page,
+          pageSize: LIST_PAGE_SIZE,
+          ...toRequirementListQuery(filter),
+          ownerId: optionalFilterValue(effectiveSelectedOwnerId),
+          versionId: optionalFilterValue(effectiveSelectedVersionId),
+        });
+        if (
+          listRequestIdRef.current !== requestId ||
+          latestListScopeKeyRef.current !== requestScopeKey
+        ) {
+          return;
+        }
+        setItems((current) =>
+          append ? [...current, ...result.items] : result.items,
+        );
+        setPageInfo({
+          page: result.page ?? page,
+          pageSize: result.pageSize ?? LIST_PAGE_SIZE,
+          total: result.total ?? result.items.length,
+        });
+        setStatusCounts(result.statusCounts ?? []);
+      } catch (error) {
+        if (
+          listRequestIdRef.current === requestId &&
+          latestListScopeKeyRef.current === requestScopeKey
+        ) {
+          setErrorKey(getApiErrorMessageKey(error));
+        }
+      } finally {
+        if (
+          listRequestIdRef.current === requestId &&
+          latestListScopeKeyRef.current === requestScopeKey
+        ) {
+          if (append) {
+            setIsLoadingMore(false);
+          } else {
+            setIsLoading(false);
+          }
         }
       }
-    }
-  }, [
-    effectiveSelectedOwnerId,
-    effectiveSelectedVersionId,
-    filter,
-    listScopeKey,
-    organizationId,
-    spaceId,
-  ]);
+    },
+    [
+      effectiveSelectedOwnerId,
+      effectiveSelectedVersionId,
+      filter,
+      listScopeKey,
+      organizationId,
+      spaceId,
+    ],
+  );
 
   const loadFilterOptions = useCallback(async () => {
     if (!spaceId) {
@@ -248,6 +251,7 @@ export function RequirementsPage() {
         listRequestIdRef.current += 1;
         setItems([]);
         setPageInfo(INITIAL_PAGE_INFO);
+        setStatusCounts([]);
         setIsLoading(false);
         setIsLoadingMore(false);
       }
@@ -314,12 +318,32 @@ export function RequirementsPage() {
     [members],
   );
 
-  const buckets: { label: string; key: FilterKey }[] = [
-    { label: t("filters.active"), key: "active" },
-    { label: t("filters.draft"), key: "DRAFT" },
-    { label: t("filters.confirmed"), key: "CONFIRMED" },
-    { label: t("filters.archived"), key: "ARCHIVED" },
-    { label: t("filters.all"), key: "all" },
+  const buckets: { count: number; label: string; key: FilterKey }[] = [
+    {
+      count: getActiveRequirementCount(statusCounts, items.length),
+      label: t("filters.active"),
+      key: "active",
+    },
+    {
+      count: getRequirementStatusCount(statusCounts, "DRAFT"),
+      label: t("filters.draft"),
+      key: "DRAFT",
+    },
+    {
+      count: getRequirementStatusCount(statusCounts, "CONFIRMED"),
+      label: t("filters.confirmed"),
+      key: "CONFIRMED",
+    },
+    {
+      count: getRequirementStatusCount(statusCounts, "ARCHIVED"),
+      label: t("filters.archived"),
+      key: "ARCHIVED",
+    },
+    {
+      count: getAllRequirementStatusCount(statusCounts, items.length),
+      label: t("filters.all"),
+      key: "all",
+    },
   ];
 
   const rememberRequirement = useCallback(
@@ -693,6 +717,9 @@ export function RequirementsPage() {
                   )}
                 >
                   {b.label}
+                  <span className="rounded bg-background px-1 font-mono text-[10px]">
+                    {b.count}
+                  </span>
                 </button>
               ))}
             </div>
@@ -772,11 +799,42 @@ function toRequirementListQuery(filter: FilterKey): {
     };
   }
 
-  return {};
+  return {
+    status: "CONFIRMED",
+  };
 }
 
 function optionalFilterValue(value: string): string | undefined {
   return value.trim() ? value : undefined;
+}
+
+function getRequirementStatusCount(
+  counts: RequirementStatusCount[],
+  status: RequirementStatus,
+): number {
+  return counts.find((entry) => entry.status === status)?.count ?? 0;
+}
+
+function getActiveRequirementCount(
+  counts: RequirementStatusCount[],
+  fallback: number,
+): number {
+  if (counts.length === 0) {
+    return fallback;
+  }
+
+  return getRequirementStatusCount(counts, "CONFIRMED");
+}
+
+function getAllRequirementStatusCount(
+  counts: RequirementStatusCount[],
+  fallback: number,
+): number {
+  if (counts.length === 0) {
+    return fallback;
+  }
+
+  return counts.reduce((sum, entry) => sum + entry.count, 0);
 }
 
 function createRequirementListScopeKey({

@@ -5,6 +5,7 @@ import type {
   IntakeItem,
   IntakeSourceType,
   IntakeStatus,
+  IntakeStatusCount,
   Priority,
   Requirement,
   SpaceMemberWithUser,
@@ -169,6 +170,7 @@ export function IntakePage() {
   const [createOpen, setCreateOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
   const [pageInfo, setPageInfo] = useState(INITIAL_PAGE_INFO);
+  const [statusCounts, setStatusCounts] = useState<IntakeStatusCount[]>([]);
   const [hasLoadedItems, setHasLoadedItems] = useState(false);
   const [convertOpen, setConvertOpen] = useState(false);
   const [convertTarget, setConvertTarget] = useState<IntakeItem | null>(null);
@@ -208,71 +210,72 @@ export function IntakePage() {
     [],
   );
 
-  const loadItems = useCallback(async (
-    page = 1,
-    mode: "replace" | "append" = "replace",
-  ) => {
-    if (!spaceId) {
-      return;
-    }
-
-    const requestId = listRequestIdRef.current + 1;
-    listRequestIdRef.current = requestId;
-    const requestScopeKey = listScopeKey;
-    const append = mode === "append";
-
-    if (append) {
-      setIsLoadingMore(true);
-    } else {
-      setIsLoading(true);
-      setHasLoadedItems(false);
-    }
-    setErrorKey(null);
-
-    try {
-      const result = await listIntakeItems({
-        organizationId,
-        page,
-        pageSize: LIST_PAGE_SIZE,
-        spaceId,
-        status: filter === "all" ? undefined : filter,
-        ...listFilters,
-      });
-      if (
-        listRequestIdRef.current !== requestId ||
-        latestListScopeKeyRef.current !== requestScopeKey
-      ) {
+  const loadItems = useCallback(
+    async (page = 1, mode: "replace" | "append" = "replace") => {
+      if (!spaceId) {
         return;
       }
-      setItems((current) =>
-        append ? [...current, ...result.items] : result.items,
-      );
-      setPageInfo({
-        page: result.page ?? page,
-        pageSize: result.pageSize ?? LIST_PAGE_SIZE,
-        total: result.total ?? result.items.length,
-      });
-    } catch (error) {
-      if (
-        listRequestIdRef.current === requestId &&
-        latestListScopeKeyRef.current === requestScopeKey
-      ) {
-        setErrorKey(getApiErrorMessageKey(error));
+
+      const requestId = listRequestIdRef.current + 1;
+      listRequestIdRef.current = requestId;
+      const requestScopeKey = listScopeKey;
+      const append = mode === "append";
+
+      if (append) {
+        setIsLoadingMore(true);
+      } else {
+        setIsLoading(true);
+        setHasLoadedItems(false);
       }
-    } finally {
-      if (
-        listRequestIdRef.current === requestId &&
-        latestListScopeKeyRef.current === requestScopeKey
-      ) {
-        if (append) {
-          setIsLoadingMore(false);
-        } else {
-          setIsLoading(false);
+      setErrorKey(null);
+
+      try {
+        const result = await listIntakeItems({
+          organizationId,
+          page,
+          pageSize: LIST_PAGE_SIZE,
+          spaceId,
+          status: filter === "all" ? undefined : filter,
+          ...listFilters,
+        });
+        if (
+          listRequestIdRef.current !== requestId ||
+          latestListScopeKeyRef.current !== requestScopeKey
+        ) {
+          return;
         }
-        setHasLoadedItems(true);
+        setItems((current) =>
+          append ? [...current, ...result.items] : result.items,
+        );
+        setPageInfo({
+          page: result.page ?? page,
+          pageSize: result.pageSize ?? LIST_PAGE_SIZE,
+          total: result.total ?? result.items.length,
+        });
+        setStatusCounts(result.statusCounts ?? []);
+      } catch (error) {
+        if (
+          listRequestIdRef.current === requestId &&
+          latestListScopeKeyRef.current === requestScopeKey
+        ) {
+          setErrorKey(getApiErrorMessageKey(error));
+        }
+      } finally {
+        if (
+          listRequestIdRef.current === requestId &&
+          latestListScopeKeyRef.current === requestScopeKey
+        ) {
+          if (append) {
+            setIsLoadingMore(false);
+          } else {
+            setIsLoading(false);
+          }
+          setHasLoadedItems(true);
+        }
       }
-    }
-  }, [filter, listFilters, listScopeKey, organizationId, spaceId]);
+    },
+    [filter, listFilters, listScopeKey, organizationId, spaceId],
+  );
 
   useEffect(() => {
     if (sessionStatus !== "authenticated" || !spaceId) {
@@ -280,6 +283,7 @@ export function IntakePage() {
         listRequestIdRef.current += 1;
         setItems([]);
         setPageInfo(INITIAL_PAGE_INFO);
+        setStatusCounts([]);
         setIsLoading(false);
         setIsLoadingMore(false);
         setHasLoadedItems(false);
@@ -340,34 +344,38 @@ export function IntakePage() {
 
   const buckets: { label: string; key: FilterKey; count: number }[] = useMemo(
     () => [
-      { label: t("filters.all"), key: "all", count: items.length },
+      {
+        label: t("filters.all"),
+        key: "all",
+        count: getAllIntakeStatusCount(statusCounts, items.length),
+      },
       {
         label: t("filters.pending"),
         key: "PENDING",
-        count: items.filter((it) => it.status === "PENDING").length,
+        count: getIntakeStatusCount(statusCounts, "PENDING"),
       },
       {
         label: t("filters.accepted"),
         key: "ACCEPTED",
-        count: items.filter((it) => it.status === "ACCEPTED").length,
+        count: getIntakeStatusCount(statusCounts, "ACCEPTED"),
       },
       {
         label: t("filters.deferred"),
         key: "DEFERRED",
-        count: items.filter((it) => it.status === "DEFERRED").length,
+        count: getIntakeStatusCount(statusCounts, "DEFERRED"),
       },
       {
         label: tIntakeItems("status.REJECTED"),
         key: "REJECTED",
-        count: items.filter((it) => it.status === "REJECTED").length,
+        count: getIntakeStatusCount(statusCounts, "REJECTED"),
       },
       {
         label: t("filters.converted"),
         key: "CONVERTED",
-        count: items.filter((it) => it.status === "CONVERTED").length,
+        count: getIntakeStatusCount(statusCounts, "CONVERTED"),
       },
     ],
-    [items, t, tIntakeItems],
+    [items.length, statusCounts, t, tIntakeItems],
   );
 
   const openItem = useCallback(
@@ -1816,6 +1824,24 @@ function canManageIntakeItem(
 function normalizeSearchParam(value: string | null): string | undefined {
   const normalized = value?.trim();
   return normalized ? normalized : undefined;
+}
+
+function getIntakeStatusCount(
+  counts: IntakeStatusCount[],
+  status: IntakeStatus,
+): number {
+  return counts.find((entry) => entry.status === status)?.count ?? 0;
+}
+
+function getAllIntakeStatusCount(
+  counts: IntakeStatusCount[],
+  fallback: number,
+): number {
+  if (counts.length === 0) {
+    return fallback;
+  }
+
+  return counts.reduce((sum, entry) => sum + entry.count, 0);
 }
 
 function buildWorkItemsHref(

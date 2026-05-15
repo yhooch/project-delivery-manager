@@ -7,6 +7,7 @@ import {
   ListVersionsResponseSchema,
   UpdateRequirementResponseSchema,
   type CreateRequirementDraftRequest,
+  type ListRequirementsResponse,
   type PageResult,
   type Requirement,
   type RequirementStatus,
@@ -65,7 +66,7 @@ const defaultApi: RequirementApiTransport = apiClient;
 export async function listRequirements(
   input: ListRequirementsInput,
   api: RequirementApiTransport = defaultApi,
-): Promise<PageResult<Requirement>> {
+): Promise<ListRequirementsResponse> {
   const { organizationId: _organizationId, spaceId, ...query } = input;
   const response = await api.get<PageResult<Requirement>>(
     `/spaces/${spaceId}/requirements`,

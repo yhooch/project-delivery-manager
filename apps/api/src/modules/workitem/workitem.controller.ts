@@ -19,7 +19,7 @@ import {
   WorkItemIdPathParamsSchema,
   WorkItemListQuerySchema,
   type CreateWorkItemRequest,
-  type PageResult,
+  type ListWorkItemsResponse,
   type Priority,
   type StatusCategory,
   type UpdateWorkItemRequest,
@@ -65,7 +65,7 @@ export class WorkItemController {
       priority?: Priority;
     },
     @Req() request: RequestWithContext,
-  ): Promise<PageResult<WorkItem>> {
+  ): Promise<ListWorkItemsResponse> {
     const session = this.currentUser.requireSession(request);
 
     return this.workItems.list(session.userId, params.spaceId, query);

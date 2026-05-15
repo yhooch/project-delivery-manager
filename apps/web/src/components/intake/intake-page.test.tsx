@@ -345,6 +345,42 @@ describe("IntakePage", () => {
     ).toBeGreaterThanOrEqual(1);
   });
 
+  it("renders intake status bucket totals from the paged list response", async () => {
+    listIntakeItemsMock.mockResolvedValueOnce({
+      items: [
+        makeIntake({
+          title: "Only loaded intake",
+          status: "PENDING",
+        }),
+      ],
+      statusCounts: [
+        { status: "PENDING", count: 12 },
+        { status: "ACCEPTED", count: 4 },
+        { status: "CONVERTED", count: 3 },
+      ],
+      total: 19,
+    });
+
+    render(<IntakePage />);
+
+    expect(await screen.findByText("Only loaded intake")).toBeInTheDocument();
+    expect(
+      within(
+        screen.getByRole("button", { name: /intake\.filters\.all/ }),
+      ).getByText("19"),
+    ).toBeInTheDocument();
+    expect(
+      within(
+        screen.getByRole("button", { name: /intake\.filters\.pending/ }),
+      ).getByText("12"),
+    ).toBeInTheDocument();
+    expect(
+      within(
+        screen.getByRole("button", { name: /intake\.filters\.accepted/ }),
+      ).getByText("4"),
+    ).toBeInTheDocument();
+  });
+
   it("renders real version, reporter, and assignee labels from lookups", async () => {
     const reporterId = "01ARZ3NDEKTSV4RRFFQ69G5FRP";
     const assigneeId = "01ARZ3NDEKTSV4RRFFQ69G5FAS";
@@ -1353,9 +1389,7 @@ describe("IntakePage", () => {
 
     fireEvent.click(await screen.findByText("Developer pending intake"));
 
-    expect(
-      screen.getByTestId("intake-create-button"),
-    ).toBeInTheDocument();
+    expect(screen.getByTestId("intake-create-button")).toBeInTheDocument();
     expect(screen.queryByTestId("intake-edit-button")).not.toBeInTheDocument();
     expect(
       screen.queryByTestId("intake-accept-button"),
@@ -1364,9 +1398,7 @@ describe("IntakePage", () => {
     expect(
       screen.queryByTestId("intake-reject-button"),
     ).not.toBeInTheDocument();
-    expect(
-      screen.queryByTestId("intake-comment-input"),
-    ).toBeInTheDocument();
+    expect(screen.queryByTestId("intake-comment-input")).toBeInTheDocument();
     expect(
       screen.queryByTestId("intake-comments-readonly"),
     ).not.toBeInTheDocument();

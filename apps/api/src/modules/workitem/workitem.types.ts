@@ -1,9 +1,8 @@
 import type {
   ObjectParticipantRelation,
-  PageResult,
+  ListWorkItemsResponse,
   Priority,
   StatusCategory,
-  WorkItem,
 } from "@project-delivery/shared";
 
 export type WorkItemListInput = {
@@ -23,7 +22,7 @@ export type WorkItemListInput = {
   priority?: Priority;
 };
 
-export type WorkItemListResult = PageResult<WorkItem>;
+export type WorkItemListResult = ListWorkItemsResponse;
 
 export type WorkItemWorkflowSelection = {
   workflowVersionId: string;

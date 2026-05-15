@@ -6,7 +6,7 @@ import {
   type IntakeItem,
   type IntakeTaskInput,
   type IntakeStatus,
-  type PageResult,
+  type ListIntakeItemsResponse,
   type SpaceRole,
   type UpdateIntakeItemRequest,
 } from "@project-delivery/shared";
@@ -36,10 +36,7 @@ import {
   type WorkItemRepository,
 } from "../workitem/workitem.repository";
 import { canManageDeliveryObject } from "../workitem/delivery-object-permissions";
-import {
-  INTAKE_REPOSITORY,
-  type IntakeRepository,
-} from "./intake.repository";
+import { INTAKE_REPOSITORY, type IntakeRepository } from "./intake.repository";
 import type {
   ConvertIntakeItemTaskInput,
   IntakeItemListInput,
@@ -74,7 +71,7 @@ export class IntakeService {
     actorUserId: string,
     spaceId: string,
     input: Omit<IntakeItemListInput, "restrictToParticipantUserId">,
-  ): Promise<PageResult<IntakeItem>> {
+  ): Promise<ListIntakeItemsResponse> {
     const access = await this.requireSpaceAccess(actorUserId, spaceId);
 
     if (input.versionId) {
@@ -86,7 +83,9 @@ export class IntakeService {
 
     return this.intakeItems.listBySpaceId(spaceId, {
       ...input,
-      restrictToParticipantUserId: FULL_SPACE_INTAKE_READER_ROLES.has(access.role)
+      restrictToParticipantUserId: FULL_SPACE_INTAKE_READER_ROLES.has(
+        access.role,
+      )
         ? undefined
         : actorUserId,
     });
@@ -182,7 +181,12 @@ export class IntakeService {
     intakeItemId: string,
     metadata: RequestMetadata = {},
   ): Promise<IntakeItem> {
-    return this.transitionStatus(actorUserId, intakeItemId, "ACCEPTED", metadata);
+    return this.transitionStatus(
+      actorUserId,
+      intakeItemId,
+      "ACCEPTED",
+      metadata,
+    );
   }
 
   async defer(
@@ -190,7 +194,12 @@ export class IntakeService {
     intakeItemId: string,
     metadata: RequestMetadata = {},
   ): Promise<IntakeItem> {
-    return this.transitionStatus(actorUserId, intakeItemId, "DEFERRED", metadata);
+    return this.transitionStatus(
+      actorUserId,
+      intakeItemId,
+      "DEFERRED",
+      metadata,
+    );
   }
 
   async reject(
@@ -198,7 +207,12 @@ export class IntakeService {
     intakeItemId: string,
     metadata: RequestMetadata = {},
   ): Promise<IntakeItem> {
-    return this.transitionStatus(actorUserId, intakeItemId, "REJECTED", metadata);
+    return this.transitionStatus(
+      actorUserId,
+      intakeItemId,
+      "REJECTED",
+      metadata,
+    );
   }
 
   async convertToWorkItems(
@@ -402,10 +416,7 @@ export class IntakeService {
     }
   }
 
-  private async prepareConvertTask(
-    item: IntakeItem,
-    task: IntakeTaskInput,
-  ) {
+  private async prepareConvertTask(item: IntakeItem, task: IntakeTaskInput) {
     const versionId = task.versionId ?? item.versionId;
     const requirementId = task.requirementId ?? item.requirementId;
     const assigneeId = task.assigneeId ?? item.assigneeId;
@@ -535,13 +546,20 @@ export class IntakeService {
     const version = await this.versions.findById(versionId);
 
     if (!version || version.spaceId !== spaceId) {
-      throw new ApiException("NOT_FOUND", "Version not found", HttpStatus.NOT_FOUND);
+      throw new ApiException(
+        "NOT_FOUND",
+        "Version not found",
+        HttpStatus.NOT_FOUND,
+      );
     }
 
     return version;
   }
 
-  private async requireRequirementInSpace(spaceId: string, requirementId: string) {
+  private async requireRequirementInSpace(
+    spaceId: string,
+    requirementId: string,
+  ) {
     const requirement = await this.requirements.findById(requirementId);
 
     if (!requirement || requirement.spaceId !== spaceId) {

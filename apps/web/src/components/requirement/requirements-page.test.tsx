@@ -4,6 +4,7 @@ import {
   render,
   screen,
   waitFor,
+  within,
 } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -259,6 +260,7 @@ describe("RequirementsPage", () => {
         page: 1,
         pageSize: 100,
         spaceId: "SPC_01",
+        status: "CONFIRMED",
       }),
     );
     expect(listRequirementsMock.mock.calls[0][0]).not.toMatchObject({
@@ -272,6 +274,42 @@ describe("RequirementsPage", () => {
     expect(await screen.findByText("PM User (pm)")).toBeInTheDocument();
     // The list renders with the testid.
     expect(screen.getByTestId("requirements-list")).toBeInTheDocument();
+  });
+
+  it("renders requirement status totals from the paged list response", async () => {
+    listRequirementsMock.mockResolvedValueOnce({
+      items: [
+        makeRequirement({
+          title: "Loaded requirement",
+          status: "CONFIRMED",
+        }),
+      ],
+      statusCounts: [
+        { status: "DRAFT", count: 3 },
+        { status: "CONFIRMED", count: 8 },
+        { status: "ARCHIVED", count: 2 },
+      ],
+      total: 10,
+    });
+
+    render(<RequirementsPage />);
+
+    expect(await screen.findByText("Loaded requirement")).toBeInTheDocument();
+    expect(
+      within(
+        screen.getByRole("button", { name: /requirements\.filters\.active/ }),
+      ).getByText("8"),
+    ).toBeInTheDocument();
+    expect(
+      within(
+        screen.getByRole("button", { name: /requirements\.filters\.draft/ }),
+      ).getByText("3"),
+    ).toBeInTheDocument();
+    expect(
+      within(
+        screen.getByRole("button", { name: /requirements\.filters\.all/ }),
+      ).getByText("13"),
+    ).toBeInTheDocument();
   });
 
   it("marks the active requirement option for keyboard navigation", async () => {
@@ -400,7 +438,7 @@ describe("RequirementsPage", () => {
     expect(screen.queryByText("Old shipped")).not.toBeInTheDocument();
 
     fireEvent.click(
-      screen.getByRole("button", { name: "requirements.filters.archived" }),
+      screen.getByRole("button", { name: /requirements\.filters\.archived/ }),
     );
 
     await waitFor(() =>
@@ -477,7 +515,7 @@ describe("RequirementsPage", () => {
     ).toBeInTheDocument();
 
     fireEvent.click(
-      screen.getByRole("button", { name: "requirements.filters.all" }),
+      screen.getByRole("button", { name: /requirements\.filters\.all/ }),
     );
 
     await waitFor(() =>

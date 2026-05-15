@@ -1,6 +1,11 @@
 "use client";
 
-import type {
+import {
+  BugLifecycleFilterBuckets,
+  resolveBugLifecycleBucket,
+  type BugLifecycleBucket,
+  type BugLifecycleBucketCount,
+  type BugLifecycleFilterBucket,
   BugSeverity,
   BugView,
   Priority,
@@ -66,38 +71,10 @@ const severityColor: Record<BugSeverity, string> = {
   TRIVIAL: "bg-muted text-muted-foreground",
 };
 
-type BugLifecycleBucket =
-  | "all"
-  | "pendingConfirm"
-  | "pendingFix"
-  | "fixing"
-  | "pendingRegression"
-  | "regressionPassed"
-  | "closed";
-
-const bugBucketStatus: Exclude<BugLifecycleBucket, "all">[] = [
-  "pendingConfirm",
-  "pendingFix",
-  "fixing",
-  "pendingRegression",
-  "regressionPassed",
-  "closed",
-];
-
-const bugBucketCategory: Record<
-  Exclude<BugLifecycleBucket, "all">,
-  StatusCategory
-> = {
-  pendingConfirm: "NOT_STARTED",
-  pendingFix: "WAITING",
-  fixing: "IN_PROGRESS",
-  pendingRegression: "VERIFYING",
-  regressionPassed: "DONE",
-  closed: "DONE",
-};
+const bugBucketStatus = BugLifecycleFilterBuckets;
 
 const bugBucketByCategory: Partial<
-  Record<StatusCategory, Exclude<BugLifecycleBucket, "all">>
+  Record<StatusCategory, BugLifecycleFilterBucket>
 > = {
   DONE: "regressionPassed",
   IN_PROGRESS: "fixing",
@@ -105,18 +82,6 @@ const bugBucketByCategory: Partial<
   TERMINATED: "closed",
   VERIFYING: "pendingRegression",
   WAITING: "pendingFix",
-};
-
-const bugBucketStateCodes: Record<
-  Exclude<BugLifecycleBucket, "all">,
-  string[]
-> = {
-  pendingConfirm: ["PENDING_CONFIRMATION"],
-  pendingFix: ["PENDING_FIX"],
-  fixing: ["FIXING"],
-  pendingRegression: ["PENDING_REGRESSION"],
-  regressionPassed: ["REGRESSION_PASSED"],
-  closed: ["CLOSED"],
 };
 const STATUS_FILTERS: StatusCategory[] = [
   "NOT_STARTED",
@@ -176,6 +141,9 @@ export function BugsPage() {
   const [requirements, setRequirements] = useState<Requirement[]>([]);
   const [relatedTasks, setRelatedTasks] = useState<WorkItem[]>([]);
   const [pageInfo, setPageInfo] = useState(INITIAL_PAGE_INFO);
+  const [lifecycleBucketCounts, setLifecycleBucketCounts] = useState<
+    BugLifecycleBucketCount[]
+  >([]);
   const [createOpen, setCreateOpen] = useState(false);
   const [editingBug, setEditingBug] = useState<BugView | null>(null);
   const [detailRevision, setDetailRevision] = useState(0);
@@ -185,10 +153,7 @@ export function BugsPage() {
   );
   const [bucketFilter, setBucketFilter] = useState<BugLifecycleBucket>("all");
   const { captureFocus, restoreFocus } = useFocusReturn();
-  const canCreateBug = canCreateBugs(
-    currentSpace?.role,
-    currentSpace?.status,
-  );
+  const canCreateBug = canCreateBugs(currentSpace?.role, currentSpace?.status);
   const requestedVersionId = normalizeSearchParam(
     searchParams.get("versionId"),
   );
@@ -199,8 +164,9 @@ export function BugsPage() {
   const requestedBugId =
     normalizeSearchParam(searchParams.get("bugId")) ??
     normalizeSearchParam(searchParams.get("workItemId"));
-  const activeBucket =
-    bucketFilter !== "all"
+  const activeBucket = filters.lifecycleBucket
+    ? filters.lifecycleBucket
+    : bucketFilter !== "all"
       ? bucketFilter
       : filters.statusCategory
         ? (bugBucketByCategory[filters.statusCategory] ?? "all")
@@ -224,77 +190,93 @@ export function BugsPage() {
 
   const setFilter = useCallback(
     (key: keyof BugListFilterState, value: string) => {
-      setFilters((current) => ({ ...current, [key]: value || undefined }));
+      if (key === "statusCategory") {
+        setBucketFilter("all");
+      }
+      if (key === "lifecycleBucket") {
+        setBucketFilter((value as BugLifecycleBucket) || "all");
+      }
+      setFilters((current) => {
+        const next = { ...current, [key]: value || undefined };
+        if (key === "statusCategory" && value) {
+          next.lifecycleBucket = undefined;
+        }
+        if (key === "lifecycleBucket") {
+          next.statusCategory = undefined;
+        }
+        return next;
+      });
     },
     [],
   );
 
-  const fetchBugs = useCallback(async (
-    page = 1,
-    mode: "replace" | "append" = "replace",
-  ) => {
-    if (!spaceId) {
-      return;
-    }
-
-    const requestId = listRequestIdRef.current + 1;
-    listRequestIdRef.current = requestId;
-    const requestScopeKey = listScopeKey;
-    const append = mode === "append";
-
-    if (append) {
-      setLoadingMore(true);
-    } else {
-      setLoading(true);
-      setHasLoadedItems(false);
-    }
-    setErrorMessage(null);
-
-    try {
-      const result = await listBugs({
-        organizationId,
-        page,
-        pageSize: LIST_PAGE_SIZE,
-        spaceId,
-        type: "BUG",
-        ...filters,
-      });
-      if (
-        listRequestIdRef.current !== requestId ||
-        latestListScopeKeyRef.current !== requestScopeKey
-      ) {
+  const fetchBugs = useCallback(
+    async (page = 1, mode: "replace" | "append" = "replace") => {
+      if (!spaceId) {
         return;
       }
-      setItems((current) =>
-        append ? [...current, ...result.items] : result.items,
-      );
-      setPageInfo({
-        page: result.page ?? page,
-        pageSize: result.pageSize ?? LIST_PAGE_SIZE,
-        total: result.total ?? result.items.length,
-      });
-    } catch (error) {
-      if (
-        listRequestIdRef.current === requestId &&
-        latestListScopeKeyRef.current === requestScopeKey
-      ) {
-        const key = getApiErrorMessageKey(error);
-        setErrorMessage(tApiError(key));
+
+      const requestId = listRequestIdRef.current + 1;
+      listRequestIdRef.current = requestId;
+      const requestScopeKey = listScopeKey;
+      const append = mode === "append";
+
+      if (append) {
+        setLoadingMore(true);
+      } else {
+        setLoading(true);
+        setHasLoadedItems(false);
       }
-    } finally {
-      if (
-        listRequestIdRef.current === requestId &&
-        latestListScopeKeyRef.current === requestScopeKey
-      ) {
-        if (append) {
-          setLoadingMore(false);
-        } else {
-          setLoading(false);
+      setErrorMessage(null);
+
+      try {
+        const result = await listBugs({
+          organizationId,
+          page,
+          pageSize: LIST_PAGE_SIZE,
+          spaceId,
+          type: "BUG",
+          ...filters,
+        });
+        if (
+          listRequestIdRef.current !== requestId ||
+          latestListScopeKeyRef.current !== requestScopeKey
+        ) {
+          return;
         }
-        setHasLoadedItems(true);
+        setItems((current) =>
+          append ? [...current, ...result.items] : result.items,
+        );
+        setPageInfo({
+          page: result.page ?? page,
+          pageSize: result.pageSize ?? LIST_PAGE_SIZE,
+          total: result.total ?? result.items.length,
+        });
+        setLifecycleBucketCounts(result.lifecycleBucketCounts ?? []);
+      } catch (error) {
+        if (
+          listRequestIdRef.current === requestId &&
+          latestListScopeKeyRef.current === requestScopeKey
+        ) {
+          const key = getApiErrorMessageKey(error);
+          setErrorMessage(tApiError(key));
+        }
+      } finally {
+        if (
+          listRequestIdRef.current === requestId &&
+          latestListScopeKeyRef.current === requestScopeKey
+        ) {
+          if (append) {
+            setLoadingMore(false);
+          } else {
+            setLoading(false);
+          }
+          setHasLoadedItems(true);
+        }
       }
-    }
-  }, [filters, listScopeKey, organizationId, spaceId, tApiError]);
+    },
+    [filters, listScopeKey, organizationId, spaceId, tApiError],
+  );
 
   useEffect(() => {
     if (spaceId) {
@@ -303,6 +285,7 @@ export function BugsPage() {
       listRequestIdRef.current += 1;
       setItems([]);
       setPageInfo(INITIAL_PAGE_INFO);
+      setLifecycleBucketCounts([]);
       setLoading(false);
       setLoadingMore(false);
       setHasLoadedItems(false);
@@ -596,15 +579,18 @@ export function BugsPage() {
       {
         label: t("buckets.all"),
         key: "all" as BugLifecycleBucket,
-        count: bugViewModels.length,
+        count: getAllLifecycleBucketCount(
+          lifecycleBucketCounts,
+          bugViewModels.length,
+        ),
       },
       ...bugBucketStatus.map((key) => ({
         label: t(`buckets.${key}`),
         key,
-        count: bugViewModels.filter((bug) => bug.lifecycleBucket === key).length,
+        count: getLifecycleBucketCount(lifecycleBucketCounts, key),
       })),
     ],
-    [bugViewModels, t],
+    [bugViewModels.length, lifecycleBucketCounts, t],
   );
 
   const header = (
@@ -707,12 +693,7 @@ export function BugsPage() {
                 data-testid="bugs-filter-option"
                 data-filter-key={b.key}
                 onClick={() => {
-                  setBucketFilter(b.key);
-                  if (b.key === "all") {
-                    setFilter("statusCategory", "");
-                  } else {
-                    setFilter("statusCategory", bugBucketCategory[b.key]);
-                  }
+                  setFilter("lifecycleBucket", b.key === "all" ? "" : b.key);
                 }}
                 className={cn(
                   "flex h-7 items-center gap-1.5 rounded-md px-2.5 text-[12px] transition-colors cursor-pointer",
@@ -1085,7 +1066,10 @@ function toBugViewModel(
     bug.workflowVersionId,
     bug.currentStateId,
   );
-  const lifecycleBucket = resolveBugLifecycleBucket(bug, workflowState?.code);
+  const lifecycleBucket = resolveBugLifecycleBucket({
+    stateCode: workflowState?.code,
+    statusCategory: bug.statusCategory,
+  });
   const statusLabel = workflowState?.name ?? tStatus(bug.statusCategory);
 
   return {
@@ -1106,23 +1090,6 @@ function toBugViewModel(
     lifecycleBucket,
     severity: bug.bugDetail.severity,
   };
-}
-
-function resolveBugLifecycleBucket(
-  bug: Pick<BugView, "statusCategory">,
-  stateCode: string | undefined,
-): Exclude<BugLifecycleBucket, "all"> {
-  if (stateCode) {
-    const normalized = stateCode.trim().toUpperCase();
-    const match = bugBucketStatus.find((bucket) =>
-      bugBucketStateCodes[bucket].includes(normalized),
-    );
-    if (match) {
-      return match;
-    }
-  }
-
-  return bugBucketByCategory[bug.statusCategory] ?? "pendingConfirm";
 }
 
 function deriveInitial(value?: string): string {
@@ -1178,6 +1145,24 @@ function normalizeStatusCategory(
     : undefined;
 }
 
+function getLifecycleBucketCount(
+  counts: BugLifecycleBucketCount[],
+  bucket: BugLifecycleFilterBucket,
+): number {
+  return counts.find((entry) => entry.bucket === bucket)?.count ?? 0;
+}
+
+function getAllLifecycleBucketCount(
+  counts: BugLifecycleBucketCount[],
+  fallback: number,
+): number {
+  if (counts.length === 0) {
+    return fallback;
+  }
+
+  return counts.reduce((sum, entry) => sum + entry.count, 0);
+}
+
 function createBugListScopeKey({
   filters,
   organizationId,
@@ -1191,6 +1176,7 @@ function createBugListScopeKey({
     organizationId ?? "",
     spaceId ?? "",
     filters.assigneeId ?? "",
+    filters.lifecycleBucket ?? "",
     filters.priority ?? "",
     filters.relatedTaskId ?? "",
     filters.reporterId ?? "",

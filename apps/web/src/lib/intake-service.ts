@@ -17,7 +17,7 @@ import {
   type IntakeItem,
   type IntakeSourceType,
   type IntakeStatus,
-  type PageResult,
+  type ListIntakeItemsResponse,
   type Priority,
   type UpdateIntakeItemRequest,
 } from "@project-delivery/shared";
@@ -69,7 +69,7 @@ const defaultApi: IntakeApiTransport = apiClient;
 export async function listIntakeItems(
   input: ListIntakeItemsInput,
   api: IntakeApiTransport = defaultApi,
-): Promise<PageResult<IntakeItem>> {
+): Promise<ListIntakeItemsResponse> {
   const { organizationId: _organizationId, spaceId, ...filters } = input;
   const query = IntakeItemListQuerySchema.parse(filters);
   const response = await api.get<unknown>(`/spaces/${spaceId}/intake-items`, {

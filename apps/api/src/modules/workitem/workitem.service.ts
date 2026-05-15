@@ -1,7 +1,7 @@
 import { HttpStatus, Inject, Injectable } from "@nestjs/common";
 import {
   type CreateWorkItemRequest,
-  type PageResult,
+  type ListWorkItemsResponse,
   type SpaceRole,
   type UpdateWorkItemRequest,
   type WorkItem,
@@ -52,7 +52,7 @@ export class WorkItemService {
     actorUserId: string,
     spaceId: string,
     input: Omit<WorkItemListInput, "actorUserId" | "visibility">,
-  ): Promise<PageResult<WorkItem>> {
+  ): Promise<ListWorkItemsResponse> {
     const access = await this.requireSpaceAccess(actorUserId, spaceId);
 
     await this.validateListFilters(spaceId, input);
@@ -160,7 +160,10 @@ export class WorkItemService {
 
     return toWorkItemDetail(
       workItem,
-      await this.workflowActions.resolvePermissionSnapshot(actorUserId, workItem.id),
+      await this.workflowActions.resolvePermissionSnapshot(
+        actorUserId,
+        workItem.id,
+      ),
     );
   }
 
@@ -192,7 +195,10 @@ export class WorkItemService {
       await this.requireVersionInSpace(workItem.spaceId, input.versionId);
     }
     if (input.requirementId) {
-      await this.requireRequirementInSpace(workItem.spaceId, input.requirementId);
+      await this.requireRequirementInSpace(
+        workItem.spaceId,
+        input.requirementId,
+      );
     }
 
     const shouldReplaceRelatedParticipants =
@@ -205,7 +211,9 @@ export class WorkItemService {
               ? input.requirementId
               : workItem.requirementId,
           versionId:
-            input.versionId !== undefined ? input.versionId : workItem.versionId,
+            input.versionId !== undefined
+              ? input.versionId
+              : workItem.versionId,
         })
       : [];
     const dueDate = parseOptionalDate(input.dueDate, "dueDate");
@@ -256,7 +264,10 @@ export class WorkItemService {
     return updated;
   }
 
-  private async requireVisibleWorkItem(actorUserId: string, workItemId: string) {
+  private async requireVisibleWorkItem(
+    actorUserId: string,
+    workItemId: string,
+  ) {
     const workItem = await this.workItems.findTaskById(workItemId);
 
     if (!workItem) {
@@ -325,7 +336,9 @@ export class WorkItemService {
     const linkedUsers: WorkItemLinkedUsers[] = [];
 
     if (input.versionId) {
-      linkedUsers.push(await this.requireVersionInSpace(spaceId, input.versionId));
+      linkedUsers.push(
+        await this.requireVersionInSpace(spaceId, input.versionId),
+      );
     }
     if (input.requirementId) {
       linkedUsers.push(
@@ -389,7 +402,11 @@ export class WorkItemService {
     const version = await this.workItems.findVersionInSpace(spaceId, versionId);
 
     if (!version) {
-      throw new ApiException("NOT_FOUND", "Version not found", HttpStatus.NOT_FOUND);
+      throw new ApiException(
+        "NOT_FOUND",
+        "Version not found",
+        HttpStatus.NOT_FOUND,
+      );
     }
 
     return version;
@@ -415,7 +432,10 @@ export class WorkItemService {
     return requirement;
   }
 
-  private async requireIntakeItemInSpace(spaceId: string, intakeItemId: string) {
+  private async requireIntakeItemInSpace(
+    spaceId: string,
+    intakeItemId: string,
+  ) {
     const intakeItem = await this.workItems.findIntakeItemInSpace(
       spaceId,
       intakeItemId,
@@ -465,7 +485,9 @@ export class WorkItemService {
   }
 }
 
-function resolveWorkItemVisibility(role: SpaceRole): WorkItemListInput["visibility"] {
+function resolveWorkItemVisibility(
+  role: SpaceRole,
+): WorkItemListInput["visibility"] {
   if (canReadAllSpaceWorkItems(role)) {
     return "SPACE";
   }
@@ -526,7 +548,13 @@ function buildTimelineDiff(
     existing.description ?? null,
     next.description,
   );
-  addTimelineChange(before, after, "priority", existing.priority, next.priority);
+  addTimelineChange(
+    before,
+    after,
+    "priority",
+    existing.priority,
+    next.priority,
+  );
   addTimelineChange(
     before,
     after,

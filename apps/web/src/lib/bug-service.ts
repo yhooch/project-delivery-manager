@@ -7,9 +7,10 @@ import {
   UpdateBugRequestSchema,
   UpdateBugResponseSchema,
   type BugSeverity,
+  type BugLifecycleFilterBucket,
   type BugView,
   type CreateBugRequest,
-  type PageResult,
+  type ListBugsResponse,
   type Priority,
   type StatusCategory,
   type UpdateBugRequest,
@@ -48,6 +49,7 @@ export type UpdateBugInput = UpdateBugRequest;
 
 export type BugListFilterState = {
   assigneeId?: string;
+  lifecycleBucket?: BugLifecycleFilterBucket;
   priority?: Priority;
   relatedTaskId?: string;
   reporterId?: string;
@@ -62,7 +64,7 @@ const defaultApi: BugApiTransport = apiClient;
 export async function listBugs(
   input: ListBugsInput,
   api: BugApiTransport = defaultApi,
-): Promise<PageResult<BugView>> {
+): Promise<ListBugsResponse> {
   const { organizationId: _organizationId, spaceId, ...filters } = input;
   const query = BugListQuerySchema.parse({
     ...filters,

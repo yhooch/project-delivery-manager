@@ -2,7 +2,7 @@ import { HttpStatus, Inject, Injectable, Logger } from "@nestjs/common";
 import {
   type BugView,
   type CreateBugRequest,
-  type PageResult,
+  type ListBugsResponse,
   type SpaceRole,
   type UpdateBugRequest,
 } from "@project-delivery/shared";
@@ -54,7 +54,7 @@ export class BugService {
     spaceId: string,
     input: Omit<BugListInput, "actorUserId" | "visibility">,
     auditMetadata: AuditMetadata = {},
-  ): Promise<PageResult<BugView>> {
+  ): Promise<ListBugsResponse> {
     const access = await this.requireSpaceAccess(
       actorUserId,
       spaceId,
@@ -479,7 +479,9 @@ export class BugService {
     const linkedUsers: BugLinkedUsers[] = [];
 
     if (input.versionId) {
-      linkedUsers.push(await this.requireVersionInSpace(spaceId, input.versionId));
+      linkedUsers.push(
+        await this.requireVersionInSpace(spaceId, input.versionId),
+      );
     }
     if (input.requirementId) {
       linkedUsers.push(
@@ -559,13 +561,20 @@ export class BugService {
     const version = await this.bugs.findVersionInSpace(spaceId, versionId);
 
     if (!version) {
-      throw new ApiException("NOT_FOUND", "Version not found", HttpStatus.NOT_FOUND);
+      throw new ApiException(
+        "NOT_FOUND",
+        "Version not found",
+        HttpStatus.NOT_FOUND,
+      );
     }
 
     return version;
   }
 
-  private async requireRequirementInSpace(spaceId: string, requirementId: string) {
+  private async requireRequirementInSpace(
+    spaceId: string,
+    requirementId: string,
+  ) {
     const requirement = await this.bugs.findRequirementInSpace(
       spaceId,
       requirementId,
@@ -582,7 +591,10 @@ export class BugService {
     return requirement;
   }
 
-  private async requireIntakeItemInSpace(spaceId: string, intakeItemId: string) {
+  private async requireIntakeItemInSpace(
+    spaceId: string,
+    intakeItemId: string,
+  ) {
     const intakeItem = await this.bugs.findIntakeItemInSpace(
       spaceId,
       intakeItemId,
@@ -599,7 +611,10 @@ export class BugService {
     return intakeItem;
   }
 
-  private async requireRelatedTaskInSpace(spaceId: string, relatedTaskId: string) {
+  private async requireRelatedTaskInSpace(
+    spaceId: string,
+    relatedTaskId: string,
+  ) {
     const relatedTask = await this.bugs.findRelatedTaskInSpace(
       spaceId,
       relatedTaskId,
@@ -711,7 +726,9 @@ export class BugService {
     }
   }
 
-  private async safeAudit(input: Parameters<BugRepository["createAuditLog"]>[0]) {
+  private async safeAudit(
+    input: Parameters<BugRepository["createAuditLog"]>[0],
+  ) {
     try {
       await this.bugs.createAuditLog(input);
     } catch (error) {
@@ -785,7 +802,13 @@ function buildTimelineDiff(
     existing.description ?? null,
     next.description,
   );
-  addTimelineChange(before, after, "priority", existing.priority, next.priority);
+  addTimelineChange(
+    before,
+    after,
+    "priority",
+    existing.priority,
+    next.priority,
+  );
   addTimelineChange(
     before,
     after,

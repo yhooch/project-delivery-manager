@@ -106,17 +106,38 @@ export class PrismaRequirementRepository implements RequirementRepository {
 
   async listBySpaceId(spaceId: string, input: RequirementListInput) {
     const where = buildListWhere(spaceId, input);
-    const participantIds = shouldLoadParticipantIds(input)
-      ? await this.listParticipantRequirementIds(spaceId, input.actorUserId)
-      : [];
+    const countInput: RequirementListInput = {
+      ...input,
+      includeDrafts: true,
+      status: undefined,
+    };
+    const participantIds =
+      shouldLoadParticipantIds(input) || shouldLoadParticipantIds(countInput)
+        ? await this.listParticipantRequirementIds(spaceId, input.actorUserId)
+        : [];
+    const countWhere = buildListWhere(spaceId, countInput);
 
     applyVisibility(where, input, participantIds);
+    applyVisibility(countWhere, countInput, participantIds);
+    const statusGroups = isKnownEmptyIdFilter(countWhere.id)
+      ? []
+      : await this.prisma.client.requirement.groupBy({
+          by: ["status"],
+          _count: {
+            _all: true,
+          },
+          where: countWhere,
+        });
 
     if (isKnownEmptyIdFilter(where.id)) {
       return {
         items: [],
         page: input.page,
         pageSize: input.pageSize,
+        statusCounts: statusGroups.map((group) => ({
+          count: group._count._all,
+          status: group.status,
+        })),
         total: 0,
       };
     }
@@ -151,6 +172,10 @@ export class PrismaRequirementRepository implements RequirementRepository {
       ),
       page: input.page,
       pageSize: input.pageSize,
+      statusCounts: statusGroups.map((group) => ({
+        count: group._count._all,
+        status: group.status,
+      })),
       total,
     };
   }
@@ -375,7 +400,10 @@ export class PrismaRequirementRepository implements RequirementRepository {
   }
 
   private async listAttachmentRefsByRequirementIds(requirementIds: string[]) {
-    const result = new Map<string, Awaited<ReturnType<typeof this.listAttachmentRefsForRequirement>>>();
+    const result = new Map<
+      string,
+      Awaited<ReturnType<typeof this.listAttachmentRefsForRequirement>>
+    >();
 
     if (requirementIds.length === 0) {
       return result;

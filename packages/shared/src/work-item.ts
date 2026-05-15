@@ -9,6 +9,7 @@ import {
   BugSeveritySchema,
   PrioritySchema,
   StatusCategorySchema,
+  type StatusCategory,
   WorkItemTypeSchema,
 } from "./enums.ts";
 import { PermissionSnapshotSchema } from "./workflow.ts";
@@ -103,6 +104,77 @@ export const BugViewSchema = WorkItemSchema.extend({
 
 export type BugView = z.infer<typeof BugViewSchema>;
 
+export const BugLifecycleFilterBuckets = [
+  "pendingConfirm",
+  "pendingFix",
+  "fixing",
+  "pendingRegression",
+  "regressionPassed",
+  "closed",
+] as const;
+
+export const BugLifecycleBucketSchema = z.enum([
+  "all",
+  ...BugLifecycleFilterBuckets,
+]);
+export const BugLifecycleFilterBucketSchema = z.enum(BugLifecycleFilterBuckets);
+
+export type BugLifecycleBucket = z.infer<typeof BugLifecycleBucketSchema>;
+export type BugLifecycleFilterBucket = z.infer<
+  typeof BugLifecycleFilterBucketSchema
+>;
+
+export const BugLifecycleBucketStateCodes = {
+  pendingConfirm: ["PENDING_CONFIRMATION"],
+  pendingFix: ["PENDING_FIX"],
+  fixing: ["FIXING"],
+  pendingRegression: ["PENDING_REGRESSION"],
+  regressionPassed: ["REGRESSION_PASSED"],
+  closed: ["CLOSED"],
+} as const satisfies Record<BugLifecycleFilterBucket, readonly string[]>;
+
+export const BugLifecycleBucketFallbackStatusCategory = {
+  pendingConfirm: "NOT_STARTED",
+  pendingFix: "WAITING",
+  fixing: "IN_PROGRESS",
+  pendingRegression: "VERIFYING",
+  regressionPassed: "DONE",
+  closed: "TERMINATED",
+} as const satisfies Record<BugLifecycleFilterBucket, StatusCategory>;
+
+export function resolveBugLifecycleBucket(input: {
+  stateCode?: string;
+  statusCategory: StatusCategory;
+}): BugLifecycleFilterBucket {
+  const normalized = input.stateCode?.trim().toUpperCase();
+
+  if (normalized) {
+    const match = BugLifecycleFilterBuckets.find((bucket) =>
+      (BugLifecycleBucketStateCodes[bucket] as readonly string[]).includes(
+        normalized,
+      ),
+    );
+    if (match) {
+      return match;
+    }
+  }
+
+  switch (input.statusCategory) {
+    case "DONE":
+      return "regressionPassed";
+    case "IN_PROGRESS":
+      return "fixing";
+    case "NOT_STARTED":
+      return "pendingConfirm";
+    case "TERMINATED":
+      return "closed";
+    case "VERIFYING":
+      return "pendingRegression";
+    case "WAITING":
+      return "pendingFix";
+  }
+}
+
 export const CreateBugRequestSchema = CreateWorkItemRequestSchema.omit({
   type: true,
 }).extend({
@@ -140,7 +212,6 @@ export const WorkItemListQuerySchema = PageQuerySchema.extend({
   priority: PrioritySchema.optional(),
 });
 
-export const ListWorkItemsResponseSchema = pageResultSchema(WorkItemSchema);
 export const CreateWorkItemResponseSchema = WorkItemSchema;
 export const GetWorkItemResponseSchema = WorkItemDetailSchema;
 export const UpdateWorkItemResponseSchema = WorkItemSchema;
@@ -156,8 +227,45 @@ export const BugListQuerySchema = PageQuerySchema.extend({
   priority: PrioritySchema.optional(),
   severity: BugSeveritySchema.optional(),
   relatedTaskId: UlidSchema.optional(),
+  lifecycleBucket: BugLifecycleFilterBucketSchema.optional(),
 });
-export const ListBugsResponseSchema = pageResultSchema(BugViewSchema);
+
+export const WorkItemStatusCategoryCountSchema = z
+  .object({
+    statusCategory: StatusCategorySchema,
+    count: z.number().int().min(0),
+  })
+  .strict();
+
+export type WorkItemStatusCategoryCount = z.infer<
+  typeof WorkItemStatusCategoryCountSchema
+>;
+
+export const BugLifecycleBucketCountSchema = z
+  .object({
+    bucket: BugLifecycleFilterBucketSchema,
+    count: z.number().int().min(0),
+  })
+  .strict();
+
+export type BugLifecycleBucketCount = z.infer<
+  typeof BugLifecycleBucketCountSchema
+>;
+
+export const ListWorkItemsResponseSchema = pageResultSchema(
+  WorkItemSchema,
+).extend({
+  statusCategoryCounts: z.array(WorkItemStatusCategoryCountSchema).optional(),
+});
+
+export type ListWorkItemsResponse = z.infer<typeof ListWorkItemsResponseSchema>;
+
+export const ListBugsResponseSchema = pageResultSchema(BugViewSchema).extend({
+  lifecycleBucketCounts: z.array(BugLifecycleBucketCountSchema).optional(),
+  statusCategoryCounts: z.array(WorkItemStatusCategoryCountSchema).optional(),
+});
+
+export type ListBugsResponse = z.infer<typeof ListBugsResponseSchema>;
 export const CreateBugResponseSchema = BugViewSchema;
 export const GetBugResponseSchema = BugViewSchema;
 export const UpdateBugResponseSchema = BugViewSchema;

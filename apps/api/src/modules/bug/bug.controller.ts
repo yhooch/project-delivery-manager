@@ -20,14 +20,18 @@ import {
   UpdateBugRequestSchema,
   type BugSeverity,
   type BugView,
+  type BugLifecycleFilterBucket,
   type CreateBugRequest,
-  type PageResult,
+  type ListBugsResponse,
   type Priority,
   type StatusCategory,
   type UpdateBugRequest,
 } from "@project-delivery/shared";
 
-import { getRequestId, type RequestWithContext } from "../../http/request-context";
+import {
+  getRequestId,
+  type RequestWithContext,
+} from "../../http/request-context";
 import { ZodValidationPipe } from "../../http/zod-validation.pipe";
 import { CurrentUserService } from "../auth/current-user.service";
 import { getRequestMetadata } from "../auth/request-metadata";
@@ -65,9 +69,10 @@ export class BugController {
       priority?: Priority;
       severity?: BugSeverity;
       relatedTaskId?: string;
+      lifecycleBucket?: BugLifecycleFilterBucket;
     },
     @Req() request: RequestWithContext,
-  ): Promise<PageResult<BugView>> {
+  ): Promise<ListBugsResponse> {
     const session = this.currentUser.requireSession(request);
 
     return this.bugs.list(

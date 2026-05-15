@@ -1,10 +1,9 @@
 import type {
   ConvertIntakeItemToWorkItemsResponse,
   CreateIntakeItemRequest,
-  IntakeItem,
   IntakeSourceType,
   IntakeStatus,
-  PageResult,
+  ListIntakeItemsResponse,
   Priority,
   StatusCategory,
   UpdateIntakeItemRequest,
@@ -25,7 +24,7 @@ export type IntakeItemListInput = {
   versionId?: string;
 };
 
-export type IntakeItemListResult = PageResult<IntakeItem>;
+export type IntakeItemListResult = ListIntakeItemsResponse;
 
 export type CreateIntakeItemInput = CreateIntakeItemRequest & {
   id: string;

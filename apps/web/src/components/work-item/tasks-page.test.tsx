@@ -5,6 +5,7 @@ import {
   render,
   screen,
   waitFor,
+  within,
 } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -263,6 +264,45 @@ describe("TasksPage", () => {
     );
   });
 
+  it("renders status bucket totals from the paged list response", async () => {
+    listWorkItemsMock.mockResolvedValueOnce({
+      items: [
+        makeTask({
+          title: "First loaded task",
+          statusCategory: "IN_PROGRESS",
+        }),
+      ],
+      statusCategoryCounts: [
+        { statusCategory: "IN_PROGRESS", count: 37 },
+        { statusCategory: "DONE", count: 8 },
+      ],
+      total: 45,
+    });
+
+    render(<TasksPage />);
+
+    expect(await screen.findByText("First loaded task")).toBeInTheDocument();
+    expect(
+      within(
+        screen.getByRole("button", { name: /tasks\.buckets\.all/ }),
+      ).getByText("45"),
+    ).toBeInTheDocument();
+    expect(
+      within(
+        screen.getAllByRole("button", {
+          name: /workItems\.statusCategory\.IN_PROGRESS/,
+        })[0],
+      ).getByText("37"),
+    ).toBeInTheDocument();
+    expect(
+      within(
+        screen.getAllByRole("button", {
+          name: /workItems\.statusCategory\.DONE/,
+        })[0],
+      ).getByText("8"),
+    ).toBeInTheDocument();
+  });
+
   it("opens a work item detail sheet from a workItemId deep link", async () => {
     searchParamsMock.current = new URLSearchParams(
       "workItemId=01ARZ3NDEKTSV4RRFFQ69G5FDL",
@@ -508,7 +548,6 @@ describe("TasksPage", () => {
     expect(await screen.findByText("Untriaged")).toBeInTheDocument();
     // No member lookup -> neutral fallback, not the raw assignee id tail.
     expect(screen.getByText("?")).toBeInTheDocument();
-    expect(screen.queryByText("0")).not.toBeInTheDocument();
   });
 
   it("filters tasks by status bucket through the backend query", async () => {
@@ -546,9 +585,9 @@ describe("TasksPage", () => {
 
     // Click on "DONE" bucket.
     fireEvent.click(
-      screen.getByRole("button", {
-        name: "workItems.statusCategory.DONE",
-      }),
+      screen.getAllByRole("button", {
+        name: /workItems\.statusCategory\.DONE/,
+      })[0],
     );
 
     await waitFor(() =>

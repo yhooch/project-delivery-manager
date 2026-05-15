@@ -1,4 +1,12 @@
 import { Inject, Injectable } from "@nestjs/common";
+import {
+  BugLifecycleBucketFallbackStatusCategory,
+  BugLifecycleBucketStateCodes,
+  BugLifecycleFilterBuckets,
+  resolveBugLifecycleBucket,
+  type BugLifecycleFilterBucket,
+  type StatusCategory,
+} from "@project-delivery/shared";
 import { ulid } from "ulid";
 
 import { Prisma } from "../../generated/prisma/client";
@@ -22,6 +30,11 @@ export class PrismaBugRepository implements BugRepository {
 
   async listBySpaceId(spaceId: string, input: BugListInput) {
     const where = buildListWhere(spaceId, input);
+    const countWhere = buildListWhere(spaceId, {
+      ...input,
+      lifecycleBucket: undefined,
+      statusCategory: undefined,
+    });
 
     if (input.visibility === "PARTICIPANT") {
       const visibleIds = await this.listParticipantBugIds(
@@ -32,8 +45,10 @@ export class PrismaBugRepository implements BugRepository {
       if (visibleIds.length === 0) {
         return {
           items: [],
+          lifecycleBucketCounts: [],
           page: input.page,
           pageSize: input.pageSize,
+          statusCategoryCounts: [],
           total: 0,
         };
       }
@@ -41,31 +56,82 @@ export class PrismaBugRepository implements BugRepository {
       where.id = {
         in: visibleIds,
       };
+      countWhere.id = {
+        in: visibleIds,
+      };
     }
 
-    const [items, total] = await this.prisma.client.$transaction([
-      this.prisma.client.workItem.findMany({
-        include: {
-          bugDetail: true,
-        },
-        orderBy: buildOrderBy(input),
-        skip: (input.page - 1) * input.pageSize,
-        take: input.pageSize,
-        where,
-      }),
-      this.prisma.client.workItem.count({
-        where,
-      }),
-    ]);
+    const [items, total, statusCategoryGroups, lifecycleGroups] =
+      await this.prisma.client.$transaction([
+        this.prisma.client.workItem.findMany({
+          include: {
+            bugDetail: true,
+          },
+          orderBy: buildOrderBy(input),
+          skip: (input.page - 1) * input.pageSize,
+          take: input.pageSize,
+          where,
+        }),
+        this.prisma.client.workItem.count({
+          where,
+        }),
+        this.prisma.client.workItem.groupBy({
+          by: ["statusCategory"],
+          _count: {
+            _all: true,
+          },
+          where: countWhere,
+        }),
+        this.prisma.client.workItem.groupBy({
+          by: ["currentStateId", "statusCategory"],
+          _count: {
+            _all: true,
+          },
+          where: countWhere,
+        }),
+      ]);
+    const stateCodes = await this.findStateCodes(
+      lifecycleGroups.map((group) => group.currentStateId),
+    );
 
     return {
       items: items.flatMap((item) =>
         item.bugDetail ? [toBugView(item as PrismaBugViewRecord)] : [],
       ),
+      lifecycleBucketCounts: toLifecycleBucketCounts(
+        lifecycleGroups,
+        stateCodes,
+      ),
       page: input.page,
       pageSize: input.pageSize,
+      statusCategoryCounts: statusCategoryGroups.map((group) => ({
+        count: group._count._all,
+        statusCategory: group.statusCategory,
+      })),
       total,
     };
+  }
+
+  private async findStateCodes(stateIds: string[]) {
+    const uniqueStateIds = [...new Set(stateIds)];
+
+    if (uniqueStateIds.length === 0) {
+      return new Map<string, string>();
+    }
+
+    const states = await this.prisma.client.workflowState.findMany({
+      select: {
+        code: true,
+        id: true,
+      },
+      where: {
+        id: {
+          in: uniqueStateIds,
+        },
+      },
+    });
+
+    return new Map(states.map((state) => [state.id, state.code]));
   }
 
   async create(input: CreateBugInput) {
@@ -577,7 +643,7 @@ function buildListWhere(
   spaceId: string,
   input: BugListInput,
 ): Prisma.WorkItemWhereInput {
-  return {
+  const where: Prisma.WorkItemWhereInput = {
     assigneeId: input.assigneeId,
     bugDetail: {
       is: {
@@ -596,6 +662,79 @@ function buildListWhere(
     type: "BUG",
     versionId: input.versionId,
   };
+
+  if (input.lifecycleBucket) {
+    where.AND = [
+      ...toArray(where.AND),
+      bugLifecycleBucketWhere(input.lifecycleBucket),
+    ];
+  }
+
+  return where;
+}
+
+function bugLifecycleBucketWhere(
+  bucket: BugLifecycleFilterBucket,
+): Prisma.WorkItemWhereInput {
+  const stateCodes = BugLifecycleBucketStateCodes[bucket];
+  const fallbackStatusCategory =
+    BugLifecycleBucketFallbackStatusCategory[bucket];
+
+  return {
+    OR: [
+      {
+        currentState: {
+          code: {
+            in: [...stateCodes],
+          },
+        },
+      },
+      {
+        AND: [
+          {
+            currentState: {
+              code: {
+                notIn: knownBugLifecycleStateCodes(),
+              },
+            },
+          },
+          {
+            statusCategory: fallbackStatusCategory,
+          },
+        ],
+      },
+    ],
+  };
+}
+
+function knownBugLifecycleStateCodes() {
+  return BugLifecycleFilterBuckets.flatMap((bucket) => [
+    ...BugLifecycleBucketStateCodes[bucket],
+  ]);
+}
+
+function toLifecycleBucketCounts(
+  groups: {
+    currentStateId: string;
+    statusCategory: StatusCategory;
+    _count: { _all: number };
+  }[],
+  stateCodes: Map<string, string>,
+) {
+  const counts = new Map<BugLifecycleFilterBucket, number>();
+
+  for (const group of groups) {
+    const bucket = resolveBugLifecycleBucket({
+      stateCode: stateCodes.get(group.currentStateId),
+      statusCategory: group.statusCategory,
+    });
+    counts.set(bucket, (counts.get(bucket) ?? 0) + group._count._all);
+  }
+
+  return BugLifecycleFilterBuckets.map((bucket) => ({
+    bucket,
+    count: counts.get(bucket) ?? 0,
+  }));
 }
 
 function buildOrderBy(
@@ -611,7 +750,10 @@ function buildOrderBy(
     case "priority":
       return [{ priority: sortOrder }, { createdAt: "asc" }];
     case "relatedTaskId":
-      return [{ bugDetail: { relatedTaskId: sortOrder } }, { createdAt: "asc" }];
+      return [
+        { bugDetail: { relatedTaskId: sortOrder } },
+        { createdAt: "asc" },
+      ];
     case "severity":
       return [{ bugDetail: { severity: sortOrder } }, { createdAt: "asc" }];
     case "title":
@@ -746,4 +888,12 @@ function toJson(
 
 function unique(values: readonly (string | undefined)[]) {
   return Array.from(new Set(values.filter(Boolean))) as string[];
+}
+
+function toArray<T>(value: T | T[] | undefined): T[] {
+  if (!value) {
+    return [];
+  }
+
+  return Array.isArray(value) ? value : [value];
 }

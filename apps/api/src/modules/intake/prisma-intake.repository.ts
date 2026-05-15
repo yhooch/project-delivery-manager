@@ -182,7 +182,9 @@ export class PrismaIntakeRepository implements IntakeRepository {
     return converted
       ? {
           intakeItemId: converted.intakeItemId,
-          workItems: converted.workItems.map((workItem) => toWorkItem(workItem)),
+          workItems: converted.workItems.map((workItem) =>
+            toWorkItem(workItem),
+          ),
         }
       : undefined;
   }
@@ -285,12 +287,21 @@ export class PrismaIntakeRepository implements IntakeRepository {
         items: [],
         page: input.page,
         pageSize: input.pageSize,
+        statusCounts: [],
         total: 0,
       };
     }
 
     const where = buildListWhere(spaceId, input, participantItemIds);
-    const [items, total] = await this.prisma.client.$transaction([
+    const countWhere = buildListWhere(
+      spaceId,
+      {
+        ...input,
+        status: undefined,
+      },
+      participantItemIds,
+    );
+    const [items, total, statusGroups] = await this.prisma.client.$transaction([
       this.prisma.client.intakeItem.findMany({
         orderBy: buildOrderBy(input),
         skip: (input.page - 1) * input.pageSize,
@@ -300,12 +311,23 @@ export class PrismaIntakeRepository implements IntakeRepository {
       this.prisma.client.intakeItem.count({
         where,
       }),
+      this.prisma.client.intakeItem.groupBy({
+        by: ["status"],
+        _count: {
+          _all: true,
+        },
+        where: countWhere,
+      }),
     ]);
 
     return {
       items: items.map(toIntakeItem),
       page: input.page,
       pageSize: input.pageSize,
+      statusCounts: statusGroups.map((group) => ({
+        count: group._count._all,
+        status: group.status,
+      })),
       total,
     };
   }
@@ -425,7 +447,9 @@ export class PrismaIntakeRepository implements IntakeRepository {
       },
     });
 
-    return [...new Set(participants.map((participant) => participant.targetId))];
+    return [
+      ...new Set(participants.map((participant) => participant.targetId)),
+    ];
   }
 }
 
@@ -700,8 +724,9 @@ type IntakeSnapshotField =
   | "title"
   | "versionId";
 
-type IntakeItemRecord = Awaited<
-  ReturnType<Prisma.TransactionClient["intakeItem"]["findFirst"]>
-> extends infer T
-  ? NonNullable<T>
-  : never;
+type IntakeItemRecord =
+  Awaited<
+    ReturnType<Prisma.TransactionClient["intakeItem"]["findFirst"]>
+  > extends infer T
+    ? NonNullable<T>
+    : never;

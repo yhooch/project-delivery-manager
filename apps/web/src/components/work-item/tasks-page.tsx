@@ -7,6 +7,7 @@ import type {
   StatusCategory,
   Version,
   WorkItem,
+  WorkItemStatusCategoryCount,
 } from "@project-delivery/shared";
 import { Filter, Plus, Search } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
@@ -109,6 +110,9 @@ export function TasksPage() {
   const [filterOpen, setFilterOpen] = useState(false);
   const [requirements, setRequirements] = useState<Requirement[]>([]);
   const [pageInfo, setPageInfo] = useState(INITIAL_PAGE_INFO);
+  const [statusCategoryCounts, setStatusCategoryCounts] = useState<
+    WorkItemStatusCategoryCount[]
+  >([]);
   const [createOpen, setCreateOpen] = useState(false);
   const [hasLoadedItems, setHasLoadedItems] = useState(false);
   const [handledDeepLinkKey, setHandledDeepLinkKey] = useState<string | null>(
@@ -143,72 +147,73 @@ export function TasksPage() {
     [],
   );
 
-  const fetchTasks = useCallback(async (
-    page = 1,
-    mode: "replace" | "append" = "replace",
-  ) => {
-    if (!spaceId) {
-      return;
-    }
-
-    const requestId = listRequestIdRef.current + 1;
-    listRequestIdRef.current = requestId;
-    const requestScopeKey = listScopeKey;
-    const append = mode === "append";
-
-    if (append) {
-      setLoadingMore(true);
-    } else {
-      setLoading(true);
-      setHasLoadedItems(false);
-    }
-    setErrorMessage(null);
-
-    try {
-      const result = await listWorkItems({
-        organizationId,
-        page,
-        pageSize: LIST_PAGE_SIZE,
-        spaceId,
-        type: "TASK",
-        ...filters,
-      });
-      if (
-        listRequestIdRef.current !== requestId ||
-        latestListScopeKeyRef.current !== requestScopeKey
-      ) {
+  const fetchTasks = useCallback(
+    async (page = 1, mode: "replace" | "append" = "replace") => {
+      if (!spaceId) {
         return;
       }
-      setItems((current) =>
-        append ? [...current, ...result.items] : result.items,
-      );
-      setPageInfo({
-        page: result.page ?? page,
-        pageSize: result.pageSize ?? LIST_PAGE_SIZE,
-        total: result.total ?? result.items.length,
-      });
-    } catch (error) {
-      if (
-        listRequestIdRef.current === requestId &&
-        latestListScopeKeyRef.current === requestScopeKey
-      ) {
-        const key = getApiErrorMessageKey(error);
-        setErrorMessage(tApiError(key));
+
+      const requestId = listRequestIdRef.current + 1;
+      listRequestIdRef.current = requestId;
+      const requestScopeKey = listScopeKey;
+      const append = mode === "append";
+
+      if (append) {
+        setLoadingMore(true);
+      } else {
+        setLoading(true);
+        setHasLoadedItems(false);
       }
-    } finally {
-      if (
-        listRequestIdRef.current === requestId &&
-        latestListScopeKeyRef.current === requestScopeKey
-      ) {
-        if (append) {
-          setLoadingMore(false);
-        } else {
-          setLoading(false);
+      setErrorMessage(null);
+
+      try {
+        const result = await listWorkItems({
+          organizationId,
+          page,
+          pageSize: LIST_PAGE_SIZE,
+          spaceId,
+          type: "TASK",
+          ...filters,
+        });
+        if (
+          listRequestIdRef.current !== requestId ||
+          latestListScopeKeyRef.current !== requestScopeKey
+        ) {
+          return;
         }
-        setHasLoadedItems(true);
+        setItems((current) =>
+          append ? [...current, ...result.items] : result.items,
+        );
+        setPageInfo({
+          page: result.page ?? page,
+          pageSize: result.pageSize ?? LIST_PAGE_SIZE,
+          total: result.total ?? result.items.length,
+        });
+        setStatusCategoryCounts(result.statusCategoryCounts ?? []);
+      } catch (error) {
+        if (
+          listRequestIdRef.current === requestId &&
+          latestListScopeKeyRef.current === requestScopeKey
+        ) {
+          const key = getApiErrorMessageKey(error);
+          setErrorMessage(tApiError(key));
+        }
+      } finally {
+        if (
+          listRequestIdRef.current === requestId &&
+          latestListScopeKeyRef.current === requestScopeKey
+        ) {
+          if (append) {
+            setLoadingMore(false);
+          } else {
+            setLoading(false);
+          }
+          setHasLoadedItems(true);
+        }
       }
-    }
-  }, [filters, listScopeKey, organizationId, spaceId, tApiError]);
+    },
+    [filters, listScopeKey, organizationId, spaceId, tApiError],
+  );
 
   useEffect(() => {
     if (spaceId) {
@@ -217,6 +222,7 @@ export function TasksPage() {
       listRequestIdRef.current += 1;
       setItems([]);
       setPageInfo(INITIAL_PAGE_INFO);
+      setStatusCategoryCounts([]);
       setLoading(false);
       setLoadingMore(false);
       setHasLoadedItems(false);
@@ -265,17 +271,42 @@ export function TasksPage() {
     };
   }, [filterOpen, organizationId, spaceId]);
 
-  const buckets: { label: string; key: StatusFilterKey }[] = useMemo(
-    () => [
-      { label: t("buckets.all"), key: "all" },
-      { label: tStatus("NOT_STARTED"), key: "NOT_STARTED" },
-      { label: tStatus("IN_PROGRESS"), key: "IN_PROGRESS" },
-      { label: tStatus("WAITING"), key: "WAITING" },
-      { label: tStatus("VERIFYING"), key: "VERIFYING" },
-      { label: tStatus("DONE"), key: "DONE" },
-    ],
-    [t, tStatus],
-  );
+  const buckets: { count: number; label: string; key: StatusFilterKey }[] =
+    useMemo(
+      () => [
+        {
+          count: getAllStatusCategoryCount(statusCategoryCounts, items.length),
+          label: t("buckets.all"),
+          key: "all",
+        },
+        {
+          count: getStatusCategoryCount(statusCategoryCounts, "NOT_STARTED"),
+          label: tStatus("NOT_STARTED"),
+          key: "NOT_STARTED",
+        },
+        {
+          count: getStatusCategoryCount(statusCategoryCounts, "IN_PROGRESS"),
+          label: tStatus("IN_PROGRESS"),
+          key: "IN_PROGRESS",
+        },
+        {
+          count: getStatusCategoryCount(statusCategoryCounts, "WAITING"),
+          label: tStatus("WAITING"),
+          key: "WAITING",
+        },
+        {
+          count: getStatusCategoryCount(statusCategoryCounts, "VERIFYING"),
+          label: tStatus("VERIFYING"),
+          key: "VERIFYING",
+        },
+        {
+          count: getStatusCategoryCount(statusCategoryCounts, "DONE"),
+          label: tStatus("DONE"),
+          key: "DONE",
+        },
+      ],
+      [items.length, statusCategoryCounts, t, tStatus],
+    );
 
   const taskViewModels = useMemo(
     () =>
@@ -398,12 +429,7 @@ export function TasksPage() {
       .then((item) => {
         if (!cancelled) {
           open(
-            toTaskViewModel(
-              item,
-              tStatus,
-              { getMember, getVersion },
-              locale,
-            ),
+            toTaskViewModel(item, tStatus, { getMember, getVersion }, locale),
           );
           setHandledDeepLinkKey(key);
         }
@@ -565,6 +591,9 @@ export function TasksPage() {
                 }`}
               >
                 {b.label}
+                <span className="rounded bg-background px-1 font-mono text-[10px]">
+                  {b.count}
+                </span>
               </button>
             ))}
           </div>
@@ -830,6 +859,26 @@ function normalizeStatusCategory(
   return STATUS_FILTERS.includes(normalized as StatusCategory)
     ? (normalized as StatusCategory)
     : undefined;
+}
+
+function getStatusCategoryCount(
+  counts: WorkItemStatusCategoryCount[],
+  statusCategory: StatusCategory,
+): number {
+  return (
+    counts.find((entry) => entry.statusCategory === statusCategory)?.count ?? 0
+  );
+}
+
+function getAllStatusCategoryCount(
+  counts: WorkItemStatusCategoryCount[],
+  fallback: number,
+): number {
+  if (counts.length === 0) {
+    return fallback;
+  }
+
+  return counts.reduce((sum, entry) => sum + entry.count, 0);
 }
 
 function createTaskListScopeKey({

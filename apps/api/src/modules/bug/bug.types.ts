@@ -1,7 +1,7 @@
 import type {
   BugSeverity,
-  BugView,
-  PageResult,
+  BugLifecycleFilterBucket,
+  ListBugsResponse,
   Priority,
   SpaceRole,
   StatusCategory,
@@ -24,9 +24,10 @@ export type BugListInput = {
   priority?: Priority;
   severity?: BugSeverity;
   relatedTaskId?: string;
+  lifecycleBucket?: BugLifecycleFilterBucket;
 };
 
-export type BugListResult = PageResult<BugView>;
+export type BugListResult = ListBugsResponse;
 
 export type BugWorkflowSelection = {
   workflowVersionId: string;

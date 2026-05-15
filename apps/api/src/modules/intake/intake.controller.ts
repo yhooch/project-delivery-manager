@@ -26,7 +26,7 @@ import {
   type IntakeItem,
   type IntakeSourceType,
   type IntakeStatus,
-  type PageResult,
+  type ListIntakeItemsResponse,
   type Priority,
   type UpdateIntakeItemRequest,
 } from "@project-delivery/shared";
@@ -72,7 +72,7 @@ export class IntakeController {
       versionId?: string;
     },
     @Req() request: RequestWithContext,
-  ): Promise<PageResult<IntakeItem>> {
+  ): Promise<ListIntakeItemsResponse> {
     const session = this.currentUser.requireSession(request);
 
     return this.intakeItems.list(session.userId, params.spaceId, query);

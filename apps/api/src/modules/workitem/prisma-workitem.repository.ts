@@ -22,6 +22,10 @@ export class PrismaWorkItemRepository implements WorkItemRepository {
 
   async listBySpaceId(spaceId: string, input: WorkItemListInput) {
     const where = buildListWhere(spaceId, input);
+    const countWhere = buildListWhere(spaceId, {
+      ...input,
+      statusCategory: undefined,
+    });
 
     if (input.visibility === "PARTICIPANT") {
       const visibleIds = await this.listParticipantWorkItemIds(
@@ -34,11 +38,15 @@ export class PrismaWorkItemRepository implements WorkItemRepository {
           items: [],
           page: input.page,
           pageSize: input.pageSize,
+          statusCategoryCounts: [],
           total: 0,
         };
       }
 
       where.id = {
+        in: visibleIds,
+      };
+      countWhere.id = {
         in: visibleIds,
       };
     }
@@ -61,24 +69,37 @@ export class PrismaWorkItemRepository implements WorkItemRepository {
       }
 
       where.AND = [...toArray(where.AND), { OR: visibilityOr }];
+      countWhere.AND = [...toArray(countWhere.AND), { OR: visibilityOr }];
     }
 
-    const [items, total] = await this.prisma.client.$transaction([
-      this.prisma.client.workItem.findMany({
-        orderBy: buildOrderBy(input),
-        skip: (input.page - 1) * input.pageSize,
-        take: input.pageSize,
-        where,
-      }),
-      this.prisma.client.workItem.count({
-        where,
-      }),
-    ]);
+    const [items, total, statusCategoryGroups] =
+      await this.prisma.client.$transaction([
+        this.prisma.client.workItem.findMany({
+          orderBy: buildOrderBy(input),
+          skip: (input.page - 1) * input.pageSize,
+          take: input.pageSize,
+          where,
+        }),
+        this.prisma.client.workItem.count({
+          where,
+        }),
+        this.prisma.client.workItem.groupBy({
+          by: ["statusCategory"],
+          _count: {
+            _all: true,
+          },
+          where: countWhere,
+        }),
+      ]);
 
     return {
       items: items.map((item) => toWorkItem(item)),
       page: input.page,
       pageSize: input.pageSize,
+      statusCategoryCounts: statusCategoryGroups.map((group) => ({
+        count: group._count._all,
+        statusCategory: group.statusCategory,
+      })),
       total,
     };
   }

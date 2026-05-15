@@ -1,7 +1,7 @@
 import { HttpStatus, Inject, Injectable } from "@nestjs/common";
 import {
   type CreateRequirementDraftRequest,
-  type PageResult,
+  type ListRequirementsResponse,
   type PermissionSnapshot,
   type Requirement,
   type SaveRequirementRequest,
@@ -65,7 +65,7 @@ export class RequirementService {
     actorUserId: string,
     spaceId: string,
     input: Omit<RequirementListInput, "actorUserId" | "visibility">,
-  ): Promise<PageResult<Requirement>> {
+  ): Promise<ListRequirementsResponse> {
     const access = await this.requireSpaceAccess(actorUserId, spaceId);
 
     if (input.ownerId) {
@@ -129,9 +129,14 @@ export class RequirementService {
 
   async get(actorUserId: string, requirementId: string): Promise<Requirement> {
     const requirement = await this.requireExistingRequirement(requirementId);
-    const access = await this.requireSpaceAccess(actorUserId, requirement.spaceId);
+    const access = await this.requireSpaceAccess(
+      actorUserId,
+      requirement.spaceId,
+    );
 
-    if (!(await this.canReadRequirement(actorUserId, requirement, access.role))) {
+    if (
+      !(await this.canReadRequirement(actorUserId, requirement, access.role))
+    ) {
       throwRequirementNotFound();
     }
 
@@ -311,7 +316,11 @@ export class RequirementService {
     const version = await this.versions.findById(versionId);
 
     if (!version || version.spaceId !== spaceId) {
-      throw new ApiException("NOT_FOUND", "Version not found", HttpStatus.NOT_FOUND);
+      throw new ApiException(
+        "NOT_FOUND",
+        "Version not found",
+        HttpStatus.NOT_FOUND,
+      );
     }
 
     return version;

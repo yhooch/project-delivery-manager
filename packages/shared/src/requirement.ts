@@ -159,8 +159,26 @@ export const RequirementListQuerySchema = PageQuerySchema.extend({
   includeDrafts: z.coerce.boolean().optional(),
 });
 
-export const ListRequirementsResponseSchema =
-  pageResultSchema(RequirementSchema);
+export const RequirementStatusCountSchema = z
+  .object({
+    status: RequirementStatusSchema,
+    count: z.number().int().min(0),
+  })
+  .strict();
+
+export type RequirementStatusCount = z.infer<
+  typeof RequirementStatusCountSchema
+>;
+
+export const ListRequirementsResponseSchema = pageResultSchema(
+  RequirementSchema,
+).extend({
+  statusCounts: z.array(RequirementStatusCountSchema).optional(),
+});
+
+export type ListRequirementsResponse = z.infer<
+  typeof ListRequirementsResponseSchema
+>;
 export const CreateRequirementDraftResponseSchema = RequirementSchema;
 export const GetRequirementResponseSchema = RequirementSchema;
 export const UpdateRequirementResponseSchema = RequirementSchema;

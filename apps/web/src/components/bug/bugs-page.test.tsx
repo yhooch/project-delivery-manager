@@ -4,6 +4,7 @@ import {
   render,
   screen,
   waitFor,
+  within,
 } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -319,6 +320,42 @@ describe("BugsPage", () => {
     ).toBeInTheDocument();
   });
 
+  it("renders bug lifecycle bucket totals from the paged list response", async () => {
+    listBugsMock.mockResolvedValueOnce({
+      items: [
+        makeBug({
+          title: "Only loaded bug",
+          statusCategory: "IN_PROGRESS",
+        }),
+      ],
+      lifecycleBucketCounts: [
+        { bucket: "fixing", count: 14 },
+        { bucket: "pendingRegression", count: 5 },
+        { bucket: "closed", count: 2 },
+      ],
+      total: 21,
+    });
+
+    render(<BugsPage />);
+
+    expect(await screen.findByText("Only loaded bug")).toBeInTheDocument();
+    expect(
+      within(
+        screen.getByRole("button", { name: /bugs\.buckets\.all/ }),
+      ).getByText("21"),
+    ).toBeInTheDocument();
+    expect(
+      within(
+        screen.getByRole("button", { name: /bugs\.buckets\.fixing/ }),
+      ).getByText("14"),
+    ).toBeInTheDocument();
+    expect(
+      within(
+        screen.getByRole("button", { name: /bugs\.buckets\.closed/ }),
+      ).getByText("2"),
+    ).toBeInTheDocument();
+  });
+
   it("filters by fixing bucket (IN_PROGRESS) through the backend query", async () => {
     listBugsMock
       .mockResolvedValueOnce({
@@ -364,8 +401,8 @@ describe("BugsPage", () => {
     await waitFor(() =>
       expect(listBugsMock).toHaveBeenLastCalledWith(
         expect.objectContaining({
+          lifecycleBucket: "fixing",
           spaceId: "SPC_01",
-          statusCategory: "IN_PROGRESS",
           type: "BUG",
         }),
       ),
@@ -416,7 +453,7 @@ describe("BugsPage", () => {
     await waitFor(() =>
       expect(listBugsMock).toHaveBeenLastCalledWith(
         expect.objectContaining({
-          statusCategory: "VERIFYING",
+          lifecycleBucket: "pendingRegression",
         }),
       ),
     );
@@ -456,12 +493,6 @@ describe("BugsPage", () => {
       .mockResolvedValueOnce({
         items: [
           makeBug({
-            id: "01ARZ3NDEKTSV4RRFFQ69G5F01",
-            currentStateId: "STATE_REGRESSION_PASSED",
-            title: "Passed bug",
-            statusCategory: "DONE",
-          }),
-          makeBug({
             id: "01ARZ3NDEKTSV4RRFFQ69G5F02",
             currentStateId: "STATE_CLOSED",
             title: "Closed bug",
@@ -482,7 +513,7 @@ describe("BugsPage", () => {
 
     await waitFor(() =>
       expect(listBugsMock).toHaveBeenLastCalledWith(
-        expect.objectContaining({ statusCategory: "DONE" }),
+        expect.objectContaining({ lifecycleBucket: "closed" }),
       ),
     );
     expect(await screen.findByText("Closed bug")).toBeInTheDocument();
