@@ -405,7 +405,12 @@
       "createSpace": "Create project space",
       "switchingOrg": "Switching organization…",
       "switchingSpace": "Switching space…",
-      "currentBadge": "Current"
+      "currentBadge": "Current",
+      "roles": {
+        "OWNER": "Owner",
+        "ADMIN": "Admin",
+        "MEMBER": "Member"
+      }
     },
     "spaceSwitcher": {
       "label": "Switch space",
@@ -467,6 +472,10 @@
       "searching": "Searching…",
       "untitled": "Untitled",
       "recent": "Recently opened",
+      "dialog": {
+        "title": "Command palette",
+        "description": "Search and execute commands"
+      },
       "navigation": "Navigation",
       "switchSpace": "Switch space",
       "create": "Create",
@@ -900,6 +909,9 @@
       "saving": "Saving",
       "archive": "Archive",
       "archiving": "Archiving",
+      "discardDraft": "Discard draft",
+      "discardingDraft": "Deleting",
+      "discardDraftConfirm": "Delete this empty draft? This cannot be undone.",
       "metaTitle": "Current information",
       "metaDescription": "Displayed from backend results without expanding permission boundaries.",
       "attachments": "Attachments",
@@ -1227,7 +1239,13 @@
     "buckets": {
       "all": "All",
       "open": "Open",
-      "regression": "Regression"
+      "regression": "Regression",
+      "pendingConfirm": "Pending confirmation",
+      "pendingFix": "Pending fix",
+      "fixing": "Fixing",
+      "pendingRegression": "Pending regression",
+      "regressionPassed": "Regression passed",
+      "closed": "Closed"
     },
     "filters": {
       "label": "Bug filters",
@@ -1584,6 +1602,8 @@
       "acceptedAt": "Accepted at",
       "version": "Version",
       "noVersion": "Unlinked",
+      "assignee": "Assignee",
+      "unassigned": "Unassigned",
       "descriptionTitle": "Description",
       "descriptionEmpty": "This item has no description yet."
     },
@@ -2827,6 +2847,9 @@
         "REOPENED": "Reopened"
       }
     },
+    "time": {
+      "justNow": "just now"
+    },
     "workItems": {
       "title": "Tasks and bugs",
       "empty": "M1 only shows empty states and counts. Real tasks and bugs will be connected in M2/M3."
@@ -3060,7 +3083,9 @@
       "readonly": "Current permission cannot upload attachments",
       "retry": "Retry",
       "size": "Size",
-      "uploadedBy": "Uploaded by"
+      "uploadedBy": "Uploaded by",
+      "previewFile": "Preview {fileName}",
+      "downloadFile": "Download {fileName}"
     },
     "timeline": {
       "loading": "Loading timeline…",
@@ -3078,6 +3103,10 @@
     },
     "missingApi": {
       "title": "API not yet available"
+    },
+    "links": {
+      "loading": "Loading title…",
+      "unavailable": "Title unavailable"
     },
     "empty": "Select an item to view details"
   },
@@ -3189,9 +3218,20 @@
       "title": "Organization info",
       "fields": {
         "name": "Organization name",
-        "code": "Organization code"
+        "code": "Organization code",
+        "status": "Organization status"
       },
-      "readOnlyNote": "Editing organization profile is not yet supported here."
+      "status": {
+        "ACTIVE": "Active",
+        "DISABLED": "Disabled"
+      },
+      "actions": {
+        "save": "Save changes",
+        "submitting": "Saving…",
+        "cancel": "Reset"
+      },
+      "editableNote": "Owners and admins can update organization profile fields. Disabling an organization removes it from active sessions.",
+      "readOnlyNote": "Your organization role can view profile fields but cannot update them."
     },
     "members": {
       "title": "Organization members",

@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   HttpCode,
   HttpStatus,
@@ -106,5 +107,20 @@ export class RequirementController {
     const session = this.currentUser.requireSession(request);
 
     return this.requirements.update(session.userId, params.requirementId, body);
+  }
+
+  @Delete("requirements/:requirementId")
+  @HttpCode(HttpStatus.OK)
+  @UseGuards(WriteOriginGuard)
+  async deleteDraft(
+    @Param(new ZodValidationPipe(RequirementIdPathParamsSchema))
+    params: { requirementId: string },
+    @Req() request: RequestWithContext,
+  ): Promise<Record<string, never>> {
+    const session = this.currentUser.requireSession(request);
+
+    await this.requirements.deleteDraft(session.userId, params.requirementId);
+
+    return {};
   }
 }

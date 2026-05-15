@@ -15,6 +15,7 @@ const items: Item[] = [
 
 function Harness({
   activeId = "one",
+  canSubmit,
   onAssign,
   onEdit,
   onOpen,
@@ -22,6 +23,7 @@ function Harness({
   onSubmit,
 }: {
   activeId?: string;
+  canSubmit?: (item: Item) => boolean;
   onAssign?: (item: Item) => void;
   onEdit?: (item: Item) => void;
   onOpen?: (item: Item) => void;
@@ -33,6 +35,7 @@ function Harness({
     activeId,
     getId: (item) => item.id,
     onAssign,
+    canSubmit,
     onEdit,
     onOpen,
     onSelect,
@@ -90,5 +93,25 @@ describe("useListKeyboardNav", () => {
     );
 
     expect(onSubmit).not.toHaveBeenCalled();
+  });
+
+  it("does not prevent or run submit when the active item has no executable submit action", () => {
+    const onSubmit = vi.fn();
+
+    render(
+      <Harness
+        canSubmit={(item) => item.id === "two"}
+        onSubmit={onSubmit}
+      />,
+    );
+
+    const event = new KeyboardEvent("keydown", {
+      key: "s",
+      cancelable: true,
+    });
+    window.dispatchEvent(event);
+
+    expect(onSubmit).not.toHaveBeenCalled();
+    expect(event.defaultPrevented).toBe(false);
   });
 });

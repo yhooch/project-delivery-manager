@@ -22,10 +22,14 @@ import {
 } from "react";
 
 import { getApiErrorMessageKey } from "../../lib/api-error-messages";
-import { listBugs, type BugListFilterState } from "../../lib/bug-service";
+import { getBug, listBugs, type BugListFilterState } from "../../lib/bug-service";
 import { useListKeyboardNav } from "../../lib/hooks/use-list-keyboard-nav";
 import { listRequirements } from "../../lib/requirement-service";
-import { useSpaceMembers, useVersions } from "../../lib/v2/lookups";
+import {
+  useSpaceMembers,
+  useVersions,
+  useWorkflowStateLookup,
+} from "../../lib/v2/lookups";
 import type { WorkItemViewModel } from "../../lib/v2/work-item-view-model";
 import { cn } from "../../lib/utils";
 import { listWorkItems } from "../../lib/work-item-service";
@@ -52,7 +56,7 @@ const severityColor: Record<BugSeverity, string> = {
   TRIVIAL: "bg-muted text-muted-foreground",
 };
 
-type FilterKey =
+type BugLifecycleBucket =
   | "all"
   | "pendingConfirm"
   | "pendingFix"
@@ -61,7 +65,7 @@ type FilterKey =
   | "regressionPassed"
   | "closed";
 
-const bugBucketStatus: Exclude<FilterKey, "all">[] = [
+const bugBucketStatus: Exclude<BugLifecycleBucket, "all">[] = [
   "pendingConfirm",
   "pendingFix",
   "fixing",
@@ -70,17 +74,20 @@ const bugBucketStatus: Exclude<FilterKey, "all">[] = [
   "closed",
 ];
 
-const bugBucketCategory: Record<Exclude<FilterKey, "all">, StatusCategory> = {
+const bugBucketCategory: Record<
+  Exclude<BugLifecycleBucket, "all">,
+  StatusCategory
+> = {
   pendingConfirm: "NOT_STARTED",
   pendingFix: "WAITING",
   fixing: "IN_PROGRESS",
   pendingRegression: "VERIFYING",
   regressionPassed: "DONE",
-  closed: "TERMINATED",
+  closed: "DONE",
 };
 
 const bugBucketByCategory: Partial<
-  Record<StatusCategory, Exclude<FilterKey, "all">>
+  Record<StatusCategory, Exclude<BugLifecycleBucket, "all">>
 > = {
   DONE: "regressionPassed",
   IN_PROGRESS: "fixing",
@@ -88,6 +95,18 @@ const bugBucketByCategory: Partial<
   TERMINATED: "closed",
   VERIFYING: "pendingRegression",
   WAITING: "pendingFix",
+};
+
+const bugBucketStateCodes: Record<
+  Exclude<BugLifecycleBucket, "all">,
+  string[]
+> = {
+  pendingConfirm: ["PENDING_CONFIRMATION"],
+  pendingFix: ["PENDING_FIX"],
+  fixing: ["FIXING"],
+  pendingRegression: ["PENDING_REGRESSION"],
+  regressionPassed: ["REGRESSION_PASSED"],
+  closed: ["CLOSED"],
 };
 const STATUS_FILTERS: StatusCategory[] = [
   "NOT_STARTED",
@@ -106,7 +125,10 @@ const SEVERITY_FILTERS: BugSeverity[] = [
   "TRIVIAL",
 ];
 
-type MockBugItem = WorkItemViewModel & { severity: BugSeverity };
+type MockBugItem = WorkItemViewModel & {
+  lifecycleBucket: Exclude<BugLifecycleBucket, "all">;
+  severity: BugSeverity;
+};
 
 export function BugsPage() {
   const tNav = useTranslations("shell.nav");
@@ -142,14 +164,26 @@ export function BugsPage() {
   const [createOpen, setCreateOpen] = useState(false);
   const [editingBug, setEditingBug] = useState<BugView | null>(null);
   const [detailRevision, setDetailRevision] = useState(0);
+  const [hasLoadedItems, setHasLoadedItems] = useState(false);
+  const [handledDeepLinkKey, setHandledDeepLinkKey] = useState<string | null>(
+    null,
+  );
+  const [bucketFilter, setBucketFilter] =
+    useState<BugLifecycleBucket>("all");
   const canCreateBug = canWriteWorkItems(
     currentSpace?.role,
     currentSpace?.status,
   );
   const requestedNew = normalizeSearchParam(searchParams.get("new"));
-  const activeBucket = filters.statusCategory
-    ? (bugBucketByCategory[filters.statusCategory] ?? "all")
-    : "all";
+  const requestedBugId =
+    normalizeSearchParam(searchParams.get("bugId")) ??
+    normalizeSearchParam(searchParams.get("workItemId"));
+  const activeBucket =
+    bucketFilter !== "all"
+      ? bucketFilter
+      : filters.statusCategory
+        ? (bugBucketByCategory[filters.statusCategory] ?? "all")
+        : "all";
 
   const setFilter = useCallback(
     (key: keyof BugListFilterState, value: string) => {
@@ -164,6 +198,7 @@ export function BugsPage() {
     }
 
     setLoading(true);
+    setHasLoadedItems(false);
     setErrorMessage(null);
 
     try {
@@ -179,6 +214,7 @@ export function BugsPage() {
       setErrorMessage(tApiError(key));
     } finally {
       setLoading(false);
+      setHasLoadedItems(true);
     }
   }, [filters, organizationId, spaceId, tApiError]);
 
@@ -187,6 +223,7 @@ export function BugsPage() {
       void fetchBugs();
     } else {
       setItems([]);
+      setHasLoadedItems(false);
     }
   }, [fetchBugs, spaceId]);
 
@@ -225,18 +262,34 @@ export function BugsPage() {
     };
   }, [filterOpen, organizationId, spaceId]);
 
+  const workflowVersionIds = useMemo(
+    () => items.map((item) => item.workflowVersionId),
+    [items],
+  );
+  const workflowStateLookup = useWorkflowStateLookup(
+    workflowVersionIds,
+    spaceId,
+    organizationId,
+  );
+
   const mockItems = useMemo<MockBugItem[]>(
     () =>
       items.map((bug) =>
         toMockBug(bug, tStatus, {
           getMember,
           getVersion,
+          getWorkflowState: workflowStateLookup.getState,
         }),
       ),
-    [getMember, getVersion, items, tStatus],
+    [getMember, getVersion, items, tStatus, workflowStateLookup.getState],
   );
 
-  const filtered = mockItems;
+  const filtered = useMemo(() => {
+    if (bucketFilter === "all") {
+      return mockItems;
+    }
+    return mockItems.filter((bug) => bug.lifecycleBucket === bucketFilter);
+  }, [bucketFilter, mockItems]);
 
   const openBug = useCallback(
     (bug: MockBugItem) => {
@@ -246,7 +299,7 @@ export function BugsPage() {
           type: "BUG",
           code: bug.code,
           title: bug.title,
-          href: "/bugs",
+          href: `/bugs?bugId=${encodeURIComponent(bug.id)}`,
         },
         recentScope,
       );
@@ -275,11 +328,17 @@ export function BugsPage() {
       setItems((current) =>
         current.map((item) => (item.id === updated.id ? updated : item)),
       );
-      setActiveItem(toMockBug(updated, tStatus, { getMember, getVersion }));
+      setActiveItem(
+        toMockBug(updated, tStatus, {
+          getMember,
+          getVersion,
+          getWorkflowState: workflowStateLookup.getState,
+        }),
+      );
       setDetailRevision((revision) => revision + 1);
       void fetchBugs();
     },
-    [fetchBugs, getMember, getVersion, tStatus],
+    [fetchBugs, getMember, getVersion, tStatus, workflowStateLookup.getState],
   );
 
   useEffect(() => {
@@ -287,6 +346,65 @@ export function BugsPage() {
       setCreateOpen(true);
     }
   }, [canCreateBug, requestedNew]);
+
+  useEffect(() => {
+    if (!requestedBugId || !spaceId) {
+      return;
+    }
+
+    const key = `bug:${spaceId}:${requestedBugId}`;
+    if (handledDeepLinkKey === key) {
+      return;
+    }
+
+    const listed = mockItems.find((item) => item.id === requestedBugId);
+    if (listed) {
+      openBug(listed);
+      setHandledDeepLinkKey(key);
+      return;
+    }
+
+    if (loading || !hasLoadedItems) {
+      return;
+    }
+
+    let cancelled = false;
+    void getBug({ bugId: requestedBugId, organizationId, spaceId })
+      .then((bug) => {
+        if (!cancelled) {
+          openBug(
+            toMockBug(bug, tStatus, {
+              getMember,
+              getVersion,
+              getWorkflowState: workflowStateLookup.getState,
+            }),
+          );
+          setHandledDeepLinkKey(key);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setHandledDeepLinkKey(key);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    getMember,
+    getVersion,
+    handledDeepLinkKey,
+    hasLoadedItems,
+    loading,
+    mockItems,
+    openBug,
+    organizationId,
+    requestedBugId,
+    spaceId,
+    tStatus,
+    workflowStateLookup.getState,
+  ]);
 
   useListKeyboardNav<MockBugItem>({
     items: filtered,
@@ -302,18 +420,16 @@ export function BugsPage() {
     () => [
       {
         label: t("buckets.all"),
-        key: "all" as FilterKey,
+        key: "all" as BugLifecycleBucket,
         count: mockItems.length,
       },
       ...bugBucketStatus.map((key) => ({
-        label: tStatus(bugBucketCategory[key]),
+        label: t(`buckets.${key}`),
         key,
-        count: mockItems.filter(
-          (bug) => bug.statusCategory === bugBucketCategory[key],
-        ).length,
+        count: mockItems.filter((bug) => bug.lifecycleBucket === key).length,
       })),
     ],
-    [mockItems, t, tStatus],
+    [mockItems, t],
   );
 
   const header = (
@@ -382,13 +498,16 @@ export function BugsPage() {
           <button
             key={b.key}
             type="button"
-            data-testid={`bugs-filter-${b.key}`}
-            onClick={() =>
-              setFilter(
-                "statusCategory",
-                b.key === "all" ? "" : bugBucketCategory[b.key],
-              )
-            }
+            data-testid="bugs-filter-option"
+            data-filter-key={b.key}
+            onClick={() => {
+              setBucketFilter(b.key);
+              if (b.key === "all") {
+                setFilter("statusCategory", "");
+              } else {
+                setFilter("statusCategory", bugBucketCategory[b.key]);
+              }
+            }}
             className={cn(
               "flex h-7 items-center gap-1.5 rounded-md px-2.5 text-[12px] transition-colors cursor-pointer",
               activeBucket === b.key
@@ -443,9 +562,10 @@ export function BugsPage() {
             <select
               data-testid="bugs-filter-status"
               value={filters.statusCategory ?? ""}
-              onChange={(event) =>
-                setFilter("statusCategory", event.target.value)
-              }
+              onChange={(event) => {
+                setBucketFilter("all");
+                setFilter("statusCategory", event.target.value);
+              }}
               className="h-8 w-full rounded-md border border-input bg-background px-2 text-sm"
             >
               <option value="">{tFilters("allStatusCategories")}</option>
@@ -541,13 +661,31 @@ export function BugsPage() {
             description={t("states.empty.description")}
           />
         ) : (
-          <ul data-testid="bugs-list" className="divide-y divide-border">
+          <ul
+            data-testid="bugs-list"
+            role="listbox"
+            className="divide-y divide-border"
+          >
             {filtered.map((bug) => (
-              <li key={bug.id} data-testid={`bugs-row-${bug.id}`}>
-                <div className="flex items-center gap-2 px-6 py-2.5 transition-colors hover:bg-muted/40">
+              <li
+                key={bug.id}
+                data-testid="bugs-row"
+                data-id={bug.id}
+                role="option"
+                aria-selected={activeItem?.id === bug.id}
+              >
+                <div
+                  className={cn(
+                    "flex items-center gap-2 border-l-2 px-6 py-2.5 transition-colors",
+                    activeItem?.id === bug.id
+                      ? "border-primary bg-primary/10"
+                      : "border-transparent hover:bg-muted/40",
+                  )}
+                >
                   <button
                     type="button"
                     onClick={() => openBug(bug)}
+                    data-selected={activeItem?.id === bug.id}
                     className="flex min-w-0 flex-1 items-center gap-3 text-left cursor-pointer"
                   >
                     <Bug className="h-3.5 w-3.5 shrink-0 text-destructive/80" />
@@ -599,7 +737,8 @@ export function BugsPage() {
                       variant="ghost"
                       size="icon"
                       className="h-7 w-7 shrink-0"
-                      data-testid={`bugs-edit-${bug.id}`}
+                      data-testid="bugs-edit-button"
+                      data-id={bug.id}
                       aria-label={t("actions.edit")}
                       onClick={() => {
                         const source = items.find((item) => item.id === bug.id);
@@ -693,6 +832,10 @@ function FilterField({
 type BugLookupHelpers = {
   getMember: (userId: string) => SpaceMemberWithUser | undefined;
   getVersion: (versionId: string) => Version | undefined;
+  getWorkflowState: (
+    workflowVersionId: string | undefined,
+    stateId: string | undefined,
+  ) => { code: string; name: string } | undefined;
 };
 
 function toMockBug(
@@ -713,6 +856,12 @@ function toMockBug(
       bug.statusCategory !== "TERMINATED"
     : false;
   const isBlocked = bug.statusCategory === "WAITING" || Boolean(bug.blockedAt);
+  const workflowState = lookups.getWorkflowState(
+    bug.workflowVersionId,
+    bug.currentStateId,
+  );
+  const lifecycleBucket = resolveBugLifecycleBucket(bug, workflowState?.code);
+  const statusLabel = workflowState?.name ?? tStatus(bug.statusCategory);
 
   return {
     id: bug.id,
@@ -720,7 +869,7 @@ function toMockBug(
     type: "BUG",
     title: bug.title,
     statusCategory: bug.statusCategory,
-    statusLabel: tStatus(bug.statusCategory),
+    statusLabel,
     priority: bug.priority,
     assignee: { name: assigneeName, initial },
     versionName: version?.name,
@@ -729,8 +878,26 @@ function toMockBug(
     isBlocked,
     blockedReason: bug.blockedReason,
     updatedAgo: undefined,
+    lifecycleBucket,
     severity: bug.bugDetail.severity,
   };
+}
+
+function resolveBugLifecycleBucket(
+  bug: Pick<BugView, "statusCategory">,
+  stateCode: string | undefined,
+): Exclude<BugLifecycleBucket, "all"> {
+  if (stateCode) {
+    const normalized = stateCode.trim().toUpperCase();
+    const match = bugBucketStatus.find((bucket) =>
+      bugBucketStateCodes[bucket].includes(normalized),
+    );
+    if (match) {
+      return match;
+    }
+  }
+
+  return bugBucketByCategory[bug.statusCategory] ?? "pendingConfirm";
 }
 
 function deriveBugCode(id: string): string {

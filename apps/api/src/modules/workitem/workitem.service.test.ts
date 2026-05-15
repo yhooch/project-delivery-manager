@@ -165,7 +165,7 @@ describe("WorkItemService", () => {
   });
 
   it("updates editable fields without changing workflow state fields", async () => {
-    const subject = createSubject("DEVELOPER");
+    const subject = createSubject("PM");
     subject.workItems.items.set(
       WORK_ITEM_ID,
       makeWorkItem({
@@ -225,7 +225,7 @@ describe("WorkItemService", () => {
   });
 
   it("does not allow unchecked update input to change blocked state fields", async () => {
-    const subject = createSubject("DEVELOPER");
+    const subject = createSubject("PM");
     subject.workItems.items.set(
       WORK_ITEM_ID,
       makeWorkItem({
@@ -247,6 +247,31 @@ describe("WorkItemService", () => {
       "blockedReason",
     );
   });
+
+  it.each(["DEVELOPER", "TESTER", "MEMBER"] as const)(
+    "rejects %s direct TASK patches even when the task is visible",
+    async (role) => {
+      const subject = createSubject(role);
+      subject.workItems.items.set(
+        WORK_ITEM_ID,
+        makeWorkItem({
+          assigneeId: ACTOR_ID,
+        }),
+      );
+      subject.workItems.participantKeys.add(`${WORK_ITEM_ID}:${ACTOR_ID}`);
+      subject.workItems.testerVisibleIds.add(WORK_ITEM_ID);
+
+      await expect(
+        subject.service.update(ACTOR_ID, WORK_ITEM_ID, {
+          priority: "HIGH",
+          title: `${role} direct edit`,
+        }),
+      ).rejects.toMatchObject({
+        code: "SPACE_ACCESS_DENIED",
+      });
+      expect(subject.workItems.updatedInput).toBeUndefined();
+    },
+  );
 });
 
 function createSubject(role: SpaceRole, actorUserId = ACTOR_ID) {

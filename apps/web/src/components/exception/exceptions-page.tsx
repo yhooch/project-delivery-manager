@@ -450,6 +450,7 @@ export function ExceptionsPage() {
                     (signal) => signal.type === tab.key,
                   );
                   const exceptionDetail = matchedSignal?.reason;
+                  const isSelected = active?.id === item.workItem.id;
 
                   return (
                     <li
@@ -458,8 +459,13 @@ export function ExceptionsPage() {
                     >
                       <button
                         type="button"
+                        aria-selected={isSelected}
                         onClick={() => handleSelect(item)}
-                        className="flex w-full items-center gap-3 px-6 py-2.5 text-left transition-colors hover:bg-muted/40 cursor-pointer"
+                        className={cn(
+                          "flex w-full cursor-pointer items-center gap-3 px-6 py-2.5 text-left transition-colors hover:bg-muted/40",
+                          isSelected &&
+                            "bg-primary/10 shadow-[inset_3px_0_0_hsl(var(--primary))]",
+                        )}
                       >
                         {mock.type === "BUG" ? (
                           <Bug className="h-3.5 w-3.5 shrink-0 text-destructive/80" />

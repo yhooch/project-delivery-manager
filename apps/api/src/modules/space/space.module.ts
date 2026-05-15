@@ -1,6 +1,7 @@
 import { Module } from "@nestjs/common";
 
 import { PrismaModule } from "../../prisma/prisma.module";
+import { AuditModule } from "../audit/audit.module";
 import { AuthModule } from "../auth/auth.module";
 import { IdentityModule } from "../identity/identity.module";
 import { OrganizationModule } from "../organization/organization.module";
@@ -15,6 +16,7 @@ import { SpaceService } from "./space.service";
   exports: [SPACE_REPOSITORY],
   imports: [
     AuthModule,
+    AuditModule,
     IdentityModule,
     OrganizationModule,
     PrismaModule,

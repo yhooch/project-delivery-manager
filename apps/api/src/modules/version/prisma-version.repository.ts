@@ -1,4 +1,5 @@
 import { Inject, Injectable } from "@nestjs/common";
+import { ulid } from "ulid";
 
 import { Prisma } from "../../generated/prisma/client";
 import { PrismaService } from "../../prisma/prisma.service";
@@ -31,6 +32,7 @@ const BOARD_STATUS_TITLES = {
   VERIFYING: "Verifying",
   WAITING: "Waiting",
 } as const;
+const BLOCKED_STATE_TOKENS = ["blocked", "阻塞"] as const;
 
 @Injectable()
 export class PrismaVersionRepository implements VersionRepository {
@@ -40,22 +42,36 @@ export class PrismaVersionRepository implements VersionRepository {
   ) {}
 
   async create(input: CreateVersionInput) {
-    const version = await this.prisma.client.version.create({
-      data: {
-        id: input.id,
-        organizationId: input.organizationId,
-        spaceId: input.spaceId,
-        name: input.name,
-        target: input.target,
-        description: input.description,
-        ownerId: input.ownerId,
-        status: input.status,
-        startDate: input.startDate,
-        targetDate: input.targetDate,
-        releaseDate: input.releaseDate,
-        createdById: input.createdById,
-        updatedById: input.createdById,
-      },
+    const version = await this.prisma.client.$transaction(async (tx) => {
+      const created = await tx.version.create({
+        data: {
+          id: input.id,
+          organizationId: input.organizationId,
+          spaceId: input.spaceId,
+          name: input.name,
+          target: input.target,
+          description: input.description,
+          ownerId: input.ownerId,
+          status: input.status,
+          startDate: input.startDate,
+          targetDate: input.targetDate,
+          releaseDate: input.releaseDate,
+          createdById: input.createdById,
+          updatedById: input.createdById,
+        },
+      });
+
+      await createTimelineEvent(tx, {
+        actorUserId: input.createdById,
+        after: versionTimelineSnapshot(created),
+        eventType: "CREATED",
+        organizationId: created.organizationId,
+        spaceId: created.spaceId,
+        targetId: created.id,
+        title: "创建版本",
+      });
+
+      return created;
     });
 
     return this.toVersionWithStats(version);
@@ -197,6 +213,17 @@ export class PrismaVersionRepository implements VersionRepository {
 
   async update(input: UpdateVersionInput) {
     const updated = await this.prisma.client.$transaction(async (tx) => {
+      const previous = await tx.version.findFirst({
+        where: {
+          deletedAt: null,
+          id: input.versionId,
+        },
+      });
+
+      if (!previous) {
+        return undefined;
+      }
+
       const result = await tx.version.updateMany({
         data: {
           name: input.name,
@@ -219,12 +246,35 @@ export class PrismaVersionRepository implements VersionRepository {
         return undefined;
       }
 
-      return tx.version.findFirst({
+      const version = await tx.version.findFirst({
         where: {
           deletedAt: null,
           id: input.versionId,
         },
       });
+
+      if (!version) {
+        return undefined;
+      }
+
+      await createTimelineEvent(tx, {
+        actorUserId: input.updatedById,
+        after: versionTimelineSnapshot(version),
+        before: versionTimelineSnapshot(previous),
+        eventType:
+          input.status && input.status !== previous.status
+            ? "STATUS_CHANGED"
+            : "UPDATED",
+        organizationId: version.organizationId,
+        spaceId: version.spaceId,
+        targetId: version.id,
+        title:
+          input.status && input.status !== previous.status
+            ? "更新版本状态"
+            : "更新版本",
+      });
+
+      return version;
     });
 
     return updated ? this.toVersionWithStats(updated) : undefined;
@@ -485,13 +535,23 @@ function versionStatsWorkItemWhere(
 function blockedWorkItemWhere(): Prisma.WorkItemWhereInput[] {
   return [
     {
-      blockedAt: {
-        not: null,
-      },
-    },
-    {
-      blockedReason: {
-        not: null,
+      currentState: {
+        is: {
+          OR: BLOCKED_STATE_TOKENS.flatMap((token) => [
+            {
+              code: {
+                contains: token,
+                mode: "insensitive" as const,
+              },
+            },
+            {
+              name: {
+                contains: token,
+                mode: "insensitive" as const,
+              },
+            },
+          ]),
+        },
       },
     },
   ];
@@ -540,4 +600,65 @@ function toArray<T>(value: T | T[] | undefined): T[] {
   }
 
   return Array.isArray(value) ? value : [value];
+}
+
+type VersionTimelineRecord = {
+  description: string | null;
+  name: string;
+  ownerId: string | null;
+  releaseDate: Date | null;
+  startDate: Date | null;
+  status: string;
+  target: string | null;
+  targetDate: Date | null;
+};
+
+function versionTimelineSnapshot(record: VersionTimelineRecord) {
+  return {
+    description: record.description ?? null,
+    name: record.name,
+    ownerId: record.ownerId ?? null,
+    releaseDate: record.releaseDate?.toISOString() ?? null,
+    startDate: record.startDate?.toISOString() ?? null,
+    status: record.status,
+    target: record.target ?? null,
+    targetDate: record.targetDate?.toISOString() ?? null,
+  };
+}
+
+async function createTimelineEvent(
+  tx: Prisma.TransactionClient,
+  input: {
+    actorUserId: string;
+    after?: Record<string, unknown>;
+    before?: Record<string, unknown>;
+    eventType: "CREATED" | "STATUS_CHANGED" | "UPDATED";
+    organizationId: string;
+    spaceId: string;
+    targetId: string;
+    title: string;
+  },
+) {
+  await tx.timelineEvent.create({
+    data: {
+      id: ulid(),
+      actorId: input.actorUserId,
+      after: toJson(input.after),
+      before: toJson(input.before),
+      createdById: input.actorUserId,
+      eventType: input.eventType,
+      organizationId: input.organizationId,
+      spaceId: input.spaceId,
+      targetId: input.targetId,
+      targetType: "VERSION",
+      title: input.title,
+      updatedById: input.actorUserId,
+    },
+  });
+}
+
+function toJson(value: Record<string, unknown> | undefined) {
+  return value && Object.keys(value).length > 0
+    ? (value as Prisma.InputJsonObject)
+    : undefined;
 }

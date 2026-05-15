@@ -12,6 +12,8 @@ import {
 import { ulid } from "ulid";
 
 import { ApiException } from "../../http/api-exception";
+import { AuditService } from "../audit/audit.service";
+import type { RequestMetadata } from "../auth/auth-session.types";
 import { RateLimiterService } from "../auth/rate-limiter.service";
 import {
   USER_REPOSITORY,
@@ -37,11 +39,14 @@ export class OrganizationService {
     private readonly users: UserRepository,
     @Inject(RateLimiterService)
     private readonly rateLimiter: RateLimiterService,
+    @Inject(AuditService)
+    private readonly audit: AuditService,
   ) {}
 
   async create(
     userId: string,
     input: CreateOrganizationRequest,
+    metadata: RequestMetadata = {},
   ): Promise<Organization> {
     const limiter = {
       key: `organization:create:${userId}`,
@@ -68,6 +73,15 @@ export class OrganizationService {
       name: input.name,
       code,
       ownerId: userId,
+    });
+    await this.audit.record({
+      actionType: "CREATE",
+      actorId: userId,
+      after: result.organization,
+      ...metadata,
+      organizationId: result.organization.id,
+      targetId: result.organization.id,
+      targetType: "ORGANIZATION",
     });
 
     return result.organization;
@@ -130,6 +144,7 @@ export class OrganizationService {
     actorUserId: string,
     organizationId: string,
     input: AddOrganizationMemberRequest,
+    metadata: RequestMetadata = {},
   ): Promise<OrganizationMemberWithUser> {
     await this.requireOrganizationManager(actorUserId, organizationId);
 
@@ -147,13 +162,24 @@ export class OrganizationService {
       );
     }
 
-    return this.organizations.addMember({
+    const added = await this.organizations.addMember({
       id: ulid(),
       organizationId,
       role: input.role,
       userId: user.id,
       createdById: actorUserId,
     });
+    await this.audit.record({
+      actionType: "CREATE",
+      actorId: actorUserId,
+      after: summarizeOrganizationMember(added),
+      ...metadata,
+      organizationId,
+      targetId: added.id,
+      targetType: "ORGANIZATION_MEMBER",
+    });
+
+    return added;
   }
 
   async updateMember(
@@ -161,6 +187,7 @@ export class OrganizationService {
     organizationId: string,
     memberId: string,
     input: UpdateOrganizationMemberRequest,
+    metadata: RequestMetadata = {},
   ): Promise<OrganizationMemberWithUser> {
     await this.requireOrganizationManager(actorUserId, organizationId);
 
@@ -197,6 +224,19 @@ export class OrganizationService {
       );
     }
 
+    await this.audit.record({
+      actionType: hasRoleOrStatusChange(member, updated)
+        ? "ROLE_CHANGED"
+        : "UPDATE",
+      actorId: actorUserId,
+      after: summarizeOrganizationMember(updated),
+      before: summarizeOrganizationMember(member),
+      ...metadata,
+      organizationId,
+      targetId: updated.id,
+      targetType: "ORGANIZATION_MEMBER",
+    });
+
     return updated;
   }
 
@@ -204,6 +244,7 @@ export class OrganizationService {
     actorUserId: string,
     organizationId: string,
     memberId: string,
+    metadata: RequestMetadata = {},
   ): Promise<void> {
     await this.requireOrganizationManager(actorUserId, organizationId);
 
@@ -249,14 +290,27 @@ export class OrganizationService {
         HttpStatus.NOT_FOUND,
       );
     }
+    await this.audit.record({
+      actionType: "DELETE",
+      actorId: actorUserId,
+      before: summarizeOrganizationMember(member),
+      ...metadata,
+      organizationId,
+      targetId: member.id,
+      targetType: "ORGANIZATION_MEMBER",
+    });
   }
 
   async update(
     actorUserId: string,
     organizationId: string,
     input: UpdateOrganizationRequest,
+    metadata: RequestMetadata = {},
   ): Promise<Organization> {
-    await this.requireOrganizationManager(actorUserId, organizationId);
+    const access = await this.requireOrganizationManager(
+      actorUserId,
+      organizationId,
+    );
 
     if (input.code) {
       const existing = await this.organizations.findByCode(input.code);
@@ -284,6 +338,17 @@ export class OrganizationService {
         HttpStatus.NOT_FOUND,
       );
     }
+
+    await this.audit.record({
+      actionType: "UPDATE",
+      actorId: actorUserId,
+      after: updated,
+      before: access.organization,
+      ...metadata,
+      organizationId,
+      targetId: organizationId,
+      targetType: "ORGANIZATION",
+    });
 
     return updated;
   }
@@ -402,6 +467,22 @@ function isEffectiveOwner(member: {
   status: RecordStatus;
 }): boolean {
   return member.role === "OWNER" && member.status === "ACTIVE";
+}
+
+function hasRoleOrStatusChange(
+  before: OrganizationMemberWithUser,
+  after: OrganizationMemberWithUser,
+): boolean {
+  return before.role !== after.role || before.status !== after.status;
+}
+
+function summarizeOrganizationMember(member: OrganizationMemberWithUser) {
+  return {
+    id: member.id,
+    role: member.role,
+    status: member.status,
+    userId: member.userId,
+  };
 }
 
 function normalizeUsername(username: string): string {

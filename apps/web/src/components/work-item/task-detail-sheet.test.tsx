@@ -62,7 +62,16 @@ const memberMap = new Map<
   { user: { name: string; avatar?: string } }
 >();
 const versionMap = new Map<string, { name: string }>();
+const relationTitleMap = new Map<string, string>();
 vi.mock("../../lib/v2/lookups", () => ({
+  useRelationTitle: (
+    type: string,
+    id: string | undefined,
+  ) => ({
+    title: id ? relationTitleMap.get(`${type}:${id}`) : undefined,
+    loading: false,
+    error: null,
+  }),
   useSpaceMembers: () => ({
     members: [],
     loading: false,
@@ -229,6 +238,7 @@ function makeBugResponse(overrides: Record<string, unknown> = {}) {
 beforeEach(() => {
   memberMap.clear();
   versionMap.clear();
+  relationTitleMap.clear();
   getBugMock.mockReset();
   getWorkItemMock.mockReset();
   executeActionMock.mockReset();
@@ -363,7 +373,9 @@ describe("TaskDetailSheet", () => {
     );
 
     fireEvent.click(await screen.findByRole("button", { name: "Resolve" }));
-    fireEvent.change(screen.getByTestId("task-action-field-resolution"), {
+    const resolutionField = screen.getByTestId("task-action-field");
+    expect(resolutionField).toHaveAttribute("data-field-key", "resolution");
+    fireEvent.change(resolutionField, {
       target: { value: "fixed" },
     });
     fireEvent.change(screen.getByTestId("task-action-comment"), {
@@ -679,8 +691,12 @@ describe("TaskDetailSheet", () => {
 
     await waitFor(() => expect(listAttachmentsMock).toHaveBeenCalled());
     expect(await screen.findByText("design.png")).toBeInTheDocument();
-    expect(screen.getByLabelText("Preview design.png")).toBeInTheDocument();
-    expect(screen.getByLabelText("Download design.png")).toBeInTheDocument();
+    expect(
+      screen.getByLabelText("taskDetail.attachments.previewFile"),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByLabelText("taskDetail.attachments.downloadFile"),
+    ).toBeInTheDocument();
     // Upload button is present
     expect(
       screen.getByRole("button", {
@@ -719,7 +735,9 @@ describe("TaskDetailSheet", () => {
     );
 
     await activateTab(/attachments/i);
-    fireEvent.click(await screen.findByLabelText("Preview design.png"));
+    fireEvent.click(
+      await screen.findByLabelText("taskDetail.attachments.previewFile"),
+    );
 
     await waitFor(() =>
       expect(getAttachmentDownloadUrlMock).toHaveBeenCalledWith({
@@ -890,10 +908,45 @@ describe("TaskDetailSheet", () => {
     ).toBeInTheDocument();
   });
 
+  it("shows readable relation titles instead of short relation ids on the links tab", async () => {
+    relationTitleMap.set(
+      "requirement:01ARZ3NDEKTSV4RRFFQ69G5FRQ",
+      "Checkout requirement",
+    );
+    relationTitleMap.set(
+      "intake:01ARZ3NDEKTSV4RRFFQ69G5FIN",
+      "Customer intake",
+    );
+    getWorkItemMock.mockResolvedValue(
+      makeDetailResponse({
+        requirementId: "01ARZ3NDEKTSV4RRFFQ69G5FRQ",
+        intakeItemId: "01ARZ3NDEKTSV4RRFFQ69G5FIN",
+      }),
+    );
+
+    render(
+      <TaskDetailSheet item={makeViewModel()} open onOpenChange={() => {}} />,
+    );
+
+    await activateTab(/links/i);
+    const list = await screen.findByTestId("task-links-list");
+    expect(within(list).getByText("Checkout requirement")).toBeInTheDocument();
+    expect(within(list).getByText("Customer intake")).toBeInTheDocument();
+    expect(within(list).queryByText("9G5FRQ")).not.toBeInTheDocument();
+    expect(within(list).queryByText("9G5FIN")).not.toBeInTheDocument();
+  });
+
   it("loads bug relation data from the bug detail endpoint on the links tab", async () => {
     versionMap.set("01ARZ3NDEKTSV4RRFFQ69G5FV1", { name: "Bugfix train" });
+    relationTitleMap.set(
+      "workItem:01ARZ3NDEKTSV4RRFFQ69G5FTK",
+      "Related task title",
+    );
     getBugMock.mockResolvedValue(
       makeBugResponse({
+        bugDetail: {
+          relatedTaskId: "01ARZ3NDEKTSV4RRFFQ69G5FTK",
+        },
         versionId: "01ARZ3NDEKTSV4RRFFQ69G5FV1",
       }),
     );
@@ -912,6 +965,11 @@ describe("TaskDetailSheet", () => {
     expect(
       within(await screen.findByTestId("task-links-list")).getByText(
         "Bugfix train",
+      ),
+    ).toBeInTheDocument();
+    expect(
+      within(await screen.findByTestId("task-links-list")).getByText(
+        "Related task title",
       ),
     ).toBeInTheDocument();
   });

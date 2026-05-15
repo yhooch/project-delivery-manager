@@ -337,6 +337,7 @@ describe("ExceptionsPage", () => {
     const row = await screen.findByText("Click exception");
     fireEvent.click(row);
 
+    expect(row.closest("button")).toHaveAttribute("aria-selected", "true");
     expect(
       await screen.findByTestId("task-detail-sheet-open"),
     ).toBeInTheDocument();

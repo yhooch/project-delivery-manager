@@ -1,6 +1,7 @@
 import { Module } from "@nestjs/common";
 
 import { PrismaModule } from "../../prisma/prisma.module";
+import { AuditModule } from "../audit/audit.module";
 import { AuthModule } from "../auth/auth.module";
 import { IdentityModule } from "../identity/identity.module";
 import {
@@ -15,7 +16,7 @@ import { PrismaOrganizationRepository } from "./prisma-organization.repository";
 @Module({
   controllers: [AppSessionController, OrganizationController],
   exports: [AppSessionService, ORGANIZATION_REPOSITORY],
-  imports: [AuthModule, IdentityModule, PrismaModule],
+  imports: [AuditModule, AuthModule, IdentityModule, PrismaModule],
   providers: [
     AppSessionService,
     OrganizationService,

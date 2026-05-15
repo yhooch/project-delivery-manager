@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 
+import type { SpaceRole } from "@project-delivery/shared";
 import type { OrganizationRepository } from "../organization/organization.repository";
 import type { RequirementRepository } from "../requirement/requirement.repository";
 import type { SpaceRepository } from "../space/space.repository";
@@ -98,6 +99,25 @@ describe("IntakeService", () => {
     });
   });
 
+  it("allows PM to update intake fields after validating references", async () => {
+    const { intakeItems, service } = createSubject({ role: "PM" });
+
+    await service.update(ACTOR_USER_ID, INTAKE_ITEM_ID, {
+      assigneeId: ASSIGNEE_ID,
+      title: "Updated intake",
+    });
+
+    expect(intakeItems.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        assigneeId: ASSIGNEE_ID,
+        intakeItemId: INTAKE_ITEM_ID,
+        shouldUpdateAssignee: true,
+        title: "Updated intake",
+        updatedById: ACTOR_USER_ID,
+      }),
+    );
+  });
+
   it("accepts pending intake items and rejects illegal status changes", async () => {
     const { intakeItems, service } = createSubject({
       item: intakeItem({ status: "PENDING" }),
@@ -134,6 +154,55 @@ describe("IntakeService", () => {
       code: "VALIDATION_ERROR",
     });
   });
+
+  it.each(["DEVELOPER", "TESTER", "MEMBER"] as const)(
+    "rejects %s intake decisions even when the item is visible",
+    async (role) => {
+      const pending = createSubject({
+        item: intakeItem({ status: "PENDING" }),
+        role,
+      });
+
+      await expect(
+        pending.service.update(ACTOR_USER_ID, INTAKE_ITEM_ID, {
+          title: `${role} direct edit`,
+        }),
+      ).rejects.toMatchObject({
+        code: "SPACE_ACCESS_DENIED",
+      });
+      await expect(
+        pending.service.accept(ACTOR_USER_ID, INTAKE_ITEM_ID),
+      ).rejects.toMatchObject({
+        code: "SPACE_ACCESS_DENIED",
+      });
+      await expect(
+        pending.service.defer(ACTOR_USER_ID, INTAKE_ITEM_ID),
+      ).rejects.toMatchObject({
+        code: "SPACE_ACCESS_DENIED",
+      });
+      await expect(
+        pending.service.reject(ACTOR_USER_ID, INTAKE_ITEM_ID),
+      ).rejects.toMatchObject({
+        code: "SPACE_ACCESS_DENIED",
+      });
+      expect(pending.intakeItems.update).not.toHaveBeenCalled();
+      expect(pending.intakeItems.updateStatus).not.toHaveBeenCalled();
+
+      const accepted = createSubject({
+        item: intakeItem({ status: "ACCEPTED" }),
+        role,
+      });
+
+      await expect(
+        accepted.service.convertToWorkItems(ACTOR_USER_ID, INTAKE_ITEM_ID, {
+          tasks: [{ title: `${role} converted task` }],
+        }),
+      ).rejects.toMatchObject({
+        code: "SPACE_ACCESS_DENIED",
+      });
+      expect(accepted.intakeItems.convertToWorkItems).not.toHaveBeenCalled();
+    },
+  );
 
   it("converts an accepted intake item to one TASK with inherited context", async () => {
     const { intakeItems, service } = createSubject({
@@ -355,7 +424,7 @@ describe("IntakeService", () => {
 function createSubject(input: {
   hasParticipant?: boolean;
   item?: ReturnType<typeof intakeItem>;
-  role: "SPACE_ADMIN" | "PM" | "DEVELOPER" | "VIEWER";
+  role: SpaceRole;
 }) {
   const item = input.item ?? intakeItem();
   const intakeItems = {

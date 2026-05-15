@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   buildSpaceExceptionSignals,
+  isBlockedRecord,
   isPendingConfirmRecord,
   isPendingRegressionRecord,
   type SpaceExceptionWorkItemRecord,
@@ -15,8 +16,8 @@ describe("space exception helpers", () => {
       blockedAt: new Date("2026-05-11T12:00:00.000Z"),
       blockedReason: "Waiting for upstream API",
       currentState: {
-        code: "waiting_pm_confirm",
-        name: "Waiting PM confirm",
+        code: "blocked_waiting_pm_confirm",
+        name: "Blocked waiting PM confirm",
       },
       dueDate: new Date("2026-05-12T12:00:00.000Z"),
       lastStatusChangedAt: new Date("2026-05-09T12:00:00.000Z"),
@@ -29,6 +30,33 @@ describe("space exception helpers", () => {
         staleThresholdDays: 3,
       }).map((signal) => signal.type),
     ).toEqual(["overdue", "blocked", "pending_confirm", "stale"]);
+  });
+
+  it("uses current workflow state instead of residual blocked fields", () => {
+    expect(
+      isBlockedRecord(
+        workItem({
+          blockedAt: new Date("2026-05-11T12:00:00.000Z"),
+          blockedReason: "Old reason",
+          currentState: {
+            code: "in_progress",
+            name: "In progress",
+          },
+        }),
+      ),
+    ).toBe(false);
+    expect(
+      isBlockedRecord(
+        workItem({
+          blockedAt: null,
+          blockedReason: null,
+          currentState: {
+            code: "blocked",
+            name: "Blocked",
+          },
+        }),
+      ),
+    ).toBe(true);
   });
 
   it("does not treat WAITING or VERIFYING items without confirm evidence as pending confirmation", () => {
@@ -92,7 +120,7 @@ describe("space exception helpers", () => {
     ).toBe(true);
   });
 
-  it("requires an unregressed bug and regression state evidence for pending regression", () => {
+  it("requires a bug and regression state evidence for pending regression", () => {
     expect(
       isPendingRegressionRecord(
         workItem({
@@ -140,7 +168,7 @@ describe("space exception helpers", () => {
           type: "BUG",
         }),
       ),
-    ).toBe(false);
+    ).toBe(true);
   });
 
   it("recognizes Chinese regression state tokens for unregressed bugs", () => {

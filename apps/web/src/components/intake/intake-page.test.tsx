@@ -107,6 +107,32 @@ vi.mock("../../lib/version-service", () => ({
   listVersions: listVersionsMock,
 }));
 
+const memberMap = new Map<
+  string,
+  { user: { name: string; username: string } }
+>();
+const versionMap = new Map<string, { name: string }>();
+vi.mock("../../lib/v2/lookups", () => ({
+  useSpaceMembers: () => ({
+    members: Array.from(memberMap.entries()).map(([userId, member]) => ({
+      userId,
+      ...member,
+    })),
+    loading: false,
+    error: null,
+    getMember: (id: string) => memberMap.get(id),
+  }),
+  useVersions: () => ({
+    versions: Array.from(versionMap.entries()).map(([id, version]) => ({
+      id,
+      ...version,
+    })),
+    loading: false,
+    error: null,
+    getVersion: (id: string) => versionMap.get(id),
+  }),
+}));
+
 vi.mock("./create-intake-dialog", () => ({
   CreateIntakeDialog: ({ open }: { open: boolean }) =>
     open ? <div data-testid="create-intake-dialog-open" /> : null,
@@ -165,6 +191,8 @@ beforeEach(() => {
   listVersionsMock.mockReset();
   listRequirementsMock.mockResolvedValue({ items: [], total: 0 });
   listVersionsMock.mockResolvedValue({ items: [], total: 0 });
+  memberMap.clear();
+  versionMap.clear();
   routerPushMock.mockReset();
   searchParamsMock.current = new URLSearchParams();
   sessionMock.current = {
@@ -245,6 +273,43 @@ describe("IntakePage", () => {
     ).toBeGreaterThanOrEqual(1);
   });
 
+  it("renders real version, reporter, and assignee labels from lookups", async () => {
+    const reporterId = "01ARZ3NDEKTSV4RRFFQ69G5FRP";
+    const assigneeId = "01ARZ3NDEKTSV4RRFFQ69G5FAS";
+    const versionId = "01ARZ3NDEKTSV4RRFFQ69G5FV1";
+    memberMap.set(reporterId, {
+      user: { name: "Reporter Name", username: "reporter" },
+    });
+    memberMap.set(assigneeId, {
+      user: { name: "Assignee Name", username: "assignee" },
+    });
+    versionMap.set(versionId, { name: "Release 2026.5" });
+    listIntakeItemsMock.mockResolvedValueOnce({
+      items: [
+        makeIntake({
+          assigneeId,
+          reporterId,
+          title: "Lookup intake",
+          versionId,
+        }),
+      ],
+      total: 1,
+    });
+
+    render(<IntakePage />);
+
+    expect(await screen.findByText("Lookup intake")).toBeInTheDocument();
+    expect(screen.getByText("Release 2026.5")).toBeInTheDocument();
+    expect(screen.getByText("Assignee Name")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByText("Lookup intake"));
+
+    expect(screen.getByText("Reporter Name")).toBeInTheDocument();
+    expect(screen.getAllByText("Assignee Name").length).toBeGreaterThanOrEqual(
+      1,
+    );
+  });
+
   it("renders the empty state when there are no intake items", async () => {
     listIntakeItemsMock.mockResolvedValueOnce({ items: [], total: 0 });
 
@@ -291,26 +356,47 @@ describe("IntakePage", () => {
   });
 
   it("filters rows by status when a bucket button is clicked", async () => {
-    listIntakeItemsMock.mockResolvedValueOnce({
-      items: [
-        makeIntake({
-          id: "01ARZ3NDEKTSV4RRFFQ69G5F01",
-          title: "Pending one",
-          status: "PENDING",
-        }),
-        makeIntake({
-          id: "01ARZ3NDEKTSV4RRFFQ69G5F02",
-          title: "Accepted one",
-          status: "ACCEPTED",
-        }),
-        makeIntake({
-          id: "01ARZ3NDEKTSV4RRFFQ69G5F03",
-          title: "Rejected one",
-          status: "REJECTED",
-        }),
-      ],
-      total: 3,
-    });
+    listIntakeItemsMock
+      .mockResolvedValueOnce({
+        items: [
+          makeIntake({
+            id: "01ARZ3NDEKTSV4RRFFQ69G5F01",
+            title: "Pending one",
+            status: "PENDING",
+          }),
+          makeIntake({
+            id: "01ARZ3NDEKTSV4RRFFQ69G5F02",
+            title: "Accepted one",
+            status: "ACCEPTED",
+          }),
+          makeIntake({
+            id: "01ARZ3NDEKTSV4RRFFQ69G5F03",
+            title: "Rejected one",
+            status: "REJECTED",
+          }),
+        ],
+        total: 3,
+      })
+      .mockResolvedValueOnce({
+        items: [
+          makeIntake({
+            id: "01ARZ3NDEKTSV4RRFFQ69G5F02",
+            title: "Accepted one",
+            status: "ACCEPTED",
+          }),
+        ],
+        total: 1,
+      })
+      .mockResolvedValueOnce({
+        items: [
+          makeIntake({
+            id: "01ARZ3NDEKTSV4RRFFQ69G5F03",
+            title: "Rejected one",
+            status: "REJECTED",
+          }),
+        ],
+        total: 1,
+      });
 
     render(<IntakePage />);
 
@@ -321,12 +407,28 @@ describe("IntakePage", () => {
       screen.getByRole("button", { name: /intake\.filters\.accepted/ }),
     );
 
-    expect(screen.queryByText("Pending one")).not.toBeInTheDocument();
+    await waitFor(() =>
+      expect(listIntakeItemsMock).toHaveBeenLastCalledWith(
+        expect.objectContaining({ status: "ACCEPTED" }),
+      ),
+    );
+    await waitFor(() =>
+      expect(screen.queryByText("Pending one")).not.toBeInTheDocument(),
+    );
     expect(screen.getByText("Accepted one")).toBeInTheDocument();
 
-    fireEvent.click(screen.getByTestId("intake-filter-REJECTED"));
+    fireEvent.click(
+      screen.getByRole("button", { name: /intakeItems\.status\.REJECTED/ }),
+    );
 
-    expect(screen.queryByText("Accepted one")).not.toBeInTheDocument();
+    await waitFor(() =>
+      expect(listIntakeItemsMock).toHaveBeenLastCalledWith(
+        expect.objectContaining({ status: "REJECTED" }),
+      ),
+    );
+    await waitFor(() =>
+      expect(screen.queryByText("Accepted one")).not.toBeInTheDocument(),
+    );
     expect(screen.getByText("Rejected one")).toBeInTheDocument();
   });
 
@@ -460,7 +562,7 @@ describe("IntakePage", () => {
       ) ?? "[]",
     ) as Array<{ href: string; title: string; type: string }>;
     expect(stored[0]).toMatchObject({
-      href: "/intake-items",
+      href: "/intake-items?id=01ARZ3NDEKTSV4RRFFQ69G5FRC",
       title: "Remember intake",
       type: "INTAKE",
     });
@@ -491,6 +593,29 @@ describe("IntakePage", () => {
         spaceId: "SPC_01",
       }),
     );
+  });
+
+  it("marks the keyboard-selected intake row as aria-selected", async () => {
+    listIntakeItemsMock.mockResolvedValueOnce({
+      items: [
+        makeIntake({ id: "01ARZ3NDEKTSV4RRFFQ69G5F01", title: "First intake" }),
+        makeIntake({ id: "01ARZ3NDEKTSV4RRFFQ69G5F02", title: "Second intake" }),
+      ],
+      total: 2,
+    });
+
+    render(<IntakePage />);
+
+    await screen.findByText("First intake");
+    fireEvent.keyDown(window, { key: "j" });
+
+    const rows = screen.getAllByTestId("intake-row");
+    expect(rows[0]).toHaveAttribute("aria-selected", "true");
+    expect(rows[0]).toHaveAttribute(
+      "data-id",
+      "01ARZ3NDEKTSV4RRFFQ69G5F01",
+    );
+    expect(rows[1]).toHaveAttribute("aria-selected", "false");
   });
 
   it("keeps the detail drawer closed when Escape is pressed during accept", async () => {

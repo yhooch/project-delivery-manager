@@ -52,3 +52,8 @@ export type ArchiveRequirementInput = {
   requirementId: string;
   updatedById: string;
 };
+
+export type DeleteRequirementDraftInput = {
+  deletedById: string;
+  requirementId: string;
+};

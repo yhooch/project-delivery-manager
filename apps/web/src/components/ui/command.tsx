@@ -3,6 +3,7 @@
 import * as DialogPrimitive from "@radix-ui/react-dialog";
 import { Command as CommandPrimitive } from "cmdk";
 import { Search } from "lucide-react";
+import { useTranslations } from "next-intl";
 import * as React from "react";
 
 import { cn } from "../../lib/utils";
@@ -25,16 +26,18 @@ Command.displayName = CommandPrimitive.displayName;
 type CommandDialogProps = React.ComponentProps<typeof DialogPrimitive.Root>;
 
 export function CommandDialog({ children, ...props }: CommandDialogProps) {
+  const t = useTranslations("shell.command.dialog");
+
   return (
     <DialogPrimitive.Root {...props}>
       <DialogPrimitive.Portal>
         <DialogPrimitive.Overlay className="fixed inset-0 z-50 bg-foreground/30 backdrop-blur-[2px] data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0" />
         <DialogPrimitive.Content className="fixed left-[50%] top-[15%] z-50 w-full max-w-xl translate-x-[-50%] overflow-hidden rounded-lg border border-border bg-popover shadow-2xl duration-150 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-98">
           <DialogPrimitive.Title className="sr-only">
-            Command palette
+            {t("title")}
           </DialogPrimitive.Title>
           <DialogPrimitive.Description className="sr-only">
-            Search and execute commands
+            {t("description")}
           </DialogPrimitive.Description>
           <Command className="[&_[cmdk-group-heading]]:px-2 [&_[cmdk-group-heading]]:py-1.5 [&_[cmdk-group-heading]]:text-[10px] [&_[cmdk-group-heading]]:font-medium [&_[cmdk-group-heading]]:uppercase [&_[cmdk-group-heading]]:tracking-wider [&_[cmdk-group-heading]]:text-muted-foreground [&_[cmdk-input-wrapper]_svg]:h-4 [&_[cmdk-input-wrapper]_svg]:w-4 [&_[cmdk-item]]:px-2 [&_[cmdk-item]]:py-2 [&_[cmdk-item]_svg]:h-4 [&_[cmdk-item]_svg]:w-4">
             {children}

@@ -18,6 +18,10 @@ import {
   type SpaceRepository,
 } from "../space/space.repository";
 import { WorkflowActionExecutionService } from "../workflow/workflow-action-execution.service";
+import {
+  canManageDeliveryObject,
+  getDeliveryObjectWriteDeniedReason,
+} from "../workitem/delivery-object-permissions";
 import { BUG_REPOSITORY, type BugRepository } from "./bug.repository";
 import type { AuditMetadata, BugLinkedUsers, BugListInput } from "./bug.types";
 
@@ -194,12 +198,12 @@ export class BugService {
       auditMetadata,
     );
 
-    if (access.role === "VIEWER") {
+    if (!canManageDeliveryObject(access.role)) {
       await this.auditBugAccessDenied(
         actorUserId,
         bug,
         "updateBug",
-        "VIEWER_READ_ONLY",
+        getDeliveryObjectWriteDeniedReason(access.role),
         auditMetadata,
       );
       throwSpaceAccessDenied();

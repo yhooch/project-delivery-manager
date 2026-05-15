@@ -152,6 +152,7 @@ export function WorkflowConfigPage({ workflowId }: WorkflowConfigPageProps) {
   const spaceId = session?.defaultSpaceId ?? currentSpace?.id;
   const organizationId =
     currentSpace?.organizationId ?? session?.defaultOrganizationId;
+  const canManageWorkflow = currentSpace?.role === "SPACE_ADMIN";
 
   const [workflow, setWorkflow] = useState<WorkflowDefinition | null>(null);
   const [versions, setVersions] = useState<WorkflowVersion[]>([]);
@@ -256,8 +257,12 @@ export function WorkflowConfigPage({ workflowId }: WorkflowConfigPageProps) {
     if (!version) {
       return true;
     }
-    return version.status !== "DRAFT";
-  }, [version]);
+    return !canManageWorkflow || version.status !== "DRAFT";
+  }, [canManageWorkflow, version]);
+
+  const canBindCurrentVersion = Boolean(
+    canManageWorkflow && version?.status === "PUBLISHED",
+  );
 
   const handleRefreshVersion = useCallback(() => {
     if (selectedVersionId) {
@@ -494,7 +499,10 @@ export function WorkflowConfigPage({ workflowId }: WorkflowConfigPageProps) {
               className="h-7 text-xs"
               data-testid="workflow-config-publish"
               disabled={
-                !version || version.status !== "DRAFT" || busy !== "none"
+                !canManageWorkflow ||
+                !version ||
+                version.status !== "DRAFT" ||
+                busy !== "none"
               }
               onClick={handlePublish}
               size="sm"
@@ -508,7 +516,10 @@ export function WorkflowConfigPage({ workflowId }: WorkflowConfigPageProps) {
               className="h-7 text-xs"
               data-testid="workflow-config-disable"
               disabled={
-                !version || version.status !== "PUBLISHED" || busy !== "none"
+                !canManageWorkflow ||
+                !version ||
+                version.status !== "PUBLISHED" ||
+                busy !== "none"
               }
               onClick={handleDisable}
               size="sm"
@@ -523,7 +534,10 @@ export function WorkflowConfigPage({ workflowId }: WorkflowConfigPageProps) {
               className="h-7 text-xs"
               data-testid="workflow-config-copy-draft"
               disabled={
-                !version || version.status !== "PUBLISHED" || busy !== "none"
+                !canManageWorkflow ||
+                !version ||
+                version.status !== "PUBLISHED" ||
+                busy !== "none"
               }
               onClick={handleCopyDraft}
               size="sm"
@@ -607,6 +621,7 @@ export function WorkflowConfigPage({ workflowId }: WorkflowConfigPageProps) {
               currentVersion={version}
               onCreate={() => setDialog({ kind: "createBinding" })}
               onEdit={(binding) => setDialog({ binding, kind: "editBinding" })}
+              readOnly={!canBindCurrentVersion}
             />
           </div>
         ) : (
@@ -683,7 +698,7 @@ export function WorkflowConfigPage({ workflowId }: WorkflowConfigPageProps) {
                 setDialog({ kind: "closed" });
                 void handleRefreshBindings();
               }}
-              open
+              open={canBindCurrentVersion}
               workflowId={workflowId}
               workflowVersionId={version.id}
             />

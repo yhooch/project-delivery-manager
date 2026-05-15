@@ -29,6 +29,7 @@ vi.mock("../../i18n/routing", () => ({
 }));
 
 const sessionMock = vi.hoisted(() => ({
+  refreshSession: vi.fn(),
   current: {
     session: {
       defaultOrganizationId: "ORG_01",
@@ -38,9 +39,18 @@ const sessionMock = vi.hoisted(() => ({
       name: "Acme Corp",
       code: "ACME",
       role: "OWNER",
+      status: "ACTIVE",
     },
+    currentSpace: undefined,
+    refreshSession: vi.fn(),
     status: "authenticated" as const,
-  } as { session: unknown; currentOrganization: unknown; status: string },
+  } as {
+    currentOrganization: unknown;
+    currentSpace: unknown;
+    refreshSession: unknown;
+    session: unknown;
+    status: string;
+  },
 }));
 vi.mock("../providers/session-provider", () => ({
   useSession: () => sessionMock.current,
@@ -49,10 +59,12 @@ vi.mock("../providers/session-provider", () => ({
 const {
   listOrganizationMembersMock,
   removeOrganizationMemberMock,
+  updateOrganizationMock,
   updateOrganizationMemberMock,
 } = vi.hoisted(() => ({
     listOrganizationMembersMock: vi.fn(),
     removeOrganizationMemberMock: vi.fn(),
+    updateOrganizationMock: vi.fn(),
     updateOrganizationMemberMock: vi.fn(),
   }));
 vi.mock("../../lib/space-service", () => ({
@@ -60,6 +72,7 @@ vi.mock("../../lib/space-service", () => ({
     role === "OWNER" || role === "ADMIN",
   listOrganizationMembers: listOrganizationMembersMock,
   removeOrganizationMember: removeOrganizationMemberMock,
+  updateOrganization: updateOrganizationMock,
   updateOrganizationMember: updateOrganizationMemberMock,
 }));
 
@@ -89,6 +102,8 @@ function makeOrgMember(overrides: Record<string, unknown> = {}) {
 beforeEach(() => {
   listOrganizationMembersMock.mockReset();
   removeOrganizationMemberMock.mockReset();
+  sessionMock.refreshSession.mockReset();
+  updateOrganizationMock.mockReset();
   updateOrganizationMemberMock.mockReset();
   sessionMock.current = {
     session: {
@@ -99,7 +114,10 @@ beforeEach(() => {
       name: "Acme Corp",
       code: "ACME",
       role: "OWNER",
+      status: "ACTIVE",
     },
+    currentSpace: undefined,
+    refreshSession: sessionMock.refreshSession,
     status: "authenticated" as const,
   };
 });
@@ -130,7 +148,6 @@ describe("OrganizationPage", () => {
       expect(listOrganizationMembersMock).toHaveBeenCalledTimes(1),
     );
 
-    // Org info readonly inputs.
     const nameInput = await screen.findByLabelText(
       "organization.info.fields.name",
     );
@@ -139,6 +156,9 @@ describe("OrganizationPage", () => {
       "organization.info.fields.code",
     );
     expect((codeInput as HTMLInputElement).value).toBe("ACME");
+    expect(screen.getByTestId("organization-profile-status")).toHaveValue(
+      "ACTIVE",
+    );
 
     // Members render.
     expect(screen.getByText("Alice")).toBeInTheDocument();
@@ -149,6 +169,39 @@ describe("OrganizationPage", () => {
     expect(
       screen.getByText("organization.members.roles.MEMBER"),
     ).toBeInTheDocument();
+  });
+
+  it("allows OWNER/ADMIN to update organization profile and refreshes session", async () => {
+    listOrganizationMembersMock.mockResolvedValueOnce({ items: [], total: 0 });
+    updateOrganizationMock.mockResolvedValueOnce({
+      id: "ORG_01",
+      name: "Acme Labs",
+      code: "ACME-LABS",
+      status: "ACTIVE",
+    });
+    sessionMock.refreshSession.mockResolvedValueOnce(undefined);
+
+    render(<OrganizationPage />);
+
+    await waitFor(() =>
+      expect(listOrganizationMembersMock).toHaveBeenCalled(),
+    );
+    fireEvent.change(screen.getByTestId("organization-profile-name"), {
+      target: { value: "  Acme Labs  " },
+    });
+    fireEvent.change(screen.getByTestId("organization-profile-code"), {
+      target: { value: " ACME-LABS " },
+    });
+
+    fireEvent.click(screen.getByTestId("organization-profile-save"));
+
+    await waitFor(() =>
+      expect(updateOrganizationMock).toHaveBeenCalledWith("ORG_01", {
+        name: "Acme Labs",
+        code: "ACME-LABS",
+      }),
+    );
+    expect(sessionMock.refreshSession).toHaveBeenCalledWith("ORG_01", undefined);
   });
 
   it("renders the empty member message when there are no members", async () => {
@@ -399,7 +452,10 @@ describe("OrganizationPage", () => {
         name: "Acme Corp",
         code: "ACME",
         role: "MEMBER",
+        status: "ACTIVE",
       },
+      currentSpace: undefined,
+      refreshSession: sessionMock.refreshSession,
       status: "authenticated" as const,
     };
     listOrganizationMembersMock.mockResolvedValueOnce({
@@ -420,6 +476,10 @@ describe("OrganizationPage", () => {
       "organization.members.readOnly",
     );
     expect(screen.getByTestId("organization-add-member-button")).toBeDisabled();
+    expect(screen.getByTestId("organization-profile-name")).toHaveAttribute(
+      "readonly",
+    );
+    expect(screen.getByTestId("organization-profile-status")).toBeDisabled();
     expect(
       screen.queryByTestId("organization-member-remove-OM_MEMBER"),
     ).not.toBeInTheDocument();
@@ -434,6 +494,8 @@ describe("OrganizationPage", () => {
         defaultOrganizationId: undefined as unknown as string,
       },
       currentOrganization: null,
+      currentSpace: undefined,
+      refreshSession: sessionMock.refreshSession,
       status: "authenticated" as const,
     };
 

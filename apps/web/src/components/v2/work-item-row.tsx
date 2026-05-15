@@ -19,16 +19,23 @@ const priorityDot: Record<WorkItemViewModel["priority"], string> = {
 export type WorkItemRowProps = {
   item: WorkItemViewModel;
   onSelect: (item: WorkItemViewModel) => void;
+  selected?: boolean;
 };
 
-export function WorkItemRow({ item, onSelect }: WorkItemRowProps) {
+export function WorkItemRow({ item, onSelect, selected = false }: WorkItemRowProps) {
   return (
     <button
       type="button"
-      data-testid={`work-item-row-${item.id}`}
-      data-work-item-id={item.id}
+      data-testid="work-item-row"
+      data-id={item.id}
+      data-selected={selected ? "true" : "false"}
       onClick={() => onSelect(item)}
-      className="group flex w-full items-center gap-3 px-4 py-2 text-left transition-colors hover:bg-muted/40 cursor-pointer"
+      className={cn(
+        "group flex w-full items-center gap-3 border-l-2 px-4 py-2 text-left transition-colors cursor-pointer",
+        selected
+          ? "border-primary bg-primary/10 text-foreground"
+          : "border-transparent hover:bg-muted/40",
+      )}
     >
       <span
         className={cn(

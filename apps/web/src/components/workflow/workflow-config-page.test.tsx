@@ -56,7 +56,12 @@ const sessionMock = vi.hoisted(() => ({
       defaultOrganizationId: "ORG_01",
       defaultSpaceId: "SPC_01",
     },
-    currentSpace: { id: "SPC_01", organizationId: "ORG_01", name: "Space A" },
+    currentSpace: {
+      id: "SPC_01",
+      organizationId: "ORG_01",
+      name: "Space A",
+      role: "SPACE_ADMIN",
+    },
     status: "authenticated" as const,
   },
 }));
@@ -289,7 +294,12 @@ beforeEach(() => {
       defaultOrganizationId: "ORG_01",
       defaultSpaceId: "SPC_01",
     },
-    currentSpace: { id: "SPC_01", organizationId: "ORG_01", name: "Space A" },
+    currentSpace: {
+      id: "SPC_01",
+      organizationId: "ORG_01",
+      name: "Space A",
+      role: "SPACE_ADMIN",
+    },
     status: "authenticated" as const,
   };
 });
@@ -353,6 +363,29 @@ describe("WorkflowConfigPage", () => {
     expect(
       screen.queryByTestId("workflow-binding-row-01ARZ3NDEKTSV4RRFFQ69G5BD2"),
     ).not.toBeInTheDocument();
+    expect(
+      screen.getByRole("button", {
+        name: /workflow\.config\.bindings\.create/,
+      }),
+    ).toBeDisabled();
+  });
+
+  it("enables binding creation only for a published selected version", async () => {
+    getWorkflowMock.mockResolvedValueOnce(makeWorkflow());
+    setupVersions([makePublishedVersion()]);
+    setupBindings([
+      makeBinding({
+        workflowVersionId: publishedVersionId,
+      }),
+    ]);
+    getWorkflowVersionMock.mockResolvedValueOnce(makePublishedVersion());
+
+    render(<WorkflowConfigPage workflowId={workflowId} />);
+
+    const createBinding = await screen.findByRole("button", {
+      name: /workflow\.config\.bindings\.create/,
+    });
+    expect(createBinding).not.toBeDisabled();
   });
 
   it("re-fetches the version when the dropdown changes", async () => {
@@ -799,9 +832,11 @@ describe("WorkflowConfigPage", () => {
 
   it("creates a workflow binding for the current version", async () => {
     getWorkflowMock.mockResolvedValue(makeWorkflow());
-    setupVersions([makeDraftVersion()]);
-    getWorkflowVersionMock.mockResolvedValue(makeDraftVersion());
-    createWorkflowBindingMock.mockResolvedValueOnce(makeBinding());
+    setupVersions([makePublishedVersion()]);
+    getWorkflowVersionMock.mockResolvedValue(makePublishedVersion());
+    createWorkflowBindingMock.mockResolvedValueOnce(
+      makeBinding({ workflowVersionId: publishedVersionId }),
+    );
 
     render(<WorkflowConfigPage workflowId={workflowId} />);
 
@@ -834,7 +869,7 @@ describe("WorkflowConfigPage", () => {
           isDefault: true,
           priority: "HIGH",
           workflowId,
-          workflowVersionId: draftVersionId,
+          workflowVersionId: publishedVersionId,
           workItemType: "BUG",
         },
       ),
@@ -843,9 +878,9 @@ describe("WorkflowConfigPage", () => {
 
   it("updates an existing workflow binding to the current version", async () => {
     getWorkflowMock.mockResolvedValue(makeWorkflow());
-    setupVersions([makeDraftVersion()]);
+    setupVersions([makePublishedVersion()]);
     setupBindings([makeBinding({ workflowVersionId: publishedVersionId })]);
-    getWorkflowVersionMock.mockResolvedValue(makeDraftVersion());
+    getWorkflowVersionMock.mockResolvedValue(makePublishedVersion());
     updateWorkflowBindingMock.mockResolvedValueOnce(
       makeBinding({ priority: undefined }),
     );
@@ -875,7 +910,7 @@ describe("WorkflowConfigPage", () => {
         {
           isDefault: true,
           workflowId,
-          workflowVersionId: draftVersionId,
+          workflowVersionId: publishedVersionId,
           workItemType: "BUG",
         },
       ),

@@ -238,7 +238,7 @@ test.describe("M3 自动化主链路与回归用例", () => {
     });
 
     const commentWorkflow = await createCommentRequiredWorkflow(
-      pm,
+      owner,
       space.id,
       runId,
     );
@@ -308,7 +308,15 @@ test.describe("M3 自动化主链路与回归用例", () => {
       runId,
       versionId: version.id,
     });
-    const bugEditResponse = await patch(tester, `/bugs/${bug.id}`, {
+    await expectRejected(
+      await patch(tester, `/bugs/${bug.id}`, {
+        actualResult: "TESTER 不能直接编辑 Bug 字段",
+        severity: "CRITICAL",
+      }),
+      "TESTER 直接 PATCH Bug",
+      [403],
+    );
+    const bugEditResponse = await patch(pm, `/bugs/${bug.id}`, {
       actualResult: "编辑后确认实际结果仍不符合预期",
       severity: "CRITICAL",
     });
@@ -338,8 +346,7 @@ test.describe("M3 自动化主链路与回归用例", () => {
     currentBug = await executeBugAction(tester, currentBug, "REGRESSION_FAIL", {
       failedReason: "回归仍失败",
     });
-    expect(currentBug.statusCategory).toBe("WAITING");
-    currentBug = await executeBugAction(developer, currentBug, "START_FIX");
+    expect(currentBug.statusCategory).toBe("IN_PROGRESS");
     currentBug = await executeBugAction(
       developer,
       currentBug,

@@ -499,10 +499,33 @@ describe("TasksPage", () => {
       ) ?? "[]",
     ) as Array<{ href: string; title: string; type: string }>;
     expect(stored[0]).toMatchObject({
-      href: "/work-items",
+      href: "/work-items?workItemId=01ARZ3NDEKTSV4RRFFQ69G5FRC",
       title: "Remember me",
       type: "TASK",
     });
+  });
+
+  it("marks the keyboard-selected task row as aria-selected", async () => {
+    listWorkItemsMock.mockResolvedValueOnce({
+      items: [
+        makeTask({ id: "01ARZ3NDEKTSV4RRFFQ69G5F01", title: "First task" }),
+        makeTask({ id: "01ARZ3NDEKTSV4RRFFQ69G5F02", title: "Second task" }),
+      ],
+      total: 2,
+    });
+
+    render(<TasksPage />);
+
+    await screen.findByText("First task");
+    fireEvent.keyDown(window, { key: "j" });
+
+    const rows = screen.getAllByTestId("tasks-row");
+    expect(rows[0]).toHaveAttribute("aria-selected", "true");
+    expect(rows[0]).toHaveAttribute(
+      "data-id",
+      "01ARZ3NDEKTSV4RRFFQ69G5F01",
+    );
+    expect(rows[1]).toHaveAttribute("aria-selected", "false");
   });
 
   it("refetches tasks when the detail sheet reports a change", async () => {

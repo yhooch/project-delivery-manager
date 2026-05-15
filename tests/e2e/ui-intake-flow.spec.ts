@@ -76,7 +76,9 @@ test.describe("UI 需求池页面主链路", () => {
     await page.keyboard.press("Escape");
     await expect(sheet).toBeHidden({ timeout: 10_000 });
 
-    await page.getByTestId("intake-filter-ACCEPTED").click();
+    await page
+      .locator('[data-testid="intake-filter-option"][data-filter-key="ACCEPTED"]')
+      .click();
     await expect(page.getByTestId("intake-list").getByText(title)).toBeVisible({
       timeout: 10_000,
     });

@@ -8,12 +8,12 @@ import type {
 } from "@project-delivery/shared";
 import {
   Archive,
-  Clock,
   FileText,
   Filter,
   GitBranch,
   Link2,
   Plus,
+  User2,
 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useSearchParams } from "next/navigation";
@@ -144,6 +144,14 @@ export function RequirementsPage() {
     }
     return items;
   }, [filter, items]);
+  const versionNameById = useMemo(
+    () => new Map(versions.map((version) => [version.id, version.name])),
+    [versions],
+  );
+  const memberNameByUserId = useMemo(
+    () => new Map(members.map((member) => [member.userId, formatMember(member)])),
+    [members],
+  );
 
   const buckets: { label: string; key: FilterKey }[] = [
     { label: t("filters.active"), key: "active" },
@@ -353,7 +361,7 @@ export function RequirementsPage() {
               {req.versionId && (
                 <Badge variant="outline" className="hidden gap-1 md:inline-flex">
                   <GitBranch className="h-2.5 w-2.5" />
-                  {shortenId(req.versionId)}
+                  {formatVersionLabel(req.versionId, versionNameById)}
                 </Badge>
               )}
               {req.relatedWorkItems.taskCount + req.relatedWorkItems.bugCount >
@@ -366,13 +374,15 @@ export function RequirementsPage() {
               )}
               {req.ownerId && (
                 <span className="hidden items-center gap-1 text-[11px] text-muted-foreground md:flex">
-                  <Clock className="h-2.5 w-2.5" />
-                  {shortenId(req.ownerId)}
+                  <User2 className="h-2.5 w-2.5" />
+                  {formatOwnerLabel(req.ownerId, memberNameByUserId)}
                 </span>
               )}
               <Avatar className="h-5 w-5 shrink-0">
                 <AvatarFallback className="text-[9px]">
-                  {req.ownerId ? initialOf(req.ownerId) : "·"}
+                  {req.ownerId
+                    ? initialOf(formatOwnerLabel(req.ownerId, memberNameByUserId))
+                    : "·"}
                 </AvatarFallback>
               </Avatar>
             </Link>
@@ -507,6 +517,20 @@ function formatMember(member: SpaceMemberWithUser): string {
   return `${member.user.name} (${member.user.username})`;
 }
 
-function initialOf(id: string): string {
-  return id.charAt(0).toUpperCase();
+function formatVersionLabel(
+  versionId: string,
+  versionNameById: Map<string, string>,
+): string {
+  return versionNameById.get(versionId) ?? versionId;
+}
+
+function formatOwnerLabel(
+  ownerId: string,
+  memberNameByUserId: Map<string, string>,
+): string {
+  return memberNameByUserId.get(ownerId) ?? ownerId;
+}
+
+function initialOf(value: string): string {
+  return value.trim().charAt(0).toUpperCase();
 }

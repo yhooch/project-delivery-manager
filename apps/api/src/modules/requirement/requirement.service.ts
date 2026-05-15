@@ -177,6 +177,25 @@ export class RequirementService {
     return saved ? withPermissions(saved, access.role) : throwRequirementNotFound();
   }
 
+  async deleteDraft(
+    actorUserId: string,
+    requirementId: string,
+  ): Promise<void> {
+    const existing = await this.requireExistingRequirement(requirementId);
+
+    await this.requireSpaceAccess(actorUserId, existing.spaceId);
+    this.assertCanDeleteDraft(actorUserId, existing);
+
+    const deleted = await this.requirements.deleteDraft({
+      deletedById: actorUserId,
+      requirementId,
+    });
+
+    if (!deleted) {
+      throwRequirementNotFound();
+    }
+  }
+
   private async requireExistingRequirement(requirementId: string) {
     const requirement = await this.requirements.findById(requirementId);
 
@@ -307,6 +326,36 @@ export class RequirementService {
         HttpStatus.BAD_REQUEST,
       );
     }
+
+    if (!isValidTiptapContentJson(input.contentJson)) {
+      throw new ApiException(
+        "VALIDATION_ERROR",
+        "contentJson must be a valid Tiptap document without base64 images",
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+  }
+
+  private assertCanDeleteDraft(actorUserId: string, requirement: Requirement) {
+    if (requirement.status !== "DRAFT") {
+      throw new ApiException(
+        "DRAFT_REQUIREMENT_REQUIRED",
+        "Only draft requirements can be deleted",
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+
+    if (requirement.authorId !== actorUserId) {
+      throwRequirementNotFound();
+    }
+
+    if (!isEmptyDraftRequirement(requirement)) {
+      throw new ApiException(
+        "VALIDATION_ERROR",
+        "Only empty draft requirements can be deleted",
+        HttpStatus.BAD_REQUEST,
+      );
+    }
   }
 }
 
@@ -370,4 +419,168 @@ function throwRequirementNotFound(): never {
     "Requirement not found",
     HttpStatus.NOT_FOUND,
   );
+}
+
+function isEmptyDraftRequirement(requirement: Requirement): boolean {
+  return (
+    requirement.title.trim().length === 0 &&
+    !hasText(requirement.summary) &&
+    !hasText(requirement.contentText) &&
+    !hasText(requirement.contentMarkdownCache) &&
+    !hasMeaningfulTiptapContent(requirement.contentJson) &&
+    (requirement.attachments?.length ?? 0) === 0
+  );
+}
+
+function hasMeaningfulTiptapContent(value: unknown): boolean {
+  if (Array.isArray(value)) {
+    return value.some((item) => hasMeaningfulTiptapContent(item));
+  }
+
+  if (!isPlainRecord(value)) {
+    return false;
+  }
+
+  if (typeof value.text === "string" && value.text.trim().length > 0) {
+    return true;
+  }
+
+  if (
+    typeof value.type === "string" &&
+    !["doc", "paragraph", "text"].includes(value.type)
+  ) {
+    return true;
+  }
+
+  return hasMeaningfulTiptapContent(value.content);
+}
+
+function hasText(value: string | undefined): boolean {
+  return typeof value === "string" && value.trim().length > 0;
+}
+
+function isPlainRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function isValidTiptapContentJson(value: unknown): boolean {
+  return (
+    isPlainRecord(value) &&
+    !containsBase64ImageData(value) &&
+    isValidTiptapNode(value, true)
+  );
+}
+
+function isValidTiptapNode(value: unknown, isRoot = false): boolean {
+  if (!isPlainRecord(value)) {
+    return false;
+  }
+
+  if (
+    !Object.keys(value).every((key) =>
+      ["attrs", "content", "marks", "text", "type"].includes(key),
+    )
+  ) {
+    return false;
+  }
+
+  if (typeof value.type !== "string" || value.type.trim().length === 0) {
+    return false;
+  }
+
+  if (isRoot && value.type !== "doc") {
+    return false;
+  }
+
+  if ("text" in value && typeof value.text !== "string") {
+    return false;
+  }
+
+  if (value.type === "text" && typeof value.text !== "string") {
+    return false;
+  }
+
+  if ("attrs" in value && !isJsonCompatibleObject(value.attrs)) {
+    return false;
+  }
+
+  if (
+    "content" in value &&
+    (!Array.isArray(value.content) ||
+      !value.content.every((item) => isValidTiptapNode(item)))
+  ) {
+    return false;
+  }
+
+  if (
+    "marks" in value &&
+    (!Array.isArray(value.marks) ||
+      !value.marks.every((item) => isValidTiptapMark(item)))
+  ) {
+    return false;
+  }
+
+  return true;
+}
+
+function isValidTiptapMark(value: unknown): boolean {
+  if (!isPlainRecord(value)) {
+    return false;
+  }
+
+  if (!Object.keys(value).every((key) => ["attrs", "type"].includes(key))) {
+    return false;
+  }
+
+  return (
+    typeof value.type === "string" &&
+    value.type.trim().length > 0 &&
+    (!("attrs" in value) || isJsonCompatibleObject(value.attrs))
+  );
+}
+
+function containsBase64ImageData(value: unknown): boolean {
+  if (typeof value === "string") {
+    return /^data:image\/[a-z0-9.+-]+(?:;[a-z0-9=.+-]+)*;base64(?:,|$)/iu.test(
+      value,
+    );
+  }
+
+  if (Array.isArray(value)) {
+    return value.some((item) => containsBase64ImageData(item));
+  }
+
+  if (!isPlainRecord(value)) {
+    return false;
+  }
+
+  return Object.values(value).some((item) => containsBase64ImageData(item));
+}
+
+function isJsonCompatibleObject(value: unknown): boolean {
+  return isPlainRecord(value) && isJsonCompatible(value);
+}
+
+function isJsonCompatible(value: unknown): boolean {
+  if (value === null) {
+    return true;
+  }
+
+  if (typeof value === "string" || typeof value === "boolean") {
+    return true;
+  }
+
+  if (typeof value === "number") {
+    return Number.isFinite(value);
+  }
+
+  if (Array.isArray(value)) {
+    return value.every((item) => isJsonCompatible(item));
+  }
+
+  if (isPlainRecord(value)) {
+    return Object.values(value).every((item) => isJsonCompatible(item));
+  }
+
+  return false;
 }

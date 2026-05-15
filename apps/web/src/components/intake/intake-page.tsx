@@ -4,7 +4,9 @@ import type {
   IntakeItem,
   IntakeStatus,
   Priority,
+  SpaceMemberWithUser,
   StatusCategory,
+  Version,
 } from "@project-delivery/shared";
 import {
   ArrowRight,
@@ -32,6 +34,7 @@ import {
   rejectIntakeItem,
 } from "../../lib/intake-service";
 import { cn } from "../../lib/utils";
+import { useSpaceMembers, useVersions } from "../../lib/v2/lookups";
 import { listWorkItems } from "../../lib/work-item-service";
 import { useSession } from "../providers/session-provider";
 import { recordRecentOpen } from "../shell/recent-opens";
@@ -102,6 +105,8 @@ export function IntakePage() {
     () => ({ organizationId, spaceId }),
     [organizationId, spaceId],
   );
+  const { getMember } = useSpaceMembers(spaceId, organizationId);
+  const { getVersion } = useVersions(spaceId, organizationId);
 
   const [items, setItems] = useState<IntakeItem[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -132,7 +137,13 @@ export function IntakePage() {
     setErrorKey(null);
 
     try {
-      const page = await listIntakeItems({ spaceId, page: 1, pageSize: 100 });
+      const page = await listIntakeItems({
+        organizationId,
+        page: 1,
+        pageSize: 100,
+        spaceId,
+        status: filter === "all" ? undefined : filter,
+      });
       setItems(page.items);
     } catch (error) {
       setErrorKey(getApiErrorMessageKey(error));
@@ -140,7 +151,7 @@ export function IntakePage() {
       setIsLoading(false);
       setHasLoadedItems(true);
     }
-  }, [spaceId]);
+  }, [filter, organizationId, spaceId]);
 
   useEffect(() => {
     if (sessionStatus !== "authenticated" || !spaceId) {
@@ -149,12 +160,7 @@ export function IntakePage() {
     void loadItems();
   }, [loadItems, sessionStatus, spaceId]);
 
-  const filtered = useMemo(() => {
-    if (filter === "all") {
-      return items;
-    }
-    return items.filter((item) => item.status === filter);
-  }, [filter, items]);
+  const filtered = items;
 
   const buckets: { label: string; key: FilterKey; count: number }[] = useMemo(
     () => [
@@ -196,7 +202,7 @@ export function IntakePage() {
           type: "INTAKE",
           code: formatItemCode(item.id),
           title: item.title,
-          href: "/intake-items",
+          href: `/intake-items?id=${encodeURIComponent(item.id)}`,
         },
         recentScope,
       );
@@ -265,6 +271,7 @@ export function IntakePage() {
     onSelect: setActive,
     onOpen: openItem,
     onEdit: openItem,
+    canSubmit: (item) => canSubmitIntakeItem(item, canWriteIntake),
     onSubmit: (item) => {
       if (!canWriteIntake) {
         return;
@@ -433,13 +440,29 @@ export function IntakePage() {
     );
   } else {
     body = (
-      <ul data-testid="intake-list" className="divide-y divide-border">
+      <ul
+        data-testid="intake-list"
+        role="listbox"
+        className="divide-y divide-border"
+      >
         {filtered.map((item) => (
-          <li key={item.id} data-testid={`intake-row-${item.id}`}>
+          <li
+            key={item.id}
+            data-testid="intake-row"
+            data-id={item.id}
+            role="option"
+            aria-selected={active?.id === item.id}
+          >
             <button
               type="button"
               onClick={() => openItem(item)}
-              className="flex w-full items-center gap-3 px-6 py-2.5 text-left transition-colors hover:bg-muted/40 cursor-pointer"
+              data-selected={active?.id === item.id}
+              className={cn(
+                "flex w-full items-center gap-3 border-l-2 px-6 py-2.5 text-left transition-colors cursor-pointer",
+                active?.id === item.id
+                  ? "border-primary bg-primary/10"
+                  : "border-transparent hover:bg-muted/40",
+              )}
             >
               <span
                 className={cn(
@@ -465,12 +488,17 @@ export function IntakePage() {
               {item.versionId && (
                 <span className="hidden gap-1 text-[11px] text-muted-foreground md:inline-flex">
                   <GitBranch className="h-2.5 w-2.5" />
-                  {shortenId(item.versionId)}
+                  {displayVersionName(item.versionId, getVersion)}
+                </span>
+              )}
+              {item.assigneeId && (
+                <span className="hidden max-w-28 truncate text-[11px] text-muted-foreground lg:inline-block">
+                  {displayUserName(item.assigneeId, getMember)}
                 </span>
               )}
               <Avatar className="h-5 w-5 shrink-0">
                 <AvatarFallback className="text-[9px]">
-                  {initialOf(item.reporterId)}
+                  {initialOf(displayUserName(item.reporterId, getMember))}
                 </AvatarFallback>
               </Avatar>
             </button>
@@ -495,7 +523,8 @@ export function IntakePage() {
             <button
               key={b.key}
               type="button"
-              data-testid={`intake-filter-${b.key}`}
+              data-testid="intake-filter-option"
+              data-filter-key={b.key}
               onClick={() => setFilter(b.key)}
               className={cn(
                 "flex h-7 items-center gap-1.5 rounded-md px-2.5 text-[12px] transition-colors cursor-pointer",
@@ -546,7 +575,7 @@ export function IntakePage() {
                   {active.versionId && (
                     <Badge variant="outline" className="gap-1">
                       <GitBranch className="h-2.5 w-2.5" />
-                      {shortenId(active.versionId)}
+                      {displayVersionName(active.versionId, getVersion)}
                     </Badge>
                   )}
                 </div>
@@ -653,7 +682,16 @@ export function IntakePage() {
                   <FieldRow
                     icon={Users}
                     label={t("detail.reporter")}
-                    value={shortenId(active.reporterId)}
+                    value={displayUserName(active.reporterId, getMember)}
+                  />
+                  <FieldRow
+                    icon={Users}
+                    label={t("detail.assignee")}
+                    value={
+                      active.assigneeId
+                        ? displayUserName(active.assigneeId, getMember)
+                        : t("detail.unassigned")
+                    }
                   />
                   <FieldRow
                     icon={Clock}
@@ -665,7 +703,7 @@ export function IntakePage() {
                     label={t("detail.version")}
                     value={
                       active.versionId
-                        ? shortenId(active.versionId)
+                        ? displayVersionName(active.versionId, getVersion)
                         : t("detail.noVersion")
                     }
                   />
@@ -754,12 +792,31 @@ function shortenId(id: string): string {
   return id.slice(-6);
 }
 
+function displayUserName(
+  userId: string,
+  getMember: (userId: string) => SpaceMemberWithUser | undefined,
+): string {
+  const member = getMember(userId);
+  return member?.user.name ?? member?.user.username ?? shortenId(userId);
+}
+
+function displayVersionName(
+  versionId: string,
+  getVersion: (versionId: string) => Version | undefined,
+): string {
+  return getVersion(versionId)?.name ?? shortenId(versionId);
+}
+
 function formatItemCode(id: string): string {
   return `INK-${shortenId(id)}`.toUpperCase();
 }
 
 function initialOf(id: string): string {
-  return id.charAt(0).toUpperCase();
+  return id.trim().charAt(0).toUpperCase() || "?";
+}
+
+function canSubmitIntakeItem(item: IntakeItem, canWriteIntake: boolean): boolean {
+  return canWriteIntake && (item.status === "PENDING" || item.status === "ACCEPTED");
 }
 
 function normalizeSearchParam(value: string | null): string | undefined {

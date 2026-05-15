@@ -60,7 +60,7 @@ const REQUEST_META = {
 
 describe("WorkflowConfigService", () => {
   it("copies a published workflow version into a draft with states, actions, and form fields", async () => {
-    const { repository, service } = createSubject("PM", {
+    const { repository, service } = createSubject("SPACE_ADMIN", {
       versionStatus: "PUBLISHED",
     });
 
@@ -95,6 +95,10 @@ describe("WorkflowConfigService", () => {
 
   it("publishes a valid draft and writes audit log", async () => {
     const { repository, service } = createSubject("SPACE_ADMIN");
+    repository.definitions.set(WORKFLOW_ID, {
+      ...repository.definitions.get(WORKFLOW_ID)!,
+      status: "DRAFT",
+    });
 
     const published = await service.publishVersion(
       ACTOR_ID,
@@ -104,6 +108,7 @@ describe("WorkflowConfigService", () => {
 
     expect(published.status).toBe("PUBLISHED");
     expect(published.publishedAt).toBeDefined();
+    expect(repository.definitions.get(WORKFLOW_ID)?.status).toBe("ACTIVE");
     expect(repository.auditLogs.at(-1)).toMatchObject({
       actionType: "WORKFLOW_VERSION_PUBLISHED",
       targetId: WORKFLOW_VERSION_ID,
@@ -111,7 +116,7 @@ describe("WorkflowConfigService", () => {
   });
 
   it("returns detailed publish validation failures", async () => {
-    const { repository, service } = createSubject("PM", {
+    const { repository, service } = createSubject("SPACE_ADMIN", {
       withAction: false,
       withEndState: false,
     });
@@ -137,7 +142,7 @@ describe("WorkflowConfigService", () => {
   });
 
   it("rejects direct state/action/form changes on published versions", async () => {
-    const { service } = createSubject("PM", {
+    const { service } = createSubject("SPACE_ADMIN", {
       versionStatus: "PUBLISHED",
     });
 
@@ -158,7 +163,7 @@ describe("WorkflowConfigService", () => {
   });
 
   it("rejects VIEWER in workflow action allowedSpaceRoles at service boundary", async () => {
-    const { service } = createSubject("PM");
+    const { service } = createSubject("SPACE_ADMIN");
     const input = {
       code: "VIEWER_ACTION",
       name: "Viewer action",
@@ -212,7 +217,7 @@ describe("WorkflowConfigService", () => {
     const logger = vi
       .spyOn(Logger.prototype, "error")
       .mockImplementation(() => undefined);
-    const { service } = createSubject("PM", {
+    const { service } = createSubject("SPACE_ADMIN", {
       failAudit: true,
     });
 
@@ -238,7 +243,7 @@ describe("WorkflowConfigService", () => {
   });
 
   it("requires a replacement default binding before disabling a default workflow version", async () => {
-    const { repository, service } = createSubject("PM", {
+    const { repository, service } = createSubject("SPACE_ADMIN", {
       defaultBinding: true,
       versionStatus: "PUBLISHED",
     });
@@ -273,6 +278,23 @@ describe("WorkflowConfigService", () => {
     expect(disabled.status).toBe("DISABLED");
     expect(repository.auditLogs.at(-1)).toMatchObject({
       actionType: "WORKFLOW_VERSION_DISABLED",
+    });
+  });
+
+  it("rejects PM workflow configuration writes", async () => {
+    const { repository, service } = createSubject("PM");
+
+    await expect(
+      service.createVersion(ACTOR_ID, WORKFLOW_ID, {}, REQUEST_META),
+    ).rejects.toMatchObject({
+      code: "SPACE_ACCESS_DENIED",
+    });
+    expect(repository.auditLogs.at(-1)).toMatchObject({
+      actionType: "ACCESS_DENIED",
+      metadata: expect.objectContaining({
+        deniedOperation: "createWorkflowVersion",
+        role: "PM",
+      }),
     });
   });
 });
@@ -621,12 +643,19 @@ class InMemoryWorkflowConfigRepository implements WorkflowConfigRepository {
     if (!version) {
       return undefined;
     }
+    const definition = this.definitions.get(version.workflowDefinitionId);
 
     this.versions.set(version.id, {
       ...version,
       publishedAt: input.publishedAt,
       status: "PUBLISHED",
     });
+    if (definition) {
+      this.definitions.set(definition.id, {
+        ...definition,
+        status: "ACTIVE",
+      });
+    }
 
     return this.versionRecord(version.id);
   }

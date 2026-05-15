@@ -49,6 +49,9 @@ describe("shared contracts", () => {
         "LAST_ORGANIZATION_OWNER_REQUIRED",
         "TARGET_REQUIRED_FOR_ATTACHMENT",
         "ATTACHMENT_TARGET_NOT_FOUND",
+        "ATTACHMENT_LIMIT_EXCEEDED",
+        "FILE_TOO_LARGE",
+        "UNSUPPORTED_MIME_TYPE",
         "DRAFT_REQUIREMENT_REQUIRED",
         "INTAKE_ITEM_NOT_FOUND",
         "INTAKE_ITEM_NOT_ACCEPTED",
@@ -783,7 +786,7 @@ describe("shared contracts", () => {
     ).toEqual({ status: "ARCHIVED" });
   });
 
-  it("restricts M1 attachment presign requests to the shared whitelist", () => {
+  it("keeps M1 attachment requests parseable so the API can return dedicated file error codes", () => {
     expect(() =>
       PresignAttachmentRequestSchema.parse({
         targetType: "REQUIREMENT",
@@ -802,7 +805,17 @@ describe("shared contracts", () => {
         mimeType: "application/octet-stream",
         size: 1024,
       }),
-    ).toThrow();
+    ).not.toThrow();
+
+    expect(() =>
+      PresignAttachmentRequestSchema.parse({
+        targetType: "REQUIREMENT",
+        targetId: "01FRZ3NDEKTSV4RRFFQ69G5FAE",
+        fileName: "huge.pdf",
+        mimeType: "application/pdf",
+        size: 20 * 1024 * 1024 + 1,
+      }),
+    ).not.toThrow();
   });
 
   it("generates OpenAPI operations from the endpoint contract list", () => {

@@ -7,6 +7,7 @@ import type { RequestMetadata } from "./auth-session.types";
 export function getRequestMetadata(request: RequestWithContext): RequestMetadata {
   return {
     ip: getRequestIp(request),
+    requestId: request.requestId,
     userAgent: firstHeaderValue(request.headers?.["user-agent"]),
   };
 }

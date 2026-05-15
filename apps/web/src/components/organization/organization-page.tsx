@@ -1,6 +1,9 @@
 "use client";
 
-import type { OrganizationMemberWithUser } from "@project-delivery/shared";
+import type {
+  OrganizationMemberWithUser,
+  RecordStatus,
+} from "@project-delivery/shared";
 import { Crown, Plus, ShieldCheck, Trash2 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -10,6 +13,7 @@ import {
   canManageOrganization,
   listOrganizationMembers,
   removeOrganizationMember,
+  updateOrganization,
 } from "../../lib/space-service";
 import { cn } from "../../lib/utils";
 import { useSession } from "../providers/session-provider";
@@ -38,16 +42,28 @@ const roleVariant: Record<string, "primary" | "info" | "default"> = {
   ADMIN: "info",
   MEMBER: "default",
 };
+const organizationStatusOptions: readonly RecordStatus[] = ["ACTIVE", "DISABLED"];
 
 export function OrganizationPage() {
   const t = useTranslations("organization");
   const tShell = useTranslations("shell.nav");
   const tRoot = useTranslations();
-  const { currentOrganization, session, status } = useSession();
+  const {
+    currentOrganization,
+    currentSpace,
+    refreshSession,
+    session,
+    status,
+  } = useSession();
   const organizationId =
     session?.defaultOrganizationId ?? currentOrganization?.id;
   const canManageMembers = canManageOrganization(currentOrganization?.role);
 
+  const [orgName, setOrgName] = useState("");
+  const [orgCode, setOrgCode] = useState("");
+  const [orgStatus, setOrgStatus] = useState<RecordStatus>("ACTIVE");
+  const [isProfileSubmitting, setIsProfileSubmitting] = useState(false);
+  const [profileErrorKey, setProfileErrorKey] = useState<string | null>(null);
   const [members, setMembers] = useState<OrganizationMemberWithUser[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [errorKey, setErrorKey] = useState<string | null>(null);
@@ -68,6 +84,33 @@ export function OrganizationPage() {
       ).length,
     [members],
   );
+
+  const hasProfileChanges = Boolean(
+    currentOrganization &&
+      (orgName.trim() !== currentOrganization.name ||
+        orgCode.trim() !== currentOrganization.code ||
+        orgStatus !== currentOrganization.status),
+  );
+
+  useEffect(() => {
+    if (!currentOrganization) {
+      setOrgName("");
+      setOrgCode("");
+      setOrgStatus("ACTIVE");
+      setProfileErrorKey(null);
+      return;
+    }
+
+    setOrgName(currentOrganization.name);
+    setOrgCode(currentOrganization.code);
+    setOrgStatus(currentOrganization.status);
+    setProfileErrorKey(null);
+  }, [
+    currentOrganization?.code,
+    currentOrganization?.id,
+    currentOrganization?.name,
+    currentOrganization?.status,
+  ]);
 
   const load = useCallback(async () => {
     if (!organizationId) {
@@ -113,6 +156,46 @@ export function OrganizationPage() {
     } finally {
       setPendingMemberId(null);
     }
+  }
+
+  async function onSaveOrganizationProfile() {
+    if (!organizationId || !currentOrganization || !canManageMembers) {
+      return;
+    }
+
+    const nextName = orgName.trim();
+    const nextCode = orgCode.trim();
+
+    if (nextName.length === 0 || nextCode.length < 2 || !hasProfileChanges) {
+      return;
+    }
+
+    setIsProfileSubmitting(true);
+    setProfileErrorKey(null);
+
+    try {
+      const updated = await updateOrganization(organizationId, {
+        ...(nextName !== currentOrganization.name ? { name: nextName } : {}),
+        ...(nextCode !== currentOrganization.code ? { code: nextCode } : {}),
+        ...(orgStatus !== currentOrganization.status ? { status: orgStatus } : {}),
+      });
+      await refreshSession(updated.id, currentSpace?.id);
+    } catch (error) {
+      setProfileErrorKey(getApiErrorMessageKey(error));
+    } finally {
+      setIsProfileSubmitting(false);
+    }
+  }
+
+  function onResetOrganizationProfile() {
+    if (!currentOrganization) {
+      return;
+    }
+
+    setOrgName(currentOrganization.name);
+    setOrgCode(currentOrganization.code);
+    setOrgStatus(currentOrganization.status);
+    setProfileErrorKey(null);
   }
 
   const isEditRoleMemberLastActiveOwner =
@@ -250,29 +333,96 @@ export function OrganizationPage() {
         <div className="mx-auto flex max-w-4xl flex-col gap-6">
           {/* 组织信息 */}
           <section className="rounded-lg border border-border bg-card">
-            <header className="border-b border-border px-5 py-3">
+            <header className="flex items-center justify-between border-b border-border px-5 py-3">
               <h2 className="text-sm font-semibold">{t("info.title")}</h2>
+              {canManageMembers ? (
+                <div className="flex items-center gap-2">
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="text-xs"
+                    disabled={isProfileSubmitting || !hasProfileChanges}
+                    onClick={onResetOrganizationProfile}
+                  >
+                    {t("info.actions.cancel")}
+                  </Button>
+                  <Button
+                    type="button"
+                    size="sm"
+                    className="text-xs"
+                    data-testid="organization-profile-save"
+                    disabled={
+                      isProfileSubmitting ||
+                      !hasProfileChanges ||
+                      orgName.trim().length === 0 ||
+                      orgCode.trim().length < 2
+                    }
+                    onClick={() => void onSaveOrganizationProfile()}
+                  >
+                    {isProfileSubmitting
+                      ? t("info.actions.submitting")
+                      : t("info.actions.save")}
+                  </Button>
+                </div>
+              ) : null}
             </header>
-            <div className="grid gap-4 px-5 py-4 md:grid-cols-2">
+            {profileErrorKey ? (
+              <div
+                className="border-b border-destructive/40 bg-destructive/10 px-5 py-2 text-xs text-destructive"
+                role="alert"
+              >
+                {tRoot(profileErrorKey)}
+              </div>
+            ) : null}
+            <div className="grid gap-4 px-5 py-4 md:grid-cols-3">
               <div className="flex flex-col gap-1.5">
                 <Label htmlFor="org-name">{t("info.fields.name")}</Label>
                 <Input
                   id="org-name"
-                  value={currentOrganization.name}
-                  readOnly
+                  data-testid="organization-profile-name"
+                  value={orgName}
+                  maxLength={120}
+                  readOnly={!canManageMembers}
+                  disabled={isProfileSubmitting}
+                  onChange={(event) => setOrgName(event.target.value)}
                 />
               </div>
               <div className="flex flex-col gap-1.5">
                 <Label htmlFor="org-code">{t("info.fields.code")}</Label>
                 <Input
                   id="org-code"
-                  value={currentOrganization.code}
-                  readOnly
+                  data-testid="organization-profile-code"
+                  value={orgCode}
+                  maxLength={32}
+                  pattern="[A-Za-z0-9_-]+"
+                  readOnly={!canManageMembers}
+                  disabled={isProfileSubmitting}
+                  onChange={(event) => setOrgCode(event.target.value)}
                 />
+              </div>
+              <div className="flex flex-col gap-1.5">
+                <Label htmlFor="org-status">{t("info.fields.status")}</Label>
+                <select
+                  id="org-status"
+                  data-testid="organization-profile-status"
+                  className="flex h-8 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 focus-visible:ring-offset-background disabled:cursor-not-allowed disabled:opacity-50"
+                  value={orgStatus}
+                  disabled={!canManageMembers || isProfileSubmitting}
+                  onChange={(event) =>
+                    setOrgStatus(event.target.value as RecordStatus)
+                  }
+                >
+                  {organizationStatusOptions.map((statusKey) => (
+                    <option key={statusKey} value={statusKey}>
+                      {t(`info.status.${statusKey}`)}
+                    </option>
+                  ))}
+                </select>
               </div>
             </div>
             <div className="border-t border-border bg-muted/30 px-5 py-2.5 text-[11px] text-muted-foreground">
-              {t("info.readOnlyNote")}
+              {canManageMembers ? t("info.editableNote") : t("info.readOnlyNote")}
             </div>
           </section>
 

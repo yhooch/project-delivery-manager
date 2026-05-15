@@ -124,7 +124,9 @@ describe("CreateSpaceDialog", () => {
     fireEvent.click(screen.getByTestId("create-space-submit"));
 
     await waitFor(() => {
-      expect(screen.getByTestId("create-space-error")).toHaveTextContent("boom");
+      expect(screen.getByTestId("create-space-error")).toHaveTextContent(
+        "errors.api.UNKNOWN",
+      );
     });
     expect(onOpenChange).not.toHaveBeenCalled();
     expect(refreshSessionMock).not.toHaveBeenCalled();

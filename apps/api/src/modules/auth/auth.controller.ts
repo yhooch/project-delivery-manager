@@ -83,7 +83,11 @@ export class AuthController {
     @Res({ passthrough: true }) response: CookieResponse,
   ): Promise<LogoutResponse> {
     const session = this.currentUser.requireSession(request);
-    await this.auth.logout(session.sessionId);
+    await this.auth.logout(
+      session.sessionId,
+      session.userId,
+      getRequestMetadata(request),
+    );
     clearSessionCookie(response, this.config, this.authCookieName());
     return {};
   }

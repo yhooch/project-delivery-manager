@@ -193,6 +193,14 @@ export function CreateWorkflowDialog({
               trimmedDescription.length > 0 ? trimmedDescription : undefined,
           },
         );
+        await createWorkflowVersion(
+          {
+            organizationId: context.organizationId,
+            spaceId: context.spaceId,
+            workflowId: result.id,
+          },
+          {},
+        );
       }
 
       onSuccess(result);

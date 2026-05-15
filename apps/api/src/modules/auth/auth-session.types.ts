@@ -34,5 +34,6 @@ export type CreatedSession = {
 
 export type RequestMetadata = {
   ip?: string;
+  requestId?: string;
   userAgent?: string;
 };

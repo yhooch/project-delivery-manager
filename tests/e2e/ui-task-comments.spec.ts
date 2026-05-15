@@ -52,7 +52,9 @@ test.describe("UI 任务详情评论 Tab", () => {
       timeout: 15_000,
     });
 
-    const row = page.getByTestId(`tasks-row-${task.id}`);
+    const row = page.locator(
+      `[data-testid="tasks-row"][data-id="${task.id}"]`,
+    );
     await expect(row).toBeVisible({ timeout: 10_000 });
     await row.click();
 

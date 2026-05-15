@@ -118,7 +118,7 @@ type VersionWithDefinition = {
   definition: WorkflowDefinitionRecord;
 };
 
-const WORKFLOW_MANAGER_ROLES = new Set<SpaceRole>(["SPACE_ADMIN", "PM"]);
+const WORKFLOW_MANAGER_ROLES = new Set<SpaceRole>(["SPACE_ADMIN"]);
 const WORKFLOW_ACTION_EXECUTOR_ROLES = new Set<SpaceRole>([
   "SPACE_ADMIN",
   "PM",

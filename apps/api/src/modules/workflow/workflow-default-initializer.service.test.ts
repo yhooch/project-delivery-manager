@@ -169,6 +169,16 @@ describe("WorkflowDefaultInitializerService", () => {
 
     const bugVersion = versionByDefinitionCode(client, "BUG");
     const startFix = actionByCode(client, bugVersion.id, "START_FIX");
+    const fixingState = statesForVersion(client, bugVersion.id).find(
+      (state) => state.code === "FIXING",
+    );
+    const regressionFail = actionByCode(
+      client,
+      bugVersion.id,
+      "REGRESSION_FAIL",
+    );
+
+    expect(regressionFail.toStateId).toBe(fixingState?.id);
     expect(startFix.allowedSpaceRoles).toEqual([
       "DEVELOPER",
       "PM",

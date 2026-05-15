@@ -44,7 +44,11 @@ import { createComment, listComments } from "../../lib/comment-service";
 import { listTimeline } from "../../lib/timeline-service";
 import { cn } from "../../lib/utils";
 import { type WorkItemViewModel } from "../../lib/v2/work-item-view-model";
-import { useSpaceMembers, useVersions } from "../../lib/v2/lookups";
+import {
+  useRelationTitle,
+  useSpaceMembers,
+  useVersions,
+} from "../../lib/v2/lookups";
 import { getWorkItem } from "../../lib/work-item-service";
 
 import { useSession } from "../providers/session-provider";
@@ -923,7 +927,8 @@ function ActionFormFieldControl({
         <Label htmlFor={id}>{label}</Label>
         <Textarea
           id={id}
-          data-testid={`task-action-field-${field.key}`}
+          data-testid="task-action-field"
+          data-field-key={field.key}
           value={value}
           rows={3}
           onChange={(event) => onChange(event.target.value)}
@@ -938,7 +943,8 @@ function ActionFormFieldControl({
         <Label htmlFor={id}>{label}</Label>
         <select
           id={id}
-          data-testid={`task-action-field-${field.key}`}
+          data-testid="task-action-field"
+          data-field-key={field.key}
           value={value}
           onChange={(event) => onChange(event.target.value)}
           className="h-8 w-full rounded-md border border-input bg-background px-2 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
@@ -960,7 +966,8 @@ function ActionFormFieldControl({
         <Label htmlFor={id}>{label}</Label>
         <select
           id={id}
-          data-testid={`task-action-field-${field.key}`}
+          data-testid="task-action-field"
+          data-field-key={field.key}
           value={value}
           onChange={(event) => onChange(event.target.value)}
           className="h-8 w-full rounded-md border border-input bg-background px-2 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
@@ -981,7 +988,8 @@ function ActionFormFieldControl({
       <Label htmlFor={id}>{label}</Label>
       <Input
         id={id}
-        data-testid={`task-action-field-${field.key}`}
+        data-testid="task-action-field"
+        data-field-key={field.key}
         type={
           field.fieldType === "DATE"
             ? "date"
@@ -1163,6 +1171,24 @@ function LinksPanel({
 }) {
   const { getMember } = useSpaceMembers(spaceId, organizationId);
   const { getVersion } = useVersions(spaceId, organizationId);
+  const requirementTitle = useRelationTitle(
+    "requirement",
+    detail?.requirementId,
+    spaceId,
+    organizationId,
+  );
+  const intakeTitle = useRelationTitle(
+    "intake",
+    detail?.intakeItemId,
+    spaceId,
+    organizationId,
+  );
+  const relatedTaskTitle = useRelationTitle(
+    "workItem",
+    isBugSheetDetail(detail) ? detail.bugDetail.relatedTaskId : undefined,
+    spaceId,
+    organizationId,
+  );
 
   if (detailLoading && !detail) {
     return <LoadingState />;
@@ -1191,21 +1217,21 @@ function LinksPanel({
     links.push({
       icon: Link2,
       label: t("fields.requirement"),
-      value: truncateId(detail.requirementId),
+      value: relationTitleValue(requirementTitle, t),
     });
   }
   if (detail.intakeItemId) {
     links.push({
       icon: Link2,
       label: t("fields.intake"),
-      value: truncateId(detail.intakeItemId),
+      value: relationTitleValue(intakeTitle, t),
     });
   }
   if (isBugSheetDetail(detail) && detail.bugDetail.relatedTaskId) {
     links.push({
       icon: Link2,
       label: tApiError("bugs.form.relatedTask"),
-      value: truncateId(detail.bugDetail.relatedTaskId),
+      value: relationTitleValue(relatedTaskTitle, t),
     });
   }
   if (detail.reporterId) {
@@ -1229,6 +1255,19 @@ function LinksPanel({
       ))}
     </div>
   );
+}
+
+function relationTitleValue(
+  result: ReturnType<typeof useRelationTitle>,
+  t: ReturnType<typeof useTranslations<"taskDetail">>,
+): string {
+  if (result.title) {
+    return result.title;
+  }
+  if (result.loading) {
+    return t("links.loading");
+  }
+  return t("links.unavailable");
 }
 
 // ---------------------------------------------------------------------------
@@ -1663,9 +1702,14 @@ function AttachmentsTab({
                       variant="ghost"
                       size="sm"
                       className="h-7 px-2"
-                      data-testid={`task-attachments-preview-${attachment.id}`}
-                      aria-label={`Preview ${attachment.fileName}`}
-                      title={`Preview ${attachment.fileName}`}
+                      data-testid="task-attachments-preview-button"
+                      data-id={attachment.id}
+                      aria-label={t("attachments.previewFile", {
+                        fileName: attachment.fileName,
+                      })}
+                      title={t("attachments.previewFile", {
+                        fileName: attachment.fileName,
+                      })}
                       disabled={openingAttachmentId !== null || !spaceId}
                       onClick={() => {
                         void handleAttachmentAction(attachment, "preview");
@@ -1682,9 +1726,14 @@ function AttachmentsTab({
                       variant="ghost"
                       size="sm"
                       className="h-7 px-2"
-                      data-testid={`task-attachments-download-${attachment.id}`}
-                      aria-label={`Download ${attachment.fileName}`}
-                      title={`Download ${attachment.fileName}`}
+                      data-testid="task-attachments-download-button"
+                      data-id={attachment.id}
+                      aria-label={t("attachments.downloadFile", {
+                        fileName: attachment.fileName,
+                      })}
+                      title={t("attachments.downloadFile", {
+                        fileName: attachment.fileName,
+                      })}
                       disabled={openingAttachmentId !== null || !spaceId}
                       onClick={() => {
                         void handleAttachmentAction(attachment, "download");

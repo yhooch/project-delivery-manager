@@ -1,4 +1,8 @@
-import type { Attachment } from "@project-delivery/shared";
+import {
+  AttachmentMaxCountPerTarget,
+  AttachmentMaxSizeBytes,
+  type Attachment,
+} from "@project-delivery/shared";
 import { ulid } from "ulid";
 import { describe, expect, it, vi } from "vitest";
 
@@ -98,6 +102,70 @@ describe("AttachmentService", () => {
         size: 1024,
       }),
     ).rejects.toThrow("not visible");
+    expect(attachments.create).not.toHaveBeenCalled();
+  });
+
+  it("returns dedicated error codes for attachment size, MIME, and count limits", async () => {
+    const actorUserId = ulid();
+    const organizationId = ulid();
+    const spaceId = ulid();
+    const workItemId = ulid();
+    const attachments = {
+      countByTarget: vi.fn(async () => AttachmentMaxCountPerTarget),
+      create: vi.fn(),
+      findById: vi.fn(),
+      listByTarget: vi.fn(),
+    } as unknown as AttachmentRepository;
+    const targets = {
+      resolve: vi.fn(async () => ({
+        organizationId,
+        spaceId,
+        targetId: workItemId,
+        targetType: "WORK_ITEM" as const,
+        title: "Task",
+        role: "PM" as const,
+        canWrite: true,
+      })),
+    } as unknown as TargetResolverService;
+    const service = new AttachmentService(
+      attachments,
+      {} as RequirementRepository,
+      targets,
+    );
+
+    await expect(
+      service.presign(actorUserId, {
+        targetType: "WORK_ITEM",
+        targetId: workItemId,
+        fileName: "large.pdf",
+        mimeType: "application/pdf",
+        size: AttachmentMaxSizeBytes + 1,
+      }),
+    ).rejects.toMatchObject({
+      code: "FILE_TOO_LARGE",
+    });
+    await expect(
+      service.presign(actorUserId, {
+        targetType: "WORK_ITEM",
+        targetId: workItemId,
+        fileName: "payload.bin",
+        mimeType: "application/octet-stream",
+        size: 1024,
+      }),
+    ).rejects.toMatchObject({
+      code: "UNSUPPORTED_MIME_TYPE",
+    });
+    await expect(
+      service.presign(actorUserId, {
+        targetType: "WORK_ITEM",
+        targetId: workItemId,
+        fileName: "spec.pdf",
+        mimeType: "application/pdf",
+        size: 1024,
+      }),
+    ).rejects.toMatchObject({
+      code: "ATTACHMENT_LIMIT_EXCEEDED",
+    });
     expect(attachments.create).not.toHaveBeenCalled();
   });
 });

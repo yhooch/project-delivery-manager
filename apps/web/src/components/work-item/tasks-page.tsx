@@ -221,7 +221,7 @@ export function TasksPage() {
           type: "TASK",
           code: item.code,
           title: item.title,
-          href: "/work-items",
+          href: `/work-items?workItemId=${encodeURIComponent(item.id)}`,
         },
         recentScope,
       );
@@ -524,10 +524,24 @@ export function TasksPage() {
             description={t("states.empty.description")}
           />
         ) : (
-          <ul data-testid="tasks-list" className="divide-y divide-border">
+          <ul
+            data-testid="tasks-list"
+            role="listbox"
+            className="divide-y divide-border"
+          >
             {filtered.map((item) => (
-              <li key={item.id} data-testid={`tasks-row-${item.id}`}>
-                <WorkItemRow item={item} onSelect={open} />
+              <li
+                key={item.id}
+                data-testid="tasks-row"
+                data-id={item.id}
+                role="option"
+                aria-selected={activeItem?.id === item.id}
+              >
+                <WorkItemRow
+                  item={item}
+                  onSelect={open}
+                  selected={activeItem?.id === item.id}
+                />
               </li>
             ))}
           </ul>

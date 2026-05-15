@@ -34,6 +34,7 @@ import {
 import type { RequestWithContext } from "../../http/request-context";
 import { ZodValidationPipe } from "../../http/zod-validation.pipe";
 import { CurrentUserService } from "../auth/current-user.service";
+import { getRequestMetadata } from "../auth/request-metadata";
 import { RequireSessionGuard } from "../auth/session.guard";
 import { WriteOriginGuard } from "../auth/write-origin.guard";
 import { OrganizationService } from "./organization.service";
@@ -57,7 +58,11 @@ export class OrganizationController {
     @Req() request: RequestWithContext,
   ): Promise<Organization> {
     const session = this.currentUser.requireSession(request);
-    return this.organizations.create(session.userId, body);
+    return this.organizations.create(
+      session.userId,
+      body,
+      getRequestMetadata(request),
+    );
   }
 
   @Get()
@@ -113,6 +118,7 @@ export class OrganizationController {
       session.userId,
       params.organizationId,
       body,
+      getRequestMetadata(request),
     );
   }
 
@@ -136,6 +142,7 @@ export class OrganizationController {
       params.organizationId,
       params.memberId,
       body,
+      getRequestMetadata(request),
     );
   }
 
@@ -156,6 +163,7 @@ export class OrganizationController {
       session.userId,
       params.organizationId,
       params.memberId,
+      getRequestMetadata(request),
     );
     return {};
   }
@@ -185,6 +193,7 @@ export class OrganizationController {
       session.userId,
       params.organizationId,
       body,
+      getRequestMetadata(request),
     );
   }
 }

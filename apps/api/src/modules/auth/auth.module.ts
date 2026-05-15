@@ -1,5 +1,6 @@
 import { Module } from "@nestjs/common";
 
+import { AuditModule } from "../audit/audit.module";
 import { IdentityModule } from "../identity/identity.module";
 import { AuthController, CurrentUserController } from "./auth.controller";
 import { AuthService } from "./auth.service";
@@ -22,7 +23,7 @@ import { WriteOriginGuard } from "./write-origin.guard";
     SessionParsingMiddleware,
     WriteOriginGuard,
   ],
-  imports: [IdentityModule],
+  imports: [AuditModule, IdentityModule],
   providers: [
     AuthService,
     AuthSessionBuilder,

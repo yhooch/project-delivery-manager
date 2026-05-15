@@ -179,29 +179,45 @@ export function MyWorkbench() {
   const todoItems = useMemo(
     () =>
       (view?.sections.myTodos.items.items ?? []).map(
-        toWorkbenchItem(locale, { getMember, getVersion }, tStatusCategory),
+        toWorkbenchItem(
+          locale,
+          { getMember, getVersion },
+          tStatusCategory,
+          t("time.justNow"),
+        ),
       ),
-    [view, locale, getMember, getVersion, tStatusCategory],
+    [view, locale, getMember, getVersion, tStatusCategory, t],
   );
   const assignedTaskItems = useMemo(
     () =>
       (view?.sections.assignedTasks.items.items ?? []).map(
-        toWorkbenchItem(locale, { getMember, getVersion }, tStatusCategory),
+        toWorkbenchItem(
+          locale,
+          { getMember, getVersion },
+          tStatusCategory,
+          t("time.justNow"),
+        ),
       ),
-    [view, locale, getMember, getVersion, tStatusCategory],
+    [view, locale, getMember, getVersion, tStatusCategory, t],
   );
   const assignedBugItems = useMemo(
     () =>
       (view?.sections.assignedBugs.items.items ?? []).map(
-        toWorkbenchItem(locale, { getMember, getVersion }, tStatusCategory),
+        toWorkbenchItem(
+          locale,
+          { getMember, getVersion },
+          tStatusCategory,
+          t("time.justNow"),
+        ),
       ),
-    [view, locale, getMember, getVersion, tStatusCategory],
+    [view, locale, getMember, getVersion, tStatusCategory, t],
   );
   const actionItems = useMemo(() => {
     const toWorkItem = toWorkbenchItem(
       locale,
       { getMember, getVersion },
       tStatusCategory,
+      t("time.justNow"),
     );
 
     return (view?.sections.actionTodos.items.items ?? []).map((todo) => ({
@@ -209,27 +225,42 @@ export function MyWorkbench() {
       contextLabel: todo.availableAction.name,
       listKey: todo.id,
     }));
-  }, [view, locale, getMember, getVersion, tStatusCategory]);
+  }, [view, locale, getMember, getVersion, tStatusCategory, t]);
   const pendingConfirmItems = useMemo(
     () =>
       (view?.sections.pendingConfirm.items.items ?? []).map(
-        toWorkbenchItem(locale, { getMember, getVersion }, tStatusCategory),
+        toWorkbenchItem(
+          locale,
+          { getMember, getVersion },
+          tStatusCategory,
+          t("time.justNow"),
+        ),
       ),
-    [view, locale, getMember, getVersion, tStatusCategory],
+    [view, locale, getMember, getVersion, tStatusCategory, t],
   );
   const dueSoonItems = useMemo(
     () =>
       (view?.sections.dueSoon.items.items ?? []).map(
-        toWorkbenchItem(locale, { getMember, getVersion }, tStatusCategory),
+        toWorkbenchItem(
+          locale,
+          { getMember, getVersion },
+          tStatusCategory,
+          t("time.justNow"),
+        ),
       ),
-    [view, locale, getMember, getVersion, tStatusCategory],
+    [view, locale, getMember, getVersion, tStatusCategory, t],
   );
   const blockedItems = useMemo(
     () =>
       (view?.sections.blocked?.items.items ?? []).map(
-        toWorkbenchItem(locale, { getMember, getVersion }, tStatusCategory),
+        toWorkbenchItem(
+          locale,
+          { getMember, getVersion },
+          tStatusCategory,
+          t("time.justNow"),
+        ),
       ),
-    [view, locale, getMember, getVersion, tStatusCategory],
+    [view, locale, getMember, getVersion, tStatusCategory, t],
   );
   const recentEvents = view?.sections.recentActivities.items.items ?? [];
 
@@ -705,8 +736,9 @@ function toWorkbenchItem(
   locale: string,
   lookups?: WorkbenchLookupHelpers,
   statusLabel?: (category: StatusCategory) => string,
+  justNowLabel?: string,
 ) {
-  const toViewModel = toMockWorkItem(locale, lookups, statusLabel);
+  const toViewModel = toMockWorkItem(locale, lookups, statusLabel, justNowLabel);
 
   return (item: ViewWorkItemSummary): WorkbenchItemViewModel => ({
     ...toViewModel(item),
@@ -719,6 +751,7 @@ export function toMockWorkItem(
   locale: string,
   lookups?: WorkbenchLookupHelpers,
   statusLabel?: (category: StatusCategory) => string,
+  justNowLabel?: string,
 ) {
   const labels = locale.startsWith("zh") ? STATUS_LABEL_ZH : STATUS_LABEL_EN;
 
@@ -736,7 +769,7 @@ export function toMockWorkItem(
         )
       : undefined;
     const updatedAgo = item.lastActionAt
-      ? formatTimeAgo(item.lastActionAt, locale)
+      ? formatTimeAgo(item.lastActionAt, locale, justNowLabel)
       : undefined;
 
     const member = item.assigneeId
@@ -788,7 +821,7 @@ function initialOf(value: string) {
   return trimmed.slice(0, 1).toUpperCase();
 }
 
-function formatTimeAgo(value: string, locale: string, justNow?: string) {
+function formatTimeAgo(value: string, locale: string, justNowLabel = "") {
   const date = new Date(value);
 
   if (Number.isNaN(date.getTime())) {
@@ -799,7 +832,7 @@ function formatTimeAgo(value: string, locale: string, justNow?: string) {
   const diffMin = Math.round(diffMs / 60_000);
 
   if (Math.abs(diffMin) < 1) {
-    return justNow ?? (locale.startsWith("zh") ? "刚刚" : "just now");
+    return justNowLabel;
   }
 
   const rtf = new Intl.RelativeTimeFormat(locale, { numeric: "auto" });

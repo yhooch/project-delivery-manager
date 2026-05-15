@@ -434,7 +434,7 @@ export const DEFAULT_WORKFLOW_TEMPLATES: readonly DefaultWorkflowTemplate[] = [
         code: "REGRESSION_FAIL",
         name: "回归不通过",
         fromStateCode: "PENDING_REGRESSION",
-        toStateCode: "PENDING_FIX",
+        toStateCode: "FIXING",
         allowedSpaceRoles: testingRoles,
         actorRelations: [],
         formFields: [
@@ -473,4 +473,3 @@ export const DEFAULT_WORKFLOW_TEMPLATES: readonly DefaultWorkflowTemplate[] = [
     ],
   },
 ] as const;
-

@@ -46,6 +46,7 @@ import {
 import type { RequestWithContext } from "../../http/request-context";
 import { ZodValidationPipe } from "../../http/zod-validation.pipe";
 import { CurrentUserService } from "../auth/current-user.service";
+import { getRequestMetadata } from "../auth/request-metadata";
 import { RequireSessionGuard } from "../auth/session.guard";
 import { WriteOriginGuard } from "../auth/write-origin.guard";
 import { SpaceService } from "./space.service";
@@ -91,7 +92,12 @@ export class SpaceController {
   ): Promise<Space> {
     const session = this.currentUser.requireSession(request);
 
-    return this.spaces.create(session.userId, params.organizationId, body);
+    return this.spaces.create(
+      session.userId,
+      params.organizationId,
+      body,
+      getRequestMetadata(request),
+    );
   }
 
   @Get("spaces/:spaceId")
@@ -117,7 +123,12 @@ export class SpaceController {
   ): Promise<Space> {
     const session = this.currentUser.requireSession(request);
 
-    return this.spaces.update(session.userId, params.spaceId, body);
+    return this.spaces.update(
+      session.userId,
+      params.spaceId,
+      body,
+      getRequestMetadata(request),
+    );
   }
 
   @Get("views/spaces/:spaceId/overview")
@@ -189,7 +200,12 @@ export class SpaceController {
   ): Promise<SpaceMemberWithUser> {
     const session = this.currentUser.requireSession(request);
 
-    return this.spaces.addMember(session.userId, params.spaceId, body);
+    return this.spaces.addMember(
+      session.userId,
+      params.spaceId,
+      body,
+      getRequestMetadata(request),
+    );
   }
 
   @Patch("spaces/:spaceId/members/:memberId")
@@ -213,6 +229,7 @@ export class SpaceController {
       params.spaceId,
       params.memberId,
       body,
+      getRequestMetadata(request),
     );
   }
 }

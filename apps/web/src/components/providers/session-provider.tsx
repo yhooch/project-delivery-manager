@@ -20,9 +20,10 @@ import {
 
 import {
   createOrganizationAndRefreshSession,
-  getAppSession,
+  getPersistedAppSession,
   loginAccount,
   logoutAccount,
+  refreshAppSession,
   registerAccount,
   switchSpace,
   switchOrganization,
@@ -82,7 +83,7 @@ export function SessionProvider({ children }: SessionProviderProps) {
     setStatus("loading");
 
     try {
-      const nextSession = await getAppSession();
+      const nextSession = await getPersistedAppSession();
       setSession(nextSession);
       setStatus("authenticated");
     } catch (error) {
@@ -101,7 +102,10 @@ export function SessionProvider({ children }: SessionProviderProps) {
 
   const refreshSession = useCallback(
     async (recentOrganizationId?: string, recentSpaceId?: string) => {
-      const nextSession = await getAppSession(recentOrganizationId, recentSpaceId);
+      const nextSession = await refreshAppSession(
+        recentOrganizationId,
+        recentSpaceId,
+      );
       setSession(nextSession);
       setStatus("authenticated");
 

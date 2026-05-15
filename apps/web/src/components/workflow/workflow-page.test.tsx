@@ -43,7 +43,12 @@ const sessionMock = vi.hoisted(() => ({
       defaultOrganizationId: "ORG_01",
       defaultSpaceId: "SPC_01",
     },
-    currentSpace: { id: "SPC_01", organizationId: "ORG_01", name: "Space A" },
+    currentSpace: {
+      id: "SPC_01",
+      organizationId: "ORG_01",
+      name: "Space A",
+      role: "SPACE_ADMIN",
+    },
     status: "authenticated" as const,
   },
 }));
@@ -114,7 +119,12 @@ beforeEach(() => {
       defaultOrganizationId: "ORG_01",
       defaultSpaceId: "SPC_01",
     },
-    currentSpace: { id: "SPC_01", organizationId: "ORG_01", name: "Space A" },
+    currentSpace: {
+      id: "SPC_01",
+      organizationId: "ORG_01",
+      name: "Space A",
+      role: "SPACE_ADMIN",
+    },
     status: "authenticated" as const,
   };
 });

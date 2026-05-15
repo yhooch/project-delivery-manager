@@ -23,6 +23,7 @@ import {
   PenLine,
   Save,
   Split,
+  Trash2,
   User2,
   Flag,
   GitBranch as GitBranchIcon,
@@ -41,12 +42,14 @@ import {
 import { getApiErrorMessageKey } from "../../lib/api-error-messages";
 import {
   archiveRequirement,
+  deleteRequirementDraft,
   getRequirement,
   listRequirementAssignableMembers,
   listRequirementVersions,
   updateRequirement,
 } from "../../lib/requirement-service";
 import { cn } from "../../lib/utils";
+import { useRouter } from "../../i18n/routing";
 import { useSession } from "../providers/session-provider";
 import { Badge, type BadgeProps } from "../ui/badge";
 import { Button } from "../ui/button";
@@ -101,6 +104,7 @@ export function RequirementDetailWorkspace({
   const t = useTranslations("requirements");
   const tRoot = useTranslations();
   const locale = useLocale();
+  const router = useRouter();
   const { session, status } = useSession();
   const [requirement, setRequirement] = useState<Requirement | null>(null);
   const [versions, setVersions] = useState<Version[]>([]);
@@ -111,6 +115,7 @@ export function RequirementDetailWorkspace({
   const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [isArchiving, setIsArchiving] = useState(false);
+  const [isDiscardingDraft, setIsDiscardingDraft] = useState(false);
   const [errorKey, setErrorKey] = useState<string | null>(null);
   const titleInputRef = useRef<HTMLTextAreaElement>(null);
 
@@ -248,6 +253,36 @@ export function RequirementDetailWorkspace({
     }
   }
 
+  async function onDiscardDraft() {
+    if (
+      !requirement ||
+      !canEditRequirement ||
+      !isEmptyDraftRequirement(requirement, form)
+    ) {
+      return;
+    }
+
+    if (!window.confirm(t("detail.discardDraftConfirm"))) {
+      return;
+    }
+
+    setIsDiscardingDraft(true);
+    setErrorKey(null);
+
+    try {
+      await deleteRequirementDraft({
+        organizationId: requirement.organizationId,
+        requirementId: requirement.id,
+        spaceId: requirement.spaceId,
+      });
+      router.push("/requirements");
+    } catch (error) {
+      setErrorKey(getApiErrorMessageKey(error));
+    } finally {
+      setIsDiscardingDraft(false);
+    }
+  }
+
   if (status === "loading" || isLoading) {
     return (
       <StatePanel
@@ -295,6 +330,10 @@ export function RequirementDetailWorkspace({
   const versionLabel = formatVersionName(requirement.versionId, versions);
   const shortId = requirement.id.slice(-8).toUpperCase();
   const lastModifiedLabel = formatTimestamp(requirement.updatedAt, locale);
+  const canDiscardDraft =
+    canEditRequirement &&
+    requirement.authorId === session.user.id &&
+    isEmptyDraftRequirement(requirement, form);
 
   return (
     <form className="flex flex-col gap-6" onSubmit={onSave}>
@@ -310,8 +349,22 @@ export function RequirementDetailWorkspace({
               {t("form.readonly")}
             </span>
           ) : null}
+          {canDiscardDraft ? (
+            <Button
+              disabled={isDiscardingDraft}
+              onClick={() => void onDiscardDraft()}
+              size="sm"
+              type="button"
+              variant="destructive"
+            >
+              <Trash2 aria-hidden="true" />
+              {isDiscardingDraft
+                ? t("detail.discardingDraft")
+                : t("detail.discardDraft")}
+            </Button>
+          ) : null}
           <Button
-            disabled={!canEditRequirement || isArchiving}
+            disabled={!canEditRequirement || isArchiving || isDiscardingDraft}
             onClick={() => void onArchive()}
             size="sm"
             type="button"
@@ -321,7 +374,7 @@ export function RequirementDetailWorkspace({
             {isArchiving ? t("detail.archiving") : t("detail.archive")}
           </Button>
           <Button
-            disabled={!canEditRequirement || isSaving}
+            disabled={!canEditRequirement || isSaving || isDiscardingDraft}
             size="sm"
             type="submit"
           >
@@ -799,6 +852,43 @@ function formStateToSaveRequest(
   };
 }
 
+function isEmptyDraftRequirement(
+  requirement: Requirement,
+  form: RequirementFormState,
+): boolean {
+  return (
+    requirement.status === "DRAFT" &&
+    form.title.trim().length === 0 &&
+    form.summary.trim().length === 0 &&
+    form.content.contentText.trim().length === 0 &&
+    !hasMeaningfulTiptapContent(form.content.contentJson) &&
+    (requirement.attachments?.length ?? 0) === 0
+  );
+}
+
+function hasMeaningfulTiptapContent(value: unknown): boolean {
+  if (Array.isArray(value)) {
+    return value.some((item) => hasMeaningfulTiptapContent(item));
+  }
+
+  if (!isPlainRecord(value)) {
+    return false;
+  }
+
+  if (typeof value.text === "string" && value.text.trim().length > 0) {
+    return true;
+  }
+
+  if (
+    typeof value.type === "string" &&
+    !["doc", "paragraph", "text"].includes(value.type)
+  ) {
+    return true;
+  }
+
+  return hasMeaningfulTiptapContent(value.content);
+}
+
 function appendAttachmentRef(
   current: AttachmentRef[] | undefined,
   attachment: AttachmentRef,
@@ -816,6 +906,10 @@ function optionalText(value: string): string | undefined {
   const trimmed = value.trim();
 
   return trimmed.length > 0 ? trimmed : undefined;
+}
+
+function isPlainRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
 function formatMember(member: SpaceMemberWithUser) {

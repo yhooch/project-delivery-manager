@@ -69,6 +69,7 @@ import type {
   RequirementListInput,
   RequirementListResult,
   SaveRequirementInput,
+  DeleteRequirementDraftInput,
 } from "./requirement.types";
 
 const ORIGIN = "http://localhost:3000";
@@ -241,6 +242,78 @@ describe("requirement and attachment API", () => {
           canEdit: false,
           canUploadAttachment: false,
         });
+      });
+  });
+
+  it("rejects malformed Tiptap content and inline base64 images", async () => {
+    const { agent, space } = await setupRequirementSpace(
+      "m1g_content_validation",
+      "REQUIREMENT",
+    );
+    const draft = (
+      await createRequirement(agent, space.id, {}).expect(200)
+    ).body.data as Requirement;
+
+    await patchRequirement(agent, draft.id, {
+      title: "非法结构",
+      contentJson: {
+        foo: "bar",
+      },
+    })
+      .expect(400)
+      .expect(({ body }) => {
+        expect(body.code).toBe("VALIDATION_ERROR");
+      });
+
+    await patchRequirement(agent, draft.id, {
+      title: "Base64 图片",
+      contentJson: {
+        type: "doc",
+        content: [
+          {
+            type: "image",
+            attrs: {
+              src: "data:image/png;base64,AAAA",
+            },
+          },
+        ],
+      },
+    })
+      .expect(400)
+      .expect(({ body }) => {
+        expect(body.code).toBe("VALIDATION_ERROR");
+      });
+  });
+
+  it("deletes only empty DRAFT requirements created by the current user", async () => {
+    const { agent, assigneeAgent, space } = await setupRequirementSpace(
+      "m1g_discard_draft",
+      "REQUIREMENT",
+    );
+    const draft = (
+      await createRequirement(agent, space.id, {}).expect(200)
+    ).body.data as Requirement;
+
+    await deleteRequirement(assigneeAgent, draft.id)
+      .expect(404)
+      .expect(({ body }) => {
+        expect(body.code).toBe("REQUIREMENT_NOT_FOUND");
+      });
+
+    await deleteRequirement(agent, draft.id).expect(200).expect(({ body }) => {
+      expect(body.data).toEqual({});
+    });
+    await agent.get(`/api/v1/requirements/${draft.id}`).expect(404);
+
+    const titledDraft = (
+      await createRequirement(agent, space.id, {}).expect(200)
+    ).body.data as Requirement;
+    requirements.setDraftTitle(titledDraft.id, "已有标题");
+
+    await deleteRequirement(agent, titledDraft.id)
+      .expect(400)
+      .expect(({ body }) => {
+        expect(body.code).toBe("VALIDATION_ERROR");
       });
   });
 
@@ -592,7 +665,7 @@ describe("requirement and attachment API", () => {
     })
       .expect(400)
       .expect(({ body }) => {
-        expect(body.code).toBe("VALIDATION_ERROR");
+        expect(body.code).toBe("ATTACHMENT_LIMIT_EXCEEDED");
       });
   });
 
@@ -741,6 +814,12 @@ describe("requirement and attachment API", () => {
       .patch(`/api/v1/requirements/${requirementId}`)
       .set("Origin", ORIGIN)
       .send(body);
+  }
+
+  function deleteRequirement(agent: request.Agent, requirementId: string) {
+    return agent
+      .delete(`/api/v1/requirements/${requirementId}`)
+      .set("Origin", ORIGIN);
   }
 
   function presignAttachment(
@@ -1395,6 +1474,23 @@ class InMemoryRequirementRepository implements RequirementRepository {
     requirement.status = "ARCHIVED";
     requirement.updatedAt = new Date().toISOString();
     return this.toPublic(requirement);
+  }
+
+  async deleteDraft(input: DeleteRequirementDraftInput): Promise<boolean> {
+    const requirement = this.records.get(input.requirementId);
+
+    if (!requirement || requirement.status !== "DRAFT") {
+      return false;
+    }
+
+    this.records.delete(input.requirementId);
+    for (let index = this.participants.length - 1; index >= 0; index -= 1) {
+      if (this.participants[index]?.targetId === input.requirementId) {
+        this.participants.splice(index, 1);
+      }
+    }
+
+    return true;
   }
 
   participantsFor(requirementId: string) {

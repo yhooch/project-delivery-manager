@@ -59,9 +59,7 @@ test.describe("UI 命令面板（Cmd+K）", () => {
     await expect(tasksGroup).toBeVisible({ timeout: 10_000 });
 
     // The created task surfaces as a group entry with its synthetic code.
-    const taskItem = tasksGroup.locator(
-      '[data-testid^="command-palette-item-task-"]',
-    ).first();
+    const taskItem = tasksGroup.getByTestId("command-palette-item-task").first();
     await expect(taskItem).toBeVisible();
     await taskItem.click();
 

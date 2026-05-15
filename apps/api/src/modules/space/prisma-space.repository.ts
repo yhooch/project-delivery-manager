@@ -3,9 +3,11 @@ import type {
   GetMyWorkbenchViewResponse,
   GetSpaceExceptionsViewResponse,
   GetSpaceOverviewViewResponse,
+  ObjectParticipantTargetType,
   PageResult,
   SpaceRole,
   StatusCategory,
+  TargetType,
   ViewExceptionSignal,
   ViewExceptionType,
   ViewWorkItemSummary,
@@ -57,6 +59,19 @@ import type {
 const DEFAULT_WORKFLOW_CODES = ["DEVELOPMENT_TASK", "GENERAL_TASK", "BUG"];
 const TERMINAL_STATUS_CATEGORIES: StatusCategory[] = ["DONE", "TERMINATED"];
 const DUE_SOON_DAYS = 7;
+const BLOCKED_STATE_TOKENS = ["blocked", "阻塞"] as const;
+const PENDING_CONFIRM_STATE_TOKENS = ["confirm", "待确认", "确认"] as const;
+const PENDING_REGRESSION_STATE_TOKENS = [
+  "regression",
+  "待回归",
+  "回归",
+] as const;
+const RECENT_ACTIVITY_TARGET_TYPES = [
+  "WORK_ITEM",
+  "REQUIREMENT",
+  "INTAKE_ITEM",
+  "VERSION",
+] as const satisfies readonly TargetType[];
 
 @Injectable()
 export class PrismaSpaceRepository implements SpaceRepository {
@@ -890,13 +905,20 @@ export class PrismaSpaceRepository implements SpaceRepository {
     const participantSpaceIds = accesses
       .filter((access) => !canReadAllSpaceWorkItems(access.role))
       .map((access) => access.spaceId);
-    const participantWorkItemIds =
+    const participantTargetIdsByType =
       participantSpaceIds.length === 0
-        ? []
-        : await this.listParticipantWorkItemIds(
+        ? new Map<ObjectParticipantTargetType, string[]>()
+        : await this.listParticipantTargetIds(
             input.actorUserId,
             participantSpaceIds,
+            ["WORK_ITEM", "REQUIREMENT", "INTAKE_ITEM"],
           );
+    const participantWorkItemIds =
+      participantTargetIdsByType.get("WORK_ITEM") ?? [];
+    const participantRequirementIds =
+      participantTargetIdsByType.get("REQUIREMENT") ?? [];
+    const participantIntakeItemIds =
+      participantTargetIdsByType.get("INTAKE_ITEM") ?? [];
     const testerWorkItemIds =
       testerSpaceIds.length === 0
         ? []
@@ -907,6 +929,8 @@ export class PrismaSpaceRepository implements SpaceRepository {
         accesses.map((access) => [access.spaceId, access]),
       ),
       accesses,
+      participantIntakeItemIds,
+      participantRequirementIds,
       participantSpaceIds,
       participantWorkItemIds,
       readAllSpaceIds,
@@ -916,26 +940,38 @@ export class PrismaSpaceRepository implements SpaceRepository {
     };
   }
 
-  private async listParticipantWorkItemIds(
+  private async listParticipantTargetIds(
     actorUserId: string,
     spaceIds: string[],
+    targetTypes: ObjectParticipantTargetType[],
   ) {
     const participants = await this.prisma.client.objectParticipant.findMany({
-      distinct: ["targetId"],
+      distinct: ["targetType", "targetId"],
       select: {
         targetId: true,
+        targetType: true,
       },
       where: {
         deletedAt: null,
         spaceId: {
           in: spaceIds,
         },
-        targetType: "WORK_ITEM",
+        targetType: {
+          in: targetTypes,
+        },
         userId: actorUserId,
       },
     });
+    const idsByType = new Map<ObjectParticipantTargetType, string[]>();
 
-    return participants.map((participant) => participant.targetId);
+    for (const participant of participants) {
+      const current = idsByType.get(participant.targetType) ?? [];
+
+      current.push(participant.targetId);
+      idsByType.set(participant.targetType, current);
+    }
+
+    return idsByType;
   }
 
   private async listTesterVisibleWorkItemIds(spaceIds: string[]) {
@@ -1167,7 +1203,7 @@ export class PrismaSpaceRepository implements SpaceRepository {
     }
 
     if (input.versionId || scopedWorkItemWhere) {
-      const scopedTargetIds = await this.listVisibleWorkItemIds(
+      const scopedTargets = await this.listVisibleTimelineTargetRefs(
         context,
         {
           organizationId,
@@ -1176,7 +1212,7 @@ export class PrismaSpaceRepository implements SpaceRepository {
         scopedWorkItemWhere,
       );
 
-      if (scopedTargetIds.length === 0) {
+      if (scopedTargets.length === 0) {
         return {
           items: [],
           page: input.page,
@@ -1186,11 +1222,16 @@ export class PrismaSpaceRepository implements SpaceRepository {
       }
 
       where.AND = [
-        ...(Array.isArray(where.AND) ? where.AND : []),
+        ...(Array.isArray(where.AND)
+          ? where.AND
+          : where.AND
+            ? [where.AND]
+            : []),
         {
-          targetId: {
-            in: scopedTargetIds,
-          },
+          OR: scopedTargets.map((target) => ({
+            targetId: target.id,
+            targetType: target.type,
+          })),
         },
       ];
     }
@@ -1211,13 +1252,16 @@ export class PrismaSpaceRepository implements SpaceRepository {
         where,
       }),
     ]);
-    const targetTitles = await this.findWorkItemTitles(
-      unique(events.map((event) => event.targetId)),
+    const targetTitles = await this.findTimelineTargetTitles(
+      events.map((event) => ({
+        id: event.targetId,
+        type: event.targetType,
+      })),
     );
 
     return {
       items: events.map((event) =>
-        toTimelineEvent(event, targetTitles.get(event.targetId)),
+        toTimelineEvent(event, targetTitles.get(timelineTargetKey(event))),
       ),
       page: input.page,
       pageSize: input.pageSize,
@@ -1225,31 +1269,234 @@ export class PrismaSpaceRepository implements SpaceRepository {
     };
   }
 
-  private async findWorkItemTitles(workItemIds: string[]) {
+  private async findTimelineTargetTitles(
+    targets: Array<{ id: string; type: TargetType }>,
+  ) {
     const titles = new Map<string, string>();
+    const idsByType = new Map<TargetType, string[]>();
 
-    if (workItemIds.length === 0) {
+    for (const target of targets) {
+      const current = idsByType.get(target.type) ?? [];
+
+      current.push(target.id);
+      idsByType.set(target.type, current);
+    }
+
+    if (idsByType.size === 0) {
       return titles;
     }
 
-    const items = await this.prisma.client.workItem.findMany({
-      select: {
-        id: true,
-        title: true,
-      },
-      where: {
-        deletedAt: null,
-        id: {
-          in: workItemIds,
+    const [workItems, requirements, intakeItems, versions] = await Promise.all([
+      this.prisma.client.workItem.findMany({
+        select: {
+          id: true,
+          title: true,
         },
-      },
-    });
+        where: {
+          deletedAt: null,
+          id: {
+            in: unique(idsByType.get("WORK_ITEM") ?? []),
+          },
+        },
+      }),
+      this.prisma.client.requirement.findMany({
+        select: {
+          id: true,
+          title: true,
+        },
+        where: {
+          deletedAt: null,
+          id: {
+            in: unique(idsByType.get("REQUIREMENT") ?? []),
+          },
+        },
+      }),
+      this.prisma.client.intakeItem.findMany({
+        select: {
+          id: true,
+          title: true,
+        },
+        where: {
+          deletedAt: null,
+          id: {
+            in: unique(idsByType.get("INTAKE_ITEM") ?? []),
+          },
+        },
+      }),
+      this.prisma.client.version.findMany({
+        select: {
+          id: true,
+          name: true,
+        },
+        where: {
+          deletedAt: null,
+          id: {
+            in: unique(idsByType.get("VERSION") ?? []),
+          },
+        },
+      }),
+    ]);
 
-    for (const item of items) {
-      titles.set(item.id, item.title);
+    for (const item of workItems) {
+      setTimelineTitle(titles, "WORK_ITEM", item.id, item.title);
+    }
+
+    for (const item of requirements) {
+      setTimelineTitle(titles, "REQUIREMENT", item.id, item.title);
+    }
+
+    for (const item of intakeItems) {
+      setTimelineTitle(titles, "INTAKE_ITEM", item.id, item.title);
+    }
+
+    for (const item of versions) {
+      setTimelineTitle(titles, "VERSION", item.id, item.name);
     }
 
     return titles;
+  }
+
+  private async listVisibleTimelineTargetRefs(
+    context: ViewAccessContext,
+    filters: {
+      organizationId: string;
+      versionId?: string;
+    },
+    scopedWorkItemWhere?: Prisma.WorkItemWhereInput,
+  ): Promise<Array<{ id: string; type: TargetType }>> {
+    const workItemIds = await this.listVisibleWorkItemIds(
+      context,
+      filters,
+      scopedWorkItemWhere,
+    );
+    const refs: Array<{ id: string; type: TargetType }> = workItemIds.map(
+      (id) => ({
+        id,
+        type: "WORK_ITEM",
+      }),
+    );
+
+    if (scopedWorkItemWhere || !filters.versionId) {
+      return refs;
+    }
+
+    const nonWorkItemTargets = await this.listVisibleVersionScopedTimelineTargets(
+      context,
+      filters,
+    );
+
+    return [...refs, ...nonWorkItemTargets];
+  }
+
+  private async listVisibleVersionScopedTimelineTargets(
+    context: ViewAccessContext,
+    filters: {
+      organizationId: string;
+      versionId?: string;
+    },
+  ): Promise<Array<{ id: string; type: TargetType }>> {
+    if (!filters.versionId) {
+      return [];
+    }
+
+    const requirementVisibilityOr = [
+      ...(context.readAllSpaceIds.length > 0
+        ? [
+            {
+              spaceId: {
+                in: context.readAllSpaceIds,
+              },
+            },
+          ]
+        : []),
+      ...(context.participantRequirementIds.length > 0
+        ? [
+            {
+              id: {
+                in: context.participantRequirementIds,
+              },
+            },
+          ]
+        : []),
+    ];
+    const intakeVisibilityOr = [
+      ...(context.readAllSpaceIds.length > 0
+        ? [
+            {
+              spaceId: {
+                in: context.readAllSpaceIds,
+              },
+            },
+          ]
+        : []),
+      ...(context.participantIntakeItemIds.length > 0
+        ? [
+            {
+              id: {
+                in: context.participantIntakeItemIds,
+              },
+            },
+          ]
+        : []),
+    ];
+    const [versions, requirements, intakeItems] = await Promise.all([
+      context.readAllSpaceIds.length > 0
+        ? this.prisma.client.version.findMany({
+            select: {
+              id: true,
+            },
+            where: {
+              deletedAt: null,
+              id: filters.versionId,
+              organizationId: filters.organizationId,
+              spaceId: {
+                in: context.readAllSpaceIds,
+              },
+            },
+          })
+        : Promise.resolve([]),
+      requirementVisibilityOr.length > 0
+        ? this.prisma.client.requirement.findMany({
+            select: {
+              id: true,
+            },
+            where: {
+              deletedAt: null,
+              organizationId: filters.organizationId,
+              versionId: filters.versionId,
+              OR: requirementVisibilityOr,
+            },
+          })
+        : Promise.resolve([]),
+      intakeVisibilityOr.length > 0
+        ? this.prisma.client.intakeItem.findMany({
+            select: {
+              id: true,
+            },
+            where: {
+              deletedAt: null,
+              organizationId: filters.organizationId,
+              versionId: filters.versionId,
+              OR: intakeVisibilityOr,
+            },
+          })
+        : Promise.resolve([]),
+    ]);
+
+    return [
+      ...versions.map((version) => ({
+        id: version.id,
+        type: "VERSION" as const,
+      })),
+      ...requirements.map((requirement) => ({
+        id: requirement.id,
+        type: "REQUIREMENT" as const,
+      })),
+      ...intakeItems.map((item) => ({
+        id: item.id,
+        type: "INTAKE_ITEM" as const,
+      })),
+    ];
   }
 
   private async listVisibleWorkItemIds(
@@ -1437,6 +1684,8 @@ type ViewSpaceAccess = {
 type ViewAccessContext = {
   accessBySpaceId: Map<string, ViewSpaceAccess>;
   accesses: ViewSpaceAccess[];
+  participantIntakeItemIds: string[];
+  participantRequirementIds: string[];
   participantSpaceIds: string[];
   participantWorkItemIds: string[];
   readAllSpaceIds: string[];
@@ -1571,7 +1820,9 @@ function buildTimelineWhere(
       spaceId: {
         in: context.readAllSpaceIds,
       },
-      targetType: "WORK_ITEM",
+      targetType: {
+        in: [...RECENT_ACTIVITY_TARGET_TYPES],
+      },
     });
   }
 
@@ -1590,6 +1841,24 @@ function buildTimelineWhere(
         in: context.testerWorkItemIds,
       },
       targetType: "WORK_ITEM",
+    });
+  }
+
+  if (context.participantRequirementIds.length > 0) {
+    visibilityOr.push({
+      targetId: {
+        in: context.participantRequirementIds,
+      },
+      targetType: "REQUIREMENT",
+    });
+  }
+
+  if (context.participantIntakeItemIds.length > 0) {
+    visibilityOr.push({
+      targetId: {
+        in: context.participantIntakeItemIds,
+      },
+      targetType: "INTAKE_ITEM",
     });
   }
 
@@ -1617,20 +1886,7 @@ function andWorkItemWhere(
 }
 
 function blockedWorkItemWhere(): Prisma.WorkItemWhereInput {
-  return {
-    OR: [
-      {
-        blockedAt: {
-          not: null,
-        },
-      },
-      {
-        blockedReason: {
-          not: null,
-        },
-      },
-    ],
-  };
+  return workflowStateTokenWhere(BLOCKED_STATE_TOKENS);
 }
 
 function pendingRegressionWhere(): Prisma.WorkItemWhereInput {
@@ -1641,17 +1897,16 @@ function pendingRegressionWhere(): Prisma.WorkItemWhereInput {
         bugDetail: {
           is: {
             deletedAt: null,
-            regressionAt: null,
           },
         },
       },
-      workflowStateTokenWhere("regression"),
+      workflowStateTokenWhere(PENDING_REGRESSION_STATE_TOKENS),
     ],
   };
 }
 
 function pendingConfirmWhere(): Prisma.WorkItemWhereInput {
-  return workflowStateTokenWhere("confirm");
+  return workflowStateTokenWhere(PENDING_CONFIRM_STATE_TOKENS);
 }
 
 function staleWorkItemWhere(
@@ -1707,7 +1962,6 @@ function workbenchWorkItemFilterWhere(
 
 function hasWorkbenchScopeFilters(input: MyWorkbenchViewInput) {
   return Boolean(
-    input.versionId ||
     input.assigneeId ||
     input.statusCategory ||
     input.workItemType ||
@@ -1761,27 +2015,46 @@ function exceptionTypeWhere(
   }
 }
 
-function workflowStateTokenWhere(token: string): Prisma.WorkItemWhereInput {
+function workflowStateTokenWhere(
+  tokens: readonly string[],
+): Prisma.WorkItemWhereInput {
   return {
     currentState: {
       is: {
-        OR: [
+        OR: tokens.flatMap((token) => [
           {
             code: {
               contains: token,
-              mode: "insensitive",
+              mode: "insensitive" as const,
             },
           },
           {
             name: {
               contains: token,
-              mode: "insensitive",
+              mode: "insensitive" as const,
             },
           },
-        ],
+        ]),
       },
     },
   };
+}
+
+function timelineTargetKey(target: { targetId: string; targetType: TargetType }) {
+  return `${target.targetType}:${target.targetId}`;
+}
+
+function setTimelineTitle(
+  titles: Map<string, string>,
+  type: TargetType,
+  id: string,
+  title: string,
+) {
+  if (title.trim().length === 0) {
+    return;
+  }
+
+  titles.set(`${type}:${id}`, title);
 }
 
 function toViewWorkItemSummary(

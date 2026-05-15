@@ -4,6 +4,7 @@ import { describe, expect, it, vi } from "vitest";
 import {
   archiveRequirement,
   createRequirementDraft,
+  deleteRequirementDraft,
   listRequirements,
   updateRequirement,
   type RequirementApiTransport,
@@ -55,6 +56,7 @@ function createApi(
   overrides: Partial<Record<keyof RequirementApiTransport, unknown>>,
 ): RequirementApiTransport {
   return {
+    delete: vi.fn(),
     get: vi.fn(),
     patch: vi.fn(),
     post: vi.fn(),
@@ -103,7 +105,7 @@ describe("requirement service", () => {
     });
   });
 
-  it("creates drafts, saves content, and archives requirements", async () => {
+  it("creates drafts, saves content, archives, and deletes draft requirements", async () => {
     const draft = createRequirementFixture();
     const saved = createRequirementFixture({
       ownerId,
@@ -115,6 +117,7 @@ describe("requirement service", () => {
       status: "ARCHIVED",
     });
     const api = createApi({
+      delete: vi.fn(async () => ({ data: {} })),
       patch: vi.fn(async (_path: string, body: unknown) => ({
         data: isArchiveBody(body) ? archived : saved,
       })),
@@ -160,6 +163,16 @@ describe("requirement service", () => {
         api,
       ),
     ).resolves.toEqual(archived);
+    await expect(
+      deleteRequirementDraft(
+        {
+          organizationId,
+          requirementId,
+          spaceId,
+        },
+        api,
+      ),
+    ).resolves.toEqual({});
 
     expect(api.post).toHaveBeenCalledWith(`/spaces/${spaceId}/requirements`, {
       versionId,
@@ -167,6 +180,7 @@ describe("requirement service", () => {
     expect(api.patch).toHaveBeenLastCalledWith(`/requirements/${requirementId}`, {
       status: "ARCHIVED",
     });
+    expect(api.delete).toHaveBeenCalledWith(`/requirements/${requirementId}`);
   });
 });
 

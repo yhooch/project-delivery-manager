@@ -13,7 +13,7 @@ import {
 import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useState } from "react";
 
-import { Link } from "../../i18n/routing";
+import { Link, useRouter } from "../../i18n/routing";
 import { getApiErrorMessageKey } from "../../lib/api-error-messages";
 import { listWorkflows } from "../../lib/workflow-service";
 import { cn } from "../../lib/utils";
@@ -45,10 +45,12 @@ export function WorkflowPage() {
   const t = useTranslations("workflow");
   const tShell = useTranslations("shell.nav");
   const tRoot = useTranslations();
+  const router = useRouter();
   const { currentSpace, session, status } = useSession();
   const spaceId = session?.defaultSpaceId ?? currentSpace?.id;
   const organizationId =
     currentSpace?.organizationId ?? session?.defaultOrganizationId;
+  const canManageWorkflow = currentSpace?.role === "SPACE_ADMIN";
 
   const [workflows, setWorkflows] = useState<WorkflowDefinition[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -102,7 +104,7 @@ export function WorkflowPage() {
           className="text-xs"
           data-testid="workflow-create-button"
           onClick={() => setDialog({ kind: "create" })}
-          disabled={!spaceId}
+          disabled={!spaceId || !canManageWorkflow}
         >
           <Plus className="h-3 w-3" />
           {t("page.newWorkflow")}
@@ -178,6 +180,7 @@ export function WorkflowPage() {
                   size="sm"
                   className="h-7 text-xs"
                   onClick={() => handleCopyAsNewVersion(wf)}
+                  disabled={!canManageWorkflow}
                 >
                   {t("page.copyAsNewVersion")}
                 </Button>
@@ -186,6 +189,7 @@ export function WorkflowPage() {
                   size="sm"
                   className="h-7 text-xs"
                   onClick={() => setDialog({ kind: "edit", workflow: wf })}
+                  disabled={!canManageWorkflow}
                 >
                   <Pencil className="h-3 w-3" />
                   {t("page.edit")}
@@ -236,8 +240,13 @@ export function WorkflowPage() {
                 : { kind: "create" }
           }
           onClose={() => setDialog({ kind: "closed" })}
-          onSuccess={() => {
+          onSuccess={(workflow) => {
+            const shouldEnterCreatedWorkflow = dialog.kind === "create";
             setDialog({ kind: "closed" });
+            if (shouldEnterCreatedWorkflow) {
+              router.push(`/workflow/${workflow.id}`);
+              return;
+            }
             void loadWorkflows();
           }}
           open={dialog.kind !== "closed"}

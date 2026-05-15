@@ -246,6 +246,12 @@ const executeActionErrors = [
 const intakeItemErrors = [...spaceErrors, "INTAKE_ITEM_NOT_FOUND"];
 const workItemErrors = [...spaceErrors, "WORK_ITEM_NOT_FOUND"];
 const attachmentTargetErrors = [...spaceErrors, "ATTACHMENT_TARGET_NOT_FOUND"];
+const attachmentUploadErrors = [
+  ...attachmentTargetErrors,
+  "ATTACHMENT_LIMIT_EXCEEDED",
+  "FILE_TOO_LARGE",
+  "UNSUPPORTED_MIME_TYPE",
+];
 const viewErrors = [...spaceErrors, "VALIDATION_ERROR"];
 
 function endpoint(contract: ApiEndpointContract): ApiEndpointContract {
@@ -1192,7 +1198,7 @@ export const apiContracts = [
     requestSchema: PresignAttachmentRequestSchema,
     responseSchema: PresignAttachmentResponseSchema,
     errorCodes: [
-      ...attachmentTargetErrors,
+      ...attachmentUploadErrors,
       "TARGET_REQUIRED_FOR_ATTACHMENT",
       "DRAFT_REQUIREMENT_REQUIRED",
     ],
@@ -1208,7 +1214,7 @@ export const apiContracts = [
     requestSchema: CreateAttachmentRequestSchema,
     responseSchema: CreateAttachmentResponseSchema,
     errorCodes: [
-      ...attachmentTargetErrors,
+      ...attachmentUploadErrors,
       "DRAFT_REQUIREMENT_REQUIRED",
       "VALIDATION_ERROR",
     ],

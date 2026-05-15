@@ -23,6 +23,8 @@ type RepositoryInternals = {
   resolveViewAccessContext(...args: unknown[]): Promise<{
     accessBySpaceId: Map<string, unknown>;
     accesses: unknown[];
+    participantIntakeItemIds: string[];
+    participantRequirementIds: string[];
     participantSpaceIds: string[];
     participantWorkItemIds: string[];
     readAllSpaceIds: string[];
@@ -109,6 +111,8 @@ describe("PrismaSpaceRepository", () => {
     internals.resolveViewAccessContext = vi.fn(async () => ({
       accessBySpaceId: new Map(),
       accesses: [],
+      participantIntakeItemIds: [],
+      participantRequirementIds: [],
       participantSpaceIds: [],
       participantWorkItemIds: [],
       readAllSpaceIds: [spaceId],
@@ -180,6 +184,54 @@ describe("PrismaSpaceRepository", () => {
       by: ["type"],
       where: visibleWhere,
     });
+    expect(workItemCount).toHaveBeenNthCalledWith(5, {
+      where: {
+        AND: [
+          {
+            AND: [
+              visibleWhere,
+              {
+                statusCategory: {
+                  notIn: ["DONE", "TERMINATED"],
+                },
+              },
+            ],
+          },
+          {
+            currentState: {
+              is: {
+                OR: [
+                  {
+                    code: {
+                      contains: "blocked",
+                      mode: "insensitive",
+                    },
+                  },
+                  {
+                    name: {
+                      contains: "blocked",
+                      mode: "insensitive",
+                    },
+                  },
+                  {
+                    code: {
+                      contains: "阻塞",
+                      mode: "insensitive",
+                    },
+                  },
+                  {
+                    name: {
+                      contains: "阻塞",
+                      mode: "insensitive",
+                    },
+                  },
+                ],
+              },
+            },
+          },
+        ],
+      },
+    });
   });
 
   it("applies all my workbench query filters to sections, actions, stats, and activities", async () => {
@@ -224,6 +276,8 @@ describe("PrismaSpaceRepository", () => {
     internals.resolveViewAccessContext = vi.fn(async () => ({
       accessBySpaceId: new Map([[spaceId, access]]),
       accesses: [access],
+      participantIntakeItemIds: [],
+      participantRequirementIds: [],
       participantSpaceIds: [],
       participantWorkItemIds: [],
       readAllSpaceIds: [spaceId],
@@ -278,6 +332,105 @@ describe("PrismaSpaceRepository", () => {
       workItemType: "BUG",
       exceptionType: "pending_regression",
     });
+  });
+
+  it("includes non-work-item timeline events for read-all space roles", async () => {
+    const organizationId = "01TRZ3NDEKTSV4RRFFQ69G5ORG";
+    const spaceId = "01TRZ3NDEKTSV4RRFFQ69G5SPC";
+    const actorUserId = "01TRZ3NDEKTSV4RRFFQ69G5USR";
+    const events = [
+      timelineEvent("01TRZ3NDEKTSV4RRFFQ69G5EV1", "WORK_ITEM", "01TRZ3NDEKTSV4RRFFQ69G5WI1"),
+      timelineEvent("01TRZ3NDEKTSV4RRFFQ69G5EV2", "REQUIREMENT", "01TRZ3NDEKTSV4RRFFQ69G5RQ1"),
+      timelineEvent("01TRZ3NDEKTSV4RRFFQ69G5EV3", "INTAKE_ITEM", "01TRZ3NDEKTSV4RRFFQ69G5IN1"),
+      timelineEvent("01TRZ3NDEKTSV4RRFFQ69G5EV4", "VERSION", "01TRZ3NDEKTSV4RRFFQ69G5VR1"),
+    ];
+    const timelineFindMany = vi.fn(async () => events);
+    const prisma = {
+      client: {
+        $transaction: vi.fn(async (operations: Promise<unknown>[]) =>
+          Promise.all(operations),
+        ),
+        intakeItem: {
+          findMany: vi.fn(async () => [
+            { id: "01TRZ3NDEKTSV4RRFFQ69G5IN1", title: "Intake A" },
+          ]),
+        },
+        requirement: {
+          findMany: vi.fn(async () => [
+            { id: "01TRZ3NDEKTSV4RRFFQ69G5RQ1", title: "Requirement A" },
+          ]),
+        },
+        timelineEvent: {
+          count: vi.fn(async () => events.length),
+          findMany: timelineFindMany,
+        },
+        version: {
+          findMany: vi.fn(async () => [
+            { id: "01TRZ3NDEKTSV4RRFFQ69G5VR1", name: "Version A" },
+          ]),
+        },
+        workItem: {
+          findMany: vi.fn(async () => [
+            { id: "01TRZ3NDEKTSV4RRFFQ69G5WI1", title: "Task A" },
+          ]),
+        },
+      },
+    } as unknown as PrismaService;
+    const repository = new PrismaSpaceRepository(prisma);
+    const internals = repository as unknown as RepositoryInternals;
+
+    const result = (await internals.pageRecentActivities(
+      {
+        accessBySpaceId: new Map(),
+        accesses: [],
+        participantIntakeItemIds: [],
+        participantRequirementIds: [],
+        participantSpaceIds: [],
+        participantWorkItemIds: [],
+        readAllSpaceIds: [spaceId],
+        spaceIds: [spaceId],
+        testerSpaceIds: [],
+        testerWorkItemIds: [],
+      },
+      {
+        actorUserId,
+        organizationId,
+        page: 1,
+        pageSize: 20,
+      },
+      organizationId,
+    )) as PageResult<{ target: { title?: string; type: string } }>;
+
+    expect(timelineFindMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          OR: [
+            {
+              spaceId: {
+                in: [spaceId],
+              },
+              targetType: {
+                in: ["WORK_ITEM", "REQUIREMENT", "INTAKE_ITEM", "VERSION"],
+              },
+            },
+          ],
+        }),
+      }),
+    );
+    expect(result.items.map((item) => item.target)).toEqual([
+      { id: "01TRZ3NDEKTSV4RRFFQ69G5WI1", title: "Task A", type: "WORK_ITEM" },
+      {
+        id: "01TRZ3NDEKTSV4RRFFQ69G5RQ1",
+        title: "Requirement A",
+        type: "REQUIREMENT",
+      },
+      {
+        id: "01TRZ3NDEKTSV4RRFFQ69G5IN1",
+        title: "Intake A",
+        type: "INTAKE_ITEM",
+      },
+      { id: "01TRZ3NDEKTSV4RRFFQ69G5VR1", title: "Version A", type: "VERSION" },
+    ]);
   });
 
   it("does not expose action todos to VIEWER even when they are creator or assignee", async () => {
@@ -348,6 +501,8 @@ describe("PrismaSpaceRepository", () => {
           ],
         ]),
         accesses: [],
+        participantIntakeItemIds: [],
+        participantRequirementIds: [],
         participantSpaceIds: [],
         participantWorkItemIds: [],
         readAllSpaceIds: [spaceId],
@@ -418,5 +573,28 @@ function actionTodoWorkItem(
     versionId: null,
     workflowVersionId: "01HRZ3NDEKTSV4RRFFQ69G5FWFV1",
     ...overrides,
+  };
+}
+
+function timelineEvent(id: string, targetType: string, targetId: string) {
+  return {
+    actor: {
+      avatar: null,
+      id: "01TRZ3NDEKTSV4RRFFQ69G5USR",
+      name: "Taylor",
+      username: "taylor",
+    },
+    after: null,
+    before: null,
+    createdAt: new Date("2026-05-13T12:00:00.000Z"),
+    detail: null,
+    eventType: "UPDATED",
+    id,
+    metadata: null,
+    organizationId: "01TRZ3NDEKTSV4RRFFQ69G5ORG",
+    spaceId: "01TRZ3NDEKTSV4RRFFQ69G5SPC",
+    targetId,
+    targetType,
+    title: "updated",
   };
 }

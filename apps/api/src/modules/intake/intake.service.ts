@@ -33,6 +33,7 @@ import {
   WORK_ITEM_REPOSITORY,
   type WorkItemRepository,
 } from "../workitem/workitem.repository";
+import { canManageDeliveryObject } from "../workitem/delivery-object-permissions";
 import {
   INTAKE_REPOSITORY,
   type IntakeRepository,
@@ -120,7 +121,7 @@ export class IntakeService {
   ): Promise<IntakeItem> {
     const item = await this.requireExistingIntakeItem(intakeItemId);
 
-    await this.requireWritableIntakeItem(actorUserId, item);
+    await this.requireManageableIntakeItem(actorUserId, item);
     await this.validateReferences(item.organizationId, item.spaceId, input);
 
     const updated = await this.intakeItems.update({
@@ -167,7 +168,7 @@ export class IntakeService {
 
     const item = await this.requireExistingIntakeItem(intakeItemId);
 
-    await this.requireWritableIntakeItem(actorUserId, item);
+    await this.requireManageableIntakeItem(actorUserId, item);
     this.assertCanConvert(item.status);
 
     const tasks: ConvertIntakeItemTaskInput[] = [];
@@ -203,7 +204,7 @@ export class IntakeService {
   ): Promise<IntakeItem> {
     const item = await this.requireExistingIntakeItem(intakeItemId);
 
-    await this.requireWritableIntakeItem(actorUserId, item);
+    await this.requireManageableIntakeItem(actorUserId, item);
     this.assertCanTransition(item.status, status);
 
     if (item.status === status) {
@@ -391,13 +392,13 @@ export class IntakeService {
     return access;
   }
 
-  private async requireWritableIntakeItem(
+  private async requireManageableIntakeItem(
     actorUserId: string,
     item: IntakeItem,
   ) {
     const access = await this.requireVisibleIntakeItem(actorUserId, item);
 
-    if (access.role === "VIEWER") {
+    if (!canManageDeliveryObject(access.role)) {
       throwSpaceAccessDenied();
     }
 

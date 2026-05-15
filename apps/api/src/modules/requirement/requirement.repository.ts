@@ -3,6 +3,7 @@ import type { Requirement } from "@project-delivery/shared";
 import type {
   ArchiveRequirementInput,
   CreateRequirementDraftInput,
+  DeleteRequirementDraftInput,
   RequirementListInput,
   RequirementListResult,
   SaveRequirementInput,
@@ -24,4 +25,5 @@ export type RequirementRepository = {
   ): Promise<RequirementListResult>;
   save(input: SaveRequirementInput): Promise<Requirement | undefined>;
   archive(input: ArchiveRequirementInput): Promise<Requirement | undefined>;
+  deleteDraft(input: DeleteRequirementDraftInput): Promise<boolean>;
 };

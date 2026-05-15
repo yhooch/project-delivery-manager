@@ -3,6 +3,7 @@
 import { useTranslations } from "next-intl";
 import { useState, type FormEvent } from "react";
 
+import { getApiErrorMessageKey } from "../../lib/api-error-messages";
 import { useSession } from "../providers/session-provider";
 
 import { Button } from "../ui/button";
@@ -24,23 +25,24 @@ type Props = {
 
 export function CreateOrganizationDialog({ open, onOpenChange }: Props) {
   const t = useTranslations("shell.createOrg");
+  const tRoot = useTranslations();
   const { createOrganization } = useSession();
   const [name, setName] = useState("");
   const [code, setCode] = useState("");
   const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [errorKey, setErrorKey] = useState<string | null>(null);
 
   const handleSubmit = async (event: FormEvent) => {
     event.preventDefault();
     setSubmitting(true);
-    setError(null);
+    setErrorKey(null);
     try {
       await createOrganization({ name: name.trim(), code: code.trim() || undefined });
       setName("");
       setCode("");
       onOpenChange(false);
     } catch (err) {
-      setError(err instanceof Error ? err.message : t("error"));
+      setErrorKey(getApiErrorMessageKey(err));
     } finally {
       setSubmitting(false);
     }
@@ -78,12 +80,12 @@ export function CreateOrganizationDialog({ open, onOpenChange }: Props) {
               disabled={submitting}
             />
           </div>
-          {error && (
+          {errorKey && (
             <div
               data-testid="create-org-error"
               className="rounded-md border border-destructive/40 bg-destructive/10 px-2.5 py-1.5 text-xs text-destructive"
             >
-              {error}
+              {tRoot(errorKey)}
             </div>
           )}
           <DialogFooter>

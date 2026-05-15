@@ -310,6 +310,9 @@ describe("CommandPalette", () => {
     // Helper caps at <=12; the newest entry should always be at index 0.
     expect(stored.length).toBeLessThanOrEqual(12);
     expect((stored[0] as { title: string }).title).toBe("Task A");
+    expect((stored[0] as { href: string }).href).toBe(
+      "/work-items?workItemId=01ARZ3NDEKTSV4RRFFQ69G5FT1",
+    );
   });
 
   it("shows the search view with grouped results when query has ≥2 chars", async () => {
@@ -349,6 +352,22 @@ describe("CommandPalette", () => {
     });
     // At least one requirement uses the untitled fallback string.
     expect(screen.getByText("shell.command.untitled")).toBeInTheDocument();
+  });
+
+  it("opens bug search results through a direct detail href", async () => {
+    render(<CommandPalette />);
+    openCommandPalette();
+
+    const input = await screen.findByPlaceholderText(
+      "shell.command.placeholder",
+    );
+    fireEvent.change(input, { target: { value: "Bug" } });
+
+    fireEvent.click(await screen.findByText("Bug Alpha"));
+
+    expect(routerPushMock).toHaveBeenCalledWith(
+      "/bugs?bugId=01ARZ3NDEKTSV4RRFFQ69G5FB1",
+    );
   });
 
   it("persists theme preference when selecting a theme command", async () => {

@@ -19,6 +19,8 @@ import {
 import { ulid } from "ulid";
 
 import { ApiException } from "../../http/api-exception";
+import { AuditService } from "../audit/audit.service";
+import type { RequestMetadata } from "../auth/auth-session.types";
 import {
   USER_REPOSITORY,
   type UserRepository,
@@ -46,6 +48,8 @@ export class SpaceService {
     private readonly users: UserRepository,
     @Inject(WorkflowDefaultInitializerService)
     private readonly workflowInitializer: WorkflowDefaultInitializerService,
+    @Inject(AuditService)
+    private readonly audit: AuditService,
   ) {}
 
   async list(
@@ -76,6 +80,7 @@ export class SpaceService {
     actorUserId: string,
     organizationId: string,
     input: CreateSpaceRequest,
+    metadata: RequestMetadata = {},
   ): Promise<Space> {
     await this.requireOrganizationManager(actorUserId, organizationId);
     const ownerId = input.ownerId ?? actorUserId;
@@ -110,6 +115,16 @@ export class SpaceService {
       organizationId,
       spaceId: created.space.id,
     });
+    await this.audit.record({
+      actionType: "CREATE",
+      actorId: actorUserId,
+      after: created.space,
+      ...metadata,
+      organizationId,
+      spaceId: created.space.id,
+      targetId: created.space.id,
+      targetType: "SPACE",
+    });
 
     return created.space;
   }
@@ -124,6 +139,7 @@ export class SpaceService {
     actorUserId: string,
     spaceId: string,
     input: UpdateSpaceRequest,
+    metadata: RequestMetadata = {},
   ): Promise<Space> {
     const access = await this.requireSpaceManager(actorUserId, spaceId);
 
@@ -164,6 +180,18 @@ export class SpaceService {
       throwSpaceNotFound();
     }
 
+    await this.audit.record({
+      actionType: "UPDATE",
+      actorId: actorUserId,
+      after: updated,
+      before: access.space,
+      ...metadata,
+      organizationId: access.space.organizationId,
+      spaceId,
+      targetId: spaceId,
+      targetType: "SPACE",
+    });
+
     return updated;
   }
 
@@ -181,6 +209,7 @@ export class SpaceService {
     actorUserId: string,
     spaceId: string,
     input: AddSpaceMemberRequest,
+    metadata: RequestMetadata = {},
   ): Promise<SpaceMemberWithUser> {
     const access = await this.requireSpaceManager(actorUserId, spaceId);
     const user = await this.resolveActiveUser(input);
@@ -202,7 +231,7 @@ export class SpaceService {
       );
     }
 
-    return this.spaces.addMember({
+    const added = await this.spaces.addMember({
       id: ulid(),
       organizationId: access.space.organizationId,
       spaceId,
@@ -210,6 +239,18 @@ export class SpaceService {
       role: input.role,
       createdById: actorUserId,
     });
+    await this.audit.record({
+      actionType: "CREATE",
+      actorId: actorUserId,
+      after: summarizeSpaceMember(added),
+      ...metadata,
+      organizationId: access.space.organizationId,
+      spaceId,
+      targetId: added.id,
+      targetType: "SPACE_MEMBER",
+    });
+
+    return added;
   }
 
   async updateMember(
@@ -217,8 +258,9 @@ export class SpaceService {
     spaceId: string,
     memberId: string,
     input: UpdateSpaceMemberRequest,
+    metadata: RequestMetadata = {},
   ): Promise<SpaceMemberWithUser> {
-    await this.requireSpaceManager(actorUserId, spaceId);
+    const access = await this.requireSpaceManager(actorUserId, spaceId);
     const member = await this.spaces.findMemberById(spaceId, memberId);
 
     if (!member) {
@@ -236,6 +278,20 @@ export class SpaceService {
     if (!updated) {
       throwSpaceMemberNotFound();
     }
+
+    await this.audit.record({
+      actionType: hasRoleOrStatusChange(member, updated)
+        ? "ROLE_CHANGED"
+        : "UPDATE",
+      actorId: actorUserId,
+      after: summarizeSpaceMember(updated),
+      before: summarizeSpaceMember(member),
+      ...metadata,
+      organizationId: access.space.organizationId,
+      spaceId,
+      targetId: updated.id,
+      targetType: "SPACE_MEMBER",
+    });
 
     return updated;
   }
@@ -441,6 +497,22 @@ function generateSpaceCode(name: string): string {
 
 function normalizeUsername(username: string): string {
   return username.toLowerCase();
+}
+
+function hasRoleOrStatusChange(
+  before: SpaceMemberWithUser,
+  after: SpaceMemberWithUser,
+): boolean {
+  return before.role !== after.role || before.status !== after.status;
+}
+
+function summarizeSpaceMember(member: SpaceMemberWithUser) {
+  return {
+    id: member.id,
+    role: member.role,
+    status: member.status,
+    userId: member.userId,
+  };
 }
 
 function throwOrganizationAccessDenied(): never {

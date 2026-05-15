@@ -12,6 +12,7 @@ import type { RequirementRepository } from "./requirement.repository";
 import type {
   ArchiveRequirementInput,
   CreateRequirementDraftInput,
+  DeleteRequirementDraftInput,
   RequirementListInput,
   SaveRequirementInput,
 } from "./requirement.types";
@@ -321,6 +322,41 @@ export class PrismaRequirementRepository implements RequirementRepository {
     ]);
 
     return toRequirement(updated, attachments, relatedWorkItems);
+  }
+
+  async deleteDraft(input: DeleteRequirementDraftInput) {
+    return this.prisma.client.$transaction(async (tx) => {
+      const now = new Date();
+      const result = await tx.requirement.updateMany({
+        data: {
+          deletedAt: now,
+          updatedById: input.deletedById,
+        },
+        where: {
+          deletedAt: null,
+          id: input.requirementId,
+          status: "DRAFT",
+        },
+      });
+
+      if (result.count === 0) {
+        return false;
+      }
+
+      await tx.objectParticipant.updateMany({
+        data: {
+          deletedAt: now,
+          updatedById: input.deletedById,
+        },
+        where: {
+          deletedAt: null,
+          targetId: input.requirementId,
+          targetType: "REQUIREMENT",
+        },
+      });
+
+      return true;
+    });
   }
 
   private async listAttachmentRefsForRequirement(requirementId: string) {

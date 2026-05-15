@@ -17,6 +17,7 @@ const PENDING_REGRESSION_STATE_TOKENS = [
   "待回归",
   "回归",
 ] as const;
+const BLOCKED_STATE_TOKENS = ["blocked", "阻塞"] as const;
 
 export type SpaceExceptionWorkItemRecord = {
   blockedAt: Date | null;
@@ -57,8 +58,8 @@ export function buildSpaceExceptionSignals(
   if (isBlockedRecord(record)) {
     signals.push({
       type: "blocked",
-      evidenceSource: "BLOCKED_FIELD",
-      reason: record.blockedReason ?? "工作项被标记为阻塞",
+      evidenceSource: "WORKFLOW_STATE",
+      reason: record.blockedReason ?? "工作项处于阻塞状态",
       blockedAt: record.blockedAt?.toISOString(),
       blockedReason: record.blockedReason ?? undefined,
     });
@@ -102,7 +103,10 @@ export function buildSpaceExceptionSignals(
 }
 
 export function isBlockedRecord(record: SpaceExceptionWorkItemRecord) {
-  return Boolean(record.blockedAt || record.blockedReason);
+  return (
+    includesAnyToken(record.currentState.code, BLOCKED_STATE_TOKENS) ||
+    includesAnyToken(record.currentState.name, BLOCKED_STATE_TOKENS)
+  );
 }
 
 export function isOverdueRecord(
@@ -127,7 +131,6 @@ export function isPendingRegressionRecord(record: SpaceExceptionWorkItemRecord) 
   return (
     record.type === "BUG" &&
     Boolean(record.bugDetail && !record.bugDetail.deletedAt) &&
-    !record.bugDetail?.regressionAt &&
     (includesAnyToken(
       record.currentState.code,
       PENDING_REGRESSION_STATE_TOKENS,

@@ -59,6 +59,7 @@ const memberMap = new Map<
   { user: { name: string; username: string } }
 >();
 const versionMap = new Map<string, { name: string }>();
+const workflowStateMap = new Map<string, { code: string; name: string }>();
 vi.mock("../../lib/v2/lookups", () => ({
   useSpaceMembers: () => ({
     members: Array.from(memberMap.entries()).map(([userId, member]) => ({
@@ -78,16 +79,23 @@ vi.mock("../../lib/v2/lookups", () => ({
     error: null,
     getVersion: (id: string) => versionMap.get(id),
   }),
+  useWorkflowStateLookup: () => ({
+    loading: false,
+    error: null,
+    getState: (_workflowVersionId: string | undefined, stateId: string | undefined) =>
+      stateId ? workflowStateMap.get(stateId) : undefined,
+  }),
 }));
 
-const { listBugsMock, listRequirementsMock, listWorkItemsMock } = vi.hoisted(
-  () => ({
+const { getBugMock, listBugsMock, listRequirementsMock, listWorkItemsMock } =
+  vi.hoisted(() => ({
+    getBugMock: vi.fn(),
     listBugsMock: vi.fn(),
     listRequirementsMock: vi.fn(),
     listWorkItemsMock: vi.fn(),
-  }),
-);
+  }));
 vi.mock("../../lib/bug-service", () => ({
+  getBug: getBugMock,
   listBugs: listBugsMock,
 }));
 vi.mock("../../lib/requirement-service", () => ({
@@ -191,12 +199,14 @@ function makeBug(overrides: Record<string, unknown> = {}) {
 }
 
 beforeEach(() => {
+  getBugMock.mockReset();
   listBugsMock.mockReset();
   listRequirementsMock.mockReset();
   listWorkItemsMock.mockReset();
   searchParamsMock.current = new URLSearchParams();
   memberMap.clear();
   versionMap.clear();
+  workflowStateMap.clear();
   sessionMock.current = {
     currentSpace: {
       id: "SPC_01",
@@ -272,17 +282,23 @@ describe("BugsPage", () => {
 
     await waitFor(() => expect(listBugsMock).toHaveBeenCalledTimes(1));
     expect(
-      screen.getByTestId("bugs-filter-pendingConfirm"),
-    ).toBeInTheDocument();
-    expect(screen.getByTestId("bugs-filter-pendingFix")).toBeInTheDocument();
-    expect(screen.getByTestId("bugs-filter-fixing")).toBeInTheDocument();
-    expect(
-      screen.getByTestId("bugs-filter-pendingRegression"),
+      screen.getByRole("button", { name: /bugs\.buckets\.pendingConfirm/ }),
     ).toBeInTheDocument();
     expect(
-      screen.getByTestId("bugs-filter-regressionPassed"),
+      screen.getByRole("button", { name: /bugs\.buckets\.pendingFix/ }),
     ).toBeInTheDocument();
-    expect(screen.getByTestId("bugs-filter-closed")).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: /bugs\.buckets\.fixing/ }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: /bugs\.buckets\.pendingRegression/ }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: /bugs\.buckets\.regressionPassed/ }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: /bugs\.buckets\.closed/ }),
+    ).toBeInTheDocument();
   });
 
   it("filters by fixing bucket (IN_PROGRESS) through the backend query", async () => {
@@ -324,7 +340,9 @@ describe("BugsPage", () => {
     expect(screen.getByText("Closed bug")).toBeInTheDocument();
     expect(screen.getByText("Terminated bug")).toBeInTheDocument();
 
-    fireEvent.click(screen.getByTestId("bugs-filter-fixing"));
+    fireEvent.click(
+      screen.getByRole("button", { name: /bugs\.buckets\.fixing/ }),
+    );
     await waitFor(() =>
       expect(listBugsMock).toHaveBeenLastCalledWith(
         expect.objectContaining({
@@ -372,7 +390,11 @@ describe("BugsPage", () => {
     render(<BugsPage />);
 
     expect(await screen.findByText("In progress bug")).toBeInTheDocument();
-    fireEvent.click(screen.getByTestId("bugs-filter-pendingRegression"));
+    fireEvent.click(
+      screen.getByRole("button", {
+        name: /bugs\.buckets\.pendingRegression/,
+      }),
+    );
     await waitFor(() =>
       expect(listBugsMock).toHaveBeenLastCalledWith(
         expect.objectContaining({
@@ -384,6 +406,122 @@ describe("BugsPage", () => {
       expect(screen.queryByText("In progress bug")).not.toBeInTheDocument(),
     );
     expect(screen.getByText("Regression bug")).toBeInTheDocument();
+  });
+
+  it("separates regression passed and closed bugs by workflow state", async () => {
+    workflowStateMap.set("STATE_REGRESSION_PASSED", {
+      code: "REGRESSION_PASSED",
+      name: "Regression passed",
+    });
+    workflowStateMap.set("STATE_CLOSED", {
+      code: "CLOSED",
+      name: "Closed",
+    });
+    listBugsMock
+      .mockResolvedValueOnce({
+        items: [
+          makeBug({
+            id: "01ARZ3NDEKTSV4RRFFQ69G5F01",
+            currentStateId: "STATE_REGRESSION_PASSED",
+            title: "Passed bug",
+            statusCategory: "DONE",
+          }),
+          makeBug({
+            id: "01ARZ3NDEKTSV4RRFFQ69G5F02",
+            currentStateId: "STATE_CLOSED",
+            title: "Closed bug",
+            statusCategory: "DONE",
+          }),
+        ],
+        total: 2,
+      })
+      .mockResolvedValueOnce({
+        items: [
+          makeBug({
+            id: "01ARZ3NDEKTSV4RRFFQ69G5F01",
+            currentStateId: "STATE_REGRESSION_PASSED",
+            title: "Passed bug",
+            statusCategory: "DONE",
+          }),
+          makeBug({
+            id: "01ARZ3NDEKTSV4RRFFQ69G5F02",
+            currentStateId: "STATE_CLOSED",
+            title: "Closed bug",
+            statusCategory: "DONE",
+          }),
+        ],
+        total: 2,
+      });
+
+    render(<BugsPage />);
+
+    expect(await screen.findByText("Passed bug")).toBeInTheDocument();
+    expect(screen.getByText("Closed bug")).toBeInTheDocument();
+
+    fireEvent.click(
+      screen.getByRole("button", { name: /bugs\.buckets\.closed/ }),
+    );
+
+    await waitFor(() =>
+      expect(listBugsMock).toHaveBeenLastCalledWith(
+        expect.objectContaining({ statusCategory: "DONE" }),
+      ),
+    );
+    expect(await screen.findByText("Closed bug")).toBeInTheDocument();
+    expect(screen.queryByText("Passed bug")).not.toBeInTheDocument();
+  });
+
+  it("opens a bug detail sheet from a bugId deep link", async () => {
+    searchParamsMock.current = new URLSearchParams(
+      "bugId=01ARZ3NDEKTSV4RRFFQ69G5FDL",
+    );
+    listBugsMock.mockResolvedValueOnce({ items: [], total: 0 });
+    getBugMock.mockResolvedValueOnce(
+      makeBug({
+        id: "01ARZ3NDEKTSV4RRFFQ69G5FDL",
+        title: "Deep linked bug",
+      }),
+    );
+
+    render(<BugsPage />);
+
+    await waitFor(() =>
+      expect(getBugMock).toHaveBeenCalledWith({
+        bugId: "01ARZ3NDEKTSV4RRFFQ69G5FDL",
+        organizationId: "ORG_01",
+        spaceId: "SPC_01",
+      }),
+    );
+    expect(
+      await screen.findByTestId("task-detail-sheet-open"),
+    ).toBeInTheDocument();
+    expect(screen.getByTestId("task-detail-sheet-item-title")).toHaveTextContent(
+      "Deep linked bug",
+    );
+  });
+
+  it("opens a bug detail sheet from a workItemId deep link", async () => {
+    searchParamsMock.current = new URLSearchParams(
+      "workItemId=01ARZ3NDEKTSV4RRFFQ69G5FWI",
+    );
+    listBugsMock.mockResolvedValueOnce({ items: [], total: 0 });
+    getBugMock.mockResolvedValueOnce(
+      makeBug({
+        id: "01ARZ3NDEKTSV4RRFFQ69G5FWI",
+        title: "Work item linked bug",
+      }),
+    );
+
+    render(<BugsPage />);
+
+    await waitFor(() =>
+      expect(getBugMock).toHaveBeenCalledWith(
+        expect.objectContaining({
+          bugId: "01ARZ3NDEKTSV4RRFFQ69G5FWI",
+        }),
+      ),
+    );
+    expect(await screen.findByText("Work item linked bug")).toBeInTheDocument();
   });
 
   it("opens filter controls and sends selected version, assignee, priority, severity, requirement, and related task to the backend", async () => {
@@ -550,10 +688,33 @@ describe("BugsPage", () => {
       ) ?? "[]",
     ) as Array<{ href: string; title: string; type: string }>;
     expect(stored[0]).toMatchObject({
-      href: "/bugs",
+      href: "/bugs?bugId=01ARZ3NDEKTSV4RRFFQ69G5FRC",
       title: "Remember bug",
       type: "BUG",
     });
+  });
+
+  it("marks the keyboard-selected bug row as aria-selected", async () => {
+    listBugsMock.mockResolvedValueOnce({
+      items: [
+        makeBug({ id: "01ARZ3NDEKTSV4RRFFQ69G5F01", title: "First bug" }),
+        makeBug({ id: "01ARZ3NDEKTSV4RRFFQ69G5F02", title: "Second bug" }),
+      ],
+      total: 2,
+    });
+
+    render(<BugsPage />);
+
+    await screen.findByText("First bug");
+    fireEvent.keyDown(window, { key: "j" });
+
+    const rows = screen.getAllByTestId("bugs-row");
+    expect(rows[0]).toHaveAttribute("aria-selected", "true");
+    expect(rows[0]).toHaveAttribute(
+      "data-id",
+      "01ARZ3NDEKTSV4RRFFQ69G5F01",
+    );
+    expect(rows[1]).toHaveAttribute("aria-selected", "false");
   });
 
   it("refetches the bug list when the detail sheet reports a change", async () => {
@@ -594,9 +755,9 @@ describe("BugsPage", () => {
       "Before edit",
     );
 
-    fireEvent.click(
-      screen.getByTestId("bugs-edit-01ARZ3NDEKTSV4RRFFQ69G5FA1"),
-    );
+    const editButton = screen.getByTestId("bugs-edit-button");
+    expect(editButton).toHaveAttribute("data-id", "01ARZ3NDEKTSV4RRFFQ69G5FA1");
+    fireEvent.click(editButton);
     expect(await screen.findByTestId("edit-bug-dialog-open")).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "save edit" }));
 

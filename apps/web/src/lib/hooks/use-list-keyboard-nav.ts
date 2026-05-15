@@ -13,9 +13,9 @@ import { useEffect, useRef } from "react";
  * - `Enter`           → open the highlighted item (calls `onOpen`).
  * - `e`               → edit/open the highlighted item (calls `onEdit`, or
  *   falls back to `onOpen`).
- * - `a`               → open the assign affordance when provided.
+ * - `a`               → open the assign affordance when provided and allowed.
  * - `s`               → run the primary submit/action affordance when
- *   provided.
+ *   provided and allowed.
  * - `Escape`          → close the detail drawer (calls `onClose`).
  *
  * If no item is currently highlighted (`activeId` not in `items`), the first
@@ -31,6 +31,8 @@ export type UseListKeyboardNavOptions<T> = {
   onEdit?: (item: T) => void;
   onAssign?: (item: T) => void;
   onSubmit?: (item: T) => void;
+  canAssign?: (item: T) => boolean;
+  canSubmit?: (item: T) => boolean;
   onClose?: () => void;
   enabled?: boolean;
 };
@@ -132,8 +134,12 @@ export function useListKeyboardNav<T>(
           : isEdit
             ? current.onEdit ?? current.onOpen
             : isAssign
-              ? current.onAssign
-              : current.onSubmit;
+              ? current.canAssign?.(activeItem) === false
+                ? undefined
+                : current.onAssign
+              : current.canSubmit?.(activeItem) === false
+                ? undefined
+                : current.onSubmit;
 
         if (action) {
           event.preventDefault();

@@ -4,6 +4,7 @@ import { useTranslations } from "next-intl";
 import { useState, type FormEvent } from "react";
 
 import { useSession } from "../providers/session-provider";
+import { getApiErrorMessageKey } from "../../lib/api-error-messages";
 import { createSpace } from "../../lib/space-service";
 
 import { Button } from "../ui/button";
@@ -27,18 +28,19 @@ type Props = {
 
 export function CreateSpaceDialog({ open, onOpenChange, organizationId }: Props) {
   const t = useTranslations("shell.createSpace");
+  const tRoot = useTranslations();
   const { refreshSession } = useSession();
   const [name, setName] = useState("");
   const [code, setCode] = useState("");
   const [description, setDescription] = useState("");
   const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [errorKey, setErrorKey] = useState<string | null>(null);
 
   const resetForm = () => {
     setName("");
     setCode("");
     setDescription("");
-    setError(null);
+    setErrorKey(null);
   };
 
   const handleSubmit = async (event: FormEvent) => {
@@ -47,7 +49,7 @@ export function CreateSpaceDialog({ open, onOpenChange, organizationId }: Props)
     if (trimmedName.length < 1) return;
 
     setSubmitting(true);
-    setError(null);
+    setErrorKey(null);
     try {
       const trimmedCode = code.trim();
       const trimmedDescription = description.trim();
@@ -60,7 +62,7 @@ export function CreateSpaceDialog({ open, onOpenChange, organizationId }: Props)
       resetForm();
       onOpenChange(false);
     } catch (err) {
-      setError(err instanceof Error ? err.message : t("error"));
+      setErrorKey(getApiErrorMessageKey(err));
     } finally {
       setSubmitting(false);
     }
@@ -121,12 +123,12 @@ export function CreateSpaceDialog({ open, onOpenChange, organizationId }: Props)
               disabled={submitting}
             />
           </div>
-          {error && (
+          {errorKey && (
             <div
               data-testid="create-space-error"
               className="rounded-md border border-destructive/40 bg-destructive/10 px-2.5 py-1.5 text-xs text-destructive"
             >
-              {error}
+              {tRoot(errorKey)}
             </div>
           )}
           <DialogFooter>

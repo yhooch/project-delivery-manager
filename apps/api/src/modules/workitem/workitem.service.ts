@@ -26,6 +26,7 @@ import { WorkflowActionExecutionService } from "../workflow/workflow-action-exec
 import type { WorkItemLinkedUsers, WorkItemListInput } from "./workitem.types";
 import { toWorkItemDetail } from "./workitem.mappers";
 import { canReadAllSpaceWorkItems } from "./workitem-visibility";
+import { canManageDeliveryObject } from "./delivery-object-permissions";
 
 @Injectable()
 export class WorkItemService {
@@ -148,7 +149,7 @@ export class WorkItemService {
       workItemId,
     );
 
-    if (access.role === "VIEWER") {
+    if (!canManageDeliveryObject(access.role)) {
       throwSpaceAccessDenied();
     }
 

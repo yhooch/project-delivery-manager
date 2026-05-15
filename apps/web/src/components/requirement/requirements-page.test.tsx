@@ -161,6 +161,34 @@ describe("RequirementsPage", () => {
   });
 
   it("renders requirement rows with title and status badge", async () => {
+    listRequirementVersionsMock.mockResolvedValueOnce({
+      items: [
+        {
+          id: "01ARZ3NDEKTSV4RRFFQ69G5FD1",
+          name: "M1 Release",
+        },
+      ],
+      total: 1,
+    });
+    listRequirementAssignableMembersMock.mockResolvedValueOnce({
+      items: [
+        {
+          id: "MEMBER_01",
+          organizationId: "ORG_01",
+          role: "PM",
+          spaceId: "SPC_01",
+          status: "ACTIVE",
+          user: {
+            id: "01ARZ3NDEKTSV4RRFFQ69G5FU1",
+            name: "PM User",
+            status: "ACTIVE",
+            username: "pm",
+          },
+          userId: "01ARZ3NDEKTSV4RRFFQ69G5FU1",
+        },
+      ],
+      total: 1,
+    });
     listRequirementsMock.mockResolvedValueOnce({
       items: [
         makeRequirement({
@@ -189,6 +217,8 @@ describe("RequirementsPage", () => {
     });
     expect(await screen.findByText("Onboarding redesign")).toBeInTheDocument();
     expect(screen.getByText("requirements.status.CONFIRMED")).toBeInTheDocument();
+    expect(await screen.findByText("M1 Release")).toBeInTheDocument();
+    expect(await screen.findByText("PM User (pm)")).toBeInTheDocument();
     // The list renders with the testid.
     expect(screen.getByTestId("requirements-list")).toBeInTheDocument();
   });

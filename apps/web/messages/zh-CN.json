@@ -405,7 +405,12 @@
       "createSpace": "创建项目空间",
       "switchingOrg": "切换组织中…",
       "switchingSpace": "切换空间中…",
-      "currentBadge": "当前"
+      "currentBadge": "当前",
+      "roles": {
+        "OWNER": "所有者",
+        "ADMIN": "管理员",
+        "MEMBER": "成员"
+      }
     },
     "spaceSwitcher": {
       "label": "切换空间",
@@ -467,6 +472,10 @@
       "searching": "搜索中…",
       "untitled": "未命名",
       "recent": "最近打开",
+      "dialog": {
+        "title": "命令面板",
+        "description": "搜索并执行命令"
+      },
       "navigation": "导航",
       "switchSpace": "切换空间",
       "create": "新建",
@@ -903,6 +912,9 @@
       "saving": "保存中",
       "archive": "归档",
       "archiving": "归档中",
+      "discardDraft": "放弃草稿",
+      "discardingDraft": "正在删除",
+      "discardDraftConfirm": "确认删除这个空草稿？删除后无法恢复。",
       "metaTitle": "当前信息",
       "metaDescription": "按后端返回结果展示，不扩大权限边界。",
       "attachments": "附件数",
@@ -1222,7 +1234,13 @@
     "buckets": {
       "all": "全部",
       "open": "未关闭",
-      "regression": "待回归"
+      "regression": "待回归",
+      "pendingConfirm": "待确认",
+      "pendingFix": "待修复",
+      "fixing": "修复中",
+      "pendingRegression": "待回归",
+      "regressionPassed": "回归通过",
+      "closed": "已关闭"
     },
     "filters": {
       "label": "Bug 筛选",
@@ -1579,6 +1597,8 @@
       "acceptedAt": "纳入时间",
       "version": "版本",
       "noVersion": "未关联",
+      "assignee": "负责人",
+      "unassigned": "未分配",
       "descriptionTitle": "描述",
       "descriptionEmpty": "该事项暂无描述。"
     },
@@ -2822,6 +2842,9 @@
         "REOPENED": "重新打开"
       }
     },
+    "time": {
+      "justNow": "刚刚"
+    },
     "workItems": {
       "title": "任务与 Bug",
       "empty": "M1 仅展示空态和计数，占位等待 M2/M3 接入真实任务与 Bug。"
@@ -3055,7 +3078,9 @@
       "readonly": "当前权限不能上传附件",
       "retry": "重试",
       "size": "大小",
-      "uploadedBy": "上传者"
+      "uploadedBy": "上传者",
+      "previewFile": "预览 {fileName}",
+      "downloadFile": "下载 {fileName}"
     },
     "timeline": {
       "loading": "加载时间线中…",
@@ -3073,6 +3098,10 @@
     },
     "missingApi": {
       "title": "该接口待补"
+    },
+    "links": {
+      "loading": "正在加载标题…",
+      "unavailable": "标题不可用"
     },
     "empty": "选择一个工作项以查看详情"
   },
@@ -3184,9 +3213,20 @@
       "title": "组织信息",
       "fields": {
         "name": "组织名称",
-        "code": "组织编码"
+        "code": "组织编码",
+        "status": "组织状态"
       },
-      "readOnlyNote": "暂不支持在此处修改组织资料。"
+      "status": {
+        "ACTIVE": "启用",
+        "DISABLED": "禁用"
+      },
+      "actions": {
+        "save": "保存更改",
+        "submitting": "保存中…",
+        "cancel": "重置"
+      },
+      "editableNote": "所有者和管理员可更新组织资料。禁用组织后，该组织会从有效会话中移除。",
+      "readOnlyNote": "当前组织角色只能查看组织资料，不能修改。"
     },
     "members": {
       "title": "组织成员",

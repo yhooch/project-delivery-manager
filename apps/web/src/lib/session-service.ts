@@ -31,12 +31,26 @@ export type SessionApiTransport = {
 };
 
 const defaultApi: SessionApiTransport = apiClient;
+const recentOrganizationStorageKey = "pdm.recentOrganizationId";
+const recentSpaceStorageKey = "pdm.recentSpaceId";
+
+export type RecentSessionStorage = Pick<
+  Storage,
+  "getItem" | "removeItem" | "setItem"
+>;
+
+export type RecentSessionSelection = {
+  recentOrganizationId?: string;
+  recentSpaceId?: string;
+};
 
 export async function registerAccount(
   input: RegisterRequest,
   api: SessionApiTransport = defaultApi,
+  recentStorage: RecentSessionStorage | undefined = getRecentSessionStorage(),
 ): Promise<AppSession> {
   const response = await api.post<RegisterResponse>("/auth/register", input);
+  persistRecentSessionSelection(response.data, recentStorage);
 
   return response.data;
 }
@@ -44,10 +58,11 @@ export async function registerAccount(
 export async function loginAccount(
   input: LoginRequest,
   api: SessionApiTransport = defaultApi,
+  recentStorage: RecentSessionStorage | undefined = getRecentSessionStorage(),
 ): Promise<AppSession> {
-  const response = await api.post<LoginResponse>("/auth/login", input);
+  await api.post<LoginResponse>("/auth/login", input);
 
-  return response.data;
+  return getPersistedAppSession(api, recentStorage);
 }
 
 export async function logoutAccount(
@@ -78,6 +93,34 @@ export async function getAppSession(
   return response.data;
 }
 
+export async function getPersistedAppSession(
+  api: SessionApiTransport = defaultApi,
+  recentStorage: RecentSessionStorage | undefined = getRecentSessionStorage(),
+): Promise<AppSession> {
+  const recent = readRecentSessionSelection(recentStorage);
+
+  return refreshAppSession(
+    recent.recentOrganizationId,
+    recent.recentSpaceId,
+    api,
+    recentStorage,
+  );
+}
+
+export async function refreshAppSession(
+  recentOrganizationId?: string,
+  recentSpaceId?: string,
+  api: SessionApiTransport = defaultApi,
+  recentStorage: RecentSessionStorage | undefined = getRecentSessionStorage(),
+): Promise<AppSession> {
+  const session = recentSpaceId
+    ? await getAppSession(recentOrganizationId, recentSpaceId, api)
+    : await getAppSession(recentOrganizationId, api);
+  persistRecentSessionSelection(session, recentStorage);
+
+  return session;
+}
+
 export async function createOrganization(
   input: CreateOrganizationRequest,
   api: SessionApiTransport = defaultApi,
@@ -93,25 +136,28 @@ export async function createOrganization(
 export async function createOrganizationAndRefreshSession(
   input: CreateOrganizationRequest,
   api: SessionApiTransport = defaultApi,
+  recentStorage: RecentSessionStorage | undefined = getRecentSessionStorage(),
 ): Promise<AppSession> {
   const organization = await createOrganization(input, api);
 
-  return getAppSession(organization.id, api);
+  return refreshAppSession(organization.id, undefined, api, recentStorage);
 }
 
 export async function switchOrganization(
   organizationId: string,
   api: SessionApiTransport = defaultApi,
+  recentStorage: RecentSessionStorage | undefined = getRecentSessionStorage(),
 ): Promise<AppSession> {
-  return getAppSession(organizationId, api);
+  return refreshAppSession(organizationId, undefined, api, recentStorage);
 }
 
 export async function switchSpace(
   organizationId: string,
   spaceId: string,
   api: SessionApiTransport = defaultApi,
+  recentStorage: RecentSessionStorage | undefined = getRecentSessionStorage(),
 ): Promise<AppSession> {
-  return getAppSession(organizationId, spaceId, api);
+  return refreshAppSession(organizationId, spaceId, api, recentStorage);
 }
 
 export async function updateUserPreferences(
@@ -136,4 +182,57 @@ export async function changePassword(
   );
 
   return response.data;
+}
+
+export function readRecentSessionSelection(
+  recentStorage: RecentSessionStorage | undefined = getRecentSessionStorage(),
+): RecentSessionSelection {
+  return {
+    recentOrganizationId:
+      recentStorage?.getItem(recentOrganizationStorageKey) || undefined,
+    recentSpaceId: recentStorage?.getItem(recentSpaceStorageKey) || undefined,
+  };
+}
+
+export function persistRecentSessionSelection(
+  session: AppSession,
+  recentStorage: RecentSessionStorage | undefined = getRecentSessionStorage(),
+): void {
+  if (!recentStorage) {
+    return;
+  }
+
+  if (!session.defaultOrganizationId) {
+    recentStorage.removeItem(recentOrganizationStorageKey);
+    recentStorage.removeItem(recentSpaceStorageKey);
+    return;
+  }
+
+  recentStorage.setItem(
+    recentOrganizationStorageKey,
+    session.defaultOrganizationId,
+  );
+
+  const defaultSpace = session.defaultSpaceId
+    ? session.spaces.find((space) => space.id === session.defaultSpaceId)
+    : undefined;
+
+  if (defaultSpace?.organizationId === session.defaultOrganizationId) {
+    recentStorage.setItem(recentSpaceStorageKey, defaultSpace.id);
+    return;
+  }
+
+  recentStorage.removeItem(recentSpaceStorageKey);
+}
+
+function getRecentSessionStorage(): RecentSessionStorage | undefined {
+  if (typeof window === "undefined") {
+    return undefined;
+  }
+
+  try {
+    return window.localStorage;
+  } catch {
+    return undefined;
+  }
 }

@@ -125,6 +125,23 @@ function deriveCode(prefix: string, id: string) {
   return `${prefix}-${id.slice(-6).toUpperCase()}`;
 }
 
+function getDetailHref(item: Pick<SearchResult, "id" | "href" | "type">) {
+  if (item.type === "TASK") {
+    return `/work-items?workItemId=${encodeURIComponent(item.id)}`;
+  }
+  if (item.type === "BUG") {
+    return `/bugs?bugId=${encodeURIComponent(item.id)}`;
+  }
+  if (item.type === "INTAKE") {
+    return `/intake-items?id=${encodeURIComponent(item.id)}`;
+  }
+  return item.href;
+}
+
+function withDetailHref(item: SearchResult): SearchResult {
+  return { ...item, href: getDetailHref(item) };
+}
+
 const PAGE_SIZE = 25;
 
 export function CommandPalette() {
@@ -167,7 +184,7 @@ export function CommandPalette() {
     if (!open) {
       setQuery("");
     } else {
-      setRecent(readRecent(recentScope));
+      setRecent(readRecent(recentScope).map(withDetailHref));
     }
   }, [open, recentScope]);
 
@@ -178,7 +195,7 @@ export function CommandPalette() {
         return;
       }
 
-      setRecent(readRecent(recentScope));
+      setRecent(readRecent(recentScope).map(withDetailHref));
     };
 
     window.addEventListener(RECENT_CHANGED_EVENT, onRecentChanged);
@@ -238,7 +255,7 @@ export function CommandPalette() {
               type: "TASK",
               code: deriveCode("TASK", item.id),
               title: item.title,
-              href: "/work-items",
+              href: getDetailHref({ id: item.id, type: "TASK", href: "/work-items" }),
             });
           }
         } else {
@@ -253,7 +270,7 @@ export function CommandPalette() {
               type: "BUG",
               code: deriveCode("BUG", item.id),
               title: item.title,
-              href: "/bugs",
+              href: getDetailHref({ id: item.id, type: "BUG", href: "/bugs" }),
             });
           }
         } else {
@@ -283,7 +300,11 @@ export function CommandPalette() {
               type: "INTAKE",
               code: deriveCode("INK", item.id),
               title: item.title,
-              href: "/intake-items",
+              href: getDetailHref({
+                id: item.id,
+                type: "INTAKE",
+                href: "/intake-items",
+              }),
             });
           }
         } else {
@@ -317,9 +338,10 @@ export function CommandPalette() {
   };
 
   const navigateAndRemember = (item: SearchResult) => {
-    const next = writeRecent(item, recentScope);
+    const itemWithDetailHref = withDetailHref(item);
+    const next = writeRecent(itemWithDetailHref, recentScope);
     setRecent(next);
-    navigate(item.href);
+    navigate(itemWithDetailHref.href);
   };
 
   const selectTheme = (theme: NextThemeMode) => {
@@ -580,9 +602,9 @@ function SearchGroup({
         return (
           <CommandItem
             key={item.id}
-            data-testid={
-              itemTestIdPrefix ? `${itemTestIdPrefix}-${item.id}` : undefined
-            }
+            data-testid={itemTestIdPrefix ?? "command-palette-item"}
+            data-id={item.id}
+            data-type={item.type.toLowerCase()}
             value={`${item.code} ${item.title}`}
             onSelect={() => onSelect(item)}
           >

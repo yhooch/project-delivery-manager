@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 
+import type { AuditService } from "../audit/audit.service";
 import type { RateLimiterService } from "../auth/rate-limiter.service";
 import type { UserRepository } from "../identity/identity.repository";
 import {
@@ -23,6 +24,7 @@ describe("OrganizationService", () => {
       repository,
       {} as UserRepository,
       {} as RateLimiterService,
+      createAuditService(),
     );
 
     await expect(
@@ -44,6 +46,7 @@ describe("OrganizationService", () => {
       repository,
       {} as UserRepository,
       {} as RateLimiterService,
+      createAuditService(),
     );
 
     await expect(
@@ -95,4 +98,10 @@ function createRepository() {
     removeMember: ReturnType<typeof vi.fn>;
     updateMember: ReturnType<typeof vi.fn>;
   };
+}
+
+function createAuditService() {
+  return {
+    record: vi.fn(),
+  } as unknown as AuditService;
 }

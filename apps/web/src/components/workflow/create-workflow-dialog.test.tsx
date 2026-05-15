@@ -91,6 +91,18 @@ function renderCopyDialog(onSuccess = vi.fn()) {
   );
 }
 
+function renderCreateDialog(onSuccess = vi.fn()) {
+  render(
+    <CreateWorkflowDialog
+      context={{ organizationId, spaceId }}
+      mode={{ kind: "create" }}
+      onClose={vi.fn()}
+      onSuccess={onSuccess}
+      open
+    />,
+  );
+}
+
 beforeEach(() => {
   createWorkflowMock.mockReset();
   createWorkflowVersionMock.mockReset();
@@ -103,6 +115,42 @@ afterEach(() => {
 });
 
 describe("CreateWorkflowDialog", () => {
+  it("creates the first draft version after creating a workflow", async () => {
+    const onSuccess = vi.fn();
+    createWorkflowMock.mockResolvedValueOnce(makeWorkflow());
+    createWorkflowVersionMock.mockResolvedValueOnce(makeVersion());
+
+    renderCreateDialog(onSuccess);
+
+    fireEvent.change(screen.getByLabelText("workflow.dialog.create.fields.name"), {
+      target: { value: "Custom flow" },
+    });
+    fireEvent.change(screen.getByLabelText("workflow.dialog.create.fields.code"), {
+      target: { value: "CUSTOM_FLOW" },
+    });
+    fireEvent.click(
+      screen.getByRole("button", {
+        name: "workflow.dialog.create.submit",
+      }),
+    );
+
+    await waitFor(() =>
+      expect(createWorkflowMock).toHaveBeenCalledWith(
+        { organizationId, spaceId },
+        {
+          code: "CUSTOM_FLOW",
+          description: undefined,
+          name: "Custom flow",
+        },
+      ),
+    );
+    expect(createWorkflowVersionMock).toHaveBeenCalledWith(
+      { organizationId, spaceId, workflowId },
+      {},
+    );
+    expect(onSuccess).toHaveBeenCalledWith(makeWorkflow());
+  });
+
   it("uses the latest published workflow version as the copy source", async () => {
     const newerPublishedVersionId = "01ARZ3NDEKTSV4RRFFQ69G5VP2";
     listWorkflowVersionsMock.mockResolvedValueOnce({

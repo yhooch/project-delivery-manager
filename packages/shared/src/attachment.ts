@@ -58,8 +58,8 @@ export const PresignAttachmentRequestSchema = z
     targetType: AttachmentTargetTypeSchema,
     targetId: UlidSchema,
     fileName: z.string().min(1),
-    mimeType: AttachmentMimeTypeSchema,
-    size: z.number().int().positive().max(AttachmentMaxSizeBytes),
+    mimeType: z.string().min(1),
+    size: z.number().int(),
   })
   .strict();
 
@@ -85,8 +85,8 @@ export const CreateAttachmentRequestSchema = z
     targetId: UlidSchema,
     fileName: z.string().min(1),
     fileKey: z.string().min(1),
-    mimeType: AttachmentMimeTypeSchema,
-    size: z.number().int().positive().max(AttachmentMaxSizeBytes),
+    mimeType: z.string().min(1),
+    size: z.number().int(),
   })
   .strict();
 

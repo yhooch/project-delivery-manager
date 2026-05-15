@@ -37,6 +37,7 @@ export type WorkflowBindingListProps = {
   currentVersion: WorkflowVersion;
   onCreate: () => void;
   onEdit: (binding: WorkflowBinding) => void;
+  readOnly?: boolean;
 };
 
 export function WorkflowBindingList({
@@ -44,6 +45,7 @@ export function WorkflowBindingList({
   currentVersion,
   onCreate,
   onEdit,
+  readOnly = false,
 }: WorkflowBindingListProps) {
   const t = useTranslations("workflow.config.bindings");
   const tType = useTranslations("workflow.workItemType");
@@ -78,6 +80,7 @@ export function WorkflowBindingList({
         </div>
         <Button
           className="h-7 text-xs"
+          disabled={readOnly}
           onClick={onCreate}
           size="sm"
           variant="outline"
@@ -155,6 +158,7 @@ export function WorkflowBindingList({
                       <Button
                         aria-label={t("actions.edit")}
                         className="h-6 w-6"
+                        disabled={readOnly}
                         onClick={() => onEdit(binding)}
                         size="icon-sm"
                         variant="ghost"

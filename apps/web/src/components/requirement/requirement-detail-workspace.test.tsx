@@ -23,11 +23,28 @@ vi.mock("next-intl", () => ({
   useLocale: () => "zh-CN",
 }));
 
+const { routerPushMock } = vi.hoisted(() => ({
+  routerPushMock: vi.fn(),
+}));
+vi.mock("../../i18n/routing", () => ({
+  useRouter: () => ({ push: routerPushMock }),
+}));
+
 const sessionMock = vi.hoisted(() => ({
   current: {
     session: {
       defaultOrganizationId: "ORG_01",
       defaultSpaceId: "SPC_01",
+      user: {
+        id: "USER_01",
+        name: "Requirement User",
+        preferences: {
+          locale: "zh-CN",
+          themeMode: "SYSTEM",
+        },
+        status: "ACTIVE",
+        username: "requirement",
+      },
       spaces: [
         {
           id: "SPC_01",
@@ -46,12 +63,14 @@ vi.mock("../providers/session-provider", () => ({
 
 const {
   archiveRequirementMock,
+  deleteRequirementDraftMock,
   getRequirementMock,
   listRequirementAssignableMembersMock,
   listRequirementVersionsMock,
   updateRequirementMock,
 } = vi.hoisted(() => ({
   archiveRequirementMock: vi.fn(),
+  deleteRequirementDraftMock: vi.fn(),
   getRequirementMock: vi.fn(),
   listRequirementAssignableMembersMock: vi.fn(),
   listRequirementVersionsMock: vi.fn(),
@@ -59,6 +78,7 @@ const {
 }));
 vi.mock("../../lib/requirement-service", () => ({
   archiveRequirement: archiveRequirementMock,
+  deleteRequirementDraft: deleteRequirementDraftMock,
   getRequirement: getRequirementMock,
   listRequirementAssignableMembers: listRequirementAssignableMembersMock,
   listRequirementVersions: listRequirementVersionsMock,
@@ -99,6 +119,7 @@ function makeRequirement(overrides: Record<string, unknown> = {}) {
     contentJson: { type: "doc", content: [] },
     contentFormat: "TIPTAP_JSON",
     status: "DRAFT",
+    authorId: "USER_01",
     priority: "MEDIUM",
     relatedWorkItems: { taskCount: 0, bugCount: 0, tasks: [], bugs: [] },
     permissions: {
@@ -115,12 +136,15 @@ function makeRequirement(overrides: Record<string, unknown> = {}) {
 
 beforeEach(() => {
   archiveRequirementMock.mockReset();
+  deleteRequirementDraftMock.mockReset();
   editorSlotMock.mockClear();
   getRequirementMock.mockReset();
   listRequirementAssignableMembersMock.mockReset();
   listRequirementVersionsMock.mockReset();
   updateRequirementMock.mockReset();
+  routerPushMock.mockReset();
 
+  deleteRequirementDraftMock.mockResolvedValue({});
   listRequirementVersionsMock.mockResolvedValue({ items: [], total: 0 });
   listRequirementAssignableMembersMock.mockResolvedValue({ items: [], total: 0 });
   updateRequirementMock.mockResolvedValue(makeRequirement());
@@ -238,5 +262,40 @@ describe("RequirementDetailWorkspace", () => {
         expect.objectContaining({ priority: "URGENT" }),
       ),
     );
+  });
+
+  it("lets the owner discard an empty draft through the safe delete action", async () => {
+    getRequirementMock.mockResolvedValueOnce(
+      makeRequirement({
+        title: "",
+        summary: undefined,
+        contentJson: {},
+        contentText: "",
+        contentMarkdownCache: "",
+        status: "DRAFT",
+      }),
+    );
+    const confirmSpy = vi.spyOn(window, "confirm").mockReturnValue(true);
+
+    render(
+      <RequirementDetailWorkspace requirementId="01ARZ3NDEKTSV4RRFFQ69G5FA1" />,
+    );
+
+    fireEvent.click(
+      await screen.findByRole("button", {
+        name: "requirements.detail.discardDraft",
+      }),
+    );
+
+    await waitFor(() =>
+      expect(deleteRequirementDraftMock).toHaveBeenCalledWith({
+        organizationId: "ORG_01",
+        requirementId: "01ARZ3NDEKTSV4RRFFQ69G5FA1",
+        spaceId: "SPC_01",
+      }),
+    );
+    expect(routerPushMock).toHaveBeenCalledWith("/requirements");
+
+    confirmSpy.mockRestore();
   });
 });

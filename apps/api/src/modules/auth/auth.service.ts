@@ -9,6 +9,7 @@ import * as argon2 from "argon2";
 import { ulid } from "ulid";
 
 import { ApiException } from "../../http/api-exception";
+import { AuditService } from "../audit/audit.service";
 import {
   USER_REPOSITORY,
   type UserRepository,
@@ -37,6 +38,8 @@ export class AuthService {
     private readonly sessionBuilder: AuthSessionBuilder,
     @Inject(RateLimiterService)
     private readonly rateLimiter: RateLimiterService,
+    @Inject(AuditService)
+    private readonly audit: AuditService,
   ) {}
 
   async register(
@@ -70,6 +73,13 @@ export class AuthService {
       themeMode: "SYSTEM",
     });
     const createdSession = await this.sessions.createSession(user, metadata);
+    await this.audit.recordForUserOrganizations(user.id, {
+      ...metadata,
+      actionType: "LOGIN",
+      metadata: { sessionId: createdSession.session.id, source: "register" },
+      targetId: user.id,
+      targetType: "USER",
+    });
 
     return {
       appSession: this.sessionBuilder.buildIdentitySession(user),
@@ -96,6 +106,20 @@ export class AuthService {
     this.rateLimiter.reset(limiter.key);
     await this.sessions.rotateUserSessions(user.id);
     const createdSession = await this.sessions.createSession(user, metadata);
+    await this.audit.recordForUserOrganizations(user.id, {
+      ...metadata,
+      actionType: "SESSION_REVOKED",
+      metadata: { reason: "ROTATED" },
+      targetId: user.id,
+      targetType: "USER",
+    });
+    await this.audit.recordForUserOrganizations(user.id, {
+      ...metadata,
+      actionType: "LOGIN",
+      metadata: { sessionId: createdSession.session.id },
+      targetId: user.id,
+      targetType: "USER",
+    });
 
     return {
       appSession: this.sessionBuilder.buildIdentitySession(user),
@@ -107,8 +131,25 @@ export class AuthService {
     };
   }
 
-  async logout(sessionId: string): Promise<void> {
+  async logout(
+    sessionId: string,
+    userId: string,
+    metadata: RequestMetadata,
+  ): Promise<void> {
     await this.sessions.revokeSession(sessionId);
+    await this.audit.recordForUserOrganizations(userId, {
+      ...metadata,
+      actionType: "LOGOUT",
+      targetId: sessionId,
+      targetType: "SESSION",
+    });
+    await this.audit.recordForUserOrganizations(userId, {
+      ...metadata,
+      actionType: "SESSION_REVOKED",
+      metadata: { reason: "LOGOUT" },
+      targetId: sessionId,
+      targetType: "SESSION",
+    });
   }
 
   async changePassword(

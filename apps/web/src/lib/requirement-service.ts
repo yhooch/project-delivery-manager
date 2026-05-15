@@ -1,5 +1,6 @@
 import {
   CreateRequirementDraftResponseSchema,
+  DeleteRequirementDraftResponseSchema,
   GetRequirementResponseSchema,
   ListRequirementsResponseSchema,
   ListSpaceMembersResponseSchema,
@@ -17,6 +18,7 @@ import {
 import { apiClient, type ApiRequestInit } from "./api-client";
 
 export type RequirementApiTransport = {
+  delete<TData>(path: string, init?: ApiRequestInit): Promise<{ data: TData }>;
   get<TData>(path: string, init?: ApiRequestInit): Promise<{ data: TData }>;
   patch<TData>(
     path: string,
@@ -126,6 +128,20 @@ export async function archiveRequirement(
   api: RequirementApiTransport = defaultApi,
 ): Promise<Requirement> {
   return updateRequirement(context, { status: "ARCHIVED" }, api);
+}
+
+export async function deleteRequirementDraft(
+  context: RequirementIdentityInput,
+  api: RequirementApiTransport = defaultApi,
+): Promise<Record<string, never>> {
+  const {
+    organizationId: _organizationId,
+    requirementId,
+    spaceId: _spaceId,
+  } = context;
+  const response = await api.delete<unknown>(`/requirements/${requirementId}`);
+
+  return DeleteRequirementDraftResponseSchema.parse(response.data);
 }
 
 export async function listRequirementVersions(

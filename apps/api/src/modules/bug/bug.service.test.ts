@@ -205,7 +205,7 @@ describe("BugService", () => {
   });
 
   it("updates bug details, related participants and assignee change timeline input", async () => {
-    const subject = createSubject("DEVELOPER");
+    const subject = createSubject("PM");
 
     subject.bugs.items.set(
       BUG_ID,
@@ -295,34 +295,48 @@ describe("BugService", () => {
     );
   });
 
-  it("returns updated bug when a participant-only actor assigns it away", async () => {
-    const subject = createSubject("DEVELOPER");
+  it.each(["DEVELOPER", "TESTER", "MEMBER"] as const)(
+    "rejects %s direct BUG patches even when the bug is visible",
+    async (role) => {
+      const subject = createSubject(role);
 
-    subject.bugs.items.set(
-      BUG_ID,
-      makeBug({
-        assigneeId: ACTOR_ID,
-      }),
-    );
-    subject.bugs.participantKeys.add(`${BUG_ID}:${ACTOR_ID}`);
-    subject.spaces.addMember(ASSIGNEE_ID, "DEVELOPER");
-    subject.organizations.addMember(ASSIGNEE_ID);
-    subject.permissionResolver.resolvePermissionSnapshot = async () => {
-      throw new Error("visibility should not be rechecked after update");
-    };
+      subject.bugs.items.set(
+        BUG_ID,
+        makeBug({
+          assigneeId: ACTOR_ID,
+        }),
+      );
+      subject.bugs.participantKeys.add(`${BUG_ID}:${ACTOR_ID}`);
 
-    const updated = await subject.service.update(ACTOR_ID, BUG_ID, {
-      assigneeId: ASSIGNEE_ID,
-    });
+      await expect(
+        subject.service.update(
+          ACTOR_ID,
+          BUG_ID,
+          {
+            severity: "CRITICAL",
+            title: `${role} direct edit`,
+          },
+          {
+            requestId: `${role.toLowerCase()}-patch-denied`,
+          },
+        ),
+      ).rejects.toMatchObject({
+        code: "SPACE_ACCESS_DENIED",
+      });
 
-    expect(updated).toMatchObject({
-      assigneeId: ASSIGNEE_ID,
-      permissions: {
-        canEdit: true,
-      },
-    });
-    expect(subject.permissionResolver.resolvedWorkItemIds).toEqual([BUG_ID]);
-  });
+      expect(subject.bugs.updatedInput).toBeUndefined();
+      expect(subject.bugs.auditLogs).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            actionType: "ACCESS_DENIED",
+            requestId: `${role.toLowerCase()}-patch-denied`,
+            targetId: BUG_ID,
+            targetType: "BUG",
+          }),
+        ]),
+      );
+    },
+  );
 });
 
 function createSubject(role: SpaceRole, actorUserId = ACTOR_ID) {

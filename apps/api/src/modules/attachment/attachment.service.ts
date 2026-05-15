@@ -6,6 +6,7 @@ import {
   AttachmentMimeTypeSchema,
   PresignedUploadUrlExpiresInSeconds,
   type Attachment,
+  type AttachmentMimeType,
   type AttachmentTargetType,
   type CreateAttachmentRequest,
   type GetAttachmentDownloadUrlResponse,
@@ -68,7 +69,7 @@ export class AttachmentService {
     actorUserId: string,
     input: CreateAttachmentRequest,
   ): Promise<Attachment> {
-    this.assertFileConstraints(input);
+    const file = this.assertFileConstraints(input);
     if (!isExpectedFileKey(input.targetType, input.targetId, input.fileKey)) {
       throw new ApiException(
         "VALIDATION_ERROR",
@@ -91,7 +92,7 @@ export class AttachmentService {
       targetId: input.targetId,
       fileName: input.fileName,
       fileKey: input.fileKey,
-      mimeType: input.mimeType,
+      mimeType: file.mimeType,
       size: input.size,
       uploadedById: actorUserId,
     });
@@ -264,28 +265,44 @@ export class AttachmentService {
 
     if (count >= AttachmentMaxCountPerTarget) {
       throw new ApiException(
-        "VALIDATION_ERROR",
+        "ATTACHMENT_LIMIT_EXCEEDED",
         "Attachment count limit exceeded",
         HttpStatus.BAD_REQUEST,
       );
     }
   }
 
-  private assertFileConstraints(input: { mimeType: string; size: number }) {
-    if (input.size <= 0 || input.size > AttachmentMaxSizeBytes) {
+  private assertFileConstraints(input: {
+    mimeType: string;
+    size: number;
+  }): { mimeType: AttachmentMimeType } {
+    if (input.size <= 0) {
       throw new ApiException(
         "VALIDATION_ERROR",
-        "Attachment size exceeds the allowed range",
+        "Attachment size must be positive",
         HttpStatus.BAD_REQUEST,
       );
     }
-    if (!AttachmentMimeTypeSchema.safeParse(input.mimeType).success) {
+    if (input.size > AttachmentMaxSizeBytes) {
       throw new ApiException(
-        "VALIDATION_ERROR",
+        "FILE_TOO_LARGE",
+        "Attachment size exceeds the allowed limit",
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+    const mimeType = AttachmentMimeTypeSchema.safeParse(input.mimeType);
+
+    if (!mimeType.success) {
+      throw new ApiException(
+        "UNSUPPORTED_MIME_TYPE",
         "Attachment MIME type is not allowed",
         HttpStatus.BAD_REQUEST,
       );
     }
+
+    return {
+      mimeType: mimeType.data,
+    };
   }
 }
 

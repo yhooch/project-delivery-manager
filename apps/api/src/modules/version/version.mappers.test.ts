@@ -103,6 +103,57 @@ describe("version board work item mapper", () => {
       "pending_regression",
     );
   });
+
+  it("uses current blocked state for blocked hints and keeps blocked fields as details only", () => {
+    const residualBlockedFields = toVersionBoardWorkItemSummary(
+      workItem({
+        blockedAt: new Date("2026-05-12T12:00:00.000Z"),
+        blockedReason: "Old dependency",
+        currentState: {
+          category: "IN_PROGRESS",
+          code: "in_progress",
+          name: "In progress",
+        },
+      }),
+      {
+        now,
+        staleThresholdDays: 3,
+      },
+    );
+    const blockedStateWithoutReason = toVersionBoardWorkItemSummary(
+      workItem({
+        currentState: {
+          category: "WAITING",
+          code: "blocked",
+          name: "Blocked",
+        },
+        statusCategory: "WAITING",
+      }),
+      {
+        now,
+        staleThresholdDays: 3,
+      },
+    );
+
+    expect(residualBlockedFields.currentStatus.exceptionHints.blocked).toBe(
+      false,
+    );
+    expect(
+      residualBlockedFields.exceptionSignals.some(
+        (signal) => signal.type === "blocked",
+      ),
+    ).toBe(false);
+    expect(blockedStateWithoutReason.currentStatus.exceptionHints.blocked).toBe(
+      true,
+    );
+    expect(
+      blockedStateWithoutReason.exceptionSignals.find(
+        (signal) => signal.type === "blocked",
+      ),
+    ).toMatchObject({
+      evidenceSource: "WORKFLOW_STATE",
+    });
+  });
 });
 
 function workItem(

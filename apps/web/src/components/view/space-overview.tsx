@@ -635,7 +635,11 @@ export function SpaceOverview() {
                             )}
                           </div>
                           <div className="mt-0.5 text-[10px] text-muted-foreground">
-                            {formatTimeAgo(event.createdAt, locale)}
+                            {formatTimeAgo(
+                              event.createdAt,
+                              locale,
+                              t("time.justNow"),
+                            )}
                           </div>
                         </div>
                       </div>
@@ -807,7 +811,7 @@ function initialOf(value: string) {
   return trimmed.slice(0, 1).toUpperCase();
 }
 
-function formatTimeAgo(value: string, locale: string) {
+function formatTimeAgo(value: string, locale: string, justNowLabel: string) {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return "";
 
@@ -815,7 +819,7 @@ function formatTimeAgo(value: string, locale: string) {
   const diffMin = Math.round(diffMs / 60_000);
 
   if (Math.abs(diffMin) < 1) {
-    return locale.startsWith("zh") ? "刚刚" : "just now";
+    return justNowLabel;
   }
 
   const rtf = new Intl.RelativeTimeFormat(locale, { numeric: "auto" });

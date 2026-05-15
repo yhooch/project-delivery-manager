@@ -5,6 +5,7 @@ import { useTranslations } from "next-intl";
 import { useState } from "react";
 
 import { useSession } from "../providers/session-provider";
+import { canManageOrganization } from "../../lib/space-service";
 import { Badge } from "../ui/badge";
 import { Button } from "../ui/button";
 import {
@@ -53,7 +54,10 @@ export function OrganizationSwitcher() {
   }
 
   const canCreateOrganization = Boolean(session.capabilities?.canCreateOrganization);
-  const canCreateSpace = Boolean(session.capabilities?.canCreateSpace);
+  const canCreateSpace = Boolean(
+    currentOrganization?.status === "ACTIVE" &&
+      canManageOrganization(currentOrganization.role),
+  );
   const hasMultipleOrgs = session.organizations.length > 1;
   const hasAnySpaces = spacesForCurrentOrganization.length > 0;
 
@@ -165,7 +169,7 @@ export function OrganizationSwitcher() {
                 <Building2 className="h-3.5 w-3.5 text-muted-foreground" />
                 <span className="flex-1 truncate">{organization.name}</span>
                 <Badge variant="outline" className="shrink-0 normal-case">
-                  {organization.role}
+                  {t(`roles.${organization.role}`)}
                 </Badge>
                 {isCurrent ? (
                   <span className="inline-flex items-center gap-1 text-[10px] text-primary">
