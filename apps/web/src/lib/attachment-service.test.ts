@@ -253,22 +253,55 @@ describe("attachment service", () => {
     );
   });
 
-  it("treats the M1 pseudo object-storage origin as an accepted local upload", async () => {
+  it("treats the M1 dev-only pseudo object-storage origin as an accepted local upload", async () => {
     const api = createApi();
     const fetchSpy = vi.fn();
     vi.stubGlobal("fetch", fetchSpy);
 
-    await uploadRequirementImage(
-      {
-        existingAttachmentCount: 0,
-        file: createImageFile(),
-        requirementId,
-      },
-      api,
-    );
+    try {
+      await uploadRequirementImage(
+        {
+          existingAttachmentCount: 0,
+          file: createImageFile(),
+          requirementId,
+        },
+        api,
+      );
 
-    expect(fetchSpy).not.toHaveBeenCalled();
-    vi.unstubAllGlobals();
+      expect(fetchSpy).not.toHaveBeenCalled();
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
+  it("does not skip pseudo object-storage uploads outside dev and test", async () => {
+    const api = createApi();
+    const file = createImageFile();
+    const fetchSpy = vi.fn(async () => ({ ok: true }));
+    vi.stubEnv("NODE_ENV", "production");
+    vi.stubGlobal("fetch", fetchSpy);
+
+    try {
+      await uploadRequirementImage(
+        {
+          existingAttachmentCount: 0,
+          file,
+          requirementId,
+        },
+        api,
+      );
+
+      expect(fetchSpy).toHaveBeenCalledWith(uploadUrl, {
+        body: file,
+        headers: {
+          "Content-Type": "image/png",
+        },
+        method: "PUT",
+      });
+    } finally {
+      vi.unstubAllGlobals();
+      vi.unstubAllEnvs();
+    }
   });
 
   it("rejects image files that exceed size, MIME, or count limits", () => {

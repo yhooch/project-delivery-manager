@@ -68,7 +68,8 @@ export function SpaceSettingsPage() {
   const t = useTranslations("spaceSettings");
   const tShell = useTranslations("shell.nav");
   const tRoot = useTranslations();
-  const { currentOrganization, currentSpace, session, status } = useSession();
+  const { currentOrganization, currentSpace, refreshSession, session, status } =
+    useSession();
   const spaceId = session?.defaultSpaceId ?? currentSpace?.id;
   const writeAllowed = canManageSpace(currentSpace?.role);
   const writeDisabledHint = writeAllowed
@@ -240,6 +241,11 @@ export function SpaceSettingsPage() {
       setCode(updated.code);
       setDescription(updated.description ?? "");
       setOwnerId(updated.ownerId ?? "");
+      try {
+        await refreshSession(updated.organizationId, updated.id);
+      } catch (error) {
+        setSaveErrorKey(getApiErrorMessageKey(error));
+      }
     } catch (error) {
       setSpace(previous);
       setName(previous.name);

@@ -53,6 +53,7 @@ const sessionMock = vi.hoisted(() => ({
           id: "SPC_01",
           organizationId: "ORG_01",
           role: "PM",
+          status: "ACTIVE",
         },
       ],
     },
@@ -60,6 +61,7 @@ const sessionMock = vi.hoisted(() => ({
       id: "SPC_01",
       organizationId: "ORG_01",
       role: "PM",
+      status: "ACTIVE",
     },
     status: "authenticated" as const,
   } as { currentSpace?: unknown; session: unknown; status: string },
@@ -257,6 +259,7 @@ beforeEach(() => {
           id: "SPC_01",
           organizationId: "ORG_01",
           role: "PM",
+          status: "ACTIVE",
         },
       ],
     },
@@ -264,6 +267,7 @@ beforeEach(() => {
       id: "SPC_01",
       organizationId: "ORG_01",
       role: "PM",
+      status: "ACTIVE",
     },
     status: "authenticated" as const,
   };
@@ -1200,6 +1204,7 @@ describe("IntakePage", () => {
             id: "SPC_01",
             organizationId: "ORG_01",
             role: "VIEWER",
+            status: "ACTIVE",
           },
         ],
       },
@@ -1207,6 +1212,7 @@ describe("IntakePage", () => {
         id: "SPC_01",
         organizationId: "ORG_01",
         role: "VIEWER",
+        status: "ACTIVE",
       },
       status: "authenticated" as const,
     };
@@ -1237,7 +1243,7 @@ describe("IntakePage", () => {
     ).not.toBeInTheDocument();
   });
 
-  it("hides management actions for non-admin non-PM space roles", async () => {
+  it("allows create and comments but hides management actions for non-admin non-PM space roles", async () => {
     sessionMock.current = {
       session: {
         defaultOrganizationId: "ORG_01",
@@ -1246,14 +1252,16 @@ describe("IntakePage", () => {
           {
             id: "SPC_01",
             organizationId: "ORG_01",
-            role: "DEVELOPER",
+            role: "REQUIREMENT",
+            status: "ACTIVE",
           },
         ],
       },
       currentSpace: {
         id: "SPC_01",
         organizationId: "ORG_01",
-        role: "DEVELOPER",
+        role: "REQUIREMENT",
+        status: "ACTIVE",
       },
       status: "authenticated" as const,
     };
@@ -1278,8 +1286,8 @@ describe("IntakePage", () => {
     fireEvent.click(await screen.findByText("Developer pending intake"));
 
     expect(
-      screen.queryByTestId("intake-create-button"),
-    ).not.toBeInTheDocument();
+      screen.getByTestId("intake-create-button"),
+    ).toBeInTheDocument();
     expect(screen.queryByTestId("intake-edit-button")).not.toBeInTheDocument();
     expect(
       screen.queryByTestId("intake-accept-button"),
@@ -1290,10 +1298,10 @@ describe("IntakePage", () => {
     ).not.toBeInTheDocument();
     expect(
       screen.queryByTestId("intake-comment-input"),
-    ).not.toBeInTheDocument();
-    expect(
-      await screen.findByTestId("intake-comments-readonly"),
     ).toBeInTheDocument();
+    expect(
+      screen.queryByTestId("intake-comments-readonly"),
+    ).not.toBeInTheDocument();
 
     fireEvent.click(screen.getByText("Developer accepted intake"));
 

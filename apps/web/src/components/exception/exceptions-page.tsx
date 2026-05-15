@@ -35,14 +35,16 @@ import {
 import { usePathname, useRouter } from "../../i18n/routing";
 import { getSpace } from "../../lib/space-service";
 import { cn } from "../../lib/utils";
-import type { WorkItemViewModel } from "../../lib/v2/work-item-view-model";
+import {
+  createWorkItemViewModelMapper,
+  type WorkItemViewModel,
+} from "../../lib/v2/work-item-view-model";
 import { useSpaceMembers, useVersions } from "../../lib/v2/lookups";
 import {
   getM4ViewFilterControls,
   type M4ViewFilterControlModel,
 } from "../../lib/view-forms";
 import { getSpaceExceptionsView } from "../../lib/view-service";
-import { toMockWorkItem } from "../workbench/my-workbench";
 import { useSession } from "../providers/session-provider";
 import { recordRecentOpen } from "../shell/recent-opens";
 
@@ -152,6 +154,9 @@ export function ExceptionsPage() {
   const [filters, setFilters] =
     useState<ExceptionFilterValues>(requestedFilters);
   const [thresholdValue, setThresholdValue] = useState<number | null>(null);
+  const [thresholdErrorKey, setThresholdErrorKey] = useState<string | null>(
+    null,
+  );
   const [thresholdOpen, setThresholdOpen] = useState(false);
   const requestSeq = useRef(0);
   const { captureFocus, restoreFocus } = useFocusReturn();
@@ -160,7 +165,22 @@ export function ExceptionsPage() {
   const spaceId = session?.defaultSpaceId;
   const canEditThreshold = canManageSpaceThreshold(currentSpace?.role);
   const { members, getMember } = useSpaceMembers(spaceId, organizationId);
-  const { versions, getVersion } = useVersions(spaceId, organizationId);
+  const {
+    versions,
+    getVersion,
+    loading: versionsLoading,
+  } = useVersions(spaceId, organizationId);
+
+  const effectiveFilters = useMemo<ExceptionFilterValues>(() => {
+    if (
+      filters.versionId &&
+      !versions.some((version) => version.id === filters.versionId)
+    ) {
+      return { ...filters, versionId: undefined };
+    }
+
+    return filters;
+  }, [filters, versions]);
 
   useEffect(() => {
     setTabValue(requestedExceptionType);
@@ -169,6 +189,34 @@ export function ExceptionsPage() {
   useEffect(() => {
     setFilters(requestedFilters);
   }, [requestedFilters]);
+
+  useEffect(() => {
+    if (!filters.versionId || versionsLoading) {
+      return;
+    }
+
+    if (versions.some((version) => version.id === filters.versionId)) {
+      return;
+    }
+
+    setFilters((current) =>
+      current.versionId === filters.versionId
+        ? { ...current, versionId: undefined }
+        : current,
+    );
+    const params = new URLSearchParams(searchParams.toString());
+    params.delete("versionId");
+    const query = params.toString();
+    const target = query ? `${pathname}?${query}` : pathname;
+    router.replace(target as never, { scroll: false });
+  }, [
+    filters.versionId,
+    pathname,
+    router,
+    searchParams,
+    versions,
+    versionsLoading,
+  ]);
 
   const fetchView = useCallback(async () => {
     if (!spaceId) {
@@ -188,10 +236,10 @@ export function ExceptionsPage() {
       const next = await getSpaceExceptionsView({
         spaceId,
         organizationId,
-        versionId: filters.versionId,
-        assigneeId: filters.assigneeId,
-        statusCategory: filters.statusCategory,
-        workItemType: filters.workItemType,
+        versionId: effectiveFilters.versionId,
+        assigneeId: effectiveFilters.assigneeId,
+        statusCategory: effectiveFilters.statusCategory,
+        workItemType: effectiveFilters.workItemType,
         exceptionType: tabValue,
         page: 1,
         pageSize: 200,
@@ -211,10 +259,10 @@ export function ExceptionsPage() {
       }
     }
   }, [
-    filters.assigneeId,
-    filters.statusCategory,
-    filters.versionId,
-    filters.workItemType,
+    effectiveFilters.assigneeId,
+    effectiveFilters.statusCategory,
+    effectiveFilters.versionId,
+    effectiveFilters.workItemType,
     organizationId,
     spaceId,
     tabValue,
@@ -223,18 +271,24 @@ export function ExceptionsPage() {
   useEffect(() => {
     if (!spaceId) {
       setThresholdValue(null);
+      setThresholdErrorKey(null);
       return;
     }
 
     let isActive = true;
     void (async () => {
+      setThresholdErrorKey(null);
       try {
         const nextSpace = await getSpace(spaceId);
         if (isActive) {
           setThresholdValue(nextSpace.settings.staleThresholdDays);
         }
-      } catch {
-        // silent — button still functions; dialog falls back to default value
+      } catch (error) {
+        if (isActive) {
+          setThresholdValue(null);
+          setThresholdErrorKey(getApiErrorMessageKey(error));
+          setThresholdOpen(false);
+        }
       }
     })();
 
@@ -263,10 +317,10 @@ export function ExceptionsPage() {
         const next = await getSpaceExceptionsView({
           spaceId: spaceId!,
           organizationId,
-          versionId: filters.versionId,
-          assigneeId: filters.assigneeId,
-          statusCategory: filters.statusCategory,
-          workItemType: filters.workItemType,
+          versionId: effectiveFilters.versionId,
+          assigneeId: effectiveFilters.assigneeId,
+          statusCategory: effectiveFilters.statusCategory,
+          workItemType: effectiveFilters.workItemType,
           exceptionType: tabValue,
           page: 1,
           pageSize: 200,
@@ -294,10 +348,10 @@ export function ExceptionsPage() {
       }
     };
   }, [
-    filters.assigneeId,
-    filters.statusCategory,
-    filters.versionId,
-    filters.workItemType,
+    effectiveFilters.assigneeId,
+    effectiveFilters.statusCategory,
+    effectiveFilters.versionId,
+    effectiveFilters.workItemType,
     organizationId,
     spaceId,
     tabValue,
@@ -328,18 +382,18 @@ export function ExceptionsPage() {
 
   const buildExceptionViewModel = useCallback(
     (item: SpaceExceptionItem): WorkItemViewModel => {
-      const mock = toMockWorkItem(
+      const viewItem = createWorkItemViewModelMapper({
         locale,
-        { getMember, getVersion },
-        tStatusCategory,
-      )(item.workItem);
+        lookups: { getMember, getVersion },
+        statusLabel: tStatusCategory,
+      })(item.workItem);
       const blockedSignal = item.exceptions.find(
         (signal) => signal.type === "blocked",
       );
       return {
-        ...mock,
-        isBlocked: mock.isBlocked || Boolean(blockedSignal),
-        blockedReason: mock.blockedReason ?? blockedSignal?.reason,
+        ...viewItem,
+        isBlocked: viewItem.isBlocked || Boolean(blockedSignal),
+        blockedReason: viewItem.blockedReason ?? blockedSignal?.reason,
       };
     },
     [getMember, getVersion, locale, tStatusCategory],
@@ -397,25 +451,43 @@ export function ExceptionsPage() {
     onClose: () => handleSheetOpenChange(false),
   });
 
+  const thresholdButtonDisabled =
+    !canEditThreshold || Boolean(thresholdErrorKey);
   const headerActions = (
-    <Button
-      variant="outline"
-      size="sm"
-      className="text-xs"
-      data-testid="exceptions-threshold-button"
-      disabled={!canEditThreshold}
-      aria-disabled={!canEditThreshold}
-      title={canEditThreshold ? undefined : t("threshold.readonly")}
-      onClick={() => setThresholdOpen(true)}
-    >
-      <Settings2 className="h-3 w-3" />
-      {t("threshold.title")}
-      {thresholdValue !== null && (
-        <span className="ml-1 text-[10px] text-muted-foreground">
-          {t("threshold.readonlyValue", { count: thresholdValue })}
+    <div className="flex min-w-0 flex-wrap items-center gap-2">
+      <Button
+        variant="outline"
+        size="sm"
+        className="text-xs"
+        data-testid="exceptions-threshold-button"
+        disabled={thresholdButtonDisabled}
+        aria-disabled={thresholdButtonDisabled}
+        title={
+          thresholdErrorKey
+            ? tRoot(thresholdErrorKey)
+            : canEditThreshold
+              ? undefined
+              : t("threshold.readonly")
+        }
+        onClick={() => setThresholdOpen(true)}
+      >
+        <Settings2 className="h-3 w-3" />
+        {t("threshold.title")}
+        {thresholdValue !== null && (
+          <span className="ml-1 text-[10px] text-muted-foreground">
+            {t("threshold.readonlyValue", { count: thresholdValue })}
+          </span>
+        )}
+      </Button>
+      {thresholdErrorKey ? (
+        <span
+          data-testid="exceptions-threshold-error"
+          className="max-w-[220px] truncate text-[11px] text-destructive"
+        >
+          {tRoot(thresholdErrorKey)}
         </span>
-      )}
-    </Button>
+      ) : null}
+    </div>
   );
 
   const pageDescription = t("page.description");
@@ -639,7 +711,7 @@ export function ExceptionsPage() {
                 className="divide-y divide-border"
               >
                 {tab.items.map((item) => {
-                  const mock = buildExceptionViewModel(item);
+                  const viewItem = buildExceptionViewModel(item);
                   const matchedSignal = item.exceptions.find(
                     (signal) => signal.type === tab.key,
                   );
@@ -667,16 +739,16 @@ export function ExceptionsPage() {
                             "bg-primary/10 shadow-[inset_3px_0_0_hsl(var(--primary))]",
                         )}
                       >
-                        {mock.type === "BUG" ? (
+                        {viewItem.type === "BUG" ? (
                           <Bug className="h-3.5 w-3.5 shrink-0 text-destructive/80" />
                         ) : (
                           <CheckCircle2 className="h-3.5 w-3.5 shrink-0 text-primary/80" />
                         )}
                         <span className="font-mono text-[11px] text-muted-foreground">
-                          {mock.type}
+                          {tRoot(`versionBoard.filters.type.${viewItem.type}`)}
                         </span>
                         <span className="flex-1 truncate text-[13px] font-medium">
-                          {mock.title}
+                          {viewItem.title}
                         </span>
                         {(exceptionDetail || exceptionMeta.length > 0) && (
                           <span className="hidden min-w-0 max-w-[280px] flex-col items-end gap-0.5 text-right md:flex">
@@ -699,22 +771,22 @@ export function ExceptionsPage() {
                         )}
                         <span className="shrink-0">
                           <StatusBadge
-                            category={mock.statusCategory}
-                            label={mock.statusLabel}
+                            category={viewItem.statusCategory}
+                            label={viewItem.statusLabel}
                             withDot={false}
                           />
                         </span>
-                        {mock.versionName && (
+                        {viewItem.versionName && (
                           <Badge
                             variant="outline"
                             className="hidden md:inline-flex"
                           >
-                            {mock.versionName}
+                            {viewItem.versionName}
                           </Badge>
                         )}
                         <Avatar className="h-5 w-5 shrink-0">
                           <AvatarFallback className="text-[9px]">
-                            {mock.assignee.initial}
+                            {viewItem.assignee.initial}
                           </AvatarFallback>
                         </Avatar>
                       </button>
@@ -736,7 +808,7 @@ export function ExceptionsPage() {
         }}
       />
 
-      {spaceId && (
+      {spaceId && !thresholdErrorKey && (
         <ThresholdEditorDialog
           initialValue={thresholdValue ?? 3}
           onClose={() => setThresholdOpen(false)}

@@ -16,6 +16,7 @@ type AuthShellProps = {
 
 export function AuthShell({ children, mode }: AuthShellProps) {
   const t = useTranslations("auth");
+  const tBrand = useTranslations("shell.brand");
   const alternateHref = mode === "login" ? "/register" : "/login";
 
   return (
@@ -23,7 +24,7 @@ export function AuthShell({ children, mode }: AuthShellProps) {
       <header className="flex items-center justify-between px-5 py-4">
         <div className="flex items-center gap-2">
           <div className="flex h-7 w-7 items-center justify-center rounded-md bg-primary text-[12px] font-bold text-primary-foreground">
-            PD
+            {tBrand("shortName")}
           </div>
           <span className="text-sm font-semibold tracking-tight">
             {t("brand.name")}

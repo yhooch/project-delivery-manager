@@ -44,6 +44,7 @@ type SidebarProps = {
 
 export function Sidebar({ className, onNavigate }: SidebarProps) {
   const tShell = useTranslations("shell.nav");
+  const tBrand = useTranslations("shell.brand");
   const pathname = usePathname();
   const { currentOrganization } = useSession();
 
@@ -147,7 +148,7 @@ export function Sidebar({ className, onNavigate }: SidebarProps) {
     >
       <div className="flex h-12 shrink-0 items-center gap-2 border-b border-border px-3">
         <div className="flex h-6 w-6 items-center justify-center rounded-md bg-primary text-[11px] font-bold text-primary-foreground">
-          PD
+          {tBrand("shortName")}
         </div>
         <span className="text-sm font-semibold tracking-tight">
           {tShell("appName")}

@@ -38,23 +38,30 @@ vi.mock("../../i18n/routing", () => ({
   useRouter: () => ({ push: vi.fn(), replace: vi.fn() }),
 }));
 
-const sessionMock = vi.hoisted(() => ({
-  current: {
-    session: {
-      defaultOrganizationId: "ORG_01",
-      defaultSpaceId: "SPC_01",
+const { refreshSessionMock, sessionMock } = vi.hoisted(() => {
+  const refreshSessionMock = vi.fn();
+  return {
+    refreshSessionMock,
+    sessionMock: {
+      current: {
+        session: {
+          defaultOrganizationId: "ORG_01",
+          defaultSpaceId: "SPC_01",
+        },
+        currentOrganization: { id: "ORG_01", name: "Acme Org" },
+        currentSpace: {
+          id: "SPC_01",
+          organizationId: "ORG_01",
+          name: "Space A",
+          role: "SPACE_ADMIN",
+          status: "ACTIVE",
+        },
+        refreshSession: refreshSessionMock,
+        status: "authenticated" as const,
+      },
     },
-    currentOrganization: { id: "ORG_01", name: "Acme Org" },
-    currentSpace: {
-      id: "SPC_01",
-      organizationId: "ORG_01",
-      name: "Space A",
-      role: "SPACE_ADMIN",
-      status: "ACTIVE",
-    },
-    status: "authenticated" as const,
-  },
-}));
+  };
+});
 vi.mock("../providers/session-provider", () => ({
   useSession: () => sessionMock.current,
 }));
@@ -142,6 +149,7 @@ beforeEach(() => {
   listSpaceMembersMock.mockReset();
   updateSpaceMock.mockReset();
   updateSpaceMemberMock.mockReset();
+  refreshSessionMock.mockReset();
   sessionMock.current = {
     session: {
       defaultOrganizationId: "ORG_01",
@@ -155,6 +163,7 @@ beforeEach(() => {
       role: "SPACE_ADMIN",
       status: "ACTIVE",
     },
+    refreshSession: refreshSessionMock,
     status: "authenticated" as const,
   };
 });
@@ -287,6 +296,7 @@ describe("SpaceSettingsPage", () => {
       },
       currentOrganization: undefined as unknown as never,
       currentSpace: undefined as unknown as never,
+      refreshSession: refreshSessionMock,
       status: "authenticated" as const,
     };
 
@@ -330,6 +340,7 @@ describe("SpaceSettingsPage", () => {
       description: "Team space",
       ownerId: "USR_01",
     });
+    expect(refreshSessionMock).toHaveBeenCalledWith("ORG_01", "SPC_01");
   });
 
   it("maps a CONFLICT error on code to a field-level message", async () => {

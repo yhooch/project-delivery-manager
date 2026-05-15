@@ -31,7 +31,10 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { getApiErrorMessageKey } from "../../lib/api-error-messages";
 import { ApiClientError } from "../../lib/api-client";
 import { Link, usePathname, useRouter } from "../../i18n/routing";
-import type { WorkItemViewModel } from "../../lib/v2/work-item-view-model";
+import {
+  createWorkItemViewModelMapper,
+  type WorkItemViewModel,
+} from "../../lib/v2/work-item-view-model";
 import { cn } from "../../lib/utils";
 import { useSession } from "../providers/session-provider";
 import { recordRecentOpen } from "../shell/recent-opens";
@@ -41,7 +44,6 @@ import { listVersions } from "../../lib/version-service";
 import { getVersionBoardView } from "../../lib/view-service";
 import { useFocusReturn } from "../../lib/hooks/use-list-keyboard-nav";
 import { useSpaceMembers } from "../../lib/v2/lookups";
-import { toMockWorkItem } from "../workbench/my-workbench";
 
 import { Avatar, AvatarFallback, AvatarImage } from "../ui/avatar";
 import { Badge } from "../ui/badge";
@@ -172,11 +174,11 @@ function canManageVersionEntries(
   return status !== "DISABLED" && (role === "SPACE_ADMIN" || role === "PM");
 }
 
-function canWriteWorkItems(
+function canCreateVersionWorkItems(
   role: SpaceRole | undefined,
   status: RecordStatus | undefined,
 ): boolean {
-  return Boolean(role) && role !== "VIEWER" && status !== "DISABLED";
+  return status !== "DISABLED" && (role === "SPACE_ADMIN" || role === "PM");
 }
 
 // ---------------------------------------------------------------------------
@@ -203,7 +205,7 @@ export function VersionPage() {
     currentSpace?.role,
     currentSpace?.status,
   );
-  const canCreateWorkItem = canWriteWorkItems(
+  const canCreateWorkItem = canCreateVersionWorkItems(
     currentSpace?.role,
     currentSpace?.status,
   );
@@ -270,9 +272,13 @@ export function VersionPage() {
   // -------------------------------------------------------------------------
 
   const replaceVersionParam = useCallback(
-    (nextVersionId: string) => {
+    (nextVersionId: string | undefined) => {
       const next = new URLSearchParams(searchParams.toString());
-      next.set("versionId", nextVersionId);
+      if (nextVersionId) {
+        next.set("versionId", nextVersionId);
+      } else {
+        next.delete("versionId");
+      }
       const query = next.toString();
       const target = query ? `${pathname}?${query}` : pathname;
       router.replace(target as never, { scroll: false });
@@ -311,6 +317,12 @@ export function VersionPage() {
       });
       if (versionsRequestSeq.current !== requestId) return;
       setVersions(page.items);
+      if (
+        versionIdParam &&
+        !page.items.some((version) => version.id === versionIdParam)
+      ) {
+        replaceVersionParam(page.items[0]?.id);
+      }
       setVersionId((current) => {
         if (versionIdParam && page.items.some((v) => v.id === versionIdParam)) {
           return versionIdParam;
@@ -326,7 +338,7 @@ export function VersionPage() {
         setIsLoadingVersions(false);
       }
     }
-  }, [organizationId, spaceId, versionIdParam]);
+  }, [organizationId, replaceVersionParam, spaceId, versionIdParam]);
 
   useEffect(() => {
     void fetchVersions();
@@ -509,9 +521,12 @@ export function VersionPage() {
 
   const openItem = (summary: ViewWorkItemSummary) => {
     captureFocus();
-    const item = toMockWorkItem(locale, {
-      getMember: (userId) => getMember(userId),
-      getVersion: (nextVersionId) => getVersionLookup(nextVersionId),
+    const item = createWorkItemViewModelMapper({
+      locale,
+      lookups: {
+        getMember: (userId) => getMember(userId),
+        getVersion: (nextVersionId) => getVersionLookup(nextVersionId),
+      },
     })(summary);
     recordRecentOpen(
       {
@@ -1213,9 +1228,12 @@ function BoardColumns({
               </div>
             )}
             {items.map((item) => {
-              const mock = toMockWorkItem(locale, {
-                getMember: (userId) => getMember(userId),
-                getVersion: (versionId) => getVersion(versionId),
+              const viewItem = createWorkItemViewModelMapper({
+                locale,
+                lookups: {
+                  getMember: (userId) => getMember(userId),
+                  getVersion: (versionId) => getVersion(versionId),
+                },
               })(item);
               return (
                 <button
@@ -1232,12 +1250,12 @@ function BoardColumns({
                       <CheckCircle2 className="h-3 w-3 text-primary/80" />
                     )}
                     <span className="min-w-0 truncate font-mono text-[10px] text-muted-foreground">
-                      {mock.type}
+                      {t(`filters.type.${viewItem.type}`)}
                     </span>
                     <span
                       className={cn(
                         "ml-auto h-1.5 w-1.5 rounded-full",
-                        priorityDotColor[mock.priority],
+                        priorityDotColor[viewItem.priority],
                       )}
                     />
                   </div>
@@ -1262,7 +1280,7 @@ function BoardColumns({
                     )}
                     <Avatar className="ml-auto h-5 w-5">
                       <AvatarFallback className="text-[9px]">
-                        {mock.assignee.initial}
+                        {viewItem.assignee.initial}
                       </AvatarFallback>
                     </Avatar>
                   </div>

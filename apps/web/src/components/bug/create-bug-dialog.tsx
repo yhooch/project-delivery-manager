@@ -12,6 +12,7 @@ import { useTranslations } from "next-intl";
 import { useEffect, useState } from "react";
 
 import { getApiErrorMessageKey } from "../../lib/api-error-messages";
+import { toCreateBugRequest } from "../../lib/bug-forms";
 import { createBug } from "../../lib/bug-service";
 import { listRequirements } from "../../lib/requirement-service";
 import { listSpaceMembers } from "../../lib/space-service";
@@ -165,20 +166,20 @@ export function CreateBugDialog({
     try {
       await createBug(
         { organizationId, spaceId },
-        {
+        toCreateBugRequest({
           title: trimmed,
-          description: description.trim() || undefined,
-          stepsToReproduce: steps.trim() || undefined,
-          expectedResult: expectedResult.trim() || undefined,
-          actualResult: actualResult.trim() || undefined,
+          description,
+          stepsToReproduce: steps,
+          expectedResult,
+          actualResult,
           severity,
           priority,
-          versionId: versionId || undefined,
-          requirementId: requirementId || undefined,
-          relatedTaskId: relatedTaskId || undefined,
-          assigneeId: assigneeId || undefined,
-          dueDate: dueDate ? new Date(dueDate).toISOString() : undefined,
-        },
+          versionId,
+          requirementId,
+          relatedTaskId,
+          assigneeId,
+          dueDate: toDateInputRequestValue(dueDate),
+        }),
       );
       onCreated?.();
       handleOpenChange(false);
@@ -443,4 +444,8 @@ export function CreateBugDialog({
       </DialogContent>
     </Dialog>
   );
+}
+
+function toDateInputRequestValue(value: string): string {
+  return value ? new Date(`${value}T00:00:00`).toISOString() : value;
 }

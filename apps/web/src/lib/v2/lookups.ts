@@ -248,9 +248,9 @@ export async function getCachedWorkflowVersion({
 
 /**
  * Synchronous lookup helpers — return `undefined` if the cache is cold.
- * Useful in pure transform functions (e.g. `toMockWorkItem`) where async
- * fetching is not possible. Callers should warm the cache via the hooks
- * or `getMembers/getVersions` before relying on these.
+ * Useful in pure transform functions where async fetching is not possible.
+ * Callers should warm the cache via the hooks or `getMembers/getVersions`
+ * before relying on these.
  */
 export function getMemberById(
   userId: string,

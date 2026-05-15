@@ -133,7 +133,15 @@ export function IntakePage() {
   const organizationId = session?.defaultOrganizationId;
   const sessionSpace = session?.spaces?.find((space) => space.id === spaceId);
   const currentSpaceRole = currentSpace?.role ?? sessionSpace?.role;
-  const canWriteIntake = canManageIntake(currentSpaceRole);
+  const currentSpaceStatus = currentSpace?.status ?? sessionSpace?.status;
+  const canCreateOrCommentIntake = canCreateOrCommentIntakeItem(
+    currentSpaceRole,
+    currentSpaceStatus,
+  );
+  const canManageIntake = canManageIntakeItem(
+    currentSpaceRole,
+    currentSpaceStatus,
+  );
   const recentScope = useMemo(
     () => ({ organizationId, spaceId }),
     [organizationId, spaceId],
@@ -347,15 +355,15 @@ export function IntakePage() {
     onSelect: setActive,
     onOpen: openItem,
     onEdit: openItem,
-    canAssign: () => canWriteIntake,
+    canAssign: () => canManageIntake,
     onAssign: (item) => {
       captureFocus();
       setActive(item);
       setEditOpen(true);
     },
-    canSubmit: (item) => canSubmitIntakeItem(item, canWriteIntake),
+    canSubmit: (item) => canSubmitIntakeItem(item, canManageIntake),
     onSubmit: (item) => {
-      if (!canWriteIntake) {
+      if (!canManageIntake) {
         return;
       }
       if (item.status === "PENDING" || item.status === "DEFERRED") {
@@ -385,7 +393,7 @@ export function IntakePage() {
     action: StatusActionKind,
     target: IntakeItem | null = active,
   ) {
-    if (!target || !spaceId || !canWriteIntake) {
+    if (!target || !spaceId || !canManageIntake) {
       return;
     }
 
@@ -430,7 +438,7 @@ export function IntakePage() {
   }
 
   function openConvertDialog() {
-    if (!active || !canWriteIntake || active.status !== "ACCEPTED") {
+    if (!active || !canManageIntake || active.status !== "ACCEPTED") {
       return;
     }
     setConvertTarget(active);
@@ -509,7 +517,7 @@ export function IntakePage() {
         <Filter className="h-3 w-3" />
         {t("actions.filter")}
       </Button>
-      {canWriteIntake && (
+      {canCreateOrCommentIntake && (
         <Button
           size="sm"
           className="text-xs"
@@ -807,7 +815,7 @@ export function IntakePage() {
                   {t("detail.actions")}
                 </span>
                 <div className="flex min-w-0 flex-wrap items-center gap-1.5 sm:ml-auto sm:justify-end">
-                  {canWriteIntake && (
+                  {canManageIntake && (
                     <Button
                       size="sm"
                       variant="outline"
@@ -821,7 +829,7 @@ export function IntakePage() {
                       {t("detail.edit")}
                     </Button>
                   )}
-                  {canWriteIntake &&
+                  {canManageIntake &&
                     (active.status === "PENDING" ||
                       active.status === "DEFERRED") && (
                       <>
@@ -867,7 +875,7 @@ export function IntakePage() {
                         </Button>
                       </>
                     )}
-                  {canWriteIntake && active.status === "ACCEPTED" && (
+                  {canManageIntake && active.status === "ACCEPTED" && (
                     <Button
                       size="sm"
                       className="h-7 text-xs"
@@ -951,7 +959,7 @@ export function IntakePage() {
                   tRoot={tRoot}
                 />
                 <IntakeCommentsSection
-                  canComment={canWriteIntake}
+                  canComment={canCreateOrCommentIntake}
                   getMember={getMember}
                   intakeItem={active}
                   organizationId={organizationId}
@@ -978,7 +986,7 @@ export function IntakePage() {
         </SheetContent>
       </Sheet>
 
-      {spaceId && canWriteIntake && (
+      {spaceId && canCreateOrCommentIntake && (
         <CreateIntakeDialog
           open={createOpen}
           onOpenChange={setCreateOpen}
@@ -989,7 +997,7 @@ export function IntakePage() {
         />
       )}
 
-      {spaceId && canWriteIntake && (
+      {spaceId && canManageIntake && (
         <EditIntakeDialog
           open={editOpen}
           onOpenChange={setEditOpen}
@@ -999,7 +1007,7 @@ export function IntakePage() {
         />
       )}
 
-      {spaceId && canWriteIntake && (
+      {spaceId && canManageIntake && (
         <ConvertIntakeDialog
           open={convertOpen}
           onOpenChange={(next) => {
@@ -1534,18 +1542,28 @@ function initialOf(id: string): string {
 
 function canSubmitIntakeItem(
   item: IntakeItem,
-  canWriteIntake: boolean,
+  canManageIntake: boolean,
 ): boolean {
   return (
-    canWriteIntake &&
+    canManageIntake &&
     (item.status === "PENDING" ||
       item.status === "DEFERRED" ||
       item.status === "ACCEPTED")
   );
 }
 
-function canManageIntake(role: string | undefined): boolean {
-  return role === "SPACE_ADMIN" || role === "PM";
+function canCreateOrCommentIntakeItem(
+  role: string | undefined,
+  status: string | undefined,
+): boolean {
+  return Boolean(role) && role !== "VIEWER" && status === "ACTIVE";
+}
+
+function canManageIntakeItem(
+  role: string | undefined,
+  status: string | undefined,
+): boolean {
+  return (role === "SPACE_ADMIN" || role === "PM") && status === "ACTIVE";
 }
 
 function normalizeSearchParam(value: string | null): string | undefined {

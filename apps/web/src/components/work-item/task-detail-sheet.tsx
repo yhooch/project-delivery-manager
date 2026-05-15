@@ -1064,7 +1064,9 @@ function ActionFormFieldControl({
     );
   }
 
-  if (field.fieldType === "USER" && lookup.members.length > 0) {
+  if (field.fieldType === "USER") {
+    const hasMembers = lookup.members.length > 0;
+
     return (
       <div className="flex flex-col gap-1.5">
         <Label htmlFor={id}>{label}</Label>
@@ -1074,6 +1076,7 @@ function ActionFormFieldControl({
           aria-invalid={errorMessage ? true : undefined}
           data-testid="task-action-field"
           data-field-key={field.key}
+          disabled={!hasMembers}
           value={value}
           onChange={(event) => onChange(event.target.value)}
           className={cn(
@@ -1081,7 +1084,7 @@ function ActionFormFieldControl({
             errorMessage && "border-destructive focus-visible:ring-destructive",
           )}
         >
-          <option value="" />
+          <option value="">{hasMembers ? "" : "-"}</option>
           {lookup.members.map((member) => (
             <option key={member.userId} value={member.userId}>
               {member.user.name || member.user.username}

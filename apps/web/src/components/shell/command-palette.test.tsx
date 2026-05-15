@@ -190,6 +190,14 @@ afterEach(() => {
 
 describe("CommandPalette", () => {
   it("renders navigation / switchSpace / create / preferences groups when open with empty query", async () => {
+    sessionMock.current = {
+      ...sessionMock.current,
+      currentSpace: {
+        ...sessionMock.current.currentSpace!,
+        role: "SPACE_ADMIN",
+      },
+    };
+
     render(<CommandPalette />);
     openCommandPalette();
 
@@ -201,8 +209,8 @@ describe("CommandPalette", () => {
     expect(screen.getByText("shell.command.createTask")).toBeInTheDocument();
     expect(screen.getByText("shell.command.createBug")).toBeInTheDocument();
     expect(
-      screen.queryByText("shell.command.createRequirement"),
-    ).not.toBeInTheDocument();
+      screen.getByText("shell.command.createRequirement"),
+    ).toBeInTheDocument();
     expect(screen.getByText("shell.command.preferences")).toBeInTheDocument();
     expect(screen.getByText("shell.command.nav.spaces")).toBeInTheDocument();
     expect(
@@ -311,6 +319,30 @@ describe("CommandPalette", () => {
     ).not.toBeInTheDocument();
   });
 
+  it("shows bug creation only for tester writers", async () => {
+    sessionMock.current = {
+      ...sessionMock.current,
+      currentSpace: {
+        ...sessionMock.current.currentSpace!,
+        role: "TESTER",
+      },
+    };
+
+    render(<CommandPalette />);
+    openCommandPalette();
+
+    expect(
+      await screen.findByText("shell.command.navigation"),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByText("shell.command.createTask"),
+    ).not.toBeInTheDocument();
+    expect(screen.getByText("shell.command.createBug")).toBeInTheDocument();
+    expect(
+      screen.queryByText("shell.command.createRequirement"),
+    ).not.toBeInTheDocument();
+  });
+
   it("shows requirement creation only for requirement writers", async () => {
     sessionMock.current = {
       ...sessionMock.current,
@@ -326,10 +358,36 @@ describe("CommandPalette", () => {
     expect(
       await screen.findByText("shell.command.navigation"),
     ).toBeInTheDocument();
-    expect(screen.getByText("shell.command.createTask")).toBeInTheDocument();
+    expect(
+      screen.queryByText("shell.command.createTask"),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByText("shell.command.createBug"),
+    ).not.toBeInTheDocument();
     expect(
       screen.getByText("shell.command.createRequirement"),
     ).toBeInTheDocument();
+  });
+
+  it("prefetches fresh current-space results each time the palette opens", async () => {
+    render(<CommandPalette />);
+    openCommandPalette();
+
+    await waitFor(() => expect(listWorkItemsMock).toHaveBeenCalledTimes(1));
+    expect(listWorkItemsMock).toHaveBeenLastCalledWith({
+      spaceId: "SPC_01",
+      organizationId: "ORG_01",
+      page: 1,
+      pageSize: 25,
+    });
+
+    fireEvent.click(await screen.findByTestId("command-palette-nav-spaces"));
+    openCommandPalette();
+
+    await waitFor(() => expect(listWorkItemsMock).toHaveBeenCalledTimes(2));
+    expect(listBugsMock).toHaveBeenCalledTimes(2);
+    expect(listRequirementsMock).toHaveBeenCalledTimes(2);
+    expect(listIntakeItemsMock).toHaveBeenCalledTimes(2);
   });
 
   it("does not show the switchSpace group when there are no spaces", async () => {

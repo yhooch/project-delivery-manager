@@ -62,6 +62,7 @@ describe("Sidebar", () => {
   it("keeps the four primary nav groups visible for non-admin members", () => {
     render(<Sidebar />);
 
+    expect(screen.getByText("shell.brand.shortName")).toBeInTheDocument();
     expect(screen.getByTestId("sidebar-nav-group-work")).toHaveTextContent(
       "shell.nav.group.work",
     );

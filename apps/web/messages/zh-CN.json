@@ -64,7 +64,7 @@
     "register": {
       "eyebrow": "首次进入",
       "title": "注册账号",
-      "description": "注册成功后直接进入应用壳；如果尚无组织，会显示 onboarding 空态。",
+      "description": "注册成功后直接进入应用壳；如果尚无组织，会显示引导空态。",
       "alternatePrompt": "已有账号？",
       "link": "去登录",
       "form": {
@@ -375,10 +375,6 @@
       "description": "登录后才能继续访问工作台。",
       "action": "前往登录"
     },
-    "topbar": {
-      "eyebrow": "工作台",
-      "title": "交付运行视图"
-    },
     "topBar": {
       "navigationLabel": "打开主导航",
       "commandLabel": "打开命令菜单",
@@ -386,14 +382,6 @@
     },
     "mobileNav": {
       "description": "在小屏幕中打开主导航菜单。"
-    },
-    "search": {
-      "label": "命令搜索",
-      "placeholder": "搜索需求、工作项或成员"
-    },
-    "notifications": {
-      "label": "通知",
-      "ariaLabel": "打开通知"
     },
     "organizationSwitcher": {
       "label": "切换组织",
@@ -413,15 +401,6 @@
         "ADMIN": "管理员",
         "MEMBER": "成员"
       }
-    },
-    "spaceSwitcher": {
-      "label": "切换空间",
-      "empty": "暂无空间",
-      "signedOut": "未登录"
-    },
-    "logout": {
-      "label": "登出",
-      "ariaLabel": "退出登录"
     },
     "user": {
       "openMenu": "打开用户菜单",
@@ -528,24 +507,6 @@
       "error": "创建组织失败，请稍后重试。"
     }
   },
-  "onboarding": {
-    "empty": {
-      "title": "还没有可用组织",
-      "description": "你可以创建一个组织开始使用，或等待管理员把你添加到已有组织。"
-    },
-    "waiting": {
-      "title": "等待管理员添加",
-      "description": "当前 session 未授予创建组织能力，请等待组织管理员添加成员权限。",
-      "compactTitle": "另一种路径",
-      "compactDescription": "如果团队已有组织，请让管理员添加你的账号。"
-    },
-    "createOrganization": {
-      "title": "创建组织",
-      "description": "创建成功后会刷新 session，并由后端返回默认组织。",
-      "submit": "创建组织",
-      "submitting": "创建中"
-    }
-  },
   "versions": {
     "page": {
       "eyebrow": "空间版本",
@@ -605,7 +566,7 @@
     },
     "detail": {
       "title": "版本详情",
-      "description": "维护版本基础字段，并查看 M1 稳定统计。",
+      "description": "维护版本基础字段，并查看当前统计。",
       "viewRequirements": "查看需求",
       "submit": "保存版本",
       "submitting": "保存中"
@@ -997,7 +958,7 @@
     },
     "relatedWorkItems": {
       "title": "关联任务/Bug",
-      "description": "M1 保留展示位置，M2/M3 接入真实任务和 Bug。",
+      "description": "查看已关联到该需求的任务和 Bug。",
       "tasks": "任务",
       "bugs": "Bug",
       "emptyTitle": "暂无关联工作项",
@@ -2158,20 +2119,20 @@
         "description": "请切换到可访问的组织后继续。"
       },
       "page": {
-        "eyebrow": "M1 空间管理",
-        "title": "组织与空间",
+        "eyebrow": "项目空间管理",
+        "title": "项目空间",
         "noSpace": "未选择空间"
       }
     },
     "list": {
-      "title": "空间列表",
-      "description": "按当前组织加载空间，空间切换后隔离详情与总览数据。",
-      "spaceCount": "{count} 个空间",
-      "readOnly": "当前组织角色只能查看空间，不能创建空间。",
+      "title": "项目空间列表",
+      "description": "按当前组织加载项目空间，切换后隔离详情与总览数据。",
+      "spaceCount": "{count} 个项目空间",
+      "readOnly": "当前组织角色只能查看项目空间，不能创建项目空间。",
       "refresh": "刷新",
-      "errorTitle": "空间列表加载失败",
-      "loading": "正在加载空间",
-      "empty": "暂无空间",
+      "errorTitle": "项目空间列表加载失败",
+      "loading": "正在加载项目空间",
+      "empty": "暂无项目空间",
       "emptyValue": "—",
       "selected": "当前空间",
       "switch": "切换",
@@ -2185,95 +2146,16 @@
         "updatedAt": "最近更新"
       },
       "table": {
-        "label": "空间列表"
+        "label": "项目空间列表"
       }
     },
-    "create": {
-      "title": "创建空间",
-      "fields": {
-        "name": {
-          "label": "空间名称",
-          "error": "请输入空间名称，最长 120 个字符。"
-        },
-        "code": {
-          "label": "空间代码",
-          "error": "空间代码需为 2 到 32 位，仅支持字母、数字、下划线或短横线。"
-        },
-        "description": {
-          "label": "描述",
-          "error": "描述最多 2000 个字符。"
-        },
-        "owner": {
-          "label": "负责人",
-          "default": "默认当前用户"
-        },
-        "staleThresholdDays": {
-          "label": "长期停滞阈值（天）",
-          "error": "请输入 1 到 30 之间的整数。"
-        }
-      },
-      "submit": "创建空间",
-      "submitting": "创建中"
-    },
     "settings": {
-      "title": "空间设置",
-      "description": "维护空间基础信息和长期停滞阈值。",
-      "noSpace": "选择空间后可查看设置。",
-      "loading": "正在加载空间设置",
-      "readOnly": "当前空间角色只能查看设置，不能保存修改。",
-      "fields": {
-        "name": {
-          "label": "空间名称",
-          "error": "请输入空间名称，最长 120 个字符。"
-        },
-        "code": {
-          "label": "空间代码",
-          "error": "空间代码需为 2 到 32 位，仅支持字母、数字、下划线或短横线。"
-        },
-        "description": {
-          "label": "描述",
-          "error": "描述最多 2000 个字符。"
-        },
-        "owner": {
-          "label": "负责人",
-          "default": "不变"
-        },
-        "status": {
-          "label": "空间状态"
-        },
-        "staleThresholdDays": {
-          "label": "长期停滞阈值（天）",
-          "error": "请输入 1 到 30 之间的整数。"
-        }
-      },
       "status": {
         "ACTIVE": "启用",
         "DISABLED": "禁用"
-      },
-      "submit": "保存设置",
-      "submitting": "保存中"
+      }
     },
     "members": {
-      "title": "空间成员",
-      "description": "空间成员必须先属于当前组织。",
-      "memberCount": "{count} 位成员",
-      "readOnly": "当前空间角色只能查看成员，不能添加或修改成员。",
-      "loading": "正在加载成员",
-      "empty": "暂无空间成员",
-      "noSpace": {
-        "title": "未选择空间",
-        "description": "选择或创建空间后可管理空间成员。"
-      },
-      "table": {
-        "label": "空间成员列表",
-        "member": "成员",
-        "role": "空间角色",
-        "status": "状态"
-      },
-      "actions": {
-        "changeRole": "修改 {username} 的空间角色",
-        "changeStatus": "修改 {username} 的空间状态"
-      },
       "roles": {
         "SPACE_ADMIN": "空间管理员",
         "PM": "项目经理",
@@ -2282,29 +2164,6 @@
         "REQUIREMENT": "需求",
         "MEMBER": "成员",
         "VIEWER": "只读"
-      },
-      "status": {
-        "ACTIVE": "启用",
-        "DISABLED": "禁用"
-      },
-      "add": {
-        "title": "添加空间成员",
-        "user": "组织成员",
-        "userPlaceholder": "选择组织成员",
-        "userError": "请选择一个组织成员。",
-        "noCandidates": "没有可添加的组织成员。",
-        "role": "空间角色",
-        "roles": {
-          "SPACE_ADMIN": "空间管理员",
-          "PM": "项目经理",
-          "DEVELOPER": "开发",
-          "TESTER": "测试",
-          "REQUIREMENT": "需求",
-          "MEMBER": "成员",
-          "VIEWER": "只读"
-        },
-        "submit": "添加成员",
-        "submitting": "添加中"
       }
     }
   },
@@ -2911,7 +2770,7 @@
     },
     "workItems": {
       "title": "任务与 Bug",
-      "empty": "M1 仅展示空态和计数，占位等待 M2/M3 接入真实任务与 Bug。"
+      "empty": "当前空间还没有任务或 Bug。"
     },
     "workflows": {
       "title": "默认流程",

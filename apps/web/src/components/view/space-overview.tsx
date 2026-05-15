@@ -25,7 +25,7 @@ import {
 } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
 import { useSearchParams } from "next/navigation";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { getApiErrorMessageKey } from "../../lib/api-error-messages";
 import { useVersions } from "../../lib/v2/lookups";
@@ -108,14 +108,49 @@ export function SpaceOverview() {
 
   const organizationId = session?.defaultOrganizationId;
   const spaceId = session?.defaultSpaceId;
-  const versionIdParam = searchParams.get("versionId") ?? undefined;
+  const versionIdParam = normalizeSearchParam(searchParams.get("versionId"));
 
   const [view, setView] = useState<GetSpaceOverviewViewResponse | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [errorKey, setErrorKey] = useState<string | null>(null);
   const requestSeq = useRef(0);
 
-  const { versions } = useVersions(spaceId, organizationId);
+  const { versions, loading: versionsLoading } = useVersions(
+    spaceId,
+    organizationId,
+  );
+  const activeVersionId = useMemo(() => {
+    if (!versionIdParam) {
+      return undefined;
+    }
+
+    return versions.some((version) => version.id === versionIdParam)
+      ? versionIdParam
+      : undefined;
+  }, [versionIdParam, versions]);
+
+  useEffect(() => {
+    if (!versionIdParam || versionsLoading) {
+      return;
+    }
+
+    if (versions.some((version) => version.id === versionIdParam)) {
+      return;
+    }
+
+    const next = new URLSearchParams(searchParams.toString());
+    next.delete("versionId");
+    const query = next.toString();
+    const target = query ? `${pathname}?${query}` : pathname;
+    router.replace(target as never, { scroll: false });
+  }, [
+    pathname,
+    router,
+    searchParams,
+    versionIdParam,
+    versions,
+    versionsLoading,
+  ]);
 
   const fetchView = useCallback(
     async () => {
@@ -131,7 +166,7 @@ export function SpaceOverview() {
         const next = await getSpaceOverviewView({
           spaceId,
           organizationId,
-          versionId: versionIdParam,
+          versionId: activeVersionId,
         });
         if (requestSeq.current !== requestId) return;
         setView(next);
@@ -142,7 +177,7 @@ export function SpaceOverview() {
         if (requestSeq.current === requestId) setIsLoading(false);
       }
     },
-    [organizationId, spaceId, versionIdParam],
+    [activeVersionId, organizationId, spaceId],
   );
 
   useEffect(() => {
@@ -243,7 +278,7 @@ export function SpaceOverview() {
       )
     : t("currentVersion.noDate");
 
-  const selectedVersion = versions.find((v) => v.id === versionIdParam);
+  const selectedVersion = versions.find((v) => v.id === activeVersionId);
 
   const headerEyebrow = view?.space.code
     ? `${currentSpace?.name ?? view.space.name} · ${view.space.code}`
@@ -254,7 +289,7 @@ export function SpaceOverview() {
 
   const buildLink = (base: string, extra?: Record<string, string>) => {
     const sp = new URLSearchParams();
-    if (versionIdParam) sp.set("versionId", versionIdParam);
+    if (activeVersionId) sp.set("versionId", activeVersionId);
     for (const [k, v] of Object.entries(extra ?? {})) sp.set(k, v);
     const q = sp.toString();
     return q ? `${base}?${q}` : base;
@@ -280,7 +315,7 @@ export function SpaceOverview() {
             <VersionFilter
               t={t}
               versions={versions}
-              selectedId={versionIdParam}
+              selectedId={activeVersionId}
               onChange={setVersionFilter}
             />
             <Button
@@ -845,4 +880,9 @@ function formatTimeAgo(value: string, locale: string, justNowLabel: string) {
   const diffDay = Math.round(diffHour / 24);
 
   return rtf.format(-diffDay, "day");
+}
+
+function normalizeSearchParam(value: string | null): string | undefined {
+  const trimmed = value?.trim();
+  return trimmed ? trimmed : undefined;
 }

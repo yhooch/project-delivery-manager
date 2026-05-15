@@ -471,6 +471,52 @@ describe("TaskDetailSheet", () => {
     expect(executeActionMock).not.toHaveBeenCalled();
   });
 
+  it("renders an unavailable user action field as a disabled select", async () => {
+    const action = makeAction({
+      formFields: [
+        {
+          fieldType: "USER",
+          id: "01ARZ3NDEKTSV4RRFFQ69G5FU2",
+          key: "reviewerId",
+          label: "Reviewer",
+          order: 1,
+          required: true,
+        },
+      ],
+      id: "01ARZ3NDEKTSV4RRFFQ69G5FC1",
+      name: "Assign reviewer",
+      requiresComment: false,
+    });
+    getWorkItemMock.mockResolvedValueOnce(
+      makeDetailResponse({
+        permissions: {
+          canEdit: true,
+          canComment: true,
+          canUploadAttachment: true,
+          availableActions: [action],
+        },
+      }),
+    );
+
+    render(
+      <TaskDetailSheet
+        item={makeViewModel()}
+        open
+        onOpenChange={() => {}}
+        onChanged={() => {}}
+      />,
+    );
+
+    fireEvent.click(
+      await screen.findByRole("button", { name: "Assign reviewer" }),
+    );
+
+    const reviewerField = screen.getByTestId("task-action-field");
+    expect(reviewerField.tagName).toBe("SELECT");
+    expect(reviewerField).toBeDisabled();
+    expect(reviewerField).toHaveAttribute("data-field-key", "reviewerId");
+  });
+
   it("refreshes the open timeline after a workflow action succeeds", async () => {
     const action = makeAction({ id: "01ACT_REFRESH", name: "Complete" });
     getWorkItemMock.mockResolvedValueOnce(

@@ -23,7 +23,6 @@ import { useLocale, useTranslations } from "next-intl";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { getApiErrorMessageKey } from "../../lib/api-error-messages";
-import { formatDisplayCode } from "../../lib/display-code";
 import { cn } from "../../lib/utils";
 import {
   getMembers,
@@ -36,7 +35,11 @@ import {
   M4_STATUS_CATEGORY_OPTIONS,
   M4_WORK_ITEM_TYPE_OPTIONS,
 } from "../../lib/view-forms";
-import type { WorkItemViewModel } from "../../lib/v2/work-item-view-model";
+import {
+  createWorkItemViewModelMapper,
+  type WorkItemViewModel,
+  type WorkItemViewModelLookupHelpers,
+} from "../../lib/v2/work-item-view-model";
 import { getMyWorkbenchView } from "../../lib/view-service";
 import { Link } from "../../i18n/routing";
 import { useSession } from "../providers/session-provider";
@@ -1071,13 +1074,7 @@ function ItemList({
   );
 }
 
-export type WorkbenchLookupHelpers = {
-  getMember: (
-    userId: string,
-    spaceId?: string,
-  ) => SpaceMemberWithUser | undefined;
-  getVersion: (versionId: string, spaceId?: string) => Version | undefined;
-};
+export type WorkbenchLookupHelpers = WorkItemViewModelLookupHelpers;
 
 function toWorkbenchItem(
   locale: string,
@@ -1086,86 +1083,19 @@ function toWorkbenchItem(
   justNowLabel?: string,
   unknownVersionLabel?: string,
 ) {
-  const toViewModel = toMockWorkItem(
+  const toViewModel = createWorkItemViewModelMapper({
     locale,
     lookups,
     statusLabel,
     justNowLabel,
     unknownVersionLabel,
-  );
+  });
 
   return (item: ViewWorkItemSummary): WorkbenchItemViewModel => ({
     ...toViewModel(item),
     organizationId: item.organizationId,
     spaceId: item.spaceId,
   });
-}
-
-export function toMockWorkItem(
-  locale: string,
-  lookups?: WorkbenchLookupHelpers,
-  statusLabel?: (category: StatusCategory) => string,
-  justNowLabel?: string,
-  unknownVersionLabel?: string,
-) {
-  return (item: ViewWorkItemSummary): WorkItemViewModel => {
-    const code = formatDisplayCode(
-      item.type === "BUG" ? "BUG" : "TASK",
-      item.id,
-    );
-    const isOverdue = item.exceptionSignals.some(
-      (signal) => signal.type === "overdue",
-    );
-    const blockedSignal = item.exceptionSignals.find(
-      (signal) => signal.type === "blocked",
-    );
-    const dueDate = item.dueDate
-      ? new Intl.DateTimeFormat(locale, { dateStyle: "medium" }).format(
-          new Date(item.dueDate),
-        )
-      : undefined;
-    const updatedAgo = item.lastActionAt
-      ? formatTimeAgo(item.lastActionAt, locale, justNowLabel)
-      : undefined;
-
-    const member = item.assigneeId
-      ? lookups?.getMember(item.assigneeId, item.spaceId)
-      : undefined;
-    const assigneeName =
-      getEmbeddedAssigneeName(item) ??
-      member?.user.name ??
-      member?.user.username ??
-      item.assigneeId ??
-      "—";
-    const version = item.versionId
-      ? lookups?.getVersion(item.versionId, item.spaceId)
-      : undefined;
-    const versionName = item.versionId
-      ? (getEmbeddedVersionName(item) ?? version?.name ?? unknownVersionLabel)
-      : undefined;
-
-    return {
-      id: item.id,
-      code,
-      type: item.type,
-      title: item.title,
-      statusCategory: item.currentStatus.statusCategory,
-      statusLabel:
-        statusLabel?.(item.currentStatus.statusCategory) ??
-        item.currentStatus.stateName,
-      priority: item.priority,
-      assignee: {
-        name: assigneeName,
-        initial: initialOf(assigneeName),
-      },
-      versionName,
-      dueDate,
-      isOverdue,
-      isBlocked: Boolean(blockedSignal),
-      blockedReason: blockedSignal?.reason,
-      updatedAgo,
-    };
-  };
 }
 
 function collectWorkbenchWorkItems(
@@ -1216,42 +1146,6 @@ function uniqueVersions(versions: Version[]): Version[] {
   }
 
   return result;
-}
-
-type ViewWorkItemSummaryWithEmbeddedLookups = ViewWorkItemSummary & {
-  assignee?: { name?: string; username?: string };
-  assigneeName?: string;
-  version?: { name?: string };
-  versionName?: string;
-};
-
-function getEmbeddedAssigneeName(
-  item: ViewWorkItemSummary,
-): string | undefined {
-  const embedded = item as ViewWorkItemSummaryWithEmbeddedLookups;
-  return firstNonEmpty(
-    embedded.assigneeName,
-    embedded.assignee?.name,
-    embedded.assignee?.username,
-  );
-}
-
-function getEmbeddedVersionName(item: ViewWorkItemSummary): string | undefined {
-  const embedded = item as ViewWorkItemSummaryWithEmbeddedLookups;
-  return firstNonEmpty(embedded.versionName, embedded.version?.name);
-}
-
-function firstNonEmpty(
-  ...values: Array<string | null | undefined>
-): string | undefined {
-  for (const value of values) {
-    const trimmed = value?.trim();
-    if (trimmed) {
-      return trimmed;
-    }
-  }
-
-  return undefined;
 }
 
 function initialOf(value: string) {

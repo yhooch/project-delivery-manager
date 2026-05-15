@@ -58,6 +58,7 @@ const nextVersionId = "01ARZ3NDEKTSV4RRFFQ69G5FV2";
 const requirementId = "01ARZ3NDEKTSV4RRFFQ69G5FR1";
 const relatedTaskId = "01ARZ3NDEKTSV4RRFFQ69G5FT1";
 const assigneeId = "01ARZ3NDEKTSV4RRFFQ69G5FA2";
+const regressionById = "01ARZ3NDEKTSV4RRFFQ69G5FA3";
 
 function makeBug(overrides: Partial<BugView> = {}): BugView {
   return {
@@ -82,6 +83,10 @@ function makeBug(overrides: Partial<BugView> = {}): BugView {
       stepsToReproduce: "Open login",
       expectedResult: "Login works",
       actualResult: "Page crashes",
+      fixNote: "Patch validation",
+      regressionResult: "Pending regression",
+      regressionBy: regressionById,
+      regressionAt: "2026-05-10T10:00:00.000Z",
       relatedTaskId,
     },
     ...overrides,
@@ -114,6 +119,10 @@ beforeEach(() => {
       {
         userId: assigneeId,
         user: { name: "Alice", username: "alice" },
+      },
+      {
+        userId: regressionById,
+        user: { name: "Bob", username: "bob" },
       },
     ],
     total: 1,
@@ -160,6 +169,18 @@ describe("EditBugDialog", () => {
     fireEvent.change(screen.getByTestId("edit-bug-actual-input"), {
       target: { value: "Actual" },
     });
+    fireEvent.change(screen.getByTestId("edit-bug-fix-note-input"), {
+      target: { value: "  Fixed null payment token  " },
+    });
+    fireEvent.change(screen.getByTestId("edit-bug-regression-result-input"), {
+      target: { value: "  Passed on staging  " },
+    });
+    fireEvent.change(screen.getByTestId("edit-bug-regression-by-select"), {
+      target: { value: regressionById },
+    });
+    fireEvent.change(screen.getByTestId("edit-bug-regression-at-input"), {
+      target: { value: "2026-05-14T10:30" },
+    });
     fireEvent.change(screen.getByTestId("edit-bug-severity-select"), {
       target: { value: "CRITICAL" },
     });
@@ -181,7 +202,11 @@ describe("EditBugDialog", () => {
         actualResult: "Actual",
         description: "Updated description",
         expectedResult: "Expected",
+        fixNote: "Fixed null payment token",
         priority: "URGENT",
+        regressionAt: new Date("2026-05-14T10:30").toISOString(),
+        regressionBy: regressionById,
+        regressionResult: "Passed on staging",
         relatedTaskId,
         requirementId,
         severity: "CRITICAL",
@@ -224,6 +249,18 @@ describe("EditBugDialog", () => {
     fireEvent.change(screen.getByTestId("edit-bug-assignee-select"), {
       target: { value: "" },
     });
+    fireEvent.change(screen.getByTestId("edit-bug-fix-note-input"), {
+      target: { value: "" },
+    });
+    fireEvent.change(screen.getByTestId("edit-bug-regression-result-input"), {
+      target: { value: "" },
+    });
+    fireEvent.change(screen.getByTestId("edit-bug-regression-by-select"), {
+      target: { value: "" },
+    });
+    fireEvent.change(screen.getByTestId("edit-bug-regression-at-input"), {
+      target: { value: "" },
+    });
     fireEvent.change(screen.getByTestId("edit-bug-duedate-input"), {
       target: { value: "" },
     });
@@ -236,6 +273,10 @@ describe("EditBugDialog", () => {
         assigneeId: null,
         description: null,
         dueDate: null,
+        fixNote: null,
+        regressionAt: null,
+        regressionBy: null,
+        regressionResult: null,
         relatedTaskId: null,
         requirementId: null,
         versionId: null,

@@ -412,6 +412,9 @@ export function WorkflowConfigPage({ workflowId }: WorkflowConfigPageProps) {
     if (!spaceId) {
       return;
     }
+    if (!confirmWorkflowDelete(t("states.actions.delete"), state.name)) {
+      return;
+    }
     setActionErrorKey(null);
     try {
       await deleteWorkflowState({
@@ -427,6 +430,9 @@ export function WorkflowConfigPage({ workflowId }: WorkflowConfigPageProps) {
 
   async function handleDeleteAction(action: WorkflowActionSummary) {
     if (!spaceId) {
+      return;
+    }
+    if (!confirmWorkflowDelete(t("actions.actions.delete"), action.name)) {
       return;
     }
     setActionErrorKey(null);
@@ -447,6 +453,9 @@ export function WorkflowConfigPage({ workflowId }: WorkflowConfigPageProps) {
     field: ActionFormFieldSummary,
   ) {
     if (!spaceId) {
+      return;
+    }
+    if (!confirmWorkflowDelete(t("fields.actions.delete"), field.label)) {
       return;
     }
     setActionErrorKey(null);
@@ -860,6 +869,14 @@ function getStringValue(value: unknown): string | undefined {
   return typeof value === "string" && value.trim().length > 0
     ? value
     : undefined;
+}
+
+function confirmWorkflowDelete(actionLabel: string, targetName: string): boolean {
+  if (typeof window === "undefined") {
+    return true;
+  }
+
+  return window.confirm(`${actionLabel}: ${targetName}`);
 }
 
 function Label({

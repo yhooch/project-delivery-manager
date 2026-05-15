@@ -108,7 +108,7 @@ export function TasksPage() {
     null,
   );
   const { captureFocus, restoreFocus } = useFocusReturn();
-  const canCreateTask = canWriteWorkItems(
+  const canCreateTask = canCreateTasks(
     currentSpace?.role,
     currentSpace?.status,
   );
@@ -196,10 +196,10 @@ export function TasksPage() {
     [t, tStatus],
   );
 
-  const mockItems = useMemo(
+  const taskViewModels = useMemo(
     () =>
       items.map((item) =>
-        toMockWorkItem(item, tStatus, {
+        toTaskViewModel(item, tStatus, {
           getMember,
           getVersion,
         }),
@@ -208,7 +208,7 @@ export function TasksPage() {
   );
 
   const filtered = useMemo(() => {
-    return mockItems.filter((task) => {
+    return taskViewModels.filter((task) => {
       if (query.trim()) {
         const q = query.toLowerCase();
         return (
@@ -218,7 +218,7 @@ export function TasksPage() {
       }
       return true;
     });
-  }, [mockItems, query]);
+  }, [query, taskViewModels]);
 
   const open = useCallback(
     (item: WorkItemViewModel) => {
@@ -290,7 +290,9 @@ export function TasksPage() {
       return;
     }
 
-    const listed = mockItems.find((item) => item.id === requestedWorkItemId);
+    const listed = taskViewModels.find(
+      (item) => item.id === requestedWorkItemId,
+    );
     if (listed) {
       open(listed);
       setHandledDeepLinkKey(key);
@@ -309,7 +311,7 @@ export function TasksPage() {
     })
       .then((item) => {
         if (!cancelled) {
-          open(toMockWorkItem(item, tStatus, { getMember, getVersion }));
+          open(toTaskViewModel(item, tStatus, { getMember, getVersion }));
           setHandledDeepLinkKey(key);
         }
       })
@@ -328,11 +330,11 @@ export function TasksPage() {
     hasLoadedItems,
     handledDeepLinkKey,
     loading,
-    mockItems,
     open,
     organizationId,
     requestedWorkItemId,
     spaceId,
+    taskViewModels,
     tStatus,
   ]);
 
@@ -600,11 +602,11 @@ export function TasksPage() {
   );
 }
 
-function canWriteWorkItems(
+function canCreateTasks(
   role: string | undefined,
   status: string | undefined,
 ): boolean {
-  return Boolean(role) && role !== "VIEWER" && status !== "DISABLED";
+  return (role === "SPACE_ADMIN" || role === "PM") && status !== "DISABLED";
 }
 
 function FilterField({
@@ -627,7 +629,7 @@ type LookupHelpers = {
   getVersion: (versionId: string) => Version | undefined;
 };
 
-function toMockWorkItem(
+function toTaskViewModel(
   item: WorkItem,
   tStatus: (key: StatusCategory) => string,
   lookups: LookupHelpers,

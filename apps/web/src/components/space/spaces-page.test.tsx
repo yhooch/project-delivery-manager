@@ -124,7 +124,7 @@ function makeSpace(overrides: Record<string, unknown> = {}) {
       id: "VER_01",
       organizationId: "ORG_01",
       spaceId: "SPC_01",
-      name: "M1",
+      name: "2026 Q2",
       status: "IN_PROGRESS",
       stats: {
         requirementCount: 1,
@@ -249,7 +249,7 @@ describe("SpacesPage", () => {
     expect(
       screen.getByTestId("spaces-current-version-SPC_01"),
     ).toHaveTextContent(
-      "spaces.list.fields.currentVersionM1versionBoard.status.IN_PROGRESS",
+      "spaces.list.fields.currentVersion2026 Q2versionBoard.status.IN_PROGRESS",
     );
     expect(
       screen.getByTestId("spaces-unfinished-tasks-SPC_01"),

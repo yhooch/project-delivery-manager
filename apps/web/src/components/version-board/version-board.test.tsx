@@ -546,6 +546,31 @@ describe("VersionPage", () => {
     ).toHaveTextContent("v2.0.0");
   });
 
+  it("replaces a stale URL versionId with a version from the current space", async () => {
+    searchParamsMock.current = new URLSearchParams({
+      versionId: "VERSION_FROM_OLD_SPACE",
+    });
+    listVersionsMock.mockResolvedValueOnce({
+      items: [makeVersion({ id: "01ARZ3NDEKTSV4RRFFQ69G5FV1" })],
+      total: 1,
+    });
+    getVersionBoardViewMock.mockResolvedValueOnce(makeBoardResponse([]));
+
+    render(<VersionPage />);
+
+    await waitFor(() =>
+      expect(routerMock.replace).toHaveBeenCalledWith(
+        expect.stringContaining("versionId=01ARZ3NDEKTSV4RRFFQ69G5FV1"),
+        expect.objectContaining({ scroll: false }),
+      ),
+    );
+    expect(getVersionBoardViewMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        versionId: "01ARZ3NDEKTSV4RRFFQ69G5FV1",
+      }),
+    );
+  });
+
   it("falls back to em-dash for missing release date", async () => {
     listVersionsMock.mockResolvedValueOnce({
       items: [
@@ -897,7 +922,7 @@ describe("VersionPage", () => {
     ).not.toBeInTheDocument();
   });
 
-  it("allows product writer roles to create work items but not versions", async () => {
+  it("keeps work item creation read-only for product writer roles", async () => {
     sessionMock.current = {
       session: {
         defaultOrganizationId: "ORG_01",
@@ -924,20 +949,12 @@ describe("VersionPage", () => {
     expect(screen.getByTestId("version-page-edit-version")).toBeDisabled();
 
     const newWorkItem = screen.getByTestId("version-board-new-work-item");
-    expect(newWorkItem).not.toBeDisabled();
+    expect(newWorkItem).toBeDisabled();
     fireEvent.click(newWorkItem);
     expect(
-      await screen.findByTestId("create-task-dialog-open"),
-    ).toBeInTheDocument();
+      screen.queryByTestId("create-task-dialog-open"),
+    ).not.toBeInTheDocument();
     await waitFor(() => expect(listTimelineMock).toHaveBeenCalledTimes(1));
-
-    capturedHandlers.createTaskOnCreated?.();
-
-    await waitFor(() =>
-      expect(getVersionBoardViewMock).toHaveBeenCalledTimes(2),
-    );
-    await waitFor(() => expect(listVersionsMock).toHaveBeenCalledTimes(2));
-    await waitFor(() => expect(listTimelineMock).toHaveBeenCalledTimes(2));
   });
 
   it("renders the noSpace empty state when session lacks a space", async () => {

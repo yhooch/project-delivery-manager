@@ -309,6 +309,33 @@ describe("ExceptionsPage", () => {
     );
   });
 
+  it("cleans stale versionId filters before querying exceptions", async () => {
+    searchParamsMock.current = new URLSearchParams({
+      exceptionType: "overdue",
+      versionId: "V_OLD",
+    });
+    getSpaceExceptionsViewMock.mockResolvedValueOnce(
+      makeViewResponse([], {
+        exceptionType: "overdue",
+      }),
+    );
+
+    render(<ExceptionsPage />);
+
+    await waitFor(() =>
+      expect(getSpaceExceptionsViewMock).toHaveBeenCalledWith(
+        expect.objectContaining({
+          exceptionType: "overdue",
+          versionId: undefined,
+        }),
+      ),
+    );
+    expect(routerMock.replace).toHaveBeenCalledWith(
+      expect.not.stringContaining("versionId=V_OLD"),
+      expect.objectContaining({ scroll: false }),
+    );
+  });
+
   it("renders the overdue tab with the work item title and tabs list", async () => {
     getSpaceExceptionsViewMock.mockResolvedValueOnce(
       makeViewResponse([
@@ -743,5 +770,18 @@ describe("ExceptionsPage", () => {
 
     const button = await screen.findByTestId("exceptions-threshold-button");
     expect(button).toBeDisabled();
+  });
+
+  it("disables threshold configuration and shows an error when threshold loading fails", async () => {
+    getSpaceMock.mockRejectedValueOnce(new Error("load failed"));
+    getSpaceExceptionsViewMock.mockResolvedValueOnce(makeViewResponse([]));
+
+    render(<ExceptionsPage />);
+
+    const button = await screen.findByTestId("exceptions-threshold-button");
+    await waitFor(() => expect(button).toBeDisabled());
+    expect(
+      await screen.findByTestId("exceptions-threshold-error"),
+    ).toHaveTextContent("errors.api.UNKNOWN");
   });
 });

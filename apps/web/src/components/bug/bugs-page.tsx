@@ -133,7 +133,7 @@ const SEVERITY_FILTERS: BugSeverity[] = [
   "TRIVIAL",
 ];
 
-type MockBugItem = WorkItemViewModel & {
+type BugItemViewModel = WorkItemViewModel & {
   lifecycleBucket: Exclude<BugLifecycleBucket, "all">;
   severity: BugSeverity;
 };
@@ -178,7 +178,7 @@ export function BugsPage() {
   );
   const [bucketFilter, setBucketFilter] = useState<BugLifecycleBucket>("all");
   const { captureFocus, restoreFocus } = useFocusReturn();
-  const canCreateBug = canWriteWorkItems(
+  const canCreateBug = canCreateBugs(
     currentSpace?.role,
     currentSpace?.status,
   );
@@ -286,10 +286,10 @@ export function BugsPage() {
     organizationId,
   );
 
-  const mockItems = useMemo<MockBugItem[]>(
+  const bugViewModels = useMemo<BugItemViewModel[]>(
     () =>
       items.map((bug) =>
-        toMockBug(bug, tStatus, {
+        toBugViewModel(bug, tStatus, {
           getMember,
           getVersion,
           getWorkflowState: workflowStateLookup.getState,
@@ -300,13 +300,13 @@ export function BugsPage() {
 
   const filtered = useMemo(() => {
     if (bucketFilter === "all") {
-      return mockItems;
+      return bugViewModels;
     }
-    return mockItems.filter((bug) => bug.lifecycleBucket === bucketFilter);
-  }, [bucketFilter, mockItems]);
+    return bugViewModels.filter((bug) => bug.lifecycleBucket === bucketFilter);
+  }, [bucketFilter, bugViewModels]);
 
   const openBug = useCallback(
-    (bug: MockBugItem) => {
+    (bug: BugItemViewModel) => {
       captureFocus();
       recordRecentOpen(
         {
@@ -328,8 +328,8 @@ export function BugsPage() {
     setEditingBug(bug);
   }, []);
 
-  const openEditBugFromMock = useCallback(
-    (bug: MockBugItem) => {
+  const openEditBugFromViewModel = useCallback(
+    (bug: BugItemViewModel) => {
       const source = items.find((item) => item.id === bug.id);
       if (
         source &&
@@ -364,7 +364,7 @@ export function BugsPage() {
         current.map((item) => (item.id === updated.id ? updated : item)),
       );
       setActiveItem(
-        toMockBug(updated, tStatus, {
+        toBugViewModel(updated, tStatus, {
           getMember,
           getVersion,
           getWorkflowState: workflowStateLookup.getState,
@@ -409,7 +409,7 @@ export function BugsPage() {
       return;
     }
 
-    const listed = mockItems.find((item) => item.id === requestedBugId);
+    const listed = bugViewModels.find((item) => item.id === requestedBugId);
     if (listed) {
       openBug(listed);
       setHandledDeepLinkKey(key);
@@ -425,7 +425,7 @@ export function BugsPage() {
       .then((bug) => {
         if (!cancelled) {
           openBug(
-            toMockBug(bug, tStatus, {
+            toBugViewModel(bug, tStatus, {
               getMember,
               getVersion,
               getWorkflowState: workflowStateLookup.getState,
@@ -449,29 +449,29 @@ export function BugsPage() {
     handledDeepLinkKey,
     hasLoadedItems,
     loading,
-    mockItems,
     openBug,
     organizationId,
     requestedBugId,
     spaceId,
     tStatus,
+    bugViewModels,
     workflowStateLookup.getState,
   ]);
 
-  useListKeyboardNav<MockBugItem>({
+  useListKeyboardNav<BugItemViewModel>({
     items: filtered,
     activeId: activeItem?.id,
     getId: (item) => item.id,
     onSelect: setActiveItem,
     onOpen: openBug,
-    onEdit: openEditBugFromMock,
+    onEdit: openEditBugFromViewModel,
     canAssign: (bug) =>
       canEditBug(
         items.find((item) => item.id === bug.id),
         currentSpace?.role,
         currentSpace?.status,
       ),
-    onAssign: openEditBugFromMock,
+    onAssign: openEditBugFromViewModel,
     canSubmit: () => false,
     onClose: () => handleSheetOpenChange(false),
   });
@@ -481,15 +481,15 @@ export function BugsPage() {
       {
         label: t("buckets.all"),
         key: "all" as BugLifecycleBucket,
-        count: mockItems.length,
+        count: bugViewModels.length,
       },
       ...bugBucketStatus.map((key) => ({
         label: t(`buckets.${key}`),
         key,
-        count: mockItems.filter((bug) => bug.lifecycleBucket === key).length,
+        count: bugViewModels.filter((bug) => bug.lifecycleBucket === key).length,
       })),
     ],
-    [mockItems, t],
+    [bugViewModels, t],
   );
 
   const header = (
@@ -807,7 +807,7 @@ export function BugsPage() {
                       data-id={bug.id}
                       aria-label={t("actions.edit")}
                       onClick={() => {
-                        openEditBugFromMock(bug);
+                        openEditBugFromViewModel(bug);
                       }}
                     >
                       <Pencil className="h-3 w-3" />
@@ -862,11 +862,21 @@ export function BugsPage() {
   );
 }
 
-function canWriteWorkItems(
+function canWriteBugs(
   role: string | undefined,
   status: string | undefined,
 ): boolean {
   return Boolean(role) && role !== "VIEWER" && status !== "DISABLED";
+}
+
+function canCreateBugs(
+  role: string | undefined,
+  status: string | undefined,
+): boolean {
+  return (
+    (role === "SPACE_ADMIN" || role === "PM" || role === "TESTER") &&
+    status !== "DISABLED"
+  );
 }
 
 function canEditBug(
@@ -874,7 +884,7 @@ function canEditBug(
   role: string | undefined,
   status: string | undefined,
 ): boolean {
-  return canWriteWorkItems(role, status) && bug?.permissions?.canEdit !== false;
+  return canWriteBugs(role, status) && bug?.permissions?.canEdit !== false;
 }
 
 function FilterField({
@@ -901,11 +911,11 @@ type BugLookupHelpers = {
   ) => { code: string; name: string } | undefined;
 };
 
-function toMockBug(
+function toBugViewModel(
   bug: BugView,
   tStatus: (key: StatusCategory) => string,
   lookups: BugLookupHelpers,
-): MockBugItem {
+): BugItemViewModel {
   const code = formatDisplayCode("BUG", bug.id);
   const member = bug.assigneeId ? lookups.getMember(bug.assigneeId) : undefined;
   const assigneeName = member?.user.name ?? member?.user.username ?? "";

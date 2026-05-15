@@ -71,6 +71,10 @@ export function EditBugDialog({
   const [steps, setSteps] = useState("");
   const [expectedResult, setExpectedResult] = useState("");
   const [actualResult, setActualResult] = useState("");
+  const [fixNote, setFixNote] = useState("");
+  const [regressionResult, setRegressionResult] = useState("");
+  const [regressionBy, setRegressionBy] = useState("");
+  const [regressionAt, setRegressionAt] = useState("");
   const [severity, setSeverity] = useState<BugSeverity>("MAJOR");
   const [versionId, setVersionId] = useState("");
   const [requirementId, setRequirementId] = useState("");
@@ -97,6 +101,10 @@ export function EditBugDialog({
     setSteps(bug.bugDetail.stepsToReproduce ?? "");
     setExpectedResult(bug.bugDetail.expectedResult ?? "");
     setActualResult(bug.bugDetail.actualResult ?? "");
+    setFixNote(bug.bugDetail.fixNote ?? "");
+    setRegressionResult(bug.bugDetail.regressionResult ?? "");
+    setRegressionBy(bug.bugDetail.regressionBy ?? "");
+    setRegressionAt(toDateTimeInputValue(bug.bugDetail.regressionAt));
     setSeverity(bug.bugDetail.severity);
     setVersionId(bug.versionId ?? "");
     setRequirementId(bug.requirementId ?? "");
@@ -192,6 +200,12 @@ export function EditBugDialog({
           stepsToReproduce: steps,
           expectedResult,
           actualResult,
+          fixNote,
+          regressionResult,
+          regressionBy,
+          regressionAt: regressionAt
+            ? new Date(regressionAt).toISOString()
+            : null,
           severity,
           priority,
           versionId,
@@ -218,7 +232,7 @@ export function EditBugDialog({
       >
         <DialogHeader>
           <DialogTitle>{tEdit("title")}</DialogTitle>
-          <DialogDescription>{tRoot("bugs.create.description")}</DialogDescription>
+          <DialogDescription>{tEdit("submit")}</DialogDescription>
         </DialogHeader>
 
         <form
@@ -309,6 +323,66 @@ export function EditBugDialog({
                 onChange={(event) => setActualResult(event.target.value)}
                 maxLength={8000}
                 rows={3}
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="edit-bug-fix-note">
+                {tForm("fixNote")}
+              </Label>
+              <Textarea
+                id="edit-bug-fix-note"
+                data-testid="edit-bug-fix-note-input"
+                value={fixNote}
+                onChange={(event) => setFixNote(event.target.value)}
+                maxLength={8000}
+                rows={3}
+              />
+            </div>
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="edit-bug-regression-result">
+                {tForm("regressionResult")}
+              </Label>
+              <Textarea
+                id="edit-bug-regression-result"
+                data-testid="edit-bug-regression-result-input"
+                value={regressionResult}
+                onChange={(event) => setRegressionResult(event.target.value)}
+                maxLength={8000}
+                rows={3}
+              />
+            </div>
+            <SelectField
+              label={tForm("regressionBy")}
+              htmlFor="edit-bug-regression-by"
+            >
+              <select
+                id="edit-bug-regression-by"
+                data-testid="edit-bug-regression-by-select"
+                value={regressionBy}
+                onChange={(event) => setRegressionBy(event.target.value)}
+                className="h-8 w-full rounded-md border border-input bg-background px-2 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              >
+                <option value="">{tForm("unassigned")}</option>
+                {members.map((member) => (
+                  <option key={member.userId} value={member.userId}>
+                    {member.user.name || member.user.username}
+                  </option>
+                ))}
+              </select>
+            </SelectField>
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="edit-bug-regression-at">
+                {tForm("regressionAt")}
+              </Label>
+              <Input
+                id="edit-bug-regression-at"
+                data-testid="edit-bug-regression-at-input"
+                type="datetime-local"
+                value={regressionAt}
+                onChange={(event) => setRegressionAt(event.target.value)}
               />
             </div>
           </div>
@@ -484,4 +558,17 @@ function toDateInputValue(value: string | undefined): string {
   }
 
   return date.toISOString().slice(0, 10);
+}
+
+function toDateTimeInputValue(value: string | undefined): string {
+  if (!value) {
+    return "";
+  }
+
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return "";
+  }
+
+  return date.toISOString().slice(0, 16);
 }

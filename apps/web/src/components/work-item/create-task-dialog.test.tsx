@@ -59,7 +59,7 @@ import { CreateTaskDialog } from "./create-task-dialog";
 const spaceId = "01ARZ3NDEKTSV4RRFFQ69G5FS1";
 const organizationId = "ORG_01";
 const requirementId = "01ARZ3NDEKTSV4RRFFQ69G5FR1";
-const intakeItemId = "01ARZ3NDEKTSV4RRFFQ69G5FI1";
+const intakeItemId = "01ARZ3NDEKTSV4RRFFQ69G5FJ1";
 
 beforeEach(() => {
   createWorkItemMock.mockReset();

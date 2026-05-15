@@ -475,6 +475,7 @@ describe("SpaceOverview", () => {
 
     expect(await screen.findByText("Old overview version")).toBeInTheDocument();
 
+    versionsMock.current = [{ id: "V_NEW", name: "New version" }];
     searchParamsMock.current = new URLSearchParams({ versionId: "V_NEW" });
     rerender(<SpaceOverview />);
 
@@ -516,6 +517,7 @@ describe("SpaceOverview", () => {
 
   it("builds exception drill-down links carrying the current versionId", async () => {
     searchParamsMock.current = new URLSearchParams({ versionId: "V_99" });
+    versionsMock.current = [{ id: "V_99", name: "v0.99" }];
     getSpaceOverviewViewMock.mockResolvedValue(makeOverview());
 
     render(<SpaceOverview />);
@@ -529,5 +531,23 @@ describe("SpaceOverview", () => {
     const taskDoneChip = screen.getByTestId("space-overview-task-status-DONE");
     expect(taskDoneChip.getAttribute("href")).toContain("versionId=V_99");
     expect(taskDoneChip.getAttribute("href")).toContain("workItemType=TASK");
+  });
+
+  it("removes stale versionId params and does not send them to the overview API", async () => {
+    searchParamsMock.current = new URLSearchParams({ versionId: "V_OLD" });
+    versionsMock.current = [{ id: "V_CURRENT", name: "Current version" }];
+    getSpaceOverviewViewMock.mockResolvedValue(makeOverview());
+
+    render(<SpaceOverview />);
+
+    await waitFor(() =>
+      expect(getSpaceOverviewViewMock).toHaveBeenCalledWith(
+        expect.objectContaining({ versionId: undefined }),
+      ),
+    );
+    expect(routerMock.replace).toHaveBeenCalledWith(
+      expect.not.stringContaining("versionId=V_OLD"),
+      expect.objectContaining({ scroll: false }),
+    );
   });
 });

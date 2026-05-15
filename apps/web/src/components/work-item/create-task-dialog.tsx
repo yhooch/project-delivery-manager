@@ -15,6 +15,7 @@ import { listIntakeItems } from "../../lib/intake-service";
 import { listRequirements } from "../../lib/requirement-service";
 import { listSpaceMembers } from "../../lib/space-service";
 import { listVersions } from "../../lib/version-service";
+import { toCreateTaskRequest } from "../../lib/work-item-forms";
 import { createWorkItem } from "../../lib/work-item-service";
 
 import {
@@ -150,16 +151,16 @@ export function CreateTaskDialog({
     try {
       await createWorkItem(
         { organizationId, spaceId },
-        {
+        toCreateTaskRequest({
           title: trimmed,
-          description: description.trim() || undefined,
+          description,
           priority,
-          versionId: versionId || undefined,
-          requirementId: requirementId || undefined,
-          intakeItemId: intakeItemId || undefined,
-          assigneeId: assigneeId || undefined,
-          dueDate: dueDate ? new Date(dueDate).toISOString() : undefined,
-        },
+          versionId,
+          requirementId,
+          intakeItemId,
+          assigneeId,
+          dueDate: toDateInputRequestValue(dueDate),
+        }),
       );
       onCreated?.();
       handleOpenChange(false);
@@ -360,4 +361,8 @@ export function CreateTaskDialog({
       </DialogContent>
     </Dialog>
   );
+}
+
+function toDateInputRequestValue(value: string): string {
+  return value ? new Date(`${value}T00:00:00`).toISOString() : value;
 }

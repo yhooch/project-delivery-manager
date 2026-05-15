@@ -173,7 +173,11 @@ export function CommandPalette() {
     currentSpace ??
     spacesForCurrentOrganization.find((space) => space.id === spaceId);
   const hasCurrentSpace = Boolean(effectiveCurrentSpace);
-  const canCreateWorkItemInCurrentSpace = canWriteWorkItems(
+  const canCreateTaskInCurrentSpace = canCreateTasks(
+    effectiveCurrentSpace?.role,
+    effectiveCurrentSpace?.status,
+  );
+  const canCreateBugInCurrentSpace = canCreateBugs(
     effectiveCurrentSpace?.role,
     effectiveCurrentSpace?.status,
   );
@@ -182,7 +186,9 @@ export function CommandPalette() {
     effectiveCurrentSpace?.status,
   );
   const hasCreateCommands =
-    canCreateWorkItemInCurrentSpace || canCreateRequirementInCurrentSpace;
+    canCreateTaskInCurrentSpace ||
+    canCreateBugInCurrentSpace ||
+    canCreateRequirementInCurrentSpace;
   const recentScope = useMemo(
     () => ({ organizationId, spaceId }),
     [organizationId, spaceId],
@@ -224,13 +230,16 @@ export function CommandPalette() {
     };
   }, [recentScope, recentStorageKey]);
 
-  // Pre-fetch the first page of each entity type when the palette opens.
+  // Pre-fetch the first page of each entity type every time the palette opens.
   // cmdk filters in-memory based on each CommandItem's `value` prop.
   useEffect(() => {
-    if (!open || !spaceId || hasFetched) return;
+    if (!open || !spaceId) return;
 
     let cancelled = false;
     setIsLoading(true);
+    setHasFetched(false);
+    setCanPruneRecent(false);
+    setResults([]);
 
     void (async () => {
       try {
@@ -346,7 +355,7 @@ export function CommandPalette() {
     return () => {
       cancelled = true;
     };
-  }, [open, spaceId, organizationId, hasFetched, t]);
+  }, [open, spaceId, organizationId, t]);
 
   // Reset in-memory fetch state if user switches organization / space.
   useEffect(() => {
@@ -588,19 +597,19 @@ export function CommandPalette() {
                   heading={t("create")}
                   data-testid="command-palette-create-group"
                 >
-                  {canCreateWorkItemInCurrentSpace && (
-                    <>
-                      <CommandItem
-                        onSelect={() => navigate("/work-items?new=task")}
-                      >
-                        <Plus className="text-muted-foreground" />
-                        <span>{t("createTask")}</span>
-                      </CommandItem>
-                      <CommandItem onSelect={() => navigate("/bugs?new=bug")}>
-                        <Plus className="text-muted-foreground" />
-                        <span>{t("createBug")}</span>
-                      </CommandItem>
-                    </>
+                  {canCreateTaskInCurrentSpace && (
+                    <CommandItem
+                      onSelect={() => navigate("/work-items?new=task")}
+                    >
+                      <Plus className="text-muted-foreground" />
+                      <span>{t("createTask")}</span>
+                    </CommandItem>
+                  )}
+                  {canCreateBugInCurrentSpace && (
+                    <CommandItem onSelect={() => navigate("/bugs?new=bug")}>
+                      <Plus className="text-muted-foreground" />
+                      <span>{t("createBug")}</span>
+                    </CommandItem>
                   )}
                   {canCreateRequirementInCurrentSpace && (
                     <CommandItem
@@ -648,11 +657,21 @@ export function CommandPalette() {
   );
 }
 
-function canWriteWorkItems(
+function canCreateTasks(
   role: string | undefined,
   status: string | undefined,
 ): boolean {
-  return Boolean(role) && role !== "VIEWER" && status !== "DISABLED";
+  return status !== "DISABLED" && (role === "SPACE_ADMIN" || role === "PM");
+}
+
+function canCreateBugs(
+  role: string | undefined,
+  status: string | undefined,
+): boolean {
+  return (
+    status !== "DISABLED" &&
+    (role === "SPACE_ADMIN" || role === "PM" || role === "TESTER")
+  );
 }
 
 function canWriteRequirements(
