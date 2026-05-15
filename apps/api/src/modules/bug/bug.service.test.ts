@@ -294,6 +294,35 @@ describe("BugService", () => {
       ]),
     );
   });
+
+  it("returns updated bug when a participant-only actor assigns it away", async () => {
+    const subject = createSubject("DEVELOPER");
+
+    subject.bugs.items.set(
+      BUG_ID,
+      makeBug({
+        assigneeId: ACTOR_ID,
+      }),
+    );
+    subject.bugs.participantKeys.add(`${BUG_ID}:${ACTOR_ID}`);
+    subject.spaces.addMember(ASSIGNEE_ID, "DEVELOPER");
+    subject.organizations.addMember(ASSIGNEE_ID);
+    subject.permissionResolver.resolvePermissionSnapshot = async () => {
+      throw new Error("visibility should not be rechecked after update");
+    };
+
+    const updated = await subject.service.update(ACTOR_ID, BUG_ID, {
+      assigneeId: ASSIGNEE_ID,
+    });
+
+    expect(updated).toMatchObject({
+      assigneeId: ASSIGNEE_ID,
+      permissions: {
+        canEdit: true,
+      },
+    });
+    expect(subject.permissionResolver.resolvedWorkItemIds).toEqual([BUG_ID]);
+  });
 });
 
 function createSubject(role: SpaceRole, actorUserId = ACTOR_ID) {
@@ -326,6 +355,31 @@ function createPermissionResolver(role: SpaceRole) {
   return {
     resolvedWorkItemIds: [] as string[],
     async resolvePermissionSnapshot(_actorUserId: string, workItemId: string) {
+      this.resolvedWorkItemIds.push(workItemId);
+      return {
+        availableActions: [
+          {
+            actorRelations: [],
+            allowedSpaceRoles: [role],
+            code: "START_PROGRESS",
+            formFields: [],
+            fromStateId: CURRENT_STATE_ID,
+            id: "01H0000000000000000000000D",
+            name: "开始处理",
+            order: 0,
+            requiresComment: false,
+            toStateId: "01H0000000000000000000000E",
+          },
+        ],
+        canComment: canWrite,
+        canEdit: canWrite,
+        canUploadAttachment: canWrite,
+      };
+    },
+    async resolvePermissionSnapshotForKnownVisibleWorkItem(
+      _actorUserId: string,
+      workItemId: string,
+    ) {
       this.resolvedWorkItemIds.push(workItemId);
       return {
         availableActions: [

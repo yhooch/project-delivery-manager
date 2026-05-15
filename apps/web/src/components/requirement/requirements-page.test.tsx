@@ -26,7 +26,10 @@ vi.mock("next/navigation", () => ({
   useSearchParams: () => searchParamsMock.current,
 }));
 
-const routerPushMock = vi.hoisted(() => vi.fn());
+const { routerPushMock, routerReplaceMock } = vi.hoisted(() => ({
+  routerPushMock: vi.fn(),
+  routerReplaceMock: vi.fn(),
+}));
 vi.mock("../../i18n/routing", () => ({
   routing: { defaultLocale: "zh-CN", locales: ["zh-CN", "en-US"] },
   Link: ({
@@ -50,8 +53,8 @@ vi.mock("../../i18n/routing", () => ({
   ),
   getPathname: () => "/",
   redirect: () => undefined,
-  usePathname: () => "/",
-  useRouter: () => ({ push: routerPushMock, replace: vi.fn() }),
+  usePathname: () => "/requirements",
+  useRouter: () => ({ push: routerPushMock, replace: routerReplaceMock }),
 }));
 
 const sessionMock = vi.hoisted(() => ({
@@ -109,6 +112,7 @@ beforeEach(() => {
   listRequirementAssignableMembersMock.mockReset();
   listRequirementVersionsMock.mockReset();
   routerPushMock.mockReset();
+  routerReplaceMock.mockReset();
   listRequirementAssignableMembersMock.mockResolvedValue({
     items: [],
     total: 0,
@@ -151,6 +155,9 @@ describe("RequirementsPage", () => {
     expect(routerPushMock).toHaveBeenCalledWith(
       "/requirements/01ARZ3NDEKTSV4RRFFQ69G5FCMD",
     );
+    expect(routerReplaceMock).toHaveBeenCalledWith("/requirements", {
+      scroll: false,
+    });
   });
 
   it("renders requirement rows with title and status badge", async () => {

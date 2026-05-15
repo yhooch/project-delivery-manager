@@ -19,7 +19,7 @@ import { useTranslations } from "next-intl";
 import { useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
-import { Link, useRouter } from "../../i18n/routing";
+import { Link, usePathname, useRouter } from "../../i18n/routing";
 import { getApiErrorMessageKey } from "../../lib/api-error-messages";
 import { useListKeyboardNav } from "../../lib/hooks/use-list-keyboard-nav";
 import {
@@ -56,6 +56,7 @@ export function RequirementsPage() {
   const tNav = useTranslations("shell.nav");
   const tRoot = useTranslations();
   const router = useRouter();
+  const pathname = usePathname();
   const searchParams = useSearchParams();
   const { session, status: sessionStatus } = useSession();
   const spaceId = session?.defaultSpaceId;
@@ -202,6 +203,15 @@ export function RequirementsPage() {
     }
   }, [isCreating, rememberRequirement, router, spaceId]);
 
+  const clearCreateLinkQuery = useCallback(() => {
+    const params = new URLSearchParams(searchParams.toString());
+    params.delete("new");
+    const query = params.toString();
+    const target = query ? `${pathname}?${query}` : pathname;
+
+    router.replace(target as never, { scroll: false });
+  }, [pathname, router, searchParams]);
+
   useEffect(() => {
     if (
       requestedNew !== "requirement" ||
@@ -217,8 +227,10 @@ export function RequirementsPage() {
     }
 
     setHandledCreateLinkKey(key);
+    clearCreateLinkQuery();
     void handleCreateDraft();
   }, [
+    clearCreateLinkQuery,
     handledCreateLinkKey,
     handleCreateDraft,
     isCreating,

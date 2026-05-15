@@ -69,6 +69,30 @@ export class WorkflowActionExecutionService {
     actorUserId: string,
     workItemId: string,
   ): Promise<PermissionSnapshot> {
+    return this.resolvePermissionSnapshotInternal(actorUserId, workItemId, {
+      validateVisibility: true,
+    });
+  }
+
+  async resolvePermissionSnapshotForKnownVisibleWorkItem(
+    actorUserId: string,
+    workItemId: string,
+    access: WorkflowActionActorSpaceAccess,
+  ): Promise<PermissionSnapshot> {
+    return this.resolvePermissionSnapshotInternal(actorUserId, workItemId, {
+      access,
+      validateVisibility: false,
+    });
+  }
+
+  private async resolvePermissionSnapshotInternal(
+    actorUserId: string,
+    workItemId: string,
+    options: {
+      access?: WorkflowActionActorSpaceAccess;
+      validateVisibility: boolean;
+    },
+  ): Promise<PermissionSnapshot> {
     return this.executions.transaction(async (tx) => {
       const workItem = await tx.findWorkItemById(workItemId);
 
@@ -80,11 +104,13 @@ export class WorkflowActionExecutionService {
         );
       }
 
-      const access = await tx.findActiveSpaceAccess({
-        actorUserId,
-        organizationId: workItem.organizationId,
-        spaceId: workItem.spaceId,
-      });
+      const access =
+        options.access ??
+        (await tx.findActiveSpaceAccess({
+          actorUserId,
+          organizationId: workItem.organizationId,
+          spaceId: workItem.spaceId,
+        }));
 
       if (!access) {
         throw new ApiException(
@@ -94,7 +120,9 @@ export class WorkflowActionExecutionService {
         );
       }
 
-      await validateWorkItemVisibility(tx, actorUserId, workItem, access);
+      if (options.validateVisibility) {
+        await validateWorkItemVisibility(tx, actorUserId, workItem, access);
+      }
 
       const availableActions = await resolveAvailableActions(
         tx,

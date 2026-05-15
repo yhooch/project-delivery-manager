@@ -316,10 +316,15 @@ export class BugService {
 
     return {
       ...updated,
-      permissions: await this.workflowActions.resolvePermissionSnapshot(
-        actorUserId,
-        updated.id,
-      ),
+      permissions:
+        await this.workflowActions.resolvePermissionSnapshotForKnownVisibleWorkItem(
+          actorUserId,
+          updated.id,
+          {
+            role: access.role,
+            spaceOwnerId: access.space.ownerId,
+          },
+        ),
     };
   }
 
