@@ -67,7 +67,7 @@ test.describe("UI 空间设置与组织管理", () => {
     });
     await expect(ownerRow).toBeVisible({ timeout: 10_000 });
     await expect(
-      ownerRow.locator('[data-testid^="organization-member-remove-"]'),
+      ownerRow.locator('[data-testid^="organization-member-disable-"]'),
     ).toBeDisabled();
   });
 });
