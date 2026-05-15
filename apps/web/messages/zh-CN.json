@@ -2577,12 +2577,17 @@
     "description": "{space} 的基础统计和默认流程。",
     "loadingValue": "加载中",
     "actions": {
-      "refresh": "刷新"
+      "refresh": "刷新",
+      "viewAll": "查看全部"
     },
     "filters": {
       "label": "空间总览筛选",
       "version": "版本",
       "allVersions": "全部版本"
+    },
+    "header": {
+      "staleThreshold": "长时间未流转阈值 {days} 天",
+      "filteredBy": "已筛选：{version}"
     },
     "states": {
       "loading": {
@@ -2745,7 +2750,8 @@
       "submitting": "保存中",
       "readonly": "当前空间角色只能查看阈值，不能修改。",
       "readonlyValue": "{count} 天",
-      "saved": "阈值已保存，异常结果已刷新。"
+      "saved": "阈值已保存，异常结果已刷新。",
+      "cancel": "取消"
     },
     "states": {
       "sessionLoading": {
@@ -2929,7 +2935,7 @@
   },
   "spaceSettings": {
     "page": {
-      "description": "管理空间名称、成员与异常阈值等配置。",
+      "description": "管理空间资料、成员与异常阈值等配置。",
       "noSpace": {
         "title": "未选择空间",
         "description": "请先在顶部切换到一个项目空间。"
@@ -2937,14 +2943,32 @@
     },
     "actions": {
       "save": "保存",
-      "saving": "保存中"
+      "saving": "保存中",
+      "viewerOnlyHint": "需要空间管理员或项目经理角色"
+    },
+    "overview": {
+      "title": "空间概览",
+      "organizationLabel": "归属组织",
+      "memberCountLabel": "成员",
+      "memberCount": "{count} 人",
+      "yourRoleLabel": "你的角色",
+      "statusLabel": "状态",
+      "statusActive": "正常",
+      "statusDisabled": "已停用"
     },
     "basic": {
       "title": "基础信息",
       "fields": {
         "name": "空间名称",
-        "code": "空间编码"
-      }
+        "code": "空间编码",
+        "codeHint": "同组织内唯一，支持字母、数字、下划线、短横线。",
+        "description": "描述",
+        "descriptionPlaceholder": "简要说明空间用途与负责范围（最多 2000 字符）。",
+        "owner": "负责人",
+        "ownerPlaceholder": "选择空间负责人",
+        "ownerNone": "未指定"
+      },
+      "codeConflict": "该编码在当前组织内已存在，请更换。"
     },
     "threshold": {
       "title": "异常阈值",
@@ -2957,6 +2981,10 @@
       "title": "空间成员",
       "add": "添加成员",
       "empty": "暂无空间成员",
+      "emptyFiltered": "没有匹配的成员",
+      "searchPlaceholder": "搜索姓名或用户名",
+      "roleFilterAll": "全部角色",
+      "ownerBadge": "负责人",
       "statusDisabled": "已禁用",
       "actions": {
         "changeRole": "修改 {username} 的空间角色",

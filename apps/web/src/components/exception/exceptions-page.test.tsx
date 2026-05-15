@@ -33,7 +33,14 @@ const sessionMock = vi.hoisted(() => ({
       defaultOrganizationId: "ORG_01",
       defaultSpaceId: "SPC_01",
     },
-  } as { session: unknown },
+    currentSpace: {
+      id: "SPC_01",
+      organizationId: "ORG_01",
+      name: "Space A",
+      role: "SPACE_ADMIN",
+      status: "ACTIVE",
+    },
+  } as { session: unknown; currentSpace: unknown },
 }));
 vi.mock("../providers/session-provider", () => ({
   useSession: () => sessionMock.current,
@@ -44,6 +51,15 @@ const { getSpaceExceptionsViewMock } = vi.hoisted(() => ({
 }));
 vi.mock("../../lib/view-service", () => ({
   getSpaceExceptionsView: getSpaceExceptionsViewMock,
+}));
+
+const { getSpaceMock, updateSpaceMock } = vi.hoisted(() => ({
+  getSpaceMock: vi.fn(),
+  updateSpaceMock: vi.fn(),
+}));
+vi.mock("../../lib/space-service", () => ({
+  getSpace: getSpaceMock,
+  updateSpace: updateSpaceMock,
 }));
 
 vi.mock("../work-item/task-detail-sheet", () => ({
@@ -106,10 +122,27 @@ function makeViewResponse(items: ReturnType<typeof makeException>[]) {
 
 beforeEach(() => {
   getSpaceExceptionsViewMock.mockReset();
+  getSpaceMock.mockReset();
+  getSpaceMock.mockResolvedValue({
+    id: "SPC_01",
+    organizationId: "ORG_01",
+    name: "Space A",
+    code: "SPC-A",
+    status: "ACTIVE",
+    settings: { staleThresholdDays: 3 },
+  });
+  updateSpaceMock.mockReset();
   sessionMock.current = {
     session: {
       defaultOrganizationId: "ORG_01",
       defaultSpaceId: "SPC_01",
+    },
+    currentSpace: {
+      id: "SPC_01",
+      organizationId: "ORG_01",
+      name: "Space A",
+      role: "SPACE_ADMIN",
+      status: "ACTIVE",
     },
   };
 });
@@ -243,7 +276,7 @@ describe("ExceptionsPage", () => {
   });
 
   it("renders the unauthenticated empty state when there is no session", async () => {
-    sessionMock.current = { session: null };
+    sessionMock.current = { session: null, currentSpace: undefined };
 
     render(<ExceptionsPage />);
 
@@ -259,6 +292,7 @@ describe("ExceptionsPage", () => {
         defaultOrganizationId: "ORG_01",
         defaultSpaceId: undefined,
       },
+      currentSpace: undefined,
     };
 
     render(<ExceptionsPage />);
@@ -267,5 +301,55 @@ describe("ExceptionsPage", () => {
       await screen.findByText("spaceExceptions.states.noSpaceSelected.title"),
     ).toBeInTheDocument();
     expect(getSpaceExceptionsViewMock).not.toHaveBeenCalled();
+  });
+
+  it("opens the threshold dialog and saves a new value, refetching the view", async () => {
+    getSpaceExceptionsViewMock.mockResolvedValue(makeViewResponse([]));
+    updateSpaceMock.mockResolvedValueOnce({
+      id: "SPC_01",
+      organizationId: "ORG_01",
+      name: "Space A",
+      code: "SPC-A",
+      status: "ACTIVE",
+      settings: { staleThresholdDays: 7 },
+    });
+
+    render(<ExceptionsPage />);
+
+    const button = await screen.findByTestId("exceptions-threshold-button");
+    await waitFor(() => expect(button).not.toBeDisabled());
+    const initialFetchCalls = getSpaceExceptionsViewMock.mock.calls.length;
+    fireEvent.click(button);
+
+    const input = await screen.findByTestId(
+      "exceptions-threshold-dialog-input",
+    );
+    fireEvent.change(input, { target: { value: "7" } });
+    fireEvent.click(
+      screen.getByTestId("exceptions-threshold-dialog-submit"),
+    );
+
+    await waitFor(() => expect(updateSpaceMock).toHaveBeenCalledTimes(1));
+    expect(updateSpaceMock).toHaveBeenCalledWith("SPC_01", {
+      staleThresholdDays: 7,
+    });
+    await waitFor(() =>
+      expect(
+        getSpaceExceptionsViewMock.mock.calls.length,
+      ).toBeGreaterThan(initialFetchCalls),
+    );
+  });
+
+  it("disables the threshold button when the current space role cannot manage", async () => {
+    sessionMock.current.currentSpace = {
+      ...(sessionMock.current.currentSpace as { role: string }),
+      role: "DEVELOPER",
+    };
+    getSpaceExceptionsViewMock.mockResolvedValueOnce(makeViewResponse([]));
+
+    render(<ExceptionsPage />);
+
+    const button = await screen.findByTestId("exceptions-threshold-button");
+    expect(button).toBeDisabled();
   });
 });

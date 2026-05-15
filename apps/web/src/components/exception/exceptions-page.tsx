@@ -19,6 +19,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { getApiErrorMessageKey } from "../../lib/api-error-messages";
 import { useListKeyboardNav } from "../../lib/hooks/use-list-keyboard-nav";
+import { getSpace } from "../../lib/space-service";
 import { cn } from "../../lib/utils";
 import type { WorkItemViewModel } from "../../lib/v2/work-item-view-model";
 import { getSpaceExceptionsView } from "../../lib/view-service";
@@ -33,6 +34,12 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "../ui/tabs";
 import { TaskDetailSheet } from "../work-item/task-detail-sheet";
 import { PageHeader } from "../v2/page-header";
 import { EmptyState, ErrorState, LoadingState } from "../v2/states";
+
+import { ThresholdEditorDialog } from "./threshold-editor-dialog";
+
+function canManageSpaceThreshold(role: string | undefined): boolean {
+  return role === "SPACE_ADMIN" || role === "PM";
+}
 
 type Tone =
   | "destructive"
@@ -68,16 +75,19 @@ export function ExceptionsPage() {
   const tNav = useTranslations("shell.nav");
   const tRoot = useTranslations();
   const locale = useLocale();
-  const { session } = useSession();
+  const { currentSpace, session } = useSession();
   const [view, setView] = useState<GetSpaceExceptionsViewResponse | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [errorKey, setErrorKey] = useState<string | null>(null);
   const [active, setActive] = useState<WorkItemViewModel | null>(null);
   const [open, setOpen] = useState(false);
   const [tabValue, setTabValue] = useState<ViewExceptionType>(tabs[0].key);
+  const [thresholdValue, setThresholdValue] = useState<number | null>(null);
+  const [thresholdOpen, setThresholdOpen] = useState(false);
 
   const organizationId = session?.defaultOrganizationId;
   const spaceId = session?.defaultSpaceId;
+  const canEditThreshold = canManageSpaceThreshold(currentSpace?.role);
 
   const fetchView = useCallback(async () => {
     if (!spaceId) {
@@ -101,6 +111,29 @@ export function ExceptionsPage() {
       setIsLoading(false);
     }
   }, [organizationId, spaceId]);
+
+  useEffect(() => {
+    if (!spaceId) {
+      setThresholdValue(null);
+      return;
+    }
+
+    let isActive = true;
+    void (async () => {
+      try {
+        const nextSpace = await getSpace(spaceId);
+        if (isActive) {
+          setThresholdValue(nextSpace.settings.staleThresholdDays);
+        }
+      } catch {
+        // silent — button still functions; dialog falls back to default value
+      }
+    })();
+
+    return () => {
+      isActive = false;
+    };
+  }, [spaceId]);
 
   useEffect(() => {
     if (!spaceId) {
@@ -200,9 +233,17 @@ export function ExceptionsPage() {
       size="sm"
       className="text-xs"
       data-testid="exceptions-threshold-button"
+      disabled={!canEditThreshold}
+      title={canEditThreshold ? undefined : t("threshold.readonly")}
+      onClick={() => setThresholdOpen(true)}
     >
       <Settings2 className="h-3 w-3" />
       {t("threshold.title")}
+      {thresholdValue !== null && (
+        <span className="ml-1 text-[10px] text-muted-foreground">
+          {t("threshold.readonlyValue", { count: thresholdValue })}
+        </span>
+      )}
     </Button>
   );
 
@@ -403,6 +444,20 @@ export function ExceptionsPage() {
       </Tabs>
 
       <TaskDetailSheet item={active} open={open} onOpenChange={setOpen} />
+
+      {spaceId && (
+        <ThresholdEditorDialog
+          initialValue={thresholdValue ?? 3}
+          onClose={() => setThresholdOpen(false)}
+          onSaved={(nextValue) => {
+            setThresholdValue(nextValue);
+            setThresholdOpen(false);
+            void fetchView();
+          }}
+          open={thresholdOpen}
+          spaceId={spaceId}
+        />
+      )}
     </div>
   );
 }

@@ -1,4 +1,5 @@
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const { translatorCache } = vi.hoisted(() => ({
@@ -37,7 +38,14 @@ const sessionMock = vi.hoisted(() => ({
       defaultOrganizationId: "ORG_01",
       defaultSpaceId: "SPC_01",
     },
-    currentSpace: { id: "SPC_01", organizationId: "ORG_01", name: "Space A" },
+    currentOrganization: { id: "ORG_01", name: "Acme Org" },
+    currentSpace: {
+      id: "SPC_01",
+      organizationId: "ORG_01",
+      name: "Space A",
+      role: "SPACE_ADMIN",
+      status: "ACTIVE",
+    },
     status: "authenticated" as const,
   },
 }));
@@ -59,6 +67,24 @@ vi.mock("../../lib/space-service", () => ({
   updateSpaceMember: updateSpaceMemberMock,
 }));
 
+const { FakeApiClientError } = vi.hoisted(() => {
+  class FakeApiClientError extends Error {
+    readonly error: { code: string; message: string };
+    readonly status: number;
+    constructor(code: string, status: number) {
+      super(code);
+      this.name = "ApiClientError";
+      this.error = { code, message: code };
+      this.status = status;
+    }
+  }
+  return { FakeApiClientError };
+});
+
+vi.mock("../../lib/api-client", () => ({
+  ApiClientError: FakeApiClientError,
+}));
+
 vi.mock("./add-space-member-dialog", () => ({
   AddSpaceMemberDialog: ({ open }: { open: boolean }) =>
     open ? <div data-testid="add-space-member-open" /> : null,
@@ -76,6 +102,9 @@ function makeSpace(overrides: Record<string, unknown> = {}) {
     organizationId: "ORG_01",
     code: "SPC-A",
     name: "Space A",
+    description: undefined,
+    ownerId: undefined,
+    status: "ACTIVE",
     settings: { staleThresholdDays: 3 },
     ...overrides,
   } as unknown as import("@project-delivery/shared").Space;
@@ -88,6 +117,7 @@ function makeMember(overrides: Record<string, unknown> = {}) {
     role: "DEVELOPER",
     status: "ACTIVE",
     spaceId: "SPC_01",
+    organizationId: "ORG_01",
     user: {
       id: "USR_01",
       name: "Alice",
@@ -107,7 +137,14 @@ beforeEach(() => {
       defaultOrganizationId: "ORG_01",
       defaultSpaceId: "SPC_01",
     },
-    currentSpace: { id: "SPC_01", organizationId: "ORG_01", name: "Space A" },
+    currentOrganization: { id: "ORG_01", name: "Acme Org" },
+    currentSpace: {
+      id: "SPC_01",
+      organizationId: "ORG_01",
+      name: "Space A",
+      role: "SPACE_ADMIN",
+      status: "ACTIVE",
+    },
     status: "authenticated" as const,
   };
 });
@@ -140,6 +177,26 @@ describe("SpaceSettingsPage", () => {
     // Member row.
     expect(screen.getByText("Alice")).toBeInTheDocument();
     expect(screen.getByText("@alice")).toBeInTheDocument();
+  });
+
+  it("renders the overview card with organization, member count, and role", async () => {
+    getSpaceMock.mockResolvedValueOnce(makeSpace());
+    listSpaceMembersMock.mockResolvedValueOnce({
+      items: [makeMember()],
+      total: 1,
+    });
+
+    render(<SpaceSettingsPage />);
+
+    await waitFor(() =>
+      expect(
+        screen.getByTestId("space-settings-overview"),
+      ).toBeInTheDocument(),
+    );
+    expect(screen.getByText("Acme Org")).toBeInTheDocument();
+    expect(
+      screen.getByTestId("space-settings-status-badge"),
+    ).toBeInTheDocument();
   });
 
   it("renders the empty member list message when there are no members", async () => {
@@ -211,7 +268,7 @@ describe("SpaceSettingsPage", () => {
     );
 
     fireEvent.click(
-      screen.getByRole("button", { name: "spaceSettings.members.add" }),
+      screen.getByRole("button", { name: /spaceSettings\.members\.add/ }),
     );
     expect(
       await screen.findByTestId("add-space-member-open"),
@@ -224,6 +281,7 @@ describe("SpaceSettingsPage", () => {
         defaultOrganizationId: "ORG_01",
         defaultSpaceId: undefined as unknown as string,
       },
+      currentOrganization: undefined as unknown as never,
       currentSpace: undefined as unknown as never,
       status: "authenticated" as const,
     };
@@ -234,5 +292,127 @@ describe("SpaceSettingsPage", () => {
       await screen.findByText("spaceSettings.page.noSpace.title"),
     ).toBeInTheDocument();
     expect(getSpaceMock).not.toHaveBeenCalled();
+  });
+
+  it("saves description and owner via updateSpace and reflects the response", async () => {
+    getSpaceMock.mockResolvedValueOnce(makeSpace());
+    listSpaceMembersMock.mockResolvedValueOnce({
+      items: [makeMember()],
+      total: 1,
+    });
+    updateSpaceMock.mockResolvedValueOnce(
+      makeSpace({
+        description: "Team space",
+        ownerId: "USR_01",
+      }),
+    );
+
+    render(<SpaceSettingsPage />);
+
+    const description = await screen.findByTestId(
+      "space-settings-description-input",
+    );
+    const owner = await screen.findByTestId(
+      "space-settings-owner-input",
+    );
+
+    fireEvent.change(description, { target: { value: "Team space" } });
+    fireEvent.change(owner, { target: { value: "USR_01" } });
+
+    fireEvent.click(
+      screen.getByTestId("space-settings-basic-submit"),
+    );
+
+    await waitFor(() => expect(updateSpaceMock).toHaveBeenCalledTimes(1));
+    expect(updateSpaceMock).toHaveBeenCalledWith("SPC_01", {
+      name: "Space A",
+      code: "SPC-A",
+      description: "Team space",
+      ownerId: "USR_01",
+    });
+  });
+
+  it("maps a CONFLICT error on code to a field-level message", async () => {
+    getSpaceMock.mockResolvedValueOnce(makeSpace());
+    listSpaceMembersMock.mockResolvedValueOnce({ items: [], total: 0 });
+    updateSpaceMock.mockRejectedValueOnce(
+      new FakeApiClientError("CONFLICT", 409),
+    );
+
+    render(<SpaceSettingsPage />);
+
+    const codeInput = await screen.findByTestId(
+      "space-settings-code-input",
+    );
+    fireEvent.change(codeInput, { target: { value: "OTHER-CODE" } });
+    fireEvent.click(screen.getByTestId("space-settings-basic-submit"));
+
+    expect(
+      await screen.findByTestId("space-settings-code-error"),
+    ).toHaveTextContent("spaceSettings.basic.codeConflict");
+  });
+
+  it("filters the member list by the search input", async () => {
+    getSpaceMock.mockResolvedValueOnce(makeSpace());
+    listSpaceMembersMock.mockResolvedValueOnce({
+      items: [
+        makeMember({
+          id: "SPM_01",
+          userId: "U1",
+          user: { id: "U1", name: "Alice", username: "alice" },
+        }),
+        makeMember({
+          id: "SPM_02",
+          userId: "U2",
+          user: { id: "U2", name: "Bob", username: "bob" },
+        }),
+      ],
+      total: 2,
+    });
+
+    render(<SpaceSettingsPage />);
+
+    await screen.findByText("Alice");
+    expect(screen.getByText("Bob")).toBeInTheDocument();
+
+    const user = userEvent.setup();
+    await user.type(
+      screen.getByTestId("space-settings-member-search"),
+      "bob",
+    );
+
+    await waitFor(() =>
+      expect(screen.queryByText("Alice")).not.toBeInTheDocument(),
+    );
+    expect(screen.getByText("Bob")).toBeInTheDocument();
+  });
+
+  it("disables all write controls when the current space role is VIEWER", async () => {
+    sessionMock.current.currentSpace = {
+      ...sessionMock.current.currentSpace!,
+      role: "VIEWER",
+    };
+    getSpaceMock.mockResolvedValueOnce(makeSpace());
+    listSpaceMembersMock.mockResolvedValueOnce({
+      items: [makeMember()],
+      total: 1,
+    });
+
+    render(<SpaceSettingsPage />);
+
+    await waitFor(() =>
+      expect(
+        screen.getByTestId("space-settings-basic-submit"),
+      ).toBeDisabled(),
+    );
+    expect(
+      screen.getByTestId("space-settings-threshold-submit"),
+    ).toBeDisabled();
+    expect(
+      screen.getByTestId("space-settings-add-member-button"),
+    ).toBeDisabled();
+    expect(
+      screen.getByTestId("space-settings-name-input"),
+    ).toBeDisabled();
   });
 });

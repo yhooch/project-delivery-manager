@@ -2585,12 +2585,17 @@
     "description": "Base metrics and default workflows for {space}.",
     "loadingValue": "Loading",
     "actions": {
-      "refresh": "Refresh"
+      "refresh": "Refresh",
+      "viewAll": "View all"
     },
     "filters": {
       "label": "Space overview filters",
       "version": "Version",
       "allVersions": "All versions"
+    },
+    "header": {
+      "staleThreshold": "Stale threshold {days} day(s)",
+      "filteredBy": "Filtered: {version}"
     },
     "states": {
       "loading": {
@@ -2753,7 +2758,8 @@
       "submitting": "Saving",
       "readonly": "Your space role can view the threshold but cannot change it.",
       "readonlyValue": "{count} days",
-      "saved": "Threshold saved and exception results refreshed."
+      "saved": "Threshold saved and exception results refreshed.",
+      "cancel": "Cancel"
     },
     "states": {
       "sessionLoading": {
@@ -2937,7 +2943,7 @@
   },
   "spaceSettings": {
     "page": {
-      "description": "Manage space name, members, and exception thresholds.",
+      "description": "Manage space details, members, and exception thresholds.",
       "noSpace": {
         "title": "No space selected",
         "description": "Switch to a project space first to manage settings."
@@ -2945,14 +2951,32 @@
     },
     "actions": {
       "save": "Save",
-      "saving": "Saving"
+      "saving": "Saving",
+      "viewerOnlyHint": "Requires space admin or project manager role"
+    },
+    "overview": {
+      "title": "Space overview",
+      "organizationLabel": "Organization",
+      "memberCountLabel": "Members",
+      "memberCount": "{count}",
+      "yourRoleLabel": "Your role",
+      "statusLabel": "Status",
+      "statusActive": "Active",
+      "statusDisabled": "Disabled"
     },
     "basic": {
       "title": "Basic info",
       "fields": {
         "name": "Space name",
-        "code": "Space code"
-      }
+        "code": "Space code",
+        "codeHint": "Unique within the organization. Letters, digits, underscore, dash only.",
+        "description": "Description",
+        "descriptionPlaceholder": "Briefly describe what this space is for (up to 2000 characters).",
+        "owner": "Owner",
+        "ownerPlaceholder": "Pick a space owner",
+        "ownerNone": "Unassigned"
+      },
+      "codeConflict": "This code already exists in the organization. Pick another."
     },
     "threshold": {
       "title": "Exception thresholds",
@@ -2965,6 +2989,10 @@
       "title": "Space members",
       "add": "Add member",
       "empty": "No space members",
+      "emptyFiltered": "No matching members",
+      "searchPlaceholder": "Search by name or username",
+      "roleFilterAll": "All roles",
+      "ownerBadge": "Owner",
       "statusDisabled": "Disabled",
       "actions": {
         "changeRole": "Change space role for {username}",
