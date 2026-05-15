@@ -44,7 +44,6 @@ import type {
   OrganizationListResult,
   OrganizationMemberListInput,
   OrganizationMemberListResult,
-  RemoveOrganizationMemberInput,
   UpdateOrganizationMemberInput,
 } from "./organization.types";
 
@@ -406,7 +405,7 @@ describe("organization and AppSession API", () => {
       });
   });
 
-  it("removes an organization member when an admin issues DELETE", async () => {
+  it("disables an organization member through PATCH status", async () => {
     const ownerAgent = await registeredAgent("m1c_rm_owner", "203.0.113.60");
     const memberAgent = await registeredAgent("m1c_rm_member", "203.0.113.61");
     const organization = (
@@ -425,14 +424,20 @@ describe("organization and AppSession API", () => {
         item.userId === memberUser?.id,
     );
 
-    await removeOrganizationMember(
+    await updateOrganizationMember(
       ownerAgent,
       organization.id,
       memberBefore?.id ?? "",
+      {
+        status: "DISABLED",
+      },
     )
       .expect(200)
       .expect(({ body }) => {
-        expect(body.data).toEqual({});
+        expect(body.data).toMatchObject({
+          id: memberBefore?.id,
+          status: "DISABLED",
+        });
       });
 
     const memberAfter = organizations.members.find(
@@ -440,17 +445,17 @@ describe("organization and AppSession API", () => {
         item.organizationId === organization.id &&
         item.userId === memberUser?.id,
     );
-    expect(memberAfter).toBeUndefined();
+    expect(memberAfter?.status).toBe("DISABLED");
 
     await listOrganizationMembers(ownerAgent, organization.id)
       .expect(200)
       .expect(({ body }) => {
-        expect(body.data.total).toBe(1);
+        expect(body.data.total).toBe(2);
         expect(
           body.data.items.map(
             (item: OrganizationMemberWithUser) => item.user.username,
           ),
-        ).toEqual(["m1c_rm_owner"]);
+        ).toEqual(["m1c_rm_owner", "m1c_rm_member"]);
       });
 
     await memberAgent
@@ -458,56 +463,6 @@ describe("organization and AppSession API", () => {
       .expect(403)
       .expect(({ body }) => {
         expect(body.code).toBe("ORGANIZATION_ACCESS_DENIED");
-      });
-  });
-
-  it("rejects removing the last active OWNER", async () => {
-    const ownerAgent = await registeredAgent(
-      "m1c_rm_last_owner",
-      "203.0.113.62",
-    );
-    await registeredAgent("m1c_rm_second_owner", "203.0.113.63");
-    const organization = (
-      await createOrganization(
-        ownerAgent,
-        "M1C Remove Last",
-        "m1c-remove-last",
-      )
-    ).body.data as Organization;
-    const ownerMember = organizations.members.find(
-      (member) => member.organizationId === organization.id,
-    );
-
-    await removeOrganizationMember(
-      ownerAgent,
-      organization.id,
-      ownerMember?.id ?? "",
-    )
-      .expect(409)
-      .expect(({ body }) => {
-        expect(body.code).toBe("LAST_ORGANIZATION_OWNER_REQUIRED");
-      });
-
-    expect(
-      organizations.members.find(
-        (member) =>
-          member.organizationId === organization.id && member.role === "OWNER",
-      ),
-    ).toBeDefined();
-
-    await addOrganizationMember(ownerAgent, organization.id, {
-      username: "m1c_rm_second_owner",
-      role: "OWNER",
-    }).expect(200);
-
-    await removeOrganizationMember(
-      ownerAgent,
-      organization.id,
-      ownerMember?.id ?? "",
-    )
-      .expect(200)
-      .expect(({ body }) => {
-        expect(body.data).toEqual({});
       });
   });
 
@@ -524,10 +479,13 @@ describe("organization and AppSession API", () => {
       )
     ).body.data as Organization;
 
-    await removeOrganizationMember(
+    await updateOrganizationMember(
       ownerAgent,
       organization.id,
       "01ARZ3NDEKTSV4RRFFQ69G5FAV",
+      {
+        status: "DISABLED",
+      },
     )
       .expect(404)
       .expect(({ body }) => {
@@ -697,16 +655,6 @@ describe("organization and AppSession API", () => {
     organizationId: string,
   ) {
     return agent.get(`/api/v1/organizations/${organizationId}/members`);
-  }
-
-  function removeOrganizationMember(
-    agent: request.Agent,
-    organizationId: string,
-    memberId: string,
-  ) {
-    return agent
-      .delete(`/api/v1/organizations/${organizationId}/members/${memberId}`)
-      .set("Origin", ORIGIN);
   }
 
   function updateOrganization(
@@ -1026,27 +974,6 @@ class InMemoryOrganizationRepository implements OrganizationRepository {
     _userId: string,
   ): Promise<SessionSpaceSummary[]> {
     return [];
-  }
-
-  async removeMember(input: RemoveOrganizationMemberInput): Promise<boolean> {
-    const index = this.members.findIndex(
-      (item) =>
-        item.organizationId === input.organizationId &&
-        item.id === input.memberId,
-    );
-
-    if (index === -1) {
-      return false;
-    }
-
-    const member = this.members[index];
-
-    if (this.isLastActiveOwner(member)) {
-      throw new LastOrganizationOwnerRequiredError();
-    }
-
-    this.members.splice(index, 1);
-    return true;
   }
 
   async updateMember(

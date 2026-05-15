@@ -84,7 +84,9 @@ type CreateWorkflowBindingRequest = z.infer<
 type CreateWorkflowDefinitionRequest = z.infer<
   typeof CreateWorkflowDefinitionRequestSchema
 >;
-type CreateWorkflowStateRequest = z.infer<typeof CreateWorkflowStateRequestSchema>;
+type CreateWorkflowStateRequest = z.infer<
+  typeof CreateWorkflowStateRequestSchema
+>;
 type CreateWorkflowVersionRequest = z.infer<
   typeof CreateWorkflowVersionRequestSchema
 >;
@@ -100,7 +102,9 @@ type UpdateWorkflowBindingRequest = z.infer<
 type UpdateWorkflowDefinitionRequest = z.infer<
   typeof UpdateWorkflowDefinitionRequestSchema
 >;
-type UpdateWorkflowStateRequest = z.infer<typeof UpdateWorkflowStateRequestSchema>;
+type UpdateWorkflowStateRequest = z.infer<
+  typeof UpdateWorkflowStateRequestSchema
+>;
 type UpdateWorkflowVersionRequest = z.infer<
   typeof UpdateWorkflowVersionRequestSchema
 >;
@@ -134,6 +138,10 @@ const STATUS_CATEGORIES = new Set<StatusCategory>([
   "VERIFYING",
   "DONE",
   "TERMINATED",
+]);
+const USER_SIDE_EFFECT_FORM_FIELD_KEYS = new Set([
+  "fixAssigneeId",
+  "regressionBy",
 ]);
 
 @Injectable()
@@ -772,6 +780,7 @@ export class WorkflowConfigService {
       "createActionFormField",
     );
 
+    assertUserSideEffectFormFieldType(input.key, input.fieldType);
     this.assertUniqueFormFieldKey(action, input.key);
 
     const created = await this.workflows.createFormField({
@@ -819,6 +828,10 @@ export class WorkflowConfigService {
     if (input.key && input.key !== field.key) {
       this.assertUniqueFormFieldKey(field.action, input.key, field.id);
     }
+    assertUserSideEffectFormFieldType(
+      input.key ?? field.key,
+      input.fieldType ?? field.fieldType,
+    );
 
     const updated = await this.workflows.updateFormField({
       actorUserId,
@@ -1045,7 +1058,8 @@ export class WorkflowConfigService {
       return access;
     }
 
-    const space = access?.space ?? (await this.workflows.findSpaceById(spaceId));
+    const space =
+      access?.space ?? (await this.workflows.findSpaceById(spaceId));
 
     if (space) {
       await this.auditAccessDenied(actorUserId, space, input);
@@ -1133,7 +1147,9 @@ export class WorkflowConfigService {
       throwWorkflowVersionNotFound();
     }
 
-    const definition = await this.requireDefinition(version.workflowDefinitionId);
+    const definition = await this.requireDefinition(
+      version.workflowDefinitionId,
+    );
 
     return {
       definition,
@@ -1313,9 +1329,8 @@ export class WorkflowConfigService {
   private async assertCanDisableDefinition(
     definition: WorkflowDefinitionRecord,
   ): Promise<void> {
-    const defaultBindings = await this.workflows.listDefaultBindingsForDefinition(
-      definition.id,
-    );
+    const defaultBindings =
+      await this.workflows.listDefaultBindingsForDefinition(definition.id);
 
     for (const binding of defaultBindings) {
       await this.assertReplacementDefaultExists(binding, {
@@ -1407,6 +1422,8 @@ type PublishValidationIssue = {
   code: string;
   message: string;
   actionId?: string;
+  fieldKey?: string;
+  formFieldId?: string;
   stateId?: string;
 };
 
@@ -1458,6 +1475,21 @@ function validatePublish(
         message: "Workflow action target state must exist",
       });
     }
+
+    for (const field of action.formFields) {
+      if (
+        USER_SIDE_EFFECT_FORM_FIELD_KEYS.has(field.key) &&
+        field.fieldType !== "USER"
+      ) {
+        issues.push({
+          actionId: action.id,
+          code: "USER_SIDE_EFFECT_FIELD_TYPE_INVALID",
+          fieldKey: field.key,
+          formFieldId: field.id,
+          message: "Workflow side effect user fields must use USER field type",
+        });
+      }
+    }
   }
 
   const outgoingByStateId = new Map<string, WorkflowActionRecord[]>();
@@ -1472,7 +1504,8 @@ function validatePublish(
     if (!state.isEnd && (outgoingByStateId.get(state.id)?.length ?? 0) === 0) {
       issues.push({
         code: "NON_END_STATE_ACTION_REQUIRED",
-        message: "Non-end workflow state must have at least one outgoing action",
+        message:
+          "Non-end workflow state must have at least one outgoing action",
         stateId: state.id,
       });
     }
@@ -1589,6 +1622,26 @@ function assertAllowedActionSpaceRoles(
     {
       field: "allowedSpaceRoles",
       role: invalidRole,
+    },
+  );
+}
+
+function assertUserSideEffectFormFieldType(
+  key: string,
+  fieldType: ActionFormFieldSummary["fieldType"],
+) {
+  if (!USER_SIDE_EFFECT_FORM_FIELD_KEYS.has(key) || fieldType === "USER") {
+    return;
+  }
+
+  throw new ApiException(
+    "VALIDATION_ERROR",
+    "Workflow side effect user fields must use USER fieldType",
+    HttpStatus.BAD_REQUEST,
+    {
+      expectedFieldType: "USER",
+      field: "fieldType",
+      key,
     },
   );
 }

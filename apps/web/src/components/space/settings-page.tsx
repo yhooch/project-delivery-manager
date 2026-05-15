@@ -24,6 +24,7 @@ import {
   updateSpace,
   updateSpaceMember,
 } from "../../lib/space-service";
+import { parseThresholdDays } from "../../lib/threshold-normalizer";
 import { cn } from "../../lib/utils";
 import { useSession } from "../providers/session-provider";
 
@@ -829,22 +830,6 @@ function getSpaceMemberIdentity(member: SpaceMemberWithUser) {
     member.user.name?.trim() || member.user.username?.trim() || member.userId;
 
   return { displayName, username };
-}
-
-function parseThresholdDays(value: string): number | null {
-  const trimmed = value.trim();
-
-  if (!/^\d+$/.test(trimmed)) {
-    return null;
-  }
-
-  const parsed = Number(trimmed);
-
-  if (!Number.isInteger(parsed) || parsed < 1 || parsed > 30) {
-    return null;
-  }
-
-  return parsed;
 }
 
 function initialOf(value: string) {

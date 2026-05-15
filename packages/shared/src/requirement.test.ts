@@ -1,8 +1,15 @@
 import { describe, expect, it } from "vitest";
 
-import { UpdateRequirementRequestSchema } from "./requirement.ts";
+import {
+  CreateRequirementDraftRequestSchema,
+  UpdateRequirementRequestSchema,
+} from "./requirement.ts";
 
 describe("requirement schemas", () => {
+  it("accepts omitted create draft request bodies", () => {
+    expect(CreateRequirementDraftRequestSchema.parse(undefined)).toEqual({});
+  });
+
   it("accepts valid Tiptap documents and rejects malformed content", () => {
     expect(
       UpdateRequirementRequestSchema.parse({

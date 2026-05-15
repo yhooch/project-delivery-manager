@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
+import { z } from "zod";
 import {
+  ApiErrorSchema,
   ApiErrorCodeSchema,
   AppSessionSchema,
   AttachmentListQuerySchema,
@@ -41,6 +43,7 @@ describe("shared contracts", () => {
   it("contains the required M0/M1/M2 error codes", () => {
     expect(ApiErrorCodeSchema.options).toEqual(
       expect.arrayContaining([
+        "INTERNAL_SERVER_ERROR",
         "INVALID_CREDENTIALS",
         "RATE_LIMITED",
         "ORGANIZATION_NOT_FOUND",
@@ -77,6 +80,16 @@ describe("shared contracts", () => {
         expect(declaredErrorCodes.has(errorCode)).toBe(true);
       }
     }
+  });
+
+  it("exposes INTERNAL_SERVER_ERROR in the ApiError JSON schema enum", () => {
+    const apiErrorJsonSchema = z.toJSONSchema(ApiErrorSchema) as {
+      properties?: Record<string, { enum?: string[] }>;
+    };
+
+    expect(apiErrorJsonSchema.properties?.["code"]?.enum).toEqual(
+      expect.arrayContaining(["INTERNAL_SERVER_ERROR"]),
+    );
   });
 
   it("covers backend-frozen error branches in endpoint contracts", () => {
@@ -824,7 +837,7 @@ describe("shared contracts", () => {
     ).toBe(session.defaultOrganizationId);
   });
 
-  it("covers M1 version statistics and requirement related work item placeholders", () => {
+  it("covers M1 version statistics and requirement related work item summaries", () => {
     const version = VersionSchema.parse({
       id: "01ERZ3NDEKTSV4RRFFQ69G5FAD",
       organizationId: "01BRZ3NDEKTSV4RRFFQ69G5FAA",
@@ -936,7 +949,7 @@ describe("shared contracts", () => {
     ).toEqual({ status: "ARCHIVED" });
   });
 
-  it("keeps M1 attachment requests parseable so the API can return dedicated file error codes", () => {
+  it("enforces M1 attachment request file constraints at the shared boundary", () => {
     expect(() =>
       PresignAttachmentRequestSchema.parse({
         targetType: "REQUIREMENT",
@@ -947,25 +960,25 @@ describe("shared contracts", () => {
       }),
     ).not.toThrow();
 
-    expect(() =>
-      PresignAttachmentRequestSchema.parse({
+    expect(
+      PresignAttachmentRequestSchema.safeParse({
         targetType: "REQUIREMENT",
         targetId: "01FRZ3NDEKTSV4RRFFQ69G5FAE",
         fileName: "payload.bin",
         mimeType: "application/octet-stream",
         size: 1024,
-      }),
-    ).not.toThrow();
+      }).success,
+    ).toBe(false);
 
-    expect(() =>
-      PresignAttachmentRequestSchema.parse({
+    expect(
+      PresignAttachmentRequestSchema.safeParse({
         targetType: "REQUIREMENT",
         targetId: "01FRZ3NDEKTSV4RRFFQ69G5FAE",
         fileName: "huge.pdf",
         mimeType: "application/pdf",
         size: 20 * 1024 * 1024 + 1,
-      }),
-    ).not.toThrow();
+      }).success,
+    ).toBe(false);
   });
 
   it("generates OpenAPI operations from the endpoint contract list", () => {

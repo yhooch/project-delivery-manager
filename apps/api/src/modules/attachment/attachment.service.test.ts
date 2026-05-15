@@ -209,9 +209,7 @@ describe("AttachmentService", () => {
       });
 
       vi.setSystemTime(
-        new Date(
-          Date.now() + PresignedUploadUrlExpiresInSeconds * 1000 + 1,
-        ),
+        new Date(Date.now() + PresignedUploadUrlExpiresInSeconds * 1000 + 1),
       );
 
       await expect(
@@ -279,9 +277,20 @@ describe("AttachmentService", () => {
         fileName: "payload.bin",
         mimeType: "application/octet-stream",
         size: 1024,
-      }),
+      } as unknown as Parameters<AttachmentService["presign"]>[1]),
     ).rejects.toMatchObject({
       code: "UNSUPPORTED_MIME_TYPE",
+    });
+    await expect(
+      service.presign(actorUserId, {
+        targetType: "WORK_ITEM",
+        targetId: workItemId,
+        fileName: "fractional.pdf",
+        mimeType: "application/pdf",
+        size: 1024.5,
+      }),
+    ).rejects.toMatchObject({
+      code: "VALIDATION_ERROR",
     });
     await expect(
       service.presign(actorUserId, {

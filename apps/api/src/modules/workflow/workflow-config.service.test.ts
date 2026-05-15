@@ -86,7 +86,9 @@ describe("WorkflowConfigService", () => {
         },
       ],
     });
-    expect(draft.states.map((state) => state.id)).not.toContain(PENDING_STATE_ID);
+    expect(draft.states.map((state) => state.id)).not.toContain(
+      PENDING_STATE_ID,
+    );
     expect(repository.auditLogs.at(-1)).toMatchObject({
       actionType: "CREATE",
       metadata: expect.objectContaining({
@@ -185,6 +187,75 @@ describe("WorkflowConfigService", () => {
       details: {
         field: "allowedSpaceRoles",
         role: "VIEWER",
+      },
+    });
+  });
+
+  it("requires reserved side-effect user fields to use USER fieldType", async () => {
+    const { service } = createSubject("SPACE_ADMIN");
+
+    await expect(
+      service.createFormField(
+        ACTOR_ID,
+        ACTION_ID,
+        {
+          fieldType: "TEXT",
+          key: "fixAssigneeId",
+          label: "修复负责人",
+          required: true,
+        },
+        REQUEST_META,
+      ),
+    ).rejects.toMatchObject({
+      code: "VALIDATION_ERROR",
+      details: {
+        expectedFieldType: "USER",
+        field: "fieldType",
+        key: "fixAssigneeId",
+      },
+    });
+
+    await expect(
+      service.updateFormField(
+        ACTOR_ID,
+        FIELD_ID,
+        {
+          key: "regressionBy",
+        },
+        REQUEST_META,
+      ),
+    ).rejects.toMatchObject({
+      code: "VALIDATION_ERROR",
+      details: {
+        expectedFieldType: "USER",
+        field: "fieldType",
+        key: "regressionBy",
+      },
+    });
+  });
+
+  it("rejects publishing workflow versions with mis-typed reserved user fields", async () => {
+    const { repository, service } = createSubject("SPACE_ADMIN");
+    repository.fields.set(FIELD_ID, {
+      ...repository.fields.get(FIELD_ID)!,
+      fieldType: "SELECT",
+      key: "regressionBy",
+      options: [ACTOR_ID],
+    });
+
+    await expect(
+      service.publishVersion(ACTOR_ID, WORKFLOW_VERSION_ID, REQUEST_META),
+    ).rejects.toMatchObject({
+      code: "WORKFLOW_PUBLISH_VALIDATION_FAILED",
+      details: {
+        issues: expect.arrayContaining([
+          expect.objectContaining({
+            actionId: ACTION_ID,
+            code: "USER_SIDE_EFFECT_FIELD_TYPE_INVALID",
+            fieldKey: "regressionBy",
+            formFieldId: FIELD_ID,
+          }),
+        ]),
       },
     });
   });
@@ -628,7 +699,8 @@ class InMemoryWorkflowConfigRepository implements WorkflowConfigRepository {
       publishedAt: null,
       status: "DRAFT",
       version:
-        Math.max(0, ...existingVersions.map((existing) => existing.version)) + 1,
+        Math.max(0, ...existingVersions.map((existing) => existing.version)) +
+        1,
       workflowDefinitionId: input.workflowId,
     };
 
@@ -914,7 +986,8 @@ class InMemoryWorkflowConfigRepository implements WorkflowConfigRepository {
           binding.workflowVersionId === input.workflowVersionId) &&
         (!input.workItemType || binding.workItemType === input.workItemType) &&
         (!input.priority || binding.priority === input.priority) &&
-        (input.isDefault === undefined || binding.isDefault === input.isDefault),
+        (input.isDefault === undefined ||
+          binding.isDefault === input.isDefault),
     );
 
     return page(items, input);
@@ -966,7 +1039,8 @@ class InMemoryWorkflowConfigRepository implements WorkflowConfigRepository {
 
   async listDefaultBindingsForDefinition(workflowId: string) {
     return [...this.bindings.values()].filter(
-      (binding) => binding.isDefault && binding.workflowDefinitionId === workflowId,
+      (binding) =>
+        binding.isDefault && binding.workflowDefinitionId === workflowId,
     );
   }
 
@@ -1042,10 +1116,7 @@ class InMemoryWorkflowConfigRepository implements WorkflowConfigRepository {
   }
 }
 
-function page<T>(
-  items: T[],
-  input: WorkflowConfigListInput,
-): PageResult<T> {
+function page<T>(items: T[], input: WorkflowConfigListInput): PageResult<T> {
   const start = (input.page - 1) * input.pageSize;
 
   return {

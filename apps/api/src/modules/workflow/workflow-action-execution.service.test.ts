@@ -451,6 +451,92 @@ describe("WorkflowActionExecutionService", () => {
     });
   });
 
+  it("forces fixAssigneeId to active member semantics even when declared as TEXT", async () => {
+    const subject = createSubject("TESTER", {
+      assigneeId: undefined,
+      type: "BUG",
+    });
+    subject.repository.actions.set(
+      USER_FIELD_ACTION_ID,
+      makeAction({
+        actorRelations: [],
+        allowedSpaceRoles: ["TESTER"],
+        code: "CONFIRM_DEFECT",
+        formFields: [
+          makeField({
+            fieldType: "TEXT",
+            key: "fixAssigneeId",
+            label: "修复负责人",
+            required: true,
+          }),
+        ],
+        id: USER_FIELD_ACTION_ID,
+      }),
+    );
+
+    await expect(
+      subject.service.executeAction(
+        ACTOR_ID,
+        WORK_ITEM_ID,
+        USER_FIELD_ACTION_ID,
+        {
+          formValues: {
+            fixAssigneeId: ASSIGNEE_ID,
+          },
+        },
+      ),
+    ).rejects.toMatchObject({
+      code: "SPACE_MEMBER_INVALID",
+      details: {
+        field: "fixAssigneeId",
+      },
+    });
+    expect(
+      subject.repository.workItems.get(WORK_ITEM_ID)?.assigneeId,
+    ).toBeUndefined();
+    expect(subject.repository.timelineEvents).toHaveLength(0);
+  });
+
+  it("forces regressionBy to active member semantics even when declared as SELECT", async () => {
+    const subject = createSubject("TESTER", {
+      type: "BUG",
+    });
+    subject.repository.actions.set(
+      SUBMIT_ACTION_ID,
+      makeAction({
+        actorRelations: [],
+        allowedSpaceRoles: ["TESTER"],
+        formFields: [
+          makeField({
+            fieldType: "SELECT",
+            key: "regressionBy",
+            label: "回归人",
+            options: [REPORTER_ID],
+            required: true,
+          }),
+        ],
+        id: SUBMIT_ACTION_ID,
+      }),
+    );
+
+    await expect(
+      subject.service.executeAction(ACTOR_ID, WORK_ITEM_ID, SUBMIT_ACTION_ID, {
+        formValues: {
+          regressionBy: REPORTER_ID,
+        },
+      }),
+    ).rejects.toMatchObject({
+      code: "SPACE_MEMBER_INVALID",
+      details: {
+        field: "regressionBy",
+      },
+    });
+    expect(
+      subject.repository.workItems.get(WORK_ITEM_ID)?.bugDetail?.regressionById,
+    ).toBeUndefined();
+    expect(subject.repository.timelineEvents).toHaveLength(0);
+  });
+
   it("hides non-testing TASK action execution from non-participant TESTER users", async () => {
     const subject = createSubject("TESTER", {
       assigneeId: undefined,
@@ -562,10 +648,9 @@ describe("WorkflowActionExecutionService", () => {
         `${SPACE_ID}:${WORK_ITEM_ID}:${ASSIGNEE_ID}:ASSIGNEE`,
       ),
     ).toBe(true);
-    expect(subject.repository.timelineEvents.map((event) => event.eventType)).toEqual([
-      "ASSIGNEE_CHANGED",
-      "ACTION_EXECUTED",
-    ]);
+    expect(
+      subject.repository.timelineEvents.map((event) => event.eventType),
+    ).toEqual(["ASSIGNEE_CHANGED", "ACTION_EXECUTED"]);
   });
 
   it("updates Bug regression details from default action field keys", async () => {
@@ -587,7 +672,11 @@ describe("WorkflowActionExecutionService", () => {
             required: true,
           }),
         ],
-        fromState: state("PENDING_REGRESSION", IN_PROGRESS_STATE_ID, "VERIFYING"),
+        fromState: state(
+          "PENDING_REGRESSION",
+          IN_PROGRESS_STATE_ID,
+          "VERIFYING",
+        ),
         fromStateId: IN_PROGRESS_STATE_ID,
         id: SUBMIT_ACTION_ID,
         name: "回归通过",
@@ -596,13 +685,20 @@ describe("WorkflowActionExecutionService", () => {
       }),
     );
 
-    await subject.service.executeAction(ACTOR_ID, WORK_ITEM_ID, SUBMIT_ACTION_ID, {
-      formValues: {
-        regressionConclusion: "回归通过",
+    await subject.service.executeAction(
+      ACTOR_ID,
+      WORK_ITEM_ID,
+      SUBMIT_ACTION_ID,
+      {
+        formValues: {
+          regressionConclusion: "回归通过",
+        },
       },
-    });
+    );
 
-    expect(subject.repository.workItems.get(WORK_ITEM_ID)?.bugDetail).toMatchObject({
+    expect(
+      subject.repository.workItems.get(WORK_ITEM_ID)?.bugDetail,
+    ).toMatchObject({
       regressionById: ACTOR_ID,
       regressionResult: "回归通过",
     });
@@ -653,33 +749,45 @@ describe("WorkflowActionExecutionService", () => {
       }),
     );
 
-    await subject.service.executeAction(ACTOR_ID, WORK_ITEM_ID, SUBMIT_ACTION_ID, {
-      formValues: {},
-    });
-
-    expect(subject.repository.workItems.get(WORK_ITEM_ID)?.closedAt).toBeDefined();
-    expect(subject.repository.timelineEvents.map((event) => event.eventType)).toEqual([
-      "ACTION_EXECUTED",
-      "CLOSED",
-    ]);
-
-    await subject.service.executeAction(ACTOR_ID, WORK_ITEM_ID, BLOCK_ACTION_ID, {
-      formValues: {
-        reopenReason: "线上仍可复现",
+    await subject.service.executeAction(
+      ACTOR_ID,
+      WORK_ITEM_ID,
+      SUBMIT_ACTION_ID,
+      {
+        formValues: {},
       },
-    });
+    );
 
-    expect(subject.repository.workItems.get(WORK_ITEM_ID)?.closedAt).toBeUndefined();
-    expect(subject.repository.workItems.get(WORK_ITEM_ID)?.bugDetail).toMatchObject({
+    expect(
+      subject.repository.workItems.get(WORK_ITEM_ID)?.closedAt,
+    ).toBeDefined();
+    expect(
+      subject.repository.timelineEvents.map((event) => event.eventType),
+    ).toEqual(["ACTION_EXECUTED", "CLOSED"]);
+
+    await subject.service.executeAction(
+      ACTOR_ID,
+      WORK_ITEM_ID,
+      BLOCK_ACTION_ID,
+      {
+        formValues: {
+          reopenReason: "线上仍可复现",
+        },
+      },
+    );
+
+    expect(
+      subject.repository.workItems.get(WORK_ITEM_ID)?.closedAt,
+    ).toBeUndefined();
+    expect(
+      subject.repository.workItems.get(WORK_ITEM_ID)?.bugDetail,
+    ).toMatchObject({
       regressionById: ACTOR_ID,
       regressionResult: "线上仍可复现",
     });
-    expect(subject.repository.timelineEvents.map((event) => event.eventType)).toEqual([
-      "ACTION_EXECUTED",
-      "CLOSED",
-      "ACTION_EXECUTED",
-      "REOPENED",
-    ]);
+    expect(
+      subject.repository.timelineEvents.map((event) => event.eventType),
+    ).toEqual(["ACTION_EXECUTED", "CLOSED", "ACTION_EXECUTED", "REOPENED"]);
   });
 });
 
@@ -711,7 +819,9 @@ function createSubject(
 }
 
 class FakeWorkflowActionExecutionRepository
-  implements WorkflowActionExecutionRepository, WorkflowActionExecutionTransaction
+  implements
+    WorkflowActionExecutionRepository,
+    WorkflowActionExecutionTransaction
 {
   readonly access = new Map<string, WorkflowActionActorSpaceAccess>();
   readonly actions = new Map<string, ExecutableWorkflowAction>();

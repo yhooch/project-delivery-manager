@@ -142,7 +142,7 @@ function withDetailHref(item: SearchResult): SearchResult {
   return { ...item, href: getDetailHref(item) };
 }
 
-const PAGE_SIZE = 25;
+const PAGE_SIZE = 100;
 
 export function CommandPalette() {
   const t = useTranslations("shell.command");
@@ -166,9 +166,7 @@ export function CommandPalette() {
 
   const spaceId = session?.defaultSpaceId;
   const organizationId = session?.defaultOrganizationId;
-  const canManageOrganization =
-    currentOrganization?.role === "OWNER" ||
-    currentOrganization?.role === "ADMIN";
+  const hasCurrentOrganization = Boolean(currentOrganization);
   const effectiveCurrentSpace =
     currentSpace ??
     spacesForCurrentOrganization.find((space) => space.id === spaceId);
@@ -230,8 +228,8 @@ export function CommandPalette() {
     };
   }, [recentScope, recentStorageKey]);
 
-  // Pre-fetch the first page of each entity type every time the palette opens.
-  // cmdk filters in-memory based on each CommandItem's `value` prop.
+  // MVP list APIs do not expose a query/search parameter yet, so fetch a
+  // bounded larger page and let cmdk filter the local result set.
   useEffect(() => {
     if (!open || !spaceId) return;
 
@@ -557,7 +555,7 @@ export function CommandPalette() {
                   <span>{t("nav.spaceSettings")}</span>
                 </CommandItem>
               )}
-              {canManageOrganization && (
+              {hasCurrentOrganization && (
                 <CommandItem
                   data-testid="command-palette-nav-organization"
                   onSelect={() => navigate("/organization")}

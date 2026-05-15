@@ -22,7 +22,7 @@ export const Input = React.forwardRef<HTMLInputElement, InputProps>(
         disabled={disabled}
         aria-disabled={disabled ? true : ariaDisabled}
         className={cn(
-          "flex h-8 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm transition-colors",
+          "flex h-8 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm transition-colors [@media(pointer:coarse)]:min-h-11 [@media(pointer:coarse)]:py-2",
           "placeholder:text-muted-foreground",
           "file:border-0 file:bg-transparent file:text-sm file:font-medium",
           "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 focus-visible:ring-offset-background",

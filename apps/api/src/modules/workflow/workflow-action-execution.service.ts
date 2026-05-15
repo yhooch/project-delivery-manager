@@ -40,6 +40,10 @@ const BUG_REGRESSION_RESULT_KEYS = new Set([
   "failedReason",
   "reopenReason",
 ]);
+const USER_SIDE_EFFECT_FORM_FIELD_KEYS = new Set([
+  "fixAssigneeId",
+  "regressionBy",
+]);
 
 export type WorkflowActionRequestMetadata = {
   ip?: string;
@@ -225,7 +229,12 @@ export class WorkflowActionExecutionService {
           );
         }
 
-        const formValues = await validateFormValues(tx, workItem, action, input);
+        const formValues = await validateFormValues(
+          tx,
+          workItem,
+          action,
+          input,
+        );
         const now = new Date();
         const blockedPatch = buildBlockedPatch(action, formValues, now);
         const bugPatch = buildBugDetailPatch(
@@ -246,7 +255,8 @@ export class WorkflowActionExecutionService {
             ? getOptionalString(formValues.fixAssigneeId)
             : undefined;
         const assigneeChanged =
-          assigneeId !== undefined && assigneeId !== (workItem.assigneeId ?? null);
+          assigneeId !== undefined &&
+          assigneeId !== (workItem.assigneeId ?? null);
         const closedPatch = buildClosedPatch(action, now);
         const before = buildTimelineBefore(workItem);
         const updated = await tx.updateWorkItemState({
@@ -328,7 +338,8 @@ export class WorkflowActionExecutionService {
             organizationId: updated.organizationId,
             spaceId: updated.spaceId,
             targetId: updated.id,
-            title: lifecycleEvent === "CLOSED" ? "关闭工作项" : "重新打开工作项",
+            title:
+              lifecycleEvent === "CLOSED" ? "关闭工作项" : "重新打开工作项",
           });
         }
 
@@ -525,7 +536,11 @@ async function validateFormValues(
       continue;
     }
 
-    result[field.key] = await validateFieldValue(tx, workItem, field, value);
+    const validated = await validateFieldValue(tx, workItem, field, value);
+
+    result[field.key] = USER_SIDE_EFFECT_FORM_FIELD_KEYS.has(field.key)
+      ? await validateUserFormFieldValue(tx, workItem, field, validated)
+      : validated;
   }
 
   return result;
@@ -550,26 +565,7 @@ async function validateFieldValue(
       }
       return value;
     case "USER":
-      if (typeof value !== "string" || !ULID_PATTERN.test(value)) {
-        throwInvalidFieldValue(field);
-      }
-      if (
-        !(await tx.isActiveSpaceMember({
-          organizationId: workItem.organizationId,
-          spaceId: workItem.spaceId,
-          userId: value,
-        }))
-      ) {
-        throw new ApiException(
-          "SPACE_MEMBER_INVALID",
-          `${field.label} must be an active space member`,
-          HttpStatus.NOT_FOUND,
-          {
-            field: field.key,
-          },
-        );
-      }
-      return value;
+      return validateUserFormFieldValue(tx, workItem, field, value);
     case "DATE": {
       if (typeof value !== "string") {
         throwInvalidFieldValue(field);
@@ -587,6 +583,35 @@ async function validateFieldValue(
       }
       return value;
   }
+}
+
+async function validateUserFormFieldValue(
+  tx: WorkflowActionExecutionTransaction,
+  workItem: ExecutableWorkItem,
+  field: ExecutableWorkflowActionFormField,
+  value: unknown,
+): Promise<string> {
+  if (typeof value !== "string" || !ULID_PATTERN.test(value)) {
+    throwInvalidFieldValue(field);
+  }
+  if (
+    !(await tx.isActiveSpaceMember({
+      organizationId: workItem.organizationId,
+      spaceId: workItem.spaceId,
+      userId: value,
+    }))
+  ) {
+    throw new ApiException(
+      "SPACE_MEMBER_INVALID",
+      `${field.label} must be an active space member`,
+      HttpStatus.NOT_FOUND,
+      {
+        field: field.key,
+      },
+    );
+  }
+
+  return value;
 }
 
 function throwInvalidFieldValue(
@@ -807,7 +832,8 @@ function toPermissionSnapshot(
   return {
     availableActions,
     canComment: canWriteTarget,
-    canEdit: canManageDeliveryObject(access.role) && isDirectlyEditable(workItem),
+    canEdit:
+      canManageDeliveryObject(access.role) && isDirectlyEditable(workItem),
     canUploadAttachment: canWriteTarget,
   };
 }
@@ -861,7 +887,10 @@ function resolveLifecycleEvent(action: ExecutableWorkflowAction) {
   if (isReopenAction(action)) {
     return "REOPENED";
   }
-  if (action.code.includes("CANCEL") || action.toState.code.includes("CANCEL")) {
+  if (
+    action.code.includes("CANCEL") ||
+    action.toState.code.includes("CANCEL")
+  ) {
     return "CANCELED";
   }
   if (action.code.includes("CLOSE") || action.toState.code.includes("CLOSE")) {
@@ -893,8 +922,9 @@ function resolveLifecycleTimelineEvent(
 }
 
 function isReopenAction(action: ExecutableWorkflowAction) {
-  return action.code.includes("REOPEN") || (
-    action.fromState.isEnd && !action.toState.isEnd
+  return (
+    action.code.includes("REOPEN") ||
+    (action.fromState.isEnd && !action.toState.isEnd)
   );
 }
 

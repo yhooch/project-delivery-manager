@@ -104,11 +104,14 @@ export const RequirementSchema = z
 
 export type Requirement = z.infer<typeof RequirementSchema>;
 
-export const CreateRequirementDraftRequestSchema = z
+const CreateRequirementDraftBodySchema = z
   .object({
     versionId: UlidSchema.optional(),
   })
   .strict();
+
+export const CreateRequirementDraftRequestSchema =
+  CreateRequirementDraftBodySchema.default({});
 
 export type CreateRequirementDraftRequest = z.infer<
   typeof CreateRequirementDraftRequestSchema

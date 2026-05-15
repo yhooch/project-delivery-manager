@@ -58,7 +58,6 @@ import type {
   OrganizationListResult,
   OrganizationMemberListInput,
   OrganizationMemberListResult,
-  RemoveOrganizationMemberInput,
   UpdateOrganizationMemberInput,
 } from "../organization/organization.types";
 import { WorkflowDefaultInitializerService } from "../workflow/workflow-default-initializer.service";
@@ -1095,21 +1094,6 @@ class InMemoryOrganizationRepository implements OrganizationRepository {
     userId: string,
   ): Promise<SessionSpaceSummary[]> {
     return this.spaceRepository?.listSessionSummaries(userId) ?? [];
-  }
-
-  async removeMember(input: RemoveOrganizationMemberInput): Promise<boolean> {
-    const index = this.members.findIndex(
-      (item) =>
-        item.organizationId === input.organizationId &&
-        item.id === input.memberId,
-    );
-
-    if (index === -1) {
-      return false;
-    }
-
-    this.members.splice(index, 1);
-    return true;
   }
 
   async updateMember(

@@ -12,6 +12,7 @@ export const IsoDateTimeSchema = z.string().min(1);
 
 export const ApiErrorCodeSchema = z.enum([
   "BAD_REQUEST",
+  "INTERNAL_SERVER_ERROR",
   "UNAUTHORIZED",
   "FORBIDDEN",
   "NOT_FOUND",

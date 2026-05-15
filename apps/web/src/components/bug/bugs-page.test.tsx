@@ -773,7 +773,12 @@ describe("BugsPage", () => {
   it("opens edit from a bug row and refreshes the list and active detail after saving", async () => {
     listBugsMock
       .mockResolvedValueOnce({
-        items: [makeBug({ title: "Before edit" })],
+        items: [
+          makeBug({
+            title: "Before edit",
+            permissions: { canEdit: true },
+          }),
+        ],
         total: 1,
       })
       .mockResolvedValueOnce({
@@ -801,6 +806,24 @@ describe("BugsPage", () => {
     expect(
       screen.getByTestId("task-detail-sheet-item-title"),
     ).toHaveTextContent("Edited bug");
+  });
+
+  it("hides edit actions when a writable bug omits permissions", async () => {
+    listBugsMock.mockResolvedValueOnce({
+      items: [makeBug({ title: "Missing permissions bug" })],
+      total: 1,
+    });
+
+    render(<BugsPage />);
+
+    fireEvent.click(await screen.findByText("Missing permissions bug"));
+    expect(screen.queryByTestId("bugs-edit-button")).not.toBeInTheDocument();
+
+    fireEvent.keyDown(window, { key: "e" });
+
+    expect(
+      screen.queryByTestId("edit-bug-dialog-open"),
+    ).not.toBeInTheDocument();
   });
 
   it("does not open edit from the keyboard shortcut for read-only users", async () => {

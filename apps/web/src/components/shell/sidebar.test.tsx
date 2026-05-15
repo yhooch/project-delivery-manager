@@ -59,7 +59,7 @@ afterEach(() => {
 });
 
 describe("Sidebar", () => {
-  it("keeps the four primary nav groups visible for non-admin members", () => {
+  it("keeps primary nav and the organization entry visible for non-admin members", () => {
     render(<Sidebar />);
 
     expect(screen.getByText("shell.brand.shortName")).toBeInTheDocument();
@@ -82,9 +82,10 @@ describe("Sidebar", () => {
     expect(
       screen.getByRole("link", { name: /shell\.nav\.spaceSettings/u }),
     ).toHaveAttribute("href", "/settings");
+    const section = screen.getByTestId("sidebar-organization-section");
     expect(
-      screen.queryByTestId("sidebar-organization-section"),
-    ).not.toBeInTheDocument();
+      within(section).getByRole("link", { name: /shell\.nav\.organization/u }),
+    ).toHaveAttribute("href", "/organization");
   });
 
   it("renders OWNER/ADMIN organization links inside a collapsible organization section", () => {

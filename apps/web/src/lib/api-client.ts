@@ -227,5 +227,9 @@ function fallbackErrorCode(status: number): ApiErrorCode {
     return "RATE_LIMITED";
   }
 
+  if (status >= 500) {
+    return "INTERNAL_SERVER_ERROR";
+  }
+
   return "BAD_REQUEST";
 }

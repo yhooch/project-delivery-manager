@@ -384,6 +384,119 @@ export async function listWorkflowDefinitionsForUi(
   return data.items ?? [];
 }
 
+export async function ensureWorkflowDefinitionForUi(
+  user: UiTestUser,
+  runId: string,
+): Promise<{ id: string; code?: string; name?: string }> {
+  const existing = await listWorkflowDefinitionsForUi(user);
+  if (existing.length > 0) {
+    return existing[0]!;
+  }
+
+  const suffix = runId.replace(/[^a-zA-Z0-9]/gu, "").toUpperCase();
+  const definition = await postUiData<{
+    code?: string;
+    id?: string;
+    name?: string;
+  }>(
+    user,
+    `/spaces/${user.spaceId}/workflows`,
+    {
+      code: `UI_TASK_${suffix}`.slice(0, 80),
+      name: `UI Task Workflow ${runId}`,
+    },
+    "POST /spaces/:id/workflows",
+  );
+  if (!definition.id) {
+    throw new Error("UI E2E: 创建流程定义响应缺少 data.id。");
+  }
+
+  const draft = await postUiData<{ id?: string }>(
+    user,
+    `/workflows/${definition.id}/versions`,
+    {},
+    "POST /workflows/:id/versions",
+  );
+  if (!draft.id) {
+    throw new Error("UI E2E: 创建流程版本响应缺少 data.id。");
+  }
+
+  const start = await postUiData<{ id?: string }>(
+    user,
+    `/workflow-versions/${draft.id}/states`,
+    {
+      category: "NOT_STARTED",
+      code: "TODO",
+      isStart: true,
+      name: "待处理",
+      order: 0,
+    },
+    "POST /workflow-versions/:id/states",
+  );
+  if (!start.id) {
+    throw new Error("UI E2E: 创建开始状态响应缺少 data.id。");
+  }
+
+  const done = await postUiData<{ id?: string }>(
+    user,
+    `/workflow-versions/${draft.id}/states`,
+    {
+      category: "DONE",
+      code: "DONE",
+      isEnd: true,
+      name: "已完成",
+      order: 1,
+    },
+    "POST /workflow-versions/:id/states",
+  );
+  if (!done.id) {
+    throw new Error("UI E2E: 创建完成状态响应缺少 data.id。");
+  }
+
+  await postUiData(
+    user,
+    `/workflow-versions/${draft.id}/actions`,
+    {
+      allowedSpaceRoles: ["SPACE_ADMIN", "PM"],
+      code: "COMPLETE",
+      fromStateId: start.id,
+      name: "完成",
+      order: 0,
+      requiresComment: false,
+      toStateId: done.id,
+    },
+    "POST /workflow-versions/:id/actions",
+  );
+
+  const version = await postUiData<{ id?: string }>(
+    user,
+    `/workflow-versions/${draft.id}/publish`,
+    {},
+    "POST /workflow-versions/:id/publish",
+  );
+  if (!version.id) {
+    throw new Error("UI E2E: 发布流程版本响应缺少 data.id。");
+  }
+
+  await postUiData(
+    user,
+    `/spaces/${user.spaceId}/workflow-bindings`,
+    {
+      isDefault: true,
+      workflowVersionId: version.id,
+      workItemType: "TASK",
+    },
+    "POST /spaces/:id/workflow-bindings",
+  );
+
+  const workflow: { id: string; code?: string; name?: string } = {
+    id: definition.id,
+  };
+  if (definition.code) workflow.code = definition.code;
+  if (definition.name) workflow.name = definition.name;
+  return workflow;
+}
+
 async function getUiData<TData>(
   user: UiTestUser,
   path: string,

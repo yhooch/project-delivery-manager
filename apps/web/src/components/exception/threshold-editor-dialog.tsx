@@ -5,6 +5,7 @@ import { useEffect, useState, type FormEvent } from "react";
 
 import { getApiErrorMessageKey } from "../../lib/api-error-messages";
 import { updateSpace } from "../../lib/space-service";
+import { parseThresholdDays } from "../../lib/threshold-normalizer";
 
 import { Button } from "../ui/button";
 import {
@@ -156,20 +157,4 @@ export function ThresholdEditorDialog({
       </DialogContent>
     </Dialog>
   );
-}
-
-function parseThresholdDays(value: string): number | null {
-  const trimmed = value.trim();
-
-  if (!/^\d+$/.test(trimmed)) {
-    return null;
-  }
-
-  const parsed = Number(trimmed);
-
-  if (!Number.isInteger(parsed) || parsed < 1 || parsed > 30) {
-    return null;
-  }
-
-  return parsed;
 }

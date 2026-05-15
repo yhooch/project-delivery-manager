@@ -37,7 +37,6 @@ import {
   ListOrganizationMembersResponseSchema,
   ListOrganizationsQuerySchema,
   ListOrganizationsResponseSchema,
-  RemoveOrganizationMemberResponseSchema,
   UpdateOrganizationMemberRequestSchema,
   UpdateOrganizationMemberResponseSchema,
   UpdateOrganizationRequestSchema,
@@ -212,10 +211,6 @@ const addOrganizationMemberErrors = [
 const updateOrganizationMemberErrors = [
   ...organizationErrors,
   "VALIDATION_ERROR",
-  "ORGANIZATION_MEMBER_NOT_FOUND",
-];
-const removeOrganizationMemberErrors = [
-  ...organizationErrors,
   "ORGANIZATION_MEMBER_NOT_FOUND",
 ];
 const spaceErrors = [
@@ -462,18 +457,6 @@ export const apiContracts = [
     requestSchema: UpdateOrganizationMemberRequestSchema,
     responseSchema: UpdateOrganizationMemberResponseSchema,
     errorCodes: updateOrganizationMemberErrors,
-  }),
-  endpoint({
-    operationId: "removeOrganizationMember",
-    method: "delete",
-    path: "/organizations/{organizationId}/members/{memberId}",
-    tags: ["organization-members"],
-    summary: "Remove organization member",
-    pathSchema: OrganizationIdPathParamsSchema.merge(MemberIdPathParamsSchema),
-    querySchema: EmptyObjectSchema,
-    requestSchema: EmptyObjectSchema,
-    responseSchema: RemoveOrganizationMemberResponseSchema,
-    errorCodes: removeOrganizationMemberErrors,
   }),
   endpoint({
     operationId: "listSpaces",

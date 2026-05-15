@@ -884,7 +884,7 @@ function canEditBug(
   role: string | undefined,
   status: string | undefined,
 ): boolean {
-  return canWriteBugs(role, status) && bug?.permissions?.canEdit !== false;
+  return canWriteBugs(role, status) && bug?.permissions?.canEdit === true;
 }
 
 function FilterField({

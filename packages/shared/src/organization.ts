@@ -1,6 +1,5 @@
 import { z } from "zod";
 import {
-  EmptyObjectSchema,
   PageQuerySchema,
   UlidSchema,
   pageResultSchema,
@@ -131,4 +130,3 @@ export const AddOrganizationMemberResponseSchema =
   OrganizationMemberWithUserSchema;
 export const UpdateOrganizationMemberResponseSchema =
   OrganizationMemberWithUserSchema;
-export const RemoveOrganizationMemberResponseSchema = EmptyObjectSchema;

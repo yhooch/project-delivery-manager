@@ -35,26 +35,6 @@ describe("OrganizationService", () => {
       code: "LAST_ORGANIZATION_OWNER_REQUIRED",
     });
   });
-
-  it("maps repository last-owner race protection during member removal", async () => {
-    const repository = createRepository();
-    repository.countActiveOwners.mockResolvedValue(2);
-    repository.removeMember.mockRejectedValue(
-      new LastOrganizationOwnerRequiredError(),
-    );
-    const service = new OrganizationService(
-      repository,
-      {} as UserRepository,
-      {} as RateLimiterService,
-      createAuditService(),
-    );
-
-    await expect(
-      service.removeMember(ACTOR_ID, ORGANIZATION_ID, MEMBER_ID),
-    ).rejects.toMatchObject({
-      code: "LAST_ORGANIZATION_OWNER_REQUIRED",
-    });
-  });
 });
 
 function createRepository() {
@@ -90,12 +70,10 @@ function createRepository() {
     listMembers: vi.fn(),
     listSessionSpaceSummaries: vi.fn(),
     listSessionSummaries: vi.fn(),
-    removeMember: vi.fn(),
     updateMember: vi.fn(),
     updateOrganization: vi.fn(),
   } satisfies Record<keyof OrganizationRepository, unknown> as OrganizationRepository & {
     countActiveOwners: ReturnType<typeof vi.fn>;
-    removeMember: ReturnType<typeof vi.fn>;
     updateMember: ReturnType<typeof vi.fn>;
   };
 }

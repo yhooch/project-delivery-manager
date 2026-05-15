@@ -103,6 +103,8 @@ export class CurrentUserController {
   constructor(
     @Inject(AuthService)
     private readonly auth: AuthService,
+    @Inject(ConfigService)
+    private readonly config: ConfigService,
     @Inject(CurrentUserService)
     private readonly currentUser: CurrentUserService,
   ) {}
@@ -113,9 +115,11 @@ export class CurrentUserController {
     @Body(new ZodValidationPipe(ChangePasswordRequestSchema))
     body: ChangePasswordRequest,
     @Req() request: RequestWithContext,
+    @Res({ passthrough: true }) response: CookieResponse,
   ): Promise<LogoutResponse> {
     const session = this.currentUser.requireSession(request);
     await this.auth.changePassword(session.userId, body);
+    clearSessionCookie(response, this.config, this.authCookieName());
     return {};
   }
 
@@ -128,5 +132,9 @@ export class CurrentUserController {
   ): Promise<UpdateUserPreferencesResponse> {
     const session = this.currentUser.requireSession(request);
     return this.auth.updatePreferences(session.userId, body);
+  }
+
+  private authCookieName(): string {
+    return this.config.get<string>("SESSION_COOKIE_NAME") ?? "pdm_session";
   }
 }

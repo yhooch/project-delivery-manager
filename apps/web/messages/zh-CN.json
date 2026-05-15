@@ -3038,6 +3038,8 @@
       "title": "该接口待补"
     },
     "links": {
+      "emptyTitle": "暂无关联",
+      "emptyDescription": "当前工作项还没有关联版本、需求、事项或关联任务。",
       "loading": "正在加载标题…",
       "unavailable": "标题不可用"
     },

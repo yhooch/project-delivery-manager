@@ -34,6 +34,16 @@ export const AttachmentMimeTypeSchema = z.enum([
 
 export type AttachmentMimeType = z.infer<typeof AttachmentMimeTypeSchema>;
 
+const AttachmentSizeSchema = z
+  .number()
+  .int()
+  .positive()
+  .max(AttachmentMaxSizeBytes);
+const AttachmentUploadMetadataSchema = z.object({
+  mimeType: AttachmentMimeTypeSchema,
+  size: AttachmentSizeSchema,
+});
+
 export const AttachmentSchema = z
   .object({
     id: UlidSchema,
@@ -44,7 +54,7 @@ export const AttachmentSchema = z
     fileName: z.string().min(1),
     fileKey: z.string().min(1),
     mimeType: AttachmentMimeTypeSchema,
-    size: z.number().int().positive().max(AttachmentMaxSizeBytes),
+    size: AttachmentSizeSchema,
     uploadedById: UlidSchema,
     previewUrl: z.url().optional(),
     createdAt: IsoDateTimeSchema,
@@ -58,9 +68,8 @@ export const PresignAttachmentRequestSchema = z
     targetType: AttachmentTargetTypeSchema,
     targetId: UlidSchema,
     fileName: z.string().min(1),
-    mimeType: z.string().min(1),
-    size: z.number().int(),
   })
+  .extend(AttachmentUploadMetadataSchema.shape)
   .strict();
 
 export type PresignAttachmentRequest = z.infer<
@@ -85,9 +94,8 @@ export const CreateAttachmentRequestSchema = z
     targetId: UlidSchema,
     fileName: z.string().min(1),
     fileKey: z.string().min(1),
-    mimeType: z.string().min(1),
-    size: z.number().int(),
   })
+  .extend(AttachmentUploadMetadataSchema.shape)
   .strict();
 
 export type CreateAttachmentRequest = z.infer<

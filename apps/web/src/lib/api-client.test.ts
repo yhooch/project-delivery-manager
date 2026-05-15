@@ -114,4 +114,34 @@ describe("api client", () => {
       });
     }
   });
+
+  it("falls back to INTERNAL_SERVER_ERROR for unstructured 500 responses", async () => {
+    expect.assertions(2);
+
+    const fetchMock = vi.fn<typeof fetch>(async () => {
+      return new Response("not json", {
+        headers: {
+          "x-request-id": "req_500",
+        },
+        status: 500,
+        statusText: "Internal Server Error",
+      });
+    });
+
+    vi.stubGlobal("fetch", fetchMock);
+
+    try {
+      await apiClient.get("/health");
+    } catch (caught) {
+      expect(caught).toBeInstanceOf(ApiClientError);
+      expect(caught).toMatchObject({
+        error: {
+          code: "INTERNAL_SERVER_ERROR",
+          message: "Internal Server Error",
+          requestId: "req_500",
+        },
+        status: 500,
+      });
+    }
+  });
 });

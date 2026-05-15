@@ -4,7 +4,7 @@ import { e2eEnv } from "./support/m0-env";
 import { skipWhenUiEnvironmentUnavailable } from "./support/ui-env";
 import {
   disposeUiUser,
-  listWorkflowDefinitionsForUi,
+  ensureWorkflowDefinitionForUi,
   registerLoginCreateOrgAndSpace,
   shortRunId,
   type UiTestUser,
@@ -27,13 +27,12 @@ test.describe("UI 流程配置页", () => {
   test("流程列表 → 配置页 → 状态/动作/绑定区块与发布校验可见", async ({
     page,
   }) => {
+    const runId = shortRunId();
     user = await registerLoginCreateOrgAndSpace({
       page,
-      runId: shortRunId(),
+      runId,
     });
-    const workflows = await listWorkflowDefinitionsForUi(user);
-    test.skip(workflows.length === 0, "当前空间没有初始化任何流程定义。");
-    const workflow = workflows[0]!;
+    const workflow = await ensureWorkflowDefinitionForUi(user, runId);
 
     await page.goto(`${e2eEnv.webBaseURL}/zh-CN/workflow`);
     await expect(page.getByTestId("workflow-page")).toBeVisible({

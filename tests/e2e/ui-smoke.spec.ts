@@ -27,24 +27,26 @@ test.describe("UI smoke 主链路", () => {
       timeout: 10_000,
     });
     // Theme/language toggles are part of the shell top bar.
-    await expect(page.getByTestId("theme-toggle")).toBeVisible({ timeout: 5_000 });
+    await expect(page.getByTestId("theme-toggle")).toBeVisible({
+      timeout: 5_000,
+    });
     await expect(page.getByTestId("language-toggle")).toBeVisible();
 
     // Step 2: Switch theme to dark and verify the <html> class flips.
     await page.getByTestId("theme-toggle").click();
-    await page.getByRole("menuitem", { name: /Dark|深色/u }).click();
+    await page.getByRole("menu").getByRole("menuitem").nth(2).click();
     await expect(page.locator("html")).toHaveClass(/dark/u, { timeout: 3_000 });
 
     // Step 3: Switch language to English; URL gains the /en-US prefix.
     await page.getByTestId("language-toggle").click();
-    await page.getByRole("menuitem", { name: /英文|English|EN/u }).click();
+    await page.getByRole("menu").getByRole("menuitem").nth(1).click();
     await expect(page).toHaveURL(/\/en-US(?:\/.*)?$/u, { timeout: 5_000 });
 
     // Step 4: Theme persists after the locale switch (dark class survives navigation).
     await expect(page.locator("html")).toHaveClass(/dark/u);
   });
 
-  test("登录页存在 + Cmd+K 命令面板可触发", async ({ page }) => {
+  test("登录页表单可见", async ({ page }) => {
     await page.goto(`${e2eEnv.webBaseURL}/zh-CN/login`);
     await expect(page.locator("#login-username")).toBeVisible();
     await expect(page.locator("#login-password")).toBeVisible();

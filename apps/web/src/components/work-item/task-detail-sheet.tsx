@@ -1777,7 +1777,12 @@ function LinksPanel({
   }
 
   if (links.length === 0) {
-    return <EmptyState title={t("missingApi.title")} />;
+    return (
+      <EmptyState
+        title={t("links.emptyTitle")}
+        description={t("links.emptyDescription")}
+      />
+    );
   }
 
   return (

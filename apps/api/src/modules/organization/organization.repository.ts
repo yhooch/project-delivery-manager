@@ -10,7 +10,6 @@ import type {
   OrganizationMemberListInput,
   OrganizationMemberListResult,
   OrganizationSummaryWithRole,
-  RemoveOrganizationMemberInput,
   SpaceSummaryWithRole,
   UpdateOrganizationInput,
   UpdateOrganizationMemberInput,
@@ -56,7 +55,6 @@ export type OrganizationRepository = {
   ): Promise<OrganizationMemberListResult>;
   listSessionSummaries(userId: string): Promise<OrganizationSummaryWithRole[]>;
   listSessionSpaceSummaries(userId: string): Promise<SpaceSummaryWithRole[]>;
-  removeMember(input: RemoveOrganizationMemberInput): Promise<boolean>;
   updateMember(
     input: UpdateOrganizationMemberInput,
   ): Promise<OrganizationMemberListResult["items"][number] | undefined>;

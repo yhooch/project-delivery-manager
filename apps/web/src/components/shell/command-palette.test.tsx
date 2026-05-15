@@ -238,7 +238,7 @@ describe("CommandPalette", () => {
     expect(routerPushMock).toHaveBeenCalledWith("/organization");
   });
 
-  it("gates settings by current space and organization by OWNER/ADMIN role", async () => {
+  it("gates settings by current space but keeps organization visible for members", async () => {
     sessionMock.current = {
       ...sessionMock.current,
       currentOrganization: {
@@ -264,8 +264,8 @@ describe("CommandPalette", () => {
       screen.queryByTestId("command-palette-nav-settings"),
     ).not.toBeInTheDocument();
     expect(
-      screen.queryByTestId("command-palette-nav-organization"),
-    ).not.toBeInTheDocument();
+      screen.getByTestId("command-palette-nav-organization"),
+    ).toBeInTheDocument();
   });
 
   it("hides create commands when there is no current space", async () => {
@@ -378,7 +378,7 @@ describe("CommandPalette", () => {
       spaceId: "SPC_01",
       organizationId: "ORG_01",
       page: 1,
-      pageSize: 25,
+      pageSize: 100,
     });
 
     fireEvent.click(await screen.findByTestId("command-palette-nav-spaces"));

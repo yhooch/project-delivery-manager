@@ -48,9 +48,7 @@ export function Sidebar({ className, onNavigate }: SidebarProps) {
   const pathname = usePathname();
   const { currentOrganization } = useSession();
 
-  const isAdmin =
-    currentOrganization?.role === "OWNER" ||
-    currentOrganization?.role === "ADMIN";
+  const hasCurrentOrganization = Boolean(currentOrganization);
   const groups: NavGroup[] = [
     {
       key: "work",
@@ -204,7 +202,7 @@ export function Sidebar({ className, onNavigate }: SidebarProps) {
           </div>
         ))}
 
-        {isAdmin && (
+        {hasCurrentOrganization && (
           <details
             className="group flex flex-col gap-0.5 border-t border-border pt-2"
             data-testid="sidebar-organization-section"

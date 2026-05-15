@@ -164,7 +164,11 @@ export class AuthService {
       throwInvalidCredentials();
     }
 
-    await this.users.updatePassword(user.id, await hashPassword(input.newPassword));
+    await this.users.updatePassword(
+      user.id,
+      await hashPassword(input.newPassword),
+    );
+    await this.sessions.rotateUserSessions(user.id);
   }
 
   async updatePreferences(

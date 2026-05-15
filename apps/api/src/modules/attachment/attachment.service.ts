@@ -66,7 +66,11 @@ export class AttachmentService {
     const fileKey = createSignedFileKey(actorUserId, input);
 
     return {
-      uploadUrl: createObjectUrl("upload", fileKey, PresignedUploadUrlExpiresInSeconds),
+      uploadUrl: createObjectUrl(
+        "upload",
+        fileKey,
+        PresignedUploadUrlExpiresInSeconds,
+      ),
       fileKey,
       expiresInSeconds: PresignedUploadUrlExpiresInSeconds,
     };
@@ -311,10 +315,16 @@ export class AttachmentService {
     }
   }
 
-  private assertFileConstraints(input: {
-    mimeType: string;
-    size: number;
-  }): { mimeType: AttachmentMimeType } {
+  private assertFileConstraints(input: { mimeType: string; size: number }): {
+    mimeType: AttachmentMimeType;
+  } {
+    if (!Number.isInteger(input.size)) {
+      throw new ApiException(
+        "VALIDATION_ERROR",
+        "Attachment size must be an integer",
+        HttpStatus.BAD_REQUEST,
+      );
+    }
     if (input.size <= 0) {
       throw new ApiException(
         "VALIDATION_ERROR",
@@ -380,7 +390,9 @@ function isExpectedFileKey(
   targetId: string,
   fileKey: string,
 ): boolean {
-  return fileKey.startsWith(`attachments/${targetType.toLowerCase()}/${targetId}/`);
+  return fileKey.startsWith(
+    `attachments/${targetType.toLowerCase()}/${targetId}/`,
+  );
 }
 
 function assertSignedFileKey(
@@ -509,7 +521,10 @@ function createObjectUrl(
   fileKey: string,
   expiresInSeconds: number,
 ): string {
-  const url = new URL(`/${action}/${encodeURIComponent(fileKey)}`, OBJECT_STORAGE_ORIGIN);
+  const url = new URL(
+    `/${action}/${encodeURIComponent(fileKey)}`,
+    OBJECT_STORAGE_ORIGIN,
+  );
   url.searchParams.set("expiresIn", String(expiresInSeconds));
   return url.toString();
 }

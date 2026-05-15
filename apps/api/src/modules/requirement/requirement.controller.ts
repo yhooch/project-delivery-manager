@@ -34,9 +34,6 @@ import { RequireSessionGuard } from "../auth/session.guard";
 import { WriteOriginGuard } from "../auth/write-origin.guard";
 import { RequirementService } from "./requirement.service";
 
-const OptionalCreateRequirementDraftRequestSchema =
-  CreateRequirementDraftRequestSchema.optional().transform((value) => value ?? {});
-
 @Controller()
 @UseGuards(RequireSessionGuard)
 export class RequirementController {
@@ -75,7 +72,7 @@ export class RequirementController {
   async createDraft(
     @Param(new ZodValidationPipe(SpaceIdPathParamsSchema))
     params: { spaceId: string },
-    @Body(new ZodValidationPipe(OptionalCreateRequirementDraftRequestSchema))
+    @Body(new ZodValidationPipe(CreateRequirementDraftRequestSchema))
     body: CreateRequirementDraftRequest,
     @Req() request: RequestWithContext,
   ): Promise<Requirement> {

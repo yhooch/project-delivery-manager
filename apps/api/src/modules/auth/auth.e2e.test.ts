@@ -177,6 +177,60 @@ describe("auth and session API", () => {
     await agent.get("/api/v1/auth/session").expect(401);
   });
 
+  it("revokes active sessions and clears the current cookie after password change", async () => {
+    const agent = request.agent(app.getHttpServer());
+    const registerResponse = await post(
+      agent,
+      "/api/v1/auth/register",
+      "203.0.113.21",
+    )
+      .send({
+        username: "password_change_user",
+        password: "password-123",
+        confirmPassword: "password-123",
+      })
+      .expect(200);
+    const token = extractSessionToken(registerResponse.headers["set-cookie"]);
+    const userId = users.getByUsername("password_change_user")?.id;
+
+    await patch(agent, "/api/v1/users/me/password", "203.0.113.21")
+      .send({
+        oldPassword: "password-123",
+        newPassword: "password-456",
+        confirmPassword: "password-456",
+      })
+      .expect(200)
+      .expect(({ headers }) => {
+        const setCookieHeader = headers["set-cookie"];
+        const setCookies = Array.isArray(setCookieHeader)
+          ? setCookieHeader.join("; ")
+          : setCookieHeader;
+        expect(setCookies).toContain("pdm_session=");
+      });
+
+    await expect(
+      moduleRef.get(AuthSessionService).resolveToken(token),
+    ).resolves.toBeUndefined();
+    expect(
+      sessions.records.filter((session) => session.userId === userId),
+    ).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ revocationReason: "ROTATED" }),
+      ]),
+    );
+    await agent.get("/api/v1/auth/session").expect(401);
+    await loginUser(
+      "password_change_user",
+      "password-123",
+      "203.0.113.22",
+    ).expect(401);
+    await loginUser(
+      "password_change_user",
+      "password-456",
+      "203.0.113.22",
+    ).expect(200);
+  });
+
   it("rate limits repeated login failures by username and IP", async () => {
     await registerUser("limited_user", "203.0.113.18").expect(200);
 

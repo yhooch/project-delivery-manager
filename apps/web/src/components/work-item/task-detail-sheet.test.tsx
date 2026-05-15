@@ -1491,7 +1491,10 @@ describe("TaskDetailSheet", () => {
     await waitFor(() => expect(getWorkItemMock).toHaveBeenCalled());
 
     expect(
-      await screen.findByText("taskDetail.missingApi.title"),
+      await screen.findByText("taskDetail.links.emptyTitle"),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText("taskDetail.links.emptyDescription"),
     ).toBeInTheDocument();
     expect(
       screen.queryByText("taskDetail.fields.reporter"),

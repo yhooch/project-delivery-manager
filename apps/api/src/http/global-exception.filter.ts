@@ -71,7 +71,7 @@ function toApiError(
   }
 
   return {
-    code: "BAD_REQUEST",
+    code: "INTERNAL_SERVER_ERROR",
     message: "Internal server error",
     requestId,
   };
@@ -115,6 +115,10 @@ function getApiErrorCode(code: unknown, status: number): ApiErrorCode {
     case HttpStatus.TOO_MANY_REQUESTS:
       return "RATE_LIMITED";
     default:
+      if (status >= HttpStatus.INTERNAL_SERVER_ERROR) {
+        return "INTERNAL_SERVER_ERROR";
+      }
+
       return "BAD_REQUEST";
   }
 }
