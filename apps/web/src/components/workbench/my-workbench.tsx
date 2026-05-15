@@ -709,24 +709,6 @@ function ItemList({
   );
 }
 
-const STATUS_LABEL_ZH: Record<StatusCategory, string> = {
-  NOT_STARTED: "未开始",
-  IN_PROGRESS: "进行中",
-  WAITING: "等待中",
-  VERIFYING: "验证中",
-  DONE: "已完成",
-  TERMINATED: "已终止",
-};
-
-const STATUS_LABEL_EN: Record<StatusCategory, string> = {
-  NOT_STARTED: "Not started",
-  IN_PROGRESS: "In progress",
-  WAITING: "Waiting",
-  VERIFYING: "Verifying",
-  DONE: "Done",
-  TERMINATED: "Terminated",
-};
-
 export type WorkbenchLookupHelpers = {
   getMember: (userId: string) => SpaceMemberWithUser | undefined;
   getVersion: (versionId: string) => Version | undefined;
@@ -753,8 +735,6 @@ export function toMockWorkItem(
   statusLabel?: (category: StatusCategory) => string,
   justNowLabel?: string,
 ) {
-  const labels = locale.startsWith("zh") ? STATUS_LABEL_ZH : STATUS_LABEL_EN;
-
   return (item: ViewWorkItemSummary): WorkItemViewModel => {
     const code = `${item.type === "BUG" ? "BUG" : "TASK"}-${item.id.slice(-6).toUpperCase()}`;
     const isOverdue = item.exceptionSignals.some(
@@ -794,7 +774,6 @@ export function toMockWorkItem(
       statusCategory: item.currentStatus.statusCategory,
       statusLabel:
         statusLabel?.(item.currentStatus.statusCategory) ??
-        labels[item.currentStatus.statusCategory] ??
         item.currentStatus.stateName,
       priority: item.priority,
       assignee: {
