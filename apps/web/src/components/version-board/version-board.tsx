@@ -752,7 +752,7 @@ export function VersionPage() {
             value="board"
             className="mt-0 flex min-w-0 flex-1 flex-col overflow-hidden"
           >
-            <div className="min-w-0 flex-1 overflow-hidden">
+            <div className="min-w-0 flex-1 overflow-x-hidden overflow-y-auto xl:overflow-hidden">
               {isLoadingBoard && !board ? (
                 <LoadingState label={t("states.loadingBoard")} />
               ) : (
@@ -1118,7 +1118,7 @@ function BoardColumns({
   t: ReturnType<typeof useTranslations<"versionBoard">>;
 }) {
   return (
-    <div className="grid h-full min-w-0 grid-cols-1 gap-3 px-4 py-4 md:grid-cols-2 xl:grid-cols-6">
+    <div className="grid min-h-full min-w-0 grid-cols-1 gap-3 px-4 py-4 md:grid-cols-2 xl:h-full xl:grid-cols-6">
       {grouped.map(({ category, items, total }) => (
         <div
           key={category}
