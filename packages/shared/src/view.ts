@@ -300,6 +300,8 @@ export type ViewExceptionCount = z.infer<typeof ViewExceptionCountSchema>;
 export const GetSpaceOverviewViewResponseSchema = SpaceOverviewSchema.extend({
   filters: ViewAppliedFiltersSchema.optional(),
   statusCounts: z.array(ViewStatusCountSchema).optional(),
+  taskStatusCounts: z.array(ViewStatusCountSchema).optional(),
+  bugStatusCounts: z.array(ViewStatusCountSchema).optional(),
   workItemTypeCounts: z.array(ViewWorkItemTypeCountSchema).optional(),
   exceptionCounts: z.array(ViewExceptionCountSchema).optional(),
   recentActivities: pageResultSchema(ViewRecentActivitySchema).optional(),

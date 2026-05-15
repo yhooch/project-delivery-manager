@@ -158,6 +158,15 @@ function makeOverview(overrides: Record<string, unknown> = {}) {
       { statusCategory: "IN_PROGRESS", count: 7 },
       { statusCategory: "DONE", count: 8 },
     ],
+    taskStatusCounts: [
+      { statusCategory: "NOT_STARTED", count: 4 },
+      { statusCategory: "IN_PROGRESS", count: 6 },
+      { statusCategory: "DONE", count: 5 },
+    ],
+    bugStatusCounts: [
+      { statusCategory: "IN_PROGRESS", count: 1 },
+      { statusCategory: "DONE", count: 3 },
+    ],
     exceptionCounts: [
       { exceptionType: "overdue", count: 4 },
       { exceptionType: "blocked", count: 2 },
@@ -228,16 +237,27 @@ describe("SpaceOverview", () => {
       "3/8",
     );
 
-    // Status distribution chips render counts.
-    expect(
-      screen.getByTestId("space-overview-status-NOT_STARTED"),
-    ).toHaveTextContent("5");
-    expect(
-      screen.getByTestId("space-overview-status-IN_PROGRESS"),
-    ).toHaveTextContent("7");
-    expect(screen.getByTestId("space-overview-status-DONE")).toHaveTextContent(
-      "8",
+    // Task and bug status distribution chips render their own counts and
+    // each chip drills to the correct destination.
+    const taskDoneChip = screen.getByTestId(
+      "space-overview-task-status-DONE",
     );
+    expect(taskDoneChip).toHaveTextContent("5");
+    expect(taskDoneChip.getAttribute("href")).toContain("/work-items");
+    expect(taskDoneChip.getAttribute("href")).toContain("statusCategory=DONE");
+
+    const bugDoneChip = screen.getByTestId(
+      "space-overview-bug-status-distribution-DONE",
+    );
+    expect(bugDoneChip).toHaveTextContent("3");
+    expect(bugDoneChip.getAttribute("href")).toContain("/bugs");
+    expect(bugDoneChip.getAttribute("href")).toContain("statusCategory=DONE");
+
+    // Categories with zero counts still render (showing "0") so the layout is
+    // stable across data states.
+    expect(
+      screen.getByTestId("space-overview-bug-status-distribution-NOT_STARTED"),
+    ).toHaveTextContent("0");
 
     // All 5 exception chips render (missing ones default to 0).
     expect(
@@ -268,6 +288,8 @@ describe("SpaceOverview", () => {
         exceptionCounts: [],
         recentActivities: { items: [] },
         statusCounts: [],
+        taskStatusCounts: [],
+        bugStatusCounts: [],
         stats: {
           versionCount: 0,
           requirementCount: 0,
@@ -293,9 +315,11 @@ describe("SpaceOverview", () => {
     expect(
       screen.getByText("spaceOverview.timeline.empty"),
     ).toBeInTheDocument();
+    // Both per-type distribution panels render their empty label when no
+    // task/bug exists.
     expect(
-      screen.getByText("spaceOverview.statusCounts.empty"),
-    ).toBeInTheDocument();
+      screen.getAllByText("spaceOverview.statusCounts.empty"),
+    ).toHaveLength(2);
   });
 
   it("renders the error state when the view fetch rejects", async () => {

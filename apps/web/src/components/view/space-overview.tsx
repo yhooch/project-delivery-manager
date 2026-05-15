@@ -5,6 +5,7 @@ import type {
   StatusCategory,
   TimelineEvent,
   ViewExceptionType,
+  ViewStatusCount,
 } from "@project-delivery/shared";
 import {
   AlertTriangle,
@@ -205,7 +206,8 @@ export function SpaceOverview() {
   const currentVersion = view?.currentVersion;
   const recentEvents = view?.recentActivities?.items ?? [];
   const exceptionCounts = view?.exceptionCounts ?? [];
-  const statusCounts = view?.statusCounts ?? [];
+  const taskStatusCounts = view?.taskStatusCounts ?? [];
+  const bugStatusCounts = view?.bugStatusCounts ?? [];
   const staleThresholdDays =
     view?.staleThresholdDays ?? view?.space.settings.staleThresholdDays;
 
@@ -240,7 +242,8 @@ export function SpaceOverview() {
     ? `${currentSpace?.name ?? view.space.name} · ${view.space.code}`
     : (currentSpace?.name ?? tNav("group.deliver"));
 
-  const statusTotal = statusCounts.reduce((s, c) => s + c.count, 0);
+  const taskStatusTotal = taskStatusCounts.reduce((s, c) => s + c.count, 0);
+  const bugStatusTotal = bugStatusCounts.reduce((s, c) => s + c.count, 0);
 
   const buildLink = (base: string, extra: Record<string, string> = {}) => {
     const sp = new URLSearchParams();
@@ -510,75 +513,37 @@ export function SpaceOverview() {
               </Link>
             </div>
 
-            {/* Combined status distribution */}
-            <section
-              data-testid="space-overview-status-distribution"
-              className="rounded-lg border border-border bg-card p-4"
-            >
-              <div className="flex items-baseline justify-between gap-2">
-                <h3 className="text-sm font-semibold">
-                  {t("statusCounts.title")}
-                </h3>
-                <span className="text-[11px] text-muted-foreground">
-                  {t("statusCounts.description")}
-                </span>
-              </div>
-              {statusTotal === 0 ? (
-                <div className="mt-3 text-xs text-muted-foreground">
-                  {t("statusCounts.empty")}
-                </div>
-              ) : (
-                <>
-                  <div className="mt-3 flex h-2 overflow-hidden rounded-full bg-muted">
-                    {STATUS_ORDER.map((category) => {
-                      const item = statusCounts.find(
-                        (c) => c.statusCategory === category,
-                      );
-                      const count = item?.count ?? 0;
-                      if (count === 0) return null;
-                      const pct = (count / statusTotal) * 100;
-                      return (
-                        <span
-                          key={category}
-                          title={`${tRoot(`m4Views.statusCategory.${category}`)} · ${count}`}
-                          className={`h-full ${statusBarClass[category]}`}
-                          style={{ width: `${pct}%` }}
-                        />
-                      );
-                    })}
-                  </div>
-                  <ul className="mt-3 flex flex-wrap gap-2">
-                    {STATUS_ORDER.map((category) => {
-                      const item = statusCounts.find(
-                        (c) => c.statusCategory === category,
-                      );
-                      const count = item?.count ?? 0;
-                      return (
-                        <li key={category}>
-                          <Link
-                            href={buildLink("/work-items", {
-                              statusCategory: category,
-                            })}
-                            data-testid={`space-overview-status-${category}`}
-                            className="inline-flex items-center gap-1.5 rounded-md border border-border bg-background px-2 py-1 text-[11px] hover:bg-muted"
-                          >
-                            <span
-                              className={`h-1.5 w-1.5 rounded-full ${statusBarClass[category]}`}
-                            />
-                            <span>
-                              {tRoot(`m4Views.statusCategory.${category}`)}
-                            </span>
-                            <span className="font-mono text-foreground">
-                              {count}
-                            </span>
-                          </Link>
-                        </li>
-                      );
-                    })}
-                  </ul>
-                </>
-              )}
-            </section>
+            {/* Per-type status distribution: tasks + bugs side by side */}
+            <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
+              <StatusDistributionPanel
+                testIdPrefix="space-overview-task-status"
+                title={t("summary.taskProgress")}
+                description={t("statusCounts.description")}
+                emptyLabel={t("statusCounts.empty")}
+                counts={taskStatusCounts}
+                total={taskStatusTotal}
+                buildHref={(category) =>
+                  buildLink("/work-items", { statusCategory: category })
+                }
+                categoryLabel={(category) =>
+                  tRoot(`m4Views.statusCategory.${category}`)
+                }
+              />
+              <StatusDistributionPanel
+                testIdPrefix="space-overview-bug-status-distribution"
+                title={t("summary.bugStatus")}
+                description={t("statusCounts.description")}
+                emptyLabel={t("statusCounts.empty")}
+                counts={bugStatusCounts}
+                total={bugStatusTotal}
+                buildHref={(category) =>
+                  buildLink("/bugs", { statusCategory: category })
+                }
+                categoryLabel={(category) =>
+                  tRoot(`m4Views.statusCategory.${category}`)
+                }
+              />
+            </div>
 
             {/* Requirements / versions inline KPIs */}
             <section
@@ -698,6 +663,81 @@ export function SpaceOverview() {
         )}
       </div>
     </div>
+  );
+}
+
+function StatusDistributionPanel({
+  testIdPrefix,
+  title,
+  description,
+  emptyLabel,
+  counts,
+  total,
+  buildHref,
+  categoryLabel,
+}: {
+  testIdPrefix: string;
+  title: string;
+  description: string;
+  emptyLabel: string;
+  counts: ViewStatusCount[];
+  total: number;
+  buildHref: (category: StatusCategory) => string;
+  categoryLabel: (category: StatusCategory) => string;
+}) {
+  return (
+    <section
+      data-testid={testIdPrefix}
+      className="rounded-lg border border-border bg-card p-4"
+    >
+      <div className="flex items-baseline justify-between gap-2">
+        <h3 className="text-sm font-semibold">{title}</h3>
+        <span className="text-[11px] text-muted-foreground">{description}</span>
+      </div>
+      {total === 0 ? (
+        <div className="mt-3 text-xs text-muted-foreground">{emptyLabel}</div>
+      ) : (
+        <>
+          <div className="mt-3 flex h-2 overflow-hidden rounded-full bg-muted">
+            {STATUS_ORDER.map((category) => {
+              const item = counts.find((c) => c.statusCategory === category);
+              const count = item?.count ?? 0;
+              if (count === 0) return null;
+              const pct = (count / total) * 100;
+              return (
+                <span
+                  key={category}
+                  title={`${categoryLabel(category)} · ${count}`}
+                  className={`h-full ${statusBarClass[category]}`}
+                  style={{ width: `${pct}%` }}
+                />
+              );
+            })}
+          </div>
+          <ul className="mt-3 flex flex-wrap gap-2">
+            {STATUS_ORDER.map((category) => {
+              const item = counts.find((c) => c.statusCategory === category);
+              const count = item?.count ?? 0;
+              return (
+                <li key={category}>
+                  <Link
+                    href={buildHref(category)}
+                    data-testid={`${testIdPrefix}-${category}`}
+                    className="inline-flex items-center gap-1.5 rounded-md border border-border bg-background px-2 py-1 text-[11px] hover:bg-muted"
+                  >
+                    <span
+                      className={`h-1.5 w-1.5 rounded-full ${statusBarClass[category]}`}
+                    />
+                    <span>{categoryLabel(category)}</span>
+                    <span className="font-mono text-foreground">{count}</span>
+                  </Link>
+                </li>
+              );
+            })}
+          </ul>
+        </>
+      )}
+    </section>
   );
 }
 

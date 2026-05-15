@@ -193,6 +193,10 @@ describe("space API", () => {
           pageSize: 20,
           total: 0,
         });
+        expect(Array.isArray(overview.taskStatusCounts)).toBe(true);
+        expect(Array.isArray(overview.bugStatusCounts)).toBe(true);
+        expect(overview.taskStatusCounts).toEqual([]);
+        expect(overview.bugStatusCounts).toEqual([]);
       });
 
     await ownerAgent
@@ -1229,6 +1233,8 @@ class InMemorySpaceRepository implements SpaceRepository {
         versionId: input.versionId,
       },
       statusCounts: [],
+      taskStatusCounts: [],
+      bugStatusCounts: [],
       workItemTypeCounts: [],
       exceptionCounts: [],
       recentActivities: {
