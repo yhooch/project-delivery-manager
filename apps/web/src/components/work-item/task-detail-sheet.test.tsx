@@ -1,4 +1,5 @@
 import {
+  act,
   cleanup,
   fireEvent,
   render,
@@ -192,6 +193,15 @@ function makeDetailResponse(
     },
     ...overrides,
   };
+}
+
+function createDeferred<T>() {
+  let resolve!: (value: T | PromiseLike<T>) => void;
+  const promise = new Promise<T>((resolveValue) => {
+    resolve = resolveValue;
+  });
+
+  return { promise, resolve };
 }
 
 function makeBugResponse(overrides: Record<string, unknown> = {}) {
@@ -467,6 +477,104 @@ describe("TaskDetailSheet", () => {
       await screen.findByText("Real detail description"),
     ).toBeInTheDocument();
     expect(screen.getByText("Reporter Name")).toBeInTheDocument();
+  });
+
+  it("clears loaded detail and permissions when switching items", async () => {
+    const secondDetail = createDeferred<ReturnType<typeof makeDetailResponse>>();
+    getWorkItemMock
+      .mockResolvedValueOnce(
+        makeDetailResponse({
+          id: "TASK_A",
+          title: "Loaded first task",
+          permissions: {
+            canEdit: true,
+            canComment: true,
+            canUploadAttachment: true,
+            availableActions: [makeAction({ id: "ACT_A", name: "Old action" })],
+          },
+        }),
+      )
+      .mockReturnValueOnce(secondDetail.promise);
+
+    const { rerender } = render(
+      <TaskDetailSheet
+        item={makeViewModel({ id: "TASK_A", title: "List first task" })}
+        open
+        onOpenChange={() => {}}
+      />,
+    );
+
+    expect(await screen.findByText("Loaded first task")).toBeInTheDocument();
+    expect(
+      await screen.findByRole("button", { name: "Old action" }),
+    ).toBeInTheDocument();
+
+    rerender(
+      <TaskDetailSheet
+        item={makeViewModel({ id: "TASK_B", title: "List second task" })}
+        open
+        onOpenChange={() => {}}
+      />,
+    );
+
+    expect(screen.queryByText("Loaded first task")).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Old action" }),
+    ).not.toBeInTheDocument();
+    expect(screen.getByText("List second task")).toBeInTheDocument();
+
+    await act(async () => {
+      secondDetail.resolve(
+        makeDetailResponse({ id: "TASK_B", title: "Loaded second task" }),
+      );
+    });
+
+    expect(await screen.findByText("Loaded second task")).toBeInTheDocument();
+  });
+
+  it("ignores stale detail responses after switching items", async () => {
+    const firstDetail = createDeferred<ReturnType<typeof makeDetailResponse>>();
+    const secondDetail = createDeferred<ReturnType<typeof makeDetailResponse>>();
+    getWorkItemMock
+      .mockReturnValueOnce(firstDetail.promise)
+      .mockReturnValueOnce(secondDetail.promise);
+
+    const { rerender } = render(
+      <TaskDetailSheet
+        item={makeViewModel({ id: "TASK_A", title: "List first task" })}
+        open
+        onOpenChange={() => {}}
+      />,
+    );
+
+    await waitFor(() => expect(getWorkItemMock).toHaveBeenCalledTimes(1));
+
+    rerender(
+      <TaskDetailSheet
+        item={makeViewModel({ id: "TASK_B", title: "List second task" })}
+        open
+        onOpenChange={() => {}}
+      />,
+    );
+
+    await waitFor(() => expect(getWorkItemMock).toHaveBeenCalledTimes(2));
+
+    await act(async () => {
+      secondDetail.resolve(
+        makeDetailResponse({ id: "TASK_B", title: "Loaded second task" }),
+      );
+    });
+
+    expect(await screen.findByText("Loaded second task")).toBeInTheDocument();
+
+    await act(async () => {
+      firstDetail.resolve(
+        makeDetailResponse({ id: "TASK_A", title: "Stale first task" }),
+      );
+    });
+
+    expect(screen.queryByText("Stale first task")).not.toBeInTheDocument();
+    expect(screen.getByText("Loaded second task")).toBeInTheDocument();
   });
 
   it("submits a new comment via createComment when send button is clicked", async () => {

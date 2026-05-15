@@ -139,6 +139,18 @@ type SheetDetail = (WorkItemDetail | BugView) & {
   permissions?: PermissionSnapshot;
 };
 
+function getWorkItemPermissionRequestKey({
+  item,
+  organizationId,
+  spaceId,
+}: {
+  item: Pick<WorkItemViewModel, "id" | "type">;
+  organizationId?: string;
+  spaceId?: string;
+}): string {
+  return `${item.type}:${item.id}:${organizationId ?? ""}:${spaceId ?? ""}`;
+}
+
 async function loadSheetDetail({
   item,
   organizationId,
@@ -479,6 +491,14 @@ type WorkItemPermissionState = {
   setPermissions: (permissions: PermissionSnapshot | null) => void;
 };
 
+type WorkItemPermissionLoadState = {
+  detail: SheetDetail | null;
+  error: string | null;
+  loading: boolean;
+  permissions: PermissionSnapshot | null;
+  requestKey: string;
+};
+
 function useWorkItemPermissions({
   item,
   organizationId,
@@ -490,39 +510,109 @@ function useWorkItemPermissions({
   spaceId?: string;
   tApiError: ReturnType<typeof useTranslations>;
 }): WorkItemPermissionState {
-  const [detail, setDetail] = useState<SheetDetail | null>(null);
-  const [permissions, setPermissions] = useState<PermissionSnapshot | null>(
-    null,
+  const requestKey = getWorkItemPermissionRequestKey({
+    item,
+    organizationId,
+    spaceId,
+  });
+  const latestRequestKeyRef = useRef(requestKey);
+  const requestSeqRef = useRef(0);
+  const [state, setState] = useState<WorkItemPermissionLoadState>(() => ({
+    detail: null,
+    error: null,
+    loading: false,
+    permissions: null,
+    requestKey,
+  }));
+
+  latestRequestKeyRef.current = requestKey;
+
+  const setPermissions = useCallback(
+    (permissions: PermissionSnapshot | null) => {
+      setState((current) => {
+        if (current.requestKey === requestKey) {
+          return { ...current, permissions };
+        }
+
+        return {
+          detail: null,
+          error: null,
+          loading: false,
+          permissions,
+          requestKey,
+        };
+      });
+    },
+    [requestKey],
   );
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
 
   const fetchPermissions = useCallback(async () => {
-    setLoading(true);
-    setError(null);
+    requestSeqRef.current += 1;
+    const requestSeq = requestSeqRef.current;
+    const nextRequestKey = requestKey;
+    const requestItem = { id: item.id, type: item.type };
+
+    setState({
+      detail: null,
+      error: null,
+      loading: true,
+      permissions: null,
+      requestKey: nextRequestKey,
+    });
+
+    const isLatestRequest = () =>
+      requestSeqRef.current === requestSeq &&
+      latestRequestKeyRef.current === nextRequestKey;
 
     try {
-      const detail = await loadSheetDetail({ item, organizationId, spaceId });
-      setDetail(detail);
-      setPermissions(detail.permissions ?? null);
+      const detail = await loadSheetDetail({
+        item: requestItem,
+        organizationId,
+        spaceId,
+      });
+      if (!isLatestRequest()) return;
+
+      setState({
+        detail,
+        error: null,
+        loading: false,
+        permissions: detail.permissions ?? null,
+        requestKey: nextRequestKey,
+      });
     } catch (err) {
+      if (!isLatestRequest()) return;
+
       const key = getApiErrorMessageKey(err);
-      setError(tApiError(key));
-    } finally {
-      setLoading(false);
+      setState({
+        detail: null,
+        error: tApiError(key),
+        loading: false,
+        permissions: null,
+        requestKey: nextRequestKey,
+      });
     }
-  }, [item, organizationId, spaceId, tApiError]);
+  }, [item.id, item.type, organizationId, requestKey, spaceId, tApiError]);
 
   useEffect(() => {
     void fetchPermissions();
   }, [fetchPermissions]);
 
+  const currentState =
+    state.requestKey === requestKey
+      ? state
+      : {
+          detail: null,
+          error: null,
+          loading: false,
+          permissions: null,
+        };
+
   return {
-    detail,
-    error,
+    detail: currentState.detail,
+    error: currentState.error,
     fetchPermissions,
-    loading,
-    permissions,
+    loading: currentState.loading,
+    permissions: currentState.permissions,
     setPermissions,
   };
 }
