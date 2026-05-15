@@ -393,12 +393,13 @@ class FakeWorkItemRepository implements WorkItemRepository {
 
     const updated = makeWorkItem({
       ...existing,
-      assigneeId: input.assigneeId ?? existing.assigneeId,
-      dueDate: input.dueDate?.toISOString() ?? existing.dueDate,
+      assigneeId: applyOptional(input.assigneeId, existing.assigneeId),
+      description: applyOptional(input.description, existing.description),
+      dueDate: applyOptionalDate(input.dueDate, existing.dueDate),
       priority: input.priority ?? existing.priority,
-      requirementId: input.requirementId ?? existing.requirementId,
+      requirementId: applyOptional(input.requirementId, existing.requirementId),
       title: input.title ?? existing.title,
-      versionId: input.versionId ?? existing.versionId,
+      versionId: applyOptional(input.versionId, existing.versionId),
     });
 
     this.items.set(updated.id, updated);
@@ -465,6 +466,25 @@ class FakeOrganizationRepository {
   async findMemberByUserId(organizationId: string, userId: string) {
     return this.members.get(`${organizationId}:${userId}`);
   }
+}
+
+function applyOptional<T>(value: T | null | undefined, fallback: T | undefined) {
+  if (value === undefined) {
+    return fallback;
+  }
+
+  return value === null ? undefined : value;
+}
+
+function applyOptionalDate(
+  value: Date | null | undefined,
+  fallback: string | undefined,
+) {
+  if (value === undefined) {
+    return fallback;
+  }
+
+  return value === null ? undefined : value.toISOString();
 }
 
 function makeSpace(): Space {

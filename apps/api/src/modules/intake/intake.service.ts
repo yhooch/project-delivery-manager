@@ -224,9 +224,9 @@ export class IntakeService {
     organizationId: string,
     spaceId: string,
     input: {
-      assigneeId?: string;
-      requirementId?: string;
-      versionId?: string;
+      assigneeId?: string | null;
+      requirementId?: string | null;
+      versionId?: string | null;
     },
   ) {
     if (input.versionId) {

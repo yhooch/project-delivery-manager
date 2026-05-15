@@ -198,7 +198,7 @@ export function EditBugDialog({
           requirementId,
           relatedTaskId,
           assigneeId,
-          dueDate: dueDate ? new Date(dueDate).toISOString() : undefined,
+          dueDate: dueDate ? new Date(dueDate).toISOString() : null,
         }),
       );
       onUpdated?.(updated);

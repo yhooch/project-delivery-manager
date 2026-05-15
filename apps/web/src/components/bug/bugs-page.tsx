@@ -174,6 +174,10 @@ export function BugsPage() {
     currentSpace?.role,
     currentSpace?.status,
   );
+  const requestedVersionId = normalizeSearchParam(searchParams.get("versionId"));
+  const requestedStatusCategory = normalizeStatusCategory(
+    searchParams.get("statusCategory"),
+  );
   const requestedNew = normalizeSearchParam(searchParams.get("new"));
   const requestedBugId =
     normalizeSearchParam(searchParams.get("bugId")) ??
@@ -316,11 +320,11 @@ export function BugsPage() {
   const openEditBugFromMock = useCallback(
     (bug: MockBugItem) => {
       const source = items.find((item) => item.id === bug.id);
-      if (source) {
+      if (source && canEditBug(source, currentSpace?.role, currentSpace?.status)) {
         openEditBug(source);
       }
     },
-    [items, openEditBug],
+    [currentSpace?.role, currentSpace?.status, items, openEditBug],
   );
 
   const handleBugUpdated = useCallback(
@@ -346,6 +350,23 @@ export function BugsPage() {
       setCreateOpen(true);
     }
   }, [canCreateBug, requestedNew]);
+
+  useEffect(() => {
+    setFilters((current) => {
+      if (
+        current.versionId === requestedVersionId &&
+        current.statusCategory === requestedStatusCategory
+      ) {
+        return current;
+      }
+      return {
+        ...current,
+        statusCategory: requestedStatusCategory,
+        versionId: requestedVersionId,
+      };
+    });
+    setBucketFilter("all");
+  }, [requestedStatusCategory, requestedVersionId]);
 
   useEffect(() => {
     if (!requestedBugId || !spaceId) {
@@ -741,10 +762,7 @@ export function BugsPage() {
                       data-id={bug.id}
                       aria-label={t("actions.edit")}
                       onClick={() => {
-                        const source = items.find((item) => item.id === bug.id);
-                        if (source) {
-                          openEditBug(source);
-                        }
+                        openEditBugFromMock(bug);
                       }}
                     >
                       <Pencil className="h-3 w-3" />

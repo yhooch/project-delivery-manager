@@ -59,6 +59,8 @@ describe("bug forms", () => {
     expect(
       toUpdateBugRequest({
         actualResult: "",
+        assigneeId: "",
+        dueDate: "",
         fixNote: "  Guard null payment token  ",
         priority: "HIGH",
         regressionAt: "2026-05-13T12:00:00.000Z",
@@ -67,15 +69,21 @@ describe("bug forms", () => {
         relatedTaskId: "",
         severity: "MINOR",
         title: "  Updated bug  ",
+        versionId: "",
       }),
     ).toEqual({
+      actualResult: null,
+      assigneeId: null,
+      dueDate: null,
       fixNote: "Guard null payment token",
       priority: "HIGH",
       regressionAt: "2026-05-13T12:00:00.000Z",
       regressionBy,
       regressionResult: "Passed",
+      relatedTaskId: null,
       severity: "MINOR",
       title: "Updated bug",
+      versionId: null,
     });
 
     expect(

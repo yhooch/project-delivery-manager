@@ -72,22 +72,22 @@ export type CreateBugInput = {
 
 export type UpdateBugInput = {
   workItemId: string;
-  versionId?: string;
-  requirementId?: string;
+  versionId?: string | null;
+  requirementId?: string | null;
   title?: string;
-  description?: string;
+  description?: string | null;
   priority?: Priority;
-  assigneeId?: string;
-  dueDate?: Date;
+  assigneeId?: string | null;
+  dueDate?: Date | null;
   severity?: BugSeverity;
-  stepsToReproduce?: string;
-  expectedResult?: string;
-  actualResult?: string;
-  fixNote?: string;
-  regressionResult?: string;
-  regressionById?: string;
-  regressionAt?: Date;
-  relatedTaskId?: string;
+  stepsToReproduce?: string | null;
+  expectedResult?: string | null;
+  actualResult?: string | null;
+  fixNote?: string | null;
+  regressionResult?: string | null;
+  regressionById?: string | null;
+  regressionAt?: Date | null;
+  relatedTaskId?: string | null;
   relatedUserIds: string[];
   shouldReplaceRelatedParticipants: boolean;
   shouldReplaceAssigneeParticipants: boolean;

@@ -342,7 +342,7 @@ export class PrismaIntakeRepository implements IntakeRepository {
         },
       });
 
-      if (input.shouldUpdateAssignee && input.assigneeId) {
+      if (input.shouldUpdateAssignee) {
         await replaceAssigneeParticipant(tx, {
           actorUserId: input.updatedById,
           assigneeId: input.assigneeId,
@@ -475,26 +475,36 @@ async function replaceAssigneeParticipant(
   tx: Prisma.TransactionClient,
   input: {
     actorUserId: string;
-    assigneeId: string;
+    assigneeId: string | null | undefined;
     item: IntakeItemRecord;
   },
 ) {
+  const where: Prisma.ObjectParticipantWhereInput = {
+    deletedAt: null,
+    relationType: "ASSIGNEE",
+    spaceId: input.item.spaceId,
+    targetId: input.item.id,
+    targetType: "INTAKE_ITEM",
+  };
+
+  if (input.assigneeId) {
+    where.userId = {
+      not: input.assigneeId,
+    };
+  }
+
   await tx.objectParticipant.updateMany({
     data: {
       deletedAt: new Date(),
       updatedById: input.actorUserId,
     },
-    where: {
-      deletedAt: null,
-      relationType: "ASSIGNEE",
-      spaceId: input.item.spaceId,
-      targetId: input.item.id,
-      targetType: "INTAKE_ITEM",
-      userId: {
-        not: input.assigneeId,
-      },
-    },
+    where,
   });
+
+  if (!input.assigneeId) {
+    return;
+  }
+
   await ensureParticipant(tx, {
     actorUserId: input.actorUserId,
     organizationId: input.item.organizationId,

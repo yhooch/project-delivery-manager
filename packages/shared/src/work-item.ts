@@ -66,13 +66,13 @@ export type CreateWorkItemRequest = z.infer<typeof CreateWorkItemRequestSchema>;
 
 export const UpdateWorkItemRequestSchema = z
   .object({
-    versionId: UlidSchema.optional(),
-    requirementId: UlidSchema.optional(),
+    versionId: UlidSchema.nullable().optional(),
+    requirementId: UlidSchema.nullable().optional(),
     title: z.string().min(1).max(200).optional(),
-    description: z.string().max(8000).optional(),
+    description: z.string().max(8000).nullable().optional(),
     priority: PrioritySchema.optional(),
-    assigneeId: UlidSchema.optional(),
-    dueDate: IsoDateTimeSchema.optional(),
+    assigneeId: UlidSchema.nullable().optional(),
+    dueDate: IsoDateTimeSchema.nullable().optional(),
     blockedReason: z.never().optional(),
   })
   .strict();
@@ -117,14 +117,14 @@ export type CreateBugRequest = z.infer<typeof CreateBugRequestSchema>;
 
 export const UpdateBugRequestSchema = UpdateWorkItemRequestSchema.extend({
   severity: BugSeveritySchema.optional(),
-  stepsToReproduce: z.string().max(8000).optional(),
-  expectedResult: z.string().max(8000).optional(),
-  actualResult: z.string().max(8000).optional(),
-  fixNote: z.string().max(8000).optional(),
-  regressionResult: z.string().max(8000).optional(),
-  regressionBy: UlidSchema.optional(),
-  regressionAt: IsoDateTimeSchema.optional(),
-  relatedTaskId: UlidSchema.optional(),
+  stepsToReproduce: z.string().max(8000).nullable().optional(),
+  expectedResult: z.string().max(8000).nullable().optional(),
+  actualResult: z.string().max(8000).nullable().optional(),
+  fixNote: z.string().max(8000).nullable().optional(),
+  regressionResult: z.string().max(8000).nullable().optional(),
+  regressionBy: UlidSchema.nullable().optional(),
+  regressionAt: IsoDateTimeSchema.nullable().optional(),
+  relatedTaskId: UlidSchema.nullable().optional(),
 });
 
 export type UpdateBugRequest = z.infer<typeof UpdateBugRequestSchema>;

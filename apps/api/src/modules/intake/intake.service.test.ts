@@ -118,6 +118,44 @@ describe("IntakeService", () => {
     );
   });
 
+  it("passes null update fields through to clear optional intake values", async () => {
+    const { intakeItems, service } = createSubject({
+      item: intakeItem({
+        assigneeId: ASSIGNEE_ID,
+        description: "Old description",
+        priority: "MEDIUM",
+        requirementId: REQUIREMENT_ID,
+        versionId: VERSION_ID,
+      }),
+      role: "PM",
+    });
+
+    const updated = await service.update(ACTOR_USER_ID, INTAKE_ITEM_ID, {
+      assigneeId: null,
+      description: null,
+      priority: null,
+      requirementId: null,
+      versionId: null,
+    });
+
+    expect(updated.assigneeId).toBeUndefined();
+    expect(updated.description).toBeUndefined();
+    expect(updated.priority).toBeUndefined();
+    expect(updated.requirementId).toBeUndefined();
+    expect(updated.versionId).toBeUndefined();
+    expect(intakeItems.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        assigneeId: null,
+        description: null,
+        intakeItemId: INTAKE_ITEM_ID,
+        priority: null,
+        requirementId: null,
+        shouldUpdateAssignee: true,
+        versionId: null,
+      }),
+    );
+  });
+
   it("accepts pending intake items and rejects illegal status changes", async () => {
     const { intakeItems, service } = createSubject({
       item: intakeItem({ status: "PENDING" }),
@@ -474,8 +512,15 @@ function createSubject(input: {
     update: vi.fn(async (updateInput) =>
       intakeItem({
         ...item,
-        assigneeId: updateInput.assigneeId ?? item.assigneeId,
+        assigneeId: applyOptional(updateInput.assigneeId, item.assigneeId),
+        description: applyOptional(updateInput.description, item.description),
+        priority: applyOptional(updateInput.priority, item.priority),
+        requirementId: applyOptional(
+          updateInput.requirementId,
+          item.requirementId,
+        ),
         title: updateInput.title ?? item.title,
+        versionId: applyOptional(updateInput.versionId, item.versionId),
       }),
     ),
     updateStatus: vi.fn(async (statusInput) =>
@@ -567,6 +612,14 @@ function createSubject(input: {
     versions,
     workItems,
   };
+}
+
+function applyOptional<T>(value: T | null | undefined, fallback: T | undefined) {
+  if (value === undefined) {
+    return fallback;
+  }
+
+  return value === null ? undefined : value;
 }
 
 function intakeItem(

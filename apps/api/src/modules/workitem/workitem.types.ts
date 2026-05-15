@@ -61,13 +61,13 @@ export type CreateWorkItemInput = {
 
 export type UpdateWorkItemInput = {
   workItemId: string;
-  versionId?: string;
-  requirementId?: string;
+  versionId?: string | null;
+  requirementId?: string | null;
   title?: string;
-  description?: string;
+  description?: string | null;
   priority?: Priority;
-  assigneeId?: string;
-  dueDate?: Date;
+  assigneeId?: string | null;
+  dueDate?: Date | null;
   relatedUserIds: string[];
   shouldReplaceRelatedParticipants: boolean;
   shouldReplaceAssigneeParticipants: boolean;

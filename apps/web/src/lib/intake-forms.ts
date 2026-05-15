@@ -30,9 +30,25 @@ const optionalUlid = z.preprocess(
   UlidSchema.optional(),
 );
 
+const clearableText = (maxLength: number) =>
+  z.preprocess(
+    (value) => normalizeClearableText(value),
+    z.string().max(maxLength).nullable().optional(),
+  );
+
+const clearableUlid = z.preprocess(
+  (value) => normalizeClearableText(value),
+  UlidSchema.nullable().optional(),
+);
+
 const optionalPriority = z.preprocess(
   (value) => normalizeOptionalText(value),
   PrioritySchema.optional(),
+);
+
+const clearablePriority = z.preprocess(
+  (value) => normalizeClearableText(value),
+  PrioritySchema.nullable().optional(),
 );
 
 const optionalIsoDateTime = z.preprocess(
@@ -57,6 +73,32 @@ const optionalSourceObject = z.preprocess((value) => {
     return value;
   }
 }, IntakeSourceObjectSchema.optional());
+
+const clearableSourceObject = z.preprocess((value) => {
+  if (value === undefined) {
+    return undefined;
+  }
+
+  if (value === null) {
+    return null;
+  }
+
+  if (typeof value !== "string") {
+    return value;
+  }
+
+  const trimmed = value.trim();
+
+  if (trimmed.length === 0) {
+    return null;
+  }
+
+  try {
+    return JSON.parse(trimmed) as unknown;
+  } catch {
+    return value;
+  }
+}, IntakeSourceObjectSchema.nullable().optional());
 
 const intakeBaseFormFields = {
   assigneeId: optionalUlid,
@@ -92,12 +134,17 @@ export type CreateIntakeItemFormValues = z.output<
 >;
 
 export const updateIntakeItemFormSchema = UpdateIntakeItemRequestSchema.extend({
-  ...intakeBaseFormFields,
+  assigneeId: clearableUlid,
+  description: clearableText(8000),
+  priority: clearablePriority,
+  requirementId: clearableUlid,
+  sourceObject: clearableSourceObject,
   sourceType: IntakeSourceTypeSchema.optional(),
   title: z.preprocess(
     (value) => normalizeOptionalText(value),
     z.string().min(1).max(200).optional(),
   ),
+  versionId: clearableUlid,
 });
 
 export type UpdateIntakeItemFormInput = z.input<
@@ -161,4 +208,22 @@ function normalizeOptionalText(value: unknown): string | undefined {
   const trimmed = value.trim();
 
   return trimmed.length > 0 ? trimmed : undefined;
+}
+
+function normalizeClearableText(value: unknown): string | null | undefined {
+  if (value === undefined) {
+    return undefined;
+  }
+
+  if (value === null) {
+    return null;
+  }
+
+  if (typeof value !== "string") {
+    return value as string | null | undefined;
+  }
+
+  const trimmed = value.trim();
+
+  return trimmed.length > 0 ? trimmed : null;
 }

@@ -295,6 +295,73 @@ describe("BugService", () => {
     );
   });
 
+  it("clears optional bug links and dates when update fields are null", async () => {
+    const subject = createSubject("PM");
+
+    subject.bugs.items.set(
+      BUG_ID,
+      makeBug({
+        assigneeId: ASSIGNEE_ID,
+        description: "Old description",
+        dueDate: "2026-05-20T00:00:00.000Z",
+        requirementId: REQUIREMENT_ID,
+        versionId: VERSION_ID,
+        bugDetail: {
+          actualResult: "Old actual",
+          expectedResult: "Old expected",
+          relatedTaskId: RELATED_TASK_ID,
+          severity: "MAJOR",
+          stepsToReproduce: "Old steps",
+          workItemId: BUG_ID,
+        },
+      }),
+    );
+
+    const updated = await subject.service.update(ACTOR_ID, BUG_ID, {
+      actualResult: null,
+      assigneeId: null,
+      description: null,
+      dueDate: null,
+      expectedResult: null,
+      relatedTaskId: null,
+      requirementId: null,
+      stepsToReproduce: null,
+      versionId: null,
+    });
+
+    expect(updated.assigneeId).toBeUndefined();
+    expect(updated.description).toBeUndefined();
+    expect(updated.dueDate).toBeUndefined();
+    expect(updated.requirementId).toBeUndefined();
+    expect(updated.versionId).toBeUndefined();
+    expect(updated.bugDetail.actualResult).toBeUndefined();
+    expect(updated.bugDetail.expectedResult).toBeUndefined();
+    expect(updated.bugDetail.relatedTaskId).toBeUndefined();
+    expect(updated.bugDetail.stepsToReproduce).toBeUndefined();
+    expect(subject.bugs.updatedInput).toMatchObject({
+      assigneeChanged: true,
+      assigneeId: null,
+      dueDate: null,
+      relatedTaskId: null,
+      relatedUserIds: [],
+      requirementId: null,
+      shouldReplaceAssigneeParticipants: true,
+      shouldReplaceRelatedParticipants: true,
+      versionId: null,
+    });
+    expect(subject.bugs.updatedInput?.timelineAfter).toMatchObject({
+      actualResult: null,
+      assigneeId: null,
+      description: null,
+      dueDate: null,
+      expectedResult: null,
+      relatedTaskId: null,
+      requirementId: null,
+      stepsToReproduce: null,
+      versionId: null,
+    });
+  });
+
   it.each(["DEVELOPER", "TESTER", "MEMBER"] as const)(
     "rejects %s direct BUG patches even when the bug is visible",
     async (role) => {
@@ -521,27 +588,46 @@ class FakeBugRepository implements BugRepository {
 
     const updated = makeBug({
       ...existing,
-      assigneeId: input.assigneeId ?? existing.assigneeId,
+      assigneeId: applyOptional(input.assigneeId, existing.assigneeId),
       bugDetail: {
         ...existing.bugDetail,
-        actualResult: input.actualResult ?? existing.bugDetail.actualResult,
-        expectedResult: input.expectedResult ?? existing.bugDetail.expectedResult,
-        fixNote: input.fixNote ?? existing.bugDetail.fixNote,
-        regressionAt:
-          input.regressionAt?.toISOString() ?? existing.bugDetail.regressionAt,
-        regressionBy: input.regressionById ?? existing.bugDetail.regressionBy,
-        regressionResult:
-          input.regressionResult ?? existing.bugDetail.regressionResult,
-        relatedTaskId: input.relatedTaskId ?? existing.bugDetail.relatedTaskId,
+        actualResult: applyOptional(
+          input.actualResult,
+          existing.bugDetail.actualResult,
+        ),
+        expectedResult: applyOptional(
+          input.expectedResult,
+          existing.bugDetail.expectedResult,
+        ),
+        fixNote: applyOptional(input.fixNote, existing.bugDetail.fixNote),
+        regressionAt: applyOptionalDate(
+          input.regressionAt,
+          existing.bugDetail.regressionAt,
+        ),
+        regressionBy: applyOptional(
+          input.regressionById,
+          existing.bugDetail.regressionBy,
+        ),
+        regressionResult: applyOptional(
+          input.regressionResult,
+          existing.bugDetail.regressionResult,
+        ),
+        relatedTaskId: applyOptional(
+          input.relatedTaskId,
+          existing.bugDetail.relatedTaskId,
+        ),
         severity: input.severity ?? existing.bugDetail.severity,
-        stepsToReproduce:
-          input.stepsToReproduce ?? existing.bugDetail.stepsToReproduce,
+        stepsToReproduce: applyOptional(
+          input.stepsToReproduce,
+          existing.bugDetail.stepsToReproduce,
+        ),
       },
-      dueDate: input.dueDate?.toISOString() ?? existing.dueDate,
+      description: applyOptional(input.description, existing.description),
+      dueDate: applyOptionalDate(input.dueDate, existing.dueDate),
       priority: input.priority ?? existing.priority,
-      requirementId: input.requirementId ?? existing.requirementId,
+      requirementId: applyOptional(input.requirementId, existing.requirementId),
       title: input.title ?? existing.title,
-      versionId: input.versionId ?? existing.versionId,
+      versionId: applyOptional(input.versionId, existing.versionId),
     });
 
     this.items.set(updated.id, updated);
@@ -608,6 +694,25 @@ class FakeOrganizationRepository {
   async findMemberByUserId(organizationId: string, userId: string) {
     return this.members.get(`${organizationId}:${userId}`);
   }
+}
+
+function applyOptional<T>(value: T | null | undefined, fallback: T | undefined) {
+  if (value === undefined) {
+    return fallback;
+  }
+
+  return value === null ? undefined : value;
+}
+
+function applyOptionalDate(
+  value: Date | null | undefined,
+  fallback: string | undefined,
+) {
+  if (value === undefined) {
+    return fallback;
+  }
+
+  return value === null ? undefined : value.toISOString();
 }
 
 function makeSpace(): Space {

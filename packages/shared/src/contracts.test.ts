@@ -128,13 +128,22 @@ describe("shared contracts", () => {
 
     expect(
       UpdateIntakeItemRequestSchema.parse({
+        description: null,
+        priority: null,
+        requirementId: null,
         sourceType: "REQUIREMENT_CHANGE",
         sourceObject: {
           requirementId: "01FRZ3NDEKTSV4RRFFQ69G5FAE",
         },
-        assigneeId: "01BRZ3NDEKTSV4RRFFQ69G5FAA",
+        assigneeId: null,
+        versionId: null,
       }),
-    ).toMatchObject({ sourceType: "REQUIREMENT_CHANGE" });
+    ).toMatchObject({
+      assigneeId: null,
+      priority: null,
+      sourceType: "REQUIREMENT_CHANGE",
+      versionId: null,
+    });
 
     expect(
       IntakeItemSchema.parse({
@@ -230,16 +239,22 @@ describe("shared contracts", () => {
 
     expect(
       UpdateBugRequestSchema.parse({
+        assigneeId: null,
+        dueDate: null,
         severity: "MAJOR",
         fixNote: "Guard the null session branch.",
         regressionResult: "Regression passed on staging.",
         regressionBy: "01NRZ3NDEKTSV4RRFFQ69G5FAN",
         regressionAt: "2026-05-13T00:00:00.000Z",
-        relatedTaskId: "01MRZ3NDEKTSV4RRFFQ69G5FAM",
+        relatedTaskId: null,
+        requirementId: null,
+        versionId: null,
       }),
     ).toMatchObject({
+      assigneeId: null,
       regressionBy: "01NRZ3NDEKTSV4RRFFQ69G5FAN",
-      relatedTaskId: "01MRZ3NDEKTSV4RRFFQ69G5FAM",
+      relatedTaskId: null,
+      versionId: null,
     });
 
     expect(

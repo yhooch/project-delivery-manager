@@ -195,4 +195,51 @@ describe("EditBugDialog", () => {
     );
     expect(onOpenChange).toHaveBeenCalledWith(false);
   });
+
+  it("submits nulls when optional bug fields are cleared", async () => {
+    render(
+      <EditBugDialog
+        bug={makeBug({ dueDate: "2026-05-15T00:00:00.000Z" })}
+        open
+        onOpenChange={vi.fn()}
+        organizationId={organizationId}
+        spaceId={spaceId}
+      />,
+    );
+
+    await screen.findByText("v1");
+
+    fireEvent.change(screen.getByTestId("edit-bug-description-input"), {
+      target: { value: "" },
+    });
+    fireEvent.change(screen.getByTestId("edit-bug-version-select"), {
+      target: { value: "" },
+    });
+    fireEvent.change(screen.getByTestId("edit-bug-requirement-select"), {
+      target: { value: "" },
+    });
+    fireEvent.change(screen.getByTestId("edit-bug-related-task-select"), {
+      target: { value: "" },
+    });
+    fireEvent.change(screen.getByTestId("edit-bug-assignee-select"), {
+      target: { value: "" },
+    });
+    fireEvent.change(screen.getByTestId("edit-bug-duedate-input"), {
+      target: { value: "" },
+    });
+    fireEvent.click(screen.getByTestId("edit-bug-submit"));
+
+    await waitFor(() => expect(updateBugMock).toHaveBeenCalledTimes(1));
+    expect(updateBugMock).toHaveBeenCalledWith(
+      { bugId, organizationId, spaceId },
+      expect.objectContaining({
+        assigneeId: null,
+        description: null,
+        dueDate: null,
+        relatedTaskId: null,
+        requirementId: null,
+        versionId: null,
+      }),
+    );
+  });
 });

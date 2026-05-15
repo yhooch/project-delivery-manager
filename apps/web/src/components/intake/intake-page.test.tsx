@@ -538,6 +538,71 @@ describe("IntakePage", () => {
     expect(screen.queryByText("Original intake")).not.toBeInTheDocument();
   });
 
+  it("submits nulls when optional intake fields are cleared", async () => {
+    const versionId = "01ARZ3NDEKTSV4RRFFQ69G5FV1";
+    const requirementId = "01ARZ3NDEKTSV4RRFFQ69G5FR1";
+    const original = makeIntake({
+      id: "01ARZ3NDEKTSV4RRFFQ69G5FE2",
+      title: "Clearable intake",
+      description: "Description to clear",
+      sourceType: "AD_HOC",
+      priority: "MEDIUM",
+      requirementId,
+      versionId,
+    });
+    listVersionsMock.mockResolvedValueOnce({
+      items: [{ id: versionId, name: "Release 1" }],
+      total: 1,
+    });
+    listRequirementsMock.mockResolvedValueOnce({
+      items: [{ id: requirementId, title: "Requirement 1" }],
+      total: 1,
+    });
+    listIntakeItemsMock.mockResolvedValueOnce({ items: [original], total: 1 });
+    updateIntakeItemMock.mockResolvedValueOnce({
+      ...original,
+      description: undefined,
+      priority: undefined,
+      requirementId: undefined,
+      versionId: undefined,
+    });
+
+    render(<IntakePage />);
+
+    fireEvent.click(await screen.findByText("Clearable intake"));
+    fireEvent.click(await screen.findByTestId("intake-edit-button"));
+
+    await screen.findByText("Release 1");
+    fireEvent.change(screen.getByTestId("edit-intake-description-input"), {
+      target: { value: "" },
+    });
+    fireEvent.change(screen.getByTestId("edit-intake-priority-select"), {
+      target: { value: "" },
+    });
+    fireEvent.change(screen.getByTestId("edit-intake-version-select"), {
+      target: { value: "" },
+    });
+    fireEvent.change(screen.getByTestId("edit-intake-requirement-select"), {
+      target: { value: "" },
+    });
+    fireEvent.click(screen.getByTestId("edit-intake-submit"));
+
+    await waitFor(() =>
+      expect(updateIntakeItemMock).toHaveBeenCalledWith(
+        {
+          intakeItemId: "01ARZ3NDEKTSV4RRFFQ69G5FE2",
+          spaceId: "SPC_01",
+        },
+        expect.objectContaining({
+          description: null,
+          priority: null,
+          requirementId: null,
+          versionId: null,
+        }),
+      ),
+    );
+  });
+
   it("records directly opened intake items in recent opens", async () => {
     listIntakeItemsMock.mockResolvedValueOnce({
       items: [

@@ -639,6 +639,41 @@ describe("BugsPage", () => {
     expect(await screen.findByText("Overview filtered bug")).toBeInTheDocument();
   });
 
+  it("syncs bug list filters when URL query params change after mount", async () => {
+    searchParamsMock.current = new URLSearchParams(
+      `versionId=${VERSION_ID}&statusCategory=DONE`,
+    );
+    listBugsMock.mockResolvedValue({
+      items: [makeBug({ title: "URL synced bug" })],
+      total: 1,
+    });
+
+    const { rerender } = render(<BugsPage />);
+
+    await waitFor(() =>
+      expect(listBugsMock).toHaveBeenCalledWith(
+        expect.objectContaining({
+          statusCategory: "DONE",
+          versionId: VERSION_ID,
+        }),
+      ),
+    );
+    const callCountAfterInitialSync = listBugsMock.mock.calls.length;
+
+    searchParamsMock.current = new URLSearchParams();
+    rerender(<BugsPage />);
+
+    await waitFor(() => {
+      expect(listBugsMock.mock.calls.length).toBeGreaterThan(
+        callCountAfterInitialSync,
+      );
+      const [query] =
+        listBugsMock.mock.calls[listBugsMock.mock.calls.length - 1];
+      expect(query.statusCategory).toBeUndefined();
+      expect(query.versionId).toBeUndefined();
+    });
+  });
+
   it("opens the task detail sheet when a row is clicked", async () => {
     listBugsMock.mockResolvedValueOnce({
       items: [makeBug({ title: "Click bug" })],
@@ -766,6 +801,32 @@ describe("BugsPage", () => {
     expect(screen.getByTestId("task-detail-sheet-item-title")).toHaveTextContent(
       "Edited bug",
     );
+  });
+
+  it("does not open edit from the keyboard shortcut for read-only users", async () => {
+    sessionMock.current = {
+      currentSpace: {
+        id: "SPC_01",
+        organizationId: "ORG_01",
+        name: "Space A",
+        role: "VIEWER",
+        status: "ACTIVE",
+      },
+      status: "authenticated" as const,
+    };
+    listBugsMock.mockResolvedValueOnce({
+      items: [makeBug({ title: "Read only bug" })],
+      total: 1,
+    });
+
+    render(<BugsPage />);
+
+    fireEvent.click(await screen.findByText("Read only bug"));
+    expect(screen.queryByTestId("bugs-edit-button")).not.toBeInTheDocument();
+
+    fireEvent.keyDown(window, { key: "e" });
+
+    expect(screen.queryByTestId("edit-bug-dialog-open")).not.toBeInTheDocument();
   });
 
   it("renders the empty state when there are no bugs", async () => {

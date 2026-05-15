@@ -122,7 +122,7 @@ export class BugService {
       createdById: actorUserId,
       currentStateId: workflow.currentStateId,
       description: input.description,
-      dueDate: parseOptionalDate(input.dueDate, "dueDate"),
+      dueDate: parseOptionalDate(input.dueDate, "dueDate") ?? undefined,
       expectedResult: input.expectedResult,
       intakeItemId: input.intakeItemId,
       lastStatusChangedAt: now,
@@ -243,9 +243,16 @@ export class BugService {
     const relatedUsers = shouldReplaceRelatedParticipants
       ? await this.findLinkedTargetsInSpace(bug.spaceId, {
           intakeItemId: bug.intakeItemId,
-          relatedTaskId: input.relatedTaskId ?? bug.bugDetail.relatedTaskId,
-          requirementId: input.requirementId ?? bug.requirementId,
-          versionId: input.versionId ?? bug.versionId,
+          relatedTaskId:
+            input.relatedTaskId !== undefined
+              ? input.relatedTaskId
+              : bug.bugDetail.relatedTaskId,
+          requirementId:
+            input.requirementId !== undefined
+              ? input.requirementId
+              : bug.requirementId,
+          versionId:
+            input.versionId !== undefined ? input.versionId : bug.versionId,
         })
       : [];
     const dueDate = parseOptionalDate(input.dueDate, "dueDate");
@@ -254,11 +261,11 @@ export class BugService {
       actualResult: input.actualResult,
       assigneeId: input.assigneeId,
       description: input.description,
-      dueDate: dueDate?.toISOString(),
+      dueDate: toTimelineDate(dueDate),
       expectedResult: input.expectedResult,
       fixNote: input.fixNote,
       priority: input.priority,
-      regressionAt: regressionAt?.toISOString(),
+      regressionAt: toTimelineDate(regressionAt),
       regressionBy: input.regressionBy,
       regressionResult: input.regressionResult,
       relatedTaskId: input.relatedTaskId,
@@ -492,10 +499,10 @@ export class BugService {
   private async findLinkedTargetsInSpace(
     spaceId: string,
     input: {
-      versionId?: string;
-      requirementId?: string;
+      versionId?: string | null;
+      requirementId?: string | null;
       intakeItemId?: string;
-      relatedTaskId?: string;
+      relatedTaskId?: string | null;
     },
   ): Promise<BugLinkedUsers[]> {
     const linkedUsers: BugLinkedUsers[] = [];
@@ -715,9 +722,13 @@ function canReadAllSpaceBugs(role: SpaceRole) {
   return SPACE_BUG_READ_ALL_ROLES.has(role);
 }
 
-function parseOptionalDate(value: string | undefined, field: string) {
-  if (!value) {
+function parseOptionalDate(value: string | null | undefined, field: string) {
+  if (value === undefined) {
     return undefined;
+  }
+
+  if (value === null) {
+    return null;
   }
 
   const date = new Date(value);
@@ -733,25 +744,29 @@ function parseOptionalDate(value: string | undefined, field: string) {
   return date;
 }
 
+function toTimelineDate(value: Date | null | undefined) {
+  return value instanceof Date ? value.toISOString() : value;
+}
+
 function buildTimelineDiff(
   existing: BugView,
   next: {
-    actualResult?: string;
-    assigneeId?: string;
-    description?: string;
-    dueDate?: string;
-    expectedResult?: string;
-    fixNote?: string;
+    actualResult?: string | null;
+    assigneeId?: string | null;
+    description?: string | null;
+    dueDate?: string | null;
+    expectedResult?: string | null;
+    fixNote?: string | null;
     priority?: BugView["priority"];
-    regressionAt?: string;
-    regressionBy?: string;
-    regressionResult?: string;
-    relatedTaskId?: string;
-    requirementId?: string;
+    regressionAt?: string | null;
+    regressionBy?: string | null;
+    regressionResult?: string | null;
+    relatedTaskId?: string | null;
+    requirementId?: string | null;
     severity?: BugView["bugDetail"]["severity"];
-    stepsToReproduce?: string;
+    stepsToReproduce?: string | null;
     title?: string;
-    versionId?: string;
+    versionId?: string | null;
   },
 ) {
   const before: Record<string, unknown> = {};

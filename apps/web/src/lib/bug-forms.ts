@@ -26,6 +26,17 @@ const optionalUlid = z.preprocess(
   UlidSchema.optional(),
 );
 
+const clearableText = (maxLength: number) =>
+  z.preprocess(
+    (value) => normalizeClearableText(value),
+    z.string().max(maxLength).nullable().optional(),
+  );
+
+const clearableUlid = z.preprocess(
+  (value) => normalizeClearableText(value),
+  UlidSchema.nullable().optional(),
+);
+
 const optionalPriority = z.preprocess(
   (value) => normalizeOptionalText(value),
   PrioritySchema.optional(),
@@ -39,6 +50,11 @@ const optionalSeverity = z.preprocess(
 const optionalIsoDateTime = z.preprocess(
   (value) => normalizeOptionalText(value),
   z.string().min(1).optional(),
+);
+
+const clearableIsoDateTime = z.preprocess(
+  (value) => normalizeClearableText(value),
+  z.string().min(1).nullable().optional(),
 );
 
 export const createBugFormSchema = CreateBugRequestSchema.extend({
@@ -67,26 +83,26 @@ export type CreateBugFormInput = z.input<typeof createBugFormSchema>;
 export type CreateBugFormValues = z.output<typeof createBugFormSchema>;
 
 export const updateBugFormSchema = UpdateBugRequestSchema.extend({
-  actualResult: optionalText(8000),
-  assigneeId: optionalUlid,
+  actualResult: clearableText(8000),
+  assigneeId: clearableUlid,
   blockedReason: optionalText(1000),
-  description: optionalText(8000),
-  dueDate: optionalIsoDateTime,
-  expectedResult: optionalText(8000),
-  fixNote: optionalText(8000),
+  description: clearableText(8000),
+  dueDate: clearableIsoDateTime,
+  expectedResult: clearableText(8000),
+  fixNote: clearableText(8000),
   priority: optionalPriority,
-  regressionAt: optionalIsoDateTime,
-  regressionBy: optionalUlid,
-  regressionResult: optionalText(8000),
-  relatedTaskId: optionalUlid,
-  requirementId: optionalUlid,
+  regressionAt: clearableIsoDateTime,
+  regressionBy: clearableUlid,
+  regressionResult: clearableText(8000),
+  relatedTaskId: clearableUlid,
+  requirementId: clearableUlid,
   severity: optionalSeverity,
-  stepsToReproduce: optionalText(8000),
+  stepsToReproduce: clearableText(8000),
   title: z.preprocess(
     (value) => normalizeOptionalText(value),
     z.string().min(1).max(200).optional(),
   ),
-  versionId: optionalUlid,
+  versionId: clearableUlid,
 });
 
 export type UpdateBugFormInput = z.input<typeof updateBugFormSchema>;
@@ -108,4 +124,22 @@ function normalizeOptionalText(value: unknown): string | undefined {
   const trimmed = value.trim();
 
   return trimmed.length > 0 ? trimmed : undefined;
+}
+
+function normalizeClearableText(value: unknown): string | null | undefined {
+  if (value === undefined) {
+    return undefined;
+  }
+
+  if (value === null) {
+    return null;
+  }
+
+  if (typeof value !== "string") {
+    return value as string | null | undefined;
+  }
+
+  const trimmed = value.trim();
+
+  return trimmed.length > 0 ? trimmed : null;
 }

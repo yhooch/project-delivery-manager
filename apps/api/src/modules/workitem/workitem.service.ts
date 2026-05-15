@@ -111,7 +111,7 @@ export class WorkItemService {
       createdById: actorUserId,
       currentStateId: workflow.currentStateId,
       description: input.description,
-      dueDate: parseOptionalDate(input.dueDate, "dueDate"),
+      dueDate: parseOptionalDate(input.dueDate, "dueDate") ?? undefined,
       intakeItemId: input.intakeItemId,
       lastStatusChangedAt: now,
       organizationId: access.space.organizationId,
@@ -174,15 +174,19 @@ export class WorkItemService {
     const relatedUsers = shouldReplaceRelatedParticipants
       ? await this.findLinkedTargetsInSpace(workItem.spaceId, {
           intakeItemId: workItem.intakeItemId,
-          requirementId: input.requirementId ?? workItem.requirementId,
-          versionId: input.versionId ?? workItem.versionId,
+          requirementId:
+            input.requirementId !== undefined
+              ? input.requirementId
+              : workItem.requirementId,
+          versionId:
+            input.versionId !== undefined ? input.versionId : workItem.versionId,
         })
       : [];
     const dueDate = parseOptionalDate(input.dueDate, "dueDate");
     const timeline = buildTimelineDiff(workItem, {
       assigneeId: input.assigneeId,
       description: input.description,
-      dueDate: dueDate?.toISOString(),
+      dueDate: toTimelineDate(dueDate),
       priority: input.priority,
       requirementId: input.requirementId,
       title: input.title,
@@ -307,8 +311,8 @@ export class WorkItemService {
   private async findLinkedTargetsInSpace(
     spaceId: string,
     input: {
-      versionId?: string;
-      requirementId?: string;
+      versionId?: string | null;
+      requirementId?: string | null;
       intakeItemId?: string;
     },
   ): Promise<WorkItemLinkedUsers[]> {
@@ -440,9 +444,13 @@ function resolveWorkItemVisibility(role: SpaceRole): WorkItemListInput["visibili
   return "PARTICIPANT";
 }
 
-function parseOptionalDate(value: string | undefined, field: string) {
-  if (!value) {
+function parseOptionalDate(value: string | null | undefined, field: string) {
+  if (value === undefined) {
     return undefined;
+  }
+
+  if (value === null) {
+    return null;
   }
 
   const date = new Date(value);
@@ -458,16 +466,20 @@ function parseOptionalDate(value: string | undefined, field: string) {
   return date;
 }
 
+function toTimelineDate(value: Date | null | undefined) {
+  return value instanceof Date ? value.toISOString() : value;
+}
+
 function buildTimelineDiff(
   existing: WorkItem,
   next: {
-    assigneeId?: string;
-    description?: string;
-    dueDate?: string;
+    assigneeId?: string | null;
+    description?: string | null;
+    dueDate?: string | null;
     priority?: WorkItem["priority"];
-    requirementId?: string;
+    requirementId?: string | null;
     title?: string;
-    versionId?: string;
+    versionId?: string | null;
   },
 ) {
   const before: Record<string, unknown> = {};

@@ -59,11 +59,17 @@ describe("intake forms", () => {
         assigneeId: "",
         description: "",
         priority: "HIGH",
+        requirementId: "",
         title: "  Updated intake  ",
+        versionId: "",
       }),
     ).toEqual({
+      assigneeId: null,
+      description: null,
       priority: "HIGH",
+      requirementId: null,
       title: "Updated intake",
+      versionId: null,
     });
 
     expect(

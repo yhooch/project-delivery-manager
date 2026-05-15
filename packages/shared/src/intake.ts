@@ -57,14 +57,14 @@ export type CreateIntakeItemRequest = z.infer<
 
 export const UpdateIntakeItemRequestSchema = z
   .object({
-    versionId: UlidSchema.optional(),
-    requirementId: UlidSchema.optional(),
+    versionId: UlidSchema.nullable().optional(),
+    requirementId: UlidSchema.nullable().optional(),
     title: z.string().min(1).max(200).optional(),
-    description: z.string().max(8000).optional(),
+    description: z.string().max(8000).nullable().optional(),
     sourceType: IntakeSourceTypeSchema.optional(),
-    sourceObject: IntakeSourceObjectSchema.optional(),
-    priority: PrioritySchema.optional(),
-    assigneeId: UlidSchema.optional(),
+    sourceObject: IntakeSourceObjectSchema.nullable().optional(),
+    priority: PrioritySchema.nullable().optional(),
+    assigneeId: UlidSchema.nullable().optional(),
   })
   .strict();
 
