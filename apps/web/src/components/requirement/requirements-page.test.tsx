@@ -281,6 +281,47 @@ describe("RequirementsPage", () => {
     expect(await screen.findByText("My draft")).toBeInTheDocument();
   });
 
+  it("includes drafts when the user selects the all bucket", async () => {
+    listRequirementsMock.mockResolvedValueOnce({
+      items: [
+        makeRequirement({
+          id: "01ARZ3NDEKTSV4RRFFQ69G5F04",
+          title: "Confirmed requirement",
+          status: "CONFIRMED",
+        }),
+      ],
+      total: 1,
+    });
+    listRequirementsMock.mockResolvedValueOnce({
+      items: [
+        makeRequirement({
+          id: "01ARZ3NDEKTSV4RRFFQ69G5F05",
+          title: "Visible draft",
+          status: "DRAFT",
+        }),
+      ],
+      total: 1,
+    });
+
+    render(<RequirementsPage />);
+
+    expect(await screen.findByText("Confirmed requirement")).toBeInTheDocument();
+
+    fireEvent.click(
+      screen.getByRole("button", { name: "requirements.filters.all" }),
+    );
+
+    await waitFor(() =>
+      expect(listRequirementsMock).toHaveBeenLastCalledWith(
+        expect.objectContaining({
+          includeDrafts: true,
+          spaceId: "SPC_01",
+        }),
+      ),
+    );
+    expect(await screen.findByText("Visible draft")).toBeInTheDocument();
+  });
+
   it("applies version and owner filters from the filter panel", async () => {
     const versionId = "01ARZ3NDEKTSV4RRFFQ69G5FD1";
     const ownerId = "01ARZ3NDEKTSV4RRFFQ69G5FU1";

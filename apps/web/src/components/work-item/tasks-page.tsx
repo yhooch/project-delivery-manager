@@ -10,6 +10,7 @@ import type {
 } from "@project-delivery/shared";
 import { Filter, Plus, Search } from "lucide-react";
 import { useTranslations } from "next-intl";
+import { useSearchParams } from "next/navigation";
 import {
   useCallback,
   useEffect,
@@ -24,6 +25,7 @@ import { listRequirements } from "../../lib/requirement-service";
 import { useSpaceMembers, useVersions } from "../../lib/v2/lookups";
 import type { WorkItemViewModel } from "../../lib/v2/work-item-view-model";
 import {
+  getWorkItem,
   listWorkItems,
   type TaskListFilterState,
 } from "../../lib/work-item-service";
@@ -58,10 +60,17 @@ export function TasksPage() {
   const tPriority = useTranslations("workItems.priority");
   const tFilters = useTranslations("workItems.filters");
   const tApiError = useTranslations();
+  const searchParams = useSearchParams();
 
   const { currentSpace, status: sessionStatus } = useSession();
   const spaceId = currentSpace?.id;
   const organizationId = currentSpace?.organizationId;
+  const requestedWorkItemId = normalizeSearchParam(
+    searchParams.get("workItemId"),
+  );
+  const requestedIntakeItemId = normalizeSearchParam(
+    searchParams.get("intakeItemId"),
+  );
   const recentScope = useMemo(
     () => ({ organizationId, spaceId }),
     [organizationId, spaceId],
@@ -75,10 +84,16 @@ export function TasksPage() {
   const [activeItem, setActiveItem] = useState<WorkItemViewModel | null>(null);
   const [sheetOpen, setSheetOpen] = useState(false);
   const [query, setQuery] = useState("");
-  const [filters, setFilters] = useState<TaskListFilterState>({});
+  const [filters, setFilters] = useState<TaskListFilterState>(() => ({
+    intakeItemId: requestedIntakeItemId,
+  }));
   const [filterOpen, setFilterOpen] = useState(false);
   const [requirements, setRequirements] = useState<Requirement[]>([]);
   const [createOpen, setCreateOpen] = useState(false);
+  const [hasLoadedItems, setHasLoadedItems] = useState(false);
+  const [handledDeepLinkKey, setHandledDeepLinkKey] = useState<string | null>(
+    null,
+  );
   const canCreateTask = canWriteWorkItems(
     currentSpace?.role,
     currentSpace?.status,
@@ -97,6 +112,7 @@ export function TasksPage() {
     }
 
     setLoading(true);
+    setHasLoadedItems(false);
     setErrorMessage(null);
 
     try {
@@ -112,6 +128,7 @@ export function TasksPage() {
       setErrorMessage(tApiError(key));
     } finally {
       setLoading(false);
+      setHasLoadedItems(true);
     }
   }, [filters, organizationId, spaceId, tApiError]);
 
@@ -120,6 +137,7 @@ export function TasksPage() {
       void fetchTasks();
     } else {
       setItems([]);
+      setHasLoadedItems(false);
     }
   }, [fetchTasks, spaceId]);
 
@@ -205,6 +223,67 @@ export function TasksPage() {
     },
     [recentScope],
   );
+
+  useEffect(() => {
+    setFilters((current) => {
+      if (current.intakeItemId === requestedIntakeItemId) {
+        return current;
+      }
+      return { ...current, intakeItemId: requestedIntakeItemId };
+    });
+  }, [requestedIntakeItemId]);
+
+  useEffect(() => {
+    if (!requestedWorkItemId || !spaceId) {
+      return;
+    }
+
+    const key = `workItem:${spaceId}:${requestedWorkItemId}`;
+    if (handledDeepLinkKey === key) {
+      return;
+    }
+
+    const listed = mockItems.find((item) => item.id === requestedWorkItemId);
+    if (listed) {
+      open(listed);
+      setHandledDeepLinkKey(key);
+      return;
+    }
+
+    if (loading || !hasLoadedItems) {
+      return;
+    }
+
+    let cancelled = false;
+    void getWorkItem({ organizationId, spaceId, workItemId: requestedWorkItemId })
+      .then((item) => {
+        if (!cancelled) {
+          open(toMockWorkItem(item, tStatus, { getMember, getVersion }));
+          setHandledDeepLinkKey(key);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setHandledDeepLinkKey(key);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    getMember,
+    getVersion,
+    hasLoadedItems,
+    handledDeepLinkKey,
+    loading,
+    mockItems,
+    open,
+    organizationId,
+    requestedWorkItemId,
+    spaceId,
+    tStatus,
+  ]);
 
   const select = (item: WorkItemViewModel) => {
     setActiveItem(item);
@@ -546,4 +625,9 @@ function formatDate(iso: string): string {
   } catch {
     return iso;
   }
+}
+
+function normalizeSearchParam(value: string | null): string | undefined {
+  const normalized = value?.trim();
+  return normalized ? normalized : undefined;
 }

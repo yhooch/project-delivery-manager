@@ -442,6 +442,12 @@ function toRequirementListQuery(
     };
   }
 
+  if (filter === "all") {
+    return {
+      includeDrafts: true,
+    };
+  }
+
   return {};
 }
 

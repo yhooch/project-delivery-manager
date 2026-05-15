@@ -18,6 +18,9 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 const { translatorCache } = vi.hoisted(() => ({
   translatorCache: new Map<string, (key: string) => string>(),
 }));
+const { searchParamsMock } = vi.hoisted(() => ({
+  searchParamsMock: { current: new URLSearchParams() },
+}));
 vi.mock("next-intl", () => ({
   useTranslations: (namespace?: string) => {
     const key = namespace ?? "__root__";
@@ -29,6 +32,9 @@ vi.mock("next-intl", () => ({
     return fn;
   },
   useLocale: () => "zh-CN",
+}));
+vi.mock("next/navigation", () => ({
+  useSearchParams: () => searchParamsMock.current,
 }));
 
 // next-intl/navigation re-exports used by routing — not needed but stub to avoid
@@ -88,13 +94,14 @@ vi.mock("../../lib/v2/lookups", () => ({
 
 // Service mocks. NOTE: vi.mock is hoisted, so the mock fn must be created
 // via vi.hoisted to be available when the factory runs.
-const { listRequirementsMock, listWorkItemsMock } = vi.hoisted(() => ({
+const { getWorkItemMock, listRequirementsMock, listWorkItemsMock } = vi.hoisted(() => ({
+  getWorkItemMock: vi.fn(),
   listRequirementsMock: vi.fn(),
   listWorkItemsMock: vi.fn(),
 }));
 vi.mock("../../lib/work-item-service", () => ({
   listWorkItems: listWorkItemsMock,
-  getWorkItem: vi.fn(),
+  getWorkItem: getWorkItemMock,
 }));
 vi.mock("../../lib/requirement-service", () => ({
   listRequirements: listRequirementsMock,
@@ -168,8 +175,10 @@ function makeTask(overrides: Partial<Record<string, unknown>> = {}) {
 // -----------------------------------------------------------------------------
 
 beforeEach(() => {
+  getWorkItemMock.mockReset();
   listRequirementsMock.mockReset();
   listWorkItemsMock.mockReset();
+  searchParamsMock.current = new URLSearchParams();
   memberMap.clear();
   versionMap.clear();
   sessionMock.current = {
@@ -190,6 +199,58 @@ afterEach(() => {
 });
 
 describe("TasksPage", () => {
+  it("filters related tasks from an intake item deep link", async () => {
+    searchParamsMock.current = new URLSearchParams(
+      "intakeItemId=01ARZ3NDEKTSV4RRFFQ69G5FIN",
+    );
+    listWorkItemsMock.mockResolvedValueOnce({
+      items: [makeTask({ title: "Converted intake task" })],
+      total: 1,
+    });
+
+    render(<TasksPage />);
+
+    expect(await screen.findByText("Converted intake task")).toBeInTheDocument();
+    await waitFor(() =>
+      expect(listWorkItemsMock).toHaveBeenCalledWith(
+        expect.objectContaining({
+          intakeItemId: "01ARZ3NDEKTSV4RRFFQ69G5FIN",
+          spaceId: "SPC_01",
+          type: "TASK",
+        }),
+      ),
+    );
+  });
+
+  it("opens a work item detail sheet from a workItemId deep link", async () => {
+    searchParamsMock.current = new URLSearchParams(
+      "workItemId=01ARZ3NDEKTSV4RRFFQ69G5FDL",
+    );
+    listWorkItemsMock.mockResolvedValueOnce({ items: [], total: 0 });
+    getWorkItemMock.mockResolvedValueOnce(
+      makeTask({
+        id: "01ARZ3NDEKTSV4RRFFQ69G5FDL",
+        title: "Deep linked task",
+      }),
+    );
+
+    render(<TasksPage />);
+
+    await waitFor(() =>
+      expect(getWorkItemMock).toHaveBeenCalledWith({
+        organizationId: "ORG_01",
+        spaceId: "SPC_01",
+        workItemId: "01ARZ3NDEKTSV4RRFFQ69G5FDL",
+      }),
+    );
+    expect(
+      await screen.findByTestId("task-detail-sheet-open"),
+    ).toBeInTheDocument();
+    expect(screen.getByTestId("task-detail-sheet-item-title")).toHaveTextContent(
+      "Deep linked task",
+    );
+  });
+
   it("renders task rows with real assignee name from the member lookup", async () => {
     memberMap.set(ASSIGNEE_ID, {
       user: { name: "Alice Wonderland", username: "alice" },
