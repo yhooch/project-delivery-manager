@@ -1,10 +1,10 @@
-import { Module } from "@nestjs/common";
+import { forwardRef, Module } from "@nestjs/common";
 
 import { AuditModule } from "../audit/audit.module";
 import { IdentityModule } from "../identity/identity.module";
+import { OrganizationModule } from "../organization/organization.module";
 import { AuthController, CurrentUserController } from "./auth.controller";
 import { AuthService } from "./auth.service";
-import { AuthSessionBuilder } from "./auth-session.builder";
 import { AuthSessionService } from "./auth-session.service";
 import { CurrentUserService } from "./current-user.service";
 import { RateLimiterService } from "./rate-limiter.service";
@@ -23,10 +23,9 @@ import { WriteOriginGuard } from "./write-origin.guard";
     SessionParsingMiddleware,
     WriteOriginGuard,
   ],
-  imports: [AuditModule, IdentityModule],
+  imports: [AuditModule, IdentityModule, forwardRef(() => OrganizationModule)],
   providers: [
     AuthService,
-    AuthSessionBuilder,
     AuthSessionService,
     CurrentUserService,
     RateLimiterService,

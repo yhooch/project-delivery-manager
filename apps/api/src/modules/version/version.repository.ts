@@ -7,13 +7,17 @@ import type {
   VersionBoardResult,
   VersionListInput,
   VersionListResult,
+  VersionStatsScope,
 } from "./version.types";
 
 export const VERSION_REPOSITORY = Symbol("VERSION_REPOSITORY");
 
 export type VersionRepository = {
   create(input: CreateVersionInput): Promise<Version>;
-  findById(versionId: string): Promise<Version | undefined>;
+  findById(
+    versionId: string,
+    statsScope?: VersionStatsScope,
+  ): Promise<Version | undefined>;
   findByName(
     spaceId: string,
     name: string,

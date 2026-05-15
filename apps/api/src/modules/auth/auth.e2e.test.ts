@@ -1,5 +1,10 @@
 import { type INestApplication } from "@nestjs/common";
 import { Test, type TestingModule } from "@nestjs/testing";
+import {
+  AppSessionSchema,
+  type SessionOrganizationSummary,
+  type SessionSpaceSummary,
+} from "@project-delivery/shared";
 import request from "supertest";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
@@ -21,6 +26,10 @@ import type {
   SessionRevocationReason,
   UpdateUserPreferencesInput,
 } from "../identity/identity.types";
+import {
+  ORGANIZATION_REPOSITORY,
+  type OrganizationRepository,
+} from "../organization/organization.repository";
 import { AuthSessionService } from "./auth-session.service";
 
 const ORIGIN = "http://localhost:3000";
@@ -47,6 +56,8 @@ describe("auth and session API", () => {
       .useValue(users)
       .overrideProvider(SESSION_REPOSITORY)
       .useValue(sessions)
+      .overrideProvider(ORGANIZATION_REPOSITORY)
+      .useValue(createEmptyOrganizationRepository())
       .compile();
 
     app = configureApp(moduleRef.createNestApplication());
@@ -62,14 +73,21 @@ describe("auth and session API", () => {
       200,
     );
     const token = extractSessionToken(response.headers["set-cookie"]);
+    const appSession = AppSessionSchema.parse(response.body.data);
 
-    expect(response.body.data.user).toMatchObject({
+    expect(appSession.user).toMatchObject({
       username: "register_ok",
       name: "register_ok",
       preferences: {
         locale: "zh-CN",
         themeMode: "SYSTEM",
       },
+    });
+    expect(appSession.organizations).toEqual([]);
+    expect(appSession.spaces).toEqual([]);
+    expect(appSession.capabilities).toEqual({
+      canCreateOrganization: true,
+      canCreateSpace: false,
     });
     expect(token).toBeTruthy();
     expect(sessions.records).toHaveLength(1);
@@ -102,7 +120,11 @@ describe("auth and session API", () => {
       "203.0.113.14",
     ).expect(200);
 
-    expect(response.body.data.user.username).toBe("login_ok");
+    const appSession = AppSessionSchema.parse(response.body.data);
+
+    expect(appSession.user.username).toBe("login_ok");
+    expect(appSession.organizations).toEqual([]);
+    expect(appSession.spaces).toEqual([]);
     expect(extractSessionToken(response.headers["set-cookie"])).toBeTruthy();
     expect(previousSession?.revocationReason).toBe("ROTATED");
   });
@@ -344,6 +366,17 @@ function extractSessionToken(cookies: string[] | string | undefined): string {
   }
 
   return value;
+}
+
+function createEmptyOrganizationRepository(): OrganizationRepository {
+  return {
+    async listSessionSummaries(): Promise<SessionOrganizationSummary[]> {
+      return [];
+    },
+    async listSessionSpaceSummaries(): Promise<SessionSpaceSummary[]> {
+      return [];
+    },
+  } as unknown as OrganizationRepository;
 }
 
 class InMemoryUserRepository implements UserRepository {

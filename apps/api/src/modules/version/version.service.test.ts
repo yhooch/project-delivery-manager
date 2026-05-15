@@ -20,6 +20,7 @@ import type {
   VersionBoardResult,
   VersionListInput,
   VersionListResult,
+  VersionStatsScope,
 } from "./version.types";
 
 const ORGANIZATION_ID = "01H00000000000000000000000";
@@ -149,6 +150,57 @@ describe("VersionService board view", () => {
     expect(subject.versions.boardInput?.visibility).toBe("TESTER");
   });
 
+  it("passes actor-scoped stats visibility when listing versions", async () => {
+    const subject = createSubject("TESTER");
+
+    subject.versions.items.set(VERSION_ID, makeVersion());
+
+    await subject.service.list(ACTOR_ID, SPACE_ID, {
+      page: 1,
+      pageSize: 20,
+    });
+
+    expect(subject.versions.listInput).toMatchObject({
+      actorUserId: ACTOR_ID,
+      page: 1,
+      pageSize: 20,
+      visibility: "TESTER",
+    });
+  });
+
+  it("returns participant-scoped stats for restricted version reads", async () => {
+    const subject = createSubject("DEVELOPER");
+
+    subject.versions.items.set(
+      VERSION_ID,
+      makeVersion({
+        stats: {
+          blockedCount: 4,
+          bugCount: 3,
+          requirementCount: 2,
+          taskCount: 1,
+        },
+      }),
+    );
+
+    const result = await subject.service.get(ACTOR_ID, VERSION_ID);
+
+    expect(subject.versions.findStatsScopes).toEqual([
+      undefined,
+      {
+        actorUserId: ACTOR_ID,
+        spaceId: SPACE_ID,
+        visibility: "PARTICIPANT",
+      },
+    ]);
+    expect(result.stats).toEqual({
+      blockedCount: 0,
+      bugCount: 1,
+      requirementCount: 1,
+      taskCount: 1,
+    });
+  });
+
   it("rejects query scope that does not match the version", async () => {
     const subject = createSubject("PM");
 
@@ -207,6 +259,8 @@ function createAuditService() {
 class FakeVersionRepository implements VersionRepository {
   readonly items = new Map<string, Version>();
   boardInput?: VersionBoardInput;
+  readonly findStatsScopes: Array<VersionStatsScope | undefined> = [];
+  listInput?: VersionListInput;
 
   async create(input: CreateVersionInput): Promise<Version> {
     const version = makeVersion({
@@ -221,8 +275,26 @@ class FakeVersionRepository implements VersionRepository {
     return version;
   }
 
-  async findById(versionId: string): Promise<Version | undefined> {
-    return this.items.get(versionId);
+  async findById(
+    versionId: string,
+    statsScope?: VersionStatsScope,
+  ): Promise<Version | undefined> {
+    this.findStatsScopes.push(statsScope);
+    const version = this.items.get(versionId);
+
+    if (!version || !statsScope || statsScope.visibility === "SPACE") {
+      return version;
+    }
+
+    return {
+      ...version,
+      stats: {
+        blockedCount: 0,
+        bugCount: 1,
+        requirementCount: 1,
+        taskCount: 1,
+      },
+    };
   }
 
   async findByName(
@@ -240,6 +312,7 @@ class FakeVersionRepository implements VersionRepository {
     spaceId: string,
     input: VersionListInput,
   ): Promise<VersionListResult> {
+    this.listInput = input;
     const items = [...this.items.values()].filter(
       (item) => item.spaceId === spaceId,
     );

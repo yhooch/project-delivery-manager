@@ -357,7 +357,11 @@ function makeSummary(overrides: Record<string, unknown> = {}) {
   };
 }
 
-function makeBoardResponse(items: ReturnType<typeof makeSummary>[]) {
+function makeBoardResponse(
+  items: ReturnType<typeof makeSummary>[],
+  pageInfo: Partial<{ page: number; pageSize: number; total: number }> = {},
+) {
+  const total = pageInfo.total ?? items.length;
   return {
     columns: [
       { statusCategory: "NOT_STARTED", total: 0 },
@@ -372,7 +376,12 @@ function makeBoardResponse(items: ReturnType<typeof makeSummary>[]) {
       { statusCategory: "DONE", total: 0 },
       { statusCategory: "TERMINATED", total: 0 },
     ],
-    items: { items, total: items.length, page: 1, pageSize: 200 },
+    items: {
+      items,
+      total,
+      page: pageInfo.page ?? 1,
+      pageSize: pageInfo.pageSize ?? 200,
+    },
   };
 }
 
@@ -499,6 +508,104 @@ describe("VersionPage", () => {
     ).toBeInTheDocument();
     // Card itself surfaces.
     expect(await screen.findByText("Login UI")).toBeInTheDocument();
+  });
+
+  it("paginates board items and refreshes the current page after detail changes", async () => {
+    listVersionsMock.mockResolvedValue({
+      items: [makeVersion()],
+      total: 1,
+    });
+    getVersionBoardViewMock
+      .mockResolvedValueOnce(
+        makeBoardResponse(
+          [
+            makeSummary({
+              id: "01ARZ3NDEKTSV4RRFFQ69G5FP1",
+              title: "Page one card",
+            }),
+          ],
+          { total: 201, page: 1, pageSize: 200 },
+        ),
+      )
+      .mockResolvedValueOnce(
+        makeBoardResponse(
+          [
+            makeSummary({
+              id: "01ARZ3NDEKTSV4RRFFQ69G5FP2",
+              title: "Page two card",
+            }),
+          ],
+          { total: 201, page: 2, pageSize: 200 },
+        ),
+      )
+      .mockResolvedValueOnce(
+        makeBoardResponse(
+          [
+            makeSummary({
+              id: "01ARZ3NDEKTSV4RRFFQ69G5FP2",
+              title: "Page two card updated",
+            }),
+          ],
+          { total: 201, page: 2, pageSize: 200 },
+        ),
+      )
+      .mockResolvedValueOnce(
+        makeBoardResponse(
+          [
+            makeSummary({
+              id: "01ARZ3NDEKTSV4RRFFQ69G5FP3",
+              title: "Filtered first page card",
+              type: "BUG",
+            }),
+          ],
+          { total: 1, page: 1, pageSize: 200 },
+        ),
+      );
+
+    render(<VersionPage />);
+
+    expect(await screen.findByText("Page one card")).toBeInTheDocument();
+    expect(screen.getByTestId("version-board-pagination-summary")).toHaveTextContent(
+      "versionBoard.pagination.summary",
+    );
+
+    const nextButton = screen.getByTestId("version-board-pagination-next");
+    expect(nextButton).toHaveAttribute(
+      "aria-label",
+      "versionBoard.pagination.nextAria",
+    );
+    fireEvent.click(nextButton);
+
+    await waitFor(() =>
+      expect(getVersionBoardViewMock).toHaveBeenCalledTimes(2),
+    );
+    expect(getVersionBoardViewMock.mock.calls[1]![0]).toMatchObject({
+      page: 2,
+      pageSize: 200,
+    });
+    fireEvent.click(await screen.findByText("Page two card"));
+    fireEvent.click(
+      await screen.findByTestId("task-detail-sheet-fire-changed"),
+    );
+
+    await waitFor(() =>
+      expect(getVersionBoardViewMock).toHaveBeenCalledTimes(3),
+    );
+    expect(getVersionBoardViewMock.mock.calls[2]![0]).toMatchObject({
+      page: 2,
+      pageSize: 200,
+    });
+
+    fireEvent.click(await screen.findByTestId("version-board-filter-type-BUG"));
+
+    await waitFor(() =>
+      expect(getVersionBoardViewMock).toHaveBeenCalledTimes(4),
+    );
+    expect(getVersionBoardViewMock.mock.calls[3]![0]).toMatchObject({
+      page: 1,
+      pageSize: 200,
+      workItemType: "BUG",
+    });
   });
 
   it("keeps the board responsive without forcing six columns on mobile", async () => {

@@ -39,9 +39,13 @@ const AttachmentSizeSchema = z
   .int()
   .positive()
   .max(AttachmentMaxSizeBytes);
-const AttachmentUploadMetadataSchema = z.object({
+const AttachmentStoredMetadataSchema = z.object({
   mimeType: AttachmentMimeTypeSchema,
   size: AttachmentSizeSchema,
+});
+const AttachmentUploadMetadataSchema = z.object({
+  mimeType: z.string().min(1),
+  size: z.number().int().positive(),
 });
 
 export const AttachmentSchema = z
@@ -53,8 +57,7 @@ export const AttachmentSchema = z
     targetId: UlidSchema,
     fileName: z.string().min(1),
     fileKey: z.string().min(1),
-    mimeType: AttachmentMimeTypeSchema,
-    size: AttachmentSizeSchema,
+    ...AttachmentStoredMetadataSchema.shape,
     uploadedById: UlidSchema,
     previewUrl: z.url().optional(),
     createdAt: IsoDateTimeSchema,

@@ -671,6 +671,13 @@
       },
       "clear": "Clear filters"
     },
+    "pagination": {
+      "summary": "Page {page} of {pageCount}, showing {from}-{to} of {total}",
+      "previous": "Previous",
+      "next": "Next",
+      "previousAria": "View previous work-item page",
+      "nextAria": "View next work-item page"
+    },
     "columns": {
       "NOT_STARTED": "Not started",
       "IN_PROGRESS": "In progress",
@@ -1954,7 +1961,7 @@
         }
       },
       "pendingConfirm": {
-        "title": "Pending my confirmation",
+        "title": "Pending confirmation",
         "description": "Items in confirmation or regression confirmation states.",
         "empty": {
           "title": "No pending confirmations",
@@ -2034,7 +2041,7 @@
       "assignedTasks": "Tasks I own",
       "assignedBugs": "Bugs I own",
       "actions": "Workflow actions for me",
-      "pendingConfirm": "Pending my confirmation",
+      "pendingConfirm": "Pending confirmation",
       "risk": "Risks / exceptions",
       "dueSoon": "Due soon",
       "blocked": "Blocked",
@@ -2045,7 +2052,7 @@
       "assignedTasks": "No tasks assigned to you.",
       "assignedBugs": "No bugs assigned to you.",
       "actions": "No action todos.",
-      "pendingConfirm": "No items pending your confirmation.",
+      "pendingConfirm": "No items pending confirmation.",
       "risk": "No risk or exception items.",
       "dueSoon": "No due soon items.",
       "blocked": "No blocked work items.",
@@ -2827,6 +2834,13 @@
       "lastChangedMeta": "Last changed {date}",
       "sourceMeta": "Evidence source: {source}"
     },
+    "pagination": {
+      "summary": "Page {page} of {pageCount}, showing {from}-{to} of {total}",
+      "previous": "Previous",
+      "next": "Next",
+      "previousAria": "View previous exceptions page",
+      "nextAria": "View next exceptions page"
+    },
     "threshold": {
       "title": "Stale threshold",
       "description": "Changing space staleThresholdDays refreshes stale exception results.",
@@ -3148,6 +3162,10 @@
       "noOrganization": {
         "title": "No organization selected",
         "description": "Switch to an organization first."
+      },
+      "noPermission": {
+        "title": "No organization management access",
+        "description": "Only organization owners or admins can access organization settings."
       }
     },
     "info": {

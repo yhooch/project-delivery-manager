@@ -3,6 +3,7 @@ import { afterEach, describe, expect, it } from "vitest";
 
 import { Button } from "./button";
 import { Input } from "./input";
+import { Textarea } from "./textarea";
 
 afterEach(() => {
   cleanup();
@@ -38,5 +39,15 @@ describe("Input", () => {
     const input = screen.getByLabelText("Space name");
     expect(input).toBeDisabled();
     expect(input).toHaveAttribute("aria-disabled", "true");
+  });
+});
+
+describe("Textarea", () => {
+  it("mirrors native disabled state to aria-disabled", () => {
+    render(<Textarea aria-label="Comment" disabled />);
+
+    const textarea = screen.getByLabelText("Comment");
+    expect(textarea).toBeDisabled();
+    expect(textarea).toHaveAttribute("aria-disabled", "true");
   });
 });

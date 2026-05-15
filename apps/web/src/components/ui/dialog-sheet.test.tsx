@@ -26,6 +26,9 @@ describe("dialog and sheet primitives", () => {
     expect(
       screen.getByRole("button", { name: "common.actions.close" }),
     ).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "common.actions.close" })).toHaveClass(
+      "[@media(pointer:coarse)]:h-11",
+    );
     expect(screen.getByRole("dialog")).toHaveClass("overflow-y-auto");
     expect(screen.getByRole("dialog")).toHaveClass("max-h-[calc(100dvh-2rem)]");
   });
@@ -42,6 +45,9 @@ describe("dialog and sheet primitives", () => {
     expect(
       screen.getByRole("button", { name: "common.actions.close" }),
     ).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "common.actions.close" })).toHaveClass(
+      "[@media(pointer:coarse)]:h-11",
+    );
     expect(screen.getByRole("dialog")).toHaveClass("overflow-y-auto");
   });
 });

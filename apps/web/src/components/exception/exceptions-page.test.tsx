@@ -211,7 +211,9 @@ function makeException(
 function makeViewResponse(
   items: ReturnType<typeof makeException>[],
   filters: Record<string, unknown> = { exceptionType: "overdue" },
+  pageInfo: Partial<{ page: number; pageSize: number; total: number }> = {},
 ) {
+  const total = pageInfo.total ?? items.length;
   return {
     filters: {
       organizationId: "ORG_01",
@@ -235,7 +237,12 @@ function makeViewResponse(
       { exceptionType: "pending_regression", count: 0 },
       { exceptionType: "stale", count: 0 },
     ],
-    items: { items, total: items.length, page: 1, pageSize: 200 },
+    items: {
+      items,
+      total,
+      page: pageInfo.page ?? 1,
+      pageSize: pageInfo.pageSize ?? 200,
+    },
   };
 }
 
@@ -361,6 +368,117 @@ describe("ExceptionsPage", () => {
     expect(
       screen.getByText("m4Views.exceptionType.blocked"),
     ).toBeInTheDocument();
+  });
+
+  it("paginates exception rows, refreshes the current page, and resets filters to page one", async () => {
+    getSpaceExceptionsViewMock
+      .mockResolvedValueOnce(
+        makeViewResponse(
+          [
+            makeException(
+              makeWorkItem({
+                id: "01ARZ3NDEKTSV4RRFFQ69G5FE1",
+                title: "Page one exception",
+              }),
+            ),
+          ],
+          { exceptionType: "overdue" },
+          { total: 201, page: 1, pageSize: 200 },
+        ),
+      )
+      .mockResolvedValueOnce(
+        makeViewResponse(
+          [
+            makeException(
+              makeWorkItem({
+                id: "01ARZ3NDEKTSV4RRFFQ69G5FE2",
+                title: "Page two exception",
+              }),
+            ),
+          ],
+          { exceptionType: "overdue" },
+          { total: 201, page: 2, pageSize: 200 },
+        ),
+      )
+      .mockResolvedValueOnce(
+        makeViewResponse(
+          [
+            makeException(
+              makeWorkItem({
+                id: "01ARZ3NDEKTSV4RRFFQ69G5FE2",
+                title: "Page two exception updated",
+              }),
+            ),
+          ],
+          { exceptionType: "overdue" },
+          { total: 201, page: 2, pageSize: 200 },
+        ),
+      )
+      .mockResolvedValueOnce(
+        makeViewResponse(
+          [
+            makeException(
+              makeWorkItem({
+                id: "01ARZ3NDEKTSV4RRFFQ69G5FE3",
+                title: "Filtered first page exception",
+              }),
+            ),
+          ],
+          {
+            assigneeId: "01ARZ3NDEKTSV4RRFFQ69G5FB1",
+            exceptionType: "overdue",
+          },
+          { total: 1, page: 1, pageSize: 200 },
+        ),
+      );
+
+    render(<ExceptionsPage />);
+
+    expect(await screen.findByText("Page one exception")).toBeInTheDocument();
+    expect(screen.getByTestId("exceptions-pagination-summary")).toHaveTextContent(
+      "spaceExceptions.pagination.summary",
+    );
+
+    const nextButton = screen.getByTestId("exceptions-pagination-next");
+    expect(nextButton).toHaveAttribute(
+      "aria-label",
+      "spaceExceptions.pagination.nextAria",
+    );
+    fireEvent.click(nextButton);
+
+    await waitFor(() =>
+      expect(getSpaceExceptionsViewMock).toHaveBeenCalledTimes(2),
+    );
+    expect(getSpaceExceptionsViewMock.mock.calls[1]![0]).toMatchObject({
+      page: 2,
+      pageSize: 200,
+    });
+
+    fireEvent.click(await screen.findByText("Page two exception"));
+    fireEvent.click(screen.getByRole("button", { name: "detail changed" }));
+
+    await waitFor(() =>
+      expect(getSpaceExceptionsViewMock).toHaveBeenCalledTimes(3),
+    );
+    expect(getSpaceExceptionsViewMock.mock.calls[2]![0]).toMatchObject({
+      page: 2,
+      pageSize: 200,
+    });
+
+    fireEvent.click(
+      screen.getByTestId(
+        "exceptions-filter-assigneeId-01ARZ3NDEKTSV4RRFFQ69G5FB1",
+      ),
+    );
+
+    await waitFor(() =>
+      expect(getSpaceExceptionsViewMock).toHaveBeenCalledTimes(4),
+    );
+    expect(getSpaceExceptionsViewMock.mock.calls[3]![0]).toMatchObject({
+      assigneeId: "01ARZ3NDEKTSV4RRFFQ69G5FB1",
+      page: 1,
+      pageSize: 200,
+    });
   });
 
   it("renders the empty state on the active tab when there are no items", async () => {

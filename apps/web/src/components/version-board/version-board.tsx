@@ -17,6 +17,8 @@ import {
   Bug,
   CheckCircle2,
   ChevronDown,
+  ChevronLeft,
+  ChevronRight,
   Clock,
   Filter,
   Pencil,
@@ -110,6 +112,8 @@ const VERSION_STATUS_VARIANT: Record<
   RELEASED: "success",
   ARCHIVED: "default",
 };
+
+const BOARD_PAGE_SIZE = 200;
 
 // ---------------------------------------------------------------------------
 // Filter state shape — keep all three filters together so the toolbar wiring
@@ -223,6 +227,7 @@ export function VersionPage() {
   const [board, setBoard] = useState<GetVersionBoardViewResponse | null>(null);
   const [isLoadingBoard, setIsLoadingBoard] = useState(false);
   const [filters, setFilters] = useState<BoardFilters>(EMPTY_FILTERS);
+  const [boardPage, setBoardPage] = useState(1);
 
   // ----- requirements tab -----
   const [requirements, setRequirements] = useState<Requirement[]>([]);
@@ -260,6 +265,7 @@ export function VersionPage() {
     setVersions([]);
     setVersionId(null);
     setBoard(null);
+    setBoardPage(1);
     setRequirements([]);
     setTimeline([]);
     setErrorKey(null);
@@ -289,6 +295,7 @@ export function VersionPage() {
   const selectVersion = useCallback(
     (nextVersionId: string, syncUrl = true) => {
       setVersionId(nextVersionId);
+      setBoardPage(1);
       if (syncUrl) {
         replaceVersionParam(nextVersionId);
       }
@@ -350,6 +357,7 @@ export function VersionPage() {
     }
 
     if (versions.some((version) => version.id === versionIdParam)) {
+      setBoardPage(1);
       setVersionId(versionIdParam);
     }
   }, [versionIdParam, versions]);
@@ -371,8 +379,8 @@ export function VersionPage() {
         versionId,
         organizationId,
         spaceId: spaceId ?? undefined,
-        page: 1,
-        pageSize: 200,
+        page: boardPage,
+        pageSize: BOARD_PAGE_SIZE,
         assigneeId: filters.assigneeId ?? undefined,
         statusCategory: filters.statusCategory ?? undefined,
         workItemType: filters.workItemType ?? undefined,
@@ -391,6 +399,7 @@ export function VersionPage() {
     filters.assigneeId,
     filters.statusCategory,
     filters.workItemType,
+    boardPage,
     organizationId,
     spaceId,
     versionId,
@@ -508,6 +517,32 @@ export function VersionPage() {
     filters.assigneeId !== null ||
     filters.statusCategory !== null ||
     filters.workItemType !== null;
+
+  const boardPagination = useMemo(() => {
+    const pageResult = board?.items;
+    const total = pageResult?.total ?? 0;
+    const pageSize = pageResult?.pageSize ?? BOARD_PAGE_SIZE;
+    const page = pageResult?.page ?? boardPage;
+    const pageCount = Math.max(1, Math.ceil(total / pageSize));
+    const from = total === 0 ? 0 : (page - 1) * pageSize + 1;
+    const to = total === 0 ? 0 : Math.min(page * pageSize, total);
+
+    return {
+      from,
+      page,
+      pageCount,
+      to,
+      total,
+    };
+  }, [board?.items, boardPage]);
+
+  const updateBoardFilters = useCallback(
+    (next: BoardFilters | ((prev: BoardFilters) => BoardFilters)) => {
+      setBoardPage(1);
+      setFilters(next);
+    },
+    [],
+  );
 
   const getVersionLookup = useCallback(
     (targetVersionId: string) =>
@@ -818,7 +853,7 @@ export function VersionPage() {
             {activeTab === "board" && (
               <BoardToolbar
                 filters={filters}
-                setFilters={setFilters}
+                setFilters={updateBoardFilters}
                 hasActiveFilter={hasActiveFilter}
                 members={members}
                 getMember={getMember}
@@ -848,6 +883,21 @@ export function VersionPage() {
                 />
               )}
             </div>
+            {board ? (
+              <BoardPagination
+                pagination={boardPagination}
+                loading={isLoadingBoard}
+                onPrevious={() =>
+                  setBoardPage((current) => Math.max(1, current - 1))
+                }
+                onNext={() =>
+                  setBoardPage((current) =>
+                    Math.min(boardPagination.pageCount, current + 1),
+                  )
+                }
+                t={t}
+              />
+            ) : null}
           </TabsContent>
 
           <TabsContent
@@ -948,6 +998,71 @@ export function VersionPage() {
 
 // Backwards-compatible alias — older imports referenced `VersionBoard`.
 export { VersionPage as VersionBoard };
+
+function BoardPagination({
+  loading,
+  onNext,
+  onPrevious,
+  pagination,
+  t,
+}: {
+  loading: boolean;
+  onNext: () => void;
+  onPrevious: () => void;
+  pagination: {
+    from: number;
+    page: number;
+    pageCount: number;
+    to: number;
+    total: number;
+  };
+  t: ReturnType<typeof useTranslations<"versionBoard">>;
+}) {
+  return (
+    <div
+      data-testid="version-board-pagination"
+      className="flex shrink-0 flex-col gap-2 border-t border-border px-4 py-2 text-xs text-muted-foreground sm:flex-row sm:items-center sm:justify-between sm:px-6"
+    >
+      <span data-testid="version-board-pagination-summary">
+        {t("pagination.summary", {
+          from: pagination.from,
+          page: pagination.page,
+          pageCount: pagination.pageCount,
+          to: pagination.to,
+          total: pagination.total,
+        })}
+      </span>
+      <div className="flex items-center gap-2">
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          className="h-8 text-xs"
+          data-testid="version-board-pagination-previous"
+          aria-label={t("pagination.previousAria")}
+          disabled={loading || pagination.page <= 1}
+          onClick={onPrevious}
+        >
+          <ChevronLeft className="h-3 w-3" />
+          {t("pagination.previous")}
+        </Button>
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          className="h-8 text-xs"
+          data-testid="version-board-pagination-next"
+          aria-label={t("pagination.nextAria")}
+          disabled={loading || pagination.page >= pagination.pageCount}
+          onClick={onNext}
+        >
+          {t("pagination.next")}
+          <ChevronRight className="h-3 w-3" />
+        </Button>
+      </div>
+    </div>
+  );
+}
 
 // ===========================================================================
 // Board toolbar — assignee / statusCategory / workItemType filters

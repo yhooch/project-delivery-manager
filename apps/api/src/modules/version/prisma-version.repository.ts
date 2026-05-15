@@ -1,4 +1,5 @@
 import { Inject, Injectable } from "@nestjs/common";
+import type { ObjectParticipantTargetType } from "@project-delivery/shared";
 import { ulid } from "ulid";
 
 import { Prisma } from "../../generated/prisma/client";
@@ -13,6 +14,7 @@ import type {
   VersionBoardWorkItemRecord,
   VersionListInput,
   VersionListResult,
+  VersionStatsScope,
 } from "./version.types";
 
 const BOARD_STATUS_CATEGORIES = [
@@ -77,7 +79,7 @@ export class PrismaVersionRepository implements VersionRepository {
     return this.toVersionWithStats(version);
   }
 
-  async findById(versionId: string) {
+  async findById(versionId: string, statsScope?: VersionStatsScope) {
     const version = await this.prisma.client.version.findFirst({
       where: {
         deletedAt: null,
@@ -85,7 +87,7 @@ export class PrismaVersionRepository implements VersionRepository {
       },
     });
 
-    return version ? this.toVersionWithStats(version) : undefined;
+    return version ? this.toVersionWithStats(version, statsScope) : undefined;
   }
 
   async findByName(spaceId: string, name: string) {
@@ -128,6 +130,11 @@ export class PrismaVersionRepository implements VersionRepository {
     ]);
     const stats = await this.countStatsByVersionIds(
       versions.map((version) => version.id),
+      {
+        actorUserId: input.actorUserId,
+        spaceId,
+        visibility: input.visibility,
+      },
     );
 
     return {
@@ -282,13 +289,17 @@ export class PrismaVersionRepository implements VersionRepository {
 
   private async toVersionWithStats(
     version: Parameters<typeof toVersion>[0],
+    statsScope?: VersionStatsScope,
   ) {
-    const stats = await this.countStatsByVersionIds([version.id]);
+    const stats = await this.countStatsByVersionIds([version.id], statsScope);
 
     return toVersion(version, stats.get(version.id));
   }
 
-  private async countStatsByVersionIds(versionIds: string[]) {
+  private async countStatsByVersionIds(
+    versionIds: string[],
+    statsScope?: VersionStatsScope,
+  ) {
     const stats = new Map<
       string,
       {
@@ -312,6 +323,29 @@ export class PrismaVersionRepository implements VersionRepository {
       });
     }
 
+    const participantTargetIdsByType =
+      statsScope && statsScope.visibility !== "SPACE"
+        ? await this.listParticipantTargetIds(
+            statsScope.spaceId,
+            statsScope.actorUserId,
+            ["WORK_ITEM", "REQUIREMENT"],
+          )
+        : new Map<ObjectParticipantTargetType, string[]>();
+    const participantRequirementIds =
+      participantTargetIdsByType.get("REQUIREMENT") ?? [];
+    const participantWorkItemIds =
+      participantTargetIdsByType.get("WORK_ITEM") ?? [];
+    const requirementWhere = versionStatsRequirementWhere(
+      versionIds,
+      statsScope,
+      participantRequirementIds,
+    );
+    const workItemWhere = versionStatsWorkItemWhere(
+      versionIds,
+      statsScope,
+      participantWorkItemIds,
+    );
+
     const [requirementGroups, workItemGroups, blockedGroups] =
       await Promise.all([
         this.prisma.client.requirement.groupBy({
@@ -319,19 +353,14 @@ export class PrismaVersionRepository implements VersionRepository {
           _count: {
             _all: true,
           },
-          where: {
-            deletedAt: null,
-            versionId: {
-              in: versionIds,
-            },
-          },
+          where: requirementWhere,
         }),
         this.prisma.client.workItem.groupBy({
           by: ["versionId", "type"],
           _count: {
             _all: true,
           },
-          where: versionStatsWorkItemWhere(versionIds),
+          where: workItemWhere,
         }),
         this.prisma.client.workItem.groupBy({
           by: ["versionId"],
@@ -340,7 +369,7 @@ export class PrismaVersionRepository implements VersionRepository {
           },
           where: {
             AND: [
-              versionStatsWorkItemWhere(versionIds),
+              workItemWhere,
               {
                 OR: blockedWorkItemWhere(),
               },
@@ -452,20 +481,48 @@ export class PrismaVersionRepository implements VersionRepository {
   }
 
   private async listParticipantWorkItemIds(spaceId: string, userId: string) {
+    const participantTargetIdsByType = await this.listParticipantTargetIds(
+      spaceId,
+      userId,
+      ["WORK_ITEM"],
+    );
+
+    return participantTargetIdsByType.get("WORK_ITEM") ?? [];
+  }
+
+  private async listParticipantTargetIds(
+    spaceId: string,
+    userId: string,
+    targetTypes: ObjectParticipantTargetType[],
+  ) {
     const participants = await this.prisma.client.objectParticipant.findMany({
+      distinct: ["targetType", "targetId"],
       select: {
         targetId: true,
+        targetType: true,
       },
       where: {
         deletedAt: null,
         spaceId,
-        targetType: "WORK_ITEM",
+        targetType: {
+          in: targetTypes,
+        },
         userId,
       },
     });
+    const idsByType = new Map<ObjectParticipantTargetType, string[]>();
 
-    return Array.from(
-      new Set(participants.map((participant) => participant.targetId)),
+    for (const participant of participants) {
+      const ids = idsByType.get(participant.targetType) ?? [];
+      ids.push(participant.targetId);
+      idsByType.set(participant.targetType, ids);
+    }
+
+    return new Map(
+      Array.from(idsByType, ([targetType, targetIds]) => [
+        targetType,
+        Array.from(new Set(targetIds)),
+      ]),
     );
   }
 }
@@ -510,9 +567,12 @@ function buildWorkItemTypeConstraints(
 
 function versionStatsWorkItemWhere(
   versionIds: string[],
+  statsScope?: VersionStatsScope,
+  participantWorkItemIds: string[] = [],
 ): Prisma.WorkItemWhereInput {
-  return {
+  const baseWhere: Prisma.WorkItemWhereInput = {
     deletedAt: null,
+    ...(statsScope ? { spaceId: statsScope.spaceId } : {}),
     versionId: {
       in: versionIds,
     },
@@ -529,6 +589,64 @@ function versionStatsWorkItemWhere(
         type: "BUG",
       },
     ],
+  };
+
+  if (!statsScope || statsScope.visibility === "SPACE") {
+    return baseWhere;
+  }
+
+  if (statsScope.visibility === "TESTER") {
+    const visibilityOr: Prisma.WorkItemWhereInput[] = [
+      testerVisibleWorkItemWhere(),
+    ];
+
+    if (participantWorkItemIds.length > 0) {
+      visibilityOr.push({
+        id: {
+          in: participantWorkItemIds,
+        },
+      });
+    }
+
+    return {
+      AND: [baseWhere, { OR: visibilityOr }],
+    };
+  }
+
+  return {
+    AND: [
+      baseWhere,
+      {
+        id: {
+          in: participantWorkItemIds,
+        },
+      },
+    ],
+  };
+}
+
+function versionStatsRequirementWhere(
+  versionIds: string[],
+  statsScope?: VersionStatsScope,
+  participantRequirementIds: string[] = [],
+): Prisma.RequirementWhereInput {
+  const baseWhere: Prisma.RequirementWhereInput = {
+    deletedAt: null,
+    ...(statsScope ? { spaceId: statsScope.spaceId } : {}),
+    versionId: {
+      in: versionIds,
+    },
+  };
+
+  if (!statsScope || statsScope.visibility === "SPACE") {
+    return baseWhere;
+  }
+
+  return {
+    ...baseWhere,
+    id: {
+      in: participantRequirementIds,
+    },
   };
 }
 

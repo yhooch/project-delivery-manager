@@ -114,7 +114,7 @@ export function OrganizationPage() {
   const load = useCallback(async () => {
     const sequence = ++loadSequenceRef.current;
 
-    if (!organizationId) {
+    if (!organizationId || !canManageMembers) {
       setMembers([]);
       setIsLoading(false);
       setErrorKey(null);
@@ -136,7 +136,7 @@ export function OrganizationPage() {
         setIsLoading(false);
       }
     }
-  }, [organizationId]);
+  }, [canManageMembers, organizationId]);
 
   useEffect(() => {
     loadSequenceRef.current += 1;
@@ -151,11 +151,27 @@ export function OrganizationPage() {
   }, [organizationId]);
 
   useEffect(() => {
-    if (status !== "authenticated" || !organizationId) {
+    if (canManageMembers) {
+      return;
+    }
+
+    loadSequenceRef.current += 1;
+    setMembers([]);
+    setIsLoading(false);
+    setErrorKey(null);
+    setIsAddMemberOpen(false);
+    setDisableMember(null);
+    setEditRoleMember(null);
+    setPendingMemberId(null);
+    setMemberActionErrorKey(null);
+  }, [canManageMembers]);
+
+  useEffect(() => {
+    if (status !== "authenticated" || !organizationId || !canManageMembers) {
       return;
     }
     void load();
-  }, [load, organizationId, status]);
+  }, [canManageMembers, load, organizationId, status]);
 
   async function onConfirmDisable() {
     if (!disableMember || !organizationId || !canManageMembers) {
@@ -255,6 +271,20 @@ export function OrganizationPage() {
           <EmptyState
             title={t("page.noOrganization.title")}
             description={t("page.noOrganization.description")}
+          />
+        </div>
+      </div>
+    );
+  }
+
+  if (!canManageMembers) {
+    return (
+      <div data-testid="organization-page" className="flex h-full flex-col">
+        {headerNode}
+        <div className="flex-1 overflow-y-auto px-6 py-6">
+          <EmptyState
+            title={t("page.noPermission.title")}
+            description={t("page.noPermission.description")}
           />
         </div>
       </div>

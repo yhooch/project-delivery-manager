@@ -205,11 +205,35 @@ export function RequirementsPage() {
     [rememberRequirement, router],
   );
 
+  const focusRequirementOption = useCallback((id: string) => {
+    const schedule =
+      typeof window.requestAnimationFrame === "function"
+        ? window.requestAnimationFrame
+        : (callback: FrameRequestCallback) =>
+            window.setTimeout(() => callback(performance.now()), 0);
+
+    schedule(() => {
+      document
+        .querySelector<HTMLElement>(
+          `[data-requirement-option-id="${toAttributeSelectorValue(id)}"]`,
+        )
+        ?.focus({ preventScroll: true });
+    });
+  }, []);
+
+  const selectRequirement = useCallback(
+    (item: Requirement) => {
+      setActiveId(item.id);
+      focusRequirementOption(item.id);
+    },
+    [focusRequirementOption],
+  );
+
   useListKeyboardNav<Requirement>({
     items: filtered,
     activeId,
     getId: (item) => item.id,
-    onSelect: (item) => setActiveId(item.id),
+    onSelect: selectRequirement,
     onOpen: openRequirement,
     onEdit: openRequirement,
   });
@@ -366,14 +390,28 @@ export function RequirementsPage() {
     );
   } else {
     body = (
-      <ul data-testid="requirements-list" className="divide-y divide-border">
+      <ul
+        data-testid="requirements-list"
+        className="divide-y divide-border"
+        role="listbox"
+        aria-label={t("list.title")}
+      >
         {filtered.map((req) => (
-          <li key={req.id} data-testid={`requirements-row-${req.id}`}>
+          <li
+            key={req.id}
+            data-testid={`requirements-row-${req.id}`}
+            role="none"
+          >
             <Link
               href={`/requirements/${req.id}`}
               onClick={() => rememberRequirement(req)}
+              onFocus={() => setActiveId(req.id)}
+              role="option"
+              aria-selected={activeId === req.id}
+              tabIndex={!activeId || activeId === req.id ? 0 : -1}
+              data-requirement-option-id={req.id}
               className={cn(
-                "flex w-full items-start gap-3 px-6 py-3 text-left transition-colors hover:bg-muted/40 cursor-pointer",
+                "flex w-full cursor-pointer items-start gap-3 px-6 py-3 text-left transition-colors hover:bg-muted/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset",
                 activeId === req.id && "bg-muted/40",
               )}
             >
@@ -567,6 +605,10 @@ function optionalFilterValue(value: string): string | undefined {
 function normalizeSearchParam(value: string | null): string | undefined {
   const normalized = value?.trim();
   return normalized ? normalized : undefined;
+}
+
+function toAttributeSelectorValue(value: string): string {
+  return value.replace(/\\/g, "\\\\").replace(/"/g, '\\"');
 }
 
 function canWriteRequirements(

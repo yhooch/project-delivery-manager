@@ -106,7 +106,11 @@ vi.mock("../../lib/intake-service", () => ({
   listIntakeItems: listIntakeItemsMock,
 }));
 
-import { CommandPalette, openCommandPalette } from "./command-palette";
+import {
+  CommandPalette,
+  openCommandPalette,
+  useCommandPaletteShortcut,
+} from "./command-palette";
 import { createRecentStorageKey } from "./recent-opens";
 
 const RECENT_KEY = createRecentStorageKey({
@@ -186,7 +190,13 @@ beforeEach(() => {
 
 afterEach(() => {
   cleanup();
+  vi.useRealTimers();
 });
+
+function ShortcutProbe() {
+  useCommandPaletteShortcut();
+  return null;
+}
 
 describe("CommandPalette", () => {
   it("renders navigation / switchSpace / create / preferences groups when open with empty query", async () => {
@@ -238,7 +248,7 @@ describe("CommandPalette", () => {
     expect(routerPushMock).toHaveBeenCalledWith("/organization");
   });
 
-  it("gates settings by current space but keeps organization visible for members", async () => {
+  it("gates settings by current space and organization by OWNER/ADMIN role", async () => {
     sessionMock.current = {
       ...sessionMock.current,
       currentOrganization: {
@@ -264,8 +274,8 @@ describe("CommandPalette", () => {
       screen.queryByTestId("command-palette-nav-settings"),
     ).not.toBeInTheDocument();
     expect(
-      screen.getByTestId("command-palette-nav-organization"),
-    ).toBeInTheDocument();
+      screen.queryByTestId("command-palette-nav-organization"),
+    ).not.toBeInTheDocument();
   });
 
   it("hides create commands when there is no current space", async () => {
@@ -378,7 +388,7 @@ describe("CommandPalette", () => {
       spaceId: "SPC_01",
       organizationId: "ORG_01",
       page: 1,
-      pageSize: 100,
+      pageSize: 25,
     });
 
     fireEvent.click(await screen.findByTestId("command-palette-nav-spaces"));
@@ -608,5 +618,40 @@ describe("CommandPalette", () => {
     expect(sessionMock.current.persistPreferences).toHaveBeenCalledWith({
       themeMode: "DARK",
     });
+  });
+
+  it("navigates with G chords and cancels the sequence on Escape, blur, or timeout", () => {
+    const { unmount } = render(<ShortcutProbe />);
+
+    for (const [key, route] of [
+      ["i", "/"],
+      ["v", "/versions"],
+      ["r", "/requirements"],
+      ["b", "/bugs"],
+    ] as const) {
+      fireEvent.keyDown(window, { key: "g" });
+      fireEvent.keyDown(window, { key });
+      expect(routerPushMock).toHaveBeenLastCalledWith(route);
+    }
+    expect(routerPushMock).toHaveBeenCalledTimes(4);
+
+    fireEvent.keyDown(window, { key: "g" });
+    fireEvent.keyDown(window, { key: "Escape" });
+    fireEvent.keyDown(window, { key: "v" });
+    expect(routerPushMock).toHaveBeenCalledTimes(4);
+
+    fireEvent.keyDown(window, { key: "g" });
+    fireEvent.blur(window);
+    fireEvent.keyDown(window, { key: "r" });
+    expect(routerPushMock).toHaveBeenCalledTimes(4);
+
+    unmount();
+
+    vi.useFakeTimers();
+    render(<ShortcutProbe />);
+    fireEvent.keyDown(window, { key: "g" });
+    vi.advanceTimersByTime(801);
+    fireEvent.keyDown(window, { key: "b" });
+    expect(routerPushMock).toHaveBeenCalledTimes(4);
   });
 });

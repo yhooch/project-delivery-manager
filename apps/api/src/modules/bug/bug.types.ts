@@ -117,7 +117,7 @@ export type CreateAuditLogInput = AuditMetadata & {
   actorId?: string;
   organizationId: string;
   spaceId?: string;
-  targetType: "BUG" | "SPACE" | "WORK_ITEM";
+  targetType: "SPACE" | "WORK_ITEM";
   targetId: string;
   before?: Record<string, unknown>;
   after?: Record<string, unknown>;

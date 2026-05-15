@@ -21,6 +21,7 @@ import type { ComponentType, SVGProps } from "react";
 import { useSession } from "../providers/session-provider";
 
 import { Link, usePathname } from "../../i18n/routing";
+import { canManageOrganization } from "../../lib/space-service";
 import { cn } from "../../lib/utils";
 
 type NavItem = {
@@ -49,6 +50,9 @@ export function Sidebar({ className, onNavigate }: SidebarProps) {
   const { currentOrganization } = useSession();
 
   const hasCurrentOrganization = Boolean(currentOrganization);
+  const canManageCurrentOrganization = canManageOrganization(
+    currentOrganization?.role,
+  );
   const groups: NavGroup[] = [
     {
       key: "work",
@@ -176,7 +180,7 @@ export function Sidebar({ className, onNavigate }: SidebarProps) {
                       href={item.href}
                       onClick={onNavigate}
                       className={cn(
-                        "group flex h-7 items-center gap-2 rounded-md px-2 text-[13px] transition-colors",
+                        "group flex h-7 items-center gap-2 rounded-md px-2 text-[13px] transition-colors [@media(pointer:coarse)]:h-11",
                         isActive
                           ? "bg-muted text-foreground font-medium"
                           : "text-muted-foreground hover:bg-muted/50 hover:text-foreground",
@@ -202,13 +206,13 @@ export function Sidebar({ className, onNavigate }: SidebarProps) {
           </div>
         ))}
 
-        {hasCurrentOrganization && (
+        {hasCurrentOrganization && canManageCurrentOrganization && (
           <details
             className="group flex flex-col gap-0.5 border-t border-border pt-2"
             data-testid="sidebar-organization-section"
             open
           >
-            <summary className="flex h-7 cursor-pointer list-none items-center gap-2 rounded-md px-2 text-[10px] font-medium uppercase tracking-wider text-muted-foreground transition-colors hover:bg-muted/50 hover:text-foreground [&::-webkit-details-marker]:hidden">
+            <summary className="flex h-7 cursor-pointer list-none items-center gap-2 rounded-md px-2 text-[10px] font-medium uppercase tracking-wider text-muted-foreground transition-colors hover:bg-muted/50 hover:text-foreground [@media(pointer:coarse)]:h-11 [&::-webkit-details-marker]:hidden">
               <Cog className="h-3.5 w-3.5 shrink-0" />
               <span className="flex-1 truncate">
                 {tShell("group.organization")}
@@ -221,7 +225,7 @@ export function Sidebar({ className, onNavigate }: SidebarProps) {
                   href="/organization"
                   onClick={onNavigate}
                   className={cn(
-                    "flex h-7 items-center gap-2 rounded-md px-2 text-[13px] transition-colors",
+                    "flex h-7 items-center gap-2 rounded-md px-2 text-[13px] transition-colors [@media(pointer:coarse)]:h-11",
                     pathname === "/organization" ||
                       pathname.startsWith("/organization/")
                       ? "bg-muted text-foreground font-medium"

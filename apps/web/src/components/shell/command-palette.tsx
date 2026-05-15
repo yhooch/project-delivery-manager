@@ -26,6 +26,7 @@ import { formatDisplayCode } from "../../lib/display-code";
 import { listIntakeItems } from "../../lib/intake-service";
 import { toThemeMode, type NextThemeMode } from "../../lib/preferences";
 import { listRequirements } from "../../lib/requirement-service";
+import { canManageOrganization } from "../../lib/space-service";
 import { listWorkItems } from "../../lib/work-item-service";
 
 import {
@@ -52,20 +53,76 @@ import {
 } from "./recent-opens";
 
 let openExternal: ((open?: boolean) => void) | null = null;
+const GO_CHORD_TIMEOUT_MS = 800;
 
 export function openCommandPalette() {
   openExternal?.(true);
+}
+
+function isEditableTarget(target: EventTarget | null): boolean {
+  if (!target || !(target instanceof HTMLElement)) {
+    return false;
+  }
+
+  const tag = target.tagName;
+  return tag === "INPUT" || tag === "TEXTAREA" || target.isContentEditable;
 }
 
 export function useCommandPaletteShortcut() {
   const router = useRouter();
 
   useEffect(() => {
+    let sequenceHandler: ((next: KeyboardEvent) => void) | null = null;
+    let sequenceTimeout: number | null = null;
+
+    const clearSequence = () => {
+      if (sequenceHandler) {
+        window.removeEventListener("keydown", sequenceHandler);
+        sequenceHandler = null;
+      }
+      if (sequenceTimeout) {
+        window.clearTimeout(sequenceTimeout);
+        sequenceTimeout = null;
+      }
+      window.removeEventListener("blur", clearSequence);
+    };
+
+    const startGoSequence = () => {
+      clearSequence();
+
+      sequenceHandler = (next: KeyboardEvent) => {
+        if (next.key === "Escape") {
+          next.preventDefault();
+          clearSequence();
+          return;
+        }
+
+        if (isEditableTarget(next.target)) {
+          clearSequence();
+          return;
+        }
+
+        const routes: Record<string, string> = {
+          i: "/",
+          v: "/versions",
+          r: "/requirements",
+          b: "/bugs",
+        };
+        const route = routes[next.key.toLowerCase()];
+        clearSequence();
+        if (route) {
+          next.preventDefault();
+          router.push(route);
+        }
+      };
+
+      window.addEventListener("keydown", sequenceHandler);
+      window.addEventListener("blur", clearSequence, { once: true });
+      sequenceTimeout = window.setTimeout(clearSequence, GO_CHORD_TIMEOUT_MS);
+    };
+
     const handler = (event: KeyboardEvent) => {
-      const target = event.target as HTMLElement | null;
-      const tag = target?.tagName;
-      const isInput =
-        tag === "INPUT" || tag === "TEXTAREA" || target?.isContentEditable;
+      const isInput = isEditableTarget(event.target);
 
       if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "k") {
         event.preventDefault();
@@ -76,36 +133,16 @@ export function useCommandPaletteShortcut() {
       if (isInput) return;
 
       if (event.key.toLowerCase() === "g") {
-        const sequenceHandler = (next: KeyboardEvent) => {
-          window.removeEventListener("keydown", sequenceHandler);
-          // Ignore the chord if the user is typing in a form field by the
-          // time the second key fires.
-          const nextTarget = next.target as HTMLElement | null;
-          const nextTag = nextTarget?.tagName;
-          if (
-            nextTag === "INPUT" ||
-            nextTag === "TEXTAREA" ||
-            nextTarget?.isContentEditable
-          ) {
-            return;
-          }
-          const routes: Record<string, string> = {
-            i: "/",
-            v: "/versions",
-            r: "/requirements",
-            b: "/bugs",
-          };
-          const route = routes[next.key.toLowerCase()];
-          if (route) {
-            router.push(route);
-          }
-        };
-        window.addEventListener("keydown", sequenceHandler, { once: true });
+        event.preventDefault();
+        startGoSequence();
       }
     };
 
     window.addEventListener("keydown", handler);
-    return () => window.removeEventListener("keydown", handler);
+    return () => {
+      clearSequence();
+      window.removeEventListener("keydown", handler);
+    };
   }, [router]);
 }
 
@@ -142,7 +179,7 @@ function withDetailHref(item: SearchResult): SearchResult {
   return { ...item, href: getDetailHref(item) };
 }
 
-const PAGE_SIZE = 100;
+const PAGE_SIZE = 25;
 
 export function CommandPalette() {
   const t = useTranslations("shell.command");
@@ -167,6 +204,9 @@ export function CommandPalette() {
   const spaceId = session?.defaultSpaceId;
   const organizationId = session?.defaultOrganizationId;
   const hasCurrentOrganization = Boolean(currentOrganization);
+  const canManageCurrentOrganization = canManageOrganization(
+    currentOrganization?.role,
+  );
   const effectiveCurrentSpace =
     currentSpace ??
     spacesForCurrentOrganization.find((space) => space.id === spaceId);
@@ -555,7 +595,7 @@ export function CommandPalette() {
                   <span>{t("nav.spaceSettings")}</span>
                 </CommandItem>
               )}
-              {hasCurrentOrganization && (
+              {hasCurrentOrganization && canManageCurrentOrganization && (
                 <CommandItem
                   data-testid="command-palette-nav-organization"
                   onSelect={() => navigate("/organization")}

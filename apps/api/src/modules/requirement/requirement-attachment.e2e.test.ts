@@ -4,7 +4,6 @@ import {
   AttachmentMaxCountPerTarget,
   AttachmentMaxSizeBytes,
   type Attachment,
-  type AttachmentMimeType,
   type AttachmentTargetType,
   type Organization,
   type OrganizationMember,
@@ -89,6 +88,8 @@ describe("requirement and attachment API", () => {
     process.env["NODE_ENV"] = "test";
     process.env["SESSION_COOKIE_NAME"] = "pdm_session";
     process.env["WEB_APP_URL"] = ORIGIN;
+    process.env["ATTACHMENT_OBJECT_STORAGE_ORIGIN"] =
+      "https://object-storage.local";
 
     users = new InMemoryUserRepository();
     organizations = new InMemoryOrganizationRepository(users);
@@ -642,6 +643,30 @@ describe("requirement and attachment API", () => {
       .expect(({ body }) => {
         expect(body.code).toBe("UNSUPPORTED_MIME_TYPE");
       });
+    await createAttachment(agent, {
+      targetType: "REQUIREMENT",
+      targetId: draft.id,
+      fileName: "large.png",
+      fileKey: `attachments/requirement/${draft.id}/large.png`,
+      mimeType: "image/png",
+      size: AttachmentMaxSizeBytes + 1,
+    })
+      .expect(400)
+      .expect(({ body }) => {
+        expect(body.code).toBe("FILE_TOO_LARGE");
+      });
+    await createAttachment(agent, {
+      targetType: "REQUIREMENT",
+      targetId: draft.id,
+      fileName: "bad.exe",
+      fileKey: `attachments/requirement/${draft.id}/bad.exe`,
+      mimeType: "application/x-msdownload",
+      size: 1024,
+    })
+      .expect(400)
+      .expect(({ body }) => {
+        expect(body.code).toBe("UNSUPPORTED_MIME_TYPE");
+      });
 
     await patchRequirement(agent, draft.id, {
       title: "已确认需求",
@@ -839,7 +864,7 @@ describe("requirement and attachment API", () => {
     agent: request.Agent,
     body: {
       fileName: string;
-      mimeType: AttachmentMimeType;
+      mimeType: string;
       size: number;
       targetId: string;
       targetType: AttachmentTargetType;
@@ -856,7 +881,7 @@ describe("requirement and attachment API", () => {
     body: {
       fileKey: string;
       fileName: string;
-      mimeType: AttachmentMimeType;
+      mimeType: string;
       size: number;
       targetId: string;
       targetType: AttachmentTargetType;

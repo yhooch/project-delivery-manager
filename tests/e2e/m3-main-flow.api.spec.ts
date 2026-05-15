@@ -421,13 +421,15 @@ test.describe("M3 自动化主链路与回归用例", () => {
         expect.arrayContaining([
           expect.objectContaining({
             actionType: "CREATE",
+            metadata: expect.objectContaining({ workItemType: "BUG" }),
             targetId: bug.id,
-            targetType: "BUG",
+            targetType: "WORK_ITEM",
           }),
           expect.objectContaining({
             actionType: "UPDATE",
+            metadata: expect.objectContaining({ workItemType: "BUG" }),
             targetId: bug.id,
-            targetType: "BUG",
+            targetType: "WORK_ITEM",
           }),
         ]),
       );

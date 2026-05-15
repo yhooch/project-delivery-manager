@@ -12,6 +12,8 @@ import {
   Bug,
   CheckCircle2,
   ChevronDown,
+  ChevronLeft,
+  ChevronRight,
   Clock,
   Filter,
   GitBranch,
@@ -113,6 +115,8 @@ const exceptionFilterControls: M4ViewFilterControlModel[] =
     (control) => control.id !== "exceptionType",
   );
 
+const EXCEPTIONS_PAGE_SIZE = 200;
+
 type ExceptionFilterValues = {
   assigneeId?: string;
   statusCategory?: StatusCategory;
@@ -153,6 +157,7 @@ export function ExceptionsPage() {
   );
   const [filters, setFilters] =
     useState<ExceptionFilterValues>(requestedFilters);
+  const [page, setPage] = useState(1);
   const [thresholdValue, setThresholdValue] = useState<number | null>(null);
   const [thresholdErrorKey, setThresholdErrorKey] = useState<string | null>(
     null,
@@ -184,10 +189,12 @@ export function ExceptionsPage() {
 
   useEffect(() => {
     setTabValue(requestedExceptionType);
+    setPage(1);
   }, [requestedExceptionType]);
 
   useEffect(() => {
     setFilters(requestedFilters);
+    setPage(1);
   }, [requestedFilters]);
 
   useEffect(() => {
@@ -204,6 +211,7 @@ export function ExceptionsPage() {
         ? { ...current, versionId: undefined }
         : current,
     );
+    setPage(1);
     const params = new URLSearchParams(searchParams.toString());
     params.delete("versionId");
     const query = params.toString();
@@ -241,8 +249,8 @@ export function ExceptionsPage() {
         statusCategory: effectiveFilters.statusCategory,
         workItemType: effectiveFilters.workItemType,
         exceptionType: tabValue,
-        page: 1,
-        pageSize: 200,
+        page,
+        pageSize: EXCEPTIONS_PAGE_SIZE,
       });
       if (requestSeq.current !== requestId) {
         return;
@@ -264,6 +272,7 @@ export function ExceptionsPage() {
     effectiveFilters.versionId,
     effectiveFilters.workItemType,
     organizationId,
+    page,
     spaceId,
     tabValue,
   ]);
@@ -298,64 +307,8 @@ export function ExceptionsPage() {
   }, [spaceId]);
 
   useEffect(() => {
-    if (!spaceId) {
-      requestSeq.current += 1;
-      setView(null);
-      setIsLoading(false);
-      return;
-    }
-
-    const requestId = requestSeq.current + 1;
-    requestSeq.current = requestId;
-
-    async function load() {
-      setView(null);
-      setIsLoading(true);
-      setErrorKey(null);
-
-      try {
-        const next = await getSpaceExceptionsView({
-          spaceId: spaceId!,
-          organizationId,
-          versionId: effectiveFilters.versionId,
-          assigneeId: effectiveFilters.assigneeId,
-          statusCategory: effectiveFilters.statusCategory,
-          workItemType: effectiveFilters.workItemType,
-          exceptionType: tabValue,
-          page: 1,
-          pageSize: 200,
-        });
-
-        if (requestSeq.current === requestId) {
-          setView(next);
-        }
-      } catch (error) {
-        if (requestSeq.current === requestId) {
-          setErrorKey(getApiErrorMessageKey(error));
-        }
-      } finally {
-        if (requestSeq.current === requestId) {
-          setIsLoading(false);
-        }
-      }
-    }
-
-    void load();
-
-    return () => {
-      if (requestSeq.current === requestId) {
-        requestSeq.current += 1;
-      }
-    };
-  }, [
-    effectiveFilters.assigneeId,
-    effectiveFilters.statusCategory,
-    effectiveFilters.versionId,
-    effectiveFilters.workItemType,
-    organizationId,
-    spaceId,
-    tabValue,
-  ]);
+    void fetchView();
+  }, [fetchView]);
 
   const grouped = useMemo(() => {
     const viewExceptionType = view?.filters?.exceptionType ?? tabValue;
@@ -379,6 +332,24 @@ export function ExceptionsPage() {
     () => grouped.find((tab) => tab.key === tabValue)?.items ?? [],
     [grouped, tabValue],
   );
+
+  const pagination = useMemo(() => {
+    const pageResult = view?.items;
+    const total = pageResult?.total ?? 0;
+    const pageSize = pageResult?.pageSize ?? EXCEPTIONS_PAGE_SIZE;
+    const currentPage = pageResult?.page ?? page;
+    const pageCount = Math.max(1, Math.ceil(total / pageSize));
+    const from = total === 0 ? 0 : (currentPage - 1) * pageSize + 1;
+    const to = total === 0 ? 0 : Math.min(currentPage * pageSize, total);
+
+    return {
+      from,
+      page: currentPage,
+      pageCount,
+      to,
+      total,
+    };
+  }, [page, view?.items]);
 
   const buildExceptionViewModel = useCallback(
     (item: SpaceExceptionItem): WorkItemViewModel => {
@@ -522,6 +493,7 @@ export function ExceptionsPage() {
               ? normalizeWorkItemType(value ?? null)
               : normalizeSearchParam(value ?? null),
       };
+      setPage(1);
       setFilters(nextFilters);
       const params = new URLSearchParams(searchParams.toString());
       for (const control of exceptionFilterControls) {
@@ -539,6 +511,7 @@ export function ExceptionsPage() {
     [filters, pathname, router, searchParams],
   );
   const clearFilters = useCallback(() => {
+    setPage(1);
     setFilters({});
     const params = new URLSearchParams(searchParams.toString());
     for (const control of exceptionFilterControls) {
@@ -551,6 +524,7 @@ export function ExceptionsPage() {
   const handleTabChange = useCallback(
     (next: string) => {
       const nextType = normalizeExceptionType(next) ?? tabs[0].key;
+      setPage(1);
       setTabValue(nextType);
       replaceQueryParam("exceptionType", nextType);
     },
@@ -795,6 +769,21 @@ export function ExceptionsPage() {
                 })}
               </ul>
             )}
+            {tab.key === tabValue && view ? (
+              <ExceptionsPagination
+                loading={isLoading}
+                onPrevious={() =>
+                  setPage((current) => Math.max(1, current - 1))
+                }
+                onNext={() =>
+                  setPage((current) =>
+                    Math.min(pagination.pageCount, current + 1),
+                  )
+                }
+                pagination={pagination}
+                t={t}
+              />
+            ) : null}
           </TabsContent>
         ))}
       </Tabs>
@@ -821,6 +810,71 @@ export function ExceptionsPage() {
           spaceId={spaceId}
         />
       )}
+    </div>
+  );
+}
+
+function ExceptionsPagination({
+  loading,
+  onNext,
+  onPrevious,
+  pagination,
+  t,
+}: {
+  loading: boolean;
+  onNext: () => void;
+  onPrevious: () => void;
+  pagination: {
+    from: number;
+    page: number;
+    pageCount: number;
+    to: number;
+    total: number;
+  };
+  t: ReturnType<typeof useTranslations<"spaceExceptions">>;
+}) {
+  return (
+    <div
+      data-testid="exceptions-pagination"
+      className="flex flex-col gap-2 border-t border-border px-4 py-2 text-xs text-muted-foreground sm:flex-row sm:items-center sm:justify-between sm:px-6"
+    >
+      <span data-testid="exceptions-pagination-summary">
+        {t("pagination.summary", {
+          from: pagination.from,
+          page: pagination.page,
+          pageCount: pagination.pageCount,
+          to: pagination.to,
+          total: pagination.total,
+        })}
+      </span>
+      <div className="flex items-center gap-2">
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          className="h-8 text-xs"
+          data-testid="exceptions-pagination-previous"
+          aria-label={t("pagination.previousAria")}
+          disabled={loading || pagination.page <= 1}
+          onClick={onPrevious}
+        >
+          <ChevronLeft className="h-3 w-3" />
+          {t("pagination.previous")}
+        </Button>
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          className="h-8 text-xs"
+          data-testid="exceptions-pagination-next"
+          aria-label={t("pagination.nextAria")}
+          disabled={loading || pagination.page >= pagination.pageCount}
+          onClick={onNext}
+        >
+          {t("pagination.next")}
+          <ChevronRight className="h-3 w-3" />
+        </Button>
+      </div>
     </div>
   );
 }

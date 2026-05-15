@@ -1,3 +1,4 @@
+import type { ConfigService } from "@nestjs/config";
 import {
   AttachmentMaxCountPerTarget,
   AttachmentMaxSizeBytes,
@@ -101,6 +102,61 @@ describe("AttachmentService", () => {
         targetType: "ATTACHMENT",
       }),
     );
+  });
+
+  it("uses the configured object storage origin for upload and download URLs", async () => {
+    const actorUserId = ulid();
+    const organizationId = ulid();
+    const spaceId = ulid();
+    const workItemId = ulid();
+    const objectStorageOrigin = "https://storage.example.test";
+    const attachment = fakeAttachment(
+      ulid(),
+      `attachments/work_item/${workItemId}/spec.pdf`,
+    );
+    const attachments = {
+      countByTarget: vi.fn(async () => 0),
+      create: vi.fn(),
+      findById: vi.fn(async () => attachment),
+      listByTarget: vi.fn(),
+    } as unknown as AttachmentRepository;
+    const targets = {
+      resolve: vi.fn(async () => ({
+        organizationId,
+        spaceId,
+        targetId: workItemId,
+        targetType: "WORK_ITEM" as const,
+        title: "Task",
+        role: "PM" as const,
+        canWrite: true,
+      })),
+    } as unknown as TargetResolverService;
+    const config = {
+      get: vi.fn((key: string) =>
+        key === "ATTACHMENT_OBJECT_STORAGE_ORIGIN"
+          ? objectStorageOrigin
+          : undefined,
+      ),
+    } as unknown as ConfigService;
+    const service = new AttachmentService(
+      attachments,
+      {} as RequirementRepository,
+      targets,
+      createAuditService(),
+      config,
+    );
+
+    const presign = await service.presign(actorUserId, {
+      targetType: "WORK_ITEM",
+      targetId: workItemId,
+      fileName: "spec.pdf",
+      mimeType: "application/pdf",
+      size: 1024,
+    });
+    const download = await service.getDownloadUrl(actorUserId, attachment.id);
+
+    expect(presign.uploadUrl).toContain(`${objectStorageOrigin}/upload/`);
+    expect(download.downloadUrl).toContain(`${objectStorageOrigin}/download/`);
   });
 
   it("does not create attachments when WORK_ITEM visibility resolution rejects", async () => {

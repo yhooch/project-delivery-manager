@@ -2,7 +2,6 @@ import type {
   DefaultWorkflowSummary,
   Space,
   SpaceMemberWithUser,
-  SpaceOverviewStats,
   VersionSummary,
 } from "@project-delivery/shared";
 
@@ -57,7 +56,6 @@ export type SpaceRepository = {
   getSpaceOverviewView(
     input: SpaceOverviewViewInput,
   ): Promise<SpaceOverviewViewResult>;
-  getOverviewStats(spaceId: string): Promise<SpaceOverviewStats>;
   findCurrentVersion(spaceId: string): Promise<VersionSummary | undefined>;
   listByOrganizationId(
     organizationId: string,

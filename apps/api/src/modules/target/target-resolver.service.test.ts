@@ -555,7 +555,6 @@ function createResolver() {
     findCurrentVersion: vi.fn(),
     findMemberById: vi.fn(),
     findMemberByUserId: vi.fn(),
-    getOverviewStats: vi.fn(),
     listByOrganizationId: vi.fn(),
     listDefaultWorkflows: vi.fn(),
     listMembers: vi.fn(),

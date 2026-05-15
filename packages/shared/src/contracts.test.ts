@@ -949,7 +949,7 @@ describe("shared contracts", () => {
     ).toEqual({ status: "ARCHIVED" });
   });
 
-  it("enforces M1 attachment request file constraints at the shared boundary", () => {
+  it("keeps M1 attachment request validation structural at the shared boundary", () => {
     expect(() =>
       PresignAttachmentRequestSchema.parse({
         targetType: "REQUIREMENT",
@@ -968,7 +968,7 @@ describe("shared contracts", () => {
         mimeType: "application/octet-stream",
         size: 1024,
       }).success,
-    ).toBe(false);
+    ).toBe(true);
 
     expect(
       PresignAttachmentRequestSchema.safeParse({
@@ -977,6 +977,26 @@ describe("shared contracts", () => {
         fileName: "huge.pdf",
         mimeType: "application/pdf",
         size: 20 * 1024 * 1024 + 1,
+      }).success,
+    ).toBe(true);
+
+    expect(
+      PresignAttachmentRequestSchema.safeParse({
+        targetType: "REQUIREMENT",
+        targetId: "01FRZ3NDEKTSV4RRFFQ69G5FAE",
+        fileName: "empty.txt",
+        mimeType: "",
+        size: 1024,
+      }).success,
+    ).toBe(false);
+
+    expect(
+      PresignAttachmentRequestSchema.safeParse({
+        targetType: "REQUIREMENT",
+        targetId: "01FRZ3NDEKTSV4RRFFQ69G5FAE",
+        fileName: "fractional.pdf",
+        mimeType: "application/pdf",
+        size: 1024.5,
       }).success,
     ).toBe(false);
   });

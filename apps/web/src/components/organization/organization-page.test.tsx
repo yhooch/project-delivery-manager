@@ -453,7 +453,7 @@ describe("OrganizationPage", () => {
     );
   });
 
-  it("renders read-only controls for non OWNER/ADMIN organization roles", async () => {
+  it("renders a no-permission empty state for non OWNER/ADMIN organization roles", async () => {
     sessionMock.current = {
       session: {
         defaultOrganizationId: "ORG_01",
@@ -469,33 +469,21 @@ describe("OrganizationPage", () => {
       refreshSession: sessionMock.refreshSession,
       status: "authenticated" as const,
     };
-    listOrganizationMembersMock.mockResolvedValueOnce({
-      items: [
-        makeOrgMember({
-          id: "OM_MEMBER",
-          role: "MEMBER",
-          user: { id: "U_MEMBER", name: "Mallory", username: "mallory" },
-        }),
-      ],
-      total: 1,
-    });
 
     render(<OrganizationPage />);
 
-    expect(await screen.findByText("Mallory")).toBeInTheDocument();
     expect(
-      screen.getByTestId("organization-readonly-notice"),
-    ).toHaveTextContent("organization.members.readOnly");
-    expect(screen.getByTestId("organization-add-member-button")).toBeDisabled();
-    expect(screen.getByTestId("organization-profile-name")).toHaveAttribute(
-      "readonly",
-    );
-    expect(screen.getByTestId("organization-profile-status")).toBeDisabled();
+      await screen.findByText("organization.page.noPermission.title"),
+    ).toBeInTheDocument();
     expect(
-      screen.queryByTestId("organization-member-disable-OM_MEMBER"),
+      screen.getByText("organization.page.noPermission.description"),
+    ).toBeInTheDocument();
+    expect(listOrganizationMembersMock).not.toHaveBeenCalled();
+    expect(
+      screen.queryByTestId("organization-add-member-button"),
     ).not.toBeInTheDocument();
     expect(
-      screen.queryByTestId("organization-member-edit-role-OM_MEMBER"),
+      screen.queryByTestId("organization-profile-name"),
     ).not.toBeInTheDocument();
   });
 

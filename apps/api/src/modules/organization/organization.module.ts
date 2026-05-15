@@ -1,4 +1,4 @@
-import { Module } from "@nestjs/common";
+import { forwardRef, Module } from "@nestjs/common";
 
 import { PrismaModule } from "../../prisma/prisma.module";
 import { AuditModule } from "../audit/audit.module";
@@ -16,7 +16,12 @@ import { PrismaOrganizationRepository } from "./prisma-organization.repository";
 @Module({
   controllers: [AppSessionController, OrganizationController],
   exports: [AppSessionService, ORGANIZATION_REPOSITORY],
-  imports: [AuditModule, AuthModule, IdentityModule, PrismaModule],
+  imports: [
+    AuditModule,
+    forwardRef(() => AuthModule),
+    IdentityModule,
+    PrismaModule,
+  ],
   providers: [
     AppSessionService,
     OrganizationService,

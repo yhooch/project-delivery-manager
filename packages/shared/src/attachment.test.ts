@@ -9,7 +9,7 @@ import {
 const TARGET_ID = "01H00000000000000000000001";
 
 describe("attachment schemas", () => {
-  it("accepts allowed MIME types up to the shared 20MB limit", () => {
+  it("accepts structurally valid upload metadata for presign requests", () => {
     expect(
       PresignAttachmentRequestSchema.parse({
         targetType: "REQUIREMENT",
@@ -24,13 +24,36 @@ describe("attachment schemas", () => {
     });
   });
 
-  it("rejects unsupported MIME types and files larger than 20MB", () => {
+  it("leaves MIME allow-list and max-size checks to the attachment domain service", () => {
     expect(
       PresignAttachmentRequestSchema.safeParse({
         targetType: "REQUIREMENT",
         targetId: TARGET_ID,
         fileName: "archive.bin",
         mimeType: "application/octet-stream",
+        size: 1024,
+      }).success,
+    ).toBe(true);
+
+    expect(
+      CreateAttachmentRequestSchema.safeParse({
+        targetType: "REQUIREMENT",
+        targetId: TARGET_ID,
+        fileName: "spec.pdf",
+        fileKey: `attachments/requirement/${TARGET_ID}/spec.pdf`,
+        mimeType: "application/pdf",
+        size: AttachmentMaxSizeBytes + 1,
+      }).success,
+    ).toBe(true);
+  });
+
+  it("still rejects structurally invalid upload metadata", () => {
+    expect(
+      PresignAttachmentRequestSchema.safeParse({
+        targetType: "REQUIREMENT",
+        targetId: TARGET_ID,
+        fileName: "empty.txt",
+        mimeType: "",
         size: 1024,
       }).success,
     ).toBe(false);
@@ -42,7 +65,18 @@ describe("attachment schemas", () => {
         fileName: "spec.pdf",
         fileKey: `attachments/requirement/${TARGET_ID}/spec.pdf`,
         mimeType: "application/pdf",
-        size: AttachmentMaxSizeBytes + 1,
+        size: 0,
+      }).success,
+    ).toBe(false);
+
+    expect(
+      CreateAttachmentRequestSchema.safeParse({
+        targetType: "REQUIREMENT",
+        targetId: TARGET_ID,
+        fileName: "spec.pdf",
+        fileKey: `attachments/requirement/${TARGET_ID}/spec.pdf`,
+        mimeType: "application/pdf",
+        size: 1024.5,
       }).success,
     ).toBe(false);
   });

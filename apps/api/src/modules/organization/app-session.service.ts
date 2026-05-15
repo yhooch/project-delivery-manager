@@ -11,6 +11,11 @@ import {
   type OrganizationRepository,
 } from "./organization.repository";
 
+type SessionSummaryRepository = Pick<
+  OrganizationRepository,
+  "listSessionSpaceSummaries" | "listSessionSummaries"
+>;
+
 @Injectable()
 export class AppSessionService {
   constructor(
@@ -23,9 +28,11 @@ export class AppSessionService {
     recentOrganizationId?: string,
     recentSpaceId?: string,
   ): Promise<AppSession> {
+    const sessionRepository =
+      this.organizations as Partial<SessionSummaryRepository>;
     const [organizations, spaces] = await Promise.all([
-      this.organizations.listSessionSummaries(user.id),
-      this.organizations.listSessionSpaceSummaries(user.id),
+      listSessionSummaries(sessionRepository, user.id),
+      listSessionSpaceSummaries(sessionRepository, user.id),
     ]);
     const defaultOrganization = chooseDefaultOrganization(
       organizations,
@@ -54,6 +61,24 @@ export class AppSessionService {
       },
     };
   }
+}
+
+function listSessionSummaries(
+  repository: Partial<SessionSummaryRepository>,
+  userId: string,
+): Promise<SessionOrganizationSummary[]> {
+  return typeof repository.listSessionSummaries === "function"
+    ? repository.listSessionSummaries(userId)
+    : Promise.resolve([]);
+}
+
+function listSessionSpaceSummaries(
+  repository: Partial<SessionSummaryRepository>,
+  userId: string,
+): Promise<SessionSpaceSummary[]> {
+  return typeof repository.listSessionSpaceSummaries === "function"
+    ? repository.listSessionSpaceSummaries(userId)
+    : Promise.resolve([]);
 }
 
 function chooseDefaultOrganization<

@@ -16,7 +16,8 @@ import {
 } from "../identity/identity.repository";
 import { IdentityUserService } from "../identity/identity-user.service";
 import type { IdentityUser } from "../identity/identity.types";
-import { AuthSessionBuilder } from "./auth-session.builder";
+import { AppSessionService } from "../organization/app-session.service";
+import { toSessionUser } from "./auth-session.builder";
 import { AuthSessionService } from "./auth-session.service";
 import type { AuthResult, RequestMetadata } from "./auth-session.types";
 import { RateLimiterService } from "./rate-limiter.service";
@@ -34,8 +35,8 @@ export class AuthService {
     private readonly identityUsers: IdentityUserService,
     @Inject(AuthSessionService)
     private readonly sessions: AuthSessionService,
-    @Inject(AuthSessionBuilder)
-    private readonly sessionBuilder: AuthSessionBuilder,
+    @Inject(AppSessionService)
+    private readonly appSessions: AppSessionService,
     @Inject(RateLimiterService)
     private readonly rateLimiter: RateLimiterService,
     @Inject(AuditService)
@@ -82,7 +83,7 @@ export class AuthService {
     });
 
     return {
-      appSession: this.sessionBuilder.buildIdentitySession(user),
+      appSession: await this.appSessions.buildForUser(toSessionUser(user)),
       cookie: {
         name: this.sessions.getCookieName(),
         token: createdSession.token,
@@ -122,7 +123,7 @@ export class AuthService {
     });
 
     return {
-      appSession: this.sessionBuilder.buildIdentitySession(user),
+      appSession: await this.appSessions.buildForUser(toSessionUser(user)),
       cookie: {
         name: this.sessions.getCookieName(),
         token: createdSession.token,

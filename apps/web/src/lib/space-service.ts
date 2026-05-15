@@ -8,7 +8,6 @@ import type {
   RecordStatus,
   Space,
   SpaceMemberWithUser,
-  SpaceOverview,
   SpaceRole,
   SpaceSummary,
   UpdateOrganizationMemberRequest,
@@ -158,17 +157,6 @@ export async function updateSpace(
   return response.data;
 }
 
-export async function getSpaceOverview(
-  spaceId: string,
-  api: WorkspaceApiTransport = defaultApi,
-): Promise<SpaceOverview> {
-  const response = await api.get<SpaceOverview>(
-    `/views/spaces/${spaceId}/overview`,
-  );
-
-  return response.data;
-}
-
 export async function listSpaceMembers(
   spaceId: string,
   optionsOrApi: ListSpaceMembersOptions | WorkspaceApiTransport = {},
@@ -238,6 +226,5 @@ export type {
   OrganizationMemberWithUser,
   Space,
   SpaceMemberWithUser,
-  SpaceOverview,
   SpaceSummary,
 };

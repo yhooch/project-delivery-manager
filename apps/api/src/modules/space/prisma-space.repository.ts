@@ -94,6 +94,11 @@ const INTAKE_ITEM_READ_ALL_ROLES = new Set<SpaceRole>([
   "PM",
   "VIEWER",
 ]);
+const AGGREGATE_STATS_READ_ALL_ROLES = new Set<SpaceRole>([
+  "SPACE_ADMIN",
+  "PM",
+  "VIEWER",
+]);
 
 @Injectable()
 export class PrismaSpaceRepository implements SpaceRepository {
@@ -652,7 +657,7 @@ export class PrismaSpaceRepository implements SpaceRepository {
           items: actionTodos,
         },
         pendingConfirm: {
-          title: "待我确认",
+          title: "待确认",
           total: pendingConfirm.total,
           items: pendingConfirm,
         },
@@ -689,6 +694,10 @@ export class PrismaSpaceRepository implements SpaceRepository {
       organizationId: input.space.organizationId,
       versionId: input.versionId,
     });
+    const visibleRequirementWhere = buildVisibleRequirementWhere(context, {
+      organizationId: input.space.organizationId,
+      versionId: input.versionId,
+    });
     const nonTerminalWhere = andWorkItemWhere(visibleWhere, {
       statusCategory: {
         notIn: TERMINAL_STATUS_CATEGORIES,
@@ -720,11 +729,7 @@ export class PrismaSpaceRepository implements SpaceRepository {
         },
       }),
       this.prisma.client.requirement.count({
-        where: {
-          deletedAt: null,
-          spaceId: input.space.id,
-          versionId: input.versionId,
-        },
+        where: visibleRequirementWhere,
       }),
       input.versionId
         ? this.findVersionById(input.space.id, input.versionId)
@@ -783,10 +788,14 @@ export class PrismaSpaceRepository implements SpaceRepository {
         staleThresholdDays,
       ),
     ]);
+    const visibleCurrentVersion =
+      currentVersion && shouldScopeAggregateStats(context)
+        ? await this.withVisibleVersionSummaryStats(currentVersion, context)
+        : currentVersion;
 
     return {
       space: input.space,
-      currentVersion,
+      currentVersion: visibleCurrentVersion,
       stats: {
         versionCount,
         requirementCount,
@@ -874,35 +883,6 @@ export class PrismaSpaceRepository implements SpaceRepository {
       },
       counts,
       items,
-    };
-  }
-
-  async getOverviewStats(spaceId: string) {
-    const [versionCount, requirementCount] =
-      await this.prisma.client.$transaction([
-        this.prisma.client.version.count({
-          where: {
-            deletedAt: null,
-            spaceId,
-          },
-        }),
-        this.prisma.client.requirement.count({
-          where: {
-            deletedAt: null,
-            spaceId,
-          },
-        }),
-      ]);
-
-    return {
-      versionCount,
-      requirementCount,
-      taskCount: 0,
-      completedTaskCount: 0,
-      bugCount: 0,
-      openBugCount: 0,
-      blockedCount: 0,
-      overdueCount: 0,
     };
   }
 
@@ -1820,6 +1800,50 @@ export class PrismaSpaceRepository implements SpaceRepository {
       isStale(candidate.lastStatusChangedAt, candidate.spaceId, context, now),
     ).length;
   }
+
+  private async withVisibleVersionSummaryStats(
+    version: VersionSummary,
+    context: ViewAccessContext,
+  ): Promise<VersionSummary> {
+    const visibleWorkItemWhere = buildVisibleWorkItemWhere(context, {
+      organizationId: version.organizationId,
+      versionId: version.id,
+    });
+    const visibleRequirementWhere = buildVisibleRequirementWhere(context, {
+      organizationId: version.organizationId,
+      versionId: version.id,
+    });
+    const [requirementCount, taskCount, bugCount, blockedCount] =
+      await Promise.all([
+        this.prisma.client.requirement.count({
+          where: visibleRequirementWhere,
+        }),
+        this.prisma.client.workItem.count({
+          where: andWorkItemWhere(visibleWorkItemWhere, {
+            type: "TASK",
+          }),
+        }),
+        this.prisma.client.workItem.count({
+          where: andWorkItemWhere(visibleWorkItemWhere, {
+            type: "BUG",
+          }),
+        }),
+        this.prisma.client.workItem.count({
+          where: andWorkItemWhere(visibleWorkItemWhere, blockedWorkItemWhere()),
+        }),
+      ]);
+
+    return {
+      ...version,
+      stats: {
+        ...version.stats,
+        blockedCount,
+        bugCount,
+        requirementCount,
+        taskCount,
+      },
+    };
+  }
 }
 
 type ViewSpaceAccess = {
@@ -1959,6 +1983,63 @@ function buildVisibleWorkItemWhere(
           },
         }),
   };
+}
+
+function buildVisibleRequirementWhere(
+  context: ViewAccessContext,
+  filters: {
+    organizationId: string;
+    versionId?: string;
+  },
+): Prisma.RequirementWhereInput {
+  const readAllSpaceIds = context.accesses
+    .filter((access) => AGGREGATE_STATS_READ_ALL_ROLES.has(access.role))
+    .map((access) => access.spaceId);
+  const visibilityOr: Prisma.RequirementWhereInput[] = [];
+
+  if (readAllSpaceIds.length > 0) {
+    visibilityOr.push({
+      spaceId: {
+        in: readAllSpaceIds,
+      },
+    });
+  }
+
+  if (context.participantRequirementIds.length > 0) {
+    visibilityOr.push({
+      id: {
+        in: context.participantRequirementIds,
+      },
+    });
+  }
+
+  return {
+    deletedAt: null,
+    organizationId: filters.organizationId,
+    spaceId: {
+      in: context.spaceIds,
+    },
+    versionId: filters.versionId,
+    ...(visibilityOr.length > 0
+      ? {
+          OR: visibilityOr,
+        }
+      : {
+          id: {
+            in: [],
+          },
+        }),
+  };
+}
+
+function shouldScopeAggregateStats(context: ViewAccessContext): boolean {
+  const readAllSpaceIds = new Set(
+    context.accesses
+      .filter((access) => AGGREGATE_STATS_READ_ALL_ROLES.has(access.role))
+      .map((access) => access.spaceId),
+  );
+
+  return context.spaceIds.some((spaceId) => !readAllSpaceIds.has(spaceId));
 }
 
 function buildTimelineWhere(
@@ -2430,7 +2511,7 @@ function emptyWorkbenchResponse(
         items: emptyActionTodos,
       },
       pendingConfirm: {
-        title: "待我确认",
+        title: "待确认",
         total: 0,
         items: emptyWorkItems,
       },

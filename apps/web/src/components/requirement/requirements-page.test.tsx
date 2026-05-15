@@ -42,10 +42,12 @@ vi.mock("../../i18n/routing", () => ({
     children,
     href,
     onClick,
+    ...rest
   }: {
     children: React.ReactNode;
     href: string;
     onClick?: () => void;
+    [key: string]: unknown;
   }) => (
     <a
       href={href}
@@ -53,6 +55,7 @@ vi.mock("../../i18n/routing", () => ({
         event.preventDefault();
         onClick?.();
       }}
+      {...rest}
     >
       {children}
     </a>
@@ -269,6 +272,53 @@ describe("RequirementsPage", () => {
     expect(await screen.findByText("PM User (pm)")).toBeInTheDocument();
     // The list renders with the testid.
     expect(screen.getByTestId("requirements-list")).toBeInTheDocument();
+  });
+
+  it("marks the active requirement option for keyboard navigation", async () => {
+    listRequirementsMock.mockResolvedValueOnce({
+      items: [
+        makeRequirement({
+          id: "01ARZ3NDEKTSV4RRFFQ69G5FK1",
+          title: "First semantic requirement",
+          status: "CONFIRMED",
+        }),
+        makeRequirement({
+          id: "01ARZ3NDEKTSV4RRFFQ69G5FK2",
+          title: "Second semantic requirement",
+          status: "CONFIRMED",
+        }),
+      ],
+      total: 2,
+    });
+
+    render(<RequirementsPage />);
+
+    expect(
+      await screen.findByRole("listbox", { name: "requirements.list.title" }),
+    ).toBeInTheDocument();
+    const firstOption = screen.getByRole("option", {
+      name: /First semantic requirement/u,
+    });
+    const secondOption = screen.getByRole("option", {
+      name: /Second semantic requirement/u,
+    });
+    expect(firstOption).toHaveAttribute("aria-selected", "false");
+
+    fireEvent.keyDown(window, { key: "j" });
+    await waitFor(() =>
+      expect(firstOption).toHaveAttribute("aria-selected", "true"),
+    );
+    await waitFor(() => expect(firstOption).toHaveFocus());
+
+    fireEvent.keyDown(window, { key: "j" });
+    await waitFor(() =>
+      expect(secondOption).toHaveAttribute("aria-selected", "true"),
+    );
+
+    fireEvent.keyDown(window, { key: "Enter" });
+    expect(routerPushMock).toHaveBeenCalledWith(
+      "/requirements/01ARZ3NDEKTSV4RRFFQ69G5FK2",
+    );
   });
 
   it("renders the empty state when there are no requirements (active filter)", async () => {

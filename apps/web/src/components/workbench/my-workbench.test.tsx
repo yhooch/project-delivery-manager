@@ -129,10 +129,12 @@ vi.mock("../work-item/task-detail-sheet", () => ({
   TaskDetailSheet: ({
     item,
     onChanged,
+    onOpenChange,
     open,
   }: {
     item: { id: string; title: string } | null;
     onChanged?: () => void;
+    onOpenChange?: (open: boolean) => void;
     open: boolean;
   }) =>
     open && item ? (
@@ -140,6 +142,9 @@ vi.mock("../work-item/task-detail-sheet", () => ({
         <span>{item.title}</span>
         <button type="button" onClick={onChanged}>
           detail changed
+        </button>
+        <button type="button" onClick={() => onOpenChange?.(false)}>
+          close detail
         </button>
       </div>
     ) : null,
@@ -778,6 +783,58 @@ describe("MyWorkbench", () => {
 
     await waitFor(() =>
       expect(getMyWorkbenchViewMock).toHaveBeenCalledTimes(2),
+    );
+  });
+
+  it("supports J/K/Enter/E/Escape keyboard paths and restores focus after closing detail", async () => {
+    getMyWorkbenchViewMock.mockResolvedValueOnce(
+      makeWorkbenchResponse({
+        todos: [
+          makeWorkItemSummary({
+            id: "01ARZ3NDEKTSV4RRFFQ69G5FK1",
+            title: "Keyboard first item",
+          }),
+          makeWorkItemSummary({
+            id: "01ARZ3NDEKTSV4RRFFQ69G5FK2",
+            title: "Keyboard second item",
+          }),
+        ],
+      }),
+    );
+
+    render(<MyWorkbench />);
+
+    const firstTitle = await screen.findByText("Keyboard first item");
+    const secondTitle = await screen.findByText("Keyboard second item");
+    const firstButton = firstTitle.closest("button");
+    const secondButton = secondTitle.closest("button");
+    if (!firstButton || !secondButton) {
+      throw new Error("Expected workbench keyboard rows to render as buttons");
+    }
+
+    fireEvent.keyDown(window, { key: "j" });
+    await waitFor(() => expect(firstButton).toHaveFocus());
+
+    fireEvent.keyDown(window, { key: "j" });
+    await waitFor(() => expect(secondButton).toHaveFocus());
+
+    fireEvent.keyDown(window, { key: "k" });
+    await waitFor(() => expect(firstButton).toHaveFocus());
+
+    fireEvent.keyDown(window, { key: "Enter" });
+    expect(await screen.findByTestId("task-detail-sheet-open")).toHaveTextContent(
+      "Keyboard first item",
+    );
+
+    fireEvent.keyDown(window, { key: "Escape" });
+    await waitFor(() =>
+      expect(screen.queryByTestId("task-detail-sheet-open")).not.toBeInTheDocument(),
+    );
+    await waitFor(() => expect(firstButton).toHaveFocus());
+
+    fireEvent.keyDown(window, { key: "e" });
+    expect(await screen.findByTestId("task-detail-sheet-open")).toHaveTextContent(
+      "Keyboard first item",
     );
   });
 

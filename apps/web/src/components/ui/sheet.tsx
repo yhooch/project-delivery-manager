@@ -71,7 +71,7 @@ export const SheetContent = React.forwardRef<
         <DialogPrimitive.Close
           aria-label={closeLabel ?? t("close")}
           className={cn(
-            "absolute right-3 top-3 inline-flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+            "absolute right-3 top-3 inline-flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring [@media(pointer:coarse)]:h-11 [@media(pointer:coarse)]:w-11",
           )}
         >
           <X className="h-4 w-4" />

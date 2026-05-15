@@ -19,7 +19,9 @@ import {
 } from "../space/space.repository";
 import { WorkflowActionExecutionService } from "../workflow/workflow-action-execution.service";
 import {
+  canCreateBugDeliveryObject,
   canManageDeliveryObject,
+  getBugCreateDeniedReason,
   getDeliveryObjectWriteDeniedReason,
 } from "../workitem/delivery-object-permissions";
 import { BUG_REPOSITORY, type BugRepository } from "./bug.repository";
@@ -75,7 +77,7 @@ export class BugService {
     input: CreateBugRequest,
     auditMetadata: AuditMetadata = {},
   ): Promise<BugView> {
-    const access = await this.requireSpaceWriter(
+    const access = await this.requireBugCreator(
       actorUserId,
       spaceId,
       "createBug",
@@ -148,11 +150,12 @@ export class BugService {
       after: toAuditRecord(created),
       metadata: {
         operation: "createBug",
+        workItemType: "BUG",
       },
       organizationId: created.organizationId,
       spaceId: created.spaceId,
       targetId: created.id,
-      targetType: "BUG",
+      targetType: "WORK_ITEM",
     });
 
     return {
@@ -318,11 +321,12 @@ export class BugService {
       before: toAuditRecord(bug),
       metadata: {
         operation: "updateBug",
+        workItemType: "BUG",
       },
       organizationId: updated.organizationId,
       spaceId: updated.spaceId,
       targetId: updated.id,
-      targetType: "BUG",
+      targetType: "WORK_ITEM",
     });
 
     return {
@@ -409,7 +413,7 @@ export class BugService {
     return access;
   }
 
-  private async requireSpaceWriter(
+  private async requireBugCreator(
     userId: string,
     spaceId: string,
     operation: string,
@@ -422,14 +426,14 @@ export class BugService {
       auditMetadata,
     );
 
-    if (access.role === "VIEWER") {
+    if (!canCreateBugDeliveryObject(access.role)) {
       await this.safeAudit({
         ...auditMetadata,
         actionType: "ACCESS_DENIED",
         actorId: userId,
         metadata: {
           operation,
-          reason: "VIEWER_READ_ONLY",
+          reason: getBugCreateDeniedReason(access.role),
         },
         organizationId: access.space.organizationId,
         spaceId,
@@ -686,11 +690,12 @@ export class BugService {
       metadata: {
         operation,
         reason,
+        workItemType: "BUG",
       },
       organizationId: bug.organizationId,
       spaceId: bug.spaceId,
       targetId: bug.id,
-      targetType: "BUG",
+      targetType: "WORK_ITEM",
     });
   }
 

@@ -23,6 +23,10 @@ import { useLocale, useTranslations } from "next-intl";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { getApiErrorMessageKey } from "../../lib/api-error-messages";
+import {
+  useFocusReturn,
+  useListKeyboardNav,
+} from "../../lib/hooks/use-list-keyboard-nav";
 import { cn } from "../../lib/utils";
 import {
   getMembers,
@@ -69,6 +73,7 @@ const priorityDotColor: Record<WorkItemViewModel["priority"], string> = {
 };
 
 type WorkbenchItemViewModel = WorkItemViewModel & {
+  listKey?: string;
   organizationId?: string;
   spaceId?: string;
 };
@@ -100,6 +105,9 @@ export function MyWorkbench() {
     organizationId?: string;
     spaceId?: string;
   } | null>(null);
+  const [activeWorkbenchItemKey, setActiveWorkbenchItemKey] = useState<
+    string | undefined
+  >(undefined);
   const [sheetOpen, setSheetOpen] = useState(false);
   const [selectedSpaceId, setSelectedSpaceId] = useState<string | undefined>(
     undefined,
@@ -112,6 +120,8 @@ export function MyWorkbench() {
     membersBySpaceId: new Map(),
     versionsBySpaceId: new Map(),
   });
+  const itemButtonRefs = useRef(new Map<string, HTMLButtonElement>());
+  const { captureFocus, restoreFocus } = useFocusReturn();
 
   const organizationId = session?.defaultOrganizationId;
   const selectedSpace = spacesForCurrentOrganization.find(
@@ -358,67 +368,132 @@ export function MyWorkbench() {
     };
   }, [filters, organizationId, selectedSpaceId]);
 
-  const openItem = (item: WorkbenchItemViewModel) => {
-    const itemOrganizationId = item.organizationId ?? organizationId;
-    const itemSpaceId = item.spaceId ?? selectedSpaceId;
+  const registerWorkbenchItemButton = useCallback(
+    (key: string, node: HTMLButtonElement | null) => {
+      if (node) {
+        itemButtonRefs.current.set(key, node);
+      } else {
+        itemButtonRefs.current.delete(key);
+      }
+    },
+    [],
+  );
 
-    recordRecentOpen(
-      {
-        id: item.id,
-        type: item.type,
-        code: item.code,
-        title: item.title,
-        href: item.type === "BUG" ? "/bugs" : "/work-items",
-      },
-      { organizationId: itemOrganizationId, spaceId: itemSpaceId },
-    );
-    setActiveItem(item);
-    setActiveItemContext({
-      organizationId: itemOrganizationId,
-      spaceId: itemSpaceId,
+  const focusWorkbenchItem = useCallback((key: string) => {
+    const schedule =
+      typeof window.requestAnimationFrame === "function"
+        ? window.requestAnimationFrame
+        : (callback: FrameRequestCallback) =>
+            window.setTimeout(() => callback(performance.now()), 0);
+
+    schedule(() => {
+      itemButtonRefs.current.get(key)?.focus({ preventScroll: true });
     });
-    setSheetOpen(true);
-  };
+  }, []);
+
+  const setActiveWorkbenchItem = useCallback(
+    (item: WorkbenchItemViewModel) => {
+      setActiveWorkbenchItemKey(getWorkbenchItemKey(item));
+    },
+    [],
+  );
+
+  const selectWorkbenchItem = useCallback(
+    (item: WorkbenchItemViewModel) => {
+      const key = getWorkbenchItemKey(item);
+      setActiveWorkbenchItemKey(key);
+      focusWorkbenchItem(key);
+    },
+    [focusWorkbenchItem],
+  );
+
+  const openItem = useCallback(
+    (item: WorkbenchItemViewModel, trigger?: HTMLElement | null) => {
+      captureFocus(trigger);
+      const itemOrganizationId = item.organizationId ?? organizationId;
+      const itemSpaceId = item.spaceId ?? selectedSpaceId;
+
+      recordRecentOpen(
+        {
+          id: item.id,
+          type: item.type,
+          code: item.code,
+          title: item.title,
+          href: item.type === "BUG" ? "/bugs" : "/work-items",
+        },
+        { organizationId: itemOrganizationId, spaceId: itemSpaceId },
+      );
+      setActiveWorkbenchItemKey(getWorkbenchItemKey(item));
+      setActiveItem(item);
+      setActiveItemContext({
+        organizationId: itemOrganizationId,
+        spaceId: itemSpaceId,
+      });
+      setSheetOpen(true);
+    },
+    [captureFocus, organizationId, selectedSpaceId],
+  );
+
+  const closeDetailSheet = useCallback(() => {
+    setSheetOpen(false);
+    restoreFocus();
+  }, [restoreFocus]);
+
+  const handleDetailSheetOpenChange = useCallback(
+    (nextOpen: boolean) => {
+      setSheetOpen(nextOpen);
+      if (!nextOpen) {
+        restoreFocus();
+      }
+    },
+    [restoreFocus],
+  );
 
   const greetingName = session?.user.name ?? t("title");
 
   const todoItems = useMemo(
     () =>
-      (view?.sections.myTodos.items.items ?? []).map(
-        toWorkbenchItem(
-          locale,
-          lookupHelpers,
-          tStatusCategory,
-          t("time.justNow"),
-          t("versionFallback"),
-        ),
-      ),
+      (view?.sections.myTodos.items.items ?? [])
+        .map(
+          toWorkbenchItem(
+            locale,
+            lookupHelpers,
+            tStatusCategory,
+            t("time.justNow"),
+            t("versionFallback"),
+          ),
+        )
+        .map(withWorkbenchListKey("todo")),
     [view, locale, lookupHelpers, tStatusCategory, t],
   );
   const assignedTaskItems = useMemo(
     () =>
-      (view?.sections.assignedTasks.items.items ?? []).map(
-        toWorkbenchItem(
-          locale,
-          lookupHelpers,
-          tStatusCategory,
-          t("time.justNow"),
-          t("versionFallback"),
-        ),
-      ),
+      (view?.sections.assignedTasks.items.items ?? [])
+        .map(
+          toWorkbenchItem(
+            locale,
+            lookupHelpers,
+            tStatusCategory,
+            t("time.justNow"),
+            t("versionFallback"),
+          ),
+        )
+        .map(withWorkbenchListKey("assigned-task")),
     [view, locale, lookupHelpers, tStatusCategory, t],
   );
   const assignedBugItems = useMemo(
     () =>
-      (view?.sections.assignedBugs.items.items ?? []).map(
-        toWorkbenchItem(
-          locale,
-          lookupHelpers,
-          tStatusCategory,
-          t("time.justNow"),
-          t("versionFallback"),
-        ),
-      ),
+      (view?.sections.assignedBugs.items.items ?? [])
+        .map(
+          toWorkbenchItem(
+            locale,
+            lookupHelpers,
+            tStatusCategory,
+            t("time.justNow"),
+            t("versionFallback"),
+          ),
+        )
+        .map(withWorkbenchListKey("assigned-bug")),
     [view, locale, lookupHelpers, tStatusCategory, t],
   );
   const actionItems = useMemo(() => {
@@ -430,52 +505,103 @@ export function MyWorkbench() {
       t("versionFallback"),
     );
 
-    return (view?.sections.actionTodos.items.items ?? []).map((todo) => ({
-      ...toWorkItem(todo.workItem),
-      contextLabel: todo.availableAction.name,
-      listKey: todo.id,
-    }));
+    return (view?.sections.actionTodos.items.items ?? [])
+      .map((todo) => ({
+        ...toWorkItem(todo.workItem),
+        contextLabel: todo.availableAction.name,
+        listKey: todo.id,
+      }))
+      .map(withWorkbenchListKey("action"));
   }, [view, locale, lookupHelpers, tStatusCategory, t]);
   const pendingConfirmItems = useMemo(
     () =>
-      (view?.sections.pendingConfirm.items.items ?? []).map(
-        toWorkbenchItem(
-          locale,
-          lookupHelpers,
-          tStatusCategory,
-          t("time.justNow"),
-          t("versionFallback"),
-        ),
-      ),
+      (view?.sections.pendingConfirm.items.items ?? [])
+        .map(
+          toWorkbenchItem(
+            locale,
+            lookupHelpers,
+            tStatusCategory,
+            t("time.justNow"),
+            t("versionFallback"),
+          ),
+        )
+        .map(withWorkbenchListKey("pending-confirm")),
     [view, locale, lookupHelpers, tStatusCategory, t],
   );
   const dueSoonItems = useMemo(
     () =>
-      (view?.sections.dueSoon.items.items ?? []).map(
-        toWorkbenchItem(
-          locale,
-          lookupHelpers,
-          tStatusCategory,
-          t("time.justNow"),
-          t("versionFallback"),
-        ),
-      ),
+      (view?.sections.dueSoon.items.items ?? [])
+        .map(
+          toWorkbenchItem(
+            locale,
+            lookupHelpers,
+            tStatusCategory,
+            t("time.justNow"),
+            t("versionFallback"),
+          ),
+        )
+        .map(withWorkbenchListKey("due-soon")),
     [view, locale, lookupHelpers, tStatusCategory, t],
   );
   const blockedItems = useMemo(
     () =>
-      (view?.sections.blocked?.items.items ?? []).map(
-        toWorkbenchItem(
-          locale,
-          lookupHelpers,
-          tStatusCategory,
-          t("time.justNow"),
-          t("versionFallback"),
-        ),
-      ),
+      (view?.sections.blocked?.items.items ?? [])
+        .map(
+          toWorkbenchItem(
+            locale,
+            lookupHelpers,
+            tStatusCategory,
+            t("time.justNow"),
+            t("versionFallback"),
+          ),
+        )
+        .map(withWorkbenchListKey("blocked")),
     [view, locale, lookupHelpers, tStatusCategory, t],
   );
   const recentEvents = view?.sections.recentActivities.items.items ?? [];
+
+  const keyboardItems = useMemo(
+    () => [
+      ...todoItems,
+      ...assignedTaskItems,
+      ...assignedBugItems,
+      ...actionItems,
+      ...pendingConfirmItems,
+      ...dueSoonItems,
+      ...blockedItems,
+    ],
+    [
+      actionItems,
+      assignedBugItems,
+      assignedTaskItems,
+      blockedItems,
+      dueSoonItems,
+      pendingConfirmItems,
+      todoItems,
+    ],
+  );
+
+  useEffect(() => {
+    if (
+      activeWorkbenchItemKey &&
+      !keyboardItems.some(
+        (item) => getWorkbenchItemKey(item) === activeWorkbenchItemKey,
+      )
+    ) {
+      setActiveWorkbenchItemKey(undefined);
+    }
+  }, [activeWorkbenchItemKey, keyboardItems]);
+
+  useListKeyboardNav<WorkbenchItemViewModel>({
+    items: keyboardItems,
+    activeId: activeWorkbenchItemKey,
+    getId: getWorkbenchItemKey,
+    onSelect: selectWorkbenchItem,
+    onOpen: openItem,
+    onEdit: openItem,
+    onClose: sheetOpen ? closeDetailSheet : undefined,
+    enabled: Boolean(session && organizationId),
+  });
 
   const stats = view?.stats;
   const todoCount = view?.sections.myTodos.total ?? todoItems.length;
@@ -612,7 +738,13 @@ export function MyWorkbench() {
             empty={t("empty.todo")}
             isLoading={isLoading && !view}
           >
-            <ItemList items={todoItems} onSelect={openItem} />
+            <ItemList
+              activeItemKey={activeWorkbenchItemKey}
+              items={todoItems}
+              onFocusItem={setActiveWorkbenchItem}
+              onSelect={openItem}
+              registerItemButton={registerWorkbenchItemButton}
+            />
           </Section>
 
           <Section
@@ -623,7 +755,13 @@ export function MyWorkbench() {
             empty={t("empty.assignedTasks")}
             isLoading={isLoading && !view}
           >
-            <ItemList items={assignedTaskItems} onSelect={openItem} />
+            <ItemList
+              activeItemKey={activeWorkbenchItemKey}
+              items={assignedTaskItems}
+              onFocusItem={setActiveWorkbenchItem}
+              onSelect={openItem}
+              registerItemButton={registerWorkbenchItemButton}
+            />
           </Section>
 
           <Section
@@ -632,7 +770,13 @@ export function MyWorkbench() {
             empty={t("empty.assignedBugs")}
             isLoading={isLoading && !view}
           >
-            <ItemList items={assignedBugItems} onSelect={openItem} />
+            <ItemList
+              activeItemKey={activeWorkbenchItemKey}
+              items={assignedBugItems}
+              onFocusItem={setActiveWorkbenchItem}
+              onSelect={openItem}
+              registerItemButton={registerWorkbenchItemButton}
+            />
           </Section>
 
           <Section
@@ -641,7 +785,13 @@ export function MyWorkbench() {
             empty={t("empty.actions")}
             isLoading={isLoading && !view}
           >
-            <ItemList items={actionItems} onSelect={openItem} />
+            <ItemList
+              activeItemKey={activeWorkbenchItemKey}
+              items={actionItems}
+              onFocusItem={setActiveWorkbenchItem}
+              onSelect={openItem}
+              registerItemButton={registerWorkbenchItemButton}
+            />
           </Section>
 
           <Section
@@ -650,7 +800,13 @@ export function MyWorkbench() {
             empty={t("empty.pendingConfirm")}
             isLoading={isLoading && !view}
           >
-            <ItemList items={pendingConfirmItems} onSelect={openItem} />
+            <ItemList
+              activeItemKey={activeWorkbenchItemKey}
+              items={pendingConfirmItems}
+              onFocusItem={setActiveWorkbenchItem}
+              onSelect={openItem}
+              registerItemButton={registerWorkbenchItemButton}
+            />
           </Section>
 
           <Section
@@ -659,7 +815,13 @@ export function MyWorkbench() {
             empty={t("empty.dueSoon")}
             isLoading={isLoading && !view}
           >
-            <ItemList items={dueSoonItems} onSelect={openItem} />
+            <ItemList
+              activeItemKey={activeWorkbenchItemKey}
+              items={dueSoonItems}
+              onFocusItem={setActiveWorkbenchItem}
+              onSelect={openItem}
+              registerItemButton={registerWorkbenchItemButton}
+            />
           </Section>
 
           <Section
@@ -668,7 +830,13 @@ export function MyWorkbench() {
             empty={t("empty.blocked")}
             isLoading={isLoading && !view}
           >
-            <ItemList items={blockedItems} onSelect={openItem} />
+            <ItemList
+              activeItemKey={activeWorkbenchItemKey}
+              items={blockedItems}
+              onFocusItem={setActiveWorkbenchItem}
+              onSelect={openItem}
+              registerItemButton={registerWorkbenchItemButton}
+            />
           </Section>
         </div>
 
@@ -732,7 +900,7 @@ export function MyWorkbench() {
       <TaskDetailSheet
         item={activeItem}
         open={sheetOpen}
-        onOpenChange={setSheetOpen}
+        onOpenChange={handleDetailSheetOpenChange}
         spaceId={activeItemContext?.spaceId ?? selectedSpaceId}
         organizationId={activeItemContext?.organizationId ?? organizationId}
         onChanged={() => {
@@ -1002,79 +1170,115 @@ function Section({
 }
 
 function ItemList({
+  activeItemKey,
   items,
+  onFocusItem,
   onSelect,
+  registerItemButton,
 }: {
+  activeItemKey: string | undefined;
   items: WorkbenchItemViewModel[];
-  onSelect: (item: WorkbenchItemViewModel) => void;
+  onFocusItem: (item: WorkbenchItemViewModel) => void;
+  onSelect: (
+    item: WorkbenchItemViewModel,
+    trigger?: HTMLElement | null,
+  ) => void;
+  registerItemButton: (key: string, node: HTMLButtonElement | null) => void;
 }) {
   return (
     <ul className="divide-y divide-border">
-      {items.map((item) => (
-        <li key={item.listKey ?? item.id}>
-          <button
-            type="button"
-            onClick={() => onSelect(item)}
-            className="group flex w-full items-center gap-3 px-4 py-2 text-left transition-colors hover:bg-muted/40 cursor-pointer"
-          >
-            <span
+      {items.map((item) => {
+        const itemKey = getWorkbenchItemKey(item);
+        const isActive = activeItemKey === itemKey;
+
+        return (
+          <li key={itemKey}>
+            <button
+              ref={(node) => registerItemButton(itemKey, node)}
+              type="button"
+              data-workbench-item-key={itemKey}
+              data-active={isActive ? "true" : undefined}
+              onFocus={() => onFocusItem(item)}
+              onClick={(event) => onSelect(item, event.currentTarget)}
               className={cn(
-                "h-1.5 w-1.5 shrink-0 rounded-full",
-                priorityDotColor[item.priority],
+                "group flex w-full cursor-pointer items-center gap-3 px-4 py-2 text-left transition-colors hover:bg-muted/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset",
+                isActive && "bg-muted/40",
               )}
-            />
-            {item.type === "BUG" ? (
-              <Bug className="h-3.5 w-3.5 shrink-0 text-destructive/80" />
-            ) : (
-              <CheckCircle2 className="h-3.5 w-3.5 shrink-0 text-primary/80" />
-            )}
-            <span className="font-mono text-[11px] text-muted-foreground">
-              {item.code}
-            </span>
-            <span className="flex-1 truncate text-[13px] font-medium">
-              {item.title}
-            </span>
-            {item.contextLabel ? (
-              <Badge
-                variant="outline"
-                className="hidden max-w-36 truncate md:inline-flex"
-              >
-                {item.contextLabel}
-              </Badge>
-            ) : null}
-            <StatusBadge
-              category={item.statusCategory}
-              label={item.statusLabel}
-              withDot={false}
-            />
-            {item.versionName && (
-              <Badge variant="outline" className="hidden md:inline-flex">
-                {item.versionName}
-              </Badge>
-            )}
-            {item.dueDate && (
+            >
               <span
                 className={cn(
-                  "hidden text-[11px] md:inline-block",
-                  item.isOverdue ? "text-destructive" : "text-muted-foreground",
+                  "h-1.5 w-1.5 shrink-0 rounded-full",
+                  priorityDotColor[item.priority],
                 )}
-              >
-                {item.dueDate}
+              />
+              {item.type === "BUG" ? (
+                <Bug className="h-3.5 w-3.5 shrink-0 text-destructive/80" />
+              ) : (
+                <CheckCircle2 className="h-3.5 w-3.5 shrink-0 text-primary/80" />
+              )}
+              <span className="font-mono text-[11px] text-muted-foreground">
+                {item.code}
               </span>
-            )}
-            <Avatar className="h-5 w-5 shrink-0">
-              <AvatarFallback className="text-[9px]">
-                {item.assignee.initial}
-              </AvatarFallback>
-            </Avatar>
-          </button>
-        </li>
-      ))}
+              <span className="flex-1 truncate text-[13px] font-medium">
+                {item.title}
+              </span>
+              {item.contextLabel ? (
+                <Badge
+                  variant="outline"
+                  className="hidden max-w-36 truncate md:inline-flex"
+                >
+                  {item.contextLabel}
+                </Badge>
+              ) : null}
+              <StatusBadge
+                category={item.statusCategory}
+                label={item.statusLabel}
+                withDot={false}
+              />
+              {item.versionName && (
+                <Badge variant="outline" className="hidden md:inline-flex">
+                  {item.versionName}
+                </Badge>
+              )}
+              {item.dueDate && (
+                <span
+                  className={cn(
+                    "hidden text-[11px] md:inline-block",
+                    item.isOverdue
+                      ? "text-destructive"
+                      : "text-muted-foreground",
+                  )}
+                >
+                  {item.dueDate}
+                </span>
+              )}
+              <Avatar className="h-5 w-5 shrink-0">
+                <AvatarFallback className="text-[9px]">
+                  {item.assignee.initial}
+                </AvatarFallback>
+              </Avatar>
+            </button>
+          </li>
+        );
+      })}
     </ul>
   );
 }
 
 export type WorkbenchLookupHelpers = WorkItemViewModelLookupHelpers;
+
+function getWorkbenchItemKey(item: Pick<WorkbenchItemViewModel, "id"> & {
+  listKey?: string;
+}) {
+  return item.listKey ?? item.id;
+}
+
+function withWorkbenchListKey(prefix: string) {
+  return (item: WorkbenchItemViewModel): WorkbenchItemViewModel => ({
+    ...item,
+    listKey: `${prefix}:${item.listKey ?? item.id}`,
+  });
+}
 
 function toWorkbenchItem(
   locale: string,

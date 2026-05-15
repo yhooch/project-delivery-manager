@@ -25,7 +25,11 @@ import {
   VERSION_REPOSITORY,
   type VersionRepository,
 } from "./version.repository";
-import type { VersionBoardVisibility, VersionListInput } from "./version.types";
+import type {
+  VersionBoardVisibility,
+  VersionListInput,
+  VersionStatsVisibility,
+} from "./version.types";
 import { canReadAllSpaceWorkItems } from "../workitem/workitem-visibility";
 
 const SPACE_MANAGER_ROLES = new Set<SpaceRole>(["SPACE_ADMIN", "PM"]);
@@ -46,11 +50,15 @@ export class VersionService {
   async list(
     actorUserId: string,
     spaceId: string,
-    input: VersionListInput,
+    input: Omit<VersionListInput, "actorUserId" | "visibility">,
   ): Promise<PageResult<Version>> {
-    await this.requireSpaceAccess(actorUserId, spaceId);
+    const access = await this.requireSpaceAccess(actorUserId, spaceId);
 
-    return this.versions.listBySpaceId(spaceId, input);
+    return this.versions.listBySpaceId(spaceId, {
+      ...input,
+      actorUserId,
+      visibility: resolveVersionStatsVisibility(access.role),
+    });
   }
 
   async create(
@@ -106,9 +114,9 @@ export class VersionService {
       throwVersionNotFound();
     }
 
-    await this.requireSpaceAccess(actorUserId, version.spaceId);
+    const access = await this.requireSpaceAccess(actorUserId, version.spaceId);
 
-    return version;
+    return this.withVisibleStats(version, actorUserId, access.role);
   }
 
   async getBoard(
@@ -284,9 +292,33 @@ export class VersionService {
       throwSpaceAccessDenied();
     }
   }
+
+  private async withVisibleStats(
+    version: Version,
+    actorUserId: string,
+    role: SpaceRole,
+  ) {
+    const visibility = resolveVersionStatsVisibility(role);
+
+    if (visibility === "SPACE") {
+      return version;
+    }
+
+    return (
+      (await this.versions.findById(version.id, {
+        actorUserId,
+        spaceId: version.spaceId,
+        visibility,
+      })) ?? version
+    );
+  }
 }
 
 function resolveVersionBoardVisibility(role: SpaceRole): VersionBoardVisibility {
+  return resolveVersionStatsVisibility(role);
+}
+
+function resolveVersionStatsVisibility(role: SpaceRole): VersionStatsVisibility {
   if (canReadAllSpaceWorkItems(role)) {
     return "SPACE";
   }

@@ -38,7 +38,7 @@ const RELATED_USER_ID = "01H0000000000000000000000C";
 
 describe("BugService", () => {
   it("creates BUG work items with bug_details, default workflow and participants", async () => {
-    const subject = createSubject("DEVELOPER");
+    const subject = createSubject("TESTER");
 
     subject.bugs.workflowSelection = {
       currentStateId: CURRENT_STATE_ID,
@@ -124,8 +124,12 @@ describe("BugService", () => {
       expect.arrayContaining([
         expect.objectContaining({
           actionType: "CREATE",
+          metadata: {
+            operation: "createBug",
+            workItemType: "BUG",
+          },
           requestId: "create-request",
-          targetType: "BUG",
+          targetType: "WORK_ITEM",
         }),
       ]),
     );
@@ -151,40 +155,47 @@ describe("BugService", () => {
     expect(developerSubject.bugs.listInput?.visibility).toBe("PARTICIPANT");
   });
 
-  it("rejects VIEWER writes and records an access denied audit log", async () => {
-    const subject = createSubject("VIEWER", VIEWER_ID);
+  it.each(["DEVELOPER", "MEMBER", "VIEWER"] as const)(
+    "rejects %s BUG creates and records an access denied audit log",
+    async (role) => {
+      const actorUserId = role === "VIEWER" ? VIEWER_ID : ACTOR_ID;
+      const subject = createSubject(role, actorUserId);
 
-    await expect(
-      subject.service.create(
-        VIEWER_ID,
-        SPACE_ID,
-        {
-          priority: "MEDIUM",
-          severity: "MAJOR",
-          title: "viewer write",
-        },
-        {
-          requestId: "viewer-denied",
-        },
-      ),
-    ).rejects.toMatchObject({
-      code: "SPACE_ACCESS_DENIED",
-    });
+      await expect(
+        subject.service.create(
+          actorUserId,
+          SPACE_ID,
+          {
+            priority: "MEDIUM",
+            severity: "MAJOR",
+            title: `${role} write`,
+          },
+          {
+            requestId: `${role.toLowerCase()}-denied`,
+          },
+        ),
+      ).rejects.toMatchObject({
+        code: "SPACE_ACCESS_DENIED",
+      });
 
-    expect(subject.bugs.auditLogs).toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({
-          actionType: "ACCESS_DENIED",
-          requestId: "viewer-denied",
-          targetId: SPACE_ID,
-          targetType: "SPACE",
-        }),
-      ]),
-    );
-  });
+      expect(subject.bugs.auditLogs).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            actionType: "ACCESS_DENIED",
+            metadata: expect.objectContaining({
+              operation: "createBug",
+            }),
+            requestId: `${role.toLowerCase()}-denied`,
+            targetId: SPACE_ID,
+            targetType: "SPACE",
+          }),
+        ]),
+      );
+    },
+  );
 
   it("rejects relatedTaskId when the task is missing, a Bug or from another space", async () => {
-    const subject = createSubject("DEVELOPER");
+    const subject = createSubject("TESTER");
 
     subject.bugs.workflowSelection = {
       currentStateId: CURRENT_STATE_ID,
@@ -287,9 +298,13 @@ describe("BugService", () => {
       expect.arrayContaining([
         expect.objectContaining({
           actionType: "UPDATE",
+          metadata: {
+            operation: "updateBug",
+            workItemType: "BUG",
+          },
           requestId: "update-request",
           targetId: BUG_ID,
-          targetType: "BUG",
+          targetType: "WORK_ITEM",
         }),
       ]),
     );
@@ -396,9 +411,13 @@ describe("BugService", () => {
         expect.arrayContaining([
           expect.objectContaining({
             actionType: "ACCESS_DENIED",
+            metadata: expect.objectContaining({
+              operation: "updateBug",
+              workItemType: "BUG",
+            }),
             requestId: `${role.toLowerCase()}-patch-denied`,
             targetId: BUG_ID,
-            targetType: "BUG",
+            targetType: "WORK_ITEM",
           }),
         ]),
       );

@@ -155,6 +155,11 @@ export class SpaceService {
         access.space.organizationId,
         input.ownerId,
       );
+      await this.requireActiveSpaceMember(
+        spaceId,
+        input.ownerId,
+        "Space owner",
+      );
     }
 
     if (input.code && input.code !== access.space.code) {
@@ -452,6 +457,24 @@ export class SpaceService {
         "SPACE_MEMBER_MUST_BELONG_TO_ORGANIZATION",
         "Space member must belong to the same organization",
         HttpStatus.BAD_REQUEST,
+      );
+    }
+
+    return member;
+  }
+
+  private async requireActiveSpaceMember(
+    spaceId: string,
+    userId: string,
+    label: string,
+  ) {
+    const member = await this.spaces.findMemberByUserId(spaceId, userId);
+
+    if (!member || member.status !== "ACTIVE") {
+      throw new ApiException(
+        "SPACE_MEMBER_NOT_FOUND",
+        `${label} must be an active space member`,
+        HttpStatus.NOT_FOUND,
       );
     }
 

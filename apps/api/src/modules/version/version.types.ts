@@ -10,17 +10,27 @@ import type {
 } from "@project-delivery/shared";
 
 export type VersionListInput = {
+  actorUserId: string;
   ownerId?: string;
   page: number;
   pageSize: number;
   sortBy?: string;
   sortOrder?: "asc" | "desc";
   status?: VersionStatus;
+  visibility: VersionStatsVisibility;
 };
 
 export type VersionListResult = PageResult<Version>;
 
-export type VersionBoardVisibility = "SPACE" | "PARTICIPANT" | "TESTER";
+export type VersionStatsVisibility = "SPACE" | "PARTICIPANT" | "TESTER";
+
+export type VersionStatsScope = {
+  actorUserId: string;
+  spaceId: string;
+  visibility: VersionStatsVisibility;
+};
+
+export type VersionBoardVisibility = VersionStatsVisibility;
 
 export type VersionBoardInput = VersionBoardViewQuery & {
   actorUserId: string;

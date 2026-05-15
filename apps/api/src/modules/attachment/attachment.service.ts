@@ -1,6 +1,7 @@
 import { createHmac, timingSafeEqual } from "node:crypto";
 
-import { HttpStatus, Inject, Injectable } from "@nestjs/common";
+import { HttpStatus, Inject, Injectable, Optional } from "@nestjs/common";
+import { ConfigService } from "@nestjs/config";
 import {
   AttachmentDownloadUrlExpiresInSeconds,
   AttachmentMaxCountPerTarget,
@@ -19,6 +20,7 @@ import {
 } from "@project-delivery/shared";
 import { ulid } from "ulid";
 
+import { DEFAULT_ATTACHMENT_OBJECT_STORAGE_ORIGIN } from "../../config/env";
 import { ApiException } from "../../http/api-exception";
 import { AuditService } from "../audit/audit.service";
 import type { RequestMetadata } from "../auth/auth-session.types";
@@ -40,8 +42,6 @@ const REQUIREMENT_WRITER_ROLES = new Set<SpaceRole>([
   "REQUIREMENT",
 ]);
 
-const OBJECT_STORAGE_ORIGIN = "https://object-storage.local";
-
 @Injectable()
 export class AttachmentService {
   constructor(
@@ -53,6 +53,9 @@ export class AttachmentService {
     private readonly targets: TargetResolverService,
     @Inject(AuditService)
     private readonly audit: AuditService,
+    @Optional()
+    @Inject(ConfigService)
+    private readonly config?: ConfigService,
   ) {}
 
   async presign(
@@ -70,6 +73,7 @@ export class AttachmentService {
         "upload",
         fileKey,
         PresignedUploadUrlExpiresInSeconds,
+        this.objectStorageOrigin(),
       ),
       fileKey,
       expiresInSeconds: PresignedUploadUrlExpiresInSeconds,
@@ -173,6 +177,7 @@ export class AttachmentService {
         "download",
         attachment.fileKey,
         AttachmentDownloadUrlExpiresInSeconds,
+        this.objectStorageOrigin(),
       ),
       expiresInSeconds: AttachmentDownloadUrlExpiresInSeconds,
     };
@@ -353,6 +358,13 @@ export class AttachmentService {
       mimeType: mimeType.data,
     };
   }
+
+  private objectStorageOrigin(): string {
+    return (
+      this.config?.get<string>("ATTACHMENT_OBJECT_STORAGE_ORIGIN") ??
+      DEFAULT_ATTACHMENT_OBJECT_STORAGE_ORIGIN
+    );
+  }
 }
 
 function createFileKey(
@@ -520,10 +532,11 @@ function createObjectUrl(
   action: "download" | "upload",
   fileKey: string,
   expiresInSeconds: number,
+  objectStorageOrigin: string,
 ): string {
   const url = new URL(
     `/${action}/${encodeURIComponent(fileKey)}`,
-    OBJECT_STORAGE_ORIGIN,
+    objectStorageOrigin,
   );
   url.searchParams.set("expiresIn", String(expiresInSeconds));
   return url.toString();

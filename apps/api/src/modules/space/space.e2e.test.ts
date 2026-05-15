@@ -4,6 +4,7 @@ import {
   AppSessionSchema,
   type DefaultWorkflowSummary,
   type GetSpaceExceptionsViewResponse,
+  type ObjectParticipantTargetType,
   type Organization,
   type OrganizationMember,
   type OrganizationMemberWithUser,
@@ -14,7 +15,6 @@ import {
   type Space,
   type SpaceMember,
   type SpaceMemberWithUser,
-  type SpaceOverviewStats,
   type SpaceRole,
   type SpaceSummary,
   type StatusCategory,
@@ -75,6 +75,7 @@ import type {
   SpaceMemberListInput,
   SpaceMemberListResult,
   SpaceOverviewViewInput,
+  SpaceOverviewViewResult,
   UpdateSpaceInput,
   UpdateSpaceMemberInput,
 } from "./space.types";
@@ -353,6 +354,70 @@ describe("space API", () => {
           { workItemType: "TASK", count: 2 },
           { workItemType: "BUG", count: 1 },
         ]);
+      });
+  });
+
+  it("does not expose hidden requirement counts in overview stats to restricted roles", async () => {
+    const ownerAgent = await registeredAgent(
+      "m4d_overview_visibility_owner",
+      "203.0.113.172",
+    );
+    const developerAgent = await registeredAgent(
+      "m4d_overview_visibility_dev",
+      "203.0.113.173",
+    );
+    const organization = (
+      await createOrganization(
+        ownerAgent,
+        "M4D Overview Visibility",
+        "m4d-overview-visibility",
+      )
+    ).body.data as Organization;
+    await addOrganizationMember(ownerAgent, organization.id, {
+      username: "m4d_overview_visibility_dev",
+      role: "MEMBER",
+    }).expect(200);
+    const space = (
+      await createSpace(ownerAgent, organization.id, {
+        name: "Overview Visibility Space",
+        code: "overview-visibility-space",
+      })
+    ).body.data as Space;
+    await addSpaceMember(ownerAgent, space.id, {
+      username: "m4d_overview_visibility_dev",
+      role: "DEVELOPER",
+    }).expect(200);
+    const developer = users.getByUsername("m4d_overview_visibility_dev");
+    const visibleRequirementId = ulid();
+    const hiddenRequirementId = ulid();
+
+    spaces.recordOverviewRequirements(
+      {
+        id: visibleRequirementId,
+        spaceId: space.id,
+      },
+      {
+        id: hiddenRequirementId,
+        spaceId: space.id,
+      },
+    );
+    spaces.recordOverviewParticipant({
+      targetId: visibleRequirementId,
+      targetType: "REQUIREMENT",
+      userId: developer?.id ?? "",
+    });
+
+    await ownerAgent
+      .get(`/api/v1/views/spaces/${space.id}/overview`)
+      .expect(200)
+      .expect(({ body }) => {
+        expect(body.data.stats.requirementCount).toBe(2);
+      });
+    await developerAgent
+      .get(`/api/v1/views/spaces/${space.id}/overview`)
+      .expect(200)
+      .expect(({ body }) => {
+        expect(body.data.stats.requirementCount).toBe(1);
       });
   });
 
@@ -637,6 +702,69 @@ describe("space API", () => {
           id: devMember.id,
           status: "DISABLED",
         });
+      });
+  });
+
+  it("requires updated space owner to be an active space member", async () => {
+    const ownerAgent = await registeredAgent(
+      "m1d_owner_update_admin",
+      "203.0.113.74",
+    );
+    await registeredAgent("m1d_owner_update_candidate", "203.0.113.75");
+    const organization = (
+      await createOrganization(
+        ownerAgent,
+        "M1D Owner Update",
+        "m1d-owner-update",
+      )
+    ).body.data as Organization;
+    await addOrganizationMember(ownerAgent, organization.id, {
+      username: "m1d_owner_update_candidate",
+      role: "MEMBER",
+    }).expect(200);
+    const candidate = users.getByUsername("m1d_owner_update_candidate");
+    const space = (
+      await createSpace(ownerAgent, organization.id, {
+        name: "Owner Update Space",
+        code: "owner-update-space",
+      })
+    ).body.data as Space;
+
+    await patchSpace(ownerAgent, space.id, {
+      ownerId: candidate?.id,
+    })
+      .expect(404)
+      .expect(({ body }) => {
+        expect(body.code).toBe("SPACE_MEMBER_NOT_FOUND");
+      });
+
+    const member = (
+      await addSpaceMember(ownerAgent, space.id, {
+        username: "m1d_owner_update_candidate",
+        role: "DEVELOPER",
+      }).expect(200)
+    ).body.data as SpaceMemberWithUser;
+
+    await patchSpaceMember(ownerAgent, space.id, member.id, {
+      status: "DISABLED",
+    }).expect(200);
+    await patchSpace(ownerAgent, space.id, {
+      ownerId: candidate?.id,
+    })
+      .expect(404)
+      .expect(({ body }) => {
+        expect(body.code).toBe("SPACE_MEMBER_NOT_FOUND");
+      });
+
+    await patchSpaceMember(ownerAgent, space.id, member.id, {
+      status: "ACTIVE",
+    }).expect(200);
+    await patchSpace(ownerAgent, space.id, {
+      ownerId: candidate?.id,
+    })
+      .expect(200)
+      .expect(({ body }) => {
+        expect(body.data.ownerId).toBe(candidate?.id);
       });
   });
 
@@ -1176,12 +1304,26 @@ type OverviewWorkItemSeed = {
   statusCategory: StatusCategory;
 };
 
+type OverviewRequirementSeed = {
+  id: string;
+  spaceId: string;
+  versionId?: string;
+};
+
+type OverviewParticipantSeed = {
+  targetId: string;
+  targetType: ObjectParticipantTargetType;
+  userId: string;
+};
+
 class InMemorySpaceRepository implements SpaceRepository {
   readonly members: SpaceMember[] = [];
   private readonly defaultWorkflows = new Map<
     string,
     DefaultWorkflowSummary[]
   >();
+  private readonly overviewParticipants: OverviewParticipantSeed[] = [];
+  private readonly overviewRequirements: OverviewRequirementSeed[] = [];
   private readonly overviewWorkItems: OverviewWorkItemSeed[] = [];
   private readonly spaces = new Map<string, Space>();
 
@@ -1385,7 +1527,7 @@ class InMemorySpaceRepository implements SpaceRepository {
           items: emptyActionTodos,
         },
         pendingConfirm: {
-          title: "待我确认",
+          title: "待确认",
           total: 0,
           items: emptyWorkItems,
         },
@@ -1416,7 +1558,7 @@ class InMemorySpaceRepository implements SpaceRepository {
 
   async getSpaceOverviewView(input: SpaceOverviewViewInput) {
     const [stats, currentVersion, defaultWorkflows] = await Promise.all([
-      this.getOverviewStats(input.space.id),
+      this.getVisibleOverviewStats(input),
       this.findCurrentVersion(input.space.id),
       this.listDefaultWorkflows(input.space.id),
     ]);
@@ -1479,31 +1621,6 @@ class InMemorySpaceRepository implements SpaceRepository {
         pageSize: input.pageSize,
         total: 0,
       },
-    };
-  }
-
-  async getOverviewStats(spaceId: string): Promise<SpaceOverviewStats> {
-    const overviewWorkItems = this.overviewWorkItems.filter(
-      (item) => item.spaceId === spaceId,
-    );
-
-    return {
-      versionCount: 0,
-      requirementCount: 0,
-      taskCount: overviewWorkItems.filter((item) => item.type === "TASK")
-        .length,
-      completedTaskCount: overviewWorkItems.filter(
-        (item) => item.type === "TASK" && item.statusCategory === "DONE",
-      ).length,
-      bugCount: overviewWorkItems.filter((item) => item.type === "BUG").length,
-      openBugCount: overviewWorkItems.filter(
-        (item) =>
-          item.type === "BUG" &&
-          item.statusCategory !== "DONE" &&
-          item.statusCategory !== "TERMINATED",
-      ).length,
-      blockedCount: 0,
-      overdueCount: 0,
     };
   }
 
@@ -1638,6 +1755,63 @@ class InMemorySpaceRepository implements SpaceRepository {
 
   recordOverviewWorkItems(...items: OverviewWorkItemSeed[]): void {
     this.overviewWorkItems.push(...items);
+  }
+
+  recordOverviewRequirements(...items: OverviewRequirementSeed[]): void {
+    this.overviewRequirements.push(...items);
+  }
+
+  recordOverviewParticipant(input: OverviewParticipantSeed): void {
+    this.overviewParticipants.push(input);
+  }
+
+  private async getVisibleOverviewStats(
+    input: SpaceOverviewViewInput,
+  ): Promise<SpaceOverviewViewResult["stats"]> {
+    const overviewWorkItems = this.overviewWorkItems.filter(
+      (item) => item.spaceId === input.space.id,
+    );
+
+    return {
+      versionCount: 0,
+      requirementCount: this.visibleOverviewRequirements(input).length,
+      taskCount: overviewWorkItems.filter((item) => item.type === "TASK")
+        .length,
+      completedTaskCount: overviewWorkItems.filter(
+        (item) => item.type === "TASK" && item.statusCategory === "DONE",
+      ).length,
+      bugCount: overviewWorkItems.filter((item) => item.type === "BUG").length,
+      openBugCount: overviewWorkItems.filter(
+        (item) =>
+          item.type === "BUG" &&
+          item.statusCategory !== "DONE" &&
+          item.statusCategory !== "TERMINATED",
+      ).length,
+      blockedCount: 0,
+      overdueCount: 0,
+    };
+  }
+
+  private visibleOverviewRequirements(
+    input: SpaceOverviewViewInput,
+  ): OverviewRequirementSeed[] {
+    const canReadAllStats =
+      input.role === "SPACE_ADMIN" ||
+      input.role === "PM" ||
+      input.role === "VIEWER";
+
+    return this.overviewRequirements.filter(
+      (item) =>
+        item.spaceId === input.space.id &&
+        (!input.versionId || item.versionId === input.versionId) &&
+        (canReadAllStats ||
+          this.overviewParticipants.some(
+            (participant) =>
+              participant.targetId === item.id &&
+              participant.targetType === "REQUIREMENT" &&
+              participant.userId === input.actorUserId,
+          )),
+    );
   }
 
   private toMemberWithUser(member: SpaceMember): SpaceMemberWithUser {
