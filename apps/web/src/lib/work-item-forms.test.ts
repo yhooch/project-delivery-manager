@@ -54,12 +54,17 @@ describe("work item forms", () => {
         description: "  Ready for implementation  ",
         dueDate: "",
         priority: "URGENT",
+        requirementId: "",
         title: "",
+        versionId: "",
       }),
     ).toEqual({
       assigneeId,
       description: "Ready for implementation",
+      dueDate: null,
       priority: "URGENT",
+      requirementId: null,
+      versionId: null,
     });
   });
 });

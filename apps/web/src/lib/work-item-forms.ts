@@ -25,6 +25,17 @@ const optionalUlid = z.preprocess(
   UlidSchema.optional(),
 );
 
+const clearableText = (maxLength: number) =>
+  z.preprocess(
+    (value) => normalizeClearableText(value),
+    z.string().max(maxLength).nullable().optional(),
+  );
+
+const clearableUlid = z.preprocess(
+  (value) => normalizeClearableText(value),
+  UlidSchema.nullable().optional(),
+);
+
 const optionalPriority = z.preprocess(
   (value) => normalizeOptionalText(value),
   PrioritySchema.optional(),
@@ -33,6 +44,11 @@ const optionalPriority = z.preprocess(
 const optionalIsoDateTime = z.preprocess(
   (value) => normalizeOptionalText(value),
   z.string().min(1).optional(),
+);
+
+const clearableIsoDateTime = z.preprocess(
+  (value) => normalizeClearableText(value),
+  z.string().min(1).nullable().optional(),
 );
 
 export const createTaskFormSchema = CreateWorkItemRequestSchema.extend({
@@ -58,17 +74,17 @@ export type CreateTaskFormInput = z.input<typeof createTaskFormSchema>;
 export type CreateTaskFormValues = z.output<typeof createTaskFormSchema>;
 
 export const updateTaskFormSchema = UpdateWorkItemRequestSchema.extend({
-  assigneeId: optionalUlid,
+  assigneeId: clearableUlid,
   blockedReason: optionalText(1000),
-  description: optionalText(8000),
-  dueDate: optionalIsoDateTime,
+  description: clearableText(8000),
+  dueDate: clearableIsoDateTime,
   priority: optionalPriority,
-  requirementId: optionalUlid,
+  requirementId: clearableUlid,
   title: z.preprocess(
     (value) => normalizeOptionalText(value),
     z.string().min(1).max(200).optional(),
   ),
-  versionId: optionalUlid,
+  versionId: clearableUlid,
 });
 
 export type UpdateTaskFormInput = z.input<typeof updateTaskFormSchema>;
@@ -94,4 +110,22 @@ function normalizeOptionalText(value: unknown): string | undefined {
   const trimmed = value.trim();
 
   return trimmed.length > 0 ? trimmed : undefined;
+}
+
+function normalizeClearableText(value: unknown): string | null | undefined {
+  if (value === undefined) {
+    return undefined;
+  }
+
+  if (value === null) {
+    return null;
+  }
+
+  if (typeof value !== "string") {
+    return value as string | null | undefined;
+  }
+
+  const trimmed = value.trim();
+
+  return trimmed.length > 0 ? trimmed : null;
 }

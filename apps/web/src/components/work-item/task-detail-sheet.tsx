@@ -1080,7 +1080,7 @@ function DetailTab({
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
 
-  useEffect(() => {
+  const resetEditDraft = useCallback(() => {
     setTitle(detail?.title ?? item.title);
     setDescription(detail?.description ?? "");
     setPriority(detail?.priority ?? item.priority);
@@ -1101,6 +1101,20 @@ function DetailTab({
     item.priority,
     item.title,
   ]);
+
+  useEffect(() => {
+    resetEditDraft();
+  }, [resetEditDraft]);
+
+  const startEdit = () => {
+    resetEditDraft();
+    setEditing(true);
+  };
+
+  const cancelEdit = () => {
+    resetEditDraft();
+    setEditing(false);
+  };
 
   useEffect(() => {
     if (!editing || !spaceId) {
@@ -1183,7 +1197,7 @@ function DetailTab({
             variant={editing ? "secondary" : "outline"}
             className="h-7 text-xs"
             data-testid="task-edit-button"
-            onClick={() => setEditing((current) => !current)}
+            onClick={editing ? cancelEdit : startEdit}
           >
             <Pencil className="h-3 w-3" />
             {editing ? t("edit.cancel") : t("edit.button")}
@@ -1333,7 +1347,7 @@ function DetailTab({
               size="sm"
               className="h-7 text-xs"
               disabled={saving}
-              onClick={() => setEditing(false)}
+              onClick={cancelEdit}
             >
               {t("edit.cancel")}
             </Button>

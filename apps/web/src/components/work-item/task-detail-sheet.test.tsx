@@ -604,6 +604,153 @@ describe("TaskDetailSheet", () => {
     expect(screen.queryByTestId("task-edit-form")).not.toBeInTheDocument();
   });
 
+  it("submits null for cleared editable task fields", async () => {
+    const assigneeId = "01ARZ3NDEKTSV4RRFFQ69G5FAS";
+    const versionId = "01ARZ3NDEKTSV4RRFFQ69G5FV1";
+    const requirementId = "01ARZ3NDEKTSV4RRFFQ69G5FRQ";
+    memberMap.set(assigneeId, {
+      user: { name: "Alice Owner" },
+    });
+    versionMap.set(versionId, { name: "Release 1" });
+    listRequirementsMock.mockResolvedValue({
+      items: [{ id: requirementId, title: "Requirement B" }],
+      total: 1,
+    });
+    getWorkItemMock.mockResolvedValueOnce(
+      makeDetailResponse({
+        assigneeId,
+        description: "Before",
+        dueDate: "2026-06-01T00:00:00.000Z",
+        requirementId,
+        versionId,
+        permissions: {
+          canEdit: true,
+          canComment: true,
+          canUploadAttachment: true,
+          availableActions: [],
+        },
+      }),
+    );
+
+    render(
+      <TaskDetailSheet item={makeViewModel()} open onOpenChange={() => {}} />,
+    );
+
+    fireEvent.click(await screen.findByTestId("task-edit-button"));
+    expect(await screen.findByText("Requirement B")).toBeInTheDocument();
+
+    fireEvent.change(screen.getByTestId("task-edit-description-input"), {
+      target: { value: "" },
+    });
+    fireEvent.change(screen.getByTestId("task-edit-assignee-select"), {
+      target: { value: "" },
+    });
+    fireEvent.change(screen.getByTestId("task-edit-version-select"), {
+      target: { value: "" },
+    });
+    fireEvent.change(screen.getByTestId("task-edit-requirement-select"), {
+      target: { value: "" },
+    });
+    fireEvent.change(screen.getByTestId("task-edit-due-date-input"), {
+      target: { value: "" },
+    });
+    fireEvent.click(screen.getByTestId("task-edit-submit"));
+
+    await waitFor(() => expect(updateWorkItemMock).toHaveBeenCalledTimes(1));
+    expect(updateWorkItemMock).toHaveBeenCalledWith(
+      expect.any(Object),
+      expect.objectContaining({
+        assigneeId: null,
+        description: null,
+        dueDate: null,
+        requirementId: null,
+        versionId: null,
+      }),
+    );
+  });
+
+  it("resets the edit draft when canceling and opening again", async () => {
+    const assigneeId = "01ARZ3NDEKTSV4RRFFQ69G5FAS";
+    const versionId = "01ARZ3NDEKTSV4RRFFQ69G5FV1";
+    const requirementId = "01ARZ3NDEKTSV4RRFFQ69G5FRQ";
+    memberMap.set(assigneeId, {
+      user: { name: "Alice Owner" },
+    });
+    versionMap.set(versionId, { name: "Release 1" });
+    listRequirementsMock.mockResolvedValue({
+      items: [{ id: requirementId, title: "Requirement B" }],
+      total: 1,
+    });
+    getWorkItemMock.mockResolvedValueOnce(
+      makeDetailResponse({
+        assigneeId,
+        description: "Before",
+        dueDate: "2026-06-01T00:00:00.000Z",
+        requirementId,
+        versionId,
+        permissions: {
+          canEdit: true,
+          canComment: true,
+          canUploadAttachment: true,
+          availableActions: [],
+        },
+      }),
+    );
+
+    render(
+      <TaskDetailSheet item={makeViewModel()} open onOpenChange={() => {}} />,
+    );
+
+    fireEvent.click(await screen.findByTestId("task-edit-button"));
+    expect(await screen.findByText("Requirement B")).toBeInTheDocument();
+
+    fireEvent.change(screen.getByTestId("task-edit-title-input"), {
+      target: { value: "Unsaved title" },
+    });
+    fireEvent.change(screen.getByTestId("task-edit-description-input"), {
+      target: { value: "Unsaved description" },
+    });
+    fireEvent.change(screen.getByTestId("task-edit-assignee-select"), {
+      target: { value: "" },
+    });
+    fireEvent.change(screen.getByTestId("task-edit-version-select"), {
+      target: { value: "" },
+    });
+    fireEvent.change(screen.getByTestId("task-edit-requirement-select"), {
+      target: { value: "" },
+    });
+    fireEvent.change(screen.getByTestId("task-edit-due-date-input"), {
+      target: { value: "" },
+    });
+
+    const form = screen.getByTestId("task-edit-form");
+    fireEvent.click(
+      within(form).getByRole("button", { name: "taskDetail.edit.cancel" }),
+    );
+    expect(screen.queryByTestId("task-edit-form")).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByTestId("task-edit-button"));
+
+    expect(screen.getByTestId("task-edit-title-input")).toHaveValue(
+      "Detail test task",
+    );
+    expect(screen.getByTestId("task-edit-description-input")).toHaveValue(
+      "Before",
+    );
+    expect(screen.getByTestId("task-edit-assignee-select")).toHaveValue(
+      assigneeId,
+    );
+    expect(screen.getByTestId("task-edit-version-select")).toHaveValue(
+      versionId,
+    );
+    expect(screen.getByTestId("task-edit-requirement-select")).toHaveValue(
+      requirementId,
+    );
+    expect(screen.getByTestId("task-edit-due-date-input")).toHaveValue(
+      "2026-06-01",
+    );
+  });
+
   it("does not show task field editing when PermissionSnapshot.canEdit is false", async () => {
     getWorkItemMock.mockResolvedValueOnce(
       makeDetailResponse({
