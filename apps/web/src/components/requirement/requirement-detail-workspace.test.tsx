@@ -1,4 +1,10 @@
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import {
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const { translatorCache } = vi.hoisted(() => ({
@@ -194,5 +200,43 @@ describe("RequirementDetailWorkspace", () => {
     );
 
     expect(updateRequirementMock).not.toHaveBeenCalled();
+  });
+
+  it("updates priority through the themed property dropdown", async () => {
+    getRequirementMock.mockResolvedValueOnce(makeRequirement());
+    updateRequirementMock.mockResolvedValueOnce(
+      makeRequirement({ priority: "URGENT" }),
+    );
+
+    render(
+      <RequirementDetailWorkspace requirementId="01ARZ3NDEKTSV4RRFFQ69G5FA1" />,
+    );
+
+    expect(
+      await screen.findByDisplayValue("Permissioned requirement"),
+    ).toBeInTheDocument();
+
+    fireEvent.pointerDown(
+      screen.getByRole("button", { name: "requirements.form.priority" }),
+    );
+    fireEvent.click(
+      await screen.findByRole("menuitem", {
+        name: /requirements\.priority\.URGENT/u,
+      }),
+    );
+    fireEvent.click(
+      screen.getByRole("button", { name: "requirements.detail.save" }),
+    );
+
+    await waitFor(() =>
+      expect(updateRequirementMock).toHaveBeenCalledWith(
+        {
+          organizationId: "ORG_01",
+          requirementId: "01ARZ3NDEKTSV4RRFFQ69G5FA1",
+          spaceId: "SPC_01",
+        },
+        expect.objectContaining({ priority: "URGENT" }),
+      ),
+    );
   });
 });

@@ -13,6 +13,8 @@ import type {
 import {
   Archive,
   Bug,
+  Check,
+  ChevronDown,
   CircleAlert,
   Clock,
   FileText,
@@ -27,7 +29,14 @@ import {
   Hash,
 } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
-import { useEffect, useMemo, useState, type FormEvent, type ReactNode } from "react";
+import {
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type FormEvent,
+  type ReactNode,
+} from "react";
 
 import { getApiErrorMessageKey } from "../../lib/api-error-messages";
 import {
@@ -41,6 +50,12 @@ import { cn } from "../../lib/utils";
 import { useSession } from "../providers/session-provider";
 import { Badge, type BadgeProps } from "../ui/badge";
 import { Button } from "../ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "../ui/dropdown-menu";
 import {
   RequirementContentEditorSlot,
   createContentEditorValue,
@@ -97,6 +112,7 @@ export function RequirementDetailWorkspace({
   const [isSaving, setIsSaving] = useState(false);
   const [isArchiving, setIsArchiving] = useState(false);
   const [errorKey, setErrorKey] = useState<string | null>(null);
+  const titleInputRef = useRef<HTMLTextAreaElement>(null);
 
   const currentSpace = useMemo(
     () =>
@@ -176,6 +192,10 @@ export function RequirementDetailWorkspace({
       isActive = false;
     };
   }, [organizationId, requestKey, requirementId, spaceId, status]);
+
+  useEffect(() => {
+    resizeTitleInput(titleInputRef.current);
+  }, [form.title]);
 
   async function onSave(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -279,12 +299,12 @@ export function RequirementDetailWorkspace({
   return (
     <form className="flex flex-col gap-6" onSubmit={onSave}>
       {/* Notion-style action toolbar (replaces m1 panel header buttons) */}
-      <div className="flex items-center justify-between gap-3">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
           <FileText className="h-3.5 w-3.5" aria-hidden="true" />
           <span>{t("detail.eyebrow")}</span>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2 sm:justify-end">
           {!canEditRequirement ? (
             <span className="text-[11px] text-muted-foreground">
               {t("form.readonly")}
@@ -322,10 +342,10 @@ export function RequirementDetailWorkspace({
 
       {/* Big Notion-style title */}
       <div className="flex flex-col gap-2 pt-2">
-        <input
+        <textarea
           aria-label={t("form.title")}
           className={cn(
-            "w-full border-0 bg-transparent p-0 text-4xl font-bold tracking-tight text-foreground outline-none",
+            "w-full resize-none overflow-hidden border-0 bg-transparent p-0 text-4xl font-bold tracking-tight text-foreground outline-none",
             "placeholder:text-muted-foreground/40",
             "focus-visible:outline-none focus-visible:ring-0",
             "disabled:cursor-not-allowed disabled:opacity-70",
@@ -333,14 +353,17 @@ export function RequirementDetailWorkspace({
           )}
           disabled={!canEditRequirement}
           maxLength={200}
-          onChange={(event) =>
+          onChange={(event) => {
+            resizeTitleInput(event.currentTarget);
             setForm((current) => ({
               ...current,
               title: event.target.value,
-            }))
-          }
+            }));
+          }}
           placeholder={titlePlaceholder}
+          ref={titleInputRef}
           required
+          rows={1}
           value={titleValue}
         />
 
@@ -368,14 +391,14 @@ export function RequirementDetailWorkspace({
               placeholder={t("form.noVersion")}
               value={form.versionId}
               displayValue={versionLabel ?? null}
-            >
-              <option value="">{t("form.noVersion")}</option>
-              {versions.map((version) => (
-                <option key={version.id} value={version.id}>
-                  {version.name}
-                </option>
-              ))}
-            </PropertySelect>
+              options={[
+                { label: t("form.noVersion"), value: "" },
+                ...versions.map((version) => ({
+                  label: version.name,
+                  value: version.id,
+                })),
+              ]}
+            />
           </PropertyItem>
 
           <PropertyItem icon={<User2 className="h-3.5 w-3.5" />} label={t("form.owner")}>
@@ -388,14 +411,14 @@ export function RequirementDetailWorkspace({
               placeholder={t("form.noOwner")}
               value={form.ownerId}
               displayValue={ownerLabel ?? null}
-            >
-              <option value="">{t("form.noOwner")}</option>
-              {members.map((member) => (
-                <option key={member.userId} value={member.userId}>
-                  {formatMember(member)}
-                </option>
-              ))}
-            </PropertySelect>
+              options={[
+                { label: t("form.noOwner"), value: "" },
+                ...members.map((member) => ({
+                  label: formatMember(member),
+                  value: member.userId,
+                })),
+              ]}
+            />
           </PropertyItem>
 
           <PropertyItem icon={<Flag className="h-3.5 w-3.5" />} label={t("form.priority")}>
@@ -417,14 +440,14 @@ export function RequirementDetailWorkspace({
                   </Badge>
                 ) : null
               }
-            >
-              <option value="">{t("form.noPriority")}</option>
-              {PRIORITIES.map((priority) => (
-                <option key={priority} value={priority}>
-                  {t(`priority.${priority}`)}
-                </option>
-              ))}
-            </PropertySelect>
+              options={[
+                { label: t("form.noPriority"), value: "" },
+                ...PRIORITIES.map((priority) => ({
+                  label: t(`priority.${priority}`),
+                  value: priority,
+                })),
+              ]}
+            />
           </PropertyItem>
 
           <PropertyItem icon={<PenLine className="h-3.5 w-3.5" />} label={t("detail.fields.author")}>
@@ -515,15 +538,22 @@ type PropertyItemProps = {
 
 function PropertyItem({ icon, label, children }: PropertyItemProps) {
   return (
-    <div className="flex items-center gap-1.5">
-      <span className="flex items-center gap-1 text-muted-foreground">
+    <div className="flex min-w-0 items-center gap-1.5">
+      <span className="flex shrink-0 items-center gap-1 text-muted-foreground">
         {icon}
         <span>{label}</span>
       </span>
-      <span className="flex items-center text-foreground/90">{children}</span>
+      <span className="flex min-w-0 items-center text-foreground/90">
+        {children}
+      </span>
     </div>
   );
 }
+
+type PropertySelectOption = {
+  label: ReactNode;
+  value: string;
+};
 
 type PropertySelectProps = {
   ariaLabel: string;
@@ -532,13 +562,12 @@ type PropertySelectProps = {
   placeholder: string;
   value: string;
   displayValue: ReactNode;
-  children: ReactNode;
+  options: PropertySelectOption[];
 };
 
 /**
- * Notion-style inline selector: shows a compact label/badge that visually
- * blends with the property strip, but is backed by a native <select> so we
- * keep accessibility and keyboard support without adding new dependencies.
+ * Notion-style inline selector backed by Radix DropdownMenu. Native select
+ * popups are not themeable enough across browsers, especially in dark mode.
  */
 function PropertySelect({
   ariaLabel,
@@ -547,35 +576,66 @@ function PropertySelect({
   placeholder,
   value,
   displayValue,
-  children,
+  options,
 }: PropertySelectProps) {
   return (
-    <span className="relative inline-flex items-center">
-      <span
-        className={cn(
-          "inline-flex items-center gap-1 rounded-md px-1.5 py-0.5",
-          !disabled && "hover:bg-muted",
-          disabled && "opacity-80",
-        )}
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild disabled={disabled}>
+        <button
+          aria-label={ariaLabel}
+          className={cn(
+            "inline-flex max-w-[16rem] items-center gap-1 rounded-md px-1.5 py-0.5 text-left outline-none transition-colors",
+            "focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
+            !disabled && "cursor-pointer hover:bg-muted",
+            disabled && "cursor-not-allowed opacity-80",
+          )}
+          disabled={disabled}
+          type="button"
+        >
+          <span className="min-w-0 truncate">
+            {displayValue ?? (
+              <span className="text-muted-foreground/80">{placeholder}</span>
+            )}
+          </span>
+          {!disabled ? (
+            <ChevronDown
+              aria-hidden="true"
+              className="h-3 w-3 shrink-0 text-muted-foreground"
+            />
+          ) : null}
+        </button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent
+        align="start"
+        className="max-w-[min(20rem,calc(100vw-2rem))] min-w-[12rem]"
       >
-        {displayValue ?? (
-          <span className="text-muted-foreground/80">{placeholder}</span>
-        )}
-      </span>
-      <select
-        aria-label={ariaLabel}
-        className={cn(
-          "absolute inset-0 cursor-pointer opacity-0",
-          disabled && "pointer-events-none",
-        )}
-        disabled={disabled}
-        onChange={(event) => onChange(event.target.value)}
-        value={value}
-      >
-        {children}
-      </select>
-    </span>
+        {options.map((option) => (
+          <DropdownMenuItem
+            key={option.value || "__empty"}
+            onSelect={() => onChange(option.value)}
+          >
+            <Check
+              aria-hidden="true"
+              className={cn(
+                "h-3.5 w-3.5 shrink-0",
+                value === option.value ? "opacity-100" : "opacity-0",
+              )}
+            />
+            <span className="min-w-0 truncate">{option.label}</span>
+          </DropdownMenuItem>
+        ))}
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
+}
+
+function resizeTitleInput(element: HTMLTextAreaElement | null) {
+  if (!element) {
+    return;
+  }
+
+  element.style.height = "auto";
+  element.style.height = `${Math.max(element.scrollHeight, 48)}px`;
 }
 
 function StatusDot({ status }: { status: RequirementStatus }) {
