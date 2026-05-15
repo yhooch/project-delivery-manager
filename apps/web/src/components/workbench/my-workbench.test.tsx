@@ -17,6 +17,35 @@ vi.mock("next-intl", () => ({
   useLocale: () => "zh-CN",
 }));
 
+vi.mock("../ui/dropdown-menu", async () => {
+  const React = await import("react");
+  type AnyProps = Record<string, unknown> & {
+    children?: React.ReactNode;
+    onSelect?: (event: { preventDefault: () => void }) => void;
+  };
+  return {
+    DropdownMenu: ({ children }: AnyProps) =>
+      React.createElement("div", null, children),
+    DropdownMenuTrigger: ({ children }: AnyProps) =>
+      React.createElement(React.Fragment, null, children),
+    DropdownMenuContent: ({ children }: AnyProps) =>
+      React.createElement("div", { role: "menu" }, children),
+    DropdownMenuLabel: ({ children }: AnyProps) =>
+      React.createElement("span", null, children),
+    DropdownMenuSeparator: () => React.createElement("hr"),
+    DropdownMenuItem: ({ children, onSelect, ...rest }: AnyProps) =>
+      React.createElement(
+        "button",
+        {
+          type: "button",
+          onClick: () => onSelect?.({ preventDefault: () => {} }),
+          ...rest,
+        },
+        children,
+      ),
+  };
+});
+
 vi.mock("../../i18n/routing", () => ({
   routing: { defaultLocale: "zh-CN", locales: ["zh-CN", "en-US"] },
   Link: ({ children }: { children: React.ReactNode }) => children,
@@ -33,7 +62,12 @@ const sessionMock = vi.hoisted(() => ({
       defaultOrganizationId: "ORG_01",
       defaultSpaceId: "SPC_01",
     },
+    currentOrganization: { id: "ORG_01", name: "Org A" },
     currentSpace: { id: "SPC_01", organizationId: "ORG_01", name: "Space A" },
+    spacesForCurrentOrganization: [
+      { id: "SPC_01", organizationId: "ORG_01", name: "Space A" },
+      { id: "SPC_02", organizationId: "ORG_01", name: "Space B" },
+    ],
   },
 }));
 vi.mock("../providers/session-provider", () => ({
@@ -242,7 +276,12 @@ beforeEach(() => {
       defaultOrganizationId: "ORG_01",
       defaultSpaceId: "SPC_01",
     },
+    currentOrganization: { id: "ORG_01", name: "Org A" },
     currentSpace: { id: "SPC_01", organizationId: "ORG_01", name: "Space A" },
+    spacesForCurrentOrganization: [
+      { id: "SPC_01", organizationId: "ORG_01", name: "Space A" },
+      { id: "SPC_02", organizationId: "ORG_01", name: "Space B" },
+    ],
   };
   window.localStorage.clear();
 });
@@ -252,6 +291,30 @@ afterEach(() => {
 });
 
 describe("MyWorkbench", () => {
+  it("loads organization-level data by default and narrows only after a space is selected", async () => {
+    getMyWorkbenchViewMock.mockResolvedValue(makeWorkbenchResponse());
+
+    render(<MyWorkbench />);
+
+    await waitFor(() =>
+      expect(getMyWorkbenchViewMock).toHaveBeenCalledTimes(1),
+    );
+    expect(getMyWorkbenchViewMock.mock.calls[0]?.[0]).toEqual({
+      organizationId: "ORG_01",
+      spaceId: undefined,
+    });
+
+    fireEvent.click(screen.getByTestId("workbench-space-filter-SPC_02"));
+
+    await waitFor(() =>
+      expect(getMyWorkbenchViewMock).toHaveBeenCalledTimes(2),
+    );
+    expect(getMyWorkbenchViewMock.mock.calls[1]?.[0]).toEqual({
+      organizationId: "ORG_01",
+      spaceId: "SPC_02",
+    });
+  });
+
   it("renders the four KPI summary chips with stat values", async () => {
     getMyWorkbenchViewMock.mockResolvedValueOnce(
       makeWorkbenchResponse({
@@ -542,7 +605,9 @@ describe("MyWorkbench", () => {
         defaultOrganizationId: undefined as unknown as string,
         defaultSpaceId: undefined as unknown as string,
       },
+      currentOrganization: undefined as unknown as never,
       currentSpace: undefined as unknown as never,
+      spacesForCurrentOrganization: [],
     };
 
     render(<MyWorkbench />);
@@ -556,7 +621,9 @@ describe("MyWorkbench", () => {
   it("renders the signIn empty state when session is null", async () => {
     sessionMock.current = {
       session: null as unknown as never,
+      currentOrganization: undefined as unknown as never,
       currentSpace: undefined as unknown as never,
+      spacesForCurrentOrganization: [],
     };
 
     render(<MyWorkbench />);

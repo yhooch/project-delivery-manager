@@ -80,9 +80,10 @@ describe("auth and session API", () => {
   it("rejects duplicate usernames", async () => {
     await registerUser("duplicate_user", "203.0.113.11").expect(200);
 
-    const response = await registerUser("duplicate_user", "203.0.113.12").expect(
-      409,
-    );
+    const response = await registerUser(
+      "duplicate_user",
+      "203.0.113.12",
+    ).expect(409);
 
     expect(response.body).toMatchObject({
       code: "CONFLICT",
@@ -95,8 +96,11 @@ describe("auth and session API", () => {
       (session) => session.userId === users.getByUsername("login_ok")?.id,
     );
 
-    const response = await loginUser("login_ok", "password-123", "203.0.113.14")
-      .expect(200);
+    const response = await loginUser(
+      "login_ok",
+      "password-123",
+      "203.0.113.14",
+    ).expect(200);
 
     expect(response.body.data.user.username).toBe("login_ok");
     expect(extractSessionToken(response.headers["set-cookie"])).toBeTruthy();
@@ -127,6 +131,35 @@ describe("auth and session API", () => {
     });
   });
 
+  it("rejects write requests with missing or untrusted origins", async () => {
+    await request(app.getHttpServer())
+      .post("/api/v1/auth/register")
+      .send({
+        username: "missing_origin_user",
+        password: "password-123",
+        confirmPassword: "password-123",
+      })
+      .expect(403)
+      .expect(({ body }) => {
+        expect(body.code).toBe("FORBIDDEN");
+      });
+
+    await request(app.getHttpServer())
+      .post("/api/v1/auth/register")
+      .set("Origin", "http://evil.example")
+      .set("x-forwarded-host", "evil.example")
+      .set("x-forwarded-proto", "http")
+      .send({
+        username: "spoofed_origin_user",
+        password: "password-123",
+        confirmPassword: "password-123",
+      })
+      .expect(403)
+      .expect(({ body }) => {
+        expect(body.code).toBe("FORBIDDEN");
+      });
+  });
+
   it("revokes the current session on logout", async () => {
     const agent = request.agent(app.getHttpServer());
     await post(agent, "/api/v1/auth/register", "203.0.113.17")
@@ -138,7 +171,9 @@ describe("auth and session API", () => {
       .expect(200);
     await agent.get("/api/v1/demo/protected").expect(200);
 
-    await post(agent, "/api/v1/auth/logout", "203.0.113.17").send({}).expect(200);
+    await post(agent, "/api/v1/auth/logout", "203.0.113.17")
+      .send({})
+      .expect(200);
     await agent.get("/api/v1/demo/protected").expect(401);
   });
 
@@ -187,26 +222,33 @@ describe("auth and session API", () => {
       })
       .expect(200);
 
-    const resolved = await moduleRef.get(AuthSessionService).resolveToken(token);
+    const resolved = await moduleRef
+      .get(AuthSessionService)
+      .resolveToken(token);
 
     expect(resolved?.user.preferences).toEqual({
       locale: "en-US",
       themeMode: "DARK",
     });
-    await agent.get("/api/v1/demo/protected").expect(200).expect(({ body }) => {
-      expect(body.data.preferences).toEqual({
-        locale: "en-US",
-        themeMode: "DARK",
+    await agent
+      .get("/api/v1/demo/protected")
+      .expect(200)
+      .expect(({ body }) => {
+        expect(body.data.preferences).toEqual({
+          locale: "en-US",
+          themeMode: "DARK",
+        });
       });
-    });
   });
 
   function registerUser(username: string, ip: string) {
-    return post(request(app.getHttpServer()), "/api/v1/auth/register", ip).send({
-      username,
-      password: "password-123",
-      confirmPassword: "password-123",
-    });
+    return post(request(app.getHttpServer()), "/api/v1/auth/register", ip).send(
+      {
+        username,
+        password: "password-123",
+        confirmPassword: "password-123",
+      },
+    );
   }
 
   function loginUser(username: string, password: string, ip: string) {
@@ -331,7 +373,9 @@ class InMemorySessionRepository implements SessionRepository {
         !record.revokedAt &&
         record.expiresAt > now,
     );
-    const user = session ? await this.users.findById(session.userId) : undefined;
+    const user = session
+      ? await this.users.findById(session.userId)
+      : undefined;
 
     return session && user && user.status === "ACTIVE"
       ? {

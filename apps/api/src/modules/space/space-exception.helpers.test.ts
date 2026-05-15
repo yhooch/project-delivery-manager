@@ -117,6 +117,54 @@ describe("space exception helpers", () => {
       ),
     ).toBe(false);
   });
+
+  it("marks items stale from lastStatusChangedAt when they reach the space threshold", () => {
+    const signals = buildSpaceExceptionSignals(
+      workItem({
+        lastStatusChangedAt: new Date("2026-05-08T12:00:00.000Z"),
+      }),
+      {
+        now,
+        staleThresholdDays: 5,
+      },
+    );
+
+    expect(signals).toEqual([
+      expect.objectContaining({
+        type: "stale",
+        evidenceSource: "LAST_STATUS_CHANGED_AT",
+        lastStatusChangedAt: "2026-05-08T12:00:00.000Z",
+        staleDays: 5,
+        staleThresholdDays: 5,
+      }),
+    ]);
+  });
+
+  it("does not mark items stale before the space threshold or after terminal states", () => {
+    expect(
+      buildSpaceExceptionSignals(
+        workItem({
+          lastStatusChangedAt: new Date("2026-05-09T12:00:00.000Z"),
+        }),
+        {
+          now,
+          staleThresholdDays: 5,
+        },
+      ).some((signal) => signal.type === "stale"),
+    ).toBe(false);
+    expect(
+      buildSpaceExceptionSignals(
+        workItem({
+          lastStatusChangedAt: new Date("2026-05-08T12:00:00.000Z"),
+          statusCategory: "DONE",
+        }),
+        {
+          now,
+          staleThresholdDays: 5,
+        },
+      ).some((signal) => signal.type === "stale"),
+    ).toBe(false);
+  });
 });
 
 function workItem(

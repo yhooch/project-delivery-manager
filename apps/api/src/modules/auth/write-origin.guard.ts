@@ -28,11 +28,7 @@ export class WriteOriginGuard implements CanActivate {
       throwInvalidOrigin();
     }
 
-    const allowedOrigins = new Set<string>([
-      new URL(this.config.get<string>("WEB_APP_URL") ?? "http://localhost:3000")
-        .origin,
-      getRequestOrigin(request),
-    ]);
+    const allowedOrigins = getAllowedOrigins(this.config);
 
     if (!allowedOrigins.has(sourceOrigin)) {
       throwInvalidOrigin();
@@ -53,15 +49,22 @@ function getSourceOrigin(request: RequestWithContext): string | undefined {
   return referer ? safeOrigin(referer) : undefined;
 }
 
-function getRequestOrigin(request: RequestWithContext): string {
-  const host = firstHeaderValue(request.headers?.["x-forwarded-host"]) ??
-    firstHeaderValue(request.headers?.host) ??
-    "localhost";
-  const protocol = firstHeaderValue(request.headers?.["x-forwarded-proto"]) ??
-    request.protocol ??
-    "http";
+function getAllowedOrigins(config: ConfigService): Set<string> {
+  const origins = new Set<string>();
+  const configuredOrigin = safeOrigin(
+    config.get<string>("WEB_APP_URL") ?? "http://localhost:3000",
+  );
 
-  return `${protocol}://${host}`;
+  if (configuredOrigin) {
+    origins.add(configuredOrigin);
+  }
+
+  if ((config.get<string>("NODE_ENV") ?? "development") !== "production") {
+    origins.add("http://localhost:3000");
+    origins.add("http://127.0.0.1:3000");
+  }
+
+  return origins;
 }
 
 function safeOrigin(value: string): string | undefined {

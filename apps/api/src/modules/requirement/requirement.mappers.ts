@@ -2,7 +2,11 @@ import type {
   AttachmentMimeType,
   AttachmentRef,
   Requirement,
+  RequirementRelatedWorkItemSummary,
+  RequirementRelatedWorkItems,
   RequirementStatus,
+  StatusCategory,
+  WorkItemType,
 } from "@project-delivery/shared";
 
 type PrismaRequirementRecord = {
@@ -32,9 +36,19 @@ type PrismaAttachmentRefRecord = {
   size: number;
 };
 
+type PrismaRelatedWorkItemRecord = {
+  assigneeId: string | null;
+  id: string;
+  statusCategory: StatusCategory;
+  title: string;
+  type: WorkItemType;
+  versionId: string | null;
+};
+
 export function toRequirement(
   record: PrismaRequirementRecord,
   attachments: PrismaAttachmentRefRecord[] = [],
+  relatedWorkItems: RequirementRelatedWorkItems = emptyRelatedWorkItems(),
 ): Requirement {
   return {
     id: record.id,
@@ -52,14 +66,33 @@ export function toRequirement(
     ownerId: record.ownerId ?? undefined,
     authorId: record.authorId ?? undefined,
     attachments: attachments.map(toAttachmentRef),
-    relatedWorkItems: {
-      taskCount: 0,
-      bugCount: 0,
-      tasks: [],
-      bugs: [],
-    },
+    relatedWorkItems,
     createdAt: record.createdAt.toISOString(),
     updatedAt: record.updatedAt.toISOString(),
+  };
+}
+
+export function toRequirementRelatedWorkItems(
+  records: PrismaRelatedWorkItemRecord[],
+): RequirementRelatedWorkItems {
+  const tasks: RequirementRelatedWorkItemSummary[] = [];
+  const bugs: RequirementRelatedWorkItemSummary[] = [];
+
+  for (const record of records) {
+    const item = toRelatedWorkItemSummary(record);
+
+    if (item.type === "TASK") {
+      tasks.push(item);
+    } else {
+      bugs.push(item);
+    }
+  }
+
+  return {
+    taskCount: tasks.length,
+    bugCount: bugs.length,
+    tasks,
+    bugs,
   };
 }
 
@@ -70,6 +103,28 @@ function toAttachmentRef(record: PrismaAttachmentRefRecord): AttachmentRef {
     fileKey: record.fileKey,
     mimeType: record.mimeType as AttachmentMimeType,
     size: record.size,
+  };
+}
+
+function toRelatedWorkItemSummary(
+  record: PrismaRelatedWorkItemRecord,
+): RequirementRelatedWorkItemSummary {
+  return {
+    id: record.id,
+    type: record.type,
+    title: record.title,
+    versionId: record.versionId ?? undefined,
+    assigneeId: record.assigneeId ?? undefined,
+    statusCategory: record.statusCategory,
+  };
+}
+
+function emptyRelatedWorkItems(): RequirementRelatedWorkItems {
+  return {
+    taskCount: 0,
+    bugCount: 0,
+    tasks: [],
+    bugs: [],
   };
 }
 

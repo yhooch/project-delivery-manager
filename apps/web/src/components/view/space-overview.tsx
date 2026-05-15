@@ -368,7 +368,12 @@ export function SpaceOverview() {
                     </div>
                   </div>
                   <Link
-                    href="/versions"
+                    href={buildLink(
+                      "/versions",
+                      currentVersion?.id
+                        ? { versionId: currentVersion.id }
+                        : undefined,
+                    )}
                     data-testid="space-overview-version-board-link"
                     className="inline-flex items-center gap-1 rounded-md border border-border px-2 py-1 text-[11px] hover:bg-muted"
                   >

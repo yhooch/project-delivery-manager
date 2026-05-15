@@ -10,6 +10,7 @@ import { ApiClientError } from "./api-client";
 import {
   AttachmentUploadError,
   createAttachmentUploadFailure,
+  getAttachmentDownloadUrl,
   listAttachments,
   uploadAttachment,
   uploadRequirementImage,
@@ -120,7 +121,9 @@ describe("attachment service", () => {
       targetId: requirementId,
       targetType: "REQUIREMENT",
     });
-    expect(api.get).toHaveBeenCalledWith(`/attachments/${attachmentId}/download-url`);
+    expect(api.get).toHaveBeenCalledWith(
+      `/attachments/${attachmentId}/download-url`,
+    );
   });
 
   it("uploads WORK_ITEM attachments with the same presign and register flow", async () => {
@@ -173,13 +176,17 @@ describe("attachment service", () => {
       downloadUrl,
     });
 
-    expect(workItemApi.post).toHaveBeenNthCalledWith(1, "/attachments/presign", {
-      fileName: "note.md",
-      mimeType: "text/markdown",
-      size: file.size,
-      targetId: workItemId,
-      targetType: "WORK_ITEM",
-    });
+    expect(workItemApi.post).toHaveBeenNthCalledWith(
+      1,
+      "/attachments/presign",
+      {
+        fileName: "note.md",
+        mimeType: "text/markdown",
+        size: file.size,
+        targetId: workItemId,
+        targetType: "WORK_ITEM",
+      },
+    );
     expect(workItemApi.post).toHaveBeenNthCalledWith(2, "/attachments", {
       fileKey,
       fileName: "note.md",
@@ -222,6 +229,28 @@ describe("attachment service", () => {
         targetType: "REQUIREMENT",
       },
     });
+  });
+
+  it("gets a signed attachment download URL by attachment id", async () => {
+    const api = createApi();
+
+    await expect(
+      getAttachmentDownloadUrl(
+        {
+          attachmentId,
+          organizationId,
+          spaceId,
+        },
+        api,
+      ),
+    ).resolves.toEqual({
+      downloadUrl,
+      expiresInSeconds: 300,
+    });
+
+    expect(api.get).toHaveBeenCalledWith(
+      `/attachments/${attachmentId}/download-url`,
+    );
   });
 
   it("treats the M1 pseudo object-storage origin as an accepted local upload", async () => {

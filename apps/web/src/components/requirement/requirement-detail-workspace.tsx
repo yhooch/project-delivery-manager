@@ -7,7 +7,6 @@ import type {
   RequirementRelatedWorkItemSummary,
   RequirementStatus,
   SpaceMemberWithUser,
-  SpaceRole,
   UpdateRequirementRequest,
   Version,
 } from "@project-delivery/shared";
@@ -49,12 +48,6 @@ import {
 } from "./requirement-content-editor-slot";
 
 const PRIORITIES: Priority[] = ["LOW", "MEDIUM", "HIGH", "URGENT"];
-const REQUIREMENT_WRITER_ROLES = new Set<SpaceRole>([
-  "SPACE_ADMIN",
-  "PM",
-  "REQUIREMENT",
-]);
-
 const STATUS_VARIANT: Record<RequirementStatus, BadgeProps["variant"]> = {
   DRAFT: "outline",
   CONFIRMED: "primary",
@@ -117,15 +110,9 @@ export function RequirementDetailWorkspace({
     currentSpace?.organizationId ??
     session?.defaultOrganizationId;
   const spaceId = requirement?.spaceId ?? currentSpace?.id;
-  const fallbackCanEditRequirement =
-    requirement?.status !== "ARCHIVED" &&
-    currentSpace !== undefined &&
-    REQUIREMENT_WRITER_ROLES.has(currentSpace.role);
-  const canEditRequirement =
-    requirement?.permissions?.canEdit ?? fallbackCanEditRequirement;
   const canUploadRequirementImages =
-    requirement?.permissions?.canUploadAttachment ??
-    (fallbackCanEditRequirement && requirement?.status === "DRAFT");
+    requirement?.permissions?.canUploadAttachment === true;
+  const canEditRequirement = requirement?.permissions?.canEdit === true;
   const requestKey = useMemo(
     () =>
       [

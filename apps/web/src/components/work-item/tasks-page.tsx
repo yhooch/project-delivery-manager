@@ -1,22 +1,32 @@
 "use client";
 
 import type {
+  Priority,
+  Requirement,
+  SpaceMemberWithUser,
   StatusCategory,
+  Version,
   WorkItem,
 } from "@project-delivery/shared";
 import { Filter, Plus, Search } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+  type ReactNode,
+} from "react";
 
 import { getApiErrorMessageKey } from "../../lib/api-error-messages";
 import { useListKeyboardNav } from "../../lib/hooks/use-list-keyboard-nav";
+import { listRequirements } from "../../lib/requirement-service";
 import { useSpaceMembers, useVersions } from "../../lib/v2/lookups";
 import type { WorkItemViewModel } from "../../lib/v2/work-item-view-model";
-import { listWorkItems } from "../../lib/work-item-service";
-import type {
-  SpaceMemberWithUser,
-  Version,
-} from "@project-delivery/shared";
+import {
+  listWorkItems,
+  type TaskListFilterState,
+} from "../../lib/work-item-service";
 
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
@@ -31,10 +41,22 @@ import { TaskDetailSheet } from "./task-detail-sheet";
 
 type StatusFilterKey = "all" | StatusCategory;
 
+const STATUS_FILTERS: StatusCategory[] = [
+  "NOT_STARTED",
+  "IN_PROGRESS",
+  "WAITING",
+  "VERIFYING",
+  "DONE",
+  "TERMINATED",
+];
+const PRIORITY_FILTERS: Priority[] = ["LOW", "MEDIUM", "HIGH", "URGENT"];
+
 export function TasksPage() {
   const tNav = useTranslations("shell.nav");
   const t = useTranslations("tasks");
   const tStatus = useTranslations("workItems.statusCategory");
+  const tPriority = useTranslations("workItems.priority");
+  const tFilters = useTranslations("workItems.filters");
   const tApiError = useTranslations();
 
   const { currentSpace, status: sessionStatus } = useSession();
@@ -44,8 +66,8 @@ export function TasksPage() {
     () => ({ organizationId, spaceId }),
     [organizationId, spaceId],
   );
-  const { getMember } = useSpaceMembers(spaceId, organizationId);
-  const { getVersion } = useVersions(spaceId, organizationId);
+  const { members, getMember } = useSpaceMembers(spaceId, organizationId);
+  const { versions, getVersion } = useVersions(spaceId, organizationId);
 
   const [items, setItems] = useState<WorkItem[]>([]);
   const [loading, setLoading] = useState(false);
@@ -53,8 +75,21 @@ export function TasksPage() {
   const [activeItem, setActiveItem] = useState<WorkItemViewModel | null>(null);
   const [sheetOpen, setSheetOpen] = useState(false);
   const [query, setQuery] = useState("");
-  const [statusFilter, setStatusFilter] = useState<StatusFilterKey>("all");
+  const [filters, setFilters] = useState<TaskListFilterState>({});
+  const [filterOpen, setFilterOpen] = useState(false);
+  const [requirements, setRequirements] = useState<Requirement[]>([]);
   const [createOpen, setCreateOpen] = useState(false);
+  const canCreateTask = canWriteWorkItems(
+    currentSpace?.role,
+    currentSpace?.status,
+  );
+
+  const setFilter = useCallback(
+    (key: keyof TaskListFilterState, value: string) => {
+      setFilters((current) => ({ ...current, [key]: value || undefined }));
+    },
+    [],
+  );
 
   const fetchTasks = useCallback(async () => {
     if (!spaceId) {
@@ -65,7 +100,12 @@ export function TasksPage() {
     setErrorMessage(null);
 
     try {
-      const result = await listWorkItems({ spaceId, type: "TASK" });
+      const result = await listWorkItems({
+        organizationId,
+        spaceId,
+        type: "TASK",
+        ...filters,
+      });
       setItems(result.items);
     } catch (error) {
       const key = getApiErrorMessageKey(error);
@@ -73,7 +113,7 @@ export function TasksPage() {
     } finally {
       setLoading(false);
     }
-  }, [spaceId, tApiError]);
+  }, [filters, organizationId, spaceId, tApiError]);
 
   useEffect(() => {
     if (spaceId) {
@@ -82,6 +122,35 @@ export function TasksPage() {
       setItems([]);
     }
   }, [fetchTasks, spaceId]);
+
+  useEffect(() => {
+    if (!filterOpen || !spaceId) {
+      return;
+    }
+
+    let cancelled = false;
+
+    void listRequirements({
+      organizationId,
+      page: 1,
+      pageSize: 100,
+      spaceId,
+    })
+      .then((result) => {
+        if (!cancelled) {
+          setRequirements(result.items);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setRequirements([]);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [filterOpen, organizationId, spaceId]);
 
   const buckets: { label: string; key: StatusFilterKey }[] = useMemo(
     () => [
@@ -108,9 +177,6 @@ export function TasksPage() {
 
   const filtered = useMemo(() => {
     return mockItems.filter((task) => {
-      if (statusFilter !== "all" && task.statusCategory !== statusFilter) {
-        return false;
-      }
       if (query.trim()) {
         const q = query.toLowerCase();
         return (
@@ -120,7 +186,7 @@ export function TasksPage() {
       }
       return true;
     });
-  }, [mockItems, query, statusFilter]);
+  }, [mockItems, query]);
 
   const open = useCallback(
     (item: WorkItemViewModel) => {
@@ -161,19 +227,30 @@ export function TasksPage() {
       description={t("page.description")}
       actions={
         <>
-          <Button variant="outline" size="sm" className="text-xs">
-            <Filter className="h-3 w-3" />
-            {t("actions.filter")}
-          </Button>
-          <Button
-            size="sm"
-            className="text-xs"
-            data-testid="tasks-create-button"
-            onClick={() => setCreateOpen(true)}
-          >
-            <Plus className="h-3 w-3" />
-            {t("actions.create")}
-          </Button>
+          {spaceId && (
+            <Button
+              variant={filterOpen ? "secondary" : "outline"}
+              size="sm"
+              className="text-xs"
+              data-testid="tasks-filter-button"
+              aria-expanded={filterOpen}
+              onClick={() => setFilterOpen((open) => !open)}
+            >
+              <Filter className="h-3 w-3" />
+              {t("actions.filter")}
+            </Button>
+          )}
+          {spaceId && canCreateTask && (
+            <Button
+              size="sm"
+              className="text-xs"
+              data-testid="tasks-create-button"
+              onClick={() => setCreateOpen(true)}
+            >
+              <Plus className="h-3 w-3" />
+              {t("actions.create")}
+            </Button>
+          )}
         </>
       }
     />
@@ -219,9 +296,11 @@ export function TasksPage() {
             <button
               key={b.key}
               type="button"
-              onClick={() => setStatusFilter(b.key)}
+              onClick={() =>
+                setFilter("statusCategory", b.key === "all" ? "" : b.key)
+              }
               className={`h-7 rounded-md px-2.5 text-[12px] transition-colors cursor-pointer ${
-                statusFilter === b.key
+                (filters.statusCategory ?? "all") === b.key
                   ? "bg-muted font-medium text-foreground"
                   : "text-muted-foreground hover:bg-muted/50 hover:text-foreground"
               }`}
@@ -231,6 +310,93 @@ export function TasksPage() {
           ))}
         </div>
       </div>
+
+      {filterOpen && (
+        <div
+          data-testid="tasks-filter-panel"
+          className="grid gap-3 border-b border-border bg-muted/20 px-6 py-3 md:grid-cols-5"
+        >
+          <FilterField label={tFilters("version")}>
+            <select
+              data-testid="tasks-filter-version"
+              value={filters.versionId ?? ""}
+              onChange={(event) => setFilter("versionId", event.target.value)}
+              className="h-8 w-full rounded-md border border-input bg-background px-2 text-sm"
+            >
+              <option value="">{tFilters("allVersions")}</option>
+              {versions.map((version) => (
+                <option key={version.id} value={version.id}>
+                  {version.name}
+                </option>
+              ))}
+            </select>
+          </FilterField>
+          <FilterField label={tFilters("assignee")}>
+            <select
+              data-testid="tasks-filter-assignee"
+              value={filters.assigneeId ?? ""}
+              onChange={(event) => setFilter("assigneeId", event.target.value)}
+              className="h-8 w-full rounded-md border border-input bg-background px-2 text-sm"
+            >
+              <option value="">{tFilters("allAssignees")}</option>
+              {members.map((member) => (
+                <option key={member.userId} value={member.userId}>
+                  {member.user.name || member.user.username}
+                </option>
+              ))}
+            </select>
+          </FilterField>
+          <FilterField label={tFilters("statusCategory")}>
+            <select
+              data-testid="tasks-filter-status"
+              value={filters.statusCategory ?? ""}
+              onChange={(event) =>
+                setFilter("statusCategory", event.target.value)
+              }
+              className="h-8 w-full rounded-md border border-input bg-background px-2 text-sm"
+            >
+              <option value="">{tFilters("allStatusCategories")}</option>
+              {STATUS_FILTERS.map((status) => (
+                <option key={status} value={status}>
+                  {tStatus(status)}
+                </option>
+              ))}
+            </select>
+          </FilterField>
+          <FilterField label={tFilters("priority")}>
+            <select
+              data-testid="tasks-filter-priority"
+              value={filters.priority ?? ""}
+              onChange={(event) => setFilter("priority", event.target.value)}
+              className="h-8 w-full rounded-md border border-input bg-background px-2 text-sm"
+            >
+              <option value="">{tFilters("allPriorities")}</option>
+              {PRIORITY_FILTERS.map((priority) => (
+                <option key={priority} value={priority}>
+                  {tPriority(priority)}
+                </option>
+              ))}
+            </select>
+          </FilterField>
+          <FilterField label={tFilters("requirement")}>
+            <select
+              data-testid="tasks-filter-requirement"
+              value={filters.requirementId ?? ""}
+              onChange={(event) =>
+                setFilter("requirementId", event.target.value)
+              }
+              className="h-8 w-full rounded-md border border-input bg-background px-2 text-sm"
+            >
+              <option value="">{tFilters("allRequirements")}</option>
+              {requirements.map((requirement) => (
+                <option key={requirement.id} value={requirement.id}>
+                  {requirement.title || requirement.id}
+                </option>
+              ))}
+            </select>
+          </FilterField>
+        </div>
+      )}
 
       <div className="flex-1 overflow-y-auto">
         {loading ? (
@@ -264,12 +430,14 @@ export function TasksPage() {
         item={activeItem}
         open={sheetOpen}
         onOpenChange={setSheetOpen}
+        organizationId={organizationId}
+        spaceId={spaceId}
         onChanged={() => {
           void fetchTasks();
         }}
       />
 
-      {spaceId && (
+      {spaceId && canCreateTask && (
         <CreateTaskDialog
           open={createOpen}
           onOpenChange={setCreateOpen}
@@ -280,6 +448,28 @@ export function TasksPage() {
         />
       )}
     </div>
+  );
+}
+
+function canWriteWorkItems(
+  role: string | undefined,
+  status: string | undefined,
+): boolean {
+  return Boolean(role) && role !== "VIEWER" && status !== "DISABLED";
+}
+
+function FilterField({
+  children,
+  label,
+}: {
+  children: ReactNode;
+  label: string;
+}) {
+  return (
+    <label className="flex min-w-0 flex-col gap-1 text-[11px] font-medium text-muted-foreground">
+      <span>{label}</span>
+      {children}
+    </label>
   );
 }
 
@@ -294,17 +484,23 @@ function toMockWorkItem(
   lookups: LookupHelpers,
 ): WorkItemViewModel {
   const code = deriveCode(item.id, item.type);
-  const member = item.assigneeId ? lookups.getMember(item.assigneeId) : undefined;
-  const assigneeName = member?.user.name ?? member?.user.username ?? item.assigneeId ?? "";
+  const member = item.assigneeId
+    ? lookups.getMember(item.assigneeId)
+    : undefined;
+  const assigneeName =
+    member?.user.name ?? member?.user.username ?? item.assigneeId ?? "";
   const initial = deriveInitial(assigneeName);
-  const version = item.versionId ? lookups.getVersion(item.versionId) : undefined;
+  const version = item.versionId
+    ? lookups.getVersion(item.versionId)
+    : undefined;
   const dueDate = item.dueDate ? formatDate(item.dueDate) : undefined;
   const isOverdue = item.dueDate
     ? new Date(item.dueDate).getTime() < Date.now() &&
       item.statusCategory !== "DONE" &&
       item.statusCategory !== "TERMINATED"
     : false;
-  const isBlocked = item.statusCategory === "WAITING" || Boolean(item.blockedAt);
+  const isBlocked =
+    item.statusCategory === "WAITING" || Boolean(item.blockedAt);
 
   return {
     id: item.id,

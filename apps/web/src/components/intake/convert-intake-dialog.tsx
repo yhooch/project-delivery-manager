@@ -1,17 +1,29 @@
 "use client";
 
 import type {
+  ConvertIntakeItemToWorkItemsResponse,
   IntakeItem,
   Priority,
+  Requirement,
   SpaceMemberWithUser,
+  Version,
+  WorkflowBinding,
+  WorkflowDefinition,
 } from "@project-delivery/shared";
 import { Plus, Trash2 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useEffect, useState } from "react";
 
 import { getApiErrorMessageKey } from "../../lib/api-error-messages";
+import { toConvertIntakeItemRequest } from "../../lib/intake-forms";
 import { convertIntakeItemToWorkItems } from "../../lib/intake-service";
+import { listRequirements } from "../../lib/requirement-service";
 import { listSpaceMembers } from "../../lib/space-service";
+import { listVersions } from "../../lib/version-service";
+import {
+  listWorkflowBindings,
+  listWorkflows,
+} from "../../lib/workflow-service";
 
 import {
   Dialog,
@@ -24,25 +36,45 @@ import {
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
 import { Label } from "../ui/label";
+import { Textarea } from "../ui/textarea";
 
 type ConvertIntakeDialogProps = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   spaceId: string;
   intakeItem: IntakeItem | null;
-  onConverted?: () => void;
+  onConverted?: (result: ConvertIntakeItemToWorkItemsResponse) => void;
 };
 
 const PRIORITIES: Priority[] = ["LOW", "MEDIUM", "HIGH", "URGENT"];
 
 type TaskRow = {
-  title: string;
   assigneeId: string;
+  description: string;
+  dueDate: string;
   priority: Priority;
+  requirementId: string;
+  title: string;
+  versionId: string;
+  workflowVersionId: string;
 };
 
-function makeRow(): TaskRow {
-  return { title: "", assigneeId: "", priority: "MEDIUM" };
+type WorkflowOption = {
+  binding: WorkflowBinding;
+  workflowName?: string;
+};
+
+function makeRow(intakeItem: IntakeItem | null, includeTitle = false): TaskRow {
+  return {
+    assigneeId: intakeItem?.assigneeId ?? "",
+    description: intakeItem?.description ?? "",
+    dueDate: "",
+    priority: intakeItem?.priority ?? "MEDIUM",
+    requirementId: intakeItem?.requirementId ?? "",
+    title: includeTitle ? (intakeItem?.title ?? "") : "",
+    versionId: intakeItem?.versionId ?? "",
+    workflowVersionId: "",
+  };
 }
 
 export function ConvertIntakeDialog({
@@ -53,15 +85,19 @@ export function ConvertIntakeDialog({
   onConverted,
 }: ConvertIntakeDialogProps) {
   const t = useTranslations("intake.dialog");
+  const tIntakeItems = useTranslations("intakeItems");
   const tPriority = useTranslations("intakeItems.priority");
   const tRoot = useTranslations();
 
-  const [rows, setRows] = useState<TaskRow[]>([makeRow()]);
+  const [rows, setRows] = useState<TaskRow[]>([makeRow(null)]);
   const [errors, setErrors] = useState<boolean[]>([false]);
   const [submitting, setSubmitting] = useState(false);
   const [errorKey, setErrorKey] = useState<string | null>(null);
 
   const [members, setMembers] = useState<SpaceMemberWithUser[]>([]);
+  const [versions, setVersions] = useState<Version[]>([]);
+  const [requirements, setRequirements] = useState<Requirement[]>([]);
+  const [workflowOptions, setWorkflowOptions] = useState<WorkflowOption[]>([]);
 
   useEffect(() => {
     if (!open || !spaceId) {
@@ -72,11 +108,33 @@ export function ConvertIntakeDialog({
 
     void (async () => {
       try {
-        const memberPage = await listSpaceMembers(spaceId);
+        const [
+          memberPage,
+          versionPage,
+          requirementPage,
+          workflowPage,
+          bindingPage,
+        ] = await Promise.all([
+          listSpaceMembers(spaceId),
+          listVersions({ spaceId, page: 1, pageSize: 100 }),
+          listRequirements({ spaceId, page: 1, pageSize: 100 }),
+          listWorkflows({ spaceId, page: 1, pageSize: 100 }),
+          listWorkflowBindings({
+            page: 1,
+            pageSize: 100,
+            spaceId,
+            workItemType: "TASK",
+          }),
+        ]);
         if (cancelled) {
           return;
         }
         setMembers(memberPage.items);
+        setVersions(versionPage.items);
+        setRequirements(requirementPage.items);
+        setWorkflowOptions(
+          toWorkflowOptions(bindingPage.items, workflowPage.items),
+        );
       } catch {
         // swallow option load errors
       }
@@ -87,8 +145,16 @@ export function ConvertIntakeDialog({
     };
   }, [open, spaceId]);
 
+  useEffect(() => {
+    if (!open) {
+      return;
+    }
+    setRows([makeRow(intakeItem, true)]);
+    setErrors([false]);
+  }, [intakeItem, open]);
+
   function reset() {
-    setRows([makeRow()]);
+    setRows([makeRow(intakeItem)]);
     setErrors([false]);
     setErrorKey(null);
     setSubmitting(false);
@@ -113,7 +179,7 @@ export function ConvertIntakeDialog({
   }
 
   function addRow() {
-    setRows((prev) => [...prev, makeRow()]);
+    setRows((prev) => [...prev, makeRow(intakeItem)]);
     setErrors((prev) => [...prev, false]);
   }
 
@@ -142,17 +208,24 @@ export function ConvertIntakeDialog({
     setErrorKey(null);
 
     try {
-      await convertIntakeItemToWorkItems(
+      const result = await convertIntakeItemToWorkItems(
         { intakeItemId: intakeItem.id, spaceId },
-        {
+        toConvertIntakeItemRequest({
           tasks: rows.map((row) => ({
-            title: row.title.trim(),
             assigneeId: row.assigneeId || undefined,
+            description: row.description,
+            dueDate: row.dueDate
+              ? new Date(row.dueDate).toISOString()
+              : undefined,
             priority: row.priority,
+            requirementId: row.requirementId || undefined,
+            title: row.title,
+            versionId: row.versionId || undefined,
+            workflowVersionId: row.workflowVersionId || undefined,
           })),
-        },
+        }),
       );
-      onConverted?.();
+      onConverted?.(result);
       handleOpenChange(false);
     } catch (error) {
       setErrorKey(getApiErrorMessageKey(error));
@@ -163,7 +236,7 @@ export function ConvertIntakeDialog({
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent className="max-w-2xl">
+      <DialogContent className="max-h-[90vh] max-w-3xl overflow-y-auto">
         <DialogHeader>
           <DialogTitle>{t("convert.title")}</DialogTitle>
           <DialogDescription>{t("convert.description")}</DialogDescription>
@@ -195,65 +268,199 @@ export function ConvertIntakeDialog({
             {rows.map((row, index) => (
               <div
                 key={index}
-                className="flex flex-col gap-2 rounded-md border border-border p-2 sm:flex-row sm:items-end"
+                className="flex flex-col gap-3 rounded-md border border-border p-3"
               >
-                <div className="flex-1 flex-col gap-1">
-                  <Input
-                    placeholder={t("convert.taskTitlePlaceholder")}
-                    value={row.title}
-                    onChange={(event) =>
-                      updateRow(index, { title: event.target.value })
-                    }
-                    maxLength={200}
-                    aria-invalid={errors[index]}
-                  />
-                  {errors[index] && (
-                    <span className="mt-1 text-[11px] text-destructive" role="alert">
-                      {t("convert.taskTitleError")}
-                    </span>
-                  )}
+                <div className="flex items-center justify-between gap-2">
+                  <div className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
+                    {tIntakeItems("convert.taskLegend", { index: index + 1 })}
+                  </div>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon-sm"
+                    onClick={() => removeRow(index)}
+                    disabled={rows.length === 1 || submitting}
+                    aria-label={t("convert.removeTask")}
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </Button>
                 </div>
-                <select
-                  value={row.assigneeId}
-                  onChange={(event) =>
-                    updateRow(index, { assigneeId: event.target.value })
-                  }
-                  className="h-8 w-full rounded-md border border-input bg-background px-2 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:w-40"
-                  aria-label={t("convert.taskAssignee")}
-                >
-                  <option value="">{t("convert.unassigned")}</option>
-                  {members.map((member) => (
-                    <option key={member.userId} value={member.userId}>
-                      {member.user.name || member.user.username}
-                    </option>
-                  ))}
-                </select>
-                <select
-                  value={row.priority}
-                  onChange={(event) =>
-                    updateRow(index, {
-                      priority: event.target.value as Priority,
-                    })
-                  }
-                  className="h-8 w-full rounded-md border border-input bg-background px-2 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:w-32"
-                  aria-label={t("convert.taskPriority")}
-                >
-                  {PRIORITIES.map((p) => (
-                    <option key={p} value={p}>
-                      {tPriority(p)}
-                    </option>
-                  ))}
-                </select>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon-sm"
-                  onClick={() => removeRow(index)}
-                  disabled={rows.length === 1 || submitting}
-                  aria-label={t("convert.removeTask")}
-                >
-                  <Trash2 className="h-3.5 w-3.5" />
-                </Button>
+
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <div className="flex flex-col gap-1.5 sm:col-span-2">
+                    <Label htmlFor={`convert-task-title-${index}`}>
+                      {tIntakeItems("taskForm.title")}
+                    </Label>
+                    <Input
+                      id={`convert-task-title-${index}`}
+                      data-testid={`convert-task-title-${index}`}
+                      placeholder={t("convert.taskTitlePlaceholder")}
+                      value={row.title}
+                      onChange={(event) =>
+                        updateRow(index, { title: event.target.value })
+                      }
+                      maxLength={200}
+                      aria-invalid={errors[index]}
+                    />
+                    {errors[index] && (
+                      <span
+                        className="text-[11px] text-destructive"
+                        role="alert"
+                      >
+                        {t("convert.taskTitleError")}
+                      </span>
+                    )}
+                  </div>
+                  <div className="flex flex-col gap-1.5 sm:col-span-2">
+                    <Label htmlFor={`convert-task-description-${index}`}>
+                      {tIntakeItems("taskForm.description")}
+                    </Label>
+                    <Textarea
+                      id={`convert-task-description-${index}`}
+                      data-testid={`convert-task-description-${index}`}
+                      value={row.description}
+                      onChange={(event) =>
+                        updateRow(index, { description: event.target.value })
+                      }
+                      maxLength={8000}
+                      rows={3}
+                    />
+                  </div>
+                  <div className="flex flex-col gap-1.5">
+                    <Label htmlFor={`convert-task-version-${index}`}>
+                      {tIntakeItems("taskForm.version")}
+                    </Label>
+                    <select
+                      id={`convert-task-version-${index}`}
+                      data-testid={`convert-task-version-${index}`}
+                      value={row.versionId}
+                      onChange={(event) =>
+                        updateRow(index, { versionId: event.target.value })
+                      }
+                      className="h-8 w-full rounded-md border border-input bg-background px-2 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                    >
+                      <option value="">
+                        {tIntakeItems("taskForm.noVersion")}
+                      </option>
+                      {versions.map((version) => (
+                        <option key={version.id} value={version.id}>
+                          {version.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="flex flex-col gap-1.5">
+                    <Label htmlFor={`convert-task-requirement-${index}`}>
+                      {tIntakeItems("taskForm.requirement")}
+                    </Label>
+                    <select
+                      id={`convert-task-requirement-${index}`}
+                      data-testid={`convert-task-requirement-${index}`}
+                      value={row.requirementId}
+                      onChange={(event) =>
+                        updateRow(index, { requirementId: event.target.value })
+                      }
+                      className="h-8 w-full rounded-md border border-input bg-background px-2 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                    >
+                      <option value="">
+                        {tIntakeItems("taskForm.noRequirement")}
+                      </option>
+                      {requirements.map((requirement) => (
+                        <option key={requirement.id} value={requirement.id}>
+                          {requirement.title ||
+                            t("fields.untitledRequirement")}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="flex flex-col gap-1.5">
+                    <Label htmlFor={`convert-task-assignee-${index}`}>
+                      {tIntakeItems("taskForm.assignee")}
+                    </Label>
+                    <select
+                      id={`convert-task-assignee-${index}`}
+                      data-testid={`convert-task-assignee-${index}`}
+                      value={row.assigneeId}
+                      onChange={(event) =>
+                        updateRow(index, { assigneeId: event.target.value })
+                      }
+                      className="h-8 w-full rounded-md border border-input bg-background px-2 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                      aria-label={t("convert.taskAssignee")}
+                    >
+                      <option value="">{t("convert.unassigned")}</option>
+                      {members.map((member) => (
+                        <option key={member.userId} value={member.userId}>
+                          {member.user.name || member.user.username}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="flex flex-col gap-1.5">
+                    <Label htmlFor={`convert-task-priority-${index}`}>
+                      {tIntakeItems("taskForm.priority")}
+                    </Label>
+                    <select
+                      id={`convert-task-priority-${index}`}
+                      data-testid={`convert-task-priority-${index}`}
+                      value={row.priority}
+                      onChange={(event) =>
+                        updateRow(index, {
+                          priority: event.target.value as Priority,
+                        })
+                      }
+                      className="h-8 w-full rounded-md border border-input bg-background px-2 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                      aria-label={t("convert.taskPriority")}
+                    >
+                      {PRIORITIES.map((p) => (
+                        <option key={p} value={p}>
+                          {tPriority(p)}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="flex flex-col gap-1.5">
+                    <Label htmlFor={`convert-task-due-date-${index}`}>
+                      {tIntakeItems("taskForm.dueDate")}
+                    </Label>
+                    <Input
+                      id={`convert-task-due-date-${index}`}
+                      data-testid={`convert-task-due-date-${index}`}
+                      type="date"
+                      value={row.dueDate}
+                      onChange={(event) =>
+                        updateRow(index, { dueDate: event.target.value })
+                      }
+                    />
+                  </div>
+                  <div className="flex flex-col gap-1.5">
+                    <Label htmlFor={`convert-task-workflow-${index}`}>
+                      {tRoot("workflow.eyebrow")}
+                    </Label>
+                    <select
+                      id={`convert-task-workflow-${index}`}
+                      data-testid={`convert-task-workflow-${index}`}
+                      value={row.workflowVersionId}
+                      onChange={(event) =>
+                        updateRow(index, {
+                          workflowVersionId: event.target.value,
+                        })
+                      }
+                      className="h-8 w-full rounded-md border border-input bg-background px-2 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                    >
+                      <option value="">
+                        {tRoot("workflow.bindingsPanel.fields.isDefault")}
+                      </option>
+                      {workflowOptions.map((option) => (
+                        <option
+                          key={option.binding.id}
+                          value={option.binding.workflowVersionId}
+                        >
+                          {formatWorkflowOption(option, tRoot)}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
               </div>
             ))}
             <Button
@@ -289,4 +496,33 @@ export function ConvertIntakeDialog({
       </DialogContent>
     </Dialog>
   );
+}
+
+function toWorkflowOptions(
+  bindings: WorkflowBinding[],
+  workflows: WorkflowDefinition[],
+): WorkflowOption[] {
+  const workflowNameById = new Map(
+    workflows.map((workflow) => [workflow.id, workflow.name]),
+  );
+
+  return bindings
+    .filter((binding) => binding.workItemType === "TASK")
+    .map((binding) => ({
+      binding,
+      workflowName: workflowNameById.get(binding.workflowId),
+    }));
+}
+
+function formatWorkflowOption(
+  option: WorkflowOption,
+  t: (key: string) => string,
+): string {
+  const name = option.workflowName ?? t("workflow.workItemType.TASK");
+  const version = option.binding.workflowVersionId.slice(-6).toUpperCase();
+  const defaultMark = option.binding.isDefault
+    ? ` · ${t("workflow.bindingsPanel.fields.isDefault")}`
+    : "";
+
+  return `${name} · v${version}${defaultMark}`;
 }

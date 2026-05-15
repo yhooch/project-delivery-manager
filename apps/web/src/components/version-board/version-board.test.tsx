@@ -110,6 +110,10 @@ vi.mock("../ui/tabs", async () => {
   };
 });
 
+const routerMock = vi.hoisted(() => ({
+  replace: vi.fn(),
+  push: vi.fn(),
+}));
 vi.mock("../../i18n/routing", () => ({
   routing: { defaultLocale: "zh-CN", locales: ["zh-CN", "en-US"] },
   Link: ({
@@ -127,7 +131,14 @@ vi.mock("../../i18n/routing", () => ({
   getPathname: () => "/",
   redirect: () => undefined,
   usePathname: () => "/",
-  useRouter: () => ({ push: vi.fn(), replace: vi.fn() }),
+  useRouter: () => routerMock,
+}));
+
+const searchParamsMock = vi.hoisted(() => ({
+  current: new URLSearchParams(),
+}));
+vi.mock("next/navigation", () => ({
+  useSearchParams: () => searchParamsMock.current,
 }));
 
 const sessionMock = vi.hoisted(() => ({
@@ -399,6 +410,9 @@ beforeEach(() => {
   listTimelineMock.mockReset();
   createVersionMock.mockReset();
   updateVersionMock.mockReset();
+  routerMock.replace.mockReset();
+  routerMock.push.mockReset();
+  searchParamsMock.current = new URLSearchParams();
   capturedHandlers.createVersionOnCreated = null;
   capturedHandlers.editVersionOnUpdated = null;
   capturedHandlers.detailSheetOnChanged = null;
@@ -467,6 +481,33 @@ describe("VersionPage", () => {
     ).toBeInTheDocument();
     // Card itself surfaces.
     expect(await screen.findByText("Login UI")).toBeInTheDocument();
+  });
+
+  it("selects the version from the URL before falling back to the first one", async () => {
+    searchParamsMock.current = new URLSearchParams({
+      versionId: "01ARZ3NDEKTSV4RRFFQ69G5FV2",
+    });
+    listVersionsMock.mockResolvedValueOnce({
+      items: [
+        makeVersion({ id: "01ARZ3NDEKTSV4RRFFQ69G5FV1", name: "v1.0.0" }),
+        makeVersion({ id: "01ARZ3NDEKTSV4RRFFQ69G5FV2", name: "v2.0.0" }),
+      ],
+      total: 2,
+    });
+    getVersionBoardViewMock.mockResolvedValueOnce(makeBoardResponse([]));
+
+    render(<VersionPage />);
+
+    await waitFor(() =>
+      expect(getVersionBoardViewMock).toHaveBeenCalledWith(
+        expect.objectContaining({
+          versionId: "01ARZ3NDEKTSV4RRFFQ69G5FV2",
+        }),
+      ),
+    );
+    expect(screen.getByTestId("version-board-version-trigger")).toHaveTextContent(
+      "v2.0.0",
+    );
   });
 
   it("falls back to em-dash for missing release date", async () => {

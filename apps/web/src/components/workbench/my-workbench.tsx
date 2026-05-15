@@ -12,6 +12,7 @@ import {
   ArrowUpRight,
   Bug,
   CheckCircle2,
+  ChevronDown,
   Clock,
   Inbox,
   type LucideIcon,
@@ -30,6 +31,14 @@ import { recordRecentOpen } from "../shell/recent-opens";
 import { Avatar, AvatarFallback } from "../ui/avatar";
 import { Badge } from "../ui/badge";
 import { Button } from "../ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "../ui/dropdown-menu";
 import { StatusBadge } from "../ui/status-badge";
 
 import { EmptyState, ErrorState, ListSkeleton } from "../v2/states";
@@ -42,23 +51,45 @@ const priorityDotColor: Record<WorkItemViewModel["priority"], string> = {
   URGENT: "bg-destructive",
 };
 
+type WorkbenchItemViewModel = WorkItemViewModel & {
+  organizationId?: string;
+  spaceId?: string;
+};
+
 export function MyWorkbench() {
   const t = useTranslations("workbench");
   const tStatusCategory = useTranslations("workItems.statusCategory");
   const tRoot = useTranslations();
   const locale = useLocale();
-  const { session, currentSpace } = useSession();
+  const {
+    session,
+    currentOrganization,
+    spacesForCurrentOrganization = [],
+  } = useSession();
   const [view, setView] = useState<GetMyWorkbenchViewResponse | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [errorKey, setErrorKey] = useState<string | null>(null);
   const [activeItem, setActiveItem] = useState<WorkItemViewModel | null>(null);
+  const [activeItemContext, setActiveItemContext] = useState<{
+    organizationId?: string;
+    spaceId?: string;
+  } | null>(null);
   const [sheetOpen, setSheetOpen] = useState(false);
+  const [selectedSpaceId, setSelectedSpaceId] = useState<string | undefined>(
+    undefined,
+  );
 
   const organizationId = session?.defaultOrganizationId;
-  const spaceId = session?.defaultSpaceId;
+  const selectedSpace = spacesForCurrentOrganization.find(
+    (space) => space.id === selectedSpaceId,
+  );
   // Lookups: hooks return empty results gracefully when spaceId is undefined.
-  const { getMember } = useSpaceMembers(spaceId, organizationId);
-  const { getVersion } = useVersions(spaceId, organizationId);
+  const { getMember } = useSpaceMembers(selectedSpaceId, organizationId);
+  const { getVersion } = useVersions(selectedSpaceId, organizationId);
+
+  useEffect(() => {
+    setSelectedSpaceId(undefined);
+  }, [organizationId]);
 
   const fetchView = useCallback(async () => {
     if (!organizationId) {
@@ -71,7 +102,7 @@ export function MyWorkbench() {
     try {
       const next = await getMyWorkbenchView({
         organizationId,
-        spaceId: spaceId ?? undefined,
+        spaceId: selectedSpaceId,
       });
       setView(next);
     } catch (error) {
@@ -79,7 +110,7 @@ export function MyWorkbench() {
     } finally {
       setIsLoading(false);
     }
-  }, [organizationId, spaceId]);
+  }, [organizationId, selectedSpaceId]);
 
   useEffect(() => {
     if (!organizationId) {
@@ -96,7 +127,7 @@ export function MyWorkbench() {
       try {
         const next = await getMyWorkbenchView({
           organizationId: organizationId!,
-          spaceId: spaceId ?? undefined,
+          spaceId: selectedSpaceId,
         });
 
         if (active) {
@@ -118,9 +149,12 @@ export function MyWorkbench() {
     return () => {
       active = false;
     };
-  }, [organizationId, spaceId]);
+  }, [organizationId, selectedSpaceId]);
 
-  const openItem = (item: WorkItemViewModel) => {
+  const openItem = (item: WorkbenchItemViewModel) => {
+    const itemOrganizationId = item.organizationId ?? organizationId;
+    const itemSpaceId = item.spaceId ?? selectedSpaceId;
+
     recordRecentOpen(
       {
         id: item.id,
@@ -129,9 +163,13 @@ export function MyWorkbench() {
         title: item.title,
         href: item.type === "BUG" ? "/bugs" : "/work-items",
       },
-      { organizationId, spaceId },
+      { organizationId: itemOrganizationId, spaceId: itemSpaceId },
     );
     setActiveItem(item);
+    setActiveItemContext({
+      organizationId: itemOrganizationId,
+      spaceId: itemSpaceId,
+    });
     setSheetOpen(true);
   };
 
@@ -140,26 +178,26 @@ export function MyWorkbench() {
   const todoItems = useMemo(
     () =>
       (view?.sections.myTodos.items.items ?? []).map(
-        toMockWorkItem(locale, { getMember, getVersion }, tStatusCategory),
+        toWorkbenchItem(locale, { getMember, getVersion }, tStatusCategory),
       ),
     [view, locale, getMember, getVersion, tStatusCategory],
   );
   const assignedTaskItems = useMemo(
     () =>
       (view?.sections.assignedTasks.items.items ?? []).map(
-        toMockWorkItem(locale, { getMember, getVersion }, tStatusCategory),
+        toWorkbenchItem(locale, { getMember, getVersion }, tStatusCategory),
       ),
     [view, locale, getMember, getVersion, tStatusCategory],
   );
   const assignedBugItems = useMemo(
     () =>
       (view?.sections.assignedBugs.items.items ?? []).map(
-        toMockWorkItem(locale, { getMember, getVersion }, tStatusCategory),
+        toWorkbenchItem(locale, { getMember, getVersion }, tStatusCategory),
       ),
     [view, locale, getMember, getVersion, tStatusCategory],
   );
   const actionItems = useMemo(() => {
-    const toWorkItem = toMockWorkItem(
+    const toWorkItem = toWorkbenchItem(
       locale,
       { getMember, getVersion },
       tStatusCategory,
@@ -174,21 +212,21 @@ export function MyWorkbench() {
   const pendingConfirmItems = useMemo(
     () =>
       (view?.sections.pendingConfirm.items.items ?? []).map(
-        toMockWorkItem(locale, { getMember, getVersion }, tStatusCategory),
+        toWorkbenchItem(locale, { getMember, getVersion }, tStatusCategory),
       ),
     [view, locale, getMember, getVersion, tStatusCategory],
   );
   const dueSoonItems = useMemo(
     () =>
       (view?.sections.dueSoon.items.items ?? []).map(
-        toMockWorkItem(locale, { getMember, getVersion }, tStatusCategory),
+        toWorkbenchItem(locale, { getMember, getVersion }, tStatusCategory),
       ),
     [view, locale, getMember, getVersion, tStatusCategory],
   );
   const blockedItems = useMemo(
     () =>
       (view?.sections.blocked?.items.items ?? []).map(
-        toMockWorkItem(locale, { getMember, getVersion }, tStatusCategory),
+        toWorkbenchItem(locale, { getMember, getVersion }, tStatusCategory),
       ),
     [view, locale, getMember, getVersion, tStatusCategory],
   );
@@ -261,17 +299,27 @@ export function MyWorkbench() {
       <div className="flex items-end justify-between">
         <div>
           <div className="text-[11px] font-medium uppercase tracking-wider text-primary">
-            {currentSpace?.name ?? t("title")}
+            {selectedSpace?.name ??
+              currentOrganization?.name ??
+              tRoot("dashboard.filters.allSpaces")}
           </div>
           <h1 className="mt-1 text-xl font-semibold tracking-tight">
             {greetingName} · {t("title")}
           </h1>
           <p className="mt-1 text-sm text-muted-foreground">{t("subtitle")}</p>
         </div>
-        <Button variant="ghost" size="sm" className="text-xs">
-          {t("viewAll")}
-          <ArrowUpRight className="h-3 w-3" />
-        </Button>
+        <div className="flex items-center gap-2">
+          <WorkbenchSpaceFilter
+            spaces={spacesForCurrentOrganization}
+            selectedSpaceId={selectedSpaceId}
+            onChange={setSelectedSpaceId}
+            tRoot={tRoot}
+          />
+          <Button variant="ghost" size="sm" className="text-xs">
+            {t("viewAll")}
+            <ArrowUpRight className="h-3 w-3" />
+          </Button>
+        </div>
       </div>
 
       {/* Summary chips */}
@@ -428,11 +476,65 @@ export function MyWorkbench() {
         item={activeItem}
         open={sheetOpen}
         onOpenChange={setSheetOpen}
+        spaceId={activeItemContext?.spaceId ?? selectedSpaceId}
+        organizationId={activeItemContext?.organizationId ?? organizationId}
         onChanged={() => {
           void fetchView();
         }}
       />
     </div>
+  );
+}
+
+function WorkbenchSpaceFilter({
+  spaces,
+  selectedSpaceId,
+  onChange,
+  tRoot,
+}: {
+  spaces: { id: string; name: string }[];
+  selectedSpaceId: string | undefined;
+  onChange: (spaceId: string | undefined) => void;
+  tRoot: ReturnType<typeof useTranslations>;
+}) {
+  const selectedSpace = spaces.find((space) => space.id === selectedSpaceId);
+
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button
+          variant="outline"
+          size="sm"
+          className="text-xs"
+          aria-label={tRoot("dashboard.filters.space")}
+          data-testid="workbench-space-filter"
+        >
+          <span className="max-w-[140px] truncate">
+            {selectedSpace?.name ?? tRoot("dashboard.filters.allSpaces")}
+          </span>
+          <ChevronDown className="h-3 w-3" />
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" className="min-w-[200px]">
+        <DropdownMenuLabel>{tRoot("dashboard.filters.space")}</DropdownMenuLabel>
+        <DropdownMenuSeparator />
+        <DropdownMenuItem
+          data-testid="workbench-space-filter-all"
+          onSelect={() => onChange(undefined)}
+        >
+          {tRoot("dashboard.filters.allSpaces")}
+        </DropdownMenuItem>
+        {spaces.map((space) => (
+          <DropdownMenuItem
+            key={space.id}
+            data-testid={`workbench-space-filter-${space.id}`}
+            onSelect={() => onChange(space.id)}
+          >
+            {space.name}
+          </DropdownMenuItem>
+        ))}
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
 }
 
@@ -511,8 +613,8 @@ function ItemList({
   items,
   onSelect,
 }: {
-  items: WorkItemViewModel[];
-  onSelect: (item: WorkItemViewModel) => void;
+  items: WorkbenchItemViewModel[];
+  onSelect: (item: WorkbenchItemViewModel) => void;
 }) {
   return (
     <ul className="divide-y divide-border">
@@ -593,6 +695,20 @@ export type WorkbenchLookupHelpers = {
   getMember: (userId: string) => SpaceMemberWithUser | undefined;
   getVersion: (versionId: string) => Version | undefined;
 };
+
+function toWorkbenchItem(
+  locale: string,
+  lookups?: WorkbenchLookupHelpers,
+  statusLabel?: (category: StatusCategory) => string,
+) {
+  const toViewModel = toMockWorkItem(locale, lookups, statusLabel);
+
+  return (item: ViewWorkItemSummary): WorkbenchItemViewModel => ({
+    ...toViewModel(item),
+    organizationId: item.organizationId,
+    spaceId: item.spaceId,
+  });
+}
 
 export function toMockWorkItem(
   locale: string,

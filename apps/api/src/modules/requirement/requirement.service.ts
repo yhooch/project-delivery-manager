@@ -2,6 +2,7 @@ import { HttpStatus, Inject, Injectable } from "@nestjs/common";
 import {
   type CreateRequirementDraftRequest,
   type PageResult,
+  type PermissionSnapshot,
   type Requirement,
   type SaveRequirementRequest,
   type SpaceRole,
@@ -74,11 +75,18 @@ export class RequirementService {
       await this.requireVersionInSpace(spaceId, input.versionId);
     }
 
-    return this.requirements.listBySpaceId(spaceId, {
+    const page = await this.requirements.listBySpaceId(spaceId, {
       ...input,
       actorUserId,
       visibility: resolveRequirementListVisibility(access.role),
     });
+
+    return {
+      ...page,
+      items: page.items.map((requirement) =>
+        withPermissions(requirement, access.role),
+      ),
+    };
   }
 
   async createDraft(
@@ -92,13 +100,16 @@ export class RequirementService {
       await this.requireVersionInSpace(spaceId, input.versionId);
     }
 
-    return this.requirements.createDraft({
-      id: ulid(),
-      organizationId: access.space.organizationId,
-      spaceId,
-      versionId: input.versionId,
-      createdById: actorUserId,
-    });
+    return withPermissions(
+      await this.requirements.createDraft({
+        id: ulid(),
+        organizationId: access.space.organizationId,
+        spaceId,
+        versionId: input.versionId,
+        createdById: actorUserId,
+      }),
+      access.role,
+    );
   }
 
   async get(actorUserId: string, requirementId: string): Promise<Requirement> {
@@ -109,7 +120,7 @@ export class RequirementService {
       throwRequirementNotFound();
     }
 
-    return requirement;
+    return withPermissions(requirement, access.role);
   }
 
   async update(
@@ -122,6 +133,7 @@ export class RequirementService {
       actorUserId,
       existing.spaceId,
     );
+    await this.requireDraftParticipant(actorUserId, existing);
 
     if (isArchiveRequest(input)) {
       const archived = await this.requirements.archive({
@@ -129,7 +141,9 @@ export class RequirementService {
         updatedById: actorUserId,
       });
 
-      return archived ?? throwRequirementNotFound();
+      return archived
+        ? withPermissions(archived, access.role)
+        : throwRequirementNotFound();
     }
 
     this.assertCanSave(existing);
@@ -160,7 +174,7 @@ export class RequirementService {
       updatedById: actorUserId,
     });
 
-    return saved ?? throwRequirementNotFound();
+    return saved ? withPermissions(saved, access.role) : throwRequirementNotFound();
   }
 
   private async requireExistingRequirement(requirementId: string) {
@@ -198,13 +212,10 @@ export class RequirementService {
     requirement: Requirement,
     role: SpaceRole,
   ) {
-    if (REQUIREMENT_WRITER_ROLES.has(role)) {
-      return true;
-    }
-
     if (
       requirement.status !== "DRAFT" &&
-      REQUIREMENT_NON_DRAFT_READ_ALL_ROLES.has(role)
+      (REQUIREMENT_WRITER_ROLES.has(role) ||
+        REQUIREMENT_NON_DRAFT_READ_ALL_ROLES.has(role))
     ) {
       return true;
     }
@@ -224,6 +235,27 @@ export class RequirementService {
     }
 
     return version;
+  }
+
+  private async requireDraftParticipant(
+    actorUserId: string,
+    requirement: Requirement,
+  ) {
+    if (requirement.status !== "DRAFT") {
+      return;
+    }
+
+    if (
+      await this.requirements.isParticipant(
+        requirement.spaceId,
+        requirement.id,
+        actorUserId,
+      )
+    ) {
+      return;
+    }
+
+    throwRequirementNotFound();
   }
 
   private async requireActiveSpaceOwner(
@@ -296,6 +328,32 @@ function resolveRequirementListVisibility(
   }
 
   return "PARTICIPANT";
+}
+
+function withPermissions(
+  requirement: Requirement,
+  role: SpaceRole,
+): Requirement {
+  return {
+    ...requirement,
+    permissions: toPermissionSnapshot(requirement, role),
+  };
+}
+
+function toPermissionSnapshot(
+  requirement: Requirement,
+  role: SpaceRole,
+): PermissionSnapshot {
+  const canEdit =
+    requirement.status !== "ARCHIVED" && REQUIREMENT_WRITER_ROLES.has(role);
+  const canComment = requirement.status !== "ARCHIVED" && role !== "VIEWER";
+
+  return {
+    availableActions: [],
+    canComment,
+    canEdit,
+    canUploadAttachment: canEdit && requirement.status === "DRAFT",
+  };
 }
 
 function throwSpaceAccessDenied(): never {

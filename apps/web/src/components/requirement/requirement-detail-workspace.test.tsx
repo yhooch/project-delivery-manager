@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const { translatorCache } = vi.hoisted(() => ({
@@ -165,7 +165,7 @@ describe("RequirementDetailWorkspace", () => {
     expect(updateRequirementMock).not.toHaveBeenCalled();
   });
 
-  it("falls back to writer role when the backend omits requirement permissions", async () => {
+  it("disables editing when the backend omits requirement permissions", async () => {
     getRequirementMock.mockResolvedValueOnce(
       makeRequirement({ permissions: undefined }),
     );
@@ -176,23 +176,23 @@ describe("RequirementDetailWorkspace", () => {
 
     expect(
       await screen.findByDisplayValue("Permissioned requirement"),
-    ).not.toBeDisabled();
+    ).toBeDisabled();
     expect(
       screen.getByRole("button", { name: "requirements.detail.save" }),
-    ).not.toBeDisabled();
+    ).toBeDisabled();
     expect(screen.getByTestId("requirement-editor-slot")).toHaveAttribute(
       "data-disabled",
-      "false",
+      "true",
     );
     expect(screen.getByTestId("requirement-editor-slot")).toHaveAttribute(
       "data-can-upload-images",
-      "true",
+      "false",
     );
 
     fireEvent.click(
       screen.getByRole("button", { name: "requirements.detail.save" }),
     );
 
-    await waitFor(() => expect(updateRequirementMock).toHaveBeenCalledTimes(1));
+    expect(updateRequirementMock).not.toHaveBeenCalled();
   });
 });

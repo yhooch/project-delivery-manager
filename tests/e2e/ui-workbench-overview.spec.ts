@@ -69,7 +69,7 @@ function waitForWorkbenchView(
     return (
       url.pathname === "/api/v1/views/my-workbench" &&
       url.searchParams.get("organizationId") === user.organizationId &&
-      url.searchParams.get("spaceId") === user.spaceId
+      !url.searchParams.has("spaceId")
     );
   });
 }

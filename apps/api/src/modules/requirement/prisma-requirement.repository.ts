@@ -1,9 +1,13 @@
 import { Inject, Injectable } from "@nestjs/common";
+import type { RequirementRelatedWorkItems } from "@project-delivery/shared";
 import { ulid } from "ulid";
 
 import { Prisma } from "../../generated/prisma/client";
 import { PrismaService } from "../../prisma/prisma.service";
-import { toRequirement } from "./requirement.mappers";
+import {
+  toRequirement,
+  toRequirementRelatedWorkItems,
+} from "./requirement.mappers";
 import type { RequirementRepository } from "./requirement.repository";
 import type {
   ArchiveRequirementInput,
@@ -56,12 +60,16 @@ export class PrismaRequirementRepository implements RequirementRepository {
       },
     });
 
-    return requirement
-      ? toRequirement(
-          requirement,
-          await this.listAttachmentRefsForRequirement(requirement.id),
-        )
-      : undefined;
+    if (!requirement) {
+      return undefined;
+    }
+
+    const [attachments, relatedWorkItems] = await Promise.all([
+      this.listAttachmentRefsForRequirement(requirement.id),
+      this.listRelatedWorkItemsForRequirement(requirement.id),
+    ]);
+
+    return toRequirement(requirement, attachments, relatedWorkItems);
   }
 
   async isParticipant(spaceId: string, requirementId: string, userId: string) {
@@ -83,10 +91,9 @@ export class PrismaRequirementRepository implements RequirementRepository {
 
   async listBySpaceId(spaceId: string, input: RequirementListInput) {
     const where = buildListWhere(spaceId, input);
-    const participantIds =
-      input.visibility === "ALL"
-        ? []
-        : await this.listParticipantRequirementIds(spaceId, input.actorUserId);
+    const participantIds = shouldLoadParticipantIds(input)
+      ? await this.listParticipantRequirementIds(spaceId, input.actorUserId)
+      : [];
 
     applyVisibility(where, input, participantIds);
 
@@ -112,15 +119,19 @@ export class PrismaRequirementRepository implements RequirementRepository {
         where,
       }),
     ]);
-    const attachmentsByRequirementId = await this.listAttachmentRefsByRequirementIds(
-      requirements.map((requirement) => requirement.id),
-    );
+    const requirementIds = requirements.map((requirement) => requirement.id);
+    const [attachmentsByRequirementId, relatedWorkItemsByRequirementId] =
+      await Promise.all([
+        this.listAttachmentRefsByRequirementIds(requirementIds),
+        this.listRelatedWorkItemsByRequirementIds(requirementIds),
+      ]);
 
     return {
       items: requirements.map((requirement) =>
         toRequirement(
           requirement,
           attachmentsByRequirementId.get(requirement.id) ?? [],
+          relatedWorkItemsByRequirementId.get(requirement.id),
         ),
       ),
       page: input.page,
@@ -195,12 +206,16 @@ export class PrismaRequirementRepository implements RequirementRepository {
       return requirement;
     });
 
-    return updated
-      ? toRequirement(
-          updated,
-          await this.listAttachmentRefsForRequirement(updated.id),
-        )
-      : undefined;
+    if (!updated) {
+      return undefined;
+    }
+
+    const [attachments, relatedWorkItems] = await Promise.all([
+      this.listAttachmentRefsForRequirement(updated.id),
+      this.listRelatedWorkItemsForRequirement(updated.id),
+    ]);
+
+    return toRequirement(updated, attachments, relatedWorkItems);
   }
 
   async archive(input: ArchiveRequirementInput) {
@@ -228,12 +243,16 @@ export class PrismaRequirementRepository implements RequirementRepository {
       });
     });
 
-    return updated
-      ? toRequirement(
-          updated,
-          await this.listAttachmentRefsForRequirement(updated.id),
-        )
-      : undefined;
+    if (!updated) {
+      return undefined;
+    }
+
+    const [attachments, relatedWorkItems] = await Promise.all([
+      this.listAttachmentRefsForRequirement(updated.id),
+      this.listRelatedWorkItemsForRequirement(updated.id),
+    ]);
+
+    return toRequirement(updated, attachments, relatedWorkItems);
   }
 
   private async listAttachmentRefsForRequirement(requirementId: string) {
@@ -275,6 +294,53 @@ export class PrismaRequirementRepository implements RequirementRepository {
       const current = result.get(record.targetId) ?? [];
       current.push(record);
       result.set(record.targetId, current);
+    }
+
+    return result;
+  }
+
+  private async listRelatedWorkItemsForRequirement(requirementId: string) {
+    const records = await this.prisma.client.workItem.findMany({
+      orderBy: [{ type: "asc" }, { createdAt: "asc" }],
+      where: {
+        deletedAt: null,
+        requirementId,
+      },
+    });
+
+    return toRequirementRelatedWorkItems(records);
+  }
+
+  private async listRelatedWorkItemsByRequirementIds(requirementIds: string[]) {
+    const result = new Map<string, RequirementRelatedWorkItems>();
+
+    if (requirementIds.length === 0) {
+      return result;
+    }
+
+    const records = await this.prisma.client.workItem.findMany({
+      orderBy: [{ type: "asc" }, { createdAt: "asc" }],
+      where: {
+        deletedAt: null,
+        requirementId: {
+          in: requirementIds,
+        },
+      },
+    });
+    const grouped = new Map<string, typeof records>();
+
+    for (const record of records) {
+      if (!record.requirementId) {
+        continue;
+      }
+
+      const current = grouped.get(record.requirementId) ?? [];
+      current.push(record);
+      grouped.set(record.requirementId, current);
+    }
+
+    for (const [requirementId, items] of grouped) {
+      result.set(requirementId, toRequirementRelatedWorkItems(items));
     }
 
     return result;
@@ -329,6 +395,7 @@ function applyVisibility(
   participantIds: string[],
 ) {
   if (input.visibility === "ALL") {
+    restrictDraftVisibilityToParticipants(where, input, participantIds);
     return;
   }
 
@@ -336,6 +403,49 @@ function applyVisibility(
     where.id = {
       in: participantIds,
     };
+    return;
+  }
+
+  where.AND = [
+    ...toArray(where.AND),
+    {
+      OR: [
+        {
+          status: {
+            not: "DRAFT",
+          },
+        },
+        {
+          id: {
+            in: participantIds,
+          },
+        },
+      ],
+    },
+  ];
+}
+
+function shouldLoadParticipantIds(input: RequirementListInput): boolean {
+  return (
+    input.visibility !== "ALL" ||
+    input.status === "DRAFT" ||
+    input.includeDrafts === true
+  );
+}
+
+function restrictDraftVisibilityToParticipants(
+  where: Prisma.RequirementWhereInput,
+  input: RequirementListInput,
+  participantIds: string[],
+) {
+  if (input.status === "DRAFT") {
+    where.id = {
+      in: participantIds,
+    };
+    return;
+  }
+
+  if (input.status || !input.includeDrafts) {
     return;
   }
 

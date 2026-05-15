@@ -3,19 +3,31 @@
 import type {
   BugSeverity,
   BugView,
+  Priority,
+  Requirement,
+  SpaceMemberWithUser,
   StatusCategory,
+  Version,
+  WorkItem,
 } from "@project-delivery/shared";
 import { Bug, Filter, Plus } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+  type ReactNode,
+} from "react";
 
 import { getApiErrorMessageKey } from "../../lib/api-error-messages";
-import { listBugs } from "../../lib/bug-service";
+import { listBugs, type BugListFilterState } from "../../lib/bug-service";
 import { useListKeyboardNav } from "../../lib/hooks/use-list-keyboard-nav";
+import { listRequirements } from "../../lib/requirement-service";
 import { useSpaceMembers, useVersions } from "../../lib/v2/lookups";
 import type { WorkItemViewModel } from "../../lib/v2/work-item-view-model";
 import { cn } from "../../lib/utils";
-import type { SpaceMemberWithUser, Version } from "@project-delivery/shared";
+import { listWorkItems } from "../../lib/work-item-service";
 
 import { Avatar, AvatarFallback } from "../ui/avatar";
 import { Badge } from "../ui/badge";
@@ -65,13 +77,42 @@ const bugBucketCategory: Record<Exclude<FilterKey, "all">, StatusCategory> = {
   closed: "TERMINATED",
 };
 
+const bugBucketByCategory: Partial<
+  Record<StatusCategory, Exclude<FilterKey, "all">>
+> = {
+  DONE: "regressionPassed",
+  IN_PROGRESS: "fixing",
+  NOT_STARTED: "pendingConfirm",
+  TERMINATED: "closed",
+  VERIFYING: "pendingRegression",
+  WAITING: "pendingFix",
+};
+const STATUS_FILTERS: StatusCategory[] = [
+  "NOT_STARTED",
+  "IN_PROGRESS",
+  "WAITING",
+  "VERIFYING",
+  "DONE",
+  "TERMINATED",
+];
+const PRIORITY_FILTERS: Priority[] = ["LOW", "MEDIUM", "HIGH", "URGENT"];
+const SEVERITY_FILTERS: BugSeverity[] = [
+  "BLOCKER",
+  "CRITICAL",
+  "MAJOR",
+  "MINOR",
+  "TRIVIAL",
+];
+
 type MockBugItem = WorkItemViewModel & { severity: BugSeverity };
 
 export function BugsPage() {
   const tNav = useTranslations("shell.nav");
   const t = useTranslations("bugs");
   const tStatus = useTranslations("bugs.statusCategory");
+  const tPriority = useTranslations("bugs.priority");
   const tSeverity = useTranslations("bugs.severity");
+  const tFilters = useTranslations("bugs.filters");
   const tApiError = useTranslations();
 
   const { currentSpace, status: sessionStatus } = useSession();
@@ -81,16 +122,33 @@ export function BugsPage() {
     () => ({ organizationId, spaceId }),
     [organizationId, spaceId],
   );
-  const { getMember } = useSpaceMembers(spaceId, organizationId);
-  const { getVersion } = useVersions(spaceId, organizationId);
+  const { members, getMember } = useSpaceMembers(spaceId, organizationId);
+  const { versions, getVersion } = useVersions(spaceId, organizationId);
 
   const [items, setItems] = useState<BugView[]>([]);
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [activeItem, setActiveItem] = useState<WorkItemViewModel | null>(null);
   const [sheetOpen, setSheetOpen] = useState(false);
-  const [filter, setFilter] = useState<FilterKey>("all");
+  const [filters, setFilters] = useState<BugListFilterState>({});
+  const [filterOpen, setFilterOpen] = useState(false);
+  const [requirements, setRequirements] = useState<Requirement[]>([]);
+  const [relatedTasks, setRelatedTasks] = useState<WorkItem[]>([]);
   const [createOpen, setCreateOpen] = useState(false);
+  const canCreateBug = canWriteWorkItems(
+    currentSpace?.role,
+    currentSpace?.status,
+  );
+  const activeBucket = filters.statusCategory
+    ? (bugBucketByCategory[filters.statusCategory] ?? "all")
+    : "all";
+
+  const setFilter = useCallback(
+    (key: keyof BugListFilterState, value: string) => {
+      setFilters((current) => ({ ...current, [key]: value || undefined }));
+    },
+    [],
+  );
 
   const fetchBugs = useCallback(async () => {
     if (!spaceId) {
@@ -101,7 +159,12 @@ export function BugsPage() {
     setErrorMessage(null);
 
     try {
-      const result = await listBugs({ spaceId, type: "BUG" });
+      const result = await listBugs({
+        organizationId,
+        spaceId,
+        type: "BUG",
+        ...filters,
+      });
       setItems(result.items);
     } catch (error) {
       const key = getApiErrorMessageKey(error);
@@ -109,7 +172,7 @@ export function BugsPage() {
     } finally {
       setLoading(false);
     }
-  }, [spaceId, tApiError]);
+  }, [filters, organizationId, spaceId, tApiError]);
 
   useEffect(() => {
     if (spaceId) {
@@ -118,6 +181,41 @@ export function BugsPage() {
       setItems([]);
     }
   }, [fetchBugs, spaceId]);
+
+  useEffect(() => {
+    if (!filterOpen || !spaceId) {
+      return;
+    }
+
+    let cancelled = false;
+
+    void Promise.all([
+      listRequirements({ organizationId, page: 1, pageSize: 100, spaceId }),
+      listWorkItems({
+        organizationId,
+        page: 1,
+        pageSize: 100,
+        spaceId,
+        type: "TASK",
+      }),
+    ])
+      .then(([requirementPage, taskPage]) => {
+        if (!cancelled) {
+          setRequirements(requirementPage.items);
+          setRelatedTasks(taskPage.items);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setRequirements([]);
+          setRelatedTasks([]);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [filterOpen, organizationId, spaceId]);
 
   const mockItems = useMemo<MockBugItem[]>(
     () =>
@@ -130,14 +228,7 @@ export function BugsPage() {
     [getMember, getVersion, items, tStatus],
   );
 
-  const filtered = useMemo(() => {
-    if (filter !== "all") {
-      return mockItems.filter(
-        (bug) => bug.statusCategory === bugBucketCategory[filter],
-      );
-    }
-    return mockItems;
-  }, [filter, mockItems]);
+  const filtered = mockItems;
 
   const openBug = useCallback(
     (bug: MockBugItem) => {
@@ -192,24 +283,30 @@ export function BugsPage() {
       description={t("page.description")}
       actions={
         <>
-          <Button
-            variant="outline"
-            size="sm"
-            className="text-xs"
-            data-testid="bugs-filter-button"
-          >
-            <Filter className="h-3 w-3" />
-            {t("actions.filter")}
-          </Button>
-          <Button
-            size="sm"
-            className="text-xs"
-            data-testid="bugs-create-button"
-            onClick={() => setCreateOpen(true)}
-          >
-            <Plus className="h-3 w-3" />
-            {t("actions.create")}
-          </Button>
+          {spaceId && (
+            <Button
+              variant={filterOpen ? "secondary" : "outline"}
+              size="sm"
+              className="text-xs"
+              data-testid="bugs-filter-button"
+              aria-expanded={filterOpen}
+              onClick={() => setFilterOpen((open) => !open)}
+            >
+              <Filter className="h-3 w-3" />
+              {t("actions.filter")}
+            </Button>
+          )}
+          {spaceId && canCreateBug && (
+            <Button
+              size="sm"
+              className="text-xs"
+              data-testid="bugs-create-button"
+              onClick={() => setCreateOpen(true)}
+            >
+              <Plus className="h-3 w-3" />
+              {t("actions.create")}
+            </Button>
+          )}
         </>
       }
     />
@@ -246,10 +343,15 @@ export function BugsPage() {
             key={b.key}
             type="button"
             data-testid={`bugs-filter-${b.key}`}
-            onClick={() => setFilter(b.key)}
+            onClick={() =>
+              setFilter(
+                "statusCategory",
+                b.key === "all" ? "" : bugBucketCategory[b.key],
+              )
+            }
             className={cn(
               "flex h-7 items-center gap-1.5 rounded-md px-2.5 text-[12px] transition-colors cursor-pointer",
-              filter === b.key
+              activeBucket === b.key
                 ? "bg-muted font-medium text-foreground"
                 : "text-muted-foreground hover:bg-muted/50 hover:text-foreground",
             )}
@@ -261,6 +363,125 @@ export function BugsPage() {
           </button>
         ))}
       </div>
+
+      {filterOpen && (
+        <div
+          data-testid="bugs-filter-panel"
+          className="grid gap-3 border-b border-border bg-muted/20 px-6 py-3 md:grid-cols-6"
+        >
+          <FilterField label={tFilters("version")}>
+            <select
+              data-testid="bugs-filter-version"
+              value={filters.versionId ?? ""}
+              onChange={(event) => setFilter("versionId", event.target.value)}
+              className="h-8 w-full rounded-md border border-input bg-background px-2 text-sm"
+            >
+              <option value="">{tFilters("allVersions")}</option>
+              {versions.map((version) => (
+                <option key={version.id} value={version.id}>
+                  {version.name}
+                </option>
+              ))}
+            </select>
+          </FilterField>
+          <FilterField label={tFilters("assignee")}>
+            <select
+              data-testid="bugs-filter-assignee"
+              value={filters.assigneeId ?? ""}
+              onChange={(event) => setFilter("assigneeId", event.target.value)}
+              className="h-8 w-full rounded-md border border-input bg-background px-2 text-sm"
+            >
+              <option value="">{tFilters("allAssignees")}</option>
+              {members.map((member) => (
+                <option key={member.userId} value={member.userId}>
+                  {member.user.name || member.user.username}
+                </option>
+              ))}
+            </select>
+          </FilterField>
+          <FilterField label={tFilters("statusCategory")}>
+            <select
+              data-testid="bugs-filter-status"
+              value={filters.statusCategory ?? ""}
+              onChange={(event) =>
+                setFilter("statusCategory", event.target.value)
+              }
+              className="h-8 w-full rounded-md border border-input bg-background px-2 text-sm"
+            >
+              <option value="">{tFilters("allStatusCategories")}</option>
+              {STATUS_FILTERS.map((status) => (
+                <option key={status} value={status}>
+                  {tStatus(status)}
+                </option>
+              ))}
+            </select>
+          </FilterField>
+          <FilterField label={tFilters("priority")}>
+            <select
+              data-testid="bugs-filter-priority"
+              value={filters.priority ?? ""}
+              onChange={(event) => setFilter("priority", event.target.value)}
+              className="h-8 w-full rounded-md border border-input bg-background px-2 text-sm"
+            >
+              <option value="">{tFilters("allPriorities")}</option>
+              {PRIORITY_FILTERS.map((priority) => (
+                <option key={priority} value={priority}>
+                  {tPriority(priority)}
+                </option>
+              ))}
+            </select>
+          </FilterField>
+          <FilterField label={tFilters("severity")}>
+            <select
+              data-testid="bugs-filter-severity"
+              value={filters.severity ?? ""}
+              onChange={(event) => setFilter("severity", event.target.value)}
+              className="h-8 w-full rounded-md border border-input bg-background px-2 text-sm"
+            >
+              <option value="">{tFilters("allSeverities")}</option>
+              {SEVERITY_FILTERS.map((severity) => (
+                <option key={severity} value={severity}>
+                  {tSeverity(severity)}
+                </option>
+              ))}
+            </select>
+          </FilterField>
+          <FilterField label={tFilters("requirement")}>
+            <select
+              data-testid="bugs-filter-requirement"
+              value={filters.requirementId ?? ""}
+              onChange={(event) =>
+                setFilter("requirementId", event.target.value)
+              }
+              className="h-8 w-full rounded-md border border-input bg-background px-2 text-sm"
+            >
+              <option value="">{tFilters("allRequirements")}</option>
+              {requirements.map((requirement) => (
+                <option key={requirement.id} value={requirement.id}>
+                  {requirement.title || requirement.id}
+                </option>
+              ))}
+            </select>
+          </FilterField>
+          <FilterField label={tFilters("relatedTask")}>
+            <select
+              data-testid="bugs-filter-related-task"
+              value={filters.relatedTaskId ?? ""}
+              onChange={(event) =>
+                setFilter("relatedTaskId", event.target.value)
+              }
+              className="h-8 w-full rounded-md border border-input bg-background px-2 text-sm"
+            >
+              <option value="">{tFilters("allRelatedTasks")}</option>
+              {relatedTasks.map((task) => (
+                <option key={task.id} value={task.id}>
+                  {task.title}
+                </option>
+              ))}
+            </select>
+          </FilterField>
+        </div>
+      )}
 
       <div className="flex-1 overflow-y-auto">
         {loading ? (
@@ -334,12 +555,14 @@ export function BugsPage() {
         item={activeItem}
         open={sheetOpen}
         onOpenChange={setSheetOpen}
+        organizationId={organizationId}
+        spaceId={spaceId}
         onChanged={() => {
           void fetchBugs();
         }}
       />
 
-      {spaceId && (
+      {spaceId && canCreateBug && (
         <CreateBugDialog
           open={createOpen}
           onOpenChange={setCreateOpen}
@@ -350,6 +573,28 @@ export function BugsPage() {
         />
       )}
     </div>
+  );
+}
+
+function canWriteWorkItems(
+  role: string | undefined,
+  status: string | undefined,
+): boolean {
+  return Boolean(role) && role !== "VIEWER" && status !== "DISABLED";
+}
+
+function FilterField({
+  children,
+  label,
+}: {
+  children: ReactNode;
+  label: string;
+}) {
+  return (
+    <label className="flex min-w-0 flex-col gap-1 text-[11px] font-medium text-muted-foreground">
+      <span>{label}</span>
+      {children}
+    </label>
   );
 }
 

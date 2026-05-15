@@ -18,13 +18,24 @@ vi.mock("next-intl", () => ({
   useLocale: () => "zh-CN",
 }));
 
+const routerMock = vi.hoisted(() => ({
+  replace: vi.fn(),
+  push: vi.fn(),
+}));
 vi.mock("../../i18n/routing", () => ({
   routing: { defaultLocale: "zh-CN", locales: ["zh-CN", "en-US"] },
   Link: ({ children }: { children: React.ReactNode }) => children,
   getPathname: () => "/",
   redirect: () => undefined,
-  usePathname: () => "/",
-  useRouter: () => ({ push: vi.fn(), replace: vi.fn() }),
+  usePathname: () => "/exceptions",
+  useRouter: () => routerMock,
+}));
+
+const searchParamsMock = vi.hoisted(() => ({
+  current: new URLSearchParams(),
+}));
+vi.mock("next/navigation", () => ({
+  useSearchParams: () => searchParamsMock.current,
 }));
 
 const sessionMock = vi.hoisted(() => ({
@@ -113,8 +124,16 @@ function makeException(workItem: ReturnType<typeof makeWorkItem>, type = "overdu
   };
 }
 
-function makeViewResponse(items: ReturnType<typeof makeException>[]) {
+function makeViewResponse(
+  items: ReturnType<typeof makeException>[],
+  filters: Record<string, unknown> = { exceptionType: "overdue" },
+) {
   return {
+    filters: {
+      organizationId: "ORG_01",
+      spaceId: "SPC_01",
+      ...filters,
+    },
     counts: [
       { exceptionType: "overdue", count: items.filter((i) => i.exceptions.some((e) => e.type === "overdue")).length },
       { exceptionType: "blocked", count: items.filter((i) => i.exceptions.some((e) => e.type === "blocked")).length },
@@ -122,12 +141,15 @@ function makeViewResponse(items: ReturnType<typeof makeException>[]) {
       { exceptionType: "pending_regression", count: 0 },
       { exceptionType: "stale", count: 0 },
     ],
-    items: { items, total: items.length, page: 1, pageSize: 100 },
+    items: { items, total: items.length, page: 1, pageSize: 200 },
   };
 }
 
 beforeEach(() => {
   getSpaceExceptionsViewMock.mockReset();
+  routerMock.replace.mockReset();
+  routerMock.push.mockReset();
+  searchParamsMock.current = new URLSearchParams();
   getSpaceMock.mockReset();
   getSpaceMock.mockResolvedValue({
     id: "SPC_01",
@@ -159,6 +181,31 @@ afterEach(() => {
 });
 
 describe("ExceptionsPage", () => {
+  it("consumes exceptionType and versionId from the URL and sends them to the API", async () => {
+    searchParamsMock.current = new URLSearchParams({
+      exceptionType: "pendingRegression",
+      versionId: "V_01",
+    });
+    getSpaceExceptionsViewMock.mockResolvedValueOnce(
+      makeViewResponse([], {
+        exceptionType: "pending_regression",
+        versionId: "V_01",
+      }),
+    );
+
+    render(<ExceptionsPage />);
+
+    await waitFor(() =>
+      expect(getSpaceExceptionsViewMock).toHaveBeenCalledWith(
+        expect.objectContaining({
+          exceptionType: "pending_regression",
+          versionId: "V_01",
+          pageSize: 200,
+        }),
+      ),
+    );
+  });
+
   it("renders the overdue tab with the work item title and tabs list", async () => {
     getSpaceExceptionsViewMock.mockResolvedValueOnce(
       makeViewResponse([
@@ -234,6 +281,11 @@ describe("ExceptionsPage", () => {
           }),
           "overdue",
         ),
+      ]),
+    );
+    getSpaceExceptionsViewMock.mockResolvedValueOnce(
+      makeViewResponse(
+        [
         makeException(
           makeWorkItem({
             id: "01ARZ3NDEKTSV4RRFFQ69G5F02",
@@ -242,7 +294,9 @@ describe("ExceptionsPage", () => {
           }),
           "blocked",
         ),
-      ]),
+        ],
+        { exceptionType: "blocked" },
+      ),
     );
 
     render(<ExceptionsPage />);
@@ -255,6 +309,15 @@ describe("ExceptionsPage", () => {
     );
 
     expect(await screen.findByText("Blocked only")).toBeInTheDocument();
+    await waitFor(() =>
+      expect(getSpaceExceptionsViewMock).toHaveBeenLastCalledWith(
+        expect.objectContaining({ exceptionType: "blocked" }),
+      ),
+    );
+    expect(routerMock.replace).toHaveBeenCalledWith(
+      expect.stringContaining("exceptionType=blocked"),
+      expect.objectContaining({ scroll: false }),
+    );
   });
 
   it("opens the task detail sheet when an exception row is clicked", async () => {

@@ -16,6 +16,8 @@ import {
   CheckCircle2,
   ChevronRight,
   Clock,
+  Download,
+  Eye,
   GitBranch,
   Link2,
   Loader2,
@@ -32,6 +34,7 @@ import { getApiErrorMessageKey } from "../../lib/api-error-messages";
 import { toExecuteActionRequest } from "../../lib/action-forms";
 import {
   AttachmentUploadError,
+  getAttachmentDownloadUrl,
   listAttachments,
   uploadAttachment,
 } from "../../lib/attachment-service";
@@ -86,6 +89,11 @@ type Props = {
    * views once the sheet detail mutates. Safe to omit.
    */
   onChanged?: () => void;
+};
+
+type ContextualWorkItemViewModel = WorkItemViewModel & {
+  organizationId?: string;
+  spaceId?: string;
 };
 
 /**
@@ -189,8 +197,13 @@ export function TaskDetailSheet({
   const tApiError = useTranslations();
   const { currentSpace, currentOrganization, session } = useSession();
 
-  const spaceId = spaceIdProp ?? currentSpace?.id;
-  const organizationId = organizationIdProp ?? currentOrganization?.id;
+  const itemContext = item as ContextualWorkItemViewModel | null;
+  const spaceId = spaceIdProp ?? itemContext?.spaceId ?? currentSpace?.id;
+  const organizationId =
+    organizationIdProp ??
+    itemContext?.organizationId ??
+    currentOrganization?.id ??
+    currentSpace?.organizationId;
   const currentUserId = currentUserIdProp ?? session?.user.id;
 
   if (!item) {
@@ -260,10 +273,9 @@ function TaskDetailSheetBody({
         `${isBug ? "bugs" : "workItems"}.statusCategory.${statusCategory}`,
       )
     : item.statusLabel;
-  const versionName =
-    detail?.versionId
-      ? (getVersion(detail.versionId)?.name ?? truncateId(detail.versionId))
-      : item.versionName;
+  const versionName = detail?.versionId
+    ? (getVersion(detail.versionId)?.name ?? truncateId(detail.versionId))
+    : item.versionName;
   const dueDate = detail?.dueDate
     ? formatDateTime(detail.dueDate, "default")
     : item.dueDate;
@@ -296,10 +308,7 @@ function TaskDetailSheetBody({
           {isBug ? t("sheetDescription.bug") : t("sheetDescription.task")}
         </SheetDescription>
         <div className="mt-3 flex flex-wrap items-center gap-2">
-          <StatusBadge
-            category={statusCategory}
-            label={statusLabel}
-          />
+          <StatusBadge category={statusCategory} label={statusLabel} />
           <Badge
             variant="outline"
             className={cn("gap-1", priorityColor[priority])}
@@ -349,9 +358,7 @@ function TaskDetailSheetBody({
               <span className="font-medium text-warning">
                 {t("blocked.label")}
               </span>
-              <span className="ml-2 text-foreground/80">
-                {blockedReason}
-              </span>
+              <span className="ml-2 text-foreground/80">{blockedReason}</span>
             </div>
           </div>
         </div>
@@ -709,8 +716,7 @@ function ActionBar({
 
   const actions = permissionState.permissions?.availableActions ?? [];
   const selectedActionStillAvailable = Boolean(
-    selectedAction &&
-      actions.some((action) => action.id === selectedAction.id),
+    selectedAction && actions.some((action) => action.id === selectedAction.id),
   );
 
   useEffect(() => {
@@ -1039,7 +1045,7 @@ function DetailTab({
           value={
             updatedAt
               ? formatDateTime(updatedAt, "default")
-              : item.updatedAgo ?? "—"
+              : (item.updatedAgo ?? "—")
           }
         />
       </div>
@@ -1444,7 +1450,13 @@ function AttachmentsTab({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [uploadError, setUploadError] = useState<string | null>(null);
+  const [attachmentActionError, setAttachmentActionError] = useState<
+    string | null
+  >(null);
   const [uploading, setUploading] = useState(false);
+  const [openingAttachmentId, setOpeningAttachmentId] = useState<string | null>(
+    null,
+  );
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   const fetchAttachments = useCallback(async () => {
@@ -1486,6 +1498,7 @@ function AttachmentsTab({
         return;
       }
       setUploadError(null);
+      setAttachmentActionError(null);
       setUploading(true);
       try {
         await uploadAttachment({
@@ -1512,6 +1525,38 @@ function AttachmentsTab({
       item.id,
       tApiError,
     ],
+  );
+
+  const handleAttachmentAction = useCallback(
+    async (attachment: Attachment, action: "download" | "preview") => {
+      if (!spaceId) {
+        return;
+      }
+
+      const actionId = `${action}:${attachment.id}`;
+      setAttachmentActionError(null);
+      setOpeningAttachmentId(actionId);
+
+      try {
+        const result = await getAttachmentDownloadUrl({
+          attachmentId: attachment.id,
+          organizationId,
+          spaceId,
+        });
+
+        if (action === "preview") {
+          window.open(result.downloadUrl, "_blank", "noopener,noreferrer");
+        } else {
+          triggerAttachmentDownload(result.downloadUrl, attachment.fileName);
+        }
+      } catch (err) {
+        const key = getApiErrorMessageKey(err);
+        setAttachmentActionError(tApiError(key));
+      } finally {
+        setOpeningAttachmentId(null);
+      }
+    },
+    [organizationId, spaceId, tApiError],
   );
 
   return (
@@ -1555,9 +1600,9 @@ function AttachmentsTab({
           </span>
         )}
       </div>
-      {uploadError && (
+      {(uploadError || attachmentActionError) && (
         <p className="border-b border-border bg-destructive/10 px-5 py-2 text-[11px] text-destructive">
-          {uploadError}
+          {uploadError ?? attachmentActionError}
         </p>
       )}
       <div className="flex-1 overflow-y-auto">
@@ -1612,6 +1657,46 @@ function AttachmentsTab({
                       </span>
                     </div>
                   </div>
+                  <div className="flex shrink-0 items-center gap-1">
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="h-7 px-2"
+                      data-testid={`task-attachments-preview-${attachment.id}`}
+                      aria-label={`Preview ${attachment.fileName}`}
+                      title={`Preview ${attachment.fileName}`}
+                      disabled={openingAttachmentId !== null || !spaceId}
+                      onClick={() => {
+                        void handleAttachmentAction(attachment, "preview");
+                      }}
+                    >
+                      {openingAttachmentId === `preview:${attachment.id}` ? (
+                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      ) : (
+                        <Eye className="h-3.5 w-3.5" />
+                      )}
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="h-7 px-2"
+                      data-testid={`task-attachments-download-${attachment.id}`}
+                      aria-label={`Download ${attachment.fileName}`}
+                      title={`Download ${attachment.fileName}`}
+                      disabled={openingAttachmentId !== null || !spaceId}
+                      onClick={() => {
+                        void handleAttachmentAction(attachment, "download");
+                      }}
+                    >
+                      {openingAttachmentId === `download:${attachment.id}` ? (
+                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      ) : (
+                        <Download className="h-3.5 w-3.5" />
+                      )}
+                    </Button>
+                  </div>
                 </li>
               );
             })}
@@ -1620,6 +1705,19 @@ function AttachmentsTab({
       </div>
     </div>
   );
+}
+
+function triggerAttachmentDownload(
+  downloadUrl: string,
+  fileName: string,
+): void {
+  const anchor = document.createElement("a");
+  anchor.href = downloadUrl;
+  anchor.download = fileName;
+  anchor.rel = "noopener noreferrer";
+  document.body.appendChild(anchor);
+  anchor.click();
+  anchor.remove();
 }
 
 // ---------------------------------------------------------------------------

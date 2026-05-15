@@ -220,6 +220,52 @@ describe("IntakeService", () => {
     ]);
   });
 
+  it("honors explicit convert task fields from the request schema", async () => {
+    const { intakeItems, service, workItems } = createSubject({
+      item: intakeItem({
+        description: "Inherited description",
+        status: "ACCEPTED",
+      }),
+      role: "PM",
+    });
+
+    await service.convertToWorkItems(ACTOR_USER_ID, INTAKE_ITEM_ID, {
+      tasks: [
+        {
+          assigneeId: ASSIGNEE_ID,
+          description: "Task-specific description",
+          dueDate: "2026-06-01T00:00:00.000Z",
+          priority: "URGENT",
+          requirementId: REQUIREMENT_ID,
+          title: "Explicit converted task",
+          versionId: VERSION_ID,
+          workflowVersionId: WORKFLOW_VERSION_ID,
+        },
+      ],
+    });
+
+    expect(workItems.resolveTaskWorkflow).toHaveBeenCalledWith(
+      SPACE_ID,
+      WORKFLOW_VERSION_ID,
+    );
+    expect(intakeItems.convertToWorkItems).toHaveBeenCalledWith(
+      expect.objectContaining({
+        tasks: [
+          expect.objectContaining({
+            assigneeId: ASSIGNEE_ID,
+            description: "Task-specific description",
+            dueDate: expect.any(Date),
+            priority: "URGENT",
+            requirementId: REQUIREMENT_ID,
+            title: "Explicit converted task",
+            versionId: VERSION_ID,
+            workflowVersionId: WORKFLOW_VERSION_ID,
+          }),
+        ],
+      }),
+    );
+  });
+
   it("rejects duplicate and non-accepted conversions with dedicated error codes", async () => {
     const converted = createSubject({
       item: intakeItem({ status: "CONVERTED" }),

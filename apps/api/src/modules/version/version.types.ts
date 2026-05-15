@@ -62,6 +62,7 @@ export type VersionBoardWorkItemRecord = {
     category: StatusCategory;
   };
   bugDetail: {
+    deletedAt: Date | null;
     regressionAt: Date | null;
   } | null;
 };

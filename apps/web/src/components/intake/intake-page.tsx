@@ -19,6 +19,7 @@ import {
 import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
+import { useRouter } from "../../i18n/routing";
 import { getApiErrorMessageKey } from "../../lib/api-error-messages";
 import { useListKeyboardNav } from "../../lib/hooks/use-list-keyboard-nav";
 import {
@@ -28,6 +29,7 @@ import {
   rejectIntakeItem,
 } from "../../lib/intake-service";
 import { cn } from "../../lib/utils";
+import { listWorkItems } from "../../lib/work-item-service";
 import { useSession } from "../providers/session-provider";
 import { recordRecentOpen } from "../shell/recent-opens";
 
@@ -68,7 +70,13 @@ const intakeStatusToCategory: Record<IntakeStatus, StatusCategory> = {
   CONVERTED: "DONE",
 };
 
-type FilterKey = "all" | "PENDING" | "ACCEPTED" | "DEFERRED" | "CONVERTED";
+type FilterKey =
+  | "all"
+  | "PENDING"
+  | "ACCEPTED"
+  | "DEFERRED"
+  | "REJECTED"
+  | "CONVERTED";
 
 type StatusActionKind = "accept" | "defer" | "reject";
 
@@ -77,9 +85,13 @@ export function IntakePage() {
   const tNav = useTranslations("shell.nav");
   const tIntakeItems = useTranslations("intakeItems");
   const tRoot = useTranslations();
-  const { session, status: sessionStatus } = useSession();
+  const router = useRouter();
+  const { currentSpace, session, status: sessionStatus } = useSession();
   const spaceId = session?.defaultSpaceId;
   const organizationId = session?.defaultOrganizationId;
+  const sessionSpace = session?.spaces?.find((space) => space.id === spaceId);
+  const currentSpaceRole = currentSpace?.role ?? sessionSpace?.role;
+  const canWriteIntake = currentSpaceRole ? currentSpaceRole !== "VIEWER" : true;
   const recentScope = useMemo(
     () => ({ organizationId, spaceId }),
     [organizationId, spaceId],
@@ -93,6 +105,7 @@ export function IntakePage() {
   const [actionInFlight, setActionInFlight] = useState<StatusActionKind | null>(
     null,
   );
+  const [viewTasksInFlight, setViewTasksInFlight] = useState(false);
   const [actionErrorKey, setActionErrorKey] = useState<string | null>(null);
   const [createOpen, setCreateOpen] = useState(false);
   const [convertOpen, setConvertOpen] = useState(false);
@@ -149,12 +162,17 @@ export function IntakePage() {
         count: items.filter((it) => it.status === "DEFERRED").length,
       },
       {
+        label: tIntakeItems("status.REJECTED"),
+        key: "REJECTED",
+        count: items.filter((it) => it.status === "REJECTED").length,
+      },
+      {
         label: t("filters.converted"),
         key: "CONVERTED",
         count: items.filter((it) => it.status === "CONVERTED").length,
       },
     ],
-    [items, t],
+    [items, t, tIntakeItems],
   );
 
   const openItem = useCallback(
@@ -182,6 +200,9 @@ export function IntakePage() {
     onOpen: openItem,
     onEdit: openItem,
     onSubmit: (item) => {
+      if (!canWriteIntake) {
+        return;
+      }
       if (item.status === "PENDING") {
         void handleStatusAction("accept", item);
       } else if (item.status === "ACCEPTED") {
@@ -207,7 +228,7 @@ export function IntakePage() {
     action: StatusActionKind,
     target: IntakeItem | null = active,
   ) {
-    if (!target || !spaceId) {
+    if (!target || !spaceId || !canWriteIntake) {
       return;
     }
 
@@ -252,14 +273,42 @@ export function IntakePage() {
   }
 
   function openConvertDialog() {
-    if (!active) {
+    if (!active || !canWriteIntake) {
       return;
     }
     setConvertTarget(active);
     setConvertOpen(true);
   }
 
-  const headerActions = (
+  async function handleViewConvertedTasks(target: IntakeItem | null = active) {
+    if (!target || !spaceId || target.status !== "CONVERTED") {
+      return;
+    }
+
+    setViewTasksInFlight(true);
+
+    try {
+      const related = await listWorkItems({
+        intakeItemId: target.id,
+        page: 1,
+        pageSize: 2,
+        spaceId,
+      });
+      const firstTask = related.items[0];
+      const href =
+        related.total === 1 && firstTask
+          ? buildWorkItemsHref({ workItemId: firstTask.id })
+          : buildWorkItemsHref({ intakeItemId: target.id });
+
+      router.push(href);
+    } catch {
+      router.push(buildWorkItemsHref({ intakeItemId: target.id }));
+    } finally {
+      setViewTasksInFlight(false);
+    }
+  }
+
+  const headerActions = canWriteIntake ? (
     <Button
       size="sm"
       className="text-xs"
@@ -270,7 +319,7 @@ export function IntakePage() {
       <Plus className="h-3 w-3" />
       {t("page.create")}
     </Button>
-  );
+  ) : null;
 
   let body: React.ReactNode;
 
@@ -434,7 +483,7 @@ export function IntakePage() {
                   {t("detail.actions")}
                 </span>
                 <div className="ml-auto flex items-center gap-1.5">
-                  {active.status === "PENDING" && (
+                  {canWriteIntake && active.status === "PENDING" && (
                     <>
                       <Button
                         size="sm"
@@ -476,7 +525,7 @@ export function IntakePage() {
                       </Button>
                     </>
                   )}
-                  {active.status === "ACCEPTED" && (
+                  {canWriteIntake && active.status === "ACCEPTED" && (
                     <Button
                       size="sm"
                       className="h-7 text-xs"
@@ -494,7 +543,8 @@ export function IntakePage() {
                       variant="outline"
                       className="h-7 text-xs"
                       data-testid="intake-view-converted-tasks-button"
-                      disabled
+                      disabled={viewTasksInFlight}
+                      onClick={() => void handleViewConvertedTasks()}
                       type="button"
                     >
                       <CheckCircle2 className="h-3 w-3" />
@@ -546,7 +596,7 @@ export function IntakePage() {
         </SheetContent>
       </Sheet>
 
-      {spaceId && (
+      {spaceId && canWriteIntake && (
         <CreateIntakeDialog
           open={createOpen}
           onOpenChange={setCreateOpen}
@@ -557,7 +607,7 @@ export function IntakePage() {
         />
       )}
 
-      {spaceId && (
+      {spaceId && canWriteIntake && (
         <ConvertIntakeDialog
           open={convertOpen}
           onOpenChange={(next) => {
@@ -612,4 +662,18 @@ function formatItemCode(id: string): string {
 
 function initialOf(id: string): string {
   return id.charAt(0).toUpperCase();
+}
+
+function buildWorkItemsHref(
+  query: { intakeItemId: string } | { workItemId: string },
+): string {
+  const params = new URLSearchParams();
+
+  if ("intakeItemId" in query) {
+    params.set("intakeItemId", query.intakeItemId);
+  } else {
+    params.set("workItemId", query.workItemId);
+  }
+
+  return `/work-items?${params.toString()}`;
 }

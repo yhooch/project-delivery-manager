@@ -29,10 +29,7 @@ import {
   type OrganizationRepository,
 } from "../organization/organization.repository";
 import { WorkflowDefaultInitializerService } from "../workflow/workflow-default-initializer.service";
-import {
-  SPACE_REPOSITORY,
-  type SpaceRepository,
-} from "./space.repository";
+import { SPACE_REPOSITORY, type SpaceRepository } from "./space.repository";
 import type { SpaceListInput, SpaceMemberListInput } from "./space.types";
 
 const DEFAULT_STALE_THRESHOLD_DAYS = 3;
@@ -56,7 +53,10 @@ export class SpaceService {
     organizationId: string,
     input: SpaceListInput,
   ): Promise<PageResult<SpaceSummary>> {
-    const access = await this.requireOrganizationAccess(actorUserId, organizationId);
+    const access = await this.requireOrganizationAccess(
+      actorUserId,
+      organizationId,
+    );
     const canListAllSpaces = access.role === "OWNER" || access.role === "ADMIN";
     const result = await this.spaces.listByOrganizationId(
       organizationId,
@@ -184,7 +184,10 @@ export class SpaceService {
   ): Promise<SpaceMemberWithUser> {
     const access = await this.requireSpaceManager(actorUserId, spaceId);
     const user = await this.resolveActiveUser(input);
-    await this.requireActiveOrganizationMember(access.space.organizationId, user.id);
+    await this.requireActiveOrganizationMember(
+      access.space.organizationId,
+      user.id,
+    );
 
     const existingMember = await this.spaces.findMemberByUserId(
       spaceId,
@@ -311,11 +314,15 @@ export class SpaceService {
 
     return this.spaces.getMyWorkbenchView({
       actorUserId,
+      assigneeId: query.assigneeId,
+      exceptionType: query.exceptionType,
       organizationId: query.organizationId,
       page: query.page,
       pageSize: query.pageSize,
       spaceId: query.spaceId,
+      statusCategory: query.statusCategory,
       versionId: query.versionId,
+      workItemType: query.workItemType,
     });
   }
 
@@ -409,7 +416,11 @@ export class SpaceService {
     const user = userById ?? userByUsername;
 
     if (!user || user.status !== "ACTIVE") {
-      throw new ApiException("NOT_FOUND", "User not found", HttpStatus.NOT_FOUND);
+      throw new ApiException(
+        "NOT_FOUND",
+        "User not found",
+        HttpStatus.NOT_FOUND,
+      );
     }
 
     return user;
@@ -449,7 +460,11 @@ function throwSpaceAccessDenied(): never {
 }
 
 function throwSpaceNotFound(): never {
-  throw new ApiException("SPACE_NOT_FOUND", "Space not found", HttpStatus.NOT_FOUND);
+  throw new ApiException(
+    "SPACE_NOT_FOUND",
+    "Space not found",
+    HttpStatus.NOT_FOUND,
+  );
 }
 
 function throwSpaceMemberNotFound(): never {

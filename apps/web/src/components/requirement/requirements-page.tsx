@@ -1,6 +1,11 @@
 "use client";
 
-import type { Requirement } from "@project-delivery/shared";
+import type {
+  Requirement,
+  RequirementStatus,
+  SpaceMemberWithUser,
+  Version,
+} from "@project-delivery/shared";
 import {
   Archive,
   Clock,
@@ -18,6 +23,8 @@ import { getApiErrorMessageKey } from "../../lib/api-error-messages";
 import { useListKeyboardNav } from "../../lib/hooks/use-list-keyboard-nav";
 import {
   createRequirementDraft,
+  listRequirementAssignableMembers,
+  listRequirementVersions,
   listRequirements,
 } from "../../lib/requirement-service";
 import { cn } from "../../lib/utils";
@@ -57,9 +64,14 @@ export function RequirementsPage() {
   );
 
   const [items, setItems] = useState<Requirement[]>([]);
+  const [versions, setVersions] = useState<Version[]>([]);
+  const [members, setMembers] = useState<SpaceMemberWithUser[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [errorKey, setErrorKey] = useState<string | null>(null);
   const [filter, setFilter] = useState<FilterKey>("active");
+  const [isFilterPanelOpen, setIsFilterPanelOpen] = useState(false);
+  const [selectedVersionId, setSelectedVersionId] = useState("");
+  const [selectedOwnerId, setSelectedOwnerId] = useState("");
   const [isCreating, setIsCreating] = useState(false);
   const [activeId, setActiveId] = useState<string | undefined>(undefined);
 
@@ -76,7 +88,9 @@ export function RequirementsPage() {
         spaceId,
         page: 1,
         pageSize: 100,
-        includeDrafts: true,
+        ...toRequirementListQuery(filter),
+        ownerId: optionalFilterValue(selectedOwnerId),
+        versionId: optionalFilterValue(selectedVersionId),
       });
       setItems(page.items);
     } catch (error) {
@@ -84,7 +98,24 @@ export function RequirementsPage() {
     } finally {
       setIsLoading(false);
     }
-  }, [spaceId]);
+  }, [filter, selectedOwnerId, selectedVersionId, spaceId]);
+
+  const loadFilterOptions = useCallback(async () => {
+    if (!spaceId) {
+      return;
+    }
+
+    try {
+      const [versionPage, memberPage] = await Promise.all([
+        listRequirementVersions({ organizationId, spaceId }),
+        listRequirementAssignableMembers({ organizationId, spaceId }),
+      ]);
+      setVersions(versionPage.items);
+      setMembers(memberPage.items);
+    } catch (error) {
+      setErrorKey(getApiErrorMessageKey(error));
+    }
+  }, [organizationId, spaceId]);
 
   useEffect(() => {
     if (sessionStatus !== "authenticated" || !spaceId) {
@@ -93,14 +124,18 @@ export function RequirementsPage() {
     void loadItems();
   }, [loadItems, sessionStatus, spaceId]);
 
+  useEffect(() => {
+    if (sessionStatus !== "authenticated" || !spaceId) {
+      return;
+    }
+    void loadFilterOptions();
+  }, [loadFilterOptions, sessionStatus, spaceId]);
+
   const filtered = useMemo(() => {
-    if (filter === "all") {
-      return items;
-    }
     if (filter === "active") {
-      return items.filter((r) => r.status !== "ARCHIVED");
+      return items.filter((r) => r.status !== "ARCHIVED" && r.status !== "DRAFT");
     }
-    return items.filter((r) => r.status === filter);
+    return items;
   }, [filter, items]);
 
   const buckets: { label: string; key: FilterKey }[] = [
@@ -168,10 +203,21 @@ export function RequirementsPage() {
         size="sm"
         className="text-xs"
         type="button"
-        disabled
+        onClick={() => setIsFilterPanelOpen((current) => !current)}
+        aria-pressed={isFilterPanelOpen}
       >
         <Filter className="h-3 w-3" />
         {t("page.filter")}
+      </Button>
+      <Button
+        variant={filter === "DRAFT" ? "secondary" : "outline"}
+        size="sm"
+        className="text-xs"
+        type="button"
+        onClick={() => setFilter("DRAFT")}
+      >
+        <FileText className="h-3 w-3" />
+        {t("actions.myDrafts")}
       </Button>
       <Button
         size="sm"
@@ -303,22 +349,64 @@ export function RequirementsPage() {
       />
 
       {sessionStatus === "authenticated" && spaceId && !errorKey && (
-        <div className="flex items-center gap-1 border-b border-border px-6 py-3">
-          {buckets.map((b) => (
-            <button
-              key={b.key}
-              type="button"
-              onClick={() => setFilter(b.key)}
-              className={cn(
-                "flex h-7 items-center gap-1.5 rounded-md px-2.5 text-[12px] transition-colors cursor-pointer",
-                filter === b.key
-                  ? "bg-muted font-medium text-foreground"
-                  : "text-muted-foreground hover:bg-muted/50 hover:text-foreground",
-              )}
+        <div className="border-b border-border px-6 py-3">
+          <div className="flex flex-wrap items-center gap-1">
+            {buckets.map((b) => (
+              <button
+                key={b.key}
+                type="button"
+                onClick={() => setFilter(b.key)}
+                className={cn(
+                  "flex h-7 items-center gap-1.5 rounded-md px-2.5 text-[12px] transition-colors cursor-pointer",
+                  filter === b.key
+                    ? "bg-muted font-medium text-foreground"
+                    : "text-muted-foreground hover:bg-muted/50 hover:text-foreground",
+                )}
+              >
+                {b.label}
+              </button>
+            ))}
+          </div>
+
+          {isFilterPanelOpen ? (
+            <div
+              aria-label={t("filters.label")}
+              className="mt-3 flex flex-wrap items-center gap-3 text-xs text-muted-foreground"
             >
-              {b.label}
-            </button>
-          ))}
+              <label className="flex items-center gap-2">
+                <span>{t("filters.version")}</span>
+                <select
+                  aria-label={t("filters.version")}
+                  className="h-7 rounded-md border border-border bg-background px-2 text-xs text-foreground"
+                  onChange={(event) => setSelectedVersionId(event.target.value)}
+                  value={selectedVersionId}
+                >
+                  <option value="">{t("filters.allVersions")}</option>
+                  {versions.map((version) => (
+                    <option key={version.id} value={version.id}>
+                      {version.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className="flex items-center gap-2">
+                <span>{t("filters.owner")}</span>
+                <select
+                  aria-label={t("filters.owner")}
+                  className="h-7 rounded-md border border-border bg-background px-2 text-xs text-foreground"
+                  onChange={(event) => setSelectedOwnerId(event.target.value)}
+                  value={selectedOwnerId}
+                >
+                  <option value="">{t("filters.allOwners")}</option>
+                  {members.map((member) => (
+                    <option key={member.userId} value={member.userId}>
+                      {formatMember(member)}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            </div>
+          ) : null}
         </div>
       )}
 
@@ -336,6 +424,33 @@ function shortenId(id: string): string {
 
 function formatRequirementCode(id: string): string {
   return `REQ-${shortenId(id)}`.toUpperCase();
+}
+
+function toRequirementListQuery(
+  filter: FilterKey,
+): { includeDrafts?: boolean; status?: RequirementStatus } {
+  if (filter === "DRAFT") {
+    return {
+      includeDrafts: true,
+      status: "DRAFT",
+    };
+  }
+
+  if (filter === "CONFIRMED" || filter === "ARCHIVED") {
+    return {
+      status: filter,
+    };
+  }
+
+  return {};
+}
+
+function optionalFilterValue(value: string): string | undefined {
+  return value.trim() ? value : undefined;
+}
+
+function formatMember(member: SpaceMemberWithUser): string {
+  return `${member.user.name} (${member.user.username})`;
 }
 
 function initialOf(id: string): string {

@@ -123,7 +123,7 @@ describe("requirement and attachment API", () => {
     await app.close();
   });
 
-  it("creates an empty DRAFT, saves content as CONFIRMED, returns empty related work items, and archives it", async () => {
+  it("creates an empty DRAFT, saves content as CONFIRMED, returns permission snapshots, and archives it", async () => {
     const { agent, requirementUser, assignee, space, version } =
       await setupRequirementSpace("m1g_lifecycle", "REQUIREMENT");
 
@@ -139,6 +139,12 @@ describe("requirement and attachment API", () => {
       title: "",
       contentJson: {},
       status: "DRAFT",
+      permissions: {
+        availableActions: [],
+        canComment: true,
+        canEdit: true,
+        canUploadAttachment: true,
+      },
       relatedWorkItems: {
         taskCount: 0,
         bugCount: 0,
@@ -187,6 +193,12 @@ describe("requirement and attachment API", () => {
       status: "CONFIRMED",
       ownerId: assignee.id,
       priority: "HIGH",
+      permissions: {
+        availableActions: [],
+        canComment: true,
+        canEdit: true,
+        canUploadAttachment: false,
+      },
       relatedWorkItems: {
         taskCount: 0,
         bugCount: 0,
@@ -223,6 +235,85 @@ describe("requirement and attachment API", () => {
       .expect(200)
       .expect(({ body }) => {
         expect(body.data.status).toBe("ARCHIVED");
+        expect(body.data.permissions).toEqual({
+          availableActions: [],
+          canComment: false,
+          canEdit: false,
+          canUploadAttachment: false,
+        });
+      });
+  });
+
+  it("returns real related task and Bug summaries for requirement detail and list", async () => {
+    const { agent, assignee, space, version } = await setupRequirementSpace(
+      "m1g_related_work",
+      "PM",
+    );
+    const requirement = await createSavedRequirement(agent, space.id, {
+      versionId: version.id,
+      ownerId: assignee.id,
+      title: "关联工作项需求",
+      priority: "HIGH",
+    });
+    const taskId = ulid();
+    const bugId = ulid();
+
+    requirements.seedRelatedWorkItems(requirement.id, {
+      taskCount: 1,
+      bugCount: 1,
+      tasks: [
+        {
+          id: taskId,
+          type: "TASK",
+          title: "实现需求任务",
+          versionId: version.id,
+          assigneeId: assignee.id,
+          statusCategory: "IN_PROGRESS",
+        },
+      ],
+      bugs: [
+        {
+          id: bugId,
+          type: "BUG",
+          title: "修复需求 Bug",
+          versionId: version.id,
+          statusCategory: "VERIFYING",
+        },
+      ],
+    });
+
+    await agent
+      .get(`/api/v1/requirements/${requirement.id}`)
+      .expect(200)
+      .expect(({ body }) => {
+        expect(body.data.relatedWorkItems).toMatchObject({
+          taskCount: 1,
+          bugCount: 1,
+          tasks: [
+            {
+              id: taskId,
+              title: "实现需求任务",
+              type: "TASK",
+              statusCategory: "IN_PROGRESS",
+            },
+          ],
+          bugs: [
+            {
+              id: bugId,
+              title: "修复需求 Bug",
+              type: "BUG",
+              statusCategory: "VERIFYING",
+            },
+          ],
+        });
+      });
+    await listRequirements(agent, space.id, { ownerId: assignee.id })
+      .expect(200)
+      .expect(({ body }) => {
+        expect(body.data.items[0].relatedWorkItems).toMatchObject({
+          taskCount: 1,
+          bugCount: 1,
+        });
       });
   });
 
@@ -312,7 +403,7 @@ describe("requirement and attachment API", () => {
   });
 
   it("does not leak titled DRAFT requirements to non-participant space members", async () => {
-    const { agent, developerAgent, space } = await setupRequirementSpace(
+    const { agent, assigneeAgent, developerAgent, space } = await setupRequirementSpace(
       "m1g_draft_visibility",
       "PM",
     );
@@ -320,6 +411,10 @@ describe("requirement and attachment API", () => {
       await createRequirement(agent, space.id, {}).expect(200)
     ).body.data as Requirement;
     requirements.setDraftTitle(draft.id, "已命名草稿");
+    const otherDraft = (
+      await createRequirement(assigneeAgent, space.id, {}).expect(200)
+    ).body.data as Requirement;
+    requirements.setDraftTitle(otherDraft.id, "他人草稿");
 
     await listRequirements(agent, space.id, { status: "DRAFT" })
       .expect(200)
@@ -328,6 +423,7 @@ describe("requirement and attachment API", () => {
           draft.id,
         ]);
       });
+    await agent.get(`/api/v1/requirements/${otherDraft.id}`).expect(404);
     await listRequirements(developerAgent, space.id, { status: "DRAFT" })
       .expect(200)
       .expect(({ body }) => {
@@ -546,10 +642,9 @@ describe("requirement and attachment API", () => {
       space.id,
       `${prefix} Version`,
     );
-    void assigneeAgent;
-
     return {
       agent,
+      assigneeAgent,
       developerAgent,
       viewerAgent,
       outsiderAgent,
@@ -1316,6 +1411,17 @@ class InMemoryRequirementRepository implements RequirementRepository {
     }
   }
 
+  seedRelatedWorkItems(
+    requirementId: string,
+    relatedWorkItems: Requirement["relatedWorkItems"],
+  ): void {
+    const requirement = this.records.get(requirementId);
+
+    if (requirement) {
+      requirement.relatedWorkItems = cloneRelatedWorkItems(relatedWorkItems);
+    }
+  }
+
   private matchesStatusFilter(
     requirement: InternalRequirement,
     input: RequirementListInput,
@@ -1334,21 +1440,27 @@ class InMemoryRequirementRepository implements RequirementRepository {
     requirement: InternalRequirement,
     input: RequirementListInput,
   ): boolean {
-    if (input.visibility === "ALL") {
-      return true;
-    }
-
-    const isParticipant = this.participants.some(
-      (participant) =>
-        participant.targetId === requirement.id &&
-        participant.userId === input.actorUserId,
+    const isParticipant = this.isRequirementParticipant(
+      requirement.id,
+      input.actorUserId,
     );
+
+    if (input.visibility === "ALL") {
+      return requirement.status !== "DRAFT" || isParticipant;
+    }
 
     if (input.visibility === "PARTICIPANT") {
       return isParticipant;
     }
 
     return requirement.status !== "DRAFT" || isParticipant;
+  }
+
+  private isRequirementParticipant(requirementId: string, userId: string) {
+    return this.participants.some(
+      (participant) =>
+        participant.targetId === requirementId && participant.userId === userId,
+    );
   }
 
   private ensureParticipant(
@@ -1395,7 +1507,7 @@ class InMemoryRequirementRepository implements RequirementRepository {
 
     return {
       ...publicRequirement,
-      relatedWorkItems: emptyRelatedWorkItems(),
+      relatedWorkItems: cloneRelatedWorkItems(publicRequirement.relatedWorkItems),
     };
   }
 }
@@ -1491,5 +1603,16 @@ function emptyRelatedWorkItems(): Requirement["relatedWorkItems"] {
     bugCount: 0,
     tasks: [],
     bugs: [],
+  };
+}
+
+function cloneRelatedWorkItems(
+  relatedWorkItems: Requirement["relatedWorkItems"],
+): Requirement["relatedWorkItems"] {
+  return {
+    taskCount: relatedWorkItems.taskCount,
+    bugCount: relatedWorkItems.bugCount,
+    tasks: relatedWorkItems.tasks.map((item) => ({ ...item })),
+    bugs: relatedWorkItems.bugs.map((item) => ({ ...item })),
   };
 }

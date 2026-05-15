@@ -15,10 +15,12 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
+import { useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { getApiErrorMessageKey } from "../../lib/api-error-messages";
 import { useListKeyboardNav } from "../../lib/hooks/use-list-keyboard-nav";
+import { usePathname, useRouter } from "../../i18n/routing";
 import { getSpace } from "../../lib/space-service";
 import { cn } from "../../lib/utils";
 import type { WorkItemViewModel } from "../../lib/v2/work-item-view-model";
@@ -62,6 +64,16 @@ const tabs: {
   { key: "stale", icon: Clock, tone: "default" },
 ];
 
+const exceptionTypeAliases: Record<string, ViewExceptionType> = {
+  overdue: "overdue",
+  blocked: "blocked",
+  pendingConfirm: "pending_confirm",
+  pending_confirm: "pending_confirm",
+  pendingRegression: "pending_regression",
+  pending_regression: "pending_regression",
+  stale: "stale",
+};
+
 const toneClass: Record<Tone, string> = {
   destructive: "text-destructive",
   warning: "text-warning",
@@ -77,19 +89,30 @@ export function ExceptionsPage() {
   const tStatusCategory = useTranslations("workItems.statusCategory");
   const tRoot = useTranslations();
   const locale = useLocale();
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
   const { currentSpace, session } = useSession();
+  const requestedExceptionType =
+    normalizeExceptionType(searchParams.get("exceptionType")) ?? tabs[0].key;
+  const versionIdParam = normalizeSearchParam(searchParams.get("versionId"));
   const [view, setView] = useState<GetSpaceExceptionsViewResponse | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [errorKey, setErrorKey] = useState<string | null>(null);
   const [active, setActive] = useState<WorkItemViewModel | null>(null);
   const [open, setOpen] = useState(false);
-  const [tabValue, setTabValue] = useState<ViewExceptionType>(tabs[0].key);
+  const [tabValue, setTabValue] =
+    useState<ViewExceptionType>(requestedExceptionType);
   const [thresholdValue, setThresholdValue] = useState<number | null>(null);
   const [thresholdOpen, setThresholdOpen] = useState(false);
 
   const organizationId = session?.defaultOrganizationId;
   const spaceId = session?.defaultSpaceId;
   const canEditThreshold = canManageSpaceThreshold(currentSpace?.role);
+
+  useEffect(() => {
+    setTabValue(requestedExceptionType);
+  }, [requestedExceptionType]);
 
   const fetchView = useCallback(async () => {
     if (!spaceId) {
@@ -103,8 +126,10 @@ export function ExceptionsPage() {
       const next = await getSpaceExceptionsView({
         spaceId,
         organizationId,
+        versionId: versionIdParam,
+        exceptionType: tabValue,
         page: 1,
-        pageSize: 100,
+        pageSize: 200,
       });
       setView(next);
     } catch (error) {
@@ -112,7 +137,7 @@ export function ExceptionsPage() {
     } finally {
       setIsLoading(false);
     }
-  }, [organizationId, spaceId]);
+  }, [organizationId, spaceId, tabValue, versionIdParam]);
 
   useEffect(() => {
     if (!spaceId) {
@@ -153,8 +178,10 @@ export function ExceptionsPage() {
         const next = await getSpaceExceptionsView({
           spaceId: spaceId!,
           organizationId,
+          versionId: versionIdParam,
+          exceptionType: tabValue,
           page: 1,
-          pageSize: 100,
+          pageSize: 200,
         });
 
         if (isActive) {
@@ -176,24 +203,25 @@ export function ExceptionsPage() {
     return () => {
       isActive = false;
     };
-  }, [organizationId, spaceId]);
+  }, [organizationId, spaceId, tabValue, versionIdParam]);
 
   const grouped = useMemo(() => {
-    const items = view?.items.items ?? [];
+    const viewExceptionType = view?.filters?.exceptionType ?? tabValue;
+    const items =
+      viewExceptionType === tabValue ? (view?.items.items ?? []) : [];
     return tabs.map((tab) => {
-      const exceptionItems = items.filter((item) =>
-        item.exceptions.some((signal) => signal.type === tab.key),
-      );
       const countFromCounts = view?.counts.find(
         (entry) => entry.exceptionType === tab.key,
       )?.count;
       return {
         ...tab,
-        items: exceptionItems,
-        count: countFromCounts ?? exceptionItems.length,
+        items: tab.key === tabValue ? items : [],
+        count:
+          countFromCounts ??
+          (tab.key === tabValue ? (view?.items.total ?? items.length) : 0),
       };
     });
-  }, [view]);
+  }, [tabValue, view]);
 
   const visibleItems = useMemo(
     () => grouped.find((tab) => tab.key === tabValue)?.items ?? [],
@@ -276,6 +304,18 @@ export function ExceptionsPage() {
   );
 
   const pageDescription = t("page.description");
+  const handleTabChange = useCallback(
+    (next: string) => {
+      const nextType = normalizeExceptionType(next) ?? tabs[0].key;
+      setTabValue(nextType);
+      const params = new URLSearchParams(searchParams.toString());
+      params.set("exceptionType", nextType);
+      const query = params.toString();
+      const target = query ? `${pathname}?${query}` : pathname;
+      router.replace(target as never, { scroll: false });
+    },
+    [pathname, router, searchParams],
+  );
 
   if (!session) {
     return (
@@ -364,7 +404,7 @@ export function ExceptionsPage() {
 
       <Tabs
         value={tabValue}
-        onValueChange={(next) => setTabValue(next as ViewExceptionType)}
+        onValueChange={handleTabChange}
         className="flex flex-1 flex-col overflow-hidden"
       >
         <TabsList className="px-6">
@@ -494,4 +534,17 @@ export function ExceptionsPage() {
       )}
     </div>
   );
+}
+
+function normalizeExceptionType(value: string | null): ViewExceptionType | null {
+  if (!value) {
+    return null;
+  }
+
+  return exceptionTypeAliases[value] ?? null;
+}
+
+function normalizeSearchParam(value: string | null): string | undefined {
+  const trimmed = value?.trim();
+  return trimmed ? trimmed : undefined;
 }

@@ -225,6 +225,11 @@ describe("SpaceOverview", () => {
     expect(
       screen.getByTestId("space-overview-current-version"),
     ).toBeInTheDocument();
+    expect(
+      screen
+        .getByTestId("space-overview-version-board-link")
+        .getAttribute("href"),
+    ).toContain("versionId=01ARZ3NDEKTSV4RRFFQ69G5FV1");
     expect(screen.getByTestId("space-overview-kpi-grid")).toBeInTheDocument();
 
     // Stale threshold meta strip.

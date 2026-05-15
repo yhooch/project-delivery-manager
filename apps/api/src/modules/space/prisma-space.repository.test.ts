@@ -1,5 +1,6 @@
 import type {
   GetSpaceOverviewViewResponse,
+  PageResult,
   Space,
 } from "@project-delivery/shared";
 import { describe, expect, it, vi } from "vitest";
@@ -11,10 +12,13 @@ type RepositoryInternals = {
   findCurrentVersion(spaceId: string): Promise<undefined>;
   findVersionById(spaceId: string, versionId: string): Promise<undefined>;
   getExceptionCounts(...args: unknown[]): Promise<unknown[]>;
+  getWorkbenchStats(...args: unknown[]): Promise<unknown>;
   listDefaultWorkflows(spaceId: string): Promise<unknown[]>;
+  pageActionTodos(...args: unknown[]): Promise<unknown>;
   pageRecentActivities(
     ...args: unknown[]
-  ): Promise<GetSpaceOverviewViewResponse["recentActivities"]>;
+  ): Promise<GetSpaceOverviewViewResponse["recentActivities"] | unknown>;
+  pageWorkItemSummaries(...args: unknown[]): Promise<unknown>;
   resolveViewAccessContext(...args: unknown[]): Promise<{
     accessBySpaceId: Map<string, unknown>;
     accesses: unknown[];
@@ -110,7 +114,7 @@ describe("PrismaSpaceRepository", () => {
       spaceIds: [spaceId],
       testerSpaceIds: [],
       testerWorkItemIds: [],
-	    }));
+    }));
     internals.findCurrentVersion = vi.fn(async () => undefined);
     internals.findVersionById = vi.fn(async () => undefined);
     internals.listDefaultWorkflows = vi.fn(async () => []);
@@ -176,4 +180,111 @@ describe("PrismaSpaceRepository", () => {
       where: visibleWhere,
     });
   });
+
+  it("applies all my workbench query filters to sections, actions, stats, and activities", async () => {
+    const organizationId = "01BRZ3NDEKTSV4RRFFQ69G5FAA";
+    const spaceId = "01DRZ3NDEKTSV4RRFFQ69G5FAC";
+    const versionId = "01ERZ3NDEKTSV4RRFFQ69G5FAD";
+    const actorUserId = "01FRZ3NDEKTSV4RRFFQ69G5FAE";
+    const assigneeId = "01GRZ3NDEKTSV4RRFFQ69G5FAF";
+    const access = {
+      organizationId,
+      role: "PM",
+      spaceId,
+      staleThresholdDays: 5,
+    };
+    const emptyWorkItems = emptyPage(2, 10);
+    const emptyActionTodos = emptyPage(2, 10);
+    const emptyActivities = emptyPage(2, 10);
+    const prisma = {
+      client: {},
+    } as unknown as PrismaService;
+    const repository = new PrismaSpaceRepository(prisma);
+    const internals = repository as unknown as RepositoryInternals;
+    const pageWorkItemSummaries = vi.fn(
+      async (..._args: unknown[]) => emptyWorkItems,
+    );
+    const pageActionTodos = vi.fn(
+      async (..._args: unknown[]) => emptyActionTodos,
+    );
+    const pageRecentActivities = vi.fn(
+      async (..._args: unknown[]) => emptyActivities,
+    );
+    const getWorkbenchStats = vi.fn(async (..._args: unknown[]) => ({
+      actionTodoCount: 0,
+      assignedWorkItemCount: 0,
+      blockedCount: 0,
+      overdueCount: 0,
+      pendingConfirmCount: 0,
+      pendingRegressionCount: 0,
+      staleCount: 0,
+    }));
+
+    internals.resolveViewAccessContext = vi.fn(async () => ({
+      accessBySpaceId: new Map([[spaceId, access]]),
+      accesses: [access],
+      participantSpaceIds: [],
+      participantWorkItemIds: [],
+      readAllSpaceIds: [spaceId],
+      spaceIds: [spaceId],
+      testerSpaceIds: [],
+      testerWorkItemIds: [],
+    }));
+    internals.pageWorkItemSummaries = pageWorkItemSummaries;
+    internals.pageActionTodos = pageActionTodos;
+    internals.pageRecentActivities = pageRecentActivities;
+    internals.getWorkbenchStats = getWorkbenchStats;
+
+    const result = await repository.getMyWorkbenchView({
+      actorUserId,
+      assigneeId,
+      exceptionType: "pending_regression",
+      organizationId,
+      page: 2,
+      pageSize: 10,
+      spaceId,
+      statusCategory: "WAITING",
+      versionId,
+      workItemType: "BUG",
+    });
+    const serializedSectionWheres = pageWorkItemSummaries.mock.calls.map(
+      ([where]) => JSON.stringify(where),
+    );
+    const actionWhere = JSON.stringify(pageActionTodos.mock.calls[0]?.[0]);
+    const statsWhere = JSON.stringify(getWorkbenchStats.mock.calls[0]?.[0]);
+    const activityScopeWhere = JSON.stringify(
+      pageRecentActivities.mock.calls[0]?.[3],
+    );
+
+    for (const where of [
+      ...serializedSectionWheres,
+      actionWhere,
+      statsWhere,
+      activityScopeWhere,
+    ]) {
+      expect(where).toContain(assigneeId);
+      expect(where).toContain(versionId);
+      expect(where).toContain("WAITING");
+      expect(where).toContain("BUG");
+      expect(where).toContain("regression");
+    }
+    expect(result.filters).toMatchObject({
+      organizationId,
+      spaceId,
+      versionId,
+      assigneeId,
+      statusCategory: "WAITING",
+      workItemType: "BUG",
+      exceptionType: "pending_regression",
+    });
+  });
 });
+
+function emptyPage<T>(page: number, pageSize: number): PageResult<T> {
+  return {
+    items: [],
+    page,
+    pageSize,
+    total: 0,
+  };
+}

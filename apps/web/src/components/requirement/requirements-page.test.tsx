@@ -61,13 +61,22 @@ vi.mock("../providers/session-provider", () => ({
   useSession: () => sessionMock.current,
 }));
 
-const { listRequirementsMock, createRequirementDraftMock } = vi.hoisted(() => ({
+const {
+  listRequirementsMock,
+  createRequirementDraftMock,
+  listRequirementAssignableMembersMock,
+  listRequirementVersionsMock,
+} = vi.hoisted(() => ({
   listRequirementsMock: vi.fn(),
   createRequirementDraftMock: vi.fn(),
+  listRequirementAssignableMembersMock: vi.fn(),
+  listRequirementVersionsMock: vi.fn(),
 }));
 vi.mock("../../lib/requirement-service", () => ({
   listRequirements: listRequirementsMock,
   createRequirementDraft: createRequirementDraftMock,
+  listRequirementAssignableMembers: listRequirementAssignableMembersMock,
+  listRequirementVersions: listRequirementVersionsMock,
 }));
 
 import { RequirementsPage } from "./requirements-page";
@@ -91,7 +100,17 @@ function makeRequirement(overrides: Record<string, unknown> = {}) {
 beforeEach(() => {
   listRequirementsMock.mockReset();
   createRequirementDraftMock.mockReset();
+  listRequirementAssignableMembersMock.mockReset();
+  listRequirementVersionsMock.mockReset();
   routerPushMock.mockReset();
+  listRequirementAssignableMembersMock.mockResolvedValue({
+    items: [],
+    total: 0,
+  });
+  listRequirementVersionsMock.mockResolvedValue({
+    items: [],
+    total: 0,
+  });
   sessionMock.current = {
     session: {
       defaultOrganizationId: "ORG_01",
@@ -124,6 +143,16 @@ describe("RequirementsPage", () => {
     await waitFor(() =>
       expect(listRequirementsMock).toHaveBeenCalledTimes(1),
     );
+    expect(listRequirementsMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        page: 1,
+        pageSize: 100,
+        spaceId: "SPC_01",
+      }),
+    );
+    expect(listRequirementsMock.mock.calls[0][0]).not.toMatchObject({
+      includeDrafts: true,
+    });
     expect(await screen.findByText("Onboarding redesign")).toBeInTheDocument();
     expect(screen.getByText("requirements.status.CONFIRMED")).toBeInTheDocument();
     // The list renders with the testid.
@@ -176,35 +205,132 @@ describe("RequirementsPage", () => {
     );
   });
 
-  it("filters by ARCHIVED bucket when the user clicks it", async () => {
+  it("filters by ARCHIVED bucket through the list API when the user clicks it", async () => {
     listRequirementsMock.mockResolvedValueOnce({
       items: [
         makeRequirement({
           id: "01ARZ3NDEKTSV4RRFFQ69G5F01",
-          title: "Active draft",
-          status: "DRAFT",
+          title: "Current scope",
+          status: "CONFIRMED",
         }),
+      ],
+      total: 1,
+    });
+    listRequirementsMock.mockResolvedValueOnce({
+      items: [
         makeRequirement({
           id: "01ARZ3NDEKTSV4RRFFQ69G5F02",
           title: "Old shipped",
           status: "ARCHIVED",
         }),
       ],
-      total: 2,
+      total: 1,
     });
 
     render(<RequirementsPage />);
 
-    expect(await screen.findByText("Active draft")).toBeInTheDocument();
-    // Initial filter is "active" → ARCHIVED hidden.
+    expect(await screen.findByText("Current scope")).toBeInTheDocument();
     expect(screen.queryByText("Old shipped")).not.toBeInTheDocument();
 
     fireEvent.click(
       screen.getByRole("button", { name: "requirements.filters.archived" }),
     );
 
-    expect(screen.queryByText("Active draft")).not.toBeInTheDocument();
-    expect(screen.getByText("Old shipped")).toBeInTheDocument();
+    await waitFor(() =>
+      expect(listRequirementsMock).toHaveBeenLastCalledWith(
+        expect.objectContaining({
+          spaceId: "SPC_01",
+          status: "ARCHIVED",
+        }),
+      ),
+    );
+    expect(await screen.findByText("Old shipped")).toBeInTheDocument();
+    expect(screen.queryByText("Current scope")).not.toBeInTheDocument();
+  });
+
+  it("loads the current user's drafts through the DRAFT entry", async () => {
+    listRequirementsMock.mockResolvedValueOnce({ items: [], total: 0 });
+    listRequirementsMock.mockResolvedValueOnce({
+      items: [
+        makeRequirement({
+          id: "01ARZ3NDEKTSV4RRFFQ69G5F03",
+          title: "My draft",
+          status: "DRAFT",
+        }),
+      ],
+      total: 1,
+    });
+
+    render(<RequirementsPage />);
+
+    await waitFor(() => expect(listRequirementsMock).toHaveBeenCalledTimes(1));
+
+    fireEvent.click(
+      screen.getByRole("button", { name: "requirements.actions.myDrafts" }),
+    );
+
+    await waitFor(() =>
+      expect(listRequirementsMock).toHaveBeenLastCalledWith(
+        expect.objectContaining({
+          includeDrafts: true,
+          spaceId: "SPC_01",
+          status: "DRAFT",
+        }),
+      ),
+    );
+    expect(await screen.findByText("My draft")).toBeInTheDocument();
+  });
+
+  it("applies version and owner filters from the filter panel", async () => {
+    const versionId = "01ARZ3NDEKTSV4RRFFQ69G5FD1";
+    const ownerId = "01ARZ3NDEKTSV4RRFFQ69G5FU1";
+
+    listRequirementVersionsMock.mockResolvedValueOnce({
+      items: [{ id: versionId, name: "M1" }],
+      total: 1,
+    });
+    listRequirementAssignableMembersMock.mockResolvedValueOnce({
+      items: [
+        {
+          id: "MEMBER_01",
+          organizationId: "ORG_01",
+          spaceId: "SPC_01",
+          userId: ownerId,
+          role: "PM",
+          status: "ACTIVE",
+          user: {
+            id: ownerId,
+            username: "pm",
+            name: "PM User",
+            status: "ACTIVE",
+          },
+        },
+      ],
+      total: 1,
+    });
+    listRequirementsMock.mockResolvedValue({ items: [], total: 0 });
+
+    render(<RequirementsPage />);
+
+    await waitFor(() => expect(listRequirementVersionsMock).toHaveBeenCalled());
+
+    fireEvent.click(screen.getByRole("button", { name: "requirements.page.filter" }));
+    fireEvent.change(screen.getByLabelText("requirements.filters.version"), {
+      target: { value: versionId },
+    });
+    fireEvent.change(screen.getByLabelText("requirements.filters.owner"), {
+      target: { value: ownerId },
+    });
+
+    await waitFor(() =>
+      expect(listRequirementsMock).toHaveBeenLastCalledWith(
+        expect.objectContaining({
+          ownerId,
+          spaceId: "SPC_01",
+          versionId,
+        }),
+      ),
+    );
   });
 
   it("creates a draft and navigates to its detail page when the user clicks 创建", async () => {

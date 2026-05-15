@@ -9,6 +9,7 @@ import {
   PresignAttachmentResponseSchema,
   type Attachment,
   type AttachmentTargetType,
+  type GetAttachmentDownloadUrlResponse,
   type AttachmentMimeType,
   type PageResult,
 } from "@project-delivery/shared";
@@ -70,6 +71,12 @@ export type UploadAttachmentInput = {
 export type ListAttachmentsInput = z.input<typeof AttachmentListQuerySchema> & {
   organizationId?: string;
   spaceId: string;
+};
+
+export type GetAttachmentDownloadUrlInput = {
+  attachmentId: string;
+  organizationId?: string;
+  spaceId?: string;
 };
 
 export type AttachmentUploadFailure = {
@@ -177,11 +184,9 @@ export async function uploadAttachment(
     const attachment = CreateAttachmentResponseSchema.parse(
       attachmentResponse.data,
     );
-    const downloadResponse = await api.get<unknown>(
-      `/attachments/${attachment.id}/download-url`,
-    );
-    const download = GetAttachmentDownloadUrlResponseSchema.parse(
-      downloadResponse.data,
+    const download = await getAttachmentDownloadUrl(
+      { attachmentId: attachment.id },
+      api,
     );
 
     return {
@@ -193,12 +198,31 @@ export async function uploadAttachment(
   }
 }
 
+export async function getAttachmentDownloadUrl(
+  input: GetAttachmentDownloadUrlInput,
+  api: AttachmentApiTransport = defaultApi,
+): Promise<GetAttachmentDownloadUrlResponse> {
+  const {
+    attachmentId,
+    organizationId: _organizationId,
+    spaceId: _spaceId,
+  } = input;
+  const response = await api.get<unknown>(
+    `/attachments/${attachmentId}/download-url`,
+  );
+
+  return GetAttachmentDownloadUrlResponseSchema.parse(response.data);
+}
+
 export async function listAttachments(
   input: ListAttachmentsInput,
   api: AttachmentApiTransport = defaultApi,
 ): Promise<PageResult<Attachment>> {
-  const { organizationId: _organizationId, spaceId: _spaceId, ...query } =
-    input;
+  const {
+    organizationId: _organizationId,
+    spaceId: _spaceId,
+    ...query
+  } = input;
   const filters = AttachmentListQuerySchema.parse(query);
   const response = await api.get<unknown>("/attachments", {
     query: filters,

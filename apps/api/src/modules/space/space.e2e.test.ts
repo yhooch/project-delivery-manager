@@ -62,10 +62,7 @@ import type {
   UpdateOrganizationMemberInput,
 } from "../organization/organization.types";
 import { WorkflowDefaultInitializerService } from "../workflow/workflow-default-initializer.service";
-import {
-  SPACE_REPOSITORY,
-  type SpaceRepository,
-} from "./space.repository";
+import { SPACE_REPOSITORY, type SpaceRepository } from "./space.repository";
 import type {
   AddSpaceMemberInput,
   CreateSpaceInput,
@@ -128,7 +125,10 @@ describe("space API", () => {
   });
 
   it("creates a space, adds creator as SPACE_ADMIN, and initializes defaults", async () => {
-    const ownerAgent = await registeredAgent("m1d_create_owner", "203.0.113.60");
+    const ownerAgent = await registeredAgent(
+      "m1d_create_owner",
+      "203.0.113.60",
+    );
     const organization = (
       await createOrganization(ownerAgent, "M1D Create", "m1d-create")
     ).body.data as Organization;
@@ -211,6 +211,21 @@ describe("space API", () => {
         expect(body.data.sections).toHaveProperty("myTodos");
         expect(body.data.sections).toHaveProperty("actionTodos");
       });
+    await ownerAgent
+      .get(
+        `/api/v1/views/my-workbench?organizationId=${organization.id}&spaceId=${space.id}&assigneeId=${creator?.id ?? ""}&statusCategory=WAITING&workItemType=BUG&exceptionType=pending_regression`,
+      )
+      .expect(200)
+      .expect(({ body }) => {
+        expect(body.data.filters).toMatchObject({
+          organizationId: organization.id,
+          spaceId: space.id,
+          assigneeId: creator?.id,
+          statusCategory: "WAITING",
+          workItemType: "BUG",
+          exceptionType: "pending_regression",
+        });
+      });
   });
 
   it("aggregates overview status counts separately for tasks and bugs", async () => {
@@ -270,7 +285,10 @@ describe("space API", () => {
   });
 
   it("exposes the space exceptions view to read-only members", async () => {
-    const ownerAgent = await registeredAgent("m4d_exception_owner", "203.0.113.160");
+    const ownerAgent = await registeredAgent(
+      "m4d_exception_owner",
+      "203.0.113.160",
+    );
     const viewerAgent = await registeredAgent(
       "m4d_exception_viewer",
       "203.0.113.161",
@@ -359,7 +377,10 @@ describe("space API", () => {
   });
 
   it("adds space members only from active members in the same organization", async () => {
-    const ownerAgent = await registeredAgent("m1d_member_owner", "203.0.113.63");
+    const ownerAgent = await registeredAgent(
+      "m1d_member_owner",
+      "203.0.113.63",
+    );
     await registeredAgent("m1d_member_candidate", "203.0.113.64");
     const outsiderAgent = await registeredAgent(
       "m1d_member_other_org",
@@ -368,7 +389,9 @@ describe("space API", () => {
     const organization = (
       await createOrganization(ownerAgent, "M1D Members", "m1d-members")
     ).body.data as Organization;
-    await createOrganization(outsiderAgent, "M1D Other", "m1d-other").expect(200);
+    await createOrganization(outsiderAgent, "M1D Other", "m1d-other").expect(
+      200,
+    );
     await addOrganizationMember(ownerAgent, organization.id, {
       username: "m1d_member_candidate",
       role: "MEMBER",
@@ -407,7 +430,10 @@ describe("space API", () => {
   });
 
   it("rejects non-organization access and non-space-member access", async () => {
-    const ownerAgent = await registeredAgent("m1d_access_owner", "203.0.113.66");
+    const ownerAgent = await registeredAgent(
+      "m1d_access_owner",
+      "203.0.113.66",
+    );
     const orgMemberAgent = await registeredAgent(
       "m1d_access_org_member",
       "203.0.113.67",
@@ -469,7 +495,10 @@ describe("space API", () => {
   it("allows SPACE_ADMIN and PM to manage settings and members, but rejects VIEWER writes", async () => {
     const ownerAgent = await registeredAgent("m1d_role_owner", "203.0.113.69");
     const pmAgent = await registeredAgent("m1d_role_pm", "203.0.113.70");
-    const viewerAgent = await registeredAgent("m1d_role_viewer", "203.0.113.71");
+    const viewerAgent = await registeredAgent(
+      "m1d_role_viewer",
+      "203.0.113.71",
+    );
     await registeredAgent("m1d_role_dev", "203.0.113.72");
     const organization = (
       await createOrganization(ownerAgent, "M1D Roles", "m1d-roles")
@@ -606,13 +635,10 @@ describe("space API", () => {
     name: string,
     code: string,
   ) {
-    return agent
-      .post("/api/v1/organizations")
-      .set("Origin", ORIGIN)
-      .send({
-        name,
-        code,
-      });
+    return agent.post("/api/v1/organizations").set("Origin", ORIGIN).send({
+      name,
+      code,
+    });
   }
 
   function addOrganizationMember(
@@ -770,7 +796,9 @@ class InMemorySessionRepository implements SessionRepository {
         !record.revokedAt &&
         record.expiresAt > now,
     );
-    const user = session ? await this.users.findById(session.userId) : undefined;
+    const user = session
+      ? await this.users.findById(session.userId)
+      : undefined;
 
     return session && user && user.status === "ACTIVE"
       ? {
@@ -924,7 +952,8 @@ class InMemoryOrganizationRepository implements OrganizationRepository {
     userId: string,
   ): Promise<OrganizationMemberWithUser | undefined> {
     const member = this.members.find(
-      (item) => item.organizationId === organizationId && item.userId === userId,
+      (item) =>
+        item.organizationId === organizationId && item.userId === userId,
     );
 
     return member ? this.toMemberWithUser(member) : undefined;
@@ -1047,7 +1076,9 @@ class InMemoryOrganizationRepository implements OrganizationRepository {
 
   private accessibleOrganizations(userId: string): Organization[] {
     return this.members
-      .filter((member) => member.userId === userId && member.status === "ACTIVE")
+      .filter(
+        (member) => member.userId === userId && member.status === "ACTIVE",
+      )
       .map((member) => {
         const organization = this.organizations.get(member.organizationId);
 
@@ -1090,7 +1121,10 @@ type OverviewWorkItemSeed = {
 
 class InMemorySpaceRepository implements SpaceRepository {
   readonly members: SpaceMember[] = [];
-  private readonly defaultWorkflows = new Map<string, DefaultWorkflowSummary[]>();
+  private readonly defaultWorkflows = new Map<
+    string,
+    DefaultWorkflowSummary[]
+  >();
   private readonly overviewWorkItems: OverviewWorkItemSeed[] = [];
   private readonly spaces = new Map<string, Space>();
 
@@ -1099,7 +1133,9 @@ class InMemorySpaceRepository implements SpaceRepository {
     private readonly organizations: InMemoryOrganizationRepository,
   ) {}
 
-  async createWithAdmin(input: CreateSpaceInput): Promise<CreatedSpaceWithAdmin> {
+  async createWithAdmin(
+    input: CreateSpaceInput,
+  ): Promise<CreatedSpaceWithAdmin> {
     const space: Space = {
       id: input.id,
       organizationId: input.organizationId,
@@ -1221,6 +1257,10 @@ class InMemorySpaceRepository implements SpaceRepository {
         organizationId: input.organizationId,
         spaceId: input.spaceId,
         versionId: input.versionId,
+        assigneeId: input.assigneeId,
+        statusCategory: input.statusCategory,
+        workItemType: input.workItemType,
+        exceptionType: input.exceptionType,
       },
       stats: {
         assignedWorkItemCount: 0,
@@ -1358,7 +1398,8 @@ class InMemorySpaceRepository implements SpaceRepository {
     return {
       versionCount: 0,
       requirementCount: 0,
-      taskCount: overviewWorkItems.filter((item) => item.type === "TASK").length,
+      taskCount: overviewWorkItems.filter((item) => item.type === "TASK")
+        .length,
       completedTaskCount: overviewWorkItems.filter(
         (item) => item.type === "TASK" && item.statusCategory === "DONE",
       ).length,
@@ -1374,7 +1415,9 @@ class InMemorySpaceRepository implements SpaceRepository {
     };
   }
 
-  async findCurrentVersion(_spaceId: string): Promise<VersionSummary | undefined> {
+  async findCurrentVersion(
+    _spaceId: string,
+  ): Promise<VersionSummary | undefined> {
     return undefined;
   }
 
@@ -1407,7 +1450,9 @@ class InMemorySpaceRepository implements SpaceRepository {
     };
   }
 
-  async listDefaultWorkflows(spaceId: string): Promise<DefaultWorkflowSummary[]> {
+  async listDefaultWorkflows(
+    spaceId: string,
+  ): Promise<DefaultWorkflowSummary[]> {
     return this.defaultWorkflows.get(spaceId) ?? [];
   }
 
@@ -1469,7 +1514,9 @@ class InMemorySpaceRepository implements SpaceRepository {
 
   listSessionSummaries(userId: string): SessionSpaceSummary[] {
     return this.members
-      .filter((member) => member.userId === userId && member.status === "ACTIVE")
+      .filter(
+        (member) => member.userId === userId && member.status === "ACTIVE",
+      )
       .flatMap((member) => {
         const space = this.spaces.get(member.spaceId);
 

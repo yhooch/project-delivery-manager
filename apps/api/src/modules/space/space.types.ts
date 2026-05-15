@@ -99,7 +99,13 @@ export type SpaceOverviewData = {
 
 export type MyWorkbenchViewInput = Pick<
   WorkbenchViewQuery,
-  "page" | "pageSize" | "versionId"
+  | "assigneeId"
+  | "exceptionType"
+  | "page"
+  | "pageSize"
+  | "statusCategory"
+  | "versionId"
+  | "workItemType"
 > & {
   actorUserId: string;
   organizationId: string;

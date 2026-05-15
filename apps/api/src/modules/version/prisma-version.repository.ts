@@ -2,10 +2,7 @@ import { Inject, Injectable } from "@nestjs/common";
 
 import { Prisma } from "../../generated/prisma/client";
 import { PrismaService } from "../../prisma/prisma.service";
-import {
-  toVersion,
-  toVersionBoardWorkItemSummary,
-} from "./version.mappers";
+import { toVersion, toVersionBoardWorkItemSummary } from "./version.mappers";
 import { testerVisibleWorkItemWhere } from "../workitem/workitem-visibility";
 import type { VersionRepository } from "./version.repository";
 import type {
@@ -149,6 +146,7 @@ export class PrismaVersionRepository implements VersionRepository {
         include: {
           bugDetail: {
             select: {
+              deletedAt: true,
               regressionAt: true,
             },
           },
@@ -187,13 +185,10 @@ export class PrismaVersionRepository implements VersionRepository {
       ),
       items: {
         items: items.map((item) =>
-          toVersionBoardWorkItemSummary(
-            item as VersionBoardWorkItemRecord,
-            {
-              now,
-              staleThresholdDays: input.staleThresholdDays,
-            },
-          ),
+          toVersionBoardWorkItemSummary(item as VersionBoardWorkItemRecord, {
+            now,
+            staleThresholdDays: input.staleThresholdDays,
+          }),
         ),
         page: input.page,
         pageSize: input.pageSize,
@@ -294,7 +289,9 @@ export class PrismaVersionRepository implements VersionRepository {
       type: input.workItemType,
       versionId: input.versionId,
       AND:
-        workItemTypeConstraints.length > 0 ? workItemTypeConstraints : undefined,
+        workItemTypeConstraints.length > 0
+          ? workItemTypeConstraints
+          : undefined,
     };
 
     if (input.visibility === "PARTICIPANT") {
@@ -413,7 +410,10 @@ function buildBoardOrderBy(
 }
 
 function toBoardColumns(
-  counts: { statusCategory: (typeof BOARD_STATUS_CATEGORIES)[number]; count: number }[],
+  counts: {
+    statusCategory: (typeof BOARD_STATUS_CATEGORIES)[number];
+    count: number;
+  }[],
 ) {
   const countByStatus = new Map(
     counts.map((count) => [count.statusCategory, count.count]),

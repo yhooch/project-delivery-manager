@@ -372,7 +372,11 @@ export class PrismaSpaceRepository implements SpaceRepository {
       organizationId: input.organizationId,
       versionId: input.versionId,
     });
-    const nonTerminalWhere = andWorkItemWhere(visibleWhere, {
+    const filteredVisibleWhere = andWorkItemWhere(
+      visibleWhere,
+      workbenchWorkItemFilterWhere(input, context, now),
+    );
+    const nonTerminalWhere = andWorkItemWhere(filteredVisibleWhere, {
       statusCategory: {
         notIn: TERMINAL_STATUS_CATEGORIES,
       },
@@ -453,16 +457,31 @@ export class PrismaSpaceRepository implements SpaceRepository {
         now,
       ),
       this.pageActionTodos(nonTerminalWhere, input, context, now),
-      this.pageRecentActivities(context, input, input.organizationId),
-      this.getWorkbenchStats(nonTerminalWhere, input, context, now, staleThresholdDays),
+      this.pageRecentActivities(
+        context,
+        input,
+        input.organizationId,
+        hasWorkbenchScopeFilters(input) ? filteredVisibleWhere : undefined,
+      ),
+      this.getWorkbenchStats(
+        nonTerminalWhere,
+        input,
+        context,
+        now,
+        staleThresholdDays,
+      ),
     ]);
 
     return {
-      filters: {
+      filters: removeUndefined({
         organizationId: input.organizationId,
         spaceId: input.spaceId,
         versionId: input.versionId,
-      },
+        assigneeId: input.assigneeId,
+        statusCategory: input.statusCategory,
+        workItemType: input.workItemType,
+        exceptionType: input.exceptionType,
+      }),
       stats: {
         ...stats,
         actionTodoCount: actionTodos.total,
@@ -613,7 +632,12 @@ export class PrismaSpaceRepository implements SpaceRepository {
         },
         input.space.organizationId,
       ),
-      this.getExceptionCounts(nonTerminalWhere, context, now, staleThresholdDays),
+      this.getExceptionCounts(
+        nonTerminalWhere,
+        context,
+        now,
+        staleThresholdDays,
+      ),
     ]);
 
     return {
@@ -949,7 +973,11 @@ export class PrismaSpaceRepository implements SpaceRepository {
           },
           currentState: true,
         },
-        orderBy: [{ priority: "desc" }, { dueDate: "asc" }, { createdAt: "desc" }],
+        orderBy: [
+          { priority: "desc" },
+          { dueDate: "asc" },
+          { createdAt: "desc" },
+        ],
         skip: (input.page - 1) * input.pageSize,
         take: input.pageSize,
         where,
@@ -1125,6 +1153,7 @@ export class PrismaSpaceRepository implements SpaceRepository {
       "actorUserId" | "organizationId" | "page" | "pageSize" | "versionId"
     >,
     organizationId: string,
+    scopedWorkItemWhere?: Prisma.WorkItemWhereInput,
   ) {
     const where = buildTimelineWhere(context, organizationId);
 
@@ -1137,11 +1166,15 @@ export class PrismaSpaceRepository implements SpaceRepository {
       };
     }
 
-    if (input.versionId) {
-      const scopedTargetIds = await this.listVisibleWorkItemIds(context, {
-        organizationId,
-        versionId: input.versionId,
-      });
+    if (input.versionId || scopedWorkItemWhere) {
+      const scopedTargetIds = await this.listVisibleWorkItemIds(
+        context,
+        {
+          organizationId,
+          versionId: input.versionId,
+        },
+        scopedWorkItemWhere,
+      );
 
       if (scopedTargetIds.length === 0) {
         return {
@@ -1225,12 +1258,13 @@ export class PrismaSpaceRepository implements SpaceRepository {
       organizationId: string;
       versionId?: string;
     },
+    whereOverride?: Prisma.WorkItemWhereInput,
   ) {
     const items = await this.prisma.client.workItem.findMany({
       select: {
         id: true,
       },
-      where: buildVisibleWorkItemWhere(context, filters),
+      where: whereOverride ?? buildVisibleWorkItemWhere(context, filters),
     });
 
     return items.map((item) => item.id);
@@ -1631,18 +1665,74 @@ function staleWorkItemWhere(
   };
 }
 
+function staleWorkItemWhereForContext(
+  context: ViewAccessContext,
+  now: Date,
+): Prisma.WorkItemWhereInput {
+  return {
+    OR: context.accesses.map((access) => ({
+      lastStatusChangedAt: {
+        lte: addDays(now, -access.staleThresholdDays),
+      },
+      spaceId: access.spaceId,
+    })),
+  };
+}
+
+function workbenchWorkItemFilterWhere(
+  input: MyWorkbenchViewInput,
+  context: ViewAccessContext,
+  now: Date,
+): Prisma.WorkItemWhereInput {
+  const baseWhere = removeUndefined({
+    assigneeId: input.assigneeId,
+    statusCategory: input.statusCategory,
+    type: input.workItemType,
+  });
+
+  if (!input.exceptionType) {
+    return baseWhere;
+  }
+
+  return andWorkItemWhere(
+    baseWhere,
+    exceptionTypeWhere(
+      input.exceptionType,
+      now,
+      minStaleThresholdDays(context.accesses),
+      staleWorkItemWhereForContext(context, now),
+    ),
+  );
+}
+
+function hasWorkbenchScopeFilters(input: MyWorkbenchViewInput) {
+  return Boolean(
+    input.versionId ||
+    input.assigneeId ||
+    input.statusCategory ||
+    input.workItemType ||
+    input.exceptionType,
+  );
+}
+
 function exceptionWorkItemWhere(
   exceptionType: ViewExceptionType | undefined,
   now: Date,
   staleThresholdDays: number,
+  staleWhere?: Prisma.WorkItemWhereInput,
 ): Prisma.WorkItemWhereInput {
   if (exceptionType) {
-    return exceptionTypeWhere(exceptionType, now, staleThresholdDays);
+    return exceptionTypeWhere(
+      exceptionType,
+      now,
+      staleThresholdDays,
+      staleWhere,
+    );
   }
 
   return {
     OR: SPACE_EXCEPTION_TYPES.map((type) =>
-      exceptionTypeWhere(type, now, staleThresholdDays),
+      exceptionTypeWhere(type, now, staleThresholdDays, staleWhere),
     ),
   };
 }
@@ -1651,6 +1741,7 @@ function exceptionTypeWhere(
   exceptionType: ViewExceptionType,
   now: Date,
   staleThresholdDays: number,
+  staleWhere?: Prisma.WorkItemWhereInput,
 ): Prisma.WorkItemWhereInput {
   switch (exceptionType) {
     case "overdue":
@@ -1666,7 +1757,7 @@ function exceptionTypeWhere(
     case "pending_regression":
       return pendingRegressionWhere();
     case "stale":
-      return staleWorkItemWhere(now, staleThresholdDays);
+      return staleWhere ?? staleWorkItemWhere(now, staleThresholdDays);
   }
 }
 
@@ -1748,7 +1839,11 @@ function toWorkbenchActionTodo(
   context: ViewAccessContext,
   now: Date,
 ): WorkbenchActionTodo {
-  const currentStatus = toViewWorkItemSummary(workItem, context, now).currentStatus;
+  const currentStatus = toViewWorkItemSummary(
+    workItem,
+    context,
+    now,
+  ).currentStatus;
   const reason = resolveActionReason(actorUserId, workItem, action, access);
 
   return {
@@ -1781,14 +1876,20 @@ function resolveActionReason(
     };
   }
 
-  if (action.actorRelations.includes("ASSIGNEE") && workItem.assigneeId === actorUserId) {
+  if (
+    action.actorRelations.includes("ASSIGNEE") &&
+    workItem.assigneeId === actorUserId
+  ) {
     return {
       code: "ASSIGNED_TO_ME",
       description: "我是该工作项负责人",
     };
   }
 
-  if (action.actorRelations.includes("REPORTER") && workItem.reporterId === actorUserId) {
+  if (
+    action.actorRelations.includes("REPORTER") &&
+    workItem.reporterId === actorUserId
+  ) {
     return {
       code: "REPORTED_BY_ME",
       description: "我是该工作项报告人",
@@ -1868,16 +1969,21 @@ function emptyWorkbenchResponse(
 ): GetMyWorkbenchViewResponse {
   const emptyWorkItems = emptyPage<ViewWorkItemSummary>(input);
   const emptyActionTodos = emptyPage<WorkbenchActionTodo>(input);
-  const emptyActivities = emptyPage<
-    GetMyWorkbenchViewResponse["sections"]["recentActivities"]["items"]["items"][number]
-  >(input);
+  const emptyActivities =
+    emptyPage<
+      GetMyWorkbenchViewResponse["sections"]["recentActivities"]["items"]["items"][number]
+    >(input);
 
   return {
-    filters: {
+    filters: removeUndefined({
       organizationId: input.organizationId,
       spaceId: input.spaceId,
       versionId: input.versionId,
-    },
+      assigneeId: input.assigneeId,
+      statusCategory: input.statusCategory,
+      workItemType: input.workItemType,
+      exceptionType: input.exceptionType,
+    }),
     stats: {
       assignedWorkItemCount: 0,
       actionTodoCount: 0,

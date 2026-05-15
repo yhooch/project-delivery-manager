@@ -504,6 +504,11 @@ describe("shared contracts", () => {
       filters: {
         organizationId: "01BRZ3NDEKTSV4RRFFQ69G5FAA",
         spaceId: "01DRZ3NDEKTSV4RRFFQ69G5FAC",
+        versionId: "01ERZ3NDEKTSV4RRFFQ69G5FAD",
+        assigneeId: "01ARZ3NDEKTSV4RRFFQ69G5FAV",
+        statusCategory: "WAITING",
+        workItemType: "BUG",
+        exceptionType: "pending_confirm",
       },
       stats: {
         assignedWorkItemCount: 1,
@@ -551,9 +556,10 @@ describe("shared contracts", () => {
     expect(
       workbench.sections.actionTodos.items.items[0]?.availableAction.code,
     ).toBe("confirm_fix");
-    expect(
-      workbench.sections.recentActivities.items.items[0]?.eventType,
-    ).toBe("ACTION_EXECUTED");
+    expect(workbench.sections.recentActivities.items.items[0]?.eventType).toBe(
+      "ACTION_EXECUTED",
+    );
+    expect(workbench.filters.exceptionType).toBe("pending_confirm");
 
     const overview = GetSpaceOverviewViewResponseSchema.parse({
       space: {
@@ -595,9 +601,7 @@ describe("shared contracts", () => {
       },
     });
 
-    expect(overview.recentActivities?.items[0]?.target.type).toBe(
-      "WORK_ITEM",
-    );
+    expect(overview.recentActivities?.items[0]?.target.type).toBe("WORK_ITEM");
     expect(overview.taskStatusCounts?.[0]).toEqual({
       statusCategory: "IN_PROGRESS",
       count: 1,

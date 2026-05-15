@@ -57,7 +57,10 @@ vi.mock("../providers/session-provider", () => ({
 }));
 
 // Lookups
-const memberMap = new Map<string, { user: { name: string; avatar?: string } }>();
+const memberMap = new Map<
+  string,
+  { user: { name: string; avatar?: string } }
+>();
 const versionMap = new Map<string, { name: string }>();
 vi.mock("../../lib/v2/lookups", () => ({
   useSpaceMembers: () => ({
@@ -81,6 +84,7 @@ const {
   executeActionMock,
   listCommentsMock,
   createCommentMock,
+  getAttachmentDownloadUrlMock,
   listAttachmentsMock,
   uploadAttachmentMock,
   listTimelineMock,
@@ -90,6 +94,7 @@ const {
   executeActionMock: vi.fn(),
   listCommentsMock: vi.fn(),
   createCommentMock: vi.fn(),
+  getAttachmentDownloadUrlMock: vi.fn(),
   listAttachmentsMock: vi.fn(),
   uploadAttachmentMock: vi.fn(),
   listTimelineMock: vi.fn(),
@@ -120,6 +125,7 @@ vi.mock("../../lib/attachment-service", () => {
   }
   return {
     AttachmentUploadError,
+    getAttachmentDownloadUrl: getAttachmentDownloadUrlMock,
     listAttachments: listAttachmentsMock,
     uploadAttachment: uploadAttachmentMock,
   };
@@ -170,9 +176,7 @@ function makeAction(
   } as import("@project-delivery/shared").WorkflowActionSummary;
 }
 
-function makeDetailResponse(
-  overrides: Record<string, unknown> = {},
-) {
+function makeDetailResponse(overrides: Record<string, unknown> = {}) {
   return {
     id: "01ARZ3NDEKTSV4RRFFQ69G5FA1",
     organizationId: "ORG_01",
@@ -230,6 +234,7 @@ beforeEach(() => {
   executeActionMock.mockReset();
   listCommentsMock.mockReset();
   createCommentMock.mockReset();
+  getAttachmentDownloadUrlMock.mockReset();
   listAttachmentsMock.mockReset();
   uploadAttachmentMock.mockReset();
   listTimelineMock.mockReset();
@@ -237,6 +242,10 @@ beforeEach(() => {
   // Default success values to prevent fallbacks from masking failures.
   getBugMock.mockResolvedValue(makeBugResponse());
   getWorkItemMock.mockResolvedValue(makeDetailResponse());
+  getAttachmentDownloadUrlMock.mockResolvedValue({
+    downloadUrl: "https://object-storage.local/download/design.png",
+    expiresInSeconds: 300,
+  });
   listCommentsMock.mockResolvedValue({ items: [], total: 0 });
   listAttachmentsMock.mockResolvedValue({ items: [], total: 0 });
   listTimelineMock.mockResolvedValue({ items: [], total: 0 });
@@ -284,25 +293,19 @@ describe("TaskDetailSheet", () => {
     );
 
     render(
-      <TaskDetailSheet
-        item={makeViewModel()}
-        open
-        onOpenChange={() => {}}
-      />,
+      <TaskDetailSheet item={makeViewModel()} open onOpenChange={() => {}} />,
     );
 
     await waitFor(() => expect(getWorkItemMock).toHaveBeenCalled());
-    expect(await screen.findByRole("button", { name: "Approve" })).toBeInTheDocument();
+    expect(
+      await screen.findByRole("button", { name: "Approve" }),
+    ).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Reject" })).toBeInTheDocument();
   });
 
   it("shows the empty actions message when availableActions is empty", async () => {
     render(
-      <TaskDetailSheet
-        item={makeViewModel()}
-        open
-        onOpenChange={() => {}}
-      />,
+      <TaskDetailSheet item={makeViewModel()} open onOpenChange={() => {}} />,
     );
 
     await waitFor(() => expect(getWorkItemMock).toHaveBeenCalled());
@@ -406,11 +409,13 @@ describe("TaskDetailSheet", () => {
       />,
     );
 
-    await waitFor(() => expect(getBugMock).toHaveBeenCalledWith({
-      bugId: "01ARZ3NDEKTSV4RRFFQ69G5FA1",
-      organizationId: "ORG_01",
-      spaceId: "SPC_01",
-    }));
+    await waitFor(() =>
+      expect(getBugMock).toHaveBeenCalledWith({
+        bugId: "01ARZ3NDEKTSV4RRFFQ69G5FA1",
+        organizationId: "ORG_01",
+        spaceId: "SPC_01",
+      }),
+    );
     expect(getWorkItemMock).not.toHaveBeenCalled();
     expect(
       await screen.findByRole("button", { name: "Confirm bug" }),
@@ -439,11 +444,7 @@ describe("TaskDetailSheet", () => {
     });
 
     render(
-      <TaskDetailSheet
-        item={makeViewModel()}
-        open
-        onOpenChange={() => {}}
-      />,
+      <TaskDetailSheet item={makeViewModel()} open onOpenChange={() => {}} />,
     );
 
     await activateTab(/comments/i);
@@ -480,7 +481,8 @@ describe("TaskDetailSheet", () => {
   });
 
   it("clears loaded detail and permissions when switching items", async () => {
-    const secondDetail = createDeferred<ReturnType<typeof makeDetailResponse>>();
+    const secondDetail =
+      createDeferred<ReturnType<typeof makeDetailResponse>>();
     getWorkItemMock
       .mockResolvedValueOnce(
         makeDetailResponse({
@@ -534,7 +536,8 @@ describe("TaskDetailSheet", () => {
 
   it("ignores stale detail responses after switching items", async () => {
     const firstDetail = createDeferred<ReturnType<typeof makeDetailResponse>>();
-    const secondDetail = createDeferred<ReturnType<typeof makeDetailResponse>>();
+    const secondDetail =
+      createDeferred<ReturnType<typeof makeDetailResponse>>();
     getWorkItemMock
       .mockReturnValueOnce(firstDetail.promise)
       .mockReturnValueOnce(secondDetail.promise);
@@ -595,11 +598,7 @@ describe("TaskDetailSheet", () => {
     });
 
     render(
-      <TaskDetailSheet
-        item={makeViewModel()}
-        open
-        onOpenChange={() => {}}
-      />,
+      <TaskDetailSheet item={makeViewModel()} open onOpenChange={() => {}} />,
     );
 
     await activateTab(/comments/i);
@@ -610,7 +609,9 @@ describe("TaskDetailSheet", () => {
     );
     fireEvent.change(input, { target: { value: "Hello world" } });
 
-    const submit = screen.getByRole("button", { name: /taskDetail\.comments\.submit/ });
+    const submit = screen.getByRole("button", {
+      name: /taskDetail\.comments\.submit/,
+    });
     fireEvent.click(submit);
 
     await waitFor(() => expect(createCommentMock).toHaveBeenCalledTimes(1));
@@ -638,11 +639,7 @@ describe("TaskDetailSheet", () => {
     listCommentsMock.mockResolvedValueOnce({ items: [], total: 0 });
 
     render(
-      <TaskDetailSheet
-        item={makeViewModel()}
-        open
-        onOpenChange={() => {}}
-      />,
+      <TaskDetailSheet item={makeViewModel()} open onOpenChange={() => {}} />,
     );
 
     await activateTab(/comments/i);
@@ -675,21 +672,68 @@ describe("TaskDetailSheet", () => {
     });
 
     render(
-      <TaskDetailSheet
-        item={makeViewModel()}
-        open
-        onOpenChange={() => {}}
-      />,
+      <TaskDetailSheet item={makeViewModel()} open onOpenChange={() => {}} />,
     );
 
     await activateTab(/attachments/i);
 
     await waitFor(() => expect(listAttachmentsMock).toHaveBeenCalled());
     expect(await screen.findByText("design.png")).toBeInTheDocument();
+    expect(screen.getByLabelText("Preview design.png")).toBeInTheDocument();
+    expect(screen.getByLabelText("Download design.png")).toBeInTheDocument();
     // Upload button is present
     expect(
-      screen.getByRole("button", { name: /taskDetail\.attachments\.uploadAction/ }),
+      screen.getByRole("button", {
+        name: /taskDetail\.attachments\.uploadAction/,
+      }),
     ).toBeInTheDocument();
+  });
+
+  it("uses the signed download-url endpoint for attachment preview", async () => {
+    const openSpy = vi.spyOn(window, "open").mockImplementation(() => null);
+    listAttachmentsMock.mockResolvedValueOnce({
+      items: [
+        {
+          id: "01ARZ3NDEKTSV4RRFFQ69G5FAT1",
+          organizationId: "ORG_01",
+          spaceId: "SPC_01",
+          targetType: "WORK_ITEM",
+          targetId: "01ARZ3NDEKTSV4RRFFQ69G5FA1",
+          fileName: "design.png",
+          fileKey: "k",
+          mimeType: "image/png",
+          size: 12345,
+          uploadedById: "01ARZ3NDEKTSV4RRFFQ69G5FU1",
+          createdAt: "2026-05-12T00:00:00.000Z",
+        },
+      ],
+      total: 1,
+    });
+    getAttachmentDownloadUrlMock.mockResolvedValueOnce({
+      downloadUrl: "https://object-storage.local/download/design.png",
+      expiresInSeconds: 300,
+    });
+
+    render(
+      <TaskDetailSheet item={makeViewModel()} open onOpenChange={() => {}} />,
+    );
+
+    await activateTab(/attachments/i);
+    fireEvent.click(await screen.findByLabelText("Preview design.png"));
+
+    await waitFor(() =>
+      expect(getAttachmentDownloadUrlMock).toHaveBeenCalledWith({
+        attachmentId: "01ARZ3NDEKTSV4RRFFQ69G5FAT1",
+        organizationId: "ORG_01",
+        spaceId: "SPC_01",
+      }),
+    );
+    expect(openSpy).toHaveBeenCalledWith(
+      "https://object-storage.local/download/design.png",
+      "_blank",
+      "noopener,noreferrer",
+    );
+    openSpy.mockRestore();
   });
 
   it("calls uploadAttachment when a file is selected on the attachments tab", async () => {
@@ -697,11 +741,7 @@ describe("TaskDetailSheet", () => {
     uploadAttachmentMock.mockResolvedValueOnce(undefined);
 
     render(
-      <TaskDetailSheet
-        item={makeViewModel()}
-        open
-        onOpenChange={() => {}}
-      />,
+      <TaskDetailSheet item={makeViewModel()} open onOpenChange={() => {}} />,
     );
 
     await activateTab(/attachments/i);
@@ -739,11 +779,7 @@ describe("TaskDetailSheet", () => {
     listAttachmentsMock.mockResolvedValueOnce({ items: [], total: 0 });
 
     render(
-      <TaskDetailSheet
-        item={makeViewModel()}
-        open
-        onOpenChange={() => {}}
-      />,
+      <TaskDetailSheet item={makeViewModel()} open onOpenChange={() => {}} />,
     );
 
     await activateTab(/attachments/i);
@@ -786,11 +822,7 @@ describe("TaskDetailSheet", () => {
     });
 
     render(
-      <TaskDetailSheet
-        item={makeViewModel()}
-        open
-        onOpenChange={() => {}}
-      />,
+      <TaskDetailSheet item={makeViewModel()} open onOpenChange={() => {}} />,
     );
 
     await activateTab(/timeline/i);
@@ -802,11 +834,7 @@ describe("TaskDetailSheet", () => {
     listTimelineMock.mockResolvedValueOnce({ items: [], total: 0 });
 
     render(
-      <TaskDetailSheet
-        item={makeViewModel()}
-        open
-        onOpenChange={() => {}}
-      />,
+      <TaskDetailSheet item={makeViewModel()} open onOpenChange={() => {}} />,
     );
 
     await activateTab(/timeline/i);
@@ -827,11 +855,7 @@ describe("TaskDetailSheet", () => {
     );
 
     render(
-      <TaskDetailSheet
-        item={makeViewModel()}
-        open
-        onOpenChange={() => {}}
-      />,
+      <TaskDetailSheet item={makeViewModel()} open onOpenChange={() => {}} />,
     );
 
     await activateTab(/links/i);
@@ -840,7 +864,9 @@ describe("TaskDetailSheet", () => {
     expect(
       await screen.findByText("taskDetail.missingApi.title"),
     ).toBeInTheDocument();
-    expect(screen.queryByText("taskDetail.fields.reporter")).not.toBeInTheDocument();
+    expect(
+      screen.queryByText("taskDetail.fields.reporter"),
+    ).not.toBeInTheDocument();
   });
 
   it("shows the resolved version name on the links tab when versionId is present", async () => {
@@ -852,11 +878,7 @@ describe("TaskDetailSheet", () => {
     );
 
     render(
-      <TaskDetailSheet
-        item={makeViewModel()}
-        open
-        onOpenChange={() => {}}
-      />,
+      <TaskDetailSheet item={makeViewModel()} open onOpenChange={() => {}} />,
     );
 
     await activateTab(/links/i);
@@ -931,9 +953,7 @@ describe("TaskDetailSheet", () => {
   });
 
   it("renders the empty placeholder when item is null", () => {
-    render(
-      <TaskDetailSheet item={null} open onOpenChange={() => {}} />,
-    );
+    render(<TaskDetailSheet item={null} open onOpenChange={() => {}} />);
     const sheet = screen.getByTestId("task-detail-sheet");
     const description = screen.getByText("taskDetail.emptyDescription");
 
@@ -966,19 +986,13 @@ describe("TaskDetailSheet", () => {
     });
 
     render(
-      <TaskDetailSheet
-        item={makeViewModel()}
-        open
-        onOpenChange={() => {}}
-      />,
+      <TaskDetailSheet item={makeViewModel()} open onOpenChange={() => {}} />,
     );
 
     await activateTab(/comments/i);
     await waitFor(() => expect(listCommentsMock).toHaveBeenCalled());
     // Resolved name from lookup wins over comment.author.name.
-    expect(
-      await screen.findByText("Resolved Member Name"),
-    ).toBeInTheDocument();
+    expect(await screen.findByText("Resolved Member Name")).toBeInTheDocument();
     expect(screen.queryByText("Cached fallback")).not.toBeInTheDocument();
   });
 });

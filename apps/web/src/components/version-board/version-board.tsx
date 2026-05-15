@@ -23,11 +23,12 @@ import {
   XCircle,
 } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
+import { useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { getApiErrorMessageKey } from "../../lib/api-error-messages";
 import { ApiClientError } from "../../lib/api-client";
-import { Link } from "../../i18n/routing";
+import { Link, usePathname, useRouter } from "../../i18n/routing";
 import type { WorkItemViewModel } from "../../lib/v2/work-item-view-model";
 import { cn } from "../../lib/utils";
 import { useSession } from "../providers/session-provider";
@@ -156,6 +157,11 @@ function initialOf(value: string): string {
   return value.trim().slice(0, 1).toUpperCase() || "?";
 }
 
+function normalizeSearchParam(value: string | null): string | undefined {
+  const trimmed = value?.trim();
+  return trimmed ? trimmed : undefined;
+}
+
 // ---------------------------------------------------------------------------
 // Page component
 // ---------------------------------------------------------------------------
@@ -169,10 +175,14 @@ export function VersionPage() {
   const tVersionStatus = useTranslations("versionBoard.status");
   const tHero = useTranslations("versionBoard.hero");
   const locale = useLocale();
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
 
   const { session, currentSpace } = useSession();
   const organizationId = session?.defaultOrganizationId;
   const spaceId = session?.defaultSpaceId ?? currentSpace?.id;
+  const versionIdParam = normalizeSearchParam(searchParams.get("versionId"));
 
   const { members, getMember } = useSpaceMembers(spaceId, organizationId);
 
@@ -214,6 +224,27 @@ export function VersionPage() {
   // Data loaders
   // -------------------------------------------------------------------------
 
+  const replaceVersionParam = useCallback(
+    (nextVersionId: string) => {
+      const next = new URLSearchParams(searchParams.toString());
+      next.set("versionId", nextVersionId);
+      const query = next.toString();
+      const target = query ? `${pathname}?${query}` : pathname;
+      router.replace(target as never, { scroll: false });
+    },
+    [pathname, router, searchParams],
+  );
+
+  const selectVersion = useCallback(
+    (nextVersionId: string, syncUrl = true) => {
+      setVersionId(nextVersionId);
+      if (syncUrl) {
+        replaceVersionParam(nextVersionId);
+      }
+    },
+    [replaceVersionParam],
+  );
+
   const fetchVersions = useCallback(async () => {
     if (!spaceId) return;
     setIsLoadingVersions(true);
@@ -227,6 +258,12 @@ export function VersionPage() {
       });
       setVersions(page.items);
       setVersionId((current) => {
+        if (
+          versionIdParam &&
+          page.items.some((v) => v.id === versionIdParam)
+        ) {
+          return versionIdParam;
+        }
         if (current && page.items.some((v) => v.id === current)) return current;
         return page.items[0]?.id ?? null;
       });
@@ -235,11 +272,21 @@ export function VersionPage() {
     } finally {
       setIsLoadingVersions(false);
     }
-  }, [organizationId, spaceId]);
+  }, [organizationId, spaceId, versionIdParam]);
 
   useEffect(() => {
     void fetchVersions();
   }, [fetchVersions]);
+
+  useEffect(() => {
+    if (!versionIdParam) {
+      return;
+    }
+
+    if (versions.some((version) => version.id === versionIdParam)) {
+      setVersionId(versionIdParam);
+    }
+  }, [versionIdParam, versions]);
 
   const fetchBoard = useCallback(async () => {
     if (!versionId) return;
@@ -384,7 +431,7 @@ export function VersionPage() {
     // Optimistically prepend so the dropdown reflects the new version even if
     // the refresh has not yet returned, then refresh authoritative data.
     setVersions((prev) => [created, ...prev.filter((v) => v.id !== created.id)]);
-    setVersionId(created.id);
+    selectVersion(created.id);
     void fetchVersions();
   };
 
@@ -523,7 +570,7 @@ export function VersionPage() {
               <DropdownMenuItem
                 key={v.id}
                 data-testid={`version-board-version-option-${v.id}`}
-                onSelect={() => setVersionId(v.id)}
+                onSelect={() => selectVersion(v.id)}
                 className="gap-2"
               >
                 <span className="flex-1 truncate">{v.name}</span>

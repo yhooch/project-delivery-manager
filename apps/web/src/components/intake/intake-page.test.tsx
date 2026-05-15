@@ -11,6 +11,9 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 const { translatorCache } = vi.hoisted(() => ({
   translatorCache: new Map<string, (key: string) => string>(),
 }));
+const { routerPushMock } = vi.hoisted(() => ({
+  routerPushMock: vi.fn(),
+}));
 vi.mock("next-intl", () => ({
   useTranslations: (namespace?: string) => {
     const key = namespace ?? "__root__";
@@ -30,7 +33,7 @@ vi.mock("../../i18n/routing", () => ({
   getPathname: () => "/",
   redirect: () => undefined,
   usePathname: () => "/",
-  useRouter: () => ({ push: vi.fn(), replace: vi.fn() }),
+  useRouter: () => ({ push: routerPushMock, replace: vi.fn() }),
 }));
 
 const sessionMock = vi.hoisted(() => ({
@@ -38,9 +41,21 @@ const sessionMock = vi.hoisted(() => ({
     session: {
       defaultOrganizationId: "ORG_01",
       defaultSpaceId: "SPC_01",
+      spaces: [
+        {
+          id: "SPC_01",
+          organizationId: "ORG_01",
+          role: "PM",
+        },
+      ],
+    },
+    currentSpace: {
+      id: "SPC_01",
+      organizationId: "ORG_01",
+      role: "PM",
     },
     status: "authenticated" as const,
-  } as { session: unknown; status: string },
+  } as { currentSpace?: unknown; session: unknown; status: string },
 }));
 vi.mock("../providers/session-provider", () => ({
   useSession: () => sessionMock.current,
@@ -51,17 +66,22 @@ const {
   acceptIntakeItemMock,
   deferIntakeItemMock,
   rejectIntakeItemMock,
+  listWorkItemsMock,
 } = vi.hoisted(() => ({
   listIntakeItemsMock: vi.fn(),
   acceptIntakeItemMock: vi.fn(),
   deferIntakeItemMock: vi.fn(),
   rejectIntakeItemMock: vi.fn(),
+  listWorkItemsMock: vi.fn(),
 }));
 vi.mock("../../lib/intake-service", () => ({
   listIntakeItems: listIntakeItemsMock,
   acceptIntakeItem: acceptIntakeItemMock,
   deferIntakeItem: deferIntakeItemMock,
   rejectIntakeItem: rejectIntakeItemMock,
+}));
+vi.mock("../../lib/work-item-service", () => ({
+  listWorkItems: listWorkItemsMock,
 }));
 
 vi.mock("./create-intake-dialog", () => ({
@@ -92,15 +112,47 @@ function makeIntake(overrides: Record<string, unknown> = {}) {
   } as unknown as import("@project-delivery/shared").IntakeItem;
 }
 
+function makeTask(overrides: Record<string, unknown> = {}) {
+  return {
+    id: "01ARZ3NDEKTSV4RRFFQ69G5FT1",
+    type: "TASK",
+    organizationId: "ORG_01",
+    spaceId: "SPC_01",
+    title: "Converted task",
+    priority: "MEDIUM",
+    reporterId: "01ARZ3NDEKTSV4RRFFQ69G5FR1",
+    workflowVersionId: "01ARZ3NDEKTSV4RRFFQ69G5FW1",
+    currentStateId: "01ARZ3NDEKTSV4RRFFQ69G5FCS",
+    statusCategory: "NOT_STARTED",
+    lastStatusChangedAt: "2026-05-01T00:00:00.000Z",
+    intakeItemId: "01ARZ3NDEKTSV4RRFFQ69G5F04",
+    ...overrides,
+  } as unknown as import("@project-delivery/shared").WorkItem;
+}
+
 beforeEach(() => {
   listIntakeItemsMock.mockReset();
   acceptIntakeItemMock.mockReset();
   deferIntakeItemMock.mockReset();
   rejectIntakeItemMock.mockReset();
+  listWorkItemsMock.mockReset();
+  routerPushMock.mockReset();
   sessionMock.current = {
     session: {
       defaultOrganizationId: "ORG_01",
       defaultSpaceId: "SPC_01",
+      spaces: [
+        {
+          id: "SPC_01",
+          organizationId: "ORG_01",
+          role: "PM",
+        },
+      ],
+    },
+    currentSpace: {
+      id: "SPC_01",
+      organizationId: "ORG_01",
+      role: "PM",
     },
     status: "authenticated" as const,
   };
@@ -198,8 +250,13 @@ describe("IntakePage", () => {
           title: "Accepted one",
           status: "ACCEPTED",
         }),
+        makeIntake({
+          id: "01ARZ3NDEKTSV4RRFFQ69G5F03",
+          title: "Rejected one",
+          status: "REJECTED",
+        }),
       ],
-      total: 2,
+      total: 3,
     });
 
     render(<IntakePage />);
@@ -213,6 +270,11 @@ describe("IntakePage", () => {
 
     expect(screen.queryByText("Pending one")).not.toBeInTheDocument();
     expect(screen.getByText("Accepted one")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByTestId("intake-filter-REJECTED"));
+
+    expect(screen.queryByText("Accepted one")).not.toBeInTheDocument();
+    expect(screen.getByText("Rejected one")).toBeInTheDocument();
   });
 
   it("opens the create intake dialog when the 创建 button is clicked", async () => {
@@ -369,7 +431,7 @@ describe("IntakePage", () => {
     expect(screen.queryByTestId("intake-detail-sheet")).not.toBeInTheDocument();
   });
 
-  it("does not reopen the conversion dialog for converted intake items", async () => {
+  it("opens converted intake related tasks from the detail drawer", async () => {
     listIntakeItemsMock.mockResolvedValueOnce({
       items: [
         makeIntake({
@@ -380,6 +442,12 @@ describe("IntakePage", () => {
       ],
       total: 1,
     });
+    listWorkItemsMock.mockResolvedValueOnce({
+      items: [makeTask()],
+      page: 1,
+      pageSize: 2,
+      total: 1,
+    });
 
     render(<IntakePage />);
 
@@ -388,11 +456,63 @@ describe("IntakePage", () => {
       "intake-view-converted-tasks-button",
     );
 
-    expect(viewTasks).toBeDisabled();
+    expect(viewTasks).not.toBeDisabled();
     fireEvent.click(viewTasks);
+    await waitFor(() =>
+      expect(listWorkItemsMock).toHaveBeenCalledWith({
+        intakeItemId: "01ARZ3NDEKTSV4RRFFQ69G5F04",
+        page: 1,
+        pageSize: 2,
+        spaceId: "SPC_01",
+      }),
+    );
+    expect(routerPushMock).toHaveBeenCalledWith(
+      "/work-items?workItemId=01ARZ3NDEKTSV4RRFFQ69G5FT1",
+    );
     expect(
       screen.queryByTestId("convert-intake-dialog-open"),
     ).not.toBeInTheDocument();
+  });
+
+  it("hides write actions for VIEWER space role", async () => {
+    sessionMock.current = {
+      session: {
+        defaultOrganizationId: "ORG_01",
+        defaultSpaceId: "SPC_01",
+        spaces: [
+          {
+            id: "SPC_01",
+            organizationId: "ORG_01",
+            role: "VIEWER",
+          },
+        ],
+      },
+      currentSpace: {
+        id: "SPC_01",
+        organizationId: "ORG_01",
+        role: "VIEWER",
+      },
+      status: "authenticated" as const,
+    };
+    listIntakeItemsMock.mockResolvedValueOnce({
+      items: [
+        makeIntake({
+          id: "01ARZ3NDEKTSV4RRFFQ69G5FV1",
+          title: "Read only intake",
+          status: "PENDING",
+        }),
+      ],
+      total: 1,
+    });
+
+    render(<IntakePage />);
+
+    fireEvent.click(await screen.findByText("Read only intake"));
+
+    expect(screen.queryByTestId("intake-create-button")).not.toBeInTheDocument();
+    expect(screen.queryByTestId("intake-accept-button")).not.toBeInTheDocument();
+    expect(screen.queryByTestId("intake-defer-button")).not.toBeInTheDocument();
+    expect(screen.queryByTestId("intake-reject-button")).not.toBeInTheDocument();
   });
 
   it("renders the noSpace empty state when session has no defaultSpaceId", async () => {
@@ -400,7 +520,9 @@ describe("IntakePage", () => {
       session: {
         defaultOrganizationId: "ORG_01",
         defaultSpaceId: undefined,
+        spaces: [],
       },
+      currentSpace: undefined,
       status: "authenticated" as const,
     };
 
