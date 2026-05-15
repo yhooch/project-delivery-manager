@@ -202,7 +202,7 @@ export class WorkflowConfigService {
     const dto = toWorkflowDefinition(created);
 
     await this.audit({
-      actionType: "WORKFLOW_DEFINITION_CREATED",
+      actionType: "CREATE",
       after: dto,
       actorId: actorUserId,
       metadata,
@@ -265,10 +265,7 @@ export class WorkflowConfigService {
     const after = toWorkflowDefinition(updated);
 
     await this.audit({
-      actionType:
-        input.status === "DISABLED"
-          ? "WORKFLOW_DEFINITION_DISABLED"
-          : "WORKFLOW_DEFINITION_UPDATED",
+      actionType: "UPDATE",
       actorId: actorUserId,
       after,
       before,
@@ -325,7 +322,7 @@ export class WorkflowConfigService {
     const dto = toWorkflowVersion(created);
 
     await this.audit({
-      actionType: "WORKFLOW_VERSION_CREATED",
+      actionType: "CREATE",
       actorId: actorUserId,
       after: dto,
       metadata,
@@ -401,7 +398,7 @@ export class WorkflowConfigService {
     const after = toWorkflowVersion(updated);
 
     await this.audit({
-      actionType: "WORKFLOW_VERSION_DISABLED",
+      actionType: "UPDATE",
       actorId: actorUserId,
       after,
       before,
@@ -476,7 +473,7 @@ export class WorkflowConfigService {
     const after = toWorkflowVersion(published);
 
     await this.audit({
-      actionType: "WORKFLOW_VERSION_PUBLISHED",
+      actionType: "UPDATE",
       actorId: actorUserId,
       after,
       before,
@@ -520,7 +517,7 @@ export class WorkflowConfigService {
     const dto = toWorkflowState(created);
 
     await this.audit({
-      actionType: "WORKFLOW_STATE_CREATED",
+      actionType: "CREATE",
       actorId: actorUserId,
       after: dto,
       metadata,
@@ -571,7 +568,7 @@ export class WorkflowConfigService {
     const after = toWorkflowState(updated);
 
     await this.audit({
-      actionType: "WORKFLOW_STATE_UPDATED",
+      actionType: "UPDATE",
       actorId: actorUserId,
       after,
       before,
@@ -605,7 +602,7 @@ export class WorkflowConfigService {
     }
 
     await this.audit({
-      actionType: "WORKFLOW_STATE_DELETED",
+      actionType: "DELETE",
       actorId: actorUserId,
       before: toWorkflowState(state),
       metadata,
@@ -653,7 +650,7 @@ export class WorkflowConfigService {
     const dto = toWorkflowActionSummary(created);
 
     await this.audit({
-      actionType: "WORKFLOW_ACTION_CREATED",
+      actionType: "CREATE",
       actorId: actorUserId,
       after: dto,
       metadata,
@@ -713,7 +710,7 @@ export class WorkflowConfigService {
     const after = toWorkflowActionSummary(updated);
 
     await this.audit({
-      actionType: "WORKFLOW_ACTION_UPDATED",
+      actionType: "UPDATE",
       actorId: actorUserId,
       after,
       before,
@@ -747,7 +744,7 @@ export class WorkflowConfigService {
     }
 
     await this.audit({
-      actionType: "WORKFLOW_ACTION_DELETED",
+      actionType: "DELETE",
       actorId: actorUserId,
       before: toWorkflowActionSummary(action),
       metadata,
@@ -791,7 +788,7 @@ export class WorkflowConfigService {
     const dto = toActionFormFieldSummary(created);
 
     await this.audit({
-      actionType: "WORKFLOW_ACTION_FIELD_CREATED",
+      actionType: "CREATE",
       actorId: actorUserId,
       after: dto,
       metadata,
@@ -842,7 +839,7 @@ export class WorkflowConfigService {
     const after = toActionFormFieldSummary(updated);
 
     await this.audit({
-      actionType: "WORKFLOW_ACTION_FIELD_UPDATED",
+      actionType: "UPDATE",
       actorId: actorUserId,
       after,
       before,
@@ -876,7 +873,7 @@ export class WorkflowConfigService {
     }
 
     await this.audit({
-      actionType: "WORKFLOW_ACTION_FIELD_DELETED",
+      actionType: "DELETE",
       actorId: actorUserId,
       before: toActionFormFieldSummary(field),
       metadata,
@@ -938,7 +935,7 @@ export class WorkflowConfigService {
     const dto = toWorkflowBinding(created);
 
     await this.audit({
-      actionType: "WORKFLOW_BINDING_CREATED",
+      actionType: "CREATE",
       actorId: actorUserId,
       after: dto,
       metadata,
@@ -1004,7 +1001,7 @@ export class WorkflowConfigService {
     const after = toWorkflowBinding(updated);
 
     await this.audit({
-      actionType: "WORKFLOW_BINDING_UPDATED",
+      actionType: "UPDATE",
       actorId: actorUserId,
       after,
       before,

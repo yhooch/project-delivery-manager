@@ -82,8 +82,10 @@ vi.mock("../../lib/v2/lookups", () => ({
   useWorkflowStateLookup: () => ({
     loading: false,
     error: null,
-    getState: (_workflowVersionId: string | undefined, stateId: string | undefined) =>
-      stateId ? workflowStateMap.get(stateId) : undefined,
+    getState: (
+      _workflowVersionId: string | undefined,
+      stateId: string | undefined,
+    ) => (stateId ? workflowStateMap.get(stateId) : undefined),
   }),
 }));
 
@@ -256,7 +258,7 @@ describe("BugsPage", () => {
     expect(screen.getAllByText("B").length).toBeGreaterThanOrEqual(1);
   });
 
-  it("falls back to the assignee id when no member is cached", async () => {
+  it("uses a neutral assignee fallback when no member is cached", async () => {
     listBugsMock.mockResolvedValueOnce({
       items: [makeBug({ title: "No-member bug" })],
       total: 1,
@@ -265,11 +267,8 @@ describe("BugsPage", () => {
     render(<BugsPage />);
 
     expect(await screen.findByText("No-member bug")).toBeInTheDocument();
-    // Raw assignee id starts with "0" so fallback initial is "0" — there may
-    // be multiple "0" labels rendered (severity counts etc.); ensure at least
-    // one is the avatar fallback.
-    const zeros = screen.getAllByText("0");
-    expect(zeros.length).toBeGreaterThanOrEqual(1);
+    // No member lookup -> neutral fallback, not the raw assignee id tail.
+    expect(screen.getByText("?")).toBeInTheDocument();
   });
 
   it("renders workflow-state buckets for the bug lifecycle", async () => {
@@ -495,9 +494,9 @@ describe("BugsPage", () => {
     expect(
       await screen.findByTestId("task-detail-sheet-open"),
     ).toBeInTheDocument();
-    expect(screen.getByTestId("task-detail-sheet-item-title")).toHaveTextContent(
-      "Deep linked bug",
-    );
+    expect(
+      screen.getByTestId("task-detail-sheet-item-title"),
+    ).toHaveTextContent("Deep linked bug");
   });
 
   it("opens a bug detail sheet from a workItemId deep link", async () => {
@@ -636,7 +635,9 @@ describe("BugsPage", () => {
     );
     const [query] = listBugsMock.mock.calls[0];
     expect(query).not.toHaveProperty("workItemType");
-    expect(await screen.findByText("Overview filtered bug")).toBeInTheDocument();
+    expect(
+      await screen.findByText("Overview filtered bug"),
+    ).toBeInTheDocument();
   });
 
   it("syncs bug list filters when URL query params change after mount", async () => {
@@ -745,10 +746,7 @@ describe("BugsPage", () => {
 
     const rows = screen.getAllByTestId("bugs-row");
     expect(rows[0]).toHaveAttribute("aria-selected", "true");
-    expect(rows[0]).toHaveAttribute(
-      "data-id",
-      "01ARZ3NDEKTSV4RRFFQ69G5F01",
-    );
+    expect(rows[0]).toHaveAttribute("data-id", "01ARZ3NDEKTSV4RRFFQ69G5F01");
     expect(rows[1]).toHaveAttribute("aria-selected", "false");
   });
 
@@ -786,21 +784,23 @@ describe("BugsPage", () => {
     render(<BugsPage />);
 
     fireEvent.click(await screen.findByText("Before edit"));
-    expect(screen.getByTestId("task-detail-sheet-item-title")).toHaveTextContent(
-      "Before edit",
-    );
+    expect(
+      screen.getByTestId("task-detail-sheet-item-title"),
+    ).toHaveTextContent("Before edit");
 
     const editButton = screen.getByTestId("bugs-edit-button");
     expect(editButton).toHaveAttribute("data-id", "01ARZ3NDEKTSV4RRFFQ69G5FA1");
     fireEvent.click(editButton);
-    expect(await screen.findByTestId("edit-bug-dialog-open")).toBeInTheDocument();
+    expect(
+      await screen.findByTestId("edit-bug-dialog-open"),
+    ).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "save edit" }));
 
     await waitFor(() => expect(listBugsMock).toHaveBeenCalledTimes(2));
     expect(await screen.findByText("After edit")).toBeInTheDocument();
-    expect(screen.getByTestId("task-detail-sheet-item-title")).toHaveTextContent(
-      "Edited bug",
-    );
+    expect(
+      screen.getByTestId("task-detail-sheet-item-title"),
+    ).toHaveTextContent("Edited bug");
   });
 
   it("does not open edit from the keyboard shortcut for read-only users", async () => {
@@ -826,7 +826,9 @@ describe("BugsPage", () => {
 
     fireEvent.keyDown(window, { key: "e" });
 
-    expect(screen.queryByTestId("edit-bug-dialog-open")).not.toBeInTheDocument();
+    expect(
+      screen.queryByTestId("edit-bug-dialog-open"),
+    ).not.toBeInTheDocument();
   });
 
   it("renders the empty state when there are no bugs", async () => {

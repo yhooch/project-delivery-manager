@@ -941,12 +941,12 @@ describe("IntakePage", () => {
     );
   });
 
-  it("keeps A as an explicit disabled no-op on the intake list", async () => {
+  it("opens the intake edit affordance with A without running status actions", async () => {
     listIntakeItemsMock.mockResolvedValueOnce({
       items: [
         makeIntake({
           id: "01ARZ3NDEKTSV4RRFFQ69G5FA0",
-          title: "No assign shortcut",
+          title: "Assign shortcut target",
         }),
       ],
       total: 1,
@@ -954,7 +954,7 @@ describe("IntakePage", () => {
 
     render(<IntakePage />);
 
-    await screen.findByText("No assign shortcut");
+    await screen.findByText("Assign shortcut target");
     fireEvent.keyDown(window, { key: "j" });
 
     const assignEvent = new KeyboardEvent("keydown", {
@@ -963,7 +963,8 @@ describe("IntakePage", () => {
     });
     window.dispatchEvent(assignEvent);
 
-    expect(assignEvent.defaultPrevented).toBe(false);
+    expect(assignEvent.defaultPrevented).toBe(true);
+    expect(await screen.findByTestId("edit-intake-dialog")).toBeInTheDocument();
     expect(
       screen.queryByTestId("convert-intake-dialog-open"),
     ).not.toBeInTheDocument();

@@ -226,7 +226,10 @@ export function RequirementsPage() {
     setCreateDenied(false);
 
     try {
-      const draft = await createRequirementDraft({ organizationId, spaceId }, {});
+      const draft = await createRequirementDraft(
+        { organizationId, spaceId },
+        {},
+      );
       rememberRequirement(draft);
       router.push(`/requirements/${draft.id}`);
     } catch (error) {
@@ -315,6 +318,7 @@ export function RequirementsPage() {
         }}
         type="button"
         disabled={!spaceId || isCreating || !canCreateRequirement}
+        aria-disabled={!spaceId || isCreating || !canCreateRequirement}
         title={!canCreateRequirement ? t("page.createReadonly") : undefined}
       >
         <Plus className="h-3 w-3" />
@@ -435,7 +439,10 @@ export function RequirementsPage() {
   }
 
   return (
-    <div data-testid="requirements-page" className="flex h-full flex-col">
+    <div
+      data-testid="requirements-page"
+      className="flex h-full min-w-0 flex-col"
+    >
       <PageHeader
         eyebrow={tNav("group.document")}
         title={tNav("requirements")}
@@ -454,29 +461,31 @@ export function RequirementsPage() {
       ) : null}
 
       {sessionStatus === "authenticated" && spaceId && !errorKey && (
-        <div className="border-b border-border px-6 py-3">
-          <div className="flex flex-wrap items-center gap-1">
-            {buckets.map((b) => (
-              <button
-                key={b.key}
-                type="button"
-                onClick={() => setFilter(b.key)}
-                className={cn(
-                  "flex h-7 items-center gap-1.5 rounded-md px-2.5 text-[12px] transition-colors cursor-pointer",
-                  filter === b.key
-                    ? "bg-muted font-medium text-foreground"
-                    : "text-muted-foreground hover:bg-muted/50 hover:text-foreground",
-                )}
-              >
-                {b.label}
-              </button>
-            ))}
+        <div className="border-b border-border px-4 py-3 sm:px-6">
+          <div className="-mx-1 overflow-x-auto px-1">
+            <div className="flex min-w-max items-center gap-1">
+              {buckets.map((b) => (
+                <button
+                  key={b.key}
+                  type="button"
+                  onClick={() => setFilter(b.key)}
+                  className={cn(
+                    "flex h-7 items-center gap-1.5 rounded-md px-2.5 text-[12px] transition-colors cursor-pointer",
+                    filter === b.key
+                      ? "bg-muted font-medium text-foreground"
+                      : "text-muted-foreground hover:bg-muted/50 hover:text-foreground",
+                  )}
+                >
+                  {b.label}
+                </button>
+              ))}
+            </div>
           </div>
 
           {isFilterPanelOpen ? (
             <div
               aria-label={t("filters.label")}
-              className="mt-3 flex flex-wrap items-center gap-3 text-xs text-muted-foreground"
+              className="mt-3 flex min-w-0 flex-wrap items-center gap-3 text-xs text-muted-foreground"
             >
               <label className="flex items-center gap-2">
                 <span>{t("filters.version")}</span>
@@ -515,20 +524,13 @@ export function RequirementsPage() {
         </div>
       )}
 
-      <div className="flex-1 overflow-y-auto">{body}</div>
+      <div className="min-w-0 flex-1 overflow-y-auto">{body}</div>
     </div>
   );
 }
 
-function shortenId(id: string): string {
-  if (id.length <= 8) {
-    return id;
-  }
-  return id.slice(-6);
-}
-
-function formatRequirementCode(id: string): string {
-  return `REQ-${shortenId(id)}`.toUpperCase();
+function formatRequirementCode(_id: string): string {
+  return "REQ";
 }
 
 function toRequirementListQuery(filter: FilterKey): {
@@ -584,14 +586,14 @@ function formatVersionLabel(
   versionId: string,
   versionNameById: Map<string, string>,
 ): string {
-  return versionNameById.get(versionId) ?? versionId;
+  return versionNameById.get(versionId) ?? "—";
 }
 
 function formatOwnerLabel(
   ownerId: string,
   memberNameByUserId: Map<string, string>,
 ): string {
-  return memberNameByUserId.get(ownerId) ?? ownerId;
+  return memberNameByUserId.get(ownerId) ?? "—";
 }
 
 function initialOf(value: string): string {

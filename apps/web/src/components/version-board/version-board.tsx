@@ -39,6 +39,7 @@ import { listRequirements } from "../../lib/requirement-service";
 import { listTimeline } from "../../lib/timeline-service";
 import { listVersions } from "../../lib/version-service";
 import { getVersionBoardView } from "../../lib/view-service";
+import { useFocusReturn } from "../../lib/hooks/use-list-keyboard-nav";
 import { useSpaceMembers } from "../../lib/v2/lookups";
 import { toMockWorkItem } from "../workbench/my-workbench";
 
@@ -243,6 +244,7 @@ export function VersionPage() {
     useState(false);
   const [createVersionDialogOpen, setCreateVersionDialogOpen] = useState(false);
   const [editVersionDialogOpen, setEditVersionDialogOpen] = useState(false);
+  const { captureFocus, restoreFocus } = useFocusReturn();
 
   // -------------------------------------------------------------------------
   // Data loaders
@@ -439,6 +441,7 @@ export function VersionPage() {
   // -------------------------------------------------------------------------
 
   const openItem = (summary: ViewWorkItemSummary) => {
+    captureFocus();
     const item = toMockWorkItem(locale, {
       getMember: (userId) => getMember(userId),
       getVersion: (nextVersionId) => getVersionLookup(nextVersionId),
@@ -456,6 +459,16 @@ export function VersionPage() {
     setActiveItem(item);
     setSheetOpen(true);
   };
+
+  const handleSheetOpenChange = useCallback(
+    (nextOpen: boolean) => {
+      setSheetOpen(nextOpen);
+      if (!nextOpen) {
+        restoreFocus();
+      }
+    },
+    [restoreFocus],
+  );
 
   const handleVersionCreated = (created: Version) => {
     // Optimistically prepend so the dropdown reflects the new version even if
@@ -487,8 +500,7 @@ export function VersionPage() {
   const owner = currentVersion?.ownerId
     ? getMember(currentVersion.ownerId)
     : undefined;
-  const ownerName =
-    owner?.user.name ?? owner?.user.username ?? currentVersion?.ownerId ?? "";
+  const ownerName = owner?.user.name ?? owner?.user.username ?? "";
 
   const headerMeta = currentVersion ? (
     <div
@@ -622,6 +634,7 @@ export function VersionPage() {
         className="text-xs"
         data-testid="version-page-edit-version"
         disabled={!currentVersion || !spaceId || !canManageVersions}
+        aria-disabled={!currentVersion || !spaceId || !canManageVersions}
         title={!canManageVersions ? t("actions.manageReadonly") : undefined}
         onClick={() => setEditVersionDialogOpen(true)}
       >
@@ -633,6 +646,7 @@ export function VersionPage() {
         className="text-xs"
         data-testid="version-page-new-version"
         disabled={!spaceId || !canManageVersions}
+        aria-disabled={!spaceId || !canManageVersions}
         title={!canManageVersions ? t("actions.manageReadonly") : undefined}
         onClick={() => setCreateVersionDialogOpen(true)}
       >
@@ -691,29 +705,34 @@ export function VersionPage() {
     );
   } else {
     body = (
-      <div className="flex flex-1 flex-col overflow-hidden">
+      <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
         <Tabs
           value={activeTab}
           onValueChange={(value) =>
             setActiveTab(value as "board" | "requirements" | "timeline")
           }
-          className="flex flex-1 flex-col overflow-hidden"
+          className="flex min-w-0 flex-1 flex-col overflow-hidden"
         >
-          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border px-6 py-2">
-            <TabsList>
-              <TabsTrigger value="board" data-testid="version-tab-board">
-                {t("tabs.board")}
-              </TabsTrigger>
-              <TabsTrigger
-                value="requirements"
-                data-testid="version-tab-requirements"
-              >
-                {t("tabs.requirements")}
-              </TabsTrigger>
-              <TabsTrigger value="timeline" data-testid="version-tab-timeline">
-                {t("tabs.timeline")}
-              </TabsTrigger>
-            </TabsList>
+          <div className="flex min-w-0 flex-col gap-3 border-b border-border px-4 py-2 sm:px-6 xl:flex-row xl:items-center xl:justify-between">
+            <div className="-mx-1 overflow-x-auto px-1">
+              <TabsList className="min-w-max">
+                <TabsTrigger value="board" data-testid="version-tab-board">
+                  {t("tabs.board")}
+                </TabsTrigger>
+                <TabsTrigger
+                  value="requirements"
+                  data-testid="version-tab-requirements"
+                >
+                  {t("tabs.requirements")}
+                </TabsTrigger>
+                <TabsTrigger
+                  value="timeline"
+                  data-testid="version-tab-timeline"
+                >
+                  {t("tabs.timeline")}
+                </TabsTrigger>
+              </TabsList>
+            </div>
             {activeTab === "board" && (
               <BoardToolbar
                 filters={filters}
@@ -731,9 +750,9 @@ export function VersionPage() {
 
           <TabsContent
             value="board"
-            className="mt-0 flex flex-1 flex-col overflow-hidden"
+            className="mt-0 flex min-w-0 flex-1 flex-col overflow-hidden"
           >
-            <div className="flex-1 overflow-x-auto overflow-y-hidden">
+            <div className="min-w-0 flex-1 overflow-hidden">
               {isLoadingBoard && !board ? (
                 <LoadingState label={t("states.loadingBoard")} />
               ) : (
@@ -751,7 +770,7 @@ export function VersionPage() {
 
           <TabsContent
             value="requirements"
-            className="mt-0 flex-1 overflow-y-auto"
+            className="mt-0 min-w-0 flex-1 overflow-y-auto"
           >
             <RequirementsTab
               loading={isLoadingRequirements}
@@ -790,7 +809,10 @@ export function VersionPage() {
   // -------------------------------------------------------------------------
 
   return (
-    <div data-testid="version-board-page" className="flex h-full flex-col">
+    <div
+      data-testid="version-board-page"
+      className="flex h-full min-w-0 flex-col"
+    >
       <PageHeader
         eyebrow={tShell("group.deliver")}
         title={t("title")}
@@ -798,11 +820,11 @@ export function VersionPage() {
         actions={headerActions}
         meta={headerMeta}
       />
-      <div className="flex flex-1 flex-col overflow-hidden">{body}</div>
+      <div className="flex min-w-0 flex-1 flex-col overflow-hidden">{body}</div>
       <TaskDetailSheet
         item={activeItem}
         open={sheetOpen}
-        onOpenChange={setSheetOpen}
+        onOpenChange={handleSheetOpenChange}
         onChanged={() => {
           refreshVersionContext();
         }}
@@ -875,7 +897,7 @@ function BoardToolbar({
   const assigneeLabel = filters.assigneeId
     ? (getMember(filters.assigneeId)?.user.name ??
       getMember(filters.assigneeId)?.user.username ??
-      filters.assigneeId)
+      "—")
     : t("filters.assignee.all");
 
   const statusLabel = filters.statusCategory
@@ -887,18 +909,18 @@ function BoardToolbar({
     : t("filters.type.all");
 
   return (
-    <div className="flex flex-wrap items-center gap-2">
+    <div className="flex min-w-0 flex-wrap items-center gap-2">
       {/* Assignee filter */}
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <Button
             variant="outline"
             size="sm"
-            className="text-xs"
+            className="min-w-0 text-xs"
             data-testid="version-board-filter-assignee"
           >
             <Users className="h-3 w-3" />
-            {assigneeLabel}
+            <span className="max-w-[140px] truncate">{assigneeLabel}</span>
             <ChevronDown className="h-3 w-3" />
           </Button>
         </DropdownMenuTrigger>
@@ -1031,6 +1053,7 @@ function BoardToolbar({
         className="text-xs"
         data-testid="version-board-new-work-item"
         disabled={!spaceId || !canCreateWorkItem}
+        aria-disabled={!spaceId || !canCreateWorkItem}
         title={!canCreateWorkItem ? t("newWorkItemReadonly") : undefined}
         onClick={onNewWorkItem}
       >
@@ -1095,12 +1118,12 @@ function BoardColumns({
   t: ReturnType<typeof useTranslations<"versionBoard">>;
 }) {
   return (
-    <div className="flex h-full min-w-max gap-3 px-6 py-4">
+    <div className="grid h-full min-w-0 grid-cols-1 gap-3 px-4 py-4 md:grid-cols-2 xl:grid-cols-6">
       {grouped.map(({ category, items, total }) => (
         <div
           key={category}
           data-testid={`version-board-column-${category}`}
-          className="flex h-full w-[280px] shrink-0 flex-col rounded-lg border border-border bg-card/30"
+          className="flex min-h-0 min-w-0 flex-col rounded-lg border border-border bg-card/30"
         >
           <header className="flex shrink-0 items-center gap-2 border-b border-border px-3 py-2.5">
             <span
@@ -1113,7 +1136,7 @@ function BoardColumns({
               {total}
             </span>
           </header>
-          <div className="flex-1 space-y-2 overflow-y-auto p-2">
+          <div className="min-h-0 flex-1 space-y-2 overflow-y-auto p-2">
             {items.length === 0 && (
               <div className="flex h-20 items-center justify-center text-[11px] text-muted-foreground">
                 —
@@ -1130,7 +1153,7 @@ function BoardColumns({
                   type="button"
                   data-testid={`version-board-card-${item.id}`}
                   onClick={() => openItem(item)}
-                  className="group block w-full rounded-md border border-border bg-card p-2.5 text-left shadow-sm transition-all hover:border-primary/40 hover:shadow-md cursor-pointer"
+                  className="group block w-full min-w-0 rounded-md border border-border bg-card p-2.5 text-left shadow-sm transition-all hover:border-primary/40 hover:shadow-md cursor-pointer"
                 >
                   <div className="flex items-center gap-1.5">
                     {item.type === "BUG" ? (
@@ -1138,8 +1161,8 @@ function BoardColumns({
                     ) : (
                       <CheckCircle2 className="h-3 w-3 text-primary/80" />
                     )}
-                    <span className="font-mono text-[10px] text-muted-foreground">
-                      {mock.code}
+                    <span className="min-w-0 truncate font-mono text-[10px] text-muted-foreground">
+                      {mock.type}
                     </span>
                     <span
                       className={cn(
@@ -1234,8 +1257,7 @@ function RequirementsTab({
     <ul className="divide-y divide-border">
       {requirements.map((req) => {
         const owner = req.ownerId ? getMember(req.ownerId) : undefined;
-        const ownerName =
-          owner?.user.name ?? owner?.user.username ?? req.ownerId ?? "—";
+        const ownerName = owner?.user.name ?? owner?.user.username ?? "—";
         return (
           <li
             key={req.id}
@@ -1244,7 +1266,7 @@ function RequirementsTab({
           >
             <Link
               href={`/requirements/${req.id}`}
-              className="flex items-center gap-3 hover:opacity-90"
+              className="flex min-w-0 items-center gap-3 hover:opacity-90"
             >
               <div className="min-w-0 flex-1">
                 <div className="truncate text-sm font-medium">
@@ -1262,10 +1284,10 @@ function RequirementsTab({
               >
                 {tRequirementStatus(req.status)}
               </Badge>
-              <span className="text-[11px] text-muted-foreground">
+              <span className="hidden shrink-0 text-[11px] text-muted-foreground sm:inline">
                 {ownerName}
               </span>
-              <span className="text-[11px] text-muted-foreground">
+              <span className="hidden shrink-0 text-[11px] text-muted-foreground md:inline">
                 {formatDateTime(req.updatedAt, locale)}
               </span>
             </Link>

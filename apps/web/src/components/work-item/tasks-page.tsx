@@ -20,7 +20,10 @@ import {
 } from "react";
 
 import { getApiErrorMessageKey } from "../../lib/api-error-messages";
-import { useListKeyboardNav } from "../../lib/hooks/use-list-keyboard-nav";
+import {
+  useFocusReturn,
+  useListKeyboardNav,
+} from "../../lib/hooks/use-list-keyboard-nav";
 import { listRequirements } from "../../lib/requirement-service";
 import { useSpaceMembers, useVersions } from "../../lib/v2/lookups";
 import type { WorkItemViewModel } from "../../lib/v2/work-item-view-model";
@@ -103,6 +106,7 @@ export function TasksPage() {
   const [handledDeepLinkKey, setHandledDeepLinkKey] = useState<string | null>(
     null,
   );
+  const { captureFocus, restoreFocus } = useFocusReturn();
   const canCreateTask = canWriteWorkItems(
     currentSpace?.role,
     currentSpace?.status,
@@ -217,6 +221,7 @@ export function TasksPage() {
 
   const open = useCallback(
     (item: WorkItemViewModel) => {
+      captureFocus();
       recordRecentOpen(
         {
           id: item.id,
@@ -230,7 +235,17 @@ export function TasksPage() {
       setActiveItem(item);
       setSheetOpen(true);
     },
-    [recentScope],
+    [captureFocus, recentScope],
+  );
+
+  const handleSheetOpenChange = useCallback(
+    (nextOpen: boolean) => {
+      setSheetOpen(nextOpen);
+      if (!nextOpen) {
+        restoreFocus();
+      }
+    },
+    [restoreFocus],
   );
 
   useEffect(() => {
@@ -331,9 +346,10 @@ export function TasksPage() {
     onSelect: select,
     onOpen: open,
     onEdit: open,
-    canAssign: () => false,
+    canAssign: () => true,
+    onAssign: open,
     canSubmit: () => false,
-    onClose: () => setSheetOpen(false),
+    onClose: () => handleSheetOpenChange(false),
   });
 
   const header = (
@@ -374,7 +390,7 @@ export function TasksPage() {
 
   if (sessionStatus === "loading") {
     return (
-      <div data-testid="tasks-page" className="flex h-full flex-col">
+      <div data-testid="tasks-page" className="flex h-full min-w-0 flex-col">
         {header}
         <ListSkeleton />
       </div>
@@ -383,7 +399,7 @@ export function TasksPage() {
 
   if (!spaceId) {
     return (
-      <div data-testid="tasks-page" className="flex h-full flex-col">
+      <div data-testid="tasks-page" className="flex h-full min-w-0 flex-col">
         {header}
         <EmptyState
           title={t("states.noSpace.title")}
@@ -394,11 +410,11 @@ export function TasksPage() {
   }
 
   return (
-    <div data-testid="tasks-page" className="flex h-full flex-col">
+    <div data-testid="tasks-page" className="flex h-full min-w-0 flex-col">
       {header}
 
-      <div className="flex items-center gap-3 border-b border-border px-6 py-3">
-        <div className="relative flex-1 max-w-md">
+      <div className="flex min-w-0 flex-col gap-3 border-b border-border px-4 py-3 sm:px-6 md:flex-row md:items-center">
+        <div className="relative min-w-0 flex-1 md:max-w-md">
           <Search className="absolute left-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
           <Input
             placeholder={t("search.placeholder")}
@@ -407,30 +423,32 @@ export function TasksPage() {
             className="pl-7"
           />
         </div>
-        <div className="flex items-center gap-1">
-          {buckets.map((b) => (
-            <button
-              key={b.key}
-              type="button"
-              onClick={() =>
-                setFilter("statusCategory", b.key === "all" ? "" : b.key)
-              }
-              className={`h-7 rounded-md px-2.5 text-[12px] transition-colors cursor-pointer ${
-                (filters.statusCategory ?? "all") === b.key
-                  ? "bg-muted font-medium text-foreground"
-                  : "text-muted-foreground hover:bg-muted/50 hover:text-foreground"
-              }`}
-            >
-              {b.label}
-            </button>
-          ))}
+        <div className="-mx-1 overflow-x-auto px-1">
+          <div className="flex min-w-max items-center gap-1">
+            {buckets.map((b) => (
+              <button
+                key={b.key}
+                type="button"
+                onClick={() =>
+                  setFilter("statusCategory", b.key === "all" ? "" : b.key)
+                }
+                className={`h-7 rounded-md px-2.5 text-[12px] transition-colors cursor-pointer ${
+                  (filters.statusCategory ?? "all") === b.key
+                    ? "bg-muted font-medium text-foreground"
+                    : "text-muted-foreground hover:bg-muted/50 hover:text-foreground"
+                }`}
+              >
+                {b.label}
+              </button>
+            ))}
+          </div>
         </div>
       </div>
 
       {filterOpen && (
         <div
           data-testid="tasks-filter-panel"
-          className="grid gap-3 border-b border-border bg-muted/20 px-6 py-3 md:grid-cols-5"
+          className="grid min-w-0 gap-3 border-b border-border bg-muted/20 px-4 py-3 sm:px-6 md:grid-cols-5"
         >
           <FilterField label={tFilters("version")}>
             <select
@@ -514,7 +532,7 @@ export function TasksPage() {
         </div>
       )}
 
-      <div className="flex-1 overflow-y-auto">
+      <div className="min-w-0 flex-1 overflow-y-auto">
         {loading ? (
           <ListSkeleton />
         ) : errorMessage ? (
@@ -559,7 +577,7 @@ export function TasksPage() {
       <TaskDetailSheet
         item={activeItem}
         open={sheetOpen}
-        onOpenChange={setSheetOpen}
+        onOpenChange={handleSheetOpenChange}
         organizationId={organizationId}
         spaceId={spaceId}
         onChanged={() => {
@@ -617,8 +635,7 @@ function toMockWorkItem(
   const member = item.assigneeId
     ? lookups.getMember(item.assigneeId)
     : undefined;
-  const assigneeName =
-    member?.user.name ?? member?.user.username ?? item.assigneeId ?? "";
+  const assigneeName = member?.user.name ?? member?.user.username ?? "";
   const initial = deriveInitial(assigneeName);
   const version = item.versionId
     ? lookups.getVersion(item.versionId)
@@ -650,9 +667,8 @@ function toMockWorkItem(
   };
 }
 
-function deriveCode(id: string, type: "TASK" | "BUG"): string {
-  const tail = id.slice(-6).toUpperCase();
-  return `${type}-${tail}`;
+function deriveCode(_id: string, type: "TASK" | "BUG"): string {
+  return type;
 }
 
 function deriveInitial(value?: string): string {

@@ -286,18 +286,23 @@ export class TargetResolverService {
           actorUserId,
         );
       case "REQUIREMENT":
-        if (REQUIREMENT_READ_ALL_ROLES.has(role)) {
-          return true;
+        if (target.isDraftRequirement) {
+          return this.isRequirementParticipant(
+            target.spaceId,
+            target.targetId,
+            actorUserId,
+          );
         }
+
         if (
-          !target.isDraftRequirement &&
+          REQUIREMENT_READ_ALL_ROLES.has(role) ||
           REQUIREMENT_NON_DRAFT_READ_ALL_ROLES.has(role)
         ) {
           return true;
         }
-        return this.isObjectParticipant(
+
+        return this.isRequirementParticipant(
           target.spaceId,
-          target.targetType,
           target.targetId,
           actorUserId,
         );
@@ -340,13 +345,20 @@ export class TargetResolverService {
           actorUserId,
         );
       case "REQUIREMENT":
+        if (target.isDraftRequirement) {
+          return this.isRequirementParticipant(
+            target.spaceId,
+            target.targetId,
+            actorUserId,
+          );
+        }
+
         if (REQUIREMENT_WRITE_ALL_ROLES.has(role)) {
           return true;
         }
 
-        return this.isObjectParticipant(
+        return this.isRequirementParticipant(
           target.spaceId,
-          target.targetType,
           target.targetId,
           actorUserId,
         );
@@ -373,6 +385,14 @@ export class TargetResolverService {
     });
 
     return Boolean(participant);
+  }
+
+  private async isRequirementParticipant(
+    spaceId: string,
+    requirementId: string,
+    userId: string,
+  ): Promise<boolean> {
+    return this.requirements.isParticipant(spaceId, requirementId, userId);
   }
 }
 

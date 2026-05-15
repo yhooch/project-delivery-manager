@@ -88,7 +88,10 @@ describe("WorkflowConfigService", () => {
     });
     expect(draft.states.map((state) => state.id)).not.toContain(PENDING_STATE_ID);
     expect(repository.auditLogs.at(-1)).toMatchObject({
-      actionType: "WORKFLOW_VERSION_CREATED",
+      actionType: "CREATE",
+      metadata: expect.objectContaining({
+        operation: "createWorkflowVersion",
+      }),
       requestId: REQUEST_META.requestId,
     });
   });
@@ -110,7 +113,10 @@ describe("WorkflowConfigService", () => {
     expect(published.publishedAt).toBeDefined();
     expect(repository.definitions.get(WORKFLOW_ID)?.status).toBe("ACTIVE");
     expect(repository.auditLogs.at(-1)).toMatchObject({
-      actionType: "WORKFLOW_VERSION_PUBLISHED",
+      actionType: "UPDATE",
+      metadata: expect.objectContaining({
+        operation: "publishWorkflowVersion",
+      }),
       targetId: WORKFLOW_VERSION_ID,
     });
   });
@@ -277,7 +283,10 @@ describe("WorkflowConfigService", () => {
 
     expect(disabled.status).toBe("DISABLED");
     expect(repository.auditLogs.at(-1)).toMatchObject({
-      actionType: "WORKFLOW_VERSION_DISABLED",
+      actionType: "UPDATE",
+      metadata: expect.objectContaining({
+        operation: "updateWorkflowVersion",
+      }),
     });
   });
 

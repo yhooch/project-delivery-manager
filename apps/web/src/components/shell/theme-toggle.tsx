@@ -2,6 +2,7 @@
 
 import { Monitor, Moon, Sun } from "lucide-react";
 import { useTranslations } from "next-intl";
+import { useEffect, useState } from "react";
 
 import { Button } from "../ui/button";
 import {
@@ -24,7 +25,14 @@ export function ThemeToggle() {
   const t = useTranslations("common.theme");
   const { theme, resolvedTheme, setTheme } = useTheme();
   const { session, persistPreferences } = useSession();
-  const Icon = ICONS[resolvedTheme === "dark" ? "dark" : "light"];
+  const [mounted, setMounted] = useState(false);
+  const Icon = mounted
+    ? ICONS[resolvedTheme === "dark" ? "dark" : "light"]
+    : Sun;
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const handleSelect = (mode: NextThemeMode) => {
     setTheme(mode);
@@ -43,7 +51,9 @@ export function ThemeToggle() {
           title={t("label")}
           data-testid="theme-toggle"
         >
-          <Icon className="h-3.5 w-3.5" />
+          <Icon
+            className={mounted ? "h-3.5 w-3.5" : "h-3.5 w-3.5 opacity-0"}
+          />
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-32">

@@ -10,7 +10,10 @@ import { describe, expect, it, vi } from "vitest";
 import type { AuditService } from "../audit/audit.service";
 import type { RequirementRepository } from "../requirement/requirement.repository";
 import type { TargetResolverService } from "../target/target-resolver.service";
-import type { AttachmentRepository } from "./attachment.repository";
+import {
+  AttachmentLimitExceededError,
+  type AttachmentRepository,
+} from "./attachment.repository";
 import { AttachmentService } from "./attachment.service";
 
 describe("AttachmentService", () => {
@@ -292,6 +295,58 @@ describe("AttachmentService", () => {
       code: "ATTACHMENT_LIMIT_EXCEEDED",
     });
     expect(attachments.create).not.toHaveBeenCalled();
+  });
+
+  it("maps concurrent repository count-limit failures to the public error code", async () => {
+    const actorUserId = ulid();
+    const organizationId = ulid();
+    const spaceId = ulid();
+    const workItemId = ulid();
+    const attachments = {
+      countByTarget: vi.fn(async () => AttachmentMaxCountPerTarget - 1),
+      create: vi.fn(async () => {
+        throw new AttachmentLimitExceededError();
+      }),
+      findById: vi.fn(),
+      listByTarget: vi.fn(),
+    } as unknown as AttachmentRepository;
+    const targets = {
+      resolve: vi.fn(async () => ({
+        organizationId,
+        spaceId,
+        targetId: workItemId,
+        targetType: "WORK_ITEM" as const,
+        title: "Task",
+        role: "PM" as const,
+        canWrite: true,
+      })),
+    } as unknown as TargetResolverService;
+    const service = new AttachmentService(
+      attachments,
+      {} as RequirementRepository,
+      targets,
+      createAuditService(),
+    );
+    const presign = await service.presign(actorUserId, {
+      targetType: "WORK_ITEM",
+      targetId: workItemId,
+      fileName: "spec.pdf",
+      mimeType: "application/pdf",
+      size: 1024,
+    });
+
+    await expect(
+      service.create(actorUserId, {
+        targetType: "WORK_ITEM",
+        targetId: workItemId,
+        fileName: "spec.pdf",
+        fileKey: presign.fileKey,
+        mimeType: "application/pdf",
+        size: 1024,
+      }),
+    ).rejects.toMatchObject({
+      code: "ATTACHMENT_LIMIT_EXCEEDED",
+    });
   });
 });
 

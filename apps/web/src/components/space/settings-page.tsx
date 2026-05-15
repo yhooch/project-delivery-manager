@@ -212,10 +212,7 @@ export function SpaceSettingsPage() {
       setCode(previous.code);
       setDescription(previous.description ?? "");
       setOwnerId(previous.ownerId ?? "");
-      if (
-        error instanceof ApiClientError &&
-        error.error.code === "CONFLICT"
-      ) {
+      if (error instanceof ApiClientError && error.error.code === "CONFLICT") {
         setCodeError("spaceSettings.basic.codeConflict");
       } else {
         setSaveErrorKey(getApiErrorMessageKey(error));
@@ -299,7 +296,10 @@ export function SpaceSettingsPage() {
 
   if (status === "loading") {
     return (
-      <div data-testid="space-settings-page" className="flex h-full flex-col">
+      <div
+        data-testid="space-settings-page"
+        className="flex h-full min-w-0 flex-col"
+      >
         {headerNode}
         <div className="flex-1 overflow-y-auto px-6 py-6">
           <ListSkeleton rows={6} />
@@ -310,7 +310,10 @@ export function SpaceSettingsPage() {
 
   if (!spaceId) {
     return (
-      <div data-testid="space-settings-page" className="flex h-full flex-col">
+      <div
+        data-testid="space-settings-page"
+        className="flex h-full min-w-0 flex-col"
+      >
         {headerNode}
         <div className="flex-1 overflow-y-auto px-6 py-6">
           <EmptyState
@@ -324,7 +327,10 @@ export function SpaceSettingsPage() {
 
   if (errorKey) {
     return (
-      <div data-testid="space-settings-page" className="flex h-full flex-col">
+      <div
+        data-testid="space-settings-page"
+        className="flex h-full min-w-0 flex-col"
+      >
         {headerNode}
         <div className="flex-1 overflow-y-auto px-6 py-6">
           <ErrorState message={tRoot(errorKey)} onRetry={() => void load()} />
@@ -335,7 +341,10 @@ export function SpaceSettingsPage() {
 
   if (isLoading || !space) {
     return (
-      <div data-testid="space-settings-page" className="flex h-full flex-col">
+      <div
+        data-testid="space-settings-page"
+        className="flex h-full min-w-0 flex-col"
+      >
         {headerNode}
         <div className="flex-1 overflow-y-auto px-6 py-6">
           <ListSkeleton rows={6} />
@@ -350,11 +359,14 @@ export function SpaceSettingsPage() {
     : undefined;
 
   return (
-    <div data-testid="space-settings-page" className="flex h-full flex-col">
+    <div
+      data-testid="space-settings-page"
+      className="flex h-full min-w-0 flex-col"
+    >
       {headerNode}
 
-      <div className="flex-1 overflow-y-auto px-6 py-6">
-        <div className="mx-auto flex max-w-4xl flex-col gap-6">
+      <div className="min-w-0 flex-1 overflow-y-auto px-4 py-6 sm:px-6">
+        <div className="mx-auto flex max-w-4xl min-w-0 flex-col gap-6">
           {saveErrorKey ? (
             <div
               role="alert"
@@ -369,15 +381,17 @@ export function SpaceSettingsPage() {
             data-testid="space-settings-overview"
             className="rounded-lg border border-border bg-card px-5 py-4"
           >
-            <div className="flex items-start gap-4">
+            <div className="flex min-w-0 items-start gap-4">
               <Avatar className="h-12 w-12">
                 <AvatarFallback className="text-base">
                   {space.name.slice(0, 1).toUpperCase()}
                 </AvatarFallback>
               </Avatar>
-              <div className="flex-1">
-                <div className="flex items-center gap-2">
-                  <h2 className="text-base font-semibold">{space.name}</h2>
+              <div className="min-w-0 flex-1">
+                <div className="flex min-w-0 flex-wrap items-center gap-2">
+                  <h2 className="min-w-0 truncate text-base font-semibold">
+                    {space.name}
+                  </h2>
                   <span className="font-mono text-[11px] text-muted-foreground">
                     {space.code}
                   </span>
@@ -391,19 +405,19 @@ export function SpaceSettingsPage() {
                   </Badge>
                 </div>
                 <dl className="mt-2 grid grid-cols-1 gap-x-6 gap-y-1 text-[11px] text-muted-foreground sm:grid-cols-3">
-                  <div className="flex gap-1.5">
+                  <div className="flex min-w-0 gap-1.5">
                     <dt>{t("overview.organizationLabel")}：</dt>
-                    <dd className="font-medium text-foreground/80">
+                    <dd className="min-w-0 truncate font-medium text-foreground/80">
                       {currentOrganization?.name ?? "—"}
                     </dd>
                   </div>
-                  <div className="flex gap-1.5">
+                  <div className="flex min-w-0 gap-1.5">
                     <dt>{t("overview.memberCountLabel")}：</dt>
                     <dd className="font-medium text-foreground/80">
                       {t("overview.memberCount", { count: members.length })}
                     </dd>
                   </div>
-                  <div className="flex gap-1.5">
+                  <div className="flex min-w-0 gap-1.5">
                     <dt>{t("overview.yourRoleLabel")}：</dt>
                     <dd className="font-medium text-foreground/80">
                       {currentSpace?.role
@@ -448,9 +462,7 @@ export function SpaceSettingsPage() {
                     }}
                     aria-invalid={codeError ? "true" : undefined}
                     aria-describedby={
-                      codeError
-                        ? "space-code-error"
-                        : "space-code-hint"
+                      codeError ? "space-code-error" : "space-code-hint"
                     }
                     disabled={!writeAllowed}
                     required
@@ -505,7 +517,7 @@ export function SpaceSettingsPage() {
                   </select>
                 </div>
               </div>
-              <div className="flex items-center justify-end gap-3 border-t border-border px-5 py-3">
+              <div className="flex flex-wrap items-center justify-end gap-3 border-t border-border px-5 py-3">
                 {writeDisabledHint && (
                   <span className="text-[11px] text-muted-foreground">
                     {writeDisabledHint}
@@ -530,7 +542,7 @@ export function SpaceSettingsPage() {
               <h2 className="text-sm font-semibold">{t("threshold.title")}</h2>
             </header>
             <div className="px-5 py-4">
-              <div className="flex items-end gap-3">
+              <div className="flex flex-wrap items-end gap-3">
                 <div className="flex flex-col gap-1.5">
                   <Label htmlFor="stale-threshold">
                     {t("threshold.fields.staleDays")}
@@ -597,22 +609,20 @@ export function SpaceSettingsPage() {
               <span className="text-[11px] text-muted-foreground">
                 {t("overview.memberCount", { count: members.length })}
               </span>
-              <div className="ml-auto flex items-center gap-2">
+              <div className="flex w-full min-w-0 flex-wrap items-center gap-2 sm:ml-auto sm:w-auto">
                 <Input
                   data-testid="space-settings-member-search"
                   value={memberSearch}
                   onChange={(event) => setMemberSearch(event.target.value)}
                   placeholder={t("members.searchPlaceholder")}
-                  className="h-8 w-44 text-xs"
+                  className="h-8 min-w-0 flex-1 text-xs sm:w-44 sm:flex-none"
                 />
                 <select
                   data-testid="space-settings-member-role-filter"
-                  className="h-8 rounded-md border border-input bg-background px-2 text-xs"
+                  className="h-8 min-w-0 rounded-md border border-input bg-background px-2 text-xs"
                   value={memberRoleFilter}
                   onChange={(event) =>
-                    setMemberRoleFilter(
-                      event.target.value as SpaceRole | "ALL",
-                    )
+                    setMemberRoleFilter(event.target.value as SpaceRole | "ALL")
                   }
                 >
                   <option value="ALL">{t("members.roleFilterAll")}</option>
@@ -653,14 +663,15 @@ export function SpaceSettingsPage() {
               >
                 {filteredMembers.map((member) => {
                   const isOwner =
-                    ownerMember?.userId === member.userId && Boolean(space.ownerId);
+                    ownerMember?.userId === member.userId &&
+                    Boolean(space.ownerId);
                   const identity = getSpaceMemberIdentity(member);
                   return (
                     <li
                       key={member.id}
                       data-testid={`space-settings-member-${member.id}`}
                       className={cn(
-                        "flex items-center gap-3 px-5 py-2.5",
+                        "flex min-w-0 flex-wrap items-center gap-3 px-5 py-2.5",
                         member.status === "DISABLED" && "opacity-60",
                       )}
                     >
@@ -669,8 +680,8 @@ export function SpaceSettingsPage() {
                           {initialOf(identity.displayName)}
                         </AvatarFallback>
                       </Avatar>
-                      <div className="flex-1">
-                        <div className="flex items-center gap-1.5 text-[13px] font-medium">
+                      <div className="min-w-0 flex-1">
+                        <div className="flex min-w-0 flex-wrap items-center gap-1.5 text-[13px] font-medium">
                           {identity.displayName}
                           {isOwner && (
                             <Badge variant="primary" className="text-[10px]">

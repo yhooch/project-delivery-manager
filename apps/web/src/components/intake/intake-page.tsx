@@ -36,7 +36,10 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "../../i18n/routing";
 import { getApiErrorMessageKey } from "../../lib/api-error-messages";
 import { createComment, listComments } from "../../lib/comment-service";
-import { useListKeyboardNav } from "../../lib/hooks/use-list-keyboard-nav";
+import {
+  useFocusReturn,
+  useListKeyboardNav,
+} from "../../lib/hooks/use-list-keyboard-nav";
 import {
   acceptIntakeItem,
   deferIntakeItem,
@@ -160,6 +163,7 @@ export function IntakePage() {
   const [handledDeepLinkKey, setHandledDeepLinkKey] = useState<string | null>(
     null,
   );
+  const { captureFocus, restoreFocus } = useFocusReturn();
 
   const setListFilter = useCallback(
     (key: keyof IntakeListFilterState, value: string) => {
@@ -267,6 +271,7 @@ export function IntakePage() {
 
   const openItem = useCallback(
     (item: IntakeItem) => {
+      captureFocus();
       recordRecentOpen(
         {
           id: item.id,
@@ -279,7 +284,7 @@ export function IntakePage() {
       );
       setActive(item);
     },
-    [recentScope],
+    [captureFocus, recentScope],
   );
 
   useEffect(() => {
@@ -342,7 +347,12 @@ export function IntakePage() {
     onSelect: setActive,
     onOpen: openItem,
     onEdit: openItem,
-    canAssign: () => false,
+    canAssign: () => canWriteIntake,
+    onAssign: (item) => {
+      captureFocus();
+      setActive(item);
+      setEditOpen(true);
+    },
     canSubmit: (item) => canSubmitIntakeItem(item, canWriteIntake),
     onSubmit: (item) => {
       if (!canWriteIntake) {
@@ -367,6 +377,7 @@ export function IntakePage() {
       setActive(null);
       setActionErrorKey(null);
       setEditOpen(false);
+      restoreFocus();
     }
   }
 
@@ -569,7 +580,7 @@ export function IntakePage() {
               onClick={() => openItem(item)}
               data-selected={active?.id === item.id}
               className={cn(
-                "flex w-full items-center gap-3 border-l-2 px-6 py-2.5 text-left transition-colors cursor-pointer",
+                "flex w-full min-w-0 items-center gap-3 border-l-2 px-4 py-2.5 text-left transition-colors cursor-pointer sm:px-6",
                 active?.id === item.id
                   ? "border-primary bg-primary/10"
                   : "border-transparent hover:bg-muted/40",
@@ -585,17 +596,19 @@ export function IntakePage() {
               <span className="font-mono text-[11px] text-muted-foreground">
                 {formatItemCode(item.id)}
               </span>
-              <span className="flex-1 truncate text-[13px] font-medium">
+              <span className="min-w-0 flex-1 truncate text-[13px] font-medium">
                 {item.title}
               </span>
               <Badge variant="outline" className="hidden md:inline-flex">
                 {tIntakeItems(`sourceType.${item.sourceType}`)}
               </Badge>
-              <StatusBadge
-                category={intakeStatusToCategory[item.status]}
-                label={tIntakeItems(`status.${item.status}`)}
-                withDot={false}
-              />
+              <span className="shrink-0">
+                <StatusBadge
+                  category={intakeStatusToCategory[item.status]}
+                  label={tIntakeItems(`status.${item.status}`)}
+                  withDot={false}
+                />
+              </span>
               {item.versionId && (
                 <span className="hidden gap-1 text-[11px] text-muted-foreground md:inline-flex">
                   <GitBranch className="h-2.5 w-2.5" />
@@ -620,7 +633,7 @@ export function IntakePage() {
   }
 
   return (
-    <div data-testid="intake-page" className="flex h-full flex-col">
+    <div data-testid="intake-page" className="flex h-full min-w-0 flex-col">
       <PageHeader
         eyebrow={tNav("group.document")}
         title={tNav("intake")}
@@ -629,34 +642,38 @@ export function IntakePage() {
       />
 
       {sessionStatus === "authenticated" && spaceId && !errorKey && (
-        <div className="flex items-center gap-1 border-b border-border px-6 py-3">
-          {buckets.map((b) => (
-            <button
-              key={b.key}
-              type="button"
-              data-testid="intake-filter-option"
-              data-filter-key={b.key}
-              onClick={() => setFilter(b.key)}
-              className={cn(
-                "flex h-7 items-center gap-1.5 rounded-md px-2.5 text-[12px] transition-colors cursor-pointer",
-                filter === b.key
-                  ? "bg-muted font-medium text-foreground"
-                  : "text-muted-foreground hover:bg-muted/50 hover:text-foreground",
-              )}
-            >
-              {b.label}
-              <span className="rounded bg-background px-1 font-mono text-[10px]">
-                {b.count}
-              </span>
-            </button>
-          ))}
+        <div className="border-b border-border px-4 py-3 sm:px-6">
+          <div className="-mx-1 overflow-x-auto px-1">
+            <div className="flex min-w-max items-center gap-1">
+              {buckets.map((b) => (
+                <button
+                  key={b.key}
+                  type="button"
+                  data-testid="intake-filter-option"
+                  data-filter-key={b.key}
+                  onClick={() => setFilter(b.key)}
+                  className={cn(
+                    "flex h-7 items-center gap-1.5 rounded-md px-2.5 text-[12px] transition-colors cursor-pointer",
+                    filter === b.key
+                      ? "bg-muted font-medium text-foreground"
+                      : "text-muted-foreground hover:bg-muted/50 hover:text-foreground",
+                  )}
+                >
+                  {b.label}
+                  <span className="rounded bg-background px-1 font-mono text-[10px]">
+                    {b.count}
+                  </span>
+                </button>
+              ))}
+            </div>
+          </div>
         </div>
       )}
 
       {sessionStatus === "authenticated" && spaceId && filterOpen && (
         <div
           data-testid="intake-filter-panel"
-          className="grid gap-3 border-b border-border bg-muted/20 px-6 py-3 md:grid-cols-5"
+          className="grid min-w-0 gap-3 border-b border-border bg-muted/20 px-4 py-3 sm:px-6 md:grid-cols-3 xl:grid-cols-5"
         >
           <FilterField label={t("filters.version")}>
             <select
@@ -746,7 +763,7 @@ export function IntakePage() {
         </div>
       )}
 
-      <div className="flex-1 overflow-y-auto">{body}</div>
+      <div className="min-w-0 flex-1 overflow-y-auto">{body}</div>
 
       <Sheet open={Boolean(active)} onOpenChange={handleCloseDrawer}>
         <SheetContent
@@ -785,11 +802,11 @@ export function IntakePage() {
                 </div>
               </SheetHeader>
 
-              <div className="flex items-center gap-1.5 border-b border-border bg-muted/30 px-5 py-2.5">
+              <div className="flex min-w-0 flex-col gap-2 border-b border-border bg-muted/30 px-5 py-2.5 sm:flex-row sm:items-center">
                 <span className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
                   {t("detail.actions")}
                 </span>
-                <div className="ml-auto flex items-center gap-1.5">
+                <div className="flex min-w-0 flex-wrap items-center gap-1.5 sm:ml-auto sm:justify-end">
                   {canWriteIntake && (
                     <Button
                       size="sm"
@@ -885,8 +902,8 @@ export function IntakePage() {
                 </div>
               )}
 
-              <div className="flex-1 overflow-y-auto px-5 py-4">
-                <div className="grid grid-cols-2 gap-x-6 gap-y-3 text-[13px]">
+              <div className="min-w-0 flex-1 overflow-y-auto px-5 py-4">
+                <div className="grid grid-cols-1 gap-x-6 gap-y-3 text-[13px] sm:grid-cols-2">
                   <FieldRow
                     icon={Users}
                     label={t("detail.reporter")}
@@ -1466,26 +1483,19 @@ function FieldRow({
   );
 }
 
-function shortenId(id: string): string {
-  if (id.length <= 8) {
-    return id;
-  }
-  return id.slice(-6);
-}
-
 function displayUserName(
   userId: string,
   getMember: (userId: string) => SpaceMemberWithUser | undefined,
 ): string {
   const member = getMember(userId);
-  return member?.user.name ?? member?.user.username ?? shortenId(userId);
+  return member?.user.name ?? member?.user.username ?? "—";
 }
 
 function displayVersionName(
   versionId: string,
   getVersion: (versionId: string) => Version | undefined,
 ): string {
-  return getVersion(versionId)?.name ?? shortenId(versionId);
+  return getVersion(versionId)?.name ?? "—";
 }
 
 function formatDateTime(value: string): string {
@@ -1505,8 +1515,8 @@ function formatDateTime(value: string): string {
   }
 }
 
-function formatItemCode(id: string): string {
-  return `INK-${shortenId(id)}`.toUpperCase();
+function formatItemCode(_id: string): string {
+  return "INTAKE";
 }
 
 function initialOf(id: string): string {

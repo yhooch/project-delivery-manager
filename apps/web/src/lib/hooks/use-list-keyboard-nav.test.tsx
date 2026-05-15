@@ -1,7 +1,8 @@
-import { render } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { useState } from "react";
 import { describe, expect, it, vi } from "vitest";
 
-import { useListKeyboardNav } from "./use-list-keyboard-nav";
+import { useFocusReturn, useListKeyboardNav } from "./use-list-keyboard-nav";
 
 type Item = {
   id: string;
@@ -51,13 +52,7 @@ describe("useListKeyboardNav", () => {
     const onAssign = vi.fn();
     const onSubmit = vi.fn();
 
-    render(
-      <Harness
-        onAssign={onAssign}
-        onEdit={onEdit}
-        onSubmit={onSubmit}
-      />,
-    );
+    render(<Harness onAssign={onAssign} onEdit={onEdit} onSubmit={onSubmit} />);
 
     window.dispatchEvent(new KeyboardEvent("keydown", { key: "e" }));
     window.dispatchEvent(new KeyboardEvent("keydown", { key: "a" }));
@@ -99,10 +94,7 @@ describe("useListKeyboardNav", () => {
     const onSubmit = vi.fn();
 
     render(
-      <Harness
-        canSubmit={(item) => item.id === "two"}
-        onSubmit={onSubmit}
-      />,
+      <Harness canSubmit={(item) => item.id === "two"} onSubmit={onSubmit} />,
     );
 
     const event = new KeyboardEvent("keydown", {
@@ -113,5 +105,50 @@ describe("useListKeyboardNav", () => {
 
     expect(onSubmit).not.toHaveBeenCalled();
     expect(event.defaultPrevented).toBe(false);
+  });
+});
+
+function FocusReturnHarness() {
+  const [open, setOpen] = useState(false);
+  const { captureFocus, restoreFocus } = useFocusReturn();
+
+  return (
+    <>
+      <button
+        type="button"
+        onClick={() => {
+          captureFocus();
+          setOpen(true);
+        }}
+      >
+        open
+      </button>
+      {open ? (
+        <button
+          type="button"
+          onClick={() => {
+            setOpen(false);
+            restoreFocus();
+          }}
+        >
+          close
+        </button>
+      ) : null}
+    </>
+  );
+}
+
+describe("useFocusReturn", () => {
+  it("restores focus to the trigger after a controlled drawer closes", async () => {
+    render(<FocusReturnHarness />);
+
+    const opener = screen.getByRole("button", { name: "open" });
+    opener.focus();
+    fireEvent.click(opener);
+    expect(screen.getByRole("button", { name: "close" })).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "close" }));
+
+    await waitFor(() => expect(opener).toHaveFocus());
   });
 });

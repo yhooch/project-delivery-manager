@@ -22,8 +22,15 @@ import {
 } from "react";
 
 import { getApiErrorMessageKey } from "../../lib/api-error-messages";
-import { getBug, listBugs, type BugListFilterState } from "../../lib/bug-service";
-import { useListKeyboardNav } from "../../lib/hooks/use-list-keyboard-nav";
+import {
+  getBug,
+  listBugs,
+  type BugListFilterState,
+} from "../../lib/bug-service";
+import {
+  useFocusReturn,
+  useListKeyboardNav,
+} from "../../lib/hooks/use-list-keyboard-nav";
 import { listRequirements } from "../../lib/requirement-service";
 import {
   useSpaceMembers,
@@ -168,13 +175,15 @@ export function BugsPage() {
   const [handledDeepLinkKey, setHandledDeepLinkKey] = useState<string | null>(
     null,
   );
-  const [bucketFilter, setBucketFilter] =
-    useState<BugLifecycleBucket>("all");
+  const [bucketFilter, setBucketFilter] = useState<BugLifecycleBucket>("all");
+  const { captureFocus, restoreFocus } = useFocusReturn();
   const canCreateBug = canWriteWorkItems(
     currentSpace?.role,
     currentSpace?.status,
   );
-  const requestedVersionId = normalizeSearchParam(searchParams.get("versionId"));
+  const requestedVersionId = normalizeSearchParam(
+    searchParams.get("versionId"),
+  );
   const requestedStatusCategory = normalizeStatusCategory(
     searchParams.get("statusCategory"),
   );
@@ -297,6 +306,7 @@ export function BugsPage() {
 
   const openBug = useCallback(
     (bug: MockBugItem) => {
+      captureFocus();
       recordRecentOpen(
         {
           id: bug.id,
@@ -310,7 +320,7 @@ export function BugsPage() {
       setActiveItem(bug);
       setSheetOpen(true);
     },
-    [recentScope],
+    [captureFocus, recentScope],
   );
 
   const openEditBug = useCallback((bug: BugView) => {
@@ -320,11 +330,31 @@ export function BugsPage() {
   const openEditBugFromMock = useCallback(
     (bug: MockBugItem) => {
       const source = items.find((item) => item.id === bug.id);
-      if (source && canEditBug(source, currentSpace?.role, currentSpace?.status)) {
+      if (
+        source &&
+        canEditBug(source, currentSpace?.role, currentSpace?.status)
+      ) {
+        captureFocus();
         openEditBug(source);
       }
     },
-    [currentSpace?.role, currentSpace?.status, items, openEditBug],
+    [
+      captureFocus,
+      currentSpace?.role,
+      currentSpace?.status,
+      items,
+      openEditBug,
+    ],
+  );
+
+  const handleSheetOpenChange = useCallback(
+    (nextOpen: boolean) => {
+      setSheetOpen(nextOpen);
+      if (!nextOpen) {
+        restoreFocus();
+      }
+    },
+    [restoreFocus],
   );
 
   const handleBugUpdated = useCallback(
@@ -434,7 +464,15 @@ export function BugsPage() {
     onSelect: setActiveItem,
     onOpen: openBug,
     onEdit: openEditBugFromMock,
-    onClose: () => setSheetOpen(false),
+    canAssign: (bug) =>
+      canEditBug(
+        items.find((item) => item.id === bug.id),
+        currentSpace?.role,
+        currentSpace?.status,
+      ),
+    onAssign: openEditBugFromMock,
+    canSubmit: () => false,
+    onClose: () => handleSheetOpenChange(false),
   });
 
   const buckets = useMemo(
@@ -491,7 +529,7 @@ export function BugsPage() {
 
   if (sessionStatus === "loading") {
     return (
-      <div data-testid="bugs-page" className="flex h-full flex-col">
+      <div data-testid="bugs-page" className="flex h-full min-w-0 flex-col">
         {header}
         <ListSkeleton />
       </div>
@@ -500,7 +538,7 @@ export function BugsPage() {
 
   if (!spaceId) {
     return (
-      <div data-testid="bugs-page" className="flex h-full flex-col">
+      <div data-testid="bugs-page" className="flex h-full min-w-0 flex-col">
         {header}
         <EmptyState
           title={t("states.noSpace.title")}
@@ -511,43 +549,47 @@ export function BugsPage() {
   }
 
   return (
-    <div data-testid="bugs-page" className="flex h-full flex-col">
+    <div data-testid="bugs-page" className="flex h-full min-w-0 flex-col">
       {header}
 
-      <div className="flex items-center gap-1 border-b border-border px-6 py-3">
-        {buckets.map((b) => (
-          <button
-            key={b.key}
-            type="button"
-            data-testid="bugs-filter-option"
-            data-filter-key={b.key}
-            onClick={() => {
-              setBucketFilter(b.key);
-              if (b.key === "all") {
-                setFilter("statusCategory", "");
-              } else {
-                setFilter("statusCategory", bugBucketCategory[b.key]);
-              }
-            }}
-            className={cn(
-              "flex h-7 items-center gap-1.5 rounded-md px-2.5 text-[12px] transition-colors cursor-pointer",
-              activeBucket === b.key
-                ? "bg-muted font-medium text-foreground"
-                : "text-muted-foreground hover:bg-muted/50 hover:text-foreground",
-            )}
-          >
-            {b.label}
-            <span className="rounded bg-background px-1 font-mono text-[10px]">
-              {b.count}
-            </span>
-          </button>
-        ))}
+      <div className="border-b border-border px-4 py-3 sm:px-6">
+        <div className="-mx-1 overflow-x-auto px-1">
+          <div className="flex min-w-max items-center gap-1">
+            {buckets.map((b) => (
+              <button
+                key={b.key}
+                type="button"
+                data-testid="bugs-filter-option"
+                data-filter-key={b.key}
+                onClick={() => {
+                  setBucketFilter(b.key);
+                  if (b.key === "all") {
+                    setFilter("statusCategory", "");
+                  } else {
+                    setFilter("statusCategory", bugBucketCategory[b.key]);
+                  }
+                }}
+                className={cn(
+                  "flex h-7 items-center gap-1.5 rounded-md px-2.5 text-[12px] transition-colors cursor-pointer",
+                  activeBucket === b.key
+                    ? "bg-muted font-medium text-foreground"
+                    : "text-muted-foreground hover:bg-muted/50 hover:text-foreground",
+                )}
+              >
+                {b.label}
+                <span className="rounded bg-background px-1 font-mono text-[10px]">
+                  {b.count}
+                </span>
+              </button>
+            ))}
+          </div>
+        </div>
       </div>
 
       {filterOpen && (
         <div
           data-testid="bugs-filter-panel"
-          className="grid gap-3 border-b border-border bg-muted/20 px-6 py-3 md:grid-cols-6"
+          className="grid min-w-0 gap-3 border-b border-border bg-muted/20 px-4 py-3 sm:px-6 md:grid-cols-3 xl:grid-cols-6"
         >
           <FilterField label={tFilters("version")}>
             <select
@@ -664,7 +706,7 @@ export function BugsPage() {
         </div>
       )}
 
-      <div className="flex-1 overflow-y-auto">
+      <div className="min-w-0 flex-1 overflow-y-auto">
         {loading ? (
           <ListSkeleton />
         ) : errorMessage ? (
@@ -697,7 +739,7 @@ export function BugsPage() {
               >
                 <div
                   className={cn(
-                    "flex items-center gap-2 border-l-2 px-6 py-2.5 transition-colors",
+                    "flex min-w-0 items-center gap-2 border-l-2 px-4 py-2.5 transition-colors sm:px-6",
                     activeItem?.id === bug.id
                       ? "border-primary bg-primary/10"
                       : "border-transparent hover:bg-muted/40",
@@ -713,22 +755,24 @@ export function BugsPage() {
                     <span className="font-mono text-[11px] text-muted-foreground">
                       {bug.code}
                     </span>
-                    <span className="flex-1 truncate text-[13px] font-medium">
+                    <span className="min-w-0 flex-1 truncate text-[13px] font-medium">
                       {bug.title}
                     </span>
                     <span
                       className={cn(
-                        "rounded px-1.5 py-0.5 text-[10px] font-medium",
+                        "hidden shrink-0 rounded px-1.5 py-0.5 text-[10px] font-medium sm:inline-flex",
                         severityColor[bug.severity],
                       )}
                     >
                       {tSeverity(bug.severity)}
                     </span>
-                    <StatusBadge
-                      category={bug.statusCategory}
-                      label={bug.statusLabel}
-                      withDot={false}
-                    />
+                    <span className="shrink-0">
+                      <StatusBadge
+                        category={bug.statusCategory}
+                        label={bug.statusLabel}
+                        withDot={false}
+                      />
+                    </span>
                     {bug.versionName && (
                       <Badge
                         variant="outline"
@@ -779,7 +823,7 @@ export function BugsPage() {
         key={`${activeItem?.id ?? "empty"}:${detailRevision}`}
         item={activeItem}
         open={sheetOpen}
-        onOpenChange={setSheetOpen}
+        onOpenChange={handleSheetOpenChange}
         organizationId={organizationId}
         spaceId={spaceId}
         onChanged={() => {
@@ -863,8 +907,7 @@ function toMockBug(
 ): MockBugItem {
   const code = deriveBugCode(bug.id);
   const member = bug.assigneeId ? lookups.getMember(bug.assigneeId) : undefined;
-  const assigneeName =
-    member?.user.name ?? member?.user.username ?? bug.assigneeId ?? "";
+  const assigneeName = member?.user.name ?? member?.user.username ?? "";
   const initial = deriveInitial(assigneeName);
   const version = bug.versionId ? lookups.getVersion(bug.versionId) : undefined;
   const dueDate = bug.dueDate ? formatDate(bug.dueDate) : undefined;
@@ -918,9 +961,8 @@ function resolveBugLifecycleBucket(
   return bugBucketByCategory[bug.statusCategory] ?? "pendingConfirm";
 }
 
-function deriveBugCode(id: string): string {
-  const tail = id.slice(-6).toUpperCase();
-  return `BUG-${tail}`;
+function deriveBugCode(_id: string): string {
+  return "BUG";
 }
 
 function deriveInitial(value?: string): string {
@@ -951,7 +993,9 @@ function normalizeSearchParam(value: string | null): string | undefined {
   return normalized ? normalized : undefined;
 }
 
-function createInitialFilters(searchParams: URLSearchParams): BugListFilterState {
+function createInitialFilters(
+  searchParams: URLSearchParams,
+): BugListFilterState {
   const versionId = normalizeSearchParam(searchParams.get("versionId"));
   const statusCategory = normalizeStatusCategory(
     searchParams.get("statusCategory"),
@@ -963,7 +1007,9 @@ function createInitialFilters(searchParams: URLSearchParams): BugListFilterState
   };
 }
 
-function normalizeStatusCategory(value: string | null): StatusCategory | undefined {
+function normalizeStatusCategory(
+  value: string | null,
+): StatusCategory | undefined {
   const normalized = normalizeSearchParam(value);
   return normalized && STATUS_FILTERS.includes(normalized as StatusCategory)
     ? (normalized as StatusCategory)

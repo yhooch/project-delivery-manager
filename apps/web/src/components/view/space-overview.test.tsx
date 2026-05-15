@@ -1,4 +1,10 @@
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import {
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const { translatorCache } = vi.hoisted(() => ({
@@ -236,18 +242,16 @@ describe("SpaceOverview", () => {
     expect(screen.getByTestId("space-overview-stale")).toHaveTextContent("5");
 
     // Task progress / bug status tiles render numbers.
-    expect(screen.getByTestId("space-overview-task-progress")).toHaveTextContent(
-      "5/20",
-    );
+    expect(
+      screen.getByTestId("space-overview-task-progress"),
+    ).toHaveTextContent("5/20");
     expect(screen.getByTestId("space-overview-bug-status")).toHaveTextContent(
-      "3/8",
+      "5/8",
     );
 
     // Task and bug status distribution chips render their own counts and
     // each chip drills to the correct destination.
-    const taskDoneChip = screen.getByTestId(
-      "space-overview-task-status-DONE",
-    );
+    const taskDoneChip = screen.getByTestId("space-overview-task-status-DONE");
     expect(taskDoneChip).toHaveTextContent("5");
     expect(taskDoneChip.getAttribute("href")).toContain("/work-items");
     expect(taskDoneChip.getAttribute("href")).toContain("statusCategory=DONE");
@@ -469,14 +473,10 @@ describe("SpaceOverview", () => {
     const overdueLink = await screen.findByTestId(
       "space-overview-exception-overdue",
     );
-    expect(overdueLink.getAttribute("href")).toContain(
-      "exceptionType=overdue",
-    );
+    expect(overdueLink.getAttribute("href")).toContain("exceptionType=overdue");
     expect(overdueLink.getAttribute("href")).toContain("versionId=V_99");
 
-    const taskDoneChip = screen.getByTestId(
-      "space-overview-task-status-DONE",
-    );
+    const taskDoneChip = screen.getByTestId("space-overview-task-status-DONE");
     expect(taskDoneChip.getAttribute("href")).toContain("versionId=V_99");
     expect(taskDoneChip.getAttribute("href")).toContain("workItemType=TASK");
   });

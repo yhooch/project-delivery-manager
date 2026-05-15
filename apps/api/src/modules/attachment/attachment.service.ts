@@ -28,6 +28,7 @@ import {
 } from "../requirement/requirement.repository";
 import { TargetResolverService } from "../target/target-resolver.service";
 import {
+  AttachmentLimitExceededError,
   ATTACHMENT_REPOSITORY,
   type AttachmentRepository,
 } from "./attachment.repository";
@@ -92,7 +93,7 @@ export class AttachmentService {
     );
     await this.assertAttachmentCountLimit(input.targetType, input.targetId);
 
-    const created = await this.attachments.create({
+    const created = await this.createAttachmentOrThrowLimitExceeded({
       id: ulid(),
       organizationId: target.organizationId,
       spaceId: target.spaceId,
@@ -292,11 +293,21 @@ export class AttachmentService {
     const count = await this.attachments.countByTarget(targetType, targetId);
 
     if (count >= AttachmentMaxCountPerTarget) {
-      throw new ApiException(
-        "ATTACHMENT_LIMIT_EXCEEDED",
-        "Attachment count limit exceeded",
-        HttpStatus.BAD_REQUEST,
-      );
+      throwAttachmentLimitExceeded();
+    }
+  }
+
+  private async createAttachmentOrThrowLimitExceeded(
+    input: Parameters<AttachmentRepository["create"]>[0],
+  ) {
+    try {
+      return await this.attachments.create(input);
+    } catch (error) {
+      if (error instanceof AttachmentLimitExceededError) {
+        throwAttachmentLimitExceeded();
+      }
+
+      throw error;
     }
   }
 
@@ -508,6 +519,14 @@ function throwAttachmentTargetNotFound(): never {
     "ATTACHMENT_TARGET_NOT_FOUND",
     "Attachment target not found",
     HttpStatus.NOT_FOUND,
+  );
+}
+
+function throwAttachmentLimitExceeded(): never {
+  throw new ApiException(
+    "ATTACHMENT_LIMIT_EXCEEDED",
+    "Attachment count limit exceeded",
+    HttpStatus.BAD_REQUEST,
   );
 }
 

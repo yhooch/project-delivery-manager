@@ -97,25 +97,31 @@ export class SpaceService {
       );
     }
 
-    const created = await this.spaces.createWithAdmin({
-      id: ulid(),
-      adminMemberId: ulid(),
-      ownerMemberId: ownerId === actorUserId ? undefined : ulid(),
-      organizationId,
-      name: input.name,
-      code,
-      description: input.description,
-      ownerId,
-      staleThresholdDays:
-        input.staleThresholdDays ?? DEFAULT_STALE_THRESHOLD_DAYS,
-      actorUserId,
-    });
-
-    await this.workflowInitializer.initializeDefaultWorkflowsForSpace({
-      actorUserId,
-      organizationId,
-      spaceId: created.space.id,
-    });
+    const created = await this.spaces.createWithAdmin(
+      {
+        id: ulid(),
+        adminMemberId: ulid(),
+        ownerMemberId: ownerId === actorUserId ? undefined : ulid(),
+        organizationId,
+        name: input.name,
+        code,
+        description: input.description,
+        ownerId,
+        staleThresholdDays:
+          input.staleThresholdDays ?? DEFAULT_STALE_THRESHOLD_DAYS,
+        actorUserId,
+      },
+      async (tx, createdSpace) => {
+        await this.workflowInitializer.initializeDefaultWorkflowsForSpaceInTransaction(
+          tx,
+          {
+            actorUserId,
+            organizationId,
+            spaceId: createdSpace.space.id,
+          },
+        );
+      },
+    );
     await this.audit.record({
       actionType: "CREATE",
       actorId: actorUserId,

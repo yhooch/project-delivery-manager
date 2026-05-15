@@ -4,6 +4,7 @@ import {
   render,
   screen,
   waitFor,
+  within,
 } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -370,21 +371,33 @@ describe("MyWorkbench", () => {
       screen.getByText("workbench.summary.pendingConfirm"),
     ).toBeInTheDocument();
     expect(
-      screen.getByText("workbench.summary.pendingRegression"),
-    ).toBeInTheDocument();
-    expect(screen.getByText("workbench.summary.stale")).toBeInTheDocument();
+      screen.queryByText("workbench.summary.pendingRegression"),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByText("workbench.summary.stale"),
+    ).not.toBeInTheDocument();
+    expect(screen.getByTestId("workbench-summary").children).toHaveLength(4);
 
-    // Values: todoCount=1, dueSoon=2, blocked=4, pendingConfirm=5,
-    // pendingRegression=1, stale=0.
-    expect(screen.getAllByText("1").length).toBeGreaterThanOrEqual(1);
-    expect(screen.getByText("4")).toBeInTheDocument();
-    expect(screen.getByText("5")).toBeInTheDocument();
-    expect(screen.getAllByText("0").length).toBeGreaterThanOrEqual(1);
+    const summary = screen.getByTestId("workbench-summary");
+    // Values: todoCount=1, dueSoon=2, blocked=4, pendingConfirm=5.
+    expect(within(summary).getByText("1")).toBeInTheDocument();
+    expect(within(summary).getByText("2")).toBeInTheDocument();
+    expect(within(summary).getByText("4")).toBeInTheDocument();
+    expect(within(summary).getByText("5")).toBeInTheDocument();
   });
 
-  it("renders '—' when stats is missing (graceful degradation)", async () => {
+  it("falls back to section totals when stats is missing", async () => {
     getMyWorkbenchViewMock.mockResolvedValueOnce(
-      makeWorkbenchResponse({ withStats: false }),
+      makeWorkbenchResponse({
+        withStats: false,
+        blocked: [
+          makeWorkItemSummary({ id: "01ARZ3NDEKTSV4RRFFQ69G5F06" }),
+        ],
+        pendingConfirm: [
+          makeWorkItemSummary({ id: "01ARZ3NDEKTSV4RRFFQ69G5F07" }),
+          makeWorkItemSummary({ id: "01ARZ3NDEKTSV4RRFFQ69G5F08" }),
+        ],
+      }),
     );
 
     render(<MyWorkbench />);
@@ -393,9 +406,10 @@ describe("MyWorkbench", () => {
       expect(getMyWorkbenchViewMock).toHaveBeenCalledTimes(1),
     );
 
-    // Both blocked and pendingConfirm chips fall back to '—'.
-    const dashes = await screen.findAllByText("—");
-    expect(dashes.length).toBeGreaterThanOrEqual(4);
+    const summary = await screen.findByTestId("workbench-summary");
+    expect(within(summary).getByText("1")).toBeInTheDocument();
+    expect(within(summary).getByText("2")).toBeInTheDocument();
+    expect(within(summary).queryByText("—")).not.toBeInTheDocument();
   });
 
   it("sends frozen workbench filter parameters to the view request", async () => {
@@ -456,7 +470,7 @@ describe("MyWorkbench", () => {
     );
   });
 
-  it("renders all workbench sections with their items", async () => {
+  it("renders the IA-approved workbench sections with their items", async () => {
     getMyWorkbenchViewMock.mockResolvedValueOnce(
       makeWorkbenchResponse({
         todos: [
@@ -517,20 +531,40 @@ describe("MyWorkbench", () => {
     expect(screen.getByText("Pending confirm item")).toBeInTheDocument();
     expect(screen.getByText("Blocked item")).toBeInTheDocument();
 
-    // Section titles rendered.
-    expect(screen.getByText("workbench.sections.todo")).toBeInTheDocument();
     expect(
-      screen.getByText("workbench.sections.assignedTasks"),
+      screen.getByRole("heading", { name: "workbench.sections.todo" }),
     ).toBeInTheDocument();
     expect(
-      screen.getByText("workbench.sections.assignedBugs"),
+      screen.getByRole("heading", {
+        name: "workbench.sections.pendingConfirm",
+      }),
     ).toBeInTheDocument();
-    expect(screen.getByText("workbench.sections.actions")).toBeInTheDocument();
     expect(
-      screen.getByText("workbench.sections.pendingConfirm"),
+      screen.getByRole("heading", { name: "workbench.sections.risk" }),
     ).toBeInTheDocument();
-    expect(screen.getByText("workbench.sections.dueSoon")).toBeInTheDocument();
-    expect(screen.getByText("workbench.sections.blocked")).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", { name: "workbench.sections.recent" }),
+    ).toBeInTheDocument();
+
+    expect(
+      screen.queryByRole("heading", { name: "workbench.sections.actions" }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("heading", {
+        name: "workbench.sections.assignedTasks",
+      }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("heading", {
+        name: "workbench.sections.assignedBugs",
+      }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("heading", { name: "workbench.sections.dueSoon" }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("heading", { name: "workbench.sections.blocked" }),
+    ).not.toBeInTheDocument();
   });
 
   it("preloads organization-level version names by item space without leaking ID tails", async () => {
@@ -646,7 +680,7 @@ describe("MyWorkbench", () => {
     consoleError.mockRestore();
   });
 
-  it("renders the empty blocked section hint when no blocked items returned", async () => {
+  it("renders the empty risk section hint when no risk items are returned", async () => {
     getMyWorkbenchViewMock.mockResolvedValueOnce(makeWorkbenchResponse());
 
     render(<MyWorkbench />);
@@ -656,7 +690,7 @@ describe("MyWorkbench", () => {
     );
 
     expect(
-      await screen.findByText("workbench.empty.blocked"),
+      await screen.findByText("workbench.empty.risk"),
     ).toBeInTheDocument();
   });
 

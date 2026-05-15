@@ -11,6 +11,12 @@ import type {
 
 export const ATTACHMENT_REPOSITORY = Symbol("ATTACHMENT_REPOSITORY");
 
+export class AttachmentLimitExceededError extends Error {
+  constructor() {
+    super("Attachment count limit exceeded");
+  }
+}
+
 export type AttachmentRepository = {
   countByTarget(
     targetType: AttachmentTargetType,

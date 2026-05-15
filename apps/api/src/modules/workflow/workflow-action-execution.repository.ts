@@ -1,5 +1,6 @@
 import type {
   ActionFormFieldType,
+  AuditAction,
   BugDetail,
   ObjectParticipantRelation,
   SpaceRole,
@@ -110,7 +111,7 @@ export type ReplaceWorkflowActionParticipantsInput = {
 };
 
 export type CreateWorkflowActionAuditLogInput = {
-  actionType: string;
+  actionType: AuditAction;
   actorUserId: string;
   after?: Record<string, unknown>;
   before?: Record<string, unknown>;

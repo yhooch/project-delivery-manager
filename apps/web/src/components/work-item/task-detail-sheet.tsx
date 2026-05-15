@@ -110,7 +110,7 @@ type ContextualWorkItemViewModel = WorkItemViewModel & {
 /**
  * Display label for an actor identity.
  * Prefers the cached space-member display name; otherwise falls back to a
- * truncated id so that the UI never collapses on missing lookup data.
+ * neutral fallback so missing lookup data never exposes raw ids.
  */
 function displayUser(
   userId: string | undefined,
@@ -121,14 +121,13 @@ function displayUser(
   }
 
   const member = getMember(userId);
-  const name = member?.user.name ?? truncateId(userId);
+  const name = member?.user.name ?? missingLookupLabel(userId);
   const initial = name.trim().slice(0, 1).toUpperCase() || "?";
   return { name, initial };
 }
 
-function truncateId(id: string): string {
-  if (id.length <= 8) return id;
-  return `${id.slice(0, 4)}…${id.slice(-4)}`;
+function missingLookupLabel(_id: string): string {
+  return "—";
 }
 
 function formatBytes(bytes: number): string {
@@ -301,7 +300,8 @@ function TaskDetailSheetBody({
       )
     : item.statusLabel;
   const versionName = detail?.versionId
-    ? (getVersion(detail.versionId)?.name ?? truncateId(detail.versionId))
+    ? (getVersion(detail.versionId)?.name ??
+      missingLookupLabel(detail.versionId))
     : item.versionName;
   const dueDate = detail?.dueDate
     ? formatDateTime(detail.dueDate, "default")
@@ -324,7 +324,7 @@ function TaskDetailSheetBody({
           ) : (
             <CheckCircle2 className="h-3.5 w-3.5 text-primary" />
           )}
-          <span>{item.code}</span>
+          <span>{isBug ? "BUG" : "TASK"}</span>
           <ChevronRight className="h-3 w-3" />
           <span className="truncate">{versionName}</span>
         </div>
@@ -1061,7 +1061,7 @@ function DetailTab({
   tRoot: ReturnType<typeof useTranslations>;
   versionName?: string;
 }) {
-  const assigneeId = (detail?.assigneeId ?? item.assignee.name) || undefined;
+  const assigneeId = detail?.assigneeId || undefined;
   const assignee = displayUser(assigneeId, lookup.getMember);
   const reporter = displayUser(detail?.reporterId, lookup.getMember);
   const updatedAt = detail?.lastActionAt ?? detail?.lastStatusChangedAt;
@@ -1540,7 +1540,8 @@ function LinksPanel({
   }
 
   const versionName = detail.versionId
-    ? (getVersion(detail.versionId)?.name ?? truncateId(detail.versionId))
+    ? (getVersion(detail.versionId)?.name ??
+      missingLookupLabel(detail.versionId))
     : undefined;
   const reporter = displayUser(detail.reporterId, getMember);
 

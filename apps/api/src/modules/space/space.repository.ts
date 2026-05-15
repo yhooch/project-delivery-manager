@@ -9,6 +9,7 @@ import type {
 import type {
   AddSpaceMemberInput,
   CreateSpaceInput,
+  CreateSpaceInTransaction,
   CreatedSpaceWithAdmin,
   MyWorkbenchViewInput,
   MyWorkbenchViewResult,
@@ -29,7 +30,10 @@ export const SPACE_REPOSITORY = Symbol("SPACE_REPOSITORY");
 
 export type SpaceRepository = {
   addMember(input: AddSpaceMemberInput): Promise<SpaceMemberWithUser>;
-  createWithAdmin(input: CreateSpaceInput): Promise<CreatedSpaceWithAdmin>;
+  createWithAdmin(
+    input: CreateSpaceInput,
+    inTransaction?: CreateSpaceInTransaction,
+  ): Promise<CreatedSpaceWithAdmin>;
   findAccessibleById(
     userId: string,
     spaceId: string,

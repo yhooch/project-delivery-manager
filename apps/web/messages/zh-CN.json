@@ -2073,6 +2073,7 @@
       "assignedBugs": "我负责的 Bug",
       "actions": "待处理动作",
       "pendingConfirm": "待我确认",
+      "risk": "风险/异常",
       "dueSoon": "临近截止",
       "blocked": "阻塞中",
       "recent": "最近动态"
@@ -2083,6 +2084,7 @@
       "assignedBugs": "暂无你负责的 Bug。",
       "actions": "暂无待处理动作。",
       "pendingConfirm": "暂无待你确认的事项。",
+      "risk": "暂无风险或异常事项。",
       "dueSoon": "暂无临近截止事项。",
       "blocked": "暂无阻塞工作项。",
       "recent": "暂无最近动态。",

@@ -1,5 +1,6 @@
 import type {
   ActionFormFieldType,
+  AuditAction,
   PageResult,
   Priority,
   SpaceRole,
@@ -175,7 +176,7 @@ export type AuditLogInput = {
   organizationId: string;
   spaceId?: string;
   actorId?: string;
-  actionType: string;
+  actionType: AuditAction;
   targetType: string;
   targetId: string;
   requestId?: string;

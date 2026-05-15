@@ -267,7 +267,11 @@ export function ConvertIntakeDialog({
           </div>
         )}
 
-        <form onSubmit={handleSubmit} className="flex flex-col gap-3" noValidate>
+        <form
+          onSubmit={handleSubmit}
+          className="flex flex-col gap-3"
+          noValidate
+        >
           {errorKey && (
             <div
               role="alert"
@@ -381,8 +385,7 @@ export function ConvertIntakeDialog({
                       </option>
                       {requirements.map((requirement) => (
                         <option key={requirement.id} value={requirement.id}>
-                          {requirement.title ||
-                            t("fields.untitledRequirement")}
+                          {requirement.title || t("fields.untitledRequirement")}
                         </option>
                       ))}
                     </select>
@@ -510,9 +513,7 @@ export function ConvertIntakeDialog({
                   : undefined
               }
             >
-              {submitting
-                ? t("convert.submitting")
-                : t("convert.submit")}
+              {submitting ? t("convert.submitting") : t("convert.submit")}
             </Button>
           </DialogFooter>
         </form>
@@ -542,10 +543,9 @@ function formatWorkflowOption(
   t: (key: string) => string,
 ): string {
   const name = option.workflowName ?? t("workflow.workItemType.TASK");
-  const version = option.binding.workflowVersionId.slice(-6).toUpperCase();
   const defaultMark = option.binding.isDefault
     ? ` · ${t("workflow.bindingsPanel.fields.isDefault")}`
     : "";
 
-  return `${name} · v${version}${defaultMark}`;
+  return `${name}${defaultMark}`;
 }

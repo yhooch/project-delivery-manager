@@ -92,7 +92,7 @@
   --accent: 210 20% 96%;
   --accent-foreground: 222 47% 11%;
 
-  --primary: 239 84% 67%;
+  --primary: 238.7 83.5% 66.7%;
   --primary-foreground: 0 0% 100%;
 
   --destructive: 0 72% 42%;
@@ -109,7 +109,7 @@
 
   --border: 214 32% 91%;
   --input: 214 32% 91%;
-  --ring: 239 84% 67%;
+  --ring: 238.7 83.5% 66.7%;
 
   --radius: 0.5rem;
 
@@ -152,7 +152,7 @@
 
   --border: 224 18% 18%;
   --input: 224 18% 18%;
-  --ring: 239 84% 67%;
+  --ring: 238.7 83.5% 66.7%;
 
   color-scheme: dark;
 }

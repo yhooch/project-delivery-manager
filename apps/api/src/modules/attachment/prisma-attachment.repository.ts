@@ -1,11 +1,17 @@
 import { Inject, Injectable } from "@nestjs/common";
-import type { AttachmentTargetType } from "@project-delivery/shared";
+import {
+  AttachmentMaxCountPerTarget,
+  type AttachmentTargetType,
+} from "@project-delivery/shared";
 import { ulid } from "ulid";
 
 import { Prisma } from "../../generated/prisma/client";
 import { PrismaService } from "../../prisma/prisma.service";
 import { toAttachment } from "./attachment.mappers";
-import type { AttachmentRepository } from "./attachment.repository";
+import {
+  AttachmentLimitExceededError,
+  type AttachmentRepository,
+} from "./attachment.repository";
 import type { CreateAttachmentInput } from "./attachment.types";
 
 @Injectable()
@@ -27,6 +33,19 @@ export class PrismaAttachmentRepository implements AttachmentRepository {
 
   async create(input: CreateAttachmentInput) {
     const attachment = await this.prisma.client.$transaction(async (tx) => {
+      await lockAttachmentTarget(tx, input.targetType, input.targetId);
+      const currentCount = await tx.attachment.count({
+        where: {
+          deletedAt: null,
+          targetId: input.targetId,
+          targetType: input.targetType,
+        },
+      });
+
+      if (currentCount >= AttachmentMaxCountPerTarget) {
+        throw new AttachmentLimitExceededError();
+      }
+
       const created = await tx.attachment.create({
         data: {
           id: input.id,
@@ -115,4 +134,29 @@ export class PrismaAttachmentRepository implements AttachmentRepository {
       total,
     };
   }
+}
+
+async function lockAttachmentTarget(
+  tx: Prisma.TransactionClient,
+  targetType: AttachmentTargetType,
+  targetId: string,
+) {
+  if (targetType === "WORK_ITEM") {
+    await tx.$queryRaw`
+      SELECT id
+      FROM work_items
+      WHERE id = ${targetId}
+        AND deleted_at IS NULL
+      FOR UPDATE
+    `;
+    return;
+  }
+
+  await tx.$queryRaw`
+    SELECT id
+    FROM requirements
+    WHERE id = ${targetId}
+      AND deleted_at IS NULL
+    FOR UPDATE
+  `;
 }

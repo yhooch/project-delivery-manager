@@ -66,6 +66,7 @@ import { SPACE_REPOSITORY, type SpaceRepository } from "./space.repository";
 import type {
   AddSpaceMemberInput,
   CreateSpaceInput,
+  CreateSpaceInTransaction,
   CreatedSpaceWithAdmin,
   MyWorkbenchViewInput,
   SpaceAccess,
@@ -262,6 +263,39 @@ describe("space API", () => {
           role: "SPACE_ADMIN",
           spaceId: space.id,
           userId: ownerUser?.id,
+        }),
+      ]),
+    );
+  });
+
+  it("does not leave a visible space when default workflow initialization fails", async () => {
+    const ownerAgent = await registeredAgent(
+      "m1d_create_initializer_failure",
+      "203.0.113.65",
+    );
+    const organization = (
+      await createOrganization(
+        ownerAgent,
+        "M1D Init Failure",
+        "m1d-init-failure",
+      )
+    ).body.data as Organization;
+
+    workflowInitializer.failNextInitialization();
+
+    await createSpace(ownerAgent, organization.id, {
+      name: "Initializer Failure Space",
+      code: "initializer-failure-space",
+    }).expect(500);
+
+    await expect(
+      spaces.findByCode(organization.id, "initializer-failure-space"),
+    ).resolves.toBeUndefined();
+    expect(spaces.members).not.toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          organizationId: organization.id,
+          role: "SPACE_ADMIN",
         }),
       ]),
     );
@@ -1174,6 +1208,7 @@ class InMemorySpaceRepository implements SpaceRepository {
 
   async createWithAdmin(
     input: CreateSpaceInput,
+    inTransaction?: CreateSpaceInTransaction,
   ): Promise<CreatedSpaceWithAdmin> {
     const space: Space = {
       id: input.id,
@@ -1195,23 +1230,47 @@ class InMemorySpaceRepository implements SpaceRepository {
       role: "SPACE_ADMIN",
       status: "ACTIVE",
     };
-    this.spaces.set(space.id, space);
-    this.members.push(adminMembership);
-    if (input.ownerMemberId && input.ownerId) {
-      this.members.push({
-        id: input.ownerMemberId,
-        organizationId: input.organizationId,
-        spaceId: input.id,
-        userId: input.ownerId,
-        role: "SPACE_ADMIN",
-        status: "ACTIVE",
-      });
-    }
+    const previousSpaces = new Map(this.spaces);
+    const previousMembers = [...this.members];
+    const previousDefaultWorkflows = new Map(this.defaultWorkflows);
 
-    return {
-      space,
-      adminMembership,
-    };
+    try {
+      this.spaces.set(space.id, space);
+      this.members.push(adminMembership);
+      if (input.ownerMemberId && input.ownerId) {
+        this.members.push({
+          id: input.ownerMemberId,
+          organizationId: input.organizationId,
+          spaceId: input.id,
+          userId: input.ownerId,
+          role: "SPACE_ADMIN",
+          status: "ACTIVE",
+        });
+      }
+
+      const created = {
+        space,
+        adminMembership,
+      };
+
+      await inTransaction?.(
+        {} as Parameters<CreateSpaceInTransaction>[0],
+        created,
+      );
+
+      return created;
+    } catch (error) {
+      this.spaces.clear();
+      for (const [spaceId, record] of previousSpaces) {
+        this.spaces.set(spaceId, record);
+      }
+      this.members.splice(0, this.members.length, ...previousMembers);
+      this.defaultWorkflows.clear();
+      for (const [spaceId, summaries] of previousDefaultWorkflows) {
+        this.defaultWorkflows.set(spaceId, summaries);
+      }
+      throw error;
+    }
   }
 
   async addMember(input: AddSpaceMemberInput): Promise<SpaceMemberWithUser> {
@@ -1623,6 +1682,7 @@ class FakeWorkflowDefaultInitializer {
     organizationId: string;
     spaceId: string;
   }> = [];
+  private shouldFailNextInitialization = false;
 
   constructor(private readonly spaces: InMemorySpaceRepository) {}
 
@@ -1631,6 +1691,11 @@ class FakeWorkflowDefaultInitializer {
     organizationId: string;
     spaceId: string;
   }): Promise<DefaultWorkflowSummary[]> {
+    if (this.shouldFailNextInitialization) {
+      this.shouldFailNextInitialization = false;
+      throw new Error("default workflow initialization failed");
+    }
+
     this.calls.push(input);
     const summaries = createDefaultWorkflowSummaries();
     this.spaces.recordDefaultWorkflows(input.spaceId, summaries);
@@ -1647,6 +1712,10 @@ class FakeWorkflowDefaultInitializer {
     },
   ): Promise<DefaultWorkflowSummary[]> {
     return this.initializeDefaultWorkflowsForSpace(input);
+  }
+
+  failNextInitialization(): void {
+    this.shouldFailNextInitialization = true;
   }
 }
 

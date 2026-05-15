@@ -28,7 +28,10 @@ import { useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { getApiErrorMessageKey } from "../../lib/api-error-messages";
-import { useListKeyboardNav } from "../../lib/hooks/use-list-keyboard-nav";
+import {
+  useFocusReturn,
+  useListKeyboardNav,
+} from "../../lib/hooks/use-list-keyboard-nav";
 import { usePathname, useRouter } from "../../i18n/routing";
 import { getSpace } from "../../lib/space-service";
 import { cn } from "../../lib/utils";
@@ -150,6 +153,7 @@ export function ExceptionsPage() {
     useState<ExceptionFilterValues>(requestedFilters);
   const [thresholdValue, setThresholdValue] = useState<number | null>(null);
   const [thresholdOpen, setThresholdOpen] = useState(false);
+  const { captureFocus, restoreFocus } = useFocusReturn();
 
   const organizationId = session?.defaultOrganizationId;
   const spaceId = session?.defaultSpaceId;
@@ -338,12 +342,23 @@ export function ExceptionsPage() {
 
   const openExceptionItem = useCallback(
     (item: SpaceExceptionItem) => {
+      captureFocus();
       const next = buildExceptionViewModel(item);
       rememberWorkItem(next);
       setActive(next);
       setOpen(true);
     },
-    [buildExceptionViewModel, rememberWorkItem],
+    [buildExceptionViewModel, captureFocus, rememberWorkItem],
+  );
+
+  const handleSheetOpenChange = useCallback(
+    (nextOpen: boolean) => {
+      setOpen(nextOpen);
+      if (!nextOpen) {
+        restoreFocus();
+      }
+    },
+    [restoreFocus],
   );
 
   useListKeyboardNav<SpaceExceptionItem>({
@@ -355,7 +370,10 @@ export function ExceptionsPage() {
     },
     onOpen: openExceptionItem,
     onEdit: openExceptionItem,
-    onClose: () => setOpen(false),
+    canAssign: () => true,
+    onAssign: openExceptionItem,
+    canSubmit: () => false,
+    onClose: () => handleSheetOpenChange(false),
   });
 
   const headerActions = (
@@ -365,6 +383,7 @@ export function ExceptionsPage() {
       className="text-xs"
       data-testid="exceptions-threshold-button"
       disabled={!canEditThreshold}
+      aria-disabled={!canEditThreshold}
       title={canEditThreshold ? undefined : t("threshold.readonly")}
       onClick={() => setThresholdOpen(true)}
     >
@@ -447,7 +466,10 @@ export function ExceptionsPage() {
 
   if (!session) {
     return (
-      <div data-testid="exceptions-page" className="flex h-full flex-col">
+      <div
+        data-testid="exceptions-page"
+        className="flex h-full min-w-0 flex-col"
+      >
         <PageHeader
           eyebrow={tNav("group.deliver")}
           title={tNav("exceptions")}
@@ -465,7 +487,10 @@ export function ExceptionsPage() {
 
   if (!spaceId) {
     return (
-      <div data-testid="exceptions-page" className="flex h-full flex-col">
+      <div
+        data-testid="exceptions-page"
+        className="flex h-full min-w-0 flex-col"
+      >
         <PageHeader
           eyebrow={tNav("group.deliver")}
           title={tNav("exceptions")}
@@ -483,7 +508,10 @@ export function ExceptionsPage() {
 
   if (isLoading && !view) {
     return (
-      <div data-testid="exceptions-page" className="flex h-full flex-col">
+      <div
+        data-testid="exceptions-page"
+        className="flex h-full min-w-0 flex-col"
+      >
         <PageHeader
           eyebrow={tNav("group.deliver")}
           title={tNav("exceptions")}
@@ -499,7 +527,10 @@ export function ExceptionsPage() {
 
   if (errorKey) {
     return (
-      <div data-testid="exceptions-page" className="flex h-full flex-col">
+      <div
+        data-testid="exceptions-page"
+        className="flex h-full min-w-0 flex-col"
+      >
         <PageHeader
           eyebrow={tNav("group.deliver")}
           title={tNav("exceptions")}
@@ -522,7 +553,7 @@ export function ExceptionsPage() {
   };
 
   return (
-    <div data-testid="exceptions-page" className="flex h-full flex-col">
+    <div data-testid="exceptions-page" className="flex h-full min-w-0 flex-col">
       <PageHeader
         eyebrow={tNav("group.deliver")}
         title={tNav("exceptions")}
@@ -533,28 +564,30 @@ export function ExceptionsPage() {
       <Tabs
         value={tabValue}
         onValueChange={handleTabChange}
-        className="flex flex-1 flex-col overflow-hidden"
+        className="flex min-w-0 flex-1 flex-col overflow-hidden"
       >
-        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border px-6 py-2">
-          <TabsList>
-            {grouped.map((tab) => {
-              const Icon = tab.icon;
-              return (
-                <TabsTrigger
-                  key={tab.key}
-                  value={tab.key}
-                  className="gap-1.5"
-                  data-testid={`exceptions-tab-${tab.key}`}
-                >
-                  <Icon className={cn("h-3 w-3", toneClass[tab.tone])} />
-                  {tRoot(`m4Views.exceptionType.${tab.key}`)}
-                  <span className="rounded bg-muted px-1.5 py-0.5 font-mono text-[10px] text-muted-foreground">
-                    {tab.count}
-                  </span>
-                </TabsTrigger>
-              );
-            })}
-          </TabsList>
+        <div className="flex min-w-0 flex-col gap-3 border-b border-border px-4 py-2 sm:px-6 xl:flex-row xl:items-center xl:justify-between">
+          <div className="-mx-1 overflow-x-auto px-1">
+            <TabsList className="min-w-max">
+              {grouped.map((tab) => {
+                const Icon = tab.icon;
+                return (
+                  <TabsTrigger
+                    key={tab.key}
+                    value={tab.key}
+                    className="gap-1.5"
+                    data-testid={`exceptions-tab-${tab.key}`}
+                  >
+                    <Icon className={cn("h-3 w-3", toneClass[tab.tone])} />
+                    {tRoot(`m4Views.exceptionType.${tab.key}`)}
+                    <span className="rounded bg-muted px-1.5 py-0.5 font-mono text-[10px] text-muted-foreground">
+                      {tab.count}
+                    </span>
+                  </TabsTrigger>
+                );
+              })}
+            </TabsList>
+          </div>
 
           <ExceptionFilterToolbar
             filters={filters}
@@ -572,7 +605,7 @@ export function ExceptionsPage() {
             key={tab.key}
             value={tab.key}
             data-testid={`exceptions-panel-${tab.key}`}
-            className="mt-0 flex-1 overflow-y-auto"
+            className="mt-0 min-w-0 flex-1 overflow-y-auto"
           >
             {tab.items.length === 0 ? (
               <EmptyState
@@ -608,7 +641,7 @@ export function ExceptionsPage() {
                         aria-selected={isSelected}
                         onClick={() => handleSelect(item)}
                         className={cn(
-                          "flex w-full cursor-pointer items-center gap-3 px-6 py-2.5 text-left transition-colors hover:bg-muted/40",
+                          "flex w-full min-w-0 cursor-pointer items-center gap-3 px-4 py-2.5 text-left transition-colors hover:bg-muted/40 sm:px-6",
                           isSelected &&
                             "bg-primary/10 shadow-[inset_3px_0_0_hsl(var(--primary))]",
                         )}
@@ -619,7 +652,7 @@ export function ExceptionsPage() {
                           <CheckCircle2 className="h-3.5 w-3.5 shrink-0 text-primary/80" />
                         )}
                         <span className="font-mono text-[11px] text-muted-foreground">
-                          {mock.code}
+                          {mock.type}
                         </span>
                         <span className="flex-1 truncate text-[13px] font-medium">
                           {mock.title}
@@ -643,11 +676,13 @@ export function ExceptionsPage() {
                             ) : null}
                           </span>
                         )}
-                        <StatusBadge
-                          category={mock.statusCategory}
-                          label={mock.statusLabel}
-                          withDot={false}
-                        />
+                        <span className="shrink-0">
+                          <StatusBadge
+                            category={mock.statusCategory}
+                            label={mock.statusLabel}
+                            withDot={false}
+                          />
+                        </span>
                         {mock.versionName && (
                           <Badge
                             variant="outline"
@@ -674,7 +709,7 @@ export function ExceptionsPage() {
       <TaskDetailSheet
         item={active}
         open={open}
-        onOpenChange={setOpen}
+        onOpenChange={handleSheetOpenChange}
         onChanged={() => {
           void fetchView();
         }}
@@ -715,7 +750,7 @@ function ExceptionFilterToolbar({
   versions: ReturnType<typeof useVersions>["versions"];
 }) {
   return (
-    <div className="flex flex-wrap items-center gap-2">
+    <div className="flex min-w-0 flex-wrap items-center gap-2">
       {exceptionFilterControls.map((control) => {
         const value = getExceptionFilterValue(filters, control.id);
         const Icon = getExceptionFilterIcon(control.id);
@@ -735,7 +770,7 @@ function ExceptionFilterToolbar({
               <Button
                 variant="outline"
                 size="sm"
-                className="text-xs"
+                className="min-w-0 text-xs"
                 data-testid={`exceptions-filter-${control.id}`}
               >
                 <Icon className="h-3 w-3" />
@@ -826,7 +861,7 @@ function getExceptionFilterOptions({
 
   if (controlId === "assigneeId") {
     return members.map((member) => ({
-      label: member.user.name || member.user.username || member.userId,
+      label: member.user.name || member.user.username || "—",
       value: member.userId,
     }));
   }

@@ -16,6 +16,8 @@ import type {
   VersionSummary,
 } from "@project-delivery/shared";
 
+import type { Prisma } from "../../generated/prisma/client";
+
 export type CreateSpaceInput = {
   id: string;
   adminMemberId: string;
@@ -33,6 +35,11 @@ export type CreatedSpaceWithAdmin = {
   space: Space;
   adminMembership: SpaceMember;
 };
+
+export type CreateSpaceInTransaction = (
+  tx: Prisma.TransactionClient,
+  created: CreatedSpaceWithAdmin,
+) => Promise<void>;
 
 export type SpaceListInput = {
   page: number;

@@ -306,18 +306,107 @@ describe("TargetResolverService", () => {
     });
   });
 
+  it.each(["SPACE_ADMIN", "PM", "REQUIREMENT"] as const)(
+    "hides DRAFT REQUIREMENT targets from %s non-participants across attachment, comment, and timeline resolution",
+    async (role) => {
+      const actorUserId = ulid();
+      const requirementId = ulid();
+      const spaceId = ulid();
+      const organizationId = ulid();
+      const { requirements, resolver, spaces } = createResolver();
+
+      vi.mocked(requirements.findById).mockResolvedValue(
+        makeRequirement(requirementId, spaceId, organizationId, "DRAFT"),
+      );
+      vi.mocked(requirements.isParticipant).mockResolvedValue(false);
+      vi.mocked(spaces.findAccessibleById).mockResolvedValue({
+        role,
+        space: makeSpace(spaceId, organizationId),
+      });
+
+      await expect(
+        resolver.resolve(actorUserId, "REQUIREMENT", requirementId, {
+          access: "write",
+          hideInaccessible: true,
+          notFoundCode: "ATTACHMENT_TARGET_NOT_FOUND",
+        }),
+      ).rejects.toMatchObject({
+        code: "ATTACHMENT_TARGET_NOT_FOUND",
+        status: HttpStatus.NOT_FOUND,
+      });
+
+      await expect(
+        resolver.resolve(actorUserId, "REQUIREMENT", requirementId, {
+          access: "write",
+        }),
+      ).rejects.toMatchObject({
+        code: "REQUIREMENT_NOT_FOUND",
+        status: HttpStatus.NOT_FOUND,
+      });
+
+      await expect(
+        resolver.resolve(actorUserId, "REQUIREMENT", requirementId),
+      ).rejects.toMatchObject({
+        code: "REQUIREMENT_NOT_FOUND",
+        status: HttpStatus.NOT_FOUND,
+      });
+      expect(requirements.isParticipant).toHaveBeenCalledWith(
+        spaceId,
+        requirementId,
+        actorUserId,
+      );
+    },
+  );
+
+  it("allows DRAFT REQUIREMENT participants to resolve read and write targets", async () => {
+    const actorUserId = ulid();
+    const requirementId = ulid();
+    const spaceId = ulid();
+    const organizationId = ulid();
+    const { requirements, resolver, spaces } = createResolver();
+
+    vi.mocked(requirements.findById).mockResolvedValue(
+      makeRequirement(requirementId, spaceId, organizationId, "DRAFT"),
+    );
+    vi.mocked(requirements.isParticipant).mockResolvedValue(true);
+    vi.mocked(spaces.findAccessibleById).mockResolvedValue({
+      role: "PM",
+      space: makeSpace(spaceId, organizationId),
+    });
+
+    await expect(
+      resolver.resolve(actorUserId, "REQUIREMENT", requirementId),
+    ).resolves.toMatchObject({
+      canWrite: true,
+      role: "PM",
+      targetId: requirementId,
+      targetType: "REQUIREMENT",
+    });
+
+    await expect(
+      resolver.resolve(actorUserId, "REQUIREMENT", requirementId, {
+        access: "write",
+        hideInaccessible: true,
+        notFoundCode: "ATTACHMENT_TARGET_NOT_FOUND",
+      }),
+    ).resolves.toMatchObject({
+      canWrite: true,
+      targetId: requirementId,
+      targetType: "REQUIREMENT",
+    });
+  });
+
   it("hides REQUIREMENT targets from same-space non-participants without requirement read-all roles", async () => {
     const actorUserId = ulid();
     const requirementId = ulid();
     const spaceId = ulid();
     const organizationId = ulid();
-    const { objectParticipantFindFirst, requirements, resolver, spaces } =
-      createResolver();
+    const { requirements, resolver, spaces } = createResolver();
 
     vi.mocked(requirements.findById).mockResolvedValue(
       makeRequirement(requirementId, spaceId, organizationId, "CONFIRMED"),
     );
-    objectParticipantFindFirst.mockResolvedValue(undefined);
+    vi.mocked(requirements.isParticipant).mockResolvedValue(false);
     vi.mocked(spaces.findAccessibleById).mockResolvedValue({
       role: "DEVELOPER",
       space: makeSpace(spaceId, organizationId),
@@ -329,7 +418,7 @@ describe("TargetResolverService", () => {
       code: "REQUIREMENT_NOT_FOUND",
     });
 
-    objectParticipantFindFirst.mockResolvedValue({ id: ulid() });
+    vi.mocked(requirements.isParticipant).mockResolvedValue(true);
 
     await expect(
       resolver.resolve(actorUserId, "REQUIREMENT", requirementId),
@@ -415,6 +504,7 @@ describe("TargetResolverService", () => {
     vi.mocked(requirements.findById).mockResolvedValue(
       makeRequirement(requirementId, spaceId, organizationId, "DRAFT"),
     );
+    vi.mocked(requirements.isParticipant).mockResolvedValue(false);
     vi.mocked(spaces.findAccessibleById).mockResolvedValue({
       role: "VIEWER",
       space: makeSpace(spaceId, organizationId),
@@ -453,6 +543,7 @@ function createResolver() {
     archive: vi.fn(),
     createDraft: vi.fn(),
     findById: vi.fn(),
+    isParticipant: vi.fn(),
     listBySpaceId: vi.fn(),
     save: vi.fn(),
   } as unknown as RequirementRepository;

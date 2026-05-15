@@ -312,7 +312,7 @@ describe("TasksPage", () => {
     expect(screen.getByText("A")).toBeInTheDocument();
   });
 
-  it("falls back to the assignee id when no member is cached", async () => {
+  it("uses a neutral assignee fallback when no member is cached", async () => {
     listWorkItemsMock.mockResolvedValueOnce({
       items: [makeTask({ title: "Untriaged" })],
       total: 1,
@@ -321,8 +321,9 @@ describe("TasksPage", () => {
     render(<TasksPage />);
 
     expect(await screen.findByText("Untriaged")).toBeInTheDocument();
-    // No member lookup -> initial uses first char of the raw assignee id ("0").
-    expect(screen.getByText("0")).toBeInTheDocument();
+    // No member lookup -> neutral fallback, not the raw assignee id tail.
+    expect(screen.getByText("?")).toBeInTheDocument();
+    expect(screen.queryByText("0")).not.toBeInTheDocument();
   });
 
   it("filters tasks by status bucket through the backend query", async () => {
@@ -529,7 +530,7 @@ describe("TasksPage", () => {
     expect(rows[1]).toHaveAttribute("aria-selected", "false");
   });
 
-  it("keeps A and S keyboard shortcuts as explicit disabled no-ops on the task list", async () => {
+  it("opens task detail with A and keeps S as an explicit disabled no-op on the task list", async () => {
     listWorkItemsMock.mockResolvedValueOnce({
       items: [makeTask({ title: "Shortcut target" })],
       total: 1,
@@ -551,11 +552,11 @@ describe("TasksPage", () => {
     window.dispatchEvent(assignEvent);
     window.dispatchEvent(submitEvent);
 
-    expect(assignEvent.defaultPrevented).toBe(false);
+    expect(assignEvent.defaultPrevented).toBe(true);
     expect(submitEvent.defaultPrevented).toBe(false);
     expect(
-      screen.queryByTestId("task-detail-sheet-open"),
-    ).not.toBeInTheDocument();
+      await screen.findByTestId("task-detail-sheet-open"),
+    ).toBeInTheDocument();
     expect(listWorkItemsMock).toHaveBeenCalledTimes(1);
   });
 

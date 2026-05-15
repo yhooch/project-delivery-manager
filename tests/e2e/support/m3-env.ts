@@ -93,6 +93,7 @@ export type M3User = {
 
 export type M3AuditLog = {
   actionType: string;
+  metadata: unknown;
   targetId: string;
   targetType: string;
 };
@@ -615,6 +616,7 @@ export async function findAuditLogs(
     },
     select: {
       actionType: true,
+      metadata: true,
       targetId: true,
       targetType: true,
     },

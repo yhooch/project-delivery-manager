@@ -451,26 +451,44 @@ export function MyWorkbench() {
       ),
     [view, locale, lookupHelpers, tStatusCategory, t],
   );
+  const myWorkbenchItems = useMemo(
+    () =>
+      mergeTodoGroupItems({
+        actionItems,
+        assignedBugItems,
+        assignedTaskItems,
+        assignedBugLabel: t("sections.assignedBugs"),
+        assignedTaskLabel: t("sections.assignedTasks"),
+        todoItems,
+      }),
+    [
+      actionItems,
+      assignedBugItems,
+      assignedTaskItems,
+      t,
+      todoItems,
+    ],
+  );
+  const riskItems = useMemo(
+    () =>
+      mergeLabeledUniqueItems([
+        { items: blockedItems, label: t("sections.blocked") },
+        { items: dueSoonItems, label: t("sections.dueSoon") },
+      ]),
+    [blockedItems, dueSoonItems, t],
+  );
   const recentEvents = view?.sections.recentActivities.items.items ?? [];
 
   const stats = view?.stats;
   const todoCount = view?.sections.myTodos.total ?? todoItems.length;
-  const assignedTaskCount =
-    view?.sections.assignedTasks.total ?? assignedTaskItems.length;
-  const assignedBugCount =
-    view?.sections.assignedBugs.total ?? assignedBugItems.length;
-  const actionCount = view?.sections.actionTodos.total ?? actionItems.length;
   const pendingConfirmSectionCount =
     view?.sections.pendingConfirm.total ?? pendingConfirmItems.length;
   const dueSoonCount = view?.sections.dueSoon.total ?? dueSoonItems.length;
   const blockedSectionCount =
     view?.sections.blocked?.total ?? blockedItems.length;
-  // Show "—" if backend view did not include stats (graceful degradation).
-  const blockedCount: number | undefined = stats?.blockedCount;
-  const pendingConfirmCount: number | undefined = stats?.pendingConfirmCount;
-  const pendingRegressionCount: number | undefined =
-    stats?.pendingRegressionCount;
-  const staleCount: number | undefined = stats?.staleCount;
+  const blockedCount = stats?.blockedCount ?? blockedSectionCount;
+  const pendingConfirmCount =
+    stats?.pendingConfirmCount ?? pendingConfirmSectionCount;
 
   if (!session) {
     return (
@@ -551,7 +569,7 @@ export function MyWorkbench() {
       {/* Summary chips */}
       <div
         data-testid="workbench-summary"
-        className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-6"
+        className="grid grid-cols-2 gap-3 lg:grid-cols-4"
       >
         <SummaryChip
           icon={Inbox}
@@ -577,18 +595,6 @@ export function MyWorkbench() {
           value={pendingConfirmCount}
           label={t("summary.pendingConfirm")}
         />
-        <SummaryChip
-          icon={Bug}
-          tone="warning"
-          value={pendingRegressionCount}
-          label={t("summary.pendingRegression")}
-        />
-        <SummaryChip
-          icon={Clock}
-          tone="info"
-          value={staleCount}
-          label={t("summary.stale")}
-        />
       </div>
 
       <WorkbenchFilters
@@ -604,38 +610,11 @@ export function MyWorkbench() {
         <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
           <Section
             title={t("sections.todo")}
-            count={todoCount}
+            count={myWorkbenchItems.length}
             empty={t("empty.todo")}
             isLoading={isLoading && !view}
           >
-            <ItemList items={todoItems} onSelect={openItem} />
-          </Section>
-
-          <Section
-            title={t("sections.assignedTasks")}
-            count={assignedTaskCount}
-            empty={t("empty.assignedTasks")}
-            isLoading={isLoading && !view}
-          >
-            <ItemList items={assignedTaskItems} onSelect={openItem} />
-          </Section>
-
-          <Section
-            title={t("sections.assignedBugs")}
-            count={assignedBugCount}
-            empty={t("empty.assignedBugs")}
-            isLoading={isLoading && !view}
-          >
-            <ItemList items={assignedBugItems} onSelect={openItem} />
-          </Section>
-
-          <Section
-            title={t("sections.actions")}
-            count={actionCount}
-            empty={t("empty.actions")}
-            isLoading={isLoading && !view}
-          >
-            <ItemList items={actionItems} onSelect={openItem} />
+            <ItemList items={myWorkbenchItems} onSelect={openItem} />
           </Section>
 
           <Section
@@ -648,21 +627,12 @@ export function MyWorkbench() {
           </Section>
 
           <Section
-            title={t("sections.dueSoon")}
-            count={dueSoonCount}
-            empty={t("empty.dueSoon")}
+            title={t("sections.risk")}
+            count={riskItems.length}
+            empty={t("empty.risk")}
             isLoading={isLoading && !view}
           >
-            <ItemList items={dueSoonItems} onSelect={openItem} />
-          </Section>
-
-          <Section
-            title={t("sections.blocked")}
-            count={blockedSectionCount}
-            empty={t("empty.blocked")}
-            isLoading={isLoading && !view}
-          >
-            <ItemList items={blockedItems} onSelect={openItem} />
+            <ItemList items={riskItems} onSelect={openItem} />
           </Section>
         </div>
 
@@ -1068,6 +1038,99 @@ function ItemList({
       ))}
     </ul>
   );
+}
+
+function mergeTodoGroupItems({
+  actionItems,
+  assignedBugItems,
+  assignedBugLabel,
+  assignedTaskItems,
+  assignedTaskLabel,
+  todoItems,
+}: {
+  actionItems: WorkbenchItemViewModel[];
+  assignedBugItems: WorkbenchItemViewModel[];
+  assignedBugLabel: string;
+  assignedTaskItems: WorkbenchItemViewModel[];
+  assignedTaskLabel: string;
+  todoItems: WorkbenchItemViewModel[];
+}): WorkbenchItemViewModel[] {
+  const actionWorkItemIds = new Set(actionItems.map((item) => item.id));
+  const seenWorkItemIds = new Set<string>();
+  const result: WorkbenchItemViewModel[] = [];
+
+  for (const item of todoItems) {
+    if (actionWorkItemIds.has(item.id) || seenWorkItemIds.has(item.id)) {
+      continue;
+    }
+
+    seenWorkItemIds.add(item.id);
+    result.push(item);
+  }
+
+  for (const { items, label } of [
+    { items: assignedTaskItems, label: assignedTaskLabel },
+    { items: assignedBugItems, label: assignedBugLabel },
+  ]) {
+    for (const item of items) {
+      if (actionWorkItemIds.has(item.id) || seenWorkItemIds.has(item.id)) {
+        continue;
+      }
+
+      seenWorkItemIds.add(item.id);
+      result.push({
+        ...item,
+        contextLabel: mergeContextLabels(item.contextLabel, label),
+      });
+    }
+  }
+
+  return [...result, ...actionItems];
+}
+
+function mergeLabeledUniqueItems(
+  groups: { items: WorkbenchItemViewModel[]; label: string }[],
+): WorkbenchItemViewModel[] {
+  const byId = new Map<string, WorkbenchItemViewModel>();
+
+  for (const { items, label } of groups) {
+    for (const item of items) {
+      const existing = byId.get(item.id);
+
+      if (!existing) {
+        byId.set(item.id, {
+          ...item,
+          contextLabel: mergeContextLabels(item.contextLabel, label),
+          listKey: `${item.id}:risk`,
+        });
+        continue;
+      }
+
+      byId.set(item.id, {
+        ...existing,
+        contextLabel: mergeContextLabels(existing.contextLabel, label),
+      });
+    }
+  }
+
+  return Array.from(byId.values());
+}
+
+function mergeContextLabels(
+  current: string | undefined,
+  next: string,
+): string {
+  if (!current) {
+    return next;
+  }
+
+  const labels = current.split(" · ");
+
+  if (labels.includes(next)) {
+    return current;
+  }
+
+  return [...labels, next].join(" · ");
 }
 
 export type WorkbenchLookupHelpers = {

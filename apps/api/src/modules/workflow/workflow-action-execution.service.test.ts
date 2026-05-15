@@ -111,7 +111,10 @@ describe("WorkflowActionExecutionService", () => {
     });
     expect(subject.repository.auditLogs).toHaveLength(1);
     expect(subject.repository.auditLogs[0]).toMatchObject({
-      actionType: "WORKFLOW_ACTION_EXECUTED",
+      actionType: "UPDATE",
+      metadata: {
+        operation: "executeWorkflowAction",
+      },
       targetId: WORK_ITEM_ID,
     });
   });
@@ -154,9 +157,10 @@ describe("WorkflowActionExecutionService", () => {
     });
     expect(subject.repository.auditLogs).toHaveLength(1);
     expect(subject.repository.auditLogs[0]).toMatchObject({
-      actionType: "WORKFLOW_ACTION_PERMISSION_DENIED",
+      actionType: "ACCESS_DENIED",
       metadata: {
         errorCode: "WORKFLOW_ACTION_PERMISSION_DENIED",
+        operation: "executeWorkflowActionDenied",
       },
     });
   });

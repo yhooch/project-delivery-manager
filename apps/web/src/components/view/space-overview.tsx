@@ -389,7 +389,8 @@ export function SpaceOverview() {
                     {t("summary.versionProgress")}
                   </span>
                   <span className="font-mono text-foreground">
-                    {Math.round(versionProgress * 100)}% · {taskDone}/{taskTotal}
+                    {Math.round(versionProgress * 100)}% · {taskDone}/
+                    {taskTotal}
                   </span>
                 </div>
                 <div className="h-1.5 overflow-hidden rounded-full bg-muted">
@@ -501,7 +502,7 @@ export function SpaceOverview() {
                 </div>
                 <div className="mt-3 flex items-end gap-2">
                   <span className="text-2xl font-semibold leading-none">
-                    {bugOpen}/{bugTotal}
+                    {bugTotal - bugOpen}/{bugTotal}
                   </span>
                   <span className="text-[11px] text-muted-foreground">
                     {t("summary.bugClosedWithPct", { pct: bugClosePct })}
@@ -511,7 +512,7 @@ export function SpaceOverview() {
                   <div
                     className="h-full rounded-full bg-destructive"
                     style={{
-                      width: `${bugTotal > 0 ? (bugOpen / bugTotal) * 100 : 0}%`,
+                      width: `${bugClosePct}%`,
                     }}
                   />
                 </div>

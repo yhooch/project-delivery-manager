@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useCallback, useEffect, useRef } from "react";
 
 /**
  * Options for {@link useListKeyboardNav}.
@@ -98,9 +98,7 @@ export function useListKeyboardNav<T>(
       if (isDown || isUp) {
         event.preventDefault();
         const currentIndex = current.activeId
-          ? items.findIndex(
-              (item) => current.getId(item) === current.activeId,
-            )
+          ? items.findIndex((item) => current.getId(item) === current.activeId)
           : -1;
 
         let nextIndex: number;
@@ -132,7 +130,7 @@ export function useListKeyboardNav<T>(
         const action = isEnter
           ? current.onOpen
           : isEdit
-            ? current.onEdit ?? current.onOpen
+            ? (current.onEdit ?? current.onOpen)
             : isAssign
               ? current.canAssign?.(activeItem) === false
                 ? undefined
@@ -153,4 +151,56 @@ export function useListKeyboardNav<T>(
       window.removeEventListener("keydown", handler);
     };
   }, []);
+}
+
+function getCurrentFocusTarget(): HTMLElement | null {
+  if (
+    typeof document === "undefined" ||
+    !(document.activeElement instanceof HTMLElement) ||
+    document.activeElement === document.body
+  ) {
+    return null;
+  }
+
+  return document.activeElement;
+}
+
+function canRestoreFocus(element: HTMLElement): boolean {
+  return (
+    typeof document !== "undefined" &&
+    document.contains(element) &&
+    !element.hasAttribute("disabled") &&
+    element.getAttribute("aria-disabled") !== "true"
+  );
+}
+
+export function useFocusReturn() {
+  const triggerRef = useRef<HTMLElement | null>(null);
+
+  const captureFocus = useCallback((target?: HTMLElement | null) => {
+    triggerRef.current = target ?? getCurrentFocusTarget();
+  }, []);
+
+  const restoreFocus = useCallback(() => {
+    const target = triggerRef.current;
+    triggerRef.current = null;
+
+    if (!target) {
+      return;
+    }
+
+    const schedule =
+      typeof window.requestAnimationFrame === "function"
+        ? window.requestAnimationFrame
+        : (callback: FrameRequestCallback) =>
+            window.setTimeout(() => callback(performance.now()), 0);
+
+    schedule(() => {
+      if (canRestoreFocus(target)) {
+        target.focus({ preventScroll: true });
+      }
+    });
+  }, []);
+
+  return { captureFocus, restoreFocus };
 }

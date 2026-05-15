@@ -52,6 +52,7 @@ import type {
   SpaceMemberListResult,
   SpaceExceptionsViewInput,
   MyWorkbenchViewInput,
+  CreateSpaceInTransaction,
   SpaceOverviewViewInput,
   UpdateSpaceInput,
   UpdateSpaceMemberInput,
@@ -99,6 +100,7 @@ export class PrismaSpaceRepository implements SpaceRepository {
 
   async createWithAdmin(
     input: CreateSpaceInput,
+    inTransaction?: CreateSpaceInTransaction,
   ): Promise<CreatedSpaceWithAdmin> {
     const result = await this.prisma.client.$transaction(async (tx) => {
       const space = await tx.space.create({
@@ -139,16 +141,17 @@ export class PrismaSpaceRepository implements SpaceRepository {
         });
       }
 
-      return {
-        adminMembership,
-        space,
+      const created = {
+        adminMembership: toSpaceMember(adminMembership),
+        space: toSpace(space),
       };
+
+      await inTransaction?.(tx, created);
+
+      return created;
     });
 
-    return {
-      space: toSpace(result.space),
-      adminMembership: toSpaceMember(result.adminMembership),
-    };
+    return result;
   }
 
   async addMember(input: AddSpaceMemberInput) {

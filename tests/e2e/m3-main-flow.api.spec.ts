@@ -399,16 +399,22 @@ test.describe("M3 自动化主链路与回归用例", () => {
         task.id,
       ]);
       const actionTypes = auditLogs.map((log) => log.actionType);
+      const operations = auditLogs
+        .map((log) => readAuditOperation(log.metadata))
+        .filter((operation): operation is string => Boolean(operation));
 
       expect(actionTypes).toEqual(
+        expect.arrayContaining(["ACCESS_DENIED", "CREATE", "UPDATE"]),
+      );
+      expect(operations).toEqual(
         expect.arrayContaining([
-          "WORKFLOW_ACTION_EXECUTED",
-          "WORKFLOW_ACTION_PERMISSION_DENIED",
-          "WORKFLOW_ACTION_VALIDATION_FAILED",
-          "WORKFLOW_ACTION_FIELD_CREATED",
-          "WORKFLOW_DEFINITION_CREATED",
-          "WORKFLOW_VERSION_CREATED",
-          "WORKFLOW_VERSION_PUBLISHED",
+          "executeWorkflowAction",
+          "executeWorkflowActionDenied",
+          "executeWorkflowActionValidationFailed",
+          "createActionFormField",
+          "createWorkflowDefinition",
+          "createWorkflowVersion",
+          "publishWorkflowVersion",
         ]),
       );
       expect(auditLogs).toEqual(
@@ -637,4 +643,17 @@ async function assertIntakeMultiTaskBreakdown(input: {
     "已转换事项不能重复拆解",
     [409],
   );
+}
+
+function readAuditOperation(metadata: unknown) {
+  if (
+    metadata &&
+    typeof metadata === "object" &&
+    "operation" in metadata &&
+    typeof metadata.operation === "string"
+  ) {
+    return metadata.operation;
+  }
+
+  return undefined;
 }

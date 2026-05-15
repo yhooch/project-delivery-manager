@@ -1,5 +1,6 @@
 import { HttpStatus, Inject, Injectable, Logger } from "@nestjs/common";
 import type {
+  AuditAction,
   ApiErrorCode,
   ExecuteActionRequest,
   PermissionSnapshot,
@@ -368,7 +369,7 @@ export class WorkflowActionExecutionService {
 
         return {
           audit: buildAuditLogInput(
-            "WORKFLOW_ACTION_EXECUTED",
+            "UPDATE",
             actorUserId,
             requestMetadata,
             successAuditContext,
@@ -917,7 +918,7 @@ function buildAuditSnapshot(workItem: ExecutableWorkItem) {
 }
 
 function buildAuditLogInput(
-  actionType: string,
+  actionType: AuditAction,
   actorUserId: string,
   requestMetadata: WorkflowActionRequestMetadata,
   context: WorkflowActionAuditContext,
@@ -936,6 +937,7 @@ function buildAuditLogInput(
       errorCode: getApiExceptionCode(error),
       errorMessage: getErrorMessage(error),
       formValues: context.formValues,
+      operation: resolveWorkflowActionAuditOperation(actionType, error),
       requestId: requestMetadata.requestId,
     }),
     organizationId: context.organizationId,
@@ -956,10 +958,25 @@ function resolveFailureAuditActionType(error: unknown) {
     code === "WORKFLOW_ACTION_PERMISSION_DENIED" ||
     code === "WORK_ITEM_NOT_FOUND"
   ) {
-    return "WORKFLOW_ACTION_PERMISSION_DENIED";
+    return "ACCESS_DENIED";
   }
 
-  return "WORKFLOW_ACTION_VALIDATION_FAILED";
+  return "UPDATE";
+}
+
+function resolveWorkflowActionAuditOperation(
+  actionType: AuditAction,
+  error?: unknown,
+) {
+  if (!error) {
+    return "executeWorkflowAction";
+  }
+
+  if (actionType === "ACCESS_DENIED") {
+    return "executeWorkflowActionDenied";
+  }
+
+  return "executeWorkflowActionValidationFailed";
 }
 
 function getApiExceptionCode(error: unknown): ApiErrorCode | undefined {

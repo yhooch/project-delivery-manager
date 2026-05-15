@@ -2078,6 +2078,7 @@
       "assignedBugs": "Bugs I own",
       "actions": "Action todos",
       "pendingConfirm": "Pending my confirmation",
+      "risk": "Risks / exceptions",
       "dueSoon": "Due soon",
       "blocked": "Blocked",
       "recent": "Recent activity"
@@ -2088,6 +2089,7 @@
       "assignedBugs": "No bugs assigned to you.",
       "actions": "No action todos.",
       "pendingConfirm": "No items pending your confirmation.",
+      "risk": "No risk or exception items.",
       "dueSoon": "No due soon items.",
       "blocked": "No blocked work items.",
       "recent": "No recent activity.",
