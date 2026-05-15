@@ -10,6 +10,9 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 const { translatorCache } = vi.hoisted(() => ({
   translatorCache: new Map<string, (key: string) => string>(),
 }));
+const { searchParamsMock } = vi.hoisted(() => ({
+  searchParamsMock: { current: new URLSearchParams() },
+}));
 vi.mock("next-intl", () => ({
   useTranslations: (namespace?: string) => {
     const key = namespace ?? "__root__";
@@ -21,6 +24,9 @@ vi.mock("next-intl", () => ({
     return fn;
   },
   useLocale: () => "zh-CN",
+}));
+vi.mock("next/navigation", () => ({
+  useSearchParams: () => searchParamsMock.current,
 }));
 
 vi.mock("../../i18n/routing", () => ({
@@ -157,6 +163,7 @@ beforeEach(() => {
   listBugsMock.mockReset();
   listRequirementsMock.mockReset();
   listWorkItemsMock.mockReset();
+  searchParamsMock.current = new URLSearchParams();
   memberMap.clear();
   versionMap.clear();
   sessionMock.current = {
@@ -177,6 +184,18 @@ afterEach(() => {
 });
 
 describe("BugsPage", () => {
+  it("opens the create dialog from the command palette query", async () => {
+    searchParamsMock.current = new URLSearchParams("new=bug");
+    listBugsMock.mockResolvedValueOnce({ items: [], total: 0 });
+
+    render(<BugsPage />);
+
+    await waitFor(() => expect(listBugsMock).toHaveBeenCalled());
+    expect(
+      await screen.findByTestId("create-bug-dialog-open"),
+    ).toBeInTheDocument();
+  });
+
   it("renders bug rows with member-resolved assignee initial and version name", async () => {
     memberMap.set(ASSIGNEE_ID, {
       user: { name: "Bob Smith", username: "bob" },

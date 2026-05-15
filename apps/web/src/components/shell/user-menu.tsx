@@ -1,6 +1,6 @@
 "use client";
 
-import { KeyRound, LogOut, Settings, UserCircle2 } from "lucide-react";
+import { KeyRound, LogOut } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useState } from "react";
 
@@ -44,14 +44,6 @@ export function UserMenu() {
             </span>
           </DropdownMenuLabel>
           <DropdownMenuSeparator />
-          <DropdownMenuItem className="gap-2 text-xs">
-            <UserCircle2 className="h-3.5 w-3.5 text-muted-foreground" />
-            {t("profile")}
-          </DropdownMenuItem>
-          <DropdownMenuItem className="gap-2 text-xs">
-            <Settings className="h-3.5 w-3.5 text-muted-foreground" />
-            {t("preferences")}
-          </DropdownMenuItem>
           <DropdownMenuItem
             data-testid="user-menu-change-password"
             onSelect={() => {

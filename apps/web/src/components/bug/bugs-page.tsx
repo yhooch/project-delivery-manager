@@ -12,6 +12,7 @@ import type {
 } from "@project-delivery/shared";
 import { Bug, Filter, Plus } from "lucide-react";
 import { useTranslations } from "next-intl";
+import { useSearchParams } from "next/navigation";
 import {
   useCallback,
   useEffect,
@@ -114,6 +115,7 @@ export function BugsPage() {
   const tSeverity = useTranslations("bugs.severity");
   const tFilters = useTranslations("bugs.filters");
   const tApiError = useTranslations();
+  const searchParams = useSearchParams();
 
   const { currentSpace, status: sessionStatus } = useSession();
   const spaceId = currentSpace?.id;
@@ -139,6 +141,7 @@ export function BugsPage() {
     currentSpace?.role,
     currentSpace?.status,
   );
+  const requestedNew = normalizeSearchParam(searchParams.get("new"));
   const activeBucket = filters.statusCategory
     ? (bugBucketByCategory[filters.statusCategory] ?? "all")
     : "all";
@@ -247,6 +250,12 @@ export function BugsPage() {
     },
     [recentScope],
   );
+
+  useEffect(() => {
+    if (requestedNew === "bug" && canCreateBug) {
+      setCreateOpen(true);
+    }
+  }, [canCreateBug, requestedNew]);
 
   useListKeyboardNav<MockBugItem>({
     items: filtered,
@@ -667,4 +676,9 @@ function formatDate(iso: string): string {
   } catch {
     return iso;
   }
+}
+
+function normalizeSearchParam(value: string | null): string | undefined {
+  const normalized = value?.trim();
+  return normalized ? normalized : undefined;
 }

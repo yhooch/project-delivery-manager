@@ -58,7 +58,7 @@ export class PrismaVersionRepository implements VersionRepository {
       },
     });
 
-    return this.toVersionWithRequirementCount(version);
+    return this.toVersionWithStats(version);
   }
 
   async findById(versionId: string) {
@@ -69,7 +69,7 @@ export class PrismaVersionRepository implements VersionRepository {
       },
     });
 
-    return version ? this.toVersionWithRequirementCount(version) : undefined;
+    return version ? this.toVersionWithStats(version) : undefined;
   }
 
   async findByName(spaceId: string, name: string) {
@@ -110,15 +110,13 @@ export class PrismaVersionRepository implements VersionRepository {
         where,
       }),
     ]);
-    const requirementCounts = await this.countRequirementsByVersionIds(
+    const stats = await this.countStatsByVersionIds(
       versions.map((version) => version.id),
     );
 
     return {
       items: versions.map((version) =>
-        toVersion(version, {
-          requirementCount: requirementCounts.get(version.id) ?? 0,
-        }),
+        toVersion(version, stats.get(version.id)),
       ),
       page: input.page,
       pageSize: input.pageSize,
@@ -229,49 +227,120 @@ export class PrismaVersionRepository implements VersionRepository {
       });
     });
 
-    return updated ? this.toVersionWithRequirementCount(updated) : undefined;
+    return updated ? this.toVersionWithStats(updated) : undefined;
   }
 
-  private async toVersionWithRequirementCount(
+  private async toVersionWithStats(
     version: Parameters<typeof toVersion>[0],
   ) {
-    const requirementCount = await this.prisma.client.requirement.count({
-      where: {
-        deletedAt: null,
-        versionId: version.id,
-      },
-    });
+    const stats = await this.countStatsByVersionIds([version.id]);
 
-    return toVersion(version, { requirementCount });
+    return toVersion(version, stats.get(version.id));
   }
 
-  private async countRequirementsByVersionIds(versionIds: string[]) {
-    const counts = new Map<string, number>();
+  private async countStatsByVersionIds(versionIds: string[]) {
+    const stats = new Map<
+      string,
+      {
+        blockedCount: number;
+        bugCount: number;
+        requirementCount: number;
+        taskCount: number;
+      }
+    >();
 
     if (versionIds.length === 0) {
-      return counts;
+      return stats;
     }
 
-    const groups = await this.prisma.client.requirement.groupBy({
-      by: ["versionId"],
-      _count: {
-        _all: true,
-      },
-      where: {
-        deletedAt: null,
-        versionId: {
-          in: versionIds,
-        },
-      },
-    });
+    for (const versionId of versionIds) {
+      stats.set(versionId, {
+        blockedCount: 0,
+        bugCount: 0,
+        requirementCount: 0,
+        taskCount: 0,
+      });
+    }
 
-    for (const group of groups) {
-      if (group.versionId) {
-        counts.set(group.versionId, group._count._all);
+    const [requirementGroups, workItemGroups, blockedGroups] =
+      await Promise.all([
+        this.prisma.client.requirement.groupBy({
+          by: ["versionId"],
+          _count: {
+            _all: true,
+          },
+          where: {
+            deletedAt: null,
+            versionId: {
+              in: versionIds,
+            },
+          },
+        }),
+        this.prisma.client.workItem.groupBy({
+          by: ["versionId", "type"],
+          _count: {
+            _all: true,
+          },
+          where: versionStatsWorkItemWhere(versionIds),
+        }),
+        this.prisma.client.workItem.groupBy({
+          by: ["versionId"],
+          _count: {
+            _all: true,
+          },
+          where: {
+            AND: [
+              versionStatsWorkItemWhere(versionIds),
+              {
+                OR: blockedWorkItemWhere(),
+              },
+            ],
+          },
+        }),
+      ]);
+
+    for (const group of requirementGroups) {
+      const current = group.versionId ? stats.get(group.versionId) : undefined;
+
+      if (group.versionId && current) {
+        stats.set(group.versionId, {
+          ...current,
+          requirementCount: group._count._all,
+        });
       }
     }
 
-    return counts;
+    for (const group of workItemGroups) {
+      if (!group.versionId) {
+        continue;
+      }
+
+      const current = stats.get(group.versionId);
+
+      if (!current) {
+        continue;
+      }
+
+      stats.set(group.versionId, {
+        ...current,
+        bugCount: group.type === "BUG" ? group._count._all : current.bugCount,
+        taskCount:
+          group.type === "TASK" ? group._count._all : current.taskCount,
+      });
+    }
+
+    for (const group of blockedGroups) {
+      const current = group.versionId ? stats.get(group.versionId) : undefined;
+
+      if (group.versionId && current) {
+        stats.set(group.versionId, {
+          ...current,
+          blockedCount: group._count._all,
+        });
+      }
+    }
+
+    return stats;
   }
 
   private async buildBoardWhere(
@@ -385,6 +454,45 @@ function buildWorkItemTypeConstraints(
           type: "BUG",
         },
       ],
+    },
+  ];
+}
+
+function versionStatsWorkItemWhere(
+  versionIds: string[],
+): Prisma.WorkItemWhereInput {
+  return {
+    deletedAt: null,
+    versionId: {
+      in: versionIds,
+    },
+    OR: [
+      {
+        type: "TASK",
+      },
+      {
+        bugDetail: {
+          is: {
+            deletedAt: null,
+          },
+        },
+        type: "BUG",
+      },
+    ],
+  };
+}
+
+function blockedWorkItemWhere(): Prisma.WorkItemWhereInput[] {
+  return [
+    {
+      blockedAt: {
+        not: null,
+      },
+    },
+    {
+      blockedReason: {
+        not: null,
+      },
     },
   ];
 }

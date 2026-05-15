@@ -46,6 +46,20 @@ export class PrismaRequirementRepository implements RequirementRepository {
         actorUserId: input.createdById,
       });
 
+      await createTimelineEvent(tx, {
+        actorUserId: input.createdById,
+        after: {
+          status: created.status,
+          title: created.title,
+          versionId: created.versionId ?? null,
+        },
+        eventType: "CREATED",
+        organizationId: input.organizationId,
+        spaceId: input.spaceId,
+        targetId: created.id,
+        title: "创建需求草稿",
+      });
+
       return created;
     });
 
@@ -142,6 +156,17 @@ export class PrismaRequirementRepository implements RequirementRepository {
 
   async save(input: SaveRequirementInput) {
     const updated = await this.prisma.client.$transaction(async (tx) => {
+      const previous = await tx.requirement.findFirst({
+        where: {
+          deletedAt: null,
+          id: input.requirementId,
+        },
+      });
+
+      if (!previous) {
+        return undefined;
+      }
+
       const result = await tx.requirement.updateMany({
         data: {
           title: input.title,
@@ -203,6 +228,17 @@ export class PrismaRequirementRepository implements RequirementRepository {
         });
       }
 
+      await createTimelineEvent(tx, {
+        actorUserId: input.updatedById,
+        after: requirementTimelineSnapshot(requirement),
+        before: requirementTimelineSnapshot(previous),
+        eventType: "UPDATED",
+        organizationId: requirement.organizationId,
+        spaceId: requirement.spaceId,
+        targetId: requirement.id,
+        title: "保存需求",
+      });
+
       return requirement;
     });
 
@@ -220,6 +256,17 @@ export class PrismaRequirementRepository implements RequirementRepository {
 
   async archive(input: ArchiveRequirementInput) {
     const updated = await this.prisma.client.$transaction(async (tx) => {
+      const previous = await tx.requirement.findFirst({
+        where: {
+          deletedAt: null,
+          id: input.requirementId,
+        },
+      });
+
+      if (!previous) {
+        return undefined;
+      }
+
       const result = await tx.requirement.updateMany({
         data: {
           status: "ARCHIVED",
@@ -235,12 +282,33 @@ export class PrismaRequirementRepository implements RequirementRepository {
         return undefined;
       }
 
-      return tx.requirement.findFirst({
+      const requirement = await tx.requirement.findFirst({
         where: {
           deletedAt: null,
           id: input.requirementId,
         },
       });
+
+      if (!requirement) {
+        return undefined;
+      }
+
+      await createTimelineEvent(tx, {
+        actorUserId: input.updatedById,
+        after: {
+          status: requirement.status,
+        },
+        before: {
+          status: previous.status,
+        },
+        eventType: "STATUS_CHANGED",
+        organizationId: requirement.organizationId,
+        spaceId: requirement.spaceId,
+        targetId: requirement.id,
+        title: "归档需求",
+      });
+
+      return requirement;
     });
 
     if (!updated) {
@@ -486,6 +554,65 @@ function toArray<T>(value: T | T[] | undefined): T[] {
   }
 
   return Array.isArray(value) ? value : [value];
+}
+
+type RequirementTimelineRecord = {
+  contentText: string | null;
+  ownerId: string | null;
+  priority: string | null;
+  status: string;
+  summary: string | null;
+  title: string;
+  versionId: string | null;
+};
+
+function requirementTimelineSnapshot(record: RequirementTimelineRecord) {
+  return {
+    contentText: record.contentText ?? null,
+    ownerId: record.ownerId ?? null,
+    priority: record.priority ?? null,
+    status: record.status,
+    summary: record.summary ?? null,
+    title: record.title,
+    versionId: record.versionId ?? null,
+  };
+}
+
+async function createTimelineEvent(
+  tx: Prisma.TransactionClient,
+  input: {
+    actorUserId: string;
+    after?: Record<string, unknown>;
+    before?: Record<string, unknown>;
+    eventType: "CREATED" | "STATUS_CHANGED" | "UPDATED";
+    organizationId: string;
+    spaceId: string;
+    targetId: string;
+    title: string;
+  },
+) {
+  await tx.timelineEvent.create({
+    data: {
+      id: ulid(),
+      actorId: input.actorUserId,
+      after: toJson(input.after),
+      before: toJson(input.before),
+      createdById: input.actorUserId,
+      eventType: input.eventType,
+      organizationId: input.organizationId,
+      spaceId: input.spaceId,
+      targetId: input.targetId,
+      targetType: "REQUIREMENT",
+      title: input.title,
+      updatedById: input.actorUserId,
+    },
+  });
+}
+
+function toJson(value: Record<string, unknown> | undefined) {
+  return value && Object.keys(value).length > 0
+    ? (value as Prisma.InputJsonObject)
+    : undefined;
 }
 
 async function ensureParticipant(

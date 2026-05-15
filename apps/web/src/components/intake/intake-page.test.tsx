@@ -14,6 +14,9 @@ const { translatorCache } = vi.hoisted(() => ({
 const { routerPushMock } = vi.hoisted(() => ({
   routerPushMock: vi.fn(),
 }));
+const { searchParamsMock } = vi.hoisted(() => ({
+  searchParamsMock: { current: new URLSearchParams() },
+}));
 vi.mock("next-intl", () => ({
   useTranslations: (namespace?: string) => {
     const key = namespace ?? "__root__";
@@ -25,6 +28,9 @@ vi.mock("next-intl", () => ({
     return fn;
   },
   useLocale: () => "zh-CN",
+}));
+vi.mock("next/navigation", () => ({
+  useSearchParams: () => searchParamsMock.current,
 }));
 
 vi.mock("../../i18n/routing", () => ({
@@ -65,12 +71,14 @@ const {
   listIntakeItemsMock,
   acceptIntakeItemMock,
   deferIntakeItemMock,
+  getIntakeItemMock,
   rejectIntakeItemMock,
   listWorkItemsMock,
 } = vi.hoisted(() => ({
   listIntakeItemsMock: vi.fn(),
   acceptIntakeItemMock: vi.fn(),
   deferIntakeItemMock: vi.fn(),
+  getIntakeItemMock: vi.fn(),
   rejectIntakeItemMock: vi.fn(),
   listWorkItemsMock: vi.fn(),
 }));
@@ -78,6 +86,7 @@ vi.mock("../../lib/intake-service", () => ({
   listIntakeItems: listIntakeItemsMock,
   acceptIntakeItem: acceptIntakeItemMock,
   deferIntakeItem: deferIntakeItemMock,
+  getIntakeItem: getIntakeItemMock,
   rejectIntakeItem: rejectIntakeItemMock,
 }));
 vi.mock("../../lib/work-item-service", () => ({
@@ -134,9 +143,11 @@ beforeEach(() => {
   listIntakeItemsMock.mockReset();
   acceptIntakeItemMock.mockReset();
   deferIntakeItemMock.mockReset();
+  getIntakeItemMock.mockReset();
   rejectIntakeItemMock.mockReset();
   listWorkItemsMock.mockReset();
   routerPushMock.mockReset();
+  searchParamsMock.current = new URLSearchParams();
   sessionMock.current = {
     session: {
       defaultOrganizationId: "ORG_01",
@@ -164,6 +175,29 @@ afterEach(() => {
 });
 
 describe("IntakePage", () => {
+  it("opens an intake item detail drawer from the id query", async () => {
+    searchParamsMock.current = new URLSearchParams(
+      "id=01ARZ3NDEKTSV4RRFFQ69G5FID",
+    );
+    listIntakeItemsMock.mockResolvedValueOnce({
+      items: [
+        makeIntake({
+          id: "01ARZ3NDEKTSV4RRFFQ69G5FID",
+          title: "Deep linked intake",
+        }),
+      ],
+      total: 1,
+    });
+
+    render(<IntakePage />);
+
+    expect(await screen.findByText("Deep linked intake")).toBeInTheDocument();
+    expect(
+      await screen.findByTestId("intake-detail-sheet"),
+    ).toBeInTheDocument();
+    expect(getIntakeItemMock).not.toHaveBeenCalled();
+  });
+
   it("renders intake rows with title, source type and status badge", async () => {
     listIntakeItemsMock.mockResolvedValueOnce({
       items: [

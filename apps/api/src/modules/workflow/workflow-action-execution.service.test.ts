@@ -216,6 +216,35 @@ describe("WorkflowActionExecutionService", () => {
     });
   });
 
+  it("rejects form values that are not configured on the action", async () => {
+    const subject = createSubject("DEVELOPER");
+    subject.repository.actions.set(
+      SUBMIT_ACTION_ID,
+      makeAction({
+        formFields: [
+          makeField({
+            key: "testNote",
+            label: "提测说明",
+          }),
+        ],
+        id: SUBMIT_ACTION_ID,
+      }),
+    );
+
+    await expect(
+      subject.service.executeAction(ACTOR_ID, WORK_ITEM_ID, SUBMIT_ACTION_ID, {
+        formValues: {
+          unexpected: "should not be accepted",
+        },
+      }),
+    ).rejects.toMatchObject({
+      code: "WORKFLOW_ACTION_FORM_INVALID",
+      details: {
+        field: "unexpected",
+      },
+    });
+  });
+
   it("rejects actions that require comments when comment is blank", async () => {
     const subject = createSubject("DEVELOPER");
     subject.repository.actions.set(

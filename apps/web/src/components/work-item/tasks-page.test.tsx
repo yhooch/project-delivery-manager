@@ -199,6 +199,18 @@ afterEach(() => {
 });
 
 describe("TasksPage", () => {
+  it("opens the create dialog from the command palette query", async () => {
+    searchParamsMock.current = new URLSearchParams("new=task");
+    listWorkItemsMock.mockResolvedValueOnce({ items: [], total: 0 });
+
+    render(<TasksPage />);
+
+    await waitFor(() => expect(listWorkItemsMock).toHaveBeenCalled());
+    expect(
+      await screen.findByTestId("create-task-dialog-open"),
+    ).toBeInTheDocument();
+  });
+
   it("filters related tasks from an intake item deep link", async () => {
     searchParamsMock.current = new URLSearchParams(
       "intakeItemId=01ARZ3NDEKTSV4RRFFQ69G5FIN",

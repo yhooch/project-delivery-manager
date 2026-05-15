@@ -419,6 +419,20 @@ async function validateFormValues(
   input: ExecuteActionRequest,
 ): Promise<Record<string, string | number>> {
   const result: Record<string, string | number> = {};
+  const configuredKeys = new Set(action.formFields.map((field) => field.key));
+
+  for (const key of Object.keys(input.formValues)) {
+    if (!configuredKeys.has(key)) {
+      throw new ApiException(
+        "WORKFLOW_ACTION_FORM_INVALID",
+        `${key} is not configured for this workflow action`,
+        HttpStatus.BAD_REQUEST,
+        {
+          field: key,
+        },
+      );
+    }
+  }
 
   for (const field of action.formFields) {
     const value = input.formValues[field.key];

@@ -65,6 +65,7 @@ export function TasksPage() {
   const { currentSpace, status: sessionStatus } = useSession();
   const spaceId = currentSpace?.id;
   const organizationId = currentSpace?.organizationId;
+  const requestedNew = normalizeSearchParam(searchParams.get("new"));
   const requestedWorkItemId = normalizeSearchParam(
     searchParams.get("workItemId"),
   );
@@ -223,6 +224,12 @@ export function TasksPage() {
     },
     [recentScope],
   );
+
+  useEffect(() => {
+    if (requestedNew === "task" && canCreateTask) {
+      setCreateOpen(true);
+    }
+  }, [canCreateTask, requestedNew]);
 
   useEffect(() => {
     setFilters((current) => {

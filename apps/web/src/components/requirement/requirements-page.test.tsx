@@ -7,6 +7,9 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 const { translatorCache } = vi.hoisted(() => ({
   translatorCache: new Map<string, (key: string) => string>(),
 }));
+const { searchParamsMock } = vi.hoisted(() => ({
+  searchParamsMock: { current: new URLSearchParams() },
+}));
 vi.mock("next-intl", () => ({
   useTranslations: (namespace?: string) => {
     const key = namespace ?? "__root__";
@@ -18,6 +21,9 @@ vi.mock("next-intl", () => ({
     return fn;
   },
   useLocale: () => "zh-CN",
+}));
+vi.mock("next/navigation", () => ({
+  useSearchParams: () => searchParamsMock.current,
 }));
 
 const routerPushMock = vi.hoisted(() => vi.fn());
@@ -118,6 +124,7 @@ beforeEach(() => {
     },
     status: "authenticated" as const,
   };
+  searchParamsMock.current = new URLSearchParams();
   window.localStorage.clear();
 });
 
@@ -126,6 +133,26 @@ afterEach(() => {
 });
 
 describe("RequirementsPage", () => {
+  it("creates a draft and navigates from the command palette query", async () => {
+    searchParamsMock.current = new URLSearchParams("new=requirement");
+    listRequirementsMock.mockResolvedValueOnce({ items: [], total: 0 });
+    createRequirementDraftMock.mockResolvedValueOnce(
+      makeRequirement({ id: "01ARZ3NDEKTSV4RRFFQ69G5FCMD" }),
+    );
+
+    render(<RequirementsPage />);
+
+    await waitFor(() =>
+      expect(createRequirementDraftMock).toHaveBeenCalledWith(
+        { spaceId: "SPC_01" },
+        {},
+      ),
+    );
+    expect(routerPushMock).toHaveBeenCalledWith(
+      "/requirements/01ARZ3NDEKTSV4RRFFQ69G5FCMD",
+    );
+  });
+
   it("renders requirement rows with title and status badge", async () => {
     listRequirementsMock.mockResolvedValueOnce({
       items: [

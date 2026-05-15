@@ -30,9 +30,16 @@ type PrismaVersionRecord = {
   taskCount: number;
 };
 
+type VersionStatsOverrides = {
+  blockedCount?: number;
+  bugCount?: number;
+  requirementCount?: number;
+  taskCount?: number;
+};
+
 export function toVersion(
   record: PrismaVersionRecord,
-  overrides?: { requirementCount?: number },
+  overrides?: VersionStatsOverrides,
 ): Version {
   return {
     id: record.id,
@@ -48,9 +55,9 @@ export function toVersion(
     releaseDate: record.releaseDate?.toISOString(),
     stats: {
       requirementCount: overrides?.requirementCount ?? record.requirementCount,
-      taskCount: record.taskCount,
-      bugCount: record.bugCount,
-      blockedCount: record.blockedCount,
+      taskCount: overrides?.taskCount ?? record.taskCount,
+      bugCount: overrides?.bugCount ?? record.bugCount,
+      blockedCount: overrides?.blockedCount ?? record.blockedCount,
     },
   };
 }

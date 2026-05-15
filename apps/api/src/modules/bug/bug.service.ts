@@ -3,7 +3,6 @@ import {
   type BugView,
   type CreateBugRequest,
   type PageResult,
-  type PermissionSnapshot,
   type SpaceRole,
   type UpdateBugRequest,
 } from "@project-delivery/shared";
@@ -152,7 +151,13 @@ export class BugService {
       targetType: "BUG",
     });
 
-    return withPermissions(created, access.role);
+    return {
+      ...created,
+      permissions: await this.workflowActions.resolvePermissionSnapshot(
+        actorUserId,
+        created.id,
+      ),
+    };
   }
 
   async get(
@@ -309,7 +314,13 @@ export class BugService {
       targetType: "BUG",
     });
 
-    return withPermissions(updated, access.role);
+    return {
+      ...updated,
+      permissions: await this.workflowActions.resolvePermissionSnapshot(
+        actorUserId,
+        updated.id,
+      ),
+    };
   }
 
   private async requireVisibleBug(
@@ -693,24 +704,6 @@ export class BugService {
 
 function canReadAllSpaceBugs(role: SpaceRole) {
   return SPACE_BUG_READ_ALL_ROLES.has(role);
-}
-
-function withPermissions(bug: BugView, role: SpaceRole): BugView {
-  return {
-    ...bug,
-    permissions: toPermissionSnapshot(role),
-  };
-}
-
-function toPermissionSnapshot(role: SpaceRole): PermissionSnapshot {
-  const canWrite = role !== "VIEWER";
-
-  return {
-    availableActions: [],
-    canComment: canWrite,
-    canEdit: canWrite,
-    canUploadAttachment: canWrite,
-  };
 }
 
 function parseOptionalDate(value: string | undefined, field: string) {

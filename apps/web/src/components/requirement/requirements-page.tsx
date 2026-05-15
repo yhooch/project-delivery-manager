@@ -16,6 +16,7 @@ import {
   Plus,
 } from "lucide-react";
 import { useTranslations } from "next-intl";
+import { useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { Link, useRouter } from "../../i18n/routing";
@@ -55,6 +56,7 @@ export function RequirementsPage() {
   const tNav = useTranslations("shell.nav");
   const tRoot = useTranslations();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { session, status: sessionStatus } = useSession();
   const spaceId = session?.defaultSpaceId;
   const organizationId = session?.defaultOrganizationId;
@@ -74,6 +76,10 @@ export function RequirementsPage() {
   const [selectedOwnerId, setSelectedOwnerId] = useState("");
   const [isCreating, setIsCreating] = useState(false);
   const [activeId, setActiveId] = useState<string | undefined>(undefined);
+  const [handledCreateLinkKey, setHandledCreateLinkKey] = useState<
+    string | null
+  >(null);
+  const requestedNew = normalizeSearchParam(searchParams.get("new"));
 
   const loadItems = useCallback(async () => {
     if (!spaceId) {
@@ -179,7 +185,7 @@ export function RequirementsPage() {
     onEdit: openRequirement,
   });
 
-  async function handleCreateDraft() {
+  const handleCreateDraft = useCallback(async () => {
     if (!spaceId || isCreating) {
       return;
     }
@@ -194,7 +200,32 @@ export function RequirementsPage() {
       setErrorKey(getApiErrorMessageKey(error));
       setIsCreating(false);
     }
-  }
+  }, [isCreating, rememberRequirement, router, spaceId]);
+
+  useEffect(() => {
+    if (
+      requestedNew !== "requirement" ||
+      sessionStatus !== "authenticated" ||
+      !spaceId
+    ) {
+      return;
+    }
+
+    const key = `requirement:${spaceId}`;
+    if (handledCreateLinkKey === key || isCreating) {
+      return;
+    }
+
+    setHandledCreateLinkKey(key);
+    void handleCreateDraft();
+  }, [
+    handledCreateLinkKey,
+    handleCreateDraft,
+    isCreating,
+    requestedNew,
+    sessionStatus,
+    spaceId,
+  ]);
 
   const headerActions = (
     <>
@@ -453,6 +484,11 @@ function toRequirementListQuery(
 
 function optionalFilterValue(value: string): string | undefined {
   return value.trim() ? value : undefined;
+}
+
+function normalizeSearchParam(value: string | null): string | undefined {
+  const normalized = value?.trim();
+  return normalized ? normalized : undefined;
 }
 
 function formatMember(member: SpaceMemberWithUser): string {

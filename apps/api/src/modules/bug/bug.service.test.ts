@@ -86,6 +86,13 @@ describe("BugService", () => {
 
     expect(created).toMatchObject({
       currentStateId: CURRENT_STATE_ID,
+      permissions: {
+        availableActions: [
+          {
+            code: "START_PROGRESS",
+          },
+        ],
+      },
       priority: "HIGH",
       statusCategory: "NOT_STARTED",
       type: "BUG",
@@ -112,6 +119,7 @@ describe("BugService", () => {
       ASSIGNEE_ID,
       RELATED_USER_ID,
     ]);
+    expect(subject.permissionResolver.resolvedWorkItemIds).toEqual([created.id]);
     expect(subject.bugs.auditLogs).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
@@ -247,6 +255,13 @@ describe("BugService", () => {
         relatedTaskId: RELATED_TASK_ID,
         severity: "CRITICAL",
       },
+      permissions: {
+        availableActions: [
+          {
+            code: "START_PROGRESS",
+          },
+        ],
+      },
     });
     expect(subject.bugs.updatedInput).toMatchObject({
       assigneeChanged: true,
@@ -267,6 +282,7 @@ describe("BugService", () => {
       ASSIGNEE_ID,
       RELATED_USER_ID,
     ]);
+    expect(subject.permissionResolver.resolvedWorkItemIds).toEqual([BUG_ID]);
     expect(subject.bugs.auditLogs).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
@@ -284,6 +300,7 @@ function createSubject(role: SpaceRole, actorUserId = ACTOR_ID) {
   const bugs = new FakeBugRepository();
   const spaces = new FakeSpaceRepository();
   const organizations = new FakeOrganizationRepository();
+  const permissionResolver = createPermissionResolver(role);
 
   spaces.addAccess(actorUserId, role);
   spaces.addMember(actorUserId, role);
@@ -296,8 +313,9 @@ function createSubject(role: SpaceRole, actorUserId = ACTOR_ID) {
       bugs,
       spaces as unknown as SpaceRepository,
       organizations as unknown as OrganizationRepository,
-      createPermissionResolver(role) as unknown as WorkflowActionExecutionService,
+      permissionResolver as unknown as WorkflowActionExecutionService,
     ),
+    permissionResolver,
     spaces,
   };
 }
@@ -306,9 +324,24 @@ function createPermissionResolver(role: SpaceRole) {
   const canWrite = role !== "VIEWER";
 
   return {
-    async resolvePermissionSnapshot() {
+    resolvedWorkItemIds: [] as string[],
+    async resolvePermissionSnapshot(_actorUserId: string, workItemId: string) {
+      this.resolvedWorkItemIds.push(workItemId);
       return {
-        availableActions: [],
+        availableActions: [
+          {
+            actorRelations: [],
+            allowedSpaceRoles: [role],
+            code: "START_PROGRESS",
+            formFields: [],
+            fromStateId: CURRENT_STATE_ID,
+            id: "01H0000000000000000000000D",
+            name: "开始处理",
+            order: 0,
+            requiresComment: false,
+            toStateId: "01H0000000000000000000000E",
+          },
+        ],
         canComment: canWrite,
         canEdit: canWrite,
         canUploadAttachment: canWrite,

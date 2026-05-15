@@ -17,6 +17,7 @@ import {
   Users,
 } from "lucide-react";
 import { useTranslations } from "next-intl";
+import { useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { useRouter } from "../../i18n/routing";
@@ -25,6 +26,7 @@ import { useListKeyboardNav } from "../../lib/hooks/use-list-keyboard-nav";
 import {
   acceptIntakeItem,
   deferIntakeItem,
+  getIntakeItem,
   listIntakeItems,
   rejectIntakeItem,
 } from "../../lib/intake-service";
@@ -86,6 +88,8 @@ export function IntakePage() {
   const tIntakeItems = useTranslations("intakeItems");
   const tRoot = useTranslations();
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const requestedIntakeItemId = normalizeSearchParam(searchParams.get("id"));
   const { currentSpace, session, status: sessionStatus } = useSession();
   const spaceId = session?.defaultSpaceId;
   const organizationId = session?.defaultOrganizationId;
@@ -108,8 +112,12 @@ export function IntakePage() {
   const [viewTasksInFlight, setViewTasksInFlight] = useState(false);
   const [actionErrorKey, setActionErrorKey] = useState<string | null>(null);
   const [createOpen, setCreateOpen] = useState(false);
+  const [hasLoadedItems, setHasLoadedItems] = useState(false);
   const [convertOpen, setConvertOpen] = useState(false);
   const [convertTarget, setConvertTarget] = useState<IntakeItem | null>(null);
+  const [handledDeepLinkKey, setHandledDeepLinkKey] = useState<string | null>(
+    null,
+  );
 
   const loadItems = useCallback(async () => {
     if (!spaceId) {
@@ -117,6 +125,7 @@ export function IntakePage() {
     }
 
     setIsLoading(true);
+    setHasLoadedItems(false);
     setErrorKey(null);
 
     try {
@@ -126,6 +135,7 @@ export function IntakePage() {
       setErrorKey(getApiErrorMessageKey(error));
     } finally {
       setIsLoading(false);
+      setHasLoadedItems(true);
     }
   }, [spaceId]);
 
@@ -191,6 +201,59 @@ export function IntakePage() {
     },
     [recentScope],
   );
+
+  useEffect(() => {
+    if (!requestedIntakeItemId || !spaceId) {
+      return;
+    }
+
+    const key = `intake:${spaceId}:${requestedIntakeItemId}`;
+    if (handledDeepLinkKey === key) {
+      return;
+    }
+
+    const listed = items.find((item) => item.id === requestedIntakeItemId);
+    if (listed) {
+      openItem(listed);
+      setHandledDeepLinkKey(key);
+      return;
+    }
+
+    if (isLoading || !hasLoadedItems) {
+      return;
+    }
+
+    let cancelled = false;
+    void getIntakeItem({
+      intakeItemId: requestedIntakeItemId,
+      organizationId,
+      spaceId,
+    })
+      .then((item) => {
+        if (!cancelled) {
+          openItem(item);
+          setHandledDeepLinkKey(key);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setHandledDeepLinkKey(key);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    handledDeepLinkKey,
+    hasLoadedItems,
+    isLoading,
+    items,
+    openItem,
+    organizationId,
+    requestedIntakeItemId,
+    spaceId,
+  ]);
 
   useListKeyboardNav<IntakeItem>({
     items: filtered,
@@ -662,6 +725,11 @@ function formatItemCode(id: string): string {
 
 function initialOf(id: string): string {
   return id.charAt(0).toUpperCase();
+}
+
+function normalizeSearchParam(value: string | null): string | undefined {
+  const normalized = value?.trim();
+  return normalized ? normalized : undefined;
 }
 
 function buildWorkItemsHref(
