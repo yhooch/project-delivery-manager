@@ -54,6 +54,45 @@ describe("TargetResolverService", () => {
     });
   });
 
+  it("rejects VIEWER writes even when the user is an object participant", async () => {
+    const actorUserId = ulid();
+    const workItemId = ulid();
+    const spaceId = ulid();
+    const organizationId = ulid();
+    const { objectParticipantFindFirst, resolver, spaces, workItemFindFirst } =
+      createResolver();
+
+    workItemFindFirst.mockResolvedValue({
+      id: workItemId,
+      organizationId,
+      spaceId,
+      title: "Work item",
+    });
+    objectParticipantFindFirst.mockResolvedValue({ id: ulid() });
+    vi.mocked(spaces.findAccessibleById).mockResolvedValue({
+      role: "VIEWER",
+      space: makeSpace(spaceId, organizationId),
+    });
+
+    await expect(
+      resolver.resolve(actorUserId, "WORK_ITEM", workItemId),
+    ).resolves.toMatchObject({
+      canWrite: false,
+      role: "VIEWER",
+      targetId: workItemId,
+    });
+
+    await expect(
+      resolver.resolve(actorUserId, "WORK_ITEM", workItemId, {
+        access: "write",
+      }),
+    ).rejects.toMatchObject({
+      code: "SPACE_ACCESS_DENIED",
+      status: HttpStatus.FORBIDDEN,
+    });
+    expect(objectParticipantFindFirst).not.toHaveBeenCalled();
+  });
+
   it("can hide inaccessible targets behind a caller-specific not found code", async () => {
     const workItemId = ulid();
     const { resolver, spaces, workItemFindFirst } = createResolver();
@@ -298,6 +337,42 @@ describe("TargetResolverService", () => {
       targetId: requirementId,
       targetType: "REQUIREMENT",
     });
+  });
+
+  it("rejects VIEWER writes to non-draft REQUIREMENT targets even as participant", async () => {
+    const actorUserId = ulid();
+    const requirementId = ulid();
+    const spaceId = ulid();
+    const organizationId = ulid();
+    const { objectParticipantFindFirst, requirements, resolver, spaces } =
+      createResolver();
+
+    vi.mocked(requirements.findById).mockResolvedValue(
+      makeRequirement(requirementId, spaceId, organizationId, "CONFIRMED"),
+    );
+    objectParticipantFindFirst.mockResolvedValue({ id: ulid() });
+    vi.mocked(spaces.findAccessibleById).mockResolvedValue({
+      role: "VIEWER",
+      space: makeSpace(spaceId, organizationId),
+    });
+
+    await expect(
+      resolver.resolve(actorUserId, "REQUIREMENT", requirementId),
+    ).resolves.toMatchObject({
+      canWrite: false,
+      role: "VIEWER",
+      targetId: requirementId,
+    });
+
+    await expect(
+      resolver.resolve(actorUserId, "REQUIREMENT", requirementId, {
+        access: "write",
+      }),
+    ).rejects.toMatchObject({
+      code: "SPACE_ACCESS_DENIED",
+      status: HttpStatus.FORBIDDEN,
+    });
+    expect(objectParticipantFindFirst).not.toHaveBeenCalled();
   });
 
   it("hides INTAKE_ITEM targets from same-space non-participants without read-all roles", async () => {

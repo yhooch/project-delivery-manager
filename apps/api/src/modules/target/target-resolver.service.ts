@@ -319,6 +319,10 @@ export class TargetResolverService {
     target: TargetRecord,
     role: SpaceRole,
   ) {
+    if (role === "VIEWER") {
+      return false;
+    }
+
     switch (target.targetType) {
       case "SPACE":
       case "VERSION":

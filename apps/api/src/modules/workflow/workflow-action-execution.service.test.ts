@@ -214,6 +214,34 @@ describe("WorkflowActionExecutionService", () => {
     },
   );
 
+  it("keeps non-participant TESTER visible BUG snapshots read-only for target writes", async () => {
+    const subject = createSubject("TESTER", {
+      assigneeId: undefined,
+      type: "BUG",
+    });
+    subject.repository.participantKeys.clear();
+    subject.repository.actions.set(
+      START_ACTION_ID,
+      makeAction({
+        actorRelations: [],
+        allowedSpaceRoles: ["TESTER"],
+      }),
+    );
+
+    await expect(
+      subject.service.resolvePermissionSnapshot(ACTOR_ID, WORK_ITEM_ID),
+    ).resolves.toMatchObject({
+      availableActions: [
+        {
+          code: "START_PROGRESS",
+        },
+      ],
+      canComment: false,
+      canEdit: false,
+      canUploadAttachment: false,
+    });
+  });
+
   it("marks PM snapshots editable because direct TASK/BUG patches allow managers", async () => {
     const subject = createSubject("PM");
 
@@ -471,6 +499,10 @@ describe("WorkflowActionExecutionService", () => {
 
     expect(detail).toMatchObject({
       currentStateId: IN_PROGRESS_STATE_ID,
+      permissions: {
+        canComment: false,
+        canUploadAttachment: false,
+      },
       statusCategory: "IN_PROGRESS",
       type: "TASK",
     });

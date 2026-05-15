@@ -131,8 +131,19 @@ export class WorkflowActionExecutionService {
         workItem,
         access,
       );
+      const canWriteTarget = await resolveWorkItemWritePermission(
+        tx,
+        actorUserId,
+        workItem,
+        access,
+      );
 
-      return toPermissionSnapshot(workItem, access, availableActions);
+      return toPermissionSnapshot(
+        workItem,
+        access,
+        availableActions,
+        canWriteTarget,
+      );
     });
   }
 
@@ -326,9 +337,20 @@ export class WorkflowActionExecutionService {
           updated,
           access,
         );
+        const canWriteTarget = await resolveWorkItemWritePermission(
+          tx,
+          actorUserId,
+          updated,
+          access,
+        );
         const detail = toWorkItemDetail(
           updated,
-          toPermissionSnapshot(updated, access, availableActions),
+          toPermissionSnapshot(
+            updated,
+            access,
+            availableActions,
+            canWriteTarget,
+          ),
         );
         const after = buildAuditSnapshot(updated);
 
@@ -439,6 +461,27 @@ async function validateWorkItemVisibility(
     "Work item not found",
     HttpStatus.NOT_FOUND,
   );
+}
+
+async function resolveWorkItemWritePermission(
+  tx: WorkflowActionExecutionTransaction,
+  actorUserId: string,
+  workItem: ExecutableWorkItem,
+  access: WorkflowActionActorSpaceAccess,
+) {
+  if (access.role === "VIEWER") {
+    return false;
+  }
+
+  if (canManageDeliveryObject(access.role)) {
+    return true;
+  }
+
+  return tx.isWorkItemParticipant({
+    spaceId: workItem.spaceId,
+    userId: actorUserId,
+    workItemId: workItem.id,
+  });
 }
 
 async function validateFormValues(
@@ -758,14 +801,13 @@ function toPermissionSnapshot(
   workItem: ExecutableWorkItem,
   access: WorkflowActionActorSpaceAccess,
   availableActions: WorkflowActionSummary[],
+  canWriteTarget: boolean,
 ): PermissionSnapshot {
-  const canWrite = access.role !== "VIEWER";
-
   return {
     availableActions,
-    canComment: canWrite,
+    canComment: canWriteTarget,
     canEdit: canManageDeliveryObject(access.role) && isDirectlyEditable(workItem),
-    canUploadAttachment: canWrite,
+    canUploadAttachment: canWriteTarget,
   };
 }
 
