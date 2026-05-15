@@ -29,10 +29,12 @@ import { Button } from "../ui/button";
 import { Input } from "../ui/input";
 import { Label } from "../ui/label";
 import { Textarea } from "../ui/textarea";
+import { useSession } from "../providers/session-provider";
 
 type CreateTaskDialogProps = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  organizationId?: string;
   spaceId: string;
   initialVersionId?: string;
   onCreated?: () => void;
@@ -43,6 +45,7 @@ const PRIORITIES: Priority[] = ["LOW", "MEDIUM", "HIGH", "URGENT"];
 export function CreateTaskDialog({
   open,
   onOpenChange,
+  organizationId: explicitOrganizationId,
   spaceId,
   initialVersionId,
   onCreated,
@@ -50,6 +53,11 @@ export function CreateTaskDialog({
   const t = useTranslations("tasks.dialog");
   const tPriority = useTranslations("workItems.priority");
   const tRoot = useTranslations();
+  const { currentOrganization, session } = useSession();
+  const organizationId =
+    explicitOrganizationId ??
+    session?.defaultOrganizationId ??
+    currentOrganization?.id;
 
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
@@ -85,9 +93,9 @@ export function CreateTaskDialog({
       try {
         const [versionPage, requirementPage, intakePage, memberPage] =
           await Promise.all([
-            listVersions({ spaceId, page: 1, pageSize: 100 }),
-            listRequirements({ spaceId, page: 1, pageSize: 100 }),
-            listIntakeItems({ spaceId, page: 1, pageSize: 100 }),
+            listVersions({ organizationId, spaceId, page: 1, pageSize: 100 }),
+            listRequirements({ organizationId, spaceId, page: 1, pageSize: 100 }),
+            listIntakeItems({ organizationId, spaceId, page: 1, pageSize: 100 }),
             listSpaceMembers(spaceId),
           ]);
         if (cancelled) {
@@ -105,7 +113,7 @@ export function CreateTaskDialog({
     return () => {
       cancelled = true;
     };
-  }, [open, spaceId]);
+  }, [open, organizationId, spaceId]);
 
   function reset() {
     setTitle("");
@@ -141,7 +149,7 @@ export function CreateTaskDialog({
 
     try {
       await createWorkItem(
-        { spaceId },
+        { organizationId, spaceId },
         {
           title: trimmed,
           description: description.trim() || undefined,

@@ -60,9 +60,15 @@ export function RequirementsPage() {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  const { currentSpace, session, status: sessionStatus } = useSession();
+  const {
+    currentOrganization,
+    currentSpace,
+    session,
+    status: sessionStatus,
+  } = useSession();
   const spaceId = session?.defaultSpaceId;
-  const organizationId = session?.defaultOrganizationId;
+  const organizationId =
+    session?.defaultOrganizationId ?? currentOrganization?.id;
   const sessionSpace =
     currentSpace ?? session?.spaces?.find((space) => space.id === spaceId);
   const canCreateRequirement = canWriteRequirements(
@@ -101,6 +107,7 @@ export function RequirementsPage() {
 
     try {
       const page = await listRequirements({
+        organizationId,
         spaceId,
         page: 1,
         pageSize: 100,
@@ -114,7 +121,7 @@ export function RequirementsPage() {
     } finally {
       setIsLoading(false);
     }
-  }, [filter, selectedOwnerId, selectedVersionId, spaceId]);
+  }, [filter, organizationId, selectedOwnerId, selectedVersionId, spaceId]);
 
   const loadFilterOptions = useCallback(async () => {
     if (!spaceId) {
@@ -219,14 +226,21 @@ export function RequirementsPage() {
     setCreateDenied(false);
 
     try {
-      const draft = await createRequirementDraft({ spaceId }, {});
+      const draft = await createRequirementDraft({ organizationId, spaceId }, {});
       rememberRequirement(draft);
       router.push(`/requirements/${draft.id}`);
     } catch (error) {
       setErrorKey(getApiErrorMessageKey(error));
       setIsCreating(false);
     }
-  }, [canCreateRequirement, isCreating, rememberRequirement, router, spaceId]);
+  }, [
+    canCreateRequirement,
+    isCreating,
+    organizationId,
+    rememberRequirement,
+    router,
+    spaceId,
+  ]);
 
   const clearCreateLinkQuery = useCallback(() => {
     const params = new URLSearchParams(searchParams.toString());

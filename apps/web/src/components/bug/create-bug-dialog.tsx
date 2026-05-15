@@ -30,10 +30,12 @@ import { Button } from "../ui/button";
 import { Input } from "../ui/input";
 import { Label } from "../ui/label";
 import { Textarea } from "../ui/textarea";
+import { useSession } from "../providers/session-provider";
 
 type CreateBugDialogProps = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  organizationId?: string;
   spaceId: string;
   onCreated?: () => void;
 };
@@ -50,6 +52,7 @@ const SEVERITIES: BugSeverity[] = [
 export function CreateBugDialog({
   open,
   onOpenChange,
+  organizationId: explicitOrganizationId,
   spaceId,
   onCreated,
 }: CreateBugDialogProps) {
@@ -57,6 +60,11 @@ export function CreateBugDialog({
   const tPriority = useTranslations("bugs.priority");
   const tSeverity = useTranslations("bugs.severity");
   const tRoot = useTranslations();
+  const { currentOrganization, session } = useSession();
+  const organizationId =
+    explicitOrganizationId ??
+    session?.defaultOrganizationId ??
+    currentOrganization?.id;
 
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
@@ -90,9 +98,15 @@ export function CreateBugDialog({
       try {
         const [versionPage, requirementPage, taskPage, memberPage] =
           await Promise.all([
-            listVersions({ spaceId, page: 1, pageSize: 100 }),
-            listRequirements({ spaceId, page: 1, pageSize: 100 }),
-            listWorkItems({ spaceId, page: 1, pageSize: 100, type: "TASK" }),
+            listVersions({ organizationId, spaceId, page: 1, pageSize: 100 }),
+            listRequirements({ organizationId, spaceId, page: 1, pageSize: 100 }),
+            listWorkItems({
+              organizationId,
+              spaceId,
+              page: 1,
+              pageSize: 100,
+              type: "TASK",
+            }),
             listSpaceMembers(spaceId),
           ]);
         if (cancelled) {
@@ -110,7 +124,7 @@ export function CreateBugDialog({
     return () => {
       cancelled = true;
     };
-  }, [open, spaceId]);
+  }, [open, organizationId, spaceId]);
 
   function reset() {
     setTitle("");
@@ -150,7 +164,7 @@ export function CreateBugDialog({
 
     try {
       await createBug(
-        { spaceId },
+        { organizationId, spaceId },
         {
           title: trimmed,
           description: description.trim() || undefined,

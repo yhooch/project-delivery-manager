@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import type {
   OrganizationMemberWithUser,
@@ -7,6 +7,7 @@ import type {
   SpaceRole,
   Version,
 } from "@project-delivery/shared";
+import type { AuditService } from "../audit/audit.service";
 import type { OrganizationRepository } from "../organization/organization.repository";
 import type { SpaceRepository } from "../space/space.repository";
 import type { SpaceAccess } from "../space/space.types";
@@ -30,6 +31,58 @@ const VERSION_ID = "01H00000000000000000000003";
 const ASSIGNEE_ID = "01H00000000000000000000004";
 
 describe("VersionService board view", () => {
+  it("writes audit logs when versions are created and updated", async () => {
+    const subject = createSubject("PM");
+
+    const created = await subject.service.create(
+      ACTOR_ID,
+      SPACE_ID,
+      {
+        name: "M1",
+        ownerId: ASSIGNEE_ID,
+        status: "PLANNED",
+        target: "First milestone",
+      },
+      { requestId: "req-version-create" },
+    );
+
+    expect(subject.audit.record).toHaveBeenCalledWith(
+      expect.objectContaining({
+        actionType: "CREATE",
+        actorId: ACTOR_ID,
+        after: expect.objectContaining({ id: created.id, name: "M1" }),
+        organizationId: ORGANIZATION_ID,
+        requestId: "req-version-create",
+        spaceId: SPACE_ID,
+        targetId: created.id,
+        targetType: "VERSION",
+      }),
+    );
+
+    await subject.service.update(
+      ACTOR_ID,
+      created.id,
+      {
+        name: "M1.1",
+      },
+      { requestId: "req-version-update" },
+    );
+
+    expect(subject.audit.record).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        actionType: "UPDATE",
+        actorId: ACTOR_ID,
+        after: expect.objectContaining({ name: "M1.1" }),
+        before: expect.objectContaining({ name: "M1" }),
+        organizationId: ORGANIZATION_ID,
+        requestId: "req-version-update",
+        spaceId: SPACE_ID,
+        targetId: created.id,
+        targetType: "VERSION",
+      }),
+    );
+  });
+
   it("returns the version board with canonical filters and space-wide visibility", async () => {
     const subject = createSubject("PM");
 
@@ -127,16 +180,27 @@ function createSubject(role: SpaceRole) {
   const versions = new FakeVersionRepository();
   const spaces = new FakeSpaceRepository(role);
   const organizations = new FakeOrganizationRepository();
+  const audit = createAuditService();
 
   return {
+    audit,
     organizations,
     service: new VersionService(
       versions,
       spaces as unknown as SpaceRepository,
       organizations as unknown as OrganizationRepository,
+      audit,
     ),
     spaces,
     versions,
+  };
+}
+
+function createAuditService() {
+  return {
+    record: vi.fn(),
+  } as unknown as AuditService & {
+    record: ReturnType<typeof vi.fn>;
   };
 }
 

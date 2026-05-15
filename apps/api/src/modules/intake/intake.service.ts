@@ -13,6 +13,8 @@ import {
 import { ulid } from "ulid";
 
 import { ApiException } from "../../http/api-exception";
+import { AuditService } from "../audit/audit.service";
+import type { RequestMetadata } from "../auth/auth-session.types";
 import {
   ORGANIZATION_REPOSITORY,
   type OrganizationRepository,
@@ -64,6 +66,8 @@ export class IntakeService {
     private readonly organizations: OrganizationRepository,
     @Inject(WORK_ITEM_REPOSITORY)
     private readonly workItems: WorkItemRepository,
+    @Inject(AuditService)
+    private readonly audit: AuditService,
   ) {}
 
   async list(
@@ -92,18 +96,32 @@ export class IntakeService {
     actorUserId: string,
     spaceId: string,
     input: CreateIntakeItemRequest,
+    metadata: RequestMetadata = {},
   ): Promise<IntakeItem> {
     const access = await this.requireIntakeWriter(actorUserId, spaceId);
 
     await this.validateReferences(access.space.organizationId, spaceId, input);
 
-    return this.intakeItems.create({
+    const created = await this.intakeItems.create({
       ...input,
       id: ulid(),
       organizationId: access.space.organizationId,
       reporterId: actorUserId,
       spaceId,
     });
+
+    await this.audit.record({
+      actionType: "CREATE",
+      actorId: actorUserId,
+      after: created,
+      ...metadata,
+      organizationId: created.organizationId,
+      spaceId: created.spaceId,
+      targetId: created.id,
+      targetType: "INTAKE_ITEM",
+    });
+
+    return created;
   }
 
   async get(actorUserId: string, intakeItemId: string): Promise<IntakeItem> {
@@ -118,6 +136,7 @@ export class IntakeService {
     actorUserId: string,
     intakeItemId: string,
     input: UpdateIntakeItemRequest,
+    metadata: RequestMetadata = {},
   ): Promise<IntakeItem> {
     const item = await this.requireExistingIntakeItem(intakeItemId);
 
@@ -138,25 +157,55 @@ export class IntakeService {
       updatedById: actorUserId,
     });
 
-    return updated ?? throwIntakeItemNotFound();
+    if (!updated) {
+      throwIntakeItemNotFound();
+    }
+
+    await this.audit.record({
+      actionType: "UPDATE",
+      actorId: actorUserId,
+      after: updated,
+      before: item,
+      metadata: { operation: "UPDATE_FIELDS" },
+      ...metadata,
+      organizationId: item.organizationId,
+      spaceId: item.spaceId,
+      targetId: intakeItemId,
+      targetType: "INTAKE_ITEM",
+    });
+
+    return updated;
   }
 
-  async accept(actorUserId: string, intakeItemId: string): Promise<IntakeItem> {
-    return this.transitionStatus(actorUserId, intakeItemId, "ACCEPTED");
+  async accept(
+    actorUserId: string,
+    intakeItemId: string,
+    metadata: RequestMetadata = {},
+  ): Promise<IntakeItem> {
+    return this.transitionStatus(actorUserId, intakeItemId, "ACCEPTED", metadata);
   }
 
-  async defer(actorUserId: string, intakeItemId: string): Promise<IntakeItem> {
-    return this.transitionStatus(actorUserId, intakeItemId, "DEFERRED");
+  async defer(
+    actorUserId: string,
+    intakeItemId: string,
+    metadata: RequestMetadata = {},
+  ): Promise<IntakeItem> {
+    return this.transitionStatus(actorUserId, intakeItemId, "DEFERRED", metadata);
   }
 
-  async reject(actorUserId: string, intakeItemId: string): Promise<IntakeItem> {
-    return this.transitionStatus(actorUserId, intakeItemId, "REJECTED");
+  async reject(
+    actorUserId: string,
+    intakeItemId: string,
+    metadata: RequestMetadata = {},
+  ): Promise<IntakeItem> {
+    return this.transitionStatus(actorUserId, intakeItemId, "REJECTED", metadata);
   }
 
   async convertToWorkItems(
     actorUserId: string,
     intakeItemId: string,
     input: ConvertIntakeItemToWorkItemsRequest,
+    metadata: RequestMetadata = {},
   ): Promise<ConvertIntakeItemToWorkItemsResponse> {
     if (input.tasks.length === 0) {
       throw new ApiException(
@@ -184,6 +233,45 @@ export class IntakeService {
     });
 
     if (converted) {
+      await Promise.all(
+        converted.workItems.map((workItem) =>
+          this.audit.record({
+            actionType: "CREATE",
+            actorId: actorUserId,
+            after: workItem,
+            metadata: {
+              intakeItemId,
+              operation: "CREATED_BY_INTAKE_CONVERSION",
+            },
+            ...metadata,
+            organizationId: workItem.organizationId,
+            spaceId: workItem.spaceId,
+            targetId: workItem.id,
+            targetType: "WORK_ITEM",
+          }),
+        ),
+      );
+
+      await this.audit.record({
+        actionType: "UPDATE",
+        actorId: actorUserId,
+        after: {
+          status: "CONVERTED",
+          workItemIds: converted.workItems.map((workItem) => workItem.id),
+        },
+        before: item,
+        metadata: {
+          operation: "CONVERT_TO_WORK_ITEMS",
+          taskCount: converted.workItems.length,
+          workItemIds: converted.workItems.map((workItem) => workItem.id),
+        },
+        ...metadata,
+        organizationId: item.organizationId,
+        spaceId: item.spaceId,
+        targetId: intakeItemId,
+        targetType: "INTAKE_ITEM",
+      });
+
       return converted;
     }
 
@@ -201,6 +289,7 @@ export class IntakeService {
     actorUserId: string,
     intakeItemId: string,
     status: Extract<IntakeStatus, "ACCEPTED" | "DEFERRED" | "REJECTED">,
+    metadata: RequestMetadata,
   ): Promise<IntakeItem> {
     const item = await this.requireExistingIntakeItem(intakeItemId);
 
@@ -217,7 +306,24 @@ export class IntakeService {
       status,
     });
 
-    return updated ?? throwIntakeItemNotFound();
+    if (!updated) {
+      throwIntakeItemNotFound();
+    }
+
+    await this.audit.record({
+      actionType: "UPDATE",
+      actorId: actorUserId,
+      after: updated,
+      before: item,
+      metadata: { operation: "TRANSITION_STATUS", status },
+      ...metadata,
+      organizationId: item.organizationId,
+      spaceId: item.spaceId,
+      targetId: intakeItemId,
+      targetType: "INTAKE_ITEM",
+    });
+
+    return updated;
   }
 
   private async validateReferences(

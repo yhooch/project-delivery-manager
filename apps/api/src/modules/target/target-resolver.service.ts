@@ -42,6 +42,12 @@ const INTAKE_ITEM_READ_ALL_ROLES = new Set<SpaceRole>([
   "PM",
   "VIEWER",
 ]);
+const MANAGER_ROLES = new Set<SpaceRole>(["SPACE_ADMIN", "PM"]);
+const REQUIREMENT_WRITE_ALL_ROLES = new Set<SpaceRole>([
+  "SPACE_ADMIN",
+  "PM",
+  "REQUIREMENT",
+]);
 
 @Injectable()
 export class TargetResolverService {
@@ -83,7 +89,7 @@ export class TargetResolverService {
       throwTargetNotFound(targetType, options.notFoundCode);
     }
 
-    const canWrite = access.role !== "VIEWER";
+    const canWrite = await this.canWriteTarget(actorUserId, target, access.role);
 
     if (options.access === "write" && !canWrite) {
       throwSpaceAccessDenied();
@@ -299,6 +305,41 @@ export class TargetResolverService {
         if (INTAKE_ITEM_READ_ALL_ROLES.has(role)) {
           return true;
         }
+        return this.isObjectParticipant(
+          target.spaceId,
+          target.targetType,
+          target.targetId,
+          actorUserId,
+        );
+    }
+  }
+
+  private async canWriteTarget(
+    actorUserId: string,
+    target: TargetRecord,
+    role: SpaceRole,
+  ) {
+    switch (target.targetType) {
+      case "SPACE":
+      case "VERSION":
+        return MANAGER_ROLES.has(role);
+      case "WORK_ITEM":
+      case "INTAKE_ITEM":
+        if (MANAGER_ROLES.has(role)) {
+          return true;
+        }
+
+        return this.isObjectParticipant(
+          target.spaceId,
+          target.targetType,
+          target.targetId,
+          actorUserId,
+        );
+      case "REQUIREMENT":
+        if (REQUIREMENT_WRITE_ALL_ROLES.has(role)) {
+          return true;
+        }
+
         return this.isObjectParticipant(
           target.spaceId,
           target.targetType,

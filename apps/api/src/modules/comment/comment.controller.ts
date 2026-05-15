@@ -22,6 +22,7 @@ import type { z } from "zod";
 import type { RequestWithContext } from "../../http/request-context";
 import { ZodValidationPipe } from "../../http/zod-validation.pipe";
 import { CurrentUserService } from "../auth/current-user.service";
+import { getRequestMetadata } from "../auth/request-metadata";
 import { RequireSessionGuard } from "../auth/session.guard";
 import { WriteOriginGuard } from "../auth/write-origin.guard";
 import { CommentService } from "./comment.service";
@@ -66,6 +67,6 @@ export class CommentController {
   ): Promise<Comment> {
     const session = this.currentUser.requireSession(request);
 
-    return this.comments.create(session.userId, body);
+    return this.comments.create(session.userId, body, getRequestMetadata(request));
   }
 }

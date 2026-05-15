@@ -596,8 +596,8 @@ describe("VersionPage", () => {
     );
   });
 
-  it("refetches the board when TaskDetailSheet.onChanged fires", async () => {
-    listVersionsMock.mockResolvedValueOnce({
+  it("refetches board, versions, and timeline when TaskDetailSheet.onChanged fires", async () => {
+    listVersionsMock.mockResolvedValue({
       items: [makeVersion()],
       total: 1,
     });
@@ -612,6 +612,7 @@ describe("VersionPage", () => {
     await waitFor(() =>
       expect(getVersionBoardViewMock).toHaveBeenCalledTimes(1),
     );
+    await waitFor(() => expect(listTimelineMock).toHaveBeenCalledTimes(1));
     // Click the card to open the sheet, then trigger onChanged.
     fireEvent.click(await screen.findByText("Refresh me"));
     fireEvent.click(
@@ -621,14 +622,16 @@ describe("VersionPage", () => {
     await waitFor(() =>
       expect(getVersionBoardViewMock).toHaveBeenCalledTimes(2),
     );
+    await waitFor(() => expect(listVersionsMock).toHaveBeenCalledTimes(2));
+    await waitFor(() => expect(listTimelineMock).toHaveBeenCalledTimes(2));
   });
 
   it("switches to the requirements tab and calls listRequirements", async () => {
-    listVersionsMock.mockResolvedValueOnce({
+    listVersionsMock.mockResolvedValue({
       items: [makeVersion()],
       total: 1,
     });
-    getVersionBoardViewMock.mockResolvedValueOnce(makeBoardResponse([]));
+    getVersionBoardViewMock.mockResolvedValue(makeBoardResponse([]));
     listRequirementsMock.mockResolvedValueOnce({
       items: [
         makeRequirement({
@@ -652,11 +655,11 @@ describe("VersionPage", () => {
   });
 
   it("shows the requirements empty state when none are linked", async () => {
-    listVersionsMock.mockResolvedValueOnce({
+    listVersionsMock.mockResolvedValue({
       items: [makeVersion()],
       total: 1,
     });
-    getVersionBoardViewMock.mockResolvedValueOnce(makeBoardResponse([]));
+    getVersionBoardViewMock.mockResolvedValue(makeBoardResponse([]));
     listRequirementsMock.mockResolvedValueOnce({
       items: [],
       total: 0,
@@ -876,6 +879,15 @@ describe("VersionPage", () => {
     expect(
       await screen.findByTestId("create-task-dialog-open"),
     ).toBeInTheDocument();
+    await waitFor(() => expect(listTimelineMock).toHaveBeenCalledTimes(1));
+
+    capturedHandlers.createTaskOnCreated?.();
+
+    await waitFor(() =>
+      expect(getVersionBoardViewMock).toHaveBeenCalledTimes(2),
+    );
+    await waitFor(() => expect(listVersionsMock).toHaveBeenCalledTimes(2));
+    await waitFor(() => expect(listTimelineMock).toHaveBeenCalledTimes(2));
   });
 
   it("renders the noSpace empty state when session lacks a space", async () => {

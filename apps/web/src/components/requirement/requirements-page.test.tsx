@@ -168,7 +168,7 @@ describe("RequirementsPage", () => {
 
     await waitFor(() =>
       expect(createRequirementDraftMock).toHaveBeenCalledWith(
-        { spaceId: "SPC_01" },
+        { organizationId: "ORG_01", spaceId: "SPC_01" },
         {},
       ),
     );
@@ -509,7 +509,7 @@ describe("RequirementsPage", () => {
 
     await waitFor(() =>
       expect(createRequirementDraftMock).toHaveBeenCalledWith(
-        { spaceId: "SPC_01" },
+        { organizationId: "ORG_01", spaceId: "SPC_01" },
         {},
       ),
     );

@@ -19,6 +19,7 @@ import type {
 export type CreateSpaceInput = {
   id: string;
   adminMemberId: string;
+  ownerMemberId?: string;
   organizationId: string;
   name: string;
   code: string;

@@ -160,6 +160,17 @@ export function RequirementContentEditorSlot({
         void uploadFiles(files);
         return true;
       },
+      handleDrop: (_view, event) => {
+        const files = getImageFiles(event.dataTransfer?.files);
+
+        if (files.length === 0) {
+          return false;
+        }
+
+        event.preventDefault();
+        void uploadFiles(files);
+        return true;
+      },
     },
     editable: !disabled,
     extensions: [
@@ -659,6 +670,12 @@ function createUploadingItem(file: File): UploadItem {
     retryable: false,
     status: "uploading",
   };
+}
+
+function getImageFiles(fileList: FileList | null | undefined): File[] {
+  return Array.from(fileList ?? []).filter((file) =>
+    file.type.startsWith("image/"),
+  );
 }
 
 function createFailedUpload(

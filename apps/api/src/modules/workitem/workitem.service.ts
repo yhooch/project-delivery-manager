@@ -10,6 +10,8 @@ import {
 import { ulid } from "ulid";
 
 import { ApiException } from "../../http/api-exception";
+import { AuditService } from "../audit/audit.service";
+import type { RequestMetadata } from "../auth/auth-session.types";
 import {
   ORGANIZATION_REPOSITORY,
   type OrganizationRepository,
@@ -39,6 +41,8 @@ export class WorkItemService {
     private readonly organizations: OrganizationRepository,
     @Inject(WorkflowActionExecutionService)
     private readonly workflowActions: WorkflowActionExecutionService,
+    @Inject(AuditService)
+    private readonly audit: AuditService,
   ) {}
 
   async list(
@@ -61,6 +65,7 @@ export class WorkItemService {
     actorUserId: string,
     spaceId: string,
     input: CreateWorkItemRequest,
+    metadata: RequestMetadata = {},
   ): Promise<WorkItem> {
     const access = await this.requireSpaceWriter(actorUserId, spaceId);
 
@@ -105,7 +110,7 @@ export class WorkItemService {
 
     const now = new Date();
 
-    return this.workItems.create({
+    const created = await this.workItems.create({
       id: ulid(),
       assigneeId: input.assigneeId,
       createdById: actorUserId,
@@ -125,6 +130,19 @@ export class WorkItemService {
       versionId: input.versionId,
       workflowVersionId: workflow.workflowVersionId,
     });
+
+    await this.audit.record({
+      actionType: "CREATE",
+      actorId: actorUserId,
+      after: created,
+      ...metadata,
+      organizationId: created.organizationId,
+      spaceId: created.spaceId,
+      targetId: created.id,
+      targetType: "WORK_ITEM",
+    });
+
+    return created;
   }
 
   async get(actorUserId: string, workItemId: string): Promise<WorkItemDetail> {
@@ -143,6 +161,7 @@ export class WorkItemService {
     actorUserId: string,
     workItemId: string,
     input: UpdateWorkItemRequest,
+    metadata: RequestMetadata = {},
   ): Promise<WorkItem> {
     const { access, workItem } = await this.requireVisibleWorkItem(
       actorUserId,
@@ -210,7 +229,24 @@ export class WorkItemService {
       versionId: input.versionId,
     });
 
-    return updated ?? throwWorkItemNotFound();
+    if (!updated) {
+      throwWorkItemNotFound();
+    }
+
+    await this.audit.record({
+      actionType: "UPDATE",
+      actorId: actorUserId,
+      after: updated,
+      before: workItem,
+      metadata: { operation: "UPDATE_FIELDS" },
+      ...metadata,
+      organizationId: workItem.organizationId,
+      spaceId: workItem.spaceId,
+      targetId: workItemId,
+      targetType: "WORK_ITEM",
+    });
+
+    return updated;
   }
 
   private async requireVisibleWorkItem(actorUserId: string, workItemId: string) {

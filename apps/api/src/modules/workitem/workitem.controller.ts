@@ -30,6 +30,7 @@ import {
 import type { RequestWithContext } from "../../http/request-context";
 import { ZodValidationPipe } from "../../http/zod-validation.pipe";
 import { CurrentUserService } from "../auth/current-user.service";
+import { getRequestMetadata } from "../auth/request-metadata";
 import { RequireSessionGuard } from "../auth/session.guard";
 import { WriteOriginGuard } from "../auth/write-origin.guard";
 import { WorkItemService } from "./workitem.service";
@@ -82,7 +83,12 @@ export class WorkItemController {
   ): Promise<WorkItem> {
     const session = this.currentUser.requireSession(request);
 
-    return this.workItems.create(session.userId, params.spaceId, body);
+    return this.workItems.create(
+      session.userId,
+      params.spaceId,
+      body,
+      getRequestMetadata(request),
+    );
   }
 
   @Get("work-items/:workItemId")
@@ -108,6 +114,11 @@ export class WorkItemController {
   ): Promise<WorkItem> {
     const session = this.currentUser.requireSession(request);
 
-    return this.workItems.update(session.userId, params.workItemId, body);
+    return this.workItems.update(
+      session.userId,
+      params.workItemId,
+      body,
+      getRequestMetadata(request),
+    );
   }
 }

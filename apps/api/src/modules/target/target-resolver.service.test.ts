@@ -217,7 +217,52 @@ describe("TargetResolverService", () => {
     await expect(
       resolver.resolve(actorUserId, "WORK_ITEM", workItemId),
     ).resolves.toMatchObject({
+      canWrite: false,
       role: "TESTER",
+      targetId: workItemId,
+    });
+    await expect(
+      resolver.resolve(actorUserId, "WORK_ITEM", workItemId, {
+        access: "write",
+      }),
+    ).rejects.toMatchObject({
+      code: "SPACE_ACCESS_DENIED",
+    });
+  });
+
+  it("allows PM to write any visible WORK_ITEM without object participation", async () => {
+    const actorUserId = ulid();
+    const workItemId = ulid();
+    const spaceId = ulid();
+    const organizationId = ulid();
+    const { objectParticipantFindFirst, resolver, spaces, workItemFindFirst } =
+      createResolver();
+
+    workItemFindFirst.mockResolvedValue({
+      id: workItemId,
+      organizationId,
+      spaceId,
+      statusCategory: "NOT_STARTED",
+      title: "Task",
+      type: "TASK",
+      currentState: {
+        code: "PENDING",
+        name: "待处理",
+      },
+    });
+    objectParticipantFindFirst.mockResolvedValue(undefined);
+    vi.mocked(spaces.findAccessibleById).mockResolvedValue({
+      role: "PM",
+      space: makeSpace(spaceId, organizationId),
+    });
+
+    await expect(
+      resolver.resolve(actorUserId, "WORK_ITEM", workItemId, {
+        access: "write",
+      }),
+    ).resolves.toMatchObject({
+      canWrite: true,
+      role: "PM",
       targetId: workItemId,
     });
   });

@@ -17,6 +17,13 @@ vi.mock("next-intl", () => ({
   },
 }));
 
+vi.mock("../providers/session-provider", () => ({
+  useSession: () => ({
+    currentOrganization: { id: "ORG_01" },
+    session: { defaultOrganizationId: "ORG_01" },
+  }),
+}));
+
 const {
   createBugMock,
   listRequirementsMock,
@@ -50,6 +57,7 @@ vi.mock("../../lib/work-item-service", () => ({
 import { CreateBugDialog } from "./create-bug-dialog";
 
 const spaceId = "01ARZ3NDEKTSV4RRFFQ69G5FS1";
+const organizationId = "ORG_01";
 const requirementId = "01ARZ3NDEKTSV4RRFFQ69G5FR1";
 const relatedTaskId = "01ARZ3NDEKTSV4RRFFQ69G5FT1";
 
@@ -82,6 +90,7 @@ describe("CreateBugDialog", () => {
       <CreateBugDialog
         open
         onOpenChange={() => {}}
+        organizationId={organizationId}
         spaceId={spaceId}
       />,
     );
@@ -111,7 +120,7 @@ describe("CreateBugDialog", () => {
 
     await waitFor(() => expect(createBugMock).toHaveBeenCalledTimes(1));
     expect(createBugMock).toHaveBeenCalledWith(
-      { spaceId },
+      { organizationId, spaceId },
       expect.objectContaining({
         actualResult: "Actual result",
         description: "Checkout fails intermittently",
@@ -128,6 +137,7 @@ describe("CreateBugDialog", () => {
       <CreateBugDialog
         open
         onOpenChange={() => {}}
+        organizationId={organizationId}
         spaceId={spaceId}
       />,
     );

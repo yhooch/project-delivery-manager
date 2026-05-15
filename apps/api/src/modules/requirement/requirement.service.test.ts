@@ -1,0 +1,261 @@
+import type { Requirement, SpaceRole } from "@project-delivery/shared";
+import { describe, expect, it, vi } from "vitest";
+
+import type { AuditService } from "../audit/audit.service";
+import type { OrganizationRepository } from "../organization/organization.repository";
+import type { SpaceRepository } from "../space/space.repository";
+import type { VersionRepository } from "../version/version.repository";
+import type { RequirementRepository } from "./requirement.repository";
+import { RequirementService } from "./requirement.service";
+
+const ORGANIZATION_ID = "01H00000000000000000000000";
+const SPACE_ID = "01H00000000000000000000001";
+const ACTOR_ID = "01H00000000000000000000002";
+const VERSION_ID = "01H00000000000000000000003";
+const REQUIREMENT_ID = "01H00000000000000000000004";
+
+describe("RequirementService audit logging", () => {
+  it("writes audit logs for draft creation and saving", async () => {
+    const subject = createSubject();
+
+    const draft = await subject.service.createDraft(
+      ACTOR_ID,
+      SPACE_ID,
+      { versionId: VERSION_ID },
+      { requestId: "req-requirement-create" },
+    );
+
+    expect(subject.audit.record).toHaveBeenCalledWith(
+      expect.objectContaining({
+        actionType: "CREATE",
+        actorId: ACTOR_ID,
+        after: expect.objectContaining({ id: draft.id, status: "DRAFT" }),
+        organizationId: ORGANIZATION_ID,
+        requestId: "req-requirement-create",
+        spaceId: SPACE_ID,
+        targetId: REQUIREMENT_ID,
+        targetType: "REQUIREMENT",
+      }),
+    );
+
+    subject.requirements.current = makeRequirement({ status: "DRAFT" });
+
+    await subject.service.update(
+      ACTOR_ID,
+      REQUIREMENT_ID,
+      {
+        contentJson: {
+          content: [{ text: "Confirmed scope", type: "text" }],
+          type: "doc",
+        },
+        contentText: "Confirmed scope",
+        title: "Confirmed requirement",
+      },
+      { requestId: "req-requirement-save" },
+    );
+
+    expect(subject.audit.record).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        actionType: "UPDATE",
+        actorId: ACTOR_ID,
+        after: expect.objectContaining({
+          status: "CONFIRMED",
+          title: "Confirmed requirement",
+        }),
+        before: expect.objectContaining({ status: "DRAFT" }),
+        metadata: { operation: "SAVE" },
+        organizationId: ORGANIZATION_ID,
+        requestId: "req-requirement-save",
+        spaceId: SPACE_ID,
+        targetId: REQUIREMENT_ID,
+        targetType: "REQUIREMENT",
+      }),
+    );
+  });
+
+  it("writes audit logs for archiving and deleting empty drafts", async () => {
+    const subject = createSubject({
+      current: makeRequirement({ status: "CONFIRMED", title: "Archived req" }),
+    });
+
+    await subject.service.update(
+      ACTOR_ID,
+      REQUIREMENT_ID,
+      { status: "ARCHIVED" },
+      { requestId: "req-requirement-archive" },
+    );
+
+    expect(subject.audit.record).toHaveBeenCalledWith(
+      expect.objectContaining({
+        actionType: "UPDATE",
+        actorId: ACTOR_ID,
+        after: expect.objectContaining({ status: "ARCHIVED" }),
+        before: expect.objectContaining({ status: "CONFIRMED" }),
+        metadata: { operation: "ARCHIVE" },
+        organizationId: ORGANIZATION_ID,
+        requestId: "req-requirement-archive",
+        spaceId: SPACE_ID,
+        targetId: REQUIREMENT_ID,
+        targetType: "REQUIREMENT",
+      }),
+    );
+
+    subject.requirements.current = makeRequirement({
+      authorId: ACTOR_ID,
+      contentJson: {},
+      status: "DRAFT",
+      title: "",
+    });
+
+    await subject.service.deleteDraft(ACTOR_ID, REQUIREMENT_ID, {
+      requestId: "req-requirement-delete",
+    });
+
+    expect(subject.audit.record).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        actionType: "DELETE",
+        actorId: ACTOR_ID,
+        before: expect.objectContaining({ status: "DRAFT", title: "" }),
+        metadata: { operation: "DELETE_EMPTY_DRAFT" },
+        organizationId: ORGANIZATION_ID,
+        requestId: "req-requirement-delete",
+        spaceId: SPACE_ID,
+        targetId: REQUIREMENT_ID,
+        targetType: "REQUIREMENT",
+      }),
+    );
+  });
+});
+
+function createSubject(
+  input: {
+    current?: Requirement;
+    role?: SpaceRole;
+  } = {},
+) {
+  const requirements = new FakeRequirementRepository(
+    input.current ?? makeRequirement({ status: "DRAFT" }),
+  );
+  const spaces = {
+    findAccessibleById: vi.fn(async () => ({
+      role: input.role ?? "PM",
+      space: {
+        code: "REQ",
+        id: SPACE_ID,
+        name: "Requirement Space",
+        organizationId: ORGANIZATION_ID,
+        settings: { staleThresholdDays: 3 },
+        status: "ACTIVE" as const,
+      },
+    })),
+    findMemberByUserId: vi.fn(),
+  } as unknown as SpaceRepository;
+  const versions = {
+    findById: vi.fn(async () => ({
+      id: VERSION_ID,
+      name: "M1",
+      organizationId: ORGANIZATION_ID,
+      spaceId: SPACE_ID,
+      stats: {
+        blockedCount: 0,
+        bugCount: 0,
+        requirementCount: 0,
+        taskCount: 0,
+      },
+      status: "PLANNED" as const,
+    })),
+  } as unknown as VersionRepository;
+  const organizations = {
+    findMemberByUserId: vi.fn(),
+  } as unknown as OrganizationRepository;
+  const audit = createAuditService();
+
+  return {
+    audit,
+    requirements,
+    service: new RequirementService(
+      requirements,
+      spaces,
+      versions,
+      organizations,
+      audit,
+    ),
+  };
+}
+
+class FakeRequirementRepository implements RequirementRepository {
+  constructor(public current: Requirement) {}
+
+  async createDraft() {
+    this.current = makeRequirement({ status: "DRAFT" });
+    return this.current;
+  }
+
+  async findById() {
+    return this.current;
+  }
+
+  async isParticipant() {
+    return true;
+  }
+
+  async listBySpaceId() {
+    return {
+      items: [this.current],
+      page: 1,
+      pageSize: 20,
+      total: 1,
+    };
+  }
+
+  async save(input: { title?: string }) {
+    this.current = makeRequirement({
+      ...this.current,
+      status: "CONFIRMED",
+      title: input.title ?? this.current.title,
+    });
+    return this.current;
+  }
+
+  async archive() {
+    this.current = makeRequirement({
+      ...this.current,
+      status: "ARCHIVED",
+    });
+    return this.current;
+  }
+
+  async deleteDraft() {
+    return true;
+  }
+}
+
+function createAuditService() {
+  return {
+    record: vi.fn(),
+  } as unknown as AuditService & {
+    record: ReturnType<typeof vi.fn>;
+  };
+}
+
+function makeRequirement(overrides: Partial<Requirement> = {}): Requirement {
+  return {
+    attachments: [],
+    contentFormat: "TIPTAP_JSON",
+    contentJson: {},
+    createdAt: "2026-05-13T00:00:00.000Z",
+    id: REQUIREMENT_ID,
+    organizationId: ORGANIZATION_ID,
+    relatedWorkItems: {
+      bugCount: 0,
+      bugs: [],
+      taskCount: 0,
+      tasks: [],
+    },
+    spaceId: SPACE_ID,
+    status: "DRAFT",
+    title: "Draft requirement",
+    updatedAt: "2026-05-13T00:00:00.000Z",
+    ...overrides,
+  };
+}

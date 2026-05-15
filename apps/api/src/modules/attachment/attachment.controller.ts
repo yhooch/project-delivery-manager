@@ -28,6 +28,7 @@ import {
 import type { RequestWithContext } from "../../http/request-context";
 import { ZodValidationPipe } from "../../http/zod-validation.pipe";
 import { CurrentUserService } from "../auth/current-user.service";
+import { getRequestMetadata } from "../auth/request-metadata";
 import { RequireSessionGuard } from "../auth/session.guard";
 import { WriteOriginGuard } from "../auth/write-origin.guard";
 import { AttachmentService } from "./attachment.service";
@@ -65,7 +66,11 @@ export class AttachmentController {
   ): Promise<Attachment> {
     const session = this.currentUser.requireSession(request);
 
-    return this.attachments.create(session.userId, body);
+    return this.attachments.create(
+      session.userId,
+      body,
+      getRequestMetadata(request),
+    );
   }
 
   @Get()

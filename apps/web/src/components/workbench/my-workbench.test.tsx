@@ -343,7 +343,7 @@ describe("MyWorkbench", () => {
     });
   });
 
-  it("renders the four KPI summary chips with stat values", async () => {
+  it("renders the KPI summary chips with stat values", async () => {
     getMyWorkbenchViewMock.mockResolvedValueOnce(
       makeWorkbenchResponse({
         withStats: true,
@@ -361,7 +361,6 @@ describe("MyWorkbench", () => {
       expect(getMyWorkbenchViewMock).toHaveBeenCalledTimes(1),
     );
 
-    // Four KPI labels rendered (the chip is just a div, so we just verify text).
     expect(
       await screen.findByText("workbench.summary.todo"),
     ).toBeInTheDocument();
@@ -370,10 +369,17 @@ describe("MyWorkbench", () => {
     expect(
       screen.getByText("workbench.summary.pendingConfirm"),
     ).toBeInTheDocument();
+    expect(
+      screen.getByText("workbench.summary.pendingRegression"),
+    ).toBeInTheDocument();
+    expect(screen.getByText("workbench.summary.stale")).toBeInTheDocument();
 
-    // Values: todoCount=1, dueSoon=2, blocked=4 (from stats), pendingConfirm=5.
+    // Values: todoCount=1, dueSoon=2, blocked=4, pendingConfirm=5,
+    // pendingRegression=1, stale=0.
+    expect(screen.getAllByText("1").length).toBeGreaterThanOrEqual(1);
     expect(screen.getByText("4")).toBeInTheDocument();
     expect(screen.getByText("5")).toBeInTheDocument();
+    expect(screen.getAllByText("0").length).toBeGreaterThanOrEqual(1);
   });
 
   it("renders '—' when stats is missing (graceful degradation)", async () => {
@@ -389,7 +395,65 @@ describe("MyWorkbench", () => {
 
     // Both blocked and pendingConfirm chips fall back to '—'.
     const dashes = await screen.findAllByText("—");
-    expect(dashes.length).toBeGreaterThanOrEqual(2);
+    expect(dashes.length).toBeGreaterThanOrEqual(4);
+  });
+
+  it("sends frozen workbench filter parameters to the view request", async () => {
+    const versionId = "VERSION_01";
+    const assigneeId = "ASSIGNEE_01";
+
+    getVersionsMock.mockResolvedValue([{ id: versionId, name: "Release 1" }]);
+    getMembersMock.mockResolvedValue([
+      {
+        id: "MEMBER_01",
+        userId: assigneeId,
+        user: { id: assigneeId, name: "Alice", username: "alice" },
+      },
+    ]);
+    getMyWorkbenchViewMock.mockResolvedValue(
+      makeWorkbenchResponse({
+        todos: [
+          makeWorkItemSummary({
+            assigneeId,
+            id: "01ARZ3NDEKTSV4RRFFQ69G5F31",
+            versionId,
+          }),
+        ],
+      }),
+    );
+
+    render(<MyWorkbench />);
+
+    expect(await screen.findAllByText("Release 1")).not.toHaveLength(0);
+
+    fireEvent.change(screen.getByLabelText("m4Views.filters.version"), {
+      target: { value: versionId },
+    });
+    fireEvent.change(screen.getByLabelText("m4Views.filters.assignee"), {
+      target: { value: assigneeId },
+    });
+    fireEvent.change(screen.getByLabelText("m4Views.filters.statusCategory"), {
+      target: { value: "VERIFYING" },
+    });
+    fireEvent.change(screen.getByLabelText("m4Views.filters.workItemType"), {
+      target: { value: "BUG" },
+    });
+    fireEvent.change(screen.getByLabelText("m4Views.filters.exceptionType"), {
+      target: { value: "pending_regression" },
+    });
+
+    await waitFor(() =>
+      expect(getMyWorkbenchViewMock).toHaveBeenCalledWith(
+        expect.objectContaining({
+          assigneeId,
+          exceptionType: "pending_regression",
+          organizationId: "ORG_01",
+          statusCategory: "VERIFYING",
+          versionId,
+          workItemType: "BUG",
+        }),
+      ),
+    );
   });
 
   it("renders all workbench sections with their items", async () => {
@@ -493,7 +557,7 @@ describe("MyWorkbench", () => {
     expect(
       await screen.findByText("Cross-space version item"),
     ).toBeInTheDocument();
-    expect(await screen.findByText("Release train")).toBeInTheDocument();
+    expect(await screen.findAllByText("Release train")).not.toHaveLength(0);
     expect(screen.queryByText("9XYZ")).not.toBeInTheDocument();
     expect(getVersionsMock).toHaveBeenCalledWith("SPC_02", "ORG_01");
   });

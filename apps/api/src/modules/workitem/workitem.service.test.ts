@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import type {
   OrganizationMemberWithUser,
@@ -7,6 +7,7 @@ import type {
   SpaceRole,
   WorkItem,
 } from "@project-delivery/shared";
+import type { AuditService } from "../audit/audit.service";
 import type { OrganizationRepository } from "../organization/organization.repository";
 import type { SpaceRepository } from "../space/space.repository";
 import type { SpaceAccess } from "../space/space.types";
@@ -56,16 +57,21 @@ describe("WorkItemService", () => {
     subject.spaces.addMember(ASSIGNEE_ID, "DEVELOPER");
     subject.organizations.addMember(ASSIGNEE_ID);
 
-    const created = await subject.service.create(ACTOR_ID, SPACE_ID, {
-      assigneeId: ASSIGNEE_ID,
-      dueDate: "2026-06-01T00:00:00.000Z",
-      intakeItemId: INTAKE_ITEM_ID,
-      priority: "HIGH",
-      requirementId: REQUIREMENT_ID,
-      title: "Implement task API",
-      type: "TASK",
-      versionId: VERSION_ID,
-    });
+    const created = await subject.service.create(
+      ACTOR_ID,
+      SPACE_ID,
+      {
+        assigneeId: ASSIGNEE_ID,
+        dueDate: "2026-06-01T00:00:00.000Z",
+        intakeItemId: INTAKE_ITEM_ID,
+        priority: "HIGH",
+        requirementId: REQUIREMENT_ID,
+        title: "Implement task API",
+        type: "TASK",
+        versionId: VERSION_ID,
+      },
+      { requestId: "req-workitem-create" },
+    );
 
     expect(created).toMatchObject({
       assigneeId: ASSIGNEE_ID,
@@ -88,6 +94,18 @@ describe("WorkItemService", () => {
       ASSIGNEE_ID,
       RELATED_USER_ID,
     ]);
+    expect(subject.audit.record).toHaveBeenCalledWith(
+      expect.objectContaining({
+        actionType: "CREATE",
+        actorId: ACTOR_ID,
+        after: expect.objectContaining({ id: created.id }),
+        organizationId: ORGANIZATION_ID,
+        requestId: "req-workitem-create",
+        spaceId: SPACE_ID,
+        targetId: created.id,
+        targetType: "WORK_ITEM",
+      }),
+    );
   });
 
   it("uses scoped visibility for TESTER and participant visibility for other roles", async () => {
@@ -188,13 +206,18 @@ describe("WorkItemService", () => {
     subject.spaces.addMember(ASSIGNEE_ID, "DEVELOPER");
     subject.organizations.addMember(ASSIGNEE_ID);
 
-    const updated = await subject.service.update(ACTOR_ID, WORK_ITEM_ID, {
-      assigneeId: ASSIGNEE_ID,
-      dueDate: "2026-06-10T00:00:00.000Z",
-      priority: "URGENT",
-      requirementId: REQUIREMENT_ID,
-      versionId: VERSION_ID,
-    });
+    const updated = await subject.service.update(
+      ACTOR_ID,
+      WORK_ITEM_ID,
+      {
+        assigneeId: ASSIGNEE_ID,
+        dueDate: "2026-06-10T00:00:00.000Z",
+        priority: "URGENT",
+        requirementId: REQUIREMENT_ID,
+        versionId: VERSION_ID,
+      },
+      { requestId: "req-workitem-update" },
+    );
 
     expect(updated).toMatchObject({
       assigneeId: ASSIGNEE_ID,
@@ -222,6 +245,20 @@ describe("WorkItemService", () => {
       dueDate: "2026-06-10T00:00:00.000Z",
       priority: "URGENT",
     });
+    expect(subject.audit.record).toHaveBeenCalledWith(
+      expect.objectContaining({
+        actionType: "UPDATE",
+        actorId: ACTOR_ID,
+        after: expect.objectContaining({ id: updated.id }),
+        before: expect.objectContaining({ id: WORK_ITEM_ID }),
+        metadata: { operation: "UPDATE_FIELDS" },
+        organizationId: ORGANIZATION_ID,
+        requestId: "req-workitem-update",
+        spaceId: SPACE_ID,
+        targetId: WORK_ITEM_ID,
+        targetType: "WORK_ITEM",
+      }),
+    );
   });
 
   it("does not allow unchecked update input to change blocked state fields", async () => {
@@ -278,21 +315,32 @@ function createSubject(role: SpaceRole, actorUserId = ACTOR_ID) {
   const workItems = new FakeWorkItemRepository();
   const spaces = new FakeSpaceRepository();
   const organizations = new FakeOrganizationRepository();
+  const audit = createAuditService();
 
   spaces.addAccess(actorUserId, role);
   spaces.addMember(actorUserId, role);
   organizations.addMember(actorUserId);
 
   return {
+    audit,
     organizations,
     service: new WorkItemService(
       workItems,
       spaces as unknown as SpaceRepository,
       organizations as unknown as OrganizationRepository,
       createPermissionResolver(role) as unknown as WorkflowActionExecutionService,
+      audit,
     ),
     spaces,
     workItems,
+  };
+}
+
+function createAuditService() {
+  return {
+    record: vi.fn(),
+  } as unknown as AuditService & {
+    record: ReturnType<typeof vi.fn>;
   };
 }
 

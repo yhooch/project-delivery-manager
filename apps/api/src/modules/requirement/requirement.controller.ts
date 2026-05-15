@@ -29,6 +29,7 @@ import {
 import type { RequestWithContext } from "../../http/request-context";
 import { ZodValidationPipe } from "../../http/zod-validation.pipe";
 import { CurrentUserService } from "../auth/current-user.service";
+import { getRequestMetadata } from "../auth/request-metadata";
 import { RequireSessionGuard } from "../auth/session.guard";
 import { WriteOriginGuard } from "../auth/write-origin.guard";
 import { RequirementService } from "./requirement.service";
@@ -80,7 +81,12 @@ export class RequirementController {
   ): Promise<Requirement> {
     const session = this.currentUser.requireSession(request);
 
-    return this.requirements.createDraft(session.userId, params.spaceId, body);
+    return this.requirements.createDraft(
+      session.userId,
+      params.spaceId,
+      body,
+      getRequestMetadata(request),
+    );
   }
 
   @Get("requirements/:requirementId")
@@ -106,7 +112,12 @@ export class RequirementController {
   ): Promise<Requirement> {
     const session = this.currentUser.requireSession(request);
 
-    return this.requirements.update(session.userId, params.requirementId, body);
+    return this.requirements.update(
+      session.userId,
+      params.requirementId,
+      body,
+      getRequestMetadata(request),
+    );
   }
 
   @Delete("requirements/:requirementId")
@@ -119,7 +130,11 @@ export class RequirementController {
   ): Promise<Record<string, never>> {
     const session = this.currentUser.requireSession(request);
 
-    await this.requirements.deleteDraft(session.userId, params.requirementId);
+    await this.requirements.deleteDraft(
+      session.userId,
+      params.requirementId,
+      getRequestMetadata(request),
+    );
 
     return {};
   }

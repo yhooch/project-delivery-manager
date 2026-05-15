@@ -12,6 +12,13 @@ vi.mock("next-intl", () => ({
     (key: string) => (namespace ? `${namespace}.${key}` : key),
 }));
 
+vi.mock("../providers/session-provider", () => ({
+  useSession: () => ({
+    currentOrganization: { id: "ORG_01" },
+    session: { defaultOrganizationId: "ORG_01" },
+  }),
+}));
+
 const {
   convertIntakeItemToWorkItemsMock,
   listRequirementsMock,
@@ -57,6 +64,7 @@ import type {
 import { ConvertIntakeDialog } from "./convert-intake-dialog";
 
 const spaceId = "01ARZ3NDEKTSV4RRFFQ69G5FS1";
+const organizationId = "ORG_01";
 const intakeItemId = "01ARZ3NDEKTSV4RRFFQ69G5FI1";
 const versionId = "01ARZ3NDEKTSV4RRFFQ69G5FV1";
 const requirementId = "01ARZ3NDEKTSV4RRFFQ69G5FR1";
@@ -69,7 +77,7 @@ function makeIntake(): IntakeItem {
     assigneeId,
     description: "Break checkout work into tasks",
     id: intakeItemId,
-    organizationId: "01ARZ3NDEKTSV4RRFFQ69G5FO1",
+    organizationId,
     priority: "HIGH",
     reporterId: "01ARZ3NDEKTSV4RRFFQ69G5FU1",
     requirementId,
@@ -135,6 +143,7 @@ describe("ConvertIntakeDialog", () => {
       <ConvertIntakeDialog
         open
         onOpenChange={vi.fn()}
+        organizationId={organizationId}
         spaceId={spaceId}
         intakeItem={makeIntake()}
         onConverted={onConverted}
@@ -157,7 +166,7 @@ describe("ConvertIntakeDialog", () => {
 
     await waitFor(() =>
       expect(convertIntakeItemToWorkItemsMock).toHaveBeenCalledWith(
-        { intakeItemId, spaceId },
+        { intakeItemId, organizationId, spaceId },
         {
           tasks: [
             {
@@ -178,5 +187,23 @@ describe("ConvertIntakeDialog", () => {
       intakeItemId,
       workItems: [],
     });
+  });
+
+  it("keeps non-accepted intake items from being converted", async () => {
+    render(
+      <ConvertIntakeDialog
+        open
+        onOpenChange={vi.fn()}
+        organizationId={organizationId}
+        spaceId={spaceId}
+        intakeItem={{ ...makeIntake(), status: "CONVERTED" }}
+      />,
+    );
+
+    const submit = await screen.findByRole("button", {
+      name: "intake.dialog.convert.submit",
+    });
+    expect(submit).toBeDisabled();
+    expect(convertIntakeItemToWorkItemsMock).not.toHaveBeenCalled();
   });
 });

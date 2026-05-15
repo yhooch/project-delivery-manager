@@ -2,6 +2,7 @@ import { Module } from "@nestjs/common";
 
 import { PrismaModule } from "../../prisma/prisma.module";
 import { AuthModule } from "../auth/auth.module";
+import { AuditModule } from "../audit/audit.module";
 import { TargetModule } from "../target/target.module";
 import { CommentController } from "./comment.controller";
 import { COMMENT_REPOSITORY } from "./comment.repository";
@@ -11,7 +12,7 @@ import { PrismaCommentRepository } from "./prisma-comment.repository";
 @Module({
   controllers: [CommentController],
   exports: [COMMENT_REPOSITORY, CommentService],
-  imports: [AuthModule, PrismaModule, TargetModule],
+  imports: [AuthModule, AuditModule, PrismaModule, TargetModule],
   providers: [
     CommentService,
     {

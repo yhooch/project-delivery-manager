@@ -73,6 +73,22 @@ const RECENT_ACTIVITY_TARGET_TYPES = [
   "INTAKE_ITEM",
   "VERSION",
 ] as const satisfies readonly TargetType[];
+const REQUIREMENT_READ_ALL_ROLES = new Set<SpaceRole>([
+  "SPACE_ADMIN",
+  "PM",
+  "REQUIREMENT",
+]);
+const REQUIREMENT_NON_DRAFT_READ_ALL_ROLES = new Set<SpaceRole>([
+  "SPACE_ADMIN",
+  "PM",
+  "VIEWER",
+  "REQUIREMENT",
+]);
+const INTAKE_ITEM_READ_ALL_ROLES = new Set<SpaceRole>([
+  "SPACE_ADMIN",
+  "PM",
+  "VIEWER",
+]);
 
 @Injectable()
 export class PrismaSpaceRepository implements SpaceRepository {
@@ -109,6 +125,19 @@ export class PrismaSpaceRepository implements SpaceRepository {
           userId: input.actorUserId,
         },
       });
+      if (input.ownerMemberId && input.ownerId) {
+        await tx.spaceMember.create({
+          data: {
+            id: input.ownerMemberId,
+            createdById: input.actorUserId,
+            organizationId: input.organizationId,
+            role: "SPACE_ADMIN",
+            spaceId: space.id,
+            updatedById: input.actorUserId,
+            userId: input.ownerId,
+          },
+        });
+      }
 
       return {
         adminMembership,
@@ -992,6 +1021,17 @@ export class PrismaSpaceRepository implements SpaceRepository {
     const readAllSpaceIds = accesses
       .filter((access) => canReadAllSpaceWorkItems(access.role))
       .map((access) => access.spaceId);
+    const requirementReadAllSpaceIds = accesses
+      .filter((access) => REQUIREMENT_READ_ALL_ROLES.has(access.role))
+      .map((access) => access.spaceId);
+    const requirementNonDraftReadAllSpaceIds = accesses
+      .filter((access) =>
+        REQUIREMENT_NON_DRAFT_READ_ALL_ROLES.has(access.role),
+      )
+      .map((access) => access.spaceId);
+    const intakeItemReadAllSpaceIds = accesses
+      .filter((access) => INTAKE_ITEM_READ_ALL_ROLES.has(access.role))
+      .map((access) => access.spaceId);
     const testerSpaceIds = accesses
       .filter((access) => access.role === "TESTER")
       .map((access) => access.spaceId);
@@ -1027,6 +1067,9 @@ export class PrismaSpaceRepository implements SpaceRepository {
       participantSpaceIds,
       participantWorkItemIds,
       readAllSpaceIds,
+      requirementNonDraftReadAllSpaceIds,
+      requirementReadAllSpaceIds,
+      intakeItemReadAllSpaceIds,
       spaceIds: accesses.map((access) => access.spaceId),
       testerSpaceIds,
       testerWorkItemIds,
@@ -1295,39 +1338,37 @@ export class PrismaSpaceRepository implements SpaceRepository {
       };
     }
 
-    if (input.versionId || scopedWorkItemWhere) {
-      const scopedTargets = await this.listVisibleTimelineTargetRefs(
-        context,
-        {
-          organizationId,
-          versionId: input.versionId,
-        },
-        scopedWorkItemWhere,
-      );
+    const visibleTargets = await this.listVisibleTimelineTargetRefs(
+      context,
+      {
+        organizationId,
+        versionId: input.versionId,
+      },
+      scopedWorkItemWhere,
+    );
 
-      if (scopedTargets.length === 0) {
-        return {
-          items: [],
-          page: input.page,
-          pageSize: input.pageSize,
-          total: 0,
-        };
-      }
-
-      where.AND = [
-        ...(Array.isArray(where.AND)
-          ? where.AND
-          : where.AND
-            ? [where.AND]
-            : []),
-        {
-          OR: scopedTargets.map((target) => ({
-            targetId: target.id,
-            targetType: target.type,
-          })),
-        },
-      ];
+    if (visibleTargets.length === 0) {
+      return {
+        items: [],
+        page: input.page,
+        pageSize: input.pageSize,
+        total: 0,
+      };
     }
+
+    where.AND = [
+      ...(Array.isArray(where.AND)
+        ? where.AND
+        : where.AND
+          ? [where.AND]
+          : []),
+      {
+        OR: visibleTargets.map((target) => ({
+          targetId: target.id,
+          targetType: target.type,
+        })),
+      },
+    ];
 
     const [events, total] = await this.prisma.client.$transaction([
       this.prisma.client.timelineEvent.findMany({
@@ -1469,11 +1510,11 @@ export class PrismaSpaceRepository implements SpaceRepository {
       }),
     );
 
-    if (scopedWorkItemWhere || !filters.versionId) {
+    if (scopedWorkItemWhere) {
       return refs;
     }
 
-    const nonWorkItemTargets = await this.listVisibleVersionScopedTimelineTargets(
+    const nonWorkItemTargets = await this.listVisibleNonWorkItemTimelineTargets(
       context,
       filters,
     );
@@ -1481,23 +1522,31 @@ export class PrismaSpaceRepository implements SpaceRepository {
     return [...refs, ...nonWorkItemTargets];
   }
 
-  private async listVisibleVersionScopedTimelineTargets(
+  private async listVisibleNonWorkItemTimelineTargets(
     context: ViewAccessContext,
     filters: {
       organizationId: string;
       versionId?: string;
     },
   ): Promise<Array<{ id: string; type: TargetType }>> {
-    if (!filters.versionId) {
-      return [];
-    }
-
     const requirementVisibilityOr = [
-      ...(context.readAllSpaceIds.length > 0
+      ...(context.requirementReadAllSpaceIds.length > 0
         ? [
             {
               spaceId: {
-                in: context.readAllSpaceIds,
+                in: context.requirementReadAllSpaceIds,
+              },
+            },
+          ]
+        : []),
+      ...(context.requirementNonDraftReadAllSpaceIds.length > 0
+        ? [
+            {
+              spaceId: {
+                in: context.requirementNonDraftReadAllSpaceIds,
+              },
+              status: {
+                not: "DRAFT" as const,
               },
             },
           ]
@@ -1513,11 +1562,11 @@ export class PrismaSpaceRepository implements SpaceRepository {
         : []),
     ];
     const intakeVisibilityOr = [
-      ...(context.readAllSpaceIds.length > 0
+      ...(context.intakeItemReadAllSpaceIds.length > 0
         ? [
             {
               spaceId: {
-                in: context.readAllSpaceIds,
+                in: context.intakeItemReadAllSpaceIds,
               },
             },
           ]
@@ -1533,7 +1582,7 @@ export class PrismaSpaceRepository implements SpaceRepository {
         : []),
     ];
     const [versions, requirements, intakeItems] = await Promise.all([
-      context.readAllSpaceIds.length > 0
+      context.spaceIds.length > 0
         ? this.prisma.client.version.findMany({
             select: {
               id: true,
@@ -1543,7 +1592,7 @@ export class PrismaSpaceRepository implements SpaceRepository {
               id: filters.versionId,
               organizationId: filters.organizationId,
               spaceId: {
-                in: context.readAllSpaceIds,
+                in: context.spaceIds,
               },
             },
           })
@@ -1777,11 +1826,14 @@ type ViewSpaceAccess = {
 type ViewAccessContext = {
   accessBySpaceId: Map<string, ViewSpaceAccess>;
   accesses: ViewSpaceAccess[];
+  intakeItemReadAllSpaceIds: string[];
   participantIntakeItemIds: string[];
   participantRequirementIds: string[];
   participantSpaceIds: string[];
   participantWorkItemIds: string[];
   readAllSpaceIds: string[];
+  requirementNonDraftReadAllSpaceIds: string[];
+  requirementReadAllSpaceIds: string[];
   spaceIds: string[];
   testerSpaceIds: string[];
   testerWorkItemIds: string[];
@@ -1906,65 +1958,18 @@ function buildTimelineWhere(
   context: ViewAccessContext,
   organizationId: string,
 ): Prisma.TimelineEventWhereInput | undefined {
-  const visibilityOr: Prisma.TimelineEventWhereInput[] = [];
-
-  if (context.readAllSpaceIds.length > 0) {
-    visibilityOr.push({
-      spaceId: {
-        in: context.readAllSpaceIds,
-      },
-      targetType: {
-        in: [...RECENT_ACTIVITY_TARGET_TYPES],
-      },
-    });
-  }
-
-  if (context.participantWorkItemIds.length > 0) {
-    visibilityOr.push({
-      targetId: {
-        in: context.participantWorkItemIds,
-      },
-      targetType: "WORK_ITEM",
-    });
-  }
-
-  if (context.testerWorkItemIds.length > 0) {
-    visibilityOr.push({
-      targetId: {
-        in: context.testerWorkItemIds,
-      },
-      targetType: "WORK_ITEM",
-    });
-  }
-
-  if (context.participantRequirementIds.length > 0) {
-    visibilityOr.push({
-      targetId: {
-        in: context.participantRequirementIds,
-      },
-      targetType: "REQUIREMENT",
-    });
-  }
-
-  if (context.participantIntakeItemIds.length > 0) {
-    visibilityOr.push({
-      targetId: {
-        in: context.participantIntakeItemIds,
-      },
-      targetType: "INTAKE_ITEM",
-    });
-  }
-
-  if (visibilityOr.length === 0) {
+  if (context.spaceIds.length === 0) {
     return undefined;
   }
 
   return {
     deletedAt: null,
     organizationId,
-    OR: visibilityOr,
     spaceId: {
       in: context.spaceIds,
+    },
+    targetType: {
+      in: [...RECENT_ACTIVITY_TARGET_TYPES],
     },
   };
 }

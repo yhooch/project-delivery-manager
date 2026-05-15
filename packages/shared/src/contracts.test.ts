@@ -79,6 +79,87 @@ describe("shared contracts", () => {
     }
   });
 
+  it("covers backend-frozen error branches in endpoint contracts", () => {
+    const errorCodesFor = (operationId: string) => {
+      const contract = apiContracts.find(
+        (entry) => entry.operationId === operationId,
+      );
+
+      expect(contract).toBeDefined();
+      return contract?.errorCodes ?? [];
+    };
+
+    expect(errorCodesFor("createWorkItem")).toEqual(
+      expect.arrayContaining([
+        "VALIDATION_ERROR",
+        "NOT_FOUND",
+        "REQUIREMENT_NOT_FOUND",
+        "INTAKE_ITEM_NOT_FOUND",
+        "WORKFLOW_VERSION_NOT_FOUND",
+      ]),
+    );
+    expect(errorCodesFor("createBug")).toEqual(
+      expect.arrayContaining([
+        "VALIDATION_ERROR",
+        "NOT_FOUND",
+        "REQUIREMENT_NOT_FOUND",
+        "INTAKE_ITEM_NOT_FOUND",
+        "WORK_ITEM_NOT_FOUND",
+        "WORKFLOW_VERSION_NOT_FOUND",
+      ]),
+    );
+    expect(errorCodesFor("convertIntakeItemToWorkItems")).toEqual(
+      expect.arrayContaining([
+        "VALIDATION_ERROR",
+        "NOT_FOUND",
+        "REQUIREMENT_NOT_FOUND",
+        "WORKFLOW_VERSION_NOT_FOUND",
+        "INTAKE_ITEM_NOT_ACCEPTED",
+        "INTAKE_ITEM_ALREADY_CONVERTED",
+      ]),
+    );
+    expect(errorCodesFor("acceptIntakeItem")).toEqual(
+      expect.arrayContaining([
+        "VALIDATION_ERROR",
+        "INTAKE_ITEM_NOT_FOUND",
+        "INTAKE_ITEM_ALREADY_CONVERTED",
+      ]),
+    );
+    expect(errorCodesFor("publishWorkflowVersion")).toEqual(
+      expect.arrayContaining([
+        "WORKFLOW_VERSION_NOT_FOUND",
+        "WORKFLOW_VERSION_ALREADY_PUBLISHED",
+        "WORKFLOW_VERSION_INVALID",
+        "WORKFLOW_PUBLISH_VALIDATION_FAILED",
+        "VALIDATION_ERROR",
+      ]),
+    );
+    expect(errorCodesFor("createWorkflowState")).toEqual(
+      expect.arrayContaining([
+        "WORKFLOW_VERSION_ALREADY_PUBLISHED",
+        "WORKFLOW_VERSION_INVALID",
+        "CONFLICT",
+        "VALIDATION_ERROR",
+      ]),
+    );
+    expect(errorCodesFor("presignAttachment")).toEqual(
+      expect.arrayContaining([
+        "ATTACHMENT_TARGET_NOT_FOUND",
+        "ATTACHMENT_LIMIT_EXCEEDED",
+        "FILE_TOO_LARGE",
+        "UNSUPPORTED_MIME_TYPE",
+        "DRAFT_REQUIREMENT_REQUIRED",
+        "VALIDATION_ERROR",
+      ]),
+    );
+    expect(errorCodesFor("listAttachments")).toEqual(
+      expect.arrayContaining([
+        "ATTACHMENT_TARGET_NOT_FOUND",
+        "VALIDATION_ERROR",
+      ]),
+    );
+  });
+
   it("keeps endpoint contract operation and route identities unique", () => {
     const operationIds = new Set<string>();
     const routeKeys = new Set<string>();

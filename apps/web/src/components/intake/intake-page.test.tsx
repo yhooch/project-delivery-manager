@@ -607,6 +607,7 @@ describe("IntakePage", () => {
     await waitFor(() =>
       expect(acceptIntakeItemMock).toHaveBeenCalledWith({
         intakeItemId: "01ARZ3NDEKTSV4RRFFQ69G5F01",
+        organizationId: "ORG_01",
         spaceId: "SPC_01",
       }),
     );
@@ -934,6 +935,7 @@ describe("IntakePage", () => {
     await waitFor(() =>
       expect(acceptIntakeItemMock).toHaveBeenCalledWith({
         intakeItemId: "01ARZ3NDEKTSV4RRFFQ69G5FS1",
+        organizationId: "ORG_01",
         spaceId: "SPC_01",
       }),
     );
@@ -1000,6 +1002,7 @@ describe("IntakePage", () => {
     await waitFor(() =>
       expect(acceptIntakeItemMock).toHaveBeenCalledWith({
         intakeItemId: "01ARZ3NDEKTSV4RRFFQ69G5FDF",
+        organizationId: "ORG_01",
         spaceId: "SPC_01",
       }),
     );
@@ -1145,6 +1148,7 @@ describe("IntakePage", () => {
     await waitFor(() =>
       expect(listWorkItemsMock).toHaveBeenCalledWith({
         intakeItemId: "01ARZ3NDEKTSV4RRFFQ69G5F04",
+        organizationId: "ORG_01",
         page: 1,
         pageSize: 2,
         spaceId: "SPC_01",

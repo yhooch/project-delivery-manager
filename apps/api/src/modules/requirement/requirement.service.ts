@@ -11,6 +11,8 @@ import {
 import { ulid } from "ulid";
 
 import { ApiException } from "../../http/api-exception";
+import { AuditService } from "../audit/audit.service";
+import type { RequestMetadata } from "../auth/auth-session.types";
 import {
   ORGANIZATION_REPOSITORY,
   type OrganizationRepository,
@@ -55,6 +57,8 @@ export class RequirementService {
     private readonly versions: VersionRepository,
     @Inject(ORGANIZATION_REPOSITORY)
     private readonly organizations: OrganizationRepository,
+    @Inject(AuditService)
+    private readonly audit: AuditService,
   ) {}
 
   async list(
@@ -93,6 +97,7 @@ export class RequirementService {
     actorUserId: string,
     spaceId: string,
     input: CreateRequirementDraftRequest,
+    metadata: RequestMetadata = {},
   ): Promise<Requirement> {
     const access = await this.requireRequirementWriter(actorUserId, spaceId);
 
@@ -100,16 +105,26 @@ export class RequirementService {
       await this.requireVersionInSpace(spaceId, input.versionId);
     }
 
-    return withPermissions(
-      await this.requirements.createDraft({
-        id: ulid(),
-        organizationId: access.space.organizationId,
-        spaceId,
-        versionId: input.versionId,
-        createdById: actorUserId,
-      }),
-      access.role,
-    );
+    const created = await this.requirements.createDraft({
+      id: ulid(),
+      organizationId: access.space.organizationId,
+      spaceId,
+      versionId: input.versionId,
+      createdById: actorUserId,
+    });
+
+    await this.audit.record({
+      actionType: "CREATE",
+      actorId: actorUserId,
+      after: created,
+      ...metadata,
+      organizationId: access.space.organizationId,
+      spaceId,
+      targetId: created.id,
+      targetType: "REQUIREMENT",
+    });
+
+    return withPermissions(created, access.role);
   }
 
   async get(actorUserId: string, requirementId: string): Promise<Requirement> {
@@ -127,6 +142,7 @@ export class RequirementService {
     actorUserId: string,
     requirementId: string,
     input: UpdateRequirementRequest,
+    metadata: RequestMetadata = {},
   ): Promise<Requirement> {
     const existing = await this.requireExistingRequirement(requirementId);
     const access = await this.requireRequirementWriter(
@@ -141,9 +157,24 @@ export class RequirementService {
         updatedById: actorUserId,
       });
 
-      return archived
-        ? withPermissions(archived, access.role)
-        : throwRequirementNotFound();
+      if (!archived) {
+        throwRequirementNotFound();
+      }
+
+      await this.audit.record({
+        actionType: "UPDATE",
+        actorId: actorUserId,
+        after: archived,
+        before: existing,
+        metadata: { operation: "ARCHIVE" },
+        ...metadata,
+        organizationId: existing.organizationId,
+        spaceId: existing.spaceId,
+        targetId: requirementId,
+        targetType: "REQUIREMENT",
+      });
+
+      return withPermissions(archived, access.role);
     }
 
     this.assertCanSave(existing);
@@ -174,12 +205,30 @@ export class RequirementService {
       updatedById: actorUserId,
     });
 
-    return saved ? withPermissions(saved, access.role) : throwRequirementNotFound();
+    if (!saved) {
+      throwRequirementNotFound();
+    }
+
+    await this.audit.record({
+      actionType: "UPDATE",
+      actorId: actorUserId,
+      after: saved,
+      before: existing,
+      metadata: { operation: "SAVE" },
+      ...metadata,
+      organizationId: existing.organizationId,
+      spaceId: existing.spaceId,
+      targetId: requirementId,
+      targetType: "REQUIREMENT",
+    });
+
+    return withPermissions(saved, access.role);
   }
 
   async deleteDraft(
     actorUserId: string,
     requirementId: string,
+    metadata: RequestMetadata = {},
   ): Promise<void> {
     const existing = await this.requireExistingRequirement(requirementId);
 
@@ -194,6 +243,18 @@ export class RequirementService {
     if (!deleted) {
       throwRequirementNotFound();
     }
+
+    await this.audit.record({
+      actionType: "DELETE",
+      actorId: actorUserId,
+      before: existing,
+      metadata: { operation: "DELETE_EMPTY_DRAFT" },
+      ...metadata,
+      organizationId: existing.organizationId,
+      spaceId: existing.spaceId,
+      targetId: requirementId,
+      targetType: "REQUIREMENT",
+    });
   }
 
   private async requireExistingRequirement(requirementId: string) {

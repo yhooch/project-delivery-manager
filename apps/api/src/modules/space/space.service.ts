@@ -100,6 +100,7 @@ export class SpaceService {
     const created = await this.spaces.createWithAdmin({
       id: ulid(),
       adminMemberId: ulid(),
+      ownerMemberId: ownerId === actorUserId ? undefined : ulid(),
       organizationId,
       name: input.name,
       code,

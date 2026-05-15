@@ -34,6 +34,7 @@ import {
 import type { RequestWithContext } from "../../http/request-context";
 import { ZodValidationPipe } from "../../http/zod-validation.pipe";
 import { CurrentUserService } from "../auth/current-user.service";
+import { getRequestMetadata } from "../auth/request-metadata";
 import { RequireSessionGuard } from "../auth/session.guard";
 import { WriteOriginGuard } from "../auth/write-origin.guard";
 import { IntakeService } from "./intake.service";
@@ -89,7 +90,12 @@ export class IntakeController {
   ): Promise<IntakeItem> {
     const session = this.currentUser.requireSession(request);
 
-    return this.intakeItems.create(session.userId, params.spaceId, body);
+    return this.intakeItems.create(
+      session.userId,
+      params.spaceId,
+      body,
+      getRequestMetadata(request),
+    );
   }
 
   @Get("intake-items/:id")
@@ -115,7 +121,12 @@ export class IntakeController {
   ): Promise<IntakeItem> {
     const session = this.currentUser.requireSession(request);
 
-    return this.intakeItems.update(session.userId, params.id, body);
+    return this.intakeItems.update(
+      session.userId,
+      params.id,
+      body,
+      getRequestMetadata(request),
+    );
   }
 
   @Post("intake-items/:id/accept")
@@ -130,7 +141,11 @@ export class IntakeController {
   ): Promise<IntakeItem> {
     const session = this.currentUser.requireSession(request);
 
-    return this.intakeItems.accept(session.userId, params.id);
+    return this.intakeItems.accept(
+      session.userId,
+      params.id,
+      getRequestMetadata(request),
+    );
   }
 
   @Post("intake-items/:id/defer")
@@ -145,7 +160,11 @@ export class IntakeController {
   ): Promise<IntakeItem> {
     const session = this.currentUser.requireSession(request);
 
-    return this.intakeItems.defer(session.userId, params.id);
+    return this.intakeItems.defer(
+      session.userId,
+      params.id,
+      getRequestMetadata(request),
+    );
   }
 
   @Post("intake-items/:id/reject")
@@ -160,7 +179,11 @@ export class IntakeController {
   ): Promise<IntakeItem> {
     const session = this.currentUser.requireSession(request);
 
-    return this.intakeItems.reject(session.userId, params.id);
+    return this.intakeItems.reject(
+      session.userId,
+      params.id,
+      getRequestMetadata(request),
+    );
   }
 
   @Post("intake-items/:id/convert-to-work-items")
@@ -175,6 +198,11 @@ export class IntakeController {
   ): Promise<ConvertIntakeItemToWorkItemsResponse> {
     const session = this.currentUser.requireSession(request);
 
-    return this.intakeItems.convertToWorkItems(session.userId, params.id, body);
+    return this.intakeItems.convertToWorkItems(
+      session.userId,
+      params.id,
+      body,
+      getRequestMetadata(request),
+    );
   }
 }

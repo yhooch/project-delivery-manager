@@ -228,6 +228,45 @@ describe("space API", () => {
       });
   });
 
+  it("adds a non-creator owner as an active space member on create", async () => {
+    const ownerAgent = await registeredAgent(
+      "m1d_create_owner_member_admin",
+      "203.0.113.63",
+    );
+    await registeredAgent("m1d_create_owner_member_owner", "203.0.113.64");
+    const organization = (
+      await createOrganization(
+        ownerAgent,
+        "M1D Create Owner Member",
+        "m1d-create-owner-member",
+      )
+    ).body.data as Organization;
+    const ownerUser = users.getByUsername("m1d_create_owner_member_owner");
+
+    await addOrganizationMember(ownerAgent, organization.id, {
+      username: "m1d_create_owner_member_owner",
+      role: "MEMBER",
+    }).expect(200);
+    const space = (
+      await createSpace(ownerAgent, organization.id, {
+        name: "Owner Member Space",
+        code: "owner-member-space",
+        ownerId: ownerUser?.id,
+      }).expect(200)
+    ).body.data as Space;
+
+    expect(space.ownerId).toBe(ownerUser?.id);
+    expect(spaces.members).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          role: "SPACE_ADMIN",
+          spaceId: space.id,
+          userId: ownerUser?.id,
+        }),
+      ]),
+    );
+  });
+
   it("aggregates overview status counts separately for tasks and bugs", async () => {
     const ownerAgent = await registeredAgent(
       "m4d_overview_owner",
@@ -1158,6 +1197,16 @@ class InMemorySpaceRepository implements SpaceRepository {
     };
     this.spaces.set(space.id, space);
     this.members.push(adminMembership);
+    if (input.ownerMemberId && input.ownerId) {
+      this.members.push({
+        id: input.ownerMemberId,
+        organizationId: input.organizationId,
+        spaceId: input.id,
+        userId: input.ownerId,
+        role: "SPACE_ADMIN",
+        status: "ACTIVE",
+      });
+    }
 
     return {
       space,

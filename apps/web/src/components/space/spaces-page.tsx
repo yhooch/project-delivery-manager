@@ -258,7 +258,9 @@ export function SpacesPage() {
                     {t(`settings.status.${space.status}`)}
                   </Badge>
                   {membership ? (
-                    <Badge variant="outline">{membership.role}</Badge>
+                    <Badge variant="outline">
+                      {t(`members.roles.${membership.role}`)}
+                    </Badge>
                   ) : (
                     <Badge variant="default">{t("list.notMember")}</Badge>
                   )}

@@ -11,6 +11,8 @@ import {
 import { ulid } from "ulid";
 
 import { ApiException } from "../../http/api-exception";
+import { AuditService } from "../audit/audit.service";
+import type { RequestMetadata } from "../auth/auth-session.types";
 import {
   ORGANIZATION_REPOSITORY,
   type OrganizationRepository,
@@ -37,6 +39,8 @@ export class VersionService {
     private readonly spaces: SpaceRepository,
     @Inject(ORGANIZATION_REPOSITORY)
     private readonly organizations: OrganizationRepository,
+    @Inject(AuditService)
+    private readonly audit: AuditService,
   ) {}
 
   async list(
@@ -53,6 +57,7 @@ export class VersionService {
     actorUserId: string,
     spaceId: string,
     input: CreateVersionRequest,
+    metadata: RequestMetadata = {},
   ): Promise<Version> {
     const access = await this.requireSpaceManager(actorUserId, spaceId);
 
@@ -65,7 +70,7 @@ export class VersionService {
       );
     }
 
-    return this.versions.create({
+    const created = await this.versions.create({
       id: ulid(),
       organizationId: access.space.organizationId,
       spaceId,
@@ -79,6 +84,19 @@ export class VersionService {
       releaseDate: parseOptionalDate(input.releaseDate, "releaseDate"),
       createdById: actorUserId,
     });
+
+    await this.audit.record({
+      actionType: "CREATE",
+      actorId: actorUserId,
+      after: created,
+      ...metadata,
+      organizationId: created.organizationId,
+      spaceId: created.spaceId,
+      targetId: created.id,
+      targetType: "VERSION",
+    });
+
+    return created;
   }
 
   async get(actorUserId: string, versionId: string): Promise<Version> {
@@ -133,6 +151,7 @@ export class VersionService {
     actorUserId: string,
     versionId: string,
     input: UpdateVersionRequest,
+    metadata: RequestMetadata = {},
   ): Promise<Version> {
     const existing = await this.versions.findById(versionId);
 
@@ -169,6 +188,18 @@ export class VersionService {
     if (!updated) {
       throwVersionNotFound();
     }
+
+    await this.audit.record({
+      actionType: "UPDATE",
+      actorId: actorUserId,
+      after: updated,
+      before: existing,
+      ...metadata,
+      organizationId: existing.organizationId,
+      spaceId: existing.spaceId,
+      targetId: versionId,
+      targetType: "VERSION",
+    });
 
     return updated;
   }

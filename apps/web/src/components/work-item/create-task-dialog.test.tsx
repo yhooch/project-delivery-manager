@@ -17,6 +17,13 @@ vi.mock("next-intl", () => ({
   },
 }));
 
+vi.mock("../providers/session-provider", () => ({
+  useSession: () => ({
+    currentOrganization: { id: "ORG_01" },
+    session: { defaultOrganizationId: "ORG_01" },
+  }),
+}));
+
 const {
   createWorkItemMock,
   listIntakeItemsMock,
@@ -50,6 +57,7 @@ vi.mock("../../lib/version-service", () => ({
 import { CreateTaskDialog } from "./create-task-dialog";
 
 const spaceId = "01ARZ3NDEKTSV4RRFFQ69G5FS1";
+const organizationId = "ORG_01";
 const requirementId = "01ARZ3NDEKTSV4RRFFQ69G5FR1";
 const intakeItemId = "01ARZ3NDEKTSV4RRFFQ69G5FI1";
 
@@ -82,6 +90,7 @@ describe("CreateTaskDialog", () => {
       <CreateTaskDialog
         open
         onOpenChange={() => {}}
+        organizationId={organizationId}
         spaceId={spaceId}
       />,
     );
@@ -102,7 +111,7 @@ describe("CreateTaskDialog", () => {
 
     await waitFor(() => expect(createWorkItemMock).toHaveBeenCalledTimes(1));
     expect(createWorkItemMock).toHaveBeenCalledWith(
-      { spaceId },
+      { organizationId, spaceId },
       expect.objectContaining({
         intakeItemId,
         requirementId,

@@ -2,6 +2,7 @@ import { Module } from "@nestjs/common";
 
 import { PrismaModule } from "../../prisma/prisma.module";
 import { AuthModule } from "../auth/auth.module";
+import { AuditModule } from "../audit/audit.module";
 import { OrganizationModule } from "../organization/organization.module";
 import { SpaceModule } from "../space/space.module";
 import { WorkflowModule } from "../workflow/workflow.module";
@@ -13,7 +14,14 @@ import { WorkItemService } from "./workitem.service";
 @Module({
   controllers: [WorkItemController],
   exports: [WORK_ITEM_REPOSITORY, WorkItemService],
-  imports: [AuthModule, OrganizationModule, PrismaModule, SpaceModule, WorkflowModule],
+  imports: [
+    AuthModule,
+    AuditModule,
+    OrganizationModule,
+    PrismaModule,
+    SpaceModule,
+    WorkflowModule,
+  ],
   providers: [
     WorkItemService,
     {

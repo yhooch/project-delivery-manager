@@ -428,12 +428,21 @@ export function VersionPage() {
     filters.statusCategory !== null ||
     filters.workItemType !== null;
 
+  const getVersionLookup = useCallback(
+    (targetVersionId: string) =>
+      versions.find((version) => version.id === targetVersionId),
+    [versions],
+  );
+
   // -------------------------------------------------------------------------
   // Handlers
   // -------------------------------------------------------------------------
 
   const openItem = (summary: ViewWorkItemSummary) => {
-    const item = toMockWorkItem(locale)(summary);
+    const item = toMockWorkItem(locale, {
+      getMember: (userId) => getMember(userId),
+      getVersion: (nextVersionId) => getVersionLookup(nextVersionId),
+    })(summary);
     recordRecentOpen(
       {
         id: item.id,
@@ -463,6 +472,12 @@ export function VersionPage() {
     setVersions((prev) => prev.map((v) => (v.id === updated.id ? updated : v)));
     void fetchVersions();
   };
+
+  const refreshVersionContext = useCallback(() => {
+    void fetchBoard();
+    void fetchVersions();
+    void fetchTimeline();
+  }, [fetchBoard, fetchTimeline, fetchVersions]);
 
   // -------------------------------------------------------------------------
   // Header meta — flattened from the former <VersionHero> band; lives in the
@@ -594,7 +609,7 @@ export function VersionPage() {
               >
                 <span className="flex-1 truncate">{v.name}</span>
                 <span className="text-[10px] uppercase tracking-wide text-muted-foreground">
-                  {v.status}
+                  {tVersionStatus(v.status)}
                 </span>
               </DropdownMenuItem>
             ))}
@@ -725,6 +740,8 @@ export function VersionPage() {
                 <BoardColumns
                   grouped={grouped}
                   locale={locale}
+                  getMember={getMember}
+                  getVersion={getVersionLookup}
                   openItem={openItem}
                   t={t}
                 />
@@ -787,7 +804,7 @@ export function VersionPage() {
         open={sheetOpen}
         onOpenChange={setSheetOpen}
         onChanged={() => {
-          void fetchBoard();
+          refreshVersionContext();
         }}
       />
       {spaceId && canCreateWorkItem ? (
@@ -795,9 +812,10 @@ export function VersionPage() {
           open={createWorkItemDialogOpen}
           onOpenChange={setCreateWorkItemDialogOpen}
           spaceId={spaceId}
+          organizationId={organizationId}
           initialVersionId={versionId ?? undefined}
           onCreated={() => {
-            void fetchBoard();
+            refreshVersionContext();
           }}
         />
       ) : null}
@@ -1060,6 +1078,8 @@ function KpiInline({
 function BoardColumns({
   grouped,
   locale,
+  getMember,
+  getVersion,
   openItem,
   t,
 }: {
@@ -1069,6 +1089,8 @@ function BoardColumns({
     total: number;
   }[];
   locale: string;
+  getMember: ReturnType<typeof useSpaceMembers>["getMember"];
+  getVersion: (versionId: string) => Version | undefined;
   openItem: (summary: ViewWorkItemSummary) => void;
   t: ReturnType<typeof useTranslations<"versionBoard">>;
 }) {
@@ -1098,7 +1120,10 @@ function BoardColumns({
               </div>
             )}
             {items.map((item) => {
-              const mock = toMockWorkItem(locale)(item);
+              const mock = toMockWorkItem(locale, {
+                getMember: (userId) => getMember(userId),
+                getVersion: (versionId) => getVersion(versionId),
+              })(item);
               return (
                 <button
                   key={item.id}

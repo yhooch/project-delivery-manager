@@ -1,3 +1,5 @@
+import { createHmac, timingSafeEqual } from "node:crypto";
+
 import { HttpStatus, Inject, Injectable } from "@nestjs/common";
 import {
   AttachmentDownloadUrlExpiresInSeconds,
@@ -18,6 +20,8 @@ import {
 import { ulid } from "ulid";
 
 import { ApiException } from "../../http/api-exception";
+import { AuditService } from "../audit/audit.service";
+import type { RequestMetadata } from "../auth/auth-session.types";
 import {
   REQUIREMENT_REPOSITORY,
   type RequirementRepository,
@@ -46,6 +50,8 @@ export class AttachmentService {
     private readonly requirements: RequirementRepository,
     @Inject(TargetResolverService)
     private readonly targets: TargetResolverService,
+    @Inject(AuditService)
+    private readonly audit: AuditService,
   ) {}
 
   async presign(
@@ -56,7 +62,7 @@ export class AttachmentService {
     await this.requireWritableAttachmentTarget(actorUserId, input);
     await this.assertAttachmentCountLimit(input.targetType, input.targetId);
 
-    const fileKey = createFileKey(input.targetType, input.targetId, input.fileName);
+    const fileKey = createSignedFileKey(actorUserId, input);
 
     return {
       uploadUrl: createObjectUrl("upload", fileKey, PresignedUploadUrlExpiresInSeconds),
@@ -68,6 +74,7 @@ export class AttachmentService {
   async create(
     actorUserId: string,
     input: CreateAttachmentRequest,
+    metadata: RequestMetadata = {},
   ): Promise<Attachment> {
     const file = this.assertFileConstraints(input);
     if (!isExpectedFileKey(input.targetType, input.targetId, input.fileKey)) {
@@ -77,6 +84,7 @@ export class AttachmentService {
         HttpStatus.BAD_REQUEST,
       );
     }
+    assertSignedFileKey(actorUserId, input);
 
     const target = await this.requireWritableAttachmentTarget(
       actorUserId,
@@ -84,7 +92,7 @@ export class AttachmentService {
     );
     await this.assertAttachmentCountLimit(input.targetType, input.targetId);
 
-    return this.attachments.create({
+    const created = await this.attachments.create({
       id: ulid(),
       organizationId: target.organizationId,
       spaceId: target.spaceId,
@@ -96,6 +104,26 @@ export class AttachmentService {
       size: input.size,
       uploadedById: actorUserId,
     });
+
+    await this.audit.record({
+      actionType: "CREATE",
+      actorId: actorUserId,
+      after: created,
+      metadata: {
+        fileName: input.fileName,
+        mimeType: file.mimeType,
+        size: input.size,
+        targetId: input.targetId,
+        targetType: input.targetType,
+      },
+      ...metadata,
+      organizationId: target.organizationId,
+      spaceId: target.spaceId,
+      targetId: created.id,
+      targetType: "ATTACHMENT",
+    });
+
+    return created;
   }
 
   async list(
@@ -314,12 +342,145 @@ function createFileKey(
   return `attachments/${targetType.toLowerCase()}/${targetId}/${ulid()}-${sanitizeFileName(fileName)}`;
 }
 
+function createSignedFileKey(
+  actorUserId: string,
+  input: PresignAttachmentRequest,
+): string {
+  const unsignedFileKey = createFileKey(
+    input.targetType,
+    input.targetId,
+    input.fileName,
+  );
+  const expiresAt = Date.now() + PresignedUploadUrlExpiresInSeconds * 1000;
+  const signature = signFileKey(actorUserId, {
+    expiresAt,
+    fileKey: unsignedFileKey,
+    mimeType: input.mimeType,
+    size: input.size,
+    targetId: input.targetId,
+    targetType: input.targetType,
+  });
+
+  return `${unsignedFileKey}~${expiresAt}~${signature}`;
+}
+
 function isExpectedFileKey(
   targetType: "REQUIREMENT" | "WORK_ITEM",
   targetId: string,
   fileKey: string,
 ): boolean {
   return fileKey.startsWith(`attachments/${targetType.toLowerCase()}/${targetId}/`);
+}
+
+function assertSignedFileKey(
+  actorUserId: string,
+  input: CreateAttachmentRequest,
+): void {
+  const signedFileKey = parseSignedFileKey(input.fileKey);
+
+  if (!signedFileKey) {
+    throwInvalidFileKeySignature();
+  }
+  if (Date.now() > signedFileKey.expiresAt) {
+    throw new ApiException(
+      "VALIDATION_ERROR",
+      "Presigned attachment registration has expired",
+      HttpStatus.BAD_REQUEST,
+    );
+  }
+
+  const expectedSignature = signFileKey(actorUserId, {
+    expiresAt: signedFileKey.expiresAt,
+    fileKey: signedFileKey.unsignedFileKey,
+    mimeType: input.mimeType,
+    size: input.size,
+    targetId: input.targetId,
+    targetType: input.targetType,
+  });
+
+  if (!safeSignatureEqual(signedFileKey.signature, expectedSignature)) {
+    throwInvalidFileKeySignature();
+  }
+}
+
+function parseSignedFileKey(fileKey: string):
+  | {
+      expiresAt: number;
+      signature: string;
+      unsignedFileKey: string;
+    }
+  | undefined {
+  const parts = fileKey.split("~");
+
+  if (parts.length < 3) {
+    return undefined;
+  }
+
+  const [signature, expiresAtText] = parts.slice(-2).reverse();
+  const unsignedFileKey = parts.slice(0, -2).join("~");
+  const expiresAt = Number(expiresAtText);
+
+  if (!unsignedFileKey || !Number.isSafeInteger(expiresAt) || !signature) {
+    return undefined;
+  }
+
+  return {
+    expiresAt,
+    signature,
+    unsignedFileKey,
+  };
+}
+
+function signFileKey(
+  actorUserId: string,
+  input: {
+    expiresAt: number;
+    fileKey: string;
+    mimeType: string;
+    size: number;
+    targetId: string;
+    targetType: AttachmentTargetType;
+  },
+): string {
+  const payload = [
+    actorUserId,
+    input.targetType,
+    input.targetId,
+    input.fileKey,
+    input.mimeType,
+    input.size,
+    input.expiresAt,
+  ].join("\n");
+
+  return createHmac("sha256", attachmentSigningSecret())
+    .update(payload)
+    .digest("base64url");
+}
+
+function attachmentSigningSecret(): string {
+  return (
+    process.env["ATTACHMENT_FILE_KEY_SECRET"] ??
+    process.env["DATABASE_URL"] ??
+    "local-attachment-signing-key"
+  );
+}
+
+function safeSignatureEqual(left: string, right: string): boolean {
+  const leftBuffer = Buffer.from(left);
+  const rightBuffer = Buffer.from(right);
+
+  return (
+    leftBuffer.length === rightBuffer.length &&
+    timingSafeEqual(leftBuffer, rightBuffer)
+  );
+}
+
+function throwInvalidFileKeySignature(): never {
+  throw new ApiException(
+    "VALIDATION_ERROR",
+    "fileKey signature is invalid",
+    HttpStatus.BAD_REQUEST,
+  );
 }
 
 function sanitizeFileName(fileName: string): string {

@@ -28,6 +28,9 @@ type RepositoryInternals = {
     participantSpaceIds: string[];
     participantWorkItemIds: string[];
     readAllSpaceIds: string[];
+    requirementNonDraftReadAllSpaceIds: string[];
+    requirementReadAllSpaceIds: string[];
+    intakeItemReadAllSpaceIds: string[];
     spaceIds: string[];
     testerSpaceIds: string[];
     testerWorkItemIds: string[];
@@ -203,6 +206,9 @@ describe("PrismaSpaceRepository", () => {
       participantSpaceIds: [],
       participantWorkItemIds: [],
       readAllSpaceIds: [spaceId],
+      requirementNonDraftReadAllSpaceIds: [spaceId],
+      requirementReadAllSpaceIds: [spaceId],
+      intakeItemReadAllSpaceIds: [spaceId],
       spaceIds: [spaceId],
       testerSpaceIds: [],
       testerWorkItemIds: [],
@@ -368,6 +374,9 @@ describe("PrismaSpaceRepository", () => {
       participantSpaceIds: [],
       participantWorkItemIds: [],
       readAllSpaceIds: [spaceId],
+      requirementNonDraftReadAllSpaceIds: [spaceId],
+      requirementReadAllSpaceIds: [spaceId],
+      intakeItemReadAllSpaceIds: [spaceId],
       spaceIds: [spaceId],
       testerSpaceIds: [],
       testerWorkItemIds: [],
@@ -475,6 +484,9 @@ describe("PrismaSpaceRepository", () => {
         participantSpaceIds: [],
         participantWorkItemIds: [],
         readAllSpaceIds: [spaceId],
+        requirementNonDraftReadAllSpaceIds: [spaceId],
+        requirementReadAllSpaceIds: [spaceId],
+        intakeItemReadAllSpaceIds: [spaceId],
         spaceIds: [spaceId],
         testerSpaceIds: [],
         testerWorkItemIds: [],
@@ -491,16 +503,34 @@ describe("PrismaSpaceRepository", () => {
     expect(timelineFindMany).toHaveBeenCalledWith(
       expect.objectContaining({
         where: expect.objectContaining({
-          OR: [
+          AND: [
             {
-              spaceId: {
-                in: [spaceId],
-              },
-              targetType: {
-                in: ["WORK_ITEM", "REQUIREMENT", "INTAKE_ITEM", "VERSION"],
-              },
+              OR: expect.arrayContaining([
+                {
+                  targetId: "01TRZ3NDEKTSV4RRFFQ69G5WI1",
+                  targetType: "WORK_ITEM",
+                },
+                {
+                  targetId: "01TRZ3NDEKTSV4RRFFQ69G5RQ1",
+                  targetType: "REQUIREMENT",
+                },
+                {
+                  targetId: "01TRZ3NDEKTSV4RRFFQ69G5IN1",
+                  targetType: "INTAKE_ITEM",
+                },
+                {
+                  targetId: "01TRZ3NDEKTSV4RRFFQ69G5VR1",
+                  targetType: "VERSION",
+                },
+              ]),
             },
           ],
+          spaceId: {
+            in: [spaceId],
+          },
+          targetType: {
+            in: ["WORK_ITEM", "REQUIREMENT", "INTAKE_ITEM", "VERSION"],
+          },
         }),
       }),
     );
@@ -518,6 +548,99 @@ describe("PrismaSpaceRepository", () => {
       },
       { id: "01TRZ3NDEKTSV4RRFFQ69G5VR1", title: "Version A", type: "VERSION" },
     ]);
+  });
+
+  it("does not use work-item read-all access to expose draft requirement activity", async () => {
+    const organizationId = "01TRZ3NDEKTSV4RRFFQ69G5ORG";
+    const spaceId = "01TRZ3NDEKTSV4RRFFQ69G5SPC";
+    const requirementFindMany = vi.fn(async () => [
+      { id: "01TRZ3NDEKTSV4RRFFQ69G5RQ1", title: "Confirmed Requirement" },
+    ]);
+    const timelineFindMany = vi.fn(async () => []);
+    const prisma = {
+      client: {
+        $transaction: vi.fn(async (operations: Promise<unknown>[]) =>
+          Promise.all(operations),
+        ),
+        intakeItem: {
+          findMany: vi.fn(async () => []),
+        },
+        requirement: {
+          findMany: requirementFindMany,
+        },
+        timelineEvent: {
+          count: vi.fn(async () => 0),
+          findMany: timelineFindMany,
+        },
+        version: {
+          findMany: vi.fn(async () => []),
+        },
+        workItem: {
+          findMany: vi.fn(async () => []),
+        },
+      },
+    } as unknown as PrismaService;
+    const repository = new PrismaSpaceRepository(prisma);
+    const internals = repository as unknown as RepositoryInternals;
+
+    await internals.pageRecentActivities(
+      {
+        accessBySpaceId: new Map(),
+        accesses: [],
+        participantIntakeItemIds: [],
+        participantRequirementIds: [],
+        participantSpaceIds: [],
+        participantWorkItemIds: [],
+        readAllSpaceIds: [spaceId],
+        requirementNonDraftReadAllSpaceIds: [spaceId],
+        requirementReadAllSpaceIds: [],
+        intakeItemReadAllSpaceIds: [],
+        spaceIds: [spaceId],
+        testerSpaceIds: [],
+        testerWorkItemIds: [],
+      },
+      {
+        actorUserId: "01TRZ3NDEKTSV4RRFFQ69G5USR",
+        organizationId,
+        page: 1,
+        pageSize: 20,
+      },
+      organizationId,
+    );
+
+    expect(requirementFindMany).toHaveBeenNthCalledWith(
+      1,
+      expect.objectContaining({
+        where: expect.objectContaining({
+          OR: [
+            {
+              spaceId: {
+                in: [spaceId],
+              },
+              status: {
+                not: "DRAFT",
+              },
+            },
+          ],
+        }),
+      }),
+    );
+    expect(timelineFindMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          AND: [
+            {
+              OR: [
+                {
+                  targetId: "01TRZ3NDEKTSV4RRFFQ69G5RQ1",
+                  targetType: "REQUIREMENT",
+                },
+              ],
+            },
+          ],
+        }),
+      }),
+    );
   });
 
   it("does not expose action todos to VIEWER even when they are creator or assignee", async () => {
@@ -593,6 +716,9 @@ describe("PrismaSpaceRepository", () => {
         participantSpaceIds: [],
         participantWorkItemIds: [],
         readAllSpaceIds: [spaceId],
+        requirementNonDraftReadAllSpaceIds: [],
+        requirementReadAllSpaceIds: [],
+        intakeItemReadAllSpaceIds: [],
         spaceIds: [spaceId],
         testerSpaceIds: [],
         testerWorkItemIds: [],

@@ -1,6 +1,29 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+const { uploadRequirementImageMock } = vi.hoisted(() => ({
+  uploadRequirementImageMock: vi.fn(),
+}));
+
+vi.mock("../../lib/attachment-service", () => {
+  class AttachmentUploadError extends Error {
+    readonly code: string;
+    readonly retryable: boolean;
+
+    constructor(code: string, retryable = false) {
+      super(code);
+      this.name = "AttachmentUploadError";
+      this.code = code;
+      this.retryable = retryable;
+    }
+  }
+
+  return {
+    AttachmentUploadError,
+    uploadRequirementImage: uploadRequirementImageMock,
+  };
+});
+
 import {
   RequirementContentEditorSlot,
   type RequirementContentEditorSlotProps,
@@ -85,6 +108,15 @@ function latestContentJson(onChange: ReturnType<typeof vi.fn>) {
   return calls.at(-1)?.[0].contentJson;
 }
 
+function makeDropDataTransfer(files: File[]) {
+  return {
+    files,
+    getData: () => "",
+    items: [],
+    types: ["Files"],
+  };
+}
+
 function firstTextNode(contentJson: Record<string, unknown>) {
   return (
     contentJson.content as Array<{
@@ -94,7 +126,12 @@ function firstTextNode(contentJson: Record<string, unknown>) {
 }
 
 beforeEach(() => {
+  uploadRequirementImageMock.mockReset();
   vi.spyOn(window, "prompt").mockReturnValue(null);
+  if (!document.elementFromPoint) {
+    document.elementFromPoint = () =>
+      screen.queryByLabelText("requirements.editor.ariaLabel");
+  }
   const textPrototype = Text.prototype as Text & {
     getBoundingClientRect?: () => DOMRect;
     getClientRects?: () => DOMRectList;
@@ -249,5 +286,85 @@ describe("RequirementContentEditorSlot link extension", () => {
       .join("\n");
 
     expect(loggedMessages).not.toMatch(/duplicate extension names.*link/i);
+  });
+});
+
+describe("RequirementContentEditorSlot image drop", () => {
+  it("uploads dropped images through the attachment chain and inserts the attachment URL", async () => {
+    const onAttachmentUploaded = vi.fn();
+    const imageFile = new File(["image-bytes"], "dropped.png", {
+      type: "image/png",
+    });
+
+    uploadRequirementImageMock.mockResolvedValueOnce({
+      attachment: {
+        fileKey: "requirements/REQ_01/dropped.png",
+        fileName: "dropped.png",
+        id: "ATTACHMENT_01",
+        mimeType: "image/png",
+        previewUrl: "https://cdn.example/dropped-preview.png",
+        size: imageFile.size,
+      },
+      imageUrl: "https://cdn.example/dropped.png",
+    });
+
+    const { onChange } = renderEditor({
+      canUploadImages: true,
+      onAttachmentUploaded,
+      requirementId: "REQ_01",
+    });
+
+    fireEvent.drop(
+      await screen.findByLabelText("requirements.editor.ariaLabel"),
+      {
+        dataTransfer: makeDropDataTransfer([imageFile]),
+      },
+    );
+
+    await waitFor(() =>
+      expect(uploadRequirementImageMock).toHaveBeenCalledWith({
+        existingAttachmentCount: 0,
+        file: imageFile,
+        requirementId: "REQ_01",
+      }),
+    );
+    expect(onAttachmentUploaded).toHaveBeenCalledWith({
+      fileKey: "requirements/REQ_01/dropped.png",
+      fileName: "dropped.png",
+      id: "ATTACHMENT_01",
+      mimeType: "image/png",
+      previewUrl: "https://cdn.example/dropped-preview.png",
+      size: imageFile.size,
+    });
+
+    const image = await screen.findByRole("img", { name: "dropped.png" });
+    expect(image.getAttribute("src")).toBe("https://cdn.example/dropped.png");
+
+    await waitFor(() => expect(onChange).toHaveBeenCalled());
+    expect(JSON.stringify(latestContentJson(onChange))).not.toContain("data:");
+  });
+
+  it("does not upload dropped images until the editor has a requirement id", async () => {
+    const imageFile = new File(["image-bytes"], "draft-only.png", {
+      type: "image/png",
+    });
+
+    renderEditor({
+      canUploadImages: true,
+    });
+
+    fireEvent.drop(
+      await screen.findByLabelText("requirements.editor.ariaLabel"),
+      {
+        dataTransfer: makeDropDataTransfer([imageFile]),
+      },
+    );
+
+    expect(uploadRequirementImageMock).not.toHaveBeenCalled();
+    expect(
+      await screen.findByText(
+        "requirements.editor.uploadErrors.DRAFT_REQUIRED",
+      ),
+    ).toBeInTheDocument();
   });
 });

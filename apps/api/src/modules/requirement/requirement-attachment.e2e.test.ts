@@ -556,6 +556,19 @@ describe("requirement and attachment API", () => {
       uploadedById: requirementUser.id,
     });
 
+    await createAttachment(agent, {
+      targetType: "REQUIREMENT",
+      targetId: draft.id,
+      fileName: "设计图.png",
+      fileKey: presign.fileKey,
+      mimeType: "image/png",
+      size: 2048,
+    })
+      .expect(400)
+      .expect(({ body }) => {
+        expect(body.code).toBe("VALIDATION_ERROR");
+      });
+
     await agent
       .get(`/api/v1/attachments/${attachment.id}/download-url`)
       .expect(200)
@@ -613,7 +626,7 @@ describe("requirement and attachment API", () => {
     })
       .expect(400)
       .expect(({ body }) => {
-        expect(body.code).toBe("VALIDATION_ERROR");
+        expect(body.code).toBe("FILE_TOO_LARGE");
       });
     await agent
       .post("/api/v1/attachments/presign")
@@ -627,7 +640,7 @@ describe("requirement and attachment API", () => {
       })
       .expect(400)
       .expect(({ body }) => {
-        expect(body.code).toBe("VALIDATION_ERROR");
+        expect(body.code).toBe("UNSUPPORTED_MIME_TYPE");
       });
 
     await patchRequirement(agent, draft.id, {

@@ -2,6 +2,7 @@ import type { Comment } from "@project-delivery/shared";
 import { ulid } from "ulid";
 import { describe, expect, it, vi } from "vitest";
 
+import type { AuditService } from "../audit/audit.service";
 import type { TargetResolverService } from "../target/target-resolver.service";
 import type { CommentRepository } from "./comment.repository";
 import { CommentService } from "./comment.service";
@@ -27,13 +28,18 @@ describe("CommentService", () => {
         canWrite: true,
       })),
     } as unknown as TargetResolverService;
-    const service = new CommentService(comments, targets);
+    const audit = createAuditService();
+    const service = new CommentService(comments, targets, audit);
 
-    await service.create(actorUserId, {
-      targetType: "WORK_ITEM",
-      targetId: workItemId,
-      body: "Looks good",
-    });
+    await service.create(
+      actorUserId,
+      {
+        targetType: "WORK_ITEM",
+        targetId: workItemId,
+        body: "Looks good",
+      },
+      { requestId: "req-comment" },
+    );
 
     expect(targets.resolve).toHaveBeenCalledWith(
       actorUserId,
@@ -53,6 +59,20 @@ describe("CommentService", () => {
         targetType: "WORK_ITEM",
       }),
     );
+    expect(audit.record).toHaveBeenCalledWith(
+      expect.objectContaining({
+        actionType: "CREATE",
+        actorId: actorUserId,
+        metadata: {
+          targetId: workItemId,
+          targetType: "WORK_ITEM",
+        },
+        organizationId,
+        requestId: "req-comment",
+        spaceId,
+        targetType: "COMMENT",
+      }),
+    );
   });
 
   it("does not create comments when WORK_ITEM visibility resolution rejects", async () => {
@@ -67,7 +87,8 @@ describe("CommentService", () => {
         throw new Error("not visible");
       }),
     } as unknown as TargetResolverService;
-    const service = new CommentService(comments, targets);
+    const audit = createAuditService();
+    const service = new CommentService(comments, targets, audit);
 
     await expect(
       service.create(actorUserId, {
@@ -77,8 +98,17 @@ describe("CommentService", () => {
       }),
     ).rejects.toThrow("not visible");
     expect(comments.create).not.toHaveBeenCalled();
+    expect(audit.record).not.toHaveBeenCalled();
   });
 });
+
+function createAuditService() {
+  return {
+    record: vi.fn(),
+  } as unknown as AuditService & {
+    record: ReturnType<typeof vi.fn>;
+  };
+}
 
 function fakeComment(id: string, targetId: string): Comment {
   return {

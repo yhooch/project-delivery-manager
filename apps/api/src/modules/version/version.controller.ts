@@ -31,6 +31,7 @@ import {
 import type { RequestWithContext } from "../../http/request-context";
 import { ZodValidationPipe } from "../../http/zod-validation.pipe";
 import { CurrentUserService } from "../auth/current-user.service";
+import { getRequestMetadata } from "../auth/request-metadata";
 import { RequireSessionGuard } from "../auth/session.guard";
 import { WriteOriginGuard } from "../auth/write-origin.guard";
 import { VersionService } from "./version.service";
@@ -77,7 +78,12 @@ export class VersionController {
   ): Promise<Version> {
     const session = this.currentUser.requireSession(request);
 
-    return this.versions.create(session.userId, params.spaceId, body);
+    return this.versions.create(
+      session.userId,
+      params.spaceId,
+      body,
+      getRequestMetadata(request),
+    );
   }
 
   @Get("versions/:versionId")
@@ -116,6 +122,11 @@ export class VersionController {
   ): Promise<Version> {
     const session = this.currentUser.requireSession(request);
 
-    return this.versions.update(session.userId, params.versionId, body);
+    return this.versions.update(
+      session.userId,
+      params.versionId,
+      body,
+      getRequestMetadata(request),
+    );
   }
 }

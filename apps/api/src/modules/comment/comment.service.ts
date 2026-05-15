@@ -8,6 +8,8 @@ import type {
 import { ulid } from "ulid";
 import type { z } from "zod";
 
+import { AuditService } from "../audit/audit.service";
+import type { RequestMetadata } from "../auth/auth-session.types";
 import { TargetResolverService } from "../target/target-resolver.service";
 import {
   COMMENT_REPOSITORY,
@@ -23,6 +25,8 @@ export class CommentService {
     private readonly comments: CommentRepository,
     @Inject(TargetResolverService)
     private readonly targets: TargetResolverService,
+    @Inject(AuditService)
+    private readonly audit: AuditService,
   ) {}
 
   async list(
@@ -53,6 +57,7 @@ export class CommentService {
   async create(
     actorUserId: string,
     input: CreateCommentRequestInput,
+    metadata: RequestMetadata = {},
   ): Promise<Comment> {
     const target = await this.targets.resolve(
       actorUserId,
@@ -63,7 +68,7 @@ export class CommentService {
       },
     );
 
-    return this.comments.create({
+    const created = await this.comments.create({
       id: ulid(),
       organizationId: target.organizationId,
       spaceId: target.spaceId,
@@ -73,5 +78,22 @@ export class CommentService {
       body: input.body,
       timelineEventId: ulid(),
     });
+
+    await this.audit.record({
+      actionType: "CREATE",
+      actorId: actorUserId,
+      after: created,
+      metadata: {
+        targetId: target.targetId,
+        targetType: input.targetType,
+      },
+      ...metadata,
+      organizationId: target.organizationId,
+      spaceId: target.spaceId,
+      targetId: created.id,
+      targetType: "COMMENT",
+    });
+
+    return created;
   }
 }

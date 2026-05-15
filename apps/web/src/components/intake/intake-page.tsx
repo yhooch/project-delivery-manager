@@ -131,7 +131,7 @@ export function IntakePage() {
   const currentSpaceRole = currentSpace?.role ?? sessionSpace?.role;
   const canWriteIntake = currentSpaceRole
     ? currentSpaceRole !== "VIEWER"
-    : true;
+    : false;
   const recentScope = useMemo(
     () => ({ organizationId, spaceId }),
     [organizationId, spaceId],
@@ -396,7 +396,7 @@ export function IntakePage() {
     setActive(optimistic);
 
     try {
-      const context = { intakeItemId: target.id, spaceId };
+      const context = { intakeItemId: target.id, organizationId, spaceId };
       const updated =
         action === "accept"
           ? await acceptIntakeItem(context)
@@ -419,7 +419,7 @@ export function IntakePage() {
   }
 
   function openConvertDialog() {
-    if (!active || !canWriteIntake) {
+    if (!active || !canWriteIntake || active.status !== "ACCEPTED") {
       return;
     }
     setConvertTarget(active);
@@ -464,6 +464,7 @@ export function IntakePage() {
 
     try {
       const related = await listWorkItems({
+        organizationId,
         intakeItemId: target.id,
         page: 1,
         pageSize: 2,
@@ -986,6 +987,7 @@ export function IntakePage() {
               setConvertTarget(null);
             }
           }}
+          organizationId={organizationId}
           spaceId={spaceId}
           intakeItem={convertTarget}
           onConverted={handleConvertedIntakeItem}

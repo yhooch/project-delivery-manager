@@ -959,7 +959,7 @@
       "contentText": "正文",
       "ariaLabel": "需求正文编辑器",
       "toolbarLabel": "正文编辑工具栏",
-      "placeholder": "输入需求背景、范围、验收要点或粘贴图片。",
+      "placeholder": "输入需求背景、范围、验收要点，或粘贴/拖入图片。",
       "draftUploadOnly": "图片上传仅支持草稿需求；已确认需求可继续编辑文字内容。",
       "linkPrompt": "输入链接地址",
       "unknownFile": "未命名文件",
@@ -1650,6 +1650,7 @@
         "taskAssignee": "任务负责人",
         "taskPriority": "任务优先级",
         "unassigned": "未分配",
+        "invalidStatus": "只有已纳入的事项才能拆解为任务。",
         "submit": "创建任务",
         "submitting": "创建中"
       },
@@ -2059,7 +2060,9 @@
       "todo": "我的待办",
       "dueSoon": "临近截止",
       "blocked": "阻塞事项",
-      "pendingConfirm": "待确认"
+      "pendingConfirm": "待确认",
+      "pendingRegression": "待回归",
+      "stale": "长期未流转"
     },
     "time": {
       "justNow": "刚刚"
@@ -3015,6 +3018,7 @@
       "total": "{count} 项"
     },
     "filters": {
+      "label": "工作项筛选",
       "version": "版本",
       "allVersions": "全部版本",
       "assignee": "负责人",

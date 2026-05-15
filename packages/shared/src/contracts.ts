@@ -227,11 +227,26 @@ const spaceErrors = [
 ];
 const createVersionErrors = [...spaceErrors, "VALIDATION_ERROR", "CONFLICT"];
 const versionByIdErrors = [...spaceErrors, "NOT_FOUND", "VALIDATION_ERROR"];
+const requirementReferenceErrors = [
+  ...spaceErrors,
+  "NOT_FOUND",
+  "VALIDATION_ERROR",
+];
+const requirementItemErrors = [
+  ...spaceErrors,
+  "REQUIREMENT_NOT_FOUND",
+  "VALIDATION_ERROR",
+];
 const workflowErrors = [
   ...spaceErrors,
   "WORKFLOW_NOT_FOUND",
   "WORKFLOW_VERSION_NOT_FOUND",
+  "WORKFLOW_VERSION_ALREADY_PUBLISHED",
+  "WORKFLOW_VERSION_INVALID",
   "WORKFLOW_PUBLISH_VALIDATION_FAILED",
+  "VALIDATION_ERROR",
+  "CONFLICT",
+  "NOT_FOUND",
 ];
 const executeActionErrors = [
   ...workflowErrors,
@@ -241,12 +256,39 @@ const executeActionErrors = [
   "WORKFLOW_ACTION_PERMISSION_DENIED",
   "WORKFLOW_ACTION_FORM_INVALID",
   "WORKFLOW_ACTION_COMMENT_REQUIRED",
-  "WORKFLOW_VERSION_INVALID",
   "SPACE_MEMBER_INVALID",
 ];
-const intakeItemErrors = [...spaceErrors, "INTAKE_ITEM_NOT_FOUND"];
-const workItemErrors = [...spaceErrors, "WORK_ITEM_NOT_FOUND"];
-const attachmentTargetErrors = [...spaceErrors, "ATTACHMENT_TARGET_NOT_FOUND"];
+const linkedTargetErrors = [
+  "NOT_FOUND",
+  "REQUIREMENT_NOT_FOUND",
+  "INTAKE_ITEM_NOT_FOUND",
+];
+const intakeItemErrors = [
+  ...spaceErrors,
+  "INTAKE_ITEM_NOT_FOUND",
+  "VALIDATION_ERROR",
+];
+const intakeReferenceErrors = [
+  ...intakeItemErrors,
+  "NOT_FOUND",
+  "REQUIREMENT_NOT_FOUND",
+];
+const workItemErrors = [
+  ...spaceErrors,
+  "WORK_ITEM_NOT_FOUND",
+  "VALIDATION_ERROR",
+];
+const workItemReferenceErrors = [
+  ...workItemErrors,
+  ...linkedTargetErrors,
+  "WORKFLOW_VERSION_NOT_FOUND",
+];
+const bugReferenceErrors = workItemReferenceErrors;
+const attachmentTargetErrors = [
+  ...spaceErrors,
+  "ATTACHMENT_TARGET_NOT_FOUND",
+  "VALIDATION_ERROR",
+];
 const attachmentUploadErrors = [
   ...attachmentTargetErrors,
   "ATTACHMENT_LIMIT_EXCEEDED",
@@ -623,7 +665,7 @@ export const apiContracts = [
     querySchema: RequirementListQuerySchema,
     requestSchema: EmptyObjectSchema,
     responseSchema: ListRequirementsResponseSchema,
-    errorCodes: spaceErrors,
+    errorCodes: requirementReferenceErrors,
   }),
   endpoint({
     operationId: "createRequirementDraft",
@@ -635,7 +677,7 @@ export const apiContracts = [
     querySchema: EmptyObjectSchema,
     requestSchema: CreateRequirementDraftRequestSchema,
     responseSchema: CreateRequirementDraftResponseSchema,
-    errorCodes: [...spaceErrors, "DRAFT_REQUIREMENT_REQUIRED"],
+    errorCodes: [...requirementReferenceErrors, "DRAFT_REQUIREMENT_REQUIRED"],
   }),
   endpoint({
     operationId: "getRequirement",
@@ -647,7 +689,7 @@ export const apiContracts = [
     querySchema: EmptyObjectSchema,
     requestSchema: EmptyObjectSchema,
     responseSchema: GetRequirementResponseSchema,
-    errorCodes: [...spaceErrors, "REQUIREMENT_NOT_FOUND"],
+    errorCodes: requirementItemErrors,
   }),
   endpoint({
     operationId: "updateRequirement",
@@ -660,10 +702,8 @@ export const apiContracts = [
     requestSchema: UpdateRequirementRequestSchema,
     responseSchema: UpdateRequirementResponseSchema,
     errorCodes: [
-      ...spaceErrors,
-      "REQUIREMENT_NOT_FOUND",
+      ...requirementItemErrors,
       "NOT_FOUND",
-      "VALIDATION_ERROR",
     ],
   }),
   endpoint({
@@ -677,10 +717,8 @@ export const apiContracts = [
     requestSchema: EmptyObjectSchema,
     responseSchema: DeleteRequirementDraftResponseSchema,
     errorCodes: [
-      ...spaceErrors,
-      "REQUIREMENT_NOT_FOUND",
+      ...requirementItemErrors,
       "DRAFT_REQUIREMENT_REQUIRED",
-      "VALIDATION_ERROR",
     ],
   }),
   endpoint({
@@ -693,7 +731,7 @@ export const apiContracts = [
     querySchema: IntakeItemListQuerySchema,
     requestSchema: EmptyObjectSchema,
     responseSchema: ListIntakeItemsResponseSchema,
-    errorCodes: spaceErrors,
+    errorCodes: intakeReferenceErrors,
   }),
   endpoint({
     operationId: "createIntakeItem",
@@ -705,7 +743,7 @@ export const apiContracts = [
     querySchema: EmptyObjectSchema,
     requestSchema: CreateIntakeItemRequestSchema,
     responseSchema: CreateIntakeItemResponseSchema,
-    errorCodes: spaceErrors,
+    errorCodes: intakeReferenceErrors,
   }),
   endpoint({
     operationId: "getIntakeItem",
@@ -729,7 +767,7 @@ export const apiContracts = [
     querySchema: EmptyObjectSchema,
     requestSchema: UpdateIntakeItemRequestSchema,
     responseSchema: UpdateIntakeItemResponseSchema,
-    errorCodes: [...intakeItemErrors, "VALIDATION_ERROR"],
+    errorCodes: intakeReferenceErrors,
   }),
   endpoint({
     operationId: "acceptIntakeItem",
@@ -741,7 +779,10 @@ export const apiContracts = [
     querySchema: EmptyObjectSchema,
     requestSchema: EmptyObjectSchema,
     responseSchema: AcceptIntakeItemResponseSchema,
-    errorCodes: intakeItemErrors,
+    errorCodes: [
+      ...intakeItemErrors,
+      "INTAKE_ITEM_ALREADY_CONVERTED",
+    ],
   }),
   endpoint({
     operationId: "deferIntakeItem",
@@ -753,7 +794,10 @@ export const apiContracts = [
     querySchema: EmptyObjectSchema,
     requestSchema: EmptyObjectSchema,
     responseSchema: DeferIntakeItemResponseSchema,
-    errorCodes: intakeItemErrors,
+    errorCodes: [
+      ...intakeItemErrors,
+      "INTAKE_ITEM_ALREADY_CONVERTED",
+    ],
   }),
   endpoint({
     operationId: "rejectIntakeItem",
@@ -765,7 +809,10 @@ export const apiContracts = [
     querySchema: EmptyObjectSchema,
     requestSchema: EmptyObjectSchema,
     responseSchema: RejectIntakeItemResponseSchema,
-    errorCodes: intakeItemErrors,
+    errorCodes: [
+      ...intakeItemErrors,
+      "INTAKE_ITEM_ALREADY_CONVERTED",
+    ],
   }),
   endpoint({
     operationId: "convertIntakeItemToWorkItems",
@@ -779,6 +826,9 @@ export const apiContracts = [
     responseSchema: ConvertIntakeItemToWorkItemsResponseSchema,
     errorCodes: [
       ...intakeItemErrors,
+      "NOT_FOUND",
+      "REQUIREMENT_NOT_FOUND",
+      "WORKFLOW_VERSION_NOT_FOUND",
       "INTAKE_ITEM_NOT_ACCEPTED",
       "INTAKE_ITEM_ALREADY_CONVERTED",
     ],
@@ -793,7 +843,7 @@ export const apiContracts = [
     querySchema: WorkItemListQuerySchema,
     requestSchema: EmptyObjectSchema,
     responseSchema: ListWorkItemsResponseSchema,
-    errorCodes: spaceErrors,
+    errorCodes: workItemReferenceErrors,
   }),
   endpoint({
     operationId: "createWorkItem",
@@ -805,7 +855,7 @@ export const apiContracts = [
     querySchema: EmptyObjectSchema,
     requestSchema: CreateWorkItemRequestSchema,
     responseSchema: CreateWorkItemResponseSchema,
-    errorCodes: spaceErrors,
+    errorCodes: workItemReferenceErrors,
   }),
   endpoint({
     operationId: "getWorkItem",
@@ -829,7 +879,7 @@ export const apiContracts = [
     querySchema: EmptyObjectSchema,
     requestSchema: UpdateWorkItemRequestSchema,
     responseSchema: UpdateWorkItemResponseSchema,
-    errorCodes: [...workItemErrors, "VALIDATION_ERROR"],
+    errorCodes: workItemReferenceErrors,
   }),
   endpoint({
     operationId: "listBugs",
@@ -841,7 +891,7 @@ export const apiContracts = [
     querySchema: BugListQuerySchema,
     requestSchema: EmptyObjectSchema,
     responseSchema: ListBugsResponseSchema,
-    errorCodes: spaceErrors,
+    errorCodes: bugReferenceErrors,
   }),
   endpoint({
     operationId: "createBug",
@@ -853,7 +903,7 @@ export const apiContracts = [
     querySchema: EmptyObjectSchema,
     requestSchema: CreateBugRequestSchema,
     responseSchema: CreateBugResponseSchema,
-    errorCodes: spaceErrors,
+    errorCodes: bugReferenceErrors,
   }),
   endpoint({
     operationId: "getBug",
@@ -877,7 +927,7 @@ export const apiContracts = [
     querySchema: EmptyObjectSchema,
     requestSchema: UpdateBugRequestSchema,
     responseSchema: UpdateBugResponseSchema,
-    errorCodes: [...workItemErrors, "VALIDATION_ERROR"],
+    errorCodes: bugReferenceErrors,
   }),
   endpoint({
     operationId: "listWorkflows",
@@ -1203,7 +1253,7 @@ export const apiContracts = [
     querySchema: AttachmentListQuerySchema,
     requestSchema: EmptyObjectSchema,
     responseSchema: ListAttachmentsResponseSchema,
-    errorCodes: spaceErrors,
+    errorCodes: attachmentTargetErrors,
   }),
   endpoint({
     operationId: "presignAttachment",
@@ -1234,7 +1284,6 @@ export const apiContracts = [
     errorCodes: [
       ...attachmentUploadErrors,
       "DRAFT_REQUIREMENT_REQUIRED",
-      "VALIDATION_ERROR",
     ],
   }),
   endpoint({

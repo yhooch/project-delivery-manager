@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 
 import type { SpaceRole } from "@project-delivery/shared";
+import type { AuditService } from "../audit/audit.service";
 import type { OrganizationRepository } from "../organization/organization.repository";
 import type { RequirementRepository } from "../requirement/requirement.repository";
 import type { SpaceRepository } from "../space/space.repository";
@@ -66,15 +67,20 @@ describe("IntakeService", () => {
   });
 
   it("creates an intake item with actor as reporter after validating references", async () => {
-    const { intakeItems, service } = createSubject({ role: "PM" });
+    const { audit, intakeItems, service } = createSubject({ role: "PM" });
 
-    await service.create(ACTOR_USER_ID, SPACE_ID, {
-      assigneeId: ASSIGNEE_ID,
-      requirementId: REQUIREMENT_ID,
-      sourceType: "REQUIREMENT_CHANGE",
-      title: "Clarify scope",
-      versionId: VERSION_ID,
-    });
+    await service.create(
+      ACTOR_USER_ID,
+      SPACE_ID,
+      {
+        assigneeId: ASSIGNEE_ID,
+        requirementId: REQUIREMENT_ID,
+        sourceType: "REQUIREMENT_CHANGE",
+        title: "Clarify scope",
+        versionId: VERSION_ID,
+      },
+      { requestId: "req-intake-create" },
+    );
 
     expect(intakeItems.create).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -84,6 +90,21 @@ describe("IntakeService", () => {
         requirementId: REQUIREMENT_ID,
         spaceId: SPACE_ID,
         versionId: VERSION_ID,
+      }),
+    );
+    expect(audit.record).toHaveBeenCalledWith(
+      expect.objectContaining({
+        actionType: "CREATE",
+        actorId: ACTOR_USER_ID,
+        after: expect.objectContaining({
+          id: INTAKE_ITEM_ID,
+          title: "Clarify scope",
+        }),
+        organizationId: ORGANIZATION_ID,
+        requestId: "req-intake-create",
+        spaceId: SPACE_ID,
+        targetId: INTAKE_ITEM_ID,
+        targetType: "INTAKE_ITEM",
       }),
     );
   });
@@ -157,18 +178,33 @@ describe("IntakeService", () => {
   });
 
   it("accepts pending intake items and rejects illegal status changes", async () => {
-    const { intakeItems, service } = createSubject({
+    const { audit, intakeItems, service } = createSubject({
       item: intakeItem({ status: "PENDING" }),
       role: "PM",
     });
 
-    await service.accept(ACTOR_USER_ID, INTAKE_ITEM_ID);
+    await service.accept(ACTOR_USER_ID, INTAKE_ITEM_ID, {
+      requestId: "req-intake-accept",
+    });
 
     expect(intakeItems.updateStatus).toHaveBeenCalledWith({
       actorUserId: ACTOR_USER_ID,
       intakeItemId: INTAKE_ITEM_ID,
       status: "ACCEPTED",
     });
+    expect(audit.record).toHaveBeenCalledWith(
+      expect.objectContaining({
+        actionType: "UPDATE",
+        actorId: ACTOR_USER_ID,
+        before: expect.objectContaining({ status: "PENDING" }),
+        metadata: { operation: "TRANSITION_STATUS", status: "ACCEPTED" },
+        organizationId: ORGANIZATION_ID,
+        requestId: "req-intake-accept",
+        spaceId: SPACE_ID,
+        targetId: INTAKE_ITEM_ID,
+        targetType: "INTAKE_ITEM",
+      }),
+    );
 
     const converted = createSubject({
       item: intakeItem({ status: "CONVERTED" }),
@@ -243,7 +279,7 @@ describe("IntakeService", () => {
   );
 
   it("converts an accepted intake item to one TASK with inherited context", async () => {
-    const { intakeItems, service } = createSubject({
+    const { audit, intakeItems, service } = createSubject({
       item: intakeItem({
         assigneeId: ASSIGNEE_ID,
         requirementId: REQUIREMENT_ID,
@@ -253,14 +289,19 @@ describe("IntakeService", () => {
       role: "PM",
     });
 
-    const result = await service.convertToWorkItems(ACTOR_USER_ID, INTAKE_ITEM_ID, {
-      tasks: [
-        {
-          dueDate: "2026-06-01T00:00:00.000Z",
-          title: "Implement converted task",
-        },
-      ],
-    });
+    const result = await service.convertToWorkItems(
+      ACTOR_USER_ID,
+      INTAKE_ITEM_ID,
+      {
+        tasks: [
+          {
+            dueDate: "2026-06-01T00:00:00.000Z",
+            title: "Implement converted task",
+          },
+        ],
+      },
+      { requestId: "req-intake-convert" },
+    );
 
     expect(result).toMatchObject({
       intakeItemId: INTAKE_ITEM_ID,
@@ -287,6 +328,46 @@ describe("IntakeService", () => {
             versionId: VERSION_ID,
           }),
         ],
+      }),
+    );
+    expect(audit.record).toHaveBeenCalledWith(
+      expect.objectContaining({
+        actionType: "UPDATE",
+        actorId: ACTOR_USER_ID,
+        after: {
+          status: "CONVERTED",
+          workItemIds: [WORK_ITEM_ID],
+        },
+        before: expect.objectContaining({ id: INTAKE_ITEM_ID }),
+        metadata: {
+          operation: "CONVERT_TO_WORK_ITEMS",
+          taskCount: 1,
+          workItemIds: [WORK_ITEM_ID],
+        },
+        organizationId: ORGANIZATION_ID,
+        requestId: "req-intake-convert",
+        spaceId: SPACE_ID,
+        targetId: INTAKE_ITEM_ID,
+        targetType: "INTAKE_ITEM",
+      }),
+    );
+    expect(audit.record).toHaveBeenCalledWith(
+      expect.objectContaining({
+        actionType: "CREATE",
+        actorId: ACTOR_USER_ID,
+        after: expect.objectContaining({
+          id: WORK_ITEM_ID,
+          intakeItemId: INTAKE_ITEM_ID,
+        }),
+        metadata: {
+          intakeItemId: INTAKE_ITEM_ID,
+          operation: "CREATED_BY_INTAKE_CONVERSION",
+        },
+        organizationId: ORGANIZATION_ID,
+        requestId: "req-intake-convert",
+        spaceId: SPACE_ID,
+        targetId: WORK_ITEM_ID,
+        targetType: "WORK_ITEM",
       }),
     );
   });
@@ -595,8 +676,10 @@ function createSubject(input: {
     })),
     update: vi.fn(),
   } satisfies WorkItemRepository;
+  const audit = createAuditService();
 
   return {
+    audit,
     intakeItems,
     organizations,
     requirements,
@@ -607,10 +690,19 @@ function createSubject(input: {
       requirements as unknown as RequirementRepository,
       organizations as unknown as OrganizationRepository,
       workItems,
+      audit,
     ),
     spaces,
     versions,
     workItems,
+  };
+}
+
+function createAuditService() {
+  return {
+    record: vi.fn(),
+  } as unknown as AuditService & {
+    record: ReturnType<typeof vi.fn>;
   };
 }
 

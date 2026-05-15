@@ -37,10 +37,12 @@ import { Button } from "../ui/button";
 import { Input } from "../ui/input";
 import { Label } from "../ui/label";
 import { Textarea } from "../ui/textarea";
+import { useSession } from "../providers/session-provider";
 
 type ConvertIntakeDialogProps = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  organizationId?: string;
   spaceId: string;
   intakeItem: IntakeItem | null;
   onConverted?: (result: ConvertIntakeItemToWorkItemsResponse) => void;
@@ -80,6 +82,7 @@ function makeRow(intakeItem: IntakeItem | null, includeTitle = false): TaskRow {
 export function ConvertIntakeDialog({
   open,
   onOpenChange,
+  organizationId: explicitOrganizationId,
   spaceId,
   intakeItem,
   onConverted,
@@ -88,6 +91,11 @@ export function ConvertIntakeDialog({
   const tIntakeItems = useTranslations("intakeItems");
   const tPriority = useTranslations("intakeItems.priority");
   const tRoot = useTranslations();
+  const { currentOrganization, session } = useSession();
+  const organizationId =
+    explicitOrganizationId ??
+    session?.defaultOrganizationId ??
+    currentOrganization?.id;
 
   const [rows, setRows] = useState<TaskRow[]>([makeRow(null)]);
   const [errors, setErrors] = useState<boolean[]>([false]);
@@ -116,10 +124,11 @@ export function ConvertIntakeDialog({
           bindingPage,
         ] = await Promise.all([
           listSpaceMembers(spaceId),
-          listVersions({ spaceId, page: 1, pageSize: 100 }),
-          listRequirements({ spaceId, page: 1, pageSize: 100 }),
-          listWorkflows({ spaceId, page: 1, pageSize: 100 }),
+          listVersions({ organizationId, spaceId, page: 1, pageSize: 100 }),
+          listRequirements({ organizationId, spaceId, page: 1, pageSize: 100 }),
+          listWorkflows({ organizationId, spaceId, page: 1, pageSize: 100 }),
           listWorkflowBindings({
+            organizationId,
             page: 1,
             pageSize: 100,
             spaceId,
@@ -143,7 +152,7 @@ export function ConvertIntakeDialog({
     return () => {
       cancelled = true;
     };
-  }, [open, spaceId]);
+  }, [open, organizationId, spaceId]);
 
   useEffect(() => {
     if (!open) {
@@ -198,6 +207,11 @@ export function ConvertIntakeDialog({
       return;
     }
 
+    if (intakeItem.status !== "ACCEPTED") {
+      setErrorKey("intake.dialog.convert.invalidStatus");
+      return;
+    }
+
     const nextErrors = rows.map((row) => row.title.trim().length === 0);
     setErrors(nextErrors);
     if (nextErrors.some(Boolean)) {
@@ -209,7 +223,7 @@ export function ConvertIntakeDialog({
 
     try {
       const result = await convertIntakeItemToWorkItems(
-        { intakeItemId: intakeItem.id, spaceId },
+        { intakeItemId: intakeItem.id, organizationId, spaceId },
         toConvertIntakeItemRequest({
           tasks: rows.map((row) => ({
             assigneeId: row.assigneeId || undefined,
@@ -486,7 +500,16 @@ export function ConvertIntakeDialog({
             >
               {t("actions.cancel")}
             </Button>
-            <Button type="submit" size="sm" disabled={submitting}>
+            <Button
+              type="submit"
+              size="sm"
+              disabled={submitting || intakeItem?.status !== "ACCEPTED"}
+              title={
+                intakeItem?.status && intakeItem.status !== "ACCEPTED"
+                  ? t("convert.invalidStatus")
+                  : undefined
+              }
+            >
               {submitting
                 ? t("convert.submitting")
                 : t("convert.submit")}

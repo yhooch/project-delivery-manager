@@ -5,7 +5,9 @@ import type {
   SpaceMemberWithUser,
   StatusCategory,
   Version,
+  ViewExceptionType,
   ViewWorkItemSummary,
+  WorkItemType,
 } from "@project-delivery/shared";
 import {
   AlertCircle,
@@ -28,6 +30,11 @@ import {
   useSpaceMembers,
   useVersions,
 } from "../../lib/v2/lookups";
+import {
+  M4_EXCEPTION_TYPE_OPTIONS,
+  M4_STATUS_CATEGORY_OPTIONS,
+  M4_WORK_ITEM_TYPE_OPTIONS,
+} from "../../lib/view-forms";
 import type { WorkItemViewModel } from "../../lib/v2/work-item-view-model";
 import { getMyWorkbenchView } from "../../lib/view-service";
 import { Link } from "../../i18n/routing";
@@ -62,6 +69,14 @@ type WorkbenchItemViewModel = WorkItemViewModel & {
   spaceId?: string;
 };
 
+type WorkbenchFilterState = {
+  assigneeId?: string;
+  exceptionType?: ViewExceptionType;
+  statusCategory?: StatusCategory;
+  versionId?: string;
+  workItemType?: WorkItemType;
+};
+
 export function MyWorkbench() {
   const t = useTranslations("workbench");
   const tStatusCategory = useTranslations("workItems.statusCategory");
@@ -84,6 +99,7 @@ export function MyWorkbench() {
   const [selectedSpaceId, setSelectedSpaceId] = useState<string | undefined>(
     undefined,
   );
+  const [filters, setFilters] = useState<WorkbenchFilterState>({});
   const [organizationLookups, setOrganizationLookups] = useState<{
     membersBySpaceId: Map<string, SpaceMemberWithUser[]>;
     versionsBySpaceId: Map<string, Version[]>;
@@ -97,8 +113,14 @@ export function MyWorkbench() {
     (space) => space.id === selectedSpaceId,
   );
   // Lookups: hooks return empty results gracefully when spaceId is undefined.
-  const { getMember } = useSpaceMembers(selectedSpaceId, organizationId);
-  const { getVersion } = useVersions(selectedSpaceId, organizationId);
+  const { getMember, members: selectedSpaceMembers } = useSpaceMembers(
+    selectedSpaceId,
+    organizationId,
+  );
+  const { getVersion, versions: selectedSpaceVersions } = useVersions(
+    selectedSpaceId,
+    organizationId,
+  );
 
   const workItemSummaries = useMemo(
     () => collectWorkbenchWorkItems(view),
@@ -184,7 +206,71 @@ export function MyWorkbench() {
 
   useEffect(() => {
     setSelectedSpaceId(undefined);
+    setFilters((current) =>
+      Object.keys(current).length > 0 ? {} : current,
+    );
   }, [organizationId]);
+
+  const availableMembers = useMemo(() => {
+    if (selectedSpaceId) {
+      return selectedSpaceMembers;
+    }
+
+    return uniqueMembers(
+      Array.from(organizationLookups.membersBySpaceId.values()).flat(),
+    );
+  }, [
+    organizationLookups.membersBySpaceId,
+    selectedSpaceId,
+    selectedSpaceMembers,
+  ]);
+
+  const availableVersions = useMemo(() => {
+    if (selectedSpaceId) {
+      return selectedSpaceVersions;
+    }
+
+    return uniqueVersions(
+      Array.from(organizationLookups.versionsBySpaceId.values()).flat(),
+    );
+  }, [
+    organizationLookups.versionsBySpaceId,
+    selectedSpaceId,
+    selectedSpaceVersions,
+  ]);
+
+  const setFilterValue = useCallback(
+    <K extends keyof WorkbenchFilterState>(
+      key: K,
+      value: WorkbenchFilterState[K] | "",
+    ) => {
+      setFilters((current) => {
+        const next = { ...current };
+
+        if (value) {
+          next[key] = value as WorkbenchFilterState[K];
+        } else {
+          delete next[key];
+        }
+
+        return next;
+      });
+    },
+    [],
+  );
+
+  const handleSpaceChange = useCallback((spaceId: string | undefined) => {
+    setSelectedSpaceId(spaceId);
+    setFilters((current) => ({
+      exceptionType: current.exceptionType,
+      statusCategory: current.statusCategory,
+      workItemType: current.workItemType,
+    }));
+  }, []);
+
+  const clearFilters = useCallback(() => {
+    setFilters({});
+  }, []);
 
   const fetchView = useCallback(async () => {
     if (!organizationId) {
@@ -196,6 +282,7 @@ export function MyWorkbench() {
 
     try {
       const next = await getMyWorkbenchView({
+        ...filters,
         organizationId,
         spaceId: selectedSpaceId,
       });
@@ -205,7 +292,7 @@ export function MyWorkbench() {
     } finally {
       setIsLoading(false);
     }
-  }, [organizationId, selectedSpaceId]);
+  }, [filters, organizationId, selectedSpaceId]);
 
   useEffect(() => {
     if (!organizationId) {
@@ -221,6 +308,7 @@ export function MyWorkbench() {
 
       try {
         const next = await getMyWorkbenchView({
+          ...filters,
           organizationId: organizationId!,
           spaceId: selectedSpaceId,
         });
@@ -244,7 +332,7 @@ export function MyWorkbench() {
     return () => {
       active = false;
     };
-  }, [organizationId, selectedSpaceId]);
+  }, [filters, organizationId, selectedSpaceId]);
 
   const openItem = (item: WorkbenchItemViewModel) => {
     const itemOrganizationId = item.organizationId ?? organizationId;
@@ -380,6 +468,9 @@ export function MyWorkbench() {
   // Show "—" if backend view did not include stats (graceful degradation).
   const blockedCount: number | undefined = stats?.blockedCount;
   const pendingConfirmCount: number | undefined = stats?.pendingConfirmCount;
+  const pendingRegressionCount: number | undefined =
+    stats?.pendingRegressionCount;
+  const staleCount: number | undefined = stats?.staleCount;
 
   if (!session) {
     return (
@@ -445,7 +536,7 @@ export function MyWorkbench() {
           <WorkbenchSpaceFilter
             spaces={spacesForCurrentOrganization}
             selectedSpaceId={selectedSpaceId}
-            onChange={setSelectedSpaceId}
+            onChange={handleSpaceChange}
             tRoot={tRoot}
           />
           <Button asChild variant="ghost" size="sm" className="text-xs">
@@ -460,7 +551,7 @@ export function MyWorkbench() {
       {/* Summary chips */}
       <div
         data-testid="workbench-summary"
-        className="grid grid-cols-2 gap-3 md:grid-cols-4"
+        className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-6"
       >
         <SummaryChip
           icon={Inbox}
@@ -486,7 +577,28 @@ export function MyWorkbench() {
           value={pendingConfirmCount}
           label={t("summary.pendingConfirm")}
         />
+        <SummaryChip
+          icon={Bug}
+          tone="warning"
+          value={pendingRegressionCount}
+          label={t("summary.pendingRegression")}
+        />
+        <SummaryChip
+          icon={Clock}
+          tone="info"
+          value={staleCount}
+          label={t("summary.stale")}
+        />
       </div>
+
+      <WorkbenchFilters
+        filters={filters}
+        members={availableMembers}
+        versions={availableVersions}
+        onChange={setFilterValue}
+        onClear={clearFilters}
+        tRoot={tRoot}
+      />
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1fr_320px]">
         <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
@@ -676,6 +788,136 @@ function WorkbenchSpaceFilter({
         ))}
       </DropdownMenuContent>
     </DropdownMenu>
+  );
+}
+
+function WorkbenchFilters({
+  filters,
+  members,
+  versions,
+  onChange,
+  onClear,
+  tRoot,
+}: {
+  filters: WorkbenchFilterState;
+  members: SpaceMemberWithUser[];
+  versions: Version[];
+  onChange: (key: keyof WorkbenchFilterState, value: string) => void;
+  onClear: () => void;
+  tRoot: ReturnType<typeof useTranslations>;
+}) {
+  const hasFilters = Object.values(filters).some(Boolean);
+
+  return (
+    <div
+      aria-label={tRoot("m4Views.filters.label")}
+      className="grid gap-3 rounded-lg border border-border bg-card/40 p-3 md:grid-cols-6"
+      data-testid="workbench-filter-panel"
+    >
+      <WorkbenchSelectFilter
+        label={tRoot("m4Views.filters.version")}
+        value={filters.versionId ?? ""}
+        onChange={(value) => onChange("versionId", value)}
+      >
+        <option value="">{tRoot("m4Views.filters.allVersions")}</option>
+        {versions.map((version) => (
+          <option key={version.id} value={version.id}>
+            {version.name}
+          </option>
+        ))}
+      </WorkbenchSelectFilter>
+
+      <WorkbenchSelectFilter
+        label={tRoot("m4Views.filters.assignee")}
+        value={filters.assigneeId ?? ""}
+        onChange={(value) => onChange("assigneeId", value)}
+      >
+        <option value="">{tRoot("m4Views.filters.allAssignees")}</option>
+        {members.map((member) => (
+          <option key={member.userId} value={member.userId}>
+            {member.user.name || member.user.username}
+          </option>
+        ))}
+      </WorkbenchSelectFilter>
+
+      <WorkbenchSelectFilter
+        label={tRoot("m4Views.filters.statusCategory")}
+        value={filters.statusCategory ?? ""}
+        onChange={(value) => onChange("statusCategory", value)}
+      >
+        <option value="">
+          {tRoot("m4Views.filters.allStatusCategories")}
+        </option>
+        {M4_STATUS_CATEGORY_OPTIONS.map((option) => (
+          <option key={option.value} value={option.value}>
+            {tRoot(option.labelKey)}
+          </option>
+        ))}
+      </WorkbenchSelectFilter>
+
+      <WorkbenchSelectFilter
+        label={tRoot("m4Views.filters.workItemType")}
+        value={filters.workItemType ?? ""}
+        onChange={(value) => onChange("workItemType", value)}
+      >
+        <option value="">{tRoot("m4Views.filters.allWorkItemTypes")}</option>
+        {M4_WORK_ITEM_TYPE_OPTIONS.map((option) => (
+          <option key={option.value} value={option.value}>
+            {tRoot(option.labelKey)}
+          </option>
+        ))}
+      </WorkbenchSelectFilter>
+
+      <WorkbenchSelectFilter
+        label={tRoot("m4Views.filters.exceptionType")}
+        value={filters.exceptionType ?? ""}
+        onChange={(value) => onChange("exceptionType", value)}
+      >
+        <option value="">{tRoot("m4Views.filters.allExceptionTypes")}</option>
+        {M4_EXCEPTION_TYPE_OPTIONS.map((option) => (
+          <option key={option.value} value={option.value}>
+            {tRoot(option.labelKey)}
+          </option>
+        ))}
+      </WorkbenchSelectFilter>
+
+      <div className="flex items-end">
+        <Button
+          className="h-8 w-full text-xs"
+          disabled={!hasFilters}
+          onClick={onClear}
+          type="button"
+          variant="ghost"
+        >
+          {tRoot("m4Views.filters.clear")}
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+function WorkbenchSelectFilter({
+  children,
+  label,
+  onChange,
+  value,
+}: {
+  children: React.ReactNode;
+  label: string;
+  onChange: (value: string) => void;
+  value: string;
+}) {
+  return (
+    <label className="flex min-w-0 flex-col gap-1 text-[11px] font-medium text-muted-foreground">
+      <span className="truncate">{label}</span>
+      <select
+        className="h-8 w-full rounded-md border border-input bg-background px-2 text-sm font-normal text-foreground"
+        onChange={(event) => onChange(event.target.value)}
+        value={value}
+      >
+        {children}
+      </select>
+    </label>
   );
 }
 
@@ -938,6 +1180,38 @@ function collectWorkbenchWorkItems(
     ...view.sections.dueSoon.items.items,
     ...view.sections.blocked.items.items,
   ];
+}
+
+function uniqueMembers(members: SpaceMemberWithUser[]): SpaceMemberWithUser[] {
+  const seen = new Set<string>();
+  const result: SpaceMemberWithUser[] = [];
+
+  for (const member of members) {
+    if (seen.has(member.userId)) {
+      continue;
+    }
+
+    seen.add(member.userId);
+    result.push(member);
+  }
+
+  return result;
+}
+
+function uniqueVersions(versions: Version[]): Version[] {
+  const seen = new Set<string>();
+  const result: Version[] = [];
+
+  for (const version of versions) {
+    if (seen.has(version.id)) {
+      continue;
+    }
+
+    seen.add(version.id);
+    result.push(version);
+  }
+
+  return result;
 }
 
 type ViewWorkItemSummaryWithEmbeddedLookups = ViewWorkItemSummary & {

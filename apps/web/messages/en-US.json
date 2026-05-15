@@ -956,7 +956,7 @@
       "contentText": "Body",
       "ariaLabel": "Requirement body editor",
       "toolbarLabel": "Body editor toolbar",
-      "placeholder": "Write background, scope, acceptance points, or paste an image.",
+      "placeholder": "Write background, scope, acceptance points, or paste/drop an image.",
       "draftUploadOnly": "Image upload is only available for draft requirements. Confirmed requirements can still edit text.",
       "linkPrompt": "Enter link URL",
       "unknownFile": "Unnamed file",
@@ -1655,6 +1655,7 @@
         "taskAssignee": "Task assignee",
         "taskPriority": "Task priority",
         "unassigned": "Unassigned",
+        "invalidStatus": "Only accepted intake items can be split into tasks.",
         "submit": "Create tasks",
         "submitting": "Creating"
       },
@@ -2064,7 +2065,9 @@
       "todo": "My todos",
       "dueSoon": "Due soon",
       "blocked": "Blocked",
-      "pendingConfirm": "Pending confirm"
+      "pendingConfirm": "Pending confirm",
+      "pendingRegression": "Pending regression",
+      "stale": "Stale"
     },
     "time": {
       "justNow": "just now"
@@ -3020,6 +3023,7 @@
       "total": "{count} items"
     },
     "filters": {
+      "label": "Work item filters",
       "version": "Version",
       "allVersions": "All versions",
       "assignee": "Assignee",
