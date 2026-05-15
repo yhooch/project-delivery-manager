@@ -334,9 +334,9 @@
       "label": "主导航",
       "appName": "项目交付管理",
       "group": {
-        "work": "工作台",
-        "deliver": "交付",
-        "document": "文档",
+        "work": "工作",
+        "deliver": "推进",
+        "document": "沉淀",
         "configure": "配置"
       },
       "workbench": "我的工作台",
@@ -344,12 +344,12 @@
       "versions": "版本",
       "tasks": "任务",
       "bugs": "Bug",
-      "exceptions": "异常视图",
+      "exceptions": "异常",
       "requirements": "需求",
       "intake": "事项池",
       "workflow": "流程配置",
       "spaceSettings": "空间设置",
-      "organization": "组织管理"
+      "organization": "组织设置"
     },
     "status": {
       "label": "会话状态",
@@ -474,7 +474,7 @@
         "versions": "版本",
         "tasks": "任务",
         "bugs": "Bug",
-        "exceptions": "异常视图",
+        "exceptions": "异常",
         "requirements": "需求",
         "intake": "事项池",
         "workflow": "流程配置"

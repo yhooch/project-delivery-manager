@@ -335,9 +335,9 @@
       "appName": "Project Delivery Manager",
       "group": {
         "work": "Work",
-        "deliver": "Delivery",
-        "document": "Documents",
-        "configure": "Configuration"
+        "deliver": "Deliver",
+        "document": "Document",
+        "configure": "Configure"
       },
       "workbench": "My workbench",
       "overview": "Space overview",
@@ -349,7 +349,7 @@
       "intake": "Intake",
       "workflow": "Workflow",
       "spaceSettings": "Space settings",
-      "organization": "Organization"
+      "organization": "Organization settings"
     },
     "status": {
       "label": "Session status",

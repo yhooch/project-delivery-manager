@@ -22,7 +22,8 @@ export const test = base.extend<UiFixtures>({
     async ({ page }, use) => {
       let hasAuthenticatedSession = false;
       const collector = collectUnexpectedNetworkIssues(page, {
-        ignoreConsole,
+        ignoreConsole: (message) =>
+          ignoreConsole(message, hasAuthenticatedSession),
         ignoreStatus: (response) =>
           ignoreStatus(response, hasAuthenticatedSession),
         ignoreRequestFailure,
@@ -103,11 +104,17 @@ function ignoreRequestFailure(request: Request): boolean {
   return isBrowserMetadataRequest(pathname) || isSourceMapRequest(pathname);
 }
 
-function ignoreConsole(message: ConsoleMessage): boolean {
+function ignoreConsole(
+  message: ConsoleMessage,
+  hasAuthenticatedSession: boolean,
+): boolean {
   const text = message.text();
 
   return (
     text.includes("was preloaded using link preload") ||
+    (!hasAuthenticatedSession &&
+      text.includes("Failed to load resource") &&
+      text.includes("401")) ||
     (text.includes("Failed to load resource") &&
       (text.includes("/favicon.ico") || text.includes(".map"))
     )

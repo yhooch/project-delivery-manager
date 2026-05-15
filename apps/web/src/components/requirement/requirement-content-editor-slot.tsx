@@ -169,6 +169,7 @@ export function RequirementContentEditorSlot({
             class: "tiptap-code-block",
           },
         },
+        link: false,
       }),
       LinkExtension.configure({
         HTMLAttributes: {

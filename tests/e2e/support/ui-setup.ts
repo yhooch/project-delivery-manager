@@ -156,7 +156,11 @@ export async function registerLoginCreateOrgAndSpace({
   }
 
   // 5) Refresh the page so the session picks up the freshly minted space.
-  await page.reload();
+  await page.reload({ waitUntil: "networkidle" });
+  await expect(page.getByTestId("org-switcher-current-name")).toHaveText(
+    orgName,
+    { timeout: 10_000 },
+  );
 
   return {
     cookie: cookieHeader,
