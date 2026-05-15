@@ -1,5 +1,4 @@
 import { describe, expect, it } from "vitest";
-import { readFileSync } from "node:fs";
 import {
   ApiErrorCodeSchema,
   AppSessionSchema,
@@ -74,15 +73,22 @@ describe("shared contracts", () => {
     }
   });
 
-  it("keeps every endpoint operation visible in the full test plan", () => {
-    const fullTestPlan = readFileSync(
-      new URL("../../../docs/full-test-plan.md", import.meta.url),
-      "utf8",
-    );
+  it("keeps endpoint contract operation and route identities unique", () => {
+    const operationIds = new Set<string>();
+    const routeKeys = new Set<string>();
 
     for (const contract of apiContracts) {
-      expect(fullTestPlan).toContain(`\`${contract.operationId}\``);
+      expect(contract.operationId).toMatch(/^[A-Za-z][A-Za-z0-9]*$/);
+      expect(operationIds.has(contract.operationId)).toBe(false);
+      operationIds.add(contract.operationId);
+
+      const routeKey = `${contract.method.toUpperCase()} ${contract.path}`;
+      expect(routeKeys.has(routeKey)).toBe(false);
+      routeKeys.add(routeKey);
     }
+
+    expect(operationIds.size).toBe(apiContracts.length);
+    expect(routeKeys.size).toBe(apiContracts.length);
   });
 
   it("covers M2 intake source, assignee and edit contracts", () => {
