@@ -10,7 +10,7 @@ import { useTranslations } from "next-intl";
 import { useEffect, useState } from "react";
 
 import { getApiErrorMessageKey } from "../../lib/api-error-messages";
-import { listSpaceMembers } from "../../lib/space-service";
+import { isActiveStatus, listSpaceMembers } from "../../lib/space-service";
 import { updateVersion } from "../../lib/version-service";
 
 import {
@@ -108,9 +108,9 @@ export function EditVersionDialog({
     let cancelled = false;
     void (async () => {
       try {
-        const page = await listSpaceMembers(spaceId);
+        const page = await listSpaceMembers(spaceId, { status: "ACTIVE" });
         if (cancelled) return;
-        setMembers(page.items);
+        setMembers(page.items.filter((member) => isActiveStatus(member.status)));
       } catch {
         // swallow — owner select stays empty
       }

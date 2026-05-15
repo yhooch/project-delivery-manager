@@ -23,6 +23,7 @@ vi.mock("../../lib/version-service", () => ({
 }));
 
 vi.mock("../../lib/space-service", () => ({
+  isActiveStatus: (status: string | undefined) => status === "ACTIVE",
   listSpaceMembers: listSpaceMembersMock,
 }));
 
@@ -52,13 +53,14 @@ function makeMember(
   userId: string,
   name: string,
   username: string,
+  status: SpaceMemberWithUser["status"] = "ACTIVE",
 ): SpaceMemberWithUser {
   return {
     id: `${userId}_MEMBER`,
     organizationId,
     role: "MEMBER",
     spaceId,
-    status: "ACTIVE",
+    status,
     userId,
     user: {
       id: userId,
@@ -123,14 +125,19 @@ describe("CreateVersionDialog", () => {
       items: [
         makeMember("01ARZ3NDEKTSV4RRFFQ69G5FA1", "Alice Zhang", "alice"),
         makeMember("01ARZ3NDEKTSV4RRFFQ69G5FB1", "", "bob"),
+        makeMember("01ARZ3NDEKTSV4RRFFQ69G5FC1", "Disabled", "disabled", "DISABLED"),
       ],
-      total: 2,
+      total: 3,
     });
 
     renderDialog();
 
     expect(await screen.findByText("Alice Zhang")).toBeInTheDocument();
     expect(screen.getByText("bob")).toBeInTheDocument();
+    expect(screen.queryByText("Disabled")).not.toBeInTheDocument();
+    expect(listSpaceMembersMock).toHaveBeenCalledWith(spaceId, {
+      status: "ACTIVE",
+    });
   });
 
   it("submits the create payload with ISO dates and undefined optional dates", async () => {

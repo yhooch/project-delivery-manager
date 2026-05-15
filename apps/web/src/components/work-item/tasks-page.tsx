@@ -72,6 +72,10 @@ export function TasksPage() {
   const requestedIntakeItemId = normalizeSearchParam(
     searchParams.get("intakeItemId"),
   );
+  const requestedVersionId = normalizeSearchParam(searchParams.get("versionId"));
+  const requestedStatusCategory = normalizeStatusCategory(
+    searchParams.get("statusCategory"),
+  );
   const recentScope = useMemo(
     () => ({ organizationId, spaceId }),
     [organizationId, spaceId],
@@ -87,6 +91,8 @@ export function TasksPage() {
   const [query, setQuery] = useState("");
   const [filters, setFilters] = useState<TaskListFilterState>(() => ({
     intakeItemId: requestedIntakeItemId,
+    statusCategory: requestedStatusCategory,
+    versionId: requestedVersionId,
   }));
   const [filterOpen, setFilterOpen] = useState(false);
   const [requirements, setRequirements] = useState<Requirement[]>([]);
@@ -239,6 +245,22 @@ export function TasksPage() {
       return { ...current, intakeItemId: requestedIntakeItemId };
     });
   }, [requestedIntakeItemId]);
+
+  useEffect(() => {
+    setFilters((current) => {
+      if (
+        current.versionId === requestedVersionId &&
+        current.statusCategory === requestedStatusCategory
+      ) {
+        return current;
+      }
+      return {
+        ...current,
+        statusCategory: requestedStatusCategory,
+        versionId: requestedVersionId,
+      };
+    });
+  }, [requestedStatusCategory, requestedVersionId]);
 
   useEffect(() => {
     if (!requestedWorkItemId || !spaceId) {
@@ -637,4 +659,13 @@ function formatDate(iso: string): string {
 function normalizeSearchParam(value: string | null): string | undefined {
   const normalized = value?.trim();
   return normalized ? normalized : undefined;
+}
+
+function normalizeStatusCategory(
+  value: string | null,
+): StatusCategory | undefined {
+  const normalized = normalizeSearchParam(value);
+  return STATUS_FILTERS.includes(normalized as StatusCategory)
+    ? (normalized as StatusCategory)
+    : undefined;
 }

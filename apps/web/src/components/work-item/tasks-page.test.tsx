@@ -234,6 +234,30 @@ describe("TasksPage", () => {
     );
   });
 
+  it("initializes version and status filters from overview links while ignoring BUG workItemType", async () => {
+    searchParamsMock.current = new URLSearchParams(
+      `versionId=${VERSION_ID}&statusCategory=DONE&workItemType=BUG`,
+    );
+    listWorkItemsMock.mockResolvedValueOnce({
+      items: [makeTask({ title: "Done version task", statusCategory: "DONE" })],
+      total: 1,
+    });
+
+    render(<TasksPage />);
+
+    expect(await screen.findByText("Done version task")).toBeInTheDocument();
+    await waitFor(() =>
+      expect(listWorkItemsMock).toHaveBeenCalledWith(
+        expect.objectContaining({
+          spaceId: "SPC_01",
+          statusCategory: "DONE",
+          type: "TASK",
+          versionId: VERSION_ID,
+        }),
+      ),
+    );
+  });
+
   it("opens a work item detail sheet from a workItemId deep link", async () => {
     searchParamsMock.current = new URLSearchParams(
       "workItemId=01ARZ3NDEKTSV4RRFFQ69G5FDL",

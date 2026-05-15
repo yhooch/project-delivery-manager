@@ -251,6 +251,7 @@ describe("SpaceOverview", () => {
     expect(taskDoneChip).toHaveTextContent("5");
     expect(taskDoneChip.getAttribute("href")).toContain("/work-items");
     expect(taskDoneChip.getAttribute("href")).toContain("statusCategory=DONE");
+    expect(taskDoneChip.getAttribute("href")).toContain("workItemType=TASK");
 
     const bugDoneChip = screen.getByTestId(
       "space-overview-bug-status-distribution-DONE",
@@ -326,6 +327,22 @@ describe("SpaceOverview", () => {
     expect(
       screen.getAllByText("spaceOverview.statusCounts.empty"),
     ).toHaveLength(2);
+  });
+
+  it("keeps current-version actions stable when there is no current version", async () => {
+    getSpaceOverviewViewMock.mockResolvedValueOnce(
+      makeOverview({ currentVersion: undefined }),
+    );
+
+    render(<SpaceOverview />);
+
+    const versionLink = await screen.findByTestId(
+      "space-overview-version-board-link",
+    );
+    expect(versionLink.getAttribute("href")).toBe("/versions");
+    expect(
+      screen.getByText("spaceOverview.currentVersion.empty"),
+    ).toBeInTheDocument();
   });
 
   it("renders the error state when the view fetch rejects", async () => {
@@ -456,5 +473,11 @@ describe("SpaceOverview", () => {
       "exceptionType=overdue",
     );
     expect(overdueLink.getAttribute("href")).toContain("versionId=V_99");
+
+    const taskDoneChip = screen.getByTestId(
+      "space-overview-task-status-DONE",
+    );
+    expect(taskDoneChip.getAttribute("href")).toContain("versionId=V_99");
+    expect(taskDoneChip.getAttribute("href")).toContain("workItemType=TASK");
   });
 });

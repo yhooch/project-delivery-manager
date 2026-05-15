@@ -11,6 +11,12 @@ export const SPACE_EXCEPTION_TYPES: readonly ViewExceptionType[] = [
   "pending_regression",
   "stale",
 ];
+const PENDING_CONFIRM_STATE_TOKENS = ["confirm", "待确认", "确认"] as const;
+const PENDING_REGRESSION_STATE_TOKENS = [
+  "regression",
+  "待回归",
+  "回归",
+] as const;
 
 export type SpaceExceptionWorkItemRecord = {
   blockedAt: Date | null;
@@ -112,8 +118,8 @@ export function isOverdueRecord(
 
 export function isPendingConfirmRecord(record: SpaceExceptionWorkItemRecord) {
   return (
-    includesToken(record.currentState.code, "confirm") ||
-    includesToken(record.currentState.name, "confirm")
+    includesAnyToken(record.currentState.code, PENDING_CONFIRM_STATE_TOKENS) ||
+    includesAnyToken(record.currentState.name, PENDING_CONFIRM_STATE_TOKENS)
   );
 }
 
@@ -122,8 +128,11 @@ export function isPendingRegressionRecord(record: SpaceExceptionWorkItemRecord) 
     record.type === "BUG" &&
     Boolean(record.bugDetail && !record.bugDetail.deletedAt) &&
     !record.bugDetail?.regressionAt &&
-    (includesToken(record.currentState.code, "regression") ||
-      includesToken(record.currentState.name, "regression"))
+    (includesAnyToken(
+      record.currentState.code,
+      PENDING_REGRESSION_STATE_TOKENS,
+    ) ||
+      includesAnyToken(record.currentState.name, PENDING_REGRESSION_STATE_TOKENS))
   );
 }
 
@@ -137,4 +146,8 @@ export function elapsedDays(from: Date, to: Date) {
 
 function includesToken(value: string, token: string) {
   return value.toLowerCase().includes(token);
+}
+
+function includesAnyToken(value: string, tokens: readonly string[]) {
+  return tokens.some((token) => includesToken(value, token));
 }

@@ -10,7 +10,7 @@ import type {
   Version,
   WorkItem,
 } from "@project-delivery/shared";
-import { Bug, Filter, Plus } from "lucide-react";
+import { Bug, Filter, Pencil, Plus } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useSearchParams } from "next/navigation";
 import {
@@ -42,6 +42,7 @@ import { PageHeader } from "../v2/page-header";
 import { TaskDetailSheet } from "../work-item/task-detail-sheet";
 
 import { CreateBugDialog } from "./create-bug-dialog";
+import { EditBugDialog } from "./edit-bug-dialog";
 
 const severityColor: Record<BugSeverity, string> = {
   BLOCKER: "bg-destructive text-destructive-foreground",
@@ -132,11 +133,15 @@ export function BugsPage() {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [activeItem, setActiveItem] = useState<WorkItemViewModel | null>(null);
   const [sheetOpen, setSheetOpen] = useState(false);
-  const [filters, setFilters] = useState<BugListFilterState>({});
+  const [filters, setFilters] = useState<BugListFilterState>(() =>
+    createInitialFilters(searchParams),
+  );
   const [filterOpen, setFilterOpen] = useState(false);
   const [requirements, setRequirements] = useState<Requirement[]>([]);
   const [relatedTasks, setRelatedTasks] = useState<WorkItem[]>([]);
   const [createOpen, setCreateOpen] = useState(false);
+  const [editingBug, setEditingBug] = useState<BugView | null>(null);
+  const [detailRevision, setDetailRevision] = useState(0);
   const canCreateBug = canWriteWorkItems(
     currentSpace?.role,
     currentSpace?.status,
@@ -251,6 +256,32 @@ export function BugsPage() {
     [recentScope],
   );
 
+  const openEditBug = useCallback((bug: BugView) => {
+    setEditingBug(bug);
+  }, []);
+
+  const openEditBugFromMock = useCallback(
+    (bug: MockBugItem) => {
+      const source = items.find((item) => item.id === bug.id);
+      if (source) {
+        openEditBug(source);
+      }
+    },
+    [items, openEditBug],
+  );
+
+  const handleBugUpdated = useCallback(
+    (updated: BugView) => {
+      setItems((current) =>
+        current.map((item) => (item.id === updated.id ? updated : item)),
+      );
+      setActiveItem(toMockBug(updated, tStatus, { getMember, getVersion }));
+      setDetailRevision((revision) => revision + 1);
+      void fetchBugs();
+    },
+    [fetchBugs, getMember, getVersion, tStatus],
+  );
+
   useEffect(() => {
     if (requestedNew === "bug" && canCreateBug) {
       setCreateOpen(true);
@@ -263,7 +294,7 @@ export function BugsPage() {
     getId: (item) => item.id,
     onSelect: setActiveItem,
     onOpen: openBug,
-    onEdit: openBug,
+    onEdit: openEditBugFromMock,
     onClose: () => setSheetOpen(false),
   });
 
@@ -513,47 +544,74 @@ export function BugsPage() {
           <ul data-testid="bugs-list" className="divide-y divide-border">
             {filtered.map((bug) => (
               <li key={bug.id} data-testid={`bugs-row-${bug.id}`}>
-                <button
-                  type="button"
-                  onClick={() => openBug(bug)}
-                  className="flex w-full items-center gap-3 px-6 py-2.5 text-left transition-colors hover:bg-muted/40 cursor-pointer"
-                >
-                  <Bug className="h-3.5 w-3.5 shrink-0 text-destructive/80" />
-                  <span className="font-mono text-[11px] text-muted-foreground">
-                    {bug.code}
-                  </span>
-                  <span className="flex-1 truncate text-[13px] font-medium">
-                    {bug.title}
-                  </span>
-                  <span
-                    className={cn(
-                      "rounded px-1.5 py-0.5 text-[10px] font-medium",
-                      severityColor[bug.severity],
-                    )}
+                <div className="flex items-center gap-2 px-6 py-2.5 transition-colors hover:bg-muted/40">
+                  <button
+                    type="button"
+                    onClick={() => openBug(bug)}
+                    className="flex min-w-0 flex-1 items-center gap-3 text-left cursor-pointer"
                   >
-                    {tSeverity(bug.severity)}
-                  </span>
-                  <StatusBadge
-                    category={bug.statusCategory}
-                    label={bug.statusLabel}
-                    withDot={false}
-                  />
-                  {bug.versionName && (
-                    <Badge variant="outline" className="hidden md:inline-flex">
-                      {bug.versionName}
-                    </Badge>
+                    <Bug className="h-3.5 w-3.5 shrink-0 text-destructive/80" />
+                    <span className="font-mono text-[11px] text-muted-foreground">
+                      {bug.code}
+                    </span>
+                    <span className="flex-1 truncate text-[13px] font-medium">
+                      {bug.title}
+                    </span>
+                    <span
+                      className={cn(
+                        "rounded px-1.5 py-0.5 text-[10px] font-medium",
+                        severityColor[bug.severity],
+                      )}
+                    >
+                      {tSeverity(bug.severity)}
+                    </span>
+                    <StatusBadge
+                      category={bug.statusCategory}
+                      label={bug.statusLabel}
+                      withDot={false}
+                    />
+                    {bug.versionName && (
+                      <Badge
+                        variant="outline"
+                        className="hidden md:inline-flex"
+                      >
+                        {bug.versionName}
+                      </Badge>
+                    )}
+                    {bug.isOverdue && (
+                      <Badge variant="destructive" className="text-[10px]">
+                        {t("badges.overdue")}
+                      </Badge>
+                    )}
+                    <Avatar className="h-5 w-5 shrink-0">
+                      <AvatarFallback className="text-[9px]">
+                        {bug.assignee.initial}
+                      </AvatarFallback>
+                    </Avatar>
+                  </button>
+                  {canEditBug(
+                    items.find((item) => item.id === bug.id),
+                    currentSpace?.role,
+                    currentSpace?.status,
+                  ) && (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      className="h-7 w-7 shrink-0"
+                      data-testid={`bugs-edit-${bug.id}`}
+                      aria-label={t("actions.edit")}
+                      onClick={() => {
+                        const source = items.find((item) => item.id === bug.id);
+                        if (source) {
+                          openEditBug(source);
+                        }
+                      }}
+                    >
+                      <Pencil className="h-3 w-3" />
+                    </Button>
                   )}
-                  {bug.isOverdue && (
-                    <Badge variant="destructive" className="text-[10px]">
-                      {t("badges.overdue")}
-                    </Badge>
-                  )}
-                  <Avatar className="h-5 w-5 shrink-0">
-                    <AvatarFallback className="text-[9px]">
-                      {bug.assignee.initial}
-                    </AvatarFallback>
-                  </Avatar>
-                </button>
+                </div>
               </li>
             ))}
           </ul>
@@ -561,12 +619,14 @@ export function BugsPage() {
       </div>
 
       <TaskDetailSheet
+        key={`${activeItem?.id ?? "empty"}:${detailRevision}`}
         item={activeItem}
         open={sheetOpen}
         onOpenChange={setSheetOpen}
         organizationId={organizationId}
         spaceId={spaceId}
         onChanged={() => {
+          setDetailRevision((revision) => revision + 1);
           void fetchBugs();
         }}
       />
@@ -581,6 +641,21 @@ export function BugsPage() {
           }}
         />
       )}
+
+      {spaceId && (
+        <EditBugDialog
+          bug={editingBug}
+          open={Boolean(editingBug)}
+          onOpenChange={(open) => {
+            if (!open) {
+              setEditingBug(null);
+            }
+          }}
+          organizationId={organizationId}
+          spaceId={spaceId}
+          onUpdated={handleBugUpdated}
+        />
+      )}
     </div>
   );
 }
@@ -590,6 +665,14 @@ function canWriteWorkItems(
   status: string | undefined,
 ): boolean {
   return Boolean(role) && role !== "VIEWER" && status !== "DISABLED";
+}
+
+function canEditBug(
+  bug: BugView | undefined,
+  role: string | undefined,
+  status: string | undefined,
+): boolean {
+  return canWriteWorkItems(role, status) && bug?.permissions?.canEdit !== false;
 }
 
 function FilterField({
@@ -681,4 +764,23 @@ function formatDate(iso: string): string {
 function normalizeSearchParam(value: string | null): string | undefined {
   const normalized = value?.trim();
   return normalized ? normalized : undefined;
+}
+
+function createInitialFilters(searchParams: URLSearchParams): BugListFilterState {
+  const versionId = normalizeSearchParam(searchParams.get("versionId"));
+  const statusCategory = normalizeStatusCategory(
+    searchParams.get("statusCategory"),
+  );
+
+  return {
+    ...(versionId ? { versionId } : {}),
+    ...(statusCategory ? { statusCategory } : {}),
+  };
+}
+
+function normalizeStatusCategory(value: string | null): StatusCategory | undefined {
+  const normalized = normalizeSearchParam(value);
+  return normalized && STATUS_FILTERS.includes(normalized as StatusCategory)
+    ? (normalized as StatusCategory)
+    : undefined;
 }

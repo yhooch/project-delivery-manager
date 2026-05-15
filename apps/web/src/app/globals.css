@@ -55,12 +55,22 @@
 }
 
 @keyframes fade-in {
-  from { opacity: 0; }
-  to { opacity: 1; }
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
 }
 @keyframes slide-in-right {
-  from { transform: translateX(8px); opacity: 0; }
-  to { transform: translateX(0); opacity: 1; }
+  from {
+    transform: translateX(8px);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
 }
 
 /* ============================================================
@@ -82,19 +92,19 @@
   --accent: 210 20% 96%;
   --accent-foreground: 222 47% 11%;
 
-  --primary: 239 84% 67%;
+  --primary: 239 66% 48%;
   --primary-foreground: 0 0% 100%;
 
-  --destructive: 0 84% 60%;
+  --destructive: 0 72% 42%;
   --destructive-foreground: 0 0% 100%;
 
-  --warning: 38 92% 50%;
+  --warning: 32 95% 32%;
   --warning-foreground: 0 0% 100%;
 
-  --info: 217 91% 60%;
+  --info: 217 80% 42%;
   --info-foreground: 0 0% 100%;
 
-  --success: 142 71% 45%;
+  --success: 142 72% 30%;
   --success-foreground: 0 0% 100%;
 
   --border: 214 32% 91%;
@@ -167,8 +177,13 @@
     line-height: 1.5;
   }
 
-  ::-webkit-scrollbar { width: 10px; height: 10px; }
-  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
   ::-webkit-scrollbar-thumb {
     background: hsl(var(--muted-foreground) / 0.25);
     border-radius: 8px;
@@ -185,13 +200,29 @@
     color: hsl(var(--foreground));
   }
 
-  code, kbd, samp, .font-mono {
+  code,
+  kbd,
+  samp,
+  .font-mono {
     font-family: var(--font-mono);
     font-feature-settings: normal;
   }
 
-  h1 { font-weight: 600; letter-spacing: -0.02em; }
-  h2 { font-weight: 600; letter-spacing: -0.015em; }
-  h3 { font-weight: 600; letter-spacing: -0.01em; }
-  h4, h5, h6 { font-weight: 600; }
+  h1 {
+    font-weight: 600;
+    letter-spacing: -0.02em;
+  }
+  h2 {
+    font-weight: 600;
+    letter-spacing: -0.015em;
+  }
+  h3 {
+    font-weight: 600;
+    letter-spacing: -0.01em;
+  }
+  h4,
+  h5,
+  h6 {
+    font-weight: 600;
+  }
 }

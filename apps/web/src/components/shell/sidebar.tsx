@@ -35,7 +35,12 @@ type NavGroup = {
   items: NavItem[];
 };
 
-export function Sidebar() {
+type SidebarProps = {
+  className?: string;
+  onNavigate?: () => void;
+};
+
+export function Sidebar({ className, onNavigate }: SidebarProps) {
   const tShell = useTranslations("shell.nav");
   const pathname = usePathname();
   const { currentOrganization, currentSpace } = useSession();
@@ -133,7 +138,13 @@ export function Sidebar() {
   }
 
   return (
-    <aside className="flex h-full w-56 shrink-0 flex-col border-r border-border bg-card/40">
+    <aside
+      aria-label={tShell("label")}
+      className={cn(
+        "flex h-full w-56 shrink-0 flex-col border-r border-border bg-card/40",
+        className,
+      )}
+    >
       <div className="flex h-12 shrink-0 items-center gap-2 border-b border-border px-3">
         <div className="flex h-6 w-6 items-center justify-center rounded-md bg-primary text-[11px] font-bold text-primary-foreground">
           PD
@@ -153,12 +164,14 @@ export function Sidebar() {
               {group.items.map((item) => {
                 const isActive = item.match
                   ? item.match(pathname)
-                  : pathname === item.href || pathname.startsWith(`${item.href}/`);
+                  : pathname === item.href ||
+                    pathname.startsWith(`${item.href}/`);
                 const Icon = item.icon;
                 return (
                   <li key={item.href}>
                     <Link
                       href={item.href}
+                      onClick={onNavigate}
                       className={cn(
                         "group flex h-7 items-center gap-2 rounded-md px-2 text-[13px] transition-colors",
                         isActive
@@ -191,6 +204,7 @@ export function Sidebar() {
         <div className="shrink-0 border-t border-border p-2">
           <Link
             href="/organization"
+            onClick={onNavigate}
             className={cn(
               "flex h-7 items-center gap-2 rounded-md px-2 text-[12px] text-muted-foreground transition-colors hover:bg-muted/50 hover:text-foreground",
             )}

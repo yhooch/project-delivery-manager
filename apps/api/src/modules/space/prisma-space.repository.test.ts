@@ -13,6 +13,7 @@ type RepositoryInternals = {
   findVersionById(spaceId: string, versionId: string): Promise<undefined>;
   getExceptionCounts(...args: unknown[]): Promise<unknown[]>;
   getWorkbenchStats(...args: unknown[]): Promise<unknown>;
+  listActionsByState(...args: unknown[]): Promise<Map<string, unknown[]>>;
   listDefaultWorkflows(spaceId: string): Promise<unknown[]>;
   pageActionTodos(...args: unknown[]): Promise<unknown>;
   pageRecentActivities(
@@ -278,6 +279,97 @@ describe("PrismaSpaceRepository", () => {
       exceptionType: "pending_regression",
     });
   });
+
+  it("does not expose action todos to VIEWER even when they are creator or assignee", async () => {
+    const actorUserId = "01HRZ3NDEKTSV4RRFFQ69G5FVIEW";
+    const organizationId = "01HRZ3NDEKTSV4RRFFQ69G5FORG1";
+    const spaceId = "01HRZ3NDEKTSV4RRFFQ69G5FSPC1";
+    const workflowVersionId = "01HRZ3NDEKTSV4RRFFQ69G5FWFV1";
+    const currentStateId = "01HRZ3NDEKTSV4RRFFQ69G5FSTA1";
+    const candidates = [
+      actionTodoWorkItem({
+        assigneeId: actorUserId,
+        id: "01HRZ3NDEKTSV4RRFFQ69G5FWI01",
+        title: "Assigned to viewer",
+      }),
+      actionTodoWorkItem({
+        createdById: actorUserId,
+        id: "01HRZ3NDEKTSV4RRFFQ69G5FWI02",
+        title: "Created by viewer",
+      }),
+    ];
+    const action = {
+      actorRelations: ["ASSIGNEE", "CREATOR"],
+      allowedSpaceRoles: ["VIEWER"],
+      code: "SUBMIT",
+      formFields: [],
+      fromStateId: currentStateId,
+      id: "01HRZ3NDEKTSV4RRFFQ69G5FACT1",
+      name: "Submit",
+      requiresComment: false,
+      sortOrder: 1,
+      toStateId: "01HRZ3NDEKTSV4RRFFQ69G5FSTA2",
+      workflowVersionId,
+    };
+    const findMany = vi.fn(async () => candidates);
+    const prisma = {
+      client: {
+        workItem: {
+          findMany,
+        },
+      },
+    } as unknown as PrismaService;
+    const repository = new PrismaSpaceRepository(prisma);
+    const internals = repository as unknown as RepositoryInternals;
+
+    internals.listActionsByState = vi.fn(
+      async () =>
+        new Map([[`${workflowVersionId}:${currentStateId}`, [action]]]),
+    );
+
+    const result = (await internals.pageActionTodos(
+      { organizationId },
+      {
+        actorUserId,
+        organizationId,
+        page: 1,
+        pageSize: 10,
+      },
+      {
+        accessBySpaceId: new Map([
+          [
+            spaceId,
+            {
+              organizationId,
+              role: "VIEWER",
+              spaceId,
+              staleThresholdDays: 5,
+            },
+          ],
+        ]),
+        accesses: [],
+        participantSpaceIds: [],
+        participantWorkItemIds: [],
+        readAllSpaceIds: [spaceId],
+        spaceIds: [spaceId],
+        testerSpaceIds: [],
+        testerWorkItemIds: [],
+      },
+      new Date("2026-05-13T12:00:00.000Z"),
+    )) as PageResult<unknown>;
+
+    expect(result).toEqual({
+      items: [],
+      page: 1,
+      pageSize: 10,
+      total: 0,
+    });
+    expect(findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { organizationId },
+      }),
+    );
+  });
 });
 
 function emptyPage<T>(page: number, pageSize: number): PageResult<T> {
@@ -286,5 +378,45 @@ function emptyPage<T>(page: number, pageSize: number): PageResult<T> {
     page,
     pageSize,
     total: 0,
+  };
+}
+
+function actionTodoWorkItem(
+  overrides: Partial<{
+    assigneeId: string | null;
+    createdById: string | null;
+    id: string;
+    title: string;
+  }> = {},
+) {
+  return {
+    assigneeId: null,
+    blockedAt: null,
+    blockedReason: null,
+    bugDetail: null,
+    createdById: "01HRZ3NDEKTSV4RRFFQ69G5FCRT1",
+    currentState: {
+      category: "IN_PROGRESS",
+      code: "in_progress",
+      id: "01HRZ3NDEKTSV4RRFFQ69G5FSTA1",
+      name: "In progress",
+    },
+    currentStateId: "01HRZ3NDEKTSV4RRFFQ69G5FSTA1",
+    dueDate: null,
+    id: "01HRZ3NDEKTSV4RRFFQ69G5FWI01",
+    intakeItemId: null,
+    lastActionAt: null,
+    lastStatusChangedAt: new Date("2026-05-13T12:00:00.000Z"),
+    organizationId: "01HRZ3NDEKTSV4RRFFQ69G5FORG1",
+    priority: "MEDIUM",
+    reporterId: "01HRZ3NDEKTSV4RRFFQ69G5FRPT1",
+    requirementId: null,
+    spaceId: "01HRZ3NDEKTSV4RRFFQ69G5FSPC1",
+    statusCategory: "IN_PROGRESS",
+    title: "Action todo work item",
+    type: "TASK",
+    versionId: null,
+    workflowVersionId: "01HRZ3NDEKTSV4RRFFQ69G5FWFV1",
+    ...overrides,
   };
 }

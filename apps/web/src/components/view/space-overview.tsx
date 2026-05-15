@@ -245,10 +245,10 @@ export function SpaceOverview() {
   const taskStatusTotal = taskStatusCounts.reduce((s, c) => s + c.count, 0);
   const bugStatusTotal = bugStatusCounts.reduce((s, c) => s + c.count, 0);
 
-  const buildLink = (base: string, extra: Record<string, string> = {}) => {
+  const buildLink = (base: string, extra?: Record<string, string>) => {
     const sp = new URLSearchParams();
     if (versionIdParam) sp.set("versionId", versionIdParam);
-    for (const [k, v] of Object.entries(extra)) sp.set(k, v);
+    for (const [k, v] of Object.entries(extra ?? {})) sp.set(k, v);
     const q = sp.toString();
     return q ? `${base}?${q}` : base;
   };
@@ -528,7 +528,10 @@ export function SpaceOverview() {
                 counts={taskStatusCounts}
                 total={taskStatusTotal}
                 buildHref={(category) =>
-                  buildLink("/work-items", { statusCategory: category })
+                  buildLink("/work-items", {
+                    statusCategory: category,
+                    workItemType: "TASK",
+                  })
                 }
                 categoryLabel={(category) =>
                   tRoot(`m4Views.statusCategory.${category}`)

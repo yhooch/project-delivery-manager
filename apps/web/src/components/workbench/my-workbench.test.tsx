@@ -48,7 +48,19 @@ vi.mock("../ui/dropdown-menu", async () => {
 
 vi.mock("../../i18n/routing", () => ({
   routing: { defaultLocale: "zh-CN", locales: ["zh-CN", "en-US"] },
-  Link: ({ children }: { children: React.ReactNode }) => children,
+  Link: ({
+    children,
+    href,
+    ...rest
+  }: {
+    children: React.ReactNode;
+    href: string;
+    [key: string]: unknown;
+  }) => (
+    <a href={String(href)} {...rest}>
+      {children}
+    </a>
+  ),
   getPathname: () => "/",
   redirect: () => undefined,
   usePathname: () => "/",
@@ -572,6 +584,23 @@ describe("MyWorkbench", () => {
       await screen.findByText("workbench.sections.recent"),
     ).toBeInTheDocument();
     expect(screen.getByText("edited the description")).toBeInTheDocument();
+  });
+
+  it("renders workbench header actions as navigable links", async () => {
+    getMyWorkbenchViewMock.mockResolvedValueOnce(makeWorkbenchResponse());
+
+    render(<MyWorkbench />);
+
+    await waitFor(() =>
+      expect(getMyWorkbenchViewMock).toHaveBeenCalledTimes(1),
+    );
+
+    expect(
+      screen.getByRole("link", { name: "workbench.viewAll" }),
+    ).toHaveAttribute("href", "/work-items?workItemType=TASK");
+    expect(
+      screen.getByRole("link", { name: "workbench.sections.recent" }),
+    ).toHaveAttribute("href", "/overview");
   });
 
   it("renders the empty recent activity hint when none are returned", async () => {

@@ -161,12 +161,11 @@ describe("WorkflowPage", () => {
 
     render(<WorkflowPage />);
 
-    // ErrorState falls back to its built-in zh-CN defaults; assert via the
-    // retry button label "重试" (the title is "加载失败").
+    // ErrorState defaults are resolved through the shared common.states keys.
     expect(
-      await screen.findByRole("button", { name: "重试" }),
+      await screen.findByRole("button", { name: "common.states.retry" }),
     ).toBeInTheDocument();
-    expect(screen.getByText("加载失败")).toBeInTheDocument();
+    expect(screen.getByText("common.states.errorTitle")).toBeInTheDocument();
   });
 
   it("shows the loading skeleton while listWorkflows is pending", async () => {

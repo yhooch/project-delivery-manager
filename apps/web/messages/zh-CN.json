@@ -4,16 +4,26 @@
     "description": "面向交付团队的轻量工作台。"
   },
   "common": {
+    "actions": {
+      "close": "关闭"
+    },
     "language": {
       "label": "切换语言",
       "zh-CN": {
+        "label": "中文",
         "shortLabel": "中",
         "ariaLabel": "切换到中文"
       },
       "en-US": {
+        "label": "英文",
         "shortLabel": "EN",
         "ariaLabel": "切换到英文"
       }
+    },
+    "states": {
+      "loading": "加载中…",
+      "errorTitle": "加载失败",
+      "retry": "重试"
     },
     "theme": {
       "label": "切换主题",
@@ -368,8 +378,12 @@
       "title": "交付运行视图"
     },
     "topBar": {
+      "navigationLabel": "打开主导航",
       "commandLabel": "打开命令菜单",
       "commandPlaceholder": "搜索或输入命令"
+    },
+    "mobileNav": {
+      "description": "在小屏幕中打开主导航菜单。"
     },
     "search": {
       "label": "命令搜索",
@@ -1202,6 +1216,7 @@
       "close": "关闭",
       "filter": "筛选",
       "create": "新建 Bug",
+      "edit": "编辑 Bug",
       "retry": "重试"
     },
     "buckets": {
@@ -1557,6 +1572,7 @@
     "detail": {
       "sheetDescription": "查看事项详情、状态动作、来源信息和描述。",
       "actions": "操作",
+      "edit": "编辑",
       "convert": "拆解为任务",
       "viewTasks": "查看关联任务",
       "reporter": "提交人",
@@ -1570,6 +1586,10 @@
       "create": {
         "title": "新建事项",
         "description": "记录待处理的想法、变更或后续事项，便于后续筛选与拆解。"
+      },
+      "edit": {
+        "title": "编辑事项",
+        "description": "更新事项标题、描述、来源和关联信息。"
       },
       "convert": {
         "title": "拆解为任务",
@@ -1602,7 +1622,9 @@
       "actions": {
         "cancel": "取消",
         "submit": "创建事项",
-        "submitting": "创建中"
+        "submitting": "创建中",
+        "save": "保存事项",
+        "saving": "保存中"
       }
     }
   },
@@ -3170,9 +3192,15 @@
       "title": "组织成员",
       "add": "添加成员",
       "empty": "暂无组织成员",
-      "readOnly": "当前组织角色只能查看成员，不能添加或移除成员。",
-      "ownerProtectionNote": "系统会自动保护至少一个 OWNER 不可移除。",
+      "readOnly": "当前组织角色只能查看成员，不能添加、移除或调整角色。",
+      "ownerProtectionNote": "系统会自动保护至少一个所有者不可移除或降级。",
+      "roles": {
+        "OWNER": "所有者",
+        "ADMIN": "管理员",
+        "MEMBER": "成员"
+      },
       "actions": {
+        "changeRole": "修改 {username} 的组织角色",
         "remove": "移除 {username}"
       }
     },
@@ -3192,6 +3220,17 @@
         },
         "submit": "添加",
         "submitting": "添加中…",
+        "cancel": "取消"
+      },
+      "editRole": {
+        "title": "修改组织角色",
+        "description": "调整 {username} 在当前组织中的角色。",
+        "fields": {
+          "role": "组织角色"
+        },
+        "lastOwnerWarning": "至少需要保留一名 OWNER，无法将最后一个有效所有者降级。",
+        "submit": "保存",
+        "submitting": "保存中…",
         "cancel": "取消"
       },
       "removeMember": {

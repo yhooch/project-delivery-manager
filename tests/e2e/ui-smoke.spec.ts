@@ -37,7 +37,7 @@ test.describe("UI smoke 主链路", () => {
 
     // Step 3: Switch language to English; URL gains the /en-US prefix.
     await page.getByTestId("language-toggle").click();
-    await page.getByRole("menuitem", { name: /English|EN/u }).click();
+    await page.getByRole("menuitem", { name: /英文|English|EN/u }).click();
     await expect(page).toHaveURL(/\/en-US(?:\/.*)?$/u, { timeout: 5_000 });
 
     // Step 4: Theme persists after the locale switch (dark class survives navigation).

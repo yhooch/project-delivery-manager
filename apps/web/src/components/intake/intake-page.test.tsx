@@ -73,6 +73,7 @@ const {
   deferIntakeItemMock,
   getIntakeItemMock,
   rejectIntakeItemMock,
+  updateIntakeItemMock,
   listWorkItemsMock,
 } = vi.hoisted(() => ({
   listIntakeItemsMock: vi.fn(),
@@ -80,6 +81,7 @@ const {
   deferIntakeItemMock: vi.fn(),
   getIntakeItemMock: vi.fn(),
   rejectIntakeItemMock: vi.fn(),
+  updateIntakeItemMock: vi.fn(),
   listWorkItemsMock: vi.fn(),
 }));
 vi.mock("../../lib/intake-service", () => ({
@@ -88,9 +90,21 @@ vi.mock("../../lib/intake-service", () => ({
   deferIntakeItem: deferIntakeItemMock,
   getIntakeItem: getIntakeItemMock,
   rejectIntakeItem: rejectIntakeItemMock,
+  updateIntakeItem: updateIntakeItemMock,
 }));
 vi.mock("../../lib/work-item-service", () => ({
   listWorkItems: listWorkItemsMock,
+}));
+
+const { listRequirementsMock, listVersionsMock } = vi.hoisted(() => ({
+  listRequirementsMock: vi.fn(),
+  listVersionsMock: vi.fn(),
+}));
+vi.mock("../../lib/requirement-service", () => ({
+  listRequirements: listRequirementsMock,
+}));
+vi.mock("../../lib/version-service", () => ({
+  listVersions: listVersionsMock,
 }));
 
 vi.mock("./create-intake-dialog", () => ({
@@ -145,7 +159,12 @@ beforeEach(() => {
   deferIntakeItemMock.mockReset();
   getIntakeItemMock.mockReset();
   rejectIntakeItemMock.mockReset();
+  updateIntakeItemMock.mockReset();
   listWorkItemsMock.mockReset();
+  listRequirementsMock.mockReset();
+  listVersionsMock.mockReset();
+  listRequirementsMock.mockResolvedValue({ items: [], total: 0 });
+  listVersionsMock.mockResolvedValue({ items: [], total: 0 });
   routerPushMock.mockReset();
   searchParamsMock.current = new URLSearchParams();
   sessionMock.current = {
@@ -356,6 +375,65 @@ describe("IntakePage", () => {
         spaceId: "SPC_01",
       }),
     );
+  });
+
+  it("updates the active intake item and list after editing", async () => {
+    const original = makeIntake({
+      id: "01ARZ3NDEKTSV4RRFFQ69G5FE1",
+      title: "Original intake",
+      description: "Original description",
+      sourceType: "AD_HOC",
+      priority: "MEDIUM",
+    });
+    const updated = {
+      ...original,
+      title: "Edited intake",
+      description: "Edited description",
+      priority: "HIGH",
+    };
+    listIntakeItemsMock.mockResolvedValueOnce({ items: [original], total: 1 });
+    updateIntakeItemMock.mockResolvedValueOnce(updated);
+
+    render(<IntakePage />);
+
+    fireEvent.click(await screen.findByText("Original intake"));
+    fireEvent.click(await screen.findByTestId("intake-edit-button"));
+
+    const titleInput = await screen.findByTestId("edit-intake-title-input");
+    fireEvent.change(titleInput, {
+      target: { value: "  Edited intake  " },
+    });
+    fireEvent.change(screen.getByTestId("edit-intake-description-input"), {
+      target: { value: "  Edited description  " },
+    });
+    fireEvent.change(screen.getByTestId("edit-intake-priority-select"), {
+      target: { value: "HIGH" },
+    });
+    fireEvent.click(screen.getByTestId("edit-intake-submit"));
+
+    await waitFor(() =>
+      expect(updateIntakeItemMock).toHaveBeenCalledWith(
+        {
+          intakeItemId: "01ARZ3NDEKTSV4RRFFQ69G5FE1",
+          spaceId: "SPC_01",
+        },
+        expect.objectContaining({
+          description: "Edited description",
+          priority: "HIGH",
+          sourceType: "AD_HOC",
+          title: "Edited intake",
+        }),
+      ),
+    );
+    await waitFor(() =>
+      expect(screen.queryByTestId("edit-intake-dialog")).not.toBeInTheDocument(),
+    );
+
+    expect(screen.getAllByText("Edited intake").length).toBeGreaterThanOrEqual(
+      1,
+    );
+    expect(screen.getByText("Edited description")).toBeInTheDocument();
+    expect(screen.queryByText("Original intake")).not.toBeInTheDocument();
   });
 
   it("records directly opened intake items in recent opens", async () => {

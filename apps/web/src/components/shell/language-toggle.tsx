@@ -47,13 +47,14 @@ export function LanguageToggle() {
         {locales.map((value) => (
           <DropdownMenuItem
             key={value}
+            aria-label={t(`${value}.ariaLabel`)}
             onSelect={() => handleSelect(value)}
             className="text-xs"
           >
             <span className="font-mono text-[10px] text-muted-foreground">
               {t(`${value}.shortLabel`)}
             </span>
-            <span>{value === "zh-CN" ? "中文" : "English"}</span>
+            <span>{t(`${value}.label`)}</span>
             {value === locale && (
               <span className="ml-auto h-1.5 w-1.5 rounded-full bg-primary" />
             )}

@@ -1943,6 +1943,10 @@ function hasActionPermission(
   action: ViewWorkflowActionRecord,
   access: ViewSpaceAccess,
 ) {
+  if (access.role === "VIEWER") {
+    return false;
+  }
+
   return (
     action.allowedSpaceRoles.includes(access.role) ||
     action.actorRelations.some((relation) => {

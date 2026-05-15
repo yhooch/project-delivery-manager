@@ -10,6 +10,7 @@ import {
   addSpaceMember,
   createSpace,
   listOrganizationMembers,
+  listSpaceMembers,
   listSpaces,
   removeOrganizationMember,
   updateSpaceMember,
@@ -106,6 +107,26 @@ describe("space service", () => {
         query: { page: 1, pageSize: 200 },
       },
     );
+  });
+
+  it("lists active space members with a status filter", async () => {
+    const result: PageResult<SpaceMemberWithUser> = {
+      items: [],
+      page: 1,
+      pageSize: 200,
+      total: 0,
+    };
+    const api = createApi({
+      get: vi.fn(async () => ({ data: result })),
+    });
+
+    await expect(
+      listSpaceMembers(spaceId, { status: "ACTIVE" }, api),
+    ).resolves.toBe(result);
+
+    expect(api.get).toHaveBeenCalledWith(`/spaces/${spaceId}/members`, {
+      query: { page: 1, pageSize: 200, status: "ACTIVE" },
+    });
   });
 
   it("issues a DELETE to remove an organization member", async () => {

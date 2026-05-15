@@ -40,6 +40,11 @@ const defaultPageQuery = {
   pageSize: 200,
 } as const;
 
+export type ListSpaceMembersOptions = {
+  role?: SpaceRole;
+  status?: RecordStatus;
+};
+
 export async function listOrganizationMembers(
   organizationId: string,
   api: WorkspaceApiTransport = defaultApi,
@@ -166,12 +171,18 @@ export async function getSpaceOverview(
 
 export async function listSpaceMembers(
   spaceId: string,
+  optionsOrApi: ListSpaceMembersOptions | WorkspaceApiTransport = {},
   api: WorkspaceApiTransport = defaultApi,
 ): Promise<PageResult<SpaceMemberWithUser>> {
-  const response = await api.get<PageResult<SpaceMemberWithUser>>(
+  const options = isWorkspaceApiTransport(optionsOrApi) ? {} : optionsOrApi;
+  const transport = isWorkspaceApiTransport(optionsOrApi) ? optionsOrApi : api;
+  const response = await transport.get<PageResult<SpaceMemberWithUser>>(
     `/spaces/${spaceId}/members`,
     {
-      query: defaultPageQuery,
+      query: {
+        ...defaultPageQuery,
+        ...options,
+      },
     },
   );
 
@@ -215,6 +226,12 @@ export function canManageSpace(role: SpaceRole | undefined) {
 
 export function isActiveStatus(status: RecordStatus | undefined) {
   return status === "ACTIVE";
+}
+
+function isWorkspaceApiTransport(
+  value: ListSpaceMembersOptions | WorkspaceApiTransport,
+): value is WorkspaceApiTransport {
+  return typeof (value as WorkspaceApiTransport).get === "function";
 }
 
 export type {

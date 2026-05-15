@@ -67,6 +67,31 @@ describe("space exception helpers", () => {
     ).toBe(true);
   });
 
+  it("recognizes Chinese confirmation state tokens", () => {
+    expect(
+      isPendingConfirmRecord(
+        workItem({
+          currentState: {
+            code: "custom_state_1",
+            name: "待确认",
+          },
+          statusCategory: "WAITING",
+        }),
+      ),
+    ).toBe(true);
+    expect(
+      isPendingConfirmRecord(
+        workItem({
+          currentState: {
+            code: "custom_state_2",
+            name: "产品确认",
+          },
+          statusCategory: "VERIFYING",
+        }),
+      ),
+    ).toBe(true);
+  });
+
   it("requires an unregressed bug and regression state evidence for pending regression", () => {
     expect(
       isPendingRegressionRecord(
@@ -116,6 +141,41 @@ describe("space exception helpers", () => {
         }),
       ),
     ).toBe(false);
+  });
+
+  it("recognizes Chinese regression state tokens for unregressed bugs", () => {
+    expect(
+      isPendingRegressionRecord(
+        workItem({
+          bugDetail: {
+            deletedAt: null,
+            regressionAt: null,
+          },
+          currentState: {
+            code: "custom_state_3",
+            name: "待回归",
+          },
+          statusCategory: "VERIFYING",
+          type: "BUG",
+        }),
+      ),
+    ).toBe(true);
+    expect(
+      isPendingRegressionRecord(
+        workItem({
+          bugDetail: {
+            deletedAt: null,
+            regressionAt: null,
+          },
+          currentState: {
+            code: "custom_state_4",
+            name: "测试回归",
+          },
+          statusCategory: "WAITING",
+          type: "BUG",
+        }),
+      ),
+    ).toBe(true);
   });
 
   it("marks items stale from lastStatusChangedAt when they reach the space threshold", () => {

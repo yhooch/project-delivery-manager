@@ -4,16 +4,26 @@
     "description": "A lightweight workspace for delivery teams."
   },
   "common": {
+    "actions": {
+      "close": "Close"
+    },
     "language": {
       "label": "Switch language",
       "zh-CN": {
+        "label": "Chinese",
         "shortLabel": "ZH",
         "ariaLabel": "Switch to Chinese"
       },
       "en-US": {
+        "label": "English",
         "shortLabel": "EN",
         "ariaLabel": "Switch to English"
       }
+    },
+    "states": {
+      "loading": "Loading…",
+      "errorTitle": "Failed to load",
+      "retry": "Retry"
     },
     "theme": {
       "label": "Switch theme",
@@ -368,8 +378,12 @@
       "title": "Delivery operations"
     },
     "topBar": {
+      "navigationLabel": "Open primary navigation",
       "commandLabel": "Open command menu",
       "commandPlaceholder": "Search or type a command"
+    },
+    "mobileNav": {
+      "description": "Open the primary navigation menu on small screens."
     },
     "search": {
       "label": "Command search",
@@ -1207,6 +1221,7 @@
       "close": "Close",
       "filter": "Filter",
       "create": "New bug",
+      "edit": "Edit bug",
       "retry": "Retry"
     },
     "buckets": {
@@ -1562,6 +1577,7 @@
     "detail": {
       "sheetDescription": "Review intake details, status actions, source metadata, and description.",
       "actions": "Actions",
+      "edit": "Edit",
       "convert": "Split into tasks",
       "viewTasks": "View related tasks",
       "reporter": "Reporter",
@@ -1575,6 +1591,10 @@
       "create": {
         "title": "New intake item",
         "description": "Capture an incoming idea, change request, or follow-up to triage later."
+      },
+      "edit": {
+        "title": "Edit intake item",
+        "description": "Update the title, description, source, and linked context."
       },
       "convert": {
         "title": "Split into tasks",
@@ -1607,7 +1627,9 @@
       "actions": {
         "cancel": "Cancel",
         "submit": "Create item",
-        "submitting": "Creating"
+        "submitting": "Creating",
+        "save": "Save item",
+        "saving": "Saving"
       }
     }
   },
@@ -3175,9 +3197,15 @@
       "title": "Organization members",
       "add": "Add member",
       "empty": "No organization members",
-      "readOnly": "Your organization role can view members but cannot add or remove them.",
-      "ownerProtectionNote": "The system protects at least one OWNER from being removed.",
+      "readOnly": "Your organization role can view members but cannot add, remove, or change roles.",
+      "ownerProtectionNote": "The system protects at least one owner from being removed or downgraded.",
+      "roles": {
+        "OWNER": "Owner",
+        "ADMIN": "Admin",
+        "MEMBER": "Member"
+      },
       "actions": {
+        "changeRole": "Change organization role for {username}",
         "remove": "Remove {username}"
       }
     },
@@ -3197,6 +3225,17 @@
         },
         "submit": "Add",
         "submitting": "Adding…",
+        "cancel": "Cancel"
+      },
+      "editRole": {
+        "title": "Change organization role",
+        "description": "Change {username}'s role in the current organization.",
+        "fields": {
+          "role": "Organization role"
+        },
+        "lastOwnerWarning": "At least one OWNER is required. The last active owner cannot be downgraded.",
+        "submit": "Save",
+        "submitting": "Saving…",
         "cancel": "Cancel"
       },
       "removeMember": {

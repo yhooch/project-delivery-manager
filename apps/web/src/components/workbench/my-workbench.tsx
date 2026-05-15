@@ -25,6 +25,7 @@ import { cn } from "../../lib/utils";
 import { useSpaceMembers, useVersions } from "../../lib/v2/lookups";
 import type { WorkItemViewModel } from "../../lib/v2/work-item-view-model";
 import { getMyWorkbenchView } from "../../lib/view-service";
+import { Link } from "../../i18n/routing";
 import { useSession } from "../providers/session-provider";
 import { recordRecentOpen } from "../shell/recent-opens";
 
@@ -315,9 +316,11 @@ export function MyWorkbench() {
             onChange={setSelectedSpaceId}
             tRoot={tRoot}
           />
-          <Button variant="ghost" size="sm" className="text-xs">
-            {t("viewAll")}
-            <ArrowUpRight className="h-3 w-3" />
+          <Button asChild variant="ghost" size="sm" className="text-xs">
+            <Link href="/work-items?workItemType=TASK">
+              {t("viewAll")}
+              <ArrowUpRight className="h-3 w-3" />
+            </Link>
           </Button>
         </div>
       </div>
@@ -422,8 +425,10 @@ export function MyWorkbench() {
         <aside className="flex flex-col gap-3 rounded-lg border border-border bg-card/40 p-4">
           <div className="flex items-center justify-between">
             <h3 className="text-sm font-semibold">{t("sections.recent")}</h3>
-            <Button variant="ghost" size="icon-sm">
-              <ArrowUpRight className="h-3 w-3" />
+            <Button asChild variant="ghost" size="icon-sm">
+              <Link href="/overview" aria-label={t("sections.recent")}>
+                <ArrowUpRight className="h-3 w-3" />
+              </Link>
             </Button>
           </div>
           {isLoading && !view ? (

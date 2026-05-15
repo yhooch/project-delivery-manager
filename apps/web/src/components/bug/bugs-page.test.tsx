@@ -102,6 +102,37 @@ vi.mock("./create-bug-dialog", () => ({
     open ? <div data-testid="create-bug-dialog-open" /> : null,
 }));
 
+vi.mock("./edit-bug-dialog", () => ({
+  EditBugDialog: ({
+    bug,
+    onOpenChange,
+    onUpdated,
+    open,
+  }: {
+    bug: import("@project-delivery/shared").BugView | null;
+    onOpenChange: (open: boolean) => void;
+    onUpdated?: (bug: import("@project-delivery/shared").BugView) => void;
+    open: boolean;
+  }) =>
+    open && bug ? (
+      <div data-testid="edit-bug-dialog-open">
+        <button
+          type="button"
+          onClick={() => {
+            onUpdated?.({
+              ...bug,
+              title: "Edited bug",
+              bugDetail: { ...bug.bugDetail, severity: "CRITICAL" },
+            });
+            onOpenChange(false);
+          }}
+        >
+          save edit
+        </button>
+      </div>
+    ) : null,
+}));
+
 vi.mock("../work-item/task-detail-sheet", () => ({
   TaskDetailSheet: ({
     item,
@@ -444,6 +475,32 @@ describe("BugsPage", () => {
     );
   });
 
+  it("initializes supported filters from overview query params and ignores task-only workItemType", async () => {
+    searchParamsMock.current = new URLSearchParams(
+      `versionId=${VERSION_ID}&statusCategory=DONE&workItemType=TASK`,
+    );
+    listBugsMock.mockResolvedValueOnce({
+      items: [makeBug({ title: "Overview filtered bug" })],
+      total: 1,
+    });
+
+    render(<BugsPage />);
+
+    await waitFor(() =>
+      expect(listBugsMock).toHaveBeenCalledWith(
+        expect.objectContaining({
+          spaceId: "SPC_01",
+          statusCategory: "DONE",
+          type: "BUG",
+          versionId: VERSION_ID,
+        }),
+      ),
+    );
+    const [query] = listBugsMock.mock.calls[0];
+    expect(query).not.toHaveProperty("workItemType");
+    expect(await screen.findByText("Overview filtered bug")).toBeInTheDocument();
+  });
+
   it("opens the task detail sheet when a row is clicked", async () => {
     listBugsMock.mockResolvedValueOnce({
       items: [makeBug({ title: "Click bug" })],
@@ -517,6 +574,37 @@ describe("BugsPage", () => {
 
     await waitFor(() => expect(listBugsMock).toHaveBeenCalledTimes(2));
     expect(await screen.findByText("After action")).toBeInTheDocument();
+  });
+
+  it("opens edit from a bug row and refreshes the list and active detail after saving", async () => {
+    listBugsMock
+      .mockResolvedValueOnce({
+        items: [makeBug({ title: "Before edit" })],
+        total: 1,
+      })
+      .mockResolvedValueOnce({
+        items: [makeBug({ title: "After edit" })],
+        total: 1,
+      });
+
+    render(<BugsPage />);
+
+    fireEvent.click(await screen.findByText("Before edit"));
+    expect(screen.getByTestId("task-detail-sheet-item-title")).toHaveTextContent(
+      "Before edit",
+    );
+
+    fireEvent.click(
+      screen.getByTestId("bugs-edit-01ARZ3NDEKTSV4RRFFQ69G5FA1"),
+    );
+    expect(await screen.findByTestId("edit-bug-dialog-open")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "save edit" }));
+
+    await waitFor(() => expect(listBugsMock).toHaveBeenCalledTimes(2));
+    expect(await screen.findByText("After edit")).toBeInTheDocument();
+    expect(screen.getByTestId("task-detail-sheet-item-title")).toHaveTextContent(
+      "Edited bug",
+    );
   });
 
   it("renders the empty state when there are no bugs", async () => {

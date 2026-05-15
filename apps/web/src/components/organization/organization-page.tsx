@@ -1,7 +1,7 @@
 "use client";
 
 import type { OrganizationMemberWithUser } from "@project-delivery/shared";
-import { Crown, Plus, Trash2 } from "lucide-react";
+import { Crown, Plus, ShieldCheck, Trash2 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
@@ -31,6 +31,7 @@ import { EmptyState, ErrorState, ListSkeleton } from "../v2/states";
 import { PageHeader } from "../v2/page-header";
 
 import { AddOrgMemberDialog } from "./add-org-member-dialog";
+import { EditOrgMemberRoleDialog } from "./edit-org-member-role-dialog";
 
 const roleVariant: Record<string, "primary" | "info" | "default"> = {
   OWNER: "primary",
@@ -52,6 +53,8 @@ export function OrganizationPage() {
   const [errorKey, setErrorKey] = useState<string | null>(null);
   const [isAddMemberOpen, setIsAddMemberOpen] = useState(false);
   const [removeMember, setRemoveMember] =
+    useState<OrganizationMemberWithUser | null>(null);
+  const [editRoleMember, setEditRoleMember] =
     useState<OrganizationMemberWithUser | null>(null);
   const [pendingMemberId, setPendingMemberId] = useState<string | null>(null);
   const [memberActionErrorKey, setMemberActionErrorKey] = useState<
@@ -111,6 +114,11 @@ export function OrganizationPage() {
       setPendingMemberId(null);
     }
   }
+
+  const isEditRoleMemberLastActiveOwner =
+    editRoleMember?.role === "OWNER" &&
+    editRoleMember.status === "ACTIVE" &&
+    activeOwnerCount <= 1;
 
   const headerNode = (
     <PageHeader
@@ -177,7 +185,7 @@ export function OrganizationPage() {
               <Avatar className="h-7 w-7">
                 <AvatarFallback>{initialOf(displayName)}</AvatarFallback>
               </Avatar>
-              <div className="flex-1">
+              <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-1.5 text-[13px] font-medium">
                   {displayName}
                   {member.role === "OWNER" && (
@@ -190,25 +198,42 @@ export function OrganizationPage() {
                 </div>
               </div>
               <Badge variant={roleVariant[member.role] ?? "default"}>
-                {member.role}
+                {t(`members.roles.${member.role}`)}
               </Badge>
               {canManageMembers ? (
-                <Button
-                  variant="ghost"
-                  size="icon-sm"
-                  data-testid={`organization-member-remove-${member.id}`}
-                  disabled={
-                    isLastActiveOwner ||
-                    member.status === "DISABLED" ||
-                    pendingMemberId === member.id
-                  }
-                  onClick={() => setRemoveMember(member)}
-                  aria-label={t("members.actions.remove", {
-                    username,
-                  })}
-                >
-                  <Trash2 className="h-3.5 w-3.5 text-muted-foreground" />
-                </Button>
+                <>
+                  <Button
+                    variant="ghost"
+                    size="icon-sm"
+                    data-testid={`organization-member-edit-role-${member.id}`}
+                    disabled={
+                      member.status === "DISABLED" ||
+                      pendingMemberId === member.id
+                    }
+                    onClick={() => setEditRoleMember(member)}
+                    aria-label={t("members.actions.changeRole", {
+                      username,
+                    })}
+                  >
+                    <ShieldCheck className="h-3.5 w-3.5 text-muted-foreground" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon-sm"
+                    data-testid={`organization-member-remove-${member.id}`}
+                    disabled={
+                      isLastActiveOwner ||
+                      member.status === "DISABLED" ||
+                      pendingMemberId === member.id
+                    }
+                    onClick={() => setRemoveMember(member)}
+                    aria-label={t("members.actions.remove", {
+                      username,
+                    })}
+                  >
+                    <Trash2 className="h-3.5 w-3.5 text-muted-foreground" />
+                  </Button>
+                </>
               ) : null}
             </li>
           );
@@ -295,19 +320,35 @@ export function OrganizationPage() {
       </div>
 
       {canManageMembers ? (
-        <AddOrgMemberDialog
-          onClose={() => setIsAddMemberOpen(false)}
-          onSuccess={(member) => {
-            setIsAddMemberOpen(false);
-            setMembers((current) => {
-              const filtered = current.filter((item) => item.id !== member.id);
-              return [...filtered, member];
-            });
-            void load();
-          }}
-          open={isAddMemberOpen}
-          organizationId={organizationId}
-        />
+        <>
+          <AddOrgMemberDialog
+            onClose={() => setIsAddMemberOpen(false)}
+            onSuccess={(member) => {
+              setIsAddMemberOpen(false);
+              setMembers((current) => {
+                const filtered = current.filter((item) => item.id !== member.id);
+                return [...filtered, member];
+              });
+              void load();
+            }}
+            open={isAddMemberOpen}
+            organizationId={organizationId}
+          />
+          <EditOrgMemberRoleDialog
+            isLastActiveOwner={Boolean(isEditRoleMemberLastActiveOwner)}
+            member={editRoleMember}
+            onClose={() => setEditRoleMember(null)}
+            onSuccess={(member) => {
+              setEditRoleMember(null);
+              setMembers((current) =>
+                current.map((item) => (item.id === member.id ? member : item)),
+              );
+              void load();
+            }}
+            open={editRoleMember !== null}
+            organizationId={organizationId}
+          />
+        </>
       ) : null}
 
       <Dialog

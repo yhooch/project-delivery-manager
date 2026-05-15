@@ -12,6 +12,7 @@ import {
   ChevronRight,
   Clock,
   GitBranch,
+  Pencil,
   Plus,
   Target,
   Users,
@@ -56,6 +57,7 @@ import {
 
 import { ConvertIntakeDialog } from "./convert-intake-dialog";
 import { CreateIntakeDialog } from "./create-intake-dialog";
+import { EditIntakeDialog } from "./edit-intake-dialog";
 
 const priorityDot: Record<Priority, string> = {
   LOW: "bg-muted-foreground/40",
@@ -112,6 +114,7 @@ export function IntakePage() {
   const [viewTasksInFlight, setViewTasksInFlight] = useState(false);
   const [actionErrorKey, setActionErrorKey] = useState<string | null>(null);
   const [createOpen, setCreateOpen] = useState(false);
+  const [editOpen, setEditOpen] = useState(false);
   const [hasLoadedItems, setHasLoadedItems] = useState(false);
   const [convertOpen, setConvertOpen] = useState(false);
   const [convertTarget, setConvertTarget] = useState<IntakeItem | null>(null);
@@ -284,6 +287,7 @@ export function IntakePage() {
     if (!open) {
       setActive(null);
       setActionErrorKey(null);
+      setEditOpen(false);
     }
   }
 
@@ -341,6 +345,13 @@ export function IntakePage() {
     }
     setConvertTarget(active);
     setConvertOpen(true);
+  }
+
+  function handleUpdatedIntakeItem(updated: IntakeItem) {
+    setItems((current) =>
+      current.map((item) => (item.id === updated.id ? updated : item)),
+    );
+    setActive((current) => (current?.id === updated.id ? updated : current));
   }
 
   async function handleViewConvertedTasks(target: IntakeItem | null = active) {
@@ -546,6 +557,20 @@ export function IntakePage() {
                   {t("detail.actions")}
                 </span>
                 <div className="ml-auto flex items-center gap-1.5">
+                  {canWriteIntake && (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="h-7 text-xs"
+                      data-testid="intake-edit-button"
+                      disabled={actionInFlight !== null}
+                      onClick={() => setEditOpen(true)}
+                      type="button"
+                    >
+                      <Pencil className="h-3 w-3" />
+                      {t("detail.edit")}
+                    </Button>
+                  )}
                   {canWriteIntake && active.status === "PENDING" && (
                     <>
                       <Button
@@ -667,6 +692,16 @@ export function IntakePage() {
           onCreated={() => {
             void loadItems();
           }}
+        />
+      )}
+
+      {spaceId && canWriteIntake && (
+        <EditIntakeDialog
+          open={editOpen}
+          onOpenChange={setEditOpen}
+          spaceId={spaceId}
+          intakeItem={active}
+          onUpdated={handleUpdatedIntakeItem}
         />
       )}
 

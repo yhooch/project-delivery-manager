@@ -219,9 +219,9 @@ describe("SpaceSettingsPage", () => {
 
     render(<SpaceSettingsPage />);
 
-    // ErrorState built-in defaults render "重试" button.
+    // ErrorState defaults are resolved through the shared common.states keys.
     expect(
-      await screen.findByRole("button", { name: "重试" }),
+      await screen.findByRole("button", { name: "common.states.retry" }),
     ).toBeInTheDocument();
   });
 

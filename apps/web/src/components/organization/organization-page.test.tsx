@@ -46,17 +46,21 @@ vi.mock("../providers/session-provider", () => ({
   useSession: () => sessionMock.current,
 }));
 
-const { listOrganizationMembersMock, removeOrganizationMemberMock } = vi.hoisted(
-  () => ({
+const {
+  listOrganizationMembersMock,
+  removeOrganizationMemberMock,
+  updateOrganizationMemberMock,
+} = vi.hoisted(() => ({
     listOrganizationMembersMock: vi.fn(),
     removeOrganizationMemberMock: vi.fn(),
-  }),
-);
+    updateOrganizationMemberMock: vi.fn(),
+  }));
 vi.mock("../../lib/space-service", () => ({
   canManageOrganization: (role: string | undefined) =>
     role === "OWNER" || role === "ADMIN",
   listOrganizationMembers: listOrganizationMembersMock,
   removeOrganizationMember: removeOrganizationMemberMock,
+  updateOrganizationMember: updateOrganizationMemberMock,
 }));
 
 vi.mock("./add-org-member-dialog", () => ({
@@ -85,6 +89,7 @@ function makeOrgMember(overrides: Record<string, unknown> = {}) {
 beforeEach(() => {
   listOrganizationMembersMock.mockReset();
   removeOrganizationMemberMock.mockReset();
+  updateOrganizationMemberMock.mockReset();
   sessionMock.current = {
     session: {
       defaultOrganizationId: "ORG_01",
@@ -138,9 +143,12 @@ describe("OrganizationPage", () => {
     // Members render.
     expect(screen.getByText("Alice")).toBeInTheDocument();
     expect(screen.getByText("Bob")).toBeInTheDocument();
-    // Role badges render the raw role string.
-    expect(screen.getByText("OWNER")).toBeInTheDocument();
-    expect(screen.getByText("MEMBER")).toBeInTheDocument();
+    expect(
+      screen.getByText("organization.members.roles.OWNER"),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText("organization.members.roles.MEMBER"),
+    ).toBeInTheDocument();
   });
 
   it("renders the empty member message when there are no members", async () => {
@@ -161,9 +169,9 @@ describe("OrganizationPage", () => {
 
     render(<OrganizationPage />);
 
-    // ErrorState built-in defaults render a 重试 button.
+    // ErrorState uses mocked translation keys in this test environment.
     expect(
-      await screen.findByRole("button", { name: "重试" }),
+      await screen.findByRole("button", { name: "common.states.retry" }),
     ).toBeInTheDocument();
   });
 
@@ -229,6 +237,108 @@ describe("OrganizationPage", () => {
       name: "organization.members.actions.remove",
     });
     expect(removeBtn).toBeDisabled();
+  });
+
+  it("updates an organization member role", async () => {
+    const memberRow = makeOrgMember({
+      id: "OM_MEMBER",
+      role: "MEMBER",
+      user: { id: "U_MEMBER", name: "Mallory", username: "mallory" },
+    });
+    const updated = makeOrgMember({
+      ...memberRow,
+      role: "ADMIN",
+    });
+    listOrganizationMembersMock
+      .mockResolvedValueOnce({
+        items: [
+          makeOrgMember({
+            id: "OM_OWNER",
+            role: "OWNER",
+            user: { id: "U_OWNER", name: "Owner", username: "owner" },
+          }),
+          memberRow,
+        ],
+        total: 2,
+      })
+      .mockResolvedValueOnce({
+        items: [
+          makeOrgMember({
+            id: "OM_OWNER",
+            role: "OWNER",
+            user: { id: "U_OWNER", name: "Owner", username: "owner" },
+          }),
+          updated,
+        ],
+        total: 2,
+      });
+    updateOrganizationMemberMock.mockResolvedValueOnce(updated);
+
+    render(<OrganizationPage />);
+
+    expect(await screen.findByText("Mallory")).toBeInTheDocument();
+    fireEvent.click(
+      screen.getByTestId("organization-member-edit-role-OM_MEMBER"),
+    );
+
+    fireEvent.change(
+      await screen.findByLabelText("organization.dialog.editRole.fields.role"),
+      {
+        target: { value: "ADMIN" },
+      },
+    );
+    fireEvent.click(
+      screen.getByRole("button", {
+        name: "organization.dialog.editRole.submit",
+      }),
+    );
+
+    await waitFor(() =>
+      expect(updateOrganizationMemberMock).toHaveBeenCalledWith(
+        "ORG_01",
+        "OM_MEMBER",
+        { role: "ADMIN" },
+      ),
+    );
+    expect(
+      await screen.findByText("organization.members.roles.ADMIN"),
+    ).toBeInTheDocument();
+  });
+
+  it("prevents downgrading the last active OWNER", async () => {
+    listOrganizationMembersMock.mockResolvedValueOnce({
+      items: [
+        makeOrgMember({
+          id: "OM_OWNER",
+          role: "OWNER",
+          user: { id: "U_OWNER", name: "Owner", username: "owner" },
+        }),
+      ],
+      total: 1,
+    });
+
+    render(<OrganizationPage />);
+
+    expect(await screen.findByText("Owner")).toBeInTheDocument();
+    fireEvent.click(
+      screen.getByTestId("organization-member-edit-role-OM_OWNER"),
+    );
+
+    const roleSelect = await screen.findByLabelText(
+      "organization.dialog.editRole.fields.role",
+    );
+    const adminOption = screen.getByRole("option", {
+      name: "organization.members.roles.ADMIN",
+    });
+    expect(adminOption).toBeDisabled();
+    fireEvent.change(roleSelect, { target: { value: "ADMIN" } });
+    fireEvent.click(
+      screen.getByRole("button", {
+        name: "organization.dialog.editRole.submit",
+      }),
+    );
+
+    expect(updateOrganizationMemberMock).not.toHaveBeenCalled();
   });
 
   it("calls removeOrganizationMember after the user confirms removal", async () => {
@@ -312,6 +422,9 @@ describe("OrganizationPage", () => {
     expect(screen.getByTestId("organization-add-member-button")).toBeDisabled();
     expect(
       screen.queryByTestId("organization-member-remove-OM_MEMBER"),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByTestId("organization-member-edit-role-OM_MEMBER"),
     ).not.toBeInTheDocument();
   });
 
