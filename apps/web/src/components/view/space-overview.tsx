@@ -303,7 +303,7 @@ export function SpaceOverview() {
   };
 
   return (
-    <div data-testid="space-overview-page" className="flex h-full flex-col">
+    <div data-testid="space-overview-page" className="flex h-full flex-col bg-background">
       <PageHeader
         eyebrow={headerEyebrow}
         title={tNav("overview")}
@@ -326,7 +326,7 @@ export function SpaceOverview() {
               aria-busy={isLoading}
             >
               <RotateCw
-                className={`h-3 w-3 ${isLoading ? "animate-spin" : ""}`}
+                className={`h-3.5 w-3.5 ${isLoading ? "animate-spin" : ""}`}
               />
               {t("actions.refresh")}
             </Button>
@@ -334,7 +334,7 @@ export function SpaceOverview() {
         }
       />
 
-      <div className="flex-1 overflow-y-auto px-6 py-6">
+      <div className="flex-1 overflow-y-auto px-8 py-12">
         {isLoading && !view ? (
           <LoadingState label={t("states.loading.title")} />
         ) : errorKey ? (
@@ -344,376 +344,313 @@ export function SpaceOverview() {
             onRetry={() => void fetchView()}
           />
         ) : (
-          <div className="mx-auto flex max-w-6xl flex-col gap-6">
-            {/* Meta strip — stale threshold and current filter */}
+          <div className="mx-auto flex max-w-6xl flex-col gap-16">
+            
+            {/* Meta Row */}
             {(staleThresholdDays !== undefined || selectedVersion) && (
               <div
                 data-testid="space-overview-meta"
-                className="flex flex-wrap items-center justify-between gap-2 text-[11px] text-muted-foreground"
+                className="flex flex-wrap items-center gap-4 text-xs font-medium text-muted-foreground"
               >
-                {staleThresholdDays !== undefined ? (
-                  <span data-testid="space-overview-stale">
+                {staleThresholdDays !== undefined && (
+                  <span data-testid="space-overview-stale" className="flex items-center gap-1.5">
+                    <Clock className="h-3.5 w-3.5" />
                     {t("header.staleThreshold", { days: staleThresholdDays })}
                   </span>
-                ) : (
-                  <span />
                 )}
-                {selectedVersion ? (
-                  <span data-testid="space-overview-filtered-by">
+                {selectedVersion && (
+                  <span data-testid="space-overview-filtered-by" className="flex items-center gap-1.5">
+                    <GitBranch className="h-3.5 w-3.5" />
                     {t("header.filteredBy", { version: selectedVersion.name })}
                   </span>
-                ) : null}
+                )}
               </div>
             )}
 
-            {/* Current version hero */}
-            <section
-              data-testid="space-overview-current-version"
-              className="rounded-lg border border-border bg-card p-5"
-            >
-              <div className="flex items-start justify-between gap-3">
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-2 text-[11px] font-medium uppercase tracking-wider text-primary">
-                    <GitBranch className="h-3 w-3" />
-                    {t("currentVersion.title")}
-                  </div>
-                  <h2 className="mt-1 truncate text-lg font-semibold tracking-tight">
-                    {versionName}
-                  </h2>
-                  <p className="mt-1 line-clamp-2 text-sm text-muted-foreground">
-                    {versionGoal}
-                  </p>
-                  {currentVersion?.status ? (
-                    <div className="mt-2">
-                      <StatusBadge
-                        category={
-                          versionStatusToCategory[currentVersion.status] ??
-                          "NOT_STARTED"
-                        }
-                        label={tRoot(
-                          `spaceOverview.versionStatus.${currentVersion.status}`,
-                        )}
-                      />
-                    </div>
-                  ) : null}
-                </div>
-                <div className="flex flex-col items-end gap-2">
-                  <div className="text-right">
-                    <div className="text-[11px] uppercase tracking-wider text-muted-foreground">
-                      {t("currentVersion.targetDate")}
-                    </div>
-                    <div className="mt-1 flex items-center gap-1 text-sm font-semibold">
-                      <CalendarClock className="h-3.5 w-3.5 text-muted-foreground" />
-                      {versionDueDate}
-                    </div>
-                  </div>
-                  <Link
-                    href={buildLink(
-                      "/versions",
-                      currentVersion?.id
-                        ? { versionId: currentVersion.id }
-                        : undefined,
-                    )}
-                    data-testid="space-overview-version-board-link"
-                    className="inline-flex items-center gap-1 rounded-md border border-border px-2 py-1 text-[11px] hover:bg-muted"
-                  >
-                    {t("links.versionBoard")}
-                    <ArrowUpRight className="h-3 w-3" />
-                  </Link>
-                </div>
-              </div>
-
-              <div className="mt-4">
-                <div className="mb-1.5 flex items-center justify-between text-[11px]">
-                  <span className="text-muted-foreground">
-                    {t("summary.versionProgress")}
-                  </span>
-                  <span className="font-mono text-foreground">
-                    {Math.round(versionProgress * 100)}% · {taskDone}/
-                    {taskTotal}
-                  </span>
-                </div>
-                <div className="h-1.5 overflow-hidden rounded-full bg-muted">
-                  <div
-                    className="h-full rounded-full bg-primary transition-all"
-                    style={{ width: `${versionProgress * 100}%` }}
-                  />
-                </div>
-              </div>
-            </section>
-
-            {/* Exception strip — 阻塞与延期 */}
-            <section
-              data-testid="space-overview-exception-strip"
-              className="rounded-lg border border-border bg-card p-4"
-            >
-              <div className="flex items-baseline justify-between">
-                <h3 className="flex items-center gap-2 text-sm font-semibold">
-                  <AlertTriangle className="h-3.5 w-3.5 text-warning" />
-                  {t("exceptions.title")}
-                </h3>
-                <Link
-                  href={buildLink("/exceptions")}
-                  data-testid="space-overview-exceptions-all-link"
-                  className="text-[11px] text-muted-foreground hover:text-foreground"
-                >
-                  {t("actions.viewAll")}
-                </Link>
-              </div>
-              {totalExceptions === 0 ? (
-                <div className="mt-3 text-xs text-muted-foreground">
-                  {t("exceptions.empty")}
-                </div>
-              ) : (
-                <ul className="mt-3 grid grid-cols-2 gap-2 md:grid-cols-5">
-                  {EXCEPTION_ORDER.map((type) => {
-                    const item = exceptionCounts.find(
-                      (c) => c.exceptionType === type,
-                    );
-                    const count = item?.count ?? 0;
-                    const Icon = exceptionIcon[type];
-                    return (
-                      <li key={type}>
-                        <Link
-                          href={buildLink("/exceptions", {
-                            exceptionType: type,
-                          })}
-                          data-testid={`space-overview-exception-${type}`}
-                          className="flex items-center justify-between gap-2 rounded-md border border-border bg-background px-3 py-2 transition-colors hover:bg-muted"
-                        >
-                          <span className="flex items-center gap-2 text-[12px] text-foreground">
-                            <Icon
-                              className={`h-3.5 w-3.5 ${exceptionToneClass[type]}`}
-                            />
-                            {tRoot(`m4Views.exceptionType.${type}`)}
-                          </span>
-                          <span className="font-mono text-sm font-semibold">
-                            {count}
-                          </span>
-                        </Link>
-                      </li>
-                    );
-                  })}
-                </ul>
-              )}
-            </section>
-
-            {/* Task & bug split */}
-            <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
-              <Link
-                href={buildLink("/work-items", { workItemType: "TASK" })}
-                data-testid="space-overview-task-progress"
-                className="group rounded-lg border border-border bg-card p-4 transition-colors hover:border-primary/40"
-              >
-                <div className="flex items-center justify-between">
-                  <h3 className="flex items-center gap-2 text-sm font-semibold">
-                    <ClipboardList className="h-3.5 w-3.5 text-primary" />
-                    {t("summary.taskProgress")}
-                  </h3>
-                  <ArrowUpRight className="h-3.5 w-3.5 text-muted-foreground transition-colors group-hover:text-foreground" />
-                </div>
-                <div className="mt-3 flex items-end gap-2">
-                  <span className="text-2xl font-semibold leading-none">
-                    {taskDone}/{taskTotal}
-                  </span>
-                  <span className="text-[11px] text-muted-foreground">
-                    {t("summary.taskProgressWithPct", { pct: taskPct })}
-                  </span>
-                </div>
-                <div className="mt-3 h-1 overflow-hidden rounded-full bg-muted">
-                  <div
-                    className="h-full rounded-full bg-primary"
-                    style={{ width: `${taskPct}%` }}
-                  />
-                </div>
-              </Link>
-
-              <Link
-                href={buildLink("/bugs")}
-                data-testid="space-overview-bug-status"
-                className="group rounded-lg border border-border bg-card p-4 transition-colors hover:border-destructive/40"
-              >
-                <div className="flex items-center justify-between">
-                  <h3 className="flex items-center gap-2 text-sm font-semibold">
-                    <Bug className="h-3.5 w-3.5 text-destructive" />
-                    {t("summary.bugStatus")}
-                  </h3>
-                  <ArrowUpRight className="h-3.5 w-3.5 text-muted-foreground transition-colors group-hover:text-foreground" />
-                </div>
-                <div className="mt-3 flex items-end gap-2">
-                  <span className="text-2xl font-semibold leading-none">
-                    {bugTotal - bugOpen}/{bugTotal}
-                  </span>
-                  <span className="text-[11px] text-muted-foreground">
-                    {t("summary.bugClosedWithPct", { pct: bugClosePct })}
-                  </span>
-                </div>
-                <div className="mt-3 h-1 overflow-hidden rounded-full bg-muted">
-                  <div
-                    className="h-full rounded-full bg-destructive"
-                    style={{
-                      width: `${bugClosePct}%`,
-                    }}
-                  />
-                </div>
-              </Link>
-            </div>
-
-            {/* Per-type status distribution: tasks + bugs side by side */}
-            <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
-              <StatusDistributionPanel
-                testIdPrefix="space-overview-task-status"
-                title={t("summary.taskProgress")}
-                description={t("statusCounts.description")}
-                emptyLabel={t("statusCounts.empty")}
-                counts={taskStatusCounts}
-                total={taskStatusTotal}
-                buildHref={(category) =>
-                  buildLink("/work-items", {
-                    statusCategory: category,
-                    workItemType: "TASK",
-                  })
-                }
-                categoryLabel={(category) =>
-                  tRoot(`m4Views.statusCategory.${category}`)
-                }
-              />
-              <StatusDistributionPanel
-                testIdPrefix="space-overview-bug-status-distribution"
-                title={t("summary.bugStatus")}
-                description={t("statusCounts.description")}
-                emptyLabel={t("statusCounts.empty")}
-                counts={bugStatusCounts}
-                total={bugStatusTotal}
-                buildHref={(category) =>
-                  buildLink("/bugs", { statusCategory: category })
-                }
-                categoryLabel={(category) =>
-                  tRoot(`m4Views.statusCategory.${category}`)
-                }
-              />
-            </div>
-
-            {/* Requirements / versions inline KPIs */}
-            <section
+            {/* KPI Data Row (Borderless) */}
+            <div
               data-testid="space-overview-kpi-grid"
-              className="grid grid-cols-1 gap-3 md:grid-cols-2"
+              className="grid grid-cols-2 gap-8 lg:grid-cols-4 lg:gap-12"
             >
-              <Link
+              <KPIMetric
+                href={buildLink("/work-items", { workItemType: "TASK" })}
+                testId="space-overview-task-progress"
+                icon={<ClipboardList className="h-4 w-4" />}
+                iconClassName="bg-primary/10 text-primary"
+                title={t("summary.taskProgress")}
+                value={<>{taskDone}<span className="text-muted-foreground font-light text-2xl">/{taskTotal}</span></>}
+                description={t("summary.taskProgressWithPct", { pct: taskPct })}
+              />
+              <KPIMetric
+                href={buildLink("/bugs")}
+                testId="space-overview-bug-status"
+                icon={<Bug className="h-4 w-4" />}
+                iconClassName="bg-destructive/10 text-destructive"
+                title={t("summary.bugStatus")}
+                value={<>{bugTotal - bugOpen}<span className="text-muted-foreground font-light text-2xl">/{bugTotal}</span></>}
+                description={t("summary.bugClosedWithPct", { pct: bugClosePct })}
+              />
+              <KPIMetric
                 href={buildLink("/requirements")}
-                data-testid="space-overview-requirements-link"
-                className="group flex items-center gap-3 rounded-lg border border-border bg-card px-4 py-3 transition-colors hover:border-info/40"
-              >
-                <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-info/10 text-info">
-                  <FileText className="h-4 w-4" />
-                </div>
-                <div className="flex flex-1 flex-col">
-                  <span className="text-lg font-semibold leading-none">
-                    {stats?.requirementCount ?? 0}
-                  </span>
-                  <span className="mt-1 text-[11px] text-muted-foreground">
-                    {t("stats.requirements")}
-                  </span>
-                </div>
-                <ArrowUpRight className="h-3.5 w-3.5 text-muted-foreground transition-colors group-hover:text-foreground" />
-              </Link>
-              <Link
+                testId="space-overview-requirements-link"
+                icon={<FileText className="h-4 w-4" />}
+                iconClassName="bg-info/10 text-info"
+                title={t("stats.requirements")}
+                value={stats?.requirementCount ?? 0}
+              />
+              <KPIMetric
                 href={buildLink("/versions")}
-                data-testid="space-overview-versions-link"
-                className="group flex items-center gap-3 rounded-lg border border-border bg-card px-4 py-3 transition-colors hover:border-primary/40"
-              >
-                <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/10 text-primary">
-                  <GitBranch className="h-4 w-4" />
-                </div>
-                <div className="flex flex-1 flex-col">
-                  <span className="text-lg font-semibold leading-none">
-                    {stats?.versionCount ?? 0}
-                  </span>
-                  <span className="mt-1 text-[11px] text-muted-foreground">
-                    {t("stats.versions")}
-                  </span>
-                </div>
-                <ArrowUpRight className="h-3.5 w-3.5 text-muted-foreground transition-colors group-hover:text-foreground" />
-              </Link>
-            </section>
+                testId="space-overview-versions-link"
+                icon={<GitBranch className="h-4 w-4" />}
+                iconClassName="bg-primary/10 text-primary"
+                title={t("stats.versions")}
+                value={stats?.versionCount ?? 0}
+              />
+            </div>
 
-            {/* Recent timeline */}
-            <section
-              data-testid="space-overview-timeline"
-              className="rounded-lg border border-border bg-card p-4"
-            >
-              <div className="flex items-baseline justify-between">
-                <h3 className="text-sm font-semibold">{t("timeline.title")}</h3>
-              </div>
-              {recentEvents.length === 0 ? (
-                <div className="mt-3 text-xs text-muted-foreground">
-                  {t("timeline.empty")}
-                </div>
-              ) : (
-                <ul className="mt-3 space-y-2">
-                  {recentEvents.map((event) => {
-                    const href = buildTimelineHref(event);
-                    const inner = (
-                      <div className="flex gap-2.5 px-1 py-1">
-                        <Tip content={event.actor.name}>
-                          <Avatar className="h-6 w-6">
-                            <AvatarFallback className="text-[10px]">
-                              {initialOf(event.actor.name)}
-                            </AvatarFallback>
-                          </Avatar>
-                        </Tip>
-                        <div className="flex-1 text-[12px]">
-                          <div className="leading-snug">
-                            <span className="font-medium">
-                              {event.actor.name}
-                            </span>
-                            <span className="text-muted-foreground">
-                              {" "}
-                              {event.title}{" "}
-                            </span>
-                            {event.target.title && (
-                              <span className="font-mono text-[11px]">
-                                {event.target.title}
-                              </span>
+            <div className="h-px w-full bg-border/40" />
+
+            {/* Main Split Layout */}
+            <div className="grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-16">
+              
+              {/* Left Column: Progress & Status */}
+              <div className="flex flex-col gap-16">
+                
+                {/* Current Version */}
+                <section
+                  data-testid="space-overview-current-version"
+                  className="flex flex-col gap-5"
+                >
+                  <div className="flex items-center gap-2">
+                    <h3 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">{t("currentVersion.title")}</h3>
+                  </div>
+                  <div className="flex flex-col md:flex-row md:items-end justify-between gap-8 border-l-2 border-primary/50 pl-5">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-3">
+                        <h2 className="truncate text-3xl font-light tracking-tight text-foreground">
+                          {versionName}
+                        </h2>
+                        {currentVersion?.status && (
+                          <StatusBadge
+                            category={
+                              versionStatusToCategory[currentVersion.status] ??
+                              "NOT_STARTED"
+                            }
+                            label={tRoot(
+                              `spaceOverview.versionStatus.${currentVersion.status}`,
                             )}
-                          </div>
-                          <div className="mt-0.5 text-[10px] text-muted-foreground">
-                            {formatTimeAgo(
-                              event.createdAt,
-                              locale,
-                              t("time.justNow"),
-                            )}
-                          </div>
-                        </div>
+                          />
+                        )}
                       </div>
-                    );
-                    if (href) {
-                      return (
-                        <li
-                          key={event.id}
-                          data-testid={`space-overview-timeline-${event.id}`}
+                      <p className="mt-3 text-sm text-muted-foreground leading-relaxed max-w-xl">
+                        {versionGoal}
+                      </p>
+                      <div className="mt-4 flex items-center gap-4 text-xs font-medium">
+                        <div className="flex items-center gap-1.5 text-muted-foreground">
+                          <CalendarClock className="h-4 w-4" />
+                          {t("currentVersion.targetDate")}: <span className="text-foreground">{versionDueDate}</span>
+                        </div>
+                        <Link
+                          href={buildLink(
+                            "/versions",
+                            currentVersion?.id
+                              ? { versionId: currentVersion.id }
+                              : undefined,
+                          )}
+                          data-testid="space-overview-version-board-link"
+                          className="flex items-center gap-1 text-primary hover:underline underline-offset-2 transition-colors"
                         >
-                          <Link
-                            href={href as never}
-                            className="block rounded-md transition-colors hover:bg-muted/50"
-                          >
-                            {inner}
-                          </Link>
-                        </li>
-                      );
-                    }
-                    return (
-                      <li
-                        key={event.id}
-                        data-testid={`space-overview-timeline-${event.id}`}
-                      >
-                        {inner}
-                      </li>
-                    );
-                  })}
-                </ul>
-              )}
-            </section>
+                          {t("links.versionBoard")}
+                          <ArrowUpRight className="h-3 w-3" />
+                        </Link>
+                      </div>
+                    </div>
+                    
+                    <div className="w-full md:w-64 shrink-0 flex flex-col gap-2">
+                      <div className="flex items-center justify-between text-xs font-medium">
+                        <span className="text-muted-foreground">{t("summary.versionProgress")}</span>
+                        <span className="text-foreground">{Math.round(versionProgress * 100)}%</span>
+                      </div>
+                      <div className="h-1.5 overflow-hidden rounded-full bg-muted">
+                        <div
+                          className="h-full rounded-full bg-primary"
+                          style={{ width: `${versionProgress * 100}%` }}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </section>
+
+                {/* Status Distributions */}
+                <section className="flex flex-col gap-5">
+                  <div className="flex items-center gap-2">
+                    <h3 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">{t("statusCounts.description")}</h3>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-12">
+                    <StatusDistributionList
+                      testIdPrefix="space-overview-task-status"
+                      title={t("summary.taskProgress")}
+                      emptyLabel={t("statusCounts.empty")}
+                      counts={taskStatusCounts}
+                      total={taskStatusTotal}
+                      buildHref={(category) =>
+                        buildLink("/work-items", {
+                          statusCategory: category,
+                          workItemType: "TASK",
+                        })
+                      }
+                      categoryLabel={(category) =>
+                        tRoot(`m4Views.statusCategory.${category}`)
+                      }
+                    />
+                    <StatusDistributionList
+                      testIdPrefix="space-overview-bug-status-distribution"
+                      title={t("summary.bugStatus")}
+                      emptyLabel={t("statusCounts.empty")}
+                      counts={bugStatusCounts}
+                      total={bugStatusTotal}
+                      buildHref={(category) =>
+                        buildLink("/bugs", { statusCategory: category })
+                      }
+                      categoryLabel={(category) =>
+                        tRoot(`m4Views.statusCategory.${category}`)
+                      }
+                    />
+                  </div>
+                </section>
+              </div>
+
+              {/* Right Column: Exceptions & Timeline */}
+              <div className="flex flex-col gap-16 border-t lg:border-t-0 lg:border-l border-border/40 pt-10 lg:pt-0 lg:pl-10">
+                
+                {/* Exceptions */}
+                <section className="flex flex-col gap-5">
+                  <div className="flex items-center justify-between">
+                    <h3 className="flex items-center gap-2 text-sm font-semibold uppercase tracking-wider text-muted-foreground">
+                      <AlertTriangle className="h-4 w-4 text-warning" />
+                      {t("exceptions.title")}
+                    </h3>
+                    <Link
+                      href={buildLink("/exceptions")}
+                      className="text-[11px] font-medium text-muted-foreground hover:text-foreground transition-colors"
+                    >
+                      {t("actions.viewAll")}
+                    </Link>
+                  </div>
+                  <div>
+                    {totalExceptions === 0 ? (
+                      <div className="text-xs text-muted-foreground">
+                        {t("exceptions.empty")}
+                      </div>
+                    ) : (
+                      <ul className="flex flex-col gap-3">
+                        {EXCEPTION_ORDER.map((type) => {
+                          const item = exceptionCounts.find(
+                            (c) => c.exceptionType === type,
+                          );
+                          const count = item?.count ?? 0;
+                          const Icon = exceptionIcon[type];
+                          return (
+                            <li key={type}>
+                              <Link
+                                href={buildLink("/exceptions", {
+                                  exceptionType: type,
+                                })}
+                                data-testid={`space-overview-exception-${type}`}
+                                className="group flex items-center justify-between gap-3 transition-colors"
+                              >
+                                <span className="flex items-center gap-2.5 text-[13px] font-medium text-foreground/80 group-hover:text-foreground">
+                                  <Icon
+                                    className={`h-4 w-4 ${exceptionToneClass[type]}`}
+                                  />
+                                  {tRoot(`m4Views.exceptionType.${type}`)}
+                                </span>
+                                <span className="font-mono text-base font-semibold text-foreground">
+                                  {count}
+                                </span>
+                              </Link>
+                            </li>
+                          );
+                        })}
+                      </ul>
+                    )}
+                  </div>
+                </section>
+
+                {/* Timeline */}
+                <section className="flex flex-col gap-5">
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">
+                      {t("timeline.title")}
+                    </h3>
+                  </div>
+                  <div>
+                    {recentEvents.length === 0 ? (
+                      <div className="text-xs text-muted-foreground">
+                        {t("timeline.empty")}
+                      </div>
+                    ) : (
+                      <ul className="relative flex flex-col gap-6 before:absolute before:inset-y-0 before:left-3 before:w-px before:bg-border/50">
+                        {recentEvents.map((event) => {
+                          const href = buildTimelineHref(event);
+                          const inner = (
+                            <div className="flex gap-4">
+                              <Tip content={event.actor.name}>
+                                <Avatar className="h-6 w-6 border-4 border-background z-10 shrink-0 bg-muted">
+                                  <AvatarFallback className="text-[9px] bg-transparent text-muted-foreground">
+                                    {initialOf(event.actor.name)}
+                                  </AvatarFallback>
+                                </Avatar>
+                              </Tip>
+                              <div className="flex-1 text-[13px] min-w-0 pt-0.5">
+                                <div className="leading-snug">
+                                  <span className="font-medium text-foreground/90">
+                                    {event.actor.name}
+                                  </span>
+                                  <span className="text-muted-foreground px-1.5">
+                                    {event.title}
+                                  </span>
+                                  {event.target.title && (
+                                    <span className="font-medium text-foreground inline-block truncate max-w-full align-bottom">
+                                      {event.target.title}
+                                    </span>
+                                  )}
+                                </div>
+                                <div className="mt-1 text-[11px] font-medium text-muted-foreground/60">
+                                  {formatTimeAgo(
+                                    event.createdAt,
+                                    locale,
+                                    t("time.justNow"),
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+                          );
+                          if (href) {
+                            return (
+                              <li key={event.id}>
+                                <Link
+                                  href={href as never}
+                                  className="block -mx-3 -my-2 rounded-lg p-2 transition-colors hover:bg-muted/40"
+                                >
+                                  {inner}
+                                </Link>
+                              </li>
+                            );
+                          }
+                          return (
+                            <li key={event.id}>
+                              {inner}
+                            </li>
+                          );
+                        })}
+                      </ul>
+                    )}
+                  </div>
+                </section>
+                
+              </div>
+            </div>
           </div>
         )}
       </div>
@@ -721,10 +658,52 @@ export function SpaceOverview() {
   );
 }
 
-function StatusDistributionPanel({
+function KPIMetric({
+  title,
+  value,
+  description,
+  href,
+  testId,
+  icon,
+  iconClassName,
+}: {
+  title: string;
+  value: React.ReactNode;
+  description?: string;
+  href: string;
+  testId: string;
+  icon: React.ReactNode;
+  iconClassName: string;
+}) {
+  return (
+    <Link
+      href={href}
+      data-testid={testId}
+      className="group -m-1 flex flex-col gap-2 rounded-xl p-1 transition-colors hover:bg-muted/30"
+    >
+      <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
+        <span
+          className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg transition-colors ${iconClassName}`}
+        >
+          {icon}
+        </span>
+        <span>{title}</span>
+      </div>
+      <div className="text-4xl font-light tracking-tight text-foreground mt-1">
+        {value}
+      </div>
+      {description && (
+        <div className="text-[12px] font-medium text-muted-foreground/70 mt-1">
+          {description}
+        </div>
+      )}
+    </Link>
+  );
+}
+
+function StatusDistributionList({
   testIdPrefix,
   title,
-  description,
   emptyLabel,
   counts,
   total,
@@ -733,7 +712,6 @@ function StatusDistributionPanel({
 }: {
   testIdPrefix: string;
   title: string;
-  description: string;
   emptyLabel: string;
   counts: ViewStatusCount[];
   total: number;
@@ -741,19 +719,13 @@ function StatusDistributionPanel({
   categoryLabel: (category: StatusCategory) => string;
 }) {
   return (
-    <section
-      data-testid={testIdPrefix}
-      className="rounded-lg border border-border bg-card p-4"
-    >
-      <div className="flex items-baseline justify-between gap-2">
-        <h3 className="text-sm font-semibold">{title}</h3>
-        <span className="text-[11px] text-muted-foreground">{description}</span>
-      </div>
+    <div className="flex flex-col">
+      <h4 className="text-[13px] font-medium text-foreground mb-3">{title}</h4>
       {total === 0 ? (
-        <div className="mt-3 text-xs text-muted-foreground">{emptyLabel}</div>
+        <div className="text-xs text-muted-foreground">{emptyLabel}</div>
       ) : (
-        <>
-          <div className="mt-3 flex h-2 overflow-hidden rounded-full bg-muted">
+        <div className="flex flex-col gap-4">
+          <div className="flex h-1.5 overflow-hidden rounded-full bg-muted">
             {STATUS_ORDER.map((category) => {
               const item = counts.find((c) => c.statusCategory === category);
               const count = item?.count ?? 0;
@@ -763,36 +735,42 @@ function StatusDistributionPanel({
                 <span
                   key={category}
                   title={`${categoryLabel(category)} · ${count}`}
-                  className={`h-full ${statusBarClass[category]}`}
+                  className={`h-full ${statusBarClass[category]} transition-all`}
                   style={{ width: `${pct}%` }}
                 />
               );
             })}
           </div>
-          <ul className="mt-3 flex flex-wrap gap-2">
+          <ul className="flex flex-col gap-2">
             {STATUS_ORDER.map((category) => {
               const item = counts.find((c) => c.statusCategory === category);
               const count = item?.count ?? 0;
+              const pct = Math.round((count / total) * 100);
               return (
                 <li key={category}>
                   <Link
                     href={buildHref(category)}
                     data-testid={`${testIdPrefix}-${category}`}
-                    className="inline-flex items-center gap-1.5 rounded-md border border-border bg-background px-2 py-1 text-[11px] hover:bg-muted"
+                    className="group flex items-center justify-between transition-colors"
                   >
-                    <span
-                      className={`h-1.5 w-1.5 rounded-full ${statusBarClass[category]}`}
-                    />
-                    <span>{categoryLabel(category)}</span>
-                    <span className="font-mono text-foreground">{count}</span>
+                    <div className="flex items-center gap-2.5">
+                      <span
+                        className={`h-2 w-2 rounded-full ${statusBarClass[category]}`}
+                      />
+                      <span className="text-sm font-medium text-foreground/80 group-hover:text-foreground">{categoryLabel(category)}</span>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <span className="font-mono text-xs text-muted-foreground">{pct}%</span>
+                      <span className="font-mono text-sm font-semibold w-6 text-right text-foreground/90">{count}</span>
+                    </div>
                   </Link>
                 </li>
               );
             })}
           </ul>
-        </>
+        </div>
       )}
-    </section>
+    </div>
   );
 }
 
@@ -814,23 +792,24 @@ function VersionFilter({
         <Button
           variant="outline"
           size="sm"
-          className="text-xs"
+          className="text-xs bg-transparent border-border/80"
           aria-label={t("filters.label")}
           data-testid="space-overview-version-filter"
         >
-          <GitBranch className="h-3 w-3" />
-          <span className="max-w-[140px] truncate">
+          <GitBranch className="h-3 w-3 opacity-70" />
+          <span className="max-w-[140px] truncate font-medium">
             {selected?.name ?? t("filters.allVersions")}
           </span>
-          <ChevronDown className="h-3 w-3" />
+          <ChevronDown className="h-3 w-3 opacity-50" />
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="min-w-[200px]">
-        <DropdownMenuLabel>{t("filters.version")}</DropdownMenuLabel>
-        <DropdownMenuSeparator />
+      <DropdownMenuContent align="end" className="min-w-[200px] rounded-xl shadow-md border-border/80">
+        <DropdownMenuLabel className="text-[11px] uppercase tracking-wider text-muted-foreground">{t("filters.version")}</DropdownMenuLabel>
+        <DropdownMenuSeparator className="bg-border/60" />
         <DropdownMenuItem
           data-testid="space-overview-version-filter-all"
           onSelect={() => onChange(undefined)}
+          className="text-[13px]"
         >
           {t("filters.allVersions")}
         </DropdownMenuItem>
@@ -839,6 +818,7 @@ function VersionFilter({
             key={v.id}
             data-testid={`space-overview-version-filter-${v.id}`}
             onSelect={() => onChange(v.id)}
+            className="text-[13px]"
           >
             {v.name}
           </DropdownMenuItem>
