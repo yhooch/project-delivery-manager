@@ -879,6 +879,7 @@
       },
       "untitled": "未命名需求",
       "untitledDraft": "未命名草稿",
+      "localDraftCache": "本机缓存",
       "noVersion": "未关联版本",
       "noOwner": "未分配",
       "noPriority": "未设置",
@@ -907,6 +908,9 @@
         "delete": "删除",
         "deleting": "删除中",
         "browserWarning": "这个空草稿尚未处理。"
+      },
+      "localDraftCache": {
+        "restored": "已恢复本机未保存内容，保存需求后会清除这份缓存。"
       },
       "metaTitle": "当前信息",
       "metaDescription": "按后端返回结果展示，不扩大权限边界。",

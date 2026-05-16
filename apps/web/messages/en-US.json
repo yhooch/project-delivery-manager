@@ -879,6 +879,7 @@
       },
       "untitled": "Untitled requirement",
       "untitledDraft": "Untitled draft",
+      "localDraftCache": "Local cache",
       "noVersion": "No version",
       "noOwner": "Unassigned",
       "noPriority": "Not set",
@@ -907,6 +908,9 @@
         "delete": "Delete",
         "deleting": "Deleting",
         "browserWarning": "This empty draft has not been handled."
+      },
+      "localDraftCache": {
+        "restored": "Restored unsaved content from this browser. Saving the requirement clears this cache."
       },
       "metaTitle": "Current information",
       "metaDescription": "Displayed from backend results without expanding permission boundaries.",

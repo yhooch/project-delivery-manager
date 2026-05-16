@@ -134,6 +134,17 @@ function makeRequirement(overrides: Record<string, unknown> = {}) {
   } as import("@project-delivery/shared").Requirement;
 }
 
+function localDraftCacheKey() {
+  return [
+    "requirement",
+    "draft",
+    "USER_01",
+    "ORG_01",
+    "SPC_01",
+    "01ARZ3NDEKTSV4RRFFQ69G5FA1",
+  ].join(":");
+}
+
 beforeEach(() => {
   archiveRequirementMock.mockReset();
   deleteRequirementDraftMock.mockReset();
@@ -151,6 +162,7 @@ beforeEach(() => {
     total: 0,
   });
   updateRequirementMock.mockResolvedValue(makeRequirement());
+  window.localStorage.clear();
 });
 
 afterEach(() => {
@@ -265,6 +277,99 @@ describe("RequirementDetailWorkspace", () => {
         expect.objectContaining({ priority: "URGENT" }),
       ),
     );
+  });
+
+  it("restores unsaved draft fields from the browser cache after returning to the draft", async () => {
+    const emptyDraft = makeRequirement({
+      contentJson: {},
+      contentMarkdownCache: "",
+      contentText: "",
+      summary: undefined,
+      title: "",
+      updatedAt: "2026-05-12T00:00:00.000Z",
+    });
+    getRequirementMock.mockResolvedValue(emptyDraft);
+
+    const { unmount } = render(
+      <RequirementDetailWorkspace requirementId="01ARZ3NDEKTSV4RRFFQ69G5FA1" />,
+    );
+
+    const title = await screen.findByLabelText("requirements.form.title");
+    fireEvent.change(title, {
+      target: { value: "本机未保存标题" },
+    });
+    fireEvent.change(
+      screen.getByPlaceholderText("requirements.detail.summaryPlaceholder"),
+      {
+        target: { value: "本机未保存摘要" },
+      },
+    );
+    fireEvent(window, new Event("pagehide"));
+
+    await waitFor(() =>
+      expect(window.localStorage.getItem(localDraftCacheKey())).toContain(
+        "本机未保存标题",
+      ),
+    );
+
+    unmount();
+    render(
+      <RequirementDetailWorkspace requirementId="01ARZ3NDEKTSV4RRFFQ69G5FA1" />,
+    );
+
+    expect(
+      await screen.findByDisplayValue("本机未保存标题"),
+    ).toBeInTheDocument();
+    expect(screen.getByDisplayValue("本机未保存摘要")).toBeInTheDocument();
+    expect(
+      screen.getByTestId("requirement-local-draft-cache-restored"),
+    ).toHaveTextContent("requirements.detail.localDraftCache.restored");
+  });
+
+  it("clears the browser draft cache after saving the requirement", async () => {
+    const emptyDraft = makeRequirement({
+      contentJson: {},
+      contentMarkdownCache: "",
+      contentText: "",
+      summary: undefined,
+      title: "",
+      updatedAt: "2026-05-12T00:00:00.000Z",
+    });
+    window.localStorage.setItem(
+      localDraftCacheKey(),
+      JSON.stringify({
+        cachedAt: "2026-05-12T00:01:00.000Z",
+        form: {
+          content: {
+            contentJson: { type: "doc", content: [] },
+            contentMarkdownCache: "",
+            contentText: "",
+          },
+          ownerId: "",
+          priority: "",
+          summary: "",
+          title: "待保存本机缓存",
+          versionId: "",
+        },
+        requirementUpdatedAt: "2026-05-12T00:00:00.000Z",
+        version: 1,
+      }),
+    );
+    getRequirementMock.mockResolvedValueOnce(emptyDraft);
+
+    render(
+      <RequirementDetailWorkspace requirementId="01ARZ3NDEKTSV4RRFFQ69G5FA1" />,
+    );
+
+    expect(
+      await screen.findByDisplayValue("待保存本机缓存"),
+    ).toBeInTheDocument();
+    fireEvent.click(
+      screen.getByRole("button", { name: "requirements.detail.save" }),
+    );
+
+    await waitFor(() => expect(updateRequirementMock).toHaveBeenCalled());
+    expect(window.localStorage.getItem(localDraftCacheKey())).toBeNull();
   });
 
   it("lets the owner discard an empty draft through the safe delete action", async () => {

@@ -33,6 +33,7 @@ import { useLocale, useTranslations } from "next-intl";
 import {
   useEffect,
   useCallback,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -42,6 +43,17 @@ import {
 
 import { getApiErrorMessageKey } from "../../lib/api-error-messages";
 import { formatDisplayCode } from "../../lib/display-code";
+import {
+  LOCAL_DRAFT_CACHE_WRITE_DELAY_MS,
+  clearRequirementDraftLocalCache,
+  createEmptyRequirementDraftCacheForm,
+  createRequirementDraftCacheForm,
+  createRequirementDraftLocalCacheKey,
+  persistRequirementDraftLocalCacheSnapshot,
+  resolveRequirementDraftCacheForm,
+  type RequirementDraftCacheFormState,
+  type RequirementDraftLocalCacheSnapshot,
+} from "../../lib/requirement-draft-local-cache";
 import {
   archiveRequirement,
   deleteRequirementDraft,
@@ -69,11 +81,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "../ui/dropdown-menu";
-import {
-  RequirementContentEditorSlot,
-  createContentEditorValue,
-  type RequirementContentEditorValue,
-} from "./requirement-content-editor-slot";
+import { RequirementContentEditorSlot } from "./requirement-content-editor-slot";
 
 const PRIORITIES: Priority[] = ["LOW", "MEDIUM", "HIGH", "URGENT"];
 const STATUS_VARIANT: Record<RequirementStatus, BadgeProps["variant"]> = {
@@ -99,14 +107,7 @@ type RequirementDetailWorkspaceProps = {
   requirementId: string;
 };
 
-type RequirementFormState = {
-  content: RequirementContentEditorValue;
-  ownerId: string;
-  priority: Priority | "";
-  summary: string;
-  title: string;
-  versionId: string;
-};
+type RequirementFormState = RequirementDraftCacheFormState;
 
 export function RequirementDetailWorkspace({
   requirementId,
@@ -132,7 +133,17 @@ export function RequirementDetailWorkspace({
     string | null
   >(null);
   const [errorKey, setErrorKey] = useState<string | null>(null);
+  const [didRestoreLocalDraftCache, setDidRestoreLocalDraftCache] =
+    useState(false);
   const titleInputRef = useRef<HTMLTextAreaElement>(null);
+  const localDraftCacheSnapshotRef = useRef<RequirementDraftLocalCacheSnapshot>(
+    {
+      canEdit: false,
+      form: createEmptyRequirementForm(),
+      key: null,
+      requirement: null,
+    },
+  );
 
   const currentSpace = useMemo(
     () =>
@@ -149,6 +160,18 @@ export function RequirementDetailWorkspace({
   const canUploadRequirementImages =
     requirement?.permissions?.canUploadAttachment === true;
   const canEditRequirement = requirement?.permissions?.canEdit === true;
+  const localDraftCacheKey = useMemo(
+    () =>
+      requirement && session
+        ? createRequirementDraftLocalCacheKey({
+            organizationId: requirement.organizationId,
+            requirementId: requirement.id,
+            spaceId: requirement.spaceId,
+            userId: session.user.id,
+          })
+        : null,
+    [requirement, session],
+  );
   const shouldPromptBeforeLeavingEmptyDraft = Boolean(
     requirement &&
     session &&
@@ -204,7 +227,14 @@ export function RequirementDetailWorkspace({
         setRequirement(nextRequirement);
         setVersions(versionPage.items);
         setMembers(memberPage.items);
-        setForm(requirementToFormState(nextRequirement));
+        const nextForm = requirementToFormState(nextRequirement);
+        const cachedForm = resolveRequirementDraftCacheForm(
+          nextRequirement,
+          nextForm,
+          session?.user.id,
+        );
+        setForm(cachedForm.form);
+        setDidRestoreLocalDraftCache(cachedForm.restored);
       } catch (error) {
         if (isActive) {
           setErrorKey(getApiErrorMessageKey(error));
@@ -221,11 +251,89 @@ export function RequirementDetailWorkspace({
     return () => {
       isActive = false;
     };
-  }, [organizationId, requestKey, requirementId, spaceId, status]);
+  }, [
+    organizationId,
+    requestKey,
+    requirementId,
+    session?.user.id,
+    spaceId,
+    status,
+  ]);
 
   useEffect(() => {
     resizeTitleInput(titleInputRef.current);
   }, [form.title]);
+
+  useLayoutEffect(() => {
+    localDraftCacheSnapshotRef.current = {
+      canEdit: canEditRequirement,
+      form,
+      key: localDraftCacheKey,
+      requirement,
+    };
+  }, [canEditRequirement, form, localDraftCacheKey, requirement]);
+
+  useEffect(() => {
+    const timeout = window.setTimeout(() => {
+      persistRequirementDraftLocalCacheSnapshot(
+        localDraftCacheSnapshotRef.current,
+      );
+    }, LOCAL_DRAFT_CACHE_WRITE_DELAY_MS);
+
+    return () => {
+      window.clearTimeout(timeout);
+    };
+  }, [canEditRequirement, form, localDraftCacheKey, requirement]);
+
+  useEffect(() => {
+    function flushLocalDraftCache() {
+      persistRequirementDraftLocalCacheSnapshot(
+        localDraftCacheSnapshotRef.current,
+      );
+    }
+
+    function flushLocalDraftCacheWhenHidden() {
+      if (document.visibilityState === "hidden") {
+        flushLocalDraftCache();
+      }
+    }
+
+    window.addEventListener("beforeunload", flushLocalDraftCache);
+    window.addEventListener("pagehide", flushLocalDraftCache);
+    document.addEventListener(
+      "visibilitychange",
+      flushLocalDraftCacheWhenHidden,
+    );
+
+    return () => {
+      window.removeEventListener("beforeunload", flushLocalDraftCache);
+      window.removeEventListener("pagehide", flushLocalDraftCache);
+      document.removeEventListener(
+        "visibilitychange",
+        flushLocalDraftCacheWhenHidden,
+      );
+    };
+  }, []);
+
+  useEffect(
+    () => () => {
+      persistRequirementDraftLocalCacheSnapshot(
+        localDraftCacheSnapshotRef.current,
+      );
+    },
+    [],
+  );
+
+  function clearLocalDraftCacheForCurrentRequirement() {
+    clearRequirementDraftLocalCache(localDraftCacheKey);
+    localDraftCacheSnapshotRef.current = {
+      canEdit: false,
+      form,
+      key: null,
+      requirement: null,
+    };
+    setDidRestoreLocalDraftCache(false);
+  }
 
   const requestEmptyDraftLeaveDecision = useCallback((href: string) => {
     setPendingNavigationHref(href);
@@ -331,6 +439,7 @@ export function RequirementDetailWorkspace({
         },
         formStateToSaveRequest(form),
       );
+      clearLocalDraftCacheForCurrentRequirement();
       setRequirement(nextRequirement);
       setForm(requirementToFormState(nextRequirement));
     } catch (error) {
@@ -354,6 +463,7 @@ export function RequirementDetailWorkspace({
         requirementId: requirement.id,
         spaceId: requirement.spaceId,
       });
+      clearLocalDraftCacheForCurrentRequirement();
       setRequirement(nextRequirement);
       setForm(requirementToFormState(nextRequirement));
     } catch (error) {
@@ -385,6 +495,7 @@ export function RequirementDetailWorkspace({
         requirementId: requirement.id,
         spaceId: requirement.spaceId,
       });
+      clearLocalDraftCacheForCurrentRequirement();
       router.push("/requirements");
     } catch (error) {
       setErrorKey(getApiErrorMessageKey(error));
@@ -418,6 +529,7 @@ export function RequirementDetailWorkspace({
         requirementId: requirement.id,
         spaceId: requirement.spaceId,
       });
+      clearLocalDraftCacheForCurrentRequirement();
       setDraftLeavePromptOpen(false);
       setPendingNavigationHref(null);
       router.push(target);
@@ -536,6 +648,16 @@ export function RequirementDetailWorkspace({
             role="alert"
           >
             {tRoot(errorKey)}
+          </div>
+        ) : null}
+
+        {didRestoreLocalDraftCache ? (
+          <div
+            className="rounded-md border border-info/30 bg-info/10 px-3 py-2 text-sm text-info"
+            data-testid="requirement-local-draft-cache-restored"
+            role="status"
+          >
+            {t("detail.localDraftCache.restored")}
           </div>
         ) : null}
 
@@ -1026,31 +1148,13 @@ function StatePanel({
 }
 
 function createEmptyRequirementForm(): RequirementFormState {
-  return {
-    content: createContentEditorValue({}),
-    ownerId: "",
-    priority: "",
-    summary: "",
-    title: "",
-    versionId: "",
-  };
+  return createEmptyRequirementDraftCacheForm();
 }
 
 function requirementToFormState(
   requirement: Requirement,
 ): RequirementFormState {
-  return {
-    content: createContentEditorValue({
-      contentJson: requirement.contentJson,
-      contentMarkdownCache: requirement.contentMarkdownCache,
-      contentText: requirement.contentText,
-    }),
-    ownerId: requirement.ownerId ?? "",
-    priority: requirement.priority ?? "",
-    summary: requirement.summary ?? "",
-    title: requirement.title,
-    versionId: requirement.versionId ?? "",
-  };
+  return createRequirementDraftCacheForm(requirement);
 }
 
 function formStateToSaveRequest(

@@ -26,6 +26,11 @@ import { formatDisplayCode } from "../../lib/display-code";
 import { useListKeyboardNav } from "../../lib/hooks/use-list-keyboard-nav";
 import { canWriteRequirements } from "../../lib/permission-gates";
 import {
+  createRequirementDraftLocalCacheKey,
+  isRequirementDraftCacheNewerThanRequirement,
+  readRequirementDraftLocalCache,
+} from "../../lib/requirement-draft-local-cache";
+import {
   createRequirementDraft,
   listRequirementAssignableMembers,
   listRequirementVersions,
@@ -47,6 +52,12 @@ import {
 } from "../v2/states";
 
 type FilterKey = "active" | "DRAFT" | "CONFIRMED" | "ARCHIVED" | "all";
+type RequirementListDisplayItem = {
+  requirement: Requirement;
+  summary: string | undefined;
+  title: string;
+  usesLocalDraftCache: boolean;
+};
 
 const statusVariant: Record<Requirement["status"], BadgeProps["variant"]> = {
   DRAFT: "default",
@@ -317,6 +328,17 @@ export function RequirementsPage() {
       new Map(members.map((member) => [member.userId, formatMember(member)])),
     [members],
   );
+  const displayItems = useMemo(
+    () =>
+      filtered.map((requirement) =>
+        createRequirementListDisplayItem({
+          requirement,
+          t,
+          userId: session?.user.id,
+        }),
+      ),
+    [filtered, session?.user.id, t],
+  );
 
   const buckets: { count: number; label: string; key: FilterKey }[] = [
     {
@@ -347,13 +369,16 @@ export function RequirementsPage() {
   ];
 
   const rememberRequirement = useCallback(
-    (item: Requirement) => {
+    (item: Requirement, titleOverride?: string) => {
       recordRecentOpen(
         {
           id: item.id,
           type: "REQUIREMENT",
           code: formatRequirementCode(item.id),
-          title: item.title || t("list.untitled"),
+          title:
+            titleOverride ??
+            normalizeDisplayText(item.title) ??
+            getRequirementFallbackTitle(item, t),
           href: `/requirements/${item.id}`,
         },
         recentScope,
@@ -363,9 +388,9 @@ export function RequirementsPage() {
   );
 
   const openRequirement = useCallback(
-    (item: Requirement) => {
-      rememberRequirement(item);
-      router.push(`/requirements/${item.id}`);
+    (item: RequirementListDisplayItem) => {
+      rememberRequirement(item.requirement, item.title);
+      router.push(`/requirements/${item.requirement.id}`);
     },
     [rememberRequirement, router],
   );
@@ -387,17 +412,17 @@ export function RequirementsPage() {
   }, []);
 
   const selectRequirement = useCallback(
-    (item: Requirement) => {
-      setActiveId(item.id);
-      focusRequirementOption(item.id);
+    (item: RequirementListDisplayItem) => {
+      setActiveId(item.requirement.id);
+      focusRequirementOption(item.requirement.id);
     },
     [focusRequirementOption],
   );
 
-  useListKeyboardNav<Requirement>({
-    items: filtered,
+  useListKeyboardNav<RequirementListDisplayItem>({
+    items: displayItems,
     activeId,
-    getId: (item) => item.id,
+    getId: (item) => item.requirement.id,
     onSelect: selectRequirement,
     onOpen: openRequirement,
     onEdit: openRequirement,
@@ -594,84 +619,96 @@ export function RequirementsPage() {
           role="listbox"
           aria-label={t("list.title")}
         >
-          {filtered.map((req) => (
-            <li
-              key={req.id}
-              data-testid={`requirements-row-${req.id}`}
-              role="none"
-            >
-              <Link
-                href={`/requirements/${req.id}`}
-                onClick={() => rememberRequirement(req)}
-                onFocus={() => setActiveId(req.id)}
-                role="option"
-                aria-selected={activeId === req.id}
-                tabIndex={!activeId || activeId === req.id ? 0 : -1}
-                data-requirement-option-id={req.id}
-                className={cn(
-                  "flex w-full cursor-pointer items-start gap-3 px-6 py-3 text-left transition-colors hover:bg-muted/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset",
-                  activeId === req.id && "bg-muted/40",
-                )}
+          {displayItems.map((item) => {
+            const req = item.requirement;
+
+            return (
+              <li
+                key={req.id}
+                data-testid={`requirements-row-${req.id}`}
+                role="none"
               >
-                {req.status === "ARCHIVED" ? (
-                  <Archive className="mt-0.5 h-3.5 w-3.5 shrink-0 text-muted-foreground" />
-                ) : (
-                  <FileText className="mt-0.5 h-3.5 w-3.5 shrink-0 text-primary/80" />
-                )}
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-2">
-                    <span className="font-mono text-[11px] text-muted-foreground">
-                      {formatRequirementCode(req.id)}
-                    </span>
-                    <span className="truncate text-[13px] font-medium">
-                      {req.title || t("list.untitled")}
-                    </span>
-                  </div>
-                  {req.summary && (
-                    <p className="mt-0.5 line-clamp-1 text-[12px] text-muted-foreground">
-                      {req.summary}
-                    </p>
+                <Link
+                  href={`/requirements/${req.id}`}
+                  onClick={() => rememberRequirement(req, item.title)}
+                  onFocus={() => setActiveId(req.id)}
+                  role="option"
+                  aria-selected={activeId === req.id}
+                  tabIndex={!activeId || activeId === req.id ? 0 : -1}
+                  data-requirement-option-id={req.id}
+                  className={cn(
+                    "flex w-full cursor-pointer items-start gap-3 px-6 py-3 text-left transition-colors hover:bg-muted/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset",
+                    activeId === req.id && "bg-muted/40",
                   )}
-                </div>
-                <Badge variant={statusVariant[req.status]}>
-                  {t(`status.${req.status}`)}
-                </Badge>
-                {req.versionId && (
-                  <Badge
-                    variant="outline"
-                    className="hidden gap-1 md:inline-flex"
-                  >
-                    <GitBranch className="h-2.5 w-2.5" />
-                    {formatVersionLabel(req.versionId, versionNameById)}
+                >
+                  {req.status === "ARCHIVED" ? (
+                    <Archive className="mt-0.5 h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+                  ) : (
+                    <FileText className="mt-0.5 h-3.5 w-3.5 shrink-0 text-primary/80" />
+                  )}
+                  <div className="min-w-0 flex-1">
+                    <div className="flex min-w-0 items-center gap-2">
+                      <span className="shrink-0 font-mono text-[11px] text-muted-foreground">
+                        {formatRequirementCode(req.id)}
+                      </span>
+                      <span className="truncate text-[13px] font-medium">
+                        {item.title}
+                      </span>
+                      {item.usesLocalDraftCache ? (
+                        <Badge
+                          variant="info"
+                          className="shrink-0 px-1 py-0 text-[10px] font-normal tracking-normal"
+                        >
+                          {t("list.localDraftCache")}
+                        </Badge>
+                      ) : null}
+                    </div>
+                    {item.summary ? (
+                      <p className="mt-0.5 line-clamp-1 text-[12px] text-muted-foreground">
+                        {item.summary}
+                      </p>
+                    ) : null}
+                  </div>
+                  <Badge variant={statusVariant[req.status]}>
+                    {t(`status.${req.status}`)}
                   </Badge>
-                )}
-                {req.relatedWorkItems.taskCount +
-                  req.relatedWorkItems.bugCount >
-                  0 && (
-                  <span className="hidden items-center gap-1 text-[11px] text-muted-foreground md:flex">
-                    <Link2 className="h-2.5 w-2.5" />
-                    {req.relatedWorkItems.taskCount +
-                      req.relatedWorkItems.bugCount}
-                  </span>
-                )}
-                {req.ownerId && (
-                  <span className="hidden items-center gap-1 text-[11px] text-muted-foreground md:flex">
-                    <User2 className="h-2.5 w-2.5" />
-                    {formatOwnerLabel(req.ownerId, memberNameByUserId)}
-                  </span>
-                )}
-                <Avatar className="h-5 w-5 shrink-0">
-                  <AvatarFallback className="text-[9px]">
-                    {req.ownerId
-                      ? initialOf(
-                          formatOwnerLabel(req.ownerId, memberNameByUserId),
-                        )
-                      : "·"}
-                  </AvatarFallback>
-                </Avatar>
-              </Link>
-            </li>
-          ))}
+                  {req.versionId ? (
+                    <Badge
+                      variant="outline"
+                      className="hidden gap-1 md:inline-flex"
+                    >
+                      <GitBranch className="h-2.5 w-2.5" />
+                      {formatVersionLabel(req.versionId, versionNameById)}
+                    </Badge>
+                  ) : null}
+                  {req.relatedWorkItems.taskCount +
+                    req.relatedWorkItems.bugCount >
+                  0 ? (
+                    <span className="hidden items-center gap-1 text-[11px] text-muted-foreground md:flex">
+                      <Link2 className="h-2.5 w-2.5" />
+                      {req.relatedWorkItems.taskCount +
+                        req.relatedWorkItems.bugCount}
+                    </span>
+                  ) : null}
+                  {req.ownerId ? (
+                    <span className="hidden items-center gap-1 text-[11px] text-muted-foreground md:flex">
+                      <User2 className="h-2.5 w-2.5" />
+                      {formatOwnerLabel(req.ownerId, memberNameByUserId)}
+                    </span>
+                  ) : null}
+                  <Avatar className="h-5 w-5 shrink-0">
+                    <AvatarFallback className="text-[9px]">
+                      {req.ownerId
+                        ? initialOf(
+                            formatOwnerLabel(req.ownerId, memberNameByUserId),
+                          )
+                        : "·"}
+                    </AvatarFallback>
+                  </Avatar>
+                </Link>
+              </li>
+            );
+          })}
         </ul>
         {paginationFooter}
       </>
@@ -774,6 +811,75 @@ export function RequirementsPage() {
 
 function formatRequirementCode(id: string): string {
   return formatDisplayCode("REQ", id);
+}
+
+function createRequirementListDisplayItem({
+  requirement,
+  t,
+  userId,
+}: {
+  requirement: Requirement;
+  t: ReturnType<typeof useTranslations>;
+  userId: string | undefined;
+}): RequirementListDisplayItem {
+  const fallbackTitle = getRequirementFallbackTitle(requirement, t);
+
+  if (!userId || requirement.status !== "DRAFT") {
+    return {
+      requirement,
+      summary: normalizeDisplayText(requirement.summary),
+      title: normalizeDisplayText(requirement.title) ?? fallbackTitle,
+      usesLocalDraftCache: false,
+    };
+  }
+
+  const cached = readRequirementDraftLocalCache(
+    createRequirementDraftLocalCacheKey({
+      organizationId: requirement.organizationId,
+      requirementId: requirement.id,
+      spaceId: requirement.spaceId,
+      userId,
+    }),
+  );
+
+  if (
+    !cached ||
+    !isRequirementDraftCacheNewerThanRequirement(cached, requirement)
+  ) {
+    return {
+      requirement,
+      summary: normalizeDisplayText(requirement.summary),
+      title: normalizeDisplayText(requirement.title) ?? fallbackTitle,
+      usesLocalDraftCache: false,
+    };
+  }
+
+  return {
+    requirement,
+    summary:
+      normalizeDisplayText(cached.form.summary) ??
+      normalizeDisplayText(requirement.summary),
+    title:
+      normalizeDisplayText(cached.form.title) ??
+      normalizeDisplayText(requirement.title) ??
+      fallbackTitle,
+    usesLocalDraftCache: true,
+  };
+}
+
+function getRequirementFallbackTitle(
+  requirement: Requirement,
+  t: ReturnType<typeof useTranslations>,
+): string {
+  return requirement.status === "DRAFT"
+    ? t("list.untitledDraft")
+    : t("list.untitled");
+}
+
+function normalizeDisplayText(value: string | undefined): string | undefined {
+  const trimmed = value?.trim();
+
+  return trimmed ? trimmed : undefined;
 }
 
 function toRequirementListQuery(filter: FilterKey): {

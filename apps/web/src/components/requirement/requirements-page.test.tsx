@@ -72,6 +72,25 @@ const sessionMock = vi.hoisted(() => ({
     session: {
       defaultOrganizationId: "ORG_01",
       defaultSpaceId: "SPC_01",
+      user: {
+        id: "USER_01",
+        name: "Requirement User",
+        preferences: {
+          locale: "zh-CN",
+          themeMode: "SYSTEM",
+        },
+        status: "ACTIVE",
+        username: "requirement",
+      },
+      spaces: [
+        {
+          id: "SPC_01",
+          organizationId: "ORG_01",
+          name: "Space",
+          role: "PM",
+          status: "ACTIVE",
+        },
+      ],
     },
     currentSpace: {
       id: "SPC_01",
@@ -106,6 +125,10 @@ vi.mock("../../lib/requirement-service", () => ({
 }));
 
 import { RequirementsPage } from "./requirements-page";
+import {
+  LOCAL_DRAFT_CACHE_VERSION,
+  createRequirementDraftLocalCacheKey,
+} from "../../lib/requirement-draft-local-cache";
 import { createRecentStorageKey } from "../shell/recent-opens";
 
 function makeRequirement(overrides: Record<string, unknown> = {}) {
@@ -119,6 +142,7 @@ function makeRequirement(overrides: Record<string, unknown> = {}) {
     versionId: "01ARZ3NDEKTSV4RRFFQ69G5FD1",
     ownerId: "01ARZ3NDEKTSV4RRFFQ69G5FU1",
     relatedWorkItems: { taskCount: 2, bugCount: 1 },
+    updatedAt: "2026-05-12T00:00:00.000Z",
     ...overrides,
   } as unknown as import("@project-delivery/shared").Requirement;
 }
@@ -142,6 +166,25 @@ beforeEach(() => {
     session: {
       defaultOrganizationId: "ORG_01",
       defaultSpaceId: "SPC_01",
+      user: {
+        id: "USER_01",
+        name: "Requirement User",
+        preferences: {
+          locale: "zh-CN",
+          themeMode: "SYSTEM",
+        },
+        status: "ACTIVE",
+        username: "requirement",
+      },
+      spaces: [
+        {
+          id: "SPC_01",
+          organizationId: "ORG_01",
+          name: "Space",
+          role: "PM",
+          status: "ACTIVE",
+        },
+      ],
     },
     currentSpace: {
       id: "SPC_01",
@@ -486,6 +529,108 @@ describe("RequirementsPage", () => {
     expect(await screen.findByText("My draft")).toBeInTheDocument();
   });
 
+  it("renders blank draft rows with the draft-specific untitled label", async () => {
+    listRequirementsMock.mockResolvedValueOnce({ items: [], total: 0 });
+    listRequirementsMock.mockResolvedValueOnce({
+      items: [
+        makeRequirement({
+          id: "01ARZ3NDEKTSV4RRFFQ69G5FD0",
+          status: "DRAFT",
+          summary: undefined,
+          title: "",
+        }),
+      ],
+      total: 1,
+    });
+
+    render(<RequirementsPage />);
+
+    await waitFor(() => expect(listRequirementsMock).toHaveBeenCalledTimes(1));
+
+    fireEvent.click(
+      screen.getByRole("button", { name: "requirements.actions.myDrafts" }),
+    );
+
+    expect(
+      await screen.findByText("requirements.list.untitledDraft"),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByText("requirements.list.untitled"),
+    ).not.toBeInTheDocument();
+  });
+
+  it("uses the browser draft cache title and summary in the draft list", async () => {
+    const draftId = "01ARZ3NDEKTSV4RRFFQ69G5FDC";
+    window.localStorage.setItem(
+      createRequirementDraftLocalCacheKey({
+        organizationId: "ORG_01",
+        requirementId: draftId,
+        spaceId: "SPC_01",
+        userId: "USER_01",
+      }),
+      JSON.stringify({
+        cachedAt: "2026-05-12T00:01:00.000Z",
+        form: {
+          content: {
+            contentJson: { type: "doc", content: [] },
+            contentMarkdownCache: "",
+            contentText: "",
+          },
+          ownerId: "",
+          priority: "",
+          summary: "本机未保存摘要",
+          title: "本机未保存标题",
+          versionId: "",
+        },
+        requirementUpdatedAt: "2026-05-12T00:00:00.000Z",
+        version: LOCAL_DRAFT_CACHE_VERSION,
+      }),
+    );
+    listRequirementsMock.mockResolvedValueOnce({ items: [], total: 0 });
+    listRequirementsMock.mockResolvedValueOnce({
+      items: [
+        makeRequirement({
+          id: draftId,
+          status: "DRAFT",
+          summary: undefined,
+          title: "",
+          updatedAt: "2026-05-12T00:00:00.000Z",
+        }),
+      ],
+      total: 1,
+    });
+
+    render(<RequirementsPage />);
+
+    await waitFor(() => expect(listRequirementsMock).toHaveBeenCalledTimes(1));
+
+    fireEvent.click(
+      screen.getByRole("button", { name: "requirements.actions.myDrafts" }),
+    );
+
+    expect(await screen.findByText("本机未保存标题")).toBeInTheDocument();
+    expect(screen.getByText("本机未保存摘要")).toBeInTheDocument();
+    expect(
+      screen.getByText("requirements.list.localDraftCache"),
+    ).toBeInTheDocument();
+
+    fireEvent.click(screen.getByText("本机未保存标题"));
+
+    const stored = JSON.parse(
+      window.localStorage.getItem(
+        createRecentStorageKey({
+          organizationId: "ORG_01",
+          spaceId: "SPC_01",
+        }),
+      ) ?? "[]",
+    ) as Array<{ href: string; title: string; type: string }>;
+    expect(stored[0]).toMatchObject({
+      href: `/requirements/${draftId}`,
+      title: "本机未保存标题",
+      type: "REQUIREMENT",
+    });
+  });
+
   it("includes drafts when the user selects the all bucket", async () => {
     listRequirementsMock.mockResolvedValueOnce({
       items: [
@@ -665,6 +810,25 @@ describe("RequirementsPage", () => {
       session: {
         defaultOrganizationId: "ORG_02",
         defaultSpaceId: "SPC_02",
+        user: {
+          id: "USER_01",
+          name: "Requirement User",
+          preferences: {
+            locale: "zh-CN",
+            themeMode: "SYSTEM",
+          },
+          status: "ACTIVE",
+          username: "requirement",
+        },
+        spaces: [
+          {
+            id: "SPC_02",
+            organizationId: "ORG_02",
+            name: "Next Space",
+            role: "PM",
+            status: "ACTIVE",
+          },
+        ],
       },
       currentSpace: {
         id: "SPC_02",
@@ -788,6 +952,17 @@ describe("RequirementsPage", () => {
       session: {
         defaultOrganizationId: "ORG_01",
         defaultSpaceId: undefined as unknown as string,
+        user: {
+          id: "USER_01",
+          name: "Requirement User",
+          preferences: {
+            locale: "zh-CN",
+            themeMode: "SYSTEM",
+          },
+          status: "ACTIVE",
+          username: "requirement",
+        },
+        spaces: [],
       },
       currentSpace:
         undefined as unknown as typeof sessionMock.current.currentSpace,
