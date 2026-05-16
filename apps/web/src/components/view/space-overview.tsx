@@ -303,7 +303,10 @@ export function SpaceOverview() {
   };
 
   return (
-    <div data-testid="space-overview-page" className="flex h-full flex-col bg-background">
+    <div
+      data-testid="space-overview-page"
+      className="flex h-full flex-col bg-background"
+    >
       <PageHeader
         eyebrow={headerEyebrow}
         title={tNav("overview")}
@@ -334,7 +337,7 @@ export function SpaceOverview() {
         }
       />
 
-      <div className="flex-1 overflow-y-auto px-8 py-12">
+      <div className="flex-1 overflow-y-auto px-6 py-8 lg:px-8">
         {isLoading && !view ? (
           <LoadingState label={t("states.loading.title")} />
         ) : errorKey ? (
@@ -344,22 +347,27 @@ export function SpaceOverview() {
             onRetry={() => void fetchView()}
           />
         ) : (
-          <div className="mx-auto flex max-w-6xl flex-col gap-16">
-            
+          <div className="mx-auto flex max-w-6xl flex-col gap-10">
             {/* Meta Row */}
             {(staleThresholdDays !== undefined || selectedVersion) && (
               <div
                 data-testid="space-overview-meta"
-                className="flex flex-wrap items-center gap-4 text-xs font-medium text-muted-foreground"
+                className="flex flex-wrap items-center gap-3 text-xs font-medium text-muted-foreground"
               >
                 {staleThresholdDays !== undefined && (
-                  <span data-testid="space-overview-stale" className="flex items-center gap-1.5">
+                  <span
+                    data-testid="space-overview-stale"
+                    className="flex items-center gap-1.5"
+                  >
                     <Clock className="h-3.5 w-3.5" />
                     {t("header.staleThreshold", { days: staleThresholdDays })}
                   </span>
                 )}
                 {selectedVersion && (
-                  <span data-testid="space-overview-filtered-by" className="flex items-center gap-1.5">
+                  <span
+                    data-testid="space-overview-filtered-by"
+                    className="flex items-center gap-1.5"
+                  >
                     <GitBranch className="h-3.5 w-3.5" />
                     {t("header.filteredBy", { version: selectedVersion.name })}
                   </span>
@@ -370,7 +378,7 @@ export function SpaceOverview() {
             {/* KPI Data Row (Borderless) */}
             <div
               data-testid="space-overview-kpi-grid"
-              className="grid grid-cols-2 gap-8 lg:grid-cols-4 lg:gap-12"
+              className="grid grid-cols-2 gap-5 lg:grid-cols-4 lg:gap-8"
             >
               <KPIMetric
                 href={buildLink("/work-items", { workItemType: "TASK" })}
@@ -378,7 +386,14 @@ export function SpaceOverview() {
                 icon={<ClipboardList className="h-4 w-4" />}
                 iconClassName="bg-primary/10 text-primary"
                 title={t("summary.taskProgress")}
-                value={<>{taskDone}<span className="text-muted-foreground font-light text-2xl">/{taskTotal}</span></>}
+                value={
+                  <>
+                    {taskDone}
+                    <span className="text-xl font-light text-muted-foreground">
+                      /{taskTotal}
+                    </span>
+                  </>
+                }
                 description={t("summary.taskProgressWithPct", { pct: taskPct })}
               />
               <KPIMetric
@@ -387,8 +402,17 @@ export function SpaceOverview() {
                 icon={<Bug className="h-4 w-4" />}
                 iconClassName="bg-destructive/10 text-destructive"
                 title={t("summary.bugStatus")}
-                value={<>{bugTotal - bugOpen}<span className="text-muted-foreground font-light text-2xl">/{bugTotal}</span></>}
-                description={t("summary.bugClosedWithPct", { pct: bugClosePct })}
+                value={
+                  <>
+                    {bugTotal - bugOpen}
+                    <span className="text-xl font-light text-muted-foreground">
+                      /{bugTotal}
+                    </span>
+                  </>
+                }
+                description={t("summary.bugClosedWithPct", {
+                  pct: bugClosePct,
+                })}
               />
               <KPIMetric
                 href={buildLink("/requirements")}
@@ -411,23 +435,23 @@ export function SpaceOverview() {
             <div className="h-px w-full bg-border/40" />
 
             {/* Main Split Layout */}
-            <div className="grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-16">
-              
+            <div className="grid grid-cols-1 gap-10 lg:grid-cols-[1fr_320px] lg:gap-12">
               {/* Left Column: Progress & Status */}
-              <div className="flex flex-col gap-16">
-                
+              <div className="flex flex-col gap-10">
                 {/* Current Version */}
                 <section
                   data-testid="space-overview-current-version"
-                  className="flex flex-col gap-5"
+                  className="flex flex-col gap-4"
                 >
                   <div className="flex items-center gap-2">
-                    <h3 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">{t("currentVersion.title")}</h3>
+                    <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                      {t("currentVersion.title")}
+                    </h3>
                   </div>
-                  <div className="flex flex-col md:flex-row md:items-end justify-between gap-8 border-l-2 border-primary/50 pl-5">
-                    <div className="flex-1 min-w-0">
+                  <div className="flex flex-col justify-between gap-5 border-l-2 border-primary/50 pl-4 md:flex-row md:items-end">
+                    <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-3">
-                        <h2 className="truncate text-3xl font-light tracking-tight text-foreground">
+                        <h2 className="truncate text-2xl font-light tracking-tight text-foreground">
                           {versionName}
                         </h2>
                         {currentVersion?.status && (
@@ -442,13 +466,16 @@ export function SpaceOverview() {
                           />
                         )}
                       </div>
-                      <p className="mt-3 text-sm text-muted-foreground leading-relaxed max-w-xl">
+                      <p className="mt-2 max-w-xl text-sm leading-6 text-muted-foreground">
                         {versionGoal}
                       </p>
-                      <div className="mt-4 flex items-center gap-4 text-xs font-medium">
+                      <div className="mt-3 flex flex-wrap items-center gap-3 text-xs font-medium">
                         <div className="flex items-center gap-1.5 text-muted-foreground">
                           <CalendarClock className="h-4 w-4" />
-                          {t("currentVersion.targetDate")}: <span className="text-foreground">{versionDueDate}</span>
+                          {t("currentVersion.targetDate")}:{" "}
+                          <span className="text-foreground">
+                            {versionDueDate}
+                          </span>
                         </div>
                         <Link
                           href={buildLink(
@@ -465,11 +492,15 @@ export function SpaceOverview() {
                         </Link>
                       </div>
                     </div>
-                    
-                    <div className="w-full md:w-64 shrink-0 flex flex-col gap-2">
+
+                    <div className="flex w-full shrink-0 flex-col gap-2 md:w-56">
                       <div className="flex items-center justify-between text-xs font-medium">
-                        <span className="text-muted-foreground">{t("summary.versionProgress")}</span>
-                        <span className="text-foreground">{Math.round(versionProgress * 100)}%</span>
+                        <span className="text-muted-foreground">
+                          {t("summary.versionProgress")}
+                        </span>
+                        <span className="text-foreground">
+                          {Math.round(versionProgress * 100)}%
+                        </span>
                       </div>
                       <div className="h-1.5 overflow-hidden rounded-full bg-muted">
                         <div
@@ -482,11 +513,13 @@ export function SpaceOverview() {
                 </section>
 
                 {/* Status Distributions */}
-                <section className="flex flex-col gap-5">
+                <section className="flex flex-col gap-4">
                   <div className="flex items-center gap-2">
-                    <h3 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">{t("statusCounts.description")}</h3>
+                    <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                      {t("statusCounts.description")}
+                    </h3>
                   </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-12">
+                  <div className="grid grid-cols-1 gap-8 sm:grid-cols-2">
                     <StatusDistributionList
                       testIdPrefix="space-overview-task-status"
                       title={t("summary.taskProgress")}
@@ -521,12 +554,11 @@ export function SpaceOverview() {
               </div>
 
               {/* Right Column: Exceptions & Timeline */}
-              <div className="flex flex-col gap-16 border-t lg:border-t-0 lg:border-l border-border/40 pt-10 lg:pt-0 lg:pl-10">
-                
+              <div className="flex flex-col gap-10 border-t border-border/40 pt-8 lg:border-l lg:border-t-0 lg:pt-0 lg:pl-8">
                 {/* Exceptions */}
-                <section className="flex flex-col gap-5">
+                <section className="flex flex-col gap-4">
                   <div className="flex items-center justify-between">
-                    <h3 className="flex items-center gap-2 text-sm font-semibold uppercase tracking-wider text-muted-foreground">
+                    <h3 className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                       <AlertTriangle className="h-4 w-4 text-warning" />
                       {t("exceptions.title")}
                     </h3>
@@ -543,7 +575,7 @@ export function SpaceOverview() {
                         {t("exceptions.empty")}
                       </div>
                     ) : (
-                      <ul className="flex flex-col gap-3">
+                      <ul className="flex flex-col gap-2.5">
                         {EXCEPTION_ORDER.map((type) => {
                           const item = exceptionCounts.find(
                             (c) => c.exceptionType === type,
@@ -578,9 +610,9 @@ export function SpaceOverview() {
                 </section>
 
                 {/* Timeline */}
-                <section className="flex flex-col gap-5">
+                <section className="flex flex-col gap-4">
                   <div className="flex items-center justify-between">
-                    <h3 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">
+                    <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                       {t("timeline.title")}
                     </h3>
                   </div>
@@ -590,11 +622,11 @@ export function SpaceOverview() {
                         {t("timeline.empty")}
                       </div>
                     ) : (
-                      <ul className="relative flex flex-col gap-6 before:absolute before:inset-y-0 before:left-3 before:w-px before:bg-border/50">
+                      <ul className="relative flex flex-col gap-4 before:absolute before:inset-y-0 before:left-3 before:w-px before:bg-border/50">
                         {recentEvents.map((event) => {
                           const href = buildTimelineHref(event);
                           const inner = (
-                            <div className="flex gap-4">
+                            <div className="flex gap-3">
                               <Tip content={event.actor.name}>
                                 <Avatar className="h-6 w-6 border-4 border-background z-10 shrink-0 bg-muted">
                                   <AvatarFallback className="text-[9px] bg-transparent text-muted-foreground">
@@ -638,17 +670,12 @@ export function SpaceOverview() {
                               </li>
                             );
                           }
-                          return (
-                            <li key={event.id}>
-                              {inner}
-                            </li>
-                          );
+                          return <li key={event.id}>{inner}</li>;
                         })}
                       </ul>
                     )}
                   </div>
                 </section>
-                
               </div>
             </div>
           </div>
@@ -679,21 +706,21 @@ function KPIMetric({
     <Link
       href={href}
       data-testid={testId}
-      className="group -m-1 flex flex-col gap-2 rounded-xl p-1 transition-colors hover:bg-muted/30"
+      className="group -m-1 flex flex-col gap-1.5 rounded-xl p-1 transition-colors hover:bg-muted/30"
     >
-      <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
+      <div className="flex items-center gap-2 text-[13px] font-medium text-muted-foreground">
         <span
-          className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg transition-colors ${iconClassName}`}
+          className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-md transition-colors ${iconClassName}`}
         >
           {icon}
         </span>
         <span>{title}</span>
       </div>
-      <div className="text-4xl font-light tracking-tight text-foreground mt-1">
+      <div className="mt-0.5 text-3xl font-light tracking-tight text-foreground">
         {value}
       </div>
       {description && (
-        <div className="text-[12px] font-medium text-muted-foreground/70 mt-1">
+        <div className="mt-0.5 text-[11px] font-medium text-muted-foreground/70">
           {description}
         </div>
       )}
@@ -720,11 +747,11 @@ function StatusDistributionList({
 }) {
   return (
     <div className="flex flex-col">
-      <h4 className="text-[13px] font-medium text-foreground mb-3">{title}</h4>
+      <h4 className="mb-2 text-[13px] font-medium text-foreground">{title}</h4>
       {total === 0 ? (
         <div className="text-xs text-muted-foreground">{emptyLabel}</div>
       ) : (
-        <div className="flex flex-col gap-4">
+        <div className="flex flex-col gap-3">
           <div className="flex h-1.5 overflow-hidden rounded-full bg-muted">
             {STATUS_ORDER.map((category) => {
               const item = counts.find((c) => c.statusCategory === category);
@@ -741,7 +768,7 @@ function StatusDistributionList({
               );
             })}
           </div>
-          <ul className="flex flex-col gap-2">
+          <ul className="flex flex-col gap-1.5">
             {STATUS_ORDER.map((category) => {
               const item = counts.find((c) => c.statusCategory === category);
               const count = item?.count ?? 0;
@@ -757,11 +784,17 @@ function StatusDistributionList({
                       <span
                         className={`h-2 w-2 rounded-full ${statusBarClass[category]}`}
                       />
-                      <span className="text-sm font-medium text-foreground/80 group-hover:text-foreground">{categoryLabel(category)}</span>
+                      <span className="text-[13px] font-medium text-foreground/80 group-hover:text-foreground">
+                        {categoryLabel(category)}
+                      </span>
                     </div>
                     <div className="flex items-center gap-3">
-                      <span className="font-mono text-xs text-muted-foreground">{pct}%</span>
-                      <span className="font-mono text-sm font-semibold w-6 text-right text-foreground/90">{count}</span>
+                      <span className="font-mono text-xs text-muted-foreground">
+                        {pct}%
+                      </span>
+                      <span className="font-mono text-sm font-semibold w-6 text-right text-foreground/90">
+                        {count}
+                      </span>
                     </div>
                   </Link>
                 </li>
@@ -803,8 +836,13 @@ function VersionFilter({
           <ChevronDown className="h-3 w-3 opacity-50" />
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="min-w-[200px] rounded-xl shadow-md border-border/80">
-        <DropdownMenuLabel className="text-[11px] uppercase tracking-wider text-muted-foreground">{t("filters.version")}</DropdownMenuLabel>
+      <DropdownMenuContent
+        align="end"
+        className="min-w-[200px] rounded-xl shadow-md border-border/80"
+      >
+        <DropdownMenuLabel className="text-[11px] uppercase tracking-wider text-muted-foreground">
+          {t("filters.version")}
+        </DropdownMenuLabel>
         <DropdownMenuSeparator className="bg-border/60" />
         <DropdownMenuItem
           data-testid="space-overview-version-filter-all"
