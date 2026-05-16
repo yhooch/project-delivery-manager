@@ -1101,12 +1101,24 @@ describe("TaskDetailSheet", () => {
     );
   });
 
-  it("infers task edit version from a selected intake item", async () => {
+  it("infers task edit version and requirement from a selected intake item", async () => {
     const versionId = "01ARZ3NDEKTSV4RRFFQ69G5FV1";
+    const requirementId = "01ARZ3NDEKTSV4RRFFQ69G5FRQ";
     const intakeItemId = "01ARZ3NDEKTSV4RRFFQ69G5FJ1";
     versionMap.set(versionId, { name: "Release 1" });
+    listRequirementsMock.mockResolvedValueOnce({
+      items: [{ id: requirementId, title: "Requirement from intake", versionId }],
+      total: 1,
+    });
     listIntakeItemsMock.mockResolvedValueOnce({
-      items: [{ id: intakeItemId, title: "Versioned intake", versionId }],
+      items: [
+        {
+          id: intakeItemId,
+          title: "Versioned intake",
+          requirementId,
+          versionId,
+        },
+      ],
       total: 1,
     });
     getWorkItemMock.mockResolvedValueOnce(
@@ -1133,10 +1145,14 @@ describe("TaskDetailSheet", () => {
     const intakeSelect = screen.getByTestId(
       "task-edit-intake-select",
     ) as HTMLSelectElement;
+    const requirementSelect = screen.getByTestId(
+      "task-edit-requirement-select",
+    ) as HTMLSelectElement;
 
     fireEvent.change(intakeSelect, { target: { value: intakeItemId } });
 
     await waitFor(() => expect(versionSelect.value).toBe(versionId));
+    expect(requirementSelect.value).toBe(requirementId);
     expect(intakeSelect.value).toBe(intakeItemId);
   });
 

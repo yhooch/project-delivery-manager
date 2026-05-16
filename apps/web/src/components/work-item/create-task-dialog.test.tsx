@@ -308,4 +308,47 @@ describe("CreateTaskDialog", () => {
     expect(intakeSelect.value).toBe(intakeItemId);
     expect(requirementSelect.value).toBe(unversionedRequirementId);
   });
+
+  it("infers the version and requirement from a selected intake item", async () => {
+    listVersionsMock.mockResolvedValue({
+      items: [{ id: versionId, name: "Version 1" }],
+      total: 1,
+    });
+    listRequirementsMock.mockResolvedValue({
+      items: [{ id: requirementId, title: "Requirement v1", versionId }],
+      total: 1,
+    });
+    listIntakeItemsMock.mockResolvedValue({
+      items: [
+        { id: intakeItemId, title: "Intake v1", requirementId, versionId },
+      ],
+      total: 1,
+    });
+
+    render(
+      <CreateTaskDialog
+        open
+        onOpenChange={() => {}}
+        organizationId={organizationId}
+        spaceId={spaceId}
+      />,
+    );
+
+    await screen.findByText("Intake v1");
+    const versionSelect = screen.getByLabelText(
+      "tasks.dialog.fields.version",
+    ) as HTMLSelectElement;
+    const requirementSelect = screen.getByTestId(
+      "create-task-requirement-select",
+    ) as HTMLSelectElement;
+    const intakeSelect = screen.getByTestId(
+      "create-task-intake-select",
+    ) as HTMLSelectElement;
+
+    fireEvent.change(intakeSelect, { target: { value: intakeItemId } });
+
+    await waitFor(() => expect(versionSelect.value).toBe(versionId));
+    expect(requirementSelect.value).toBe(requirementId);
+    expect(intakeSelect.value).toBe(intakeItemId);
+  });
 });

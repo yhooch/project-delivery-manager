@@ -292,10 +292,18 @@ export function EditBugDialog({
     setRelatedTaskId(nextRelatedTaskId);
 
     const nextRelatedTask = tasks.find((task) => task.id === nextRelatedTaskId);
-    const nextVersionId = nextRelatedTask?.versionId;
+    const nextRequirement = requirements.find(
+      (requirement) => requirement.id === nextRelatedTask?.requirementId,
+    );
+    const nextVersionId =
+      nextRelatedTask?.versionId ?? nextRequirement?.versionId;
 
     if (nextVersionId) {
       setVersionId(nextVersionId);
+    }
+    if (nextRelatedTask?.requirementId) {
+      setRequirementId(nextRelatedTask.requirementId);
+    } else if (nextVersionId) {
       if (
         !isTraceOptionCompatibleWithVersion(
           selectedRequirement,

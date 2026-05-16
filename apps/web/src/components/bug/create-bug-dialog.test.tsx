@@ -272,7 +272,7 @@ describe("CreateBugDialog", () => {
     ).not.toBeInTheDocument();
   });
 
-  it("infers the version from a selected related task", async () => {
+  it("infers the version and requirement from a selected related task", async () => {
     listVersionsMock.mockResolvedValueOnce({
       items: [
         { id: versionId, name: "v1" },
@@ -294,7 +294,12 @@ describe("CreateBugDialog", () => {
     listWorkItemsMock.mockResolvedValueOnce({
       items: [
         { id: relatedTaskId, title: "Task v1", versionId },
-        { id: nextRelatedTaskId, title: "Task v2", versionId: nextVersionId },
+        {
+          id: nextRelatedTaskId,
+          title: "Task v2",
+          requirementId: nextRequirementId,
+          versionId: nextVersionId,
+        },
       ],
       total: 2,
     });
@@ -322,6 +327,7 @@ describe("CreateBugDialog", () => {
     });
 
     await waitFor(() => expect(versionSelect.value).toBe(nextVersionId));
+    expect(requirementSelect.value).toBe(nextRequirementId);
     expect(
       within(requirementSelect).queryByRole("option", {
         name: "Requirement v1",

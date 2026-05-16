@@ -1711,10 +1711,18 @@ function DetailTab({
     const nextIntakeItem = intakeItems.find(
       (intakeItem) => intakeItem.id === nextIntakeItemId,
     );
-    const nextVersionId = nextIntakeItem?.versionId;
+    const nextRequirement = requirements.find(
+      (requirement) => requirement.id === nextIntakeItem?.requirementId,
+    );
+    const nextVersionId =
+      nextIntakeItem?.versionId ?? nextRequirement?.versionId;
 
     if (nextVersionId) {
       setEditVersionId(nextVersionId);
+    }
+    if (nextIntakeItem?.requirementId) {
+      setEditRequirementId(nextIntakeItem.requirementId);
+    } else if (nextVersionId) {
       if (
         !isTraceOptionCompatibleWithVersion(selectedRequirement, nextVersionId)
       ) {

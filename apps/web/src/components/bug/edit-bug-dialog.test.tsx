@@ -385,12 +385,28 @@ describe("EditBugDialog", () => {
     ).toBeInTheDocument();
   });
 
-  it("infers a missing version from the selected related task", async () => {
+  it("infers a missing version and requirement from the selected related task", async () => {
     const versionedTaskId = "01ARZ3NDEKTSV4RRFFQ69G5FT2";
+    const versionedRequirementId = "01ARZ3NDEKTSV4RRFFQ69G5FR2";
+    listRequirementsMock.mockResolvedValueOnce({
+      items: [
+        {
+          id: versionedRequirementId,
+          title: "Requirement 2",
+          versionId: nextVersionId,
+        },
+      ],
+      total: 1,
+    });
     listWorkItemsMock.mockResolvedValueOnce({
       items: [
         { id: relatedTaskId, title: "Task 1", versionId },
-        { id: versionedTaskId, title: "Task 2", versionId: nextVersionId },
+        {
+          id: versionedTaskId,
+          title: "Task 2",
+          requirementId: versionedRequirementId,
+          versionId: nextVersionId,
+        },
       ],
       total: 2,
     });
@@ -417,11 +433,15 @@ describe("EditBugDialog", () => {
     const versionSelect = screen.getByTestId(
       "edit-bug-version-select",
     ) as HTMLSelectElement;
+    const requirementSelect = screen.getByTestId(
+      "edit-bug-requirement-select",
+    ) as HTMLSelectElement;
 
     fireEvent.change(screen.getByTestId("edit-bug-related-task-select"), {
       target: { value: versionedTaskId },
     });
 
     await waitFor(() => expect(versionSelect.value).toBe(nextVersionId));
+    expect(requirementSelect.value).toBe(versionedRequirementId);
   });
 });
