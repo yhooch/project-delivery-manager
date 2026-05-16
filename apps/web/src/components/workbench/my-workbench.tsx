@@ -16,6 +16,7 @@ import {
   CheckCircle2,
   ChevronDown,
   Clock,
+  Filter,
   GitBranch,
   Inbox,
   type LucideIcon,
@@ -119,6 +120,7 @@ export function MyWorkbench() {
     undefined,
   );
   const [filters, setFilters] = useState<WorkbenchFilterState>({});
+  const [filterOpen, setFilterOpen] = useState(false);
   const [organizationLookups, setOrganizationLookups] = useState<{
     membersBySpaceId: Map<string, SpaceMemberWithUser[]>;
     versionsBySpaceId: Map<string, Version[]>;
@@ -233,6 +235,7 @@ export function MyWorkbench() {
   useEffect(() => {
     setSelectedSpaceId(undefined);
     setFilters((current) => (Object.keys(current).length > 0 ? {} : current));
+    setFilterOpen(false);
   }, [organizationId]);
 
   useEffect(() => {
@@ -678,7 +681,7 @@ export function MyWorkbench() {
       data-testid="workbench-page"
       className="mx-auto flex max-w-6xl flex-col gap-6 px-6 py-6"
     >
-      <div className="flex items-end justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <div className="text-[11px] font-medium uppercase tracking-wider text-primary">
             {selectedSpace?.name ??
@@ -690,13 +693,26 @@ export function MyWorkbench() {
           </h1>
           <p className="mt-1 text-sm text-muted-foreground">{t("subtitle")}</p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <WorkbenchSpaceFilter
             spaces={spacesForCurrentOrganization}
             selectedSpaceId={selectedSpaceId}
             onChange={handleSpaceChange}
             tRoot={tRoot}
           />
+          <Button
+            variant={filterOpen ? "secondary" : "outline"}
+            size="sm"
+            className="text-xs"
+            data-testid="workbench-filter-button"
+            aria-controls="workbench-filter-panel"
+            aria-expanded={filterOpen}
+            onClick={() => setFilterOpen((open) => !open)}
+            type="button"
+          >
+            <Filter className="h-3 w-3" />
+            {t("filter")}
+          </Button>
           <Button asChild variant="ghost" size="sm" className="text-xs">
             <Link href="/work-items?workItemType=TASK">
               {t("viewAll")}
@@ -737,14 +753,16 @@ export function MyWorkbench() {
         />
       </div>
 
-      <WorkbenchFilters
-        filters={filters}
-        members={availableMembers}
-        versions={availableVersions}
-        onChange={setFilterValue}
-        onClear={clearFilters}
-        tRoot={tRoot}
-      />
+      {filterOpen ? (
+        <WorkbenchFilters
+          filters={filters}
+          members={availableMembers}
+          versions={availableVersions}
+          onChange={setFilterValue}
+          onClear={clearFilters}
+          tRoot={tRoot}
+        />
+      ) : null}
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1fr_320px]">
         <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
@@ -1002,6 +1020,7 @@ function WorkbenchFilters({
 
   return (
     <div
+      id="workbench-filter-panel"
       aria-label={tRoot("m4Views.filters.label")}
       className="grid gap-3 rounded-lg border border-border bg-card/40 p-3 md:grid-cols-6"
       data-testid="workbench-filter-panel"

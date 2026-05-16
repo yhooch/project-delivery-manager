@@ -443,6 +443,19 @@ describe("MyWorkbench", () => {
 
     render(<MyWorkbench />);
 
+    await waitFor(() =>
+      expect(getMyWorkbenchViewMock).toHaveBeenCalledTimes(1),
+    );
+
+    const filterButton = screen.getByTestId("workbench-filter-button");
+    expect(filterButton).toHaveAttribute("aria-expanded", "false");
+    expect(
+      screen.queryByTestId("workbench-filter-panel"),
+    ).not.toBeInTheDocument();
+
+    fireEvent.click(filterButton);
+
+    expect(filterButton).toHaveAttribute("aria-expanded", "true");
     expect(await screen.findAllByText("Release 1")).not.toHaveLength(0);
 
     fireEvent.change(screen.getByLabelText("m4Views.filters.version"), {

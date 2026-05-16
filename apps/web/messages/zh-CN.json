@@ -2064,6 +2064,7 @@
     "title": "我的工作台",
     "subtitle": "聚合待办、流程动作、即将到期事项、阻塞事项和最近动态。",
     "viewAll": "查看全部",
+    "filter": "筛选",
     "errorTitle": "工作台加载失败",
     "versionFallback": "版本未命名",
     "summary": {

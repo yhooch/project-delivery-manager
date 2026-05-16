@@ -2064,6 +2064,7 @@
     "title": "My workbench",
     "subtitle": "Review todos, workflow actions, due-soon items, blockers, and recent activity.",
     "viewAll": "View all",
+    "filter": "Filter",
     "errorTitle": "Failed to load workbench",
     "versionFallback": "Unknown version",
     "summary": {
