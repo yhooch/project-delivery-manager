@@ -28,12 +28,9 @@ vi.mock("../../i18n/routing", () => ({
 
 const sessionMock = vi.hoisted(() => ({
   current: {
-    currentOrganization: {
-      id: "ORG_01",
-      name: "Org",
-      role: "MEMBER",
-      status: "ACTIVE",
-    },
+    currentOrganization: undefined as
+      | { id: string; name: string; role: string; status: string }
+      | undefined,
   },
 }));
 vi.mock("../providers/session-provider", () => ({
@@ -59,6 +56,22 @@ afterEach(() => {
 });
 
 describe("Sidebar", () => {
+  it("does not render space navigation without a current organization", () => {
+    sessionMock.current = {
+      currentOrganization: undefined,
+    };
+
+    const { container } = render(<Sidebar />);
+
+    expect(container.firstChild).toBeNull();
+    expect(
+      screen.queryByTestId("sidebar-nav-group-work"),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByTestId("sidebar-management-section"),
+    ).not.toBeInTheDocument();
+  });
+
   it("keeps current-space nav in the main area and exposes space management at the bottom", () => {
     render(<Sidebar />);
 

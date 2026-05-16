@@ -241,6 +241,10 @@ describe("RequirementContentEditorSlot link extension", () => {
     const linkInput = within(dialog).getByRole("textbox", {
       name: "requirements.editor.linkPrompt",
     });
+    expect(linkInput).toHaveAttribute(
+      "placeholder",
+      "requirements.editor.linkPlaceholder",
+    );
 
     fireEvent.change(linkInput, {
       target: { value: " https://example.com/new " },

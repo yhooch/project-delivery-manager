@@ -52,6 +52,11 @@ export function Sidebar({ className, onNavigate }: SidebarProps) {
   const canManageCurrentOrganization = canManageOrganization(
     currentOrganization?.role,
   );
+
+  if (!hasCurrentOrganization) {
+    return null;
+  }
+
   const groups: NavGroup[] = [
     {
       key: "work",

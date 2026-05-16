@@ -648,7 +648,6 @@ export function RequirementDetailWorkspace({
   return (
     <>
       <form className="flex flex-col gap-6" onSubmit={onSave}>
-        {/* Notion-style action toolbar (replaces m1 panel header buttons) */}
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
             <FileText className="h-3.5 w-3.5" aria-hidden="true" />

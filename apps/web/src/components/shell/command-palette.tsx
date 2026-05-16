@@ -73,10 +73,20 @@ function isEditableTarget(target: EventTarget | null): boolean {
   return tag === "INPUT" || tag === "TEXTAREA" || target.isContentEditable;
 }
 
-export function useCommandPaletteShortcut() {
+type CommandPaletteShortcutOptions = {
+  enabled?: boolean;
+};
+
+export function useCommandPaletteShortcut({
+  enabled = true,
+}: CommandPaletteShortcutOptions = {}) {
   const router = useRouter();
 
   useEffect(() => {
+    if (!enabled) {
+      return;
+    }
+
     let sequenceHandler: ((next: KeyboardEvent) => void) | null = null;
     let sequenceTimeout: number | null = null;
 
@@ -148,7 +158,7 @@ export function useCommandPaletteShortcut() {
       clearSequence();
       window.removeEventListener("keydown", handler);
     };
-  }, [router]);
+  }, [enabled, router]);
 }
 
 type SearchResult = RecentEntry;
@@ -186,7 +196,11 @@ function withDetailHref(item: SearchResult): SearchResult {
 
 const PAGE_SIZE = 25;
 
-export function CommandPalette() {
+type CommandPaletteProps = {
+  enabled?: boolean;
+};
+
+export function CommandPalette({ enabled = true }: CommandPaletteProps) {
   const t = useTranslations("shell.command");
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
@@ -242,21 +256,37 @@ export function CommandPalette() {
   );
 
   useEffect(() => {
+    if (!enabled) {
+      openExternal = null;
+      setOpen(false);
+      return;
+    }
+
     openExternal = (next) => setOpen(next ?? true);
     return () => {
       openExternal = null;
     };
-  }, []);
+  }, [enabled]);
 
   useEffect(() => {
+    if (!enabled) {
+      setQuery("");
+      setRecent([]);
+      return;
+    }
+
     if (!open) {
       setQuery("");
     } else {
       setRecent(readRecent(recentScope).map(withDetailHref));
     }
-  }, [open, recentScope]);
+  }, [enabled, open, recentScope]);
 
   useEffect(() => {
+    if (!enabled) {
+      return;
+    }
+
     const onRecentChanged = (event: Event) => {
       const detail = (event as CustomEvent<{ storageKey?: string }>).detail;
       if (detail?.storageKey && detail.storageKey !== recentStorageKey) {
@@ -271,12 +301,12 @@ export function CommandPalette() {
     return () => {
       window.removeEventListener(RECENT_CHANGED_EVENT, onRecentChanged);
     };
-  }, [recentScope, recentStorageKey]);
+  }, [enabled, recentScope, recentStorageKey]);
 
   // MVP list APIs do not expose a query/search parameter yet, so fetch a
   // bounded larger page and let cmdk filter the local result set.
   useEffect(() => {
-    if (!open || !spaceId) return;
+    if (!enabled || !open || !spaceId) return;
 
     let cancelled = false;
     setIsLoading(true);
@@ -398,7 +428,7 @@ export function CommandPalette() {
     return () => {
       cancelled = true;
     };
-  }, [open, spaceId, organizationId, t]);
+  }, [enabled, open, spaceId, organizationId, t]);
 
   // Reset in-memory fetch state if user switches organization / space.
   useEffect(() => {
@@ -406,7 +436,7 @@ export function CommandPalette() {
     setCanPruneRecent(false);
     setResults([]);
     setRecent([]);
-  }, [organizationId, spaceId]);
+  }, [enabled, organizationId, spaceId]);
 
   const navigate = (href: string) => {
     setOpen(false);
@@ -445,16 +475,20 @@ export function CommandPalette() {
   // fetch in hand — otherwise we'd wipe the list every time the cache
   // hasn't loaded yet.
   useEffect(() => {
-    if (!open || !hasFetched || !canPruneRecent) return;
+    if (!enabled || !open || !hasFetched || !canPruneRecent) return;
     const liveKeys = new Set<string>();
     for (const r of results) liveKeys.add(buildLiveKey(r.type, r.id));
     setRecent((prev) => {
       const { next, changed } = pruneStaleRecent(prev, liveKeys, recentScope);
       return changed ? next : prev;
     });
-  }, [canPruneRecent, open, hasFetched, recentScope, results]);
+  }, [canPruneRecent, enabled, open, hasFetched, recentScope, results]);
 
   const showSearchView = query.trim().length >= 2 && spaceId;
+
+  if (!enabled) {
+    return null;
+  }
 
   return (
     <CommandDialog open={open} onOpenChange={setOpen}>

@@ -65,5 +65,17 @@ describe("work item contracts", () => {
         statusCategory: "VERIFYING",
       }),
     ).toBe("pendingRegression");
+    expect(
+      resolveBugLifecycleBucket({
+        stateCode: "pending_regression",
+        statusCategory: "VERIFYING",
+      }),
+    ).toBe("pendingRegression");
+    expect(
+      resolveBugLifecycleBucket({
+        stateCode: "PeNdInG_ReGrEsSiOn",
+        statusCategory: "VERIFYING",
+      }),
+    ).toBe("pendingRegression");
   });
 });

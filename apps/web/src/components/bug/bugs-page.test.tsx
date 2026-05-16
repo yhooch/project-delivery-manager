@@ -932,6 +932,14 @@ describe("BugsPage", () => {
     expect(rows[0]).toHaveAttribute("data-id", "01ARZ3NDEKTSV4RRFFQ69G5F01");
     expect(rows[1]).not.toHaveAttribute("aria-current");
     expect(firstButton).toHaveFocus();
+
+    const escapeEvent = new KeyboardEvent("keydown", {
+      key: "Escape",
+      cancelable: true,
+    });
+    window.dispatchEvent(escapeEvent);
+
+    expect(escapeEvent.defaultPrevented).toBe(false);
   });
 
   it("opens the bug edit/assignee affordance with A for writable bugs", async () => {

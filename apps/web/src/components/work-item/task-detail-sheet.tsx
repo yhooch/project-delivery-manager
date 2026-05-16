@@ -66,6 +66,7 @@ import {
 } from "../../lib/versioned-trace-linking";
 import { toUpdateTaskRequest } from "../../lib/work-item-forms";
 import { getWorkItem, updateWorkItem } from "../../lib/work-item-service";
+import { Link } from "../../i18n/routing";
 
 import { useSession } from "../providers/session-provider";
 import { IntakeDetailSheet } from "../intake/intake-detail-sheet";
@@ -333,7 +334,7 @@ function TaskDetailSheetBody({
       missingLookupLabel(detail.versionId))
     : item.versionName;
   const dueDate = detail?.dueDate
-    ? formatDateTime(detail.dueDate, "default")
+    ? formatDateTime(detail.dueDate, locale)
     : item.dueDate;
   const isBlocked = detail
     ? statusCategory === "WAITING" || Boolean(detail.blockedAt)
@@ -1557,6 +1558,7 @@ function DetailTab({
   tRoot: ReturnType<typeof useTranslations>;
   versionName?: string;
 }) {
+  const locale = useLocale();
   const assigneeId = detail?.assigneeId || undefined;
   const assignee = displayUser(assigneeId, lookup.getMember);
   const reporter = displayUser(detail?.reporterId, lookup.getMember);
@@ -1982,7 +1984,7 @@ function DetailTab({
           label={t("fields.updated")}
           value={
             updatedAt
-              ? formatDateTime(updatedAt, "default")
+              ? formatDateTime(updatedAt, locale)
               : (item.updatedAgo ?? "—")
           }
         />
@@ -2050,7 +2052,7 @@ function DetailTab({
               label={tRoot("bugs.form.regressionAt")}
               value={
                 bugDetail.regressionAt
-                  ? formatDateTime(bugDetail.regressionAt, "default")
+                  ? formatDateTime(bugDetail.regressionAt, locale)
                   : tRoot("bugs.bugFields.empty")
               }
             />
@@ -2244,15 +2246,13 @@ function TraceabilityRow({
           {value}
         </span>
       ) : link.kind === "anchor" ? (
-        <a
+        <Link
           className="ml-auto cursor-pointer truncate font-medium text-primary underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           data-testid="task-requirement-link"
           href={link.href}
-          rel="noopener noreferrer"
-          target="_blank"
         >
           {value}
-        </a>
+        </Link>
       ) : (
         <button
           className="ml-auto max-w-[60%] cursor-pointer truncate text-right font-medium text-primary underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
@@ -2305,6 +2305,7 @@ function CommentsTab({
   onCountChange?: (count: number) => void;
   onChanged?: () => void;
 }) {
+  const locale = useLocale();
   const requestKey = getWorkItemSubresourceRequestKey({
     item,
     organizationId,
@@ -2485,7 +2486,7 @@ function CommentsTab({
                     <div className="flex items-center gap-2">
                       <span className="text-sm font-medium">{name}</span>
                       <span className="text-[11px] text-muted-foreground">
-                        {formatDateTime(comment.createdAt, "default")}
+                        {formatDateTime(comment.createdAt, locale)}
                       </span>
                     </div>
                     <p className="mt-1 whitespace-pre-wrap text-sm leading-relaxed text-foreground/90">
@@ -2578,6 +2579,7 @@ function AttachmentsTab({
   onCountChange?: (count: number) => void;
   onTimelineRefresh?: () => void;
 }) {
+  const locale = useLocale();
   const requestKey = getWorkItemSubresourceRequestKey({
     item,
     organizationId,
@@ -2879,7 +2881,7 @@ function AttachmentsTab({
                         {t("attachments.uploadedBy")}: {uploader.name}
                       </span>
                       <span>
-                        {formatDateTime(attachment.createdAt, "default")}
+                        {formatDateTime(attachment.createdAt, locale)}
                       </span>
                     </div>
                   </div>
@@ -2975,6 +2977,7 @@ function TimelineTab({
   tApiError: ReturnType<typeof useTranslations>;
   refreshVersion: number;
 }) {
+  const locale = useLocale();
   const requestKey = getWorkItemSubresourceRequestKey({
     item,
     organizationId,
@@ -3123,7 +3126,7 @@ function TimelineTab({
                 )}
               </div>
               <div className="mt-0.5 text-[11px] text-muted-foreground">
-                {formatDateTime(event.createdAt, "default")}
+                {formatDateTime(event.createdAt, locale)}
               </div>
             </div>
           </li>

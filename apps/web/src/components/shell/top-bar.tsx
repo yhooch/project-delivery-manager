@@ -13,10 +13,14 @@ import { UserMenu } from "./user-menu";
 import { openCommandPalette } from "./command-palette";
 
 type TopBarProps = {
+  commandPaletteEnabled?: boolean;
   onOpenSidebar?: () => void;
 };
 
-export function TopBar({ onOpenSidebar }: TopBarProps) {
+export function TopBar({
+  commandPaletteEnabled = true,
+  onOpenSidebar,
+}: TopBarProps) {
   const t = useTranslations("shell.topBar");
 
   return (
@@ -39,22 +43,24 @@ export function TopBar({ onOpenSidebar }: TopBarProps) {
       </div>
 
       <div className="flex min-w-0 flex-1 justify-center">
-        <button
-          type="button"
-          data-testid="command-palette-trigger"
-          onClick={openCommandPalette}
-          aria-label={t("commandLabel")}
-          className="group flex h-7 w-8 shrink-0 items-center justify-center gap-2 rounded-md border border-border bg-background px-0 text-xs text-muted-foreground transition-colors [@media(pointer:coarse)]:min-h-11 [@media(pointer:coarse)]:min-w-11 hover:border-input hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 sm:w-full sm:max-w-md sm:justify-start sm:px-2.5 cursor-pointer"
-        >
-          <Search className="h-3.5 w-3.5" />
-          <span className="hidden flex-1 text-left sm:inline">
-            {t("commandPlaceholder")}
-          </span>
-          <span className="hidden items-center gap-1 sm:flex">
-            <Kbd>⌘</Kbd>
-            <Kbd>K</Kbd>
-          </span>
-        </button>
+        {commandPaletteEnabled && (
+          <button
+            type="button"
+            data-testid="command-palette-trigger"
+            onClick={openCommandPalette}
+            aria-label={t("commandLabel")}
+            className="group flex h-7 w-8 shrink-0 cursor-pointer items-center justify-center gap-2 rounded-md border border-border bg-background px-0 text-xs text-muted-foreground transition-colors [@media(pointer:coarse)]:min-h-11 [@media(pointer:coarse)]:min-w-11 hover:border-input hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 sm:w-full sm:max-w-md sm:justify-start sm:px-2.5"
+          >
+            <Search className="h-3.5 w-3.5" />
+            <span className="hidden flex-1 text-left sm:inline">
+              {t("commandPlaceholder")}
+            </span>
+            <span className="hidden items-center gap-1 sm:flex">
+              <Kbd>⌘</Kbd>
+              <Kbd>K</Kbd>
+            </span>
+          </button>
+        )}
       </div>
 
       <div className="flex shrink-0 items-center gap-1">

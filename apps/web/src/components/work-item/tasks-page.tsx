@@ -486,7 +486,7 @@ export function TasksPage() {
     onOpen: open,
     onEdit: open,
     canSubmit: () => false,
-    onClose: () => handleSheetOpenChange(false),
+    onClose: sheetOpen ? () => handleSheetOpenChange(false) : undefined,
   });
 
   const header = (

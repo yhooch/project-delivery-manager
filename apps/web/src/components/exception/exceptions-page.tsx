@@ -466,6 +466,8 @@ export function ExceptionsPage() {
       ?.querySelector<HTMLButtonElement>("button")
       ?.focus({ preventScroll: true });
   }, []);
+  const detailSheetOpen =
+    open && activeContext?.contextKey === exceptionsContextKey;
 
   useListKeyboardNav<SpaceExceptionItem>({
     items: visibleItems,
@@ -483,7 +485,7 @@ export function ExceptionsPage() {
     onOpen: openExceptionItem,
     onEdit: openExceptionItem,
     canSubmit: () => false,
-    onClose: () => handleSheetOpenChange(false),
+    onClose: detailSheetOpen ? () => handleSheetOpenChange(false) : undefined,
   });
 
   const thresholdButtonDisabled =
@@ -663,8 +665,6 @@ export function ExceptionsPage() {
   const handleSelect = (item: SpaceExceptionItem) => {
     openExceptionItem(item);
   };
-  const detailSheetOpen =
-    open && activeContext?.contextKey === exceptionsContextKey;
   const detailSheetItem = detailSheetOpen ? active : null;
 
   return (

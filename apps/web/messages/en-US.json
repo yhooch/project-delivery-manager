@@ -954,6 +954,7 @@
       "placeholder": "Write background, scope, acceptance points, or paste/drop an image.",
       "draftUploadOnly": "Image upload is only available for draft requirements. Confirmed requirements can still edit text.",
       "linkPrompt": "Enter link URL",
+      "linkPlaceholder": "https://example.com/spec",
       "unknownFile": "Unnamed file",
       "uploading": "Uploading image",
       "retry": "Retry",

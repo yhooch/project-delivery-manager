@@ -153,18 +153,6 @@ export const BugLifecycleBucketFallbackStatusCategories = {
   readonly StatusCategory[]
 >;
 
-export const BugLifecycleBucketFallbackStatusCategory = {
-  pendingConfirm: "NOT_STARTED",
-  pendingFix: "WAITING",
-  fixing: "IN_PROGRESS",
-  pendingRegression: undefined,
-  regressionPassed: "DONE",
-  closed: "TERMINATED",
-} as const satisfies Record<
-  BugLifecycleFilterBucket,
-  StatusCategory | undefined
->;
-
 export function resolveBugLifecycleBucket(input: {
   stateCode?: string;
   statusCategory: StatusCategory;

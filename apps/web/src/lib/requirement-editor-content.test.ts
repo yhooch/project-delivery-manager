@@ -130,38 +130,163 @@ describe("requirement editor content", () => {
     });
   });
 
-  it("creates editor values with text cache from Tiptap JSON", () => {
+  it("creates editor values with markdown cache from Tiptap JSON", () => {
     const value = createEditorValueFromTiptapJson({
       content: [
         {
-          content: [{ text: "First paragraph", type: "text" }],
+          attrs: { level: 2 },
+          content: [{ text: "Overview", type: "text" }],
+          type: "heading",
+        },
+        {
+          content: [
+            { text: "Use ", type: "text" },
+            {
+              marks: [{ type: "bold" }],
+              text: "bold",
+              type: "text",
+            },
+            { text: ", ", type: "text" },
+            {
+              marks: [{ type: "italic" }],
+              text: "italic",
+              type: "text",
+            },
+            { text: ", ", type: "text" },
+            {
+              marks: [{ type: "code" }],
+              text: "code",
+              type: "text",
+            },
+            { text: ", ", type: "text" },
+            {
+              marks: [
+                {
+                  attrs: { href: "https://example.com/spec" },
+                  type: "link",
+                },
+              ],
+              text: "link",
+              type: "text",
+            },
+          ],
           type: "paragraph",
         },
         {
-          content: [{ text: "Second paragraph", type: "text" }],
+          content: [
+            {
+              content: [
+                {
+                  content: [{ text: "Bullet A", type: "text" }],
+                  type: "paragraph",
+                },
+              ],
+              type: "listItem",
+            },
+            {
+              content: [
+                {
+                  content: [{ text: "Bullet B", type: "text" }],
+                  type: "paragraph",
+                },
+              ],
+              type: "listItem",
+            },
+          ],
+          type: "bulletList",
+        },
+        {
+          attrs: { start: 3 },
+          content: [
+            {
+              content: [
+                {
+                  content: [{ text: "Ordered", type: "text" }],
+                  type: "paragraph",
+                },
+              ],
+              type: "listItem",
+            },
+          ],
+          type: "orderedList",
+        },
+        {
+          content: [
+            {
+              attrs: { checked: true },
+              content: [
+                {
+                  content: [{ text: "Done", type: "text" }],
+                  type: "paragraph",
+                },
+              ],
+              type: "taskItem",
+            },
+            {
+              attrs: { checked: false },
+              content: [
+                {
+                  content: [{ text: "Todo", type: "text" }],
+                  type: "paragraph",
+                },
+              ],
+              type: "taskItem",
+            },
+          ],
+          type: "taskList",
+        },
+        {
+          content: [
+            {
+              content: [{ text: "Quote", type: "text" }],
+              type: "paragraph",
+            },
+          ],
+          type: "blockquote",
+        },
+        {
+          attrs: { language: "ts" },
+          content: [{ text: "const x = 1;", type: "text" }],
+          type: "codeBlock",
+        },
+        { type: "horizontalRule" },
+        {
+          attrs: {
+            alt: "diagram.png",
+            attachmentId: "ATTACHMENT_01",
+            src: "attachment://ATTACHMENT_01",
+          },
+          type: "image",
+        },
+        {
+          content: [
+            { text: "Line one", type: "text" },
+            { type: "hardBreak" },
+            { text: "Line two", type: "text" },
+          ],
           type: "paragraph",
         },
       ],
       type: "doc",
     });
 
-    expect(value).toEqual({
-      contentJson: {
-        content: [
-          {
-            content: [{ text: "First paragraph", type: "text" }],
-            type: "paragraph",
-          },
-          {
-            content: [{ text: "Second paragraph", type: "text" }],
-            type: "paragraph",
-          },
-        ],
-        type: "doc",
-      },
-      contentMarkdownCache: "First paragraph\n\nSecond paragraph",
-      contentText: "First paragraph\n\nSecond paragraph",
-    });
+    expect(value.contentMarkdownCache).toBe(
+      [
+        "## Overview",
+        "Use **bold**, *italic*, `code`, [link](https://example.com/spec)",
+        "- Bullet A\n- Bullet B",
+        "3. Ordered",
+        "- [x] Done\n- [ ] Todo",
+        "> Quote",
+        "```ts\nconst x = 1;\n```",
+        "---",
+        "![diagram.png](attachment://ATTACHMENT_01)",
+        "Line one  \nLine two",
+      ].join("\n\n"),
+    );
+    expect(value.contentText).toContain("Overview");
+    expect(value.contentText).toContain("bold");
+    expect(value.contentText).not.toContain("**bold**");
   });
 
   it("keeps the textarea-era fallback compatible", () => {

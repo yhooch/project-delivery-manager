@@ -193,12 +193,28 @@ afterEach(() => {
   vi.useRealTimers();
 });
 
-function ShortcutProbe() {
-  useCommandPaletteShortcut();
+function ShortcutProbe({ enabled = true }: { enabled?: boolean }) {
+  useCommandPaletteShortcut({ enabled });
   return null;
 }
 
 describe("CommandPalette", () => {
+  it("does not render or open business commands when disabled", () => {
+    render(<CommandPalette enabled={false} />);
+    openCommandPalette();
+
+    expect(
+      screen.queryByTestId("command-palette-input"),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByText("shell.command.navigation"),
+    ).not.toBeInTheDocument();
+    expect(listWorkItemsMock).not.toHaveBeenCalled();
+    expect(listBugsMock).not.toHaveBeenCalled();
+    expect(listRequirementsMock).not.toHaveBeenCalled();
+    expect(listIntakeItemsMock).not.toHaveBeenCalled();
+  });
+
   it("renders navigation / switchSpace / create / preferences groups when open with empty query", async () => {
     sessionMock.current = {
       ...sessionMock.current,
@@ -653,5 +669,24 @@ describe("CommandPalette", () => {
     vi.advanceTimersByTime(801);
     fireEvent.keyDown(window, { key: "b" });
     expect(routerPushMock).toHaveBeenCalledTimes(4);
+  });
+
+  it("ignores command palette and G shortcuts when shortcuts are disabled", () => {
+    render(
+      <>
+        <CommandPalette enabled={false} />
+        <ShortcutProbe enabled={false} />
+      </>,
+    );
+
+    fireEvent.keyDown(window, { key: "g" });
+    fireEvent.keyDown(window, { key: "v" });
+    fireEvent.keyDown(window, { ctrlKey: true, key: "k" });
+
+    expect(routerPushMock).not.toHaveBeenCalled();
+    expect(
+      screen.queryByTestId("command-palette-input"),
+    ).not.toBeInTheDocument();
+    expect(listWorkItemsMock).not.toHaveBeenCalled();
   });
 });

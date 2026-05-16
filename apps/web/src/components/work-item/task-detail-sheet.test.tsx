@@ -40,7 +40,18 @@ vi.mock("next-intl", () => ({
 
 vi.mock("../../i18n/routing", () => ({
   routing: { defaultLocale: "zh-CN", locales: ["zh-CN", "en-US"] },
-  Link: ({ children }: { children: React.ReactNode }) => children,
+  Link: ({
+    children,
+    href,
+    ...props
+  }: {
+    children: React.ReactNode;
+    href: string;
+  }) => (
+    <a href={href} {...props}>
+      {children}
+    </a>
+  ),
   getPathname: () => "/",
   redirect: () => undefined,
   usePathname: () => "/",
@@ -1997,8 +2008,8 @@ describe("TaskDetailSheet", () => {
       "href",
       `/requirements/${requirementId}`,
     );
-    expect(requirementLink).toHaveAttribute("target", "_blank");
-    expect(requirementLink).toHaveAttribute("rel", "noopener noreferrer");
+    expect(requirementLink).not.toHaveAttribute("target");
+    expect(requirementLink).not.toHaveAttribute("rel");
 
     fireEvent.click(screen.getByTestId("task-intake-link"));
 

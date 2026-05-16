@@ -954,6 +954,7 @@
       "placeholder": "输入需求背景、范围、验收要点，或粘贴/拖入图片。",
       "draftUploadOnly": "图片上传仅支持草稿需求；已确认需求可继续编辑文字内容。",
       "linkPrompt": "输入链接地址",
+      "linkPlaceholder": "https://example.com/spec",
       "unknownFile": "未命名文件",
       "uploading": "正在上传图片",
       "retry": "重试",

@@ -19,10 +19,11 @@ type AppShellProps = {
 };
 
 export function AppShell({ children }: AppShellProps) {
-  const { status, session } = useSession();
+  const { currentOrganization, status, session } = useSession();
   const t = useTranslations("shell");
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  useCommandPaletteShortcut();
+  const hasOrganization = Boolean(currentOrganization);
+  useCommandPaletteShortcut({ enabled: hasOrganization });
 
   useEffect(() => {
     document.title = t("documentTitle");
@@ -57,30 +58,37 @@ export function AppShell({ children }: AppShellProps) {
     );
   }
 
-  const hasOrganization = session.organizations.length > 0;
-
   return (
     <div className="flex h-screen overflow-hidden bg-background">
-      <Sidebar className="hidden md:flex" />
-      <Sheet open={sidebarOpen} onOpenChange={setSidebarOpen}>
-        <SheetContent side="left" className="w-[82vw] max-w-xs p-0">
-          <SheetTitle className="sr-only">{t("nav.label")}</SheetTitle>
-          <SheetDescription className="sr-only">
-            {t("mobileNav.description")}
-          </SheetDescription>
-          <Sidebar
-            className="w-full border-r-0 bg-card"
-            onNavigate={() => setSidebarOpen(false)}
-          />
-        </SheetContent>
-      </Sheet>
+      {hasOrganization && (
+        <>
+          <Sidebar className="hidden md:flex" />
+          <Sheet open={sidebarOpen} onOpenChange={setSidebarOpen}>
+            <SheetContent side="left" className="w-[82vw] max-w-xs p-0">
+              <SheetTitle className="sr-only">{t("nav.label")}</SheetTitle>
+              <SheetDescription className="sr-only">
+                {t("mobileNav.description")}
+              </SheetDescription>
+              <Sidebar
+                className="w-full border-r-0 bg-card"
+                onNavigate={() => setSidebarOpen(false)}
+              />
+            </SheetContent>
+          </Sheet>
+        </>
+      )}
       <div className="flex flex-1 flex-col overflow-hidden">
-        <TopBar onOpenSidebar={() => setSidebarOpen(true)} />
+        <TopBar
+          commandPaletteEnabled={hasOrganization}
+          onOpenSidebar={
+            hasOrganization ? () => setSidebarOpen(true) : undefined
+          }
+        />
         <main className="flex-1 overflow-auto bg-background">
           {hasOrganization ? children : <OnboardingEmpty />}
         </main>
       </div>
-      <CommandPalette />
+      {hasOrganization && <CommandPalette />}
     </div>
   );
 }

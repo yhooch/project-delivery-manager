@@ -717,7 +717,7 @@ export function RequirementContentEditorSlot({
                   href: event.target.value,
                 }))
               }
-              placeholder="https://example.com"
+              placeholder={t("linkPlaceholder")}
               value={linkDialog.href}
             />
             <DialogFooter>

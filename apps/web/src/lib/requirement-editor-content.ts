@@ -37,7 +37,7 @@ export function createEditorValueFromTiptapJson(
 
   return {
     contentJson: sanitized,
-    contentMarkdownCache: contentText,
+    contentMarkdownCache: serializeTiptapJsonToMarkdown(sanitized),
     contentText,
   };
 }
@@ -124,6 +124,336 @@ export function containsBase64Image(value: unknown): boolean {
   }
 
   return containsBase64Image(value.content);
+}
+
+function serializeTiptapJsonToMarkdown(value: unknown): string {
+  return serializeBlock(value, 0).trim();
+}
+
+function serializeBlock(value: unknown, indent: number): string {
+  if (!isRecord(value)) {
+    return "";
+  }
+
+  switch (value.type) {
+    case "doc":
+      return serializeBlocks(value.content, indent);
+    case "paragraph":
+      return serializeInlineContent(value.content);
+    case "heading": {
+      const level = isRecord(value.attrs)
+        ? clampHeadingLevel(value.attrs.level)
+        : 1;
+      const text = serializeInlineContent(value.content);
+      return `${"#".repeat(level)}${text ? ` ${text}` : ""}`;
+    }
+    case "bulletList":
+      return serializeList(value, false, indent);
+    case "orderedList":
+      return serializeList(value, true, indent);
+    case "taskList":
+      return serializeTaskList(value, indent);
+    case "codeBlock":
+      return serializeCodeBlock(value);
+    case "blockquote":
+      return serializeBlockquote(value, indent);
+    case "horizontalRule":
+      return `${" ".repeat(indent)}---`;
+    case "image":
+      return serializeImage(value);
+    case "hardBreak":
+      return "  \n";
+    default:
+      return serializeBlocks(value.content, indent);
+  }
+}
+
+function serializeBlocks(value: unknown, indent: number): string {
+  if (!Array.isArray(value)) {
+    return "";
+  }
+
+  return value
+    .map((item) => serializeBlock(item, indent))
+    .filter((item) => item.length > 0)
+    .join("\n\n");
+}
+
+function serializeInlineContent(value: unknown): string {
+  if (!Array.isArray(value)) {
+    return "";
+  }
+
+  return value.map((item) => serializeInlineNode(item)).join("");
+}
+
+function serializeInlineNode(value: unknown): string {
+  if (!isRecord(value)) {
+    return "";
+  }
+
+  if (value.type === "text" && typeof value.text === "string") {
+    return serializeMarkedText(value.text, value.marks);
+  }
+
+  if (value.type === "hardBreak") {
+    return "  \n";
+  }
+
+  if (value.type === "image") {
+    return serializeImage(value);
+  }
+
+  return serializeInlineContent(value.content);
+}
+
+function serializeMarkedText(text: string, marks: unknown): string {
+  const markList = Array.isArray(marks) ? marks.filter(isRecord) : [];
+  const hasCode = markList.some((mark) => mark.type === "code");
+  let result = hasCode ? serializeInlineCode(text) : escapeMarkdownText(text);
+
+  const link = markList.find((mark) => mark.type === "link");
+  if (link && isRecord(link.attrs) && typeof link.attrs.href === "string") {
+    result = `[${result}](${escapeMarkdownUrl(link.attrs.href)})`;
+  }
+
+  if (markList.some((mark) => mark.type === "bold")) {
+    result = `**${result}**`;
+  }
+
+  if (markList.some((mark) => mark.type === "italic")) {
+    result = `*${result}*`;
+  }
+
+  return result;
+}
+
+function serializeInlineCode(text: string): string {
+  const longestRun = Math.max(
+    0,
+    ...Array.from(text.matchAll(/`+/gu), (match) => match[0].length),
+  );
+  const fence = "`".repeat(longestRun + 1);
+
+  return `${fence}${text}${fence}`;
+}
+
+function serializeList(
+  value: Record<string, unknown>,
+  ordered: boolean,
+  indent: number,
+): string {
+  const items = Array.isArray(value.content) ? value.content : [];
+  const start =
+    ordered && isRecord(value.attrs) && typeof value.attrs.start === "number"
+      ? value.attrs.start
+      : 1;
+
+  return items
+    .map((item, index) =>
+      serializeListItem(
+        item,
+        ordered ? `${start + index}. ` : "- ",
+        indent,
+      ),
+    )
+    .filter((item) => item.length > 0)
+    .join("\n");
+}
+
+function serializeListItem(
+  value: unknown,
+  marker: string,
+  indent: number,
+): string {
+  if (!isRecord(value)) {
+    return "";
+  }
+
+  const blocks = Array.isArray(value.content) ? value.content : [];
+
+  return serializeListItemBlocks(blocks, marker, indent);
+}
+
+function serializeTaskList(
+  value: Record<string, unknown>,
+  indent: number,
+): string {
+  const items = Array.isArray(value.content) ? value.content : [];
+
+  return items
+    .map((item) => {
+      if (!isRecord(item)) {
+        return "";
+      }
+
+      const checked = isRecord(item.attrs) && item.attrs.checked === true;
+      const blocks = Array.isArray(item.content) ? item.content : [];
+
+      return serializeListItemBlocks(
+        blocks,
+        checked ? "- [x] " : "- [ ] ",
+        indent,
+      );
+    })
+    .filter((item) => item.length > 0)
+    .join("\n");
+}
+
+function serializeListItemBlocks(
+  blocks: unknown[],
+  marker: string,
+  indent: number,
+): string {
+  const padding = " ".repeat(indent);
+  const markerPrefix = `${padding}${marker}`;
+  const continuationPadding = " ".repeat(indent + marker.length);
+  const lines: string[] = [];
+
+  if (blocks.length === 0) {
+    return markerPrefix.trimEnd();
+  }
+
+  blocks.forEach((block) => {
+    if (!isRecord(block)) {
+      return;
+    }
+
+    if (block.type === "paragraph") {
+      const text = serializeInlineContent(block.content);
+
+      if (lines.length === 0) {
+        lines.push(`${markerPrefix}${text}`);
+      } else {
+        lines.push(`${continuationPadding}${text}`.trimEnd());
+      }
+      return;
+    }
+
+    if (
+      block.type === "bulletList" ||
+      block.type === "orderedList" ||
+      block.type === "taskList"
+    ) {
+      lines.push(serializeBlock(block, indent + 2));
+      return;
+    }
+
+    const serialized = serializeBlock(block, indent + marker.length);
+    if (serialized.length > 0) {
+      if (lines.length === 0) {
+        lines.push(markerPrefix.trimEnd());
+      }
+      lines.push(indentMarkdownBlock(serialized, continuationPadding));
+    }
+  });
+
+  return lines.filter((line) => line.length > 0).join("\n");
+}
+
+function serializeCodeBlock(value: Record<string, unknown>): string {
+  const code = collectRawText(value.content);
+  const language =
+    isRecord(value.attrs) && typeof value.attrs.language === "string"
+      ? value.attrs.language.trim()
+      : "";
+  const longestRun = Math.max(
+    2,
+    ...Array.from(code.matchAll(/`+/gu), (match) => match[0].length),
+  );
+  const fence = "`".repeat(longestRun + 1);
+
+  return `${fence}${language}\n${code}\n${fence}`;
+}
+
+function serializeBlockquote(
+  value: Record<string, unknown>,
+  indent: number,
+): string {
+  const content = serializeBlocks(value.content, indent);
+  const padding = " ".repeat(indent);
+
+  return content
+    .split("\n")
+    .map((line) => `${padding}>${line ? ` ${line}` : ""}`)
+    .join("\n");
+}
+
+function serializeImage(value: Record<string, unknown>): string {
+  const attrs = isRecord(value.attrs) ? value.attrs : {};
+  const attachmentId = getAttachmentIdFromImageAttrs(attrs);
+  const src =
+    attachmentId !== undefined
+      ? createAttachmentImageSource(attachmentId)
+      : typeof attrs.src === "string" && attrs.src.trim().length > 0
+        ? attrs.src.trim()
+        : "attachment://image";
+  const alt =
+    getStringAttr(attrs, "alt") ??
+    getStringAttr(attrs, "title") ??
+    getStringAttr(attrs, "fileName") ??
+    attachmentId ??
+    "attachment";
+
+  return `![${escapeImageAlt(alt)}](${escapeMarkdownUrl(src)})`;
+}
+
+function collectRawText(value: unknown): string {
+  if (Array.isArray(value)) {
+    return value.map((item) => collectRawText(item)).join("");
+  }
+
+  if (!isRecord(value)) {
+    return "";
+  }
+
+  if (typeof value.text === "string") {
+    return value.text;
+  }
+
+  if (value.type === "hardBreak") {
+    return "\n";
+  }
+
+  return collectRawText(value.content);
+}
+
+function indentMarkdownBlock(markdown: string, padding: string): string {
+  return markdown
+    .split("\n")
+    .map((line) => (line.length > 0 ? `${padding}${line}` : padding.trimEnd()))
+    .join("\n");
+}
+
+function clampHeadingLevel(value: unknown): number {
+  if (typeof value !== "number" || !Number.isFinite(value)) {
+    return 1;
+  }
+
+  return Math.min(Math.max(Math.trunc(value), 1), 6);
+}
+
+function getStringAttr(
+  attrs: Record<string, unknown>,
+  key: string,
+): string | undefined {
+  const value = attrs[key];
+
+  return typeof value === "string" && value.trim().length > 0
+    ? value.trim()
+    : undefined;
+}
+
+function escapeMarkdownText(text: string): string {
+  return text.replace(/[\\`*_[\]]/gu, "\\$&");
+}
+
+function escapeImageAlt(text: string): string {
+  return text.replace(/[\\\]]/gu, "\\$&");
+}
+
+function escapeMarkdownUrl(url: string): string {
+  return url.trim().replace(/\s/gu, "%20").replace(/\)/gu, "%29");
 }
 
 function sanitizeTiptapValue(value: unknown): unknown {

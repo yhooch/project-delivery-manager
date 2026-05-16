@@ -729,7 +729,7 @@ export function BugsPage() {
       ),
     onAssign: openEditBugFromViewModel,
     canSubmit: () => false,
-    onClose: () => handleSheetOpenChange(false),
+    onClose: sheetOpen ? () => handleSheetOpenChange(false) : undefined,
   });
 
   const buckets = useMemo(

@@ -859,6 +859,14 @@ describe("ExceptionsPage", () => {
     expect(rows[0]).not.toHaveAttribute("aria-selected");
     expect(rows[1]).not.toHaveAttribute("aria-current");
     expect(firstButton).toHaveFocus();
+
+    const escapeEvent = new KeyboardEvent("keydown", {
+      key: "Escape",
+      cancelable: true,
+    });
+    window.dispatchEvent(escapeEvent);
+
+    expect(escapeEvent.defaultPrevented).toBe(false);
   });
 
   it("does not use A as a fake assign shortcut on exception rows", async () => {
