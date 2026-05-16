@@ -8,8 +8,8 @@ import {
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("next-intl", () => ({
-  useTranslations: (namespace?: string) =>
-    (key: string) => (namespace ? `${namespace}.${key}` : key),
+  useTranslations: (namespace?: string) => (key: string) =>
+    namespace ? `${namespace}.${key}` : key,
 }));
 
 vi.mock("../providers/session-provider", () => ({
@@ -67,12 +67,15 @@ const spaceId = "01ARZ3NDEKTSV4RRFFQ69G5FS1";
 const organizationId = "ORG_01";
 const intakeItemId = "01ARZ3NDEKTSV4RRFFQ69G5FI1";
 const versionId = "01ARZ3NDEKTSV4RRFFQ69G5FV1";
+const versionTwoId = "01ARZ3NDEKTSV4RRFFQ69G5FV2";
 const requirementId = "01ARZ3NDEKTSV4RRFFQ69G5FR1";
+const requirementTwoId = "01ARZ3NDEKTSV4RRFFQ69G5FR2";
+const unversionedRequirementId = "01ARZ3NDEKTSV4RRFFQ69G5FR3";
 const assigneeId = "01ARZ3NDEKTSV4RRFFQ69G5FA1";
 const workflowId = "01ARZ3NDEKTSV4RRFFQ69G5FW1";
 const workflowVersionId = "01ARZ3NDEKTSV4RRFFQ69G5FW2";
 
-function makeIntake(): IntakeItem {
+function makeIntake(overrides: Partial<IntakeItem> = {}): IntakeItem {
   return {
     assigneeId,
     description: "Break checkout work into tasks",
@@ -86,6 +89,7 @@ function makeIntake(): IntakeItem {
     status: "ACCEPTED",
     title: "Checkout scope",
     versionId,
+    ...overrides,
   };
 }
 
@@ -109,7 +113,9 @@ beforeEach(() => {
     items: [{ id: versionId, name: "M2" } as Version],
   });
   listRequirementsMock.mockResolvedValue({
-    items: [{ id: requirementId, title: "Requirement A" } as Requirement],
+    items: [
+      { id: requirementId, title: "Requirement A", versionId } as Requirement,
+    ],
   });
   listWorkflowsMock.mockResolvedValue({
     items: [{ id: workflowId, name: "General task" } as WorkflowDefinition],
@@ -150,7 +156,9 @@ describe("ConvertIntakeDialog", () => {
       />,
     );
 
-    expect(await screen.findByDisplayValue("Checkout scope")).toBeInTheDocument();
+    expect(
+      await screen.findByDisplayValue("Checkout scope"),
+    ).toBeInTheDocument();
     await screen.findByText(/General task/);
 
     fireEvent.change(screen.getByTestId("convert-task-due-date-0"), {
@@ -236,5 +244,103 @@ describe("ConvertIntakeDialog", () => {
       ).not.toBeDisabled(),
     );
     expect(listWorkflowBindingsMock).toHaveBeenCalledTimes(2);
+  });
+
+  it("filters requirement options by the row version", async () => {
+    listVersionsMock.mockResolvedValue({
+      items: [
+        { id: versionId, name: "Version 1" } as Version,
+        { id: versionTwoId, name: "Version 2" } as Version,
+      ],
+    });
+    listRequirementsMock.mockResolvedValue({
+      items: [
+        {
+          id: requirementId,
+          title: "Requirement v1",
+          versionId,
+        } as Requirement,
+        {
+          id: requirementTwoId,
+          title: "Requirement v2",
+          versionId: versionTwoId,
+        } as Requirement,
+        {
+          id: unversionedRequirementId,
+          title: "Requirement no version",
+        } as Requirement,
+      ],
+    });
+
+    render(
+      <ConvertIntakeDialog
+        open
+        onOpenChange={vi.fn()}
+        organizationId={organizationId}
+        spaceId={spaceId}
+        intakeItem={makeIntake()}
+      />,
+    );
+
+    await screen.findByText("Requirement v1");
+    const versionSelect = screen.getByTestId(
+      "convert-task-version-0",
+    ) as HTMLSelectElement;
+    const requirementSelect = screen.getByTestId(
+      "convert-task-requirement-0",
+    ) as HTMLSelectElement;
+
+    expect(versionSelect.value).toBe(versionId);
+    expect(requirementSelect.value).toBe(requirementId);
+
+    fireEvent.change(versionSelect, { target: { value: versionTwoId } });
+
+    expect(requirementSelect.value).toBe("");
+    expect(screen.queryByText("Requirement v1")).not.toBeInTheDocument();
+    expect(
+      screen.queryByText("Requirement no version"),
+    ).not.toBeInTheDocument();
+    expect(screen.getByText("Requirement v2")).toBeInTheDocument();
+  });
+
+  it("infers the row version from a versioned requirement", async () => {
+    listVersionsMock.mockResolvedValue({
+      items: [{ id: versionId, name: "Version 1" } as Version],
+    });
+    listRequirementsMock.mockResolvedValue({
+      items: [
+        {
+          id: requirementId,
+          title: "Requirement v1",
+          versionId,
+        } as Requirement,
+      ],
+    });
+
+    render(
+      <ConvertIntakeDialog
+        open
+        onOpenChange={vi.fn()}
+        organizationId={organizationId}
+        spaceId={spaceId}
+        intakeItem={makeIntake({
+          requirementId: undefined,
+          versionId: undefined,
+        })}
+      />,
+    );
+
+    await screen.findByText("Requirement v1");
+    const versionSelect = screen.getByTestId(
+      "convert-task-version-0",
+    ) as HTMLSelectElement;
+    const requirementSelect = screen.getByTestId(
+      "convert-task-requirement-0",
+    ) as HTMLSelectElement;
+
+    fireEvent.change(requirementSelect, { target: { value: requirementId } });
+
+    await waitFor(() => expect(versionSelect.value).toBe(versionId));
+    expect(requirementSelect.value).toBe(requirementId);
   });
 });

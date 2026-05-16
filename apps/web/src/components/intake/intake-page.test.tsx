@@ -550,7 +550,7 @@ describe("IntakePage", () => {
       user: { name: "Alice", username: "alice" },
     });
     listRequirementsMock.mockResolvedValueOnce({
-      items: [{ id: requirementId, title: "Requirement A" }],
+      items: [{ id: requirementId, title: "Requirement A", versionId }],
       total: 1,
     });
     listIntakeItemsMock.mockResolvedValue({
@@ -619,6 +619,76 @@ describe("IntakePage", () => {
         }),
       ),
     );
+  });
+
+  it("links version and requirement filters", async () => {
+    const versionId = "01ARZ3NDEKTSV4RRFFQ69G5FV1";
+    const versionTwoId = "01ARZ3NDEKTSV4RRFFQ69G5FV2";
+    const requirementId = "01ARZ3NDEKTSV4RRFFQ69G5FR1";
+    const requirementTwoId = "01ARZ3NDEKTSV4RRFFQ69G5FR2";
+    const unversionedRequirementId = "01ARZ3NDEKTSV4RRFFQ69G5FR3";
+    versionMap.set(versionId, { name: "M1" });
+    versionMap.set(versionTwoId, { name: "M2" });
+    listRequirementsMock.mockResolvedValueOnce({
+      items: [
+        { id: requirementId, title: "Requirement v1", versionId },
+        {
+          id: requirementTwoId,
+          title: "Requirement v2",
+          versionId: versionTwoId,
+        },
+        { id: unversionedRequirementId, title: "Requirement no version" },
+      ],
+      total: 3,
+    });
+    listIntakeItemsMock.mockResolvedValue({
+      items: [makeIntake({ title: "Filtered intake" })],
+      total: 1,
+    });
+
+    render(<IntakePage />);
+
+    await screen.findByText("Filtered intake");
+    fireEvent.click(screen.getByTestId("intake-filter-button"));
+    await screen.findByText("Requirement v1");
+
+    const versionSelect = screen.getByTestId(
+      "intake-filter-version",
+    ) as HTMLSelectElement;
+    const requirementSelect = screen.getByTestId(
+      "intake-filter-requirement",
+    ) as HTMLSelectElement;
+
+    fireEvent.change(requirementSelect, {
+      target: { value: requirementTwoId },
+    });
+
+    await waitFor(() => expect(versionSelect.value).toBe(versionTwoId));
+    expect(requirementSelect.value).toBe(requirementTwoId);
+    expect(
+      screen.queryByText("Requirement no version"),
+    ).not.toBeInTheDocument();
+    expect(listIntakeItemsMock).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        requirementId: requirementTwoId,
+        versionId: versionTwoId,
+      }),
+    );
+
+    fireEvent.change(versionSelect, { target: { value: versionId } });
+
+    await waitFor(() => expect(requirementSelect.value).toBe(""));
+    expect(screen.getByText("Requirement v1")).toBeInTheDocument();
+    expect(screen.queryByText("Requirement v2")).not.toBeInTheDocument();
+    await waitFor(() => {
+      const lastCall = listIntakeItemsMock.mock.lastCall?.[0];
+      expect(lastCall).toEqual(
+        expect.objectContaining({
+          requirementId: undefined,
+          versionId,
+        }),
+      );
+    });
   });
 
   it("opens the create intake dialog when the 创建 button is clicked", async () => {
@@ -1239,15 +1309,17 @@ describe("IntakePage", () => {
     );
     fireEvent.click(within(convertDialog).getByText("converted"));
 
+    await waitFor(() =>
+      expect(
+        screen.queryByTestId("intake-convert-button"),
+      ).not.toBeInTheDocument(),
+    );
     expect(
-      await screen.findByTestId("intake-view-converted-tasks-button"),
-    ).toBeInTheDocument();
-    expect(
-      screen.queryByTestId("intake-convert-button"),
+      screen.queryByTestId("intake-view-converted-tasks-button"),
     ).not.toBeInTheDocument();
   });
 
-  it("opens converted intake related tasks from the detail drawer", async () => {
+  it("opens converted intake related task list from the related section", async () => {
     listIntakeItemsMock.mockResolvedValueOnce({
       items: [
         makeIntake({
@@ -1258,40 +1330,36 @@ describe("IntakePage", () => {
       ],
       total: 1,
     });
-    listWorkItemsMock
-      .mockResolvedValueOnce({
-        items: [],
-        page: 1,
-        pageSize: 5,
-        total: 0,
-      })
-      .mockResolvedValueOnce({
-        items: [makeTask()],
-        page: 1,
-        pageSize: 2,
-        total: 1,
-      });
+    listWorkItemsMock.mockResolvedValueOnce({
+      items: [],
+      page: 1,
+      pageSize: 5,
+      total: 0,
+    });
 
     render(<IntakePage />);
 
     fireEvent.click(await screen.findByText("Already converted"));
-    const viewTasks = await screen.findByTestId(
-      "intake-view-converted-tasks-button",
+    const openTaskList = await screen.findByTestId(
+      "intake-related-tasks-open-list",
     );
 
-    expect(viewTasks).not.toBeDisabled();
-    fireEvent.click(viewTasks);
+    expect(openTaskList).not.toBeDisabled();
+    expect(
+      screen.queryByTestId("intake-view-converted-tasks-button"),
+    ).not.toBeInTheDocument();
+    fireEvent.click(openTaskList);
     await waitFor(() =>
       expect(listWorkItemsMock).toHaveBeenCalledWith({
         intakeItemId: "01ARZ3NDEKTSV4RRFFQ69G5F04",
         organizationId: "ORG_01",
         page: 1,
-        pageSize: 2,
+        pageSize: 5,
         spaceId: "SPC_01",
       }),
     );
     expect(routerPushMock).toHaveBeenCalledWith(
-      "/work-items?workItemId=01ARZ3NDEKTSV4RRFFQ69G5FT1",
+      "/work-items?intakeItemId=01ARZ3NDEKTSV4RRFFQ69G5F04",
     );
     expect(
       screen.queryByTestId("convert-intake-dialog-open"),

@@ -10,7 +10,7 @@ import type {
 } from "@project-delivery/shared";
 import { IntakeSourceTypeSchema } from "@project-delivery/shared";
 import { useTranslations } from "next-intl";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import { getApiErrorMessageKey } from "../../lib/api-error-messages";
 import { toUpdateIntakeItemRequest } from "../../lib/intake-forms";
@@ -31,6 +31,10 @@ import {
 import { Input } from "../ui/input";
 import { Label } from "../ui/label";
 import { Textarea } from "../ui/textarea";
+import {
+  filterRequirementsByVersion,
+  isRequirementCompatibleWithVersion,
+} from "./versioned-requirement-linking";
 
 type EditIntakeDialogProps = {
   open: boolean;
@@ -71,6 +75,14 @@ export function EditIntakeDialog({
   const [versions, setVersions] = useState<Version[]>([]);
   const [requirements, setRequirements] = useState<Requirement[]>([]);
   const [members, setMembers] = useState<SpaceMemberWithUser[]>([]);
+  const selectedRequirement = useMemo(
+    () => requirements.find((requirement) => requirement.id === requirementId),
+    [requirementId, requirements],
+  );
+  const filteredRequirements = useMemo(
+    () => filterRequirementsByVersion(requirements, versionId),
+    [requirements, versionId],
+  );
 
   useEffect(() => {
     if (!open || !intakeItem) {
@@ -143,6 +155,29 @@ export function EditIntakeDialog({
       reset();
     }
     onOpenChange(next);
+  }
+
+  function handleVersionChange(nextVersionId: string) {
+    setVersionId(nextVersionId);
+
+    if (
+      !isRequirementCompatibleWithVersion(selectedRequirement, nextVersionId)
+    ) {
+      setRequirementId("");
+    }
+  }
+
+  function handleRequirementChange(nextRequirementId: string) {
+    setRequirementId(nextRequirementId);
+
+    const nextRequirement = requirements.find(
+      (requirement) => requirement.id === nextRequirementId,
+    );
+    const nextVersionId = nextRequirement?.versionId;
+
+    if (!versionId && nextVersionId) {
+      setVersionId(nextVersionId);
+    }
   }
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
@@ -290,7 +325,7 @@ export function EditIntakeDialog({
                 id="edit-intake-version"
                 data-testid="edit-intake-version-select"
                 value={versionId}
-                onChange={(event) => setVersionId(event.target.value)}
+                onChange={(event) => handleVersionChange(event.target.value)}
                 className="h-8 w-full rounded-md border border-input bg-background px-2 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               >
                 <option value="">{t("fields.noVersion")}</option>
@@ -309,11 +344,13 @@ export function EditIntakeDialog({
                 id="edit-intake-requirement"
                 data-testid="edit-intake-requirement-select"
                 value={requirementId}
-                onChange={(event) => setRequirementId(event.target.value)}
+                onChange={(event) =>
+                  handleRequirementChange(event.target.value)
+                }
                 className="h-8 w-full rounded-md border border-input bg-background px-2 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               >
                 <option value="">{t("fields.noRequirement")}</option>
-                {requirements.map((req) => (
+                {filteredRequirements.map((req) => (
                   <option key={req.id} value={req.id}>
                     {req.title || t("fields.untitledRequirement")}
                   </option>

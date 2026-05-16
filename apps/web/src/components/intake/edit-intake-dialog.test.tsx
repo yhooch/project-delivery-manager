@@ -13,19 +13,19 @@ vi.mock("next-intl", () => ({
 }));
 
 const {
-  createIntakeItemMock,
   listRequirementsMock,
   listSpaceMembersMock,
   listVersionsMock,
+  updateIntakeItemMock,
 } = vi.hoisted(() => ({
-  createIntakeItemMock: vi.fn(),
   listRequirementsMock: vi.fn(),
   listSpaceMembersMock: vi.fn(),
   listVersionsMock: vi.fn(),
+  updateIntakeItemMock: vi.fn(),
 }));
 
 vi.mock("../../lib/intake-service", () => ({
-  createIntakeItem: createIntakeItemMock,
+  updateIntakeItem: updateIntakeItemMock,
 }));
 vi.mock("../../lib/requirement-service", () => ({
   listRequirements: listRequirementsMock,
@@ -37,10 +37,14 @@ vi.mock("../../lib/version-service", () => ({
   listVersions: listVersionsMock,
 }));
 
-import { CreateIntakeDialog } from "./create-intake-dialog";
+import type { IntakeItem } from "@project-delivery/shared";
 
+import { EditIntakeDialog } from "./edit-intake-dialog";
+
+const organizationId = "01ARZ3NDEKTSV4RRFFQ69G5FO1";
 const spaceId = "01ARZ3NDEKTSV4RRFFQ69G5FS1";
-const assigneeId = "01ARZ3NDEKTSV4RRFFQ69G5FA1";
+const intakeItemId = "01ARZ3NDEKTSV4RRFFQ69G5FI1";
+const reporterId = "01ARZ3NDEKTSV4RRFFQ69G5FU1";
 const versionId = "01ARZ3NDEKTSV4RRFFQ69G5FV1";
 const versionTwoId = "01ARZ3NDEKTSV4RRFFQ69G5FV2";
 const requirementId = "01ARZ3NDEKTSV4RRFFQ69G5FR1";
@@ -48,91 +52,22 @@ const requirementTwoId = "01ARZ3NDEKTSV4RRFFQ69G5FR2";
 const unversionedRequirementId = "01ARZ3NDEKTSV4RRFFQ69G5FR3";
 
 beforeEach(() => {
-  createIntakeItemMock.mockReset();
   listRequirementsMock.mockReset();
   listSpaceMembersMock.mockReset();
   listVersionsMock.mockReset();
+  updateIntakeItemMock.mockReset();
 
   listRequirementsMock.mockResolvedValue({ items: [], total: 0 });
   listVersionsMock.mockResolvedValue({ items: [], total: 0 });
-  listSpaceMembersMock.mockResolvedValue({
-    items: [
-      {
-        userId: assigneeId,
-        user: { name: "Alice", username: "alice" },
-      },
-    ],
-    total: 1,
-  });
-  createIntakeItemMock.mockResolvedValue({
-    id: "01ARZ3NDEKTSV4RRFFQ69G5FI1",
-  });
+  listSpaceMembersMock.mockResolvedValue({ items: [], total: 0 });
+  updateIntakeItemMock.mockResolvedValue(makeIntakeItem());
 });
 
 afterEach(() => {
   cleanup();
 });
 
-describe("CreateIntakeDialog", () => {
-  it("submits assigneeId, sourceObject, and every shared source type through the create schema", async () => {
-    render(
-      <CreateIntakeDialog open onOpenChange={vi.fn()} spaceId={spaceId} />,
-    );
-
-    await screen.findByText("Alice");
-
-    const sourceSelect = screen.getByTestId("create-intake-source-select");
-    expect(sourceSelect).toHaveTextContent(
-      "intakeItems.sourceType.EXTERNAL_COLLABORATION",
-    );
-
-    fireEvent.change(screen.getByTestId("create-intake-title-input"), {
-      target: { value: "  New intake  " },
-    });
-    fireEvent.change(screen.getByTestId("create-intake-assignee-select"), {
-      target: { value: assigneeId },
-    });
-    fireEvent.change(screen.getByTestId("create-intake-source-object-input"), {
-      target: { value: '{ "meetingId": "m-1" }' },
-    });
-    fireEvent.change(sourceSelect, {
-      target: { value: "EXTERNAL_COLLABORATION" },
-    });
-    fireEvent.click(screen.getByTestId("create-intake-submit"));
-
-    await waitFor(() => expect(createIntakeItemMock).toHaveBeenCalledTimes(1));
-    expect(createIntakeItemMock).toHaveBeenCalledWith(
-      { spaceId },
-      expect.objectContaining({
-        assigneeId,
-        sourceObject: { meetingId: "m-1" },
-        sourceType: "EXTERNAL_COLLABORATION",
-        title: "New intake",
-      }),
-    );
-  });
-
-  it("shows an option load error, disables submit, and retries", async () => {
-    listSpaceMembersMock.mockRejectedValueOnce(new Error("network"));
-
-    render(
-      <CreateIntakeDialog open onOpenChange={vi.fn()} spaceId={spaceId} />,
-    );
-
-    expect(
-      await screen.findByTestId("create-intake-options-error"),
-    ).toHaveTextContent("common.states.optionsLoadFailed");
-    expect(screen.getByTestId("create-intake-submit")).toBeDisabled();
-
-    fireEvent.click(screen.getByTestId("create-intake-options-retry"));
-
-    await screen.findByText("Alice");
-    await waitFor(() =>
-      expect(screen.getByTestId("create-intake-submit")).not.toBeDisabled(),
-    );
-    expect(listSpaceMembersMock).toHaveBeenCalledTimes(2);
-  });
-
+describe("EditIntakeDialog", () => {
   it("filters requirement options by the selected version", async () => {
     listVersionsMock.mockResolvedValue({
       items: [
@@ -155,18 +90,23 @@ describe("CreateIntakeDialog", () => {
     });
 
     render(
-      <CreateIntakeDialog open onOpenChange={vi.fn()} spaceId={spaceId} />,
+      <EditIntakeDialog
+        open
+        onOpenChange={vi.fn()}
+        spaceId={spaceId}
+        intakeItem={makeIntakeItem({ requirementId, versionId })}
+      />,
     );
 
     await screen.findByText("Requirement v1");
     const versionSelect = screen.getByTestId(
-      "create-intake-version-select",
+      "edit-intake-version-select",
     ) as HTMLSelectElement;
     const requirementSelect = screen.getByTestId(
-      "create-intake-requirement-select",
+      "edit-intake-requirement-select",
     ) as HTMLSelectElement;
 
-    fireEvent.change(requirementSelect, { target: { value: requirementId } });
+    expect(versionSelect.value).toBe(versionId);
     expect(requirementSelect.value).toBe(requirementId);
 
     fireEvent.change(versionSelect, { target: { value: versionTwoId } });
@@ -190,15 +130,20 @@ describe("CreateIntakeDialog", () => {
     });
 
     render(
-      <CreateIntakeDialog open onOpenChange={vi.fn()} spaceId={spaceId} />,
+      <EditIntakeDialog
+        open
+        onOpenChange={vi.fn()}
+        spaceId={spaceId}
+        intakeItem={makeIntakeItem()}
+      />,
     );
 
     await screen.findByText("Requirement v1");
     const versionSelect = screen.getByTestId(
-      "create-intake-version-select",
+      "edit-intake-version-select",
     ) as HTMLSelectElement;
     const requirementSelect = screen.getByTestId(
-      "create-intake-requirement-select",
+      "edit-intake-requirement-select",
     ) as HTMLSelectElement;
 
     fireEvent.change(requirementSelect, { target: { value: requirementId } });
@@ -207,3 +152,18 @@ describe("CreateIntakeDialog", () => {
     expect(requirementSelect.value).toBe(requirementId);
   });
 });
+
+function makeIntakeItem(
+  overrides: Partial<Pick<IntakeItem, "requirementId" | "versionId">> = {},
+): IntakeItem {
+  return {
+    id: intakeItemId,
+    organizationId,
+    reporterId,
+    sourceType: "AD_HOC",
+    spaceId,
+    status: "PENDING",
+    title: "Existing intake",
+    ...overrides,
+  };
+}

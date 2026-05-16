@@ -38,6 +38,10 @@ import { Input } from "../ui/input";
 import { Label } from "../ui/label";
 import { Textarea } from "../ui/textarea";
 import { useSession } from "../providers/session-provider";
+import {
+  filterRequirementsByVersion,
+  isRequirementCompatibleWithVersion,
+} from "./versioned-requirement-linking";
 
 type ConvertIntakeDialogProps = {
   open: boolean;
@@ -199,7 +203,11 @@ export function ConvertIntakeDialog({
 
   function updateRow(index: number, patch: Partial<TaskRow>) {
     setRows((prev) =>
-      prev.map((row, idx) => (idx === index ? { ...row, ...patch } : row)),
+      prev.map((row, idx) =>
+        idx === index
+          ? applyLinkedRequirementPatch(row, patch, requirements)
+          : row,
+      ),
     );
     if (patch.title !== undefined) {
       setErrors((prev) =>
@@ -413,7 +421,10 @@ export function ConvertIntakeDialog({
                       <option value="">
                         {tIntakeItems("taskForm.noRequirement")}
                       </option>
-                      {requirements.map((requirement) => (
+                      {filterRequirementsByVersion(
+                        requirements,
+                        row.versionId,
+                      ).map((requirement) => (
                         <option key={requirement.id} value={requirement.id}>
                           {requirement.title || t("fields.untitledRequirement")}
                         </option>
@@ -628,4 +639,41 @@ function formatWorkflowOption(
     : "";
 
   return `${name}${defaultMark}`;
+}
+
+function applyLinkedRequirementPatch(
+  row: TaskRow,
+  patch: Partial<TaskRow>,
+  requirements: Requirement[],
+): TaskRow {
+  const next = { ...row, ...patch };
+
+  if (patch.versionId !== undefined) {
+    const selectedRequirement = requirements.find(
+      (requirement) => requirement.id === next.requirementId,
+    );
+
+    if (
+      !isRequirementCompatibleWithVersion(selectedRequirement, patch.versionId)
+    ) {
+      next.requirementId = "";
+    }
+  }
+
+  if (patch.requirementId !== undefined) {
+    const selectedRequirement = requirements.find(
+      (requirement) => requirement.id === patch.requirementId,
+    );
+    const nextVersionId = selectedRequirement?.versionId;
+
+    if (!next.versionId && nextVersionId) {
+      next.versionId = nextVersionId;
+    } else if (
+      !isRequirementCompatibleWithVersion(selectedRequirement, next.versionId)
+    ) {
+      next.requirementId = "";
+    }
+  }
+
+  return next;
 }

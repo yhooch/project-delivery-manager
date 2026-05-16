@@ -82,6 +82,10 @@ import {
 import { ConvertIntakeDialog } from "./convert-intake-dialog";
 import { CreateIntakeDialog } from "./create-intake-dialog";
 import { EditIntakeDialog } from "./edit-intake-dialog";
+import {
+  filterRequirementsByVersion,
+  isRequirementCompatibleWithVersion,
+} from "./versioned-requirement-linking";
 
 const priorityDot: Record<Priority, string> = {
   LOW: "bg-muted-foreground/40",
@@ -165,7 +169,6 @@ export function IntakePage() {
   const [actionInFlight, setActionInFlight] = useState<StatusActionKind | null>(
     null,
   );
-  const [viewTasksInFlight, setViewTasksInFlight] = useState(false);
   const [actionErrorKey, setActionErrorKey] = useState<string | null>(null);
   const [createOpen, setCreateOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
@@ -202,12 +205,55 @@ export function IntakePage() {
   const paginationFrom = loadedCount > 0 ? 1 : 0;
   const paginationTo = Math.min(loadedCount, pageInfo.total);
   const hasMoreItems = loadedCount < pageInfo.total;
+  const filteredRequirements = useMemo(
+    () =>
+      filterRequirementsByVersion(requirements, listFilters.versionId ?? ""),
+    [listFilters.versionId, requirements],
+  );
 
   const setListFilter = useCallback(
     (key: keyof IntakeListFilterState, value: string) => {
       setListFilters((current) => ({ ...current, [key]: value || undefined }));
     },
     [],
+  );
+  const setVersionFilter = useCallback(
+    (nextVersionId: string) => {
+      setListFilters((current) => {
+        const selectedRequirement = requirements.find(
+          (requirement) => requirement.id === current.requirementId,
+        );
+
+        return {
+          ...current,
+          requirementId: isRequirementCompatibleWithVersion(
+            selectedRequirement,
+            nextVersionId,
+          )
+            ? current.requirementId
+            : undefined,
+          versionId: nextVersionId || undefined,
+        };
+      });
+    },
+    [requirements],
+  );
+  const setRequirementFilter = useCallback(
+    (nextRequirementId: string) => {
+      setListFilters((current) => {
+        const selectedRequirement = requirements.find(
+          (requirement) => requirement.id === nextRequirementId,
+        );
+        const nextVersionId = selectedRequirement?.versionId;
+
+        return {
+          ...current,
+          requirementId: nextRequirementId || undefined,
+          versionId: current.versionId || nextVersionId,
+        };
+      });
+    },
+    [requirements],
   );
 
   const loadItems = useCallback(
@@ -575,35 +621,6 @@ export function IntakePage() {
     void loadItems(1, "replace");
   }
 
-  async function handleViewConvertedTasks(target: IntakeItem | null = active) {
-    if (!target || !spaceId || target.status !== "CONVERTED") {
-      return;
-    }
-
-    setViewTasksInFlight(true);
-
-    try {
-      const related = await listWorkItems({
-        organizationId,
-        intakeItemId: target.id,
-        page: 1,
-        pageSize: 2,
-        spaceId,
-      });
-      const firstTask = related.items[0];
-      const href =
-        related.total === 1 && firstTask
-          ? buildWorkItemsHref({ workItemId: firstTask.id })
-          : buildWorkItemsHref({ intakeItemId: target.id });
-
-      router.push(href);
-    } catch {
-      router.push(buildWorkItemsHref({ intakeItemId: target.id }));
-    } finally {
-      setViewTasksInFlight(false);
-    }
-  }
-
   const headerActions = spaceId ? (
     <>
       <Button
@@ -823,9 +840,7 @@ export function IntakePage() {
             <select
               data-testid="intake-filter-version"
               value={listFilters.versionId ?? ""}
-              onChange={(event) =>
-                setListFilter("versionId", event.target.value)
-              }
+              onChange={(event) => setVersionFilter(event.target.value)}
               className="h-8 w-full rounded-md border border-input bg-background px-2 text-sm"
             >
               <option value="">{t("filters.allVersions")}</option>
@@ -840,13 +855,11 @@ export function IntakePage() {
             <select
               data-testid="intake-filter-requirement"
               value={listFilters.requirementId ?? ""}
-              onChange={(event) =>
-                setListFilter("requirementId", event.target.value)
-              }
+              onChange={(event) => setRequirementFilter(event.target.value)}
               className="h-8 w-full rounded-md border border-input bg-background px-2 text-sm"
             >
               <option value="">{t("filters.allRequirements")}</option>
-              {requirements.map((requirement) => (
+              {filteredRequirements.map((requirement) => (
                 <option key={requirement.id} value={requirement.id}>
                   {requirement.title || requirement.id}
                 </option>
@@ -1021,20 +1034,6 @@ export function IntakePage() {
                     >
                       <ArrowRight className="h-3 w-3" />
                       {t("detail.convert")}
-                    </Button>
-                  )}
-                  {active.status === "CONVERTED" && (
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      className="h-7 text-xs"
-                      data-testid="intake-view-converted-tasks-button"
-                      disabled={viewTasksInFlight}
-                      onClick={() => void handleViewConvertedTasks()}
-                      type="button"
-                    >
-                      <CheckCircle2 className="h-3 w-3" />
-                      {t("detail.viewTasks")}
                     </Button>
                   )}
                 </div>

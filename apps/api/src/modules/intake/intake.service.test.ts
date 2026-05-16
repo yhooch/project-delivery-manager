@@ -21,6 +21,7 @@ const INTAKE_ITEM_ID = "01H00000000000000000000006";
 const WORKFLOW_VERSION_ID = "01H00000000000000000000007";
 const CURRENT_STATE_ID = "01H00000000000000000000008";
 const WORK_ITEM_ID = "01H00000000000000000000009";
+const VERSION_TWO_ID = "01H00000000000000000000010";
 
 describe("IntakeService", () => {
   it("lists full space intake for PM and participant-only intake for other roles", async () => {
@@ -109,13 +110,36 @@ describe("IntakeService", () => {
     );
   });
 
+  it("rejects intake create when requirement belongs to another version", async () => {
+    const { intakeItems, requirements, service } = createSubject({
+      role: "PM",
+    });
+    vi.mocked(requirements.findById).mockResolvedValueOnce(
+      requirement({ versionId: VERSION_TWO_ID }),
+    );
+
+    await expect(
+      service.create(ACTOR_USER_ID, SPACE_ID, {
+        requirementId: REQUIREMENT_ID,
+        sourceType: "REQUIREMENT_CHANGE",
+        title: "Cross-version intake",
+        versionId: VERSION_ID,
+      }),
+    ).rejects.toMatchObject({
+      code: "VALIDATION_ERROR",
+    });
+    expect(intakeItems.create).not.toHaveBeenCalled();
+  });
+
   it("hides a single intake item from non-privileged non-participants", async () => {
     const { service } = createSubject({
       hasParticipant: false,
       role: "DEVELOPER",
     });
 
-    await expect(service.get(ACTOR_USER_ID, INTAKE_ITEM_ID)).rejects.toMatchObject({
+    await expect(
+      service.get(ACTOR_USER_ID, INTAKE_ITEM_ID),
+    ).rejects.toMatchObject({
       code: "INTAKE_ITEM_NOT_FOUND",
     });
   });
@@ -175,6 +199,28 @@ describe("IntakeService", () => {
         versionId: null,
       }),
     );
+  });
+
+  it("rejects intake update when final requirement and version differ", async () => {
+    const { intakeItems, requirements, service } = createSubject({
+      item: intakeItem({
+        requirementId: REQUIREMENT_ID,
+        versionId: VERSION_ID,
+      }),
+      role: "PM",
+    });
+    vi.mocked(requirements.findById).mockResolvedValueOnce(
+      requirement({ versionId: VERSION_ID }),
+    );
+
+    await expect(
+      service.update(ACTOR_USER_ID, INTAKE_ITEM_ID, {
+        versionId: VERSION_TWO_ID,
+      }),
+    ).rejects.toMatchObject({
+      code: "VALIDATION_ERROR",
+    });
+    expect(intakeItems.update).not.toHaveBeenCalled();
   });
 
   it("accepts pending intake items and rejects illegal status changes", async () => {
@@ -454,6 +500,33 @@ describe("IntakeService", () => {
     );
   });
 
+  it("rejects converted task rows when requirement belongs to another version", async () => {
+    const { intakeItems, requirements, service } = createSubject({
+      item: intakeItem({
+        status: "ACCEPTED",
+        versionId: VERSION_ID,
+      }),
+      role: "PM",
+    });
+    vi.mocked(requirements.findById).mockResolvedValueOnce(
+      requirement({ versionId: VERSION_TWO_ID }),
+    );
+
+    await expect(
+      service.convertToWorkItems(ACTOR_USER_ID, INTAKE_ITEM_ID, {
+        tasks: [
+          {
+            requirementId: REQUIREMENT_ID,
+            title: "Cross-version converted task",
+          },
+        ],
+      }),
+    ).rejects.toMatchObject({
+      code: "VALIDATION_ERROR",
+    });
+    expect(intakeItems.convertToWorkItems).not.toHaveBeenCalled();
+  });
+
   it("rejects duplicate and non-accepted conversions with dedicated error codes", async () => {
     const converted = createSubject({
       item: intakeItem({ status: "CONVERTED" }),
@@ -706,7 +779,10 @@ function createAuditService() {
   };
 }
 
-function applyOptional<T>(value: T | null | undefined, fallback: T | undefined) {
+function applyOptional<T>(
+  value: T | null | undefined,
+  fallback: T | undefined,
+) {
   if (value === undefined) {
     return fallback;
   }
@@ -782,9 +858,7 @@ function workItem(
     workflowVersionId: overrides.workflowVersionId ?? WORKFLOW_VERSION_ID,
     ...(overrides.assigneeId ? { assigneeId: overrides.assigneeId } : {}),
     ...(overrides.dueDate ? { dueDate: overrides.dueDate } : {}),
-    ...(overrides.intakeItemId
-      ? { intakeItemId: overrides.intakeItemId }
-      : {}),
+    ...(overrides.intakeItemId ? { intakeItemId: overrides.intakeItemId } : {}),
     ...(overrides.requirementId
       ? { requirementId: overrides.requirementId }
       : {}),
@@ -808,7 +882,9 @@ function version(overrides: { spaceId?: string } = {}) {
   };
 }
 
-function requirement(overrides: { spaceId?: string } = {}) {
+function requirement(
+  overrides: { spaceId?: string; versionId?: string | null } = {},
+) {
   return {
     attachments: [],
     contentFormat: "TIPTAP_JSON" as const,
@@ -826,5 +902,8 @@ function requirement(overrides: { spaceId?: string } = {}) {
     status: "CONFIRMED" as const,
     title: "Requirement",
     updatedAt: "2026-05-13T00:00:00.000Z",
+    ...(overrides.versionId !== null
+      ? { versionId: overrides.versionId ?? VERSION_ID }
+      : {}),
   };
 }

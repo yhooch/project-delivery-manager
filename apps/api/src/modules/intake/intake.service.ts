@@ -7,6 +7,7 @@ import {
   type IntakeTaskInput,
   type IntakeStatus,
   type ListIntakeItemsResponse,
+  type Requirement,
   type SpaceRole,
   type UpdateIntakeItemRequest,
 } from "@project-delivery/shared";
@@ -140,7 +141,21 @@ export class IntakeService {
     const item = await this.requireExistingIntakeItem(intakeItemId);
 
     await this.requireManageableIntakeItem(actorUserId, item);
-    await this.validateReferences(item.organizationId, item.spaceId, input);
+    const shouldValidateTraceFields =
+      input.versionId !== undefined || input.requirementId !== undefined;
+    await this.validateReferences(item.organizationId, item.spaceId, {
+      assigneeId: input.assigneeId,
+      requirementId: shouldValidateTraceFields
+        ? input.requirementId !== undefined
+          ? input.requirementId
+          : item.requirementId
+        : input.requirementId,
+      versionId: shouldValidateTraceFields
+        ? input.versionId !== undefined
+          ? input.versionId
+          : item.versionId
+        : input.versionId,
+    });
 
     const updated = await this.intakeItems.update({
       ...input,
@@ -349,12 +364,14 @@ export class IntakeService {
       versionId?: string | null;
     },
   ) {
+    const requirement = input.requirementId
+      ? await this.requireRequirementInSpace(spaceId, input.requirementId)
+      : undefined;
+
     if (input.versionId) {
       await this.requireVersionInSpace(spaceId, input.versionId);
     }
-    if (input.requirementId) {
-      await this.requireRequirementInSpace(spaceId, input.requirementId);
-    }
+    assertRequirementVersionMatches(input.versionId, requirement);
     if (input.assigneeId) {
       await this.requireActiveSpaceMember(
         organizationId,
@@ -426,6 +443,7 @@ export class IntakeService {
     const requirement = requirementId
       ? await this.requireRequirementInSpace(item.spaceId, requirementId)
       : undefined;
+    assertRequirementVersionMatches(versionId, requirement);
 
     if (assigneeId) {
       await this.requireActiveSpaceMember(
@@ -645,6 +663,23 @@ function parseOptionalDate(value: string | undefined, field: string) {
   }
 
   return date;
+}
+
+function assertRequirementVersionMatches(
+  versionId: string | null | undefined,
+  requirement: Requirement | undefined,
+) {
+  if (!versionId || !requirement?.versionId) {
+    return;
+  }
+
+  if (requirement.versionId !== versionId) {
+    throw new ApiException(
+      "VALIDATION_ERROR",
+      "Requirement must belong to the selected version",
+      HttpStatus.BAD_REQUEST,
+    );
+  }
 }
 
 function collectRelatedUserIds(userIds: Array<string | undefined>) {
