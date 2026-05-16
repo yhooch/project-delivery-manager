@@ -9,6 +9,7 @@ export type AttachmentPresignUploadInput = {
   expiresInSeconds: number;
   key: string;
   mimeType: string;
+  size: number;
 };
 
 export type AttachmentPresignDownloadInput = {

@@ -77,10 +77,14 @@ export class S3AttachmentObjectStorage
       this.publicClient,
       new PutObjectCommand({
         Bucket: this.bucket,
+        ContentLength: input.size,
         ContentType: input.mimeType,
         Key: input.key,
       }),
-      { expiresIn: input.expiresInSeconds },
+      {
+        expiresIn: input.expiresInSeconds,
+        signableHeaders: new Set(["content-type"]),
+      },
     );
   }
 

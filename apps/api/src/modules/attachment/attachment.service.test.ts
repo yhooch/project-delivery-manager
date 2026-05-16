@@ -65,6 +65,7 @@ describe("AttachmentService", () => {
       expiresInSeconds: PresignedUploadUrlExpiresInSeconds,
       key: presign.fileKey,
       mimeType: "application/pdf",
+      size: 1024,
     });
   });
 
@@ -198,7 +199,7 @@ describe("AttachmentService", () => {
       },
       message: "Uploaded attachment size does not match registration",
     });
-    expect(objectStorage.deleteObjectIfExists).toHaveBeenCalledWith(fileKey);
+    expect(objectStorage.deleteObjectIfExists).not.toHaveBeenCalled();
     expect(attachments.create).not.toHaveBeenCalled();
   });
 
@@ -234,7 +235,7 @@ describe("AttachmentService", () => {
       },
       message: "Uploaded attachment MIME type does not match registration",
     });
-    expect(objectStorage.deleteObjectIfExists).toHaveBeenCalledWith(fileKey);
+    expect(objectStorage.deleteObjectIfExists).not.toHaveBeenCalled();
     expect(attachments.create).not.toHaveBeenCalled();
   });
 

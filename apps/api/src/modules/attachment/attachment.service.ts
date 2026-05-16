@@ -76,6 +76,7 @@ export class AttachmentService {
       expiresInSeconds: PresignedUploadUrlExpiresInSeconds,
       key: fileKey,
       mimeType: input.mimeType,
+      size: input.size,
     });
 
     return {
@@ -380,7 +381,6 @@ export class AttachmentService {
       );
     }
     if (object.size !== input.size) {
-      await this.deleteInvalidUploadedObject(input.fileKey);
       throw new ApiException(
         "VALIDATION_ERROR",
         "Uploaded attachment size does not match registration",
@@ -392,7 +392,6 @@ export class AttachmentService {
       );
     }
     if (!mimeTypesMatch(object, input.mimeType)) {
-      await this.deleteInvalidUploadedObject(input.fileKey);
       throw new ApiException(
         "VALIDATION_ERROR",
         "Uploaded attachment MIME type does not match registration",
@@ -402,14 +401,6 @@ export class AttachmentService {
           expectedMimeType: input.mimeType,
         },
       );
-    }
-  }
-
-  private async deleteInvalidUploadedObject(fileKey: string): Promise<void> {
-    try {
-      await this.objectStorage.deleteObjectIfExists(fileKey);
-    } catch (error) {
-      void error;
     }
   }
 }
