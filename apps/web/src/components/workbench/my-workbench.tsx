@@ -10,16 +10,12 @@ import type {
   WorkItemType,
 } from "@project-delivery/shared";
 import {
-  AlertCircle,
   ArrowUpRight,
   Bug,
   CheckCircle2,
   ChevronDown,
-  Clock,
   Filter,
   GitBranch,
-  Inbox,
-  type LucideIcon,
 } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -63,8 +59,6 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "../ui/dropdown-menu";
-import { StatusBadge } from "../ui/status-badge";
-import { SelectMenu } from "../ui/select-menu";
 
 import { EmptyState, ErrorState, ListSkeleton } from "../v2/states";
 import { TaskDetailSheet } from "../work-item/task-detail-sheet";
@@ -121,6 +115,7 @@ export function MyWorkbench() {
   );
   const [filters, setFilters] = useState<WorkbenchFilterState>({});
   const [filterOpen, setFilterOpen] = useState(false);
+  const filterPopoverRef = useRef<HTMLDivElement | null>(null);
   const [organizationLookups, setOrganizationLookups] = useState<{
     membersBySpaceId: Map<string, SpaceMemberWithUser[]>;
     versionsBySpaceId: Map<string, Version[]>;
@@ -237,6 +232,33 @@ export function MyWorkbench() {
     setFilters((current) => (Object.keys(current).length > 0 ? {} : current));
     setFilterOpen(false);
   }, [organizationId]);
+
+  useEffect(() => {
+    if (!filterOpen) {
+      return;
+    }
+
+    function handlePointerOutside(event: MouseEvent | TouchEvent) {
+      const target = event.target;
+
+      if (
+        target instanceof Node &&
+        filterPopoverRef.current?.contains(target)
+      ) {
+        return;
+      }
+
+      setFilterOpen(false);
+    }
+
+    document.addEventListener("mousedown", handlePointerOutside);
+    document.addEventListener("touchstart", handlePointerOutside);
+
+    return () => {
+      document.removeEventListener("mousedown", handlePointerOutside);
+      document.removeEventListener("touchstart", handlePointerOutside);
+    };
+  }, [filterOpen]);
 
   useEffect(() => {
     setSheetOpen(false);
@@ -679,40 +701,54 @@ export function MyWorkbench() {
   return (
     <div
       data-testid="workbench-page"
-      className="mx-auto flex max-w-6xl flex-col gap-6 px-6 py-6"
+      className="mx-auto flex max-w-6xl flex-col gap-8 px-6 py-8"
     >
       <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <div className="text-[11px] font-medium uppercase tracking-wider text-primary">
+          <div className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground mb-2">
             {selectedSpace?.name ??
               currentOrganization?.name ??
               tRoot("dashboard.filters.allSpaces")}
           </div>
-          <h1 className="mt-1 text-xl font-semibold tracking-tight">
-            {greetingName} · {t("title")}
+          <h1 className="text-3xl font-light tracking-tight text-foreground">
+            {greetingName} <span className="text-muted-foreground mx-1">·</span> {t("title")}
           </h1>
-          <p className="mt-1 text-sm text-muted-foreground">{t("subtitle")}</p>
+          <p className="mt-2 text-[13px] text-muted-foreground">{t("subtitle")}</p>
         </div>
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="flex flex-wrap items-center gap-3">
           <WorkbenchSpaceFilter
             spaces={spacesForCurrentOrganization}
             selectedSpaceId={selectedSpaceId}
             onChange={handleSpaceChange}
             tRoot={tRoot}
           />
-          <Button
-            variant={filterOpen ? "secondary" : "outline"}
-            size="sm"
-            className="text-xs"
-            data-testid="workbench-filter-button"
-            aria-controls="workbench-filter-panel"
-            aria-expanded={filterOpen}
-            onClick={() => setFilterOpen((open) => !open)}
-            type="button"
-          >
-            <Filter className="h-3 w-3" />
-            {t("filter")}
-          </Button>
+          <div ref={filterPopoverRef} className="relative">
+            <Button
+              variant={filterOpen ? "secondary" : "outline"}
+              size="sm"
+              className="text-xs"
+              data-testid="workbench-filter-button"
+              aria-controls="workbench-filter-panel"
+              aria-expanded={filterOpen}
+              onClick={() => setFilterOpen((open) => !open)}
+              type="button"
+            >
+              <Filter className="h-3 w-3" />
+              {t("filter")}
+            </Button>
+            {filterOpen && (
+              <div className="absolute right-0 top-full z-50 mt-2 w-[min(calc(100vw-2rem),600px)] overflow-hidden rounded-xl border border-border/60 bg-card shadow-lg animate-in fade-in zoom-in-95 origin-top-right">
+                <WorkbenchFilters
+                  filters={filters}
+                  members={availableMembers}
+                  versions={availableVersions}
+                  onChange={setFilterValue}
+                  onClear={clearFilters}
+                  tRoot={tRoot}
+                />
+              </div>
+            )}
+          </div>
           <Button asChild variant="ghost" size="sm" className="text-xs">
             <Link href="/work-items?workItemType=TASK">
               {t("viewAll")}
@@ -728,44 +764,31 @@ export function MyWorkbench() {
         className="grid grid-cols-2 gap-3 lg:grid-cols-4"
       >
         <SummaryChip
-          icon={Inbox}
           tone="primary"
           value={todoCount}
           label={t("summary.todo")}
         />
         <SummaryChip
-          icon={Clock}
           tone="info"
           value={dueSoonCount}
           label={t("summary.dueSoon")}
         />
         <SummaryChip
-          icon={AlertCircle}
           tone="warning"
           value={blockedCount}
           label={t("summary.blocked")}
         />
         <SummaryChip
-          icon={CheckCircle2}
           tone="success"
           value={pendingConfirmCount}
           label={t("summary.pendingConfirm")}
         />
       </div>
 
-      {filterOpen ? (
-        <WorkbenchFilters
-          filters={filters}
-          members={availableMembers}
-          versions={availableVersions}
-          onChange={setFilterValue}
-          onClear={clearFilters}
-          tRoot={tRoot}
-        />
-      ) : null}
+      <div className="h-px w-full bg-border/40 my-1" />
 
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1fr_320px]">
-        <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
+      <div className="grid grid-cols-1 gap-8 lg:grid-cols-[1fr_320px] items-start">
+        <div className="grid grid-cols-1 gap-7 xl:grid-cols-2">
           <Section
             title={t("sections.todo")}
             count={todoCount}
@@ -874,51 +897,55 @@ export function MyWorkbench() {
           </Section>
         </div>
 
-        <aside className="flex flex-col gap-3 rounded-lg border border-border bg-card/40 p-4">
-          <div className="flex items-center justify-between">
-            <h3 className="text-sm font-semibold">{t("sections.recent")}</h3>
-            <Button asChild variant="ghost" size="icon-sm">
+        <aside className="sticky top-6 flex flex-col gap-4 pt-1 lg:pl-6 lg:border-l lg:border-border/40 lg:-ml-6 min-h-[50vh]">
+          <div className="flex items-center justify-between pb-2 border-b border-border/40">
+            <h3 className="text-[13px] font-semibold uppercase tracking-wider text-muted-foreground">{t("sections.recent")}</h3>
+            <Button
+              asChild
+              variant="ghost"
+              size="icon-sm"
+              className="text-muted-foreground hover:text-foreground"
+            >
               <Link href="/overview" aria-label={t("sections.recent")}>
-                <ArrowUpRight className="h-3 w-3" />
+                <ArrowUpRight className="h-3.5 w-3.5" />
               </Link>
             </Button>
           </div>
           {isLoading && !view ? (
-            <div className="space-y-2">
-              {Array.from({ length: 3 }).map((_, idx) => (
+            <div className="space-y-4">
+              {Array.from({ length: 4 }).map((_, idx) => (
                 <div
                   key={idx}
-                  className="h-10 animate-pulse rounded-md bg-muted/60"
+                  className="h-10 animate-pulse rounded-md bg-muted/40"
                 />
               ))}
             </div>
           ) : recentEvents.length === 0 ? (
             <p className="text-xs text-muted-foreground">{t("empty.recent")}</p>
           ) : (
-            <ul className="space-y-3">
+            <ul className="relative flex flex-col gap-5 before:absolute before:inset-y-0 before:left-3 before:w-px before:bg-border/50">
               {recentEvents.map((event) => (
-                <li key={event.id} className="flex gap-2.5">
+                <li key={event.id} className="flex gap-4">
                   <Tip content={event.actor.name}>
-                    <Avatar className="h-6 w-6 cursor-pointer">
-                      <AvatarFallback className="text-[10px]">
+                    <Avatar className="h-6 w-6 cursor-pointer border-4 border-background ring-2 ring-background z-10 shrink-0 bg-muted">
+                      <AvatarFallback className="text-[9px] text-muted-foreground bg-transparent">
                         {initialOf(event.actor.name)}
                       </AvatarFallback>
                     </Avatar>
                   </Tip>
-                  <div className="flex-1 text-[12px]">
+                  <div className="flex-1 text-[13px] min-w-0 pt-0.5">
                     <div className="leading-snug">
-                      <span className="font-medium">{event.actor.name}</span>
-                      <span className="text-muted-foreground">
-                        {" "}
-                        {event.title}{" "}
+                      <span className="font-medium text-foreground/90">{event.actor.name}</span>
+                      <span className="text-muted-foreground px-1.5">
+                        {event.title}
                       </span>
                       {event.target.title && (
-                        <span className="font-mono text-[11px]">
+                        <span className="font-medium text-foreground inline-block truncate max-w-full align-bottom">
                           {event.target.title}
                         </span>
                       )}
                     </div>
-                    <div className="mt-0.5 text-[10px] text-muted-foreground">
+                    <div className="mt-1 text-[11px] font-medium text-muted-foreground/60">
                       {formatTimeAgo(
                         event.createdAt,
                         locale,
@@ -976,14 +1003,15 @@ function WorkbenchSpaceFilter({
           <ChevronDown className="h-3 w-3" />
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="min-w-[200px]">
-        <DropdownMenuLabel>
+      <DropdownMenuContent align="end" className="min-w-[200px] rounded-xl shadow-md border-border/80">
+        <DropdownMenuLabel className="text-[11px] uppercase tracking-wider text-muted-foreground">
           {tRoot("dashboard.filters.space")}
         </DropdownMenuLabel>
-        <DropdownMenuSeparator />
+        <DropdownMenuSeparator className="bg-border/60" />
         <DropdownMenuItem
           data-testid="workbench-space-filter-all"
           onSelect={() => onChange(undefined)}
+          className="text-[13px]"
         >
           {tRoot("dashboard.filters.allSpaces")}
         </DropdownMenuItem>
@@ -992,6 +1020,7 @@ function WorkbenchSpaceFilter({
             key={space.id}
             data-testid={`workbench-space-filter-${space.id}`}
             onSelect={() => onChange(space.id)}
+            className="text-[13px]"
           >
             {space.name}
           </DropdownMenuItem>
@@ -1017,82 +1046,74 @@ function WorkbenchFilters({
   tRoot: ReturnType<typeof useTranslations>;
 }) {
   const hasFilters = Object.values(filters).some(Boolean);
+  const versionOptions = versions.map((version) => ({
+    label: version.name,
+    value: version.id,
+  }));
+  const memberOptions = members.map((member) => ({
+    label: member.user.name || member.user.username,
+    value: member.userId,
+  }));
 
   return (
     <div
       id="workbench-filter-panel"
       aria-label={tRoot("m4Views.filters.label")}
-      className="grid gap-3 rounded-lg border border-border bg-card/40 p-3 md:grid-cols-6"
+      className="flex max-h-[min(70vh,540px)] flex-col gap-3 overflow-y-auto rounded-xl bg-muted/30 p-3 animate-in fade-in slide-in-from-top-2"
       data-testid="workbench-filter-panel"
     >
-      <WorkbenchSelectFilter
+      <WorkbenchFilterGroup
         label={tRoot("m4Views.filters.version")}
         value={filters.versionId ?? ""}
-        onChange={(value) => onChange("versionId", value)}
-      >
-        <option value="">{tRoot("m4Views.filters.allVersions")}</option>
-        {versions.map((version) => (
-          <option key={version.id} value={version.id}>
-            {version.name}
-          </option>
-        ))}
-      </WorkbenchSelectFilter>
+        allLabel={tRoot("m4Views.filters.allVersions")}
+        options={versionOptions}
+        onSelect={(value) => onChange("versionId", value)}
+      />
 
-      <WorkbenchSelectFilter
+      <WorkbenchFilterGroup
         label={tRoot("m4Views.filters.assignee")}
         value={filters.assigneeId ?? ""}
-        onChange={(value) => onChange("assigneeId", value)}
-      >
-        <option value="">{tRoot("m4Views.filters.allAssignees")}</option>
-        {members.map((member) => (
-          <option key={member.userId} value={member.userId}>
-            {member.user.name || member.user.username}
-          </option>
-        ))}
-      </WorkbenchSelectFilter>
+        allLabel={tRoot("m4Views.filters.allAssignees")}
+        options={memberOptions}
+        onSelect={(value) => onChange("assigneeId", value)}
+      />
 
-      <WorkbenchSelectFilter
+      <WorkbenchFilterGroup
         label={tRoot("m4Views.filters.statusCategory")}
         value={filters.statusCategory ?? ""}
-        onChange={(value) => onChange("statusCategory", value)}
-      >
-        <option value="">{tRoot("m4Views.filters.allStatusCategories")}</option>
-        {M4_STATUS_CATEGORY_OPTIONS.map((option) => (
-          <option key={option.value} value={option.value}>
-            {tRoot(option.labelKey)}
-          </option>
-        ))}
-      </WorkbenchSelectFilter>
+        allLabel={tRoot("m4Views.filters.allStatusCategories")}
+        options={M4_STATUS_CATEGORY_OPTIONS.map((option) => ({
+          label: tRoot(option.labelKey),
+          value: option.value,
+        }))}
+        onSelect={(value) => onChange("statusCategory", value)}
+      />
 
-      <WorkbenchSelectFilter
+      <WorkbenchFilterGroup
         label={tRoot("m4Views.filters.workItemType")}
         value={filters.workItemType ?? ""}
-        onChange={(value) => onChange("workItemType", value)}
-      >
-        <option value="">{tRoot("m4Views.filters.allWorkItemTypes")}</option>
-        {M4_WORK_ITEM_TYPE_OPTIONS.map((option) => (
-          <option key={option.value} value={option.value}>
-            {tRoot(option.labelKey)}
-          </option>
-        ))}
-      </WorkbenchSelectFilter>
+        allLabel={tRoot("m4Views.filters.allWorkItemTypes")}
+        options={M4_WORK_ITEM_TYPE_OPTIONS.map((option) => ({
+          label: tRoot(option.labelKey),
+          value: option.value,
+        }))}
+        onSelect={(value) => onChange("workItemType", value)}
+      />
 
-      <WorkbenchSelectFilter
+      <WorkbenchFilterGroup
         label={tRoot("m4Views.filters.exceptionType")}
         value={filters.exceptionType ?? ""}
-        onChange={(value) => onChange("exceptionType", value)}
-      >
-        <option value="">{tRoot("m4Views.filters.allExceptionTypes")}</option>
-        {M4_EXCEPTION_TYPE_OPTIONS.map((option) => (
-          <option key={option.value} value={option.value}>
-            {tRoot(option.labelKey)}
-          </option>
-        ))}
-      </WorkbenchSelectFilter>
+        allLabel={tRoot("m4Views.filters.allExceptionTypes")}
+        options={M4_EXCEPTION_TYPE_OPTIONS.map((option) => ({
+          label: tRoot(option.labelKey),
+          value: option.value,
+        }))}
+        onSelect={(value) => onChange("exceptionType", value)}
+      />
 
-      <div className="flex items-end">
+      <div className="flex justify-end border-t border-border/50 pt-2">
         <Button
-          className="h-8 w-full text-xs"
+          className="h-8 text-[12px] rounded-md bg-transparent hover:bg-background shadow-sm border border-border/40 hover:border-border/80 transition-all text-muted-foreground hover:text-foreground"
           disabled={!hasFilters}
           onClick={onClear}
           type="button"
@@ -1105,66 +1126,76 @@ function WorkbenchFilters({
   );
 }
 
-function WorkbenchSelectFilter({
-  children,
+function WorkbenchFilterGroup({
+  allLabel,
   label,
-  onChange,
+  onSelect,
+  options,
   value,
 }: {
-  children: React.ReactNode;
+  allLabel: string;
   label: string;
-  onChange: (value: string) => void;
+  onSelect: (value: string) => void;
+  options: { label: string; value: string }[];
   value: string;
 }) {
+  const groupOptions = [{ label: allLabel, value: "" }, ...options];
+
   return (
-    <label className="flex min-w-0 flex-col gap-1 text-[11px] font-medium text-muted-foreground">
-      <span className="truncate">{label}</span>
-      <SelectMenu
-        className="h-8 w-full rounded-md border border-input bg-background px-2 text-sm font-normal text-foreground"
-        onChange={(event) => onChange(event.target.value)}
-        value={value}
-      >
-        {children}
-      </SelectMenu>
-    </label>
+    <section className="min-w-0 space-y-1.5">
+      <h4 className="truncate text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+        {label}
+      </h4>
+      <div className="flex flex-wrap gap-1.5" role="group" aria-label={label}>
+        {groupOptions.map((option) => {
+          const selected = value === option.value;
+
+          return (
+            <button
+              key={option.value || "__all"}
+              type="button"
+              aria-pressed={selected}
+              className={cn(
+                "min-h-7 max-w-full rounded-full border px-2.5 py-0.5 text-[12px] font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 focus-visible:ring-offset-background",
+                selected
+                  ? "border-primary/40 bg-primary/10 text-primary shadow-sm"
+                  : "border-border/60 bg-background/70 text-muted-foreground hover:border-border hover:bg-background hover:text-foreground",
+              )}
+              onClick={() => onSelect(option.value)}
+            >
+              <span className="block truncate">{option.label}</span>
+            </button>
+          );
+        })}
+      </div>
+    </section>
   );
 }
 
 type SummaryTone = "primary" | "info" | "warning" | "success";
 
-const toneClass: Record<SummaryTone, string> = {
-  primary: "bg-primary/10 text-primary",
-  info: "bg-info/10 text-info",
-  warning: "bg-warning/10 text-warning",
-  success: "bg-success/10 text-success",
-};
-
 function SummaryChip({
-  icon: Icon,
   tone,
   value,
   label,
 }: {
-  icon: LucideIcon;
   tone: SummaryTone;
   value: number | undefined;
   label: string;
 }) {
   return (
-    <div className="flex items-center gap-3 rounded-lg border border-border bg-card/40 px-4 py-3">
-      <div
-        className={cn(
-          "flex h-9 w-9 items-center justify-center rounded-lg",
-          toneClass[tone],
-        )}
-      >
-        <Icon className="h-4 w-4" />
+    <div className="group flex flex-col gap-0.5 rounded-2xl p-3 hover:bg-muted/30 transition-colors cursor-default">
+      <div className="text-[13px] font-medium text-muted-foreground group-hover:text-foreground transition-colors">
+        {label}
       </div>
-      <div className="flex flex-col">
-        <span className="text-lg font-semibold leading-none">
-          {typeof value === "number" ? value : "—"}
-        </span>
-        <span className="mt-1 text-[11px] text-muted-foreground">{label}</span>
+      <div className={cn(
+        "text-4xl font-light tracking-tight transition-colors",
+        tone === "primary" ? "text-primary group-hover:text-primary/80" : 
+        tone === "info" ? "text-info group-hover:text-info/80" :
+        tone === "warning" ? "text-warning group-hover:text-warning/80" :
+        "text-success group-hover:text-success/80"
+      )}>
+        {typeof value === "number" ? value : "—"}
       </div>
     </div>
   );
@@ -1184,24 +1215,26 @@ function Section({
   children: React.ReactNode;
 }) {
   return (
-    <section className="rounded-lg border border-border bg-card/40">
-      <header className="flex items-center justify-between border-b border-border px-4 py-2.5">
-        <div className="flex items-center gap-2">
-          <h2 className="text-sm font-semibold">{title}</h2>
-          <span className="rounded bg-muted px-1.5 py-0.5 font-mono text-[10px] text-muted-foreground">
+    <section className="flex flex-col">
+      <header className="flex items-center justify-between pb-2 border-b border-border/40">
+        <div className="flex items-center gap-3">
+          <h2 className="text-[13px] font-semibold uppercase tracking-wider text-muted-foreground">{title}</h2>
+          <span className="rounded-full bg-muted/60 px-2 py-0.5 font-mono text-[10px] font-medium text-muted-foreground border border-border/40">
             {count}
           </span>
         </div>
       </header>
-      {isLoading ? (
-        <ListSkeleton rows={3} />
-      ) : count === 0 ? (
-        <div className="px-4 py-8 text-center text-xs text-muted-foreground">
-          {empty}
-        </div>
-      ) : (
-        children
-      )}
+      <div className="mt-1.5">
+        {isLoading ? (
+          <div className="py-1.5"><ListSkeleton rows={3} /></div>
+        ) : count === 0 ? (
+          <div className="py-4 text-xs text-muted-foreground">
+            {empty}
+          </div>
+        ) : (
+          children
+        )}
+      </div>
     </section>
   );
 }
@@ -1223,7 +1256,7 @@ function ItemList({
   registerItemButton: (key: string, node: HTMLButtonElement | null) => void;
 }) {
   return (
-    <ul className="divide-y divide-border">
+    <ul className="flex flex-col gap-0.5">
       {items.map((item) => {
         const itemKey = getWorkbenchItemKey(item);
         const isActive = activeItemKey === itemKey;
@@ -1238,70 +1271,80 @@ function ItemList({
               onFocus={() => onFocusItem(item)}
               onClick={(event) => onSelect(item, event.currentTarget)}
               className={cn(
-                "group flex w-full cursor-pointer items-center gap-3 px-4 py-2 text-left transition-colors hover:bg-muted/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset",
-                isActive && "bg-muted/40",
+                "group flex w-full cursor-pointer items-center gap-3 px-3 py-2 rounded-lg text-left transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring focus-visible:bg-muted/30",
+                isActive ? "bg-muted/60" : "hover:bg-muted/30",
               )}
             >
-              <span
-                className={cn(
-                  "h-1.5 w-1.5 shrink-0 rounded-full",
-                  priorityDotColor[item.priority],
+              <div className="flex w-4 items-center justify-center shrink-0">
+                {item.type === "BUG" ? (
+                  <Bug className="h-3.5 w-3.5 text-destructive/80" />
+                ) : (
+                  <CheckCircle2 className="h-3.5 w-3.5 text-primary/80" />
                 )}
-              />
-              {item.type === "BUG" ? (
-                <Bug className="h-3.5 w-3.5 shrink-0 text-destructive/80" />
-              ) : (
-                <CheckCircle2 className="h-3.5 w-3.5 shrink-0 text-primary/80" />
-              )}
-              <span className="font-mono text-[11px] text-muted-foreground">
-                {item.code}
-              </span>
-              <span className="flex-1 truncate text-[13px] font-medium">
-                {item.title}
-              </span>
-              {item.contextLabel ? (
-                <Badge
-                  variant="outline"
-                  className="hidden max-w-36 truncate md:inline-flex"
-                >
-                  {item.contextLabel}
-                </Badge>
-              ) : null}
-              <StatusBadge
-                category={item.statusCategory}
-                label={item.statusLabel}
-                withDot={false}
-              />
-              {item.versionName && (
-                <Tip content={item.versionName}>
-                  <Badge
-                    variant="outline"
-                    className="hidden gap-1 md:inline-flex"
-                  >
-                    <GitBranch aria-hidden="true" className="h-2.5 w-2.5" />
-                    {item.versionName}
-                  </Badge>
-                </Tip>
-              )}
-              {item.dueDate && (
-                <span
-                  className={cn(
-                    "hidden text-[11px] md:inline-block",
-                    item.isOverdue
-                      ? "text-destructive"
-                      : "text-muted-foreground",
+              </div>
+              <div className="flex flex-col flex-1 min-w-0 py-0.5">
+                <div className="flex items-center gap-2">
+                  <span className="truncate text-[13px] font-medium text-foreground/90 group-hover:text-foreground transition-colors">
+                    {item.title}
+                  </span>
+                  {item.contextLabel ? (
+                    <Badge
+                      variant="secondary"
+                      className="hidden sm:inline-flex bg-muted/40 font-normal px-1.5 h-4 text-[9px] shrink-0"
+                    >
+                      {item.contextLabel}
+                    </Badge>
+                  ) : null}
+                </div>
+                <div className="flex items-center gap-2 mt-0.5">
+                  <span className="font-mono text-[10px] text-muted-foreground shrink-0">
+                    {item.code}
+                  </span>
+                  <span className="w-1 h-1 rounded-full bg-border" />
+                  <span className="text-[10px] text-muted-foreground flex items-center gap-1.5 shrink-0">
+                    <span
+                      className={cn(
+                        "h-1.5 w-1.5 rounded-full",
+                        priorityDotColor[item.priority],
+                      )}
+                    />
+                    {item.statusLabel}
+                  </span>
+                  {item.versionName && (
+                    <>
+                      <span className="w-1 h-1 rounded-full bg-border" />
+                      <span className="hidden sm:inline-flex items-center gap-1 text-[10px] text-muted-foreground shrink-0">
+                        <GitBranch className="h-2.5 w-2.5 opacity-70" />
+                        {item.versionName}
+                      </span>
+                    </>
                   )}
-                >
-                  {item.dueDate}
-                </span>
-              )}
-              <Tip content={item.assignee.name || undefined}>
-                <Avatar className="h-5 w-5 shrink-0">
-                  <AvatarFallback className="text-[9px]">
-                    {item.assignee.initial}
-                  </AvatarFallback>
-                </Avatar>
-              </Tip>
+                  {item.dueDate && (
+                    <>
+                      <span className="w-1 h-1 rounded-full bg-border" />
+                      <span
+                        className={cn(
+                          "hidden sm:inline-block text-[10px] shrink-0",
+                          item.isOverdue
+                            ? "text-destructive font-medium"
+                            : "text-muted-foreground",
+                        )}
+                      >
+                        {item.dueDate}
+                      </span>
+                    </>
+                  )}
+                </div>
+              </div>
+              <div className="flex items-center pl-2 shrink-0">
+                <Tip content={item.assignee.name || undefined}>
+                  <Avatar className="h-6 w-6">
+                    <AvatarFallback className="text-[10px] bg-muted/60 text-muted-foreground">
+                      {item.assignee.initial}
+                    </AvatarFallback>
+                  </Avatar>
+                </Tip>
+              </div>
             </button>
           </li>
         );
@@ -1439,3 +1482,4 @@ function formatTimeAgo(value: string, locale: string, justNowLabel = "") {
 
   return rtf.format(-diffDay, "day");
 }
+

@@ -458,21 +458,29 @@ describe("MyWorkbench", () => {
     expect(filterButton).toHaveAttribute("aria-expanded", "true");
     expect(await screen.findAllByText("Release 1")).not.toHaveLength(0);
 
-    fireEvent.change(screen.getByLabelText("m4Views.filters.version"), {
-      target: { value: versionId },
-    });
-    fireEvent.change(screen.getByLabelText("m4Views.filters.assignee"), {
-      target: { value: assigneeId },
-    });
-    fireEvent.change(screen.getByLabelText("m4Views.filters.statusCategory"), {
-      target: { value: "VERIFYING" },
-    });
-    fireEvent.change(screen.getByLabelText("m4Views.filters.workItemType"), {
-      target: { value: "BUG" },
-    });
-    fireEvent.change(screen.getByLabelText("m4Views.filters.exceptionType"), {
-      target: { value: "pending_regression" },
-    });
+    fireEvent.click(
+      within(screen.getByRole("group", { name: "m4Views.filters.version" }))
+        .getByRole("button", { name: "Release 1" }),
+    );
+    fireEvent.click(
+      within(screen.getByRole("group", { name: "m4Views.filters.assignee" }))
+        .getByRole("button", { name: "Alice" }),
+    );
+    fireEvent.click(
+      within(
+        screen.getByRole("group", { name: "m4Views.filters.statusCategory" }),
+      ).getByRole("button", { name: "m4Views.statusCategory.VERIFYING" }),
+    );
+    fireEvent.click(
+      within(screen.getByRole("group", { name: "m4Views.filters.workItemType" }))
+        .getByRole("button", { name: "m4Views.workItemType.BUG" }),
+    );
+    fireEvent.click(
+      within(screen.getByRole("group", { name: "m4Views.filters.exceptionType" }))
+        .getByRole("button", {
+          name: "m4Views.exceptionType.pending_regression",
+        }),
+    );
 
     await waitFor(() =>
       expect(getMyWorkbenchViewMock).toHaveBeenCalledWith(
@@ -486,6 +494,12 @@ describe("MyWorkbench", () => {
         }),
       ),
     );
+
+    fireEvent.mouseDown(document.body);
+    expect(filterButton).toHaveAttribute("aria-expanded", "false");
+    expect(
+      screen.queryByTestId("workbench-filter-panel"),
+    ).not.toBeInTheDocument();
   });
 
   it("renders the IA-approved workbench sections with their items", async () => {
