@@ -110,8 +110,10 @@ test.describe("UI Bug 页面主链路", () => {
     await expect(page.getByTestId("task-attachments-panel")).toBeVisible();
     await page.getByTestId("task-timeline-tab").click();
     await expect(page.getByTestId("task-timeline-panel")).toBeVisible();
-    await page.getByTestId("task-links-tab").click();
-    await expect(page.getByTestId("task-links-panel")).toBeVisible();
+    await page.getByTestId("task-detail-tab").click();
+    await expect(
+      page.getByTestId("task-links-section"),
+    ).toBeVisible();
 
     page.off("request", onRequest);
     expect(

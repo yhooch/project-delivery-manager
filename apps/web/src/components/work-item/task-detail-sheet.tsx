@@ -327,6 +327,153 @@ function TaskDetailSheetBody({
   const refreshTimeline = useCallback(() => {
     setTimelineRefreshVersion((version) => version + 1);
   }, []);
+  const countRequestKey = getWorkItemSubresourceRequestKey({
+    item,
+    organizationId,
+    spaceId,
+  });
+  const latestCountRequestKeyRef = useRef(countRequestKey);
+  const countRequestSeqRef = useRef(0);
+  const countRevisionRef = useRef({
+    attachments: 0,
+    comments: 0,
+    requestKey: countRequestKey,
+  });
+  if (countRevisionRef.current.requestKey !== countRequestKey) {
+    countRevisionRef.current = {
+      attachments: 0,
+      comments: 0,
+      requestKey: countRequestKey,
+    };
+  }
+  const [countState, setCountState] = useState(() => ({
+    attachments: null as number | null,
+    comments: null as number | null,
+    requestKey: countRequestKey,
+  }));
+  latestCountRequestKeyRef.current = countRequestKey;
+  const counts =
+    countState.requestKey === countRequestKey
+      ? countState
+      : {
+          attachments: null,
+          comments: null,
+          requestKey: countRequestKey,
+        };
+  const setCommentsCount = useCallback(
+    (count: number) => {
+      if (countRevisionRef.current.requestKey !== countRequestKey) {
+        return;
+      }
+      countRevisionRef.current.comments += 1;
+      setCountState((current) =>
+        current.requestKey === countRequestKey
+          ? { ...current, comments: count }
+          : current,
+      );
+    },
+    [countRequestKey],
+  );
+  const incrementCommentsCount = useCallback(() => {
+    if (countRevisionRef.current.requestKey !== countRequestKey) {
+      return;
+    }
+    countRevisionRef.current.comments += 1;
+    setCountState((current) =>
+      current.requestKey === countRequestKey
+        ? { ...current, comments: (current.comments ?? 0) + 1 }
+        : current,
+    );
+  }, [countRequestKey]);
+  const setAttachmentsCount = useCallback(
+    (count: number) => {
+      if (countRevisionRef.current.requestKey !== countRequestKey) {
+        return;
+      }
+      countRevisionRef.current.attachments += 1;
+      setCountState((current) =>
+        current.requestKey === countRequestKey
+          ? { ...current, attachments: count }
+          : current,
+      );
+    },
+    [countRequestKey],
+  );
+  const fetchSubresourceCounts = useCallback(async () => {
+    const nextRequestKey = countRequestKey;
+    countRequestSeqRef.current += 1;
+    const requestSeq = countRequestSeqRef.current;
+    const commentsRevision = countRevisionRef.current.comments;
+    const attachmentsRevision = countRevisionRef.current.attachments;
+
+    if (!spaceId) {
+      setCountState({
+        attachments: null,
+        comments: null,
+        requestKey: nextRequestKey,
+      });
+      return;
+    }
+
+    setCountState({
+      attachments: null,
+      comments: null,
+      requestKey: nextRequestKey,
+    });
+
+    const [commentsResult, attachmentsResult] = await Promise.allSettled([
+      listComments({
+        organizationId,
+        page: 1,
+        pageSize: 1,
+        spaceId,
+        targetId: item.id,
+        targetType: "WORK_ITEM",
+      }),
+      listAttachments({
+        organizationId,
+        page: 1,
+        pageSize: 1,
+        spaceId,
+        targetId: item.id,
+        targetType: "WORK_ITEM",
+      }),
+    ]);
+
+    if (
+      requestSeq !== countRequestSeqRef.current ||
+      latestCountRequestKeyRef.current !== nextRequestKey
+    ) {
+      return;
+    }
+
+    setCountState((current) => {
+      if (current.requestKey !== nextRequestKey) {
+        return current;
+      }
+
+      const revision = countRevisionRef.current;
+      return {
+        attachments:
+          attachmentsResult.status === "fulfilled" &&
+          revision.requestKey === nextRequestKey &&
+          revision.attachments === attachmentsRevision
+            ? attachmentsResult.value.total
+            : current.attachments,
+        comments:
+          commentsResult.status === "fulfilled" &&
+          revision.requestKey === nextRequestKey &&
+          revision.comments === commentsRevision
+            ? commentsResult.value.total
+            : current.comments,
+        requestKey: nextRequestKey,
+      };
+    });
+  }, [countRequestKey, item.id, organizationId, spaceId]);
+
+  useEffect(() => {
+    void fetchSubresourceCounts();
+  }, [fetchSubresourceCounts]);
 
   return (
     <SheetContent
@@ -413,41 +560,39 @@ function TaskDetailSheetBody({
         defaultValue="detail"
         className="flex flex-1 flex-col overflow-hidden"
       >
-        <TabsList className="px-5">
-          <TabsTrigger value="detail" data-testid="task-detail-tab">
+        <TabsList className="w-full overflow-x-auto px-5">
+          <TabsTrigger
+            value="detail"
+            className="shrink-0"
+            data-testid="task-detail-tab"
+          >
             {t("tabs.detail")}
           </TabsTrigger>
           <TabsTrigger
             value="comments"
-            className="gap-1.5"
+            className="shrink-0 gap-1.5"
             data-testid="task-comments-tab"
           >
             <MessageSquare className="h-3 w-3" />
             {t("tabs.comments")}
+            <TabCount count={counts.comments} />
           </TabsTrigger>
           <TabsTrigger
             value="attachments"
-            className="gap-1.5"
+            className="shrink-0 gap-1.5"
             data-testid="task-attachments-tab"
           >
             <Paperclip className="h-3 w-3" />
             {t("tabs.attachments")}
+            <TabCount count={counts.attachments} />
           </TabsTrigger>
           <TabsTrigger
             value="timeline"
-            className="gap-1.5"
+            className="shrink-0 gap-1.5"
             data-testid="task-timeline-tab"
           >
             <Clock className="h-3 w-3" />
             {t("tabs.timeline")}
-          </TabsTrigger>
-          <TabsTrigger
-            value="links"
-            className="gap-1.5"
-            data-testid="task-links-tab"
-          >
-            <Link2 className="h-3 w-3" />
-            {t("tabs.links")}
           </TabsTrigger>
         </TabsList>
 
@@ -482,7 +627,9 @@ function TaskDetailSheetBody({
             canComment={permissionState.permissions?.canComment === true}
             t={t}
             tApiError={tApiError}
+            onCountChange={setCommentsCount}
             onChanged={() => {
+              incrementCommentsCount();
               refreshTimeline();
               onChanged?.();
             }}
@@ -504,6 +651,7 @@ function TaskDetailSheetBody({
             }
             t={t}
             tApiError={tApiError}
+            onCountChange={setAttachmentsCount}
             onTimelineRefresh={refreshTimeline}
           />
         </TabsContent>
@@ -523,26 +671,23 @@ function TaskDetailSheetBody({
           />
         </TabsContent>
 
-        <TabsContent
-          value="links"
-          data-testid="task-links-panel"
-          className="mt-0 flex-1 overflow-y-auto px-5 py-4"
-        >
-          <LinksPanel
-            detail={detail}
-            detailError={permissionState.error}
-            detailLoading={permissionState.loading}
-            spaceId={spaceId}
-            organizationId={organizationId}
-            t={t}
-            tApiError={tApiError}
-            onRetry={() => {
-              void permissionState.fetchPermissions();
-            }}
-          />
-        </TabsContent>
       </Tabs>
     </SheetContent>
+  );
+}
+
+function TabCount({ count }: { count: number | null }) {
+  if (count === null) {
+    return null;
+  }
+
+  return (
+    <span
+      aria-label={String(count)}
+      className="ml-0.5 min-w-4 rounded-full bg-muted px-1.5 text-center text-[10px] font-medium leading-4 text-muted-foreground tabular-nums"
+    >
+      {count}
+    </span>
   );
 }
 
@@ -1602,6 +1747,14 @@ function DetailTab({
           }
         />
       </div>
+      <TraceabilitySection
+        detail={detail}
+        organizationId={organizationId}
+        spaceId={spaceId}
+        t={t}
+        tApiError={tRoot}
+        versionName={versionName}
+      />
       <div className="mt-6 space-y-3">
         <h3 className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
           {t("description.title")}
@@ -1692,30 +1845,24 @@ function DetailTextBlock({
 }
 
 // ---------------------------------------------------------------------------
-// Links / relations tab
+// Traceability
 // ---------------------------------------------------------------------------
 
-function LinksPanel({
+function TraceabilitySection({
   detail,
-  detailError,
-  detailLoading,
   spaceId,
   organizationId,
   t,
   tApiError,
-  onRetry,
+  versionName,
 }: {
   detail: SheetDetail | null;
-  detailError: string | null;
-  detailLoading: boolean;
   spaceId?: string;
   organizationId?: string;
   t: ReturnType<typeof useTranslations<"taskDetail">>;
   tApiError: ReturnType<typeof useTranslations>;
-  onRetry: () => void;
+  versionName?: string;
 }) {
-  const { getMember } = useSpaceMembers(spaceId, organizationId);
-  const { getVersion } = useVersions(spaceId, organizationId);
   const requirementTitle = useRelationTitle(
     "requirement",
     detail?.requirementId,
@@ -1735,24 +1882,12 @@ function LinksPanel({
     organizationId,
   );
 
-  if (detailLoading && !detail) {
-    return <LoadingState />;
-  }
-  if (detailError) {
-    return <ErrorState message={detailError} onRetry={onRetry} />;
-  }
   if (!detail) {
-    return <EmptyState title={t("missingApi.title")} />;
+    return null;
   }
-
-  const versionName = detail.versionId
-    ? (getVersion(detail.versionId)?.name ??
-      missingLookupLabel(detail.versionId))
-    : undefined;
-  const reporter = displayUser(detail.reporterId, getMember);
 
   const links: { icon: typeof GitBranch; label: string; value: string }[] = [];
-  if (versionName) {
+  if (detail.versionId && versionName) {
     links.push({
       icon: GitBranch,
       label: t("fields.version"),
@@ -1780,30 +1915,25 @@ function LinksPanel({
       value: relationTitleValue(relatedTaskTitle, t),
     });
   }
-  if (detail.reporterId) {
-    links.push({
-      icon: User2,
-      label: t("fields.reporter"),
-      value: reporter.name,
-    });
-  }
-
-  if (links.length === 0) {
-    return (
-      <EmptyState
-        title={t("links.emptyTitle")}
-        description={t("links.emptyDescription")}
-      />
-    );
-  }
 
   return (
-    <div data-testid="task-links-list" className="flex flex-col gap-2">
-      {links.map((link, idx) => (
-        <div key={`${link.label}-${idx}`} data-testid="task-links-item">
-          <FieldRow icon={link.icon} label={link.label} value={link.value} />
+    <div data-testid="task-links-section" className="mt-6 space-y-3">
+      <h3 className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
+        {t("tabs.links")}
+      </h3>
+      {links.length === 0 ? (
+        <p className="text-sm leading-relaxed text-muted-foreground">
+          {t("links.emptyDescription")}
+        </p>
+      ) : (
+        <div data-testid="task-links-list" className="grid gap-y-3 text-[13px]">
+          {links.map((link, idx) => (
+            <div key={`${link.label}-${idx}`} data-testid="task-links-item">
+              <FieldRow icon={link.icon} label={link.label} value={link.value} />
+            </div>
+          ))}
         </div>
-      ))}
+      )}
     </div>
   );
 }
@@ -1833,6 +1963,7 @@ function CommentsTab({
   canComment,
   t,
   tApiError,
+  onCountChange,
   onChanged,
 }: {
   item: WorkItemViewModel;
@@ -1842,6 +1973,7 @@ function CommentsTab({
   canComment: boolean;
   t: ReturnType<typeof useTranslations<"taskDetail">>;
   tApiError: ReturnType<typeof useTranslations>;
+  onCountChange?: (count: number) => void;
   onChanged?: () => void;
 }) {
   const requestKey = getWorkItemSubresourceRequestKey({
@@ -1915,6 +2047,7 @@ function CommentsTab({
         loading: false,
         requestKey: nextRequestKey,
       });
+      onCountChange?.(result.total);
     } catch (err) {
       if (!isLatestRequest()) return;
       const key = getApiErrorMessageKey(err);
@@ -1933,7 +2066,14 @@ function CommentsTab({
         );
       }
     }
-  }, [item.id, organizationId, requestKey, spaceId, tApiError]);
+  }, [
+    item.id,
+    onCountChange,
+    organizationId,
+    requestKey,
+    spaceId,
+    tApiError,
+  ]);
 
   useEffect(() => {
     void fetchComments();
@@ -2103,6 +2243,7 @@ function AttachmentsTab({
   canUploadAttachment,
   t,
   tApiError,
+  onCountChange,
   onTimelineRefresh,
 }: {
   item: WorkItemViewModel;
@@ -2112,6 +2253,7 @@ function AttachmentsTab({
   canUploadAttachment: boolean;
   t: ReturnType<typeof useTranslations<"taskDetail">>;
   tApiError: ReturnType<typeof useTranslations>;
+  onCountChange?: (count: number) => void;
   onTimelineRefresh?: () => void;
 }) {
   const requestKey = getWorkItemSubresourceRequestKey({
@@ -2191,6 +2333,7 @@ function AttachmentsTab({
         loading: false,
         requestKey: nextRequestKey,
       });
+      onCountChange?.(result.total);
     } catch (err) {
       if (!isLatestRequest()) return;
       const key = getApiErrorMessageKey(err);
@@ -2209,7 +2352,14 @@ function AttachmentsTab({
         );
       }
     }
-  }, [item.id, organizationId, requestKey, spaceId, tApiError]);
+  }, [
+    item.id,
+    onCountChange,
+    organizationId,
+    requestKey,
+    spaceId,
+    tApiError,
+  ]);
 
   useEffect(() => {
     void fetchAttachments();

@@ -340,6 +340,22 @@ describe("TaskDetailSheet", () => {
     ).toBeInTheDocument();
   });
 
+  it("shows counts on comments and attachments tabs without adding a timeline count", async () => {
+    listCommentsMock.mockResolvedValue({ items: [], total: 3 });
+    listAttachmentsMock.mockResolvedValue({ items: [], total: 2 });
+
+    render(
+      <TaskDetailSheet item={makeViewModel()} open onOpenChange={() => {}} />,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId("task-comments-tab")).toHaveTextContent("3");
+      expect(screen.getByTestId("task-attachments-tab")).toHaveTextContent("2");
+    });
+    expect(screen.getByTestId("task-timeline-tab")).not.toHaveTextContent("3");
+    expect(screen.getByTestId("task-timeline-tab")).not.toHaveTextContent("2");
+  });
+
   it("renders workflow action fields and submits the populated payload", async () => {
     const onChanged = vi.fn();
     const action = makeAction({
@@ -627,7 +643,7 @@ describe("TaskDetailSheet", () => {
   });
 
   it("renders comments fetched via listComments on the comments tab", async () => {
-    listCommentsMock.mockResolvedValueOnce({
+    listCommentsMock.mockResolvedValue({
       items: [
         {
           id: "01ARZ3NDEKTSV4RRFFQ69G5FC1",
@@ -668,9 +684,20 @@ describe("TaskDetailSheet", () => {
       items: Array<Record<string, unknown>>;
       total: number;
     }>();
-    listCommentsMock
-      .mockReturnValueOnce(firstComments.promise)
-      .mockReturnValueOnce(secondComments.promise);
+    listCommentsMock.mockImplementation(
+      (input: { pageSize?: number; targetId: string }) => {
+        if (input.pageSize === 1) {
+          return Promise.resolve({ items: [], total: 0 });
+        }
+        if (input.targetId === "TASK_A") {
+          return firstComments.promise;
+        }
+        if (input.targetId === "TASK_B") {
+          return secondComments.promise;
+        }
+        return Promise.resolve({ items: [], total: 0 });
+      },
+    );
 
     const { rerender } = render(
       <TaskDetailSheet
@@ -681,7 +708,14 @@ describe("TaskDetailSheet", () => {
     );
 
     await activateTab(/comments/i);
-    await waitFor(() => expect(listCommentsMock).toHaveBeenCalledTimes(1));
+    await waitFor(() =>
+      expect(
+        listCommentsMock.mock.calls.some(
+          ([input]) =>
+            input.targetId === "TASK_A" && input.pageSize !== 1,
+        ),
+      ).toBe(true),
+    );
 
     rerender(
       <TaskDetailSheet
@@ -691,7 +725,14 @@ describe("TaskDetailSheet", () => {
       />,
     );
 
-    await waitFor(() => expect(listCommentsMock).toHaveBeenCalledTimes(2));
+    await waitFor(() =>
+      expect(
+        listCommentsMock.mock.calls.some(
+          ([input]) =>
+            input.targetId === "TASK_B" && input.pageSize !== 1,
+        ),
+      ).toBe(true),
+    );
     expect(
       await screen.findByText("taskDetail.comments.loading"),
     ).toBeInTheDocument();
@@ -1181,6 +1222,62 @@ describe("TaskDetailSheet", () => {
     expect(await screen.findByText("Hello world")).toBeInTheDocument();
   });
 
+  it("keeps a locally incremented comment count when the initial count request resolves later", async () => {
+    const countResponse = createDeferred<{
+      items: Array<Record<string, unknown>>;
+      total: number;
+    }>();
+    listCommentsMock.mockImplementation((input: { pageSize?: number }) =>
+      input.pageSize === 1
+        ? countResponse.promise
+        : Promise.resolve({ items: [], total: 5 }),
+    );
+    createCommentMock.mockResolvedValueOnce({
+      id: "01ARZ3NDEKTSV4RRFFQ69G5FC2",
+      organizationId: "ORG_01",
+      spaceId: "SPC_01",
+      targetType: "WORK_ITEM",
+      targetId: "01ARZ3NDEKTSV4RRFFQ69G5FA1",
+      author: {
+        id: "01ARZ3NDEKTSV4RRFFQ69G5FU1",
+        username: "tester",
+        name: "Tester",
+      },
+      body: "Race-safe comment",
+      createdAt: "2026-05-13T00:00:00.000Z",
+    });
+
+    render(
+      <TaskDetailSheet item={makeViewModel()} open onOpenChange={() => {}} />,
+    );
+
+    await activateTab(/comments/i);
+    await waitFor(() =>
+      expect(screen.getByTestId("task-comments-tab")).toHaveTextContent("5"),
+    );
+
+    fireEvent.change(
+      await screen.findByPlaceholderText("taskDetail.comments.placeholder"),
+      { target: { value: "Race-safe comment" } },
+    );
+    fireEvent.click(
+      screen.getByRole("button", {
+        name: /taskDetail\.comments\.submit/,
+      }),
+    );
+
+    await waitFor(() =>
+      expect(screen.getByTestId("task-comments-tab")).toHaveTextContent("6"),
+    );
+
+    await act(async () => {
+      countResponse.resolve({ items: [], total: 5 });
+      await countResponse.promise;
+    });
+
+    expect(screen.getByTestId("task-comments-tab")).toHaveTextContent("6");
+  });
+
   it("loads a fresh timeline after creating a comment", async () => {
     listCommentsMock.mockResolvedValueOnce({ items: [], total: 0 });
     createCommentMock.mockResolvedValueOnce({
@@ -1268,7 +1365,7 @@ describe("TaskDetailSheet", () => {
   });
 
   it("renders attachments from listAttachments on the attachments tab", async () => {
-    listAttachmentsMock.mockResolvedValueOnce({
+    listAttachmentsMock.mockResolvedValue({
       items: [
         {
           id: "01ARZ3NDEKTSV4RRFFQ69G5FAT1",
@@ -1311,7 +1408,7 @@ describe("TaskDetailSheet", () => {
 
   it("uses the signed download-url endpoint for attachment preview", async () => {
     const openSpy = vi.spyOn(window, "open").mockImplementation(() => null);
-    listAttachmentsMock.mockResolvedValueOnce({
+    listAttachmentsMock.mockResolvedValue({
       items: [
         {
           id: "01ARZ3NDEKTSV4RRFFQ69G5FAT1",
@@ -1562,7 +1659,7 @@ describe("TaskDetailSheet", () => {
     ).toBeInTheDocument();
   });
 
-  it("shows EmptyState on the links tab when all relation ids are missing", async () => {
+  it("shows an empty traceability section on the detail tab when all relation ids are missing", async () => {
     getWorkItemMock.mockResolvedValue(
       makeDetailResponse({
         versionId: undefined,
@@ -1576,21 +1673,16 @@ describe("TaskDetailSheet", () => {
       <TaskDetailSheet item={makeViewModel()} open onOpenChange={() => {}} />,
     );
 
-    await activateTab(/links/i);
     await waitFor(() => expect(getWorkItemMock).toHaveBeenCalled());
 
-    expect(
-      await screen.findByText("taskDetail.links.emptyTitle"),
-    ).toBeInTheDocument();
+    expect(await screen.findByTestId("task-links-section")).toBeInTheDocument();
     expect(
       screen.getByText("taskDetail.links.emptyDescription"),
     ).toBeInTheDocument();
-    expect(
-      screen.queryByText("taskDetail.fields.reporter"),
-    ).not.toBeInTheDocument();
+    expect(screen.queryByTestId("task-links-tab")).not.toBeInTheDocument();
   });
 
-  it("shows the resolved version name on the links tab when versionId is present", async () => {
+  it("shows the resolved version name in the detail traceability section when versionId is present", async () => {
     versionMap.set("01ARZ3NDEKTSV4RRFFQ69G5FV1", { name: "Sprint 2026.5" });
     getWorkItemMock.mockResolvedValue(
       makeDetailResponse({
@@ -1602,7 +1694,6 @@ describe("TaskDetailSheet", () => {
       <TaskDetailSheet item={makeViewModel()} open onOpenChange={() => {}} />,
     );
 
-    await activateTab(/links/i);
     await waitFor(() => expect(getWorkItemMock).toHaveBeenCalled());
     expect(
       within(await screen.findByTestId("task-links-list")).getByText(
@@ -1611,7 +1702,7 @@ describe("TaskDetailSheet", () => {
     ).toBeInTheDocument();
   });
 
-  it("shows readable relation titles instead of short relation ids on the links tab", async () => {
+  it("shows readable relation titles instead of short relation ids in the detail traceability section", async () => {
     relationTitleMap.set(
       "requirement:01ARZ3NDEKTSV4RRFFQ69G5FRQ",
       "Checkout requirement",
@@ -1631,7 +1722,6 @@ describe("TaskDetailSheet", () => {
       <TaskDetailSheet item={makeViewModel()} open onOpenChange={() => {}} />,
     );
 
-    await activateTab(/links/i);
     const list = await screen.findByTestId("task-links-list");
     expect(within(list).getByText("Checkout requirement")).toBeInTheDocument();
     expect(within(list).getByText("Customer intake")).toBeInTheDocument();
@@ -1639,7 +1729,7 @@ describe("TaskDetailSheet", () => {
     expect(within(list).queryByText("9G5FIN")).not.toBeInTheDocument();
   });
 
-  it("loads bug relation data from the bug detail endpoint on the links tab", async () => {
+  it("loads bug relation data from the bug detail endpoint in the detail traceability section", async () => {
     versionMap.set("01ARZ3NDEKTSV4RRFFQ69G5FV1", { name: "Bugfix train" });
     relationTitleMap.set(
       "workItem:01ARZ3NDEKTSV4RRFFQ69G5FTK",
@@ -1662,7 +1752,6 @@ describe("TaskDetailSheet", () => {
       />,
     );
 
-    await activateTab(/links/i);
     await waitFor(() => expect(getBugMock).toHaveBeenCalled());
     expect(getWorkItemMock).not.toHaveBeenCalled();
     expect(
@@ -1726,7 +1815,7 @@ describe("TaskDetailSheet", () => {
     memberMap.set("01ARZ3NDEKTSV4RRFFQ69G5FU1", {
       user: { name: "Resolved Member Name" },
     });
-    listCommentsMock.mockResolvedValueOnce({
+    listCommentsMock.mockResolvedValue({
       items: [
         {
           id: "01ARZ3NDEKTSV4RRFFQ69G5FC1",
