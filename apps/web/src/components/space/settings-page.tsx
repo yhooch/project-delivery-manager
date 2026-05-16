@@ -339,7 +339,7 @@ export function SpaceSettingsPage() {
     return (
       <div
         data-testid="space-settings-page"
-        className="flex h-full min-w-0 flex-col"
+        className="flex h-full min-w-0 flex-col bg-background"
       >
         {headerNode}
         <div className="flex-1 overflow-y-auto px-6 py-6">
@@ -353,7 +353,7 @@ export function SpaceSettingsPage() {
     return (
       <div
         data-testid="space-settings-page"
-        className="flex h-full min-w-0 flex-col"
+        className="flex h-full min-w-0 flex-col bg-background"
       >
         {headerNode}
         <div className="flex-1 overflow-y-auto px-6 py-6">
@@ -370,7 +370,7 @@ export function SpaceSettingsPage() {
     return (
       <div
         data-testid="space-settings-page"
-        className="flex h-full min-w-0 flex-col"
+        className="flex h-full min-w-0 flex-col bg-background"
       >
         {headerNode}
         <div className="flex-1 overflow-y-auto px-6 py-6">
@@ -384,7 +384,7 @@ export function SpaceSettingsPage() {
     return (
       <div
         data-testid="space-settings-page"
-        className="flex h-full min-w-0 flex-col"
+        className="flex h-full min-w-0 flex-col bg-background"
       >
         {headerNode}
         <div className="flex-1 overflow-y-auto px-6 py-6">
@@ -403,84 +403,103 @@ export function SpaceSettingsPage() {
   return (
     <div
       data-testid="space-settings-page"
-      className="flex h-full min-w-0 flex-col"
+      className="flex h-full min-w-0 flex-col bg-background"
     >
       {headerNode}
 
-      <div className="min-w-0 flex-1 overflow-y-auto px-4 py-6 sm:px-6">
-        <div className="mx-auto flex max-w-4xl min-w-0 flex-col gap-6">
+      <div className="min-w-0 flex-1 overflow-y-auto px-6 py-10">
+        <div className="mx-auto flex max-w-5xl min-w-0 flex-col gap-12">
           {saveErrorKey ? (
             <div
               role="alert"
-              className="rounded-md border border-destructive/40 bg-destructive/10 px-4 py-2 text-xs text-destructive"
+              className="rounded-md bg-destructive/10 px-4 py-3 text-sm text-destructive"
             >
               {tRoot(saveErrorKey)}
             </div>
           ) : null}
 
-          {/* 概览卡 */}
+          {/* 概览区 */}
           <section
             data-testid="space-settings-overview"
-            className="rounded-lg border border-border bg-card px-5 py-4"
+            className="flex min-w-0 items-center gap-6"
           >
-            <div className="flex min-w-0 items-start gap-4">
-              <Avatar className="h-12 w-12">
-                <AvatarFallback className="text-base">
-                  {space.name.slice(0, 1).toUpperCase()}
-                </AvatarFallback>
-              </Avatar>
-              <div className="min-w-0 flex-1">
-                <div className="flex min-w-0 flex-wrap items-center gap-2">
-                  <h2 className="min-w-0 truncate text-base font-semibold">
-                    {space.name}
-                  </h2>
-                  <span className="font-mono text-[11px] text-muted-foreground">
-                    {space.code}
+            <Avatar className="h-16 w-16">
+              <AvatarFallback className="text-xl bg-primary/10 text-primary font-medium">
+                {space.name.slice(0, 1).toUpperCase()}
+              </AvatarFallback>
+            </Avatar>
+            <div className="min-w-0 flex-1">
+              <div className="flex min-w-0 flex-wrap items-center gap-3">
+                <h2 className="min-w-0 truncate text-xl font-medium tracking-tight">
+                  {space.name}
+                </h2>
+                <span className="font-mono text-xs text-muted-foreground mt-0.5">
+                  {space.code}
+                </span>
+                <Badge
+                  variant={spaceStatus === "DISABLED" ? "warning" : "primary"}
+                  data-testid="space-settings-status-badge"
+                  className="font-normal"
+                >
+                  {spaceStatus === "DISABLED"
+                    ? t("overview.statusDisabled")
+                    : t("overview.statusActive")}
+                </Badge>
+              </div>
+              <div className="mt-2 flex flex-wrap gap-x-6 gap-y-2 text-[13px] text-muted-foreground">
+                <div className="flex min-w-0 items-center gap-1.5">
+                  <span className="opacity-80">
+                    {t("overview.organizationLabel")}:
                   </span>
-                  <Badge
-                    variant={spaceStatus === "DISABLED" ? "warning" : "primary"}
-                    data-testid="space-settings-status-badge"
-                  >
-                    {spaceStatus === "DISABLED"
-                      ? t("overview.statusDisabled")
-                      : t("overview.statusActive")}
-                  </Badge>
+                  <span className="font-medium text-foreground">
+                    {currentOrganization?.name ?? emptyValue}
+                  </span>
                 </div>
-                <dl className="mt-2 grid grid-cols-1 gap-x-6 gap-y-1 text-[11px] text-muted-foreground sm:grid-cols-3">
-                  <div className="flex min-w-0 gap-1.5">
-                    <dt>{t("overview.organizationLabel")}：</dt>
-                    <dd className="min-w-0 truncate font-medium text-foreground/80">
-                      {currentOrganization?.name ?? emptyValue}
-                    </dd>
-                  </div>
-                  <div className="flex min-w-0 gap-1.5">
-                    <dt>{t("overview.memberCountLabel")}：</dt>
-                    <dd className="font-medium text-foreground/80">
-                      {t("overview.memberCount", { count: members.length })}
-                    </dd>
-                  </div>
-                  <div className="flex min-w-0 gap-1.5">
-                    <dt>{t("overview.yourRoleLabel")}：</dt>
-                    <dd className="font-medium text-foreground/80">
-                      {currentSpace?.role
-                        ? t(`members.roles.${currentSpace.role}`)
-                        : emptyValue}
-                    </dd>
-                  </div>
-                </dl>
+                <div className="flex min-w-0 items-center gap-1.5">
+                  <span className="opacity-80">
+                    {t("overview.memberCountLabel")}:
+                  </span>
+                  <span className="font-medium text-foreground">
+                    {members.length}
+                  </span>
+                </div>
+                <div className="flex min-w-0 items-center gap-1.5">
+                  <span className="opacity-80">
+                    {t("overview.yourRoleLabel")}:
+                  </span>
+                  <span className="font-medium text-foreground">
+                    {currentSpace?.role
+                      ? t(`members.roles.${currentSpace.role}`)
+                      : emptyValue}
+                  </span>
+                </div>
               </div>
             </div>
           </section>
 
+          <div className="h-px w-full bg-border/50" />
+
           {/* 基础信息 */}
-          <section className="rounded-lg border border-border bg-card">
-            <header className="border-b border-border px-5 py-3">
-              <h2 className="text-sm font-semibold">{t("basic.title")}</h2>
-            </header>
-            <form onSubmit={onSaveBasic}>
-              <div className="grid gap-4 px-5 py-4 md:grid-cols-2">
-                <div className="flex flex-col gap-1.5">
-                  <Label htmlFor="space-name">{t("basic.fields.name")}</Label>
+          <section className="grid grid-cols-1 md:grid-cols-[280px_1fr] gap-8">
+            <div>
+              <h2 className="text-base font-medium text-foreground">
+                {t("basic.title")}
+              </h2>
+              <p className="mt-1.5 text-sm text-muted-foreground leading-relaxed">
+                {t("basic.description")}
+              </p>
+            </div>
+
+            <form
+              id="basic-settings-form"
+              onSubmit={onSaveBasic}
+              className="flex flex-col gap-6"
+            >
+              <div className="grid gap-5 md:grid-cols-2">
+                <div className="flex flex-col gap-2">
+                  <Label htmlFor="space-name" className="text-sm font-medium">
+                    {t("basic.fields.name")}
+                  </Label>
                   <Input
                     id="space-name"
                     data-testid="space-settings-name-input"
@@ -488,11 +507,14 @@ export function SpaceSettingsPage() {
                     maxLength={120}
                     onChange={(event) => setName(event.target.value)}
                     disabled={!writeAllowed}
+                    className="max-w-md bg-transparent"
                     required
                   />
                 </div>
-                <div className="flex flex-col gap-1.5">
-                  <Label htmlFor="space-code">{t("basic.fields.code")}</Label>
+                <div className="flex flex-col gap-2">
+                  <Label htmlFor="space-code" className="text-sm font-medium">
+                    {t("basic.fields.code")}
+                  </Label>
                   <Input
                     id="space-code"
                     data-testid="space-settings-code-input"
@@ -507,45 +529,34 @@ export function SpaceSettingsPage() {
                       codeError ? "space-code-error" : "space-code-hint"
                     }
                     disabled={!writeAllowed}
+                    className="max-w-md bg-transparent"
                     required
                   />
                   {codeError ? (
                     <p
                       id="space-code-error"
                       data-testid="space-settings-code-error"
-                      className="text-[11px] text-destructive"
+                      className="text-[11px] text-destructive mt-1"
                     >
                       {tRoot(codeError)}
                     </p>
                   ) : (
                     <p
                       id="space-code-hint"
-                      className="text-[11px] text-muted-foreground"
+                      className="text-[11px] text-muted-foreground mt-1"
                     >
                       {t("basic.fields.codeHint")}
                     </p>
                   )}
                 </div>
-                <div className="flex flex-col gap-1.5 md:col-span-2">
-                  <Label htmlFor="space-description">
-                    {t("basic.fields.description")}
+                <div className="flex flex-col gap-2 md:col-span-2">
+                  <Label htmlFor="space-owner" className="text-sm font-medium">
+                    {t("basic.fields.owner")}
                   </Label>
-                  <Textarea
-                    id="space-description"
-                    data-testid="space-settings-description-input"
-                    value={description}
-                    maxLength={2000}
-                    placeholder={t("basic.fields.descriptionPlaceholder")}
-                    onChange={(event) => setDescription(event.target.value)}
-                    disabled={!writeAllowed}
-                  />
-                </div>
-                <div className="flex flex-col gap-1.5">
-                  <Label htmlFor="space-owner">{t("basic.fields.owner")}</Label>
                   <SelectMenu
                     id="space-owner"
                     data-testid="space-settings-owner-input"
-                    className="flex h-8 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 focus-visible:ring-offset-background disabled:cursor-not-allowed disabled:opacity-50"
+                    className="flex h-9 w-full max-w-md rounded-md border border-input bg-transparent px-3 py-1 text-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
                     value={ownerId}
                     onChange={(event) => setOwnerId(event.target.value)}
                     disabled={!writeAllowed}
@@ -558,37 +569,65 @@ export function SpaceSettingsPage() {
                     ))}
                   </SelectMenu>
                 </div>
+                <div className="flex flex-col gap-2 md:col-span-2">
+                  <Label
+                    htmlFor="space-description"
+                    className="text-sm font-medium"
+                  >
+                    {t("basic.fields.description")}
+                  </Label>
+                  <Textarea
+                    id="space-description"
+                    data-testid="space-settings-description-input"
+                    value={description}
+                    maxLength={2000}
+                    placeholder={t("basic.fields.descriptionPlaceholder")}
+                    onChange={(event) => setDescription(event.target.value)}
+                    disabled={!writeAllowed}
+                    className="max-w-2xl min-h-[100px] resize-y bg-transparent"
+                  />
+                </div>
               </div>
-              <div className="flex flex-wrap items-center justify-end gap-3 border-t border-border px-5 py-3">
-                {writeDisabledHint && (
-                  <span className="text-[11px] text-muted-foreground">
-                    {writeDisabledHint}
-                  </span>
-                )}
+              <div className="flex items-center gap-4 pt-2">
                 <Button
                   size="sm"
                   type="submit"
-                  className="text-xs"
+                  form="basic-settings-form"
                   data-testid="space-settings-basic-submit"
                   disabled={isSavingBasic || !writeAllowed}
                 >
                   {isSavingBasic ? t("actions.saving") : t("actions.save")}
                 </Button>
+                {!writeAllowed && (
+                  <span className="text-sm text-muted-foreground">
+                    {writeDisabledHint}
+                  </span>
+                )}
               </div>
             </form>
           </section>
 
+          <div className="h-px w-full bg-border/50" />
+
           {/* 异常阈值 */}
-          <section className="rounded-lg border border-border bg-card">
-            <header className="border-b border-border px-5 py-3">
-              <h2 className="text-sm font-semibold">{t("threshold.title")}</h2>
-            </header>
-            <div className="px-5 py-4">
-              <div className="flex flex-wrap items-end gap-3">
-                <div className="flex flex-col gap-1.5">
-                  <Label htmlFor="stale-threshold">
-                    {t("threshold.fields.staleDays")}
-                  </Label>
+          <section className="grid grid-cols-1 md:grid-cols-[280px_1fr] gap-8">
+            <div>
+              <h2 className="text-base font-medium text-foreground">
+                {t("threshold.title")}
+              </h2>
+              <p className="mt-1.5 text-sm text-muted-foreground leading-relaxed">
+                {t("threshold.description")}
+              </p>
+            </div>
+            <div className="flex flex-col gap-4">
+              <div className="flex flex-col gap-2">
+                <Label
+                  htmlFor="stale-threshold"
+                  className="text-sm font-medium"
+                >
+                  {t("threshold.fields.staleDays")}
+                </Label>
+                <div className="flex items-center gap-3">
                   <Input
                     id="stale-threshold"
                     data-testid="space-settings-threshold-input"
@@ -600,7 +639,7 @@ export function SpaceSettingsPage() {
                       setThreshold(event.target.value);
                       if (thresholdError) setThresholdError(null);
                     }}
-                    className="w-32"
+                    className="w-32 bg-transparent"
                     aria-invalid={thresholdError ? "true" : undefined}
                     aria-describedby={
                       thresholdError
@@ -609,59 +648,79 @@ export function SpaceSettingsPage() {
                     }
                     disabled={!writeAllowed}
                   />
-                  {thresholdError ? (
-                    <p
-                      id="space-settings-threshold-error"
-                      data-testid="space-settings-threshold-error"
-                      className="text-[11px] text-destructive"
-                    >
-                      {t(thresholdError)}
-                    </p>
-                  ) : null}
+                  <Button
+                    size="sm"
+                    variant="secondary"
+                    type="button"
+                    data-testid="space-settings-threshold-submit"
+                    onClick={() => void onSaveThreshold()}
+                    disabled={isSavingThreshold || !writeAllowed}
+                  >
+                    {isSavingThreshold
+                      ? t("actions.saving")
+                      : t("actions.save")}
+                  </Button>
                 </div>
-                <Button
-                  size="sm"
-                  className="text-xs"
-                  type="button"
-                  data-testid="space-settings-threshold-submit"
-                  onClick={() => void onSaveThreshold()}
-                  disabled={isSavingThreshold || !writeAllowed}
-                >
-                  {isSavingThreshold ? t("actions.saving") : t("actions.save")}
-                </Button>
-                {writeDisabledHint && (
-                  <span className="text-[11px] text-muted-foreground">
-                    {writeDisabledHint}
-                  </span>
+                {thresholdError && (
+                  <p
+                    id="space-settings-threshold-error"
+                    data-testid="space-settings-threshold-error"
+                    className="text-[11px] text-destructive mt-1"
+                  >
+                    {t(thresholdError)}
+                  </p>
                 )}
+                <p
+                  id="space-settings-threshold-hint"
+                  className="mt-1 text-[11px] text-muted-foreground"
+                >
+                  {t("threshold.hint")}
+                </p>
               </div>
-              <p
-                id="space-settings-threshold-hint"
-                className="mt-2 text-[11px] text-muted-foreground"
-              >
-                {t("threshold.hint")}
-              </p>
             </div>
           </section>
 
+          <div className="h-px w-full bg-border/50" />
+
           {/* 成员管理 */}
-          <section className="rounded-lg border border-border bg-card">
-            <header className="flex flex-wrap items-center gap-3 border-b border-border px-5 py-3">
-              <h2 className="text-sm font-semibold">{t("members.title")}</h2>
-              <span className="text-[11px] text-muted-foreground">
-                {t("overview.memberCount", { count: members.length })}
-              </span>
-              <div className="flex w-full min-w-0 flex-wrap items-center gap-2 sm:ml-auto sm:w-auto">
+          <section className="grid grid-cols-1 md:grid-cols-[280px_1fr] gap-8">
+            <div>
+              <h2 className="text-base font-medium text-foreground">
+                {t("members.title")}
+              </h2>
+              <p className="mt-1.5 text-sm text-muted-foreground leading-relaxed">
+                {t("members.description")}
+              </p>
+              <Button
+                size="sm"
+                variant="secondary"
+                className="mt-6"
+                data-testid="space-settings-add-member-button"
+                disabled={!organizationId || !writeAllowed}
+                onClick={() => setIsAddMemberOpen(true)}
+              >
+                <Plus className="h-4 w-4 mr-2 -ml-1" />
+                {t("members.add")}
+              </Button>
+            </div>
+
+            <div className="flex flex-col gap-4">
+              {!writeAllowed && (
+                <div className="w-fit rounded-lg bg-muted/30 px-4 py-3 text-sm text-muted-foreground">
+                  {writeDisabledHint}
+                </div>
+              )}
+              <div className="flex flex-wrap items-center gap-3">
                 <Input
                   data-testid="space-settings-member-search"
                   value={memberSearch}
                   onChange={(event) => setMemberSearch(event.target.value)}
                   placeholder={t("members.searchPlaceholder")}
-                  className="h-8 min-w-0 flex-1 text-xs sm:w-44 sm:flex-none"
+                  className="h-9 min-w-0 flex-1 max-w-sm text-sm bg-transparent"
                 />
                 <SelectMenu
                   data-testid="space-settings-member-role-filter"
-                  className="h-8 min-w-0 rounded-md border border-input bg-background px-2 text-xs"
+                  className="h-9 w-40 min-w-0 rounded-md border border-input bg-transparent px-3 text-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
                   value={memberRoleFilter}
                   onChange={(event) =>
                     setMemberRoleFilter(event.target.value as SpaceRole | "ALL")
@@ -674,117 +733,131 @@ export function SpaceSettingsPage() {
                     </option>
                   ))}
                 </SelectMenu>
-                <Button
-                  size="sm"
-                  className="text-xs"
-                  data-testid="space-settings-add-member-button"
-                  disabled={!organizationId || !writeAllowed}
-                  onClick={() => setIsAddMemberOpen(true)}
+              </div>
+              {memberActionErrorKey && (
+                <div
+                  className="rounded-md bg-destructive/10 px-4 py-3 text-sm text-destructive"
+                  role="alert"
                 >
-                  <Plus className="h-3 w-3" />
-                  {t("members.add")}
-                </Button>
-              </div>
-            </header>
-            {memberActionErrorKey ? (
-              <div
-                className="border-b border-destructive/40 bg-destructive/10 px-5 py-2 text-xs text-destructive"
-                role="alert"
-              >
-                {tRoot(memberActionErrorKey)}
-              </div>
-            ) : null}
-            {members.length === 0 ? (
-              <EmptyState title={t("members.empty")} />
-            ) : filteredMembers.length === 0 ? (
-              <EmptyState title={t("members.emptyFiltered")} />
-            ) : (
-              <ul
-                data-testid="space-settings-members-list"
-                className="divide-y divide-border"
-              >
-                {filteredMembers.map((member) => {
-                  const isOwner =
-                    ownerMember?.userId === member.userId &&
-                    Boolean(space.ownerId);
-                  const identity = getSpaceMemberIdentity(member);
-                  return (
-                    <li
-                      key={member.id}
-                      data-testid={`space-settings-member-${member.id}`}
-                      className={cn(
-                        "flex min-w-0 flex-wrap items-center gap-3 px-5 py-2.5",
-                        member.status === "DISABLED" && "opacity-60",
-                      )}
-                    >
-                      <Avatar className="h-7 w-7">
-                        <AvatarFallback>
-                          {initialOf(identity.displayName)}
-                        </AvatarFallback>
-                      </Avatar>
-                      <div className="min-w-0 flex-1">
-                        <div className="flex min-w-0 flex-wrap items-center gap-1.5 text-[13px] font-medium">
-                          {identity.displayName}
-                          {isOwner && (
-                            <Badge variant="primary" className="text-[10px]">
-                              {t("members.ownerBadge")}
-                            </Badge>
+                  {tRoot(memberActionErrorKey)}
+                </div>
+              )}
+              <div className="w-full pt-2">
+                {members.length === 0 ? (
+                  <EmptyState title={t("members.empty")} />
+                ) : filteredMembers.length === 0 ? (
+                  <EmptyState title={t("members.emptyFiltered")} />
+                ) : (
+                  <ul
+                    data-testid="space-settings-members-list"
+                    className="flex flex-col gap-2"
+                  >
+                    {filteredMembers.map((member) => {
+                      const isOwner =
+                        ownerMember?.userId === member.userId &&
+                        Boolean(space.ownerId);
+                      const identity = getSpaceMemberIdentity(member);
+                      return (
+                        <li
+                          key={member.id}
+                          data-testid={`space-settings-member-${member.id}`}
+                          className={cn(
+                            "group flex flex-col sm:flex-row sm:items-center gap-3 py-3",
+                            member.status === "DISABLED" &&
+                              "opacity-60 grayscale-[0.2]",
                           )}
-                        </div>
-                        <div className="font-mono text-[11px] text-muted-foreground">
-                          <span aria-hidden="true">@</span>
-                          <span
-                            data-testid={`space-settings-member-username-${member.id}`}
-                          >
-                            {identity.username}
-                          </span>
-                        </div>
-                      </div>
-                      <Badge variant={roleVariant[member.role] ?? "default"}>
-                        {t(`members.roles.${member.role}`)}
-                      </Badge>
-                      {member.status === "DISABLED" && (
-                        <Badge variant="default">
-                          {t("members.statusDisabled")}
-                        </Badge>
-                      )}
-                      <Button
-                        variant="ghost"
-                        size="icon-sm"
-                        data-testid={`space-settings-member-edit-${member.id}`}
-                        disabled={
-                          !writeAllowed ||
-                          pendingMemberId === member.id ||
-                          member.status === "DISABLED"
-                        }
-                        onClick={() => setEditRoleMember(member)}
-                        aria-label={t("members.actions.changeRole", {
-                          username: identity.username,
-                        })}
-                      >
-                        <ShieldCheck className="h-3.5 w-3.5 text-muted-foreground" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon-sm"
-                        data-testid={`space-settings-member-disable-${member.id}`}
-                        disabled={
-                          !writeAllowed ||
-                          pendingMemberId === member.id ||
-                          member.status === "DISABLED"
-                        }
-                        onClick={() => void onDisableMember(member)}
-                        aria-label={t("members.actions.changeStatus", {
-                          username: identity.username,
-                        })}
-                      >
-                        <Trash2 className="h-3.5 w-3.5 text-muted-foreground" />
-                      </Button>
-                    </li>
-                  );
-                })}
-              </ul>
-            )}
+                        >
+                          <div className="flex flex-1 items-center gap-4 min-w-0">
+                            <Avatar className="h-10 w-10 shrink-0">
+                              <AvatarFallback className="bg-muted text-muted-foreground">
+                                {initialOf(identity.displayName)}
+                              </AvatarFallback>
+                            </Avatar>
+                            <div className="flex flex-col min-w-0 flex-1">
+                              <div className="flex min-w-0 flex-wrap items-center gap-2">
+                                <span className="text-sm font-medium truncate text-foreground">
+                                  {identity.displayName}
+                                </span>
+                                {isOwner && (
+                                  <Badge
+                                    variant="primary"
+                                    className="text-[10px] font-normal leading-none h-4 px-1 shrink-0"
+                                  >
+                                    {t("members.ownerBadge")}
+                                  </Badge>
+                                )}
+                              </div>
+                              <div className="font-mono text-[13px] text-muted-foreground truncate">
+                                <span aria-hidden="true">@</span>
+                                <span
+                                  data-testid={`space-settings-member-username-${member.id}`}
+                                >
+                                  {identity.username}
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-4 sm:pl-4 pl-[56px]">
+                            <div className="flex items-center gap-2 shrink-0">
+                              <Badge
+                                variant={roleVariant[member.role] ?? "default"}
+                                className="font-normal"
+                              >
+                                {t(`members.roles.${member.role}`)}
+                              </Badge>
+                              {member.status === "DISABLED" && (
+                                <Badge
+                                  variant="outline"
+                                  className="font-normal text-muted-foreground"
+                                >
+                                  {t("members.statusDisabled")}
+                                </Badge>
+                              )}
+                            </div>
+                            <div className="flex items-center gap-1 opacity-100 transition-opacity sm:opacity-0 sm:group-focus-within:opacity-100 sm:group-hover:opacity-100">
+                              <Button
+                                variant="ghost"
+                                size="icon-sm"
+                                data-testid={`space-settings-member-edit-${member.id}`}
+                                disabled={
+                                  !writeAllowed ||
+                                  pendingMemberId === member.id ||
+                                  member.status === "DISABLED"
+                                }
+                                onClick={() => setEditRoleMember(member)}
+                                aria-label={t("members.actions.changeRole", {
+                                  username: identity.username,
+                                })}
+                                className="hover:bg-muted"
+                              >
+                                <ShieldCheck className="h-4 w-4 text-muted-foreground" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="icon-sm"
+                                data-testid={`space-settings-member-disable-${member.id}`}
+                                disabled={
+                                  !writeAllowed ||
+                                  pendingMemberId === member.id ||
+                                  member.status === "DISABLED"
+                                }
+                                onClick={() => void onDisableMember(member)}
+                                aria-label={t("members.actions.changeStatus", {
+                                  username: identity.username,
+                                })}
+                                className="hover:text-destructive hover:bg-destructive/10"
+                              >
+                                <Trash2 className="h-4 w-4 text-muted-foreground" />
+                              </Button>
+                            </div>
+                          </div>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                )}
+              </div>
+            </div>
           </section>
         </div>
       </div>

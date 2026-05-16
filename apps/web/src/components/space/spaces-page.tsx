@@ -25,12 +25,13 @@ import {
 
 import { getApiErrorMessageKey } from "../../lib/api-error-messages";
 import { canManageOrganization, listSpaces } from "../../lib/space-service";
+import { cn } from "../../lib/utils";
 import { useSession } from "../providers/session-provider";
 import { Badge } from "../ui/badge";
 import { Button } from "../ui/button";
+import { CreateSpaceDialog } from "../shell/create-space-dialog";
 import { EmptyState, ErrorState, ListSkeleton } from "../v2/states";
 import { PageHeader } from "../v2/page-header";
-import { CreateSpaceDialog } from "../shell/create-space-dialog";
 
 const statusVariant: Record<string, "primary" | "warning" | "default"> = {
   ACTIVE: "primary",
@@ -157,7 +158,7 @@ export function SpacesPage() {
             onClick={() => void load()}
           >
             <RotateCw
-              className={`h-3 w-3 ${isLoading ? "animate-spin" : ""}`}
+              className={`h-3.5 w-3.5 ${isLoading ? "animate-spin" : ""}`}
             />
             {t("list.refresh")}
           </Button>
@@ -168,7 +169,7 @@ export function SpacesPage() {
               data-testid="spaces-create-button"
               onClick={() => setCreateOpen(true)}
             >
-              <Plus className="h-3 w-3" />
+              <Plus className="h-3.5 w-3.5" />
               {tShell("organizationSwitcher.createSpace")}
             </Button>
           ) : null}
@@ -229,26 +230,28 @@ export function SpacesPage() {
     body = <ListSkeleton rows={5} />;
   } else if (spaces.length === 0) {
     body = (
-      <EmptyState
-        icon={<FolderKanban className="h-4 w-4" />}
-        title={t("list.empty")}
-        description={t("list.description")}
-        action={
-          canCreateSpace ? (
-            <Button size="sm" onClick={() => setCreateOpen(true)}>
-              <Plus className="h-3 w-3" />
-              {tShell("organizationSwitcher.createSpace")}
-            </Button>
-          ) : undefined
-        }
-      />
+      <div className="py-12 border border-dashed border-border rounded-xl bg-muted/10">
+        <EmptyState
+          icon={<FolderKanban className="h-5 w-5" />}
+          title={t("list.empty")}
+          description={t("list.description")}
+          action={
+            canCreateSpace ? (
+              <Button size="sm" onClick={() => setCreateOpen(true)}>
+                <Plus className="h-4 w-4 mr-1.5" />
+                {tShell("organizationSwitcher.createSpace")}
+              </Button>
+            ) : undefined
+          }
+        />
+      </div>
     );
   } else {
     body = (
       <ul
         data-testid="spaces-list"
         aria-label={t("list.table.label")}
-        className="divide-y divide-border"
+        className="grid grid-cols-1 gap-5 md:grid-cols-2 lg:grid-cols-3"
       >
         {spaces.map((space) => {
           const membership = membershipBySpaceId.get(space.id);
@@ -258,59 +261,101 @@ export function SpacesPage() {
             <li
               key={space.id}
               data-testid={`spaces-list-item-${space.id}`}
-              className="flex flex-wrap items-center gap-3 px-5 py-3"
+              className={cn(
+                "group flex flex-col rounded-xl border bg-card transition-all hover:shadow-md hover:border-border/80",
+                isCurrent
+                  ? "border-primary/30 shadow-sm ring-1 ring-primary/10"
+                  : "border-border/60",
+                space.status === "DISABLED" && "opacity-60 grayscale-[0.2]",
+              )}
             >
-              <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/10 text-primary">
-                <FolderKanban className="h-4 w-4" />
-              </div>
-              <div className="min-w-0 flex-1">
-                <div className="flex flex-wrap items-center gap-2">
-                  <h2 className="truncate text-sm font-semibold">
-                    {space.name}
-                  </h2>
-                  <span className="font-mono text-[11px] text-muted-foreground">
-                    {space.code}
-                  </span>
-                  {isCurrent ? (
-                    <Badge variant="primary">{t("list.selected")}</Badge>
-                  ) : null}
-                  <Badge variant={statusVariant[space.status] ?? "default"}>
+              <div className="flex flex-col p-5 flex-1">
+                <div className="flex items-start justify-between gap-4 mb-4">
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div
+                      className={cn(
+                        "flex h-10 w-10 shrink-0 items-center justify-center rounded-lg transition-colors",
+                        isCurrent
+                          ? "bg-primary/10 text-primary"
+                          : "bg-muted/60 text-muted-foreground group-hover:bg-primary/5 group-hover:text-primary/80",
+                      )}
+                    >
+                      <FolderKanban className="h-5 w-5" />
+                    </div>
+                    <div className="flex flex-col min-w-0">
+                      <div className="flex items-center gap-2">
+                        <h2 className="truncate text-base font-semibold tracking-tight text-foreground">
+                          {space.name}
+                        </h2>
+                      </div>
+                      <div className="flex items-center gap-2 mt-0.5">
+                        <span className="font-mono text-[11px] text-muted-foreground">
+                          {space.code}
+                        </span>
+                        {isCurrent && (
+                          <Badge
+                            variant="primary"
+                            className="h-5 px-1.5 text-[10px] font-medium uppercase tracking-wider leading-none shadow-sm"
+                          >
+                            {t("list.selected")}
+                          </Badge>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex flex-wrap items-center gap-2 mb-4">
+                  <Badge
+                    variant={statusVariant[space.status] ?? "default"}
+                    className="h-5 px-1.5 text-[10px] font-normal bg-transparent border-border/60 text-muted-foreground"
+                  >
                     {t(`settings.status.${space.status}`)}
                   </Badge>
                   {membership ? (
-                    <Badge variant="outline">
+                    <Badge
+                      variant="outline"
+                      className="h-5 px-1.5 text-[10px] font-normal bg-transparent border-border/60 text-muted-foreground"
+                    >
                       {t(`members.roles.${membership.role}`)}
                     </Badge>
                   ) : (
-                    <Badge variant="default">{t("list.notMember")}</Badge>
+                    <Badge
+                      variant="default"
+                      className="h-5 px-1.5 text-[10px] font-normal bg-muted/30 text-muted-foreground border-transparent"
+                    >
+                      {t("list.notMember")}
+                    </Badge>
                   )}
                 </div>
-                {space.description ? (
-                  <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">
+
+                {space.description && (
+                  <p className="line-clamp-2 text-[13px] text-muted-foreground leading-relaxed mb-6">
                     {space.description}
                   </p>
-                ) : null}
-                <div
-                  data-testid={`spaces-operational-fields-${space.id}`}
-                  className="mt-2 grid gap-x-4 gap-y-1.5 text-[11px] text-muted-foreground sm:grid-cols-2 lg:grid-cols-3"
-                >
+                )}
+
+                <div className="mt-auto grid grid-cols-2 gap-x-4 gap-y-3">
                   <SpaceMetaItem
-                    icon={<User2 className="h-3 w-3" aria-hidden="true" />}
+                    icon={<User2 className="h-3.5 w-3.5" />}
                     label={t("list.fields.owner")}
                     testId={`spaces-owner-${space.id}`}
                     value={formatOwnerLabel(space, t("list.emptyValue"))}
                   />
                   <SpaceMetaItem
-                    icon={<GitBranch className="h-3 w-3" aria-hidden="true" />}
+                    icon={<GitBranch className="h-3.5 w-3.5" />}
                     label={t("list.fields.currentVersion")}
                     testId={`spaces-current-version-${space.id}`}
                     value={
                       space.currentVersion ? (
-                        <span className="inline-flex min-w-0 items-center gap-1">
-                          <span className="truncate">
+                        <span className="inline-flex min-w-0 items-center gap-1.5 text-foreground/90">
+                          <span className="truncate max-w-[80px]">
                             {space.currentVersion.name}
                           </span>
-                          <Badge variant="outline">
+                          <Badge
+                            variant="outline"
+                            className="h-5 px-1.5 text-[10px] font-normal"
+                          >
                             {tVersionStatus(space.currentVersion.status)}
                           </Badge>
                         </span>
@@ -320,69 +365,86 @@ export function SpacesPage() {
                     }
                   />
                   <SpaceMetaItem
-                    icon={<ListChecks className="h-3 w-3" aria-hidden="true" />}
+                    icon={<ListChecks className="h-3.5 w-3.5" />}
                     label={t("list.fields.unfinishedTaskCount")}
                     testId={`spaces-unfinished-tasks-${space.id}`}
-                    value={formatNullableCount(
-                      space.unfinishedTaskCount,
-                      t("list.emptyValue"),
-                    )}
+                    value={
+                      <span className="text-foreground/90">
+                        {formatNullableCount(
+                          space.unfinishedTaskCount,
+                          t("list.emptyValue"),
+                        )}
+                      </span>
+                    }
                   />
                   <SpaceMetaItem
-                    icon={<Bug className="h-3 w-3" aria-hidden="true" />}
+                    icon={<Bug className="h-3.5 w-3.5" />}
                     label={t("list.fields.openBugCount")}
                     testId={`spaces-open-bugs-${space.id}`}
-                    value={formatNullableCount(
-                      space.openBugCount,
-                      t("list.emptyValue"),
-                    )}
+                    value={
+                      <span className="text-foreground/90">
+                        {formatNullableCount(
+                          space.openBugCount,
+                          t("list.emptyValue"),
+                        )}
+                      </span>
+                    }
                   />
                   <SpaceMetaItem
-                    icon={
-                      <CircleAlert className="h-3 w-3" aria-hidden="true" />
-                    }
+                    icon={<CircleAlert className="h-3.5 w-3.5" />}
                     label={t("list.fields.blockedCount")}
                     testId={`spaces-blocked-${space.id}`}
-                    value={formatNullableCount(
-                      space.blockedCount,
-                      t("list.emptyValue"),
-                    )}
+                    value={
+                      <span className="text-foreground/90">
+                        {formatNullableCount(
+                          space.blockedCount,
+                          t("list.emptyValue"),
+                        )}
+                      </span>
+                    }
                   />
-                  <SpaceMetaItem
-                    icon={<Clock3 className="h-3 w-3" aria-hidden="true" />}
-                    label={t("list.fields.updatedAt")}
-                    testId={`spaces-updated-at-${space.id}`}
-                    value={formatUpdatedAt(
+                </div>
+              </div>
+
+              <div className="flex items-center justify-between border-t border-border/40 bg-muted/10 px-5 py-3 rounded-b-xl">
+                <div
+                  className="flex items-center gap-1.5 text-[11px] text-muted-foreground"
+                  title={t("list.fields.updatedAt")}
+                >
+                  <Clock3 className="h-3 w-3 opacity-70" />
+                  <span data-testid={`spaces-updated-at-${space.id}`}>
+                    <span>{t("list.fields.updatedAt")}</span>
+                    {formatUpdatedAt(
                       space.updatedAt,
                       locale,
                       t("list.emptyValue"),
                     )}
-                  />
+                  </span>
                 </div>
+                <Button
+                  variant={isCurrent ? "secondary" : "ghost"}
+                  size="sm"
+                  className="h-7 text-xs px-2.5 -mr-1 font-medium"
+                  data-testid={`spaces-switch-${space.id}`}
+                  disabled={
+                    pendingSpaceId !== null ||
+                    !canSwitch ||
+                    space.status === "DISABLED"
+                  }
+                  onClick={() => void onSwitchSpace(space.id)}
+                >
+                  {isCurrent ? (
+                    t("list.selected")
+                  ) : pendingSpaceId === space.id ? (
+                    tShell("organizationSwitcher.switchingSpace")
+                  ) : (
+                    <>
+                      {t("list.switch")}
+                      <ArrowUpRight className="h-3 w-3 ml-1 opacity-60" />
+                    </>
+                  )}
+                </Button>
               </div>
-              <Button
-                variant={isCurrent ? "outline" : "default"}
-                size="sm"
-                className="text-xs"
-                data-testid={`spaces-switch-${space.id}`}
-                disabled={
-                  pendingSpaceId !== null ||
-                  !canSwitch ||
-                  space.status === "DISABLED"
-                }
-                onClick={() => void onSwitchSpace(space.id)}
-              >
-                {isCurrent ? (
-                  <>
-                    <ArrowUpRight className="h-3 w-3" />
-                    {t("list.selected")}
-                  </>
-                ) : pendingSpaceId === space.id ? (
-                  tShell("organizationSwitcher.switchingSpace")
-                ) : (
-                  t("list.switch")
-                )}
-              </Button>
             </li>
           );
         })}
@@ -394,28 +456,33 @@ export function SpacesPage() {
     <div data-testid="spaces-page" className="flex h-full flex-col">
       {headerNode}
 
-      <div className="flex-1 overflow-y-auto px-6 py-6">
-        <div className="mx-auto flex max-w-4xl flex-col gap-6">
+      <div className="flex-1 overflow-y-auto px-6 py-8">
+        <div className="mx-auto flex max-w-6xl flex-col gap-6">
           {!canCreateSpace ? (
             <div
               data-testid="spaces-readonly-notice"
-              className="rounded-md border border-border bg-muted/30 px-4 py-2 text-xs text-muted-foreground"
+              className="rounded-lg bg-muted/40 px-4 py-3 text-xs text-muted-foreground flex items-center gap-2 border border-border/50"
             >
+              <CircleAlert className="h-4 w-4 opacity-70" />
               {t("list.readOnly")}
             </div>
           ) : null}
           {switchErrorKey ? (
             <div
               role="alert"
-              className="rounded-md border border-destructive/40 bg-destructive/10 px-4 py-2 text-xs text-destructive"
+              className="rounded-lg border border-destructive/20 bg-destructive/5 px-4 py-3 text-xs text-destructive flex items-center gap-2"
             >
+              <CircleAlert className="h-4 w-4" />
               {tRoot(switchErrorKey)}
             </div>
           ) : null}
-          <section className="rounded-lg border border-border bg-card">
-            <header className="flex items-center justify-between border-b border-border px-5 py-3">
-              <h2 className="text-sm font-semibold">{t("list.title")}</h2>
-              <span className="text-[11px] text-muted-foreground">
+
+          <section className="flex flex-col gap-4">
+            <header className="flex items-center justify-between px-1">
+              <h2 className="text-lg font-medium tracking-tight">
+                {t("list.title")}
+              </h2>
+              <span className="text-[11px] text-muted-foreground font-medium px-2.5 py-1 bg-muted/30 rounded-full border border-border/50">
                 {t("list.spaceCount", { count: spaces.length })}
               </span>
             </header>
@@ -447,12 +514,15 @@ function SpaceMetaItem({
   value: ReactNode;
 }) {
   return (
-    <div className="flex min-w-0 items-center gap-1.5" data-testid={testId}>
-      <span className="flex shrink-0 items-center gap-1">
+    <div
+      className="flex min-w-0 items-center justify-between gap-2"
+      data-testid={testId}
+    >
+      <span className="flex shrink-0 items-center gap-1.5 text-muted-foreground/70">
         {icon}
-        <span>{label}</span>
+        <span className="truncate text-[11px]">{label}</span>
       </span>
-      <span className="min-w-0 truncate font-medium text-foreground/80">
+      <span className="min-w-0 truncate text-[12px] font-medium text-foreground/80">
         {value}
       </span>
     </div>

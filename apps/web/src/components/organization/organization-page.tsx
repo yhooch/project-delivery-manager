@@ -303,7 +303,7 @@ export function OrganizationPage() {
     membersBody = <EmptyState title={t("members.empty")} />;
   } else {
     membersBody = (
-      <ul className="divide-y divide-border">
+      <ul className="flex flex-col gap-2">
         {members.map((member) => {
           const isLastActiveOwner =
             member.role === "OWNER" &&
@@ -317,69 +317,86 @@ export function OrganizationPage() {
               key={member.id}
               data-testid={`organization-member-${member.id}`}
               className={cn(
-                "flex items-center gap-3 px-5 py-2.5",
+                "group flex flex-col sm:flex-row sm:items-center gap-3 py-3",
                 member.status === "DISABLED" && "opacity-60",
               )}
             >
-              <Avatar className="h-7 w-7">
-                <AvatarFallback>{initialOf(displayName)}</AvatarFallback>
-              </Avatar>
-              <div className="min-w-0 flex-1">
-                <div className="flex items-center gap-1.5 text-[13px] font-medium">
-                  {displayName}
-                  {member.role === "OWNER" && (
-                    <Crown className="h-3 w-3 text-warning" />
-                  )}
-                </div>
-                <div className="font-mono text-[11px] text-muted-foreground">
-                  <span aria-hidden="true">@</span>
-                  <span>{username}</span>
+              <div className="flex flex-1 items-center gap-4 min-w-0">
+                <Avatar className="h-10 w-10 shrink-0">
+                  <AvatarFallback className="bg-muted text-muted-foreground">
+                    {initialOf(displayName)}
+                  </AvatarFallback>
+                </Avatar>
+                <div className="flex flex-col min-w-0 flex-1">
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm font-medium truncate text-foreground">
+                      {displayName}
+                    </span>
+                    {member.role === "OWNER" && (
+                      <Crown className="h-3.5 w-3.5 text-warning shrink-0" />
+                    )}
+                  </div>
+                  <div className="text-[13px] text-muted-foreground truncate">
+                    @{username}
+                  </div>
                 </div>
               </div>
-              <Badge variant={roleVariant[member.role] ?? "default"}>
-                {t(`members.roles.${member.role}`)}
-              </Badge>
-              <Badge
-                data-testid={`organization-member-status-${member.id}`}
-                variant={member.status === "DISABLED" ? "warning" : "outline"}
-              >
-                {t(`members.status.${member.status}`)}
-              </Badge>
-              {canManageMembers ? (
-                <>
-                  <Button
-                    variant="ghost"
-                    size="icon-sm"
-                    data-testid={`organization-member-edit-role-${member.id}`}
-                    disabled={
-                      member.status === "DISABLED" ||
-                      pendingMemberId === member.id
-                    }
-                    onClick={() => setEditRoleMember(member)}
-                    aria-label={t("members.actions.changeRole", {
-                      username,
-                    })}
+              <div className="flex items-center gap-4 sm:pl-4 pl-[56px]">
+                <div className="flex items-center gap-2 shrink-0">
+                  <Badge
+                    variant={roleVariant[member.role] ?? "default"}
+                    className="font-normal"
                   >
-                    <ShieldCheck className="h-3.5 w-3.5 text-muted-foreground" />
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="icon-sm"
-                    data-testid={`organization-member-disable-${member.id}`}
-                    disabled={
-                      isLastActiveOwner ||
-                      member.status === "DISABLED" ||
-                      pendingMemberId === member.id
+                    {t(`members.roles.${member.role}`)}
+                  </Badge>
+                  <Badge
+                    data-testid={`organization-member-status-${member.id}`}
+                    variant={
+                      member.status === "DISABLED" ? "warning" : "outline"
                     }
-                    onClick={() => setDisableMember(member)}
-                    aria-label={t("members.actions.disable", {
-                      username,
-                    })}
+                    className="font-normal"
                   >
-                    <Ban className="h-3.5 w-3.5 text-muted-foreground" />
-                  </Button>
-                </>
-              ) : null}
+                    {t(`members.status.${member.status}`)}
+                  </Badge>
+                </div>
+                {canManageMembers ? (
+                  <div className="flex items-center gap-1 opacity-100 transition-opacity sm:opacity-0 sm:group-focus-within:opacity-100 sm:group-hover:opacity-100">
+                    <Button
+                      variant="ghost"
+                      size="icon-sm"
+                      data-testid={`organization-member-edit-role-${member.id}`}
+                      disabled={
+                        member.status === "DISABLED" ||
+                        pendingMemberId === member.id
+                      }
+                      onClick={() => setEditRoleMember(member)}
+                      aria-label={t("members.actions.changeRole", {
+                        username,
+                      })}
+                      className="hover:bg-muted"
+                    >
+                      <ShieldCheck className="h-4 w-4 text-muted-foreground" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon-sm"
+                      data-testid={`organization-member-disable-${member.id}`}
+                      disabled={
+                        isLastActiveOwner ||
+                        member.status === "DISABLED" ||
+                        pendingMemberId === member.id
+                      }
+                      onClick={() => setDisableMember(member)}
+                      aria-label={t("members.actions.disable", {
+                        username,
+                      })}
+                      className="hover:bg-destructive/10 hover:text-destructive"
+                    >
+                      <Ban className="h-4 w-4 text-muted-foreground" />
+                    </Button>
+                  </div>
+                ) : null}
+              </div>
             </li>
           );
         })}
@@ -388,146 +405,171 @@ export function OrganizationPage() {
   }
 
   return (
-    <div data-testid="organization-page" className="flex h-full flex-col">
+    <div
+      data-testid="organization-page"
+      className="flex h-full flex-col bg-background"
+    >
       {headerNode}
 
-      <div className="flex-1 overflow-y-auto px-6 py-6">
-        <div className="mx-auto flex max-w-4xl flex-col gap-6">
-          {/* 组织信息 */}
-          <section className="rounded-lg border border-border bg-card">
-            <header className="flex items-center justify-between border-b border-border px-5 py-3">
-              <h2 className="text-sm font-semibold">{t("info.title")}</h2>
-              {canManageMembers ? (
-                <div className="flex items-center gap-2">
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    className="text-xs"
-                    disabled={isProfileSubmitting || !hasProfileChanges}
-                    onClick={onResetOrganizationProfile}
-                  >
-                    {t("info.actions.cancel")}
-                  </Button>
-                  <Button
-                    type="button"
-                    size="sm"
-                    className="text-xs"
-                    data-testid="organization-profile-save"
-                    disabled={
-                      isProfileSubmitting ||
-                      !hasProfileChanges ||
-                      orgName.trim().length === 0 ||
-                      orgCode.trim().length < 2
-                    }
-                    onClick={() => void onSaveOrganizationProfile()}
-                  >
-                    {isProfileSubmitting
-                      ? t("info.actions.submitting")
-                      : t("info.actions.save")}
-                  </Button>
+      <div className="flex-1 overflow-y-auto px-6 py-10">
+        <div className="mx-auto flex max-w-5xl flex-col gap-12">
+          {/* Organization Info */}
+          <section className="grid grid-cols-1 md:grid-cols-[280px_1fr] gap-8">
+            <div>
+              <h2 className="text-base font-medium text-foreground">
+                {t("info.title")}
+              </h2>
+              <p className="mt-1.5 text-sm text-muted-foreground leading-relaxed">
+                {tRoot("organization.page.description")}
+              </p>
+            </div>
+            <div className="flex flex-col gap-6">
+              {profileErrorKey ? (
+                <div
+                  className="rounded-md bg-destructive/10 px-4 py-3 text-sm text-destructive"
+                  role="alert"
+                >
+                  {tRoot(profileErrorKey)}
                 </div>
               ) : null}
-            </header>
-            {profileErrorKey ? (
-              <div
-                className="border-b border-destructive/40 bg-destructive/10 px-5 py-2 text-xs text-destructive"
-                role="alert"
-              >
-                {tRoot(profileErrorKey)}
+              <div className="grid gap-5 md:grid-cols-2">
+                <div className="flex flex-col gap-2">
+                  <Label htmlFor="org-name" className="text-sm font-medium">
+                    {t("info.fields.name")}
+                  </Label>
+                  <Input
+                    id="org-name"
+                    data-testid="organization-profile-name"
+                    value={orgName}
+                    maxLength={120}
+                    readOnly={!canManageMembers}
+                    disabled={isProfileSubmitting}
+                    onChange={(event) => setOrgName(event.target.value)}
+                    className="max-w-md bg-transparent"
+                  />
+                </div>
+                <div className="flex flex-col gap-2">
+                  <Label htmlFor="org-code" className="text-sm font-medium">
+                    {t("info.fields.code")}
+                  </Label>
+                  <Input
+                    id="org-code"
+                    data-testid="organization-profile-code"
+                    value={orgCode}
+                    maxLength={32}
+                    pattern="[A-Za-z0-9_-]+"
+                    readOnly={!canManageMembers}
+                    disabled={isProfileSubmitting}
+                    onChange={(event) => setOrgCode(event.target.value)}
+                    className="max-w-md bg-transparent"
+                  />
+                </div>
+                <div className="flex flex-col gap-2 md:col-span-2">
+                  <Label htmlFor="org-status" className="text-sm font-medium">
+                    {t("info.fields.status")}
+                  </Label>
+                  <SelectMenu
+                    id="org-status"
+                    data-testid="organization-profile-status"
+                    className="flex h-9 w-full max-w-[220px] rounded-md border border-input bg-transparent px-3 py-1 text-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+                    value={orgStatus}
+                    disabled={!canManageMembers || isProfileSubmitting}
+                    onChange={(event) =>
+                      setOrgStatus(event.target.value as RecordStatus)
+                    }
+                  >
+                    {organizationStatusOptions.map((statusKey) => (
+                      <option key={statusKey} value={statusKey}>
+                        {t(`info.status.${statusKey}`)}
+                      </option>
+                    ))}
+                  </SelectMenu>
+                </div>
               </div>
-            ) : null}
-            <div className="grid gap-4 px-5 py-4 md:grid-cols-3">
-              <div className="flex flex-col gap-1.5">
-                <Label htmlFor="org-name">{t("info.fields.name")}</Label>
-                <Input
-                  id="org-name"
-                  data-testid="organization-profile-name"
-                  value={orgName}
-                  maxLength={120}
-                  readOnly={!canManageMembers}
-                  disabled={isProfileSubmitting}
-                  onChange={(event) => setOrgName(event.target.value)}
-                />
+              <div className="flex items-center gap-4 pt-2">
+                {canManageMembers ? (
+                  <>
+                    <Button
+                      type="button"
+                      size="sm"
+                      data-testid="organization-profile-save"
+                      disabled={
+                        isProfileSubmitting ||
+                        !hasProfileChanges ||
+                        orgName.trim().length === 0 ||
+                        orgCode.trim().length < 2
+                      }
+                      onClick={() => void onSaveOrganizationProfile()}
+                    >
+                      {isProfileSubmitting
+                        ? t("info.actions.submitting")
+                        : t("info.actions.save")}
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      disabled={isProfileSubmitting || !hasProfileChanges}
+                      onClick={onResetOrganizationProfile}
+                    >
+                      {t("info.actions.cancel")}
+                    </Button>
+                  </>
+                ) : (
+                  <span className="text-sm text-muted-foreground">
+                    {t("info.readOnlyNote")}
+                  </span>
+                )}
               </div>
-              <div className="flex flex-col gap-1.5">
-                <Label htmlFor="org-code">{t("info.fields.code")}</Label>
-                <Input
-                  id="org-code"
-                  data-testid="organization-profile-code"
-                  value={orgCode}
-                  maxLength={32}
-                  pattern="[A-Za-z0-9_-]+"
-                  readOnly={!canManageMembers}
-                  disabled={isProfileSubmitting}
-                  onChange={(event) => setOrgCode(event.target.value)}
-                />
-              </div>
-              <div className="flex flex-col gap-1.5">
-                <Label htmlFor="org-status">{t("info.fields.status")}</Label>
-                <SelectMenu
-                  id="org-status"
-                  data-testid="organization-profile-status"
-                  className="flex h-8 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 focus-visible:ring-offset-background disabled:cursor-not-allowed disabled:opacity-50"
-                  value={orgStatus}
-                  disabled={!canManageMembers || isProfileSubmitting}
-                  onChange={(event) =>
-                    setOrgStatus(event.target.value as RecordStatus)
-                  }
-                >
-                  {organizationStatusOptions.map((statusKey) => (
-                    <option key={statusKey} value={statusKey}>
-                      {t(`info.status.${statusKey}`)}
-                    </option>
-                  ))}
-                </SelectMenu>
-              </div>
-            </div>
-            <div className="border-t border-border bg-muted/30 px-5 py-2.5 text-[11px] text-muted-foreground">
-              {canManageMembers
-                ? t("info.editableNote")
-                : t("info.readOnlyNote")}
             </div>
           </section>
 
-          {/* 组织成员 */}
-          <section className="rounded-lg border border-border bg-card">
-            <header className="flex items-center justify-between border-b border-border px-5 py-3">
-              <h2 className="text-sm font-semibold">{t("members.title")}</h2>
-              <Button
-                size="sm"
-                className="text-xs"
-                data-testid="organization-add-member-button"
-                disabled={!canManageMembers}
-                onClick={() => {
-                  if (canManageMembers) {
-                    setIsAddMemberOpen(true);
-                  }
-                }}
-              >
-                <Plus className="h-3 w-3" />
-                {t("members.add")}
-              </Button>
-            </header>
-            {!canManageMembers ? (
-              <div
-                className="border-b border-border bg-muted/30 px-5 py-2 text-xs text-muted-foreground"
-                data-testid="organization-readonly-notice"
-              >
-                {t("members.readOnly")}
-              </div>
-            ) : null}
-            {memberActionErrorKey ? (
-              <div
-                className="border-b border-destructive/40 bg-destructive/10 px-5 py-2 text-xs text-destructive"
-                role="alert"
-              >
-                {tRoot(memberActionErrorKey)}
-              </div>
-            ) : null}
-            {membersBody}
-            <div className="border-t border-border bg-muted/30 px-5 py-2.5 text-[11px] text-muted-foreground">
-              {t("members.ownerProtectionNote")}
+          <div className="h-px w-full bg-border/50" />
+
+          {/* Members */}
+          <section className="grid grid-cols-1 md:grid-cols-[280px_1fr] gap-8">
+            <div>
+              <h2 className="text-base font-medium text-foreground">
+                {t("members.title")}
+              </h2>
+              <p className="mt-1.5 text-sm text-muted-foreground leading-relaxed">
+                {t("members.description")}
+              </p>
+              {canManageMembers && (
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  className="mt-6"
+                  data-testid="organization-add-member-button"
+                  disabled={!canManageMembers}
+                  onClick={() => setIsAddMemberOpen(true)}
+                >
+                  <Plus className="h-4 w-4 mr-2 -ml-1" />
+                  {t("members.add")}
+                </Button>
+              )}
+            </div>
+            <div className="flex flex-col gap-4">
+              {!canManageMembers && (
+                <div className="text-sm text-muted-foreground bg-muted/30 px-4 py-3 rounded-lg w-fit">
+                  {t("members.readOnly")}
+                </div>
+              )}
+              {memberActionErrorKey && (
+                <div
+                  className="rounded-md bg-destructive/10 px-4 py-3 text-sm text-destructive w-fit"
+                  role="alert"
+                >
+                  {tRoot(memberActionErrorKey)}
+                </div>
+              )}
+              <div className="w-full">{membersBody}</div>
+
+              {members.length > 0 && (
+                <p className="text-sm text-muted-foreground mt-4">
+                  {t("members.ownerProtectionNote")}
+                </p>
+              )}
             </div>
           </section>
         </div>

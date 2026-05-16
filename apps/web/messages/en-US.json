@@ -3124,6 +3124,7 @@
     },
     "basic": {
       "title": "Basic info",
+      "description": "Maintain the space name, code, owner, and description.",
       "fields": {
         "name": "Space name",
         "code": "Space code",
@@ -3138,6 +3139,7 @@
     },
     "threshold": {
       "title": "Exception thresholds",
+      "description": "Configure the long-stale rule used by this space's exception view.",
       "fields": {
         "staleDays": "Long stale threshold (days)"
       },
@@ -3146,6 +3148,7 @@
     },
     "members": {
       "title": "Space members",
+      "description": "Manage who can access this space and which space role they hold.",
       "add": "Add member",
       "empty": "No space members",
       "emptyFiltered": "No matching members",
@@ -3229,6 +3232,7 @@
     },
     "members": {
       "title": "Organization members",
+      "description": "Manage organization members and roles. Organization members are candidates for space membership.",
       "add": "Add member",
       "empty": "No organization members",
       "readOnly": "Your organization role can view members but cannot add, disable, or change roles.",
