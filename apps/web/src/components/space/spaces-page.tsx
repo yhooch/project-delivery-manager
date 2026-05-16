@@ -413,7 +413,7 @@ export function SpacesPage() {
                 >
                   <Clock3 className="h-3 w-3 opacity-70" />
                   <span data-testid={`spaces-updated-at-${space.id}`}>
-                    <span>{t("list.fields.updatedAt")}</span>
+                    <span>{t("list.fields.updatedAt")}: </span>
                     {formatUpdatedAt(
                       space.updatedAt,
                       locale,

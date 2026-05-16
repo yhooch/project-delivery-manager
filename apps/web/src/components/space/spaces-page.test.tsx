@@ -263,6 +263,9 @@ describe("SpacesPage", () => {
     expect(
       screen.getByTestId("spaces-updated-at-SPC_01").textContent,
     ).toContain("2026");
+    expect(screen.getByTestId("spaces-updated-at-SPC_01")).toHaveTextContent(
+      "spaces.list.fields.updatedAt: ",
+    );
 
     expect(screen.getByTestId("spaces-owner-SPC_03")).toHaveTextContent(
       "spaces.list.fields.ownerspaces.list.emptyValue",
@@ -278,7 +281,7 @@ describe("SpacesPage", () => {
       "spaces.list.fields.unfinishedTaskCountspaces.list.emptyValue",
     );
     expect(screen.getByTestId("spaces-updated-at-SPC_03")).toHaveTextContent(
-      "spaces.list.fields.updatedAtspaces.list.emptyValue",
+      "spaces.list.fields.updatedAt: spaces.list.emptyValue",
     );
   });
 
