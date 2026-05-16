@@ -16,6 +16,7 @@ import {
   CheckCircle2,
   ChevronDown,
   Clock,
+  GitBranch,
   Inbox,
   type LucideIcon,
 } from "lucide-react";
@@ -52,6 +53,7 @@ import { recordRecentOpen } from "../shell/recent-opens";
 import { Avatar, AvatarFallback } from "../ui/avatar";
 import { Badge } from "../ui/badge";
 import { Button } from "../ui/button";
+import { Tip } from "../ui/tooltip";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -403,12 +405,9 @@ export function MyWorkbench() {
     });
   }, []);
 
-  const setActiveWorkbenchItem = useCallback(
-    (item: WorkbenchItemViewModel) => {
-      setActiveWorkbenchItemKey(getWorkbenchItemKey(item));
-    },
-    [],
-  );
+  const setActiveWorkbenchItem = useCallback((item: WorkbenchItemViewModel) => {
+    setActiveWorkbenchItemKey(getWorkbenchItemKey(item));
+  }, []);
 
   const selectWorkbenchItem = useCallback(
     (item: WorkbenchItemViewModel) => {
@@ -880,11 +879,13 @@ export function MyWorkbench() {
             <ul className="space-y-3">
               {recentEvents.map((event) => (
                 <li key={event.id} className="flex gap-2.5">
-                  <Avatar className="h-6 w-6">
-                    <AvatarFallback className="text-[10px]">
-                      {initialOf(event.actor.name)}
-                    </AvatarFallback>
-                  </Avatar>
+                  <Tip content={event.actor.name}>
+                    <Avatar className="h-6 w-6">
+                      <AvatarFallback className="text-[10px]">
+                        {initialOf(event.actor.name)}
+                      </AvatarFallback>
+                    </Avatar>
+                  </Tip>
                   <div className="flex-1 text-[12px]">
                     <div className="leading-snug">
                       <span className="font-medium">{event.actor.name}</span>
@@ -1252,9 +1253,15 @@ function ItemList({
                 withDot={false}
               />
               {item.versionName && (
-                <Badge variant="outline" className="hidden md:inline-flex">
-                  {item.versionName}
-                </Badge>
+                <Tip content={item.versionName}>
+                  <Badge
+                    variant="outline"
+                    className="hidden gap-1 md:inline-flex"
+                  >
+                    <GitBranch aria-hidden="true" className="h-2.5 w-2.5" />
+                    {item.versionName}
+                  </Badge>
+                </Tip>
               )}
               {item.dueDate && (
                 <span
@@ -1268,11 +1275,13 @@ function ItemList({
                   {item.dueDate}
                 </span>
               )}
-              <Avatar className="h-5 w-5 shrink-0">
-                <AvatarFallback className="text-[9px]">
-                  {item.assignee.initial}
-                </AvatarFallback>
-              </Avatar>
+              <Tip content={item.assignee.name || undefined}>
+                <Avatar className="h-5 w-5 shrink-0">
+                  <AvatarFallback className="text-[9px]">
+                    {item.assignee.initial}
+                  </AvatarFallback>
+                </Avatar>
+              </Tip>
             </button>
           </li>
         );
@@ -1283,9 +1292,11 @@ function ItemList({
 
 export type WorkbenchLookupHelpers = WorkItemViewModelLookupHelpers;
 
-function getWorkbenchItemKey(item: Pick<WorkbenchItemViewModel, "id"> & {
-  listKey?: string;
-}) {
+function getWorkbenchItemKey(
+  item: Pick<WorkbenchItemViewModel, "id"> & {
+    listKey?: string;
+  },
+) {
   return item.listKey ?? item.id;
 }
 

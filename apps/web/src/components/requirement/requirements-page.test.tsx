@@ -314,7 +314,7 @@ describe("RequirementsPage", () => {
       screen.getByText("requirements.status.CONFIRMED"),
     ).toBeInTheDocument();
     expect(await screen.findByText("M1 Release")).toBeInTheDocument();
-    expect(await screen.findByText("PM User (pm)")).toBeInTheDocument();
+    expect(screen.queryByText("PM User (pm)")).not.toBeInTheDocument();
     // The list renders with the testid.
     expect(screen.getByTestId("requirements-list")).toBeInTheDocument();
   });

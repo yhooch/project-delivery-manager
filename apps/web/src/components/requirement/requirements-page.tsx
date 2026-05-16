@@ -14,7 +14,6 @@ import {
   GitBranch,
   Link2,
   Plus,
-  User2,
 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useSearchParams } from "next/navigation";
@@ -43,6 +42,7 @@ import { recordRecentOpen } from "../shell/recent-opens";
 import { Avatar, AvatarFallback } from "../ui/avatar";
 import { Badge, type BadgeProps } from "../ui/badge";
 import { Button } from "../ui/button";
+import { Tip } from "../ui/tooltip";
 import { PageHeader } from "../v2/page-header";
 import {
   EmptyState,
@@ -621,6 +621,27 @@ export function RequirementsPage() {
         >
           {displayItems.map((item) => {
             const req = item.requirement;
+            const ownerName = req.ownerId
+              ? formatOwnerLabel(req.ownerId, memberNameByUserId)
+              : "";
+            const ownerTip =
+              ownerName && ownerName !== "—" ? ownerName : undefined;
+            const versionName = req.versionId
+              ? formatVersionLabel(req.versionId, versionNameById)
+              : "";
+            const versionTip =
+              versionName && versionName !== "—"
+                ? `${t("list.columns.version")}: ${versionName}`
+                : undefined;
+            const relatedWorkItemCount =
+              req.relatedWorkItems.taskCount + req.relatedWorkItems.bugCount;
+            const relatedTip =
+              relatedWorkItemCount > 0
+                ? `${t("list.columns.related")}: ${t("list.relatedCounts", {
+                    bugs: req.relatedWorkItems.bugCount,
+                    tasks: req.relatedWorkItems.taskCount,
+                  })}`
+                : undefined;
 
             return (
               <li
@@ -673,38 +694,34 @@ export function RequirementsPage() {
                     {t(`status.${req.status}`)}
                   </Badge>
                   {req.versionId ? (
-                    <Badge
-                      variant="outline"
-                      className="hidden gap-1 md:inline-flex"
-                    >
-                      <GitBranch className="h-2.5 w-2.5" />
-                      {formatVersionLabel(req.versionId, versionNameById)}
-                    </Badge>
+                    <Tip content={versionTip}>
+                      <Badge
+                        variant="outline"
+                        className="hidden gap-1 md:inline-flex"
+                      >
+                        <GitBranch aria-hidden="true" className="h-2.5 w-2.5" />
+                        {versionName}
+                      </Badge>
+                    </Tip>
                   ) : null}
-                  {req.relatedWorkItems.taskCount +
-                    req.relatedWorkItems.bugCount >
-                  0 ? (
-                    <span className="hidden items-center gap-1 text-[11px] text-muted-foreground md:flex">
-                      <Link2 className="h-2.5 w-2.5" />
-                      {req.relatedWorkItems.taskCount +
-                        req.relatedWorkItems.bugCount}
-                    </span>
+                  {relatedWorkItemCount > 0 ? (
+                    <Tip content={relatedTip}>
+                      <Badge
+                        variant="outline"
+                        className="hidden gap-1 md:inline-flex"
+                      >
+                        <Link2 aria-hidden="true" className="h-2.5 w-2.5" />
+                        {relatedWorkItemCount}
+                      </Badge>
+                    </Tip>
                   ) : null}
-                  {req.ownerId ? (
-                    <span className="hidden items-center gap-1 text-[11px] text-muted-foreground md:flex">
-                      <User2 className="h-2.5 w-2.5" />
-                      {formatOwnerLabel(req.ownerId, memberNameByUserId)}
-                    </span>
-                  ) : null}
-                  <Avatar className="h-5 w-5 shrink-0">
-                    <AvatarFallback className="text-[9px]">
-                      {req.ownerId
-                        ? initialOf(
-                            formatOwnerLabel(req.ownerId, memberNameByUserId),
-                          )
-                        : "·"}
-                    </AvatarFallback>
-                  </Avatar>
+                  <Tip content={ownerTip}>
+                    <Avatar className="h-5 w-5 shrink-0">
+                      <AvatarFallback className="text-[9px]">
+                        {ownerName ? initialOf(ownerName) : "·"}
+                      </AvatarFallback>
+                    </Avatar>
+                  </Tip>
                 </Link>
               </li>
             );

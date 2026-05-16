@@ -54,6 +54,7 @@ import { recordRecentOpen } from "../shell/recent-opens";
 import { Avatar, AvatarFallback } from "../ui/avatar";
 import { Badge } from "../ui/badge";
 import { Button } from "../ui/button";
+import { Tip } from "../ui/tooltip";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -246,7 +247,6 @@ export function ExceptionsPage() {
 
     const requestId = requestSeq.current + 1;
     requestSeq.current = requestId;
-    setView(null);
     setIsLoading(true);
     setErrorKey(null);
 
@@ -320,10 +320,37 @@ export function ExceptionsPage() {
     void fetchView();
   }, [fetchView]);
 
+  const viewMatchesRequest = useMemo(
+    () =>
+      viewMatchesCurrentRequest(view, {
+        assigneeId: effectiveFilters.assigneeId,
+        exceptionType: tabValue,
+        organizationId,
+        page,
+        spaceId,
+        statusCategory: effectiveFilters.statusCategory,
+        versionId: effectiveFilters.versionId,
+        workItemType: effectiveFilters.workItemType,
+      }),
+    [
+      effectiveFilters.assigneeId,
+      effectiveFilters.statusCategory,
+      effectiveFilters.versionId,
+      effectiveFilters.workItemType,
+      organizationId,
+      page,
+      spaceId,
+      tabValue,
+      view,
+    ],
+  );
+
   const grouped = useMemo(() => {
     const viewExceptionType = view?.filters?.exceptionType ?? tabValue;
     const items =
-      viewExceptionType === tabValue ? (view?.items.items ?? []) : [];
+      viewMatchesRequest && viewExceptionType === tabValue
+        ? (view?.items.items ?? [])
+        : [];
     return tabs.map((tab) => {
       const countFromCounts = view?.counts.find(
         (entry) => entry.exceptionType === tab.key,
@@ -333,10 +360,12 @@ export function ExceptionsPage() {
         items: tab.key === tabValue ? items : [],
         count:
           countFromCounts ??
-          (tab.key === tabValue ? (view?.items.total ?? items.length) : 0),
+          (tab.key === tabValue && viewMatchesRequest
+            ? (view?.items.total ?? items.length)
+            : 0),
       };
     });
-  }, [tabValue, view]);
+  }, [tabValue, view, viewMatchesRequest]);
 
   const visibleItems = useMemo(
     () => grouped.find((tab) => tab.key === tabValue)?.items ?? [],
@@ -344,7 +373,7 @@ export function ExceptionsPage() {
   );
 
   const pagination = useMemo(() => {
-    const pageResult = view?.items;
+    const pageResult = viewMatchesRequest ? view?.items : undefined;
     const total = pageResult?.total ?? 0;
     const pageSize = pageResult?.pageSize ?? EXCEPTIONS_PAGE_SIZE;
     const currentPage = pageResult?.page ?? page;
@@ -359,7 +388,7 @@ export function ExceptionsPage() {
       to,
       total,
     };
-  }, [page, view?.items]);
+  }, [page, view?.items, viewMatchesRequest]);
 
   const buildExceptionViewModel = useCallback(
     (item: SpaceExceptionItem): WorkItemViewModel => {
@@ -600,26 +629,7 @@ export function ExceptionsPage() {
     );
   }
 
-  if (isLoading && !view) {
-    return (
-      <div
-        data-testid="exceptions-page"
-        className="flex h-full min-w-0 flex-col"
-      >
-        <PageHeader
-          eyebrow={tNav("group.deliver")}
-          title={tNav("exceptions")}
-          description={pageDescription}
-          actions={headerActions}
-        />
-        <div className="flex-1 px-6 py-6">
-          <LoadingState label={t("states.loadingList")} />
-        </div>
-      </div>
-    );
-  }
-
-  if (errorKey) {
+  if (errorKey && !view) {
     return (
       <div
         data-testid="exceptions-page"
@@ -663,21 +673,25 @@ export function ExceptionsPage() {
         onValueChange={handleTabChange}
         className="flex min-w-0 flex-1 flex-col overflow-hidden"
       >
-        <div className="flex min-w-0 flex-col gap-3 border-b border-border px-4 py-2 sm:px-6 xl:flex-row xl:items-center xl:justify-between">
+        <div className="flex min-w-0 flex-col gap-3 border-b border-border px-4 py-3 sm:px-6 xl:flex-row xl:items-center xl:justify-between">
           <div className="-mx-1 overflow-x-auto px-1">
-            <TabsList className="min-w-max">
+            <TabsList className="h-auto min-w-max border-0">
               {grouped.map((tab) => {
                 const Icon = tab.icon;
                 return (
                   <TabsTrigger
                     key={tab.key}
                     value={tab.key}
-                    className="gap-1.5"
+                    className={cn(
+                      "h-7 rounded-md px-2.5 text-[12px] transition-colors cursor-pointer",
+                      "data-[state=active]:bg-muted data-[state=active]:font-medium data-[state=active]:text-foreground data-[state=active]:after:hidden",
+                      "data-[state=inactive]:text-muted-foreground data-[state=inactive]:hover:bg-muted/50 data-[state=inactive]:hover:text-foreground",
+                    )}
                     data-testid={`exceptions-tab-${tab.key}`}
                   >
                     <Icon className={cn("h-3 w-3", toneClass[tab.tone])} />
                     {tRoot(`m4Views.exceptionType.${tab.key}`)}
-                    <span className="rounded bg-muted px-1.5 py-0.5 font-mono text-[10px] text-muted-foreground">
+                    <span className="rounded bg-background px-1 font-mono text-[10px] text-muted-foreground">
                       {tab.count}
                     </span>
                   </TabsTrigger>
@@ -704,7 +718,15 @@ export function ExceptionsPage() {
             data-testid={`exceptions-panel-${tab.key}`}
             className="mt-0 min-w-0 flex-1 overflow-y-auto"
           >
-            {tab.items.length === 0 ? (
+            {tab.key === tabValue && isLoading && !viewMatchesRequest ? (
+              <LoadingState label={t("states.loadingList")} />
+            ) : tab.key === tabValue && errorKey ? (
+              <ErrorState
+                title={t("errorTitle")}
+                message={tRoot(errorKey)}
+                onRetry={() => void fetchView()}
+              />
+            ) : tab.items.length === 0 ? (
               <EmptyState
                 title={t("states.empty.title")}
                 description={t("states.empty.description")}
@@ -781,25 +803,37 @@ export function ExceptionsPage() {
                           />
                         </span>
                         {viewItem.versionName && (
-                          <Badge
-                            variant="outline"
-                            className="hidden md:inline-flex"
+                          <Tip
+                            content={`${tRoot("m4Views.filters.version")}: ${
+                              viewItem.versionName
+                            }`}
                           >
-                            {viewItem.versionName}
-                          </Badge>
+                            <Badge
+                              variant="outline"
+                              className="hidden gap-1 md:inline-flex"
+                            >
+                              <GitBranch
+                                aria-hidden="true"
+                                className="h-2.5 w-2.5"
+                              />
+                              {viewItem.versionName}
+                            </Badge>
+                          </Tip>
                         )}
-                        <Avatar className="h-5 w-5 shrink-0">
-                          <AvatarFallback className="text-[9px]">
-                            {viewItem.assignee.initial}
-                          </AvatarFallback>
-                        </Avatar>
+                        <Tip content={viewItem.assignee.name || undefined}>
+                          <Avatar className="h-5 w-5 shrink-0">
+                            <AvatarFallback className="text-[9px]">
+                              {viewItem.assignee.initial}
+                            </AvatarFallback>
+                          </Avatar>
+                        </Tip>
                       </button>
                     </li>
                   );
                 })}
               </ul>
             )}
-            {tab.key === tabValue && view ? (
+            {tab.key === tabValue && viewMatchesRequest ? (
               <ExceptionsPagination
                 loading={isLoading}
                 onPrevious={() =>

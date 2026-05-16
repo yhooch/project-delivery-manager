@@ -49,6 +49,7 @@ import { useSpaceMembers } from "../../lib/v2/lookups";
 import { Avatar, AvatarFallback, AvatarImage } from "../ui/avatar";
 import { Badge } from "../ui/badge";
 import { Button } from "../ui/button";
+import { Tip } from "../ui/tooltip";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -749,14 +750,16 @@ export function VersionPage() {
       >
         {ownerName ? (
           <>
-            <Avatar className="h-5 w-5">
-              {owner?.user.avatar && (
-                <AvatarImage src={owner.user.avatar} alt={ownerName} />
-              )}
-              <AvatarFallback className="text-[9px]">
-                {initialOf(ownerName)}
-              </AvatarFallback>
-            </Avatar>
+            <Tip content={ownerName}>
+              <Avatar className="h-5 w-5">
+                {owner?.user.avatar && (
+                  <AvatarImage src={owner.user.avatar} alt={ownerName} />
+                )}
+                <AvatarFallback className="text-[9px]">
+                  {initialOf(ownerName)}
+                </AvatarFallback>
+              </Avatar>
+            </Tip>
             <span className="text-foreground">{ownerName}</span>
           </>
         ) : (
@@ -1441,11 +1444,13 @@ function BoardColumns({
                           {t("badges.overdue")}
                         </Badge>
                       )}
-                      <Avatar className="ml-auto h-5 w-5">
-                        <AvatarFallback className="text-[9px]">
-                          {viewItem.assignee.initial}
-                        </AvatarFallback>
-                      </Avatar>
+                      <Tip content={viewItem.assignee.name || undefined}>
+                        <Avatar className="ml-auto h-5 w-5">
+                          <AvatarFallback className="text-[9px]">
+                            {viewItem.assignee.initial}
+                          </AvatarFallback>
+                        </Avatar>
+                      </Tip>
                     </div>
                   </button>
                 );
@@ -1634,12 +1639,14 @@ function TimelineTab({
             data-testid={`version-timeline-row-${event.id}`}
             className="flex gap-3"
           >
-            <Avatar className="h-7 w-7">
-              {event.actor.avatar && (
-                <AvatarImage src={event.actor.avatar} alt={actorName} />
-              )}
-              <AvatarFallback>{initialOf(actorName)}</AvatarFallback>
-            </Avatar>
+            <Tip content={actorName}>
+              <Avatar className="h-7 w-7">
+                {event.actor.avatar && (
+                  <AvatarImage src={event.actor.avatar} alt={actorName} />
+                )}
+                <AvatarFallback>{initialOf(actorName)}</AvatarFallback>
+              </Avatar>
+            </Tip>
             <div className="flex-1 text-[13px]">
               <div>
                 <span className="font-medium">{actorName}</span>

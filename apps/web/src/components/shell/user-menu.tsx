@@ -7,6 +7,7 @@ import { useState } from "react";
 import { useSession } from "../providers/session-provider";
 import { Avatar, AvatarFallback } from "../ui/avatar";
 import { Button } from "../ui/button";
+import { Tip } from "../ui/tooltip";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -31,9 +32,11 @@ export function UserMenu() {
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <Button variant="ghost" size="icon-sm" aria-label={t("openMenu")}>
-            <Avatar className="h-6 w-6">
-              <AvatarFallback>{initial}</AvatarFallback>
-            </Avatar>
+            <Tip content={session.user.name}>
+              <Avatar className="h-6 w-6">
+                <AvatarFallback>{initial}</AvatarFallback>
+              </Avatar>
+            </Tip>
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="w-52">

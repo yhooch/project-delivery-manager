@@ -56,6 +56,7 @@ import { Avatar, AvatarFallback } from "../ui/avatar";
 import { Badge } from "../ui/badge";
 import { Button } from "../ui/button";
 import { StatusBadge } from "../ui/status-badge";
+import { Tip } from "../ui/tooltip";
 import { PageHeader } from "../v2/page-header";
 import {
   EmptyState,
@@ -744,67 +745,87 @@ export function IntakePage() {
           role="listbox"
           className="divide-y divide-border"
         >
-          {filtered.map((item) => (
-            <li
-              key={item.id}
-              data-testid="intake-row"
-              data-id={item.id}
-              role="option"
-              aria-selected={active?.id === item.id}
-            >
-              <button
-                type="button"
-                onClick={() => openItem(item)}
-                data-selected={active?.id === item.id}
-                className={cn(
-                  "flex w-full min-w-0 items-center gap-3 border-l-2 px-4 py-2.5 text-left transition-colors cursor-pointer sm:px-6",
-                  active?.id === item.id
-                    ? "border-primary bg-primary/10"
-                    : "border-transparent hover:bg-muted/40",
-                )}
+          {filtered.map((item) => {
+            const reporterName = displayUserName(item.reporterId, getMember);
+            const reporterTip =
+              reporterName && reporterName !== "—" ? reporterName : undefined;
+            const versionName = item.versionId
+              ? displayVersionName(item.versionId, getVersion)
+              : "";
+            const versionTip =
+              versionName && versionName !== "—"
+                ? `${tIntakeItems("filters.version")}: ${versionName}`
+                : undefined;
+
+            return (
+              <li
+                key={item.id}
+                data-testid="intake-row"
+                data-id={item.id}
+                role="option"
+                aria-selected={active?.id === item.id}
               >
-                <span
+                <button
+                  type="button"
+                  onClick={() => openItem(item)}
+                  data-selected={active?.id === item.id}
                   className={cn(
-                    "h-1.5 w-1.5 shrink-0 rounded-full",
-                    priorityDot[item.priority ?? "MEDIUM"],
+                    "flex w-full min-w-0 items-center gap-3 border-l-2 px-4 py-2.5 text-left transition-colors cursor-pointer sm:px-6",
+                    active?.id === item.id
+                      ? "border-primary bg-primary/10"
+                      : "border-transparent hover:bg-muted/40",
                   )}
-                />
-                <Target className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
-                <span className="font-mono text-[11px] text-muted-foreground">
-                  {formatItemCode(item.id)}
-                </span>
-                <span className="min-w-0 flex-1 truncate text-[13px] font-medium">
-                  {item.title}
-                </span>
-                <Badge variant="outline" className="hidden md:inline-flex">
-                  {tIntakeItems(`sourceType.${item.sourceType}`)}
-                </Badge>
-                <span className="shrink-0">
-                  <StatusBadge
-                    category={intakeStatusToCategory[item.status]}
-                    label={tIntakeItems(`status.${item.status}`)}
-                    withDot={false}
+                >
+                  <span
+                    className={cn(
+                      "h-1.5 w-1.5 shrink-0 rounded-full",
+                      priorityDot[item.priority ?? "MEDIUM"],
+                    )}
                   />
-                </span>
-                {item.versionId && (
-                  <span className="hidden gap-1 text-[11px] text-muted-foreground md:inline-flex">
-                    <GitBranch className="h-2.5 w-2.5" />
-                    {displayVersionName(item.versionId, getVersion)}
+                  <Target className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+                  <span className="font-mono text-[11px] text-muted-foreground">
+                    {formatItemCode(item.id)}
                   </span>
-                )}
-                {item.assigneeId && (
-                  <span className="hidden max-w-28 truncate text-[11px] text-muted-foreground lg:inline-block">
-                    {displayUserName(item.assigneeId, getMember)}
+                  <span className="min-w-0 flex-1 truncate text-[13px] font-medium">
+                    {item.title}
                   </span>
-                )}
-                <Avatar className="h-5 w-5 shrink-0">
-                  <AvatarFallback className="text-[9px]">
-                    {initialOf(displayUserName(item.reporterId, getMember))}
-                  </AvatarFallback>
-                </Avatar>
-              </button>
-            </li>
-          ))}
+                  <Badge variant="outline" className="hidden md:inline-flex">
+                    {tIntakeItems(`sourceType.${item.sourceType}`)}
+                  </Badge>
+                  <span className="shrink-0">
+                    <StatusBadge
+                      category={intakeStatusToCategory[item.status]}
+                      label={tIntakeItems(`status.${item.status}`)}
+                      withDot={false}
+                    />
+                  </span>
+                  {item.versionId && (
+                    <Tip content={versionTip}>
+                      <Badge
+                        variant="outline"
+                        className="hidden gap-1 md:inline-flex"
+                      >
+                        <GitBranch aria-hidden="true" className="h-2.5 w-2.5" />
+                        {versionName}
+                      </Badge>
+                    </Tip>
+                  )}
+                  {item.assigneeId && (
+                    <span className="hidden max-w-28 truncate text-[11px] text-muted-foreground lg:inline-block">
+                      {displayUserName(item.assigneeId, getMember)}
+                    </span>
+                  )}
+                  <Tip content={reporterTip}>
+                    <Avatar className="h-5 w-5 shrink-0">
+                      <AvatarFallback className="text-[9px]">
+                        {initialOf(reporterName)}
+                      </AvatarFallback>
+                    </Avatar>
+                  </Tip>
+                </button>
+              </li>
+            );
+          })}
         </ul>
         {paginationFooter}
       </>

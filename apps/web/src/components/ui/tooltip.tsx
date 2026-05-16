@@ -9,6 +9,14 @@ export const TooltipProvider = TooltipPrimitive.Provider;
 export const Tooltip = TooltipPrimitive.Root;
 export const TooltipTrigger = TooltipPrimitive.Trigger;
 
+type TipProps = {
+  children: React.ReactElement;
+  content?: React.ReactNode;
+  side?: React.ComponentPropsWithoutRef<
+    typeof TooltipPrimitive.Content
+  >["side"];
+};
+
 export const TooltipContent = React.forwardRef<
   React.ComponentRef<typeof TooltipPrimitive.Content>,
   React.ComponentPropsWithoutRef<typeof TooltipPrimitive.Content>
@@ -27,3 +35,23 @@ export const TooltipContent = React.forwardRef<
   </TooltipPrimitive.Portal>
 ));
 TooltipContent.displayName = TooltipPrimitive.Content.displayName;
+
+export function Tip({ children, content, side }: TipProps) {
+  if (!content) {
+    return children;
+  }
+
+  return (
+    <TooltipProvider delayDuration={350} skipDelayDuration={150}>
+      <Tooltip>
+        <TooltipTrigger asChild>{children}</TooltipTrigger>
+        <TooltipContent
+          side={side}
+          className="max-w-xs whitespace-normal text-left leading-snug"
+        >
+          {content}
+        </TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
+  );
+}

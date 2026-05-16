@@ -15,7 +15,7 @@ import {
   Version,
   WorkItem,
 } from "@project-delivery/shared";
-import { Bug, Filter, Pencil, Plus } from "lucide-react";
+import { Bug, Filter, GitBranch, Pencil, Plus } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
 import { useSearchParams } from "next/navigation";
 import {
@@ -57,6 +57,7 @@ import { Avatar, AvatarFallback } from "../ui/avatar";
 import { Badge } from "../ui/badge";
 import { Button } from "../ui/button";
 import { StatusBadge } from "../ui/status-badge";
+import { Tip } from "../ui/tooltip";
 import { useSession } from "../providers/session-provider";
 import { recordRecentOpen } from "../shell/recent-opens";
 import { EmptyState, ErrorState, ListSkeleton } from "../v2/states";
@@ -944,9 +945,7 @@ export function BugsPage() {
             <select
               data-testid="bugs-filter-requirement"
               value={filters.requirementId ?? ""}
-              onChange={(event) =>
-                setRequirementFilter(event.target.value)
-              }
+              onChange={(event) => setRequirementFilter(event.target.value)}
               className="h-8 w-full rounded-md border border-input bg-background px-2 text-sm"
             >
               <option value="">{tFilters("allRequirements")}</option>
@@ -961,9 +960,7 @@ export function BugsPage() {
             <select
               data-testid="bugs-filter-related-task"
               value={filters.relatedTaskId ?? ""}
-              onChange={(event) =>
-                setRelatedTaskFilter(event.target.value)
-              }
+              onChange={(event) => setRelatedTaskFilter(event.target.value)}
               className="h-8 w-full rounded-md border border-input bg-background px-2 text-sm"
             >
               <option value="">{tFilters("allRelatedTasks")}</option>
@@ -1049,12 +1046,20 @@ export function BugsPage() {
                         />
                       </span>
                       {bug.versionName && (
-                        <Badge
-                          variant="outline"
-                          className="hidden md:inline-flex"
+                        <Tip
+                          content={`${tFilters("version")}: ${bug.versionName}`}
                         >
-                          {bug.versionName}
-                        </Badge>
+                          <Badge
+                            variant="outline"
+                            className="hidden gap-1 md:inline-flex"
+                          >
+                            <GitBranch
+                              aria-hidden="true"
+                              className="h-2.5 w-2.5"
+                            />
+                            {bug.versionName}
+                          </Badge>
+                        </Tip>
                       )}
                       {bug.isOverdue && (
                         <Badge variant="destructive" className="text-[10px]">
@@ -1073,11 +1078,13 @@ export function BugsPage() {
                           {bug.dueDate}
                         </span>
                       )}
-                      <Avatar className="h-5 w-5 shrink-0">
-                        <AvatarFallback className="text-[9px]">
-                          {bug.assignee.initial}
-                        </AvatarFallback>
-                      </Avatar>
+                      <Tip content={bug.assignee.name || undefined}>
+                        <Avatar className="h-5 w-5 shrink-0">
+                          <AvatarFallback className="text-[9px]">
+                            {bug.assignee.initial}
+                          </AvatarFallback>
+                        </Avatar>
+                      </Tip>
                     </button>
                     {canEditBug(
                       items.find((item) => item.id === bug.id),

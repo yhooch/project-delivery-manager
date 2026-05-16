@@ -1,6 +1,6 @@
 "use client";
 
-import { Bug, CheckCircle2 } from "lucide-react";
+import { Bug, CheckCircle2, GitBranch } from "lucide-react";
 
 import type { WorkItemViewModel } from "../../lib/v2/work-item-view-model";
 import { cn } from "../../lib/utils";
@@ -8,6 +8,7 @@ import { cn } from "../../lib/utils";
 import { Avatar, AvatarFallback } from "../ui/avatar";
 import { Badge } from "../ui/badge";
 import { StatusBadge } from "../ui/status-badge";
+import { Tip } from "../ui/tooltip";
 
 const priorityDot: Record<WorkItemViewModel["priority"], string> = {
   LOW: "bg-muted-foreground/40",
@@ -22,7 +23,11 @@ export type WorkItemRowProps = {
   selected?: boolean;
 };
 
-export function WorkItemRow({ item, onSelect, selected = false }: WorkItemRowProps) {
+export function WorkItemRow({
+  item,
+  onSelect,
+  selected = false,
+}: WorkItemRowProps) {
   return (
     <button
       type="button"
@@ -60,9 +65,12 @@ export function WorkItemRow({ item, onSelect, selected = false }: WorkItemRowPro
         withDot={false}
       />
       {item.versionName && (
-        <Badge variant="outline" className="hidden md:inline-flex">
-          {item.versionName}
-        </Badge>
+        <Tip content={item.versionName}>
+          <Badge variant="outline" className="hidden gap-1 md:inline-flex">
+            <GitBranch aria-hidden="true" className="h-2.5 w-2.5" />
+            {item.versionName}
+          </Badge>
+        </Tip>
       )}
       {item.dueDate && (
         <span
@@ -74,11 +82,13 @@ export function WorkItemRow({ item, onSelect, selected = false }: WorkItemRowPro
           {item.dueDate}
         </span>
       )}
-      <Avatar className="h-5 w-5 shrink-0">
-        <AvatarFallback className="text-[9px]">
-          {item.assignee.initial}
-        </AvatarFallback>
-      </Avatar>
+      <Tip content={item.assignee.name || undefined}>
+        <Avatar className="h-5 w-5 shrink-0">
+          <AvatarFallback className="text-[9px]">
+            {item.assignee.initial}
+          </AvatarFallback>
+        </Avatar>
+      </Tip>
     </button>
   );
 }

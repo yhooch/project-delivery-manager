@@ -35,6 +35,7 @@ import { useSession } from "../providers/session-provider";
 
 import { Avatar, AvatarFallback } from "../ui/avatar";
 import { Button } from "../ui/button";
+import { Tip } from "../ui/tooltip";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -152,33 +153,30 @@ export function SpaceOverview() {
     versionsLoading,
   ]);
 
-  const fetchView = useCallback(
-    async () => {
-      if (!spaceId) {
-        return;
-      }
-      const requestId = requestSeq.current + 1;
-      requestSeq.current = requestId;
-      setView(null);
-      setIsLoading(true);
-      setErrorKey(null);
-      try {
-        const next = await getSpaceOverviewView({
-          spaceId,
-          organizationId,
-          versionId: activeVersionId,
-        });
-        if (requestSeq.current !== requestId) return;
-        setView(next);
-      } catch (error) {
-        if (requestSeq.current !== requestId) return;
-        setErrorKey(getApiErrorMessageKey(error));
-      } finally {
-        if (requestSeq.current === requestId) setIsLoading(false);
-      }
-    },
-    [activeVersionId, organizationId, spaceId],
-  );
+  const fetchView = useCallback(async () => {
+    if (!spaceId) {
+      return;
+    }
+    const requestId = requestSeq.current + 1;
+    requestSeq.current = requestId;
+    setView(null);
+    setIsLoading(true);
+    setErrorKey(null);
+    try {
+      const next = await getSpaceOverviewView({
+        spaceId,
+        organizationId,
+        versionId: activeVersionId,
+      });
+      if (requestSeq.current !== requestId) return;
+      setView(next);
+    } catch (error) {
+      if (requestSeq.current !== requestId) return;
+      setErrorKey(getApiErrorMessageKey(error));
+    } finally {
+      if (requestSeq.current === requestId) setIsLoading(false);
+    }
+  }, [activeVersionId, organizationId, spaceId]);
 
   useEffect(() => {
     if (!spaceId) {
@@ -657,11 +655,13 @@ export function SpaceOverview() {
                     const href = buildTimelineHref(event);
                     const inner = (
                       <div className="flex gap-2.5 px-1 py-1">
-                        <Avatar className="h-6 w-6">
-                          <AvatarFallback className="text-[10px]">
-                            {initialOf(event.actor.name)}
-                          </AvatarFallback>
-                        </Avatar>
+                        <Tip content={event.actor.name}>
+                          <Avatar className="h-6 w-6">
+                            <AvatarFallback className="text-[10px]">
+                              {initialOf(event.actor.name)}
+                            </AvatarFallback>
+                          </Avatar>
+                        </Tip>
                         <div className="flex-1 text-[12px]">
                           <div className="leading-snug">
                             <span className="font-medium">
