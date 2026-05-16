@@ -1,6 +1,11 @@
 "use client";
 
-import type { SpaceSummary } from "@project-delivery/shared";
+import type {
+  RecordStatus,
+  SpaceRole,
+  SpaceSummary,
+  VersionStatus,
+} from "@project-delivery/shared";
 import {
   ArrowUpRight,
   Bug,
@@ -33,9 +38,30 @@ import { CreateSpaceDialog } from "../shell/create-space-dialog";
 import { EmptyState, ErrorState, ListSkeleton } from "../v2/states";
 import { PageHeader } from "../v2/page-header";
 
-const statusVariant: Record<string, "primary" | "warning" | "default"> = {
+const statusVariant: Record<RecordStatus, "primary" | "warning"> = {
   ACTIVE: "primary",
   DISABLED: "warning",
+};
+const versionStatusVariant: Record<
+  VersionStatus,
+  "primary" | "info" | "success" | "default"
+> = {
+  PLANNED: "info",
+  IN_PROGRESS: "primary",
+  RELEASED: "success",
+  ARCHIVED: "default",
+};
+const roleVariant: Record<
+  SpaceRole,
+  "primary" | "info" | "warning" | "default"
+> = {
+  SPACE_ADMIN: "primary",
+  PM: "info",
+  DEVELOPER: "default",
+  TESTER: "warning",
+  REQUIREMENT: "info",
+  MEMBER: "default",
+  VIEWER: "default",
 };
 
 export function SpacesPage() {
@@ -180,7 +206,7 @@ export function SpacesPage() {
 
   if (status === "loading") {
     return (
-      <div data-testid="spaces-page" className="flex h-full flex-col">
+      <div data-testid="spaces-page" className="flex h-full flex-col bg-background">
         {headerNode}
         <div className="flex-1 overflow-y-auto px-6 py-6">
           <ListSkeleton rows={5} />
@@ -191,7 +217,7 @@ export function SpacesPage() {
 
   if (!session) {
     return (
-      <div data-testid="spaces-page" className="flex h-full flex-col">
+      <div data-testid="spaces-page" className="flex h-full flex-col bg-background">
         {headerNode}
         <div className="flex-1 overflow-y-auto px-6 py-6">
           <EmptyState
@@ -205,7 +231,7 @@ export function SpacesPage() {
 
   if (!organizationId || !currentOrganization) {
     return (
-      <div data-testid="spaces-page" className="flex h-full flex-col">
+      <div data-testid="spaces-page" className="flex h-full flex-col bg-background">
         {headerNode}
         <div className="flex-1 overflow-y-auto px-6 py-6">
           <EmptyState
@@ -307,15 +333,15 @@ export function SpacesPage() {
 
                 <div className="flex flex-wrap items-center gap-2 mb-4">
                   <Badge
-                    variant={statusVariant[space.status] ?? "default"}
-                    className="h-5 px-1.5 text-[10px] font-normal bg-transparent border-border/60 text-muted-foreground"
+                    variant={statusVariant[space.status]}
+                    className="h-5 px-1.5 text-[10px] font-normal"
                   >
                     {t(`settings.status.${space.status}`)}
                   </Badge>
                   {membership ? (
                     <Badge
-                      variant="outline"
-                      className="h-5 px-1.5 text-[10px] font-normal bg-transparent border-border/60 text-muted-foreground"
+                      variant={roleVariant[membership.role] ?? "default"}
+                      className="h-5 px-1.5 text-[10px] font-normal"
                     >
                       {t(`members.roles.${membership.role}`)}
                     </Badge>
@@ -353,7 +379,9 @@ export function SpacesPage() {
                             {space.currentVersion.name}
                           </span>
                           <Badge
-                            variant="outline"
+                            variant={
+                              versionStatusVariant[space.currentVersion.status]
+                            }
                             className="h-5 px-1.5 text-[10px] font-normal"
                           >
                             {tVersionStatus(space.currentVersion.status)}
@@ -365,7 +393,7 @@ export function SpacesPage() {
                     }
                   />
                   <SpaceMetaItem
-                    icon={<ListChecks className="h-3.5 w-3.5" />}
+                    icon={<ListChecks className="h-3.5 w-3.5 text-primary" />}
                     label={t("list.fields.unfinishedTaskCount")}
                     testId={`spaces-unfinished-tasks-${space.id}`}
                     value={
@@ -378,7 +406,7 @@ export function SpacesPage() {
                     }
                   />
                   <SpaceMetaItem
-                    icon={<Bug className="h-3.5 w-3.5" />}
+                    icon={<Bug className="h-3.5 w-3.5 text-destructive" />}
                     label={t("list.fields.openBugCount")}
                     testId={`spaces-open-bugs-${space.id}`}
                     value={
@@ -391,7 +419,7 @@ export function SpacesPage() {
                     }
                   />
                   <SpaceMetaItem
-                    icon={<CircleAlert className="h-3.5 w-3.5" />}
+                    icon={<CircleAlert className="h-3.5 w-3.5 text-warning" />}
                     label={t("list.fields.blockedCount")}
                     testId={`spaces-blocked-${space.id}`}
                     value={
@@ -453,7 +481,7 @@ export function SpacesPage() {
   }
 
   return (
-    <div data-testid="spaces-page" className="flex h-full flex-col">
+    <div data-testid="spaces-page" className="flex h-full flex-col bg-background">
       {headerNode}
 
       <div className="flex-1 overflow-y-auto px-6 py-8">
@@ -461,9 +489,9 @@ export function SpacesPage() {
           {!canCreateSpace ? (
             <div
               data-testid="spaces-readonly-notice"
-              className="rounded-lg bg-muted/40 px-4 py-3 text-xs text-muted-foreground flex items-center gap-2 border border-border/50"
+              className="rounded-lg border border-warning/20 bg-warning/10 px-4 py-3 text-xs text-warning flex items-center gap-2"
             >
-              <CircleAlert className="h-4 w-4 opacity-70" />
+              <CircleAlert className="h-4 w-4" />
               {t("list.readOnly")}
             </div>
           ) : null}
