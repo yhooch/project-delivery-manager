@@ -577,6 +577,66 @@ describe("ExceptionsPage", () => {
     );
   });
 
+  it("keeps the exception tabs mounted while a tab reloads", async () => {
+    let resolveBlocked: (
+      value: ReturnType<typeof makeViewResponse>,
+    ) => void = () => {};
+    getSpaceExceptionsViewMock
+      .mockResolvedValueOnce(
+        makeViewResponse([
+          makeException(
+            makeWorkItem({
+              id: "01ARZ3NDEKTSV4RRFFQ69G5F30",
+              title: "Overdue before switch",
+            }),
+          ),
+        ]),
+      )
+      .mockImplementationOnce(
+        () =>
+          new Promise((resolve) => {
+            resolveBlocked = resolve;
+          }),
+      );
+
+    render(<ExceptionsPage />);
+
+    expect(await screen.findByText("Overdue before switch")).toBeInTheDocument();
+
+    const user = userEvent.setup();
+    await user.click(screen.getByTestId("exceptions-tab-blocked"));
+
+    await waitFor(() =>
+      expect(getSpaceExceptionsViewMock).toHaveBeenCalledTimes(2),
+    );
+    expect(screen.getByTestId("exceptions-tab-overdue")).toBeInTheDocument();
+    expect(screen.getByTestId("exceptions-tab-blocked")).toBeInTheDocument();
+    expect(
+      screen.queryByText("Overdue before switch"),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.getByText("spaceExceptions.states.loadingList"),
+    ).toBeInTheDocument();
+
+    resolveBlocked(
+      makeViewResponse(
+        [
+          makeException(
+            makeWorkItem({
+              id: "01ARZ3NDEKTSV4RRFFQ69G5F31",
+              title: "Blocked after switch",
+              exceptionSignals: [{ type: "blocked", reason: "Waiting" }],
+            }),
+            "blocked",
+          ),
+        ],
+        { exceptionType: "blocked" },
+      ),
+    );
+
+    expect(await screen.findByText("Blocked after switch")).toBeInTheDocument();
+  });
+
   it("syncs assignee, status, and work item type filters to the URL and API query", async () => {
     getSpaceExceptionsViewMock.mockResolvedValue(makeViewResponse([]));
 
@@ -667,14 +727,20 @@ describe("ExceptionsPage", () => {
     );
 
     resolveSecond(
-      makeViewResponse([
-        makeException(
-          makeWorkItem({
-            id: "01ARZ3NDEKTSV4RRFFQ69G5F21",
-            title: "New exception row",
-          }),
-        ),
-      ]),
+      makeViewResponse(
+        [
+          makeException(
+            makeWorkItem({
+              id: "01ARZ3NDEKTSV4RRFFQ69G5F21",
+              title: "New exception row",
+            }),
+          ),
+        ],
+        {
+          assigneeId: "01ARZ3NDEKTSV4RRFFQ69G5FB1",
+          exceptionType: "overdue",
+        },
+      ),
     );
 
     expect(await screen.findByText("New exception row")).toBeInTheDocument();

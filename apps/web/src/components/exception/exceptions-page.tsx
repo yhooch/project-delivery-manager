@@ -122,6 +122,13 @@ type ExceptionFilterValues = {
   workItemType?: WorkItemType;
 };
 
+type ExceptionViewRequest = ExceptionFilterValues & {
+  exceptionType: ViewExceptionType;
+  organizationId?: string;
+  page: number;
+  spaceId?: string;
+};
+
 export function ExceptionsPage() {
   const t = useTranslations("spaceExceptions");
   const tNav = useTranslations("shell.nav");
@@ -1190,4 +1197,49 @@ function normalizeWorkItemType(value: string | null): WorkItemType | undefined {
 function normalizeSearchParam(value: string | null): string | undefined {
   const trimmed = value?.trim();
   return trimmed ? trimmed : undefined;
+}
+
+function viewMatchesCurrentRequest(
+  view: GetSpaceExceptionsViewResponse | null,
+  request: ExceptionViewRequest,
+): boolean {
+  if (!view) {
+    return false;
+  }
+
+  if (
+    view.items.page !== request.page ||
+    view.items.pageSize !== EXCEPTIONS_PAGE_SIZE
+  ) {
+    return false;
+  }
+
+  if (
+    request.organizationId &&
+    !sameOptionalValue(view.filters.organizationId, request.organizationId)
+  ) {
+    return false;
+  }
+
+  if (
+    request.spaceId &&
+    !sameOptionalValue(view.filters.spaceId, request.spaceId)
+  ) {
+    return false;
+  }
+
+  return (
+    sameOptionalValue(view.filters.assigneeId, request.assigneeId) &&
+    sameOptionalValue(view.filters.exceptionType, request.exceptionType) &&
+    sameOptionalValue(view.filters.statusCategory, request.statusCategory) &&
+    sameOptionalValue(view.filters.versionId, request.versionId) &&
+    sameOptionalValue(view.filters.workItemType, request.workItemType)
+  );
+}
+
+function sameOptionalValue<T extends string>(
+  actual: T | undefined,
+  expected: T | undefined,
+): boolean {
+  return actual === expected;
 }
