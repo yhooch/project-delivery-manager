@@ -1624,6 +1624,51 @@ describe("TaskDetailSheet", () => {
     );
   });
 
+  it("confirms and retries task save when version cascade is required", async () => {
+    const cascadeError = new ApiClientError(
+      {
+        code: "TRACE_VERSION_CHANGE_REQUIRES_CASCADE",
+        message: "任务版本变更需要同步上下游对象",
+        requestId: "REQ_TRACE",
+      },
+      new Response(null, { status: 409, statusText: "Conflict" }),
+    );
+    updateWorkItemMock
+      .mockRejectedValueOnce(cascadeError)
+      .mockResolvedValueOnce(makeDetailResponse());
+
+    render(
+      <TaskDetailSheet item={makeViewModel()} open onOpenChange={() => {}} />,
+    );
+
+    fireEvent.click(await screen.findByTestId("task-edit-button"));
+    fireEvent.click(screen.getByTestId("task-edit-submit"));
+
+    expect(
+      await screen.findByTestId("trace-version-cascade-confirm-dialog"),
+    ).toHaveTextContent("errors.api.TRACE_VERSION_CHANGE_REQUIRES_CASCADE");
+    expect(
+      screen.getByTestId("trace-version-cascade-confirm-dialog"),
+    ).not.toHaveTextContent("任务版本变更需要同步上下游对象");
+    await waitFor(() => expect(updateWorkItemMock).toHaveBeenCalledTimes(1));
+    expect(updateWorkItemMock).toHaveBeenLastCalledWith(
+      expect.any(Object),
+      expect.not.objectContaining({ cascadeVersionChange: true }),
+    );
+
+    fireEvent.click(screen.getByTestId("trace-version-cascade-confirm"));
+
+    await waitFor(() => expect(updateWorkItemMock).toHaveBeenCalledTimes(2));
+    expect(updateWorkItemMock).toHaveBeenLastCalledWith(
+      {
+        organizationId: "ORG_01",
+        spaceId: "SPC_01",
+        workItemId: "01ARZ3NDEKTSV4RRFFQ69G5FA1",
+      },
+      expect.objectContaining({ cascadeVersionChange: true }),
+    );
+  });
+
   it("does not show task field editing when PermissionSnapshot.canEdit is false", async () => {
     getWorkItemMock.mockResolvedValueOnce(
       makeDetailResponse({

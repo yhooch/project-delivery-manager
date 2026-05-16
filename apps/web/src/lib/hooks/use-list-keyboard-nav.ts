@@ -14,9 +14,9 @@ import { useCallback, useEffect, useRef } from "react";
  * - `e`               → edit/open the highlighted item (calls `onEdit`, or
  *   falls back to `onOpen`).
  * - `a`               → open the assign affordance when provided and allowed.
- * - `s`               → trigger the conservative submit/action shortcut when
- *   provided and allowed. Callers should open/focus the action affordance, not
- *   directly commit workflow actions.
+ * - `s`               → open or focus the conservative action UI when provided
+ *   and allowed. Callers should not directly commit workflow actions from this
+ *   shortcut.
  * - `Escape`          → close the detail drawer (calls `onClose`).
  *
  * If no item is currently highlighted (`activeId` not in `items`), the first
@@ -31,8 +31,16 @@ export type UseListKeyboardNavOptions<T> = {
   onOpen?: (item: T) => void;
   onEdit?: (item: T) => void;
   onAssign?: (item: T) => void;
+  /**
+   * Historical API name for the `s` shortcut. Treat this as "open/focus action
+   * UI" rather than "submit a write operation".
+   */
   onSubmit?: (item: T) => void;
   canAssign?: (item: T) => boolean;
+  /**
+   * Historical API name for checking whether the `s` action UI shortcut is
+   * available.
+   */
   canSubmit?: (item: T) => boolean;
   onClose?: () => void;
   enabled?: boolean;
@@ -81,7 +89,7 @@ export function useListKeyboardNav<T>(
       const isEnter = key === "Enter";
       const isEdit = key.toLowerCase() === "e";
       const isAssign = key.toLowerCase() === "a";
-      const isSubmit = key.toLowerCase() === "s";
+      const isActionUiShortcut = key.toLowerCase() === "s";
       const isEscape = key === "Escape";
 
       if (isEscape) {
@@ -117,7 +125,7 @@ export function useListKeyboardNav<T>(
         return;
       }
 
-      if (isEnter || isEdit || isAssign || isSubmit) {
+      if (isEnter || isEdit || isAssign || isActionUiShortcut) {
         if (!current.activeId) {
           return;
         }

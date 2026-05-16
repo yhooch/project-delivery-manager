@@ -191,6 +191,7 @@ export function IntakePage() {
   const listRequestIdRef = useRef(0);
   const previousContextKeyRef = useRef(contextKey);
   const rowRefs = useRef(new Map<string, HTMLLIElement>());
+  const primaryActionButtonRef = useRef<HTMLButtonElement | null>(null);
   latestListScopeKeyRef.current = listScopeKey;
   const loadedCount = items.length;
   const paginationFrom = loadedCount > 0 ? 1 : 0;
@@ -451,6 +452,27 @@ export function IntakePage() {
       ?.focus({ preventScroll: true });
   }, []);
 
+  const focusPrimaryActionButton = useCallback(() => {
+    [0, 16, 50].forEach((delay) => {
+      window.setTimeout(() => {
+        const target = primaryActionButtonRef.current;
+        if (target && document.contains(target) && !target.disabled) {
+          target.focus({ preventScroll: true });
+        }
+      }, delay);
+    });
+  }, []);
+
+  const focusActionArea = useCallback(
+    (item: IntakeItem) => {
+      captureFocus();
+      setSelectedItem(item);
+      setActive(item);
+      focusPrimaryActionButton();
+    },
+    [captureFocus, focusPrimaryActionButton],
+  );
+
   useEffect(() => {
     if (!requestedIntakeItemId || !spaceId) {
       return;
@@ -522,19 +544,7 @@ export function IntakePage() {
       setEditOpen(true);
     },
     canSubmit: (item) => canSubmitIntakeItem(item, canManageIntake),
-    onSubmit: (item) => {
-      if (!canManageIntake) {
-        return;
-      }
-      if (item.status === "PENDING" || item.status === "DEFERRED") {
-        void handleStatusAction("accept", item);
-      } else if (item.status === "ACCEPTED") {
-        setSelectedItem(item);
-        setActive(item);
-        setConvertTarget(item);
-        setConvertOpen(true);
-      }
-    },
+    onSubmit: focusActionArea,
     onClose: () => {
       setActive(null);
       setActionErrorKey(null);
@@ -1023,6 +1033,7 @@ export function IntakePage() {
                 active.status === "DEFERRED") && (
                 <>
                   <Button
+                    ref={primaryActionButtonRef}
                     size="sm"
                     className="h-7 text-xs"
                     data-testid="intake-accept-button"
@@ -1066,6 +1077,7 @@ export function IntakePage() {
               )}
               {active.status === "ACCEPTED" && (
                 <Button
+                  ref={primaryActionButtonRef}
                   size="sm"
                   className="h-7 text-xs"
                   data-testid="intake-convert-button"

@@ -292,7 +292,7 @@ describe("SpacesPage", () => {
     );
   });
 
-  it("renders read-only copy and no create action when capability is false", async () => {
+  it("shows create action for an active OWNER current organization even when capability is false", async () => {
     sessionMock.current = {
       ...sessionMock.current,
       session: {
@@ -311,20 +311,45 @@ describe("SpacesPage", () => {
     render(<SpacesPage />);
 
     expect(await screen.findByText("Space A")).toBeInTheDocument();
+    expect(screen.getByTestId("spaces-create-button")).toBeInTheDocument();
+    expect(
+      screen.queryByTestId("spaces-readonly-notice"),
+    ).not.toBeInTheDocument();
+  });
+
+  it("hides create action for an active MEMBER current organization even when capability is true", async () => {
+    sessionMock.current = {
+      ...sessionMock.current,
+      currentOrganization: {
+        ...sessionMock.current.currentOrganization,
+        role: "MEMBER",
+      },
+    };
+    listSpacesMock.mockResolvedValueOnce({
+      items: [],
+      total: 0,
+    });
+
+    render(<SpacesPage />);
+
+    expect(await screen.findByText("spaces.list.empty")).toBeInTheDocument();
     expect(screen.getByTestId("spaces-readonly-notice")).toHaveTextContent(
       "spaces.list.readOnly",
     );
     expect(
       screen.queryByTestId("spaces-create-button"),
     ).not.toBeInTheDocument();
+    expect(
+      screen.queryByText("shell.organizationSwitcher.createSpace"),
+    ).not.toBeInTheDocument();
   });
 
-  it("uses capability and active organization status for create-space without a role allowlist", async () => {
+  it("shows create action for an active ADMIN current organization", async () => {
     sessionMock.current = {
       ...sessionMock.current,
       currentOrganization: {
         ...sessionMock.current.currentOrganization,
-        role: "MEMBER",
+        role: "ADMIN",
       },
     };
     listSpacesMock.mockResolvedValueOnce({

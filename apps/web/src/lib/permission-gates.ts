@@ -1,4 +1,5 @@
 const SPACE_MANAGER_ROLES = new Set<string>(["SPACE_ADMIN", "PM"]);
+const ORGANIZATION_SPACE_CREATOR_ROLES = new Set<string>(["OWNER", "ADMIN"]);
 const BUG_CREATOR_ROLES = new Set<string>([
   "SPACE_ADMIN",
   "PM",
@@ -19,6 +20,15 @@ export function canManageSpace(
   status: string | undefined,
 ): boolean {
   return Boolean(role && isEnabledRecord(status) && SPACE_MANAGER_ROLES.has(role));
+}
+
+export function canCreateSpaceInOrganization(
+  role: string | undefined,
+  status: string | undefined,
+): boolean {
+  return Boolean(
+    role && status === "ACTIVE" && ORGANIZATION_SPACE_CREATOR_ROLES.has(role),
+  );
 }
 
 export function canManageWorkflow(

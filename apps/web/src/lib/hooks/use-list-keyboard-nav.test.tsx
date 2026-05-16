@@ -16,43 +16,49 @@ const items: Item[] = [
 
 function Harness({
   activeId = "one",
-  canSubmit,
+  canFocusActionArea,
   onAssign,
   onEdit,
+  onFocusActionArea,
   onOpen,
   onSelect = () => undefined,
-  onSubmit,
 }: {
   activeId?: string;
-  canSubmit?: (item: Item) => boolean;
+  canFocusActionArea?: (item: Item) => boolean;
   onAssign?: (item: Item) => void;
   onEdit?: (item: Item) => void;
+  onFocusActionArea?: (item: Item) => void;
   onOpen?: (item: Item) => void;
   onSelect?: (item: Item) => void;
-  onSubmit?: (item: Item) => void;
 }) {
   useListKeyboardNav<Item>({
     items,
     activeId,
     getId: (item) => item.id,
     onAssign,
-    canSubmit,
+    canSubmit: canFocusActionArea,
     onEdit,
     onOpen,
     onSelect,
-    onSubmit,
+    onSubmit: onFocusActionArea,
   });
 
   return <input aria-label="field" />;
 }
 
 describe("useListKeyboardNav", () => {
-  it("maps e/a/s to edit, assign, and submit callbacks for the active item", () => {
+  it("maps e/a/s to edit, assign, and action UI callbacks for the active item", () => {
     const onEdit = vi.fn();
     const onAssign = vi.fn();
-    const onSubmit = vi.fn();
+    const onFocusActionArea = vi.fn();
 
-    render(<Harness onAssign={onAssign} onEdit={onEdit} onSubmit={onSubmit} />);
+    render(
+      <Harness
+        onAssign={onAssign}
+        onEdit={onEdit}
+        onFocusActionArea={onFocusActionArea}
+      />,
+    );
 
     window.dispatchEvent(new KeyboardEvent("keydown", { key: "e" }));
     window.dispatchEvent(new KeyboardEvent("keydown", { key: "a" }));
@@ -60,7 +66,7 @@ describe("useListKeyboardNav", () => {
 
     expect(onEdit).toHaveBeenCalledWith(items[0]);
     expect(onAssign).toHaveBeenCalledWith(items[0]);
-    expect(onSubmit).toHaveBeenCalledWith(items[0]);
+    expect(onFocusActionArea).toHaveBeenCalledWith(items[0]);
   });
 
   it("uses onOpen as the edit fallback when no explicit edit callback exists", () => {
@@ -86,27 +92,30 @@ describe("useListKeyboardNav", () => {
   });
 
   it("ignores action keys when no item is active or focus is in an editable field", () => {
-    const onSubmit = vi.fn();
+    const onFocusActionArea = vi.fn();
     const { getByLabelText, rerender } = render(
-      <Harness activeId="missing" onSubmit={onSubmit} />,
+      <Harness activeId="missing" onFocusActionArea={onFocusActionArea} />,
     );
 
     window.dispatchEvent(new KeyboardEvent("keydown", { key: "s" }));
-    expect(onSubmit).not.toHaveBeenCalled();
+    expect(onFocusActionArea).not.toHaveBeenCalled();
 
-    rerender(<Harness onSubmit={onSubmit} />);
+    rerender(<Harness onFocusActionArea={onFocusActionArea} />);
     getByLabelText("field").dispatchEvent(
       new KeyboardEvent("keydown", { key: "s", bubbles: true }),
     );
 
-    expect(onSubmit).not.toHaveBeenCalled();
+    expect(onFocusActionArea).not.toHaveBeenCalled();
   });
 
-  it("does not prevent or run submit when the active item has no executable submit action", () => {
-    const onSubmit = vi.fn();
+  it("does not prevent or run the action UI shortcut when unavailable", () => {
+    const onFocusActionArea = vi.fn();
 
     render(
-      <Harness canSubmit={(item) => item.id === "two"} onSubmit={onSubmit} />,
+      <Harness
+        canFocusActionArea={(item) => item.id === "two"}
+        onFocusActionArea={onFocusActionArea}
+      />,
     );
 
     const event = new KeyboardEvent("keydown", {
@@ -115,7 +124,7 @@ describe("useListKeyboardNav", () => {
     });
     window.dispatchEvent(event);
 
-    expect(onSubmit).not.toHaveBeenCalled();
+    expect(onFocusActionArea).not.toHaveBeenCalled();
     expect(event.defaultPrevented).toBe(false);
   });
 });

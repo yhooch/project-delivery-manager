@@ -22,6 +22,20 @@
       }
     },
     "workflowDefaults": {
+      "definitions": {
+        "DEVELOPMENT_TASK": {
+          "name": "Development task default workflow",
+          "description": "Built-in development task workflow for development, test handoff, and QA closure."
+        },
+        "GENERAL_TASK": {
+          "name": "General task default workflow",
+          "description": "Built-in general task workflow for processing, confirmation, and closure."
+        },
+        "BUG": {
+          "name": "Bug default workflow",
+          "description": "Built-in bug workflow for defect confirmation, fixing, regression, and closure."
+        }
+      },
       "states": {
         "PENDING": "Pending",
         "IN_PROGRESS": "In progress",

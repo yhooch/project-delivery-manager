@@ -18,6 +18,8 @@ import { getApiErrorMessageKey } from "../../lib/api-error-messages";
 import { canManageWorkflow as canManageWorkflowForRole } from "../../lib/permission-gates";
 import {
   translateWorkflowActionName,
+  translateWorkflowDefinitionDescription,
+  translateWorkflowDefinitionName,
   translateWorkflowFieldLabel,
   translateWorkflowStateName,
 } from "../../lib/workflow-display";
@@ -665,8 +667,15 @@ export function WorkflowConfigPage({ workflowId }: WorkflowConfigPageProps) {
   const headerNode = (
     <PageHeader
       eyebrow={tShell("group.configure")}
-      title={workflow?.name ?? t("loading")}
-      description={workflow?.description ?? t("description")}
+      title={
+        workflow ? translateWorkflowDefinitionName(tRoot, workflow) : t("loading")
+      }
+      description={
+        workflow
+          ? translateWorkflowDefinitionDescription(tRoot, workflow) ??
+            t("description")
+          : t("description")
+      }
       actions={
         <div className="flex items-center gap-2">
           <Button asChild className="h-7 text-xs" size="sm" variant="ghost">

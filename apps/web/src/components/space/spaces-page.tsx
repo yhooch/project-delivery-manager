@@ -29,6 +29,7 @@ import {
 } from "react";
 
 import { getApiErrorMessageKey } from "../../lib/api-error-messages";
+import { canCreateSpaceInOrganization } from "../../lib/permission-gates";
 import { listSpaces } from "../../lib/space-service";
 import { cn } from "../../lib/utils";
 import { useSession } from "../providers/session-provider";
@@ -81,9 +82,9 @@ export function SpacesPage() {
 
   const organizationId =
     session?.defaultOrganizationId ?? currentOrganization?.id;
-  const canCreateSpace = Boolean(
-    session?.capabilities?.canCreateSpace &&
-    currentOrganization?.status === "ACTIVE",
+  const canCreateSpace = canCreateSpaceInOrganization(
+    currentOrganization?.role,
+    currentOrganization?.status,
   );
 
   const [spaces, setSpaces] = useState<SpaceSummary[]>([]);

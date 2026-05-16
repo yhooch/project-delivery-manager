@@ -1246,21 +1246,13 @@ describe("IntakePage", () => {
     });
   });
 
-  it("runs the primary intake action with S for the active row", async () => {
+  it("opens the detail action area with S for the active row without accepting it", async () => {
     const original = makeIntake({
       id: "01ARZ3NDEKTSV4RRFFQ69G5FS1",
       title: "Keyboard accept",
       status: "PENDING",
     });
     listIntakeItemsMock.mockResolvedValueOnce({ items: [original], total: 1 });
-    acceptIntakeItemMock.mockResolvedValueOnce({
-      ...original,
-      status: "ACCEPTED",
-    });
-    listIntakeItemsMock.mockResolvedValueOnce({
-      items: [{ ...original, status: "ACCEPTED" }],
-      total: 1,
-    });
 
     render(<IntakePage />);
 
@@ -1268,13 +1260,43 @@ describe("IntakePage", () => {
     fireEvent.keyDown(window, { key: "j" });
     fireEvent.keyDown(window, { key: "s" });
 
-    await waitFor(() =>
-      expect(acceptIntakeItemMock).toHaveBeenCalledWith({
-        intakeItemId: "01ARZ3NDEKTSV4RRFFQ69G5FS1",
-        organizationId: "ORG_01",
-        spaceId: "SPC_01",
-      }),
-    );
+    expect(
+      await screen.findByTestId("intake-detail-sheet"),
+    ).toBeInTheDocument();
+    const acceptButton = await screen.findByTestId("intake-accept-button");
+    await waitFor(() => expect(acceptButton).toHaveFocus());
+    expect(acceptIntakeItemMock).not.toHaveBeenCalled();
+    expect(deferIntakeItemMock).not.toHaveBeenCalled();
+    expect(rejectIntakeItemMock).not.toHaveBeenCalled();
+  });
+
+  it("focuses convert from S on accepted intake without opening the convert dialog", async () => {
+    listIntakeItemsMock.mockResolvedValueOnce({
+      items: [
+        makeIntake({
+          id: "01ARZ3NDEKTSV4RRFFQ69G5FS2",
+          title: "Keyboard convert",
+          status: "ACCEPTED",
+        }),
+      ],
+      total: 1,
+    });
+
+    render(<IntakePage />);
+
+    await screen.findByText("Keyboard convert");
+    fireEvent.keyDown(window, { key: "j" });
+    fireEvent.keyDown(window, { key: "s" });
+
+    expect(
+      await screen.findByTestId("intake-detail-sheet"),
+    ).toBeInTheDocument();
+    const convertButton = await screen.findByTestId("intake-convert-button");
+    await waitFor(() => expect(convertButton).toHaveFocus());
+    expect(
+      screen.queryByTestId("convert-intake-dialog-open"),
+    ).not.toBeInTheDocument();
+    expect(acceptIntakeItemMock).not.toHaveBeenCalled();
   });
 
   it("opens the intake edit/assignee affordance with A without running status actions", async () => {
@@ -1308,41 +1330,28 @@ describe("IntakePage", () => {
     expect(rejectIntakeItemMock).not.toHaveBeenCalled();
   });
 
-  it("allows deferred intake items to be accepted or rejected without showing defer again", async () => {
+  it("allows deferred intake items to show accept or reject, and S only focuses the actions", async () => {
     const original = makeIntake({
       id: "01ARZ3NDEKTSV4RRFFQ69G5FDF",
       title: "Deferred follow-up",
       status: "DEFERRED",
     });
     listIntakeItemsMock.mockResolvedValueOnce({ items: [original], total: 1 });
-    acceptIntakeItemMock.mockResolvedValueOnce({
-      ...original,
-      status: "ACCEPTED",
-    });
-    listIntakeItemsMock.mockResolvedValueOnce({
-      items: [{ ...original, status: "ACCEPTED" }],
-      total: 1,
-    });
 
     render(<IntakePage />);
 
     fireEvent.click(await screen.findByText("Deferred follow-up"));
 
-    expect(
-      await screen.findByTestId("intake-accept-button"),
-    ).toBeInTheDocument();
+    const acceptButton = await screen.findByTestId("intake-accept-button");
+    expect(acceptButton).toBeInTheDocument();
     expect(screen.getByTestId("intake-reject-button")).toBeInTheDocument();
     expect(screen.queryByTestId("intake-defer-button")).not.toBeInTheDocument();
 
     fireEvent.keyDown(window, { key: "s" });
 
-    await waitFor(() =>
-      expect(acceptIntakeItemMock).toHaveBeenCalledWith({
-        intakeItemId: "01ARZ3NDEKTSV4RRFFQ69G5FDF",
-        organizationId: "ORG_01",
-        spaceId: "SPC_01",
-      }),
-    );
+    await waitFor(() => expect(acceptButton).toHaveFocus());
+    expect(acceptIntakeItemMock).not.toHaveBeenCalled();
+    expect(rejectIntakeItemMock).not.toHaveBeenCalled();
   });
 
   it("exposes intake rows as a named list and focuses the keyboard-selected row", async () => {

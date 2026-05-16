@@ -66,6 +66,8 @@ import {
 import {
   filterTraceOptionsByVersion,
   inheritVersionFromTraceOption,
+  isTraceVersionCascadeRequiredError,
+  traceVersionCascadeConfirmMessage,
 } from "../../lib/versioned-trace-linking";
 import { toUpdateTaskRequest } from "../../lib/work-item-forms";
 import {
@@ -82,6 +84,7 @@ import { Link } from "../../i18n/routing";
 
 import { useSession } from "../providers/session-provider";
 import { IntakeDetailSheet } from "../intake/intake-detail-sheet";
+import { TraceVersionCascadeConfirmDialog } from "../trace-version-cascade-confirm-dialog";
 import { Avatar, AvatarFallback, AvatarImage } from "../ui/avatar";
 import { Badge } from "../ui/badge";
 import { Button } from "../ui/button";
@@ -211,6 +214,11 @@ function toDateInputValue(value: string | undefined): string {
 
 type SheetDetail = (WorkItemDetail | BugView) & {
   permissions?: PermissionSnapshot;
+};
+
+type PendingTaskCascadeConfirm = {
+  request: ReturnType<typeof toUpdateTaskRequest>;
+  message: string;
 };
 
 function getWorkItemPermissionRequestKey({
@@ -1701,6 +1709,8 @@ function DetailTab({
   const [titleError, setTitleError] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
+  const [pendingCascadeConfirm, setPendingCascadeConfirm] =
+    useState<PendingTaskCascadeConfirm | null>(null);
 
   const resetEditDraft = useCallback(() => {
     setTitle(detail?.title ?? item.title);
@@ -1718,6 +1728,7 @@ function DetailTab({
     setDueDate(toDateInputValue(detail?.dueDate));
     setTitleError(false);
     setSaveError(null);
+    setPendingCascadeConfirm(null);
   }, [
     bugDetail?.actualResult,
     bugDetail?.expectedResult,
@@ -1893,6 +1904,8 @@ function DetailTab({
     setSaving(true);
     setSaveError(null);
 
+    let taskUpdateRequest: ReturnType<typeof toUpdateTaskRequest> | null = null;
+
     try {
       const commonPatch = {
         assigneeId: editAssigneeId,
@@ -1922,18 +1935,73 @@ function DetailTab({
           }),
         );
       } else {
+        taskUpdateRequest = toUpdateTaskRequest(commonPatch);
         await updateWorkItem(
           {
             organizationId,
             spaceId,
             workItemId: detail.id,
           },
-          toUpdateTaskRequest(commonPatch),
+          taskUpdateRequest,
         );
       }
       await onSaved();
       setEditing(false);
     } catch (err) {
+      if (
+        taskUpdateRequest &&
+        !isBugSheetDetail(detail) &&
+        isTraceVersionCascadeRequiredError(err)
+      ) {
+        setPendingCascadeConfirm({
+          request: taskUpdateRequest,
+          message: traceVersionCascadeConfirmMessage({
+            body: tRoot("errors.api.TRACE_VERSION_CHANGE_REQUIRES_CASCADE"),
+            suffix: tRoot(
+              "errors.api.TRACE_VERSION_CHANGE_REQUIRES_CASCADE_CONFIRM_SUFFIX",
+            ),
+          }),
+        });
+        return;
+      }
+      const key = getApiErrorMessageKey(err);
+      setSaveError(tRoot(key));
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const confirmCascadeVersionChange = async () => {
+    if (
+      !detail ||
+      !spaceId ||
+      !canEdit ||
+      isBugSheetDetail(detail) ||
+      !pendingCascadeConfirm
+    ) {
+      return;
+    }
+
+    setSaving(true);
+    setSaveError(null);
+
+    try {
+      await updateWorkItem(
+        {
+          organizationId,
+          spaceId,
+          workItemId: detail.id,
+        },
+        {
+          ...pendingCascadeConfirm.request,
+          cascadeVersionChange: true,
+        },
+      );
+      setPendingCascadeConfirm(null);
+      await onSaved();
+      setEditing(false);
+    } catch (err) {
+      setPendingCascadeConfirm(null);
       const key = getApiErrorMessageKey(err);
       setSaveError(tRoot(key));
     } finally {
@@ -2222,6 +2290,13 @@ function DetailTab({
           </div>
         </form>
       )}
+      <TraceVersionCascadeConfirmDialog
+        message={pendingCascadeConfirm?.message ?? ""}
+        onCancel={() => setPendingCascadeConfirm(null)}
+        onConfirm={() => void confirmCascadeVersionChange()}
+        open={pendingCascadeConfirm !== null}
+        submitting={saving}
+      />
       <div className="grid grid-cols-2 gap-x-6 gap-y-3 text-[13px]">
         <FieldRow
           icon={User2}

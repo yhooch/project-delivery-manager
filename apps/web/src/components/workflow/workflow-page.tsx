@@ -18,6 +18,10 @@ import { Link, useRouter } from "../../i18n/routing";
 import { getApiErrorMessageKey } from "../../lib/api-error-messages";
 import { canManageWorkflow as canManageWorkflowForRole } from "../../lib/permission-gates";
 import {
+  translateWorkflowDefinitionDescription,
+  translateWorkflowDefinitionName,
+} from "../../lib/workflow-display";
+import {
   listWorkflowBindings,
   listWorkflows,
   listWorkflowVersions,
@@ -295,6 +299,11 @@ export function WorkflowPage() {
           const defaultTypes = metadata.defaultWorkItemTypes
             .map((type) => tWorkItemType(type))
             .join(", ");
+          const workflowName = translateWorkflowDefinitionName(tRoot, wf);
+          const workflowDescription = translateWorkflowDefinitionDescription(
+            tRoot,
+            wf,
+          );
 
           return (
             <article
@@ -311,7 +320,7 @@ export function WorkflowPage() {
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2">
                     <h3 className="truncate text-sm font-semibold">
-                      {wf.name}
+                      {workflowName}
                     </h3>
                   </div>
                   <div className="mt-0.5 flex items-center gap-2 font-mono text-[11px] text-muted-foreground">
@@ -323,9 +332,9 @@ export function WorkflowPage() {
                 </Badge>
               </div>
 
-              {wf.description ? (
+              {workflowDescription ? (
                 <p className="line-clamp-2 text-[12px] text-muted-foreground">
-                  {wf.description}
+                  {workflowDescription}
                 </p>
               ) : null}
 

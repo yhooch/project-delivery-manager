@@ -15,7 +15,8 @@ import type {
 } from "@project-delivery/shared";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-const { translatorCache } = vi.hoisted(() => ({
+const { rootMessages, translatorCache } = vi.hoisted(() => ({
+  rootMessages: new Map<string, string>(),
   translatorCache: new Map<string, (key: string) => string>(),
 }));
 vi.mock("next-intl", () => ({
@@ -23,7 +24,10 @@ vi.mock("next-intl", () => ({
     const key = namespace ?? "__root__";
     let fn = translatorCache.get(key);
     if (!fn) {
-      fn = (k: string) => (namespace ? `${namespace}.${k}` : k);
+      fn = (k: string) => {
+        const messageKey = namespace ? `${namespace}.${k}` : k;
+        return namespace ? messageKey : (rootMessages.get(k) ?? messageKey);
+      };
       translatorCache.set(key, fn);
     }
     return fn;
@@ -144,7 +148,9 @@ const actionId = "01ARZ3NDEKTSV4RRFFQ69G5AC1";
 const fieldId = "01ARZ3NDEKTSV4RRFFQ69G5FD1";
 const bindingId = "01ARZ3NDEKTSV4RRFFQ69G5BD1";
 
-function makeWorkflow(): WorkflowDefinition {
+function makeWorkflow(
+  overrides: Partial<WorkflowDefinition> = {},
+): WorkflowDefinition {
   return {
     code: "BUG_DEFAULT",
     description: "Default workflow",
@@ -153,6 +159,7 @@ function makeWorkflow(): WorkflowDefinition {
     organizationId: "ORG_01",
     spaceId: "SPC_01",
     status: "ACTIVE",
+    ...overrides,
   };
 }
 
@@ -277,6 +284,7 @@ function setupBindings(bindings: WorkflowBinding[]) {
 }
 
 beforeEach(() => {
+  rootMessages.clear();
   getWorkflowMock.mockReset();
   listWorkflowVersionsMock.mockReset();
   getWorkflowVersionMock.mockReset();
@@ -317,6 +325,93 @@ afterEach(() => {
 });
 
 describe("WorkflowConfigPage", () => {
+  it("localizes built-in default workflow configuration labels by stable codes", async () => {
+    rootMessages.set(
+      "common.workflowDefaults.definitions.BUG.name",
+      "Bug default workflow",
+    );
+    rootMessages.set(
+      "common.workflowDefaults.definitions.BUG.description",
+      "Built-in bug workflow for defect confirmation, fixing, regression, and closure.",
+    );
+    rootMessages.set(
+      "common.workflowDefaults.states.PENDING_CONFIRMATION",
+      "Pending confirmation",
+    );
+    rootMessages.set(
+      "common.workflowDefaults.states.PENDING_FIX",
+      "Pending fix",
+    );
+    rootMessages.set(
+      "common.workflowDefaults.actions.CONFIRM_DEFECT",
+      "Confirm defect",
+    );
+    rootMessages.set(
+      "common.workflowDefaults.fields.fixAssigneeId",
+      "Fix assignee",
+    );
+    const versionWithChineseDefaults = makeDraftVersion({
+      actions: [
+        makeAction({
+          code: "CONFIRM_DEFECT",
+          formFields: [
+            {
+              fieldType: "USER",
+              id: fieldId,
+              key: "fixAssigneeId",
+              label: "修复负责人",
+              order: 0,
+              required: true,
+            },
+          ],
+          name: "确认缺陷",
+          toStateId: stateDoneId,
+        }),
+      ],
+      states: [
+        makeState({
+          code: "PENDING_CONFIRMATION",
+          name: "待确认",
+        }),
+        makeState({
+          category: "WAITING",
+          code: "PENDING_FIX",
+          id: stateDoneId,
+          isEnd: false,
+          isStart: false,
+          name: "待修复",
+          order: 1,
+        }),
+      ],
+    });
+    getWorkflowMock.mockResolvedValueOnce(
+      makeWorkflow({
+        code: "BUG",
+        description: "系统内置 Bug 流程，用于缺陷确认、修复、回归和关闭。",
+        name: "Bug 默认流程",
+      }),
+    );
+    setupVersions([versionWithChineseDefaults]);
+    getWorkflowVersionMock.mockResolvedValueOnce(versionWithChineseDefaults);
+
+    render(<WorkflowConfigPage workflowId={workflowId} />);
+
+    expect(await screen.findByText("Bug default workflow")).toBeInTheDocument();
+    expect(screen.queryByText("Bug 默认流程")).not.toBeInTheDocument();
+    expect(screen.getByText("Pending confirmation")).toBeInTheDocument();
+    expect(screen.getByText("Pending fix")).toBeInTheDocument();
+    expect(screen.getByText("Confirm defect")).toBeInTheDocument();
+
+    fireEvent.click(
+      screen.getByRole("button", {
+        name: /workflow\.config\.actions\.actions\.toggleFields/,
+      }),
+    );
+
+    expect(await screen.findByText("Fix assignee")).toBeInTheDocument();
+    expect(screen.queryByText("修复负责人")).not.toBeInTheDocument();
+  });
+
   it("renders the version selector, state table, and action list for a draft version", async () => {
     getWorkflowMock.mockResolvedValueOnce(makeWorkflow());
     setupVersions([makePublishedVersion(), makeDraftVersion()]);

@@ -22,6 +22,20 @@
       }
     },
     "workflowDefaults": {
+      "definitions": {
+        "DEVELOPMENT_TASK": {
+          "name": "开发任务默认流程",
+          "description": "系统内置开发任务流程，用于开发、提测和测试闭环。"
+        },
+        "GENERAL_TASK": {
+          "name": "通用任务默认流程",
+          "description": "系统内置通用任务流程，用于处理、确认和关闭普通任务。"
+        },
+        "BUG": {
+          "name": "Bug 默认流程",
+          "description": "系统内置 Bug 流程，用于缺陷确认、修复、回归和关闭。"
+        }
+      },
       "states": {
         "PENDING": "待处理",
         "IN_PROGRESS": "处理中",

@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { EmptyObjectSchema } from "./common.ts";
+import { EmptyObjectSchema, UlidSchema } from "./common.ts";
 import { PasswordSchema, UserPreferencesSchema, UsernameSchema } from "./user.ts";
 import { OrganizationRoleSchema, RecordStatusSchema, SpaceRoleSchema } from "./enums.ts";
 
@@ -46,7 +46,7 @@ export type ChangePasswordRequest = z.infer<
 
 export const SessionOrganizationSummarySchema = z
   .object({
-    id: z.string().min(1),
+    id: UlidSchema,
     name: z.string().min(1),
     code: z.string().min(1),
     role: OrganizationRoleSchema,
@@ -60,10 +60,10 @@ export type SessionOrganizationSummary = z.infer<
 
 export const SessionSpaceSummarySchema = z
   .object({
-    id: z.string().min(1),
+    id: UlidSchema,
     name: z.string().min(1),
     code: z.string().min(1),
-    organizationId: z.string().min(1),
+    organizationId: UlidSchema,
     role: SpaceRoleSchema,
     status: RecordStatusSchema,
   })
@@ -86,7 +86,7 @@ export const AppSessionSchema = z
   .object({
     user: z
       .object({
-        id: z.string().min(1),
+        id: UlidSchema,
         username: UsernameSchema,
         email: z.email().optional(),
         name: z.string().min(1),
@@ -97,8 +97,8 @@ export const AppSessionSchema = z
       .strict(),
     organizations: z.array(SessionOrganizationSummarySchema),
     spaces: z.array(SessionSpaceSummarySchema),
-    defaultOrganizationId: z.string().min(1).optional(),
-    defaultSpaceId: z.string().min(1).optional(),
+    defaultOrganizationId: UlidSchema.optional(),
+    defaultSpaceId: UlidSchema.optional(),
     capabilities: AppSessionCapabilitiesSchema,
   })
   .strict();

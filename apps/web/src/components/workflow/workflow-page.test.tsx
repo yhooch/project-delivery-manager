@@ -8,7 +8,8 @@ import {
 } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-const { translatorCache } = vi.hoisted(() => ({
+const { rootMessages, translatorCache } = vi.hoisted(() => ({
+  rootMessages: new Map<string, string>(),
   translatorCache: new Map<
     string,
     (key: string, values?: Record<string, unknown>) => string
@@ -21,7 +22,10 @@ vi.mock("next-intl", () => ({
     if (!fn) {
       fn = (k: string, values?: Record<string, unknown>) => {
         const valueSuffix = values ? ` ${JSON.stringify(values)}` : "";
-        return `${namespace ? `${namespace}.${k}` : k}${valueSuffix}`;
+        const messageKey = namespace ? `${namespace}.${k}` : k;
+        return `${namespace ? messageKey : (rootMessages.get(k) ?? messageKey)}${
+          valueSuffix
+        }`;
       };
       translatorCache.set(key, fn);
     }
@@ -146,6 +150,7 @@ function makeBinding(overrides: Record<string, unknown> = {}) {
 }
 
 beforeEach(() => {
+  rootMessages.clear();
   listWorkflowBindingsMock.mockReset();
   listWorkflowsMock.mockReset();
   listWorkflowVersionsMock.mockReset();
@@ -172,6 +177,42 @@ afterEach(() => {
 });
 
 describe("WorkflowPage", () => {
+  it("localizes built-in default workflow definitions by code while preserving custom names", async () => {
+    rootMessages.set(
+      "common.workflowDefaults.definitions.BUG.name",
+      "Bug default workflow",
+    );
+    rootMessages.set(
+      "common.workflowDefaults.definitions.BUG.description",
+      "Built-in bug workflow for defect confirmation, fixing, regression, and closure.",
+    );
+    listWorkflowsMock.mockResolvedValueOnce({
+      items: [
+        makeWorkflow({
+          name: "Bug 默认流程",
+          description: "系统内置 Bug 流程，用于缺陷确认、修复、回归和关闭。",
+          code: "BUG",
+        }),
+        makeWorkflow({
+          id: "01ARZ3NDEKTSV4RRFFQ69G5FW2",
+          name: "自定义验收流程",
+          description: "自定义流程描述",
+          code: "CUSTOM_ACCEPTANCE",
+        }),
+      ],
+      total: 2,
+    });
+
+    render(<WorkflowPage />);
+
+    expect(await screen.findByText("Bug default workflow")).toBeInTheDocument();
+    expect(
+      screen.queryByText("Bug 默认流程"),
+    ).not.toBeInTheDocument();
+    expect(screen.getByText("自定义验收流程")).toBeInTheDocument();
+    expect(screen.getByText("自定义流程描述")).toBeInTheDocument();
+  });
+
   it("renders workflow cards with name, code, description and status badge", async () => {
     listWorkflowsMock.mockResolvedValueOnce({
       items: [makeWorkflow({ name: "Story Workflow", code: "STORY_DEFAULT" })],

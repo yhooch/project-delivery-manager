@@ -183,17 +183,58 @@ afterEach(() => {
 });
 
 describe("OrganizationSwitcher", () => {
-  it("shows create-space for an active MEMBER current organization with capability", () => {
+  it("hides create-space for an active MEMBER current organization even with capability", () => {
     render(<OrganizationSwitcher />);
 
-    expect(screen.getByTestId("org-switcher-create-space")).toBeInTheDocument();
+    expect(
+      screen.queryByTestId("org-switcher-create-space"),
+    ).not.toBeInTheDocument();
     expect(
       screen.getByText("shell.organizationSwitcher.roles.MEMBER"),
     ).toBeInTheDocument();
     expect(screen.queryByText("MEMBER")).not.toBeInTheDocument();
   });
 
-  it("does not require OWNER/ADMIN role to show create-space", () => {
+  it.each(["OWNER", "ADMIN"])(
+    "shows create-space for an active %s current organization",
+    (role) => {
+      sessionMock.current = {
+        ...sessionMock.current,
+        currentOrganization: {
+          code: "beta",
+          id: "ORG_BETA",
+          name: "Beta",
+          role,
+          status: "ACTIVE",
+        },
+        session: {
+          ...sessionMock.current.session,
+          capabilities: {
+            ...sessionMock.current.session.capabilities,
+            canCreateSpace: false,
+          },
+          defaultOrganizationId: "ORG_BETA",
+          organizations: sessionMock.current.session.organizations.map(
+            (organization) =>
+              organization.id === "ORG_BETA"
+                ? { ...organization, role }
+                : organization,
+          ),
+        },
+      };
+
+      render(<OrganizationSwitcher />);
+
+      expect(
+        screen.getByTestId("org-switcher-create-space"),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByText(`shell.organizationSwitcher.roles.${role}`),
+      ).toBeInTheDocument();
+    },
+  );
+
+  it("keeps create-organization controlled by global capability", () => {
     sessionMock.current = {
       ...sessionMock.current,
       currentOrganization: {
@@ -205,19 +246,20 @@ describe("OrganizationSwitcher", () => {
       },
       session: {
         ...sessionMock.current.session,
+        capabilities: {
+          canCreateOrganization: true,
+          canCreateSpace: false,
+        },
         defaultOrganizationId: "ORG_BETA",
       },
     };
 
     render(<OrganizationSwitcher />);
 
-    expect(screen.getByTestId("org-switcher-create-space")).toBeInTheDocument();
-    expect(
-      screen.getByText("shell.organizationSwitcher.roles.ADMIN"),
-    ).toBeInTheDocument();
+    expect(screen.getByTestId("org-switcher-create-org")).toBeInTheDocument();
   });
 
-  it("hides create-space for an ADMIN current organization when capability is false", () => {
+  it("hides create-organization when global capability is false", () => {
     sessionMock.current = {
       ...sessionMock.current,
       currentOrganization: {
@@ -231,6 +273,7 @@ describe("OrganizationSwitcher", () => {
         ...sessionMock.current.session,
         capabilities: {
           ...sessionMock.current.session.capabilities,
+          canCreateOrganization: false,
           canCreateSpace: false,
         },
         defaultOrganizationId: "ORG_BETA",
@@ -240,7 +283,7 @@ describe("OrganizationSwitcher", () => {
     render(<OrganizationSwitcher />);
 
     expect(
-      screen.queryByTestId("org-switcher-create-space"),
+      screen.queryByTestId("org-switcher-create-org"),
     ).not.toBeInTheDocument();
     expect(
       screen.getByText("shell.organizationSwitcher.roles.ADMIN"),

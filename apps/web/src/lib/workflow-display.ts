@@ -32,6 +32,36 @@ export function translateWorkflowActionName(
   );
 }
 
+export function translateWorkflowDefinitionName(
+  t: Translator,
+  workflow: { code?: string; name: string },
+): string {
+  return translateByStableCode(
+    t,
+    "common.workflowDefaults.definitions",
+    workflow.code,
+    workflow.name,
+    "name",
+  );
+}
+
+export function translateWorkflowDefinitionDescription(
+  t: Translator,
+  workflow: { code?: string; description?: string | null },
+): string | undefined {
+  if (!workflow.description) {
+    return undefined;
+  }
+
+  return translateByStableCode(
+    t,
+    "common.workflowDefaults.definitions",
+    workflow.code,
+    workflow.description,
+    "description",
+  );
+}
+
 export function translateWorkflowFieldLabel(
   t: Translator,
   field: { key?: string; label: string },
@@ -71,13 +101,16 @@ function translateByStableCode(
   namespace: string,
   code: string | undefined,
   fallback: string,
+  property?: string,
 ): string {
   const normalized = code?.trim();
   if (!normalized) {
     return fallback;
   }
 
-  const key = `${namespace}.${normalized}`;
+  const key = property
+    ? `${namespace}.${normalized}.${property}`
+    : `${namespace}.${normalized}`;
   try {
     const translated = t(key);
     return translated === key ? fallback : translated;
