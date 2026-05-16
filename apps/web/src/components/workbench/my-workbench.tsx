@@ -880,7 +880,7 @@ export function MyWorkbench() {
               {recentEvents.map((event) => (
                 <li key={event.id} className="flex gap-2.5">
                   <Tip content={event.actor.name}>
-                    <Avatar className="h-6 w-6">
+                    <Avatar className="h-6 w-6 cursor-pointer">
                       <AvatarFallback className="text-[10px]">
                         {initialOf(event.actor.name)}
                       </AvatarFallback>
