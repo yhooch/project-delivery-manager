@@ -69,6 +69,7 @@ import {
 } from "../../lib/versioned-trace-linking";
 import { useRouter } from "../../i18n/routing";
 import { useSession } from "../providers/session-provider";
+import { TraceVersionCascadeConfirmDialog } from "../trace-version-cascade-confirm-dialog";
 import { Badge, type BadgeProps } from "../ui/badge";
 import { Button } from "../ui/button";
 import {
@@ -137,6 +138,10 @@ export function RequirementDetailWorkspace({
     string | null
   >(null);
   const [errorKey, setErrorKey] = useState<string | null>(null);
+  const [pendingCascadeConfirm, setPendingCascadeConfirm] = useState<{
+    request: UpdateRequirementRequest;
+    message: string;
+  } | null>(null);
   const [didRestoreLocalDraftCache, setDidRestoreLocalDraftCache] =
     useState(false);
   const titleInputRef = useRef<HTMLTextAreaElement>(null);
@@ -442,41 +447,55 @@ export function RequirementDetailWorkspace({
     const request = formStateToSaveRequest(form);
 
     try {
-      const nextRequirement = await updateRequirement(
-        context,
-        request,
-      );
+      const nextRequirement = await updateRequirement(context, request);
       clearLocalDraftCacheForCurrentRequirement();
       setRequirement(nextRequirement);
       setForm(requirementToFormState(nextRequirement));
     } catch (error) {
-      if (
-        isTraceVersionCascadeRequiredError(error) &&
-        window.confirm(
-          traceVersionCascadeConfirmMessage(error, {
-            fallback: tRoot(
-              "errors.api.TRACE_VERSION_CHANGE_REQUIRES_CASCADE_CONFIRM_FALLBACK",
-            ),
+      if (isTraceVersionCascadeRequiredError(error)) {
+        setPendingCascadeConfirm({
+          request,
+          message: traceVersionCascadeConfirmMessage({
+            body: tRoot("errors.api.TRACE_VERSION_CHANGE_REQUIRES_CASCADE"),
             suffix: tRoot(
               "errors.api.TRACE_VERSION_CHANGE_REQUIRES_CASCADE_CONFIRM_SUFFIX",
             ),
           }),
-        )
-      ) {
-        try {
-          const nextRequirement = await updateRequirement(context, {
-            ...request,
-            cascadeVersionChange: true,
-          });
-          clearLocalDraftCacheForCurrentRequirement();
-          setRequirement(nextRequirement);
-          setForm(requirementToFormState(nextRequirement));
-          return;
-        } catch (retryError) {
-          setErrorKey(getApiErrorMessageKey(retryError));
-          return;
-        }
+        });
+        return;
       }
+      setErrorKey(getApiErrorMessageKey(error));
+    } finally {
+      setIsSaving(false);
+    }
+  }
+
+  async function handleConfirmCascadeVersionChange() {
+    if (!requirement || !canEditRequirement || !pendingCascadeConfirm) {
+      return;
+    }
+
+    setIsSaving(true);
+    setErrorKey(null);
+
+    try {
+      const nextRequirement = await updateRequirement(
+        {
+          organizationId: requirement.organizationId,
+          requirementId: requirement.id,
+          spaceId: requirement.spaceId,
+        },
+        {
+          ...pendingCascadeConfirm.request,
+          cascadeVersionChange: true,
+        },
+      );
+      setPendingCascadeConfirm(null);
+      clearLocalDraftCacheForCurrentRequirement();
+      setRequirement(nextRequirement);
+      setForm(requirementToFormState(nextRequirement));
+    } catch (error) {
+      setPendingCascadeConfirm(null);
       setErrorKey(getApiErrorMessageKey(error));
     } finally {
       setIsSaving(false);
@@ -616,9 +635,9 @@ export function RequirementDetailWorkspace({
 
   const titleValue = form.title;
   const titlePlaceholder = t("detail.untitledDraft");
-  const ownerLabel = formatOwnerName(requirement.ownerId, members);
+  const ownerLabel = formatOwnerName(form.ownerId, members);
   const authorLabel = formatOwnerName(requirement.authorId, members);
-  const versionLabel = formatVersionName(requirement.versionId, versions);
+  const versionLabel = formatVersionName(form.versionId, versions);
   const shortId = formatDisplayCode("REQ", requirement.id);
   const lastModifiedLabel = formatTimestamp(requirement.updatedAt, locale);
   const canDiscardDraft =
@@ -906,6 +925,14 @@ export function RequirementDetailWorkspace({
         {/* Related work items — minimal, flat section */}
         <RelatedWorkItemsSection requirement={requirement} t={t} />
       </form>
+
+      <TraceVersionCascadeConfirmDialog
+        message={pendingCascadeConfirm?.message ?? ""}
+        onCancel={() => setPendingCascadeConfirm(null)}
+        onConfirm={() => void handleConfirmCascadeVersionChange()}
+        open={pendingCascadeConfirm !== null}
+        submitting={isSaving}
+      />
 
       <Dialog
         open={draftLeavePromptOpen}

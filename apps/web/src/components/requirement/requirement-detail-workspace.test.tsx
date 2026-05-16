@@ -313,8 +313,62 @@ describe("RequirementDetailWorkspace", () => {
     );
   });
 
+  it("reflects selected version and owner before saving", async () => {
+    const versionId = "01ARZ3NDEKTSV4RRFFQ69G5FV1";
+    const ownerId = "01ARZ3NDEKTSV4RRFFQ69G5FO1";
+    getRequirementMock.mockResolvedValueOnce(makeRequirement());
+    listRequirementVersionsMock.mockResolvedValueOnce({
+      items: [{ id: versionId, name: "Release 1" }],
+      total: 1,
+    });
+    listRequirementAssignableMembersMock.mockResolvedValueOnce({
+      items: [
+        {
+          id: "SPACE_MEMBER_01",
+          organizationId: "ORG_01",
+          role: "PM",
+          spaceId: "SPC_01",
+          userId: ownerId,
+          user: {
+            id: ownerId,
+            name: "Owner One",
+            username: "owner1",
+          },
+        },
+      ],
+      total: 1,
+    });
+
+    render(
+      <RequirementDetailWorkspace requirementId="01ARZ3NDEKTSV4RRFFQ69G5FA1" />,
+    );
+
+    expect(
+      await screen.findByDisplayValue("Permissioned requirement"),
+    ).toBeInTheDocument();
+
+    fireEvent.pointerDown(
+      screen.getByRole("button", { name: "requirements.form.version" }),
+    );
+    fireEvent.click(
+      await screen.findByRole("menuitem", { name: /Release 1/u }),
+    );
+    expect(
+      screen.getByRole("button", { name: "requirements.form.version" }),
+    ).toHaveTextContent("Release 1");
+
+    fireEvent.pointerDown(
+      screen.getByRole("button", { name: "requirements.form.owner" }),
+    );
+    fireEvent.click(
+      await screen.findByRole("menuitem", { name: /Owner One \(owner1\)/u }),
+    );
+    expect(
+      screen.getByRole("button", { name: "requirements.form.owner" }),
+    ).toHaveTextContent("Owner One (owner1)");
+  });
+
   it("confirms and retries requirement save when version cascade is required", async () => {
-    const confirmSpy = vi.spyOn(window, "confirm").mockReturnValue(true);
     const cascadeError = new ApiClientError(
       {
         code: "TRACE_VERSION_CHANGE_REQUIRES_CASCADE",
@@ -326,7 +380,9 @@ describe("RequirementDetailWorkspace", () => {
     getRequirementMock.mockResolvedValueOnce(makeRequirement());
     updateRequirementMock
       .mockRejectedValueOnce(cascadeError)
-      .mockResolvedValueOnce(makeRequirement({ title: "Permissioned requirement" }));
+      .mockResolvedValueOnce(
+        makeRequirement({ title: "Permissioned requirement" }),
+      );
 
     render(
       <RequirementDetailWorkspace requirementId="01ARZ3NDEKTSV4RRFFQ69G5FA1" />,
@@ -339,16 +395,20 @@ describe("RequirementDetailWorkspace", () => {
       screen.getByRole("button", { name: "requirements.detail.save" }),
     );
 
+    expect(
+      await screen.findByTestId("trace-version-cascade-confirm-dialog"),
+    ).toHaveTextContent("errors.api.TRACE_VERSION_CHANGE_REQUIRES_CASCADE");
+    expect(
+      screen.getByTestId("trace-version-cascade-confirm-dialog"),
+    ).not.toHaveTextContent("版本变更需要同步下游对象");
+    await waitFor(() => expect(updateRequirementMock).toHaveBeenCalledTimes(1));
+    fireEvent.click(screen.getByTestId("trace-version-cascade-confirm"));
+
     await waitFor(() => expect(updateRequirementMock).toHaveBeenCalledTimes(2));
-    expect(confirmSpy).toHaveBeenCalledWith(
-      expect.stringContaining("版本变更需要同步下游对象"),
-    );
     expect(updateRequirementMock).toHaveBeenLastCalledWith(
       expect.any(Object),
       expect.objectContaining({ cascadeVersionChange: true }),
     );
-
-    confirmSpy.mockRestore();
   });
 
   it("restores unsaved draft fields from the browser cache after returning to the draft", async () => {

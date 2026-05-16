@@ -39,25 +39,17 @@ export function isTraceVersionCascadeRequiredError(error: unknown): boolean {
 }
 
 export type TraceVersionCascadeConfirmCopy = {
-  fallback: string;
+  body: string;
   suffix: string;
 };
 
 const defaultCascadeConfirmCopy: TraceVersionCascadeConfirmCopy = {
-  fallback: "版本变更会同步影响已关联对象。确认继续？",
+  body: "版本变更会影响已关联的下游对象，请确认后继续。",
   suffix: "确认后将同步更新已关联对象的版本，是否继续？",
 };
 
 export function traceVersionCascadeConfirmMessage(
-  error: unknown,
   copy: TraceVersionCascadeConfirmCopy = defaultCascadeConfirmCopy,
 ): string {
-  const message =
-    error instanceof ApiClientError ? error.error.message.trim() : "";
-
-  if (message) {
-    return `${message}\n\n${copy.suffix}`;
-  }
-
-  return copy.fallback;
+  return `${copy.body}\n\n${copy.suffix}`;
 }

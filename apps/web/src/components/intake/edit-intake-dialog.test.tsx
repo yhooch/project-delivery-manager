@@ -114,9 +114,7 @@ describe("EditIntakeDialog", () => {
 
     expect(requirementSelect.value).toBe("");
     expect(screen.queryByText("Requirement v1")).not.toBeInTheDocument();
-    expect(
-      screen.getByText("Requirement no version"),
-    ).toBeInTheDocument();
+    expect(screen.getByText("Requirement no version")).toBeInTheDocument();
     expect(screen.getByText("Requirement v2")).toBeInTheDocument();
   });
 
@@ -154,7 +152,6 @@ describe("EditIntakeDialog", () => {
   });
 
   it("confirms and retries intake save when version cascade is required", async () => {
-    const confirmSpy = vi.spyOn(window, "confirm").mockReturnValue(true);
     const cascadeError = new ApiClientError(
       {
         code: "TRACE_VERSION_CHANGE_REQUIRES_CASCADE",
@@ -181,17 +178,23 @@ describe("EditIntakeDialog", () => {
     await screen.findByDisplayValue("Existing intake");
     fireEvent.click(screen.getByTestId("edit-intake-submit"));
 
+    expect(
+      await screen.findByTestId("trace-version-cascade-confirm-dialog"),
+    ).toHaveTextContent("errors.api.TRACE_VERSION_CHANGE_REQUIRES_CASCADE");
+    expect(
+      screen.getByTestId("trace-version-cascade-confirm-dialog"),
+    ).not.toHaveTextContent("事项版本变更需要同步任务");
+    await waitFor(() => expect(updateIntakeItemMock).toHaveBeenCalledTimes(1));
+    fireEvent.click(screen.getByTestId("trace-version-cascade-confirm"));
+
     await waitFor(() => expect(updateIntakeItemMock).toHaveBeenCalledTimes(2));
-    expect(confirmSpy).toHaveBeenCalledWith(
-      expect.stringContaining("事项版本变更需要同步任务"),
-    );
     expect(updateIntakeItemMock).toHaveBeenLastCalledWith(
       { intakeItemId, spaceId },
       expect.objectContaining({ cascadeVersionChange: true }),
     );
-    expect(onUpdated).toHaveBeenCalledWith(expect.objectContaining({ versionId }));
-
-    confirmSpy.mockRestore();
+    expect(onUpdated).toHaveBeenCalledWith(
+      expect.objectContaining({ versionId }),
+    );
   });
 });
 
