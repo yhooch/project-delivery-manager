@@ -10,6 +10,88 @@ import {
 import { PrismaAttachmentRepository } from "./prisma-attachment.repository";
 
 describe("PrismaAttachmentRepository", () => {
+  it("uses tenant target scope for count, list, and find read queries", async () => {
+    const input = createAttachmentInput();
+    const record = {
+      ...input,
+      createdAt: new Date("2026-05-15T00:00:00.000Z"),
+    };
+    const attachment = {
+      count: vi.fn(async () => 1),
+      findFirst: vi.fn(async () => record),
+      findMany: vi.fn(async () => [record]),
+    };
+    const prisma = {
+      client: {
+        $transaction: vi.fn(async (operations: Array<Promise<unknown>>) =>
+          Promise.all(operations),
+        ),
+        attachment,
+      },
+    } as unknown as PrismaService;
+    const repository = new PrismaAttachmentRepository(prisma);
+    const target = {
+      organizationId: input.organizationId,
+      spaceId: input.spaceId,
+      targetId: input.targetId,
+      targetType: input.targetType,
+    };
+
+    await repository.countByTarget(target);
+    await repository.findById({
+      ...target,
+      attachmentId: input.id,
+    });
+    await repository.listByTarget({
+      ...target,
+      page: 2,
+      pageSize: 10,
+    });
+
+    expect(attachment.count).toHaveBeenNthCalledWith(1, {
+      where: {
+        deletedAt: null,
+        organizationId: input.organizationId,
+        spaceId: input.spaceId,
+        targetId: input.targetId,
+        targetType: input.targetType,
+      },
+    });
+    expect(attachment.findFirst).toHaveBeenCalledWith({
+      where: {
+        deletedAt: null,
+        id: input.id,
+        organizationId: input.organizationId,
+        spaceId: input.spaceId,
+        targetId: input.targetId,
+        targetType: input.targetType,
+      },
+    });
+    expect(attachment.findMany).toHaveBeenCalledWith({
+      orderBy: {
+        createdAt: "asc",
+      },
+      skip: 10,
+      take: 10,
+      where: {
+        deletedAt: null,
+        organizationId: input.organizationId,
+        spaceId: input.spaceId,
+        targetId: input.targetId,
+        targetType: input.targetType,
+      },
+    });
+    expect(attachment.count).toHaveBeenNthCalledWith(2, {
+      where: {
+        deletedAt: null,
+        organizationId: input.organizationId,
+        spaceId: input.spaceId,
+        targetId: input.targetId,
+        targetType: input.targetType,
+      },
+    });
+  });
+
   it("locks the target and enforces the per-target count inside attachment create transaction", async () => {
     const input = createAttachmentInput();
     const tx = {
@@ -43,6 +125,8 @@ describe("PrismaAttachmentRepository", () => {
     expect(tx.attachment.count).toHaveBeenCalledWith({
       where: {
         deletedAt: null,
+        organizationId: input.organizationId,
+        spaceId: input.spaceId,
         targetId: input.targetId,
         targetType: input.targetType,
       },
@@ -94,8 +178,8 @@ describe("PrismaAttachmentRepository", () => {
       };
       const prisma = {
         client: {
-          $transaction: vi.fn(async (callback: (client: typeof tx) => unknown) =>
-            callback(tx),
+          $transaction: vi.fn(
+            async (callback: (client: typeof tx) => unknown) => callback(tx),
           ),
         },
       } as unknown as PrismaService;

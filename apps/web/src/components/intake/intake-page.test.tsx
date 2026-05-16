@@ -171,8 +171,22 @@ vi.mock("../../lib/v2/lookups", () => ({
 }));
 
 vi.mock("./create-intake-dialog", () => ({
-  CreateIntakeDialog: ({ open }: { open: boolean }) =>
-    open ? <div data-testid="create-intake-dialog-open" /> : null,
+  CreateIntakeDialog: ({
+    open,
+    organizationId,
+    spaceId,
+  }: {
+    open: boolean;
+    organizationId?: string;
+    spaceId: string;
+  }) =>
+    open ? (
+      <div
+        data-testid="create-intake-dialog-open"
+        data-organization-id={organizationId}
+        data-space-id={spaceId}
+      />
+    ) : null,
 }));
 vi.mock("./convert-intake-dialog", () => ({
   ConvertIntakeDialog: ({
@@ -743,9 +757,9 @@ describe("IntakePage", () => {
     await waitFor(() => expect(listIntakeItemsMock).toHaveBeenCalled());
 
     fireEvent.click(screen.getByRole("button", { name: "intake.page.create" }));
-    expect(
-      await screen.findByTestId("create-intake-dialog-open"),
-    ).toBeInTheDocument();
+    const dialog = await screen.findByTestId("create-intake-dialog-open");
+    expect(dialog).toHaveAttribute("data-organization-id", "ORG_01");
+    expect(dialog).toHaveAttribute("data-space-id", "SPC_01");
   });
 
   it("opens the detail drawer when an intake row is clicked and accepts it", async () => {
@@ -1068,6 +1082,7 @@ describe("IntakePage", () => {
       expect(updateIntakeItemMock).toHaveBeenCalledWith(
         {
           intakeItemId: "01ARZ3NDEKTSV4RRFFQ69G5FE1",
+          organizationId: "ORG_01",
           spaceId: "SPC_01",
         },
         expect.objectContaining({
@@ -1146,6 +1161,7 @@ describe("IntakePage", () => {
       expect(updateIntakeItemMock).toHaveBeenCalledWith(
         {
           intakeItemId: "01ARZ3NDEKTSV4RRFFQ69G5FE2",
+          organizationId: "ORG_01",
           spaceId: "SPC_01",
         },
         expect.objectContaining({

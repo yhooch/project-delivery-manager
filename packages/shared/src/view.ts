@@ -100,7 +100,6 @@ export type ViewCurrentStatusSummary = z.infer<
 
 export const ViewExceptionEvidenceSourceSchema = z.enum([
   "DUE_DATE",
-  "BLOCKED_FIELD",
   "WORKFLOW_STATE",
   "ACTION_REQUIRED",
   "LAST_STATUS_CHANGED_AT",

@@ -6,6 +6,7 @@ import type {
 
 import type {
   AttachmentLookupResult,
+  AttachmentTargetContext,
   CreateAttachmentInput,
 } from "./attachment.types";
 
@@ -24,15 +25,21 @@ export class AttachmentTargetNotFoundError extends Error {
 }
 
 export type AttachmentRepository = {
-  countByTarget(
-    targetType: AttachmentTargetType,
-    targetId: string,
-  ): Promise<number>;
-  create(input: CreateAttachmentInput): Promise<NonNullable<AttachmentLookupResult>>;
-  findById(attachmentId: string): Promise<AttachmentLookupResult>;
+  countByTarget(target: AttachmentTargetContext): Promise<number>;
+  create(
+    input: CreateAttachmentInput,
+  ): Promise<NonNullable<AttachmentLookupResult>>;
+  findById(
+    input: AttachmentTargetContext & { attachmentId: string },
+  ): Promise<AttachmentLookupResult>;
+  findTargetContextById(
+    attachmentId: string,
+  ): Promise<AttachmentTargetContext | undefined>;
   listByTarget(input: {
+    organizationId: string;
     page: number;
     pageSize: number;
+    spaceId: string;
     targetId: string;
     targetType: AttachmentTargetType;
   }): Promise<PageResult<Attachment>>;

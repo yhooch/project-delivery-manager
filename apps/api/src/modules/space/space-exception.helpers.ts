@@ -13,6 +13,7 @@ export const SPACE_EXCEPTION_TYPES: readonly ViewExceptionType[] = [
 ];
 
 export const SPACE_EXCEPTION_STATE_RULES = {
+  blockedTokens: ["blocked", "阻塞"] as const,
   pendingConfirmTokens: ["confirm", "待确认", "确认"] as const,
   pendingRegressionCodes: [
     "pending_regression",
@@ -64,10 +65,11 @@ export function buildSpaceExceptionSignals(
   if (isBlockedRecord(record)) {
     signals.push({
       type: "blocked",
-      evidenceSource: "BLOCKED_FIELD",
+      evidenceSource: "WORKFLOW_STATE",
       reason: record.blockedReason ?? "工作项处于阻塞状态",
       blockedAt: record.blockedAt?.toISOString(),
       blockedReason: record.blockedReason ?? undefined,
+      currentStateId: record.currentStateId,
     });
   }
 
@@ -111,7 +113,14 @@ export function buildSpaceExceptionSignals(
 export function isBlockedRecord(record: SpaceExceptionWorkItemRecord) {
   return (
     !isTerminalStatusCategory(record.statusCategory) &&
-    (Boolean(record.blockedAt) || Boolean(record.blockedReason?.trim()))
+    (includesAnyToken(
+      record.currentState.code,
+      SPACE_EXCEPTION_STATE_RULES.blockedTokens,
+    ) ||
+      includesAnyToken(
+        record.currentState.name,
+        SPACE_EXCEPTION_STATE_RULES.blockedTokens,
+      ))
   );
 }
 
@@ -171,7 +180,7 @@ export function elapsedDays(from: Date, to: Date) {
 }
 
 function includesToken(value: string, token: string) {
-  return value.toLowerCase().includes(token);
+  return value.toLowerCase().includes(token.toLowerCase());
 }
 
 function includesAnyToken(value: string, tokens: readonly string[]) {

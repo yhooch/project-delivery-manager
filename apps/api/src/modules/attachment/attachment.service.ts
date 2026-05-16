@@ -1,4 +1,4 @@
-import { HttpStatus, Inject, Injectable } from "@nestjs/common";
+import { HttpStatus, Inject, Injectable, Logger } from "@nestjs/common";
 import {
   AttachmentDownloadUrlExpiresInSeconds,
   AttachmentMaxCountPerTarget,
@@ -46,6 +46,8 @@ const REQUIREMENT_WRITER_ROLES = new Set<SpaceRole>([
 
 @Injectable()
 export class AttachmentService {
+  private readonly logger = new Logger(AttachmentService.name);
+
   constructor(
     @Inject(ATTACHMENT_REPOSITORY)
     private readonly attachments: AttachmentRepository,
@@ -64,8 +66,11 @@ export class AttachmentService {
     input: PresignAttachmentRequest,
   ): Promise<PresignAttachmentResponse> {
     this.assertFileConstraints(input);
-    await this.requireWritableAttachmentTarget(actorUserId, input);
-    await this.assertAttachmentCountLimit(input.targetType, input.targetId);
+    const target = await this.requireWritableAttachmentTarget(
+      actorUserId,
+      input,
+    );
+    await this.assertAttachmentCountLimit(target);
 
     const fileKey = createFileKey(
       input.targetType,
@@ -104,7 +109,7 @@ export class AttachmentService {
       actorUserId,
       input,
     );
-    await this.assertAttachmentCountLimit(input.targetType, input.targetId);
+    await this.assertAttachmentCountLimit(target);
     await this.assertUploadedObjectMatches(input);
 
     const created = await this.createAttachmentOrThrowPublicError({
@@ -156,8 +161,10 @@ export class AttachmentService {
     );
 
     return this.attachments.listByTarget({
+      organizationId: target.organizationId,
       page: input.page,
       pageSize: input.pageSize,
+      spaceId: target.spaceId,
       targetId: target.targetId,
       targetType: target.targetType,
     });
@@ -167,16 +174,29 @@ export class AttachmentService {
     actorUserId: string,
     attachmentId: string,
   ): Promise<GetAttachmentDownloadUrlResponse> {
-    const attachment = await this.attachments.findById(attachmentId);
+    const attachmentContext =
+      await this.attachments.findTargetContextById(attachmentId);
+
+    if (!attachmentContext) {
+      throwAttachmentTargetNotFound();
+    }
+
+    const target = await this.requireReadableAttachmentTarget(actorUserId, {
+      targetId: attachmentContext.targetId,
+      targetType: attachmentContext.targetType,
+    });
+
+    const attachment = await this.attachments.findById({
+      attachmentId,
+      organizationId: target.organizationId,
+      spaceId: target.spaceId,
+      targetId: target.targetId,
+      targetType: target.targetType,
+    });
 
     if (!attachment) {
       throwAttachmentTargetNotFound();
     }
-
-    await this.requireReadableAttachmentTarget(actorUserId, {
-      targetId: attachment.targetId,
-      targetType: attachment.targetType,
-    });
 
     const downloadUrl = await this.objectStorage.createPresignedDownloadUrl({
       expiresInSeconds: AttachmentDownloadUrlExpiresInSeconds,
@@ -301,11 +321,8 @@ export class AttachmentService {
     };
   }
 
-  private async assertAttachmentCountLimit(
-    targetType: AttachmentTargetType,
-    targetId: string,
-  ) {
-    const count = await this.attachments.countByTarget(targetType, targetId);
+  private async assertAttachmentCountLimit(target: AttachmentTargetContext) {
+    const count = await this.attachments.countByTarget(target);
 
     if (count >= AttachmentMaxCountPerTarget) {
       throwAttachmentLimitExceeded();
@@ -381,27 +398,52 @@ export class AttachmentService {
       );
     }
     if (object.size !== input.size) {
-      throw new ApiException(
-        "VALIDATION_ERROR",
-        "Uploaded attachment size does not match registration",
-        HttpStatus.BAD_REQUEST,
-        {
-          actualSize: object.size,
-          expectedSize: input.size,
-        },
+      await this.rejectUploadedObjectMismatch(
+        input.fileKey,
+        new ApiException(
+          "VALIDATION_ERROR",
+          "Uploaded attachment size does not match registration",
+          HttpStatus.BAD_REQUEST,
+          {
+            actualSize: object.size,
+            expectedSize: input.size,
+          },
+        ),
       );
     }
     if (!mimeTypesMatch(object, input.mimeType)) {
-      throw new ApiException(
-        "VALIDATION_ERROR",
-        "Uploaded attachment MIME type does not match registration",
-        HttpStatus.BAD_REQUEST,
-        {
-          actualMimeType: object.mimeType,
-          expectedMimeType: input.mimeType,
-        },
+      await this.rejectUploadedObjectMismatch(
+        input.fileKey,
+        new ApiException(
+          "VALIDATION_ERROR",
+          "Uploaded attachment MIME type does not match registration",
+          HttpStatus.BAD_REQUEST,
+          {
+            actualMimeType: object.mimeType,
+            expectedMimeType: input.mimeType,
+          },
+        ),
       );
     }
+  }
+
+  private async rejectUploadedObjectMismatch(
+    fileKey: string,
+    error: ApiException,
+  ): Promise<never> {
+    try {
+      await this.objectStorage.deleteObjectIfExists(fileKey);
+    } catch (deleteError) {
+      this.logger.warn(
+        `Failed to delete mismatched attachment object ${fileKey}: ${
+          deleteError instanceof Error
+            ? deleteError.message
+            : String(deleteError)
+        }`,
+      );
+    }
+
+    throw error;
   }
 }
 

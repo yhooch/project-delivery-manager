@@ -1,102 +1,153 @@
 # tests/e2e
 
-End-to-end suites driven by Playwright. The folder mixes two flavours:
+End-to-end suites driven by Playwright. The release gate must run against a
+real stack: PostgreSQL + MinIO + API + Web.
 
-| Flavour             | Files                                                                                                                                                                                                                                                                                                                          | Default behaviour                                                                                                     |
-| ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------- |
-| API E2E (HTTP only) | `m0-main-flow.api.spec.ts`, `m3-main-flow.api.spec.ts`, `m4-mvp-main-flow.api.spec.ts`                                                                                                                                                                                                                                         | skipped unless the matching `E2E_M{0,3,4}_ENABLED=1` and `E2E_DB_READY=1` are exported and the API/Web probes succeed |
-| UI E2E (browser)    | `ui-smoke.spec.ts`, `ui-command-palette.spec.ts`, `ui-org-switcher.spec.ts`, `ui-workbench-overview.spec.ts`, `ui-requirements-create.spec.ts`, `ui-tasks-create.spec.ts`, `ui-task-comments.spec.ts`, `ui-bugs-flow.spec.ts`, `ui-intake-flow.spec.ts`, `ui-version-exceptions-flow.spec.ts`, `ui-settings-organization.spec.ts`, `ui-workflow-config.spec.ts` | skipped unless `E2E_UI_ENABLED=1` AND `E2E_DB_READY=1` AND both probes succeed (see `support/ui-env.ts`)              |
+| Command | Purpose |
+| --- | --- |
+| `corepack pnpm test:e2e` | Default release gate. Fails fast unless all E2E flags are enabled and API/Web probes pass. |
+| `corepack pnpm test:e2e:full` | Docker orchestration: Postgres + MinIO + migrations + API + Web + Playwright. |
+| `corepack pnpm test:e2e:local` | No-Docker orchestration: local `/tmp` Postgres + local MinIO + migrations + API + Web + Playwright. |
+| `corepack pnpm test:e2e:list` | List discovered tests only. This does not run the gate and must not be treated as a pass. |
+| `corepack pnpm test:e2e:gate-check` | Minimal regression check that the default gate fails when E2E flags are absent. |
 
-Running the UI suite for real requires a fully wired stack: Postgres + migrated
-schema + MinIO for attachment storage + API on `:3001` + Web on `:3000`. The
-orchestrator script below provisions all of that against disposable containers
-so it cannot pollute your dev DB or object storage.
+## Why `test:e2e` Fails By Default
 
-## One-command UI E2E
+The specs still contain internal `test.skip(...)` guards so direct Playwright
+debugging can avoid destructive calls when the stack is missing. That is not
+acceptable for the package-level gate: a green run with every test skipped is a
+false release signal.
 
-Prerequisites on the host machine:
+`corepack pnpm test:e2e` now refuses to delegate to Playwright unless these are
+true:
 
-- Docker (with the `docker compose` v2 plugin)
-- Node 22+, `corepack` enabled (`corepack enable`)
+- `E2E_M0_ENABLED=1`
+- `E2E_M3_ENABLED=1`
+- `E2E_M4_ENABLED=1`
+- `E2E_UI_ENABLED=1`
+- `E2E_DB_READY=1`
+- `GET $E2E_API_URL/health` returns 2xx/3xx
+- `GET $E2E_WEB_URL/` returns 2xx/3xx
+
+Use `corepack pnpm test:e2e:list` when you only need discovery output.
+`corepack pnpm test:e2e --list` intentionally fails without a real E2E stack.
+
+## Docker Path
+
+Prerequisites:
+
+- Docker with the `docker compose` v2 plugin
+- Node 22+, `corepack` enabled
 - `curl`
-- `node_modules` already installed (`corepack pnpm install` once after clone)
-- Free ports for Postgres (`55432`), MinIO S3 API (`59000`), MinIO console
-  (`59001`), API (`3001`) and Web (`3000`)
+- `node_modules` already installed
+- Free ports: Postgres `55432`, MinIO S3 `59000`, MinIO console `59001`, API
+  `3001`, Web `3000`
 
-Then, from the repo root:
+Run:
 
 ```bash
 corepack pnpm test:e2e:full
 ```
 
-That single command does, in order:
+This command:
 
-1. `docker compose -f docker-compose.e2e.yml up -d postgres-e2e minio-e2e` —
-   starts throwaway Postgres 16 and MinIO containers with `tmpfs`-backed
-   storage.
-2. Waits for Postgres and MinIO to become ready, initializes the
-   `crm-manager-attachments-e2e` bucket and browser-upload CORS, then runs
-   `prisma migrate deploy` against Postgres.
-3. Launches the API (`@project-delivery/api dev`) in the background and waits
-   for `GET /api/v1/health` to return 200.
-4. Launches the Web app (`@project-delivery/web dev --port 3000`) in the
-   background and waits for `GET /` to return 2xx/3xx.
-5. Runs `corepack pnpm test:e2e` with `E2E_M0_ENABLED=1`,
-   `E2E_M3_ENABLED=1`, `E2E_M4_ENABLED=1`, `E2E_UI_ENABLED=1` and
-   `E2E_DB_READY=1` exported so API and UI specs actually execute (any extra
-   args are forwarded, e.g.
-   `corepack pnpm test:e2e:full tests/e2e/ui-smoke.spec.ts`).
-6. On exit (success, failure, Ctrl-C) — a `trap` runs
-   `scripts/e2e/down.sh`, which kills the API/Web process groups and
-   `docker compose down -v` the Postgres/MinIO containers.
+1. Starts throwaway Postgres and MinIO from `docker-compose.e2e.yml`.
+2. Waits for readiness, creates the E2E bucket/CORS, and runs Prisma
+   migrations.
+3. Starts API and Web in the background.
+4. Exports all `E2E_*_ENABLED=1` flags plus `E2E_DB_READY=1`.
+5. Runs `corepack pnpm test:e2e` so the default gate validates the stack before
+   Playwright executes.
+6. Tears down containers and recorded API/Web process groups on exit.
 
-Logs and PID files live in `.e2e-run/` (gitignored via `.env.*`/`*.log`
-patterns and the directory itself is treated as scratch). Inspect
-`.e2e-run/api.log` / `.e2e-run/web.log` if a step times out.
+Extra Playwright args are forwarded:
 
-## Manual control
+```bash
+corepack pnpm test:e2e:full tests/e2e/ui-smoke.spec.ts
+```
 
-| Command                                     | What it does                                      |
-| ------------------------------------------- | ------------------------------------------------- |
-| `corepack pnpm e2e:up`                      | Just step 1 + 2 (Postgres + MinIO + migrations)   |
-| `corepack pnpm e2e:down`                    | Tear everything down (containers + recorded PIDs) |
-| `E2E_KEEP_UP=1 corepack pnpm test:e2e:full` | Skip teardown so you can poke the running stack   |
+## No-Docker Local Path
 
-## Honoured environment variables
+Prerequisites:
 
-See `.env.e2e.example` at the repo root for the full list and defaults. The
-most useful overrides:
+- PostgreSQL server/client binaries on `PATH`: `initdb`, `pg_ctl`, `psql`,
+  `createdb`
+- MinIO server/client binaries on `PATH`: `minio`, `mc`
+- Node 22+, `corepack` enabled
+- `curl`
+- `node_modules` already installed
+- Free ports: Postgres `55432`, MinIO S3 `59000`, MinIO console `59001`, API
+  `3001`, Web `3000`
 
-- `E2E_PG_PORT` / `E2E_PG_USER` / `E2E_PG_PASSWORD` / `E2E_PG_DB`
-- `E2E_MINIO_PORT` / `E2E_MINIO_CONSOLE_PORT`
-- `MINIO_INTERNAL_ENDPOINT` / `MINIO_PUBLIC_ENDPOINT` / `MINIO_BUCKET`
-- `MINIO_ACCESS_KEY` / `MINIO_SECRET_KEY` / `MINIO_REGION`
-- `MINIO_FORCE_PATH_STYLE` / `MINIO_AUTO_CREATE_BUCKET`
-- `PORT` (API) / `WEB_PORT`
-- `API_PROXY_TARGET` (Web rewrite target, default `http://127.0.0.1:$PORT`)
-- `E2E_WAIT_API_SECS` (default 90), `E2E_WAIT_WEB_SECS` (default 120),
-  `E2E_WAIT_DB_SECS` (default 60), `E2E_WAIT_MINIO_SECS` (default 60)
-- `DATABASE_URL` (overrides the value otherwise derived from the four PG vars)
+Run:
 
-## Design notes
+```bash
+corepack pnpm test:e2e:local
+```
 
-- The disposable Postgres uses `tmpfs` for `/var/lib/postgresql/data`, so
-  start-up is fast and `docker compose down -v` reliably wipes state.
-- The disposable MinIO service uses `tmpfs` for `/data`; `up.sh` recreates the
-  attachment bucket and CORS each run.
-- API and Web are started with `setsid` so the cleanup script can SIGTERM the
-  whole process group (tsx-watch and `next dev` spawn child workers).
-- The orchestrator never touches the developer's `.env` file or the dev
-  database. Everything is driven by env vars passed directly to the child
-  processes.
-- The UI specs themselves are **not modified** by this orchestrator; they
-  continue to self-skip unless their preconditions are satisfied. The
-  orchestrator's job is purely to satisfy those preconditions in one go.
-- UI specs must import `test`/`expect` from `support/ui-test.ts`, not directly
-  from `@playwright/test`. The shared fixture fails on unexpected HTTP
-  `4xx/5xx`, `requestfailed`, `console.error`, `console.warning`, and
-  `pageerror` events, with only browser metadata/source-map noise and the
-  initial unauthenticated `GET /api/v1/auth/session` 401 before the first
-  successful session/register/login response whitelisted. Do not rely only on
-  container visibility; assert the backing API contract that makes the UI state
-  meaningful.
+Default local isolation:
+
+- PostgreSQL data directory: `/tmp/crm-manager-pg`
+- Database: `project_delivery_manager_e2e_local`
+- MinIO data directory: `/tmp/crm-manager-minio-e2e`
+- Bucket: `crm-manager-attachments-e2e-local`
+
+If `DATABASE_URL` is already set, `run-local.sh` reuses it instead of starting
+`/tmp/crm-manager-pg`, but it refuses database names that do not contain
+`e2e` or `test`. To override that guard for a manually verified disposable
+database:
+
+```bash
+E2E_ALLOW_NON_E2E_DATABASE=1 DATABASE_URL=postgresql://... corepack pnpm test:e2e:local
+```
+
+If `minio` or `mc` is missing, the script exits before starting API/Web and
+prints install/download hints. Typical installs:
+
+```bash
+brew install minio/stable/minio minio/stable/mc
+```
+
+On Linux, download `minio` and `mc` from `https://dl.min.io/`, `chmod +x` both
+binaries, and put them on `PATH`.
+
+## Manual Control
+
+| Command | What it does |
+| --- | --- |
+| `corepack pnpm e2e:up` | Docker only: start Postgres + MinIO, create bucket/CORS, run migrations. |
+| `corepack pnpm e2e:down` | Stop recorded API/Web, local MinIO/Postgres left by `run-local.sh`, and Docker E2E containers if Docker is available. |
+| `E2E_KEEP_UP=1 corepack pnpm test:e2e:full` | Keep the Docker stack running after Playwright exits. |
+| `E2E_KEEP_UP=1 corepack pnpm test:e2e:local` | Keep the local stack running after Playwright exits. |
+
+Logs and PID files live in `.e2e-run/`. Inspect `.e2e-run/api.log`,
+`.e2e-run/web.log`, `.e2e-run/postgres.log`, or `.e2e-run/minio.log` when a
+step times out.
+
+## Environment Variables
+
+See `.env.e2e.example` at the repo root for defaults. Common overrides:
+
+- `E2E_PG_PORT`, `E2E_PG_USER`, `E2E_PG_PASSWORD`, `E2E_PG_DB`
+- `E2E_LOCAL_PGDATA` for the no-Docker path
+- `DATABASE_URL`
+- `E2E_MINIO_PORT`, `E2E_MINIO_CONSOLE_PORT`, `E2E_MINIO_DATA_DIR`
+- `MINIO_INTERNAL_ENDPOINT`, `MINIO_PUBLIC_ENDPOINT`, `MINIO_BUCKET`
+- `MINIO_ACCESS_KEY`, `MINIO_SECRET_KEY`, `MINIO_REGION`
+- `PORT`, `WEB_PORT`, `API_PROXY_TARGET`
+- `E2E_WAIT_API_SECS`, `E2E_WAIT_WEB_SECS`, `E2E_WAIT_DB_SECS`,
+  `E2E_WAIT_MINIO_SECS`
+
+## Test Flavours
+
+| Flavour | Files | Runtime guard |
+| --- | --- | --- |
+| API E2E | `m0-main-flow.api.spec.ts`, `m3-main-flow.api.spec.ts`, `m4-mvp-main-flow.api.spec.ts` | Matching `E2E_M{0,3,4}_ENABLED=1`, `E2E_DB_READY=1`, API probe, and optional Web probe. |
+| UI E2E | `ui-*.spec.ts` | `E2E_UI_ENABLED=1`, `E2E_DB_READY=1`, API probe, and Web probe. |
+
+UI specs must import `test`/`expect` from `support/ui-test.ts`, not directly
+from `@playwright/test`. The shared fixture fails on unexpected HTTP `4xx/5xx`,
+`requestfailed`, `console.error`, `console.warning`, and `pageerror` events,
+with only browser metadata/source-map noise and the initial unauthenticated
+`GET /api/v1/auth/session` 401 before the first successful auth response
+whitelisted.

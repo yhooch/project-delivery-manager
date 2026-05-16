@@ -2925,7 +2925,6 @@
     "errorTitle": "无法加载异常视图",
     "evidenceSource": {
       "DUE_DATE": "截止时间",
-      "BLOCKED_FIELD": "阻塞字段",
       "WORKFLOW_STATE": "流程状态",
       "ACTION_REQUIRED": "待处理动作",
       "LAST_STATUS_CHANGED_AT": "最后流转时间"

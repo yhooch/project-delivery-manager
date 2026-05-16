@@ -2925,7 +2925,6 @@
     "errorTitle": "Unable to load exception view",
     "evidenceSource": {
       "DUE_DATE": "Due date",
-      "BLOCKED_FIELD": "Blocked field",
       "WORKFLOW_STATE": "Workflow state",
       "ACTION_REQUIRED": "Required action",
       "LAST_STATUS_CHANGED_AT": "Last status change"

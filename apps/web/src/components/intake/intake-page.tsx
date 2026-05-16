@@ -878,6 +878,7 @@ export function IntakePage() {
         >
           <FilterField label={t("filters.version")}>
             <SelectMenu
+              aria-label={t("filters.version")}
               data-testid="intake-filter-version"
               value={listFilters.versionId ?? ""}
               onChange={(event) => setVersionFilter(event.target.value)}
@@ -893,6 +894,7 @@ export function IntakePage() {
           </FilterField>
           <FilterField label={t("filters.requirement")}>
             <SelectMenu
+              aria-label={t("filters.requirement")}
               data-testid="intake-filter-requirement"
               value={listFilters.requirementId ?? ""}
               onChange={(event) => setRequirementFilter(event.target.value)}
@@ -908,6 +910,7 @@ export function IntakePage() {
           </FilterField>
           <FilterField label={t("filters.priority")}>
             <SelectMenu
+              aria-label={t("filters.priority")}
               data-testid="intake-filter-priority"
               value={listFilters.priority ?? ""}
               onChange={(event) =>
@@ -925,6 +928,7 @@ export function IntakePage() {
           </FilterField>
           <FilterField label={t("filters.sourceType")}>
             <SelectMenu
+              aria-label={t("filters.sourceType")}
               data-testid="intake-filter-source"
               value={listFilters.sourceType ?? ""}
               onChange={(event) =>
@@ -942,6 +946,7 @@ export function IntakePage() {
           </FilterField>
           <FilterField label={t("filters.assignee")}>
             <SelectMenu
+              aria-label={t("filters.assignee")}
               data-testid="intake-filter-assignee"
               value={listFilters.assigneeId ?? ""}
               onChange={(event) =>
@@ -1065,6 +1070,7 @@ export function IntakePage() {
         <CreateIntakeDialog
           open={createOpen}
           onOpenChange={setCreateOpen}
+          organizationId={organizationId}
           spaceId={spaceId}
           onCreated={() => {
             void loadItems(1, "replace");
@@ -1076,6 +1082,7 @@ export function IntakePage() {
         <EditIntakeDialog
           open={editOpen}
           onOpenChange={setEditOpen}
+          organizationId={organizationId}
           spaceId={spaceId}
           intakeItem={active}
           onUpdated={handleUpdatedIntakeItem}

@@ -16,11 +16,13 @@ const {
   listRequirementsMock,
   listSpaceMembersMock,
   listVersionsMock,
+  sessionOrganizationId,
   updateIntakeItemMock,
 } = vi.hoisted(() => ({
   listRequirementsMock: vi.fn(),
   listSpaceMembersMock: vi.fn(),
   listVersionsMock: vi.fn(),
+  sessionOrganizationId: "01ARZ3NDEKTSV4RRFFQ69G5FO1",
   updateIntakeItemMock: vi.fn(),
 }));
 
@@ -36,13 +38,19 @@ vi.mock("../../lib/space-service", () => ({
 vi.mock("../../lib/version-service", () => ({
   listVersions: listVersionsMock,
 }));
+vi.mock("../providers/session-provider", () => ({
+  useSession: () => ({
+    currentOrganization: { id: sessionOrganizationId },
+    session: { defaultOrganizationId: sessionOrganizationId },
+  }),
+}));
 
 import type { IntakeItem } from "@project-delivery/shared";
 
 import { ApiClientError } from "../../lib/api-client";
 import { EditIntakeDialog } from "./edit-intake-dialog";
 
-const organizationId = "01ARZ3NDEKTSV4RRFFQ69G5FO1";
+const organizationId = sessionOrganizationId;
 const spaceId = "01ARZ3NDEKTSV4RRFFQ69G5FS1";
 const intakeItemId = "01ARZ3NDEKTSV4RRFFQ69G5FI1";
 const reporterId = "01ARZ3NDEKTSV4RRFFQ69G5FU1";
@@ -100,6 +108,18 @@ describe("EditIntakeDialog", () => {
     );
 
     await screen.findByText("Requirement v1");
+    expect(listVersionsMock).toHaveBeenCalledWith({
+      organizationId,
+      page: 1,
+      pageSize: 100,
+      spaceId,
+    });
+    expect(listRequirementsMock).toHaveBeenCalledWith({
+      organizationId,
+      page: 1,
+      pageSize: 100,
+      spaceId,
+    });
     const versionSelect = screen.getByTestId(
       "edit-intake-version-select",
     ) as HTMLSelectElement;
@@ -189,7 +209,7 @@ describe("EditIntakeDialog", () => {
 
     await waitFor(() => expect(updateIntakeItemMock).toHaveBeenCalledTimes(2));
     expect(updateIntakeItemMock).toHaveBeenLastCalledWith(
-      { intakeItemId, spaceId },
+      { intakeItemId, organizationId, spaceId },
       expect.objectContaining({ cascadeVersionChange: true }),
     );
     expect(onUpdated).toHaveBeenCalledWith(

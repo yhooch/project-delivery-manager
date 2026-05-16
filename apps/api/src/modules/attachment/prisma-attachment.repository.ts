@@ -13,7 +13,10 @@ import {
   AttachmentTargetNotFoundError,
   type AttachmentRepository,
 } from "./attachment.repository";
-import type { CreateAttachmentInput } from "./attachment.types";
+import type {
+  AttachmentTargetContext,
+  CreateAttachmentInput,
+} from "./attachment.types";
 
 @Injectable()
 export class PrismaAttachmentRepository implements AttachmentRepository {
@@ -22,12 +25,14 @@ export class PrismaAttachmentRepository implements AttachmentRepository {
     private readonly prisma: PrismaService,
   ) {}
 
-  async countByTarget(targetType: AttachmentTargetType, targetId: string) {
+  async countByTarget(target: AttachmentTargetContext) {
     return this.prisma.client.attachment.count({
       where: {
         deletedAt: null,
-        targetId,
-        targetType,
+        organizationId: target.organizationId,
+        spaceId: target.spaceId,
+        targetId: target.targetId,
+        targetType: target.targetType,
       },
     });
   }
@@ -38,6 +43,8 @@ export class PrismaAttachmentRepository implements AttachmentRepository {
         tx,
         input.targetType,
         input.targetId,
+        input.organizationId,
+        input.spaceId,
       );
 
       if (!targetExists) {
@@ -47,6 +54,8 @@ export class PrismaAttachmentRepository implements AttachmentRepository {
       const currentCount = await tx.attachment.count({
         where: {
           deletedAt: null,
+          organizationId: input.organizationId,
+          spaceId: input.spaceId,
           targetId: input.targetId,
           targetType: input.targetType,
         },
@@ -101,25 +110,52 @@ export class PrismaAttachmentRepository implements AttachmentRepository {
     return toAttachment(attachment);
   }
 
-  async findById(attachmentId: string) {
+  async findById(input: AttachmentTargetContext & { attachmentId: string }) {
     const attachment = await this.prisma.client.attachment.findFirst({
       where: {
         deletedAt: null,
-        id: attachmentId,
+        id: input.attachmentId,
+        organizationId: input.organizationId,
+        spaceId: input.spaceId,
+        targetId: input.targetId,
+        targetType: input.targetType,
       },
     });
 
     return attachment ? toAttachment(attachment) : undefined;
   }
 
+  async findTargetContextById(
+    attachmentId: string,
+  ): Promise<AttachmentTargetContext | undefined> {
+    const attachment = await this.prisma.client.attachment.findFirst({
+      select: {
+        organizationId: true,
+        spaceId: true,
+        targetId: true,
+        targetType: true,
+      },
+      where: {
+        deletedAt: null,
+        id: attachmentId,
+      },
+    });
+
+    return attachment ?? undefined;
+  }
+
   async listByTarget(input: {
+    organizationId: string;
     page: number;
     pageSize: number;
+    spaceId: string;
     targetId: string;
     targetType: AttachmentTargetType;
   }) {
     const where = {
       deletedAt: null,
+      organizationId: input.organizationId,
+      spaceId: input.spaceId,
       targetId: input.targetId,
       targetType: input.targetType,
     };
@@ -150,12 +186,16 @@ async function lockAttachmentTarget(
   tx: Prisma.TransactionClient,
   targetType: AttachmentTargetType,
   targetId: string,
+  organizationId: string,
+  spaceId: string,
 ): Promise<boolean> {
   if (targetType === "WORK_ITEM") {
     const rows = await tx.$queryRaw<Array<{ id: string }>>`
       SELECT id
       FROM work_items
       WHERE id = ${targetId}
+        AND organization_id = ${organizationId}
+        AND space_id = ${spaceId}
         AND deleted_at IS NULL
       FOR UPDATE
     `;
@@ -166,6 +206,8 @@ async function lockAttachmentTarget(
     SELECT id
     FROM requirements
     WHERE id = ${targetId}
+      AND organization_id = ${organizationId}
+      AND space_id = ${spaceId}
       AND deleted_at IS NULL
     FOR UPDATE
   `;

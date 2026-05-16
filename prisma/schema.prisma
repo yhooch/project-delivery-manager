@@ -611,6 +611,7 @@ model Attachment {
   @@index([organizationId])
   @@index([spaceId])
   @@index([targetType, targetId])
+  @@index([organizationId, spaceId, targetType, targetId, deletedAt, createdAt], map: "attachments_org_space_target_deleted_created_idx")
   @@index([uploadedById])
   @@map("attachments")
 }

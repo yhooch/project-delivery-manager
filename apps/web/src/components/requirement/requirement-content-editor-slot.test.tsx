@@ -1,9 +1,18 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import {
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-const { uploadRequirementImageMock } = vi.hoisted(() => ({
-  uploadRequirementImageMock: vi.fn(),
-}));
+const { getAttachmentDownloadUrlMock, uploadRequirementImageMock } = vi.hoisted(
+  () => ({
+    getAttachmentDownloadUrlMock: vi.fn(),
+    uploadRequirementImageMock: vi.fn(),
+  }),
+);
 
 vi.mock("../../lib/attachment-service", () => {
   class AttachmentUploadError extends Error {
@@ -20,6 +29,7 @@ vi.mock("../../lib/attachment-service", () => {
 
   return {
     AttachmentUploadError,
+    getAttachmentDownloadUrl: getAttachmentDownloadUrlMock,
     uploadRequirementImage: uploadRequirementImageMock,
   };
 });
@@ -125,14 +135,24 @@ function firstTextNode(contentJson: Record<string, unknown>) {
   )[0].content[0];
 }
 
+function imageNodes(contentJson: Record<string, unknown>) {
+  return (contentJson.content as Array<Record<string, unknown>>).filter(
+    (node) => node.type === "image",
+  );
+}
+
 beforeEach(() => {
+  getAttachmentDownloadUrlMock.mockReset();
   uploadRequirementImageMock.mockReset();
-  vi.spyOn(window, "prompt").mockReturnValue(null);
   if (!document.elementFromPoint) {
     document.elementFromPoint = () =>
       screen.queryByLabelText("requirements.editor.ariaLabel");
   }
   const textPrototype = Text.prototype as Text & {
+    getBoundingClientRect?: () => DOMRect;
+    getClientRects?: () => DOMRectList;
+  };
+  const elementPrototype = Element.prototype as Element & {
     getBoundingClientRect?: () => DOMRect;
     getClientRects?: () => DOMRectList;
   };
@@ -147,6 +167,17 @@ beforeEach(() => {
   }
   if (!textPrototype.getBoundingClientRect) {
     textPrototype.getBoundingClientRect = () => new DOMRect();
+  }
+  if (!elementPrototype.getClientRects) {
+    elementPrototype.getClientRects = () =>
+      ({
+        item: () => null,
+        length: 0,
+        [Symbol.iterator]: function* () {},
+      }) as DOMRectList;
+  }
+  if (!elementPrototype.getBoundingClientRect) {
+    elementPrototype.getBoundingClientRect = () => new DOMRect();
   }
 });
 
@@ -199,14 +230,27 @@ describe("RequirementContentEditorSlot link extension", () => {
   });
 
   it("sets a selected link through the toolbar and emits link mark attrs", async () => {
+    const promptSpy = vi.spyOn(window, "prompt").mockReturnValue(null);
     const { onChange } = renderEditor();
 
     await screen.findByText("Example link");
     selectEditorText("Example link");
-    vi.mocked(window.prompt).mockReturnValue(" https://example.com/new ");
 
     fireEvent.click(
       screen.getByRole("button", { name: "requirements.editor.toolbar.link" }),
+    );
+    const dialog = await screen.findByRole("dialog");
+    const linkInput = within(dialog).getByRole("textbox", {
+      name: "requirements.editor.linkPrompt",
+    });
+
+    fireEvent.change(linkInput, {
+      target: { value: " https://example.com/new " },
+    });
+    fireEvent.click(
+      within(dialog).getByRole("button", {
+        name: "requirements.editor.toolbar.link",
+      }),
     );
 
     await waitFor(() => expect(onChange).toHaveBeenCalled());
@@ -227,9 +271,10 @@ describe("RequirementContentEditorSlot link extension", () => {
       text: "Example link",
       type: "text",
     });
+    expect(promptSpy).not.toHaveBeenCalled();
   });
 
-  it("unsets the selected link when prompt returns an empty string", async () => {
+  it("unsets the selected link when the link dialog is submitted empty", async () => {
     const { onChange } = renderEditor({
       value: makeValue({
         content: [
@@ -259,10 +304,22 @@ describe("RequirementContentEditorSlot link extension", () => {
 
     await screen.findByRole("link", { name: "Example link" });
     selectEditorText("Example link");
-    vi.mocked(window.prompt).mockReturnValue("   ");
 
     fireEvent.click(
       screen.getByRole("button", { name: "requirements.editor.toolbar.link" }),
+    );
+    const dialog = await screen.findByRole("dialog");
+    const linkInput = within(dialog).getByRole("textbox", {
+      name: "requirements.editor.linkPrompt",
+    });
+
+    fireEvent.change(linkInput, {
+      target: { value: "   " },
+    });
+    fireEvent.click(
+      within(dialog).getByRole("button", {
+        name: "requirements.editor.toolbar.link",
+      }),
     );
 
     await waitFor(() => expect(onChange).toHaveBeenCalled());
@@ -290,7 +347,43 @@ describe("RequirementContentEditorSlot link extension", () => {
 });
 
 describe("RequirementContentEditorSlot image drop", () => {
-  it("uploads dropped images through the attachment chain and inserts the attachment URL", async () => {
+  it("resolves stable attachment image refs to temporary URLs for editing", async () => {
+    getAttachmentDownloadUrlMock.mockResolvedValueOnce({
+      downloadUrl: "https://cdn.example/resolved.png",
+      expiresInSeconds: 300,
+    });
+
+    renderEditor({
+      value: makeValue({
+        content: [
+          {
+            attrs: {
+              alt: "resolved.png",
+              attachmentId: "ATTACHMENT_01",
+              src: "attachment://ATTACHMENT_01",
+            },
+            type: "image",
+          },
+        ],
+        type: "doc",
+      }),
+    });
+
+    await waitFor(() =>
+      expect(getAttachmentDownloadUrlMock).toHaveBeenCalledWith({
+        attachmentId: "ATTACHMENT_01",
+      }),
+    );
+    await waitFor(() =>
+      expect(
+        screen
+          .getByRole("img", { name: "resolved.png" })
+          .getAttribute("src"),
+      ).toBe("https://cdn.example/resolved.png"),
+    );
+  });
+
+  it("uploads dropped images, previews the download URL, and persists the stable attachment reference", async () => {
     const onAttachmentUploaded = vi.fn();
     const imageFile = new File(["image-bytes"], "dropped.png", {
       type: "image/png",
@@ -341,7 +434,22 @@ describe("RequirementContentEditorSlot image drop", () => {
     expect(image.getAttribute("src")).toBe("https://cdn.example/dropped.png");
 
     await waitFor(() => expect(onChange).toHaveBeenCalled());
-    expect(JSON.stringify(latestContentJson(onChange))).not.toContain("data:");
+    const persistedJson = latestContentJson(onChange);
+
+    expect(JSON.stringify(persistedJson)).not.toContain("data:");
+    expect(JSON.stringify(persistedJson)).not.toContain(
+      "https://cdn.example/dropped.png",
+    );
+    expect(imageNodes(persistedJson!)).toEqual([
+      expect.objectContaining({
+        attrs: expect.objectContaining({
+          attachmentId: "ATTACHMENT_01",
+          fileKey: "requirements/REQ_01/dropped.png",
+          src: "attachment://ATTACHMENT_01",
+        }),
+        type: "image",
+      }),
+    ]);
   });
 
   it("does not upload dropped images until the editor has a requirement id", async () => {

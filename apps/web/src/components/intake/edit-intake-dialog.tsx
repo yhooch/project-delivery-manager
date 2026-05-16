@@ -40,9 +40,11 @@ import { Input } from "../ui/input";
 import { Label } from "../ui/label";
 import { Textarea } from "../ui/textarea";
 import { SelectMenu } from "../ui/select-menu";
+import { useSession } from "../providers/session-provider";
 type EditIntakeDialogProps = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  organizationId?: string;
   spaceId: string;
   intakeItem: IntakeItem | null;
   onUpdated?: (item: IntakeItem) => void;
@@ -55,6 +57,7 @@ const PRIORITIES: Priority[] = ["LOW", "MEDIUM", "HIGH", "URGENT"];
 export function EditIntakeDialog({
   open,
   onOpenChange,
+  organizationId: explicitOrganizationId,
   spaceId,
   intakeItem,
   onUpdated,
@@ -63,6 +66,11 @@ export function EditIntakeDialog({
   const tSourceType = useTranslations("intakeItems.sourceType");
   const tPriority = useTranslations("intakeItems.priority");
   const tRoot = useTranslations();
+  const { currentOrganization, session } = useSession();
+  const organizationId =
+    explicitOrganizationId ??
+    session?.defaultOrganizationId ??
+    currentOrganization?.id;
 
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
@@ -120,8 +128,8 @@ export function EditIntakeDialog({
     void (async () => {
       try {
         const [versionPage, requirementPage, memberPage] = await Promise.all([
-          listVersions({ spaceId, page: 1, pageSize: 100 }),
-          listRequirements({ spaceId, page: 1, pageSize: 100 }),
+          listVersions({ organizationId, spaceId, page: 1, pageSize: 100 }),
+          listRequirements({ organizationId, spaceId, page: 1, pageSize: 100 }),
           listSpaceMembers(spaceId),
         ]);
         if (cancelled) {
@@ -138,7 +146,7 @@ export function EditIntakeDialog({
     return () => {
       cancelled = true;
     };
-  }, [open, spaceId]);
+  }, [open, organizationId, spaceId]);
 
   function reset() {
     setTitle("");
@@ -203,7 +211,7 @@ export function EditIntakeDialog({
 
     try {
       const updated = await updateIntakeItem(
-        { intakeItemId: intakeItem.id, spaceId },
+        { intakeItemId: intakeItem.id, organizationId, spaceId },
         request,
       );
       onUpdated?.(updated);
@@ -237,7 +245,7 @@ export function EditIntakeDialog({
 
     try {
       const updated = await updateIntakeItem(
-        { intakeItemId: intakeItem.id, spaceId },
+        { intakeItemId: intakeItem.id, organizationId, spaceId },
         {
           ...pendingCascadeConfirm.request,
           cascadeVersionChange: true,
@@ -320,6 +328,7 @@ export function EditIntakeDialog({
                   {t("fields.sourceType")}
                 </Label>
                 <SelectMenu
+                  aria-label={t("fields.sourceType")}
                   id="edit-intake-source"
                   data-testid="edit-intake-source-select"
                   value={sourceType}
@@ -340,6 +349,7 @@ export function EditIntakeDialog({
                   {t("fields.priority")}
                 </Label>
                 <SelectMenu
+                  aria-label={t("fields.priority")}
                   id="edit-intake-priority"
                   data-testid="edit-intake-priority-select"
                   value={priority}
@@ -361,6 +371,7 @@ export function EditIntakeDialog({
                   {t("fields.version")}
                 </Label>
                 <SelectMenu
+                  aria-label={t("fields.version")}
                   id="edit-intake-version"
                   data-testid="edit-intake-version-select"
                   value={versionId}
@@ -380,6 +391,7 @@ export function EditIntakeDialog({
                   {t("fields.requirement")}
                 </Label>
                 <SelectMenu
+                  aria-label={t("fields.requirement")}
                   id="edit-intake-requirement"
                   data-testid="edit-intake-requirement-select"
                   value={requirementId}
@@ -401,6 +413,7 @@ export function EditIntakeDialog({
                   {t("fields.assignee")}
                 </Label>
                 <SelectMenu
+                  aria-label={t("fields.assignee")}
                   id="edit-intake-assignee"
                   data-testid="edit-intake-assignee-select"
                   value={assigneeId}

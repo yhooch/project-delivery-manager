@@ -17,11 +17,13 @@ const {
   listRequirementsMock,
   listSpaceMembersMock,
   listVersionsMock,
+  sessionOrganizationId,
 } = vi.hoisted(() => ({
   createIntakeItemMock: vi.fn(),
   listRequirementsMock: vi.fn(),
   listSpaceMembersMock: vi.fn(),
   listVersionsMock: vi.fn(),
+  sessionOrganizationId: "01ARZ3NDEKTSV4RRFFQ69G5FO1",
 }));
 
 vi.mock("../../lib/intake-service", () => ({
@@ -36,9 +38,16 @@ vi.mock("../../lib/space-service", () => ({
 vi.mock("../../lib/version-service", () => ({
   listVersions: listVersionsMock,
 }));
+vi.mock("../providers/session-provider", () => ({
+  useSession: () => ({
+    currentOrganization: { id: sessionOrganizationId },
+    session: { defaultOrganizationId: sessionOrganizationId },
+  }),
+}));
 
 import { CreateIntakeDialog } from "./create-intake-dialog";
 
+const organizationId = sessionOrganizationId;
 const spaceId = "01ARZ3NDEKTSV4RRFFQ69G5FS1";
 const assigneeId = "01ARZ3NDEKTSV4RRFFQ69G5FA1";
 const versionId = "01ARZ3NDEKTSV4RRFFQ69G5FV1";
@@ -80,6 +89,18 @@ describe("CreateIntakeDialog", () => {
     );
 
     await screen.findByText("Alice");
+    expect(listVersionsMock).toHaveBeenCalledWith({
+      organizationId,
+      page: 1,
+      pageSize: 100,
+      spaceId,
+    });
+    expect(listRequirementsMock).toHaveBeenCalledWith({
+      organizationId,
+      page: 1,
+      pageSize: 100,
+      spaceId,
+    });
 
     const sourceSelect = screen.getByTestId("create-intake-source-select");
     expect(sourceSelect).toHaveTextContent(
@@ -102,7 +123,7 @@ describe("CreateIntakeDialog", () => {
 
     await waitFor(() => expect(createIntakeItemMock).toHaveBeenCalledTimes(1));
     expect(createIntakeItemMock).toHaveBeenCalledWith(
-      { spaceId },
+      { organizationId, spaceId },
       expect.objectContaining({
         assigneeId,
         sourceObject: { meetingId: "m-1" },

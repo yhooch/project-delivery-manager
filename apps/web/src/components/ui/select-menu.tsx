@@ -23,6 +23,9 @@ export type SelectMenuProps = React.SelectHTMLAttributes<HTMLSelectElement> & {
   contentClassName?: string;
   "data-testid"?: string;
   menuAlign?: "start" | "center" | "end";
+  triggerAriaLabel?: string;
+  triggerAriaLabelledBy?: string;
+  triggerId?: string;
   triggerTestId?: string;
 };
 
@@ -34,12 +37,18 @@ export const SelectMenu = React.forwardRef<HTMLSelectElement, SelectMenuProps>(
       containerClassName,
       contentClassName,
       disabled,
+      id,
       menuAlign = "start",
       onChange,
+      triggerAriaLabel,
+      triggerAriaLabelledBy,
+      triggerId,
       triggerTestId,
       value,
       defaultValue,
       "aria-disabled": ariaDisabled,
+      "aria-label": ariaLabel,
+      "aria-labelledby": ariaLabelledBy,
       "data-testid": testId,
       ...props
     },
@@ -53,11 +62,28 @@ export const SelectMenu = React.forwardRef<HTMLSelectElement, SelectMenuProps>(
     const selectedValue = String(isControlled ? value : internalValue);
     const selectedOption =
       options.find((option) => option.value === selectedValue) ?? options[0];
+    const [resolvedAriaLabelledBy, setResolvedAriaLabelledBy] =
+      React.useState("");
 
     const shouldFillContainer =
       !className ||
       className.includes("w-full") ||
       className.includes("flex-1");
+
+    React.useEffect(() => {
+      if (!ariaLabelledBy) {
+        setResolvedAriaLabelledBy("");
+        return;
+      }
+
+      setResolvedAriaLabelledBy(
+        ariaLabelledBy
+          .split(/\s+/u)
+          .map((labelId) => document.getElementById(labelId)?.textContent ?? "")
+          .join(" ")
+          .trim(),
+      );
+    }, [ariaLabelledBy]);
 
     function handleNativeChange(event: React.ChangeEvent<HTMLSelectElement>) {
       if (!isControlled) {
@@ -86,9 +112,12 @@ export const SelectMenu = React.forwardRef<HTMLSelectElement, SelectMenuProps>(
       >
         <select
           ref={ref}
+          id={id}
           value={selectedValue}
           disabled={disabled}
           aria-disabled={disabled ? true : ariaDisabled}
+          aria-label={ariaLabel}
+          aria-labelledby={ariaLabelledBy}
           data-testid={testId}
           tabIndex={-1}
           className="sr-only"
@@ -109,7 +138,10 @@ export const SelectMenu = React.forwardRef<HTMLSelectElement, SelectMenuProps>(
           <DropdownMenuTrigger asChild disabled={disabled}>
             <button
               type="button"
+              id={triggerId ?? (id ? `${id}-trigger` : undefined)}
               aria-disabled={disabled ? true : ariaDisabled}
+              aria-label={triggerAriaLabel}
+              aria-labelledby={triggerAriaLabelledBy}
               data-testid={
                 triggerTestId ?? (testId ? `${testId}-trigger` : undefined)
               }
@@ -122,6 +154,13 @@ export const SelectMenu = React.forwardRef<HTMLSelectElement, SelectMenuProps>(
                 "pr-8",
               )}
             >
+              {triggerAriaLabel ||
+              triggerAriaLabelledBy ||
+              (!ariaLabel && !resolvedAriaLabelledBy) ? null : (
+                <span className="sr-only">
+                  {ariaLabel ?? resolvedAriaLabelledBy}
+                </span>
+              )}
               <span className="min-w-0 flex-1 truncate">
                 {renderDisplayLabel(selectedOption?.label)}
               </span>

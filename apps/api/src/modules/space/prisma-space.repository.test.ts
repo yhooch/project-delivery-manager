@@ -319,18 +319,36 @@ describe("PrismaSpaceRepository", () => {
             ],
           },
           {
-            OR: [
-              {
-                blockedAt: {
-                  not: null,
-                },
+            currentState: {
+              is: {
+                OR: [
+                  {
+                    code: {
+                      contains: "blocked",
+                      mode: "insensitive",
+                    },
+                  },
+                  {
+                    name: {
+                      contains: "blocked",
+                      mode: "insensitive",
+                    },
+                  },
+                  {
+                    code: {
+                      contains: "阻塞",
+                      mode: "insensitive",
+                    },
+                  },
+                  {
+                    name: {
+                      contains: "阻塞",
+                      mode: "insensitive",
+                    },
+                  },
+                ],
               },
-              {
-                blockedReason: {
-                  not: null,
-                },
-              },
-            ],
+            },
             statusCategory: {
               notIn: ["DONE", "TERMINATED"],
             },
@@ -795,10 +813,12 @@ describe("PrismaSpaceRepository", () => {
       countCalls[3]?.[0].where,
     );
 
-    expect(blockedWhere).toContain("blockedAt");
-    expect(blockedWhere).toContain("blockedReason");
+    expect(blockedWhere).toContain("currentState");
+    expect(blockedWhere).toContain("blocked");
+    expect(blockedWhere).toContain("阻塞");
     expect(blockedWhere).toContain("notIn");
-    expect(blockedWhere).not.toContain("currentState");
+    expect(blockedWhere).not.toContain("blockedAt");
+    expect(blockedWhere).not.toContain("blockedReason");
     expect(pendingConfirmWhere).toContain("confirm");
     expect(pendingRegressionWhere).toContain("regressionAt");
     expect(pendingRegressionWhere).toContain("VERIFYING");

@@ -77,13 +77,8 @@ export type TraceVersionCascadeConfirmCopy = {
   suffix: string;
 };
 
-const defaultCascadeConfirmCopy: TraceVersionCascadeConfirmCopy = {
-  body: "版本变更会影响已关联的下游对象，请确认后继续。",
-  suffix: "确认后将同步更新已关联对象的版本，是否继续？",
-};
-
 export function traceVersionCascadeConfirmMessage(
-  copy: TraceVersionCascadeConfirmCopy = defaultCascadeConfirmCopy,
+  copy: TraceVersionCascadeConfirmCopy,
 ): string {
   return `${copy.body}\n\n${copy.suffix}`;
 }

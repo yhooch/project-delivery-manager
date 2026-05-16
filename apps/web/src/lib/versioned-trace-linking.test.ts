@@ -86,7 +86,7 @@ describe("versioned trace linking", () => {
     }
   });
 
-  it("detects trace cascade errors and builds a confirmation message", () => {
+  it("detects trace cascade errors and builds a caller-provided confirmation message", () => {
     const error = new ApiClientError(
       {
         code: "TRACE_VERSION_CHANGE_REQUIRES_CASCADE",
@@ -100,14 +100,11 @@ describe("versioned trace linking", () => {
     expect(isTraceVersionCascadeRequiredError(error)).toBe(true);
     expect(
       traceVersionCascadeConfirmMessage({
-        body: "版本变更会影响已关联的下游对象，请确认后继续。",
-        suffix: "确认后将同步更新已关联对象的版本，是否继续？",
+        body: "Changing the version affects linked delivery items.",
+        suffix: "Continue and update linked item versions?",
       }),
     ).toBe(
-      "版本变更会影响已关联的下游对象，请确认后继续。\n\n确认后将同步更新已关联对象的版本，是否继续？",
-    );
-    expect(traceVersionCascadeConfirmMessage()).not.toContain(
-      "Version change affects linked delivery items",
+      "Changing the version affects linked delivery items.\n\nContinue and update linked item versions?",
     );
   });
 });

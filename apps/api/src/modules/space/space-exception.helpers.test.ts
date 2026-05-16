@@ -16,8 +16,8 @@ describe("space exception helpers", () => {
       blockedAt: new Date("2026-05-11T12:00:00.000Z"),
       blockedReason: "Waiting for upstream API",
       currentState: {
-        code: "pm_confirm",
-        name: "PM confirm",
+        code: "blocked_pm_confirm",
+        name: "Blocked PM confirm",
       },
       dueDate: new Date("2026-05-12T12:00:00.000Z"),
       lastStatusChangedAt: new Date("2026-05-09T12:00:00.000Z"),
@@ -32,19 +32,7 @@ describe("space exception helpers", () => {
     ).toEqual(["overdue", "blocked", "pending_confirm", "stale"]);
   });
 
-  it("uses blocked fields instead of workflow-state tokens for blocked records", () => {
-    expect(
-      isBlockedRecord(
-        workItem({
-          blockedAt: new Date("2026-05-11T12:00:00.000Z"),
-          blockedReason: "Waiting for upstream API",
-          currentState: {
-            code: "in_progress",
-            name: "In progress",
-          },
-        }),
-      ),
-    ).toBe(true);
+  it("uses workflow state instead of blocked fields for blocked records", () => {
     expect(
       isBlockedRecord(
         workItem({
@@ -56,23 +44,41 @@ describe("space exception helpers", () => {
           },
         }),
       ),
-    ).toBe(false);
+    ).toBe(true);
     expect(
       isBlockedRecord(
         workItem({
           blockedAt: new Date("2026-05-11T12:00:00.000Z"),
           blockedReason: "Old reason",
+          currentState: {
+            code: "in_progress",
+            name: "In progress",
+          },
+        }),
+      ),
+    ).toBe(false);
+    expect(
+      isBlockedRecord(
+        workItem({
+          currentState: {
+            code: "blocked",
+            name: "Blocked",
+          },
           statusCategory: "DONE",
         }),
       ),
     ).toBe(false);
   });
 
-  it("emits blocked evidence from blocked fields", () => {
+  it("emits blocked evidence from workflow state and keeps fields as display hints", () => {
     const signals = buildSpaceExceptionSignals(
       workItem({
         blockedAt: new Date("2026-05-11T12:00:00.000Z"),
         blockedReason: "Waiting for upstream API",
+        currentState: {
+          code: "blocked",
+          name: "Blocked",
+        },
       }),
       {
         now,
@@ -83,8 +89,9 @@ describe("space exception helpers", () => {
     expect(signals).toContainEqual(
       expect.objectContaining({
         type: "blocked",
-        evidenceSource: "BLOCKED_FIELD",
+        evidenceSource: "WORKFLOW_STATE",
         blockedReason: "Waiting for upstream API",
+        currentStateId: "state_1",
       }),
     );
   });

@@ -182,40 +182,39 @@ describe("PrismaVersionRepository", () => {
             ],
           },
           {
-            OR: [
-              {
-                currentState: {
-                  is: {
-                    OR: [
-                      {
-                        code: {
-                          contains: "blocked",
-                          mode: "insensitive",
-                        },
-                      },
-                      {
-                        name: {
-                          contains: "blocked",
-                          mode: "insensitive",
-                        },
-                      },
-                      {
-                        code: {
-                          contains: "阻塞",
-                          mode: "insensitive",
-                        },
-                      },
-                      {
-                        name: {
-                          contains: "阻塞",
-                          mode: "insensitive",
-                        },
-                      },
-                    ],
+            currentState: {
+              is: {
+                OR: [
+                  {
+                    code: {
+                      contains: "blocked",
+                      mode: "insensitive",
+                    },
                   },
-                },
+                  {
+                    name: {
+                      contains: "blocked",
+                      mode: "insensitive",
+                    },
+                  },
+                  {
+                    code: {
+                      contains: "阻塞",
+                      mode: "insensitive",
+                    },
+                  },
+                  {
+                    name: {
+                      contains: "阻塞",
+                      mode: "insensitive",
+                    },
+                  },
+                ],
               },
-            ],
+            },
+            statusCategory: {
+              notIn: ["DONE", "TERMINATED"],
+            },
           },
         ],
       },

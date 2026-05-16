@@ -1,3 +1,4 @@
+import { Logger } from "@nestjs/common";
 import {
   AttachmentDownloadUrlExpiresInSeconds,
   AttachmentMaxCountPerTarget,
@@ -58,8 +59,12 @@ describe("AttachmentService", () => {
       },
     );
     expect(attachments.countByTarget).toHaveBeenCalledWith(
-      "WORK_ITEM",
-      workItemId,
+      expect.objectContaining({
+        organizationId: expect.any(String),
+        spaceId: expect.any(String),
+        targetId: workItemId,
+        targetType: "WORK_ITEM",
+      }),
     );
     expect(objectStorage.createPresignedUploadUrl).toHaveBeenCalledWith({
       expiresInSeconds: PresignedUploadUrlExpiresInSeconds,
@@ -199,7 +204,7 @@ describe("AttachmentService", () => {
       },
       message: "Uploaded attachment size does not match registration",
     });
-    expect(objectStorage.deleteObjectIfExists).not.toHaveBeenCalled();
+    expect(objectStorage.deleteObjectIfExists).toHaveBeenCalledWith(fileKey);
     expect(attachments.create).not.toHaveBeenCalled();
   });
 
@@ -235,25 +240,81 @@ describe("AttachmentService", () => {
       },
       message: "Uploaded attachment MIME type does not match registration",
     });
-    expect(objectStorage.deleteObjectIfExists).not.toHaveBeenCalled();
+    expect(objectStorage.deleteObjectIfExists).toHaveBeenCalledWith(fileKey);
     expect(attachments.create).not.toHaveBeenCalled();
+  });
+
+  it("keeps the original mismatch error when best-effort object deletion fails", async () => {
+    const actorUserId = ulid();
+    const workItemId = ulid();
+    const fileKey = validFileKey("WORK_ITEM", workItemId);
+    const logger = vi
+      .spyOn(Logger.prototype, "warn")
+      .mockImplementation(() => undefined);
+    const objectStorage = createObjectStorage({
+      deleteObjectIfExists: vi.fn(async () => {
+        throw new Error("delete failed");
+      }),
+      statObject: vi.fn(async () => ({
+        mimeType: "application/pdf",
+        size: 2048,
+      })),
+    });
+    const { service, attachments } = createServiceFixture({
+      objectStorage,
+      targetId: workItemId,
+    });
+
+    await expect(
+      service.create(actorUserId, {
+        targetType: "WORK_ITEM",
+        targetId: workItemId,
+        fileName: "spec.pdf",
+        fileKey,
+        mimeType: "application/pdf",
+        size: 1024,
+      }),
+    ).rejects.toMatchObject({
+      code: "VALIDATION_ERROR",
+      details: {
+        actualSize: 2048,
+        expectedSize: 1024,
+      },
+      message: "Uploaded attachment size does not match registration",
+    });
+    expect(objectStorage.deleteObjectIfExists).toHaveBeenCalledWith(fileKey);
+    expect(logger).toHaveBeenCalledWith(
+      expect.stringContaining("Failed to delete mismatched attachment object"),
+    );
+    expect(attachments.create).not.toHaveBeenCalled();
+    logger.mockRestore();
   });
 
   it("signs download URLs after resolving current read permission", async () => {
     const actorUserId = ulid();
+    const organizationId = ulid();
+    const spaceId = ulid();
     const workItemId = ulid();
     const attachment = fakeAttachment(
       ulid(),
       validFileKey("WORK_ITEM", workItemId),
       workItemId,
+      {
+        organizationId,
+        spaceId,
+      },
     );
-    const { service, objectStorage, targets } = createServiceFixture({
-      attachment,
-      targetId: workItemId,
-    });
+    const { service, attachments, objectStorage, targets } =
+      createServiceFixture({
+        attachment,
+        organizationId,
+        spaceId,
+        targetId: workItemId,
+      });
 
     const download = await service.getDownloadUrl(actorUserId, attachment.id);
 
+    expect(targets.resolve).toHaveBeenCalledTimes(1);
     expect(targets.resolve).toHaveBeenCalledWith(
       actorUserId,
       "WORK_ITEM",
@@ -263,6 +324,16 @@ describe("AttachmentService", () => {
         notFoundCode: "ATTACHMENT_TARGET_NOT_FOUND",
       },
     );
+    expect(attachments.findTargetContextById).toHaveBeenCalledWith(
+      attachment.id,
+    );
+    expect(attachments.findById).toHaveBeenCalledWith({
+      attachmentId: attachment.id,
+      organizationId,
+      spaceId,
+      targetId: workItemId,
+      targetType: "WORK_ITEM",
+    });
     expect(objectStorage.createPresignedDownloadUrl).toHaveBeenCalledWith({
       expiresInSeconds: AttachmentDownloadUrlExpiresInSeconds,
       key: attachment.fileKey,
@@ -271,6 +342,43 @@ describe("AttachmentService", () => {
       downloadUrl: "https://minio.example.test/download",
       expiresInSeconds: AttachmentDownloadUrlExpiresInSeconds,
     });
+  });
+
+  it("does not sign download URLs when the attachment row does not match the resolved target context", async () => {
+    const actorUserId = ulid();
+    const organizationId = ulid();
+    const spaceId = ulid();
+    const workItemId = ulid();
+    const attachment = fakeAttachment(
+      ulid(),
+      validFileKey("WORK_ITEM", workItemId),
+      workItemId,
+      {
+        organizationId: ulid(),
+        spaceId: ulid(),
+      },
+    );
+    const { service, attachments, objectStorage } = createServiceFixture({
+      attachment,
+      organizationId,
+      spaceId,
+      targetId: workItemId,
+    });
+    vi.mocked(attachments.findById).mockResolvedValueOnce(undefined);
+
+    await expect(
+      service.getDownloadUrl(actorUserId, attachment.id),
+    ).rejects.toMatchObject({
+      code: "ATTACHMENT_TARGET_NOT_FOUND",
+    });
+    expect(attachments.findById).toHaveBeenCalledWith({
+      attachmentId: attachment.id,
+      organizationId,
+      spaceId,
+      targetId: workItemId,
+      targetType: "WORK_ITEM",
+    });
+    expect(objectStorage.createPresignedDownloadUrl).not.toHaveBeenCalled();
   });
 
   it("does not create attachments when WORK_ITEM visibility resolution rejects", async () => {
@@ -397,15 +505,17 @@ describe("AttachmentService", () => {
   });
 });
 
-function createServiceFixture(options: {
-  attachment?: Attachment;
-  countByTarget?: number;
-  createError?: Error;
-  objectStorage?: MockAttachmentObjectStorage;
-  organizationId?: string;
-  spaceId?: string;
-  targetId?: string;
-} = {}) {
+function createServiceFixture(
+  options: {
+    attachment?: Attachment;
+    countByTarget?: number;
+    createError?: Error;
+    objectStorage?: MockAttachmentObjectStorage;
+    organizationId?: string;
+    spaceId?: string;
+    targetId?: string;
+  } = {},
+) {
   const organizationId = options.organizationId ?? ulid();
   const spaceId = options.spaceId ?? ulid();
   const targetId = options.targetId ?? ulid();
@@ -416,14 +526,37 @@ function createServiceFixture(options: {
         throw options.createError;
       }
 
-      return fakeAttachment(input.id, input.fileKey, input.targetId);
+      return fakeAttachment(input.id, input.fileKey, input.targetId, {
+        organizationId: input.organizationId,
+        spaceId: input.spaceId,
+        targetType: input.targetType,
+        uploadedById: input.uploadedById,
+      });
     }),
     findById: vi.fn(async () => options.attachment),
-    listByTarget: vi.fn(),
+    findTargetContextById: vi.fn(async () =>
+      options.attachment
+        ? {
+            organizationId: options.attachment.organizationId,
+            spaceId: options.attachment.spaceId,
+            targetId: options.attachment.targetId,
+            targetType: options.attachment.targetType,
+          }
+        : undefined,
+    ),
+    listByTarget: vi.fn(
+      async (input: Parameters<AttachmentRepository["listByTarget"]>[0]) => ({
+        items: [],
+        page: input.page,
+        pageSize: input.pageSize,
+        total: 0,
+      }),
+    ),
   } as unknown as AttachmentRepository & {
     countByTarget: ReturnType<typeof vi.fn>;
     create: ReturnType<typeof vi.fn>;
     findById: ReturnType<typeof vi.fn>;
+    findTargetContextById: ReturnType<typeof vi.fn>;
     listByTarget: ReturnType<typeof vi.fn>;
   };
   const targets = {
@@ -495,19 +628,21 @@ function fakeAttachment(
   id: string,
   fileKey: string,
   targetId = ulid(),
+  overrides: Partial<Attachment> = {},
 ): Attachment {
   return {
     id,
-    organizationId: ulid(),
-    spaceId: ulid(),
-    targetType: "WORK_ITEM",
+    organizationId: overrides.organizationId ?? ulid(),
+    spaceId: overrides.spaceId ?? ulid(),
+    targetType: overrides.targetType ?? "WORK_ITEM",
     targetId,
     fileName: "spec.pdf",
     fileKey,
     mimeType: "application/pdf",
     size: 1024,
-    uploadedById: ulid(),
+    uploadedById: overrides.uploadedById ?? ulid(),
     createdAt: new Date().toISOString(),
+    ...overrides,
   };
 }
 

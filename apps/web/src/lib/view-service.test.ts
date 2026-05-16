@@ -167,7 +167,7 @@ function createWorkItem(): ViewWorkItemSummary {
     exceptionSignals: [
       {
         blockedReason: "Waiting for approval",
-        evidenceSource: "BLOCKED_FIELD",
+        evidenceSource: "WORKFLOW_STATE",
         reason: "Blocked by dependency",
         type: "blocked",
       },

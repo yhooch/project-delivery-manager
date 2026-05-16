@@ -2071,19 +2071,8 @@ function andWorkItemWhere(
 
 function blockedWorkItemWhere(): Prisma.WorkItemWhereInput {
   return {
+    ...workflowStateTokenWhere(SPACE_EXCEPTION_STATE_RULES.blockedTokens),
     statusCategory: nonTerminalStatusWhere(),
-    OR: [
-      {
-        blockedAt: {
-          not: null,
-        },
-      },
-      {
-        blockedReason: {
-          not: null,
-        },
-      },
-    ],
   };
 }
 

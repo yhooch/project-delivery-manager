@@ -35,9 +35,11 @@ import { Input } from "../ui/input";
 import { Label } from "../ui/label";
 import { Textarea } from "../ui/textarea";
 import { SelectMenu } from "../ui/select-menu";
+import { useSession } from "../providers/session-provider";
 type CreateIntakeDialogProps = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  organizationId?: string;
   spaceId: string;
   onCreated?: () => void;
 };
@@ -50,6 +52,7 @@ type OptionsLoadState = "idle" | "loading" | "ready" | "failed";
 export function CreateIntakeDialog({
   open,
   onOpenChange,
+  organizationId: explicitOrganizationId,
   spaceId,
   onCreated,
 }: CreateIntakeDialogProps) {
@@ -57,6 +60,11 @@ export function CreateIntakeDialog({
   const tSourceType = useTranslations("intakeItems.sourceType");
   const tPriority = useTranslations("intakeItems.priority");
   const tRoot = useTranslations();
+  const { currentOrganization, session } = useSession();
+  const organizationId =
+    explicitOrganizationId ??
+    session?.defaultOrganizationId ??
+    currentOrganization?.id;
 
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
@@ -95,8 +103,8 @@ export function CreateIntakeDialog({
     void (async () => {
       try {
         const [versionPage, requirementPage, memberPage] = await Promise.all([
-          listVersions({ spaceId, page: 1, pageSize: 100 }),
-          listRequirements({ spaceId, page: 1, pageSize: 100 }),
+          listVersions({ organizationId, spaceId, page: 1, pageSize: 100 }),
+          listRequirements({ organizationId, spaceId, page: 1, pageSize: 100 }),
           listSpaceMembers(spaceId),
         ]);
         if (cancelled) {
@@ -116,7 +124,7 @@ export function CreateIntakeDialog({
     return () => {
       cancelled = true;
     };
-  }, [open, optionsReloadKey, spaceId]);
+  }, [open, optionsReloadKey, organizationId, spaceId]);
 
   function reset() {
     setTitle("");
@@ -172,7 +180,7 @@ export function CreateIntakeDialog({
 
     try {
       await createIntakeItem(
-        { spaceId },
+        { organizationId, spaceId },
         toCreateIntakeItemRequest({
           assigneeId: assigneeId || undefined,
           title: trimmed,
@@ -265,6 +273,7 @@ export function CreateIntakeDialog({
                 {t("fields.sourceType")}
               </Label>
               <SelectMenu
+                aria-label={t("fields.sourceType")}
                 id="create-intake-source"
                 data-testid="create-intake-source-select"
                 value={sourceType}
@@ -285,6 +294,7 @@ export function CreateIntakeDialog({
                 {t("fields.priority")}
               </Label>
               <SelectMenu
+                aria-label={t("fields.priority")}
                 id="create-intake-priority"
                 data-testid="create-intake-priority-select"
                 value={priority}
@@ -306,6 +316,7 @@ export function CreateIntakeDialog({
                 {t("fields.version")}
               </Label>
               <SelectMenu
+                aria-label={t("fields.version")}
                 id="create-intake-version"
                 data-testid="create-intake-version-select"
                 value={versionId}
@@ -326,6 +337,7 @@ export function CreateIntakeDialog({
                 {t("fields.requirement")}
               </Label>
               <SelectMenu
+                aria-label={t("fields.requirement")}
                 id="create-intake-requirement"
                 data-testid="create-intake-requirement-select"
                 value={requirementId}
@@ -348,6 +360,7 @@ export function CreateIntakeDialog({
                 {t("fields.assignee")}
               </Label>
               <SelectMenu
+                aria-label={t("fields.assignee")}
                 id="create-intake-assignee"
                 data-testid="create-intake-assignee-select"
                 value={assigneeId}

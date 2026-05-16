@@ -61,3 +61,19 @@ if (typeof Element !== "undefined") {
     Element.prototype.scrollIntoView = () => {};
   }
 }
+
+// ProseMirror/Tiptap may ask Range for geometry while scrolling selections.
+// jsdom does not implement those methods, so provide stable empty rects.
+if (typeof Range !== "undefined") {
+  if (!Range.prototype.getClientRects) {
+    Range.prototype.getClientRects = () =>
+      ({
+        item: () => null,
+        length: 0,
+        [Symbol.iterator]: function* () {},
+      }) as DOMRectList;
+  }
+  if (!Range.prototype.getBoundingClientRect) {
+    Range.prototype.getBoundingClientRect = () => new DOMRect();
+  }
+}

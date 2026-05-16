@@ -40,22 +40,37 @@ import {
   useRef,
   useState,
   type ChangeEvent,
+  type FormEvent,
 } from "react";
 
 import {
   AttachmentUploadError,
+  getAttachmentDownloadUrl,
   uploadRequirementImage,
   type AttachmentUploadErrorCode,
 } from "../../lib/attachment-service";
 import {
+  collectAttachmentImageIds,
+  containsBase64Image,
   createContentEditorValue,
   createEditorValueFromTiptapJson,
   createTiptapDocumentFromText,
+  createTiptapDocumentForEditing,
   sanitizeTiptapDocument,
+  type AttachmentImageDisplayUrls,
   type RequirementContentEditorValue,
 } from "../../lib/requirement-editor-content";
 import { cn } from "../../lib/utils";
 import { Button } from "../ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "../ui/dialog";
+import { Input } from "../ui/input";
 
 export {
   createContentEditorValue,
@@ -79,6 +94,13 @@ type UploadItem = {
   id: string;
   retryable: boolean;
   status: "failed" | "uploading";
+};
+
+type LinkDialogState = {
+  from: number;
+  href: string;
+  open: boolean;
+  to: number;
 };
 
 const RequirementImage = ImageExtension.extend({
@@ -138,9 +160,18 @@ export function RequirementContentEditorSlot({
   const [localAttachmentCount, setLocalAttachmentCount] =
     useState(attachmentCount);
   const [uploads, setUploads] = useState<UploadItem[]>([]);
+  const [imageDisplayUrls, setImageDisplayUrls] =
+    useState<Record<string, string>>({});
+  const imageDisplayUrlsRef = useRef<AttachmentImageDisplayUrls>({});
+  const [linkDialog, setLinkDialog] = useState<LinkDialogState>({
+    from: 0,
+    href: "",
+    open: false,
+    to: 0,
+  });
   const normalizedInitialContent = useMemo(
-    () => sanitizeTiptapDocument(value.contentJson),
-    [value.contentJson],
+    () => createTiptapDocumentForEditing(value.contentJson, imageDisplayUrls),
+    [imageDisplayUrls, value.contentJson],
   );
   const editor = useEditor({
     content: normalizedInitialContent,
@@ -211,10 +242,17 @@ export function RequirementContentEditorSlot({
     ],
     immediatelyRender: false,
     onUpdate: ({ editor: activeEditor }) => {
-      const contentJson = sanitizeTiptapDocument(activeEditor.getJSON());
+      const rawContentJson = activeEditor.getJSON();
+      const contentJson = sanitizeTiptapDocument(rawContentJson);
 
-      if (JSON.stringify(contentJson) !== JSON.stringify(activeEditor.getJSON())) {
-        activeEditor.commands.setContent(contentJson, { emitUpdate: false });
+      if (containsBase64Image(rawContentJson)) {
+        activeEditor.commands.setContent(
+          createTiptapDocumentForEditing(
+            contentJson,
+            imageDisplayUrlsRef.current,
+          ),
+          { emitUpdate: false },
+        );
       }
 
       onChange(createEditorValueFromTiptapJson(contentJson));
@@ -226,20 +264,93 @@ export function RequirementContentEditorSlot({
   }, [attachmentCount]);
 
   useEffect(() => {
+    imageDisplayUrlsRef.current = imageDisplayUrls;
+  }, [imageDisplayUrls]);
+
+  useEffect(() => {
+    const attachmentIds = collectAttachmentImageIds(value.contentJson);
+    const missingAttachmentIds = attachmentIds.filter(
+      (attachmentId) => !imageDisplayUrls[attachmentId],
+    );
+
+    if (missingAttachmentIds.length === 0) {
+      return;
+    }
+
+    let cancelled = false;
+
+    void Promise.all(
+      missingAttachmentIds.map(async (attachmentId) => {
+        try {
+          const result = await getAttachmentDownloadUrl({ attachmentId });
+
+          return [attachmentId, result.downloadUrl] as const;
+        } catch {
+          return null;
+        }
+      }),
+    ).then((results) => {
+      if (cancelled) {
+        return;
+      }
+
+      const resolvedResults = results.filter(
+        (result): result is readonly [string, string] => result !== null,
+      );
+
+      if (resolvedResults.length === 0) {
+        return;
+      }
+
+      setImageDisplayUrls((current) => {
+        const next = { ...current };
+
+        resolvedResults.forEach((result) => {
+          next[result[0]] = result[1];
+        });
+
+        return next;
+      });
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [imageDisplayUrls, value.contentJson]);
+
+  useEffect(() => {
     editor?.setEditable(!disabled);
   }, [disabled, editor]);
+
+  useEffect(() => {
+    if (!editor) {
+      return;
+    }
+
+    const hydrated = createTiptapDocumentForEditing(
+      editor.getJSON(),
+      imageDisplayUrls,
+    );
+
+    if (JSON.stringify(editor.getJSON()) !== JSON.stringify(hydrated)) {
+      editor.commands.setContent(hydrated, { emitUpdate: false });
+    }
+  }, [editor, imageDisplayUrls]);
 
   useEffect(() => {
     if (!editor || editor.isFocused) {
       return;
     }
 
-    const sanitized = sanitizeTiptapDocument(value.contentJson);
+    const sanitized = createTiptapDocumentForEditing(
+      value.contentJson,
+      imageDisplayUrls,
+    );
 
     if (JSON.stringify(editor.getJSON()) !== JSON.stringify(sanitized)) {
       editor.commands.setContent(sanitized, { emitUpdate: false });
     }
-  }, [editor, value.contentJson]);
+  }, [editor, imageDisplayUrls, value.contentJson]);
 
   function applyLink() {
     if (!editor) {
@@ -247,23 +358,41 @@ export function RequirementContentEditorSlot({
     }
 
     const currentHref = editor.getAttributes("link").href as string | undefined;
-    const nextHref = window.prompt(t("linkPrompt"), currentHref ?? "");
+    const { from, to } = editor.state.selection;
 
-    if (nextHref === null) {
+    setLinkDialog({
+      from,
+      href: currentHref ?? "",
+      open: true,
+      to,
+    });
+  }
+
+  function submitLink(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+
+    if (!editor) {
       return;
     }
 
-    if (nextHref.trim().length === 0) {
-      editor.chain().focus().unsetLink().run();
-      return;
-    }
-
-    editor
+    const nextHref = linkDialog.href.trim();
+    const chain = editor
       .chain()
       .focus()
-      .extendMarkRange("link")
-      .setLink({ href: nextHref.trim() })
-      .run();
+      .setTextSelection({ from: linkDialog.from, to: linkDialog.to })
+      .extendMarkRange("link");
+
+    if (nextHref.length === 0) {
+      chain.unsetLink().run();
+    } else {
+      chain.setLink({ href: nextHref }).run();
+    }
+
+    setLinkDialog((current) => ({
+      ...current,
+      href: "",
+      open: false,
+    }));
   }
 
   async function uploadFiles(files: File[]) {
@@ -293,6 +422,10 @@ export function RequirementContentEditorSlot({
         });
         nextAttachmentCount += 1;
         setLocalAttachmentCount(nextAttachmentCount);
+        setImageDisplayUrls((current) => ({
+          ...current,
+          [result.attachment.id]: result.imageUrl,
+        }));
         insertUploadedImage(result.attachment, result.imageUrl);
         onAttachmentUploaded?.(toAttachmentRef(result.attachment));
         setUploads((current) =>
@@ -353,6 +486,10 @@ export function RequirementContentEditorSlot({
         requirementId,
       });
       setLocalAttachmentCount((current) => current + 1);
+      setImageDisplayUrls((current) => ({
+        ...current,
+        [result.attachment.id]: result.imageUrl,
+      }));
       insertUploadedImage(result.attachment, result.imageUrl);
       onAttachmentUploaded?.(toAttachmentRef(result.attachment));
       setUploads((current) =>
@@ -556,6 +693,41 @@ export function RequirementContentEditorSlot({
           editor={editor}
         />
       </div>
+      <Dialog
+        open={linkDialog.open}
+        onOpenChange={(open) =>
+          setLinkDialog((current) => ({
+            ...current,
+            open,
+          }))
+        }
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{t("linkPrompt")}</DialogTitle>
+            <DialogDescription className="sr-only">
+              {t("linkPrompt")}
+            </DialogDescription>
+          </DialogHeader>
+          <form className="flex flex-col gap-3" onSubmit={submitLink}>
+            <Input
+              aria-label={t("linkPrompt")}
+              autoFocus
+              onChange={(event) =>
+                setLinkDialog((current) => ({
+                  ...current,
+                  href: event.target.value,
+                }))
+              }
+              placeholder="https://example.com"
+              value={linkDialog.href}
+            />
+            <DialogFooter>
+              <Button type="submit">{t("toolbar.link")}</Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
       {!canUploadImages && !disabled ? (
         <p className="text-xs text-muted-foreground">{t("draftUploadOnly")}</p>
       ) : null}

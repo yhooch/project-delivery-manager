@@ -58,7 +58,10 @@ import {
   ATTACHMENT_REPOSITORY,
   type AttachmentRepository,
 } from "../attachment/attachment.repository";
-import type { CreateAttachmentInput } from "../attachment/attachment.types";
+import type {
+  AttachmentTargetContext,
+  CreateAttachmentInput,
+} from "../attachment/attachment.types";
 import {
   ATTACHMENT_OBJECT_STORAGE,
   type AttachmentObjectStorage,
@@ -593,6 +596,94 @@ describe("requirement and attachment API", () => {
       });
   });
 
+  it("hides dirty cross-tenant attachments from list, download, and count limit checks", async () => {
+    const { agent, space } = await setupRequirementSpace(
+      "m1g_attach_scope",
+      "REQUIREMENT",
+    );
+    const draft = (await createRequirement(agent, space.id, {}).expect(200))
+      .body.data as Requirement;
+    const presign = (
+      await presignAttachment(agent, {
+        targetType: "REQUIREMENT",
+        targetId: draft.id,
+        fileName: "visible.png",
+        mimeType: "image/png",
+        size: 1024,
+      }).expect(200)
+    ).body.data as { fileKey: string };
+    const visible = (
+      await createAttachment(agent, {
+        targetType: "REQUIREMENT",
+        targetId: draft.id,
+        fileName: "visible.png",
+        fileKey: presign.fileKey,
+        mimeType: "image/png",
+        size: 1024,
+      }).expect(200)
+    ).body.data as Attachment;
+    const dirtyOrganizationAttachment = attachments.seedAttachment({
+      organizationId: ulid(),
+      spaceId: draft.spaceId,
+      targetType: "REQUIREMENT",
+      targetId: draft.id,
+    });
+    const dirtySpaceAttachment = attachments.seedAttachment({
+      organizationId: draft.organizationId,
+      spaceId: ulid(),
+      targetType: "REQUIREMENT",
+      targetId: draft.id,
+    });
+
+    await listAttachments(agent, {
+      page: 1,
+      pageSize: 20,
+      targetType: "REQUIREMENT",
+      targetId: draft.id,
+    })
+      .expect(200)
+      .expect(({ body }) => {
+        expect(body.data.total).toBe(1);
+        expect(body.data.items.map((item: Attachment) => item.id)).toEqual([
+          visible.id,
+        ]);
+      });
+
+    await agent
+      .get(`/api/v1/attachments/${dirtyOrganizationAttachment.id}/download-url`)
+      .expect(404)
+      .expect(({ body }) => {
+        expect(body.code).toBe("ATTACHMENT_TARGET_NOT_FOUND");
+      });
+    await agent
+      .get(`/api/v1/attachments/${dirtySpaceAttachment.id}/download-url`)
+      .expect(404)
+      .expect(({ body }) => {
+        expect(body.code).toBe("ATTACHMENT_TARGET_NOT_FOUND");
+      });
+    await agent
+      .get(`/api/v1/attachments/${visible.id}/download-url`)
+      .expect(200);
+
+    const countDraft = (
+      await createRequirement(agent, space.id, {}).expect(200)
+    ).body.data as Requirement;
+    attachments.seedTarget(
+      ulid(),
+      ulid(),
+      "REQUIREMENT",
+      countDraft.id,
+      AttachmentMaxCountPerTarget,
+    );
+    await presignAttachment(agent, {
+      targetType: "REQUIREMENT",
+      targetId: countDraft.id,
+      fileName: "not-blocked-by-dirty.png",
+      mimeType: "image/png",
+      size: 1024,
+    }).expect(200);
+  });
+
   it("validates attachment target, permission, size, MIME, draft status, and count limit", async () => {
     const { agent, outsiderAgent, space } = await setupRequirementSpace(
       "m1g_attachment_errors",
@@ -893,6 +984,18 @@ describe("requirement and attachment API", () => {
     },
   ) {
     return agent.post("/api/v1/attachments").set("Origin", ORIGIN).send(body);
+  }
+
+  function listAttachments(
+    agent: request.Agent,
+    query: {
+      page?: number;
+      pageSize?: number;
+      targetId: string;
+      targetType: AttachmentTargetType;
+    },
+  ) {
+    return agent.get("/api/v1/attachments").query(query);
   }
 
   function getUser(username: string): IdentityUser {
@@ -1707,14 +1810,9 @@ function createAttachmentObjectStorage(): AttachmentObjectStorage {
 class InMemoryAttachmentRepository implements AttachmentRepository {
   private readonly records = new Map<string, Attachment>();
 
-  async countByTarget(
-    targetType: AttachmentTargetType,
-    targetId: string,
-  ): Promise<number> {
-    return [...this.records.values()].filter(
-      (attachment) =>
-        attachment.targetType === targetType &&
-        attachment.targetId === targetId,
+  async countByTarget(target: AttachmentTargetContext): Promise<number> {
+    return [...this.records.values()].filter((attachment) =>
+      isSameAttachmentTarget(attachment, target),
     ).length;
   }
 
@@ -1737,20 +1835,41 @@ class InMemoryAttachmentRepository implements AttachmentRepository {
     return attachment;
   }
 
-  async findById(attachmentId: string): Promise<Attachment | undefined> {
-    return this.records.get(attachmentId);
+  async findById(
+    input: AttachmentTargetContext & { attachmentId: string },
+  ): Promise<Attachment | undefined> {
+    const attachment = this.records.get(input.attachmentId);
+
+    return attachment && isSameAttachmentTarget(attachment, input)
+      ? attachment
+      : undefined;
+  }
+
+  async findTargetContextById(
+    attachmentId: string,
+  ): Promise<AttachmentTargetContext | undefined> {
+    const attachment = this.records.get(attachmentId);
+
+    return attachment
+      ? {
+          organizationId: attachment.organizationId,
+          spaceId: attachment.spaceId,
+          targetId: attachment.targetId,
+          targetType: attachment.targetType,
+        }
+      : undefined;
   }
 
   async listByTarget(input: {
+    organizationId: string;
     page: number;
     pageSize: number;
+    spaceId: string;
     targetId: string;
     targetType: AttachmentTargetType;
   }) {
-    const matching = [...this.records.values()].filter(
-      (attachment) =>
-        attachment.targetType === input.targetType &&
-        attachment.targetId === input.targetId,
+    const matching = [...this.records.values()].filter((attachment) =>
+      isSameAttachmentTarget(attachment, input),
     );
 
     return {
@@ -1772,22 +1891,55 @@ class InMemoryAttachmentRepository implements AttachmentRepository {
     count: number,
   ): void {
     for (let index = 0; index < count; index += 1) {
-      const id = ulid();
-      this.records.set(id, {
-        id,
+      this.seedAttachment({
         organizationId,
         spaceId,
         targetType,
         targetId,
         fileName: `seed-${index}.png`,
-        fileKey: `attachments/${targetType.toLowerCase()}/${targetId}/${id}.png`,
-        mimeType: "image/png",
-        size: 100,
-        uploadedById: "seed-user",
-        createdAt: new Date().toISOString(),
       });
     }
   }
+
+  seedAttachment(input: {
+    fileName?: string;
+    organizationId: string;
+    spaceId: string;
+    targetId: string;
+    targetType: AttachmentTargetType;
+  }): Attachment {
+    const id = ulid();
+    const attachment: Attachment = {
+      id,
+      organizationId: input.organizationId,
+      spaceId: input.spaceId,
+      targetType: input.targetType,
+      targetId: input.targetId,
+      fileName: input.fileName ?? "seed.png",
+      fileKey: `attachments/${input.targetType.toLowerCase()}/${
+        input.targetId
+      }/${id}.png`,
+      mimeType: "image/png",
+      size: 100,
+      uploadedById: "seed-user",
+      createdAt: new Date().toISOString(),
+    };
+    this.records.set(attachment.id, attachment);
+
+    return attachment;
+  }
+}
+
+function isSameAttachmentTarget(
+  attachment: Attachment,
+  target: AttachmentTargetContext,
+): boolean {
+  return (
+    attachment.organizationId === target.organizationId &&
+    attachment.spaceId === target.spaceId &&
+    attachment.targetType === target.targetType &&
+    attachment.targetId === target.targetId
+  );
 }
 
 function emptyRelatedWorkItems(): Requirement["relatedWorkItems"] {

@@ -32,6 +32,7 @@ import {
   UpdateWorkItemRequestSchema,
   UpdateRequirementRequestSchema,
   VersionSchema,
+  ViewExceptionSignalSchema,
   ViewExceptionTypeSchema,
   ViewWorkItemSummarySchema,
   WorkbenchActionTodoSchema,
@@ -602,6 +603,26 @@ describe("shared contracts", () => {
 
     expect(workItem.currentStatus.exceptionHints.pendingConfirm).toBe(true);
     expect(workItem.exceptionSignals[0]?.type).toBe("pending_confirm");
+    expect(
+      ViewExceptionSignalSchema.parse({
+        type: "blocked",
+        evidenceSource: "WORKFLOW_STATE",
+        reason: "Workflow state marks the work item blocked.",
+        blockedAt: "2026-05-13T00:00:00.000Z",
+        blockedReason: "Waiting for dependency",
+        currentStateId: "01KRZ3NDEKTSV4RRFFQ69G5FAK",
+      }),
+    ).toMatchObject({
+      evidenceSource: "WORKFLOW_STATE",
+      blockedReason: "Waiting for dependency",
+    });
+    expect(() =>
+      ViewExceptionSignalSchema.parse({
+        type: "blocked",
+        evidenceSource: "LEGACY_FIELD",
+        reason: "Legacy fields are not a source of truth.",
+      }),
+    ).toThrow();
 
     const todo = WorkbenchActionTodoSchema.parse({
       id: "01GRZ3NDEKTSV4RRFFQ69G5FAG:01QRZ3NDEKTSV4RRFFQ69G5FAQ",

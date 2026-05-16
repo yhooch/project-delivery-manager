@@ -9,8 +9,9 @@ import { ulid } from "ulid";
 
 import { Prisma } from "../../generated/prisma/client";
 import { PrismaService } from "../../prisma/prisma.service";
-import { toVersion, toVersionBoardWorkItemSummary } from "./version.mappers";
+import { SPACE_EXCEPTION_STATE_RULES } from "../space/space-exception.helpers";
 import { testerVisibleWorkItemWhere } from "../workitem/workitem-visibility";
+import { toVersion, toVersionBoardWorkItemSummary } from "./version.mappers";
 import type { VersionRepository } from "./version.repository";
 import type {
   CreateVersionInput,
@@ -49,7 +50,7 @@ const BOARD_STATUS_TITLES = {
   VERIFYING: "Verifying",
   WAITING: "Waiting",
 } as const;
-const BLOCKED_STATE_TOKENS = ["blocked", "阻塞"] as const;
+const TERMINAL_STATUS_CATEGORIES: StatusCategory[] = ["DONE", "TERMINATED"];
 
 @Injectable()
 export class PrismaVersionRepository implements VersionRepository {
@@ -431,12 +432,7 @@ export class PrismaVersionRepository implements VersionRepository {
             _all: true,
           },
           where: {
-            AND: [
-              workItemWhere,
-              {
-                OR: blockedWorkItemWhere(),
-              },
-            ],
+            AND: [workItemWhere, blockedWorkItemWhere()],
           },
         }),
       ]);
@@ -717,29 +713,30 @@ function versionStatsRequirementWhere(
   };
 }
 
-function blockedWorkItemWhere(): Prisma.WorkItemWhereInput[] {
-  return [
-    {
-      currentState: {
-        is: {
-          OR: BLOCKED_STATE_TOKENS.flatMap((token) => [
-            {
-              code: {
-                contains: token,
-                mode: "insensitive" as const,
-              },
+function blockedWorkItemWhere(): Prisma.WorkItemWhereInput {
+  return {
+    currentState: {
+      is: {
+        OR: SPACE_EXCEPTION_STATE_RULES.blockedTokens.flatMap((token) => [
+          {
+            code: {
+              contains: token,
+              mode: "insensitive" as const,
             },
-            {
-              name: {
-                contains: token,
-                mode: "insensitive" as const,
-              },
+          },
+          {
+            name: {
+              contains: token,
+              mode: "insensitive" as const,
             },
-          ]),
-        },
+          },
+        ]),
       },
     },
-  ];
+    statusCategory: {
+      notIn: TERMINAL_STATUS_CATEGORIES,
+    },
+  };
 }
 
 function buildBoardOrderBy(

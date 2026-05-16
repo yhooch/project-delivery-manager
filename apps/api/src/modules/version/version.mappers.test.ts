@@ -104,8 +104,8 @@ describe("version board work item mapper", () => {
     );
   });
 
-  it("uses blocked fields for blocked hints and ignores blocked state tokens", () => {
-    const blockedFields = toVersionBoardWorkItemSummary(
+  it("uses workflow state for blocked hints and treats blocked fields as display hints", () => {
+    const residualBlockedFields = toVersionBoardWorkItemSummary(
       workItem({
         blockedAt: new Date("2026-05-12T12:00:00.000Z"),
         blockedReason: "Waiting for dependency",
@@ -120,7 +120,7 @@ describe("version board work item mapper", () => {
         staleThresholdDays: 3,
       },
     );
-    const blockedStateWithoutFields = toVersionBoardWorkItemSummary(
+    const blockedState = toVersionBoardWorkItemSummary(
       workItem({
         currentState: {
           category: "WAITING",
@@ -135,23 +135,48 @@ describe("version board work item mapper", () => {
       },
     );
 
-    expect(blockedFields.currentStatus.exceptionHints.blocked).toBe(true);
-    expect(
-      blockedFields.exceptionSignals.find(
-        (signal) => signal.type === "blocked",
-      ),
-    ).toMatchObject({
-      evidenceSource: "BLOCKED_FIELD",
-      blockedReason: "Waiting for dependency",
-    });
-    expect(blockedStateWithoutFields.currentStatus.exceptionHints.blocked).toBe(
+    expect(residualBlockedFields.currentStatus.exceptionHints.blocked).toBe(
       false,
     );
     expect(
-      blockedStateWithoutFields.exceptionSignals.some(
+      residualBlockedFields.exceptionSignals.some(
         (signal) => signal.type === "blocked",
       ),
     ).toBe(false);
+    expect(blockedState.currentStatus.exceptionHints.blocked).toBe(true);
+    expect(
+      blockedState.exceptionSignals.find((signal) => signal.type === "blocked"),
+    ).toMatchObject({
+      evidenceSource: "WORKFLOW_STATE",
+      currentStateId: "state_1",
+    });
+  });
+
+  it("carries blocked field display hints only when workflow state is blocked", () => {
+    const blocked = toVersionBoardWorkItemSummary(
+      workItem({
+        blockedAt: new Date("2026-05-12T12:00:00.000Z"),
+        blockedReason: "Waiting for dependency",
+        currentState: {
+          category: "WAITING",
+          code: "blocked",
+          name: "Blocked",
+        },
+        statusCategory: "WAITING",
+      }),
+      {
+        now,
+        staleThresholdDays: 3,
+      },
+    );
+
+    expect(
+      blocked.exceptionSignals.find((signal) => signal.type === "blocked"),
+    ).toMatchObject({
+      blockedAt: "2026-05-12T12:00:00.000Z",
+      blockedReason: "Waiting for dependency",
+      evidenceSource: "WORKFLOW_STATE",
+    });
   });
 });
 

@@ -2,7 +2,9 @@ import { describe, expect, it } from "vitest";
 
 import {
   containsBase64Image,
+  collectAttachmentImageIds,
   createContentEditorValue,
+  createTiptapDocumentForEditing,
   createEditorValueFromTiptapJson,
   sanitizeTiptapDocument,
 } from "./requirement-editor-content";
@@ -27,6 +29,7 @@ describe("requirement editor content", () => {
         {
           attrs: {
             attachmentId: "01ARZ3NDEKTSV4RRFFQ69G5FB0",
+            downloadUrl: minioDownloadUrl,
             src: minioDownloadUrl,
           },
           type: "image",
@@ -44,6 +47,77 @@ describe("requirement editor content", () => {
           content: [{ text: "Scope", type: "text" }],
           type: "paragraph",
         },
+        {
+          attrs: {
+            attachmentId: "01ARZ3NDEKTSV4RRFFQ69G5FB0",
+            src: "attachment://01ARZ3NDEKTSV4RRFFQ69G5FB0",
+          },
+          type: "image",
+        },
+      ],
+      type: "doc",
+    });
+  });
+
+  it("normalizes uploaded image nodes to stable attachment references", () => {
+    const sanitized = sanitizeTiptapDocument({
+      content: [
+        {
+          attrs: {
+            alt: "wireframe.png",
+            attachmentId: "01ARZ3NDEKTSV4RRFFQ69G5FB0",
+            fileKey: "attachments/requirement/REQ/wireframe.png",
+            imageUrl: minioDownloadUrl,
+            src: minioDownloadUrl,
+            title: "wireframe.png",
+          },
+          type: "image",
+        },
+      ],
+      type: "doc",
+    });
+
+    expect(sanitized).toEqual({
+      content: [
+        {
+          attrs: {
+            alt: "wireframe.png",
+            attachmentId: "01ARZ3NDEKTSV4RRFFQ69G5FB0",
+            fileKey: "attachments/requirement/REQ/wireframe.png",
+            src: "attachment://01ARZ3NDEKTSV4RRFFQ69G5FB0",
+            title: "wireframe.png",
+          },
+          type: "image",
+        },
+      ],
+      type: "doc",
+    });
+    expect(JSON.stringify(sanitized)).not.toContain("X-Amz-Signature");
+  });
+
+  it("hydrates stable attachment image sources for editing only", () => {
+    const contentJson = {
+      content: [
+        {
+          attrs: {
+            attachmentId: "01ARZ3NDEKTSV4RRFFQ69G5FB0",
+            src: "attachment://01ARZ3NDEKTSV4RRFFQ69G5FB0",
+          },
+          type: "image",
+        },
+      ],
+      type: "doc",
+    };
+
+    expect(collectAttachmentImageIds(contentJson)).toEqual([
+      "01ARZ3NDEKTSV4RRFFQ69G5FB0",
+    ]);
+    expect(
+      createTiptapDocumentForEditing(contentJson, {
+        "01ARZ3NDEKTSV4RRFFQ69G5FB0": minioDownloadUrl,
+      }),
+    ).toEqual({
+      content: [
         {
           attrs: {
             attachmentId: "01ARZ3NDEKTSV4RRFFQ69G5FB0",
