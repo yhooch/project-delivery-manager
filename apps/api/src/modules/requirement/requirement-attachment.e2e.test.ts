@@ -17,6 +17,7 @@ import {
   type SpaceMember,
   type SpaceMemberWithUser,
   type SpaceRole,
+  type StatusCategory,
   type Version,
 } from "@project-delivery/shared";
 import request from "supertest";
@@ -251,9 +252,8 @@ describe("requirement and attachment API", () => {
       "m1g_content_validation",
       "REQUIREMENT",
     );
-    const draft = (
-      await createRequirement(agent, space.id, {}).expect(200)
-    ).body.data as Requirement;
+    const draft = (await createRequirement(agent, space.id, {}).expect(200))
+      .body.data as Requirement;
 
     await patchRequirement(agent, draft.id, {
       title: "非法结构",
@@ -291,9 +291,8 @@ describe("requirement and attachment API", () => {
       "m1g_discard_draft",
       "REQUIREMENT",
     );
-    const draft = (
-      await createRequirement(agent, space.id, {}).expect(200)
-    ).body.data as Requirement;
+    const draft = (await createRequirement(agent, space.id, {}).expect(200))
+      .body.data as Requirement;
 
     await deleteRequirement(assigneeAgent, draft.id)
       .expect(404)
@@ -301,9 +300,11 @@ describe("requirement and attachment API", () => {
         expect(body.code).toBe("REQUIREMENT_NOT_FOUND");
       });
 
-    await deleteRequirement(agent, draft.id).expect(200).expect(({ body }) => {
-      expect(body.data).toEqual({});
-    });
+    await deleteRequirement(agent, draft.id)
+      .expect(200)
+      .expect(({ body }) => {
+        expect(body.data).toEqual({});
+      });
     await agent.get(`/api/v1/requirements/${draft.id}`).expect(404);
 
     const titledDraft = (
@@ -413,9 +414,8 @@ describe("requirement and attachment API", () => {
       title: "版本二需求",
       priority: "LOW",
     });
-    const draft = (
-      await createRequirement(agent, space.id, {}).expect(200)
-    ).body.data as Requirement;
+    const draft = (await createRequirement(agent, space.id, {}).expect(200))
+      .body.data as Requirement;
 
     await listRequirements(agent, space.id, { versionId: version.id })
       .expect(200)
@@ -477,13 +477,10 @@ describe("requirement and attachment API", () => {
   });
 
   it("does not leak titled DRAFT requirements to non-participant space members", async () => {
-    const { agent, assigneeAgent, developerAgent, space } = await setupRequirementSpace(
-      "m1g_draft_visibility",
-      "PM",
-    );
-    const draft = (
-      await createRequirement(agent, space.id, {}).expect(200)
-    ).body.data as Requirement;
+    const { agent, assigneeAgent, developerAgent, space } =
+      await setupRequirementSpace("m1g_draft_visibility", "PM");
+    const draft = (await createRequirement(agent, space.id, {}).expect(200))
+      .body.data as Requirement;
     requirements.setDraftTitle(draft.id, "已命名草稿");
     const otherDraft = (
       await createRequirement(assigneeAgent, space.id, {}).expect(200)
@@ -506,9 +503,9 @@ describe("requirement and attachment API", () => {
     await listRequirements(developerAgent, space.id, { includeDrafts: true })
       .expect(200)
       .expect(({ body }) => {
-        expect(body.data.items.some((item: Requirement) => item.id === draft.id)).toBe(
-          false,
-        );
+        expect(
+          body.data.items.some((item: Requirement) => item.id === draft.id),
+        ).toBe(false);
       });
     await developerAgent.get(`/api/v1/requirements/${draft.id}`).expect(404);
   });
@@ -516,9 +513,8 @@ describe("requirement and attachment API", () => {
   it("presigns, registers, and downloads requirement attachments", async () => {
     const { agent, viewerAgent, requirementUser, space } =
       await setupRequirementSpace("m1g_attachment_success", "REQUIREMENT");
-    const draft = (
-      await createRequirement(agent, space.id, {}).expect(200)
-    ).body.data as Requirement;
+    const draft = (await createRequirement(agent, space.id, {}).expect(200))
+      .body.data as Requirement;
 
     const presign = (
       await presignAttachment(agent, {
@@ -528,7 +524,11 @@ describe("requirement and attachment API", () => {
         mimeType: "image/png",
         size: 1024,
       }).expect(200)
-    ).body.data as { expiresInSeconds: number; fileKey: string; uploadUrl: string };
+    ).body.data as {
+      expiresInSeconds: number;
+      fileKey: string;
+      uploadUrl: string;
+    };
 
     expect(presign).toMatchObject({
       expiresInSeconds: 600,
@@ -592,9 +592,8 @@ describe("requirement and attachment API", () => {
       "m1g_attachment_errors",
       "REQUIREMENT",
     );
-    const draft = (
-      await createRequirement(agent, space.id, {}).expect(200)
-    ).body.data as Requirement;
+    const draft = (await createRequirement(agent, space.id, {}).expect(200))
+      .body.data as Requirement;
 
     await presignAttachment(agent, {
       targetType: "REQUIREMENT",
@@ -707,12 +706,12 @@ describe("requirement and attachment API", () => {
       });
   });
 
-  async function setupRequirementSpace(
-    prefix: string,
-    writerRole: SpaceRole,
-  ) {
+  async function setupRequirementSpace(prefix: string, writerRole: SpaceRole) {
     const agent = await registeredAgent(`${prefix}_writer`, `${prefix}.1`);
-    const viewerAgent = await registeredAgent(`${prefix}_viewer`, `${prefix}.2`);
+    const viewerAgent = await registeredAgent(
+      `${prefix}_viewer`,
+      `${prefix}.2`,
+    );
     const outsiderAgent = await registeredAgent(
       `${prefix}_outsider`,
       `${prefix}.3`,
@@ -1003,7 +1002,9 @@ class InMemorySessionRepository {
         !record.revokedAt &&
         record.expiresAt > now,
     );
-    const user = session ? await this.users.findById(session.userId) : undefined;
+    const user = session
+      ? await this.users.findById(session.userId)
+      : undefined;
 
     return session && user && user.status === "ACTIVE"
       ? {
@@ -1115,7 +1116,8 @@ class InMemoryOrganizationRepository {
     userId: string,
   ): Promise<OrganizationMemberWithUser | undefined> {
     const member = this.members.find(
-      (item) => item.organizationId === organizationId && item.userId === userId,
+      (item) =>
+        item.organizationId === organizationId && item.userId === userId,
     );
 
     return member ? this.toMemberWithUser(member) : undefined;
@@ -1265,6 +1267,24 @@ class InMemorySpaceRepository {
   }
 }
 
+function makeBoardColumn(
+  statusCategory: StatusCategory,
+  title: string,
+  input: VersionBoardInput,
+) {
+  return {
+    statusCategory,
+    title,
+    total: 0,
+    items: {
+      items: [],
+      page: input.page,
+      pageSize: input.pageSize,
+      total: 0,
+    },
+  };
+}
+
 class InMemoryVersionRepository implements VersionRepository {
   private readonly versions = new Map<string, Version>();
 
@@ -1356,19 +1376,13 @@ class InMemoryVersionRepository implements VersionRepository {
   async listBoard(input: VersionBoardInput): Promise<VersionBoardResult> {
     return {
       columns: [
-        { statusCategory: "NOT_STARTED", title: "Not started", total: 0 },
-        { statusCategory: "IN_PROGRESS", title: "In progress", total: 0 },
-        { statusCategory: "WAITING", title: "Waiting", total: 0 },
-        { statusCategory: "VERIFYING", title: "Verifying", total: 0 },
-        { statusCategory: "DONE", title: "Done", total: 0 },
-        { statusCategory: "TERMINATED", title: "Terminated", total: 0 },
+        makeBoardColumn("NOT_STARTED", "Not started", input),
+        makeBoardColumn("IN_PROGRESS", "In progress", input),
+        makeBoardColumn("WAITING", "Waiting", input),
+        makeBoardColumn("VERIFYING", "Verifying", input),
+        makeBoardColumn("DONE", "Done", input),
+        makeBoardColumn("TERMINATED", "Terminated", input),
       ],
-      items: {
-        items: [],
-        page: input.page,
-        pageSize: input.pageSize,
-        total: 0,
-      },
     };
   }
 
@@ -1502,7 +1516,9 @@ class InMemoryRequirementRepository implements RequirementRepository {
     return this.toPublic(requirement);
   }
 
-  async archive(input: ArchiveRequirementInput): Promise<Requirement | undefined> {
+  async archive(
+    input: ArchiveRequirementInput,
+  ): Promise<Requirement | undefined> {
     const requirement = this.records.get(input.requirementId);
 
     if (!requirement) {
@@ -1641,7 +1657,9 @@ class InMemoryRequirementRepository implements RequirementRepository {
 
     return {
       ...publicRequirement,
-      relatedWorkItems: cloneRelatedWorkItems(publicRequirement.relatedWorkItems),
+      relatedWorkItems: cloneRelatedWorkItems(
+        publicRequirement.relatedWorkItems,
+      ),
     };
   }
 }
@@ -1655,7 +1673,8 @@ class InMemoryAttachmentRepository implements AttachmentRepository {
   ): Promise<number> {
     return [...this.records.values()].filter(
       (attachment) =>
-        attachment.targetType === targetType && attachment.targetId === targetId,
+        attachment.targetType === targetType &&
+        attachment.targetId === targetId,
     ).length;
   }
 

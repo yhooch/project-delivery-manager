@@ -1,5 +1,10 @@
 import { Inject, Injectable } from "@nestjs/common";
-import type { ObjectParticipantTargetType } from "@project-delivery/shared";
+import type {
+  ObjectParticipantTargetType,
+  PageResult,
+  StatusCategory,
+  ViewWorkItemSummary,
+} from "@project-delivery/shared";
 import { ulid } from "ulid";
 
 import { Prisma } from "../../generated/prisma/client";
@@ -164,70 +169,116 @@ export class PrismaVersionRepository implements VersionRepository {
 
     if (!where) {
       return {
-        columns: toBoardColumns([]),
-        items: {
-          items: [],
-          page: input.page,
-          pageSize: input.pageSize,
-          total: 0,
-        },
+        columns: toBoardColumns(new Map(), new Map(), input),
       };
     }
 
-    const [items, total, counts] = await this.prisma.client.$transaction([
-      this.prisma.client.workItem.findMany({
-        include: {
-          bugDetail: {
-            select: {
-              deletedAt: true,
-              regressionAt: true,
-            },
-          },
-          currentState: {
-            select: {
-              category: true,
-              code: true,
-              name: true,
-            },
-          },
-        },
-        orderBy: buildBoardOrderBy(input),
-        skip: (input.page - 1) * input.pageSize,
-        take: input.pageSize,
-        where,
-      }),
-      this.prisma.client.workItem.count({
-        where,
-      }),
-      this.prisma.client.workItem.groupBy({
-        by: ["statusCategory"],
-        _count: {
-          _all: true,
-        },
-        where,
-      }),
-    ]);
+    const counts = await this.prisma.client.workItem.groupBy({
+      by: ["statusCategory"],
+      _count: {
+        _all: true,
+      },
+      where,
+    });
+    const countByStatus = new Map<StatusCategory, number>(
+      counts.map((count) => [count.statusCategory, count._count._all]),
+    );
     const now = new Date();
+    const requestedStatuses = input.columnStatusCategory
+      ? [input.columnStatusCategory]
+      : BOARD_STATUS_CATEGORIES;
+    const itemPages = await this.listBoardColumnPages({
+      countByStatus,
+      input,
+      now,
+      statuses: requestedStatuses,
+      where,
+    });
 
     return {
-      columns: toBoardColumns(
-        counts.map((count) => ({
-          count: count._count._all,
-          statusCategory: count.statusCategory,
-        })),
-      ),
-      items: {
-        items: items.map((item) =>
-          toVersionBoardWorkItemSummary(item as VersionBoardWorkItemRecord, {
-            now,
-            staleThresholdDays: input.staleThresholdDays,
-          }),
-        ),
-        page: input.page,
-        pageSize: input.pageSize,
-        total,
-      },
+      columns: toBoardColumns(countByStatus, itemPages, input),
     };
+  }
+
+  private async listBoardColumnPages(input: {
+    countByStatus: Map<StatusCategory, number>;
+    input: VersionBoardInput;
+    now: Date;
+    statuses: readonly StatusCategory[];
+    where: Prisma.WorkItemWhereInput;
+  }): Promise<Map<StatusCategory, PageResult<ViewWorkItemSummary>>> {
+    const pages = new Map<StatusCategory, PageResult<ViewWorkItemSummary>>();
+    const queries = input.statuses.map((statusCategory) => {
+      if (
+        input.input.statusCategory &&
+        input.input.statusCategory !== statusCategory
+      ) {
+        return Promise.resolve({
+          statusCategory,
+          page: emptyBoardColumnPage(input.input, 0),
+        });
+      }
+
+      const total = input.countByStatus.get(statusCategory) ?? 0;
+
+      if (total === 0) {
+        return Promise.resolve({
+          statusCategory,
+          page: emptyBoardColumnPage(input.input, 0),
+        });
+      }
+
+      return this.prisma.client.workItem
+        .findMany({
+          include: {
+            bugDetail: {
+              select: {
+                deletedAt: true,
+                regressionAt: true,
+              },
+            },
+            currentState: {
+              select: {
+                category: true,
+                code: true,
+                name: true,
+              },
+            },
+          },
+          orderBy: buildBoardOrderBy(input.input),
+          skip: (input.input.page - 1) * input.input.pageSize,
+          take: input.input.pageSize,
+          where: {
+            ...input.where,
+            statusCategory,
+          },
+        })
+        .then((items) => ({
+          statusCategory,
+          page: {
+            items: items.map((item) =>
+              toVersionBoardWorkItemSummary(
+                item as VersionBoardWorkItemRecord,
+                {
+                  now: input.now,
+                  staleThresholdDays: input.input.staleThresholdDays,
+                },
+              ),
+            ),
+            page: input.input.page,
+            pageSize: input.input.pageSize,
+            total,
+          },
+        }));
+    });
+
+    const results = await Promise.all(queries);
+
+    for (const result of results) {
+      pages.set(result.statusCategory, result.page);
+    }
+
+    return pages;
   }
 
   async update(input: UpdateVersionInput) {
@@ -712,20 +763,33 @@ function buildBoardOrderBy(
 }
 
 function toBoardColumns(
-  counts: {
-    statusCategory: (typeof BOARD_STATUS_CATEGORIES)[number];
-    count: number;
-  }[],
+  countByStatus: Map<StatusCategory, number>,
+  itemPages: Map<StatusCategory, PageResult<ViewWorkItemSummary>>,
+  input: Pick<VersionBoardInput, "page" | "pageSize">,
 ) {
-  const countByStatus = new Map(
-    counts.map((count) => [count.statusCategory, count.count]),
-  );
+  return BOARD_STATUS_CATEGORIES.map((statusCategory) => {
+    const total = countByStatus.get(statusCategory) ?? 0;
 
-  return BOARD_STATUS_CATEGORIES.map((statusCategory) => ({
-    statusCategory,
-    title: BOARD_STATUS_TITLES[statusCategory],
-    total: countByStatus.get(statusCategory) ?? 0,
-  }));
+    return {
+      statusCategory,
+      title: BOARD_STATUS_TITLES[statusCategory],
+      total,
+      items:
+        itemPages.get(statusCategory) ?? emptyBoardColumnPage(input, total),
+    };
+  });
+}
+
+function emptyBoardColumnPage(
+  input: Pick<VersionBoardInput, "page" | "pageSize">,
+  total: number,
+): PageResult<ViewWorkItemSummary> {
+  return {
+    items: [],
+    page: input.page,
+    pageSize: input.pageSize,
+    total,
+  };
 }
 
 function toArray<T>(value: T | T[] | undefined): T[] {

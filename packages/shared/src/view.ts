@@ -57,12 +57,11 @@ export const VersionBoardViewQuerySchema = PageQuerySchema.extend({
   spaceId: UlidSchema.optional(),
   assigneeId: UlidSchema.optional(),
   statusCategory: StatusCategorySchema.optional(),
+  columnStatusCategory: StatusCategorySchema.optional(),
   workItemType: WorkItemTypeSchema.optional(),
 });
 
-export type VersionBoardViewQuery = z.infer<
-  typeof VersionBoardViewQuerySchema
->;
+export type VersionBoardViewQuery = z.infer<typeof VersionBoardViewQuerySchema>;
 
 export const SpaceExceptionsViewQuerySchema = PageQuerySchema.extend({
   organizationId: UlidSchema.optional(),
@@ -284,9 +283,7 @@ export const ViewWorkItemTypeCountSchema = z
   })
   .strict();
 
-export type ViewWorkItemTypeCount = z.infer<
-  typeof ViewWorkItemTypeCountSchema
->;
+export type ViewWorkItemTypeCount = z.infer<typeof ViewWorkItemTypeCountSchema>;
 
 export const ViewExceptionCountSchema = z
   .object({
@@ -317,6 +314,7 @@ export const VersionBoardColumnSchema = z
     statusCategory: StatusCategorySchema,
     title: z.string().min(1).max(120),
     total: z.number().int().min(0),
+    items: pageResultSchema(ViewWorkItemSummarySchema),
   })
   .strict();
 
@@ -326,7 +324,6 @@ export const GetVersionBoardViewResponseSchema = z
   .object({
     filters: ViewAppliedFiltersSchema,
     columns: z.array(VersionBoardColumnSchema),
-    items: pageResultSchema(ViewWorkItemSummarySchema),
   })
   .strict();
 

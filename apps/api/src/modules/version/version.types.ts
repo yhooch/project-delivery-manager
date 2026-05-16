@@ -41,10 +41,7 @@ export type VersionBoardInput = VersionBoardViewQuery & {
   visibility: VersionBoardVisibility;
 };
 
-export type VersionBoardResult = Pick<
-  GetVersionBoardViewResponse,
-  "columns" | "items"
->;
+export type VersionBoardResult = Pick<GetVersionBoardViewResponse, "columns">;
 
 export type VersionBoardWorkItemRecord = {
   id: string;

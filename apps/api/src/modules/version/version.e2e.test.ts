@@ -9,6 +9,7 @@ import {
   type SpaceMember,
   type SpaceMemberWithUser,
   type SpaceRole,
+  type StatusCategory,
   type Version,
   type VersionStatus,
 } from "@project-delivery/shared";
@@ -102,7 +103,11 @@ describe("version API", () => {
       "m1f-versions",
     );
     organizations.addTestMember(organization.id, pm.id, "MEMBER");
-    const space = spaces.createTestSpace(organization.id, owner.id, "Version Space");
+    const space = spaces.createTestSpace(
+      organization.id,
+      owner.id,
+      "Version Space",
+    );
     spaces.addTestMember(organization.id, space.id, pm.id, "PM");
 
     const createResponse = await createVersion(ownerAgent, space.id, {
@@ -161,7 +166,10 @@ describe("version API", () => {
   });
 
   it("rejects non-space-member reads and VIEWER writes", async () => {
-    const ownerAgent = await registeredAgent("m1f_access_owner", "203.0.113.92");
+    const ownerAgent = await registeredAgent(
+      "m1f_access_owner",
+      "203.0.113.92",
+    );
     const viewerAgent = await registeredAgent(
       "m1f_access_viewer",
       "203.0.113.93",
@@ -180,7 +188,11 @@ describe("version API", () => {
     );
     organizations.addTestMember(organization.id, viewer.id, "MEMBER");
     organizations.addTestMember(organization.id, outsider.id, "MEMBER");
-    const space = spaces.createTestSpace(organization.id, owner.id, "Access Space");
+    const space = spaces.createTestSpace(
+      organization.id,
+      owner.id,
+      "Access Space",
+    );
     spaces.addTestMember(organization.id, space.id, viewer.id, "VIEWER");
     const version = (
       await createVersion(ownerAgent, space.id, {
@@ -208,7 +220,10 @@ describe("version API", () => {
   });
 
   it("enforces version name uniqueness per space only", async () => {
-    const ownerAgent = await registeredAgent("m1f_unique_owner", "203.0.113.95");
+    const ownerAgent = await registeredAgent(
+      "m1f_unique_owner",
+      "203.0.113.95",
+    );
     const owner = getUser("m1f_unique_owner");
     const organization = organizations.createTestOrganization(
       owner.id,
@@ -242,7 +257,10 @@ describe("version API", () => {
   });
 
   it("filters versions by status and owner", async () => {
-    const ownerAgent = await registeredAgent("m1f_filter_owner", "203.0.113.96");
+    const ownerAgent = await registeredAgent(
+      "m1f_filter_owner",
+      "203.0.113.96",
+    );
     const pmAgent = await registeredAgent("m1f_filter_pm", "203.0.113.97");
     const owner = getUser("m1f_filter_owner");
     const pm = getUser("m1f_filter_pm");
@@ -252,7 +270,11 @@ describe("version API", () => {
       "m1f-filter",
     );
     organizations.addTestMember(organization.id, pm.id, "MEMBER");
-    const space = spaces.createTestSpace(organization.id, owner.id, "Filter Space");
+    const space = spaces.createTestSpace(
+      organization.id,
+      owner.id,
+      "Filter Space",
+    );
     spaces.addTestMember(organization.id, space.id, pm.id, "PM");
 
     const plannedForPm = (
@@ -313,7 +335,11 @@ describe("version API", () => {
       "M1F Stats",
       "m1f-stats",
     );
-    const space = spaces.createTestSpace(organization.id, owner.id, "Stats Space");
+    const space = spaces.createTestSpace(
+      organization.id,
+      owner.id,
+      "Stats Space",
+    );
     const version = (
       await createVersion(ownerAgent, space.id, {
         name: "Stats Version",
@@ -355,7 +381,11 @@ describe("version API", () => {
       "m1f-owner",
     );
     organizations.addTestMember(organization.id, candidate.id, "MEMBER");
-    const space = spaces.createTestSpace(organization.id, owner.id, "Owner Space");
+    const space = spaces.createTestSpace(
+      organization.id,
+      owner.id,
+      "Owner Space",
+    );
 
     await createVersion(ownerAgent, space.id, {
       name: "Bad Owner",
@@ -529,7 +559,9 @@ class InMemorySessionRepository {
         !record.revokedAt &&
         record.expiresAt > now,
     );
-    const user = session ? await this.users.findById(session.userId) : undefined;
+    const user = session
+      ? await this.users.findById(session.userId)
+      : undefined;
 
     return session && user && user.status === "ACTIVE"
       ? {
@@ -641,7 +673,8 @@ class InMemoryOrganizationRepository {
     userId: string,
   ): Promise<OrganizationMemberWithUser | undefined> {
     const member = this.members.find(
-      (item) => item.organizationId === organizationId && item.userId === userId,
+      (item) =>
+        item.organizationId === organizationId && item.userId === userId,
     );
 
     return member ? this.toMemberWithUser(member) : undefined;
@@ -773,6 +806,24 @@ class InMemorySpaceRepository {
   }
 }
 
+function makeBoardColumn(
+  statusCategory: StatusCategory,
+  title: string,
+  input: VersionBoardInput,
+) {
+  return {
+    statusCategory,
+    title,
+    total: 0,
+    items: {
+      items: [],
+      page: input.page,
+      pageSize: input.pageSize,
+      total: 0,
+    },
+  };
+}
+
 class InMemoryVersionRepository implements VersionRepository {
   private readonly requirementCounts = new Map<string, number>();
   private readonly versions = new Map<string, Version>();
@@ -846,19 +897,13 @@ class InMemoryVersionRepository implements VersionRepository {
   async listBoard(input: VersionBoardInput): Promise<VersionBoardResult> {
     return {
       columns: [
-        { statusCategory: "NOT_STARTED", title: "Not started", total: 0 },
-        { statusCategory: "IN_PROGRESS", title: "In progress", total: 0 },
-        { statusCategory: "WAITING", title: "Waiting", total: 0 },
-        { statusCategory: "VERIFYING", title: "Verifying", total: 0 },
-        { statusCategory: "DONE", title: "Done", total: 0 },
-        { statusCategory: "TERMINATED", title: "Terminated", total: 0 },
+        makeBoardColumn("NOT_STARTED", "Not started", input),
+        makeBoardColumn("IN_PROGRESS", "In progress", input),
+        makeBoardColumn("WAITING", "Waiting", input),
+        makeBoardColumn("VERIFYING", "Verifying", input),
+        makeBoardColumn("DONE", "Done", input),
+        makeBoardColumn("TERMINATED", "Terminated", input),
       ],
-      items: {
-        items: [],
-        page: input.page,
-        pageSize: input.pageSize,
-        total: 0,
-      },
     };
   }
 

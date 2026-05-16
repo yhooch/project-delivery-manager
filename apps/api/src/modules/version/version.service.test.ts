@@ -5,6 +5,7 @@ import type {
   Space,
   SpaceMemberWithUser,
   SpaceRole,
+  StatusCategory,
   Version,
 } from "@project-delivery/shared";
 import type { AuditService } from "../audit/audit.service";
@@ -116,7 +117,7 @@ describe("VersionService board view", () => {
       versionId: VERSION_ID,
       workItemType: "BUG",
     });
-    expect(result.items).toMatchObject({
+    expect(result.columns[0]?.items).toMatchObject({
       page: 2,
       pageSize: 10,
       total: 0,
@@ -406,19 +407,13 @@ class FakeVersionRepository implements VersionRepository {
 
     return {
       columns: [
-        { statusCategory: "NOT_STARTED", title: "Not started", total: 0 },
-        { statusCategory: "IN_PROGRESS", title: "In progress", total: 0 },
-        { statusCategory: "WAITING", title: "Waiting", total: 0 },
-        { statusCategory: "VERIFYING", title: "Verifying", total: 0 },
-        { statusCategory: "DONE", title: "Done", total: 0 },
-        { statusCategory: "TERMINATED", title: "Terminated", total: 0 },
+        makeBoardColumn("NOT_STARTED", "Not started", input),
+        makeBoardColumn("IN_PROGRESS", "In progress", input),
+        makeBoardColumn("WAITING", "Waiting", input),
+        makeBoardColumn("VERIFYING", "Verifying", input),
+        makeBoardColumn("DONE", "Done", input),
+        makeBoardColumn("TERMINATED", "Terminated", input),
       ],
-      items: {
-        items: [],
-        page: input.page,
-        pageSize: input.pageSize,
-        total: 0,
-      },
     };
   }
 
@@ -522,6 +517,24 @@ function makeVersion(overrides: Partial<Version> = {}): Version {
     },
     status: "PLANNED",
     ...overrides,
+  };
+}
+
+function makeBoardColumn(
+  statusCategory: StatusCategory,
+  title: string,
+  input: VersionBoardInput,
+) {
+  return {
+    statusCategory,
+    title,
+    total: 0,
+    items: {
+      items: [],
+      page: input.page,
+      pageSize: input.pageSize,
+      total: 0,
+    },
   };
 }
 

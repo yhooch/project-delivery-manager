@@ -678,7 +678,9 @@
       "previous": "Previous",
       "next": "Next",
       "previousAria": "View previous work-item page",
-      "nextAria": "View next work-item page"
+      "nextAria": "View next work-item page",
+      "columnLoadMore": "Load more ({loaded}/{total})",
+      "columnLoading": "Loading"
     },
     "columns": {
       "NOT_STARTED": "Not started",

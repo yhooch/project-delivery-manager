@@ -281,10 +281,10 @@ function createVersionBoardResponse(): GetVersionBoardViewResponse {
         statusCategory: "WAITING",
         title: "Waiting",
         total: 1,
+        items: page([createWorkItem()]),
       },
     ],
     filters: { organizationId, spaceId, versionId },
-    items: page([createWorkItem()]),
   };
 }
 

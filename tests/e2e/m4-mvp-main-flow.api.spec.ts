@@ -302,7 +302,8 @@ test.describe("M4-J MVP 自动化主链路与回归用例", () => {
     expect(board.columns.map((column) => column.statusCategory)).toEqual(
       expect.arrayContaining(["WAITING", "VERIFYING"]),
     );
-    expect(board.items.items.map((item) => item.id)).toEqual(
+    const boardItems = board.columns.flatMap((column) => column.items.items);
+    expect(boardItems.map((item) => item.id)).toEqual(
       expect.arrayContaining([
         blockedTask.id,
         readyForTestTask.id,
@@ -312,9 +313,7 @@ test.describe("M4-J MVP 自动化主链路与回归用例", () => {
       ]),
     );
     expect(
-      board.items.items.every(
-        (item) => item.organizationId === organization.id,
-      ),
+      boardItems.every((item) => item.organizationId === organization.id),
     ).toBe(true);
 
     const overview = await expectData(

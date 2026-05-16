@@ -678,7 +678,9 @@
       "previous": "上一页",
       "next": "下一页",
       "previousAria": "查看上一页工作项",
-      "nextAria": "查看下一页工作项"
+      "nextAria": "查看下一页工作项",
+      "columnLoadMore": "加载更多（{loaded}/{total}）",
+      "columnLoading": "加载中"
     },
     "columns": {
       "NOT_STARTED": "未开始",

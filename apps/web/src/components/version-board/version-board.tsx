@@ -2,6 +2,7 @@
 
 import type {
   GetVersionBoardViewResponse,
+  PageResult,
   RecordStatus,
   Requirement,
   SpaceRole,
@@ -17,8 +18,6 @@ import {
   Bug,
   CheckCircle2,
   ChevronDown,
-  ChevronLeft,
-  ChevronRight,
   Clock,
   Filter,
   Pencil,
@@ -113,7 +112,7 @@ const VERSION_STATUS_VARIANT: Record<
   ARCHIVED: "default",
 };
 
-const BOARD_PAGE_SIZE = 200;
+const BOARD_COLUMN_PAGE_SIZE = 50;
 
 // ---------------------------------------------------------------------------
 // Filter state shape — keep all three filters together so the toolbar wiring
@@ -169,6 +168,54 @@ function initialOf(value: string): string {
 function normalizeSearchParam(value: string | null): string | undefined {
   const trimmed = value?.trim();
   return trimmed ? trimmed : undefined;
+}
+
+function emptyBoardColumnPage(
+  pageSize: number,
+): PageResult<ViewWorkItemSummary> {
+  return {
+    items: [],
+    page: 1,
+    pageSize,
+    total: 0,
+  };
+}
+
+function mergeBoardColumnPage(
+  current: GetVersionBoardViewResponse,
+  next: GetVersionBoardViewResponse,
+  category: StatusCategory,
+): GetVersionBoardViewResponse {
+  const nextColumns = new Map(
+    next.columns.map((column) => [column.statusCategory, column]),
+  );
+
+  return {
+    ...current,
+    columns: current.columns.map((column) => {
+      const nextColumn = nextColumns.get(column.statusCategory);
+
+      if (!nextColumn) {
+        return column;
+      }
+
+      if (column.statusCategory !== category) {
+        return {
+          ...column,
+          title: nextColumn.title,
+          total: nextColumn.total,
+        };
+      }
+
+      return {
+        ...nextColumn,
+        items: {
+          ...nextColumn.items,
+          items: [...column.items.items, ...nextColumn.items.items],
+        },
+      };
+    }),
+  };
 }
 
 function canManageVersionEntries(
@@ -227,8 +274,9 @@ export function VersionPage() {
   // ----- board -----
   const [board, setBoard] = useState<GetVersionBoardViewResponse | null>(null);
   const [isLoadingBoard, setIsLoadingBoard] = useState(false);
+  const [loadingColumnCategory, setLoadingColumnCategory] =
+    useState<StatusCategory | null>(null);
   const [filters, setFilters] = useState<BoardFilters>(EMPTY_FILTERS);
-  const [boardPage, setBoardPage] = useState(1);
 
   // ----- requirements tab -----
   const [requirements, setRequirements] = useState<Requirement[]>([]);
@@ -271,7 +319,7 @@ export function VersionPage() {
     setVersions([]);
     setVersionId(null);
     setBoard(null);
-    setBoardPage(1);
+    setLoadingColumnCategory(null);
     setRequirements([]);
     setTimeline([]);
     setErrorKey(null);
@@ -307,7 +355,6 @@ export function VersionPage() {
   const selectVersion = useCallback(
     (nextVersionId: string, syncUrl = true) => {
       setVersionId(nextVersionId);
-      setBoardPage(1);
       if (syncUrl) {
         replaceVersionParam(nextVersionId);
       }
@@ -369,7 +416,6 @@ export function VersionPage() {
     }
 
     if (versions.some((version) => version.id === versionIdParam)) {
-      setBoardPage(1);
       setVersionId(versionIdParam);
     }
   }, [versionIdParam, versions]);
@@ -391,8 +437,8 @@ export function VersionPage() {
         versionId,
         organizationId,
         spaceId: spaceId ?? undefined,
-        page: boardPage,
-        pageSize: BOARD_PAGE_SIZE,
+        page: 1,
+        pageSize: BOARD_COLUMN_PAGE_SIZE,
         assigneeId: filters.assigneeId ?? undefined,
         statusCategory: filters.statusCategory ?? undefined,
         workItemType: filters.workItemType ?? undefined,
@@ -411,7 +457,6 @@ export function VersionPage() {
     filters.assigneeId,
     filters.statusCategory,
     filters.workItemType,
-    boardPage,
     organizationId,
     spaceId,
     versionId,
@@ -515,42 +560,32 @@ export function VersionPage() {
     [versionId, versions],
   );
 
-  const grouped = useMemo(() => {
-    const items = board?.items.items ?? [];
-    return COLUMN_ORDER.map((category) => ({
-      category,
-      items: items.filter((it) => it.currentStatus.statusCategory === category),
-      total:
-        board?.columns.find((c) => c.statusCategory === category)?.total ?? 0,
-    }));
-  }, [board]);
+  const grouped = useMemo(
+    () =>
+      COLUMN_ORDER.map((category) => {
+        const column = board?.columns.find(
+          (entry) => entry.statusCategory === category,
+        );
+        const pageInfo =
+          column?.items ?? emptyBoardColumnPage(BOARD_COLUMN_PAGE_SIZE);
+
+        return {
+          category,
+          items: pageInfo.items,
+          pageInfo,
+          total: column?.total ?? pageInfo.total,
+        };
+      }),
+    [board],
+  );
 
   const hasActiveFilter =
     filters.assigneeId !== null ||
     filters.statusCategory !== null ||
     filters.workItemType !== null;
 
-  const boardPagination = useMemo(() => {
-    const pageResult = board?.items;
-    const total = pageResult?.total ?? 0;
-    const pageSize = pageResult?.pageSize ?? BOARD_PAGE_SIZE;
-    const page = pageResult?.page ?? boardPage;
-    const pageCount = Math.max(1, Math.ceil(total / pageSize));
-    const from = total === 0 ? 0 : (page - 1) * pageSize + 1;
-    const to = total === 0 ? 0 : Math.min(page * pageSize, total);
-
-    return {
-      from,
-      page,
-      pageCount,
-      to,
-      total,
-    };
-  }, [board?.items, boardPage]);
-
   const updateBoardFilters = useCallback(
     (next: BoardFilters | ((prev: BoardFilters) => BoardFilters)) => {
-      setBoardPage(1);
       setFilters(next);
     },
     [],
@@ -625,6 +660,65 @@ export function VersionPage() {
     void fetchVersions();
     void fetchTimeline();
   }, [fetchBoard, fetchTimeline, fetchVersions]);
+
+  const loadMoreColumn = useCallback(
+    async (category: StatusCategory) => {
+      if (!versionId || !board || loadingColumnCategory) {
+        return;
+      }
+
+      const currentColumn = board.columns.find(
+        (column) => column.statusCategory === category,
+      );
+
+      if (
+        !currentColumn ||
+        currentColumn.items.items.length >= currentColumn.total
+      ) {
+        return;
+      }
+
+      const requestId = boardRequestSeq.current + 1;
+      boardRequestSeq.current = requestId;
+      setLoadingColumnCategory(category);
+      setErrorKey(null);
+
+      try {
+        const next = await getVersionBoardView({
+          versionId,
+          organizationId,
+          spaceId: spaceId ?? undefined,
+          assigneeId: filters.assigneeId ?? undefined,
+          columnStatusCategory: category,
+          page: currentColumn.items.page + 1,
+          pageSize: BOARD_COLUMN_PAGE_SIZE,
+          statusCategory: filters.statusCategory ?? undefined,
+          workItemType: filters.workItemType ?? undefined,
+        });
+        if (boardRequestSeq.current !== requestId) return;
+        setBoard((current) =>
+          current ? mergeBoardColumnPage(current, next, category) : current,
+        );
+      } catch (error) {
+        if (boardRequestSeq.current !== requestId) return;
+        setErrorKey(getApiErrorMessageKey(error));
+      } finally {
+        if (boardRequestSeq.current === requestId) {
+          setLoadingColumnCategory(null);
+        }
+      }
+    },
+    [
+      board,
+      filters.assigneeId,
+      filters.statusCategory,
+      filters.workItemType,
+      loadingColumnCategory,
+      organizationId,
+      spaceId,
+      versionId,
+    ],
+  );
 
   // -------------------------------------------------------------------------
   // Header meta — flattened from the former <VersionHero> band; lives in the
@@ -892,29 +986,16 @@ export function VersionPage() {
               ) : (
                 <BoardColumns
                   grouped={grouped}
+                  loadingColumnCategory={loadingColumnCategory}
                   locale={locale}
                   getMember={getMember}
                   getVersion={getVersionLookup}
+                  onLoadMore={loadMoreColumn}
                   openItem={openItem}
                   t={t}
                 />
               )}
             </div>
-            {board ? (
-              <BoardPagination
-                pagination={boardPagination}
-                loading={isLoadingBoard}
-                onPrevious={() =>
-                  setBoardPage((current) => Math.max(1, current - 1))
-                }
-                onNext={() =>
-                  setBoardPage((current) =>
-                    Math.min(boardPagination.pageCount, current + 1),
-                  )
-                }
-                t={t}
-              />
-            ) : null}
           </TabsContent>
 
           <TabsContent
@@ -1021,71 +1102,6 @@ export function VersionPage() {
 
 // Backwards-compatible alias — older imports referenced `VersionBoard`.
 export { VersionPage as VersionBoard };
-
-function BoardPagination({
-  loading,
-  onNext,
-  onPrevious,
-  pagination,
-  t,
-}: {
-  loading: boolean;
-  onNext: () => void;
-  onPrevious: () => void;
-  pagination: {
-    from: number;
-    page: number;
-    pageCount: number;
-    to: number;
-    total: number;
-  };
-  t: ReturnType<typeof useTranslations<"versionBoard">>;
-}) {
-  return (
-    <div
-      data-testid="version-board-pagination"
-      className="flex shrink-0 flex-col gap-2 border-t border-border px-4 py-2 text-xs text-muted-foreground sm:flex-row sm:items-center sm:justify-between sm:px-6"
-    >
-      <span data-testid="version-board-pagination-summary">
-        {t("pagination.summary", {
-          from: pagination.from,
-          page: pagination.page,
-          pageCount: pagination.pageCount,
-          to: pagination.to,
-          total: pagination.total,
-        })}
-      </span>
-      <div className="flex items-center gap-2">
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          className="h-8 text-xs"
-          data-testid="version-board-pagination-previous"
-          aria-label={t("pagination.previousAria")}
-          disabled={loading || pagination.page <= 1}
-          onClick={onPrevious}
-        >
-          <ChevronLeft className="h-3 w-3" />
-          {t("pagination.previous")}
-        </Button>
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          className="h-8 text-xs"
-          data-testid="version-board-pagination-next"
-          aria-label={t("pagination.nextAria")}
-          disabled={loading || pagination.page >= pagination.pageCount}
-          onClick={onNext}
-        >
-          {t("pagination.next")}
-          <ChevronRight className="h-3 w-3" />
-        </Button>
-      </div>
-    </div>
-  );
-}
 
 // ===========================================================================
 // Board toolbar — assignee / statusCategory / workItemType filters
@@ -1320,20 +1336,25 @@ function KpiInline({
 
 function BoardColumns({
   grouped,
+  loadingColumnCategory,
   locale,
   getMember,
   getVersion,
+  onLoadMore,
   openItem,
   t,
 }: {
   grouped: {
     category: StatusCategory;
     items: ViewWorkItemSummary[];
+    pageInfo: PageResult<ViewWorkItemSummary>;
     total: number;
   }[];
+  loadingColumnCategory: StatusCategory | null;
   locale: string;
   getMember: ReturnType<typeof useSpaceMembers>["getMember"];
   getVersion: (versionId: string) => Version | undefined;
+  onLoadMore: (category: StatusCategory) => void;
   openItem: (summary: ViewWorkItemSummary) => void;
   t: ReturnType<typeof useTranslations<"versionBoard">>;
 }) {
@@ -1342,92 +1363,115 @@ function BoardColumns({
       data-testid="version-board-columns"
       className="grid min-h-full min-w-0 grid-cols-1 gap-3 px-4 py-4 md:grid-cols-2 xl:h-full xl:grid-cols-6"
     >
-      {grouped.map(({ category, items, total }) => (
-        <div
-          key={category}
-          data-testid={`version-board-column-${category}`}
-          className="flex min-h-0 min-w-0 flex-col rounded-lg border border-border bg-card/30"
-        >
-          <header className="flex shrink-0 items-center gap-2 border-b border-border px-3 py-2.5">
-            <span
-              className={cn("h-1.5 w-1.5 rounded-full", COLUMN_DOT[category])}
-            />
-            <h2 className="text-[13px] font-semibold">
-              {t(`columns.${category}`)}
-            </h2>
-            <span className="rounded bg-muted px-1.5 py-0.5 font-mono text-[10px] text-muted-foreground">
-              {total}
-            </span>
-          </header>
-          <div className="min-h-0 flex-1 space-y-2 overflow-y-auto p-2">
-            {items.length === 0 && (
-              <div className="flex h-20 items-center justify-center text-[11px] text-muted-foreground">
-                —
-              </div>
-            )}
-            {items.map((item) => {
-              const viewItem = createWorkItemViewModelMapper({
-                locale,
-                lookups: {
-                  getMember: (userId) => getMember(userId),
-                  getVersion: (versionId) => getVersion(versionId),
-                },
-              })(item);
-              return (
-                <button
-                  key={item.id}
-                  type="button"
-                  data-testid={`version-board-card-${item.id}`}
-                  onClick={() => openItem(item)}
-                  className="group block w-full min-w-0 rounded-md border border-border bg-card p-2.5 text-left shadow-sm transition-all hover:border-primary/40 hover:shadow-md cursor-pointer"
-                >
-                  <div className="flex items-center gap-1.5">
-                    {item.type === "BUG" ? (
-                      <Bug className="h-3 w-3 text-destructive/80" />
-                    ) : (
-                      <CheckCircle2 className="h-3 w-3 text-primary/80" />
-                    )}
-                    <span className="min-w-0 truncate font-mono text-[10px] text-muted-foreground">
-                      {t(`filters.type.${viewItem.type}`)}
-                    </span>
-                    <span
-                      className={cn(
-                        "ml-auto h-1.5 w-1.5 rounded-full",
-                        priorityDotColor[viewItem.priority],
+      {grouped.map(({ category, items, pageInfo, total }) => {
+        const hasMore = items.length < total;
+        const isLoadingMore = loadingColumnCategory === category;
+
+        return (
+          <div
+            key={category}
+            data-testid={`version-board-column-${category}`}
+            className="flex min-h-0 min-w-0 flex-col rounded-lg border border-border bg-card/30"
+          >
+            <header className="flex shrink-0 items-center gap-2 border-b border-border px-3 py-2.5">
+              <span
+                className={cn("h-1.5 w-1.5 rounded-full", COLUMN_DOT[category])}
+              />
+              <h2 className="text-[13px] font-semibold">
+                {t(`columns.${category}`)}
+              </h2>
+              <span className="rounded bg-muted px-1.5 py-0.5 font-mono text-[10px] text-muted-foreground">
+                {total}
+              </span>
+            </header>
+            <div className="min-h-0 flex-1 space-y-2 overflow-y-auto p-2">
+              {items.length === 0 && (
+                <div className="flex h-20 items-center justify-center text-[11px] text-muted-foreground">
+                  —
+                </div>
+              )}
+              {items.map((item) => {
+                const viewItem = createWorkItemViewModelMapper({
+                  locale,
+                  lookups: {
+                    getMember: (userId) => getMember(userId),
+                    getVersion: (versionId) => getVersion(versionId),
+                  },
+                })(item);
+                return (
+                  <button
+                    key={item.id}
+                    type="button"
+                    data-testid={`version-board-card-${item.id}`}
+                    onClick={() => openItem(item)}
+                    className="group block w-full min-w-0 rounded-md border border-border bg-card p-2.5 text-left shadow-sm transition-all hover:border-primary/40 hover:shadow-md cursor-pointer"
+                  >
+                    <div className="flex items-center gap-1.5">
+                      {item.type === "BUG" ? (
+                        <Bug className="h-3 w-3 text-destructive/80" />
+                      ) : (
+                        <CheckCircle2 className="h-3 w-3 text-primary/80" />
                       )}
-                    />
-                  </div>
-                  <div className="mt-1.5 line-clamp-2 text-[13px] font-medium leading-snug">
-                    {item.title}
-                  </div>
-                  <div className="mt-2 flex items-center gap-2">
-                    {item.exceptionSignals.some(
-                      (s) => s.type === "blocked",
-                    ) && (
-                      <Badge variant="warning" className="gap-1 text-[9px]">
-                        <AlertCircle className="h-2 w-2" />
-                        {t("badges.blocked")}
-                      </Badge>
-                    )}
-                    {item.exceptionSignals.some(
-                      (s) => s.type === "overdue",
-                    ) && (
-                      <Badge variant="destructive" className="text-[9px]">
-                        {t("badges.overdue")}
-                      </Badge>
-                    )}
-                    <Avatar className="ml-auto h-5 w-5">
-                      <AvatarFallback className="text-[9px]">
-                        {viewItem.assignee.initial}
-                      </AvatarFallback>
-                    </Avatar>
-                  </div>
-                </button>
-              );
-            })}
+                      <span className="min-w-0 truncate font-mono text-[10px] text-muted-foreground">
+                        {t(`filters.type.${viewItem.type}`)}
+                      </span>
+                      <span
+                        className={cn(
+                          "ml-auto h-1.5 w-1.5 rounded-full",
+                          priorityDotColor[viewItem.priority],
+                        )}
+                      />
+                    </div>
+                    <div className="mt-1.5 line-clamp-2 text-[13px] font-medium leading-snug">
+                      {item.title}
+                    </div>
+                    <div className="mt-2 flex items-center gap-2">
+                      {item.exceptionSignals.some(
+                        (s) => s.type === "blocked",
+                      ) && (
+                        <Badge variant="warning" className="gap-1 text-[9px]">
+                          <AlertCircle className="h-2 w-2" />
+                          {t("badges.blocked")}
+                        </Badge>
+                      )}
+                      {item.exceptionSignals.some(
+                        (s) => s.type === "overdue",
+                      ) && (
+                        <Badge variant="destructive" className="text-[9px]">
+                          {t("badges.overdue")}
+                        </Badge>
+                      )}
+                      <Avatar className="ml-auto h-5 w-5">
+                        <AvatarFallback className="text-[9px]">
+                          {viewItem.assignee.initial}
+                        </AvatarFallback>
+                      </Avatar>
+                    </div>
+                  </button>
+                );
+              })}
+              {hasMore ? (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="h-8 w-full text-xs"
+                  data-testid={`version-board-column-load-more-${category}`}
+                  disabled={isLoadingMore}
+                  onClick={() => onLoadMore(category)}
+                >
+                  {isLoadingMore
+                    ? t("pagination.columnLoading")
+                    : t("pagination.columnLoadMore", {
+                        loaded: items.length,
+                        total: pageInfo.total,
+                      })}
+                </Button>
+              ) : null}
+            </div>
           </div>
-        </div>
-      ))}
+        );
+      })}
     </div>
   );
 }

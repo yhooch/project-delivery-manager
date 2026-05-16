@@ -360,28 +360,42 @@ function makeSummary(overrides: Record<string, unknown> = {}) {
 function makeBoardResponse(
   items: ReturnType<typeof makeSummary>[],
   pageInfo: Partial<{ page: number; pageSize: number; total: number }> = {},
+  columnTotals: Partial<Record<string, number>> = {},
 ) {
+  const primaryCategory = items[0]?.currentStatus.statusCategory;
+  const page = pageInfo.page ?? 1;
+  const pageSize = pageInfo.pageSize ?? 50;
   const total = pageInfo.total ?? items.length;
+  const makeColumn = (statusCategory: string, title: string) => {
+    const columnItems = items.filter(
+      (item) => item.currentStatus.statusCategory === statusCategory,
+    );
+    const columnTotal =
+      columnTotals[statusCategory] ??
+      (statusCategory === primaryCategory ? total : columnItems.length);
+
+    return {
+      statusCategory,
+      title,
+      total: columnTotal,
+      items: {
+        items: columnItems,
+        total: columnTotal,
+        page,
+        pageSize,
+      },
+    };
+  };
+
   return {
     columns: [
-      { statusCategory: "NOT_STARTED", total: 0 },
-      {
-        statusCategory: "IN_PROGRESS",
-        total: items.filter(
-          (i) => i.currentStatus.statusCategory === "IN_PROGRESS",
-        ).length,
-      },
-      { statusCategory: "WAITING", total: 0 },
-      { statusCategory: "VERIFYING", total: 0 },
-      { statusCategory: "DONE", total: 0 },
-      { statusCategory: "TERMINATED", total: 0 },
+      makeColumn("NOT_STARTED", "Not started"),
+      makeColumn("IN_PROGRESS", "In progress"),
+      makeColumn("WAITING", "Waiting"),
+      makeColumn("VERIFYING", "Verifying"),
+      makeColumn("DONE", "Done"),
+      makeColumn("TERMINATED", "Terminated"),
     ],
-    items: {
-      items,
-      total,
-      page: pageInfo.page ?? 1,
-      pageSize: pageInfo.pageSize ?? 200,
-    },
   };
 }
 
@@ -510,7 +524,7 @@ describe("VersionPage", () => {
     expect(await screen.findByText("Login UI")).toBeInTheDocument();
   });
 
-  it("paginates board items and refreshes the current page after detail changes", async () => {
+  it("loads more items per board column and refreshes the first column pages after detail changes", async () => {
     listVersionsMock.mockResolvedValue({
       items: [makeVersion()],
       total: 1,
@@ -524,7 +538,7 @@ describe("VersionPage", () => {
               title: "Page one card",
             }),
           ],
-          { total: 201, page: 1, pageSize: 200 },
+          { total: 201, page: 1, pageSize: 50 },
         ),
       )
       .mockResolvedValueOnce(
@@ -535,18 +549,18 @@ describe("VersionPage", () => {
               title: "Page two card",
             }),
           ],
-          { total: 201, page: 2, pageSize: 200 },
+          { total: 201, page: 2, pageSize: 50 },
         ),
       )
       .mockResolvedValueOnce(
         makeBoardResponse(
           [
             makeSummary({
-              id: "01ARZ3NDEKTSV4RRFFQ69G5FP2",
-              title: "Page two card updated",
+              id: "01ARZ3NDEKTSV4RRFFQ69G5FP1",
+              title: "Page one card updated",
             }),
           ],
-          { total: 201, page: 2, pageSize: 200 },
+          { total: 201, page: 1, pageSize: 50 },
         ),
       )
       .mockResolvedValueOnce(
@@ -558,31 +572,28 @@ describe("VersionPage", () => {
               type: "BUG",
             }),
           ],
-          { total: 1, page: 1, pageSize: 200 },
+          { total: 1, page: 1, pageSize: 50 },
         ),
       );
 
     render(<VersionPage />);
 
     expect(await screen.findByText("Page one card")).toBeInTheDocument();
-    expect(screen.getByTestId("version-board-pagination-summary")).toHaveTextContent(
-      "versionBoard.pagination.summary",
+    fireEvent.click(
+      screen.getByTestId("version-board-column-load-more-IN_PROGRESS"),
     );
-
-    const nextButton = screen.getByTestId("version-board-pagination-next");
-    expect(nextButton).toHaveAttribute(
-      "aria-label",
-      "versionBoard.pagination.nextAria",
-    );
-    fireEvent.click(nextButton);
 
     await waitFor(() =>
       expect(getVersionBoardViewMock).toHaveBeenCalledTimes(2),
     );
     expect(getVersionBoardViewMock.mock.calls[1]![0]).toMatchObject({
+      columnStatusCategory: "IN_PROGRESS",
       page: 2,
-      pageSize: 200,
+      pageSize: 50,
     });
+    expect(await screen.findByText("Page two card")).toBeInTheDocument();
+    expect(screen.getByText("Page one card")).toBeInTheDocument();
+
     fireEvent.click(await screen.findByText("Page two card"));
     fireEvent.click(
       await screen.findByTestId("task-detail-sheet-fire-changed"),
@@ -592,8 +603,11 @@ describe("VersionPage", () => {
       expect(getVersionBoardViewMock).toHaveBeenCalledTimes(3),
     );
     expect(getVersionBoardViewMock.mock.calls[2]![0]).toMatchObject({
-      page: 2,
-      pageSize: 200,
+      page: 1,
+      pageSize: 50,
+    });
+    expect(getVersionBoardViewMock.mock.calls[2]![0]).not.toMatchObject({
+      columnStatusCategory: "IN_PROGRESS",
     });
 
     fireEvent.click(await screen.findByTestId("version-board-filter-type-BUG"));
@@ -603,7 +617,7 @@ describe("VersionPage", () => {
     );
     expect(getVersionBoardViewMock.mock.calls[3]![0]).toMatchObject({
       page: 1,
-      pageSize: 200,
+      pageSize: 50,
       workItemType: "BUG",
     });
   });
