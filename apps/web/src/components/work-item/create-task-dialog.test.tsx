@@ -59,7 +59,13 @@ import { CreateTaskDialog } from "./create-task-dialog";
 const spaceId = "01ARZ3NDEKTSV4RRFFQ69G5FS1";
 const organizationId = "ORG_01";
 const requirementId = "01ARZ3NDEKTSV4RRFFQ69G5FR1";
+const requirementTwoId = "01ARZ3NDEKTSV4RRFFQ69G5FR2";
+const unversionedRequirementId = "01ARZ3NDEKTSV4RRFFQ69G5FR3";
 const intakeItemId = "01ARZ3NDEKTSV4RRFFQ69G5FJ1";
+const intakeItemTwoId = "01ARZ3NDEKTSV4RRFFQ69G5FJ2";
+const unversionedIntakeItemId = "01ARZ3NDEKTSV4RRFFQ69G5FJ3";
+const versionId = "01ARZ3NDEKTSV4RRFFQ69G5FV1";
+const versionTwoId = "01ARZ3NDEKTSV4RRFFQ69G5FV2";
 
 beforeEach(() => {
   createWorkItemMock.mockReset();
@@ -145,5 +151,161 @@ describe("CreateTaskDialog", () => {
       expect(screen.getByTestId("create-task-submit")).not.toBeDisabled(),
     );
     expect(listRequirementsMock).toHaveBeenCalledTimes(2);
+  });
+
+  it("filters requirement and intake options by the selected version", async () => {
+    listVersionsMock.mockResolvedValue({
+      items: [
+        { id: versionId, name: "Version 1" },
+        { id: versionTwoId, name: "Version 2" },
+      ],
+      total: 2,
+    });
+    listRequirementsMock.mockResolvedValue({
+      items: [
+        { id: requirementId, title: "Requirement v1", versionId },
+        { id: requirementTwoId, title: "Requirement v2", versionId: versionTwoId },
+        { id: unversionedRequirementId, title: "Requirement no version" },
+      ],
+      total: 3,
+    });
+    listIntakeItemsMock.mockResolvedValue({
+      items: [
+        { id: intakeItemId, title: "Intake v1", versionId },
+        { id: intakeItemTwoId, title: "Intake v2", versionId: versionTwoId },
+        { id: unversionedIntakeItemId, title: "Intake no version" },
+      ],
+      total: 3,
+    });
+
+    render(
+      <CreateTaskDialog
+        open
+        onOpenChange={() => {}}
+        organizationId={organizationId}
+        spaceId={spaceId}
+      />,
+    );
+
+    await screen.findByText("Requirement v1");
+    const versionSelect = screen.getByLabelText(
+      "tasks.dialog.fields.version",
+    ) as HTMLSelectElement;
+    const requirementSelect = screen.getByTestId(
+      "create-task-requirement-select",
+    ) as HTMLSelectElement;
+    const intakeSelect = screen.getByTestId(
+      "create-task-intake-select",
+    ) as HTMLSelectElement;
+
+    fireEvent.change(requirementSelect, { target: { value: requirementId } });
+    fireEvent.change(intakeSelect, { target: { value: intakeItemId } });
+    expect(requirementSelect.value).toBe(requirementId);
+    expect(intakeSelect.value).toBe(intakeItemId);
+
+    fireEvent.change(versionSelect, { target: { value: versionTwoId } });
+
+    expect(requirementSelect.value).toBe("");
+    expect(intakeSelect.value).toBe("");
+    expect(screen.queryByText("Requirement v1")).not.toBeInTheDocument();
+    expect(screen.queryByText("Requirement no version")).not.toBeInTheDocument();
+    expect(screen.queryByText("Intake v1")).not.toBeInTheDocument();
+    expect(screen.queryByText("Intake no version")).not.toBeInTheDocument();
+    expect(screen.getByText("Requirement v2")).toBeInTheDocument();
+    expect(screen.getByText("Intake v2")).toBeInTheDocument();
+  });
+
+  it("infers the version from a versioned requirement and clears incompatible intake", async () => {
+    listVersionsMock.mockResolvedValue({
+      items: [{ id: versionId, name: "Version 1" }],
+      total: 1,
+    });
+    listRequirementsMock.mockResolvedValue({
+      items: [{ id: requirementId, title: "Requirement v1", versionId }],
+      total: 1,
+    });
+    listIntakeItemsMock.mockResolvedValue({
+      items: [{ id: unversionedIntakeItemId, title: "Intake no version" }],
+      total: 1,
+    });
+
+    render(
+      <CreateTaskDialog
+        open
+        onOpenChange={() => {}}
+        organizationId={organizationId}
+        spaceId={spaceId}
+      />,
+    );
+
+    await screen.findByText("Requirement v1");
+    const versionSelect = screen.getByLabelText(
+      "tasks.dialog.fields.version",
+    ) as HTMLSelectElement;
+    const requirementSelect = screen.getByTestId(
+      "create-task-requirement-select",
+    ) as HTMLSelectElement;
+    const intakeSelect = screen.getByTestId(
+      "create-task-intake-select",
+    ) as HTMLSelectElement;
+
+    fireEvent.change(intakeSelect, {
+      target: { value: unversionedIntakeItemId },
+    });
+    expect(intakeSelect.value).toBe(unversionedIntakeItemId);
+
+    fireEvent.change(requirementSelect, { target: { value: requirementId } });
+
+    await waitFor(() => expect(versionSelect.value).toBe(versionId));
+    expect(requirementSelect.value).toBe(requirementId);
+    expect(intakeSelect.value).toBe("");
+  });
+
+  it("infers the version from a versioned intake item and clears incompatible requirement", async () => {
+    listVersionsMock.mockResolvedValue({
+      items: [{ id: versionId, name: "Version 1" }],
+      total: 1,
+    });
+    listRequirementsMock.mockResolvedValue({
+      items: [
+        { id: unversionedRequirementId, title: "Requirement no version" },
+      ],
+      total: 1,
+    });
+    listIntakeItemsMock.mockResolvedValue({
+      items: [{ id: intakeItemId, title: "Intake v1", versionId }],
+      total: 1,
+    });
+
+    render(
+      <CreateTaskDialog
+        open
+        onOpenChange={() => {}}
+        organizationId={organizationId}
+        spaceId={spaceId}
+      />,
+    );
+
+    await screen.findByText("Intake v1");
+    const versionSelect = screen.getByLabelText(
+      "tasks.dialog.fields.version",
+    ) as HTMLSelectElement;
+    const requirementSelect = screen.getByTestId(
+      "create-task-requirement-select",
+    ) as HTMLSelectElement;
+    const intakeSelect = screen.getByTestId(
+      "create-task-intake-select",
+    ) as HTMLSelectElement;
+
+    fireEvent.change(requirementSelect, {
+      target: { value: unversionedRequirementId },
+    });
+    expect(requirementSelect.value).toBe(unversionedRequirementId);
+
+    fireEvent.change(intakeSelect, { target: { value: intakeItemId } });
+
+    await waitFor(() => expect(versionSelect.value).toBe(versionId));
+    expect(intakeSelect.value).toBe(intakeItemId);
+    expect(requirementSelect.value).toBe("");
   });
 });

@@ -8,7 +8,7 @@ import type {
   Version,
 } from "@project-delivery/shared";
 import { useTranslations } from "next-intl";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import { getApiErrorMessageKey } from "../../lib/api-error-messages";
 import { listIntakeItems } from "../../lib/intake-service";
@@ -83,6 +83,22 @@ export function CreateTaskDialog({
 
   const optionFieldsDisabled = submitting || optionsLoadState !== "ready";
   const submitDisabled = submitting || optionsLoadState !== "ready";
+  const selectedRequirement = useMemo(
+    () => requirements.find((requirement) => requirement.id === requirementId),
+    [requirementId, requirements],
+  );
+  const selectedIntakeItem = useMemo(
+    () => intakeItems.find((intakeItem) => intakeItem.id === intakeItemId),
+    [intakeItemId, intakeItems],
+  );
+  const filteredRequirements = useMemo(
+    () => filterByVersion(requirements, versionId),
+    [requirements, versionId],
+  );
+  const filteredIntakeItems = useMemo(
+    () => filterByVersion(intakeItems, versionId),
+    [intakeItems, versionId],
+  );
 
   useEffect(() => {
     if (open) {
@@ -146,6 +162,49 @@ export function CreateTaskDialog({
   function retryOptionsLoad() {
     setOptionsLoadState("loading");
     setOptionsReloadKey((value) => value + 1);
+  }
+
+  function handleVersionChange(nextVersionId: string) {
+    setVersionId(nextVersionId);
+
+    if (!isCompatibleWithVersion(selectedRequirement, nextVersionId)) {
+      setRequirementId("");
+    }
+    if (!isCompatibleWithVersion(selectedIntakeItem, nextVersionId)) {
+      setIntakeItemId("");
+    }
+  }
+
+  function handleRequirementChange(nextRequirementId: string) {
+    setRequirementId(nextRequirementId);
+
+    const nextRequirement = requirements.find(
+      (requirement) => requirement.id === nextRequirementId,
+    );
+    const nextVersionId = nextRequirement?.versionId;
+
+    if (!versionId && nextVersionId) {
+      setVersionId(nextVersionId);
+      if (!isCompatibleWithVersion(selectedIntakeItem, nextVersionId)) {
+        setIntakeItemId("");
+      }
+    }
+  }
+
+  function handleIntakeItemChange(nextIntakeItemId: string) {
+    setIntakeItemId(nextIntakeItemId);
+
+    const nextIntakeItem = intakeItems.find(
+      (intakeItem) => intakeItem.id === nextIntakeItemId,
+    );
+    const nextVersionId = nextIntakeItem?.versionId;
+
+    if (!versionId && nextVersionId) {
+      setVersionId(nextVersionId);
+      if (!isCompatibleWithVersion(selectedRequirement, nextVersionId)) {
+        setRequirementId("");
+      }
+    }
   }
 
   function handleOpenChange(next: boolean) {
@@ -259,7 +318,7 @@ export function CreateTaskDialog({
               <select
                 id="create-task-version"
                 value={versionId}
-                onChange={(event) => setVersionId(event.target.value)}
+                onChange={(event) => handleVersionChange(event.target.value)}
                 disabled={optionFieldsDisabled}
                 className="h-8 w-full rounded-md border border-input bg-background px-2 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               >
@@ -279,14 +338,14 @@ export function CreateTaskDialog({
                 id="create-task-requirement"
                 data-testid="create-task-requirement-select"
                 value={requirementId}
-                onChange={(event) => setRequirementId(event.target.value)}
+                onChange={(event) => handleRequirementChange(event.target.value)}
                 disabled={optionFieldsDisabled}
                 className="h-8 w-full rounded-md border border-input bg-background px-2 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               >
                 <option value="">
                   {tRoot("workItems.form.noRequirement")}
                 </option>
-                {requirements.map((requirement) => (
+                {filteredRequirements.map((requirement) => (
                   <option key={requirement.id} value={requirement.id}>
                     {requirement.title ||
                       tRoot("intake.dialog.fields.untitledRequirement")}
@@ -302,14 +361,14 @@ export function CreateTaskDialog({
                 id="create-task-intake"
                 data-testid="create-task-intake-select"
                 value={intakeItemId}
-                onChange={(event) => setIntakeItemId(event.target.value)}
+                onChange={(event) => handleIntakeItemChange(event.target.value)}
                 disabled={optionFieldsDisabled}
                 className="h-8 w-full rounded-md border border-input bg-background px-2 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               >
                 <option value="">
                   {tRoot("workItems.trace.noIntakeItem")}
                 </option>
-                {intakeItems.map((intakeItem) => (
+                {filteredIntakeItems.map((intakeItem) => (
                   <option key={intakeItem.id} value={intakeItem.id}>
                     {intakeItem.title}
                   </option>
@@ -442,4 +501,30 @@ function OptionsLoadNotice({
 
 function toDateInputRequestValue(value: string): string {
   return value ? new Date(`${value}T00:00:00`).toISOString() : value;
+}
+
+function filterByVersion<T extends { versionId?: string }>(
+  items: T[],
+  versionId: string,
+): T[] {
+  if (!versionId) {
+    return items;
+  }
+
+  return items.filter((item) => item.versionId === versionId);
+}
+
+function isCompatibleWithVersion(
+  item: { versionId?: string } | undefined,
+  versionId: string,
+): boolean {
+  if (!item) {
+    return true;
+  }
+
+  if (!versionId) {
+    return !item.versionId;
+  }
+
+  return item.versionId === versionId;
 }
