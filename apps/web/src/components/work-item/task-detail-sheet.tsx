@@ -276,6 +276,7 @@ export function TaskDetailSheet({
     <Sheet open={open} onOpenChange={onOpenChange}>
       <TaskDetailSheetBody
         item={item}
+        open={open}
         spaceId={spaceId}
         organizationId={organizationId}
         currentUserId={currentUserId}
@@ -289,6 +290,7 @@ export function TaskDetailSheet({
 
 type BodyProps = {
   item: WorkItemViewModel;
+  open: boolean;
   spaceId?: string;
   organizationId?: string;
   currentUserId?: string;
@@ -299,6 +301,7 @@ type BodyProps = {
 
 function TaskDetailSheetBody({
   item,
+  open,
   spaceId,
   organizationId,
   currentUserId: _currentUserId,
@@ -335,16 +338,33 @@ function TaskDetailSheetBody({
     ? statusCategory === "WAITING" || Boolean(detail.blockedAt)
     : item.isBlocked;
   const blockedReason = detail?.blockedReason ?? item.blockedReason;
+  const detailRequestKey = getWorkItemSubresourceRequestKey({
+    item,
+    organizationId,
+    spaceId,
+  });
   const [timelineRefreshVersion, setTimelineRefreshVersion] = useState(0);
   const [nestedIntakeItemId, setNestedIntakeItemId] = useState<string | null>(
     null,
   );
   const [nestedTask, setNestedTask] = useState<WorkItemViewModel | null>(null);
   const [nestedTaskOpen, setNestedTaskOpen] = useState(false);
+  const latestDetailRequestKeyRef = useRef(detailRequestKey);
+  const latestOpenRef = useRef(open);
+  latestDetailRequestKeyRef.current = detailRequestKey;
+  latestOpenRef.current = open;
   const refreshTimeline = useCallback(() => {
     setTimelineRefreshVersion((version) => version + 1);
   }, []);
+  useEffect(() => {
+    setNestedIntakeItemId(null);
+    setNestedTask(null);
+    setNestedTaskOpen(false);
+  }, [detailRequestKey, open]);
   const openNestedIntakeItem = useCallback((intakeItemId: string) => {
+    if (!latestOpenRef.current) {
+      return;
+    }
     setNestedIntakeItemId(intakeItemId);
   }, []);
   const closeNestedIntakeItem = useCallback((open: boolean) => {
@@ -358,12 +378,19 @@ function TaskDetailSheetBody({
         return;
       }
 
+      const requestKey = detailRequestKey;
       try {
         const workItem = await getWorkItem({
           organizationId,
           spaceId,
           workItemId,
         });
+        if (
+          latestDetailRequestKeyRef.current !== requestKey ||
+          !latestOpenRef.current
+        ) {
+          return;
+        }
         setNestedTask(
           toWorkItemListViewModel(workItem, {
             locale,
@@ -377,14 +404,31 @@ function TaskDetailSheetBody({
         );
         setNestedTaskOpen(true);
       } catch {
+        if (
+          latestDetailRequestKeyRef.current !== requestKey ||
+          !latestOpenRef.current
+        ) {
+          return;
+        }
         setNestedTask(null);
         setNestedTaskOpen(false);
       }
     },
-    [getVersion, locale, lookup.getMember, organizationId, spaceId, tApiError],
+    [
+      detailRequestKey,
+      getVersion,
+      locale,
+      lookup.getMember,
+      organizationId,
+      spaceId,
+      tApiError,
+    ],
   );
   const openNestedWorkItem = useCallback(
     (workItem: WorkItem) => {
+      if (!latestOpenRef.current) {
+        return;
+      }
       setNestedTask(
         toWorkItemListViewModel(workItem, {
           locale,
@@ -406,11 +450,7 @@ function TaskDetailSheetBody({
       setNestedTask(null);
     }
   }, []);
-  const countRequestKey = getWorkItemSubresourceRequestKey({
-    item,
-    organizationId,
-    spaceId,
-  });
+  const countRequestKey = detailRequestKey;
   const latestCountRequestKeyRef = useRef(countRequestKey);
   const countRequestSeqRef = useRef(0);
   const countRevisionRef = useRef({

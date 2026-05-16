@@ -1522,6 +1522,48 @@ describe("IntakePage", () => {
     });
   });
 
+  it("closes the related task detail sheet when the parent intake drawer closes", async () => {
+    const intake = makeIntake({
+      id: "01ARZ3NDEKTSV4RRFFQ69G5FRA",
+      title: "First related intake",
+      status: "CONVERTED",
+    });
+    listIntakeItemsMock.mockResolvedValueOnce({
+      items: [intake],
+      total: 1,
+    });
+    listWorkItemsMock.mockResolvedValueOnce({
+      items: [
+        makeTask({
+          id: "01ARZ3NDEKTSV4RRFFQ69G5TRA",
+          title: "Task from first intake",
+        }),
+      ],
+      page: 1,
+      pageSize: 10,
+      total: 1,
+    });
+
+    render(<IntakePage />);
+
+    fireEvent.click(await screen.findByText("First related intake"));
+    fireEvent.click(await screen.findByText("Task from first intake"));
+
+    expect(await screen.findByTestId("task-detail-sheet")).toHaveAttribute(
+      "data-task-id",
+      "01ARZ3NDEKTSV4RRFFQ69G5TRA",
+    );
+
+    fireEvent.click(
+      screen.getByRole("button", { name: "common.actions.close" }),
+    );
+
+    await waitFor(() =>
+      expect(screen.queryByTestId("task-detail-sheet")).not.toBeInTheDocument(),
+    );
+    expect(screen.queryByTestId("intake-detail-sheet")).not.toBeInTheDocument();
+  });
+
   it("resets related task load-more state when a detail refresh supersedes it", async () => {
     listIntakeItemsMock.mockResolvedValueOnce({
       items: [

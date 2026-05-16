@@ -338,11 +338,18 @@ export function IntakePage() {
     setEditOpen(false);
     setConvertOpen(false);
     setConvertTarget(null);
+    setSelectedTask(null);
+    setTaskSheetOpen(false);
     setRelatedTasksRefreshVersion(0);
     setFilterOpen(false);
     setRequirements([]);
     setHandledDeepLinkKey(null);
   }, [contextKey]);
+
+  useEffect(() => {
+    setSelectedTask(null);
+    setTaskSheetOpen(false);
+  }, [active?.id, contextKey]);
 
   useEffect(() => {
     if (!filterOpen || !spaceId) {
@@ -519,6 +526,8 @@ export function IntakePage() {
       setActive(null);
       setActionErrorKey(null);
       setEditOpen(false);
+      setSelectedTask(null);
+      setTaskSheetOpen(false);
       restoreFocus();
     }
   }
