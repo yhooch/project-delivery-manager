@@ -493,10 +493,10 @@ export function SpaceSettingsPage() {
             <form
               id="basic-settings-form"
               onSubmit={onSaveBasic}
-              className="flex flex-col gap-6"
+              className="flex min-w-0 flex-col gap-6"
             >
-              <div className="grid gap-5 md:grid-cols-2">
-                <div className="flex flex-col gap-2">
+              <div className="grid min-w-0 gap-5 md:grid-cols-2">
+                <div className="flex min-w-0 flex-col gap-2">
                   <Label htmlFor="space-name" className="text-sm font-medium">
                     {t("basic.fields.name")}
                   </Label>
@@ -507,11 +507,11 @@ export function SpaceSettingsPage() {
                     maxLength={120}
                     onChange={(event) => setName(event.target.value)}
                     disabled={!writeAllowed}
-                    className="max-w-md bg-transparent"
+                    className="max-w-full bg-transparent md:max-w-md"
                     required
                   />
                 </div>
-                <div className="flex flex-col gap-2">
+                <div className="flex min-w-0 flex-col gap-2">
                   <Label htmlFor="space-code" className="text-sm font-medium">
                     {t("basic.fields.code")}
                   </Label>
@@ -529,7 +529,7 @@ export function SpaceSettingsPage() {
                       codeError ? "space-code-error" : "space-code-hint"
                     }
                     disabled={!writeAllowed}
-                    className="max-w-md bg-transparent"
+                    className="max-w-full bg-transparent md:max-w-md"
                     required
                   />
                   {codeError ? (
@@ -549,14 +549,14 @@ export function SpaceSettingsPage() {
                     </p>
                   )}
                 </div>
-                <div className="flex flex-col gap-2 md:col-span-2">
+                <div className="flex min-w-0 flex-col gap-2 md:col-span-2">
                   <Label htmlFor="space-owner" className="text-sm font-medium">
                     {t("basic.fields.owner")}
                   </Label>
                   <SelectMenu
                     id="space-owner"
                     data-testid="space-settings-owner-input"
-                    className="flex h-9 w-full max-w-md rounded-md border border-input bg-transparent px-3 py-1 text-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+                    className="flex h-9 w-full max-w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 md:max-w-md"
                     value={ownerId}
                     onChange={(event) => setOwnerId(event.target.value)}
                     disabled={!writeAllowed}
@@ -569,7 +569,7 @@ export function SpaceSettingsPage() {
                     ))}
                   </SelectMenu>
                 </div>
-                <div className="flex flex-col gap-2 md:col-span-2">
+                <div className="flex min-w-0 flex-col gap-2 md:col-span-2">
                   <Label
                     htmlFor="space-description"
                     className="text-sm font-medium"
@@ -584,7 +584,7 @@ export function SpaceSettingsPage() {
                     placeholder={t("basic.fields.descriptionPlaceholder")}
                     onChange={(event) => setDescription(event.target.value)}
                     disabled={!writeAllowed}
-                    className="max-w-2xl min-h-[100px] resize-y bg-transparent"
+                    className="min-h-[100px] max-w-full resize-y bg-transparent md:max-w-2xl"
                   />
                 </div>
               </div>
