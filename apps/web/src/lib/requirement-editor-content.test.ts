@@ -7,6 +7,9 @@ import {
   sanitizeTiptapDocument,
 } from "./requirement-editor-content";
 
+const minioDownloadUrl =
+  "http://127.0.0.1:9000/project-attachments/file.png?X-Amz-Signature=test";
+
 describe("requirement editor content", () => {
   it("removes base64 image nodes before content is saved", () => {
     const contentJson = {
@@ -24,7 +27,7 @@ describe("requirement editor content", () => {
         {
           attrs: {
             attachmentId: "01ARZ3NDEKTSV4RRFFQ69G5FB0",
-            src: "https://object-storage.local/download/file.png",
+            src: minioDownloadUrl,
           },
           type: "image",
         },
@@ -44,7 +47,7 @@ describe("requirement editor content", () => {
         {
           attrs: {
             attachmentId: "01ARZ3NDEKTSV4RRFFQ69G5FB0",
-            src: "https://object-storage.local/download/file.png",
+            src: minioDownloadUrl,
           },
           type: "image",
         },

@@ -1,12 +1,39 @@
 import { z } from "zod";
 
-export const DEFAULT_ATTACHMENT_OBJECT_STORAGE_ORIGIN =
-  "https://object-storage.local";
+const DEFAULT_MINIO_INTERNAL_ENDPOINT = "http://localhost:9000";
+const DEFAULT_MINIO_PUBLIC_ENDPOINT = "http://localhost:9000";
+const DEFAULT_MINIO_BUCKET = "project-delivery-attachments";
+const DEFAULT_MINIO_REGION = "us-east-1";
+
+const BooleanEnvSchema = z.preprocess((value) => {
+  if (typeof value === "boolean") {
+    return value;
+  }
+  if (typeof value === "string") {
+    const normalized = value.trim().toLowerCase();
+
+    if (["1", "true", "yes", "on"].includes(normalized)) {
+      return true;
+    }
+    if (["0", "false", "no", "off"].includes(normalized)) {
+      return false;
+    }
+  }
+
+  return value;
+}, z.boolean());
 
 export const EnvSchema = z
   .object({
-    ATTACHMENT_OBJECT_STORAGE_ORIGIN: z.string().url().optional(),
     DATABASE_URL: z.string().url(),
+    MINIO_ACCESS_KEY: z.string().min(1).optional(),
+    MINIO_AUTO_CREATE_BUCKET: BooleanEnvSchema.optional(),
+    MINIO_BUCKET: z.string().min(1).optional(),
+    MINIO_FORCE_PATH_STYLE: BooleanEnvSchema.optional(),
+    MINIO_INTERNAL_ENDPOINT: z.string().url().optional(),
+    MINIO_PUBLIC_ENDPOINT: z.string().url().optional(),
+    MINIO_REGION: z.string().min(1).optional(),
+    MINIO_SECRET_KEY: z.string().min(1).optional(),
     NODE_ENV: z
       .enum(["development", "test", "production"])
       .default("development"),
@@ -16,22 +43,43 @@ export const EnvSchema = z
   })
   .passthrough()
   .superRefine((env, context) => {
-    if (
-      env.NODE_ENV === "production" &&
-      !env.ATTACHMENT_OBJECT_STORAGE_ORIGIN
-    ) {
-      context.addIssue({
-        code: "custom",
-        message: "Required in production",
-        path: ["ATTACHMENT_OBJECT_STORAGE_ORIGIN"],
-      });
+    if (env.NODE_ENV !== "production") {
+      return;
+    }
+
+    const productionRequiredKeys = [
+      "MINIO_ACCESS_KEY",
+      "MINIO_AUTO_CREATE_BUCKET",
+      "MINIO_BUCKET",
+      "MINIO_FORCE_PATH_STYLE",
+      "MINIO_INTERNAL_ENDPOINT",
+      "MINIO_PUBLIC_ENDPOINT",
+      "MINIO_REGION",
+      "MINIO_SECRET_KEY",
+    ] as const;
+
+    for (const key of productionRequiredKeys) {
+      if (env[key] === undefined) {
+        context.addIssue({
+          code: "custom",
+          message: "Required in production",
+          path: [key],
+        });
+      }
     }
   })
   .transform((env) => ({
     ...env,
-    ATTACHMENT_OBJECT_STORAGE_ORIGIN:
-      env.ATTACHMENT_OBJECT_STORAGE_ORIGIN ??
-      DEFAULT_ATTACHMENT_OBJECT_STORAGE_ORIGIN,
+    MINIO_ACCESS_KEY: env.MINIO_ACCESS_KEY ?? "minioadmin",
+    MINIO_AUTO_CREATE_BUCKET: env.MINIO_AUTO_CREATE_BUCKET ?? false,
+    MINIO_BUCKET: env.MINIO_BUCKET ?? DEFAULT_MINIO_BUCKET,
+    MINIO_FORCE_PATH_STYLE: env.MINIO_FORCE_PATH_STYLE ?? true,
+    MINIO_INTERNAL_ENDPOINT:
+      env.MINIO_INTERNAL_ENDPOINT ?? DEFAULT_MINIO_INTERNAL_ENDPOINT,
+    MINIO_PUBLIC_ENDPOINT:
+      env.MINIO_PUBLIC_ENDPOINT ?? DEFAULT_MINIO_PUBLIC_ENDPOINT,
+    MINIO_REGION: env.MINIO_REGION ?? DEFAULT_MINIO_REGION,
+    MINIO_SECRET_KEY: env.MINIO_SECRET_KEY ?? "minioadmin",
   }));
 
 export type Env = z.infer<typeof EnvSchema>;

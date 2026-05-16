@@ -10,6 +10,8 @@ import { AttachmentController } from "./attachment.controller";
 import { ATTACHMENT_REPOSITORY } from "./attachment.repository";
 import { AttachmentService } from "./attachment.service";
 import { PrismaAttachmentRepository } from "./prisma-attachment.repository";
+import { ATTACHMENT_OBJECT_STORAGE } from "./storage/attachment-object-storage";
+import { S3AttachmentObjectStorage } from "./storage/s3-attachment-object-storage";
 
 @Module({
   controllers: [AttachmentController],
@@ -27,6 +29,10 @@ import { PrismaAttachmentRepository } from "./prisma-attachment.repository";
     {
       provide: ATTACHMENT_REPOSITORY,
       useClass: PrismaAttachmentRepository,
+    },
+    {
+      provide: ATTACHMENT_OBJECT_STORAGE,
+      useClass: S3AttachmentObjectStorage,
     },
   ],
 })

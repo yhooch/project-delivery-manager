@@ -170,6 +170,9 @@ import { TaskDetailSheet } from "./task-detail-sheet";
 
 // -----------------------------------------------------------------------------
 
+const minioDesignDownloadUrl =
+  "http://127.0.0.1:9000/project-attachments/design.png?X-Amz-Signature=test";
+
 function makeViewModel(
   overrides: Partial<WorkItemViewModel> = {},
 ): WorkItemViewModel {
@@ -280,7 +283,7 @@ beforeEach(() => {
   getBugMock.mockResolvedValue(makeBugResponse());
   getWorkItemMock.mockResolvedValue(makeDetailResponse());
   getAttachmentDownloadUrlMock.mockResolvedValue({
-    downloadUrl: "https://object-storage.local/download/design.png",
+    downloadUrl: minioDesignDownloadUrl,
     expiresInSeconds: 300,
   });
   listCommentsMock.mockResolvedValue({ items: [], total: 0 });
@@ -1526,7 +1529,7 @@ describe("TaskDetailSheet", () => {
       total: 1,
     });
     getAttachmentDownloadUrlMock.mockResolvedValueOnce({
-      downloadUrl: "https://object-storage.local/download/design.png",
+      downloadUrl: minioDesignDownloadUrl,
       expiresInSeconds: 300,
     });
 
@@ -1547,7 +1550,7 @@ describe("TaskDetailSheet", () => {
       }),
     );
     expect(openSpy).toHaveBeenCalledWith(
-      "https://object-storage.local/download/design.png",
+      minioDesignDownloadUrl,
       "_blank",
       "noopener,noreferrer",
     );

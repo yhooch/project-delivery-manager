@@ -3,7 +3,7 @@
 # scripts/e2e/run.sh
 #
 # Full UI-E2E orchestrator. Performs, in order:
-#   1. up.sh          -> docker compose up postgres + prisma migrate deploy
+#   1. up.sh          -> docker compose up postgres/minio + migrate + bucket/CORS
 #   2. start API      -> background, wait for /api/v1/health to return 200
 #   3. start Web      -> background, wait for / to return 2xx/3xx
 #   4. playwright     -> E2E_M0/M3/M4/UI_ENABLED=1 E2E_DB_READY=1 corepack pnpm test:e2e
@@ -14,6 +14,10 @@
 #
 # Honoured env vars (all optional):
 #   E2E_PG_PORT / E2E_PG_USER / E2E_PG_PASSWORD / E2E_PG_DB
+#   E2E_MINIO_PORT / E2E_MINIO_CONSOLE_PORT
+#   MINIO_INTERNAL_ENDPOINT / MINIO_PUBLIC_ENDPOINT / MINIO_BUCKET
+#   MINIO_ACCESS_KEY / MINIO_SECRET_KEY / MINIO_REGION
+#   MINIO_FORCE_PATH_STYLE / MINIO_AUTO_CREATE_BUCKET
 #   PORT                  API listen port (default 3001)
 #   WEB_PORT              Web listen port (default 3000)
 #   API_PROXY_TARGET      Web rewrite target (default http://127.0.0.1:$PORT)
@@ -34,6 +38,8 @@ E2E_PG_PORT="${E2E_PG_PORT:-55432}"
 E2E_PG_USER="${E2E_PG_USER:-e2e}"
 E2E_PG_PASSWORD="${E2E_PG_PASSWORD:-e2e}"
 E2E_PG_DB="${E2E_PG_DB:-project_delivery_manager_e2e}"
+E2E_MINIO_PORT="${E2E_MINIO_PORT:-59000}"
+E2E_MINIO_CONSOLE_PORT="${E2E_MINIO_CONSOLE_PORT:-59001}"
 PORT="${PORT:-3001}"
 WEB_PORT="${WEB_PORT:-3000}"
 E2E_WAIT_API_SECS="${E2E_WAIT_API_SECS:-90}"
@@ -49,6 +55,14 @@ export WEB_APP_URL="${WEB_APP_URL:-http://127.0.0.1:${WEB_PORT}}"
 export API_PROXY_TARGET="${API_PROXY_TARGET:-http://127.0.0.1:${PORT}}"
 export E2E_API_URL="${E2E_API_URL:-http://127.0.0.1:${PORT}/api/v1}"
 export E2E_WEB_URL="${E2E_WEB_URL:-http://127.0.0.1:${WEB_PORT}}"
+export MINIO_PUBLIC_ENDPOINT="${MINIO_PUBLIC_ENDPOINT:-http://127.0.0.1:${E2E_MINIO_PORT}}"
+export MINIO_INTERNAL_ENDPOINT="${MINIO_INTERNAL_ENDPOINT:-${MINIO_PUBLIC_ENDPOINT}}"
+export MINIO_BUCKET="${MINIO_BUCKET:-crm-manager-attachments-e2e}"
+export MINIO_ACCESS_KEY="${MINIO_ACCESS_KEY:-e2e-minio}"
+export MINIO_SECRET_KEY="${MINIO_SECRET_KEY:-e2e-minio-secret}"
+export MINIO_REGION="${MINIO_REGION:-us-east-1}"
+export MINIO_FORCE_PATH_STYLE="${MINIO_FORCE_PATH_STYLE:-true}"
+export MINIO_AUTO_CREATE_BUCKET="${MINIO_AUTO_CREATE_BUCKET:-false}"
 export E2E_M0_ENABLED="${E2E_M0_ENABLED:-1}"
 export E2E_M3_ENABLED="${E2E_M3_ENABLED:-1}"
 export E2E_M4_ENABLED="${E2E_M4_ENABLED:-1}"
@@ -91,6 +105,13 @@ E2E_PG_PORT="${E2E_PG_PORT}" \
 E2E_PG_USER="${E2E_PG_USER}" \
 E2E_PG_PASSWORD="${E2E_PG_PASSWORD}" \
 E2E_PG_DB="${E2E_PG_DB}" \
+E2E_MINIO_PORT="${E2E_MINIO_PORT}" \
+E2E_MINIO_CONSOLE_PORT="${E2E_MINIO_CONSOLE_PORT}" \
+MINIO_BUCKET="${MINIO_BUCKET}" \
+MINIO_ACCESS_KEY="${MINIO_ACCESS_KEY}" \
+MINIO_SECRET_KEY="${MINIO_SECRET_KEY}" \
+MINIO_REGION="${MINIO_REGION}" \
+WEB_PORT="${WEB_PORT}" \
 DATABASE_URL="${DATABASE_URL}" \
   bash -- "${SCRIPT_DIR}/up.sh"
 
@@ -159,6 +180,14 @@ start_background "API server" "${API_PID_FILE}" "${API_LOG_FILE}" -- \
     PORT="${PORT}" \
     SESSION_COOKIE_NAME="${SESSION_COOKIE_NAME}" \
     WEB_APP_URL="${WEB_APP_URL}" \
+    MINIO_INTERNAL_ENDPOINT="${MINIO_INTERNAL_ENDPOINT}" \
+    MINIO_PUBLIC_ENDPOINT="${MINIO_PUBLIC_ENDPOINT}" \
+    MINIO_BUCKET="${MINIO_BUCKET}" \
+    MINIO_ACCESS_KEY="${MINIO_ACCESS_KEY}" \
+    MINIO_SECRET_KEY="${MINIO_SECRET_KEY}" \
+    MINIO_REGION="${MINIO_REGION}" \
+    MINIO_FORCE_PATH_STYLE="${MINIO_FORCE_PATH_STYLE}" \
+    MINIO_AUTO_CREATE_BUCKET="${MINIO_AUTO_CREATE_BUCKET}" \
   corepack pnpm --dir "${REPO_ROOT}" --filter @project-delivery/api dev
 
 wait_for_http "API health" "${E2E_API_URL}/health" "${E2E_WAIT_API_SECS}" "${API_LOG_FILE}"
@@ -185,6 +214,7 @@ log "Step 4/4: running Playwright E2E suite."
 log "  E2E_M0_ENABLED=${E2E_M0_ENABLED} E2E_M3_ENABLED=${E2E_M3_ENABLED} E2E_M4_ENABLED=${E2E_M4_ENABLED}"
 log "  E2E_UI_ENABLED=${E2E_UI_ENABLED} E2E_DB_READY=${E2E_DB_READY}"
 log "  E2E_API_URL=${E2E_API_URL} E2E_WEB_URL=${E2E_WEB_URL}"
+log "  MINIO_PUBLIC_ENDPOINT=${MINIO_PUBLIC_ENDPOINT} MINIO_BUCKET=${MINIO_BUCKET}"
 
 cd -- "${REPO_ROOT}"
 # Forward any extra positional args (spec paths, -g pattern, --headed, ...).

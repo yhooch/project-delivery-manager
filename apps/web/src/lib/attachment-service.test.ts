@@ -24,8 +24,8 @@ const spaceId = "01ARZ3NDEKTSV4RRFFQ69G5FAW";
 const requirementId = "01ARZ3NDEKTSV4RRFFQ69G5FAY";
 const attachmentId = "01ARZ3NDEKTSV4RRFFQ69G5FB0";
 const fileKey = `attachments/requirement/${requirementId}/01ARZ3NDEKTSV4RRFFQ69G5FB1-wireframe.png`;
-const uploadUrl = `https://object-storage.local/upload/${encodeURIComponent(fileKey)}`;
-const downloadUrl = `https://object-storage.local/download/${encodeURIComponent(fileKey)}`;
+const uploadUrl = `http://127.0.0.1:9000/project-attachments/${fileKey}?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Signature=test-upload`;
+const downloadUrl = `http://127.0.0.1:9000/project-attachments/${fileKey}?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Signature=test-download`;
 
 function createImageFile() {
   return new File(["image"], "wireframe.png", {
@@ -253,32 +253,10 @@ describe("attachment service", () => {
     );
   });
 
-  it("treats the M1 dev-only pseudo object-storage origin as an accepted local upload", async () => {
-    const api = createApi();
-    const fetchSpy = vi.fn();
-    vi.stubGlobal("fetch", fetchSpy);
-
-    try {
-      await uploadRequirementImage(
-        {
-          existingAttachmentCount: 0,
-          file: createImageFile(),
-          requirementId,
-        },
-        api,
-      );
-
-      expect(fetchSpy).not.toHaveBeenCalled();
-    } finally {
-      vi.unstubAllGlobals();
-    }
-  });
-
-  it("does not skip pseudo object-storage uploads outside dev and test", async () => {
+  it("uploads presigned MinIO objects through fetch before registering", async () => {
     const api = createApi();
     const file = createImageFile();
-    const fetchSpy = vi.fn(async () => ({ ok: true }));
-    vi.stubEnv("NODE_ENV", "production");
+    const fetchSpy = vi.fn(async () => new Response(null, { status: 200 }));
     vi.stubGlobal("fetch", fetchSpy);
 
     try {
@@ -298,9 +276,9 @@ describe("attachment service", () => {
         },
         method: "PUT",
       });
+      expect(api.post).toHaveBeenCalledTimes(2);
     } finally {
       vi.unstubAllGlobals();
-      vi.unstubAllEnvs();
     }
   });
 
@@ -357,28 +335,38 @@ describe("attachment service", () => {
     ).toBe("text/plain");
   });
 
-  it("keeps failed object uploads retryable and does not register the attachment", async () => {
+  it("keeps failed MinIO object uploads retryable and does not register the attachment", async () => {
     const api = createApi();
-    const uploadObject = vi.fn(async () => {
-      throw new Error("object storage unavailable");
-    });
+    const file = createImageFile();
+    const fetchSpy = vi.fn(async () => new Response(null, { status: 500 }));
+    vi.stubGlobal("fetch", fetchSpy);
 
-    await expect(
-      uploadRequirementImage(
-        {
-          existingAttachmentCount: 0,
-          file: createImageFile(),
-          requirementId,
+    try {
+      await expect(
+        uploadRequirementImage(
+          {
+            existingAttachmentCount: 0,
+            file,
+            requirementId,
+          },
+          api,
+        ),
+      ).rejects.toMatchObject({
+        code: "UPLOAD_FAILED",
+        retryable: true,
+      } satisfies Partial<AttachmentUploadError>);
+
+      expect(fetchSpy).toHaveBeenCalledWith(uploadUrl, {
+        body: file,
+        headers: {
+          "Content-Type": "image/png",
         },
-        api,
-        uploadObject,
-      ),
-    ).rejects.toMatchObject({
-      code: "UPLOAD_FAILED",
-      retryable: true,
-    } satisfies Partial<AttachmentUploadError>);
-
-    expect(api.post).toHaveBeenCalledTimes(1);
+        method: "PUT",
+      });
+      expect(api.post).toHaveBeenCalledTimes(1);
+    } finally {
+      vi.unstubAllGlobals();
+    }
   });
 
   it("maps upload failures into retryable localized form state", () => {

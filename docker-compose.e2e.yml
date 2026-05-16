@@ -1,12 +1,18 @@
-# Disposable PostgreSQL instance dedicated to running the UI E2E suite.
-# Kept fully separate from any developer database so a `docker compose down -v`
-# at the end of the run reliably wipes state and never touches dev data.
+# Disposable services dedicated to running the UI E2E suite.
+# Kept fully separate from any developer database/storage so a
+# `docker compose down -v` at the end of the run reliably wipes state and never
+# touches dev data.
 #
 # Defaults can be overridden via env vars when invoking compose:
 #   E2E_PG_PORT (host port, default 55432)
 #   E2E_PG_USER (default e2e)
 #   E2E_PG_PASSWORD (default e2e)
 #   E2E_PG_DB (default project_delivery_manager_e2e)
+#   E2E_MINIO_PORT (host S3 API port, default 59000)
+#   E2E_MINIO_CONSOLE_PORT (host console port, default 59001)
+#   MINIO_ACCESS_KEY (default e2e-minio)
+#   MINIO_SECRET_KEY (default e2e-minio-secret)
+#   MINIO_REGION (default us-east-1)
 
 services:
   postgres-e2e:
@@ -31,3 +37,19 @@ services:
       timeout: 3s
       retries: 30
       start_period: 3s
+
+  minio-e2e:
+    image: minio/minio
+    container_name: crm-manager-e2e-minio
+    restart: "no"
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ACCESS_KEY:-e2e-minio}
+      MINIO_ROOT_PASSWORD: ${MINIO_SECRET_KEY:-e2e-minio-secret}
+      MINIO_REGION_NAME: ${MINIO_REGION:-us-east-1}
+    ports:
+      - "${E2E_MINIO_PORT:-59000}:9000"
+      - "${E2E_MINIO_CONSOLE_PORT:-59001}:9001"
+    tmpfs:
+      # Keep E2E object storage disposable just like the database.
+      - /data

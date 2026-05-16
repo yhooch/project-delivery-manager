@@ -1,7 +1,4 @@
-import { createHmac, timingSafeEqual } from "node:crypto";
-
-import { HttpStatus, Inject, Injectable, Optional } from "@nestjs/common";
-import { ConfigService } from "@nestjs/config";
+import { HttpStatus, Inject, Injectable } from "@nestjs/common";
 import {
   AttachmentDownloadUrlExpiresInSeconds,
   AttachmentMaxCountPerTarget,
@@ -20,7 +17,6 @@ import {
 } from "@project-delivery/shared";
 import { ulid } from "ulid";
 
-import { DEFAULT_ATTACHMENT_OBJECT_STORAGE_ORIGIN } from "../../config/env";
 import { ApiException } from "../../http/api-exception";
 import { AuditService } from "../audit/audit.service";
 import type { RequestMetadata } from "../auth/auth-session.types";
@@ -36,6 +32,11 @@ import {
   type AttachmentRepository,
 } from "./attachment.repository";
 import type { AttachmentTargetContext } from "./attachment.types";
+import {
+  ATTACHMENT_OBJECT_STORAGE,
+  type AttachmentObjectMetadata,
+  type AttachmentObjectStorage,
+} from "./storage/attachment-object-storage";
 
 const REQUIREMENT_WRITER_ROLES = new Set<SpaceRole>([
   "SPACE_ADMIN",
@@ -54,9 +55,8 @@ export class AttachmentService {
     private readonly targets: TargetResolverService,
     @Inject(AuditService)
     private readonly audit: AuditService,
-    @Optional()
-    @Inject(ConfigService)
-    private readonly config?: ConfigService,
+    @Inject(ATTACHMENT_OBJECT_STORAGE)
+    private readonly objectStorage: AttachmentObjectStorage,
   ) {}
 
   async presign(
@@ -67,15 +67,19 @@ export class AttachmentService {
     await this.requireWritableAttachmentTarget(actorUserId, input);
     await this.assertAttachmentCountLimit(input.targetType, input.targetId);
 
-    const fileKey = createSignedFileKey(actorUserId, input);
+    const fileKey = createFileKey(
+      input.targetType,
+      input.targetId,
+      input.fileName,
+    );
+    const uploadUrl = await this.objectStorage.createPresignedUploadUrl({
+      expiresInSeconds: PresignedUploadUrlExpiresInSeconds,
+      key: fileKey,
+      mimeType: input.mimeType,
+    });
 
     return {
-      uploadUrl: createObjectUrl(
-        "upload",
-        fileKey,
-        PresignedUploadUrlExpiresInSeconds,
-        this.objectStorageOrigin(),
-      ),
+      uploadUrl,
       fileKey,
       expiresInSeconds: PresignedUploadUrlExpiresInSeconds,
     };
@@ -94,13 +98,13 @@ export class AttachmentService {
         HttpStatus.BAD_REQUEST,
       );
     }
-    assertSignedFileKey(actorUserId, input);
 
     const target = await this.requireWritableAttachmentTarget(
       actorUserId,
       input,
     );
     await this.assertAttachmentCountLimit(input.targetType, input.targetId);
+    await this.assertUploadedObjectMatches(input);
 
     const created = await this.createAttachmentOrThrowPublicError({
       id: ulid(),
@@ -173,13 +177,13 @@ export class AttachmentService {
       targetType: attachment.targetType,
     });
 
+    const downloadUrl = await this.objectStorage.createPresignedDownloadUrl({
+      expiresInSeconds: AttachmentDownloadUrlExpiresInSeconds,
+      key: attachment.fileKey,
+    });
+
     return {
-      downloadUrl: createObjectUrl(
-        "download",
-        attachment.fileKey,
-        AttachmentDownloadUrlExpiresInSeconds,
-        this.objectStorageOrigin(),
-      ),
+      downloadUrl,
       expiresInSeconds: AttachmentDownloadUrlExpiresInSeconds,
     };
   }
@@ -363,11 +367,50 @@ export class AttachmentService {
     };
   }
 
-  private objectStorageOrigin(): string {
-    return (
-      this.config?.get<string>("ATTACHMENT_OBJECT_STORAGE_ORIGIN") ??
-      DEFAULT_ATTACHMENT_OBJECT_STORAGE_ORIGIN
-    );
+  private async assertUploadedObjectMatches(
+    input: CreateAttachmentRequest,
+  ): Promise<void> {
+    const object = await this.objectStorage.statObject(input.fileKey);
+
+    if (!object) {
+      throw new ApiException(
+        "VALIDATION_ERROR",
+        "Uploaded attachment object does not exist",
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+    if (object.size !== input.size) {
+      await this.deleteInvalidUploadedObject(input.fileKey);
+      throw new ApiException(
+        "VALIDATION_ERROR",
+        "Uploaded attachment size does not match registration",
+        HttpStatus.BAD_REQUEST,
+        {
+          actualSize: object.size,
+          expectedSize: input.size,
+        },
+      );
+    }
+    if (!mimeTypesMatch(object, input.mimeType)) {
+      await this.deleteInvalidUploadedObject(input.fileKey);
+      throw new ApiException(
+        "VALIDATION_ERROR",
+        "Uploaded attachment MIME type does not match registration",
+        HttpStatus.BAD_REQUEST,
+        {
+          actualMimeType: object.mimeType,
+          expectedMimeType: input.mimeType,
+        },
+      );
+    }
+  }
+
+  private async deleteInvalidUploadedObject(fileKey: string): Promise<void> {
+    try {
+      await this.objectStorage.deleteObjectIfExists(fileKey);
+    } catch (error) {
+      void error;
+    }
   }
 }
 
@@ -379,147 +422,27 @@ function createFileKey(
   return `attachments/${targetType.toLowerCase()}/${targetId}/${ulid()}-${sanitizeFileName(fileName)}`;
 }
 
-function createSignedFileKey(
-  actorUserId: string,
-  input: PresignAttachmentRequest,
-): string {
-  const unsignedFileKey = createFileKey(
-    input.targetType,
-    input.targetId,
-    input.fileName,
-  );
-  const expiresAt = Date.now() + PresignedUploadUrlExpiresInSeconds * 1000;
-  const signature = signFileKey(actorUserId, {
-    expiresAt,
-    fileKey: unsignedFileKey,
-    mimeType: input.mimeType,
-    size: input.size,
-    targetId: input.targetId,
-    targetType: input.targetType,
-  });
-
-  return `${unsignedFileKey}~${expiresAt}~${signature}`;
-}
-
 function isExpectedFileKey(
   targetType: "REQUIREMENT" | "WORK_ITEM",
   targetId: string,
   fileKey: string,
 ): boolean {
-  return fileKey.startsWith(
-    `attachments/${targetType.toLowerCase()}/${targetId}/`,
-  );
-}
+  const prefix = `attachments/${targetType.toLowerCase()}/${targetId}/`;
 
-function assertSignedFileKey(
-  actorUserId: string,
-  input: CreateAttachmentRequest,
-): void {
-  const signedFileKey = parseSignedFileKey(input.fileKey);
-
-  if (!signedFileKey) {
-    throwInvalidFileKeySignature();
-  }
-  if (Date.now() > signedFileKey.expiresAt) {
-    throw new ApiException(
-      "VALIDATION_ERROR",
-      "Presigned attachment registration has expired",
-      HttpStatus.BAD_REQUEST,
-    );
+  if (!fileKey.startsWith(prefix)) {
+    return false;
   }
 
-  const expectedSignature = signFileKey(actorUserId, {
-    expiresAt: signedFileKey.expiresAt,
-    fileKey: signedFileKey.unsignedFileKey,
-    mimeType: input.mimeType,
-    size: input.size,
-    targetId: input.targetId,
-    targetType: input.targetType,
-  });
+  const objectName = fileKey.slice(prefix.length);
 
-  if (!safeSignatureEqual(signedFileKey.signature, expectedSignature)) {
-    throwInvalidFileKeySignature();
-  }
+  return /^[0-9A-HJKMNP-TV-Z]{26}-.+$/u.test(objectName);
 }
 
-function parseSignedFileKey(fileKey: string):
-  | {
-      expiresAt: number;
-      signature: string;
-      unsignedFileKey: string;
-    }
-  | undefined {
-  const parts = fileKey.split("~");
-
-  if (parts.length < 3) {
-    return undefined;
-  }
-
-  const [signature, expiresAtText] = parts.slice(-2).reverse();
-  const unsignedFileKey = parts.slice(0, -2).join("~");
-  const expiresAt = Number(expiresAtText);
-
-  if (!unsignedFileKey || !Number.isSafeInteger(expiresAt) || !signature) {
-    return undefined;
-  }
-
-  return {
-    expiresAt,
-    signature,
-    unsignedFileKey,
-  };
-}
-
-function signFileKey(
-  actorUserId: string,
-  input: {
-    expiresAt: number;
-    fileKey: string;
-    mimeType: string;
-    size: number;
-    targetId: string;
-    targetType: AttachmentTargetType;
-  },
-): string {
-  const payload = [
-    actorUserId,
-    input.targetType,
-    input.targetId,
-    input.fileKey,
-    input.mimeType,
-    input.size,
-    input.expiresAt,
-  ].join("\n");
-
-  return createHmac("sha256", attachmentSigningSecret())
-    .update(payload)
-    .digest("base64url");
-}
-
-function attachmentSigningSecret(): string {
-  return (
-    process.env["ATTACHMENT_FILE_KEY_SECRET"] ??
-    process.env["DATABASE_URL"] ??
-    "local-attachment-signing-key"
-  );
-}
-
-function safeSignatureEqual(left: string, right: string): boolean {
-  const leftBuffer = Buffer.from(left);
-  const rightBuffer = Buffer.from(right);
-
-  return (
-    leftBuffer.length === rightBuffer.length &&
-    timingSafeEqual(leftBuffer, rightBuffer)
-  );
-}
-
-function throwInvalidFileKeySignature(): never {
-  throw new ApiException(
-    "VALIDATION_ERROR",
-    "fileKey signature is invalid",
-    HttpStatus.BAD_REQUEST,
-  );
+function mimeTypesMatch(
+  object: AttachmentObjectMetadata,
+  expected: string,
+): boolean {
+  return normalizeMimeType(object.mimeType) === normalizeMimeType(expected);
 }
 
 function sanitizeFileName(fileName: string): string {
@@ -532,18 +455,8 @@ function sanitizeFileName(fileName: string): string {
   return sanitized || "file";
 }
 
-function createObjectUrl(
-  action: "download" | "upload",
-  fileKey: string,
-  expiresInSeconds: number,
-  objectStorageOrigin: string,
-): string {
-  const url = new URL(
-    `/${action}/${encodeURIComponent(fileKey)}`,
-    objectStorageOrigin,
-  );
-  url.searchParams.set("expiresIn", String(expiresInSeconds));
-  return url.toString();
+function normalizeMimeType(mimeType: string): string {
+  return mimeType.split(";")[0]?.trim().toLowerCase() ?? "";
 }
 
 function throwAttachmentTargetNotFound(): never {

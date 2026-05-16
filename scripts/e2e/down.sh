@@ -4,7 +4,7 @@
 #
 # Tears down everything scripts/e2e/up.sh / run.sh started:
 #   - Kills lingering API / Web Node processes whose PIDs we recorded.
-#   - Stops and removes the disposable Postgres container (volumes too).
+#   - Stops and removes disposable Postgres and MinIO containers (volumes too).
 #
 # Safe to run multiple times; missing artefacts are ignored.
 
@@ -64,7 +64,7 @@ if [ -d "${RUN_DIR}" ]; then
 fi
 
 if command -v docker >/dev/null 2>&1 && docker compose version >/dev/null 2>&1; then
-  log "Stopping Postgres container and removing volumes..."
+  log "Stopping Postgres/MinIO containers and removing volumes..."
   docker compose -f docker-compose.e2e.yml down -v --remove-orphans || true
 else
   log "docker not available; skipping container teardown."

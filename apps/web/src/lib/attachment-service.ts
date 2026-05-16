@@ -114,10 +114,6 @@ export const attachmentUploadFailureSchema = z
 
 const defaultApi: AttachmentApiTransport = apiClient;
 const defaultUploadObject: UploadObject = async (uploadUrl, file, mimeType) => {
-  if (isDevOnlyPseudoObjectStorageShimUrl(uploadUrl)) {
-    return;
-  }
-
   const response = await fetch(uploadUrl, {
     body: file,
     headers: {
@@ -281,23 +277,6 @@ export function createAttachmentUploadFailure(
 
 function isImageMimeType(mimeType: AttachmentMimeType): boolean {
   return mimeType.startsWith("image/");
-}
-
-function isDevOnlyPseudoObjectStorageShimUrl(uploadUrl: string): boolean {
-  // Local tests can return a pseudo object-storage URL before real storage is wired.
-  // Production must still attempt the actual PUT instead of silently registering files.
-  if (
-    process.env.NODE_ENV !== "development" &&
-    process.env.NODE_ENV !== "test"
-  ) {
-    return false;
-  }
-
-  try {
-    return new URL(uploadUrl).hostname === "object-storage.local";
-  } catch {
-    return false;
-  }
 }
 
 function mapAttachmentUploadError(error: unknown): AttachmentUploadError {

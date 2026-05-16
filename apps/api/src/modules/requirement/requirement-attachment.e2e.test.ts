@@ -60,6 +60,10 @@ import {
 } from "../attachment/attachment.repository";
 import type { CreateAttachmentInput } from "../attachment/attachment.types";
 import {
+  ATTACHMENT_OBJECT_STORAGE,
+  type AttachmentObjectStorage,
+} from "../attachment/storage/attachment-object-storage";
+import {
   REQUIREMENT_REPOSITORY,
   type RequirementRepository,
 } from "./requirement.repository";
@@ -89,8 +93,6 @@ describe("requirement and attachment API", () => {
     process.env["NODE_ENV"] = "test";
     process.env["SESSION_COOKIE_NAME"] = "pdm_session";
     process.env["WEB_APP_URL"] = ORIGIN;
-    process.env["ATTACHMENT_OBJECT_STORAGE_ORIGIN"] =
-      "https://object-storage.local";
 
     users = new InMemoryUserRepository();
     organizations = new InMemoryOrganizationRepository(users);
@@ -116,6 +118,8 @@ describe("requirement and attachment API", () => {
       .useValue(requirements)
       .overrideProvider(ATTACHMENT_REPOSITORY)
       .useValue(attachments)
+      .overrideProvider(ATTACHMENT_OBJECT_STORAGE)
+      .useValue(createAttachmentObjectStorage())
       .compile();
 
     app = configureApp(moduleRef.createNestApplication());
@@ -534,7 +538,9 @@ describe("requirement and attachment API", () => {
       expiresInSeconds: 600,
     });
     expect(presign.fileKey).toContain(`attachments/requirement/${draft.id}/`);
-    expect(presign.uploadUrl).toContain("https://object-storage.local/upload/");
+    expect(presign.uploadUrl).toContain(
+      "http://127.0.0.1:9000/crm-manager-attachments/",
+    );
 
     const attachment = (
       await createAttachment(agent, {
@@ -576,7 +582,7 @@ describe("requirement and attachment API", () => {
       .expect(({ body }) => {
         expect(body.data.expiresInSeconds).toBe(300);
         expect(body.data.downloadUrl).toContain(
-          "https://object-storage.local/download/",
+          "http://127.0.0.1:9000/crm-manager-attachments/",
         );
       });
     await viewerAgent
@@ -1678,6 +1684,24 @@ class InMemoryRequirementRepository implements RequirementRepository {
       ),
     };
   }
+}
+
+function createAttachmentObjectStorage(): AttachmentObjectStorage {
+  return {
+    createPresignedDownloadUrl: async ({ key }) =>
+      `http://127.0.0.1:9000/crm-manager-attachments/${encodeURIComponent(
+        key,
+      )}?X-Amz-Expires=300`,
+    createPresignedUploadUrl: async ({ key }) =>
+      `http://127.0.0.1:9000/crm-manager-attachments/${encodeURIComponent(
+        key,
+      )}?X-Amz-Expires=600`,
+    deleteObjectIfExists: async () => undefined,
+    statObject: async () => ({
+      mimeType: "image/png",
+      size: 1024,
+    }),
+  };
 }
 
 class InMemoryAttachmentRepository implements AttachmentRepository {

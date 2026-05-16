@@ -8,9 +8,9 @@ End-to-end suites driven by Playwright. The folder mixes two flavours:
 | UI E2E (browser)    | `ui-smoke.spec.ts`, `ui-command-palette.spec.ts`, `ui-org-switcher.spec.ts`, `ui-workbench-overview.spec.ts`, `ui-requirements-create.spec.ts`, `ui-tasks-create.spec.ts`, `ui-task-comments.spec.ts`, `ui-bugs-flow.spec.ts`, `ui-intake-flow.spec.ts`, `ui-version-exceptions-flow.spec.ts`, `ui-settings-organization.spec.ts`, `ui-workflow-config.spec.ts` | skipped unless `E2E_UI_ENABLED=1` AND `E2E_DB_READY=1` AND both probes succeed (see `support/ui-env.ts`)              |
 
 Running the UI suite for real requires a fully wired stack: Postgres + migrated
-schema + API on `:3001` + Web on `:3000`. The orchestrator script below
-provisions all of that against a disposable database so it cannot pollute your
-dev DB.
+schema + MinIO for attachment storage + API on `:3001` + Web on `:3000`. The
+orchestrator script below provisions all of that against disposable containers
+so it cannot pollute your dev DB or object storage.
 
 ## One-command UI E2E
 
@@ -20,7 +20,8 @@ Prerequisites on the host machine:
 - Node 22+, `corepack` enabled (`corepack enable`)
 - `curl`
 - `node_modules` already installed (`corepack pnpm install` once after clone)
-- A free port for Postgres (default `55432`), API (`3001`) and Web (`3000`)
+- Free ports for Postgres (`55432`), MinIO S3 API (`59000`), MinIO console
+  (`59001`), API (`3001`) and Web (`3000`)
 
 Then, from the repo root:
 
@@ -30,10 +31,12 @@ corepack pnpm test:e2e:full
 
 That single command does, in order:
 
-1. `docker compose -f docker-compose.e2e.yml up -d postgres-e2e` — starts a
-   throwaway Postgres 16 with `tmpfs`-backed storage.
-2. Waits for the container's healthcheck to flip to `healthy`, then runs
-   `prisma migrate deploy` against it.
+1. `docker compose -f docker-compose.e2e.yml up -d postgres-e2e minio-e2e` —
+   starts throwaway Postgres 16 and MinIO containers with `tmpfs`-backed
+   storage.
+2. Waits for Postgres and MinIO to become ready, initializes the
+   `crm-manager-attachments-e2e` bucket and browser-upload CORS, then runs
+   `prisma migrate deploy` against Postgres.
 3. Launches the API (`@project-delivery/api dev`) in the background and waits
    for `GET /api/v1/health` to return 200.
 4. Launches the Web app (`@project-delivery/web dev --port 3000`) in the
@@ -45,7 +48,7 @@ That single command does, in order:
    `corepack pnpm test:e2e:full tests/e2e/ui-smoke.spec.ts`).
 6. On exit (success, failure, Ctrl-C) — a `trap` runs
    `scripts/e2e/down.sh`, which kills the API/Web process groups and
-   `docker compose down -v` the Postgres container.
+   `docker compose down -v` the Postgres/MinIO containers.
 
 Logs and PID files live in `.e2e-run/` (gitignored via `.env.*`/`*.log`
 patterns and the directory itself is treated as scratch). Inspect
@@ -55,7 +58,7 @@ patterns and the directory itself is treated as scratch). Inspect
 
 | Command                                     | What it does                                      |
 | ------------------------------------------- | ------------------------------------------------- |
-| `corepack pnpm e2e:up`                      | Just step 1 + 2 (Postgres + migrations)           |
+| `corepack pnpm e2e:up`                      | Just step 1 + 2 (Postgres + MinIO + migrations)   |
 | `corepack pnpm e2e:down`                    | Tear everything down (containers + recorded PIDs) |
 | `E2E_KEEP_UP=1 corepack pnpm test:e2e:full` | Skip teardown so you can poke the running stack   |
 
@@ -65,16 +68,22 @@ See `.env.e2e.example` at the repo root for the full list and defaults. The
 most useful overrides:
 
 - `E2E_PG_PORT` / `E2E_PG_USER` / `E2E_PG_PASSWORD` / `E2E_PG_DB`
+- `E2E_MINIO_PORT` / `E2E_MINIO_CONSOLE_PORT`
+- `MINIO_INTERNAL_ENDPOINT` / `MINIO_PUBLIC_ENDPOINT` / `MINIO_BUCKET`
+- `MINIO_ACCESS_KEY` / `MINIO_SECRET_KEY` / `MINIO_REGION`
+- `MINIO_FORCE_PATH_STYLE` / `MINIO_AUTO_CREATE_BUCKET`
 - `PORT` (API) / `WEB_PORT`
 - `API_PROXY_TARGET` (Web rewrite target, default `http://127.0.0.1:$PORT`)
 - `E2E_WAIT_API_SECS` (default 90), `E2E_WAIT_WEB_SECS` (default 120),
-  `E2E_WAIT_DB_SECS` (default 60)
+  `E2E_WAIT_DB_SECS` (default 60), `E2E_WAIT_MINIO_SECS` (default 60)
 - `DATABASE_URL` (overrides the value otherwise derived from the four PG vars)
 
 ## Design notes
 
 - The disposable Postgres uses `tmpfs` for `/var/lib/postgresql/data`, so
   start-up is fast and `docker compose down -v` reliably wipes state.
+- The disposable MinIO service uses `tmpfs` for `/data`; `up.sh` recreates the
+  attachment bucket and CORS each run.
 - API and Web are started with `setsid` so the cleanup script can SIGTERM the
   whole process group (tsx-watch and `next dev` spawn child workers).
 - The orchestrator never touches the developer's `.env` file or the dev
