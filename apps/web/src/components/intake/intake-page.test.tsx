@@ -143,7 +143,13 @@ const memberMap = new Map<
   { user: { name: string; username: string } }
 >();
 const versionMap = new Map<string, { name: string }>();
+const relationTitleMap = new Map<string, string>();
 vi.mock("../../lib/v2/lookups", () => ({
+  useRelationTitle: (type: string, id: string | undefined) => ({
+    title: id ? relationTitleMap.get(`${type}:${id}`) : undefined,
+    loading: false,
+    error: null,
+  }),
   useSpaceMembers: () => ({
     members: Array.from(memberMap.entries()).map(([userId, member]) => ({
       userId,
@@ -298,6 +304,7 @@ beforeEach(() => {
   listTimelineMock.mockResolvedValue({ items: [], total: 0 });
   memberMap.clear();
   versionMap.clear();
+  relationTitleMap.clear();
   routerPushMock.mockReset();
   searchParamsMock.current = new URLSearchParams();
   sessionMock.current = {
@@ -703,9 +710,7 @@ describe("IntakePage", () => {
 
     await waitFor(() => expect(versionSelect.value).toBe(versionTwoId));
     expect(requirementSelect.value).toBe(requirementTwoId);
-    expect(
-      screen.getByText("Requirement no version"),
-    ).toBeInTheDocument();
+    expect(screen.getByText("Requirement no version")).toBeInTheDocument();
     expect(listIntakeItemsMock).toHaveBeenLastCalledWith(
       expect.objectContaining({
         requirementId: requirementTwoId,
@@ -777,6 +782,35 @@ describe("IntakePage", () => {
         spaceId: "SPC_01",
       }),
     );
+  });
+
+  it("renders linked requirement in the intake detail drawer as a safe new-tab link", async () => {
+    const requirementId = "01ARZ3NDEKTSV4RRFFQ69G5FRQ";
+    relationTitleMap.set(`requirement:${requirementId}`, "Trace requirement");
+    listIntakeItemsMock.mockResolvedValueOnce({
+      items: [
+        makeIntake({
+          id: "01ARZ3NDEKTSV4RRFFQ69G5FRL",
+          title: "Intake with requirement",
+          requirementId,
+        }),
+      ],
+      total: 1,
+    });
+
+    render(<IntakePage />);
+
+    fireEvent.click(await screen.findByText("Intake with requirement"));
+
+    const requirementLink = await screen.findByTestId(
+      "intake-requirement-link",
+    );
+    expect(requirementLink).toHaveAttribute(
+      "href",
+      `/requirements/${requirementId}`,
+    );
+    expect(requirementLink).toHaveAttribute("target", "_blank");
+    expect(requirementLink).toHaveAttribute("rel", "noopener noreferrer");
   });
 
   it("loads related tasks, comments, timeline, and posts a new intake comment", async () => {
@@ -1380,8 +1414,10 @@ describe("IntakePage", () => {
       "intake-related-tasks-open-list",
     );
 
-    expect(openTaskList).not.toBeDisabled();
-    fireEvent.click(openTaskList);
+    expect(openTaskList).toHaveAttribute(
+      "href",
+      "/work-items?intakeItemId=01ARZ3NDEKTSV4RRFFQ69G5F04",
+    );
     await waitFor(() =>
       expect(listWorkItemsMock).toHaveBeenCalledWith({
         intakeItemId: "01ARZ3NDEKTSV4RRFFQ69G5F04",
@@ -1391,9 +1427,7 @@ describe("IntakePage", () => {
         spaceId: "SPC_01",
       }),
     );
-    expect(routerPushMock).toHaveBeenCalledWith(
-      "/work-items?intakeItemId=01ARZ3NDEKTSV4RRFFQ69G5F04",
-    );
+    expect(routerPushMock).not.toHaveBeenCalled();
     expect(
       screen.queryByTestId("convert-intake-dialog-open"),
     ).not.toBeInTheDocument();

@@ -1634,7 +1634,10 @@
       "assignee": "负责人",
       "unassigned": "未分配",
       "descriptionTitle": "描述",
-      "descriptionEmpty": "该事项暂无描述。"
+      "descriptionEmpty": "该事项暂无描述。",
+      "linksTitle": "关联",
+      "loadingTitle": "正在加载标题…",
+      "unavailable": "不可访问或已删除"
     },
     "dialog": {
       "create": {
@@ -3092,7 +3095,7 @@
       "emptyTitle": "暂无关联",
       "emptyDescription": "当前工作项还没有关联版本、需求、事项或关联任务。",
       "loading": "正在加载标题…",
-      "unavailable": "标题不可用"
+      "unavailable": "不可访问或已删除"
     },
     "empty": "选择一个工作项以查看详情"
   },

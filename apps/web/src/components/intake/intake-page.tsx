@@ -1,7 +1,6 @@
 "use client";
 
 import type {
-  Comment,
   IntakeItem,
   IntakeSourceType,
   IntakeStatus,
@@ -10,34 +9,22 @@ import type {
   Requirement,
   SpaceMemberWithUser,
   StatusCategory,
-  TimelineEvent,
   Version,
   WorkItem,
 } from "@project-delivery/shared";
 import {
   ArrowRight,
-  CheckCircle2,
-  ChevronRight,
-  Clock,
   Filter,
   GitBranch,
-  Link2,
-  Loader2,
-  MessageSquare,
   Pencil,
   Plus,
-  Send,
   Target,
-  Users,
 } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
 import { useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
-import { useRouter } from "../../i18n/routing";
 import { getApiErrorMessageKey } from "../../lib/api-error-messages";
-import { toCreateCommentRequest } from "../../lib/comment-forms";
-import { createComment, listComments } from "../../lib/comment-service";
 import { formatDisplayCode } from "../../lib/display-code";
 import {
   useFocusReturn,
@@ -52,7 +39,6 @@ import {
   type IntakeListFilterState,
 } from "../../lib/intake-service";
 import { listRequirements } from "../../lib/requirement-service";
-import { listTimeline } from "../../lib/timeline-service";
 import { cn } from "../../lib/utils";
 import { useSpaceMembers, useVersions } from "../../lib/v2/lookups";
 import {
@@ -63,21 +49,12 @@ import {
   toWorkItemListViewModel,
   type WorkItemViewModel,
 } from "../../lib/v2/work-item-view-model";
-import { listWorkItems } from "../../lib/work-item-service";
 import { useSession } from "../providers/session-provider";
 import { recordRecentOpen } from "../shell/recent-opens";
 
 import { Avatar, AvatarFallback } from "../ui/avatar";
 import { Badge } from "../ui/badge";
 import { Button } from "../ui/button";
-import { Input } from "../ui/input";
-import {
-  Sheet,
-  SheetContent,
-  SheetDescription,
-  SheetHeader,
-  SheetTitle,
-} from "../ui/sheet";
 import { StatusBadge } from "../ui/status-badge";
 import { PageHeader } from "../v2/page-header";
 import {
@@ -91,6 +68,7 @@ import { TaskDetailSheet } from "../work-item/task-detail-sheet";
 import { ConvertIntakeDialog } from "./convert-intake-dialog";
 import { CreateIntakeDialog } from "./create-intake-dialog";
 import { EditIntakeDialog } from "./edit-intake-dialog";
+import { IntakeDetailSheet } from "./intake-detail-sheet";
 
 const priorityDot: Record<Priority, string> = {
   LOW: "bg-muted-foreground/40",
@@ -113,13 +91,7 @@ const SOURCE_TYPES: IntakeSourceType[] = [
 
 const PRIORITY_FILTERS: Priority[] = ["LOW", "MEDIUM", "HIGH", "URGENT"];
 const LIST_PAGE_SIZE = 100;
-const RELATED_TASKS_PAGE_SIZE = 10;
 const INITIAL_PAGE_INFO = { page: 1, pageSize: LIST_PAGE_SIZE, total: 0 };
-const INITIAL_RELATED_TASKS_PAGE_INFO = {
-  page: 1,
-  pageSize: RELATED_TASKS_PAGE_SIZE,
-  total: 0,
-};
 
 const intakeStatusToCategory: Record<IntakeStatus, StatusCategory> = {
   PENDING: "NOT_STARTED",
@@ -145,7 +117,6 @@ export function IntakePage() {
   const tIntakeItems = useTranslations("intakeItems");
   const tRoot = useTranslations();
   const locale = useLocale();
-  const router = useRouter();
   const searchParams = useSearchParams();
   const requestedIntakeItemId = normalizeSearchParam(searchParams.get("id"));
   const { currentSpace, session, status: sessionStatus } = useSession();
@@ -188,8 +159,13 @@ export function IntakePage() {
   const [hasLoadedItems, setHasLoadedItems] = useState(false);
   const [convertOpen, setConvertOpen] = useState(false);
   const [convertTarget, setConvertTarget] = useState<IntakeItem | null>(null);
+  const [selectedTask, setSelectedTask] = useState<WorkItemViewModel | null>(
+    null,
+  );
+  const [taskSheetOpen, setTaskSheetOpen] = useState(false);
+  const [relatedTasksRefreshVersion, setRelatedTasksRefreshVersion] =
+    useState(0);
   const [requirements, setRequirements] = useState<Requirement[]>([]);
-  const [timelineRefreshVersion, setTimelineRefreshVersion] = useState(0);
   const [handledDeepLinkKey, setHandledDeepLinkKey] = useState<string | null>(
     null,
   );
@@ -362,9 +338,9 @@ export function IntakePage() {
     setEditOpen(false);
     setConvertOpen(false);
     setConvertTarget(null);
+    setRelatedTasksRefreshVersion(0);
     setFilterOpen(false);
     setRequirements([]);
-    setTimelineRefreshVersion(0);
     setHandledDeepLinkKey(null);
   }, [contextKey]);
 
@@ -630,6 +606,28 @@ export function IntakePage() {
     }
 
     void loadItems(1, "replace");
+  }
+
+  function openTaskDetail(task: WorkItem) {
+    setSelectedTask(
+      toWorkItemListViewModel(task, {
+        locale,
+        lookups: {
+          getMember,
+          getVersion,
+        },
+        statusLabel: (category) =>
+          tRoot(`workItems.statusCategory.${category}`),
+      }),
+    );
+    setTaskSheetOpen(true);
+  }
+
+  function closeTaskSheet(open: boolean) {
+    setTaskSheetOpen(open);
+    if (!open) {
+      setSelectedTask(null);
+    }
   }
 
   const headerActions = spaceId ? (
@@ -933,213 +931,104 @@ export function IntakePage() {
 
       <div className="min-w-0 flex-1 overflow-y-auto">{body}</div>
 
-      <Sheet open={Boolean(active)} onOpenChange={handleCloseDrawer}>
-        <SheetContent
-          className="flex flex-col gap-0 p-0"
-          data-testid="intake-detail-sheet"
-        >
-          {active && (
+      <IntakeDetailSheet
+        actionBar={
+          active && canManageIntake ? (
             <>
-              <SheetHeader className="px-5 py-4">
-                <div className="flex items-center gap-2 text-[11px] font-mono text-muted-foreground">
-                  <Target className="h-3.5 w-3.5" />
-                  <span>{formatItemCode(active.id)}</span>
-                  <ChevronRight className="h-3 w-3" />
-                  <span>{tIntakeItems(`sourceType.${active.sourceType}`)}</span>
-                </div>
-                <SheetTitle className="mt-1 text-base leading-snug">
-                  {active.title}
-                </SheetTitle>
-                <SheetDescription className="sr-only">
-                  {t("detail.sheetDescription")}
-                </SheetDescription>
-                <div className="mt-3 flex flex-wrap items-center gap-2">
-                  <StatusBadge
-                    category={intakeStatusToCategory[active.status]}
-                    label={tIntakeItems(`status.${active.status}`)}
-                  />
-                  <Badge variant="outline">
-                    {tIntakeItems(`sourceType.${active.sourceType}`)}
-                  </Badge>
-                  {active.versionId && (
-                    <Badge variant="outline" className="gap-1">
-                      <GitBranch className="h-2.5 w-2.5" />
-                      {displayVersionName(active.versionId, getVersion)}
-                    </Badge>
-                  )}
-                </div>
-              </SheetHeader>
-
-              <div className="flex min-w-0 flex-col gap-2 border-b border-border bg-muted/30 px-5 py-2.5 sm:flex-row sm:items-center">
-                <span className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
-                  {t("detail.actions")}
-                </span>
-                <div className="flex min-w-0 flex-wrap items-center gap-1.5 sm:ml-auto sm:justify-end">
-                  {canManageIntake && (
+              <Button
+                size="sm"
+                variant="outline"
+                className="h-7 text-xs"
+                data-testid="intake-edit-button"
+                disabled={actionInFlight !== null}
+                onClick={() => setEditOpen(true)}
+                type="button"
+              >
+                <Pencil className="h-3 w-3" />
+                {t("detail.edit")}
+              </Button>
+              {(active.status === "PENDING" ||
+                active.status === "DEFERRED") && (
+                <>
+                  <Button
+                    size="sm"
+                    className="h-7 text-xs"
+                    data-testid="intake-accept-button"
+                    disabled={actionInFlight !== null}
+                    onClick={() => void handleStatusAction("accept")}
+                    type="button"
+                  >
+                    {actionInFlight === "accept"
+                      ? tIntakeItems("statusActions.accepting")
+                      : tIntakeItems("statusActions.accept")}
+                  </Button>
+                  {active.status === "PENDING" && (
                     <Button
                       size="sm"
-                      variant="outline"
+                      variant="secondary"
                       className="h-7 text-xs"
-                      data-testid="intake-edit-button"
+                      data-testid="intake-defer-button"
                       disabled={actionInFlight !== null}
-                      onClick={() => setEditOpen(true)}
+                      onClick={() => void handleStatusAction("defer")}
                       type="button"
                     >
-                      <Pencil className="h-3 w-3" />
-                      {t("detail.edit")}
+                      {actionInFlight === "defer"
+                        ? tIntakeItems("statusActions.deferring")
+                        : tIntakeItems("statusActions.defer")}
                     </Button>
                   )}
-                  {canManageIntake &&
-                    (active.status === "PENDING" ||
-                      active.status === "DEFERRED") && (
-                      <>
-                        <Button
-                          size="sm"
-                          className="h-7 text-xs"
-                          data-testid="intake-accept-button"
-                          disabled={actionInFlight !== null}
-                          onClick={() => void handleStatusAction("accept")}
-                          type="button"
-                        >
-                          {actionInFlight === "accept"
-                            ? tIntakeItems("statusActions.accepting")
-                            : tIntakeItems("statusActions.accept")}
-                        </Button>
-                        {active.status === "PENDING" && (
-                          <Button
-                            size="sm"
-                            variant="secondary"
-                            className="h-7 text-xs"
-                            data-testid="intake-defer-button"
-                            disabled={actionInFlight !== null}
-                            onClick={() => void handleStatusAction("defer")}
-                            type="button"
-                          >
-                            {actionInFlight === "defer"
-                              ? tIntakeItems("statusActions.deferring")
-                              : tIntakeItems("statusActions.defer")}
-                          </Button>
-                        )}
-                        <Button
-                          size="sm"
-                          variant="destructive"
-                          className="h-7 text-xs"
-                          data-testid="intake-reject-button"
-                          disabled={actionInFlight !== null}
-                          onClick={() => void handleStatusAction("reject")}
-                          type="button"
-                        >
-                          {actionInFlight === "reject"
-                            ? tIntakeItems("statusActions.rejecting")
-                            : tIntakeItems("statusActions.reject")}
-                        </Button>
-                      </>
-                    )}
-                  {canManageIntake && active.status === "ACCEPTED" && (
-                    <Button
-                      size="sm"
-                      className="h-7 text-xs"
-                      data-testid="intake-convert-button"
-                      onClick={openConvertDialog}
-                      type="button"
-                    >
-                      <ArrowRight className="h-3 w-3" />
-                      {t("detail.convert")}
-                    </Button>
-                  )}
-                </div>
-              </div>
-
-              {actionErrorKey && (
-                <div className="border-b border-border bg-destructive/5 px-5 py-2 text-[12px] text-destructive">
-                  {tRoot(actionErrorKey)}
-                </div>
+                  <Button
+                    size="sm"
+                    variant="destructive"
+                    className="h-7 text-xs"
+                    data-testid="intake-reject-button"
+                    disabled={actionInFlight !== null}
+                    onClick={() => void handleStatusAction("reject")}
+                    type="button"
+                  >
+                    {actionInFlight === "reject"
+                      ? tIntakeItems("statusActions.rejecting")
+                      : tIntakeItems("statusActions.reject")}
+                  </Button>
+                </>
               )}
-
-              <div className="min-w-0 flex-1 overflow-y-auto px-5 py-4">
-                <div className="grid grid-cols-1 gap-x-6 gap-y-3 text-[13px] sm:grid-cols-2">
-                  <FieldRow
-                    icon={Users}
-                    label={t("detail.reporter")}
-                    value={displayUserName(active.reporterId, getMember)}
-                  />
-                  <FieldRow
-                    icon={Users}
-                    label={t("detail.assignee")}
-                    value={
-                      active.assigneeId
-                        ? displayUserName(active.assigneeId, getMember)
-                        : t("detail.unassigned")
-                    }
-                  />
-                  <FieldRow
-                    icon={Clock}
-                    label={t("detail.acceptedAt")}
-                    value={formatOptionalDateTime(
-                      active.acceptedAt,
-                      locale,
-                      tRoot("common.emptyValue"),
-                    )}
-                  />
-                  <FieldRow
-                    icon={GitBranch}
-                    label={t("detail.version")}
-                    value={
-                      active.versionId
-                        ? displayVersionName(active.versionId, getVersion)
-                        : t("detail.noVersion")
-                    }
-                  />
-                </div>
-                <div className="mt-6">
-                  <h3 className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
-                    {t("detail.descriptionTitle")}
-                  </h3>
-                  <p className="mt-2 text-sm leading-relaxed text-foreground/90 whitespace-pre-wrap">
-                    {active.description ?? t("detail.descriptionEmpty")}
-                  </p>
-                </div>
-                <RelatedTasksSection
-                  getMember={getMember}
-                  getVersion={getVersion}
-                  intakeItem={active}
-                  organizationId={organizationId}
-                  routerPush={(href) => router.push(href)}
-                  spaceId={spaceId}
-                  t={t}
-                  tIntakeItems={tIntakeItems}
-                  locale={locale}
-                  tRoot={tRoot}
-                />
-                <IntakeCommentsSection
-                  canComment={canCreateOrCommentIntake}
-                  getMember={getMember}
-                  intakeItem={active}
-                  organizationId={organizationId}
-                  spaceId={spaceId}
-                  onTimelineRefresh={() =>
-                    setTimelineRefreshVersion((version) => version + 1)
-                  }
-                  locale={locale}
-                  t={t}
-                  tIntakeItems={tIntakeItems}
-                  tRoot={tRoot}
-                />
-                <IntakeTimelineSection
-                  intakeItem={active}
-                  organizationId={organizationId}
-                  refreshVersion={timelineRefreshVersion}
-                  spaceId={spaceId}
-                  locale={locale}
-                  t={t}
-                  tIntakeItems={tIntakeItems}
-                  tRoot={tRoot}
-                />
-              </div>
+              {active.status === "ACCEPTED" && (
+                <Button
+                  size="sm"
+                  className="h-7 text-xs"
+                  data-testid="intake-convert-button"
+                  onClick={openConvertDialog}
+                  type="button"
+                >
+                  <ArrowRight className="h-3 w-3" />
+                  {t("detail.convert")}
+                </Button>
+              )}
             </>
-          )}
-        </SheetContent>
-      </Sheet>
+          ) : null
+        }
+        actionErrorMessage={actionErrorKey ? tRoot(actionErrorKey) : null}
+        canComment={canCreateOrCommentIntake}
+        intakeItem={active}
+        onOpenChange={handleCloseDrawer}
+        onOpenWorkItem={openTaskDetail}
+        open={Boolean(active)}
+        organizationId={organizationId}
+        relatedTasksRefreshVersion={relatedTasksRefreshVersion}
+        showRelatedTasksListLink
+        spaceId={spaceId}
+      />
+
+      <TaskDetailSheet
+        item={selectedTask}
+        open={taskSheetOpen}
+        onOpenChange={closeTaskSheet}
+        organizationId={organizationId}
+        spaceId={spaceId}
+        onChanged={() => {
+          setRelatedTasksRefreshVersion((version) => version + 1);
+        }}
+      />
 
       {spaceId && canCreateOrCommentIntake && (
         <CreateIntakeDialog
@@ -1221,635 +1110,6 @@ function createIntakeListScopeKey({
   ].join("\u001f");
 }
 
-function RelatedTasksSection({
-  getMember,
-  getVersion,
-  intakeItem,
-  locale,
-  organizationId,
-  routerPush,
-  spaceId,
-  t,
-  tIntakeItems,
-  tRoot,
-}: {
-  getMember: (userId: string) => SpaceMemberWithUser | undefined;
-  getVersion: (versionId: string) => Version | undefined;
-  intakeItem: IntakeItem;
-  locale: string;
-  organizationId?: string;
-  routerPush: (href: string) => void;
-  spaceId?: string;
-  t: ReturnType<typeof useTranslations<"intake">>;
-  tIntakeItems: ReturnType<typeof useTranslations<"intakeItems">>;
-  tRoot: ReturnType<typeof useTranslations>;
-}) {
-  const [tasks, setTasks] = useState<WorkItem[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [loadingMore, setLoadingMore] = useState(false);
-  const [errorKey, setErrorKey] = useState<string | null>(null);
-  const [loadMoreErrorKey, setLoadMoreErrorKey] = useState<string | null>(null);
-  const [pageInfo, setPageInfo] = useState(INITIAL_RELATED_TASKS_PAGE_INFO);
-  const [selectedTask, setSelectedTask] = useState<WorkItemViewModel | null>(
-    null,
-  );
-  const [taskSheetOpen, setTaskSheetOpen] = useState(false);
-  const taskScopeKey = useMemo(
-    () => `${organizationId ?? ""}:${spaceId ?? ""}:${intakeItem.id}`,
-    [intakeItem.id, organizationId, spaceId],
-  );
-  const latestTaskScopeKeyRef = useRef(taskScopeKey);
-  const taskRequestIdRef = useRef(0);
-  latestTaskScopeKeyRef.current = taskScopeKey;
-
-  const fetchTasks = useCallback(
-    async (page = 1, mode: "replace" | "append" = "replace") => {
-      if (!spaceId) {
-        setTasks([]);
-        setLoading(false);
-        setLoadingMore(false);
-        setErrorKey(null);
-        setLoadMoreErrorKey(null);
-        setPageInfo(INITIAL_RELATED_TASKS_PAGE_INFO);
-        return;
-      }
-
-      const requestId = taskRequestIdRef.current + 1;
-      taskRequestIdRef.current = requestId;
-      const requestScopeKey = taskScopeKey;
-      const append = mode === "append";
-
-      if (append) {
-        setLoadingMore(true);
-        setLoadMoreErrorKey(null);
-      } else {
-        setLoading(true);
-        setLoadingMore(false);
-        setErrorKey(null);
-        setLoadMoreErrorKey(null);
-      }
-
-      try {
-        const result = await listWorkItems({
-          intakeItemId: intakeItem.id,
-          organizationId,
-          page,
-          pageSize: RELATED_TASKS_PAGE_SIZE,
-          spaceId,
-        });
-        if (
-          taskRequestIdRef.current !== requestId ||
-          latestTaskScopeKeyRef.current !== requestScopeKey
-        ) {
-          return;
-        }
-        setTasks((current) =>
-          append ? [...current, ...result.items] : result.items,
-        );
-        setPageInfo((current) => ({
-          page: result.page ?? page,
-          pageSize: result.pageSize ?? RELATED_TASKS_PAGE_SIZE,
-          total: result.total ?? (append ? current.total : result.items.length),
-        }));
-      } catch (error) {
-        if (
-          taskRequestIdRef.current === requestId &&
-          latestTaskScopeKeyRef.current === requestScopeKey
-        ) {
-          if (append) {
-            setLoadMoreErrorKey(getApiErrorMessageKey(error));
-          } else {
-            setErrorKey(getApiErrorMessageKey(error));
-          }
-        }
-      } finally {
-        if (
-          taskRequestIdRef.current === requestId &&
-          latestTaskScopeKeyRef.current === requestScopeKey
-        ) {
-          if (append) {
-            setLoadingMore(false);
-          } else {
-            setLoading(false);
-          }
-        }
-      }
-    },
-    [intakeItem.id, organizationId, spaceId, taskScopeKey],
-  );
-
-  useEffect(() => {
-    void fetchTasks();
-  }, [fetchTasks]);
-
-  useEffect(() => {
-    setSelectedTask(null);
-    setTaskSheetOpen(false);
-  }, [taskScopeKey]);
-
-  const openList = () => {
-    routerPush(buildWorkItemsHref({ intakeItemId: intakeItem.id }));
-  };
-
-  const openTaskDetail = (task: WorkItem) => {
-    setSelectedTask(
-      toWorkItemListViewModel(task, {
-        locale,
-        lookups: {
-          getMember,
-          getVersion,
-        },
-        statusLabel: (category) =>
-          tRoot(`workItems.statusCategory.${category}`),
-      }),
-    );
-    setTaskSheetOpen(true);
-  };
-
-  const closeTaskSheet = (open: boolean) => {
-    setTaskSheetOpen(open);
-    if (!open) {
-      setSelectedTask(null);
-    }
-  };
-
-  const loadedCount = tasks.length;
-  const paginationFrom = loadedCount > 0 ? 1 : 0;
-  const paginationTo = Math.min(loadedCount, pageInfo.total);
-  const hasMoreTasks = loadedCount < pageInfo.total;
-
-  return (
-    <section className="mt-6" data-testid="intake-related-tasks-section">
-      <div className="mb-2 flex items-center justify-between gap-2">
-        <h3 className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
-          {tIntakeItems("relatedTasks.title")}
-        </h3>
-        <Button
-          type="button"
-          size="sm"
-          variant="outline"
-          className="h-7 text-xs"
-          data-testid="intake-related-tasks-open-list"
-          onClick={openList}
-        >
-          <Link2 className="h-3 w-3" />
-          {tIntakeItems("relatedTasks.openTaskList")}
-        </Button>
-      </div>
-      {loading ? (
-        <LoadingState className="h-28" label={tRoot("common.states.loading")} />
-      ) : errorKey ? (
-        <ErrorState
-          className="h-28"
-          message={tRoot(errorKey)}
-          onRetry={() => {
-            void fetchTasks();
-          }}
-          retryLabel={t("actions.retry")}
-        />
-      ) : tasks.length === 0 ? (
-        <EmptyState
-          className="h-32"
-          icon={<Link2 className="h-4 w-4" />}
-          title={tIntakeItems("relatedTasks.empty.title")}
-          description={tIntakeItems("relatedTasks.empty.description")}
-        />
-      ) : (
-        <>
-          <ul
-            className="divide-y divide-border rounded-md border border-border"
-            data-testid="intake-related-tasks-list"
-          >
-            {tasks.map((task) => (
-              <li key={task.id}>
-                <button
-                  type="button"
-                  data-testid="intake-related-task-item"
-                  className="flex w-full cursor-pointer items-center gap-2 px-3 py-2 text-left text-sm transition-colors hover:bg-muted/50"
-                  onClick={() => openTaskDetail(task)}
-                >
-                  <CheckCircle2 className="h-3.5 w-3.5 shrink-0 text-primary" />
-                  <span className="min-w-0 flex-1 truncate font-medium">
-                    {task.title}
-                  </span>
-                  <span className="hidden shrink-0 text-[11px] text-muted-foreground sm:inline">
-                    {tIntakeItems("relatedTasks.meta", {
-                      dueDate: formatOptionalDate(
-                        task.dueDate,
-                        locale,
-                        tIntakeItems("noDueDate"),
-                      ),
-                      priority: tRoot(`workItems.priority.${task.priority}`),
-                      status: tRoot(
-                        `workItems.statusCategory.${task.statusCategory}`,
-                      ),
-                    })}
-                  </span>
-                </button>
-              </li>
-            ))}
-          </ul>
-          <div className="mt-2 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-            <span
-              className="text-[11px] text-muted-foreground"
-              data-testid="intake-related-tasks-pagination-summary"
-            >
-              {t("pagination.summary", {
-                from: paginationFrom,
-                to: paginationTo,
-                total: pageInfo.total,
-              })}
-            </span>
-            {hasMoreTasks && (
-              <Button
-                type="button"
-                size="sm"
-                variant="outline"
-                className="h-7 text-xs"
-                data-testid="intake-related-tasks-load-more"
-                disabled={loadingMore}
-                onClick={() => {
-                  void fetchTasks(pageInfo.page + 1, "append");
-                }}
-              >
-                {loadingMore && <Loader2 className="h-3 w-3 animate-spin" />}
-                {loadingMore
-                  ? t("pagination.loadingMore")
-                  : t("pagination.loadMore")}
-              </Button>
-            )}
-          </div>
-          {loadMoreErrorKey && (
-            <p
-              className="mt-2 text-[11px] text-destructive"
-              data-testid="intake-related-tasks-load-more-error"
-            >
-              {tRoot(loadMoreErrorKey)}
-            </p>
-          )}
-        </>
-      )}
-      <TaskDetailSheet
-        item={selectedTask}
-        open={taskSheetOpen}
-        onOpenChange={closeTaskSheet}
-        organizationId={organizationId}
-        spaceId={spaceId}
-        onChanged={() => {
-          void fetchTasks(1, "replace");
-        }}
-      />
-    </section>
-  );
-}
-
-function IntakeCommentsSection({
-  canComment,
-  getMember,
-  intakeItem,
-  locale,
-  onTimelineRefresh,
-  organizationId,
-  spaceId,
-  t,
-  tIntakeItems,
-  tRoot,
-}: {
-  canComment: boolean;
-  getMember: (userId: string) => SpaceMemberWithUser | undefined;
-  intakeItem: IntakeItem;
-  locale: string;
-  onTimelineRefresh?: () => void;
-  organizationId?: string;
-  spaceId?: string;
-  t: ReturnType<typeof useTranslations<"intake">>;
-  tIntakeItems: ReturnType<typeof useTranslations<"intakeItems">>;
-  tRoot: ReturnType<typeof useTranslations>;
-}) {
-  const [comments, setComments] = useState<Comment[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [errorKey, setErrorKey] = useState<string | null>(null);
-  const [draft, setDraft] = useState("");
-  const [submitting, setSubmitting] = useState(false);
-  const [submitErrorKey, setSubmitErrorKey] = useState<string | null>(null);
-
-  const fetchComments = useCallback(async () => {
-    if (!spaceId) {
-      return;
-    }
-
-    setLoading(true);
-    setErrorKey(null);
-
-    try {
-      const result = await listComments({
-        organizationId,
-        spaceId,
-        targetId: intakeItem.id,
-        targetType: "INTAKE_ITEM",
-      });
-      setComments(result.items);
-    } catch (error) {
-      setErrorKey(getApiErrorMessageKey(error));
-    } finally {
-      setLoading(false);
-    }
-  }, [intakeItem.id, organizationId, spaceId]);
-
-  useEffect(() => {
-    void fetchComments();
-  }, [fetchComments]);
-
-  const handleSubmit = async () => {
-    if (!draft.trim() || !spaceId || !canComment) {
-      return;
-    }
-
-    setSubmitting(true);
-    setSubmitErrorKey(null);
-
-    try {
-      const request = toCreateCommentRequest({
-        body: draft,
-        targetId: intakeItem.id,
-        targetType: "INTAKE_ITEM",
-      });
-      const created = await createComment({
-        ...request,
-        organizationId,
-        spaceId,
-      });
-      setComments((current) => [...current, created]);
-      setDraft("");
-      onTimelineRefresh?.();
-    } catch (error) {
-      setSubmitErrorKey(getApiErrorMessageKey(error));
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
-  return (
-    <section className="mt-6" data-testid="intake-comments-section">
-      <h3 className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
-        {tIntakeItems("comments.title")}
-      </h3>
-      <div className="mt-2 rounded-md border border-border">
-        {loading ? (
-          <LoadingState
-            className="h-28"
-            label={tRoot("common.states.loading")}
-          />
-        ) : errorKey ? (
-          <ErrorState
-            className="h-28"
-            message={tRoot(errorKey)}
-            onRetry={() => {
-              void fetchComments();
-            }}
-            retryLabel={t("actions.retry")}
-          />
-        ) : comments.length === 0 ? (
-          <EmptyState
-            className="h-28"
-            icon={<MessageSquare className="h-4 w-4" />}
-            title={tIntakeItems("comments.empty.title")}
-            description={tIntakeItems("comments.empty.description")}
-          />
-        ) : (
-          <ul
-            className="divide-y divide-border"
-            data-testid="intake-comments-list"
-          >
-            {comments.map((comment) => {
-              const member = getMember(comment.author.id);
-              const name = member?.user.name ?? comment.author.name;
-              const initial = initialOf(name);
-
-              return (
-                <li
-                  key={comment.id}
-                  data-testid="intake-comment-item"
-                  className="flex gap-3 px-3 py-3"
-                >
-                  <Avatar className="h-7 w-7">
-                    <AvatarFallback>{initial}</AvatarFallback>
-                  </Avatar>
-                  <div className="min-w-0 flex-1">
-                    <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-                      <span className="text-sm font-medium">{name}</span>
-                      <span className="text-[11px] text-muted-foreground">
-                        {formatOptionalDateTime(
-                          comment.createdAt,
-                          locale,
-                          tRoot("common.emptyValue"),
-                        )}
-                      </span>
-                    </div>
-                    <p className="mt-1 whitespace-pre-wrap text-sm leading-relaxed text-foreground/90">
-                      {comment.body}
-                    </p>
-                  </div>
-                </li>
-              );
-            })}
-          </ul>
-        )}
-        {submitErrorKey && (
-          <p className="border-t border-border bg-destructive/10 px-3 py-2 text-[11px] text-destructive">
-            {tRoot(submitErrorKey)}
-          </p>
-        )}
-        {canComment ? (
-          <div className="flex gap-2 border-t border-border p-3">
-            <Input
-              data-testid="intake-comment-input"
-              value={draft}
-              placeholder={tIntakeItems("comments.body")}
-              disabled={submitting}
-              onChange={(event) => setDraft(event.target.value)}
-              onKeyDown={(event) => {
-                if (event.key === "Enter" && (event.metaKey || event.ctrlKey)) {
-                  event.preventDefault();
-                  void handleSubmit();
-                }
-              }}
-            />
-            <Button
-              type="button"
-              size="sm"
-              data-testid="intake-comment-submit"
-              disabled={submitting || draft.trim().length === 0}
-              onClick={() => {
-                void handleSubmit();
-              }}
-            >
-              {submitting ? (
-                <Loader2 className="h-3 w-3 animate-spin" />
-              ) : (
-                <Send className="h-3 w-3" />
-              )}
-              {submitting
-                ? tIntakeItems("comments.submitting")
-                : tIntakeItems("comments.submit")}
-            </Button>
-          </div>
-        ) : (
-          <p
-            data-testid="intake-comments-readonly"
-            className="border-t border-border px-3 py-2 text-[11px] text-muted-foreground"
-          >
-            {tRoot("intakeItems.permissions.commentReadonly")}
-          </p>
-        )}
-      </div>
-    </section>
-  );
-}
-
-function IntakeTimelineSection({
-  intakeItem,
-  locale,
-  organizationId,
-  refreshVersion,
-  spaceId,
-  t,
-  tIntakeItems,
-  tRoot,
-}: {
-  intakeItem: IntakeItem;
-  locale: string;
-  organizationId?: string;
-  refreshVersion: number;
-  spaceId?: string;
-  t: ReturnType<typeof useTranslations<"intake">>;
-  tIntakeItems: ReturnType<typeof useTranslations<"intakeItems">>;
-  tRoot: ReturnType<typeof useTranslations>;
-}) {
-  const [events, setEvents] = useState<TimelineEvent[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [errorKey, setErrorKey] = useState<string | null>(null);
-
-  const fetchEvents = useCallback(async () => {
-    if (!spaceId) {
-      return;
-    }
-
-    setLoading(true);
-    setErrorKey(null);
-
-    try {
-      const result = await listTimeline({
-        organizationId,
-        spaceId,
-        targetId: intakeItem.id,
-        targetType: "INTAKE_ITEM",
-      });
-      setEvents(result.items);
-    } catch (error) {
-      setErrorKey(getApiErrorMessageKey(error));
-    } finally {
-      setLoading(false);
-    }
-  }, [intakeItem.id, organizationId, spaceId]);
-
-  useEffect(() => {
-    void fetchEvents();
-  }, [fetchEvents, refreshVersion]);
-
-  return (
-    <section className="mt-6" data-testid="intake-timeline-section">
-      <h3 className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
-        {tIntakeItems("timeline.title")}
-      </h3>
-      <div className="mt-2 rounded-md border border-border">
-        {loading ? (
-          <LoadingState
-            className="h-28"
-            label={tRoot("common.states.loading")}
-          />
-        ) : errorKey ? (
-          <ErrorState
-            className="h-28"
-            message={tRoot(errorKey)}
-            onRetry={() => {
-              void fetchEvents();
-            }}
-            retryLabel={t("actions.retry")}
-          />
-        ) : events.length === 0 ? (
-          <EmptyState
-            className="h-28"
-            icon={<Clock className="h-4 w-4" />}
-            title={tIntakeItems("timeline.empty.title")}
-            description={tIntakeItems("timeline.empty.description")}
-          />
-        ) : (
-          <ul
-            className="divide-y divide-border"
-            data-testid="intake-timeline-list"
-          >
-            {events.map((event) => (
-              <li
-                key={event.id}
-                data-testid="intake-timeline-item"
-                className="flex gap-3 px-3 py-3"
-              >
-                <Avatar className="h-7 w-7">
-                  <AvatarFallback>{initialOf(event.actor.name)}</AvatarFallback>
-                </Avatar>
-                <div className="min-w-0 flex-1 text-[13px]">
-                  <div>
-                    <span className="font-medium">{event.actor.name}</span>
-                    <span className="text-muted-foreground">
-                      {" "}
-                      {event.title}{" "}
-                    </span>
-                    {event.detail && (
-                      <span className="font-mono text-[12px] text-foreground">
-                        {event.detail}
-                      </span>
-                    )}
-                  </div>
-                  <div className="mt-0.5 text-[11px] text-muted-foreground">
-                    {formatOptionalDateTime(
-                      event.createdAt,
-                      locale,
-                      tRoot("common.emptyValue"),
-                    )}
-                  </div>
-                </div>
-              </li>
-            ))}
-          </ul>
-        )}
-      </div>
-    </section>
-  );
-}
-
-function FieldRow({
-  icon: Icon,
-  label,
-  value,
-}: {
-  icon: typeof Users;
-  label: string;
-  value: string;
-}) {
-  return (
-    <div className="flex items-center gap-2">
-      <Icon className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
-      <span className="text-[11px] uppercase tracking-wider text-muted-foreground">
-        {label}
-      </span>
-      <span className="ml-auto truncate font-medium text-foreground">
-        {value}
-      </span>
-    </div>
-  );
-}
-
 function displayUserName(
   userId: string,
   getMember: (userId: string) => SpaceMemberWithUser | undefined,
@@ -1863,63 +1123,6 @@ function displayVersionName(
   getVersion: (versionId: string) => Version | undefined,
 ): string {
   return getVersion(versionId)?.name ?? "—";
-}
-
-function formatOptionalDate(
-  value: string | null | undefined,
-  locale: string,
-  emptyValue: string,
-): string {
-  if (!value) {
-    return emptyValue;
-  }
-
-  return formatDate(value, locale) ?? emptyValue;
-}
-
-function formatOptionalDateTime(
-  value: string | null | undefined,
-  locale: string,
-  emptyValue: string,
-): string {
-  if (!value) {
-    return emptyValue;
-  }
-
-  return formatDateTime(value, locale) ?? emptyValue;
-}
-
-function formatDate(value: string, locale: string): string | undefined {
-  try {
-    const date = new Date(value);
-
-    if (Number.isNaN(date.getTime())) {
-      return undefined;
-    }
-
-    return new Intl.DateTimeFormat(locale, { dateStyle: "medium" }).format(
-      date,
-    );
-  } catch {
-    return undefined;
-  }
-}
-
-function formatDateTime(value: string, locale: string): string | undefined {
-  try {
-    const date = new Date(value);
-
-    if (Number.isNaN(date.getTime())) {
-      return undefined;
-    }
-
-    return new Intl.DateTimeFormat(locale, {
-      dateStyle: "short",
-      timeStyle: "short",
-    }).format(date);
-  } catch {
-    return undefined;
-  }
 }
 
 function formatItemCode(id: string): string {
@@ -1977,18 +1180,4 @@ function getAllIntakeStatusCount(
   }
 
   return counts.reduce((sum, entry) => sum + entry.count, 0);
-}
-
-function buildWorkItemsHref(
-  query: { intakeItemId: string } | { workItemId: string },
-): string {
-  const params = new URLSearchParams();
-
-  if ("intakeItemId" in query) {
-    params.set("intakeItemId", query.intakeItemId);
-  } else {
-    params.set("workItemId", query.workItemId);
-  }
-
-  return `/work-items?${params.toString()}`;
 }

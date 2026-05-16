@@ -10,6 +10,7 @@ import type {
   Priority,
   Requirement,
   TimelineEvent,
+  WorkItem,
   WorkItemDetail,
   WorkflowActionSummary,
 } from "@project-delivery/shared";
@@ -30,7 +31,7 @@ import {
   Send,
   User2,
 } from "lucide-react";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type React from "react";
 
@@ -50,7 +51,10 @@ import { listIntakeItems } from "../../lib/intake-service";
 import { listRequirements } from "../../lib/requirement-service";
 import { listTimeline } from "../../lib/timeline-service";
 import { cn } from "../../lib/utils";
-import { type WorkItemViewModel } from "../../lib/v2/work-item-view-model";
+import {
+  toWorkItemListViewModel,
+  type WorkItemViewModel,
+} from "../../lib/v2/work-item-view-model";
 import {
   useRelationTitle,
   useSpaceMembers,
@@ -64,6 +68,7 @@ import { toUpdateTaskRequest } from "../../lib/work-item-forms";
 import { getWorkItem, updateWorkItem } from "../../lib/work-item-service";
 
 import { useSession } from "../providers/session-provider";
+import { IntakeDetailSheet } from "../intake/intake-detail-sheet";
 import { Avatar, AvatarFallback, AvatarImage } from "../ui/avatar";
 import { Badge } from "../ui/badge";
 import { Button } from "../ui/button";
@@ -301,6 +306,7 @@ function TaskDetailSheetBody({
   tApiError,
   onChanged,
 }: BodyProps) {
+  const locale = useLocale();
   const isBug = item.type === "BUG";
   const lookup = useSpaceMembers(spaceId, organizationId);
   const { getVersion } = useVersions(spaceId, organizationId);
@@ -330,8 +336,75 @@ function TaskDetailSheetBody({
     : item.isBlocked;
   const blockedReason = detail?.blockedReason ?? item.blockedReason;
   const [timelineRefreshVersion, setTimelineRefreshVersion] = useState(0);
+  const [nestedIntakeItemId, setNestedIntakeItemId] = useState<string | null>(
+    null,
+  );
+  const [nestedTask, setNestedTask] = useState<WorkItemViewModel | null>(null);
+  const [nestedTaskOpen, setNestedTaskOpen] = useState(false);
   const refreshTimeline = useCallback(() => {
     setTimelineRefreshVersion((version) => version + 1);
+  }, []);
+  const openNestedIntakeItem = useCallback((intakeItemId: string) => {
+    setNestedIntakeItemId(intakeItemId);
+  }, []);
+  const closeNestedIntakeItem = useCallback((open: boolean) => {
+    if (!open) {
+      setNestedIntakeItemId(null);
+    }
+  }, []);
+  const openNestedTask = useCallback(
+    async (workItemId: string) => {
+      if (!spaceId) {
+        return;
+      }
+
+      try {
+        const workItem = await getWorkItem({
+          organizationId,
+          spaceId,
+          workItemId,
+        });
+        setNestedTask(
+          toWorkItemListViewModel(workItem, {
+            locale,
+            lookups: {
+              getMember: lookup.getMember,
+              getVersion,
+            },
+            statusLabel: (category) =>
+              tApiError(`workItems.statusCategory.${category}`),
+          }),
+        );
+        setNestedTaskOpen(true);
+      } catch {
+        setNestedTask(null);
+        setNestedTaskOpen(false);
+      }
+    },
+    [getVersion, locale, lookup.getMember, organizationId, spaceId, tApiError],
+  );
+  const openNestedWorkItem = useCallback(
+    (workItem: WorkItem) => {
+      setNestedTask(
+        toWorkItemListViewModel(workItem, {
+          locale,
+          lookups: {
+            getMember: lookup.getMember,
+            getVersion,
+          },
+          statusLabel: (category) =>
+            tApiError(`workItems.statusCategory.${category}`),
+        }),
+      );
+      setNestedTaskOpen(true);
+    },
+    [getVersion, locale, lookup.getMember, tApiError],
+  );
+  const closeNestedTask = useCallback((open: boolean) => {
+    setNestedTaskOpen(open);
+    if (!open) {
+      setNestedTask(null);
+    }
   }, []);
   const countRequestKey = getWorkItemSubresourceRequestKey({
     item,
@@ -482,203 +555,224 @@ function TaskDetailSheetBody({
   }, [fetchSubresourceCounts]);
 
   return (
-    <SheetContent
-      data-testid="task-detail-sheet"
-      data-task-id={item.id}
-      className="flex flex-col gap-0 p-0"
-    >
-      <SheetHeader className="px-5 py-4">
-        <div className="flex items-center gap-2 text-[11px] font-mono text-muted-foreground">
-          {isBug ? (
-            <Bug className="h-3.5 w-3.5 text-destructive" />
-          ) : (
-            <CheckCircle2 className="h-3.5 w-3.5 text-primary" />
-          )}
-          <span>{isBug ? "BUG" : "TASK"}</span>
-          <ChevronRight className="h-3 w-3" />
-          <span className="truncate">{versionName}</span>
-        </div>
-        <SheetTitle className="mt-1 text-base leading-snug">
-          {detail?.title ?? item.title}
-        </SheetTitle>
-        <SheetDescription className="sr-only">
-          {isBug ? t("sheetDescription.bug") : t("sheetDescription.task")}
-        </SheetDescription>
-        <div className="mt-3 flex flex-wrap items-center gap-2">
-          <StatusBadge category={statusCategory} label={statusLabel} />
-          <Badge
-            variant="outline"
-            className={cn("gap-1", priorityColor[priority])}
-          >
-            <span
-              className={cn(
-                "h-1.5 w-1.5 rounded-full",
-                priority === "URGENT" && "bg-destructive",
-                priority === "HIGH" && "bg-warning",
-                priority === "MEDIUM" && "bg-info",
-                priority === "LOW" && "bg-muted-foreground",
-              )}
-            />
-            {t(`priority.${priority}`)}
-          </Badge>
-          {dueDate && (
+    <>
+      <SheetContent
+        data-testid="task-detail-sheet"
+        data-task-id={item.id}
+        className="flex flex-col gap-0 p-0"
+      >
+        <SheetHeader className="px-5 py-4">
+          <div className="flex items-center gap-2 text-[11px] font-mono text-muted-foreground">
+            {isBug ? (
+              <Bug className="h-3.5 w-3.5 text-destructive" />
+            ) : (
+              <CheckCircle2 className="h-3.5 w-3.5 text-primary" />
+            )}
+            <span>{isBug ? "BUG" : "TASK"}</span>
+            <ChevronRight className="h-3 w-3" />
+            <span className="truncate">{versionName}</span>
+          </div>
+          <SheetTitle className="mt-1 text-base leading-snug">
+            {detail?.title ?? item.title}
+          </SheetTitle>
+          <SheetDescription className="sr-only">
+            {isBug ? t("sheetDescription.bug") : t("sheetDescription.task")}
+          </SheetDescription>
+          <div className="mt-3 flex flex-wrap items-center gap-2">
+            <StatusBadge category={statusCategory} label={statusLabel} />
             <Badge
               variant="outline"
-              className={cn(
-                "gap-1",
-                item.isOverdue && "border-destructive/40 text-destructive",
-              )}
+              className={cn("gap-1", priorityColor[priority])}
             >
-              <Clock className="h-2.5 w-2.5" />
-              {t("fields.due")} {dueDate}
+              <span
+                className={cn(
+                  "h-1.5 w-1.5 rounded-full",
+                  priority === "URGENT" && "bg-destructive",
+                  priority === "HIGH" && "bg-warning",
+                  priority === "MEDIUM" && "bg-info",
+                  priority === "LOW" && "bg-muted-foreground",
+                )}
+              />
+              {t(`priority.${priority}`)}
             </Badge>
-          )}
-        </div>
-      </SheetHeader>
+            {dueDate && (
+              <Badge
+                variant="outline"
+                className={cn(
+                  "gap-1",
+                  item.isOverdue && "border-destructive/40 text-destructive",
+                )}
+              >
+                <Clock className="h-2.5 w-2.5" />
+                {t("fields.due")} {dueDate}
+              </Badge>
+            )}
+          </div>
+        </SheetHeader>
 
-      <ActionBar
-        item={item}
-        spaceId={spaceId}
-        organizationId={organizationId}
-        permissionState={permissionState}
-        lookup={lookup}
-        t={t}
-        tApiError={tApiError}
-        onChanged={onChanged}
-        onTimelineRefresh={refreshTimeline}
-      />
+        <ActionBar
+          item={item}
+          spaceId={spaceId}
+          organizationId={organizationId}
+          permissionState={permissionState}
+          lookup={lookup}
+          t={t}
+          tApiError={tApiError}
+          onChanged={onChanged}
+          onTimelineRefresh={refreshTimeline}
+        />
 
-      {isBlocked && blockedReason && (
-        <div className="border-b border-border bg-warning/10 px-5 py-2.5">
-          <div className="flex items-start gap-2">
-            <AlertCircle className="mt-0.5 h-3.5 w-3.5 shrink-0 text-warning" />
-            <div className="text-xs">
-              <span className="font-medium text-warning">
-                {t("blocked.label")}
-              </span>
-              <span className="ml-2 text-foreground/80">{blockedReason}</span>
+        {isBlocked && blockedReason && (
+          <div className="border-b border-border bg-warning/10 px-5 py-2.5">
+            <div className="flex items-start gap-2">
+              <AlertCircle className="mt-0.5 h-3.5 w-3.5 shrink-0 text-warning" />
+              <div className="text-xs">
+                <span className="font-medium text-warning">
+                  {t("blocked.label")}
+                </span>
+                <span className="ml-2 text-foreground/80">{blockedReason}</span>
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        )}
 
-      <Tabs
-        defaultValue="detail"
-        className="flex flex-1 flex-col overflow-hidden"
-      >
-        <TabsList className="w-full overflow-x-auto px-5">
-          <TabsTrigger
+        <Tabs
+          defaultValue="detail"
+          className="flex flex-1 flex-col overflow-hidden"
+        >
+          <TabsList className="w-full overflow-x-auto px-5">
+            <TabsTrigger
+              value="detail"
+              className="shrink-0"
+              data-testid="task-detail-tab"
+            >
+              {t("tabs.detail")}
+            </TabsTrigger>
+            <TabsTrigger
+              value="comments"
+              className="shrink-0 gap-1.5"
+              data-testid="task-comments-tab"
+            >
+              <MessageSquare className="h-3 w-3" />
+              {t("tabs.comments")}
+              <TabCount count={counts.comments} />
+            </TabsTrigger>
+            <TabsTrigger
+              value="attachments"
+              className="shrink-0 gap-1.5"
+              data-testid="task-attachments-tab"
+            >
+              <Paperclip className="h-3 w-3" />
+              {t("tabs.attachments")}
+              <TabCount count={counts.attachments} />
+            </TabsTrigger>
+            <TabsTrigger
+              value="timeline"
+              className="shrink-0 gap-1.5"
+              data-testid="task-timeline-tab"
+            >
+              <Clock className="h-3 w-3" />
+              {t("tabs.timeline")}
+            </TabsTrigger>
+          </TabsList>
+
+          <TabsContent
             value="detail"
-            className="shrink-0"
-            data-testid="task-detail-tab"
+            data-testid="task-detail-panel"
+            className="mt-0 flex-1 overflow-y-auto px-5 py-4"
           >
-            {t("tabs.detail")}
-          </TabsTrigger>
-          <TabsTrigger
-            value="comments"
-            className="shrink-0 gap-1.5"
-            data-testid="task-comments-tab"
-          >
-            <MessageSquare className="h-3 w-3" />
-            {t("tabs.comments")}
-            <TabCount count={counts.comments} />
-          </TabsTrigger>
-          <TabsTrigger
+            <DetailTab
+              item={item}
+              detail={detail}
+              lookup={lookup}
+              canEdit={!isBug && permissionState.permissions?.canEdit === true}
+              organizationId={organizationId}
+              spaceId={spaceId}
+              t={t}
+              tRoot={tApiError}
+              versionName={versionName}
+              onOpenIntakeItem={openNestedIntakeItem}
+              onOpenRelatedTask={openNestedTask}
+              onSaved={async () => {
+                await permissionState.fetchPermissions();
+                onChanged?.();
+              }}
+            />
+          </TabsContent>
+
+          <TabsContent value="comments" className="mt-0 flex-1 overflow-hidden">
+            <CommentsTab
+              item={item}
+              spaceId={spaceId}
+              organizationId={organizationId}
+              lookup={lookup}
+              canComment={permissionState.permissions?.canComment === true}
+              t={t}
+              tApiError={tApiError}
+              onCountChange={setCommentsCount}
+              onChanged={() => {
+                incrementCommentsCount();
+                refreshTimeline();
+                onChanged?.();
+              }}
+            />
+          </TabsContent>
+
+          <TabsContent
             value="attachments"
-            className="shrink-0 gap-1.5"
-            data-testid="task-attachments-tab"
+            data-testid="task-attachments-panel"
+            className="mt-0 flex-1 overflow-y-auto"
           >
-            <Paperclip className="h-3 w-3" />
-            {t("tabs.attachments")}
-            <TabCount count={counts.attachments} />
-          </TabsTrigger>
-          <TabsTrigger
+            <AttachmentsTab
+              item={item}
+              spaceId={spaceId}
+              organizationId={organizationId}
+              lookup={lookup}
+              canUploadAttachment={
+                permissionState.permissions?.canUploadAttachment === true
+              }
+              t={t}
+              tApiError={tApiError}
+              onCountChange={setAttachmentsCount}
+              onTimelineRefresh={refreshTimeline}
+            />
+          </TabsContent>
+
+          <TabsContent
             value="timeline"
-            className="shrink-0 gap-1.5"
-            data-testid="task-timeline-tab"
+            data-testid="task-timeline-panel"
+            className="mt-0 flex-1 overflow-y-auto"
           >
-            <Clock className="h-3 w-3" />
-            {t("tabs.timeline")}
-          </TabsTrigger>
-        </TabsList>
-
-        <TabsContent
-          value="detail"
-          data-testid="task-detail-panel"
-          className="mt-0 flex-1 overflow-y-auto px-5 py-4"
-        >
-          <DetailTab
-            item={item}
-            detail={detail}
-            lookup={lookup}
-            canEdit={!isBug && permissionState.permissions?.canEdit === true}
-            organizationId={organizationId}
-            spaceId={spaceId}
-            t={t}
-            tRoot={tApiError}
-            versionName={versionName}
-            onSaved={async () => {
-              await permissionState.fetchPermissions();
-              onChanged?.();
-            }}
-          />
-        </TabsContent>
-
-        <TabsContent value="comments" className="mt-0 flex-1 overflow-hidden">
-          <CommentsTab
-            item={item}
-            spaceId={spaceId}
-            organizationId={organizationId}
-            lookup={lookup}
-            canComment={permissionState.permissions?.canComment === true}
-            t={t}
-            tApiError={tApiError}
-            onCountChange={setCommentsCount}
-            onChanged={() => {
-              incrementCommentsCount();
-              refreshTimeline();
-              onChanged?.();
-            }}
-          />
-        </TabsContent>
-
-        <TabsContent
-          value="attachments"
-          data-testid="task-attachments-panel"
-          className="mt-0 flex-1 overflow-y-auto"
-        >
-          <AttachmentsTab
-            item={item}
-            spaceId={spaceId}
-            organizationId={organizationId}
-            lookup={lookup}
-            canUploadAttachment={
-              permissionState.permissions?.canUploadAttachment === true
-            }
-            t={t}
-            tApiError={tApiError}
-            onCountChange={setAttachmentsCount}
-            onTimelineRefresh={refreshTimeline}
-          />
-        </TabsContent>
-
-        <TabsContent
-          value="timeline"
-          data-testid="task-timeline-panel"
-          className="mt-0 flex-1 overflow-y-auto"
-        >
-          <TimelineTab
-            item={item}
-            spaceId={spaceId}
-            organizationId={organizationId}
-            t={t}
-            tApiError={tApiError}
-            refreshVersion={timelineRefreshVersion}
-          />
-        </TabsContent>
-
-      </Tabs>
-    </SheetContent>
+            <TimelineTab
+              item={item}
+              spaceId={spaceId}
+              organizationId={organizationId}
+              t={t}
+              tApiError={tApiError}
+              refreshVersion={timelineRefreshVersion}
+            />
+          </TabsContent>
+        </Tabs>
+      </SheetContent>
+      <IntakeDetailSheet
+        canComment={false}
+        intakeItemId={nestedIntakeItemId ?? undefined}
+        onOpenChange={closeNestedIntakeItem}
+        onOpenWorkItem={openNestedWorkItem}
+        open={Boolean(nestedIntakeItemId)}
+        organizationId={organizationId}
+        spaceId={spaceId}
+        testId="nested-intake-detail-sheet"
+      />
+      <TaskDetailSheet
+        item={nestedTask}
+        open={nestedTaskOpen}
+        onOpenChange={closeNestedTask}
+        organizationId={organizationId}
+        spaceId={spaceId}
+        onChanged={onChanged}
+      />
+    </>
   );
 }
 
@@ -1400,6 +1494,8 @@ function DetailTab({
   item,
   detail,
   lookup,
+  onOpenIntakeItem,
+  onOpenRelatedTask,
   onSaved,
   organizationId,
   spaceId,
@@ -1411,6 +1507,8 @@ function DetailTab({
   item: WorkItemViewModel;
   detail: SheetDetail | null;
   lookup: ReturnType<typeof useSpaceMembers>;
+  onOpenIntakeItem: (intakeItemId: string) => void;
+  onOpenRelatedTask: (workItemId: string) => void;
   onSaved: () => Promise<void>;
   organizationId?: string;
   spaceId?: string;
@@ -1537,10 +1635,14 @@ function DetailTab({
   function handleEditVersionChange(nextVersionId: string) {
     setEditVersionId(nextVersionId);
 
-    if (!isTraceOptionCompatibleWithVersion(selectedRequirement, nextVersionId)) {
+    if (
+      !isTraceOptionCompatibleWithVersion(selectedRequirement, nextVersionId)
+    ) {
       setEditRequirementId("");
     }
-    if (!isTraceOptionCompatibleWithVersion(selectedIntakeItem, nextVersionId)) {
+    if (
+      !isTraceOptionCompatibleWithVersion(selectedIntakeItem, nextVersionId)
+    ) {
       setEditIntakeItemId("");
     }
   }
@@ -1555,7 +1657,9 @@ function DetailTab({
 
     if (nextVersionId) {
       setEditVersionId(nextVersionId);
-      if (!isTraceOptionCompatibleWithVersion(selectedIntakeItem, nextVersionId)) {
+      if (
+        !isTraceOptionCompatibleWithVersion(selectedIntakeItem, nextVersionId)
+      ) {
         setEditIntakeItemId("");
       }
     }
@@ -1571,7 +1675,9 @@ function DetailTab({
 
     if (nextVersionId) {
       setEditVersionId(nextVersionId);
-      if (!isTraceOptionCompatibleWithVersion(selectedRequirement, nextVersionId)) {
+      if (
+        !isTraceOptionCompatibleWithVersion(selectedRequirement, nextVersionId)
+      ) {
         setEditRequirementId("");
       }
     }
@@ -1725,7 +1831,9 @@ function DetailTab({
                 data-testid="task-edit-version-select"
                 value={editVersionId}
                 disabled={saving}
-                onChange={(event) => handleEditVersionChange(event.target.value)}
+                onChange={(event) =>
+                  handleEditVersionChange(event.target.value)
+                }
                 className="h-8 w-full rounded-md border border-input bg-background px-2 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               >
                 <option value="">{t("edit.noVersion")}</option>
@@ -1855,6 +1963,8 @@ function DetailTab({
       </div>
       <TraceabilitySection
         detail={detail}
+        onOpenIntakeItem={onOpenIntakeItem}
+        onOpenRelatedTask={onOpenRelatedTask}
         organizationId={organizationId}
         spaceId={spaceId}
         t={t}
@@ -1956,6 +2066,8 @@ function DetailTextBlock({
 
 function TraceabilitySection({
   detail,
+  onOpenIntakeItem,
+  onOpenRelatedTask,
   spaceId,
   organizationId,
   t,
@@ -1963,6 +2075,8 @@ function TraceabilitySection({
   versionName,
 }: {
   detail: SheetDetail | null;
+  onOpenIntakeItem: (intakeItemId: string) => void;
+  onOpenRelatedTask: (workItemId: string) => void;
   spaceId?: string;
   organizationId?: string;
   t: ReturnType<typeof useTranslations<"taskDetail">>;
@@ -1992,9 +2106,10 @@ function TraceabilitySection({
     return null;
   }
 
-  const links: { icon: typeof GitBranch; label: string; value: string }[] = [];
+  const links: TraceabilityLink[] = [];
   if (detail.versionId && versionName) {
     links.push({
+      kind: "text",
       icon: GitBranch,
       label: t("fields.version"),
       value: versionName,
@@ -2002,23 +2117,31 @@ function TraceabilitySection({
   }
   if (detail.requirementId) {
     links.push({
+      href: `/requirements/${detail.requirementId}`,
+      kind: "anchor",
       icon: Link2,
       label: t("fields.requirement"),
-      value: relationTitleValue(requirementTitle, t),
+      result: requirementTitle,
     });
   }
   if (detail.intakeItemId) {
     links.push({
+      kind: "button",
       icon: Link2,
       label: t("fields.intake"),
-      value: relationTitleValue(intakeTitle, t),
+      onClick: () => onOpenIntakeItem(detail.intakeItemId ?? ""),
+      result: intakeTitle,
+      testId: "task-intake-link",
     });
   }
   if (isBugSheetDetail(detail) && detail.bugDetail.relatedTaskId) {
     links.push({
+      kind: "button",
       icon: Link2,
       label: tApiError("bugs.form.relatedTask"),
-      value: relationTitleValue(relatedTaskTitle, t),
+      onClick: () => onOpenRelatedTask(detail.bugDetail.relatedTaskId ?? ""),
+      result: relatedTaskTitle,
+      testId: "task-related-task-link",
     });
   }
 
@@ -2035,10 +2158,84 @@ function TraceabilitySection({
         <div data-testid="task-links-list" className="grid gap-y-3 text-[13px]">
           {links.map((link, idx) => (
             <div key={`${link.label}-${idx}`} data-testid="task-links-item">
-              <FieldRow icon={link.icon} label={link.label} value={link.value} />
+              <TraceabilityRow link={link} t={t} />
             </div>
           ))}
         </div>
+      )}
+    </div>
+  );
+}
+
+type TraceabilityLink =
+  | {
+      icon: typeof GitBranch;
+      kind: "text";
+      label: string;
+      value: string;
+    }
+  | {
+      href: string;
+      icon: typeof GitBranch;
+      kind: "anchor";
+      label: string;
+      result: ReturnType<typeof useRelationTitle>;
+    }
+  | {
+      icon: typeof GitBranch;
+      kind: "button";
+      label: string;
+      onClick: () => void;
+      result: ReturnType<typeof useRelationTitle>;
+      testId: string;
+    };
+
+function TraceabilityRow({
+  link,
+  t,
+}: {
+  link: TraceabilityLink;
+  t: ReturnType<typeof useTranslations<"taskDetail">>;
+}) {
+  const Icon = link.icon;
+
+  if (link.kind === "text") {
+    return <FieldRow icon={Icon} label={link.label} value={link.value} />;
+  }
+
+  const value = relationTitleValue(link.result, t);
+  const disabled =
+    link.result.loading || Boolean(link.result.error) || !link.result.title;
+
+  return (
+    <div className="flex items-center gap-2">
+      <Icon className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+      <span className="text-[11px] uppercase tracking-wider text-muted-foreground">
+        {link.label}
+      </span>
+      {disabled ? (
+        <span className="ml-auto truncate font-medium text-muted-foreground">
+          {value}
+        </span>
+      ) : link.kind === "anchor" ? (
+        <a
+          className="ml-auto truncate font-medium text-primary underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          data-testid="task-requirement-link"
+          href={link.href}
+          rel="noopener noreferrer"
+          target="_blank"
+        >
+          {value}
+        </a>
+      ) : (
+        <button
+          className="ml-auto max-w-[60%] truncate text-right font-medium text-primary underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          data-testid={link.testId}
+          onClick={link.onClick}
+          type="button"
+        >
+          {value}
+        </button>
       )}
     </div>
   );
@@ -2172,14 +2369,7 @@ function CommentsTab({
         );
       }
     }
-  }, [
-    item.id,
-    onCountChange,
-    organizationId,
-    requestKey,
-    spaceId,
-    tApiError,
-  ]);
+  }, [item.id, onCountChange, organizationId, requestKey, spaceId, tApiError]);
 
   useEffect(() => {
     void fetchComments();
@@ -2458,14 +2648,7 @@ function AttachmentsTab({
         );
       }
     }
-  }, [
-    item.id,
-    onCountChange,
-    organizationId,
-    requestKey,
-    spaceId,
-    tApiError,
-  ]);
+  }, [item.id, onCountChange, organizationId, requestKey, spaceId, tApiError]);
 
   useEffect(() => {
     void fetchAttachments();

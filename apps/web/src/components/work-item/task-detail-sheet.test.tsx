@@ -101,6 +101,7 @@ const {
   uploadAttachmentMock,
   listTimelineMock,
   updateWorkItemMock,
+  getIntakeItemMock,
   listIntakeItemsMock,
   listRequirementsMock,
 } = vi.hoisted(() => ({
@@ -114,6 +115,7 @@ const {
   uploadAttachmentMock: vi.fn(),
   listTimelineMock: vi.fn(),
   updateWorkItemMock: vi.fn(),
+  getIntakeItemMock: vi.fn(),
   listIntakeItemsMock: vi.fn(),
   listRequirementsMock: vi.fn(),
 }));
@@ -127,6 +129,7 @@ vi.mock("../../lib/requirement-service", () => ({
   listRequirements: listRequirementsMock,
 }));
 vi.mock("../../lib/intake-service", () => ({
+  getIntakeItem: getIntakeItemMock,
   listIntakeItems: listIntakeItemsMock,
 }));
 vi.mock("../../lib/bug-service", () => ({
@@ -266,6 +269,7 @@ beforeEach(() => {
   uploadAttachmentMock.mockReset();
   listTimelineMock.mockReset();
   updateWorkItemMock.mockReset();
+  getIntakeItemMock.mockReset();
   listIntakeItemsMock.mockReset();
   listRequirementsMock.mockReset();
 
@@ -280,6 +284,17 @@ beforeEach(() => {
   listAttachmentsMock.mockResolvedValue({ items: [], total: 0 });
   listTimelineMock.mockResolvedValue({ items: [], total: 0 });
   updateWorkItemMock.mockResolvedValue(makeDetailResponse());
+  getIntakeItemMock.mockResolvedValue({
+    id: "01ARZ3NDEKTSV4RRFFQ69G5FI1",
+    organizationId: "ORG_01",
+    spaceId: "SPC_01",
+    title: "Loaded intake",
+    description: "Intake detail",
+    sourceType: "AD_HOC",
+    status: "PENDING",
+    priority: "MEDIUM",
+    reporterId: "01ARZ3NDEKTSV4RRFFQ69G5FR1",
+  });
   listIntakeItemsMock.mockResolvedValue({ items: [], total: 0 });
   listRequirementsMock.mockResolvedValue({ items: [], total: 0 });
 });
@@ -718,8 +733,7 @@ describe("TaskDetailSheet", () => {
     await waitFor(() =>
       expect(
         listCommentsMock.mock.calls.some(
-          ([input]) =>
-            input.targetId === "TASK_A" && input.pageSize !== 1,
+          ([input]) => input.targetId === "TASK_A" && input.pageSize !== 1,
         ),
       ).toBe(true),
     );
@@ -735,8 +749,7 @@ describe("TaskDetailSheet", () => {
     await waitFor(() =>
       expect(
         listCommentsMock.mock.calls.some(
-          ([input]) =>
-            input.targetId === "TASK_B" && input.pageSize !== 1,
+          ([input]) => input.targetId === "TASK_B" && input.pageSize !== 1,
         ),
       ).toBe(true),
     );
@@ -1795,6 +1808,57 @@ describe("TaskDetailSheet", () => {
     expect(within(list).queryByText("9G5FJ1")).not.toBeInTheDocument();
   });
 
+  it("opens linked requirement in a new tab and source intake in a nested drawer", async () => {
+    const requirementId = "01ARZ3NDEKTSV4RRFFQ69G5FRQ";
+    const intakeItemId = "01ARZ3NDEKTSV4RRFFQ69G5FIN";
+    relationTitleMap.set(`requirement:${requirementId}`, "Requirement Alpha");
+    relationTitleMap.set(`intake:${intakeItemId}`, "Intake Alpha");
+    getWorkItemMock.mockResolvedValueOnce(
+      makeDetailResponse({
+        requirementId,
+        intakeItemId,
+      }),
+    );
+    getIntakeItemMock.mockResolvedValueOnce({
+      id: intakeItemId,
+      organizationId: "ORG_01",
+      spaceId: "SPC_01",
+      title: "Loaded nested intake",
+      description: "Nested intake detail",
+      sourceType: "AD_HOC",
+      status: "PENDING",
+      priority: "MEDIUM",
+      reporterId: "01ARZ3NDEKTSV4RRFFQ69G5FR1",
+    });
+
+    render(
+      <TaskDetailSheet
+        item={makeViewModel({ title: "Task with links" })}
+        open
+        onOpenChange={() => {}}
+      />,
+    );
+
+    const requirementLink = await screen.findByTestId("task-requirement-link");
+    expect(requirementLink).toHaveAttribute(
+      "href",
+      `/requirements/${requirementId}`,
+    );
+    expect(requirementLink).toHaveAttribute("target", "_blank");
+    expect(requirementLink).toHaveAttribute("rel", "noopener noreferrer");
+
+    fireEvent.click(screen.getByTestId("task-intake-link"));
+
+    expect(
+      await screen.findByTestId("nested-intake-detail-sheet"),
+    ).toHaveTextContent("Loaded nested intake");
+    expect(getIntakeItemMock).toHaveBeenCalledWith({
+      intakeItemId,
+      organizationId: "ORG_01",
+      spaceId: "SPC_01",
+    });
+  });
+
   it("loads bug relation data from the bug detail endpoint in the detail traceability section", async () => {
     versionMap.set("01ARZ3NDEKTSV4RRFFQ69G5FV1", { name: "Bugfix train" });
     relationTitleMap.set(
@@ -1830,6 +1894,83 @@ describe("TaskDetailSheet", () => {
         "Related task title",
       ),
     ).toBeInTheDocument();
+  });
+
+  it("opens a bug source intake in a nested intake drawer", async () => {
+    const intakeItemId = "01ARZ3NDEKTSV4RRFFQ69G5BJI";
+    relationTitleMap.set(`intake:${intakeItemId}`, "Bug source intake");
+    getBugMock.mockResolvedValueOnce(
+      makeBugResponse({
+        intakeItemId,
+      }),
+    );
+    getIntakeItemMock.mockResolvedValueOnce({
+      id: intakeItemId,
+      organizationId: "ORG_01",
+      spaceId: "SPC_01",
+      title: "Loaded bug source intake",
+      description: "Bug source intake detail",
+      sourceType: "DEFECT_PROBLEM",
+      status: "PENDING",
+      priority: "HIGH",
+      reporterId: "01ARZ3NDEKTSV4RRFFQ69G5FR1",
+    });
+
+    render(
+      <TaskDetailSheet
+        item={makeViewModel({ type: "BUG", title: "Bug with source intake" })}
+        open
+        onOpenChange={() => {}}
+      />,
+    );
+
+    fireEvent.click(await screen.findByTestId("task-intake-link"));
+
+    expect(
+      await screen.findByTestId("nested-intake-detail-sheet"),
+    ).toHaveTextContent("Loaded bug source intake");
+    expect(getIntakeItemMock).toHaveBeenCalledWith({
+      intakeItemId,
+      organizationId: "ORG_01",
+      spaceId: "SPC_01",
+    });
+  });
+
+  it("opens a bug related task in a nested task sheet", async () => {
+    const relatedTaskId = "01ARZ3NDEKTSV4RRFFQ69G5RT1";
+    relationTitleMap.set(`workItem:${relatedTaskId}`, "Related task title");
+    getBugMock.mockResolvedValueOnce(
+      makeBugResponse({
+        bugDetail: {
+          relatedTaskId,
+        },
+      }),
+    );
+    getWorkItemMock.mockResolvedValueOnce(
+      makeDetailResponse({
+        id: relatedTaskId,
+        title: "Nested related task",
+      }),
+    );
+
+    render(
+      <TaskDetailSheet
+        item={makeViewModel({ type: "BUG", title: "Bug with related task" })}
+        open
+        onOpenChange={() => {}}
+      />,
+    );
+
+    fireEvent.click(await screen.findByTestId("task-related-task-link"));
+
+    await waitFor(() =>
+      expect(getWorkItemMock).toHaveBeenCalledWith({
+        organizationId: "ORG_01",
+        spaceId: "SPC_01",
+        workItemId: relatedTaskId,
+      }),
+    );
+    expect(await screen.findByText("Nested related task")).toBeInTheDocument();
   });
 
   it("renders bug-specific detail fields from getBug", async () => {

@@ -1634,7 +1634,10 @@
       "assignee": "Assignee",
       "unassigned": "Unassigned",
       "descriptionTitle": "Description",
-      "descriptionEmpty": "This item has no description yet."
+      "descriptionEmpty": "This item has no description yet.",
+      "linksTitle": "Links",
+      "loadingTitle": "Loading title…",
+      "unavailable": "Unavailable or deleted"
     },
     "dialog": {
       "create": {
@@ -3092,7 +3095,7 @@
       "emptyTitle": "No links",
       "emptyDescription": "This item has no linked version, requirement, intake item, or related task.",
       "loading": "Loading title…",
-      "unavailable": "Title unavailable"
+      "unavailable": "Unavailable or deleted"
     },
     "empty": "Select an item to view details"
   },
