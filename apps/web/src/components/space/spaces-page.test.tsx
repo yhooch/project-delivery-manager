@@ -212,6 +212,13 @@ describe("SpacesPage", () => {
     await waitFor(() => expect(listSpacesMock).toHaveBeenCalledWith("ORG_01"));
     expect(await screen.findByText("Space A")).toBeInTheDocument();
     expect(screen.getByText("Space B")).toBeInTheDocument();
+    expect(screen.getByTestId("spaces-list")).toHaveClass(
+      "grid",
+      "grid-cols-1",
+      "gap-5",
+      "md:grid-cols-2",
+      "lg:grid-cols-3",
+    );
     expect(screen.getByTestId("spaces-create-button")).toBeInTheDocument();
     expect(screen.getByTestId("spaces-switch-SPC_01")).toBeDisabled();
 
@@ -264,7 +271,7 @@ describe("SpacesPage", () => {
       screen.getByTestId("spaces-updated-at-SPC_01").textContent,
     ).toContain("2026");
     expect(screen.getByTestId("spaces-updated-at-SPC_01")).toHaveTextContent(
-      "spaces.list.fields.updatedAt",
+      "spaces.list.fields.updatedAt: ",
     );
 
     expect(screen.getByTestId("spaces-owner-SPC_02")).toHaveTextContent(
@@ -281,7 +288,7 @@ describe("SpacesPage", () => {
       "spaces.list.fields.unfinishedTaskCountspaces.list.emptyValue",
     );
     expect(screen.getByTestId("spaces-updated-at-SPC_02")).toHaveTextContent(
-      "spaces.list.fields.updatedAtspaces.list.emptyValue",
+      "spaces.list.fields.updatedAt: spaces.list.emptyValue",
     );
   });
 
