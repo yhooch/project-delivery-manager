@@ -56,6 +56,7 @@ import { Avatar, AvatarFallback } from "../ui/avatar";
 import { Badge } from "../ui/badge";
 import { Button } from "../ui/button";
 import { StatusBadge } from "../ui/status-badge";
+import { SelectMenu } from "../ui/select-menu";
 import { Tip } from "../ui/tooltip";
 import { PageHeader } from "../v2/page-header";
 import {
@@ -876,7 +877,7 @@ export function IntakePage() {
           className="grid min-w-0 gap-3 border-b border-border bg-muted/20 px-4 py-3 sm:px-6 md:grid-cols-3 xl:grid-cols-5"
         >
           <FilterField label={t("filters.version")}>
-            <select
+            <SelectMenu
               data-testid="intake-filter-version"
               value={listFilters.versionId ?? ""}
               onChange={(event) => setVersionFilter(event.target.value)}
@@ -888,10 +889,10 @@ export function IntakePage() {
                   {version.name}
                 </option>
               ))}
-            </select>
+            </SelectMenu>
           </FilterField>
           <FilterField label={t("filters.requirement")}>
-            <select
+            <SelectMenu
               data-testid="intake-filter-requirement"
               value={listFilters.requirementId ?? ""}
               onChange={(event) => setRequirementFilter(event.target.value)}
@@ -903,10 +904,10 @@ export function IntakePage() {
                   {requirement.title || requirement.id}
                 </option>
               ))}
-            </select>
+            </SelectMenu>
           </FilterField>
           <FilterField label={t("filters.priority")}>
-            <select
+            <SelectMenu
               data-testid="intake-filter-priority"
               value={listFilters.priority ?? ""}
               onChange={(event) =>
@@ -920,10 +921,10 @@ export function IntakePage() {
                   {tIntakeItems(`priority.${priority}`)}
                 </option>
               ))}
-            </select>
+            </SelectMenu>
           </FilterField>
           <FilterField label={t("filters.sourceType")}>
-            <select
+            <SelectMenu
               data-testid="intake-filter-source"
               value={listFilters.sourceType ?? ""}
               onChange={(event) =>
@@ -937,10 +938,10 @@ export function IntakePage() {
                   {tIntakeItems(`sourceType.${sourceType}`)}
                 </option>
               ))}
-            </select>
+            </SelectMenu>
           </FilterField>
           <FilterField label={t("filters.assignee")}>
-            <select
+            <SelectMenu
               data-testid="intake-filter-assignee"
               value={listFilters.assigneeId ?? ""}
               onChange={(event) =>
@@ -954,7 +955,7 @@ export function IntakePage() {
                   {member.user.name || member.user.username}
                 </option>
               ))}
-            </select>
+            </SelectMenu>
           </FilterField>
         </div>
       )}

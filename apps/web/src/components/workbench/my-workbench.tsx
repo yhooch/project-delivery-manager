@@ -63,6 +63,7 @@ import {
   DropdownMenuTrigger,
 } from "../ui/dropdown-menu";
 import { StatusBadge } from "../ui/status-badge";
+import { SelectMenu } from "../ui/select-menu";
 
 import { EmptyState, ErrorState, ListSkeleton } from "../v2/states";
 import { TaskDetailSheet } from "../work-item/task-detail-sheet";
@@ -1099,13 +1100,13 @@ function WorkbenchSelectFilter({
   return (
     <label className="flex min-w-0 flex-col gap-1 text-[11px] font-medium text-muted-foreground">
       <span className="truncate">{label}</span>
-      <select
+      <SelectMenu
         className="h-8 w-full rounded-md border border-input bg-background px-2 text-sm font-normal text-foreground"
         onChange={(event) => onChange(event.target.value)}
         value={value}
       >
         {children}
-      </select>
+      </SelectMenu>
     </label>
   );
 }

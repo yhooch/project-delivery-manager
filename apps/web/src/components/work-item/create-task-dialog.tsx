@@ -34,6 +34,7 @@ import { Button } from "../ui/button";
 import { Input } from "../ui/input";
 import { Label } from "../ui/label";
 import { Textarea } from "../ui/textarea";
+import { SelectMenu } from "../ui/select-menu";
 import { useSession } from "../providers/session-provider";
 
 type CreateTaskDialogProps = {
@@ -123,8 +124,18 @@ export function CreateTaskDialog({
         const [versionPage, requirementPage, intakePage, memberPage] =
           await Promise.all([
             listVersions({ organizationId, spaceId, page: 1, pageSize: 100 }),
-            listRequirements({ organizationId, spaceId, page: 1, pageSize: 100 }),
-            listIntakeItems({ organizationId, spaceId, page: 1, pageSize: 100 }),
+            listRequirements({
+              organizationId,
+              spaceId,
+              page: 1,
+              pageSize: 100,
+            }),
+            listIntakeItems({
+              organizationId,
+              spaceId,
+              page: 1,
+              pageSize: 100,
+            }),
             listSpaceMembers(spaceId),
           ]);
         if (cancelled) {
@@ -171,10 +182,14 @@ export function CreateTaskDialog({
   function handleVersionChange(nextVersionId: string) {
     setVersionId(nextVersionId);
 
-    if (!isTraceOptionCompatibleWithVersion(selectedRequirement, nextVersionId)) {
+    if (
+      !isTraceOptionCompatibleWithVersion(selectedRequirement, nextVersionId)
+    ) {
       setRequirementId("");
     }
-    if (!isTraceOptionCompatibleWithVersion(selectedIntakeItem, nextVersionId)) {
+    if (
+      !isTraceOptionCompatibleWithVersion(selectedIntakeItem, nextVersionId)
+    ) {
       setIntakeItemId("");
     }
   }
@@ -189,7 +204,9 @@ export function CreateTaskDialog({
 
     if (nextVersionId) {
       setVersionId(nextVersionId);
-      if (!isTraceOptionCompatibleWithVersion(selectedIntakeItem, nextVersionId)) {
+      if (
+        !isTraceOptionCompatibleWithVersion(selectedIntakeItem, nextVersionId)
+      ) {
         setIntakeItemId("");
       }
     }
@@ -213,7 +230,9 @@ export function CreateTaskDialog({
     if (nextIntakeItem?.requirementId) {
       setRequirementId(nextIntakeItem.requirementId);
     } else if (nextVersionId) {
-      if (!isTraceOptionCompatibleWithVersion(selectedRequirement, nextVersionId)) {
+      if (
+        !isTraceOptionCompatibleWithVersion(selectedRequirement, nextVersionId)
+      ) {
         setRequirementId("");
       }
     }
@@ -271,7 +290,11 @@ export function CreateTaskDialog({
           <DialogDescription>{t("create.description")}</DialogDescription>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit} className="flex flex-col gap-3" noValidate>
+        <form
+          onSubmit={handleSubmit}
+          className="flex flex-col gap-3"
+          noValidate
+        >
           {errorKey && (
             <div
               role="alert"
@@ -327,7 +350,7 @@ export function CreateTaskDialog({
             />
             <div className="flex flex-col gap-1.5">
               <Label htmlFor="create-task-version">{t("fields.version")}</Label>
-              <select
+              <SelectMenu
                 id="create-task-version"
                 value={versionId}
                 onChange={(event) => handleVersionChange(event.target.value)}
@@ -340,17 +363,19 @@ export function CreateTaskDialog({
                     {version.name}
                   </option>
                 ))}
-              </select>
+              </SelectMenu>
             </div>
             <div className="flex flex-col gap-1.5">
               <Label htmlFor="create-task-requirement">
                 {tRoot("workItems.form.requirement")}
               </Label>
-              <select
+              <SelectMenu
                 id="create-task-requirement"
                 data-testid="create-task-requirement-select"
                 value={requirementId}
-                onChange={(event) => handleRequirementChange(event.target.value)}
+                onChange={(event) =>
+                  handleRequirementChange(event.target.value)
+                }
                 disabled={optionFieldsDisabled}
                 className="h-8 w-full rounded-md border border-input bg-background px-2 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               >
@@ -363,13 +388,13 @@ export function CreateTaskDialog({
                       tRoot("intake.dialog.fields.untitledRequirement")}
                   </option>
                 ))}
-              </select>
+              </SelectMenu>
             </div>
             <div className="flex flex-col gap-1.5">
               <Label htmlFor="create-task-intake">
                 {tRoot("workItems.trace.intakeItem")}
               </Label>
-              <select
+              <SelectMenu
                 id="create-task-intake"
                 data-testid="create-task-intake-select"
                 value={intakeItemId}
@@ -385,13 +410,13 @@ export function CreateTaskDialog({
                     {intakeItem.title}
                   </option>
                 ))}
-              </select>
+              </SelectMenu>
             </div>
             <div className="flex flex-col gap-1.5">
               <Label htmlFor="create-task-assignee">
                 {t("fields.assignee")}
               </Label>
-              <select
+              <SelectMenu
                 id="create-task-assignee"
                 value={assigneeId}
                 onChange={(event) => setAssigneeId(event.target.value)}
@@ -404,13 +429,13 @@ export function CreateTaskDialog({
                     {member.user.name || member.user.username}
                   </option>
                 ))}
-              </select>
+              </SelectMenu>
             </div>
             <div className="flex flex-col gap-1.5">
               <Label htmlFor="create-task-priority">
                 {t("fields.priority")}
               </Label>
-              <select
+              <SelectMenu
                 id="create-task-priority"
                 value={priority}
                 onChange={(event) =>
@@ -423,12 +448,10 @@ export function CreateTaskDialog({
                     {tPriority(p)}
                   </option>
                 ))}
-              </select>
+              </SelectMenu>
             </div>
             <div className="flex flex-col gap-1.5">
-              <Label htmlFor="create-task-duedate">
-                {t("fields.dueDate")}
-              </Label>
+              <Label htmlFor="create-task-duedate">{t("fields.dueDate")}</Label>
               <Input
                 id="create-task-duedate"
                 type="date"

@@ -39,6 +39,7 @@ import {
 import { Input } from "../ui/input";
 import { Label } from "../ui/label";
 import { Textarea } from "../ui/textarea";
+import { SelectMenu } from "../ui/select-menu";
 type EditIntakeDialogProps = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -332,7 +333,7 @@ export function EditIntakeDialog({
                 <Label htmlFor="edit-intake-source">
                   {t("fields.sourceType")}
                 </Label>
-                <select
+                <SelectMenu
                   id="edit-intake-source"
                   data-testid="edit-intake-source-select"
                   value={sourceType}
@@ -346,13 +347,13 @@ export function EditIntakeDialog({
                       {tSourceType(s)}
                     </option>
                   ))}
-                </select>
+                </SelectMenu>
               </div>
               <div className="flex flex-col gap-1.5">
                 <Label htmlFor="edit-intake-priority">
                   {t("fields.priority")}
                 </Label>
-                <select
+                <SelectMenu
                   id="edit-intake-priority"
                   data-testid="edit-intake-priority-select"
                   value={priority}
@@ -367,13 +368,13 @@ export function EditIntakeDialog({
                       {tPriority(p)}
                     </option>
                   ))}
-                </select>
+                </SelectMenu>
               </div>
               <div className="flex flex-col gap-1.5">
                 <Label htmlFor="edit-intake-version">
                   {t("fields.version")}
                 </Label>
-                <select
+                <SelectMenu
                   id="edit-intake-version"
                   data-testid="edit-intake-version-select"
                   value={versionId}
@@ -386,13 +387,13 @@ export function EditIntakeDialog({
                       {version.name}
                     </option>
                   ))}
-                </select>
+                </SelectMenu>
               </div>
               <div className="flex flex-col gap-1.5">
                 <Label htmlFor="edit-intake-requirement">
                   {t("fields.requirement")}
                 </Label>
-                <select
+                <SelectMenu
                   id="edit-intake-requirement"
                   data-testid="edit-intake-requirement-select"
                   value={requirementId}
@@ -407,13 +408,13 @@ export function EditIntakeDialog({
                       {req.title || t("fields.untitledRequirement")}
                     </option>
                   ))}
-                </select>
+                </SelectMenu>
               </div>
               <div className="flex flex-col gap-1.5">
                 <Label htmlFor="edit-intake-assignee">
                   {t("fields.assignee")}
                 </Label>
-                <select
+                <SelectMenu
                   id="edit-intake-assignee"
                   data-testid="edit-intake-assignee-select"
                   value={assigneeId}
@@ -426,7 +427,7 @@ export function EditIntakeDialog({
                       {member.user.name || member.user.username}
                     </option>
                   ))}
-                </select>
+                </SelectMenu>
               </div>
               <div className="flex flex-col gap-1.5 sm:col-span-2">
                 <Label htmlFor="edit-intake-source-object">

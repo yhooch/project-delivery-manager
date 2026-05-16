@@ -21,6 +21,7 @@ import {
 } from "../ui/dialog";
 import { Input } from "../ui/input";
 import { Label } from "../ui/label";
+import { SelectMenu } from "../ui/select-menu";
 
 const ORG_ROLES: readonly OrganizationRole[] = ["OWNER", "ADMIN", "MEMBER"];
 
@@ -95,7 +96,11 @@ export function AddOrgMemberDialog({
           <DialogDescription>{t("description")}</DialogDescription>
         </DialogHeader>
 
-        <form className="flex flex-col gap-4" noValidate onSubmit={handleSubmit}>
+        <form
+          className="flex flex-col gap-4"
+          noValidate
+          onSubmit={handleSubmit}
+        >
           <div className="flex flex-col gap-1.5">
             <Label htmlFor="add-org-member-username">
               {t("fields.username")}
@@ -114,7 +119,7 @@ export function AddOrgMemberDialog({
 
           <div className="flex flex-col gap-1.5">
             <Label htmlFor="add-org-member-role">{t("fields.role")}</Label>
-            <select
+            <SelectMenu
               className="flex h-8 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 focus-visible:ring-offset-background"
               id="add-org-member-role"
               onChange={(event) =>
@@ -127,7 +132,7 @@ export function AddOrgMemberDialog({
                   {t(`roles.${roleKey}`)}
                 </option>
               ))}
-            </select>
+            </SelectMenu>
           </div>
 
           {errorKey ? (

@@ -41,6 +41,7 @@ import { Button } from "../ui/button";
 import { Input } from "../ui/input";
 import { Label } from "../ui/label";
 import { Textarea } from "../ui/textarea";
+import { SelectMenu } from "../ui/select-menu";
 import { useSession } from "../providers/session-provider";
 
 type ConvertIntakeDialogProps = {
@@ -384,7 +385,7 @@ export function ConvertIntakeDialog({
                     <Label htmlFor={`convert-task-version-${index}`}>
                       {tIntakeItems("taskForm.version")}
                     </Label>
-                    <select
+                    <SelectMenu
                       id={`convert-task-version-${index}`}
                       data-testid={`convert-task-version-${index}`}
                       value={row.versionId}
@@ -402,13 +403,13 @@ export function ConvertIntakeDialog({
                           {version.name}
                         </option>
                       ))}
-                    </select>
+                    </SelectMenu>
                   </div>
                   <div className="flex flex-col gap-1.5">
                     <Label htmlFor={`convert-task-requirement-${index}`}>
                       {tIntakeItems("taskForm.requirement")}
                     </Label>
-                    <select
+                    <SelectMenu
                       id={`convert-task-requirement-${index}`}
                       data-testid={`convert-task-requirement-${index}`}
                       value={row.requirementId}
@@ -429,13 +430,13 @@ export function ConvertIntakeDialog({
                           {requirement.title || t("fields.untitledRequirement")}
                         </option>
                       ))}
-                    </select>
+                    </SelectMenu>
                   </div>
                   <div className="flex flex-col gap-1.5">
                     <Label htmlFor={`convert-task-assignee-${index}`}>
                       {tIntakeItems("taskForm.assignee")}
                     </Label>
-                    <select
+                    <SelectMenu
                       id={`convert-task-assignee-${index}`}
                       data-testid={`convert-task-assignee-${index}`}
                       value={row.assigneeId}
@@ -452,13 +453,13 @@ export function ConvertIntakeDialog({
                           {member.user.name || member.user.username}
                         </option>
                       ))}
-                    </select>
+                    </SelectMenu>
                   </div>
                   <div className="flex flex-col gap-1.5">
                     <Label htmlFor={`convert-task-priority-${index}`}>
                       {tIntakeItems("taskForm.priority")}
                     </Label>
-                    <select
+                    <SelectMenu
                       id={`convert-task-priority-${index}`}
                       data-testid={`convert-task-priority-${index}`}
                       value={row.priority}
@@ -475,7 +476,7 @@ export function ConvertIntakeDialog({
                           {tPriority(p)}
                         </option>
                       ))}
-                    </select>
+                    </SelectMenu>
                   </div>
                   <div className="flex flex-col gap-1.5">
                     <Label htmlFor={`convert-task-due-date-${index}`}>
@@ -495,7 +496,7 @@ export function ConvertIntakeDialog({
                     <Label htmlFor={`convert-task-workflow-${index}`}>
                       {tRoot("workflow.eyebrow")}
                     </Label>
-                    <select
+                    <SelectMenu
                       id={`convert-task-workflow-${index}`}
                       data-testid={`convert-task-workflow-${index}`}
                       value={row.workflowVersionId}
@@ -518,7 +519,7 @@ export function ConvertIntakeDialog({
                           {formatWorkflowOption(option, tRoot)}
                         </option>
                       ))}
-                    </select>
+                    </SelectMenu>
                   </div>
                 </div>
               </div>

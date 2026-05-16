@@ -85,6 +85,7 @@ import {
 import { StatusBadge } from "../ui/status-badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../ui/tabs";
 import { Textarea } from "../ui/textarea";
+import { SelectMenu } from "../ui/select-menu";
 import { EmptyState, ErrorState, LoadingState } from "../v2/states";
 
 const priorityColor: Record<WorkItemViewModel["priority"], string> = {
@@ -1336,7 +1337,7 @@ function ActionFormFieldControl({
     return (
       <div className="flex flex-col gap-1.5">
         <Label htmlFor={id}>{label}</Label>
-        <select
+        <SelectMenu
           id={id}
           aria-describedby={errorMessage ? errorId : undefined}
           aria-invalid={errorMessage ? true : undefined}
@@ -1355,7 +1356,7 @@ function ActionFormFieldControl({
               {option}
             </option>
           ))}
-        </select>
+        </SelectMenu>
         {error}
       </div>
     );
@@ -1367,7 +1368,7 @@ function ActionFormFieldControl({
     return (
       <div className="flex flex-col gap-1.5">
         <Label htmlFor={id}>{label}</Label>
-        <select
+        <SelectMenu
           id={id}
           aria-describedby={errorMessage ? errorId : undefined}
           aria-invalid={errorMessage ? true : undefined}
@@ -1387,7 +1388,7 @@ function ActionFormFieldControl({
               {member.user.name || member.user.username}
             </option>
           ))}
-        </select>
+        </SelectMenu>
         {error}
       </div>
     );
@@ -1837,7 +1838,7 @@ function DetailTab({
             </div>
             <div className="flex flex-col gap-1.5">
               <Label htmlFor="task-edit-priority">{t("fields.priority")}</Label>
-              <select
+              <SelectMenu
                 id="task-edit-priority"
                 data-testid="task-edit-priority-select"
                 value={priority}
@@ -1852,11 +1853,11 @@ function DetailTab({
                     {t(`priority.${nextPriority}`)}
                   </option>
                 ))}
-              </select>
+              </SelectMenu>
             </div>
             <div className="flex flex-col gap-1.5">
               <Label htmlFor="task-edit-assignee">{t("fields.assignee")}</Label>
-              <select
+              <SelectMenu
                 id="task-edit-assignee"
                 data-testid="task-edit-assignee-select"
                 value={editAssigneeId}
@@ -1870,11 +1871,11 @@ function DetailTab({
                     {member.user.name || member.user.username}
                   </option>
                 ))}
-              </select>
+              </SelectMenu>
             </div>
             <div className="flex flex-col gap-1.5">
               <Label htmlFor="task-edit-version">{t("fields.version")}</Label>
-              <select
+              <SelectMenu
                 id="task-edit-version"
                 data-testid="task-edit-version-select"
                 value={editVersionId}
@@ -1890,13 +1891,13 @@ function DetailTab({
                     {version.name}
                   </option>
                 ))}
-              </select>
+              </SelectMenu>
             </div>
             <div className="flex flex-col gap-1.5">
               <Label htmlFor="task-edit-requirement">
                 {t("fields.requirement")}
               </Label>
-              <select
+              <SelectMenu
                 id="task-edit-requirement"
                 data-testid="task-edit-requirement-select"
                 value={editRequirementId}
@@ -1912,11 +1913,11 @@ function DetailTab({
                     {requirement.title || requirement.id}
                   </option>
                 ))}
-              </select>
+              </SelectMenu>
             </div>
             <div className="flex flex-col gap-1.5">
               <Label htmlFor="task-edit-intake">{t("fields.intake")}</Label>
-              <select
+              <SelectMenu
                 id="task-edit-intake"
                 data-testid="task-edit-intake-select"
                 value={editIntakeItemId}
@@ -1934,7 +1935,7 @@ function DetailTab({
                     {intakeItem.title || intakeItem.id}
                   </option>
                 ))}
-              </select>
+              </SelectMenu>
             </div>
             <div className="flex flex-col gap-1.5">
               <Label htmlFor="task-edit-due-date">{t("fields.due")}</Label>

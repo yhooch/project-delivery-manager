@@ -20,6 +20,7 @@ import {
   DialogTitle,
 } from "../ui/dialog";
 import { Label } from "../ui/label";
+import { SelectMenu } from "../ui/select-menu";
 
 const ORG_ROLES: readonly OrganizationRole[] = ["OWNER", "ADMIN", "MEMBER"];
 
@@ -75,9 +76,13 @@ export function EditOrgMemberRoleDialog({
     setErrorKey(null);
 
     try {
-      const updated = await updateOrganizationMember(organizationId, member.id, {
-        role,
-      });
+      const updated = await updateOrganizationMember(
+        organizationId,
+        member.id,
+        {
+          role,
+        },
+      );
       onSuccess(updated);
     } catch (error) {
       setErrorKey(getApiErrorMessageKey(error));
@@ -96,10 +101,14 @@ export function EditOrgMemberRoleDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <form className="flex flex-col gap-4" noValidate onSubmit={handleSubmit}>
+        <form
+          className="flex flex-col gap-4"
+          noValidate
+          onSubmit={handleSubmit}
+        >
           <div className="flex flex-col gap-1.5">
             <Label htmlFor="edit-org-member-role">{t("fields.role")}</Label>
-            <select
+            <SelectMenu
               autoFocus
               className="flex h-8 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 focus-visible:ring-offset-background"
               id="edit-org-member-role"
@@ -117,7 +126,7 @@ export function EditOrgMemberRoleDialog({
                   {tRoles(roleKey)}
                 </option>
               ))}
-            </select>
+            </SelectMenu>
           </div>
 
           {isLastActiveOwner ? (

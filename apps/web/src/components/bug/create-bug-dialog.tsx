@@ -35,6 +35,7 @@ import { Button } from "../ui/button";
 import { Input } from "../ui/input";
 import { Label } from "../ui/label";
 import { Textarea } from "../ui/textarea";
+import { SelectMenu } from "../ui/select-menu";
 import { useSession } from "../providers/session-provider";
 
 type CreateBugDialogProps = {
@@ -128,7 +129,12 @@ export function CreateBugDialog({
         const [versionPage, requirementPage, taskPage, memberPage] =
           await Promise.all([
             listVersions({ organizationId, spaceId, page: 1, pageSize: 100 }),
-            listRequirements({ organizationId, spaceId, page: 1, pageSize: 100 }),
+            listRequirements({
+              organizationId,
+              spaceId,
+              page: 1,
+              pageSize: 100,
+            }),
             listWorkItems({
               organizationId,
               spaceId,
@@ -187,18 +193,12 @@ export function CreateBugDialog({
     setVersionId(nextVersionId);
 
     if (
-      !isTraceOptionCompatibleWithVersion(
-        selectedRequirement,
-        nextVersionId,
-      )
+      !isTraceOptionCompatibleWithVersion(selectedRequirement, nextVersionId)
     ) {
       setRequirementId("");
     }
     if (
-      !isTraceOptionCompatibleWithVersion(
-        selectedRelatedTask,
-        nextVersionId,
-      )
+      !isTraceOptionCompatibleWithVersion(selectedRelatedTask, nextVersionId)
     ) {
       setRelatedTaskId("");
     }
@@ -215,10 +215,7 @@ export function CreateBugDialog({
     if (nextVersionId) {
       setVersionId(nextVersionId);
       if (
-        !isTraceOptionCompatibleWithVersion(
-          selectedRelatedTask,
-          nextVersionId,
-        )
+        !isTraceOptionCompatibleWithVersion(selectedRelatedTask, nextVersionId)
       ) {
         setRelatedTaskId("");
       }
@@ -242,10 +239,7 @@ export function CreateBugDialog({
       setRequirementId(nextRelatedTask.requirementId);
     } else if (nextVersionId) {
       if (
-        !isTraceOptionCompatibleWithVersion(
-          selectedRequirement,
-          nextVersionId,
-        )
+        !isTraceOptionCompatibleWithVersion(selectedRequirement, nextVersionId)
       ) {
         setRequirementId("");
       }
@@ -412,7 +406,7 @@ export function CreateBugDialog({
               <Label htmlFor="create-bug-severity">
                 {t("fields.severity")}
               </Label>
-              <select
+              <SelectMenu
                 id="create-bug-severity"
                 data-testid="create-bug-severity-select"
                 value={severity}
@@ -426,13 +420,13 @@ export function CreateBugDialog({
                     {tSeverity(s)}
                   </option>
                 ))}
-              </select>
+              </SelectMenu>
             </div>
             <div className="flex flex-col gap-1.5">
               <Label htmlFor="create-bug-priority">
                 {t("fields.priority")}
               </Label>
-              <select
+              <SelectMenu
                 id="create-bug-priority"
                 data-testid="create-bug-priority-select"
                 value={priority}
@@ -446,11 +440,11 @@ export function CreateBugDialog({
                     {tPriority(p)}
                   </option>
                 ))}
-              </select>
+              </SelectMenu>
             </div>
             <div className="flex flex-col gap-1.5">
               <Label htmlFor="create-bug-version">{t("fields.version")}</Label>
-              <select
+              <SelectMenu
                 id="create-bug-version"
                 data-testid="create-bug-version-select"
                 value={versionId}
@@ -464,13 +458,13 @@ export function CreateBugDialog({
                     {version.name}
                   </option>
                 ))}
-              </select>
+              </SelectMenu>
             </div>
             <div className="flex flex-col gap-1.5">
               <Label htmlFor="create-bug-requirement">
                 {tRoot("bugs.form.requirement")}
               </Label>
-              <select
+              <SelectMenu
                 id="create-bug-requirement"
                 data-testid="create-bug-requirement-select"
                 value={requirementId}
@@ -487,13 +481,13 @@ export function CreateBugDialog({
                       tRoot("intake.dialog.fields.untitledRequirement")}
                   </option>
                 ))}
-              </select>
+              </SelectMenu>
             </div>
             <div className="flex flex-col gap-1.5">
               <Label htmlFor="create-bug-related-task">
                 {tRoot("bugs.form.relatedTask")}
               </Label>
-              <select
+              <SelectMenu
                 id="create-bug-related-task"
                 data-testid="create-bug-related-task-select"
                 value={relatedTaskId}
@@ -509,13 +503,13 @@ export function CreateBugDialog({
                     {task.title}
                   </option>
                 ))}
-              </select>
+              </SelectMenu>
             </div>
             <div className="flex flex-col gap-1.5">
               <Label htmlFor="create-bug-assignee">
                 {t("fields.assignee")}
               </Label>
-              <select
+              <SelectMenu
                 id="create-bug-assignee"
                 data-testid="create-bug-assignee-select"
                 value={assigneeId}
@@ -529,7 +523,7 @@ export function CreateBugDialog({
                     {member.user.name || member.user.username}
                   </option>
                 ))}
-              </select>
+              </SelectMenu>
             </div>
             <div className="col-span-2 flex flex-col gap-1.5">
               <Label htmlFor="create-bug-duedate">{t("fields.dueDate")}</Label>

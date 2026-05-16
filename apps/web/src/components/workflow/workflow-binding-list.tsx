@@ -28,6 +28,7 @@ import {
   DialogTitle,
 } from "../ui/dialog";
 import { Label } from "../ui/label";
+import { SelectMenu } from "../ui/select-menu";
 
 const WORK_ITEM_TYPE_OPTIONS: WorkItemType[] = ["TASK", "BUG"];
 const PRIORITY_OPTIONS: Priority[] = ["LOW", "MEDIUM", "HIGH", "URGENT"];
@@ -134,7 +135,9 @@ export function WorkflowBindingList({
                       {tType(binding.workItemType)}
                     </td>
                     <td className="px-2 py-1.5">
-                      {binding.priority ? tPriority(binding.priority) : t("anyPriority")}
+                      {binding.priority
+                        ? tPriority(binding.priority)
+                        : t("anyPriority")}
                     </td>
                     <td className="px-2 py-1.5">
                       <Badge variant={isCurrentVersion ? "primary" : "outline"}>
@@ -278,13 +281,17 @@ export function WorkflowBindingDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <form className="flex flex-col gap-4" noValidate onSubmit={handleSubmit}>
+        <form
+          className="flex flex-col gap-4"
+          noValidate
+          onSubmit={handleSubmit}
+        >
           <div className="grid grid-cols-2 gap-3">
             <div className="flex flex-col gap-1.5">
               <Label htmlFor="workflow-binding-dialog-work-item-type">
                 {t("fields.workItemType")}
               </Label>
-              <select
+              <SelectMenu
                 aria-label={t("fields.workItemType")}
                 className="rounded-md border border-input bg-background px-3 py-2 text-xs"
                 id="workflow-binding-dialog-work-item-type"
@@ -298,18 +305,20 @@ export function WorkflowBindingDialog({
                     {tType(option)}
                   </option>
                 ))}
-              </select>
+              </SelectMenu>
             </div>
 
             <div className="flex flex-col gap-1.5">
               <Label htmlFor="workflow-binding-dialog-priority">
                 {t("fields.priority")}
               </Label>
-              <select
+              <SelectMenu
                 aria-label={t("fields.priority")}
                 className="rounded-md border border-input bg-background px-3 py-2 text-xs"
                 id="workflow-binding-dialog-priority"
-                onChange={(event) => setPriority(event.target.value as Priority | "")}
+                onChange={(event) =>
+                  setPriority(event.target.value as Priority | "")
+                }
                 value={priority}
               >
                 <option value="">{t("fields.anyPriority")}</option>
@@ -318,7 +327,7 @@ export function WorkflowBindingDialog({
                     {tPriority(option)}
                   </option>
                 ))}
-              </select>
+              </SelectMenu>
             </div>
           </div>
 

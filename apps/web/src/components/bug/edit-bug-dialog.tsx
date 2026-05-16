@@ -36,6 +36,7 @@ import {
 import { Input } from "../ui/input";
 import { Label } from "../ui/label";
 import { Textarea } from "../ui/textarea";
+import { SelectMenu } from "../ui/select-menu";
 
 type EditBugDialogProps = {
   bug: BugView | null;
@@ -208,27 +209,16 @@ export function EditBugDialog({
     }
 
     if (
-      !isTraceOptionCompatibleWithVersion(
-        selectedRequirement,
-        nextVersionId,
-      )
+      !isTraceOptionCompatibleWithVersion(selectedRequirement, nextVersionId)
     ) {
       setRequirementId("");
     }
     if (
-      !isTraceOptionCompatibleWithVersion(
-        selectedRelatedTask,
-        nextVersionId,
-      )
+      !isTraceOptionCompatibleWithVersion(selectedRelatedTask, nextVersionId)
     ) {
       setRelatedTaskId("");
     }
-  }, [
-    optionsLoadState,
-    selectedRelatedTask,
-    selectedRequirement,
-    versionId,
-  ]);
+  }, [optionsLoadState, selectedRelatedTask, selectedRequirement, versionId]);
 
   function handleOpenChange(next: boolean) {
     if (!next) {
@@ -250,18 +240,12 @@ export function EditBugDialog({
     setVersionId(nextVersionId);
 
     if (
-      !isTraceOptionCompatibleWithVersion(
-        selectedRequirement,
-        nextVersionId,
-      )
+      !isTraceOptionCompatibleWithVersion(selectedRequirement, nextVersionId)
     ) {
       setRequirementId("");
     }
     if (
-      !isTraceOptionCompatibleWithVersion(
-        selectedRelatedTask,
-        nextVersionId,
-      )
+      !isTraceOptionCompatibleWithVersion(selectedRelatedTask, nextVersionId)
     ) {
       setRelatedTaskId("");
     }
@@ -278,10 +262,7 @@ export function EditBugDialog({
     if (nextVersionId) {
       setVersionId(nextVersionId);
       if (
-        !isTraceOptionCompatibleWithVersion(
-          selectedRelatedTask,
-          nextVersionId,
-        )
+        !isTraceOptionCompatibleWithVersion(selectedRelatedTask, nextVersionId)
       ) {
         setRelatedTaskId("");
       }
@@ -305,10 +286,7 @@ export function EditBugDialog({
       setRequirementId(nextRelatedTask.requirementId);
     } else if (nextVersionId) {
       if (
-        !isTraceOptionCompatibleWithVersion(
-          selectedRequirement,
-          nextVersionId,
-        )
+        !isTraceOptionCompatibleWithVersion(selectedRequirement, nextVersionId)
       ) {
         setRequirementId("");
       }
@@ -413,9 +391,7 @@ export function EditBugDialog({
           </div>
 
           <div className="flex flex-col gap-1.5">
-            <Label htmlFor="edit-bug-description">
-              {tForm("description")}
-            </Label>
+            <Label htmlFor="edit-bug-description">{tForm("description")}</Label>
             <Textarea
               id="edit-bug-description"
               data-testid="edit-bug-description-input"
@@ -477,9 +453,7 @@ export function EditBugDialog({
 
           <div className="grid grid-cols-2 gap-3">
             <div className="flex flex-col gap-1.5">
-              <Label htmlFor="edit-bug-fix-note">
-                {tForm("fixNote")}
-              </Label>
+              <Label htmlFor="edit-bug-fix-note">{tForm("fixNote")}</Label>
               <Textarea
                 id="edit-bug-fix-note"
                 data-testid="edit-bug-fix-note-input"
@@ -506,7 +480,7 @@ export function EditBugDialog({
               label={tForm("regressionBy")}
               htmlFor="edit-bug-regression-by"
             >
-              <select
+              <SelectMenu
                 id="edit-bug-regression-by"
                 data-testid="edit-bug-regression-by-select"
                 value={regressionBy}
@@ -520,7 +494,7 @@ export function EditBugDialog({
                     {member.user.name || member.user.username}
                   </option>
                 ))}
-              </select>
+              </SelectMenu>
             </SelectField>
             <div className="flex flex-col gap-1.5">
               <Label htmlFor="edit-bug-regression-at">
@@ -537,8 +511,11 @@ export function EditBugDialog({
           </div>
 
           <div className="grid grid-cols-2 gap-3">
-            <SelectField label={t("fields.severity")} htmlFor="edit-bug-severity">
-              <select
+            <SelectField
+              label={t("fields.severity")}
+              htmlFor="edit-bug-severity"
+            >
+              <SelectMenu
                 id="edit-bug-severity"
                 data-testid="edit-bug-severity-select"
                 value={severity}
@@ -552,10 +529,13 @@ export function EditBugDialog({
                     {tSeverity(s)}
                   </option>
                 ))}
-              </select>
+              </SelectMenu>
             </SelectField>
-            <SelectField label={t("fields.priority")} htmlFor="edit-bug-priority">
-              <select
+            <SelectField
+              label={t("fields.priority")}
+              htmlFor="edit-bug-priority"
+            >
+              <SelectMenu
                 id="edit-bug-priority"
                 data-testid="edit-bug-priority-select"
                 value={priority}
@@ -569,10 +549,10 @@ export function EditBugDialog({
                     {tPriority(p)}
                   </option>
                 ))}
-              </select>
+              </SelectMenu>
             </SelectField>
             <SelectField label={t("fields.version")} htmlFor="edit-bug-version">
-              <select
+              <SelectMenu
                 id="edit-bug-version"
                 data-testid="edit-bug-version-select"
                 value={versionId}
@@ -586,13 +566,13 @@ export function EditBugDialog({
                     {version.name}
                   </option>
                 ))}
-              </select>
+              </SelectMenu>
             </SelectField>
             <SelectField
               label={tRoot("bugs.form.requirement")}
               htmlFor="edit-bug-requirement"
             >
-              <select
+              <SelectMenu
                 id="edit-bug-requirement"
                 data-testid="edit-bug-requirement-select"
                 value={requirementId}
@@ -609,13 +589,13 @@ export function EditBugDialog({
                       tRoot("intake.dialog.fields.untitledRequirement")}
                   </option>
                 ))}
-              </select>
+              </SelectMenu>
             </SelectField>
             <SelectField
               label={tRoot("bugs.form.relatedTask")}
               htmlFor="edit-bug-related-task"
             >
-              <select
+              <SelectMenu
                 id="edit-bug-related-task"
                 data-testid="edit-bug-related-task-select"
                 value={relatedTaskId}
@@ -631,10 +611,13 @@ export function EditBugDialog({
                     {task.title}
                   </option>
                 ))}
-              </select>
+              </SelectMenu>
             </SelectField>
-            <SelectField label={t("fields.assignee")} htmlFor="edit-bug-assignee">
-              <select
+            <SelectField
+              label={t("fields.assignee")}
+              htmlFor="edit-bug-assignee"
+            >
+              <SelectMenu
                 id="edit-bug-assignee"
                 data-testid="edit-bug-assignee-select"
                 value={assigneeId}
@@ -648,7 +631,7 @@ export function EditBugDialog({
                     {member.user.name || member.user.username}
                   </option>
                 ))}
-              </select>
+              </SelectMenu>
             </SelectField>
             <div className="col-span-2 flex flex-col gap-1.5">
               <Label htmlFor="edit-bug-duedate">{t("fields.dueDate")}</Label>

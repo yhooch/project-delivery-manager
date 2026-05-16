@@ -57,6 +57,7 @@ import { Avatar, AvatarFallback } from "../ui/avatar";
 import { Badge } from "../ui/badge";
 import { Button } from "../ui/button";
 import { StatusBadge } from "../ui/status-badge";
+import { SelectMenu } from "../ui/select-menu";
 import { Tip } from "../ui/tooltip";
 import { useSession } from "../providers/session-provider";
 import { recordRecentOpen } from "../shell/recent-opens";
@@ -864,7 +865,7 @@ export function BugsPage() {
           className="grid min-w-0 gap-3 border-b border-border bg-muted/20 px-4 py-3 sm:px-6 md:grid-cols-3 xl:grid-cols-6"
         >
           <FilterField label={tFilters("version")}>
-            <select
+            <SelectMenu
               data-testid="bugs-filter-version"
               value={filters.versionId ?? ""}
               onChange={(event) => setVersionFilter(event.target.value)}
@@ -876,10 +877,10 @@ export function BugsPage() {
                   {version.name}
                 </option>
               ))}
-            </select>
+            </SelectMenu>
           </FilterField>
           <FilterField label={tFilters("assignee")}>
-            <select
+            <SelectMenu
               data-testid="bugs-filter-assignee"
               value={filters.assigneeId ?? ""}
               onChange={(event) => setFilter("assigneeId", event.target.value)}
@@ -891,10 +892,10 @@ export function BugsPage() {
                   {member.user.name || member.user.username}
                 </option>
               ))}
-            </select>
+            </SelectMenu>
           </FilterField>
           <FilterField label={tFilters("statusCategory")}>
-            <select
+            <SelectMenu
               data-testid="bugs-filter-status"
               value={filters.statusCategory ?? ""}
               onChange={(event) => {
@@ -909,10 +910,10 @@ export function BugsPage() {
                   {tStatus(status)}
                 </option>
               ))}
-            </select>
+            </SelectMenu>
           </FilterField>
           <FilterField label={tFilters("priority")}>
-            <select
+            <SelectMenu
               data-testid="bugs-filter-priority"
               value={filters.priority ?? ""}
               onChange={(event) => setFilter("priority", event.target.value)}
@@ -924,10 +925,10 @@ export function BugsPage() {
                   {tPriority(priority)}
                 </option>
               ))}
-            </select>
+            </SelectMenu>
           </FilterField>
           <FilterField label={tFilters("severity")}>
-            <select
+            <SelectMenu
               data-testid="bugs-filter-severity"
               value={filters.severity ?? ""}
               onChange={(event) => setFilter("severity", event.target.value)}
@@ -939,10 +940,10 @@ export function BugsPage() {
                   {tSeverity(severity)}
                 </option>
               ))}
-            </select>
+            </SelectMenu>
           </FilterField>
           <FilterField label={tFilters("requirement")}>
-            <select
+            <SelectMenu
               data-testid="bugs-filter-requirement"
               value={filters.requirementId ?? ""}
               onChange={(event) => setRequirementFilter(event.target.value)}
@@ -954,10 +955,10 @@ export function BugsPage() {
                   {requirement.title || requirement.id}
                 </option>
               ))}
-            </select>
+            </SelectMenu>
           </FilterField>
           <FilterField label={tFilters("relatedTask")}>
-            <select
+            <SelectMenu
               data-testid="bugs-filter-related-task"
               value={filters.relatedTaskId ?? ""}
               onChange={(event) => setRelatedTaskFilter(event.target.value)}
@@ -969,7 +970,7 @@ export function BugsPage() {
                   {task.title}
                 </option>
               ))}
-            </select>
+            </SelectMenu>
           </FilterField>
         </div>
       )}

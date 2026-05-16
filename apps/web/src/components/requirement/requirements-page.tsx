@@ -43,6 +43,7 @@ import { Avatar, AvatarFallback } from "../ui/avatar";
 import { Badge, type BadgeProps } from "../ui/badge";
 import { Button } from "../ui/button";
 import { Tip } from "../ui/tooltip";
+import { SelectMenu } from "../ui/select-menu";
 import { PageHeader } from "../v2/page-header";
 import {
   EmptyState,
@@ -786,9 +787,9 @@ export function RequirementsPage() {
             >
               <label className="flex items-center gap-2">
                 <span>{t("filters.version")}</span>
-                <select
+                <SelectMenu
                   aria-label={t("filters.version")}
-                  className="h-7 rounded-md border border-border bg-background px-2 text-xs text-foreground"
+                  className="h-8 px-2 text-xs"
                   onChange={(event) => setSelectedVersionId(event.target.value)}
                   value={effectiveSelectedVersionId}
                 >
@@ -798,13 +799,13 @@ export function RequirementsPage() {
                       {version.name}
                     </option>
                   ))}
-                </select>
+                </SelectMenu>
               </label>
               <label className="flex items-center gap-2">
                 <span>{t("filters.owner")}</span>
-                <select
+                <SelectMenu
                   aria-label={t("filters.owner")}
-                  className="h-7 rounded-md border border-border bg-background px-2 text-xs text-foreground"
+                  className="h-8 px-2 text-xs"
                   onChange={(event) => setSelectedOwnerId(event.target.value)}
                   value={effectiveSelectedOwnerId}
                 >
@@ -814,7 +815,7 @@ export function RequirementsPage() {
                       {formatMember(member)}
                     </option>
                   ))}
-                </select>
+                </SelectMenu>
               </label>
             </div>
           ) : null}

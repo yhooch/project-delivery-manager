@@ -26,6 +26,7 @@ import {
 import { Input } from "../ui/input";
 import { Label } from "../ui/label";
 import { Textarea } from "../ui/textarea";
+import { SelectMenu } from "../ui/select-menu";
 
 const FIELD_TYPE_OPTIONS: ActionFormFieldType[] = [
   "TEXT",
@@ -100,9 +101,7 @@ export function WorkflowFormFieldDialog({
   const isEdit = mode.kind === "edit";
   const selectOptions = parseSelectOptions(optionsText);
   const selectOptionsErrorKey =
-    fieldType === "SELECT"
-      ? getSelectOptionsErrorKey(selectOptions)
-      : null;
+    fieldType === "SELECT" ? getSelectOptionsErrorKey(selectOptions) : null;
 
   function handleOpenChange(next: boolean) {
     if (!next) {
@@ -184,7 +183,11 @@ export function WorkflowFormFieldDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <form className="flex flex-col gap-4" noValidate onSubmit={handleSubmit}>
+        <form
+          className="flex flex-col gap-4"
+          noValidate
+          onSubmit={handleSubmit}
+        >
           <div className="grid grid-cols-2 gap-3">
             <div className="flex flex-col gap-1.5">
               <Label htmlFor="workflow-field-dialog-label">
@@ -200,7 +203,9 @@ export function WorkflowFormFieldDialog({
               />
             </div>
             <div className="flex flex-col gap-1.5">
-              <Label htmlFor="workflow-field-dialog-key">{t("fields.key")}</Label>
+              <Label htmlFor="workflow-field-dialog-key">
+                {t("fields.key")}
+              </Label>
               <Input
                 id="workflow-field-dialog-key"
                 maxLength={80}
@@ -217,7 +222,7 @@ export function WorkflowFormFieldDialog({
               <Label htmlFor="workflow-field-dialog-type">
                 {t("fields.fieldType")}
               </Label>
-              <select
+              <SelectMenu
                 aria-label={t("fields.fieldType")}
                 className="rounded-md border border-input bg-background px-3 py-2 text-xs"
                 id="workflow-field-dialog-type"
@@ -231,7 +236,7 @@ export function WorkflowFormFieldDialog({
                     {tType(option)}
                   </option>
                 ))}
-              </select>
+              </SelectMenu>
             </div>
             <div className="flex flex-col gap-1.5">
               <Label htmlFor="workflow-field-dialog-order">

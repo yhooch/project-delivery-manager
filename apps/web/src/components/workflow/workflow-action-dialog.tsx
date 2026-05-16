@@ -27,6 +27,7 @@ import {
 } from "../ui/dialog";
 import { Input } from "../ui/input";
 import { Label } from "../ui/label";
+import { SelectMenu } from "../ui/select-menu";
 
 const SPACE_ROLE_OPTIONS = [
   "SPACE_ADMIN",
@@ -87,8 +88,12 @@ export function WorkflowActionDialog({
   const [toStateId, setToStateId] = useState<string>("");
   const [order, setOrder] = useState<string>("0");
   const [requiresComment, setRequiresComment] = useState(false);
-  const [allowedRoles, setAllowedRoles] = useState<WorkflowActionAllowedRole[]>([]);
-  const [actorRelations, setActorRelations] = useState<WorkflowActorRelation[]>([]);
+  const [allowedRoles, setAllowedRoles] = useState<WorkflowActionAllowedRole[]>(
+    [],
+  );
+  const [actorRelations, setActorRelations] = useState<WorkflowActorRelation[]>(
+    [],
+  );
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorKey, setErrorKey] = useState<string | null>(null);
 
@@ -106,8 +111,9 @@ export function WorkflowActionDialog({
       setOrder(String(mode.action.order));
       setRequiresComment(mode.action.requiresComment);
       setAllowedRoles(
-        mode.action.allowedSpaceRoles.filter((role): role is WorkflowActionAllowedRole =>
-          SPACE_ROLE_OPTION_SET.has(role),
+        mode.action.allowedSpaceRoles.filter(
+          (role): role is WorkflowActionAllowedRole =>
+            SPACE_ROLE_OPTION_SET.has(role),
         ),
       );
       setActorRelations([...mode.action.actorRelations]);
@@ -139,7 +145,9 @@ export function WorkflowActionDialog({
       const trimmedName = name.trim();
       const trimmedCode = code.trim();
       const parsedOrder = Number.parseInt(order, 10);
-      const orderValue = Number.isFinite(parsedOrder) ? Math.max(0, parsedOrder) : 0;
+      const orderValue = Number.isFinite(parsedOrder)
+        ? Math.max(0, parsedOrder)
+        : 0;
 
       if (mode.kind === "edit") {
         await updateWorkflowAction(
@@ -203,10 +211,16 @@ export function WorkflowActionDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <form className="flex flex-col gap-4" noValidate onSubmit={handleSubmit}>
+        <form
+          className="flex flex-col gap-4"
+          noValidate
+          onSubmit={handleSubmit}
+        >
           <div className="grid grid-cols-2 gap-3">
             <div className="flex flex-col gap-1.5">
-              <Label htmlFor="workflow-action-dialog-name">{t("fields.name")}</Label>
+              <Label htmlFor="workflow-action-dialog-name">
+                {t("fields.name")}
+              </Label>
               <Input
                 autoFocus
                 id="workflow-action-dialog-name"
@@ -217,7 +231,9 @@ export function WorkflowActionDialog({
               />
             </div>
             <div className="flex flex-col gap-1.5">
-              <Label htmlFor="workflow-action-dialog-code">{t("fields.code")}</Label>
+              <Label htmlFor="workflow-action-dialog-code">
+                {t("fields.code")}
+              </Label>
               <Input
                 id="workflow-action-dialog-code"
                 maxLength={80}
@@ -234,7 +250,7 @@ export function WorkflowActionDialog({
               <Label htmlFor="workflow-action-dialog-from">
                 {t("fields.fromState")}
               </Label>
-              <select
+              <SelectMenu
                 aria-label={t("fields.fromState")}
                 className="rounded-md border border-input bg-background px-3 py-2 text-xs"
                 id="workflow-action-dialog-from"
@@ -249,13 +265,13 @@ export function WorkflowActionDialog({
                     {state.name}
                   </option>
                 ))}
-              </select>
+              </SelectMenu>
             </div>
             <div className="flex flex-col gap-1.5">
               <Label htmlFor="workflow-action-dialog-to">
                 {t("fields.toState")}
               </Label>
-              <select
+              <SelectMenu
                 aria-label={t("fields.toState")}
                 className="rounded-md border border-input bg-background px-3 py-2 text-xs"
                 id="workflow-action-dialog-to"
@@ -270,12 +286,14 @@ export function WorkflowActionDialog({
                     {state.name}
                   </option>
                 ))}
-              </select>
+              </SelectMenu>
             </div>
           </div>
 
           <div className="flex flex-col gap-1.5">
-            <Label htmlFor="workflow-action-dialog-order">{t("fields.order")}</Label>
+            <Label htmlFor="workflow-action-dialog-order">
+              {t("fields.order")}
+            </Label>
             <Input
               id="workflow-action-dialog-order"
               inputMode="numeric"
@@ -307,7 +325,9 @@ export function WorkflowActionDialog({
                 >
                   <input
                     checked={allowedRoles.includes(role)}
-                    onChange={() => setAllowedRoles((prev) => toggle(prev, role))}
+                    onChange={() =>
+                      setAllowedRoles((prev) => toggle(prev, role))
+                    }
                     type="checkbox"
                   />
                   {tRole(role)}

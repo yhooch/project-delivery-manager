@@ -34,6 +34,7 @@ import { Badge } from "../ui/badge";
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
 import { Label } from "../ui/label";
+import { SelectMenu } from "../ui/select-menu";
 import { Textarea } from "../ui/textarea";
 import { EmptyState, ErrorState, ListSkeleton } from "../v2/states";
 import { PageHeader } from "../v2/page-header";
@@ -541,7 +542,7 @@ export function SpaceSettingsPage() {
                 </div>
                 <div className="flex flex-col gap-1.5">
                   <Label htmlFor="space-owner">{t("basic.fields.owner")}</Label>
-                  <select
+                  <SelectMenu
                     id="space-owner"
                     data-testid="space-settings-owner-input"
                     className="flex h-8 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 focus-visible:ring-offset-background disabled:cursor-not-allowed disabled:opacity-50"
@@ -555,7 +556,7 @@ export function SpaceSettingsPage() {
                         {member.user.name} (@{member.user.username})
                       </option>
                     ))}
-                  </select>
+                  </SelectMenu>
                 </div>
               </div>
               <div className="flex flex-wrap items-center justify-end gap-3 border-t border-border px-5 py-3">
@@ -658,7 +659,7 @@ export function SpaceSettingsPage() {
                   placeholder={t("members.searchPlaceholder")}
                   className="h-8 min-w-0 flex-1 text-xs sm:w-44 sm:flex-none"
                 />
-                <select
+                <SelectMenu
                   data-testid="space-settings-member-role-filter"
                   className="h-8 min-w-0 rounded-md border border-input bg-background px-2 text-xs"
                   value={memberRoleFilter}
@@ -672,7 +673,7 @@ export function SpaceSettingsPage() {
                       {t(`members.roles.${roleKey}`)}
                     </option>
                   ))}
-                </select>
+                </SelectMenu>
                 <Button
                   size="sm"
                   className="text-xs"

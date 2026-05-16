@@ -39,6 +39,7 @@ import {
 
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
+import { SelectMenu } from "../ui/select-menu";
 import { useSession } from "../providers/session-provider";
 import { EmptyState, ErrorState, ListSkeleton } from "../v2/states";
 import { PageHeader } from "../v2/page-header";
@@ -609,7 +610,7 @@ export function TasksPage() {
           className="grid min-w-0 gap-3 border-b border-border bg-muted/20 px-4 py-3 sm:px-6 md:grid-cols-5"
         >
           <FilterField label={tFilters("version")}>
-            <select
+            <SelectMenu
               data-testid="tasks-filter-version"
               value={filters.versionId ?? ""}
               onChange={(event) => setFilter("versionId", event.target.value)}
@@ -621,10 +622,10 @@ export function TasksPage() {
                   {version.name}
                 </option>
               ))}
-            </select>
+            </SelectMenu>
           </FilterField>
           <FilterField label={tFilters("assignee")}>
-            <select
+            <SelectMenu
               data-testid="tasks-filter-assignee"
               value={filters.assigneeId ?? ""}
               onChange={(event) => setFilter("assigneeId", event.target.value)}
@@ -636,10 +637,10 @@ export function TasksPage() {
                   {member.user.name || member.user.username}
                 </option>
               ))}
-            </select>
+            </SelectMenu>
           </FilterField>
           <FilterField label={tFilters("statusCategory")}>
-            <select
+            <SelectMenu
               data-testid="tasks-filter-status"
               value={filters.statusCategory ?? ""}
               onChange={(event) =>
@@ -653,10 +654,10 @@ export function TasksPage() {
                   {tStatus(status)}
                 </option>
               ))}
-            </select>
+            </SelectMenu>
           </FilterField>
           <FilterField label={tFilters("priority")}>
-            <select
+            <SelectMenu
               data-testid="tasks-filter-priority"
               value={filters.priority ?? ""}
               onChange={(event) => setFilter("priority", event.target.value)}
@@ -668,10 +669,10 @@ export function TasksPage() {
                   {tPriority(priority)}
                 </option>
               ))}
-            </select>
+            </SelectMenu>
           </FilterField>
           <FilterField label={tFilters("requirement")}>
-            <select
+            <SelectMenu
               data-testid="tasks-filter-requirement"
               value={filters.requirementId ?? ""}
               onChange={(event) =>
@@ -685,7 +686,7 @@ export function TasksPage() {
                   {requirement.title || requirement.id}
                 </option>
               ))}
-            </select>
+            </SelectMenu>
           </FilterField>
         </div>
       )}

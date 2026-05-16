@@ -25,6 +25,7 @@ import { Button } from "../ui/button";
 import { Input } from "../ui/input";
 import { Label } from "../ui/label";
 import { Textarea } from "../ui/textarea";
+import { SelectMenu } from "../ui/select-menu";
 
 const VERSION_STATUS_OPTIONS: VersionStatus[] = [
   "PLANNED",
@@ -88,7 +89,9 @@ export function CreateVersionDialog({
       try {
         const page = await listSpaceMembers(spaceId, { status: "ACTIVE" });
         if (cancelled) return;
-        setMembers(page.items.filter((member) => isActiveStatus(member.status)));
+        setMembers(
+          page.items.filter((member) => isActiveStatus(member.status)),
+        );
       } catch {
         // swallow — owner select stays empty
       }
@@ -143,10 +146,7 @@ export function CreateVersionDialog({
     };
 
     try {
-      const version = await createVersion(
-        { spaceId, organizationId },
-        request,
-      );
+      const version = await createVersion({ spaceId, organizationId }, request);
       onCreated?.(version);
       handleOpenChange(false);
     } catch (error) {
@@ -233,7 +233,7 @@ export function CreateVersionDialog({
           <div className="grid grid-cols-2 gap-3">
             <div className="flex flex-col gap-1.5">
               <Label htmlFor="create-version-owner">{t("fields.owner")}</Label>
-              <select
+              <SelectMenu
                 id="create-version-owner"
                 data-testid="create-version-owner-select"
                 value={ownerId}
@@ -246,14 +246,14 @@ export function CreateVersionDialog({
                     {member.user.name || member.user.username}
                   </option>
                 ))}
-              </select>
+              </SelectMenu>
             </div>
 
             <div className="flex flex-col gap-1.5">
               <Label htmlFor="create-version-status">
                 {t("fields.status")}
               </Label>
-              <select
+              <SelectMenu
                 id="create-version-status"
                 data-testid="create-version-status-select"
                 value={status}
@@ -267,7 +267,7 @@ export function CreateVersionDialog({
                     {tStatus(s)}
                   </option>
                 ))}
-              </select>
+              </SelectMenu>
             </div>
 
             <div className="flex flex-col gap-1.5">

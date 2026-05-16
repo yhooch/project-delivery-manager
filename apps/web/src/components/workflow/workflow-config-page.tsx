@@ -15,9 +15,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "../../i18n/routing";
 import { ApiClientError } from "../../lib/api-client";
 import { getApiErrorMessageKey } from "../../lib/api-error-messages";
-import {
-  canManageWorkflow as canManageWorkflowForRole,
-} from "../../lib/permission-gates";
+import { canManageWorkflow as canManageWorkflowForRole } from "../../lib/permission-gates";
 import {
   createWorkflowVersion,
   deleteActionFormField,
@@ -34,6 +32,7 @@ import { useSession } from "../providers/session-provider";
 
 import { Badge } from "../ui/badge";
 import { Button } from "../ui/button";
+import { SelectMenu } from "../ui/select-menu";
 import { ErrorState, ListSkeleton } from "../v2/states";
 import { PageHeader } from "../v2/page-header";
 
@@ -684,7 +683,7 @@ export function WorkflowConfigPage({ workflowId }: WorkflowConfigPageProps) {
           <Label htmlFor="workflow-config-version-select">
             {t("toolbar.versionLabel")}
           </Label>
-          <select
+          <SelectMenu
             aria-label={t("toolbar.versionLabel")}
             className="rounded-md border border-input bg-background px-2 py-1 text-xs"
             data-testid="workflow-config-version-select"
@@ -706,7 +705,7 @@ export function WorkflowConfigPage({ workflowId }: WorkflowConfigPageProps) {
                 })}
               </option>
             ))}
-          </select>
+          </SelectMenu>
           {version ? (
             <Badge
               data-testid="workflow-config-version-status"
@@ -1012,10 +1011,9 @@ function formatBackendPublishIssue(
     backendPublishIssueMessageKeys[
       code as keyof typeof backendPublishIssueMessageKeys
     ];
-  const message =
-    messageKey
-      ? tRoot(messageKey)
-      : issue.message?.trim() || tRoot("workflow.publishIssues.unknownMessage");
+  const message = messageKey
+    ? tRoot(messageKey)
+    : issue.message?.trim() || tRoot("workflow.publishIssues.unknownMessage");
   const targetId = issue.stateId ?? issue.actionId;
 
   if (!code) {
@@ -1035,7 +1033,10 @@ function getStringValue(value: unknown): string | undefined {
     : undefined;
 }
 
-function confirmWorkflowDelete(actionLabel: string, targetName: string): boolean {
+function confirmWorkflowDelete(
+  actionLabel: string,
+  targetName: string,
+): boolean {
   if (typeof window === "undefined") {
     return true;
   }

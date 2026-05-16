@@ -26,6 +26,7 @@ import {
 } from "../ui/dialog";
 import { Input } from "../ui/input";
 import { Label } from "../ui/label";
+import { SelectMenu } from "../ui/select-menu";
 
 const SPACE_ROLES: readonly SpaceRole[] = [
   "SPACE_ADMIN",
@@ -58,7 +59,9 @@ export function AddSpaceMemberDialog({
   const tRoles = useTranslations("spaceSettings.members.roles");
   const tRoot = useTranslations();
 
-  const [orgMembers, setOrgMembers] = useState<OrganizationMemberWithUser[]>([]);
+  const [orgMembers, setOrgMembers] = useState<OrganizationMemberWithUser[]>(
+    [],
+  );
   const [search, setSearch] = useState("");
   const [selectedUserId, setSelectedUserId] = useState<string>("");
   const [role, setRole] = useState<SpaceRole>("DEVELOPER");
@@ -151,7 +154,11 @@ export function AddSpaceMemberDialog({
           <DialogDescription>{t("description")}</DialogDescription>
         </DialogHeader>
 
-        <form className="flex flex-col gap-4" noValidate onSubmit={handleSubmit}>
+        <form
+          className="flex flex-col gap-4"
+          noValidate
+          onSubmit={handleSubmit}
+        >
           <div className="flex flex-col gap-1.5">
             <Label htmlFor="add-space-member-username">
               {t("fields.username")}
@@ -168,11 +175,11 @@ export function AddSpaceMemberDialog({
               value={search}
             />
             <div
-              className="max-h-44 overflow-y-auto rounded-md border border-border"
+              className="max-h-44 overflow-y-auto rounded-md border border-border bg-popover p-1 text-popover-foreground shadow-lg"
               role="listbox"
             >
               {candidates.length === 0 ? (
-                <p className="px-3 py-2 text-[11px] text-muted-foreground">
+                <p className="px-2 py-1.5 text-[11px] text-muted-foreground">
                   {t("fields.noMatch")}
                 </p>
               ) : (
@@ -184,7 +191,7 @@ export function AddSpaceMemberDialog({
                         <button
                           aria-selected={selected}
                           className={
-                            "flex w-full items-center justify-between px-3 py-2 text-left text-xs transition-colors hover:bg-muted " +
+                            "flex w-full items-center justify-between gap-3 rounded-sm px-2 py-1.5 text-left text-xs outline-none transition-colors hover:bg-muted focus-visible:bg-muted focus-visible:ring-2 focus-visible:ring-ring " +
                             (selected ? "bg-muted text-foreground" : "")
                           }
                           onClick={() => {
@@ -194,7 +201,9 @@ export function AddSpaceMemberDialog({
                           role="option"
                           type="button"
                         >
-                          <span className="font-medium">{member.user.name}</span>
+                          <span className="font-medium">
+                            {member.user.name}
+                          </span>
                           <span className="font-mono text-[11px] text-muted-foreground">
                             @{member.user.username}
                           </span>
@@ -209,7 +218,7 @@ export function AddSpaceMemberDialog({
 
           <div className="flex flex-col gap-1.5">
             <Label htmlFor="add-space-member-role">{t("fields.role")}</Label>
-            <select
+            <SelectMenu
               className="flex h-8 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 focus-visible:ring-offset-background"
               id="add-space-member-role"
               onChange={(event) => setRole(event.target.value as SpaceRole)}
@@ -220,7 +229,7 @@ export function AddSpaceMemberDialog({
                   {tRoles(roleKey)}
                 </option>
               ))}
-            </select>
+            </SelectMenu>
           </div>
 
           {errorKey ? (

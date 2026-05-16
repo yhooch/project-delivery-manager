@@ -27,6 +27,7 @@ import {
 import { Input } from "../ui/input";
 import { Label } from "../ui/label";
 import { Textarea } from "../ui/textarea";
+import { SelectMenu } from "../ui/select-menu";
 
 type WorkflowSpaceContext = {
   organizationId?: string;
@@ -219,13 +220,17 @@ export function CreateWorkflowDialog({
           <DialogDescription>{t(descriptionKey)}</DialogDescription>
         </DialogHeader>
 
-        <form className="flex flex-col gap-4" noValidate onSubmit={handleSubmit}>
+        <form
+          className="flex flex-col gap-4"
+          noValidate
+          onSubmit={handleSubmit}
+        >
           {isCopyVersion ? (
             <div className="flex flex-col gap-1.5">
               <Label htmlFor="workflow-dialog-source-version">
                 {t("copyVersion.fields.sourceVersion")}
               </Label>
-              <select
+              <SelectMenu
                 aria-label={t("copyVersion.fields.sourceVersion")}
                 className="rounded-md border border-input bg-background px-3 py-2 text-xs"
                 disabled={isLoadingVersions}
@@ -244,7 +249,7 @@ export function CreateWorkflowDialog({
                     })}
                   </option>
                 ))}
-              </select>
+              </SelectMenu>
               <p className="text-[11px] text-muted-foreground">
                 {t("copyVersion.fields.hint")}
               </p>

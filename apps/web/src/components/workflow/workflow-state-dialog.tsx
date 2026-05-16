@@ -1,9 +1,6 @@
 "use client";
 
-import type {
-  StatusCategory,
-  WorkflowState,
-} from "@project-delivery/shared";
+import type { StatusCategory, WorkflowState } from "@project-delivery/shared";
 import { useTranslations } from "next-intl";
 import { useEffect, useState, type FormEvent } from "react";
 
@@ -25,6 +22,7 @@ import {
 } from "../ui/dialog";
 import { Input } from "../ui/input";
 import { Label } from "../ui/label";
+import { SelectMenu } from "../ui/select-menu";
 
 const CATEGORY_OPTIONS: StatusCategory[] = [
   "NOT_STARTED",
@@ -108,7 +106,9 @@ export function WorkflowStateDialog({
       const trimmedName = name.trim();
       const trimmedCode = code.trim();
       const parsedOrder = Number.parseInt(order, 10);
-      const orderValue = Number.isFinite(parsedOrder) ? Math.max(0, parsedOrder) : 0;
+      const orderValue = Number.isFinite(parsedOrder)
+        ? Math.max(0, parsedOrder)
+        : 0;
       if (mode.kind === "edit") {
         await updateWorkflowState(
           {
@@ -160,9 +160,15 @@ export function WorkflowStateDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <form className="flex flex-col gap-4" noValidate onSubmit={handleSubmit}>
+        <form
+          className="flex flex-col gap-4"
+          noValidate
+          onSubmit={handleSubmit}
+        >
           <div className="flex flex-col gap-1.5">
-            <Label htmlFor="workflow-state-dialog-name">{t("fields.name")}</Label>
+            <Label htmlFor="workflow-state-dialog-name">
+              {t("fields.name")}
+            </Label>
             <Input
               autoFocus
               id="workflow-state-dialog-name"
@@ -175,7 +181,9 @@ export function WorkflowStateDialog({
           </div>
 
           <div className="flex flex-col gap-1.5">
-            <Label htmlFor="workflow-state-dialog-code">{t("fields.code")}</Label>
+            <Label htmlFor="workflow-state-dialog-code">
+              {t("fields.code")}
+            </Label>
             <Input
               id="workflow-state-dialog-code"
               maxLength={80}
@@ -191,7 +199,7 @@ export function WorkflowStateDialog({
             <Label htmlFor="workflow-state-dialog-category">
               {t("fields.category")}
             </Label>
-            <select
+            <SelectMenu
               aria-label={t("fields.category")}
               className="rounded-md border border-input bg-background px-3 py-2 text-xs"
               id="workflow-state-dialog-category"
@@ -205,11 +213,13 @@ export function WorkflowStateDialog({
                   {tCategory(option)}
                 </option>
               ))}
-            </select>
+            </SelectMenu>
           </div>
 
           <div className="flex flex-col gap-1.5">
-            <Label htmlFor="workflow-state-dialog-order">{t("fields.order")}</Label>
+            <Label htmlFor="workflow-state-dialog-order">
+              {t("fields.order")}
+            </Label>
             <Input
               id="workflow-state-dialog-order"
               inputMode="numeric"
@@ -262,7 +272,9 @@ export function WorkflowStateDialog({
             <Button
               className="text-xs"
               disabled={
-                isSubmitting || name.trim().length === 0 || code.trim().length === 0
+                isSubmitting ||
+                name.trim().length === 0 ||
+                code.trim().length === 0
               }
               size="sm"
               type="submit"

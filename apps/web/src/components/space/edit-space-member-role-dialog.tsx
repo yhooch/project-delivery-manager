@@ -1,9 +1,6 @@
 "use client";
 
-import type {
-  SpaceMemberWithUser,
-  SpaceRole,
-} from "@project-delivery/shared";
+import type { SpaceMemberWithUser, SpaceRole } from "@project-delivery/shared";
 import { useTranslations } from "next-intl";
 import { useEffect, useState, type FormEvent } from "react";
 
@@ -20,6 +17,7 @@ import {
   DialogTitle,
 } from "../ui/dialog";
 import { Label } from "../ui/label";
+import { SelectMenu } from "../ui/select-menu";
 
 const SPACE_ROLES: readonly SpaceRole[] = [
   "SPACE_ADMIN",
@@ -100,10 +98,14 @@ export function EditSpaceMemberRoleDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <form className="flex flex-col gap-4" noValidate onSubmit={handleSubmit}>
+        <form
+          className="flex flex-col gap-4"
+          noValidate
+          onSubmit={handleSubmit}
+        >
           <div className="flex flex-col gap-1.5">
             <Label htmlFor="edit-space-member-role">{t("fields.role")}</Label>
-            <select
+            <SelectMenu
               autoFocus
               className="flex h-8 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 focus-visible:ring-offset-background"
               id="edit-space-member-role"
@@ -115,7 +117,7 @@ export function EditSpaceMemberRoleDialog({
                   {tRoles(roleKey)}
                 </option>
               ))}
-            </select>
+            </SelectMenu>
           </div>
 
           {errorKey ? (

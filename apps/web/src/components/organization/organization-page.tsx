@@ -31,6 +31,7 @@ import {
 } from "../ui/dialog";
 import { Input } from "../ui/input";
 import { Label } from "../ui/label";
+import { SelectMenu } from "../ui/select-menu";
 import { EmptyState, ErrorState, ListSkeleton } from "../v2/states";
 import { PageHeader } from "../v2/page-header";
 
@@ -464,7 +465,7 @@ export function OrganizationPage() {
               </div>
               <div className="flex flex-col gap-1.5">
                 <Label htmlFor="org-status">{t("info.fields.status")}</Label>
-                <select
+                <SelectMenu
                   id="org-status"
                   data-testid="organization-profile-status"
                   className="flex h-8 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 focus-visible:ring-offset-background disabled:cursor-not-allowed disabled:opacity-50"
@@ -479,7 +480,7 @@ export function OrganizationPage() {
                       {t(`info.status.${statusKey}`)}
                     </option>
                   ))}
-                </select>
+                </SelectMenu>
               </div>
             </div>
             <div className="border-t border-border bg-muted/30 px-5 py-2.5 text-[11px] text-muted-foreground">

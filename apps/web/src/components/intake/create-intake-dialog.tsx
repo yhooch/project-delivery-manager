@@ -34,6 +34,7 @@ import { Button } from "../ui/button";
 import { Input } from "../ui/input";
 import { Label } from "../ui/label";
 import { Textarea } from "../ui/textarea";
+import { SelectMenu } from "../ui/select-menu";
 type CreateIntakeDialogProps = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -145,7 +146,9 @@ export function CreateIntakeDialog({
   function handleVersionChange(nextVersionId: string) {
     setVersionId(nextVersionId);
 
-    if (!isTraceOptionCompatibleWithVersion(selectedRequirement, nextVersionId)) {
+    if (
+      !isTraceOptionCompatibleWithVersion(selectedRequirement, nextVersionId)
+    ) {
       setRequirementId("");
     }
   }
@@ -275,7 +278,7 @@ export function CreateIntakeDialog({
               <Label htmlFor="create-intake-source">
                 {t("fields.sourceType")}
               </Label>
-              <select
+              <SelectMenu
                 id="create-intake-source"
                 data-testid="create-intake-source-select"
                 value={sourceType}
@@ -289,13 +292,13 @@ export function CreateIntakeDialog({
                     {tSourceType(s)}
                   </option>
                 ))}
-              </select>
+              </SelectMenu>
             </div>
             <div className="flex flex-col gap-1.5">
               <Label htmlFor="create-intake-priority">
                 {t("fields.priority")}
               </Label>
-              <select
+              <SelectMenu
                 id="create-intake-priority"
                 data-testid="create-intake-priority-select"
                 value={priority}
@@ -310,13 +313,13 @@ export function CreateIntakeDialog({
                     {tPriority(p)}
                   </option>
                 ))}
-              </select>
+              </SelectMenu>
             </div>
             <div className="flex flex-col gap-1.5">
               <Label htmlFor="create-intake-version">
                 {t("fields.version")}
               </Label>
-              <select
+              <SelectMenu
                 id="create-intake-version"
                 data-testid="create-intake-version-select"
                 value={versionId}
@@ -330,13 +333,13 @@ export function CreateIntakeDialog({
                     {version.name}
                   </option>
                 ))}
-              </select>
+              </SelectMenu>
             </div>
             <div className="flex flex-col gap-1.5">
               <Label htmlFor="create-intake-requirement">
                 {t("fields.requirement")}
               </Label>
-              <select
+              <SelectMenu
                 id="create-intake-requirement"
                 data-testid="create-intake-requirement-select"
                 value={requirementId}
@@ -352,13 +355,13 @@ export function CreateIntakeDialog({
                     {req.title || t("fields.untitledRequirement")}
                   </option>
                 ))}
-              </select>
+              </SelectMenu>
             </div>
             <div className="flex flex-col gap-1.5">
               <Label htmlFor="create-intake-assignee">
                 {t("fields.assignee")}
               </Label>
-              <select
+              <SelectMenu
                 id="create-intake-assignee"
                 data-testid="create-intake-assignee-select"
                 value={assigneeId}
@@ -372,7 +375,7 @@ export function CreateIntakeDialog({
                     {member.user.name || member.user.username}
                   </option>
                 ))}
-              </select>
+              </SelectMenu>
             </div>
             <div className="flex flex-col gap-1.5 sm:col-span-2">
               <Label htmlFor="create-intake-source-object">
