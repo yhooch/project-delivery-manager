@@ -610,7 +610,9 @@ describe("VersionPage", () => {
       columnStatusCategory: "IN_PROGRESS",
     });
 
-    fireEvent.click(await screen.findByTestId("version-board-filter-type-BUG"));
+    fireEvent.click(
+      await screen.findByTestId("version-board-filter-type-option-BUG"),
+    );
 
     await waitFor(() =>
       expect(getVersionBoardViewMock).toHaveBeenCalledTimes(4),
@@ -904,7 +906,9 @@ describe("VersionPage", () => {
     );
     expect(await screen.findByText("Old filtered card")).toBeInTheDocument();
 
-    fireEvent.click(await screen.findByTestId("version-board-filter-type-BUG"));
+    fireEvent.click(
+      await screen.findByTestId("version-board-filter-type-option-BUG"),
+    );
 
     await waitFor(() =>
       expect(getVersionBoardViewMock).toHaveBeenCalledTimes(2),
@@ -940,7 +944,7 @@ describe("VersionPage", () => {
       expect(getVersionBoardViewMock).toHaveBeenCalledTimes(1),
     );
     fireEvent.click(
-      await screen.findByTestId("version-board-filter-type-TASK"),
+      await screen.findByTestId("version-board-filter-type-option-TASK"),
     );
     await waitFor(() =>
       expect(getVersionBoardViewMock).toHaveBeenCalledTimes(2),

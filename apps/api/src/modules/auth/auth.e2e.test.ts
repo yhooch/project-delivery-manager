@@ -108,6 +108,26 @@ describe("auth and session API", () => {
     });
   });
 
+  it("rate limits repeated registrations by IP", async () => {
+    for (let attempt = 0; attempt < 5; attempt += 1) {
+      await registerUser(`limited_register_${attempt}`, "203.0.113.23").expect(
+        200,
+      );
+    }
+
+    const response = await registerUser(
+      "limited_register_overflow",
+      "203.0.113.23",
+    ).expect(429);
+
+    expect(response.body).toMatchObject({
+      code: "RATE_LIMITED",
+      details: {
+        retryAfterSeconds: expect.any(Number),
+      },
+    });
+  });
+
   it("logs in and rotates the previous user session", async () => {
     await registerUser("login_ok", "203.0.113.13").expect(200);
     const previousSession = sessions.records.find(

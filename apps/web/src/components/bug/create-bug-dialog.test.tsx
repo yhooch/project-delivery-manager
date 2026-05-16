@@ -196,7 +196,7 @@ describe("CreateBugDialog", () => {
     expect(listWorkItemsMock).toHaveBeenCalledTimes(2);
   });
 
-  it("infers the version from a selected requirement and narrows related task options", async () => {
+  it("infers the version from a selected requirement and keeps it when the version changes", async () => {
     listVersionsMock.mockResolvedValueOnce({
       items: [
         { id: versionId, name: "v1" },
@@ -259,17 +259,17 @@ describe("CreateBugDialog", () => {
 
     fireEvent.change(versionSelect, { target: { value: versionId } });
 
-    await waitFor(() => expect(requirementSelect.value).toBe(""));
+    await waitFor(() => expect(requirementSelect.value).toBe(nextRequirementId));
     expect(
       within(requirementSelect).getByRole("option", {
         name: "Requirement v1",
       }),
     ).toBeInTheDocument();
     expect(
-      within(requirementSelect).queryByRole("option", {
+      within(requirementSelect).getByRole("option", {
         name: "Requirement v2",
       }),
-    ).not.toBeInTheDocument();
+    ).toBeInTheDocument();
   });
 
   it("infers the version and requirement from a selected related task", async () => {

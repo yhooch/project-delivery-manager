@@ -119,12 +119,10 @@ afterEach(() => {
 });
 
 describe("OrganizationSwitcher", () => {
-  it("hides create-space for a MEMBER current organization even with global capability", () => {
+  it("shows create-space for an active MEMBER current organization with capability", () => {
     render(<OrganizationSwitcher />);
 
-    expect(
-      screen.queryByTestId("org-switcher-create-space"),
-    ).not.toBeInTheDocument();
+    expect(screen.getByTestId("org-switcher-create-space")).toBeInTheDocument();
     expect(
       screen.getByText("shell.organizationSwitcher.roles.MEMBER"),
     ).toBeInTheDocument();
@@ -183,5 +181,21 @@ describe("OrganizationSwitcher", () => {
     expect(
       screen.getByText("shell.organizationSwitcher.roles.ADMIN"),
     ).toBeInTheDocument();
+  });
+
+  it("hides create-space when the current organization is not active", () => {
+    sessionMock.current = {
+      ...sessionMock.current,
+      currentOrganization: {
+        ...sessionMock.current.currentOrganization,
+        status: "DISABLED",
+      },
+    };
+
+    render(<OrganizationSwitcher />);
+
+    expect(
+      screen.queryByTestId("org-switcher-create-space"),
+    ).not.toBeInTheDocument();
   });
 });

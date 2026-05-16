@@ -487,7 +487,17 @@ async function assertRequirementImageUploadChain(
   );
 
   expect(presigned.fileKey).toContain(`/requirement/${requirementId}/`);
-  expect(presigned.uploadUrl).toContain(encodeURIComponent(presigned.fileKey));
+  expect(decodeURIComponent(new URL(presigned.uploadUrl).pathname)).toContain(
+    `/${presigned.fileKey}`,
+  );
+
+  const uploadResponse = await actor.context.put(presigned.uploadUrl, {
+    data: Buffer.alloc(file.size, "a"),
+    headers: {
+      "Content-Type": file.mimeType,
+    },
+  });
+  expect(uploadResponse.ok()).toBe(true);
 
   const attachment = await expectData(
     await post(actor, "/attachments", {
@@ -532,7 +542,7 @@ async function assertRequirementImageUploadChain(
     "GET /attachments/:attachmentId/download-url",
   );
   expect(downloadUrl.downloadUrl).toContain(
-    encodeURIComponent(presigned.fileKey),
+    encodeURI(presigned.fileKey),
   );
 }
 

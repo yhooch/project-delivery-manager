@@ -225,7 +225,7 @@ describe("SpacesPage", () => {
       items: [
         makeSpace(),
         makeSpace({
-          id: "SPC_03",
+          id: "SPC_02",
           name: "Space C",
           code: "SPC-C",
           owner: undefined,
@@ -267,25 +267,25 @@ describe("SpacesPage", () => {
       "spaces.list.fields.updatedAt: ",
     );
 
-    expect(screen.getByTestId("spaces-owner-SPC_03")).toHaveTextContent(
+    expect(screen.getByTestId("spaces-owner-SPC_02")).toHaveTextContent(
       "spaces.list.fields.ownerspaces.list.emptyValue",
     );
     expect(
-      screen.getByTestId("spaces-current-version-SPC_03"),
+      screen.getByTestId("spaces-current-version-SPC_02"),
     ).toHaveTextContent(
       "spaces.list.fields.currentVersionspaces.list.emptyValue",
     );
     expect(
-      screen.getByTestId("spaces-unfinished-tasks-SPC_03"),
+      screen.getByTestId("spaces-unfinished-tasks-SPC_02"),
     ).toHaveTextContent(
       "spaces.list.fields.unfinishedTaskCountspaces.list.emptyValue",
     );
-    expect(screen.getByTestId("spaces-updated-at-SPC_03")).toHaveTextContent(
+    expect(screen.getByTestId("spaces-updated-at-SPC_02")).toHaveTextContent(
       "spaces.list.fields.updatedAt: spaces.list.emptyValue",
     );
   });
 
-  it("renders read-only copy and no create action for non-admin organization roles", async () => {
+  it("renders read-only copy and no create action when capability is false", async () => {
     sessionMock.current = {
       ...sessionMock.current,
       session: {
@@ -294,10 +294,6 @@ describe("SpacesPage", () => {
           canCreateOrganization: true,
           canCreateSpace: false,
         },
-      },
-      currentOrganization: {
-        ...sessionMock.current.currentOrganization,
-        role: "MEMBER",
       },
     };
     listSpacesMock.mockResolvedValueOnce({
@@ -314,6 +310,65 @@ describe("SpacesPage", () => {
     expect(
       screen.queryByTestId("spaces-create-button"),
     ).not.toBeInTheDocument();
+  });
+
+  it("shows create action for a non-admin role when capability allows it", async () => {
+    sessionMock.current = {
+      ...sessionMock.current,
+      currentOrganization: {
+        ...sessionMock.current.currentOrganization,
+        role: "MEMBER",
+      },
+    };
+    listSpacesMock.mockResolvedValueOnce({
+      items: [makeSpace()],
+      total: 1,
+    });
+
+    render(<SpacesPage />);
+
+    expect(await screen.findByText("Space A")).toBeInTheDocument();
+    expect(screen.getByTestId("spaces-create-button")).toBeInTheDocument();
+    expect(
+      screen.queryByTestId("spaces-readonly-notice"),
+    ).not.toBeInTheDocument();
+  });
+
+  it("does not render operational summary for spaces without membership", async () => {
+    listSpacesMock.mockResolvedValueOnce({
+      items: [
+        makeSpace({
+          id: "SPC_03",
+          name: "Restricted Space",
+          code: "SPC-R",
+        }),
+      ],
+      total: 1,
+    });
+
+    render(<SpacesPage />);
+
+    expect(await screen.findByText("Restricted Space")).toBeInTheDocument();
+    expect(screen.getByTestId("spaces-restricted-SPC_03")).toHaveTextContent(
+      "spaces.list.restricted",
+    );
+    expect(screen.queryByTestId("spaces-owner-SPC_03")).not.toBeInTheDocument();
+    expect(
+      screen.queryByTestId("spaces-current-version-SPC_03"),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByTestId("spaces-unfinished-tasks-SPC_03"),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByTestId("spaces-open-bugs-SPC_03"),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByTestId("spaces-blocked-SPC_03"),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByTestId("spaces-updated-at-SPC_03"),
+    ).not.toBeInTheDocument();
+    expect(screen.getByTestId("spaces-switch-SPC_03")).toBeDisabled();
   });
 
   it("renders an empty state when the organization has no spaces", async () => {

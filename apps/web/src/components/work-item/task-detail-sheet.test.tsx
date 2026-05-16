@@ -165,6 +165,7 @@ vi.mock("../../lib/timeline-service", () => ({
 }));
 
 import type { WorkItemViewModel } from "../../lib/v2/work-item-view-model";
+import { ApiClientError } from "../../lib/api-client";
 import { AttachmentUploadError } from "../../lib/attachment-service";
 import { TaskDetailSheet } from "./task-detail-sheet";
 
@@ -1157,6 +1158,115 @@ describe("TaskDetailSheet", () => {
     await waitFor(() => expect(versionSelect.value).toBe(versionId));
     expect(requirementSelect.value).toBe(requirementId);
     expect(intakeSelect.value).toBe(intakeItemId);
+  });
+
+  it("does not clear linked requirement or intake when the task version changes", async () => {
+    const versionId = "01ARZ3NDEKTSV4RRFFQ69G5FV1";
+    const nextVersionId = "01ARZ3NDEKTSV4RRFFQ69G5FV2";
+    const requirementId = "01ARZ3NDEKTSV4RRFFQ69G5FRQ";
+    const nextRequirementId = "01ARZ3NDEKTSV4RRFFQ69G5FR2";
+    const intakeItemId = "01ARZ3NDEKTSV4RRFFQ69G5FJ1";
+    const nextIntakeItemId = "01ARZ3NDEKTSV4RRFFQ69G5FJ2";
+    versionMap.set(versionId, { name: "Release 1" });
+    versionMap.set(nextVersionId, { name: "Release 2" });
+    listRequirementsMock.mockResolvedValueOnce({
+      items: [
+        { id: requirementId, title: "Requirement v1", versionId },
+        {
+          id: nextRequirementId,
+          title: "Requirement v2",
+          versionId: nextVersionId,
+        },
+      ],
+      total: 2,
+    });
+    listIntakeItemsMock.mockResolvedValueOnce({
+      items: [
+        { id: intakeItemId, title: "Intake v1", versionId },
+        { id: nextIntakeItemId, title: "Intake v2", versionId: nextVersionId },
+      ],
+      total: 2,
+    });
+    getWorkItemMock.mockResolvedValueOnce(
+      makeDetailResponse({
+        intakeItemId,
+        requirementId,
+        versionId,
+        permissions: {
+          canEdit: true,
+          canComment: true,
+          canUploadAttachment: true,
+          availableActions: [],
+        },
+      }),
+    );
+
+    render(
+      <TaskDetailSheet item={makeViewModel()} open onOpenChange={() => {}} />,
+    );
+
+    fireEvent.click(await screen.findByTestId("task-edit-button"));
+    expect(await screen.findByText("Requirement v1")).toBeInTheDocument();
+
+    const requirementSelect = screen.getByTestId(
+      "task-edit-requirement-select",
+    ) as HTMLSelectElement;
+    const intakeSelect = screen.getByTestId(
+      "task-edit-intake-select",
+    ) as HTMLSelectElement;
+
+    fireEvent.change(screen.getByTestId("task-edit-version-select"), {
+      target: { value: nextVersionId },
+    });
+
+    await waitFor(() => expect(requirementSelect.value).toBe(requirementId));
+    expect(intakeSelect.value).toBe(intakeItemId);
+    expect(
+      within(requirementSelect).getByRole("option", { name: "Requirement v1" }),
+    ).toBeInTheDocument();
+    expect(
+      within(requirementSelect).getByRole("option", { name: "Requirement v2" }),
+    ).toBeInTheDocument();
+    expect(
+      within(intakeSelect).getByRole("option", { name: "Intake v1" }),
+    ).toBeInTheDocument();
+    expect(
+      within(intakeSelect).getByRole("option", { name: "Intake v2" }),
+    ).toBeInTheDocument();
+  });
+
+  it("shows a localized trace conflict error when task update fails", async () => {
+    getWorkItemMock.mockResolvedValueOnce(
+      makeDetailResponse({
+        permissions: {
+          canEdit: true,
+          canComment: true,
+          canUploadAttachment: true,
+          availableActions: [],
+        },
+      }),
+    );
+    updateWorkItemMock.mockRejectedValueOnce(
+      new ApiClientError(
+        {
+          code: "TRACE_CASCADE_CONFLICT",
+          message: "Linked downstream version still conflicts",
+          requestId: "REQ_TRACE",
+        },
+        new Response(null, { status: 409, statusText: "Conflict" }),
+      ),
+    );
+
+    render(
+      <TaskDetailSheet item={makeViewModel()} open onOpenChange={() => {}} />,
+    );
+
+    fireEvent.click(await screen.findByTestId("task-edit-button"));
+    fireEvent.click(screen.getByTestId("task-edit-submit"));
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "errors.api.TRACE_CASCADE_CONFLICT",
+    );
   });
 
   it("does not show task field editing when PermissionSnapshot.canEdit is false", async () => {

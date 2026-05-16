@@ -17,7 +17,6 @@ import {
   AlertCircle,
   Bug,
   CheckCircle2,
-  ChevronDown,
   Clock,
   Filter,
   Pencil,
@@ -49,13 +48,8 @@ import { useSpaceMembers } from "../../lib/v2/lookups";
 import { Avatar, AvatarFallback, AvatarImage } from "../ui/avatar";
 import { Badge } from "../ui/badge";
 import { Button } from "../ui/button";
+import { SelectMenu } from "../ui/select-menu";
 import { Tip } from "../ui/tooltip";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "../ui/dropdown-menu";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../ui/tabs";
 import { CreateTaskDialog } from "../work-item/create-task-dialog";
 import { TaskDetailSheet } from "../work-item/task-detail-sheet";
@@ -830,34 +824,22 @@ export function VersionPage() {
   const headerActions = (
     <>
       {versions.length > 0 && (
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button
-              variant="outline"
-              size="sm"
-              className="text-xs"
-              data-testid="version-board-version-trigger"
-            >
-              {currentVersion?.name ?? t("selectVersion")}
-              <ChevronDown className="h-3 w-3" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-52">
-            {versions.map((v) => (
-              <DropdownMenuItem
-                key={v.id}
-                data-testid={`version-board-version-option-${v.id}`}
-                onSelect={() => selectVersion(v.id)}
-                className="gap-2"
-              >
-                <span className="flex-1 truncate">{v.name}</span>
-                <span className="text-[10px] uppercase tracking-wide text-muted-foreground">
-                  {tVersionStatus(v.status)}
-                </span>
-              </DropdownMenuItem>
-            ))}
-          </DropdownMenuContent>
-        </DropdownMenu>
+        <SelectMenu
+          value={versionId ?? ""}
+          onChange={(event) => selectVersion(event.target.value)}
+          data-testid="version-board-version"
+          triggerTestId="version-board-version-trigger"
+          menuAlign="end"
+          className="h-8 min-w-[10rem] max-w-[13rem] text-xs"
+          contentClassName="w-52"
+          aria-label={t("selectVersion")}
+        >
+          {versions.map((v) => (
+            <option key={v.id} value={v.id}>
+              {v.name}
+            </option>
+          ))}
+        </SelectMenu>
       )}
       <Button
         variant="outline"
@@ -1149,130 +1131,81 @@ function BoardToolbar({
 
   return (
     <div className="flex min-w-0 flex-wrap items-center gap-2">
-      {/* Assignee filter */}
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <Button
-            variant="outline"
-            size="sm"
-            className="min-w-0 text-xs"
-            data-testid="version-board-filter-assignee"
-          >
-            <Users className="h-3 w-3" />
-            <span className="max-w-[140px] truncate">{assigneeLabel}</span>
-            <ChevronDown className="h-3 w-3" />
-          </Button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="start" className="w-52">
-          <DropdownMenuItem
-            data-testid="version-board-filter-assignee-all"
-            onSelect={() =>
-              setFilters((prev) => ({ ...prev, assigneeId: null }))
-            }
-          >
-            {t("filters.assignee.all")}
-          </DropdownMenuItem>
+      <span className="relative inline-flex min-w-[9rem] max-w-[12rem]">
+        <Users className="pointer-events-none absolute left-2.5 top-1/2 z-10 h-3 w-3 -translate-y-1/2 text-muted-foreground" />
+        <SelectMenu
+          value={filters.assigneeId ?? ""}
+          onChange={(event) =>
+            setFilters((prev) => ({
+              ...prev,
+              assigneeId: event.target.value || null,
+            }))
+          }
+          data-testid="version-board-filter-assignee"
+          className="h-8 pl-7 text-xs"
+          containerClassName="w-full"
+          contentClassName="w-52"
+          aria-label={assigneeLabel}
+        >
+          <option value="">{t("filters.assignee.all")}</option>
           {members.map((member) => (
-            <DropdownMenuItem
-              key={member.userId}
-              data-testid={`version-board-filter-assignee-${member.userId}`}
-              onSelect={() =>
-                setFilters((prev) => ({
-                  ...prev,
-                  assigneeId: member.userId,
-                }))
-              }
-              className="gap-2"
-            >
-              <span className="flex-1 truncate">
-                {member.user.name || member.user.username}
-              </span>
-            </DropdownMenuItem>
+            <option key={member.userId} value={member.userId}>
+              {member.user.name || member.user.username}
+            </option>
           ))}
-        </DropdownMenuContent>
-      </DropdownMenu>
+        </SelectMenu>
+      </span>
 
-      {/* Status-category filter */}
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <Button
-            variant="outline"
-            size="sm"
-            className="text-xs"
-            data-testid="version-board-filter-status"
-          >
-            <Filter className="h-3 w-3" />
-            {statusLabel}
-            <ChevronDown className="h-3 w-3" />
-          </Button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="start" className="w-52">
-          <DropdownMenuItem
-            data-testid="version-board-filter-status-all"
-            onSelect={() =>
-              setFilters((prev) => ({ ...prev, statusCategory: null }))
-            }
-          >
-            {t("filters.status.all")}
-          </DropdownMenuItem>
+      <span className="relative inline-flex min-w-[8rem] max-w-[11rem]">
+        <Filter className="pointer-events-none absolute left-2.5 top-1/2 z-10 h-3 w-3 -translate-y-1/2 text-muted-foreground" />
+        <SelectMenu
+          value={filters.statusCategory ?? ""}
+          onChange={(event) =>
+            setFilters((prev) => ({
+              ...prev,
+              statusCategory: (event.target.value || null) as
+                | StatusCategory
+                | null,
+            }))
+          }
+          data-testid="version-board-filter-status"
+          className="h-8 pl-7 text-xs"
+          containerClassName="w-full"
+          contentClassName="w-52"
+          aria-label={statusLabel}
+        >
+          <option value="">{t("filters.status.all")}</option>
           {COLUMN_ORDER.map((category) => (
-            <DropdownMenuItem
-              key={category}
-              data-testid={`version-board-filter-status-${category}`}
-              onSelect={() =>
-                setFilters((prev) => ({
-                  ...prev,
-                  statusCategory: category,
-                }))
-              }
-            >
+            <option key={category} value={category}>
               {t(`columns.${category}`)}
-            </DropdownMenuItem>
+            </option>
           ))}
-        </DropdownMenuContent>
-      </DropdownMenu>
+        </SelectMenu>
+      </span>
 
-      {/* Work-item type filter */}
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <Button
-            variant="outline"
-            size="sm"
-            className="text-xs"
-            data-testid="version-board-filter-type"
-          >
-            <Bug className="h-3 w-3" />
-            {typeLabel}
-            <ChevronDown className="h-3 w-3" />
-          </Button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="start" className="w-44">
-          <DropdownMenuItem
-            data-testid="version-board-filter-type-all"
-            onSelect={() =>
-              setFilters((prev) => ({ ...prev, workItemType: null }))
-            }
-          >
-            {t("filters.type.all")}
-          </DropdownMenuItem>
-          <DropdownMenuItem
-            data-testid="version-board-filter-type-TASK"
-            onSelect={() =>
-              setFilters((prev) => ({ ...prev, workItemType: "TASK" }))
-            }
-          >
-            {t("filters.type.TASK")}
-          </DropdownMenuItem>
-          <DropdownMenuItem
-            data-testid="version-board-filter-type-BUG"
-            onSelect={() =>
-              setFilters((prev) => ({ ...prev, workItemType: "BUG" }))
-            }
-          >
-            {t("filters.type.BUG")}
-          </DropdownMenuItem>
-        </DropdownMenuContent>
-      </DropdownMenu>
+      <span className="relative inline-flex min-w-[8rem] max-w-[10rem]">
+        <Bug className="pointer-events-none absolute left-2.5 top-1/2 z-10 h-3 w-3 -translate-y-1/2 text-muted-foreground" />
+        <SelectMenu
+          value={filters.workItemType ?? ""}
+          onChange={(event) =>
+            setFilters((prev) => ({
+              ...prev,
+              workItemType: (event.target.value || null) as
+                | WorkItemType
+                | null,
+            }))
+          }
+          data-testid="version-board-filter-type"
+          className="h-8 pl-7 text-xs"
+          containerClassName="w-full"
+          contentClassName="w-44"
+          aria-label={typeLabel}
+        >
+          <option value="">{t("filters.type.all")}</option>
+          <option value="TASK">{t("filters.type.TASK")}</option>
+          <option value="BUG">{t("filters.type.BUG")}</option>
+        </SelectMenu>
+      </span>
 
       {hasActiveFilter && (
         <Button

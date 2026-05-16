@@ -319,35 +319,20 @@ describe("PrismaSpaceRepository", () => {
             ],
           },
           {
-            currentState: {
-              is: {
-                OR: [
-                  {
-                    code: {
-                      contains: "blocked",
-                      mode: "insensitive",
-                    },
-                  },
-                  {
-                    name: {
-                      contains: "blocked",
-                      mode: "insensitive",
-                    },
-                  },
-                  {
-                    code: {
-                      contains: "阻塞",
-                      mode: "insensitive",
-                    },
-                  },
-                  {
-                    name: {
-                      contains: "阻塞",
-                      mode: "insensitive",
-                    },
-                  },
-                ],
+            OR: [
+              {
+                blockedAt: {
+                  not: null,
+                },
               },
+              {
+                blockedReason: {
+                  not: null,
+                },
+              },
+            ],
+            statusCategory: {
+              notIn: ["DONE", "TERMINATED"],
             },
           },
         ],
@@ -773,6 +758,51 @@ describe("PrismaSpaceRepository", () => {
       workItemType: "BUG",
       exceptionType: "pending_regression",
     });
+  });
+
+  it("builds exception aggregate filters from stable helper-backed rules", async () => {
+    const count = vi.fn(async () => 0);
+    const findMany = vi.fn(async () => []);
+    const prisma = {
+      client: {
+        workItem: {
+          count,
+          findMany,
+        },
+      },
+    } as unknown as PrismaService;
+    const repository = new PrismaSpaceRepository(prisma);
+    const internals = repository as unknown as RepositoryInternals;
+    const baseWhere = { spaceId: "SPC_01" };
+
+    await internals.getExceptionCounts(
+      baseWhere,
+      {
+        accesses: [{ spaceId: "SPC_01", staleThresholdDays: 3 }],
+      },
+      new Date("2026-05-13T12:00:00.000Z"),
+      3,
+    );
+
+    const countCalls = count.mock.calls as unknown as Array<
+      [{ where: unknown }]
+    >;
+    const blockedWhere = JSON.stringify(countCalls[1]?.[0].where);
+    const pendingConfirmWhere = JSON.stringify(
+      countCalls[2]?.[0].where,
+    );
+    const pendingRegressionWhere = JSON.stringify(
+      countCalls[3]?.[0].where,
+    );
+
+    expect(blockedWhere).toContain("blockedAt");
+    expect(blockedWhere).toContain("blockedReason");
+    expect(blockedWhere).toContain("notIn");
+    expect(blockedWhere).not.toContain("currentState");
+    expect(pendingConfirmWhere).toContain("confirm");
+    expect(pendingRegressionWhere).toContain("regressionAt");
+    expect(pendingRegressionWhere).toContain("VERIFYING");
+    expect(pendingRegressionWhere).toContain("pending_regression");
   });
 
   it("includes non-work-item timeline events for read-all space roles", async () => {

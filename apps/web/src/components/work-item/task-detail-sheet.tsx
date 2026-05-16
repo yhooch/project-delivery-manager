@@ -62,7 +62,7 @@ import {
 } from "../../lib/v2/lookups";
 import {
   filterTraceOptionsByVersion,
-  isTraceOptionCompatibleWithVersion,
+  inheritVersionFromTraceOption,
 } from "../../lib/versioned-trace-linking";
 import { toUpdateTaskRequest } from "../../lib/work-item-forms";
 import { getWorkItem, updateWorkItem } from "../../lib/work-item-service";
@@ -1655,37 +1655,27 @@ function DetailTab({
     };
   }, [editing, organizationId, spaceId]);
 
-  const selectedRequirement = useMemo(
-    () =>
-      requirements.find((requirement) => requirement.id === editRequirementId),
-    [editRequirementId, requirements],
-  );
-  const selectedIntakeItem = useMemo(
-    () => intakeItems.find((intakeItem) => intakeItem.id === editIntakeItemId),
-    [editIntakeItemId, intakeItems],
-  );
   const filteredRequirements = useMemo(
-    () => filterTraceOptionsByVersion(requirements, editVersionId),
-    [editVersionId, requirements],
+    () =>
+      filterTraceOptionsByVersion(
+        requirements,
+        editVersionId,
+        editRequirementId,
+      ),
+    [editRequirementId, editVersionId, requirements],
   );
   const filteredIntakeItems = useMemo(
-    () => filterTraceOptionsByVersion(intakeItems, editVersionId),
-    [editVersionId, intakeItems],
+    () =>
+      filterTraceOptionsByVersion(
+        intakeItems,
+        editVersionId,
+        editIntakeItemId,
+      ),
+    [editIntakeItemId, editVersionId, intakeItems],
   );
 
   function handleEditVersionChange(nextVersionId: string) {
     setEditVersionId(nextVersionId);
-
-    if (
-      !isTraceOptionCompatibleWithVersion(selectedRequirement, nextVersionId)
-    ) {
-      setEditRequirementId("");
-    }
-    if (
-      !isTraceOptionCompatibleWithVersion(selectedIntakeItem, nextVersionId)
-    ) {
-      setEditIntakeItemId("");
-    }
   }
 
   function handleEditRequirementChange(nextRequirementId: string) {
@@ -1694,16 +1684,9 @@ function DetailTab({
     const nextRequirement = requirements.find(
       (requirement) => requirement.id === nextRequirementId,
     );
-    const nextVersionId = nextRequirement?.versionId;
-
-    if (nextVersionId) {
-      setEditVersionId(nextVersionId);
-      if (
-        !isTraceOptionCompatibleWithVersion(selectedIntakeItem, nextVersionId)
-      ) {
-        setEditIntakeItemId("");
-      }
-    }
+    setEditVersionId(
+      inheritVersionFromTraceOption(nextRequirement, editVersionId),
+    );
   }
 
   function handleEditIntakeItemChange(nextIntakeItemId: string) {
@@ -1715,20 +1698,14 @@ function DetailTab({
     const nextRequirement = requirements.find(
       (requirement) => requirement.id === nextIntakeItem?.requirementId,
     );
-    const nextVersionId =
-      nextIntakeItem?.versionId ?? nextRequirement?.versionId;
-
-    if (nextVersionId) {
-      setEditVersionId(nextVersionId);
-    }
+    setEditVersionId(
+      inheritVersionFromTraceOption(
+        nextIntakeItem,
+        inheritVersionFromTraceOption(nextRequirement, editVersionId),
+      ),
+    );
     if (nextIntakeItem?.requirementId) {
       setEditRequirementId(nextIntakeItem.requirementId);
-    } else if (nextVersionId) {
-      if (
-        !isTraceOptionCompatibleWithVersion(selectedRequirement, nextVersionId)
-      ) {
-        setEditRequirementId("");
-      }
     }
   }
 

@@ -19,7 +19,7 @@ import { listSpaceMembers } from "../../lib/space-service";
 import { listVersions } from "../../lib/version-service";
 import {
   filterTraceOptionsByVersion,
-  isTraceOptionCompatibleWithVersion,
+  inheritVersionFromTraceOption,
 } from "../../lib/versioned-trace-linking";
 import { listWorkItems } from "../../lib/work-item-service";
 
@@ -99,21 +99,13 @@ export function CreateBugDialog({
 
   const optionFieldsDisabled = submitting || optionsLoadState !== "ready";
   const submitDisabled = submitting || optionsLoadState !== "ready";
-  const selectedRequirement = useMemo(
-    () => requirements.find((requirement) => requirement.id === requirementId),
-    [requirementId, requirements],
-  );
-  const selectedRelatedTask = useMemo(
-    () => tasks.find((task) => task.id === relatedTaskId),
-    [relatedTaskId, tasks],
-  );
   const filteredRequirements = useMemo(
-    () => filterTraceOptionsByVersion(requirements, versionId),
-    [requirements, versionId],
+    () => filterTraceOptionsByVersion(requirements, versionId, requirementId),
+    [requirementId, requirements, versionId],
   );
   const filteredTasks = useMemo(
-    () => filterTraceOptionsByVersion(tasks, versionId),
-    [tasks, versionId],
+    () => filterTraceOptionsByVersion(tasks, versionId, relatedTaskId),
+    [relatedTaskId, tasks, versionId],
   );
 
   useEffect(() => {
@@ -191,17 +183,6 @@ export function CreateBugDialog({
 
   function handleVersionChange(nextVersionId: string) {
     setVersionId(nextVersionId);
-
-    if (
-      !isTraceOptionCompatibleWithVersion(selectedRequirement, nextVersionId)
-    ) {
-      setRequirementId("");
-    }
-    if (
-      !isTraceOptionCompatibleWithVersion(selectedRelatedTask, nextVersionId)
-    ) {
-      setRelatedTaskId("");
-    }
   }
 
   function handleRequirementChange(nextRequirementId: string) {
@@ -210,16 +191,7 @@ export function CreateBugDialog({
     const nextRequirement = requirements.find(
       (requirement) => requirement.id === nextRequirementId,
     );
-    const nextVersionId = nextRequirement?.versionId;
-
-    if (nextVersionId) {
-      setVersionId(nextVersionId);
-      if (
-        !isTraceOptionCompatibleWithVersion(selectedRelatedTask, nextVersionId)
-      ) {
-        setRelatedTaskId("");
-      }
-    }
+    setVersionId(inheritVersionFromTraceOption(nextRequirement, versionId));
   }
 
   function handleRelatedTaskChange(nextRelatedTaskId: string) {
@@ -229,20 +201,14 @@ export function CreateBugDialog({
     const nextRequirement = requirements.find(
       (requirement) => requirement.id === nextRelatedTask?.requirementId,
     );
-    const nextVersionId =
-      nextRelatedTask?.versionId ?? nextRequirement?.versionId;
-
-    if (nextVersionId) {
-      setVersionId(nextVersionId);
-    }
+    setVersionId(
+      inheritVersionFromTraceOption(
+        nextRelatedTask,
+        inheritVersionFromTraceOption(nextRequirement, versionId),
+      ),
+    );
     if (nextRelatedTask?.requirementId) {
       setRequirementId(nextRelatedTask.requirementId);
-    } else if (nextVersionId) {
-      if (
-        !isTraceOptionCompatibleWithVersion(selectedRequirement, nextVersionId)
-      ) {
-        setRequirementId("");
-      }
     }
   }
 

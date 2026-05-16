@@ -105,6 +105,12 @@ export const BugViewSchema = WorkItemSchema.extend({
 
 export type BugView = z.infer<typeof BugViewSchema>;
 
+export const BugDetailViewSchema = BugViewSchema.extend({
+  permissions: PermissionSnapshotSchema,
+}).strict();
+
+export type BugDetailView = z.infer<typeof BugDetailViewSchema>;
+
 export const BugLifecycleFilterBuckets = [
   "pendingConfirm",
   "pendingFix",
@@ -268,5 +274,5 @@ export const ListBugsResponseSchema = pageResultSchema(BugViewSchema).extend({
 
 export type ListBugsResponse = z.infer<typeof ListBugsResponseSchema>;
 export const CreateBugResponseSchema = BugViewSchema;
-export const GetBugResponseSchema = BugViewSchema;
+export const GetBugResponseSchema = BugDetailViewSchema;
 export const UpdateBugResponseSchema = BugViewSchema;

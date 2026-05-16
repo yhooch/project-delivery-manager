@@ -13,6 +13,10 @@ import type {
   UpdateUserPreferencesRequest,
   UpdateUserPreferencesResponse,
 } from "@project-delivery/shared";
+import {
+  RecentOrganizationCookieName as recentOrganizationCookieName,
+  RecentSpaceCookieName as recentSpaceCookieName,
+} from "@project-delivery/shared";
 
 import { apiClient, type ApiRequestInit } from "./api-client";
 
@@ -31,8 +35,9 @@ export type SessionApiTransport = {
 };
 
 const defaultApi: SessionApiTransport = apiClient;
-const recentOrganizationStorageKey = "pdm.recentOrganizationId";
-const recentSpaceStorageKey = "pdm.recentSpaceId";
+const recentOrganizationStorageKey = recentOrganizationCookieName;
+const recentSpaceStorageKey = recentSpaceCookieName;
+const recentCookieMaxAgeSeconds = 60 * 60 * 24 * 180;
 
 export type RecentSessionStorage = Pick<
   Storage,
@@ -82,13 +87,8 @@ export async function getAppSession(
     typeof recentSpaceIdOrApi === "string"
       ? api
       : (recentSpaceIdOrApi ?? defaultApi);
-  const query = {
-    ...(recentOrganizationId ? { recentOrganizationId } : {}),
-    ...(recentSpaceId ? { recentSpaceId } : {}),
-  };
-  const response = await transport.get<GetAuthSessionResponse>("/auth/session", {
-    query: Object.keys(query).length > 0 ? query : undefined,
-  });
+  persistRecentSessionSelectionRequest(recentOrganizationId, recentSpaceId);
+  const response = await transport.get<GetAuthSessionResponse>("/auth/session");
 
   return response.data;
 }
@@ -113,6 +113,11 @@ export async function refreshAppSession(
   api: SessionApiTransport = defaultApi,
   recentStorage: RecentSessionStorage | undefined = getRecentSessionStorage(),
 ): Promise<AppSession> {
+  persistRecentSessionSelectionRequest(
+    recentOrganizationId,
+    recentSpaceId,
+    recentStorage,
+  );
   const session = recentSpaceId
     ? await getAppSession(recentOrganizationId, recentSpaceId, api)
     : await getAppSession(recentOrganizationId, api);
@@ -205,6 +210,8 @@ export function persistRecentSessionSelection(
   if (!session.defaultOrganizationId) {
     recentStorage.removeItem(recentOrganizationStorageKey);
     recentStorage.removeItem(recentSpaceStorageKey);
+    removeRecentCookie(recentOrganizationStorageKey);
+    removeRecentCookie(recentSpaceStorageKey);
     return;
   }
 
@@ -212,6 +219,7 @@ export function persistRecentSessionSelection(
     recentOrganizationStorageKey,
     session.defaultOrganizationId,
   );
+  setRecentCookie(recentOrganizationStorageKey, session.defaultOrganizationId);
 
   const defaultSpace = session.defaultSpaceId
     ? session.spaces.find((space) => space.id === session.defaultSpaceId)
@@ -219,10 +227,66 @@ export function persistRecentSessionSelection(
 
   if (defaultSpace?.organizationId === session.defaultOrganizationId) {
     recentStorage.setItem(recentSpaceStorageKey, defaultSpace.id);
+    setRecentCookie(recentSpaceStorageKey, defaultSpace.id);
     return;
   }
 
   recentStorage.removeItem(recentSpaceStorageKey);
+  removeRecentCookie(recentSpaceStorageKey);
+}
+
+function persistRecentSessionSelectionRequest(
+  recentOrganizationId?: string,
+  recentSpaceId?: string,
+  recentStorage?: RecentSessionStorage,
+): void {
+  if (recentOrganizationId) {
+    recentStorage?.setItem(recentOrganizationStorageKey, recentOrganizationId);
+    setRecentCookie(recentOrganizationStorageKey, recentOrganizationId);
+  }
+
+  if (recentSpaceId) {
+    recentStorage?.setItem(recentSpaceStorageKey, recentSpaceId);
+    setRecentCookie(recentSpaceStorageKey, recentSpaceId);
+    return;
+  }
+
+  if (recentOrganizationId) {
+    recentStorage?.removeItem(recentSpaceStorageKey);
+    removeRecentCookie(recentSpaceStorageKey);
+  }
+}
+
+function setRecentCookie(name: string, value: string): void {
+  const cookieTarget = getCookieTarget();
+
+  if (!cookieTarget) {
+    return;
+  }
+
+  cookieTarget.cookie = `${encodeURIComponent(name)}=${encodeURIComponent(
+    value,
+  )}; Max-Age=${recentCookieMaxAgeSeconds}; Path=/; SameSite=Lax`;
+}
+
+function removeRecentCookie(name: string): void {
+  const cookieTarget = getCookieTarget();
+
+  if (!cookieTarget) {
+    return;
+  }
+
+  cookieTarget.cookie = `${encodeURIComponent(
+    name,
+  )}=; Max-Age=0; Path=/; SameSite=Lax`;
+}
+
+function getCookieTarget(): Pick<Document, "cookie"> | undefined {
+  if (typeof document === "undefined") {
+    return undefined;
+  }
+
+  return document;
 }
 
 function getRecentSessionStorage(): RecentSessionStorage | undefined {

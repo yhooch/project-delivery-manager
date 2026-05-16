@@ -56,6 +56,7 @@ vi.mock("../../lib/work-item-service", () => ({
 }));
 
 import { EditBugDialog } from "./edit-bug-dialog";
+import { ApiClientError } from "../../lib/api-client";
 
 const organizationId = "01ARZ3NDEKTSV4RRFFQ69G5FO1";
 const spaceId = "01ARZ3NDEKTSV4RRFFQ69G5FS1";
@@ -214,8 +215,8 @@ describe("EditBugDialog", () => {
         regressionAt: new Date("2026-05-14T10:30").toISOString(),
         regressionBy: regressionById,
         regressionResult: "Passed on staging",
-        relatedTaskId: null,
-        requirementId: null,
+        relatedTaskId,
+        requirementId,
         severity: "CRITICAL",
         stepsToReproduce: "Step one",
         title: "Updated bug",
@@ -318,7 +319,7 @@ describe("EditBugDialog", () => {
     expect(listVersionsMock).toHaveBeenCalledTimes(2);
   });
 
-  it("clears incompatible trace fields when the version changes", async () => {
+  it("preserves incompatible trace fields when the version changes", async () => {
     listRequirementsMock.mockResolvedValueOnce({
       items: [
         { id: requirementId, title: "Requirement 1", versionId },
@@ -365,24 +366,54 @@ describe("EditBugDialog", () => {
       target: { value: nextVersionId },
     });
 
-    await waitFor(() => expect(requirementSelect.value).toBe(""));
-    expect(relatedTaskSelect.value).toBe("");
+    await waitFor(() => expect(requirementSelect.value).toBe(requirementId));
+    expect(relatedTaskSelect.value).toBe(relatedTaskId);
     expect(
-      within(requirementSelect).queryByRole("option", {
+      within(requirementSelect).getByRole("option", {
         name: "Requirement 1",
       }),
-    ).not.toBeInTheDocument();
+    ).toBeInTheDocument();
     expect(
       within(requirementSelect).getByRole("option", {
         name: "Requirement 2",
       }),
     ).toBeInTheDocument();
     expect(
-      within(relatedTaskSelect).queryByRole("option", { name: "Task 1" }),
-    ).not.toBeInTheDocument();
+      within(relatedTaskSelect).getByRole("option", { name: "Task 1" }),
+    ).toBeInTheDocument();
     expect(
       within(relatedTaskSelect).getByRole("option", { name: "Task 2" }),
     ).toBeInTheDocument();
+  });
+
+  it("shows a localized trace conflict error from updateBug", async () => {
+    updateBugMock.mockRejectedValueOnce(
+      new ApiClientError(
+        {
+          code: "TRACE_VERSION_CONFLICT",
+          message: "Version differs from linked trace object",
+          requestId: "REQ_TRACE",
+        },
+        new Response(null, { status: 409, statusText: "Conflict" }),
+      ),
+    );
+
+    render(
+      <EditBugDialog
+        bug={makeBug()}
+        open
+        onOpenChange={vi.fn()}
+        organizationId={organizationId}
+        spaceId={spaceId}
+      />,
+    );
+
+    await screen.findByText("Requirement 1");
+    fireEvent.click(screen.getByTestId("edit-bug-submit"));
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "errors.api.TRACE_VERSION_CONFLICT",
+    );
   });
 
   it("infers a missing version and requirement from the selected related task", async () => {

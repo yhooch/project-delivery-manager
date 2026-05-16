@@ -3,7 +3,10 @@ import { describe, expect, it } from "vitest";
 import { ApiClientError } from "./api-client";
 import {
   filterTraceOptionsByVersion,
+  getTraceVersionErrorCode,
+  inheritVersionFromTraceOption,
   isTraceOptionCompatibleWithVersion,
+  isTraceVersionError,
   isTraceVersionCascadeRequiredError,
   traceVersionCascadeConfirmMessage,
 } from "./versioned-trace-linking";
@@ -25,6 +28,21 @@ describe("versioned trace linking", () => {
     ]);
   });
 
+  it("keeps the current selected option available even when versions differ", () => {
+    const options = [
+      { id: "versioned", versionId },
+      { id: "other", versionId: otherVersionId },
+      { id: "unversioned" },
+    ];
+
+    expect(filterTraceOptionsByVersion(options, otherVersionId, "versioned"))
+      .toEqual([
+        { id: "versioned", versionId },
+        { id: "other", versionId: otherVersionId },
+        { id: "unversioned" },
+      ]);
+  });
+
   it("treats versioned upstreams as requiring the same selected version", () => {
     expect(isTraceOptionCompatibleWithVersion({ versionId }, versionId)).toBe(
       true,
@@ -34,6 +52,38 @@ describe("versioned trace linking", () => {
       isTraceOptionCompatibleWithVersion({ versionId }, otherVersionId),
     ).toBe(false);
     expect(isTraceOptionCompatibleWithVersion({}, otherVersionId)).toBe(true);
+  });
+
+  it("inherits a version from a selected upstream without requiring one", () => {
+    expect(inheritVersionFromTraceOption({ id: "a", versionId }, "")).toBe(
+      versionId,
+    );
+    expect(inheritVersionFromTraceOption({ id: "a" }, otherVersionId)).toBe(
+      otherVersionId,
+    );
+    expect(inheritVersionFromTraceOption(undefined, otherVersionId)).toBe(
+      otherVersionId,
+    );
+  });
+
+  it("detects all trace version error codes", () => {
+    for (const code of [
+      "TRACE_VERSION_CONFLICT",
+      "TRACE_VERSION_CHANGE_REQUIRES_CASCADE",
+      "TRACE_CASCADE_CONFLICT",
+    ] as const) {
+      const error = new ApiClientError(
+        {
+          code,
+          message: "trace conflict",
+          requestId: "REQ_TRACE",
+        },
+        new Response(null, { status: 409, statusText: "Conflict" }),
+      );
+
+      expect(isTraceVersionError(error)).toBe(true);
+      expect(getTraceVersionErrorCode(error)).toBe(code);
+    }
   });
 
   it("detects trace cascade errors and builds a confirmation message", () => {

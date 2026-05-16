@@ -22,7 +22,7 @@ import { listSpaceMembers } from "../../lib/space-service";
 import { listVersions } from "../../lib/version-service";
 import {
   filterTraceOptionsByVersion,
-  isTraceOptionCompatibleWithVersion,
+  inheritVersionFromTraceOption,
 } from "../../lib/versioned-trace-linking";
 import {
   listWorkflowBindings,
@@ -425,6 +425,7 @@ export function ConvertIntakeDialog({
                       {filterTraceOptionsByVersion(
                         requirements,
                         row.versionId,
+                        row.requirementId,
                       ).map((requirement) => (
                         <option key={requirement.id} value={requirement.id}>
                           {requirement.title || t("fields.untitledRequirement")}
@@ -649,31 +650,14 @@ function applyLinkedRequirementPatch(
 ): TaskRow {
   const next = { ...row, ...patch };
 
-  if (patch.versionId !== undefined) {
-    const selectedRequirement = requirements.find(
-      (requirement) => requirement.id === next.requirementId,
-    );
-
-    if (
-      !isTraceOptionCompatibleWithVersion(selectedRequirement, patch.versionId)
-    ) {
-      next.requirementId = "";
-    }
-  }
-
   if (patch.requirementId !== undefined) {
     const selectedRequirement = requirements.find(
       (requirement) => requirement.id === patch.requirementId,
     );
-    const nextVersionId = selectedRequirement?.versionId;
-
-    if (nextVersionId) {
-      next.versionId = nextVersionId;
-    } else if (
-      !isTraceOptionCompatibleWithVersion(selectedRequirement, next.versionId)
-    ) {
-      next.requirementId = "";
-    }
+    next.versionId = inheritVersionFromTraceOption(
+      selectedRequirement,
+      next.versionId,
+    );
   }
 
   return next;

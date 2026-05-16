@@ -138,6 +138,25 @@ describe("BugService", () => {
     );
   });
 
+  it("returns permissions with BUG detail so edit entry points are reachable", async () => {
+    const subject = createSubject("PM");
+
+    subject.bugs.items.set(BUG_ID, makeBug());
+
+    await expect(subject.service.get(ACTOR_ID, BUG_ID)).resolves.toMatchObject({
+      id: BUG_ID,
+      permissions: {
+        availableActions: [
+          {
+            code: "START_PROGRESS",
+          },
+        ],
+        canEdit: true,
+      },
+    });
+    expect(subject.permissionResolver.resolvedWorkItemIds).toEqual([BUG_ID]);
+  });
+
   it("uses space-wide visibility for TESTER and participant visibility for developers", async () => {
     const testerSubject = createSubject("TESTER");
 

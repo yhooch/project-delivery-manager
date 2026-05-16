@@ -246,7 +246,7 @@ describe("ConvertIntakeDialog", () => {
     expect(listWorkflowBindingsMock).toHaveBeenCalledTimes(2);
   });
 
-  it("filters requirement options by the row version", async () => {
+  it("keeps the selected requirement option when the row version differs", async () => {
     listVersionsMock.mockResolvedValue({
       items: [
         { id: versionId, name: "Version 1" } as Version,
@@ -295,8 +295,8 @@ describe("ConvertIntakeDialog", () => {
 
     fireEvent.change(versionSelect, { target: { value: versionTwoId } });
 
-    expect(requirementSelect.value).toBe("");
-    expect(screen.queryByText("Requirement v1")).not.toBeInTheDocument();
+    expect(requirementSelect.value).toBe(requirementId);
+    expect(screen.getByText("Requirement v1")).toBeInTheDocument();
     expect(
       screen.getByText("Requirement no version"),
     ).toBeInTheDocument();

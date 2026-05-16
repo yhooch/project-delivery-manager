@@ -2177,7 +2177,7 @@
       "title": "Project space list",
       "description": "Project spaces load from the current organization. Details and overview are isolated after switching.",
       "spaceCount": "{count} project spaces",
-      "readOnly": "Your organization role can view project spaces but cannot create them.",
+      "readOnly": "Your account cannot create project spaces in this organization.",
       "refresh": "Refresh",
       "errorTitle": "Failed to load project spaces",
       "loading": "Loading project spaces",
@@ -2186,6 +2186,7 @@
       "selected": "Current space",
       "switch": "Switch",
       "notMember": "Not joined",
+      "restricted": "You have not joined this project space. Operational summary is only visible to members.",
       "fields": {
         "owner": "Owner",
         "currentVersion": "Current active version",

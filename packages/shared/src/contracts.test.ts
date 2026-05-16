@@ -15,6 +15,7 @@ import {
   CreateWorkItemRequestSchema,
   ExecuteActionRequestSchema,
   GetAuthSessionQuerySchema,
+  GetBugResponseSchema,
   GetMyWorkbenchViewResponseSchema,
   GetSpaceOverviewViewResponseSchema,
   GetWorkItemResponseSchema,
@@ -428,6 +429,26 @@ describe("shared contracts", () => {
         severity: "CRITICAL",
       },
     });
+
+    expect(() =>
+      GetBugResponseSchema.parse({
+        id: "01PRZ3NDEKTSV4RRFFQ69G5FAP",
+        type: "BUG",
+        organizationId: "01BRZ3NDEKTSV4RRFFQ69G5FAA",
+        spaceId: "01DRZ3NDEKTSV4RRFFQ69G5FAC",
+        title: "Login regression",
+        priority: "HIGH",
+        reporterId: "01ARZ3NDEKTSV4RRFFQ69G5FAV",
+        workflowVersionId: "01JRZ3NDEKTSV4RRFFQ69G5FAJ",
+        currentStateId: "01KRZ3NDEKTSV4RRFFQ69G5FAK",
+        statusCategory: "IN_PROGRESS",
+        lastStatusChangedAt: "2026-05-13T00:00:00.000Z",
+        bugDetail: {
+          workItemId: "01PRZ3NDEKTSV4RRFFQ69G5FAP",
+          severity: "CRITICAL",
+        },
+      }),
+    ).toThrow();
   });
 
   it("covers M3 workflow action permissions and draft copy contracts", () => {
@@ -786,15 +807,7 @@ describe("shared contracts", () => {
   });
 
   it("accepts the no-organization app session empty state", () => {
-    expect(
-      GetAuthSessionQuerySchema.parse({
-        recentOrganizationId: "01BRZ3NDEKTSV4RRFFQ69G5FAA",
-        recentSpaceId: "01DRZ3NDEKTSV4RRFFQ69G5FAC",
-      }),
-    ).toEqual({
-      recentOrganizationId: "01BRZ3NDEKTSV4RRFFQ69G5FAA",
-      recentSpaceId: "01DRZ3NDEKTSV4RRFFQ69G5FAC",
-    });
+    expect(GetAuthSessionQuerySchema.parse({})).toEqual({});
 
     const session = AppSessionSchema.parse({
       user: {
@@ -1047,12 +1060,7 @@ describe("shared contracts", () => {
     expect(document.paths["/auth/session"]?.get?.operationId).toBe(
       "getAuthSession",
     );
-    expect(document.paths["/auth/session"]?.get?.parameters).toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({ name: "recentOrganizationId", in: "query" }),
-        expect.objectContaining({ name: "recentSpaceId", in: "query" }),
-      ]),
-    );
+    expect(document.paths["/auth/session"]?.get?.parameters).toBeUndefined();
     expect(
       document.paths["/intake-items/{id}/convert-to-work-items"]?.post
         ?.operationId,

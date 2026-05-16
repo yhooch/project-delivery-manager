@@ -29,7 +29,7 @@ import {
 } from "react";
 
 import { getApiErrorMessageKey } from "../../lib/api-error-messages";
-import { canManageOrganization, listSpaces } from "../../lib/space-service";
+import { listSpaces } from "../../lib/space-service";
 import { cn } from "../../lib/utils";
 import { useSession } from "../providers/session-provider";
 import { Badge } from "../ui/badge";
@@ -81,9 +81,10 @@ export function SpacesPage() {
 
   const organizationId =
     session?.defaultOrganizationId ?? currentOrganization?.id;
-  const canCreateSpace =
-    Boolean(session?.capabilities?.canCreateSpace) &&
-    canManageOrganization(currentOrganization?.role);
+  const canCreateSpace = Boolean(
+    session?.capabilities?.canCreateSpace &&
+      currentOrganization?.status === "ACTIVE",
+  );
 
   const [spaces, setSpaces] = useState<SpaceSummary[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -361,94 +362,115 @@ export function SpacesPage() {
                   </p>
                 )}
 
-                <div className="mt-auto grid grid-cols-2 gap-x-4 gap-y-3">
-                  <SpaceMetaItem
-                    icon={<User2 className="h-3.5 w-3.5" />}
-                    label={t("list.fields.owner")}
-                    testId={`spaces-owner-${space.id}`}
-                    value={formatOwnerLabel(space, t("list.emptyValue"))}
-                  />
-                  <SpaceMetaItem
-                    icon={<GitBranch className="h-3.5 w-3.5" />}
-                    label={t("list.fields.currentVersion")}
-                    testId={`spaces-current-version-${space.id}`}
-                    value={
-                      space.currentVersion ? (
-                        <span className="inline-flex min-w-0 items-center gap-1.5 text-foreground/90">
-                          <span className="truncate max-w-[80px]">
-                            {space.currentVersion.name}
+                {membership ? (
+                  <div className="mt-auto grid grid-cols-2 gap-x-4 gap-y-3">
+                    <SpaceMetaItem
+                      icon={<User2 className="h-3.5 w-3.5" />}
+                      label={t("list.fields.owner")}
+                      testId={`spaces-owner-${space.id}`}
+                      value={formatOwnerLabel(space, t("list.emptyValue"))}
+                    />
+                    <SpaceMetaItem
+                      icon={<GitBranch className="h-3.5 w-3.5" />}
+                      label={t("list.fields.currentVersion")}
+                      testId={`spaces-current-version-${space.id}`}
+                      value={
+                        space.currentVersion ? (
+                          <span className="inline-flex min-w-0 items-center gap-1.5 text-foreground/90">
+                            <span className="truncate max-w-[80px]">
+                              {space.currentVersion.name}
+                            </span>
+                            <Badge
+                              variant={
+                                versionStatusVariant[
+                                  space.currentVersion.status
+                                ]
+                              }
+                              className="h-5 px-1.5 text-[10px] font-normal"
+                            >
+                              {tVersionStatus(space.currentVersion.status)}
+                            </Badge>
                           </span>
-                          <Badge
-                            variant={
-                              versionStatusVariant[space.currentVersion.status]
-                            }
-                            className="h-5 px-1.5 text-[10px] font-normal"
-                          >
-                            {tVersionStatus(space.currentVersion.status)}
-                          </Badge>
+                        ) : (
+                          t("list.emptyValue")
+                        )
+                      }
+                    />
+                    <SpaceMetaItem
+                      icon={
+                        <ListChecks className="h-3.5 w-3.5 text-primary" />
+                      }
+                      label={t("list.fields.unfinishedTaskCount")}
+                      testId={`spaces-unfinished-tasks-${space.id}`}
+                      value={
+                        <span className="text-foreground/90">
+                          {formatNullableCount(
+                            space.unfinishedTaskCount,
+                            t("list.emptyValue"),
+                          )}
                         </span>
-                      ) : (
-                        t("list.emptyValue")
-                      )
-                    }
-                  />
-                  <SpaceMetaItem
-                    icon={<ListChecks className="h-3.5 w-3.5 text-primary" />}
-                    label={t("list.fields.unfinishedTaskCount")}
-                    testId={`spaces-unfinished-tasks-${space.id}`}
-                    value={
-                      <span className="text-foreground/90">
-                        {formatNullableCount(
-                          space.unfinishedTaskCount,
-                          t("list.emptyValue"),
-                        )}
-                      </span>
-                    }
-                  />
-                  <SpaceMetaItem
-                    icon={<Bug className="h-3.5 w-3.5 text-destructive" />}
-                    label={t("list.fields.openBugCount")}
-                    testId={`spaces-open-bugs-${space.id}`}
-                    value={
-                      <span className="text-foreground/90">
-                        {formatNullableCount(
-                          space.openBugCount,
-                          t("list.emptyValue"),
-                        )}
-                      </span>
-                    }
-                  />
-                  <SpaceMetaItem
-                    icon={<CircleAlert className="h-3.5 w-3.5 text-warning" />}
-                    label={t("list.fields.blockedCount")}
-                    testId={`spaces-blocked-${space.id}`}
-                    value={
-                      <span className="text-foreground/90">
-                        {formatNullableCount(
-                          space.blockedCount,
-                          t("list.emptyValue"),
-                        )}
-                      </span>
-                    }
-                  />
-                </div>
+                      }
+                    />
+                    <SpaceMetaItem
+                      icon={<Bug className="h-3.5 w-3.5 text-destructive" />}
+                      label={t("list.fields.openBugCount")}
+                      testId={`spaces-open-bugs-${space.id}`}
+                      value={
+                        <span className="text-foreground/90">
+                          {formatNullableCount(
+                            space.openBugCount,
+                            t("list.emptyValue"),
+                          )}
+                        </span>
+                      }
+                    />
+                    <SpaceMetaItem
+                      icon={
+                        <CircleAlert className="h-3.5 w-3.5 text-warning" />
+                      }
+                      label={t("list.fields.blockedCount")}
+                      testId={`spaces-blocked-${space.id}`}
+                      value={
+                        <span className="text-foreground/90">
+                          {formatNullableCount(
+                            space.blockedCount,
+                            t("list.emptyValue"),
+                          )}
+                        </span>
+                      }
+                    />
+                  </div>
+                ) : (
+                  <div
+                    data-testid={`spaces-restricted-${space.id}`}
+                    className="mt-auto rounded-lg border border-dashed border-border/70 bg-muted/20 px-3 py-3 text-xs text-muted-foreground"
+                  >
+                    {t("list.restricted")}
+                  </div>
+                )}
               </div>
 
               <div className="flex items-center justify-between border-t border-border/40 bg-muted/10 px-5 py-3 rounded-b-xl">
-                <div
-                  className="flex items-center gap-1.5 text-[11px] text-muted-foreground"
-                  title={t("list.fields.updatedAt")}
-                >
-                  <Clock3 className="h-3 w-3 opacity-70" />
-                  <span data-testid={`spaces-updated-at-${space.id}`}>
-                    <span>{t("list.fields.updatedAt")}: </span>
-                    {formatUpdatedAt(
-                      space.updatedAt,
-                      locale,
-                      t("list.emptyValue"),
-                    )}
+                {membership ? (
+                  <div
+                    className="flex items-center gap-1.5 text-[11px] text-muted-foreground"
+                    title={t("list.fields.updatedAt")}
+                  >
+                    <Clock3 className="h-3 w-3 opacity-70" />
+                    <span data-testid={`spaces-updated-at-${space.id}`}>
+                      <span>{t("list.fields.updatedAt")}: </span>
+                      {formatUpdatedAt(
+                        space.updatedAt,
+                        locale,
+                        t("list.emptyValue"),
+                      )}
+                    </span>
+                  </div>
+                ) : (
+                  <span className="text-[11px] text-muted-foreground">
+                    {t("list.notMember")}
                   </span>
-                </div>
+                )}
                 <Button
                   variant={isCurrent ? "secondary" : "ghost"}
                   size="sm"

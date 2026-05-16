@@ -153,7 +153,7 @@ describe("CreateTaskDialog", () => {
     expect(listRequirementsMock).toHaveBeenCalledTimes(2);
   });
 
-  it("filters requirement and intake options by the selected version", async () => {
+  it("keeps selected requirement and intake options when the selected version differs", async () => {
     listVersionsMock.mockResolvedValue({
       items: [
         { id: versionId, name: "Version 1" },
@@ -205,11 +205,11 @@ describe("CreateTaskDialog", () => {
 
     fireEvent.change(versionSelect, { target: { value: versionTwoId } });
 
-    expect(requirementSelect.value).toBe("");
-    expect(intakeSelect.value).toBe("");
-    expect(screen.queryByText("Requirement v1")).not.toBeInTheDocument();
+    expect(requirementSelect.value).toBe(requirementId);
+    expect(intakeSelect.value).toBe(intakeItemId);
+    expect(screen.getByText("Requirement v1")).toBeInTheDocument();
     expect(screen.getByText("Requirement no version")).toBeInTheDocument();
-    expect(screen.queryByText("Intake v1")).not.toBeInTheDocument();
+    expect(screen.getByText("Intake v1")).toBeInTheDocument();
     expect(screen.getByText("Intake no version")).toBeInTheDocument();
     expect(screen.getByText("Requirement v2")).toBeInTheDocument();
     expect(screen.getByText("Intake v2")).toBeInTheDocument();

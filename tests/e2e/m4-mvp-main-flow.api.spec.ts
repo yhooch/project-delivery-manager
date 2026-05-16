@@ -9,6 +9,8 @@ import {
   GetSpaceExceptionsViewResponseSchema,
   GetSpaceOverviewViewResponseSchema,
   GetVersionBoardViewResponseSchema,
+  RecentOrganizationCookieName,
+  RecentSpaceCookieName,
   UpdateSpaceResponseSchema,
   UpdateUserPreferencesResponseSchema,
   type Space,
@@ -27,6 +29,7 @@ import {
   get,
   getBug,
   getWorkItem,
+  m3AuthHeaders,
   patch,
   post,
   registerAndLoginUser,
@@ -398,10 +401,10 @@ test.describe("M4-J MVP 自动化主链路与回归用例", () => {
     expect(outsiderOrganization.id).not.toBe(organization.id);
 
     const switchedToOther = await expectData(
-      await get(
-        owner,
-        `/auth/session?recentOrganizationId=${otherOrganization.id}&recentSpaceId=${otherSpace.id}`,
-      ),
+      await getSessionWithRecentCookies(owner, {
+        organizationId: otherOrganization.id,
+        spaceId: otherSpace.id,
+      }),
       GetAuthSessionResponseSchema,
       "GET /auth/session with recent organization and space",
     );
@@ -420,10 +423,9 @@ test.describe("M4-J MVP 自动化主链路与回归用例", () => {
     expect(
       (
         await expectData(
-          await get(
-            owner,
-            `/auth/session?recentOrganizationId=${organization.id}`,
-          ),
+          await getSessionWithRecentCookies(owner, {
+            organizationId: organization.id,
+          }),
           GetAuthSessionResponseSchema,
           "GET /auth/session after en-US DARK",
         )
@@ -450,6 +452,26 @@ test.describe("M4-J MVP 自动化主链路与回归用例", () => {
     users.push(user);
 
     return user;
+  }
+
+  function getSessionWithRecentCookies(
+    user: M3User,
+    recent: { organizationId?: string; spaceId?: string },
+  ): Promise<APIResponse> {
+    const cookies = [user.cookie];
+    if (recent.organizationId) {
+      cookies.push(`${RecentOrganizationCookieName}=${recent.organizationId}`);
+    }
+    if (recent.spaceId) {
+      cookies.push(`${RecentSpaceCookieName}=${recent.spaceId}`);
+    }
+
+    return user.context.get("auth/session", {
+      headers: {
+        ...m3AuthHeaders(user),
+        Cookie: cookies.join("; "),
+      },
+    });
   }
 });
 

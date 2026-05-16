@@ -6,7 +6,6 @@ import type {
   SessionSpaceSummary,
   UpdateUserPreferencesRequest,
 } from "@project-delivery/shared";
-import { useLocale } from "next-intl";
 import {
   createContext,
   useCallback,
@@ -35,7 +34,6 @@ import {
   type NextThemeMode,
 } from "../../lib/preferences";
 import { isUnauthorizedApiError } from "../../lib/api-error-messages";
-import { usePathname, useRouter } from "../../i18n/routing";
 import type {
   CreateOrganizationFormValues,
   LoginFormValues,
@@ -292,12 +290,8 @@ type SessionPreferenceSyncProps = {
 };
 
 function SessionPreferenceSync({ session }: SessionPreferenceSyncProps) {
-  const locale = useLocale();
-  const pathname = usePathname();
-  const router = useRouter();
   const { setTheme } = useTheme();
   const appliedThemeRef = useRef<NextThemeMode | null>(null);
-  const appliedLocaleRef = useRef<string | null>(null);
 
   useEffect(() => {
     if (!session) {
@@ -311,19 +305,6 @@ function SessionPreferenceSync({ session }: SessionPreferenceSyncProps) {
       setTheme(nextTheme);
     }
   }, [session, setTheme]);
-
-  useEffect(() => {
-    if (!session) {
-      return;
-    }
-
-    const nextLocale = session.user.preferences.locale;
-
-    if (nextLocale !== locale && appliedLocaleRef.current !== nextLocale) {
-      appliedLocaleRef.current = nextLocale;
-      router.replace(pathname, { locale: nextLocale });
-    }
-  }, [locale, pathname, router, session]);
 
   return null;
 }

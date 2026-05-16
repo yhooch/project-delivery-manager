@@ -1289,7 +1289,7 @@ function ItemList({
                   </span>
                   {item.contextLabel ? (
                     <Badge
-                      variant="secondary"
+                      variant="default"
                       className="hidden sm:inline-flex bg-muted/40 font-normal px-1.5 h-4 text-[9px] shrink-0"
                     >
                       {item.contextLabel}
@@ -1482,4 +1482,3 @@ function formatTimeAgo(value: string, locale: string, justNowLabel = "") {
 
   return rtf.format(-diffDay, "day");
 }
-

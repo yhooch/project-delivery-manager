@@ -101,9 +101,7 @@ describe("session service", () => {
       username: "demo",
       password: "password-123",
     });
-    expect(api.get).toHaveBeenCalledWith("/auth/session", {
-      query: { recentOrganizationId: organizationId },
-    });
+    expect(api.get).toHaveBeenCalledWith("/auth/session");
   });
 
   it("reads persisted recent selection for initial session refresh", async () => {
@@ -130,9 +128,7 @@ describe("session service", () => {
 
     await expect(getPersistedAppSession(api, storage)).resolves.toBe(session);
 
-    expect(api.get).toHaveBeenCalledWith("/auth/session", {
-      query: { recentOrganizationId: organizationId, recentSpaceId: spaceId },
-    });
+    expect(api.get).toHaveBeenCalledWith("/auth/session");
     expect(storage.setItem).toHaveBeenCalledWith(
       "pdm.recentOrganizationId",
       organizationId,
@@ -160,16 +156,14 @@ describe("session service", () => {
     ).resolves.toBe(session);
 
     expect(api.post).toHaveBeenCalledWith("/organizations", { name: "Acme" });
-    expect(api.get).toHaveBeenCalledWith("/auth/session", {
-      query: { recentOrganizationId: organizationId },
-    });
+    expect(api.get).toHaveBeenCalledWith("/auth/session");
     expect(storage.setItem).toHaveBeenCalledWith(
       "pdm.recentOrganizationId",
       organizationId,
     );
   });
 
-  it("passes recentOrganizationId when switching organizations", async () => {
+  it("persists recentOrganizationId before switching organizations", async () => {
     const session = createSession();
     const api = createApi({
       get: vi.fn(async () => ({ data: session })),
@@ -180,16 +174,14 @@ describe("session service", () => {
       switchOrganization(organizationId, api, storage),
     ).resolves.toBe(session);
 
-    expect(api.get).toHaveBeenCalledWith("/auth/session", {
-      query: { recentOrganizationId: organizationId },
-    });
+    expect(api.get).toHaveBeenCalledWith("/auth/session");
     expect(storage.setItem).toHaveBeenCalledWith(
       "pdm.recentOrganizationId",
       organizationId,
     );
   });
 
-  it("passes recentOrganizationId and recentSpaceId when switching spaces", async () => {
+  it("persists recentOrganizationId and recentSpaceId before switching spaces", async () => {
     const session = createSession({
       defaultSpaceId: spaceId,
       spaces: [
@@ -212,9 +204,7 @@ describe("session service", () => {
       switchSpace(organizationId, spaceId, api, storage),
     ).resolves.toBe(session);
 
-    expect(api.get).toHaveBeenCalledWith("/auth/session", {
-      query: { recentOrganizationId: organizationId, recentSpaceId: spaceId },
-    });
+    expect(api.get).toHaveBeenCalledWith("/auth/session");
     expect(storage.setItem).toHaveBeenCalledWith("pdm.recentSpaceId", spaceId);
   });
 

@@ -236,6 +236,58 @@ describe("WorkflowPage", () => {
     );
   });
 
+  it("limits concurrent workflow metadata requests", async () => {
+    const workflows = Array.from({ length: 6 }, (_, index) =>
+      makeWorkflow({
+        id: `01ARZ3NDEKTSV4RRFFQ69G5F${String(index).padStart(2, "0")}`,
+        code: `WF_${index}`,
+        name: `Workflow ${index}`,
+      }),
+    );
+    const bindingResolvers = new Map<string, () => void>();
+    listWorkflowsMock.mockResolvedValueOnce({
+      items: workflows,
+      total: workflows.length,
+    });
+    listWorkflowVersionsMock.mockResolvedValue({ items: [], total: 0 });
+    listWorkflowBindingsMock.mockImplementation(
+      ({ workflowId }: { workflowId: string }) =>
+        new Promise((resolve) => {
+          bindingResolvers.set(workflowId, () =>
+            resolve({ items: [], total: 0 }),
+          );
+        }),
+    );
+
+    render(<WorkflowPage />);
+
+    await waitFor(() => expect(listWorkflowBindingsMock).toHaveBeenCalledTimes(4));
+    expect(listWorkflowBindingsMock).toHaveBeenCalledTimes(4);
+
+    await act(async () => {
+      bindingResolvers.get(workflows[0]!.id)?.();
+    });
+
+    await waitFor(() =>
+      expect(listWorkflowBindingsMock).toHaveBeenCalledTimes(5),
+    );
+
+    await act(async () => {
+      bindingResolvers.get(workflows[4]!.id)?.();
+    });
+    await waitFor(() =>
+      expect(listWorkflowBindingsMock).toHaveBeenCalledTimes(6),
+    );
+
+    await act(async () => {
+      for (const workflow of workflows) {
+        bindingResolvers.get(workflow.id)?.();
+      }
+    });
+
+    expect(await screen.findByText("Workflow 5")).toBeInTheDocument();
+  });
+
   it("renders the empty state when there are no workflows", async () => {
     listWorkflowsMock.mockResolvedValueOnce({ items: [], total: 0 });
 

@@ -19,6 +19,12 @@ const reporterId = "01ARZ3NDEKTSV4RRFFQ69G5FB1";
 const assigneeId = "01ARZ3NDEKTSV4RRFFQ69G5FB2";
 const workflowVersionId = "01ARZ3NDEKTSV4RRFFQ69G5FB3";
 const stateId = "01ARZ3NDEKTSV4RRFFQ69G5FB4";
+const permissions = {
+  availableActions: [],
+  canComment: true,
+  canEdit: true,
+  canUploadAttachment: true,
+};
 
 function createBugFixture(overrides: Partial<BugView> = {}): BugView {
   return {
@@ -106,6 +112,7 @@ describe("bug service", () => {
 
   it("creates, reads, and edits bugs through shared schemas", async () => {
     const created = createBugFixture();
+    const detail = createBugFixture({ permissions });
     const updated = createBugFixture({
       bugDetail: {
         ...created.bugDetail,
@@ -114,7 +121,7 @@ describe("bug service", () => {
       priority: "URGENT",
     });
     const api = createApi({
-      get: vi.fn(async () => ({ data: created })),
+      get: vi.fn(async () => ({ data: detail })),
       patch: vi.fn(async () => ({ data: updated })),
       post: vi.fn(async () => ({ data: created })),
     });
@@ -141,7 +148,7 @@ describe("bug service", () => {
       ),
     ).resolves.toEqual(created);
     await expect(getBug({ bugId, organizationId, spaceId }, api)).resolves.toEqual(
-      created,
+      detail,
     );
     await expect(
       updateBug(
@@ -177,6 +184,14 @@ describe("bug service", () => {
     const { bugDetail: _bugDetail, ...invalidBug } = createBugFixture();
     const api = createApi({
       get: vi.fn(async () => ({ data: invalidBug })),
+    });
+
+    await expect(getBug({ bugId, organizationId, spaceId }, api)).rejects.toThrow();
+  });
+
+  it("rejects a bug detail response without permissions", async () => {
+    const api = createApi({
+      get: vi.fn(async () => ({ data: createBugFixture() })),
     });
 
     await expect(getBug({ bugId, organizationId, spaceId }, api)).rejects.toThrow();

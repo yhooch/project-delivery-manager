@@ -54,6 +54,7 @@ const emptyWorkflowCardMetadata: WorkflowCardMetadata = {
   targetWorkItemTypes: [],
   versionCount: 0,
 };
+const WORKFLOW_METADATA_CONCURRENCY = 4;
 
 function collectWorkItemTypes(
   bindings: WorkflowBinding[],
@@ -71,8 +72,10 @@ async function loadWorkflowCardMetadata(input: {
   spaceId: string;
   workflows: WorkflowDefinition[];
 }): Promise<Record<string, WorkflowCardMetadata>> {
-  const entries = await Promise.all(
-    input.workflows.map(async (workflow) => {
+  const entries = await mapWithConcurrency(
+    input.workflows,
+    WORKFLOW_METADATA_CONCURRENCY,
+    async (workflow) => {
       const [versionPage, bindingPage] = await Promise.all([
         listWorkflowVersions({
           organizationId: input.organizationId,
@@ -101,10 +104,33 @@ async function loadWorkflowCardMetadata(input: {
           versionCount: versionPage.total,
         },
       ] as const;
-    }),
+    },
   );
 
   return Object.fromEntries(entries);
+}
+
+async function mapWithConcurrency<T, R>(
+  items: T[],
+  concurrency: number,
+  mapper: (item: T) => Promise<R>,
+): Promise<R[]> {
+  const results = new Array<R>(items.length);
+  let cursor = 0;
+
+  async function worker() {
+    while (cursor < items.length) {
+      const index = cursor;
+      cursor += 1;
+      results[index] = await mapper(items[index]!);
+    }
+  }
+
+  await Promise.all(
+    Array.from({ length: Math.min(concurrency, items.length) }, () => worker()),
+  );
+
+  return results;
 }
 
 type WorkflowDialogState =

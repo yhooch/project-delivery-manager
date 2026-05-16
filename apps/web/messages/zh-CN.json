@@ -2177,7 +2177,7 @@
       "title": "项目空间列表",
       "description": "按当前组织加载项目空间，切换后隔离详情与总览数据。",
       "spaceCount": "{count} 个项目空间",
-      "readOnly": "当前组织角色只能查看项目空间，不能创建项目空间。",
+      "readOnly": "当前账号在当前组织不能创建项目空间。",
       "refresh": "刷新",
       "errorTitle": "项目空间列表加载失败",
       "loading": "正在加载项目空间",
@@ -2186,6 +2186,7 @@
       "selected": "当前空间",
       "switch": "切换",
       "notMember": "未加入",
+      "restricted": "未加入该项目空间，空间运营摘要仅对成员可见。",
       "fields": {
         "owner": "负责人",
         "currentVersion": "当前活跃版本",

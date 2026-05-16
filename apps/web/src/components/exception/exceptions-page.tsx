@@ -11,7 +11,6 @@ import type {
 import {
   Bug,
   CheckCircle2,
-  ChevronDown,
   ChevronLeft,
   ChevronRight,
   Clock,
@@ -54,13 +53,8 @@ import { recordRecentOpen } from "../shell/recent-opens";
 import { Avatar, AvatarFallback } from "../ui/avatar";
 import { Badge } from "../ui/badge";
 import { Button } from "../ui/button";
+import { SelectMenu } from "../ui/select-menu";
 import { Tip } from "../ui/tooltip";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "../ui/dropdown-menu";
 import { StatusBadge } from "../ui/status-badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../ui/tabs";
 import { TaskDetailSheet } from "../work-item/task-detail-sheet";
@@ -985,45 +979,35 @@ function ExceptionFilterToolbar({
           tRoot(control.allLabelKey ?? control.labelKey);
 
         return (
-          <DropdownMenu key={control.id}>
-            <DropdownMenuTrigger asChild>
-              <Button
-                variant="outline"
-                size="sm"
-                className="min-w-0 text-xs"
-                data-testid={`exceptions-filter-${control.id}`}
-              >
-                <Icon className="h-3 w-3" />
-                <span className="max-w-[140px] truncate">{selectedLabel}</span>
-                <ChevronDown className="h-3 w-3" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="start" className="w-52">
-              <DropdownMenuItem
-                data-testid={`exceptions-filter-${control.id}-all`}
-                onSelect={() =>
-                  onChange(control.id as keyof ExceptionFilterValues)
-                }
-              >
+          <span
+            key={control.id}
+            className="relative inline-flex min-w-[9rem] max-w-[12rem]"
+          >
+            <Icon className="pointer-events-none absolute left-2.5 top-1/2 z-10 h-3 w-3 -translate-y-1/2 text-muted-foreground" />
+            <SelectMenu
+              value={value ?? ""}
+              onChange={(event) =>
+                onChange(
+                  control.id as keyof ExceptionFilterValues,
+                  event.target.value || undefined,
+                )
+              }
+              data-testid={`exceptions-filter-${control.id}`}
+              className="h-8 pl-7 text-xs"
+              containerClassName="w-full"
+              contentClassName="w-52"
+              aria-label={selectedLabel}
+            >
+              <option value="">
                 {tRoot(control.allLabelKey ?? control.labelKey)}
-              </DropdownMenuItem>
+              </option>
               {options.map((option) => (
-                <DropdownMenuItem
-                  key={option.value}
-                  data-testid={`exceptions-filter-${control.id}-${option.value}`}
-                  onSelect={() =>
-                    onChange(
-                      control.id as keyof ExceptionFilterValues,
-                      option.value,
-                    )
-                  }
-                  className="gap-2"
-                >
-                  <span className="flex-1 truncate">{option.label}</span>
-                </DropdownMenuItem>
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
               ))}
-            </DropdownMenuContent>
-          </DropdownMenu>
+            </SelectMenu>
+          </span>
         );
       })}
 

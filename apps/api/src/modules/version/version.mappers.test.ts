@@ -6,7 +6,7 @@ import type { VersionBoardWorkItemRecord } from "./version.types";
 const now = new Date("2026-05-13T12:00:00.000Z");
 
 describe("version board work item mapper", () => {
-  it("does not treat broad WAITING or VERIFYING categories as exceptions", () => {
+  it("uses verifying plus bug detail semantics without treating broad waiting as confirm", () => {
     const waiting = toVersionBoardWorkItemSummary(
       workItem({
         currentState: {
@@ -48,13 +48,13 @@ describe("version board work item mapper", () => {
       ),
     ).toBe(false);
     expect(verifying.currentStatus.exceptionHints.pendingRegression).toBe(
-      false,
+      true,
     );
     expect(
       verifying.exceptionSignals.some(
         (signal) => signal.type === "pending_regression",
       ),
-    ).toBe(false);
+    ).toBe(true);
   });
 
   it("uses explicit confirm and regression state evidence", () => {
@@ -104,11 +104,11 @@ describe("version board work item mapper", () => {
     );
   });
 
-  it("uses current blocked state for blocked hints and keeps blocked fields as details only", () => {
-    const residualBlockedFields = toVersionBoardWorkItemSummary(
+  it("uses blocked fields for blocked hints and ignores blocked state tokens", () => {
+    const blockedFields = toVersionBoardWorkItemSummary(
       workItem({
         blockedAt: new Date("2026-05-12T12:00:00.000Z"),
-        blockedReason: "Old dependency",
+        blockedReason: "Waiting for dependency",
         currentState: {
           category: "IN_PROGRESS",
           code: "in_progress",
@@ -120,7 +120,7 @@ describe("version board work item mapper", () => {
         staleThresholdDays: 3,
       },
     );
-    const blockedStateWithoutReason = toVersionBoardWorkItemSummary(
+    const blockedStateWithoutFields = toVersionBoardWorkItemSummary(
       workItem({
         currentState: {
           category: "WAITING",
@@ -135,24 +135,23 @@ describe("version board work item mapper", () => {
       },
     );
 
-    expect(residualBlockedFields.currentStatus.exceptionHints.blocked).toBe(
-      false,
-    );
+    expect(blockedFields.currentStatus.exceptionHints.blocked).toBe(true);
     expect(
-      residualBlockedFields.exceptionSignals.some(
-        (signal) => signal.type === "blocked",
-      ),
-    ).toBe(false);
-    expect(blockedStateWithoutReason.currentStatus.exceptionHints.blocked).toBe(
-      true,
-    );
-    expect(
-      blockedStateWithoutReason.exceptionSignals.find(
+      blockedFields.exceptionSignals.find(
         (signal) => signal.type === "blocked",
       ),
     ).toMatchObject({
-      evidenceSource: "WORKFLOW_STATE",
+      evidenceSource: "BLOCKED_FIELD",
+      blockedReason: "Waiting for dependency",
     });
+    expect(blockedStateWithoutFields.currentStatus.exceptionHints.blocked).toBe(
+      false,
+    );
+    expect(
+      blockedStateWithoutFields.exceptionSignals.some(
+        (signal) => signal.type === "blocked",
+      ),
+    ).toBe(false);
   });
 });
 

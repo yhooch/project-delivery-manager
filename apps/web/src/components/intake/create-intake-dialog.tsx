@@ -19,7 +19,7 @@ import { listSpaceMembers } from "../../lib/space-service";
 import { listVersions } from "../../lib/version-service";
 import {
   filterTraceOptionsByVersion,
-  isTraceOptionCompatibleWithVersion,
+  inheritVersionFromTraceOption,
 } from "../../lib/versioned-trace-linking";
 
 import {
@@ -79,13 +79,9 @@ export function CreateIntakeDialog({
 
   const optionFieldsDisabled = submitting || optionsLoadState !== "ready";
   const submitDisabled = submitting || optionsLoadState !== "ready";
-  const selectedRequirement = useMemo(
-    () => requirements.find((requirement) => requirement.id === requirementId),
-    [requirementId, requirements],
-  );
   const filteredRequirements = useMemo(
-    () => filterTraceOptionsByVersion(requirements, versionId),
-    [requirements, versionId],
+    () => filterTraceOptionsByVersion(requirements, versionId, requirementId),
+    [requirementId, requirements, versionId],
   );
 
   useEffect(() => {
@@ -145,12 +141,6 @@ export function CreateIntakeDialog({
 
   function handleVersionChange(nextVersionId: string) {
     setVersionId(nextVersionId);
-
-    if (
-      !isTraceOptionCompatibleWithVersion(selectedRequirement, nextVersionId)
-    ) {
-      setRequirementId("");
-    }
   }
 
   function handleRequirementChange(nextRequirementId: string) {
@@ -159,11 +149,7 @@ export function CreateIntakeDialog({
     const nextRequirement = requirements.find(
       (requirement) => requirement.id === nextRequirementId,
     );
-    const nextVersionId = nextRequirement?.versionId;
-
-    if (nextVersionId) {
-      setVersionId(nextVersionId);
-    }
+    setVersionId(inheritVersionFromTraceOption(nextRequirement, versionId));
   }
 
   function handleOpenChange(next: boolean) {

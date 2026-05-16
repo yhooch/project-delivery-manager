@@ -30,6 +30,7 @@ import {
   isBlockedRecord,
   isPendingConfirmRecord,
   isPendingRegressionRecord,
+  SPACE_EXCEPTION_STATE_RULES,
   SPACE_EXCEPTION_TYPES,
 } from "./space-exception.helpers";
 import {
@@ -61,17 +62,6 @@ import type {
 const DEFAULT_WORKFLOW_CODES = ["DEVELOPMENT_TASK", "GENERAL_TASK", "BUG"];
 const TERMINAL_STATUS_CATEGORIES: StatusCategory[] = ["DONE", "TERMINATED"];
 const DUE_SOON_DAYS = 7;
-const BLOCKED_STATE_TOKENS = ["blocked", "阻塞"] as const;
-const PENDING_CONFIRM_STATE_TOKENS = ["confirm", "待确认", "确认"] as const;
-const PENDING_REGRESSION_STATE_CODES = [
-  "pending_regression",
-  "ready_for_regression",
-] as const;
-const PENDING_REGRESSION_STATE_NAMES = [
-  "Pending regression",
-  "Ready for regression",
-  "待回归",
-] as const;
 const RECENT_ACTIVITY_TARGET_TYPES = [
   "WORK_ITEM",
   "REQUIREMENT",
@@ -2080,14 +2070,26 @@ function andWorkItemWhere(
 }
 
 function blockedWorkItemWhere(): Prisma.WorkItemWhereInput {
-  return workflowStateTokenWhere(BLOCKED_STATE_TOKENS);
+  return {
+    statusCategory: nonTerminalStatusWhere(),
+    OR: [
+      {
+        blockedAt: {
+          not: null,
+        },
+      },
+      {
+        blockedReason: {
+          not: null,
+        },
+      },
+    ],
+  };
 }
 
 function pendingRegressionWhere(): Prisma.WorkItemWhereInput {
   return {
-    statusCategory: {
-      notIn: TERMINAL_STATUS_CATEGORIES,
-    },
+    statusCategory: nonTerminalStatusWhere(),
     type: "BUG",
     AND: [
       {
@@ -2098,10 +2100,15 @@ function pendingRegressionWhere(): Prisma.WorkItemWhereInput {
           },
         },
       },
-      workflowStateExactWhere(
-        PENDING_REGRESSION_STATE_CODES,
-        PENDING_REGRESSION_STATE_NAMES,
-      ),
+      {
+        OR: [
+          { statusCategory: "VERIFYING" },
+          workflowStateExactWhere(
+            SPACE_EXCEPTION_STATE_RULES.pendingRegressionCodes,
+            SPACE_EXCEPTION_STATE_RULES.pendingRegressionNames,
+          ),
+        ],
+      },
     ],
   };
 }
@@ -2133,7 +2140,13 @@ function workflowStateExactWhere(
 }
 
 function pendingConfirmWhere(): Prisma.WorkItemWhereInput {
-  return workflowStateTokenWhere(PENDING_CONFIRM_STATE_TOKENS);
+  return {
+    statusCategory: nonTerminalStatusWhere(),
+    NOT: pendingRegressionWhere(),
+    OR: [
+      workflowStateTokenWhere(SPACE_EXCEPTION_STATE_RULES.pendingConfirmTokens),
+    ],
+  };
 }
 
 function staleWorkItemWhere(
@@ -2141,6 +2154,7 @@ function staleWorkItemWhere(
   staleThresholdDays: number,
 ): Prisma.WorkItemWhereInput {
   return {
+    statusCategory: nonTerminalStatusWhere(),
     lastStatusChangedAt: {
       lte: addDays(now, -staleThresholdDays),
     },
@@ -2156,6 +2170,7 @@ function staleWorkItemWhereForContext(
       lastStatusChangedAt: {
         lte: addDays(now, -access.staleThresholdDays),
       },
+      statusCategory: nonTerminalStatusWhere(),
       spaceId: access.spaceId,
     })),
   };
@@ -2230,6 +2245,7 @@ function exceptionTypeWhere(
         dueDate: {
           lt: now,
         },
+        statusCategory: nonTerminalStatusWhere(),
       };
     case "blocked":
       return blockedWorkItemWhere();
@@ -2240,6 +2256,12 @@ function exceptionTypeWhere(
     case "stale":
       return staleWhere ?? staleWorkItemWhere(now, staleThresholdDays);
   }
+}
+
+function nonTerminalStatusWhere() {
+  return {
+    notIn: TERMINAL_STATUS_CATEGORIES,
+  };
 }
 
 function workflowStateTokenWhere(

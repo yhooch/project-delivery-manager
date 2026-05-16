@@ -11,13 +11,13 @@ import {
 const now = new Date("2026-05-13T12:00:00.000Z");
 
 describe("space exception helpers", () => {
-  it("builds all supported exception signals from explicit evidence", () => {
+  it("builds supported exception signals from stable evidence", () => {
     const record = workItem({
       blockedAt: new Date("2026-05-11T12:00:00.000Z"),
       blockedReason: "Waiting for upstream API",
       currentState: {
-        code: "blocked_waiting_pm_confirm",
-        name: "Blocked waiting PM confirm",
+        code: "pm_confirm",
+        name: "PM confirm",
       },
       dueDate: new Date("2026-05-12T12:00:00.000Z"),
       lastStatusChangedAt: new Date("2026-05-09T12:00:00.000Z"),
@@ -32,19 +32,19 @@ describe("space exception helpers", () => {
     ).toEqual(["overdue", "blocked", "pending_confirm", "stale"]);
   });
 
-  it("uses current workflow state instead of residual blocked fields", () => {
+  it("uses blocked fields instead of workflow-state tokens for blocked records", () => {
     expect(
       isBlockedRecord(
         workItem({
           blockedAt: new Date("2026-05-11T12:00:00.000Z"),
-          blockedReason: "Old reason",
+          blockedReason: "Waiting for upstream API",
           currentState: {
             code: "in_progress",
             name: "In progress",
           },
         }),
       ),
-    ).toBe(false);
+    ).toBe(true);
     expect(
       isBlockedRecord(
         workItem({
@@ -56,10 +56,40 @@ describe("space exception helpers", () => {
           },
         }),
       ),
-    ).toBe(true);
+    ).toBe(false);
+    expect(
+      isBlockedRecord(
+        workItem({
+          blockedAt: new Date("2026-05-11T12:00:00.000Z"),
+          blockedReason: "Old reason",
+          statusCategory: "DONE",
+        }),
+      ),
+    ).toBe(false);
   });
 
-  it("does not treat WAITING or VERIFYING items without confirm evidence as pending confirmation", () => {
+  it("emits blocked evidence from blocked fields", () => {
+    const signals = buildSpaceExceptionSignals(
+      workItem({
+        blockedAt: new Date("2026-05-11T12:00:00.000Z"),
+        blockedReason: "Waiting for upstream API",
+      }),
+      {
+        now,
+        staleThresholdDays: 3,
+      },
+    );
+
+    expect(signals).toContainEqual(
+      expect.objectContaining({
+        type: "blocked",
+        evidenceSource: "BLOCKED_FIELD",
+        blockedReason: "Waiting for upstream API",
+      }),
+    );
+  });
+
+  it("uses explicit state semantics as the pending confirmation signal", () => {
     expect(
       isPendingConfirmRecord(
         workItem({
@@ -95,6 +125,21 @@ describe("space exception helpers", () => {
     ).toBe(true);
   });
 
+  it("does not double-count verifying bugs with missing regression as pending confirmation", () => {
+    expect(
+      isPendingConfirmRecord(
+        workItem({
+          bugDetail: {
+            deletedAt: null,
+            regressionAt: null,
+          },
+          statusCategory: "VERIFYING",
+          type: "BUG",
+        }),
+      ),
+    ).toBe(false);
+  });
+
   it("recognizes Chinese confirmation state tokens", () => {
     expect(
       isPendingConfirmRecord(
@@ -120,7 +165,7 @@ describe("space exception helpers", () => {
     ).toBe(true);
   });
 
-  it("requires a bug and regression state evidence for pending regression", () => {
+  it("requires an unregressed bug plus verifying/default regression semantics", () => {
     expect(
       isPendingRegressionRecord(
         workItem({
@@ -152,7 +197,7 @@ describe("space exception helpers", () => {
           type: "BUG",
         }),
       ),
-    ).toBe(false);
+    ).toBe(true);
     expect(
       isPendingRegressionRecord(
         workItem({

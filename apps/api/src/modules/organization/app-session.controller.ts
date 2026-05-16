@@ -1,5 +1,7 @@
 import { Controller, Get, Inject, Query, Req, UseGuards } from "@nestjs/common";
 import {
+  RecentOrganizationCookieName,
+  RecentSpaceCookieName,
   UlidSchema,
   type GetAuthSessionResponse,
 } from "@project-delivery/shared";
@@ -28,11 +30,15 @@ export class AppSessionController {
     recentSpaceId: string | string[] | undefined,
   ): Promise<GetAuthSessionResponse> {
     const user = this.currentUser.requireUser(request);
+    const recentOrganizationCookie =
+      request.cookies?.[RecentOrganizationCookieName];
+    const recentSpaceCookie = request.cookies?.[RecentSpaceCookieName];
 
     return this.appSessions.buildForUser(
       user,
-      parseRecentUlid(recentOrganizationId),
-      parseRecentUlid(recentSpaceId),
+      parseRecentUlid(recentOrganizationCookie) ??
+        parseRecentUlid(recentOrganizationId),
+      parseRecentUlid(recentSpaceCookie) ?? parseRecentUlid(recentSpaceId),
     );
   }
 }

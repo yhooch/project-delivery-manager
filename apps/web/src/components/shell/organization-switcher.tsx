@@ -11,7 +11,6 @@ import { useTranslations } from "next-intl";
 import { useState } from "react";
 
 import { useSession } from "../providers/session-provider";
-import { canManageOrganization } from "../../lib/space-service";
 import { Badge } from "../ui/badge";
 import { Button } from "../ui/button";
 import {
@@ -64,8 +63,7 @@ export function OrganizationSwitcher() {
   );
   const canCreateSpace = Boolean(
     session.capabilities?.canCreateSpace &&
-    currentOrganization?.status === "ACTIVE" &&
-    canManageOrganization(currentOrganization.role),
+    currentOrganization?.status === "ACTIVE",
   );
   const hasMultipleOrgs = session.organizations.length > 1;
   const hasAnySpaces = spacesForCurrentOrganization.length > 0;

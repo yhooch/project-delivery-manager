@@ -467,7 +467,7 @@ describe("ExceptionsPage", () => {
 
     fireEvent.click(
       screen.getByTestId(
-        "exceptions-filter-assigneeId-01ARZ3NDEKTSV4RRFFQ69G5FB1",
+        "exceptions-filter-assigneeId-option-01ARZ3NDEKTSV4RRFFQ69G5FB1",
       ),
     );
 
@@ -648,7 +648,7 @@ describe("ExceptionsPage", () => {
 
     fireEvent.click(
       screen.getByTestId(
-        "exceptions-filter-assigneeId-01ARZ3NDEKTSV4RRFFQ69G5FB1",
+        "exceptions-filter-assigneeId-option-01ARZ3NDEKTSV4RRFFQ69G5FB1",
       ),
     );
 
@@ -665,7 +665,7 @@ describe("ExceptionsPage", () => {
     );
 
     fireEvent.click(
-      screen.getByTestId("exceptions-filter-statusCategory-WAITING"),
+      screen.getByTestId("exceptions-filter-statusCategory-option-WAITING"),
     );
 
     await waitFor(() =>
@@ -677,7 +677,9 @@ describe("ExceptionsPage", () => {
       ),
     );
 
-    fireEvent.click(screen.getByTestId("exceptions-filter-workItemType-BUG"));
+    fireEvent.click(
+      screen.getByTestId("exceptions-filter-workItemType-option-BUG"),
+    );
 
     await waitFor(() =>
       expect(getSpaceExceptionsViewMock).toHaveBeenLastCalledWith(
@@ -718,7 +720,7 @@ describe("ExceptionsPage", () => {
 
     fireEvent.click(
       screen.getByTestId(
-        "exceptions-filter-assigneeId-01ARZ3NDEKTSV4RRFFQ69G5FB1",
+        "exceptions-filter-assigneeId-option-01ARZ3NDEKTSV4RRFFQ69G5FB1",
       ),
     );
 

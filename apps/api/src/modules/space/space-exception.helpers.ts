@@ -11,17 +11,19 @@ export const SPACE_EXCEPTION_TYPES: readonly ViewExceptionType[] = [
   "pending_regression",
   "stale",
 ];
-const PENDING_CONFIRM_STATE_TOKENS = ["confirm", "待确认", "确认"] as const;
-const PENDING_REGRESSION_STATE_CODES = [
-  "pending_regression",
-  "ready_for_regression",
-] as const;
-const PENDING_REGRESSION_STATE_NAMES = [
-  "Pending regression",
-  "Ready for regression",
-  "待回归",
-] as const;
-const BLOCKED_STATE_TOKENS = ["blocked", "阻塞"] as const;
+
+export const SPACE_EXCEPTION_STATE_RULES = {
+  pendingConfirmTokens: ["confirm", "待确认", "确认"] as const,
+  pendingRegressionCodes: [
+    "pending_regression",
+    "ready_for_regression",
+  ] as const,
+  pendingRegressionNames: [
+    "Pending regression",
+    "Ready for regression",
+    "待回归",
+  ] as const,
+};
 
 export type SpaceExceptionWorkItemRecord = {
   blockedAt: Date | null;
@@ -62,7 +64,7 @@ export function buildSpaceExceptionSignals(
   if (isBlockedRecord(record)) {
     signals.push({
       type: "blocked",
-      evidenceSource: "WORKFLOW_STATE",
+      evidenceSource: "BLOCKED_FIELD",
       reason: record.blockedReason ?? "工作项处于阻塞状态",
       blockedAt: record.blockedAt?.toISOString(),
       blockedReason: record.blockedReason ?? undefined,
@@ -108,8 +110,8 @@ export function buildSpaceExceptionSignals(
 
 export function isBlockedRecord(record: SpaceExceptionWorkItemRecord) {
   return (
-    includesAnyToken(record.currentState.code, BLOCKED_STATE_TOKENS) ||
-    includesAnyToken(record.currentState.name, BLOCKED_STATE_TOKENS)
+    !isTerminalStatusCategory(record.statusCategory) &&
+    (Boolean(record.blockedAt) || Boolean(record.blockedReason?.trim()))
   );
 }
 
@@ -126,8 +128,16 @@ export function isOverdueRecord(
 
 export function isPendingConfirmRecord(record: SpaceExceptionWorkItemRecord) {
   return (
-    includesAnyToken(record.currentState.code, PENDING_CONFIRM_STATE_TOKENS) ||
-    includesAnyToken(record.currentState.name, PENDING_CONFIRM_STATE_TOKENS)
+    !isTerminalStatusCategory(record.statusCategory) &&
+    !isPendingRegressionRecord(record) &&
+    (includesAnyToken(
+      record.currentState.code,
+      SPACE_EXCEPTION_STATE_RULES.pendingConfirmTokens,
+    ) ||
+      includesAnyToken(
+        record.currentState.name,
+        SPACE_EXCEPTION_STATE_RULES.pendingConfirmTokens,
+      ))
   );
 }
 
@@ -140,11 +150,15 @@ export function isPendingRegressionRecord(record: SpaceExceptionWorkItemRecord) 
         !record.bugDetail.deletedAt &&
         !record.bugDetail.regressionAt,
     ) &&
-    (matchesAnyValue(
-      record.currentState.code,
-      PENDING_REGRESSION_STATE_CODES,
-    ) ||
-      matchesAnyValue(record.currentState.name, PENDING_REGRESSION_STATE_NAMES))
+    (record.statusCategory === "VERIFYING" ||
+      matchesAnyValue(
+        record.currentState.code,
+        SPACE_EXCEPTION_STATE_RULES.pendingRegressionCodes,
+      ) ||
+      matchesAnyValue(
+        record.currentState.name,
+        SPACE_EXCEPTION_STATE_RULES.pendingRegressionNames,
+      ))
   );
 }
 

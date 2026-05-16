@@ -2,6 +2,8 @@ import { type INestApplication } from "@nestjs/common";
 import { Test } from "@nestjs/testing";
 import {
   AppSessionSchema,
+  RecentOrganizationCookieName,
+  RecentSpaceCookieName,
   type DefaultWorkflowSummary,
   type GetSpaceExceptionsViewResponse,
   type ObjectParticipantTargetType,
@@ -790,8 +792,13 @@ describe("space API", () => {
     ).body.data as Space;
 
     await agent
-      .get(
-        `/api/v1/auth/session?recentOrganizationId=${organizationB.id}&recentSpaceId=${spaceA.id}`,
+      .get("/api/v1/auth/session")
+      .set(
+        "Cookie",
+        [
+          `${RecentOrganizationCookieName}=${organizationB.id}`,
+          `${RecentSpaceCookieName}=${spaceA.id}`,
+        ].join("; "),
       )
       .expect(200)
       .expect(({ body }) => {
@@ -805,7 +812,8 @@ describe("space API", () => {
       });
 
     await agent
-      .get(`/api/v1/auth/session?recentSpaceId=${spaceA.id}`)
+      .get("/api/v1/auth/session")
+      .set("Cookie", `${RecentSpaceCookieName}=${spaceA.id}`)
       .expect(200)
       .expect(({ body }) => {
         const appSession = AppSessionSchema.parse(body.data);

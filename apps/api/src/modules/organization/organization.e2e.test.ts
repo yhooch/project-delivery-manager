@@ -2,6 +2,7 @@ import { type INestApplication } from "@nestjs/common";
 import { Test } from "@nestjs/testing";
 import {
   AppSessionSchema,
+  RecentOrganizationCookieName,
   type Organization,
   type OrganizationMember,
   type OrganizationMemberWithUser,
@@ -156,7 +157,7 @@ describe("organization and AppSession API", () => {
       });
   });
 
-  it("uses a validated recentOrganizationId as the default organization", async () => {
+  it("uses a validated recentOrganizationId cookie as the default organization", async () => {
     const agent = await registeredAgent("multi_org_user", "203.0.113.34");
     const first = (await createOrganization(agent, "First Org", "first-org"))
       .body.data as Organization;
@@ -164,7 +165,8 @@ describe("organization and AppSession API", () => {
       .body.data as Organization;
 
     await agent
-      .get(`/api/v1/auth/session?recentOrganizationId=${second.id}`)
+      .get("/api/v1/auth/session")
+      .set("Cookie", `${RecentOrganizationCookieName}=${second.id}`)
       .expect(200)
       .expect(({ body }) => {
         const appSession = AppSessionSchema.parse(body.data);
@@ -183,8 +185,10 @@ describe("organization and AppSession API", () => {
     await createOrganization(agent, "Fallback Two", "fallback-two").expect(200);
 
     await agent
-      .get(
-        "/api/v1/auth/session?recentOrganizationId=01ARZ3NDEKTSV4RRFFQ69G5FAV",
+      .get("/api/v1/auth/session")
+      .set(
+        "Cookie",
+        `${RecentOrganizationCookieName}=01ARZ3NDEKTSV4RRFFQ69G5FAV`,
       )
       .expect(200)
       .expect(({ body }) => {
