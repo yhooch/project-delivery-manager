@@ -309,7 +309,6 @@ describe("BugService", () => {
       BUG_ID,
       {
         assigneeId: ASSIGNEE_ID,
-        fixNote: "Guard null session",
         relatedTaskId: RELATED_TASK_ID,
         severity: "CRITICAL",
       },
@@ -321,7 +320,6 @@ describe("BugService", () => {
     expect(updated).toMatchObject({
       assigneeId: ASSIGNEE_ID,
       bugDetail: {
-        fixNote: "Guard null session",
         relatedTaskId: RELATED_TASK_ID,
         severity: "CRITICAL",
       },
@@ -343,7 +341,6 @@ describe("BugService", () => {
     });
     expect(subject.bugs.updatedInput?.timelineAfter).toMatchObject({
       assigneeId: ASSIGNEE_ID,
-      fixNote: "Guard null session",
       relatedTaskId: RELATED_TASK_ID,
       severity: "CRITICAL",
     });
@@ -367,6 +364,51 @@ describe("BugService", () => {
         }),
       ]),
     );
+  });
+
+  it("does not map lifecycle fields through direct BUG patch updates", async () => {
+    const subject = createSubject("PM");
+
+    subject.bugs.items.set(
+      BUG_ID,
+      makeBug({
+        bugDetail: {
+          fixNote: "Existing fix note",
+          regressionAt: "2026-05-13T00:00:00.000Z",
+          regressionBy: RELATED_USER_ID,
+          regressionResult: "Existing regression",
+          severity: "MAJOR",
+          workItemId: BUG_ID,
+        },
+      }),
+    );
+
+    const updated = await subject.service.update(ACTOR_ID, BUG_ID, {
+      fixNote: "Injected fix note",
+      regressionAt: "2026-05-14T00:00:00.000Z",
+      regressionBy: ACTOR_ID,
+      regressionResult: "Injected regression",
+      severity: "CRITICAL",
+    } as unknown as Parameters<BugService["update"]>[2]);
+    const updateRecord = subject.bugs.updatedInput as unknown as Record<
+      string,
+      unknown
+    >;
+
+    expect(updated.bugDetail).toMatchObject({
+      fixNote: "Existing fix note",
+      regressionAt: "2026-05-13T00:00:00.000Z",
+      regressionBy: RELATED_USER_ID,
+      regressionResult: "Existing regression",
+      severity: "CRITICAL",
+    });
+    expect(updateRecord.fixNote).toBeUndefined();
+    expect(updateRecord.regressionAt).toBeUndefined();
+    expect(updateRecord.regressionById).toBeUndefined();
+    expect(updateRecord.regressionResult).toBeUndefined();
+    expect(subject.bugs.updatedInput?.timelineAfter).toEqual({
+      severity: "CRITICAL",
+    });
   });
 
   it("clears optional bug links and dates when update fields are null", async () => {
@@ -733,19 +775,6 @@ class FakeBugRepository implements BugRepository {
         expectedResult: applyOptional(
           input.expectedResult,
           existing.bugDetail.expectedResult,
-        ),
-        fixNote: applyOptional(input.fixNote, existing.bugDetail.fixNote),
-        regressionAt: applyOptionalDate(
-          input.regressionAt,
-          existing.bugDetail.regressionAt,
-        ),
-        regressionBy: applyOptional(
-          input.regressionById,
-          existing.bugDetail.regressionBy,
-        ),
-        regressionResult: applyOptional(
-          input.regressionResult,
-          existing.bugDetail.regressionResult,
         ),
         relatedTaskId: applyOptional(
           input.relatedTaskId,

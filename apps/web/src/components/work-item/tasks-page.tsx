@@ -306,6 +306,11 @@ export function TasksPage() {
           label: tStatus("DONE"),
           key: "DONE",
         },
+        {
+          count: getStatusCategoryCount(statusCategoryCounts, "TERMINATED"),
+          label: tStatus("TERMINATED"),
+          key: "TERMINATED",
+        },
       ],
       [items.length, statusCategoryCounts, t, tStatus],
     );

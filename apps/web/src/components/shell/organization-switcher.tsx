@@ -10,6 +10,10 @@ import {
 import { useTranslations } from "next-intl";
 import { useState } from "react";
 
+import {
+  getApiErrorMessageKey,
+  type ApiErrorMessageKey,
+} from "../../lib/api-error-messages";
 import { useSession } from "../providers/session-provider";
 import { Badge } from "../ui/badge";
 import { Button } from "../ui/button";
@@ -32,6 +36,7 @@ type PendingState =
 
 export function OrganizationSwitcher() {
   const t = useTranslations("shell.organizationSwitcher");
+  const tRoot = useTranslations();
   const {
     currentOrganization,
     currentSpace,
@@ -42,6 +47,8 @@ export function OrganizationSwitcher() {
     switchSpace,
   } = useSession();
   const [pending, setPending] = useState<PendingState>({ kind: "idle" });
+  const [switchErrorKey, setSwitchErrorKey] =
+    useState<ApiErrorMessageKey | null>(null);
   const [createOrgOpen, setCreateOrgOpen] = useState(false);
   const [createSpaceOpen, setCreateSpaceOpen] = useState(false);
 
@@ -63,9 +70,7 @@ export function OrganizationSwitcher() {
   );
   const canCreateSpace = Boolean(
     session.capabilities?.canCreateSpace &&
-    currentOrganization?.status === "ACTIVE" &&
-    (currentOrganization.role === "OWNER" ||
-      currentOrganization.role === "ADMIN"),
+    currentOrganization?.status === "ACTIVE",
   );
   const hasMultipleOrgs = session.organizations.length > 1;
   const hasAnySpaces = spacesForCurrentOrganization.length > 0;
@@ -103,8 +108,11 @@ export function OrganizationSwitcher() {
   async function onSwitchOrganization(organizationId: string) {
     if (organizationId === currentOrganization?.id) return;
     setPending({ kind: "switchingOrg" });
+    setSwitchErrorKey(null);
     try {
       await switchOrganization(organizationId);
+    } catch (error) {
+      setSwitchErrorKey(getApiErrorMessageKey(error));
     } finally {
       setPending({ kind: "idle" });
     }
@@ -113,8 +121,11 @@ export function OrganizationSwitcher() {
   async function onSwitchSpace(spaceId: string) {
     if (spaceId === currentSpace?.id) return;
     setPending({ kind: "switchingSpace" });
+    setSwitchErrorKey(null);
     try {
       await switchSpace(spaceId);
+    } catch (error) {
+      setSwitchErrorKey(getApiErrorMessageKey(error));
     } finally {
       setPending({ kind: "idle" });
     }
@@ -166,6 +177,16 @@ export function OrganizationSwitcher() {
           className="w-[320px]"
           data-testid="org-switcher-menu"
         >
+          {switchErrorKey ? (
+            <div
+              className="mx-1 mb-1 rounded-md bg-destructive/10 px-2 py-1.5 text-xs text-destructive"
+              data-testid="org-switcher-error"
+              role="alert"
+            >
+              {tRoot(switchErrorKey)}
+            </div>
+          ) : null}
+
           <DropdownMenuLabel>{t("organizationsHeading")}</DropdownMenuLabel>
           {session.organizations.map((organization) => {
             const isCurrent = organization.id === currentOrganization?.id;

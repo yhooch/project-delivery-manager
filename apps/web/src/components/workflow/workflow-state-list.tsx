@@ -6,6 +6,7 @@ import { useTranslations } from "next-intl";
 
 import { Badge } from "../ui/badge";
 import { Button } from "../ui/button";
+import { translateWorkflowStateName } from "../../lib/workflow-display";
 
 export type WorkflowStateListProps = {
   states: WorkflowState[];
@@ -24,6 +25,7 @@ export function WorkflowStateList({
 }: WorkflowStateListProps) {
   const t = useTranslations("workflow.config.states");
   const tCategory = useTranslations("workflow.statusCategory");
+  const tRoot = useTranslations();
 
   const sorted = [...states].sort((a, b) => a.order - b.order);
 
@@ -35,7 +37,9 @@ export function WorkflowStateList({
       <header className="flex items-center justify-between">
         <div>
           <h2 className="text-sm font-semibold">{t("title")}</h2>
-          <p className="text-[11px] text-muted-foreground">{t("description")}</p>
+          <p className="text-[11px] text-muted-foreground">
+            {t("description")}
+          </p>
         </div>
         <Button
           className="h-7 text-xs"
@@ -64,9 +68,15 @@ export function WorkflowStateList({
               <tr className="border-b border-border text-left text-muted-foreground">
                 <th className="px-2 py-1.5 font-medium">{t("columns.code")}</th>
                 <th className="px-2 py-1.5 font-medium">{t("columns.name")}</th>
-                <th className="px-2 py-1.5 font-medium">{t("columns.category")}</th>
-                <th className="px-2 py-1.5 font-medium">{t("columns.flags")}</th>
-                <th className="px-2 py-1.5 text-right font-medium">{t("columns.order")}</th>
+                <th className="px-2 py-1.5 font-medium">
+                  {t("columns.category")}
+                </th>
+                <th className="px-2 py-1.5 font-medium">
+                  {t("columns.flags")}
+                </th>
+                <th className="px-2 py-1.5 text-right font-medium">
+                  {t("columns.order")}
+                </th>
                 <th className="px-2 py-1.5 text-right font-medium">
                   {t("columns.actions")}
                 </th>
@@ -79,8 +89,12 @@ export function WorkflowStateList({
                   data-testid={`workflow-state-row-${state.id}`}
                   key={state.id}
                 >
-                  <td className="px-2 py-1.5 font-mono text-[11px]">{state.code}</td>
-                  <td className="px-2 py-1.5">{state.name}</td>
+                  <td className="px-2 py-1.5 font-mono text-[11px]">
+                    {state.code}
+                  </td>
+                  <td className="px-2 py-1.5">
+                    {translateWorkflowStateName(tRoot, state)}
+                  </td>
                   <td className="px-2 py-1.5">
                     <Badge variant="outline">{tCategory(state.category)}</Badge>
                   </td>

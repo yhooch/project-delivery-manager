@@ -264,7 +264,7 @@ describe("SpacesPage", () => {
       screen.getByTestId("spaces-updated-at-SPC_01").textContent,
     ).toContain("2026");
     expect(screen.getByTestId("spaces-updated-at-SPC_01")).toHaveTextContent(
-      "spaces.list.fields.updatedAt: ",
+      "spaces.list.fields.updatedAt",
     );
 
     expect(screen.getByTestId("spaces-owner-SPC_02")).toHaveTextContent(
@@ -281,7 +281,7 @@ describe("SpacesPage", () => {
       "spaces.list.fields.unfinishedTaskCountspaces.list.emptyValue",
     );
     expect(screen.getByTestId("spaces-updated-at-SPC_02")).toHaveTextContent(
-      "spaces.list.fields.updatedAt: spaces.list.emptyValue",
+      "spaces.list.fields.updatedAtspaces.list.emptyValue",
     );
   });
 
@@ -312,7 +312,7 @@ describe("SpacesPage", () => {
     ).not.toBeInTheDocument();
   });
 
-  it("renders read-only copy for a non-admin role even when global capability allows it", async () => {
+  it("uses capability and active organization status for create-space without a role allowlist", async () => {
     sessionMock.current = {
       ...sessionMock.current,
       currentOrganization: {
@@ -328,12 +328,10 @@ describe("SpacesPage", () => {
     render(<SpacesPage />);
 
     expect(await screen.findByText("Space A")).toBeInTheDocument();
+    expect(screen.getByTestId("spaces-create-button")).toBeInTheDocument();
     expect(
-      screen.queryByTestId("spaces-create-button"),
+      screen.queryByTestId("spaces-readonly-notice"),
     ).not.toBeInTheDocument();
-    expect(screen.getByTestId("spaces-readonly-notice")).toHaveTextContent(
-      "spaces.list.readOnly",
-    );
   });
 
   it("does not render operational summary for spaces without membership", async () => {

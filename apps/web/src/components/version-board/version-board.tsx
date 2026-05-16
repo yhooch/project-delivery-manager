@@ -30,6 +30,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { getApiErrorMessageKey } from "../../lib/api-error-messages";
 import { Link, usePathname, useRouter } from "../../i18n/routing";
+import { getTimelineEventLabel } from "../../lib/timeline-display";
 import {
   createWorkItemViewModelMapper,
   type WorkItemViewModel,
@@ -227,7 +228,7 @@ export function VersionPage() {
   const tShell = useTranslations("shell.nav");
   const tRoot = useTranslations();
   const tRequirementStatus = useTranslations("requirements.status");
-  const tTimelineEvent = useTranslations("versionBoard.timeline.event");
+  const tTimelineEvent = useTranslations("common.timeline.event");
   const tVersionStatus = useTranslations("versionBoard.status");
   const tHero = useTranslations("versionBoard.hero");
   const locale = useLocale();
@@ -707,6 +708,7 @@ export function VersionPage() {
     ? getMember(currentVersion.ownerId)
     : undefined;
   const ownerName = owner?.user.name ?? owner?.user.username ?? "";
+  const versionTarget = currentVersion?.target?.trim() || tHero("targetNone");
 
   const headerMeta = currentVersion ? (
     <div
@@ -743,6 +745,18 @@ export function VersionPage() {
           <span>{tHero("ownerNone")}</span>
         )}
       </div>
+
+      <span className="h-3 w-px bg-border" aria-hidden />
+
+      <span className="flex min-w-0 max-w-[18rem] items-center gap-1">
+        <span>{tHero("target")}</span>
+        <span
+          data-testid="version-hero-target"
+          className="truncate font-medium text-foreground"
+        >
+          {versionTarget}
+        </span>
+      </span>
 
       <span className="h-3 w-px bg-border" aria-hidden />
 
@@ -1505,9 +1519,7 @@ function TimelineTab({
   events: TimelineEvent[];
   locale: string;
   tRoot: ReturnType<typeof useTranslations>;
-  tTimelineEvent: ReturnType<
-    typeof useTranslations<"versionBoard.timeline.event">
-  >;
+  tTimelineEvent: ReturnType<typeof useTranslations<"common.timeline.event">>;
   t: ReturnType<typeof useTranslations<"versionBoard">>;
   onRetry: () => void;
 }) {
@@ -1538,14 +1550,10 @@ function TimelineTab({
     <ul className="space-y-3 px-6 py-4">
       {events.map((event) => {
         const actorName = event.actor.name || t("timeline.unknownActor");
-        // Fall back to the raw event type when the namespace is missing —
-        // keeps the row legible if a new event type ships before i18n catches up.
-        let eventLabel: string;
-        try {
-          eventLabel = tTimelineEvent(event.eventType);
-        } catch {
-          eventLabel = event.eventType;
-        }
+        const eventLabel = getTimelineEventLabel(
+          event.eventType,
+          tTimelineEvent,
+        );
         return (
           <li
             key={event.id}
@@ -1564,9 +1572,6 @@ function TimelineTab({
               <div>
                 <span className="font-medium">{actorName}</span>
                 <span className="text-muted-foreground"> · {eventLabel}</span>
-                {event.title && (
-                  <span className="text-foreground"> · {event.title}</span>
-                )}
                 {event.detail && (
                   <span className="ml-1 font-mono text-[12px] text-foreground">
                     {event.detail}

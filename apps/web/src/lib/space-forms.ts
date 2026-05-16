@@ -16,6 +16,8 @@ import {
 } from "@project-delivery/shared";
 import { z } from "zod";
 
+import { normalizeThresholdDays } from "./threshold-normalizer";
+
 const requiredString = (maxLength: number) =>
   z.preprocess(
     (value) => (typeof value === "string" ? value.trim() : value),
@@ -38,13 +40,10 @@ const optionalSpaceCode = z.preprocess(
   SpaceCodeSchema.optional(),
 );
 
-const optionalThresholdDays = z.preprocess((value) => {
-  if (value === "" || value === null || value === undefined) {
-    return undefined;
-  }
-
-  return Number(value);
-}, z.number().int().min(1).max(30).optional());
+const optionalThresholdDays = z.preprocess(
+  normalizeThresholdDays,
+  z.number().int().min(1).max(30).optional(),
+);
 
 export const createSpaceFormSchema = CreateSpaceRequestSchema.extend({
   code: optionalSpaceCode,

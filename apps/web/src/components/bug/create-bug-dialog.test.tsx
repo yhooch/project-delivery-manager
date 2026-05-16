@@ -111,6 +111,9 @@ describe("CreateBugDialog", () => {
 
     await screen.findByText("Requirement 1");
     await screen.findByText("Task 1");
+    expect(listSpaceMembersMock).toHaveBeenCalledWith(spaceId, {
+      status: "ACTIVE",
+    });
 
     fireEvent.change(screen.getByTestId("create-bug-title-input"), {
       target: { value: "Linked bug" },
@@ -172,7 +175,7 @@ describe("CreateBugDialog", () => {
     expect(descriptionInput.value).toBe("");
   });
 
-  it("shows an option load error, disables submit, and retries", async () => {
+  it("shows an option load error, keeps base submit enabled, and retries", async () => {
     listWorkItemsMock.mockRejectedValueOnce(new Error("network"));
 
     render(
@@ -187,7 +190,8 @@ describe("CreateBugDialog", () => {
     expect(
       await screen.findByTestId("create-bug-options-error"),
     ).toHaveTextContent("common.states.optionsLoadFailed");
-    expect(screen.getByTestId("create-bug-submit")).toBeDisabled();
+    expect(screen.getByTestId("create-bug-related-task-select")).toBeDisabled();
+    expect(screen.getByTestId("create-bug-submit")).not.toBeDisabled();
 
     fireEvent.click(screen.getByTestId("create-bug-options-retry"));
 
@@ -197,6 +201,31 @@ describe("CreateBugDialog", () => {
       expect(screen.getByTestId("create-bug-submit")).not.toBeDisabled(),
     );
     expect(listWorkItemsMock).toHaveBeenCalledTimes(2);
+  });
+
+  it("submits a base bug when optional lookups fail", async () => {
+    listWorkItemsMock.mockRejectedValueOnce(new Error("network"));
+
+    render(
+      <CreateBugDialog
+        open
+        onOpenChange={() => {}}
+        organizationId={organizationId}
+        spaceId={spaceId}
+      />,
+    );
+
+    await screen.findByTestId("create-bug-options-error");
+    fireEvent.change(screen.getByTestId("create-bug-title-input"), {
+      target: { value: "Fallback bug" },
+    });
+    fireEvent.click(screen.getByTestId("create-bug-submit"));
+
+    await waitFor(() => expect(createBugMock).toHaveBeenCalledTimes(1));
+    expect(createBugMock).toHaveBeenCalledWith(
+      { organizationId, spaceId },
+      expect.objectContaining({ title: "Fallback bug" }),
+    );
   });
 
   it("infers the version from a selected requirement and keeps it when the version changes", async () => {

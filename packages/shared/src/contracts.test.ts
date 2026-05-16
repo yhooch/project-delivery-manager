@@ -349,6 +349,19 @@ describe("shared contracts", () => {
         blockedReason: "Waiting for dependency",
       }),
     ).toThrow();
+
+    for (const field of [
+      "fixNote",
+      "regressionResult",
+      "regressionBy",
+      "regressionAt",
+    ]) {
+      expect(() =>
+        UpdateBugRequestSchema.parse({
+          [field]: field === "regressionAt" ? "2026-05-13T00:00:00.000Z" : "x",
+        }),
+      ).toThrow();
+    }
   });
 
   it("covers M3 bug detail fields and related task filtering", () => {
@@ -371,10 +384,6 @@ describe("shared contracts", () => {
         assigneeId: null,
         dueDate: null,
         severity: "MAJOR",
-        fixNote: "Guard the null session branch.",
-        regressionResult: "Regression passed on staging.",
-        regressionBy: "01NRZ3NDEKTSV4RRFFQ69G5FAN",
-        regressionAt: "2026-05-13T00:00:00.000Z",
         relatedTaskId: null,
         requirementId: null,
         versionId: null,
@@ -383,7 +392,6 @@ describe("shared contracts", () => {
     ).toMatchObject({
       assigneeId: null,
       intakeItemId: null,
-      regressionBy: "01NRZ3NDEKTSV4RRFFQ69G5FAN",
       relatedTaskId: null,
       versionId: null,
     });

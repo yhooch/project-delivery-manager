@@ -55,6 +55,7 @@ export function CreateWorkflowDialog({
   open,
 }: CreateWorkflowDialogProps) {
   const t = useTranslations("workflow.dialog");
+  const tStatus = useTranslations("workflow.versionStatus");
   const tRoot = useTranslations();
   const [name, setName] = useState("");
   const [code, setCode] = useState("");
@@ -245,7 +246,7 @@ export function CreateWorkflowDialog({
                   <option key={version.id} value={version.id}>
                     {t("copyVersion.fields.versionOption", {
                       version: version.version,
-                      status: version.status,
+                      status: tStatus(version.status),
                     })}
                   </option>
                 ))}

@@ -220,6 +220,14 @@ export class PrismaIntakeRepository implements IntakeRepository {
         targetId: created.id,
         userId: input.reporterId,
       });
+      await ensureParticipant(tx, {
+        actorUserId: input.reporterId,
+        organizationId: created.organizationId,
+        relationType: "REPORTER",
+        spaceId: created.spaceId,
+        targetId: created.id,
+        userId: input.reporterId,
+      });
       if (input.assigneeId) {
         await ensureParticipant(tx, {
           actorUserId: input.reporterId,
@@ -311,8 +319,16 @@ export class PrismaIntakeRepository implements IntakeRepository {
       bugCount: workItems.filter(
         (item) => item.type === "BUG" && item.versionId !== input.nextVersionId,
       ).length,
+      bugIds: workItems
+        .filter(
+          (item) =>
+            item.type === "BUG" && item.versionId !== input.nextVersionId,
+        )
+        .map((item) => item.id),
       relatedBugCount: changedRelatedBugIds.length,
+      relatedBugIds: changedRelatedBugIds,
       workItemCount: changedWorkItemIds.size,
+      workItemIds: [...changedWorkItemIds],
     };
   }
 
@@ -802,6 +818,29 @@ async function cascadeIntakeTraceVersion(
     return;
   }
 
+  const affectedWorkItems = await tx.workItem.findMany({
+    select: {
+      id: true,
+      organizationId: true,
+      spaceId: true,
+      versionId: true,
+    },
+    where: {
+      deletedAt: null,
+      id: {
+        in: workItemIds,
+      },
+      versionId:
+        input.nextVersionId === null
+          ? {
+              not: null,
+            }
+          : {
+              not: input.nextVersionId,
+            },
+    },
+  });
+
   await assertNoIntakeCascadeConflicts(tx, {
     intakeItemId: input.intakeItemId,
     nextRequirementId: input.nextRequirementId,
@@ -809,6 +848,11 @@ async function cascadeIntakeTraceVersion(
     taskIds,
     workItemIds,
   });
+
+  const affectedWorkItemIds = affectedWorkItems.map((item) => item.id);
+  const affectedRelatedBugIds = relatedBugIds.filter((id) =>
+    affectedWorkItemIds.includes(id),
+  );
 
   if (directWorkItemIds.length > 0) {
     await tx.workItem.updateMany({
@@ -826,7 +870,7 @@ async function cascadeIntakeTraceVersion(
     });
   }
 
-  if (relatedBugIds.length > 0) {
+  if (affectedRelatedBugIds.length > 0) {
     await tx.workItem.updateMany({
       data: {
         updatedById: input.actorUserId,
@@ -835,15 +879,64 @@ async function cascadeIntakeTraceVersion(
       where: {
         deletedAt: null,
         id: {
-          in: relatedBugIds,
+          in: affectedRelatedBugIds,
         },
       },
+    });
+  }
+
+  for (const item of affectedWorkItems) {
+    await createTraceVersionCascadeTimelineEvent(tx, {
+      actorUserId: input.actorUserId,
+      beforeVersionId: item.versionId,
+      nextVersionId: input.nextVersionId,
+      organizationId: item.organizationId,
+      sourceTargetId: input.intakeItemId,
+      sourceTargetType: "INTAKE_ITEM",
+      spaceId: item.spaceId,
+      targetId: item.id,
     });
   }
 
   await syncWorkItemRelatedParticipants(tx, {
     actorUserId: input.actorUserId,
     workItemIds,
+  });
+}
+
+async function createTraceVersionCascadeTimelineEvent(
+  tx: Prisma.TransactionClient,
+  input: {
+    actorUserId: string;
+    beforeVersionId: string | null;
+    nextVersionId: string | null;
+    organizationId: string;
+    sourceTargetId: string;
+    sourceTargetType: "INTAKE_ITEM";
+    spaceId: string;
+    targetId: string;
+  },
+) {
+  await tx.timelineEvent.create({
+    data: {
+      id: ulid(),
+      actorId: input.actorUserId,
+      after: toJson({ versionId: input.nextVersionId }),
+      before: toJson({ versionId: input.beforeVersionId }),
+      createdById: input.actorUserId,
+      eventType: "UPDATED",
+      metadata: toJson({
+        operation: "TRACE_VERSION_CASCADE",
+        sourceTargetId: input.sourceTargetId,
+        sourceTargetType: input.sourceTargetType,
+      }),
+      organizationId: input.organizationId,
+      spaceId: input.spaceId,
+      targetId: input.targetId,
+      targetType: "WORK_ITEM",
+      title: "级联更新版本",
+      updatedById: input.actorUserId,
+    },
   });
 }
 

@@ -906,8 +906,6 @@ describe("WorkflowConfigPage", () => {
     setupVersions([makeDraftVersion()]);
     getWorkflowVersionMock.mockResolvedValue(makeDraftVersion());
     deleteWorkflowStateMock.mockResolvedValueOnce({});
-    const confirmMock = vi.fn(() => true);
-    vi.stubGlobal("confirm", confirmMock);
 
     render(<WorkflowConfigPage workflowId={workflowId} />);
 
@@ -918,9 +916,11 @@ describe("WorkflowConfigPage", () => {
     });
     fireEvent.click(deleteBtns[0]!);
 
-    expect(confirmMock).toHaveBeenCalledWith(
-      "workflow.config.states.actions.delete: Open",
-    );
+    expect(
+      await screen.findByTestId("workflow-delete-confirm-dialog"),
+    ).toHaveTextContent("workflow.config.deleteConfirm.description");
+    fireEvent.click(screen.getByTestId("workflow-delete-confirm"));
+
     await waitFor(() =>
       expect(deleteWorkflowStateMock).toHaveBeenCalledWith({
         organizationId: "ORG_01",
@@ -934,10 +934,6 @@ describe("WorkflowConfigPage", () => {
     getWorkflowMock.mockResolvedValue(makeWorkflow());
     setupVersions([makeDraftVersion()]);
     getWorkflowVersionMock.mockResolvedValue(makeDraftVersion());
-    vi.stubGlobal(
-      "confirm",
-      vi.fn(() => false),
-    );
 
     render(<WorkflowConfigPage workflowId={workflowId} />);
 
@@ -947,6 +943,10 @@ describe("WorkflowConfigPage", () => {
       name: /workflow\.config\.states\.actions\.delete/,
     });
     fireEvent.click(deleteBtns[0]!);
+    expect(
+      await screen.findByTestId("workflow-delete-confirm-dialog"),
+    ).toBeInTheDocument();
+    fireEvent.click(screen.getByTestId("workflow-delete-cancel"));
 
     expect(deleteWorkflowStateMock).not.toHaveBeenCalled();
   });
@@ -956,8 +956,6 @@ describe("WorkflowConfigPage", () => {
     setupVersions([makeDraftVersion()]);
     getWorkflowVersionMock.mockResolvedValue(makeDraftVersion());
     deleteWorkflowActionMock.mockResolvedValueOnce({});
-    const confirmMock = vi.fn(() => true);
-    vi.stubGlobal("confirm", confirmMock);
 
     render(<WorkflowConfigPage workflowId={workflowId} />);
 
@@ -969,9 +967,11 @@ describe("WorkflowConfigPage", () => {
       }),
     );
 
-    expect(confirmMock).toHaveBeenCalledWith(
-      "workflow.config.actions.actions.delete: Resolve",
-    );
+    expect(
+      await screen.findByTestId("workflow-delete-confirm-dialog"),
+    ).toHaveTextContent("workflow.config.deleteConfirm.description");
+    fireEvent.click(screen.getByTestId("workflow-delete-confirm"));
+
     await waitFor(() =>
       expect(deleteWorkflowActionMock).toHaveBeenCalledWith({
         actionId,

@@ -1,4 +1,4 @@
-import { HttpStatus, Inject, Injectable } from "@nestjs/common";
+import { HttpStatus, Inject, Injectable, Optional } from "@nestjs/common";
 import type {
   ApiErrorCode,
   ObjectParticipantTargetType,
@@ -8,6 +8,8 @@ import type {
 
 import { ApiException } from "../../http/api-exception";
 import { PrismaService } from "../../prisma/prisma.service";
+import { auditAccessDenied } from "../audit/audit-access-denied";
+import { AuditService } from "../audit/audit.service";
 import {
   REQUIREMENT_REPOSITORY,
   type RequirementRepository,
@@ -58,6 +60,9 @@ export class TargetResolverService {
     private readonly requirements: RequirementRepository,
     @Inject(SPACE_REPOSITORY)
     private readonly spaces: SpaceRepository,
+    @Optional()
+    @Inject(AuditService)
+    private readonly audit?: AuditService,
   ) {}
 
   async resolve(
@@ -92,6 +97,12 @@ export class TargetResolverService {
     const canWrite = await this.canWriteTarget(actorUserId, target, access.role);
 
     if (options.access === "write" && !canWrite) {
+      await this.auditTargetAccessDenied(actorUserId, target, {
+        operation: options.audit?.operation ?? "resolveTargetWrite",
+        reason: "TARGET_WRITE_DENIED",
+        requestMetadata: options.audit,
+        role: access.role,
+      });
       throwSpaceAccessDenied();
     }
 
@@ -393,6 +404,35 @@ export class TargetResolverService {
     userId: string,
   ): Promise<boolean> {
     return this.requirements.isParticipant(spaceId, requirementId, userId);
+  }
+
+  private async auditTargetAccessDenied(
+    actorUserId: string,
+    target: TargetRecord,
+    input: {
+      operation: string;
+      reason: string;
+      requestMetadata?: ResolveTargetOptions["audit"];
+      role?: SpaceRole;
+    },
+  ) {
+    if (!this.audit) {
+      return;
+    }
+
+    await auditAccessDenied(this.audit, {
+      ...input.requestMetadata,
+      actorId: actorUserId,
+      metadata: {
+        role: input.role,
+      },
+      operation: input.operation,
+      organizationId: target.organizationId,
+      reason: input.reason,
+      spaceId: target.spaceId,
+      targetId: target.targetId,
+      targetType: target.targetType,
+    });
   }
 }
 

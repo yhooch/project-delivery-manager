@@ -102,7 +102,7 @@ export function EditBugDialog({
   const [members, setMembers] = useState<SpaceMemberWithUser[]>([]);
 
   const optionFieldsDisabled = submitting || optionsLoadState !== "ready";
-  const submitDisabled = submitting || optionsLoadState !== "ready";
+  const submitDisabled = submitting;
   const selectedRequirement = useMemo(
     () => requirements.find((requirement) => requirement.id === requirementId),
     [requirementId, requirements],
@@ -173,7 +173,7 @@ export function EditBugDialog({
               pageSize: 100,
               type: "TASK",
             }),
-            listSpaceMembers(spaceId),
+            listSpaceMembers(spaceId, { status: "ACTIVE" }),
           ]);
         if (cancelled) {
           return;
@@ -292,12 +292,6 @@ export function EditBugDialog({
           stepsToReproduce: steps,
           expectedResult,
           actualResult,
-          fixNote,
-          regressionResult,
-          regressionBy,
-          regressionAt: regressionAt
-            ? new Date(regressionAt).toISOString()
-            : null,
           severity,
           priority,
           versionId,
@@ -432,8 +426,8 @@ export function EditBugDialog({
                 id="edit-bug-fix-note"
                 data-testid="edit-bug-fix-note-input"
                 value={fixNote}
-                onChange={(event) => setFixNote(event.target.value)}
                 maxLength={8000}
+                readOnly
                 rows={3}
               />
             </div>
@@ -445,8 +439,8 @@ export function EditBugDialog({
                 id="edit-bug-regression-result"
                 data-testid="edit-bug-regression-result-input"
                 value={regressionResult}
-                onChange={(event) => setRegressionResult(event.target.value)}
                 maxLength={8000}
+                readOnly
                 rows={3}
               />
             </div>
@@ -458,8 +452,7 @@ export function EditBugDialog({
                 id="edit-bug-regression-by"
                 data-testid="edit-bug-regression-by-select"
                 value={regressionBy}
-                onChange={(event) => setRegressionBy(event.target.value)}
-                disabled={optionFieldsDisabled}
+                disabled
                 className="h-8 w-full rounded-md border border-input bg-background px-2 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               >
                 <option value="">{tForm("unassigned")}</option>
@@ -479,7 +472,7 @@ export function EditBugDialog({
                 data-testid="edit-bug-regression-at-input"
                 type="datetime-local"
                 value={regressionAt}
-                onChange={(event) => setRegressionAt(event.target.value)}
+                readOnly
               />
             </div>
           </div>

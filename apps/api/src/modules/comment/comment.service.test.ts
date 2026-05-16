@@ -45,9 +45,9 @@ describe("CommentService", () => {
       actorUserId,
       "WORK_ITEM",
       workItemId,
-      {
+      expect.objectContaining({
         access: "write",
-      },
+      }),
     );
     expect(comments.create).toHaveBeenCalledWith(
       expect.objectContaining({

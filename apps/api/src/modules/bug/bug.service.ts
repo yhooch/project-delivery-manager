@@ -221,15 +221,6 @@ export class BugService {
         "Bug assignee",
       );
     }
-    if (input.regressionBy) {
-      await this.requireActiveSpaceMember(
-        bug.organizationId,
-        bug.spaceId,
-        input.regressionBy,
-        "Bug regression user",
-      );
-    }
-
     const shouldReplaceRelatedParticipants =
       input.versionId !== undefined ||
       input.intakeItemId !== undefined ||
@@ -248,19 +239,14 @@ export class BugService {
         })
       : undefined;
     const dueDate = parseOptionalDate(input.dueDate, "dueDate");
-    const regressionAt = parseOptionalDate(input.regressionAt, "regressionAt");
     const timeline = buildTimelineDiff(bug, {
       actualResult: input.actualResult,
       assigneeId: input.assigneeId,
       description: input.description,
       dueDate: toTimelineDate(dueDate),
       expectedResult: input.expectedResult,
-      fixNote: input.fixNote,
       intakeItemId: input.intakeItemId,
       priority: input.priority,
-      regressionAt: toTimelineDate(regressionAt),
-      regressionBy: input.regressionBy,
-      regressionResult: input.regressionResult,
       relatedTaskId: input.relatedTaskId,
       requirementId: input.requirementId,
       severity: input.severity,
@@ -280,12 +266,8 @@ export class BugService {
       description: input.description,
       dueDate,
       expectedResult: input.expectedResult,
-      fixNote: input.fixNote,
       intakeItemId: input.intakeItemId,
       priority: input.priority,
-      regressionAt,
-      regressionById: input.regressionBy,
-      regressionResult: input.regressionResult,
       relatedTaskId: input.relatedTaskId,
       relatedUserIds: collectRelatedUserIds(trace?.linkedUsers ?? []),
       requirementId: input.requirementId,
@@ -747,12 +729,8 @@ function buildTimelineDiff(
     description?: string | null;
     dueDate?: string | null;
     expectedResult?: string | null;
-    fixNote?: string | null;
     intakeItemId?: string | null;
     priority?: BugView["priority"];
-    regressionAt?: string | null;
-    regressionBy?: string | null;
-    regressionResult?: string | null;
     relatedTaskId?: string | null;
     requirementId?: string | null;
     severity?: BugView["bugDetail"]["severity"];
@@ -841,34 +819,6 @@ function buildTimelineDiff(
     "actualResult",
     existing.bugDetail.actualResult ?? null,
     next.actualResult,
-  );
-  addTimelineChange(
-    before,
-    after,
-    "fixNote",
-    existing.bugDetail.fixNote ?? null,
-    next.fixNote,
-  );
-  addTimelineChange(
-    before,
-    after,
-    "regressionResult",
-    existing.bugDetail.regressionResult ?? null,
-    next.regressionResult,
-  );
-  addTimelineChange(
-    before,
-    after,
-    "regressionBy",
-    existing.bugDetail.regressionBy ?? null,
-    next.regressionBy,
-  );
-  addTimelineChange(
-    before,
-    after,
-    "regressionAt",
-    existing.bugDetail.regressionAt ?? null,
-    next.regressionAt,
   );
   addTimelineChange(
     before,

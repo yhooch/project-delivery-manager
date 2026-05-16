@@ -53,6 +53,8 @@ export function toVersion(
     startDate: record.startDate?.toISOString(),
     targetDate: record.targetDate?.toISOString(),
     releaseDate: record.releaseDate?.toISOString(),
+    // Persisted counters remain in the schema for migration compatibility; live
+    // repository overrides are the factual source for API stats.
     stats: {
       requirementCount: overrides?.requirementCount ?? record.requirementCount,
       taskCount: overrides?.taskCount ?? record.taskCount,

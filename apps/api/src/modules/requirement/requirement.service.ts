@@ -11,6 +11,7 @@ import {
 import { ulid } from "ulid";
 
 import { ApiException } from "../../http/api-exception";
+import { auditAccessDenied } from "../audit/audit-access-denied";
 import { AuditService } from "../audit/audit.service";
 import type { RequestMetadata } from "../auth/auth-session.types";
 import {
@@ -104,7 +105,12 @@ export class RequirementService {
     input: CreateRequirementDraftRequest,
     metadata: RequestMetadata = {},
   ): Promise<Requirement> {
-    const access = await this.requireRequirementWriter(actorUserId, spaceId);
+    const access = await this.requireRequirementWriter(actorUserId, spaceId, {
+      metadata,
+      operation: "createRequirementDraft",
+      targetId: spaceId,
+      targetType: "SPACE",
+    });
 
     if (input.versionId) {
       await this.requireVersionInSpace(spaceId, input.versionId);
@@ -158,8 +164,17 @@ export class RequirementService {
     const access = await this.requireRequirementWriter(
       actorUserId,
       existing.spaceId,
+      {
+        metadata,
+        operation: "updateRequirement",
+        targetId: requirementId,
+        targetType: "REQUIREMENT",
+      },
     );
-    await this.requireDraftParticipant(actorUserId, existing);
+    await this.requireDraftParticipant(actorUserId, existing, {
+      metadata,
+      operation: "updateRequirement",
+    });
 
     if (isArchiveRequest(input)) {
       const archived = await this.requirements.archive({
@@ -205,25 +220,29 @@ export class RequirementService {
       );
     }
 
-    if (hasTraceVersionChange(existing.versionId, versionId)) {
-      const impact = await this.requirements.countVersionCascadeImpact({
+    const versionCascadeImpact = hasTraceVersionChange(
+      existing.versionId,
+      versionId,
+    )
+      ? await this.requirements.countVersionCascadeImpact({
         nextVersionId: versionId ?? null,
         requirementId,
-      });
+      })
+      : undefined;
 
       if (
-        hasTraceVersionCascadeImpact(impact) &&
+        versionCascadeImpact &&
+        hasTraceVersionCascadeImpact(versionCascadeImpact) &&
         input.cascadeVersionChange !== true
       ) {
         throwTraceVersionChangeRequiresCascade({
           fromVersionId: existing.versionId,
-          impact,
+          impact: versionCascadeImpact,
           targetId: requirementId,
           targetType: "REQUIREMENT",
           toVersionId: versionId ?? null,
         });
       }
-    }
 
     const saved = await this.requirements.save({
       requirementId,
@@ -249,7 +268,12 @@ export class RequirementService {
       actorId: actorUserId,
       after: saved,
       before: existing,
-      metadata: { operation: "SAVE" },
+      metadata: {
+        operation: "SAVE",
+        ...(input.cascadeVersionChange === true && versionCascadeImpact
+          ? { versionCascade: toCascadeAuditMetadata(versionCascadeImpact) }
+          : {}),
+      },
       ...metadata,
       organizationId: existing.organizationId,
       spaceId: existing.spaceId,
@@ -268,7 +292,7 @@ export class RequirementService {
     const existing = await this.requireExistingRequirement(requirementId);
 
     await this.requireSpaceAccess(actorUserId, existing.spaceId);
-    this.assertCanDeleteDraft(actorUserId, existing);
+    await this.assertCanDeleteDraft(actorUserId, existing, metadata);
 
     const deleted = await this.requirements.deleteDraft({
       deletedById: actorUserId,
@@ -312,10 +336,32 @@ export class RequirementService {
     return access;
   }
 
-  private async requireRequirementWriter(userId: string, spaceId: string) {
+  private async requireRequirementWriter(
+    userId: string,
+    spaceId: string,
+    auditContext?: {
+      metadata: RequestMetadata;
+      operation: string;
+      targetId: string;
+      targetType: string;
+    },
+  ) {
     const access = await this.requireSpaceAccess(userId, spaceId);
 
     if (!REQUIREMENT_WRITER_ROLES.has(access.role)) {
+      if (auditContext) {
+        await auditAccessDenied(this.audit, {
+          ...auditContext.metadata,
+          actorId: userId,
+          metadata: { role: access.role },
+          operation: auditContext.operation,
+          organizationId: access.space.organizationId,
+          reason: "ROLE_NOT_ALLOWED",
+          spaceId,
+          targetId: auditContext.targetId,
+          targetType: auditContext.targetType,
+        });
+      }
       throwSpaceAccessDenied();
     }
 
@@ -359,6 +405,10 @@ export class RequirementService {
   private async requireDraftParticipant(
     actorUserId: string,
     requirement: Requirement,
+    auditContext?: {
+      metadata: RequestMetadata;
+      operation: string;
+    },
   ) {
     if (requirement.status !== "DRAFT") {
       return;
@@ -374,6 +424,18 @@ export class RequirementService {
       return;
     }
 
+    if (auditContext) {
+      await auditAccessDenied(this.audit, {
+        ...auditContext.metadata,
+        actorId: actorUserId,
+        operation: auditContext.operation,
+        organizationId: requirement.organizationId,
+        reason: "DRAFT_REQUIREMENT_PARTICIPANT_REQUIRED",
+        spaceId: requirement.spaceId,
+        targetId: requirement.id,
+        targetType: "REQUIREMENT",
+      });
+    }
     throwRequirementNotFound();
   }
 
@@ -434,9 +496,24 @@ export class RequirementService {
         HttpStatus.BAD_REQUEST,
       );
     }
+
+    if (
+      containsBase64ImageData(input.contentText) ||
+      containsBase64ImageData(input.contentMarkdownCache)
+    ) {
+      throw new ApiException(
+        "VALIDATION_ERROR",
+        "requirement content must not contain base64 images",
+        HttpStatus.BAD_REQUEST,
+      );
+    }
   }
 
-  private assertCanDeleteDraft(actorUserId: string, requirement: Requirement) {
+  private async assertCanDeleteDraft(
+    actorUserId: string,
+    requirement: Requirement,
+    metadata: RequestMetadata,
+  ) {
     if (requirement.status !== "DRAFT") {
       throw new ApiException(
         "DRAFT_REQUIREMENT_REQUIRED",
@@ -446,6 +523,16 @@ export class RequirementService {
     }
 
     if (requirement.authorId !== actorUserId) {
+      await auditAccessDenied(this.audit, {
+        ...metadata,
+        actorId: actorUserId,
+        operation: "deleteRequirementDraft",
+        organizationId: requirement.organizationId,
+        reason: "DRAFT_REQUIREMENT_AUTHOR_REQUIRED",
+        spaceId: requirement.spaceId,
+        targetId: requirement.id,
+        targetType: "REQUIREMENT",
+      });
       throwRequirementNotFound();
     }
 
@@ -477,6 +564,26 @@ function resolveRequirementListVisibility(
   }
 
   return "PARTICIPANT";
+}
+
+function toCascadeAuditMetadata(
+  impact: NonNullable<
+    Awaited<ReturnType<RequirementRepository["countVersionCascadeImpact"]>>
+  >,
+) {
+  return {
+    counts: {
+      bugCount: impact.bugCount,
+      intakeItemCount: impact.intakeItemCount ?? 0,
+      relatedBugCount: impact.relatedBugCount ?? 0,
+      workItemCount: impact.workItemCount,
+    },
+    affectedIds: {
+      intakeItemIds: impact.intakeItemIds ?? [],
+      relatedBugIds: impact.relatedBugIds ?? [],
+      workItemIds: impact.workItemIds ?? [],
+    },
+  };
 }
 
 function withPermissions(
@@ -571,6 +678,24 @@ function isValidTiptapContentJson(value: unknown): boolean {
   );
 }
 
+function containsBase64ImageData(value: unknown): boolean {
+  if (typeof value === "string") {
+    return /data:image\/[a-z0-9.+-]+(?:;[a-z0-9=.+-]+)*;base64(?:,|$)/iu.test(
+      value,
+    );
+  }
+
+  if (Array.isArray(value)) {
+    return value.some((item) => containsBase64ImageData(item));
+  }
+
+  if (!isPlainRecord(value)) {
+    return false;
+  }
+
+  return Object.values(value).some((item) => containsBase64ImageData(item));
+}
+
 function isValidTiptapNode(value: unknown, isRoot = false): boolean {
   if (!isPlainRecord(value)) {
     return false;
@@ -637,24 +762,6 @@ function isValidTiptapMark(value: unknown): boolean {
     value.type.trim().length > 0 &&
     (!("attrs" in value) || isJsonCompatibleObject(value.attrs))
   );
-}
-
-function containsBase64ImageData(value: unknown): boolean {
-  if (typeof value === "string") {
-    return /^data:image\/[a-z0-9.+-]+(?:;[a-z0-9=.+-]+)*;base64(?:,|$)/iu.test(
-      value,
-    );
-  }
-
-  if (Array.isArray(value)) {
-    return value.some((item) => containsBase64ImageData(item));
-  }
-
-  if (!isPlainRecord(value)) {
-    return false;
-  }
-
-  return Object.values(value).some((item) => containsBase64ImageData(item));
 }
 
 function isJsonCompatibleObject(value: unknown): boolean {

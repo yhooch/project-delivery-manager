@@ -9,6 +9,10 @@ import { ChevronDown, ChevronRight, Pencil, Plus, Trash2 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useState } from "react";
 
+import {
+  translateWorkflowActionName,
+  translateWorkflowStateName,
+} from "../../lib/workflow-display";
 import { Badge } from "../ui/badge";
 import { Button } from "../ui/button";
 
@@ -44,9 +48,12 @@ export function WorkflowActionList({
   onDeleteField,
 }: WorkflowActionListProps) {
   const t = useTranslations("workflow.config.actions");
+  const tRoot = useTranslations();
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
 
-  const stateNameById = new Map(states.map((state) => [state.id, state.name]));
+  const stateNameById = new Map(
+    states.map((state) => [state.id, translateWorkflowStateName(tRoot, state)]),
+  );
   const sorted = [...actions].sort((a, b) => a.order - b.order);
 
   function toggleExpand(actionId: string) {
@@ -69,7 +76,9 @@ export function WorkflowActionList({
       <header className="flex items-center justify-between">
         <div>
           <h2 className="text-sm font-semibold">{t("title")}</h2>
-          <p className="text-[11px] text-muted-foreground">{t("description")}</p>
+          <p className="text-[11px] text-muted-foreground">
+            {t("description")}
+          </p>
         </div>
         <Button
           className="h-7 text-xs"
@@ -95,8 +104,10 @@ export function WorkflowActionList({
         >
           {sorted.map((action) => {
             const isOpen = expanded.has(action.id);
-            const fromName = stateNameById.get(action.fromStateId) ?? action.fromStateId;
-            const toName = stateNameById.get(action.toStateId) ?? action.toStateId;
+            const fromName =
+              stateNameById.get(action.fromStateId) ?? action.fromStateId;
+            const toName =
+              stateNameById.get(action.toStateId) ?? action.toStateId;
             return (
               <li
                 className="rounded-md border border-border/70 bg-background"
@@ -120,7 +131,9 @@ export function WorkflowActionList({
                   </Button>
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2">
-                      <span className="truncate text-xs font-medium">{action.name}</span>
+                      <span className="truncate text-xs font-medium">
+                        {translateWorkflowActionName(tRoot, action)}
+                      </span>
                       <span className="font-mono text-[10px] text-muted-foreground">
                         {action.code}
                       </span>
@@ -130,11 +143,15 @@ export function WorkflowActionList({
                         {t("transition", { from: fromName, to: toName })}
                       </span>
                       {action.requiresComment ? (
-                        <Badge variant="warning">{t("flags.requiresComment")}</Badge>
+                        <Badge variant="warning">
+                          {t("flags.requiresComment")}
+                        </Badge>
                       ) : null}
                       {action.allowedSpaceRoles.length > 0 ? (
                         <Badge variant="outline">
-                          {t("flags.roles", { count: action.allowedSpaceRoles.length })}
+                          {t("flags.roles", {
+                            count: action.allowedSpaceRoles.length,
+                          })}
                         </Badge>
                       ) : null}
                       <span className="ml-auto tabular-nums">

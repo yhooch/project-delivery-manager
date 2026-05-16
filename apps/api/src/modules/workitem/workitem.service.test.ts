@@ -445,14 +445,35 @@ describe("WorkItemService", () => {
       subject.workItems.testerVisibleIds.add(WORK_ITEM_ID);
 
       await expect(
-        subject.service.update(ACTOR_ID, WORK_ITEM_ID, {
-          priority: "HIGH",
-          title: `${role} direct edit`,
-        }),
+        subject.service.update(
+          ACTOR_ID,
+          WORK_ITEM_ID,
+          {
+            priority: "HIGH",
+            title: `${role} direct edit`,
+          },
+          { requestId: `req-task-denied-${role}` },
+        ),
       ).rejects.toMatchObject({
         code: "SPACE_ACCESS_DENIED",
       });
       expect(subject.workItems.updatedInput).toBeUndefined();
+      expect(subject.audit.record).toHaveBeenCalledWith(
+        expect.objectContaining({
+          actionType: "ACCESS_DENIED",
+          actorId: ACTOR_ID,
+          metadata: expect.objectContaining({
+            operation: "updateWorkItem",
+            reason: "ROLE_NOT_ALLOWED",
+            role,
+          }),
+          organizationId: ORGANIZATION_ID,
+          requestId: `req-task-denied-${role}`,
+          spaceId: SPACE_ID,
+          targetId: WORK_ITEM_ID,
+          targetType: "WORK_ITEM",
+        }),
+      );
     },
   );
 });

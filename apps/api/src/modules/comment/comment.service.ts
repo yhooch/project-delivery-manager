@@ -65,6 +65,10 @@ export class CommentService {
       input.targetId,
       {
         access: "write",
+        audit: {
+          ...metadata,
+          operation: "createComment",
+        },
       },
     );
 

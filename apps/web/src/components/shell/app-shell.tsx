@@ -1,6 +1,6 @@
 "use client";
 
-import { Loader2 } from "lucide-react";
+import { FolderKanban, Loader2, Plus } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useEffect, useState, type ReactNode } from "react";
 
@@ -13,16 +13,35 @@ import { CommandPalette, useCommandPaletteShortcut } from "./command-palette";
 import { Sidebar } from "./sidebar";
 import { TopBar } from "./top-bar";
 import { OnboardingEmpty } from "./onboarding-empty";
+import { CreateSpaceDialog } from "./create-space-dialog";
 
 type AppShellProps = {
   children: ReactNode;
 };
 
 export function AppShell({ children }: AppShellProps) {
-  const { currentOrganization, status, session } = useSession();
+  const {
+    currentOrganization,
+    currentSpace,
+    initializeSession,
+    session,
+    sessionErrorKey,
+    spacesForCurrentOrganization,
+    status,
+  } = useSession();
   const t = useTranslations("shell");
+  const tRoot = useTranslations();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [createSpaceOpen, setCreateSpaceOpen] = useState(false);
   const hasOrganization = Boolean(currentOrganization);
+  const hasNoSpacesInCurrentOrganization =
+    hasOrganization &&
+    spacesForCurrentOrganization.length === 0 &&
+    !currentSpace;
+  const canCreateSpace = Boolean(
+    session?.capabilities?.canCreateSpace &&
+    currentOrganization?.status === "ACTIVE",
+  );
   useCommandPaletteShortcut({ enabled: hasOrganization });
 
   useEffect(() => {
@@ -33,6 +52,35 @@ export function AppShell({ children }: AppShellProps) {
     return (
       <div className="flex h-screen items-center justify-center bg-background">
         <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
+
+  if (status === "error") {
+    return (
+      <div className="flex h-screen items-center justify-center bg-background px-4">
+        <section
+          aria-live="assertive"
+          className="flex max-w-sm flex-col items-center gap-3 text-center"
+          role="alert"
+        >
+          <h1 className="text-base font-semibold text-foreground">
+            {t("sessionError.title")}
+          </h1>
+          <p className="text-sm text-muted-foreground">
+            {t("sessionError.description")}
+          </p>
+          <p className="text-sm text-destructive">
+            {tRoot(sessionErrorKey ?? "errors.api.UNKNOWN")}
+          </p>
+          <Button
+            size="sm"
+            type="button"
+            onClick={() => void initializeSession()}
+          >
+            {t("sessionError.retry")}
+          </Button>
+        </section>
       </div>
     );
   }
@@ -85,10 +133,52 @@ export function AppShell({ children }: AppShellProps) {
           }
         />
         <main className="flex-1 overflow-auto bg-background">
-          {hasOrganization ? children : <OnboardingEmpty />}
+          {!hasOrganization ? (
+            <OnboardingEmpty />
+          ) : hasNoSpacesInCurrentOrganization ? (
+            <div
+              data-testid="app-shell-no-spaces-empty"
+              className="flex h-full items-center justify-center px-4"
+            >
+              <div className="max-w-md text-center">
+                <div className="mx-auto mb-5 flex h-12 w-12 items-center justify-center rounded-xl bg-primary/15 text-primary">
+                  <FolderKanban className="h-6 w-6" />
+                </div>
+                <h1 className="text-lg font-semibold tracking-tight">
+                  {t("noSpaces.title")}
+                </h1>
+                <p className="mt-2 text-sm text-muted-foreground">
+                  {t("noSpaces.description")}
+                </p>
+                {canCreateSpace ? (
+                  <Button
+                    size="lg"
+                    className="mt-5"
+                    data-testid="app-shell-create-space-button"
+                    onClick={() => setCreateSpaceOpen(true)}
+                  >
+                    <Plus className="h-4 w-4" />
+                    {t("organizationSwitcher.createSpace")}
+                  </Button>
+                ) : null}
+                <p className="mt-3 text-xs text-muted-foreground">
+                  {t("noSpaces.waitingHint")}
+                </p>
+              </div>
+            </div>
+          ) : (
+            children
+          )}
         </main>
       </div>
       {hasOrganization && <CommandPalette />}
+      {currentOrganization ? (
+        <CreateSpaceDialog
+          open={createSpaceOpen}
+          onOpenChange={setCreateSpaceOpen}
+          organizationId={currentOrganization.id}
+        />
+      ) : null}
     </div>
   );
 }

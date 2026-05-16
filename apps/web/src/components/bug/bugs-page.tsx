@@ -51,6 +51,7 @@ import {
 } from "../../lib/versioned-trace-linking";
 import type { WorkItemViewModel } from "../../lib/v2/work-item-view-model";
 import { cn } from "../../lib/utils";
+import { translateWorkflowStateName } from "../../lib/workflow-display";
 import { listWorkItems } from "../../lib/work-item-service";
 
 import { Avatar, AvatarFallback } from "../ui/avatar";
@@ -508,6 +509,7 @@ export function BugsPage() {
         toBugViewModel(
           bug,
           tStatus,
+          tApiError,
           {
             getMember,
             getVersion,
@@ -522,6 +524,7 @@ export function BugsPage() {
       items,
       locale,
       tStatus,
+      tApiError,
       workflowStateLookup.getState,
     ],
   );
@@ -595,6 +598,7 @@ export function BugsPage() {
         toBugViewModel(
           updated,
           tStatus,
+          tApiError,
           {
             getMember,
             getVersion,
@@ -611,6 +615,7 @@ export function BugsPage() {
       getMember,
       getVersion,
       locale,
+      tApiError,
       tStatus,
       workflowStateLookup.getState,
     ],
@@ -675,6 +680,7 @@ export function BugsPage() {
             toBugViewModel(
               bug,
               tStatus,
+              tApiError,
               {
                 getMember,
                 getVersion,
@@ -706,6 +712,7 @@ export function BugsPage() {
     organizationId,
     requestedBugId,
     spaceId,
+    tApiError,
     tStatus,
     bugViewModels,
     workflowStateLookup.getState,
@@ -1218,6 +1225,7 @@ type BugLookupHelpers = {
 function toBugViewModel(
   bug: BugView,
   tStatus: (key: StatusCategory) => string,
+  tRoot: (key: string) => string,
   lookups: BugLookupHelpers,
   locale: string,
 ): BugItemViewModel {
@@ -1241,7 +1249,9 @@ function toBugViewModel(
     stateCode: workflowState?.code,
     statusCategory: bug.statusCategory,
   });
-  const statusLabel = workflowState?.name ?? tStatus(bug.statusCategory);
+  const statusLabel = workflowState
+    ? translateWorkflowStateName(tRoot, workflowState)
+    : tStatus(bug.statusCategory);
 
   return {
     id: bug.id,

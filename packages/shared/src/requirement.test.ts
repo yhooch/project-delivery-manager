@@ -40,7 +40,7 @@ describe("requirement schemas", () => {
     ).toThrow();
   });
 
-  it("rejects recursive base64 image data in Tiptap content", () => {
+  it("rejects base64 image data anywhere in requirement content", () => {
     expect(() =>
       UpdateRequirementRequestSchema.parse({
         title: "Inline image",
@@ -55,6 +55,22 @@ describe("requirement schemas", () => {
             },
           ],
         },
+      }),
+    ).toThrow();
+
+    expect(() =>
+      UpdateRequirementRequestSchema.parse({
+        title: "Text cache",
+        contentJson: { type: "doc", content: [] },
+        contentText: "before data:image/png;name=inline;base64,AAAA after",
+      }),
+    ).toThrow();
+
+    expect(() =>
+      UpdateRequirementRequestSchema.parse({
+        title: "Markdown cache",
+        contentJson: { type: "doc", content: [] },
+        contentMarkdownCache: "![inline](data:image/jpeg;base64,AAAA)",
       }),
     ).toThrow();
   });

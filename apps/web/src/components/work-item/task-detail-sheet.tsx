@@ -4,6 +4,7 @@ import type {
   ActionFormFieldSummary,
   Attachment,
   BugView,
+  BugSeverity,
   Comment,
   IntakeItem,
   PermissionSnapshot,
@@ -45,9 +46,11 @@ import {
   uploadAttachment,
 } from "../../lib/attachment-service";
 import { executeAction } from "../../lib/action-service";
-import { getBug } from "../../lib/bug-service";
+import { toUpdateBugRequest } from "../../lib/bug-forms";
+import { getBug, updateBug } from "../../lib/bug-service";
 import { createComment, listComments } from "../../lib/comment-service";
 import { listIntakeItems } from "../../lib/intake-service";
+import { getTimelineEventLabel } from "../../lib/timeline-display";
 import { listRequirements } from "../../lib/requirement-service";
 import { listTimeline } from "../../lib/timeline-service";
 import { cn } from "../../lib/utils";
@@ -65,7 +68,16 @@ import {
   inheritVersionFromTraceOption,
 } from "../../lib/versioned-trace-linking";
 import { toUpdateTaskRequest } from "../../lib/work-item-forms";
-import { getWorkItem, updateWorkItem } from "../../lib/work-item-service";
+import {
+  getWorkItem,
+  listWorkItems,
+  updateWorkItem,
+} from "../../lib/work-item-service";
+import {
+  translateExceptionReason,
+  translateWorkflowActionName,
+  translateWorkflowFieldLabel,
+} from "../../lib/workflow-display";
 import { Link } from "../../i18n/routing";
 
 import { useSession } from "../providers/session-provider";
@@ -97,6 +109,13 @@ const priorityColor: Record<WorkItemViewModel["priority"], string> = {
 };
 
 const TASK_PRIORITIES: Priority[] = ["LOW", "MEDIUM", "HIGH", "URGENT"];
+const BUG_SEVERITIES: BugSeverity[] = [
+  "BLOCKER",
+  "CRITICAL",
+  "MAJOR",
+  "MINOR",
+  "TRIVIAL",
+];
 
 type Props = {
   item: WorkItemViewModel | null;
@@ -313,6 +332,7 @@ function TaskDetailSheetBody({
 }: BodyProps) {
   const locale = useLocale();
   const isBug = item.type === "BUG";
+  const itemTypeLabel = tApiError(`workflow.workItemType.${item.type}`);
   const lookup = useSpaceMembers(spaceId, organizationId);
   const { getVersion } = useVersions(spaceId, organizationId);
   const permissionState = useWorkItemPermissions({
@@ -610,7 +630,7 @@ function TaskDetailSheetBody({
             ) : (
               <CheckCircle2 className="h-3.5 w-3.5 text-primary" />
             )}
-            <span>{isBug ? "BUG" : "TASK"}</span>
+            <span>{itemTypeLabel}</span>
             <ChevronRight className="h-3 w-3" />
             <span className="truncate">{versionName}</span>
           </div>
@@ -672,7 +692,9 @@ function TaskDetailSheetBody({
                 <span className="font-medium text-warning">
                   {t("blocked.label")}
                 </span>
-                <span className="ml-2 text-foreground/80">{blockedReason}</span>
+                <span className="ml-2 text-foreground/80">
+                  {translateExceptionReason(tApiError, blockedReason)}
+                </span>
               </div>
             </div>
           </div>
@@ -727,7 +749,7 @@ function TaskDetailSheetBody({
               item={item}
               detail={detail}
               lookup={lookup}
-              canEdit={!isBug && permissionState.permissions?.canEdit === true}
+              canEdit={permissionState.permissions?.canEdit === true}
               organizationId={organizationId}
               spaceId={spaceId}
               t={t}
@@ -1133,7 +1155,7 @@ function ActionBar({
                     {t("actions.executing")}
                   </>
                 ) : (
-                  action.name
+                  translateWorkflowActionName(tApiError, action)
                 )}
               </Button>
             ))
@@ -1282,7 +1304,7 @@ function ActionExecutionForm({
               {t("actions.executing")}
             </>
           ) : (
-            action.name
+            translateWorkflowActionName(tRoot, action)
           )}
         </Button>
       </div>
@@ -1304,7 +1326,8 @@ function ActionFormFieldControl({
   value: string;
 }) {
   const id = `task-action-field-${field.id}`;
-  const label = field.required ? `${field.label} *` : field.label;
+  const fieldLabel = translateWorkflowFieldLabel(useTranslations(), field);
+  const label = field.required ? `${fieldLabel} *` : fieldLabel;
   const errorId = `${id}-error`;
   const error = errorMessage ? (
     <p id={errorId} className="text-[11px] text-destructive">
@@ -1568,13 +1591,19 @@ function DetailTab({
   const [editing, setEditing] = useState(false);
   const [requirements, setRequirements] = useState<Requirement[]>([]);
   const [intakeItems, setIntakeItems] = useState<IntakeItem[]>([]);
+  const [relatedTasks, setRelatedTasks] = useState<WorkItem[]>([]);
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [priority, setPriority] = useState<Priority>("MEDIUM");
+  const [severity, setSeverity] = useState<BugSeverity>("MAJOR");
   const [editAssigneeId, setEditAssigneeId] = useState("");
   const [editVersionId, setEditVersionId] = useState("");
   const [editRequirementId, setEditRequirementId] = useState("");
   const [editIntakeItemId, setEditIntakeItemId] = useState("");
+  const [editRelatedTaskId, setEditRelatedTaskId] = useState("");
+  const [stepsToReproduce, setStepsToReproduce] = useState("");
+  const [expectedResult, setExpectedResult] = useState("");
+  const [actualResult, setActualResult] = useState("");
   const [dueDate, setDueDate] = useState("");
   const [titleError, setTitleError] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -1584,14 +1613,24 @@ function DetailTab({
     setTitle(detail?.title ?? item.title);
     setDescription(detail?.description ?? "");
     setPriority(detail?.priority ?? item.priority);
+    setSeverity(bugDetail?.severity ?? "MAJOR");
     setEditAssigneeId(detail?.assigneeId ?? "");
     setEditVersionId(detail?.versionId ?? "");
     setEditRequirementId(detail?.requirementId ?? "");
     setEditIntakeItemId(detail?.intakeItemId ?? "");
+    setEditRelatedTaskId(bugDetail?.relatedTaskId ?? "");
+    setStepsToReproduce(bugDetail?.stepsToReproduce ?? "");
+    setExpectedResult(bugDetail?.expectedResult ?? "");
+    setActualResult(bugDetail?.actualResult ?? "");
     setDueDate(toDateInputValue(detail?.dueDate));
     setTitleError(false);
     setSaveError(null);
   }, [
+    bugDetail?.actualResult,
+    bugDetail?.expectedResult,
+    bugDetail?.relatedTaskId,
+    bugDetail?.severity,
+    bugDetail?.stepsToReproduce,
     detail?.assigneeId,
     detail?.description,
     detail?.dueDate,
@@ -1638,24 +1677,34 @@ function DetailTab({
         pageSize: 100,
         spaceId,
       }),
+      isBugSheetDetail(detail)
+        ? listWorkItems({
+            organizationId,
+            page: 1,
+            pageSize: 100,
+            spaceId,
+          })
+        : Promise.resolve({ items: [] as WorkItem[] }),
     ])
-      .then(([requirementResult, intakeResult]) => {
+      .then(([requirementResult, intakeResult, taskResult]) => {
         if (!cancelled) {
           setRequirements(requirementResult.items);
           setIntakeItems(intakeResult.items);
+          setRelatedTasks(taskResult.items);
         }
       })
       .catch(() => {
         if (!cancelled) {
           setRequirements([]);
           setIntakeItems([]);
+          setRelatedTasks([]);
         }
       });
 
     return () => {
       cancelled = true;
     };
-  }, [editing, organizationId, spaceId]);
+  }, [detail, editing, organizationId, spaceId]);
 
   const filteredRequirements = useMemo(
     () =>
@@ -1668,12 +1717,17 @@ function DetailTab({
   );
   const filteredIntakeItems = useMemo(
     () =>
-      filterTraceOptionsByVersion(
-        intakeItems,
-        editVersionId,
-        editIntakeItemId,
-      ),
+      filterTraceOptionsByVersion(intakeItems, editVersionId, editIntakeItemId),
     [editIntakeItemId, editVersionId, intakeItems],
+  );
+  const filteredRelatedTasks = useMemo(
+    () =>
+      filterTraceOptionsByVersion(
+        relatedTasks,
+        editVersionId,
+        editRelatedTaskId,
+      ),
+    [editRelatedTaskId, editVersionId, relatedTasks],
   );
 
   function handleEditVersionChange(nextVersionId: string) {
@@ -1727,23 +1781,43 @@ function DetailTab({
     setSaveError(null);
 
     try {
-      await updateWorkItem(
-        {
-          organizationId,
-          spaceId,
-          workItemId: detail.id,
-        },
-        toUpdateTaskRequest({
-          assigneeId: editAssigneeId,
-          description,
-          dueDate: dueDate ? new Date(`${dueDate}T00:00:00`).toISOString() : "",
-          priority,
-          intakeItemId: editIntakeItemId,
-          requirementId: editRequirementId,
-          title: trimmedTitle,
-          versionId: editVersionId,
-        }),
-      );
+      const commonPatch = {
+        assigneeId: editAssigneeId,
+        description,
+        dueDate: dueDate ? new Date(`${dueDate}T00:00:00`).toISOString() : "",
+        priority,
+        intakeItemId: editIntakeItemId,
+        requirementId: editRequirementId,
+        title: trimmedTitle,
+        versionId: editVersionId,
+      };
+
+      if (isBugSheetDetail(detail)) {
+        await updateBug(
+          {
+            bugId: detail.id,
+            organizationId,
+            spaceId,
+          },
+          toUpdateBugRequest({
+            ...commonPatch,
+            actualResult,
+            expectedResult,
+            relatedTaskId: editRelatedTaskId,
+            severity,
+            stepsToReproduce,
+          }),
+        );
+      } else {
+        await updateWorkItem(
+          {
+            organizationId,
+            spaceId,
+            workItemId: detail.id,
+          },
+          toUpdateTaskRequest(commonPatch),
+        );
+      }
       await onSaved();
       setEditing(false);
     } catch (err) {
@@ -1834,6 +1908,29 @@ function DetailTab({
                 ))}
               </SelectMenu>
             </div>
+            {isBugSheetDetail(detail) ? (
+              <div className="flex flex-col gap-1.5">
+                <Label htmlFor="task-edit-severity">
+                  {tRoot("bugs.form.severity")}
+                </Label>
+                <SelectMenu
+                  id="task-edit-severity"
+                  data-testid="task-edit-severity-select"
+                  value={severity}
+                  disabled={saving}
+                  onChange={(event) =>
+                    setSeverity(event.target.value as BugSeverity)
+                  }
+                  className="h-8 w-full rounded-md border border-input bg-background px-2 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                >
+                  {BUG_SEVERITIES.map((nextSeverity) => (
+                    <option key={nextSeverity} value={nextSeverity}>
+                      {tRoot(`bugs.severity.${nextSeverity}`)}
+                    </option>
+                  ))}
+                </SelectMenu>
+              </div>
+            ) : null}
             <div className="flex flex-col gap-1.5">
               <Label htmlFor="task-edit-assignee">{t("fields.assignee")}</Label>
               <SelectMenu
@@ -1916,6 +2013,28 @@ function DetailTab({
                 ))}
               </SelectMenu>
             </div>
+            {isBugSheetDetail(detail) ? (
+              <div className="flex flex-col gap-1.5">
+                <Label htmlFor="task-edit-related-task">
+                  {tRoot("bugs.form.relatedTask")}
+                </Label>
+                <SelectMenu
+                  id="task-edit-related-task"
+                  data-testid="task-edit-related-task-select"
+                  value={editRelatedTaskId}
+                  disabled={saving}
+                  onChange={(event) => setEditRelatedTaskId(event.target.value)}
+                  className="h-8 w-full rounded-md border border-input bg-background px-2 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                >
+                  <option value="">{tRoot("bugs.form.noRelatedTask")}</option>
+                  {filteredRelatedTasks.map((relatedTask) => (
+                    <option key={relatedTask.id} value={relatedTask.id}>
+                      {relatedTask.title || relatedTask.id}
+                    </option>
+                  ))}
+                </SelectMenu>
+              </div>
+            ) : null}
             <div className="flex flex-col gap-1.5">
               <Label htmlFor="task-edit-due-date">{t("fields.due")}</Label>
               <Input
@@ -1927,6 +2046,31 @@ function DetailTab({
                 onChange={(event) => setDueDate(event.target.value)}
               />
             </div>
+            {isBugSheetDetail(detail) ? (
+              <>
+                <BugEditTextArea
+                  id="task-edit-steps"
+                  label={tRoot("bugs.bugFields.stepsToReproduce")}
+                  value={stepsToReproduce}
+                  disabled={saving}
+                  onChange={setStepsToReproduce}
+                />
+                <BugEditTextArea
+                  id="task-edit-expected"
+                  label={tRoot("bugs.bugFields.expectedResult")}
+                  value={expectedResult}
+                  disabled={saving}
+                  onChange={setExpectedResult}
+                />
+                <BugEditTextArea
+                  id="task-edit-actual"
+                  label={tRoot("bugs.bugFields.actualResult")}
+                  value={actualResult}
+                  disabled={saving}
+                  onChange={setActualResult}
+                />
+              </>
+            ) : null}
           </div>
           {saveError && (
             <p className="mt-3 text-[11px] text-destructive" role="alert">
@@ -2065,6 +2209,35 @@ function DetailTab({
 
 function isBugSheetDetail(detail: SheetDetail | null): detail is BugView {
   return Boolean(detail && detail.type === "BUG" && "bugDetail" in detail);
+}
+
+function BugEditTextArea({
+  disabled,
+  id,
+  label,
+  onChange,
+  value,
+}: {
+  disabled: boolean;
+  id: string;
+  label: string;
+  onChange: (value: string) => void;
+  value: string;
+}) {
+  return (
+    <div className="flex flex-col gap-1.5 sm:col-span-2">
+      <Label htmlFor={id}>{label}</Label>
+      <Textarea
+        id={id}
+        data-testid={`${id}-input`}
+        value={value}
+        maxLength={8000}
+        rows={3}
+        disabled={disabled}
+        onChange={(event) => onChange(event.target.value)}
+      />
+    </div>
+  );
 }
 
 function DetailTextBlock({
@@ -2978,6 +3151,7 @@ function TimelineTab({
   refreshVersion: number;
 }) {
   const locale = useLocale();
+  const tTimelineEvent = useTranslations("common.timeline.event");
   const requestKey = getWorkItemSubresourceRequestKey({
     item,
     organizationId,
@@ -3118,7 +3292,10 @@ function TimelineTab({
             <div className="flex-1 text-[13px]">
               <div>
                 <span className="font-medium">{event.actor.name}</span>
-                <span className="text-muted-foreground"> {event.title} </span>
+                <span className="text-muted-foreground">
+                  {" "}
+                  {getTimelineEventLabel(event.eventType, tTimelineEvent)}{" "}
+                </span>
                 {event.detail && (
                   <span className="font-mono text-[12px] text-foreground">
                     {event.detail}

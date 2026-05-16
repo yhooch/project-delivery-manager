@@ -107,6 +107,7 @@ vi.mock("../../lib/v2/lookups", () => ({
 // Service mocks (hoisted so factories can wire them).
 const {
   getBugMock,
+  updateBugMock,
   getWorkItemMock,
   executeActionMock,
   listCommentsMock,
@@ -122,6 +123,7 @@ const {
   listRequirementsMock,
 } = vi.hoisted(() => ({
   getBugMock: vi.fn(),
+  updateBugMock: vi.fn(),
   getWorkItemMock: vi.fn(),
   executeActionMock: vi.fn(),
   listCommentsMock: vi.fn(),
@@ -151,6 +153,7 @@ vi.mock("../../lib/intake-service", () => ({
 }));
 vi.mock("../../lib/bug-service", () => ({
   getBug: getBugMock,
+  updateBug: updateBugMock,
 }));
 vi.mock("../../lib/action-service", () => ({
   executeAction: executeActionMock,
@@ -281,6 +284,7 @@ beforeEach(() => {
   versionMap.clear();
   relationTitleMap.clear();
   getBugMock.mockReset();
+  updateBugMock.mockReset();
   getWorkItemMock.mockReset();
   executeActionMock.mockReset();
   listCommentsMock.mockReset();
@@ -297,6 +301,7 @@ beforeEach(() => {
 
   // Default success values to prevent fallbacks from masking failures.
   getBugMock.mockResolvedValue(makeBugResponse());
+  updateBugMock.mockResolvedValue(makeBugResponse());
   getWorkItemMock.mockResolvedValue(makeDetailResponse());
   getAttachmentDownloadUrlMock.mockResolvedValue({
     downloadUrl: minioDesignDownloadUrl,
@@ -328,11 +333,11 @@ afterEach(() => {
 
 describe("TaskDetailSheet", () => {
   it.each([
-    ["TASK", "taskDetail.sheetDescription.task"],
-    ["BUG", "taskDetail.sheetDescription.bug"],
+    ["TASK", "taskDetail.sheetDescription.task", "workflow.workItemType.TASK"],
+    ["BUG", "taskDetail.sheetDescription.bug", "workflow.workItemType.BUG"],
   ] as const)(
     "wires an accessible sheet description for %s details",
-    (type, descriptionKey) => {
+    (type, descriptionKey, typeLabel) => {
       render(
         <TaskDetailSheet
           item={makeViewModel({ type })}
@@ -345,6 +350,7 @@ describe("TaskDetailSheet", () => {
       const description = screen.getByText(descriptionKey);
       expect(description).toHaveClass("sr-only");
       expect(sheet).toHaveAttribute("aria-describedby", description.id);
+      expect(screen.getByText(typeLabel)).toBeInTheDocument();
     },
   );
 
@@ -612,7 +618,7 @@ describe("TaskDetailSheet", () => {
               id: "01ARZ3NDEKTSV4RRFFQ69G5FA1",
               title: "Task",
             },
-            eventType: "WORK_ITEM_CREATED",
+            eventType: "CREATED",
             actor: { id: "USR_01", username: "tester", name: "Tester" },
             title: "created the task",
             createdAt: "2026-05-10T00:00:00.000Z",
@@ -631,7 +637,7 @@ describe("TaskDetailSheet", () => {
               id: "01ARZ3NDEKTSV4RRFFQ69G5FA1",
               title: "Task",
             },
-            eventType: "WORKFLOW_ACTION_EXECUTED",
+            eventType: "ACTION_EXECUTED",
             actor: { id: "USR_01", username: "tester", name: "Tester" },
             title: "completed the task",
             createdAt: "2026-05-13T00:00:00.000Z",
@@ -645,13 +651,19 @@ describe("TaskDetailSheet", () => {
     );
 
     await activateTab(/timeline/i);
-    expect(await screen.findByText("created the task")).toBeInTheDocument();
+    expect(
+      await screen.findByText("common.timeline.event.CREATED"),
+    ).toBeInTheDocument();
+    expect(screen.queryByText("created the task")).not.toBeInTheDocument();
 
     fireEvent.click(await screen.findByRole("button", { name: "Complete" }));
 
     await waitFor(() => expect(executeActionMock).toHaveBeenCalledTimes(1));
     await waitFor(() => expect(listTimelineMock).toHaveBeenCalledTimes(2));
-    expect(await screen.findByText("completed the task")).toBeInTheDocument();
+    expect(
+      await screen.findByText("common.timeline.event.ACTION_EXECUTED"),
+    ).toBeInTheDocument();
+    expect(screen.queryByText("completed the task")).not.toBeInTheDocument();
   });
 
   it("loads bug permissions through the bug detail endpoint", async () => {
@@ -969,6 +981,142 @@ describe("TaskDetailSheet", () => {
     expect(onChanged).toHaveBeenCalledTimes(1);
     expect(await screen.findByText("Edited task")).toBeInTheDocument();
     expect(screen.queryByTestId("task-edit-form")).not.toBeInTheDocument();
+  });
+
+  it("updates editable bug fields through updateBug when PermissionSnapshot.canEdit is true", async () => {
+    const onChanged = vi.fn();
+    const assigneeId = "01ARZ3NDEKTSV4RRFFQ69G5FAS";
+    const versionId = "01ARZ3NDEKTSV4RRFFQ69G5FV1";
+    const requirementId = "01ARZ3NDEKTSV4RRFFQ69G5FRQ";
+    const relatedTaskId = "01ARZ3NDEKTSV4RRFFQ69G5FTK";
+    memberMap.set(assigneeId, {
+      user: { name: "Alice Owner" },
+    });
+    versionMap.set(versionId, { name: "Release 1" });
+    listRequirementsMock.mockResolvedValueOnce({
+      items: [{ id: requirementId, title: "Requirement B" }],
+      total: 1,
+    });
+    listWorkItemsMock.mockResolvedValueOnce({
+      items: [
+        makeDetailResponse({
+          id: relatedTaskId,
+          title: "Related task",
+          type: "TASK",
+          versionId,
+        }),
+      ],
+      total: 1,
+    });
+    getBugMock
+      .mockResolvedValueOnce(
+        makeBugResponse({
+          description: "Before",
+          permissions: {
+            canEdit: true,
+            canComment: true,
+            canUploadAttachment: true,
+            availableActions: [],
+          },
+        }),
+      )
+      .mockResolvedValueOnce(
+        makeBugResponse({
+          assigneeId,
+          bugDetail: {
+            actualResult: "Actual after",
+            expectedResult: "Expected after",
+            relatedTaskId,
+            severity: "CRITICAL",
+            stepsToReproduce: "Steps after",
+          },
+          description: "After",
+          priority: "HIGH",
+          requirementId,
+          title: "Edited bug",
+          versionId,
+        }),
+      );
+
+    render(
+      <TaskDetailSheet
+        item={makeViewModel({ type: "BUG", title: "Bug detail" })}
+        open
+        onOpenChange={() => {}}
+        onChanged={onChanged}
+      />,
+    );
+
+    fireEvent.click(await screen.findByTestId("task-edit-button"));
+    await waitFor(() =>
+      expect(
+        getSelectOptionLabels(
+          screen.getByTestId(
+            "task-edit-related-task-select",
+          ) as HTMLSelectElement,
+        ),
+      ).toContain("Related task"),
+    );
+
+    fireEvent.change(screen.getByTestId("task-edit-title-input"), {
+      target: { value: "  Edited bug  " },
+    });
+    fireEvent.change(screen.getByTestId("task-edit-description-input"), {
+      target: { value: "  After  " },
+    });
+    fireEvent.change(screen.getByTestId("task-edit-priority-select"), {
+      target: { value: "HIGH" },
+    });
+    fireEvent.change(screen.getByTestId("task-edit-severity-select"), {
+      target: { value: "CRITICAL" },
+    });
+    fireEvent.change(screen.getByTestId("task-edit-assignee-select"), {
+      target: { value: assigneeId },
+    });
+    fireEvent.change(screen.getByTestId("task-edit-version-select"), {
+      target: { value: versionId },
+    });
+    fireEvent.change(screen.getByTestId("task-edit-requirement-select"), {
+      target: { value: requirementId },
+    });
+    fireEvent.change(screen.getByTestId("task-edit-related-task-select"), {
+      target: { value: relatedTaskId },
+    });
+    fireEvent.change(screen.getByTestId("task-edit-steps-input"), {
+      target: { value: "  Steps after  " },
+    });
+    fireEvent.change(screen.getByTestId("task-edit-expected-input"), {
+      target: { value: "  Expected after  " },
+    });
+    fireEvent.change(screen.getByTestId("task-edit-actual-input"), {
+      target: { value: "  Actual after  " },
+    });
+    fireEvent.click(screen.getByTestId("task-edit-submit"));
+
+    await waitFor(() => expect(updateBugMock).toHaveBeenCalledTimes(1));
+    expect(updateBugMock).toHaveBeenCalledWith(
+      {
+        bugId: "01ARZ3NDEKTSV4RRFFQ69G5FA1",
+        organizationId: "ORG_01",
+        spaceId: "SPC_01",
+      },
+      expect.objectContaining({
+        actualResult: "Actual after",
+        assigneeId,
+        description: "After",
+        expectedResult: "Expected after",
+        priority: "HIGH",
+        relatedTaskId,
+        requirementId,
+        severity: "CRITICAL",
+        stepsToReproduce: "Steps after",
+        title: "Edited bug",
+        versionId,
+      }),
+    );
+    expect(updateWorkItemMock).not.toHaveBeenCalled();
+    await waitFor(() => expect(getBugMock).toHaveBeenCalledTimes(2));
+    expect(onChanged).toHaveBeenCalledTimes(1);
   });
 
   it("submits null for cleared editable task fields", async () => {
@@ -1548,7 +1696,7 @@ describe("TaskDetailSheet", () => {
             id: "01ARZ3NDEKTSV4RRFFQ69G5FA1",
             title: "Task",
           },
-          eventType: "COMMENT_CREATED",
+          eventType: "COMMENTED",
           actor: { id: "USR_01", username: "tester", name: "Tester" },
           title: "commented on the task",
           createdAt: "2026-05-13T00:00:00.000Z",
@@ -1577,8 +1725,9 @@ describe("TaskDetailSheet", () => {
 
     await waitFor(() => expect(listTimelineMock).toHaveBeenCalledTimes(1));
     expect(
-      await screen.findByText("commented on the task"),
+      await screen.findByText("common.timeline.event.COMMENTED"),
     ).toBeInTheDocument();
+    expect(screen.queryByText("commented on the task")).not.toBeInTheDocument();
   });
 
   it("hides the comment composer when PermissionSnapshot.canComment is false", async () => {
@@ -1740,7 +1889,7 @@ describe("TaskDetailSheet", () => {
               id: "01ARZ3NDEKTSV4RRFFQ69G5FA1",
               title: "Task",
             },
-            eventType: "WORK_ITEM_CREATED",
+            eventType: "CREATED",
             actor: { id: "USR_01", username: "tester", name: "Tester" },
             title: "created the task",
             createdAt: "2026-05-10T00:00:00.000Z",
@@ -1759,7 +1908,7 @@ describe("TaskDetailSheet", () => {
               id: "01ARZ3NDEKTSV4RRFFQ69G5FA1",
               title: "Task",
             },
-            eventType: "ATTACHMENT_CREATED",
+            eventType: "ATTACHMENT_ADDED",
             actor: { id: "USR_01", username: "tester", name: "Tester" },
             title: "uploaded an attachment",
             createdAt: "2026-05-13T00:00:00.000Z",
@@ -1775,7 +1924,10 @@ describe("TaskDetailSheet", () => {
     );
 
     await activateTab(/timeline/i);
-    expect(await screen.findByText("created the task")).toBeInTheDocument();
+    expect(
+      await screen.findByText("common.timeline.event.CREATED"),
+    ).toBeInTheDocument();
+    expect(screen.queryByText("created the task")).not.toBeInTheDocument();
     await activateTab(/attachments/i);
 
     const fileInput = document.body.querySelector(
@@ -1788,8 +1940,11 @@ describe("TaskDetailSheet", () => {
     await activateTab(/timeline/i);
     await waitFor(() => expect(listTimelineMock).toHaveBeenCalledTimes(2));
     expect(
-      await screen.findByText("uploaded an attachment"),
+      await screen.findByText("common.timeline.event.ATTACHMENT_ADDED"),
     ).toBeInTheDocument();
+    expect(
+      screen.queryByText("uploaded an attachment"),
+    ).not.toBeInTheDocument();
   });
 
   it.each([
@@ -1866,7 +2021,7 @@ describe("TaskDetailSheet", () => {
             id: "01ARZ3NDEKTSV4RRFFQ69G5FA1",
             title: "Task",
           },
-          eventType: "WORK_ITEM_CREATED",
+          eventType: "CREATED",
           actor: {
             id: "01ARZ3NDEKTSV4RRFFQ69G5FU1",
             username: "alice",
@@ -1885,7 +2040,10 @@ describe("TaskDetailSheet", () => {
 
     await activateTab(/timeline/i);
     await waitFor(() => expect(listTimelineMock).toHaveBeenCalled());
-    expect(await screen.findByText("created the task")).toBeInTheDocument();
+    expect(
+      await screen.findByText("common.timeline.event.CREATED"),
+    ).toBeInTheDocument();
+    expect(screen.queryByText("created the task")).not.toBeInTheDocument();
   });
 
   it("shows the empty timeline state when there are no events", async () => {

@@ -134,6 +134,7 @@ export function RequirementDetailWorkspace({
   const [isDiscardingDraft, setIsDiscardingDraft] = useState(false);
   const [isDeletingDraftOnLeave, setIsDeletingDraftOnLeave] = useState(false);
   const [draftLeavePromptOpen, setDraftLeavePromptOpen] = useState(false);
+  const [discardDraftConfirmOpen, setDiscardDraftConfirmOpen] = useState(false);
   const [pendingNavigationHref, setPendingNavigationHref] = useState<
     string | null
   >(null);
@@ -535,10 +536,6 @@ export function RequirementDetailWorkspace({
       return;
     }
 
-    if (!window.confirm(t("detail.discardDraftConfirm"))) {
-      return;
-    }
-
     setIsDiscardingDraft(true);
     setErrorKey(null);
 
@@ -549,6 +546,7 @@ export function RequirementDetailWorkspace({
         spaceId: requirement.spaceId,
       });
       clearLocalDraftCacheForCurrentRequirement();
+      setDiscardDraftConfirmOpen(false);
       router.push("/requirements");
     } catch (error) {
       setErrorKey(getApiErrorMessageKey(error));
@@ -662,7 +660,8 @@ export function RequirementDetailWorkspace({
             {canDiscardDraft ? (
               <Button
                 disabled={isDiscardingDraft}
-                onClick={() => void onDiscardDraft()}
+                data-testid="requirement-discard-draft-button"
+                onClick={() => setDiscardDraftConfirmOpen(true)}
                 size="sm"
                 type="button"
                 variant="destructive"
@@ -932,6 +931,48 @@ export function RequirementDetailWorkspace({
         open={pendingCascadeConfirm !== null}
         submitting={isSaving}
       />
+
+      <Dialog
+        open={discardDraftConfirmOpen}
+        onOpenChange={(open) => {
+          if (!isDiscardingDraft) {
+            setDiscardDraftConfirmOpen(open);
+          }
+        }}
+      >
+        <DialogContent data-testid="requirement-discard-draft-dialog">
+          <DialogHeader>
+            <DialogTitle>{t("detail.discardDraft")}</DialogTitle>
+            <DialogDescription>
+              {t("detail.discardDraftConfirm")}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              data-testid="requirement-discard-draft-cancel"
+              disabled={isDiscardingDraft}
+              onClick={() => setDiscardDraftConfirmOpen(false)}
+              size="sm"
+              type="button"
+              variant="outline"
+            >
+              {tRoot("common.actions.close")}
+            </Button>
+            <Button
+              data-testid="requirement-discard-draft-confirm"
+              disabled={isDiscardingDraft}
+              onClick={() => void onDiscardDraft()}
+              size="sm"
+              type="button"
+              variant="destructive"
+            >
+              {isDiscardingDraft
+                ? t("detail.discardingDraft")
+                : t("detail.discardDraft")}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <Dialog
         open={draftLeavePromptOpen}

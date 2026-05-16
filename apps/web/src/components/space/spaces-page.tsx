@@ -83,9 +83,7 @@ export function SpacesPage() {
     session?.defaultOrganizationId ?? currentOrganization?.id;
   const canCreateSpace = Boolean(
     session?.capabilities?.canCreateSpace &&
-    currentOrganization?.status === "ACTIVE" &&
-    (currentOrganization.role === "OWNER" ||
-      currentOrganization.role === "ADMIN"),
+    currentOrganization?.status === "ACTIVE",
   );
 
   const [spaces, setSpaces] = useState<SpaceSummary[]>([]);
@@ -289,7 +287,7 @@ export function SpacesPage() {
       <ul
         data-testid="spaces-list"
         aria-label={t("list.table.label")}
-        className="grid grid-cols-1 gap-5 md:grid-cols-2 lg:grid-cols-3"
+        className="overflow-hidden rounded-lg border border-border bg-card"
       >
         {spaces.map((space) => {
           const membership = membershipBySpaceId.get(space.id);
@@ -300,81 +298,51 @@ export function SpacesPage() {
               key={space.id}
               data-testid={`spaces-list-item-${space.id}`}
               className={cn(
-                "group flex flex-col rounded-xl border bg-card transition-all hover:shadow-md hover:border-border/80",
+                "group flex flex-col border-b border-border/60 transition-colors last:border-b-0 hover:bg-muted/20 xl:flex-row xl:items-stretch",
                 isCurrent
-                  ? "border-primary/30 shadow-sm ring-1 ring-primary/10"
-                  : "border-border/60",
-                space.status === "DISABLED" && "opacity-60 grayscale-[0.2]",
+                  ? "bg-primary/5 ring-1 ring-inset ring-primary/20"
+                  : "bg-card",
+                space.status === "DISABLED" && "opacity-60",
               )}
             >
-              <div className="flex flex-col p-5 flex-1">
-                <div className="flex items-start justify-between gap-4 mb-4">
-                  <div className="flex items-center gap-3 min-w-0">
+              <div className="flex min-w-0 flex-1 flex-col gap-3 px-4 py-3 xl:flex-row xl:items-center">
+                <div className="min-w-0 xl:w-[22rem]">
+                  <div className="flex min-w-0 items-center gap-3">
                     <div
                       className={cn(
-                        "flex h-10 w-10 shrink-0 items-center justify-center rounded-lg transition-colors",
+                        "flex h-8 w-8 shrink-0 items-center justify-center rounded-md transition-colors",
                         isCurrent
                           ? "bg-primary/10 text-primary"
                           : "bg-muted/60 text-muted-foreground group-hover:bg-primary/5 group-hover:text-primary/80",
                       )}
                     >
-                      <FolderKanban className="h-5 w-5" />
+                      <FolderKanban className="h-4 w-4" />
                     </div>
                     <div className="flex flex-col min-w-0">
                       <div className="flex items-center gap-2">
-                        <h2 className="truncate text-base font-semibold tracking-tight text-foreground">
+                        <h2 className="truncate text-sm font-semibold tracking-tight text-foreground">
                           {space.name}
                         </h2>
-                      </div>
-                      <div className="flex items-center gap-2 mt-0.5">
-                        <span className="font-mono text-[11px] text-muted-foreground">
-                          {space.code}
-                        </span>
                         {isCurrent && (
                           <Badge
                             variant="primary"
-                            className="h-5 px-1.5 text-[10px] font-medium uppercase tracking-wider leading-none shadow-sm"
+                            className="h-5 px-1.5 text-[10px] font-medium uppercase leading-none"
                           >
                             {t("list.selected")}
                           </Badge>
                         )}
                       </div>
+                      <div className="flex items-center gap-2 mt-0.5">
+                        <span className="font-mono text-[11px] text-muted-foreground">
+                          {space.code}
+                        </span>
+                      </div>
                     </div>
                   </div>
                 </div>
 
-                <div className="flex flex-wrap items-center gap-2 mb-4">
-                  <Badge
-                    variant={statusVariant[space.status]}
-                    className="h-5 px-1.5 text-[10px] font-normal"
-                  >
-                    {t(`settings.status.${space.status}`)}
-                  </Badge>
-                  {membership ? (
-                    <Badge
-                      variant={roleVariant[membership.role] ?? "default"}
-                      className="h-5 px-1.5 text-[10px] font-normal"
-                    >
-                      {t(`members.roles.${membership.role}`)}
-                    </Badge>
-                  ) : (
-                    <Badge
-                      variant="default"
-                      className="h-5 px-1.5 text-[10px] font-normal bg-muted/30 text-muted-foreground border-transparent"
-                    >
-                      {t("list.notMember")}
-                    </Badge>
-                  )}
-                </div>
-
-                {space.description && (
-                  <p className="line-clamp-2 text-[13px] text-muted-foreground leading-relaxed mb-6">
-                    {space.description}
-                  </p>
-                )}
-
                 {membership ? (
-                  <div className="mt-auto grid grid-cols-2 gap-x-4 gap-y-3">
+                  <div className="grid min-w-0 flex-1 grid-cols-2 gap-x-4 gap-y-2 md:grid-cols-4 xl:grid-cols-6">
                     <SpaceMetaItem
                       icon={<User2 className="h-3.5 w-3.5" />}
                       label={t("list.fields.owner")}
@@ -448,6 +416,16 @@ export function SpacesPage() {
                         </span>
                       }
                     />
+                    <SpaceMetaItem
+                      icon={<Clock3 className="h-3.5 w-3.5" />}
+                      label={t("list.fields.updatedAt")}
+                      testId={`spaces-updated-at-${space.id}`}
+                      value={formatUpdatedAt(
+                        space.updatedAt,
+                        locale,
+                        t("list.emptyValue"),
+                      )}
+                    />
                   </div>
                 ) : (
                   <div
@@ -459,31 +437,34 @@ export function SpacesPage() {
                 )}
               </div>
 
-              <div className="flex items-center justify-between border-t border-border/40 bg-muted/10 px-5 py-3 rounded-b-xl">
-                {membership ? (
-                  <div
-                    className="flex items-center gap-1.5 text-[11px] text-muted-foreground"
-                    title={t("list.fields.updatedAt")}
+              <div className="flex shrink-0 items-center justify-between gap-3 border-t border-border/40 bg-muted/10 px-4 py-3 xl:w-56 xl:border-l xl:border-t-0">
+                <div className="flex flex-wrap items-center gap-1.5">
+                  <Badge
+                    variant={statusVariant[space.status]}
+                    className="h-5 px-1.5 text-[10px] font-normal"
                   >
-                    <Clock3 className="h-3 w-3 opacity-70" />
-                    <span data-testid={`spaces-updated-at-${space.id}`}>
-                      <span>{t("list.fields.updatedAt")}: </span>
-                      {formatUpdatedAt(
-                        space.updatedAt,
-                        locale,
-                        t("list.emptyValue"),
-                      )}
-                    </span>
-                  </div>
-                ) : (
-                  <span className="text-[11px] text-muted-foreground">
-                    {t("list.notMember")}
-                  </span>
-                )}
+                    {t(`settings.status.${space.status}`)}
+                  </Badge>
+                  {membership ? (
+                    <Badge
+                      variant={roleVariant[membership.role] ?? "default"}
+                      className="h-5 px-1.5 text-[10px] font-normal"
+                    >
+                      {t(`members.roles.${membership.role}`)}
+                    </Badge>
+                  ) : (
+                    <Badge
+                      variant="default"
+                      className="h-5 border-transparent bg-muted/30 px-1.5 text-[10px] font-normal text-muted-foreground"
+                    >
+                      {t("list.notMember")}
+                    </Badge>
+                  )}
+                </div>
                 <Button
                   variant={isCurrent ? "secondary" : "ghost"}
                   size="sm"
-                  className="h-7 text-xs px-2.5 -mr-1 font-medium"
+                  className="h-7 shrink-0 px-2.5 text-xs font-medium"
                   data-testid={`spaces-switch-${space.id}`}
                   disabled={
                     pendingSpaceId !== null ||

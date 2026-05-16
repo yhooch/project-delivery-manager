@@ -88,10 +88,6 @@ export type UpdateBugInput = {
   stepsToReproduce?: string | null;
   expectedResult?: string | null;
   actualResult?: string | null;
-  fixNote?: string | null;
-  regressionResult?: string | null;
-  regressionById?: string | null;
-  regressionAt?: Date | null;
   relatedTaskId?: string | null;
   relatedUserIds: string[];
   shouldReplaceRelatedParticipants: boolean;

@@ -55,16 +55,37 @@ describe("IntakeService", () => {
   });
 
   it("denies writes for VIEWER", async () => {
-    const { service } = createSubject({ role: "VIEWER" });
+    const { audit, service } = createSubject({ role: "VIEWER" });
 
     await expect(
-      service.create(ACTOR_USER_ID, SPACE_ID, {
-        title: "New request",
-        sourceType: "AD_HOC",
-      }),
+      service.create(
+        ACTOR_USER_ID,
+        SPACE_ID,
+        {
+          title: "New request",
+          sourceType: "AD_HOC",
+        },
+        { requestId: "req-intake-denied" },
+      ),
     ).rejects.toMatchObject({
       code: "SPACE_ACCESS_DENIED",
     });
+    expect(audit.record).toHaveBeenCalledWith(
+      expect.objectContaining({
+        actionType: "ACCESS_DENIED",
+        actorId: ACTOR_USER_ID,
+        metadata: expect.objectContaining({
+          operation: "createIntakeItem",
+          reason: "ROLE_NOT_ALLOWED",
+          role: "VIEWER",
+        }),
+        organizationId: ORGANIZATION_ID,
+        requestId: "req-intake-denied",
+        spaceId: SPACE_ID,
+        targetId: SPACE_ID,
+        targetType: "SPACE",
+      }),
+    );
   });
 
   it("creates an intake item with actor as reporter after validating references", async () => {

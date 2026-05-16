@@ -4,6 +4,7 @@ import type { ActionFormFieldSummary } from "@project-delivery/shared";
 import { Pencil, Plus, Trash2 } from "lucide-react";
 import { useTranslations } from "next-intl";
 
+import { translateWorkflowFieldLabel } from "../../lib/workflow-display";
 import { Badge } from "../ui/badge";
 import { Button } from "../ui/button";
 
@@ -24,6 +25,7 @@ export function WorkflowFormFieldList({
 }: WorkflowFormFieldListProps) {
   const t = useTranslations("workflow.config.fields");
   const tType = useTranslations("workflow.fieldType");
+  const tRoot = useTranslations();
   const sorted = [...fields].sort((a, b) => a.order - b.order);
 
   return (
@@ -59,11 +61,17 @@ export function WorkflowFormFieldList({
             <tr className="border-b border-border/60 text-left text-muted-foreground">
               <th className="px-2 py-1 font-medium">{t("columns.key")}</th>
               <th className="px-2 py-1 font-medium">{t("columns.label")}</th>
-              <th className="px-2 py-1 font-medium">{t("columns.fieldType")}</th>
+              <th className="px-2 py-1 font-medium">
+                {t("columns.fieldType")}
+              </th>
               <th className="px-2 py-1 font-medium">{t("columns.required")}</th>
               <th className="px-2 py-1 font-medium">{t("columns.options")}</th>
-              <th className="px-2 py-1 text-right font-medium">{t("columns.order")}</th>
-              <th className="px-2 py-1 text-right font-medium">{t("columns.actions")}</th>
+              <th className="px-2 py-1 text-right font-medium">
+                {t("columns.order")}
+              </th>
+              <th className="px-2 py-1 text-right font-medium">
+                {t("columns.actions")}
+              </th>
             </tr>
           </thead>
           <tbody>
@@ -74,7 +82,9 @@ export function WorkflowFormFieldList({
                 key={field.id}
               >
                 <td className="px-2 py-1 font-mono">{field.key}</td>
-                <td className="px-2 py-1">{field.label}</td>
+                <td className="px-2 py-1">
+                  {translateWorkflowFieldLabel(tRoot, field)}
+                </td>
                 <td className="px-2 py-1">
                   <Badge variant="outline">{tType(field.fieldType)}</Badge>
                 </td>
@@ -90,7 +100,9 @@ export function WorkflowFormFieldList({
                     ? field.options.join(", ")
                     : "-"}
                 </td>
-                <td className="px-2 py-1 text-right tabular-nums">{field.order}</td>
+                <td className="px-2 py-1 text-right tabular-nums">
+                  {field.order}
+                </td>
                 <td className="px-2 py-1 text-right">
                   <div className="inline-flex gap-1">
                     <Button

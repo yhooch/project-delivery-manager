@@ -87,7 +87,7 @@ export function CreateIntakeDialog({
   const [members, setMembers] = useState<SpaceMemberWithUser[]>([]);
 
   const optionFieldsDisabled = submitting || optionsLoadState !== "ready";
-  const submitDisabled = submitting || optionsLoadState !== "ready";
+  const submitDisabled = submitting;
   const filteredRequirements = useMemo(
     () => filterTraceOptionsByVersion(requirements, versionId, requirementId),
     [requirementId, requirements, versionId],
@@ -106,7 +106,7 @@ export function CreateIntakeDialog({
         const [versionPage, requirementPage, memberPage] = await Promise.all([
           listVersions({ organizationId, spaceId, page: 1, pageSize: 100 }),
           listRequirements({ organizationId, spaceId, page: 1, pageSize: 100 }),
-          listSpaceMembers(spaceId),
+          listSpaceMembers(spaceId, { status: "ACTIVE" }),
         ]);
         if (cancelled) {
           return;

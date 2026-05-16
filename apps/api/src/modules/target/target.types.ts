@@ -5,6 +5,7 @@ import type {
   TargetType,
   WorkItemType,
 } from "@project-delivery/shared";
+import type { RequestMetadata } from "../auth/auth-session.types";
 
 export type TargetAccessMode = "read" | "write";
 
@@ -12,6 +13,9 @@ export type ResolveTargetOptions = {
   access?: TargetAccessMode;
   hideInaccessible?: boolean;
   notFoundCode?: ApiErrorCode;
+  audit?: RequestMetadata & {
+    operation: string;
+  };
 };
 
 export type ResolvedTargetContext = {

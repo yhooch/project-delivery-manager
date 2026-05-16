@@ -34,7 +34,11 @@ import {
   toNextThemeMode,
   type NextThemeMode,
 } from "../../lib/preferences";
-import { isUnauthorizedApiError } from "../../lib/api-error-messages";
+import {
+  getApiErrorMessageKey,
+  isUnauthorizedApiError,
+  type ApiErrorMessageKey,
+} from "../../lib/api-error-messages";
 import type {
   CreateOrganizationFormValues,
   LoginFormValues,
@@ -44,7 +48,7 @@ import { isLocale } from "../../i18n/locales";
 import { usePathname, useRouter } from "../../i18n/routing";
 import { useTheme } from "./theme-provider";
 
-type SessionStatus = "loading" | "authenticated" | "unauthenticated";
+type SessionStatus = "loading" | "authenticated" | "unauthenticated" | "error";
 
 type SessionContextValue = {
   currentOrganization: SessionOrganizationSummary | undefined;
@@ -64,6 +68,7 @@ type SessionContextValue = {
   ) => Promise<AppSession>;
   register: (input: RegisterFormValues) => Promise<AppSession>;
   session: AppSession | null;
+  sessionErrorKey: ApiErrorMessageKey | null;
   spacesForCurrentOrganization: SessionSpaceSummary[];
   status: SessionStatus;
   switchOrganization: (organizationId: string) => Promise<AppSession>;
@@ -79,21 +84,28 @@ type SessionProviderProps = {
 export function SessionProvider({ children }: SessionProviderProps) {
   const [session, setSession] = useState<AppSession | null>(null);
   const [status, setStatus] = useState<SessionStatus>("loading");
+  const [sessionErrorKey, setSessionErrorKey] =
+    useState<ApiErrorMessageKey | null>(null);
 
   const initializeSession = useCallback(async () => {
     setStatus("loading");
+    setSessionErrorKey(null);
 
     try {
       const nextSession = await getPersistedAppSession();
       setSession(nextSession);
+      setSessionErrorKey(null);
       setStatus("authenticated");
     } catch (error) {
-      if (!isUnauthorizedApiError(error)) {
-        throw error;
+      setSession(null);
+      if (isUnauthorizedApiError(error)) {
+        setSessionErrorKey(null);
+        setStatus("unauthenticated");
+        return;
       }
 
-      setSession(null);
-      setStatus("unauthenticated");
+      setSessionErrorKey(getApiErrorMessageKey(error));
+      setStatus("error");
     }
   }, []);
 
@@ -108,6 +120,7 @@ export function SessionProvider({ children }: SessionProviderProps) {
         recentSpaceId,
       );
       setSession(nextSession);
+      setSessionErrorKey(null);
       setStatus("authenticated");
 
       return nextSession;
@@ -118,6 +131,7 @@ export function SessionProvider({ children }: SessionProviderProps) {
   const register = useCallback(async (input: RegisterFormValues) => {
     const nextSession = await registerAccount(input);
     setSession(nextSession);
+    setSessionErrorKey(null);
     setStatus("authenticated");
 
     return nextSession;
@@ -126,6 +140,7 @@ export function SessionProvider({ children }: SessionProviderProps) {
   const login = useCallback(async (input: LoginFormValues) => {
     const nextSession = await loginAccount(input);
     setSession(nextSession);
+    setSessionErrorKey(null);
     setStatus("authenticated");
 
     return nextSession;
@@ -135,6 +150,7 @@ export function SessionProvider({ children }: SessionProviderProps) {
     async (input: CreateOrganizationFormValues) => {
       const nextSession = await createOrganizationAndRefreshSession(input);
       setSession(nextSession);
+      setSessionErrorKey(null);
       setStatus("authenticated");
 
       return nextSession;
@@ -145,6 +161,7 @@ export function SessionProvider({ children }: SessionProviderProps) {
   const chooseOrganization = useCallback(async (organizationId: string) => {
     const nextSession = await switchOrganization(organizationId);
     setSession(nextSession);
+    setSessionErrorKey(null);
     setStatus("authenticated");
 
     return nextSession;
@@ -162,6 +179,7 @@ export function SessionProvider({ children }: SessionProviderProps) {
 
       const nextSession = await switchSpace(organizationId, spaceId);
       setSession(nextSession);
+      setSessionErrorKey(null);
       setStatus("authenticated");
 
       return nextSession;
@@ -201,6 +219,7 @@ export function SessionProvider({ children }: SessionProviderProps) {
       await logoutAccount();
     } finally {
       setSession(null);
+      setSessionErrorKey(null);
       setStatus("unauthenticated");
     }
   }, []);
@@ -247,6 +266,7 @@ export function SessionProvider({ children }: SessionProviderProps) {
       refreshSession,
       register,
       session,
+      sessionErrorKey,
       spacesForCurrentOrganization,
       status,
       switchOrganization: chooseOrganization,
@@ -265,6 +285,7 @@ export function SessionProvider({ children }: SessionProviderProps) {
       refreshSession,
       register,
       session,
+      sessionErrorKey,
       spacesForCurrentOrganization,
       status,
     ],

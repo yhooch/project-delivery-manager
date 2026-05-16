@@ -105,7 +105,16 @@ function ignoreRequestFailure(request: Request): boolean {
   return (
     isBrowserMetadataRequest(pathname) ||
     isSourceMapRequest(pathname) ||
+    isAbortedNextStaticRequest(request, parsed) ||
     isAbortedNextRscRequest(request, parsed)
+  );
+}
+
+function isAbortedNextStaticRequest(request: Request, url: URL): boolean {
+  return (
+    request.method() === "GET" &&
+    url.pathname.startsWith("/_next/static/") &&
+    request.failure()?.errorText === "net::ERR_ABORTED"
   );
 }
 

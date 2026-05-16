@@ -151,7 +151,11 @@ export function WorkflowPage() {
     sessionSpace?.organizationId ??
     session?.defaultOrganizationId;
   const currentSpaceRole = currentSpace?.role ?? sessionSpace?.role;
-  const canManageWorkflow = canManageWorkflowForRole(currentSpaceRole);
+  const currentSpaceStatus = currentSpace?.status ?? sessionSpace?.status;
+  const canManageWorkflow = canManageWorkflowForRole(
+    currentSpaceRole,
+    currentSpaceStatus,
+  );
   const workflowContextKey = `${status}:${organizationId ?? ""}:${spaceId ?? ""}`;
   const workflowContextKeyRef = useRef(workflowContextKey);
   workflowContextKeyRef.current = workflowContextKey;

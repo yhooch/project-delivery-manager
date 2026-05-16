@@ -160,6 +160,9 @@ describe("ConvertIntakeDialog", () => {
       await screen.findByDisplayValue("Checkout scope"),
     ).toBeInTheDocument();
     await screen.findByText(/General task/);
+    expect(listSpaceMembersMock).toHaveBeenCalledWith(spaceId, {
+      status: "ACTIVE",
+    });
 
     fireEvent.change(screen.getByTestId("convert-task-due-date-0"), {
       target: { value: "2026-06-01" },
@@ -215,7 +218,7 @@ describe("ConvertIntakeDialog", () => {
     expect(convertIntakeItemToWorkItemsMock).not.toHaveBeenCalled();
   });
 
-  it("shows an option load error, disables submit, and retries", async () => {
+  it("shows an option load error, keeps accepted intake submit enabled, and retries", async () => {
     listWorkflowBindingsMock.mockRejectedValueOnce(new Error("network"));
 
     render(
@@ -231,9 +234,10 @@ describe("ConvertIntakeDialog", () => {
     expect(
       await screen.findByTestId("convert-intake-options-error"),
     ).toHaveTextContent("common.states.optionsLoadFailed");
+    expect(screen.getByTestId("convert-task-workflow-0")).toBeDisabled();
     expect(
       screen.getByRole("button", { name: "intake.dialog.convert.submit" }),
-    ).toBeDisabled();
+    ).not.toBeDisabled();
 
     fireEvent.click(screen.getByTestId("convert-intake-options-retry"));
 
@@ -244,6 +248,35 @@ describe("ConvertIntakeDialog", () => {
       ).not.toBeDisabled(),
     );
     expect(listWorkflowBindingsMock).toHaveBeenCalledTimes(2);
+  });
+
+  it("converts an accepted intake item when optional lookups fail", async () => {
+    listWorkflowBindingsMock.mockRejectedValueOnce(new Error("network"));
+
+    render(
+      <ConvertIntakeDialog
+        open
+        onOpenChange={vi.fn()}
+        organizationId={organizationId}
+        spaceId={spaceId}
+        intakeItem={makeIntake()}
+      />,
+    );
+
+    await screen.findByTestId("convert-intake-options-error");
+    fireEvent.click(
+      screen.getByRole("button", { name: "intake.dialog.convert.submit" }),
+    );
+
+    await waitFor(() =>
+      expect(convertIntakeItemToWorkItemsMock).toHaveBeenCalledTimes(1),
+    );
+    expect(convertIntakeItemToWorkItemsMock).toHaveBeenCalledWith(
+      { intakeItemId, organizationId, spaceId },
+      expect.objectContaining({
+        tasks: [expect.objectContaining({ title: "Checkout scope" })],
+      }),
+    );
   });
 
   it("clears the selected requirement when the row version is incompatible", async () => {

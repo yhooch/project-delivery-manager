@@ -98,7 +98,7 @@ export function CreateBugDialog({
   const [members, setMembers] = useState<SpaceMemberWithUser[]>([]);
 
   const optionFieldsDisabled = submitting || optionsLoadState !== "ready";
-  const submitDisabled = submitting || optionsLoadState !== "ready";
+  const submitDisabled = submitting;
   const filteredRequirements = useMemo(
     () => filterTraceOptionsByVersion(requirements, versionId, requirementId),
     [requirementId, requirements, versionId],
@@ -134,7 +134,7 @@ export function CreateBugDialog({
               pageSize: 100,
               type: "TASK",
             }),
-            listSpaceMembers(spaceId),
+            listSpaceMembers(spaceId, { status: "ACTIVE" }),
           ]);
         if (cancelled) {
           return;

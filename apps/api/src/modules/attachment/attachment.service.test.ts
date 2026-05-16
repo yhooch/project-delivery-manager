@@ -52,11 +52,11 @@ describe("AttachmentService", () => {
       actorUserId,
       "WORK_ITEM",
       workItemId,
-      {
+      expect.objectContaining({
         access: "write",
         hideInaccessible: true,
         notFoundCode: "ATTACHMENT_TARGET_NOT_FOUND",
-      },
+      }),
     );
     expect(attachments.countByTarget).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -106,11 +106,11 @@ describe("AttachmentService", () => {
       actorUserId,
       "WORK_ITEM",
       workItemId,
-      {
+      expect.objectContaining({
         access: "write",
         hideInaccessible: true,
         notFoundCode: "ATTACHMENT_TARGET_NOT_FOUND",
-      },
+      }),
     );
     expect(attachments.create).toHaveBeenCalledWith(
       expect.objectContaining({

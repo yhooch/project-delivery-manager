@@ -315,22 +315,6 @@ export class PrismaBugRepository implements BugRepository {
         detailData.actualResult = input.actualResult;
         hasDetailChange = true;
       }
-      if (input.fixNote !== undefined) {
-        detailData.fixNote = input.fixNote;
-        hasDetailChange = true;
-      }
-      if (input.regressionResult !== undefined) {
-        detailData.regressionResult = input.regressionResult;
-        hasDetailChange = true;
-      }
-      if (input.regressionById !== undefined) {
-        detailData.regressionById = input.regressionById;
-        hasDetailChange = true;
-      }
-      if (input.regressionAt !== undefined) {
-        detailData.regressionAt = input.regressionAt;
-        hasDetailChange = true;
-      }
       if (input.relatedTaskId !== undefined) {
         detailData.relatedTaskId = input.relatedTaskId;
         hasDetailChange = true;

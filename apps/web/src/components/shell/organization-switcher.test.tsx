@@ -1,4 +1,10 @@
-import { cleanup, render, screen } from "@testing-library/react";
+import {
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("next-intl", () => ({
@@ -45,6 +51,91 @@ const sessionMock = vi.hoisted(() => ({
       role: "MEMBER",
       status: "ACTIVE",
     },
+    currentSpace: undefined as
+      | {
+          code: string;
+          id: string;
+          name: string;
+          organizationId: string;
+          role: string;
+          status: string;
+        }
+      | undefined,
+    session: {
+      capabilities: {
+        canCreateOrganization: true,
+        canCreateSpace: true,
+      },
+      defaultOrganizationId: "ORG_ALPHA",
+      organizations: [
+        {
+          code: "alpha",
+          id: "ORG_ALPHA",
+          name: "Alpha",
+          role: "MEMBER",
+          status: "ACTIVE",
+        },
+        {
+          code: "beta",
+          id: "ORG_BETA",
+          name: "Beta",
+          role: "ADMIN",
+          status: "ACTIVE",
+        },
+      ],
+      spaces: [],
+      user: {
+        id: "USR_01",
+        name: "Demo",
+        preferences: {
+          locale: "zh-CN",
+          themeMode: "SYSTEM",
+        },
+        status: "ACTIVE",
+        username: "demo",
+      },
+    },
+    spacesForCurrentOrganization: [] as Array<{
+      code: string;
+      id: string;
+      name: string;
+      organizationId: string;
+      role: string;
+      status: string;
+    }>,
+    status: "authenticated" as const,
+    switchOrganization: vi.fn(),
+    switchSpace: vi.fn(),
+  },
+}));
+vi.mock("../providers/session-provider", () => ({
+  useSession: () => sessionMock.current,
+}));
+
+vi.mock("./create-organization-dialog", () => ({
+  CreateOrganizationDialog: () => null,
+}));
+
+vi.mock("./create-space-dialog", () => ({
+  CreateSpaceDialog: () => null,
+}));
+
+import { ApiClientError } from "../../lib/api-client";
+import { OrganizationSwitcher } from "./organization-switcher";
+
+beforeEach(() => {
+  const switchOrganization = sessionMock.current.switchOrganization;
+  const switchSpace = sessionMock.current.switchSpace;
+  switchOrganization.mockReset();
+  switchSpace.mockReset();
+  sessionMock.current = {
+    currentOrganization: {
+      code: "alpha",
+      id: "ORG_ALPHA",
+      name: "Alpha",
+      role: "MEMBER",
+      status: "ACTIVE",
+    },
     currentSpace: undefined,
     session: {
       capabilities: {
@@ -82,35 +173,8 @@ const sessionMock = vi.hoisted(() => ({
     },
     spacesForCurrentOrganization: [],
     status: "authenticated" as const,
-    switchOrganization: vi.fn(),
-    switchSpace: vi.fn(),
-  },
-}));
-vi.mock("../providers/session-provider", () => ({
-  useSession: () => sessionMock.current,
-}));
-
-vi.mock("./create-organization-dialog", () => ({
-  CreateOrganizationDialog: () => null,
-}));
-
-vi.mock("./create-space-dialog", () => ({
-  CreateSpaceDialog: () => null,
-}));
-
-import { OrganizationSwitcher } from "./organization-switcher";
-
-beforeEach(() => {
-  sessionMock.current = {
-    ...sessionMock.current,
-    currentOrganization: {
-      code: "alpha",
-      id: "ORG_ALPHA",
-      name: "Alpha",
-      role: "MEMBER",
-      status: "ACTIVE",
-    },
-    spacesForCurrentOrganization: [],
+    switchOrganization,
+    switchSpace,
   };
 });
 
@@ -119,19 +183,17 @@ afterEach(() => {
 });
 
 describe("OrganizationSwitcher", () => {
-  it("hides create-space for an active MEMBER current organization with capability", () => {
+  it("shows create-space for an active MEMBER current organization with capability", () => {
     render(<OrganizationSwitcher />);
 
-    expect(
-      screen.queryByTestId("org-switcher-create-space"),
-    ).not.toBeInTheDocument();
+    expect(screen.getByTestId("org-switcher-create-space")).toBeInTheDocument();
     expect(
       screen.getByText("shell.organizationSwitcher.roles.MEMBER"),
     ).toBeInTheDocument();
     expect(screen.queryByText("MEMBER")).not.toBeInTheDocument();
   });
 
-  it("shows create-space for an ADMIN current organization", () => {
+  it("does not require OWNER/ADMIN role to show create-space", () => {
     sessionMock.current = {
       ...sessionMock.current,
       currentOrganization: {
@@ -199,5 +261,93 @@ describe("OrganizationSwitcher", () => {
     expect(
       screen.queryByTestId("org-switcher-create-space"),
     ).not.toBeInTheDocument();
+  });
+
+  it("shows an API error and restores pending state when switching organization fails", async () => {
+    sessionMock.current.switchOrganization.mockRejectedValueOnce(
+      new ApiClientError(
+        {
+          code: "FORBIDDEN",
+          message: "Forbidden",
+          requestId: "req_org_switch",
+        },
+        new Response(null, { status: 403 }),
+      ),
+    );
+
+    render(<OrganizationSwitcher />);
+
+    fireEvent.click(screen.getByTestId("org-switcher-org-ORG_BETA"));
+
+    await waitFor(() =>
+      expect(screen.getByTestId("org-switcher-error")).toHaveTextContent(
+        "errors.api.FORBIDDEN",
+      ),
+    );
+    expect(sessionMock.current.switchOrganization).toHaveBeenCalledWith(
+      "ORG_BETA",
+    );
+    expect(screen.getByTestId("org-switcher")).not.toBeDisabled();
+  });
+
+  it("shows an API error and restores pending state when switching space fails", async () => {
+    sessionMock.current = {
+      ...sessionMock.current,
+      currentOrganization: {
+        code: "alpha",
+        id: "ORG_ALPHA",
+        name: "Alpha",
+        role: "ADMIN",
+        status: "ACTIVE",
+      },
+      currentSpace: {
+        code: "space-a",
+        id: "SPC_A",
+        name: "Space A",
+        organizationId: "ORG_ALPHA",
+        role: "PM",
+        status: "ACTIVE",
+      },
+      spacesForCurrentOrganization: [
+        {
+          code: "space-a",
+          id: "SPC_A",
+          name: "Space A",
+          organizationId: "ORG_ALPHA",
+          role: "PM",
+          status: "ACTIVE",
+        },
+        {
+          code: "space-b",
+          id: "SPC_B",
+          name: "Space B",
+          organizationId: "ORG_ALPHA",
+          role: "DEVELOPER",
+          status: "ACTIVE",
+        },
+      ],
+    };
+    sessionMock.current.switchSpace.mockRejectedValueOnce(
+      new ApiClientError(
+        {
+          code: "SPACE_ACCESS_DENIED",
+          message: "Denied",
+          requestId: "req_space_switch",
+        },
+        new Response(null, { status: 403 }),
+      ),
+    );
+
+    render(<OrganizationSwitcher />);
+
+    fireEvent.click(screen.getByTestId("org-switcher-space-SPC_B"));
+
+    await waitFor(() =>
+      expect(screen.getByTestId("org-switcher-error")).toHaveTextContent(
+        "errors.api.SPACE_ACCESS_DENIED",
+      ),
+    );
+    expect(sessionMock.current.switchSpace).toHaveBeenCalledWith("SPC_B");
+    expect(screen.getByTestId("org-switcher")).not.toBeDisabled();
   });
 });

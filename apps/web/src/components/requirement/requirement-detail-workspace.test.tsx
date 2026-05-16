@@ -515,7 +515,7 @@ describe("RequirementDetailWorkspace", () => {
         status: "DRAFT",
       }),
     );
-    const confirmSpy = vi.spyOn(window, "confirm").mockReturnValue(true);
+    const confirmSpy = vi.spyOn(window, "confirm");
 
     render(
       <RequirementDetailWorkspace requirementId="01ARZ3NDEKTSV4RRFFQ69G5FA1" />,
@@ -526,6 +526,10 @@ describe("RequirementDetailWorkspace", () => {
         name: "requirements.detail.discardDraft",
       }),
     );
+    expect(
+      await screen.findByTestId("requirement-discard-draft-dialog"),
+    ).toBeInTheDocument();
+    fireEvent.click(screen.getByTestId("requirement-discard-draft-confirm"));
 
     await waitFor(() =>
       expect(deleteRequirementDraftMock).toHaveBeenCalledWith({
@@ -535,6 +539,7 @@ describe("RequirementDetailWorkspace", () => {
       }),
     );
     expect(routerPushMock).toHaveBeenCalledWith("/requirements");
+    expect(confirmSpy).not.toHaveBeenCalled();
 
     confirmSpy.mockRestore();
   });

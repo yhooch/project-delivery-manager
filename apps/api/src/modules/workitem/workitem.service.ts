@@ -10,6 +10,7 @@ import {
 import { ulid } from "ulid";
 
 import { ApiException } from "../../http/api-exception";
+import { auditAccessDenied } from "../audit/audit-access-denied";
 import { AuditService } from "../audit/audit.service";
 import type { RequestMetadata } from "../auth/auth-session.types";
 import {
@@ -82,6 +83,17 @@ export class WorkItemService {
     }
 
     if (!canCreateTaskDeliveryObject(access.role)) {
+      await auditAccessDenied(this.audit, {
+        ...metadata,
+        actorId: actorUserId,
+        metadata: { role: access.role },
+        operation: "createWorkItem",
+        organizationId: access.space.organizationId,
+        reason: "ROLE_NOT_ALLOWED",
+        spaceId,
+        targetId: spaceId,
+        targetType: "SPACE",
+      });
       throwSpaceAccessDenied();
     }
 
@@ -180,6 +192,17 @@ export class WorkItemService {
     );
 
     if (!canManageDeliveryObject(access.role)) {
+      await auditAccessDenied(this.audit, {
+        ...metadata,
+        actorId: actorUserId,
+        metadata: { role: access.role },
+        operation: "updateWorkItem",
+        organizationId: workItem.organizationId,
+        reason: "ROLE_NOT_ALLOWED",
+        spaceId: workItem.spaceId,
+        targetId: workItem.id,
+        targetType: "WORK_ITEM",
+      });
       throwSpaceAccessDenied();
     }
 

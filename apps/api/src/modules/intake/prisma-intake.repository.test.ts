@@ -4,6 +4,56 @@ import type { PrismaService } from "../../prisma/prisma.service";
 import { PrismaIntakeRepository } from "./prisma-intake.repository";
 
 describe("PrismaIntakeRepository", () => {
+  it("creates intake item creator and reporter participants idempotently", async () => {
+    const item = makeIntakeItem();
+    const objectParticipantCreate = vi.fn(async () => undefined);
+    const tx = {
+      intakeItem: {
+        create: vi.fn(async () => item),
+      },
+      objectParticipant: {
+        create: objectParticipantCreate,
+        findFirst: vi.fn(async () => undefined),
+        update: vi.fn(async () => undefined),
+      },
+      timelineEvent: {
+        create: vi.fn(async () => undefined),
+      },
+    };
+    const prisma = {
+      client: {
+        $transaction: vi.fn(async (handler) => handler(tx)),
+      },
+    } as unknown as PrismaService;
+    const repository = new PrismaIntakeRepository(prisma);
+
+    await repository.create({
+      id: item.id,
+      organizationId: item.organizationId,
+      reporterId: item.reporterId,
+      sourceType: item.sourceType,
+      spaceId: item.spaceId,
+      title: item.title,
+    });
+
+    expect(objectParticipantCreate).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        relationType: "CREATOR",
+        targetId: item.id,
+        targetType: "INTAKE_ITEM",
+        userId: item.reporterId,
+      }),
+    });
+    expect(objectParticipantCreate).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        relationType: "REPORTER",
+        targetId: item.id,
+        targetType: "INTAKE_ITEM",
+        userId: item.reporterId,
+      }),
+    });
+  });
+
   it("rebuilds related work item participants after cascading an intake version", async () => {
     const oldVersionId = "01H00000000000000000000101";
     const newVersionId = "01H00000000000000000000102";
@@ -47,6 +97,20 @@ describe("PrismaIntakeRepository", () => {
         findMany: vi
           .fn()
           .mockResolvedValueOnce([{ id: taskId, type: "TASK" }])
+          .mockResolvedValueOnce([
+            {
+              id: taskId,
+              organizationId: before.organizationId,
+              spaceId: before.spaceId,
+              versionId: oldVersionId,
+            },
+            {
+              id: bugId,
+              organizationId: before.organizationId,
+              spaceId: before.spaceId,
+              versionId: oldVersionId,
+            },
+          ])
           .mockResolvedValueOnce([
             {
               bugDetail: null,

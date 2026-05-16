@@ -505,6 +505,9 @@ describe("VersionPage", () => {
       expect(getVersionBoardViewMock).toHaveBeenCalledTimes(1),
     );
     expect(await screen.findByTestId("version-hero")).toBeInTheDocument();
+    expect(screen.getByTestId("version-hero-target")).toHaveTextContent(
+      "Ship login",
+    );
     // KPI cells render with stats values.
     expect(
       screen.getByTestId("version-hero-kpi-requirementCount").textContent,
@@ -698,10 +701,11 @@ describe("VersionPage", () => {
     );
   });
 
-  it("falls back to em-dash for missing release date", async () => {
+  it("falls back to localized placeholders for missing release date and target", async () => {
     listVersionsMock.mockResolvedValueOnce({
       items: [
         makeVersion({
+          target: undefined,
           releaseDate: undefined,
           targetDate: undefined,
         }),
@@ -717,6 +721,9 @@ describe("VersionPage", () => {
     ).toBe("—");
     expect(screen.getByTestId("version-hero-date-target").textContent).toBe(
       "—",
+    );
+    expect(screen.getByTestId("version-hero-target")).toHaveTextContent(
+      "versionBoard.hero.targetNone",
     );
   });
 
@@ -873,8 +880,9 @@ describe("VersionPage", () => {
     expect(timelineRow).toBeInTheDocument();
     expect(timelineRow.textContent).toContain("Alice");
     expect(timelineRow.textContent).toContain(
-      "versionBoard.timeline.event.STATUS_CHANGED",
+      "common.timeline.event.STATUS_CHANGED",
     );
+    expect(timelineRow.textContent).not.toContain("version moved");
   });
 
   it("renders the timeline error state when timeline loading returns 404", async () => {

@@ -21,6 +21,9 @@ const { routerPushMock } = vi.hoisted(() => ({
 const { searchParamsMock } = vi.hoisted(() => ({
   searchParamsMock: { current: new URLSearchParams() },
 }));
+const { localeMock } = vi.hoisted(() => ({
+  localeMock: { current: "zh-CN" },
+}));
 
 function getSelectOptionLabels(select: HTMLSelectElement): string[] {
   return Array.from(select.options, (option) => option.textContent ?? "");
@@ -43,7 +46,7 @@ vi.mock("next-intl", () => ({
     }
     return fn;
   },
-  useLocale: () => "zh-CN",
+  useLocale: () => localeMock.current,
 }));
 vi.mock("next/navigation", () => ({
   useSearchParams: () => searchParamsMock.current,
@@ -51,7 +54,22 @@ vi.mock("next/navigation", () => ({
 
 vi.mock("../../i18n/routing", () => ({
   routing: { defaultLocale: "zh-CN", locales: ["zh-CN", "en-US"] },
-  Link: ({ children }: { children: React.ReactNode }) => children,
+  Link: ({
+    children,
+    href,
+    ...rest
+  }: {
+    children: React.ReactNode;
+    href: string;
+  } & React.AnchorHTMLAttributes<HTMLAnchorElement>) => {
+    const localizedHref =
+      localeMock.current === "zh-CN" ? href : `/${localeMock.current}${href}`;
+    return (
+      <a href={localizedHref} {...rest}>
+        {children}
+      </a>
+    );
+  },
   getPathname: () => "/",
   redirect: () => undefined,
   usePathname: () => "/",
@@ -326,6 +344,7 @@ beforeEach(() => {
   relationTitleMap.clear();
   routerPushMock.mockReset();
   searchParamsMock.current = new URLSearchParams();
+  localeMock.current = "zh-CN";
   sessionMock.current = {
     session: {
       defaultOrganizationId: "ORG_01",
@@ -808,7 +827,8 @@ describe("IntakePage", () => {
     );
   });
 
-  it("renders linked requirement in the intake detail drawer as a safe new-tab link", async () => {
+  it("renders linked requirement in the intake detail drawer as a safe locale-aware new-tab link", async () => {
+    localeMock.current = "en-US";
     const requirementId = "01ARZ3NDEKTSV4RRFFQ69G5FRQ";
     relationTitleMap.set(`requirement:${requirementId}`, "Trace requirement");
     listIntakeItemsMock.mockResolvedValueOnce({
@@ -831,7 +851,7 @@ describe("IntakePage", () => {
     );
     expect(requirementLink).toHaveAttribute(
       "href",
-      `/requirements/${requirementId}`,
+      `/en-US/requirements/${requirementId}`,
     );
     expect(requirementLink).toHaveAttribute("target", "_blank");
     expect(requirementLink).toHaveAttribute("rel", "noopener noreferrer");
@@ -921,7 +941,7 @@ describe("IntakePage", () => {
             type: "INTAKE_ITEM",
             title: "Detail resources",
           },
-          eventType: "COMMENT_CREATED",
+          eventType: "COMMENTED",
           actor: {
             id: "01ARZ3NDEKTSV4RRFFQ69G5FU2",
             username: "bob",
@@ -970,8 +990,11 @@ describe("IntakePage", () => {
     ).not.toBeInTheDocument();
     expect(screen.queryByText(relatedTaskDueDate)).not.toBeInTheDocument();
     expect(
-      await screen.findByText("created the intake item"),
+      await screen.findByText("common.timeline.event.CREATED"),
     ).toBeInTheDocument();
+    expect(
+      screen.queryByText("created the intake item"),
+    ).not.toBeInTheDocument();
     expect(listWorkItemsMock).toHaveBeenCalledWith(
       expect.objectContaining({
         intakeItemId: "01ARZ3NDEKTSV4RRFFQ69G5FDT",
@@ -1009,8 +1032,11 @@ describe("IntakePage", () => {
     expect(await screen.findByText("New intake comment")).toBeInTheDocument();
     await waitFor(() => expect(listTimelineMock).toHaveBeenCalledTimes(2));
     expect(
-      await screen.findByText("commented on the intake item"),
+      await screen.findByText("common.timeline.event.COMMENTED"),
     ).toBeInTheDocument();
+    expect(
+      screen.queryByText("commented on the intake item"),
+    ).not.toBeInTheDocument();
   });
 
   it("renders noDueDate fallback for related tasks without a due date", async () => {

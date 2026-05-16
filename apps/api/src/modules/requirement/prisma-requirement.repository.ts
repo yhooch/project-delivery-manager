@@ -19,6 +19,12 @@ import type {
   SaveRequirementInput,
 } from "./requirement.types";
 
+type RequirementTenantScope = {
+  id: string;
+  organizationId: string;
+  spaceId: string;
+};
+
 @Injectable()
 export class PrismaRequirementRepository implements RequirementRepository {
   constructor(
@@ -82,8 +88,8 @@ export class PrismaRequirementRepository implements RequirementRepository {
     }
 
     const [attachments, relatedWorkItems] = await Promise.all([
-      this.listAttachmentRefsForRequirement(requirement.id),
-      this.listRelatedWorkItemsForRequirement(requirement.id),
+      this.listAttachmentRefsForRequirement(requirement),
+      this.listRelatedWorkItemsForRequirement(requirement),
     ]);
 
     return toRequirement(requirement, attachments, relatedWorkItems);
@@ -157,11 +163,10 @@ export class PrismaRequirementRepository implements RequirementRepository {
         where,
       }),
     ]);
-    const requirementIds = requirements.map((requirement) => requirement.id);
     const [attachmentsByRequirementId, relatedWorkItemsByRequirementId] =
       await Promise.all([
-        this.listAttachmentRefsByRequirementIds(requirementIds),
-        this.listRelatedWorkItemsByRequirementIds(requirementIds),
+        this.listAttachmentRefsByRequirements(requirements),
+        this.listRelatedWorkItemsByRequirements(requirements),
       ]);
 
     return {
@@ -254,11 +259,22 @@ export class PrismaRequirementRepository implements RequirementRepository {
       bugCount: directWorkItems.filter(
         (item) => item.type === "BUG" && item.versionId !== input.nextVersionId,
       ).length,
+      bugIds: directWorkItems
+        .filter(
+          (item) =>
+            item.type === "BUG" && item.versionId !== input.nextVersionId,
+        )
+        .map((item) => item.id),
       intakeItemCount: intakeItems.filter(
         (item) => item.versionId !== input.nextVersionId,
       ).length,
+      intakeItemIds: intakeItems
+        .filter((item) => item.versionId !== input.nextVersionId)
+        .map((item) => item.id),
       relatedBugCount: changedRelatedBugIds.length,
+      relatedBugIds: changedRelatedBugIds,
       workItemCount: changedWorkItemIds.size,
+      workItemIds: [...changedWorkItemIds],
     };
   }
 
@@ -321,7 +337,10 @@ export class PrismaRequirementRepository implements RequirementRepository {
         });
       }
 
-      if (input.shouldUpdateOwner && input.ownerId) {
+      const ownerChanged =
+        input.shouldUpdateOwner && previous.ownerId !== requirement.ownerId;
+
+      if (ownerChanged && input.ownerId) {
         await tx.objectParticipant.updateMany({
           data: {
             deletedAt: new Date(),
@@ -348,6 +367,23 @@ export class PrismaRequirementRepository implements RequirementRepository {
         });
       }
 
+      if (ownerChanged) {
+        await createTimelineEvent(tx, {
+          actorUserId: input.updatedById,
+          after: {
+            ownerId: requirement.ownerId ?? null,
+          },
+          before: {
+            ownerId: previous.ownerId ?? null,
+          },
+          eventType: "ASSIGNEE_CHANGED",
+          organizationId: requirement.organizationId,
+          spaceId: requirement.spaceId,
+          targetId: requirement.id,
+          title: "负责人变更",
+        });
+      }
+
       await createTimelineEvent(tx, {
         actorUserId: input.updatedById,
         after: requirementTimelineSnapshot(requirement),
@@ -367,8 +403,8 @@ export class PrismaRequirementRepository implements RequirementRepository {
     }
 
     const [attachments, relatedWorkItems] = await Promise.all([
-      this.listAttachmentRefsForRequirement(updated.id),
-      this.listRelatedWorkItemsForRequirement(updated.id),
+      this.listAttachmentRefsForRequirement(updated),
+      this.listRelatedWorkItemsForRequirement(updated),
     ]);
 
     return toRequirement(updated, attachments, relatedWorkItems);
@@ -436,8 +472,8 @@ export class PrismaRequirementRepository implements RequirementRepository {
     }
 
     const [attachments, relatedWorkItems] = await Promise.all([
-      this.listAttachmentRefsForRequirement(updated.id),
-      this.listRelatedWorkItemsForRequirement(updated.id),
+      this.listAttachmentRefsForRequirement(updated),
+      this.listRelatedWorkItemsForRequirement(updated),
     ]);
 
     return toRequirement(updated, attachments, relatedWorkItems);
@@ -478,14 +514,18 @@ export class PrismaRequirementRepository implements RequirementRepository {
     });
   }
 
-  private async listAttachmentRefsForRequirement(requirementId: string) {
+  private async listAttachmentRefsForRequirement(
+    requirement: RequirementTenantScope,
+  ) {
     const records = await this.prisma.client.attachment.findMany({
       orderBy: {
         createdAt: "asc",
       },
       where: {
         deletedAt: null,
-        targetId: requirementId,
+        organizationId: requirement.organizationId,
+        spaceId: requirement.spaceId,
+        targetId: requirement.id,
         targetType: "REQUIREMENT",
       },
     });
@@ -493,13 +533,15 @@ export class PrismaRequirementRepository implements RequirementRepository {
     return records;
   }
 
-  private async listAttachmentRefsByRequirementIds(requirementIds: string[]) {
+  private async listAttachmentRefsByRequirements(
+    requirements: RequirementTenantScope[],
+  ) {
     const result = new Map<
       string,
       Awaited<ReturnType<typeof this.listAttachmentRefsForRequirement>>
     >();
 
-    if (requirementIds.length === 0) {
+    if (requirements.length === 0) {
       return result;
     }
 
@@ -509,9 +551,11 @@ export class PrismaRequirementRepository implements RequirementRepository {
       },
       where: {
         deletedAt: null,
-        targetId: {
-          in: requirementIds,
-        },
+        OR: requirements.map((requirement) => ({
+          organizationId: requirement.organizationId,
+          spaceId: requirement.spaceId,
+          targetId: requirement.id,
+        })),
         targetType: "REQUIREMENT",
       },
     });
@@ -525,22 +569,28 @@ export class PrismaRequirementRepository implements RequirementRepository {
     return result;
   }
 
-  private async listRelatedWorkItemsForRequirement(requirementId: string) {
+  private async listRelatedWorkItemsForRequirement(
+    requirement: RequirementTenantScope,
+  ) {
     const records = await this.prisma.client.workItem.findMany({
       orderBy: [{ type: "asc" }, { createdAt: "asc" }],
       where: {
         deletedAt: null,
-        requirementId,
+        organizationId: requirement.organizationId,
+        requirementId: requirement.id,
+        spaceId: requirement.spaceId,
       },
     });
 
     return toRequirementRelatedWorkItems(records);
   }
 
-  private async listRelatedWorkItemsByRequirementIds(requirementIds: string[]) {
+  private async listRelatedWorkItemsByRequirements(
+    requirements: RequirementTenantScope[],
+  ) {
     const result = new Map<string, RequirementRelatedWorkItems>();
 
-    if (requirementIds.length === 0) {
+    if (requirements.length === 0) {
       return result;
     }
 
@@ -548,9 +598,11 @@ export class PrismaRequirementRepository implements RequirementRepository {
       orderBy: [{ type: "asc" }, { createdAt: "asc" }],
       where: {
         deletedAt: null,
-        requirementId: {
-          in: requirementIds,
-        },
+        OR: requirements.map((requirement) => ({
+          organizationId: requirement.organizationId,
+          requirementId: requirement.id,
+          spaceId: requirement.spaceId,
+        })),
       },
     });
     const grouped = new Map<string, typeof records>();
@@ -742,7 +794,7 @@ async function createTimelineEvent(
     actorUserId: string;
     after?: Record<string, unknown>;
     before?: Record<string, unknown>;
-    eventType: "CREATED" | "STATUS_CHANGED" | "UPDATED";
+    eventType: "ASSIGNEE_CHANGED" | "CREATED" | "STATUS_CHANGED" | "UPDATED";
     organizationId: string;
     spaceId: string;
     targetId: string;
@@ -776,7 +828,12 @@ async function cascadeRequirementTraceVersion(
   },
 ) {
   const intakeItems = await tx.intakeItem.findMany({
-    select: { id: true },
+    select: {
+      id: true,
+      organizationId: true,
+      spaceId: true,
+      versionId: true,
+    },
     where: {
       deletedAt: null,
       requirementId: input.requirementId,
@@ -823,6 +880,28 @@ async function cascadeRequirementTraceVersion(
       ...relatedBugs.map((bug) => bug.workItemId),
     ]),
   ];
+  const affectedIntakeItems = intakeItems.filter(
+    (item) => item.versionId !== input.nextVersionId,
+  );
+  const affectedWorkItems =
+    workItemIds.length > 0
+      ? (
+          await tx.workItem.findMany({
+            select: {
+              id: true,
+              organizationId: true,
+              spaceId: true,
+              versionId: true,
+            },
+            where: {
+              deletedAt: null,
+              id: {
+                in: workItemIds,
+              },
+            },
+          })
+        ).filter((item) => item.versionId !== input.nextVersionId)
+      : [];
 
   await assertNoRequirementCascadeConflicts(tx, {
     intakeItemIds,
@@ -832,7 +911,7 @@ async function cascadeRequirementTraceVersion(
     workItemIds,
   });
 
-  if (intakeItemIds.length > 0) {
+  if (affectedIntakeItems.length > 0) {
     await tx.intakeItem.updateMany({
       data: {
         updatedById: input.actorUserId,
@@ -841,13 +920,27 @@ async function cascadeRequirementTraceVersion(
       where: {
         deletedAt: null,
         id: {
-          in: intakeItemIds,
+          in: affectedIntakeItems.map((item) => item.id),
         },
       },
     });
+
+    for (const item of affectedIntakeItems) {
+      await createTraceVersionCascadeTimelineEvent(tx, {
+        actorUserId: input.actorUserId,
+        beforeVersionId: item.versionId,
+        nextVersionId: input.nextVersionId,
+        organizationId: item.organizationId,
+        sourceTargetId: input.requirementId,
+        sourceTargetType: "REQUIREMENT",
+        spaceId: item.spaceId,
+        targetId: item.id,
+        targetType: "INTAKE_ITEM",
+      });
+    }
   }
 
-  if (workItemIds.length > 0) {
+  if (affectedWorkItems.length > 0) {
     await tx.workItem.updateMany({
       data: {
         updatedById: input.actorUserId,
@@ -856,16 +949,69 @@ async function cascadeRequirementTraceVersion(
       where: {
         deletedAt: null,
         id: {
-          in: workItemIds,
+          in: affectedWorkItems.map((item) => item.id),
         },
       },
     });
 
+    for (const item of affectedWorkItems) {
+      await createTraceVersionCascadeTimelineEvent(tx, {
+        actorUserId: input.actorUserId,
+        beforeVersionId: item.versionId,
+        nextVersionId: input.nextVersionId,
+        organizationId: item.organizationId,
+        sourceTargetId: input.requirementId,
+        sourceTargetType: "REQUIREMENT",
+        spaceId: item.spaceId,
+        targetId: item.id,
+        targetType: "WORK_ITEM",
+      });
+    }
+  }
+
+  if (workItemIds.length > 0) {
     await syncWorkItemRelatedParticipants(tx, {
       actorUserId: input.actorUserId,
       workItemIds,
     });
   }
+}
+
+async function createTraceVersionCascadeTimelineEvent(
+  tx: Prisma.TransactionClient,
+  input: {
+    actorUserId: string;
+    beforeVersionId: string | null;
+    nextVersionId: string | null;
+    organizationId: string;
+    sourceTargetId: string;
+    sourceTargetType: "INTAKE_ITEM" | "REQUIREMENT";
+    spaceId: string;
+    targetId: string;
+    targetType: "INTAKE_ITEM" | "WORK_ITEM";
+  },
+) {
+  await tx.timelineEvent.create({
+    data: {
+      id: ulid(),
+      actorId: input.actorUserId,
+      after: toJson({ versionId: input.nextVersionId }),
+      before: toJson({ versionId: input.beforeVersionId }),
+      createdById: input.actorUserId,
+      eventType: "UPDATED",
+      metadata: toJson({
+        operation: "TRACE_VERSION_CASCADE",
+        sourceTargetId: input.sourceTargetId,
+        sourceTargetType: input.sourceTargetType,
+      }),
+      organizationId: input.organizationId,
+      spaceId: input.spaceId,
+      targetId: input.targetId,
+      targetType: input.targetType,
+      title: "级联更新版本",
+      updatedById: input.actorUserId,
+    },
+  });
 }
 
 async function assertNoRequirementCascadeConflicts(

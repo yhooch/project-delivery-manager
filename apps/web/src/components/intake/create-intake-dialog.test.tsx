@@ -101,6 +101,9 @@ describe("CreateIntakeDialog", () => {
       pageSize: 100,
       spaceId,
     });
+    expect(listSpaceMembersMock).toHaveBeenCalledWith(spaceId, {
+      status: "ACTIVE",
+    });
 
     const sourceSelect = screen.getByTestId("create-intake-source-select");
     expect(sourceSelect).toHaveTextContent(
@@ -133,7 +136,7 @@ describe("CreateIntakeDialog", () => {
     );
   });
 
-  it("shows an option load error, disables submit, and retries", async () => {
+  it("shows an option load error, keeps base submit enabled, and retries", async () => {
     listSpaceMembersMock.mockRejectedValueOnce(new Error("network"));
 
     render(
@@ -143,7 +146,8 @@ describe("CreateIntakeDialog", () => {
     expect(
       await screen.findByTestId("create-intake-options-error"),
     ).toHaveTextContent("common.states.optionsLoadFailed");
-    expect(screen.getByTestId("create-intake-submit")).toBeDisabled();
+    expect(screen.getByTestId("create-intake-assignee-select")).toBeDisabled();
+    expect(screen.getByTestId("create-intake-submit")).not.toBeDisabled();
 
     fireEvent.click(screen.getByTestId("create-intake-options-retry"));
 
@@ -152,6 +156,28 @@ describe("CreateIntakeDialog", () => {
       expect(screen.getByTestId("create-intake-submit")).not.toBeDisabled(),
     );
     expect(listSpaceMembersMock).toHaveBeenCalledTimes(2);
+  });
+
+  it("submits a base intake item when optional lookups fail", async () => {
+    listSpaceMembersMock.mockRejectedValueOnce(new Error("network"));
+
+    render(
+      <CreateIntakeDialog open onOpenChange={vi.fn()} spaceId={spaceId} />,
+    );
+
+    await screen.findByTestId("create-intake-options-error");
+    fireEvent.change(screen.getByTestId("create-intake-title-input"), {
+      target: { value: "Fallback intake" },
+    });
+    fireEvent.click(screen.getByTestId("create-intake-submit"));
+
+    await waitFor(() =>
+      expect(createIntakeItemMock).toHaveBeenCalledTimes(1),
+    );
+    expect(createIntakeItemMock).toHaveBeenCalledWith(
+      { organizationId, spaceId },
+      expect.objectContaining({ title: "Fallback intake" }),
+    );
   });
 
   it("clears the selected requirement when the selected version is incompatible", async () => {

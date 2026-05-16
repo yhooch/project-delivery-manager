@@ -15,6 +15,12 @@ import {
 import { PermissionSnapshotSchema } from "./workflow.ts";
 
 const TiptapJsonRecordSchema = z.record(z.string(), z.unknown());
+const RequirementContentTextSchema = z
+  .string()
+  .max(20000)
+  .refine((value) => !containsBase64ImageData(value), {
+    message: "content text must not contain base64 image data",
+  });
 
 export const TiptapJsonSchema = TiptapJsonRecordSchema.superRefine(
   (value, context) => {
@@ -87,8 +93,8 @@ export const RequirementSchema = z
     title: z.string().max(200),
     summary: z.string().max(2000).optional(),
     contentJson: TiptapJsonSchema,
-    contentText: z.string().max(20000).optional(),
-    contentMarkdownCache: z.string().max(20000).optional(),
+    contentText: RequirementContentTextSchema.optional(),
+    contentMarkdownCache: RequirementContentTextSchema.optional(),
     contentFormat: z.literal("TIPTAP_JSON"),
     status: RequirementStatusSchema,
     priority: PrioritySchema.optional(),
@@ -122,8 +128,8 @@ export const SaveRequirementRequestSchema = z
     title: z.string().min(1).max(200),
     summary: z.string().max(2000).optional(),
     contentJson: TiptapJsonSchema,
-    contentText: z.string().max(20000).optional(),
-    contentMarkdownCache: z.string().max(20000).optional(),
+    contentText: RequirementContentTextSchema.optional(),
+    contentMarkdownCache: RequirementContentTextSchema.optional(),
     versionId: UlidSchema.nullable().optional(),
     cascadeVersionChange: z.boolean().optional(),
     priority: PrioritySchema.optional(),
@@ -256,9 +262,9 @@ function isValidTiptapMark(value: unknown): value is Record<string, unknown> {
   );
 }
 
-function containsBase64ImageData(value: unknown): boolean {
+export function containsBase64ImageData(value: unknown): boolean {
   if (typeof value === "string") {
-    return /^data:image\/[a-z0-9.+-]+(?:;[a-z0-9=.+-]+)*;base64(?:,|$)/iu.test(
+    return /data:image\/[a-z0-9.+-]+(?:;[a-z0-9=.+-]+)*;base64(?:,|$)/iu.test(
       value,
     );
   }

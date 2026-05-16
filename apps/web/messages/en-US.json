@@ -8,6 +8,77 @@
     "actions": {
       "close": "Close"
     },
+    "timeline": {
+      "event": {
+        "CREATED": "Created",
+        "UPDATED": "Updated",
+        "STATUS_CHANGED": "Status changed",
+        "ACTION_EXECUTED": "Workflow action",
+        "ASSIGNEE_CHANGED": "Assignee changed",
+        "COMMENTED": "Commented",
+        "ATTACHMENT_ADDED": "Attachment added",
+        "CLOSED": "Closed",
+        "REOPENED": "Reopened"
+      }
+    },
+    "workflowDefaults": {
+      "states": {
+        "PENDING": "Pending",
+        "IN_PROGRESS": "In progress",
+        "BLOCKED": "Blocked",
+        "READY_FOR_TEST": "Ready for test",
+        "TESTING": "Testing",
+        "DONE": "Done",
+        "CANCELED": "Canceled",
+        "PENDING_CONFIRMATION": "Pending confirmation",
+        "PENDING_FIX": "Pending fix",
+        "FIXING": "Fixing",
+        "PENDING_REGRESSION": "Pending regression",
+        "REGRESSION_PASSED": "Regression passed",
+        "CLOSED": "Closed",
+        "REJECTED": "Rejected"
+      },
+      "actions": {
+        "START_PROGRESS": "Start progress",
+        "MARK_BLOCKED": "Mark blocked",
+        "RESOLVE_BLOCKED": "Resolve blocked",
+        "SUBMIT_TEST": "Submit for test",
+        "START_TEST": "Start test",
+        "PASS_TEST": "Pass test",
+        "REJECT_TEST": "Reject test",
+        "CANCEL_TASK": "Cancel task",
+        "SUBMIT_CONFIRMATION": "Submit confirmation",
+        "CONFIRM_DONE": "Confirm done",
+        "RETURN_PROCESSING": "Return to processing",
+        "CONFIRM_DEFECT": "Confirm defect",
+        "REJECT_DEFECT": "Reject defect",
+        "START_FIX": "Start fix",
+        "SUBMIT_REGRESSION": "Submit regression",
+        "REGRESSION_PASS": "Regression passed",
+        "REGRESSION_FAIL": "Regression failed",
+        "CLOSE_DEFECT": "Close defect",
+        "REOPEN_DEFECT": "Reopen defect"
+      },
+      "fields": {
+        "blockedReason": "Blocked reason",
+        "testNote": "Test note",
+        "rejectReason": "Reject reason",
+        "cancelReason": "Cancel reason",
+        "completionNote": "Completion note",
+        "fixAssigneeId": "Fix assignee",
+        "fixSummary": "Fix summary",
+        "regressionConclusion": "Regression conclusion",
+        "failedReason": "Failed reason",
+        "reopenReason": "Reopen reason"
+      }
+    },
+    "exceptionReasons": {
+      "OVERDUE": "The work item is past its due date.",
+      "BLOCKED": "The work item is blocked.",
+      "PENDING_CONFIRM": "The work item is pending confirmation.",
+      "PENDING_REGRESSION": "The bug is pending regression.",
+      "STALE": "The work item status has not changed for a long time."
+    },
     "language": {
       "label": "Switch language",
       "zh-CN": {
@@ -304,6 +375,7 @@
   "errors": {
     "api": {
       "BAD_REQUEST": "The request is invalid. Check the input and try again.",
+      "INTERNAL_SERVER_ERROR": "The service is temporarily unavailable. Try again later.",
       "UNAUTHORIZED": "Your session has expired. Sign in again.",
       "FORBIDDEN": "Your account cannot perform this action.",
       "NOT_FOUND": "The requested resource is unavailable.",
@@ -335,6 +407,9 @@
       "REQUIREMENT_NOT_FOUND": "The requirement is unavailable.",
       "TARGET_REQUIRED_FOR_ATTACHMENT": "An attachment must be linked to a target.",
       "ATTACHMENT_TARGET_NOT_FOUND": "The attachment target is unavailable.",
+      "ATTACHMENT_LIMIT_EXCEEDED": "The attachment limit has been reached. Remove some attachments and try again.",
+      "FILE_TOO_LARGE": "The file is too large. Compress it or choose a smaller file.",
+      "UNSUPPORTED_MIME_TYPE": "This file type is not supported. Choose a different file.",
       "DRAFT_REQUIREMENT_REQUIRED": "Only draft requirements can be processed.",
       "INTAKE_ITEM_NOT_FOUND": "The intake item is unavailable.",
       "INTAKE_ITEM_NOT_ACCEPTED": "The intake item has not been accepted.",
@@ -387,6 +462,11 @@
       "description": "Sign in to continue to the workspace.",
       "action": "Go to sign in"
     },
+    "sessionError": {
+      "title": "Session initialization failed",
+      "description": "We could not verify your sign-in state. Try again.",
+      "retry": "Retry"
+    },
     "topBar": {
       "navigationLabel": "Open primary navigation",
       "commandLabel": "Open command menu",
@@ -394,6 +474,11 @@
     },
     "mobileNav": {
       "description": "Open the primary navigation menu on small screens."
+    },
+    "noSpaces": {
+      "title": "No project spaces yet",
+      "description": "Create a project space to start delivery work, or wait for an administrator to add you to an existing space.",
+      "waitingHint": "You can stay signed in while access is being prepared."
     },
     "organizationSwitcher": {
       "label": "Switch organization",
@@ -519,114 +604,6 @@
       "error": "Failed to create organization. Try again later."
     }
   },
-  "versions": {
-    "page": {
-      "eyebrow": "Space versions",
-      "title": "Version management",
-      "unknownSpace": "Current space"
-    },
-    "actions": {
-      "refresh": "Refresh"
-    },
-    "filters": {
-      "label": "Version filters",
-      "status": "Status",
-      "allStatuses": "All statuses",
-      "owner": "Owner",
-      "allOwners": "All owners"
-    },
-    "status": {
-      "PLANNED": "Planned",
-      "IN_PROGRESS": "In progress",
-      "RELEASED": "Released",
-      "ARCHIVED": "Archived"
-    },
-    "states": {
-      "loading": {
-        "title": "Loading versions",
-        "description": "Reading versions, members, and stable stats for this space."
-      },
-      "unauthenticated": {
-        "title": "Sign-in required",
-        "description": "Sign in before viewing space versions."
-      },
-      "noAccess": {
-        "title": "No space access",
-        "description": "This account has no space context, so versions cannot be viewed or changed."
-      },
-      "loadingList": "Loading version list",
-      "empty": {
-        "title": "No versions yet",
-        "description": "Create the first version to maintain targets, dates, and stats here."
-      },
-      "noSelection": {
-        "title": "No version selected",
-        "description": "Select a version on the left to edit its base fields."
-      }
-    },
-    "list": {
-      "title": "Version list",
-      "subtitle": "{count} versions in the current result",
-      "requirements": "{count} requirements",
-      "noReleaseDate": "No release date"
-    },
-    "create": {
-      "title": "Create version",
-      "description": "Version names stay unique within a space.",
-      "submit": "Create version",
-      "submitting": "Creating"
-    },
-    "detail": {
-      "title": "Version details",
-      "description": "Maintain base fields and view current stats.",
-      "viewRequirements": "View requirements",
-      "submit": "Save version",
-      "submitting": "Saving"
-    },
-    "form": {
-      "name": "Version name",
-      "status": "Status",
-      "target": "Target",
-      "description": "Description",
-      "owner": "Owner",
-      "unassigned": "Unassigned",
-      "startDate": "Start time",
-      "targetDate": "Target time",
-      "releaseDate": "Release time",
-      "readonly": "Current role is read-only"
-    },
-    "stats": {
-      "label": "Version stats",
-      "requirements": "Requirements",
-      "tasks": "Tasks",
-      "bugs": "Bugs",
-      "blocked": "Blocked"
-    },
-    "board": {
-      "title": "Version board",
-      "description": "Tasks and bugs in {version}, grouped by system status category.",
-      "noVersionDescription": "Select a version to show the task and bug board.",
-      "loading": "Loading version board",
-      "filters": {
-        "label": "Version board filters",
-        "assignee": "Assignee",
-        "allAssignees": "All assignees",
-        "statusCategory": "Status category",
-        "allStatusCategories": "All status categories",
-        "workItemType": "Work item type",
-        "allWorkItemTypes": "All work item types"
-      },
-      "card": {
-        "open": "Open {title} details"
-      },
-      "empty": {
-        "title": "No work items",
-        "description": "There are no tasks or bugs for the current version and filters.",
-        "noVersionTitle": "No version selected",
-        "noVersionDescription": "Select a version from the version list first."
-      }
-    }
-  },
   "versionBoard": {
     "title": "Versions",
     "subtitle": "Goals, requirements, work-item board and timeline for the selected version.",
@@ -649,6 +626,8 @@
       "ariaLabel": "Version overview",
       "owner": "Owner",
       "ownerNone": "Unassigned",
+      "target": "Goal",
+      "targetNone": "No goal",
       "dateStart": "Start",
       "dateTarget": "Target",
       "dateRelease": "Release",
@@ -719,18 +698,7 @@
       },
       "loading": "Loading timeline",
       "errorTitle": "Unable to load timeline",
-      "unknownActor": "Unknown user",
-      "event": {
-        "CREATED": "Created",
-        "UPDATED": "Updated",
-        "STATUS_CHANGED": "Status changed",
-        "ACTION_EXECUTED": "Workflow action",
-        "ASSIGNEE_CHANGED": "Assignee changed",
-        "COMMENTED": "Commented",
-        "ATTACHMENT_ADDED": "Attachment added",
-        "CLOSED": "Closed",
-        "REOPENED": "Reopened"
-      }
+      "unknownActor": "Unknown user"
     },
     "create": {
       "title": "New version",
@@ -1211,17 +1179,6 @@
       "empty": {
         "title": "No timeline events",
         "description": "Item creation, updates, comments, and status changes appear here."
-      },
-      "type": {
-        "CREATED": "Created",
-        "UPDATED": "Updated",
-        "STATUS_CHANGED": "Status changed",
-        "ACTION_EXECUTED": "Workflow action",
-        "ASSIGNEE_CHANGED": "Assignee changed",
-        "COMMENTED": "Commented",
-        "ATTACHMENT_ADDED": "Attachment added",
-        "CLOSED": "Closed",
-        "REOPENED": "Reopened"
       }
     }
   },
@@ -1480,17 +1437,6 @@
       "empty": {
         "title": "No timeline events",
         "description": "Bug creation, updates, comments, attachments, and workflow actions appear here."
-      },
-      "type": {
-        "CREATED": "Created",
-        "UPDATED": "Updated",
-        "STATUS_CHANGED": "Status changed",
-        "ACTION_EXECUTED": "Workflow action",
-        "ASSIGNEE_CHANGED": "Assignee changed",
-        "COMMENTED": "Commented",
-        "ATTACHMENT_ADDED": "Attachment added",
-        "CLOSED": "Closed",
-        "REOPENED": "Reopened"
       }
     },
     "dialog": {
@@ -1901,163 +1847,6 @@
       "empty": {
         "title": "No timeline events",
         "description": "Task creation, updates, comments, and attachment events appear here."
-      },
-      "type": {
-        "CREATED": "Created",
-        "UPDATED": "Updated",
-        "STATUS_CHANGED": "Status changed",
-        "ACTION_EXECUTED": "Workflow action",
-        "ASSIGNEE_CHANGED": "Assignee changed",
-        "COMMENTED": "Commented",
-        "ATTACHMENT_ADDED": "Attachment added",
-        "CLOSED": "Closed",
-        "REOPENED": "Reopened"
-      }
-    }
-  },
-  "dashboard": {
-    "session": {
-      "loading": {
-        "title": "Initializing session",
-        "description": "Reading the backend session, organizations, and workbench boundaries."
-      },
-      "unauthenticated": {
-        "title": "Sign-in required",
-        "description": "Sign in or create an account to view your workbench in the current organization.",
-        "login": "Sign in",
-        "register": "Register"
-      }
-    },
-    "missingOrganization": {
-      "title": "Current organization not found",
-      "description": "Switch to an accessible organization to view the workbench."
-    },
-    "page": {
-      "eyebrow": "M4 my workbench",
-      "title": "My workbench",
-      "scopeWithOrganization": "Current organization: {organization}",
-      "scopeWithSpace": "Current organization: {organization} / Space: {space}",
-      "pageSize": "Up to {count} per group"
-    },
-    "actions": {
-      "refresh": "Refresh",
-      "refreshing": "Refreshing"
-    },
-    "filters": {
-      "label": "Workbench filters",
-      "space": "Space",
-      "allSpaces": "All spaces",
-      "spaceCount": "{count} spaces in this organization",
-      "noSpaces": "No spaces in this organization; showing organization-level data"
-    },
-    "states": {
-      "loadingView": "Loading workbench data"
-    },
-    "empty": {
-      "view": {
-        "title": "No personal work",
-        "description": "There are no todos, workflow actions, or recent activities for the current organization and space filter."
-      }
-    },
-    "metrics": {
-      "label": "Workbench stats",
-      "assignedWorkItemCount": "Owned items",
-      "actionTodoCount": "Pending actions",
-      "pendingConfirmCount": "Pending confirmation",
-      "blockedCount": "Blocked"
-    },
-    "section": {
-      "total": "{count} items"
-    },
-    "sections": {
-      "myTodos": {
-        "title": "My todos",
-        "description": "Work items currently related to your account.",
-        "empty": {
-          "title": "No todos",
-          "description": "There are no work items needing your attention for this filter."
-        }
-      },
-      "assignedTasks": {
-        "title": "Tasks I own",
-        "description": "Tasks assigned to you.",
-        "empty": {
-          "title": "No assigned tasks",
-          "description": "There are no tasks assigned to you for this filter."
-        }
-      },
-      "assignedBugs": {
-        "title": "Bugs I own",
-        "description": "Bugs assigned to you.",
-        "empty": {
-          "title": "No assigned bugs",
-          "description": "There are no bugs assigned to you for this filter."
-        }
-      },
-      "actionTodos": {
-        "title": "Workflow actions for me",
-        "description": "Workflow actions the backend says you can process.",
-        "empty": {
-          "title": "No pending actions",
-          "description": "The backend returned no workflow actions for you under this filter."
-        }
-      },
-      "pendingConfirm": {
-        "title": "Pending confirmation",
-        "description": "Items in confirmation or regression confirmation states.",
-        "empty": {
-          "title": "No pending confirmations",
-          "description": "There are no items pending confirmation for this filter."
-        }
-      },
-      "dueSoon": {
-        "title": "Due soon",
-        "description": "Items approaching their due date.",
-        "empty": {
-          "title": "Nothing due soon",
-          "description": "There are no due-soon items for this filter."
-        }
-      },
-      "blocked": {
-        "title": "Blocked",
-        "description": "Items with blocked signals.",
-        "empty": {
-          "title": "No blocked items",
-          "description": "There are no blocked items for this filter."
-        }
-      },
-      "recentActivities": {
-        "title": "Recent activity",
-        "description": "Latest events related to you in the current organization or space.",
-        "empty": {
-          "title": "No recent activity",
-          "description": "There are no recent events for this filter."
-        }
-      }
-    },
-    "item": {
-      "open": "Open",
-      "requirement": "Requirement",
-      "unassigned": "Unassigned"
-    },
-    "actionsTable": {
-      "reason": "Reason",
-      "action": "Action code"
-    },
-    "activity": {
-      "open": "Open",
-      "unknownSpace": "Unknown space",
-      "meta": "{type} / {actor} / {space} / {date}",
-      "type": {
-        "CREATED": "Created",
-        "UPDATED": "Updated",
-        "STATUS_CHANGED": "Status changed",
-        "ACTION_EXECUTED": "Workflow action",
-        "ASSIGNEE_CHANGED": "Assignee changed",
-        "COMMENTED": "Commented",
-        "ATTACHMENT_ADDED": "Attachment added",
-        "CLOSED": "Closed",
-        "REOPENED": "Reopened"
       }
     }
   },
@@ -2078,6 +1867,10 @@
     },
     "time": {
       "justNow": "just now"
+    },
+    "filters": {
+      "space": "Project space",
+      "allSpaces": "All spaces"
     },
     "sections": {
       "todo": "My todos",
@@ -2508,6 +2301,12 @@
           "delete": "Delete field"
         }
       },
+      "deleteConfirm": {
+        "title": "Confirm deletion",
+        "description": "{action}: {target}. This cannot be undone.",
+        "cancel": "Cancel",
+        "submit": "Delete"
+      },
       "stateDialog": {
         "create": {
           "title": "New state",
@@ -2763,18 +2562,7 @@
       "loading": "Loading timeline",
       "meta": "{type} / {target} / {actor} / {date}",
       "empty": "No timeline",
-      "emptyDescription": "Task, bug, and requirement changes will appear here.",
-      "type": {
-        "CREATED": "Created",
-        "UPDATED": "Updated",
-        "STATUS_CHANGED": "Status changed",
-        "ACTION_EXECUTED": "Workflow action",
-        "ASSIGNEE_CHANGED": "Assignee changed",
-        "COMMENTED": "Commented",
-        "ATTACHMENT_ADDED": "Attachment added",
-        "CLOSED": "Closed",
-        "REOPENED": "Reopened"
-      }
+      "emptyDescription": "Task, bug, and requirement changes will appear here."
     },
     "time": {
       "justNow": "just now"
@@ -3114,7 +2902,9 @@
       "add": "Add member",
       "empty": "No space members",
       "emptyFiltered": "No matching members",
+      "searchLabel": "Search space members",
       "searchPlaceholder": "Search by name or username",
+      "roleFilterLabel": "Filter members by space role",
       "roleFilterAll": "All roles",
       "ownerBadge": "Owner",
       "statusDisabled": "Disabled",

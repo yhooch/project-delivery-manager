@@ -68,8 +68,7 @@ import {
   unsafeAuthenticatedRequestHeaders,
   unsafeRequestHeaders,
 } from "./m0-env";
-
-const TRUE_VALUES = new Set(["1", "true", "yes", "on"]);
+import { readBooleanEnv } from "./env";
 
 type ApiSchema<T> = z.ZodType<T>;
 
@@ -683,7 +682,7 @@ export async function expectData<T>(
 }
 
 async function resolveM3EnvironmentSkipReason(): Promise<string | undefined> {
-  if (!readBoolean(process.env.E2E_M3_ENABLED)) {
+  if (!readBooleanEnv(process.env.E2E_M3_ENABLED)) {
     return "M3 E2E 默认跳过；设置 E2E_M3_ENABLED=1 后才会执行自动化主链路。";
   }
 
@@ -704,10 +703,6 @@ async function resolveM3EnvironmentSkipReason(): Promise<string | undefined> {
   }
 
   return undefined;
-}
-
-function readBoolean(value: string | undefined): boolean {
-  return TRUE_VALUES.has(value?.toLowerCase() ?? "");
 }
 
 function unsafeRequestHeadersForIp(ip: string): Record<string, string> {

@@ -202,10 +202,6 @@ export const UpdateBugRequestSchema = UpdateWorkItemRequestSchema.extend({
   stepsToReproduce: z.string().max(8000).nullable().optional(),
   expectedResult: z.string().max(8000).nullable().optional(),
   actualResult: z.string().max(8000).nullable().optional(),
-  fixNote: z.string().max(8000).nullable().optional(),
-  regressionResult: z.string().max(8000).nullable().optional(),
-  regressionBy: UlidSchema.nullable().optional(),
-  regressionAt: IsoDateTimeSchema.nullable().optional(),
   relatedTaskId: UlidSchema.nullable().optional(),
 });
 

@@ -27,6 +27,7 @@ import { useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { getApiErrorMessageKey } from "../../lib/api-error-messages";
+import { getTimelineEventLabel } from "../../lib/timeline-display";
 import { useVersions } from "../../lib/v2/lookups";
 import { getSpaceOverviewView } from "../../lib/view-service";
 import { Link, usePathname, useRouter } from "../../i18n/routing";
@@ -83,6 +84,7 @@ const versionStatusToCategory: Record<string, StatusCategory> = {
 export function SpaceOverview() {
   const t = useTranslations("spaceOverview");
   const tNav = useTranslations("shell.nav");
+  const tTimelineEvent = useTranslations("common.timeline.event");
   const tRoot = useTranslations();
   const locale = useLocale();
   const router = useRouter();
@@ -623,7 +625,10 @@ export function SpaceOverview() {
                                     {event.actor.name}
                                   </span>
                                   <span className="text-muted-foreground px-1.5">
-                                    {event.title}
+                                    {getTimelineEventLabel(
+                                      event.eventType,
+                                      tTimelineEvent,
+                                    )}
                                   </span>
                                   {event.target.title && (
                                     <span className="font-medium text-foreground inline-block truncate max-w-full align-bottom">

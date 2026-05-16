@@ -37,6 +37,7 @@ import { canManageSpace } from "../../lib/permission-gates";
 import { usePathname, useRouter } from "../../i18n/routing";
 import { getSpace } from "../../lib/space-service";
 import { cn } from "../../lib/utils";
+import { translateExceptionReason } from "../../lib/workflow-display";
 import {
   createWorkItemViewModelMapper,
   type WorkItemViewModel,
@@ -174,7 +175,7 @@ export function ExceptionsPage() {
   const organizationId = session?.defaultOrganizationId;
   const spaceId = session?.defaultSpaceId;
   const exceptionsContextKey = `${organizationId ?? ""}:${spaceId ?? ""}`;
-  const canEditThreshold = canManageSpace(currentSpace?.role);
+  const canEditThreshold = canManageSpace(currentSpace?.role, currentSpace?.status);
   const { members, getMember } = useSpaceMembers(spaceId, organizationId);
   const {
     versions,
@@ -751,7 +752,9 @@ export function ExceptionsPage() {
                   const matchedSignal = item.exceptions.find(
                     (signal) => signal.type === tab.key,
                   );
-                  const exceptionDetail = matchedSignal?.reason;
+                  const exceptionDetail = matchedSignal?.reason
+                    ? translateExceptionReason(tRoot, matchedSignal.reason)
+                    : undefined;
                   const exceptionMeta = buildExceptionMeta(
                     matchedSignal,
                     locale,
@@ -1131,7 +1134,7 @@ function buildExceptionMeta(
   }
 
   if (signal.blockedReason && signal.blockedReason !== signal.reason) {
-    meta.push(signal.blockedReason);
+    meta.push(translateExceptionReason(tRoot, signal.blockedReason));
   }
 
   if (signal.evidenceSource) {

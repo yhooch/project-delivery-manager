@@ -13,6 +13,7 @@ import {
 import { ulid } from "ulid";
 
 import { ApiException } from "../../http/api-exception";
+import { auditAccessDenied } from "../audit/audit-access-denied";
 import { AuditService } from "../audit/audit.service";
 import type { RequestMetadata } from "../auth/auth-session.types";
 import {
@@ -103,7 +104,12 @@ export class IntakeService {
     input: CreateIntakeItemRequest,
     metadata: RequestMetadata = {},
   ): Promise<IntakeItem> {
-    const access = await this.requireIntakeWriter(actorUserId, spaceId);
+    const access = await this.requireIntakeWriter(actorUserId, spaceId, {
+      metadata,
+      operation: "createIntakeItem",
+      targetId: spaceId,
+      targetType: "SPACE",
+    });
 
     const trace = await this.validateReferences(
       access.space.organizationId,
@@ -150,7 +156,10 @@ export class IntakeService {
   ): Promise<IntakeItem> {
     const item = await this.requireExistingIntakeItem(intakeItemId);
 
-    await this.requireManageableIntakeItem(actorUserId, item);
+    await this.requireManageableIntakeItem(actorUserId, item, {
+      metadata,
+      operation: "updateIntakeItem",
+    });
     const shouldValidateTraceFields =
       input.versionId !== undefined || input.requirementId !== undefined;
     const trace = await this.validateReferences(
@@ -167,25 +176,26 @@ export class IntakeService {
     );
     const versionId = shouldValidateTraceFields ? trace.versionId : undefined;
 
-    if (hasTraceVersionChange(item.versionId, versionId)) {
-      const impact = await this.intakeItems.countVersionCascadeImpact({
+    const versionCascadeImpact = hasTraceVersionChange(item.versionId, versionId)
+      ? await this.intakeItems.countVersionCascadeImpact({
         intakeItemId,
         nextVersionId: versionId ?? null,
-      });
+      })
+      : undefined;
 
       if (
-        hasTraceVersionCascadeImpact(impact) &&
+        versionCascadeImpact &&
+        hasTraceVersionCascadeImpact(versionCascadeImpact) &&
         input.cascadeVersionChange !== true
       ) {
         throwTraceVersionChangeRequiresCascade({
           fromVersionId: item.versionId,
-          impact,
+          impact: versionCascadeImpact,
           targetId: intakeItemId,
           targetType: "INTAKE_ITEM",
           toVersionId: versionId ?? null,
         });
       }
-    }
 
     const updated = await this.intakeItems.update({
       ...input,
@@ -211,7 +221,12 @@ export class IntakeService {
       actorId: actorUserId,
       after: updated,
       before: item,
-      metadata: { operation: "UPDATE_FIELDS" },
+      metadata: {
+        operation: "UPDATE_FIELDS",
+        ...(input.cascadeVersionChange === true && versionCascadeImpact
+          ? { versionCascade: toCascadeAuditMetadata(versionCascadeImpact) }
+          : {}),
+      },
       ...metadata,
       organizationId: item.organizationId,
       spaceId: item.spaceId,
@@ -277,7 +292,10 @@ export class IntakeService {
 
     const item = await this.requireExistingIntakeItem(intakeItemId);
 
-    await this.requireManageableIntakeItem(actorUserId, item);
+    await this.requireManageableIntakeItem(actorUserId, item, {
+      metadata,
+      operation: "convertIntakeItem",
+    });
     this.assertCanConvert(item.status);
 
     const tasks: ConvertIntakeItemTaskInput[] = [];
@@ -353,7 +371,10 @@ export class IntakeService {
   ): Promise<IntakeItem> {
     const item = await this.requireExistingIntakeItem(intakeItemId);
 
-    await this.requireManageableIntakeItem(actorUserId, item);
+    await this.requireManageableIntakeItem(actorUserId, item, {
+      metadata,
+      operation: `transitionIntakeItem:${status}`,
+    });
     this.assertCanTransition(item.status, status);
 
     if (item.status === status) {
@@ -576,10 +597,27 @@ export class IntakeService {
   private async requireManageableIntakeItem(
     actorUserId: string,
     item: IntakeItem,
+    auditContext?: {
+      metadata: RequestMetadata;
+      operation: string;
+    },
   ) {
     const access = await this.requireVisibleIntakeItem(actorUserId, item);
 
     if (!canManageDeliveryObject(access.role)) {
+      if (auditContext) {
+        await auditAccessDenied(this.audit, {
+          ...auditContext.metadata,
+          actorId: actorUserId,
+          metadata: { role: access.role },
+          operation: auditContext.operation,
+          organizationId: item.organizationId,
+          reason: "ROLE_NOT_ALLOWED",
+          spaceId: item.spaceId,
+          targetId: item.id,
+          targetType: "INTAKE_ITEM",
+        });
+      }
       throwSpaceAccessDenied();
     }
 
@@ -596,10 +634,32 @@ export class IntakeService {
     return access;
   }
 
-  private async requireIntakeWriter(userId: string, spaceId: string) {
+  private async requireIntakeWriter(
+    userId: string,
+    spaceId: string,
+    auditContext?: {
+      metadata: RequestMetadata;
+      operation: string;
+      targetId: string;
+      targetType: string;
+    },
+  ) {
     const access = await this.requireSpaceAccess(userId, spaceId);
 
     if (access.role === "VIEWER") {
+      if (auditContext) {
+        await auditAccessDenied(this.audit, {
+          ...auditContext.metadata,
+          actorId: userId,
+          metadata: { role: access.role },
+          operation: auditContext.operation,
+          organizationId: access.space.organizationId,
+          reason: "ROLE_NOT_ALLOWED",
+          spaceId,
+          targetId: auditContext.targetId,
+          targetType: auditContext.targetType,
+        });
+      }
       throwSpaceAccessDenied();
     }
 
@@ -717,6 +777,25 @@ function selectOptional<T>(value: T | null | undefined, fallback?: T) {
   }
 
   return value === null ? undefined : value;
+}
+
+function toCascadeAuditMetadata(
+  impact: NonNullable<
+    Awaited<ReturnType<IntakeRepository["countVersionCascadeImpact"]>>
+  >,
+) {
+  return {
+    counts: {
+      bugCount: impact.bugCount,
+      relatedBugCount: impact.relatedBugCount ?? 0,
+      workItemCount: impact.workItemCount,
+    },
+    affectedIds: {
+      bugIds: impact.bugIds ?? [],
+      relatedBugIds: impact.relatedBugIds ?? [],
+      workItemIds: impact.workItemIds ?? [],
+    },
+  };
 }
 
 function collectRelatedUserIds(userIds: Array<string | undefined>) {

@@ -18,6 +18,7 @@ import {
 import { ulid } from "ulid";
 
 import { ApiException } from "../../http/api-exception";
+import { auditAccessDenied } from "../audit/audit-access-denied";
 import { AuditService } from "../audit/audit.service";
 import type { RequestMetadata } from "../auth/auth-session.types";
 import {
@@ -64,11 +65,13 @@ export class AttachmentService {
   async presign(
     actorUserId: string,
     input: PresignAttachmentRequest,
+    metadata: RequestMetadata = {},
   ): Promise<PresignAttachmentResponse> {
     this.assertFileConstraints(input);
     const target = await this.requireWritableAttachmentTarget(
       actorUserId,
       input,
+      metadata,
     );
     await this.assertAttachmentCountLimit(target);
 
@@ -108,6 +111,7 @@ export class AttachmentService {
     const target = await this.requireWritableAttachmentTarget(
       actorUserId,
       input,
+      metadata,
     );
     await this.assertAttachmentCountLimit(target);
     await this.assertUploadedObjectMatches(input);
@@ -215,6 +219,7 @@ export class AttachmentService {
       targetId: string;
       targetType: "REQUIREMENT";
     },
+    metadata: RequestMetadata = {},
   ): Promise<AttachmentTargetContext> {
     const target = await this.targets.resolve(
       actorUserId,
@@ -222,6 +227,10 @@ export class AttachmentService {
       input.targetId,
       {
         access: "write",
+        audit: {
+          ...metadata,
+          operation: "writeAttachment",
+        },
         hideInaccessible: true,
         notFoundCode: "ATTACHMENT_TARGET_NOT_FOUND",
       },
@@ -232,6 +241,17 @@ export class AttachmentService {
       throwAttachmentTargetNotFound();
     }
     if (!REQUIREMENT_WRITER_ROLES.has(target.role)) {
+      await auditAccessDenied(this.audit, {
+        ...metadata,
+        actorId: actorUserId,
+        metadata: { role: target.role },
+        operation: "writeAttachment",
+        organizationId: target.organizationId,
+        reason: "ROLE_NOT_ALLOWED",
+        spaceId: target.spaceId,
+        targetId: target.targetId,
+        targetType: "REQUIREMENT",
+      });
       throwSpaceAccessDenied();
     }
     if (requirement.status !== "DRAFT") {
@@ -256,18 +276,27 @@ export class AttachmentService {
       targetId: string;
       targetType: AttachmentTargetType;
     },
+    metadata: RequestMetadata = {},
   ): Promise<AttachmentTargetContext> {
     if (input.targetType === "REQUIREMENT") {
-      return this.requireWritableDraftRequirementTarget(actorUserId, {
-        targetId: input.targetId,
-        targetType: "REQUIREMENT",
-      });
+      return this.requireWritableDraftRequirementTarget(
+        actorUserId,
+        {
+          targetId: input.targetId,
+          targetType: "REQUIREMENT",
+        },
+        metadata,
+      );
     }
 
-    return this.requireWritableResolvedAttachmentTarget(actorUserId, {
-      targetId: input.targetId,
-      targetType: "WORK_ITEM",
-    });
+    return this.requireWritableResolvedAttachmentTarget(
+      actorUserId,
+      {
+        targetId: input.targetId,
+        targetType: "WORK_ITEM",
+      },
+      metadata,
+    );
   }
 
   private async requireReadableAttachmentTarget(
@@ -301,6 +330,7 @@ export class AttachmentService {
       targetId: string;
       targetType: AttachmentTargetType;
     },
+    metadata: RequestMetadata = {},
   ): Promise<AttachmentTargetContext> {
     const target = await this.targets.resolve(
       actorUserId,
@@ -308,6 +338,10 @@ export class AttachmentService {
       input.targetId,
       {
         access: "write",
+        audit: {
+          ...metadata,
+          operation: "writeAttachment",
+        },
         hideInaccessible: true,
         notFoundCode: "ATTACHMENT_TARGET_NOT_FOUND",
       },

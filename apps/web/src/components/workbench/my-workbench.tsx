@@ -24,7 +24,9 @@ import {
   useFocusReturn,
   useListKeyboardNav,
 } from "../../lib/hooks/use-list-keyboard-nav";
+import { getTimelineEventLabel } from "../../lib/timeline-display";
 import { cn } from "../../lib/utils";
+import { translateWorkflowActionName } from "../../lib/workflow-display";
 import {
   getMembers,
   getVersions,
@@ -73,6 +75,7 @@ type WorkbenchFilterState = {
 export function MyWorkbench() {
   const t = useTranslations("workbench");
   const tStatusCategory = useTranslations("workItems.statusCategory");
+  const tTimelineEvent = useTranslations("common.timeline.event");
   const tRoot = useTranslations();
   const locale = useLocale();
   const {
@@ -498,11 +501,11 @@ export function MyWorkbench() {
     return (view?.sections.actionTodos.items.items ?? [])
       .map((todo) => ({
         ...toWorkItem(todo.workItem),
-        contextLabel: todo.availableAction.name,
+        contextLabel: translateWorkflowActionName(tRoot, todo.availableAction),
         listKey: todo.id,
       }))
       .map(withWorkbenchListKey("action"));
-  }, [view, locale, lookupHelpers, tStatusCategory, t]);
+  }, [view, locale, lookupHelpers, tStatusCategory, t, tRoot]);
   const pendingConfirmItems = useMemo(
     () =>
       (view?.sections.pendingConfirm.items.items ?? [])
@@ -659,7 +662,7 @@ export function MyWorkbench() {
           <div className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground mb-2">
             {selectedSpace?.name ??
               currentOrganization?.name ??
-              tRoot("dashboard.filters.allSpaces")}
+              t("filters.allSpaces")}
           </div>
           <h1 className="text-3xl font-light tracking-tight text-foreground">
             {greetingName} <span className="text-muted-foreground mx-1">·</span>{" "}
@@ -895,7 +898,7 @@ export function MyWorkbench() {
                         {event.actor.name}
                       </span>
                       <span className="text-muted-foreground px-1.5">
-                        {event.title}
+                        {getTimelineEventLabel(event.eventType, tTimelineEvent)}
                       </span>
                       {event.target.title && (
                         <span className="font-medium text-foreground inline-block truncate max-w-full align-bottom">
@@ -954,9 +957,9 @@ function WorkbenchSpaceFilter({
       menuAlign="end"
       className="h-8 min-w-[9rem] max-w-[12rem] text-xs"
       contentClassName="w-52"
-      aria-label={tRoot("dashboard.filters.space")}
+      aria-label={tRoot("workbench.filters.space")}
     >
-      <option value="">{tRoot("dashboard.filters.allSpaces")}</option>
+      <option value="">{tRoot("workbench.filters.allSpaces")}</option>
       {spaces.map((space) => (
         <option key={space.id} value={space.id}>
           {space.name}

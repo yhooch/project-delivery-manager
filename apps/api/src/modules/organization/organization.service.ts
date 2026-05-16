@@ -12,6 +12,7 @@ import {
 import { ulid } from "ulid";
 
 import { ApiException } from "../../http/api-exception";
+import { auditAccessDenied } from "../audit/audit-access-denied";
 import { AuditService } from "../audit/audit.service";
 import type { RequestMetadata } from "../auth/auth-session.types";
 import { RateLimiterService } from "../auth/rate-limiter.service";
@@ -146,7 +147,12 @@ export class OrganizationService {
     input: AddOrganizationMemberRequest,
     metadata: RequestMetadata = {},
   ): Promise<OrganizationMemberWithUser> {
-    await this.requireOrganizationManager(actorUserId, organizationId);
+    await this.requireOrganizationManager(actorUserId, organizationId, {
+      metadata,
+      operation: "addOrganizationMember",
+      targetId: organizationId,
+      targetType: "ORGANIZATION",
+    });
 
     const user = await this.resolveActiveUser(input);
     const existingMember = await this.organizations.findMemberByUserId(
@@ -189,7 +195,12 @@ export class OrganizationService {
     input: UpdateOrganizationMemberRequest,
     metadata: RequestMetadata = {},
   ): Promise<OrganizationMemberWithUser> {
-    await this.requireOrganizationManager(actorUserId, organizationId);
+    await this.requireOrganizationManager(actorUserId, organizationId, {
+      metadata,
+      operation: "updateOrganizationMember",
+      targetId: memberId,
+      targetType: "ORGANIZATION_MEMBER",
+    });
 
     const member = await this.organizations.findMemberById(
       organizationId,
@@ -249,6 +260,12 @@ export class OrganizationService {
     const access = await this.requireOrganizationManager(
       actorUserId,
       organizationId,
+      {
+        metadata,
+        operation: "updateOrganization",
+        targetId: organizationId,
+        targetType: "ORGANIZATION",
+      },
     );
 
     if (input.code) {
@@ -311,10 +328,30 @@ export class OrganizationService {
   private async requireOrganizationManager(
     userId: string,
     organizationId: string,
+    auditContext?: {
+      metadata: RequestMetadata;
+      operation: string;
+      targetId: string;
+      targetType: string;
+    },
   ) {
     const access = await this.requireOrganizationAccess(userId, organizationId);
 
     if (access.role !== "OWNER" && access.role !== "ADMIN") {
+      if (auditContext) {
+        await auditAccessDenied(this.audit, {
+          ...auditContext.metadata,
+          actorId: userId,
+          metadata: {
+            role: access.role,
+          },
+          operation: auditContext.operation,
+          organizationId,
+          reason: "ROLE_NOT_ALLOWED",
+          targetId: auditContext.targetId,
+          targetType: auditContext.targetType,
+        });
+      }
       throwOrganizationAccessDenied();
     }
 

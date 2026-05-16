@@ -5,6 +5,9 @@
 # Full E2E orchestrator for machines without Docker access. It uses a local
 # PostgreSQL cluster under /tmp by default, starts local MinIO from PATH, then
 # launches API + Web before delegating to the default Playwright gate.
+# Set E2E_WEB_SERVER_MODE=start to serve an existing production build with
+# `next start` instead of `next dev`, which is useful when a dev server is
+# already running for the same workspace.
 
 set -euo pipefail
 
@@ -30,6 +33,7 @@ WEB_PORT="${WEB_PORT:-3000}"
 E2E_WAIT_API_SECS="${E2E_WAIT_API_SECS:-90}"
 E2E_WAIT_WEB_SECS="${E2E_WAIT_WEB_SECS:-120}"
 E2E_KEEP_UP="${E2E_KEEP_UP:-0}"
+E2E_WEB_SERVER_MODE="${E2E_WEB_SERVER_MODE:-dev}"
 
 DATABASE_URL_WAS_SET=0
 if [ -n "${DATABASE_URL:-}" ]; then
@@ -255,6 +259,26 @@ kill_pid_file() {
   rm -f -- "${pid_file}"
 }
 
+ensure_pid_file_alive() {
+  local label="$1"
+  local pid_file="$2"
+  local log_file="$3"
+
+  local pid
+  pid="$(cat -- "${pid_file}" 2>/dev/null || true)"
+  if [ -n "${pid}" ] && [[ "${pid}" =~ ^[0-9]+$ ]] && kill -0 "${pid}" 2>/dev/null; then
+    return 0
+  fi
+
+  log "ERROR: ${label} process exited before its health check could be trusted."
+  if [ -f "${log_file}" ]; then
+    log "---- ${label} log tail ----"
+    tail -n 80 -- "${log_file}" >&2 || true
+    log "---- end ${label} log tail ----"
+  fi
+  return 1
+}
+
 stop_local_postgres() {
   if [ "${POSTGRES_STARTED}" != "1" ]; then
     return 0
@@ -394,7 +418,13 @@ ensure_minio() {
     "${MINIO_ACCESS_KEY}" \
     "${MINIO_SECRET_KEY}" >/dev/null
   MC_CONFIG_DIR="${mc_config_dir}" mc mb --ignore-existing "e2e-local/${MINIO_BUCKET}" >/dev/null
-  MC_CONFIG_DIR="${mc_config_dir}" mc cors set "e2e-local/${MINIO_BUCKET}" "${CORS_FILE}" >/dev/null
+  if ! MC_CONFIG_DIR="${mc_config_dir}" mc cors set "e2e-local/${MINIO_BUCKET}" "${CORS_FILE}" >/dev/null; then
+    if is_true "${E2E_STRICT_MINIO_CORS:-}"; then
+      log "ERROR: failed to configure MinIO CORS and E2E_STRICT_MINIO_CORS is enabled."
+      exit 1
+    fi
+    log "WARNING: failed to configure MinIO CORS; continuing because the current E2E suite uploads through API/request clients."
+  fi
 }
 
 run_migrations() {
@@ -429,6 +459,7 @@ start_api() {
     corepack pnpm --dir "${REPO_ROOT}" --filter @project-delivery/api dev
 
   wait_for_http "API health" "${E2E_API_URL%/}/health" "${E2E_WAIT_API_SECS}" "${api_log}"
+  ensure_pid_file_alive "API server" "${RUN_DIR}/api.pid" "${api_log}"
 }
 
 start_web() {
@@ -436,14 +467,30 @@ start_web() {
   local web_log="${RUN_DIR}/web.log"
   : >"${web_log}"
 
-  start_background "Web server" "${RUN_DIR}/web.pid" "${web_log}" -- \
+  if [ "${E2E_WEB_SERVER_MODE}" = "start" ]; then
+    log "Building Web production assets for API proxy ${API_PROXY_TARGET}."
     env \
-      PORT="${WEB_PORT}" \
-      NODE_ENV=development \
+      NODE_ENV=production \
       API_PROXY_TARGET="${API_PROXY_TARGET}" \
-    corepack pnpm --dir "${REPO_ROOT}" --filter @project-delivery/web dev --port "${WEB_PORT}"
+      corepack pnpm --dir "${REPO_ROOT}" --filter @project-delivery/web build
+
+    start_background "Web server" "${RUN_DIR}/web.pid" "${web_log}" -- \
+      env \
+        PORT="${WEB_PORT}" \
+        NODE_ENV=production \
+        API_PROXY_TARGET="${API_PROXY_TARGET}" \
+      corepack pnpm --dir "${REPO_ROOT}" --filter @project-delivery/web start --port "${WEB_PORT}"
+  else
+    start_background "Web server" "${RUN_DIR}/web.pid" "${web_log}" -- \
+      env \
+        PORT="${WEB_PORT}" \
+        NODE_ENV=development \
+        API_PROXY_TARGET="${API_PROXY_TARGET}" \
+      corepack pnpm --dir "${REPO_ROOT}" --filter @project-delivery/web dev --port "${WEB_PORT}"
+  fi
 
   wait_for_http "Web app" "${E2E_WEB_URL%/}/" "${E2E_WAIT_WEB_SECS}" "${web_log}"
+  ensure_pid_file_alive "Web server" "${RUN_DIR}/web.pid" "${web_log}"
 }
 
 cd -- "${REPO_ROOT}"

@@ -10,7 +10,6 @@ import {
 const versionId = "01ARZ3NDEKTSV4RRFFQ69G5FAX";
 const requirementId = "01ARZ3NDEKTSV4RRFFQ69G5FAY";
 const relatedTaskId = "01ARZ3NDEKTSV4RRFFQ69G5FB0";
-const regressionBy = "01ARZ3NDEKTSV4RRFFQ69G5FB5";
 
 describe("bug forms", () => {
   it("normalizes create bug values through the shared request schema", () => {
@@ -64,17 +63,13 @@ describe("bug forms", () => {
     });
   });
 
-  it("normalizes update bug values and optional regression fields", () => {
+  it("normalizes update bug values through the shared request schema", () => {
     expect(
       toUpdateBugRequest({
         actualResult: "",
         assigneeId: "",
         dueDate: "",
-        fixNote: "  Guard null payment token  ",
         priority: "HIGH",
-        regressionAt: "2026-05-13T12:00:00.000Z",
-        regressionBy,
-        regressionResult: "  Passed  ",
         relatedTaskId: "",
         severity: "MINOR",
         title: "  Updated bug  ",
@@ -84,11 +79,7 @@ describe("bug forms", () => {
       actualResult: null,
       assigneeId: null,
       dueDate: null,
-      fixNote: "Guard null payment token",
       priority: "HIGH",
-      regressionAt: "2026-05-13T12:00:00.000Z",
-      regressionBy,
-      regressionResult: "Passed",
       relatedTaskId: null,
       severity: "MINOR",
       title: "Updated bug",

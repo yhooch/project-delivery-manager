@@ -1,4 +1,4 @@
-import { Controller, Get, Inject, Query, Req, UseGuards } from "@nestjs/common";
+import { Controller, Get, Inject, Req, UseGuards } from "@nestjs/common";
 import {
   RecentOrganizationCookieName,
   RecentSpaceCookieName,
@@ -24,10 +24,6 @@ export class AppSessionController {
   @UseGuards(RequireSessionGuard)
   async getSession(
     @Req() request: RequestWithContext,
-    @Query("recentOrganizationId")
-    recentOrganizationId: string | string[] | undefined,
-    @Query("recentSpaceId")
-    recentSpaceId: string | string[] | undefined,
   ): Promise<GetAuthSessionResponse> {
     const user = this.currentUser.requireUser(request);
     const recentOrganizationCookie =
@@ -36,18 +32,14 @@ export class AppSessionController {
 
     return this.appSessions.buildForUser(
       user,
-      parseRecentUlid(recentOrganizationCookie) ??
-        parseRecentUlid(recentOrganizationId),
-      parseRecentUlid(recentSpaceCookie) ?? parseRecentUlid(recentSpaceId),
+      parseRecentUlid(recentOrganizationCookie),
+      parseRecentUlid(recentSpaceCookie),
     );
   }
 }
 
-function parseRecentUlid(
-  value: string | string[] | undefined,
-): string | undefined {
-  const candidate = Array.isArray(value) ? value[0] : value;
-  const result = UlidSchema.safeParse(candidate);
+function parseRecentUlid(value: unknown): string | undefined {
+  const result = UlidSchema.safeParse(value);
 
   return result.success ? result.data : undefined;
 }

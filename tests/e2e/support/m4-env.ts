@@ -1,8 +1,7 @@
 import { test } from "@playwright/test";
 
+import { readBooleanEnv } from "./env";
 import { e2eEnv, probeApi, probeWeb } from "./m0-env";
-
-const TRUE_VALUES = new Set(["1", "true", "yes", "on"]);
 
 export function buildM4RunId(): string {
   return `m4_${Date.now().toString(36)}${Math.random()
@@ -17,7 +16,7 @@ export async function skipWhenM4EnvironmentUnavailable(): Promise<void> {
 }
 
 async function resolveM4EnvironmentSkipReason(): Promise<string | undefined> {
-  if (!readBoolean(process.env.E2E_M4_ENABLED)) {
+  if (!readBooleanEnv(process.env.E2E_M4_ENABLED)) {
     return "M4 E2E 默认跳过；设置 E2E_M4_ENABLED=1 后才会执行 MVP 自动化主链路。";
   }
 
@@ -38,8 +37,4 @@ async function resolveM4EnvironmentSkipReason(): Promise<string | undefined> {
   }
 
   return undefined;
-}
-
-function readBoolean(value: string | undefined): boolean {
-  return TRUE_VALUES.has(value?.toLowerCase() ?? "");
 }

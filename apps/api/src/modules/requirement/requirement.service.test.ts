@@ -172,6 +172,39 @@ describe("RequirementService audit logging", () => {
     });
   });
 
+  it("rejects base64 image data in text and markdown caches", async () => {
+    const subject = createSubject({
+      current: makeRequirement({ status: "CONFIRMED" }),
+    });
+
+    await expect(
+      subject.service.update(ACTOR_ID, REQUIREMENT_ID, {
+        contentJson: {
+          content: [{ text: "Scope", type: "text" }],
+          type: "doc",
+        },
+        contentMarkdownCache: "![inline](data:image/png;base64,AAAA)",
+        title: "Unsafe cache",
+      }),
+    ).rejects.toMatchObject({
+      code: "VALIDATION_ERROR",
+    });
+
+    await expect(
+      subject.service.update(ACTOR_ID, REQUIREMENT_ID, {
+        contentJson: {
+          content: [{ text: "Scope", type: "text" }],
+          type: "doc",
+        },
+        contentText: "prefix data:image/png;base64,AAAA",
+        title: "Unsafe text",
+      }),
+    ).rejects.toMatchObject({
+      code: "VALIDATION_ERROR",
+    });
+    expect(subject.requirements.savedInput).toBeUndefined();
+  });
+
   it("saves explicit requirement version clearing when there is no downstream impact", async () => {
     const subject = createSubject({
       current: makeRequirement({

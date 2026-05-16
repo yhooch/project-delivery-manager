@@ -142,7 +142,7 @@ describe("CreateTaskDialog", () => {
     );
   });
 
-  it("shows an option load error, disables submit, and retries", async () => {
+  it("shows an option load error, keeps base submit enabled, and retries", async () => {
     listRequirementsMock.mockRejectedValueOnce(new Error("network"));
 
     render(
@@ -157,7 +157,8 @@ describe("CreateTaskDialog", () => {
     expect(
       await screen.findByTestId("create-task-options-error"),
     ).toHaveTextContent("common.states.optionsLoadFailed");
-    expect(screen.getByTestId("create-task-submit")).toBeDisabled();
+    expect(screen.getByTestId("create-task-requirement-select")).toBeDisabled();
+    expect(screen.getByTestId("create-task-submit")).not.toBeDisabled();
 
     fireEvent.click(screen.getByTestId("create-task-options-retry"));
 
@@ -167,6 +168,31 @@ describe("CreateTaskDialog", () => {
       expect(screen.getByTestId("create-task-submit")).not.toBeDisabled(),
     );
     expect(listRequirementsMock).toHaveBeenCalledTimes(2);
+  });
+
+  it("submits a base task when optional lookups fail", async () => {
+    listRequirementsMock.mockRejectedValueOnce(new Error("network"));
+
+    render(
+      <CreateTaskDialog
+        open
+        onOpenChange={() => {}}
+        organizationId={organizationId}
+        spaceId={spaceId}
+      />,
+    );
+
+    await screen.findByTestId("create-task-options-error");
+    fireEvent.change(screen.getByTestId("create-task-title-input"), {
+      target: { value: "Fallback task" },
+    });
+    fireEvent.click(screen.getByTestId("create-task-submit"));
+
+    await waitFor(() => expect(createWorkItemMock).toHaveBeenCalledTimes(1));
+    expect(createWorkItemMock).toHaveBeenCalledWith(
+      { organizationId, spaceId },
+      expect.objectContaining({ title: "Fallback task" }),
+    );
   });
 
   it("keeps selected requirement and intake options when the selected version differs", async () => {

@@ -87,7 +87,7 @@ export function CreateTaskDialog({
   const [members, setMembers] = useState<SpaceMemberWithUser[]>([]);
 
   const optionFieldsDisabled = submitting || optionsLoadState !== "ready";
-  const submitDisabled = submitting || optionsLoadState !== "ready";
+  const submitDisabled = submitting;
   const filteredRequirements = useMemo(
     () => filterTraceOptionsByVersion(requirements, versionId, requirementId),
     [requirementId, requirements, versionId],
@@ -128,7 +128,7 @@ export function CreateTaskDialog({
               page: 1,
               pageSize: 100,
             }),
-            listSpaceMembers(spaceId),
+            listSpaceMembers(spaceId, { status: "ACTIVE" }),
           ]);
         if (cancelled) {
           return;

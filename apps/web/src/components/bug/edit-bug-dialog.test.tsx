@@ -176,6 +176,9 @@ describe("EditBugDialog", () => {
         screen.getByTestId("edit-bug-related-task-select") as HTMLSelectElement,
       ),
     ).toContain("Task 1");
+    expect(listSpaceMembersMock).toHaveBeenCalledWith(spaceId, {
+      status: "ACTIVE",
+    });
 
     fireEvent.change(screen.getByTestId("edit-bug-title-input"), {
       target: { value: "Updated bug" },
@@ -191,18 +194,6 @@ describe("EditBugDialog", () => {
     });
     fireEvent.change(screen.getByTestId("edit-bug-actual-input"), {
       target: { value: "Actual" },
-    });
-    fireEvent.change(screen.getByTestId("edit-bug-fix-note-input"), {
-      target: { value: "  Fixed null payment token  " },
-    });
-    fireEvent.change(screen.getByTestId("edit-bug-regression-result-input"), {
-      target: { value: "  Passed on staging  " },
-    });
-    fireEvent.change(screen.getByTestId("edit-bug-regression-by-select"), {
-      target: { value: regressionById },
-    });
-    fireEvent.change(screen.getByTestId("edit-bug-regression-at-input"), {
-      target: { value: "2026-05-14T10:30" },
     });
     fireEvent.change(screen.getByTestId("edit-bug-severity-select"), {
       target: { value: "CRITICAL" },
@@ -225,11 +216,7 @@ describe("EditBugDialog", () => {
         actualResult: "Actual",
         description: "Updated description",
         expectedResult: "Expected",
-        fixNote: "Fixed null payment token",
         priority: "URGENT",
-        regressionAt: new Date("2026-05-14T10:30").toISOString(),
-        regressionBy: regressionById,
-        regressionResult: "Passed on staging",
         relatedTaskId,
         requirementId,
         severity: "CRITICAL",
@@ -237,6 +224,16 @@ describe("EditBugDialog", () => {
         title: "Updated bug",
         versionId: nextVersionId,
       }),
+    );
+    expect(updateBugMock.mock.calls[0]![1]).not.toHaveProperty("fixNote");
+    expect(updateBugMock.mock.calls[0]![1]).not.toHaveProperty(
+      "regressionAt",
+    );
+    expect(updateBugMock.mock.calls[0]![1]).not.toHaveProperty(
+      "regressionBy",
+    );
+    expect(updateBugMock.mock.calls[0]![1]).not.toHaveProperty(
+      "regressionResult",
     );
     expect(onUpdated).toHaveBeenCalledWith(
       expect.objectContaining({ title: "Updated bug" }),
@@ -278,18 +275,6 @@ describe("EditBugDialog", () => {
     fireEvent.change(screen.getByTestId("edit-bug-assignee-select"), {
       target: { value: "" },
     });
-    fireEvent.change(screen.getByTestId("edit-bug-fix-note-input"), {
-      target: { value: "" },
-    });
-    fireEvent.change(screen.getByTestId("edit-bug-regression-result-input"), {
-      target: { value: "" },
-    });
-    fireEvent.change(screen.getByTestId("edit-bug-regression-by-select"), {
-      target: { value: "" },
-    });
-    fireEvent.change(screen.getByTestId("edit-bug-regression-at-input"), {
-      target: { value: "" },
-    });
     fireEvent.change(screen.getByTestId("edit-bug-duedate-input"), {
       target: { value: "" },
     });
@@ -302,18 +287,24 @@ describe("EditBugDialog", () => {
         assigneeId: null,
         description: null,
         dueDate: null,
-        fixNote: null,
-        regressionAt: null,
-        regressionBy: null,
-        regressionResult: null,
         relatedTaskId: null,
         requirementId: null,
         versionId: null,
       }),
     );
+    expect(updateBugMock.mock.calls[0]![1]).not.toHaveProperty("fixNote");
+    expect(updateBugMock.mock.calls[0]![1]).not.toHaveProperty(
+      "regressionAt",
+    );
+    expect(updateBugMock.mock.calls[0]![1]).not.toHaveProperty(
+      "regressionBy",
+    );
+    expect(updateBugMock.mock.calls[0]![1]).not.toHaveProperty(
+      "regressionResult",
+    );
   });
 
-  it("shows an option load error, disables submit, and retries", async () => {
+  it("shows an option load error, keeps base submit enabled, and retries", async () => {
     listVersionsMock.mockRejectedValueOnce(new Error("network"));
 
     render(
@@ -329,7 +320,8 @@ describe("EditBugDialog", () => {
     expect(
       await screen.findByTestId("edit-bug-options-error"),
     ).toHaveTextContent("common.states.optionsLoadFailed");
-    expect(screen.getByTestId("edit-bug-submit")).toBeDisabled();
+    expect(screen.getByTestId("edit-bug-version-select")).toBeDisabled();
+    expect(screen.getByTestId("edit-bug-submit")).not.toBeDisabled();
 
     fireEvent.click(screen.getByTestId("edit-bug-options-retry"));
 
@@ -338,6 +330,32 @@ describe("EditBugDialog", () => {
       expect(screen.getByTestId("edit-bug-submit")).not.toBeDisabled(),
     );
     expect(listVersionsMock).toHaveBeenCalledTimes(2);
+  });
+
+  it("submits base bug edits when optional lookups fail", async () => {
+    listVersionsMock.mockRejectedValueOnce(new Error("network"));
+
+    render(
+      <EditBugDialog
+        bug={makeBug()}
+        open
+        onOpenChange={vi.fn()}
+        organizationId={organizationId}
+        spaceId={spaceId}
+      />,
+    );
+
+    await screen.findByTestId("edit-bug-options-error");
+    fireEvent.change(screen.getByTestId("edit-bug-title-input"), {
+      target: { value: "Fallback edit" },
+    });
+    fireEvent.click(screen.getByTestId("edit-bug-submit"));
+
+    await waitFor(() => expect(updateBugMock).toHaveBeenCalledTimes(1));
+    expect(updateBugMock).toHaveBeenCalledWith(
+      { bugId, organizationId, spaceId },
+      expect.objectContaining({ title: "Fallback edit" }),
+    );
   });
 
   it("preserves incompatible trace fields when the version changes", async () => {

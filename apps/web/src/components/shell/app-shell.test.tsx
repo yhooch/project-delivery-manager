@@ -7,13 +7,9 @@ vi.mock("next-intl", () => ({
 }));
 
 vi.mock("../../i18n/routing", () => ({
-  Link: ({
-    children,
-    href,
-  }: {
-    children: React.ReactNode;
-    href: string;
-  }) => <a href={href}>{children}</a>,
+  Link: ({ children, href }: { children: React.ReactNode; href: string }) => (
+    <a href={href}>{children}</a>
+  ),
 }));
 
 const { sessionMock, useCommandPaletteShortcutMock } = vi.hoisted(() => ({
@@ -22,20 +18,30 @@ const { sessionMock, useCommandPaletteShortcutMock } = vi.hoisted(() => ({
       currentOrganization: undefined as
         | { id: string; name: string; role: string; status: string }
         | undefined,
-      session: null as
-        | {
-            organizations: Array<{
-              id: string;
-              name: string;
-              role: string;
-              status: string;
-            }>;
-          }
-        | null,
+      currentSpace: undefined as
+        | { id: string; name: string; organizationId: string; status?: string }
+        | undefined,
+      initializeSession: vi.fn(),
+      session: null as {
+        capabilities?: { canCreateSpace?: boolean };
+        organizations: Array<{
+          id: string;
+          name: string;
+          role: string;
+          status: string;
+        }>;
+      } | null,
+      sessionErrorKey: null as string | null,
+      spacesForCurrentOrganization: [] as Array<{
+        id: string;
+        name: string;
+        organizationId: string;
+      }>,
       status: "unauthenticated" as
         | "loading"
         | "authenticated"
-        | "unauthenticated",
+        | "unauthenticated"
+        | "error",
     },
   },
   useCommandPaletteShortcutMock: vi.fn(),
@@ -47,6 +53,9 @@ vi.mock("../providers/session-provider", () => ({
 vi.mock("./command-palette", () => ({
   CommandPalette: () => <div data-testid="command-palette" />,
   useCommandPaletteShortcut: useCommandPaletteShortcutMock,
+}));
+vi.mock("./create-space-dialog", () => ({
+  CreateSpaceDialog: () => <div data-testid="create-space-dialog" />,
 }));
 vi.mock("./onboarding-empty", () => ({
   OnboardingEmpty: () => <div data-testid="onboarding-empty" />,
@@ -75,7 +84,11 @@ import { AppShell } from "./app-shell";
 beforeEach(() => {
   sessionMock.current = {
     currentOrganization: undefined,
+    currentSpace: undefined,
+    initializeSession: vi.fn(),
     session: null,
+    sessionErrorKey: null,
+    spacesForCurrentOrganization: [],
     status: "unauthenticated",
   };
   useCommandPaletteShortcutMock.mockReset();
@@ -89,21 +102,46 @@ describe("AppShell", () => {
   it("renders an actionable sign-in state instead of a blank page when unauthenticated", () => {
     render(<AppShell>Workspace</AppShell>);
 
-    expect(
-      screen.getByText("shell.unauthenticated.title"),
-    ).toBeInTheDocument();
+    expect(screen.getByText("shell.unauthenticated.title")).toBeInTheDocument();
     expect(
       screen.getByRole("link", { name: "shell.unauthenticated.action" }),
     ).toHaveAttribute("href", "/login");
     expect(screen.queryByText("Workspace")).not.toBeInTheDocument();
   });
 
+  it("renders a recoverable session error state with a retry action", () => {
+    const initializeSession = vi.fn();
+    sessionMock.current = {
+      currentOrganization: undefined,
+      currentSpace: undefined,
+      initializeSession,
+      session: null,
+      sessionErrorKey: "errors.api.INTERNAL_SERVER_ERROR",
+      spacesForCurrentOrganization: [],
+      status: "error",
+    };
+
+    render(<AppShell>Workspace</AppShell>);
+
+    expect(screen.getByText("shell.sessionError.title")).toBeInTheDocument();
+    expect(
+      screen.getByText("errors.api.INTERNAL_SERVER_ERROR"),
+    ).toBeInTheDocument();
+    screen.getByRole("button", { name: "shell.sessionError.retry" }).click();
+    expect(initializeSession).toHaveBeenCalledTimes(1);
+    expect(screen.queryByText("Workspace")).not.toBeInTheDocument();
+  });
+
   it("renders only onboarding and global shell actions when authenticated without an organization", () => {
     sessionMock.current = {
       currentOrganization: undefined,
+      currentSpace: undefined,
+      initializeSession: vi.fn(),
       session: {
         organizations: [],
       },
+      sessionErrorKey: null,
+      spacesForCurrentOrganization: [],
       status: "authenticated",
     };
 
@@ -134,6 +172,13 @@ describe("AppShell", () => {
         role: "OWNER",
         status: "ACTIVE",
       },
+      currentSpace: {
+        id: "SPC_01",
+        name: "Space A",
+        organizationId: "ORG_01",
+        status: "ACTIVE",
+      },
+      initializeSession: vi.fn(),
       session: {
         organizations: [
           {
@@ -144,6 +189,10 @@ describe("AppShell", () => {
           },
         ],
       },
+      sessionErrorKey: null,
+      spacesForCurrentOrganization: [
+        { id: "SPC_01", name: "Space A", organizationId: "ORG_01" },
+      ],
       status: "authenticated",
     };
 
@@ -164,5 +213,39 @@ describe("AppShell", () => {
     expect(useCommandPaletteShortcutMock).toHaveBeenCalledWith({
       enabled: true,
     });
+  });
+
+  it("renders the organization-level no-spaces empty state without replacing no-organization onboarding", () => {
+    sessionMock.current = {
+      currentOrganization: {
+        id: "ORG_01",
+        name: "Org A",
+        role: "MEMBER",
+        status: "ACTIVE",
+      },
+      currentSpace: undefined,
+      initializeSession: vi.fn(),
+      session: {
+        capabilities: { canCreateSpace: true },
+        organizations: [
+          {
+            id: "ORG_01",
+            name: "Org A",
+            role: "MEMBER",
+            status: "ACTIVE",
+          },
+        ],
+      },
+      sessionErrorKey: null,
+      spacesForCurrentOrganization: [],
+      status: "authenticated",
+    };
+
+    render(<AppShell>Workspace</AppShell>);
+
+    expect(screen.getByTestId("app-shell-no-spaces-empty")).toBeInTheDocument();
+    expect(screen.getByTestId("app-shell-create-space-button")).toBeEnabled();
+    expect(screen.queryByTestId("onboarding-empty")).not.toBeInTheDocument();
+    expect(screen.queryByText("Workspace")).not.toBeInTheDocument();
   });
 });

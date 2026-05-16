@@ -70,7 +70,7 @@ export function SpaceSettingsPage() {
   const { currentOrganization, currentSpace, refreshSession, session, status } =
     useSession();
   const spaceId = session?.defaultSpaceId ?? currentSpace?.id;
-  const writeAllowed = canManageSpace(currentSpace?.role);
+  const writeAllowed = canManageSpace(currentSpace?.role, currentSpace?.status);
   const writeDisabledHint = writeAllowed
     ? undefined
     : t("actions.viewerOnlyHint");
@@ -729,6 +729,7 @@ export function SpaceSettingsPage() {
                   data-testid="space-settings-member-search"
                   value={memberSearch}
                   onChange={(event) => setMemberSearch(event.target.value)}
+                  aria-label={t("members.searchLabel")}
                   placeholder={t("members.searchPlaceholder")}
                   className="h-9 min-w-0 flex-1 max-w-sm text-sm bg-transparent"
                 />
@@ -736,6 +737,7 @@ export function SpaceSettingsPage() {
                   data-testid="space-settings-member-role-filter"
                   className="h-9 w-40 min-w-0 rounded-md border border-input bg-transparent px-3 text-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
                   value={memberRoleFilter}
+                  aria-label={t("members.roleFilterLabel")}
                   onChange={(event) =>
                     setMemberRoleFilter(event.target.value as SpaceRole | "ALL")
                   }

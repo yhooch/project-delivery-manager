@@ -53,7 +53,11 @@ export class AttachmentController {
   ): Promise<PresignAttachmentResponse> {
     const session = this.currentUser.requireSession(request);
 
-    return this.attachments.presign(session.userId, body);
+    return this.attachments.presign(
+      session.userId,
+      body,
+      getRequestMetadata(request),
+    );
   }
 
   @Post()

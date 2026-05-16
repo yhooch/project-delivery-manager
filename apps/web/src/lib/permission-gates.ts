@@ -14,19 +14,25 @@ function isEnabledRecord(status: string | undefined): boolean {
   return status !== "DISABLED";
 }
 
-export function canManageSpace(role: string | undefined): boolean {
-  return Boolean(role && SPACE_MANAGER_ROLES.has(role));
+export function canManageSpace(
+  role: string | undefined,
+  status: string | undefined,
+): boolean {
+  return Boolean(role && isEnabledRecord(status) && SPACE_MANAGER_ROLES.has(role));
 }
 
-export function canManageWorkflow(role: string | undefined): boolean {
-  return canManageSpace(role);
+export function canManageWorkflow(
+  role: string | undefined,
+  status: string | undefined,
+): boolean {
+  return canManageSpace(role, status);
 }
 
 export function canCreateTasks(
   role: string | undefined,
   status: string | undefined,
 ): boolean {
-  return isEnabledRecord(status) && canManageSpace(role);
+  return canManageSpace(role, status);
 }
 
 export function canCreateBugs(

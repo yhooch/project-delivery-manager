@@ -1,8 +1,7 @@
 import { test } from "@playwright/test";
 
+import { readBooleanEnv } from "./env";
 import { e2eEnv, probeApi, probeWeb } from "./m0-env";
-
-const TRUE_VALUES = new Set(["1", "true", "yes", "on"]);
 
 export async function skipWhenUiEnvironmentUnavailable(): Promise<void> {
   const reason = await resolveUiEnvironmentSkipReason();
@@ -10,7 +9,7 @@ export async function skipWhenUiEnvironmentUnavailable(): Promise<void> {
 }
 
 async function resolveUiEnvironmentSkipReason(): Promise<string | undefined> {
-  if (!readBoolean(process.env.E2E_UI_ENABLED)) {
+  if (!readBooleanEnv(process.env.E2E_UI_ENABLED)) {
     return "UI E2E 默认跳过；设置 E2E_UI_ENABLED=1 后才会执行浏览器主链路。";
   }
 
@@ -29,10 +28,6 @@ async function resolveUiEnvironmentSkipReason(): Promise<string | undefined> {
   }
 
   return undefined;
-}
-
-function readBoolean(value: string | undefined): boolean {
-  return TRUE_VALUES.has(value?.toLowerCase() ?? "");
 }
 
 export function buildUiRunId(): string {

@@ -38,6 +38,7 @@ vi.mock("./theme-provider", () => ({
 
 import type { AppSession, ThemeMode } from "@project-delivery/shared";
 
+import { ApiClientError } from "../../lib/api-client";
 import { SessionProvider, useSession } from "./session-provider";
 
 function makeSession({
@@ -87,9 +88,16 @@ function makeSession({
 }
 
 function SessionProbe() {
-  const { status } = useSession();
+  const { sessionErrorKey, status } = useSession();
 
-  return <div data-testid="session-status">{status}</div>;
+  return (
+    <>
+      <div data-testid="session-status">{status}</div>
+      {sessionErrorKey ? (
+        <div data-testid="session-error-key">{sessionErrorKey}</div>
+      ) : null}
+    </>
+  );
 }
 
 beforeEach(() => {
@@ -149,6 +157,58 @@ describe("SessionProvider", () => {
       expect(replaceMock).toHaveBeenCalledWith("/workbench", {
         locale: "en-US",
       }),
+    );
+  });
+
+  it("treats an unauthorized persisted session as unauthenticated", async () => {
+    getPersistedAppSessionMock.mockRejectedValueOnce(
+      new ApiClientError(
+        {
+          code: "UNAUTHORIZED",
+          message: "Unauthorized",
+          requestId: "req_session_unauthorized",
+        },
+        new Response(null, { status: 401 }),
+      ),
+    );
+
+    render(
+      <SessionProvider>
+        <SessionProbe />
+      </SessionProvider>,
+    );
+
+    await waitFor(() =>
+      expect(screen.getByTestId("session-status")).toHaveTextContent(
+        "unauthenticated",
+      ),
+    );
+    expect(screen.queryByTestId("session-error-key")).not.toBeInTheDocument();
+  });
+
+  it("exposes a recoverable error state when persisted session loading fails", async () => {
+    getPersistedAppSessionMock.mockRejectedValueOnce(
+      new ApiClientError(
+        {
+          code: "INTERNAL_SERVER_ERROR",
+          message: "Session failed",
+          requestId: "req_session_failed",
+        },
+        new Response(null, { status: 500 }),
+      ),
+    );
+
+    render(
+      <SessionProvider>
+        <SessionProbe />
+      </SessionProvider>,
+    );
+
+    await waitFor(() =>
+      expect(screen.getByTestId("session-status")).toHaveTextContent("error"),
+    );
+    expect(screen.getByTestId("session-error-key")).toHaveTextContent(
+      "errors.api.INTERNAL_SERVER_ERROR",
     );
   });
 });

@@ -4,6 +4,7 @@ import {
   BugViewSchema,
   GetBugResponseSchema,
   ListBugsResponseSchema,
+  UpdateBugRequestSchema,
   resolveBugLifecycleBucket,
 } from "./work-item.ts";
 
@@ -77,5 +78,32 @@ describe("work item contracts", () => {
         statusCategory: "VERIFYING",
       }),
     ).toBe("pendingRegression");
+  });
+
+  it("keeps bug lifecycle fields out of ordinary PATCH bodies", () => {
+    expect(
+      UpdateBugRequestSchema.parse({
+        actualResult: null,
+        relatedTaskId: null,
+        severity: "MAJOR",
+      }),
+    ).toMatchObject({
+      actualResult: null,
+      relatedTaskId: null,
+      severity: "MAJOR",
+    });
+
+    for (const field of [
+      "fixNote",
+      "regressionResult",
+      "regressionBy",
+      "regressionAt",
+    ]) {
+      expect(() =>
+        UpdateBugRequestSchema.parse({
+          [field]: field === "regressionAt" ? "2026-05-13T00:00:00.000Z" : "x",
+        }),
+      ).toThrow();
+    }
   });
 });

@@ -111,7 +111,7 @@ import {
   openCommandPalette,
   useCommandPaletteShortcut,
 } from "./command-palette";
-import { createRecentStorageKey } from "./recent-opens";
+import { createRecentStorageKey, RECENT_MAX } from "./recent-opens";
 
 const RECENT_KEY = createRecentStorageKey({
   organizationId: "ORG_01",
@@ -559,8 +559,8 @@ describe("CommandPalette", () => {
     const storedRaw = window.localStorage.getItem(RECENT_KEY);
     expect(storedRaw).not.toBeNull();
     const stored = JSON.parse(storedRaw as string) as unknown[];
-    // Helper caps at <=12; the newest entry should always be at index 0.
-    expect(stored.length).toBeLessThanOrEqual(12);
+    // Helper caps at RECENT_MAX; the newest entry should always be at index 0.
+    expect(stored.length).toBeLessThanOrEqual(RECENT_MAX);
     expect((stored[0] as { title: string }).title).toBe("Task A");
     expect((stored[0] as { href: string }).href).toBe(
       "/work-items?workItemId=01ARZ3NDEKTSV4RRFFQ69G5FT1",

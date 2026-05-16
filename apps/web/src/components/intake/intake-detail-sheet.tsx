@@ -31,6 +31,7 @@ import { toCreateCommentRequest } from "../../lib/comment-forms";
 import { createComment, listComments } from "../../lib/comment-service";
 import { formatDisplayCode } from "../../lib/display-code";
 import { getIntakeItem } from "../../lib/intake-service";
+import { getTimelineEventLabel } from "../../lib/timeline-display";
 import { listTimeline } from "../../lib/timeline-service";
 import {
   useRelationTitle,
@@ -38,6 +39,7 @@ import {
   useVersions,
 } from "../../lib/v2/lookups";
 import { listWorkItems } from "../../lib/work-item-service";
+import { Link } from "../../i18n/routing";
 
 import { Avatar, AvatarFallback } from "../ui/avatar";
 import { Badge } from "../ui/badge";
@@ -446,7 +448,7 @@ function RelationAnchorRow({
           {displayValue}
         </span>
       ) : (
-        <a
+        <Link
           className="ml-auto cursor-pointer truncate font-medium text-primary underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           data-testid={testId}
           href={href}
@@ -454,7 +456,7 @@ function RelationAnchorRow({
           target="_blank"
         >
           {displayValue}
-        </a>
+        </Link>
       )}
     </div>
   );
@@ -589,14 +591,14 @@ function RelatedTasksSection({
           {tIntakeItems("relatedTasks.title")}
         </h3>
         {showOpenList ? (
-          <a
+          <Link
             className="inline-flex h-7 cursor-pointer items-center gap-1.5 rounded-md border border-input bg-background px-2.5 text-xs font-medium shadow-sm transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             data-testid="intake-related-tasks-open-list"
             href={buildWorkItemsHref({ intakeItemId: intakeItem.id })}
           >
             <Link2 className="h-3 w-3" />
             {tIntakeItems("relatedTasks.openTaskList")}
-          </a>
+          </Link>
         ) : null}
       </div>
       {loading ? (
@@ -922,6 +924,7 @@ function IntakeTimelineSection({
   const [events, setEvents] = useState<TimelineEvent[]>([]);
   const [loading, setLoading] = useState(false);
   const [errorKey, setErrorKey] = useState<string | null>(null);
+  const tTimelineEvent = useTranslations("common.timeline.event");
 
   const fetchEvents = useCallback(async () => {
     if (!spaceId) {
@@ -996,7 +999,10 @@ function IntakeTimelineSection({
                     <span className="font-medium">{event.actor.name}</span>
                     <span className="text-muted-foreground">
                       {" "}
-                      {event.title}{" "}
+                      {getTimelineEventLabel(
+                        event.eventType,
+                        tTimelineEvent,
+                      )}{" "}
                     </span>
                     {event.detail && (
                       <span className="font-mono text-[12px] text-foreground">

@@ -19,6 +19,7 @@ import {
 import { ulid } from "ulid";
 
 import { ApiException } from "../../http/api-exception";
+import { auditAccessDenied } from "../audit/audit-access-denied";
 import { AuditService } from "../audit/audit.service";
 import type { RequestMetadata } from "../auth/auth-session.types";
 import {
@@ -82,7 +83,12 @@ export class SpaceService {
     input: CreateSpaceRequest,
     metadata: RequestMetadata = {},
   ): Promise<Space> {
-    await this.requireOrganizationManager(actorUserId, organizationId);
+    await this.requireOrganizationManager(actorUserId, organizationId, {
+      metadata,
+      operation: "createSpace",
+      targetId: organizationId,
+      targetType: "ORGANIZATION",
+    });
     const ownerId = input.ownerId ?? actorUserId;
     await this.requireActiveOrganizationMember(organizationId, ownerId);
 
@@ -148,7 +154,12 @@ export class SpaceService {
     input: UpdateSpaceRequest,
     metadata: RequestMetadata = {},
   ): Promise<Space> {
-    const access = await this.requireSpaceManager(actorUserId, spaceId);
+    const access = await this.requireSpaceManager(actorUserId, spaceId, {
+      metadata,
+      operation: "updateSpace",
+      targetId: spaceId,
+      targetType: "SPACE",
+    });
 
     if (input.ownerId) {
       await this.requireActiveOrganizationMember(
@@ -223,7 +234,12 @@ export class SpaceService {
     input: AddSpaceMemberRequest,
     metadata: RequestMetadata = {},
   ): Promise<SpaceMemberWithUser> {
-    const access = await this.requireSpaceManager(actorUserId, spaceId);
+    const access = await this.requireSpaceManager(actorUserId, spaceId, {
+      metadata,
+      operation: "addSpaceMember",
+      targetId: spaceId,
+      targetType: "SPACE",
+    });
     const user = await this.resolveActiveUser(input);
     await this.requireActiveOrganizationMember(
       access.space.organizationId,
@@ -272,7 +288,12 @@ export class SpaceService {
     input: UpdateSpaceMemberRequest,
     metadata: RequestMetadata = {},
   ): Promise<SpaceMemberWithUser> {
-    const access = await this.requireSpaceManager(actorUserId, spaceId);
+    const access = await this.requireSpaceManager(actorUserId, spaceId, {
+      metadata,
+      operation: "updateSpaceMember",
+      targetId: memberId,
+      targetType: "SPACE_MEMBER",
+    });
     const member = await this.spaces.findMemberById(spaceId, memberId);
 
     if (!member) {
@@ -413,10 +434,28 @@ export class SpaceService {
   private async requireOrganizationManager(
     userId: string,
     organizationId: string,
+    auditContext?: {
+      metadata: RequestMetadata;
+      operation: string;
+      targetId: string;
+      targetType: string;
+    },
   ) {
     const access = await this.requireOrganizationAccess(userId, organizationId);
 
     if (access.role !== "OWNER" && access.role !== "ADMIN") {
+      if (auditContext) {
+        await auditAccessDenied(this.audit, {
+          ...auditContext.metadata,
+          actorId: userId,
+          metadata: { role: access.role },
+          operation: auditContext.operation,
+          organizationId,
+          reason: "ROLE_NOT_ALLOWED",
+          targetId: auditContext.targetId,
+          targetType: auditContext.targetType,
+        });
+      }
       throwOrganizationAccessDenied();
     }
 
@@ -433,10 +472,32 @@ export class SpaceService {
     return access;
   }
 
-  private async requireSpaceManager(userId: string, spaceId: string) {
+  private async requireSpaceManager(
+    userId: string,
+    spaceId: string,
+    auditContext?: {
+      metadata: RequestMetadata;
+      operation: string;
+      targetId: string;
+      targetType: string;
+    },
+  ) {
     const access = await this.requireSpaceAccess(userId, spaceId);
 
     if (!SPACE_MANAGER_ROLES.has(access.role)) {
+      if (auditContext) {
+        await auditAccessDenied(this.audit, {
+          ...auditContext.metadata,
+          actorId: userId,
+          metadata: { role: access.role },
+          operation: auditContext.operation,
+          organizationId: access.space.organizationId,
+          reason: "ROLE_NOT_ALLOWED",
+          spaceId,
+          targetId: auditContext.targetId,
+          targetType: auditContext.targetType,
+        });
+      }
       throwSpaceAccessDenied();
     }
 

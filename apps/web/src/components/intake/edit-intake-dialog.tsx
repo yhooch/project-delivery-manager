@@ -131,7 +131,7 @@ export function EditIntakeDialog({
         const [versionPage, requirementPage, memberPage] = await Promise.all([
           listVersions({ organizationId, spaceId, page: 1, pageSize: 100 }),
           listRequirements({ organizationId, spaceId, page: 1, pageSize: 100 }),
-          listSpaceMembers(spaceId),
+          listSpaceMembers(spaceId, { status: "ACTIVE" }),
         ]);
         if (cancelled) {
           return;

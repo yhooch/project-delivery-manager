@@ -119,9 +119,7 @@ export function ConvertIntakeDialog({
 
   const optionFieldsDisabled = submitting || optionsLoadState !== "ready";
   const submitDisabled =
-    submitting ||
-    optionsLoadState !== "ready" ||
-    intakeItem?.status !== "ACCEPTED";
+    submitting || intakeItem?.status !== "ACCEPTED";
 
   useEffect(() => {
     if (!open || !spaceId) {
@@ -140,7 +138,7 @@ export function ConvertIntakeDialog({
           workflowPage,
           bindingPage,
         ] = await Promise.all([
-          listSpaceMembers(spaceId),
+          listSpaceMembers(spaceId, { status: "ACTIVE" }),
           listVersions({ organizationId, spaceId, page: 1, pageSize: 100 }),
           listRequirements({ organizationId, spaceId, page: 1, pageSize: 100 }),
           listWorkflows({ organizationId, spaceId, page: 1, pageSize: 100 }),

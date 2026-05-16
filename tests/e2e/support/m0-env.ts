@@ -1,4 +1,4 @@
-const TRUE_VALUES = new Set(["1", "true", "yes", "on"]);
+import { readBooleanEnv } from "./env";
 
 type ResponseStatus = {
   status: () => number;
@@ -8,13 +8,13 @@ export const e2eEnv = {
   apiBaseURL: normalizeBaseURL(
     process.env.E2E_API_URL ?? "http://127.0.0.1:3001/api/v1",
   ),
-  dbReady: readBoolean(process.env.E2E_DB_READY),
-  enabled: readBoolean(process.env.E2E_M0_ENABLED),
+  dbReady: readBooleanEnv(process.env.E2E_DB_READY),
+  enabled: readBooleanEnv(process.env.E2E_M0_ENABLED),
   requestTimeoutMs: readPositiveInteger(
     process.env.E2E_REQUEST_TIMEOUT_MS,
     5_000,
   ),
-  requireWeb: readBoolean(process.env.E2E_REQUIRE_WEB),
+  requireWeb: readBooleanEnv(process.env.E2E_REQUIRE_WEB),
   webBaseURL: normalizeBaseURL(
     process.env.E2E_WEB_URL ?? "http://127.0.0.1:3000",
   ),
@@ -133,10 +133,6 @@ async function probeURL(url: string, label: string): Promise<ProbeResult> {
 
 function normalizeBaseURL(value: string): string {
   return value.replace(/\/+$/u, "");
-}
-
-function readBoolean(value: string | undefined): boolean {
-  return TRUE_VALUES.has(value?.toLowerCase() ?? "");
 }
 
 function readPositiveInteger(

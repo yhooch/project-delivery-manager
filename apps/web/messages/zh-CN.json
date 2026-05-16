@@ -8,6 +8,77 @@
     "actions": {
       "close": "关闭"
     },
+    "timeline": {
+      "event": {
+        "CREATED": "创建",
+        "UPDATED": "更新",
+        "STATUS_CHANGED": "状态变更",
+        "ACTION_EXECUTED": "流程动作",
+        "ASSIGNEE_CHANGED": "负责人变更",
+        "COMMENTED": "评论",
+        "ATTACHMENT_ADDED": "新增附件",
+        "CLOSED": "关闭",
+        "REOPENED": "重新打开"
+      }
+    },
+    "workflowDefaults": {
+      "states": {
+        "PENDING": "待处理",
+        "IN_PROGRESS": "处理中",
+        "BLOCKED": "阻塞中",
+        "READY_FOR_TEST": "待提测",
+        "TESTING": "测试中",
+        "DONE": "已完成",
+        "CANCELED": "已取消",
+        "PENDING_CONFIRMATION": "待确认",
+        "PENDING_FIX": "待修复",
+        "FIXING": "修复中",
+        "PENDING_REGRESSION": "待回归",
+        "REGRESSION_PASSED": "回归通过",
+        "CLOSED": "已关闭",
+        "REJECTED": "已拒绝"
+      },
+      "actions": {
+        "START_PROGRESS": "开始处理",
+        "MARK_BLOCKED": "标记阻塞",
+        "RESOLVE_BLOCKED": "解除阻塞",
+        "SUBMIT_TEST": "提交提测",
+        "START_TEST": "开始测试",
+        "PASS_TEST": "测试通过",
+        "REJECT_TEST": "测试退回",
+        "CANCEL_TASK": "取消任务",
+        "SUBMIT_CONFIRMATION": "提交确认",
+        "CONFIRM_DONE": "确认完成",
+        "RETURN_PROCESSING": "退回处理",
+        "CONFIRM_DEFECT": "确认缺陷",
+        "REJECT_DEFECT": "拒绝缺陷",
+        "START_FIX": "开始修复",
+        "SUBMIT_REGRESSION": "提交回归",
+        "REGRESSION_PASS": "回归通过",
+        "REGRESSION_FAIL": "回归不通过",
+        "CLOSE_DEFECT": "关闭缺陷",
+        "REOPEN_DEFECT": "重新打开"
+      },
+      "fields": {
+        "blockedReason": "阻塞原因",
+        "testNote": "提测说明",
+        "rejectReason": "退回原因",
+        "cancelReason": "取消原因",
+        "completionNote": "完成说明",
+        "fixAssigneeId": "修复负责人",
+        "fixSummary": "修复说明",
+        "regressionConclusion": "回归结论",
+        "failedReason": "不通过原因",
+        "reopenReason": "重开原因"
+      }
+    },
+    "exceptionReasons": {
+      "OVERDUE": "工作项已超过截止时间",
+      "BLOCKED": "工作项处于阻塞状态",
+      "PENDING_CONFIRM": "工作项处于待确认状态",
+      "PENDING_REGRESSION": "Bug 处于待回归状态",
+      "STALE": "工作项状态长时间未变化"
+    },
     "language": {
       "label": "切换语言",
       "zh-CN": {
@@ -304,6 +375,7 @@
   "errors": {
     "api": {
       "BAD_REQUEST": "请求参数不正确，请检查后重试。",
+      "INTERNAL_SERVER_ERROR": "服务暂时不可用，请稍后重试。",
       "UNAUTHORIZED": "登录状态已失效，请重新登录。",
       "FORBIDDEN": "当前账号没有执行此操作的权限。",
       "NOT_FOUND": "请求的资源不存在或已不可用。",
@@ -335,6 +407,9 @@
       "REQUIREMENT_NOT_FOUND": "需求不存在或已不可用。",
       "TARGET_REQUIRED_FOR_ATTACHMENT": "附件必须关联目标对象。",
       "ATTACHMENT_TARGET_NOT_FOUND": "附件关联的目标不存在。",
+      "ATTACHMENT_LIMIT_EXCEEDED": "附件数量已达到上限，请删除部分附件后重试。",
+      "FILE_TOO_LARGE": "文件过大，请压缩或选择较小的文件。",
+      "UNSUPPORTED_MIME_TYPE": "不支持该文件类型，请更换文件后重试。",
       "DRAFT_REQUIREMENT_REQUIRED": "只能处理草稿需求。",
       "INTAKE_ITEM_NOT_FOUND": "入口事项不存在或已不可用。",
       "INTAKE_ITEM_NOT_ACCEPTED": "入口事项尚未接受。",
@@ -387,6 +462,11 @@
       "description": "登录后才能继续访问工作台。",
       "action": "前往登录"
     },
+    "sessionError": {
+      "title": "会话初始化失败",
+      "description": "暂时无法确认你的登录状态，请重试。",
+      "retry": "重试"
+    },
     "topBar": {
       "navigationLabel": "打开主导航",
       "commandLabel": "打开命令菜单",
@@ -394,6 +474,11 @@
     },
     "mobileNav": {
       "description": "在小屏幕中打开主导航菜单。"
+    },
+    "noSpaces": {
+      "title": "当前组织还没有项目空间",
+      "description": "你可以创建项目空间开始交付协作，也可以等待管理员将你加入已有空间。",
+      "waitingHint": "访问权限准备好后，刷新会话即可进入对应空间。"
     },
     "organizationSwitcher": {
       "label": "切换组织",
@@ -519,114 +604,6 @@
       "error": "创建组织失败，请稍后重试。"
     }
   },
-  "versions": {
-    "page": {
-      "eyebrow": "空间版本",
-      "title": "版本管理",
-      "unknownSpace": "当前空间"
-    },
-    "actions": {
-      "refresh": "刷新"
-    },
-    "filters": {
-      "label": "版本筛选",
-      "status": "状态",
-      "allStatuses": "全部状态",
-      "owner": "负责人",
-      "allOwners": "全部负责人"
-    },
-    "status": {
-      "PLANNED": "计划中",
-      "IN_PROGRESS": "进行中",
-      "RELEASED": "已发布",
-      "ARCHIVED": "已归档"
-    },
-    "states": {
-      "loading": {
-        "title": "正在加载版本",
-        "description": "正在读取当前空间的版本、成员和统计字段。"
-      },
-      "unauthenticated": {
-        "title": "需要登录",
-        "description": "登录后才能查看空间版本。"
-      },
-      "noAccess": {
-        "title": "无权访问空间",
-        "description": "当前账号没有此空间上下文，无法查看或维护版本。"
-      },
-      "loadingList": "正在加载版本列表",
-      "empty": {
-        "title": "暂无版本",
-        "description": "创建第一个版本后，可在这里维护目标、时间和统计。"
-      },
-      "noSelection": {
-        "title": "未选择版本",
-        "description": "选择左侧版本后可编辑基础字段。"
-      }
-    },
-    "list": {
-      "title": "版本列表",
-      "subtitle": "当前结果 {count} 个版本",
-      "requirements": "{count} 个需求",
-      "noReleaseDate": "未设置发布时间"
-    },
-    "create": {
-      "title": "创建版本",
-      "description": "版本名称在同一空间内保持唯一。",
-      "submit": "创建版本",
-      "submitting": "创建中"
-    },
-    "detail": {
-      "title": "版本详情",
-      "description": "维护版本基础字段，并查看当前统计。",
-      "viewRequirements": "查看需求",
-      "submit": "保存版本",
-      "submitting": "保存中"
-    },
-    "form": {
-      "name": "版本名称",
-      "status": "状态",
-      "target": "目标",
-      "description": "描述",
-      "owner": "负责人",
-      "unassigned": "未分配",
-      "startDate": "开始时间",
-      "targetDate": "目标时间",
-      "releaseDate": "发布时间",
-      "readonly": "当前角色只能查看"
-    },
-    "stats": {
-      "label": "版本统计",
-      "requirements": "需求",
-      "tasks": "任务",
-      "bugs": "Bug",
-      "blocked": "阻塞"
-    },
-    "board": {
-      "title": "版本看板",
-      "description": "{version} 的任务与 Bug 按系统状态归类展示。",
-      "noVersionDescription": "选择一个版本后展示任务与 Bug 看板。",
-      "loading": "正在加载版本看板",
-      "filters": {
-        "label": "版本看板筛选",
-        "assignee": "负责人",
-        "allAssignees": "全部负责人",
-        "statusCategory": "状态归类",
-        "allStatusCategories": "全部状态归类",
-        "workItemType": "工作项类型",
-        "allWorkItemTypes": "全部工作项类型"
-      },
-      "card": {
-        "open": "打开 {title} 详情"
-      },
-      "empty": {
-        "title": "暂无工作项",
-        "description": "当前版本和筛选下没有任务或 Bug。",
-        "noVersionTitle": "未选择版本",
-        "noVersionDescription": "先在版本列表中选择一个版本。"
-      }
-    }
-  },
   "versionBoard": {
     "title": "版本",
     "subtitle": "查看版本目标、关联需求、任务/Bug 看板和版本时间线。",
@@ -649,6 +626,8 @@
       "ariaLabel": "版本概览",
       "owner": "负责人",
       "ownerNone": "未指派",
+      "target": "目标",
+      "targetNone": "暂无目标",
       "dateStart": "起始",
       "dateTarget": "目标",
       "dateRelease": "发布",
@@ -719,18 +698,7 @@
       },
       "loading": "正在加载时间线",
       "errorTitle": "无法加载时间线",
-      "unknownActor": "未知用户",
-      "event": {
-        "CREATED": "创建",
-        "UPDATED": "更新",
-        "STATUS_CHANGED": "状态变更",
-        "ACTION_EXECUTED": "流程动作",
-        "ASSIGNEE_CHANGED": "负责人变更",
-        "COMMENTED": "评论",
-        "ATTACHMENT_ADDED": "新增附件",
-        "CLOSED": "关闭",
-        "REOPENED": "重新打开"
-      }
+      "unknownActor": "未知用户"
     },
     "create": {
       "title": "新建版本",
@@ -1211,17 +1179,6 @@
       "empty": {
         "title": "暂无时间线",
         "description": "事项创建、更新、评论和状态变化会显示在这里。"
-      },
-      "type": {
-        "CREATED": "创建",
-        "UPDATED": "更新",
-        "STATUS_CHANGED": "状态变更",
-        "ACTION_EXECUTED": "流程动作",
-        "ASSIGNEE_CHANGED": "负责人变更",
-        "COMMENTED": "评论",
-        "ATTACHMENT_ADDED": "新增附件",
-        "CLOSED": "关闭",
-        "REOPENED": "重新打开"
       }
     }
   },
@@ -1480,17 +1437,6 @@
       "empty": {
         "title": "暂无时间线",
         "description": "Bug 创建、更新、评论、附件和流程动作事件会显示在这里。"
-      },
-      "type": {
-        "CREATED": "创建",
-        "UPDATED": "更新",
-        "STATUS_CHANGED": "状态变更",
-        "ACTION_EXECUTED": "流程动作",
-        "ASSIGNEE_CHANGED": "负责人变更",
-        "COMMENTED": "评论",
-        "ATTACHMENT_ADDED": "新增附件",
-        "CLOSED": "关闭",
-        "REOPENED": "重新打开"
       }
     },
     "dialog": {
@@ -1901,163 +1847,6 @@
       "empty": {
         "title": "暂无时间线",
         "description": "任务创建、更新、评论和附件事件会显示在这里。"
-      },
-      "type": {
-        "CREATED": "创建",
-        "UPDATED": "更新",
-        "STATUS_CHANGED": "状态变更",
-        "ACTION_EXECUTED": "流程动作",
-        "ASSIGNEE_CHANGED": "负责人变更",
-        "COMMENTED": "评论",
-        "ATTACHMENT_ADDED": "新增附件",
-        "CLOSED": "关闭",
-        "REOPENED": "重新打开"
-      }
-    }
-  },
-  "dashboard": {
-    "session": {
-      "loading": {
-        "title": "正在初始化会话",
-        "description": "正在读取后端 session、组织列表和工作台能力边界。"
-      },
-      "unauthenticated": {
-        "title": "需要登录",
-        "description": "登录或注册后即可查看当前组织下的个人工作台。",
-        "login": "登录",
-        "register": "注册"
-      }
-    },
-    "missingOrganization": {
-      "title": "未找到当前组织",
-      "description": "请切换到可访问的组织后继续查看工作台。"
-    },
-    "page": {
-      "eyebrow": "M4 我的工作台",
-      "title": "我的工作台",
-      "scopeWithOrganization": "当前组织：{organization}",
-      "scopeWithSpace": "当前组织：{organization} / 空间：{space}",
-      "pageSize": "每组最多 {count} 条"
-    },
-    "actions": {
-      "refresh": "刷新",
-      "refreshing": "刷新中"
-    },
-    "filters": {
-      "label": "工作台筛选",
-      "space": "空间",
-      "allSpaces": "全部空间",
-      "spaceCount": "当前组织 {count} 个空间，可收窄查看",
-      "noSpaces": "当前组织暂无空间，展示组织级数据"
-    },
-    "states": {
-      "loadingView": "正在加载工作台数据"
-    },
-    "empty": {
-      "view": {
-        "title": "暂无个人工作",
-        "description": "当前组织和空间筛选下没有待办、流程动作或最近动态。"
-      }
-    },
-    "metrics": {
-      "label": "工作台统计",
-      "assignedWorkItemCount": "负责事项",
-      "actionTodoCount": "待处理动作",
-      "pendingConfirmCount": "待确认",
-      "blockedCount": "阻塞中"
-    },
-    "section": {
-      "total": "{count} 项"
-    },
-    "sections": {
-      "myTodos": {
-        "title": "我的待办",
-        "description": "当前账号相关的待处理工作项。",
-        "empty": {
-          "title": "暂无待办",
-          "description": "当前筛选下没有需要你关注的工作项。"
-        }
-      },
-      "assignedTasks": {
-        "title": "我负责的任务",
-        "description": "分配给你的任务。",
-        "empty": {
-          "title": "暂无负责任务",
-          "description": "当前筛选下没有分配给你的任务。"
-        }
-      },
-      "assignedBugs": {
-        "title": "我负责的 Bug",
-        "description": "分配给你的 Bug。",
-        "empty": {
-          "title": "暂无负责 Bug",
-          "description": "当前筛选下没有分配给你的 Bug。"
-        }
-      },
-      "actionTodos": {
-        "title": "待我处理的流程动作",
-        "description": "后端判定可由你执行的流程动作。",
-        "empty": {
-          "title": "暂无待处理动作",
-          "description": "当前筛选下后端没有返回待你处理的流程动作。"
-        }
-      },
-      "pendingConfirm": {
-        "title": "待确认",
-        "description": "处于确认或回归确认阶段的事项。",
-        "empty": {
-          "title": "暂无待确认",
-          "description": "当前筛选下没有待确认事项。"
-        }
-      },
-      "dueSoon": {
-        "title": "即将到期",
-        "description": "临近截止时间的事项。",
-        "empty": {
-          "title": "暂无即将到期",
-          "description": "当前筛选下没有即将到期事项。"
-        }
-      },
-      "blocked": {
-        "title": "阻塞中",
-        "description": "存在阻塞信号的事项。",
-        "empty": {
-          "title": "暂无阻塞",
-          "description": "当前筛选下没有阻塞事项。"
-        }
-      },
-      "recentActivities": {
-        "title": "最近动态",
-        "description": "当前组织或空间下与你相关的最新事件。",
-        "empty": {
-          "title": "暂无最近动态",
-          "description": "当前筛选下没有最近活动。"
-        }
-      }
-    },
-    "item": {
-      "open": "打开",
-      "requirement": "需求",
-      "unassigned": "未分配"
-    },
-    "actionsTable": {
-      "reason": "原因",
-      "action": "动作编码"
-    },
-    "activity": {
-      "open": "打开",
-      "unknownSpace": "未知空间",
-      "meta": "{type} / {actor} / {space} / {date}",
-      "type": {
-        "CREATED": "创建",
-        "UPDATED": "更新",
-        "STATUS_CHANGED": "状态变更",
-        "ACTION_EXECUTED": "流程动作",
-        "ASSIGNEE_CHANGED": "负责人变更",
-        "COMMENTED": "评论",
-        "ATTACHMENT_ADDED": "新增附件",
-        "CLOSED": "关闭",
-        "REOPENED": "重新打开"
       }
     }
   },
@@ -2078,6 +1867,10 @@
     },
     "time": {
       "justNow": "刚刚"
+    },
+    "filters": {
+      "space": "项目空间",
+      "allSpaces": "全部空间"
     },
     "sections": {
       "todo": "我的待办",
@@ -2508,6 +2301,12 @@
           "delete": "删除字段"
         }
       },
+      "deleteConfirm": {
+        "title": "确认删除",
+        "description": "{action}：{target}。此操作不可撤销。",
+        "cancel": "取消",
+        "submit": "删除"
+      },
       "stateDialog": {
         "create": {
           "title": "新增状态",
@@ -2763,18 +2562,7 @@
       "loading": "正在加载时间线",
       "meta": "{type} / {target} / {actor} / {date}",
       "empty": "暂无时间线",
-      "emptyDescription": "任务、Bug 和需求发生变化后会展示在这里。",
-      "type": {
-        "CREATED": "创建",
-        "UPDATED": "更新",
-        "STATUS_CHANGED": "状态变更",
-        "ACTION_EXECUTED": "流程动作",
-        "ASSIGNEE_CHANGED": "负责人变更",
-        "COMMENTED": "评论",
-        "ATTACHMENT_ADDED": "新增附件",
-        "CLOSED": "关闭",
-        "REOPENED": "重新打开"
-      }
+      "emptyDescription": "任务、Bug 和需求发生变化后会展示在这里。"
     },
     "time": {
       "justNow": "刚刚"
@@ -3114,7 +2902,9 @@
       "add": "添加成员",
       "empty": "暂无空间成员",
       "emptyFiltered": "没有匹配的成员",
+      "searchLabel": "搜索空间成员",
       "searchPlaceholder": "搜索姓名或用户名",
+      "roleFilterLabel": "按空间角色筛选成员",
       "roleFilterAll": "全部角色",
       "ownerBadge": "负责人",
       "statusDisabled": "已禁用",

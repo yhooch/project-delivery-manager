@@ -17,6 +17,11 @@ import { ApiClientError } from "../../lib/api-client";
 import { getApiErrorMessageKey } from "../../lib/api-error-messages";
 import { canManageWorkflow as canManageWorkflowForRole } from "../../lib/permission-gates";
 import {
+  translateWorkflowActionName,
+  translateWorkflowFieldLabel,
+  translateWorkflowStateName,
+} from "../../lib/workflow-display";
+import {
   createWorkflowVersion,
   deleteActionFormField,
   deleteWorkflowAction,
@@ -32,6 +37,14 @@ import { useSession } from "../providers/session-provider";
 
 import { Badge } from "../ui/badge";
 import { Button } from "../ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "../ui/dialog";
 import { SelectMenu } from "../ui/select-menu";
 import { ErrorState, ListSkeleton } from "../v2/states";
 import { PageHeader } from "../v2/page-header";
@@ -60,6 +73,26 @@ type DialogState =
   | { kind: "editField"; actionId: string; field: ActionFormFieldSummary }
   | { kind: "createBinding" }
   | { kind: "editBinding"; binding: WorkflowBinding };
+
+type DeleteConfirmState =
+  | {
+      actionLabel: string;
+      kind: "state";
+      targetId: string;
+      targetName: string;
+    }
+  | {
+      actionLabel: string;
+      kind: "action";
+      targetId: string;
+      targetName: string;
+    }
+  | {
+      actionLabel: string;
+      kind: "field";
+      targetId: string;
+      targetName: string;
+    };
 
 type PublishIssue =
   | "noStates"
@@ -182,7 +215,11 @@ export function WorkflowConfigPage({ workflowId }: WorkflowConfigPageProps) {
     sessionSpace?.organizationId ??
     session?.defaultOrganizationId;
   const currentSpaceRole = currentSpace?.role ?? sessionSpace?.role;
-  const canManageWorkflow = canManageWorkflowForRole(currentSpaceRole);
+  const currentSpaceStatus = currentSpace?.status ?? sessionSpace?.status;
+  const canManageWorkflow = canManageWorkflowForRole(
+    currentSpaceRole,
+    currentSpaceStatus,
+  );
   const workflowConfigContextKey = `${status}:${organizationId ?? ""}:${
     spaceId ?? ""
   }:${workflowId}`;
@@ -212,6 +249,9 @@ export function WorkflowConfigPage({ workflowId }: WorkflowConfigPageProps) {
     "none",
   );
   const [dialog, setDialog] = useState<DialogState>({ kind: "closed" });
+  const [deleteConfirm, setDeleteConfirm] = useState<DeleteConfirmState | null>(
+    null,
+  );
 
   const loadShell = useCallback(async () => {
     if (!spaceId) {
@@ -539,78 +579,51 @@ export function WorkflowConfigPage({ workflowId }: WorkflowConfigPageProps) {
     }
   }
 
-  async function handleDeleteState(state: WorkflowState) {
+  function handleDeleteState(state: WorkflowState) {
     if (!spaceId) {
       return;
     }
-    if (!confirmWorkflowDelete(t("states.actions.delete"), state.name)) {
-      return;
-    }
-    setActionErrorKey(null);
-    const requestId = ++actionRequestRef.current;
-    const requestContextKey = workflowConfigContextKey;
-    const isCurrentRequest = () =>
-      actionRequestRef.current === requestId &&
-      workflowConfigContextKeyRef.current === requestContextKey;
-    try {
-      await deleteWorkflowState({
-        organizationId,
-        spaceId,
-        stateId: state.id,
-      });
-      if (!isCurrentRequest()) {
-        return;
-      }
-      handleRefreshVersion();
-    } catch (error) {
-      if (!isCurrentRequest()) {
-        return;
-      }
-      setActionErrorKey(getApiErrorMessageKey(error));
-    }
+    setDeleteConfirm({
+      actionLabel: t("states.actions.delete"),
+      kind: "state",
+      targetId: state.id,
+      targetName: translateWorkflowStateName(tRoot, state),
+    });
   }
 
-  async function handleDeleteAction(action: WorkflowActionSummary) {
+  function handleDeleteAction(action: WorkflowActionSummary) {
     if (!spaceId) {
       return;
     }
-    if (!confirmWorkflowDelete(t("actions.actions.delete"), action.name)) {
-      return;
-    }
-    setActionErrorKey(null);
-    const requestId = ++actionRequestRef.current;
-    const requestContextKey = workflowConfigContextKey;
-    const isCurrentRequest = () =>
-      actionRequestRef.current === requestId &&
-      workflowConfigContextKeyRef.current === requestContextKey;
-    try {
-      await deleteWorkflowAction({
-        actionId: action.id,
-        organizationId,
-        spaceId,
-      });
-      if (!isCurrentRequest()) {
-        return;
-      }
-      handleRefreshVersion();
-    } catch (error) {
-      if (!isCurrentRequest()) {
-        return;
-      }
-      setActionErrorKey(getApiErrorMessageKey(error));
-    }
+    setDeleteConfirm({
+      actionLabel: t("actions.actions.delete"),
+      kind: "action",
+      targetId: action.id,
+      targetName: translateWorkflowActionName(tRoot, action),
+    });
   }
 
-  async function handleDeleteField(
+  function handleDeleteField(
     _action: WorkflowActionSummary,
     field: ActionFormFieldSummary,
   ) {
     if (!spaceId) {
       return;
     }
-    if (!confirmWorkflowDelete(t("fields.actions.delete"), field.label)) {
+    setDeleteConfirm({
+      actionLabel: t("fields.actions.delete"),
+      kind: "field",
+      targetId: field.id,
+      targetName: translateWorkflowFieldLabel(tRoot, field),
+    });
+  }
+
+  async function handleConfirmDelete() {
+    if (!spaceId || !deleteConfirm) {
       return;
     }
+    const pending = deleteConfirm;
+    setDeleteConfirm(null);
     setActionErrorKey(null);
     const requestId = ++actionRequestRef.current;
     const requestContextKey = workflowConfigContextKey;
@@ -618,11 +631,25 @@ export function WorkflowConfigPage({ workflowId }: WorkflowConfigPageProps) {
       actionRequestRef.current === requestId &&
       workflowConfigContextKeyRef.current === requestContextKey;
     try {
-      await deleteActionFormField({
-        fieldId: field.id,
-        organizationId,
-        spaceId,
-      });
+      if (pending.kind === "state") {
+        await deleteWorkflowState({
+          organizationId,
+          spaceId,
+          stateId: pending.targetId,
+        });
+      } else if (pending.kind === "action") {
+        await deleteWorkflowAction({
+          actionId: pending.targetId,
+          organizationId,
+          spaceId,
+        });
+      } else {
+        await deleteActionFormField({
+          fieldId: pending.targetId,
+          organizationId,
+          spaceId,
+        });
+      }
       if (!isCurrentRequest()) {
         return;
       }
@@ -860,7 +887,7 @@ export function WorkflowConfigPage({ workflowId }: WorkflowConfigPageProps) {
           <div className="flex flex-col gap-4">
             <WorkflowStateList
               onCreate={() => setDialog({ kind: "createState" })}
-              onDelete={(state) => void handleDeleteState(state)}
+              onDelete={handleDeleteState}
               onEdit={(state) => setDialog({ kind: "editState", state })}
               readOnly={isReadOnly}
               states={version.states}
@@ -871,10 +898,8 @@ export function WorkflowConfigPage({ workflowId }: WorkflowConfigPageProps) {
               onCreateField={(action) =>
                 setDialog({ actionId: action.id, kind: "createField" })
               }
-              onDelete={(action) => void handleDeleteAction(action)}
-              onDeleteField={(action, field) =>
-                void handleDeleteField(action, field)
-              }
+              onDelete={handleDeleteAction}
+              onDeleteField={handleDeleteField}
               onEdit={(action) => setDialog({ action, kind: "editAction" })}
               onEditField={(action, field) =>
                 setDialog({ actionId: action.id, field, kind: "editField" })
@@ -971,6 +996,14 @@ export function WorkflowConfigPage({ workflowId }: WorkflowConfigPageProps) {
           ) : null}
         </>
       ) : null}
+      <WorkflowDeleteConfirmDialog
+        actionLabel={deleteConfirm?.actionLabel ?? ""}
+        onCancel={() => setDeleteConfirm(null)}
+        onConfirm={() => void handleConfirmDelete()}
+        open={deleteConfirm !== null}
+        t={t}
+        targetName={deleteConfirm?.targetName ?? ""}
+      />
     </div>
   );
 }
@@ -1037,15 +1070,63 @@ function getStringValue(value: unknown): string | undefined {
     : undefined;
 }
 
-function confirmWorkflowDelete(
-  actionLabel: string,
-  targetName: string,
-): boolean {
-  if (typeof window === "undefined") {
-    return true;
-  }
-
-  return window.confirm(`${actionLabel}: ${targetName}`);
+function WorkflowDeleteConfirmDialog({
+  actionLabel,
+  onCancel,
+  onConfirm,
+  open,
+  t,
+  targetName,
+}: {
+  actionLabel: string;
+  onCancel: () => void;
+  onConfirm: () => void;
+  open: boolean;
+  t: ReturnType<typeof useTranslations<"workflow.config">>;
+  targetName: string;
+}) {
+  return (
+    <Dialog
+      onOpenChange={(nextOpen) => {
+        if (!nextOpen) {
+          onCancel();
+        }
+      }}
+      open={open}
+    >
+      <DialogContent data-testid="workflow-delete-confirm-dialog">
+        <DialogHeader>
+          <DialogTitle>{t("deleteConfirm.title")}</DialogTitle>
+          <DialogDescription>
+            {t("deleteConfirm.description", {
+              action: actionLabel,
+              target: targetName,
+            })}
+          </DialogDescription>
+        </DialogHeader>
+        <DialogFooter>
+          <Button
+            data-testid="workflow-delete-cancel"
+            onClick={onCancel}
+            size="sm"
+            type="button"
+            variant="outline"
+          >
+            {t("deleteConfirm.cancel")}
+          </Button>
+          <Button
+            data-testid="workflow-delete-confirm"
+            onClick={onConfirm}
+            size="sm"
+            type="button"
+            variant="destructive"
+          >
+            {t("deleteConfirm.submit")}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
 }
 
 function Label({

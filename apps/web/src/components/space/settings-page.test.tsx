@@ -254,6 +254,23 @@ describe("SpaceSettingsPage", () => {
     ).toBeInTheDocument();
   });
 
+  it("exposes accessible names for member search and role filtering", async () => {
+    getSpaceMock.mockResolvedValueOnce(makeSpace());
+    listSpaceMembersMock.mockResolvedValueOnce({
+      items: [makeMember()],
+      total: 1,
+    });
+
+    render(<SpaceSettingsPage />);
+
+    expect(
+      await screen.findByLabelText("spaceSettings.members.searchLabel"),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByLabelText("spaceSettings.members.roleFilterLabel"),
+    ).toBeInTheDocument();
+  });
+
   it("renders an error state when the load rejects", async () => {
     getSpaceMock.mockRejectedValueOnce(new Error("boom"));
     listSpaceMembersMock.mockRejectedValueOnce(new Error("boom"));

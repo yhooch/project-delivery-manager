@@ -275,8 +275,9 @@ describe("TasksPage", () => {
       statusCategoryCounts: [
         { statusCategory: "IN_PROGRESS", count: 37 },
         { statusCategory: "DONE", count: 8 },
+        { statusCategory: "TERMINATED", count: 3 },
       ],
-      total: 45,
+      total: 48,
     });
 
     render(<TasksPage />);
@@ -285,7 +286,7 @@ describe("TasksPage", () => {
     expect(
       within(
         screen.getByRole("button", { name: /tasks\.buckets\.all/ }),
-      ).getByText("45"),
+    ).getByText("48"),
     ).toBeInTheDocument();
     expect(
       within(
@@ -300,6 +301,13 @@ describe("TasksPage", () => {
           name: /workItems\.statusCategory\.DONE/,
         })[0],
       ).getByText("8"),
+    ).toBeInTheDocument();
+    expect(
+      within(
+        screen.getAllByRole("button", {
+          name: /workItems\.statusCategory\.TERMINATED/,
+        })[0],
+      ).getByText("3"),
     ).toBeInTheDocument();
   });
 

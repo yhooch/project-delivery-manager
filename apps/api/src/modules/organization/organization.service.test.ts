@@ -35,6 +35,52 @@ describe("OrganizationService", () => {
       code: "LAST_ORGANIZATION_OWNER_REQUIRED",
     });
   });
+
+  it("writes access denied audit for non-manager member writes", async () => {
+    const repository = createRepository();
+    const audit = createAuditService();
+    vi.mocked(repository.findAccessibleById).mockResolvedValueOnce({
+      organization: {
+        id: ORGANIZATION_ID,
+        code: "org",
+        name: "Org",
+        status: "ACTIVE" as const,
+      },
+      role: "MEMBER" as const,
+    });
+    const service = new OrganizationService(
+      repository,
+      {} as UserRepository,
+      {} as RateLimiterService,
+      audit,
+    );
+
+    await expect(
+      service.addMember(
+        ACTOR_ID,
+        ORGANIZATION_ID,
+        { role: "MEMBER", username: "new-user" },
+        { requestId: "req-org-denied" },
+      ),
+    ).rejects.toMatchObject({
+      code: "ORGANIZATION_ACCESS_DENIED",
+    });
+    expect(audit.record).toHaveBeenCalledWith(
+      expect.objectContaining({
+        actionType: "ACCESS_DENIED",
+        actorId: ACTOR_ID,
+        metadata: expect.objectContaining({
+          operation: "addOrganizationMember",
+          reason: "ROLE_NOT_ALLOWED",
+          role: "MEMBER",
+        }),
+        organizationId: ORGANIZATION_ID,
+        requestId: "req-org-denied",
+        targetId: ORGANIZATION_ID,
+        targetType: "ORGANIZATION",
+      }),
+    );
+  });
 });
 
 function createRepository() {

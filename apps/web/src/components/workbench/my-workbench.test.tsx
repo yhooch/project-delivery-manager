@@ -192,7 +192,7 @@ function makeRecentActivity(overrides: Record<string, unknown> = {}) {
       id: "01ARZ3NDEKTSV4RRFFQ69G5FA1",
       title: "Workbench task",
     },
-    eventType: "WORK_ITEM_UPDATED",
+    eventType: "UPDATED",
     actor: ACTOR,
     title: "updated the task",
     createdAt: "2026-05-13T22:00:00.000Z",
@@ -898,7 +898,12 @@ describe("MyWorkbench", () => {
     expect(
       await screen.findByText("workbench.sections.recent"),
     ).toBeInTheDocument();
-    expect(screen.getByText("edited the description")).toBeInTheDocument();
+    expect(
+      screen.getByText("common.timeline.event.UPDATED"),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByText("edited the description"),
+    ).not.toBeInTheDocument();
   });
 
   it("renders workbench header actions as navigable links", async () => {

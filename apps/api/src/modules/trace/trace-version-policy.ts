@@ -9,9 +9,13 @@ export type TraceVersionRef = {
 
 export type TraceVersionCascadeImpact = {
   intakeItemCount?: number;
+  intakeItemIds?: string[];
   workItemCount: number;
+  workItemIds?: string[];
   bugCount: number;
+  bugIds?: string[];
   relatedBugCount?: number;
+  relatedBugIds?: string[];
 };
 
 export function resolveRequiredTraceVersion(
