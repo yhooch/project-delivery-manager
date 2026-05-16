@@ -10,7 +10,7 @@ import type {
   WorkItem,
 } from "@project-delivery/shared";
 import { useTranslations } from "next-intl";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import { getApiErrorMessageKey } from "../../lib/api-error-messages";
 import { toUpdateBugRequest } from "../../lib/bug-forms";
@@ -32,6 +32,11 @@ import {
 import { Input } from "../ui/input";
 import { Label } from "../ui/label";
 import { Textarea } from "../ui/textarea";
+
+import {
+  filterTraceOptionsByVersion,
+  isTraceOptionCompatibleWithVersion,
+} from "./versioned-trace-linking";
 
 type EditBugDialogProps = {
   bug: BugView | null;
@@ -97,6 +102,22 @@ export function EditBugDialog({
 
   const optionFieldsDisabled = submitting || optionsLoadState !== "ready";
   const submitDisabled = submitting || optionsLoadState !== "ready";
+  const selectedRequirement = useMemo(
+    () => requirements.find((requirement) => requirement.id === requirementId),
+    [requirementId, requirements],
+  );
+  const selectedRelatedTask = useMemo(
+    () => tasks.find((task) => task.id === relatedTaskId),
+    [relatedTaskId, tasks],
+  );
+  const filteredRequirements = useMemo(
+    () => filterTraceOptionsByVersion(requirements, versionId),
+    [requirements, versionId],
+  );
+  const filteredTasks = useMemo(
+    () => filterTraceOptionsByVersion(tasks, versionId),
+    [tasks, versionId],
+  );
 
   useEffect(() => {
     if (!open || !bug) {
@@ -172,6 +193,44 @@ export function EditBugDialog({
     };
   }, [open, organizationId, optionsReloadKey, spaceId]);
 
+  useEffect(() => {
+    if (optionsLoadState !== "ready") {
+      return;
+    }
+
+    const nextVersionId =
+      versionId ||
+      selectedRequirement?.versionId ||
+      selectedRelatedTask?.versionId ||
+      "";
+
+    if (nextVersionId && !versionId) {
+      setVersionId(nextVersionId);
+    }
+
+    if (
+      !isTraceOptionCompatibleWithVersion(
+        selectedRequirement,
+        nextVersionId,
+      )
+    ) {
+      setRequirementId("");
+    }
+    if (
+      !isTraceOptionCompatibleWithVersion(
+        selectedRelatedTask,
+        nextVersionId,
+      )
+    ) {
+      setRelatedTaskId("");
+    }
+  }, [
+    optionsLoadState,
+    selectedRelatedTask,
+    selectedRequirement,
+    versionId,
+  ]);
+
   function handleOpenChange(next: boolean) {
     if (!next) {
       setErrorKey(null);
@@ -186,6 +245,67 @@ export function EditBugDialog({
   function retryOptionsLoad() {
     setOptionsLoadState("loading");
     setOptionsReloadKey((value) => value + 1);
+  }
+
+  function handleVersionChange(nextVersionId: string) {
+    setVersionId(nextVersionId);
+
+    if (
+      !isTraceOptionCompatibleWithVersion(
+        selectedRequirement,
+        nextVersionId,
+      )
+    ) {
+      setRequirementId("");
+    }
+    if (
+      !isTraceOptionCompatibleWithVersion(
+        selectedRelatedTask,
+        nextVersionId,
+      )
+    ) {
+      setRelatedTaskId("");
+    }
+  }
+
+  function handleRequirementChange(nextRequirementId: string) {
+    setRequirementId(nextRequirementId);
+
+    const nextRequirement = requirements.find(
+      (requirement) => requirement.id === nextRequirementId,
+    );
+    const nextVersionId = nextRequirement?.versionId;
+
+    if (!versionId && nextVersionId) {
+      setVersionId(nextVersionId);
+      if (
+        !isTraceOptionCompatibleWithVersion(
+          selectedRelatedTask,
+          nextVersionId,
+        )
+      ) {
+        setRelatedTaskId("");
+      }
+    }
+  }
+
+  function handleRelatedTaskChange(nextRelatedTaskId: string) {
+    setRelatedTaskId(nextRelatedTaskId);
+
+    const nextRelatedTask = tasks.find((task) => task.id === nextRelatedTaskId);
+    const nextVersionId = nextRelatedTask?.versionId;
+
+    if (!versionId && nextVersionId) {
+      setVersionId(nextVersionId);
+      if (
+        !isTraceOptionCompatibleWithVersion(
+          selectedRequirement,
+          nextVersionId,
+        )
+      ) {
+        setRequirementId("");
+      }
+    }
   }
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
@@ -449,7 +569,7 @@ export function EditBugDialog({
                 id="edit-bug-version"
                 data-testid="edit-bug-version-select"
                 value={versionId}
-                onChange={(event) => setVersionId(event.target.value)}
+                onChange={(event) => handleVersionChange(event.target.value)}
                 disabled={optionFieldsDisabled}
                 className="h-8 w-full rounded-md border border-input bg-background px-2 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               >
@@ -469,12 +589,14 @@ export function EditBugDialog({
                 id="edit-bug-requirement"
                 data-testid="edit-bug-requirement-select"
                 value={requirementId}
-                onChange={(event) => setRequirementId(event.target.value)}
+                onChange={(event) =>
+                  handleRequirementChange(event.target.value)
+                }
                 disabled={optionFieldsDisabled}
                 className="h-8 w-full rounded-md border border-input bg-background px-2 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               >
                 <option value="">{tRoot("bugs.form.noRequirement")}</option>
-                {requirements.map((requirement) => (
+                {filteredRequirements.map((requirement) => (
                   <option key={requirement.id} value={requirement.id}>
                     {requirement.title ||
                       tRoot("intake.dialog.fields.untitledRequirement")}
@@ -490,12 +612,14 @@ export function EditBugDialog({
                 id="edit-bug-related-task"
                 data-testid="edit-bug-related-task-select"
                 value={relatedTaskId}
-                onChange={(event) => setRelatedTaskId(event.target.value)}
+                onChange={(event) =>
+                  handleRelatedTaskChange(event.target.value)
+                }
                 disabled={optionFieldsDisabled}
                 className="h-8 w-full rounded-md border border-input bg-background px-2 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               >
                 <option value="">{tRoot("bugs.form.noRelatedTask")}</option>
-                {tasks.map((task) => (
+                {filteredTasks.map((task) => (
                   <option key={task.id} value={task.id}>
                     {task.title}
                   </option>

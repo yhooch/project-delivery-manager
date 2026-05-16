@@ -178,8 +178,11 @@ import { createRecentStorageKey } from "../shell/recent-opens";
 
 const ASSIGNEE_ID = "01ARZ3NDEKTSV4RRFFQ69G5FB1";
 const VERSION_ID = "01ARZ3NDEKTSV4RRFFQ69G5FD1";
+const NEXT_VERSION_ID = "01ARZ3NDEKTSV4RRFFQ69G5FD2";
 const REQUIREMENT_ID = "01ARZ3NDEKTSV4RRFFQ69G5FRQ";
+const NEXT_REQUIREMENT_ID = "01ARZ3NDEKTSV4RRFFQ69G5FR2";
 const RELATED_TASK_ID = "01ARZ3NDEKTSV4RRFFQ69G5FTK";
+const NEXT_RELATED_TASK_ID = "01ARZ3NDEKTSV4RRFFQ69G5FT2";
 
 function makeBug(overrides: Record<string, unknown> = {}) {
   return {
@@ -579,7 +582,13 @@ describe("BugsPage", () => {
     });
     versionMap.set(VERSION_ID, { name: "v2.0 beta" });
     listRequirementsMock.mockResolvedValueOnce({
-      items: [{ id: REQUIREMENT_ID, title: "Login requirement" }],
+      items: [
+        {
+          id: REQUIREMENT_ID,
+          title: "Login requirement",
+          versionId: VERSION_ID,
+        },
+      ],
       total: 1,
     });
     listWorkItemsMock.mockResolvedValueOnce({
@@ -660,6 +669,87 @@ describe("BugsPage", () => {
         }),
       ),
     );
+  });
+
+  it("links requirement and related task filters to the selected version", async () => {
+    versionMap.set(VERSION_ID, { name: "v1" });
+    versionMap.set(NEXT_VERSION_ID, { name: "v2" });
+    listRequirementsMock.mockResolvedValueOnce({
+      items: [
+        { id: REQUIREMENT_ID, title: "Requirement v1", versionId: VERSION_ID },
+        {
+          id: NEXT_REQUIREMENT_ID,
+          title: "Requirement v2",
+          versionId: NEXT_VERSION_ID,
+        },
+      ],
+      total: 2,
+    });
+    listWorkItemsMock.mockResolvedValueOnce({
+      items: [
+        makeBug({ id: RELATED_TASK_ID, type: "TASK", title: "Task v1" }),
+        makeBug({
+          id: NEXT_RELATED_TASK_ID,
+          type: "TASK",
+          title: "Task v2",
+          versionId: NEXT_VERSION_ID,
+        }),
+      ],
+      total: 2,
+    });
+    listBugsMock.mockResolvedValue({
+      items: [makeBug({ title: "Linked filter bug" })],
+      total: 1,
+    });
+
+    render(<BugsPage />);
+
+    await screen.findByText("Linked filter bug");
+    fireEvent.click(screen.getByTestId("bugs-filter-button"));
+    await screen.findByText("Requirement v2");
+
+    const versionSelect = screen.getByTestId(
+      "bugs-filter-version",
+    ) as HTMLSelectElement;
+    const requirementSelect = screen.getByTestId(
+      "bugs-filter-requirement",
+    ) as HTMLSelectElement;
+    const relatedTaskSelect = screen.getByTestId(
+      "bugs-filter-related-task",
+    ) as HTMLSelectElement;
+
+    fireEvent.change(requirementSelect, {
+      target: { value: NEXT_REQUIREMENT_ID },
+    });
+
+    await waitFor(() => expect(versionSelect.value).toBe(NEXT_VERSION_ID));
+    await waitFor(() =>
+      expect(listBugsMock).toHaveBeenLastCalledWith(
+        expect.objectContaining({
+          requirementId: NEXT_REQUIREMENT_ID,
+          versionId: NEXT_VERSION_ID,
+        }),
+      ),
+    );
+    expect(
+      within(relatedTaskSelect).queryByRole("option", { name: "Task v1" }),
+    ).not.toBeInTheDocument();
+    expect(
+      within(relatedTaskSelect).getByRole("option", { name: "Task v2" }),
+    ).toBeInTheDocument();
+
+    fireEvent.change(versionSelect, { target: { value: VERSION_ID } });
+
+    await waitFor(() => expect(requirementSelect.value).toBe(""));
+    expect(relatedTaskSelect.value).toBe("");
+    await waitFor(() =>
+      expect(listBugsMock).toHaveBeenLastCalledWith(
+        expect.objectContaining({ versionId: VERSION_ID }),
+      ),
+    );
+    const [query] = listBugsMock.mock.calls[listBugsMock.mock.calls.length - 1];
+    expect(query.requirementId).toBeUndefined();
+    expect(query.relatedTaskId).toBeUndefined();
   });
 
   it("initializes supported filters from overview query params and ignores task-only workItemType", async () => {

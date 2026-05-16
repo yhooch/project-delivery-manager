@@ -1,4 +1,11 @@
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import {
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const { translatorCache } = vi.hoisted(() => ({
@@ -58,8 +65,12 @@ import { CreateBugDialog } from "./create-bug-dialog";
 
 const spaceId = "01ARZ3NDEKTSV4RRFFQ69G5FS1";
 const organizationId = "ORG_01";
+const versionId = "01ARZ3NDEKTSV4RRFFQ69G5FV1";
+const nextVersionId = "01ARZ3NDEKTSV4RRFFQ69G5FV2";
 const requirementId = "01ARZ3NDEKTSV4RRFFQ69G5FR1";
+const nextRequirementId = "01ARZ3NDEKTSV4RRFFQ69G5FR2";
 const relatedTaskId = "01ARZ3NDEKTSV4RRFFQ69G5FT1";
+const nextRelatedTaskId = "01ARZ3NDEKTSV4RRFFQ69G5FT2";
 
 beforeEach(() => {
   createBugMock.mockReset();
@@ -183,5 +194,143 @@ describe("CreateBugDialog", () => {
       expect(screen.getByTestId("create-bug-submit")).not.toBeDisabled(),
     );
     expect(listWorkItemsMock).toHaveBeenCalledTimes(2);
+  });
+
+  it("infers the version from a selected requirement and narrows related task options", async () => {
+    listVersionsMock.mockResolvedValueOnce({
+      items: [
+        { id: versionId, name: "v1" },
+        { id: nextVersionId, name: "v2" },
+      ],
+      total: 2,
+    });
+    listRequirementsMock.mockResolvedValueOnce({
+      items: [
+        { id: requirementId, title: "Requirement v1", versionId },
+        {
+          id: nextRequirementId,
+          title: "Requirement v2",
+          versionId: nextVersionId,
+        },
+      ],
+      total: 2,
+    });
+    listWorkItemsMock.mockResolvedValueOnce({
+      items: [
+        { id: relatedTaskId, title: "Task v1", versionId },
+        { id: nextRelatedTaskId, title: "Task v2", versionId: nextVersionId },
+      ],
+      total: 2,
+    });
+
+    render(
+      <CreateBugDialog
+        open
+        onOpenChange={() => {}}
+        organizationId={organizationId}
+        spaceId={spaceId}
+      />,
+    );
+
+    await screen.findByText("Requirement v2");
+
+    const versionSelect = screen.getByTestId(
+      "create-bug-version-select",
+    ) as HTMLSelectElement;
+    const requirementSelect = screen.getByTestId(
+      "create-bug-requirement-select",
+    ) as HTMLSelectElement;
+    const relatedTaskSelect = screen.getByTestId(
+      "create-bug-related-task-select",
+    ) as HTMLSelectElement;
+
+    fireEvent.change(requirementSelect, {
+      target: { value: nextRequirementId },
+    });
+
+    await waitFor(() => expect(versionSelect.value).toBe(nextVersionId));
+    expect(requirementSelect.value).toBe(nextRequirementId);
+    expect(
+      within(relatedTaskSelect).queryByRole("option", { name: "Task v1" }),
+    ).not.toBeInTheDocument();
+    expect(
+      within(relatedTaskSelect).getByRole("option", { name: "Task v2" }),
+    ).toBeInTheDocument();
+
+    fireEvent.change(versionSelect, { target: { value: versionId } });
+
+    await waitFor(() => expect(requirementSelect.value).toBe(""));
+    expect(
+      within(requirementSelect).getByRole("option", {
+        name: "Requirement v1",
+      }),
+    ).toBeInTheDocument();
+    expect(
+      within(requirementSelect).queryByRole("option", {
+        name: "Requirement v2",
+      }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("infers the version from a selected related task", async () => {
+    listVersionsMock.mockResolvedValueOnce({
+      items: [
+        { id: versionId, name: "v1" },
+        { id: nextVersionId, name: "v2" },
+      ],
+      total: 2,
+    });
+    listRequirementsMock.mockResolvedValueOnce({
+      items: [
+        { id: requirementId, title: "Requirement v1", versionId },
+        {
+          id: nextRequirementId,
+          title: "Requirement v2",
+          versionId: nextVersionId,
+        },
+      ],
+      total: 2,
+    });
+    listWorkItemsMock.mockResolvedValueOnce({
+      items: [
+        { id: relatedTaskId, title: "Task v1", versionId },
+        { id: nextRelatedTaskId, title: "Task v2", versionId: nextVersionId },
+      ],
+      total: 2,
+    });
+
+    render(
+      <CreateBugDialog
+        open
+        onOpenChange={() => {}}
+        organizationId={organizationId}
+        spaceId={spaceId}
+      />,
+    );
+
+    await screen.findByText("Task v2");
+
+    const versionSelect = screen.getByTestId(
+      "create-bug-version-select",
+    ) as HTMLSelectElement;
+    const requirementSelect = screen.getByTestId(
+      "create-bug-requirement-select",
+    ) as HTMLSelectElement;
+
+    fireEvent.change(screen.getByTestId("create-bug-related-task-select"), {
+      target: { value: nextRelatedTaskId },
+    });
+
+    await waitFor(() => expect(versionSelect.value).toBe(nextVersionId));
+    expect(
+      within(requirementSelect).queryByRole("option", {
+        name: "Requirement v1",
+      }),
+    ).not.toBeInTheDocument();
+    expect(
+      within(requirementSelect).getByRole("option", {
+        name: "Requirement v2",
+      }),
+    ).toBeInTheDocument();
   });
 });

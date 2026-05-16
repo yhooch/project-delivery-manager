@@ -62,6 +62,10 @@ import { TaskDetailSheet } from "../work-item/task-detail-sheet";
 
 import { CreateBugDialog } from "./create-bug-dialog";
 import { EditBugDialog } from "./edit-bug-dialog";
+import {
+  filterTraceOptionsByVersion,
+  isTraceOptionCompatibleWithVersion,
+} from "./versioned-trace-linking";
 
 const severityColor: Record<BugSeverity, string> = {
   BLOCKER: "bg-destructive text-destructive-foreground",
@@ -187,6 +191,14 @@ export function BugsPage() {
   const paginationFrom = loadedCount > 0 ? 1 : 0;
   const paginationTo = Math.min(loadedCount, pageInfo.total);
   const hasMoreItems = loadedCount < pageInfo.total;
+  const filteredRequirements = useMemo(
+    () => filterTraceOptionsByVersion(requirements, filters.versionId ?? ""),
+    [filters.versionId, requirements],
+  );
+  const filteredRelatedTasks = useMemo(
+    () => filterTraceOptionsByVersion(relatedTasks, filters.versionId ?? ""),
+    [filters.versionId, relatedTasks],
+  );
 
   const setFilter = useCallback(
     (key: keyof BugListFilterState, value: string) => {
@@ -208,6 +220,92 @@ export function BugsPage() {
       });
     },
     [],
+  );
+  const setVersionFilter = useCallback(
+    (nextVersionId: string) => {
+      setFilters((current) => {
+        const selectedRequirement = requirements.find(
+          (requirement) => requirement.id === current.requirementId,
+        );
+        const selectedRelatedTask = relatedTasks.find(
+          (task) => task.id === current.relatedTaskId,
+        );
+        const nextRequirementId = isTraceOptionCompatibleWithVersion(
+          selectedRequirement,
+          nextVersionId,
+        )
+          ? current.requirementId
+          : undefined;
+        const nextRelatedTaskId = isTraceOptionCompatibleWithVersion(
+          selectedRelatedTask,
+          nextVersionId,
+        )
+          ? current.relatedTaskId
+          : undefined;
+
+        return {
+          ...current,
+          relatedTaskId: nextRelatedTaskId,
+          requirementId: nextRequirementId,
+          versionId: nextVersionId || undefined,
+        };
+      });
+    },
+    [relatedTasks, requirements],
+  );
+  const setRequirementFilter = useCallback(
+    (nextRequirementId: string) => {
+      setFilters((current) => {
+        const selectedRequirement = requirements.find(
+          (requirement) => requirement.id === nextRequirementId,
+        );
+        const selectedRelatedTask = relatedTasks.find(
+          (task) => task.id === current.relatedTaskId,
+        );
+        const nextVersionId =
+          current.versionId || selectedRequirement?.versionId || "";
+
+        return {
+          ...current,
+          relatedTaskId: isTraceOptionCompatibleWithVersion(
+            selectedRelatedTask,
+            nextVersionId,
+          )
+            ? current.relatedTaskId
+            : undefined,
+          requirementId: nextRequirementId || undefined,
+          versionId: nextVersionId || undefined,
+        };
+      });
+    },
+    [relatedTasks, requirements],
+  );
+  const setRelatedTaskFilter = useCallback(
+    (nextRelatedTaskId: string) => {
+      setFilters((current) => {
+        const selectedRequirement = requirements.find(
+          (requirement) => requirement.id === current.requirementId,
+        );
+        const selectedRelatedTask = relatedTasks.find(
+          (task) => task.id === nextRelatedTaskId,
+        );
+        const nextVersionId =
+          current.versionId || selectedRelatedTask?.versionId || "";
+
+        return {
+          ...current,
+          relatedTaskId: nextRelatedTaskId || undefined,
+          requirementId: isTraceOptionCompatibleWithVersion(
+            selectedRequirement,
+            nextVersionId,
+          )
+            ? current.requirementId
+            : undefined,
+          versionId: nextVersionId || undefined,
+        };
+      });
+    },
+    [relatedTasks, requirements],
   );
 
   const fetchBugs = useCallback(
@@ -343,6 +441,53 @@ export function BugsPage() {
       cancelled = true;
     };
   }, [filterOpen, organizationId, spaceId]);
+
+  useEffect(() => {
+    if (!filterOpen) {
+      return;
+    }
+
+    setFilters((current) => {
+      const selectedRequirement = requirements.find(
+        (requirement) => requirement.id === current.requirementId,
+      );
+      const selectedRelatedTask = relatedTasks.find(
+        (task) => task.id === current.relatedTaskId,
+      );
+      const nextVersionId =
+        current.versionId ||
+        selectedRequirement?.versionId ||
+        selectedRelatedTask?.versionId ||
+        "";
+      const nextRequirementId = isTraceOptionCompatibleWithVersion(
+        selectedRequirement,
+        nextVersionId,
+      )
+        ? current.requirementId
+        : undefined;
+      const nextRelatedTaskId = isTraceOptionCompatibleWithVersion(
+        selectedRelatedTask,
+        nextVersionId,
+      )
+        ? current.relatedTaskId
+        : undefined;
+
+      if (
+        current.versionId === (nextVersionId || undefined) &&
+        current.requirementId === nextRequirementId &&
+        current.relatedTaskId === nextRelatedTaskId
+      ) {
+        return current;
+      }
+
+      return {
+        ...current,
+        relatedTaskId: nextRelatedTaskId,
+        requirementId: nextRequirementId,
+        versionId: nextVersionId || undefined,
+      };
+    });
+  }, [filterOpen, relatedTasks, requirements]);
 
   const workflowVersionIds = useMemo(
     () => items.map((item) => item.workflowVersionId),
@@ -721,7 +866,7 @@ export function BugsPage() {
             <select
               data-testid="bugs-filter-version"
               value={filters.versionId ?? ""}
-              onChange={(event) => setFilter("versionId", event.target.value)}
+              onChange={(event) => setVersionFilter(event.target.value)}
               className="h-8 w-full rounded-md border border-input bg-background px-2 text-sm"
             >
               <option value="">{tFilters("allVersions")}</option>
@@ -800,12 +945,12 @@ export function BugsPage() {
               data-testid="bugs-filter-requirement"
               value={filters.requirementId ?? ""}
               onChange={(event) =>
-                setFilter("requirementId", event.target.value)
+                setRequirementFilter(event.target.value)
               }
               className="h-8 w-full rounded-md border border-input bg-background px-2 text-sm"
             >
               <option value="">{tFilters("allRequirements")}</option>
-              {requirements.map((requirement) => (
+              {filteredRequirements.map((requirement) => (
                 <option key={requirement.id} value={requirement.id}>
                   {requirement.title || requirement.id}
                 </option>
@@ -817,12 +962,12 @@ export function BugsPage() {
               data-testid="bugs-filter-related-task"
               value={filters.relatedTaskId ?? ""}
               onChange={(event) =>
-                setFilter("relatedTaskId", event.target.value)
+                setRelatedTaskFilter(event.target.value)
               }
               className="h-8 w-full rounded-md border border-input bg-background px-2 text-sm"
             >
               <option value="">{tFilters("allRelatedTasks")}</option>
-              {relatedTasks.map((task) => (
+              {filteredRelatedTasks.map((task) => (
                 <option key={task.id} value={task.id}>
                   {task.title}
                 </option>
