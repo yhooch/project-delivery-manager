@@ -9,6 +9,7 @@ import {
   toRequirementRelatedWorkItems,
 } from "./requirement.mappers";
 import { assertTraceRefsMatchVersion } from "../trace/trace-version-policy";
+import { syncWorkItemRelatedParticipants } from "../workitem/workitem-participants";
 import type { RequirementRepository } from "./requirement.repository";
 import type {
   ArchiveRequirementInput,
@@ -858,6 +859,11 @@ async function cascadeRequirementTraceVersion(
           in: workItemIds,
         },
       },
+    });
+
+    await syncWorkItemRelatedParticipants(tx, {
+      actorUserId: input.actorUserId,
+      workItemIds,
     });
   }
 }

@@ -5,6 +5,7 @@ import { Prisma } from "../../generated/prisma/client";
 import { PrismaService } from "../../prisma/prisma.service";
 import { assertTraceRefsMatchVersion } from "../trace/trace-version-policy";
 import { toWorkItem } from "../workitem/workitem.mappers";
+import { syncWorkItemRelatedParticipants } from "../workitem/workitem-participants";
 import { toIntakeItem } from "./intake.mappers";
 import type { IntakeRepository } from "./intake.repository";
 import type {
@@ -825,21 +826,24 @@ async function cascadeIntakeTraceVersion(
     });
   }
 
-  if (relatedBugIds.length === 0) {
-    return;
+  if (relatedBugIds.length > 0) {
+    await tx.workItem.updateMany({
+      data: {
+        updatedById: input.actorUserId,
+        versionId: input.nextVersionId,
+      },
+      where: {
+        deletedAt: null,
+        id: {
+          in: relatedBugIds,
+        },
+      },
+    });
   }
 
-  await tx.workItem.updateMany({
-    data: {
-      updatedById: input.actorUserId,
-      versionId: input.nextVersionId,
-    },
-    where: {
-      deletedAt: null,
-      id: {
-        in: relatedBugIds,
-      },
-    },
+  await syncWorkItemRelatedParticipants(tx, {
+    actorUserId: input.actorUserId,
+    workItemIds,
   });
 }
 
