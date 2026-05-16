@@ -3,6 +3,7 @@ import type {
   StatusCategory,
   Version,
   ViewWorkItemSummary,
+  WorkItem,
 } from "@project-delivery/shared";
 
 import { formatDisplayCode } from "../display-code";
@@ -67,9 +68,7 @@ export function toWorkItemViewModel(
     (signal) => signal.type === "blocked",
   );
   const dueDate = item.dueDate
-    ? new Intl.DateTimeFormat(locale, { dateStyle: "medium" }).format(
-        new Date(item.dueDate),
-      )
+    ? formatOptionalDate(item.dueDate, locale)
     : undefined;
   const updatedAgo = item.lastActionAt
     ? formatTimeAgo(item.lastActionAt, locale, justNowLabel)
@@ -110,6 +109,58 @@ export function toWorkItemViewModel(
   };
 }
 
+export function toWorkItemListViewModel(
+  item: WorkItem,
+  {
+    locale,
+    lookups,
+    statusLabel,
+    unknownVersionLabel,
+  }: WorkItemViewModelOptions,
+): WorkItemViewModel {
+  const code = formatDisplayCode(item.type, item.id);
+  const member = item.assigneeId
+    ? lookups?.getMember(item.assigneeId, item.spaceId)
+    : undefined;
+  const assigneeName = member?.user.name ?? member?.user.username ?? "";
+  const version = item.versionId
+    ? lookups?.getVersion(item.versionId, item.spaceId)
+    : undefined;
+  const versionName = item.versionId
+    ? (version?.name ?? unknownVersionLabel)
+    : undefined;
+  const dueDate = item.dueDate
+    ? formatOptionalDate(item.dueDate, locale)
+    : undefined;
+  const isOverdue = item.dueDate
+    ? new Date(item.dueDate).getTime() < Date.now() &&
+      item.statusCategory !== "DONE" &&
+      item.statusCategory !== "TERMINATED"
+    : false;
+  const isBlocked =
+    item.statusCategory === "WAITING" || Boolean(item.blockedAt);
+
+  return {
+    id: item.id,
+    code,
+    type: item.type,
+    title: item.title,
+    statusCategory: item.statusCategory,
+    statusLabel: statusLabel?.(item.statusCategory) ?? item.statusCategory,
+    priority: item.priority,
+    assignee: {
+      name: assigneeName,
+      initial: initialOf(assigneeName),
+    },
+    versionName,
+    dueDate,
+    isOverdue,
+    isBlocked,
+    blockedReason: item.blockedReason,
+    updatedAgo: undefined,
+  };
+}
+
 function initialOf(value: string) {
   const trimmed = value.trim();
 
@@ -118,6 +169,22 @@ function initialOf(value: string) {
   }
 
   return trimmed.slice(0, 1).toUpperCase();
+}
+
+function formatOptionalDate(value: string, locale: string): string | undefined {
+  try {
+    const date = new Date(value);
+
+    if (Number.isNaN(date.getTime())) {
+      return undefined;
+    }
+
+    return new Intl.DateTimeFormat(locale, { dateStyle: "medium" }).format(
+      date,
+    );
+  } catch {
+    return undefined;
+  }
 }
 
 function formatTimeAgo(value: string, locale: string, justNowLabel = "") {

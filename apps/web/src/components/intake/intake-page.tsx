@@ -55,6 +55,10 @@ import { listRequirements } from "../../lib/requirement-service";
 import { listTimeline } from "../../lib/timeline-service";
 import { cn } from "../../lib/utils";
 import { useSpaceMembers, useVersions } from "../../lib/v2/lookups";
+import {
+  toWorkItemListViewModel,
+  type WorkItemViewModel,
+} from "../../lib/v2/work-item-view-model";
 import { listWorkItems } from "../../lib/work-item-service";
 import { useSession } from "../providers/session-provider";
 import { recordRecentOpen } from "../shell/recent-opens";
@@ -78,6 +82,7 @@ import {
   ListSkeleton,
   LoadingState,
 } from "../v2/states";
+import { TaskDetailSheet } from "../work-item/task-detail-sheet";
 
 import { ConvertIntakeDialog } from "./convert-intake-dialog";
 import { CreateIntakeDialog } from "./create-intake-dialog";
@@ -108,7 +113,13 @@ const SOURCE_TYPES: IntakeSourceType[] = [
 
 const PRIORITY_FILTERS: Priority[] = ["LOW", "MEDIUM", "HIGH", "URGENT"];
 const LIST_PAGE_SIZE = 100;
+const RELATED_TASKS_PAGE_SIZE = 10;
 const INITIAL_PAGE_INFO = { page: 1, pageSize: LIST_PAGE_SIZE, total: 0 };
+const INITIAL_RELATED_TASKS_PAGE_INFO = {
+  page: 1,
+  pageSize: RELATED_TASKS_PAGE_SIZE,
+  total: 0,
+};
 
 const intakeStatusToCategory: Record<IntakeStatus, StatusCategory> = {
   PENDING: "NOT_STARTED",
@@ -1089,6 +1100,8 @@ export function IntakePage() {
                   </p>
                 </div>
                 <RelatedTasksSection
+                  getMember={getMember}
+                  getVersion={getVersion}
                   intakeItem={active}
                   organizationId={organizationId}
                   routerPush={(href) => router.push(href)}
@@ -1209,6 +1222,8 @@ function createIntakeListScopeKey({
 }
 
 function RelatedTasksSection({
+  getMember,
+  getVersion,
   intakeItem,
   locale,
   organizationId,
@@ -1218,6 +1233,8 @@ function RelatedTasksSection({
   tIntakeItems,
   tRoot,
 }: {
+  getMember: (userId: string) => SpaceMemberWithUser | undefined;
+  getVersion: (versionId: string) => Version | undefined;
   intakeItem: IntakeItem;
   locale: string;
   organizationId?: string;
@@ -1229,7 +1246,14 @@ function RelatedTasksSection({
 }) {
   const [tasks, setTasks] = useState<WorkItem[]>([]);
   const [loading, setLoading] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [errorKey, setErrorKey] = useState<string | null>(null);
+  const [loadMoreErrorKey, setLoadMoreErrorKey] = useState<string | null>(null);
+  const [pageInfo, setPageInfo] = useState(INITIAL_RELATED_TASKS_PAGE_INFO);
+  const [selectedTask, setSelectedTask] = useState<WorkItemViewModel | null>(
+    null,
+  );
+  const [taskSheetOpen, setTaskSheetOpen] = useState(false);
   const taskScopeKey = useMemo(
     () => `${organizationId ?? ""}:${spaceId ?? ""}:${intakeItem.id}`,
     [intakeItem.id, organizationId, spaceId],
@@ -1238,57 +1262,121 @@ function RelatedTasksSection({
   const taskRequestIdRef = useRef(0);
   latestTaskScopeKeyRef.current = taskScopeKey;
 
-  const fetchTasks = useCallback(async () => {
-    if (!spaceId) {
-      return;
-    }
-
-    const requestId = taskRequestIdRef.current + 1;
-    taskRequestIdRef.current = requestId;
-    const requestScopeKey = taskScopeKey;
-
-    setLoading(true);
-    setErrorKey(null);
-
-    try {
-      const result = await listWorkItems({
-        intakeItemId: intakeItem.id,
-        organizationId,
-        page: 1,
-        pageSize: 5,
-        spaceId,
-      });
-      if (
-        taskRequestIdRef.current !== requestId ||
-        latestTaskScopeKeyRef.current !== requestScopeKey
-      ) {
+  const fetchTasks = useCallback(
+    async (page = 1, mode: "replace" | "append" = "replace") => {
+      if (!spaceId) {
+        setTasks([]);
+        setLoading(false);
+        setLoadingMore(false);
+        setErrorKey(null);
+        setLoadMoreErrorKey(null);
+        setPageInfo(INITIAL_RELATED_TASKS_PAGE_INFO);
         return;
       }
-      setTasks(result.items);
-    } catch (error) {
-      if (
-        taskRequestIdRef.current === requestId &&
-        latestTaskScopeKeyRef.current === requestScopeKey
-      ) {
-        setErrorKey(getApiErrorMessageKey(error));
+
+      const requestId = taskRequestIdRef.current + 1;
+      taskRequestIdRef.current = requestId;
+      const requestScopeKey = taskScopeKey;
+      const append = mode === "append";
+
+      if (append) {
+        setLoadingMore(true);
+        setLoadMoreErrorKey(null);
+      } else {
+        setLoading(true);
+        setLoadingMore(false);
+        setErrorKey(null);
+        setLoadMoreErrorKey(null);
       }
-    } finally {
-      if (
-        taskRequestIdRef.current === requestId &&
-        latestTaskScopeKeyRef.current === requestScopeKey
-      ) {
-        setLoading(false);
+
+      try {
+        const result = await listWorkItems({
+          intakeItemId: intakeItem.id,
+          organizationId,
+          page,
+          pageSize: RELATED_TASKS_PAGE_SIZE,
+          spaceId,
+        });
+        if (
+          taskRequestIdRef.current !== requestId ||
+          latestTaskScopeKeyRef.current !== requestScopeKey
+        ) {
+          return;
+        }
+        setTasks((current) =>
+          append ? [...current, ...result.items] : result.items,
+        );
+        setPageInfo((current) => ({
+          page: result.page ?? page,
+          pageSize: result.pageSize ?? RELATED_TASKS_PAGE_SIZE,
+          total: result.total ?? (append ? current.total : result.items.length),
+        }));
+      } catch (error) {
+        if (
+          taskRequestIdRef.current === requestId &&
+          latestTaskScopeKeyRef.current === requestScopeKey
+        ) {
+          if (append) {
+            setLoadMoreErrorKey(getApiErrorMessageKey(error));
+          } else {
+            setErrorKey(getApiErrorMessageKey(error));
+          }
+        }
+      } finally {
+        if (
+          taskRequestIdRef.current === requestId &&
+          latestTaskScopeKeyRef.current === requestScopeKey
+        ) {
+          if (append) {
+            setLoadingMore(false);
+          } else {
+            setLoading(false);
+          }
+        }
       }
-    }
-  }, [intakeItem.id, organizationId, spaceId, taskScopeKey]);
+    },
+    [intakeItem.id, organizationId, spaceId, taskScopeKey],
+  );
 
   useEffect(() => {
     void fetchTasks();
   }, [fetchTasks]);
 
+  useEffect(() => {
+    setSelectedTask(null);
+    setTaskSheetOpen(false);
+  }, [taskScopeKey]);
+
   const openList = () => {
     routerPush(buildWorkItemsHref({ intakeItemId: intakeItem.id }));
   };
+
+  const openTaskDetail = (task: WorkItem) => {
+    setSelectedTask(
+      toWorkItemListViewModel(task, {
+        locale,
+        lookups: {
+          getMember,
+          getVersion,
+        },
+        statusLabel: (category) =>
+          tRoot(`workItems.statusCategory.${category}`),
+      }),
+    );
+    setTaskSheetOpen(true);
+  };
+
+  const closeTaskSheet = (open: boolean) => {
+    setTaskSheetOpen(open);
+    if (!open) {
+      setSelectedTask(null);
+    }
+  };
+
+  const loadedCount = tasks.length;
+  const paginationFrom = loadedCount > 0 ? 1 : 0;
+  const paginationTo = Math.min(loadedCount, pageInfo.total);
+  const hasMoreTasks = loadedCount < pageInfo.total;
 
   return (
     <section className="mt-6" data-testid="intake-related-tasks-section">
@@ -1327,42 +1415,90 @@ function RelatedTasksSection({
           description={tIntakeItems("relatedTasks.empty.description")}
         />
       ) : (
-        <ul
-          className="divide-y divide-border rounded-md border border-border"
-          data-testid="intake-related-tasks-list"
-        >
-          {tasks.map((task) => (
-            <li key={task.id}>
-              <button
+        <>
+          <ul
+            className="divide-y divide-border rounded-md border border-border"
+            data-testid="intake-related-tasks-list"
+          >
+            {tasks.map((task) => (
+              <li key={task.id}>
+                <button
+                  type="button"
+                  data-testid="intake-related-task-item"
+                  className="flex w-full cursor-pointer items-center gap-2 px-3 py-2 text-left text-sm transition-colors hover:bg-muted/50"
+                  onClick={() => openTaskDetail(task)}
+                >
+                  <CheckCircle2 className="h-3.5 w-3.5 shrink-0 text-primary" />
+                  <span className="min-w-0 flex-1 truncate font-medium">
+                    {task.title}
+                  </span>
+                  <span className="hidden shrink-0 text-[11px] text-muted-foreground sm:inline">
+                    {tIntakeItems("relatedTasks.meta", {
+                      dueDate: formatOptionalDate(
+                        task.dueDate,
+                        locale,
+                        tIntakeItems("noDueDate"),
+                      ),
+                      priority: tRoot(`workItems.priority.${task.priority}`),
+                      status: tRoot(
+                        `workItems.statusCategory.${task.statusCategory}`,
+                      ),
+                    })}
+                  </span>
+                </button>
+              </li>
+            ))}
+          </ul>
+          <div className="mt-2 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+            <span
+              className="text-[11px] text-muted-foreground"
+              data-testid="intake-related-tasks-pagination-summary"
+            >
+              {t("pagination.summary", {
+                from: paginationFrom,
+                to: paginationTo,
+                total: pageInfo.total,
+              })}
+            </span>
+            {hasMoreTasks && (
+              <Button
                 type="button"
-                data-testid="intake-related-task-item"
-                className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm transition-colors hover:bg-muted/50 cursor-pointer"
-                onClick={() =>
-                  routerPush(buildWorkItemsHref({ workItemId: task.id }))
-                }
+                size="sm"
+                variant="outline"
+                className="h-7 text-xs"
+                data-testid="intake-related-tasks-load-more"
+                disabled={loadingMore}
+                onClick={() => {
+                  void fetchTasks(pageInfo.page + 1, "append");
+                }}
               >
-                <CheckCircle2 className="h-3.5 w-3.5 shrink-0 text-primary" />
-                <span className="min-w-0 flex-1 truncate font-medium">
-                  {task.title}
-                </span>
-                <span className="hidden shrink-0 text-[11px] text-muted-foreground sm:inline">
-                  {tIntakeItems("relatedTasks.meta", {
-                    dueDate: formatOptionalDate(
-                      task.dueDate,
-                      locale,
-                      tIntakeItems("noDueDate"),
-                    ),
-                    priority: tRoot(`workItems.priority.${task.priority}`),
-                    status: tRoot(
-                      `workItems.statusCategory.${task.statusCategory}`,
-                    ),
-                  })}
-                </span>
-              </button>
-            </li>
-          ))}
-        </ul>
+                {loadingMore && <Loader2 className="h-3 w-3 animate-spin" />}
+                {loadingMore
+                  ? t("pagination.loadingMore")
+                  : t("pagination.loadMore")}
+              </Button>
+            )}
+          </div>
+          {loadMoreErrorKey && (
+            <p
+              className="mt-2 text-[11px] text-destructive"
+              data-testid="intake-related-tasks-load-more-error"
+            >
+              {tRoot(loadMoreErrorKey)}
+            </p>
+          )}
+        </>
       )}
+      <TaskDetailSheet
+        item={selectedTask}
+        open={taskSheetOpen}
+        onOpenChange={closeTaskSheet}
+        organizationId={organizationId}
+        spaceId={spaceId}
+        onChanged={() => {
+          void fetchTasks(1, "replace");
+        }}
+      />
     </section>
   );
 }

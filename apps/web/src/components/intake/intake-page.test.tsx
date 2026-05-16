@@ -199,6 +199,38 @@ vi.mock("./convert-intake-dialog", () => ({
       </div>
     ) : null,
 }));
+vi.mock("../work-item/task-detail-sheet", () => ({
+  TaskDetailSheet: ({
+    item,
+    onChanged,
+    onOpenChange,
+    open,
+  }: {
+    item?: { id: string; title: string } | null;
+    onChanged?: () => void;
+    onOpenChange?: (open: boolean) => void;
+    open: boolean;
+  }) =>
+    open && item ? (
+      <div data-testid="task-detail-sheet" data-task-id={item.id}>
+        <span>{item.title}</span>
+        <button
+          type="button"
+          data-testid="task-detail-sheet-close"
+          onClick={() => onOpenChange?.(false)}
+        >
+          close task
+        </button>
+        <button
+          type="button"
+          data-testid="task-detail-sheet-changed"
+          onClick={() => onChanged?.()}
+        >
+          changed task
+        </button>
+      </div>
+    ) : null,
+}));
 
 import { IntakePage } from "./intake-page";
 import { createRecentStorageKey } from "../shell/recent-opens";
@@ -247,6 +279,12 @@ beforeEach(() => {
   rejectIntakeItemMock.mockReset();
   updateIntakeItemMock.mockReset();
   listWorkItemsMock.mockReset();
+  listWorkItemsMock.mockResolvedValue({
+    items: [],
+    page: 1,
+    pageSize: 10,
+    total: 0,
+  });
   listCommentsMock.mockReset();
   createCommentMock.mockReset();
   listTimelineMock.mockReset();
@@ -768,7 +806,7 @@ describe("IntakePage", () => {
         }),
       ],
       page: 1,
-      pageSize: 5,
+      pageSize: 10,
       total: 1,
     });
     listCommentsMock.mockResolvedValueOnce({
@@ -879,7 +917,7 @@ describe("IntakePage", () => {
       expect.objectContaining({
         intakeItemId: "01ARZ3NDEKTSV4RRFFQ69G5FDT",
         page: 1,
-        pageSize: 5,
+        pageSize: 10,
         spaceId: "SPC_01",
       }),
     );
@@ -926,7 +964,7 @@ describe("IntakePage", () => {
     listWorkItemsMock.mockResolvedValueOnce({
       items: [makeTask({ dueDate: undefined, title: "No due task" })],
       page: 1,
-      pageSize: 5,
+      pageSize: 10,
       total: 1,
     });
 
@@ -1314,9 +1352,6 @@ describe("IntakePage", () => {
         screen.queryByTestId("intake-convert-button"),
       ).not.toBeInTheDocument(),
     );
-    expect(
-      screen.queryByTestId("intake-view-converted-tasks-button"),
-    ).not.toBeInTheDocument();
   });
 
   it("opens converted intake related task list from the related section", async () => {
@@ -1333,7 +1368,7 @@ describe("IntakePage", () => {
     listWorkItemsMock.mockResolvedValueOnce({
       items: [],
       page: 1,
-      pageSize: 5,
+      pageSize: 10,
       total: 0,
     });
 
@@ -1345,16 +1380,13 @@ describe("IntakePage", () => {
     );
 
     expect(openTaskList).not.toBeDisabled();
-    expect(
-      screen.queryByTestId("intake-view-converted-tasks-button"),
-    ).not.toBeInTheDocument();
     fireEvent.click(openTaskList);
     await waitFor(() =>
       expect(listWorkItemsMock).toHaveBeenCalledWith({
         intakeItemId: "01ARZ3NDEKTSV4RRFFQ69G5F04",
         organizationId: "ORG_01",
         page: 1,
-        pageSize: 5,
+        pageSize: 10,
         spaceId: "SPC_01",
       }),
     );
@@ -1364,6 +1396,230 @@ describe("IntakePage", () => {
     expect(
       screen.queryByTestId("convert-intake-dialog-open"),
     ).not.toBeInTheDocument();
+  });
+
+  it("paginates related tasks and opens the full task detail sheet in place", async () => {
+    listIntakeItemsMock.mockResolvedValueOnce({
+      items: [
+        makeIntake({
+          id: "01ARZ3NDEKTSV4RRFFQ69G5FP1",
+          title: "Paginated related tasks",
+          status: "CONVERTED",
+        }),
+      ],
+      total: 1,
+    });
+    const firstPageTasks = Array.from({ length: 10 }, (_, index) =>
+      makeTask({
+        id: `01ARZ3NDEKTSV4RRFFQ69G5T${String(index).padStart(2, "0")}`,
+        title: `Related task ${index + 1}`,
+      }),
+    );
+    const secondPageTasks = [
+      makeTask({
+        id: "01ARZ3NDEKTSV4RRFFQ69G5T10",
+        title: "Related task 11",
+      }),
+      makeTask({
+        id: "01ARZ3NDEKTSV4RRFFQ69G5T11",
+        title: "Related task 12",
+      }),
+    ];
+    listWorkItemsMock
+      .mockResolvedValueOnce({
+        items: firstPageTasks,
+        page: 1,
+        pageSize: 10,
+        total: 12,
+      })
+      .mockResolvedValueOnce({
+        items: secondPageTasks,
+        page: 2,
+        pageSize: 10,
+        total: 12,
+      })
+      .mockResolvedValueOnce({
+        items: [makeTask({ title: "Refreshed related task" })],
+        page: 1,
+        pageSize: 10,
+        total: 1,
+      });
+
+    render(<IntakePage />);
+
+    fireEvent.click(await screen.findByText("Paginated related tasks"));
+
+    expect(await screen.findByText("Related task 1")).toBeInTheDocument();
+    expect(
+      screen.getByTestId("intake-related-tasks-pagination-summary"),
+    ).toBeInTheDocument();
+
+    fireEvent.click(screen.getByTestId("intake-related-tasks-load-more"));
+
+    expect(await screen.findByText("Related task 12")).toBeInTheDocument();
+    await waitFor(() =>
+      expect(listWorkItemsMock).toHaveBeenCalledWith({
+        intakeItemId: "01ARZ3NDEKTSV4RRFFQ69G5FP1",
+        organizationId: "ORG_01",
+        page: 2,
+        pageSize: 10,
+        spaceId: "SPC_01",
+      }),
+    );
+
+    fireEvent.click(screen.getByText("Related task 12"));
+
+    expect(await screen.findByTestId("task-detail-sheet")).toHaveAttribute(
+      "data-task-id",
+      "01ARZ3NDEKTSV4RRFFQ69G5T11",
+    );
+    expect(routerPushMock).not.toHaveBeenCalled();
+
+    fireEvent.click(screen.getByTestId("task-detail-sheet-changed"));
+
+    await waitFor(() => expect(listWorkItemsMock).toHaveBeenCalledTimes(3));
+    expect(listWorkItemsMock).toHaveBeenLastCalledWith({
+      intakeItemId: "01ARZ3NDEKTSV4RRFFQ69G5FP1",
+      organizationId: "ORG_01",
+      page: 1,
+      pageSize: 10,
+      spaceId: "SPC_01",
+    });
+  });
+
+  it("resets related task load-more state when a detail refresh supersedes it", async () => {
+    listIntakeItemsMock.mockResolvedValueOnce({
+      items: [
+        makeIntake({
+          id: "01ARZ3NDEKTSV4RRFFQ69G5FLM",
+          title: "Concurrent related tasks",
+          status: "CONVERTED",
+        }),
+      ],
+      total: 1,
+    });
+    const firstPageTasks = Array.from({ length: 10 }, (_, index) =>
+      makeTask({
+        id: `01ARZ3NDEKTSV4RRFFQ69G5L${String(index).padStart(2, "0")}`,
+        title: `Concurrent task ${index + 1}`,
+      }),
+    );
+    let resolveAppend: (value: {
+      items: import("@project-delivery/shared").WorkItem[];
+      page: number;
+      pageSize: number;
+      total: number;
+    }) => void = () => undefined;
+
+    listWorkItemsMock
+      .mockResolvedValueOnce({
+        items: firstPageTasks,
+        page: 1,
+        pageSize: 10,
+        total: 12,
+      })
+      .mockImplementationOnce(
+        () =>
+          new Promise((resolve) => {
+            resolveAppend = resolve;
+          }),
+      )
+      .mockResolvedValueOnce({
+        items: firstPageTasks,
+        page: 1,
+        pageSize: 10,
+        total: 12,
+      });
+
+    render(<IntakePage />);
+
+    fireEvent.click(await screen.findByText("Concurrent related tasks"));
+    expect(await screen.findByText("Concurrent task 1")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByTestId("intake-related-tasks-load-more"));
+    expect(screen.getByTestId("intake-related-tasks-load-more")).toBeDisabled();
+
+    fireEvent.click(screen.getByText("Concurrent task 1"));
+    expect(await screen.findByTestId("task-detail-sheet")).toHaveAttribute(
+      "data-task-id",
+      "01ARZ3NDEKTSV4RRFFQ69G5L00",
+    );
+
+    fireEvent.click(screen.getByTestId("task-detail-sheet-changed"));
+
+    await waitFor(() => expect(listWorkItemsMock).toHaveBeenCalledTimes(3));
+    await waitFor(() =>
+      expect(
+        screen.getByTestId("intake-related-tasks-load-more"),
+      ).not.toBeDisabled(),
+    );
+
+    await act(async () => {
+      resolveAppend({
+        items: [makeTask({ title: "Stale append task" })],
+        page: 2,
+        pageSize: 10,
+        total: 12,
+      });
+      await Promise.resolve();
+    });
+  });
+
+  it("lets VIEWER open related task detail while task operations stay delegated to the task sheet", async () => {
+    sessionMock.current = {
+      session: {
+        defaultOrganizationId: "ORG_01",
+        defaultSpaceId: "SPC_01",
+        spaces: [
+          {
+            id: "SPC_01",
+            organizationId: "ORG_01",
+            role: "VIEWER",
+            status: "ACTIVE",
+          },
+        ],
+      },
+      currentSpace: {
+        id: "SPC_01",
+        organizationId: "ORG_01",
+        role: "VIEWER",
+        status: "ACTIVE",
+      },
+      status: "authenticated" as const,
+    };
+    listIntakeItemsMock.mockResolvedValueOnce({
+      items: [
+        makeIntake({
+          id: "01ARZ3NDEKTSV4RRFFQ69G5FVR",
+          title: "Viewer related tasks",
+          status: "CONVERTED",
+        }),
+      ],
+      total: 1,
+    });
+    listWorkItemsMock.mockResolvedValueOnce({
+      items: [
+        makeTask({
+          id: "01ARZ3NDEKTSV4RRFFQ69G5TVR",
+          title: "Viewer task",
+        }),
+      ],
+      page: 1,
+      pageSize: 10,
+      total: 1,
+    });
+
+    render(<IntakePage />);
+
+    fireEvent.click(await screen.findByText("Viewer related tasks"));
+    expect(screen.queryByTestId("intake-edit-button")).not.toBeInTheDocument();
+
+    fireEvent.click(await screen.findByText("Viewer task"));
+
+    expect(await screen.findByTestId("task-detail-sheet")).toHaveAttribute(
+      "data-task-id",
+      "01ARZ3NDEKTSV4RRFFQ69G5TVR",
+    );
   });
 
   it("hides write actions for VIEWER space role", async () => {

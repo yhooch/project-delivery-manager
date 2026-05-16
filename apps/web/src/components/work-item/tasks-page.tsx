@@ -3,9 +3,7 @@
 import type {
   Priority,
   Requirement,
-  SpaceMemberWithUser,
   StatusCategory,
-  Version,
   WorkItem,
   WorkItemStatusCategoryCount,
 } from "@project-delivery/shared";
@@ -22,7 +20,6 @@ import {
 } from "react";
 
 import { getApiErrorMessageKey } from "../../lib/api-error-messages";
-import { formatDisplayCode } from "../../lib/display-code";
 import {
   useFocusReturn,
   useListKeyboardNav,
@@ -30,7 +27,10 @@ import {
 import { canCreateTasks } from "../../lib/permission-gates";
 import { listRequirements } from "../../lib/requirement-service";
 import { useSpaceMembers, useVersions } from "../../lib/v2/lookups";
-import type { WorkItemViewModel } from "../../lib/v2/work-item-view-model";
+import {
+  toWorkItemListViewModel,
+  type WorkItemViewModel,
+} from "../../lib/v2/work-item-view-model";
 import {
   getWorkItem,
   listWorkItems,
@@ -311,15 +311,14 @@ export function TasksPage() {
   const taskViewModels = useMemo(
     () =>
       items.map((item) =>
-        toTaskViewModel(
-          item,
-          tStatus,
-          {
+        toWorkItemListViewModel(item, {
+          locale,
+          lookups: {
             getMember,
             getVersion,
           },
-          locale,
-        ),
+          statusLabel: (category) => tStatus(category),
+        }),
       ),
     [getMember, getVersion, items, locale, tStatus],
   );
@@ -429,7 +428,11 @@ export function TasksPage() {
       .then((item) => {
         if (!cancelled) {
           open(
-            toTaskViewModel(item, tStatus, { getMember, getVersion }, locale),
+            toWorkItemListViewModel(item, {
+              locale,
+              lookups: { getMember, getVersion },
+              statusLabel: (category) => tStatus(category),
+            }),
           );
           setHandledDeepLinkKey(key);
         }
@@ -773,78 +776,6 @@ function FilterField({
       {children}
     </label>
   );
-}
-
-type LookupHelpers = {
-  getMember: (userId: string) => SpaceMemberWithUser | undefined;
-  getVersion: (versionId: string) => Version | undefined;
-};
-
-function toTaskViewModel(
-  item: WorkItem,
-  tStatus: (key: StatusCategory) => string,
-  lookups: LookupHelpers,
-  locale: string,
-): WorkItemViewModel {
-  const code = formatDisplayCode(item.type, item.id);
-  const member = item.assigneeId
-    ? lookups.getMember(item.assigneeId)
-    : undefined;
-  const assigneeName = member?.user.name ?? member?.user.username ?? "";
-  const initial = deriveInitial(assigneeName);
-  const version = item.versionId
-    ? lookups.getVersion(item.versionId)
-    : undefined;
-  const dueDate = item.dueDate ? formatDate(item.dueDate, locale) : undefined;
-  const isOverdue = item.dueDate
-    ? new Date(item.dueDate).getTime() < Date.now() &&
-      item.statusCategory !== "DONE" &&
-      item.statusCategory !== "TERMINATED"
-    : false;
-  const isBlocked =
-    item.statusCategory === "WAITING" || Boolean(item.blockedAt);
-
-  return {
-    id: item.id,
-    code,
-    type: item.type,
-    title: item.title,
-    statusCategory: item.statusCategory,
-    statusLabel: tStatus(item.statusCategory),
-    priority: item.priority,
-    assignee: { name: assigneeName, initial },
-    versionName: version?.name,
-    dueDate,
-    isOverdue,
-    isBlocked,
-    blockedReason: item.blockedReason,
-    updatedAgo: undefined,
-  };
-}
-
-function deriveInitial(value?: string): string {
-  if (!value) {
-    return "?";
-  }
-  const trimmed = value.trim();
-  if (!trimmed) {
-    return "?";
-  }
-  return trimmed.charAt(0).toUpperCase();
-}
-
-function formatDate(iso: string, locale: string): string | undefined {
-  try {
-    const date = new Date(iso);
-    if (Number.isNaN(date.getTime())) {
-      return undefined;
-    }
-    return new Intl.DateTimeFormat(locale, { dateStyle: "medium" }).format(
-      date,
-    );
-  } catch {
-    return undefined;
-  }
 }
 
 function normalizeSearchParam(value: string | null): string | undefined {
