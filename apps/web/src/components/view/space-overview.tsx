@@ -3,7 +3,6 @@
 import type {
   GetSpaceOverviewViewResponse,
   StatusCategory,
-  TimelineEvent,
   ViewExceptionType,
   ViewStatusCount,
 } from "@project-delivery/shared";
@@ -28,6 +27,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { getApiErrorMessageKey } from "../../lib/api-error-messages";
 import { getTimelineEventLabel } from "../../lib/timeline-display";
+import { getTimelineEventHref } from "../../lib/timeline-links";
 import { useVersions } from "../../lib/v2/lookups";
 import { getSpaceOverviewView } from "../../lib/view-service";
 import { Link, usePathname, useRouter } from "../../i18n/routing";
@@ -276,15 +276,6 @@ export function SpaceOverview() {
     for (const [k, v] of Object.entries(extra ?? {})) sp.set(k, v);
     const q = sp.toString();
     return q ? `${base}?${q}` : base;
-  };
-
-  const buildTimelineHref = (event: TimelineEvent): string | null => {
-    const { type, id } = event.target;
-    if (type === "WORK_ITEM") return `/work-items?workItemId=${id}`;
-    if (type === "REQUIREMENT") return `/requirements/${id}`;
-    if (type === "INTAKE_ITEM") return `/intake-items?id=${id}`;
-    if (type === "VERSION") return `/versions?versionId=${id}`;
-    return null;
   };
 
   return (
@@ -609,7 +600,7 @@ export function SpaceOverview() {
                     ) : (
                       <ul className="relative flex flex-col gap-4 before:absolute before:inset-y-0 before:left-3 before:w-px before:bg-border/50">
                         {recentEvents.map((event) => {
-                          const href = buildTimelineHref(event);
+                          const href = getTimelineEventHref(event);
                           const inner = (
                             <div className="flex gap-3">
                               <Tip content={event.actor.name}>

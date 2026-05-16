@@ -776,7 +776,7 @@ describe("TasksPage", () => {
     expect(escapeEvent.defaultPrevented).toBe(false);
   });
 
-  it("does not use A as a fake assign shortcut on the task list", async () => {
+  it("uses S to open the selected task detail instead of a fake submit action", async () => {
     listWorkItemsMock.mockResolvedValueOnce({
       items: [makeTask({ title: "Shortcut target" })],
       total: 1,
@@ -799,10 +799,10 @@ describe("TasksPage", () => {
     window.dispatchEvent(submitEvent);
 
     expect(assignEvent.defaultPrevented).toBe(false);
-    expect(submitEvent.defaultPrevented).toBe(false);
+    expect(submitEvent.defaultPrevented).toBe(true);
     expect(
-      screen.queryByTestId("task-detail-sheet-open"),
-    ).not.toBeInTheDocument();
+      await screen.findByTestId("task-detail-sheet-open"),
+    ).toHaveTextContent("Shortcut target");
     expect(listWorkItemsMock).toHaveBeenCalledTimes(1);
   });
 

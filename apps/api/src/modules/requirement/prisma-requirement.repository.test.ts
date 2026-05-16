@@ -38,12 +38,48 @@ describe("PrismaRequirementRepository", () => {
       },
     });
     expect(workItemFindMany).toHaveBeenCalledWith({
+      include: {
+        bugDetail: {
+          select: {
+            relatedTask: {
+              select: {
+                organizationId: true,
+                requirementId: true,
+                spaceId: true,
+              },
+            },
+          },
+        },
+      },
       orderBy: [{ type: "asc" }, { createdAt: "asc" }],
       where: {
         deletedAt: null,
-        organizationId: requirement.organizationId,
-        requirementId: requirement.id,
-        spaceId: requirement.spaceId,
+        OR: [
+          {
+            organizationId: requirement.organizationId,
+            requirementId: requirement.id,
+            spaceId: requirement.spaceId,
+          },
+          {
+            bugDetail: {
+              is: {
+                deletedAt: null,
+                relatedTask: {
+                  is: {
+                    deletedAt: null,
+                    organizationId: requirement.organizationId,
+                    requirementId: requirement.id,
+                    spaceId: requirement.spaceId,
+                    type: "TASK",
+                  },
+                },
+              },
+            },
+            organizationId: requirement.organizationId,
+            spaceId: requirement.spaceId,
+            type: "BUG",
+          },
+        ],
       },
     });
   });
@@ -107,6 +143,19 @@ describe("PrismaRequirementRepository", () => {
       },
     });
     expect(workItemFindMany).toHaveBeenCalledWith({
+      include: {
+        bugDetail: {
+          select: {
+            relatedTask: {
+              select: {
+                organizationId: true,
+                requirementId: true,
+                spaceId: true,
+              },
+            },
+          },
+        },
+      },
       orderBy: [{ type: "asc" }, { createdAt: "asc" }],
       where: {
         deletedAt: null,
@@ -117,9 +166,47 @@ describe("PrismaRequirementRepository", () => {
             spaceId: first.spaceId,
           },
           {
+            bugDetail: {
+              is: {
+                deletedAt: null,
+                relatedTask: {
+                  is: {
+                    deletedAt: null,
+                    organizationId: first.organizationId,
+                    requirementId: first.id,
+                    spaceId: first.spaceId,
+                    type: "TASK",
+                  },
+                },
+              },
+            },
+            organizationId: first.organizationId,
+            spaceId: first.spaceId,
+            type: "BUG",
+          },
+          {
             organizationId: second.organizationId,
             requirementId: second.id,
             spaceId: second.spaceId,
+          },
+          {
+            bugDetail: {
+              is: {
+                deletedAt: null,
+                relatedTask: {
+                  is: {
+                    deletedAt: null,
+                    organizationId: second.organizationId,
+                    requirementId: second.id,
+                    spaceId: second.spaceId,
+                    type: "TASK",
+                  },
+                },
+              },
+            },
+            organizationId: second.organizationId,
+            spaceId: second.spaceId,
+            type: "BUG",
           },
         ],
       },
@@ -182,12 +269,84 @@ describe("PrismaRequirementRepository", () => {
     expect(workItemFindMany).toHaveBeenCalledWith(
       expect.objectContaining({
         where: expect.objectContaining({
-          organizationId: saved.organizationId,
-          requirementId: saved.id,
-          spaceId: saved.spaceId,
+          OR: expect.arrayContaining([
+            expect.objectContaining({
+              organizationId: saved.organizationId,
+              requirementId: saved.id,
+              spaceId: saved.spaceId,
+            }),
+            expect.objectContaining({
+              organizationId: saved.organizationId,
+              spaceId: saved.spaceId,
+              type: "BUG",
+            }),
+          ]),
         }),
       }),
     );
+  });
+
+  it("includes bugs related through requirement tasks and de-duplicates direct matches", async () => {
+    const requirement = makeRequirement();
+    const task = makeWorkItem({
+      id: "01H00000000000000000000009",
+      requirementId: requirement.id,
+      type: "TASK",
+    });
+    const relatedBug = makeWorkItem({
+      id: "01H00000000000000000000010",
+      requirementId: null,
+      type: "BUG",
+      bugDetail: {
+        relatedTask: {
+          organizationId: requirement.organizationId,
+          requirementId: requirement.id,
+          spaceId: requirement.spaceId,
+        },
+      },
+    });
+    const directAndRelatedBug = makeWorkItem({
+      id: "01H00000000000000000000011",
+      requirementId: requirement.id,
+      type: "BUG",
+      bugDetail: {
+        relatedTask: {
+          organizationId: requirement.organizationId,
+          requirementId: requirement.id,
+          spaceId: requirement.spaceId,
+        },
+      },
+    });
+    const prisma = {
+      client: {
+        attachment: {
+          findMany: vi.fn(async () => []),
+        },
+        requirement: {
+          findFirst: vi.fn(async () => requirement),
+        },
+        workItem: {
+          findMany: vi.fn(async () => [
+            task,
+            relatedBug,
+            directAndRelatedBug,
+          ]),
+        },
+      },
+    } as unknown as PrismaService;
+    const repository = new PrismaRequirementRepository(prisma);
+
+    const result = await repository.findById(requirement.id);
+
+    expect(result?.relatedWorkItems).toMatchObject({
+      taskCount: 1,
+      bugCount: 2,
+      tasks: [expect.objectContaining({ id: task.id })],
+      bugs: [
+        expect.objectContaining({ id: relatedBug.id }),
+        expect.objectContaining({ id: directAndRelatedBug.id }),
+      ],
+    });
   });
 
   it("writes visible timeline events when creating, saving, and archiving requirements", async () => {
@@ -555,6 +714,15 @@ function makeRequirement(overrides: Partial<RequirementRecord> = {}) {
 
 type RequirementRecord = ReturnType<typeof makeBaseRequirement>;
 
+function makeWorkItem(overrides: Partial<WorkItemRecord> = {}) {
+  return {
+    ...makeBaseWorkItem(),
+    ...overrides,
+  };
+}
+
+type WorkItemRecord = ReturnType<typeof makeBaseWorkItem>;
+
 function makeBaseRequirement() {
   const now = new Date("2026-05-14T12:00:00.000Z");
 
@@ -575,5 +743,45 @@ function makeBaseRequirement() {
     authorId: "01H00000000000000000000005",
     createdAt: now,
     updatedAt: now,
+  };
+}
+
+function makeBaseWorkItem() {
+  const now = new Date("2026-05-14T12:00:00.000Z");
+
+  return {
+    id: "01H00000000000000000000009",
+    organizationId: "01H00000000000000000000002",
+    spaceId: "01H00000000000000000000003",
+    versionId: "01H00000000000000000000004",
+    requirementId: "01H00000000000000000000001" as string | null,
+    intakeItemId: null as string | null,
+    type: "TASK" as "TASK" | "BUG",
+    title: "工作项",
+    description: null,
+    priority: "MEDIUM" as const,
+    assigneeId: null as string | null,
+    reporterId: "01H00000000000000000000005",
+    workflowVersionId: "01H00000000000000000000019",
+    currentStateId: "01H00000000000000000000020",
+    statusCategory: "NOT_STARTED" as const,
+    dueDate: null,
+    lastStatusChangedAt: now,
+    lastActionAt: null,
+    blockedReason: null,
+    blockedAt: null,
+    closedAt: null,
+    createdAt: now,
+    updatedAt: now,
+    createdById: "01H00000000000000000000005",
+    updatedById: "01H00000000000000000000005",
+    deletedAt: null,
+    bugDetail: null as {
+      relatedTask: {
+        organizationId: string;
+        requirementId: string | null;
+        spaceId: string;
+      } | null;
+    } | null,
   };
 }

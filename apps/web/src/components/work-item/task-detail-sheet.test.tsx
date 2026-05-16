@@ -380,6 +380,107 @@ describe("TaskDetailSheet", () => {
     expect(screen.getByRole("button", { name: "Reject" })).toBeInTheDocument();
   });
 
+  it("focuses the workflow action region when requested by a shortcut", async () => {
+    render(
+      <TaskDetailSheet
+        actionFocusRequest={1}
+        item={makeViewModel()}
+        open
+        onOpenChange={() => {}}
+      />,
+    );
+
+    const region = await screen.findByTestId("task-actions-region");
+    await waitFor(() => expect(region).toHaveFocus());
+  });
+
+  it("preselects a preferred action for confirmation without executing it", async () => {
+    const action = makeAction({ id: "ACT_START", name: "Start work" });
+    getWorkItemMock.mockResolvedValueOnce(
+      makeDetailResponse({
+        permissions: {
+          canEdit: true,
+          canComment: true,
+          canUploadAttachment: true,
+          availableActions: [action],
+        },
+      }),
+    );
+    executeActionMock.mockResolvedValueOnce(
+      makeDetailResponse({
+        permissions: {
+          canEdit: true,
+          canComment: true,
+          canUploadAttachment: true,
+          availableActions: [],
+        },
+      }),
+    );
+
+    render(
+      <TaskDetailSheet
+        actionFocusRequest={1}
+        item={makeViewModel()}
+        open
+        onOpenChange={() => {}}
+        preferredActionId="ACT_START"
+      />,
+    );
+
+    const form = await screen.findByTestId("task-action-form");
+    expect(executeActionMock).not.toHaveBeenCalled();
+
+    fireEvent.click(within(form).getByRole("button", { name: "Start work" }));
+
+    await waitFor(() => expect(executeActionMock).toHaveBeenCalledTimes(1));
+  });
+
+  it("preselects input-required actions without auto-submitting them", async () => {
+    const action = makeAction({
+      formFields: [
+        {
+          fieldType: "TEXT",
+          id: "ACT_FIELD",
+          key: "resolution",
+          label: "Resolution",
+          order: 1,
+          required: true,
+        },
+      ],
+      id: "ACT_RESOLVE",
+      name: "Resolve",
+      requiresComment: true,
+    });
+    getWorkItemMock.mockResolvedValueOnce(
+      makeDetailResponse({
+        permissions: {
+          canEdit: true,
+          canComment: true,
+          canUploadAttachment: true,
+          availableActions: [action],
+        },
+      }),
+    );
+
+    render(
+      <TaskDetailSheet
+        actionFocusRequest={1}
+        item={makeViewModel()}
+        open
+        onOpenChange={() => {}}
+        preferredActionId="ACT_RESOLVE"
+      />,
+    );
+
+    expect(await screen.findByTestId("task-action-form")).toBeInTheDocument();
+    expect(screen.getByTestId("task-action-comment")).toBeInTheDocument();
+    expect(screen.getByTestId("task-action-field")).toHaveAttribute(
+      "data-field-key",
+      "resolution",
+    );
+    expect(executeActionMock).not.toHaveBeenCalled();
+  });
+
   it("shows the empty actions message when availableActions is empty", async () => {
     render(
       <TaskDetailSheet item={makeViewModel()} open onOpenChange={() => {}} />,
@@ -1117,6 +1218,81 @@ describe("TaskDetailSheet", () => {
     expect(updateWorkItemMock).not.toHaveBeenCalled();
     await waitFor(() => expect(getBugMock).toHaveBeenCalledTimes(2));
     expect(onChanged).toHaveBeenCalledTimes(1);
+  });
+
+  it("links requirement and version when editing a bug related task", async () => {
+    const linkedRequirementId = "01ARZ3NDEKTSV4RRFFQ69G5FR2";
+    const requirementVersionId = "01ARZ3NDEKTSV4RRFFQ69G5FV1";
+    const relatedTaskVersionId = "01ARZ3NDEKTSV4RRFFQ69G5FV2";
+    const relatedTaskId = "01ARZ3NDEKTSV4RRFFQ69G5FT2";
+    versionMap.set(requirementVersionId, { name: "Requirement release" });
+    versionMap.set(relatedTaskVersionId, { name: "Task release" });
+    listRequirementsMock.mockResolvedValueOnce({
+      items: [
+        {
+          id: linkedRequirementId,
+          title: "Linked requirement",
+          versionId: requirementVersionId,
+        },
+      ],
+      total: 1,
+    });
+    listWorkItemsMock.mockResolvedValueOnce({
+      items: [
+        makeDetailResponse({
+          id: relatedTaskId,
+          requirementId: linkedRequirementId,
+          title: "Linked task",
+          type: "TASK",
+          versionId: relatedTaskVersionId,
+        }),
+      ],
+      total: 1,
+    });
+    getBugMock.mockResolvedValueOnce(
+      makeBugResponse({
+        permissions: {
+          canEdit: true,
+          canComment: true,
+          canUploadAttachment: true,
+          availableActions: [],
+        },
+      }),
+    );
+
+    render(
+      <TaskDetailSheet
+        item={makeViewModel({ type: "BUG", title: "Bug detail" })}
+        open
+        onOpenChange={() => {}}
+      />,
+    );
+
+    fireEvent.click(await screen.findByTestId("task-edit-button"));
+    await waitFor(() =>
+      expect(
+        getSelectOptionLabels(
+          screen.getByTestId(
+            "task-edit-related-task-select",
+          ) as HTMLSelectElement,
+        ),
+      ).toContain("Linked task"),
+    );
+
+    fireEvent.change(screen.getByTestId("task-edit-related-task-select"), {
+      target: { value: relatedTaskId },
+    });
+    fireEvent.click(screen.getByTestId("task-edit-submit"));
+
+    await waitFor(() => expect(updateBugMock).toHaveBeenCalledTimes(1));
+    expect(updateBugMock).toHaveBeenCalledWith(
+      expect.any(Object),
+      expect.objectContaining({
+        relatedTaskId,
+        requirementId: linkedRequirementId,
+        versionId: relatedTaskVersionId,
+      }),
+    );
   });
 
   it("submits null for cleared editable task fields", async () => {

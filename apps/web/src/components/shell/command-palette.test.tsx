@@ -433,6 +433,21 @@ describe("CommandPalette", () => {
     ).not.toBeInTheDocument();
   });
 
+  it("shows a localized error when switching spaces fails", async () => {
+    sessionMock.current.switchSpace.mockRejectedValueOnce(new Error("boom"));
+
+    render(<CommandPalette />);
+    openCommandPalette();
+
+    fireEvent.click(await screen.findByText("Space B"));
+
+    expect(sessionMock.current.switchSpace).toHaveBeenCalledWith("SPC_02");
+    expect(
+      await screen.findByTestId("command-palette-switch-space-error"),
+    ).toHaveTextContent("errors.api.UNKNOWN");
+    expect(screen.getByTestId("command-palette-input")).toBeInTheDocument();
+  });
+
   it("loads recent entries from localStorage when the palette opens", async () => {
     // Use a task id that also exists in the listWorkItems mock so the recent
     // entry is not pruned by `pruneStaleRecent` after the fetch lands.

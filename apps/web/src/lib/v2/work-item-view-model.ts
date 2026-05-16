@@ -137,8 +137,7 @@ export function toWorkItemListViewModel(
       item.statusCategory !== "DONE" &&
       item.statusCategory !== "TERMINATED"
     : false;
-  const isBlocked =
-    item.statusCategory === "WAITING" || Boolean(item.blockedAt);
+  const isBlocked = Boolean(item.blockedAt);
 
   return {
     id: item.id,

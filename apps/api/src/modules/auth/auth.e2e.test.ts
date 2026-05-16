@@ -2,6 +2,7 @@ import { type INestApplication } from "@nestjs/common";
 import { Test, type TestingModule } from "@nestjs/testing";
 import {
   AppSessionSchema,
+  type AuditAction,
   type SessionOrganizationSummary,
   type SessionSpaceSummary,
 } from "@project-delivery/shared";
@@ -10,6 +11,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 import { AppModule } from "../../app.module";
 import { configureApp } from "../../main";
+import { AuditService } from "../audit/audit.service";
 import {
   SESSION_REPOSITORY,
   USER_REPOSITORY,
@@ -39,6 +41,7 @@ describe("auth and session API", () => {
   let moduleRef: TestingModule;
   let users: InMemoryUserRepository;
   let sessions: InMemorySessionRepository;
+  let audit: InMemoryAuditService;
 
   beforeAll(async () => {
     process.env["DATABASE_URL"] ??=
@@ -49,9 +52,12 @@ describe("auth and session API", () => {
 
     users = new InMemoryUserRepository();
     sessions = new InMemorySessionRepository(users);
+    audit = new InMemoryAuditService();
     moduleRef = await Test.createTestingModule({
       imports: [AppModule],
     })
+      .overrideProvider(AuditService)
+      .useValue(audit)
       .overrideProvider(USER_REPOSITORY)
       .useValue(users)
       .overrideProvider(SESSION_REPOSITORY)
@@ -234,8 +240,11 @@ describe("auth and session API", () => {
       .expect(200);
     const token = extractSessionToken(registerResponse.headers["set-cookie"]);
     const userId = users.getByUsername("password_change_user")?.id;
+    audit.clear();
 
     await patch(agent, "/api/v1/users/me/password", "203.0.113.21")
+      .set("x-request-id", "req-password-change")
+      .set("user-agent", "auth-e2e-agent")
       .send({
         oldPassword: "password-123",
         newPassword: "password-456",
@@ -250,6 +259,39 @@ describe("auth and session API", () => {
         expect(setCookies).toContain("pdm_session=");
       });
 
+    expect(audit.records).toEqual(
+      expect.arrayContaining([
+        {
+          userId,
+          input: expect.objectContaining({
+            actionType: "UPDATE",
+            ip: "203.0.113.21",
+            metadata: {
+              operation: "CHANGE_PASSWORD",
+              rotatedSessions: true,
+            },
+            requestId: "req-password-change",
+            targetId: userId,
+            targetType: "USER",
+            userAgent: "auth-e2e-agent",
+          }),
+        },
+        {
+          userId,
+          input: expect.objectContaining({
+            actionType: "SESSION_REVOKED",
+            ip: "203.0.113.21",
+            metadata: {
+              reason: "PASSWORD_CHANGED",
+            },
+            requestId: "req-password-change",
+            targetId: userId,
+            targetType: "USER",
+            userAgent: "auth-e2e-agent",
+          }),
+        },
+      ]),
+    );
     await expect(
       moduleRef.get(AuthSessionService).resolveToken(token),
     ).resolves.toBeUndefined();
@@ -397,6 +439,38 @@ function createEmptyOrganizationRepository(): OrganizationRepository {
       return [];
     },
   } as unknown as OrganizationRepository;
+}
+
+type RecordedAuditInput = {
+  actionType: AuditAction;
+  actorId?: string;
+  ip?: string;
+  metadata?: unknown;
+  organizationId?: string;
+  requestId?: string;
+  spaceId?: string;
+  targetId: string;
+  targetType: string;
+  userAgent?: string;
+};
+
+class InMemoryAuditService {
+  readonly records: { input: RecordedAuditInput; userId?: string }[] = [];
+
+  clear(): void {
+    this.records.length = 0;
+  }
+
+  async record(input: RecordedAuditInput): Promise<void> {
+    this.records.push({ input });
+  }
+
+  async recordForUserOrganizations(
+    userId: string,
+    input: Omit<RecordedAuditInput, "actorId" | "organizationId">,
+  ): Promise<void> {
+    this.records.push({ userId, input });
+  }
 }
 
 class InMemoryUserRepository implements UserRepository {

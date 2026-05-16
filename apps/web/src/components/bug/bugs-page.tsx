@@ -141,6 +141,7 @@ export function BugsPage() {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [activeItem, setActiveItem] = useState<WorkItemViewModel | null>(null);
   const [sheetOpen, setSheetOpen] = useState(false);
+  const [actionFocusRequest, setActionFocusRequest] = useState(0);
   const [filters, setFilters] = useState<BugListFilterState>(() =>
     createInitialFilters(searchParams),
   );
@@ -401,6 +402,7 @@ export function BugsPage() {
     previousContextKeyRef.current = contextKey;
     setActiveItem(null);
     setSheetOpen(false);
+    setActionFocusRequest(0);
     setEditingBug(null);
     setCreateOpen(false);
     setFilterOpen(false);
@@ -537,7 +539,7 @@ export function BugsPage() {
   }, [bucketFilter, bugViewModels]);
 
   const openBug = useCallback(
-    (bug: BugItemViewModel) => {
+    (bug: BugItemViewModel, options: { focusActions?: boolean } = {}) => {
       captureFocus();
       recordRecentOpen(
         {
@@ -550,9 +552,19 @@ export function BugsPage() {
         recentScope,
       );
       setActiveItem(bug);
+      setActionFocusRequest((current) =>
+        options.focusActions ? current + 1 : 0,
+      );
       setSheetOpen(true);
     },
     [captureFocus, recentScope],
+  );
+
+  const openBugActionArea = useCallback(
+    (bug: BugItemViewModel) => {
+      openBug(bug, { focusActions: true });
+    },
+    [openBug],
   );
 
   const openEditBug = useCallback((bug: BugView) => {
@@ -583,6 +595,7 @@ export function BugsPage() {
     (nextOpen: boolean) => {
       setSheetOpen(nextOpen);
       if (!nextOpen) {
+        setActionFocusRequest(0);
         restoreFocus();
       }
     },
@@ -735,7 +748,7 @@ export function BugsPage() {
         currentSpace?.status,
       ),
     onAssign: openEditBugFromViewModel,
-    canSubmit: () => false,
+    onSubmit: openBugActionArea,
     onClose: sheetOpen ? () => handleSheetOpenChange(false) : undefined,
   });
 
@@ -861,7 +874,7 @@ export function BugsPage() {
                   setFilter("lifecycleBucket", b.key === "all" ? "" : b.key);
                 }}
                 className={cn(
-                  "flex h-7 items-center gap-1.5 rounded-md px-2.5 text-[12px] transition-colors cursor-pointer",
+                  "flex h-7 items-center gap-1.5 rounded-md px-2.5 text-[12px] transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/70 focus-visible:ring-offset-2 focus-visible:ring-offset-background",
                   activeBucket === b.key
                     ? "bg-muted font-medium text-foreground"
                     : "text-muted-foreground hover:bg-muted/50 hover:text-foreground",
@@ -1047,7 +1060,7 @@ export function BugsPage() {
                       type="button"
                       onClick={() => openBug(bug)}
                       data-selected={activeItem?.id === bug.id}
-                      className="flex min-w-0 flex-1 items-center gap-3 text-left cursor-pointer"
+                      className="flex min-w-0 flex-1 items-center gap-3 rounded-sm text-left cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/70 focus-visible:ring-offset-2 focus-visible:ring-offset-background"
                     >
                       <Bug className="h-3.5 w-3.5 shrink-0 text-destructive/80" />
                       <span className="font-mono text-[11px] text-muted-foreground">
@@ -1143,6 +1156,7 @@ export function BugsPage() {
 
       <TaskDetailSheet
         key={`${activeItem?.id ?? "empty"}:${detailRevision}`}
+        actionFocusRequest={actionFocusRequest}
         item={activeItem}
         open={sheetOpen}
         onOpenChange={handleSheetOpenChange}
@@ -1240,7 +1254,7 @@ function toBugViewModel(
       bug.statusCategory !== "DONE" &&
       bug.statusCategory !== "TERMINATED"
     : false;
-  const isBlocked = bug.statusCategory === "WAITING" || Boolean(bug.blockedAt);
+  const isBlocked = Boolean(bug.blockedAt);
   const workflowState = lookups.getWorkflowState(
     bug.workflowVersionId,
     bug.currentStateId,

@@ -1,3 +1,5 @@
+import { Suspense } from "react";
+
 import { setRequestLocale } from "next-intl/server";
 
 import { BugsPage } from "../../../../components/bug/bugs-page";
@@ -13,5 +15,9 @@ export default async function BugsRoutePage({ params }: BugsPageProps) {
   const { locale } = await params;
   setRequestLocale(locale);
 
-  return <BugsPage />;
+  return (
+    <Suspense fallback={null}>
+      <BugsPage />
+    </Suspense>
+  );
 }

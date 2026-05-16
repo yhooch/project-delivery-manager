@@ -3,6 +3,7 @@ import {
   fireEvent,
   render,
   screen,
+  within,
   waitFor,
 } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
@@ -224,19 +225,30 @@ describe("SpaceSettingsPage", () => {
     expect(screen.getByText("alice", { exact: true })).toBeInTheDocument();
   });
 
-  it("renders the overview card with organization, member count, and role", async () => {
+  it("renders the overview card with organization, active member count, and role", async () => {
     getSpaceMock.mockResolvedValueOnce(makeSpace());
     listSpaceMembersMock.mockResolvedValueOnce({
-      items: [makeMember()],
-      total: 1,
+      items: [
+        makeMember(),
+        makeMember({
+          id: "SPM_DISABLED",
+          userId: "01ARZ3NDEKTSV4RRFFQ69G5F02",
+          status: "DISABLED",
+          user: {
+            id: "01ARZ3NDEKTSV4RRFFQ69G5F02",
+            name: "Bob",
+            username: "bob",
+          },
+        }),
+      ],
+      total: 2,
     });
 
     render(<SpaceSettingsPage />);
 
-    await waitFor(() =>
-      expect(screen.getByTestId("space-settings-overview")).toBeInTheDocument(),
-    );
+    const overview = await screen.findByTestId("space-settings-overview");
     expect(screen.getByText("Acme Org")).toBeInTheDocument();
+    expect(within(overview).getByText("1")).toBeInTheDocument();
     expect(
       screen.getByTestId("space-settings-status-badge"),
     ).toBeInTheDocument();
@@ -387,6 +399,40 @@ describe("SpaceSettingsPage", () => {
       ownerId: OWNER_ID,
     });
     expect(refreshSessionMock).toHaveBeenCalledWith("ORG_01", "SPC_01");
+  });
+
+  it("submits null values when clearing owner and description", async () => {
+    getSpaceMock.mockResolvedValueOnce(
+      makeSpace({
+        description: "Old description",
+        ownerId: OWNER_ID,
+      }),
+    );
+    listSpaceMembersMock.mockResolvedValueOnce({
+      items: [makeMember()],
+      total: 1,
+    });
+    updateSpaceMock.mockResolvedValueOnce(makeSpace());
+
+    render(<SpaceSettingsPage />);
+
+    const description = await screen.findByTestId(
+      "space-settings-description-input",
+    );
+    const owner = await screen.findByTestId("space-settings-owner-input");
+
+    fireEvent.change(description, { target: { value: "" } });
+    fireEvent.change(owner, { target: { value: "" } });
+
+    fireEvent.click(screen.getByTestId("space-settings-basic-submit"));
+
+    await waitFor(() => expect(updateSpaceMock).toHaveBeenCalledTimes(1));
+    expect(updateSpaceMock).toHaveBeenCalledWith("SPC_01", {
+      name: "Space A",
+      code: "SPC-A",
+      description: null,
+      ownerId: null,
+    });
   });
 
   it("maps a CONFLICT error on code to a field-level message", async () => {

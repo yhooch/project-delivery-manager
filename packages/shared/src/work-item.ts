@@ -68,6 +68,7 @@ export type CreateWorkItemRequest = z.infer<typeof CreateWorkItemRequestSchema>;
 export const UpdateWorkItemRequestSchema = z
   .object({
     versionId: UlidSchema.nullable().optional(),
+    cascadeVersionChange: z.boolean().optional(),
     requirementId: UlidSchema.nullable().optional(),
     intakeItemId: UlidSchema.nullable().optional(),
     title: z.string().min(1).max(200).optional(),

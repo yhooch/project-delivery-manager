@@ -1,3 +1,5 @@
+import { Suspense } from "react";
+
 import { setRequestLocale } from "next-intl/server";
 
 import { RequirementsPage } from "../../../../components/requirement/requirements-page";
@@ -15,5 +17,9 @@ export default async function RequirementsRoutePage({
   const { locale } = await params;
   setRequestLocale(locale);
 
-  return <RequirementsPage />;
+  return (
+    <Suspense fallback={null}>
+      <RequirementsPage />
+    </Suspense>
+  );
 }

@@ -1,3 +1,5 @@
+import { Suspense } from "react";
+
 import { setRequestLocale } from "next-intl/server";
 
 import { SpaceOverview } from "../../../../components/view/space-overview";
@@ -13,5 +15,9 @@ export default async function OverviewRoutePage({ params }: OverviewPageProps) {
   const { locale } = await params;
   setRequestLocale(locale);
 
-  return <SpaceOverview />;
+  return (
+    <Suspense fallback={null}>
+      <SpaceOverview />
+    </Suspense>
+  );
 }

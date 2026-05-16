@@ -30,9 +30,20 @@ const optionalString = (maxLength: number) =>
     z.string().max(maxLength).optional(),
   );
 
+const clearableString = (maxLength: number) =>
+  z.preprocess(
+    (value) => normalizeClearableText(value),
+    z.string().max(maxLength).nullable().optional(),
+  );
+
 const optionalUlid = z.preprocess(
   (value) => normalizeOptionalText(value),
   UlidSchema.optional(),
+);
+
+const clearableUlid = z.preprocess(
+  (value) => normalizeClearableText(value),
+  UlidSchema.nullable().optional(),
 );
 
 const optionalSpaceCode = z.preprocess(
@@ -56,16 +67,26 @@ export const createSpaceFormSchema = CreateSpaceRequestSchema.extend({
 export type CreateSpaceFormInput = z.input<typeof createSpaceFormSchema>;
 export type CreateSpaceFormValues = z.output<typeof createSpaceFormSchema>;
 
-export const updateSpaceFormSchema = UpdateSpaceRequestSchema.extend({
+export const updateSpaceFormSchema = UpdateSpaceRequestSchema.omit({
+  description: true,
+  ownerId: true,
+}).extend({
   code: optionalSpaceCode,
-  description: optionalString(2000),
+  description: clearableString(2000),
   name: optionalString(120),
-  ownerId: optionalUlid,
+  ownerId: clearableUlid,
   staleThresholdDays: optionalThresholdDays,
 });
 
 export type UpdateSpaceFormInput = z.input<typeof updateSpaceFormSchema>;
 export type UpdateSpaceFormValues = z.output<typeof updateSpaceFormSchema>;
+export type ClearableUpdateSpaceRequest = Omit<
+  UpdateSpaceRequest,
+  "description" | "ownerId"
+> & {
+  description?: string | null;
+  ownerId?: string | null;
+};
 
 export function toCreateSpaceRequest(
   input: CreateSpaceFormInput,
@@ -77,10 +98,10 @@ export function toCreateSpaceRequest(
 
 export function toUpdateSpaceRequest(
   input: UpdateSpaceFormInput,
-): UpdateSpaceRequest {
-  return UpdateSpaceRequestSchema.parse(
-    stripUndefinedFields(updateSpaceFormSchema.parse(input)),
-  );
+): ClearableUpdateSpaceRequest {
+  return stripUndefinedFields(
+    updateSpaceFormSchema.parse(input),
+  ) as ClearableUpdateSpaceRequest;
 }
 
 export type AddOrganizationMemberFormInput = {
@@ -183,6 +204,24 @@ function normalizeOptionalText(value: unknown): string | undefined {
   const trimmed = value.trim();
 
   return trimmed.length > 0 ? trimmed : undefined;
+}
+
+function normalizeClearableText(value: unknown): string | null | undefined {
+  if (value === undefined) {
+    return undefined;
+  }
+
+  if (value === null) {
+    return null;
+  }
+
+  if (typeof value !== "string") {
+    return value as string | null | undefined;
+  }
+
+  const trimmed = value.trim();
+
+  return trimmed.length > 0 ? trimmed : null;
 }
 
 function stripUndefinedFields<T extends Record<string, unknown>>(input: T): T {

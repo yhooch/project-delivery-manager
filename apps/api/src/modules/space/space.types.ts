@@ -63,8 +63,8 @@ export type UpdateSpaceInput = {
   spaceId: string;
   name?: string;
   code?: string;
-  description?: string;
-  ownerId?: string;
+  description?: string | null;
+  ownerId?: string | null;
   status?: RecordStatus;
   staleThresholdDays?: number;
   updatedById: string;

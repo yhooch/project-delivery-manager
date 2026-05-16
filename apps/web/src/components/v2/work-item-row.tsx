@@ -36,7 +36,7 @@ export function WorkItemRow({
       data-selected={selected ? "true" : "false"}
       onClick={() => onSelect(item)}
       className={cn(
-        "group flex w-full items-center gap-3 border-l-2 px-4 py-2 text-left transition-colors cursor-pointer",
+        "group flex w-full items-center gap-3 border-l-2 px-4 py-2 text-left transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary/70",
         selected
           ? "border-primary bg-primary/10 text-foreground"
           : "border-transparent hover:bg-muted/40",

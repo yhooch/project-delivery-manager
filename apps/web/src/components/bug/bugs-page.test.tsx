@@ -157,7 +157,7 @@ vi.mock("../work-item/task-detail-sheet", () => ({
     organizationId,
     spaceId,
   }: {
-    item: { id: string; title: string } | null;
+    item: { id: string; isBlocked?: boolean; title: string } | null;
     onChanged?: () => void;
     open: boolean;
     organizationId?: string;
@@ -167,6 +167,9 @@ vi.mock("../work-item/task-detail-sheet", () => ({
       <div data-testid="task-detail-sheet-open">
         <span data-testid="task-detail-sheet-item-id">{item.id}</span>
         <span data-testid="task-detail-sheet-item-title">{item.title}</span>
+        {item.isBlocked ? (
+          <span data-testid="task-detail-sheet-blocked">blocked</span>
+        ) : null}
         <span data-testid="task-detail-sheet-space-id">{spaceId}</span>
         <span data-testid="task-detail-sheet-organization-id">
           {organizationId}
@@ -297,6 +300,50 @@ describe("BugsPage", () => {
     expect(await screen.findByText("No-member bug")).toBeInTheDocument();
     // No member lookup -> neutral fallback, not the raw assignee id tail.
     expect(screen.getByText("?")).toBeInTheDocument();
+  });
+
+  it("does not treat WAITING bugs as blocked without blockedAt", async () => {
+    listBugsMock.mockResolvedValueOnce({
+      items: [
+        makeBug({
+          title: "Waiting but not blocked",
+          statusCategory: "WAITING",
+        }),
+      ],
+      total: 1,
+    });
+
+    render(<BugsPage />);
+
+    fireEvent.click(await screen.findByText("Waiting but not blocked"));
+
+    expect(
+      await screen.findByTestId("task-detail-sheet-open"),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByTestId("task-detail-sheet-blocked"),
+    ).not.toBeInTheDocument();
+  });
+
+  it("passes blocked state to the detail sheet when blockedAt is present", async () => {
+    listBugsMock.mockResolvedValueOnce({
+      items: [
+        makeBug({
+          blockedAt: "2026-05-02T00:00:00.000Z",
+          title: "Explicitly blocked bug",
+          statusCategory: "IN_PROGRESS",
+        }),
+      ],
+      total: 1,
+    });
+
+    render(<BugsPage />);
+
+    fireEvent.click(await screen.findByText("Explicitly blocked bug"));
+
+    expect(
+      await screen.findByTestId("task-detail-sheet-blocked"),
+    ).toBeInTheDocument();
   });
 
   it("renders workflow-state buckets for the bug lifecycle", async () => {
@@ -940,6 +987,17 @@ describe("BugsPage", () => {
     window.dispatchEvent(escapeEvent);
 
     expect(escapeEvent.defaultPrevented).toBe(false);
+
+    const submitEvent = new KeyboardEvent("keydown", {
+      key: "s",
+      cancelable: true,
+    });
+    window.dispatchEvent(submitEvent);
+
+    expect(submitEvent.defaultPrevented).toBe(true);
+    expect(
+      await screen.findByTestId("task-detail-sheet-open"),
+    ).toHaveTextContent("First bug");
   });
 
   it("opens the bug edit/assignee affordance with A for writable bugs", async () => {

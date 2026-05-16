@@ -807,7 +807,7 @@ export function IntakePage() {
                   onClick={() => openItem(item)}
                   data-selected={isSelected}
                   className={cn(
-                    "flex w-full min-w-0 items-center gap-3 border-l-2 px-4 py-2.5 text-left transition-colors cursor-pointer sm:px-6",
+                    "flex w-full min-w-0 items-center gap-3 border-l-2 px-4 py-2.5 text-left transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary/70 sm:px-6",
                     isSelected
                       ? "border-primary bg-primary/10"
                       : "border-transparent hover:bg-muted/40",
@@ -890,7 +890,7 @@ export function IntakePage() {
                   data-filter-key={b.key}
                   onClick={() => setFilter(b.key)}
                   className={cn(
-                    "flex h-7 items-center gap-1.5 rounded-md px-2.5 text-[12px] transition-colors cursor-pointer",
+                    "flex h-7 items-center gap-1.5 rounded-md px-2.5 text-[12px] transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/70 focus-visible:ring-offset-2 focus-visible:ring-offset-background",
                     filter === b.key
                       ? "bg-muted font-medium text-foreground"
                       : "text-muted-foreground hover:bg-muted/50 hover:text-foreground",

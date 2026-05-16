@@ -102,6 +102,7 @@ export function TasksPage() {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [activeItem, setActiveItem] = useState<WorkItemViewModel | null>(null);
   const [sheetOpen, setSheetOpen] = useState(false);
+  const [actionFocusRequest, setActionFocusRequest] = useState(0);
   const [query, setQuery] = useState("");
   const [filters, setFilters] = useState<TaskListFilterState>(() => ({
     intakeItemId: requestedIntakeItemId,
@@ -238,6 +239,7 @@ export function TasksPage() {
     previousContextKeyRef.current = contextKey;
     setActiveItem(null);
     setSheetOpen(false);
+    setActionFocusRequest(0);
     setCreateOpen(false);
     setFilterOpen(false);
     setRequirements([]);
@@ -344,7 +346,10 @@ export function TasksPage() {
   }, [query, taskViewModels]);
 
   const open = useCallback(
-    (item: WorkItemViewModel) => {
+    (
+      item: WorkItemViewModel,
+      options: { focusActions?: boolean } = {},
+    ) => {
       captureFocus();
       recordRecentOpen(
         {
@@ -357,15 +362,26 @@ export function TasksPage() {
         recentScope,
       );
       setActiveItem(item);
+      setActionFocusRequest((current) =>
+        options.focusActions ? current + 1 : 0,
+      );
       setSheetOpen(true);
     },
     [captureFocus, recentScope],
+  );
+
+  const openActionArea = useCallback(
+    (item: WorkItemViewModel) => {
+      open(item, { focusActions: true });
+    },
+    [open],
   );
 
   const handleSheetOpenChange = useCallback(
     (nextOpen: boolean) => {
       setSheetOpen(nextOpen);
       if (!nextOpen) {
+        setActionFocusRequest(0);
         restoreFocus();
       }
     },
@@ -490,7 +506,7 @@ export function TasksPage() {
     onSelect: select,
     onOpen: open,
     onEdit: open,
-    canSubmit: () => false,
+    onSubmit: openActionArea,
     onClose: sheetOpen ? () => handleSheetOpenChange(false) : undefined,
   });
 
@@ -603,7 +619,7 @@ export function TasksPage() {
                 onClick={() =>
                   setFilter("statusCategory", b.key === "all" ? "" : b.key)
                 }
-                className={`h-7 rounded-md px-2.5 text-[12px] transition-colors cursor-pointer ${
+                className={`h-7 rounded-md px-2.5 text-[12px] transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/70 focus-visible:ring-offset-2 focus-visible:ring-offset-background ${
                   (filters.statusCategory ?? "all") === b.key
                     ? "bg-muted font-medium text-foreground"
                     : "text-muted-foreground hover:bg-muted/50 hover:text-foreground"
@@ -762,6 +778,7 @@ export function TasksPage() {
       </div>
 
       <TaskDetailSheet
+        actionFocusRequest={actionFocusRequest}
         item={activeItem}
         open={sheetOpen}
         onOpenChange={handleSheetOpenChange}

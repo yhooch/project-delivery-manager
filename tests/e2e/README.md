@@ -10,6 +10,7 @@ real stack: PostgreSQL + MinIO + API + Web.
 | `corepack pnpm test:e2e:local` | No-Docker orchestration: local `/tmp` Postgres + local MinIO + migrations + API + Web + Playwright. |
 | `corepack pnpm test:e2e:list` | List discovered tests only. This does not run the gate and must not be treated as a pass. |
 | `corepack pnpm test:e2e:gate-check` | Minimal regression check that the default gate fails when E2E flags are absent. |
+| `corepack pnpm verify:e2e:local` | Local verification entry: gate regression check + test listing + no-Docker E2E run. |
 
 ## Why `test:e2e` Fails By Default
 
@@ -92,6 +93,12 @@ Default local isolation:
 - MinIO data directory: `/tmp/crm-manager-minio-e2e`
 - Bucket: `crm-manager-attachments-e2e-local`
 
+These local database and bucket defaults intentionally differ from the Docker
+examples. `.env.e2e.example` lists Docker-compatible values first; exporting
+that file before `test:e2e:local` also exports `E2E_PG_DB` and `MINIO_BUCKET`,
+so the local script will use those exported values instead of its `_local`
+defaults.
+
 If `DATABASE_URL` is already set, `run-local.sh` reuses it instead of starting
 `/tmp/crm-manager-pg`, but it refuses database names that do not contain
 `e2e` or `test`. To override that guard for a manually verified disposable
@@ -126,7 +133,8 @@ step times out.
 
 ## Environment Variables
 
-See `.env.e2e.example` at the repo root for defaults. Common overrides:
+See `.env.e2e.example` at the repo root for the Docker reference values and the
+separate no-Docker `/tmp` defaults. Common overrides:
 
 - `E2E_PG_PORT`, `E2E_PG_USER`, `E2E_PG_PASSWORD`, `E2E_PG_DB`
 - `E2E_LOCAL_PGDATA` for the no-Docker path

@@ -1334,7 +1334,7 @@ function BoardColumns({
                     type="button"
                     data-testid={`version-board-card-${item.id}`}
                     onClick={() => openItem(item)}
-                    className="group block w-full min-w-0 rounded-md border border-border bg-card p-2.5 text-left shadow-sm transition-all hover:border-primary/40 hover:shadow-md cursor-pointer"
+                    className="group block w-full min-w-0 rounded-md border border-border bg-card p-2.5 text-left shadow-sm transition-all hover:border-primary/40 hover:shadow-md cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/70 focus-visible:ring-offset-2 focus-visible:ring-offset-background"
                   >
                     <div className="flex items-center gap-1.5">
                       {item.type === "BUG" ? (

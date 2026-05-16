@@ -127,19 +127,31 @@ vi.mock("../../lib/v2/lookups", () => ({
 // Mock the task-detail-sheet so it doesn't render full Radix tree.
 vi.mock("../work-item/task-detail-sheet", () => ({
   TaskDetailSheet: ({
+    actionFocusRequest,
     item,
     onChanged,
     onOpenChange,
     open,
+    preferredActionId,
   }: {
+    actionFocusRequest?: number;
     item: { id: string; title: string } | null;
     onChanged?: () => void;
     onOpenChange?: (open: boolean) => void;
     open: boolean;
+    preferredActionId?: string;
   }) =>
     open && item ? (
       <div data-testid="task-detail-sheet-open">
         <span>{item.title}</span>
+        <span data-testid="task-detail-sheet-action-focus-request">
+          {actionFocusRequest ?? 0}
+        </span>
+        {preferredActionId ? (
+          <span data-testid="task-detail-sheet-preferred-action-id">
+            {preferredActionId}
+          </span>
+        ) : null}
         <button type="button" onClick={onChanged}>
           detail changed
         </button>
@@ -877,6 +889,40 @@ describe("MyWorkbench", () => {
     ).toHaveTextContent("Keyboard first item");
   });
 
+  it("uses S on an action todo to open detail with the preferred action selected", async () => {
+    const item = makeWorkItemSummary({
+      id: "01ARZ3NDEKTSV4RRFFQ69G5FA7",
+      title: "Action shortcut item",
+    });
+    getMyWorkbenchViewMock.mockResolvedValueOnce(
+      makeWorkbenchResponse({
+        actionTodos: [makeActionTodo(item, { actionId: "ACT_APPROVE" })],
+      }),
+    );
+
+    render(<MyWorkbench />);
+
+    await screen.findByText("Action shortcut item");
+    fireEvent.keyDown(window, { key: "j" });
+
+    const submitEvent = new KeyboardEvent("keydown", {
+      key: "s",
+      cancelable: true,
+    });
+    window.dispatchEvent(submitEvent);
+
+    expect(submitEvent.defaultPrevented).toBe(true);
+    expect(
+      await screen.findByTestId("task-detail-sheet-open"),
+    ).toHaveTextContent("Action shortcut item");
+    expect(
+      screen.getByTestId("task-detail-sheet-action-focus-request"),
+    ).toHaveTextContent("1");
+    expect(
+      screen.getByTestId("task-detail-sheet-preferred-action-id"),
+    ).toHaveTextContent("ACT_APPROVE");
+  });
+
   it("renders recent activities in the side panel", async () => {
     getMyWorkbenchViewMock.mockResolvedValueOnce(
       makeWorkbenchResponse({
@@ -904,6 +950,33 @@ describe("MyWorkbench", () => {
     expect(
       screen.queryByText("edited the description"),
     ).not.toBeInTheDocument();
+    expect(screen.getByText("Workbench task").closest("a")).toBeNull();
+  });
+
+  it("links recent activities when the timeline helper can resolve the target", async () => {
+    getMyWorkbenchViewMock.mockResolvedValueOnce(
+      makeWorkbenchResponse({
+        recent: [
+          makeRecentActivity({
+            id: "01ARZ3NDEKTSV4RRFFQ69G5FE2",
+            metadata: { workItemType: "BUG" },
+            target: {
+              type: "WORK_ITEM",
+              id: "01ARZ3NDEKTSV4RRFFQ69G5FBU",
+              title: "Workbench bug",
+            },
+          }),
+        ],
+      }),
+    );
+
+    render(<MyWorkbench />);
+
+    const title = await screen.findByText("Workbench bug");
+    expect(title.closest("a")).toHaveAttribute(
+      "href",
+      "/bugs?bugId=01ARZ3NDEKTSV4RRFFQ69G5FBU",
+    );
   });
 
   it("renders workbench header actions as navigable links", async () => {

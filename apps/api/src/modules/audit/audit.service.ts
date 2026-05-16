@@ -50,7 +50,7 @@ export class AuditService {
       this.logger.warn(
         `Audit write failed for ${input.actionType} ${input.targetType}:${input.targetId}: ${
           error instanceof Error ? error.message : String(error)
-        }`,
+        }${input.requestId ? ` requestId=${input.requestId}` : ""}`,
       );
     }
   }

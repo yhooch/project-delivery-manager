@@ -2,6 +2,7 @@
 
 import { Languages } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
+import { useSearchParams } from "next/navigation";
 
 import { Button } from "../ui/button";
 import {
@@ -19,12 +20,15 @@ export function LanguageToggle() {
   const t = useTranslations("common.language");
   const locale = useLocale();
   const pathname = usePathname();
+  const searchParams = useSearchParams();
   const router = useRouter();
   const { session, persistPreferences } = useSession();
 
   const handleSelect = (next: Locale) => {
     if (next === locale) return;
-    router.replace(pathname, { locale: next });
+    const search = searchParams.toString();
+    const target = search ? `${pathname}?${search}` : pathname;
+    router.replace(target as never, { locale: next });
     if (session) {
       void persistPreferences({ locale: next });
     }

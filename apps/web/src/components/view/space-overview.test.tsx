@@ -293,6 +293,69 @@ describe("SpaceOverview", () => {
     expect(screen.getByText("Charlie")).toBeInTheDocument();
   });
 
+  it("links timeline work item events only when the concrete work item type is known", async () => {
+    getSpaceOverviewViewMock.mockResolvedValueOnce(
+      makeOverview({
+        recentActivities: {
+          items: [
+            {
+              id: "01ARZ3NDEKTSV4RRFFQ69G5FE2",
+              organizationId: "ORG_01",
+              spaceId: "SPC_01",
+              actor: { name: "Bea", username: "bea", id: "U2" },
+              target: { type: "WORK_ITEM", id: "BUG_01", title: "Bug item" },
+              eventType: "UPDATED",
+              metadata: { workItemType: "BUG" },
+              title: "edited",
+              createdAt: "2026-05-13T22:00:00.000Z",
+            },
+            {
+              id: "01ARZ3NDEKTSV4RRFFQ69G5FE3",
+              organizationId: "ORG_01",
+              spaceId: "SPC_01",
+              actor: { name: "Cal", username: "cal", id: "U3" },
+              target: { type: "WORK_ITEM", id: "TASK_01", title: "Task item" },
+              eventType: "UPDATED",
+              metadata: { workItemType: "TASK" },
+              title: "edited",
+              createdAt: "2026-05-13T22:00:00.000Z",
+            },
+            {
+              id: "01ARZ3NDEKTSV4RRFFQ69G5FE4",
+              organizationId: "ORG_01",
+              spaceId: "SPC_01",
+              actor: { name: "Dee", username: "dee", id: "U4" },
+              target: {
+                type: "WORK_ITEM",
+                id: "WORK_01",
+                title: "Unknown item",
+              },
+              eventType: "UPDATED",
+              title: "edited",
+              createdAt: "2026-05-13T22:00:00.000Z",
+            },
+          ],
+        },
+      }),
+    );
+
+    render(<SpaceOverview />);
+
+    const bugTitle = await screen.findByText("Bug item");
+    const taskTitle = screen.getByText("Task item");
+    const unknownTitle = screen.getByText("Unknown item");
+
+    expect(bugTitle.closest("a")).toHaveAttribute(
+      "href",
+      "/bugs?bugId=BUG_01",
+    );
+    expect(taskTitle.closest("a")).toHaveAttribute(
+      "href",
+      "/work-items?workItemId=TASK_01",
+    );
+    expect(unknownTitle.closest("a")).toBeNull();
+  });
+
   it("renders the empty messages when exceptionCounts and recentActivities are empty", async () => {
     getSpaceOverviewViewMock.mockResolvedValueOnce(
       makeOverview({

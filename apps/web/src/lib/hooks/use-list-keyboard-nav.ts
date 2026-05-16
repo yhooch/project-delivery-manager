@@ -14,8 +14,9 @@ import { useCallback, useEffect, useRef } from "react";
  * - `e`               → edit/open the highlighted item (calls `onEdit`, or
  *   falls back to `onOpen`).
  * - `a`               → open the assign affordance when provided and allowed.
- * - `s`               → run the primary submit/action affordance when
- *   provided and allowed.
+ * - `s`               → trigger the conservative submit/action shortcut when
+ *   provided and allowed. Callers should open/focus the action affordance, not
+ *   directly commit workflow actions.
  * - `Escape`          → close the detail drawer (calls `onClose`).
  *
  * If no item is currently highlighted (`activeId` not in `items`), the first

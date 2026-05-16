@@ -120,8 +120,8 @@ export const UpdateSpaceRequestSchema = z
   .object({
     name: z.string().min(1).max(120).optional(),
     code: SpaceCodeSchema.optional(),
-    description: z.string().max(2000).optional(),
-    ownerId: UlidSchema.optional(),
+    description: z.string().max(2000).nullable().optional(),
+    ownerId: UlidSchema.nullable().optional(),
     status: RecordStatusSchema.optional(),
     staleThresholdDays: z.number().int().min(1).max(30).optional(),
   })

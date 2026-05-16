@@ -870,6 +870,14 @@ function createSubject(input: {
   };
 
   const workItems = {
+    countVersionCascadeImpact: vi.fn(async () => ({
+      bugCount: 0,
+      bugIds: [],
+      relatedBugCount: 0,
+      relatedBugIds: [],
+      workItemCount: 0,
+      workItemIds: [],
+    })),
     create: vi.fn(),
     findIntakeItemInSpace: vi.fn(),
     findRequirementInSpace: vi.fn(),

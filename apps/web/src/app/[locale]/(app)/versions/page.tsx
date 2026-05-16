@@ -1,3 +1,5 @@
+import { Suspense } from "react";
+
 import { setRequestLocale } from "next-intl/server";
 
 import { VersionPage } from "../../../../components/version-board/version-board";
@@ -13,5 +15,9 @@ export default async function VersionsPage({ params }: VersionsPageProps) {
   const { locale } = await params;
   setRequestLocale(locale);
 
-  return <VersionPage />;
+  return (
+    <Suspense fallback={null}>
+      <VersionPage />
+    </Suspense>
+  );
 }

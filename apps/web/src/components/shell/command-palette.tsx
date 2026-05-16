@@ -21,6 +21,7 @@ import {
 import { useTranslations } from "next-intl";
 import { useEffect, useMemo, useState } from "react";
 
+import { getApiErrorMessageKey } from "../../lib/api-error-messages";
 import { listBugs } from "../../lib/bug-service";
 import { formatDisplayCode } from "../../lib/display-code";
 import { listIntakeItems } from "../../lib/intake-service";
@@ -202,6 +203,7 @@ type CommandPaletteProps = {
 
 export function CommandPalette({ enabled = true }: CommandPaletteProps) {
   const t = useTranslations("shell.command");
+  const tRoot = useTranslations();
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<SearchResult[]>([]);
@@ -209,6 +211,9 @@ export function CommandPalette({ enabled = true }: CommandPaletteProps) {
   const [hasFetched, setHasFetched] = useState(false);
   const [canPruneRecent, setCanPruneRecent] = useState(false);
   const [recent, setRecent] = useState<SearchResult[]>([]);
+  const [switchSpaceErrorKey, setSwitchSpaceErrorKey] = useState<string | null>(
+    null,
+  );
   const router = useRouter();
   const { setTheme } = useTheme();
   const {
@@ -278,6 +283,7 @@ export function CommandPalette({ enabled = true }: CommandPaletteProps) {
     if (!open) {
       setQuery("");
     } else {
+      setSwitchSpaceErrorKey(null);
       setRecent(readRecent(recentScope).map(withDetailHref));
     }
   }, [enabled, open, recentScope]);
@@ -455,6 +461,16 @@ export function CommandPalette({ enabled = true }: CommandPaletteProps) {
     setTheme(theme);
     if (session) {
       void persistPreferences({ themeMode: toThemeMode(theme) });
+    }
+  };
+
+  const selectSpace = async (spaceId: string) => {
+    setSwitchSpaceErrorKey(null);
+    try {
+      await switchSpace(spaceId);
+      setOpen(false);
+    } catch (error) {
+      setSwitchSpaceErrorKey(getApiErrorMessageKey(error));
     }
   };
 
@@ -649,13 +665,19 @@ export function CommandPalette({ enabled = true }: CommandPaletteProps) {
               <>
                 <CommandSeparator />
                 <CommandGroup heading={t("switchSpace")}>
+                  {switchSpaceErrorKey ? (
+                    <div
+                      role="alert"
+                      data-testid="command-palette-switch-space-error"
+                      className="mx-2 mb-1 rounded-md border border-destructive/40 bg-destructive/10 px-2.5 py-1.5 text-xs text-destructive"
+                    >
+                      {tRoot(switchSpaceErrorKey)}
+                    </div>
+                  ) : null}
                   {spacesForCurrentOrganization.map((space) => (
                     <CommandItem
                       key={space.id}
-                      onSelect={() => {
-                        setOpen(false);
-                        void switchSpace(space.id);
-                      }}
+                      onSelect={() => void selectSpace(space.id)}
                     >
                       <span className="font-mono text-[10px] text-muted-foreground">
                         #

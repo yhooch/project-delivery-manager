@@ -121,6 +121,13 @@ type Props = {
   item: WorkItemViewModel | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  /**
+   * Incremented by list shortcuts when the sheet should move focus to the
+   * workflow action area. Normal opens should leave this at 0/undefined.
+   */
+  actionFocusRequest?: number;
+  /** Best-effort workflow action preselection for action-todo shortcuts. */
+  preferredActionId?: string;
   /** Optional override; falls back to current session space. */
   spaceId?: string;
   /** Optional override; falls back to current session organization. */
@@ -256,9 +263,11 @@ async function loadSheetDetail({
 }
 
 export function TaskDetailSheet({
+  actionFocusRequest,
   item,
   open,
   onOpenChange,
+  preferredActionId,
   spaceId: spaceIdProp,
   organizationId: organizationIdProp,
   currentUserId: currentUserIdProp,
@@ -298,6 +307,8 @@ export function TaskDetailSheet({
       <TaskDetailSheetBody
         item={item}
         open={open}
+        actionFocusRequest={actionFocusRequest}
+        preferredActionId={preferredActionId}
         spaceId={spaceId}
         organizationId={organizationId}
         currentUserId={currentUserId}
@@ -312,6 +323,8 @@ export function TaskDetailSheet({
 type BodyProps = {
   item: WorkItemViewModel;
   open: boolean;
+  actionFocusRequest?: number;
+  preferredActionId?: string;
   spaceId?: string;
   organizationId?: string;
   currentUserId?: string;
@@ -321,8 +334,10 @@ type BodyProps = {
 };
 
 function TaskDetailSheetBody({
+  actionFocusRequest,
   item,
   open,
+  preferredActionId,
   spaceId,
   organizationId,
   currentUserId: _currentUserId,
@@ -674,6 +689,8 @@ function TaskDetailSheetBody({
 
         <ActionBar
           item={item}
+          actionFocusRequest={actionFocusRequest}
+          preferredActionId={preferredActionId}
           spaceId={spaceId}
           organizationId={organizationId}
           permissionState={permissionState}
@@ -996,6 +1013,8 @@ function useWorkItemPermissions({
 
 function ActionBar({
   item,
+  actionFocusRequest,
+  preferredActionId,
   spaceId,
   organizationId,
   permissionState,
@@ -1006,6 +1025,8 @@ function ActionBar({
   onTimelineRefresh,
 }: {
   item: WorkItemViewModel;
+  actionFocusRequest?: number;
+  preferredActionId?: string;
   spaceId?: string;
   organizationId?: string;
   permissionState: WorkItemPermissionState;
@@ -1024,6 +1045,8 @@ function ActionBar({
   const [formErrors, setFormErrors] = useState<ActionFormErrors>(
     createEmptyActionFormErrors,
   );
+  const actionRegionRef = useRef<HTMLDivElement | null>(null);
+  const preparedActionRequestRef = useRef<string | null>(null);
 
   const resetActionForm = useCallback(() => {
     setSelectedAction(null);
@@ -1031,6 +1054,19 @@ function ActionBar({
     setFormDraft({});
     setFormErrors(createEmptyActionFormErrors());
   }, []);
+
+  const prepareActionForConfirmation = useCallback(
+    (action: WorkflowActionSummary) => {
+      setExecuteError(null);
+      setFormErrors(createEmptyActionFormErrors());
+      setSelectedAction(action);
+      setCommentDraft("");
+      setFormDraft(
+        Object.fromEntries(action.formFields.map((field) => [field.key, ""])),
+      );
+    },
+    [],
+  );
 
   const beginAction = (action: WorkflowActionSummary) => {
     setExecuteError(null);
@@ -1041,11 +1077,7 @@ function ActionBar({
       return;
     }
 
-    setSelectedAction(action);
-    setCommentDraft("");
-    setFormDraft(
-      Object.fromEntries(action.formFields.map((field) => [field.key, ""])),
-    );
+    prepareActionForConfirmation(action);
   };
 
   const handleExecute = async (
@@ -1110,8 +1142,69 @@ function ActionBar({
     }
   }, [resetActionForm, selectedAction, selectedActionStillAvailable]);
 
+  useEffect(() => {
+    if (!actionFocusRequest || actionFocusRequest <= 0) {
+      return;
+    }
+
+    const schedule =
+      typeof window.requestAnimationFrame === "function"
+        ? window.requestAnimationFrame
+        : (callback: FrameRequestCallback) =>
+            window.setTimeout(() => callback(performance.now()), 0);
+
+    schedule(() => {
+      const node = actionRegionRef.current;
+      if (!node) {
+        return;
+      }
+
+      node.scrollIntoView?.({ block: "nearest" });
+      node.focus({ preventScroll: true });
+    });
+  }, [actionFocusRequest]);
+
+  useEffect(() => {
+    if (
+      !actionFocusRequest ||
+      actionFocusRequest <= 0 ||
+      !preferredActionId
+    ) {
+      preparedActionRequestRef.current = null;
+      return;
+    }
+
+    const requestKey = `${item.id}:${actionFocusRequest}:${preferredActionId}`;
+    if (preparedActionRequestRef.current === requestKey) {
+      return;
+    }
+
+    const action = actions.find(
+      (candidate) => candidate.id === preferredActionId,
+    );
+    if (!action) {
+      return;
+    }
+
+    preparedActionRequestRef.current = requestKey;
+    prepareActionForConfirmation(action);
+  }, [
+    actionFocusRequest,
+    actions,
+    item.id,
+    preferredActionId,
+    prepareActionForConfirmation,
+  ]);
+
   return (
-    <div className="flex flex-col gap-1.5 border-b border-border bg-muted/30 px-5 py-2.5">
+    <div
+      ref={actionRegionRef}
+      role="region"
+      aria-label={t("actions.label")}
+      tabIndex={-1}
+      data-testid="task-actions-region"
+      className="flex flex-col gap-1.5 border-b border-border bg-muted/30 px-5 py-2.5 outline-none focus:ring-2 focus:ring-ring"
+    >
       <div className="flex items-center gap-1.5">
         <span className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
           {t("actions.label")}
@@ -1765,6 +1858,26 @@ function DetailTab({
     }
   }
 
+  function handleEditRelatedTaskChange(nextRelatedTaskId: string) {
+    setEditRelatedTaskId(nextRelatedTaskId);
+
+    const nextRelatedTask = relatedTasks.find(
+      (relatedTask) => relatedTask.id === nextRelatedTaskId,
+    );
+    const nextRequirement = requirements.find(
+      (requirement) => requirement.id === nextRelatedTask?.requirementId,
+    );
+    setEditVersionId(
+      inheritVersionFromTraceOption(
+        nextRelatedTask,
+        inheritVersionFromTraceOption(nextRequirement, editVersionId),
+      ),
+    );
+    if (nextRelatedTask?.requirementId) {
+      setEditRequirementId(nextRelatedTask.requirementId);
+    }
+  }
+
   const submitEdit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (!detail || !spaceId || !canEdit) {
@@ -2023,7 +2136,9 @@ function DetailTab({
                   data-testid="task-edit-related-task-select"
                   value={editRelatedTaskId}
                   disabled={saving}
-                  onChange={(event) => setEditRelatedTaskId(event.target.value)}
+                  onChange={(event) =>
+                    handleEditRelatedTaskChange(event.target.value)
+                  }
                   className="h-8 w-full rounded-md border border-input bg-background px-2 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 >
                   <option value="">{tRoot("bugs.form.noRelatedTask")}</option>

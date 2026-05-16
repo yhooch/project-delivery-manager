@@ -1,3 +1,5 @@
+import { Suspense } from "react";
+
 import { setRequestLocale } from "next-intl/server";
 
 import { ExceptionsPage } from "../../../../components/exception/exceptions-page";
@@ -15,5 +17,9 @@ export default async function ExceptionsRoutePage({
   const { locale } = await params;
   setRequestLocale(locale);
 
-  return <ExceptionsPage />;
+  return (
+    <Suspense fallback={null}>
+      <ExceptionsPage />
+    </Suspense>
+  );
 }

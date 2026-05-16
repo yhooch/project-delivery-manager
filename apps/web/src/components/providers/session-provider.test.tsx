@@ -10,6 +10,9 @@ const localeMock = vi.hoisted(() => ({
 const pathnameMock = vi.hoisted(() => ({
   current: "/workbench",
 }));
+const searchParamsMock = vi.hoisted(() => ({
+  current: new URLSearchParams(),
+}));
 
 vi.mock("next-intl", () => ({
   useLocale: () => localeMock.current,
@@ -18,6 +21,10 @@ vi.mock("next-intl", () => ({
 vi.mock("../../i18n/routing", () => ({
   usePathname: () => pathnameMock.current,
   useRouter: () => ({ replace: replaceMock }),
+}));
+
+vi.mock("next/navigation", () => ({
+  useSearchParams: () => searchParamsMock.current,
 }));
 
 vi.mock("../../lib/session-service", () => ({
@@ -106,6 +113,7 @@ beforeEach(() => {
   replaceMock.mockReset();
   localeMock.current = "en-US";
   pathnameMock.current = "/workbench";
+  searchParamsMock.current = new URLSearchParams();
   window.history.pushState(null, "", "/");
 });
 
@@ -135,8 +143,13 @@ describe("SessionProvider", () => {
     expect(replaceMock).not.toHaveBeenCalled();
   });
 
-  it("restores the session locale preference when the URL has no explicit locale", async () => {
+  it("restores the session locale preference and preserves query when the URL has no explicit locale", async () => {
     localeMock.current = "zh-CN";
+    pathnameMock.current = "/bugs";
+    searchParamsMock.current = new URLSearchParams({
+      bugId: "01ARZ3NDEKTSV4RRFFQ69G5FDL",
+      panel: "timeline",
+    });
     window.history.pushState(null, "", "/workbench");
     getPersistedAppSessionMock.mockResolvedValueOnce(
       makeSession({ locale: "en-US", themeMode: "SYSTEM" }),
@@ -154,9 +167,12 @@ describe("SessionProvider", () => {
       ),
     );
     await waitFor(() =>
-      expect(replaceMock).toHaveBeenCalledWith("/workbench", {
-        locale: "en-US",
-      }),
+      expect(replaceMock).toHaveBeenCalledWith(
+        "/bugs?bugId=01ARZ3NDEKTSV4RRFFQ69G5FDL&panel=timeline",
+        {
+          locale: "en-US",
+        },
+      ),
     );
   });
 

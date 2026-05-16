@@ -6,6 +6,7 @@ import type {
   WorkItemLinkedUsers,
   WorkItemListInput,
   WorkItemListResult,
+  WorkItemVersionCascadeImpact,
   WorkItemWorkflowSelection,
 } from "./workitem.types";
 
@@ -26,6 +27,10 @@ export type WorkItemRepository = {
     spaceId: string,
     intakeItemId: string,
   ): Promise<WorkItemLinkedUsers | undefined>;
+  countVersionCascadeImpact(input: {
+    workItemId: string;
+    nextVersionId: string | null;
+  }): Promise<WorkItemVersionCascadeImpact>;
   isParticipant(
     spaceId: string,
     workItemId: string,

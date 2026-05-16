@@ -157,6 +157,7 @@ export function ExceptionsPage() {
     spaceId?: string;
   } | null>(null);
   const [open, setOpen] = useState(false);
+  const [actionFocusRequest, setActionFocusRequest] = useState(0);
   const [tabValue, setTabValue] = useState<ViewExceptionType>(
     requestedExceptionType,
   );
@@ -185,6 +186,7 @@ export function ExceptionsPage() {
 
   useEffect(() => {
     setOpen(false);
+    setActionFocusRequest(0);
     setActive(null);
     setActiveContext(null);
     setThresholdOpen(false);
@@ -429,7 +431,10 @@ export function ExceptionsPage() {
   );
 
   const openExceptionItem = useCallback(
-    (item: SpaceExceptionItem) => {
+    (
+      item: SpaceExceptionItem,
+      options: { focusActions?: boolean } = {},
+    ) => {
       captureFocus();
       const next = buildExceptionViewModel(item);
       rememberWorkItem(next);
@@ -439,6 +444,9 @@ export function ExceptionsPage() {
         organizationId,
         spaceId,
       });
+      setActionFocusRequest((current) =>
+        options.focusActions ? current + 1 : 0,
+      );
       setOpen(true);
     },
     [
@@ -451,10 +459,18 @@ export function ExceptionsPage() {
     ],
   );
 
+  const openExceptionActionArea = useCallback(
+    (item: SpaceExceptionItem) => {
+      openExceptionItem(item, { focusActions: true });
+    },
+    [openExceptionItem],
+  );
+
   const handleSheetOpenChange = useCallback(
     (nextOpen: boolean) => {
       setOpen(nextOpen);
       if (!nextOpen) {
+        setActionFocusRequest(0);
         restoreFocus();
       }
     },
@@ -485,7 +501,7 @@ export function ExceptionsPage() {
     },
     onOpen: openExceptionItem,
     onEdit: openExceptionItem,
-    canSubmit: () => false,
+    onSubmit: openExceptionActionArea,
     onClose: detailSheetOpen ? () => handleSheetOpenChange(false) : undefined,
   });
 
@@ -780,7 +796,7 @@ export function ExceptionsPage() {
                         type="button"
                         onClick={() => handleSelect(item)}
                         className={cn(
-                          "flex w-full min-w-0 cursor-pointer items-center gap-3 px-4 py-2.5 text-left transition-colors hover:bg-muted/40 sm:px-6",
+                          "flex w-full min-w-0 cursor-pointer items-center gap-3 px-4 py-2.5 text-left transition-colors hover:bg-muted/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary/70 sm:px-6",
                           isSelected &&
                             "bg-primary/10 shadow-[inset_3px_0_0_hsl(var(--primary))]",
                         )}
@@ -873,6 +889,7 @@ export function ExceptionsPage() {
       </Tabs>
 
       <TaskDetailSheet
+        actionFocusRequest={actionFocusRequest}
         item={detailSheetItem}
         open={detailSheetOpen}
         onOpenChange={handleSheetOpenChange}

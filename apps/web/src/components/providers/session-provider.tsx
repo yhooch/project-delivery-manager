@@ -7,6 +7,7 @@ import type {
   UpdateUserPreferencesRequest,
 } from "@project-delivery/shared";
 import { useLocale } from "next-intl";
+import { useSearchParams } from "next/navigation";
 import {
   createContext,
   useCallback,
@@ -320,6 +321,7 @@ function SessionPreferenceSync({ session }: SessionPreferenceSyncProps) {
   const { setTheme } = useTheme();
   const appliedLocaleRef = useRef<string | null>(null);
   const appliedThemeRef = useRef<NextThemeMode | null>(null);
+  const searchParams = useSearchParams();
 
   useEffect(() => {
     if (!session) {
@@ -355,8 +357,10 @@ function SessionPreferenceSync({ session }: SessionPreferenceSyncProps) {
     }
 
     appliedLocaleRef.current = preferredLocale;
-    router.replace(pathname, { locale: preferredLocale });
-  }, [locale, pathname, router, session]);
+    const search = searchParams.toString();
+    const target = search ? `${pathname}?${search}` : pathname;
+    router.replace(target as never, { locale: preferredLocale });
+  }, [locale, pathname, router, searchParams, session]);
 
   return null;
 }

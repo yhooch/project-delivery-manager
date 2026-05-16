@@ -572,17 +572,9 @@ export class PrismaRequirementRepository implements RequirementRepository {
   private async listRelatedWorkItemsForRequirement(
     requirement: RequirementTenantScope,
   ) {
-    const records = await this.prisma.client.workItem.findMany({
-      orderBy: [{ type: "asc" }, { createdAt: "asc" }],
-      where: {
-        deletedAt: null,
-        organizationId: requirement.organizationId,
-        requirementId: requirement.id,
-        spaceId: requirement.spaceId,
-      },
-    });
+    const result = await this.listRelatedWorkItemsByRequirements([requirement]);
 
-    return toRequirementRelatedWorkItems(records);
+    return result.get(requirement.id);
   }
 
   private async listRelatedWorkItemsByRequirements(
@@ -595,26 +587,93 @@ export class PrismaRequirementRepository implements RequirementRepository {
     }
 
     const records = await this.prisma.client.workItem.findMany({
+      include: {
+        bugDetail: {
+          select: {
+            relatedTask: {
+              select: {
+                organizationId: true,
+                requirementId: true,
+                spaceId: true,
+              },
+            },
+          },
+        },
+      },
       orderBy: [{ type: "asc" }, { createdAt: "asc" }],
       where: {
         deletedAt: null,
-        OR: requirements.map((requirement) => ({
-          organizationId: requirement.organizationId,
-          requirementId: requirement.id,
-          spaceId: requirement.spaceId,
-        })),
+        OR: requirements.flatMap((requirement) => [
+          {
+            organizationId: requirement.organizationId,
+            requirementId: requirement.id,
+            spaceId: requirement.spaceId,
+          },
+          {
+            bugDetail: {
+              is: {
+                deletedAt: null,
+                relatedTask: {
+                  is: {
+                    deletedAt: null,
+                    organizationId: requirement.organizationId,
+                    requirementId: requirement.id,
+                    spaceId: requirement.spaceId,
+                    type: "TASK",
+                  },
+                },
+              },
+            },
+            organizationId: requirement.organizationId,
+            spaceId: requirement.spaceId,
+            type: "BUG",
+          },
+        ]),
       },
     });
     const grouped = new Map<string, typeof records>();
+    const groupedIds = new Map<string, Set<string>>();
+    const requirementIdsByScope = new Map(
+      requirements.map((requirement) => [
+        requirementScopeKey(
+          requirement.organizationId,
+          requirement.spaceId,
+          requirement.id,
+        ),
+        requirement.id,
+      ]),
+    );
 
     for (const record of records) {
-      if (!record.requirementId) {
-        continue;
+      if (record.requirementId) {
+        addRelatedWorkItemToGroup({
+          grouped,
+          groupedIds,
+          record,
+          requirementId: record.requirementId,
+          requirementIdsByScope,
+          scope: {
+            organizationId: record.organizationId,
+            spaceId: record.spaceId,
+          },
+        });
       }
 
-      const current = grouped.get(record.requirementId) ?? [];
-      current.push(record);
-      grouped.set(record.requirementId, current);
+      const relatedTask = record.bugDetail?.relatedTask;
+
+      if (record.type === "BUG" && relatedTask?.requirementId) {
+        addRelatedWorkItemToGroup({
+          grouped,
+          groupedIds,
+          record,
+          requirementId: relatedTask.requirementId,
+          requirementIdsByScope,
+          scope: {
+            organizationId: relatedTask.organizationId,
+            spaceId: relatedTask.spaceId,
+          },
+        });
+      }
     }
 
     for (const [requirementId, items] of grouped) {
@@ -764,6 +823,51 @@ function toArray<T>(value: T | T[] | undefined): T[] {
   }
 
   return Array.isArray(value) ? value : [value];
+}
+
+function addRelatedWorkItemToGroup<T extends { id: string }>(input: {
+  grouped: Map<string, T[]>;
+  groupedIds: Map<string, Set<string>>;
+  record: T;
+  requirementId: string;
+  requirementIdsByScope: Map<string, string>;
+  scope: {
+    organizationId: string;
+    spaceId: string;
+  };
+}) {
+  const requirementId = input.requirementIdsByScope.get(
+    requirementScopeKey(
+      input.scope.organizationId,
+      input.scope.spaceId,
+      input.requirementId,
+    ),
+  );
+
+  if (!requirementId) {
+    return;
+  }
+
+  const currentIds = input.groupedIds.get(requirementId) ?? new Set<string>();
+
+  if (currentIds.has(input.record.id)) {
+    return;
+  }
+
+  currentIds.add(input.record.id);
+  input.groupedIds.set(requirementId, currentIds);
+
+  const current = input.grouped.get(requirementId) ?? [];
+  current.push(input.record);
+  input.grouped.set(requirementId, current);
+}
+
+function requirementScopeKey(
+  organizationId: string,
+  spaceId: string,
+  requirementId: string,
+): string {
+  return `${organizationId}:${spaceId}:${requirementId}`;
 }
 
 type RequirementTimelineRecord = {

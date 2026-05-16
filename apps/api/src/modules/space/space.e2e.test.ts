@@ -1703,8 +1703,12 @@ class InMemorySpaceRepository implements SpaceRepository {
 
     space.name = input.name ?? space.name;
     space.code = input.code ?? space.code;
-    space.description = input.description ?? space.description;
-    space.ownerId = input.ownerId ?? space.ownerId;
+    if (input.description !== undefined) {
+      space.description = input.description ?? undefined;
+    }
+    if (input.ownerId !== undefined) {
+      space.ownerId = input.ownerId ?? undefined;
+    }
     space.status = input.status ?? space.status;
     space.settings.staleThresholdDays =
       input.staleThresholdDays ?? space.settings.staleThresholdDays;

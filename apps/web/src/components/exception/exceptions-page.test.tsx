@@ -867,6 +867,17 @@ describe("ExceptionsPage", () => {
     window.dispatchEvent(escapeEvent);
 
     expect(escapeEvent.defaultPrevented).toBe(false);
+
+    const submitEvent = new KeyboardEvent("keydown", {
+      key: "s",
+      cancelable: true,
+    });
+    window.dispatchEvent(submitEvent);
+
+    expect(submitEvent.defaultPrevented).toBe(true);
+    expect(
+      await screen.findByTestId("task-detail-sheet-open"),
+    ).toHaveTextContent("First exception");
   });
 
   it("does not use A as a fake assign shortcut on exception rows", async () => {

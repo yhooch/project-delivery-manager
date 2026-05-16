@@ -4,7 +4,9 @@
 #
 # Full E2E orchestrator for machines without Docker access. It uses a local
 # PostgreSQL cluster under /tmp by default, starts local MinIO from PATH, then
-# launches API + Web before delegating to the default Playwright gate.
+# launches API + Web before delegating to the default Playwright gate. Its
+# built-in DB and bucket defaults intentionally use `_local` suffixes; exporting
+# `.env.e2e.example` overrides them with Docker-compatible names.
 # Set E2E_WEB_SERVER_MODE=start to serve an existing production build with
 # `next start` instead of `next dev`, which is useful when a dev server is
 # already running for the same workspace.

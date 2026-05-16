@@ -3,7 +3,9 @@ import { ulid } from "ulid";
 
 import { Prisma } from "../../generated/prisma/client";
 import { PrismaService } from "../../prisma/prisma.service";
+import { assertTraceRefsMatchVersion } from "../trace/trace-version-policy";
 import { toWorkItem } from "./workitem.mappers";
+import { syncWorkItemRelatedParticipants } from "./workitem-participants";
 import type { WorkItemRepository } from "./workitem.repository";
 import type {
   CreateWorkItemInput,
@@ -205,6 +207,40 @@ export class PrismaWorkItemRepository implements WorkItemRepository {
     return workItem ? toWorkItem(workItem) : undefined;
   }
 
+  async countVersionCascadeImpact(input: {
+    workItemId: string;
+    nextVersionId: string | null;
+  }) {
+    const relatedBugs = await this.prisma.client.workItem.findMany({
+      select: {
+        id: true,
+        versionId: true,
+      },
+      where: {
+        bugDetail: {
+          is: {
+            deletedAt: null,
+            relatedTaskId: input.workItemId,
+          },
+        },
+        deletedAt: null,
+        type: "BUG",
+      },
+    });
+    const relatedBugIds = relatedBugs
+      .filter((bug) => bug.versionId !== input.nextVersionId)
+      .map((bug) => bug.id);
+
+    return {
+      bugCount: 0,
+      bugIds: [],
+      relatedBugCount: relatedBugIds.length,
+      relatedBugIds,
+      workItemCount: relatedBugIds.length,
+      workItemIds: relatedBugIds,
+    };
+  }
+
   async update(input: UpdateWorkItemInput) {
     const updated = await this.prisma.client.$transaction(async (tx) => {
       const data: Prisma.WorkItemUncheckedUpdateManyInput = {
@@ -280,6 +316,18 @@ export class PrismaWorkItemRepository implements WorkItemRepository {
           spaceId: workItem.spaceId,
           targetId: workItem.id,
           userIds: input.relatedUserIds,
+        });
+      }
+
+      if (
+        input.cascadeVersionChange === true &&
+        input.versionId !== undefined &&
+        hasOwn(input.timelineAfter, "versionId")
+      ) {
+        await cascadeTaskTraceVersion(tx, {
+          actorUserId: input.updatedById,
+          nextVersionId: input.versionId,
+          workItemId: input.workItemId,
         });
       }
 
@@ -600,6 +648,172 @@ async function replaceParticipants(
       userId,
     });
   }
+}
+
+async function cascadeTaskTraceVersion(
+  tx: Prisma.TransactionClient,
+  input: {
+    actorUserId: string;
+    nextVersionId: string | null;
+    workItemId: string;
+  },
+) {
+  const relatedBugs = await tx.workItem.findMany({
+    select: {
+      id: true,
+      organizationId: true,
+      spaceId: true,
+      versionId: true,
+    },
+    where: {
+      bugDetail: {
+        is: {
+          deletedAt: null,
+          relatedTaskId: input.workItemId,
+        },
+      },
+      deletedAt: null,
+      type: "BUG",
+    },
+  });
+
+  if (relatedBugs.length === 0) {
+    return;
+  }
+
+  const relatedBugIds = relatedBugs.map((bug) => bug.id);
+
+  await assertNoTaskCascadeConflicts(tx, {
+    nextVersionId: input.nextVersionId,
+    relatedBugIds,
+    workItemId: input.workItemId,
+  });
+
+  const affectedRelatedBugs = relatedBugs.filter(
+    (bug) => bug.versionId !== input.nextVersionId,
+  );
+
+  if (affectedRelatedBugs.length > 0) {
+    await tx.workItem.updateMany({
+      data: {
+        updatedById: input.actorUserId,
+        versionId: input.nextVersionId,
+      },
+      where: {
+        deletedAt: null,
+        id: {
+          in: affectedRelatedBugs.map((bug) => bug.id),
+        },
+      },
+    });
+
+    for (const bug of affectedRelatedBugs) {
+      await createTraceVersionCascadeTimelineEvent(tx, {
+        actorUserId: input.actorUserId,
+        beforeVersionId: bug.versionId,
+        nextVersionId: input.nextVersionId,
+        organizationId: bug.organizationId,
+        sourceTargetId: input.workItemId,
+        spaceId: bug.spaceId,
+        targetId: bug.id,
+      });
+    }
+  }
+
+  await syncWorkItemRelatedParticipants(tx, {
+    actorUserId: input.actorUserId,
+    workItemIds: relatedBugIds,
+  });
+}
+
+async function assertNoTaskCascadeConflicts(
+  tx: Prisma.TransactionClient,
+  input: {
+    nextVersionId: string | null;
+    relatedBugIds: string[];
+    workItemId: string;
+  },
+) {
+  const affectedBugs = await tx.workItem.findMany({
+    select: {
+      bugDetail: {
+        select: {
+          relatedTask: {
+            select: { versionId: true },
+          },
+          relatedTaskId: true,
+        },
+      },
+      id: true,
+      intakeItem: {
+        select: { versionId: true },
+      },
+      requirement: {
+        select: { versionId: true },
+      },
+    },
+    where: {
+      deletedAt: null,
+      id: {
+        in: input.relatedBugIds,
+      },
+    },
+  });
+
+  for (const bug of affectedBugs) {
+    assertTraceRefsMatchVersion({
+      details: {
+        workItemId: bug.id,
+      },
+      refs: [
+        { label: "requirement", versionId: bug.requirement?.versionId },
+        { label: "intakeItem", versionId: bug.intakeItem?.versionId },
+        {
+          label: "relatedTask",
+          versionId:
+            bug.bugDetail?.relatedTaskId === input.workItemId
+              ? input.nextVersionId
+              : bug.bugDetail?.relatedTask?.versionId,
+        },
+      ],
+      versionId: input.nextVersionId,
+    });
+  }
+}
+
+async function createTraceVersionCascadeTimelineEvent(
+  tx: Prisma.TransactionClient,
+  input: {
+    actorUserId: string;
+    beforeVersionId: string | null;
+    nextVersionId: string | null;
+    organizationId: string;
+    sourceTargetId: string;
+    spaceId: string;
+    targetId: string;
+  },
+) {
+  await tx.timelineEvent.create({
+    data: {
+      id: ulid(),
+      actorId: input.actorUserId,
+      after: toJson({ versionId: input.nextVersionId }),
+      before: toJson({ versionId: input.beforeVersionId }),
+      createdById: input.actorUserId,
+      eventType: "UPDATED",
+      metadata: toJson({
+        operation: "TRACE_VERSION_CASCADE",
+        sourceTargetId: input.sourceTargetId,
+        sourceTargetType: "TASK",
+      }),
+      organizationId: input.organizationId,
+      spaceId: input.spaceId,
+      targetId: input.targetId,
+      targetType: "WORK_ITEM",
+      title: "级联更新版本",
+      updatedById: input.actorUserId,
+    },
+  });
 }
 
 async function createTimelineEvent(

@@ -35,6 +35,7 @@ const CURRENT_STATE_ID = "01H00000000000000000000009";
 const WORK_ITEM_ID = "01H0000000000000000000000A";
 const RELATED_USER_ID = "01H0000000000000000000000B";
 const VERSION_TWO_ID = "01H0000000000000000000000C";
+const BUG_ID = "01H0000000000000000000000D";
 
 describe("WorkItemService", () => {
   it("creates TASK work items with the default workflow start state and participants", async () => {
@@ -367,6 +368,86 @@ describe("WorkItemService", () => {
     expect(subject.workItems.updatedInput?.versionId).toBe(VERSION_TWO_ID);
   });
 
+  it("blocks TASK version edits that affect related bugs until cascade is confirmed", async () => {
+    const subject = createSubject("PM");
+    subject.workItems.items.set(
+      WORK_ITEM_ID,
+      makeWorkItem({ versionId: VERSION_ID }),
+    );
+    subject.workItems.items.set(
+      BUG_ID,
+      makeWorkItem({
+        id: BUG_ID,
+        title: "Related bug",
+        type: "BUG",
+        versionId: VERSION_ID,
+      }),
+    );
+    subject.workItems.relatedBugTaskIds.set(BUG_ID, WORK_ITEM_ID);
+    subject.workItems.versionRefs.set(VERSION_TWO_ID, {});
+
+    await expect(
+      subject.service.update(ACTOR_ID, WORK_ITEM_ID, {
+        versionId: VERSION_TWO_ID,
+      }),
+    ).rejects.toMatchObject({
+      code: "TRACE_VERSION_CHANGE_REQUIRES_CASCADE",
+      details: expect.objectContaining({
+        impact: expect.objectContaining({
+          relatedBugCount: 1,
+          relatedBugIds: [BUG_ID],
+        }),
+        targetType: "TASK",
+      }),
+    });
+    expect(subject.workItems.updatedInput).toBeUndefined();
+    expect(subject.workItems.items.get(BUG_ID)?.versionId).toBe(VERSION_ID);
+  });
+
+  it("cascades TASK version edits to related bugs after confirmation", async () => {
+    const subject = createSubject("PM");
+    subject.workItems.items.set(
+      WORK_ITEM_ID,
+      makeWorkItem({ versionId: VERSION_ID }),
+    );
+    subject.workItems.items.set(
+      BUG_ID,
+      makeWorkItem({
+        id: BUG_ID,
+        title: "Related bug",
+        type: "BUG",
+        versionId: VERSION_ID,
+      }),
+    );
+    subject.workItems.relatedBugTaskIds.set(BUG_ID, WORK_ITEM_ID);
+    subject.workItems.versionRefs.set(VERSION_TWO_ID, {});
+
+    const updated = await subject.service.update(ACTOR_ID, WORK_ITEM_ID, {
+      cascadeVersionChange: true,
+      versionId: VERSION_TWO_ID,
+    });
+
+    expect(updated.versionId).toBe(VERSION_TWO_ID);
+    expect(subject.workItems.items.get(BUG_ID)?.versionId).toBe(
+      VERSION_TWO_ID,
+    );
+    expect(subject.workItems.updatedInput).toMatchObject({
+      cascadeVersionChange: true,
+      versionId: VERSION_TWO_ID,
+    });
+    expect(subject.audit.record).toHaveBeenCalledWith(
+      expect.objectContaining({
+        metadata: expect.objectContaining({
+          operation: "UPDATE_FIELDS",
+          versionCascade: expect.objectContaining({
+            relatedBugCount: 1,
+            relatedBugIds: [BUG_ID],
+          }),
+        }),
+      }),
+    );
+  });
+
   it("inherits requirement version when relinking a TASK requirement", async () => {
     const subject = createSubject("PM");
     subject.workItems.items.set(WORK_ITEM_ID, makeWorkItem());
@@ -539,6 +620,7 @@ class FakeWorkItemRepository implements WorkItemRepository {
   readonly versionRefs = new Map<string, WorkItemLinkedUsers>();
   readonly requirementRefs = new Map<string, WorkItemLinkedUsers>();
   readonly intakeRefs = new Map<string, WorkItemLinkedUsers>();
+  readonly relatedBugTaskIds = new Map<string, string>();
 
   async create(input: CreateWorkItemInput) {
     this.createdInput = input;
@@ -564,6 +646,31 @@ class FakeWorkItemRepository implements WorkItemRepository {
 
   async findTaskById(workItemId: string) {
     return this.items.get(workItemId);
+  }
+
+  async countVersionCascadeImpact(input: {
+    workItemId: string;
+    nextVersionId: string | null;
+  }) {
+    const relatedBugIds = [...this.relatedBugTaskIds.entries()]
+      .filter(([, taskId]) => taskId === input.workItemId)
+      .map(([bugId]) => this.items.get(bugId))
+      .filter(
+        (bug): bug is WorkItem =>
+          Boolean(bug) &&
+          bug?.type === "BUG" &&
+          (bug.versionId ?? null) !== input.nextVersionId,
+      )
+      .map((bug) => bug.id);
+
+    return {
+      bugCount: 0,
+      bugIds: [],
+      relatedBugCount: relatedBugIds.length,
+      relatedBugIds,
+      workItemCount: relatedBugIds.length,
+      workItemIds: relatedBugIds,
+    };
   }
 
   async findVersionInSpace(_spaceId: string, versionId: string) {
@@ -621,6 +728,33 @@ class FakeWorkItemRepository implements WorkItemRepository {
     });
 
     this.items.set(updated.id, updated);
+
+    if (
+      input.cascadeVersionChange === true &&
+      input.versionId !== undefined &&
+      (existing.versionId ?? null) !== input.versionId
+    ) {
+      for (const [bugId, taskId] of this.relatedBugTaskIds.entries()) {
+        if (taskId !== input.workItemId) {
+          continue;
+        }
+
+        const bug = this.items.get(bugId);
+
+        if (!bug || bug.type !== "BUG") {
+          continue;
+        }
+
+        this.items.set(
+          bugId,
+          makeWorkItem({
+            ...bug,
+            versionId: applyOptional(input.versionId, bug.versionId),
+          }),
+        );
+      }
+    }
+
     return updated;
   }
 }

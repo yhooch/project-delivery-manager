@@ -1,3 +1,5 @@
+import { Suspense } from "react";
+
 import { setRequestLocale } from "next-intl/server";
 
 import { IntakePage } from "../../../../components/intake/intake-page";
@@ -13,5 +15,9 @@ export default async function IntakeItemsPage({ params }: IntakeItemsPageProps) 
   const { locale } = await params;
   setRequestLocale(locale);
 
-  return <IntakePage />;
+  return (
+    <Suspense fallback={null}>
+      <IntakePage />
+    </Suspense>
+  );
 }

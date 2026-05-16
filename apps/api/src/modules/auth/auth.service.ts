@@ -156,6 +156,7 @@ export class AuthService {
   async changePassword(
     userId: string,
     input: ChangePasswordRequest,
+    metadata: RequestMetadata,
   ): Promise<void> {
     assertMatchingPasswords(input.newPassword, input.confirmPassword);
 
@@ -170,6 +171,20 @@ export class AuthService {
       await hashPassword(input.newPassword),
     );
     await this.sessions.rotateUserSessions(user.id);
+    await this.audit.recordForUserOrganizations(user.id, {
+      ...metadata,
+      actionType: "UPDATE",
+      metadata: { operation: "CHANGE_PASSWORD", rotatedSessions: true },
+      targetId: user.id,
+      targetType: "USER",
+    });
+    await this.audit.recordForUserOrganizations(user.id, {
+      ...metadata,
+      actionType: "SESSION_REVOKED",
+      metadata: { reason: "PASSWORD_CHANGED" },
+      targetId: user.id,
+      targetType: "USER",
+    });
   }
 
   async updatePreferences(

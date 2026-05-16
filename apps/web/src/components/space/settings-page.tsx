@@ -4,6 +4,7 @@ import type {
   Space,
   SpaceMemberWithUser,
   SpaceRole,
+  UpdateSpaceRequest,
 } from "@project-delivery/shared";
 import { Plus, ShieldCheck, Trash2 } from "lucide-react";
 import { useTranslations } from "next-intl";
@@ -238,13 +239,13 @@ export function SpaceSettingsPage() {
       ...space,
       name: request.name ?? space.name,
       code: request.code ?? space.code,
-      description: request.description,
-      ownerId: request.ownerId,
+      description: request.description ?? undefined,
+      ownerId: request.ownerId ?? undefined,
     };
     setSpace(optimistic);
 
     try {
-      const updated = await updateSpace(spaceId, request);
+      const updated = await updateSpace(spaceId, request as UpdateSpaceRequest);
       setSpace(updated);
       setName(updated.name);
       setCode(updated.code);
@@ -299,7 +300,7 @@ export function SpaceSettingsPage() {
     setSpace(optimistic);
 
     try {
-      const updated = await updateSpace(spaceId, request);
+      const updated = await updateSpace(spaceId, request as UpdateSpaceRequest);
       setSpace(updated);
       setThreshold(String(updated.settings.staleThresholdDays));
     } catch (error) {
@@ -409,6 +410,9 @@ export function SpaceSettingsPage() {
   }
 
   const spaceStatus = space.status ?? currentSpace?.status ?? "ACTIVE";
+  const activeMemberCount = members.filter(
+    (member) => member.status === "ACTIVE",
+  ).length;
   const ownerMember = space.ownerId
     ? members.find((member) => member.userId === space.ownerId)
     : undefined;
@@ -474,7 +478,7 @@ export function SpaceSettingsPage() {
                     {t("overview.memberCountLabel")}:
                   </span>
                   <span className="font-medium text-foreground">
-                    {members.length}
+                    {activeMemberCount}
                   </span>
                 </div>
                 <div className="flex min-w-0 items-center gap-1.5">

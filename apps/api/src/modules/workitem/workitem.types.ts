@@ -4,6 +4,7 @@ import type {
   Priority,
   StatusCategory,
 } from "@project-delivery/shared";
+import type { TraceVersionCascadeImpact } from "../trace/trace-version-policy";
 
 export type WorkItemListInput = {
   actorUserId: string;
@@ -63,6 +64,7 @@ export type CreateWorkItemInput = {
 export type UpdateWorkItemInput = {
   workItemId: string;
   versionId?: string | null;
+  cascadeVersionChange?: boolean;
   requirementId?: string | null;
   intakeItemId?: string | null;
   title?: string;
@@ -77,6 +79,8 @@ export type UpdateWorkItemInput = {
   timelineBefore: Record<string, unknown>;
   timelineAfter: Record<string, unknown>;
 };
+
+export type WorkItemVersionCascadeImpact = TraceVersionCascadeImpact;
 
 export type ParticipantInput = {
   organizationId: string;

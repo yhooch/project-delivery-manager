@@ -239,8 +239,6 @@ importers:
         specifier: ^1.0.7
         version: 1.0.7(tailwindcss@4.3.0)
 
-  packages/config: {}
-
   packages/shared:
     dependencies:
       zod:

@@ -26,8 +26,17 @@ import {
   type WorkItemRepository,
 } from "./workitem.repository";
 import { WorkflowActionExecutionService } from "../workflow/workflow-action-execution.service";
-import { resolveTraceVersion } from "../trace/trace-version-policy";
-import type { WorkItemLinkedUsers, WorkItemListInput } from "./workitem.types";
+import {
+  hasTraceVersionCascadeImpact,
+  hasTraceVersionChange,
+  resolveTraceVersion,
+  throwTraceVersionChangeRequiresCascade,
+} from "../trace/trace-version-policy";
+import type {
+  WorkItemLinkedUsers,
+  WorkItemListInput,
+  WorkItemVersionCascadeImpact,
+} from "./workitem.types";
 import { toWorkItemDetail } from "./workitem.mappers";
 import { canReadAllSpaceWorkItems } from "./workitem-visibility";
 import {
@@ -244,10 +253,34 @@ export class WorkItemService {
       title: input.title,
       versionId: trace?.versionId,
     });
+    const versionCascadeImpact = hasTraceVersionChange(
+      workItem.versionId,
+      trace?.versionId,
+    )
+      ? await this.countVersionCascadeImpact({
+          nextVersionId: trace?.versionId ?? null,
+          workItemId,
+        })
+      : undefined;
+
+    if (
+      versionCascadeImpact &&
+      hasTraceVersionCascadeImpact(versionCascadeImpact) &&
+      input.cascadeVersionChange !== true
+    ) {
+      throwTraceVersionChangeRequiresCascade({
+        fromVersionId: workItem.versionId,
+        impact: versionCascadeImpact,
+        targetId: workItemId,
+        targetType: "TASK",
+        toVersionId: trace?.versionId ?? null,
+      });
+    }
 
     const updated = await this.workItems.update({
       workItemId,
       assigneeId: input.assigneeId,
+      cascadeVersionChange: input.cascadeVersionChange,
       description: input.description,
       dueDate,
       intakeItemId: input.intakeItemId,
@@ -272,7 +305,12 @@ export class WorkItemService {
       actorId: actorUserId,
       after: updated,
       before: workItem,
-      metadata: { operation: "UPDATE_FIELDS" },
+      metadata: {
+        operation: "UPDATE_FIELDS",
+        ...(input.cascadeVersionChange === true && versionCascadeImpact
+          ? { versionCascade: toCascadeAuditMetadata(versionCascadeImpact) }
+          : {}),
+      },
       ...metadata,
       organizationId: workItem.organizationId,
       spaceId: workItem.spaceId,
@@ -395,6 +433,13 @@ export class WorkItemService {
     }
 
     return { linkedUsers, versionId };
+  }
+
+  private async countVersionCascadeImpact(input: {
+    workItemId: string;
+    nextVersionId: string | null;
+  }) {
+    return this.workItems.countVersionCascadeImpact(input);
   }
 
   private async requireVersionInSpace(spaceId: string, versionId: string) {
@@ -629,6 +674,17 @@ function collectRelatedUserIds(linkedUsers: WorkItemLinkedUsers[]) {
   ]);
 
   return Array.from(new Set(userIds.filter(Boolean))) as string[];
+}
+
+function toCascadeAuditMetadata(impact: WorkItemVersionCascadeImpact) {
+  return {
+    bugCount: impact.bugCount,
+    bugIds: impact.bugIds ?? [],
+    relatedBugCount: impact.relatedBugCount ?? 0,
+    relatedBugIds: impact.relatedBugIds ?? [],
+    workItemCount: impact.workItemCount,
+    workItemIds: impact.workItemIds ?? [],
+  };
 }
 
 function throwSpaceAccessDenied(): never {

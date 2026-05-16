@@ -25,6 +25,7 @@ import {
   useListKeyboardNav,
 } from "../../lib/hooks/use-list-keyboard-nav";
 import { getTimelineEventLabel } from "../../lib/timeline-display";
+import { getTimelineEventHref } from "../../lib/timeline-links";
 import { cn } from "../../lib/utils";
 import { translateWorkflowActionName } from "../../lib/workflow-display";
 import {
@@ -61,6 +62,7 @@ import { TaskDetailSheet } from "../work-item/task-detail-sheet";
 type WorkbenchItemViewModel = WorkItemViewModel & {
   listKey?: string;
   organizationId?: string;
+  preferredActionId?: string;
   spaceId?: string;
 };
 
@@ -99,6 +101,10 @@ export function MyWorkbench() {
     string | undefined
   >(undefined);
   const [sheetOpen, setSheetOpen] = useState(false);
+  const [actionFocusRequest, setActionFocusRequest] = useState(0);
+  const [preferredActionId, setPreferredActionId] = useState<
+    string | undefined
+  >(undefined);
   const [selectedSpaceId, setSelectedSpaceId] = useState<string | undefined>(
     undefined,
   );
@@ -255,6 +261,8 @@ export function MyWorkbench() {
     setActiveItemContext(null);
     setActiveWorkbenchItemKey(undefined);
     setActiveWorkbenchContextKey(undefined);
+    setActionFocusRequest(0);
+    setPreferredActionId(undefined);
   }, [organizationId, selectedSpaceId]);
 
   const availableMembers = useMemo(() => {
@@ -400,7 +408,11 @@ export function MyWorkbench() {
   );
 
   const openItem = useCallback(
-    (item: WorkbenchItemViewModel, trigger?: HTMLElement | null) => {
+    (
+      item: WorkbenchItemViewModel,
+      trigger?: HTMLElement | null,
+      options: { focusActions?: boolean } = {},
+    ) => {
       captureFocus(trigger);
       const itemOrganizationId = item.organizationId ?? organizationId;
       const itemSpaceId = item.spaceId ?? selectedSpaceId;
@@ -422,6 +434,12 @@ export function MyWorkbench() {
         organizationId: itemOrganizationId,
         spaceId: itemSpaceId,
       });
+      setActionFocusRequest((current) =>
+        options.focusActions ? current + 1 : 0,
+      );
+      setPreferredActionId(
+        options.focusActions ? item.preferredActionId : undefined,
+      );
       setSheetOpen(true);
     },
     [captureFocus, organizationId, selectedSpaceId, workbenchContextKey],
@@ -429,6 +447,8 @@ export function MyWorkbench() {
 
   const closeDetailSheet = useCallback(() => {
     setSheetOpen(false);
+    setActionFocusRequest(0);
+    setPreferredActionId(undefined);
     restoreFocus();
   }, [restoreFocus]);
 
@@ -436,10 +456,19 @@ export function MyWorkbench() {
     (nextOpen: boolean) => {
       setSheetOpen(nextOpen);
       if (!nextOpen) {
+        setActionFocusRequest(0);
+        setPreferredActionId(undefined);
         restoreFocus();
       }
     },
     [restoreFocus],
+  );
+
+  const openItemActionArea = useCallback(
+    (item: WorkbenchItemViewModel) => {
+      openItem(item, undefined, { focusActions: true });
+    },
+    [openItem],
   );
 
   const greetingName = session?.user.name ?? t("title");
@@ -503,6 +532,7 @@ export function MyWorkbench() {
         ...toWorkItem(todo.workItem),
         contextLabel: translateWorkflowActionName(tRoot, todo.availableAction),
         listKey: todo.id,
+        preferredActionId: todo.availableAction.id,
       }))
       .map(withWorkbenchListKey("action"));
   }, [view, locale, lookupHelpers, tStatusCategory, t, tRoot]);
@@ -592,6 +622,7 @@ export function MyWorkbench() {
     onSelect: selectWorkbenchItem,
     onOpen: openItem,
     onEdit: openItem,
+    onSubmit: openItemActionArea,
     onClose: sheetOpen ? closeDetailSheet : undefined,
     enabled: Boolean(session && organizationId),
   });
@@ -883,48 +914,71 @@ export function MyWorkbench() {
             <p className="text-xs text-muted-foreground">{t("empty.recent")}</p>
           ) : (
             <ul className="relative flex flex-col gap-5 before:absolute before:inset-y-0 before:left-3 before:w-px before:bg-border/50">
-              {recentEvents.map((event) => (
-                <li key={event.id} className="flex gap-4">
-                  <Tip content={event.actor.name}>
-                    <Avatar className="h-6 w-6 cursor-pointer border-4 border-background ring-2 ring-background z-10 shrink-0 bg-muted">
-                      <AvatarFallback className="text-[9px] text-muted-foreground bg-transparent">
-                        {initialOf(event.actor.name)}
-                      </AvatarFallback>
-                    </Avatar>
-                  </Tip>
-                  <div className="flex-1 text-[13px] min-w-0 pt-0.5">
-                    <div className="leading-snug">
-                      <span className="font-medium text-foreground/90">
-                        {event.actor.name}
-                      </span>
-                      <span className="text-muted-foreground px-1.5">
-                        {getTimelineEventLabel(event.eventType, tTimelineEvent)}
-                      </span>
-                      {event.target.title && (
-                        <span className="font-medium text-foreground inline-block truncate max-w-full align-bottom">
-                          {event.target.title}
+              {recentEvents.map((event) => {
+                const href = getTimelineEventHref(event);
+                const inner = (
+                  <div className="flex gap-4">
+                    <Tip content={event.actor.name}>
+                      <Avatar className="h-6 w-6 cursor-pointer border-4 border-background ring-2 ring-background z-10 shrink-0 bg-muted">
+                        <AvatarFallback className="text-[9px] text-muted-foreground bg-transparent">
+                          {initialOf(event.actor.name)}
+                        </AvatarFallback>
+                      </Avatar>
+                    </Tip>
+                    <div className="flex-1 text-[13px] min-w-0 pt-0.5">
+                      <div className="leading-snug">
+                        <span className="font-medium text-foreground/90">
+                          {event.actor.name}
                         </span>
-                      )}
-                    </div>
-                    <div className="mt-1 text-[11px] font-medium text-muted-foreground/60">
-                      {formatTimeAgo(
-                        event.createdAt,
-                        locale,
-                        t("time.justNow"),
-                      )}
+                        <span className="text-muted-foreground px-1.5">
+                          {getTimelineEventLabel(
+                            event.eventType,
+                            tTimelineEvent,
+                          )}
+                        </span>
+                        {event.target.title && (
+                          <span className="font-medium text-foreground inline-block truncate max-w-full align-bottom">
+                            {event.target.title}
+                          </span>
+                        )}
+                      </div>
+                      <div className="mt-1 text-[11px] font-medium text-muted-foreground/60">
+                        {formatTimeAgo(
+                          event.createdAt,
+                          locale,
+                          t("time.justNow"),
+                        )}
+                      </div>
                     </div>
                   </div>
-                </li>
-              ))}
+                );
+
+                if (href) {
+                  return (
+                    <li key={event.id}>
+                      <Link
+                        href={href as never}
+                        className="block -mx-3 -my-2 rounded-lg p-2 transition-colors hover:bg-muted/40"
+                      >
+                        {inner}
+                      </Link>
+                    </li>
+                  );
+                }
+
+                return <li key={event.id}>{inner}</li>;
+              })}
             </ul>
           )}
         </aside>
       </div>
 
       <TaskDetailSheet
+        actionFocusRequest={actionFocusRequest}
         item={detailSheetItem}
         open={detailSheetOpen}
         onOpenChange={handleDetailSheetOpenChange}
+        preferredActionId={preferredActionId}
         spaceId={activeItemContext?.spaceId ?? selectedSpaceId}
         organizationId={activeItemContext?.organizationId ?? organizationId}
         onChanged={() => {

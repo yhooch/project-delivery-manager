@@ -34,7 +34,7 @@ describe("space forms", () => {
     ).toBe(false);
   });
 
-  it("normalizes update space fields without preserving blank optionals", () => {
+  it("normalizes update space fields while preserving explicit clear values", () => {
     expect(
       toUpdateSpaceRequest({
         code: "  CORE  ",
@@ -45,7 +45,9 @@ describe("space forms", () => {
       }),
     ).toEqual({
       code: "CORE",
+      description: null,
       name: "Core space",
+      ownerId: null,
       staleThresholdDays: 7,
     });
   });
