@@ -8,6 +8,7 @@ import type {
   StatusCategory,
   UpdateIntakeItemRequest,
 } from "@project-delivery/shared";
+import type { TraceVersionCascadeImpact } from "../trace/trace-version-policy";
 
 export type IntakeItemListInput = {
   assigneeId?: string;
@@ -45,6 +46,8 @@ export type UpdateIntakeItemStatusInput = {
   intakeItemId: string;
   status: Extract<IntakeStatus, "ACCEPTED" | "DEFERRED" | "REJECTED">;
 };
+
+export type IntakeVersionCascadeImpact = TraceVersionCascadeImpact;
 
 export type ConvertIntakeItemTaskInput = {
   id: string;

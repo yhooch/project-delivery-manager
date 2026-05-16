@@ -63,6 +63,10 @@ import {
   updateRequirement,
 } from "../../lib/requirement-service";
 import { cn } from "../../lib/utils";
+import {
+  isTraceVersionCascadeRequiredError,
+  traceVersionCascadeConfirmMessage,
+} from "../../lib/versioned-trace-linking";
 import { useRouter } from "../../i18n/routing";
 import { useSession } from "../providers/session-provider";
 import { Badge, type BadgeProps } from "../ui/badge";
@@ -430,19 +434,49 @@ export function RequirementDetailWorkspace({
     setIsSaving(true);
     setErrorKey(null);
 
+    const context = {
+      organizationId: requirement.organizationId,
+      requirementId: requirement.id,
+      spaceId: requirement.spaceId,
+    };
+    const request = formStateToSaveRequest(form);
+
     try {
       const nextRequirement = await updateRequirement(
-        {
-          organizationId: requirement.organizationId,
-          requirementId: requirement.id,
-          spaceId: requirement.spaceId,
-        },
-        formStateToSaveRequest(form),
+        context,
+        request,
       );
       clearLocalDraftCacheForCurrentRequirement();
       setRequirement(nextRequirement);
       setForm(requirementToFormState(nextRequirement));
     } catch (error) {
+      if (
+        isTraceVersionCascadeRequiredError(error) &&
+        window.confirm(
+          traceVersionCascadeConfirmMessage(error, {
+            fallback: tRoot(
+              "errors.api.TRACE_VERSION_CHANGE_REQUIRES_CASCADE_CONFIRM_FALLBACK",
+            ),
+            suffix: tRoot(
+              "errors.api.TRACE_VERSION_CHANGE_REQUIRES_CASCADE_CONFIRM_SUFFIX",
+            ),
+          }),
+        )
+      ) {
+        try {
+          const nextRequirement = await updateRequirement(context, {
+            ...request,
+            cascadeVersionChange: true,
+          });
+          clearLocalDraftCacheForCurrentRequirement();
+          setRequirement(nextRequirement);
+          setForm(requirementToFormState(nextRequirement));
+          return;
+        } catch (retryError) {
+          setErrorKey(getApiErrorMessageKey(retryError));
+          return;
+        }
+      }
       setErrorKey(getApiErrorMessageKey(error));
     } finally {
       setIsSaving(false);
@@ -1168,7 +1202,7 @@ function formStateToSaveRequest(
     priority: form.priority || undefined,
     summary: optionalText(form.summary),
     title: form.title.trim(),
-    versionId: optionalText(form.versionId),
+    versionId: optionalText(form.versionId) ?? null,
   };
 }
 

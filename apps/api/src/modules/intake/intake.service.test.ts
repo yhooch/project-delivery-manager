@@ -110,6 +110,23 @@ describe("IntakeService", () => {
     );
   });
 
+  it("inherits requirement version when creating intake without an explicit version", async () => {
+    const { intakeItems, service } = createSubject({ role: "PM" });
+
+    await service.create(ACTOR_USER_ID, SPACE_ID, {
+      requirementId: REQUIREMENT_ID,
+      sourceType: "REQUIREMENT_CHANGE",
+      title: "Follow requirement version",
+    });
+
+    expect(intakeItems.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        requirementId: REQUIREMENT_ID,
+        versionId: VERSION_ID,
+      }),
+    );
+  });
+
   it("rejects intake create when requirement belongs to another version", async () => {
     const { intakeItems, requirements, service } = createSubject({
       role: "PM",
@@ -126,7 +143,7 @@ describe("IntakeService", () => {
         versionId: VERSION_ID,
       }),
     ).rejects.toMatchObject({
-      code: "VALIDATION_ERROR",
+      code: "TRACE_VERSION_CONFLICT",
     });
     expect(intakeItems.create).not.toHaveBeenCalled();
   });
@@ -218,9 +235,102 @@ describe("IntakeService", () => {
         versionId: VERSION_TWO_ID,
       }),
     ).rejects.toMatchObject({
-      code: "VALIDATION_ERROR",
+      code: "TRACE_VERSION_CONFLICT",
     });
     expect(intakeItems.update).not.toHaveBeenCalled();
+  });
+
+  it("inherits the new requirement version when updating intake requirement", async () => {
+    const { intakeItems, service } = createSubject({
+      item: intakeItem({
+        versionId: VERSION_TWO_ID,
+      }),
+      role: "PM",
+    });
+
+    await service.update(ACTOR_USER_ID, INTAKE_ITEM_ID, {
+      requirementId: REQUIREMENT_ID,
+    });
+
+    expect(intakeItems.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        requirementId: REQUIREMENT_ID,
+        versionId: VERSION_ID,
+      }),
+    );
+  });
+
+  it("requires cascade confirmation when changing an intake requirement moves converted work items", async () => {
+    const { intakeItems, service } = createSubject({
+      item: intakeItem({
+        status: "CONVERTED",
+        versionId: VERSION_TWO_ID,
+      }),
+      role: "PM",
+    });
+    vi.mocked(intakeItems.countVersionCascadeImpact).mockResolvedValue({
+      bugCount: 0,
+      relatedBugCount: 1,
+      workItemCount: 2,
+    });
+
+    await expect(
+      service.update(ACTOR_USER_ID, INTAKE_ITEM_ID, {
+        requirementId: REQUIREMENT_ID,
+      }),
+    ).rejects.toMatchObject({
+      code: "TRACE_VERSION_CHANGE_REQUIRES_CASCADE",
+    });
+    expect(intakeItems.update).not.toHaveBeenCalled();
+
+    await service.update(ACTOR_USER_ID, INTAKE_ITEM_ID, {
+      cascadeVersionChange: true,
+      requirementId: REQUIREMENT_ID,
+    });
+
+    expect(intakeItems.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        cascadeVersionChange: true,
+        requirementId: REQUIREMENT_ID,
+        versionId: VERSION_ID,
+      }),
+    );
+  });
+
+  it("requires cascade confirmation when an intake version change affects converted work items", async () => {
+    const { intakeItems, service } = createSubject({
+      item: intakeItem({
+        status: "CONVERTED",
+        versionId: VERSION_ID,
+      }),
+      role: "PM",
+    });
+    vi.mocked(intakeItems.countVersionCascadeImpact).mockResolvedValue({
+      bugCount: 1,
+      relatedBugCount: 1,
+      workItemCount: 2,
+    });
+
+    await expect(
+      service.update(ACTOR_USER_ID, INTAKE_ITEM_ID, {
+        versionId: VERSION_TWO_ID,
+      }),
+    ).rejects.toMatchObject({
+      code: "TRACE_VERSION_CHANGE_REQUIRES_CASCADE",
+    });
+    expect(intakeItems.update).not.toHaveBeenCalled();
+
+    await service.update(ACTOR_USER_ID, INTAKE_ITEM_ID, {
+      cascadeVersionChange: true,
+      versionId: VERSION_TWO_ID,
+    });
+
+    expect(intakeItems.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        cascadeVersionChange: true,
+        versionId: VERSION_TWO_ID,
+      }),
+    );
   });
 
   it("accepts pending intake items and rejects illegal status changes", async () => {
@@ -522,7 +632,7 @@ describe("IntakeService", () => {
         ],
       }),
     ).rejects.toMatchObject({
-      code: "VALIDATION_ERROR",
+      code: "TRACE_VERSION_CONFLICT",
     });
     expect(intakeItems.convertToWorkItems).not.toHaveBeenCalled();
   });
@@ -656,6 +766,11 @@ function createSubject(input: {
       }),
     ),
     findById: vi.fn(async () => item),
+    countVersionCascadeImpact: vi.fn(async () => ({
+      bugCount: 0,
+      relatedBugCount: 0,
+      workItemCount: 0,
+    })),
     hasParticipant: vi.fn(async () => input.hasParticipant ?? true),
     listBySpaceId: vi.fn(async (_spaceId, listInput) => ({
       items: [],

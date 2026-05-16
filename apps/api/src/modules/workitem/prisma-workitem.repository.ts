@@ -217,6 +217,9 @@ export class PrismaWorkItemRepository implements WorkItemRepository {
       if (input.requirementId !== undefined) {
         data.requirementId = input.requirementId;
       }
+      if (input.intakeItemId !== undefined) {
+        data.intakeItemId = input.intakeItemId;
+      }
       if (input.title !== undefined) {
         data.title = input.title;
       }
@@ -372,6 +375,7 @@ export class PrismaWorkItemRepository implements WorkItemRepository {
     const requirement = await this.prisma.client.requirement.findFirst({
       select: {
         ownerId: true,
+        versionId: true,
       },
       where: {
         deletedAt: null,
@@ -383,6 +387,7 @@ export class PrismaWorkItemRepository implements WorkItemRepository {
     return requirement
       ? {
           requirementOwnerId: requirement.ownerId ?? undefined,
+          requirementVersionId: requirement.versionId ?? undefined,
         }
       : undefined;
   }
@@ -392,6 +397,7 @@ export class PrismaWorkItemRepository implements WorkItemRepository {
       select: {
         assigneeId: true,
         reporterId: true,
+        versionId: true,
       },
       where: {
         deletedAt: null,
@@ -404,6 +410,7 @@ export class PrismaWorkItemRepository implements WorkItemRepository {
       ? {
           intakeAssigneeId: intakeItem.assigneeId ?? undefined,
           intakeReporterId: intakeItem.reporterId,
+          intakeVersionId: intakeItem.versionId ?? undefined,
         }
       : undefined;
   }

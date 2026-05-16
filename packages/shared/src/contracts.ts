@@ -259,6 +259,11 @@ const linkedTargetErrors = [
   "REQUIREMENT_NOT_FOUND",
   "INTAKE_ITEM_NOT_FOUND",
 ];
+const traceVersionErrors = [
+  "TRACE_VERSION_CONFLICT",
+  "TRACE_VERSION_CHANGE_REQUIRES_CASCADE",
+  "TRACE_CASCADE_CONFLICT",
+];
 const targetErrors = [
   "SPACE_NOT_FOUND",
   ...linkedTargetErrors,
@@ -273,6 +278,7 @@ const intakeReferenceErrors = [
   ...intakeItemErrors,
   "NOT_FOUND",
   "REQUIREMENT_NOT_FOUND",
+  ...traceVersionErrors,
 ];
 const workItemErrors = [
   ...spaceErrors,
@@ -282,6 +288,7 @@ const workItemErrors = [
 const workItemReferenceErrors = [
   ...workItemErrors,
   ...linkedTargetErrors,
+  ...traceVersionErrors,
   "WORKFLOW_VERSION_NOT_FOUND",
 ];
 const bugReferenceErrors = workItemReferenceErrors;
@@ -693,10 +700,7 @@ export const apiContracts = [
     querySchema: EmptyObjectSchema,
     requestSchema: UpdateRequirementRequestSchema,
     responseSchema: UpdateRequirementResponseSchema,
-    errorCodes: [
-      ...requirementItemErrors,
-      "NOT_FOUND",
-    ],
+    errorCodes: [...requirementItemErrors, "NOT_FOUND", ...traceVersionErrors],
   }),
   endpoint({
     operationId: "deleteRequirementDraft",
@@ -708,10 +712,7 @@ export const apiContracts = [
     querySchema: EmptyObjectSchema,
     requestSchema: EmptyObjectSchema,
     responseSchema: DeleteRequirementDraftResponseSchema,
-    errorCodes: [
-      ...requirementItemErrors,
-      "DRAFT_REQUIREMENT_REQUIRED",
-    ],
+    errorCodes: [...requirementItemErrors, "DRAFT_REQUIREMENT_REQUIRED"],
   }),
   endpoint({
     operationId: "listIntakeItems",
@@ -771,10 +772,7 @@ export const apiContracts = [
     querySchema: EmptyObjectSchema,
     requestSchema: EmptyObjectSchema,
     responseSchema: AcceptIntakeItemResponseSchema,
-    errorCodes: [
-      ...intakeItemErrors,
-      "INTAKE_ITEM_ALREADY_CONVERTED",
-    ],
+    errorCodes: [...intakeItemErrors, "INTAKE_ITEM_ALREADY_CONVERTED"],
   }),
   endpoint({
     operationId: "deferIntakeItem",
@@ -786,10 +784,7 @@ export const apiContracts = [
     querySchema: EmptyObjectSchema,
     requestSchema: EmptyObjectSchema,
     responseSchema: DeferIntakeItemResponseSchema,
-    errorCodes: [
-      ...intakeItemErrors,
-      "INTAKE_ITEM_ALREADY_CONVERTED",
-    ],
+    errorCodes: [...intakeItemErrors, "INTAKE_ITEM_ALREADY_CONVERTED"],
   }),
   endpoint({
     operationId: "rejectIntakeItem",
@@ -801,10 +796,7 @@ export const apiContracts = [
     querySchema: EmptyObjectSchema,
     requestSchema: EmptyObjectSchema,
     responseSchema: RejectIntakeItemResponseSchema,
-    errorCodes: [
-      ...intakeItemErrors,
-      "INTAKE_ITEM_ALREADY_CONVERTED",
-    ],
+    errorCodes: [...intakeItemErrors, "INTAKE_ITEM_ALREADY_CONVERTED"],
   }),
   endpoint({
     operationId: "convertIntakeItemToWorkItems",
@@ -1273,10 +1265,7 @@ export const apiContracts = [
     querySchema: EmptyObjectSchema,
     requestSchema: CreateAttachmentRequestSchema,
     responseSchema: CreateAttachmentResponseSchema,
-    errorCodes: [
-      ...attachmentUploadErrors,
-      "DRAFT_REQUIREMENT_REQUIRED",
-    ],
+    errorCodes: [...attachmentUploadErrors, "DRAFT_REQUIREMENT_REQUIRED"],
   }),
   endpoint({
     operationId: "getAttachmentDownloadUrl",

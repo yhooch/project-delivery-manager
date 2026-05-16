@@ -704,8 +704,8 @@ describe("IntakePage", () => {
     await waitFor(() => expect(versionSelect.value).toBe(versionTwoId));
     expect(requirementSelect.value).toBe(requirementTwoId);
     expect(
-      screen.queryByText("Requirement no version"),
-    ).not.toBeInTheDocument();
+      screen.getByText("Requirement no version"),
+    ).toBeInTheDocument();
     expect(listIntakeItemsMock).toHaveBeenLastCalledWith(
       expect.objectContaining({
         requirementId: requirementTwoId,
@@ -717,6 +717,7 @@ describe("IntakePage", () => {
 
     await waitFor(() => expect(requirementSelect.value).toBe(""));
     expect(screen.getByText("Requirement v1")).toBeInTheDocument();
+    expect(screen.getByText("Requirement no version")).toBeInTheDocument();
     expect(screen.queryByText("Requirement v2")).not.toBeInTheDocument();
     await waitFor(() => {
       const lastCall = listIntakeItemsMock.mock.lastCall?.[0];

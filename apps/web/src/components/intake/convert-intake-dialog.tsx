@@ -21,6 +21,10 @@ import { listRequirements } from "../../lib/requirement-service";
 import { listSpaceMembers } from "../../lib/space-service";
 import { listVersions } from "../../lib/version-service";
 import {
+  filterTraceOptionsByVersion,
+  isTraceOptionCompatibleWithVersion,
+} from "../../lib/versioned-trace-linking";
+import {
   listWorkflowBindings,
   listWorkflows,
 } from "../../lib/workflow-service";
@@ -38,10 +42,6 @@ import { Input } from "../ui/input";
 import { Label } from "../ui/label";
 import { Textarea } from "../ui/textarea";
 import { useSession } from "../providers/session-provider";
-import {
-  filterRequirementsByVersion,
-  isRequirementCompatibleWithVersion,
-} from "./versioned-requirement-linking";
 
 type ConvertIntakeDialogProps = {
   open: boolean;
@@ -421,7 +421,7 @@ export function ConvertIntakeDialog({
                       <option value="">
                         {tIntakeItems("taskForm.noRequirement")}
                       </option>
-                      {filterRequirementsByVersion(
+                      {filterTraceOptionsByVersion(
                         requirements,
                         row.versionId,
                       ).map((requirement) => (
@@ -654,7 +654,7 @@ function applyLinkedRequirementPatch(
     );
 
     if (
-      !isRequirementCompatibleWithVersion(selectedRequirement, patch.versionId)
+      !isTraceOptionCompatibleWithVersion(selectedRequirement, patch.versionId)
     ) {
       next.requirementId = "";
     }
@@ -666,10 +666,10 @@ function applyLinkedRequirementPatch(
     );
     const nextVersionId = selectedRequirement?.versionId;
 
-    if (!next.versionId && nextVersionId) {
+    if (nextVersionId) {
       next.versionId = nextVersionId;
     } else if (
-      !isRequirementCompatibleWithVersion(selectedRequirement, next.versionId)
+      !isTraceOptionCompatibleWithVersion(selectedRequirement, next.versionId)
     ) {
       next.requirementId = "";
     }

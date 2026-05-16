@@ -4,6 +4,7 @@ import type {
   ArchiveRequirementInput,
   CreateRequirementDraftInput,
   DeleteRequirementDraftInput,
+  RequirementVersionCascadeImpact,
   RequirementListInput,
   RequirementListResult,
   SaveRequirementInput,
@@ -23,6 +24,10 @@ export type RequirementRepository = {
     spaceId: string,
     input: RequirementListInput,
   ): Promise<RequirementListResult>;
+  countVersionCascadeImpact(input: {
+    requirementId: string;
+    nextVersionId: string | null;
+  }): Promise<RequirementVersionCascadeImpact>;
   save(input: SaveRequirementInput): Promise<Requirement | undefined>;
   archive(input: ArchiveRequirementInput): Promise<Requirement | undefined>;
   deleteDraft(input: DeleteRequirementDraftInput): Promise<boolean>;

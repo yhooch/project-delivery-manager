@@ -34,6 +34,7 @@ const WORKFLOW_VERSION_ID = "01H00000000000000000000008";
 const CURRENT_STATE_ID = "01H00000000000000000000009";
 const WORK_ITEM_ID = "01H0000000000000000000000A";
 const RELATED_USER_ID = "01H0000000000000000000000B";
+const VERSION_TWO_ID = "01H0000000000000000000000C";
 
 describe("WorkItemService", () => {
   it("creates TASK work items with the default workflow start state and participants", async () => {
@@ -135,6 +136,43 @@ describe("WorkItemService", () => {
     });
   });
 
+  it("inherits a versioned requirement when creating a TASK and rejects explicit mismatches", async () => {
+    const subject = createSubject("PM");
+
+    subject.workItems.workflowSelection = {
+      currentStateId: CURRENT_STATE_ID,
+      statusCategory: "NOT_STARTED",
+      workflowVersionId: WORKFLOW_VERSION_ID,
+    };
+    subject.workItems.versionRefs.set(VERSION_ID, {});
+    subject.workItems.versionRefs.set(VERSION_TWO_ID, {});
+    subject.workItems.requirementRefs.set(REQUIREMENT_ID, {
+      requirementVersionId: VERSION_ID,
+    });
+
+    const created = await subject.service.create(ACTOR_ID, SPACE_ID, {
+      priority: "MEDIUM",
+      requirementId: REQUIREMENT_ID,
+      title: "Inherited version task",
+      type: "TASK",
+    });
+
+    expect(created.versionId).toBe(VERSION_ID);
+    expect(subject.workItems.createdInput?.versionId).toBe(VERSION_ID);
+
+    await expect(
+      subject.service.create(ACTOR_ID, SPACE_ID, {
+        priority: "MEDIUM",
+        requirementId: REQUIREMENT_ID,
+        title: "Wrong version task",
+        type: "TASK",
+        versionId: VERSION_TWO_ID,
+      }),
+    ).rejects.toMatchObject({
+      code: "TRACE_VERSION_CONFLICT",
+    });
+  });
+
   it("uses scoped visibility for TESTER and participant visibility for other roles", async () => {
     const pmSubject = createSubject("PM");
 
@@ -170,13 +208,17 @@ describe("WorkItemService", () => {
     const subject = createSubject("TESTER");
     subject.workItems.items.set(WORK_ITEM_ID, makeWorkItem());
 
-    await expect(subject.service.get(ACTOR_ID, WORK_ITEM_ID)).rejects.toMatchObject({
+    await expect(
+      subject.service.get(ACTOR_ID, WORK_ITEM_ID),
+    ).rejects.toMatchObject({
       code: "WORK_ITEM_NOT_FOUND",
     });
 
     subject.workItems.testerVisibleIds.add(WORK_ITEM_ID);
 
-    await expect(subject.service.get(ACTOR_ID, WORK_ITEM_ID)).resolves.toMatchObject({
+    await expect(
+      subject.service.get(ACTOR_ID, WORK_ITEM_ID),
+    ).resolves.toMatchObject({
       id: WORK_ITEM_ID,
     });
   });
@@ -312,6 +354,59 @@ describe("WorkItemService", () => {
     );
   });
 
+  it("allows independent TASK version edits without requirement or intake links", async () => {
+    const subject = createSubject("PM");
+    subject.workItems.items.set(WORK_ITEM_ID, makeWorkItem());
+    subject.workItems.versionRefs.set(VERSION_TWO_ID, {});
+
+    const updated = await subject.service.update(ACTOR_ID, WORK_ITEM_ID, {
+      versionId: VERSION_TWO_ID,
+    });
+
+    expect(updated.versionId).toBe(VERSION_TWO_ID);
+    expect(subject.workItems.updatedInput?.versionId).toBe(VERSION_TWO_ID);
+  });
+
+  it("inherits requirement version when relinking a TASK requirement", async () => {
+    const subject = createSubject("PM");
+    subject.workItems.items.set(WORK_ITEM_ID, makeWorkItem());
+    subject.workItems.versionRefs.set(VERSION_ID, {});
+    subject.workItems.requirementRefs.set(REQUIREMENT_ID, {
+      requirementVersionId: VERSION_ID,
+    });
+
+    const updated = await subject.service.update(ACTOR_ID, WORK_ITEM_ID, {
+      requirementId: REQUIREMENT_ID,
+    });
+
+    expect(updated.requirementId).toBe(REQUIREMENT_ID);
+    expect(updated.versionId).toBe(VERSION_ID);
+    expect(subject.workItems.updatedInput).toMatchObject({
+      requirementId: REQUIREMENT_ID,
+      versionId: VERSION_ID,
+    });
+  });
+
+  it("inherits intake version when relinking a TASK intake item", async () => {
+    const subject = createSubject("PM");
+    subject.workItems.items.set(WORK_ITEM_ID, makeWorkItem());
+    subject.workItems.versionRefs.set(VERSION_ID, {});
+    subject.workItems.intakeRefs.set(INTAKE_ITEM_ID, {
+      intakeVersionId: VERSION_ID,
+    });
+
+    const updated = await subject.service.update(ACTOR_ID, WORK_ITEM_ID, {
+      intakeItemId: INTAKE_ITEM_ID,
+    });
+
+    expect(updated.intakeItemId).toBe(INTAKE_ITEM_ID);
+    expect(updated.versionId).toBe(VERSION_ID);
+    expect(subject.workItems.updatedInput).toMatchObject({
+      intakeItemId: INTAKE_ITEM_ID,
+      versionId: VERSION_ID,
+    });
+  });
+
   it("does not allow unchecked update input to change blocked state fields", async () => {
     const subject = createSubject("PM");
     subject.workItems.items.set(
@@ -379,7 +474,9 @@ function createSubject(role: SpaceRole, actorUserId = ACTOR_ID) {
       workItems,
       spaces as unknown as SpaceRepository,
       organizations as unknown as OrganizationRepository,
-      createPermissionResolver(role) as unknown as WorkflowActionExecutionService,
+      createPermissionResolver(
+        role,
+      ) as unknown as WorkflowActionExecutionService,
       audit,
     ),
     spaces,
@@ -495,6 +592,7 @@ class FakeWorkItemRepository implements WorkItemRepository {
       assigneeId: applyOptional(input.assigneeId, existing.assigneeId),
       description: applyOptional(input.description, existing.description),
       dueDate: applyOptionalDate(input.dueDate, existing.dueDate),
+      intakeItemId: applyOptional(input.intakeItemId, existing.intakeItemId),
       priority: input.priority ?? existing.priority,
       requirementId: applyOptional(input.requirementId, existing.requirementId),
       title: input.title ?? existing.title,
@@ -567,7 +665,10 @@ class FakeOrganizationRepository {
   }
 }
 
-function applyOptional<T>(value: T | null | undefined, fallback: T | undefined) {
+function applyOptional<T>(
+  value: T | null | undefined,
+  fallback: T | undefined,
+) {
   if (value === undefined) {
     return fallback;
   }

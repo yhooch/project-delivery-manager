@@ -333,6 +333,11 @@
       "INTAKE_ITEM_NOT_FOUND": "The intake item is unavailable.",
       "INTAKE_ITEM_NOT_ACCEPTED": "The intake item has not been accepted.",
       "INTAKE_ITEM_ALREADY_CONVERTED": "The intake item has already been converted.",
+      "TRACE_VERSION_CONFLICT": "The linked objects use inconsistent versions. Adjust the requirement, intake item, or work item version.",
+      "TRACE_VERSION_CHANGE_REQUIRES_CASCADE": "This version change affects linked downstream objects. Confirm to continue.",
+      "TRACE_VERSION_CHANGE_REQUIRES_CASCADE_CONFIRM_SUFFIX": "Confirm to update linked downstream objects to the same version.",
+      "TRACE_VERSION_CHANGE_REQUIRES_CASCADE_CONFIRM_FALLBACK": "This version change will update linked downstream objects. Continue?",
+      "TRACE_CASCADE_CONFLICT": "The version cascade update failed. Refresh linked objects and try again.",
       "UNKNOWN": "The operation failed. Try again later."
     }
   },

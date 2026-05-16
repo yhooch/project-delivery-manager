@@ -101,6 +101,7 @@ const {
   uploadAttachmentMock,
   listTimelineMock,
   updateWorkItemMock,
+  listIntakeItemsMock,
   listRequirementsMock,
 } = vi.hoisted(() => ({
   getBugMock: vi.fn(),
@@ -113,6 +114,7 @@ const {
   uploadAttachmentMock: vi.fn(),
   listTimelineMock: vi.fn(),
   updateWorkItemMock: vi.fn(),
+  listIntakeItemsMock: vi.fn(),
   listRequirementsMock: vi.fn(),
 }));
 
@@ -123,6 +125,9 @@ vi.mock("../../lib/work-item-service", () => ({
 }));
 vi.mock("../../lib/requirement-service", () => ({
   listRequirements: listRequirementsMock,
+}));
+vi.mock("../../lib/intake-service", () => ({
+  listIntakeItems: listIntakeItemsMock,
 }));
 vi.mock("../../lib/bug-service", () => ({
   getBug: getBugMock,
@@ -261,6 +266,7 @@ beforeEach(() => {
   uploadAttachmentMock.mockReset();
   listTimelineMock.mockReset();
   updateWorkItemMock.mockReset();
+  listIntakeItemsMock.mockReset();
   listRequirementsMock.mockReset();
 
   // Default success values to prevent fallbacks from masking failures.
@@ -274,6 +280,7 @@ beforeEach(() => {
   listAttachmentsMock.mockResolvedValue({ items: [], total: 0 });
   listTimelineMock.mockResolvedValue({ items: [], total: 0 });
   updateWorkItemMock.mockResolvedValue(makeDetailResponse());
+  listIntakeItemsMock.mockResolvedValue({ items: [], total: 0 });
   listRequirementsMock.mockResolvedValue({ items: [], total: 0 });
 });
 
@@ -819,12 +826,17 @@ describe("TaskDetailSheet", () => {
     const assigneeId = "01ARZ3NDEKTSV4RRFFQ69G5FAS";
     const versionId = "01ARZ3NDEKTSV4RRFFQ69G5FV1";
     const requirementId = "01ARZ3NDEKTSV4RRFFQ69G5FRQ";
+    const intakeItemId = "01ARZ3NDEKTSV4RRFFQ69G5FJ1";
     memberMap.set(assigneeId, {
       user: { name: "Alice Owner" },
     });
     versionMap.set(versionId, { name: "Release 1" });
     listRequirementsMock.mockResolvedValueOnce({
       items: [{ id: requirementId, title: "Requirement B" }],
+      total: 1,
+    });
+    listIntakeItemsMock.mockResolvedValueOnce({
+      items: [{ id: intakeItemId, title: "Intake B", versionId }],
       total: 1,
     });
     getWorkItemMock
@@ -846,6 +858,7 @@ describe("TaskDetailSheet", () => {
           description: "After",
           dueDate: "2026-06-02T00:00:00.000Z",
           priority: "HIGH",
+          intakeItemId,
           requirementId,
           title: "Edited task",
           versionId,
@@ -882,6 +895,9 @@ describe("TaskDetailSheet", () => {
     fireEvent.change(screen.getByTestId("task-edit-requirement-select"), {
       target: { value: requirementId },
     });
+    fireEvent.change(screen.getByTestId("task-edit-intake-select"), {
+      target: { value: intakeItemId },
+    });
     fireEvent.change(screen.getByTestId("task-edit-due-date-input"), {
       target: { value: "2026-06-02" },
     });
@@ -898,6 +914,7 @@ describe("TaskDetailSheet", () => {
         assigneeId,
         description: "After",
         dueDate: expect.any(String),
+        intakeItemId,
         priority: "HIGH",
         requirementId,
         title: "Edited task",
@@ -914,6 +931,7 @@ describe("TaskDetailSheet", () => {
     const assigneeId = "01ARZ3NDEKTSV4RRFFQ69G5FAS";
     const versionId = "01ARZ3NDEKTSV4RRFFQ69G5FV1";
     const requirementId = "01ARZ3NDEKTSV4RRFFQ69G5FRQ";
+    const intakeItemId = "01ARZ3NDEKTSV4RRFFQ69G5FJ1";
     memberMap.set(assigneeId, {
       user: { name: "Alice Owner" },
     });
@@ -922,11 +940,16 @@ describe("TaskDetailSheet", () => {
       items: [{ id: requirementId, title: "Requirement B" }],
       total: 1,
     });
+    listIntakeItemsMock.mockResolvedValue({
+      items: [{ id: intakeItemId, title: "Intake B", versionId }],
+      total: 1,
+    });
     getWorkItemMock.mockResolvedValueOnce(
       makeDetailResponse({
         assigneeId,
         description: "Before",
         dueDate: "2026-06-01T00:00:00.000Z",
+        intakeItemId,
         requirementId,
         versionId,
         permissions: {
@@ -957,6 +980,9 @@ describe("TaskDetailSheet", () => {
     fireEvent.change(screen.getByTestId("task-edit-requirement-select"), {
       target: { value: "" },
     });
+    fireEvent.change(screen.getByTestId("task-edit-intake-select"), {
+      target: { value: "" },
+    });
     fireEvent.change(screen.getByTestId("task-edit-due-date-input"), {
       target: { value: "" },
     });
@@ -969,6 +995,7 @@ describe("TaskDetailSheet", () => {
         assigneeId: null,
         description: null,
         dueDate: null,
+        intakeItemId: null,
         requirementId: null,
         versionId: null,
       }),
@@ -1055,6 +1082,45 @@ describe("TaskDetailSheet", () => {
     expect(screen.getByTestId("task-edit-due-date-input")).toHaveValue(
       "2026-06-01",
     );
+  });
+
+  it("infers task edit version from a selected intake item", async () => {
+    const versionId = "01ARZ3NDEKTSV4RRFFQ69G5FV1";
+    const intakeItemId = "01ARZ3NDEKTSV4RRFFQ69G5FJ1";
+    versionMap.set(versionId, { name: "Release 1" });
+    listIntakeItemsMock.mockResolvedValueOnce({
+      items: [{ id: intakeItemId, title: "Versioned intake", versionId }],
+      total: 1,
+    });
+    getWorkItemMock.mockResolvedValueOnce(
+      makeDetailResponse({
+        permissions: {
+          canEdit: true,
+          canComment: true,
+          canUploadAttachment: true,
+          availableActions: [],
+        },
+      }),
+    );
+
+    render(
+      <TaskDetailSheet item={makeViewModel()} open onOpenChange={() => {}} />,
+    );
+
+    fireEvent.click(await screen.findByTestId("task-edit-button"));
+    expect(await screen.findByText("Versioned intake")).toBeInTheDocument();
+
+    const versionSelect = screen.getByTestId(
+      "task-edit-version-select",
+    ) as HTMLSelectElement;
+    const intakeSelect = screen.getByTestId(
+      "task-edit-intake-select",
+    ) as HTMLSelectElement;
+
+    fireEvent.change(intakeSelect, { target: { value: intakeItemId } });
+
+    await waitFor(() => expect(versionSelect.value).toBe(versionId));
+    expect(intakeSelect.value).toBe(intakeItemId);
   });
 
   it("does not show task field editing when PermissionSnapshot.canEdit is false", async () => {
@@ -1708,13 +1774,13 @@ describe("TaskDetailSheet", () => {
       "Checkout requirement",
     );
     relationTitleMap.set(
-      "intake:01ARZ3NDEKTSV4RRFFQ69G5FIN",
+      "intake:01ARZ3NDEKTSV4RRFFQ69G5FJ1",
       "Customer intake",
     );
     getWorkItemMock.mockResolvedValue(
       makeDetailResponse({
         requirementId: "01ARZ3NDEKTSV4RRFFQ69G5FRQ",
-        intakeItemId: "01ARZ3NDEKTSV4RRFFQ69G5FIN",
+        intakeItemId: "01ARZ3NDEKTSV4RRFFQ69G5FJ1",
       }),
     );
 
@@ -1726,7 +1792,7 @@ describe("TaskDetailSheet", () => {
     expect(within(list).getByText("Checkout requirement")).toBeInTheDocument();
     expect(within(list).getByText("Customer intake")).toBeInTheDocument();
     expect(within(list).queryByText("9G5FRQ")).not.toBeInTheDocument();
-    expect(within(list).queryByText("9G5FIN")).not.toBeInTheDocument();
+    expect(within(list).queryByText("9G5FJ1")).not.toBeInTheDocument();
   });
 
   it("loads bug relation data from the bug detail endpoint in the detail traceability section", async () => {

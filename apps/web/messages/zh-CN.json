@@ -333,6 +333,11 @@
       "INTAKE_ITEM_NOT_FOUND": "入口事项不存在或已不可用。",
       "INTAKE_ITEM_NOT_ACCEPTED": "入口事项尚未接受。",
       "INTAKE_ITEM_ALREADY_CONVERTED": "入口事项已转换。",
+      "TRACE_VERSION_CONFLICT": "关联对象的版本不一致，请调整需求、事项或工作项版本。",
+      "TRACE_VERSION_CHANGE_REQUIRES_CASCADE": "版本变更会影响已关联的下游对象，请确认后继续。",
+      "TRACE_VERSION_CHANGE_REQUIRES_CASCADE_CONFIRM_SUFFIX": "确认后将同步更新已关联对象的版本，是否继续？",
+      "TRACE_VERSION_CHANGE_REQUIRES_CASCADE_CONFIRM_FALLBACK": "版本变更会同步影响已关联对象。确认继续？",
+      "TRACE_CASCADE_CONFLICT": "版本级联更新失败，请刷新关联对象后重试。",
       "UNKNOWN": "操作失败，请稍后重试。"
     }
   },

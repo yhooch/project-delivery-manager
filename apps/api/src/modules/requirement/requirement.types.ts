@@ -4,6 +4,7 @@ import type {
   RequirementStatus,
   SaveRequirementRequest,
 } from "@project-delivery/shared";
+import type { TraceVersionCascadeImpact } from "../trace/trace-version-policy";
 
 export type RequirementListVisibility =
   | "ALL"
@@ -40,11 +41,16 @@ export type SaveRequirementInput = {
   contentJson: SaveRequirementRequest["contentJson"];
   contentText?: string;
   contentMarkdownCache?: string;
-  versionId?: string;
+  versionId?: string | null;
+  cascadeVersionChange?: boolean;
   priority?: Priority;
   ownerId?: string;
   shouldUpdateOwner: boolean;
   updatedById: string;
+};
+
+export type RequirementVersionCascadeImpact = TraceVersionCascadeImpact & {
+  intakeItemCount: number;
 };
 
 export type ArchiveRequirementInput = {

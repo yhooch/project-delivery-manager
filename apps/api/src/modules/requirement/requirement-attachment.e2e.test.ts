@@ -1488,6 +1488,20 @@ class InMemoryRequirementRepository implements RequirementRepository {
     };
   }
 
+  async countVersionCascadeImpact(): Promise<{
+    bugCount: number;
+    intakeItemCount: number;
+    relatedBugCount: number;
+    workItemCount: number;
+  }> {
+    return {
+      bugCount: 0,
+      intakeItemCount: 0,
+      relatedBugCount: 0,
+      workItemCount: 0,
+    };
+  }
+
   async save(input: SaveRequirementInput): Promise<Requirement | undefined> {
     const requirement = this.records.get(input.requirementId);
 
@@ -1501,7 +1515,9 @@ class InMemoryRequirementRepository implements RequirementRepository {
     requirement.contentText = input.contentText ?? requirement.contentText;
     requirement.contentMarkdownCache =
       input.contentMarkdownCache ?? requirement.contentMarkdownCache;
-    requirement.versionId = input.versionId ?? requirement.versionId;
+    if (input.versionId !== undefined) {
+      requirement.versionId = input.versionId ?? undefined;
+    }
     requirement.priority = input.priority ?? requirement.priority;
     requirement.status = "CONFIRMED";
     requirement.updatedAt = new Date().toISOString();

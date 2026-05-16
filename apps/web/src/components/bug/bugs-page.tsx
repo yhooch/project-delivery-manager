@@ -45,6 +45,10 @@ import {
   useVersions,
   useWorkflowStateLookup,
 } from "../../lib/v2/lookups";
+import {
+  filterTraceOptionsByVersion,
+  isTraceOptionCompatibleWithVersion,
+} from "../../lib/versioned-trace-linking";
 import type { WorkItemViewModel } from "../../lib/v2/work-item-view-model";
 import { cn } from "../../lib/utils";
 import { listWorkItems } from "../../lib/work-item-service";
@@ -62,10 +66,6 @@ import { TaskDetailSheet } from "../work-item/task-detail-sheet";
 
 import { CreateBugDialog } from "./create-bug-dialog";
 import { EditBugDialog } from "./edit-bug-dialog";
-import {
-  filterTraceOptionsByVersion,
-  isTraceOptionCompatibleWithVersion,
-} from "./versioned-trace-linking";
 
 const severityColor: Record<BugSeverity, string> = {
   BLOCKER: "bg-destructive text-destructive-foreground",
@@ -263,7 +263,7 @@ export function BugsPage() {
           (task) => task.id === current.relatedTaskId,
         );
         const nextVersionId =
-          current.versionId || selectedRequirement?.versionId || "";
+          selectedRequirement?.versionId || current.versionId || "";
 
         return {
           ...current,
@@ -290,7 +290,7 @@ export function BugsPage() {
           (task) => task.id === nextRelatedTaskId,
         );
         const nextVersionId =
-          current.versionId || selectedRelatedTask?.versionId || "";
+          selectedRelatedTask?.versionId || current.versionId || "";
 
         return {
           ...current,

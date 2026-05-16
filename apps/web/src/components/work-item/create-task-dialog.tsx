@@ -15,6 +15,10 @@ import { listIntakeItems } from "../../lib/intake-service";
 import { listRequirements } from "../../lib/requirement-service";
 import { listSpaceMembers } from "../../lib/space-service";
 import { listVersions } from "../../lib/version-service";
+import {
+  filterTraceOptionsByVersion,
+  isTraceOptionCompatibleWithVersion,
+} from "../../lib/versioned-trace-linking";
 import { toCreateTaskRequest } from "../../lib/work-item-forms";
 import { createWorkItem } from "../../lib/work-item-service";
 
@@ -92,11 +96,11 @@ export function CreateTaskDialog({
     [intakeItemId, intakeItems],
   );
   const filteredRequirements = useMemo(
-    () => filterByVersion(requirements, versionId),
+    () => filterTraceOptionsByVersion(requirements, versionId),
     [requirements, versionId],
   );
   const filteredIntakeItems = useMemo(
-    () => filterByVersion(intakeItems, versionId),
+    () => filterTraceOptionsByVersion(intakeItems, versionId),
     [intakeItems, versionId],
   );
 
@@ -167,10 +171,10 @@ export function CreateTaskDialog({
   function handleVersionChange(nextVersionId: string) {
     setVersionId(nextVersionId);
 
-    if (!isCompatibleWithVersion(selectedRequirement, nextVersionId)) {
+    if (!isTraceOptionCompatibleWithVersion(selectedRequirement, nextVersionId)) {
       setRequirementId("");
     }
-    if (!isCompatibleWithVersion(selectedIntakeItem, nextVersionId)) {
+    if (!isTraceOptionCompatibleWithVersion(selectedIntakeItem, nextVersionId)) {
       setIntakeItemId("");
     }
   }
@@ -183,9 +187,9 @@ export function CreateTaskDialog({
     );
     const nextVersionId = nextRequirement?.versionId;
 
-    if (!versionId && nextVersionId) {
+    if (nextVersionId) {
       setVersionId(nextVersionId);
-      if (!isCompatibleWithVersion(selectedIntakeItem, nextVersionId)) {
+      if (!isTraceOptionCompatibleWithVersion(selectedIntakeItem, nextVersionId)) {
         setIntakeItemId("");
       }
     }
@@ -199,9 +203,9 @@ export function CreateTaskDialog({
     );
     const nextVersionId = nextIntakeItem?.versionId;
 
-    if (!versionId && nextVersionId) {
+    if (nextVersionId) {
       setVersionId(nextVersionId);
-      if (!isCompatibleWithVersion(selectedRequirement, nextVersionId)) {
+      if (!isTraceOptionCompatibleWithVersion(selectedRequirement, nextVersionId)) {
         setRequirementId("");
       }
     }
@@ -501,30 +505,4 @@ function OptionsLoadNotice({
 
 function toDateInputRequestValue(value: string): string {
   return value ? new Date(`${value}T00:00:00`).toISOString() : value;
-}
-
-function filterByVersion<T extends { versionId?: string }>(
-  items: T[],
-  versionId: string,
-): T[] {
-  if (!versionId) {
-    return items;
-  }
-
-  return items.filter((item) => item.versionId === versionId);
-}
-
-function isCompatibleWithVersion(
-  item: { versionId?: string } | undefined,
-  versionId: string,
-): boolean {
-  if (!item) {
-    return true;
-  }
-
-  if (!versionId) {
-    return !item.versionId;
-  }
-
-  return item.versionId === versionId;
 }

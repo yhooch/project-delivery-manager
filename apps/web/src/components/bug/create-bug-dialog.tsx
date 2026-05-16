@@ -17,6 +17,10 @@ import { createBug } from "../../lib/bug-service";
 import { listRequirements } from "../../lib/requirement-service";
 import { listSpaceMembers } from "../../lib/space-service";
 import { listVersions } from "../../lib/version-service";
+import {
+  filterTraceOptionsByVersion,
+  isTraceOptionCompatibleWithVersion,
+} from "../../lib/versioned-trace-linking";
 import { listWorkItems } from "../../lib/work-item-service";
 
 import {
@@ -32,11 +36,6 @@ import { Input } from "../ui/input";
 import { Label } from "../ui/label";
 import { Textarea } from "../ui/textarea";
 import { useSession } from "../providers/session-provider";
-
-import {
-  filterTraceOptionsByVersion,
-  isTraceOptionCompatibleWithVersion,
-} from "./versioned-trace-linking";
 
 type CreateBugDialogProps = {
   open: boolean;
@@ -213,7 +212,7 @@ export function CreateBugDialog({
     );
     const nextVersionId = nextRequirement?.versionId;
 
-    if (!versionId && nextVersionId) {
+    if (nextVersionId) {
       setVersionId(nextVersionId);
       if (
         !isTraceOptionCompatibleWithVersion(
@@ -232,7 +231,7 @@ export function CreateBugDialog({
     const nextRelatedTask = tasks.find((task) => task.id === nextRelatedTaskId);
     const nextVersionId = nextRelatedTask?.versionId;
 
-    if (!versionId && nextVersionId) {
+    if (nextVersionId) {
       setVersionId(nextVersionId);
       if (
         !isTraceOptionCompatibleWithVersion(

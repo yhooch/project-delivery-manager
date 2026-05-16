@@ -33,8 +33,10 @@ export type WorkItemWorkflowSelection = {
 export type WorkItemLinkedUsers = {
   versionOwnerId?: string;
   requirementOwnerId?: string;
+  requirementVersionId?: string;
   intakeReporterId?: string;
   intakeAssigneeId?: string;
+  intakeVersionId?: string;
 };
 
 export type CreateWorkItemInput = {
@@ -62,6 +64,7 @@ export type UpdateWorkItemInput = {
   workItemId: string;
   versionId?: string | null;
   requirementId?: string | null;
+  intakeItemId?: string | null;
   title?: string;
   description?: string | null;
   priority?: Priority;

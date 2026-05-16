@@ -7,7 +7,6 @@ import {
   type IntakeTaskInput,
   type IntakeStatus,
   type ListIntakeItemsResponse,
-  type Requirement,
   type SpaceRole,
   type UpdateIntakeItemRequest,
 } from "@project-delivery/shared";
@@ -37,6 +36,12 @@ import {
   type WorkItemRepository,
 } from "../workitem/workitem.repository";
 import { canManageDeliveryObject } from "../workitem/delivery-object-permissions";
+import {
+  hasTraceVersionCascadeImpact,
+  hasTraceVersionChange,
+  resolveTraceVersion,
+  throwTraceVersionChangeRequiresCascade,
+} from "../trace/trace-version-policy";
 import { INTAKE_REPOSITORY, type IntakeRepository } from "./intake.repository";
 import type {
   ConvertIntakeItemTaskInput,
@@ -100,7 +105,11 @@ export class IntakeService {
   ): Promise<IntakeItem> {
     const access = await this.requireIntakeWriter(actorUserId, spaceId);
 
-    await this.validateReferences(access.space.organizationId, spaceId, input);
+    const trace = await this.validateReferences(
+      access.space.organizationId,
+      spaceId,
+      input,
+    );
 
     const created = await this.intakeItems.create({
       ...input,
@@ -108,6 +117,7 @@ export class IntakeService {
       organizationId: access.space.organizationId,
       reporterId: actorUserId,
       spaceId,
+      versionId: trace.versionId ?? undefined,
     });
 
     await this.audit.record({
@@ -143,19 +153,39 @@ export class IntakeService {
     await this.requireManageableIntakeItem(actorUserId, item);
     const shouldValidateTraceFields =
       input.versionId !== undefined || input.requirementId !== undefined;
-    await this.validateReferences(item.organizationId, item.spaceId, {
-      assigneeId: input.assigneeId,
-      requirementId: shouldValidateTraceFields
-        ? input.requirementId !== undefined
-          ? input.requirementId
-          : item.requirementId
-        : input.requirementId,
-      versionId: shouldValidateTraceFields
-        ? input.versionId !== undefined
-          ? input.versionId
-          : item.versionId
-        : input.versionId,
-    });
+    const trace = await this.validateReferences(
+      item.organizationId,
+      item.spaceId,
+      {
+        assigneeId: input.assigneeId,
+        requirementId: shouldValidateTraceFields
+          ? selectOptional(input.requirementId, item.requirementId)
+          : input.requirementId,
+        versionId: input.versionId,
+        currentVersionId: item.versionId,
+      },
+    );
+    const versionId = shouldValidateTraceFields ? trace.versionId : undefined;
+
+    if (hasTraceVersionChange(item.versionId, versionId)) {
+      const impact = await this.intakeItems.countVersionCascadeImpact({
+        intakeItemId,
+        nextVersionId: versionId ?? null,
+      });
+
+      if (
+        hasTraceVersionCascadeImpact(impact) &&
+        input.cascadeVersionChange !== true
+      ) {
+        throwTraceVersionChangeRequiresCascade({
+          fromVersionId: item.versionId,
+          impact,
+          targetId: intakeItemId,
+          targetType: "INTAKE_ITEM",
+          toVersionId: versionId ?? null,
+        });
+      }
+    }
 
     const updated = await this.intakeItems.update({
       ...input,
@@ -169,6 +199,7 @@ export class IntakeService {
         "sourceObject",
       ),
       updatedById: actorUserId,
+      versionId,
     });
 
     if (!updated) {
@@ -360,6 +391,7 @@ export class IntakeService {
     spaceId: string,
     input: {
       assigneeId?: string | null;
+      currentVersionId?: string;
       requirementId?: string | null;
       versionId?: string | null;
     },
@@ -368,10 +400,16 @@ export class IntakeService {
       ? await this.requireRequirementInSpace(spaceId, input.requirementId)
       : undefined;
 
-    if (input.versionId) {
-      await this.requireVersionInSpace(spaceId, input.versionId);
+    const versionId = resolveTraceVersion({
+      currentVersionId: input.currentVersionId,
+      refs: [{ label: "requirement", versionId: requirement?.versionId }],
+      requestedVersionId: input.versionId,
+    });
+
+    if (versionId) {
+      await this.requireVersionInSpace(spaceId, versionId);
     }
-    assertRequirementVersionMatches(input.versionId, requirement);
+
     if (input.assigneeId) {
       await this.requireActiveSpaceMember(
         organizationId,
@@ -379,6 +417,8 @@ export class IntakeService {
         input.assigneeId,
       );
     }
+
+    return { requirement, versionId };
   }
 
   private assertCanTransition(
@@ -434,16 +474,22 @@ export class IntakeService {
   }
 
   private async prepareConvertTask(item: IntakeItem, task: IntakeTaskInput) {
-    const versionId = task.versionId ?? item.versionId;
     const requirementId = task.requirementId ?? item.requirementId;
     const assigneeId = task.assigneeId ?? item.assigneeId;
-    const version = versionId
-      ? await this.requireVersionInSpace(item.spaceId, versionId)
-      : undefined;
     const requirement = requirementId
       ? await this.requireRequirementInSpace(item.spaceId, requirementId)
       : undefined;
-    assertRequirementVersionMatches(versionId, requirement);
+    const versionId =
+      resolveTraceVersion({
+        refs: [
+          { label: "intakeItem", versionId: item.versionId },
+          { label: "requirement", versionId: requirement?.versionId },
+        ],
+        requestedVersionId: task.versionId,
+      }) ?? undefined;
+    const version = versionId
+      ? await this.requireVersionInSpace(item.spaceId, versionId)
+      : undefined;
 
     if (assigneeId) {
       await this.requireActiveSpaceMember(
@@ -665,21 +711,12 @@ function parseOptionalDate(value: string | undefined, field: string) {
   return date;
 }
 
-function assertRequirementVersionMatches(
-  versionId: string | null | undefined,
-  requirement: Requirement | undefined,
-) {
-  if (!versionId || !requirement?.versionId) {
-    return;
+function selectOptional<T>(value: T | null | undefined, fallback?: T) {
+  if (value === undefined) {
+    return fallback;
   }
 
-  if (requirement.versionId !== versionId) {
-    throw new ApiException(
-      "VALIDATION_ERROR",
-      "Requirement must belong to the selected version",
-      HttpStatus.BAD_REQUEST,
-    );
-  }
+  return value === null ? undefined : value;
 }
 
 function collectRelatedUserIds(userIds: Array<string | undefined>) {

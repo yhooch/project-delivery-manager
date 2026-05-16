@@ -59,6 +59,7 @@ export const UpdateIntakeItemRequestSchema = z
   .object({
     versionId: UlidSchema.nullable().optional(),
     requirementId: UlidSchema.nullable().optional(),
+    cascadeVersionChange: z.boolean().optional(),
     title: z.string().min(1).max(200).optional(),
     description: z.string().max(8000).nullable().optional(),
     sourceType: IntakeSourceTypeSchema.optional(),

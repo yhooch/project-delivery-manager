@@ -38,11 +38,14 @@ export type BugWorkflowSelection = {
 export type BugLinkedUsers = {
   versionOwnerId?: string;
   requirementOwnerId?: string;
+  requirementVersionId?: string;
   intakeReporterId?: string;
   intakeAssigneeId?: string;
+  intakeVersionId?: string;
   relatedTaskCreatorId?: string;
   relatedTaskReporterId?: string;
   relatedTaskAssigneeId?: string;
+  relatedTaskVersionId?: string;
 };
 
 export type CreateBugInput = {
@@ -75,6 +78,7 @@ export type UpdateBugInput = {
   workItemId: string;
   versionId?: string | null;
   requirementId?: string | null;
+  intakeItemId?: string | null;
   title?: string;
   description?: string | null;
   priority?: Priority;

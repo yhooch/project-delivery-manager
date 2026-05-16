@@ -69,6 +69,7 @@ export const UpdateWorkItemRequestSchema = z
   .object({
     versionId: UlidSchema.nullable().optional(),
     requirementId: UlidSchema.nullable().optional(),
+    intakeItemId: UlidSchema.nullable().optional(),
     title: z.string().min(1).max(200).optional(),
     description: z.string().max(8000).nullable().optional(),
     priority: PrioritySchema.optional(),

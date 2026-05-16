@@ -13,6 +13,7 @@ const SPACE_ID = "01H00000000000000000000001";
 const ACTOR_ID = "01H00000000000000000000002";
 const VERSION_ID = "01H00000000000000000000003";
 const REQUIREMENT_ID = "01H00000000000000000000004";
+const VERSION_TWO_ID = "01H00000000000000000000005";
 
 describe("RequirementService audit logging", () => {
   it("writes audit logs for draft creation and saving", async () => {
@@ -125,6 +126,73 @@ describe("RequirementService audit logging", () => {
       }),
     );
   });
+
+  it("requires cascade confirmation before moving a requirement to another version with downstream links", async () => {
+    const subject = createSubject({
+      current: makeRequirement({
+        status: "CONFIRMED",
+        versionId: VERSION_ID,
+      }),
+    });
+    subject.requirements.impact = {
+      bugCount: 1,
+      intakeItemCount: 1,
+      relatedBugCount: 1,
+      workItemCount: 2,
+    };
+
+    await expect(
+      subject.service.update(ACTOR_ID, REQUIREMENT_ID, {
+        contentJson: {
+          content: [{ text: "Move scope", type: "text" }],
+          type: "doc",
+        },
+        cascadeVersionChange: false,
+        title: "Move requirement",
+        versionId: VERSION_TWO_ID,
+      }),
+    ).rejects.toMatchObject({
+      code: "TRACE_VERSION_CHANGE_REQUIRES_CASCADE",
+    });
+    expect(subject.requirements.savedInput).toBeUndefined();
+
+    await subject.service.update(ACTOR_ID, REQUIREMENT_ID, {
+      contentJson: {
+        content: [{ text: "Move scope", type: "text" }],
+        type: "doc",
+      },
+      cascadeVersionChange: true,
+      title: "Move requirement",
+      versionId: VERSION_TWO_ID,
+    });
+
+    expect(subject.requirements.savedInput).toMatchObject({
+      cascadeVersionChange: true,
+      versionId: VERSION_TWO_ID,
+    });
+  });
+
+  it("saves explicit requirement version clearing when there is no downstream impact", async () => {
+    const subject = createSubject({
+      current: makeRequirement({
+        status: "CONFIRMED",
+        versionId: VERSION_ID,
+      }),
+    });
+
+    await subject.service.update(ACTOR_ID, REQUIREMENT_ID, {
+      contentJson: {
+        content: [{ text: "Clear version", type: "text" }],
+        type: "doc",
+      },
+      title: "Clear requirement version",
+      versionId: null,
+    });
+
+    expect(subject.requirements.savedInput).toMatchObject({
+      versionId: null,
+    });
+  });
 });
 
 function createSubject(
@@ -184,6 +252,14 @@ function createSubject(
 }
 
 class FakeRequirementRepository implements RequirementRepository {
+  impact = {
+    bugCount: 0,
+    intakeItemCount: 0,
+    relatedBugCount: 0,
+    workItemCount: 0,
+  };
+  savedInput?: Parameters<RequirementRepository["save"]>[0];
+
   constructor(public current: Requirement) {}
 
   async createDraft() {
@@ -208,11 +284,19 @@ class FakeRequirementRepository implements RequirementRepository {
     };
   }
 
-  async save(input: { title?: string }) {
+  async countVersionCascadeImpact() {
+    return this.impact;
+  }
+
+  async save(input: Parameters<RequirementRepository["save"]>[0]) {
+    this.savedInput = input;
     this.current = makeRequirement({
       ...this.current,
       status: "CONFIRMED",
       title: input.title ?? this.current.title,
+      ...(input.versionId !== undefined
+        ? { versionId: input.versionId ?? undefined }
+        : {}),
     });
     return this.current;
   }

@@ -115,6 +115,7 @@ describe("shared contracts", () => {
         "NOT_FOUND",
         "REQUIREMENT_NOT_FOUND",
         "INTAKE_ITEM_NOT_FOUND",
+        "TRACE_VERSION_CONFLICT",
         "WORKFLOW_VERSION_NOT_FOUND",
       ]),
     );
@@ -125,7 +126,20 @@ describe("shared contracts", () => {
         "REQUIREMENT_NOT_FOUND",
         "INTAKE_ITEM_NOT_FOUND",
         "WORK_ITEM_NOT_FOUND",
+        "TRACE_VERSION_CONFLICT",
         "WORKFLOW_VERSION_NOT_FOUND",
+      ]),
+    );
+    expect(errorCodesFor("updateRequirement")).toEqual(
+      expect.arrayContaining([
+        "TRACE_VERSION_CHANGE_REQUIRES_CASCADE",
+        "TRACE_CASCADE_CONFLICT",
+      ]),
+    );
+    expect(errorCodesFor("updateIntakeItem")).toEqual(
+      expect.arrayContaining([
+        "TRACE_VERSION_CONFLICT",
+        "TRACE_VERSION_CHANGE_REQUIRES_CASCADE",
       ]),
     );
     expect(errorCodesFor("convertIntakeItemToWorkItems")).toEqual(
@@ -248,9 +262,11 @@ describe("shared contracts", () => {
         },
         assigneeId: null,
         versionId: null,
+        cascadeVersionChange: true,
       }),
     ).toMatchObject({
       assigneeId: null,
+      cascadeVersionChange: true,
       priority: null,
       sourceType: "REQUIREMENT_CHANGE",
       versionId: null,
@@ -360,9 +376,11 @@ describe("shared contracts", () => {
         relatedTaskId: null,
         requirementId: null,
         versionId: null,
+        intakeItemId: null,
       }),
     ).toMatchObject({
       assigneeId: null,
+      intakeItemId: null,
       regressionBy: "01NRZ3NDEKTSV4RRFFQ69G5FAN",
       relatedTaskId: null,
       versionId: null,

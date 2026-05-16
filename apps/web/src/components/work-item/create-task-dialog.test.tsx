@@ -208,14 +208,14 @@ describe("CreateTaskDialog", () => {
     expect(requirementSelect.value).toBe("");
     expect(intakeSelect.value).toBe("");
     expect(screen.queryByText("Requirement v1")).not.toBeInTheDocument();
-    expect(screen.queryByText("Requirement no version")).not.toBeInTheDocument();
+    expect(screen.getByText("Requirement no version")).toBeInTheDocument();
     expect(screen.queryByText("Intake v1")).not.toBeInTheDocument();
-    expect(screen.queryByText("Intake no version")).not.toBeInTheDocument();
+    expect(screen.getByText("Intake no version")).toBeInTheDocument();
     expect(screen.getByText("Requirement v2")).toBeInTheDocument();
     expect(screen.getByText("Intake v2")).toBeInTheDocument();
   });
 
-  it("infers the version from a versioned requirement and clears incompatible intake", async () => {
+  it("infers the version from a versioned requirement and keeps unversioned intake", async () => {
     listVersionsMock.mockResolvedValue({
       items: [{ id: versionId, name: "Version 1" }],
       total: 1,
@@ -258,10 +258,10 @@ describe("CreateTaskDialog", () => {
 
     await waitFor(() => expect(versionSelect.value).toBe(versionId));
     expect(requirementSelect.value).toBe(requirementId);
-    expect(intakeSelect.value).toBe("");
+    expect(intakeSelect.value).toBe(unversionedIntakeItemId);
   });
 
-  it("infers the version from a versioned intake item and clears incompatible requirement", async () => {
+  it("infers the version from a versioned intake item and keeps unversioned requirement", async () => {
     listVersionsMock.mockResolvedValue({
       items: [{ id: versionId, name: "Version 1" }],
       total: 1,
@@ -306,6 +306,6 @@ describe("CreateTaskDialog", () => {
 
     await waitFor(() => expect(versionSelect.value).toBe(versionId));
     expect(intakeSelect.value).toBe(intakeItemId);
-    expect(requirementSelect.value).toBe("");
+    expect(requirementSelect.value).toBe(unversionedRequirementId);
   });
 });

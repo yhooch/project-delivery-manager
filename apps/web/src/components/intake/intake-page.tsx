@@ -56,6 +56,10 @@ import { listTimeline } from "../../lib/timeline-service";
 import { cn } from "../../lib/utils";
 import { useSpaceMembers, useVersions } from "../../lib/v2/lookups";
 import {
+  filterTraceOptionsByVersion,
+  isTraceOptionCompatibleWithVersion,
+} from "../../lib/versioned-trace-linking";
+import {
   toWorkItemListViewModel,
   type WorkItemViewModel,
 } from "../../lib/v2/work-item-view-model";
@@ -87,10 +91,6 @@ import { TaskDetailSheet } from "../work-item/task-detail-sheet";
 import { ConvertIntakeDialog } from "./convert-intake-dialog";
 import { CreateIntakeDialog } from "./create-intake-dialog";
 import { EditIntakeDialog } from "./edit-intake-dialog";
-import {
-  filterRequirementsByVersion,
-  isRequirementCompatibleWithVersion,
-} from "./versioned-requirement-linking";
 
 const priorityDot: Record<Priority, string> = {
   LOW: "bg-muted-foreground/40",
@@ -218,7 +218,7 @@ export function IntakePage() {
   const hasMoreItems = loadedCount < pageInfo.total;
   const filteredRequirements = useMemo(
     () =>
-      filterRequirementsByVersion(requirements, listFilters.versionId ?? ""),
+      filterTraceOptionsByVersion(requirements, listFilters.versionId ?? ""),
     [listFilters.versionId, requirements],
   );
 
@@ -237,7 +237,7 @@ export function IntakePage() {
 
         return {
           ...current,
-          requirementId: isRequirementCompatibleWithVersion(
+          requirementId: isTraceOptionCompatibleWithVersion(
             selectedRequirement,
             nextVersionId,
           )
@@ -260,7 +260,7 @@ export function IntakePage() {
         return {
           ...current,
           requirementId: nextRequirementId || undefined,
-          versionId: current.versionId || nextVersionId,
+          versionId: nextVersionId || current.versionId,
         };
       });
     },

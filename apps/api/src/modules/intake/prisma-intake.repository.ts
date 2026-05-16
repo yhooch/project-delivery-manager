@@ -3,6 +3,7 @@ import { ulid } from "ulid";
 
 import { Prisma } from "../../generated/prisma/client";
 import { PrismaService } from "../../prisma/prisma.service";
+import { assertTraceRefsMatchVersion } from "../trace/trace-version-policy";
 import { toWorkItem } from "../workitem/workitem.mappers";
 import { toIntakeItem } from "./intake.mappers";
 import type { IntakeRepository } from "./intake.repository";
@@ -253,6 +254,67 @@ export class PrismaIntakeRepository implements IntakeRepository {
     return item ? toIntakeItem(item) : undefined;
   }
 
+  async countVersionCascadeImpact(input: {
+    intakeItemId: string;
+    nextVersionId: string | null;
+  }) {
+    const workItems = await this.prisma.client.workItem.findMany({
+      select: {
+        id: true,
+        type: true,
+        versionId: true,
+      },
+      where: {
+        deletedAt: null,
+        intakeItemId: input.intakeItemId,
+      },
+    });
+    const taskIds = workItems
+      .filter((item) => item.type === "TASK")
+      .map((item) => item.id);
+    const relatedBugs =
+      taskIds.length > 0
+        ? await this.prisma.client.workItem.findMany({
+            select: {
+              id: true,
+              versionId: true,
+            },
+            where: {
+              bugDetail: {
+                is: {
+                  deletedAt: null,
+                  relatedTaskId: {
+                    in: taskIds,
+                  },
+                },
+              },
+              deletedAt: null,
+              type: "BUG",
+            },
+          })
+        : [];
+    const changedWorkItemIds = new Set(
+      workItems
+        .filter((item) => item.versionId !== input.nextVersionId)
+        .map((item) => item.id),
+    );
+    const changedRelatedBugIds = relatedBugs
+      .filter((bug) => bug.versionId !== input.nextVersionId)
+      .map((bug) => bug.id);
+
+    for (const bugId of changedRelatedBugIds) {
+      changedWorkItemIds.add(bugId);
+    }
+
+    return {
+      bugCount: workItems.filter(
+        (item) => item.type === "BUG" && item.versionId !== input.nextVersionId,
+      ).length,
+      relatedBugCount: changedRelatedBugIds.length,
+      workItemCount: changedWorkItemIds.size,
+    };
+  }
+
   async hasParticipant(input: {
     intakeItemId: string;
     spaceId: string;
@@ -369,6 +431,19 @@ export class PrismaIntakeRepository implements IntakeRepository {
           actorUserId: input.updatedById,
           assigneeId: input.assigneeId,
           item: updated,
+        });
+      }
+
+      if (
+        input.cascadeVersionChange === true &&
+        input.versionId !== undefined &&
+        before.versionId !== input.versionId
+      ) {
+        await cascadeIntakeTraceVersion(tx, {
+          actorUserId: input.updatedById,
+          intakeItemId: before.id,
+          nextRequirementId: input.requirementId,
+          nextVersionId: input.versionId,
         });
       }
 
@@ -671,6 +746,183 @@ async function createWorkItemTimelineEvent(
       updatedById: input.actorUserId,
     },
   });
+}
+
+async function cascadeIntakeTraceVersion(
+  tx: Prisma.TransactionClient,
+  input: {
+    actorUserId: string;
+    intakeItemId: string;
+    nextRequirementId?: string | null;
+    nextVersionId: string | null;
+  },
+) {
+  const workItems = await tx.workItem.findMany({
+    select: {
+      id: true,
+      type: true,
+    },
+    where: {
+      deletedAt: null,
+      intakeItemId: input.intakeItemId,
+    },
+  });
+  const taskIds = workItems
+    .filter((item) => item.type === "TASK")
+    .map((item) => item.id);
+  const relatedBugs =
+    taskIds.length > 0
+      ? await tx.bugDetail.findMany({
+          select: { workItemId: true },
+          where: {
+            deletedAt: null,
+            relatedTaskId: {
+              in: taskIds,
+            },
+            workItem: {
+              deletedAt: null,
+              type: "BUG",
+            },
+          },
+        })
+      : [];
+  const workItemIds = [
+    ...new Set([
+      ...workItems.map((item) => item.id),
+      ...relatedBugs.map((bug) => bug.workItemId),
+    ]),
+  ];
+  const directWorkItemIds = workItems.map((item) => item.id);
+  const relatedBugIds = relatedBugs
+    .map((bug) => bug.workItemId)
+    .filter((bugId) => !directWorkItemIds.includes(bugId));
+
+  if (workItemIds.length === 0) {
+    return;
+  }
+
+  await assertNoIntakeCascadeConflicts(tx, {
+    intakeItemId: input.intakeItemId,
+    nextRequirementId: input.nextRequirementId,
+    nextVersionId: input.nextVersionId,
+    taskIds,
+    workItemIds,
+  });
+
+  if (directWorkItemIds.length > 0) {
+    await tx.workItem.updateMany({
+      data: {
+        requirementId: input.nextRequirementId,
+        updatedById: input.actorUserId,
+        versionId: input.nextVersionId,
+      },
+      where: {
+        deletedAt: null,
+        id: {
+          in: directWorkItemIds,
+        },
+      },
+    });
+  }
+
+  if (relatedBugIds.length === 0) {
+    return;
+  }
+
+  await tx.workItem.updateMany({
+    data: {
+      updatedById: input.actorUserId,
+      versionId: input.nextVersionId,
+    },
+    where: {
+      deletedAt: null,
+      id: {
+        in: relatedBugIds,
+      },
+    },
+  });
+}
+
+async function assertNoIntakeCascadeConflicts(
+  tx: Prisma.TransactionClient,
+  input: {
+    intakeItemId: string;
+    nextVersionId: string | null;
+    nextRequirementId?: string | null;
+    taskIds: string[];
+    workItemIds: string[];
+  },
+) {
+  const nextRequirement = input.nextRequirementId
+    ? await tx.requirement.findFirst({
+        select: { versionId: true },
+        where: {
+          deletedAt: null,
+          id: input.nextRequirementId,
+        },
+      })
+    : undefined;
+  const affectedItems = await tx.workItem.findMany({
+    select: {
+      bugDetail: {
+        select: {
+          relatedTask: {
+            select: { versionId: true },
+          },
+          relatedTaskId: true,
+        },
+      },
+      id: true,
+      intakeItem: {
+        select: { versionId: true },
+      },
+      intakeItemId: true,
+      requirement: {
+        select: { versionId: true },
+      },
+      requirementId: true,
+    },
+    where: {
+      deletedAt: null,
+      id: {
+        in: input.workItemIds,
+      },
+    },
+  });
+
+  for (const item of affectedItems) {
+    assertTraceRefsMatchVersion({
+      details: {
+        workItemId: item.id,
+      },
+      refs: [
+        {
+          label: "requirement",
+          versionId:
+            item.intakeItemId === input.intakeItemId &&
+            input.nextRequirementId !== undefined
+              ? nextRequirement?.versionId
+              : item.requirement?.versionId,
+        },
+        {
+          label: "intakeItem",
+          versionId:
+            item.intakeItemId === input.intakeItemId
+              ? input.nextVersionId
+              : item.intakeItem?.versionId,
+        },
+        {
+          label: "relatedTask",
+          versionId:
+            item.bugDetail?.relatedTaskId &&
+            input.taskIds.includes(item.bugDetail.relatedTaskId)
+              ? input.nextVersionId
+              : item.bugDetail?.relatedTask?.versionId,
+        },
+      ],
+      versionId: input.nextVersionId,
+    });
+  }
 }
 
 function intakeSnapshot(item: IntakeItemRecord): Prisma.InputJsonObject {

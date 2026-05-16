@@ -26,6 +26,11 @@ import {
   type VersionRepository,
 } from "../version/version.repository";
 import {
+  hasTraceVersionCascadeImpact,
+  hasTraceVersionChange,
+  throwTraceVersionChangeRequiresCascade,
+} from "../trace/trace-version-policy";
+import {
   REQUIREMENT_REPOSITORY,
   type RequirementRepository,
 } from "./requirement.repository";
@@ -185,8 +190,12 @@ export class RequirementService {
     this.assertCanSave(existing);
     this.assertValidContent(input);
 
-    if (input.versionId) {
-      await this.requireVersionInSpace(existing.spaceId, input.versionId);
+    const versionId = Object.prototype.hasOwnProperty.call(input, "versionId")
+      ? input.versionId
+      : undefined;
+
+    if (versionId) {
+      await this.requireVersionInSpace(existing.spaceId, versionId);
     }
     if (input.ownerId) {
       await this.requireActiveSpaceOwner(
@@ -196,6 +205,26 @@ export class RequirementService {
       );
     }
 
+    if (hasTraceVersionChange(existing.versionId, versionId)) {
+      const impact = await this.requirements.countVersionCascadeImpact({
+        nextVersionId: versionId ?? null,
+        requirementId,
+      });
+
+      if (
+        hasTraceVersionCascadeImpact(impact) &&
+        input.cascadeVersionChange !== true
+      ) {
+        throwTraceVersionChangeRequiresCascade({
+          fromVersionId: existing.versionId,
+          impact,
+          targetId: requirementId,
+          targetType: "REQUIREMENT",
+          toVersionId: versionId ?? null,
+        });
+      }
+    }
+
     const saved = await this.requirements.save({
       requirementId,
       title: input.title,
@@ -203,7 +232,8 @@ export class RequirementService {
       contentJson: input.contentJson,
       contentText: input.contentText,
       contentMarkdownCache: input.contentMarkdownCache,
-      versionId: input.versionId,
+      versionId,
+      cascadeVersionChange: input.cascadeVersionChange,
       priority: input.priority,
       ownerId: input.ownerId,
       shouldUpdateOwner: Object.prototype.hasOwnProperty.call(input, "ownerId"),

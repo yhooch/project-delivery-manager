@@ -5,6 +5,7 @@ import type {
   Attachment,
   BugView,
   Comment,
+  IntakeItem,
   PermissionSnapshot,
   Priority,
   Requirement,
@@ -30,7 +31,7 @@ import {
   User2,
 } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type React from "react";
 
 import { getApiErrorMessageKey } from "../../lib/api-error-messages";
@@ -45,6 +46,7 @@ import {
 import { executeAction } from "../../lib/action-service";
 import { getBug } from "../../lib/bug-service";
 import { createComment, listComments } from "../../lib/comment-service";
+import { listIntakeItems } from "../../lib/intake-service";
 import { listRequirements } from "../../lib/requirement-service";
 import { listTimeline } from "../../lib/timeline-service";
 import { cn } from "../../lib/utils";
@@ -54,6 +56,10 @@ import {
   useSpaceMembers,
   useVersions,
 } from "../../lib/v2/lookups";
+import {
+  filterTraceOptionsByVersion,
+  isTraceOptionCompatibleWithVersion,
+} from "../../lib/versioned-trace-linking";
 import { toUpdateTaskRequest } from "../../lib/work-item-forms";
 import { getWorkItem, updateWorkItem } from "../../lib/work-item-service";
 
@@ -1420,12 +1426,14 @@ function DetailTab({
   const { versions } = useVersions(spaceId, organizationId);
   const [editing, setEditing] = useState(false);
   const [requirements, setRequirements] = useState<Requirement[]>([]);
+  const [intakeItems, setIntakeItems] = useState<IntakeItem[]>([]);
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [priority, setPriority] = useState<Priority>("MEDIUM");
   const [editAssigneeId, setEditAssigneeId] = useState("");
   const [editVersionId, setEditVersionId] = useState("");
   const [editRequirementId, setEditRequirementId] = useState("");
+  const [editIntakeItemId, setEditIntakeItemId] = useState("");
   const [dueDate, setDueDate] = useState("");
   const [titleError, setTitleError] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -1438,6 +1446,7 @@ function DetailTab({
     setEditAssigneeId(detail?.assigneeId ?? "");
     setEditVersionId(detail?.versionId ?? "");
     setEditRequirementId(detail?.requirementId ?? "");
+    setEditIntakeItemId(detail?.intakeItemId ?? "");
     setDueDate(toDateInputValue(detail?.dueDate));
     setTitleError(false);
     setSaveError(null);
@@ -1445,6 +1454,7 @@ function DetailTab({
     detail?.assigneeId,
     detail?.description,
     detail?.dueDate,
+    detail?.intakeItemId,
     detail?.priority,
     detail?.requirementId,
     detail?.title,
@@ -1474,20 +1484,30 @@ function DetailTab({
 
     let cancelled = false;
 
-    void listRequirements({
-      organizationId,
-      page: 1,
-      pageSize: 100,
-      spaceId,
-    })
-      .then((result) => {
+    void Promise.all([
+      listRequirements({
+        organizationId,
+        page: 1,
+        pageSize: 100,
+        spaceId,
+      }),
+      listIntakeItems({
+        organizationId,
+        page: 1,
+        pageSize: 100,
+        spaceId,
+      }),
+    ])
+      .then(([requirementResult, intakeResult]) => {
         if (!cancelled) {
-          setRequirements(result.items);
+          setRequirements(requirementResult.items);
+          setIntakeItems(intakeResult.items);
         }
       })
       .catch(() => {
         if (!cancelled) {
           setRequirements([]);
+          setIntakeItems([]);
         }
       });
 
@@ -1495,6 +1515,67 @@ function DetailTab({
       cancelled = true;
     };
   }, [editing, organizationId, spaceId]);
+
+  const selectedRequirement = useMemo(
+    () =>
+      requirements.find((requirement) => requirement.id === editRequirementId),
+    [editRequirementId, requirements],
+  );
+  const selectedIntakeItem = useMemo(
+    () => intakeItems.find((intakeItem) => intakeItem.id === editIntakeItemId),
+    [editIntakeItemId, intakeItems],
+  );
+  const filteredRequirements = useMemo(
+    () => filterTraceOptionsByVersion(requirements, editVersionId),
+    [editVersionId, requirements],
+  );
+  const filteredIntakeItems = useMemo(
+    () => filterTraceOptionsByVersion(intakeItems, editVersionId),
+    [editVersionId, intakeItems],
+  );
+
+  function handleEditVersionChange(nextVersionId: string) {
+    setEditVersionId(nextVersionId);
+
+    if (!isTraceOptionCompatibleWithVersion(selectedRequirement, nextVersionId)) {
+      setEditRequirementId("");
+    }
+    if (!isTraceOptionCompatibleWithVersion(selectedIntakeItem, nextVersionId)) {
+      setEditIntakeItemId("");
+    }
+  }
+
+  function handleEditRequirementChange(nextRequirementId: string) {
+    setEditRequirementId(nextRequirementId);
+
+    const nextRequirement = requirements.find(
+      (requirement) => requirement.id === nextRequirementId,
+    );
+    const nextVersionId = nextRequirement?.versionId;
+
+    if (nextVersionId) {
+      setEditVersionId(nextVersionId);
+      if (!isTraceOptionCompatibleWithVersion(selectedIntakeItem, nextVersionId)) {
+        setEditIntakeItemId("");
+      }
+    }
+  }
+
+  function handleEditIntakeItemChange(nextIntakeItemId: string) {
+    setEditIntakeItemId(nextIntakeItemId);
+
+    const nextIntakeItem = intakeItems.find(
+      (intakeItem) => intakeItem.id === nextIntakeItemId,
+    );
+    const nextVersionId = nextIntakeItem?.versionId;
+
+    if (nextVersionId) {
+      setEditVersionId(nextVersionId);
+      if (!isTraceOptionCompatibleWithVersion(selectedRequirement, nextVersionId)) {
+        setEditRequirementId("");
+      }
+    }
+  }
 
   const submitEdit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -1523,6 +1604,7 @@ function DetailTab({
           description,
           dueDate: dueDate ? new Date(`${dueDate}T00:00:00`).toISOString() : "",
           priority,
+          intakeItemId: editIntakeItemId,
           requirementId: editRequirementId,
           title: trimmedTitle,
           versionId: editVersionId,
@@ -1643,7 +1725,7 @@ function DetailTab({
                 data-testid="task-edit-version-select"
                 value={editVersionId}
                 disabled={saving}
-                onChange={(event) => setEditVersionId(event.target.value)}
+                onChange={(event) => handleEditVersionChange(event.target.value)}
                 className="h-8 w-full rounded-md border border-input bg-background px-2 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               >
                 <option value="">{t("edit.noVersion")}</option>
@@ -1663,13 +1745,37 @@ function DetailTab({
                 data-testid="task-edit-requirement-select"
                 value={editRequirementId}
                 disabled={saving}
-                onChange={(event) => setEditRequirementId(event.target.value)}
+                onChange={(event) =>
+                  handleEditRequirementChange(event.target.value)
+                }
                 className="h-8 w-full rounded-md border border-input bg-background px-2 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               >
                 <option value="">{t("edit.noRequirement")}</option>
-                {requirements.map((requirement) => (
+                {filteredRequirements.map((requirement) => (
                   <option key={requirement.id} value={requirement.id}>
                     {requirement.title || requirement.id}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="task-edit-intake">{t("fields.intake")}</Label>
+              <select
+                id="task-edit-intake"
+                data-testid="task-edit-intake-select"
+                value={editIntakeItemId}
+                disabled={saving}
+                onChange={(event) =>
+                  handleEditIntakeItemChange(event.target.value)
+                }
+                className="h-8 w-full rounded-md border border-input bg-background px-2 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              >
+                <option value="">
+                  {tRoot("workItems.trace.noIntakeItem")}
+                </option>
+                {filteredIntakeItems.map((intakeItem) => (
+                  <option key={intakeItem.id} value={intakeItem.id}>
+                    {intakeItem.title || intakeItem.id}
                   </option>
                 ))}
               </select>

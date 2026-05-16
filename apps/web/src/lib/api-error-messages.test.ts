@@ -16,6 +16,12 @@ const m3ErrorCodes = [
   "SPACE_MEMBER_INVALID",
 ] satisfies ApiErrorCode[];
 
+const traceErrorCodes = [
+  "TRACE_VERSION_CONFLICT",
+  "TRACE_VERSION_CHANGE_REQUIRES_CASCADE",
+  "TRACE_CASCADE_CONFLICT",
+] satisfies ApiErrorCode[];
+
 describe("api error messages", () => {
   it("maps M3 workflow/action errors to localized message keys", () => {
     for (const code of m3ErrorCodes) {
@@ -27,6 +33,25 @@ describe("api error messages", () => {
             requestId: "req_m3",
           },
           new Response(null, { status: 400 }),
+        ),
+      );
+
+      expect(key).toBe(`errors.api.${code}`);
+      expect(zhMessages.errors.api[code]).toBeTruthy();
+      expect(enMessages.errors.api[code]).toBeTruthy();
+    }
+  });
+
+  it("maps trace version errors to localized message keys", () => {
+    for (const code of traceErrorCodes) {
+      const key = getApiErrorMessageKey(
+        new ApiClientError(
+          {
+            code,
+            message: code,
+            requestId: "req_trace",
+          },
+          new Response(null, { status: 409 }),
         ),
       );
 

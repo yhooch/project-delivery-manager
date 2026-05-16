@@ -4,6 +4,7 @@ import type {
   ConvertIntakeItemToWorkItemsInput,
   ConvertIntakeItemToWorkItemsResult,
   CreateIntakeItemInput,
+  IntakeVersionCascadeImpact,
   IntakeItemListInput,
   IntakeItemListResult,
   UpdateIntakeItemInput,
@@ -18,6 +19,10 @@ export type IntakeRepository = {
   ): Promise<ConvertIntakeItemToWorkItemsResult | undefined>;
   create(input: CreateIntakeItemInput): Promise<IntakeItem>;
   findById(intakeItemId: string): Promise<IntakeItem | undefined>;
+  countVersionCascadeImpact(input: {
+    intakeItemId: string;
+    nextVersionId: string | null;
+  }): Promise<IntakeVersionCascadeImpact>;
   hasParticipant(input: {
     intakeItemId: string;
     spaceId: string;

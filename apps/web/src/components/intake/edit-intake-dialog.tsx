@@ -18,6 +18,12 @@ import { updateIntakeItem } from "../../lib/intake-service";
 import { listRequirements } from "../../lib/requirement-service";
 import { listSpaceMembers } from "../../lib/space-service";
 import { listVersions } from "../../lib/version-service";
+import {
+  filterTraceOptionsByVersion,
+  isTraceOptionCompatibleWithVersion,
+  isTraceVersionCascadeRequiredError,
+  traceVersionCascadeConfirmMessage,
+} from "../../lib/versioned-trace-linking";
 
 import { Button } from "../ui/button";
 import {
@@ -31,11 +37,6 @@ import {
 import { Input } from "../ui/input";
 import { Label } from "../ui/label";
 import { Textarea } from "../ui/textarea";
-import {
-  filterRequirementsByVersion,
-  isRequirementCompatibleWithVersion,
-} from "./versioned-requirement-linking";
-
 type EditIntakeDialogProps = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -80,7 +81,7 @@ export function EditIntakeDialog({
     [requirementId, requirements],
   );
   const filteredRequirements = useMemo(
-    () => filterRequirementsByVersion(requirements, versionId),
+    () => filterTraceOptionsByVersion(requirements, versionId),
     [requirements, versionId],
   );
 
@@ -160,9 +161,7 @@ export function EditIntakeDialog({
   function handleVersionChange(nextVersionId: string) {
     setVersionId(nextVersionId);
 
-    if (
-      !isRequirementCompatibleWithVersion(selectedRequirement, nextVersionId)
-    ) {
+    if (!isTraceOptionCompatibleWithVersion(selectedRequirement, nextVersionId)) {
       setRequirementId("");
     }
   }
@@ -175,7 +174,7 @@ export function EditIntakeDialog({
     );
     const nextVersionId = nextRequirement?.versionId;
 
-    if (!versionId && nextVersionId) {
+    if (nextVersionId) {
       setVersionId(nextVersionId);
     }
   }
@@ -195,23 +194,51 @@ export function EditIntakeDialog({
     setSubmitting(true);
     setErrorKey(null);
 
+    const request = toUpdateIntakeItemRequest({
+      title: trimmed,
+      description,
+      sourceType,
+      sourceObject,
+      versionId,
+      requirementId,
+      assigneeId,
+      priority,
+    });
+
     try {
       const updated = await updateIntakeItem(
         { intakeItemId: intakeItem.id, spaceId },
-        toUpdateIntakeItemRequest({
-          title: trimmed,
-          description,
-          sourceType,
-          sourceObject,
-          versionId,
-          requirementId,
-          assigneeId,
-          priority,
-        }),
+        request,
       );
       onUpdated?.(updated);
       handleOpenChange(false);
     } catch (error) {
+      if (
+        isTraceVersionCascadeRequiredError(error) &&
+        window.confirm(
+          traceVersionCascadeConfirmMessage(error, {
+            fallback: tRoot(
+              "errors.api.TRACE_VERSION_CHANGE_REQUIRES_CASCADE_CONFIRM_FALLBACK",
+            ),
+            suffix: tRoot(
+              "errors.api.TRACE_VERSION_CHANGE_REQUIRES_CASCADE_CONFIRM_SUFFIX",
+            ),
+          }),
+        )
+      ) {
+        try {
+          const updated = await updateIntakeItem(
+            { intakeItemId: intakeItem.id, spaceId },
+            { ...request, cascadeVersionChange: true },
+          );
+          onUpdated?.(updated);
+          handleOpenChange(false);
+          return;
+        } catch (retryError) {
+          setErrorKey(getApiErrorMessageKey(retryError));
+          return;
+        }
+      }
       setErrorKey(getApiErrorMessageKey(error));
     } finally {
       setSubmitting(false);

@@ -298,8 +298,8 @@ describe("ConvertIntakeDialog", () => {
     expect(requirementSelect.value).toBe("");
     expect(screen.queryByText("Requirement v1")).not.toBeInTheDocument();
     expect(
-      screen.queryByText("Requirement no version"),
-    ).not.toBeInTheDocument();
+      screen.getByText("Requirement no version"),
+    ).toBeInTheDocument();
     expect(screen.getByText("Requirement v2")).toBeInTheDocument();
   });
 

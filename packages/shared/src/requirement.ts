@@ -124,7 +124,8 @@ export const SaveRequirementRequestSchema = z
     contentJson: TiptapJsonSchema,
     contentText: z.string().max(20000).optional(),
     contentMarkdownCache: z.string().max(20000).optional(),
-    versionId: UlidSchema.optional(),
+    versionId: UlidSchema.nullable().optional(),
+    cascadeVersionChange: z.boolean().optional(),
     priority: PrioritySchema.optional(),
     ownerId: UlidSchema.optional(),
   })

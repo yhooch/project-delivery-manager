@@ -687,7 +687,12 @@ describe("BugsPage", () => {
     });
     listWorkItemsMock.mockResolvedValueOnce({
       items: [
-        makeBug({ id: RELATED_TASK_ID, type: "TASK", title: "Task v1" }),
+        makeBug({
+          id: RELATED_TASK_ID,
+          type: "TASK",
+          title: "Task v1",
+          versionId: VERSION_ID,
+        }),
         makeBug({
           id: NEXT_RELATED_TASK_ID,
           type: "TASK",

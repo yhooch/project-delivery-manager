@@ -17,6 +17,10 @@ import { createIntakeItem } from "../../lib/intake-service";
 import { listRequirements } from "../../lib/requirement-service";
 import { listSpaceMembers } from "../../lib/space-service";
 import { listVersions } from "../../lib/version-service";
+import {
+  filterTraceOptionsByVersion,
+  isTraceOptionCompatibleWithVersion,
+} from "../../lib/versioned-trace-linking";
 
 import {
   Dialog,
@@ -30,11 +34,6 @@ import { Button } from "../ui/button";
 import { Input } from "../ui/input";
 import { Label } from "../ui/label";
 import { Textarea } from "../ui/textarea";
-import {
-  filterRequirementsByVersion,
-  isRequirementCompatibleWithVersion,
-} from "./versioned-requirement-linking";
-
 type CreateIntakeDialogProps = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -84,7 +83,7 @@ export function CreateIntakeDialog({
     [requirementId, requirements],
   );
   const filteredRequirements = useMemo(
-    () => filterRequirementsByVersion(requirements, versionId),
+    () => filterTraceOptionsByVersion(requirements, versionId),
     [requirements, versionId],
   );
 
@@ -146,9 +145,7 @@ export function CreateIntakeDialog({
   function handleVersionChange(nextVersionId: string) {
     setVersionId(nextVersionId);
 
-    if (
-      !isRequirementCompatibleWithVersion(selectedRequirement, nextVersionId)
-    ) {
+    if (!isTraceOptionCompatibleWithVersion(selectedRequirement, nextVersionId)) {
       setRequirementId("");
     }
   }
@@ -161,7 +158,7 @@ export function CreateIntakeDialog({
     );
     const nextVersionId = nextRequirement?.versionId;
 
-    if (!versionId && nextVersionId) {
+    if (nextVersionId) {
       setVersionId(nextVersionId);
     }
   }

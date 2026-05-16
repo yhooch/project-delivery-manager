@@ -262,6 +262,9 @@ export class PrismaBugRepository implements BugRepository {
       if (input.requirementId !== undefined) {
         data.requirementId = input.requirementId;
       }
+      if (input.intakeItemId !== undefined) {
+        data.intakeItemId = input.intakeItemId;
+      }
       if (input.title !== undefined) {
         data.title = input.title;
       }
@@ -453,6 +456,7 @@ export class PrismaBugRepository implements BugRepository {
     const requirement = await this.prisma.client.requirement.findFirst({
       select: {
         ownerId: true,
+        versionId: true,
       },
       where: {
         deletedAt: null,
@@ -464,6 +468,7 @@ export class PrismaBugRepository implements BugRepository {
     return requirement
       ? {
           requirementOwnerId: requirement.ownerId ?? undefined,
+          requirementVersionId: requirement.versionId ?? undefined,
         }
       : undefined;
   }
@@ -473,6 +478,7 @@ export class PrismaBugRepository implements BugRepository {
       select: {
         assigneeId: true,
         reporterId: true,
+        versionId: true,
       },
       where: {
         deletedAt: null,
@@ -485,6 +491,7 @@ export class PrismaBugRepository implements BugRepository {
       ? {
           intakeAssigneeId: intakeItem.assigneeId ?? undefined,
           intakeReporterId: intakeItem.reporterId,
+          intakeVersionId: intakeItem.versionId ?? undefined,
         }
       : undefined;
   }
@@ -495,6 +502,7 @@ export class PrismaBugRepository implements BugRepository {
         assigneeId: true,
         createdById: true,
         reporterId: true,
+        versionId: true,
       },
       where: {
         deletedAt: null,
@@ -509,6 +517,7 @@ export class PrismaBugRepository implements BugRepository {
           relatedTaskAssigneeId: task.assigneeId ?? undefined,
           relatedTaskCreatorId: task.createdById ?? undefined,
           relatedTaskReporterId: task.reporterId,
+          relatedTaskVersionId: task.versionId ?? undefined,
         }
       : undefined;
   }

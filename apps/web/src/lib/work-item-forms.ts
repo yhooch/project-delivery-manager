@@ -78,6 +78,7 @@ export const updateTaskFormSchema = UpdateWorkItemRequestSchema.extend({
   blockedReason: optionalText(1000),
   description: clearableText(8000),
   dueDate: clearableIsoDateTime,
+  intakeItemId: clearableUlid,
   priority: optionalPriority,
   requirementId: clearableUlid,
   title: z.preprocess(

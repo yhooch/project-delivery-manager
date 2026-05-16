@@ -25,6 +25,7 @@ import {
   type WorkItemRepository,
 } from "./workitem.repository";
 import { WorkflowActionExecutionService } from "../workflow/workflow-action-execution.service";
+import { resolveTraceVersion } from "../trace/trace-version-policy";
 import type { WorkItemLinkedUsers, WorkItemListInput } from "./workitem.types";
 import { toWorkItemDetail } from "./workitem.mappers";
 import { canReadAllSpaceWorkItems } from "./workitem-visibility";
@@ -93,7 +94,7 @@ export class WorkItemService {
       );
     }
 
-    const linkedUsers = await this.requireLinkedTargetsInSpace(spaceId, {
+    const trace = await this.resolveTraceLinks(spaceId, {
       intakeItemId: input.intakeItemId,
       requirementId: input.requirementId,
       versionId: input.versionId,
@@ -128,13 +129,13 @@ export class WorkItemService {
       lastStatusChangedAt: now,
       organizationId: access.space.organizationId,
       priority: input.priority,
-      relatedUserIds: collectRelatedUserIds(linkedUsers),
+      relatedUserIds: collectRelatedUserIds(trace.linkedUsers),
       reporterId: actorUserId,
       requirementId: input.requirementId,
       spaceId,
       statusCategory: workflow.statusCategory,
       title: input.title,
-      versionId: input.versionId,
+      versionId: trace.versionId ?? undefined,
       workflowVersionId: workflow.workflowVersionId,
     });
 
@@ -191,40 +192,34 @@ export class WorkItemService {
       );
     }
 
-    if (input.versionId) {
-      await this.requireVersionInSpace(workItem.spaceId, input.versionId);
-    }
-    if (input.requirementId) {
-      await this.requireRequirementInSpace(
-        workItem.spaceId,
-        input.requirementId,
-      );
-    }
-
     const shouldReplaceRelatedParticipants =
-      input.versionId !== undefined || input.requirementId !== undefined;
-    const relatedUsers = shouldReplaceRelatedParticipants
-      ? await this.findLinkedTargetsInSpace(workItem.spaceId, {
-          intakeItemId: workItem.intakeItemId,
-          requirementId:
-            input.requirementId !== undefined
-              ? input.requirementId
-              : workItem.requirementId,
-          versionId:
-            input.versionId !== undefined
-              ? input.versionId
-              : workItem.versionId,
+      input.versionId !== undefined ||
+      input.requirementId !== undefined ||
+      input.intakeItemId !== undefined;
+    const trace = shouldReplaceRelatedParticipants
+      ? await this.resolveTraceLinks(workItem.spaceId, {
+          currentVersionId: workItem.versionId,
+          intakeItemId: selectOptional(
+            input.intakeItemId,
+            workItem.intakeItemId,
+          ),
+          requirementId: selectOptional(
+            input.requirementId,
+            workItem.requirementId,
+          ),
+          versionId: input.versionId,
         })
-      : [];
+      : undefined;
     const dueDate = parseOptionalDate(input.dueDate, "dueDate");
     const timeline = buildTimelineDiff(workItem, {
       assigneeId: input.assigneeId,
       description: input.description,
       dueDate: toTimelineDate(dueDate),
+      intakeItemId: input.intakeItemId,
       priority: input.priority,
       requirementId: input.requirementId,
       title: input.title,
-      versionId: input.versionId,
+      versionId: trace?.versionId,
     });
 
     const updated = await this.workItems.update({
@@ -232,8 +227,9 @@ export class WorkItemService {
       assigneeId: input.assigneeId,
       description: input.description,
       dueDate,
+      intakeItemId: input.intakeItemId,
       priority: input.priority,
-      relatedUserIds: collectRelatedUserIds(relatedUsers),
+      relatedUserIds: collectRelatedUserIds(trace?.linkedUsers ?? []),
       requirementId: input.requirementId,
       shouldReplaceAssigneeParticipants: input.assigneeId !== undefined,
       shouldReplaceRelatedParticipants,
@@ -241,7 +237,7 @@ export class WorkItemService {
       timelineBefore: timeline.before,
       title: input.title,
       updatedById: actorUserId,
-      versionId: input.versionId,
+      versionId: trace?.versionId,
     });
 
     if (!updated) {
@@ -325,77 +321,57 @@ export class WorkItemService {
     }
   }
 
-  private async requireLinkedTargetsInSpace(
+  private async resolveTraceLinks(
     spaceId: string,
     input: {
-      versionId?: string;
+      currentVersionId?: string;
+      versionId?: string | null;
       requirementId?: string;
       intakeItemId?: string;
     },
-  ): Promise<WorkItemLinkedUsers[]> {
+  ): Promise<{
+    versionId?: string | null;
+    linkedUsers: WorkItemLinkedUsers[];
+  }> {
     const linkedUsers: WorkItemLinkedUsers[] = [];
 
-    if (input.versionId) {
-      linkedUsers.push(
-        await this.requireVersionInSpace(spaceId, input.versionId),
-      );
-    }
+    let requirement: WorkItemLinkedUsers | undefined;
+    let intakeItem: WorkItemLinkedUsers | undefined;
+
     if (input.requirementId) {
-      linkedUsers.push(
-        await this.requireRequirementInSpace(spaceId, input.requirementId),
-      );
-    }
-    if (input.intakeItemId) {
-      linkedUsers.push(
-        await this.requireIntakeItemInSpace(spaceId, input.intakeItemId),
-      );
-    }
-
-    return linkedUsers;
-  }
-
-  private async findLinkedTargetsInSpace(
-    spaceId: string,
-    input: {
-      versionId?: string | null;
-      requirementId?: string | null;
-      intakeItemId?: string;
-    },
-  ): Promise<WorkItemLinkedUsers[]> {
-    const linkedUsers: WorkItemLinkedUsers[] = [];
-
-    if (input.versionId) {
-      const version = await this.workItems.findVersionInSpace(
-        spaceId,
-        input.versionId,
-      );
-
-      if (version) {
-        linkedUsers.push(version);
-      }
-    }
-    if (input.requirementId) {
-      const requirement = await this.workItems.findRequirementInSpace(
+      requirement = await this.requireRequirementInSpace(
         spaceId,
         input.requirementId,
       );
-
-      if (requirement) {
-        linkedUsers.push(requirement);
-      }
+      linkedUsers.push(requirement);
     }
     if (input.intakeItemId) {
-      const intakeItem = await this.workItems.findIntakeItemInSpace(
+      intakeItem = await this.requireIntakeItemInSpace(
         spaceId,
         input.intakeItemId,
       );
-
-      if (intakeItem) {
-        linkedUsers.push(intakeItem);
-      }
+      linkedUsers.push(intakeItem);
     }
 
-    return linkedUsers;
+    const versionId = resolveTraceVersion({
+      currentVersionId: input.currentVersionId,
+      refs: [
+        { label: "requirement", versionId: requirement?.requirementVersionId },
+        { label: "intakeItem", versionId: intakeItem?.intakeVersionId },
+      ],
+      requestedVersionId: input.versionId,
+    });
+
+    const participantVersionId =
+      versionId === undefined ? input.currentVersionId : versionId;
+
+    if (participantVersionId) {
+      linkedUsers.push(
+        await this.requireVersionInSpace(spaceId, participantVersionId),
+      );
+    }
+
+    return { linkedUsers, versionId };
   }
 
   private async requireVersionInSpace(spaceId: string, versionId: string) {
@@ -525,12 +501,21 @@ function toTimelineDate(value: Date | null | undefined) {
   return value instanceof Date ? value.toISOString() : value;
 }
 
+function selectOptional<T>(value: T | null | undefined, fallback?: T) {
+  if (value === undefined) {
+    return fallback;
+  }
+
+  return value === null ? undefined : value;
+}
+
 function buildTimelineDiff(
   existing: WorkItem,
   next: {
     assigneeId?: string | null;
     description?: string | null;
     dueDate?: string | null;
+    intakeItemId?: string | null;
     priority?: WorkItem["priority"];
     requirementId?: string | null;
     title?: string;
@@ -575,6 +560,13 @@ function buildTimelineDiff(
     "versionId",
     existing.versionId ?? null,
     next.versionId,
+  );
+  addTimelineChange(
+    before,
+    after,
+    "intakeItemId",
+    existing.intakeItemId ?? null,
+    next.intakeItemId,
   );
   addTimelineChange(
     before,

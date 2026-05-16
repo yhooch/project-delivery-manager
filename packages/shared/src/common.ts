@@ -51,6 +51,9 @@ export const ApiErrorCodeSchema = z.enum([
   "INTAKE_ITEM_NOT_FOUND",
   "INTAKE_ITEM_NOT_ACCEPTED",
   "INTAKE_ITEM_ALREADY_CONVERTED",
+  "TRACE_VERSION_CONFLICT",
+  "TRACE_VERSION_CHANGE_REQUIRES_CASCADE",
+  "TRACE_CASCADE_CONFLICT",
 ]);
 
 export type ApiErrorCode = z.infer<typeof ApiErrorCodeSchema>;

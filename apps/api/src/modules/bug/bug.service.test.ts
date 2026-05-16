@@ -35,6 +35,7 @@ const CURRENT_STATE_ID = "01H00000000000000000000009";
 const BUG_ID = "01H0000000000000000000000A";
 const RELATED_TASK_ID = "01H0000000000000000000000B";
 const RELATED_USER_ID = "01H0000000000000000000000C";
+const VERSION_TWO_ID = "01H0000000000000000000000D";
 
 describe("BugService", () => {
   it("creates BUG work items with bug_details, default workflow and participants", async () => {
@@ -119,7 +120,9 @@ describe("BugService", () => {
       ASSIGNEE_ID,
       RELATED_USER_ID,
     ]);
-    expect(subject.permissionResolver.resolvedWorkItemIds).toEqual([created.id]);
+    expect(subject.permissionResolver.resolvedWorkItemIds).toEqual([
+      created.id,
+    ]);
     expect(subject.bugs.auditLogs).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
@@ -212,6 +215,43 @@ describe("BugService", () => {
       }),
     ).rejects.toMatchObject({
       code: "WORK_ITEM_NOT_FOUND",
+    });
+  });
+
+  it("inherits related task version when creating a BUG and rejects version conflicts", async () => {
+    const subject = createSubject("TESTER");
+
+    subject.bugs.workflowSelection = {
+      currentStateId: CURRENT_STATE_ID,
+      statusCategory: "NOT_STARTED",
+      workflowVersionId: WORKFLOW_VERSION_ID,
+    };
+    subject.bugs.versionRefs.set(VERSION_ID, {});
+    subject.bugs.versionRefs.set(VERSION_TWO_ID, {});
+    subject.bugs.relatedTaskRefs.set(RELATED_TASK_ID, {
+      relatedTaskVersionId: VERSION_ID,
+    });
+
+    const created = await subject.service.create(ACTOR_ID, SPACE_ID, {
+      priority: "MEDIUM",
+      relatedTaskId: RELATED_TASK_ID,
+      severity: "MAJOR",
+      title: "Inherited task bug",
+    });
+
+    expect(created.versionId).toBe(VERSION_ID);
+    expect(subject.bugs.createdInput?.versionId).toBe(VERSION_ID);
+
+    await expect(
+      subject.service.create(ACTOR_ID, SPACE_ID, {
+        priority: "MEDIUM",
+        relatedTaskId: RELATED_TASK_ID,
+        severity: "MAJOR",
+        title: "Conflicting task bug",
+        versionId: VERSION_TWO_ID,
+      }),
+    ).rejects.toMatchObject({
+      code: "TRACE_VERSION_CONFLICT",
     });
   });
 
@@ -374,6 +414,62 @@ describe("BugService", () => {
       requirementId: null,
       stepsToReproduce: null,
       versionId: null,
+    });
+  });
+
+  it("allows independent BUG version edits without upstream links", async () => {
+    const subject = createSubject("PM");
+
+    subject.bugs.items.set(BUG_ID, makeBug());
+    subject.bugs.versionRefs.set(VERSION_TWO_ID, {});
+
+    const updated = await subject.service.update(ACTOR_ID, BUG_ID, {
+      versionId: VERSION_TWO_ID,
+    });
+
+    expect(updated.versionId).toBe(VERSION_TWO_ID);
+    expect(subject.bugs.updatedInput?.versionId).toBe(VERSION_TWO_ID);
+  });
+
+  it("inherits intake version when relinking a BUG intake item", async () => {
+    const subject = createSubject("PM");
+
+    subject.bugs.items.set(BUG_ID, makeBug());
+    subject.bugs.versionRefs.set(VERSION_ID, {});
+    subject.bugs.intakeRefs.set(INTAKE_ITEM_ID, {
+      intakeVersionId: VERSION_ID,
+    });
+
+    const updated = await subject.service.update(ACTOR_ID, BUG_ID, {
+      intakeItemId: INTAKE_ITEM_ID,
+    });
+
+    expect(updated.intakeItemId).toBe(INTAKE_ITEM_ID);
+    expect(updated.versionId).toBe(VERSION_ID);
+    expect(subject.bugs.updatedInput).toMatchObject({
+      intakeItemId: INTAKE_ITEM_ID,
+      versionId: VERSION_ID,
+    });
+  });
+
+  it("inherits requirement version when relinking a BUG requirement", async () => {
+    const subject = createSubject("PM");
+
+    subject.bugs.items.set(BUG_ID, makeBug());
+    subject.bugs.versionRefs.set(VERSION_ID, {});
+    subject.bugs.requirementRefs.set(REQUIREMENT_ID, {
+      requirementVersionId: VERSION_ID,
+    });
+
+    const updated = await subject.service.update(ACTOR_ID, BUG_ID, {
+      requirementId: REQUIREMENT_ID,
+    });
+
+    expect(updated.requirementId).toBe(REQUIREMENT_ID);
+    expect(updated.versionId).toBe(VERSION_ID);
+    expect(subject.bugs.updatedInput).toMatchObject({
+      requirementId: REQUIREMENT_ID,
+      versionId: VERSION_ID,
     });
   });
 
@@ -644,6 +740,7 @@ class FakeBugRepository implements BugRepository {
       },
       description: applyOptional(input.description, existing.description),
       dueDate: applyOptionalDate(input.dueDate, existing.dueDate),
+      intakeItemId: applyOptional(input.intakeItemId, existing.intakeItemId),
       priority: input.priority ?? existing.priority,
       requirementId: applyOptional(input.requirementId, existing.requirementId),
       title: input.title ?? existing.title,
@@ -716,7 +813,10 @@ class FakeOrganizationRepository {
   }
 }
 
-function applyOptional<T>(value: T | null | undefined, fallback: T | undefined) {
+function applyOptional<T>(
+  value: T | null | undefined,
+  fallback: T | undefined,
+) {
   if (value === undefined) {
     return fallback;
   }

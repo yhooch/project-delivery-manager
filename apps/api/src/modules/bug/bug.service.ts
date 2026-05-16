@@ -18,6 +18,7 @@ import {
   type SpaceRepository,
 } from "../space/space.repository";
 import { WorkflowActionExecutionService } from "../workflow/workflow-action-execution.service";
+import { resolveTraceVersion } from "../trace/trace-version-policy";
 import {
   canCreateBugDeliveryObject,
   canManageDeliveryObject,
@@ -93,7 +94,7 @@ export class BugService {
       );
     }
 
-    const linkedUsers = await this.requireLinkedTargetsInSpace(spaceId, {
+    const trace = await this.resolveTraceLinks(spaceId, {
       intakeItemId: input.intakeItemId,
       relatedTaskId: input.relatedTaskId,
       requirementId: input.requirementId,
@@ -131,7 +132,7 @@ export class BugService {
       organizationId: access.space.organizationId,
       priority: input.priority,
       relatedTaskId: input.relatedTaskId,
-      relatedUserIds: collectRelatedUserIds(linkedUsers),
+      relatedUserIds: collectRelatedUserIds(trace.linkedUsers),
       reporterId: actorUserId,
       requirementId: input.requirementId,
       severity: input.severity,
@@ -139,7 +140,7 @@ export class BugService {
       statusCategory: workflow.statusCategory,
       stepsToReproduce: input.stepsToReproduce,
       title: input.title,
-      versionId: input.versionId,
+      versionId: trace.versionId ?? undefined,
       workflowVersionId: workflow.workflowVersionId,
     });
 
@@ -229,35 +230,23 @@ export class BugService {
       );
     }
 
-    if (input.versionId) {
-      await this.requireVersionInSpace(bug.spaceId, input.versionId);
-    }
-    if (input.requirementId) {
-      await this.requireRequirementInSpace(bug.spaceId, input.requirementId);
-    }
-    if (input.relatedTaskId) {
-      await this.requireRelatedTaskInSpace(bug.spaceId, input.relatedTaskId);
-    }
-
     const shouldReplaceRelatedParticipants =
       input.versionId !== undefined ||
+      input.intakeItemId !== undefined ||
       input.requirementId !== undefined ||
       input.relatedTaskId !== undefined;
-    const relatedUsers = shouldReplaceRelatedParticipants
-      ? await this.findLinkedTargetsInSpace(bug.spaceId, {
-          intakeItemId: bug.intakeItemId,
+    const trace = shouldReplaceRelatedParticipants
+      ? await this.resolveTraceLinks(bug.spaceId, {
+          currentVersionId: bug.versionId,
+          intakeItemId: selectOptional(input.intakeItemId, bug.intakeItemId),
           relatedTaskId:
             input.relatedTaskId !== undefined
-              ? input.relatedTaskId
+              ? (input.relatedTaskId ?? undefined)
               : bug.bugDetail.relatedTaskId,
-          requirementId:
-            input.requirementId !== undefined
-              ? input.requirementId
-              : bug.requirementId,
-          versionId:
-            input.versionId !== undefined ? input.versionId : bug.versionId,
+          requirementId: selectOptional(input.requirementId, bug.requirementId),
+          versionId: input.versionId,
         })
-      : [];
+      : undefined;
     const dueDate = parseOptionalDate(input.dueDate, "dueDate");
     const regressionAt = parseOptionalDate(input.regressionAt, "regressionAt");
     const timeline = buildTimelineDiff(bug, {
@@ -267,6 +256,7 @@ export class BugService {
       dueDate: toTimelineDate(dueDate),
       expectedResult: input.expectedResult,
       fixNote: input.fixNote,
+      intakeItemId: input.intakeItemId,
       priority: input.priority,
       regressionAt: toTimelineDate(regressionAt),
       regressionBy: input.regressionBy,
@@ -276,7 +266,7 @@ export class BugService {
       severity: input.severity,
       stepsToReproduce: input.stepsToReproduce,
       title: input.title,
-      versionId: input.versionId,
+      versionId: trace?.versionId,
     });
     const assigneeChanged =
       input.assigneeId !== undefined &&
@@ -291,12 +281,13 @@ export class BugService {
       dueDate,
       expectedResult: input.expectedResult,
       fixNote: input.fixNote,
+      intakeItemId: input.intakeItemId,
       priority: input.priority,
       regressionAt,
       regressionById: input.regressionBy,
       regressionResult: input.regressionResult,
       relatedTaskId: input.relatedTaskId,
-      relatedUserIds: collectRelatedUserIds(relatedUsers),
+      relatedUserIds: collectRelatedUserIds(trace?.linkedUsers ?? []),
       requirementId: input.requirementId,
       severity: input.severity,
       shouldReplaceAssigneeParticipants: input.assigneeId !== undefined,
@@ -306,7 +297,7 @@ export class BugService {
       timelineBefore: timeline.before,
       title: input.title,
       updatedById: actorUserId,
-      versionId: input.versionId,
+      versionId: trace?.versionId,
     });
 
     if (!updated) {
@@ -467,94 +458,64 @@ export class BugService {
     }
   }
 
-  private async requireLinkedTargetsInSpace(
+  private async resolveTraceLinks(
     spaceId: string,
     input: {
-      versionId?: string;
+      currentVersionId?: string;
+      versionId?: string | null;
       requirementId?: string;
       intakeItemId?: string;
       relatedTaskId?: string;
     },
-  ): Promise<BugLinkedUsers[]> {
+  ): Promise<{ versionId?: string | null; linkedUsers: BugLinkedUsers[] }> {
     const linkedUsers: BugLinkedUsers[] = [];
 
-    if (input.versionId) {
-      linkedUsers.push(
-        await this.requireVersionInSpace(spaceId, input.versionId),
-      );
-    }
+    let requirement: BugLinkedUsers | undefined;
+    let intakeItem: BugLinkedUsers | undefined;
+    let relatedTask: BugLinkedUsers | undefined;
+
     if (input.requirementId) {
-      linkedUsers.push(
-        await this.requireRequirementInSpace(spaceId, input.requirementId),
-      );
-    }
-    if (input.intakeItemId) {
-      linkedUsers.push(
-        await this.requireIntakeItemInSpace(spaceId, input.intakeItemId),
-      );
-    }
-    if (input.relatedTaskId) {
-      linkedUsers.push(
-        await this.requireRelatedTaskInSpace(spaceId, input.relatedTaskId),
-      );
-    }
-
-    return linkedUsers;
-  }
-
-  private async findLinkedTargetsInSpace(
-    spaceId: string,
-    input: {
-      versionId?: string | null;
-      requirementId?: string | null;
-      intakeItemId?: string;
-      relatedTaskId?: string | null;
-    },
-  ): Promise<BugLinkedUsers[]> {
-    const linkedUsers: BugLinkedUsers[] = [];
-
-    if (input.versionId) {
-      const version = await this.bugs.findVersionInSpace(
-        spaceId,
-        input.versionId,
-      );
-
-      if (version) {
-        linkedUsers.push(version);
-      }
-    }
-    if (input.requirementId) {
-      const requirement = await this.bugs.findRequirementInSpace(
+      requirement = await this.requireRequirementInSpace(
         spaceId,
         input.requirementId,
       );
-
-      if (requirement) {
-        linkedUsers.push(requirement);
-      }
+      linkedUsers.push(requirement);
     }
     if (input.intakeItemId) {
-      const intakeItem = await this.bugs.findIntakeItemInSpace(
+      intakeItem = await this.requireIntakeItemInSpace(
         spaceId,
         input.intakeItemId,
       );
-
-      if (intakeItem) {
-        linkedUsers.push(intakeItem);
-      }
+      linkedUsers.push(intakeItem);
     }
     if (input.relatedTaskId) {
-      const relatedTask = await this.bugs.findRelatedTaskInSpace(
+      relatedTask = await this.requireRelatedTaskInSpace(
         spaceId,
         input.relatedTaskId,
       );
-
-      if (relatedTask) {
-        linkedUsers.push(relatedTask);
-      }
+      linkedUsers.push(relatedTask);
     }
 
-    return linkedUsers;
+    const versionId = resolveTraceVersion({
+      currentVersionId: input.currentVersionId,
+      refs: [
+        { label: "requirement", versionId: requirement?.requirementVersionId },
+        { label: "intakeItem", versionId: intakeItem?.intakeVersionId },
+        { label: "relatedTask", versionId: relatedTask?.relatedTaskVersionId },
+      ],
+      requestedVersionId: input.versionId,
+    });
+
+    const participantVersionId =
+      versionId === undefined ? input.currentVersionId : versionId;
+
+    if (participantVersionId) {
+      linkedUsers.push(
+        await this.requireVersionInSpace(spaceId, participantVersionId),
+      );
+    }
+
+    return { linkedUsers, versionId };
   }
 
   private async requireVersionInSpace(spaceId: string, versionId: string) {
@@ -770,6 +731,14 @@ function toTimelineDate(value: Date | null | undefined) {
   return value instanceof Date ? value.toISOString() : value;
 }
 
+function selectOptional<T>(value: T | null | undefined, fallback?: T) {
+  if (value === undefined) {
+    return fallback;
+  }
+
+  return value === null ? undefined : value;
+}
+
 function buildTimelineDiff(
   existing: BugView,
   next: {
@@ -779,6 +748,7 @@ function buildTimelineDiff(
     dueDate?: string | null;
     expectedResult?: string | null;
     fixNote?: string | null;
+    intakeItemId?: string | null;
     priority?: BugView["priority"];
     regressionAt?: string | null;
     regressionBy?: string | null;
@@ -829,6 +799,13 @@ function buildTimelineDiff(
     "versionId",
     existing.versionId ?? null,
     next.versionId,
+  );
+  addTimelineChange(
+    before,
+    after,
+    "intakeItemId",
+    existing.intakeItemId ?? null,
+    next.intakeItemId,
   );
   addTimelineChange(
     before,

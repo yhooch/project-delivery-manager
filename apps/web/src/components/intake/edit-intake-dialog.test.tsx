@@ -39,6 +39,7 @@ vi.mock("../../lib/version-service", () => ({
 
 import type { IntakeItem } from "@project-delivery/shared";
 
+import { ApiClientError } from "../../lib/api-client";
 import { EditIntakeDialog } from "./edit-intake-dialog";
 
 const organizationId = "01ARZ3NDEKTSV4RRFFQ69G5FO1";
@@ -114,8 +115,8 @@ describe("EditIntakeDialog", () => {
     expect(requirementSelect.value).toBe("");
     expect(screen.queryByText("Requirement v1")).not.toBeInTheDocument();
     expect(
-      screen.queryByText("Requirement no version"),
-    ).not.toBeInTheDocument();
+      screen.getByText("Requirement no version"),
+    ).toBeInTheDocument();
     expect(screen.getByText("Requirement v2")).toBeInTheDocument();
   });
 
@@ -150,6 +151,47 @@ describe("EditIntakeDialog", () => {
 
     await waitFor(() => expect(versionSelect.value).toBe(versionId));
     expect(requirementSelect.value).toBe(requirementId);
+  });
+
+  it("confirms and retries intake save when version cascade is required", async () => {
+    const confirmSpy = vi.spyOn(window, "confirm").mockReturnValue(true);
+    const cascadeError = new ApiClientError(
+      {
+        code: "TRACE_VERSION_CHANGE_REQUIRES_CASCADE",
+        message: "事项版本变更需要同步任务",
+        requestId: "REQ_TRACE",
+      },
+      new Response(null, { status: 409, statusText: "Conflict" }),
+    );
+    const onUpdated = vi.fn();
+    updateIntakeItemMock
+      .mockRejectedValueOnce(cascadeError)
+      .mockResolvedValueOnce(makeIntakeItem({ versionId }));
+
+    render(
+      <EditIntakeDialog
+        open
+        onOpenChange={vi.fn()}
+        spaceId={spaceId}
+        intakeItem={makeIntakeItem()}
+        onUpdated={onUpdated}
+      />,
+    );
+
+    await screen.findByDisplayValue("Existing intake");
+    fireEvent.click(screen.getByTestId("edit-intake-submit"));
+
+    await waitFor(() => expect(updateIntakeItemMock).toHaveBeenCalledTimes(2));
+    expect(confirmSpy).toHaveBeenCalledWith(
+      expect.stringContaining("事项版本变更需要同步任务"),
+    );
+    expect(updateIntakeItemMock).toHaveBeenLastCalledWith(
+      { intakeItemId, spaceId },
+      expect.objectContaining({ cascadeVersionChange: true }),
+    );
+    expect(onUpdated).toHaveBeenCalledWith(expect.objectContaining({ versionId }));
+
+    confirmSpy.mockRestore();
   });
 });
 

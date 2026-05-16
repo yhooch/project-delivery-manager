@@ -8,6 +8,7 @@ import {
   toRequirement,
   toRequirementRelatedWorkItems,
 } from "./requirement.mappers";
+import { assertTraceRefsMatchVersion } from "../trace/trace-version-policy";
 import type { RequirementRepository } from "./requirement.repository";
 import type {
   ArchiveRequirementInput,
@@ -180,6 +181,86 @@ export class PrismaRequirementRepository implements RequirementRepository {
     };
   }
 
+  async countVersionCascadeImpact(input: {
+    requirementId: string;
+    nextVersionId: string | null;
+  }) {
+    const intakeItems = await this.prisma.client.intakeItem.findMany({
+      select: {
+        id: true,
+        versionId: true,
+      },
+      where: {
+        deletedAt: null,
+        requirementId: input.requirementId,
+      },
+    });
+    const intakeItemIds = intakeItems.map((item) => item.id);
+    const directWorkItems = await this.prisma.client.workItem.findMany({
+      select: {
+        id: true,
+        type: true,
+        versionId: true,
+      },
+      where: {
+        deletedAt: null,
+        OR: [
+          { requirementId: input.requirementId },
+          intakeItemIds.length > 0
+            ? { intakeItemId: { in: intakeItemIds } }
+            : undefined,
+        ].filter(Boolean) as Prisma.WorkItemWhereInput[],
+      },
+    });
+    const taskIds = directWorkItems
+      .filter((item) => item.type === "TASK")
+      .map((item) => item.id);
+    const relatedBugs =
+      taskIds.length > 0
+        ? await this.prisma.client.workItem.findMany({
+            select: {
+              id: true,
+              versionId: true,
+            },
+            where: {
+              bugDetail: {
+                is: {
+                  deletedAt: null,
+                  relatedTaskId: {
+                    in: taskIds,
+                  },
+                },
+              },
+              deletedAt: null,
+              type: "BUG",
+            },
+          })
+        : [];
+    const changedWorkItemIds = new Set(
+      directWorkItems
+        .filter((item) => item.versionId !== input.nextVersionId)
+        .map((item) => item.id),
+    );
+    const changedRelatedBugIds = relatedBugs
+      .filter((bug) => bug.versionId !== input.nextVersionId)
+      .map((bug) => bug.id);
+
+    for (const bugId of changedRelatedBugIds) {
+      changedWorkItemIds.add(bugId);
+    }
+
+    return {
+      bugCount: directWorkItems.filter(
+        (item) => item.type === "BUG" && item.versionId !== input.nextVersionId,
+      ).length,
+      intakeItemCount: intakeItems.filter(
+        (item) => item.versionId !== input.nextVersionId,
+      ).length,
+      relatedBugCount: changedRelatedBugIds.length,
+      workItemCount: changedWorkItemIds.size,
+    };
+  }
+
   async save(input: SaveRequirementInput) {
     const updated = await this.prisma.client.$transaction(async (tx) => {
       const previous = await tx.requirement.findFirst({
@@ -225,6 +306,18 @@ export class PrismaRequirementRepository implements RequirementRepository {
 
       if (!requirement) {
         return undefined;
+      }
+
+      if (
+        input.cascadeVersionChange === true &&
+        input.versionId !== undefined &&
+        previous.versionId !== input.versionId
+      ) {
+        await cascadeRequirementTraceVersion(tx, {
+          actorUserId: input.updatedById,
+          nextVersionId: input.versionId,
+          requirementId: input.requirementId,
+        });
       }
 
       if (input.shouldUpdateOwner && input.ownerId) {
@@ -671,6 +764,178 @@ async function createTimelineEvent(
       updatedById: input.actorUserId,
     },
   });
+}
+
+async function cascadeRequirementTraceVersion(
+  tx: Prisma.TransactionClient,
+  input: {
+    actorUserId: string;
+    nextVersionId: string | null;
+    requirementId: string;
+  },
+) {
+  const intakeItems = await tx.intakeItem.findMany({
+    select: { id: true },
+    where: {
+      deletedAt: null,
+      requirementId: input.requirementId,
+    },
+  });
+  const intakeItemIds = intakeItems.map((item) => item.id);
+  const directWorkItems = await tx.workItem.findMany({
+    select: {
+      id: true,
+      type: true,
+    },
+    where: {
+      deletedAt: null,
+      OR: [
+        { requirementId: input.requirementId },
+        intakeItemIds.length > 0
+          ? { intakeItemId: { in: intakeItemIds } }
+          : undefined,
+      ].filter(Boolean) as Prisma.WorkItemWhereInput[],
+    },
+  });
+  const taskIds = directWorkItems
+    .filter((item) => item.type === "TASK")
+    .map((item) => item.id);
+  const relatedBugs =
+    taskIds.length > 0
+      ? await tx.bugDetail.findMany({
+          select: { workItemId: true },
+          where: {
+            deletedAt: null,
+            relatedTaskId: {
+              in: taskIds,
+            },
+            workItem: {
+              deletedAt: null,
+              type: "BUG",
+            },
+          },
+        })
+      : [];
+  const workItemIds = [
+    ...new Set([
+      ...directWorkItems.map((item) => item.id),
+      ...relatedBugs.map((bug) => bug.workItemId),
+    ]),
+  ];
+
+  await assertNoRequirementCascadeConflicts(tx, {
+    intakeItemIds,
+    nextVersionId: input.nextVersionId,
+    requirementId: input.requirementId,
+    taskIds,
+    workItemIds,
+  });
+
+  if (intakeItemIds.length > 0) {
+    await tx.intakeItem.updateMany({
+      data: {
+        updatedById: input.actorUserId,
+        versionId: input.nextVersionId,
+      },
+      where: {
+        deletedAt: null,
+        id: {
+          in: intakeItemIds,
+        },
+      },
+    });
+  }
+
+  if (workItemIds.length > 0) {
+    await tx.workItem.updateMany({
+      data: {
+        updatedById: input.actorUserId,
+        versionId: input.nextVersionId,
+      },
+      where: {
+        deletedAt: null,
+        id: {
+          in: workItemIds,
+        },
+      },
+    });
+  }
+}
+
+async function assertNoRequirementCascadeConflicts(
+  tx: Prisma.TransactionClient,
+  input: {
+    intakeItemIds: string[];
+    nextVersionId: string | null;
+    requirementId: string;
+    taskIds: string[];
+    workItemIds: string[];
+  },
+) {
+  if (input.workItemIds.length === 0) {
+    return;
+  }
+
+  const affectedItems = await tx.workItem.findMany({
+    select: {
+      bugDetail: {
+        select: {
+          relatedTask: {
+            select: { versionId: true },
+          },
+          relatedTaskId: true,
+        },
+      },
+      id: true,
+      intakeItem: {
+        select: { versionId: true },
+      },
+      intakeItemId: true,
+      requirement: {
+        select: { versionId: true },
+      },
+      requirementId: true,
+    },
+    where: {
+      deletedAt: null,
+      id: {
+        in: input.workItemIds,
+      },
+    },
+  });
+
+  for (const item of affectedItems) {
+    assertTraceRefsMatchVersion({
+      details: {
+        workItemId: item.id,
+      },
+      refs: [
+        {
+          label: "requirement",
+          versionId:
+            item.requirementId === input.requirementId
+              ? input.nextVersionId
+              : item.requirement?.versionId,
+        },
+        {
+          label: "intakeItem",
+          versionId:
+            item.intakeItemId && input.intakeItemIds.includes(item.intakeItemId)
+              ? input.nextVersionId
+              : item.intakeItem?.versionId,
+        },
+        {
+          label: "relatedTask",
+          versionId:
+            item.bugDetail?.relatedTaskId &&
+            input.taskIds.includes(item.bugDetail.relatedTaskId)
+              ? input.nextVersionId
+              : item.bugDetail?.relatedTask?.versionId,
+        },
+      ],
+      versionId: input.nextVersionId,
+    });
+  }
 }
 
 function toJson(value: Record<string, unknown> | undefined) {

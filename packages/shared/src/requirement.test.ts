@@ -13,6 +13,7 @@ describe("requirement schemas", () => {
   it("accepts valid Tiptap documents and rejects malformed content", () => {
     expect(
       UpdateRequirementRequestSchema.parse({
+        cascadeVersionChange: true,
         title: "Requirement",
         contentJson: {
           type: "doc",
@@ -23,8 +24,13 @@ describe("requirement schemas", () => {
             },
           ],
         },
+        versionId: null,
       }),
-    ).toMatchObject({ title: "Requirement" });
+    ).toMatchObject({
+      cascadeVersionChange: true,
+      title: "Requirement",
+      versionId: null,
+    });
 
     expect(() =>
       UpdateRequirementRequestSchema.parse({
