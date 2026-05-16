@@ -365,7 +365,7 @@
       },
       "workbench": "我的工作台",
       "overview": "空间总览",
-      "spaces": "项目空间",
+      "spaces": "项目空间管理",
       "versions": "版本",
       "tasks": "任务",
       "bugs": "Bug",
@@ -495,7 +495,7 @@
         "requirements": "需求",
         "intake": "事项池",
         "workflow": "流程配置",
-        "spaces": "项目空间",
+        "spaces": "项目空间管理",
         "spaceSettings": "空间设置",
         "organization": "组织设置"
       }

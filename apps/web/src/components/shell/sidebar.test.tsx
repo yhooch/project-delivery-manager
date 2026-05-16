@@ -59,7 +59,7 @@ afterEach(() => {
 });
 
 describe("Sidebar", () => {
-  it("keeps primary nav but hides the organization entry for non-admin members", () => {
+  it("keeps current-space nav in the main area and exposes space management at the bottom", () => {
     render(<Sidebar />);
 
     expect(screen.getByText("shell.brand.shortName")).toBeInTheDocument();
@@ -82,15 +82,29 @@ describe("Sidebar", () => {
     expect(
       screen.getByRole("link", { name: /shell\.nav\.spaceSettings/u }),
     ).toHaveAttribute("href", "/settings");
+
+    expect(
+      within(screen.getByTestId("sidebar-nav-group-deliver")).queryByRole(
+        "link",
+        { name: /shell\.nav\.spaces/u },
+      ),
+    ).not.toBeInTheDocument();
     expect(
       screen.queryByTestId("sidebar-organization-section"),
     ).not.toBeInTheDocument();
+
+    const management = screen.getByTestId("sidebar-management-section");
     expect(
-      screen.queryByRole("link", { name: /shell\.nav\.organization/u }),
+      within(management).getByRole("link", { name: /shell\.nav\.spaces/u }),
+    ).toHaveAttribute("href", "/spaces");
+    expect(
+      within(management).queryByRole("link", {
+        name: /shell\.nav\.organization/u,
+      }),
     ).not.toBeInTheDocument();
   });
 
-  it("renders OWNER/ADMIN organization links inside a collapsible organization section", () => {
+  it("renders OWNER/ADMIN organization settings as a bottom management link", () => {
     pathnameMock.current = "/organization";
     sessionMock.current = {
       currentOrganization: {
@@ -103,11 +117,13 @@ describe("Sidebar", () => {
 
     render(<Sidebar />);
 
-    const section = screen.getByTestId("sidebar-organization-section");
-    expect(section.tagName).toBe("DETAILS");
     expect(
-      within(section).getByText("shell.nav.group.organization"),
-    ).toBeInTheDocument();
+      screen.queryByTestId("sidebar-organization-section"),
+    ).not.toBeInTheDocument();
+    const section = screen.getByTestId("sidebar-management-section");
+    expect(
+      within(section).getByRole("link", { name: /shell\.nav\.spaces/u }),
+    ).toHaveAttribute("href", "/spaces");
     expect(
       within(section).getByRole("link", { name: /shell\.nav\.organization/u }),
     ).toHaveAttribute("href", "/organization");

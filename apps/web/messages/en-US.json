@@ -365,7 +365,7 @@
       },
       "workbench": "My workbench",
       "overview": "Space overview",
-      "spaces": "Project spaces",
+      "spaces": "Project space management",
       "versions": "Versions",
       "tasks": "Tasks",
       "bugs": "Bugs",
@@ -495,7 +495,7 @@
         "requirements": "Requirements",
         "intake": "Intake",
         "workflow": "Workflow",
-        "spaces": "Project spaces",
+        "spaces": "Project space management",
         "spaceSettings": "Space settings",
         "organization": "Organization settings"
       }

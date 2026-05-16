@@ -2,9 +2,8 @@
 
 import {
   AlertTriangle,
+  Building2,
   CheckCircle2,
-  ChevronDown,
-  Cog,
   FileText,
   FolderKanban,
   GitBranch,
@@ -77,11 +76,6 @@ export function Sidebar({ className, onNavigate }: SidebarProps) {
           icon: LayoutDashboard,
         },
         {
-          href: "/spaces",
-          label: tShell("spaces"),
-          icon: FolderKanban,
-        },
-        {
           href: "/versions",
           label: tShell("versions"),
           icon: GitBranch,
@@ -139,6 +133,24 @@ export function Sidebar({ className, onNavigate }: SidebarProps) {
       ],
     },
   ];
+  const managementItems: NavItem[] = hasCurrentOrganization
+    ? [
+        {
+          href: "/spaces",
+          label: tShell("spaces"),
+          icon: FolderKanban,
+        },
+        ...(canManageCurrentOrganization
+          ? [
+              {
+                href: "/organization",
+                label: tShell("organization"),
+                icon: Building2,
+              },
+            ]
+          : []),
+      ]
+    : [];
 
   return (
     <aside
@@ -157,98 +169,89 @@ export function Sidebar({ className, onNavigate }: SidebarProps) {
         </span>
       </div>
 
-      <nav className="flex flex-1 flex-col gap-3 overflow-y-auto p-2">
-        {groups.map((group) => (
-          <div
-            key={group.key}
-            className="flex flex-col gap-0.5"
-            data-testid={`sidebar-nav-group-${group.key}`}
-          >
-            <div className="px-2 pt-1 text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
-              {group.label}
+      <nav className="flex flex-1 flex-col overflow-hidden p-2">
+        <div className="flex flex-1 flex-col gap-3 overflow-y-auto">
+          {groups.map((group) => (
+            <div
+              key={group.key}
+              className="flex flex-col gap-0.5"
+              data-testid={`sidebar-nav-group-${group.key}`}
+            >
+              <div className="px-2 pt-1 text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+                {group.label}
+              </div>
+              <ul className="flex flex-col gap-px">
+                {group.items.map((item) => (
+                  <SidebarLink
+                    key={item.href}
+                    item={item}
+                    pathname={pathname}
+                    onNavigate={onNavigate}
+                  />
+                ))}
+              </ul>
             </div>
+          ))}
+        </div>
+
+        {managementItems.length > 0 && (
+          <div
+            className="mt-2 shrink-0 border-t border-border pt-2"
+            data-testid="sidebar-management-section"
+          >
             <ul className="flex flex-col gap-px">
-              {group.items.map((item) => {
-                const isActive = item.match
-                  ? item.match(pathname)
-                  : pathname === item.href ||
-                    pathname.startsWith(`${item.href}/`);
-                const Icon = item.icon;
-                return (
-                  <li key={item.href}>
-                    <Link
-                      href={item.href}
-                      onClick={onNavigate}
-                      className={cn(
-                        "group flex h-7 items-center gap-2 rounded-md px-2 text-[13px] transition-colors [@media(pointer:coarse)]:h-11",
-                        isActive
-                          ? "bg-muted text-foreground font-medium"
-                          : "text-muted-foreground hover:bg-muted/50 hover:text-foreground",
-                      )}
-                    >
-                      <Icon
-                        className={cn(
-                          "h-3.5 w-3.5 shrink-0",
-                          isActive && "text-primary",
-                        )}
-                      />
-                      <span className="flex-1 truncate">{item.label}</span>
-                      {item.shortcut && (
-                        <span className="hidden text-[10px] text-muted-foreground/60 group-hover:inline-block">
-                          {item.shortcut}
-                        </span>
-                      )}
-                    </Link>
-                  </li>
-                );
-              })}
+              {managementItems.map((item) => (
+                <SidebarLink
+                  key={item.href}
+                  item={item}
+                  pathname={pathname}
+                  onNavigate={onNavigate}
+                />
+              ))}
             </ul>
           </div>
-        ))}
-
-        {hasCurrentOrganization && canManageCurrentOrganization && (
-          <details
-            className="group flex flex-col gap-0.5 border-t border-border pt-2"
-            data-testid="sidebar-organization-section"
-            open
-          >
-            <summary className="flex h-7 cursor-pointer list-none items-center gap-2 rounded-md px-2 text-[10px] font-medium uppercase tracking-wider text-muted-foreground transition-colors hover:bg-muted/50 hover:text-foreground [@media(pointer:coarse)]:h-11 [&::-webkit-details-marker]:hidden">
-              <Cog className="h-3.5 w-3.5 shrink-0" />
-              <span className="flex-1 truncate">
-                {tShell("group.organization")}
-              </span>
-              <ChevronDown className="h-3 w-3 shrink-0 transition-transform group-open:rotate-180" />
-            </summary>
-            <ul className="mt-0.5 flex flex-col gap-px">
-              <li>
-                <Link
-                  href="/organization"
-                  onClick={onNavigate}
-                  className={cn(
-                    "flex h-7 items-center gap-2 rounded-md px-2 text-[13px] transition-colors [@media(pointer:coarse)]:h-11",
-                    pathname === "/organization" ||
-                      pathname.startsWith("/organization/")
-                      ? "bg-muted text-foreground font-medium"
-                      : "text-muted-foreground hover:bg-muted/50 hover:text-foreground",
-                  )}
-                >
-                  <Cog
-                    className={cn(
-                      "h-3.5 w-3.5 shrink-0",
-                      (pathname === "/organization" ||
-                        pathname.startsWith("/organization/")) &&
-                        "text-primary",
-                    )}
-                  />
-                  <span className="flex-1 truncate">
-                    {tShell("organization")}
-                  </span>
-                </Link>
-              </li>
-            </ul>
-          </details>
         )}
       </nav>
     </aside>
+  );
+}
+
+function SidebarLink({
+  item,
+  onNavigate,
+  pathname,
+}: {
+  item: NavItem;
+  onNavigate?: () => void;
+  pathname: string;
+}) {
+  const isActive = item.match
+    ? item.match(pathname)
+    : pathname === item.href || pathname.startsWith(`${item.href}/`);
+  const Icon = item.icon;
+
+  return (
+    <li>
+      <Link
+        href={item.href}
+        onClick={onNavigate}
+        className={cn(
+          "group flex h-7 items-center gap-2 rounded-md px-2 text-[13px] transition-colors [@media(pointer:coarse)]:h-11",
+          isActive
+            ? "bg-muted text-foreground font-medium"
+            : "text-muted-foreground hover:bg-muted/50 hover:text-foreground",
+        )}
+      >
+        <Icon
+          className={cn("h-3.5 w-3.5 shrink-0", isActive && "text-primary")}
+        />
+        <span className="flex-1 truncate">{item.label}</span>
+        {item.shortcut && (
+          <span className="hidden text-[10px] text-muted-foreground/60 group-hover:inline-block">
+            {item.shortcut}
+          </span>
+        )}
+      </Link>
+    </li>
   );
 }
