@@ -2109,46 +2109,6 @@
       }
     }
   },
-  "organizationMembers": {
-    "title": "Organization members",
-    "description": "Organization members are the source for space members and owners.",
-    "memberCount": "{count} members",
-    "readOnly": "Your organization role can view members but cannot add or change them.",
-    "loading": "Loading members",
-    "empty": "No organization members",
-    "table": {
-      "label": "Organization member list",
-      "member": "Member",
-      "role": "Organization role",
-      "status": "Status"
-    },
-    "actions": {
-      "changeRole": "Change organization role for {username}",
-      "changeStatus": "Change organization status for {username}"
-    },
-    "roles": {
-      "OWNER": "Owner",
-      "ADMIN": "Admin",
-      "MEMBER": "Member"
-    },
-    "status": {
-      "ACTIVE": "Active",
-      "DISABLED": "Disabled"
-    },
-    "add": {
-      "title": "Add organization member",
-      "username": "Username",
-      "usernameError": "Enter a valid username or user ID.",
-      "role": "Organization role",
-      "roles": {
-        "OWNER": "Owner",
-        "ADMIN": "Admin",
-        "MEMBER": "Member"
-      },
-      "submit": "Add member",
-      "submitting": "Adding"
-    }
-  },
   "spaces": {
     "workspace": {
       "session": {

@@ -312,7 +312,7 @@ describe("SpacesPage", () => {
     ).not.toBeInTheDocument();
   });
 
-  it("shows create action for a non-admin role when capability allows it", async () => {
+  it("renders read-only copy for a non-admin role even when global capability allows it", async () => {
     sessionMock.current = {
       ...sessionMock.current,
       currentOrganization: {
@@ -328,10 +328,12 @@ describe("SpacesPage", () => {
     render(<SpacesPage />);
 
     expect(await screen.findByText("Space A")).toBeInTheDocument();
-    expect(screen.getByTestId("spaces-create-button")).toBeInTheDocument();
     expect(
-      screen.queryByTestId("spaces-readonly-notice"),
+      screen.queryByTestId("spaces-create-button"),
     ).not.toBeInTheDocument();
+    expect(screen.getByTestId("spaces-readonly-notice")).toHaveTextContent(
+      "spaces.list.readOnly",
+    );
   });
 
   it("does not render operational summary for spaces without membership", async () => {

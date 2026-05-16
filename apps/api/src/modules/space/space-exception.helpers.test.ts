@@ -172,7 +172,7 @@ describe("space exception helpers", () => {
     ).toBe(true);
   });
 
-  it("requires an unregressed bug plus verifying/default regression semantics", () => {
+  it("requires an unregressed bug plus explicit regression state semantics", () => {
     expect(
       isPendingRegressionRecord(
         workItem({
@@ -198,6 +198,22 @@ describe("space exception helpers", () => {
           },
           currentState: {
             code: "qa_verify",
+            name: "QA verify",
+          },
+          statusCategory: "VERIFYING",
+          type: "BUG",
+        }),
+      ),
+    ).toBe(false);
+    expect(
+      isPendingRegressionRecord(
+        workItem({
+          bugDetail: {
+            deletedAt: null,
+            regressionAt: null,
+          },
+          currentState: {
+            code: "PENDING_REGRESSION",
             name: "QA verify",
           },
           statusCategory: "VERIFYING",

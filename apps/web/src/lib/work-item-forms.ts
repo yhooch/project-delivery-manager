@@ -75,7 +75,6 @@ export type CreateTaskFormValues = z.output<typeof createTaskFormSchema>;
 
 export const updateTaskFormSchema = UpdateWorkItemRequestSchema.extend({
   assigneeId: clearableUlid,
-  blockedReason: optionalText(1000),
   description: clearableText(8000),
   dueDate: clearableIsoDateTime,
   intakeItemId: clearableUlid,

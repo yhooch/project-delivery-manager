@@ -18,6 +18,10 @@ const { listSpaceMembersMock, updateVersionMock } = vi.hoisted(() => ({
   updateVersionMock: vi.fn(),
 }));
 
+function getSelectOptionLabels(select: HTMLSelectElement): string[] {
+  return Array.from(select.options, (option) => option.textContent ?? "");
+}
+
 vi.mock("../../lib/space-service", () => ({
   isActiveStatus: (status: string | undefined) => status === "ACTIVE",
   listSpaceMembers: listSpaceMembersMock,
@@ -136,16 +140,27 @@ describe("EditVersionDialog", () => {
       items: [
         makeMember("01ARZ3NDEKTSV4RRFFQ69G5FA1", "Alice Zhang", "alice"),
         makeMember("01ARZ3NDEKTSV4RRFFQ69G5FB1", "", "bob"),
-        makeMember("01ARZ3NDEKTSV4RRFFQ69G5FC1", "Disabled", "disabled", "DISABLED"),
+        makeMember(
+          "01ARZ3NDEKTSV4RRFFQ69G5FC1",
+          "Disabled",
+          "disabled",
+          "DISABLED",
+        ),
       ],
       total: 3,
     });
 
     renderDialog();
 
-    expect(await screen.findByText("Alice Zhang")).toBeInTheDocument();
-    expect(screen.getByText("bob")).toBeInTheDocument();
-    expect(screen.queryByText("Disabled")).not.toBeInTheDocument();
+    const ownerSelect = screen.getByTestId(
+      "edit-version-owner-select",
+    ) as HTMLSelectElement;
+    await waitFor(() =>
+      expect(getSelectOptionLabels(ownerSelect)).toEqual(
+        expect.arrayContaining(["Alice Zhang", "bob"]),
+      ),
+    );
+    expect(getSelectOptionLabels(ownerSelect)).not.toContain("Disabled");
     expect(listSpaceMembersMock).toHaveBeenCalledWith(spaceId, {
       status: "ACTIVE",
     });
@@ -163,9 +178,12 @@ describe("EditVersionDialog", () => {
     fireEvent.input(screen.getByTestId("edit-version-name-input"), {
       target: { value: "  Sprint 2  " },
     });
-    fireEvent.input(screen.getByLabelText("versionBoard.create.fields.target"), {
-      target: { value: "  Harden release  " },
-    });
+    fireEvent.input(
+      screen.getByLabelText("versionBoard.create.fields.target"),
+      {
+        target: { value: "  Harden release  " },
+      },
+    );
     fireEvent.input(
       screen.getByLabelText("versionBoard.create.fields.description"),
       {

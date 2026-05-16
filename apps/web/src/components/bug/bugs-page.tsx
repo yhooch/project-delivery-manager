@@ -86,7 +86,7 @@ const bugBucketByCategory: Partial<
   IN_PROGRESS: "fixing",
   NOT_STARTED: "pendingConfirm",
   TERMINATED: "closed",
-  VERIFYING: "pendingRegression",
+  VERIFYING: "fixing",
   WAITING: "pendingFix",
 };
 const STATUS_FILTERS: StatusCategory[] = [
@@ -188,6 +188,7 @@ export function BugsPage() {
   const latestListScopeKeyRef = useRef(listScopeKey);
   const listRequestIdRef = useRef(0);
   const previousContextKeyRef = useRef(contextKey);
+  const rowRefs = useRef(new Map<string, HTMLLIElement>());
   latestListScopeKeyRef.current = listScopeKey;
   const loadedCount = items.length;
   const paginationFrom = loadedCount > 0 ? 1 : 0;
@@ -615,6 +616,13 @@ export function BugsPage() {
     ],
   );
 
+  const focusRow = useCallback((bugId: string) => {
+    rowRefs.current
+      .get(bugId)
+      ?.querySelector<HTMLButtonElement>("button")
+      ?.focus({ preventScroll: true });
+  }, []);
+
   useEffect(() => {
     if (requestedNew === "bug" && canCreateBug) {
       setCreateOpen(true);
@@ -707,7 +715,10 @@ export function BugsPage() {
     items: filtered,
     activeId: activeItem?.id,
     getId: (item) => item.id,
-    onSelect: setActiveItem,
+    onSelect: (item) => {
+      setActiveItem(item);
+      focusRow(item.id);
+    },
     onOpen: openBug,
     onEdit: openEditBugFromViewModel,
     canAssign: (bug) =>
@@ -999,7 +1010,8 @@ export function BugsPage() {
           <>
             <ul
               data-testid="bugs-list"
-              role="listbox"
+              role="list"
+              aria-label={tNav("bugs")}
               className="divide-y divide-border"
             >
               {filtered.map((bug) => (
@@ -1007,8 +1019,14 @@ export function BugsPage() {
                   key={bug.id}
                   data-testid="bugs-row"
                   data-id={bug.id}
-                  role="option"
-                  aria-selected={activeItem?.id === bug.id}
+                  ref={(node) => {
+                    if (node) {
+                      rowRefs.current.set(bug.id, node);
+                    } else {
+                      rowRefs.current.delete(bug.id);
+                    }
+                  }}
+                  aria-current={activeItem?.id === bug.id ? "true" : undefined}
                 >
                   <div
                     className={cn(

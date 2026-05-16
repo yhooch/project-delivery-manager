@@ -135,6 +135,7 @@ export function TasksPage() {
   const latestListScopeKeyRef = useRef(listScopeKey);
   const listRequestIdRef = useRef(0);
   const previousContextKeyRef = useRef(contextKey);
+  const rowRefs = useRef(new Map<string, HTMLLIElement>());
   latestListScopeKeyRef.current = listScopeKey;
   const loadedCount = items.length;
   const paginationFrom = loadedCount > 0 ? 1 : 0;
@@ -462,9 +463,20 @@ export function TasksPage() {
     tStatus,
   ]);
 
-  const select = (item: WorkItemViewModel) => {
-    setActiveItem(item);
-  };
+  const focusRow = useCallback((itemId: string) => {
+    rowRefs.current
+      .get(itemId)
+      ?.querySelector<HTMLButtonElement>("button")
+      ?.focus({ preventScroll: true });
+  }, []);
+
+  const select = useCallback(
+    (item: WorkItemViewModel) => {
+      setActiveItem(item);
+      focusRow(item.id);
+    },
+    [focusRow],
+  );
 
   useListKeyboardNav<WorkItemViewModel>({
     items: filtered,
@@ -473,8 +485,6 @@ export function TasksPage() {
     onSelect: select,
     onOpen: open,
     onEdit: open,
-    canAssign: () => true,
-    onAssign: open,
     canSubmit: () => false,
     onClose: () => handleSheetOpenChange(false),
   });
@@ -715,7 +725,8 @@ export function TasksPage() {
           <>
             <ul
               data-testid="tasks-list"
-              role="listbox"
+              role="list"
+              aria-label={tNav("tasks")}
               className="divide-y divide-border"
             >
               {filtered.map((item) => (
@@ -723,8 +734,14 @@ export function TasksPage() {
                   key={item.id}
                   data-testid="tasks-row"
                   data-id={item.id}
-                  role="option"
-                  aria-selected={activeItem?.id === item.id}
+                  ref={(node) => {
+                    if (node) {
+                      rowRefs.current.set(item.id, node);
+                    } else {
+                      rowRefs.current.delete(item.id);
+                    }
+                  }}
+                  aria-current={activeItem?.id === item.id ? "true" : undefined}
                 >
                   <WorkItemRow
                     item={item}

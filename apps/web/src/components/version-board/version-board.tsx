@@ -29,7 +29,6 @@ import { useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { getApiErrorMessageKey } from "../../lib/api-error-messages";
-import { ApiClientError } from "../../lib/api-client";
 import { Link, usePathname, useRouter } from "../../i18n/routing";
 import {
   createWorkItemViewModelMapper,
@@ -49,6 +48,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "../ui/avatar";
 import { Badge } from "../ui/badge";
 import { Button } from "../ui/button";
 import { SelectMenu } from "../ui/select-menu";
+import { getStatusCategoryDotClass } from "../ui/status-badge";
 import { Tip } from "../ui/tooltip";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../ui/tabs";
 import { CreateTaskDialog } from "../work-item/create-task-dialog";
@@ -71,15 +71,6 @@ const COLUMN_ORDER: StatusCategory[] = [
   "DONE",
   "TERMINATED",
 ];
-
-const COLUMN_DOT: Record<StatusCategory, string> = {
-  NOT_STARTED: "bg-muted-foreground/40",
-  IN_PROGRESS: "bg-primary",
-  WAITING: "bg-warning",
-  VERIFYING: "bg-info",
-  DONE: "bg-success",
-  TERMINATED: "bg-muted-foreground/60",
-};
 
 const priorityDotColor: Record<WorkItemViewModel["priority"], string> = {
   LOW: "bg-muted-foreground/40",
@@ -518,15 +509,7 @@ export function VersionPage() {
       setTimeline(page.items);
     } catch (error) {
       if (timelineRequestSeq.current !== requestId) return;
-      // Per spec: if the backend reports the version timeline as unavailable
-      // (e.g. 404 / NOT_FOUND / NOT_IMPLEMENTED) we fall back to the empty
-      // state rather than a hard error, so the page stays usable.
-      if (error instanceof ApiClientError && error.status === 404) {
-        setTimeline([]);
-        setTimelineErrorKey(null);
-      } else {
-        setTimelineErrorKey(getApiErrorMessageKey(error));
-      }
+      setTimelineErrorKey(getApiErrorMessageKey(error));
     } finally {
       if (timelineRequestSeq.current === requestId) {
         setIsLoadingTimeline(false);
@@ -1085,9 +1068,6 @@ export function VersionPage() {
   );
 }
 
-// Backwards-compatible alias — older imports referenced `VersionBoard`.
-export { VersionPage as VersionBoard };
-
 // ===========================================================================
 // Board toolbar — assignee / statusCategory / workItemType filters
 // ===========================================================================
@@ -1163,9 +1143,8 @@ function BoardToolbar({
           onChange={(event) =>
             setFilters((prev) => ({
               ...prev,
-              statusCategory: (event.target.value || null) as
-                | StatusCategory
-                | null,
+              statusCategory: (event.target.value ||
+                null) as StatusCategory | null,
             }))
           }
           data-testid="version-board-filter-status"
@@ -1190,9 +1169,7 @@ function BoardToolbar({
           onChange={(event) =>
             setFilters((prev) => ({
               ...prev,
-              workItemType: (event.target.value || null) as
-                | WorkItemType
-                | null,
+              workItemType: (event.target.value || null) as WorkItemType | null,
             }))
           }
           data-testid="version-board-filter-type"
@@ -1311,7 +1288,10 @@ function BoardColumns({
           >
             <header className="flex shrink-0 items-center gap-2 border-b border-border px-3 py-2.5">
               <span
-                className={cn("h-1.5 w-1.5 rounded-full", COLUMN_DOT[category])}
+                className={cn(
+                  "h-1.5 w-1.5 rounded-full",
+                  getStatusCategoryDotClass(category),
+                )}
               />
               <h2 className="text-[13px] font-semibold">
                 {t(`columns.${category}`)}

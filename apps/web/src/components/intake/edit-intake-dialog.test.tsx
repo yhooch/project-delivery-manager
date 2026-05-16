@@ -77,7 +77,7 @@ afterEach(() => {
 });
 
 describe("EditIntakeDialog", () => {
-  it("keeps the selected requirement option when the selected version differs", async () => {
+  it("clears the selected requirement when the selected version is incompatible", async () => {
     listVersionsMock.mockResolvedValue({
       items: [
         { id: versionId, name: "Version 1" },
@@ -107,7 +107,7 @@ describe("EditIntakeDialog", () => {
       />,
     );
 
-    await screen.findByText("Requirement v1");
+    await screen.findAllByText("Requirement v1");
     expect(listVersionsMock).toHaveBeenCalledWith({
       organizationId,
       page: 1,
@@ -132,8 +132,8 @@ describe("EditIntakeDialog", () => {
 
     fireEvent.change(versionSelect, { target: { value: versionTwoId } });
 
-    expect(requirementSelect.value).toBe(requirementId);
-    expect(screen.getByText("Requirement v1")).toBeInTheDocument();
+    await waitFor(() => expect(requirementSelect.value).toBe(""));
+    expect(screen.queryByText("Requirement v1")).not.toBeInTheDocument();
     expect(screen.getByText("Requirement no version")).toBeInTheDocument();
     expect(screen.getByText("Requirement v2")).toBeInTheDocument();
   });

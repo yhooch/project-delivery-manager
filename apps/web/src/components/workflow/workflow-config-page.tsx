@@ -176,9 +176,13 @@ export function WorkflowConfigPage({ workflowId }: WorkflowConfigPageProps) {
   const tRoot = useTranslations();
   const { currentSpace, session, status } = useSession();
   const spaceId = session?.defaultSpaceId ?? currentSpace?.id;
+  const sessionSpace = session?.spaces?.find((space) => space.id === spaceId);
   const organizationId =
-    currentSpace?.organizationId ?? session?.defaultOrganizationId;
-  const canManageWorkflow = canManageWorkflowForRole(currentSpace?.role);
+    currentSpace?.organizationId ??
+    sessionSpace?.organizationId ??
+    session?.defaultOrganizationId;
+  const currentSpaceRole = currentSpace?.role ?? sessionSpace?.role;
+  const canManageWorkflow = canManageWorkflowForRole(currentSpaceRole);
   const workflowConfigContextKey = `${status}:${organizationId ?? ""}:${
     spaceId ?? ""
   }:${workflowId}`;

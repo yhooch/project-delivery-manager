@@ -23,6 +23,7 @@ import { listVersions } from "../../lib/version-service";
 import {
   filterTraceOptionsByVersion,
   inheritVersionFromTraceOption,
+  isTraceOptionCompatibleWithVersion,
 } from "../../lib/versioned-trace-linking";
 import {
   listWorkflowBindings,
@@ -658,6 +659,18 @@ function applyLinkedRequirementPatch(
       selectedRequirement,
       next.versionId,
     );
+  }
+
+  if (patch.versionId !== undefined && next.requirementId) {
+    const selectedRequirement = requirements.find(
+      (requirement) => requirement.id === next.requirementId,
+    );
+
+    if (
+      !isTraceOptionCompatibleWithVersion(selectedRequirement, next.versionId)
+    ) {
+      next.requirementId = "";
+    }
   }
 
   return next;

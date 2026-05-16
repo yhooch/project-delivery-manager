@@ -6,6 +6,7 @@ import type {
   SessionSpaceSummary,
   UpdateUserPreferencesRequest,
 } from "@project-delivery/shared";
+import { useLocale } from "next-intl";
 import {
   createContext,
   useCallback,
@@ -39,6 +40,8 @@ import type {
   LoginFormValues,
   RegisterFormValues,
 } from "../../lib/auth-forms";
+import { isLocale } from "../../i18n/locales";
+import { usePathname, useRouter } from "../../i18n/routing";
 import { useTheme } from "./theme-provider";
 
 type SessionStatus = "loading" | "authenticated" | "unauthenticated";
@@ -290,7 +293,11 @@ type SessionPreferenceSyncProps = {
 };
 
 function SessionPreferenceSync({ session }: SessionPreferenceSyncProps) {
+  const locale = useLocale();
+  const pathname = usePathname();
+  const router = useRouter();
   const { setTheme } = useTheme();
+  const appliedLocaleRef = useRef<string | null>(null);
   const appliedThemeRef = useRef<NextThemeMode | null>(null);
 
   useEffect(() => {
@@ -306,5 +313,47 @@ function SessionPreferenceSync({ session }: SessionPreferenceSyncProps) {
     }
   }, [session, setTheme]);
 
+  useEffect(() => {
+    if (!session) {
+      appliedLocaleRef.current = null;
+      return;
+    }
+
+    const preferredLocale = session.user.preferences.locale;
+    if (preferredLocale === locale) {
+      appliedLocaleRef.current = preferredLocale;
+      return;
+    }
+
+    if (hasExplicitLocalePrefix()) {
+      return;
+    }
+
+    if (appliedLocaleRef.current === preferredLocale) {
+      return;
+    }
+
+    appliedLocaleRef.current = preferredLocale;
+    router.replace(pathname, { locale: preferredLocale });
+  }, [locale, pathname, router, session]);
+
   return null;
+}
+
+function hasExplicitLocalePrefix(): boolean {
+  if (typeof window === "undefined") {
+    return false;
+  }
+
+  const firstSegment = window.location.pathname.split("/").filter(Boolean)[0];
+
+  if (!firstSegment) {
+    return false;
+  }
+
+  try {
+    return isLocale(decodeURIComponent(firstSegment));
+  } catch {
+    return isLocale(firstSegment);
+  }
 }

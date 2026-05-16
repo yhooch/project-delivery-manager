@@ -21,6 +21,11 @@ const { routerPushMock } = vi.hoisted(() => ({
 const { searchParamsMock } = vi.hoisted(() => ({
   searchParamsMock: { current: new URLSearchParams() },
 }));
+
+function getSelectOptionLabels(select: HTMLSelectElement): string[] {
+  return Array.from(select.options, (option) => option.textContent ?? "");
+}
+
 vi.mock("next-intl", () => ({
   useTranslations: (namespace?: string) => {
     const key = namespace ?? "__root__";
@@ -724,7 +729,9 @@ describe("IntakePage", () => {
 
     await waitFor(() => expect(versionSelect.value).toBe(versionTwoId));
     expect(requirementSelect.value).toBe(requirementTwoId);
-    expect(screen.getByText("Requirement no version")).toBeInTheDocument();
+    expect(getSelectOptionLabels(requirementSelect)).toContain(
+      "Requirement no version",
+    );
     expect(listIntakeItemsMock).toHaveBeenLastCalledWith(
       expect.objectContaining({
         requirementId: requirementTwoId,
@@ -735,9 +742,12 @@ describe("IntakePage", () => {
     fireEvent.change(versionSelect, { target: { value: versionId } });
 
     await waitFor(() => expect(requirementSelect.value).toBe(""));
-    expect(screen.getByText("Requirement v1")).toBeInTheDocument();
-    expect(screen.getByText("Requirement no version")).toBeInTheDocument();
-    expect(screen.queryByText("Requirement v2")).not.toBeInTheDocument();
+    expect(getSelectOptionLabels(requirementSelect)).toEqual(
+      expect.arrayContaining(["Requirement v1", "Requirement no version"]),
+    );
+    expect(getSelectOptionLabels(requirementSelect)).not.toContain(
+      "Requirement v2",
+    );
     await waitFor(() => {
       const lastCall = listIntakeItemsMock.mock.lastCall?.[0];
       expect(lastCall).toEqual(
@@ -1142,7 +1152,13 @@ describe("IntakePage", () => {
     fireEvent.click(await screen.findByText("Clearable intake"));
     fireEvent.click(await screen.findByTestId("intake-edit-button"));
 
-    await screen.findByText("Release 1");
+    await waitFor(() =>
+      expect(
+        getSelectOptionLabels(
+          screen.getByTestId("edit-intake-version-select") as HTMLSelectElement,
+        ),
+      ).toContain("Release 1"),
+    );
     fireEvent.change(screen.getByTestId("edit-intake-description-input"), {
       target: { value: "" },
     });
@@ -1235,12 +1251,12 @@ describe("IntakePage", () => {
     );
   });
 
-  it("opens the intake edit affordance with A without running status actions", async () => {
+  it("opens the intake edit/assignee affordance with A without running status actions", async () => {
     listIntakeItemsMock.mockResolvedValueOnce({
       items: [
         makeIntake({
           id: "01ARZ3NDEKTSV4RRFFQ69G5FA0",
-          title: "Assign shortcut target",
+          title: "Assignee shortcut target",
         }),
       ],
       total: 1,
@@ -1248,7 +1264,7 @@ describe("IntakePage", () => {
 
     render(<IntakePage />);
 
-    await screen.findByText("Assign shortcut target");
+    await screen.findByText("Assignee shortcut target");
     fireEvent.keyDown(window, { key: "j" });
 
     const assignEvent = new KeyboardEvent("keydown", {
@@ -1303,7 +1319,7 @@ describe("IntakePage", () => {
     );
   });
 
-  it("marks the keyboard-selected intake row as aria-selected", async () => {
+  it("exposes intake rows as a named list and focuses the keyboard-selected row", async () => {
     listIntakeItemsMock.mockResolvedValueOnce({
       items: [
         makeIntake({ id: "01ARZ3NDEKTSV4RRFFQ69G5F01", title: "First intake" }),
@@ -1320,10 +1336,16 @@ describe("IntakePage", () => {
     await screen.findByText("First intake");
     fireEvent.keyDown(window, { key: "j" });
 
-    const rows = screen.getAllByTestId("intake-row");
-    expect(rows[0]).toHaveAttribute("aria-selected", "true");
+    const list = screen.getByRole("list", { name: "shell.nav.intake" });
+    const rows = within(list).getAllByRole("listitem");
+    const firstButton = within(rows[0]).getByRole("button", {
+      name: /First intake/,
+    });
+    expect(rows[0]).toHaveAttribute("aria-current", "true");
+    expect(rows[0]).not.toHaveAttribute("aria-selected");
     expect(rows[0]).toHaveAttribute("data-id", "01ARZ3NDEKTSV4RRFFQ69G5F01");
-    expect(rows[1]).toHaveAttribute("aria-selected", "false");
+    expect(rows[1]).not.toHaveAttribute("aria-current");
+    expect(firstButton).toHaveFocus();
   });
 
   it("keeps the detail drawer closed when Escape is pressed during accept", async () => {

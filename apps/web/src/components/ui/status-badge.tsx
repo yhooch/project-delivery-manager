@@ -23,6 +23,14 @@ const dotColor: Record<StatusCategory, string> = {
   TERMINATED: "bg-muted-foreground/60",
 };
 
+export function getStatusCategoryBadgeVariant(category: StatusCategory) {
+  return statusToVariant[category];
+}
+
+export function getStatusCategoryDotClass(category: StatusCategory) {
+  return dotColor[category];
+}
+
 export type StatusBadgeProps = {
   category: StatusCategory;
   label: string;
@@ -37,10 +45,16 @@ export function StatusBadge({
   className,
 }: StatusBadgeProps) {
   return (
-    <Badge variant={statusToVariant[category]} className={cn(className)}>
+    <Badge
+      variant={getStatusCategoryBadgeVariant(category)}
+      className={cn(className)}
+    >
       {withDot && (
         <span
-          className={cn("h-1.5 w-1.5 shrink-0 rounded-full", dotColor[category])}
+          className={cn(
+            "h-1.5 w-1.5 shrink-0 rounded-full",
+            getStatusCategoryDotClass(category),
+          )}
         />
       )}
       <span>{label}</span>

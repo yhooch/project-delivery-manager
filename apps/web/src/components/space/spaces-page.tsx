@@ -83,7 +83,9 @@ export function SpacesPage() {
     session?.defaultOrganizationId ?? currentOrganization?.id;
   const canCreateSpace = Boolean(
     session?.capabilities?.canCreateSpace &&
-      currentOrganization?.status === "ACTIVE",
+    currentOrganization?.status === "ACTIVE" &&
+    (currentOrganization.role === "OWNER" ||
+      currentOrganization.role === "ADMIN"),
   );
 
   const [spaces, setSpaces] = useState<SpaceSummary[]>([]);
@@ -207,7 +209,10 @@ export function SpacesPage() {
 
   if (status === "loading") {
     return (
-      <div data-testid="spaces-page" className="flex h-full flex-col bg-background">
+      <div
+        data-testid="spaces-page"
+        className="flex h-full flex-col bg-background"
+      >
         {headerNode}
         <div className="flex-1 overflow-y-auto px-6 py-6">
           <ListSkeleton rows={5} />
@@ -218,7 +223,10 @@ export function SpacesPage() {
 
   if (!session) {
     return (
-      <div data-testid="spaces-page" className="flex h-full flex-col bg-background">
+      <div
+        data-testid="spaces-page"
+        className="flex h-full flex-col bg-background"
+      >
         {headerNode}
         <div className="flex-1 overflow-y-auto px-6 py-6">
           <EmptyState
@@ -232,7 +240,10 @@ export function SpacesPage() {
 
   if (!organizationId || !currentOrganization) {
     return (
-      <div data-testid="spaces-page" className="flex h-full flex-col bg-background">
+      <div
+        data-testid="spaces-page"
+        className="flex h-full flex-col bg-background"
+      >
         {headerNode}
         <div className="flex-1 overflow-y-auto px-6 py-6">
           <EmptyState
@@ -397,9 +408,7 @@ export function SpacesPage() {
                       }
                     />
                     <SpaceMetaItem
-                      icon={
-                        <ListChecks className="h-3.5 w-3.5 text-primary" />
-                      }
+                      icon={<ListChecks className="h-3.5 w-3.5 text-primary" />}
                       label={t("list.fields.unfinishedTaskCount")}
                       testId={`spaces-unfinished-tasks-${space.id}`}
                       value={
@@ -503,7 +512,10 @@ export function SpacesPage() {
   }
 
   return (
-    <div data-testid="spaces-page" className="flex h-full flex-col bg-background">
+    <div
+      data-testid="spaces-page"
+      className="flex h-full flex-col bg-background"
+    >
       {headerNode}
 
       <div className="flex-1 overflow-y-auto px-6 py-8">

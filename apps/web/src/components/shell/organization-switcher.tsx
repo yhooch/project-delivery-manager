@@ -63,7 +63,9 @@ export function OrganizationSwitcher() {
   );
   const canCreateSpace = Boolean(
     session.capabilities?.canCreateSpace &&
-    currentOrganization?.status === "ACTIVE",
+    currentOrganization?.status === "ACTIVE" &&
+    (currentOrganization.role === "OWNER" ||
+      currentOrganization.role === "ADMIN"),
   );
   const hasMultipleOrgs = session.organizations.length > 1;
   const hasAnySpaces = spacesForCurrentOrganization.length > 0;

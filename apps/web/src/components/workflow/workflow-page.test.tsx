@@ -261,7 +261,9 @@ describe("WorkflowPage", () => {
 
     render(<WorkflowPage />);
 
-    await waitFor(() => expect(listWorkflowBindingsMock).toHaveBeenCalledTimes(4));
+    await waitFor(() =>
+      expect(listWorkflowBindingsMock).toHaveBeenCalledTimes(4),
+    );
     expect(listWorkflowBindingsMock).toHaveBeenCalledTimes(4);
 
     await act(async () => {
@@ -381,6 +383,39 @@ describe("WorkflowPage", () => {
       name: "workflow.page.copyAsNewVersion",
     });
     expect(copy).not.toBeDisabled();
+  });
+
+  it("uses the session default space role when currentSpace is unavailable", async () => {
+    sessionMock.current = {
+      session: {
+        defaultOrganizationId: "ORG_01",
+        defaultSpaceId: "SPC_01",
+        spaces: [
+          {
+            code: "SPACE_A",
+            id: "SPC_01",
+            name: "Space A",
+            organizationId: "ORG_01",
+            role: "PM",
+            status: "ACTIVE",
+          },
+        ],
+      } as unknown as typeof sessionMock.current.session,
+      currentSpace: undefined as unknown as never,
+      status: "authenticated" as const,
+    };
+    listWorkflowsMock.mockResolvedValueOnce({
+      items: [makeWorkflow()],
+      total: 1,
+    });
+
+    render(<WorkflowPage />);
+
+    expect(await screen.findByText("Bug Default")).toBeInTheDocument();
+    expect(screen.getByTestId("workflow-create-button")).not.toBeDisabled();
+    expect(
+      screen.getByRole("button", { name: /workflow\.page\.edit/ }),
+    ).not.toBeDisabled();
   });
 
   it("renders configure as an anchor link to the workflow detail page", async () => {

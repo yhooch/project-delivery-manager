@@ -168,6 +168,7 @@ export function ExceptionsPage() {
   );
   const [thresholdOpen, setThresholdOpen] = useState(false);
   const requestSeq = useRef(0);
+  const rowRefs = useRef(new Map<string, HTMLLIElement>());
   const { captureFocus, restoreFocus } = useFocusReturn();
 
   const organizationId = session?.defaultOrganizationId;
@@ -459,11 +460,19 @@ export function ExceptionsPage() {
     [restoreFocus],
   );
 
+  const focusRow = useCallback((workItemId: string) => {
+    rowRefs.current
+      .get(workItemId)
+      ?.querySelector<HTMLButtonElement>("button")
+      ?.focus({ preventScroll: true });
+  }, []);
+
   useListKeyboardNav<SpaceExceptionItem>({
     items: visibleItems,
     activeId: active?.id,
     getId: (item) => item.workItem.id,
     onSelect: (item) => {
+      focusRow(item.workItem.id);
       setActive(buildExceptionViewModel(item));
       setActiveContext({
         contextKey: exceptionsContextKey,
@@ -473,8 +482,6 @@ export function ExceptionsPage() {
     },
     onOpen: openExceptionItem,
     onEdit: openExceptionItem,
-    canAssign: () => true,
-    onAssign: openExceptionItem,
     canSubmit: () => false,
     onClose: () => handleSheetOpenChange(false),
   });
@@ -735,6 +742,8 @@ export function ExceptionsPage() {
             ) : (
               <ul
                 data-testid={`exceptions-list-${tab.key}`}
+                role="list"
+                aria-label={t("list.title")}
                 className="divide-y divide-border"
               >
                 {tab.items.map((item) => {
@@ -755,10 +764,17 @@ export function ExceptionsPage() {
                     <li
                       key={item.workItem.id}
                       data-testid={`exceptions-row-${tab.key}-${item.workItem.id}`}
+                      ref={(node) => {
+                        if (node) {
+                          rowRefs.current.set(item.workItem.id, node);
+                        } else {
+                          rowRefs.current.delete(item.workItem.id);
+                        }
+                      }}
+                      aria-current={isSelected ? "true" : undefined}
                     >
                       <button
                         type="button"
-                        aria-selected={isSelected}
                         onClick={() => handleSelect(item)}
                         className={cn(
                           "flex w-full min-w-0 cursor-pointer items-center gap-3 px-4 py-2.5 text-left transition-colors hover:bg-muted/40 sm:px-6",

@@ -47,6 +47,9 @@ const { refreshSessionMock, sessionMock } = vi.hoisted(() => {
         session: {
           defaultOrganizationId: "ORG_01",
           defaultSpaceId: "SPC_01",
+          user: {
+            id: "USR_CURRENT",
+          },
         },
         currentOrganization: { id: "ORG_01", name: "Acme Org" },
         currentSpace: {
@@ -107,8 +110,26 @@ vi.mock("./add-space-member-dialog", () => ({
     open ? <div data-testid="add-space-member-open" /> : null,
 }));
 vi.mock("./edit-space-member-role-dialog", () => ({
-  EditSpaceMemberRoleDialog: ({ open }: { open: boolean }) =>
-    open ? <div data-testid="edit-role-dialog-open" /> : null,
+  EditSpaceMemberRoleDialog: ({
+    member,
+    onSuccess,
+    open,
+  }: {
+    member: import("@project-delivery/shared").SpaceMemberWithUser | null;
+    onSuccess: (
+      member: import("@project-delivery/shared").SpaceMemberWithUser,
+    ) => void;
+    open: boolean;
+  }) =>
+    open && member ? (
+      <button
+        data-testid="edit-role-dialog-submit"
+        onClick={() => onSuccess({ ...member, role: "VIEWER" })}
+        type="button"
+      >
+        edit-role-dialog-open
+      </button>
+    ) : null,
 }));
 
 import { SpaceSettingsPage } from "./settings-page";
@@ -156,6 +177,9 @@ beforeEach(() => {
     session: {
       defaultOrganizationId: "ORG_01",
       defaultSpaceId: "SPC_01",
+      user: {
+        id: "USR_CURRENT",
+      },
     },
     currentOrganization: { id: "ORG_01", name: "Acme Org" },
     currentSpace: {
@@ -295,6 +319,9 @@ describe("SpaceSettingsPage", () => {
       session: {
         defaultOrganizationId: "ORG_01",
         defaultSpaceId: undefined as unknown as string,
+        user: {
+          id: "USR_CURRENT",
+        },
       },
       currentOrganization: undefined as unknown as never,
       currentSpace: undefined as unknown as never,
@@ -434,5 +461,64 @@ describe("SpaceSettingsPage", () => {
       screen.getByTestId("space-settings-add-member-button"),
     ).toBeDisabled();
     expect(screen.getByTestId("space-settings-name-input")).toBeDisabled();
+  });
+
+  it("refreshes the app session when the current user's space role changes", async () => {
+    const selfMember = makeMember({
+      id: "SPM_SELF",
+      userId: "USR_CURRENT",
+      role: "PM",
+      user: { id: "USR_CURRENT", name: "Current User", username: "current" },
+    });
+    getSpaceMock.mockResolvedValueOnce(makeSpace());
+    listSpaceMembersMock.mockResolvedValueOnce({
+      items: [selfMember],
+      total: 1,
+    });
+    refreshSessionMock.mockResolvedValueOnce(undefined);
+
+    render(<SpaceSettingsPage />);
+
+    expect(await screen.findByText("Current User")).toBeInTheDocument();
+    fireEvent.click(screen.getByTestId("space-settings-member-edit-SPM_SELF"));
+    fireEvent.click(await screen.findByTestId("edit-role-dialog-submit"));
+
+    await waitFor(() =>
+      expect(refreshSessionMock).toHaveBeenCalledWith("ORG_01", "SPC_01"),
+    );
+  });
+
+  it("refreshes the app session without the disabled space when the current user is disabled", async () => {
+    const selfMember = makeMember({
+      id: "SPM_SELF",
+      userId: "USR_CURRENT",
+      user: { id: "USR_CURRENT", name: "Current User", username: "current" },
+    });
+    getSpaceMock.mockResolvedValueOnce(makeSpace());
+    listSpaceMembersMock.mockResolvedValueOnce({
+      items: [selfMember],
+      total: 1,
+    });
+    updateSpaceMemberMock.mockResolvedValueOnce(
+      makeMember({
+        ...selfMember,
+        status: "DISABLED",
+      }),
+    );
+    refreshSessionMock.mockResolvedValueOnce(undefined);
+
+    render(<SpaceSettingsPage />);
+
+    expect(await screen.findByText("Current User")).toBeInTheDocument();
+    fireEvent.click(
+      screen.getByTestId("space-settings-member-disable-SPM_SELF"),
+    );
+
+    await waitFor(() =>
+      expect(updateSpaceMemberMock).toHaveBeenCalledWith("SPC_01", "SPM_SELF", {
+        status: "DISABLED",
+      }),
+    );
+    expect(refreshSessionMock).toHaveBeenCalledWith("ORG_01", undefined);
   });
 });

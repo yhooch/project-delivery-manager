@@ -307,6 +307,8 @@ vi.mock("./edit-version-dialog", () => ({
   },
 }));
 
+import { ApiClientError } from "../../lib/api-client";
+
 import { VersionPage } from "./version-board";
 
 // -----------------------------------------------------------------------------
@@ -873,6 +875,32 @@ describe("VersionPage", () => {
     expect(timelineRow.textContent).toContain(
       "versionBoard.timeline.event.STATUS_CHANGED",
     );
+  });
+
+  it("renders the timeline error state when timeline loading returns 404", async () => {
+    listVersionsMock.mockResolvedValueOnce({
+      items: [makeVersion()],
+      total: 1,
+    });
+    getVersionBoardViewMock.mockResolvedValueOnce(makeBoardResponse([]));
+    listTimelineMock.mockRejectedValueOnce(
+      new ApiClientError(
+        { code: "NOT_FOUND", message: "not found", requestId: "REQ_404" },
+        new Response(null, { status: 404, statusText: "Not Found" }),
+      ),
+    );
+
+    render(<VersionPage />);
+
+    await waitFor(() => expect(listTimelineMock).toHaveBeenCalled());
+    fireEvent.click(await screen.findByTestId("version-tab-timeline"));
+
+    expect(
+      await screen.findByText("versionBoard.timeline.errorTitle"),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByTestId("version-tab-timeline-empty"),
+    ).not.toBeInTheDocument();
   });
 
   it("refetches the board when a filter is applied", async () => {

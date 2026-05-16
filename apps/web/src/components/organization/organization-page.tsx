@@ -85,6 +85,23 @@ export function OrganizationPage() {
     [members],
   );
 
+  function refreshAfterCurrentUserMemberChange(
+    member: OrganizationMemberWithUser,
+  ) {
+    if (member.userId !== session?.user.id) {
+      return;
+    }
+
+    const recentOrganizationId =
+      member.status === "ACTIVE" ? member.organizationId : undefined;
+    const recentSpaceId =
+      member.status === "ACTIVE" ? currentSpace?.id : undefined;
+
+    void refreshSession(recentOrganizationId, recentSpaceId).catch((error) => {
+      setMemberActionErrorKey(getApiErrorMessageKey(error));
+    });
+  }
+
   const hasProfileChanges = Boolean(
     currentOrganization &&
     (orgName.trim() !== currentOrganization.name ||
@@ -190,6 +207,7 @@ export function OrganizationPage() {
       setMembers((current) =>
         current.map((item) => (item.id === updated.id ? updated : item)),
       );
+      refreshAfterCurrentUserMemberChange(updated);
       setDisableMember(null);
     } catch (error) {
       setMemberActionErrorKey(getApiErrorMessageKey(error));
@@ -601,6 +619,7 @@ export function OrganizationPage() {
               setMembers((current) =>
                 current.map((item) => (item.id === member.id ? member : item)),
               );
+              refreshAfterCurrentUserMemberChange(member);
               void load();
             }}
             open={editRoleMember !== null}

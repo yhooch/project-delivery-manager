@@ -85,7 +85,6 @@ export type CreateBugFormValues = z.output<typeof createBugFormSchema>;
 export const updateBugFormSchema = UpdateBugRequestSchema.extend({
   actualResult: clearableText(8000),
   assigneeId: clearableUlid,
-  blockedReason: optionalText(1000),
   description: clearableText(8000),
   dueDate: clearableIsoDateTime,
   expectedResult: clearableText(8000),
@@ -108,11 +107,15 @@ export const updateBugFormSchema = UpdateBugRequestSchema.extend({
 export type UpdateBugFormInput = z.input<typeof updateBugFormSchema>;
 export type UpdateBugFormValues = z.output<typeof updateBugFormSchema>;
 
-export function toCreateBugRequest(input: CreateBugFormInput): CreateBugRequest {
+export function toCreateBugRequest(
+  input: CreateBugFormInput,
+): CreateBugRequest {
   return CreateBugRequestSchema.parse(createBugFormSchema.parse(input));
 }
 
-export function toUpdateBugRequest(input: UpdateBugFormInput): UpdateBugRequest {
+export function toUpdateBugRequest(
+  input: UpdateBugFormInput,
+): UpdateBugRequest {
   return UpdateBugRequestSchema.parse(updateBugFormSchema.parse(input));
 }
 

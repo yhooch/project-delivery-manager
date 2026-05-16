@@ -1008,9 +1008,7 @@ export class PrismaSpaceRepository implements SpaceRepository {
       .filter((access) => REQUIREMENT_READ_ALL_ROLES.has(access.role))
       .map((access) => access.spaceId);
     const requirementNonDraftReadAllSpaceIds = accesses
-      .filter((access) =>
-        REQUIREMENT_NON_DRAFT_READ_ALL_ROLES.has(access.role),
-      )
+      .filter((access) => REQUIREMENT_NON_DRAFT_READ_ALL_ROLES.has(access.role))
       .map((access) => access.spaceId);
     const intakeItemReadAllSpaceIds = accesses
       .filter((access) => INTAKE_ITEM_READ_ALL_ROLES.has(access.role))
@@ -1340,11 +1338,7 @@ export class PrismaSpaceRepository implements SpaceRepository {
     }
 
     where.AND = [
-      ...(Array.isArray(where.AND)
-        ? where.AND
-        : where.AND
-          ? [where.AND]
-          : []),
+      ...(Array.isArray(where.AND) ? where.AND : where.AND ? [where.AND] : []),
       {
         OR: visibleTargets.map((target) => ({
           targetId: target.id,
@@ -2091,7 +2085,6 @@ function pendingRegressionWhere(): Prisma.WorkItemWhereInput {
       },
       {
         OR: [
-          { statusCategory: "VERIFYING" },
           workflowStateExactWhere(
             SPACE_EXCEPTION_STATE_RULES.pendingRegressionCodes,
             SPACE_EXCEPTION_STATE_RULES.pendingRegressionNames,
@@ -2278,7 +2271,10 @@ function workflowStateTokenWhere(
   };
 }
 
-function timelineTargetKey(target: { targetId: string; targetType: TargetType }) {
+function timelineTargetKey(target: {
+  targetId: string;
+  targetType: TargetType;
+}) {
   return `${target.targetType}:${target.targetId}`;
 }
 

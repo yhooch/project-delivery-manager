@@ -160,8 +160,9 @@ export function RequirementContentEditorSlot({
   const [localAttachmentCount, setLocalAttachmentCount] =
     useState(attachmentCount);
   const [uploads, setUploads] = useState<UploadItem[]>([]);
-  const [imageDisplayUrls, setImageDisplayUrls] =
-    useState<Record<string, string>>({});
+  const [imageDisplayUrls, setImageDisplayUrls] = useState<
+    Record<string, string>
+  >({});
   const imageDisplayUrlsRef = useRef<AttachmentImageDisplayUrls>({});
   const [linkDialog, setLinkDialog] = useState<LinkDialogState>({
     from: 0,
@@ -181,7 +182,7 @@ export function RequirementContentEditorSlot({
         class: "tiptap-editor__surface",
       },
       handlePaste: (_view, event) => {
-        const files = Array.from(event.clipboardData?.files ?? []);
+        const files = getImageFiles(event.clipboardData?.files);
 
         if (files.length === 0) {
           return false;
@@ -554,10 +555,7 @@ export function RequirementContentEditorSlot({
         </h3>
         <p className="text-xs text-muted-foreground">{t("description")}</p>
       </div>
-      <div
-        className="flex flex-col gap-2"
-        aria-busy={isUploading(uploads)}
-      >
+      <div className="flex flex-col gap-2" aria-busy={isUploading(uploads)}>
         <div
           className="flex flex-wrap items-center gap-1 rounded-md border border-border/60 bg-background/60 px-2 py-1"
           role="toolbar"
@@ -742,10 +740,7 @@ export function RequirementContentEditorSlot({
           aria-live="polite"
         >
           {uploads.map((item) => (
-            <div
-              className="flex items-center gap-3 text-sm"
-              key={item.id}
-            >
+            <div className="flex items-center gap-3 text-sm" key={item.id}>
               <div
                 className={cn(
                   "flex h-7 w-7 shrink-0 items-center justify-center rounded-md",
@@ -827,12 +822,7 @@ function ToolbarButton({
 }
 
 function ToolbarDivider() {
-  return (
-    <span
-      className="mx-1 h-4 w-px bg-border/60"
-      aria-hidden="true"
-    />
-  );
+  return <span className="mx-1 h-4 w-px bg-border/60" aria-hidden="true" />;
 }
 
 function createUploadingItem(file: File): UploadItem {

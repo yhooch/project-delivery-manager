@@ -4,13 +4,16 @@ import {
   render,
   screen,
   waitFor,
-  within,
 } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const { translatorCache } = vi.hoisted(() => ({
   translatorCache: new Map<string, (key: string) => string>(),
 }));
+
+function getSelectOptionLabels(select: HTMLSelectElement): string[] {
+  return Array.from(select.options, (option) => option.textContent ?? "");
+}
 
 vi.mock("next-intl", () => ({
   useTranslations: (namespace?: string) => {
@@ -181,9 +184,9 @@ describe("CreateBugDialog", () => {
       />,
     );
 
-    expect(await screen.findByTestId("create-bug-options-error")).toHaveTextContent(
-      "common.states.optionsLoadFailed",
-    );
+    expect(
+      await screen.findByTestId("create-bug-options-error"),
+    ).toHaveTextContent("common.states.optionsLoadFailed");
     expect(screen.getByTestId("create-bug-submit")).toBeDisabled();
 
     fireEvent.click(screen.getByTestId("create-bug-options-retry"));
@@ -232,8 +235,6 @@ describe("CreateBugDialog", () => {
       />,
     );
 
-    await screen.findByText("Requirement v2");
-
     const versionSelect = screen.getByTestId(
       "create-bug-version-select",
     ) as HTMLSelectElement;
@@ -243,6 +244,11 @@ describe("CreateBugDialog", () => {
     const relatedTaskSelect = screen.getByTestId(
       "create-bug-related-task-select",
     ) as HTMLSelectElement;
+    await waitFor(() =>
+      expect(getSelectOptionLabels(requirementSelect)).toContain(
+        "Requirement v2",
+      ),
+    );
 
     fireEvent.change(requirementSelect, {
       target: { value: nextRequirementId },
@@ -250,26 +256,17 @@ describe("CreateBugDialog", () => {
 
     await waitFor(() => expect(versionSelect.value).toBe(nextVersionId));
     expect(requirementSelect.value).toBe(nextRequirementId);
-    expect(
-      within(relatedTaskSelect).queryByRole("option", { name: "Task v1" }),
-    ).not.toBeInTheDocument();
-    expect(
-      within(relatedTaskSelect).getByRole("option", { name: "Task v2" }),
-    ).toBeInTheDocument();
+    expect(getSelectOptionLabels(relatedTaskSelect)).not.toContain("Task v1");
+    expect(getSelectOptionLabels(relatedTaskSelect)).toContain("Task v2");
 
     fireEvent.change(versionSelect, { target: { value: versionId } });
 
-    await waitFor(() => expect(requirementSelect.value).toBe(nextRequirementId));
-    expect(
-      within(requirementSelect).getByRole("option", {
-        name: "Requirement v1",
-      }),
-    ).toBeInTheDocument();
-    expect(
-      within(requirementSelect).getByRole("option", {
-        name: "Requirement v2",
-      }),
-    ).toBeInTheDocument();
+    await waitFor(() =>
+      expect(requirementSelect.value).toBe(nextRequirementId),
+    );
+    expect(getSelectOptionLabels(requirementSelect)).toEqual(
+      expect.arrayContaining(["Requirement v1", "Requirement v2"]),
+    );
   });
 
   it("infers the version and requirement from a selected related task", async () => {
@@ -313,14 +310,21 @@ describe("CreateBugDialog", () => {
       />,
     );
 
-    await screen.findByText("Task v2");
-
     const versionSelect = screen.getByTestId(
       "create-bug-version-select",
     ) as HTMLSelectElement;
     const requirementSelect = screen.getByTestId(
       "create-bug-requirement-select",
     ) as HTMLSelectElement;
+    await waitFor(() =>
+      expect(
+        getSelectOptionLabels(
+          screen.getByTestId(
+            "create-bug-related-task-select",
+          ) as HTMLSelectElement,
+        ),
+      ).toContain("Task v2"),
+    );
 
     fireEvent.change(screen.getByTestId("create-bug-related-task-select"), {
       target: { value: nextRelatedTaskId },
@@ -328,15 +332,11 @@ describe("CreateBugDialog", () => {
 
     await waitFor(() => expect(versionSelect.value).toBe(nextVersionId));
     expect(requirementSelect.value).toBe(nextRequirementId);
-    expect(
-      within(requirementSelect).queryByRole("option", {
-        name: "Requirement v1",
-      }),
-    ).not.toBeInTheDocument();
-    expect(
-      within(requirementSelect).getByRole("option", {
-        name: "Requirement v2",
-      }),
-    ).toBeInTheDocument();
+    expect(getSelectOptionLabels(requirementSelect)).not.toContain(
+      "Requirement v1",
+    );
+    expect(getSelectOptionLabels(requirementSelect)).toContain(
+      "Requirement v2",
+    );
   });
 });

@@ -1,16 +1,22 @@
-import { render, screen, waitFor } from "@testing-library/react";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { cleanup, render, screen, waitFor } from "@testing-library/react";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const getPersistedAppSessionMock = vi.hoisted(() => vi.fn());
 const setThemeMock = vi.hoisted(() => vi.fn());
 const replaceMock = vi.hoisted(() => vi.fn());
+const localeMock = vi.hoisted(() => ({
+  current: "en-US",
+}));
+const pathnameMock = vi.hoisted(() => ({
+  current: "/workbench",
+}));
 
 vi.mock("next-intl", () => ({
-  useLocale: () => "en-US",
+  useLocale: () => localeMock.current,
 }));
 
 vi.mock("../../i18n/routing", () => ({
-  usePathname: () => "/workbench",
+  usePathname: () => pathnameMock.current,
   useRouter: () => ({ replace: replaceMock }),
 }));
 
@@ -90,10 +96,18 @@ beforeEach(() => {
   getPersistedAppSessionMock.mockReset();
   setThemeMock.mockReset();
   replaceMock.mockReset();
+  localeMock.current = "en-US";
+  pathnameMock.current = "/workbench";
+  window.history.pushState(null, "", "/");
+});
+
+afterEach(() => {
+  cleanup();
 });
 
 describe("SessionProvider", () => {
   it("syncs theme from session preferences without replacing explicit URL locale", async () => {
+    window.history.pushState(null, "", "/en-US/workbench");
     getPersistedAppSessionMock.mockResolvedValueOnce(
       makeSession({ locale: "zh-CN", themeMode: "DARK" }),
     );
@@ -111,5 +125,30 @@ describe("SessionProvider", () => {
     );
     await waitFor(() => expect(setThemeMock).toHaveBeenCalledWith("dark"));
     expect(replaceMock).not.toHaveBeenCalled();
+  });
+
+  it("restores the session locale preference when the URL has no explicit locale", async () => {
+    localeMock.current = "zh-CN";
+    window.history.pushState(null, "", "/workbench");
+    getPersistedAppSessionMock.mockResolvedValueOnce(
+      makeSession({ locale: "en-US", themeMode: "SYSTEM" }),
+    );
+
+    render(
+      <SessionProvider>
+        <SessionProbe />
+      </SessionProvider>,
+    );
+
+    await waitFor(() =>
+      expect(screen.getByTestId("session-status")).toHaveTextContent(
+        "authenticated",
+      ),
+    );
+    await waitFor(() =>
+      expect(replaceMock).toHaveBeenCalledWith("/workbench", {
+        locale: "en-US",
+      }),
+    );
   });
 });

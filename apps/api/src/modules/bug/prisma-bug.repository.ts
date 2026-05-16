@@ -1,9 +1,7 @@
 import { Inject, Injectable } from "@nestjs/common";
 import {
-  BugLifecycleBucketFallbackStatusCategory,
   BugLifecycleBucketStateCodes,
   BugLifecycleFilterBuckets,
-  resolveBugLifecycleBucket,
   type BugLifecycleFilterBucket,
   type StatusCategory,
 } from "@project-delivery/shared";
@@ -20,6 +18,18 @@ import type {
   ParticipantInput,
   UpdateBugInput,
 } from "./bug.types";
+
+const BUG_LIFECYCLE_FALLBACK_STATUS_CATEGORIES = {
+  pendingConfirm: ["NOT_STARTED"],
+  pendingFix: ["WAITING"],
+  fixing: ["IN_PROGRESS", "VERIFYING"],
+  pendingRegression: [],
+  regressionPassed: ["DONE"],
+  closed: ["TERMINATED"],
+} as const satisfies Record<
+  BugLifecycleFilterBucket,
+  readonly StatusCategory[]
+>;
 
 @Injectable()
 export class PrismaBugRepository implements BugRepository {
@@ -686,18 +696,23 @@ function bugLifecycleBucketWhere(
   bucket: BugLifecycleFilterBucket,
 ): Prisma.WorkItemWhereInput {
   const stateCodes = BugLifecycleBucketStateCodes[bucket];
-  const fallbackStatusCategory =
-    BugLifecycleBucketFallbackStatusCategory[bucket];
+  const fallbackStatusCategories =
+    BUG_LIFECYCLE_FALLBACK_STATUS_CATEGORIES[bucket];
+  const stateCodeWhere: Prisma.WorkItemWhereInput = {
+    currentState: {
+      code: {
+        in: [...stateCodes],
+      },
+    },
+  };
+
+  if (fallbackStatusCategories.length === 0) {
+    return stateCodeWhere;
+  }
 
   return {
     OR: [
-      {
-        currentState: {
-          code: {
-            in: [...stateCodes],
-          },
-        },
-      },
+      stateCodeWhere,
       {
         AND: [
           {
@@ -708,7 +723,9 @@ function bugLifecycleBucketWhere(
             },
           },
           {
-            statusCategory: fallbackStatusCategory,
+            statusCategory: {
+              in: [...fallbackStatusCategories],
+            },
           },
         ],
       },
@@ -733,7 +750,7 @@ function toLifecycleBucketCounts(
   const counts = new Map<BugLifecycleFilterBucket, number>();
 
   for (const group of groups) {
-    const bucket = resolveBugLifecycleBucket({
+    const bucket = resolveBugLifecycleBucketForRepository({
       stateCode: stateCodes.get(group.currentStateId),
       statusCategory: group.statusCategory,
     });
@@ -744,6 +761,34 @@ function toLifecycleBucketCounts(
     bucket,
     count: counts.get(bucket) ?? 0,
   }));
+}
+
+function resolveBugLifecycleBucketForRepository(input: {
+  stateCode?: string;
+  statusCategory: StatusCategory;
+}): BugLifecycleFilterBucket {
+  const normalized = input.stateCode?.trim().toUpperCase();
+
+  if (normalized) {
+    const match = BugLifecycleFilterBuckets.find((bucket) =>
+      (BugLifecycleBucketStateCodes[bucket] as readonly string[]).includes(
+        normalized,
+      ),
+    );
+    if (match) {
+      return match;
+    }
+  }
+
+  const fallbackMatch = BugLifecycleFilterBuckets.find((bucket) => {
+    const fallbackCategories = BUG_LIFECYCLE_FALLBACK_STATUS_CATEGORIES[
+      bucket
+    ] as readonly StatusCategory[];
+
+    return fallbackCategories.includes(input.statusCategory);
+  });
+
+  return fallbackMatch ?? "fixing";
 }
 
 function buildOrderBy(

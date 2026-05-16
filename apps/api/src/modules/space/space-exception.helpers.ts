@@ -130,8 +130,8 @@ export function isOverdueRecord(
 ) {
   return Boolean(
     record.dueDate &&
-      record.dueDate.getTime() < now.getTime() &&
-      !isTerminalStatusCategory(record.statusCategory),
+    record.dueDate.getTime() < now.getTime() &&
+    !isTerminalStatusCategory(record.statusCategory),
   );
 }
 
@@ -150,20 +150,21 @@ export function isPendingConfirmRecord(record: SpaceExceptionWorkItemRecord) {
   );
 }
 
-export function isPendingRegressionRecord(record: SpaceExceptionWorkItemRecord) {
+export function isPendingRegressionRecord(
+  record: SpaceExceptionWorkItemRecord,
+) {
   return (
     record.type === "BUG" &&
     !isTerminalStatusCategory(record.statusCategory) &&
     Boolean(
       record.bugDetail &&
-        !record.bugDetail.deletedAt &&
-        !record.bugDetail.regressionAt,
+      !record.bugDetail.deletedAt &&
+      !record.bugDetail.regressionAt,
     ) &&
-    (record.statusCategory === "VERIFYING" ||
-      matchesAnyValue(
-        record.currentState.code,
-        SPACE_EXCEPTION_STATE_RULES.pendingRegressionCodes,
-      ) ||
+    (matchesAnyValue(
+      record.currentState.code,
+      SPACE_EXCEPTION_STATE_RULES.pendingRegressionCodes,
+    ) ||
       matchesAnyValue(
         record.currentState.name,
         SPACE_EXCEPTION_STATE_RULES.pendingRegressionNames,

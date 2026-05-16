@@ -2109,46 +2109,6 @@
       }
     }
   },
-  "organizationMembers": {
-    "title": "组织成员",
-    "description": "组织成员是空间成员和负责人选择的来源。",
-    "memberCount": "{count} 位成员",
-    "readOnly": "当前组织角色只能查看成员，不能添加或修改成员。",
-    "loading": "正在加载成员",
-    "empty": "暂无组织成员",
-    "table": {
-      "label": "组织成员列表",
-      "member": "成员",
-      "role": "组织角色",
-      "status": "状态"
-    },
-    "actions": {
-      "changeRole": "修改 {username} 的组织角色",
-      "changeStatus": "修改 {username} 的组织状态"
-    },
-    "roles": {
-      "OWNER": "所有者",
-      "ADMIN": "管理员",
-      "MEMBER": "成员"
-    },
-    "status": {
-      "ACTIVE": "启用",
-      "DISABLED": "禁用"
-    },
-    "add": {
-      "title": "添加组织成员",
-      "username": "用户名",
-      "usernameError": "请输入有效用户名或用户 ID。",
-      "role": "组织角色",
-      "roles": {
-        "OWNER": "所有者",
-        "ADMIN": "管理员",
-        "MEMBER": "成员"
-      },
-      "submit": "添加成员",
-      "submitting": "添加中"
-    }
-  },
   "spaces": {
     "workspace": {
       "session": {

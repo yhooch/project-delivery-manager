@@ -122,12 +122,18 @@ describe("CreateWorkflowDialog", () => {
 
     renderCreateDialog(onSuccess);
 
-    fireEvent.change(screen.getByLabelText("workflow.dialog.create.fields.name"), {
-      target: { value: "Custom flow" },
-    });
-    fireEvent.change(screen.getByLabelText("workflow.dialog.create.fields.code"), {
-      target: { value: "CUSTOM_FLOW" },
-    });
+    fireEvent.change(
+      screen.getByLabelText("workflow.dialog.create.fields.name"),
+      {
+        target: { value: "Custom flow" },
+      },
+    );
+    fireEvent.change(
+      screen.getByLabelText("workflow.dialog.create.fields.code"),
+      {
+        target: { value: "CUSTOM_FLOW" },
+      },
+    );
     fireEvent.click(
       screen.getByRole("button", {
         name: "workflow.dialog.create.submit",
@@ -188,10 +194,13 @@ describe("CreateWorkflowDialog", () => {
         workflowId,
       }),
     );
-    const sourceSelect = screen.getByLabelText(
-      "workflow.dialog.copyVersion.fields.sourceVersion",
+    const sourceSelect = document.getElementById(
+      "workflow-dialog-source-version",
     ) as HTMLSelectElement;
-    await waitFor(() => expect(sourceSelect.value).toBe(newerPublishedVersionId));
+    expect(sourceSelect).not.toBeNull();
+    await waitFor(() =>
+      expect(sourceSelect.value).toBe(newerPublishedVersionId),
+    );
     expect([...sourceSelect.options].map((option) => option.value)).toEqual([
       "",
       publishedVersionId,

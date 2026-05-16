@@ -16,9 +16,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 
 import { Link, useRouter } from "../../i18n/routing";
 import { getApiErrorMessageKey } from "../../lib/api-error-messages";
-import {
-  canManageWorkflow as canManageWorkflowForRole,
-} from "../../lib/permission-gates";
+import { canManageWorkflow as canManageWorkflowForRole } from "../../lib/permission-gates";
 import {
   listWorkflowBindings,
   listWorkflows,
@@ -147,9 +145,13 @@ export function WorkflowPage() {
   const router = useRouter();
   const { currentSpace, session, status } = useSession();
   const spaceId = session?.defaultSpaceId ?? currentSpace?.id;
+  const sessionSpace = session?.spaces?.find((space) => space.id === spaceId);
   const organizationId =
-    currentSpace?.organizationId ?? session?.defaultOrganizationId;
-  const canManageWorkflow = canManageWorkflowForRole(currentSpace?.role);
+    currentSpace?.organizationId ??
+    sessionSpace?.organizationId ??
+    session?.defaultOrganizationId;
+  const currentSpaceRole = currentSpace?.role ?? sessionSpace?.role;
+  const canManageWorkflow = canManageWorkflowForRole(currentSpaceRole);
   const workflowContextKey = `${status}:${organizationId ?? ""}:${spaceId ?? ""}`;
   const workflowContextKeyRef = useRef(workflowContextKey);
   workflowContextKeyRef.current = workflowContextKey;

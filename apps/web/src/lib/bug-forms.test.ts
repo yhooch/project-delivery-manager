@@ -100,5 +100,10 @@ describe("bug forms", () => {
         relatedTaskId: "not-a-ulid",
       }).success,
     ).toBe(false);
+    expect(
+      updateBugFormSchema.safeParse({
+        blockedReason: "Waiting for workflow action",
+      }).success,
+    ).toBe(false);
   });
 });

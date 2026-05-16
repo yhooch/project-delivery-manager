@@ -790,6 +790,7 @@ export function RequirementsPage() {
                 <SelectMenu
                   aria-label={t("filters.version")}
                   className="h-8 px-2 text-xs"
+                  data-testid="requirements-filter-version"
                   onChange={(event) => setSelectedVersionId(event.target.value)}
                   value={effectiveSelectedVersionId}
                 >
@@ -806,6 +807,7 @@ export function RequirementsPage() {
                 <SelectMenu
                   aria-label={t("filters.owner")}
                   className="h-8 px-2 text-xs"
+                  data-testid="requirements-filter-owner"
                   onChange={(event) => setSelectedOwnerId(event.target.value)}
                   value={effectiveSelectedOwnerId}
                 >

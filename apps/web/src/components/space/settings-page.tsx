@@ -117,6 +117,19 @@ export function SpaceSettingsPage() {
     [members],
   );
 
+  function refreshAfterCurrentUserMemberChange(member: SpaceMemberWithUser) {
+    if (member.userId !== session?.user.id) {
+      return;
+    }
+
+    const recentSpaceId =
+      member.status === "ACTIVE" ? member.spaceId : undefined;
+
+    void refreshSession(member.organizationId, recentSpaceId).catch((error) => {
+      setMemberActionErrorKey(getApiErrorMessageKey(error));
+    });
+  }
+
   const filteredMembers = useMemo(() => {
     const query = memberSearch.trim().toLowerCase();
     return members.filter((member) => {
@@ -319,6 +332,7 @@ export function SpaceSettingsPage() {
       setMembers((current) =>
         current.map((item) => (item.id === updated.id ? updated : item)),
       );
+      refreshAfterCurrentUserMemberChange(updated);
     } catch (error) {
       setMembers(previous);
       setMemberActionErrorKey(getApiErrorMessageKey(error));
@@ -888,6 +902,7 @@ export function SpaceSettingsPage() {
           setMembers((current) =>
             current.map((item) => (item.id === updated.id ? updated : item)),
           );
+          refreshAfterCurrentUserMemberChange(updated);
         }}
         open={editRoleMember !== null}
         spaceId={spaceId}

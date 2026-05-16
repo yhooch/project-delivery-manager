@@ -26,8 +26,8 @@ export function PageHeader({
         className,
       )}
     >
-      <div className="flex items-end justify-between gap-4">
-        <div>
+      <div className="flex min-w-0 flex-col gap-3 sm:flex-row sm:items-end sm:justify-between sm:gap-4">
+        <div className="min-w-0 sm:flex-1">
           {eyebrow && (
             <div className="text-[11px] font-medium uppercase tracking-wider text-primary">
               {eyebrow}
@@ -37,10 +37,16 @@ export function PageHeader({
             {title}
           </h1>
           {description && (
-            <p className="mt-0.5 text-xs text-muted-foreground">{description}</p>
+            <p className="mt-0.5 text-xs text-muted-foreground">
+              {description}
+            </p>
           )}
         </div>
-        {actions && <div className="flex items-center gap-2">{actions}</div>}
+        {actions && (
+          <div className="flex w-full min-w-0 flex-col gap-2 sm:w-auto sm:flex-row sm:flex-wrap sm:items-center sm:justify-end">
+            {actions}
+          </div>
+        )}
       </div>
       {meta && (
         <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-xs text-muted-foreground">

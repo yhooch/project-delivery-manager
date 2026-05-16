@@ -4,7 +4,6 @@ import {
   render,
   screen,
   waitFor,
-  within,
 } from "@testing-library/react";
 import type { BugView } from "@project-delivery/shared";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -12,6 +11,10 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 const { translatorCache } = vi.hoisted(() => ({
   translatorCache: new Map<string, (key: string) => string>(),
 }));
+
+function getSelectOptionLabels(select: HTMLSelectElement): string[] {
+  return Array.from(select.options, (option) => option.textContent ?? "");
+}
 
 vi.mock("next-intl", () => ({
   useTranslations: (namespace?: string) => {
@@ -159,8 +162,20 @@ describe("EditBugDialog", () => {
     );
 
     await screen.findByText("v2");
-    await screen.findByText("Requirement 1");
-    await screen.findByText("Task 1");
+    await waitFor(() =>
+      expect(
+        getSelectOptionLabels(
+          screen.getByTestId(
+            "edit-bug-requirement-select",
+          ) as HTMLSelectElement,
+        ),
+      ).toContain("Requirement 1"),
+    );
+    expect(
+      getSelectOptionLabels(
+        screen.getByTestId("edit-bug-related-task-select") as HTMLSelectElement,
+      ),
+    ).toContain("Task 1");
 
     fireEvent.change(screen.getByTestId("edit-bug-title-input"), {
       target: { value: "Updated bug" },
@@ -240,7 +255,13 @@ describe("EditBugDialog", () => {
       />,
     );
 
-    await screen.findByText("v1");
+    await waitFor(() =>
+      expect(
+        getSelectOptionLabels(
+          screen.getByTestId("edit-bug-version-select") as HTMLSelectElement,
+        ),
+      ).toContain("v1"),
+    );
 
     fireEvent.change(screen.getByTestId("edit-bug-description-input"), {
       target: { value: "" },
@@ -305,9 +326,9 @@ describe("EditBugDialog", () => {
       />,
     );
 
-    expect(await screen.findByTestId("edit-bug-options-error")).toHaveTextContent(
-      "common.states.optionsLoadFailed",
-    );
+    expect(
+      await screen.findByTestId("edit-bug-options-error"),
+    ).toHaveTextContent("common.states.optionsLoadFailed");
     expect(screen.getByTestId("edit-bug-submit")).toBeDisabled();
 
     fireEvent.click(screen.getByTestId("edit-bug-options-retry"));
@@ -353,14 +374,15 @@ describe("EditBugDialog", () => {
       />,
     );
 
-    await screen.findByText("Task 1");
-
     const requirementSelect = screen.getByTestId(
       "edit-bug-requirement-select",
     ) as HTMLSelectElement;
     const relatedTaskSelect = screen.getByTestId(
       "edit-bug-related-task-select",
     ) as HTMLSelectElement;
+    await waitFor(() =>
+      expect(getSelectOptionLabels(relatedTaskSelect)).toContain("Task 1"),
+    );
 
     fireEvent.change(screen.getByTestId("edit-bug-version-select"), {
       target: { value: nextVersionId },
@@ -368,22 +390,12 @@ describe("EditBugDialog", () => {
 
     await waitFor(() => expect(requirementSelect.value).toBe(requirementId));
     expect(relatedTaskSelect.value).toBe(relatedTaskId);
-    expect(
-      within(requirementSelect).getByRole("option", {
-        name: "Requirement 1",
-      }),
-    ).toBeInTheDocument();
-    expect(
-      within(requirementSelect).getByRole("option", {
-        name: "Requirement 2",
-      }),
-    ).toBeInTheDocument();
-    expect(
-      within(relatedTaskSelect).getByRole("option", { name: "Task 1" }),
-    ).toBeInTheDocument();
-    expect(
-      within(relatedTaskSelect).getByRole("option", { name: "Task 2" }),
-    ).toBeInTheDocument();
+    expect(getSelectOptionLabels(requirementSelect)).toEqual(
+      expect.arrayContaining(["Requirement 1", "Requirement 2"]),
+    );
+    expect(getSelectOptionLabels(relatedTaskSelect)).toEqual(
+      expect.arrayContaining(["Task 1", "Task 2"]),
+    );
   });
 
   it("shows a localized trace conflict error from updateBug", async () => {
@@ -408,7 +420,15 @@ describe("EditBugDialog", () => {
       />,
     );
 
-    await screen.findByText("Requirement 1");
+    await waitFor(() =>
+      expect(
+        getSelectOptionLabels(
+          screen.getByTestId(
+            "edit-bug-requirement-select",
+          ) as HTMLSelectElement,
+        ),
+      ).toContain("Requirement 1"),
+    );
     fireEvent.click(screen.getByTestId("edit-bug-submit"));
 
     expect(await screen.findByRole("alert")).toHaveTextContent(
@@ -459,14 +479,21 @@ describe("EditBugDialog", () => {
       />,
     );
 
-    await screen.findByText("Task 2");
-
     const versionSelect = screen.getByTestId(
       "edit-bug-version-select",
     ) as HTMLSelectElement;
     const requirementSelect = screen.getByTestId(
       "edit-bug-requirement-select",
     ) as HTMLSelectElement;
+    await waitFor(() =>
+      expect(
+        getSelectOptionLabels(
+          screen.getByTestId(
+            "edit-bug-related-task-select",
+          ) as HTMLSelectElement,
+        ),
+      ).toContain("Task 2"),
+    );
 
     fireEvent.change(screen.getByTestId("edit-bug-related-task-select"), {
       target: { value: versionedTaskId },

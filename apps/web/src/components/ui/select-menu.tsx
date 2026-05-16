@@ -62,28 +62,55 @@ export const SelectMenu = React.forwardRef<HTMLSelectElement, SelectMenuProps>(
     const selectedValue = String(isControlled ? value : internalValue);
     const selectedOption =
       options.find((option) => option.value === selectedValue) ?? options[0];
-    const [resolvedAriaLabelledBy, setResolvedAriaLabelledBy] =
-      React.useState("");
+    const selectRef = React.useRef<HTMLSelectElement | null>(null);
+    const generatedLabelId = React.useId();
+    const fieldLabelId = `${generatedLabelId}-field`;
+    const selectedLabelId = `${generatedLabelId}-selected`;
+    const [resolvedFieldLabel, setResolvedFieldLabel] = React.useState("");
 
     const shouldFillContainer =
       !className ||
       className.includes("w-full") ||
       className.includes("flex-1");
 
+    const fieldLabel = ariaLabel ?? resolvedFieldLabel;
+    const computedTriggerAriaLabelledBy =
+      triggerAriaLabel || triggerAriaLabelledBy
+        ? triggerAriaLabelledBy
+        : ariaLabelledBy
+          ? `${ariaLabelledBy} ${selectedLabelId}`
+          : fieldLabel
+            ? `${fieldLabelId} ${selectedLabelId}`
+            : undefined;
+    const shouldRenderInternalFieldLabel =
+      !triggerAriaLabel &&
+      !triggerAriaLabelledBy &&
+      !ariaLabelledBy &&
+      Boolean(fieldLabel);
+
+    React.useImperativeHandle(
+      ref,
+      () => selectRef.current as HTMLSelectElement,
+    );
+
     React.useEffect(() => {
-      if (!ariaLabelledBy) {
-        setResolvedAriaLabelledBy("");
+      if (
+        ariaLabel ||
+        ariaLabelledBy ||
+        triggerAriaLabel ||
+        triggerAriaLabelledBy
+      ) {
+        setResolvedFieldLabel("");
         return;
       }
 
-      setResolvedAriaLabelledBy(
-        ariaLabelledBy
-          .split(/\s+/u)
-          .map((labelId) => document.getElementById(labelId)?.textContent ?? "")
-          .join(" ")
-          .trim(),
-      );
-    }, [ariaLabelledBy]);
+      const labels = selectRef.current?.labels;
+      const nextFieldLabel = labels
+        ? Array.from(labels).map(getLabelText).filter(Boolean).join(" ")
+        : "";
+
+      setResolvedFieldLabel(normalizeWhitespace(nextFieldLabel));
+    }, [ariaLabel, ariaLabelledBy, triggerAriaLabel, triggerAriaLabelledBy]);
 
     function handleNativeChange(event: React.ChangeEvent<HTMLSelectElement>) {
       if (!isControlled) {
@@ -111,13 +138,12 @@ export const SelectMenu = React.forwardRef<HTMLSelectElement, SelectMenuProps>(
         )}
       >
         <select
-          ref={ref}
+          ref={selectRef}
           id={id}
           value={selectedValue}
           disabled={disabled}
           aria-disabled={disabled ? true : ariaDisabled}
-          aria-label={ariaLabel}
-          aria-labelledby={ariaLabelledBy}
+          aria-hidden="true"
           data-testid={testId}
           tabIndex={-1}
           className="sr-only"
@@ -134,6 +160,11 @@ export const SelectMenu = React.forwardRef<HTMLSelectElement, SelectMenuProps>(
             </option>
           ))}
         </select>
+        {shouldRenderInternalFieldLabel && (
+          <span id={fieldLabelId} className="sr-only">
+            {fieldLabel}
+          </span>
+        )}
         <DropdownMenu>
           <DropdownMenuTrigger asChild disabled={disabled}>
             <button
@@ -141,7 +172,7 @@ export const SelectMenu = React.forwardRef<HTMLSelectElement, SelectMenuProps>(
               id={triggerId ?? (id ? `${id}-trigger` : undefined)}
               aria-disabled={disabled ? true : ariaDisabled}
               aria-label={triggerAriaLabel}
-              aria-labelledby={triggerAriaLabelledBy}
+              aria-labelledby={computedTriggerAriaLabelledBy}
               data-testid={
                 triggerTestId ?? (testId ? `${testId}-trigger` : undefined)
               }
@@ -154,14 +185,7 @@ export const SelectMenu = React.forwardRef<HTMLSelectElement, SelectMenuProps>(
                 "pr-8",
               )}
             >
-              {triggerAriaLabel ||
-              triggerAriaLabelledBy ||
-              (!ariaLabel && !resolvedAriaLabelledBy) ? null : (
-                <span className="sr-only">
-                  {ariaLabel ?? resolvedAriaLabelledBy}
-                </span>
-              )}
-              <span className="min-w-0 flex-1 truncate">
+              <span id={selectedLabelId} className="min-w-0 flex-1 truncate">
                 {renderDisplayLabel(selectedOption?.label)}
               </span>
               <ChevronDown
@@ -235,11 +259,18 @@ function parseOptions(children: React.ReactNode): SelectMenuOption[] {
 }
 
 function renderDisplayLabel(label: React.ReactNode): React.ReactNode {
-  if (typeof label !== "string" && typeof label !== "number") {
-    return label;
-  }
+  return typeof label === "number" ? String(label) : label;
+}
 
-  return Array.from(String(label)).map((char, index) => (
-    <span key={`${char}-${index}`}>{char}</span>
-  ));
+function getLabelText(label: HTMLLabelElement): string {
+  const clone = label.cloneNode(true) as HTMLElement;
+  clone
+    .querySelectorAll("button,input,meter,output,progress,select,textarea")
+    .forEach((control) => control.remove());
+
+  return normalizeWhitespace(clone.textContent ?? "");
+}
+
+function normalizeWhitespace(value: string): string {
+  return value.replace(/\s+/gu, " ").trim();
 }

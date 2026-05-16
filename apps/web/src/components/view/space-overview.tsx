@@ -13,7 +13,6 @@ import {
   Bug,
   CalendarClock,
   CheckCircle2,
-  ChevronDown,
   ClipboardList,
   Clock,
   FileText,
@@ -35,16 +34,9 @@ import { useSession } from "../providers/session-provider";
 
 import { Avatar, AvatarFallback } from "../ui/avatar";
 import { Button } from "../ui/button";
+import { SelectMenu } from "../ui/select-menu";
 import { Tip } from "../ui/tooltip";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "../ui/dropdown-menu";
-import { StatusBadge } from "../ui/status-badge";
+import { getStatusCategoryDotClass, StatusBadge } from "../ui/status-badge";
 import { PageHeader } from "../v2/page-header";
 import { EmptyState, ErrorState, LoadingState } from "../v2/states";
 
@@ -64,15 +56,6 @@ const EXCEPTION_ORDER: ViewExceptionType[] = [
   "pending_regression",
   "stale",
 ];
-
-const statusBarClass: Record<StatusCategory, string> = {
-  NOT_STARTED: "bg-muted-foreground/40",
-  IN_PROGRESS: "bg-primary",
-  WAITING: "bg-warning",
-  VERIFYING: "bg-info",
-  DONE: "bg-success",
-  TERMINATED: "bg-muted-foreground/60",
-};
 
 const exceptionToneClass: Record<ViewExceptionType, string> = {
   overdue: "text-destructive",
@@ -378,7 +361,7 @@ export function SpaceOverview() {
             {/* KPI Data Row (Borderless) */}
             <div
               data-testid="space-overview-kpi-grid"
-              className="grid grid-cols-2 gap-5 lg:grid-cols-4 lg:gap-8"
+              className="grid grid-cols-2 gap-3 lg:grid-cols-4 lg:gap-4"
             >
               <KPIMetric
                 href={buildLink("/work-items", { workItemType: "TASK" })}
@@ -389,7 +372,7 @@ export function SpaceOverview() {
                 value={
                   <>
                     {taskDone}
-                    <span className="text-xl font-light text-muted-foreground">
+                    <span className="text-base font-light text-muted-foreground">
                       /{taskTotal}
                     </span>
                   </>
@@ -405,7 +388,7 @@ export function SpaceOverview() {
                 value={
                   <>
                     {bugTotal - bugOpen}
-                    <span className="text-xl font-light text-muted-foreground">
+                    <span className="text-base font-light text-muted-foreground">
                       /{bugTotal}
                     </span>
                   </>
@@ -706,17 +689,17 @@ function KPIMetric({
     <Link
       href={href}
       data-testid={testId}
-      className="group -m-1 flex flex-col gap-1.5 rounded-xl p-1 transition-colors hover:bg-muted/30"
+      className="group -m-1 flex flex-col gap-1 rounded-lg p-2 transition-colors hover:bg-muted/30"
     >
-      <div className="flex items-center gap-2 text-[13px] font-medium text-muted-foreground">
+      <div className="flex items-center gap-2 text-xs font-medium text-muted-foreground">
         <span
-          className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-md transition-colors ${iconClassName}`}
+          className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-md transition-colors ${iconClassName}`}
         >
           {icon}
         </span>
         <span>{title}</span>
       </div>
-      <div className="mt-0.5 text-3xl font-light tracking-tight text-foreground">
+      <div className="mt-0.5 text-2xl font-light tracking-tight text-foreground">
         {value}
       </div>
       {description && (
@@ -762,7 +745,7 @@ function StatusDistributionList({
                 <span
                   key={category}
                   title={`${categoryLabel(category)} · ${count}`}
-                  className={`h-full ${statusBarClass[category]} transition-all`}
+                  className={`h-full ${getStatusCategoryDotClass(category)} transition-all`}
                   style={{ width: `${pct}%` }}
                 />
               );
@@ -782,7 +765,7 @@ function StatusDistributionList({
                   >
                     <div className="flex items-center gap-2.5">
                       <span
-                        className={`h-2 w-2 rounded-full ${statusBarClass[category]}`}
+                        className={`h-2 w-2 rounded-full ${getStatusCategoryDotClass(category)}`}
                       />
                       <span className="text-[13px] font-medium text-foreground/80 group-hover:text-foreground">
                         {categoryLabel(category)}
@@ -820,49 +803,27 @@ function VersionFilter({
 }) {
   const selected = versions.find((v) => v.id === selectedId);
   return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Button
-          variant="outline"
-          size="sm"
-          className="text-xs bg-transparent border-border/80"
-          aria-label={t("filters.label")}
-          data-testid="space-overview-version-filter"
-        >
-          <GitBranch className="h-3 w-3 opacity-70" />
-          <span className="max-w-[140px] truncate font-medium">
-            {selected?.name ?? t("filters.allVersions")}
-          </span>
-          <ChevronDown className="h-3 w-3 opacity-50" />
-        </Button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent
-        align="end"
-        className="min-w-[200px] rounded-xl shadow-md border-border/80"
+    <span className="relative inline-flex min-w-[10rem] max-w-[13rem]">
+      <GitBranch className="pointer-events-none absolute left-2.5 top-1/2 z-10 h-3 w-3 -translate-y-1/2 text-muted-foreground" />
+      <SelectMenu
+        value={selected?.id ?? ""}
+        onChange={(event) => onChange(event.target.value || undefined)}
+        data-testid="space-overview-version-filter"
+        triggerTestId="space-overview-version-filter-trigger"
+        menuAlign="end"
+        className="h-8 pl-7 text-xs"
+        containerClassName="w-full"
+        contentClassName="w-52"
+        aria-label={t("filters.label")}
       >
-        <DropdownMenuLabel className="text-[11px] uppercase tracking-wider text-muted-foreground">
-          {t("filters.version")}
-        </DropdownMenuLabel>
-        <DropdownMenuSeparator className="bg-border/60" />
-        <DropdownMenuItem
-          data-testid="space-overview-version-filter-all"
-          onSelect={() => onChange(undefined)}
-          className="text-[13px]"
-        >
-          {t("filters.allVersions")}
-        </DropdownMenuItem>
+        <option value="">{t("filters.allVersions")}</option>
         {versions.map((v) => (
-          <DropdownMenuItem
-            key={v.id}
-            data-testid={`space-overview-version-filter-${v.id}`}
-            onSelect={() => onChange(v.id)}
-            className="text-[13px]"
-          >
+          <option key={v.id} value={v.id}>
             {v.name}
-          </DropdownMenuItem>
+          </option>
         ))}
-      </DropdownMenuContent>
-    </DropdownMenu>
+      </SelectMenu>
+    </span>
   );
 }
 

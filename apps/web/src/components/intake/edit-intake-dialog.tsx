@@ -22,6 +22,7 @@ import { listVersions } from "../../lib/version-service";
 import {
   filterTraceOptionsByVersion,
   inheritVersionFromTraceOption,
+  isTraceOptionCompatibleWithVersion,
   isTraceVersionCascadeRequiredError,
   traceVersionCascadeConfirmMessage,
 } from "../../lib/versioned-trace-linking";
@@ -172,6 +173,20 @@ export function EditIntakeDialog({
 
   function handleVersionChange(nextVersionId: string) {
     setVersionId(nextVersionId);
+
+    if (!requirementId) {
+      return;
+    }
+
+    const selectedRequirement = requirements.find(
+      (requirement) => requirement.id === requirementId,
+    );
+
+    if (
+      !isTraceOptionCompatibleWithVersion(selectedRequirement, nextVersionId)
+    ) {
+      setRequirementId("");
+    }
   }
 
   function handleRequirementChange(nextRequirementId: string) {

@@ -6,7 +6,13 @@ import type {
   SpaceRole,
 } from "@project-delivery/shared";
 import { useTranslations } from "next-intl";
-import { useEffect, useMemo, useState, type FormEvent } from "react";
+import {
+  useEffect,
+  useMemo,
+  useState,
+  type FormEvent,
+  type KeyboardEvent,
+} from "react";
 
 import { getApiErrorMessageKey } from "../../lib/api-error-messages";
 import { toAddSpaceMemberRequest } from "../../lib/space-forms";
@@ -123,6 +129,39 @@ export function AddSpaceMemberDialog({
     }
   }
 
+  function selectCandidate(member: OrganizationMemberWithUser) {
+    setSelectedUserId(member.userId);
+    setSearch(member.user.username);
+  }
+
+  function handleCandidateKeyDown(
+    member: OrganizationMemberWithUser,
+    event: KeyboardEvent<HTMLDivElement>,
+  ) {
+    if (event.key === "Enter" || event.key === " ") {
+      event.preventDefault();
+      selectCandidate(member);
+      return;
+    }
+
+    if (event.key !== "ArrowDown" && event.key !== "ArrowUp") {
+      return;
+    }
+
+    event.preventDefault();
+    const listbox = event.currentTarget.closest('[role="listbox"]');
+    const options = Array.from(
+      listbox?.querySelectorAll<HTMLElement>('[role="option"]') ?? [],
+    );
+    const currentIndex = options.indexOf(event.currentTarget);
+    const offset = event.key === "ArrowDown" ? 1 : -1;
+    const nextIndex = Math.min(
+      Math.max(currentIndex + offset, 0),
+      options.length - 1,
+    );
+    options[nextIndex]?.focus({ preventScroll: true });
+  }
+
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
@@ -177,29 +216,36 @@ export function AddSpaceMemberDialog({
             <div
               className="max-h-44 overflow-y-auto rounded-md border border-border bg-popover p-1 text-popover-foreground shadow-lg"
               role="listbox"
+              aria-label={t("fields.username")}
             >
               {candidates.length === 0 ? (
                 <p className="px-2 py-1.5 text-[11px] text-muted-foreground">
                   {t("fields.noMatch")}
                 </p>
               ) : (
-                <ul>
-                  {candidates.map((member) => {
+                <ul role="none">
+                  {candidates.map((member, index) => {
                     const selected = selectedUserId === member.userId;
                     return (
-                      <li key={member.id}>
-                        <button
+                      <li key={member.id} role="none">
+                        <div
                           aria-selected={selected}
                           className={
-                            "flex w-full items-center justify-between gap-3 rounded-sm px-2 py-1.5 text-left text-xs outline-none transition-colors hover:bg-muted focus-visible:bg-muted focus-visible:ring-2 focus-visible:ring-ring " +
+                            "flex w-full cursor-pointer items-center justify-between gap-3 rounded-sm px-2 py-1.5 text-left text-xs outline-none transition-colors hover:bg-muted focus-visible:bg-muted focus-visible:ring-2 focus-visible:ring-ring " +
                             (selected ? "bg-muted text-foreground" : "")
                           }
                           onClick={() => {
-                            setSelectedUserId(member.userId);
-                            setSearch(member.user.username);
+                            selectCandidate(member);
                           }}
+                          onKeyDown={(event) =>
+                            handleCandidateKeyDown(member, event)
+                          }
                           role="option"
-                          type="button"
+                          tabIndex={
+                            selected || (!selectedUserId && index === 0)
+                              ? 0
+                              : -1
+                          }
                         >
                           <span className="font-medium">
                             {member.user.name}
@@ -207,7 +253,7 @@ export function AddSpaceMemberDialog({
                           <span className="font-mono text-[11px] text-muted-foreground">
                             @{member.user.username}
                           </span>
-                        </button>
+                        </div>
                       </li>
                     );
                   })}

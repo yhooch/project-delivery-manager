@@ -14,6 +14,11 @@ const { translatorCache } = vi.hoisted(() => ({
 const { searchParamsMock } = vi.hoisted(() => ({
   searchParamsMock: { current: new URLSearchParams() },
 }));
+
+function getSelectOptionLabels(select: HTMLSelectElement): string[] {
+  return Array.from(select.options, (option) => option.textContent ?? "");
+}
+
 vi.mock("next-intl", () => ({
   useTranslations: (namespace?: string) => {
     const key = namespace ?? "__root__";
@@ -417,7 +422,11 @@ describe("BugsPage", () => {
     expect(screen.queryByText("Terminated bug")).not.toBeInTheDocument();
   });
 
-  it("filters by pending regression bucket (VERIFYING) through the backend query", async () => {
+  it("filters by pending regression bucket through explicit workflow state", async () => {
+    workflowStateMap.set("STATE_PENDING_REGRESSION", {
+      code: "PENDING_REGRESSION",
+      name: "Pending regression",
+    });
     listBugsMock
       .mockResolvedValueOnce({
         items: [
@@ -429,6 +438,7 @@ describe("BugsPage", () => {
           makeBug({
             id: "01ARZ3NDEKTSV4RRFFQ69G5F02",
             title: "Regression bug",
+            currentStateId: "STATE_PENDING_REGRESSION",
             statusCategory: "VERIFYING",
           }),
         ],
@@ -439,6 +449,7 @@ describe("BugsPage", () => {
           makeBug({
             id: "01ARZ3NDEKTSV4RRFFQ69G5F02",
             title: "Regression bug",
+            currentStateId: "STATE_PENDING_REGRESSION",
             statusCategory: "VERIFYING",
           }),
         ],
@@ -464,6 +475,32 @@ describe("BugsPage", () => {
       expect(screen.queryByText("In progress bug")).not.toBeInTheDocument(),
     );
     expect(screen.getByText("Regression bug")).toBeInTheDocument();
+  });
+
+  it("does not treat plain VERIFYING status as pending regression", async () => {
+    searchParamsMock.current = new URLSearchParams("statusCategory=VERIFYING");
+    listBugsMock.mockResolvedValueOnce({
+      items: [
+        makeBug({
+          id: "01ARZ3NDEKTSV4RRFFQ69G5F01",
+          title: "Verifying bug",
+          statusCategory: "VERIFYING",
+        }),
+      ],
+      total: 1,
+    });
+
+    render(<BugsPage />);
+
+    expect(await screen.findByText("Verifying bug")).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: /bugs\.buckets\.fixing/ }),
+    ).toHaveClass("bg-muted");
+    expect(
+      screen.getByRole("button", {
+        name: /bugs\.buckets\.pendingRegression/,
+      }),
+    ).not.toHaveClass("bg-muted");
   });
 
   it("separates regression passed and closed bugs by workflow state", async () => {
@@ -736,12 +773,8 @@ describe("BugsPage", () => {
         }),
       ),
     );
-    expect(
-      within(relatedTaskSelect).queryByRole("option", { name: "Task v1" }),
-    ).not.toBeInTheDocument();
-    expect(
-      within(relatedTaskSelect).getByRole("option", { name: "Task v2" }),
-    ).toBeInTheDocument();
+    expect(getSelectOptionLabels(relatedTaskSelect)).not.toContain("Task v1");
+    expect(getSelectOptionLabels(relatedTaskSelect)).toContain("Task v2");
 
     fireEvent.change(versionSelect, { target: { value: VERSION_ID } });
 
@@ -875,7 +908,7 @@ describe("BugsPage", () => {
     });
   });
 
-  it("marks the keyboard-selected bug row as aria-selected", async () => {
+  it("exposes bug rows as a named list and focuses the keyboard-selected row", async () => {
     listBugsMock.mockResolvedValueOnce({
       items: [
         makeBug({ id: "01ARZ3NDEKTSV4RRFFQ69G5F01", title: "First bug" }),
@@ -889,10 +922,44 @@ describe("BugsPage", () => {
     await screen.findByText("First bug");
     fireEvent.keyDown(window, { key: "j" });
 
-    const rows = screen.getAllByTestId("bugs-row");
-    expect(rows[0]).toHaveAttribute("aria-selected", "true");
+    const list = screen.getByRole("list", { name: "shell.nav.bugs" });
+    const rows = within(list).getAllByRole("listitem");
+    const firstButton = within(rows[0]).getByRole("button", {
+      name: /First bug/,
+    });
+    expect(rows[0]).toHaveAttribute("aria-current", "true");
+    expect(rows[0]).not.toHaveAttribute("aria-selected");
     expect(rows[0]).toHaveAttribute("data-id", "01ARZ3NDEKTSV4RRFFQ69G5F01");
-    expect(rows[1]).toHaveAttribute("aria-selected", "false");
+    expect(rows[1]).not.toHaveAttribute("aria-current");
+    expect(firstButton).toHaveFocus();
+  });
+
+  it("opens the bug edit/assignee affordance with A for writable bugs", async () => {
+    listBugsMock.mockResolvedValueOnce({
+      items: [
+        makeBug({
+          title: "Assignee shortcut bug",
+          permissions: { canEdit: true },
+        }),
+      ],
+      total: 1,
+    });
+
+    render(<BugsPage />);
+
+    await screen.findByText("Assignee shortcut bug");
+    fireEvent.keyDown(window, { key: "j" });
+
+    const assignEvent = new KeyboardEvent("keydown", {
+      key: "a",
+      cancelable: true,
+    });
+    window.dispatchEvent(assignEvent);
+
+    expect(assignEvent.defaultPrevented).toBe(true);
+    expect(
+      await screen.findByTestId("edit-bug-dialog-open"),
+    ).toBeInTheDocument();
   });
 
   it("refetches the bug list when the detail sheet reports a change", async () => {

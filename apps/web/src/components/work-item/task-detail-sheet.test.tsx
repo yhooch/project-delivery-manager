@@ -17,6 +17,10 @@ async function activateTab(name: RegExp) {
   await userEvent.click(tab);
 }
 
+function getSelectOptionLabels(select: HTMLSelectElement): string[] {
+  return Array.from(select.options, (option) => option.textContent ?? "");
+}
+
 // Stable translator: same memoized fn per namespace across renders.
 const { translatorCache } = vi.hoisted(() => ({
   translatorCache: new Map<string, (key: string) => string>(),
@@ -896,7 +900,15 @@ describe("TaskDetailSheet", () => {
     );
 
     fireEvent.click(await screen.findByTestId("task-edit-button"));
-    expect(await screen.findByText("Requirement B")).toBeInTheDocument();
+    await waitFor(() =>
+      expect(
+        getSelectOptionLabels(
+          screen.getByTestId(
+            "task-edit-requirement-select",
+          ) as HTMLSelectElement,
+        ),
+      ).toContain("Requirement B"),
+    );
 
     fireEvent.change(screen.getByTestId("task-edit-title-input"), {
       target: { value: "  Edited task  " },
@@ -987,7 +999,11 @@ describe("TaskDetailSheet", () => {
     );
 
     fireEvent.click(await screen.findByTestId("task-edit-button"));
-    expect(await screen.findByText("Requirement B")).toBeInTheDocument();
+    await waitFor(() =>
+      expect(screen.getByTestId("task-edit-requirement-select")).toHaveValue(
+        requirementId,
+      ),
+    );
 
     fireEvent.change(screen.getByTestId("task-edit-description-input"), {
       target: { value: "" },
@@ -1056,7 +1072,11 @@ describe("TaskDetailSheet", () => {
     );
 
     fireEvent.click(await screen.findByTestId("task-edit-button"));
-    expect(await screen.findByText("Requirement B")).toBeInTheDocument();
+    await waitFor(() =>
+      expect(screen.getByTestId("task-edit-requirement-select")).toHaveValue(
+        requirementId,
+      ),
+    );
 
     fireEvent.change(screen.getByTestId("task-edit-title-input"), {
       target: { value: "Unsaved title" },
@@ -1111,7 +1131,9 @@ describe("TaskDetailSheet", () => {
     const intakeItemId = "01ARZ3NDEKTSV4RRFFQ69G5FJ1";
     versionMap.set(versionId, { name: "Release 1" });
     listRequirementsMock.mockResolvedValueOnce({
-      items: [{ id: requirementId, title: "Requirement from intake", versionId }],
+      items: [
+        { id: requirementId, title: "Requirement from intake", versionId },
+      ],
       total: 1,
     });
     listIntakeItemsMock.mockResolvedValueOnce({
@@ -1206,7 +1228,11 @@ describe("TaskDetailSheet", () => {
     );
 
     fireEvent.click(await screen.findByTestId("task-edit-button"));
-    expect(await screen.findByText("Requirement v1")).toBeInTheDocument();
+    await waitFor(() =>
+      expect(screen.getByTestId("task-edit-requirement-select")).toHaveValue(
+        requirementId,
+      ),
+    );
 
     const requirementSelect = screen.getByTestId(
       "task-edit-requirement-select",
@@ -1221,18 +1247,12 @@ describe("TaskDetailSheet", () => {
 
     await waitFor(() => expect(requirementSelect.value).toBe(requirementId));
     expect(intakeSelect.value).toBe(intakeItemId);
-    expect(
-      within(requirementSelect).getByRole("option", { name: "Requirement v1" }),
-    ).toBeInTheDocument();
-    expect(
-      within(requirementSelect).getByRole("option", { name: "Requirement v2" }),
-    ).toBeInTheDocument();
-    expect(
-      within(intakeSelect).getByRole("option", { name: "Intake v1" }),
-    ).toBeInTheDocument();
-    expect(
-      within(intakeSelect).getByRole("option", { name: "Intake v2" }),
-    ).toBeInTheDocument();
+    expect(getSelectOptionLabels(requirementSelect)).toEqual(
+      expect.arrayContaining(["Requirement v1", "Requirement v2"]),
+    );
+    expect(getSelectOptionLabels(intakeSelect)).toEqual(
+      expect.arrayContaining(["Intake v1", "Intake v2"]),
+    );
   });
 
   it("shows a localized trace conflict error when task update fails", async () => {

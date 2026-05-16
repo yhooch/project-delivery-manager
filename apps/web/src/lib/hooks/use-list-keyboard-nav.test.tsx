@@ -73,6 +73,18 @@ describe("useListKeyboardNav", () => {
     expect(onOpen).toHaveBeenCalledWith(items[0]);
   });
 
+  it("does not prevent A when no assign affordance is provided", () => {
+    render(<Harness />);
+
+    const event = new KeyboardEvent("keydown", {
+      key: "a",
+      cancelable: true,
+    });
+    window.dispatchEvent(event);
+
+    expect(event.defaultPrevented).toBe(false);
+  });
+
   it("ignores action keys when no item is active or focus is in an editable field", () => {
     const onSubmit = vi.fn();
     const { getByLabelText, rerender } = render(

@@ -150,6 +150,7 @@ export function IntakePage() {
   const [listFilters, setListFilters] = useState<IntakeListFilterState>({});
   const [filterOpen, setFilterOpen] = useState(false);
   const [active, setActive] = useState<IntakeItem | null>(null);
+  const [selectedItem, setSelectedItem] = useState<IntakeItem | null>(null);
   const [actionInFlight, setActionInFlight] = useState<StatusActionKind | null>(
     null,
   );
@@ -189,6 +190,7 @@ export function IntakePage() {
   const latestListScopeKeyRef = useRef(listScopeKey);
   const listRequestIdRef = useRef(0);
   const previousContextKeyRef = useRef(contextKey);
+  const rowRefs = useRef(new Map<string, HTMLLIElement>());
   latestListScopeKeyRef.current = listScopeKey;
   const loadedCount = items.length;
   const paginationFrom = loadedCount > 0 ? 1 : 0;
@@ -317,6 +319,8 @@ export function IntakePage() {
       if (sessionStatus !== "loading") {
         listRequestIdRef.current += 1;
         setItems([]);
+        setSelectedItem(null);
+        setActive(null);
         setPageInfo(INITIAL_PAGE_INFO);
         setStatusCounts([]);
         setIsLoading(false);
@@ -333,6 +337,7 @@ export function IntakePage() {
       return;
     }
     previousContextKeyRef.current = contextKey;
+    setSelectedItem(null);
     setActive(null);
     setActionInFlight(null);
     setActionErrorKey(null);
@@ -434,9 +439,17 @@ export function IntakePage() {
         recentScope,
       );
       setActive(item);
+      setSelectedItem(item);
     },
     [captureFocus, recentScope],
   );
+
+  const focusRow = useCallback((itemId: string) => {
+    rowRefs.current
+      .get(itemId)
+      ?.querySelector<HTMLButtonElement>("button")
+      ?.focus({ preventScroll: true });
+  }, []);
 
   useEffect(() => {
     if (!requestedIntakeItemId || !spaceId) {
@@ -493,14 +506,18 @@ export function IntakePage() {
 
   useListKeyboardNav<IntakeItem>({
     items: filtered,
-    activeId: active?.id,
+    activeId: selectedItem?.id ?? active?.id,
     getId: (item) => item.id,
-    onSelect: setActive,
+    onSelect: (item) => {
+      setSelectedItem(item);
+      focusRow(item.id);
+    },
     onOpen: openItem,
     onEdit: openItem,
     canAssign: () => canManageIntake,
     onAssign: (item) => {
       captureFocus();
+      setSelectedItem(item);
       setActive(item);
       setEditOpen(true);
     },
@@ -512,6 +529,7 @@ export function IntakePage() {
       if (item.status === "PENDING" || item.status === "DEFERRED") {
         void handleStatusAction("accept", item);
       } else if (item.status === "ACCEPTED") {
+        setSelectedItem(item);
         setActive(item);
         setConvertTarget(item);
         setConvertOpen(true);
@@ -557,6 +575,7 @@ export function IntakePage() {
     setItems((current) =>
       current.map((item) => (item.id === target.id ? optimistic : item)),
     );
+    setSelectedItem(optimistic);
     setActive(optimistic);
 
     try {
@@ -571,10 +590,16 @@ export function IntakePage() {
       setItems((current) =>
         current.map((item) => (item.id === updated.id ? updated : item)),
       );
+      setSelectedItem((current) =>
+        current?.id === updated.id ? updated : current,
+      );
       setActive((current) => (current?.id === updated.id ? updated : current));
       void loadItems(1, "replace");
     } catch (error) {
       setItems(original);
+      setSelectedItem((current) =>
+        current?.id === target.id ? target : current,
+      );
       setActive((current) => (current?.id === target.id ? target : current));
       setActionErrorKey(getApiErrorMessageKey(error));
     } finally {
@@ -593,6 +618,9 @@ export function IntakePage() {
   function handleUpdatedIntakeItem(updated: IntakeItem) {
     setItems((current) =>
       current.map((item) => (item.id === updated.id ? updated : item)),
+    );
+    setSelectedItem((current) =>
+      current?.id === updated.id ? updated : current,
     );
     setActive((current) => (current?.id === updated.id ? updated : current));
   }
@@ -743,10 +771,12 @@ export function IntakePage() {
       <>
         <ul
           data-testid="intake-list"
-          role="listbox"
+          role="list"
+          aria-label={tNav("intake")}
           className="divide-y divide-border"
         >
           {filtered.map((item) => {
+            const isSelected = (selectedItem?.id ?? active?.id) === item.id;
             const reporterName = displayUserName(item.reporterId, getMember);
             const reporterTip =
               reporterName && reporterName !== "—" ? reporterName : undefined;
@@ -763,16 +793,22 @@ export function IntakePage() {
                 key={item.id}
                 data-testid="intake-row"
                 data-id={item.id}
-                role="option"
-                aria-selected={active?.id === item.id}
+                ref={(node) => {
+                  if (node) {
+                    rowRefs.current.set(item.id, node);
+                  } else {
+                    rowRefs.current.delete(item.id);
+                  }
+                }}
+                aria-current={isSelected ? "true" : undefined}
               >
                 <button
                   type="button"
                   onClick={() => openItem(item)}
-                  data-selected={active?.id === item.id}
+                  data-selected={isSelected}
                   className={cn(
                     "flex w-full min-w-0 items-center gap-3 border-l-2 px-4 py-2.5 text-left transition-colors cursor-pointer sm:px-6",
-                    active?.id === item.id
+                    isSelected
                       ? "border-primary bg-primary/10"
                       : "border-transparent hover:bg-muted/40",
                   )}

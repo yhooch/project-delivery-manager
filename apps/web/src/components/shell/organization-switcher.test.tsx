@@ -119,10 +119,12 @@ afterEach(() => {
 });
 
 describe("OrganizationSwitcher", () => {
-  it("shows create-space for an active MEMBER current organization with capability", () => {
+  it("hides create-space for an active MEMBER current organization with capability", () => {
     render(<OrganizationSwitcher />);
 
-    expect(screen.getByTestId("org-switcher-create-space")).toBeInTheDocument();
+    expect(
+      screen.queryByTestId("org-switcher-create-space"),
+    ).not.toBeInTheDocument();
     expect(
       screen.getByText("shell.organizationSwitcher.roles.MEMBER"),
     ).toBeInTheDocument();

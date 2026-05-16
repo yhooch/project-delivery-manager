@@ -734,7 +734,7 @@ describe("TasksPage", () => {
     });
   });
 
-  it("marks the keyboard-selected task row as aria-selected", async () => {
+  it("exposes task rows as a named list and focuses the keyboard-selected row", async () => {
     listWorkItemsMock.mockResolvedValueOnce({
       items: [
         makeTask({ id: "01ARZ3NDEKTSV4RRFFQ69G5F01", title: "First task" }),
@@ -748,13 +748,19 @@ describe("TasksPage", () => {
     await screen.findByText("First task");
     fireEvent.keyDown(window, { key: "j" });
 
-    const rows = screen.getAllByTestId("tasks-row");
-    expect(rows[0]).toHaveAttribute("aria-selected", "true");
+    const list = screen.getByRole("list", { name: "shell.nav.tasks" });
+    const rows = within(list).getAllByRole("listitem");
+    const firstButton = within(rows[0]).getByRole("button", {
+      name: /First task/,
+    });
+    expect(rows[0]).toHaveAttribute("aria-current", "true");
+    expect(rows[0]).not.toHaveAttribute("aria-selected");
     expect(rows[0]).toHaveAttribute("data-id", "01ARZ3NDEKTSV4RRFFQ69G5F01");
-    expect(rows[1]).toHaveAttribute("aria-selected", "false");
+    expect(rows[1]).not.toHaveAttribute("aria-current");
+    expect(firstButton).toHaveFocus();
   });
 
-  it("opens task detail with A and keeps S as an explicit disabled no-op on the task list", async () => {
+  it("does not use A as a fake assign shortcut on the task list", async () => {
     listWorkItemsMock.mockResolvedValueOnce({
       items: [makeTask({ title: "Shortcut target" })],
       total: 1,
@@ -776,11 +782,11 @@ describe("TasksPage", () => {
     window.dispatchEvent(assignEvent);
     window.dispatchEvent(submitEvent);
 
-    expect(assignEvent.defaultPrevented).toBe(true);
+    expect(assignEvent.defaultPrevented).toBe(false);
     expect(submitEvent.defaultPrevented).toBe(false);
     expect(
-      await screen.findByTestId("task-detail-sheet-open"),
-    ).toBeInTheDocument();
+      screen.queryByTestId("task-detail-sheet-open"),
+    ).not.toBeInTheDocument();
     expect(listWorkItemsMock).toHaveBeenCalledTimes(1);
   });
 

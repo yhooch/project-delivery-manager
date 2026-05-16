@@ -4,6 +4,7 @@ import {
   createTaskFormSchema,
   toCreateTaskRequest,
   toUpdateTaskRequest,
+  updateTaskFormSchema,
 } from "./work-item-forms";
 
 const versionId = "01ARZ3NDEKTSV4RRFFQ69G5FAX";
@@ -50,7 +51,6 @@ describe("work item forms", () => {
     expect(
       toUpdateTaskRequest({
         assigneeId,
-        blockedReason: "",
         description: "  Ready for implementation  ",
         dueDate: "",
         intakeItemId: "",
@@ -68,5 +68,13 @@ describe("work item forms", () => {
       requirementId: null,
       versionId: null,
     });
+  });
+
+  it("rejects blockedReason in direct update task forms", () => {
+    expect(
+      updateTaskFormSchema.safeParse({
+        blockedReason: "Waiting for workflow action",
+      }).success,
+    ).toBe(false);
   });
 });

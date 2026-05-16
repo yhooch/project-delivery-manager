@@ -30,19 +30,17 @@ describe("SelectMenu", () => {
 
     expect(nativeSelect.tagName).toBe("SELECT");
     expect(nativeSelect).toHaveClass("sr-only");
-    expect(nativeSelect).toHaveAccessibleName("Status");
-    expect(screen.getByLabelText("Status")).toBe(nativeSelect);
+    expect(nativeSelect).toHaveAttribute("aria-hidden", "true");
     expect(trigger.tagName).toBe("BUTTON");
     expect(trigger).toHaveAttribute("id", "status-trigger");
-    await waitFor(() => expect(trigger).toHaveAccessibleName(/Status/u));
-    expect(trigger).toHaveAccessibleName(/Todo/u);
+    expect(trigger).toHaveAccessibleName("Status To do");
     expect(trigger).not.toHaveClass("sr-only");
     expect(
-      screen.getByRole("button", { name: /Status/u }),
+      screen.getByRole("button", { name: "Status To do" }),
     ).toBeInTheDocument();
   });
 
-  it("keeps an aria-label on both the semantic select and visible trigger", () => {
+  it("keeps an aria-label on the visible trigger", () => {
     render(
       <SelectMenu
         aria-label="Priority"
@@ -55,17 +53,35 @@ describe("SelectMenu", () => {
       </SelectMenu>,
     );
 
-    expect(screen.getByTestId("priority-select")).toHaveAccessibleName(
-      "Priority",
-    );
-    expect(screen.getByLabelText("Priority")).toBe(
-      screen.getByTestId("priority-select"),
+    expect(screen.getByTestId("priority-select")).toHaveAttribute(
+      "aria-hidden",
+      "true",
     );
     expect(screen.getByTestId("priority-select-trigger")).toHaveAccessibleName(
-      /Priority/u,
+      "Priority High",
     );
-    expect(screen.getByTestId("priority-select-trigger")).toHaveAccessibleName(
-      /High/u,
+  });
+
+  it("derives a trigger label from wrapping labels without flattening spaces", async () => {
+    render(
+      <label>
+        <span>Severity</span>
+        <SelectMenu
+          data-testid="severity-select"
+          value="major"
+          onChange={() => undefined}
+        >
+          <option value="minor">Minor issue</option>
+          <option value="major">Major issue</option>
+        </SelectMenu>
+      </label>,
     );
+
+    const trigger = screen.getByTestId("severity-select-trigger");
+
+    await waitFor(() =>
+      expect(trigger).toHaveAccessibleName("Severity Major issue"),
+    );
+    expect(trigger).not.toHaveAccessibleName(/Majorissue/u);
   });
 });

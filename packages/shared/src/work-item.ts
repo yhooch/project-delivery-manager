@@ -140,14 +140,30 @@ export const BugLifecycleBucketStateCodes = {
   closed: ["CLOSED"],
 } as const satisfies Record<BugLifecycleFilterBucket, readonly string[]>;
 
+// Pending regression must come from an explicit workflow state, not VERIFYING alone.
+export const BugLifecycleBucketFallbackStatusCategories = {
+  pendingConfirm: ["NOT_STARTED"],
+  pendingFix: ["WAITING"],
+  fixing: ["IN_PROGRESS", "VERIFYING"],
+  pendingRegression: [],
+  regressionPassed: ["DONE"],
+  closed: ["TERMINATED"],
+} as const satisfies Record<
+  BugLifecycleFilterBucket,
+  readonly StatusCategory[]
+>;
+
 export const BugLifecycleBucketFallbackStatusCategory = {
   pendingConfirm: "NOT_STARTED",
   pendingFix: "WAITING",
   fixing: "IN_PROGRESS",
-  pendingRegression: "VERIFYING",
+  pendingRegression: undefined,
   regressionPassed: "DONE",
   closed: "TERMINATED",
-} as const satisfies Record<BugLifecycleFilterBucket, StatusCategory>;
+} as const satisfies Record<
+  BugLifecycleFilterBucket,
+  StatusCategory | undefined
+>;
 
 export function resolveBugLifecycleBucket(input: {
   stateCode?: string;
@@ -166,20 +182,19 @@ export function resolveBugLifecycleBucket(input: {
     }
   }
 
-  switch (input.statusCategory) {
-    case "DONE":
-      return "regressionPassed";
-    case "IN_PROGRESS":
-      return "fixing";
-    case "NOT_STARTED":
-      return "pendingConfirm";
-    case "TERMINATED":
-      return "closed";
-    case "VERIFYING":
-      return "pendingRegression";
-    case "WAITING":
-      return "pendingFix";
+  const fallbackMatch = BugLifecycleFilterBuckets.find((bucket) => {
+    const fallbackCategories = BugLifecycleBucketFallbackStatusCategories[
+      bucket
+    ] as readonly StatusCategory[];
+
+    return fallbackCategories.includes(input.statusCategory);
+  });
+
+  if (fallbackMatch) {
+    return fallbackMatch;
   }
+
+  return "fixing";
 }
 
 export const CreateBugRequestSchema = CreateWorkItemRequestSchema.omit({

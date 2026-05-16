@@ -234,7 +234,9 @@ function makePublishedVersion(): WorkflowVersion {
   };
 }
 
-function makeBinding(overrides: Partial<WorkflowBinding> = {}): WorkflowBinding {
+function makeBinding(
+  overrides: Partial<WorkflowBinding> = {},
+): WorkflowBinding {
   return {
     id: bindingId,
     isDefault: true,
@@ -258,18 +260,20 @@ function setupVersions(versions: WorkflowVersion[]) {
 }
 
 function setupBindings(bindings: WorkflowBinding[]) {
-  listWorkflowBindingsMock.mockImplementation((input: { workflowId?: string }) => {
-    const items = input.workflowId
-      ? bindings.filter((binding) => binding.workflowId === input.workflowId)
-      : bindings;
+  listWorkflowBindingsMock.mockImplementation(
+    (input: { workflowId?: string }) => {
+      const items = input.workflowId
+        ? bindings.filter((binding) => binding.workflowId === input.workflowId)
+        : bindings;
 
-    return Promise.resolve({
-      items,
-      page: 1,
-      pageSize: 100,
-      total: items.length,
-    });
-  });
+      return Promise.resolve({
+        items,
+        page: 1,
+        pageSize: 100,
+        total: items.length,
+      });
+    },
+  );
 }
 
 beforeEach(() => {
@@ -334,11 +338,17 @@ describe("WorkflowConfigPage", () => {
     expect(select.value).toBe(draftVersionId);
 
     expect(screen.getByTestId("workflow-state-table")).toBeInTheDocument();
-    expect(screen.getByTestId(`workflow-state-row-${stateOpenId}`)).toBeInTheDocument();
-    expect(screen.getByTestId(`workflow-state-row-${stateDoneId}`)).toBeInTheDocument();
+    expect(
+      screen.getByTestId(`workflow-state-row-${stateOpenId}`),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByTestId(`workflow-state-row-${stateDoneId}`),
+    ).toBeInTheDocument();
 
     expect(screen.getByTestId("workflow-action-list")).toBeInTheDocument();
-    expect(screen.getByTestId(`workflow-action-row-${actionId}`)).toBeInTheDocument();
+    expect(
+      screen.getByTestId(`workflow-action-row-${actionId}`),
+    ).toBeInTheDocument();
   });
 
   it("renders workflow bindings for the selected workflow", async () => {
@@ -355,7 +365,9 @@ describe("WorkflowConfigPage", () => {
 
     render(<WorkflowConfigPage workflowId={workflowId} />);
 
-    expect(await screen.findByTestId("workflow-binding-table")).toBeInTheDocument();
+    expect(
+      await screen.findByTestId("workflow-binding-table"),
+    ).toBeInTheDocument();
     expect(listWorkflowBindingsMock).toHaveBeenCalledWith({
       organizationId: "ORG_01",
       page: 1,
@@ -363,16 +375,18 @@ describe("WorkflowConfigPage", () => {
       spaceId: "SPC_01",
       workflowId,
     });
-    expect(screen.getByTestId(`workflow-binding-row-${bindingId}`)).toBeInTheDocument();
-    expect(screen.getByTestId("workflow-config-list-summary")).toHaveTextContent(
-      "workflow.config.toolbar.versionCount",
-    );
-    expect(screen.getByTestId("workflow-config-list-summary")).toHaveTextContent(
-      "workflow.config.toolbar.targetTypes",
-    );
-    expect(screen.getByTestId("workflow-config-list-summary")).toHaveTextContent(
-      "workflow.config.toolbar.defaultBindings",
-    );
+    expect(
+      screen.getByTestId(`workflow-binding-row-${bindingId}`),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByTestId("workflow-config-list-summary"),
+    ).toHaveTextContent("workflow.config.toolbar.versionCount");
+    expect(
+      screen.getByTestId("workflow-config-list-summary"),
+    ).toHaveTextContent("workflow.config.toolbar.targetTypes");
+    expect(
+      screen.getByTestId("workflow-config-list-summary"),
+    ).toHaveTextContent("workflow.config.toolbar.defaultBindings");
     expect(
       screen.queryByTestId("workflow-binding-row-01ARZ3NDEKTSV4RRFFQ69G5BD2"),
     ).not.toBeInTheDocument();
@@ -414,7 +428,9 @@ describe("WorkflowConfigPage", () => {
       "workflow-config-version-select",
     )) as HTMLSelectElement;
 
-    await waitFor(() => expect(getWorkflowVersionMock).toHaveBeenCalledTimes(1));
+    await waitFor(() =>
+      expect(getWorkflowVersionMock).toHaveBeenCalledTimes(1),
+    );
 
     fireEvent.change(select, { target: { value: publishedVersionId } });
 
@@ -549,6 +565,38 @@ describe("WorkflowConfigPage", () => {
         name: /workflow\.config\.actions\.create/,
       }),
     ).not.toBeDisabled();
+  });
+
+  it("uses the session default space role when currentSpace is unavailable", async () => {
+    sessionMock.current = {
+      session: {
+        defaultOrganizationId: "ORG_01",
+        defaultSpaceId: "SPC_01",
+        spaces: [
+          {
+            code: "SPACE_A",
+            id: "SPC_01",
+            name: "Space A",
+            organizationId: "ORG_01",
+            role: "PM",
+            status: "ACTIVE",
+          },
+        ],
+      } as unknown as typeof sessionMock.current.session,
+      currentSpace: undefined as unknown as never,
+      status: "authenticated" as const,
+    };
+    getWorkflowMock.mockResolvedValueOnce(makeWorkflow());
+    setupVersions([makeDraftVersion()]);
+    getWorkflowVersionMock.mockResolvedValueOnce(makeDraftVersion());
+
+    render(<WorkflowConfigPage workflowId={workflowId} />);
+
+    const publish = await screen.findByTestId("workflow-config-publish");
+    await waitFor(() => expect(publish).not.toBeDisabled());
+    expect(
+      screen.queryByTestId("workflow-config-readonly-hint"),
+    ).not.toBeInTheDocument();
   });
 
   it("blocks publish when start state is missing and lists the issue", async () => {
@@ -712,7 +760,9 @@ describe("WorkflowConfigPage", () => {
 
     await screen.findByTestId("workflow-config-publish-issues");
     expect(
-      screen.getByText("workflow.config.publishValidation.issues.unreachableState"),
+      screen.getByText(
+        "workflow.config.publishValidation.issues.unreachableState",
+      ),
     ).toBeInTheDocument();
     expect(publishWorkflowVersionMock).not.toHaveBeenCalled();
   });
@@ -884,7 +934,10 @@ describe("WorkflowConfigPage", () => {
     getWorkflowMock.mockResolvedValue(makeWorkflow());
     setupVersions([makeDraftVersion()]);
     getWorkflowVersionMock.mockResolvedValue(makeDraftVersion());
-    vi.stubGlobal("confirm", vi.fn(() => false));
+    vi.stubGlobal(
+      "confirm",
+      vi.fn(() => false),
+    );
 
     render(<WorkflowConfigPage workflowId={workflowId} />);
 
@@ -993,7 +1046,9 @@ describe("WorkflowConfigPage", () => {
       { target: { value: "resolution" } },
     );
     fireEvent.change(
-      screen.getByLabelText("workflow.config.fieldDialog.fields.fieldType"),
+      screen.getByLabelText("workflow.config.fieldDialog.fields.fieldType", {
+        selector: "select",
+      }),
       { target: { value: "SELECT" } },
     );
 
@@ -1095,11 +1150,18 @@ describe("WorkflowConfigPage", () => {
     fireEvent.click(create);
 
     fireEvent.change(
-      screen.getByLabelText("workflow.config.bindingDialog.fields.workItemType"),
+      screen.getByLabelText(
+        "workflow.config.bindingDialog.fields.workItemType",
+        {
+          selector: "select",
+        },
+      ),
       { target: { value: "BUG" } },
     );
     fireEvent.change(
-      screen.getByLabelText("workflow.config.bindingDialog.fields.priority"),
+      screen.getByLabelText("workflow.config.bindingDialog.fields.priority", {
+        selector: "select",
+      }),
       { target: { value: "HIGH" } },
     );
     fireEvent.click(
@@ -1144,7 +1206,9 @@ describe("WorkflowConfigPage", () => {
     );
 
     fireEvent.change(
-      screen.getByLabelText("workflow.config.bindingDialog.fields.priority"),
+      screen.getByLabelText("workflow.config.bindingDialog.fields.priority", {
+        selector: "select",
+      }),
       { target: { value: "" } },
     );
     fireEvent.click(

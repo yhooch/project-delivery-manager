@@ -6,7 +6,7 @@ import type { VersionBoardWorkItemRecord } from "./version.types";
 const now = new Date("2026-05-13T12:00:00.000Z");
 
 describe("version board work item mapper", () => {
-  it("uses verifying plus bug detail semantics without treating broad waiting as confirm", () => {
+  it("does not infer confirm or regression exceptions from broad status categories", () => {
     const waiting = toVersionBoardWorkItemSummary(
       workItem({
         currentState: {
@@ -48,13 +48,13 @@ describe("version board work item mapper", () => {
       ),
     ).toBe(false);
     expect(verifying.currentStatus.exceptionHints.pendingRegression).toBe(
-      true,
+      false,
     );
     expect(
       verifying.exceptionSignals.some(
         (signal) => signal.type === "pending_regression",
       ),
-    ).toBe(true);
+    ).toBe(false);
   });
 
   it("uses explicit confirm and regression state evidence", () => {

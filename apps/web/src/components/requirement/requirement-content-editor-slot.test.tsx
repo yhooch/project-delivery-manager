@@ -52,9 +52,7 @@ function makeValue(contentJson: Record<string, unknown>) {
   };
 }
 
-function renderEditor(
-  props: Partial<RequirementContentEditorSlotProps> = {},
-) {
+function renderEditor(props: Partial<RequirementContentEditorSlotProps> = {}) {
   const onChange = vi.fn();
 
   const result = render(
@@ -376,9 +374,7 @@ describe("RequirementContentEditorSlot image drop", () => {
     );
     await waitFor(() =>
       expect(
-        screen
-          .getByRole("img", { name: "resolved.png" })
-          .getAttribute("src"),
+        screen.getByRole("img", { name: "resolved.png" }).getAttribute("src"),
       ).toBe("https://cdn.example/resolved.png"),
     );
   });
@@ -474,5 +470,28 @@ describe("RequirementContentEditorSlot image drop", () => {
         "requirements.editor.uploadErrors.DRAFT_REQUIRED",
       ),
     ).toBeInTheDocument();
+  });
+
+  it("does not upload non-image clipboard files", async () => {
+    const textFile = new File(["plain text"], "notes.txt", {
+      type: "text/plain",
+    });
+
+    renderEditor({
+      canUploadImages: true,
+      requirementId: "REQ_01",
+    });
+
+    fireEvent.paste(
+      await screen.findByLabelText("requirements.editor.ariaLabel"),
+      {
+        clipboardData: makeDropDataTransfer([textFile]),
+      },
+    );
+
+    expect(uploadRequirementImageMock).not.toHaveBeenCalled();
+    expect(
+      screen.queryByText("requirements.editor.uploadErrors.UPLOAD_FAILED"),
+    ).not.toBeInTheDocument();
   });
 });

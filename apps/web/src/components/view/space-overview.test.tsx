@@ -433,12 +433,16 @@ describe("SpaceOverview", () => {
 
     // Filter trigger reflects the selected version.
     expect(
-      screen.getByTestId("space-overview-version-filter"),
+      screen.getByTestId("space-overview-version-filter-trigger"),
     ).toHaveTextContent("v0.1");
 
     // Selecting another version replaces the search param.
-    fireEvent.click(screen.getByTestId("space-overview-version-filter"));
-    const opt = await screen.findByTestId("space-overview-version-filter-V_02");
+    fireEvent.click(
+      screen.getByTestId("space-overview-version-filter-trigger"),
+    );
+    const opt = await screen.findByTestId(
+      "space-overview-version-filter-option-V_02",
+    );
     fireEvent.click(opt);
 
     await waitFor(() =>
@@ -450,8 +454,9 @@ describe("SpaceOverview", () => {
   });
 
   it("clears old overview data while the selected version is reloading", async () => {
-    let resolveSecond: (value: ReturnType<typeof makeOverview>) => void =
-      () => {};
+    let resolveSecond: (
+      value: ReturnType<typeof makeOverview>,
+    ) => void = () => {};
     getSpaceOverviewViewMock
       .mockResolvedValueOnce(
         makeOverview({

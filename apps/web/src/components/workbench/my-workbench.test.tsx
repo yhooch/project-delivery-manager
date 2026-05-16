@@ -338,7 +338,7 @@ describe("MyWorkbench", () => {
       spaceId: undefined,
     });
 
-    fireEvent.click(screen.getByTestId("workbench-space-filter-SPC_02"));
+    fireEvent.click(screen.getByTestId("workbench-space-filter-option-SPC_02"));
 
     await waitFor(() =>
       expect(getMyWorkbenchViewMock).toHaveBeenCalledTimes(2),
@@ -391,13 +391,11 @@ describe("MyWorkbench", () => {
     expect(within(summary).getByText("5")).toBeInTheDocument();
   });
 
-  it("falls back to section totals when stats is missing", async () => {
+  it("uses a dash when pendingConfirmCount is missing", async () => {
     getMyWorkbenchViewMock.mockResolvedValueOnce(
       makeWorkbenchResponse({
         withStats: false,
-        blocked: [
-          makeWorkItemSummary({ id: "01ARZ3NDEKTSV4RRFFQ69G5F06" }),
-        ],
+        blocked: [makeWorkItemSummary({ id: "01ARZ3NDEKTSV4RRFFQ69G5F06" })],
         pendingConfirm: [
           makeWorkItemSummary({ id: "01ARZ3NDEKTSV4RRFFQ69G5F07" }),
           makeWorkItemSummary({ id: "01ARZ3NDEKTSV4RRFFQ69G5F08" }),
@@ -413,8 +411,7 @@ describe("MyWorkbench", () => {
 
     const summary = await screen.findByTestId("workbench-summary");
     expect(within(summary).getByText("1")).toBeInTheDocument();
-    expect(within(summary).getByText("2")).toBeInTheDocument();
-    expect(within(summary).queryByText("—")).not.toBeInTheDocument();
+    expect(within(summary).getByText("—")).toBeInTheDocument();
   });
 
   it("sends frozen workbench filter parameters to the view request", async () => {
@@ -459,12 +456,14 @@ describe("MyWorkbench", () => {
     expect(await screen.findAllByText("Release 1")).not.toHaveLength(0);
 
     fireEvent.click(
-      within(screen.getByRole("group", { name: "m4Views.filters.version" }))
-        .getByRole("button", { name: "Release 1" }),
+      within(
+        screen.getByRole("group", { name: "m4Views.filters.version" }),
+      ).getByRole("button", { name: "Release 1" }),
     );
     fireEvent.click(
-      within(screen.getByRole("group", { name: "m4Views.filters.assignee" }))
-        .getByRole("button", { name: "Alice" }),
+      within(
+        screen.getByRole("group", { name: "m4Views.filters.assignee" }),
+      ).getByRole("button", { name: "Alice" }),
     );
     fireEvent.click(
       within(
@@ -472,14 +471,16 @@ describe("MyWorkbench", () => {
       ).getByRole("button", { name: "m4Views.statusCategory.VERIFYING" }),
     );
     fireEvent.click(
-      within(screen.getByRole("group", { name: "m4Views.filters.workItemType" }))
-        .getByRole("button", { name: "m4Views.workItemType.BUG" }),
+      within(
+        screen.getByRole("group", { name: "m4Views.filters.workItemType" }),
+      ).getByRole("button", { name: "m4Views.workItemType.BUG" }),
     );
     fireEvent.click(
-      within(screen.getByRole("group", { name: "m4Views.filters.exceptionType" }))
-        .getByRole("button", {
-          name: "m4Views.exceptionType.pending_regression",
-        }),
+      within(
+        screen.getByRole("group", { name: "m4Views.filters.exceptionType" }),
+      ).getByRole("button", {
+        name: "m4Views.exceptionType.pending_regression",
+      }),
     );
 
     await waitFor(() =>
@@ -756,11 +757,11 @@ describe("MyWorkbench", () => {
     expect(oldItem).toBeInTheDocument();
 
     fireEvent.click(oldItem);
-    expect(await screen.findByTestId("task-detail-sheet-open")).toHaveTextContent(
-      "Old space item",
-    );
+    expect(
+      await screen.findByTestId("task-detail-sheet-open"),
+    ).toHaveTextContent("Old space item");
 
-    fireEvent.click(screen.getByTestId("workbench-space-filter-SPC_02"));
+    fireEvent.click(screen.getByTestId("workbench-space-filter-option-SPC_02"));
 
     await waitFor(() =>
       expect(screen.queryByText("Old space item")).not.toBeInTheDocument(),
@@ -858,20 +859,22 @@ describe("MyWorkbench", () => {
     await waitFor(() => expect(firstButton).toHaveFocus());
 
     fireEvent.keyDown(window, { key: "Enter" });
-    expect(await screen.findByTestId("task-detail-sheet-open")).toHaveTextContent(
-      "Keyboard first item",
-    );
+    expect(
+      await screen.findByTestId("task-detail-sheet-open"),
+    ).toHaveTextContent("Keyboard first item");
 
     fireEvent.keyDown(window, { key: "Escape" });
     await waitFor(() =>
-      expect(screen.queryByTestId("task-detail-sheet-open")).not.toBeInTheDocument(),
+      expect(
+        screen.queryByTestId("task-detail-sheet-open"),
+      ).not.toBeInTheDocument(),
     );
     await waitFor(() => expect(firstButton).toHaveFocus());
 
     fireEvent.keyDown(window, { key: "e" });
-    expect(await screen.findByTestId("task-detail-sheet-open")).toHaveTextContent(
-      "Keyboard first item",
-    );
+    expect(
+      await screen.findByTestId("task-detail-sheet-open"),
+    ).toHaveTextContent("Keyboard first item");
   });
 
   it("renders recent activities in the side panel", async () => {

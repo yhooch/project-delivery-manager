@@ -39,6 +39,9 @@ const sessionMock = vi.hoisted(() => ({
   current: {
     session: {
       defaultOrganizationId: "ORG_01",
+      user: {
+        id: "USR_CURRENT",
+      },
     },
     currentOrganization: {
       id: "ORG_01",
@@ -105,6 +108,20 @@ function makeOrgMember(overrides: Record<string, unknown> = {}) {
   } as unknown as import("@project-delivery/shared").OrganizationMemberWithUser;
 }
 
+async function findEditOrgMemberRoleSelect() {
+  return await waitFor(() => {
+    const select = document.querySelector<HTMLSelectElement>(
+      "#edit-org-member-role",
+    );
+
+    if (!select) {
+      throw new Error("edit organization member role select not found");
+    }
+
+    return select;
+  });
+}
+
 beforeEach(() => {
   listOrganizationMembersMock.mockReset();
   disableOrganizationMemberMock.mockReset();
@@ -114,6 +131,9 @@ beforeEach(() => {
   sessionMock.current = {
     session: {
       defaultOrganizationId: "ORG_01",
+      user: {
+        id: "USR_CURRENT",
+      },
     },
     currentOrganization: {
       id: "ORG_01",
@@ -339,12 +359,9 @@ describe("OrganizationPage", () => {
       screen.getByTestId("organization-member-edit-role-OM_MEMBER"),
     );
 
-    fireEvent.change(
-      await screen.findByLabelText("organization.dialog.editRole.fields.role"),
-      {
-        target: { value: "ADMIN" },
-      },
-    );
+    fireEvent.change(await findEditOrgMemberRoleSelect(), {
+      target: { value: "ADMIN" },
+    });
     fireEvent.click(
       screen.getByRole("button", {
         name: "organization.dialog.editRole.submit",
@@ -382,12 +399,11 @@ describe("OrganizationPage", () => {
       screen.getByTestId("organization-member-edit-role-OM_OWNER"),
     );
 
-    const roleSelect = await screen.findByLabelText(
-      "organization.dialog.editRole.fields.role",
+    const roleSelect = await findEditOrgMemberRoleSelect();
+    const adminOption = Array.from(roleSelect.options).find(
+      (option) => option.textContent === "organization.members.roles.ADMIN",
     );
-    const adminOption = screen.getByRole("option", {
-      name: "organization.members.roles.ADMIN",
-    });
+    expect(adminOption).toBeDefined();
     expect(adminOption).toBeDisabled();
     fireEvent.change(roleSelect, { target: { value: "ADMIN" } });
     fireEvent.click(
@@ -457,6 +473,9 @@ describe("OrganizationPage", () => {
     sessionMock.current = {
       session: {
         defaultOrganizationId: "ORG_01",
+        user: {
+          id: "USR_CURRENT",
+        },
       },
       currentOrganization: {
         id: "ORG_01",
@@ -491,6 +510,9 @@ describe("OrganizationPage", () => {
     sessionMock.current = {
       session: {
         defaultOrganizationId: undefined as unknown as string,
+        user: {
+          id: "USR_CURRENT",
+        },
       },
       currentOrganization: null,
       currentSpace: undefined,
@@ -504,5 +526,102 @@ describe("OrganizationPage", () => {
       await screen.findByText("organization.page.noOrganization.title"),
     ).toBeInTheDocument();
     expect(listOrganizationMembersMock).not.toHaveBeenCalled();
+  });
+
+  it("refreshes the app session when the current user's organization role changes", async () => {
+    const selfMember = makeOrgMember({
+      id: "OM_SELF",
+      role: "OWNER",
+      userId: "USR_CURRENT",
+      user: { id: "USR_CURRENT", name: "Current User", username: "current" },
+    });
+    const otherOwner = makeOrgMember({
+      id: "OM_OWNER",
+      role: "OWNER",
+      userId: "USR_OWNER",
+      user: { id: "USR_OWNER", name: "Owner", username: "owner" },
+    });
+    const updatedSelf = makeOrgMember({
+      ...selfMember,
+      role: "ADMIN",
+    });
+    listOrganizationMembersMock
+      .mockResolvedValueOnce({ items: [selfMember, otherOwner], total: 2 })
+      .mockResolvedValueOnce({ items: [updatedSelf, otherOwner], total: 2 });
+    updateOrganizationMemberMock.mockResolvedValueOnce(updatedSelf);
+    sessionMock.refreshSession.mockResolvedValueOnce(undefined);
+
+    render(<OrganizationPage />);
+
+    expect(await screen.findByText("Current User")).toBeInTheDocument();
+    fireEvent.click(
+      screen.getByTestId("organization-member-edit-role-OM_SELF"),
+    );
+    fireEvent.change(await findEditOrgMemberRoleSelect(), {
+      target: { value: "ADMIN" },
+    });
+    fireEvent.click(
+      screen.getByRole("button", {
+        name: "organization.dialog.editRole.submit",
+      }),
+    );
+
+    await waitFor(() =>
+      expect(updateOrganizationMemberMock).toHaveBeenCalledWith(
+        "ORG_01",
+        "OM_SELF",
+        { role: "ADMIN" },
+      ),
+    );
+    expect(sessionMock.refreshSession).toHaveBeenCalledWith(
+      "ORG_01",
+      undefined,
+    );
+  });
+
+  it("refreshes the app session without a recent organization when the current user is disabled", async () => {
+    const selfMember = makeOrgMember({
+      id: "OM_SELF",
+      role: "ADMIN",
+      userId: "USR_CURRENT",
+      user: { id: "USR_CURRENT", name: "Current User", username: "current" },
+    });
+    const owner = makeOrgMember({
+      id: "OM_OWNER",
+      role: "OWNER",
+      userId: "USR_OWNER",
+      user: { id: "USR_OWNER", name: "Owner", username: "owner" },
+    });
+    const disabledSelf = makeOrgMember({
+      ...selfMember,
+      status: "DISABLED",
+    });
+    listOrganizationMembersMock.mockResolvedValueOnce({
+      items: [owner, selfMember],
+      total: 2,
+    });
+    disableOrganizationMemberMock.mockResolvedValueOnce(disabledSelf);
+    sessionMock.refreshSession.mockResolvedValueOnce(undefined);
+
+    render(<OrganizationPage />);
+
+    expect(await screen.findByText("Current User")).toBeInTheDocument();
+    fireEvent.click(screen.getByTestId("organization-member-disable-OM_SELF"));
+    fireEvent.click(
+      await screen.findByRole("button", {
+        name: "organization.dialog.disableMember.submit",
+      }),
+    );
+
+    await waitFor(() =>
+      expect(disableOrganizationMemberMock).toHaveBeenCalledWith(
+        "ORG_01",
+        "OM_SELF",
+      ),
+    );
+    expect(sessionMock.refreshSession).toHaveBeenCalledWith(
+      undefined,
+      undefined,
+    );
   });
 });

@@ -1,9 +1,25 @@
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import {
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const { translatorCache } = vi.hoisted(() => ({
   translatorCache: new Map<string, (key: string) => string>(),
 }));
+
+function getSelectOptionLabels(select: HTMLSelectElement): string[] {
+  return Array.from(select.options, (option) => option.textContent ?? "");
+}
+
+function getVersionSelect(): HTMLSelectElement {
+  const versionSelect = document.getElementById("create-task-version");
+  expect(versionSelect).not.toBeNull();
+  return versionSelect as HTMLSelectElement;
+}
 
 vi.mock("next-intl", () => ({
   useTranslations: (namespace?: string) => {
@@ -138,9 +154,9 @@ describe("CreateTaskDialog", () => {
       />,
     );
 
-    expect(await screen.findByTestId("create-task-options-error")).toHaveTextContent(
-      "common.states.optionsLoadFailed",
-    );
+    expect(
+      await screen.findByTestId("create-task-options-error"),
+    ).toHaveTextContent("common.states.optionsLoadFailed");
     expect(screen.getByTestId("create-task-submit")).toBeDisabled();
 
     fireEvent.click(screen.getByTestId("create-task-options-retry"));
@@ -164,7 +180,11 @@ describe("CreateTaskDialog", () => {
     listRequirementsMock.mockResolvedValue({
       items: [
         { id: requirementId, title: "Requirement v1", versionId },
-        { id: requirementTwoId, title: "Requirement v2", versionId: versionTwoId },
+        {
+          id: requirementTwoId,
+          title: "Requirement v2",
+          versionId: versionTwoId,
+        },
         { id: unversionedRequirementId, title: "Requirement no version" },
       ],
       total: 3,
@@ -187,16 +207,18 @@ describe("CreateTaskDialog", () => {
       />,
     );
 
-    await screen.findByText("Requirement v1");
-    const versionSelect = screen.getByLabelText(
-      "tasks.dialog.fields.version",
-    ) as HTMLSelectElement;
+    const versionSelect = getVersionSelect();
     const requirementSelect = screen.getByTestId(
       "create-task-requirement-select",
     ) as HTMLSelectElement;
     const intakeSelect = screen.getByTestId(
       "create-task-intake-select",
     ) as HTMLSelectElement;
+    await waitFor(() =>
+      expect(getSelectOptionLabels(requirementSelect)).toContain(
+        "Requirement v1",
+      ),
+    );
 
     fireEvent.change(requirementSelect, { target: { value: requirementId } });
     fireEvent.change(intakeSelect, { target: { value: intakeItemId } });
@@ -207,12 +229,16 @@ describe("CreateTaskDialog", () => {
 
     expect(requirementSelect.value).toBe(requirementId);
     expect(intakeSelect.value).toBe(intakeItemId);
-    expect(screen.getByText("Requirement v1")).toBeInTheDocument();
-    expect(screen.getByText("Requirement no version")).toBeInTheDocument();
-    expect(screen.getByText("Intake v1")).toBeInTheDocument();
-    expect(screen.getByText("Intake no version")).toBeInTheDocument();
-    expect(screen.getByText("Requirement v2")).toBeInTheDocument();
-    expect(screen.getByText("Intake v2")).toBeInTheDocument();
+    expect(getSelectOptionLabels(requirementSelect)).toEqual(
+      expect.arrayContaining([
+        "Requirement v1",
+        "Requirement no version",
+        "Requirement v2",
+      ]),
+    );
+    expect(getSelectOptionLabels(intakeSelect)).toEqual(
+      expect.arrayContaining(["Intake v1", "Intake no version", "Intake v2"]),
+    );
   });
 
   it("infers the version from a versioned requirement and keeps unversioned intake", async () => {
@@ -238,16 +264,18 @@ describe("CreateTaskDialog", () => {
       />,
     );
 
-    await screen.findByText("Requirement v1");
-    const versionSelect = screen.getByLabelText(
-      "tasks.dialog.fields.version",
-    ) as HTMLSelectElement;
+    const versionSelect = getVersionSelect();
     const requirementSelect = screen.getByTestId(
       "create-task-requirement-select",
     ) as HTMLSelectElement;
     const intakeSelect = screen.getByTestId(
       "create-task-intake-select",
     ) as HTMLSelectElement;
+    await waitFor(() =>
+      expect(getSelectOptionLabels(requirementSelect)).toContain(
+        "Requirement v1",
+      ),
+    );
 
     fireEvent.change(intakeSelect, {
       target: { value: unversionedIntakeItemId },
@@ -286,16 +314,16 @@ describe("CreateTaskDialog", () => {
       />,
     );
 
-    await screen.findByText("Intake v1");
-    const versionSelect = screen.getByLabelText(
-      "tasks.dialog.fields.version",
-    ) as HTMLSelectElement;
+    const versionSelect = getVersionSelect();
     const requirementSelect = screen.getByTestId(
       "create-task-requirement-select",
     ) as HTMLSelectElement;
     const intakeSelect = screen.getByTestId(
       "create-task-intake-select",
     ) as HTMLSelectElement;
+    await waitFor(() =>
+      expect(getSelectOptionLabels(intakeSelect)).toContain("Intake v1"),
+    );
 
     fireEvent.change(requirementSelect, {
       target: { value: unversionedRequirementId },
@@ -334,16 +362,16 @@ describe("CreateTaskDialog", () => {
       />,
     );
 
-    await screen.findByText("Intake v1");
-    const versionSelect = screen.getByLabelText(
-      "tasks.dialog.fields.version",
-    ) as HTMLSelectElement;
+    const versionSelect = getVersionSelect();
     const requirementSelect = screen.getByTestId(
       "create-task-requirement-select",
     ) as HTMLSelectElement;
     const intakeSelect = screen.getByTestId(
       "create-task-intake-select",
     ) as HTMLSelectElement;
+    await waitFor(() =>
+      expect(getSelectOptionLabels(intakeSelect)).toContain("Intake v1"),
+    );
 
     fireEvent.change(intakeSelect, { target: { value: intakeItemId } });
 

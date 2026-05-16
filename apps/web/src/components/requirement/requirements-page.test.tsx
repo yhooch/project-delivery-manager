@@ -710,10 +710,10 @@ describe("RequirementsPage", () => {
     fireEvent.click(
       screen.getByRole("button", { name: "requirements.page.filter" }),
     );
-    fireEvent.change(screen.getByLabelText("requirements.filters.version"), {
+    fireEvent.change(screen.getByTestId("requirements-filter-version"), {
       target: { value: versionId },
     });
-    fireEvent.change(screen.getByLabelText("requirements.filters.owner"), {
+    fireEvent.change(screen.getByTestId("requirements-filter-owner"), {
       target: { value: ownerId },
     });
 
@@ -790,10 +790,10 @@ describe("RequirementsPage", () => {
     fireEvent.click(
       screen.getByRole("button", { name: "requirements.page.filter" }),
     );
-    fireEvent.change(screen.getByLabelText("requirements.filters.version"), {
+    fireEvent.change(screen.getByTestId("requirements-filter-version"), {
       target: { value: oldVersionId },
     });
-    fireEvent.change(screen.getByLabelText("requirements.filters.owner"), {
+    fireEvent.change(screen.getByTestId("requirements-filter-owner"), {
       target: { value: oldOwnerId },
     });
 

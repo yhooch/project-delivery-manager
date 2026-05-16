@@ -13,7 +13,6 @@ import {
   ArrowUpRight,
   Bug,
   CheckCircle2,
-  ChevronDown,
   Filter,
   GitBranch,
 } from "lucide-react";
@@ -50,25 +49,12 @@ import { recordRecentOpen } from "../shell/recent-opens";
 import { Avatar, AvatarFallback } from "../ui/avatar";
 import { Badge } from "../ui/badge";
 import { Button } from "../ui/button";
+import { SelectMenu } from "../ui/select-menu";
+import { getStatusCategoryDotClass } from "../ui/status-badge";
 import { Tip } from "../ui/tooltip";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "../ui/dropdown-menu";
 
 import { EmptyState, ErrorState, ListSkeleton } from "../v2/states";
 import { TaskDetailSheet } from "../work-item/task-detail-sheet";
-
-const priorityDotColor: Record<WorkItemViewModel["priority"], string> = {
-  LOW: "bg-muted-foreground/40",
-  MEDIUM: "bg-info",
-  HIGH: "bg-warning",
-  URGENT: "bg-destructive",
-};
 
 type WorkbenchItemViewModel = WorkItemViewModel & {
   listKey?: string;
@@ -331,6 +317,10 @@ export function MyWorkbench() {
 
   const fetchView = useCallback(async () => {
     if (!organizationId) {
+      requestSeq.current += 1;
+      setView(null);
+      setIsLoading(false);
+      setErrorKey(null);
       return;
     }
 
@@ -363,50 +353,12 @@ export function MyWorkbench() {
   }, [filters, organizationId, selectedSpaceId]);
 
   useEffect(() => {
-    if (!organizationId) {
-      requestSeq.current += 1;
-      setView(null);
-      setIsLoading(false);
-      return;
-    }
-
-    const requestId = requestSeq.current + 1;
-    requestSeq.current = requestId;
-
-    async function load() {
-      setView(null);
-      setIsLoading(true);
-      setErrorKey(null);
-
-      try {
-        const next = await getMyWorkbenchView({
-          ...filters,
-          organizationId: organizationId!,
-          spaceId: selectedSpaceId,
-        });
-
-        if (requestSeq.current === requestId) {
-          setView(next);
-        }
-      } catch (error) {
-        if (requestSeq.current === requestId) {
-          setErrorKey(getApiErrorMessageKey(error));
-        }
-      } finally {
-        if (requestSeq.current === requestId) {
-          setIsLoading(false);
-        }
-      }
-    }
-
-    void load();
+    void fetchView();
 
     return () => {
-      if (requestSeq.current === requestId) {
-        requestSeq.current += 1;
-      }
+      requestSeq.current += 1;
     };
-  }, [filters, organizationId, selectedSpaceId]);
+  }, [fetchView]);
 
   const registerWorkbenchItemButton = useCallback(
     (key: string, node: HTMLButtonElement | null) => {
@@ -649,8 +601,7 @@ export function MyWorkbench() {
   const blockedSectionCount =
     view?.sections.blocked?.total ?? blockedItems.length;
   const blockedCount = stats?.blockedCount ?? blockedSectionCount;
-  const pendingConfirmCount =
-    stats?.pendingConfirmCount ?? pendingConfirmSectionCount;
+  const pendingConfirmCount = stats?.pendingConfirmCount;
   const detailSheetOpen =
     sheetOpen && activeWorkbenchContextKey === workbenchContextKey;
   const detailSheetItem = detailSheetOpen ? activeItem : null;
@@ -711,9 +662,12 @@ export function MyWorkbench() {
               tRoot("dashboard.filters.allSpaces")}
           </div>
           <h1 className="text-3xl font-light tracking-tight text-foreground">
-            {greetingName} <span className="text-muted-foreground mx-1">·</span> {t("title")}
+            {greetingName} <span className="text-muted-foreground mx-1">·</span>{" "}
+            {t("title")}
           </h1>
-          <p className="mt-2 text-[13px] text-muted-foreground">{t("subtitle")}</p>
+          <p className="mt-2 text-[13px] text-muted-foreground">
+            {t("subtitle")}
+          </p>
         </div>
         <div className="flex flex-wrap items-center gap-3">
           <WorkbenchSpaceFilter
@@ -761,7 +715,7 @@ export function MyWorkbench() {
       {/* Summary chips */}
       <div
         data-testid="workbench-summary"
-        className="grid grid-cols-2 gap-3 lg:grid-cols-4"
+        className="grid grid-cols-2 gap-2 lg:grid-cols-4"
       >
         <SummaryChip
           tone="primary"
@@ -899,7 +853,9 @@ export function MyWorkbench() {
 
         <aside className="sticky top-6 flex flex-col gap-4 pt-1 lg:pl-6 lg:border-l lg:border-border/40 lg:-ml-6 min-h-[50vh]">
           <div className="flex items-center justify-between pb-2 border-b border-border/40">
-            <h3 className="text-[13px] font-semibold uppercase tracking-wider text-muted-foreground">{t("sections.recent")}</h3>
+            <h3 className="text-[13px] font-semibold uppercase tracking-wider text-muted-foreground">
+              {t("sections.recent")}
+            </h3>
             <Button
               asChild
               variant="ghost"
@@ -935,7 +891,9 @@ export function MyWorkbench() {
                   </Tip>
                   <div className="flex-1 text-[13px] min-w-0 pt-0.5">
                     <div className="leading-snug">
-                      <span className="font-medium text-foreground/90">{event.actor.name}</span>
+                      <span className="font-medium text-foreground/90">
+                        {event.actor.name}
+                      </span>
                       <span className="text-muted-foreground px-1.5">
                         {event.title}
                       </span>
@@ -988,45 +946,23 @@ function WorkbenchSpaceFilter({
   const selectedSpace = spaces.find((space) => space.id === selectedSpaceId);
 
   return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Button
-          variant="outline"
-          size="sm"
-          className="text-xs"
-          aria-label={tRoot("dashboard.filters.space")}
-          data-testid="workbench-space-filter"
-        >
-          <span className="max-w-[140px] truncate">
-            {selectedSpace?.name ?? tRoot("dashboard.filters.allSpaces")}
-          </span>
-          <ChevronDown className="h-3 w-3" />
-        </Button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="min-w-[200px] rounded-xl shadow-md border-border/80">
-        <DropdownMenuLabel className="text-[11px] uppercase tracking-wider text-muted-foreground">
-          {tRoot("dashboard.filters.space")}
-        </DropdownMenuLabel>
-        <DropdownMenuSeparator className="bg-border/60" />
-        <DropdownMenuItem
-          data-testid="workbench-space-filter-all"
-          onSelect={() => onChange(undefined)}
-          className="text-[13px]"
-        >
-          {tRoot("dashboard.filters.allSpaces")}
-        </DropdownMenuItem>
-        {spaces.map((space) => (
-          <DropdownMenuItem
-            key={space.id}
-            data-testid={`workbench-space-filter-${space.id}`}
-            onSelect={() => onChange(space.id)}
-            className="text-[13px]"
-          >
-            {space.name}
-          </DropdownMenuItem>
-        ))}
-      </DropdownMenuContent>
-    </DropdownMenu>
+    <SelectMenu
+      value={selectedSpace?.id ?? ""}
+      onChange={(event) => onChange(event.target.value || undefined)}
+      data-testid="workbench-space-filter"
+      triggerTestId="workbench-space-filter-trigger"
+      menuAlign="end"
+      className="h-8 min-w-[9rem] max-w-[12rem] text-xs"
+      contentClassName="w-52"
+      aria-label={tRoot("dashboard.filters.space")}
+    >
+      <option value="">{tRoot("dashboard.filters.allSpaces")}</option>
+      {spaces.map((space) => (
+        <option key={space.id} value={space.id}>
+          {space.name}
+        </option>
+      ))}
+    </SelectMenu>
   );
 }
 
@@ -1184,17 +1120,22 @@ function SummaryChip({
   label: string;
 }) {
   return (
-    <div className="group flex flex-col gap-0.5 rounded-2xl p-3 hover:bg-muted/30 transition-colors cursor-default">
-      <div className="text-[13px] font-medium text-muted-foreground group-hover:text-foreground transition-colors">
+    <div className="group flex flex-col gap-0.5 rounded-lg p-2.5 transition-colors hover:bg-muted/30 cursor-default">
+      <div className="text-xs font-medium text-muted-foreground transition-colors group-hover:text-foreground">
         {label}
       </div>
-      <div className={cn(
-        "text-4xl font-light tracking-tight transition-colors",
-        tone === "primary" ? "text-primary group-hover:text-primary/80" : 
-        tone === "info" ? "text-info group-hover:text-info/80" :
-        tone === "warning" ? "text-warning group-hover:text-warning/80" :
-        "text-success group-hover:text-success/80"
-      )}>
+      <div
+        className={cn(
+          "text-2xl font-light tracking-tight transition-colors",
+          tone === "primary"
+            ? "text-primary group-hover:text-primary/80"
+            : tone === "info"
+              ? "text-info group-hover:text-info/80"
+              : tone === "warning"
+                ? "text-warning group-hover:text-warning/80"
+                : "text-success group-hover:text-success/80",
+        )}
+      >
         {typeof value === "number" ? value : "—"}
       </div>
     </div>
@@ -1218,7 +1159,9 @@ function Section({
     <section className="flex flex-col">
       <header className="flex items-center justify-between pb-2 border-b border-border/40">
         <div className="flex items-center gap-3">
-          <h2 className="text-[13px] font-semibold uppercase tracking-wider text-muted-foreground">{title}</h2>
+          <h2 className="text-[13px] font-semibold uppercase tracking-wider text-muted-foreground">
+            {title}
+          </h2>
           <span className="rounded-full bg-muted/60 px-2 py-0.5 font-mono text-[10px] font-medium text-muted-foreground border border-border/40">
             {count}
           </span>
@@ -1226,11 +1169,11 @@ function Section({
       </header>
       <div className="mt-1.5">
         {isLoading ? (
-          <div className="py-1.5"><ListSkeleton rows={3} /></div>
-        ) : count === 0 ? (
-          <div className="py-4 text-xs text-muted-foreground">
-            {empty}
+          <div className="py-1.5">
+            <ListSkeleton rows={3} />
           </div>
+        ) : count === 0 ? (
+          <div className="py-4 text-xs text-muted-foreground">{empty}</div>
         ) : (
           children
         )}
@@ -1305,7 +1248,7 @@ function ItemList({
                     <span
                       className={cn(
                         "h-1.5 w-1.5 rounded-full",
-                        priorityDotColor[item.priority],
+                        getStatusCategoryDotClass(item.statusCategory),
                       )}
                     />
                     {item.statusLabel}
@@ -1406,7 +1349,7 @@ function collectWorkbenchWorkItems(
     ...view.sections.actionTodos.items.items.map((todo) => todo.workItem),
     ...view.sections.pendingConfirm.items.items,
     ...view.sections.dueSoon.items.items,
-    ...view.sections.blocked.items.items,
+    ...(view.sections.blocked?.items.items ?? []),
   ];
 }
 

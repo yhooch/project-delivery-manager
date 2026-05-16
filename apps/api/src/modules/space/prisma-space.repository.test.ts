@@ -806,12 +806,8 @@ describe("PrismaSpaceRepository", () => {
       [{ where: unknown }]
     >;
     const blockedWhere = JSON.stringify(countCalls[1]?.[0].where);
-    const pendingConfirmWhere = JSON.stringify(
-      countCalls[2]?.[0].where,
-    );
-    const pendingRegressionWhere = JSON.stringify(
-      countCalls[3]?.[0].where,
-    );
+    const pendingConfirmWhere = JSON.stringify(countCalls[2]?.[0].where);
+    const pendingRegressionWhere = JSON.stringify(countCalls[3]?.[0].where);
 
     expect(blockedWhere).toContain("currentState");
     expect(blockedWhere).toContain("blocked");
@@ -821,8 +817,9 @@ describe("PrismaSpaceRepository", () => {
     expect(blockedWhere).not.toContain("blockedReason");
     expect(pendingConfirmWhere).toContain("confirm");
     expect(pendingRegressionWhere).toContain("regressionAt");
-    expect(pendingRegressionWhere).toContain("VERIFYING");
+    expect(pendingRegressionWhere).toContain("currentState");
     expect(pendingRegressionWhere).toContain("pending_regression");
+    expect(pendingRegressionWhere).not.toContain("VERIFYING");
   });
 
   it("includes non-work-item timeline events for read-all space roles", async () => {
@@ -830,10 +827,26 @@ describe("PrismaSpaceRepository", () => {
     const spaceId = "01TRZ3NDEKTSV4RRFFQ69G5SPC";
     const actorUserId = "01TRZ3NDEKTSV4RRFFQ69G5USR";
     const events = [
-      timelineEvent("01TRZ3NDEKTSV4RRFFQ69G5EV1", "WORK_ITEM", "01TRZ3NDEKTSV4RRFFQ69G5WI1"),
-      timelineEvent("01TRZ3NDEKTSV4RRFFQ69G5EV2", "REQUIREMENT", "01TRZ3NDEKTSV4RRFFQ69G5RQ1"),
-      timelineEvent("01TRZ3NDEKTSV4RRFFQ69G5EV3", "INTAKE_ITEM", "01TRZ3NDEKTSV4RRFFQ69G5IN1"),
-      timelineEvent("01TRZ3NDEKTSV4RRFFQ69G5EV4", "VERSION", "01TRZ3NDEKTSV4RRFFQ69G5VR1"),
+      timelineEvent(
+        "01TRZ3NDEKTSV4RRFFQ69G5EV1",
+        "WORK_ITEM",
+        "01TRZ3NDEKTSV4RRFFQ69G5WI1",
+      ),
+      timelineEvent(
+        "01TRZ3NDEKTSV4RRFFQ69G5EV2",
+        "REQUIREMENT",
+        "01TRZ3NDEKTSV4RRFFQ69G5RQ1",
+      ),
+      timelineEvent(
+        "01TRZ3NDEKTSV4RRFFQ69G5EV3",
+        "INTAKE_ITEM",
+        "01TRZ3NDEKTSV4RRFFQ69G5IN1",
+      ),
+      timelineEvent(
+        "01TRZ3NDEKTSV4RRFFQ69G5EV4",
+        "VERSION",
+        "01TRZ3NDEKTSV4RRFFQ69G5VR1",
+      ),
     ];
     const timelineFindMany = vi.fn(async () => events);
     const prisma = {

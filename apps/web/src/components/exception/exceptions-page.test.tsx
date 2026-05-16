@@ -4,6 +4,7 @@ import {
   render,
   screen,
   waitFor,
+  within,
 } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -435,9 +436,9 @@ describe("ExceptionsPage", () => {
     render(<ExceptionsPage />);
 
     expect(await screen.findByText("Page one exception")).toBeInTheDocument();
-    expect(screen.getByTestId("exceptions-pagination-summary")).toHaveTextContent(
-      "spaceExceptions.pagination.summary",
-    );
+    expect(
+      screen.getByTestId("exceptions-pagination-summary"),
+    ).toHaveTextContent("spaceExceptions.pagination.summary");
 
     const nextButton = screen.getByTestId("exceptions-pagination-next");
     expect(nextButton).toHaveAttribute(
@@ -601,7 +602,9 @@ describe("ExceptionsPage", () => {
 
     render(<ExceptionsPage />);
 
-    expect(await screen.findByText("Overdue before switch")).toBeInTheDocument();
+    expect(
+      await screen.findByText("Overdue before switch"),
+    ).toBeInTheDocument();
 
     const user = userEvent.setup();
     await user.click(screen.getByTestId("exceptions-tab-blocked"));
@@ -611,9 +614,7 @@ describe("ExceptionsPage", () => {
     );
     expect(screen.getByTestId("exceptions-tab-overdue")).toBeInTheDocument();
     expect(screen.getByTestId("exceptions-tab-blocked")).toBeInTheDocument();
-    expect(
-      screen.queryByText("Overdue before switch"),
-    ).not.toBeInTheDocument();
+    expect(screen.queryByText("Overdue before switch")).not.toBeInTheDocument();
     expect(
       screen.getByText("spaceExceptions.states.loadingList"),
     ).toBeInTheDocument();
@@ -814,13 +815,79 @@ describe("ExceptionsPage", () => {
     const row = await screen.findByText("Click exception");
     fireEvent.click(row);
 
-    expect(row.closest("button")).toHaveAttribute("aria-selected", "true");
+    expect(row.closest("li")).toHaveAttribute("aria-current", "true");
+    expect(row.closest("button")).not.toHaveAttribute("aria-selected");
     expect(
       await screen.findByTestId("task-detail-sheet-open"),
     ).toBeInTheDocument();
     expect(screen.getByTestId("task-detail-sheet-item-title").textContent).toBe(
       "Click exception",
     );
+  });
+
+  it("exposes exception rows as a named list and focuses the keyboard-selected row", async () => {
+    getSpaceExceptionsViewMock.mockResolvedValueOnce(
+      makeViewResponse([
+        makeException(
+          makeWorkItem({
+            id: "01ARZ3NDEKTSV4RRFFQ69G5F01",
+            title: "First exception",
+          }),
+        ),
+        makeException(
+          makeWorkItem({
+            id: "01ARZ3NDEKTSV4RRFFQ69G5F02",
+            title: "Second exception",
+          }),
+        ),
+      ]),
+    );
+
+    render(<ExceptionsPage />);
+
+    await screen.findByText("First exception");
+    fireEvent.keyDown(window, { key: "j" });
+
+    const list = screen.getByRole("list", {
+      name: "spaceExceptions.list.title",
+    });
+    const rows = within(list).getAllByRole("listitem");
+    const firstButton = within(rows[0]).getByRole("button", {
+      name: /First exception/,
+    });
+    expect(rows[0]).toHaveAttribute("aria-current", "true");
+    expect(rows[0]).not.toHaveAttribute("aria-selected");
+    expect(rows[1]).not.toHaveAttribute("aria-current");
+    expect(firstButton).toHaveFocus();
+  });
+
+  it("does not use A as a fake assign shortcut on exception rows", async () => {
+    getSpaceExceptionsViewMock.mockResolvedValueOnce(
+      makeViewResponse([
+        makeException(
+          makeWorkItem({
+            id: "01ARZ3NDEKTSV4RRFFQ69G5F01",
+            title: "Shortcut exception",
+          }),
+        ),
+      ]),
+    );
+
+    render(<ExceptionsPage />);
+
+    await screen.findByText("Shortcut exception");
+    fireEvent.keyDown(window, { key: "j" });
+
+    const assignEvent = new KeyboardEvent("keydown", {
+      key: "a",
+      cancelable: true,
+    });
+    window.dispatchEvent(assignEvent);
+
+    expect(assignEvent.defaultPrevented).toBe(false);
+    expect(
+      screen.queryByTestId("task-detail-sheet-open"),
+    ).not.toBeInTheDocument();
   });
 
   it("records exception row opens and refetches when detail changes", async () => {
