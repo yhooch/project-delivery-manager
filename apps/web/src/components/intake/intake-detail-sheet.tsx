@@ -149,6 +149,14 @@ export function IntakeDetailSheet({
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent className="flex flex-col gap-0 p-0" data-testid={testId}>
+        {loading || loadFailed || !effectiveItem ? (
+          <SheetHeader className="sr-only">
+            <SheetTitle>{t("detail.sheetDescription")}</SheetTitle>
+            <SheetDescription>
+              {loading ? t("states.loading") : t("detail.unavailable")}
+            </SheetDescription>
+          </SheetHeader>
+        ) : null}
         {loading ? (
           <LoadingState className="h-full" label={t("states.loading")} />
         ) : loadFailed || !effectiveItem ? (
@@ -439,7 +447,7 @@ function RelationAnchorRow({
         </span>
       ) : (
         <a
-          className="ml-auto truncate font-medium text-primary underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          className="ml-auto cursor-pointer truncate font-medium text-primary underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           data-testid={testId}
           href={href}
           rel="noopener noreferrer"
@@ -582,7 +590,7 @@ function RelatedTasksSection({
         </h3>
         {showOpenList ? (
           <a
-            className="inline-flex h-7 items-center gap-1.5 rounded-md border border-input bg-background px-2.5 text-xs font-medium shadow-sm transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            className="inline-flex h-7 cursor-pointer items-center gap-1.5 rounded-md border border-input bg-background px-2.5 text-xs font-medium shadow-sm transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             data-testid="intake-related-tasks-open-list"
             href={buildWorkItemsHref({ intakeItemId: intakeItem.id })}
           >

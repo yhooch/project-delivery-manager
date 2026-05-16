@@ -2219,7 +2219,7 @@ function TraceabilityRow({
         </span>
       ) : link.kind === "anchor" ? (
         <a
-          className="ml-auto truncate font-medium text-primary underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          className="ml-auto cursor-pointer truncate font-medium text-primary underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           data-testid="task-requirement-link"
           href={link.href}
           rel="noopener noreferrer"
@@ -2229,7 +2229,7 @@ function TraceabilityRow({
         </a>
       ) : (
         <button
-          className="ml-auto max-w-[60%] truncate text-right font-medium text-primary underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          className="ml-auto max-w-[60%] cursor-pointer truncate text-right font-medium text-primary underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           data-testid={link.testId}
           onClick={link.onClick}
           type="button"
