@@ -212,6 +212,13 @@ export function isActiveStatus(status: RecordStatus | undefined) {
   return status === "ACTIVE";
 }
 
+export function canCreateSpaceInOrganization(
+  role: string | undefined,
+  status: RecordStatus | undefined,
+) {
+  return canManageOrganization(role) && isActiveStatus(status);
+}
+
 function isWorkspaceApiTransport(
   value: ListSpaceMembersOptions | WorkspaceApiTransport,
 ): value is WorkspaceApiTransport {

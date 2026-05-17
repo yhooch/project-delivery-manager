@@ -183,17 +183,49 @@ afterEach(() => {
 });
 
 describe("OrganizationSwitcher", () => {
-  it("shows create-space from the backend capability even for a MEMBER organization", () => {
+  it("hides create-space for a MEMBER organization even when backend capability is true", () => {
     render(<OrganizationSwitcher />);
 
     expect(
-      screen.getByTestId("org-switcher-create-space"),
-    ).toBeInTheDocument();
+      screen.queryByTestId("org-switcher-create-space"),
+    ).not.toBeInTheDocument();
     expect(
       screen.getByText("shell.organizationSwitcher.roles.MEMBER"),
     ).toBeInTheDocument();
     expect(screen.queryByText("MEMBER")).not.toBeInTheDocument();
   });
+
+  it.each(["OWNER", "ADMIN"])(
+    "shows create-space for an active %s current organization with backend capability",
+    (role) => {
+      sessionMock.current = {
+        ...sessionMock.current,
+        currentOrganization: {
+          code: "beta",
+          id: "ORG_BETA",
+          name: "Beta",
+          role,
+          status: "ACTIVE",
+        },
+        session: {
+          ...sessionMock.current.session,
+          defaultOrganizationId: "ORG_BETA",
+          organizations: sessionMock.current.session.organizations.map(
+            (organization) =>
+              organization.id === "ORG_BETA"
+                ? { ...organization, role }
+                : organization,
+          ),
+        },
+      };
+
+      render(<OrganizationSwitcher />);
+
+      expect(
+        screen.getByTestId("org-switcher-create-space"),
+      ).toBeInTheDocument();
+    },
+  );
 
   it.each(["OWNER", "ADMIN"])(
     "hides create-space when backend capability is false for %s",

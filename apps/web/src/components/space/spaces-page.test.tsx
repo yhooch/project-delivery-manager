@@ -317,7 +317,7 @@ describe("SpacesPage", () => {
     );
   });
 
-  it("shows create action from the backend capability even for a MEMBER organization", async () => {
+  it("hides create action for a MEMBER organization even when backend capability is true", async () => {
     sessionMock.current = {
       ...sessionMock.current,
       currentOrganization: {
@@ -333,12 +333,12 @@ describe("SpacesPage", () => {
     render(<SpacesPage />);
 
     expect(await screen.findByText("spaces.list.empty")).toBeInTheDocument();
-    expect(
-      screen.queryByTestId("spaces-readonly-notice"),
-    ).not.toBeInTheDocument();
+    expect(screen.getByTestId("spaces-readonly-notice")).toHaveTextContent(
+      "spaces.list.readOnly",
+    );
     expect(
       screen.queryByTestId("spaces-create-button"),
-    ).toBeInTheDocument();
+    ).not.toBeInTheDocument();
   });
 
   it("shows create action for an active ADMIN current organization", async () => {

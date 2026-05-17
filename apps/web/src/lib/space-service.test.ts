@@ -8,6 +8,7 @@ import { describe, expect, it, vi } from "vitest";
 
 import {
   addSpaceMember,
+  canCreateSpaceInOrganization,
   createSpace,
   disableOrganizationMember,
   listOrganizationMembers,
@@ -200,5 +201,13 @@ describe("space service", () => {
         status: "DISABLED",
       },
     );
+  });
+
+  it("checks current organization role and status before allowing space creation", () => {
+    expect(canCreateSpaceInOrganization("OWNER", "ACTIVE")).toBe(true);
+    expect(canCreateSpaceInOrganization("ADMIN", "ACTIVE")).toBe(true);
+    expect(canCreateSpaceInOrganization("MEMBER", "ACTIVE")).toBe(false);
+    expect(canCreateSpaceInOrganization("OWNER", "DISABLED")).toBe(false);
+    expect(canCreateSpaceInOrganization(undefined, "ACTIVE")).toBe(false);
   });
 });
