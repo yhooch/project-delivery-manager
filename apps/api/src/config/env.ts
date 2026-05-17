@@ -38,6 +38,7 @@ export const EnvSchema = z
       .enum(["development", "test", "production"])
       .default("development"),
     PORT: z.coerce.number().int().positive().max(65535).default(3001),
+    SESSION_COOKIE_SECURE: BooleanEnvSchema.optional(),
     SESSION_COOKIE_NAME: z.string().min(1).default("pdm_session"),
     WEB_APP_URL: z.string().url().default("http://localhost:3000"),
   })
@@ -80,6 +81,8 @@ export const EnvSchema = z
       env.MINIO_PUBLIC_ENDPOINT ?? DEFAULT_MINIO_PUBLIC_ENDPOINT,
     MINIO_REGION: env.MINIO_REGION ?? DEFAULT_MINIO_REGION,
     MINIO_SECRET_KEY: env.MINIO_SECRET_KEY ?? "minioadmin",
+    SESSION_COOKIE_SECURE:
+      env.SESSION_COOKIE_SECURE ?? (env.NODE_ENV === "production"),
   }));
 
 export type Env = z.infer<typeof EnvSchema>;

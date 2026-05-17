@@ -13,6 +13,7 @@ test-results/
 .env.*
 !.env.example
 !.env.e2e.example
+!.env.prod.example
 
 *.log
 *.tsbuildinfo

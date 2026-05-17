@@ -44,5 +44,8 @@ export function clearSessionCookie(
 }
 
 function isSecureCookie(config: ConfigService): boolean {
-  return config.get<string>("NODE_ENV") === "production";
+  return (
+    config.get<boolean>("SESSION_COOKIE_SECURE") ??
+    config.get<string>("NODE_ENV") === "production"
+  );
 }
