@@ -40,7 +40,7 @@ import {
   WorkflowVersionIdPathParamsSchema,
   type ActionFormFieldSummary,
   type PageResult,
-  type WorkflowActionSummary,
+  type WorkflowActionConfigSummary,
   type WorkflowBinding,
   type WorkflowDefinition,
   type WorkflowState,
@@ -327,7 +327,7 @@ export class WorkflowConfigController {
     @Body(new ZodValidationPipe(CreateWorkflowActionRequestSchema))
     body: CreateWorkflowActionRequest,
     @Req() request: RequestWithContext,
-  ): Promise<WorkflowActionSummary> {
+  ): Promise<WorkflowActionConfigSummary> {
     const session = this.currentUser.requireSession(request);
 
     return this.workflows.createAction(
@@ -347,7 +347,7 @@ export class WorkflowConfigController {
     @Body(new ZodValidationPipe(UpdateWorkflowActionRequestSchema))
     body: UpdateWorkflowActionRequest,
     @Req() request: RequestWithContext,
-  ): Promise<WorkflowActionSummary> {
+  ): Promise<WorkflowActionConfigSummary> {
     const session = this.currentUser.requireSession(request);
 
     return this.workflows.updateAction(

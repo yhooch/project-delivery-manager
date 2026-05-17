@@ -198,6 +198,15 @@ function ShortcutProbe({ enabled = true }: { enabled?: boolean }) {
   return null;
 }
 
+function ShortcutSelectProbe() {
+  useCommandPaletteShortcut();
+  return (
+    <select aria-label="Shortcut target">
+      <option value="one">One</option>
+    </select>
+  );
+}
+
 describe("CommandPalette", () => {
   it("does not render or open business commands when disabled", () => {
     render(<CommandPalette enabled={false} />);
@@ -651,6 +660,28 @@ describe("CommandPalette", () => {
     });
   });
 
+  it("uses distinct theme command icons matching the theme toggle semantics", async () => {
+    render(<CommandPalette />);
+    openCommandPalette();
+
+    expect(
+      await screen.findByText("shell.command.preferences"),
+    ).toBeInTheDocument();
+    const lightItem = screen
+      .getByText("shell.command.themeLight")
+      .closest("[cmdk-item]");
+    const darkItem = screen
+      .getByText("shell.command.themeDark")
+      .closest("[cmdk-item]");
+    const systemItem = screen
+      .getByText("shell.command.themeSystem")
+      .closest("[cmdk-item]");
+
+    expect(lightItem?.querySelector(".lucide-sun")).toBeInTheDocument();
+    expect(darkItem?.querySelector(".lucide-moon")).toBeInTheDocument();
+    expect(systemItem?.querySelector(".lucide-monitor")).toBeInTheDocument();
+  });
+
   it("navigates with G chords and cancels the sequence on Escape, blur, or timeout", () => {
     const { unmount } = render(<ShortcutProbe />);
 
@@ -703,5 +734,25 @@ describe("CommandPalette", () => {
       screen.queryByTestId("command-palette-input"),
     ).not.toBeInTheDocument();
     expect(listWorkItemsMock).not.toHaveBeenCalled();
+  });
+
+  it("ignores command palette shortcuts while a select has focus", () => {
+    render(
+      <>
+        <CommandPalette />
+        <ShortcutSelectProbe />
+      </>,
+    );
+
+    const select = screen.getByLabelText("Shortcut target");
+    select.focus();
+    fireEvent.keyDown(select, { ctrlKey: true, key: "k" });
+    expect(
+      screen.queryByTestId("command-palette-input"),
+    ).not.toBeInTheDocument();
+
+    fireEvent.keyDown(select, { key: "g" });
+    fireEvent.keyDown(window, { key: "v" });
+    expect(routerPushMock).not.toHaveBeenCalled();
   });
 });

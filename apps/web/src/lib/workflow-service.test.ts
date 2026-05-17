@@ -1,7 +1,7 @@
 import type {
   ActionFormFieldSummary,
   PageResult,
-  WorkflowActionSummary,
+  WorkflowActionConfigSummary,
   WorkflowBinding,
   WorkflowDefinition,
   WorkflowState,
@@ -90,8 +90,8 @@ function createFieldFixture(
 }
 
 function createActionFixture(
-  overrides: Partial<WorkflowActionSummary> = {},
-): WorkflowActionSummary {
+  overrides: Partial<WorkflowActionConfigSummary> = {},
+): WorkflowActionConfigSummary {
   return {
     actorRelations: ["ASSIGNEE"],
     allowedSpaceRoles: ["DEVELOPER"],
@@ -500,7 +500,7 @@ describe("workflow service", () => {
                   fieldType: "UNKNOWN",
                 },
               ],
-            } as unknown as WorkflowActionSummary,
+            } as unknown as WorkflowActionConfigSummary,
           ],
         }),
       })),

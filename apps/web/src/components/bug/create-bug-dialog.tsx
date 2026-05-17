@@ -18,6 +18,7 @@ import { listRequirements } from "../../lib/requirement-service";
 import { listSpaceMembers } from "../../lib/space-service";
 import { listVersions } from "../../lib/version-service";
 import {
+  clearIncompatibleTraceSelection,
   filterTraceOptionsByVersion,
   inheritVersionFromTraceOption,
 } from "../../lib/versioned-trace-linking";
@@ -183,6 +184,12 @@ export function CreateBugDialog({
 
   function handleVersionChange(nextVersionId: string) {
     setVersionId(nextVersionId);
+    setRequirementId((current) =>
+      clearIncompatibleTraceSelection(requirements, current, nextVersionId),
+    );
+    setRelatedTaskId((current) =>
+      clearIncompatibleTraceSelection(tasks, current, nextVersionId),
+    );
   }
 
   function handleRequirementChange(nextRequirementId: string) {

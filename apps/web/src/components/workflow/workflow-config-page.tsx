@@ -3,7 +3,7 @@
 import type {
   ActionFormFieldSummary,
   WorkflowBinding,
-  WorkflowActionSummary,
+  WorkflowActionConfigSummary,
   WorkflowDefinition,
   WorkflowState,
   WorkflowVersion,
@@ -70,7 +70,7 @@ type DialogState =
   | { kind: "createState" }
   | { kind: "editState"; state: WorkflowState }
   | { kind: "createAction" }
-  | { kind: "editAction"; action: WorkflowActionSummary }
+  | { kind: "editAction"; action: WorkflowActionConfigSummary }
   | { kind: "createField"; actionId: string }
   | { kind: "editField"; actionId: string; field: ActionFormFieldSummary }
   | { kind: "createBinding" }
@@ -593,7 +593,7 @@ export function WorkflowConfigPage({ workflowId }: WorkflowConfigPageProps) {
     });
   }
 
-  function handleDeleteAction(action: WorkflowActionSummary) {
+  function handleDeleteAction(action: WorkflowActionConfigSummary) {
     if (!spaceId) {
       return;
     }
@@ -606,7 +606,7 @@ export function WorkflowConfigPage({ workflowId }: WorkflowConfigPageProps) {
   }
 
   function handleDeleteField(
-    _action: WorkflowActionSummary,
+    _action: WorkflowActionConfigSummary,
     field: ActionFormFieldSummary,
   ) {
     if (!spaceId) {

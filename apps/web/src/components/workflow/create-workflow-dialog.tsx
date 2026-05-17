@@ -39,6 +39,8 @@ type Mode =
   | { kind: "edit"; workflow: WorkflowDefinition }
   | { kind: "copyVersion"; workflow: WorkflowDefinition };
 
+const WORKFLOW_CODE_PATTERN = /^[A-Za-z0-9_-]+$/u;
+
 export type CreateWorkflowDialogProps = {
   context: WorkflowSpaceContext;
   mode: Mode;
@@ -181,7 +183,19 @@ export function CreateWorkflowDialog({
         const finalCode =
           trimmedCode.length > 0
             ? trimmedCode
-            : trimmedName.toLowerCase().replace(/[^a-z0-9_-]+/g, "-");
+            : generateWorkflowCodeFromName(trimmedName);
+
+        if (!finalCode) {
+          setErrorKey("workflow.dialog.create.errors.codeRequired");
+          setIsSubmitting(false);
+          return;
+        }
+
+        if (!WORKFLOW_CODE_PATTERN.test(finalCode)) {
+          setErrorKey("workflow.dialog.create.errors.codeInvalid");
+          setIsSubmitting(false);
+          return;
+        }
 
         result = await createWorkflow(
           {
@@ -375,4 +389,19 @@ export function CreateWorkflowDialog({
       </DialogContent>
     </Dialog>
   );
+}
+
+function generateWorkflowCodeFromName(name: string): string | undefined {
+  const normalized = name
+    .trim()
+    .toLowerCase()
+    .normalize("NFKD")
+    .replace(/[\u0300-\u036f]/gu, "")
+    .replace(/[^a-z0-9_-]+/gu, "-")
+    .replace(/-+/gu, "-")
+    .replace(/^[-_]+|[-_]+$/gu, "")
+    .slice(0, 80)
+    .replace(/[-_]+$/gu, "");
+
+  return normalized.length >= 2 ? normalized : undefined;
 }

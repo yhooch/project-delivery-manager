@@ -4,7 +4,7 @@ import type {
   PageResult,
   SpaceRole,
   StatusCategory,
-  WorkflowActionSummary,
+  WorkflowActionConfigSummary,
   WorkflowBinding,
   WorkflowDefinition,
   WorkflowState,
@@ -629,7 +629,7 @@ export class WorkflowConfigService {
     workflowVersionId: string,
     input: CreateWorkflowActionRequest,
     metadata: WorkflowConfigRequestMetadata,
-  ): Promise<WorkflowActionSummary> {
+  ): Promise<WorkflowActionConfigSummary> {
     const { definition, version } = await this.requireDraftVersionForMutation(
       actorUserId,
       workflowVersionId,
@@ -677,7 +677,7 @@ export class WorkflowConfigService {
     actionId: string,
     input: UpdateWorkflowActionRequest,
     metadata: WorkflowConfigRequestMetadata,
-  ): Promise<WorkflowActionSummary> {
+  ): Promise<WorkflowActionConfigSummary> {
     const action = await this.requireAction(actionId);
     const { definition, version } = await this.requireDraftVersionForMutation(
       actorUserId,

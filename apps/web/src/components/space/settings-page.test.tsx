@@ -453,6 +453,22 @@ describe("SpaceSettingsPage", () => {
     ).toHaveTextContent("spaceSettings.basic.codeConflict");
   });
 
+  it("maps local basic form validation to a field-level message", async () => {
+    getSpaceMock.mockResolvedValueOnce(makeSpace());
+    listSpaceMembersMock.mockResolvedValueOnce({ items: [], total: 0 });
+
+    render(<SpaceSettingsPage />);
+
+    const codeInput = await screen.findByTestId("space-settings-code-input");
+    fireEvent.change(codeInput, { target: { value: "bad code!" } });
+    fireEvent.click(screen.getByTestId("space-settings-basic-submit"));
+
+    expect(
+      await screen.findByTestId("space-settings-code-error"),
+    ).toHaveTextContent("spaceSettings.basic.errors.codeInvalid");
+    expect(updateSpaceMock).not.toHaveBeenCalled();
+  });
+
   it("rejects non-integer stale threshold values before saving", async () => {
     getSpaceMock.mockResolvedValueOnce(makeSpace());
     listSpaceMembersMock.mockResolvedValueOnce({ items: [], total: 0 });

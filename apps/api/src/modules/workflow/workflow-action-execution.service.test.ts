@@ -90,6 +90,12 @@ describe("WorkflowActionExecutionService", () => {
         },
       ],
     });
+    expect(detail.permissions.availableActions[0]).not.toHaveProperty(
+      "allowedSpaceRoles",
+    );
+    expect(detail.permissions.availableActions[0]).not.toHaveProperty(
+      "actorRelations",
+    );
     expect(subject.repository.timelineEvents).toHaveLength(1);
     expect(subject.repository.timelineEvents[0]).toMatchObject({
       after: {

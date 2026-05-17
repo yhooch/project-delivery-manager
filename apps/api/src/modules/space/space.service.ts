@@ -63,9 +63,10 @@ export class SpaceService {
       organizationId,
     );
     const canListAllSpaces = access.role === "OWNER" || access.role === "ADMIN";
+    const listInput = { ...input, aggregateActorUserId: actorUserId };
     const result = await this.spaces.listByOrganizationId(
       organizationId,
-      input,
+      listInput,
       canListAllSpaces ? undefined : actorUserId,
     );
 
@@ -298,6 +299,15 @@ export class SpaceService {
 
     if (!member) {
       throwSpaceMemberNotFound();
+    }
+
+    const nextStatus = input.status ?? member.status;
+
+    if (nextStatus === "ACTIVE") {
+      await this.requireActiveOrganizationMember(
+        access.space.organizationId,
+        member.userId,
+      );
     }
 
     const updated = await this.spaces.updateMember({

@@ -163,12 +163,15 @@ describe("session service", () => {
     );
   });
 
-  it("persists recentOrganizationId before switching organizations", async () => {
+  it("persists recentOrganizationId only after switching organizations validates the session", async () => {
     const session = createSession();
-    const api = createApi({
-      get: vi.fn(async () => ({ data: session })),
-    });
     const { storage } = createRecentStorage();
+    const api = createApi({
+      get: vi.fn(async () => {
+        expect(storage.setItem).not.toHaveBeenCalled();
+        return { data: session };
+      }),
+    });
 
     await expect(
       switchOrganization(organizationId, api, storage),
@@ -181,7 +184,7 @@ describe("session service", () => {
     );
   });
 
-  it("persists recentOrganizationId and recentSpaceId before switching spaces", async () => {
+  it("persists recentOrganizationId and recentSpaceId only after switching spaces validates the session", async () => {
     const session = createSession({
       defaultSpaceId: spaceId,
       spaces: [
@@ -195,10 +198,13 @@ describe("session service", () => {
         },
       ],
     });
-    const api = createApi({
-      get: vi.fn(async () => ({ data: session })),
-    });
     const { storage } = createRecentStorage();
+    const api = createApi({
+      get: vi.fn(async () => {
+        expect(storage.setItem).not.toHaveBeenCalled();
+        return { data: session };
+      }),
+    });
 
     await expect(
       switchSpace(organizationId, spaceId, api, storage),
@@ -206,6 +212,28 @@ describe("session service", () => {
 
     expect(api.get).toHaveBeenCalledWith("/auth/session");
     expect(storage.setItem).toHaveBeenCalledWith("pdm.recentSpaceId", spaceId);
+  });
+
+  it("keeps recent storage unchanged when switching spaces fails validation", async () => {
+    const api = createApi({
+      get: vi.fn(async () => {
+        throw new Error("session failed");
+      }),
+    });
+    const { storage, values } = createRecentStorage({
+      "pdm.recentOrganizationId": otherOrganizationId,
+      "pdm.recentSpaceId": otherSpaceId,
+    });
+
+    await expect(
+      switchSpace(organizationId, spaceId, api, storage),
+    ).rejects.toThrow("session failed");
+
+    expect(api.get).toHaveBeenCalledWith("/auth/session");
+    expect(storage.setItem).not.toHaveBeenCalled();
+    expect(storage.removeItem).not.toHaveBeenCalled();
+    expect(values.get("pdm.recentOrganizationId")).toBe(otherOrganizationId);
+    expect(values.get("pdm.recentSpaceId")).toBe(otherSpaceId);
   });
 
   it("persists only a default space that belongs to the default organization", async () => {

@@ -223,8 +223,6 @@ function makeActionTodo(
     id: `${workItem.id}:${actionId}`,
     workItem,
     availableAction: {
-      actorRelations: ["ASSIGNEE"],
-      allowedSpaceRoles: ["DEVELOPER"],
       code: "START",
       formFields: [],
       fromStateId: "01ARZ3NDEKTSV4RRFFQ69G5FCS",
@@ -679,8 +677,6 @@ describe("MyWorkbench", () => {
           makeActionTodo(workItem, {
             actionId: "01ARZ3NDEKTSV4RRFFQ69G5A01",
             availableAction: {
-              actorRelations: ["ASSIGNEE"],
-              allowedSpaceRoles: ["DEVELOPER"],
               code: "START_REVIEW",
               formFields: [],
               fromStateId: "01ARZ3NDEKTSV4RRFFQ69G5FCS",
@@ -694,8 +690,6 @@ describe("MyWorkbench", () => {
           makeActionTodo(workItem, {
             actionId: "01ARZ3NDEKTSV4RRFFQ69G5A02",
             availableAction: {
-              actorRelations: ["ASSIGNEE"],
-              allowedSpaceRoles: ["DEVELOPER"],
               code: "ESCALATE",
               formFields: [],
               fromStateId: "01ARZ3NDEKTSV4RRFFQ69G5FCS",

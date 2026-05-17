@@ -1248,6 +1248,18 @@ class InMemoryOrganizationRepository implements OrganizationRepository {
     member.role = input.role ?? member.role;
     member.status = input.status ?? member.status;
 
+    if (input.status === "DISABLED") {
+      for (const spaceMember of this.spaceRepository?.members ?? []) {
+        if (
+          spaceMember.organizationId === input.organizationId &&
+          spaceMember.userId === member.userId &&
+          spaceMember.status === "ACTIVE"
+        ) {
+          spaceMember.status = "DISABLED";
+        }
+      }
+    }
+
     return this.toMemberWithUser(member);
   }
 

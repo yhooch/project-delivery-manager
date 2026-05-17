@@ -64,7 +64,9 @@ import {
   useVersions,
 } from "../../lib/v2/lookups";
 import {
+  clearIncompatibleTraceSelection,
   filterTraceOptionsByVersion,
+  getTraceVersionCascadeConfirmLabels,
   inheritVersionFromTraceOption,
   isTraceVersionCascadeRequiredError,
   traceVersionCascadeConfirmMessage,
@@ -79,6 +81,7 @@ import {
   translateExceptionReason,
   translateWorkflowActionName,
   translateWorkflowFieldLabel,
+  translateWorkflowSelectOption,
 } from "../../lib/workflow-display";
 import { Link } from "../../i18n/routing";
 
@@ -216,10 +219,17 @@ type SheetDetail = (WorkItemDetail | BugView) & {
   permissions?: PermissionSnapshot;
 };
 
-type PendingTaskCascadeConfirm = {
-  request: ReturnType<typeof toUpdateTaskRequest>;
-  message: string;
-};
+type PendingTraceCascadeConfirm =
+  | {
+      message: string;
+      request: ReturnType<typeof toUpdateTaskRequest>;
+      targetType: "TASK";
+    }
+  | {
+      message: string;
+      request: ReturnType<typeof toUpdateBugRequest>;
+      targetType: "BUG";
+    };
 
 function getWorkItemPermissionRequestKey({
   item,
@@ -1173,11 +1183,7 @@ function ActionBar({
   }, [actionFocusRequest]);
 
   useEffect(() => {
-    if (
-      !actionFocusRequest ||
-      actionFocusRequest <= 0 ||
-      !preferredActionId
-    ) {
+    if (!actionFocusRequest || actionFocusRequest <= 0 || !preferredActionId) {
       preparedActionRequestRef.current = null;
       return;
     }
@@ -1427,7 +1433,8 @@ function ActionFormFieldControl({
   value: string;
 }) {
   const id = `task-action-field-${field.id}`;
-  const fieldLabel = translateWorkflowFieldLabel(useTranslations(), field);
+  const tRoot = useTranslations();
+  const fieldLabel = translateWorkflowFieldLabel(tRoot, field);
   const label = field.required ? `${fieldLabel} *` : fieldLabel;
   const errorId = `${id}-error`;
   const error = errorMessage ? (
@@ -1478,7 +1485,7 @@ function ActionFormFieldControl({
           <option value="" />
           {(field.options ?? []).map((option) => (
             <option key={option} value={option}>
-              {option}
+              {translateWorkflowSelectOption(tRoot, field, option)}
             </option>
           ))}
         </SelectMenu>
@@ -1710,7 +1717,7 @@ function DetailTab({
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [pendingCascadeConfirm, setPendingCascadeConfirm] =
-    useState<PendingTaskCascadeConfirm | null>(null);
+    useState<PendingTraceCascadeConfirm | null>(null);
 
   const resetEditDraft = useCallback(() => {
     setTitle(detail?.title ?? item.title);
@@ -1836,6 +1843,15 @@ function DetailTab({
 
   function handleEditVersionChange(nextVersionId: string) {
     setEditVersionId(nextVersionId);
+    setEditRequirementId((current) =>
+      clearIncompatibleTraceSelection(requirements, current, nextVersionId),
+    );
+    setEditIntakeItemId((current) =>
+      clearIncompatibleTraceSelection(intakeItems, current, nextVersionId),
+    );
+    setEditRelatedTaskId((current) =>
+      clearIncompatibleTraceSelection(relatedTasks, current, nextVersionId),
+    );
   }
 
   function handleEditRequirementChange(nextRequirementId: string) {
@@ -1904,7 +1920,9 @@ function DetailTab({
     setSaving(true);
     setSaveError(null);
 
-    let taskUpdateRequest: ReturnType<typeof toUpdateTaskRequest> | null = null;
+    let pendingRequest: PendingTraceCascadeConfirm["request"] | null = null;
+    let pendingTargetType: PendingTraceCascadeConfirm["targetType"] | null =
+      null;
 
     try {
       const commonPatch = {
@@ -1919,23 +1937,28 @@ function DetailTab({
       };
 
       if (isBugSheetDetail(detail)) {
+        const bugUpdateRequest = toUpdateBugRequest({
+          ...commonPatch,
+          actualResult,
+          expectedResult,
+          relatedTaskId: editRelatedTaskId,
+          severity,
+          stepsToReproduce,
+        });
+        pendingRequest = bugUpdateRequest;
+        pendingTargetType = "BUG";
         await updateBug(
           {
             bugId: detail.id,
             organizationId,
             spaceId,
           },
-          toUpdateBugRequest({
-            ...commonPatch,
-            actualResult,
-            expectedResult,
-            relatedTaskId: editRelatedTaskId,
-            severity,
-            stepsToReproduce,
-          }),
+          bugUpdateRequest,
         );
       } else {
-        taskUpdateRequest = toUpdateTaskRequest(commonPatch);
+        const taskUpdateRequest = toUpdateTaskRequest(commonPatch);
+        pendingRequest = taskUpdateRequest;
+        pendingTargetType = "TASK";
         await updateWorkItem(
           {
             organizationId,
@@ -1949,19 +1972,41 @@ function DetailTab({
       setEditing(false);
     } catch (err) {
       if (
-        taskUpdateRequest &&
-        !isBugSheetDetail(detail) &&
+        pendingRequest &&
+        pendingTargetType &&
         isTraceVersionCascadeRequiredError(err)
       ) {
-        setPendingCascadeConfirm({
-          request: taskUpdateRequest,
-          message: traceVersionCascadeConfirmMessage({
-            body: tRoot("errors.api.TRACE_VERSION_CHANGE_REQUIRES_CASCADE"),
-            suffix: tRoot(
-              "errors.api.TRACE_VERSION_CHANGE_REQUIRES_CASCADE_CONFIRM_SUFFIX",
+        if (pendingTargetType === "TASK") {
+          setPendingCascadeConfirm({
+            request: pendingRequest as ReturnType<typeof toUpdateTaskRequest>,
+            targetType: "TASK",
+            message: traceVersionCascadeConfirmMessage(
+              {
+                body: tRoot("errors.api.TRACE_VERSION_CHANGE_REQUIRES_CASCADE"),
+                labels: getTraceVersionCascadeConfirmLabels(tRoot),
+                suffix: tRoot(
+                  "errors.api.TRACE_VERSION_CHANGE_REQUIRES_CASCADE_CONFIRM_SUFFIX",
+                ),
+              },
+              err,
             ),
-          }),
-        });
+          });
+        } else {
+          setPendingCascadeConfirm({
+            request: pendingRequest as ReturnType<typeof toUpdateBugRequest>,
+            targetType: "BUG",
+            message: traceVersionCascadeConfirmMessage(
+              {
+                body: tRoot("errors.api.TRACE_VERSION_CHANGE_REQUIRES_CASCADE"),
+                labels: getTraceVersionCascadeConfirmLabels(tRoot),
+                suffix: tRoot(
+                  "errors.api.TRACE_VERSION_CHANGE_REQUIRES_CASCADE_CONFIRM_SUFFIX",
+                ),
+              },
+              err,
+            ),
+          });
+        }
         return;
       }
       const key = getApiErrorMessageKey(err);
@@ -1972,13 +2017,7 @@ function DetailTab({
   };
 
   const confirmCascadeVersionChange = async () => {
-    if (
-      !detail ||
-      !spaceId ||
-      !canEdit ||
-      isBugSheetDetail(detail) ||
-      !pendingCascadeConfirm
-    ) {
+    if (!detail || !spaceId || !canEdit || !pendingCascadeConfirm) {
       return;
     }
 
@@ -1986,17 +2025,35 @@ function DetailTab({
     setSaveError(null);
 
     try {
-      await updateWorkItem(
-        {
-          organizationId,
-          spaceId,
-          workItemId: detail.id,
-        },
-        {
-          ...pendingCascadeConfirm.request,
-          cascadeVersionChange: true,
-        },
-      );
+      if (pendingCascadeConfirm.targetType === "BUG") {
+        if (!isBugSheetDetail(detail)) {
+          return;
+        }
+
+        await updateBug(
+          {
+            bugId: detail.id,
+            organizationId,
+            spaceId,
+          },
+          {
+            ...pendingCascadeConfirm.request,
+            cascadeVersionChange: true,
+          },
+        );
+      } else {
+        await updateWorkItem(
+          {
+            organizationId,
+            spaceId,
+            workItemId: detail.id,
+          },
+          {
+            ...pendingCascadeConfirm.request,
+            cascadeVersionChange: true,
+          },
+        );
+      }
       setPendingCascadeConfirm(null);
       await onSaved();
       setEditing(false);

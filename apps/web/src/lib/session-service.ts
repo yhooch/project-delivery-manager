@@ -87,10 +87,20 @@ export async function getAppSession(
     typeof recentSpaceIdOrApi === "string"
       ? api
       : (recentSpaceIdOrApi ?? defaultApi);
-  persistRecentSessionSelectionRequest(recentOrganizationId, recentSpaceId);
-  const response = await transport.get<GetAuthSessionResponse>("/auth/session");
 
-  return response.data;
+  const restoreRecentCookies = applyRecentSessionRequestCookies({
+    recentOrganizationId,
+    recentSpaceId,
+  });
+
+  try {
+    const response =
+      await transport.get<GetAuthSessionResponse>("/auth/session");
+
+    return response.data;
+  } finally {
+    restoreRecentCookies();
+  }
 }
 
 export async function getPersistedAppSession(
@@ -113,11 +123,6 @@ export async function refreshAppSession(
   api: SessionApiTransport = defaultApi,
   recentStorage: RecentSessionStorage | undefined = getRecentSessionStorage(),
 ): Promise<AppSession> {
-  persistRecentSessionSelectionRequest(
-    recentOrganizationId,
-    recentSpaceId,
-    recentStorage,
-  );
   const session = recentSpaceId
     ? await getAppSession(recentOrganizationId, recentSpaceId, api)
     : await getAppSession(recentOrganizationId, api);
@@ -235,28 +240,6 @@ export function persistRecentSessionSelection(
   removeRecentCookie(recentSpaceStorageKey);
 }
 
-function persistRecentSessionSelectionRequest(
-  recentOrganizationId?: string,
-  recentSpaceId?: string,
-  recentStorage?: RecentSessionStorage,
-): void {
-  if (recentOrganizationId) {
-    recentStorage?.setItem(recentOrganizationStorageKey, recentOrganizationId);
-    setRecentCookie(recentOrganizationStorageKey, recentOrganizationId);
-  }
-
-  if (recentSpaceId) {
-    recentStorage?.setItem(recentSpaceStorageKey, recentSpaceId);
-    setRecentCookie(recentSpaceStorageKey, recentSpaceId);
-    return;
-  }
-
-  if (recentOrganizationId) {
-    recentStorage?.removeItem(recentSpaceStorageKey);
-    removeRecentCookie(recentSpaceStorageKey);
-  }
-}
-
 function setRecentCookie(name: string, value: string): void {
   const cookieTarget = getCookieTarget();
 
@@ -287,6 +270,62 @@ function getCookieTarget(): Pick<Document, "cookie"> | undefined {
   }
 
   return document;
+}
+
+function applyRecentSessionRequestCookies({
+  recentOrganizationId,
+  recentSpaceId,
+}: RecentSessionSelection): () => void {
+  if (!recentOrganizationId && !recentSpaceId) {
+    return () => undefined;
+  }
+
+  const previousOrganizationId = readRecentCookie(recentOrganizationStorageKey);
+  const previousSpaceId = readRecentCookie(recentSpaceStorageKey);
+
+  if (recentOrganizationId) {
+    setRecentCookie(recentOrganizationStorageKey, recentOrganizationId);
+  }
+
+  if (recentSpaceId) {
+    setRecentCookie(recentSpaceStorageKey, recentSpaceId);
+  } else if (recentOrganizationId) {
+    removeRecentCookie(recentSpaceStorageKey);
+  }
+
+  return () => {
+    restoreRecentCookie(recentOrganizationStorageKey, previousOrganizationId);
+    restoreRecentCookie(recentSpaceStorageKey, previousSpaceId);
+  };
+}
+
+function restoreRecentCookie(name: string, value: string | undefined): void {
+  if (value) {
+    setRecentCookie(name, value);
+    return;
+  }
+
+  removeRecentCookie(name);
+}
+
+function readRecentCookie(name: string): string | undefined {
+  const cookieTarget = getCookieTarget();
+
+  if (!cookieTarget) {
+    return undefined;
+  }
+
+  const encodedName = `${encodeURIComponent(name)}=`;
+  const cookie = cookieTarget.cookie
+    .split(";")
+    .map((part) => part.trim())
+    .find((part) => part.startsWith(encodedName));
+
+  if (!cookie) {
+    return undefined;
+  }
+
+  return decodeURIComponent(cookie.slice(encodedName.length));
 }
 
 function getRecentSessionStorage(): RecentSessionStorage | undefined {

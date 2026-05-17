@@ -33,8 +33,6 @@ function createAction(
   requiresComment = false,
 ): WorkflowActionSummary {
   return {
-    actorRelations: ["ASSIGNEE"],
-    allowedSpaceRoles: ["DEVELOPER"],
     code: "SUBMIT",
     formFields: fields,
     fromStateId,

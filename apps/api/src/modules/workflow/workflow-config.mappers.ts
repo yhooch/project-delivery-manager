@@ -1,6 +1,6 @@
 import type {
   ActionFormFieldSummary,
-  WorkflowActionSummary,
+  WorkflowActionConfigSummary,
   WorkflowBinding,
   WorkflowDefinition,
   WorkflowState,
@@ -45,8 +45,8 @@ export type WorkflowActionRecord = {
   name: string;
   fromStateId: string;
   toStateId: string;
-  allowedSpaceRoles: WorkflowActionSummary["allowedSpaceRoles"];
-  actorRelations: WorkflowActionSummary["actorRelations"];
+  allowedSpaceRoles: WorkflowActionConfigSummary["allowedSpaceRoles"];
+  actorRelations: WorkflowActionConfigSummary["actorRelations"];
   requiresComment: boolean;
   formFields: ActionFormFieldRecord[];
   sortOrder: number;
@@ -116,7 +116,7 @@ export function toWorkflowState(record: WorkflowStateRecord): WorkflowState {
 
 export function toWorkflowActionSummary(
   record: WorkflowActionRecord,
-): WorkflowActionSummary {
+): WorkflowActionConfigSummary {
   return {
     actorRelations: record.actorRelations,
     allowedSpaceRoles: record.allowedSpaceRoles,

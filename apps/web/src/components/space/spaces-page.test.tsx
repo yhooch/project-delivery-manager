@@ -292,7 +292,7 @@ describe("SpacesPage", () => {
     );
   });
 
-  it("shows create action for an active OWNER current organization even when capability is false", async () => {
+  it("hides create action when the backend capability is false", async () => {
     sessionMock.current = {
       ...sessionMock.current,
       session: {
@@ -311,13 +311,13 @@ describe("SpacesPage", () => {
     render(<SpacesPage />);
 
     expect(await screen.findByText("Space A")).toBeInTheDocument();
-    expect(screen.getByTestId("spaces-create-button")).toBeInTheDocument();
-    expect(
-      screen.queryByTestId("spaces-readonly-notice"),
-    ).not.toBeInTheDocument();
+    expect(screen.queryByTestId("spaces-create-button")).not.toBeInTheDocument();
+    expect(screen.getByTestId("spaces-readonly-notice")).toHaveTextContent(
+      "spaces.list.readOnly",
+    );
   });
 
-  it("hides create action for an active MEMBER current organization even when capability is true", async () => {
+  it("shows create action from the backend capability even for a MEMBER organization", async () => {
     sessionMock.current = {
       ...sessionMock.current,
       currentOrganization: {
@@ -333,15 +333,12 @@ describe("SpacesPage", () => {
     render(<SpacesPage />);
 
     expect(await screen.findByText("spaces.list.empty")).toBeInTheDocument();
-    expect(screen.getByTestId("spaces-readonly-notice")).toHaveTextContent(
-      "spaces.list.readOnly",
-    );
+    expect(
+      screen.queryByTestId("spaces-readonly-notice"),
+    ).not.toBeInTheDocument();
     expect(
       screen.queryByTestId("spaces-create-button"),
-    ).not.toBeInTheDocument();
-    expect(
-      screen.queryByText("shell.organizationSwitcher.createSpace"),
-    ).not.toBeInTheDocument();
+    ).toBeInTheDocument();
   });
 
   it("shows create action for an active ADMIN current organization", async () => {

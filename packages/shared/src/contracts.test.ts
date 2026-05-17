@@ -37,6 +37,7 @@ import {
   ViewWorkItemSummarySchema,
   WorkbenchActionTodoSchema,
   WorkbenchViewQuerySchema,
+  WorkflowActionConfigSummarySchema,
   WorkflowActionSummarySchema,
   generateOpenApiDocument,
 } from "./index.ts";
@@ -467,8 +468,6 @@ describe("shared contracts", () => {
       name: "Start fix",
       fromStateId: "01KRZ3NDEKTSV4RRFFQ69G5FAK",
       toStateId: "01RRZ3NDEKTSV4RRFFQ69G5FAR",
-      allowedSpaceRoles: ["PM", "DEVELOPER"],
-      actorRelations: ["ASSIGNEE"],
       requiresComment: true,
       formFields: [
         {
@@ -482,6 +481,11 @@ describe("shared contracts", () => {
       ],
       order: 1,
     });
+    const configAction = WorkflowActionConfigSummarySchema.parse({
+      ...action,
+      allowedSpaceRoles: ["PM", "DEVELOPER"],
+      actorRelations: ["ASSIGNEE"],
+    });
 
     expect(
       PermissionSnapshotSchema.parse({
@@ -491,6 +495,18 @@ describe("shared contracts", () => {
         availableActions: [action],
       }).availableActions,
     ).toEqual([action]);
+    expect(configAction).toMatchObject({
+      allowedSpaceRoles: ["PM", "DEVELOPER"],
+      actorRelations: ["ASSIGNEE"],
+    });
+    expect(() =>
+      PermissionSnapshotSchema.parse({
+        canEdit: true,
+        canComment: true,
+        canUploadAttachment: true,
+        availableActions: [configAction],
+      }),
+    ).toThrow();
 
     expect(
       CreateWorkflowActionRequestSchema.parse({
@@ -642,8 +658,6 @@ describe("shared contracts", () => {
         name: "Confirm fix",
         fromStateId: "01KRZ3NDEKTSV4RRFFQ69G5FAK",
         toStateId: "01RRZ3NDEKTSV4RRFFQ69G5FAR",
-        allowedSpaceRoles: ["PM"],
-        actorRelations: ["REPORTER"],
         requiresComment: true,
         formFields: [],
         order: 1,

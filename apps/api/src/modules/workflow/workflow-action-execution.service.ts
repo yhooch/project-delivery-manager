@@ -802,8 +802,6 @@ function toWorkflowActionSummary(
   action: ExecutableWorkflowAction,
 ): WorkflowActionSummary {
   return {
-    actorRelations: action.actorRelations,
-    allowedSpaceRoles: action.allowedSpaceRoles,
     code: action.code,
     formFields: action.formFields.map((field) => ({
       fieldType: field.fieldType,

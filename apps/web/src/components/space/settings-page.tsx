@@ -16,11 +16,15 @@ import {
   useState,
   type FormEvent,
 } from "react";
+import type { ZodIssue } from "zod";
 
 import { ApiClientError } from "../../lib/api-client";
 import { getApiErrorMessageKey } from "../../lib/api-error-messages";
 import { canManageSpace } from "../../lib/permission-gates";
-import { toUpdateSpaceRequest } from "../../lib/space-forms";
+import {
+  toUpdateSpaceRequest,
+  updateSpaceFormSchema,
+} from "../../lib/space-forms";
 import {
   getSpace,
   listSpaceMembers,
@@ -64,6 +68,9 @@ const roleVariant: Record<string, "primary" | "info" | "warning" | "default"> =
     VIEWER: "default",
   };
 
+type BasicField = "code" | "description" | "name" | "ownerId";
+type BasicFieldErrors = Partial<Record<BasicField, string>>;
+
 export function SpaceSettingsPage() {
   const t = useTranslations("spaceSettings");
   const tShell = useTranslations("shell.nav");
@@ -88,7 +95,10 @@ export function SpaceSettingsPage() {
   const [isSavingBasic, setIsSavingBasic] = useState(false);
   const [isSavingThreshold, setIsSavingThreshold] = useState(false);
   const [saveErrorKey, setSaveErrorKey] = useState<string | null>(null);
+  const [nameError, setNameError] = useState<string | null>(null);
   const [codeError, setCodeError] = useState<string | null>(null);
+  const [descriptionError, setDescriptionError] = useState<string | null>(null);
+  const [ownerError, setOwnerError] = useState<string | null>(null);
   const [thresholdError, setThresholdError] = useState<string | null>(null);
   const [isAddMemberOpen, setIsAddMemberOpen] = useState(false);
   const [editRoleMember, setEditRoleMember] =
@@ -198,7 +208,10 @@ export function SpaceSettingsPage() {
     setIsLoading(false);
     setErrorKey(null);
     setSaveErrorKey(null);
+    setNameError(null);
     setCodeError(null);
+    setDescriptionError(null);
+    setOwnerError(null);
     setThresholdError(null);
     setIsAddMemberOpen(false);
     setEditRoleMember(null);
@@ -223,7 +236,25 @@ export function SpaceSettingsPage() {
 
     setIsSavingBasic(true);
     setSaveErrorKey(null);
+    setNameError(null);
     setCodeError(null);
+    setDescriptionError(null);
+    setOwnerError(null);
+
+    const basicFieldErrors = validateBasicForm({
+      code,
+      description,
+      name,
+      ownerId,
+    });
+    if (hasBasicFieldErrors(basicFieldErrors)) {
+      setNameError(basicFieldErrors.name ?? null);
+      setCodeError(basicFieldErrors.code ?? null);
+      setDescriptionError(basicFieldErrors.description ?? null);
+      setOwnerError(basicFieldErrors.ownerId ?? null);
+      setIsSavingBasic(false);
+      return;
+    }
 
     let request: ReturnType<typeof toUpdateSpaceRequest>;
     try {
@@ -523,11 +554,27 @@ export function SpaceSettingsPage() {
                     data-testid="space-settings-name-input"
                     value={name}
                     maxLength={120}
-                    onChange={(event) => setName(event.target.value)}
+                    onChange={(event) => {
+                      setName(event.target.value);
+                      if (nameError) setNameError(null);
+                    }}
+                    aria-invalid={nameError ? "true" : undefined}
+                    aria-describedby={
+                      nameError ? "space-name-error" : undefined
+                    }
                     disabled={!writeAllowed}
                     className="max-w-full bg-transparent md:max-w-md"
                     required
                   />
+                  {nameError ? (
+                    <p
+                      id="space-name-error"
+                      data-testid="space-settings-name-error"
+                      className="text-[11px] text-destructive mt-1"
+                    >
+                      {tRoot(nameError)}
+                    </p>
+                  ) : null}
                 </div>
                 <div className="flex min-w-0 flex-col gap-2">
                   <Label htmlFor="space-code" className="text-sm font-medium">
@@ -576,7 +623,14 @@ export function SpaceSettingsPage() {
                     data-testid="space-settings-owner-input"
                     className="flex h-9 w-full max-w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 md:max-w-md"
                     value={ownerId}
-                    onChange={(event) => setOwnerId(event.target.value)}
+                    onChange={(event) => {
+                      setOwnerId(event.target.value);
+                      if (ownerError) setOwnerError(null);
+                    }}
+                    aria-invalid={ownerError ? "true" : undefined}
+                    aria-describedby={
+                      ownerError ? "space-owner-error" : undefined
+                    }
                     disabled={!writeAllowed}
                   >
                     <option value="">{t("basic.fields.ownerNone")}</option>
@@ -586,6 +640,15 @@ export function SpaceSettingsPage() {
                       </option>
                     ))}
                   </SelectMenu>
+                  {ownerError ? (
+                    <p
+                      id="space-owner-error"
+                      data-testid="space-settings-owner-error"
+                      className="text-[11px] text-destructive mt-1"
+                    >
+                      {tRoot(ownerError)}
+                    </p>
+                  ) : null}
                 </div>
                 <div className="flex min-w-0 flex-col gap-2 md:col-span-2">
                   <Label
@@ -600,10 +663,28 @@ export function SpaceSettingsPage() {
                     value={description}
                     maxLength={2000}
                     placeholder={t("basic.fields.descriptionPlaceholder")}
-                    onChange={(event) => setDescription(event.target.value)}
+                    onChange={(event) => {
+                      setDescription(event.target.value);
+                      if (descriptionError) setDescriptionError(null);
+                    }}
+                    aria-invalid={descriptionError ? "true" : undefined}
+                    aria-describedby={
+                      descriptionError
+                        ? "space-description-error"
+                        : undefined
+                    }
                     disabled={!writeAllowed}
                     className="min-h-[100px] max-w-full resize-y bg-transparent md:max-w-2xl"
                   />
+                  {descriptionError ? (
+                    <p
+                      id="space-description-error"
+                      data-testid="space-settings-description-error"
+                      className="text-[11px] text-destructive mt-1"
+                    >
+                      {tRoot(descriptionError)}
+                    </p>
+                  ) : null}
                 </div>
               </div>
               <div className="flex items-center gap-4 pt-2">
@@ -929,4 +1010,73 @@ function getSpaceMemberIdentity(member: SpaceMemberWithUser) {
 function initialOf(value: string) {
   const trimmed = value.trim();
   return trimmed.length > 0 ? trimmed.slice(0, 1).toUpperCase() : "?";
+}
+
+function validateBasicForm(input: {
+  code: string;
+  description: string;
+  name: string;
+  ownerId: string;
+}): BasicFieldErrors {
+  const errors: BasicFieldErrors = {};
+  const trimmedName = input.name.trim();
+  const trimmedCode = input.code.trim();
+
+  if (trimmedName.length < 1) {
+    errors.name = "spaceSettings.basic.errors.nameRequired";
+  } else if (trimmedName.length > 120) {
+    errors.name = "spaceSettings.basic.errors.nameTooLong";
+  }
+
+  if (trimmedCode.length < 1) {
+    errors.code = "spaceSettings.basic.errors.codeRequired";
+  }
+
+  const result = updateSpaceFormSchema.safeParse(input);
+  if (!result.success) {
+    Object.assign(errors, mapBasicFormErrors(result.error.issues, errors));
+  }
+
+  return errors;
+}
+
+function mapBasicFormErrors(
+  issues: ZodIssue[],
+  existingErrors: BasicFieldErrors,
+): BasicFieldErrors {
+  const errors: BasicFieldErrors = {};
+
+  for (const issue of issues) {
+    const field = issue.path[0];
+    if (
+      field !== "name" &&
+      field !== "code" &&
+      field !== "description" &&
+      field !== "ownerId"
+    ) {
+      continue;
+    }
+    if (existingErrors[field] || errors[field]) {
+      continue;
+    }
+
+    if (field === "name") {
+      errors.name =
+        issue.code === "too_big"
+          ? "spaceSettings.basic.errors.nameTooLong"
+          : "spaceSettings.basic.errors.nameRequired";
+    } else if (field === "code") {
+      errors.code = "spaceSettings.basic.errors.codeInvalid";
+    } else if (field === "description") {
+      errors.description = "spaceSettings.basic.errors.descriptionTooLong";
+    } else {
+      errors.ownerId = "spaceSettings.basic.errors.ownerInvalid";
+    }
+  }
+
+  return errors;
+}
+
+function hasBasicFieldErrors(errors: BasicFieldErrors): boolean {
+  return Object.values(errors).some(Boolean);
 }

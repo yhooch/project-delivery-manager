@@ -64,6 +64,7 @@ import {
 } from "../../lib/requirement-service";
 import { cn } from "../../lib/utils";
 import {
+  getTraceVersionCascadeConfirmLabels,
   isTraceVersionCascadeRequiredError,
   traceVersionCascadeConfirmMessage,
 } from "../../lib/versioned-trace-linking";
@@ -456,12 +457,16 @@ export function RequirementDetailWorkspace({
       if (isTraceVersionCascadeRequiredError(error)) {
         setPendingCascadeConfirm({
           request,
-          message: traceVersionCascadeConfirmMessage({
-            body: tRoot("errors.api.TRACE_VERSION_CHANGE_REQUIRES_CASCADE"),
-            suffix: tRoot(
-              "errors.api.TRACE_VERSION_CHANGE_REQUIRES_CASCADE_CONFIRM_SUFFIX",
-            ),
-          }),
+          message: traceVersionCascadeConfirmMessage(
+            {
+              body: tRoot("errors.api.TRACE_VERSION_CHANGE_REQUIRES_CASCADE"),
+              labels: getTraceVersionCascadeConfirmLabels(tRoot),
+              suffix: tRoot(
+                "errors.api.TRACE_VERSION_CHANGE_REQUIRES_CASCADE_CONFIRM_SUFFIX",
+              ),
+            },
+            error,
+          ),
         });
         return;
       }

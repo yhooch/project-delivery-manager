@@ -84,6 +84,25 @@
         "regressionConclusion": "回归结论",
         "failedReason": "不通过原因",
         "reopenReason": "重开原因"
+      },
+      "fieldOptions": {
+        "resolution": {
+          "FIXED": "已修复",
+          "WONT_FIX": "不修复"
+        },
+        "regressionConclusion": {
+          "PASSED": "回归通过",
+          "FAILED": "回归不通过",
+          "REGRESSION_PASSED": "回归通过",
+          "REGRESSION_FAILED": "回归不通过"
+        }
+      },
+      "optionValues": {
+        "FIXED": "已修复",
+        "WONT_FIX": "不修复",
+        "PASSED": "通过",
+        "FAILED": "不通过",
+        "REGRESSION_FAILED": "回归不通过"
       }
     },
     "exceptionReasons": {
@@ -133,7 +152,18 @@
     "title": "确认级联版本变更",
     "cancel": "取消",
     "submit": "确认级联",
-    "submitting": "级联中"
+    "submitting": "级联中",
+    "scopeTitle": "影响范围",
+    "target": "变更对象",
+    "versionChange": "版本变化",
+    "noVersion": "无版本",
+    "workItems": "任务",
+    "intakeItems": "事项",
+    "bugs": "Bug",
+    "relatedBugs": "关联 Bug",
+    "affectedIds": "ID",
+    "serverMessage": "后端提示",
+    "requestId": "请求 ID"
   },
   "auth": {
     "brand": {
@@ -556,7 +586,13 @@
       "cancel": "取消",
       "submit": "创建项目空间",
       "submitting": "创建中…",
-      "error": "创建项目空间失败，请稍后重试。"
+      "error": "创建项目空间失败，请稍后重试。",
+      "errors": {
+        "nameRequired": "请输入空间名称。",
+        "nameTooLong": "空间名称不能超过 120 个字符。",
+        "codeInvalid": "编码需为 2 到 32 位字母、数字、下划线或短横线。",
+        "descriptionTooLong": "描述不能超过 2000 个字符。"
+      }
     },
     "command": {
       "placeholder": "输入命令或搜索任务、Bug、需求、事项",
@@ -2447,6 +2483,10 @@
           "description": "说明",
           "descriptionPlaceholder": "可选：简要描述此流程的用途"
         },
+        "errors": {
+          "codeRequired": "请填写流程编码。当前名称无法自动生成有效编码。",
+          "codeInvalid": "流程编码只能包含字母、数字、下划线和短横线。"
+        },
         "submit": "创建",
         "submitting": "创建中…",
         "cancel": "取消"
@@ -2899,7 +2939,15 @@
         "ownerPlaceholder": "选择空间负责人",
         "ownerNone": "未指定"
       },
-      "codeConflict": "该编码在当前组织内已存在，请更换。"
+      "codeConflict": "该编码在当前组织内已存在，请更换。",
+      "errors": {
+        "nameRequired": "请输入空间名称。",
+        "nameTooLong": "空间名称不能超过 120 个字符。",
+        "codeRequired": "请输入空间编码。",
+        "codeInvalid": "编码需为 2 到 32 位字母、数字、下划线或短横线。",
+        "descriptionTooLong": "描述不能超过 2000 个字符。",
+        "ownerInvalid": "请选择有效的空间成员作为负责人。"
+      }
     },
     "threshold": {
       "title": "异常阈值",

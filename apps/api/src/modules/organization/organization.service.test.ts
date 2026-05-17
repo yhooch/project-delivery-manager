@@ -120,6 +120,7 @@ function createRepository() {
     updateOrganization: vi.fn(),
   } satisfies Record<keyof OrganizationRepository, unknown> as OrganizationRepository & {
     countActiveOwners: ReturnType<typeof vi.fn>;
+    findMemberById: ReturnType<typeof vi.fn>;
     updateMember: ReturnType<typeof vi.fn>;
   };
 }

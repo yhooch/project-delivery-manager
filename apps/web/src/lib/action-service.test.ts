@@ -22,8 +22,6 @@ const fromStateId = "01ARZ3NDEKTSV4RRFFQ69G5FB4";
 const toStateId = "01ARZ3NDEKTSV4RRFFQ69G5FB5";
 
 const action: WorkflowActionSummary = {
-  actorRelations: ["ASSIGNEE"],
-  allowedSpaceRoles: ["DEVELOPER"],
   code: "START_PROGRESS",
   formFields: [],
   fromStateId,

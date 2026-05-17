@@ -1,5 +1,6 @@
 import { Inject, Injectable } from "@nestjs/common";
 import type {
+  ActionFormFieldSummary,
   GetMyWorkbenchViewResponse,
   GetSpaceExceptionsViewResponse,
   GetSpaceOverviewViewResponse,
@@ -14,6 +15,7 @@ import type {
   VersionSummary,
   WorkbenchActionReasonCode,
   WorkbenchActionTodo,
+  WorkflowActorRelation,
   WorkflowActionSummary,
 } from "@project-delivery/shared";
 
@@ -80,11 +82,6 @@ const REQUIREMENT_NON_DRAFT_READ_ALL_ROLES = new Set<SpaceRole>([
   "REQUIREMENT",
 ]);
 const INTAKE_ITEM_READ_ALL_ROLES = new Set<SpaceRole>([
-  "SPACE_ADMIN",
-  "PM",
-  "VIEWER",
-]);
-const AGGREGATE_STATS_READ_ALL_ROLES = new Set<SpaceRole>([
   "SPACE_ADMIN",
   "PM",
   "VIEWER",
@@ -309,6 +306,16 @@ export class PrismaSpaceRepository implements SpaceRepository {
     }
 
     const spaceIds = spaces.map((space) => space.id);
+    const aggregateActorUserId = getAggregateActorUserId(
+      input,
+      accessibleByUserId,
+    );
+    const aggregateAccessContext = aggregateActorUserId
+      ? await this.resolveViewAccessContext({
+          actorUserId: aggregateActorUserId,
+          organizationId,
+        })
+      : undefined;
     const baseWorkItemWhere = {
       deletedAt: null,
       organizationId,
@@ -316,7 +323,19 @@ export class PrismaSpaceRepository implements SpaceRepository {
         in: spaceIds,
       },
     } satisfies Prisma.WorkItemWhereInput;
-    const nonTerminalWorkItemWhere = andWorkItemWhere(baseWorkItemWhere, {
+    const visibleWorkItemWhere = aggregateAccessContext
+      ? andWorkItemWhere(
+          buildVisibleWorkItemWhere(aggregateAccessContext, {
+            organizationId,
+          }),
+          {
+            spaceId: {
+              in: spaceIds,
+            },
+          },
+        )
+      : baseWorkItemWhere;
+    const nonTerminalWorkItemWhere = andWorkItemWhere(visibleWorkItemWhere, {
       statusCategory: {
         notIn: TERMINAL_STATUS_CATEGORIES,
       },
@@ -342,12 +361,18 @@ export class PrismaSpaceRepository implements SpaceRepository {
       ),
       this.listCurrentVersionsBySpaceId(organizationId, spaceIds),
     ]);
+    const visibleCurrentVersionBySpaceId = aggregateAccessContext
+      ? await this.withVisibleVersionSummaryStatsBySpaceId(
+          currentVersionBySpaceId,
+          aggregateAccessContext,
+        )
+      : currentVersionBySpaceId;
 
     return {
       items: spaces.map((space) =>
         toSpaceSummary(space, {
           blockedCount: blockedCounts.get(space.id) ?? 0,
-          currentVersion: currentVersionBySpaceId.get(space.id),
+          currentVersion: visibleCurrentVersionBySpaceId.get(space.id),
           openBugCount: openBugCounts.get(space.id) ?? 0,
           unfinishedTaskCount: unfinishedTaskCounts.get(space.id) ?? 0,
         }),
@@ -394,6 +419,20 @@ export class PrismaSpaceRepository implements SpaceRepository {
     }
 
     return currentVersionBySpaceId;
+  }
+
+  private async withVisibleVersionSummaryStatsBySpaceId(
+    versionsBySpaceId: Map<string, VersionSummary>,
+    context: ViewAccessContext,
+  ) {
+    const entries = await Promise.all(
+      [...versionsBySpaceId.entries()].map(async ([spaceId, version]) => [
+        spaceId,
+        await this.withVisibleVersionSummaryStats(version, context),
+      ] as const),
+    );
+
+    return new Map(entries);
   }
 
   async listMembers(
@@ -784,10 +823,9 @@ export class PrismaSpaceRepository implements SpaceRepository {
         staleThresholdDays,
       ),
     ]);
-    const visibleCurrentVersion =
-      currentVersion && shouldScopeAggregateStats(context)
-        ? await this.withVisibleVersionSummaryStats(currentVersion, context)
-        : currentVersion;
+    const visibleCurrentVersion = currentVersion
+      ? await this.withVisibleVersionSummaryStats(currentVersion, context)
+      : undefined;
 
     return {
       space: input.space,
@@ -1513,6 +1551,9 @@ export class PrismaSpaceRepository implements SpaceRepository {
               spaceId: {
                 in: context.requirementReadAllSpaceIds,
               },
+              status: {
+                not: "DRAFT" as const,
+              },
             },
           ]
         : []),
@@ -1894,11 +1935,11 @@ type ViewWorkItemRecord = {
 };
 
 type ViewWorkflowActionRecord = {
-  actorRelations: WorkflowActionSummary["actorRelations"];
-  allowedSpaceRoles: WorkflowActionSummary["allowedSpaceRoles"];
+  actorRelations: WorkflowActorRelation[];
+  allowedSpaceRoles: SpaceRole[];
   code: string;
   formFields: Array<{
-    fieldType: WorkflowActionSummary["formFields"][number]["fieldType"];
+    fieldType: ActionFormFieldSummary["fieldType"];
     id: string;
     key: string;
     label: string;
@@ -1982,17 +2023,20 @@ function buildVisibleRequirementWhere(
     versionId?: string;
   },
 ): Prisma.RequirementWhereInput {
-  const readAllSpaceIds = context.accesses
+  const nonDraftReadAllSpaceIds = context.accesses
     .filter((access) =>
       REQUIREMENT_AGGREGATE_STATS_READ_ALL_ROLES.has(access.role),
     )
     .map((access) => access.spaceId);
   const visibilityOr: Prisma.RequirementWhereInput[] = [];
 
-  if (readAllSpaceIds.length > 0) {
+  if (nonDraftReadAllSpaceIds.length > 0) {
     visibilityOr.push({
       spaceId: {
-        in: readAllSpaceIds,
+        in: nonDraftReadAllSpaceIds,
+      },
+      status: {
+        not: "DRAFT",
       },
     });
   }
@@ -2024,14 +2068,11 @@ function buildVisibleRequirementWhere(
   };
 }
 
-function shouldScopeAggregateStats(context: ViewAccessContext): boolean {
-  const readAllSpaceIds = new Set(
-    context.accesses
-      .filter((access) => AGGREGATE_STATS_READ_ALL_ROLES.has(access.role))
-      .map((access) => access.spaceId),
-  );
-
-  return context.spaceIds.some((spaceId) => !readAllSpaceIds.has(spaceId));
+function getAggregateActorUserId(
+  input: SpaceListInput,
+  accessibleByUserId?: string,
+) {
+  return input.aggregateActorUserId ?? accessibleByUserId;
 }
 
 function buildTimelineWhere(
@@ -2428,8 +2469,6 @@ function toWorkflowActionSummary(
     name: action.name,
     fromStateId: action.fromStateId,
     toStateId: action.toStateId,
-    allowedSpaceRoles: action.allowedSpaceRoles,
-    actorRelations: action.actorRelations,
     requiresComment: action.requiresComment,
     formFields: action.formFields.map((field) => ({
       id: field.id,

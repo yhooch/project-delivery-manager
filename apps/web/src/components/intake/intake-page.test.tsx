@@ -1445,6 +1445,19 @@ describe("IntakePage", () => {
         items: [{ ...original, status: "CONVERTED" }],
         total: 1,
       });
+    listWorkItemsMock
+      .mockResolvedValueOnce({
+        items: [],
+        page: 1,
+        pageSize: 10,
+        total: 0,
+      })
+      .mockResolvedValueOnce({
+        items: [makeTask({ title: "Breakdown created task" })],
+        page: 1,
+        pageSize: 10,
+        total: 1,
+      });
 
     render(<IntakePage />);
 
@@ -1460,6 +1473,10 @@ describe("IntakePage", () => {
         screen.queryByTestId("intake-convert-button"),
       ).not.toBeInTheDocument(),
     );
+    expect(
+      await screen.findByText("Breakdown created task"),
+    ).toBeInTheDocument();
+    await waitFor(() => expect(listWorkItemsMock).toHaveBeenCalledTimes(2));
   });
 
   it("opens converted intake related task list from the related section", async () => {

@@ -11,6 +11,8 @@ import {
   Inbox,
   LayoutDashboard,
   Loader2,
+  Monitor,
+  Moon,
   Plus,
   Settings2,
   ShieldAlert,
@@ -24,6 +26,7 @@ import { useEffect, useMemo, useState } from "react";
 import { getApiErrorMessageKey } from "../../lib/api-error-messages";
 import { listBugs } from "../../lib/bug-service";
 import { formatDisplayCode } from "../../lib/display-code";
+import { isEditableTarget } from "../../lib/hooks/use-list-keyboard-nav";
 import { listIntakeItems } from "../../lib/intake-service";
 import {
   canCreateBugs,
@@ -60,18 +63,18 @@ import {
 
 let openExternal: ((open?: boolean) => void) | null = null;
 const GO_CHORD_TIMEOUT_MS = 800;
+const THEME_COMMANDS = [
+  { icon: Sun, labelKey: "themeLight", mode: "light" },
+  { icon: Moon, labelKey: "themeDark", mode: "dark" },
+  { icon: Monitor, labelKey: "themeSystem", mode: "system" },
+] satisfies {
+  icon: typeof Sun;
+  labelKey: "themeLight" | "themeDark" | "themeSystem";
+  mode: NextThemeMode;
+}[];
 
 export function openCommandPalette() {
   openExternal?.(true);
-}
-
-function isEditableTarget(target: EventTarget | null): boolean {
-  if (!target || !(target instanceof HTMLElement)) {
-    return false;
-  }
-
-  const tag = target.tagName;
-  return tag === "INPUT" || tag === "TEXTAREA" || target.isContentEditable;
 }
 
 type CommandPaletteShortcutOptions = {
@@ -140,13 +143,13 @@ export function useCommandPaletteShortcut({
     const handler = (event: KeyboardEvent) => {
       const isInput = isEditableTarget(event.target);
 
+      if (isInput) return;
+
       if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "k") {
         event.preventDefault();
         openExternal?.();
         return;
       }
-
-      if (isInput) return;
 
       if (event.key.toLowerCase() === "g") {
         event.preventDefault();
@@ -724,30 +727,12 @@ export function CommandPalette({ enabled = true }: CommandPaletteProps) {
 
             <CommandSeparator />
             <CommandGroup heading={t("preferences")}>
-              <CommandItem
-                onSelect={() => {
-                  selectTheme("light");
-                }}
-              >
-                <Sun className="text-muted-foreground" />
-                <span>{t("themeLight")}</span>
-              </CommandItem>
-              <CommandItem
-                onSelect={() => {
-                  selectTheme("dark");
-                }}
-              >
-                <Sun className="text-muted-foreground" />
-                <span>{t("themeDark")}</span>
-              </CommandItem>
-              <CommandItem
-                onSelect={() => {
-                  selectTheme("system");
-                }}
-              >
-                <Sun className="text-muted-foreground" />
-                <span>{t("themeSystem")}</span>
-              </CommandItem>
+              {THEME_COMMANDS.map(({ icon: Icon, labelKey, mode }) => (
+                <CommandItem key={mode} onSelect={() => selectTheme(mode)}>
+                  <Icon className="text-muted-foreground" />
+                  <span>{t(labelKey)}</span>
+                </CommandItem>
+              ))}
             </CommandGroup>
           </>
         )}

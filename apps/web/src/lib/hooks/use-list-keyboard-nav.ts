@@ -46,7 +46,7 @@ export type UseListKeyboardNavOptions<T> = {
   enabled?: boolean;
 };
 
-function isEditableTarget(target: EventTarget | null): boolean {
+export function isEditableTarget(target: EventTarget | null): boolean {
   if (!target || !(target instanceof HTMLElement)) {
     return false;
   }
@@ -54,7 +54,7 @@ function isEditableTarget(target: EventTarget | null): boolean {
   if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") {
     return true;
   }
-  if (target.isContentEditable) {
+  if (target.isContentEditable || target.closest('[contenteditable="true"]')) {
     return true;
   }
   return false;

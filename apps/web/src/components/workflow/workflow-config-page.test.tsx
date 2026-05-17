@@ -7,7 +7,7 @@ import {
   waitFor,
 } from "@testing-library/react";
 import type {
-  WorkflowActionSummary,
+  WorkflowActionConfigSummary,
   WorkflowBinding,
   WorkflowDefinition,
   WorkflowState,
@@ -178,8 +178,8 @@ function makeState(overrides: Partial<WorkflowState> = {}): WorkflowState {
 }
 
 function makeAction(
-  overrides: Partial<WorkflowActionSummary> = {},
-): WorkflowActionSummary {
+  overrides: Partial<WorkflowActionConfigSummary> = {},
+): WorkflowActionConfigSummary {
   return {
     actorRelations: ["ASSIGNEE"],
     allowedSpaceRoles: ["DEVELOPER"],

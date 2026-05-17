@@ -195,7 +195,7 @@ describe("CreateTaskDialog", () => {
     );
   });
 
-  it("keeps selected requirement and intake options when the selected version differs", async () => {
+  it("clears selected requirement and intake when the selected version differs", async () => {
     listVersionsMock.mockResolvedValue({
       items: [
         { id: versionId, name: "Version 1" },
@@ -253,18 +253,18 @@ describe("CreateTaskDialog", () => {
 
     fireEvent.change(versionSelect, { target: { value: versionTwoId } });
 
-    expect(requirementSelect.value).toBe(requirementId);
-    expect(intakeSelect.value).toBe(intakeItemId);
+    await waitFor(() => expect(requirementSelect.value).toBe(""));
+    expect(intakeSelect.value).toBe("");
     expect(getSelectOptionLabels(requirementSelect)).toEqual(
-      expect.arrayContaining([
-        "Requirement v1",
-        "Requirement no version",
-        "Requirement v2",
-      ]),
+      expect.arrayContaining(["Requirement no version", "Requirement v2"]),
+    );
+    expect(getSelectOptionLabels(requirementSelect)).not.toContain(
+      "Requirement v1",
     );
     expect(getSelectOptionLabels(intakeSelect)).toEqual(
-      expect.arrayContaining(["Intake v1", "Intake no version", "Intake v2"]),
+      expect.arrayContaining(["Intake no version", "Intake v2"]),
     );
+    expect(getSelectOptionLabels(intakeSelect)).not.toContain("Intake v1");
   });
 
   it("infers the version from a versioned requirement and keeps unversioned intake", async () => {

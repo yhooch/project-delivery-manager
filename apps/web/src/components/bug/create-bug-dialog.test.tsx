@@ -228,7 +228,7 @@ describe("CreateBugDialog", () => {
     );
   });
 
-  it("infers the version from a selected requirement and keeps it when the version changes", async () => {
+  it("infers the version from a selected requirement and clears it when the version changes", async () => {
     listVersionsMock.mockResolvedValueOnce({
       items: [
         { id: versionId, name: "v1" },
@@ -290,12 +290,62 @@ describe("CreateBugDialog", () => {
 
     fireEvent.change(versionSelect, { target: { value: versionId } });
 
+    await waitFor(() => expect(requirementSelect.value).toBe(""));
+    expect(getSelectOptionLabels(requirementSelect)).toContain(
+      "Requirement v1",
+    );
+    expect(getSelectOptionLabels(requirementSelect)).not.toContain(
+      "Requirement v2",
+    );
+  });
+
+  it("clears an incompatible related task when the version changes", async () => {
+    listVersionsMock.mockResolvedValueOnce({
+      items: [
+        { id: versionId, name: "v1" },
+        { id: nextVersionId, name: "v2" },
+      ],
+      total: 2,
+    });
+    listRequirementsMock.mockResolvedValueOnce({
+      items: [{ id: requirementId, title: "Requirement v1", versionId }],
+      total: 1,
+    });
+    listWorkItemsMock.mockResolvedValueOnce({
+      items: [
+        { id: relatedTaskId, title: "Task v1", versionId },
+        { id: nextRelatedTaskId, title: "Task v2", versionId: nextVersionId },
+      ],
+      total: 2,
+    });
+
+    render(
+      <CreateBugDialog
+        open
+        onOpenChange={() => {}}
+        organizationId={organizationId}
+        spaceId={spaceId}
+      />,
+    );
+
+    const versionSelect = screen.getByTestId(
+      "create-bug-version-select",
+    ) as HTMLSelectElement;
+    const relatedTaskSelect = screen.getByTestId(
+      "create-bug-related-task-select",
+    ) as HTMLSelectElement;
     await waitFor(() =>
-      expect(requirementSelect.value).toBe(nextRequirementId),
+      expect(getSelectOptionLabels(relatedTaskSelect)).toContain("Task v1"),
     );
-    expect(getSelectOptionLabels(requirementSelect)).toEqual(
-      expect.arrayContaining(["Requirement v1", "Requirement v2"]),
-    );
+
+    fireEvent.change(relatedTaskSelect, { target: { value: relatedTaskId } });
+    expect(relatedTaskSelect.value).toBe(relatedTaskId);
+
+    fireEvent.change(versionSelect, { target: { value: nextVersionId } });
+
+    await waitFor(() => expect(relatedTaskSelect.value).toBe(""));
+    expect(getSelectOptionLabels(relatedTaskSelect)).toContain("Task v2");
+    expect(getSelectOptionLabels(relatedTaskSelect)).not.toContain("Task v1");
   });
 
   it("infers the version and requirement from a selected related task", async () => {

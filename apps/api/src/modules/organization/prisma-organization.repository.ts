@@ -361,6 +361,21 @@ export class PrismaOrganizationRepository implements OrganizationRepository {
         },
       });
 
+      if (member.status === "ACTIVE" && nextStatus === "DISABLED") {
+        await tx.spaceMember.updateMany({
+          data: {
+            status: "DISABLED",
+            updatedById: input.updatedById,
+          },
+          where: {
+            deletedAt: null,
+            organizationId: input.organizationId,
+            status: "ACTIVE",
+            userId: member.userId,
+          },
+        });
+      }
+
       return tx.organizationMember.findFirst({
         include: {
           user: true,

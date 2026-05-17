@@ -5,7 +5,6 @@ import { useTranslations } from "next-intl";
 import { useEffect, useState, type ReactNode } from "react";
 
 import { Link } from "../../i18n/routing";
-import { canCreateSpaceInOrganization } from "../../lib/permission-gates";
 import { useSession } from "../providers/session-provider";
 import { Button } from "../ui/button";
 import { Sheet, SheetContent, SheetDescription, SheetTitle } from "../ui/sheet";
@@ -39,10 +38,7 @@ export function AppShell({ children }: AppShellProps) {
     hasOrganization &&
     spacesForCurrentOrganization.length === 0 &&
     !currentSpace;
-  const canCreateSpace = canCreateSpaceInOrganization(
-    currentOrganization?.role,
-    currentOrganization?.status,
-  );
+  const canCreateSpace = Boolean(session?.capabilities?.canCreateSpace);
   useCommandPaletteShortcut({ enabled: hasOrganization });
 
   useEffect(() => {

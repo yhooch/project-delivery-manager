@@ -157,6 +157,58 @@ describe("CreateWorkflowDialog", () => {
     expect(onSuccess).toHaveBeenCalledWith(makeWorkflow());
   });
 
+  it("auto-generates a workflow code from an ASCII name when code is blank", async () => {
+    createWorkflowMock.mockResolvedValueOnce(makeWorkflow());
+    createWorkflowVersionMock.mockResolvedValueOnce(makeVersion());
+
+    renderCreateDialog();
+
+    fireEvent.change(
+      screen.getByLabelText("workflow.dialog.create.fields.name"),
+      {
+        target: { value: "  QA Review Flow  " },
+      },
+    );
+    fireEvent.click(
+      screen.getByRole("button", {
+        name: "workflow.dialog.create.submit",
+      }),
+    );
+
+    await waitFor(() =>
+      expect(createWorkflowMock).toHaveBeenCalledWith(
+        { organizationId, spaceId },
+        {
+          code: "qa-review-flow",
+          description: undefined,
+          name: "QA Review Flow",
+        },
+      ),
+    );
+  });
+
+  it("shows a validation error when blank code cannot be generated from the name", async () => {
+    renderCreateDialog();
+
+    fireEvent.change(
+      screen.getByLabelText("workflow.dialog.create.fields.name"),
+      {
+        target: { value: "流程" },
+      },
+    );
+    fireEvent.click(
+      screen.getByRole("button", {
+        name: "workflow.dialog.create.submit",
+      }),
+    );
+
+    expect(
+      await screen.findByRole("alert"),
+    ).toHaveTextContent("workflow.dialog.create.errors.codeRequired");
+    expect(createWorkflowMock).not.toHaveBeenCalled();
+    expect(createWorkflowVersionMock).not.toHaveBeenCalled();
+  });
+
   it("uses the latest published workflow version as the copy source", async () => {
     const newerPublishedVersionId = "01ARZ3NDEKTSV4RRFFQ69G5VP2";
     listWorkflowVersionsMock.mockResolvedValueOnce({

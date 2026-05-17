@@ -38,7 +38,7 @@ import {
   UpdateWorkflowVersionResponseSchema,
   type ActionFormFieldSummary,
   type PageResult,
-  type WorkflowActionSummary,
+  type WorkflowActionConfigSummary,
   type WorkflowBinding,
   type WorkflowDefinition,
   type WorkflowState,
@@ -332,7 +332,7 @@ export async function createWorkflowAction(
   context: WorkflowVersionIdentityInput,
   input: CreateWorkflowActionInput,
   api: WorkflowApiTransport = defaultApi,
-): Promise<WorkflowActionSummary> {
+): Promise<WorkflowActionConfigSummary> {
   const {
     organizationId: _organizationId,
     spaceId: _spaceId,
@@ -351,7 +351,7 @@ export async function updateWorkflowAction(
   context: WorkflowActionIdentityInput,
   input: UpdateWorkflowActionInput,
   api: WorkflowApiTransport = defaultApi,
-): Promise<WorkflowActionSummary> {
+): Promise<WorkflowActionConfigSummary> {
   const { actionId, organizationId: _organizationId, spaceId: _spaceId } = context;
   const body = UpdateWorkflowActionRequestSchema.parse(input);
   const response = await api.patch<unknown>(`/workflow-actions/${actionId}`, body);

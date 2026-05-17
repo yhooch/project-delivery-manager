@@ -74,6 +74,58 @@ export function translateWorkflowFieldLabel(
   );
 }
 
+export function translateWorkflowSelectOption(
+  t: Translator,
+  field: { key?: string },
+  option: string,
+): string {
+  const normalized = option.trim();
+  if (!normalized) {
+    return option;
+  }
+
+  const fieldKey = field.key?.trim();
+  if (fieldKey) {
+    const fieldOption = translateOptional(
+      t,
+      `common.workflowDefaults.fieldOptions.${fieldKey}.${normalized}`,
+    );
+    if (fieldOption) {
+      return fieldOption;
+    }
+  }
+
+  const stateName = translateByStableCode(
+    t,
+    "common.workflowDefaults.states",
+    normalized,
+    normalized,
+  );
+  if (stateName !== normalized) {
+    return stateName;
+  }
+
+  const actionName = translateByStableCode(
+    t,
+    "common.workflowDefaults.actions",
+    normalized,
+    normalized,
+  );
+  if (actionName !== normalized) {
+    return actionName;
+  }
+
+  const genericOption = translateOptional(
+    t,
+    `common.workflowDefaults.optionValues.${normalized}`,
+  );
+  if (genericOption) {
+    return genericOption;
+  }
+
+  return humanizeStableOption(normalized) ?? option;
+}
+
 export function translateExceptionReason(
   t: Translator,
   reason: string,
@@ -111,10 +163,33 @@ function translateByStableCode(
   const key = property
     ? `${namespace}.${normalized}.${property}`
     : `${namespace}.${normalized}`;
+  return translateOptional(t, key) ?? fallback;
+}
+
+function translateOptional(t: Translator, key: string): string | undefined {
   try {
     const translated = t(key);
-    return translated === key ? fallback : translated;
+    return translated === key ? undefined : translated;
   } catch {
-    return fallback;
+    return undefined;
   }
+}
+
+function humanizeStableOption(option: string): string | undefined {
+  if (!/^[A-Za-z0-9_-]+$/u.test(option)) {
+    return undefined;
+  }
+
+  const words = option
+    .split(/[_-]+/u)
+    .map((part) => part.trim())
+    .filter(Boolean);
+
+  if (words.length === 0) {
+    return undefined;
+  }
+
+  return words
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+    .join(" ");
 }

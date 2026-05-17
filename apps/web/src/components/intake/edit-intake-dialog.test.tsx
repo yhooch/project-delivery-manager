@@ -175,6 +175,14 @@ describe("EditIntakeDialog", () => {
     const cascadeError = new ApiClientError(
       {
         code: "TRACE_VERSION_CHANGE_REQUIRES_CASCADE",
+        details: {
+          impact: {
+            workItemCount: 1,
+            workItemIds: ["TASK_CHILD"],
+          },
+          targetId: intakeItemId,
+          targetType: "INTAKE_ITEM",
+        },
         message: "事项版本变更需要同步任务",
         requestId: "REQ_TRACE",
       },
@@ -204,6 +212,12 @@ describe("EditIntakeDialog", () => {
     expect(
       screen.getByTestId("trace-version-cascade-confirm-dialog"),
     ).not.toHaveTextContent("事项版本变更需要同步任务");
+    expect(
+      screen.getByTestId("trace-version-cascade-confirm-dialog"),
+    ).toHaveTextContent("traceVersionCascadeConfirm.scopeTitle");
+    expect(
+      screen.getByTestId("trace-version-cascade-confirm-dialog"),
+    ).toHaveTextContent("TASK_CHILD");
     await waitFor(() => expect(updateIntakeItemMock).toHaveBeenCalledTimes(1));
     fireEvent.click(screen.getByTestId("trace-version-cascade-confirm"));
 

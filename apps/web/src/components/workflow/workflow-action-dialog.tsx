@@ -2,7 +2,7 @@
 
 import type {
   SpaceRole,
-  WorkflowActionSummary,
+  WorkflowActionConfigSummary,
   WorkflowActorRelation,
   WorkflowState,
 } from "@project-delivery/shared";
@@ -10,6 +10,7 @@ import { useTranslations } from "next-intl";
 import { useEffect, useState, type FormEvent } from "react";
 
 import { getApiErrorMessageKey } from "../../lib/api-error-messages";
+import { translateWorkflowStateName } from "../../lib/workflow-display";
 import {
   createWorkflowAction,
   updateWorkflowAction,
@@ -49,7 +50,7 @@ const ACTOR_RELATION_OPTIONS: WorkflowActorRelation[] = [
 
 export type WorkflowActionDialogMode =
   | { kind: "create" }
-  | { kind: "edit"; action: WorkflowActionSummary };
+  | { kind: "edit"; action: WorkflowActionConfigSummary };
 
 export type WorkflowActionDialogProps = {
   context: WorkflowSpaceContext;
@@ -262,7 +263,7 @@ export function WorkflowActionDialog({
                 ) : null}
                 {states.map((state) => (
                   <option key={state.id} value={state.id}>
-                    {state.name}
+                    {translateWorkflowStateName(tRoot, state)}
                   </option>
                 ))}
               </SelectMenu>
@@ -283,7 +284,7 @@ export function WorkflowActionDialog({
                 ) : null}
                 {states.map((state) => (
                   <option key={state.id} value={state.id}>
-                    {state.name}
+                    {translateWorkflowStateName(tRoot, state)}
                   </option>
                 ))}
               </SelectMenu>

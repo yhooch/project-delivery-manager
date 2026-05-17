@@ -183,12 +183,12 @@ afterEach(() => {
 });
 
 describe("OrganizationSwitcher", () => {
-  it("hides create-space for an active MEMBER current organization even with capability", () => {
+  it("shows create-space from the backend capability even for a MEMBER organization", () => {
     render(<OrganizationSwitcher />);
 
     expect(
-      screen.queryByTestId("org-switcher-create-space"),
-    ).not.toBeInTheDocument();
+      screen.getByTestId("org-switcher-create-space"),
+    ).toBeInTheDocument();
     expect(
       screen.getByText("shell.organizationSwitcher.roles.MEMBER"),
     ).toBeInTheDocument();
@@ -196,7 +196,7 @@ describe("OrganizationSwitcher", () => {
   });
 
   it.each(["OWNER", "ADMIN"])(
-    "shows create-space for an active %s current organization",
+    "hides create-space when backend capability is false for %s",
     (role) => {
       sessionMock.current = {
         ...sessionMock.current,
@@ -226,8 +226,8 @@ describe("OrganizationSwitcher", () => {
       render(<OrganizationSwitcher />);
 
       expect(
-        screen.getByTestId("org-switcher-create-space"),
-      ).toBeInTheDocument();
+        screen.queryByTestId("org-switcher-create-space"),
+      ).not.toBeInTheDocument();
       expect(
         screen.getByText(`shell.organizationSwitcher.roles.${role}`),
       ).toBeInTheDocument();
@@ -290,12 +290,15 @@ describe("OrganizationSwitcher", () => {
     ).toBeInTheDocument();
   });
 
-  it("hides create-space when the current organization is not active", () => {
+  it("hides create-space when the backend capability is false", () => {
     sessionMock.current = {
       ...sessionMock.current,
-      currentOrganization: {
-        ...sessionMock.current.currentOrganization,
-        status: "DISABLED",
+      session: {
+        ...sessionMock.current.session,
+        capabilities: {
+          ...sessionMock.current.session.capabilities,
+          canCreateSpace: false,
+        },
       },
     };
 

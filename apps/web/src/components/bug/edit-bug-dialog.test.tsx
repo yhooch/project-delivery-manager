@@ -217,8 +217,8 @@ describe("EditBugDialog", () => {
         description: "Updated description",
         expectedResult: "Expected",
         priority: "URGENT",
-        relatedTaskId,
-        requirementId,
+        relatedTaskId: null,
+        requirementId: null,
         severity: "CRITICAL",
         stepsToReproduce: "Step one",
         title: "Updated bug",
@@ -226,12 +226,8 @@ describe("EditBugDialog", () => {
       }),
     );
     expect(updateBugMock.mock.calls[0]![1]).not.toHaveProperty("fixNote");
-    expect(updateBugMock.mock.calls[0]![1]).not.toHaveProperty(
-      "regressionAt",
-    );
-    expect(updateBugMock.mock.calls[0]![1]).not.toHaveProperty(
-      "regressionBy",
-    );
+    expect(updateBugMock.mock.calls[0]![1]).not.toHaveProperty("regressionAt");
+    expect(updateBugMock.mock.calls[0]![1]).not.toHaveProperty("regressionBy");
     expect(updateBugMock.mock.calls[0]![1]).not.toHaveProperty(
       "regressionResult",
     );
@@ -293,12 +289,8 @@ describe("EditBugDialog", () => {
       }),
     );
     expect(updateBugMock.mock.calls[0]![1]).not.toHaveProperty("fixNote");
-    expect(updateBugMock.mock.calls[0]![1]).not.toHaveProperty(
-      "regressionAt",
-    );
-    expect(updateBugMock.mock.calls[0]![1]).not.toHaveProperty(
-      "regressionBy",
-    );
+    expect(updateBugMock.mock.calls[0]![1]).not.toHaveProperty("regressionAt");
+    expect(updateBugMock.mock.calls[0]![1]).not.toHaveProperty("regressionBy");
     expect(updateBugMock.mock.calls[0]![1]).not.toHaveProperty(
       "regressionResult",
     );
@@ -358,7 +350,7 @@ describe("EditBugDialog", () => {
     );
   });
 
-  it("preserves incompatible trace fields when the version changes", async () => {
+  it("clears incompatible trace fields when the version changes", async () => {
     listRequirementsMock.mockResolvedValueOnce({
       items: [
         { id: requirementId, title: "Requirement 1", versionId },
@@ -406,14 +398,14 @@ describe("EditBugDialog", () => {
       target: { value: nextVersionId },
     });
 
-    await waitFor(() => expect(requirementSelect.value).toBe(requirementId));
-    expect(relatedTaskSelect.value).toBe(relatedTaskId);
-    expect(getSelectOptionLabels(requirementSelect)).toEqual(
-      expect.arrayContaining(["Requirement 1", "Requirement 2"]),
+    await waitFor(() => expect(requirementSelect.value).toBe(""));
+    expect(relatedTaskSelect.value).toBe("");
+    expect(getSelectOptionLabels(requirementSelect)).toContain("Requirement 2");
+    expect(getSelectOptionLabels(requirementSelect)).not.toContain(
+      "Requirement 1",
     );
-    expect(getSelectOptionLabels(relatedTaskSelect)).toEqual(
-      expect.arrayContaining(["Task 1", "Task 2"]),
-    );
+    expect(getSelectOptionLabels(relatedTaskSelect)).toContain("Task 2");
+    expect(getSelectOptionLabels(relatedTaskSelect)).not.toContain("Task 1");
   });
 
   it("shows a localized trace conflict error from updateBug", async () => {
@@ -451,6 +443,85 @@ describe("EditBugDialog", () => {
 
     expect(await screen.findByRole("alert")).toHaveTextContent(
       "errors.api.TRACE_VERSION_CONFLICT",
+    );
+  });
+
+  it("confirms and retries bug save when version cascade is required", async () => {
+    updateBugMock
+      .mockRejectedValueOnce(
+        new ApiClientError(
+          {
+            code: "TRACE_VERSION_CHANGE_REQUIRES_CASCADE",
+            message: "Bug version change requires cascade",
+            requestId: "REQ_TRACE",
+            details: {
+              targetType: "TASK",
+              targetId: bugId,
+              fromVersionId: versionId,
+              toVersionId: nextVersionId,
+              impact: {
+                bugCount: 1,
+                bugIds: ["01ARZ3NDEKTSV4RRFFQ69G5FB2"],
+                relatedBugCount: 0,
+                workItemCount: 0,
+              },
+            },
+          },
+          new Response(null, { status: 409, statusText: "Conflict" }),
+        ),
+      )
+      .mockResolvedValueOnce(makeBug({ versionId: nextVersionId }));
+    const onUpdated = vi.fn();
+
+    render(
+      <EditBugDialog
+        bug={makeBug()}
+        open
+        onOpenChange={vi.fn()}
+        organizationId={organizationId}
+        spaceId={spaceId}
+        onUpdated={onUpdated}
+      />,
+    );
+
+    await waitFor(() =>
+      expect(
+        getSelectOptionLabels(
+          screen.getByTestId("edit-bug-version-select") as HTMLSelectElement,
+        ),
+      ).toContain("v2"),
+    );
+    fireEvent.change(screen.getByTestId("edit-bug-version-select"), {
+      target: { value: nextVersionId },
+    });
+    fireEvent.click(screen.getByTestId("edit-bug-submit"));
+
+    const confirmDialog = await screen.findByTestId(
+      "trace-version-cascade-confirm-dialog",
+    );
+    expect(confirmDialog).toHaveTextContent(
+      "errors.api.TRACE_VERSION_CHANGE_REQUIRES_CASCADE",
+    );
+    expect(confirmDialog).toHaveTextContent(
+      "traceVersionCascadeConfirm.scopeTitle",
+    );
+    expect(confirmDialog).toHaveTextContent(bugId);
+    expect(confirmDialog).toHaveTextContent("01ARZ3NDEKTSV4RRFFQ69G5FB2");
+    await waitFor(() => expect(updateBugMock).toHaveBeenCalledTimes(1));
+    expect(updateBugMock).toHaveBeenLastCalledWith(
+      expect.any(Object),
+      expect.not.objectContaining({ cascadeVersionChange: true }),
+    );
+
+    fireEvent.click(screen.getByTestId("trace-version-cascade-confirm"));
+
+    await waitFor(() => expect(updateBugMock).toHaveBeenCalledTimes(2));
+    expect(updateBugMock).toHaveBeenLastCalledWith(
+      { bugId, organizationId, spaceId },
+      expect.objectContaining({ cascadeVersionChange: true }),
+    );
+    expect(onUpdated).toHaveBeenCalledWith(
+      expect.objectContaining({ versionId: nextVersionId }),
     );
   });
 

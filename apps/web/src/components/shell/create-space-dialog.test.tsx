@@ -106,6 +106,30 @@ describe("CreateSpaceDialog", () => {
     });
   });
 
+  it("shows a field-level local error when the code is invalid", async () => {
+    render(
+      <CreateSpaceDialog
+        open={true}
+        onOpenChange={vi.fn()}
+        organizationId="ORG_01"
+      />,
+    );
+
+    fireEvent.input(screen.getByTestId("create-space-name"), {
+      target: { value: "New Space" },
+    });
+    fireEvent.input(screen.getByTestId("create-space-code"), {
+      target: { value: "bad code!" },
+    });
+    fireEvent.click(screen.getByTestId("create-space-submit"));
+
+    expect(screen.getByTestId("create-space-code-error")).toHaveTextContent(
+      "shell.createSpace.errors.codeInvalid",
+    );
+    expect(createSpaceMock).not.toHaveBeenCalled();
+    expect(refreshSessionMock).not.toHaveBeenCalled();
+  });
+
   it("shows an error and keeps the dialog open when createSpace rejects", async () => {
     createSpaceMock.mockRejectedValueOnce(new Error("boom"));
     const onOpenChange = vi.fn();

@@ -2,7 +2,7 @@
 
 import type {
   ActionFormFieldSummary,
-  WorkflowActionSummary,
+  WorkflowActionConfigSummary,
   WorkflowState,
 } from "@project-delivery/shared";
 import { ChevronDown, ChevronRight, Pencil, Plus, Trash2 } from "lucide-react";
@@ -19,19 +19,19 @@ import { Button } from "../ui/button";
 import { WorkflowFormFieldList } from "./workflow-form-field-list";
 
 export type WorkflowActionListProps = {
-  actions: WorkflowActionSummary[];
+  actions: WorkflowActionConfigSummary[];
   states: WorkflowState[];
   readOnly: boolean;
   onCreate: () => void;
-  onEdit: (action: WorkflowActionSummary) => void;
-  onDelete: (action: WorkflowActionSummary) => void;
-  onCreateField: (action: WorkflowActionSummary) => void;
+  onEdit: (action: WorkflowActionConfigSummary) => void;
+  onDelete: (action: WorkflowActionConfigSummary) => void;
+  onCreateField: (action: WorkflowActionConfigSummary) => void;
   onEditField: (
-    action: WorkflowActionSummary,
+    action: WorkflowActionConfigSummary,
     field: ActionFormFieldSummary,
   ) => void;
   onDeleteField: (
-    action: WorkflowActionSummary,
+    action: WorkflowActionConfigSummary,
     field: ActionFormFieldSummary,
   ) => void;
 };

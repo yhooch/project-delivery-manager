@@ -84,6 +84,25 @@
         "regressionConclusion": "Regression conclusion",
         "failedReason": "Failed reason",
         "reopenReason": "Reopen reason"
+      },
+      "fieldOptions": {
+        "resolution": {
+          "FIXED": "Fixed",
+          "WONT_FIX": "Won't fix"
+        },
+        "regressionConclusion": {
+          "PASSED": "Regression passed",
+          "FAILED": "Regression failed",
+          "REGRESSION_PASSED": "Regression passed",
+          "REGRESSION_FAILED": "Regression failed"
+        }
+      },
+      "optionValues": {
+        "FIXED": "Fixed",
+        "WONT_FIX": "Won't fix",
+        "PASSED": "Passed",
+        "FAILED": "Failed",
+        "REGRESSION_FAILED": "Regression failed"
       }
     },
     "exceptionReasons": {
@@ -133,7 +152,18 @@
     "title": "Confirm Version Cascade",
     "cancel": "Cancel",
     "submit": "Apply Cascade",
-    "submitting": "Applying"
+    "submitting": "Applying",
+    "scopeTitle": "Affected scope",
+    "target": "Target",
+    "versionChange": "Version change",
+    "noVersion": "No version",
+    "workItems": "Tasks",
+    "intakeItems": "Intake items",
+    "bugs": "Bugs",
+    "relatedBugs": "Related bugs",
+    "affectedIds": "IDs",
+    "serverMessage": "Server message",
+    "requestId": "Request ID"
   },
   "auth": {
     "brand": {
@@ -556,7 +586,13 @@
       "cancel": "Cancel",
       "submit": "Create project space",
       "submitting": "Creating…",
-      "error": "Failed to create project space. Please try again later."
+      "error": "Failed to create project space. Please try again later.",
+      "errors": {
+        "nameRequired": "Enter a space name.",
+        "nameTooLong": "Space name must be 120 characters or fewer.",
+        "codeInvalid": "Use 2 to 32 letters, digits, underscores, or dashes.",
+        "descriptionTooLong": "Description must be 2000 characters or fewer."
+      }
     },
     "command": {
       "placeholder": "Type a command or search tasks, bugs, requirements, intake",
@@ -2447,6 +2483,10 @@
           "description": "Description",
           "descriptionPlaceholder": "Optional: briefly describe the workflow purpose"
         },
+        "errors": {
+          "codeRequired": "Enter a workflow code. The current name cannot generate a valid code automatically.",
+          "codeInvalid": "Workflow code can only contain letters, digits, underscore, and dash."
+        },
         "submit": "Create",
         "submitting": "Creating…",
         "cancel": "Cancel"
@@ -2899,7 +2939,15 @@
         "ownerPlaceholder": "Pick a space owner",
         "ownerNone": "Unassigned"
       },
-      "codeConflict": "This code already exists in the organization. Pick another."
+      "codeConflict": "This code already exists in the organization. Pick another.",
+      "errors": {
+        "nameRequired": "Enter a space name.",
+        "nameTooLong": "Space name must be 120 characters or fewer.",
+        "codeRequired": "Enter a space code.",
+        "codeInvalid": "Use 2 to 32 letters, digits, underscores, or dashes.",
+        "descriptionTooLong": "Description must be 2000 characters or fewer.",
+        "ownerInvalid": "Choose an active space member as owner."
+      }
     },
     "threshold": {
       "title": "Exception thresholds",

@@ -617,8 +617,6 @@ function createPermissionResolver(role: SpaceRole) {
       return {
         availableActions: [
           {
-            actorRelations: [],
-            allowedSpaceRoles: [role],
             code: "START_PROGRESS",
             formFields: [],
             fromStateId: CURRENT_STATE_ID,
@@ -642,8 +640,6 @@ function createPermissionResolver(role: SpaceRole) {
       return {
         availableActions: [
           {
-            actorRelations: [],
-            allowedSpaceRoles: [role],
             code: "START_PROGRESS",
             formFields: [],
             fromStateId: CURRENT_STATE_ID,

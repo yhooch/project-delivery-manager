@@ -22,7 +22,8 @@ function getSelectOptionLabels(select: HTMLSelectElement): string[] {
 }
 
 // Stable translator: same memoized fn per namespace across renders.
-const { translatorCache } = vi.hoisted(() => ({
+const { rootMessages, translatorCache } = vi.hoisted(() => ({
+  rootMessages: new Map<string, string>(),
   translatorCache: new Map<string, (key: string) => string>(),
 }));
 vi.mock("next-intl", () => ({
@@ -30,7 +31,10 @@ vi.mock("next-intl", () => ({
     const key = namespace ?? "__root__";
     let fn = translatorCache.get(key);
     if (!fn) {
-      fn = (k: string) => (namespace ? `${namespace}.${k}` : k);
+      fn = (k: string) => {
+        const messageKey = namespace ? `${namespace}.${k}` : k;
+        return namespace ? messageKey : (rootMessages.get(k) ?? messageKey);
+      };
       translatorCache.set(key, fn);
     }
     return fn;
@@ -220,8 +224,6 @@ function makeAction(
     name: "Submit for review",
     fromStateId: "01ARZ3NDEKTSV4RRFFQ69G5FS1",
     toStateId: "01ARZ3NDEKTSV4RRFFQ69G5FS2",
-    allowedSpaceRoles: [],
-    actorRelations: [],
     requiresComment: false,
     formFields: [],
     order: 1,
@@ -280,6 +282,7 @@ function makeBugResponse(overrides: Record<string, unknown> = {}) {
 }
 
 beforeEach(() => {
+  rootMessages.clear();
   memberMap.clear();
   versionMap.clear();
   relationTitleMap.clear();
@@ -637,6 +640,68 @@ describe("TaskDetailSheet", () => {
       screen.getByText("taskDetail.actions.commentError"),
     ).toBeInTheDocument();
     expect(executeActionMock).not.toHaveBeenCalled();
+  });
+
+  it("renders select action field options with display labels instead of raw enum values", async () => {
+    rootMessages.set(
+      "common.workflowDefaults.states.REGRESSION_PASSED",
+      "Regression passed",
+    );
+    rootMessages.set(
+      "common.workflowDefaults.fieldOptions.resolution.WONT_FIX",
+      "Won't fix",
+    );
+    const action = makeAction({
+      formFields: [
+        {
+          fieldType: "SELECT",
+          id: "01ARZ3NDEKTSV4RRFFQ69G5FC2",
+          key: "resolution",
+          label: "Resolution",
+          options: ["REGRESSION_PASSED", "WONT_FIX", "custom-option"],
+          order: 1,
+          required: true,
+        },
+      ],
+      id: "01ARZ3NDEKTSV4RRFFQ69G5FC1",
+      name: "Resolve",
+      requiresComment: false,
+    });
+    getWorkItemMock.mockResolvedValueOnce(
+      makeDetailResponse({
+        permissions: {
+          canEdit: true,
+          canComment: true,
+          canUploadAttachment: true,
+          availableActions: [action],
+        },
+      }),
+    );
+
+    render(
+      <TaskDetailSheet
+        item={makeViewModel()}
+        open
+        onOpenChange={() => {}}
+        onChanged={() => {}}
+      />,
+    );
+
+    fireEvent.click(await screen.findByRole("button", { name: "Resolve" }));
+
+    const resolutionField = screen.getByTestId(
+      "task-action-field",
+    ) as HTMLSelectElement;
+    expect(getSelectOptionLabels(resolutionField)).toEqual([
+      "",
+      "Regression passed",
+      "Won't fix",
+      "Custom Option",
+    ]);
+    expect(getSelectOptionLabels(resolutionField)).not.toContain(
+      "REGRESSION_PASSED",
+    );
+    expect(getSelectOptionLabels(resolutionField)).not.toContain("WONT_FIX");
   });
 
   it("renders an unavailable user action field as a disabled select", async () => {
@@ -1220,6 +1285,113 @@ describe("TaskDetailSheet", () => {
     expect(onChanged).toHaveBeenCalledTimes(1);
   });
 
+  it("confirms and retries bug save from the detail editor when version cascade is required", async () => {
+    const versionId = "01ARZ3NDEKTSV4RRFFQ69G5FV1";
+    const nextVersionId = "01ARZ3NDEKTSV4RRFFQ69G5FV2";
+    const affectedBugId = "01ARZ3NDEKTSV4RRFFQ69G5FB2";
+    const onChanged = vi.fn();
+    versionMap.set(versionId, { name: "Release 1" });
+    versionMap.set(nextVersionId, { name: "Release 2" });
+    getBugMock
+      .mockResolvedValueOnce(
+        makeBugResponse({
+          versionId,
+          permissions: {
+            canEdit: true,
+            canComment: true,
+            canUploadAttachment: true,
+            availableActions: [],
+          },
+        }),
+      )
+      .mockResolvedValueOnce(
+        makeBugResponse({
+          versionId: nextVersionId,
+          permissions: {
+            canEdit: true,
+            canComment: true,
+            canUploadAttachment: true,
+            availableActions: [],
+          },
+        }),
+      );
+    updateBugMock
+      .mockRejectedValueOnce(
+        new ApiClientError(
+          {
+            code: "TRACE_VERSION_CHANGE_REQUIRES_CASCADE",
+            message: "Bug version change requires cascade",
+            requestId: "REQ_TRACE",
+            details: {
+              targetType: "TASK",
+              targetId: "01ARZ3NDEKTSV4RRFFQ69G5FA1",
+              fromVersionId: versionId,
+              toVersionId: nextVersionId,
+              impact: {
+                bugCount: 1,
+                bugIds: [affectedBugId],
+                relatedBugCount: 0,
+                workItemCount: 0,
+              },
+            },
+          },
+          new Response(null, { status: 409, statusText: "Conflict" }),
+        ),
+      )
+      .mockResolvedValueOnce(makeBugResponse({ versionId: nextVersionId }));
+
+    render(
+      <TaskDetailSheet
+        item={makeViewModel({ type: "BUG", title: "Bug detail" })}
+        open
+        onOpenChange={() => {}}
+        onChanged={onChanged}
+      />,
+    );
+
+    fireEvent.click(await screen.findByTestId("task-edit-button"));
+    await waitFor(() =>
+      expect(
+        getSelectOptionLabels(
+          screen.getByTestId("task-edit-version-select") as HTMLSelectElement,
+        ),
+      ).toContain("Release 2"),
+    );
+    fireEvent.change(screen.getByTestId("task-edit-version-select"), {
+      target: { value: nextVersionId },
+    });
+    fireEvent.click(screen.getByTestId("task-edit-submit"));
+
+    const confirmDialog = await screen.findByTestId(
+      "trace-version-cascade-confirm-dialog",
+    );
+    expect(confirmDialog).toHaveTextContent(
+      "errors.api.TRACE_VERSION_CHANGE_REQUIRES_CASCADE",
+    );
+    expect(confirmDialog).toHaveTextContent(
+      "traceVersionCascadeConfirm.scopeTitle",
+    );
+    expect(confirmDialog).toHaveTextContent(affectedBugId);
+    await waitFor(() => expect(updateBugMock).toHaveBeenCalledTimes(1));
+    expect(updateBugMock).toHaveBeenLastCalledWith(
+      expect.any(Object),
+      expect.not.objectContaining({ cascadeVersionChange: true }),
+    );
+
+    fireEvent.click(screen.getByTestId("trace-version-cascade-confirm"));
+
+    await waitFor(() => expect(updateBugMock).toHaveBeenCalledTimes(2));
+    expect(updateBugMock).toHaveBeenLastCalledWith(
+      {
+        bugId: "01ARZ3NDEKTSV4RRFFQ69G5FA1",
+        organizationId: "ORG_01",
+        spaceId: "SPC_01",
+      },
+      expect.objectContaining({ cascadeVersionChange: true }),
+    );
+    await waitFor(() => expect(onChanged).toHaveBeenCalledTimes(1));
+  });
+
   it("links requirement and version when editing a bug related task", async () => {
     const linkedRequirementId = "01ARZ3NDEKTSV4RRFFQ69G5FR2";
     const requirementVersionId = "01ARZ3NDEKTSV4RRFFQ69G5FV1";
@@ -1517,7 +1689,7 @@ describe("TaskDetailSheet", () => {
     expect(intakeSelect.value).toBe(intakeItemId);
   });
 
-  it("does not clear linked requirement or intake when the task version changes", async () => {
+  it("clears linked requirement and intake when the task version changes", async () => {
     const versionId = "01ARZ3NDEKTSV4RRFFQ69G5FV1";
     const nextVersionId = "01ARZ3NDEKTSV4RRFFQ69G5FV2";
     const requirementId = "01ARZ3NDEKTSV4RRFFQ69G5FRQ";
@@ -1580,14 +1752,16 @@ describe("TaskDetailSheet", () => {
       target: { value: nextVersionId },
     });
 
-    await waitFor(() => expect(requirementSelect.value).toBe(requirementId));
-    expect(intakeSelect.value).toBe(intakeItemId);
-    expect(getSelectOptionLabels(requirementSelect)).toEqual(
-      expect.arrayContaining(["Requirement v1", "Requirement v2"]),
+    await waitFor(() => expect(requirementSelect.value).toBe(""));
+    expect(intakeSelect.value).toBe("");
+    expect(getSelectOptionLabels(requirementSelect)).toContain(
+      "Requirement v2",
     );
-    expect(getSelectOptionLabels(intakeSelect)).toEqual(
-      expect.arrayContaining(["Intake v1", "Intake v2"]),
+    expect(getSelectOptionLabels(requirementSelect)).not.toContain(
+      "Requirement v1",
     );
+    expect(getSelectOptionLabels(intakeSelect)).toContain("Intake v2");
+    expect(getSelectOptionLabels(intakeSelect)).not.toContain("Intake v1");
   });
 
   it("shows a localized trace conflict error when task update fails", async () => {
@@ -1630,6 +1804,18 @@ describe("TaskDetailSheet", () => {
         code: "TRACE_VERSION_CHANGE_REQUIRES_CASCADE",
         message: "任务版本变更需要同步上下游对象",
         requestId: "REQ_TRACE",
+        details: {
+          targetType: "TASK",
+          targetId: "01ARZ3NDEKTSV4RRFFQ69G5FA1",
+          fromVersionId: "01ARZ3NDEKTSV4RRFFQ69G5FV1",
+          toVersionId: "01ARZ3NDEKTSV4RRFFQ69G5FV2",
+          impact: {
+            bugCount: 1,
+            bugIds: ["01ARZ3NDEKTSV4RRFFQ69G5FB1"],
+            relatedBugCount: 0,
+            workItemCount: 0,
+          },
+        },
       },
       new Response(null, { status: 409, statusText: "Conflict" }),
     );
@@ -1649,7 +1835,10 @@ describe("TaskDetailSheet", () => {
     ).toHaveTextContent("errors.api.TRACE_VERSION_CHANGE_REQUIRES_CASCADE");
     expect(
       screen.getByTestId("trace-version-cascade-confirm-dialog"),
-    ).not.toHaveTextContent("任务版本变更需要同步上下游对象");
+    ).toHaveTextContent("traceVersionCascadeConfirm.scopeTitle");
+    expect(
+      screen.getByTestId("trace-version-cascade-confirm-dialog"),
+    ).toHaveTextContent("01ARZ3NDEKTSV4RRFFQ69G5FB1");
     await waitFor(() => expect(updateWorkItemMock).toHaveBeenCalledTimes(1));
     expect(updateWorkItemMock).toHaveBeenLastCalledWith(
       expect.any(Object),

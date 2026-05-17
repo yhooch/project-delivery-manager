@@ -14,7 +14,6 @@ import {
   getApiErrorMessageKey,
   type ApiErrorMessageKey,
 } from "../../lib/api-error-messages";
-import { canCreateSpaceInOrganization } from "../../lib/permission-gates";
 import { useSession } from "../providers/session-provider";
 import { Badge } from "../ui/badge";
 import { Button } from "../ui/button";
@@ -69,10 +68,7 @@ export function OrganizationSwitcher() {
   const canCreateOrganization = Boolean(
     session.capabilities?.canCreateOrganization,
   );
-  const canCreateSpace = canCreateSpaceInOrganization(
-    currentOrganization?.role,
-    currentOrganization?.status,
-  );
+  const canCreateSpace = Boolean(session.capabilities?.canCreateSpace);
   const hasMultipleOrgs = session.organizations.length > 1;
   const hasAnySpaces = spacesForCurrentOrganization.length > 0;
 

@@ -16,6 +16,7 @@ import { listRequirements } from "../../lib/requirement-service";
 import { listSpaceMembers } from "../../lib/space-service";
 import { listVersions } from "../../lib/version-service";
 import {
+  clearIncompatibleTraceSelection,
   filterTraceOptionsByVersion,
   inheritVersionFromTraceOption,
 } from "../../lib/versioned-trace-linking";
@@ -173,6 +174,12 @@ export function CreateTaskDialog({
 
   function handleVersionChange(nextVersionId: string) {
     setVersionId(nextVersionId);
+    setRequirementId((current) =>
+      clearIncompatibleTraceSelection(requirements, current, nextVersionId),
+    );
+    setIntakeItemId((current) =>
+      clearIncompatibleTraceSelection(intakeItems, current, nextVersionId),
+    );
   }
 
   function handleRequirementChange(nextRequirementId: string) {

@@ -372,6 +372,14 @@ describe("RequirementDetailWorkspace", () => {
     const cascadeError = new ApiClientError(
       {
         code: "TRACE_VERSION_CHANGE_REQUIRES_CASCADE",
+        details: {
+          impact: {
+            intakeItemCount: 1,
+            intakeItemIds: ["REQ_CHILD"],
+          },
+          targetId: "REQ_PARENT",
+          targetType: "REQUIREMENT",
+        },
         message: "版本变更需要同步下游对象",
         requestId: "REQ_TRACE",
       },
@@ -401,6 +409,12 @@ describe("RequirementDetailWorkspace", () => {
     expect(
       screen.getByTestId("trace-version-cascade-confirm-dialog"),
     ).not.toHaveTextContent("版本变更需要同步下游对象");
+    expect(
+      screen.getByTestId("trace-version-cascade-confirm-dialog"),
+    ).toHaveTextContent("traceVersionCascadeConfirm.scopeTitle");
+    expect(
+      screen.getByTestId("trace-version-cascade-confirm-dialog"),
+    ).toHaveTextContent("REQ_CHILD");
     await waitFor(() => expect(updateRequirementMock).toHaveBeenCalledTimes(1));
     fireEvent.click(screen.getByTestId("trace-version-cascade-confirm"));
 

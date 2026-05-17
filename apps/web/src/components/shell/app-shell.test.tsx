@@ -215,7 +215,7 @@ describe("AppShell", () => {
     });
   });
 
-  it("hides the no-spaces create action for a MEMBER current organization even when capability is true", () => {
+  it("shows the no-spaces create action from the backend capability even for a MEMBER organization", () => {
     sessionMock.current = {
       currentOrganization: {
         id: "ORG_01",
@@ -245,14 +245,14 @@ describe("AppShell", () => {
 
     expect(screen.getByTestId("app-shell-no-spaces-empty")).toBeInTheDocument();
     expect(
-      screen.queryByTestId("app-shell-create-space-button"),
-    ).not.toBeInTheDocument();
+      screen.getByTestId("app-shell-create-space-button"),
+    ).toBeEnabled();
     expect(screen.queryByTestId("onboarding-empty")).not.toBeInTheDocument();
     expect(screen.queryByText("Workspace")).not.toBeInTheDocument();
   });
 
   it.each(["OWNER", "ADMIN"])(
-    "shows the no-spaces create action for an active %s current organization",
+    "hides the no-spaces create action when backend capability is false for %s",
     (role) => {
       sessionMock.current = {
         currentOrganization: {
@@ -282,8 +282,8 @@ describe("AppShell", () => {
       render(<AppShell>Workspace</AppShell>);
 
       expect(
-        screen.getByTestId("app-shell-create-space-button"),
-      ).toBeEnabled();
+        screen.queryByTestId("app-shell-create-space-button"),
+      ).not.toBeInTheDocument();
     },
   );
 });

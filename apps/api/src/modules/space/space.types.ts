@@ -42,6 +42,7 @@ export type CreateSpaceInTransaction = (
 ) => Promise<void>;
 
 export type SpaceListInput = {
+  aggregateActorUserId?: string;
   page: number;
   pageSize: number;
   sortBy?: string;

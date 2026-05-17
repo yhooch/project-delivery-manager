@@ -39,8 +39,6 @@ export const WorkflowActionSummarySchema = z
     name: z.string().min(1).max(120),
     fromStateId: UlidSchema,
     toStateId: UlidSchema,
-    allowedSpaceRoles: z.array(SpaceRoleSchema),
-    actorRelations: z.array(WorkflowActorRelationSchema),
     requiresComment: z.boolean(),
     formFields: z.array(ActionFormFieldSummarySchema),
     order: z.number().int().min(0),
@@ -48,6 +46,17 @@ export const WorkflowActionSummarySchema = z
   .strict();
 
 export type WorkflowActionSummary = z.infer<typeof WorkflowActionSummarySchema>;
+
+export const WorkflowActionConfigSummarySchema = WorkflowActionSummarySchema.extend(
+  {
+    allowedSpaceRoles: z.array(SpaceRoleSchema),
+    actorRelations: z.array(WorkflowActorRelationSchema),
+  },
+).strict();
+
+export type WorkflowActionConfigSummary = z.infer<
+  typeof WorkflowActionConfigSummarySchema
+>;
 
 export const PermissionSnapshotSchema = z
   .object({
@@ -97,7 +106,7 @@ export const WorkflowVersionSchema = z
     status: WorkflowVersionStatusSchema,
     publishedAt: z.string().min(1).optional(),
     states: z.array(WorkflowStateSchema),
-    actions: z.array(WorkflowActionSummarySchema),
+    actions: z.array(WorkflowActionConfigSummarySchema),
   })
   .strict();
 
@@ -279,8 +288,10 @@ export const PublishWorkflowVersionResponseSchema = WorkflowVersionSchema;
 export const CreateWorkflowStateResponseSchema = WorkflowStateSchema;
 export const UpdateWorkflowStateResponseSchema = WorkflowStateSchema;
 export const DeleteWorkflowStateResponseSchema = EmptyObjectSchema;
-export const CreateWorkflowActionResponseSchema = WorkflowActionSummarySchema;
-export const UpdateWorkflowActionResponseSchema = WorkflowActionSummarySchema;
+export const CreateWorkflowActionResponseSchema =
+  WorkflowActionConfigSummarySchema;
+export const UpdateWorkflowActionResponseSchema =
+  WorkflowActionConfigSummarySchema;
 export const DeleteWorkflowActionResponseSchema = EmptyObjectSchema;
 export const CreateActionFormFieldResponseSchema = ActionFormFieldSummarySchema;
 export const UpdateActionFormFieldResponseSchema = ActionFormFieldSummarySchema;

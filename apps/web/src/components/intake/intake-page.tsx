@@ -654,6 +654,7 @@ export function IntakePage() {
       });
     }
 
+    setRelatedTasksRefreshVersion((version) => version + 1);
     void loadItems(1, "replace");
   }
 

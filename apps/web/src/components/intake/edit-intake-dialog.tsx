@@ -21,6 +21,7 @@ import { listSpaceMembers } from "../../lib/space-service";
 import { listVersions } from "../../lib/version-service";
 import {
   filterTraceOptionsByVersion,
+  getTraceVersionCascadeConfirmLabels,
   inheritVersionFromTraceOption,
   isTraceOptionCompatibleWithVersion,
   isTraceVersionCascadeRequiredError,
@@ -235,12 +236,16 @@ export function EditIntakeDialog({
       if (isTraceVersionCascadeRequiredError(error)) {
         setPendingCascadeConfirm({
           request,
-          message: traceVersionCascadeConfirmMessage({
-            body: tRoot("errors.api.TRACE_VERSION_CHANGE_REQUIRES_CASCADE"),
-            suffix: tRoot(
-              "errors.api.TRACE_VERSION_CHANGE_REQUIRES_CASCADE_CONFIRM_SUFFIX",
-            ),
-          }),
+          message: traceVersionCascadeConfirmMessage(
+            {
+              body: tRoot("errors.api.TRACE_VERSION_CHANGE_REQUIRES_CASCADE"),
+              labels: getTraceVersionCascadeConfirmLabels(tRoot),
+              suffix: tRoot(
+                "errors.api.TRACE_VERSION_CHANGE_REQUIRES_CASCADE_CONFIRM_SUFFIX",
+              ),
+            },
+            error,
+          ),
         });
         return;
       }
