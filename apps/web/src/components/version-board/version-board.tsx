@@ -581,6 +581,11 @@ export function VersionPage() {
     () => board?.columns.reduce((sum, column) => sum + column.total, 0) ?? 0,
     [board],
   );
+  const canCreateNotStartedTask =
+    canCreateWorkItem &&
+    filters.workItemType !== "BUG" &&
+    (filters.statusCategory === null ||
+      filters.statusCategory === "NOT_STARTED");
 
   const updateBoardFilters = useCallback(
     (next: BoardFilters | ((prev: BoardFilters) => BoardFilters)) => {
@@ -1063,6 +1068,8 @@ export function VersionPage() {
                   locale={locale}
                   getMember={getMember}
                   getVersion={getVersionLookup}
+                  canCreateNotStartedTask={canCreateNotStartedTask}
+                  onNewTask={() => setCreateWorkItemDialogOpen(true)}
                   onLoadMore={loadMoreColumn}
                   openItem={openItem}
                   t={t}
@@ -1369,6 +1376,8 @@ function BoardColumns({
   locale,
   getMember,
   getVersion,
+  canCreateNotStartedTask,
+  onNewTask,
   onLoadMore,
   openItem,
   t,
@@ -1383,6 +1392,8 @@ function BoardColumns({
   locale: string;
   getMember: ReturnType<typeof useSpaceMembers>["getMember"];
   getVersion: (versionId: string) => Version | undefined;
+  canCreateNotStartedTask: boolean;
+  onNewTask: () => void;
   onLoadMore: (category: StatusCategory) => void;
   openItem: (summary: ViewWorkItemSummary) => void;
   t: ReturnType<typeof useTranslations<"versionBoard">>;
@@ -1395,6 +1406,8 @@ function BoardColumns({
       {grouped.map(({ category, items, pageInfo, total }) => {
         const hasMore = items.length < total;
         const isLoadingMore = loadingColumnCategory === category;
+        const showCreateTask =
+          category === "NOT_STARTED" && canCreateNotStartedTask;
 
         return (
           <div
@@ -1417,7 +1430,20 @@ function BoardColumns({
               </span>
             </header>
             <div className="min-h-0 flex-1 space-y-2 overflow-y-auto p-2">
-              {items.length === 0 && (
+              {showCreateTask ? (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="h-8 w-full justify-start border border-dashed border-border/80 bg-background/60 text-xs text-muted-foreground hover:border-primary/40 hover:text-foreground"
+                  data-testid={`version-board-column-create-task-${category}`}
+                  onClick={onNewTask}
+                >
+                  <Plus className="h-3 w-3" />
+                  {t("newWorkItem")}
+                </Button>
+              ) : null}
+              {items.length === 0 && !showCreateTask && (
                 <div className="flex h-20 items-center justify-center text-[11px] text-muted-foreground">
                   —
                 </div>

@@ -242,18 +242,22 @@ const { capturedHandlers } = vi.hoisted(() => ({
     editVersionOnUpdated: null as ((v: unknown) => void) | null,
     detailSheetOnChanged: null as (() => void) | null,
     createTaskOnCreated: null as (() => void) | null,
+    createTaskInitialVersionId: null as string | undefined | null,
   },
 }));
 
 vi.mock("../work-item/create-task-dialog", () => ({
   CreateTaskDialog: ({
+    initialVersionId,
     open,
     onCreated,
   }: {
+    initialVersionId?: string;
     open: boolean;
     onCreated?: () => void;
   }) => {
     capturedHandlers.createTaskOnCreated = onCreated ?? null;
+    capturedHandlers.createTaskInitialVersionId = initialVersionId;
     return open ? <div data-testid="create-task-dialog-open" /> : null;
   },
 }));
@@ -459,6 +463,7 @@ beforeEach(() => {
   capturedHandlers.editVersionOnUpdated = null;
   capturedHandlers.detailSheetOnChanged = null;
   capturedHandlers.createTaskOnCreated = null;
+  capturedHandlers.createTaskInitialVersionId = null;
   sessionMock.current = {
     session: {
       defaultOrganizationId: "ORG_01",
@@ -689,6 +694,77 @@ describe("VersionPage", () => {
     ).toHaveTextContent("8");
     expect(
       screen.queryByTestId("version-tab-timeline-count"),
+    ).not.toBeInTheDocument();
+  });
+
+  it("shows the column create-task entry only for the not-started column", async () => {
+    listVersionsMock.mockResolvedValueOnce({
+      items: [makeVersion()],
+      total: 1,
+    });
+    getVersionBoardViewMock.mockResolvedValueOnce(makeBoardResponse([]));
+
+    render(<VersionPage />);
+
+    const createEntry = await screen.findByTestId(
+      "version-board-column-create-task-NOT_STARTED",
+    );
+    expect(createEntry).toHaveTextContent("versionBoard.newWorkItem");
+    expect(
+      screen.queryByTestId("version-board-column-create-task-IN_PROGRESS"),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByTestId("version-board-column-create-task-DONE"),
+    ).not.toBeInTheDocument();
+
+    fireEvent.click(createEntry);
+
+    expect(
+      await screen.findByTestId("create-task-dialog-open"),
+    ).toBeInTheDocument();
+    expect(capturedHandlers.createTaskInitialVersionId).toBe(
+      "01ARZ3NDEKTSV4RRFFQ69G5FV1",
+    );
+  });
+
+  it("hides the column create-task entry when board filters are incompatible", async () => {
+    listVersionsMock.mockResolvedValueOnce({
+      items: [makeVersion()],
+      total: 1,
+    });
+    getVersionBoardViewMock.mockResolvedValue(makeBoardResponse([]));
+
+    render(<VersionPage />);
+
+    expect(
+      await screen.findByTestId("version-board-column-create-task-NOT_STARTED"),
+    ).toBeInTheDocument();
+
+    await openBoardFilters();
+    fireEvent.click(
+      await screen.findByTestId("version-board-filter-type-option-BUG"),
+    );
+    await waitFor(() =>
+      expect(getVersionBoardViewMock).toHaveBeenCalledTimes(2),
+    );
+    expect(
+      screen.queryByTestId("version-board-column-create-task-NOT_STARTED"),
+    ).not.toBeInTheDocument();
+
+    fireEvent.click(await screen.findByTestId("version-board-filter-clear"));
+    await waitFor(() =>
+      expect(
+        screen.getByTestId("version-board-column-create-task-NOT_STARTED"),
+      ).toBeInTheDocument(),
+    );
+    fireEvent.click(
+      await screen.findByTestId("version-board-filter-status-option-WAITING"),
+    );
+    await waitFor(() =>
+      expect(getVersionBoardViewMock).toHaveBeenCalledTimes(4),
+    );
+    expect(
+      screen.queryByTestId("version-board-column-create-task-NOT_STARTED"),
     ).not.toBeInTheDocument();
   });
 
