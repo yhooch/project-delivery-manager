@@ -21,6 +21,7 @@ import {
   Filter,
   Pencil,
   Plus,
+  Tags,
   Users,
   XCircle,
 } from "lucide-react";
@@ -264,9 +265,11 @@ export function VersionPage() {
   const [loadingColumnCategory, setLoadingColumnCategory] =
     useState<StatusCategory | null>(null);
   const [filters, setFilters] = useState<BoardFilters>(EMPTY_FILTERS);
+  const [filterOpen, setFilterOpen] = useState(false);
 
   // ----- requirements tab -----
   const [requirements, setRequirements] = useState<Requirement[]>([]);
+  const [requirementsTotal, setRequirementsTotal] = useState(0);
   const [isLoadingRequirements, setIsLoadingRequirements] = useState(false);
   const [requirementsErrorKey, setRequirementsErrorKey] = useState<
     string | null
@@ -308,7 +311,9 @@ export function VersionPage() {
     setBoard(null);
     setLoadingColumnCategory(null);
     setRequirements([]);
+    setRequirementsTotal(0);
     setTimeline([]);
+    setFilterOpen(false);
     setErrorKey(null);
     setRequirementsErrorKey(null);
     setTimelineErrorKey(null);
@@ -457,12 +462,14 @@ export function VersionPage() {
     if (!versionId || !spaceId) {
       requirementsRequestSeq.current += 1;
       setRequirements([]);
+      setRequirementsTotal(0);
       setIsLoadingRequirements(false);
       return;
     }
     const requestId = requirementsRequestSeq.current + 1;
     requirementsRequestSeq.current = requestId;
     setRequirements([]);
+    setRequirementsTotal(0);
     setIsLoadingRequirements(true);
     setRequirementsErrorKey(null);
     try {
@@ -475,8 +482,10 @@ export function VersionPage() {
       });
       if (requirementsRequestSeq.current !== requestId) return;
       setRequirements(page.items);
+      setRequirementsTotal(page.total ?? page.items.length);
     } catch (error) {
       if (requirementsRequestSeq.current !== requestId) return;
+      setRequirementsTotal(0);
       setRequirementsErrorKey(getApiErrorMessageKey(error));
     } finally {
       if (requirementsRequestSeq.current === requestId) {
@@ -523,6 +532,7 @@ export function VersionPage() {
   useEffect(() => {
     if (!versionId) {
       setRequirements([]);
+      setRequirementsTotal(0);
       setTimeline([]);
       return;
     }
@@ -562,6 +572,15 @@ export function VersionPage() {
     filters.assigneeId !== null ||
     filters.statusCategory !== null ||
     filters.workItemType !== null;
+  const activeFilterCount = [
+    filters.assigneeId,
+    filters.statusCategory,
+    filters.workItemType,
+  ].filter(Boolean).length;
+  const boardTotal = useMemo(
+    () => board?.columns.reduce((sum, column) => sum + column.total, 0) ?? 0,
+    [board],
+  );
 
   const updateBoardFilters = useCallback(
     (next: BoardFilters | ((prev: BoardFilters) => BoardFilters)) => {
@@ -838,6 +857,42 @@ export function VersionPage() {
           ))}
         </SelectMenu>
       )}
+      {spaceId && currentVersion && activeTab === "board" && (
+        <Button
+          variant={filterOpen ? "secondary" : "outline"}
+          size="sm"
+          className="text-xs"
+          data-testid="version-board-filter-toggle"
+          aria-expanded={filterOpen}
+          aria-controls="version-board-filter-panel"
+          onClick={() => setFilterOpen((open) => !open)}
+        >
+          <Filter className="h-3 w-3" />
+          {t("filterTask")}
+          {activeFilterCount > 0 && (
+            <span
+              data-testid="version-board-filter-active-count"
+              className="ml-0.5 rounded bg-background px-1 font-mono text-[10px] text-foreground"
+            >
+              {activeFilterCount}
+            </span>
+          )}
+        </Button>
+      )}
+      {spaceId && currentVersion && activeTab === "board" && (
+        <Button
+          size="sm"
+          className="text-xs"
+          data-testid="version-board-new-work-item"
+          disabled={!canCreateWorkItem}
+          aria-disabled={!canCreateWorkItem}
+          title={!canCreateWorkItem ? t("newWorkItemReadonly") : undefined}
+          onClick={() => setCreateWorkItemDialogOpen(true)}
+        >
+          <Plus className="h-3 w-3" />
+          {t("newWorkItem")}
+        </Button>
+      )}
       <Button
         variant="outline"
         size="sm"
@@ -918,45 +973,66 @@ export function VersionPage() {
       <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
         <Tabs
           value={activeTab}
-          onValueChange={(value) =>
-            setActiveTab(value as "board" | "requirements" | "timeline")
-          }
+          onValueChange={(value) => {
+            const nextTab = value as "board" | "requirements" | "timeline";
+            setActiveTab(nextTab);
+            if (nextTab !== "board") {
+              setFilterOpen(false);
+            }
+          }}
           className="flex min-w-0 flex-1 flex-col overflow-hidden"
         >
-          <div className="flex min-w-0 flex-col gap-3 border-b border-border px-4 py-2 sm:px-6 xl:flex-row xl:items-center xl:justify-between">
+          <div className="flex min-w-0 border-b border-border px-4 py-3 sm:px-6">
             <div className="-mx-1 overflow-x-auto px-1">
-              <TabsList className="min-w-max">
-                <TabsTrigger value="board" data-testid="version-tab-board">
+              <TabsList className="h-auto min-w-max gap-1 border-0">
+                <TabsTrigger
+                  value="board"
+                  data-testid="version-tab-board"
+                  className="h-7 rounded-md px-2.5 text-[12px] after:hidden data-[state=active]:bg-muted data-[state=active]:font-medium data-[state=active]:text-foreground hover:bg-muted/50 hover:text-foreground"
+                >
                   {t("tabs.board")}
+                  <span
+                    data-testid="version-tab-board-count"
+                    className="rounded bg-background px-1 font-mono text-[10px]"
+                  >
+                    {boardTotal}
+                  </span>
                 </TabsTrigger>
                 <TabsTrigger
                   value="requirements"
                   data-testid="version-tab-requirements"
+                  className="h-7 rounded-md px-2.5 text-[12px] after:hidden data-[state=active]:bg-muted data-[state=active]:font-medium data-[state=active]:text-foreground hover:bg-muted/50 hover:text-foreground"
                 >
                   {t("tabs.requirements")}
+                  <span
+                    data-testid="version-tab-requirements-count"
+                    className="rounded bg-background px-1 font-mono text-[10px]"
+                  >
+                    {requirementsTotal}
+                  </span>
                 </TabsTrigger>
                 <TabsTrigger
                   value="timeline"
                   data-testid="version-tab-timeline"
+                  className="h-7 rounded-md px-2.5 text-[12px] after:hidden data-[state=active]:bg-muted data-[state=active]:font-medium data-[state=active]:text-foreground hover:bg-muted/50 hover:text-foreground"
                 >
                   {t("tabs.timeline")}
                 </TabsTrigger>
               </TabsList>
             </div>
-            {activeTab === "board" && (
-              <BoardToolbar
-                filters={filters}
-                setFilters={updateBoardFilters}
-                hasActiveFilter={hasActiveFilter}
-                members={members}
-                getMember={getMember}
-                t={t}
-                spaceId={spaceId}
-                canCreateWorkItem={canCreateWorkItem}
-                onNewWorkItem={() => setCreateWorkItemDialogOpen(true)}
-              />
-            )}
           </div>
+
+          {activeTab === "board" && filterOpen && (
+            <BoardFilterPanel
+              id="version-board-filter-panel"
+              filters={filters}
+              setFilters={updateBoardFilters}
+              hasActiveFilter={hasActiveFilter}
+              members={members}
+              getMember={getMember}
+              t={t}
+            />
+          )}
 
           <TabsContent
             value="board"
@@ -1083,20 +1159,19 @@ export function VersionPage() {
 }
 
 // ===========================================================================
-// Board toolbar — assignee / statusCategory / workItemType filters
+// Board filters — assignee / statusCategory / workItemType
 // ===========================================================================
 
-function BoardToolbar({
+function BoardFilterPanel({
+  id,
   filters,
   setFilters,
   hasActiveFilter,
   members,
   getMember,
   t,
-  spaceId,
-  canCreateWorkItem,
-  onNewWorkItem,
 }: {
+  id: string;
   filters: BoardFilters;
   setFilters: (
     next: BoardFilters | ((prev: BoardFilters) => BoardFilters),
@@ -1105,9 +1180,6 @@ function BoardToolbar({
   members: ReturnType<typeof useSpaceMembers>["members"];
   getMember: ReturnType<typeof useSpaceMembers>["getMember"];
   t: ReturnType<typeof useTranslations<"versionBoard">>;
-  spaceId?: string;
-  canCreateWorkItem: boolean;
-  onNewWorkItem: () => void;
 }) {
   const assigneeLabel = filters.assigneeId
     ? (getMember(filters.assigneeId)?.user.name ??
@@ -1124,106 +1196,121 @@ function BoardToolbar({
     : t("filters.type.all");
 
   return (
-    <div className="flex min-w-0 flex-wrap items-center gap-2">
-      <span className="relative inline-flex min-w-[9rem] max-w-[12rem]">
-        <Users className="pointer-events-none absolute left-2.5 top-1/2 z-10 h-3 w-3 -translate-y-1/2 text-muted-foreground" />
-        <SelectMenu
-          value={filters.assigneeId ?? ""}
-          onChange={(event) =>
-            setFilters((prev) => ({
-              ...prev,
-              assigneeId: event.target.value || null,
-            }))
-          }
-          data-testid="version-board-filter-assignee"
-          className="h-8 pl-7 text-xs"
-          containerClassName="w-full"
-          contentClassName="w-52"
-          aria-label={assigneeLabel}
-        >
-          <option value="">{t("filters.assignee.all")}</option>
-          {members.map((member) => (
-            <option key={member.userId} value={member.userId}>
-              {member.user.name || member.user.username}
-            </option>
-          ))}
-        </SelectMenu>
-      </span>
+    <div
+      id={id}
+      data-testid="version-board-filter-panel"
+      className="grid min-w-0 gap-3 border-b border-border bg-muted/20 px-4 py-3 sm:px-6 md:grid-cols-3 lg:grid-cols-[repeat(3,minmax(0,1fr))_auto]"
+    >
+      <BoardFilterField label={t("filters.assignee.label")}>
+        <span className="relative inline-flex min-w-0">
+          <Users className="pointer-events-none absolute left-2.5 top-1/2 z-10 h-3 w-3 -translate-y-1/2 text-muted-foreground" />
+          <SelectMenu
+            value={filters.assigneeId ?? ""}
+            onChange={(event) =>
+              setFilters((prev) => ({
+                ...prev,
+                assigneeId: event.target.value || null,
+              }))
+            }
+            data-testid="version-board-filter-assignee"
+            className="h-8 pl-7 text-xs"
+            containerClassName="w-full"
+            contentClassName="w-52"
+            aria-label={assigneeLabel}
+          >
+            <option value="">{t("filters.assignee.all")}</option>
+            {members.map((member) => (
+              <option key={member.userId} value={member.userId}>
+                {member.user.name || member.user.username}
+              </option>
+            ))}
+          </SelectMenu>
+        </span>
+      </BoardFilterField>
 
-      <span className="relative inline-flex min-w-[8rem] max-w-[11rem]">
-        <Filter className="pointer-events-none absolute left-2.5 top-1/2 z-10 h-3 w-3 -translate-y-1/2 text-muted-foreground" />
-        <SelectMenu
-          value={filters.statusCategory ?? ""}
-          onChange={(event) =>
-            setFilters((prev) => ({
-              ...prev,
-              statusCategory: (event.target.value ||
-                null) as StatusCategory | null,
-            }))
-          }
-          data-testid="version-board-filter-status"
-          className="h-8 pl-7 text-xs"
-          containerClassName="w-full"
-          contentClassName="w-52"
-          aria-label={statusLabel}
-        >
-          <option value="">{t("filters.status.all")}</option>
-          {COLUMN_ORDER.map((category) => (
-            <option key={category} value={category}>
-              {t(`columns.${category}`)}
-            </option>
-          ))}
-        </SelectMenu>
-      </span>
+      <BoardFilterField label={t("filters.status.label")}>
+        <span className="relative inline-flex min-w-0">
+          <Filter className="pointer-events-none absolute left-2.5 top-1/2 z-10 h-3 w-3 -translate-y-1/2 text-muted-foreground" />
+          <SelectMenu
+            value={filters.statusCategory ?? ""}
+            onChange={(event) =>
+              setFilters((prev) => ({
+                ...prev,
+                statusCategory: (event.target.value ||
+                  null) as StatusCategory | null,
+              }))
+            }
+            data-testid="version-board-filter-status"
+            className="h-8 pl-7 text-xs"
+            containerClassName="w-full"
+            contentClassName="w-52"
+            aria-label={statusLabel}
+          >
+            <option value="">{t("filters.status.all")}</option>
+            {COLUMN_ORDER.map((category) => (
+              <option key={category} value={category}>
+                {t(`columns.${category}`)}
+              </option>
+            ))}
+          </SelectMenu>
+        </span>
+      </BoardFilterField>
 
-      <span className="relative inline-flex min-w-[8rem] max-w-[10rem]">
-        <Bug className="pointer-events-none absolute left-2.5 top-1/2 z-10 h-3 w-3 -translate-y-1/2 text-muted-foreground" />
-        <SelectMenu
-          value={filters.workItemType ?? ""}
-          onChange={(event) =>
-            setFilters((prev) => ({
-              ...prev,
-              workItemType: (event.target.value || null) as WorkItemType | null,
-            }))
-          }
-          data-testid="version-board-filter-type"
-          className="h-8 pl-7 text-xs"
-          containerClassName="w-full"
-          contentClassName="w-44"
-          aria-label={typeLabel}
-        >
-          <option value="">{t("filters.type.all")}</option>
-          <option value="TASK">{t("filters.type.TASK")}</option>
-          <option value="BUG">{t("filters.type.BUG")}</option>
-        </SelectMenu>
-      </span>
+      <BoardFilterField label={t("filters.type.label")}>
+        <span className="relative inline-flex min-w-0">
+          <Tags className="pointer-events-none absolute left-2.5 top-1/2 z-10 h-3 w-3 -translate-y-1/2 text-muted-foreground" />
+          <SelectMenu
+            value={filters.workItemType ?? ""}
+            onChange={(event) =>
+              setFilters((prev) => ({
+                ...prev,
+                workItemType: (event.target.value ||
+                  null) as WorkItemType | null,
+              }))
+            }
+            data-testid="version-board-filter-type"
+            className="h-8 pl-7 text-xs"
+            containerClassName="w-full"
+            contentClassName="w-44"
+            aria-label={typeLabel}
+          >
+            <option value="">{t("filters.type.all")}</option>
+            <option value="TASK">{t("filters.type.TASK")}</option>
+            <option value="BUG">{t("filters.type.BUG")}</option>
+          </SelectMenu>
+        </span>
+      </BoardFilterField>
 
       {hasActiveFilter && (
-        <Button
-          variant="ghost"
-          size="sm"
-          className="text-xs"
-          data-testid="version-board-filter-clear"
-          onClick={() => setFilters({ ...EMPTY_FILTERS })}
-        >
-          <XCircle className="h-3 w-3" />
-          {t("filters.clear")}
-        </Button>
+        <div className="flex items-end">
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-8 text-xs"
+            data-testid="version-board-filter-clear"
+            onClick={() => setFilters({ ...EMPTY_FILTERS })}
+          >
+            <XCircle className="h-3 w-3" />
+            {t("filters.clear")}
+          </Button>
+        </div>
       )}
-
-      <Button
-        size="sm"
-        className="text-xs"
-        data-testid="version-board-new-work-item"
-        disabled={!spaceId || !canCreateWorkItem}
-        aria-disabled={!spaceId || !canCreateWorkItem}
-        title={!canCreateWorkItem ? t("newWorkItemReadonly") : undefined}
-        onClick={onNewWorkItem}
-      >
-        <Plus className="h-3 w-3" />
-        {t("newWorkItem")}
-      </Button>
     </div>
+  );
+}
+
+function BoardFilterField({
+  children,
+  label,
+}: {
+  children: React.ReactNode;
+  label: string;
+}) {
+  return (
+    <label className="flex min-w-0 flex-col gap-1 text-[11px] font-medium text-muted-foreground">
+      <span>{label}</span>
+      {children}
+    </label>
   );
 }
 

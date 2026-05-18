@@ -438,6 +438,11 @@ function makeTimelineEvent(overrides: Record<string, unknown> = {}) {
   } as unknown as import("@project-delivery/shared").TimelineEvent;
 }
 
+async function openBoardFilters() {
+  fireEvent.click(await screen.findByTestId("version-board-filter-toggle"));
+  return screen.findByTestId("version-board-filter-panel");
+}
+
 // -----------------------------------------------------------------------------
 
 beforeEach(() => {
@@ -615,6 +620,7 @@ describe("VersionPage", () => {
       columnStatusCategory: "IN_PROGRESS",
     });
 
+    await openBoardFilters();
     fireEvent.click(
       await screen.findByTestId("version-board-filter-type-option-BUG"),
     );
@@ -645,6 +651,44 @@ describe("VersionPage", () => {
     expect(screen.getByTestId("version-board-page").className).toContain(
       "min-w-0",
     );
+  });
+
+  it("renders compact tab counts from board totals and requirement total while timeline has no count", async () => {
+    listVersionsMock.mockResolvedValueOnce({
+      items: [makeVersion()],
+      total: 1,
+    });
+    getVersionBoardViewMock.mockResolvedValueOnce(
+      makeBoardResponse([], {}, { NOT_STARTED: 2, IN_PROGRESS: 3 }),
+    );
+    listRequirementsMock.mockResolvedValueOnce({
+      items: [
+        makeRequirement({
+          id: "01ARZ3NDEKTSV4RRFFQ69G5FRB",
+          title: "Only loaded item",
+        }),
+      ],
+      total: 8,
+      page: 1,
+      pageSize: 100,
+    });
+
+    render(<VersionPage />);
+
+    await waitFor(() =>
+      expect(getVersionBoardViewMock).toHaveBeenCalledTimes(1),
+    );
+    await waitFor(() => expect(listRequirementsMock).toHaveBeenCalled());
+
+    expect(screen.getByTestId("version-tab-board-count")).toHaveTextContent(
+      "5",
+    );
+    expect(
+      screen.getByTestId("version-tab-requirements-count"),
+    ).toHaveTextContent("8");
+    expect(
+      screen.queryByTestId("version-tab-timeline-count"),
+    ).not.toBeInTheDocument();
   });
 
   it("selects the version from the URL before falling back to the first one", async () => {
@@ -921,12 +965,16 @@ describe("VersionPage", () => {
     });
     getVersionBoardViewMock
       .mockResolvedValueOnce(
-        makeBoardResponse([
-          makeSummary({
-            id: "01ARZ3NDEKTSV4RRFFQ69G5F10",
-            title: "Old filtered card",
-          }),
-        ]),
+        makeBoardResponse(
+          [
+            makeSummary({
+              id: "01ARZ3NDEKTSV4RRFFQ69G5F10",
+              title: "Old filtered card",
+            }),
+          ],
+          {},
+          { IN_PROGRESS: 4 },
+        ),
       )
       .mockImplementationOnce(
         () =>
@@ -941,7 +989,18 @@ describe("VersionPage", () => {
       expect(getVersionBoardViewMock).toHaveBeenCalledTimes(1),
     );
     expect(await screen.findByText("Old filtered card")).toBeInTheDocument();
+    expect(screen.getByTestId("version-tab-board-count")).toHaveTextContent(
+      "4",
+    );
 
+    const panel = await openBoardFilters();
+    expect(panel.className).toContain("bg-muted/20");
+    expect(panel.className).toContain("px-4");
+    expect(panel.className).toContain("py-3");
+    expect(panel.className).toContain("sm:px-6");
+    const toggle = screen.getByTestId("version-board-filter-toggle");
+    expect(toggle.closest("header")).toBeInTheDocument();
+    expect(toggle).toHaveAttribute("aria-expanded", "true");
     fireEvent.click(
       await screen.findByTestId("version-board-filter-type-option-BUG"),
     );
@@ -956,15 +1015,25 @@ describe("VersionPage", () => {
     expect(secondCallArgs).toMatchObject({ workItemType: "BUG" });
 
     resolveSecond(
-      makeBoardResponse([
-        makeSummary({
-          id: "01ARZ3NDEKTSV4RRFFQ69G5F11",
-          title: "New filtered card",
-          type: "BUG",
-        }),
-      ]),
+      makeBoardResponse(
+        [
+          makeSummary({
+            id: "01ARZ3NDEKTSV4RRFFQ69G5F11",
+            title: "New filtered card",
+            type: "BUG",
+          }),
+        ],
+        {},
+        { IN_PROGRESS: 2 },
+      ),
     );
     expect(await screen.findByText("New filtered card")).toBeInTheDocument();
+    expect(screen.getByTestId("version-tab-board-count")).toHaveTextContent(
+      "2",
+    );
+    expect(
+      screen.getByTestId("version-board-filter-active-count"),
+    ).toHaveTextContent("1");
   });
 
   it("clears filters when the clear-filter button is pressed", async () => {
@@ -979,6 +1048,7 @@ describe("VersionPage", () => {
     await waitFor(() =>
       expect(getVersionBoardViewMock).toHaveBeenCalledTimes(1),
     );
+    await openBoardFilters();
     fireEvent.click(
       await screen.findByTestId("version-board-filter-type-option-TASK"),
     );

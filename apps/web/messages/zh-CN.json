@@ -659,9 +659,9 @@
     "subtitle": "查看版本目标、关联需求、任务/Bug 看板和版本时间线。",
     "selectVersion": "选择版本",
     "filterAll": "全部负责人",
-    "filterTask": "任务筛选",
-    "newWorkItem": "新建工作项",
-    "newWorkItemReadonly": "当前空间角色不能新建工作项。",
+    "filterTask": "筛选",
+    "newWorkItem": "新建任务",
+    "newWorkItemReadonly": "当前空间角色不能新建任务。",
     "actions": {
       "editVersion": "编辑版本",
       "newVersion": "新建版本",

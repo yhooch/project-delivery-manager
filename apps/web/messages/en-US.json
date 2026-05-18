@@ -659,9 +659,9 @@
     "subtitle": "Goals, requirements, work-item board and timeline for the selected version.",
     "selectVersion": "Select version",
     "filterAll": "All assignees",
-    "filterTask": "Task filter",
-    "newWorkItem": "New work item",
-    "newWorkItemReadonly": "Your space role cannot create work items.",
+    "filterTask": "Filter",
+    "newWorkItem": "New task",
+    "newWorkItemReadonly": "Your space role cannot create tasks.",
     "actions": {
       "editVersion": "Edit version",
       "newVersion": "New version",
