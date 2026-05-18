@@ -719,8 +719,8 @@ export function VersionPage() {
   );
 
   // -------------------------------------------------------------------------
-  // Header meta — flattened from the former <VersionHero> band; lives in the
-  // PageHeader's `meta` slot when a version is selected.
+  // Version context — keep page-level title/actions in PageHeader, and render
+  // selected-version details as a dedicated strip below it.
   // -------------------------------------------------------------------------
 
   const owner = currentVersion?.ownerId
@@ -729,107 +729,122 @@ export function VersionPage() {
   const ownerName = owner?.user.name ?? owner?.user.username ?? "";
   const versionTarget = currentVersion?.target?.trim() || tHero("targetNone");
 
-  const headerMeta = currentVersion ? (
+  const versionSummary = currentVersion ? (
     <div
       data-testid="version-hero"
-      className="flex flex-wrap items-center gap-x-4 gap-y-2"
+      className="border-b border-border bg-muted/10 px-4 py-3 sm:px-6"
     >
-      <Badge
-        data-testid="version-hero-status"
-        variant={VERSION_STATUS_VARIANT[currentVersion.status] ?? "default"}
-        className="uppercase"
-      >
-        {tVersionStatus(currentVersion.status)}
-      </Badge>
+      <div className="grid min-w-0 gap-3 xl:grid-cols-[minmax(0,1fr)_auto] xl:items-center">
+        <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-2 text-xs text-muted-foreground">
+          <Badge
+            data-testid="version-hero-status"
+            variant={VERSION_STATUS_VARIANT[currentVersion.status] ?? "default"}
+            className="uppercase"
+          >
+            {tVersionStatus(currentVersion.status)}
+          </Badge>
 
-      <div
-        data-testid="version-hero-owner"
-        className="flex items-center gap-1.5"
-      >
-        {ownerName ? (
-          <>
-            <Tip content={ownerName}>
-              <Avatar className="h-5 w-5">
-                {owner?.user.avatar && (
-                  <AvatarImage src={owner.user.avatar} alt={ownerName} />
-                )}
-                <AvatarFallback className="text-[9px]">
-                  {initialOf(ownerName)}
-                </AvatarFallback>
-              </Avatar>
+          <div
+            data-testid="version-hero-owner"
+            className="flex items-center gap-1.5"
+          >
+            {ownerName ? (
+              <>
+                <Tip content={ownerName}>
+                  <Avatar className="h-5 w-5">
+                    {owner?.user.avatar && (
+                      <AvatarImage src={owner.user.avatar} alt={ownerName} />
+                    )}
+                    <AvatarFallback className="text-[9px]">
+                      {initialOf(ownerName)}
+                    </AvatarFallback>
+                  </Avatar>
+                </Tip>
+                <span className="text-foreground">{ownerName}</span>
+              </>
+            ) : (
+              <span>{tHero("ownerNone")}</span>
+            )}
+          </div>
+
+          <span
+            className="hidden h-3 w-px bg-border sm:inline-block"
+            aria-hidden
+          />
+
+          <span className="flex min-w-0 items-center gap-1 sm:max-w-[36rem] xl:max-w-[42rem]">
+            <span className="shrink-0">{tHero("target")}</span>
+            <Tip content={versionTarget}>
+              <span
+                data-testid="version-hero-target"
+                className="truncate font-medium text-foreground"
+              >
+                {versionTarget}
+              </span>
             </Tip>
-            <span className="text-foreground">{ownerName}</span>
-          </>
-        ) : (
-          <span>{tHero("ownerNone")}</span>
-        )}
+          </span>
+        </div>
+
+        <div
+          className="flex min-w-0 flex-wrap items-center gap-x-4 gap-y-2 text-xs text-muted-foreground xl:justify-end"
+          aria-label={tHero("ariaLabel")}
+        >
+          <span className="flex items-center gap-1">
+            <span>{tHero("dateStart")}</span>
+            <span
+              data-testid="version-hero-date-start"
+              className="font-medium text-foreground"
+            >
+              {formatDateOnly(currentVersion.startDate, locale)}
+            </span>
+          </span>
+          <span className="flex items-center gap-1">
+            <span>{tHero("dateTarget")}</span>
+            <span
+              data-testid="version-hero-date-target"
+              className="font-medium text-foreground"
+            >
+              {formatDateOnly(currentVersion.targetDate, locale)}
+            </span>
+          </span>
+          <span className="flex items-center gap-1">
+            <span>{tHero("dateRelease")}</span>
+            <span
+              data-testid="version-hero-date-release"
+              className="font-medium text-foreground"
+            >
+              {formatDateOnly(currentVersion.releaseDate, locale)}
+            </span>
+          </span>
+
+          <span
+            className="hidden h-3 w-px bg-border md:inline-block"
+            aria-hidden
+          />
+
+          <KpiInline
+            testId="version-hero-kpi-requirementCount"
+            label={tHero("kpi.requirementCount")}
+            value={currentVersion.stats.requirementCount}
+          />
+          <KpiInline
+            testId="version-hero-kpi-taskCount"
+            label={tHero("kpi.taskCount")}
+            value={currentVersion.stats.taskCount}
+          />
+          <KpiInline
+            testId="version-hero-kpi-bugCount"
+            label={tHero("kpi.bugCount")}
+            value={currentVersion.stats.bugCount}
+          />
+          <KpiInline
+            testId="version-hero-kpi-blockedCount"
+            label={tHero("kpi.blockedCount")}
+            value={currentVersion.stats.blockedCount}
+            emphasize={currentVersion.stats.blockedCount > 0}
+          />
+        </div>
       </div>
-
-      <span className="h-3 w-px bg-border" aria-hidden />
-
-      <span className="flex min-w-0 max-w-[18rem] items-center gap-1">
-        <span>{tHero("target")}</span>
-        <span
-          data-testid="version-hero-target"
-          className="truncate font-medium text-foreground"
-        >
-          {versionTarget}
-        </span>
-      </span>
-
-      <span className="h-3 w-px bg-border" aria-hidden />
-
-      <span className="flex items-center gap-1">
-        <span>{tHero("dateStart")}</span>
-        <span
-          data-testid="version-hero-date-start"
-          className="font-medium text-foreground"
-        >
-          {formatDateOnly(currentVersion.startDate, locale)}
-        </span>
-      </span>
-      <span className="flex items-center gap-1">
-        <span>{tHero("dateTarget")}</span>
-        <span
-          data-testid="version-hero-date-target"
-          className="font-medium text-foreground"
-        >
-          {formatDateOnly(currentVersion.targetDate, locale)}
-        </span>
-      </span>
-      <span className="flex items-center gap-1">
-        <span>{tHero("dateRelease")}</span>
-        <span
-          data-testid="version-hero-date-release"
-          className="font-medium text-foreground"
-        >
-          {formatDateOnly(currentVersion.releaseDate, locale)}
-        </span>
-      </span>
-
-      <span className="h-3 w-px bg-border" aria-hidden />
-
-      <KpiInline
-        testId="version-hero-kpi-requirementCount"
-        label={tHero("kpi.requirementCount")}
-        value={currentVersion.stats.requirementCount}
-      />
-      <KpiInline
-        testId="version-hero-kpi-taskCount"
-        label={tHero("kpi.taskCount")}
-        value={currentVersion.stats.taskCount}
-      />
-      <KpiInline
-        testId="version-hero-kpi-bugCount"
-        label={tHero("kpi.bugCount")}
-        value={currentVersion.stats.bugCount}
-      />
-      <KpiInline
-        testId="version-hero-kpi-blockedCount"
-        label={tHero("kpi.blockedCount")}
-        value={currentVersion.stats.blockedCount}
-        emphasize={currentVersion.stats.blockedCount > 0}
-      />
     </div>
   ) : undefined;
 
@@ -1110,8 +1125,8 @@ export function VersionPage() {
         title={t("title")}
         description={t("subtitle")}
         actions={headerActions}
-        meta={headerMeta}
       />
+      {versionSummary}
       <div className="flex min-w-0 flex-1 flex-col overflow-hidden">{body}</div>
       <TaskDetailSheet
         item={detailSheetItem}

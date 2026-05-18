@@ -509,10 +509,11 @@ describe("VersionPage", () => {
     await waitFor(() =>
       expect(getVersionBoardViewMock).toHaveBeenCalledTimes(1),
     );
-    expect(await screen.findByTestId("version-hero")).toBeInTheDocument();
-    expect(screen.getByTestId("version-hero-target")).toHaveTextContent(
-      "Ship login",
-    );
+    const versionHero = await screen.findByTestId("version-hero");
+    expect(versionHero).toBeInTheDocument();
+    expect(versionHero.closest("header")).toBeNull();
+    const target = screen.getByTestId("version-hero-target");
+    expect(target).toHaveTextContent("Ship login");
     // KPI cells render with stats values.
     expect(
       screen.getByTestId("version-hero-kpi-requirementCount").textContent,
