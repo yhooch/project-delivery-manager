@@ -20,8 +20,13 @@ function createRepositoryMock(
   input: {
     transactionResult?: unknown[];
     workflowStates?: MockWorkflowState[];
+    workflowVersion?: unknown;
   } = {},
 ) {
+  const workflowBindingFindFirst = vi.fn();
+  const workflowVersionFindFirst = vi.fn(
+    async () => input.workflowVersion,
+  );
   const workItemFindMany = vi.fn((args: PrismaCallArgs) => ({
     args,
     kind: "findMany",
@@ -51,6 +56,12 @@ function createRepositoryMock(
       workflowState: {
         findMany: workflowStateFindMany,
       },
+      workflowBinding: {
+        findFirst: workflowBindingFindFirst,
+      },
+      workflowVersion: {
+        findFirst: workflowVersionFindFirst,
+      },
     },
   } as unknown as PrismaService;
 
@@ -60,11 +71,58 @@ function createRepositoryMock(
     workItemCount,
     workItemFindMany,
     workItemGroupBy,
+    workflowBindingFindFirst,
     workflowStateFindMany,
+    workflowVersionFindFirst,
   };
 }
 
 describe("PrismaBugRepository", () => {
+  it("resolves explicit BUG workflow versions through a workflow binding", async () => {
+    const { repository, workflowBindingFindFirst, workflowVersionFindFirst } =
+      createRepositoryMock({
+        workflowVersion: {
+          id: "01H00000000000000000000002",
+          states: [
+            {
+              category: "VERIFYING",
+              id: "01H00000000000000000000003",
+            },
+          ],
+        },
+      });
+
+    await expect(
+      repository.resolveBugWorkflow(
+        "01H00000000000000000000001",
+        "01H00000000000000000000002",
+      ),
+    ).resolves.toEqual({
+      currentStateId: "01H00000000000000000000003",
+      statusCategory: "VERIFYING",
+      workflowVersionId: "01H00000000000000000000002",
+    });
+    expect(workflowVersionFindFirst).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          id: "01H00000000000000000000002",
+          workflowDefinition: expect.objectContaining({
+            bindings: {
+              some: expect.objectContaining({
+                spaceId: "01H00000000000000000000001",
+                targetType: "WORK_ITEM",
+                workItemType: "BUG",
+              }),
+            },
+            spaceId: "01H00000000000000000000001",
+            status: "ACTIVE",
+          }),
+        }),
+      }),
+    );
+    expect(workflowBindingFindFirst).not.toHaveBeenCalled();
+  });
+
   it("filters pending regression by explicit workflow state code case-insensitively", async () => {
     const { repository, workItemFindMany } = createRepositoryMock();
 

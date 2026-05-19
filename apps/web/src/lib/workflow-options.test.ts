@@ -47,7 +47,7 @@ beforeEach(() => {
 });
 
 describe("workflow-options", () => {
-  it("returns only published versions with bindings for the requested work item type", async () => {
+  it("expands eligible bindings to all published versions for the requested work item type", async () => {
     listWorkflowsMock.mockResolvedValue({
       items: [
         makeWorkflow({ id: workflowId, name: "Task flow", status: "ACTIVE" }),
@@ -76,11 +76,6 @@ describe("workflow-options", () => {
           id: "BIND_EXTRA_PRIORITY",
           workflowId,
           workflowVersionId: draftVersionId,
-        }),
-        makeBinding({
-          id: "BIND_EXTRA_PUBLISHED",
-          workflowId,
-          workflowVersionId: publishedV4Id,
         }),
         makeBinding({
           id: "BIND_DISABLED_WORKFLOW",
@@ -129,10 +124,14 @@ describe("workflow-options", () => {
     expect(options.map((option) => option.version.id)).toEqual([
       publishedV2Id,
       publishedV4Id,
+      publishedV3Id,
+      publishedV1Id,
     ]);
     expect(options.map((option) => option.binding.id)).toEqual([
       "BIND_DEFAULT",
-      "BIND_EXTRA_PUBLISHED",
+      "BIND_DEFAULT",
+      "BIND_DEFAULT",
+      "BIND_DEFAULT",
     ]);
     expect(getDefaultWorkflowVersionId(options)).toBe(publishedV2Id);
     expect(formatWorkflowVersionOption(options[0], (key) => key)).toBe(
@@ -143,6 +142,8 @@ describe("workflow-options", () => {
     );
     expect(options.map((option) => option.isDefault)).toEqual([
       true,
+      false,
+      false,
       false,
     ]);
   });

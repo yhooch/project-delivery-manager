@@ -464,6 +464,50 @@ export class PrismaWorkItemRepository implements WorkItemRepository {
   }
 
   async resolveTaskWorkflow(spaceId: string, workflowVersionId?: string) {
+    if (workflowVersionId) {
+      const version = await this.prisma.client.workflowVersion.findFirst({
+        include: {
+          states: {
+            orderBy: {
+              sortOrder: "asc",
+            },
+            take: 1,
+            where: {
+              deletedAt: null,
+              isStart: true,
+            },
+          },
+        },
+        where: {
+          deletedAt: null,
+          id: workflowVersionId,
+          status: "PUBLISHED",
+          workflowDefinition: {
+            bindings: {
+              some: {
+                deletedAt: null,
+                spaceId,
+                targetType: "WORK_ITEM",
+                workItemType: "TASK",
+              },
+            },
+            deletedAt: null,
+            spaceId,
+            status: "ACTIVE",
+          },
+        },
+      });
+      const startState = version?.states[0];
+
+      return version && startState
+        ? {
+            currentStateId: startState.id,
+            statusCategory: startState.category,
+            workflowVersionId: version.id,
+          }
+        : undefined;
+    }
+
     const binding = await this.prisma.client.workflowBinding.findFirst({
       include: {
         workflowVersion: {

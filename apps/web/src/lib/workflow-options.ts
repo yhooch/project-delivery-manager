@@ -81,26 +81,22 @@ export async function loadWorkflowVersionOptions(
 
       return (versionsByWorkflowId.get(workflowId) ?? [])
         .filter((version) => version.status === "PUBLISHED")
-        .flatMap((version) => {
-          const matchingBindings = workflowBindings.filter(
+        .map((version) => {
+          const defaultBinding = workflowBindings.find(
+            (binding) =>
+              binding.isDefault && binding.workflowVersionId === version.id,
+          );
+          const matchingVersionBinding = workflowBindings.find(
             (binding) => binding.workflowVersionId === version.id,
           );
-          const binding =
-            matchingBindings.find((candidate) => candidate.isDefault) ??
-            matchingBindings[0];
 
-          if (!binding) {
-            return [];
-          }
-
-          return [
-            {
-              binding,
-              isDefault: binding.isDefault,
-              version,
-              workflow,
-            },
-          ];
+          return {
+            binding:
+              defaultBinding ?? matchingVersionBinding ?? workflowBindings[0],
+            isDefault: Boolean(defaultBinding),
+            version,
+            workflow,
+          };
         });
     })
     .sort(compareWorkflowVersionOptions);
