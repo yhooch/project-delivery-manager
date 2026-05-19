@@ -48,6 +48,7 @@ export function WorkflowActionList({
   onDeleteField,
 }: WorkflowActionListProps) {
   const t = useTranslations("workflow.config.actions");
+  const tRole = useTranslations("workflow.spaceRole");
   const tRoot = useTranslations();
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
 
@@ -108,6 +109,9 @@ export function WorkflowActionList({
               stateNameById.get(action.fromStateId) ?? action.fromStateId;
             const toName =
               stateNameById.get(action.toStateId) ?? action.toStateId;
+            const allowedRoleNames = action.allowedSpaceRoles
+              .map((role) => tRole(role))
+              .join(t("flags.roleSeparator"));
             return (
               <li
                 className="rounded-md border border-border/70 bg-background"
@@ -148,10 +152,9 @@ export function WorkflowActionList({
                         </Badge>
                       ) : null}
                       {action.allowedSpaceRoles.length > 0 ? (
-                        <Badge variant="outline">
-                          {t("flags.roles", {
-                            count: action.allowedSpaceRoles.length,
-                          })}
+                        <Badge title={allowedRoleNames} variant="outline">
+                          {t("flags.rolesLabel")}
+                          {allowedRoleNames}
                         </Badge>
                       ) : null}
                       <span className="ml-auto tabular-nums">

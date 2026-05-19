@@ -2321,7 +2321,8 @@
         "transition": "{from} → {to}",
         "flags": {
           "requiresComment": "需要评论",
-          "roles": "角色 {count}",
+          "rolesLabel": "角色：",
+          "roleSeparator": "、",
           "order": "排序 {order}"
         },
         "actions": {

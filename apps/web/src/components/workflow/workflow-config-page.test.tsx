@@ -26,7 +26,7 @@ vi.mock("next-intl", () => ({
     if (!fn) {
       fn = (k: string) => {
         const messageKey = namespace ? `${namespace}.${k}` : k;
-        return namespace ? messageKey : (rootMessages.get(k) ?? messageKey);
+        return rootMessages.get(messageKey) ?? messageKey;
       };
       translatorCache.set(key, fn);
     }
@@ -398,7 +398,7 @@ describe("WorkflowConfigPage", () => {
 
     expect(await screen.findByText("Bug default workflow")).toBeInTheDocument();
     expect(screen.queryByText("Bug 默认流程")).not.toBeInTheDocument();
-    expect(screen.getByText("Pending confirmation")).toBeInTheDocument();
+    expect(await screen.findByText("Pending confirmation")).toBeInTheDocument();
     expect(screen.getByText("Pending fix")).toBeInTheDocument();
     expect(screen.getByText("Confirm defect")).toBeInTheDocument();
 
@@ -444,6 +444,24 @@ describe("WorkflowConfigPage", () => {
     expect(
       screen.getByTestId(`workflow-action-row-${actionId}`),
     ).toBeInTheDocument();
+  });
+
+  it("renders allowed workflow action role names instead of a role count", async () => {
+    rootMessages.set("workflow.config.actions.flags.rolesLabel", "角色：");
+    rootMessages.set("workflow.config.actions.flags.roleSeparator", "、");
+    rootMessages.set("workflow.spaceRole.PM", "项目经理");
+    rootMessages.set("workflow.spaceRole.DEVELOPER", "开发");
+    const versionWithMultipleRoles = makeDraftVersion({
+      actions: [makeAction({ allowedSpaceRoles: ["PM", "DEVELOPER"] })],
+    });
+    getWorkflowMock.mockResolvedValueOnce(makeWorkflow());
+    setupVersions([versionWithMultipleRoles]);
+    getWorkflowVersionMock.mockResolvedValueOnce(versionWithMultipleRoles);
+
+    render(<WorkflowConfigPage workflowId={workflowId} />);
+
+    expect(await screen.findByText("角色：项目经理、开发")).toBeInTheDocument();
+    expect(screen.queryByText(/角色 2/u)).not.toBeInTheDocument();
   });
 
   it("renders workflow bindings for the selected workflow", async () => {

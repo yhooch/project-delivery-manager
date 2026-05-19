@@ -2321,7 +2321,8 @@
         "transition": "{from} → {to}",
         "flags": {
           "requiresComment": "Requires comment",
-          "roles": "Roles {count}",
+          "rolesLabel": "Roles: ",
+          "roleSeparator": ", ",
           "order": "Order {order}"
         },
         "actions": {
