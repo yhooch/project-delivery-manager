@@ -1,4 +1,6 @@
-type Translator = (key: string) => string;
+type Translator = ((key: string) => string) & {
+  has?: (key: string) => boolean;
+};
 
 const DEFAULT_REASON_KEY_BY_TEXT: Record<string, string> = {
   工作项已超过截止时间: "OVERDUE",
@@ -167,6 +169,10 @@ function translateByStableCode(
 }
 
 function translateOptional(t: Translator, key: string): string | undefined {
+  if (t.has && !t.has(key)) {
+    return undefined;
+  }
+
   try {
     const translated = t(key);
     return translated === key ? undefined : translated;
