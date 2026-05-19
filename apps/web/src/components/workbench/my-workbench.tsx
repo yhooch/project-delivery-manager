@@ -958,7 +958,7 @@ export function MyWorkbench() {
                     <li key={event.id}>
                       <Link
                         href={href as never}
-                        className="block -mx-3 -my-2 rounded-lg p-2 transition-colors hover:bg-muted/40"
+                        className="block -mx-2 -my-2 rounded-lg p-2 transition-colors hover:bg-muted/40"
                       >
                         {inner}
                       </Link>
