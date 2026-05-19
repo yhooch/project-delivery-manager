@@ -20,6 +20,12 @@ import {
   filterTraceOptionsByVersion,
   inheritVersionFromTraceOption,
 } from "../../lib/versioned-trace-linking";
+import {
+  formatWorkflowVersionOption,
+  getDefaultWorkflowVersionId,
+  loadWorkflowVersionOptions,
+  type WorkflowVersionOption,
+} from "../../lib/workflow-options";
 import { toCreateTaskRequest } from "../../lib/work-item-forms";
 import { createWorkItem } from "../../lib/work-item-service";
 
@@ -86,6 +92,10 @@ export function CreateTaskDialog({
   const [requirements, setRequirements] = useState<Requirement[]>([]);
   const [intakeItems, setIntakeItems] = useState<IntakeItem[]>([]);
   const [members, setMembers] = useState<SpaceMemberWithUser[]>([]);
+  const [workflowVersionId, setWorkflowVersionId] = useState("");
+  const [workflowOptions, setWorkflowOptions] = useState<
+    WorkflowVersionOption[]
+  >([]);
 
   const optionFieldsDisabled = submitting || optionsLoadState !== "ready";
   const submitDisabled = submitting;
@@ -114,7 +124,13 @@ export function CreateTaskDialog({
 
     void (async () => {
       try {
-        const [versionPage, requirementPage, intakePage, memberPage] =
+        const [
+          versionPage,
+          requirementPage,
+          intakePage,
+          memberPage,
+          nextWorkflowOptions,
+        ] =
           await Promise.all([
             listVersions({ organizationId, spaceId, page: 1, pageSize: 100 }),
             listRequirements({
@@ -130,6 +146,7 @@ export function CreateTaskDialog({
               pageSize: 100,
             }),
             listSpaceMembers(spaceId, { status: "ACTIVE" }),
+            loadWorkflowVersionOptions({ organizationId, spaceId }, "TASK"),
           ]);
         if (cancelled) {
           return;
@@ -138,6 +155,13 @@ export function CreateTaskDialog({
         setRequirements(requirementPage.items);
         setIntakeItems(intakePage.items);
         setMembers(memberPage.items);
+        setWorkflowOptions(nextWorkflowOptions);
+        setWorkflowVersionId((current) =>
+          current ||
+          getDefaultWorkflowVersionId(nextWorkflowOptions) ||
+          nextWorkflowOptions[0]?.version.id ||
+          "",
+        );
         setOptionsLoadState("ready");
       } catch {
         if (!cancelled) {
@@ -158,6 +182,8 @@ export function CreateTaskDialog({
     setRequirementId("");
     setIntakeItemId("");
     setAssigneeId("");
+    setWorkflowVersionId("");
+    setWorkflowOptions([]);
     setPriority("MEDIUM");
     setDueDate("");
     setTitleError(false);
@@ -239,6 +265,7 @@ export function CreateTaskDialog({
           versionId,
           requirementId,
           intakeItemId,
+          workflowVersionId,
           assigneeId,
           dueDate: toDateInputRequestValue(dueDate),
         }),
@@ -336,6 +363,33 @@ export function CreateTaskDialog({
                     {version.name}
                   </option>
                 ))}
+              </SelectMenu>
+            </div>
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="create-task-workflow-version">
+                {t("fields.workflowVersion")}
+              </Label>
+              <SelectMenu
+                id="create-task-workflow-version"
+                data-testid="create-task-workflow-version-select"
+                value={workflowVersionId}
+                onChange={(event) => setWorkflowVersionId(event.target.value)}
+                disabled={optionFieldsDisabled}
+                className="h-8 w-full rounded-md border border-input bg-background px-2 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              >
+                {workflowOptions.map((option) => {
+                  const label = formatWorkflowVersionOption(option, tRoot);
+
+                  return (
+                    <option
+                      key={option.version.id}
+                      value={option.version.id}
+                      title={label}
+                    >
+                      {label}
+                    </option>
+                  );
+                })}
               </SelectMenu>
             </div>
             <div className="flex flex-col gap-1.5">

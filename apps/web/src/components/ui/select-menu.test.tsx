@@ -1,4 +1,10 @@
-import { cleanup, render, screen, waitFor } from "@testing-library/react";
+import {
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
 
 import { SelectMenu } from "./select-menu";
@@ -83,5 +89,42 @@ describe("SelectMenu", () => {
       expect(trigger).toHaveAccessibleName("Severity Major issue"),
     );
     expect(trigger).not.toHaveAccessibleName(/Majorissue/u);
+  });
+
+  it("maps option titles to the visible trigger and dropdown items", async () => {
+    render(
+      <SelectMenu
+        data-testid="workflow-select"
+        value="workflow-v2"
+        onChange={() => undefined}
+      >
+        <option value="workflow-v1" title="Development workflow v1">
+          Development workflow v1
+        </option>
+        <option
+          value="workflow-v2"
+          title="Development workflow with a very long name v2"
+        >
+          Development workflow with a very long name v2
+        </option>
+      </SelectMenu>,
+    );
+
+    const trigger = screen.getByTestId("workflow-select-trigger");
+    expect(trigger).toHaveAttribute(
+      "title",
+      "Development workflow with a very long name v2",
+    );
+    expect(screen.getByTestId("workflow-select").querySelectorAll("option")[1])
+      .toHaveAttribute("title", "Development workflow with a very long name v2");
+
+    fireEvent.pointerDown(trigger, { button: 0, ctrlKey: false });
+
+    expect(
+      await screen.findByTestId("workflow-select-option-workflow-v2"),
+    ).toHaveAttribute(
+      "title",
+      "Development workflow with a very long name v2",
+    );
   });
 });

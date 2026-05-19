@@ -15,6 +15,7 @@ import {
 type SelectMenuOption = {
   disabled: boolean;
   label: React.ReactNode;
+  title?: string;
   value: string;
 };
 
@@ -155,6 +156,7 @@ export const SelectMenu = React.forwardRef<HTMLSelectElement, SelectMenuProps>(
               key={option.value || "__empty"}
               value={option.value}
               disabled={option.disabled}
+              title={option.title}
             >
               {option.label}
             </option>
@@ -177,6 +179,7 @@ export const SelectMenu = React.forwardRef<HTMLSelectElement, SelectMenuProps>(
                 triggerTestId ?? (testId ? `${testId}-trigger` : undefined)
               }
               disabled={disabled}
+              title={selectedOption?.title}
               className={cn(
                 "flex h-8 w-full items-center justify-between gap-2 rounded-md border border-input bg-background px-3 py-1 text-left text-sm text-foreground shadow-sm transition-colors [@media(pointer:coarse)]:min-h-11 [@media(pointer:coarse)]:py-2",
                 "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 focus-visible:ring-offset-background",
@@ -210,6 +213,7 @@ export const SelectMenu = React.forwardRef<HTMLSelectElement, SelectMenuProps>(
                     ? `${testId}-option-${option.value || "empty"}`
                     : undefined
                 }
+                title={option.title}
                 onSelect={() => handleMenuSelect(option.value)}
               >
                 <Check
@@ -252,6 +256,7 @@ function parseOptions(children: React.ReactNode): SelectMenuOption[] {
       {
         disabled: Boolean(child.props.disabled),
         label,
+        title: child.props.title,
         value: String(child.props.value ?? fallbackValue),
       },
     ];

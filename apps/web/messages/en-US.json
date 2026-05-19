@@ -1503,6 +1503,7 @@
         "priority": "Priority",
         "version": "Version",
         "noVersion": "No version",
+        "workflowVersion": "Workflow version",
         "assignee": "Assignee",
         "unassigned": "Unassigned",
         "dueDate": "Due date"
@@ -1558,6 +1559,7 @@
         "description": "Description",
         "version": "Version",
         "noVersion": "No version",
+        "workflowVersion": "Workflow version",
         "assignee": "Assignee",
         "unassigned": "Unassigned",
         "priority": "Priority",
@@ -1784,6 +1786,7 @@
       "dueDate": "Due date",
       "blockedReason": "Blocked reason",
       "noVersion": "Unchanged or no version",
+      "workflowVersion": "Workflow version",
       "noRequirement": "Unchanged or no requirement",
       "unassigned": "Unassigned",
       "readonly": "Current permission is read-only"

@@ -24,15 +24,13 @@ const {
   listRequirementsMock,
   listSpaceMembersMock,
   listVersionsMock,
-  listWorkflowBindingsMock,
-  listWorkflowsMock,
+  loadWorkflowVersionOptionsMock,
 } = vi.hoisted(() => ({
   convertIntakeItemToWorkItemsMock: vi.fn(),
   listRequirementsMock: vi.fn(),
   listSpaceMembersMock: vi.fn(),
   listVersionsMock: vi.fn(),
-  listWorkflowBindingsMock: vi.fn(),
-  listWorkflowsMock: vi.fn(),
+  loadWorkflowVersionOptionsMock: vi.fn(),
 }));
 
 vi.mock("../../lib/intake-service", () => ({
@@ -47,9 +45,27 @@ vi.mock("../../lib/space-service", () => ({
 vi.mock("../../lib/version-service", () => ({
   listVersions: listVersionsMock,
 }));
-vi.mock("../../lib/workflow-service", () => ({
-  listWorkflowBindings: listWorkflowBindingsMock,
-  listWorkflows: listWorkflowsMock,
+vi.mock("../../lib/workflow-options", () => ({
+  formatWorkflowVersionOption: (
+    option: {
+      isDefault: boolean;
+      version: { version: number };
+      workflow: { name: string };
+    },
+    t: (key: string) => string,
+  ) =>
+    `${option.workflow.name} v${option.version.version}${
+      option.isDefault
+        ? ` · ${t("workflow.bindingsPanel.fields.isDefault")}`
+        : ""
+    }`,
+  getDefaultWorkflowVersionId: (
+    options: Array<{
+      isDefault: boolean;
+      version: { id: string };
+    }>,
+  ) => options.find((option) => option.isDefault)?.version.id ?? "",
+  loadWorkflowVersionOptions: loadWorkflowVersionOptionsMock,
 }));
 
 import type {
@@ -57,8 +73,6 @@ import type {
   Requirement,
   SpaceMemberWithUser,
   Version,
-  WorkflowBinding,
-  WorkflowDefinition,
 } from "@project-delivery/shared";
 
 import { ConvertIntakeDialog } from "./convert-intake-dialog";
@@ -72,7 +86,6 @@ const requirementId = "01ARZ3NDEKTSV4RRFFQ69G5FR1";
 const requirementTwoId = "01ARZ3NDEKTSV4RRFFQ69G5FR2";
 const unversionedRequirementId = "01ARZ3NDEKTSV4RRFFQ69G5FR3";
 const assigneeId = "01ARZ3NDEKTSV4RRFFQ69G5FA1";
-const workflowId = "01ARZ3NDEKTSV4RRFFQ69G5FW1";
 const workflowVersionId = "01ARZ3NDEKTSV4RRFFQ69G5FW2";
 
 function makeIntake(overrides: Partial<IntakeItem> = {}): IntakeItem {
@@ -98,8 +111,7 @@ beforeEach(() => {
   listRequirementsMock.mockReset();
   listSpaceMembersMock.mockReset();
   listVersionsMock.mockReset();
-  listWorkflowBindingsMock.mockReset();
-  listWorkflowsMock.mockReset();
+  loadWorkflowVersionOptionsMock.mockReset();
 
   listSpaceMembersMock.mockResolvedValue({
     items: [
@@ -117,20 +129,19 @@ beforeEach(() => {
       { id: requirementId, title: "Requirement A", versionId } as Requirement,
     ],
   });
-  listWorkflowsMock.mockResolvedValue({
-    items: [{ id: workflowId, name: "General task" } as WorkflowDefinition],
-  });
-  listWorkflowBindingsMock.mockResolvedValue({
-    items: [
-      {
+  loadWorkflowVersionOptionsMock.mockResolvedValue([
+    {
+      binding: {
         id: "01ARZ3NDEKTSV4RRFFQ69G5FB1",
-        workflowId,
         workflowVersionId,
         workItemType: "TASK",
         isDefault: true,
-      } as WorkflowBinding,
-    ],
-  });
+      },
+      isDefault: true,
+      version: { id: workflowVersionId, version: 2 },
+      workflow: { name: "General task" },
+    },
+  ]);
   convertIntakeItemToWorkItemsMock.mockResolvedValue({
     intakeItemId,
     workItems: [],
@@ -159,7 +170,21 @@ describe("ConvertIntakeDialog", () => {
     expect(
       await screen.findByDisplayValue("Checkout scope"),
     ).toBeInTheDocument();
-    await screen.findByText(/General task/);
+    await screen.findAllByText(/General task/);
+    const workflowSelect = screen.getByTestId(
+      "convert-task-workflow-0",
+    ) as HTMLSelectElement;
+    await waitFor(() => expect(workflowSelect.value).toBe(workflowVersionId));
+    expect(workflowSelect.options[0]?.value).toBe(workflowVersionId);
+    expect(workflowSelect.options[0]).toHaveAttribute(
+      "title",
+      "General task v2 · workflow.bindingsPanel.fields.isDefault",
+    );
+    expect(screen.getByTestId("convert-task-workflow-0-trigger"))
+      .toHaveAttribute(
+        "title",
+        "General task v2 · workflow.bindingsPanel.fields.isDefault",
+      );
     expect(listSpaceMembersMock).toHaveBeenCalledWith(spaceId, {
       status: "ACTIVE",
     });
@@ -200,6 +225,59 @@ describe("ConvertIntakeDialog", () => {
     });
   });
 
+  it("uses the loaded workflow default for rows added after options are ready", async () => {
+    render(
+      <ConvertIntakeDialog
+        open
+        onOpenChange={vi.fn()}
+        organizationId={organizationId}
+        spaceId={spaceId}
+        intakeItem={makeIntake()}
+      />,
+    );
+
+    const firstWorkflowSelect = (await screen.findByTestId(
+      "convert-task-workflow-0",
+    )) as HTMLSelectElement;
+    await waitFor(() =>
+      expect(firstWorkflowSelect.value).toBe(workflowVersionId),
+    );
+
+    fireEvent.click(
+      screen.getByRole("button", { name: "intake.dialog.convert.addTask" }),
+    );
+
+    const secondWorkflowSelect = screen.getByTestId(
+      "convert-task-workflow-1",
+    ) as HTMLSelectElement;
+    expect(secondWorkflowSelect.value).toBe(workflowVersionId);
+
+    fireEvent.change(screen.getByTestId("convert-task-title-1"), {
+      target: { value: "Follow-up task" },
+    });
+    fireEvent.click(
+      screen.getByRole("button", { name: "intake.dialog.convert.submit" }),
+    );
+
+    await waitFor(() =>
+      expect(convertIntakeItemToWorkItemsMock).toHaveBeenCalledWith(
+        { intakeItemId, organizationId, spaceId },
+        {
+          tasks: [
+            expect.objectContaining({
+              title: "Checkout scope",
+              workflowVersionId,
+            }),
+            expect.objectContaining({
+              title: "Follow-up task",
+              workflowVersionId,
+            }),
+          ],
+        },
+      ),
+    );
+  });
+
   it("keeps non-accepted intake items from being converted", async () => {
     render(
       <ConvertIntakeDialog
@@ -219,7 +297,7 @@ describe("ConvertIntakeDialog", () => {
   });
 
   it("shows an option load error, keeps accepted intake submit enabled, and retries", async () => {
-    listWorkflowBindingsMock.mockRejectedValueOnce(new Error("network"));
+    loadWorkflowVersionOptionsMock.mockRejectedValueOnce(new Error("network"));
 
     render(
       <ConvertIntakeDialog
@@ -241,17 +319,17 @@ describe("ConvertIntakeDialog", () => {
 
     fireEvent.click(screen.getByTestId("convert-intake-options-retry"));
 
-    await screen.findByText(/General task/);
+    await screen.findAllByText(/General task/);
     await waitFor(() =>
       expect(
         screen.getByRole("button", { name: "intake.dialog.convert.submit" }),
       ).not.toBeDisabled(),
     );
-    expect(listWorkflowBindingsMock).toHaveBeenCalledTimes(2);
+    expect(loadWorkflowVersionOptionsMock).toHaveBeenCalledTimes(2);
   });
 
   it("converts an accepted intake item when optional lookups fail", async () => {
-    listWorkflowBindingsMock.mockRejectedValueOnce(new Error("network"));
+    loadWorkflowVersionOptionsMock.mockRejectedValueOnce(new Error("network"));
 
     render(
       <ConvertIntakeDialog

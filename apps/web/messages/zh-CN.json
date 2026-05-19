@@ -1503,6 +1503,7 @@
         "priority": "优先级",
         "version": "版本",
         "noVersion": "未指定版本",
+        "workflowVersion": "流程版本",
         "assignee": "负责人",
         "unassigned": "未分配",
         "dueDate": "截止时间"
@@ -1558,6 +1559,7 @@
         "description": "描述",
         "version": "版本",
         "noVersion": "未指定版本",
+        "workflowVersion": "流程版本",
         "assignee": "负责人",
         "unassigned": "未分配",
         "priority": "优先级",
@@ -1784,6 +1786,7 @@
       "dueDate": "截止时间",
       "blockedReason": "阻塞原因",
       "noVersion": "不变或不关联版本",
+      "workflowVersion": "流程版本",
       "noRequirement": "不变或不关联需求",
       "unassigned": "未分配",
       "readonly": "当前权限只能查看"

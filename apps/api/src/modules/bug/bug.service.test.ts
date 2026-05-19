@@ -36,6 +36,8 @@ const BUG_ID = "01H0000000000000000000000A";
 const RELATED_TASK_ID = "01H0000000000000000000000B";
 const RELATED_USER_ID = "01H0000000000000000000000C";
 const VERSION_TWO_ID = "01H0000000000000000000000D";
+const EXPLICIT_WORKFLOW_VERSION_ID = "01H0000000000000000000000E";
+const EXPLICIT_CURRENT_STATE_ID = "01H0000000000000000000000F";
 
 describe("BugService", () => {
   it("creates BUG work items with bug_details, default workflow and participants", async () => {
@@ -136,6 +138,39 @@ describe("BugService", () => {
         }),
       ]),
     );
+  });
+
+  it("uses an explicit workflow version when creating BUG work items", async () => {
+    const subject = createSubject("TESTER");
+
+    subject.bugs.workflowSelection = {
+      currentStateId: EXPLICIT_CURRENT_STATE_ID,
+      statusCategory: "IN_PROGRESS",
+      workflowVersionId: EXPLICIT_WORKFLOW_VERSION_ID,
+    };
+
+    const created = await subject.service.create(ACTOR_ID, SPACE_ID, {
+      priority: "MEDIUM",
+      severity: "MAJOR",
+      title: "Explicit workflow bug",
+      workflowVersionId: EXPLICIT_WORKFLOW_VERSION_ID,
+    });
+
+    expect(subject.bugs.workflowSelectionInput).toEqual({
+      spaceId: SPACE_ID,
+      workflowVersionId: EXPLICIT_WORKFLOW_VERSION_ID,
+    });
+    expect(created).toMatchObject({
+      currentStateId: EXPLICIT_CURRENT_STATE_ID,
+      statusCategory: "IN_PROGRESS",
+      type: "BUG",
+      workflowVersionId: EXPLICIT_WORKFLOW_VERSION_ID,
+    });
+    expect(subject.bugs.createdInput).toMatchObject({
+      currentStateId: EXPLICIT_CURRENT_STATE_ID,
+      statusCategory: "IN_PROGRESS",
+      workflowVersionId: EXPLICIT_WORKFLOW_VERSION_ID,
+    });
   });
 
   it("returns permissions with BUG detail so edit entry points are reachable", async () => {
@@ -662,6 +697,10 @@ class FakeBugRepository implements BugRepository {
   createdInput?: CreateBugInput;
   updatedInput?: UpdateBugInput;
   listInput?: BugListInput;
+  workflowSelectionInput?: {
+    spaceId: string;
+    workflowVersionId?: string;
+  };
   workflowSelection?: BugWorkflowSelection;
   readonly auditLogs: CreateAuditLogInput[] = [];
   readonly items = new Map<string, BugView>();
@@ -747,7 +786,8 @@ class FakeBugRepository implements BugRepository {
     };
   }
 
-  async resolveBugWorkflow(_spaceId: string, _workflowVersionId?: string) {
+  async resolveBugWorkflow(spaceId: string, workflowVersionId?: string) {
+    this.workflowSelectionInput = { spaceId, workflowVersionId };
     return this.workflowSelection;
   }
 

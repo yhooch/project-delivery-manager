@@ -7,8 +7,6 @@ import type {
   Requirement,
   SpaceMemberWithUser,
   Version,
-  WorkflowBinding,
-  WorkflowDefinition,
 } from "@project-delivery/shared";
 import { Plus, Trash2 } from "lucide-react";
 import { useTranslations } from "next-intl";
@@ -26,9 +24,11 @@ import {
   isTraceOptionCompatibleWithVersion,
 } from "../../lib/versioned-trace-linking";
 import {
-  listWorkflowBindings,
-  listWorkflows,
-} from "../../lib/workflow-service";
+  formatWorkflowVersionOption,
+  getDefaultWorkflowVersionId,
+  loadWorkflowVersionOptions,
+  type WorkflowVersionOption,
+} from "../../lib/workflow-options";
 
 import {
   Dialog,
@@ -68,12 +68,11 @@ type TaskRow = {
   workflowVersionId: string;
 };
 
-type WorkflowOption = {
-  binding: WorkflowBinding;
-  workflowName?: string;
-};
-
-function makeRow(intakeItem: IntakeItem | null, includeTitle = false): TaskRow {
+function makeRow(
+  intakeItem: IntakeItem | null,
+  includeTitle = false,
+  workflowVersionId = "",
+): TaskRow {
   return {
     assigneeId: intakeItem?.assigneeId ?? "",
     description: intakeItem?.description ?? "",
@@ -82,7 +81,7 @@ function makeRow(intakeItem: IntakeItem | null, includeTitle = false): TaskRow {
     requirementId: intakeItem?.requirementId ?? "",
     title: includeTitle ? (intakeItem?.title ?? "") : "",
     versionId: intakeItem?.versionId ?? "",
-    workflowVersionId: "",
+    workflowVersionId,
   };
 }
 
@@ -115,7 +114,9 @@ export function ConvertIntakeDialog({
   const [members, setMembers] = useState<SpaceMemberWithUser[]>([]);
   const [versions, setVersions] = useState<Version[]>([]);
   const [requirements, setRequirements] = useState<Requirement[]>([]);
-  const [workflowOptions, setWorkflowOptions] = useState<WorkflowOption[]>([]);
+  const [workflowOptions, setWorkflowOptions] = useState<
+    WorkflowVersionOption[]
+  >([]);
 
   const optionFieldsDisabled = submitting || optionsLoadState !== "ready";
   const submitDisabled =
@@ -135,20 +136,12 @@ export function ConvertIntakeDialog({
           memberPage,
           versionPage,
           requirementPage,
-          workflowPage,
-          bindingPage,
+          nextWorkflowOptions,
         ] = await Promise.all([
           listSpaceMembers(spaceId, { status: "ACTIVE" }),
           listVersions({ organizationId, spaceId, page: 1, pageSize: 100 }),
           listRequirements({ organizationId, spaceId, page: 1, pageSize: 100 }),
-          listWorkflows({ organizationId, spaceId, page: 1, pageSize: 100 }),
-          listWorkflowBindings({
-            organizationId,
-            page: 1,
-            pageSize: 100,
-            spaceId,
-            workItemType: "TASK",
-          }),
+          loadWorkflowVersionOptions({ organizationId, spaceId }, "TASK"),
         ]);
         if (cancelled) {
           return;
@@ -156,8 +149,15 @@ export function ConvertIntakeDialog({
         setMembers(memberPage.items);
         setVersions(versionPage.items);
         setRequirements(requirementPage.items);
-        setWorkflowOptions(
-          toWorkflowOptions(bindingPage.items, workflowPage.items),
+        setWorkflowOptions(nextWorkflowOptions);
+        const defaultWorkflowVersionId =
+          getInitialWorkflowVersionId(nextWorkflowOptions);
+        setRows((prev) =>
+          prev.map((row) =>
+            row.workflowVersionId || !defaultWorkflowVersionId
+              ? row
+              : { ...row, workflowVersionId: defaultWorkflowVersionId },
+          ),
         );
         setOptionsLoadState("ready");
       } catch {
@@ -184,6 +184,7 @@ export function ConvertIntakeDialog({
     setRows([makeRow(intakeItem)]);
     setErrors([false]);
     setErrorKey(null);
+    setWorkflowOptions([]);
     setOptionsLoadState("idle");
     setOptionsReloadKey(0);
     setSubmitting(false);
@@ -217,7 +218,10 @@ export function ConvertIntakeDialog({
   }
 
   function addRow() {
-    setRows((prev) => [...prev, makeRow(intakeItem)]);
+    setRows((prev) => [
+      ...prev,
+      makeRow(intakeItem, false, getInitialWorkflowVersionId(workflowOptions)),
+    ]);
     setErrors((prev) => [...prev, false]);
   }
 
@@ -508,17 +512,22 @@ export function ConvertIntakeDialog({
                       disabled={optionFieldsDisabled}
                       className="h-8 w-full rounded-md border border-input bg-background px-2 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                     >
-                      <option value="">
-                        {tRoot("workflow.bindingsPanel.fields.isDefault")}
-                      </option>
-                      {workflowOptions.map((option) => (
-                        <option
-                          key={option.binding.id}
-                          value={option.binding.workflowVersionId}
-                        >
-                          {formatWorkflowOption(option, tRoot)}
-                        </option>
-                      ))}
+                      {workflowOptions.map((option) => {
+                        const label = formatWorkflowVersionOption(
+                          option,
+                          tRoot,
+                        );
+
+                        return (
+                          <option
+                            key={option.version.id}
+                            value={option.version.id}
+                            title={label}
+                          >
+                            {label}
+                          </option>
+                        );
+                      })}
                     </SelectMenu>
                   </div>
                 </div>
@@ -564,6 +573,12 @@ export function ConvertIntakeDialog({
       </DialogContent>
     </Dialog>
   );
+}
+
+function getInitialWorkflowVersionId(
+  options: WorkflowVersionOption[],
+): string {
+  return getDefaultWorkflowVersionId(options) || options[0]?.version.id || "";
 }
 
 function OptionsLoadNotice({
@@ -612,34 +627,6 @@ function OptionsLoadNotice({
       </Button>
     </div>
   );
-}
-
-function toWorkflowOptions(
-  bindings: WorkflowBinding[],
-  workflows: WorkflowDefinition[],
-): WorkflowOption[] {
-  const workflowNameById = new Map(
-    workflows.map((workflow) => [workflow.id, workflow.name]),
-  );
-
-  return bindings
-    .filter((binding) => binding.workItemType === "TASK")
-    .map((binding) => ({
-      binding,
-      workflowName: workflowNameById.get(binding.workflowId),
-    }));
-}
-
-function formatWorkflowOption(
-  option: WorkflowOption,
-  t: (key: string) => string,
-): string {
-  const name = option.workflowName ?? t("workflow.workItemType.TASK");
-  const defaultMark = option.binding.isDefault
-    ? ` · ${t("workflow.bindingsPanel.fields.isDefault")}`
-    : "";
-
-  return `${name}${defaultMark}`;
 }
 
 function applyLinkedRequirementPatch(

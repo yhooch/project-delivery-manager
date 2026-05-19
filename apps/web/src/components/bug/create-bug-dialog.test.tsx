@@ -40,12 +40,14 @@ const {
   listSpaceMembersMock,
   listVersionsMock,
   listWorkItemsMock,
+  loadWorkflowVersionOptionsMock,
 } = vi.hoisted(() => ({
   createBugMock: vi.fn(),
   listRequirementsMock: vi.fn(),
   listSpaceMembersMock: vi.fn(),
   listVersionsMock: vi.fn(),
   listWorkItemsMock: vi.fn(),
+  loadWorkflowVersionOptionsMock: vi.fn(),
 }));
 
 vi.mock("../../lib/bug-service", () => ({
@@ -63,6 +65,28 @@ vi.mock("../../lib/version-service", () => ({
 vi.mock("../../lib/work-item-service", () => ({
   listWorkItems: listWorkItemsMock,
 }));
+vi.mock("../../lib/workflow-options", () => ({
+  formatWorkflowVersionOption: (
+    option: {
+      isDefault: boolean;
+      version: { version: number };
+      workflow: { name: string };
+    },
+    t: (key: string) => string,
+  ) =>
+    `${option.workflow.name} v${option.version.version}${
+      option.isDefault
+        ? ` · ${t("workflow.bindingsPanel.fields.isDefault")}`
+        : ""
+    }`,
+  getDefaultWorkflowVersionId: (
+    options: Array<{
+      isDefault: boolean;
+      version: { id: string };
+    }>,
+  ) => options.find((option) => option.isDefault)?.version.id ?? "",
+  loadWorkflowVersionOptions: loadWorkflowVersionOptionsMock,
+}));
 
 import { CreateBugDialog } from "./create-bug-dialog";
 
@@ -74,6 +98,8 @@ const requirementId = "01ARZ3NDEKTSV4RRFFQ69G5FR1";
 const nextRequirementId = "01ARZ3NDEKTSV4RRFFQ69G5FR2";
 const relatedTaskId = "01ARZ3NDEKTSV4RRFFQ69G5FT1";
 const nextRelatedTaskId = "01ARZ3NDEKTSV4RRFFQ69G5FT2";
+const workflowVersionId = "01ARZ3NDEKTSV4RRFFQ69G5FW1";
+const workflowVersionTwoId = "01ARZ3NDEKTSV4RRFFQ69G5FW2";
 
 beforeEach(() => {
   createBugMock.mockReset();
@@ -81,6 +107,7 @@ beforeEach(() => {
   listSpaceMembersMock.mockReset();
   listVersionsMock.mockReset();
   listWorkItemsMock.mockReset();
+  loadWorkflowVersionOptionsMock.mockReset();
   listVersionsMock.mockResolvedValue({ items: [], total: 0 });
   listRequirementsMock.mockResolvedValue({
     items: [{ id: requirementId, title: "Requirement 1" }],
@@ -91,6 +118,7 @@ beforeEach(() => {
     total: 1,
   });
   listSpaceMembersMock.mockResolvedValue({ items: [], total: 0 });
+  loadWorkflowVersionOptionsMock.mockResolvedValue([]);
   createBugMock.mockResolvedValue({ id: "created" });
 });
 
@@ -145,6 +173,78 @@ describe("CreateBugDialog", () => {
         relatedTaskId,
         requirementId,
         title: "Linked bug",
+      }),
+    );
+  });
+
+  it("defaults to the default workflow version and submits an explicitly selected version", async () => {
+    loadWorkflowVersionOptionsMock.mockResolvedValue([
+      {
+        binding: {
+          id: "01ARZ3NDEKTSV4RRFFQ69G5FB1",
+          isDefault: true,
+          workflowVersionId,
+        },
+        isDefault: true,
+        version: { id: workflowVersionId, version: 2 },
+        workflow: { name: "Bug flow" },
+      },
+      {
+        binding: {
+          id: "01ARZ3NDEKTSV4RRFFQ69G5FB2",
+          isDefault: false,
+          workflowVersionId: workflowVersionTwoId,
+        },
+        isDefault: false,
+        version: { id: workflowVersionTwoId, version: 1 },
+        workflow: { name: "Bug flow" },
+      },
+    ]);
+
+    render(
+      <CreateBugDialog
+        open
+        onOpenChange={() => {}}
+        organizationId={organizationId}
+        spaceId={spaceId}
+      />,
+    );
+
+    const workflowSelect = (await screen.findByTestId(
+      "create-bug-workflow-version-select",
+    )) as HTMLSelectElement;
+    await waitFor(() => expect(workflowSelect.value).toBe(workflowVersionId));
+    expect(getSelectOptionLabels(workflowSelect)).toEqual(
+      [
+        "Bug flow v2 · workflow.bindingsPanel.fields.isDefault",
+        "Bug flow v1",
+      ],
+    );
+    expect(workflowSelect.options[0]?.value).not.toBe("");
+    expect(workflowSelect.options[0]).toHaveAttribute(
+      "title",
+      "Bug flow v2 · workflow.bindingsPanel.fields.isDefault",
+    );
+    expect(screen.getByTestId("create-bug-workflow-version-select-trigger"))
+      .toHaveAttribute(
+        "title",
+        "Bug flow v2 · workflow.bindingsPanel.fields.isDefault",
+      );
+
+    fireEvent.change(workflowSelect, {
+      target: { value: workflowVersionTwoId },
+    });
+    fireEvent.change(screen.getByTestId("create-bug-title-input"), {
+      target: { value: "Bug with workflow" },
+    });
+    fireEvent.click(screen.getByTestId("create-bug-submit"));
+
+    await waitFor(() => expect(createBugMock).toHaveBeenCalledTimes(1));
+    expect(createBugMock).toHaveBeenCalledWith(
+      { organizationId, spaceId },
+      expect.objectContaining({
+        title: "Bug with workflow",
+        workflowVersionId: workflowVersionTwoId,
       }),
     );
   });

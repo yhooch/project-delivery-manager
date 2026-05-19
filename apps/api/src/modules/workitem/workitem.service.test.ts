@@ -36,6 +36,8 @@ const WORK_ITEM_ID = "01H0000000000000000000000A";
 const RELATED_USER_ID = "01H0000000000000000000000B";
 const VERSION_TWO_ID = "01H0000000000000000000000C";
 const BUG_ID = "01H0000000000000000000000D";
+const EXPLICIT_WORKFLOW_VERSION_ID = "01H0000000000000000000000E";
+const EXPLICIT_CURRENT_STATE_ID = "01H0000000000000000000000F";
 
 describe("WorkItemService", () => {
   it("creates TASK work items with the default workflow start state and participants", async () => {
@@ -134,6 +136,38 @@ describe("WorkItemService", () => {
       createdById: ACTOR_ID,
       reporterId: ACTOR_ID,
       spaceId: SPACE_ID,
+    });
+  });
+
+  it("uses an explicit workflow version when creating TASK work items", async () => {
+    const subject = createSubject("PM");
+
+    subject.workItems.workflowSelection = {
+      currentStateId: EXPLICIT_CURRENT_STATE_ID,
+      statusCategory: "IN_PROGRESS",
+      workflowVersionId: EXPLICIT_WORKFLOW_VERSION_ID,
+    };
+
+    const created = await subject.service.create(ACTOR_ID, SPACE_ID, {
+      priority: "MEDIUM",
+      title: "Explicit workflow task",
+      type: "TASK",
+      workflowVersionId: EXPLICIT_WORKFLOW_VERSION_ID,
+    });
+
+    expect(subject.workItems.workflowSelectionInput).toEqual({
+      spaceId: SPACE_ID,
+      workflowVersionId: EXPLICIT_WORKFLOW_VERSION_ID,
+    });
+    expect(created).toMatchObject({
+      currentStateId: EXPLICIT_CURRENT_STATE_ID,
+      statusCategory: "IN_PROGRESS",
+      workflowVersionId: EXPLICIT_WORKFLOW_VERSION_ID,
+    });
+    expect(subject.workItems.createdInput).toMatchObject({
+      currentStateId: EXPLICIT_CURRENT_STATE_ID,
+      statusCategory: "IN_PROGRESS",
+      workflowVersionId: EXPLICIT_WORKFLOW_VERSION_ID,
     });
   });
 
@@ -613,6 +647,10 @@ class FakeWorkItemRepository implements WorkItemRepository {
   createdInput?: CreateWorkItemInput;
   updatedInput?: UpdateWorkItemInput;
   listInput?: WorkItemListInput;
+  workflowSelectionInput?: {
+    spaceId: string;
+    workflowVersionId?: string;
+  };
   workflowSelection?: WorkItemWorkflowSelection;
   readonly items = new Map<string, WorkItem>();
   readonly participantKeys = new Set<string>();
@@ -703,7 +741,8 @@ class FakeWorkItemRepository implements WorkItemRepository {
     };
   }
 
-  async resolveTaskWorkflow(_spaceId: string, _workflowVersionId?: string) {
+  async resolveTaskWorkflow(spaceId: string, workflowVersionId?: string) {
+    this.workflowSelectionInput = { spaceId, workflowVersionId };
     return this.workflowSelection;
   }
 

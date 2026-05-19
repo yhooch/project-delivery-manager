@@ -22,6 +22,12 @@ import {
   filterTraceOptionsByVersion,
   inheritVersionFromTraceOption,
 } from "../../lib/versioned-trace-linking";
+import {
+  formatWorkflowVersionOption,
+  getDefaultWorkflowVersionId,
+  loadWorkflowVersionOptions,
+  type WorkflowVersionOption,
+} from "../../lib/workflow-options";
 import { listWorkItems } from "../../lib/work-item-service";
 
 import {
@@ -97,6 +103,10 @@ export function CreateBugDialog({
   const [requirements, setRequirements] = useState<Requirement[]>([]);
   const [tasks, setTasks] = useState<WorkItem[]>([]);
   const [members, setMembers] = useState<SpaceMemberWithUser[]>([]);
+  const [workflowVersionId, setWorkflowVersionId] = useState("");
+  const [workflowOptions, setWorkflowOptions] = useState<
+    WorkflowVersionOption[]
+  >([]);
 
   const optionFieldsDisabled = submitting || optionsLoadState !== "ready";
   const submitDisabled = submitting;
@@ -119,7 +129,13 @@ export function CreateBugDialog({
 
     void (async () => {
       try {
-        const [versionPage, requirementPage, taskPage, memberPage] =
+        const [
+          versionPage,
+          requirementPage,
+          taskPage,
+          memberPage,
+          nextWorkflowOptions,
+        ] =
           await Promise.all([
             listVersions({ organizationId, spaceId, page: 1, pageSize: 100 }),
             listRequirements({
@@ -136,6 +152,7 @@ export function CreateBugDialog({
               type: "TASK",
             }),
             listSpaceMembers(spaceId, { status: "ACTIVE" }),
+            loadWorkflowVersionOptions({ organizationId, spaceId }, "BUG"),
           ]);
         if (cancelled) {
           return;
@@ -144,6 +161,13 @@ export function CreateBugDialog({
         setRequirements(requirementPage.items);
         setTasks(taskPage.items);
         setMembers(memberPage.items);
+        setWorkflowOptions(nextWorkflowOptions);
+        setWorkflowVersionId((current) =>
+          current ||
+          getDefaultWorkflowVersionId(nextWorkflowOptions) ||
+          nextWorkflowOptions[0]?.version.id ||
+          "",
+        );
         setOptionsLoadState("ready");
       } catch {
         if (!cancelled) {
@@ -168,6 +192,8 @@ export function CreateBugDialog({
     setRequirementId("");
     setRelatedTaskId("");
     setAssigneeId("");
+    setWorkflowVersionId("");
+    setWorkflowOptions([]);
     setPriority("MEDIUM");
     setDueDate("");
     setTitleError(false);
@@ -251,6 +277,7 @@ export function CreateBugDialog({
           versionId,
           requirementId,
           relatedTaskId,
+          workflowVersionId,
           assigneeId,
           dueDate: toDateInputRequestValue(dueDate),
         }),
@@ -431,6 +458,33 @@ export function CreateBugDialog({
                     {version.name}
                   </option>
                 ))}
+              </SelectMenu>
+            </div>
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="create-bug-workflow-version">
+                {t("fields.workflowVersion")}
+              </Label>
+              <SelectMenu
+                id="create-bug-workflow-version"
+                data-testid="create-bug-workflow-version-select"
+                value={workflowVersionId}
+                onChange={(event) => setWorkflowVersionId(event.target.value)}
+                disabled={optionFieldsDisabled}
+                className="h-8 w-full rounded-md border border-input bg-background px-2 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              >
+                {workflowOptions.map((option) => {
+                  const label = formatWorkflowVersionOption(option, tRoot);
+
+                  return (
+                    <option
+                      key={option.version.id}
+                      value={option.version.id}
+                      title={label}
+                    >
+                      {label}
+                    </option>
+                  );
+                })}
               </SelectMenu>
             </div>
             <div className="flex flex-col gap-1.5">

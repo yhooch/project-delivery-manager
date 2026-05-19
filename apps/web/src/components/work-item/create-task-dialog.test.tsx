@@ -46,12 +46,14 @@ const {
   listRequirementsMock,
   listSpaceMembersMock,
   listVersionsMock,
+  loadWorkflowVersionOptionsMock,
 } = vi.hoisted(() => ({
   createWorkItemMock: vi.fn(),
   listIntakeItemsMock: vi.fn(),
   listRequirementsMock: vi.fn(),
   listSpaceMembersMock: vi.fn(),
   listVersionsMock: vi.fn(),
+  loadWorkflowVersionOptionsMock: vi.fn(),
 }));
 
 vi.mock("../../lib/work-item-service", () => ({
@@ -69,6 +71,28 @@ vi.mock("../../lib/space-service", () => ({
 vi.mock("../../lib/version-service", () => ({
   listVersions: listVersionsMock,
 }));
+vi.mock("../../lib/workflow-options", () => ({
+  formatWorkflowVersionOption: (
+    option: {
+      isDefault: boolean;
+      version: { version: number };
+      workflow: { name: string };
+    },
+    t: (key: string) => string,
+  ) =>
+    `${option.workflow.name} v${option.version.version}${
+      option.isDefault
+        ? ` · ${t("workflow.bindingsPanel.fields.isDefault")}`
+        : ""
+    }`,
+  getDefaultWorkflowVersionId: (
+    options: Array<{
+      isDefault: boolean;
+      version: { id: string };
+    }>,
+  ) => options.find((option) => option.isDefault)?.version.id ?? "",
+  loadWorkflowVersionOptions: loadWorkflowVersionOptionsMock,
+}));
 
 import { CreateTaskDialog } from "./create-task-dialog";
 
@@ -82,6 +106,8 @@ const intakeItemTwoId = "01ARZ3NDEKTSV4RRFFQ69G5FJ2";
 const unversionedIntakeItemId = "01ARZ3NDEKTSV4RRFFQ69G5FJ3";
 const versionId = "01ARZ3NDEKTSV4RRFFQ69G5FV1";
 const versionTwoId = "01ARZ3NDEKTSV4RRFFQ69G5FV2";
+const workflowVersionId = "01ARZ3NDEKTSV4RRFFQ69G5FW1";
+const workflowVersionTwoId = "01ARZ3NDEKTSV4RRFFQ69G5FW2";
 
 beforeEach(() => {
   createWorkItemMock.mockReset();
@@ -89,6 +115,7 @@ beforeEach(() => {
   listRequirementsMock.mockReset();
   listSpaceMembersMock.mockReset();
   listVersionsMock.mockReset();
+  loadWorkflowVersionOptionsMock.mockReset();
   listVersionsMock.mockResolvedValue({ items: [], total: 0 });
   listRequirementsMock.mockResolvedValue({
     items: [{ id: requirementId, title: "Requirement 1" }],
@@ -99,6 +126,7 @@ beforeEach(() => {
     total: 1,
   });
   listSpaceMembersMock.mockResolvedValue({ items: [], total: 0 });
+  loadWorkflowVersionOptionsMock.mockResolvedValue([]);
   createWorkItemMock.mockResolvedValue({ id: "created" });
 });
 
@@ -138,6 +166,78 @@ describe("CreateTaskDialog", () => {
         intakeItemId,
         requirementId,
         title: "Linked task",
+      }),
+    );
+  });
+
+  it("defaults to the default workflow version and submits an explicitly selected version", async () => {
+    loadWorkflowVersionOptionsMock.mockResolvedValue([
+      {
+        binding: {
+          id: "01ARZ3NDEKTSV4RRFFQ69G5FB1",
+          isDefault: true,
+          workflowVersionId,
+        },
+        isDefault: true,
+        version: { id: workflowVersionId, version: 2 },
+        workflow: { name: "Task flow" },
+      },
+      {
+        binding: {
+          id: "01ARZ3NDEKTSV4RRFFQ69G5FB2",
+          isDefault: false,
+          workflowVersionId: workflowVersionTwoId,
+        },
+        isDefault: false,
+        version: { id: workflowVersionTwoId, version: 1 },
+        workflow: { name: "Task flow" },
+      },
+    ]);
+
+    render(
+      <CreateTaskDialog
+        open
+        onOpenChange={() => {}}
+        organizationId={organizationId}
+        spaceId={spaceId}
+      />,
+    );
+
+    const workflowSelect = (await screen.findByTestId(
+      "create-task-workflow-version-select",
+    )) as HTMLSelectElement;
+    await waitFor(() => expect(workflowSelect.value).toBe(workflowVersionId));
+    expect(getSelectOptionLabels(workflowSelect)).toEqual(
+      [
+        "Task flow v2 · workflow.bindingsPanel.fields.isDefault",
+        "Task flow v1",
+      ],
+    );
+    expect(workflowSelect.options[0]?.value).not.toBe("");
+    expect(workflowSelect.options[0]).toHaveAttribute(
+      "title",
+      "Task flow v2 · workflow.bindingsPanel.fields.isDefault",
+    );
+    expect(screen.getByTestId("create-task-workflow-version-select-trigger"))
+      .toHaveAttribute(
+        "title",
+        "Task flow v2 · workflow.bindingsPanel.fields.isDefault",
+      );
+
+    fireEvent.change(workflowSelect, {
+      target: { value: workflowVersionTwoId },
+    });
+    fireEvent.change(screen.getByTestId("create-task-title-input"), {
+      target: { value: "Task with workflow" },
+    });
+    fireEvent.click(screen.getByTestId("create-task-submit"));
+
+    await waitFor(() => expect(createWorkItemMock).toHaveBeenCalledTimes(1));
+    expect(createWorkItemMock).toHaveBeenCalledWith(
+      { organizationId, spaceId },
+      expect.objectContaining({
+        title: "Task with workflow",
+        workflowVersionId: workflowVersionTwoId,
       }),
     );
   });
