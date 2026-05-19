@@ -6,6 +6,14 @@ services:
       POSTGRES_DB: ${POSTGRES_DB:-crm_manager}
       POSTGRES_USER: ${POSTGRES_USER:-crm}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
+      TZ: ${APP_TIMEZONE:-Asia/Shanghai}
+      PGTZ: ${APP_TIMEZONE:-Asia/Shanghai}
+    command:
+      - postgres
+      - -c
+      - timezone=${APP_TIMEZONE:-Asia/Shanghai}
+      - -c
+      - log_timezone=${APP_TIMEZONE:-Asia/Shanghai}
     volumes:
       - postgres-data:/var/lib/postgresql/data
     healthcheck:
@@ -25,6 +33,7 @@ services:
       MINIO_ROOT_USER: ${MINIO_ACCESS_KEY:?MINIO_ACCESS_KEY is required}
       MINIO_ROOT_PASSWORD: ${MINIO_SECRET_KEY:?MINIO_SECRET_KEY is required}
       MINIO_REGION_NAME: ${MINIO_REGION:-us-east-1}
+      TZ: ${MINIO_TIMEZONE:-CST-8}
     ports:
       - "${MINIO_PUBLIC_PORT:-9000}:9000"
       - "127.0.0.1:${MINIO_CONSOLE_PORT:-9001}:9001"
@@ -40,6 +49,7 @@ services:
       MINIO_SECRET_KEY: ${MINIO_SECRET_KEY:?MINIO_SECRET_KEY is required}
       MINIO_BUCKET: ${MINIO_BUCKET:-crm-manager-attachments}
       WEB_APP_URL: ${WEB_APP_URL:?WEB_APP_URL is required}
+      TZ: ${MINIO_TIMEZONE:-CST-8}
     entrypoint: ["/bin/sh", "-c"]
     command: |
       set -eu
@@ -85,6 +95,8 @@ services:
       MINIO_FORCE_PATH_STYLE: "true"
       MINIO_AUTO_CREATE_BUCKET: "false"
       PORT: "3001"
+      TZ: ${APP_TIMEZONE:-Asia/Shanghai}
+      PGOPTIONS: "-c TimeZone=UTC"
     depends_on:
       postgres:
         condition: service_healthy
@@ -113,6 +125,7 @@ services:
       API_PROXY_TARGET: http://api:3001
       NEXT_PUBLIC_API_BASE_PATH: /api/v1
       PORT: "3000"
+      TZ: ${APP_TIMEZONE:-Asia/Shanghai}
     depends_on:
       api:
         condition: service_healthy
@@ -120,6 +133,8 @@ services:
   nginx:
     image: nginx:1.27-alpine
     restart: unless-stopped
+    environment:
+      TZ: ${APP_TIMEZONE:-Asia/Shanghai}
     ports:
       - "${HTTP_PORT:-80}:80"
     volumes:
