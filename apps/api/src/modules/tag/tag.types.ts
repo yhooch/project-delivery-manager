@@ -1,5 +1,6 @@
 import type {
   GetTagAssignmentsQuery,
+  ListTagFilterOptionsQuery,
   ListTagsQuery,
   PageResult,
   ReplaceTagAssignmentsRequest,
@@ -11,6 +12,13 @@ export type TagListInput = ListTagsQuery & {
   normalizedQuery?: string;
   organizationId: string;
   spaceId: string;
+};
+
+export type TagFilterOptionsInput = ListTagFilterOptionsQuery & {
+  now: Date;
+  organizationId: string;
+  spaceId: string;
+  staleThresholdDays: number;
 };
 
 export type CreateTagInput = {

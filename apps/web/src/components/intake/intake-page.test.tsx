@@ -114,6 +114,8 @@ const {
   listCommentsMock,
   createCommentMock,
   listTimelineMock,
+  listTagFilterOptionsMock,
+  listTagsMock,
 } = vi.hoisted(() => ({
   listIntakeItemsMock: vi.fn(),
   acceptIntakeItemMock: vi.fn(),
@@ -125,6 +127,8 @@ const {
   listCommentsMock: vi.fn(),
   createCommentMock: vi.fn(),
   listTimelineMock: vi.fn(),
+  listTagFilterOptionsMock: vi.fn(),
+  listTagsMock: vi.fn(),
 }));
 vi.mock("../../lib/intake-service", () => ({
   listIntakeItems: listIntakeItemsMock,
@@ -144,6 +148,16 @@ vi.mock("../../lib/comment-service", () => ({
 vi.mock("../../lib/timeline-service", () => ({
   listTimeline: listTimelineMock,
 }));
+vi.mock("../../lib/tag-service", async (importOriginal) => {
+  const actual =
+    await importOriginal<typeof import("../../lib/tag-service")>();
+
+  return {
+    ...actual,
+    listTagFilterOptions: listTagFilterOptionsMock,
+    listTags: listTagsMock,
+  };
+});
 
 const { listRequirementsMock, listSpaceMembersMock, listVersionsMock } =
   vi.hoisted(() => ({
@@ -331,6 +345,15 @@ beforeEach(() => {
   listCommentsMock.mockReset();
   createCommentMock.mockReset();
   listTimelineMock.mockReset();
+  listTagFilterOptionsMock.mockReset();
+  listTagsMock.mockReset();
+  listTagFilterOptionsMock.mockResolvedValue({ items: [] });
+  listTagsMock.mockResolvedValue({
+    items: [],
+    page: 1,
+    pageSize: 20,
+    total: 0,
+  });
   listRequirementsMock.mockReset();
   listSpaceMembersMock.mockReset();
   listVersionsMock.mockReset();

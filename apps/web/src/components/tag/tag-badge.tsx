@@ -7,7 +7,7 @@ import * as React from "react";
 
 import { cn } from "../../lib/utils";
 
-import { getTagColorClassName } from "./tag-colors";
+import { getTagColorClassName, getTagTextColorClassName } from "./tag-colors";
 
 export type TagBadgeData = Pick<TagDto, "colorKey" | "displayName" | "name">;
 
@@ -39,11 +39,15 @@ export function TagBadge({
   return (
     <span
       className={cn(
-        "inline-flex max-w-full items-center gap-1 rounded-md border font-medium leading-4 transition-colors",
+        "inline-flex max-w-full items-center gap-1 font-medium leading-4 transition-colors",
         variant === "form"
-          ? "px-1.5 py-0.5 text-[11px]"
-          : "px-1.5 py-0 text-[11px]",
-        getTagColorClassName(tag.colorKey),
+          ? "rounded-md border px-1.5 py-0.5 text-[11px]"
+          : variant === "filter"
+            ? "rounded-md border px-1.5 py-0 text-[11px]"
+            : "px-0 py-0 text-[11px]",
+        variant === "meta"
+          ? getTagTextColorClassName(tag.colorKey)
+          : getTagColorClassName(tag.colorKey),
         className,
       )}
       title={displayName}

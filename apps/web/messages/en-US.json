@@ -2701,6 +2701,7 @@
       "description": "Review overdue, blocked, pending confirmation, pending regression, and stale items in one view."
     },
     "actions": {
+      "filter": "Filter",
       "refresh": "Refresh",
       "refreshing": "Refreshing"
     },

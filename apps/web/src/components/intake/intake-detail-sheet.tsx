@@ -19,7 +19,6 @@ import {
   Loader2,
   MessageSquare,
   Send,
-  Tag as TagIcon,
   Target,
   Users,
 } from "lucide-react";
@@ -267,6 +266,19 @@ function IntakeDetailContent({
         <SheetTitle className="mt-1 text-base leading-snug">
           {intakeItem.title}
         </SheetTitle>
+        {spaceId ? (
+          <ObjectTagAssignmentField
+            className="mt-2 w-full"
+            canEdit={canEditTags}
+            onTagsChange={onTagsChange}
+            organizationId={organizationId}
+            spaceId={spaceId}
+            tags={intakeItem.tags}
+            targetId={intakeItem.id}
+            targetType="INTAKE_ITEM"
+            testId="intake-detail-tags"
+          />
+        ) : null}
         <SheetDescription className="sr-only">
           {t("detail.sheetDescription")}
         </SheetDescription>
@@ -336,29 +348,6 @@ function IntakeDetailContent({
               intakeItem.versionId
                 ? displayVersionName(intakeItem.versionId, getVersion)
                 : t("detail.noVersion")
-            }
-          />
-          <FieldRow
-            icon={TagIcon}
-            label={tRoot("tags.field.label")}
-            contentClassName="ml-0 basis-full sm:basis-auto sm:flex-1"
-            rootClassName="items-center flex-wrap sm:col-span-2"
-            value={
-              spaceId ? (
-                <ObjectTagAssignmentField
-                  className="w-full"
-                  canEdit={canEditTags}
-                  onTagsChange={onTagsChange}
-                  organizationId={organizationId}
-                  spaceId={spaceId}
-                  tags={intakeItem.tags}
-                  targetId={intakeItem.id}
-                  targetType="INTAKE_ITEM"
-                  testId="intake-detail-tags"
-                />
-              ) : (
-                tRoot("tags.field.empty")
-              )
             }
           />
         </div>

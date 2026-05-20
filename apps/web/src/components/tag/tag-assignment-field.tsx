@@ -65,7 +65,12 @@ export function TagBadgeList({
           <span
             aria-label={hiddenTagNames.join(", ")}
             title={hiddenTagSummary}
-            className="inline-flex h-5 shrink-0 items-center rounded-md border border-border bg-muted px-1.5 text-[11px] font-medium text-muted-foreground"
+            className={cn(
+              "inline-flex shrink-0 items-center text-[11px] font-medium text-muted-foreground",
+              variant === "meta"
+                ? "h-4 px-0"
+                : "h-5 rounded-md border border-border bg-muted px-1.5",
+            )}
           >
             +{overflowCount}
           </span>

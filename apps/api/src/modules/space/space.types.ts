@@ -135,6 +135,8 @@ export type SpaceExceptionsViewInput = Pick<
   | "page"
   | "pageSize"
   | "statusCategory"
+  | "tagIds"
+  | "tagMatch"
   | "versionId"
   | "workItemType"
 > & {

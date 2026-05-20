@@ -5,6 +5,7 @@ import {
   createTag,
   deleteTag,
   getTagAssignments,
+  listTagFilterOptions,
   listTags,
   replaceTagAssignments,
   type TagApiTransport,
@@ -66,6 +67,27 @@ describe("tag service", () => {
         query: "back",
       },
     });
+  });
+
+  it("lists stable tag filter options for a page scope", async () => {
+    const response = { items: [makeTag()] };
+    const api = createApi(response);
+
+    await expect(
+      listTagFilterOptions(
+        { organizationId, scope: "SPACE_EXCEPTION", spaceId },
+        api,
+      ),
+    ).resolves.toEqual(response);
+
+    expect(api.get).toHaveBeenCalledWith(
+      `/spaces/${spaceId}/tag-filter-options`,
+      {
+        query: {
+          scope: "SPACE_EXCEPTION",
+        },
+      },
+    );
   });
 
   it("creates a tag and parses the response", async () => {

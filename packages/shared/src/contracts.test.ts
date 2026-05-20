@@ -26,6 +26,7 @@ import {
   PermissionSnapshotSchema,
   apiContracts,
   PresignAttachmentRequestSchema,
+  ListTagFilterOptionsQuerySchema,
   ListSpacesResponseSchema,
   ListTagsQuerySchema,
   RequirementSchema,
@@ -274,6 +275,11 @@ describe("shared contracts", () => {
       pageSize: 10,
       query: "release",
     });
+    expect(
+      ListTagFilterOptionsQuerySchema.parse({
+        scope: "SPACE_EXCEPTION",
+      }),
+    ).toEqual({ scope: "SPACE_EXCEPTION" });
     expect(
       TagFilterQuerySchema.parse({
         tagIds: `${tagId},${secondTagId}`,
@@ -1279,6 +1285,17 @@ describe("shared contracts", () => {
     expect(document.paths["/spaces/{spaceId}/tags"]?.get?.operationId).toBe(
       "listTags",
     );
+    expect(
+      document.paths["/spaces/{spaceId}/tag-filter-options"]?.get
+        ?.operationId,
+    ).toBe("listTagFilterOptions");
+    expect(
+      document.paths["/spaces/{spaceId}/tag-filter-options"]?.get?.parameters,
+    ).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ name: "scope", in: "query" }),
+      ]),
+    );
     expect(document.paths["/spaces/{spaceId}/tags"]?.post?.operationId).toBe(
       "createTag",
     );
@@ -1381,6 +1398,8 @@ describe("shared contracts", () => {
         expect.objectContaining({ name: "statusCategory", in: "query" }),
         expect.objectContaining({ name: "workItemType", in: "query" }),
         expect.objectContaining({ name: "exceptionType", in: "query" }),
+        expect.objectContaining({ name: "tagIds", in: "query" }),
+        expect.objectContaining({ name: "tagMatch", in: "query" }),
       ]),
     );
     expect(

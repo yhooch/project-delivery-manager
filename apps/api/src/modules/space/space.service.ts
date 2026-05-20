@@ -386,6 +386,8 @@ export class SpaceService {
       statusCategory: query.statusCategory,
       workItemType: query.workItemType,
       exceptionType: query.exceptionType,
+      tagIds: query.tagIds,
+      tagMatch: query.tagMatch,
     });
   }
 

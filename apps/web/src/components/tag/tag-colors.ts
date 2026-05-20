@@ -35,10 +35,40 @@ export const TAG_COLOR_CLASS_NAMES = {
 
 export type TagColorKey = keyof typeof TAG_COLOR_CLASS_NAMES;
 
+export const TAG_TEXT_COLOR_CLASS_NAMES = {
+  gray: "text-slate-600 dark:text-slate-300",
+  red: "text-red-700 dark:text-red-300",
+  orange: "text-orange-700 dark:text-orange-300",
+  amber: "text-amber-800 dark:text-amber-300",
+  yellow: "text-yellow-800 dark:text-yellow-300",
+  green: "text-green-700 dark:text-green-300",
+  teal: "text-teal-700 dark:text-teal-300",
+  cyan: "text-cyan-700 dark:text-cyan-300",
+  blue: "text-blue-700 dark:text-blue-300",
+  indigo: "text-indigo-700 dark:text-indigo-300",
+  violet: "text-violet-700 dark:text-violet-300",
+  purple: "text-purple-700 dark:text-purple-300",
+  pink: "text-pink-700 dark:text-pink-300",
+  rose: "text-rose-700 dark:text-rose-300",
+  primary: "text-primary",
+  info: "text-info",
+  success: "text-success",
+  warning: "text-warning",
+  destructive: "text-destructive",
+} as const satisfies Record<TagColorKey, string>;
+
 export function getTagColorClassName(colorKey: string | undefined): string {
   if (colorKey && colorKey in TAG_COLOR_CLASS_NAMES) {
     return TAG_COLOR_CLASS_NAMES[colorKey as TagColorKey];
   }
 
   return TAG_COLOR_CLASS_NAMES[TAG_COLOR_FALLBACK_KEY];
+}
+
+export function getTagTextColorClassName(colorKey: string | undefined): string {
+  if (colorKey && colorKey in TAG_TEXT_COLOR_CLASS_NAMES) {
+    return TAG_TEXT_COLOR_CLASS_NAMES[colorKey as TagColorKey];
+  }
+
+  return TAG_TEXT_COLOR_CLASS_NAMES[TAG_COLOR_FALLBACK_KEY];
 }

@@ -48,6 +48,23 @@ vi.mock("../ui/dropdown-menu", async () => {
         },
         children,
       ),
+    DropdownMenuCheckboxItem: ({ children, onSelect, onCheckedChange, ...rest }: AnyProps & {
+      onCheckedChange?: () => void;
+    }) =>
+      React.createElement(
+        "button",
+        {
+          type: "button",
+          onClick: () => {
+            onCheckedChange?.();
+            onSelect?.({ preventDefault: () => {} });
+          },
+          ...rest,
+        },
+        children,
+      ),
+    DropdownMenuSeparator: () =>
+      React.createElement("span", { "data-testid": "dropdown-separator" }),
   };
 });
 
@@ -95,6 +112,15 @@ const { getSpaceExceptionsViewMock } = vi.hoisted(() => ({
 }));
 vi.mock("../../lib/view-service", () => ({
   getSpaceExceptionsView: getSpaceExceptionsViewMock,
+}));
+
+const { listTagFilterOptionsMock, listTagsMock } = vi.hoisted(() => ({
+  listTagFilterOptionsMock: vi.fn(),
+  listTagsMock: vi.fn(),
+}));
+vi.mock("../../lib/tag-service", () => ({
+  listTagFilterOptions: listTagFilterOptionsMock,
+  listTags: listTagsMock,
 }));
 
 const { getSpaceMock, updateSpaceMock } = vi.hoisted(() => ({
@@ -183,6 +209,24 @@ function makeWorkItem(overrides: Record<string, unknown> = {}) {
   };
 }
 
+function makeTag(overrides: Record<string, unknown> = {}) {
+  const name = (overrides.name as string | undefined) ?? "backend";
+
+  return {
+    id:
+      (overrides.id as string | undefined) ?? "01ARZ3NDEKTSV4RRFFQ69G5FT1",
+    organizationId: "ORG_01",
+    spaceId: "SPC_01",
+    name,
+    displayName: `#${name}`,
+    normalizedName: name.toLocaleLowerCase("en-US"),
+    colorKey: "blue",
+    createdAt: "2026-05-01T00:00:00.000Z",
+    updatedAt: "2026-05-01T00:00:00.000Z",
+    ...overrides,
+  };
+}
+
 type TestExceptionSignal = {
   blockedReason?: string;
   dueDate?: string;
@@ -249,6 +293,8 @@ function makeViewResponse(
 
 beforeEach(() => {
   getSpaceExceptionsViewMock.mockReset();
+  listTagFilterOptionsMock.mockReset();
+  listTagsMock.mockReset();
   routerMock.replace.mockReset();
   routerMock.push.mockReset();
   searchParamsMock.current = new URLSearchParams();
@@ -262,6 +308,13 @@ beforeEach(() => {
     settings: { staleThresholdDays: 3 },
   });
   updateSpaceMock.mockReset();
+  listTagFilterOptionsMock.mockResolvedValue({ items: [] });
+  listTagsMock.mockResolvedValue({
+    items: [],
+    page: 1,
+    pageSize: 20,
+    total: 0,
+  });
   sessionMock.current = {
     session: {
       defaultOrganizationId: "ORG_01",
@@ -312,6 +365,56 @@ describe("ExceptionsPage", () => {
           versionId: "V_01",
           workItemType: "BUG",
           pageSize: 200,
+        }),
+      ),
+    );
+  });
+
+  it("renders tags carried by exception work items", async () => {
+    const tag = makeTag();
+
+    getSpaceExceptionsViewMock.mockResolvedValueOnce(
+      makeViewResponse([
+        makeException(
+          makeWorkItem({
+            tags: [tag],
+          }),
+        ),
+      ]),
+    );
+
+    render(<ExceptionsPage />);
+
+    expect(await screen.findByText("Overdue task")).toBeInTheDocument();
+    expect(screen.getByText("#backend")).toBeInTheDocument();
+  });
+
+  it("sends selected tag filters to the exceptions view query", async () => {
+    const tag = makeTag();
+
+    listTagFilterOptionsMock.mockResolvedValueOnce({ items: [tag] });
+    getSpaceExceptionsViewMock.mockImplementation(async (input) =>
+      makeViewResponse([], {
+        exceptionType: input.exceptionType,
+        tagIds: input.tagIds,
+        tagMatch: input.tagMatch,
+      }),
+    );
+
+    render(<ExceptionsPage />);
+
+    await waitFor(() => expect(getSpaceExceptionsViewMock).toHaveBeenCalled());
+    fireEvent.click(screen.getByTestId("exceptions-filter-button"));
+
+    fireEvent.click(
+      screen.getByTestId(`exceptions-filter-tags-option-${tag.id}`),
+    );
+
+    await waitFor(() =>
+      expect(getSpaceExceptionsViewMock).toHaveBeenLastCalledWith(
+        expect.objectContaining({
+          tagIds: tag.id,
+          tagMatch: "ANY",
         }),
       ),
     );
@@ -475,6 +578,7 @@ describe("ExceptionsPage", () => {
       pageSize: 200,
     });
 
+    fireEvent.click(screen.getByTestId("exceptions-filter-button"));
     fireEvent.click(
       screen.getByTestId(
         "exceptions-filter-assigneeId-option-01ARZ3NDEKTSV4RRFFQ69G5FB1",
@@ -655,6 +759,7 @@ describe("ExceptionsPage", () => {
     await waitFor(() =>
       expect(getSpaceExceptionsViewMock).toHaveBeenCalledTimes(1),
     );
+    fireEvent.click(screen.getByTestId("exceptions-filter-button"));
 
     fireEvent.click(
       screen.getByTestId(
@@ -728,6 +833,7 @@ describe("ExceptionsPage", () => {
 
     expect(await screen.findByText("Old exception row")).toBeInTheDocument();
 
+    fireEvent.click(screen.getByTestId("exceptions-filter-button"));
     fireEvent.click(
       screen.getByTestId(
         "exceptions-filter-assigneeId-option-01ARZ3NDEKTSV4RRFFQ69G5FB1",

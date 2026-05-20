@@ -111,17 +111,25 @@ const {
   createRequirementDraftMock,
   listRequirementAssignableMembersMock,
   listRequirementVersionsMock,
+  listTagFilterOptionsMock,
+  listTagsMock,
 } = vi.hoisted(() => ({
   listRequirementsMock: vi.fn(),
   createRequirementDraftMock: vi.fn(),
   listRequirementAssignableMembersMock: vi.fn(),
   listRequirementVersionsMock: vi.fn(),
+  listTagFilterOptionsMock: vi.fn(),
+  listTagsMock: vi.fn(),
 }));
 vi.mock("../../lib/requirement-service", () => ({
   listRequirements: listRequirementsMock,
   createRequirementDraft: createRequirementDraftMock,
   listRequirementAssignableMembers: listRequirementAssignableMembersMock,
   listRequirementVersions: listRequirementVersionsMock,
+}));
+vi.mock("../../lib/tag-service", () => ({
+  listTagFilterOptions: listTagFilterOptionsMock,
+  listTags: listTagsMock,
 }));
 
 import { RequirementsPage } from "./requirements-page";
@@ -152,8 +160,17 @@ beforeEach(() => {
   createRequirementDraftMock.mockReset();
   listRequirementAssignableMembersMock.mockReset();
   listRequirementVersionsMock.mockReset();
+  listTagFilterOptionsMock.mockReset();
+  listTagsMock.mockReset();
   routerPushMock.mockReset();
   routerReplaceMock.mockReset();
+  listTagFilterOptionsMock.mockResolvedValue({ items: [] });
+  listTagsMock.mockResolvedValue({
+    items: [],
+    page: 1,
+    pageSize: 20,
+    total: 0,
+  });
   listRequirementAssignableMembersMock.mockResolvedValue({
     items: [],
     total: 0,

@@ -35,13 +35,13 @@ import {
   useFocusReturn,
   useListKeyboardNav,
 } from "../../lib/hooks/use-list-keyboard-nav";
+import { useTagFilterOptions } from "../../lib/hooks/use-tag-filter-options";
 import { useTagFilterSelection } from "../../lib/hooks/use-tag-filter-selection";
 import { useUrlTagFilter } from "../../lib/hooks/use-url-tag-filter";
 import { usePathname, useRouter } from "../../i18n/routing";
 import { canCreateBugs } from "../../lib/permission-gates";
 import { listRequirements } from "../../lib/requirement-service";
 import { serializeTagFilterQuery } from "../../lib/tag-query";
-import { collectTagsFromItems } from "../../lib/tag-ui";
 import {
   useSpaceMembers,
   useVersions,
@@ -68,7 +68,7 @@ import { EmptyState, ErrorState, ListSkeleton } from "../v2/states";
 import { PageHeader } from "../v2/page-header";
 
 import { TaskDetailSheet } from "../work-item/task-detail-sheet";
-import { TagBadgeList, TagFilter } from "../tag";
+import { ListTagRail, TagFilter } from "../tag";
 
 import { CreateBugDialog } from "./create-bug-dialog";
 import { EditBugDialog } from "./edit-bug-dialog";
@@ -205,11 +205,16 @@ export function BugsPage() {
     () => filterTraceOptionsByVersion(relatedTasks, filters.versionId ?? ""),
     [filters.versionId, relatedTasks],
   );
-  const sourceTags = useMemo(() => collectTagsFromItems(items), [items]);
+  const { items: tagFilterOptions, reload: reloadTagFilterOptions } =
+    useTagFilterOptions({
+      organizationId,
+      scope: "BUG",
+      spaceId,
+    });
   const { selectedTags: selectedFilterTags, setSelectedTags } =
     useTagFilterSelection({
       organizationId,
-      sourceTags,
+      sourceTags: tagFilterOptions,
       spaceId,
       tagIds: tagFilter.tagIds,
     });
@@ -1020,15 +1025,13 @@ export function BugsPage() {
           </FilterField>
           <FilterField label={tTags("label")}>
             <TagFilter
-              allowCreate={false}
+              availableTags={tagFilterOptions}
               onChange={(value, selectedTags) => {
                 setSelectedTags(selectedTags);
                 setTagFilter(value);
               }}
-              organizationId={organizationId}
               selectedTags={selectedFilterTags}
               showMatchMode={false}
-              spaceId={spaceId}
               value={tagFilter}
               data-testid="bugs-filter-tags"
             />
@@ -1100,12 +1103,7 @@ export function BugsPage() {
                         <span className="truncate text-[13px] font-medium">
                           {bug.title}
                         </span>
-                        <TagBadgeList
-                          badgeClassName="min-w-0 max-w-24 shrink"
-                          className="hidden max-w-full flex-nowrap overflow-hidden sm:flex"
-                          maxVisible={3}
-                          tags={bug.tags}
-                        />
+                        <ListTagRail tags={bug.tags} />
                       </span>
                       <span
                         className={cn(
@@ -1202,6 +1200,7 @@ export function BugsPage() {
         spaceId={spaceId}
         onChanged={() => {
           setDetailRevision((revision) => revision + 1);
+          reloadTagFilterOptions();
           void fetchBugs(1, "replace");
         }}
       />
@@ -1210,8 +1209,10 @@ export function BugsPage() {
         <CreateBugDialog
           open={createOpen}
           onOpenChange={setCreateOpen}
+          organizationId={organizationId}
           spaceId={spaceId}
           onCreated={() => {
+            reloadTagFilterOptions();
             void fetchBugs(1, "replace");
           }}
         />
@@ -1228,7 +1229,10 @@ export function BugsPage() {
           }}
           organizationId={organizationId}
           spaceId={spaceId}
-          onUpdated={handleBugUpdated}
+          onUpdated={(bug) => {
+            reloadTagFilterOptions();
+            handleBugUpdated(bug);
+          }}
         />
       )}
     </div>

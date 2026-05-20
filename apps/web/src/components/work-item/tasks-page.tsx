@@ -24,13 +24,13 @@ import {
   useFocusReturn,
   useListKeyboardNav,
 } from "../../lib/hooks/use-list-keyboard-nav";
+import { useTagFilterOptions } from "../../lib/hooks/use-tag-filter-options";
 import { useTagFilterSelection } from "../../lib/hooks/use-tag-filter-selection";
 import { useUrlTagFilter } from "../../lib/hooks/use-url-tag-filter";
 import { canCreateTasks } from "../../lib/permission-gates";
 import { listRequirements } from "../../lib/requirement-service";
 import { usePathname, useRouter } from "../../i18n/routing";
 import { serializeTagFilterQuery } from "../../lib/tag-query";
-import { collectTagsFromItems } from "../../lib/tag-ui";
 import {
   useSpaceMembers,
   useVersions,
@@ -169,11 +169,16 @@ export function TasksPage() {
   const paginationFrom = loadedCount > 0 ? 1 : 0;
   const paginationTo = Math.min(loadedCount, pageInfo.total);
   const hasMoreItems = loadedCount < pageInfo.total;
-  const sourceTags = useMemo(() => collectTagsFromItems(items), [items]);
+  const { items: tagFilterOptions, reload: reloadTagFilterOptions } =
+    useTagFilterOptions({
+      organizationId,
+      scope: "TASK",
+      spaceId,
+    });
   const { selectedTags: selectedFilterTags, setSelectedTags } =
     useTagFilterSelection({
       organizationId,
-      sourceTags,
+      sourceTags: tagFilterOptions,
       spaceId,
       tagIds: tagFilter.tagIds,
     });
@@ -786,15 +791,13 @@ export function TasksPage() {
           </FilterField>
           <FilterField label={tTags("label")}>
             <TagFilter
-              allowCreate={false}
+              availableTags={tagFilterOptions}
               onChange={(value, selectedTags) => {
                 setSelectedTags(selectedTags);
                 setTagFilter(value);
               }}
-              organizationId={organizationId}
               selectedTags={selectedFilterTags}
               showMatchMode={false}
-              spaceId={spaceId}
               value={tagFilter}
               data-testid="tasks-filter-tags"
             />
@@ -865,6 +868,7 @@ export function TasksPage() {
         organizationId={organizationId}
         spaceId={spaceId}
         onChanged={() => {
+          reloadTagFilterOptions();
           void fetchTasks(1, "replace");
         }}
       />
@@ -873,8 +877,10 @@ export function TasksPage() {
         <CreateTaskDialog
           open={createOpen}
           onOpenChange={setCreateOpen}
+          organizationId={organizationId}
           spaceId={spaceId}
           onCreated={() => {
+            reloadTagFilterOptions();
             void fetchTasks(1, "replace");
           }}
         />

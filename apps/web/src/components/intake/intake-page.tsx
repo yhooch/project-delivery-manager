@@ -30,6 +30,7 @@ import {
   useFocusReturn,
   useListKeyboardNav,
 } from "../../lib/hooks/use-list-keyboard-nav";
+import { useTagFilterOptions } from "../../lib/hooks/use-tag-filter-options";
 import { useTagFilterSelection } from "../../lib/hooks/use-tag-filter-selection";
 import { useUrlTagFilter } from "../../lib/hooks/use-url-tag-filter";
 import {
@@ -43,7 +44,6 @@ import {
 import { usePathname, useRouter } from "../../i18n/routing";
 import { listRequirements } from "../../lib/requirement-service";
 import { serializeTagFilterQuery } from "../../lib/tag-query";
-import { collectTagsFromItems } from "../../lib/tag-ui";
 import { cn } from "../../lib/utils";
 import { useSpaceMembers, useVersions } from "../../lib/v2/lookups";
 import {
@@ -56,7 +56,7 @@ import {
 } from "../../lib/v2/work-item-view-model";
 import { useSession } from "../providers/session-provider";
 import { recordRecentOpen } from "../shell/recent-opens";
-import { TagBadgeList, TagFilter } from "../tag";
+import { ListTagRail, TagFilter } from "../tag";
 
 import { Avatar, AvatarFallback } from "../ui/avatar";
 import { Badge } from "../ui/badge";
@@ -214,11 +214,16 @@ export function IntakePage() {
   const paginationFrom = loadedCount > 0 ? 1 : 0;
   const paginationTo = Math.min(loadedCount, pageInfo.total);
   const hasMoreItems = loadedCount < pageInfo.total;
-  const sourceTags = useMemo(() => collectTagsFromItems(items), [items]);
+  const { items: tagFilterOptions, reload: reloadTagFilterOptions } =
+    useTagFilterOptions({
+      organizationId,
+      scope: "INTAKE_ITEM",
+      spaceId,
+    });
   const { selectedTags: selectedFilterTags, setSelectedTags } =
     useTagFilterSelection({
       organizationId,
-      sourceTags,
+      sourceTags: tagFilterOptions,
       spaceId,
       tagIds: tagFilter.tagIds,
     });
@@ -659,6 +664,7 @@ export function IntakePage() {
       current?.id === updated.id ? updated : current,
     );
     setActive((current) => (current?.id === updated.id ? updated : current));
+    reloadTagFilterOptions();
   }
 
   function handleConvertedIntakeItem(result: {
@@ -861,17 +867,12 @@ export function IntakePage() {
                   <span className="font-mono text-[11px] text-muted-foreground">
                     {formatItemCode(item.id)}
                   </span>
-                  <span className="min-w-0 flex-1 truncate text-[13px] font-medium">
-                    {item.title}
+                  <span className="flex min-w-0 flex-1 flex-col gap-1">
+                    <span className="truncate text-[13px] font-medium">
+                      {item.title}
+                    </span>
+                    <ListTagRail tags={tags} />
                   </span>
-                  {tags.length > 0 ? (
-                    <TagBadgeList
-                      badgeClassName="min-w-0 max-w-24 shrink"
-                      className="hidden max-w-64 shrink-0 flex-nowrap overflow-hidden lg:flex"
-                      maxVisible={3}
-                      tags={tags}
-                    />
-                  ) : null}
                   <Badge variant="outline" className="hidden md:inline-flex">
                     {tIntakeItems(`sourceType.${item.sourceType}`)}
                   </Badge>
@@ -1046,15 +1047,13 @@ export function IntakePage() {
           </FilterField>
           <FilterField label={tTags("label")}>
             <TagFilter
-              allowCreate={false}
+              availableTags={tagFilterOptions}
               onChange={(value, selectedTags) => {
                 setSelectedTags(selectedTags);
                 setTagFilter(value);
               }}
-              organizationId={organizationId}
               selectedTags={selectedFilterTags}
               showMatchMode={false}
-              spaceId={spaceId}
               value={tagFilter}
               data-testid="intake-filter-tags"
             />
@@ -1164,6 +1163,7 @@ export function IntakePage() {
         spaceId={spaceId}
         onChanged={() => {
           setRelatedTasksRefreshVersion((version) => version + 1);
+          reloadTagFilterOptions();
         }}
       />
 
@@ -1174,6 +1174,7 @@ export function IntakePage() {
           organizationId={organizationId}
           spaceId={spaceId}
           onCreated={() => {
+            reloadTagFilterOptions();
             void loadItems(1, "replace");
           }}
         />

@@ -1,6 +1,7 @@
 import { HttpStatus, Inject, Injectable } from "@nestjs/common";
 import type {
   CreateTagRequest,
+  ListTagFilterOptionsQuery,
   ListTagsQuery,
   PageResult,
   SpaceRole,
@@ -50,6 +51,24 @@ export class TagService {
       organizationId: access.space.organizationId,
       spaceId,
     });
+  }
+
+  async listFilterOptions(
+    actorUserId: string,
+    spaceId: string,
+    input: ListTagFilterOptionsQuery,
+  ): Promise<{ items: TagDto[] }> {
+    const access = await this.requireSpaceAccess(actorUserId, spaceId);
+
+    return {
+      items: await this.tags.listFilterOptions({
+        ...input,
+        now: new Date(),
+        organizationId: access.space.organizationId,
+        spaceId,
+        staleThresholdDays: access.space.settings.staleThresholdDays,
+      }),
+    };
   }
 
   async create(

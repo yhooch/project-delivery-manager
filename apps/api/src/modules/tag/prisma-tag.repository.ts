@@ -1,7 +1,9 @@
 import { Inject, Injectable } from "@nestjs/common";
+import type { TagDto, TagTargetType } from "@project-delivery/shared";
 
 import { Prisma } from "../../generated/prisma/client";
 import { PrismaService } from "../../prisma/prisma.service";
+import { buildSpaceExceptionSignals } from "../space/space-exception.helpers";
 import {
   listTagsByTarget,
   listTagsByTargets,
@@ -11,12 +13,15 @@ import { toTagDto } from "./tag.mappers";
 import type { TagRepository } from "./tag.repository";
 import type {
   CreateTagInput,
+  TagFilterOptionsInput,
   ListTagsByTargetsInput,
   ReplaceTagAssignmentsInput,
   SoftDeleteTagInput,
   TagAssignmentTargetInput,
   TagListInput,
 } from "./tag.types";
+
+const TERMINAL_STATUS_CATEGORIES = ["DONE", "TERMINATED"] as const;
 
 @Injectable()
 export class PrismaTagRepository implements TagRepository {
@@ -68,6 +73,17 @@ export class PrismaTagRepository implements TagRepository {
       pageSize: input.pageSize,
       total,
     };
+  }
+
+  async listFilterOptions(input: TagFilterOptionsInput): Promise<TagDto[]> {
+    const target = await this.listTagFilterTargetIds(input);
+
+    return this.listTagsForTargets({
+      organizationId: input.organizationId,
+      spaceId: input.spaceId,
+      targetIds: target.targetIds,
+      targetType: target.targetType,
+    });
   }
 
   async findActiveById(tagId: string) {
@@ -213,6 +229,190 @@ export class PrismaTagRepository implements TagRepository {
       usageGroups.map((group) => [group.tagId, group._count._all]),
     );
   }
+
+  private async listTagFilterTargetIds(input: TagFilterOptionsInput): Promise<{
+    targetIds: string[];
+    targetType: TagTargetType;
+  }> {
+    switch (input.scope) {
+      case "TASK":
+        return {
+          targetIds: await this.listWorkItemTargetIds(input, "TASK"),
+          targetType: "WORK_ITEM",
+        };
+      case "BUG":
+        return {
+          targetIds: await this.listWorkItemTargetIds(input, "BUG"),
+          targetType: "WORK_ITEM",
+        };
+      case "REQUIREMENT":
+        return {
+          targetIds: await this.listRequirementTargetIds(input),
+          targetType: "REQUIREMENT",
+        };
+      case "INTAKE_ITEM":
+        return {
+          targetIds: await this.listIntakeTargetIds(input),
+          targetType: "INTAKE_ITEM",
+        };
+      case "SPACE_EXCEPTION":
+        return {
+          targetIds: await this.listSpaceExceptionTargetIds(input),
+          targetType: "WORK_ITEM",
+        };
+    }
+  }
+
+  private async listWorkItemTargetIds(
+    input: Pick<TagFilterOptionsInput, "organizationId" | "spaceId">,
+    type: "BUG" | "TASK",
+  ): Promise<string[]> {
+    const items = await this.prisma.client.workItem.findMany({
+      distinct: ["id"],
+      select: {
+        id: true,
+      },
+      where: {
+        deletedAt: null,
+        organizationId: input.organizationId,
+        spaceId: input.spaceId,
+        type,
+      },
+    });
+
+    return items.map((item) => item.id);
+  }
+
+  private async listRequirementTargetIds(
+    input: Pick<TagFilterOptionsInput, "organizationId" | "spaceId">,
+  ): Promise<string[]> {
+    const requirements = await this.prisma.client.requirement.findMany({
+      distinct: ["id"],
+      select: {
+        id: true,
+      },
+      where: {
+        deletedAt: null,
+        organizationId: input.organizationId,
+        spaceId: input.spaceId,
+      },
+    });
+
+    return requirements.map((requirement) => requirement.id);
+  }
+
+  private async listIntakeTargetIds(
+    input: Pick<TagFilterOptionsInput, "organizationId" | "spaceId">,
+  ): Promise<string[]> {
+    const items = await this.prisma.client.intakeItem.findMany({
+      distinct: ["id"],
+      select: {
+        id: true,
+      },
+      where: {
+        deletedAt: null,
+        organizationId: input.organizationId,
+        spaceId: input.spaceId,
+      },
+    });
+
+    return items.map((item) => item.id);
+  }
+
+  private async listSpaceExceptionTargetIds(
+    input: TagFilterOptionsInput,
+  ): Promise<string[]> {
+    const items = await this.prisma.client.workItem.findMany({
+      distinct: ["id"],
+      include: {
+        bugDetail: {
+          select: {
+            deletedAt: true,
+            regressionAt: true,
+          },
+        },
+        currentState: {
+          select: {
+            code: true,
+            name: true,
+          },
+        },
+      },
+      where: {
+        deletedAt: null,
+        organizationId: input.organizationId,
+        spaceId: input.spaceId,
+        statusCategory: {
+          notIn: [...TERMINAL_STATUS_CATEGORIES],
+        },
+        type: {
+          in: ["TASK", "BUG"],
+        },
+      },
+    });
+
+    return items
+      .filter(
+        (item) =>
+          buildSpaceExceptionSignals(item, {
+            now: input.now,
+            staleThresholdDays: input.staleThresholdDays,
+          }).length > 0,
+      )
+      .map((item) => item.id);
+  }
+
+  private async listTagsForTargets(input: {
+    organizationId: string;
+    spaceId: string;
+    targetIds: string[];
+    targetType: TagTargetType;
+  }): Promise<TagDto[]> {
+    const targetIds = unique(input.targetIds);
+
+    if (targetIds.length === 0) {
+      return [];
+    }
+
+    const usageGroups = await this.prisma.client.tagAssignment.groupBy({
+      by: ["tagId"],
+      _count: {
+        _all: true,
+      },
+      where: {
+        deletedAt: null,
+        organizationId: input.organizationId,
+        spaceId: input.spaceId,
+        targetId: {
+          in: targetIds,
+        },
+        targetType: input.targetType,
+        tag: {
+          deletedAt: null,
+          organizationId: input.organizationId,
+          spaceId: input.spaceId,
+        },
+      },
+    });
+    const usageByTagId = new Map(
+      usageGroups.map((group) => [group.tagId, group._count._all]),
+    );
+    const tags = await this.prisma.client.tag.findMany({
+      orderBy: [{ normalizedName: "asc" }, { createdAt: "asc" }],
+      where: {
+        deletedAt: null,
+        id: {
+          in: [...usageByTagId.keys()],
+        },
+        organizationId: input.organizationId,
+        spaceId: input.spaceId,
+      },
+    });
+
+    return tags.map((tag) =>
+      toTagDto(tag, { usageCount: usageByTagId.get(tag.id) ?? 0 }),
+    );
+  }
 }
 
 function toTagOrderBy(
@@ -229,4 +429,8 @@ function toTagOrderBy(
     default:
       return [{ normalizedName: direction }, { createdAt: "asc" }];
   }
+}
+
+function unique(values: string[]) {
+  return Array.from(new Set(values.filter(Boolean)));
 }

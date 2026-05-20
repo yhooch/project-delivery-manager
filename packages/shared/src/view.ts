@@ -12,6 +12,7 @@ import {
   WorkItemTypeSchema,
 } from "./enums.ts";
 import { SpaceOverviewSchema } from "./space.ts";
+import { TagFilterQuerySchema, TagListSchema, TagMatchSchema } from "./tag.ts";
 import { TimelineEventSchema } from "./timeline.ts";
 import { WorkflowActionSummarySchema } from "./workflow.ts";
 
@@ -24,6 +25,8 @@ export const ViewAppliedFiltersSchema = z
     statusCategory: StatusCategorySchema.optional(),
     workItemType: WorkItemTypeSchema.optional(),
     exceptionType: ViewExceptionTypeSchema.optional(),
+    tagIds: TagFilterQuerySchema.shape.tagIds.optional(),
+    tagMatch: TagMatchSchema.optional(),
   })
   .strict();
 
@@ -70,6 +73,8 @@ export const SpaceExceptionsViewQuerySchema = PageQuerySchema.extend({
   statusCategory: StatusCategorySchema.optional(),
   workItemType: WorkItemTypeSchema.optional(),
   exceptionType: ViewExceptionTypeSchema.optional(),
+  tagIds: TagFilterQuerySchema.shape.tagIds.optional(),
+  tagMatch: TagMatchSchema.optional(),
 });
 
 export type SpaceExceptionsViewQuery = z.infer<
@@ -143,6 +148,7 @@ export const ViewWorkItemSummarySchema = z
     lastActionAt: IsoDateTimeSchema.optional(),
     currentStatus: ViewCurrentStatusSummarySchema,
     exceptionSignals: z.array(ViewExceptionSignalSchema),
+    tags: TagListSchema.optional(),
   })
   .strict();
 

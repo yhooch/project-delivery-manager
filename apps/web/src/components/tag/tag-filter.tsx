@@ -1,7 +1,7 @@
 "use client";
 
 import type { TagDto, TagMatch } from "@project-delivery/shared";
-import { X } from "lucide-react";
+import { ChevronDown, X } from "lucide-react";
 import { useTranslations } from "next-intl";
 import * as React from "react";
 
@@ -11,55 +11,64 @@ import {
 } from "../../lib/tag-query";
 import { cn } from "../../lib/utils";
 import { Button } from "../ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuCheckboxItem,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "../ui/dropdown-menu";
 import { Tip } from "../ui/tooltip";
 
-import { TagField } from "./tag-assignment-field";
-import { type TagPickerCreateTag, type TagPickerListTags } from "./tag-picker";
+import { formatTagDisplayName } from "./tag-badge";
 
 export type TagFilterProps = {
-  allowCreate?: boolean;
+  availableTags?: readonly TagDto[];
   className?: string;
-  createTagAction?: TagPickerCreateTag;
   disabled?: boolean;
-  listTagsAction?: TagPickerListTags;
   onChange: (value: TagFilterState, selectedTags: TagDto[]) => void;
-  organizationId?: string;
   readOnly?: boolean;
   selectedTags: readonly TagDto[];
   showMatchMode?: boolean;
-  spaceId: string;
   value: Partial<TagFilterState>;
+  "aria-label"?: string;
   "data-testid"?: string;
 };
 
 const MATCH_MODES: TagMatch[] = ["ANY", "ALL"];
 
 export function TagFilter({
-  allowCreate = false,
+  availableTags = [],
   className,
-  createTagAction,
   disabled = false,
-  listTagsAction,
   onChange,
-  organizationId,
   readOnly = false,
   selectedTags,
   showMatchMode = true,
-  spaceId,
   value,
+  "aria-label": ariaLabel,
   "data-testid": testId,
 }: TagFilterProps) {
   const t = useTranslations("tags.filter");
   const normalizedValue = normalizeTagFilterState(value);
   const isInteractive = !disabled && !readOnly;
-  const selectedById = React.useMemo(
-    () => new Map(selectedTags.map((tag) => [tag.id, tag])),
-    [selectedTags],
+  const optionTags = React.useMemo(
+    () => mergeTags(availableTags, selectedTags),
+    [availableTags, selectedTags],
+  );
+  const tagById = React.useMemo(
+    () => new Map(optionTags.map((tag) => [tag.id, tag])),
+    [optionTags],
   );
   const orderedSelectedTags = normalizedValue.tagIds.flatMap((tagId) => {
-    const tag = selectedById.get(tagId);
+    const tag = tagById.get(tagId);
     return tag ? [tag] : [];
   });
+  const triggerLabel =
+    orderedSelectedTags.length > 0
+      ? orderedSelectedTags.map(formatTagDisplayName).join(" ")
+      : t("empty");
 
   function emit(nextTagIds: string[], nextTagMatch = normalizedValue.tagMatch) {
     const nextValue = normalizeTagFilterState({
@@ -67,7 +76,7 @@ export function TagFilter({
       tagMatch: nextTagMatch,
     });
     const nextSelectedTags = nextValue.tagIds.flatMap((tagId) => {
-      const tag = selectedById.get(tagId);
+      const tag = tagById.get(tagId);
       return tag ? [tag] : [];
     });
 
@@ -96,13 +105,17 @@ export function TagFilter({
     emit(normalizedValue.tagIds, tagMatch);
   }
 
-  function handleSelectedTagsChange(nextTags: TagDto[]) {
-    const nextValue = normalizeTagFilterState({
-      tagIds: nextTags.map((tag) => tag.id),
-      tagMatch: normalizedValue.tagMatch,
-    });
+  function toggleTag(tag: TagDto) {
+    if (!isInteractive) {
+      return;
+    }
 
-    onChange(nextValue, nextTags);
+    const currentIds = normalizedValue.tagIds;
+    const nextTagIds = currentIds.includes(tag.id)
+      ? currentIds.filter((tagId) => tagId !== tag.id)
+      : [...currentIds, tag.id];
+
+    emit(nextTagIds);
   }
 
   return (
@@ -134,23 +147,68 @@ export function TagFilter({
             ))}
           </div>
         )}
-        <TagField
-          allowCreate={allowCreate}
-          className="min-w-48 flex-1 shadow-none"
-          createTagAction={createTagAction}
-          disabled={disabled}
-          emptyLabel={t("empty")}
-          getRemoveLabel={(tag) => t("remove", { name: tag.displayName })}
-          listTagsAction={listTagsAction}
-          onSelectedTagsChange={handleSelectedTagsChange}
-          organizationId={organizationId}
-          pickerPlaceholder={t("placeholder")}
-          readOnly={readOnly}
-          selectedTags={orderedSelectedTags}
-          spaceId={spaceId}
-          testId={testId}
-          variant="filter"
-        />
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild disabled={!isInteractive}>
+            <button
+              type="button"
+              className={cn(
+                "flex h-8 min-w-48 flex-1 items-center justify-between gap-2 rounded-md border border-input bg-background px-3 py-1 text-left text-sm text-foreground shadow-sm transition-colors",
+                "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 focus-visible:ring-offset-background",
+                "disabled:cursor-not-allowed disabled:opacity-50",
+              )}
+              data-testid={testId}
+              disabled={!isInteractive}
+              aria-label={ariaLabel}
+              title={triggerLabel}
+            >
+              <span
+                className={cn(
+                  "min-w-0 flex-1 truncate",
+                  orderedSelectedTags.length === 0 && "text-muted-foreground",
+                )}
+              >
+                {triggerLabel}
+              </span>
+              <ChevronDown
+                aria-hidden="true"
+                className="h-3.5 w-3.5 shrink-0 text-muted-foreground"
+              />
+            </button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent className="max-h-72 w-[var(--radix-dropdown-menu-trigger-width)] overflow-y-auto">
+            <DropdownMenuItem
+              data-testid={testId ? `${testId}-option-empty` : undefined}
+              onSelect={handleClear}
+            >
+              <span
+                className={cn(
+                  "flex-1 truncate",
+                  orderedSelectedTags.length === 0 && "font-medium",
+                )}
+              >
+                {t("empty")}
+              </span>
+            </DropdownMenuItem>
+            {optionTags.length > 0 ? <DropdownMenuSeparator /> : null}
+            {optionTags.map((tag) => {
+              const checked = normalizedValue.tagIds.includes(tag.id);
+
+              return (
+                <DropdownMenuCheckboxItem
+                  key={tag.id}
+                  checked={checked}
+                  data-testid={testId ? `${testId}-option-${tag.id}` : undefined}
+                  onCheckedChange={() => toggleTag(tag)}
+                  onSelect={(event) => event.preventDefault()}
+                >
+                  <span className="min-w-0 flex-1 truncate">
+                    {formatTagDisplayName(tag)}
+                  </span>
+                </DropdownMenuCheckboxItem>
+              );
+            })}
+          </DropdownMenuContent>
+        </DropdownMenu>
         {orderedSelectedTags.length > 0 && (
           <Tip content={t("clear")}>
             <Button
@@ -167,5 +225,24 @@ export function TagFilter({
         )}
       </div>
     </div>
+  );
+}
+
+function mergeTags(
+  availableTags: readonly TagDto[],
+  selectedTags: readonly TagDto[],
+) {
+  const byId = new Map<string, TagDto>();
+
+  for (const tag of selectedTags) {
+    byId.set(tag.id, tag);
+  }
+
+  for (const tag of availableTags) {
+    byId.set(tag.id, tag);
+  }
+
+  return Array.from(byId.values()).sort((left, right) =>
+    formatTagDisplayName(left).localeCompare(formatTagDisplayName(right)),
   );
 }

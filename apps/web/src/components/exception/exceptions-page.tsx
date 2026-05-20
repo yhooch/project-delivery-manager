@@ -4,6 +4,8 @@ import type {
   GetSpaceExceptionsViewResponse,
   SpaceExceptionItem,
   StatusCategory,
+  TagDto,
+  TagMatch,
   ViewExceptionSignal,
   ViewExceptionType,
   WorkItemType,
@@ -33,8 +35,16 @@ import {
   useFocusReturn,
   useListKeyboardNav,
 } from "../../lib/hooks/use-list-keyboard-nav";
+import { useTagFilterOptions } from "../../lib/hooks/use-tag-filter-options";
+import { useTagFilterSelection } from "../../lib/hooks/use-tag-filter-selection";
+import { useUrlTagFilter } from "../../lib/hooks/use-url-tag-filter";
 import { canManageSpace } from "../../lib/permission-gates";
 import { usePathname, useRouter } from "../../i18n/routing";
+import {
+  normalizeTagApiQuery,
+  serializeTagFilterQuery,
+  type TagFilterState,
+} from "../../lib/tag-query";
 import { getSpace } from "../../lib/space-service";
 import { cn } from "../../lib/utils";
 import { translateExceptionReason } from "../../lib/workflow-display";
@@ -57,6 +67,7 @@ import { Button } from "../ui/button";
 import { SelectMenu } from "../ui/select-menu";
 import { Tip } from "../ui/tooltip";
 import { StatusBadge } from "../ui/status-badge";
+import { ListTagRail, TagFilter } from "../tag";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../ui/tabs";
 import { TaskDetailSheet } from "../work-item/task-detail-sheet";
 import { PageHeader } from "../v2/page-header";
@@ -122,11 +133,14 @@ type ExceptionViewRequest = ExceptionFilterValues & {
   organizationId?: string;
   page: number;
   spaceId?: string;
+  tagIds?: string;
+  tagMatch?: TagMatch;
 };
 
 export function ExceptionsPage() {
   const t = useTranslations("spaceExceptions");
   const tNav = useTranslations("shell.nav");
+  const tTags = useTranslations("tags.field");
   const tRoot = useTranslations();
   const locale = useLocale();
   const router = useRouter();
@@ -146,6 +160,12 @@ export function ExceptionsPage() {
     }),
     [searchParams],
   );
+  const [tagFilter, setTagFilter] = useUrlTagFilter({
+    fixedTagMatch: "ANY",
+    pathname,
+    router,
+    searchParams,
+  });
   const [view, setView] = useState<GetSpaceExceptionsViewResponse | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [errorKey, setErrorKey] = useState<string | null>(null);
@@ -162,6 +182,7 @@ export function ExceptionsPage() {
   );
   const [filters, setFilters] =
     useState<ExceptionFilterValues>(requestedFilters);
+  const [isFilterPanelOpen, setIsFilterPanelOpen] = useState(false);
   const [page, setPage] = useState(1);
   const [thresholdValue, setThresholdValue] = useState<number | null>(null);
   const [thresholdErrorKey, setThresholdErrorKey] = useState<string | null>(
@@ -182,12 +203,26 @@ export function ExceptionsPage() {
     getVersion,
     loading: versionsLoading,
   } = useVersions(spaceId, organizationId);
+  const { items: tagFilterOptions, reload: reloadTagFilterOptions } =
+    useTagFilterOptions({
+      organizationId,
+      scope: "SPACE_EXCEPTION",
+      spaceId,
+    });
+  const { selectedTags: selectedFilterTags, setSelectedTags } =
+    useTagFilterSelection({
+      organizationId,
+      sourceTags: tagFilterOptions,
+      spaceId,
+      tagIds: tagFilter.tagIds,
+    });
 
   useEffect(() => {
     setOpen(false);
     setActionFocusRequest(0);
     setActive(null);
     setActiveContext(null);
+    setIsFilterPanelOpen(false);
     setThresholdOpen(false);
   }, [organizationId, spaceId]);
 
@@ -262,6 +297,7 @@ export function ExceptionsPage() {
         assigneeId: effectiveFilters.assigneeId,
         statusCategory: effectiveFilters.statusCategory,
         workItemType: effectiveFilters.workItemType,
+        ...normalizeTagApiQuery(serializeTagFilterQuery(tagFilter)),
         exceptionType: tabValue,
         page,
         pageSize: EXCEPTIONS_PAGE_SIZE,
@@ -289,6 +325,7 @@ export function ExceptionsPage() {
     page,
     spaceId,
     tabValue,
+    tagFilter,
   ]);
 
   useEffect(() => {
@@ -333,6 +370,7 @@ export function ExceptionsPage() {
         page,
         spaceId,
         statusCategory: effectiveFilters.statusCategory,
+        ...normalizeTagApiQuery(serializeTagFilterQuery(tagFilter)),
         versionId: effectiveFilters.versionId,
         workItemType: effectiveFilters.workItemType,
       }),
@@ -345,6 +383,7 @@ export function ExceptionsPage() {
       page,
       spaceId,
       tabValue,
+      tagFilter,
       view,
     ],
   );
@@ -508,6 +547,18 @@ export function ExceptionsPage() {
   const headerActions = (
     <div className="flex min-w-0 flex-wrap items-center gap-2">
       <Button
+        variant={isFilterPanelOpen ? "secondary" : "outline"}
+        size="sm"
+        className="text-xs"
+        data-testid="exceptions-filter-button"
+        aria-expanded={isFilterPanelOpen}
+        onClick={() => setIsFilterPanelOpen((current) => !current)}
+        type="button"
+      >
+        <Filter className="h-3 w-3" />
+        {t("actions.filter")}
+      </Button>
+      <Button
         variant="outline"
         size="sm"
         className="text-xs"
@@ -547,7 +598,8 @@ export function ExceptionsPage() {
     filters.versionId ||
     filters.assigneeId ||
     filters.statusCategory ||
-    filters.workItemType,
+    filters.workItemType ||
+    tagFilter.tagIds.length > 0,
   );
   const replaceQueryParam = useCallback(
     (key: keyof ExceptionFilterValues | "exceptionType", value?: string) => {
@@ -591,17 +643,29 @@ export function ExceptionsPage() {
     },
     [filters, pathname, router, searchParams],
   );
+  const handleTagFilterChange = useCallback(
+    (value: TagFilterState, selectedTags: TagDto[]) => {
+      setSelectedTags(selectedTags);
+      setPage(1);
+      setTagFilter(value);
+    },
+    [setSelectedTags, setTagFilter],
+  );
   const clearFilters = useCallback(() => {
     setPage(1);
     setFilters({});
+    setSelectedTags([]);
+    setTagFilter({ tagIds: [], tagMatch: "ANY" });
     const params = new URLSearchParams(searchParams.toString());
     for (const control of exceptionFilterControls) {
       params.delete(control.id);
     }
+    params.delete("tagIds");
+    params.delete("tagMatch");
     const query = params.toString();
     const target = query ? `${pathname}?${query}` : pathname;
     router.replace(target as never, { scroll: false });
-  }, [pathname, router, searchParams]);
+  }, [pathname, router, searchParams, setSelectedTags, setTagFilter]);
   const handleTabChange = useCallback(
     (next: string) => {
       const nextType = normalizeExceptionType(next) ?? tabs[0].key;
@@ -696,7 +760,7 @@ export function ExceptionsPage() {
         onValueChange={handleTabChange}
         className="flex min-w-0 flex-1 flex-col overflow-hidden"
       >
-        <div className="flex min-w-0 flex-col gap-3 border-b border-border px-4 py-3 sm:px-6 xl:flex-row xl:items-center xl:justify-between">
+        <div className="flex min-w-0 flex-col gap-3 border-b border-border px-4 py-3 sm:px-6">
           <div className="-mx-1 overflow-x-auto px-1">
             <TabsList className="h-auto min-w-max border-0">
               {grouped.map((tab) => {
@@ -723,15 +787,22 @@ export function ExceptionsPage() {
             </TabsList>
           </div>
 
-          <ExceptionFilterToolbar
-            filters={filters}
-            members={members}
-            versions={versions}
-            hasActiveFilters={hasActiveFilters}
-            onChange={handleFilterChange}
-            onClear={clearFilters}
-            tRoot={tRoot}
-          />
+          {isFilterPanelOpen ? (
+            <ExceptionFilterToolbar
+              filters={filters}
+              members={members}
+              selectedTags={selectedFilterTags}
+              tagFilter={tagFilter}
+              tagOptions={tagFilterOptions}
+              versions={versions}
+              hasActiveFilters={hasActiveFilters}
+              onChange={handleFilterChange}
+              onClear={clearFilters}
+              onTagChange={handleTagFilterChange}
+              tTags={tTags}
+              tRoot={tRoot}
+            />
+          ) : null}
         </div>
 
         {grouped.map((tab) => (
@@ -807,8 +878,14 @@ export function ExceptionsPage() {
                         <span className="font-mono text-[11px] text-muted-foreground">
                           {tRoot(`versionBoard.filters.type.${viewItem.type}`)}
                         </span>
-                        <span className="flex-1 truncate text-[13px] font-medium">
-                          {viewItem.title}
+                        <span className="flex min-w-0 flex-1 flex-col gap-1">
+                          <span className="truncate text-[13px] font-medium">
+                            {viewItem.title}
+                          </span>
+                          <ListTagRail
+                            maxVisible={6}
+                            tags={viewItem.tags}
+                          />
                         </span>
                         {(exceptionDetail || exceptionMeta.length > 0) && (
                           <span className="hidden min-w-0 max-w-[280px] flex-col items-end gap-0.5 text-right md:flex">
@@ -894,6 +971,7 @@ export function ExceptionsPage() {
         spaceId={activeContext?.spaceId}
         organizationId={activeContext?.organizationId}
         onChanged={() => {
+          reloadTagFilterOptions();
           void fetchView();
         }}
       />
@@ -986,6 +1064,11 @@ function ExceptionFilterToolbar({
   members,
   onChange,
   onClear,
+  onTagChange,
+  selectedTags,
+  tagFilter,
+  tagOptions,
+  tTags,
   tRoot,
   versions,
 }: {
@@ -994,6 +1077,11 @@ function ExceptionFilterToolbar({
   members: ReturnType<typeof useSpaceMembers>["members"];
   onChange: (key: keyof ExceptionFilterValues, value?: string) => void;
   onClear: () => void;
+  onTagChange: (value: TagFilterState, selectedTags: TagDto[]) => void;
+  selectedTags: readonly TagDto[];
+  tagFilter: TagFilterState;
+  tagOptions: readonly TagDto[];
+  tTags: ReturnType<typeof useTranslations<"tags.field">>;
   tRoot: ReturnType<typeof useTranslations>;
   versions: ReturnType<typeof useVersions>["versions"];
 }) {
@@ -1044,6 +1132,18 @@ function ExceptionFilterToolbar({
           </span>
         );
       })}
+      <span className="inline-flex min-w-[12rem] max-w-[16rem]">
+        <TagFilter
+          aria-label={tTags("label")}
+          availableTags={tagOptions}
+          className="w-full"
+          onChange={onTagChange}
+          selectedTags={selectedTags}
+          showMatchMode={false}
+          value={tagFilter}
+          data-testid="exceptions-filter-tags"
+        />
+      </span>
 
       {hasActiveFilters ? (
         <Button
@@ -1250,6 +1350,8 @@ function viewMatchesCurrentRequest(
     sameOptionalValue(view.filters.assigneeId, request.assigneeId) &&
     sameOptionalValue(view.filters.exceptionType, request.exceptionType) &&
     sameOptionalValue(view.filters.statusCategory, request.statusCategory) &&
+    sameOptionalValue(view.filters.tagIds, request.tagIds) &&
+    sameOptionalValue(view.filters.tagMatch, request.tagMatch) &&
     sameOptionalValue(view.filters.versionId, request.versionId) &&
     sameOptionalValue(view.filters.workItemType, request.workItemType)
   );

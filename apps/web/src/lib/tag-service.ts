@@ -4,11 +4,14 @@ import {
   DeleteTagResponseSchema,
   GetTagAssignmentsQuerySchema,
   GetTagAssignmentsResponseSchema,
+  ListTagFilterOptionsQuerySchema,
+  ListTagFilterOptionsResponseSchema,
   ListTagsQuerySchema,
   ListTagsResponseSchema,
   ReplaceTagAssignmentsRequestSchema,
   ReplaceTagAssignmentsResponseSchema,
   type CreateTagRequest,
+  type ListTagFilterOptionsResponse,
   type ReplaceTagAssignmentsRequest,
   type TagAssignmentsResponse,
   type TagDto,
@@ -38,6 +41,13 @@ export type ListTagsInput = z.input<typeof ListTagsQuerySchema> & {
 };
 
 export type ListTagsResponse = z.infer<typeof ListTagsResponseSchema>;
+export type ListTagFilterOptionsInput = z.input<
+  typeof ListTagFilterOptionsQuerySchema
+> & {
+  organizationId?: string;
+  spaceId: string;
+};
+export type { ListTagFilterOptionsResponse };
 export type CreateTagInput = CreateTagRequest;
 export type GetTagAssignmentsInput = z.input<
   typeof GetTagAssignmentsQuerySchema
@@ -57,6 +67,22 @@ export async function listTags(
   });
 
   return ListTagsResponseSchema.parse(response.data);
+}
+
+export async function listTagFilterOptions(
+  input: ListTagFilterOptionsInput,
+  api: TagApiTransport = defaultApi,
+): Promise<ListTagFilterOptionsResponse> {
+  const { organizationId: _organizationId, spaceId, ...filters } = input;
+  const query = ListTagFilterOptionsQuerySchema.parse(filters);
+  const response = await api.get<unknown>(
+    `/spaces/${spaceId}/tag-filter-options`,
+    {
+      query,
+    },
+  );
+
+  return ListTagFilterOptionsResponseSchema.parse(response.data);
 }
 
 export async function createTag(

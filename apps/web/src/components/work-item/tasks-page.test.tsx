@@ -108,12 +108,14 @@ vi.mock("../../lib/v2/lookups", () => ({
 const {
   createTagMock,
   getWorkItemMock,
+  listTagFilterOptionsMock,
   listRequirementsMock,
   listTagsMock,
   listWorkItemsMock,
 } = vi.hoisted(() => ({
   createTagMock: vi.fn(),
   getWorkItemMock: vi.fn(),
+  listTagFilterOptionsMock: vi.fn(),
   listRequirementsMock: vi.fn(),
   listTagsMock: vi.fn(),
   listWorkItemsMock: vi.fn(),
@@ -127,6 +129,7 @@ vi.mock("../../lib/requirement-service", () => ({
 }));
 vi.mock("../../lib/tag-service", () => ({
   createTag: createTagMock,
+  listTagFilterOptions: listTagFilterOptionsMock,
   listTags: listTagsMock,
 }));
 
@@ -216,10 +219,12 @@ function makeTag(overrides: Record<string, unknown> = {}) {
 beforeEach(() => {
   createTagMock.mockReset();
   getWorkItemMock.mockReset();
+  listTagFilterOptionsMock.mockReset();
   listRequirementsMock.mockReset();
   listTagsMock.mockReset();
   listWorkItemsMock.mockReset();
   listRequirementsMock.mockResolvedValue({ items: [], total: 0 });
+  listTagFilterOptionsMock.mockResolvedValue({ items: [] });
   listTagsMock.mockResolvedValue({
     items: [],
     page: 1,

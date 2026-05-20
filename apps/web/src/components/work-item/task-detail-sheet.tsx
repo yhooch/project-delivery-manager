@@ -30,7 +30,6 @@ import {
   Paperclip,
   Pencil,
   Send,
-  Tag as TagIcon,
   User2,
 } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
@@ -711,6 +710,22 @@ function TaskDetailSheetBody({
           <SheetTitle className="mt-1 text-base leading-snug">
             {detail?.title ?? item.title}
           </SheetTitle>
+          {detail && spaceId ? (
+            <ObjectTagAssignmentField
+              className="mt-2 w-full"
+              canEdit={permissionState.permissions?.canEdit === true}
+              onTagsChange={() => {
+                void permissionState.fetchPermissions();
+                onChanged?.();
+              }}
+              organizationId={organizationId}
+              spaceId={spaceId}
+              tags={detail.tags}
+              targetId={detail.id}
+              targetType="WORK_ITEM"
+              testId="task-detail-tags"
+            />
+          ) : null}
           <SheetDescription className="sr-only">
             {isBug ? t("sheetDescription.bug") : t("sheetDescription.task")}
           </SheetDescription>
@@ -2418,31 +2433,6 @@ function DetailTab({
             updatedAt
               ? formatDateTime(updatedAt, locale)
               : (item.updatedAgo ?? "—")
-          }
-        />
-        <FieldRow
-          icon={TagIcon}
-          label={tRoot("tags.field.label")}
-          contentClassName="ml-0 basis-full sm:basis-auto sm:flex-1"
-          rootClassName="items-center flex-wrap sm:col-span-2"
-          value={
-            detail && spaceId ? (
-              <ObjectTagAssignmentField
-                className="w-full"
-                canEdit={canEdit}
-                onTagsChange={() => {
-                  void onSaved();
-                }}
-                organizationId={organizationId}
-                spaceId={spaceId}
-                tags={detail.tags}
-                targetId={detail.id}
-                targetType="WORK_ITEM"
-                testId="task-detail-tags"
-              />
-            ) : (
-              tRoot("tags.field.empty")
-            )
           }
         />
       </div>

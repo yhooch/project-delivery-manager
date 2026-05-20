@@ -111,6 +111,7 @@ const {
   createTagMock,
   getBugMock,
   listBugsMock,
+  listTagFilterOptionsMock,
   listRequirementsMock,
   listTagsMock,
   listWorkItemsMock,
@@ -118,6 +119,7 @@ const {
   createTagMock: vi.fn(),
   getBugMock: vi.fn(),
   listBugsMock: vi.fn(),
+  listTagFilterOptionsMock: vi.fn(),
   listRequirementsMock: vi.fn(),
   listTagsMock: vi.fn(),
   listWorkItemsMock: vi.fn(),
@@ -134,6 +136,7 @@ vi.mock("../../lib/work-item-service", () => ({
 }));
 vi.mock("../../lib/tag-service", () => ({
   createTag: createTagMock,
+  listTagFilterOptions: listTagFilterOptionsMock,
   listTags: listTagsMock,
 }));
 
@@ -257,9 +260,11 @@ beforeEach(() => {
   createTagMock.mockReset();
   getBugMock.mockReset();
   listBugsMock.mockReset();
+  listTagFilterOptionsMock.mockReset();
   listRequirementsMock.mockReset();
   listTagsMock.mockReset();
   listWorkItemsMock.mockReset();
+  listTagFilterOptionsMock.mockResolvedValue({ items: [] });
   searchParamsMock.current = new URLSearchParams();
   memberMap.clear();
   versionMap.clear();

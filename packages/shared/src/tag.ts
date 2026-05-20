@@ -125,6 +125,17 @@ export type TagDto = z.infer<typeof TagDtoSchema>;
 
 export const TagListSchema = z.array(TagDtoSchema);
 
+export const TagFilterOptionScopeSchema = z.enum([
+  "TASK",
+  "BUG",
+  "REQUIREMENT",
+  "INTAKE_ITEM",
+  "SPACE_EXCEPTION",
+]);
+export type TagFilterOptionScope = z.infer<
+  typeof TagFilterOptionScopeSchema
+>;
+
 export const CreateTagRequestSchema = z
   .object({
     name: TagNameInputSchema,
@@ -139,6 +150,16 @@ export const ListTagsQuerySchema = PageQuerySchema.extend({
 });
 
 export type ListTagsQuery = z.infer<typeof ListTagsQuerySchema>;
+
+export const ListTagFilterOptionsQuerySchema = z
+  .object({
+    scope: TagFilterOptionScopeSchema,
+  })
+  .strict();
+
+export type ListTagFilterOptionsQuery = z.infer<
+  typeof ListTagFilterOptionsQuerySchema
+>;
 
 export const TagAssignmentDtoSchema = z
   .object({
@@ -192,6 +213,14 @@ export type TagAssignmentsResponse = z.infer<
 >;
 
 export const ListTagsResponseSchema = pageResultSchema(TagDtoSchema);
+export const ListTagFilterOptionsResponseSchema = z
+  .object({
+    items: TagListSchema,
+  })
+  .strict();
+export type ListTagFilterOptionsResponse = z.infer<
+  typeof ListTagFilterOptionsResponseSchema
+>;
 export const CreateTagResponseSchema = TagDtoSchema;
 export const DeleteTagResponseSchema = EmptyObjectSchema;
 export const GetTagAssignmentsResponseSchema = TagAssignmentsResponseSchema;

@@ -24,6 +24,7 @@ import { Link, usePathname, useRouter } from "../../i18n/routing";
 import { getApiErrorMessageKey } from "../../lib/api-error-messages";
 import { formatDisplayCode } from "../../lib/display-code";
 import { useListKeyboardNav } from "../../lib/hooks/use-list-keyboard-nav";
+import { useTagFilterOptions } from "../../lib/hooks/use-tag-filter-options";
 import { useTagFilterSelection } from "../../lib/hooks/use-tag-filter-selection";
 import { useUrlTagFilter } from "../../lib/hooks/use-url-tag-filter";
 import { canWriteRequirements } from "../../lib/permission-gates";
@@ -39,9 +40,8 @@ import {
   listRequirements,
 } from "../../lib/requirement-service";
 import { serializeTagFilterQuery } from "../../lib/tag-query";
-import { collectTagsFromItems } from "../../lib/tag-ui";
 import { cn } from "../../lib/utils";
-import { TagBadgeList, TagFilter } from "../tag";
+import { ListTagRail, TagFilter } from "../tag";
 import { useSession } from "../providers/session-provider";
 import { recordRecentOpen } from "../shell/recent-opens";
 
@@ -167,11 +167,15 @@ export function RequirementsPage() {
   const paginationFrom = loadedCount > 0 ? 1 : 0;
   const paginationTo = Math.min(loadedCount, pageInfo.total);
   const hasMoreItems = loadedCount < pageInfo.total;
-  const sourceTags = useMemo(() => collectTagsFromItems(items), [items]);
+  const { items: tagFilterOptions } = useTagFilterOptions({
+    organizationId,
+    scope: "REQUIREMENT",
+    spaceId,
+  });
   const { selectedTags: selectedFilterTags, setSelectedTags } =
     useTagFilterSelection({
       organizationId,
-      sourceTags,
+      sourceTags: tagFilterOptions,
       spaceId,
       tagIds: tagFilter.tagIds,
     });
@@ -712,18 +716,11 @@ export function RequirementsPage() {
                         </Badge>
                       ) : null}
                     </div>
+                    <ListTagRail className="mt-1" tags={tags} />
                     {item.summary ? (
-                      <p className="mt-0.5 line-clamp-1 text-[12px] text-muted-foreground">
+                      <p className="mt-1 line-clamp-1 text-[12px] text-muted-foreground">
                         {item.summary}
                       </p>
-                    ) : null}
-                    {tags.length > 0 ? (
-                      <TagBadgeList
-                        badgeClassName="min-w-0 max-w-24 shrink"
-                        className="mt-1 flex-nowrap overflow-hidden"
-                        maxVisible={3}
-                        tags={tags}
-                      />
                     ) : null}
                   </div>
                   <Badge variant={statusVariant[req.status]}>
@@ -860,16 +857,14 @@ export function RequirementsPage() {
                   {tTags("label")}
                 </span>
                 <TagFilter
-                  allowCreate={false}
+                  availableTags={tagFilterOptions}
                   className="max-w-xl"
                   onChange={(value, selectedTags) => {
                     setSelectedTags(selectedTags);
                     setTagFilter(value);
                   }}
-                  organizationId={organizationId}
                   selectedTags={selectedFilterTags}
                   showMatchMode={false}
-                  spaceId={spaceId}
                   value={tagFilter}
                   data-testid="requirements-filter-tags"
                 />

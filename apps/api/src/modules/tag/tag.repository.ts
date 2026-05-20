@@ -2,6 +2,7 @@ import type { TagDto } from "@project-delivery/shared";
 
 import type {
   CreateTagInput,
+  TagFilterOptionsInput,
   ListTagsByTargetsInput,
   ReplaceTagAssignmentsInput,
   SoftDeleteTagInput,
@@ -25,6 +26,7 @@ export type TagRepository = {
     input: ListTagsByTargetsInput,
   ): Promise<Map<string, TagDto[]>>;
   listBySpace(input: TagListInput): Promise<TagListResult>;
+  listFilterOptions(input: TagFilterOptionsInput): Promise<TagDto[]>;
   replaceAssignments(input: ReplaceTagAssignmentsInput): Promise<TagDto[]>;
   softDeleteOrphan(input: SoftDeleteTagInput): Promise<SoftDeleteTagResult>;
 };

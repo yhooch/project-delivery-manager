@@ -1,11 +1,5 @@
 import type { TagDto } from "@project-delivery/shared";
-import {
-  cleanup,
-  fireEvent,
-  render,
-  screen,
-  waitFor,
-} from "@testing-library/react";
+import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("next-intl", () => ({
@@ -46,7 +40,7 @@ afterEach(() => {
 });
 
 describe("TagFilter", () => {
-  it("renders selected chips and removes one tag", () => {
+  it("renders selected tags in the trigger and toggles one off", () => {
     const backend = makeTag();
     const qa = makeTag({
       id: secondTagId,
@@ -59,22 +53,21 @@ describe("TagFilter", () => {
 
     render(
       <TagFilter
+        availableTags={[backend, qa]}
         data-testid="tag-filter"
         onChange={onChange}
         selectedTags={[backend, qa]}
-        spaceId={spaceId}
         value={{ tagIds: [tagId, secondTagId], tagMatch: "ANY" }}
       />,
     );
 
-    expect(screen.getByText("#backend")).toBeInTheDocument();
-    expect(screen.getByText("#qa")).toBeInTheDocument();
+    expect(screen.getByTestId("tag-filter")).toHaveTextContent("#backend #qa");
 
-    fireEvent.click(
-      screen.getByRole("button", {
-        name: "tags.filter.remove(name=#backend)",
-      }),
-    );
+    fireEvent.pointerDown(screen.getByTestId("tag-filter"), {
+      button: 0,
+      ctrlKey: false,
+    });
+    fireEvent.click(screen.getByTestId(`tag-filter-option-${tagId}`));
 
     expect(onChange).toHaveBeenCalledWith(
       { tagIds: [secondTagId], tagMatch: "ANY" },
@@ -82,44 +75,30 @@ describe("TagFilter", () => {
     );
   });
 
-  it("adds a tag through the embedded picker", async () => {
+  it("adds a tag through the local dropdown options", async () => {
     const backend = makeTag();
-    const listTagsAction = vi.fn(async () => ({ items: [backend] }));
     const onChange = vi.fn();
 
     render(
       <TagFilter
+        availableTags={[backend]}
         data-testid="tag-filter"
-        listTagsAction={listTagsAction}
         onChange={onChange}
-        organizationId={organizationId}
         selectedTags={[]}
-        spaceId={spaceId}
         value={{ tagIds: [], tagMatch: "ANY" }}
       />,
     );
 
-    expect(
-      screen.queryByTestId("tag-filter-picker-input"),
-    ).not.toBeInTheDocument();
+    fireEvent.pointerDown(screen.getByTestId("tag-filter"), {
+      button: 0,
+      ctrlKey: false,
+    });
 
-    fireEvent.click(screen.getByRole("button", { name: "tags.field.add" }));
+    fireEvent.click(screen.getByTestId(`tag-filter-option-${tagId}`));
 
-    const input = screen.getByTestId("tag-filter-picker-input");
-    fireEvent.focus(input);
-    fireEvent.change(input, { target: { value: "#back" } });
-
-    fireEvent.click(
-      await screen.findByRole("option", {
-        name: "tags.picker.select(name=#backend)",
-      }),
-    );
-
-    await waitFor(() =>
-      expect(onChange).toHaveBeenCalledWith(
-        { tagIds: [tagId], tagMatch: "ANY" },
-        [backend],
-      ),
+    expect(onChange).toHaveBeenCalledWith(
+      { tagIds: [tagId], tagMatch: "ANY" },
+      [backend],
     );
   });
 
@@ -132,7 +111,6 @@ describe("TagFilter", () => {
         data-testid="tag-filter"
         onChange={onChange}
         selectedTags={[backend]}
-        spaceId={spaceId}
         value={{ tagIds: [tagId], tagMatch: "ANY" }}
       />,
     );

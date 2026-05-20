@@ -21,6 +21,10 @@ import type {
 
 import { Prisma } from "../../generated/prisma/client";
 import { PrismaService } from "../../prisma/prisma.service";
+import {
+  findTaggedTargetIds,
+  listTagsByTargets,
+} from "../tag/tag-assignment.helpers";
 import { toTimelineEvent } from "../timeline/timeline.mappers";
 import {
   canReadAllSpaceWorkItems,
@@ -882,7 +886,20 @@ export class PrismaSpaceRepository implements SpaceRepository {
         type: input.workItemType,
       }),
     );
-    const nonTerminalWhere = andWorkItemWhere(baseWhere, {
+    const taggedTargetIds = await findTaggedTargetIds(this.prisma.client, {
+      spaceId: input.space.id,
+      tagIds: input.tagIds,
+      tagMatch: input.tagMatch,
+      targetType: "WORK_ITEM",
+    });
+    const taggedBaseWhere = taggedTargetIds
+      ? andWorkItemWhere(baseWhere, {
+          id: {
+            in: taggedTargetIds,
+          },
+        })
+      : baseWhere;
+    const nonTerminalWhere = andWorkItemWhere(taggedBaseWhere, {
       statusCategory: {
         notIn: TERMINAL_STATUS_CATEGORIES,
       },
@@ -906,7 +923,7 @@ export class PrismaSpaceRepository implements SpaceRepository {
     ]);
 
     return {
-      filters: {
+      filters: removeUndefined({
         organizationId: input.space.organizationId,
         spaceId: input.space.id,
         versionId: input.versionId,
@@ -914,7 +931,9 @@ export class PrismaSpaceRepository implements SpaceRepository {
         statusCategory: input.statusCategory,
         workItemType: input.workItemType,
         exceptionType: input.exceptionType,
-      },
+        tagIds: input.tagIds,
+        tagMatch: input.tagIds ? input.tagMatch : undefined,
+      }),
       counts,
       items,
     };
@@ -1218,9 +1237,22 @@ export class PrismaSpaceRepository implements SpaceRepository {
       }),
     ]);
 
+    const tagsByWorkItemId =
+      items.length > 0
+        ? await listTagsByTargets(this.prisma.client, {
+            organizationId: items[0].organizationId,
+            spaceId: items[0].spaceId,
+            targetIds: items.map((item) => item.id),
+            targetType: "WORK_ITEM",
+          })
+        : new Map<string, ViewWorkItemSummary["tags"]>();
+
     return {
       items: items.map((item) => {
-        const workItem = toViewWorkItemSummary(item, context, now);
+        const workItem = {
+          ...toViewWorkItemSummary(item, context, now),
+          tags: tagsByWorkItemId.get(item.id) ?? [],
+        };
 
         return {
           workItem,
@@ -2598,12 +2630,14 @@ function emptySpaceExceptionsResponse(
     | "pageSize"
     | "space"
     | "statusCategory"
+    | "tagIds"
+    | "tagMatch"
     | "versionId"
     | "workItemType"
   >,
 ): GetSpaceExceptionsViewResponse {
   return {
-    filters: {
+    filters: removeUndefined({
       organizationId: input.space.organizationId,
       spaceId: input.space.id,
       versionId: input.versionId,
@@ -2611,7 +2645,9 @@ function emptySpaceExceptionsResponse(
       statusCategory: input.statusCategory,
       workItemType: input.workItemType,
       exceptionType: input.exceptionType,
-    },
+      tagIds: input.tagIds,
+      tagMatch: input.tagIds ? input.tagMatch : undefined,
+    }),
     counts: SPACE_EXCEPTION_TYPES.map((exceptionType) => ({
       exceptionType,
       count: 0,

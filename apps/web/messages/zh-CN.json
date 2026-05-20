@@ -2701,6 +2701,7 @@
       "description": "集中查看延期、阻塞、待确认、待回归和长期未流转事项。"
     },
     "actions": {
+      "filter": "筛选",
       "refresh": "刷新",
       "refreshing": "刷新中"
     },

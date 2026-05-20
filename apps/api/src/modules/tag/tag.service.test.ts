@@ -11,6 +11,7 @@ import type {
   CreateTagInput,
   SoftDeleteTagInput,
   SoftDeleteTagResult,
+  TagFilterOptionsInput,
   TagListInput,
   TagListResult,
 } from "./tag.types";
@@ -44,6 +45,26 @@ describe("TagService", () => {
       pageSize: 10,
       spaceId: SPACE_ID,
     });
+  });
+
+  it("lists stable tag filter options for a page scope", async () => {
+    const subject = createSubject("VIEWER");
+    const tag = makeTag();
+
+    subject.tags.filterOptions = [tag];
+
+    await expect(
+      subject.service.listFilterOptions(ACTOR_ID, SPACE_ID, {
+        scope: "TASK",
+      }),
+    ).resolves.toEqual({ items: [tag] });
+    expect(subject.tags.filterOptionsInput).toMatchObject({
+      scope: "TASK",
+      organizationId: ORGANIZATION_ID,
+      spaceId: SPACE_ID,
+      staleThresholdDays: 5,
+    });
+    expect(subject.tags.filterOptionsInput?.now).toBeInstanceOf(Date);
   });
 
   it("creates normalized tags for non-viewer members and writes audit", async () => {
@@ -222,6 +243,8 @@ function createAuditService() {
 class FakeTagRepository implements TagRepository {
   createInput?: CreateTagInput;
   deleteResult?: SoftDeleteTagResult;
+  filterOptions: TagDto[] = [];
+  filterOptionsInput?: TagFilterOptionsInput;
   readonly items = new Map<string, TagDto>();
   listInput?: TagListInput;
   softDeleteInput?: SoftDeleteTagInput;
@@ -243,6 +266,12 @@ class FakeTagRepository implements TagRepository {
 
   async listTagsByTargets(): Promise<Map<string, TagDto[]>> {
     return new Map();
+  }
+
+  async listFilterOptions(input: TagFilterOptionsInput): Promise<TagDto[]> {
+    this.filterOptionsInput = input;
+
+    return this.filterOptions;
   }
 
   async replaceAssignments(): Promise<TagDto[]> {

@@ -16,6 +16,7 @@ import {
 import {
   CreateTagRequestSchema,
   GetTagAssignmentsQuerySchema,
+  ListTagFilterOptionsQuerySchema,
   ListTagsQuerySchema,
   ReplaceTagAssignmentsRequestSchema,
   SpaceIdPathParamsSchema,
@@ -25,6 +26,8 @@ import {
   type TagAssignmentsResponse,
   type CreateTagRequest,
   type ListTagsQuery,
+  type ListTagFilterOptionsQuery,
+  type ListTagFilterOptionsResponse,
   type PageResult,
   type TagDto,
 } from "@project-delivery/shared";
@@ -61,6 +64,19 @@ export class TagController {
     const session = this.currentUser.requireSession(request);
 
     return this.tags.list(session.userId, params.spaceId, query);
+  }
+
+  @Get("spaces/:spaceId/tag-filter-options")
+  async listFilterOptions(
+    @Param(new ZodValidationPipe(SpaceIdPathParamsSchema))
+    params: { spaceId: string },
+    @Query(new ZodValidationPipe(ListTagFilterOptionsQuerySchema))
+    query: ListTagFilterOptionsQuery,
+    @Req() request: RequestWithContext,
+  ): Promise<ListTagFilterOptionsResponse> {
+    const session = this.currentUser.requireSession(request);
+
+    return this.tags.listFilterOptions(session.userId, params.spaceId, query);
   }
 
   @Post("spaces/:spaceId/tags")
