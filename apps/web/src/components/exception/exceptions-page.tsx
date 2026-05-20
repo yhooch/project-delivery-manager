@@ -70,6 +70,7 @@ import { StatusBadge } from "../ui/status-badge";
 import { ListTagRail, TagFilter } from "../tag";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../ui/tabs";
 import { TaskDetailSheet } from "../work-item/task-detail-sheet";
+import { FilterField } from "../v2/filter-controls";
 import { PageHeader } from "../v2/page-header";
 import { EmptyState, ErrorState, LoadingState } from "../v2/states";
 
@@ -1086,7 +1087,7 @@ function ExceptionFilterToolbar({
   versions: ReturnType<typeof useVersions>["versions"];
 }) {
   return (
-    <div className="flex min-w-0 flex-wrap items-center gap-2">
+    <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-2">
       {exceptionFilterControls.map((control) => {
         const value = getExceptionFilterValue(filters, control.id);
         const Icon = getExceptionFilterIcon(control.id);
@@ -1101,38 +1102,41 @@ function ExceptionFilterToolbar({
           tRoot(control.allLabelKey ?? control.labelKey);
 
         return (
-          <span
+          <FilterField
             key={control.id}
-            className="relative inline-flex min-w-[9rem] max-w-[12rem]"
+            label={tRoot(control.labelKey)}
+            width={getExceptionFilterWidth(control.id)}
           >
-            <Icon className="pointer-events-none absolute left-2.5 top-1/2 z-10 h-3 w-3 -translate-y-1/2 text-muted-foreground" />
-            <SelectMenu
-              value={value ?? ""}
-              onChange={(event) =>
-                onChange(
-                  control.id as keyof ExceptionFilterValues,
-                  event.target.value || undefined,
-                )
-              }
-              data-testid={`exceptions-filter-${control.id}`}
-              className="h-8 pl-7 text-xs"
-              containerClassName="w-full"
-              contentClassName="w-52"
-              aria-label={selectedLabel}
-            >
-              <option value="">
-                {tRoot(control.allLabelKey ?? control.labelKey)}
-              </option>
-              {options.map((option) => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
+            <span className="relative block min-w-0">
+              <Icon className="pointer-events-none absolute left-2.5 top-1/2 z-10 h-3 w-3 -translate-y-1/2 text-muted-foreground" />
+              <SelectMenu
+                value={value ?? ""}
+                onChange={(event) =>
+                  onChange(
+                    control.id as keyof ExceptionFilterValues,
+                    event.target.value || undefined,
+                  )
+                }
+                data-testid={`exceptions-filter-${control.id}`}
+                className="h-8 w-full pl-7 text-xs"
+                containerClassName="w-full"
+                contentClassName="w-56"
+                aria-label={selectedLabel}
+              >
+                <option value="">
+                  {tRoot(control.allLabelKey ?? control.labelKey)}
                 </option>
-              ))}
-            </SelectMenu>
-          </span>
+                {options.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </SelectMenu>
+            </span>
+          </FilterField>
         );
       })}
-      <span className="inline-flex min-w-[12rem] max-w-[16rem]">
+      <FilterField label={tTags("label")} width="tag">
         <TagFilter
           aria-label={tTags("label")}
           availableTags={tagOptions}
@@ -1143,7 +1147,7 @@ function ExceptionFilterToolbar({
           value={tagFilter}
           data-testid="exceptions-filter-tags"
         />
-      </span>
+      </FilterField>
 
       {hasActiveFilters ? (
         <Button
@@ -1159,6 +1163,14 @@ function ExceptionFilterToolbar({
       ) : null}
     </div>
   );
+}
+
+function getExceptionFilterWidth(
+  controlId: string,
+): "sm" | "md" | "lg" | "xl" | "tag" {
+  if (controlId === "versionId") return "md";
+  if (controlId === "assigneeId") return "md";
+  return "sm";
 }
 
 function getExceptionFilterValue(

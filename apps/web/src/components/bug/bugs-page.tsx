@@ -21,7 +21,6 @@ import {
   useMemo,
   useRef,
   useState,
-  type ReactNode,
 } from "react";
 
 import { getApiErrorMessageKey } from "../../lib/api-error-messages";
@@ -65,6 +64,7 @@ import { Tip } from "../ui/tooltip";
 import { useSession } from "../providers/session-provider";
 import { recordRecentOpen } from "../shell/recent-opens";
 import { EmptyState, ErrorState, ListSkeleton } from "../v2/states";
+import { FilterField, FilterPanel } from "../v2/filter-controls";
 import { PageHeader } from "../v2/page-header";
 
 import { TaskDetailSheet } from "../work-item/task-detail-sheet";
@@ -912,9 +912,8 @@ export function BugsPage() {
       </div>
 
       {filterOpen && (
-        <div
+        <FilterPanel
           data-testid="bugs-filter-panel"
-          className="grid min-w-0 gap-3 border-b border-border bg-muted/20 px-4 py-3 sm:px-6 md:grid-cols-3 xl:grid-cols-6"
         >
           <FilterField label={tFilters("version")}>
             <SelectMenu
@@ -946,7 +945,7 @@ export function BugsPage() {
               ))}
             </SelectMenu>
           </FilterField>
-          <FilterField label={tFilters("statusCategory")}>
+          <FilterField label={tFilters("statusCategory")} width="sm">
             <SelectMenu
               data-testid="bugs-filter-status"
               value={filters.statusCategory ?? ""}
@@ -963,7 +962,7 @@ export function BugsPage() {
               ))}
             </SelectMenu>
           </FilterField>
-          <FilterField label={tFilters("priority")}>
+          <FilterField label={tFilters("priority")} width="sm">
             <SelectMenu
               data-testid="bugs-filter-priority"
               value={filters.priority ?? ""}
@@ -978,7 +977,7 @@ export function BugsPage() {
               ))}
             </SelectMenu>
           </FilterField>
-          <FilterField label={tFilters("severity")}>
+          <FilterField label={tFilters("severity")} width="sm">
             <SelectMenu
               data-testid="bugs-filter-severity"
               value={filters.severity ?? ""}
@@ -993,12 +992,13 @@ export function BugsPage() {
               ))}
             </SelectMenu>
           </FilterField>
-          <FilterField label={tFilters("requirement")}>
+          <FilterField label={tFilters("requirement")} width="lg">
             <SelectMenu
               data-testid="bugs-filter-requirement"
               value={filters.requirementId ?? ""}
               onChange={(event) => setRequirementFilter(event.target.value)}
               className="h-8 w-full rounded-md border border-input bg-background px-2 text-sm"
+              contentClassName="w-72"
             >
               <option value="">{tFilters("allRequirements")}</option>
               {filteredRequirements.map((requirement) => (
@@ -1008,12 +1008,13 @@ export function BugsPage() {
               ))}
             </SelectMenu>
           </FilterField>
-          <FilterField label={tFilters("relatedTask")}>
+          <FilterField label={tFilters("relatedTask")} width="lg">
             <SelectMenu
               data-testid="bugs-filter-related-task"
               value={filters.relatedTaskId ?? ""}
               onChange={(event) => setRelatedTaskFilter(event.target.value)}
               className="h-8 w-full rounded-md border border-input bg-background px-2 text-sm"
+              contentClassName="w-72"
             >
               <option value="">{tFilters("allRelatedTasks")}</option>
               {filteredRelatedTasks.map((task) => (
@@ -1023,7 +1024,7 @@ export function BugsPage() {
               ))}
             </SelectMenu>
           </FilterField>
-          <FilterField label={tTags("label")}>
+          <FilterField label={tTags("label")} width="tag">
             <TagFilter
               availableTags={tagFilterOptions}
               onChange={(value, selectedTags) => {
@@ -1036,7 +1037,7 @@ export function BugsPage() {
               data-testid="bugs-filter-tags"
             />
           </FilterField>
-        </div>
+        </FilterPanel>
       )}
 
       <div className="min-w-0 flex-1 overflow-y-auto">
@@ -1252,21 +1253,6 @@ function canEditBug(
   status: string | undefined,
 ): boolean {
   return canWriteBugs(role, status) && bug?.permissions?.canEdit === true;
-}
-
-function FilterField({
-  children,
-  label,
-}: {
-  children: ReactNode;
-  label: string;
-}) {
-  return (
-    <label className="flex min-w-0 flex-col gap-1 text-[11px] font-medium text-muted-foreground">
-      <span>{label}</span>
-      {children}
-    </label>
-  );
 }
 
 type BugLookupHelpers = {

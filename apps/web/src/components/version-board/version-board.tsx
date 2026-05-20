@@ -56,6 +56,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "../ui/tabs";
 import { CreateTaskDialog } from "../work-item/create-task-dialog";
 import { TaskDetailSheet } from "../work-item/task-detail-sheet";
 import { EmptyState, ErrorState, LoadingState } from "../v2/states";
+import { FilterField } from "../v2/filter-controls";
 import { PageHeader } from "../v2/page-header";
 
 import { CreateVersionDialog } from "./create-version-dialog";
@@ -1253,10 +1254,10 @@ function BoardFilterPanel({
     <div
       id={id}
       data-testid="version-board-filter-panel"
-      className="grid min-w-0 gap-3 border-b border-border bg-muted/20 px-4 py-3 sm:px-6 md:grid-cols-3 lg:grid-cols-[repeat(3,minmax(0,1fr))_auto]"
+      className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-2"
     >
-      <BoardFilterField label={t("filters.assignee.label")}>
-        <span className="relative inline-flex min-w-0">
+      <FilterField label={t("filters.assignee.label")}>
+        <span className="relative block min-w-0">
           <Users className="pointer-events-none absolute left-2.5 top-1/2 z-10 h-3 w-3 -translate-y-1/2 text-muted-foreground" />
           <SelectMenu
             value={filters.assigneeId ?? ""}
@@ -1267,9 +1268,9 @@ function BoardFilterPanel({
               }))
             }
             data-testid="version-board-filter-assignee"
-            className="h-8 pl-7 text-xs"
+            className="h-8 w-full pl-7 text-xs"
             containerClassName="w-full"
-            contentClassName="w-52"
+            contentClassName="w-56"
             aria-label={assigneeLabel}
           >
             <option value="">{t("filters.assignee.all")}</option>
@@ -1280,10 +1281,10 @@ function BoardFilterPanel({
             ))}
           </SelectMenu>
         </span>
-      </BoardFilterField>
+      </FilterField>
 
-      <BoardFilterField label={t("filters.status.label")}>
-        <span className="relative inline-flex min-w-0">
+      <FilterField label={t("filters.status.label")} width="sm">
+        <span className="relative block min-w-0">
           <Filter className="pointer-events-none absolute left-2.5 top-1/2 z-10 h-3 w-3 -translate-y-1/2 text-muted-foreground" />
           <SelectMenu
             value={filters.statusCategory ?? ""}
@@ -1295,9 +1296,9 @@ function BoardFilterPanel({
               }))
             }
             data-testid="version-board-filter-status"
-            className="h-8 pl-7 text-xs"
+            className="h-8 w-full pl-7 text-xs"
             containerClassName="w-full"
-            contentClassName="w-52"
+            contentClassName="w-56"
             aria-label={statusLabel}
           >
             <option value="">{t("filters.status.all")}</option>
@@ -1308,10 +1309,10 @@ function BoardFilterPanel({
             ))}
           </SelectMenu>
         </span>
-      </BoardFilterField>
+      </FilterField>
 
-      <BoardFilterField label={t("filters.type.label")}>
-        <span className="relative inline-flex min-w-0">
+      <FilterField label={t("filters.type.label")} width="sm">
+        <span className="relative block min-w-0">
           <Tags className="pointer-events-none absolute left-2.5 top-1/2 z-10 h-3 w-3 -translate-y-1/2 text-muted-foreground" />
           <SelectMenu
             value={filters.workItemType ?? ""}
@@ -1323,7 +1324,7 @@ function BoardFilterPanel({
               }))
             }
             data-testid="version-board-filter-type"
-            className="h-8 pl-7 text-xs"
+            className="h-8 w-full pl-7 text-xs"
             containerClassName="w-full"
             contentClassName="w-44"
             aria-label={typeLabel}
@@ -1333,10 +1334,10 @@ function BoardFilterPanel({
             <option value="BUG">{t("filters.type.BUG")}</option>
           </SelectMenu>
         </span>
-      </BoardFilterField>
+      </FilterField>
 
       {hasActiveFilter && (
-        <div className="flex items-end">
+        <div className="flex h-8 items-center">
           <Button
             variant="ghost"
             size="sm"
@@ -1350,21 +1351,6 @@ function BoardFilterPanel({
         </div>
       )}
     </div>
-  );
-}
-
-function BoardFilterField({
-  children,
-  label,
-}: {
-  children: React.ReactNode;
-  label: string;
-}) {
-  return (
-    <label className="flex min-w-0 flex-col gap-1 text-[11px] font-medium text-muted-foreground">
-      <span>{label}</span>
-      {children}
-    </label>
   );
 }
 

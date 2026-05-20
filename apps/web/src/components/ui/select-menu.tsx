@@ -200,7 +200,7 @@ export const SelectMenu = React.forwardRef<HTMLSelectElement, SelectMenuProps>(
           <DropdownMenuContent
             align={menuAlign}
             className={cn(
-              "max-h-[min(18rem,var(--radix-dropdown-menu-content-available-height))] w-[var(--radix-dropdown-menu-trigger-width)] overflow-y-auto",
+              "max-h-[min(18rem,var(--radix-dropdown-menu-content-available-height))] min-w-[var(--radix-dropdown-menu-trigger-width)] max-w-[min(28rem,calc(100vw-2rem))] overflow-y-auto",
               contentClassName,
             )}
           >
@@ -215,6 +215,7 @@ export const SelectMenu = React.forwardRef<HTMLSelectElement, SelectMenuProps>(
                 }
                 title={option.title}
                 onSelect={() => handleMenuSelect(option.value)}
+                className="whitespace-nowrap"
               >
                 <Check
                   aria-hidden="true"
@@ -225,7 +226,7 @@ export const SelectMenu = React.forwardRef<HTMLSelectElement, SelectMenuProps>(
                       : "opacity-0",
                   )}
                 />
-                <span className="min-w-0 flex-1 truncate">
+                <span className="min-w-0 flex-1 truncate whitespace-nowrap">
                   {renderDisplayLabel(option.label)}
                 </span>
               </DropdownMenuItem>

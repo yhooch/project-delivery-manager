@@ -14,7 +14,6 @@ import {
   GitBranch,
   Link2,
   Plus,
-  Tag as TagIcon,
 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useSearchParams } from "next/navigation";
@@ -50,6 +49,7 @@ import { Badge, type BadgeProps } from "../ui/badge";
 import { Button } from "../ui/button";
 import { Tip } from "../ui/tooltip";
 import { SelectMenu } from "../ui/select-menu";
+import { FilterField } from "../v2/filter-controls";
 import { PageHeader } from "../v2/page-header";
 import {
   EmptyState,
@@ -815,13 +815,12 @@ export function RequirementsPage() {
           {isFilterPanelOpen ? (
             <div
               aria-label={t("filters.label")}
-              className="mt-3 flex min-w-0 flex-wrap items-center gap-3 text-xs text-muted-foreground"
+              className="mt-3 flex min-w-0 flex-wrap items-center gap-x-3 gap-y-2"
             >
-              <label className="flex items-center gap-2">
-                <span>{t("filters.version")}</span>
+              <FilterField label={t("filters.version")}>
                 <SelectMenu
                   aria-label={t("filters.version")}
-                  className="h-8 px-2 text-xs"
+                  className="h-8 w-full rounded-md border border-input bg-background px-2 text-sm"
                   data-testid="requirements-filter-version"
                   onChange={(event) => setSelectedVersionId(event.target.value)}
                   value={effectiveSelectedVersionId}
@@ -833,12 +832,11 @@ export function RequirementsPage() {
                     </option>
                   ))}
                 </SelectMenu>
-              </label>
-              <label className="flex items-center gap-2">
-                <span>{t("filters.owner")}</span>
+              </FilterField>
+              <FilterField label={t("filters.owner")}>
                 <SelectMenu
                   aria-label={t("filters.owner")}
-                  className="h-8 px-2 text-xs"
+                  className="h-8 w-full rounded-md border border-input bg-background px-2 text-sm"
                   data-testid="requirements-filter-owner"
                   onChange={(event) => setSelectedOwnerId(event.target.value)}
                   value={effectiveSelectedOwnerId}
@@ -850,15 +848,10 @@ export function RequirementsPage() {
                     </option>
                   ))}
                 </SelectMenu>
-              </label>
-              <div className="flex min-w-[18rem] flex-1 flex-col gap-1">
-                <span className="inline-flex items-center gap-1">
-                  <TagIcon aria-hidden="true" className="h-3.5 w-3.5" />
-                  {tTags("label")}
-                </span>
+              </FilterField>
+              <FilterField label={tTags("label")} width="tag">
                 <TagFilter
                   availableTags={tagFilterOptions}
-                  className="max-w-xl"
                   onChange={(value, selectedTags) => {
                     setSelectedTags(selectedTags);
                     setTagFilter(value);
@@ -868,7 +861,7 @@ export function RequirementsPage() {
                   value={tagFilter}
                   data-testid="requirements-filter-tags"
                 />
-              </div>
+              </FilterField>
             </div>
           ) : null}
         </div>

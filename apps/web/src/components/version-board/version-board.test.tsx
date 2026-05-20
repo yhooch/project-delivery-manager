@@ -1136,10 +1136,17 @@ describe("VersionPage", () => {
     );
 
     const panel = await openBoardFilters();
-    expect(panel.className).toContain("bg-muted/20");
-    expect(panel.className).toContain("px-4");
-    expect(panel.className).toContain("py-3");
-    expect(panel.className).toContain("sm:px-6");
+    expect(panel.className).toContain("flex");
+    expect(panel.className).toContain("flex-wrap");
+    expect(panel.className).toContain("gap-x-3");
+    expect(
+      screen.getByTestId("version-board-filter-assignee").closest("label")
+        ?.className,
+    ).toContain("inline-flex");
+    expect(
+      screen.getByTestId("version-board-filter-status").closest("label")
+        ?.className,
+    ).toContain("sm:w-[11.5rem]");
     const toggle = screen.getByTestId("version-board-filter-toggle");
     expect(toggle.closest("header")).toBeInTheDocument();
     expect(toggle).toHaveAttribute("aria-expanded", "true");

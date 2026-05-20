@@ -65,6 +65,7 @@ import { StatusBadge } from "../ui/status-badge";
 import { SelectMenu } from "../ui/select-menu";
 import { Tip } from "../ui/tooltip";
 import { PageHeader } from "../v2/page-header";
+import { FilterField, FilterPanel } from "../v2/filter-controls";
 import {
   EmptyState,
   ErrorState,
@@ -955,9 +956,8 @@ export function IntakePage() {
       )}
 
       {sessionStatus === "authenticated" && spaceId && filterOpen && (
-        <div
+        <FilterPanel
           data-testid="intake-filter-panel"
-          className="grid min-w-0 gap-3 border-b border-border bg-muted/20 px-4 py-3 sm:px-6 md:grid-cols-3 xl:grid-cols-5"
         >
           <FilterField label={t("filters.version")}>
             <SelectMenu
@@ -975,13 +975,14 @@ export function IntakePage() {
               ))}
             </SelectMenu>
           </FilterField>
-          <FilterField label={t("filters.requirement")}>
+          <FilterField label={t("filters.requirement")} width="lg">
             <SelectMenu
               aria-label={t("filters.requirement")}
               data-testid="intake-filter-requirement"
               value={listFilters.requirementId ?? ""}
               onChange={(event) => setRequirementFilter(event.target.value)}
               className="h-8 w-full rounded-md border border-input bg-background px-2 text-sm"
+              contentClassName="w-72"
             >
               <option value="">{t("filters.allRequirements")}</option>
               {filteredRequirements.map((requirement) => (
@@ -991,7 +992,7 @@ export function IntakePage() {
               ))}
             </SelectMenu>
           </FilterField>
-          <FilterField label={t("filters.priority")}>
+          <FilterField label={t("filters.priority")} width="sm">
             <SelectMenu
               aria-label={t("filters.priority")}
               data-testid="intake-filter-priority"
@@ -1045,7 +1046,7 @@ export function IntakePage() {
               ))}
             </SelectMenu>
           </FilterField>
-          <FilterField label={tTags("label")}>
+          <FilterField label={tTags("label")} width="tag">
             <TagFilter
               availableTags={tagFilterOptions}
               onChange={(value, selectedTags) => {
@@ -1058,7 +1059,7 @@ export function IntakePage() {
               data-testid="intake-filter-tags"
             />
           </FilterField>
-        </div>
+        </FilterPanel>
       )}
 
       <div className="min-w-0 flex-1 overflow-y-auto">{body}</div>
@@ -1207,21 +1208,6 @@ export function IntakePage() {
         />
       )}
     </div>
-  );
-}
-
-function FilterField({
-  children,
-  label,
-}: {
-  children: React.ReactNode;
-  label: string;
-}) {
-  return (
-    <label className="flex min-w-0 flex-col gap-1 text-[11px] font-medium text-muted-foreground">
-      <span>{label}</span>
-      {children}
-    </label>
   );
 }
 

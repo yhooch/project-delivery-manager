@@ -16,7 +16,6 @@ import {
   useMemo,
   useRef,
   useState,
-  type ReactNode,
 } from "react";
 
 import { getApiErrorMessageKey } from "../../lib/api-error-messages";
@@ -52,6 +51,7 @@ import { Input } from "../ui/input";
 import { SelectMenu } from "../ui/select-menu";
 import { useSession } from "../providers/session-provider";
 import { EmptyState, ErrorState, ListSkeleton } from "../v2/states";
+import { FilterField, FilterPanel } from "../v2/filter-controls";
 import { PageHeader } from "../v2/page-header";
 import { WorkItemRow } from "../v2/work-item-row";
 import { recordRecentOpen } from "../shell/recent-opens";
@@ -706,9 +706,8 @@ export function TasksPage() {
       </div>
 
       {filterOpen && (
-        <div
+        <FilterPanel
           data-testid="tasks-filter-panel"
-          className="grid min-w-0 gap-3 border-b border-border bg-muted/20 px-4 py-3 sm:px-6 md:grid-cols-5"
         >
           <FilterField label={tFilters("version")}>
             <SelectMenu
@@ -740,7 +739,7 @@ export function TasksPage() {
               ))}
             </SelectMenu>
           </FilterField>
-          <FilterField label={tFilters("statusCategory")}>
+          <FilterField label={tFilters("statusCategory")} width="sm">
             <SelectMenu
               data-testid="tasks-filter-status"
               value={filters.statusCategory ?? ""}
@@ -757,7 +756,7 @@ export function TasksPage() {
               ))}
             </SelectMenu>
           </FilterField>
-          <FilterField label={tFilters("priority")}>
+          <FilterField label={tFilters("priority")} width="sm">
             <SelectMenu
               data-testid="tasks-filter-priority"
               value={filters.priority ?? ""}
@@ -772,7 +771,7 @@ export function TasksPage() {
               ))}
             </SelectMenu>
           </FilterField>
-          <FilterField label={tFilters("requirement")}>
+          <FilterField label={tFilters("requirement")} width="lg">
             <SelectMenu
               data-testid="tasks-filter-requirement"
               value={filters.requirementId ?? ""}
@@ -780,6 +779,7 @@ export function TasksPage() {
                 setFilter("requirementId", event.target.value)
               }
               className="h-8 w-full rounded-md border border-input bg-background px-2 text-sm"
+              contentClassName="w-72"
             >
               <option value="">{tFilters("allRequirements")}</option>
               {requirements.map((requirement) => (
@@ -789,7 +789,7 @@ export function TasksPage() {
               ))}
             </SelectMenu>
           </FilterField>
-          <FilterField label={tTags("label")}>
+          <FilterField label={tTags("label")} width="tag">
             <TagFilter
               availableTags={tagFilterOptions}
               onChange={(value, selectedTags) => {
@@ -802,7 +802,7 @@ export function TasksPage() {
               data-testid="tasks-filter-tags"
             />
           </FilterField>
-        </div>
+        </FilterPanel>
       )}
 
       <div className="min-w-0 flex-1 overflow-y-auto">
@@ -886,21 +886,6 @@ export function TasksPage() {
         />
       )}
     </div>
-  );
-}
-
-function FilterField({
-  children,
-  label,
-}: {
-  children: ReactNode;
-  label: string;
-}) {
-  return (
-    <label className="flex min-w-0 flex-col gap-1 text-[11px] font-medium text-muted-foreground">
-      <span>{label}</span>
-      {children}
-    </label>
   );
 }
 

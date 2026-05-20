@@ -175,14 +175,15 @@ export function TagFilter({
               />
             </button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent className="max-h-72 w-[var(--radix-dropdown-menu-trigger-width)] overflow-y-auto">
+          <DropdownMenuContent className="max-h-72 min-w-[var(--radix-dropdown-menu-trigger-width)] max-w-[min(28rem,calc(100vw-2rem))] overflow-y-auto">
             <DropdownMenuItem
               data-testid={testId ? `${testId}-option-empty` : undefined}
               onSelect={handleClear}
+              className="whitespace-nowrap"
             >
               <span
                 className={cn(
-                  "flex-1 truncate",
+                  "flex-1 truncate whitespace-nowrap",
                   orderedSelectedTags.length === 0 && "font-medium",
                 )}
               >
@@ -200,8 +201,9 @@ export function TagFilter({
                   data-testid={testId ? `${testId}-option-${tag.id}` : undefined}
                   onCheckedChange={() => toggleTag(tag)}
                   onSelect={(event) => event.preventDefault()}
+                  className="whitespace-nowrap"
                 >
-                  <span className="min-w-0 flex-1 truncate">
+                  <span className="min-w-0 flex-1 truncate whitespace-nowrap">
                     {formatTagDisplayName(tag)}
                   </span>
                 </DropdownMenuCheckboxItem>
