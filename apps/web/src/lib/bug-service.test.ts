@@ -17,6 +17,7 @@ const bugId = "01ARZ3NDEKTSV4RRFFQ69G5FAZ";
 const relatedTaskId = "01ARZ3NDEKTSV4RRFFQ69G5FB0";
 const reporterId = "01ARZ3NDEKTSV4RRFFQ69G5FB1";
 const assigneeId = "01ARZ3NDEKTSV4RRFFQ69G5FB2";
+const createdById = "01ARZ3NDEKTSV4RRFFQ69G5FC1";
 const workflowVersionId = "01ARZ3NDEKTSV4RRFFQ69G5FB3";
 const stateId = "01ARZ3NDEKTSV4RRFFQ69G5FB4";
 const tagId = "01ARZ3NDEKTSV4RRFFQ69G5FB5";
@@ -87,6 +88,7 @@ describe("bug service", () => {
       listBugs(
         {
           organizationId,
+          createdById,
           page: 1,
           pageSize: 20,
           relatedTaskId,
@@ -101,6 +103,7 @@ describe("bug service", () => {
 
     expect(api.get).toHaveBeenCalledWith(`/spaces/${spaceId}/bugs`, {
       query: {
+        createdById,
         page: 1,
         pageSize: 20,
         relatedTaskId,

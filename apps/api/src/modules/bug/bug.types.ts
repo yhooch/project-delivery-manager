@@ -18,6 +18,7 @@ export type BugListInput = {
   versionId?: string;
   requirementId?: string;
   intakeItemId?: string;
+  createdById?: string;
   reporterId?: string;
   assigneeId?: string;
   statusCategory?: StatusCategory;

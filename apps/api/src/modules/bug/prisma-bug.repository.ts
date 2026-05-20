@@ -730,7 +730,28 @@ function buildListWhere(
     versionId: input.versionId,
   };
 
+  applyCreatedByFilter(where, input.createdById);
+
   return where;
+}
+
+function applyCreatedByFilter(
+  where: Prisma.WorkItemWhereInput,
+  createdById: string | undefined,
+) {
+  if (!createdById) {
+    return;
+  }
+
+  where.OR = [
+    {
+      createdById,
+    },
+    {
+      createdById: null,
+      reporterId: createdById,
+    },
+  ];
 }
 
 function applyTaggedTargetIds(

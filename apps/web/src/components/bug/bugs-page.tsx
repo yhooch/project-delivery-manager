@@ -946,6 +946,21 @@ export function BugsPage() {
               ))}
             </SelectMenu>
           </FilterField>
+          <FilterField label={tFilters("creator")}>
+            <SelectMenu
+              data-testid="bugs-filter-creator"
+              value={filters.createdById ?? ""}
+              onChange={(event) => setFilter("createdById", event.target.value)}
+              className="h-8 w-full rounded-md border border-input bg-background px-2 text-sm"
+            >
+              <option value="">{tFilters("allCreators")}</option>
+              {members.map((member) => (
+                <option key={member.userId} value={member.userId}>
+                  {member.user.name || member.user.username}
+                </option>
+              ))}
+            </SelectMenu>
+          </FilterField>
           <FilterField label={tFilters("statusCategory")} width="sm">
             <SelectMenu
               data-testid="bugs-filter-status"
@@ -1415,6 +1430,7 @@ function createBugListScopeKey({
     organizationId ?? "",
     spaceId ?? "",
     filters.assigneeId ?? "",
+    filters.createdById ?? "",
     filters.priority ?? "",
     filters.relatedTaskId ?? "",
     filters.reporterId ?? "",

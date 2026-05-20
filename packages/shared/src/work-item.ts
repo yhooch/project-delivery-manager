@@ -166,6 +166,7 @@ export const BugListQuerySchema = PageQuerySchema.merge(
   versionId: UlidSchema.optional(),
   requirementId: UlidSchema.optional(),
   intakeItemId: UlidSchema.optional(),
+  createdById: UlidSchema.optional(),
   reporterId: UlidSchema.optional(),
   assigneeId: UlidSchema.optional(),
   statusCategory: StatusCategorySchema.optional(),

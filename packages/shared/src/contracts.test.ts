@@ -552,10 +552,12 @@ describe("shared contracts", () => {
 
     expect(
       BugListQuerySchema.parse({
+        createdById: "01NRZ3NDEKTSV4RRFFQ69G5FAN",
         severity: "BLOCKER",
         relatedTaskId: "01MRZ3NDEKTSV4RRFFQ69G5FAM",
       }),
     ).toMatchObject({
+      createdById: "01NRZ3NDEKTSV4RRFFQ69G5FAN",
       relatedTaskId: "01MRZ3NDEKTSV4RRFFQ69G5FAM",
       severity: "BLOCKER",
     });
@@ -1322,6 +1324,7 @@ describe("shared contracts", () => {
     );
     expect(document.paths["/spaces/{spaceId}/bugs"]?.get?.parameters).toEqual(
       expect.arrayContaining([
+        expect.objectContaining({ name: "createdById", in: "query" }),
         expect.objectContaining({ name: "severity", in: "query" }),
         expect.objectContaining({ name: "relatedTaskId", in: "query" }),
         expect.objectContaining({ name: "tagIds", in: "query" }),

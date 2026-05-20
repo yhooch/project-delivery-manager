@@ -49,6 +49,7 @@ export type UpdateBugInput = UpdateBugRequest;
 
 export type BugListFilterState = {
   assigneeId?: string;
+  createdById?: string;
   priority?: Priority;
   relatedTaskId?: string;
   reporterId?: string;

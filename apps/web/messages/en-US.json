@@ -1323,6 +1323,8 @@
       "allRelatedTasks": "All related tasks",
       "assignee": "Assignee",
       "allAssignees": "All assignees",
+      "creator": "Creator",
+      "allCreators": "All creators",
       "statusCategory": "Status category",
       "allStatusCategories": "All status categories",
       "priority": "Priority",

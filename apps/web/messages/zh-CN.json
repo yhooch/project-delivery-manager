@@ -1323,6 +1323,8 @@
       "allRelatedTasks": "全部关联任务",
       "assignee": "负责人",
       "allAssignees": "全部负责人",
+      "creator": "创建人",
+      "allCreators": "全部创建人",
       "statusCategory": "状态归类",
       "allStatusCategories": "全部状态归类",
       "priority": "优先级",

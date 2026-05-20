@@ -212,6 +212,7 @@ import { BugsPage } from "./bugs-page";
 import { createRecentStorageKey } from "../shell/recent-opens";
 
 const ASSIGNEE_ID = "01ARZ3NDEKTSV4RRFFQ69G5FB1";
+const CREATOR_ID = "01ARZ3NDEKTSV4RRFFQ69G5FC1";
 const VERSION_ID = "01ARZ3NDEKTSV4RRFFQ69G5FD1";
 const NEXT_VERSION_ID = "01ARZ3NDEKTSV4RRFFQ69G5FD2";
 const REQUIREMENT_ID = "01ARZ3NDEKTSV4RRFFQ69G5FRQ";
@@ -630,9 +631,12 @@ describe("BugsPage", () => {
     expect(await screen.findByText("Work item linked bug")).toBeInTheDocument();
   });
 
-  it("opens filter controls and sends selected version, assignee, priority, severity, requirement, and related task to the backend", async () => {
+  it("opens filter controls and sends selected version, assignee, creator, priority, severity, requirement, and related task to the backend", async () => {
     memberMap.set(ASSIGNEE_ID, {
       user: { name: "Bob Smith", username: "bob" },
+    });
+    memberMap.set(CREATOR_ID, {
+      user: { name: "Alice Creator", username: "alice" },
     });
     versionMap.set(VERSION_ID, { name: "v2.0 beta" });
     listRequirementsMock.mockResolvedValueOnce({
@@ -681,6 +685,15 @@ describe("BugsPage", () => {
       ),
     );
 
+    fireEvent.change(screen.getByTestId("bugs-filter-creator"), {
+      target: { value: CREATOR_ID },
+    });
+    await waitFor(() =>
+      expect(listBugsMock).toHaveBeenLastCalledWith(
+        expect.objectContaining({ createdById: CREATOR_ID }),
+      ),
+    );
+
     fireEvent.change(screen.getByTestId("bugs-filter-priority"), {
       target: { value: "URGENT" },
     });
@@ -715,6 +728,7 @@ describe("BugsPage", () => {
       expect(listBugsMock).toHaveBeenLastCalledWith(
         expect.objectContaining({
           assigneeId: ASSIGNEE_ID,
+          createdById: CREATOR_ID,
           priority: "URGENT",
           relatedTaskId: RELATED_TASK_ID,
           requirementId: REQUIREMENT_ID,

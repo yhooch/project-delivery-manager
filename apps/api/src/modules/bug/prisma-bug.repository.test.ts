@@ -141,4 +141,46 @@ describe("PrismaBugRepository", () => {
     expect(transaction.mock.calls[0]?.[0]).toHaveLength(3);
     expect(workItemGroupBy).toHaveBeenCalledTimes(1);
   });
+
+  it("filters bugs by creator with reporter fallback for legacy rows", async () => {
+    const { repository, workItemCount, workItemFindMany, workItemGroupBy } =
+      createRepositoryMock();
+    const creatorId = "01ARZ3NDEKTSV4RRFFQ69G5CRT";
+
+    await repository.listBySpaceId("01ARZ3NDEKTSV4RRFFQ69G5SPC", {
+      actorUserId: "01ARZ3NDEKTSV4RRFFQ69G5USR",
+      createdById: creatorId,
+      page: 1,
+      pageSize: 20,
+      visibility: "SPACE",
+    });
+
+    const expectedCreatorWhere = [
+      { createdById: creatorId },
+      { createdById: null, reporterId: creatorId },
+    ];
+
+    expect(workItemFindMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          OR: expectedCreatorWhere,
+        }),
+      }),
+    );
+    expect(workItemCount).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          OR: expectedCreatorWhere,
+        }),
+      }),
+    );
+    expect(workItemGroupBy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          OR: expectedCreatorWhere,
+          statusCategory: undefined,
+        }),
+      }),
+    );
+  });
 });
