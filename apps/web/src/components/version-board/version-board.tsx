@@ -56,7 +56,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "../ui/tabs";
 import { CreateTaskDialog } from "../work-item/create-task-dialog";
 import { TaskDetailSheet } from "../work-item/task-detail-sheet";
 import { EmptyState, ErrorState, LoadingState } from "../v2/states";
-import { FilterField } from "../v2/filter-controls";
+import { FilterField, FilterPanel } from "../v2/filter-controls";
 import { PageHeader } from "../v2/page-header";
 
 import { CreateVersionDialog } from "./create-version-dialog";
@@ -1251,10 +1251,9 @@ function BoardFilterPanel({
     : t("filters.type.all");
 
   return (
-    <div
+    <FilterPanel
       id={id}
       data-testid="version-board-filter-panel"
-      className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-2"
     >
       <FilterField label={t("filters.assignee.label")}>
         <span className="relative block min-w-0">
@@ -1350,7 +1349,7 @@ function BoardFilterPanel({
           </Button>
         </div>
       )}
-    </div>
+    </FilterPanel>
   );
 }
 

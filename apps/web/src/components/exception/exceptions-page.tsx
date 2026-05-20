@@ -70,7 +70,7 @@ import { StatusBadge } from "../ui/status-badge";
 import { ListTagRail, TagFilter } from "../tag";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../ui/tabs";
 import { TaskDetailSheet } from "../work-item/task-detail-sheet";
-import { FilterField } from "../v2/filter-controls";
+import { FilterField, FilterPanel } from "../v2/filter-controls";
 import { PageHeader } from "../v2/page-header";
 import { EmptyState, ErrorState, LoadingState } from "../v2/states";
 
@@ -761,7 +761,7 @@ export function ExceptionsPage() {
         onValueChange={handleTabChange}
         className="flex min-w-0 flex-1 flex-col overflow-hidden"
       >
-        <div className="flex min-w-0 flex-col gap-3 border-b border-border px-4 py-3 sm:px-6">
+        <div className="flex min-w-0 border-b border-border px-4 py-3 sm:px-6">
           <div className="-mx-1 overflow-x-auto px-1">
             <TabsList className="h-auto min-w-max border-0">
               {grouped.map((tab) => {
@@ -787,8 +787,10 @@ export function ExceptionsPage() {
               })}
             </TabsList>
           </div>
+        </div>
 
-          {isFilterPanelOpen ? (
+        {isFilterPanelOpen ? (
+          <FilterPanel data-testid="exceptions-filter-panel">
             <ExceptionFilterToolbar
               filters={filters}
               members={members}
@@ -803,8 +805,8 @@ export function ExceptionsPage() {
               tTags={tTags}
               tRoot={tRoot}
             />
-          ) : null}
-        </div>
+          </FilterPanel>
+        ) : null}
 
         {grouped.map((tab) => (
           <TabsContent
