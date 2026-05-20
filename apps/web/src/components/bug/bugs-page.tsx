@@ -1,11 +1,6 @@
 "use client";
 
 import {
-  BugLifecycleFilterBuckets,
-  resolveBugLifecycleBucket,
-  type BugLifecycleBucket,
-  type BugLifecycleBucketCount,
-  type BugLifecycleFilterBucket,
   BugSeverity,
   BugView,
   Priority,
@@ -15,6 +10,7 @@ import {
   TagDto,
   Version,
   WorkItem,
+  WorkItemStatusCategoryCount,
 } from "@project-delivery/shared";
 import { Bug, Filter, GitBranch, Pencil, Plus } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
@@ -85,18 +81,8 @@ const severityColor: Record<BugSeverity, string> = {
   TRIVIAL: "bg-muted text-muted-foreground",
 };
 
-const bugBucketStatus = BugLifecycleFilterBuckets;
+type StatusFilterKey = "all" | StatusCategory;
 
-const bugBucketByCategory: Partial<
-  Record<StatusCategory, BugLifecycleFilterBucket>
-> = {
-  DONE: "regressionPassed",
-  IN_PROGRESS: "fixing",
-  NOT_STARTED: "pendingConfirm",
-  TERMINATED: "closed",
-  VERIFYING: "fixing",
-  WAITING: "pendingFix",
-};
 const STATUS_FILTERS: StatusCategory[] = [
   "NOT_STARTED",
   "IN_PROGRESS",
@@ -117,7 +103,6 @@ const LIST_PAGE_SIZE = 100;
 const INITIAL_PAGE_INFO = { page: 1, pageSize: LIST_PAGE_SIZE, total: 0 };
 
 type BugItemViewModel = WorkItemViewModel & {
-  lifecycleBucket: Exclude<BugLifecycleBucket, "all">;
   severity: BugSeverity;
   tags?: readonly TagDto[];
 };
@@ -160,8 +145,8 @@ export function BugsPage() {
   const [requirements, setRequirements] = useState<Requirement[]>([]);
   const [relatedTasks, setRelatedTasks] = useState<WorkItem[]>([]);
   const [pageInfo, setPageInfo] = useState(INITIAL_PAGE_INFO);
-  const [lifecycleBucketCounts, setLifecycleBucketCounts] = useState<
-    BugLifecycleBucketCount[]
+  const [statusCategoryCounts, setStatusCategoryCounts] = useState<
+    WorkItemStatusCategoryCount[]
   >([]);
   const [createOpen, setCreateOpen] = useState(false);
   const [editingBug, setEditingBug] = useState<BugView | null>(null);
@@ -170,7 +155,6 @@ export function BugsPage() {
   const [handledDeepLinkKey, setHandledDeepLinkKey] = useState<string | null>(
     null,
   );
-  const [bucketFilter, setBucketFilter] = useState<BugLifecycleBucket>("all");
   const { captureFocus, restoreFocus } = useFocusReturn();
   const canCreateBug = canCreateBugs(currentSpace?.role, currentSpace?.status);
   const requestedVersionId = normalizeSearchParam(
@@ -189,13 +173,6 @@ export function BugsPage() {
     router,
     searchParams,
   });
-  const activeBucket = filters.lifecycleBucket
-    ? filters.lifecycleBucket
-    : bucketFilter !== "all"
-      ? bucketFilter
-      : filters.statusCategory
-        ? (bugBucketByCategory[filters.statusCategory] ?? "all")
-        : "all";
   const listScopeKey = useMemo(
     () =>
       createBugListScopeKey({
@@ -239,22 +216,7 @@ export function BugsPage() {
 
   const setFilter = useCallback(
     (key: keyof BugListFilterState, value: string) => {
-      if (key === "statusCategory") {
-        setBucketFilter("all");
-      }
-      if (key === "lifecycleBucket") {
-        setBucketFilter((value as BugLifecycleBucket) || "all");
-      }
-      setFilters((current) => {
-        const next = { ...current, [key]: value || undefined };
-        if (key === "statusCategory" && value) {
-          next.lifecycleBucket = undefined;
-        }
-        if (key === "lifecycleBucket") {
-          next.statusCategory = undefined;
-        }
-        return next;
-      });
+      setFilters((current) => ({ ...current, [key]: value || undefined }));
     },
     [],
   );
@@ -390,7 +352,7 @@ export function BugsPage() {
           pageSize: result.pageSize ?? LIST_PAGE_SIZE,
           total: result.total ?? result.items.length,
         });
-        setLifecycleBucketCounts(result.lifecycleBucketCounts ?? []);
+        setStatusCategoryCounts(result.statusCategoryCounts ?? []);
       } catch (error) {
         if (
           listRequestIdRef.current === requestId &&
@@ -423,7 +385,7 @@ export function BugsPage() {
       listRequestIdRef.current += 1;
       setItems([]);
       setPageInfo(INITIAL_PAGE_INFO);
-      setLifecycleBucketCounts([]);
+      setStatusCategoryCounts([]);
       setLoading(false);
       setLoadingMore(false);
       setHasLoadedItems(false);
@@ -445,7 +407,6 @@ export function BugsPage() {
     setRelatedTasks([]);
     setDetailRevision((revision) => revision + 1);
     setHandledDeepLinkKey(null);
-    setBucketFilter("all");
   }, [contextKey]);
 
   useEffect(() => {
@@ -566,12 +527,7 @@ export function BugsPage() {
     ],
   );
 
-  const filtered = useMemo(() => {
-    if (bucketFilter === "all") {
-      return bugViewModels;
-    }
-    return bugViewModels.filter((bug) => bug.lifecycleBucket === bucketFilter);
-  }, [bucketFilter, bugViewModels]);
+  const filtered = bugViewModels;
 
   const openBug = useCallback(
     (bug: BugItemViewModel, options: { focusActions?: boolean } = {}) => {
@@ -696,7 +652,6 @@ export function BugsPage() {
         versionId: requestedVersionId,
       };
     });
-    setBucketFilter("all");
   }, [requestedStatusCategory, requestedVersionId]);
 
   useEffect(() => {
@@ -787,24 +742,50 @@ export function BugsPage() {
     onClose: sheetOpen ? () => handleSheetOpenChange(false) : undefined,
   });
 
-  const buckets = useMemo(
-    () => [
-      {
-        label: t("buckets.all"),
-        key: "all" as BugLifecycleBucket,
-        count: getAllLifecycleBucketCount(
-          lifecycleBucketCounts,
-          bugViewModels.length,
-        ),
-      },
-      ...bugBucketStatus.map((key) => ({
-        label: t(`buckets.${key}`),
-        key,
-        count: getLifecycleBucketCount(lifecycleBucketCounts, key),
-      })),
-    ],
-    [bugViewModels.length, lifecycleBucketCounts, t],
-  );
+  const buckets: { count: number; label: string; key: StatusFilterKey }[] =
+    useMemo(
+      () => [
+        {
+          label: t("buckets.all"),
+          key: "all",
+          count: getAllStatusCategoryCount(
+            statusCategoryCounts,
+            bugViewModels.length,
+          ),
+        },
+        {
+          count: getStatusCategoryCount(statusCategoryCounts, "NOT_STARTED"),
+          label: tStatus("NOT_STARTED"),
+          key: "NOT_STARTED",
+        },
+        {
+          count: getStatusCategoryCount(statusCategoryCounts, "IN_PROGRESS"),
+          label: tStatus("IN_PROGRESS"),
+          key: "IN_PROGRESS",
+        },
+        {
+          count: getStatusCategoryCount(statusCategoryCounts, "WAITING"),
+          label: tStatus("WAITING"),
+          key: "WAITING",
+        },
+        {
+          count: getStatusCategoryCount(statusCategoryCounts, "VERIFYING"),
+          label: tStatus("VERIFYING"),
+          key: "VERIFYING",
+        },
+        {
+          count: getStatusCategoryCount(statusCategoryCounts, "DONE"),
+          label: tStatus("DONE"),
+          key: "DONE",
+        },
+        {
+          count: getStatusCategoryCount(statusCategoryCounts, "TERMINATED"),
+          label: tStatus("TERMINATED"),
+          key: "TERMINATED",
+        },
+      ],
+      [bugViewModels.length, statusCategoryCounts, t, tStatus],
+    );
 
   const header = (
     <PageHeader
@@ -906,11 +887,11 @@ export function BugsPage() {
                 data-testid="bugs-filter-option"
                 data-filter-key={b.key}
                 onClick={() => {
-                  setFilter("lifecycleBucket", b.key === "all" ? "" : b.key);
+                  setFilter("statusCategory", b.key === "all" ? "" : b.key);
                 }}
                 className={cn(
                   "flex h-7 items-center gap-1.5 rounded-md px-2.5 text-[12px] transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/70 focus-visible:ring-offset-2 focus-visible:ring-offset-background",
-                  activeBucket === b.key
+                  (filters.statusCategory ?? "all") === b.key
                     ? "bg-muted font-medium text-foreground"
                     : "text-muted-foreground hover:bg-muted/50 hover:text-foreground",
                 )}
@@ -965,7 +946,6 @@ export function BugsPage() {
               data-testid="bugs-filter-status"
               value={filters.statusCategory ?? ""}
               onChange={(event) => {
-                setBucketFilter("all");
                 setFilter("statusCategory", event.target.value);
               }}
               className="h-8 w-full rounded-md border border-input bg-background px-2 text-sm"
@@ -1317,10 +1297,6 @@ function toBugViewModel(
     bug.workflowVersionId,
     bug.currentStateId,
   );
-  const lifecycleBucket = resolveBugLifecycleBucket({
-    stateCode: workflowState?.code,
-    statusCategory: bug.statusCategory,
-  });
   const statusLabel = workflowState
     ? translateWorkflowStateName(tRoot, workflowState)
     : tStatus(bug.statusCategory);
@@ -1330,6 +1306,8 @@ function toBugViewModel(
     code,
     type: "BUG",
     title: bug.title,
+    workflowVersionId: bug.workflowVersionId,
+    currentStateId: bug.currentStateId,
     statusCategory: bug.statusCategory,
     statusLabel,
     priority: bug.priority,
@@ -1341,7 +1319,6 @@ function toBugViewModel(
     blockedReason: bug.blockedReason,
     updatedAgo: undefined,
     tags: bug.tags,
-    lifecycleBucket,
     severity: bug.bugDetail.severity,
   };
 }
@@ -1399,15 +1376,17 @@ function normalizeStatusCategory(
     : undefined;
 }
 
-function getLifecycleBucketCount(
-  counts: BugLifecycleBucketCount[],
-  bucket: BugLifecycleFilterBucket,
+function getStatusCategoryCount(
+  counts: WorkItemStatusCategoryCount[],
+  statusCategory: StatusCategory,
 ): number {
-  return counts.find((entry) => entry.bucket === bucket)?.count ?? 0;
+  return (
+    counts.find((entry) => entry.statusCategory === statusCategory)?.count ?? 0
+  );
 }
 
-function getAllLifecycleBucketCount(
-  counts: BugLifecycleBucketCount[],
+function getAllStatusCategoryCount(
+  counts: WorkItemStatusCategoryCount[],
   fallback: number,
 ): number {
   if (counts.length === 0) {
@@ -1434,7 +1413,6 @@ function createBugListScopeKey({
     organizationId ?? "",
     spaceId ?? "",
     filters.assigneeId ?? "",
-    filters.lifecycleBucket ?? "",
     filters.priority ?? "",
     filters.relatedTaskId ?? "",
     filters.reporterId ?? "",

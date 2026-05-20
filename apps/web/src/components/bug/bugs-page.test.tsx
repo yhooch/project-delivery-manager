@@ -19,6 +19,18 @@ function getSelectOptionLabels(select: HTMLSelectElement): string[] {
   return Array.from(select.options, (option) => option.textContent ?? "");
 }
 
+function getBugFilterOption(key: string): HTMLElement {
+  const option = screen
+    .getAllByTestId("bugs-filter-option")
+    .find((element) => element.getAttribute("data-filter-key") === key);
+
+  if (!option) {
+    throw new Error(`Missing bug filter option ${key}`);
+  }
+
+  return option;
+}
+
 vi.mock("next-intl", () => ({
   useTranslations: (namespace?: string) => {
     const key = namespace ?? "__root__";
@@ -377,7 +389,7 @@ describe("BugsPage", () => {
     ).toBeInTheDocument();
   });
 
-  it("renders workflow-state buckets for the bug lifecycle", async () => {
+  it("renders status category buckets for bugs", async () => {
     listBugsMock.mockResolvedValueOnce({
       items: [],
       total: 0,
@@ -387,26 +399,37 @@ describe("BugsPage", () => {
 
     await waitFor(() => expect(listBugsMock).toHaveBeenCalledTimes(1));
     expect(
-      screen.getByRole("button", { name: /bugs\.buckets\.pendingConfirm/ }),
+      screen.getByRole("button", { name: /bugs\.buckets\.all/ }),
     ).toBeInTheDocument();
     expect(
-      screen.getByRole("button", { name: /bugs\.buckets\.pendingFix/ }),
+      screen.getByRole("button", {
+        name: /bugs\.statusCategory\.NOT_STARTED/,
+      }),
     ).toBeInTheDocument();
     expect(
-      screen.getByRole("button", { name: /bugs\.buckets\.fixing/ }),
+      screen.getByRole("button", {
+        name: /bugs\.statusCategory\.IN_PROGRESS/,
+      }),
     ).toBeInTheDocument();
     expect(
-      screen.getByRole("button", { name: /bugs\.buckets\.pendingRegression/ }),
+      screen.getByRole("button", { name: /bugs\.statusCategory\.WAITING/ }),
     ).toBeInTheDocument();
     expect(
-      screen.getByRole("button", { name: /bugs\.buckets\.regressionPassed/ }),
+      screen.getByRole("button", {
+        name: /bugs\.statusCategory\.VERIFYING/,
+      }),
     ).toBeInTheDocument();
     expect(
-      screen.getByRole("button", { name: /bugs\.buckets\.closed/ }),
+      screen.getByRole("button", { name: /bugs\.statusCategory\.DONE/ }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", {
+        name: /bugs\.statusCategory\.TERMINATED/,
+      }),
     ).toBeInTheDocument();
   });
 
-  it("renders bug lifecycle bucket totals from the paged list response", async () => {
+  it("renders bug status category totals from the paged list response", async () => {
     listBugsMock.mockResolvedValueOnce({
       items: [
         makeBug({
@@ -414,10 +437,10 @@ describe("BugsPage", () => {
           statusCategory: "IN_PROGRESS",
         }),
       ],
-      lifecycleBucketCounts: [
-        { bucket: "fixing", count: 14 },
-        { bucket: "pendingRegression", count: 5 },
-        { bucket: "closed", count: 2 },
+      statusCategoryCounts: [
+        { statusCategory: "IN_PROGRESS", count: 14 },
+        { statusCategory: "VERIFYING", count: 5 },
+        { statusCategory: "TERMINATED", count: 2 },
       ],
       total: 21,
     });
@@ -431,18 +454,14 @@ describe("BugsPage", () => {
       ).getByText("21"),
     ).toBeInTheDocument();
     expect(
-      within(
-        screen.getByRole("button", { name: /bugs\.buckets\.fixing/ }),
-      ).getByText("14"),
+      within(getBugFilterOption("IN_PROGRESS")).getByText("14"),
     ).toBeInTheDocument();
     expect(
-      within(
-        screen.getByRole("button", { name: /bugs\.buckets\.closed/ }),
-      ).getByText("2"),
+      within(getBugFilterOption("TERMINATED")).getByText("2"),
     ).toBeInTheDocument();
   });
 
-  it("filters by fixing bucket (IN_PROGRESS) through the backend query", async () => {
+  it("filters by status category through the backend query", async () => {
     listBugsMock
       .mockResolvedValueOnce({
         items: [
@@ -481,14 +500,12 @@ describe("BugsPage", () => {
     expect(screen.getByText("Closed bug")).toBeInTheDocument();
     expect(screen.getByText("Terminated bug")).toBeInTheDocument();
 
-    fireEvent.click(
-      screen.getByRole("button", { name: /bugs\.buckets\.fixing/ }),
-    );
+    fireEvent.click(getBugFilterOption("IN_PROGRESS"));
     await waitFor(() =>
       expect(listBugsMock).toHaveBeenLastCalledWith(
         expect.objectContaining({
-          lifecycleBucket: "fixing",
           spaceId: "SPC_01",
+          statusCategory: "IN_PROGRESS",
           type: "BUG",
         }),
       ),
@@ -500,62 +517,7 @@ describe("BugsPage", () => {
     expect(screen.queryByText("Terminated bug")).not.toBeInTheDocument();
   });
 
-  it("filters by pending regression bucket through explicit workflow state", async () => {
-    workflowStateMap.set("STATE_PENDING_REGRESSION", {
-      code: "PENDING_REGRESSION",
-      name: "Pending regression",
-    });
-    listBugsMock
-      .mockResolvedValueOnce({
-        items: [
-          makeBug({
-            id: "01ARZ3NDEKTSV4RRFFQ69G5F01",
-            title: "In progress bug",
-            statusCategory: "IN_PROGRESS",
-          }),
-          makeBug({
-            id: "01ARZ3NDEKTSV4RRFFQ69G5F02",
-            title: "Regression bug",
-            currentStateId: "STATE_PENDING_REGRESSION",
-            statusCategory: "VERIFYING",
-          }),
-        ],
-        total: 2,
-      })
-      .mockResolvedValueOnce({
-        items: [
-          makeBug({
-            id: "01ARZ3NDEKTSV4RRFFQ69G5F02",
-            title: "Regression bug",
-            currentStateId: "STATE_PENDING_REGRESSION",
-            statusCategory: "VERIFYING",
-          }),
-        ],
-        total: 1,
-      });
-
-    render(<BugsPage />);
-
-    expect(await screen.findByText("In progress bug")).toBeInTheDocument();
-    fireEvent.click(
-      screen.getByRole("button", {
-        name: /bugs\.buckets\.pendingRegression/,
-      }),
-    );
-    await waitFor(() =>
-      expect(listBugsMock).toHaveBeenLastCalledWith(
-        expect.objectContaining({
-          lifecycleBucket: "pendingRegression",
-        }),
-      ),
-    );
-    await waitFor(() =>
-      expect(screen.queryByText("In progress bug")).not.toBeInTheDocument(),
-    );
-    expect(screen.getByText("Regression bug")).toBeInTheDocument();
-  });
-
-  it("does not treat plain VERIFYING status as pending regression", async () => {
+  it("highlights the status category bucket from the URL", async () => {
     searchParamsMock.current = new URLSearchParams("statusCategory=VERIFYING");
     listBugsMock.mockResolvedValueOnce({
       items: [
@@ -572,70 +534,42 @@ describe("BugsPage", () => {
 
     expect(await screen.findByText("Verifying bug")).toBeInTheDocument();
     expect(
-      screen.getByRole("button", { name: /bugs\.buckets\.fixing/ }),
+      getBugFilterOption("VERIFYING"),
     ).toHaveClass("bg-muted");
     expect(
-      screen.getByRole("button", {
-        name: /bugs\.buckets\.pendingRegression/,
-      }),
+      getBugFilterOption("IN_PROGRESS"),
     ).not.toHaveClass("bg-muted");
   });
 
-  it("separates regression passed and closed bugs by workflow state", async () => {
-    workflowStateMap.set("STATE_REGRESSION_PASSED", {
-      code: "REGRESSION_PASSED",
-      name: "Regression passed",
+  it("renders the real workflow state name in bug rows", async () => {
+    workflowStateMap.set("STATE_CUSTOM_VERIFY", {
+      code: "CUSTOM_VERIFY",
+      name: "客户验收中",
     });
-    workflowStateMap.set("STATE_CLOSED", {
-      code: "CLOSED",
-      name: "Closed",
+    listBugsMock.mockResolvedValueOnce({
+      items: [
+        makeBug({
+          currentStateId: "STATE_CUSTOM_VERIFY",
+          title: "Custom state bug",
+          statusCategory: "VERIFYING",
+        }),
+      ],
+      total: 1,
     });
-    listBugsMock
-      .mockResolvedValueOnce({
-        items: [
-          makeBug({
-            id: "01ARZ3NDEKTSV4RRFFQ69G5F01",
-            currentStateId: "STATE_REGRESSION_PASSED",
-            title: "Passed bug",
-            statusCategory: "DONE",
-          }),
-          makeBug({
-            id: "01ARZ3NDEKTSV4RRFFQ69G5F02",
-            currentStateId: "STATE_CLOSED",
-            title: "Closed bug",
-            statusCategory: "DONE",
-          }),
-        ],
-        total: 2,
-      })
-      .mockResolvedValueOnce({
-        items: [
-          makeBug({
-            id: "01ARZ3NDEKTSV4RRFFQ69G5F02",
-            currentStateId: "STATE_CLOSED",
-            title: "Closed bug",
-            statusCategory: "DONE",
-          }),
-        ],
-        total: 2,
-      });
 
     render(<BugsPage />);
 
-    expect(await screen.findByText("Passed bug")).toBeInTheDocument();
-    expect(screen.getByText("Closed bug")).toBeInTheDocument();
-
-    fireEvent.click(
-      screen.getByRole("button", { name: /bugs\.buckets\.closed/ }),
-    );
-
-    await waitFor(() =>
-      expect(listBugsMock).toHaveBeenLastCalledWith(
-        expect.objectContaining({ lifecycleBucket: "closed" }),
-      ),
-    );
-    expect(await screen.findByText("Closed bug")).toBeInTheDocument();
-    expect(screen.queryByText("Passed bug")).not.toBeInTheDocument();
+    expect(await screen.findByText("Custom state bug")).toBeInTheDocument();
+    const row = screen
+      .getAllByTestId("bugs-row")
+      .find((element) => within(element).queryByText("Custom state bug"));
+    expect(row).toBeDefined();
+    expect(
+      within(row as HTMLElement).getByText("客户验收中"),
+    ).toBeInTheDocument();
+    expect(
+      within(row as HTMLElement).queryByText("bugs.statusCategory.VERIFYING"),
+    ).not.toBeInTheDocument();
   });
 
   it("opens a bug detail sheet from a bugId deep link", async () => {

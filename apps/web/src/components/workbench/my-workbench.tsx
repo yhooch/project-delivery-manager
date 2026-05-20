@@ -76,7 +76,6 @@ type WorkbenchFilterState = {
 
 export function MyWorkbench() {
   const t = useTranslations("workbench");
-  const tStatusCategory = useTranslations("workItems.statusCategory");
   const tTimelineEvent = useTranslations("common.timeline.event");
   const tRoot = useTranslations();
   const locale = useLocale();
@@ -480,13 +479,12 @@ export function MyWorkbench() {
           toWorkbenchItem(
             locale,
             lookupHelpers,
-            tStatusCategory,
             t("time.justNow"),
             t("versionFallback"),
           ),
         )
         .map(withWorkbenchListKey("todo")),
-    [view, locale, lookupHelpers, tStatusCategory, t],
+    [view, locale, lookupHelpers, t],
   );
   const assignedTaskItems = useMemo(
     () =>
@@ -495,13 +493,12 @@ export function MyWorkbench() {
           toWorkbenchItem(
             locale,
             lookupHelpers,
-            tStatusCategory,
             t("time.justNow"),
             t("versionFallback"),
           ),
         )
         .map(withWorkbenchListKey("assigned-task")),
-    [view, locale, lookupHelpers, tStatusCategory, t],
+    [view, locale, lookupHelpers, t],
   );
   const assignedBugItems = useMemo(
     () =>
@@ -510,19 +507,17 @@ export function MyWorkbench() {
           toWorkbenchItem(
             locale,
             lookupHelpers,
-            tStatusCategory,
             t("time.justNow"),
             t("versionFallback"),
           ),
         )
         .map(withWorkbenchListKey("assigned-bug")),
-    [view, locale, lookupHelpers, tStatusCategory, t],
+    [view, locale, lookupHelpers, t],
   );
   const actionItems = useMemo(() => {
     const toWorkItem = toWorkbenchItem(
       locale,
       lookupHelpers,
-      tStatusCategory,
       t("time.justNow"),
       t("versionFallback"),
     );
@@ -535,7 +530,7 @@ export function MyWorkbench() {
         preferredActionId: todo.availableAction.id,
       }))
       .map(withWorkbenchListKey("action"));
-  }, [view, locale, lookupHelpers, tStatusCategory, t, tRoot]);
+  }, [view, locale, lookupHelpers, t, tRoot]);
   const pendingConfirmItems = useMemo(
     () =>
       (view?.sections.pendingConfirm.items.items ?? [])
@@ -543,13 +538,12 @@ export function MyWorkbench() {
           toWorkbenchItem(
             locale,
             lookupHelpers,
-            tStatusCategory,
             t("time.justNow"),
             t("versionFallback"),
           ),
         )
         .map(withWorkbenchListKey("pending-confirm")),
-    [view, locale, lookupHelpers, tStatusCategory, t],
+    [view, locale, lookupHelpers, t],
   );
   const dueSoonItems = useMemo(
     () =>
@@ -558,13 +552,12 @@ export function MyWorkbench() {
           toWorkbenchItem(
             locale,
             lookupHelpers,
-            tStatusCategory,
             t("time.justNow"),
             t("versionFallback"),
           ),
         )
         .map(withWorkbenchListKey("due-soon")),
-    [view, locale, lookupHelpers, tStatusCategory, t],
+    [view, locale, lookupHelpers, t],
   );
   const blockedItems = useMemo(
     () =>
@@ -573,13 +566,12 @@ export function MyWorkbench() {
           toWorkbenchItem(
             locale,
             lookupHelpers,
-            tStatusCategory,
             t("time.justNow"),
             t("versionFallback"),
           ),
         )
         .map(withWorkbenchListKey("blocked")),
-    [view, locale, lookupHelpers, tStatusCategory, t],
+    [view, locale, lookupHelpers, t],
   );
   const recentEvents = view?.sections.recentActivities.items.items ?? [];
 
@@ -1373,14 +1365,12 @@ function withWorkbenchListKey(prefix: string) {
 function toWorkbenchItem(
   locale: string,
   lookups?: WorkbenchLookupHelpers,
-  statusLabel?: (category: StatusCategory) => string,
   justNowLabel?: string,
   unknownVersionLabel?: string,
 ) {
   const toViewModel = createWorkItemViewModelMapper({
     locale,
     lookups,
-    statusLabel,
     justNowLabel,
     unknownVersionLabel,
   });

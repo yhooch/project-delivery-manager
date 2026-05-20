@@ -504,7 +504,18 @@ describe("VersionPage", () => {
     });
     getVersionBoardViewMock.mockResolvedValueOnce(
       makeBoardResponse([
-        makeSummary({ id: "01ARZ3NDEKTSV4RRFFQ69G5F01", title: "Login UI" }),
+        makeSummary({
+          id: "01ARZ3NDEKTSV4RRFFQ69G5F01",
+          title: "Login UI",
+          currentStatus: {
+            workflowVersionId: "01ARZ3NDEKTSV4RRFFQ69G5FW1",
+            currentStateId: "01ARZ3NDEKTSV4RRFFQ69G5FCS",
+            stateCode: "DEV_REVIEW",
+            stateName: "开发复核中",
+            statusCategory: "IN_PROGRESS",
+            lastStatusChangedAt: "2026-05-01T00:00:00.000Z",
+          },
+        }),
       ]),
     );
 
@@ -538,6 +549,7 @@ describe("VersionPage", () => {
     ).toBeInTheDocument();
     // Card itself surfaces.
     expect(await screen.findByText("Login UI")).toBeInTheDocument();
+    expect(screen.getByText("开发复核中")).toBeInTheDocument();
   });
 
   it("loads more items per board column and refreshes the first column pages after detail changes", async () => {
@@ -795,13 +807,66 @@ describe("VersionPage", () => {
     ).toHaveTextContent("v2.0.0");
   });
 
+  it("defaults to an in-progress version before older inactive versions", async () => {
+    listVersionsMock.mockResolvedValueOnce({
+      items: [
+        makeVersion({
+          id: "01ARZ3NDEKTSV4RRFFQ69G5FA1",
+          name: "archived",
+          status: "ARCHIVED",
+        }),
+        makeVersion({
+          id: "01ARZ3NDEKTSV4RRFFQ69G5FR1",
+          name: "released",
+          status: "RELEASED",
+        }),
+        makeVersion({
+          id: "01ARZ3NDEKTSV4RRFFQ69G5FP1",
+          name: "planned",
+          status: "PLANNED",
+        }),
+        makeVersion({
+          id: "01ARZ3NDEKTSV4RRFFQ69G5FI1",
+          name: "current",
+          status: "IN_PROGRESS",
+        }),
+      ],
+      total: 4,
+    });
+    getVersionBoardViewMock.mockResolvedValueOnce(makeBoardResponse([]));
+
+    render(<VersionPage />);
+
+    await waitFor(() =>
+      expect(getVersionBoardViewMock).toHaveBeenCalledWith(
+        expect.objectContaining({
+          versionId: "01ARZ3NDEKTSV4RRFFQ69G5FI1",
+        }),
+      ),
+    );
+    expect(
+      screen.getByTestId("version-board-version-trigger"),
+    ).toHaveTextContent("current");
+  });
+
   it("replaces a stale URL versionId with a version from the current space", async () => {
     searchParamsMock.current = new URLSearchParams({
       versionId: "VERSION_FROM_OLD_SPACE",
     });
     listVersionsMock.mockResolvedValueOnce({
-      items: [makeVersion({ id: "01ARZ3NDEKTSV4RRFFQ69G5FV1" })],
-      total: 1,
+      items: [
+        makeVersion({
+          id: "01ARZ3NDEKTSV4RRFFQ69G5FA1",
+          name: "archived",
+          status: "ARCHIVED",
+        }),
+        makeVersion({
+          id: "01ARZ3NDEKTSV4RRFFQ69G5FI1",
+          name: "current",
+          status: "IN_PROGRESS",
+        }),
+      ],
+      total: 2,
     });
     getVersionBoardViewMock.mockResolvedValueOnce(makeBoardResponse([]));
 
@@ -809,14 +874,14 @@ describe("VersionPage", () => {
 
     await waitFor(() =>
       expect(routerMock.replace).toHaveBeenCalledWith(
-        expect.stringContaining("versionId=01ARZ3NDEKTSV4RRFFQ69G5FV1"),
+        expect.stringContaining("versionId=01ARZ3NDEKTSV4RRFFQ69G5FI1"),
         expect.objectContaining({ scroll: false }),
       ),
     );
     await waitFor(() =>
       expect(getVersionBoardViewMock).toHaveBeenCalledWith(
         expect.objectContaining({
-          versionId: "01ARZ3NDEKTSV4RRFFQ69G5FV1",
+          versionId: "01ARZ3NDEKTSV4RRFFQ69G5FI1",
         }),
       ),
     );

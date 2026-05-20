@@ -9,7 +9,6 @@ import {
   BugSeveritySchema,
   PrioritySchema,
   StatusCategorySchema,
-  type StatusCategory,
   WorkItemTypeSchema,
 } from "./enums.ts";
 import {
@@ -119,80 +118,6 @@ export const BugDetailViewSchema = BugViewSchema.extend({
 
 export type BugDetailView = z.infer<typeof BugDetailViewSchema>;
 
-export const BugLifecycleFilterBuckets = [
-  "pendingConfirm",
-  "pendingFix",
-  "fixing",
-  "pendingRegression",
-  "regressionPassed",
-  "closed",
-] as const;
-
-export const BugLifecycleBucketSchema = z.enum([
-  "all",
-  ...BugLifecycleFilterBuckets,
-]);
-export const BugLifecycleFilterBucketSchema = z.enum(BugLifecycleFilterBuckets);
-
-export type BugLifecycleBucket = z.infer<typeof BugLifecycleBucketSchema>;
-export type BugLifecycleFilterBucket = z.infer<
-  typeof BugLifecycleFilterBucketSchema
->;
-
-export const BugLifecycleBucketStateCodes = {
-  pendingConfirm: ["PENDING_CONFIRMATION"],
-  pendingFix: ["PENDING_FIX"],
-  fixing: ["FIXING"],
-  pendingRegression: ["PENDING_REGRESSION"],
-  regressionPassed: ["REGRESSION_PASSED"],
-  closed: ["CLOSED"],
-} as const satisfies Record<BugLifecycleFilterBucket, readonly string[]>;
-
-// Pending regression must come from an explicit workflow state, not VERIFYING alone.
-export const BugLifecycleBucketFallbackStatusCategories = {
-  pendingConfirm: ["NOT_STARTED"],
-  pendingFix: ["WAITING"],
-  fixing: ["IN_PROGRESS", "VERIFYING"],
-  pendingRegression: [],
-  regressionPassed: ["DONE"],
-  closed: ["TERMINATED"],
-} as const satisfies Record<
-  BugLifecycleFilterBucket,
-  readonly StatusCategory[]
->;
-
-export function resolveBugLifecycleBucket(input: {
-  stateCode?: string;
-  statusCategory: StatusCategory;
-}): BugLifecycleFilterBucket {
-  const normalized = input.stateCode?.trim().toUpperCase();
-
-  if (normalized) {
-    const match = BugLifecycleFilterBuckets.find((bucket) =>
-      (BugLifecycleBucketStateCodes[bucket] as readonly string[]).includes(
-        normalized,
-      ),
-    );
-    if (match) {
-      return match;
-    }
-  }
-
-  const fallbackMatch = BugLifecycleFilterBuckets.find((bucket) => {
-    const fallbackCategories = BugLifecycleBucketFallbackStatusCategories[
-      bucket
-    ] as readonly StatusCategory[];
-
-    return fallbackCategories.includes(input.statusCategory);
-  });
-
-  if (fallbackMatch) {
-    return fallbackMatch;
-  }
-
-  return "fixing";
-}
-
 export const CreateBugRequestSchema = CreateWorkItemRequestSchema.omit({
   type: true,
 }).extend({
@@ -245,7 +170,6 @@ export const BugListQuerySchema = PageQuerySchema.merge(
   priority: PrioritySchema.optional(),
   severity: BugSeveritySchema.optional(),
   relatedTaskId: UlidSchema.optional(),
-  lifecycleBucket: BugLifecycleFilterBucketSchema.optional(),
 });
 
 export const WorkItemStatusCategoryCountSchema = z
@@ -259,17 +183,6 @@ export type WorkItemStatusCategoryCount = z.infer<
   typeof WorkItemStatusCategoryCountSchema
 >;
 
-export const BugLifecycleBucketCountSchema = z
-  .object({
-    bucket: BugLifecycleFilterBucketSchema,
-    count: z.number().int().min(0),
-  })
-  .strict();
-
-export type BugLifecycleBucketCount = z.infer<
-  typeof BugLifecycleBucketCountSchema
->;
-
 export const ListWorkItemsResponseSchema = pageResultSchema(
   WorkItemSchema,
 ).extend({
@@ -279,7 +192,6 @@ export const ListWorkItemsResponseSchema = pageResultSchema(
 export type ListWorkItemsResponse = z.infer<typeof ListWorkItemsResponseSchema>;
 
 export const ListBugsResponseSchema = pageResultSchema(BugViewSchema).extend({
-  lifecycleBucketCounts: z.array(BugLifecycleBucketCountSchema).optional(),
   statusCategoryCounts: z.array(WorkItemStatusCategoryCountSchema).optional(),
 });
 

@@ -351,6 +351,14 @@ describe("ExceptionsPage", () => {
           makeWorkItem({
             id: "01ARZ3NDEKTSV4RRFFQ69G5F01",
             title: "Crash overdue",
+            currentStatus: {
+              workflowVersionId: "01ARZ3NDEKTSV4RRFFQ69G5FW1",
+              currentStateId: "01ARZ3NDEKTSV4RRFFQ69G5FCS",
+              stateCode: "CUSTOM_WAITING_REVIEW",
+              stateName: "等待业务复核",
+              statusCategory: "WAITING",
+              lastStatusChangedAt: "2026-05-01T00:00:00.000Z",
+            },
           }),
         ),
       ]),
@@ -362,6 +370,7 @@ describe("ExceptionsPage", () => {
       expect(getSpaceExceptionsViewMock).toHaveBeenCalledTimes(1),
     );
     expect(await screen.findByText("Crash overdue")).toBeInTheDocument();
+    expect(screen.getByText("等待业务复核")).toBeInTheDocument();
     // Tab triggers render with translation keys.
     expect(
       screen.getByText("m4Views.exceptionType.overdue"),

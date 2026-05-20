@@ -127,7 +127,6 @@ type ExceptionViewRequest = ExceptionFilterValues & {
 export function ExceptionsPage() {
   const t = useTranslations("spaceExceptions");
   const tNav = useTranslations("shell.nav");
-  const tStatusCategory = useTranslations("workItems.statusCategory");
   const tRoot = useTranslations();
   const locale = useLocale();
   const router = useRouter();
@@ -400,7 +399,6 @@ export function ExceptionsPage() {
       const viewItem = createWorkItemViewModelMapper({
         locale,
         lookups: { getMember, getVersion },
-        statusLabel: tStatusCategory,
       })(item.workItem);
       const blockedSignal = item.exceptions.find(
         (signal) => signal.type === "blocked",
@@ -411,7 +409,7 @@ export function ExceptionsPage() {
         blockedReason: viewItem.blockedReason ?? blockedSignal?.reason,
       };
     },
-    [getMember, getVersion, locale, tStatusCategory],
+    [getMember, getVersion, locale],
   );
 
   const rememberWorkItem = useCallback(

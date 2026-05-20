@@ -5,7 +5,6 @@ import {
   GetBugResponseSchema,
   ListBugsResponseSchema,
   UpdateBugRequestSchema,
-  resolveBugLifecycleBucket,
 } from "./work-item.ts";
 
 const bug = {
@@ -52,33 +51,6 @@ describe("work item contracts", () => {
         permissions,
       }).permissions,
     ).toEqual(permissions);
-  });
-
-  it("does not infer pending regression from VERIFYING category alone", () => {
-    expect(
-      resolveBugLifecycleBucket({
-        stateCode: "QA_VERIFY",
-        statusCategory: "VERIFYING",
-      }),
-    ).toBe("fixing");
-    expect(
-      resolveBugLifecycleBucket({
-        stateCode: "PENDING_REGRESSION",
-        statusCategory: "VERIFYING",
-      }),
-    ).toBe("pendingRegression");
-    expect(
-      resolveBugLifecycleBucket({
-        stateCode: "pending_regression",
-        statusCategory: "VERIFYING",
-      }),
-    ).toBe("pendingRegression");
-    expect(
-      resolveBugLifecycleBucket({
-        stateCode: "PeNdInG_ReGrEsSiOn",
-        statusCategory: "VERIFYING",
-      }),
-    ).toBe("pendingRegression");
   });
 
   it("keeps bug lifecycle fields out of ordinary PATCH bodies", () => {

@@ -20,7 +20,6 @@ import {
   UpdateBugRequestSchema,
   type BugSeverity,
   type BugView,
-  type BugLifecycleFilterBucket,
   type CreateBugRequest,
   type ListBugsResponse,
   type Priority,
@@ -70,7 +69,6 @@ export class BugController {
       priority?: Priority;
       severity?: BugSeverity;
       relatedTaskId?: string;
-      lifecycleBucket?: BugLifecycleFilterBucket;
       tagIds?: string;
       tagMatch?: TagMatch;
     },

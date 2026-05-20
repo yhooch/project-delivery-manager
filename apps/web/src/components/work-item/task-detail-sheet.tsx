@@ -63,6 +63,7 @@ import {
   useRelationTitle,
   useSpaceMembers,
   useVersions,
+  useWorkflowStateLookup,
 } from "../../lib/v2/lookups";
 import {
   clearIncompatibleTraceSelection,
@@ -83,6 +84,7 @@ import {
   translateWorkflowActionName,
   translateWorkflowFieldLabel,
   translateWorkflowSelectOption,
+  translateWorkflowStateName,
 } from "../../lib/workflow-display";
 import { Link } from "../../i18n/routing";
 
@@ -377,13 +379,37 @@ function TaskDetailSheetBody({
     tApiError,
   });
   const detail = permissionState.detail;
+  const workflowVersionIds = useMemo(
+    () =>
+      [item.workflowVersionId, detail?.workflowVersionId].filter(
+        (id): id is string => Boolean(id),
+      ),
+    [detail?.workflowVersionId, item.workflowVersionId],
+  );
+  const workflowStateLookup = useWorkflowStateLookup(
+    workflowVersionIds,
+    spaceId,
+    organizationId,
+  );
   const priority = detail?.priority ?? item.priority;
   const statusCategory = detail?.statusCategory ?? item.statusCategory;
-  const statusLabel = detail
-    ? tApiError(
-        `${isBug ? "bugs" : "workItems"}.statusCategory.${statusCategory}`,
+  const detailWorkflowState = detail
+    ? workflowStateLookup.getState(
+        detail.workflowVersionId,
+        detail.currentStateId,
       )
-    : item.statusLabel;
+    : undefined;
+  const itemWorkflowState = workflowStateLookup.getState(
+    item.workflowVersionId,
+    item.currentStateId,
+  );
+  const statusLabel = detailWorkflowState
+    ? translateWorkflowStateName(tApiError, detailWorkflowState)
+    : detail
+      ? item.statusLabel
+      : itemWorkflowState
+        ? translateWorkflowStateName(tApiError, itemWorkflowState)
+        : item.statusLabel;
   const versionName = detail?.versionId
     ? (getVersion(detail.versionId)?.name ??
       missingLookupLabel(detail.versionId))
@@ -454,9 +480,12 @@ function TaskDetailSheetBody({
             lookups: {
               getMember: lookup.getMember,
               getVersion,
+              getWorkflowState: workflowStateLookup.getState,
             },
             statusLabel: (category) =>
               tApiError(`workItems.statusCategory.${category}`),
+            workflowStateLabel: (state) =>
+              translateWorkflowStateName(tApiError, state),
           }),
         );
         setNestedTaskOpen(true);
@@ -479,6 +508,7 @@ function TaskDetailSheetBody({
       organizationId,
       spaceId,
       tApiError,
+      workflowStateLookup.getState,
     ],
   );
   const openNestedWorkItem = useCallback(
@@ -492,14 +522,23 @@ function TaskDetailSheetBody({
           lookups: {
             getMember: lookup.getMember,
             getVersion,
+            getWorkflowState: workflowStateLookup.getState,
           },
           statusLabel: (category) =>
             tApiError(`workItems.statusCategory.${category}`),
+          workflowStateLabel: (state) =>
+            translateWorkflowStateName(tApiError, state),
         }),
       );
       setNestedTaskOpen(true);
     },
-    [getVersion, locale, lookup.getMember, tApiError],
+    [
+      getVersion,
+      locale,
+      lookup.getMember,
+      tApiError,
+      workflowStateLookup.getState,
+    ],
   );
   const closeNestedTask = useCallback((open: boolean) => {
     setNestedTaskOpen(open);

@@ -1,6 +1,5 @@
 import type {
   BugSeverity,
-  BugLifecycleFilterBucket,
   ListBugsResponse,
   Priority,
   SpaceRole,
@@ -25,7 +24,6 @@ export type BugListInput = {
   priority?: Priority;
   severity?: BugSeverity;
   relatedTaskId?: string;
-  lifecycleBucket?: BugLifecycleFilterBucket;
   tagIds?: string;
   tagMatch?: TagMatch;
 };

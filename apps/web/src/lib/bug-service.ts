@@ -7,7 +7,6 @@ import {
   UpdateBugRequestSchema,
   UpdateBugResponseSchema,
   type BugSeverity,
-  type BugLifecycleFilterBucket,
   type BugView,
   type CreateBugRequest,
   type ListBugsResponse,
@@ -50,7 +49,6 @@ export type UpdateBugInput = UpdateBugRequest;
 
 export type BugListFilterState = {
   assigneeId?: string;
-  lifecycleBucket?: BugLifecycleFilterBucket;
   priority?: Priority;
   relatedTaskId?: string;
   reporterId?: string;

@@ -1,9 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
 
-vi.mock("@project-delivery/shared", async () =>
-  vi.importActual("../../../../../packages/shared/src/index.ts"),
-);
-
 import type { PrismaService } from "../../prisma/prisma.service";
 import { PrismaBugRepository } from "./prisma-bug.repository";
 
@@ -11,15 +7,9 @@ type PrismaCallArgs = {
   where?: unknown;
 };
 
-type MockWorkflowState = {
-  code: string;
-  id: string;
-};
-
 function createRepositoryMock(
   input: {
     transactionResult?: unknown[];
-    workflowStates?: MockWorkflowState[];
     workflowVersion?: unknown;
   } = {},
 ) {
@@ -39,11 +29,8 @@ function createRepositoryMock(
     args,
     kind: "groupBy",
   }));
-  const workflowStateFindMany = vi.fn(
-    async () => input.workflowStates ?? [],
-  );
   const transaction = vi.fn(
-    async () => input.transactionResult ?? [[], 0, [], []],
+    async (_queries: unknown[]) => input.transactionResult ?? [[], 0, []],
   );
   const prisma = {
     client: {
@@ -52,9 +39,6 @@ function createRepositoryMock(
         count: workItemCount,
         findMany: workItemFindMany,
         groupBy: workItemGroupBy,
-      },
-      workflowState: {
-        findMany: workflowStateFindMany,
       },
       workflowBinding: {
         findFirst: workflowBindingFindFirst,
@@ -72,7 +56,6 @@ function createRepositoryMock(
     workItemFindMany,
     workItemGroupBy,
     workflowBindingFindFirst,
-    workflowStateFindMany,
     workflowVersionFindFirst,
   };
 }
@@ -123,128 +106,21 @@ describe("PrismaBugRepository", () => {
     expect(workflowBindingFindFirst).not.toHaveBeenCalled();
   });
 
-  it("filters pending regression by explicit workflow state code case-insensitively", async () => {
-    const { repository, workItemFindMany } = createRepositoryMock();
-
-    await repository.listBySpaceId("01ARZ3NDEKTSV4RRFFQ69G5SPC", {
-      actorUserId: "01ARZ3NDEKTSV4RRFFQ69G5USR",
-      lifecycleBucket: "pendingRegression",
-      page: 1,
-      pageSize: 20,
-      visibility: "SPACE",
-    });
-
-    const where = workItemFindMany.mock.calls[0]?.[0].where;
-
-    expect(where).toEqual(
-      expect.objectContaining({
-        AND: expect.arrayContaining([
-          {
-            currentState: {
-              OR: [
-                {
-                  code: {
-                    equals: "PENDING_REGRESSION",
-                    mode: "insensitive",
-                  },
-                },
-              ],
-            },
-          },
-        ]),
-      }),
-    );
-    expect(JSON.stringify(where)).not.toContain("VERIFYING");
-  });
-
-  it("excludes explicit pending regression state codes from fixing fallback case-insensitively", async () => {
-    const { repository, workItemFindMany } = createRepositoryMock();
-
-    await repository.listBySpaceId("01ARZ3NDEKTSV4RRFFQ69G5SPC", {
-      actorUserId: "01ARZ3NDEKTSV4RRFFQ69G5USR",
-      lifecycleBucket: "fixing",
-      page: 1,
-      pageSize: 20,
-      visibility: "SPACE",
-    });
-
-    const where = workItemFindMany.mock.calls[0]?.[0].where as {
-      AND?: unknown[];
-    };
-    const lifecycleWhere = where.AND?.[0];
-
-    expect(lifecycleWhere).toEqual(
-      expect.objectContaining({
-        OR: expect.arrayContaining([
-          {
-            currentState: {
-              OR: [
-                {
-                  code: {
-                    equals: "FIXING",
-                    mode: "insensitive",
-                  },
-                },
-              ],
-            },
-          },
-          expect.objectContaining({
-            AND: expect.arrayContaining([
-              {
-                currentState: {
-                  NOT: {
-                    OR: expect.arrayContaining([
-                      {
-                        code: {
-                          equals: "PENDING_REGRESSION",
-                          mode: "insensitive",
-                        },
-                      },
-                    ]),
-                  },
-                },
-              },
-              {
-                statusCategory: {
-                  in: ["IN_PROGRESS", "VERIFYING"],
-                },
-              },
-            ]),
-          }),
-        ]),
-      }),
-    );
-    expect(JSON.stringify(lifecycleWhere)).not.toContain("notIn");
-  });
-
-  it("counts lowercase and mixed-case pending regression states consistently with list rules", async () => {
-    const { repository } = createRepositoryMock({
+  it("returns status category counts without lifecycle bucket aggregation", async () => {
+    const { repository, transaction, workItemGroupBy } = createRepositoryMock({
       transactionResult: [
         [],
         0,
-        [],
         [
           {
-            _count: { _all: 2 },
-            currentStateId: "state_verify",
-            statusCategory: "VERIFYING",
-          },
-          {
-            _count: { _all: 1 },
-            currentStateId: "state_regression_lower",
-            statusCategory: "VERIFYING",
-          },
-          {
             _count: { _all: 3 },
-            currentStateId: "state_regression_mixed",
+            statusCategory: "DONE",
+          },
+          {
+            _count: { _all: 2 },
             statusCategory: "VERIFYING",
           },
         ],
-      ],
-      workflowStates: [
-        { code: "qa_verify", id: "state_verify" },
-        { code: "pending_regression", id: "state_regression_lower" },
-        { code: "PeNdInG_ReGrEsSiOn", id: "state_regression_mixed" },
       ],
     });
 
@@ -258,13 +134,11 @@ describe("PrismaBugRepository", () => {
       },
     );
 
-    expect(result.lifecycleBucketCounts).toContainEqual({
-      bucket: "fixing",
-      count: 2,
-    });
-    expect(result.lifecycleBucketCounts).toContainEqual({
-      bucket: "pendingRegression",
-      count: 4,
-    });
+    expect(result.statusCategoryCounts).toEqual([
+      { count: 3, statusCategory: "DONE" },
+      { count: 2, statusCategory: "VERIFYING" },
+    ]);
+    expect(transaction.mock.calls[0]?.[0]).toHaveLength(3);
+    expect(workItemGroupBy).toHaveBeenCalledTimes(1);
   });
 });

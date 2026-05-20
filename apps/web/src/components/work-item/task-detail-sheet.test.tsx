@@ -82,6 +82,7 @@ const memberMap = new Map<
 >();
 const versionMap = new Map<string, { name: string }>();
 const relationTitleMap = new Map<string, string>();
+const workflowStateMap = new Map<string, { code: string; name: string }>();
 vi.mock("../../lib/v2/lookups", () => ({
   useRelationTitle: (type: string, id: string | undefined) => ({
     title: id ? relationTitleMap.get(`${type}:${id}`) : undefined,
@@ -105,6 +106,14 @@ vi.mock("../../lib/v2/lookups", () => ({
     loading: false,
     error: null,
     getVersion: (id: string) => versionMap.get(id),
+  }),
+  useWorkflowStateLookup: () => ({
+    loading: false,
+    error: null,
+    getState: (
+      _workflowVersionId: string | undefined,
+      stateId: string | undefined,
+    ) => (stateId ? workflowStateMap.get(stateId) : undefined),
   }),
 }));
 
@@ -204,6 +213,8 @@ function makeViewModel(
     code: "TASK-AAA001",
     type: "TASK",
     title: "Detail test task",
+    workflowVersionId: "01ARZ3NDEKTSV4RRFFQ69G5FW1",
+    currentStateId: "01ARZ3NDEKTSV4RRFFQ69G5FS1",
     statusCategory: "IN_PROGRESS",
     statusLabel: "进行中",
     priority: "MEDIUM",
@@ -286,6 +297,7 @@ beforeEach(() => {
   memberMap.clear();
   versionMap.clear();
   relationTitleMap.clear();
+  workflowStateMap.clear();
   getBugMock.mockReset();
   updateBugMock.mockReset();
   getWorkItemMock.mockReset();
@@ -381,6 +393,32 @@ describe("TaskDetailSheet", () => {
       await screen.findByRole("button", { name: "Approve" }),
     ).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Reject" })).toBeInTheDocument();
+  });
+
+  it("keeps the detail header on the real workflow state name after detail loads", async () => {
+    workflowStateMap.set("01ARZ3NDEKTSV4RRFFQ69G5FS2", {
+      code: "CUSTOM_ACCEPTANCE",
+      name: "客户验收中",
+    });
+    getWorkItemMock.mockResolvedValueOnce(
+      makeDetailResponse({
+        currentStateId: "01ARZ3NDEKTSV4RRFFQ69G5FS2",
+        statusCategory: "VERIFYING",
+      }),
+    );
+
+    render(
+      <TaskDetailSheet
+        item={makeViewModel({ statusLabel: "开始处理" })}
+        open
+        onOpenChange={() => {}}
+      />,
+    );
+
+    expect(await screen.findByText("客户验收中")).toBeInTheDocument();
+    expect(
+      screen.queryByText("workItems.statusCategory.VERIFYING"),
+    ).not.toBeInTheDocument();
   });
 
   it("focuses the workflow action region when requested by a shortcut", async () => {

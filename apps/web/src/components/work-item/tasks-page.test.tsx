@@ -73,6 +73,7 @@ const memberMap = new Map<
   { user: { name: string; username: string } }
 >();
 const versionMap = new Map<string, { name: string }>();
+const workflowStateMap = new Map<string, { code: string; name: string }>();
 vi.mock("../../lib/v2/lookups", () => ({
   useSpaceMembers: () => ({
     members: Array.from(memberMap.entries()).map(([userId, member]) => ({
@@ -91,6 +92,14 @@ vi.mock("../../lib/v2/lookups", () => ({
     loading: false,
     error: null,
     getVersion: (id: string) => versionMap.get(id),
+  }),
+  useWorkflowStateLookup: () => ({
+    loading: false,
+    error: null,
+    getState: (
+      _workflowVersionId: string | undefined,
+      stateId: string | undefined,
+    ) => (stateId ? workflowStateMap.get(stateId) : undefined),
   }),
 }));
 
@@ -220,6 +229,7 @@ beforeEach(() => {
   searchParamsMock.current = new URLSearchParams();
   memberMap.clear();
   versionMap.clear();
+  workflowStateMap.clear();
   sessionMock.current = {
     currentSpace: {
       id: "SPC_01",
@@ -430,6 +440,36 @@ describe("TasksPage", () => {
     expect(screen.getByText("v1.0.0 release")).toBeInTheDocument();
     // The avatar fallback shows the initial of the resolved name.
     expect(screen.getByText("A")).toBeInTheDocument();
+  });
+
+  it("renders the real workflow state name in task rows", async () => {
+    workflowStateMap.set("01ARZ3NDEKTSV4RRFFQ69G5FCS", {
+      code: "CUSTOM_REVIEW",
+      name: "产品复核",
+    });
+    listWorkItemsMock.mockResolvedValueOnce({
+      items: [
+        makeTask({
+          statusCategory: "IN_PROGRESS",
+          title: "Custom state task",
+        }),
+      ],
+      total: 1,
+    });
+
+    render(<TasksPage />);
+
+    expect(await screen.findByText("Custom state task")).toBeInTheDocument();
+    const row = screen
+      .getAllByTestId("tasks-row")
+      .find((element) => within(element).queryByText("Custom state task"));
+    expect(row).toBeDefined();
+    expect(within(row as HTMLElement).getByText("产品复核")).toBeInTheDocument();
+    expect(
+      within(row as HTMLElement).queryByText(
+        "workItems.statusCategory.IN_PROGRESS",
+      ),
+    ).not.toBeInTheDocument();
   });
 
   it("formats task due dates with the active locale instead of showing raw ISO", async () => {

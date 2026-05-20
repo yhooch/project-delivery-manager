@@ -31,7 +31,11 @@ import { listRequirements } from "../../lib/requirement-service";
 import { usePathname, useRouter } from "../../i18n/routing";
 import { serializeTagFilterQuery } from "../../lib/tag-query";
 import { collectTagsFromItems } from "../../lib/tag-ui";
-import { useSpaceMembers, useVersions } from "../../lib/v2/lookups";
+import {
+  useSpaceMembers,
+  useVersions,
+  useWorkflowStateLookup,
+} from "../../lib/v2/lookups";
 import {
   toWorkItemListViewModel,
   type WorkItemViewModel,
@@ -41,6 +45,7 @@ import {
   listWorkItems,
   type TaskListFilterState,
 } from "../../lib/work-item-service";
+import { translateWorkflowStateName } from "../../lib/workflow-display";
 
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
@@ -306,6 +311,16 @@ export function TasksPage() {
     };
   }, [filterOpen, organizationId, spaceId]);
 
+  const workflowVersionIds = useMemo(
+    () => items.map((item) => item.workflowVersionId),
+    [items],
+  );
+  const workflowStateLookup = useWorkflowStateLookup(
+    workflowVersionIds,
+    spaceId,
+    organizationId,
+  );
+
   const buckets: { count: number; label: string; key: StatusFilterKey }[] =
     useMemo(
       () => [
@@ -356,11 +371,22 @@ export function TasksPage() {
           lookups: {
             getMember,
             getVersion,
+            getWorkflowState: workflowStateLookup.getState,
           },
           statusLabel: (category) => tStatus(category),
+          workflowStateLabel: (state) =>
+            translateWorkflowStateName(tApiError, state),
         }),
       ),
-    [getMember, getVersion, items, locale, tStatus],
+    [
+      getMember,
+      getVersion,
+      items,
+      locale,
+      tApiError,
+      tStatus,
+      workflowStateLookup.getState,
+    ],
   );
 
   const filtered = useMemo(() => {
@@ -484,8 +510,14 @@ export function TasksPage() {
           open(
             toWorkItemListViewModel(item, {
               locale,
-              lookups: { getMember, getVersion },
+              lookups: {
+                getMember,
+                getVersion,
+                getWorkflowState: workflowStateLookup.getState,
+              },
               statusLabel: (category) => tStatus(category),
+              workflowStateLabel: (state) =>
+                translateWorkflowStateName(tApiError, state),
             }),
           );
           setHandledDeepLinkKey(key);
@@ -513,6 +545,8 @@ export function TasksPage() {
     taskViewModels,
     locale,
     tStatus,
+    tApiError,
+    workflowStateLookup.getState,
   ]);
 
   const focusRow = useCallback((itemId: string) => {

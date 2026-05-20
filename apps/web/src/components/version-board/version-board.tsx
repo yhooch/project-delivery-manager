@@ -50,7 +50,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "../ui/avatar";
 import { Badge } from "../ui/badge";
 import { Button } from "../ui/button";
 import { SelectMenu } from "../ui/select-menu";
-import { getStatusCategoryDotClass } from "../ui/status-badge";
+import { getStatusCategoryDotClass, StatusBadge } from "../ui/status-badge";
 import { Tip } from "../ui/tooltip";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../ui/tabs";
 import { CreateTaskDialog } from "../work-item/create-task-dialog";
@@ -101,6 +101,28 @@ const VERSION_STATUS_VARIANT: Record<
 };
 
 const BOARD_COLUMN_PAGE_SIZE = 50;
+const DEFAULT_VERSION_STATUS_ORDER: VersionStatus[] = [
+  "IN_PROGRESS",
+  "PLANNED",
+  "RELEASED",
+  "ARCHIVED",
+];
+
+function getDefaultVersionId(
+  versions: Version[],
+  preferredVersionId: string | null,
+): string | null {
+  if (preferredVersionId && versions.some((v) => v.id === preferredVersionId)) {
+    return preferredVersionId;
+  }
+
+  for (const status of DEFAULT_VERSION_STATUS_ORDER) {
+    const version = versions.find((v) => v.status === status);
+    if (version) return version.id;
+  }
+
+  return versions[0]?.id ?? null;
+}
 
 // ---------------------------------------------------------------------------
 // Filter state shape — keep all three filters together so the toolbar wiring
@@ -256,6 +278,7 @@ export function VersionPage() {
   // ----- versions -----
   const [versions, setVersions] = useState<Version[]>([]);
   const [versionId, setVersionId] = useState<string | null>(null);
+  const versionIdRef = useRef<string | null>(null);
   const [isLoadingVersions, setIsLoadingVersions] = useState(false);
   const [errorKey, setErrorKey] = useState<string | null>(null);
 
@@ -300,6 +323,10 @@ export function VersionPage() {
   const [createVersionDialogOpen, setCreateVersionDialogOpen] = useState(false);
   const [editVersionDialogOpen, setEditVersionDialogOpen] = useState(false);
   const { captureFocus, restoreFocus } = useFocusReturn();
+  const commitVersionId = useCallback((nextVersionId: string | null) => {
+    versionIdRef.current = nextVersionId;
+    setVersionId(nextVersionId);
+  }, []);
 
   useEffect(() => {
     versionsRequestSeq.current += 1;
@@ -307,7 +334,7 @@ export function VersionPage() {
     requirementsRequestSeq.current += 1;
     timelineRequestSeq.current += 1;
     setVersions([]);
-    setVersionId(null);
+    commitVersionId(null);
     setBoard(null);
     setLoadingColumnCategory(null);
     setRequirements([]);
@@ -323,7 +350,7 @@ export function VersionPage() {
     setCreateWorkItemDialogOpen(false);
     setCreateVersionDialogOpen(false);
     setEditVersionDialogOpen(false);
-  }, [organizationId, spaceId]);
+  }, [commitVersionId, organizationId, spaceId]);
 
   // -------------------------------------------------------------------------
   // Data loaders
@@ -346,19 +373,19 @@ export function VersionPage() {
 
   const selectVersion = useCallback(
     (nextVersionId: string, syncUrl = true) => {
-      setVersionId(nextVersionId);
+      commitVersionId(nextVersionId);
       if (syncUrl) {
         replaceVersionParam(nextVersionId);
       }
     },
-    [replaceVersionParam],
+    [commitVersionId, replaceVersionParam],
   );
 
   const fetchVersions = useCallback(async () => {
     if (!spaceId) {
       versionsRequestSeq.current += 1;
       setVersions([]);
-      setVersionId(null);
+      commitVersionId(null);
       setIsLoadingVersions(false);
       return;
     }
@@ -375,19 +402,18 @@ export function VersionPage() {
       });
       if (versionsRequestSeq.current !== requestId) return;
       setVersions(page.items);
-      if (
+      const hasUrlVersion = Boolean(
         versionIdParam &&
-        !page.items.some((version) => version.id === versionIdParam)
-      ) {
-        replaceVersionParam(page.items[0]?.id);
+          page.items.some((version) => version.id === versionIdParam),
+      );
+      const nextVersionId = hasUrlVersion
+        ? (versionIdParam ?? null)
+        : getDefaultVersionId(page.items, versionIdRef.current);
+
+      if (versionIdParam && !hasUrlVersion) {
+        replaceVersionParam(nextVersionId ?? undefined);
       }
-      setVersionId((current) => {
-        if (versionIdParam && page.items.some((v) => v.id === versionIdParam)) {
-          return versionIdParam;
-        }
-        if (current && page.items.some((v) => v.id === current)) return current;
-        return page.items[0]?.id ?? null;
-      });
+      commitVersionId(nextVersionId ?? null);
     } catch (error) {
       if (versionsRequestSeq.current !== requestId) return;
       setErrorKey(getApiErrorMessageKey(error));
@@ -396,7 +422,13 @@ export function VersionPage() {
         setIsLoadingVersions(false);
       }
     }
-  }, [organizationId, replaceVersionParam, spaceId, versionIdParam]);
+  }, [
+    commitVersionId,
+    organizationId,
+    replaceVersionParam,
+    spaceId,
+    versionIdParam,
+  ]);
 
   useEffect(() => {
     void fetchVersions();
@@ -408,9 +440,9 @@ export function VersionPage() {
     }
 
     if (versions.some((version) => version.id === versionIdParam)) {
-      setVersionId(versionIdParam);
+      commitVersionId(versionIdParam);
     }
-  }, [versionIdParam, versions]);
+  }, [commitVersionId, versionIdParam, versions]);
 
   const fetchBoard = useCallback(async () => {
     if (!versionId) {
@@ -1482,6 +1514,13 @@ function BoardColumns({
                     </div>
                     <div className="mt-1.5 line-clamp-2 text-[13px] font-medium leading-snug">
                       {item.title}
+                    </div>
+                    <div className="mt-2 flex min-w-0">
+                      <StatusBadge
+                        category={viewItem.statusCategory}
+                        label={viewItem.statusLabel}
+                        className="max-w-full text-[9px]"
+                      />
                     </div>
                     <div className="mt-2 flex items-center gap-2">
                       {item.exceptionSignals.some(

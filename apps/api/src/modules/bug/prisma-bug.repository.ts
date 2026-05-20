@@ -1,12 +1,4 @@
 import { Inject, Injectable } from "@nestjs/common";
-import {
-  BugLifecycleBucketFallbackStatusCategories,
-  BugLifecycleBucketStateCodes,
-  BugLifecycleFilterBuckets,
-  resolveBugLifecycleBucket,
-  type BugLifecycleFilterBucket,
-  type StatusCategory,
-} from "@project-delivery/shared";
 import { ulid } from "ulid";
 
 import { Prisma } from "../../generated/prisma/client";
@@ -37,7 +29,6 @@ export class PrismaBugRepository implements BugRepository {
     const where = buildListWhere(spaceId, input);
     const countWhere = buildListWhere(spaceId, {
       ...input,
-      lifecycleBucket: undefined,
       statusCategory: undefined,
     });
     const taggedTargetIds = await findTaggedTargetIds(this.prisma.client, {
@@ -56,7 +47,6 @@ export class PrismaBugRepository implements BugRepository {
       if (visibleIds.length === 0) {
         return {
           items: [],
-          lifecycleBucketCounts: [],
           page: input.page,
           pageSize: input.pageSize,
           statusCategoryCounts: [],
@@ -75,7 +65,7 @@ export class PrismaBugRepository implements BugRepository {
     applyTaggedTargetIds(where, taggedTargetIds);
     applyTaggedTargetIds(countWhere, taggedTargetIds);
 
-    const [items, total, statusCategoryGroups, lifecycleGroups] =
+    const [items, total, statusCategoryGroups] =
       await this.prisma.client.$transaction([
         this.prisma.client.workItem.findMany({
           include: {
@@ -96,17 +86,7 @@ export class PrismaBugRepository implements BugRepository {
           },
           where: countWhere,
         }),
-        this.prisma.client.workItem.groupBy({
-          by: ["currentStateId", "statusCategory"],
-          _count: {
-            _all: true,
-          },
-          where: countWhere,
-        }),
       ]);
-    const stateCodes = await this.findStateCodes(
-      lifecycleGroups.map((group) => group.currentStateId),
-    );
     const tagsByBugId = await listTagsByTargets(this.prisma.client, {
       organizationId: items[0]?.organizationId ?? "",
       spaceId,
@@ -126,10 +106,6 @@ export class PrismaBugRepository implements BugRepository {
             ]
           : [],
       ),
-      lifecycleBucketCounts: toLifecycleBucketCounts(
-        lifecycleGroups,
-        stateCodes,
-      ),
       page: input.page,
       pageSize: input.pageSize,
       statusCategoryCounts: statusCategoryGroups.map((group) => ({
@@ -138,28 +114,6 @@ export class PrismaBugRepository implements BugRepository {
       })),
       total,
     };
-  }
-
-  private async findStateCodes(stateIds: string[]) {
-    const uniqueStateIds = [...new Set(stateIds)];
-
-    if (uniqueStateIds.length === 0) {
-      return new Map<string, string>();
-    }
-
-    const states = await this.prisma.client.workflowState.findMany({
-      select: {
-        code: true,
-        id: true,
-      },
-      where: {
-        id: {
-          in: uniqueStateIds,
-        },
-      },
-    });
-
-    return new Map(states.map((state) => [state.id, state.code]));
   }
 
   async create(input: CreateBugInput) {
@@ -776,13 +730,6 @@ function buildListWhere(
     versionId: input.versionId,
   };
 
-  if (input.lifecycleBucket) {
-    where.AND = [
-      ...toArray(where.AND),
-      bugLifecycleBucketWhere(input.lifecycleBucket),
-    ];
-  }
-
   return where;
 }
 
@@ -802,100 +749,6 @@ function applyTaggedTargetIds(
       },
     },
   ];
-}
-
-function bugLifecycleBucketWhere(
-  bucket: BugLifecycleFilterBucket,
-): Prisma.WorkItemWhereInput {
-  const stateCodes = BugLifecycleBucketStateCodes[bucket];
-  const fallbackStatusCategories =
-    BugLifecycleBucketFallbackStatusCategories[bucket];
-  const stateCodeWhere = workflowStateCodeMatchesAnyWhere(stateCodes);
-
-  if (fallbackStatusCategories.length === 0) {
-    return stateCodeWhere;
-  }
-
-  return {
-    OR: [
-      stateCodeWhere,
-      {
-        AND: [
-          workflowStateCodeMatchesNoneWhere(knownBugLifecycleStateCodes()),
-          {
-            statusCategory: {
-              in: [...fallbackStatusCategories],
-            },
-          },
-        ],
-      },
-    ],
-  };
-}
-
-function workflowStateCodeMatchesAnyWhere(
-  stateCodes: readonly string[],
-): Prisma.WorkItemWhereInput {
-  return {
-    currentState: {
-      OR: stateCodes.map((code) => caseInsensitiveWorkflowStateCodeWhere(code)),
-    },
-  };
-}
-
-function workflowStateCodeMatchesNoneWhere(
-  stateCodes: readonly string[],
-): Prisma.WorkItemWhereInput {
-  return {
-    currentState: {
-      NOT: {
-        OR: stateCodes.map((code) =>
-          caseInsensitiveWorkflowStateCodeWhere(code),
-        ),
-      },
-    },
-  };
-}
-
-function caseInsensitiveWorkflowStateCodeWhere(
-  code: string,
-): Prisma.WorkflowStateWhereInput {
-  return {
-    code: {
-      equals: code,
-      mode: "insensitive" as const,
-    },
-  };
-}
-
-function knownBugLifecycleStateCodes() {
-  return BugLifecycleFilterBuckets.flatMap((bucket) => [
-    ...BugLifecycleBucketStateCodes[bucket],
-  ]);
-}
-
-function toLifecycleBucketCounts(
-  groups: {
-    currentStateId: string;
-    statusCategory: StatusCategory;
-    _count: { _all: number };
-  }[],
-  stateCodes: Map<string, string>,
-) {
-  const counts = new Map<BugLifecycleFilterBucket, number>();
-
-  for (const group of groups) {
-    const bucket = resolveBugLifecycleBucket({
-      stateCode: stateCodes.get(group.currentStateId),
-      statusCategory: group.statusCategory,
-    });
-    counts.set(bucket, (counts.get(bucket) ?? 0) + group._count._all);
-  }
-
-  return BugLifecycleFilterBuckets.map((bucket) => ({
-    bucket,
-    count: counts.get(bucket) ?? 0,
-  }));
 }
 
 function buildOrderBy(

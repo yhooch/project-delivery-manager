@@ -520,6 +520,14 @@ describe("MyWorkbench", () => {
           makeWorkItemSummary({
             id: "01ARZ3NDEKTSV4RRFFQ69G5F01",
             title: "Todo item one",
+            currentStatus: {
+              workflowVersionId: "01ARZ3NDEKTSV4RRFFQ69G5FW1",
+              currentStateId: "01ARZ3NDEKTSV4RRFFQ69G5FCS",
+              stateCode: "PRODUCT_REVIEW",
+              stateName: "产品验证中",
+              statusCategory: "VERIFYING",
+              lastStatusChangedAt: "2026-05-10T00:00:00.000Z",
+            },
           }),
         ],
         assignedTasks: [
@@ -567,6 +575,7 @@ describe("MyWorkbench", () => {
     render(<MyWorkbench />);
 
     expect(await screen.findByText("Todo item one")).toBeInTheDocument();
+    expect(screen.getByText("产品验证中")).toBeInTheDocument();
     expect(screen.getByText("Assigned task item")).toBeInTheDocument();
     expect(screen.getByText("Assigned bug item")).toBeInTheDocument();
     expect(screen.getByText("Due soon item")).toBeInTheDocument();

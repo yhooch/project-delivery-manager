@@ -16,6 +16,8 @@ export type WorkItemViewModel = {
   type: "TASK" | "BUG";
   title: string;
   contextLabel?: string;
+  workflowVersionId: string;
+  currentStateId: string;
   statusCategory: StatusCategory;
   statusLabel: string;
   priority: "LOW" | "MEDIUM" | "HIGH" | "URGENT";
@@ -35,12 +37,18 @@ export type WorkItemViewModelLookupHelpers = {
     spaceId?: string,
   ) => SpaceMemberWithUser | undefined;
   getVersion: (versionId: string, spaceId?: string) => Version | undefined;
+  getWorkflowState?: (
+    workflowVersionId: string | undefined,
+    stateId: string | undefined,
+    spaceId?: string,
+  ) => { code?: string; name: string } | undefined;
 };
 
 type WorkItemViewModelOptions = {
   locale: string;
   lookups?: WorkItemViewModelLookupHelpers;
   statusLabel?: (category: StatusCategory) => string;
+  workflowStateLabel?: (state: { code?: string; name: string }) => string;
   justNowLabel?: string;
   unknownVersionLabel?: string;
 };
@@ -57,7 +65,7 @@ export function toWorkItemViewModel(
   {
     locale,
     lookups,
-    statusLabel,
+    workflowStateLabel,
     justNowLabel,
     unknownVersionLabel,
   }: WorkItemViewModelOptions,
@@ -93,10 +101,14 @@ export function toWorkItemViewModel(
     code,
     type: item.type,
     title: item.title,
+    workflowVersionId: item.currentStatus.workflowVersionId,
+    currentStateId: item.currentStatus.currentStateId,
     statusCategory: item.currentStatus.statusCategory,
     statusLabel:
-      statusLabel?.(item.currentStatus.statusCategory) ??
-      item.currentStatus.stateName,
+      workflowStateLabel?.({
+        code: item.currentStatus.stateCode,
+        name: item.currentStatus.stateName,
+      }) ?? item.currentStatus.stateName,
     priority: item.priority,
     assignee: {
       name: assigneeName,
@@ -118,6 +130,7 @@ export function toWorkItemListViewModel(
     locale,
     lookups,
     statusLabel,
+    workflowStateLabel,
     unknownVersionLabel,
   }: WorkItemViewModelOptions,
 ): WorkItemViewModel {
@@ -141,14 +154,23 @@ export function toWorkItemListViewModel(
       item.statusCategory !== "TERMINATED"
     : false;
   const isBlocked = Boolean(item.blockedAt);
+  const workflowState = lookups?.getWorkflowState?.(
+    item.workflowVersionId,
+    item.currentStateId,
+    item.spaceId,
+  );
 
   return {
     id: item.id,
     code,
     type: item.type,
     title: item.title,
+    workflowVersionId: item.workflowVersionId,
+    currentStateId: item.currentStateId,
     statusCategory: item.statusCategory,
-    statusLabel: statusLabel?.(item.statusCategory) ?? item.statusCategory,
+    statusLabel: workflowState
+      ? (workflowStateLabel?.(workflowState) ?? workflowState.name)
+      : (statusLabel?.(item.statusCategory) ?? item.statusCategory),
     priority: item.priority,
     assignee: {
       name: assigneeName,
