@@ -5,6 +5,13 @@
   },
   "common": {
     "emptyValue": "—",
+    "objectMeta": {
+      "createdByAt": "创建 {name} · {date}",
+      "createdBy": "创建 {name}",
+      "createdTooltip": "创建人：{name} · 创建时间：{date}",
+      "creatorTooltip": "创建人：{name}",
+      "unknownCreator": "未知成员"
+    },
     "actions": {
       "close": "关闭"
     },

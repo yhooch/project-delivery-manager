@@ -64,6 +64,7 @@ import { Button } from "../ui/button";
 import { StatusBadge } from "../ui/status-badge";
 import { SelectMenu } from "../ui/select-menu";
 import { Tip } from "../ui/tooltip";
+import { CreatedMeta } from "../v2/created-meta";
 import { PageHeader } from "../v2/page-header";
 import { FilterField, FilterPanel } from "../v2/filter-controls";
 import {
@@ -873,6 +874,10 @@ export function IntakePage() {
                       {item.title}
                     </span>
                     <ListTagRail tags={tags} />
+                    <CreatedMeta
+                      createdAt={item.createdAt}
+                      creatorName={reporterTip}
+                    />
                   </span>
                   <Badge variant="outline" className="hidden md:inline-flex">
                     {tIntakeItems(`sourceType.${item.sourceType}`)}

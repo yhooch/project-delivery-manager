@@ -55,6 +55,8 @@ export type VersionBoardWorkItemRecord = {
   priority: ViewWorkItemSummary["priority"];
   assigneeId: string | null;
   reporterId: string;
+  createdAt: Date;
+  createdById: string | null;
   workflowVersionId: string;
   currentStateId: string;
   statusCategory: StatusCategory;

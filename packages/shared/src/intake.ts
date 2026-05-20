@@ -38,6 +38,7 @@ export const IntakeItemSchema = z
     tags: TagListSchema,
     acceptedAt: IsoDateTimeSchema.optional(),
     convertedAt: IsoDateTimeSchema.optional(),
+    createdAt: IsoDateTimeSchema.optional(),
     updatedAt: IsoDateTimeSchema.optional(),
   })
   .strict();

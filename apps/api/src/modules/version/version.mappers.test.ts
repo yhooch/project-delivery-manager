@@ -194,6 +194,8 @@ function workItem(
       name: "In progress",
     },
     currentStateId: "state_1",
+    createdAt: now,
+    createdById: "creator_1",
     dueDate: null,
     id: "work_item_1",
     intakeItemId: null,

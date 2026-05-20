@@ -5,6 +5,13 @@
   },
   "common": {
     "emptyValue": "—",
+    "objectMeta": {
+      "createdByAt": "Created by {name} · {date}",
+      "createdBy": "Created by {name}",
+      "createdTooltip": "Creator: {name} · Created: {date}",
+      "creatorTooltip": "Creator: {name}",
+      "unknownCreator": "Unknown member"
+    },
     "actions": {
       "close": "Close"
     },

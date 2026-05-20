@@ -32,6 +32,8 @@ export const WorkItemSchema = z
     priority: PrioritySchema,
     assigneeId: UlidSchema.optional(),
     reporterId: UlidSchema,
+    createdAt: IsoDateTimeSchema.optional(),
+    createdById: UlidSchema.optional(),
     workflowVersionId: UlidSchema,
     currentStateId: UlidSchema,
     statusCategory: StatusCategorySchema,

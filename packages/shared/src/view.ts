@@ -144,6 +144,8 @@ export const ViewWorkItemSummarySchema = z
     priority: PrioritySchema,
     assigneeId: UlidSchema.optional(),
     reporterId: UlidSchema,
+    createdAt: IsoDateTimeSchema.optional(),
+    createdById: UlidSchema.optional(),
     dueDate: IsoDateTimeSchema.optional(),
     lastActionAt: IsoDateTimeSchema.optional(),
     currentStatus: ViewCurrentStatusSummarySchema,

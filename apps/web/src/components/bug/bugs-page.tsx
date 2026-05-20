@@ -66,6 +66,7 @@ import { recordRecentOpen } from "../shell/recent-opens";
 import { EmptyState, ErrorState, ListSkeleton } from "../v2/states";
 import { FilterField, FilterPanel } from "../v2/filter-controls";
 import { PageHeader } from "../v2/page-header";
+import { CreatedMeta } from "../v2/created-meta";
 
 import { TaskDetailSheet } from "../work-item/task-detail-sheet";
 import { ListTagRail, TagFilter } from "../tag";
@@ -1105,6 +1106,10 @@ export function BugsPage() {
                           {bug.title}
                         </span>
                         <ListTagRail tags={bug.tags} />
+                        <CreatedMeta
+                          createdAt={bug.createdAt}
+                          creatorName={bug.creatorName}
+                        />
                       </span>
                       <span
                         className={cn(
@@ -1274,6 +1279,9 @@ function toBugViewModel(
   const code = formatDisplayCode("BUG", bug.id);
   const member = bug.assigneeId ? lookups.getMember(bug.assigneeId) : undefined;
   const assigneeName = member?.user.name ?? member?.user.username ?? "";
+  const creatorId = bug.createdById ?? bug.reporterId;
+  const creator = lookups.getMember(creatorId);
+  const creatorName = creator?.user.name ?? creator?.user.username ?? creatorId;
   const initial = deriveInitial(assigneeName);
   const version = bug.versionId ? lookups.getVersion(bug.versionId) : undefined;
   const dueDate = bug.dueDate ? formatDate(bug.dueDate, locale) : undefined;
@@ -1302,6 +1310,8 @@ function toBugViewModel(
     statusLabel,
     priority: bug.priority,
     assignee: { name: assigneeName, initial },
+    creatorName,
+    createdAt: bug.createdAt,
     versionName: version?.name,
     dueDate,
     isOverdue,

@@ -70,6 +70,7 @@ import { StatusBadge } from "../ui/status-badge";
 import { ListTagRail, TagFilter } from "../tag";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../ui/tabs";
 import { TaskDetailSheet } from "../work-item/task-detail-sheet";
+import { CreatedMeta } from "../v2/created-meta";
 import { FilterField, FilterPanel } from "../v2/filter-controls";
 import { PageHeader } from "../v2/page-header";
 import { EmptyState, ErrorState, LoadingState } from "../v2/states";
@@ -888,6 +889,10 @@ export function ExceptionsPage() {
                           <ListTagRail
                             maxVisible={6}
                             tags={viewItem.tags}
+                          />
+                          <CreatedMeta
+                            createdAt={viewItem.createdAt}
+                            creatorName={viewItem.creatorName}
                           />
                         </span>
                         {(exceptionDetail || exceptionMeta.length > 0) && (

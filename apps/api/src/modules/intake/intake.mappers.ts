@@ -4,6 +4,7 @@ type PrismaIntakeItemRecord = {
   acceptedAt: Date | null;
   assigneeId: string | null;
   convertedAt: Date | null;
+  createdAt?: Date;
   description: string | null;
   id: string;
   organizationId: string;
@@ -40,6 +41,7 @@ export function toIntakeItem(
     tags,
     acceptedAt: record.acceptedAt?.toISOString(),
     convertedAt: record.convertedAt?.toISOString(),
+    createdAt: record.createdAt?.toISOString(),
     updatedAt: record.updatedAt.toISOString(),
   };
 }

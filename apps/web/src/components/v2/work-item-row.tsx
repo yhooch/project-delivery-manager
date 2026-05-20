@@ -10,6 +10,7 @@ import { Badge } from "../ui/badge";
 import { StatusBadge } from "../ui/status-badge";
 import { ListTagRail } from "../tag";
 import { Tip } from "../ui/tooltip";
+import { CreatedMeta } from "./created-meta";
 
 const priorityDot: Record<WorkItemViewModel["priority"], string> = {
   LOW: "bg-muted-foreground/40",
@@ -60,6 +61,7 @@ export function WorkItemRow({
       <span className="flex min-w-0 flex-1 flex-col gap-1">
         <span className="truncate text-[13px] font-medium">{item.title}</span>
         <ListTagRail tags={item.tags} />
+        <CreatedMeta createdAt={item.createdAt} creatorName={item.creatorName} />
       </span>
       <StatusBadge
         category={item.statusCategory}

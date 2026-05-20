@@ -1941,6 +1941,7 @@ type ViewWorkItemRecord = {
     deletedAt: Date | null;
     regressionAt: Date | null;
   } | null;
+  createdAt: Date;
   createdById: string | null;
   currentState: {
     category: StatusCategory;
@@ -2381,6 +2382,8 @@ function toViewWorkItemSummary(
     priority: record.priority,
     assigneeId: record.assigneeId ?? undefined,
     reporterId: record.reporterId,
+    createdAt: record.createdAt.toISOString(),
+    createdById: record.createdById ?? undefined,
     dueDate: record.dueDate?.toISOString(),
     lastActionAt: record.lastActionAt?.toISOString(),
     currentStatus: {

@@ -29,6 +29,8 @@ type PrismaWorkItemRecord = {
   lastActionAt: Date | null;
   blockedReason: string | null;
   blockedAt: Date | null;
+  createdAt?: Date;
+  createdById?: string | null;
 };
 
 export function toWorkItem(
@@ -49,6 +51,8 @@ export function toWorkItem(
     priority: record.priority,
     assigneeId: record.assigneeId ?? undefined,
     reporterId: record.reporterId,
+    createdAt: record.createdAt?.toISOString(),
+    createdById: record.createdById ?? undefined,
     workflowVersionId: record.workflowVersionId,
     currentStateId: record.currentStateId,
     statusCategory: record.statusCategory,
@@ -79,6 +83,8 @@ export function toWorkItemDetail(
     priority: record.priority,
     assigneeId: record.assigneeId,
     reporterId: record.reporterId,
+    createdAt: record.createdAt,
+    createdById: record.createdById,
     workflowVersionId: record.workflowVersionId,
     currentStateId: record.currentStateId,
     statusCategory: record.statusCategory,

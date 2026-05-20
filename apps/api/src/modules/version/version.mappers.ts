@@ -90,6 +90,8 @@ export function toVersionBoardWorkItemSummary(
       statusCategory: record.statusCategory,
       workflowVersionId: record.workflowVersionId,
     },
+    createdAt: record.createdAt.toISOString(),
+    createdById: record.createdById ?? undefined,
     dueDate: record.dueDate?.toISOString(),
     exceptionSignals,
     id: record.id,

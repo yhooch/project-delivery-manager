@@ -49,6 +49,7 @@ import { Badge, type BadgeProps } from "../ui/badge";
 import { Button } from "../ui/button";
 import { Tip } from "../ui/tooltip";
 import { SelectMenu } from "../ui/select-menu";
+import { CreatedMeta } from "../v2/created-meta";
 import { FilterField } from "../v2/filter-controls";
 import { PageHeader } from "../v2/page-header";
 import {
@@ -658,6 +659,9 @@ export function RequirementsPage() {
               : "";
             const ownerTip =
               ownerName && ownerName !== "—" ? ownerName : undefined;
+            const authorName = req.authorId
+              ? formatOwnerLabel(req.authorId, memberNameByUserId)
+              : "";
             const versionName = req.versionId
               ? formatVersionLabel(req.versionId, versionNameById)
               : "";
@@ -717,6 +721,15 @@ export function RequirementsPage() {
                       ) : null}
                     </div>
                     <ListTagRail className="mt-1" tags={tags} />
+                    <CreatedMeta
+                      className="mt-0.5"
+                      createdAt={req.createdAt}
+                      creatorName={
+                        authorName && authorName !== "—"
+                          ? authorName
+                          : undefined
+                      }
+                    />
                     {item.summary ? (
                       <p className="mt-1 line-clamp-1 text-[12px] text-muted-foreground">
                         {item.summary}

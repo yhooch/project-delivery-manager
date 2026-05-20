@@ -22,6 +22,8 @@ export type WorkItemViewModel = {
   statusLabel: string;
   priority: "LOW" | "MEDIUM" | "HIGH" | "URGENT";
   assignee: { name: string; initial: string };
+  creatorName?: string;
+  createdAt?: string;
   versionName?: string;
   dueDate?: string;
   isOverdue?: boolean;
@@ -89,6 +91,8 @@ export function toWorkItemViewModel(
     : undefined;
   const assigneeName =
     member?.user.name ?? member?.user.username ?? item.assigneeId ?? "-";
+  const creatorId = item.createdById ?? item.reporterId;
+  const creatorName = resolveMemberName(creatorId, item.spaceId, lookups);
   const version = item.versionId
     ? lookups?.getVersion(item.versionId, item.spaceId)
     : undefined;
@@ -114,6 +118,8 @@ export function toWorkItemViewModel(
       name: assigneeName,
       initial: initialOf(assigneeName),
     },
+    creatorName,
+    createdAt: item.createdAt,
     versionName,
     dueDate,
     isOverdue,
@@ -139,6 +145,8 @@ export function toWorkItemListViewModel(
     ? lookups?.getMember(item.assigneeId, item.spaceId)
     : undefined;
   const assigneeName = member?.user.name ?? member?.user.username ?? "";
+  const creatorId = item.createdById ?? item.reporterId;
+  const creatorName = resolveMemberName(creatorId, item.spaceId, lookups);
   const version = item.versionId
     ? lookups?.getVersion(item.versionId, item.spaceId)
     : undefined;
@@ -176,6 +184,8 @@ export function toWorkItemListViewModel(
       name: assigneeName,
       initial: initialOf(assigneeName),
     },
+    creatorName,
+    createdAt: item.createdAt,
     versionName,
     dueDate,
     isOverdue,
@@ -184,6 +194,20 @@ export function toWorkItemListViewModel(
     updatedAgo: undefined,
     tags: item.tags,
   };
+}
+
+function resolveMemberName(
+  userId: string | undefined,
+  spaceId: string | undefined,
+  lookups: WorkItemViewModelLookupHelpers | undefined,
+) {
+  if (!userId) {
+    return undefined;
+  }
+
+  const member = lookups?.getMember(userId, spaceId);
+
+  return member?.user.name ?? member?.user.username ?? userId;
 }
 
 function initialOf(value: string) {
