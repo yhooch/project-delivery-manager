@@ -14,6 +14,7 @@ import {
   GitBranch,
   Link2,
   Plus,
+  Tag as TagIcon,
 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useSearchParams } from "next/navigation";
@@ -23,6 +24,8 @@ import { Link, usePathname, useRouter } from "../../i18n/routing";
 import { getApiErrorMessageKey } from "../../lib/api-error-messages";
 import { formatDisplayCode } from "../../lib/display-code";
 import { useListKeyboardNav } from "../../lib/hooks/use-list-keyboard-nav";
+import { useTagFilterSelection } from "../../lib/hooks/use-tag-filter-selection";
+import { useUrlTagFilter } from "../../lib/hooks/use-url-tag-filter";
 import { canWriteRequirements } from "../../lib/permission-gates";
 import {
   createRequirementDraftLocalCacheKey,
@@ -35,7 +38,10 @@ import {
   listRequirementVersions,
   listRequirements,
 } from "../../lib/requirement-service";
+import { serializeTagFilterQuery } from "../../lib/tag-query";
+import { collectTagsFromItems } from "../../lib/tag-ui";
 import { cn } from "../../lib/utils";
+import { TagBadgeList, TagFilter } from "../tag";
 import { useSession } from "../providers/session-provider";
 import { recordRecentOpen } from "../shell/recent-opens";
 
@@ -70,6 +76,7 @@ const INITIAL_PAGE_INFO = { page: 1, pageSize: LIST_PAGE_SIZE, total: 0 };
 
 export function RequirementsPage() {
   const t = useTranslations("requirements");
+  const tTags = useTranslations("tags.field");
   const tNav = useTranslations("shell.nav");
   const tRoot = useTranslations();
   const router = useRouter();
@@ -116,6 +123,12 @@ export function RequirementsPage() {
   >(null);
   const [createDenied, setCreateDenied] = useState(false);
   const requestedNew = normalizeSearchParam(searchParams.get("new"));
+  const [tagFilter, setTagFilter] = useUrlTagFilter({
+    fixedTagMatch: "ANY",
+    pathname,
+    router,
+    searchParams,
+  });
   const contextKey = useMemo(
     () => `${organizationId ?? ""}:${spaceId ?? ""}`,
     [organizationId, spaceId],
@@ -131,6 +144,8 @@ export function RequirementsPage() {
         organizationId,
         ownerId: effectiveSelectedOwnerId,
         spaceId,
+        tagIds: tagFilter.tagIds,
+        tagMatch: tagFilter.tagMatch,
         versionId: effectiveSelectedVersionId,
       }),
     [
@@ -139,6 +154,7 @@ export function RequirementsPage() {
       filter,
       organizationId,
       spaceId,
+      tagFilter,
     ],
   );
   const latestListScopeKeyRef = useRef(listScopeKey);
@@ -151,6 +167,14 @@ export function RequirementsPage() {
   const paginationFrom = loadedCount > 0 ? 1 : 0;
   const paginationTo = Math.min(loadedCount, pageInfo.total);
   const hasMoreItems = loadedCount < pageInfo.total;
+  const sourceTags = useMemo(() => collectTagsFromItems(items), [items]);
+  const { selectedTags: selectedFilterTags, setSelectedTags } =
+    useTagFilterSelection({
+      organizationId,
+      sourceTags,
+      spaceId,
+      tagIds: tagFilter.tagIds,
+    });
 
   const loadItems = useCallback(
     async (page = 1, mode: "replace" | "append" = "replace") => {
@@ -176,6 +200,7 @@ export function RequirementsPage() {
           spaceId,
           page,
           pageSize: LIST_PAGE_SIZE,
+          ...serializeTagFilterQuery(tagFilter),
           ...toRequirementListQuery(filter),
           ownerId: optionalFilterValue(effectiveSelectedOwnerId),
           versionId: optionalFilterValue(effectiveSelectedVersionId),
@@ -222,6 +247,7 @@ export function RequirementsPage() {
       listScopeKey,
       organizationId,
       spaceId,
+      tagFilter,
     ],
   );
 
@@ -622,6 +648,7 @@ export function RequirementsPage() {
         >
           {displayItems.map((item) => {
             const req = item.requirement;
+            const tags = req.tags ?? [];
             const ownerName = req.ownerId
               ? formatOwnerLabel(req.ownerId, memberNameByUserId)
               : "";
@@ -689,6 +716,14 @@ export function RequirementsPage() {
                       <p className="mt-0.5 line-clamp-1 text-[12px] text-muted-foreground">
                         {item.summary}
                       </p>
+                    ) : null}
+                    {tags.length > 0 ? (
+                      <TagBadgeList
+                        badgeClassName="min-w-0 max-w-24 shrink"
+                        className="mt-1 flex-nowrap overflow-hidden"
+                        maxVisible={3}
+                        tags={tags}
+                      />
                     ) : null}
                   </div>
                   <Badge variant={statusVariant[req.status]}>
@@ -819,6 +854,26 @@ export function RequirementsPage() {
                   ))}
                 </SelectMenu>
               </label>
+              <div className="flex min-w-[18rem] flex-1 flex-col gap-1">
+                <span className="inline-flex items-center gap-1">
+                  <TagIcon aria-hidden="true" className="h-3.5 w-3.5" />
+                  {tTags("label")}
+                </span>
+                <TagFilter
+                  allowCreate={false}
+                  className="max-w-xl"
+                  onChange={(value, selectedTags) => {
+                    setSelectedTags(selectedTags);
+                    setTagFilter(value);
+                  }}
+                  organizationId={organizationId}
+                  selectedTags={selectedFilterTags}
+                  showMatchMode={false}
+                  spaceId={spaceId}
+                  value={tagFilter}
+                  data-testid="requirements-filter-tags"
+                />
+              </div>
             </div>
           ) : null}
         </div>
@@ -968,12 +1023,16 @@ function createRequirementListScopeKey({
   organizationId,
   ownerId,
   spaceId,
+  tagIds,
+  tagMatch,
   versionId,
 }: {
   filter: FilterKey;
   organizationId?: string;
   ownerId: string;
   spaceId?: string;
+  tagIds: readonly string[];
+  tagMatch: string;
   versionId: string;
 }): string {
   return [
@@ -982,6 +1041,8 @@ function createRequirementListScopeKey({
     filter,
     optionalFilterValue(ownerId) ?? "",
     optionalFilterValue(versionId) ?? "",
+    tagIds.join(","),
+    tagIds.length > 0 ? tagMatch : "",
   ].join("\u001f");
 }
 

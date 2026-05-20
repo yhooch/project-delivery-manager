@@ -3,6 +3,7 @@ import type {
   BugSeverity,
   BugView,
   PermissionSnapshot,
+  TagDto,
 } from "@project-delivery/shared";
 
 import { toWorkItem } from "../workitem/workitem.mappers";
@@ -27,9 +28,10 @@ export type PrismaBugViewRecord = Parameters<typeof toWorkItem>[0] & {
 export function toBugView(
   record: PrismaBugViewRecord,
   permissions?: PermissionSnapshot,
+  tags: TagDto[] = [],
 ): BugView {
   return {
-    ...toWorkItem(record, permissions),
+    ...toWorkItem(record, permissions, tags),
     type: "BUG",
     bugDetail: toBugDetail(record.bugDetail),
   };

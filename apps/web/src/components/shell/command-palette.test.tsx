@@ -23,13 +23,16 @@ vi.mock("next-intl", () => ({
   useLocale: () => "zh-CN",
 }));
 
-const routerPushMock = vi.hoisted(() => vi.fn());
+const { pathnameMock, routerPushMock } = vi.hoisted(() => ({
+  pathnameMock: { current: "/" },
+  routerPushMock: vi.fn(),
+}));
 vi.mock("../../i18n/routing", () => ({
   routing: { defaultLocale: "zh-CN", locales: ["zh-CN", "en-US"] },
   Link: ({ children }: { children: React.ReactNode }) => children,
   getPathname: () => "/",
   redirect: () => undefined,
-  usePathname: () => "/",
+  usePathname: () => pathnameMock.current,
   useRouter: () => ({ push: routerPushMock, replace: vi.fn() }),
 }));
 
@@ -87,11 +90,13 @@ const {
   listBugsMock,
   listRequirementsMock,
   listIntakeItemsMock,
+  listTagsMock,
 } = vi.hoisted(() => ({
   listWorkItemsMock: vi.fn(),
   listBugsMock: vi.fn(),
   listRequirementsMock: vi.fn(),
   listIntakeItemsMock: vi.fn(),
+  listTagsMock: vi.fn(),
 }));
 vi.mock("../../lib/work-item-service", () => ({
   listWorkItems: listWorkItemsMock,
@@ -104,6 +109,9 @@ vi.mock("../../lib/requirement-service", () => ({
 }));
 vi.mock("../../lib/intake-service", () => ({
   listIntakeItems: listIntakeItemsMock,
+}));
+vi.mock("../../lib/tag-service", () => ({
+  listTags: listTagsMock,
 }));
 
 import {
@@ -123,8 +131,10 @@ beforeEach(() => {
   listBugsMock.mockReset();
   listRequirementsMock.mockReset();
   listIntakeItemsMock.mockReset();
+  listTagsMock.mockReset();
   routerPushMock.mockReset();
   themeSetMock.mockReset();
+  pathnameMock.current = "/";
   listWorkItemsMock.mockResolvedValue({
     items: [
       {
@@ -151,6 +161,26 @@ beforeEach(() => {
   });
   listIntakeItemsMock.mockResolvedValue({
     items: [{ id: "01ARZ3NDEKTSV4RRFFQ69G5FI1", title: "Intake one" }],
+    total: 1,
+  });
+  listTagsMock.mockResolvedValue({
+    items: [
+      {
+        id: "01ARZ3NDEKTSV4RRFFQ69G5F03",
+        organizationId: "ORG_01",
+        spaceId: "SPC_01",
+        name: "backend",
+        displayName: "#backend",
+        normalizedName: "backend",
+        colorKey: "blue",
+        usageCount: 2,
+        isOrphan: false,
+        createdAt: "2026-05-19T10:00:00.000Z",
+        updatedAt: "2026-05-19T10:00:00.000Z",
+      },
+    ],
+    page: 1,
+    pageSize: 25,
     total: 1,
   });
   sessionMock.current = {
@@ -222,6 +252,7 @@ describe("CommandPalette", () => {
     expect(listBugsMock).not.toHaveBeenCalled();
     expect(listRequirementsMock).not.toHaveBeenCalled();
     expect(listIntakeItemsMock).not.toHaveBeenCalled();
+    expect(listTagsMock).not.toHaveBeenCalled();
   });
 
   it("renders navigation / switchSpace / create / preferences groups when open with empty query", async () => {
@@ -611,6 +642,66 @@ describe("CommandPalette", () => {
     // Navigation group should NOT be visible while in search view.
     expect(
       screen.queryByText("shell.command.navigation"),
+    ).not.toBeInTheDocument();
+  });
+
+  it("searches current-space tags with # and opens the current object list with tag filters", async () => {
+    pathnameMock.current = "/bugs";
+
+    render(<CommandPalette />);
+    openCommandPalette();
+
+    const input = await screen.findByPlaceholderText(
+      "shell.command.placeholder",
+    );
+    fireEvent.change(input, { target: { value: "#backend" } });
+
+    await waitFor(() =>
+      expect(listTagsMock).toHaveBeenCalledWith({
+        includeUsage: true,
+        organizationId: "ORG_01",
+        page: 1,
+        pageSize: 25,
+        query: "backend",
+        spaceId: "SPC_01",
+      }),
+    );
+    expect(
+      await screen.findByTestId("command-palette-group-tags"),
+    ).toBeInTheDocument();
+
+    fireEvent.click(screen.getByTestId("command-palette-item-tag"));
+
+    expect(routerPushMock).toHaveBeenCalledWith(
+      "/bugs?tagIds=01ARZ3NDEKTSV4RRFFQ69G5F03&tagMatch=ANY",
+    );
+  });
+
+  it("does not search or show tag results without current space context", async () => {
+    sessionMock.current = {
+      ...sessionMock.current,
+      currentSpace: undefined,
+      spacesForCurrentOrganization: [],
+      session: {
+        ...sessionMock.current.session,
+        defaultSpaceId: undefined as unknown as string,
+      },
+    };
+
+    render(<CommandPalette />);
+    openCommandPalette();
+
+    const input = await screen.findByPlaceholderText(
+      "shell.command.placeholder",
+    );
+    fireEvent.change(input, { target: { value: "#backend" } });
+
+    await waitFor(() =>
+      expect(screen.getByText("shell.command.navigation")).toBeInTheDocument(),
+    );
+    expect(listTagsMock).not.toHaveBeenCalled();
+    expect(
+      screen.queryByTestId("command-palette-group-tags"),
     ).not.toBeInTheDocument();
   });
 

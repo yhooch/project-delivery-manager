@@ -24,8 +24,13 @@ import {
   useFocusReturn,
   useListKeyboardNav,
 } from "../../lib/hooks/use-list-keyboard-nav";
+import { useTagFilterSelection } from "../../lib/hooks/use-tag-filter-selection";
+import { useUrlTagFilter } from "../../lib/hooks/use-url-tag-filter";
 import { canCreateTasks } from "../../lib/permission-gates";
 import { listRequirements } from "../../lib/requirement-service";
+import { usePathname, useRouter } from "../../i18n/routing";
+import { serializeTagFilterQuery } from "../../lib/tag-query";
+import { collectTagsFromItems } from "../../lib/tag-ui";
 import { useSpaceMembers, useVersions } from "../../lib/v2/lookups";
 import {
   toWorkItemListViewModel,
@@ -45,6 +50,7 @@ import { EmptyState, ErrorState, ListSkeleton } from "../v2/states";
 import { PageHeader } from "../v2/page-header";
 import { WorkItemRow } from "../v2/work-item-row";
 import { recordRecentOpen } from "../shell/recent-opens";
+import { TagFilter } from "../tag";
 
 import { CreateTaskDialog } from "./create-task-dialog";
 import { TaskDetailSheet } from "./task-detail-sheet";
@@ -69,9 +75,12 @@ export function TasksPage() {
   const tStatus = useTranslations("workItems.statusCategory");
   const tPriority = useTranslations("workItems.priority");
   const tFilters = useTranslations("workItems.filters");
+  const tTags = useTranslations("tags.field");
   const tApiError = useTranslations();
   const locale = useLocale();
   const searchParams = useSearchParams();
+  const router = useRouter();
+  const pathname = usePathname();
 
   const { currentSpace, status: sessionStatus } = useSession();
   const spaceId = currentSpace?.id;
@@ -89,6 +98,12 @@ export function TasksPage() {
   const requestedStatusCategory = normalizeStatusCategory(
     searchParams.get("statusCategory"),
   );
+  const [tagFilter, setTagFilter] = useUrlTagFilter({
+    fixedTagMatch: "ANY",
+    pathname,
+    router,
+    searchParams,
+  });
   const recentScope = useMemo(
     () => ({ organizationId, spaceId }),
     [organizationId, spaceId],
@@ -126,8 +141,15 @@ export function TasksPage() {
     currentSpace?.status,
   );
   const listScopeKey = useMemo(
-    () => createTaskListScopeKey({ filters, organizationId, spaceId }),
-    [filters, organizationId, spaceId],
+    () =>
+      createTaskListScopeKey({
+        filters,
+        organizationId,
+        spaceId,
+        tagIds: tagFilter.tagIds,
+        tagMatch: tagFilter.tagMatch,
+      }),
+    [filters, organizationId, spaceId, tagFilter],
   );
   const contextKey = useMemo(
     () => `${organizationId ?? ""}:${spaceId ?? ""}`,
@@ -142,6 +164,14 @@ export function TasksPage() {
   const paginationFrom = loadedCount > 0 ? 1 : 0;
   const paginationTo = Math.min(loadedCount, pageInfo.total);
   const hasMoreItems = loadedCount < pageInfo.total;
+  const sourceTags = useMemo(() => collectTagsFromItems(items), [items]);
+  const { selectedTags: selectedFilterTags, setSelectedTags } =
+    useTagFilterSelection({
+      organizationId,
+      sourceTags,
+      spaceId,
+      tagIds: tagFilter.tagIds,
+    });
 
   const setFilter = useCallback(
     (key: keyof TaskListFilterState, value: string) => {
@@ -177,6 +207,7 @@ export function TasksPage() {
           spaceId,
           type: "TASK",
           ...filters,
+          ...serializeTagFilterQuery(tagFilter),
         });
         if (
           listRequestIdRef.current !== requestId ||
@@ -215,7 +246,7 @@ export function TasksPage() {
         }
       }
     },
-    [filters, listScopeKey, organizationId, spaceId, tApiError],
+    [filters, listScopeKey, organizationId, spaceId, tApiError, tagFilter],
   );
 
   useEffect(() => {
@@ -719,6 +750,21 @@ export function TasksPage() {
               ))}
             </SelectMenu>
           </FilterField>
+          <FilterField label={tTags("label")}>
+            <TagFilter
+              allowCreate={false}
+              onChange={(value, selectedTags) => {
+                setSelectedTags(selectedTags);
+                setTagFilter(value);
+              }}
+              organizationId={organizationId}
+              selectedTags={selectedFilterTags}
+              showMatchMode={false}
+              spaceId={spaceId}
+              value={tagFilter}
+              data-testid="tasks-filter-tags"
+            />
+          </FilterField>
         </div>
       )}
 
@@ -856,10 +902,14 @@ function createTaskListScopeKey({
   filters,
   organizationId,
   spaceId,
+  tagIds,
+  tagMatch,
 }: {
   filters: TaskListFilterState;
   organizationId?: string;
   spaceId?: string;
+  tagIds: readonly string[];
+  tagMatch: string;
 }): string {
   return [
     organizationId ?? "",
@@ -871,5 +921,7 @@ function createTaskListScopeKey({
     filters.requirementId ?? "",
     filters.statusCategory ?? "",
     filters.versionId ?? "",
+    tagIds.join(","),
+    tagIds.length > 0 ? tagMatch : "",
   ].join("\u001f");
 }

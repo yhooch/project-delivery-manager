@@ -40,6 +40,13 @@ export type ObjectParticipantTargetType = z.infer<
   typeof ObjectParticipantTargetTypeSchema
 >;
 
+export const TagTargetTypeSchema = z.enum([
+  "REQUIREMENT",
+  "INTAKE_ITEM",
+  "WORK_ITEM",
+]);
+export type TagTargetType = z.infer<typeof TagTargetTypeSchema>;
+
 export const ObjectParticipantRelationSchema = z.enum([
   "CREATOR",
   "ASSIGNEE",

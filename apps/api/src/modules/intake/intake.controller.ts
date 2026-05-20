@@ -28,6 +28,7 @@ import {
   type IntakeStatus,
   type ListIntakeItemsResponse,
   type Priority,
+  type TagMatch,
   type UpdateIntakeItemRequest,
 } from "@project-delivery/shared";
 
@@ -69,6 +70,8 @@ export class IntakeController {
       sortOrder?: "asc" | "desc";
       sourceType?: IntakeSourceType;
       status?: IntakeStatus;
+      tagIds?: string;
+      tagMatch?: TagMatch;
       versionId?: string;
     },
     @Req() request: RequestWithContext,

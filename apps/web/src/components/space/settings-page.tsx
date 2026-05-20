@@ -4,10 +4,11 @@ import type {
   Space,
   SpaceMemberWithUser,
   SpaceRole,
+  TagDto,
   UpdateSpaceRequest,
 } from "@project-delivery/shared";
 import { Plus, ShieldCheck, Trash2 } from "lucide-react";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import {
   useCallback,
   useEffect,
@@ -31,7 +32,9 @@ import {
   updateSpace,
   updateSpaceMember,
 } from "../../lib/space-service";
+import { deleteTag, listTags } from "../../lib/tag-service";
 import { cn } from "../../lib/utils";
+import { TagBadge } from "../tag";
 import { useSession } from "../providers/session-provider";
 
 import { Avatar, AvatarFallback } from "../ui/avatar";
@@ -75,10 +78,12 @@ export function SpaceSettingsPage() {
   const t = useTranslations("spaceSettings");
   const tShell = useTranslations("shell.nav");
   const tRoot = useTranslations();
+  const locale = useLocale();
   const { currentOrganization, currentSpace, refreshSession, session, status } =
     useSession();
   const spaceId = session?.defaultSpaceId ?? currentSpace?.id;
   const writeAllowed = canManageSpace(currentSpace?.role, currentSpace?.status);
+  const canDeleteOrphanTags = writeAllowed;
   const writeDisabledHint = writeAllowed
     ? undefined
     : t("actions.viewerOnlyHint");
@@ -111,7 +116,16 @@ export function SpaceSettingsPage() {
   const [memberRoleFilter, setMemberRoleFilter] = useState<SpaceRole | "ALL">(
     "ALL",
   );
+  const [tags, setTags] = useState<TagDto[]>([]);
+  const [tagSearch, setTagSearch] = useState("");
+  const [isLoadingTags, setIsLoadingTags] = useState(false);
+  const [tagErrorKey, setTagErrorKey] = useState<string | null>(null);
+  const [tagActionErrorKey, setTagActionErrorKey] = useState<string | null>(
+    null,
+  );
+  const [pendingTagId, setPendingTagId] = useState<string | null>(null);
   const loadSequenceRef = useRef(0);
+  const tagLoadSequenceRef = useRef(0);
 
   const organizationId =
     space?.organizationId ??
@@ -158,6 +172,40 @@ export function SpaceSettingsPage() {
     });
   }, [memberRoleFilter, memberSearch, members]);
 
+  const loadTags = useCallback(async () => {
+    const sequence = ++tagLoadSequenceRef.current;
+
+    if (!spaceId) {
+      setTags([]);
+      setIsLoadingTags(false);
+      setTagErrorKey(null);
+      return;
+    }
+
+    setIsLoadingTags(true);
+    setTagErrorKey(null);
+
+    try {
+      const page = await listTags({
+        includeUsage: true,
+        organizationId,
+        page: 1,
+        pageSize: 100,
+        query: tagSearch.trim() || undefined,
+        spaceId,
+      });
+      if (tagLoadSequenceRef.current !== sequence) return;
+      setTags(page.items);
+    } catch (error) {
+      if (tagLoadSequenceRef.current !== sequence) return;
+      setTagErrorKey(getApiErrorMessageKey(error));
+    } finally {
+      if (tagLoadSequenceRef.current === sequence) {
+        setIsLoadingTags(false);
+      }
+    }
+  }, [organizationId, spaceId, tagSearch]);
+
   const load = useCallback(async () => {
     const sequence = ++loadSequenceRef.current;
 
@@ -198,8 +246,10 @@ export function SpaceSettingsPage() {
 
   useEffect(() => {
     loadSequenceRef.current += 1;
+    tagLoadSequenceRef.current += 1;
     setSpace(null);
     setMembers([]);
+    setTags([]);
     setName("");
     setCode("");
     setDescription("");
@@ -219,6 +269,11 @@ export function SpaceSettingsPage() {
     setMemberActionErrorKey(null);
     setMemberSearch("");
     setMemberRoleFilter("ALL");
+    setTagSearch("");
+    setIsLoadingTags(false);
+    setTagErrorKey(null);
+    setTagActionErrorKey(null);
+    setPendingTagId(null);
   }, [spaceId]);
 
   useEffect(() => {
@@ -227,6 +282,13 @@ export function SpaceSettingsPage() {
     }
     void load();
   }, [load, spaceId, status]);
+
+  useEffect(() => {
+    if (status !== "authenticated" || !spaceId) {
+      return;
+    }
+    void loadTags();
+  }, [loadTags, spaceId, status]);
 
   async function onSaveBasic(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -370,6 +432,25 @@ export function SpaceSettingsPage() {
       setMemberActionErrorKey(getApiErrorMessageKey(error));
     } finally {
       setPendingMemberId(null);
+    }
+  }
+
+  async function onDeleteTag(tag: TagDto) {
+    if (!canDeleteOrphanTags || !isTagOrphan(tag)) {
+      return;
+    }
+
+    setPendingTagId(tag.id);
+    setTagActionErrorKey(null);
+
+    try {
+      await deleteTag(tag.id);
+      await loadTags();
+    } catch (error) {
+      setTagActionErrorKey(getApiErrorMessageKey(error));
+      await loadTags();
+    } finally {
+      setPendingTagId(null);
     }
   }
 
@@ -669,9 +750,7 @@ export function SpaceSettingsPage() {
                     }}
                     aria-invalid={descriptionError ? "true" : undefined}
                     aria-describedby={
-                      descriptionError
-                        ? "space-description-error"
-                        : undefined
+                      descriptionError ? "space-description-error" : undefined
                     }
                     disabled={!writeAllowed}
                     className="min-h-[100px] max-w-full resize-y bg-transparent md:max-w-2xl"
@@ -776,6 +855,133 @@ export function SpaceSettingsPage() {
                   {t("threshold.hint")}
                 </p>
               </div>
+            </div>
+          </section>
+
+          <div className="h-px w-full bg-border/50" />
+
+          {/* 标签字典 */}
+          <section
+            data-testid="space-settings-tags-section"
+            className="grid grid-cols-1 md:grid-cols-[280px_1fr] gap-8"
+          >
+            <div>
+              <h2 className="text-base font-medium text-foreground">
+                {t("tags.title")}
+              </h2>
+              <p className="mt-1.5 text-sm text-muted-foreground leading-relaxed">
+                {t("tags.description")}
+              </p>
+            </div>
+
+            <div className="flex min-w-0 flex-col gap-4">
+              <div className="flex max-w-sm min-w-0 flex-col gap-2">
+                <Label
+                  htmlFor="space-tags-search"
+                  className="text-sm font-medium"
+                >
+                  {t("tags.searchLabel")}
+                </Label>
+                <Input
+                  id="space-tags-search"
+                  data-testid="space-settings-tag-search"
+                  value={tagSearch}
+                  onChange={(event) => setTagSearch(event.target.value)}
+                  placeholder={t("tags.searchPlaceholder")}
+                  className="h-9 bg-transparent"
+                />
+              </div>
+
+              {tagActionErrorKey ? (
+                <div
+                  className="rounded-md bg-destructive/10 px-4 py-3 text-sm text-destructive"
+                  role="alert"
+                >
+                  {tRoot(tagActionErrorKey)}
+                </div>
+              ) : null}
+
+              {tagErrorKey ? (
+                <ErrorState
+                  className="h-48"
+                  message={tRoot(tagErrorKey)}
+                  onRetry={() => void loadTags()}
+                />
+              ) : isLoadingTags && tags.length === 0 ? (
+                <ListSkeleton rows={3} />
+              ) : tags.length === 0 ? (
+                <EmptyState
+                  title={
+                    tagSearch.trim() ? t("tags.emptyFiltered") : t("tags.empty")
+                  }
+                />
+              ) : (
+                <ul
+                  data-testid="space-settings-tags-list"
+                  className="flex flex-col gap-2"
+                >
+                  {tags.map((tag) => {
+                    const isOrphan = isTagOrphan(tag);
+                    const usageLabel =
+                      typeof tag.usageCount === "number"
+                        ? t("tags.usage", { count: tag.usageCount })
+                        : emptyValue;
+                    const createdAtLabel =
+                      formatTagCreatedAt(tag.createdAt, locale) ?? emptyValue;
+
+                    return (
+                      <li
+                        key={tag.id}
+                        data-testid={`space-settings-tag-${tag.id}`}
+                        className="group flex min-w-0 flex-col gap-3 py-3 sm:flex-row sm:items-center"
+                      >
+                        <div className="min-w-0 flex-1">
+                          <TagBadge tag={tag} className="max-w-full" />
+                        </div>
+                        <div className="grid min-w-0 gap-1 text-xs text-muted-foreground sm:min-w-[260px] sm:grid-cols-2">
+                          <div className="flex min-w-0 items-center gap-1.5">
+                            <span>{t("tags.usageLabel")}:</span>
+                            <span className="font-medium text-foreground">
+                              {usageLabel}
+                            </span>
+                          </div>
+                          <div className="flex min-w-0 items-center gap-1.5">
+                            <span>{t("tags.createdAtLabel")}:</span>
+                            <span className="truncate font-medium text-foreground">
+                              {createdAtLabel}
+                            </span>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2 sm:pl-2">
+                          <Badge
+                            variant={isOrphan ? "warning" : "default"}
+                            className="font-normal"
+                          >
+                            {isOrphan
+                              ? t("tags.status.orphan")
+                              : t("tags.status.inUse")}
+                          </Badge>
+                          {canDeleteOrphanTags && isOrphan ? (
+                            <Button
+                              variant="ghost"
+                              size="icon-sm"
+                              data-testid={`space-settings-tag-delete-${tag.id}`}
+                              disabled={pendingTagId === tag.id}
+                              onClick={() => void onDeleteTag(tag)}
+                              aria-label={t("tags.actions.delete", {
+                                name: tag.displayName,
+                              })}
+                              className="hover:text-destructive hover:bg-destructive/10"
+                            >
+                              <Trash2 className="h-4 w-4 text-muted-foreground" />
+                            </Button>
+                          ) : null}
+                        </div>
+                      </li>
+                    );
+                  })}
+                </ul>
+              )}
             </div>
           </section>
 
@@ -996,6 +1202,25 @@ export function SpaceSettingsPage() {
       />
     </div>
   );
+}
+
+function isTagOrphan(tag: TagDto) {
+  if (typeof tag.isOrphan === "boolean") {
+    return tag.isOrphan;
+  }
+
+  return typeof tag.usageCount === "number" ? tag.usageCount === 0 : false;
+}
+
+function formatTagCreatedAt(value: string, locale: string) {
+  try {
+    return new Intl.DateTimeFormat(locale, {
+      dateStyle: "medium",
+      timeStyle: "short",
+    }).format(new Date(value));
+  } catch {
+    return undefined;
+  }
 }
 
 function getSpaceMemberIdentity(member: SpaceMemberWithUser) {

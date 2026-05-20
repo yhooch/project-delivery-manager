@@ -21,6 +21,7 @@ import { IntakeModule } from "./modules/intake/intake.module";
 import { OrganizationModule } from "./modules/organization/organization.module";
 import { RequirementModule } from "./modules/requirement/requirement.module";
 import { SpaceModule } from "./modules/space/space.module";
+import { TagModule } from "./modules/tag/tag.module";
 import { TimelineModule } from "./modules/timeline/timeline.module";
 import { VersionModule } from "./modules/version/version.module";
 import { WorkflowModule } from "./modules/workflow/workflow.module";
@@ -44,6 +45,7 @@ import { PrismaModule } from "./prisma/prisma.module";
     BugModule,
     AttachmentModule,
     CommentModule,
+    TagModule,
     TimelineModule,
     WorkflowModule,
     PrismaModule,

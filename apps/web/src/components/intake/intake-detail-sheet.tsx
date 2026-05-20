@@ -19,6 +19,7 @@ import {
   Loader2,
   MessageSquare,
   Send,
+  Tag as TagIcon,
   Target,
   Users,
 } from "lucide-react";
@@ -32,6 +33,7 @@ import { createComment, listComments } from "../../lib/comment-service";
 import { formatDisplayCode } from "../../lib/display-code";
 import { getIntakeItem } from "../../lib/intake-service";
 import { getTimelineEventLabel } from "../../lib/timeline-display";
+import { cn } from "../../lib/utils";
 import { listTimeline } from "../../lib/timeline-service";
 import {
   useRelationTitle,
@@ -41,6 +43,7 @@ import {
 import { listWorkItems } from "../../lib/work-item-service";
 import { Link } from "../../i18n/routing";
 
+import { ObjectTagAssignmentField } from "../tag";
 import { Avatar, AvatarFallback } from "../ui/avatar";
 import { Badge } from "../ui/badge";
 import { Button } from "../ui/button";
@@ -74,8 +77,10 @@ export type IntakeDetailSheetProps = {
   actionBar?: React.ReactNode;
   actionErrorMessage?: string | null;
   canComment?: boolean;
+  canEditTags?: boolean;
   intakeItem?: IntakeItem | null;
   intakeItemId?: string;
+  onItemChange?: (item: IntakeItem) => void;
   onOpenChange: (open: boolean) => void;
   onOpenWorkItem?: (item: WorkItem) => void;
   open: boolean;
@@ -90,8 +95,10 @@ export function IntakeDetailSheet({
   actionBar,
   actionErrorMessage,
   canComment = false,
+  canEditTags = false,
   intakeItem,
   intakeItemId,
+  onItemChange,
   onOpenChange,
   onOpenWorkItem,
   open,
@@ -112,6 +119,18 @@ export function IntakeDetailSheet({
   const [loadFailed, setLoadFailed] = useState(false);
   const [timelineRefreshVersion, setTimelineRefreshVersion] = useState(0);
   const effectiveItem = intakeItem ?? loadedItem;
+
+  function handleTagsChange(tags: IntakeItem["tags"]) {
+    if (!effectiveItem) {
+      return;
+    }
+
+    const updated = { ...effectiveItem, tags };
+    setLoadedItem((current) =>
+      current?.id === updated.id ? updated : current,
+    );
+    onItemChange?.(updated);
+  }
 
   useEffect(() => {
     if (!open || intakeItem || !intakeItemId || !spaceId) {
@@ -170,10 +189,12 @@ export function IntakeDetailSheet({
             actionBar={actionBar}
             actionErrorMessage={actionErrorMessage}
             canComment={canComment}
+            canEditTags={canEditTags}
             getMember={getMember}
             getVersion={getVersion}
             intakeItem={effectiveItem}
             locale={locale}
+            onTagsChange={handleTagsChange}
             onOpenWorkItem={onOpenWorkItem}
             onTimelineRefresh={() =>
               setTimelineRefreshVersion((version) => version + 1)
@@ -197,10 +218,12 @@ function IntakeDetailContent({
   actionBar,
   actionErrorMessage,
   canComment,
+  canEditTags,
   getMember,
   getVersion,
   intakeItem,
   locale,
+  onTagsChange,
   onOpenWorkItem,
   onTimelineRefresh,
   organizationId,
@@ -215,10 +238,12 @@ function IntakeDetailContent({
   actionBar?: React.ReactNode;
   actionErrorMessage?: string | null;
   canComment: boolean;
+  canEditTags: boolean;
   getMember: (userId: string) => SpaceMemberWithUser | undefined;
   getVersion: (versionId: string) => Version | undefined;
   intakeItem: IntakeItem;
   locale: string;
+  onTagsChange: (tags: IntakeItem["tags"]) => void;
   onOpenWorkItem?: (item: WorkItem) => void;
   onTimelineRefresh: () => void;
   organizationId?: string;
@@ -311,6 +336,29 @@ function IntakeDetailContent({
               intakeItem.versionId
                 ? displayVersionName(intakeItem.versionId, getVersion)
                 : t("detail.noVersion")
+            }
+          />
+          <FieldRow
+            icon={TagIcon}
+            label={tRoot("tags.field.label")}
+            contentClassName="ml-0 basis-full sm:basis-auto sm:flex-1"
+            rootClassName="items-center flex-wrap sm:col-span-2"
+            value={
+              spaceId ? (
+                <ObjectTagAssignmentField
+                  className="w-full"
+                  canEdit={canEditTags}
+                  onTagsChange={onTagsChange}
+                  organizationId={organizationId}
+                  spaceId={spaceId}
+                  tags={intakeItem.tags}
+                  targetId={intakeItem.id}
+                  targetType="INTAKE_ITEM"
+                  testId="intake-detail-tags"
+                />
+              ) : (
+                tRoot("tags.field.empty")
+              )
             }
           />
         </div>
@@ -1028,23 +1076,32 @@ function IntakeTimelineSection({
 }
 
 function FieldRow({
+  contentClassName,
   icon: Icon,
   label,
+  rootClassName,
   value,
 }: {
+  contentClassName?: string;
   icon: typeof Users;
   label: string;
-  value: string;
+  rootClassName?: string;
+  value: React.ReactNode;
 }) {
   return (
-    <div className="flex items-center gap-2">
-      <Icon className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
-      <span className="text-[11px] uppercase tracking-wider text-muted-foreground">
+    <div className={cn("flex min-w-0 items-start gap-2", rootClassName)}>
+      <Icon className="mt-0.5 h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+      <span className="shrink-0 text-[11px] uppercase tracking-wider text-muted-foreground">
         {label}
       </span>
-      <span className="ml-auto truncate font-medium text-foreground">
+      <div
+        className={cn(
+          "ml-auto min-w-0 font-medium text-foreground",
+          contentClassName,
+        )}
+      >
         {value}
-      </span>
+      </div>
     </div>
   );
 }

@@ -237,6 +237,8 @@ export type OrganizationWhereInput = {
   auditLogs?: Prisma.AuditLogListRelationFilter
   comments?: Prisma.CommentListRelationFilter
   timelineEvents?: Prisma.TimelineEventListRelationFilter
+  tags?: Prisma.TagListRelationFilter
+  tagAssignments?: Prisma.TagAssignmentListRelationFilter
 }
 
 export type OrganizationOrderByWithRelationInput = {
@@ -265,6 +267,8 @@ export type OrganizationOrderByWithRelationInput = {
   auditLogs?: Prisma.AuditLogOrderByRelationAggregateInput
   comments?: Prisma.CommentOrderByRelationAggregateInput
   timelineEvents?: Prisma.TimelineEventOrderByRelationAggregateInput
+  tags?: Prisma.TagOrderByRelationAggregateInput
+  tagAssignments?: Prisma.TagAssignmentOrderByRelationAggregateInput
 }
 
 export type OrganizationWhereUniqueInput = Prisma.AtLeast<{
@@ -296,6 +300,8 @@ export type OrganizationWhereUniqueInput = Prisma.AtLeast<{
   auditLogs?: Prisma.AuditLogListRelationFilter
   comments?: Prisma.CommentListRelationFilter
   timelineEvents?: Prisma.TimelineEventListRelationFilter
+  tags?: Prisma.TagListRelationFilter
+  tagAssignments?: Prisma.TagAssignmentListRelationFilter
 }, "id">
 
 export type OrganizationOrderByWithAggregationInput = {
@@ -355,6 +361,8 @@ export type OrganizationCreateInput = {
   auditLogs?: Prisma.AuditLogCreateNestedManyWithoutOrganizationInput
   comments?: Prisma.CommentCreateNestedManyWithoutOrganizationInput
   timelineEvents?: Prisma.TimelineEventCreateNestedManyWithoutOrganizationInput
+  tags?: Prisma.TagCreateNestedManyWithoutOrganizationInput
+  tagAssignments?: Prisma.TagAssignmentCreateNestedManyWithoutOrganizationInput
 }
 
 export type OrganizationUncheckedCreateInput = {
@@ -382,6 +390,8 @@ export type OrganizationUncheckedCreateInput = {
   auditLogs?: Prisma.AuditLogUncheckedCreateNestedManyWithoutOrganizationInput
   comments?: Prisma.CommentUncheckedCreateNestedManyWithoutOrganizationInput
   timelineEvents?: Prisma.TimelineEventUncheckedCreateNestedManyWithoutOrganizationInput
+  tags?: Prisma.TagUncheckedCreateNestedManyWithoutOrganizationInput
+  tagAssignments?: Prisma.TagAssignmentUncheckedCreateNestedManyWithoutOrganizationInput
 }
 
 export type OrganizationUpdateInput = {
@@ -409,6 +419,8 @@ export type OrganizationUpdateInput = {
   auditLogs?: Prisma.AuditLogUpdateManyWithoutOrganizationNestedInput
   comments?: Prisma.CommentUpdateManyWithoutOrganizationNestedInput
   timelineEvents?: Prisma.TimelineEventUpdateManyWithoutOrganizationNestedInput
+  tags?: Prisma.TagUpdateManyWithoutOrganizationNestedInput
+  tagAssignments?: Prisma.TagAssignmentUpdateManyWithoutOrganizationNestedInput
 }
 
 export type OrganizationUncheckedUpdateInput = {
@@ -436,6 +448,8 @@ export type OrganizationUncheckedUpdateInput = {
   auditLogs?: Prisma.AuditLogUncheckedUpdateManyWithoutOrganizationNestedInput
   comments?: Prisma.CommentUncheckedUpdateManyWithoutOrganizationNestedInput
   timelineEvents?: Prisma.TimelineEventUncheckedUpdateManyWithoutOrganizationNestedInput
+  tags?: Prisma.TagUncheckedUpdateManyWithoutOrganizationNestedInput
+  tagAssignments?: Prisma.TagAssignmentUncheckedUpdateManyWithoutOrganizationNestedInput
 }
 
 export type OrganizationCreateManyInput = {
@@ -688,6 +702,34 @@ export type OrganizationUpdateOneRequiredWithoutAttachmentsNestedInput = {
   update?: Prisma.XOR<Prisma.XOR<Prisma.OrganizationUpdateToOneWithWhereWithoutAttachmentsInput, Prisma.OrganizationUpdateWithoutAttachmentsInput>, Prisma.OrganizationUncheckedUpdateWithoutAttachmentsInput>
 }
 
+export type OrganizationCreateNestedOneWithoutTagsInput = {
+  create?: Prisma.XOR<Prisma.OrganizationCreateWithoutTagsInput, Prisma.OrganizationUncheckedCreateWithoutTagsInput>
+  connectOrCreate?: Prisma.OrganizationCreateOrConnectWithoutTagsInput
+  connect?: Prisma.OrganizationWhereUniqueInput
+}
+
+export type OrganizationUpdateOneRequiredWithoutTagsNestedInput = {
+  create?: Prisma.XOR<Prisma.OrganizationCreateWithoutTagsInput, Prisma.OrganizationUncheckedCreateWithoutTagsInput>
+  connectOrCreate?: Prisma.OrganizationCreateOrConnectWithoutTagsInput
+  upsert?: Prisma.OrganizationUpsertWithoutTagsInput
+  connect?: Prisma.OrganizationWhereUniqueInput
+  update?: Prisma.XOR<Prisma.XOR<Prisma.OrganizationUpdateToOneWithWhereWithoutTagsInput, Prisma.OrganizationUpdateWithoutTagsInput>, Prisma.OrganizationUncheckedUpdateWithoutTagsInput>
+}
+
+export type OrganizationCreateNestedOneWithoutTagAssignmentsInput = {
+  create?: Prisma.XOR<Prisma.OrganizationCreateWithoutTagAssignmentsInput, Prisma.OrganizationUncheckedCreateWithoutTagAssignmentsInput>
+  connectOrCreate?: Prisma.OrganizationCreateOrConnectWithoutTagAssignmentsInput
+  connect?: Prisma.OrganizationWhereUniqueInput
+}
+
+export type OrganizationUpdateOneRequiredWithoutTagAssignmentsNestedInput = {
+  create?: Prisma.XOR<Prisma.OrganizationCreateWithoutTagAssignmentsInput, Prisma.OrganizationUncheckedCreateWithoutTagAssignmentsInput>
+  connectOrCreate?: Prisma.OrganizationCreateOrConnectWithoutTagAssignmentsInput
+  upsert?: Prisma.OrganizationUpsertWithoutTagAssignmentsInput
+  connect?: Prisma.OrganizationWhereUniqueInput
+  update?: Prisma.XOR<Prisma.XOR<Prisma.OrganizationUpdateToOneWithWhereWithoutTagAssignmentsInput, Prisma.OrganizationUpdateWithoutTagAssignmentsInput>, Prisma.OrganizationUncheckedUpdateWithoutTagAssignmentsInput>
+}
+
 export type OrganizationCreateNestedOneWithoutWorkflowDefinitionsInput = {
   create?: Prisma.XOR<Prisma.OrganizationCreateWithoutWorkflowDefinitionsInput, Prisma.OrganizationUncheckedCreateWithoutWorkflowDefinitionsInput>
   connectOrCreate?: Prisma.OrganizationCreateOrConnectWithoutWorkflowDefinitionsInput
@@ -796,6 +838,8 @@ export type OrganizationCreateWithoutOwnerInput = {
   auditLogs?: Prisma.AuditLogCreateNestedManyWithoutOrganizationInput
   comments?: Prisma.CommentCreateNestedManyWithoutOrganizationInput
   timelineEvents?: Prisma.TimelineEventCreateNestedManyWithoutOrganizationInput
+  tags?: Prisma.TagCreateNestedManyWithoutOrganizationInput
+  tagAssignments?: Prisma.TagAssignmentCreateNestedManyWithoutOrganizationInput
 }
 
 export type OrganizationUncheckedCreateWithoutOwnerInput = {
@@ -822,6 +866,8 @@ export type OrganizationUncheckedCreateWithoutOwnerInput = {
   auditLogs?: Prisma.AuditLogUncheckedCreateNestedManyWithoutOrganizationInput
   comments?: Prisma.CommentUncheckedCreateNestedManyWithoutOrganizationInput
   timelineEvents?: Prisma.TimelineEventUncheckedCreateNestedManyWithoutOrganizationInput
+  tags?: Prisma.TagUncheckedCreateNestedManyWithoutOrganizationInput
+  tagAssignments?: Prisma.TagAssignmentUncheckedCreateNestedManyWithoutOrganizationInput
 }
 
 export type OrganizationCreateOrConnectWithoutOwnerInput = {
@@ -890,6 +936,8 @@ export type OrganizationCreateWithoutMembersInput = {
   auditLogs?: Prisma.AuditLogCreateNestedManyWithoutOrganizationInput
   comments?: Prisma.CommentCreateNestedManyWithoutOrganizationInput
   timelineEvents?: Prisma.TimelineEventCreateNestedManyWithoutOrganizationInput
+  tags?: Prisma.TagCreateNestedManyWithoutOrganizationInput
+  tagAssignments?: Prisma.TagAssignmentCreateNestedManyWithoutOrganizationInput
 }
 
 export type OrganizationUncheckedCreateWithoutMembersInput = {
@@ -916,6 +964,8 @@ export type OrganizationUncheckedCreateWithoutMembersInput = {
   auditLogs?: Prisma.AuditLogUncheckedCreateNestedManyWithoutOrganizationInput
   comments?: Prisma.CommentUncheckedCreateNestedManyWithoutOrganizationInput
   timelineEvents?: Prisma.TimelineEventUncheckedCreateNestedManyWithoutOrganizationInput
+  tags?: Prisma.TagUncheckedCreateNestedManyWithoutOrganizationInput
+  tagAssignments?: Prisma.TagAssignmentUncheckedCreateNestedManyWithoutOrganizationInput
 }
 
 export type OrganizationCreateOrConnectWithoutMembersInput = {
@@ -958,6 +1008,8 @@ export type OrganizationUpdateWithoutMembersInput = {
   auditLogs?: Prisma.AuditLogUpdateManyWithoutOrganizationNestedInput
   comments?: Prisma.CommentUpdateManyWithoutOrganizationNestedInput
   timelineEvents?: Prisma.TimelineEventUpdateManyWithoutOrganizationNestedInput
+  tags?: Prisma.TagUpdateManyWithoutOrganizationNestedInput
+  tagAssignments?: Prisma.TagAssignmentUpdateManyWithoutOrganizationNestedInput
 }
 
 export type OrganizationUncheckedUpdateWithoutMembersInput = {
@@ -984,6 +1036,8 @@ export type OrganizationUncheckedUpdateWithoutMembersInput = {
   auditLogs?: Prisma.AuditLogUncheckedUpdateManyWithoutOrganizationNestedInput
   comments?: Prisma.CommentUncheckedUpdateManyWithoutOrganizationNestedInput
   timelineEvents?: Prisma.TimelineEventUncheckedUpdateManyWithoutOrganizationNestedInput
+  tags?: Prisma.TagUncheckedUpdateManyWithoutOrganizationNestedInput
+  tagAssignments?: Prisma.TagAssignmentUncheckedUpdateManyWithoutOrganizationNestedInput
 }
 
 export type OrganizationCreateWithoutSpacesInput = {
@@ -1010,6 +1064,8 @@ export type OrganizationCreateWithoutSpacesInput = {
   auditLogs?: Prisma.AuditLogCreateNestedManyWithoutOrganizationInput
   comments?: Prisma.CommentCreateNestedManyWithoutOrganizationInput
   timelineEvents?: Prisma.TimelineEventCreateNestedManyWithoutOrganizationInput
+  tags?: Prisma.TagCreateNestedManyWithoutOrganizationInput
+  tagAssignments?: Prisma.TagAssignmentCreateNestedManyWithoutOrganizationInput
 }
 
 export type OrganizationUncheckedCreateWithoutSpacesInput = {
@@ -1036,6 +1092,8 @@ export type OrganizationUncheckedCreateWithoutSpacesInput = {
   auditLogs?: Prisma.AuditLogUncheckedCreateNestedManyWithoutOrganizationInput
   comments?: Prisma.CommentUncheckedCreateNestedManyWithoutOrganizationInput
   timelineEvents?: Prisma.TimelineEventUncheckedCreateNestedManyWithoutOrganizationInput
+  tags?: Prisma.TagUncheckedCreateNestedManyWithoutOrganizationInput
+  tagAssignments?: Prisma.TagAssignmentUncheckedCreateNestedManyWithoutOrganizationInput
 }
 
 export type OrganizationCreateOrConnectWithoutSpacesInput = {
@@ -1078,6 +1136,8 @@ export type OrganizationUpdateWithoutSpacesInput = {
   auditLogs?: Prisma.AuditLogUpdateManyWithoutOrganizationNestedInput
   comments?: Prisma.CommentUpdateManyWithoutOrganizationNestedInput
   timelineEvents?: Prisma.TimelineEventUpdateManyWithoutOrganizationNestedInput
+  tags?: Prisma.TagUpdateManyWithoutOrganizationNestedInput
+  tagAssignments?: Prisma.TagAssignmentUpdateManyWithoutOrganizationNestedInput
 }
 
 export type OrganizationUncheckedUpdateWithoutSpacesInput = {
@@ -1104,6 +1164,8 @@ export type OrganizationUncheckedUpdateWithoutSpacesInput = {
   auditLogs?: Prisma.AuditLogUncheckedUpdateManyWithoutOrganizationNestedInput
   comments?: Prisma.CommentUncheckedUpdateManyWithoutOrganizationNestedInput
   timelineEvents?: Prisma.TimelineEventUncheckedUpdateManyWithoutOrganizationNestedInput
+  tags?: Prisma.TagUncheckedUpdateManyWithoutOrganizationNestedInput
+  tagAssignments?: Prisma.TagAssignmentUncheckedUpdateManyWithoutOrganizationNestedInput
 }
 
 export type OrganizationCreateWithoutSpaceMembersInput = {
@@ -1130,6 +1192,8 @@ export type OrganizationCreateWithoutSpaceMembersInput = {
   auditLogs?: Prisma.AuditLogCreateNestedManyWithoutOrganizationInput
   comments?: Prisma.CommentCreateNestedManyWithoutOrganizationInput
   timelineEvents?: Prisma.TimelineEventCreateNestedManyWithoutOrganizationInput
+  tags?: Prisma.TagCreateNestedManyWithoutOrganizationInput
+  tagAssignments?: Prisma.TagAssignmentCreateNestedManyWithoutOrganizationInput
 }
 
 export type OrganizationUncheckedCreateWithoutSpaceMembersInput = {
@@ -1156,6 +1220,8 @@ export type OrganizationUncheckedCreateWithoutSpaceMembersInput = {
   auditLogs?: Prisma.AuditLogUncheckedCreateNestedManyWithoutOrganizationInput
   comments?: Prisma.CommentUncheckedCreateNestedManyWithoutOrganizationInput
   timelineEvents?: Prisma.TimelineEventUncheckedCreateNestedManyWithoutOrganizationInput
+  tags?: Prisma.TagUncheckedCreateNestedManyWithoutOrganizationInput
+  tagAssignments?: Prisma.TagAssignmentUncheckedCreateNestedManyWithoutOrganizationInput
 }
 
 export type OrganizationCreateOrConnectWithoutSpaceMembersInput = {
@@ -1198,6 +1264,8 @@ export type OrganizationUpdateWithoutSpaceMembersInput = {
   auditLogs?: Prisma.AuditLogUpdateManyWithoutOrganizationNestedInput
   comments?: Prisma.CommentUpdateManyWithoutOrganizationNestedInput
   timelineEvents?: Prisma.TimelineEventUpdateManyWithoutOrganizationNestedInput
+  tags?: Prisma.TagUpdateManyWithoutOrganizationNestedInput
+  tagAssignments?: Prisma.TagAssignmentUpdateManyWithoutOrganizationNestedInput
 }
 
 export type OrganizationUncheckedUpdateWithoutSpaceMembersInput = {
@@ -1224,6 +1292,8 @@ export type OrganizationUncheckedUpdateWithoutSpaceMembersInput = {
   auditLogs?: Prisma.AuditLogUncheckedUpdateManyWithoutOrganizationNestedInput
   comments?: Prisma.CommentUncheckedUpdateManyWithoutOrganizationNestedInput
   timelineEvents?: Prisma.TimelineEventUncheckedUpdateManyWithoutOrganizationNestedInput
+  tags?: Prisma.TagUncheckedUpdateManyWithoutOrganizationNestedInput
+  tagAssignments?: Prisma.TagAssignmentUncheckedUpdateManyWithoutOrganizationNestedInput
 }
 
 export type OrganizationCreateWithoutVersionsInput = {
@@ -1250,6 +1320,8 @@ export type OrganizationCreateWithoutVersionsInput = {
   auditLogs?: Prisma.AuditLogCreateNestedManyWithoutOrganizationInput
   comments?: Prisma.CommentCreateNestedManyWithoutOrganizationInput
   timelineEvents?: Prisma.TimelineEventCreateNestedManyWithoutOrganizationInput
+  tags?: Prisma.TagCreateNestedManyWithoutOrganizationInput
+  tagAssignments?: Prisma.TagAssignmentCreateNestedManyWithoutOrganizationInput
 }
 
 export type OrganizationUncheckedCreateWithoutVersionsInput = {
@@ -1276,6 +1348,8 @@ export type OrganizationUncheckedCreateWithoutVersionsInput = {
   auditLogs?: Prisma.AuditLogUncheckedCreateNestedManyWithoutOrganizationInput
   comments?: Prisma.CommentUncheckedCreateNestedManyWithoutOrganizationInput
   timelineEvents?: Prisma.TimelineEventUncheckedCreateNestedManyWithoutOrganizationInput
+  tags?: Prisma.TagUncheckedCreateNestedManyWithoutOrganizationInput
+  tagAssignments?: Prisma.TagAssignmentUncheckedCreateNestedManyWithoutOrganizationInput
 }
 
 export type OrganizationCreateOrConnectWithoutVersionsInput = {
@@ -1318,6 +1392,8 @@ export type OrganizationUpdateWithoutVersionsInput = {
   auditLogs?: Prisma.AuditLogUpdateManyWithoutOrganizationNestedInput
   comments?: Prisma.CommentUpdateManyWithoutOrganizationNestedInput
   timelineEvents?: Prisma.TimelineEventUpdateManyWithoutOrganizationNestedInput
+  tags?: Prisma.TagUpdateManyWithoutOrganizationNestedInput
+  tagAssignments?: Prisma.TagAssignmentUpdateManyWithoutOrganizationNestedInput
 }
 
 export type OrganizationUncheckedUpdateWithoutVersionsInput = {
@@ -1344,6 +1420,8 @@ export type OrganizationUncheckedUpdateWithoutVersionsInput = {
   auditLogs?: Prisma.AuditLogUncheckedUpdateManyWithoutOrganizationNestedInput
   comments?: Prisma.CommentUncheckedUpdateManyWithoutOrganizationNestedInput
   timelineEvents?: Prisma.TimelineEventUncheckedUpdateManyWithoutOrganizationNestedInput
+  tags?: Prisma.TagUncheckedUpdateManyWithoutOrganizationNestedInput
+  tagAssignments?: Prisma.TagAssignmentUncheckedUpdateManyWithoutOrganizationNestedInput
 }
 
 export type OrganizationCreateWithoutRequirementsInput = {
@@ -1370,6 +1448,8 @@ export type OrganizationCreateWithoutRequirementsInput = {
   auditLogs?: Prisma.AuditLogCreateNestedManyWithoutOrganizationInput
   comments?: Prisma.CommentCreateNestedManyWithoutOrganizationInput
   timelineEvents?: Prisma.TimelineEventCreateNestedManyWithoutOrganizationInput
+  tags?: Prisma.TagCreateNestedManyWithoutOrganizationInput
+  tagAssignments?: Prisma.TagAssignmentCreateNestedManyWithoutOrganizationInput
 }
 
 export type OrganizationUncheckedCreateWithoutRequirementsInput = {
@@ -1396,6 +1476,8 @@ export type OrganizationUncheckedCreateWithoutRequirementsInput = {
   auditLogs?: Prisma.AuditLogUncheckedCreateNestedManyWithoutOrganizationInput
   comments?: Prisma.CommentUncheckedCreateNestedManyWithoutOrganizationInput
   timelineEvents?: Prisma.TimelineEventUncheckedCreateNestedManyWithoutOrganizationInput
+  tags?: Prisma.TagUncheckedCreateNestedManyWithoutOrganizationInput
+  tagAssignments?: Prisma.TagAssignmentUncheckedCreateNestedManyWithoutOrganizationInput
 }
 
 export type OrganizationCreateOrConnectWithoutRequirementsInput = {
@@ -1438,6 +1520,8 @@ export type OrganizationUpdateWithoutRequirementsInput = {
   auditLogs?: Prisma.AuditLogUpdateManyWithoutOrganizationNestedInput
   comments?: Prisma.CommentUpdateManyWithoutOrganizationNestedInput
   timelineEvents?: Prisma.TimelineEventUpdateManyWithoutOrganizationNestedInput
+  tags?: Prisma.TagUpdateManyWithoutOrganizationNestedInput
+  tagAssignments?: Prisma.TagAssignmentUpdateManyWithoutOrganizationNestedInput
 }
 
 export type OrganizationUncheckedUpdateWithoutRequirementsInput = {
@@ -1464,6 +1548,8 @@ export type OrganizationUncheckedUpdateWithoutRequirementsInput = {
   auditLogs?: Prisma.AuditLogUncheckedUpdateManyWithoutOrganizationNestedInput
   comments?: Prisma.CommentUncheckedUpdateManyWithoutOrganizationNestedInput
   timelineEvents?: Prisma.TimelineEventUncheckedUpdateManyWithoutOrganizationNestedInput
+  tags?: Prisma.TagUncheckedUpdateManyWithoutOrganizationNestedInput
+  tagAssignments?: Prisma.TagAssignmentUncheckedUpdateManyWithoutOrganizationNestedInput
 }
 
 export type OrganizationCreateWithoutIntakeItemsInput = {
@@ -1490,6 +1576,8 @@ export type OrganizationCreateWithoutIntakeItemsInput = {
   auditLogs?: Prisma.AuditLogCreateNestedManyWithoutOrganizationInput
   comments?: Prisma.CommentCreateNestedManyWithoutOrganizationInput
   timelineEvents?: Prisma.TimelineEventCreateNestedManyWithoutOrganizationInput
+  tags?: Prisma.TagCreateNestedManyWithoutOrganizationInput
+  tagAssignments?: Prisma.TagAssignmentCreateNestedManyWithoutOrganizationInput
 }
 
 export type OrganizationUncheckedCreateWithoutIntakeItemsInput = {
@@ -1516,6 +1604,8 @@ export type OrganizationUncheckedCreateWithoutIntakeItemsInput = {
   auditLogs?: Prisma.AuditLogUncheckedCreateNestedManyWithoutOrganizationInput
   comments?: Prisma.CommentUncheckedCreateNestedManyWithoutOrganizationInput
   timelineEvents?: Prisma.TimelineEventUncheckedCreateNestedManyWithoutOrganizationInput
+  tags?: Prisma.TagUncheckedCreateNestedManyWithoutOrganizationInput
+  tagAssignments?: Prisma.TagAssignmentUncheckedCreateNestedManyWithoutOrganizationInput
 }
 
 export type OrganizationCreateOrConnectWithoutIntakeItemsInput = {
@@ -1558,6 +1648,8 @@ export type OrganizationUpdateWithoutIntakeItemsInput = {
   auditLogs?: Prisma.AuditLogUpdateManyWithoutOrganizationNestedInput
   comments?: Prisma.CommentUpdateManyWithoutOrganizationNestedInput
   timelineEvents?: Prisma.TimelineEventUpdateManyWithoutOrganizationNestedInput
+  tags?: Prisma.TagUpdateManyWithoutOrganizationNestedInput
+  tagAssignments?: Prisma.TagAssignmentUpdateManyWithoutOrganizationNestedInput
 }
 
 export type OrganizationUncheckedUpdateWithoutIntakeItemsInput = {
@@ -1584,6 +1676,8 @@ export type OrganizationUncheckedUpdateWithoutIntakeItemsInput = {
   auditLogs?: Prisma.AuditLogUncheckedUpdateManyWithoutOrganizationNestedInput
   comments?: Prisma.CommentUncheckedUpdateManyWithoutOrganizationNestedInput
   timelineEvents?: Prisma.TimelineEventUncheckedUpdateManyWithoutOrganizationNestedInput
+  tags?: Prisma.TagUncheckedUpdateManyWithoutOrganizationNestedInput
+  tagAssignments?: Prisma.TagAssignmentUncheckedUpdateManyWithoutOrganizationNestedInput
 }
 
 export type OrganizationCreateWithoutWorkItemsInput = {
@@ -1610,6 +1704,8 @@ export type OrganizationCreateWithoutWorkItemsInput = {
   auditLogs?: Prisma.AuditLogCreateNestedManyWithoutOrganizationInput
   comments?: Prisma.CommentCreateNestedManyWithoutOrganizationInput
   timelineEvents?: Prisma.TimelineEventCreateNestedManyWithoutOrganizationInput
+  tags?: Prisma.TagCreateNestedManyWithoutOrganizationInput
+  tagAssignments?: Prisma.TagAssignmentCreateNestedManyWithoutOrganizationInput
 }
 
 export type OrganizationUncheckedCreateWithoutWorkItemsInput = {
@@ -1636,6 +1732,8 @@ export type OrganizationUncheckedCreateWithoutWorkItemsInput = {
   auditLogs?: Prisma.AuditLogUncheckedCreateNestedManyWithoutOrganizationInput
   comments?: Prisma.CommentUncheckedCreateNestedManyWithoutOrganizationInput
   timelineEvents?: Prisma.TimelineEventUncheckedCreateNestedManyWithoutOrganizationInput
+  tags?: Prisma.TagUncheckedCreateNestedManyWithoutOrganizationInput
+  tagAssignments?: Prisma.TagAssignmentUncheckedCreateNestedManyWithoutOrganizationInput
 }
 
 export type OrganizationCreateOrConnectWithoutWorkItemsInput = {
@@ -1678,6 +1776,8 @@ export type OrganizationUpdateWithoutWorkItemsInput = {
   auditLogs?: Prisma.AuditLogUpdateManyWithoutOrganizationNestedInput
   comments?: Prisma.CommentUpdateManyWithoutOrganizationNestedInput
   timelineEvents?: Prisma.TimelineEventUpdateManyWithoutOrganizationNestedInput
+  tags?: Prisma.TagUpdateManyWithoutOrganizationNestedInput
+  tagAssignments?: Prisma.TagAssignmentUpdateManyWithoutOrganizationNestedInput
 }
 
 export type OrganizationUncheckedUpdateWithoutWorkItemsInput = {
@@ -1704,6 +1804,8 @@ export type OrganizationUncheckedUpdateWithoutWorkItemsInput = {
   auditLogs?: Prisma.AuditLogUncheckedUpdateManyWithoutOrganizationNestedInput
   comments?: Prisma.CommentUncheckedUpdateManyWithoutOrganizationNestedInput
   timelineEvents?: Prisma.TimelineEventUncheckedUpdateManyWithoutOrganizationNestedInput
+  tags?: Prisma.TagUncheckedUpdateManyWithoutOrganizationNestedInput
+  tagAssignments?: Prisma.TagAssignmentUncheckedUpdateManyWithoutOrganizationNestedInput
 }
 
 export type OrganizationCreateWithoutAttachmentsInput = {
@@ -1730,6 +1832,8 @@ export type OrganizationCreateWithoutAttachmentsInput = {
   auditLogs?: Prisma.AuditLogCreateNestedManyWithoutOrganizationInput
   comments?: Prisma.CommentCreateNestedManyWithoutOrganizationInput
   timelineEvents?: Prisma.TimelineEventCreateNestedManyWithoutOrganizationInput
+  tags?: Prisma.TagCreateNestedManyWithoutOrganizationInput
+  tagAssignments?: Prisma.TagAssignmentCreateNestedManyWithoutOrganizationInput
 }
 
 export type OrganizationUncheckedCreateWithoutAttachmentsInput = {
@@ -1756,6 +1860,8 @@ export type OrganizationUncheckedCreateWithoutAttachmentsInput = {
   auditLogs?: Prisma.AuditLogUncheckedCreateNestedManyWithoutOrganizationInput
   comments?: Prisma.CommentUncheckedCreateNestedManyWithoutOrganizationInput
   timelineEvents?: Prisma.TimelineEventUncheckedCreateNestedManyWithoutOrganizationInput
+  tags?: Prisma.TagUncheckedCreateNestedManyWithoutOrganizationInput
+  tagAssignments?: Prisma.TagAssignmentUncheckedCreateNestedManyWithoutOrganizationInput
 }
 
 export type OrganizationCreateOrConnectWithoutAttachmentsInput = {
@@ -1798,6 +1904,8 @@ export type OrganizationUpdateWithoutAttachmentsInput = {
   auditLogs?: Prisma.AuditLogUpdateManyWithoutOrganizationNestedInput
   comments?: Prisma.CommentUpdateManyWithoutOrganizationNestedInput
   timelineEvents?: Prisma.TimelineEventUpdateManyWithoutOrganizationNestedInput
+  tags?: Prisma.TagUpdateManyWithoutOrganizationNestedInput
+  tagAssignments?: Prisma.TagAssignmentUpdateManyWithoutOrganizationNestedInput
 }
 
 export type OrganizationUncheckedUpdateWithoutAttachmentsInput = {
@@ -1824,6 +1932,264 @@ export type OrganizationUncheckedUpdateWithoutAttachmentsInput = {
   auditLogs?: Prisma.AuditLogUncheckedUpdateManyWithoutOrganizationNestedInput
   comments?: Prisma.CommentUncheckedUpdateManyWithoutOrganizationNestedInput
   timelineEvents?: Prisma.TimelineEventUncheckedUpdateManyWithoutOrganizationNestedInput
+  tags?: Prisma.TagUncheckedUpdateManyWithoutOrganizationNestedInput
+  tagAssignments?: Prisma.TagAssignmentUncheckedUpdateManyWithoutOrganizationNestedInput
+}
+
+export type OrganizationCreateWithoutTagsInput = {
+  id: string
+  name: string
+  code: string
+  status?: $Enums.OrganizationStatus
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  createdById?: string | null
+  updatedById?: string | null
+  deletedAt?: Date | string | null
+  owner?: Prisma.UserCreateNestedOneWithoutOrganizationsInput
+  members?: Prisma.OrganizationMemberCreateNestedManyWithoutOrganizationInput
+  spaces?: Prisma.SpaceCreateNestedManyWithoutOrganizationInput
+  spaceMembers?: Prisma.SpaceMemberCreateNestedManyWithoutOrganizationInput
+  versions?: Prisma.VersionCreateNestedManyWithoutOrganizationInput
+  requirements?: Prisma.RequirementCreateNestedManyWithoutOrganizationInput
+  attachments?: Prisma.AttachmentCreateNestedManyWithoutOrganizationInput
+  workflowDefinitions?: Prisma.WorkflowDefinitionCreateNestedManyWithoutOrganizationInput
+  workflowBindings?: Prisma.WorkflowBindingCreateNestedManyWithoutOrganizationInput
+  objectParticipants?: Prisma.ObjectParticipantCreateNestedManyWithoutOrganizationInput
+  intakeItems?: Prisma.IntakeItemCreateNestedManyWithoutOrganizationInput
+  workItems?: Prisma.WorkItemCreateNestedManyWithoutOrganizationInput
+  auditLogs?: Prisma.AuditLogCreateNestedManyWithoutOrganizationInput
+  comments?: Prisma.CommentCreateNestedManyWithoutOrganizationInput
+  timelineEvents?: Prisma.TimelineEventCreateNestedManyWithoutOrganizationInput
+  tagAssignments?: Prisma.TagAssignmentCreateNestedManyWithoutOrganizationInput
+}
+
+export type OrganizationUncheckedCreateWithoutTagsInput = {
+  id: string
+  name: string
+  code: string
+  ownerId?: string | null
+  status?: $Enums.OrganizationStatus
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  createdById?: string | null
+  updatedById?: string | null
+  deletedAt?: Date | string | null
+  members?: Prisma.OrganizationMemberUncheckedCreateNestedManyWithoutOrganizationInput
+  spaces?: Prisma.SpaceUncheckedCreateNestedManyWithoutOrganizationInput
+  spaceMembers?: Prisma.SpaceMemberUncheckedCreateNestedManyWithoutOrganizationInput
+  versions?: Prisma.VersionUncheckedCreateNestedManyWithoutOrganizationInput
+  requirements?: Prisma.RequirementUncheckedCreateNestedManyWithoutOrganizationInput
+  attachments?: Prisma.AttachmentUncheckedCreateNestedManyWithoutOrganizationInput
+  workflowDefinitions?: Prisma.WorkflowDefinitionUncheckedCreateNestedManyWithoutOrganizationInput
+  workflowBindings?: Prisma.WorkflowBindingUncheckedCreateNestedManyWithoutOrganizationInput
+  objectParticipants?: Prisma.ObjectParticipantUncheckedCreateNestedManyWithoutOrganizationInput
+  intakeItems?: Prisma.IntakeItemUncheckedCreateNestedManyWithoutOrganizationInput
+  workItems?: Prisma.WorkItemUncheckedCreateNestedManyWithoutOrganizationInput
+  auditLogs?: Prisma.AuditLogUncheckedCreateNestedManyWithoutOrganizationInput
+  comments?: Prisma.CommentUncheckedCreateNestedManyWithoutOrganizationInput
+  timelineEvents?: Prisma.TimelineEventUncheckedCreateNestedManyWithoutOrganizationInput
+  tagAssignments?: Prisma.TagAssignmentUncheckedCreateNestedManyWithoutOrganizationInput
+}
+
+export type OrganizationCreateOrConnectWithoutTagsInput = {
+  where: Prisma.OrganizationWhereUniqueInput
+  create: Prisma.XOR<Prisma.OrganizationCreateWithoutTagsInput, Prisma.OrganizationUncheckedCreateWithoutTagsInput>
+}
+
+export type OrganizationUpsertWithoutTagsInput = {
+  update: Prisma.XOR<Prisma.OrganizationUpdateWithoutTagsInput, Prisma.OrganizationUncheckedUpdateWithoutTagsInput>
+  create: Prisma.XOR<Prisma.OrganizationCreateWithoutTagsInput, Prisma.OrganizationUncheckedCreateWithoutTagsInput>
+  where?: Prisma.OrganizationWhereInput
+}
+
+export type OrganizationUpdateToOneWithWhereWithoutTagsInput = {
+  where?: Prisma.OrganizationWhereInput
+  data: Prisma.XOR<Prisma.OrganizationUpdateWithoutTagsInput, Prisma.OrganizationUncheckedUpdateWithoutTagsInput>
+}
+
+export type OrganizationUpdateWithoutTagsInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  name?: Prisma.StringFieldUpdateOperationsInput | string
+  code?: Prisma.StringFieldUpdateOperationsInput | string
+  status?: Prisma.EnumOrganizationStatusFieldUpdateOperationsInput | $Enums.OrganizationStatus
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  createdById?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  updatedById?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  deletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  owner?: Prisma.UserUpdateOneWithoutOrganizationsNestedInput
+  members?: Prisma.OrganizationMemberUpdateManyWithoutOrganizationNestedInput
+  spaces?: Prisma.SpaceUpdateManyWithoutOrganizationNestedInput
+  spaceMembers?: Prisma.SpaceMemberUpdateManyWithoutOrganizationNestedInput
+  versions?: Prisma.VersionUpdateManyWithoutOrganizationNestedInput
+  requirements?: Prisma.RequirementUpdateManyWithoutOrganizationNestedInput
+  attachments?: Prisma.AttachmentUpdateManyWithoutOrganizationNestedInput
+  workflowDefinitions?: Prisma.WorkflowDefinitionUpdateManyWithoutOrganizationNestedInput
+  workflowBindings?: Prisma.WorkflowBindingUpdateManyWithoutOrganizationNestedInput
+  objectParticipants?: Prisma.ObjectParticipantUpdateManyWithoutOrganizationNestedInput
+  intakeItems?: Prisma.IntakeItemUpdateManyWithoutOrganizationNestedInput
+  workItems?: Prisma.WorkItemUpdateManyWithoutOrganizationNestedInput
+  auditLogs?: Prisma.AuditLogUpdateManyWithoutOrganizationNestedInput
+  comments?: Prisma.CommentUpdateManyWithoutOrganizationNestedInput
+  timelineEvents?: Prisma.TimelineEventUpdateManyWithoutOrganizationNestedInput
+  tagAssignments?: Prisma.TagAssignmentUpdateManyWithoutOrganizationNestedInput
+}
+
+export type OrganizationUncheckedUpdateWithoutTagsInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  name?: Prisma.StringFieldUpdateOperationsInput | string
+  code?: Prisma.StringFieldUpdateOperationsInput | string
+  ownerId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  status?: Prisma.EnumOrganizationStatusFieldUpdateOperationsInput | $Enums.OrganizationStatus
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  createdById?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  updatedById?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  deletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  members?: Prisma.OrganizationMemberUncheckedUpdateManyWithoutOrganizationNestedInput
+  spaces?: Prisma.SpaceUncheckedUpdateManyWithoutOrganizationNestedInput
+  spaceMembers?: Prisma.SpaceMemberUncheckedUpdateManyWithoutOrganizationNestedInput
+  versions?: Prisma.VersionUncheckedUpdateManyWithoutOrganizationNestedInput
+  requirements?: Prisma.RequirementUncheckedUpdateManyWithoutOrganizationNestedInput
+  attachments?: Prisma.AttachmentUncheckedUpdateManyWithoutOrganizationNestedInput
+  workflowDefinitions?: Prisma.WorkflowDefinitionUncheckedUpdateManyWithoutOrganizationNestedInput
+  workflowBindings?: Prisma.WorkflowBindingUncheckedUpdateManyWithoutOrganizationNestedInput
+  objectParticipants?: Prisma.ObjectParticipantUncheckedUpdateManyWithoutOrganizationNestedInput
+  intakeItems?: Prisma.IntakeItemUncheckedUpdateManyWithoutOrganizationNestedInput
+  workItems?: Prisma.WorkItemUncheckedUpdateManyWithoutOrganizationNestedInput
+  auditLogs?: Prisma.AuditLogUncheckedUpdateManyWithoutOrganizationNestedInput
+  comments?: Prisma.CommentUncheckedUpdateManyWithoutOrganizationNestedInput
+  timelineEvents?: Prisma.TimelineEventUncheckedUpdateManyWithoutOrganizationNestedInput
+  tagAssignments?: Prisma.TagAssignmentUncheckedUpdateManyWithoutOrganizationNestedInput
+}
+
+export type OrganizationCreateWithoutTagAssignmentsInput = {
+  id: string
+  name: string
+  code: string
+  status?: $Enums.OrganizationStatus
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  createdById?: string | null
+  updatedById?: string | null
+  deletedAt?: Date | string | null
+  owner?: Prisma.UserCreateNestedOneWithoutOrganizationsInput
+  members?: Prisma.OrganizationMemberCreateNestedManyWithoutOrganizationInput
+  spaces?: Prisma.SpaceCreateNestedManyWithoutOrganizationInput
+  spaceMembers?: Prisma.SpaceMemberCreateNestedManyWithoutOrganizationInput
+  versions?: Prisma.VersionCreateNestedManyWithoutOrganizationInput
+  requirements?: Prisma.RequirementCreateNestedManyWithoutOrganizationInput
+  attachments?: Prisma.AttachmentCreateNestedManyWithoutOrganizationInput
+  workflowDefinitions?: Prisma.WorkflowDefinitionCreateNestedManyWithoutOrganizationInput
+  workflowBindings?: Prisma.WorkflowBindingCreateNestedManyWithoutOrganizationInput
+  objectParticipants?: Prisma.ObjectParticipantCreateNestedManyWithoutOrganizationInput
+  intakeItems?: Prisma.IntakeItemCreateNestedManyWithoutOrganizationInput
+  workItems?: Prisma.WorkItemCreateNestedManyWithoutOrganizationInput
+  auditLogs?: Prisma.AuditLogCreateNestedManyWithoutOrganizationInput
+  comments?: Prisma.CommentCreateNestedManyWithoutOrganizationInput
+  timelineEvents?: Prisma.TimelineEventCreateNestedManyWithoutOrganizationInput
+  tags?: Prisma.TagCreateNestedManyWithoutOrganizationInput
+}
+
+export type OrganizationUncheckedCreateWithoutTagAssignmentsInput = {
+  id: string
+  name: string
+  code: string
+  ownerId?: string | null
+  status?: $Enums.OrganizationStatus
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  createdById?: string | null
+  updatedById?: string | null
+  deletedAt?: Date | string | null
+  members?: Prisma.OrganizationMemberUncheckedCreateNestedManyWithoutOrganizationInput
+  spaces?: Prisma.SpaceUncheckedCreateNestedManyWithoutOrganizationInput
+  spaceMembers?: Prisma.SpaceMemberUncheckedCreateNestedManyWithoutOrganizationInput
+  versions?: Prisma.VersionUncheckedCreateNestedManyWithoutOrganizationInput
+  requirements?: Prisma.RequirementUncheckedCreateNestedManyWithoutOrganizationInput
+  attachments?: Prisma.AttachmentUncheckedCreateNestedManyWithoutOrganizationInput
+  workflowDefinitions?: Prisma.WorkflowDefinitionUncheckedCreateNestedManyWithoutOrganizationInput
+  workflowBindings?: Prisma.WorkflowBindingUncheckedCreateNestedManyWithoutOrganizationInput
+  objectParticipants?: Prisma.ObjectParticipantUncheckedCreateNestedManyWithoutOrganizationInput
+  intakeItems?: Prisma.IntakeItemUncheckedCreateNestedManyWithoutOrganizationInput
+  workItems?: Prisma.WorkItemUncheckedCreateNestedManyWithoutOrganizationInput
+  auditLogs?: Prisma.AuditLogUncheckedCreateNestedManyWithoutOrganizationInput
+  comments?: Prisma.CommentUncheckedCreateNestedManyWithoutOrganizationInput
+  timelineEvents?: Prisma.TimelineEventUncheckedCreateNestedManyWithoutOrganizationInput
+  tags?: Prisma.TagUncheckedCreateNestedManyWithoutOrganizationInput
+}
+
+export type OrganizationCreateOrConnectWithoutTagAssignmentsInput = {
+  where: Prisma.OrganizationWhereUniqueInput
+  create: Prisma.XOR<Prisma.OrganizationCreateWithoutTagAssignmentsInput, Prisma.OrganizationUncheckedCreateWithoutTagAssignmentsInput>
+}
+
+export type OrganizationUpsertWithoutTagAssignmentsInput = {
+  update: Prisma.XOR<Prisma.OrganizationUpdateWithoutTagAssignmentsInput, Prisma.OrganizationUncheckedUpdateWithoutTagAssignmentsInput>
+  create: Prisma.XOR<Prisma.OrganizationCreateWithoutTagAssignmentsInput, Prisma.OrganizationUncheckedCreateWithoutTagAssignmentsInput>
+  where?: Prisma.OrganizationWhereInput
+}
+
+export type OrganizationUpdateToOneWithWhereWithoutTagAssignmentsInput = {
+  where?: Prisma.OrganizationWhereInput
+  data: Prisma.XOR<Prisma.OrganizationUpdateWithoutTagAssignmentsInput, Prisma.OrganizationUncheckedUpdateWithoutTagAssignmentsInput>
+}
+
+export type OrganizationUpdateWithoutTagAssignmentsInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  name?: Prisma.StringFieldUpdateOperationsInput | string
+  code?: Prisma.StringFieldUpdateOperationsInput | string
+  status?: Prisma.EnumOrganizationStatusFieldUpdateOperationsInput | $Enums.OrganizationStatus
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  createdById?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  updatedById?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  deletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  owner?: Prisma.UserUpdateOneWithoutOrganizationsNestedInput
+  members?: Prisma.OrganizationMemberUpdateManyWithoutOrganizationNestedInput
+  spaces?: Prisma.SpaceUpdateManyWithoutOrganizationNestedInput
+  spaceMembers?: Prisma.SpaceMemberUpdateManyWithoutOrganizationNestedInput
+  versions?: Prisma.VersionUpdateManyWithoutOrganizationNestedInput
+  requirements?: Prisma.RequirementUpdateManyWithoutOrganizationNestedInput
+  attachments?: Prisma.AttachmentUpdateManyWithoutOrganizationNestedInput
+  workflowDefinitions?: Prisma.WorkflowDefinitionUpdateManyWithoutOrganizationNestedInput
+  workflowBindings?: Prisma.WorkflowBindingUpdateManyWithoutOrganizationNestedInput
+  objectParticipants?: Prisma.ObjectParticipantUpdateManyWithoutOrganizationNestedInput
+  intakeItems?: Prisma.IntakeItemUpdateManyWithoutOrganizationNestedInput
+  workItems?: Prisma.WorkItemUpdateManyWithoutOrganizationNestedInput
+  auditLogs?: Prisma.AuditLogUpdateManyWithoutOrganizationNestedInput
+  comments?: Prisma.CommentUpdateManyWithoutOrganizationNestedInput
+  timelineEvents?: Prisma.TimelineEventUpdateManyWithoutOrganizationNestedInput
+  tags?: Prisma.TagUpdateManyWithoutOrganizationNestedInput
+}
+
+export type OrganizationUncheckedUpdateWithoutTagAssignmentsInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  name?: Prisma.StringFieldUpdateOperationsInput | string
+  code?: Prisma.StringFieldUpdateOperationsInput | string
+  ownerId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  status?: Prisma.EnumOrganizationStatusFieldUpdateOperationsInput | $Enums.OrganizationStatus
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  createdById?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  updatedById?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  deletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  members?: Prisma.OrganizationMemberUncheckedUpdateManyWithoutOrganizationNestedInput
+  spaces?: Prisma.SpaceUncheckedUpdateManyWithoutOrganizationNestedInput
+  spaceMembers?: Prisma.SpaceMemberUncheckedUpdateManyWithoutOrganizationNestedInput
+  versions?: Prisma.VersionUncheckedUpdateManyWithoutOrganizationNestedInput
+  requirements?: Prisma.RequirementUncheckedUpdateManyWithoutOrganizationNestedInput
+  attachments?: Prisma.AttachmentUncheckedUpdateManyWithoutOrganizationNestedInput
+  workflowDefinitions?: Prisma.WorkflowDefinitionUncheckedUpdateManyWithoutOrganizationNestedInput
+  workflowBindings?: Prisma.WorkflowBindingUncheckedUpdateManyWithoutOrganizationNestedInput
+  objectParticipants?: Prisma.ObjectParticipantUncheckedUpdateManyWithoutOrganizationNestedInput
+  intakeItems?: Prisma.IntakeItemUncheckedUpdateManyWithoutOrganizationNestedInput
+  workItems?: Prisma.WorkItemUncheckedUpdateManyWithoutOrganizationNestedInput
+  auditLogs?: Prisma.AuditLogUncheckedUpdateManyWithoutOrganizationNestedInput
+  comments?: Prisma.CommentUncheckedUpdateManyWithoutOrganizationNestedInput
+  timelineEvents?: Prisma.TimelineEventUncheckedUpdateManyWithoutOrganizationNestedInput
+  tags?: Prisma.TagUncheckedUpdateManyWithoutOrganizationNestedInput
 }
 
 export type OrganizationCreateWithoutWorkflowDefinitionsInput = {
@@ -1850,6 +2216,8 @@ export type OrganizationCreateWithoutWorkflowDefinitionsInput = {
   auditLogs?: Prisma.AuditLogCreateNestedManyWithoutOrganizationInput
   comments?: Prisma.CommentCreateNestedManyWithoutOrganizationInput
   timelineEvents?: Prisma.TimelineEventCreateNestedManyWithoutOrganizationInput
+  tags?: Prisma.TagCreateNestedManyWithoutOrganizationInput
+  tagAssignments?: Prisma.TagAssignmentCreateNestedManyWithoutOrganizationInput
 }
 
 export type OrganizationUncheckedCreateWithoutWorkflowDefinitionsInput = {
@@ -1876,6 +2244,8 @@ export type OrganizationUncheckedCreateWithoutWorkflowDefinitionsInput = {
   auditLogs?: Prisma.AuditLogUncheckedCreateNestedManyWithoutOrganizationInput
   comments?: Prisma.CommentUncheckedCreateNestedManyWithoutOrganizationInput
   timelineEvents?: Prisma.TimelineEventUncheckedCreateNestedManyWithoutOrganizationInput
+  tags?: Prisma.TagUncheckedCreateNestedManyWithoutOrganizationInput
+  tagAssignments?: Prisma.TagAssignmentUncheckedCreateNestedManyWithoutOrganizationInput
 }
 
 export type OrganizationCreateOrConnectWithoutWorkflowDefinitionsInput = {
@@ -1918,6 +2288,8 @@ export type OrganizationUpdateWithoutWorkflowDefinitionsInput = {
   auditLogs?: Prisma.AuditLogUpdateManyWithoutOrganizationNestedInput
   comments?: Prisma.CommentUpdateManyWithoutOrganizationNestedInput
   timelineEvents?: Prisma.TimelineEventUpdateManyWithoutOrganizationNestedInput
+  tags?: Prisma.TagUpdateManyWithoutOrganizationNestedInput
+  tagAssignments?: Prisma.TagAssignmentUpdateManyWithoutOrganizationNestedInput
 }
 
 export type OrganizationUncheckedUpdateWithoutWorkflowDefinitionsInput = {
@@ -1944,6 +2316,8 @@ export type OrganizationUncheckedUpdateWithoutWorkflowDefinitionsInput = {
   auditLogs?: Prisma.AuditLogUncheckedUpdateManyWithoutOrganizationNestedInput
   comments?: Prisma.CommentUncheckedUpdateManyWithoutOrganizationNestedInput
   timelineEvents?: Prisma.TimelineEventUncheckedUpdateManyWithoutOrganizationNestedInput
+  tags?: Prisma.TagUncheckedUpdateManyWithoutOrganizationNestedInput
+  tagAssignments?: Prisma.TagAssignmentUncheckedUpdateManyWithoutOrganizationNestedInput
 }
 
 export type OrganizationCreateWithoutWorkflowBindingsInput = {
@@ -1970,6 +2344,8 @@ export type OrganizationCreateWithoutWorkflowBindingsInput = {
   auditLogs?: Prisma.AuditLogCreateNestedManyWithoutOrganizationInput
   comments?: Prisma.CommentCreateNestedManyWithoutOrganizationInput
   timelineEvents?: Prisma.TimelineEventCreateNestedManyWithoutOrganizationInput
+  tags?: Prisma.TagCreateNestedManyWithoutOrganizationInput
+  tagAssignments?: Prisma.TagAssignmentCreateNestedManyWithoutOrganizationInput
 }
 
 export type OrganizationUncheckedCreateWithoutWorkflowBindingsInput = {
@@ -1996,6 +2372,8 @@ export type OrganizationUncheckedCreateWithoutWorkflowBindingsInput = {
   auditLogs?: Prisma.AuditLogUncheckedCreateNestedManyWithoutOrganizationInput
   comments?: Prisma.CommentUncheckedCreateNestedManyWithoutOrganizationInput
   timelineEvents?: Prisma.TimelineEventUncheckedCreateNestedManyWithoutOrganizationInput
+  tags?: Prisma.TagUncheckedCreateNestedManyWithoutOrganizationInput
+  tagAssignments?: Prisma.TagAssignmentUncheckedCreateNestedManyWithoutOrganizationInput
 }
 
 export type OrganizationCreateOrConnectWithoutWorkflowBindingsInput = {
@@ -2038,6 +2416,8 @@ export type OrganizationUpdateWithoutWorkflowBindingsInput = {
   auditLogs?: Prisma.AuditLogUpdateManyWithoutOrganizationNestedInput
   comments?: Prisma.CommentUpdateManyWithoutOrganizationNestedInput
   timelineEvents?: Prisma.TimelineEventUpdateManyWithoutOrganizationNestedInput
+  tags?: Prisma.TagUpdateManyWithoutOrganizationNestedInput
+  tagAssignments?: Prisma.TagAssignmentUpdateManyWithoutOrganizationNestedInput
 }
 
 export type OrganizationUncheckedUpdateWithoutWorkflowBindingsInput = {
@@ -2064,6 +2444,8 @@ export type OrganizationUncheckedUpdateWithoutWorkflowBindingsInput = {
   auditLogs?: Prisma.AuditLogUncheckedUpdateManyWithoutOrganizationNestedInput
   comments?: Prisma.CommentUncheckedUpdateManyWithoutOrganizationNestedInput
   timelineEvents?: Prisma.TimelineEventUncheckedUpdateManyWithoutOrganizationNestedInput
+  tags?: Prisma.TagUncheckedUpdateManyWithoutOrganizationNestedInput
+  tagAssignments?: Prisma.TagAssignmentUncheckedUpdateManyWithoutOrganizationNestedInput
 }
 
 export type OrganizationCreateWithoutObjectParticipantsInput = {
@@ -2090,6 +2472,8 @@ export type OrganizationCreateWithoutObjectParticipantsInput = {
   auditLogs?: Prisma.AuditLogCreateNestedManyWithoutOrganizationInput
   comments?: Prisma.CommentCreateNestedManyWithoutOrganizationInput
   timelineEvents?: Prisma.TimelineEventCreateNestedManyWithoutOrganizationInput
+  tags?: Prisma.TagCreateNestedManyWithoutOrganizationInput
+  tagAssignments?: Prisma.TagAssignmentCreateNestedManyWithoutOrganizationInput
 }
 
 export type OrganizationUncheckedCreateWithoutObjectParticipantsInput = {
@@ -2116,6 +2500,8 @@ export type OrganizationUncheckedCreateWithoutObjectParticipantsInput = {
   auditLogs?: Prisma.AuditLogUncheckedCreateNestedManyWithoutOrganizationInput
   comments?: Prisma.CommentUncheckedCreateNestedManyWithoutOrganizationInput
   timelineEvents?: Prisma.TimelineEventUncheckedCreateNestedManyWithoutOrganizationInput
+  tags?: Prisma.TagUncheckedCreateNestedManyWithoutOrganizationInput
+  tagAssignments?: Prisma.TagAssignmentUncheckedCreateNestedManyWithoutOrganizationInput
 }
 
 export type OrganizationCreateOrConnectWithoutObjectParticipantsInput = {
@@ -2158,6 +2544,8 @@ export type OrganizationUpdateWithoutObjectParticipantsInput = {
   auditLogs?: Prisma.AuditLogUpdateManyWithoutOrganizationNestedInput
   comments?: Prisma.CommentUpdateManyWithoutOrganizationNestedInput
   timelineEvents?: Prisma.TimelineEventUpdateManyWithoutOrganizationNestedInput
+  tags?: Prisma.TagUpdateManyWithoutOrganizationNestedInput
+  tagAssignments?: Prisma.TagAssignmentUpdateManyWithoutOrganizationNestedInput
 }
 
 export type OrganizationUncheckedUpdateWithoutObjectParticipantsInput = {
@@ -2184,6 +2572,8 @@ export type OrganizationUncheckedUpdateWithoutObjectParticipantsInput = {
   auditLogs?: Prisma.AuditLogUncheckedUpdateManyWithoutOrganizationNestedInput
   comments?: Prisma.CommentUncheckedUpdateManyWithoutOrganizationNestedInput
   timelineEvents?: Prisma.TimelineEventUncheckedUpdateManyWithoutOrganizationNestedInput
+  tags?: Prisma.TagUncheckedUpdateManyWithoutOrganizationNestedInput
+  tagAssignments?: Prisma.TagAssignmentUncheckedUpdateManyWithoutOrganizationNestedInput
 }
 
 export type OrganizationCreateWithoutCommentsInput = {
@@ -2210,6 +2600,8 @@ export type OrganizationCreateWithoutCommentsInput = {
   workItems?: Prisma.WorkItemCreateNestedManyWithoutOrganizationInput
   auditLogs?: Prisma.AuditLogCreateNestedManyWithoutOrganizationInput
   timelineEvents?: Prisma.TimelineEventCreateNestedManyWithoutOrganizationInput
+  tags?: Prisma.TagCreateNestedManyWithoutOrganizationInput
+  tagAssignments?: Prisma.TagAssignmentCreateNestedManyWithoutOrganizationInput
 }
 
 export type OrganizationUncheckedCreateWithoutCommentsInput = {
@@ -2236,6 +2628,8 @@ export type OrganizationUncheckedCreateWithoutCommentsInput = {
   workItems?: Prisma.WorkItemUncheckedCreateNestedManyWithoutOrganizationInput
   auditLogs?: Prisma.AuditLogUncheckedCreateNestedManyWithoutOrganizationInput
   timelineEvents?: Prisma.TimelineEventUncheckedCreateNestedManyWithoutOrganizationInput
+  tags?: Prisma.TagUncheckedCreateNestedManyWithoutOrganizationInput
+  tagAssignments?: Prisma.TagAssignmentUncheckedCreateNestedManyWithoutOrganizationInput
 }
 
 export type OrganizationCreateOrConnectWithoutCommentsInput = {
@@ -2278,6 +2672,8 @@ export type OrganizationUpdateWithoutCommentsInput = {
   workItems?: Prisma.WorkItemUpdateManyWithoutOrganizationNestedInput
   auditLogs?: Prisma.AuditLogUpdateManyWithoutOrganizationNestedInput
   timelineEvents?: Prisma.TimelineEventUpdateManyWithoutOrganizationNestedInput
+  tags?: Prisma.TagUpdateManyWithoutOrganizationNestedInput
+  tagAssignments?: Prisma.TagAssignmentUpdateManyWithoutOrganizationNestedInput
 }
 
 export type OrganizationUncheckedUpdateWithoutCommentsInput = {
@@ -2304,6 +2700,8 @@ export type OrganizationUncheckedUpdateWithoutCommentsInput = {
   workItems?: Prisma.WorkItemUncheckedUpdateManyWithoutOrganizationNestedInput
   auditLogs?: Prisma.AuditLogUncheckedUpdateManyWithoutOrganizationNestedInput
   timelineEvents?: Prisma.TimelineEventUncheckedUpdateManyWithoutOrganizationNestedInput
+  tags?: Prisma.TagUncheckedUpdateManyWithoutOrganizationNestedInput
+  tagAssignments?: Prisma.TagAssignmentUncheckedUpdateManyWithoutOrganizationNestedInput
 }
 
 export type OrganizationCreateWithoutTimelineEventsInput = {
@@ -2330,6 +2728,8 @@ export type OrganizationCreateWithoutTimelineEventsInput = {
   workItems?: Prisma.WorkItemCreateNestedManyWithoutOrganizationInput
   auditLogs?: Prisma.AuditLogCreateNestedManyWithoutOrganizationInput
   comments?: Prisma.CommentCreateNestedManyWithoutOrganizationInput
+  tags?: Prisma.TagCreateNestedManyWithoutOrganizationInput
+  tagAssignments?: Prisma.TagAssignmentCreateNestedManyWithoutOrganizationInput
 }
 
 export type OrganizationUncheckedCreateWithoutTimelineEventsInput = {
@@ -2356,6 +2756,8 @@ export type OrganizationUncheckedCreateWithoutTimelineEventsInput = {
   workItems?: Prisma.WorkItemUncheckedCreateNestedManyWithoutOrganizationInput
   auditLogs?: Prisma.AuditLogUncheckedCreateNestedManyWithoutOrganizationInput
   comments?: Prisma.CommentUncheckedCreateNestedManyWithoutOrganizationInput
+  tags?: Prisma.TagUncheckedCreateNestedManyWithoutOrganizationInput
+  tagAssignments?: Prisma.TagAssignmentUncheckedCreateNestedManyWithoutOrganizationInput
 }
 
 export type OrganizationCreateOrConnectWithoutTimelineEventsInput = {
@@ -2398,6 +2800,8 @@ export type OrganizationUpdateWithoutTimelineEventsInput = {
   workItems?: Prisma.WorkItemUpdateManyWithoutOrganizationNestedInput
   auditLogs?: Prisma.AuditLogUpdateManyWithoutOrganizationNestedInput
   comments?: Prisma.CommentUpdateManyWithoutOrganizationNestedInput
+  tags?: Prisma.TagUpdateManyWithoutOrganizationNestedInput
+  tagAssignments?: Prisma.TagAssignmentUpdateManyWithoutOrganizationNestedInput
 }
 
 export type OrganizationUncheckedUpdateWithoutTimelineEventsInput = {
@@ -2424,6 +2828,8 @@ export type OrganizationUncheckedUpdateWithoutTimelineEventsInput = {
   workItems?: Prisma.WorkItemUncheckedUpdateManyWithoutOrganizationNestedInput
   auditLogs?: Prisma.AuditLogUncheckedUpdateManyWithoutOrganizationNestedInput
   comments?: Prisma.CommentUncheckedUpdateManyWithoutOrganizationNestedInput
+  tags?: Prisma.TagUncheckedUpdateManyWithoutOrganizationNestedInput
+  tagAssignments?: Prisma.TagAssignmentUncheckedUpdateManyWithoutOrganizationNestedInput
 }
 
 export type OrganizationCreateWithoutAuditLogsInput = {
@@ -2450,6 +2856,8 @@ export type OrganizationCreateWithoutAuditLogsInput = {
   workItems?: Prisma.WorkItemCreateNestedManyWithoutOrganizationInput
   comments?: Prisma.CommentCreateNestedManyWithoutOrganizationInput
   timelineEvents?: Prisma.TimelineEventCreateNestedManyWithoutOrganizationInput
+  tags?: Prisma.TagCreateNestedManyWithoutOrganizationInput
+  tagAssignments?: Prisma.TagAssignmentCreateNestedManyWithoutOrganizationInput
 }
 
 export type OrganizationUncheckedCreateWithoutAuditLogsInput = {
@@ -2476,6 +2884,8 @@ export type OrganizationUncheckedCreateWithoutAuditLogsInput = {
   workItems?: Prisma.WorkItemUncheckedCreateNestedManyWithoutOrganizationInput
   comments?: Prisma.CommentUncheckedCreateNestedManyWithoutOrganizationInput
   timelineEvents?: Prisma.TimelineEventUncheckedCreateNestedManyWithoutOrganizationInput
+  tags?: Prisma.TagUncheckedCreateNestedManyWithoutOrganizationInput
+  tagAssignments?: Prisma.TagAssignmentUncheckedCreateNestedManyWithoutOrganizationInput
 }
 
 export type OrganizationCreateOrConnectWithoutAuditLogsInput = {
@@ -2518,6 +2928,8 @@ export type OrganizationUpdateWithoutAuditLogsInput = {
   workItems?: Prisma.WorkItemUpdateManyWithoutOrganizationNestedInput
   comments?: Prisma.CommentUpdateManyWithoutOrganizationNestedInput
   timelineEvents?: Prisma.TimelineEventUpdateManyWithoutOrganizationNestedInput
+  tags?: Prisma.TagUpdateManyWithoutOrganizationNestedInput
+  tagAssignments?: Prisma.TagAssignmentUpdateManyWithoutOrganizationNestedInput
 }
 
 export type OrganizationUncheckedUpdateWithoutAuditLogsInput = {
@@ -2544,6 +2956,8 @@ export type OrganizationUncheckedUpdateWithoutAuditLogsInput = {
   workItems?: Prisma.WorkItemUncheckedUpdateManyWithoutOrganizationNestedInput
   comments?: Prisma.CommentUncheckedUpdateManyWithoutOrganizationNestedInput
   timelineEvents?: Prisma.TimelineEventUncheckedUpdateManyWithoutOrganizationNestedInput
+  tags?: Prisma.TagUncheckedUpdateManyWithoutOrganizationNestedInput
+  tagAssignments?: Prisma.TagAssignmentUncheckedUpdateManyWithoutOrganizationNestedInput
 }
 
 export type OrganizationCreateManyOwnerInput = {
@@ -2582,6 +2996,8 @@ export type OrganizationUpdateWithoutOwnerInput = {
   auditLogs?: Prisma.AuditLogUpdateManyWithoutOrganizationNestedInput
   comments?: Prisma.CommentUpdateManyWithoutOrganizationNestedInput
   timelineEvents?: Prisma.TimelineEventUpdateManyWithoutOrganizationNestedInput
+  tags?: Prisma.TagUpdateManyWithoutOrganizationNestedInput
+  tagAssignments?: Prisma.TagAssignmentUpdateManyWithoutOrganizationNestedInput
 }
 
 export type OrganizationUncheckedUpdateWithoutOwnerInput = {
@@ -2608,6 +3024,8 @@ export type OrganizationUncheckedUpdateWithoutOwnerInput = {
   auditLogs?: Prisma.AuditLogUncheckedUpdateManyWithoutOrganizationNestedInput
   comments?: Prisma.CommentUncheckedUpdateManyWithoutOrganizationNestedInput
   timelineEvents?: Prisma.TimelineEventUncheckedUpdateManyWithoutOrganizationNestedInput
+  tags?: Prisma.TagUncheckedUpdateManyWithoutOrganizationNestedInput
+  tagAssignments?: Prisma.TagAssignmentUncheckedUpdateManyWithoutOrganizationNestedInput
 }
 
 export type OrganizationUncheckedUpdateManyWithoutOwnerInput = {
@@ -2642,6 +3060,8 @@ export type OrganizationCountOutputType = {
   auditLogs: number
   comments: number
   timelineEvents: number
+  tags: number
+  tagAssignments: number
 }
 
 export type OrganizationCountOutputTypeSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
@@ -2659,6 +3079,8 @@ export type OrganizationCountOutputTypeSelect<ExtArgs extends runtime.Types.Exte
   auditLogs?: boolean | OrganizationCountOutputTypeCountAuditLogsArgs
   comments?: boolean | OrganizationCountOutputTypeCountCommentsArgs
   timelineEvents?: boolean | OrganizationCountOutputTypeCountTimelineEventsArgs
+  tags?: boolean | OrganizationCountOutputTypeCountTagsArgs
+  tagAssignments?: boolean | OrganizationCountOutputTypeCountTagAssignmentsArgs
 }
 
 /**
@@ -2769,6 +3191,20 @@ export type OrganizationCountOutputTypeCountTimelineEventsArgs<ExtArgs extends r
   where?: Prisma.TimelineEventWhereInput
 }
 
+/**
+ * OrganizationCountOutputType without action
+ */
+export type OrganizationCountOutputTypeCountTagsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  where?: Prisma.TagWhereInput
+}
+
+/**
+ * OrganizationCountOutputType without action
+ */
+export type OrganizationCountOutputTypeCountTagAssignmentsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  where?: Prisma.TagAssignmentWhereInput
+}
+
 
 export type OrganizationSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
   id?: boolean
@@ -2796,6 +3232,8 @@ export type OrganizationSelect<ExtArgs extends runtime.Types.Extensions.Internal
   auditLogs?: boolean | Prisma.Organization$auditLogsArgs<ExtArgs>
   comments?: boolean | Prisma.Organization$commentsArgs<ExtArgs>
   timelineEvents?: boolean | Prisma.Organization$timelineEventsArgs<ExtArgs>
+  tags?: boolean | Prisma.Organization$tagsArgs<ExtArgs>
+  tagAssignments?: boolean | Prisma.Organization$tagAssignmentsArgs<ExtArgs>
   _count?: boolean | Prisma.OrganizationCountOutputTypeDefaultArgs<ExtArgs>
 }, ExtArgs["result"]["organization"]>
 
@@ -2857,6 +3295,8 @@ export type OrganizationInclude<ExtArgs extends runtime.Types.Extensions.Interna
   auditLogs?: boolean | Prisma.Organization$auditLogsArgs<ExtArgs>
   comments?: boolean | Prisma.Organization$commentsArgs<ExtArgs>
   timelineEvents?: boolean | Prisma.Organization$timelineEventsArgs<ExtArgs>
+  tags?: boolean | Prisma.Organization$tagsArgs<ExtArgs>
+  tagAssignments?: boolean | Prisma.Organization$tagAssignmentsArgs<ExtArgs>
   _count?: boolean | Prisma.OrganizationCountOutputTypeDefaultArgs<ExtArgs>
 }
 export type OrganizationIncludeCreateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
@@ -2884,6 +3324,8 @@ export type $OrganizationPayload<ExtArgs extends runtime.Types.Extensions.Intern
     auditLogs: Prisma.$AuditLogPayload<ExtArgs>[]
     comments: Prisma.$CommentPayload<ExtArgs>[]
     timelineEvents: Prisma.$TimelineEventPayload<ExtArgs>[]
+    tags: Prisma.$TagPayload<ExtArgs>[]
+    tagAssignments: Prisma.$TagAssignmentPayload<ExtArgs>[]
   }
   scalars: runtime.Types.Extensions.GetPayloadResult<{
     id: string
@@ -3305,6 +3747,8 @@ export interface Prisma__OrganizationClient<T, Null = never, ExtArgs extends run
   auditLogs<T extends Prisma.Organization$auditLogsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Organization$auditLogsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$AuditLogPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   comments<T extends Prisma.Organization$commentsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Organization$commentsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$CommentPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   timelineEvents<T extends Prisma.Organization$timelineEventsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Organization$timelineEventsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$TimelineEventPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
+  tags<T extends Prisma.Organization$tagsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Organization$tagsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$TagPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
+  tagAssignments<T extends Prisma.Organization$tagAssignmentsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Organization$tagAssignmentsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$TagAssignmentPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   /**
    * Attaches callbacks for the resolution and/or rejection of the Promise.
    * @param onfulfilled The callback to execute when the Promise is resolved.
@@ -4097,6 +4541,54 @@ export type Organization$timelineEventsArgs<ExtArgs extends runtime.Types.Extens
   take?: number
   skip?: number
   distinct?: Prisma.TimelineEventScalarFieldEnum | Prisma.TimelineEventScalarFieldEnum[]
+}
+
+/**
+ * Organization.tags
+ */
+export type Organization$tagsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  /**
+   * Select specific fields to fetch from the Tag
+   */
+  select?: Prisma.TagSelect<ExtArgs> | null
+  /**
+   * Omit specific fields from the Tag
+   */
+  omit?: Prisma.TagOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.TagInclude<ExtArgs> | null
+  where?: Prisma.TagWhereInput
+  orderBy?: Prisma.TagOrderByWithRelationInput | Prisma.TagOrderByWithRelationInput[]
+  cursor?: Prisma.TagWhereUniqueInput
+  take?: number
+  skip?: number
+  distinct?: Prisma.TagScalarFieldEnum | Prisma.TagScalarFieldEnum[]
+}
+
+/**
+ * Organization.tagAssignments
+ */
+export type Organization$tagAssignmentsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  /**
+   * Select specific fields to fetch from the TagAssignment
+   */
+  select?: Prisma.TagAssignmentSelect<ExtArgs> | null
+  /**
+   * Omit specific fields from the TagAssignment
+   */
+  omit?: Prisma.TagAssignmentOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.TagAssignmentInclude<ExtArgs> | null
+  where?: Prisma.TagAssignmentWhereInput
+  orderBy?: Prisma.TagAssignmentOrderByWithRelationInput | Prisma.TagAssignmentOrderByWithRelationInput[]
+  cursor?: Prisma.TagAssignmentWhereUniqueInput
+  take?: number
+  skip?: number
+  distinct?: Prisma.TagAssignmentScalarFieldEnum | Prisma.TagAssignmentScalarFieldEnum[]
 }
 
 /**

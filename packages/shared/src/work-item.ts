@@ -12,6 +12,11 @@ import {
   type StatusCategory,
   WorkItemTypeSchema,
 } from "./enums.ts";
+import {
+  TagFilterQuerySchema,
+  TagIdListSchema,
+  TagListSchema,
+} from "./tag.ts";
 import { PermissionSnapshotSchema } from "./workflow.ts";
 
 export const WorkItemSchema = z
@@ -36,6 +41,7 @@ export const WorkItemSchema = z
     lastActionAt: IsoDateTimeSchema.optional(),
     blockedReason: z.string().max(1000).optional(),
     blockedAt: IsoDateTimeSchema.optional(),
+    tags: TagListSchema,
     permissions: PermissionSnapshotSchema.optional(),
   })
   .strict();
@@ -60,6 +66,7 @@ export const CreateWorkItemRequestSchema = z
     assigneeId: UlidSchema.optional(),
     workflowVersionId: UlidSchema.optional(),
     dueDate: IsoDateTimeSchema.optional(),
+    tagIds: TagIdListSchema.optional(),
   })
   .strict();
 
@@ -208,7 +215,9 @@ export const UpdateBugRequestSchema = UpdateWorkItemRequestSchema.extend({
 
 export type UpdateBugRequest = z.infer<typeof UpdateBugRequestSchema>;
 
-export const WorkItemListQuerySchema = PageQuerySchema.extend({
+export const WorkItemListQuerySchema = PageQuerySchema.merge(
+  TagFilterQuerySchema,
+).extend({
   type: z.literal("TASK").optional(),
   versionId: UlidSchema.optional(),
   requirementId: UlidSchema.optional(),
@@ -223,7 +232,9 @@ export const CreateWorkItemResponseSchema = WorkItemSchema;
 export const GetWorkItemResponseSchema = WorkItemDetailSchema;
 export const UpdateWorkItemResponseSchema = WorkItemSchema;
 
-export const BugListQuerySchema = PageQuerySchema.extend({
+export const BugListQuerySchema = PageQuerySchema.merge(
+  TagFilterQuerySchema,
+).extend({
   type: z.literal("BUG").optional(),
   versionId: UlidSchema.optional(),
   requirementId: UlidSchema.optional(),

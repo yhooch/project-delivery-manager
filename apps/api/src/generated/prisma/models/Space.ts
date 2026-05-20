@@ -294,6 +294,8 @@ export type SpaceWhereInput = {
   auditLogs?: Prisma.AuditLogListRelationFilter
   comments?: Prisma.CommentListRelationFilter
   timelineEvents?: Prisma.TimelineEventListRelationFilter
+  tags?: Prisma.TagListRelationFilter
+  tagAssignments?: Prisma.TagAssignmentListRelationFilter
 }
 
 export type SpaceOrderByWithRelationInput = {
@@ -324,6 +326,8 @@ export type SpaceOrderByWithRelationInput = {
   auditLogs?: Prisma.AuditLogOrderByRelationAggregateInput
   comments?: Prisma.CommentOrderByRelationAggregateInput
   timelineEvents?: Prisma.TimelineEventOrderByRelationAggregateInput
+  tags?: Prisma.TagOrderByRelationAggregateInput
+  tagAssignments?: Prisma.TagAssignmentOrderByRelationAggregateInput
 }
 
 export type SpaceWhereUniqueInput = Prisma.AtLeast<{
@@ -357,6 +361,8 @@ export type SpaceWhereUniqueInput = Prisma.AtLeast<{
   auditLogs?: Prisma.AuditLogListRelationFilter
   comments?: Prisma.CommentListRelationFilter
   timelineEvents?: Prisma.TimelineEventListRelationFilter
+  tags?: Prisma.TagListRelationFilter
+  tagAssignments?: Prisma.TagAssignmentListRelationFilter
 }, "id">
 
 export type SpaceOrderByWithAggregationInput = {
@@ -425,6 +431,8 @@ export type SpaceCreateInput = {
   auditLogs?: Prisma.AuditLogCreateNestedManyWithoutSpaceInput
   comments?: Prisma.CommentCreateNestedManyWithoutSpaceInput
   timelineEvents?: Prisma.TimelineEventCreateNestedManyWithoutSpaceInput
+  tags?: Prisma.TagCreateNestedManyWithoutSpaceInput
+  tagAssignments?: Prisma.TagAssignmentCreateNestedManyWithoutSpaceInput
 }
 
 export type SpaceUncheckedCreateInput = {
@@ -453,6 +461,8 @@ export type SpaceUncheckedCreateInput = {
   auditLogs?: Prisma.AuditLogUncheckedCreateNestedManyWithoutSpaceInput
   comments?: Prisma.CommentUncheckedCreateNestedManyWithoutSpaceInput
   timelineEvents?: Prisma.TimelineEventUncheckedCreateNestedManyWithoutSpaceInput
+  tags?: Prisma.TagUncheckedCreateNestedManyWithoutSpaceInput
+  tagAssignments?: Prisma.TagAssignmentUncheckedCreateNestedManyWithoutSpaceInput
 }
 
 export type SpaceUpdateInput = {
@@ -481,6 +491,8 @@ export type SpaceUpdateInput = {
   auditLogs?: Prisma.AuditLogUpdateManyWithoutSpaceNestedInput
   comments?: Prisma.CommentUpdateManyWithoutSpaceNestedInput
   timelineEvents?: Prisma.TimelineEventUpdateManyWithoutSpaceNestedInput
+  tags?: Prisma.TagUpdateManyWithoutSpaceNestedInput
+  tagAssignments?: Prisma.TagAssignmentUpdateManyWithoutSpaceNestedInput
 }
 
 export type SpaceUncheckedUpdateInput = {
@@ -509,6 +521,8 @@ export type SpaceUncheckedUpdateInput = {
   auditLogs?: Prisma.AuditLogUncheckedUpdateManyWithoutSpaceNestedInput
   comments?: Prisma.CommentUncheckedUpdateManyWithoutSpaceNestedInput
   timelineEvents?: Prisma.TimelineEventUncheckedUpdateManyWithoutSpaceNestedInput
+  tags?: Prisma.TagUncheckedUpdateManyWithoutSpaceNestedInput
+  tagAssignments?: Prisma.TagAssignmentUncheckedUpdateManyWithoutSpaceNestedInput
 }
 
 export type SpaceCreateManyInput = {
@@ -813,6 +827,34 @@ export type SpaceUpdateOneRequiredWithoutAttachmentsNestedInput = {
   update?: Prisma.XOR<Prisma.XOR<Prisma.SpaceUpdateToOneWithWhereWithoutAttachmentsInput, Prisma.SpaceUpdateWithoutAttachmentsInput>, Prisma.SpaceUncheckedUpdateWithoutAttachmentsInput>
 }
 
+export type SpaceCreateNestedOneWithoutTagsInput = {
+  create?: Prisma.XOR<Prisma.SpaceCreateWithoutTagsInput, Prisma.SpaceUncheckedCreateWithoutTagsInput>
+  connectOrCreate?: Prisma.SpaceCreateOrConnectWithoutTagsInput
+  connect?: Prisma.SpaceWhereUniqueInput
+}
+
+export type SpaceUpdateOneRequiredWithoutTagsNestedInput = {
+  create?: Prisma.XOR<Prisma.SpaceCreateWithoutTagsInput, Prisma.SpaceUncheckedCreateWithoutTagsInput>
+  connectOrCreate?: Prisma.SpaceCreateOrConnectWithoutTagsInput
+  upsert?: Prisma.SpaceUpsertWithoutTagsInput
+  connect?: Prisma.SpaceWhereUniqueInput
+  update?: Prisma.XOR<Prisma.XOR<Prisma.SpaceUpdateToOneWithWhereWithoutTagsInput, Prisma.SpaceUpdateWithoutTagsInput>, Prisma.SpaceUncheckedUpdateWithoutTagsInput>
+}
+
+export type SpaceCreateNestedOneWithoutTagAssignmentsInput = {
+  create?: Prisma.XOR<Prisma.SpaceCreateWithoutTagAssignmentsInput, Prisma.SpaceUncheckedCreateWithoutTagAssignmentsInput>
+  connectOrCreate?: Prisma.SpaceCreateOrConnectWithoutTagAssignmentsInput
+  connect?: Prisma.SpaceWhereUniqueInput
+}
+
+export type SpaceUpdateOneRequiredWithoutTagAssignmentsNestedInput = {
+  create?: Prisma.XOR<Prisma.SpaceCreateWithoutTagAssignmentsInput, Prisma.SpaceUncheckedCreateWithoutTagAssignmentsInput>
+  connectOrCreate?: Prisma.SpaceCreateOrConnectWithoutTagAssignmentsInput
+  upsert?: Prisma.SpaceUpsertWithoutTagAssignmentsInput
+  connect?: Prisma.SpaceWhereUniqueInput
+  update?: Prisma.XOR<Prisma.XOR<Prisma.SpaceUpdateToOneWithWhereWithoutTagAssignmentsInput, Prisma.SpaceUpdateWithoutTagAssignmentsInput>, Prisma.SpaceUncheckedUpdateWithoutTagAssignmentsInput>
+}
+
 export type SpaceCreateNestedOneWithoutWorkflowDefinitionsInput = {
   create?: Prisma.XOR<Prisma.SpaceCreateWithoutWorkflowDefinitionsInput, Prisma.SpaceUncheckedCreateWithoutWorkflowDefinitionsInput>
   connectOrCreate?: Prisma.SpaceCreateOrConnectWithoutWorkflowDefinitionsInput
@@ -924,6 +966,8 @@ export type SpaceCreateWithoutOwnerInput = {
   auditLogs?: Prisma.AuditLogCreateNestedManyWithoutSpaceInput
   comments?: Prisma.CommentCreateNestedManyWithoutSpaceInput
   timelineEvents?: Prisma.TimelineEventCreateNestedManyWithoutSpaceInput
+  tags?: Prisma.TagCreateNestedManyWithoutSpaceInput
+  tagAssignments?: Prisma.TagAssignmentCreateNestedManyWithoutSpaceInput
 }
 
 export type SpaceUncheckedCreateWithoutOwnerInput = {
@@ -951,6 +995,8 @@ export type SpaceUncheckedCreateWithoutOwnerInput = {
   auditLogs?: Prisma.AuditLogUncheckedCreateNestedManyWithoutSpaceInput
   comments?: Prisma.CommentUncheckedCreateNestedManyWithoutSpaceInput
   timelineEvents?: Prisma.TimelineEventUncheckedCreateNestedManyWithoutSpaceInput
+  tags?: Prisma.TagUncheckedCreateNestedManyWithoutSpaceInput
+  tagAssignments?: Prisma.TagAssignmentUncheckedCreateNestedManyWithoutSpaceInput
 }
 
 export type SpaceCreateOrConnectWithoutOwnerInput = {
@@ -1023,6 +1069,8 @@ export type SpaceCreateWithoutOrganizationInput = {
   auditLogs?: Prisma.AuditLogCreateNestedManyWithoutSpaceInput
   comments?: Prisma.CommentCreateNestedManyWithoutSpaceInput
   timelineEvents?: Prisma.TimelineEventCreateNestedManyWithoutSpaceInput
+  tags?: Prisma.TagCreateNestedManyWithoutSpaceInput
+  tagAssignments?: Prisma.TagAssignmentCreateNestedManyWithoutSpaceInput
 }
 
 export type SpaceUncheckedCreateWithoutOrganizationInput = {
@@ -1050,6 +1098,8 @@ export type SpaceUncheckedCreateWithoutOrganizationInput = {
   auditLogs?: Prisma.AuditLogUncheckedCreateNestedManyWithoutSpaceInput
   comments?: Prisma.CommentUncheckedCreateNestedManyWithoutSpaceInput
   timelineEvents?: Prisma.TimelineEventUncheckedCreateNestedManyWithoutSpaceInput
+  tags?: Prisma.TagUncheckedCreateNestedManyWithoutSpaceInput
+  tagAssignments?: Prisma.TagAssignmentUncheckedCreateNestedManyWithoutSpaceInput
 }
 
 export type SpaceCreateOrConnectWithoutOrganizationInput = {
@@ -1103,6 +1153,8 @@ export type SpaceCreateWithoutMembersInput = {
   auditLogs?: Prisma.AuditLogCreateNestedManyWithoutSpaceInput
   comments?: Prisma.CommentCreateNestedManyWithoutSpaceInput
   timelineEvents?: Prisma.TimelineEventCreateNestedManyWithoutSpaceInput
+  tags?: Prisma.TagCreateNestedManyWithoutSpaceInput
+  tagAssignments?: Prisma.TagAssignmentCreateNestedManyWithoutSpaceInput
 }
 
 export type SpaceUncheckedCreateWithoutMembersInput = {
@@ -1130,6 +1182,8 @@ export type SpaceUncheckedCreateWithoutMembersInput = {
   auditLogs?: Prisma.AuditLogUncheckedCreateNestedManyWithoutSpaceInput
   comments?: Prisma.CommentUncheckedCreateNestedManyWithoutSpaceInput
   timelineEvents?: Prisma.TimelineEventUncheckedCreateNestedManyWithoutSpaceInput
+  tags?: Prisma.TagUncheckedCreateNestedManyWithoutSpaceInput
+  tagAssignments?: Prisma.TagAssignmentUncheckedCreateNestedManyWithoutSpaceInput
 }
 
 export type SpaceCreateOrConnectWithoutMembersInput = {
@@ -1173,6 +1227,8 @@ export type SpaceUpdateWithoutMembersInput = {
   auditLogs?: Prisma.AuditLogUpdateManyWithoutSpaceNestedInput
   comments?: Prisma.CommentUpdateManyWithoutSpaceNestedInput
   timelineEvents?: Prisma.TimelineEventUpdateManyWithoutSpaceNestedInput
+  tags?: Prisma.TagUpdateManyWithoutSpaceNestedInput
+  tagAssignments?: Prisma.TagAssignmentUpdateManyWithoutSpaceNestedInput
 }
 
 export type SpaceUncheckedUpdateWithoutMembersInput = {
@@ -1200,6 +1256,8 @@ export type SpaceUncheckedUpdateWithoutMembersInput = {
   auditLogs?: Prisma.AuditLogUncheckedUpdateManyWithoutSpaceNestedInput
   comments?: Prisma.CommentUncheckedUpdateManyWithoutSpaceNestedInput
   timelineEvents?: Prisma.TimelineEventUncheckedUpdateManyWithoutSpaceNestedInput
+  tags?: Prisma.TagUncheckedUpdateManyWithoutSpaceNestedInput
+  tagAssignments?: Prisma.TagAssignmentUncheckedUpdateManyWithoutSpaceNestedInput
 }
 
 export type SpaceCreateWithoutVersionsInput = {
@@ -1227,6 +1285,8 @@ export type SpaceCreateWithoutVersionsInput = {
   auditLogs?: Prisma.AuditLogCreateNestedManyWithoutSpaceInput
   comments?: Prisma.CommentCreateNestedManyWithoutSpaceInput
   timelineEvents?: Prisma.TimelineEventCreateNestedManyWithoutSpaceInput
+  tags?: Prisma.TagCreateNestedManyWithoutSpaceInput
+  tagAssignments?: Prisma.TagAssignmentCreateNestedManyWithoutSpaceInput
 }
 
 export type SpaceUncheckedCreateWithoutVersionsInput = {
@@ -1254,6 +1314,8 @@ export type SpaceUncheckedCreateWithoutVersionsInput = {
   auditLogs?: Prisma.AuditLogUncheckedCreateNestedManyWithoutSpaceInput
   comments?: Prisma.CommentUncheckedCreateNestedManyWithoutSpaceInput
   timelineEvents?: Prisma.TimelineEventUncheckedCreateNestedManyWithoutSpaceInput
+  tags?: Prisma.TagUncheckedCreateNestedManyWithoutSpaceInput
+  tagAssignments?: Prisma.TagAssignmentUncheckedCreateNestedManyWithoutSpaceInput
 }
 
 export type SpaceCreateOrConnectWithoutVersionsInput = {
@@ -1297,6 +1359,8 @@ export type SpaceUpdateWithoutVersionsInput = {
   auditLogs?: Prisma.AuditLogUpdateManyWithoutSpaceNestedInput
   comments?: Prisma.CommentUpdateManyWithoutSpaceNestedInput
   timelineEvents?: Prisma.TimelineEventUpdateManyWithoutSpaceNestedInput
+  tags?: Prisma.TagUpdateManyWithoutSpaceNestedInput
+  tagAssignments?: Prisma.TagAssignmentUpdateManyWithoutSpaceNestedInput
 }
 
 export type SpaceUncheckedUpdateWithoutVersionsInput = {
@@ -1324,6 +1388,8 @@ export type SpaceUncheckedUpdateWithoutVersionsInput = {
   auditLogs?: Prisma.AuditLogUncheckedUpdateManyWithoutSpaceNestedInput
   comments?: Prisma.CommentUncheckedUpdateManyWithoutSpaceNestedInput
   timelineEvents?: Prisma.TimelineEventUncheckedUpdateManyWithoutSpaceNestedInput
+  tags?: Prisma.TagUncheckedUpdateManyWithoutSpaceNestedInput
+  tagAssignments?: Prisma.TagAssignmentUncheckedUpdateManyWithoutSpaceNestedInput
 }
 
 export type SpaceCreateWithoutRequirementsInput = {
@@ -1351,6 +1417,8 @@ export type SpaceCreateWithoutRequirementsInput = {
   auditLogs?: Prisma.AuditLogCreateNestedManyWithoutSpaceInput
   comments?: Prisma.CommentCreateNestedManyWithoutSpaceInput
   timelineEvents?: Prisma.TimelineEventCreateNestedManyWithoutSpaceInput
+  tags?: Prisma.TagCreateNestedManyWithoutSpaceInput
+  tagAssignments?: Prisma.TagAssignmentCreateNestedManyWithoutSpaceInput
 }
 
 export type SpaceUncheckedCreateWithoutRequirementsInput = {
@@ -1378,6 +1446,8 @@ export type SpaceUncheckedCreateWithoutRequirementsInput = {
   auditLogs?: Prisma.AuditLogUncheckedCreateNestedManyWithoutSpaceInput
   comments?: Prisma.CommentUncheckedCreateNestedManyWithoutSpaceInput
   timelineEvents?: Prisma.TimelineEventUncheckedCreateNestedManyWithoutSpaceInput
+  tags?: Prisma.TagUncheckedCreateNestedManyWithoutSpaceInput
+  tagAssignments?: Prisma.TagAssignmentUncheckedCreateNestedManyWithoutSpaceInput
 }
 
 export type SpaceCreateOrConnectWithoutRequirementsInput = {
@@ -1421,6 +1491,8 @@ export type SpaceUpdateWithoutRequirementsInput = {
   auditLogs?: Prisma.AuditLogUpdateManyWithoutSpaceNestedInput
   comments?: Prisma.CommentUpdateManyWithoutSpaceNestedInput
   timelineEvents?: Prisma.TimelineEventUpdateManyWithoutSpaceNestedInput
+  tags?: Prisma.TagUpdateManyWithoutSpaceNestedInput
+  tagAssignments?: Prisma.TagAssignmentUpdateManyWithoutSpaceNestedInput
 }
 
 export type SpaceUncheckedUpdateWithoutRequirementsInput = {
@@ -1448,6 +1520,8 @@ export type SpaceUncheckedUpdateWithoutRequirementsInput = {
   auditLogs?: Prisma.AuditLogUncheckedUpdateManyWithoutSpaceNestedInput
   comments?: Prisma.CommentUncheckedUpdateManyWithoutSpaceNestedInput
   timelineEvents?: Prisma.TimelineEventUncheckedUpdateManyWithoutSpaceNestedInput
+  tags?: Prisma.TagUncheckedUpdateManyWithoutSpaceNestedInput
+  tagAssignments?: Prisma.TagAssignmentUncheckedUpdateManyWithoutSpaceNestedInput
 }
 
 export type SpaceCreateWithoutIntakeItemsInput = {
@@ -1475,6 +1549,8 @@ export type SpaceCreateWithoutIntakeItemsInput = {
   auditLogs?: Prisma.AuditLogCreateNestedManyWithoutSpaceInput
   comments?: Prisma.CommentCreateNestedManyWithoutSpaceInput
   timelineEvents?: Prisma.TimelineEventCreateNestedManyWithoutSpaceInput
+  tags?: Prisma.TagCreateNestedManyWithoutSpaceInput
+  tagAssignments?: Prisma.TagAssignmentCreateNestedManyWithoutSpaceInput
 }
 
 export type SpaceUncheckedCreateWithoutIntakeItemsInput = {
@@ -1502,6 +1578,8 @@ export type SpaceUncheckedCreateWithoutIntakeItemsInput = {
   auditLogs?: Prisma.AuditLogUncheckedCreateNestedManyWithoutSpaceInput
   comments?: Prisma.CommentUncheckedCreateNestedManyWithoutSpaceInput
   timelineEvents?: Prisma.TimelineEventUncheckedCreateNestedManyWithoutSpaceInput
+  tags?: Prisma.TagUncheckedCreateNestedManyWithoutSpaceInput
+  tagAssignments?: Prisma.TagAssignmentUncheckedCreateNestedManyWithoutSpaceInput
 }
 
 export type SpaceCreateOrConnectWithoutIntakeItemsInput = {
@@ -1545,6 +1623,8 @@ export type SpaceUpdateWithoutIntakeItemsInput = {
   auditLogs?: Prisma.AuditLogUpdateManyWithoutSpaceNestedInput
   comments?: Prisma.CommentUpdateManyWithoutSpaceNestedInput
   timelineEvents?: Prisma.TimelineEventUpdateManyWithoutSpaceNestedInput
+  tags?: Prisma.TagUpdateManyWithoutSpaceNestedInput
+  tagAssignments?: Prisma.TagAssignmentUpdateManyWithoutSpaceNestedInput
 }
 
 export type SpaceUncheckedUpdateWithoutIntakeItemsInput = {
@@ -1572,6 +1652,8 @@ export type SpaceUncheckedUpdateWithoutIntakeItemsInput = {
   auditLogs?: Prisma.AuditLogUncheckedUpdateManyWithoutSpaceNestedInput
   comments?: Prisma.CommentUncheckedUpdateManyWithoutSpaceNestedInput
   timelineEvents?: Prisma.TimelineEventUncheckedUpdateManyWithoutSpaceNestedInput
+  tags?: Prisma.TagUncheckedUpdateManyWithoutSpaceNestedInput
+  tagAssignments?: Prisma.TagAssignmentUncheckedUpdateManyWithoutSpaceNestedInput
 }
 
 export type SpaceCreateWithoutWorkItemsInput = {
@@ -1599,6 +1681,8 @@ export type SpaceCreateWithoutWorkItemsInput = {
   auditLogs?: Prisma.AuditLogCreateNestedManyWithoutSpaceInput
   comments?: Prisma.CommentCreateNestedManyWithoutSpaceInput
   timelineEvents?: Prisma.TimelineEventCreateNestedManyWithoutSpaceInput
+  tags?: Prisma.TagCreateNestedManyWithoutSpaceInput
+  tagAssignments?: Prisma.TagAssignmentCreateNestedManyWithoutSpaceInput
 }
 
 export type SpaceUncheckedCreateWithoutWorkItemsInput = {
@@ -1626,6 +1710,8 @@ export type SpaceUncheckedCreateWithoutWorkItemsInput = {
   auditLogs?: Prisma.AuditLogUncheckedCreateNestedManyWithoutSpaceInput
   comments?: Prisma.CommentUncheckedCreateNestedManyWithoutSpaceInput
   timelineEvents?: Prisma.TimelineEventUncheckedCreateNestedManyWithoutSpaceInput
+  tags?: Prisma.TagUncheckedCreateNestedManyWithoutSpaceInput
+  tagAssignments?: Prisma.TagAssignmentUncheckedCreateNestedManyWithoutSpaceInput
 }
 
 export type SpaceCreateOrConnectWithoutWorkItemsInput = {
@@ -1669,6 +1755,8 @@ export type SpaceUpdateWithoutWorkItemsInput = {
   auditLogs?: Prisma.AuditLogUpdateManyWithoutSpaceNestedInput
   comments?: Prisma.CommentUpdateManyWithoutSpaceNestedInput
   timelineEvents?: Prisma.TimelineEventUpdateManyWithoutSpaceNestedInput
+  tags?: Prisma.TagUpdateManyWithoutSpaceNestedInput
+  tagAssignments?: Prisma.TagAssignmentUpdateManyWithoutSpaceNestedInput
 }
 
 export type SpaceUncheckedUpdateWithoutWorkItemsInput = {
@@ -1696,6 +1784,8 @@ export type SpaceUncheckedUpdateWithoutWorkItemsInput = {
   auditLogs?: Prisma.AuditLogUncheckedUpdateManyWithoutSpaceNestedInput
   comments?: Prisma.CommentUncheckedUpdateManyWithoutSpaceNestedInput
   timelineEvents?: Prisma.TimelineEventUncheckedUpdateManyWithoutSpaceNestedInput
+  tags?: Prisma.TagUncheckedUpdateManyWithoutSpaceNestedInput
+  tagAssignments?: Prisma.TagAssignmentUncheckedUpdateManyWithoutSpaceNestedInput
 }
 
 export type SpaceCreateWithoutAttachmentsInput = {
@@ -1723,6 +1813,8 @@ export type SpaceCreateWithoutAttachmentsInput = {
   auditLogs?: Prisma.AuditLogCreateNestedManyWithoutSpaceInput
   comments?: Prisma.CommentCreateNestedManyWithoutSpaceInput
   timelineEvents?: Prisma.TimelineEventCreateNestedManyWithoutSpaceInput
+  tags?: Prisma.TagCreateNestedManyWithoutSpaceInput
+  tagAssignments?: Prisma.TagAssignmentCreateNestedManyWithoutSpaceInput
 }
 
 export type SpaceUncheckedCreateWithoutAttachmentsInput = {
@@ -1750,6 +1842,8 @@ export type SpaceUncheckedCreateWithoutAttachmentsInput = {
   auditLogs?: Prisma.AuditLogUncheckedCreateNestedManyWithoutSpaceInput
   comments?: Prisma.CommentUncheckedCreateNestedManyWithoutSpaceInput
   timelineEvents?: Prisma.TimelineEventUncheckedCreateNestedManyWithoutSpaceInput
+  tags?: Prisma.TagUncheckedCreateNestedManyWithoutSpaceInput
+  tagAssignments?: Prisma.TagAssignmentUncheckedCreateNestedManyWithoutSpaceInput
 }
 
 export type SpaceCreateOrConnectWithoutAttachmentsInput = {
@@ -1793,6 +1887,8 @@ export type SpaceUpdateWithoutAttachmentsInput = {
   auditLogs?: Prisma.AuditLogUpdateManyWithoutSpaceNestedInput
   comments?: Prisma.CommentUpdateManyWithoutSpaceNestedInput
   timelineEvents?: Prisma.TimelineEventUpdateManyWithoutSpaceNestedInput
+  tags?: Prisma.TagUpdateManyWithoutSpaceNestedInput
+  tagAssignments?: Prisma.TagAssignmentUpdateManyWithoutSpaceNestedInput
 }
 
 export type SpaceUncheckedUpdateWithoutAttachmentsInput = {
@@ -1820,6 +1916,272 @@ export type SpaceUncheckedUpdateWithoutAttachmentsInput = {
   auditLogs?: Prisma.AuditLogUncheckedUpdateManyWithoutSpaceNestedInput
   comments?: Prisma.CommentUncheckedUpdateManyWithoutSpaceNestedInput
   timelineEvents?: Prisma.TimelineEventUncheckedUpdateManyWithoutSpaceNestedInput
+  tags?: Prisma.TagUncheckedUpdateManyWithoutSpaceNestedInput
+  tagAssignments?: Prisma.TagAssignmentUncheckedUpdateManyWithoutSpaceNestedInput
+}
+
+export type SpaceCreateWithoutTagsInput = {
+  id: string
+  name: string
+  code: string
+  description?: string | null
+  status?: $Enums.SpaceStatus
+  staleThresholdDays?: number
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  createdById?: string | null
+  updatedById?: string | null
+  deletedAt?: Date | string | null
+  organization: Prisma.OrganizationCreateNestedOneWithoutSpacesInput
+  owner?: Prisma.UserCreateNestedOneWithoutOwnedSpacesInput
+  members?: Prisma.SpaceMemberCreateNestedManyWithoutSpaceInput
+  versions?: Prisma.VersionCreateNestedManyWithoutSpaceInput
+  requirements?: Prisma.RequirementCreateNestedManyWithoutSpaceInput
+  attachments?: Prisma.AttachmentCreateNestedManyWithoutSpaceInput
+  workflowDefinitions?: Prisma.WorkflowDefinitionCreateNestedManyWithoutSpaceInput
+  workflowBindings?: Prisma.WorkflowBindingCreateNestedManyWithoutSpaceInput
+  objectParticipants?: Prisma.ObjectParticipantCreateNestedManyWithoutSpaceInput
+  intakeItems?: Prisma.IntakeItemCreateNestedManyWithoutSpaceInput
+  workItems?: Prisma.WorkItemCreateNestedManyWithoutSpaceInput
+  auditLogs?: Prisma.AuditLogCreateNestedManyWithoutSpaceInput
+  comments?: Prisma.CommentCreateNestedManyWithoutSpaceInput
+  timelineEvents?: Prisma.TimelineEventCreateNestedManyWithoutSpaceInput
+  tagAssignments?: Prisma.TagAssignmentCreateNestedManyWithoutSpaceInput
+}
+
+export type SpaceUncheckedCreateWithoutTagsInput = {
+  id: string
+  organizationId: string
+  name: string
+  code: string
+  description?: string | null
+  ownerId?: string | null
+  status?: $Enums.SpaceStatus
+  staleThresholdDays?: number
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  createdById?: string | null
+  updatedById?: string | null
+  deletedAt?: Date | string | null
+  members?: Prisma.SpaceMemberUncheckedCreateNestedManyWithoutSpaceInput
+  versions?: Prisma.VersionUncheckedCreateNestedManyWithoutSpaceInput
+  requirements?: Prisma.RequirementUncheckedCreateNestedManyWithoutSpaceInput
+  attachments?: Prisma.AttachmentUncheckedCreateNestedManyWithoutSpaceInput
+  workflowDefinitions?: Prisma.WorkflowDefinitionUncheckedCreateNestedManyWithoutSpaceInput
+  workflowBindings?: Prisma.WorkflowBindingUncheckedCreateNestedManyWithoutSpaceInput
+  objectParticipants?: Prisma.ObjectParticipantUncheckedCreateNestedManyWithoutSpaceInput
+  intakeItems?: Prisma.IntakeItemUncheckedCreateNestedManyWithoutSpaceInput
+  workItems?: Prisma.WorkItemUncheckedCreateNestedManyWithoutSpaceInput
+  auditLogs?: Prisma.AuditLogUncheckedCreateNestedManyWithoutSpaceInput
+  comments?: Prisma.CommentUncheckedCreateNestedManyWithoutSpaceInput
+  timelineEvents?: Prisma.TimelineEventUncheckedCreateNestedManyWithoutSpaceInput
+  tagAssignments?: Prisma.TagAssignmentUncheckedCreateNestedManyWithoutSpaceInput
+}
+
+export type SpaceCreateOrConnectWithoutTagsInput = {
+  where: Prisma.SpaceWhereUniqueInput
+  create: Prisma.XOR<Prisma.SpaceCreateWithoutTagsInput, Prisma.SpaceUncheckedCreateWithoutTagsInput>
+}
+
+export type SpaceUpsertWithoutTagsInput = {
+  update: Prisma.XOR<Prisma.SpaceUpdateWithoutTagsInput, Prisma.SpaceUncheckedUpdateWithoutTagsInput>
+  create: Prisma.XOR<Prisma.SpaceCreateWithoutTagsInput, Prisma.SpaceUncheckedCreateWithoutTagsInput>
+  where?: Prisma.SpaceWhereInput
+}
+
+export type SpaceUpdateToOneWithWhereWithoutTagsInput = {
+  where?: Prisma.SpaceWhereInput
+  data: Prisma.XOR<Prisma.SpaceUpdateWithoutTagsInput, Prisma.SpaceUncheckedUpdateWithoutTagsInput>
+}
+
+export type SpaceUpdateWithoutTagsInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  name?: Prisma.StringFieldUpdateOperationsInput | string
+  code?: Prisma.StringFieldUpdateOperationsInput | string
+  description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  status?: Prisma.EnumSpaceStatusFieldUpdateOperationsInput | $Enums.SpaceStatus
+  staleThresholdDays?: Prisma.IntFieldUpdateOperationsInput | number
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  createdById?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  updatedById?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  deletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  organization?: Prisma.OrganizationUpdateOneRequiredWithoutSpacesNestedInput
+  owner?: Prisma.UserUpdateOneWithoutOwnedSpacesNestedInput
+  members?: Prisma.SpaceMemberUpdateManyWithoutSpaceNestedInput
+  versions?: Prisma.VersionUpdateManyWithoutSpaceNestedInput
+  requirements?: Prisma.RequirementUpdateManyWithoutSpaceNestedInput
+  attachments?: Prisma.AttachmentUpdateManyWithoutSpaceNestedInput
+  workflowDefinitions?: Prisma.WorkflowDefinitionUpdateManyWithoutSpaceNestedInput
+  workflowBindings?: Prisma.WorkflowBindingUpdateManyWithoutSpaceNestedInput
+  objectParticipants?: Prisma.ObjectParticipantUpdateManyWithoutSpaceNestedInput
+  intakeItems?: Prisma.IntakeItemUpdateManyWithoutSpaceNestedInput
+  workItems?: Prisma.WorkItemUpdateManyWithoutSpaceNestedInput
+  auditLogs?: Prisma.AuditLogUpdateManyWithoutSpaceNestedInput
+  comments?: Prisma.CommentUpdateManyWithoutSpaceNestedInput
+  timelineEvents?: Prisma.TimelineEventUpdateManyWithoutSpaceNestedInput
+  tagAssignments?: Prisma.TagAssignmentUpdateManyWithoutSpaceNestedInput
+}
+
+export type SpaceUncheckedUpdateWithoutTagsInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  organizationId?: Prisma.StringFieldUpdateOperationsInput | string
+  name?: Prisma.StringFieldUpdateOperationsInput | string
+  code?: Prisma.StringFieldUpdateOperationsInput | string
+  description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  ownerId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  status?: Prisma.EnumSpaceStatusFieldUpdateOperationsInput | $Enums.SpaceStatus
+  staleThresholdDays?: Prisma.IntFieldUpdateOperationsInput | number
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  createdById?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  updatedById?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  deletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  members?: Prisma.SpaceMemberUncheckedUpdateManyWithoutSpaceNestedInput
+  versions?: Prisma.VersionUncheckedUpdateManyWithoutSpaceNestedInput
+  requirements?: Prisma.RequirementUncheckedUpdateManyWithoutSpaceNestedInput
+  attachments?: Prisma.AttachmentUncheckedUpdateManyWithoutSpaceNestedInput
+  workflowDefinitions?: Prisma.WorkflowDefinitionUncheckedUpdateManyWithoutSpaceNestedInput
+  workflowBindings?: Prisma.WorkflowBindingUncheckedUpdateManyWithoutSpaceNestedInput
+  objectParticipants?: Prisma.ObjectParticipantUncheckedUpdateManyWithoutSpaceNestedInput
+  intakeItems?: Prisma.IntakeItemUncheckedUpdateManyWithoutSpaceNestedInput
+  workItems?: Prisma.WorkItemUncheckedUpdateManyWithoutSpaceNestedInput
+  auditLogs?: Prisma.AuditLogUncheckedUpdateManyWithoutSpaceNestedInput
+  comments?: Prisma.CommentUncheckedUpdateManyWithoutSpaceNestedInput
+  timelineEvents?: Prisma.TimelineEventUncheckedUpdateManyWithoutSpaceNestedInput
+  tagAssignments?: Prisma.TagAssignmentUncheckedUpdateManyWithoutSpaceNestedInput
+}
+
+export type SpaceCreateWithoutTagAssignmentsInput = {
+  id: string
+  name: string
+  code: string
+  description?: string | null
+  status?: $Enums.SpaceStatus
+  staleThresholdDays?: number
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  createdById?: string | null
+  updatedById?: string | null
+  deletedAt?: Date | string | null
+  organization: Prisma.OrganizationCreateNestedOneWithoutSpacesInput
+  owner?: Prisma.UserCreateNestedOneWithoutOwnedSpacesInput
+  members?: Prisma.SpaceMemberCreateNestedManyWithoutSpaceInput
+  versions?: Prisma.VersionCreateNestedManyWithoutSpaceInput
+  requirements?: Prisma.RequirementCreateNestedManyWithoutSpaceInput
+  attachments?: Prisma.AttachmentCreateNestedManyWithoutSpaceInput
+  workflowDefinitions?: Prisma.WorkflowDefinitionCreateNestedManyWithoutSpaceInput
+  workflowBindings?: Prisma.WorkflowBindingCreateNestedManyWithoutSpaceInput
+  objectParticipants?: Prisma.ObjectParticipantCreateNestedManyWithoutSpaceInput
+  intakeItems?: Prisma.IntakeItemCreateNestedManyWithoutSpaceInput
+  workItems?: Prisma.WorkItemCreateNestedManyWithoutSpaceInput
+  auditLogs?: Prisma.AuditLogCreateNestedManyWithoutSpaceInput
+  comments?: Prisma.CommentCreateNestedManyWithoutSpaceInput
+  timelineEvents?: Prisma.TimelineEventCreateNestedManyWithoutSpaceInput
+  tags?: Prisma.TagCreateNestedManyWithoutSpaceInput
+}
+
+export type SpaceUncheckedCreateWithoutTagAssignmentsInput = {
+  id: string
+  organizationId: string
+  name: string
+  code: string
+  description?: string | null
+  ownerId?: string | null
+  status?: $Enums.SpaceStatus
+  staleThresholdDays?: number
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  createdById?: string | null
+  updatedById?: string | null
+  deletedAt?: Date | string | null
+  members?: Prisma.SpaceMemberUncheckedCreateNestedManyWithoutSpaceInput
+  versions?: Prisma.VersionUncheckedCreateNestedManyWithoutSpaceInput
+  requirements?: Prisma.RequirementUncheckedCreateNestedManyWithoutSpaceInput
+  attachments?: Prisma.AttachmentUncheckedCreateNestedManyWithoutSpaceInput
+  workflowDefinitions?: Prisma.WorkflowDefinitionUncheckedCreateNestedManyWithoutSpaceInput
+  workflowBindings?: Prisma.WorkflowBindingUncheckedCreateNestedManyWithoutSpaceInput
+  objectParticipants?: Prisma.ObjectParticipantUncheckedCreateNestedManyWithoutSpaceInput
+  intakeItems?: Prisma.IntakeItemUncheckedCreateNestedManyWithoutSpaceInput
+  workItems?: Prisma.WorkItemUncheckedCreateNestedManyWithoutSpaceInput
+  auditLogs?: Prisma.AuditLogUncheckedCreateNestedManyWithoutSpaceInput
+  comments?: Prisma.CommentUncheckedCreateNestedManyWithoutSpaceInput
+  timelineEvents?: Prisma.TimelineEventUncheckedCreateNestedManyWithoutSpaceInput
+  tags?: Prisma.TagUncheckedCreateNestedManyWithoutSpaceInput
+}
+
+export type SpaceCreateOrConnectWithoutTagAssignmentsInput = {
+  where: Prisma.SpaceWhereUniqueInput
+  create: Prisma.XOR<Prisma.SpaceCreateWithoutTagAssignmentsInput, Prisma.SpaceUncheckedCreateWithoutTagAssignmentsInput>
+}
+
+export type SpaceUpsertWithoutTagAssignmentsInput = {
+  update: Prisma.XOR<Prisma.SpaceUpdateWithoutTagAssignmentsInput, Prisma.SpaceUncheckedUpdateWithoutTagAssignmentsInput>
+  create: Prisma.XOR<Prisma.SpaceCreateWithoutTagAssignmentsInput, Prisma.SpaceUncheckedCreateWithoutTagAssignmentsInput>
+  where?: Prisma.SpaceWhereInput
+}
+
+export type SpaceUpdateToOneWithWhereWithoutTagAssignmentsInput = {
+  where?: Prisma.SpaceWhereInput
+  data: Prisma.XOR<Prisma.SpaceUpdateWithoutTagAssignmentsInput, Prisma.SpaceUncheckedUpdateWithoutTagAssignmentsInput>
+}
+
+export type SpaceUpdateWithoutTagAssignmentsInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  name?: Prisma.StringFieldUpdateOperationsInput | string
+  code?: Prisma.StringFieldUpdateOperationsInput | string
+  description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  status?: Prisma.EnumSpaceStatusFieldUpdateOperationsInput | $Enums.SpaceStatus
+  staleThresholdDays?: Prisma.IntFieldUpdateOperationsInput | number
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  createdById?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  updatedById?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  deletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  organization?: Prisma.OrganizationUpdateOneRequiredWithoutSpacesNestedInput
+  owner?: Prisma.UserUpdateOneWithoutOwnedSpacesNestedInput
+  members?: Prisma.SpaceMemberUpdateManyWithoutSpaceNestedInput
+  versions?: Prisma.VersionUpdateManyWithoutSpaceNestedInput
+  requirements?: Prisma.RequirementUpdateManyWithoutSpaceNestedInput
+  attachments?: Prisma.AttachmentUpdateManyWithoutSpaceNestedInput
+  workflowDefinitions?: Prisma.WorkflowDefinitionUpdateManyWithoutSpaceNestedInput
+  workflowBindings?: Prisma.WorkflowBindingUpdateManyWithoutSpaceNestedInput
+  objectParticipants?: Prisma.ObjectParticipantUpdateManyWithoutSpaceNestedInput
+  intakeItems?: Prisma.IntakeItemUpdateManyWithoutSpaceNestedInput
+  workItems?: Prisma.WorkItemUpdateManyWithoutSpaceNestedInput
+  auditLogs?: Prisma.AuditLogUpdateManyWithoutSpaceNestedInput
+  comments?: Prisma.CommentUpdateManyWithoutSpaceNestedInput
+  timelineEvents?: Prisma.TimelineEventUpdateManyWithoutSpaceNestedInput
+  tags?: Prisma.TagUpdateManyWithoutSpaceNestedInput
+}
+
+export type SpaceUncheckedUpdateWithoutTagAssignmentsInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  organizationId?: Prisma.StringFieldUpdateOperationsInput | string
+  name?: Prisma.StringFieldUpdateOperationsInput | string
+  code?: Prisma.StringFieldUpdateOperationsInput | string
+  description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  ownerId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  status?: Prisma.EnumSpaceStatusFieldUpdateOperationsInput | $Enums.SpaceStatus
+  staleThresholdDays?: Prisma.IntFieldUpdateOperationsInput | number
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  createdById?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  updatedById?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  deletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  members?: Prisma.SpaceMemberUncheckedUpdateManyWithoutSpaceNestedInput
+  versions?: Prisma.VersionUncheckedUpdateManyWithoutSpaceNestedInput
+  requirements?: Prisma.RequirementUncheckedUpdateManyWithoutSpaceNestedInput
+  attachments?: Prisma.AttachmentUncheckedUpdateManyWithoutSpaceNestedInput
+  workflowDefinitions?: Prisma.WorkflowDefinitionUncheckedUpdateManyWithoutSpaceNestedInput
+  workflowBindings?: Prisma.WorkflowBindingUncheckedUpdateManyWithoutSpaceNestedInput
+  objectParticipants?: Prisma.ObjectParticipantUncheckedUpdateManyWithoutSpaceNestedInput
+  intakeItems?: Prisma.IntakeItemUncheckedUpdateManyWithoutSpaceNestedInput
+  workItems?: Prisma.WorkItemUncheckedUpdateManyWithoutSpaceNestedInput
+  auditLogs?: Prisma.AuditLogUncheckedUpdateManyWithoutSpaceNestedInput
+  comments?: Prisma.CommentUncheckedUpdateManyWithoutSpaceNestedInput
+  timelineEvents?: Prisma.TimelineEventUncheckedUpdateManyWithoutSpaceNestedInput
+  tags?: Prisma.TagUncheckedUpdateManyWithoutSpaceNestedInput
 }
 
 export type SpaceCreateWithoutWorkflowDefinitionsInput = {
@@ -1847,6 +2209,8 @@ export type SpaceCreateWithoutWorkflowDefinitionsInput = {
   auditLogs?: Prisma.AuditLogCreateNestedManyWithoutSpaceInput
   comments?: Prisma.CommentCreateNestedManyWithoutSpaceInput
   timelineEvents?: Prisma.TimelineEventCreateNestedManyWithoutSpaceInput
+  tags?: Prisma.TagCreateNestedManyWithoutSpaceInput
+  tagAssignments?: Prisma.TagAssignmentCreateNestedManyWithoutSpaceInput
 }
 
 export type SpaceUncheckedCreateWithoutWorkflowDefinitionsInput = {
@@ -1874,6 +2238,8 @@ export type SpaceUncheckedCreateWithoutWorkflowDefinitionsInput = {
   auditLogs?: Prisma.AuditLogUncheckedCreateNestedManyWithoutSpaceInput
   comments?: Prisma.CommentUncheckedCreateNestedManyWithoutSpaceInput
   timelineEvents?: Prisma.TimelineEventUncheckedCreateNestedManyWithoutSpaceInput
+  tags?: Prisma.TagUncheckedCreateNestedManyWithoutSpaceInput
+  tagAssignments?: Prisma.TagAssignmentUncheckedCreateNestedManyWithoutSpaceInput
 }
 
 export type SpaceCreateOrConnectWithoutWorkflowDefinitionsInput = {
@@ -1917,6 +2283,8 @@ export type SpaceUpdateWithoutWorkflowDefinitionsInput = {
   auditLogs?: Prisma.AuditLogUpdateManyWithoutSpaceNestedInput
   comments?: Prisma.CommentUpdateManyWithoutSpaceNestedInput
   timelineEvents?: Prisma.TimelineEventUpdateManyWithoutSpaceNestedInput
+  tags?: Prisma.TagUpdateManyWithoutSpaceNestedInput
+  tagAssignments?: Prisma.TagAssignmentUpdateManyWithoutSpaceNestedInput
 }
 
 export type SpaceUncheckedUpdateWithoutWorkflowDefinitionsInput = {
@@ -1944,6 +2312,8 @@ export type SpaceUncheckedUpdateWithoutWorkflowDefinitionsInput = {
   auditLogs?: Prisma.AuditLogUncheckedUpdateManyWithoutSpaceNestedInput
   comments?: Prisma.CommentUncheckedUpdateManyWithoutSpaceNestedInput
   timelineEvents?: Prisma.TimelineEventUncheckedUpdateManyWithoutSpaceNestedInput
+  tags?: Prisma.TagUncheckedUpdateManyWithoutSpaceNestedInput
+  tagAssignments?: Prisma.TagAssignmentUncheckedUpdateManyWithoutSpaceNestedInput
 }
 
 export type SpaceCreateWithoutWorkflowBindingsInput = {
@@ -1971,6 +2341,8 @@ export type SpaceCreateWithoutWorkflowBindingsInput = {
   auditLogs?: Prisma.AuditLogCreateNestedManyWithoutSpaceInput
   comments?: Prisma.CommentCreateNestedManyWithoutSpaceInput
   timelineEvents?: Prisma.TimelineEventCreateNestedManyWithoutSpaceInput
+  tags?: Prisma.TagCreateNestedManyWithoutSpaceInput
+  tagAssignments?: Prisma.TagAssignmentCreateNestedManyWithoutSpaceInput
 }
 
 export type SpaceUncheckedCreateWithoutWorkflowBindingsInput = {
@@ -1998,6 +2370,8 @@ export type SpaceUncheckedCreateWithoutWorkflowBindingsInput = {
   auditLogs?: Prisma.AuditLogUncheckedCreateNestedManyWithoutSpaceInput
   comments?: Prisma.CommentUncheckedCreateNestedManyWithoutSpaceInput
   timelineEvents?: Prisma.TimelineEventUncheckedCreateNestedManyWithoutSpaceInput
+  tags?: Prisma.TagUncheckedCreateNestedManyWithoutSpaceInput
+  tagAssignments?: Prisma.TagAssignmentUncheckedCreateNestedManyWithoutSpaceInput
 }
 
 export type SpaceCreateOrConnectWithoutWorkflowBindingsInput = {
@@ -2041,6 +2415,8 @@ export type SpaceUpdateWithoutWorkflowBindingsInput = {
   auditLogs?: Prisma.AuditLogUpdateManyWithoutSpaceNestedInput
   comments?: Prisma.CommentUpdateManyWithoutSpaceNestedInput
   timelineEvents?: Prisma.TimelineEventUpdateManyWithoutSpaceNestedInput
+  tags?: Prisma.TagUpdateManyWithoutSpaceNestedInput
+  tagAssignments?: Prisma.TagAssignmentUpdateManyWithoutSpaceNestedInput
 }
 
 export type SpaceUncheckedUpdateWithoutWorkflowBindingsInput = {
@@ -2068,6 +2444,8 @@ export type SpaceUncheckedUpdateWithoutWorkflowBindingsInput = {
   auditLogs?: Prisma.AuditLogUncheckedUpdateManyWithoutSpaceNestedInput
   comments?: Prisma.CommentUncheckedUpdateManyWithoutSpaceNestedInput
   timelineEvents?: Prisma.TimelineEventUncheckedUpdateManyWithoutSpaceNestedInput
+  tags?: Prisma.TagUncheckedUpdateManyWithoutSpaceNestedInput
+  tagAssignments?: Prisma.TagAssignmentUncheckedUpdateManyWithoutSpaceNestedInput
 }
 
 export type SpaceCreateWithoutObjectParticipantsInput = {
@@ -2095,6 +2473,8 @@ export type SpaceCreateWithoutObjectParticipantsInput = {
   auditLogs?: Prisma.AuditLogCreateNestedManyWithoutSpaceInput
   comments?: Prisma.CommentCreateNestedManyWithoutSpaceInput
   timelineEvents?: Prisma.TimelineEventCreateNestedManyWithoutSpaceInput
+  tags?: Prisma.TagCreateNestedManyWithoutSpaceInput
+  tagAssignments?: Prisma.TagAssignmentCreateNestedManyWithoutSpaceInput
 }
 
 export type SpaceUncheckedCreateWithoutObjectParticipantsInput = {
@@ -2122,6 +2502,8 @@ export type SpaceUncheckedCreateWithoutObjectParticipantsInput = {
   auditLogs?: Prisma.AuditLogUncheckedCreateNestedManyWithoutSpaceInput
   comments?: Prisma.CommentUncheckedCreateNestedManyWithoutSpaceInput
   timelineEvents?: Prisma.TimelineEventUncheckedCreateNestedManyWithoutSpaceInput
+  tags?: Prisma.TagUncheckedCreateNestedManyWithoutSpaceInput
+  tagAssignments?: Prisma.TagAssignmentUncheckedCreateNestedManyWithoutSpaceInput
 }
 
 export type SpaceCreateOrConnectWithoutObjectParticipantsInput = {
@@ -2165,6 +2547,8 @@ export type SpaceUpdateWithoutObjectParticipantsInput = {
   auditLogs?: Prisma.AuditLogUpdateManyWithoutSpaceNestedInput
   comments?: Prisma.CommentUpdateManyWithoutSpaceNestedInput
   timelineEvents?: Prisma.TimelineEventUpdateManyWithoutSpaceNestedInput
+  tags?: Prisma.TagUpdateManyWithoutSpaceNestedInput
+  tagAssignments?: Prisma.TagAssignmentUpdateManyWithoutSpaceNestedInput
 }
 
 export type SpaceUncheckedUpdateWithoutObjectParticipantsInput = {
@@ -2192,6 +2576,8 @@ export type SpaceUncheckedUpdateWithoutObjectParticipantsInput = {
   auditLogs?: Prisma.AuditLogUncheckedUpdateManyWithoutSpaceNestedInput
   comments?: Prisma.CommentUncheckedUpdateManyWithoutSpaceNestedInput
   timelineEvents?: Prisma.TimelineEventUncheckedUpdateManyWithoutSpaceNestedInput
+  tags?: Prisma.TagUncheckedUpdateManyWithoutSpaceNestedInput
+  tagAssignments?: Prisma.TagAssignmentUncheckedUpdateManyWithoutSpaceNestedInput
 }
 
 export type SpaceCreateWithoutCommentsInput = {
@@ -2219,6 +2605,8 @@ export type SpaceCreateWithoutCommentsInput = {
   workItems?: Prisma.WorkItemCreateNestedManyWithoutSpaceInput
   auditLogs?: Prisma.AuditLogCreateNestedManyWithoutSpaceInput
   timelineEvents?: Prisma.TimelineEventCreateNestedManyWithoutSpaceInput
+  tags?: Prisma.TagCreateNestedManyWithoutSpaceInput
+  tagAssignments?: Prisma.TagAssignmentCreateNestedManyWithoutSpaceInput
 }
 
 export type SpaceUncheckedCreateWithoutCommentsInput = {
@@ -2246,6 +2634,8 @@ export type SpaceUncheckedCreateWithoutCommentsInput = {
   workItems?: Prisma.WorkItemUncheckedCreateNestedManyWithoutSpaceInput
   auditLogs?: Prisma.AuditLogUncheckedCreateNestedManyWithoutSpaceInput
   timelineEvents?: Prisma.TimelineEventUncheckedCreateNestedManyWithoutSpaceInput
+  tags?: Prisma.TagUncheckedCreateNestedManyWithoutSpaceInput
+  tagAssignments?: Prisma.TagAssignmentUncheckedCreateNestedManyWithoutSpaceInput
 }
 
 export type SpaceCreateOrConnectWithoutCommentsInput = {
@@ -2289,6 +2679,8 @@ export type SpaceUpdateWithoutCommentsInput = {
   workItems?: Prisma.WorkItemUpdateManyWithoutSpaceNestedInput
   auditLogs?: Prisma.AuditLogUpdateManyWithoutSpaceNestedInput
   timelineEvents?: Prisma.TimelineEventUpdateManyWithoutSpaceNestedInput
+  tags?: Prisma.TagUpdateManyWithoutSpaceNestedInput
+  tagAssignments?: Prisma.TagAssignmentUpdateManyWithoutSpaceNestedInput
 }
 
 export type SpaceUncheckedUpdateWithoutCommentsInput = {
@@ -2316,6 +2708,8 @@ export type SpaceUncheckedUpdateWithoutCommentsInput = {
   workItems?: Prisma.WorkItemUncheckedUpdateManyWithoutSpaceNestedInput
   auditLogs?: Prisma.AuditLogUncheckedUpdateManyWithoutSpaceNestedInput
   timelineEvents?: Prisma.TimelineEventUncheckedUpdateManyWithoutSpaceNestedInput
+  tags?: Prisma.TagUncheckedUpdateManyWithoutSpaceNestedInput
+  tagAssignments?: Prisma.TagAssignmentUncheckedUpdateManyWithoutSpaceNestedInput
 }
 
 export type SpaceCreateWithoutTimelineEventsInput = {
@@ -2343,6 +2737,8 @@ export type SpaceCreateWithoutTimelineEventsInput = {
   workItems?: Prisma.WorkItemCreateNestedManyWithoutSpaceInput
   auditLogs?: Prisma.AuditLogCreateNestedManyWithoutSpaceInput
   comments?: Prisma.CommentCreateNestedManyWithoutSpaceInput
+  tags?: Prisma.TagCreateNestedManyWithoutSpaceInput
+  tagAssignments?: Prisma.TagAssignmentCreateNestedManyWithoutSpaceInput
 }
 
 export type SpaceUncheckedCreateWithoutTimelineEventsInput = {
@@ -2370,6 +2766,8 @@ export type SpaceUncheckedCreateWithoutTimelineEventsInput = {
   workItems?: Prisma.WorkItemUncheckedCreateNestedManyWithoutSpaceInput
   auditLogs?: Prisma.AuditLogUncheckedCreateNestedManyWithoutSpaceInput
   comments?: Prisma.CommentUncheckedCreateNestedManyWithoutSpaceInput
+  tags?: Prisma.TagUncheckedCreateNestedManyWithoutSpaceInput
+  tagAssignments?: Prisma.TagAssignmentUncheckedCreateNestedManyWithoutSpaceInput
 }
 
 export type SpaceCreateOrConnectWithoutTimelineEventsInput = {
@@ -2413,6 +2811,8 @@ export type SpaceUpdateWithoutTimelineEventsInput = {
   workItems?: Prisma.WorkItemUpdateManyWithoutSpaceNestedInput
   auditLogs?: Prisma.AuditLogUpdateManyWithoutSpaceNestedInput
   comments?: Prisma.CommentUpdateManyWithoutSpaceNestedInput
+  tags?: Prisma.TagUpdateManyWithoutSpaceNestedInput
+  tagAssignments?: Prisma.TagAssignmentUpdateManyWithoutSpaceNestedInput
 }
 
 export type SpaceUncheckedUpdateWithoutTimelineEventsInput = {
@@ -2440,6 +2840,8 @@ export type SpaceUncheckedUpdateWithoutTimelineEventsInput = {
   workItems?: Prisma.WorkItemUncheckedUpdateManyWithoutSpaceNestedInput
   auditLogs?: Prisma.AuditLogUncheckedUpdateManyWithoutSpaceNestedInput
   comments?: Prisma.CommentUncheckedUpdateManyWithoutSpaceNestedInput
+  tags?: Prisma.TagUncheckedUpdateManyWithoutSpaceNestedInput
+  tagAssignments?: Prisma.TagAssignmentUncheckedUpdateManyWithoutSpaceNestedInput
 }
 
 export type SpaceCreateWithoutAuditLogsInput = {
@@ -2467,6 +2869,8 @@ export type SpaceCreateWithoutAuditLogsInput = {
   workItems?: Prisma.WorkItemCreateNestedManyWithoutSpaceInput
   comments?: Prisma.CommentCreateNestedManyWithoutSpaceInput
   timelineEvents?: Prisma.TimelineEventCreateNestedManyWithoutSpaceInput
+  tags?: Prisma.TagCreateNestedManyWithoutSpaceInput
+  tagAssignments?: Prisma.TagAssignmentCreateNestedManyWithoutSpaceInput
 }
 
 export type SpaceUncheckedCreateWithoutAuditLogsInput = {
@@ -2494,6 +2898,8 @@ export type SpaceUncheckedCreateWithoutAuditLogsInput = {
   workItems?: Prisma.WorkItemUncheckedCreateNestedManyWithoutSpaceInput
   comments?: Prisma.CommentUncheckedCreateNestedManyWithoutSpaceInput
   timelineEvents?: Prisma.TimelineEventUncheckedCreateNestedManyWithoutSpaceInput
+  tags?: Prisma.TagUncheckedCreateNestedManyWithoutSpaceInput
+  tagAssignments?: Prisma.TagAssignmentUncheckedCreateNestedManyWithoutSpaceInput
 }
 
 export type SpaceCreateOrConnectWithoutAuditLogsInput = {
@@ -2537,6 +2943,8 @@ export type SpaceUpdateWithoutAuditLogsInput = {
   workItems?: Prisma.WorkItemUpdateManyWithoutSpaceNestedInput
   comments?: Prisma.CommentUpdateManyWithoutSpaceNestedInput
   timelineEvents?: Prisma.TimelineEventUpdateManyWithoutSpaceNestedInput
+  tags?: Prisma.TagUpdateManyWithoutSpaceNestedInput
+  tagAssignments?: Prisma.TagAssignmentUpdateManyWithoutSpaceNestedInput
 }
 
 export type SpaceUncheckedUpdateWithoutAuditLogsInput = {
@@ -2564,6 +2972,8 @@ export type SpaceUncheckedUpdateWithoutAuditLogsInput = {
   workItems?: Prisma.WorkItemUncheckedUpdateManyWithoutSpaceNestedInput
   comments?: Prisma.CommentUncheckedUpdateManyWithoutSpaceNestedInput
   timelineEvents?: Prisma.TimelineEventUncheckedUpdateManyWithoutSpaceNestedInput
+  tags?: Prisma.TagUncheckedUpdateManyWithoutSpaceNestedInput
+  tagAssignments?: Prisma.TagAssignmentUncheckedUpdateManyWithoutSpaceNestedInput
 }
 
 export type SpaceCreateManyOwnerInput = {
@@ -2606,6 +3016,8 @@ export type SpaceUpdateWithoutOwnerInput = {
   auditLogs?: Prisma.AuditLogUpdateManyWithoutSpaceNestedInput
   comments?: Prisma.CommentUpdateManyWithoutSpaceNestedInput
   timelineEvents?: Prisma.TimelineEventUpdateManyWithoutSpaceNestedInput
+  tags?: Prisma.TagUpdateManyWithoutSpaceNestedInput
+  tagAssignments?: Prisma.TagAssignmentUpdateManyWithoutSpaceNestedInput
 }
 
 export type SpaceUncheckedUpdateWithoutOwnerInput = {
@@ -2633,6 +3045,8 @@ export type SpaceUncheckedUpdateWithoutOwnerInput = {
   auditLogs?: Prisma.AuditLogUncheckedUpdateManyWithoutSpaceNestedInput
   comments?: Prisma.CommentUncheckedUpdateManyWithoutSpaceNestedInput
   timelineEvents?: Prisma.TimelineEventUncheckedUpdateManyWithoutSpaceNestedInput
+  tags?: Prisma.TagUncheckedUpdateManyWithoutSpaceNestedInput
+  tagAssignments?: Prisma.TagAssignmentUncheckedUpdateManyWithoutSpaceNestedInput
 }
 
 export type SpaceUncheckedUpdateManyWithoutOwnerInput = {
@@ -2690,6 +3104,8 @@ export type SpaceUpdateWithoutOrganizationInput = {
   auditLogs?: Prisma.AuditLogUpdateManyWithoutSpaceNestedInput
   comments?: Prisma.CommentUpdateManyWithoutSpaceNestedInput
   timelineEvents?: Prisma.TimelineEventUpdateManyWithoutSpaceNestedInput
+  tags?: Prisma.TagUpdateManyWithoutSpaceNestedInput
+  tagAssignments?: Prisma.TagAssignmentUpdateManyWithoutSpaceNestedInput
 }
 
 export type SpaceUncheckedUpdateWithoutOrganizationInput = {
@@ -2717,6 +3133,8 @@ export type SpaceUncheckedUpdateWithoutOrganizationInput = {
   auditLogs?: Prisma.AuditLogUncheckedUpdateManyWithoutSpaceNestedInput
   comments?: Prisma.CommentUncheckedUpdateManyWithoutSpaceNestedInput
   timelineEvents?: Prisma.TimelineEventUncheckedUpdateManyWithoutSpaceNestedInput
+  tags?: Prisma.TagUncheckedUpdateManyWithoutSpaceNestedInput
+  tagAssignments?: Prisma.TagAssignmentUncheckedUpdateManyWithoutSpaceNestedInput
 }
 
 export type SpaceUncheckedUpdateManyWithoutOrganizationInput = {
@@ -2752,6 +3170,8 @@ export type SpaceCountOutputType = {
   auditLogs: number
   comments: number
   timelineEvents: number
+  tags: number
+  tagAssignments: number
 }
 
 export type SpaceCountOutputTypeSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
@@ -2767,6 +3187,8 @@ export type SpaceCountOutputTypeSelect<ExtArgs extends runtime.Types.Extensions.
   auditLogs?: boolean | SpaceCountOutputTypeCountAuditLogsArgs
   comments?: boolean | SpaceCountOutputTypeCountCommentsArgs
   timelineEvents?: boolean | SpaceCountOutputTypeCountTimelineEventsArgs
+  tags?: boolean | SpaceCountOutputTypeCountTagsArgs
+  tagAssignments?: boolean | SpaceCountOutputTypeCountTagAssignmentsArgs
 }
 
 /**
@@ -2863,6 +3285,20 @@ export type SpaceCountOutputTypeCountTimelineEventsArgs<ExtArgs extends runtime.
   where?: Prisma.TimelineEventWhereInput
 }
 
+/**
+ * SpaceCountOutputType without action
+ */
+export type SpaceCountOutputTypeCountTagsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  where?: Prisma.TagWhereInput
+}
+
+/**
+ * SpaceCountOutputType without action
+ */
+export type SpaceCountOutputTypeCountTagAssignmentsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  where?: Prisma.TagAssignmentWhereInput
+}
+
 
 export type SpaceSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
   id?: boolean
@@ -2892,6 +3328,8 @@ export type SpaceSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = 
   auditLogs?: boolean | Prisma.Space$auditLogsArgs<ExtArgs>
   comments?: boolean | Prisma.Space$commentsArgs<ExtArgs>
   timelineEvents?: boolean | Prisma.Space$timelineEventsArgs<ExtArgs>
+  tags?: boolean | Prisma.Space$tagsArgs<ExtArgs>
+  tagAssignments?: boolean | Prisma.Space$tagAssignmentsArgs<ExtArgs>
   _count?: boolean | Prisma.SpaceCountOutputTypeDefaultArgs<ExtArgs>
 }, ExtArgs["result"]["space"]>
 
@@ -2963,6 +3401,8 @@ export type SpaceInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs =
   auditLogs?: boolean | Prisma.Space$auditLogsArgs<ExtArgs>
   comments?: boolean | Prisma.Space$commentsArgs<ExtArgs>
   timelineEvents?: boolean | Prisma.Space$timelineEventsArgs<ExtArgs>
+  tags?: boolean | Prisma.Space$tagsArgs<ExtArgs>
+  tagAssignments?: boolean | Prisma.Space$tagAssignmentsArgs<ExtArgs>
   _count?: boolean | Prisma.SpaceCountOutputTypeDefaultArgs<ExtArgs>
 }
 export type SpaceIncludeCreateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
@@ -2991,6 +3431,8 @@ export type $SpacePayload<ExtArgs extends runtime.Types.Extensions.InternalArgs 
     auditLogs: Prisma.$AuditLogPayload<ExtArgs>[]
     comments: Prisma.$CommentPayload<ExtArgs>[]
     timelineEvents: Prisma.$TimelineEventPayload<ExtArgs>[]
+    tags: Prisma.$TagPayload<ExtArgs>[]
+    tagAssignments: Prisma.$TagAssignmentPayload<ExtArgs>[]
   }
   scalars: runtime.Types.Extensions.GetPayloadResult<{
     id: string
@@ -3414,6 +3856,8 @@ export interface Prisma__SpaceClient<T, Null = never, ExtArgs extends runtime.Ty
   auditLogs<T extends Prisma.Space$auditLogsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Space$auditLogsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$AuditLogPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   comments<T extends Prisma.Space$commentsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Space$commentsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$CommentPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   timelineEvents<T extends Prisma.Space$timelineEventsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Space$timelineEventsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$TimelineEventPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
+  tags<T extends Prisma.Space$tagsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Space$tagsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$TagPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
+  tagAssignments<T extends Prisma.Space$tagAssignmentsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Space$tagAssignmentsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$TagAssignmentPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   /**
    * Attaches callbacks for the resolution and/or rejection of the Promise.
    * @param onfulfilled The callback to execute when the Promise is resolved.
@@ -4161,6 +4605,54 @@ export type Space$timelineEventsArgs<ExtArgs extends runtime.Types.Extensions.In
   take?: number
   skip?: number
   distinct?: Prisma.TimelineEventScalarFieldEnum | Prisma.TimelineEventScalarFieldEnum[]
+}
+
+/**
+ * Space.tags
+ */
+export type Space$tagsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  /**
+   * Select specific fields to fetch from the Tag
+   */
+  select?: Prisma.TagSelect<ExtArgs> | null
+  /**
+   * Omit specific fields from the Tag
+   */
+  omit?: Prisma.TagOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.TagInclude<ExtArgs> | null
+  where?: Prisma.TagWhereInput
+  orderBy?: Prisma.TagOrderByWithRelationInput | Prisma.TagOrderByWithRelationInput[]
+  cursor?: Prisma.TagWhereUniqueInput
+  take?: number
+  skip?: number
+  distinct?: Prisma.TagScalarFieldEnum | Prisma.TagScalarFieldEnum[]
+}
+
+/**
+ * Space.tagAssignments
+ */
+export type Space$tagAssignmentsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  /**
+   * Select specific fields to fetch from the TagAssignment
+   */
+  select?: Prisma.TagAssignmentSelect<ExtArgs> | null
+  /**
+   * Omit specific fields from the TagAssignment
+   */
+  omit?: Prisma.TagAssignmentOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.TagAssignmentInclude<ExtArgs> | null
+  where?: Prisma.TagAssignmentWhereInput
+  orderBy?: Prisma.TagAssignmentOrderByWithRelationInput | Prisma.TagAssignmentOrderByWithRelationInput[]
+  cursor?: Prisma.TagAssignmentWhereUniqueInput
+  take?: number
+  skip?: number
+  distinct?: Prisma.TagAssignmentScalarFieldEnum | Prisma.TagAssignmentScalarFieldEnum[]
 }
 
 /**

@@ -23,6 +23,7 @@ import {
   type ListRequirementsResponse,
   type Requirement,
   type RequirementStatus,
+  type TagMatch,
   type UpdateRequirementRequest,
 } from "@project-delivery/shared";
 
@@ -57,6 +58,8 @@ export class RequirementController {
       sortBy?: string;
       sortOrder?: "asc" | "desc";
       status?: RequirementStatus;
+      tagIds?: string;
+      tagMatch?: TagMatch;
       versionId?: string;
     },
     @Req() request: RequestWithContext,

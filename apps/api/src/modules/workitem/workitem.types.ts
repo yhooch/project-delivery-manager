@@ -3,6 +3,7 @@ import type {
   ListWorkItemsResponse,
   Priority,
   StatusCategory,
+  TagMatch,
 } from "@project-delivery/shared";
 import type { TraceVersionCascadeImpact } from "../trace/trace-version-policy";
 
@@ -21,6 +22,8 @@ export type WorkItemListInput = {
   assigneeId?: string;
   statusCategory?: StatusCategory;
   priority?: Priority;
+  tagIds?: string;
+  tagMatch?: TagMatch;
 };
 
 export type WorkItemListResult = ListWorkItemsResponse;
@@ -59,6 +62,7 @@ export type CreateWorkItemInput = {
   lastStatusChangedAt: Date;
   relatedUserIds: string[];
   createdById: string;
+  tagIds?: string[];
 };
 
 export type UpdateWorkItemInput = {

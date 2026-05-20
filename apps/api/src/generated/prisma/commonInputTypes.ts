@@ -621,6 +621,23 @@ export type EnumAttachmentTargetTypeWithAggregatesFilter<$PrismaModel = never> =
   _max?: Prisma.NestedEnumAttachmentTargetTypeFilter<$PrismaModel>
 }
 
+export type EnumTagTargetTypeFilter<$PrismaModel = never> = {
+  equals?: $Enums.TagTargetType | Prisma.EnumTagTargetTypeFieldRefInput<$PrismaModel>
+  in?: $Enums.TagTargetType[] | Prisma.ListEnumTagTargetTypeFieldRefInput<$PrismaModel>
+  notIn?: $Enums.TagTargetType[] | Prisma.ListEnumTagTargetTypeFieldRefInput<$PrismaModel>
+  not?: Prisma.NestedEnumTagTargetTypeFilter<$PrismaModel> | $Enums.TagTargetType
+}
+
+export type EnumTagTargetTypeWithAggregatesFilter<$PrismaModel = never> = {
+  equals?: $Enums.TagTargetType | Prisma.EnumTagTargetTypeFieldRefInput<$PrismaModel>
+  in?: $Enums.TagTargetType[] | Prisma.ListEnumTagTargetTypeFieldRefInput<$PrismaModel>
+  notIn?: $Enums.TagTargetType[] | Prisma.ListEnumTagTargetTypeFieldRefInput<$PrismaModel>
+  not?: Prisma.NestedEnumTagTargetTypeWithAggregatesFilter<$PrismaModel> | $Enums.TagTargetType
+  _count?: Prisma.NestedIntFilter<$PrismaModel>
+  _min?: Prisma.NestedEnumTagTargetTypeFilter<$PrismaModel>
+  _max?: Prisma.NestedEnumTagTargetTypeFilter<$PrismaModel>
+}
+
 export type EnumWorkflowDefinitionStatusFilter<$PrismaModel = never> = {
   equals?: $Enums.WorkflowDefinitionStatus | Prisma.EnumWorkflowDefinitionStatusFieldRefInput<$PrismaModel>
   in?: $Enums.WorkflowDefinitionStatus[] | Prisma.ListEnumWorkflowDefinitionStatusFieldRefInput<$PrismaModel>
@@ -1351,6 +1368,23 @@ export type NestedEnumAttachmentTargetTypeWithAggregatesFilter<$PrismaModel = ne
   _count?: Prisma.NestedIntFilter<$PrismaModel>
   _min?: Prisma.NestedEnumAttachmentTargetTypeFilter<$PrismaModel>
   _max?: Prisma.NestedEnumAttachmentTargetTypeFilter<$PrismaModel>
+}
+
+export type NestedEnumTagTargetTypeFilter<$PrismaModel = never> = {
+  equals?: $Enums.TagTargetType | Prisma.EnumTagTargetTypeFieldRefInput<$PrismaModel>
+  in?: $Enums.TagTargetType[] | Prisma.ListEnumTagTargetTypeFieldRefInput<$PrismaModel>
+  notIn?: $Enums.TagTargetType[] | Prisma.ListEnumTagTargetTypeFieldRefInput<$PrismaModel>
+  not?: Prisma.NestedEnumTagTargetTypeFilter<$PrismaModel> | $Enums.TagTargetType
+}
+
+export type NestedEnumTagTargetTypeWithAggregatesFilter<$PrismaModel = never> = {
+  equals?: $Enums.TagTargetType | Prisma.EnumTagTargetTypeFieldRefInput<$PrismaModel>
+  in?: $Enums.TagTargetType[] | Prisma.ListEnumTagTargetTypeFieldRefInput<$PrismaModel>
+  notIn?: $Enums.TagTargetType[] | Prisma.ListEnumTagTargetTypeFieldRefInput<$PrismaModel>
+  not?: Prisma.NestedEnumTagTargetTypeWithAggregatesFilter<$PrismaModel> | $Enums.TagTargetType
+  _count?: Prisma.NestedIntFilter<$PrismaModel>
+  _min?: Prisma.NestedEnumTagTargetTypeFilter<$PrismaModel>
+  _max?: Prisma.NestedEnumTagTargetTypeFilter<$PrismaModel>
 }
 
 export type NestedEnumWorkflowDefinitionStatusFilter<$PrismaModel = never> = {

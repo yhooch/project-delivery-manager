@@ -145,6 +145,12 @@ enum ObjectParticipantTargetType {
   WORK_ITEM
 }
 
+enum TagTargetType {
+  REQUIREMENT
+  INTAKE_ITEM
+  WORK_ITEM
+}
+
 enum ObjectParticipantRelation {
   CREATOR
   ASSIGNEE
@@ -241,6 +247,9 @@ model User {
   authoredComments          Comment[]            @relation("CommentAuthor")
   actedTimelineEvents       TimelineEvent[]      @relation("TimelineEventActor")
   actedAuditLogs            AuditLog[]           @relation("AuditLogActor")
+  createdTags               Tag[]                @relation("TagCreatedBy")
+  updatedTags               Tag[]                @relation("TagUpdatedBy")
+  assignedTagAssignments    TagAssignment[]      @relation("TagAssignmentAssignedBy")
 
   @@map("users")
 }
@@ -296,6 +305,8 @@ model Organization {
   auditLogs           AuditLog[]
   comments            Comment[]
   timelineEvents      TimelineEvent[]
+  tags                Tag[]
+  tagAssignments      TagAssignment[]
 
   @@index([ownerId])
   @@index([code])
@@ -351,6 +362,8 @@ model Space {
   auditLogs           AuditLog[]
   comments            Comment[]
   timelineEvents      TimelineEvent[]
+  tags                Tag[]
+  tagAssignments      TagAssignment[]
 
   @@index([organizationId])
   @@index([ownerId])
@@ -614,6 +627,61 @@ model Attachment {
   @@index([organizationId, spaceId, targetType, targetId, deletedAt, createdAt], map: "attachments_org_space_target_deleted_created_idx")
   @@index([uploadedById])
   @@map("attachments")
+}
+
+model Tag {
+  id             String    @id @db.Char(26)
+  organizationId String    @map("organization_id") @db.Char(26)
+  spaceId        String    @map("space_id") @db.Char(26)
+  name           String    @db.VarChar(40)
+  normalizedName String    @map("normalized_name") @db.VarChar(80)
+  colorKey       String    @map("color_key") @db.VarChar(32)
+  createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt      DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
+  createdById    String?   @map("created_by_id") @db.Char(26)
+  updatedById    String?   @map("updated_by_id") @db.Char(26)
+  deletedAt      DateTime? @map("deleted_at") @db.Timestamptz(3)
+
+  organization Organization    @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  space        Space           @relation(fields: [spaceId], references: [id], onDelete: Cascade)
+  createdBy    User?           @relation("TagCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+  updatedBy    User?           @relation("TagUpdatedBy", fields: [updatedById], references: [id], onDelete: SetNull)
+  assignments  TagAssignment[]
+
+  @@index([organizationId])
+  @@index([spaceId])
+  @@index([normalizedName])
+  @@index([spaceId, normalizedName])
+  @@index([createdById])
+  @@index([updatedById])
+  @@map("tags")
+}
+
+model TagAssignment {
+  id             String        @id @db.Char(26)
+  organizationId String        @map("organization_id") @db.Char(26)
+  spaceId        String        @map("space_id") @db.Char(26)
+  tagId          String        @map("tag_id") @db.Char(26)
+  targetType     TagTargetType @map("target_type")
+  targetId       String        @map("target_id") @db.Char(26)
+  assignedById   String?       @map("assigned_by_id") @db.Char(26)
+  createdAt      DateTime      @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt      DateTime      @updatedAt @map("updated_at") @db.Timestamptz(3)
+  deletedAt      DateTime?     @map("deleted_at") @db.Timestamptz(3)
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  space        Space        @relation(fields: [spaceId], references: [id], onDelete: Cascade)
+  tag          Tag          @relation(fields: [tagId], references: [id], onDelete: Cascade)
+  assignedBy   User?        @relation("TagAssignmentAssignedBy", fields: [assignedById], references: [id], onDelete: SetNull)
+
+  @@index([organizationId])
+  @@index([spaceId])
+  @@index([tagId])
+  @@index([targetType, targetId])
+  @@index([spaceId, targetType, targetId])
+  @@index([spaceId, tagId])
+  @@index([assignedById])
+  @@map("tag_assignments")
 }
 
 model WorkflowDefinition {

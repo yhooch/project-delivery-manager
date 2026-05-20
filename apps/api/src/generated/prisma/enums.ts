@@ -209,6 +209,15 @@ export const ObjectParticipantTargetType = {
 export type ObjectParticipantTargetType = (typeof ObjectParticipantTargetType)[keyof typeof ObjectParticipantTargetType]
 
 
+export const TagTargetType = {
+  REQUIREMENT: 'REQUIREMENT',
+  INTAKE_ITEM: 'INTAKE_ITEM',
+  WORK_ITEM: 'WORK_ITEM'
+} as const
+
+export type TagTargetType = (typeof TagTargetType)[keyof typeof TagTargetType]
+
+
 export const ObjectParticipantRelation = {
   CREATOR: 'CREATOR',
   ASSIGNEE: 'ASSIGNEE',

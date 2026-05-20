@@ -3,6 +3,7 @@ import type {
   Priority,
   RequirementStatus,
   SaveRequirementRequest,
+  TagMatch,
 } from "@project-delivery/shared";
 import type { TraceVersionCascadeImpact } from "../trace/trace-version-policy";
 
@@ -20,6 +21,8 @@ export type RequirementListInput = {
   sortBy?: string;
   sortOrder?: "asc" | "desc";
   status?: RequirementStatus;
+  tagIds?: string;
+  tagMatch?: TagMatch;
   versionId?: string;
   visibility: RequirementListVisibility;
 };
@@ -32,6 +35,7 @@ export type CreateRequirementDraftInput = {
   spaceId: string;
   versionId?: string;
   createdById: string;
+  tagIds?: string[];
 };
 
 export type SaveRequirementInput = {

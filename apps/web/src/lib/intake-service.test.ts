@@ -28,6 +28,7 @@ const reporterId = "01ARZ3NDEKTSV4RRFFQ69G5FB1";
 const assigneeId = "01ARZ3NDEKTSV4RRFFQ69G5FB2";
 const workflowVersionId = "01ARZ3NDEKTSV4RRFFQ69G5FB3";
 const stateId = "01ARZ3NDEKTSV4RRFFQ69G5FB4";
+const tagId = "01ARZ3NDEKTSV4RRFFQ69G5FB5";
 
 function createIntakeFixture(overrides: Partial<IntakeItem> = {}): IntakeItem {
   return {
@@ -47,6 +48,7 @@ function createIntakeFixture(overrides: Partial<IntakeItem> = {}): IntakeItem {
     title: "Checkout scope follow-up",
     versionId,
     ...overrides,
+    tags: overrides.tags ?? [],
   };
 }
 
@@ -67,6 +69,7 @@ function createTaskFixture(overrides: Partial<WorkItem> = {}): WorkItem {
     versionId,
     workflowVersionId,
     ...overrides,
+    tags: overrides.tags ?? [],
   };
 }
 
@@ -117,6 +120,35 @@ describe("intake service", () => {
         pageSize: 20,
         status: "PENDING",
         versionId,
+      },
+    });
+  });
+
+  it("keeps tagMatch only when tagIds are active", async () => {
+    const page = createPage([createIntakeFixture()]);
+    const api = createApi({
+      get: vi.fn(async () => ({ data: page })),
+    });
+
+    await expect(
+      listIntakeItems(
+        {
+          organizationId,
+          page: 1,
+          pageSize: 20,
+          spaceId,
+          tagIds: tagId,
+        },
+        api,
+      ),
+    ).resolves.toEqual(page);
+
+    expect(api.get).toHaveBeenCalledWith(`/spaces/${spaceId}/intake-items`, {
+      query: {
+        page: 1,
+        pageSize: 20,
+        tagIds: tagId,
+        tagMatch: "ANY",
       },
     });
   });

@@ -3,6 +3,11 @@ import { ulid } from "ulid";
 
 import { Prisma } from "../../generated/prisma/client";
 import { PrismaService } from "../../prisma/prisma.service";
+import {
+  findTaggedTargetIds,
+  listTagsByTargets,
+  replaceTagAssignmentsInTransaction,
+} from "../tag/tag-assignment.helpers";
 import { assertTraceRefsMatchVersion } from "../trace/trace-version-policy";
 import { toWorkItem } from "./workitem.mappers";
 import { syncWorkItemRelatedParticipants } from "./workitem-participants";
@@ -27,6 +32,12 @@ export class PrismaWorkItemRepository implements WorkItemRepository {
     const countWhere = buildListWhere(spaceId, {
       ...input,
       statusCategory: undefined,
+    });
+    const taggedTargetIds = await findTaggedTargetIds(this.prisma.client, {
+      spaceId,
+      tagIds: input.tagIds,
+      tagMatch: input.tagMatch,
+      targetType: "WORK_ITEM",
     });
 
     if (input.visibility === "PARTICIPANT") {
@@ -74,6 +85,9 @@ export class PrismaWorkItemRepository implements WorkItemRepository {
       countWhere.AND = [...toArray(countWhere.AND), { OR: visibilityOr }];
     }
 
+    applyTaggedTargetIds(where, taggedTargetIds);
+    applyTaggedTargetIds(countWhere, taggedTargetIds);
+
     const [items, total, statusCategoryGroups] =
       await this.prisma.client.$transaction([
         this.prisma.client.workItem.findMany({
@@ -93,9 +107,17 @@ export class PrismaWorkItemRepository implements WorkItemRepository {
           where: countWhere,
         }),
       ]);
+    const tagsByWorkItemId = await listTagsByTargets(this.prisma.client, {
+      organizationId: items[0]?.organizationId ?? "",
+      spaceId,
+      targetIds: items.map((item) => item.id),
+      targetType: "WORK_ITEM",
+    });
 
     return {
-      items: items.map((item) => toWorkItem(item)),
+      items: items.map((item) =>
+        toWorkItem(item, undefined, tagsByWorkItemId.get(item.id) ?? []),
+      ),
       page: input.page,
       pageSize: input.pageSize,
       statusCategoryCounts: statusCategoryGroups.map((group) => ({
@@ -189,10 +211,26 @@ export class PrismaWorkItemRepository implements WorkItemRepository {
         title: "创建任务",
       });
 
+      await replaceTagAssignmentsInTransaction(tx, {
+        assignedById: input.createdById,
+        organizationId: input.organizationId,
+        spaceId: input.spaceId,
+        tagIds: input.tagIds,
+        targetId: workItem.id,
+        targetType: "WORK_ITEM",
+      });
+
       return workItem;
     });
 
-    return toWorkItem(created);
+    const tagsByWorkItemId = await listTagsByTargets(this.prisma.client, {
+      organizationId: created.organizationId,
+      spaceId: created.spaceId,
+      targetIds: [created.id],
+      targetType: "WORK_ITEM",
+    });
+
+    return toWorkItem(created, undefined, tagsByWorkItemId.get(created.id) ?? []);
   }
 
   async findTaskById(workItemId: string) {
@@ -204,7 +242,22 @@ export class PrismaWorkItemRepository implements WorkItemRepository {
       },
     });
 
-    return workItem ? toWorkItem(workItem) : undefined;
+    if (!workItem) {
+      return undefined;
+    }
+
+    const tagsByWorkItemId = await listTagsByTargets(this.prisma.client, {
+      organizationId: workItem.organizationId,
+      spaceId: workItem.spaceId,
+      targetIds: [workItem.id],
+      targetType: "WORK_ITEM",
+    });
+
+    return toWorkItem(
+      workItem,
+      undefined,
+      tagsByWorkItemId.get(workItem.id) ?? [],
+    );
   }
 
   async countVersionCascadeImpact(input: {
@@ -364,7 +417,22 @@ export class PrismaWorkItemRepository implements WorkItemRepository {
       return workItem;
     });
 
-    return updated ? toWorkItem(updated) : undefined;
+    if (!updated) {
+      return undefined;
+    }
+
+    const tagsByWorkItemId = await listTagsByTargets(this.prisma.client, {
+      organizationId: updated.organizationId,
+      spaceId: updated.spaceId,
+      targetIds: [updated.id],
+      targetType: "WORK_ITEM",
+    });
+
+    return toWorkItem(
+      updated,
+      undefined,
+      tagsByWorkItemId.get(updated.id) ?? [],
+    );
   }
 
   async isParticipant(spaceId: string, workItemId: string, userId: string) {
@@ -589,6 +657,24 @@ function buildListWhere(
     type: "TASK",
     versionId: input.versionId,
   };
+}
+
+function applyTaggedTargetIds(
+  where: Prisma.WorkItemWhereInput,
+  targetIds: string[] | undefined,
+) {
+  if (!targetIds) {
+    return;
+  }
+
+  where.AND = [
+    ...toArray(where.AND),
+    {
+      id: {
+        in: targetIds,
+      },
+    },
+  ];
 }
 
 function buildOrderBy(

@@ -103,6 +103,7 @@ function makeIntake(overrides: Partial<IntakeItem> = {}): IntakeItem {
     title: "Checkout scope",
     versionId,
     ...overrides,
+    tags: overrides.tags ?? [],
   };
 }
 

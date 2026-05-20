@@ -75,17 +75,25 @@ const {
   listSpaceMembersMock,
   updateSpaceMock,
   updateSpaceMemberMock,
+  listTagsMock,
+  deleteTagMock,
 } = vi.hoisted(() => ({
   getSpaceMock: vi.fn(),
   listSpaceMembersMock: vi.fn(),
   updateSpaceMock: vi.fn(),
   updateSpaceMemberMock: vi.fn(),
+  listTagsMock: vi.fn(),
+  deleteTagMock: vi.fn(),
 }));
 vi.mock("../../lib/space-service", () => ({
   getSpace: getSpaceMock,
   listSpaceMembers: listSpaceMembersMock,
   updateSpace: updateSpaceMock,
   updateSpaceMember: updateSpaceMemberMock,
+}));
+vi.mock("../../lib/tag-service", () => ({
+  deleteTag: deleteTagMock,
+  listTags: listTagsMock,
 }));
 
 const { FakeApiClientError } = vi.hoisted(() => {
@@ -168,12 +176,38 @@ function makeMember(overrides: Record<string, unknown> = {}) {
   } as unknown as import("@project-delivery/shared").SpaceMemberWithUser;
 }
 
+function makeTag(overrides: Record<string, unknown> = {}) {
+  return {
+    id: "01ARZ3NDEKTSV4RRFFQ69G5FTG",
+    organizationId: "ORG_01",
+    spaceId: "SPC_01",
+    name: "backend",
+    displayName: "#backend",
+    normalizedName: "backend",
+    colorKey: "blue",
+    usageCount: 2,
+    isOrphan: false,
+    createdAt: "2026-05-19T10:00:00.000Z",
+    updatedAt: "2026-05-19T10:00:00.000Z",
+    ...overrides,
+  } as unknown as import("@project-delivery/shared").TagDto;
+}
+
 beforeEach(() => {
   getSpaceMock.mockReset();
   listSpaceMembersMock.mockReset();
   updateSpaceMock.mockReset();
   updateSpaceMemberMock.mockReset();
+  listTagsMock.mockReset();
+  deleteTagMock.mockReset();
   refreshSessionMock.mockReset();
+  listTagsMock.mockResolvedValue({
+    items: [],
+    page: 1,
+    pageSize: 100,
+    total: 0,
+  });
+  deleteTagMock.mockResolvedValue({});
   sessionMock.current = {
     session: {
       defaultOrganizationId: "ORG_01",
@@ -364,6 +398,7 @@ describe("SpaceSettingsPage", () => {
       await screen.findByText("spaceSettings.page.noSpace.title"),
     ).toBeInTheDocument();
     expect(getSpaceMock).not.toHaveBeenCalled();
+    expect(listTagsMock).not.toHaveBeenCalled();
   });
 
   it("saves description and owner via updateSpace and reflects the response", async () => {
@@ -515,6 +550,164 @@ describe("SpaceSettingsPage", () => {
       expect(screen.queryByText("Alice")).not.toBeInTheDocument(),
     );
     expect(screen.getByText("Bob")).toBeInTheDocument();
+  });
+
+  it("renders current-space tags with usage, created time, and orphan status", async () => {
+    listTagsMock.mockResolvedValueOnce({
+      items: [makeTag()],
+      page: 1,
+      pageSize: 100,
+      total: 1,
+    });
+    getSpaceMock.mockResolvedValueOnce(makeSpace());
+    listSpaceMembersMock.mockResolvedValueOnce({ items: [], total: 0 });
+
+    render(<SpaceSettingsPage />);
+
+    await waitFor(() =>
+      expect(listTagsMock).toHaveBeenCalledWith({
+        includeUsage: true,
+        organizationId: "ORG_01",
+        page: 1,
+        pageSize: 100,
+        query: undefined,
+        spaceId: "SPC_01",
+      }),
+    );
+    expect(await screen.findByText("#backend")).toBeInTheDocument();
+    expect(
+      screen.getByText("spaceSettings.tags.status.inUse"),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        new Intl.DateTimeFormat("zh-CN", {
+          dateStyle: "medium",
+          timeStyle: "short",
+        }).format(new Date("2026-05-19T10:00:00.000Z")),
+      ),
+    ).toBeInTheDocument();
+  });
+
+  it("searches tags by name from the space settings tag section", async () => {
+    getSpaceMock.mockResolvedValueOnce(makeSpace());
+    listSpaceMembersMock.mockResolvedValueOnce({ items: [], total: 0 });
+
+    render(<SpaceSettingsPage />);
+
+    await screen.findByLabelText("spaceSettings.tags.searchLabel");
+
+    const user = userEvent.setup();
+    await user.type(screen.getByTestId("space-settings-tag-search"), "back");
+
+    await waitFor(() =>
+      expect(listTagsMock).toHaveBeenLastCalledWith({
+        includeUsage: true,
+        organizationId: "ORG_01",
+        page: 1,
+        pageSize: 100,
+        query: "back",
+        spaceId: "SPC_01",
+      }),
+    );
+  });
+
+  it("allows SPACE_ADMIN to delete orphan tags and refreshes the list", async () => {
+    const tag = makeTag({
+      id: "01ARZ3NDEKTSV4RRFFQ69G5F00",
+      name: "unused",
+      displayName: "#unused",
+      normalizedName: "unused",
+      usageCount: 0,
+      isOrphan: true,
+    });
+    listTagsMock
+      .mockResolvedValueOnce({
+        items: [tag],
+        page: 1,
+        pageSize: 100,
+        total: 1,
+      })
+      .mockResolvedValueOnce({
+        items: [],
+        page: 1,
+        pageSize: 100,
+        total: 0,
+      });
+    getSpaceMock.mockResolvedValueOnce(makeSpace());
+    listSpaceMembersMock.mockResolvedValueOnce({ items: [], total: 0 });
+
+    render(<SpaceSettingsPage />);
+
+    fireEvent.click(
+      await screen.findByTestId(
+        "space-settings-tag-delete-01ARZ3NDEKTSV4RRFFQ69G5F00",
+      ),
+    );
+
+    await waitFor(() =>
+      expect(deleteTagMock).toHaveBeenCalledWith("01ARZ3NDEKTSV4RRFFQ69G5F00"),
+    );
+    await waitFor(() => expect(listTagsMock).toHaveBeenCalledTimes(2));
+  });
+
+  it("hides orphan tag delete actions for non-manager space roles", async () => {
+    sessionMock.current.currentSpace = {
+      ...sessionMock.current.currentSpace!,
+      role: "VIEWER",
+    };
+    listTagsMock.mockResolvedValueOnce({
+      items: [
+        makeTag({
+          usageCount: 0,
+          isOrphan: true,
+        }),
+      ],
+      page: 1,
+      pageSize: 100,
+      total: 1,
+    });
+    getSpaceMock.mockResolvedValueOnce(makeSpace());
+    listSpaceMembersMock.mockResolvedValueOnce({ items: [], total: 0 });
+
+    render(<SpaceSettingsPage />);
+
+    expect(await screen.findByText("#backend")).toBeInTheDocument();
+    expect(
+      screen.queryByTestId(
+        "space-settings-tag-delete-01ARZ3NDEKTSV4RRFFQ69G5FTG",
+      ),
+    ).not.toBeInTheDocument();
+  });
+
+  it("refreshes tags and shows the API message when delete finds the tag in use", async () => {
+    const tag = makeTag({
+      usageCount: 0,
+      isOrphan: true,
+    });
+    listTagsMock.mockResolvedValue({
+      items: [tag],
+      page: 1,
+      pageSize: 100,
+      total: 1,
+    });
+    deleteTagMock.mockRejectedValueOnce(
+      new FakeApiClientError("TAG_IN_USE", 409),
+    );
+    getSpaceMock.mockResolvedValueOnce(makeSpace());
+    listSpaceMembersMock.mockResolvedValueOnce({ items: [], total: 0 });
+
+    render(<SpaceSettingsPage />);
+
+    fireEvent.click(
+      await screen.findByTestId(
+        "space-settings-tag-delete-01ARZ3NDEKTSV4RRFFQ69G5FTG",
+      ),
+    );
+
+    expect(
+      await screen.findByText("errors.api.TAG_IN_USE"),
+    ).toBeInTheDocument();
+    await waitFor(() => expect(listTagsMock).toHaveBeenCalledTimes(2));
   });
 
   it("disables all write controls when the current space role is VIEWER", async () => {

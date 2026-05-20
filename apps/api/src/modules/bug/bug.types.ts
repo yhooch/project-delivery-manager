@@ -5,6 +5,7 @@ import type {
   Priority,
   SpaceRole,
   StatusCategory,
+  TagMatch,
 } from "@project-delivery/shared";
 
 export type BugListInput = {
@@ -25,6 +26,8 @@ export type BugListInput = {
   severity?: BugSeverity;
   relatedTaskId?: string;
   lifecycleBucket?: BugLifecycleFilterBucket;
+  tagIds?: string;
+  tagMatch?: TagMatch;
 };
 
 export type BugListResult = ListBugsResponse;
@@ -72,6 +75,7 @@ export type CreateBugInput = {
   relatedTaskId?: string;
   relatedUserIds: string[];
   createdById: string;
+  tagIds?: string[];
 };
 
 export type UpdateBugInput = {

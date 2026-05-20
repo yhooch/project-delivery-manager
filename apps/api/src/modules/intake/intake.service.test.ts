@@ -955,6 +955,7 @@ function intakeItem(
     sourceType: overrides.sourceType ?? "AD_HOC",
     spaceId: overrides.spaceId ?? SPACE_ID,
     status: overrides.status ?? "PENDING",
+    tags: [],
     title: overrides.title ?? "Intake item",
     ...(overrides.assigneeId ? { assigneeId: overrides.assigneeId } : {}),
     ...(overrides.description ? { description: overrides.description } : {}),
@@ -997,6 +998,7 @@ function workItem(
     reporterId: overrides.reporterId ?? ACTOR_USER_ID,
     spaceId: SPACE_ID,
     statusCategory: overrides.statusCategory ?? "NOT_STARTED",
+    tags: [],
     title: overrides.title ?? "Work item",
     type: "TASK" as const,
     workflowVersionId: overrides.workflowVersionId ?? WORKFLOW_VERSION_ID,
@@ -1044,6 +1046,7 @@ function requirement(
     },
     spaceId: overrides.spaceId ?? SPACE_ID,
     status: "CONFIRMED" as const,
+    tags: [],
     title: "Requirement",
     updatedAt: "2026-05-13T00:00:00.000Z",
     ...(overrides.versionId !== null

@@ -26,4 +26,21 @@ describe("message catalog parity", () => {
     expect([...zhKeys].filter((key) => !enKeys.has(key)).sort()).toEqual([]);
     expect([...enKeys].filter((key) => !zhKeys.has(key)).sort()).toEqual([]);
   });
+
+  it("keeps tag workflow copy available in every locale", () => {
+    for (const locale of ["zh-CN", "en-US"] as const) {
+      const keys = new Set(flattenKeys(readMessages(locale)));
+
+      expect([...keys]).toEqual(
+        expect.arrayContaining([
+          "tags.picker.create",
+          "tags.filter.match.ANY",
+          "tags.commandPalette.results",
+          "spaceSettings.tags.actions.delete",
+          "errors.api.TAG_IN_USE",
+          "errors.api.TAG_TARGET_INVALID",
+        ]),
+      );
+    }
+  });
 });

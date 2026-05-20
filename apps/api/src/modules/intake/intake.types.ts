@@ -6,6 +6,7 @@ import type {
   ListIntakeItemsResponse,
   Priority,
   StatusCategory,
+  TagMatch,
   UpdateIntakeItemRequest,
 } from "@project-delivery/shared";
 import type { TraceVersionCascadeImpact } from "../trace/trace-version-policy";
@@ -22,6 +23,8 @@ export type IntakeItemListInput = {
   sortOrder?: "asc" | "desc";
   sourceType?: IntakeSourceType;
   status?: IntakeStatus;
+  tagIds?: string;
+  tagMatch?: TagMatch;
   versionId?: string;
 };
 
@@ -63,6 +66,7 @@ export type ConvertIntakeItemTaskInput = {
   statusCategory: StatusCategory;
   dueDate?: Date;
   relatedUserIds: string[];
+  tagIds?: string[];
 };
 
 export type ConvertIntakeItemToWorkItemsInput = {

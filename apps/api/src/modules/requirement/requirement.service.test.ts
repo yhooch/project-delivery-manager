@@ -374,5 +374,6 @@ function makeRequirement(overrides: Partial<Requirement> = {}): Requirement {
     title: "Draft requirement",
     updatedAt: "2026-05-13T00:00:00.000Z",
     ...overrides,
+    tags: overrides.tags ?? [],
   };
 }

@@ -16,6 +16,9 @@ describe("PrismaIntakeRepository", () => {
         findFirst: vi.fn(async () => undefined),
         update: vi.fn(async () => undefined),
       },
+      tagAssignment: {
+        updateMany: vi.fn(async () => ({ count: 0 })),
+      },
       timelineEvent: {
         create: vi.fn(async () => undefined),
       },
@@ -23,6 +26,9 @@ describe("PrismaIntakeRepository", () => {
     const prisma = {
       client: {
         $transaction: vi.fn(async (handler) => handler(tx)),
+        tagAssignment: {
+          findMany: vi.fn(async () => []),
+        },
       },
     } as unknown as PrismaService;
     const repository = new PrismaIntakeRepository(prisma);
@@ -169,6 +175,9 @@ describe("PrismaIntakeRepository", () => {
     const prisma = {
       client: {
         $transaction: vi.fn(async (handler) => handler(tx)),
+        tagAssignment: {
+          findMany: vi.fn(async () => []),
+        },
       },
     } as unknown as PrismaService;
     const repository = new PrismaIntakeRepository(prisma);

@@ -17,6 +17,7 @@ import {
 import type { z } from "zod";
 
 import { apiClient, type ApiRequestInit } from "./api-client";
+import { normalizeTagApiQuery } from "./tag-query";
 
 export type WorkItemApiTransport = {
   get<TData>(path: string, init?: ApiRequestInit): Promise<{ data: TData }>;
@@ -70,7 +71,7 @@ export async function listWorkItems(
     type: "TASK",
   });
   const response = await api.get<unknown>(`/spaces/${spaceId}/work-items`, {
-    query,
+    query: normalizeTagApiQuery(query),
   });
 
   return ListWorkItemsResponseSchema.parse(response.data);

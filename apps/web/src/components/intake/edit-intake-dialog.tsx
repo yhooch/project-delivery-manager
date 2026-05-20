@@ -6,6 +6,7 @@ import type {
   Priority,
   Requirement,
   SpaceMemberWithUser,
+  TagDto,
   UpdateIntakeItemRequest,
   Version,
 } from "@project-delivery/shared";
@@ -18,6 +19,8 @@ import { toUpdateIntakeItemRequest } from "../../lib/intake-forms";
 import { updateIntakeItem } from "../../lib/intake-service";
 import { listRequirements } from "../../lib/requirement-service";
 import { listSpaceMembers } from "../../lib/space-service";
+import { replaceTagAssignments } from "../../lib/tag-service";
+import { areTagIdsEqual, getTagIds } from "../../lib/tag-ui";
 import { listVersions } from "../../lib/version-service";
 import {
   filterTraceOptionsByVersion,
@@ -43,6 +46,7 @@ import { Label } from "../ui/label";
 import { Textarea } from "../ui/textarea";
 import { SelectMenu } from "../ui/select-menu";
 import { useSession } from "../providers/session-provider";
+import { TagSelectionField } from "../tag";
 type EditIntakeDialogProps = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -67,6 +71,7 @@ export function EditIntakeDialog({
   const t = useTranslations("intake.dialog");
   const tSourceType = useTranslations("intakeItems.sourceType");
   const tPriority = useTranslations("intakeItems.priority");
+  const tTags = useTranslations("tags.field");
   const tRoot = useTranslations();
   const { currentOrganization, session } = useSession();
   const organizationId =
@@ -82,6 +87,7 @@ export function EditIntakeDialog({
   const [assigneeId, setAssigneeId] = useState("");
   const [sourceObject, setSourceObject] = useState("");
   const [priority, setPriority] = useState<Priority | "">("");
+  const [selectedTags, setSelectedTags] = useState<TagDto[]>([]);
   const [titleError, setTitleError] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [errorKey, setErrorKey] = useState<string | null>(null);
@@ -115,6 +121,7 @@ export function EditIntakeDialog({
         : "",
     );
     setPriority(intakeItem.priority ?? "");
+    setSelectedTags(intakeItem.tags ?? []);
     setTitleError(false);
     setErrorKey(null);
     setSubmitting(false);
@@ -159,6 +166,7 @@ export function EditIntakeDialog({
     setAssigneeId("");
     setSourceObject("");
     setPriority("");
+    setSelectedTags([]);
     setTitleError(false);
     setErrorKey(null);
     setSubmitting(false);
@@ -199,6 +207,23 @@ export function EditIntakeDialog({
     setVersionId(inheritVersionFromTraceOption(nextRequirement, versionId));
   }
 
+  async function applyTagSelection(updated: IntakeItem): Promise<IntakeItem> {
+    const nextTagIds = getTagIds(selectedTags);
+    const currentTagIds = getTagIds(intakeItem?.tags ?? []);
+
+    if (areTagIdsEqual(nextTagIds, currentTagIds)) {
+      return updated;
+    }
+
+    const result = await replaceTagAssignments({
+      tagIds: nextTagIds,
+      targetId: updated.id,
+      targetType: "INTAKE_ITEM",
+    });
+
+    return { ...updated, tags: result.tags };
+  }
+
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!intakeItem) {
@@ -230,7 +255,7 @@ export function EditIntakeDialog({
         { intakeItemId: intakeItem.id, organizationId, spaceId },
         request,
       );
-      onUpdated?.(updated);
+      onUpdated?.(await applyTagSelection(updated));
       handleOpenChange(false);
     } catch (error) {
       if (isTraceVersionCascadeRequiredError(error)) {
@@ -272,7 +297,7 @@ export function EditIntakeDialog({
         },
       );
       setPendingCascadeConfirm(null);
-      onUpdated?.(updated);
+      onUpdated?.(await applyTagSelection(updated));
       handleOpenChange(false);
     } catch (error) {
       setPendingCascadeConfirm(null);
@@ -459,6 +484,17 @@ export function EditIntakeDialog({
                   onChange={(event) => setSourceObject(event.target.value)}
                   maxLength={2000}
                   rows={2}
+                />
+              </div>
+              <div className="flex flex-col gap-1.5 sm:col-span-2">
+                <Label>{tTags("label")}</Label>
+                <TagSelectionField
+                  disabled={submitting}
+                  onSelectedTagsChange={setSelectedTags}
+                  organizationId={organizationId}
+                  selectedTags={selectedTags}
+                  spaceId={spaceId}
+                  testId="edit-intake-tags"
                 />
               </div>
             </div>

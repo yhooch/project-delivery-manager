@@ -606,6 +606,7 @@ function makeRequirement(
       tasks: [],
       bugs: [],
     },
+    tags: [],
     createdAt: "2026-05-13T00:00:00.000Z",
     updatedAt: "2026-05-13T00:00:00.000Z",
   };

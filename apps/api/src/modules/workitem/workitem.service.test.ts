@@ -908,5 +908,6 @@ function makeWorkItem(overrides: Partial<WorkItem> = {}): WorkItem {
     type: "TASK",
     workflowVersionId: WORKFLOW_VERSION_ID,
     ...overrides,
+    tags: overrides.tags ?? [],
   };
 }

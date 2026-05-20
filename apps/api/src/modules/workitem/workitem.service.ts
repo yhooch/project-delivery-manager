@@ -155,6 +155,7 @@ export class WorkItemService {
       requirementId: input.requirementId,
       spaceId,
       statusCategory: workflow.statusCategory,
+      tagIds: input.tagIds,
       title: input.title,
       versionId: trace.versionId ?? undefined,
       workflowVersionId: workflow.workflowVersionId,

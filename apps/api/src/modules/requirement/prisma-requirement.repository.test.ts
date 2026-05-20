@@ -16,6 +16,9 @@ describe("PrismaRequirementRepository", () => {
         requirement: {
           findFirst: vi.fn(async () => requirement),
         },
+        tagAssignment: {
+          findMany: vi.fn(async () => []),
+        },
         workItem: {
           findMany: workItemFindMany,
         },
@@ -106,6 +109,9 @@ describe("PrismaRequirementRepository", () => {
           count: vi.fn(async () => 2),
           findMany: vi.fn(async () => [first, second]),
           groupBy: vi.fn(async () => []),
+        },
+        tagAssignment: {
+          findMany: vi.fn(async () => []),
         },
         workItem: {
           findMany: workItemFindMany,
@@ -213,6 +219,123 @@ describe("PrismaRequirementRepository", () => {
     });
   });
 
+  it("applies tag filters to requirement list and status counts", async () => {
+    const requirement = makeRequirement();
+    const tagId = "01H00000000000000000000021";
+    const tagAssignmentFindMany = vi.fn(async () => [
+      {
+        tagId,
+        targetId: requirement.id,
+      },
+    ]);
+    const requirementFindMany = vi.fn(async () => []);
+    const requirementCount = vi.fn(async () => 0);
+    const requirementGroupBy = vi.fn(async (_args: unknown) => [
+      {
+        _count: { _all: 1 },
+        status: "CONFIRMED",
+      },
+    ]);
+    const prisma = {
+      client: {
+        $transaction: vi.fn(async (queries) => Promise.all(queries)),
+        objectParticipant: {
+          findMany: vi.fn(async () => []),
+        },
+        requirement: {
+          count: requirementCount,
+          findMany: requirementFindMany,
+          groupBy: requirementGroupBy,
+        },
+        tagAssignment: {
+          findMany: tagAssignmentFindMany,
+        },
+      },
+    } as unknown as PrismaService;
+    const repository = new PrismaRequirementRepository(prisma);
+
+    const result = await repository.listBySpaceId(requirement.spaceId, {
+      actorUserId: requirement.authorId,
+      page: 1,
+      pageSize: 20,
+      status: "ARCHIVED",
+      tagIds: tagId,
+      tagMatch: "ALL",
+      visibility: "ALL",
+    });
+
+    expect(result.statusCounts).toEqual([
+      {
+        count: 1,
+        status: "CONFIRMED",
+      },
+    ]);
+    expect(tagAssignmentFindMany).toHaveBeenCalledWith({
+      select: {
+        tagId: true,
+        targetId: true,
+      },
+      where: {
+        deletedAt: null,
+        spaceId: requirement.spaceId,
+        tag: {
+          deletedAt: null,
+          spaceId: requirement.spaceId,
+        },
+        tagId: {
+          in: [tagId],
+        },
+        targetType: "REQUIREMENT",
+      },
+    });
+    expect(requirementFindMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          AND: [
+            {
+              id: {
+                in: [requirement.id],
+              },
+            },
+          ],
+          spaceId: requirement.spaceId,
+          status: "ARCHIVED",
+        }),
+      }),
+    );
+    expect(requirementCount).toHaveBeenCalledWith({
+      where: expect.objectContaining({
+        AND: [
+          {
+            id: {
+              in: [requirement.id],
+            },
+          },
+        ],
+        status: "ARCHIVED",
+      }),
+    });
+    const statusCountArgs = requirementGroupBy.mock.calls[0]?.[0] as
+      | { where: { AND?: unknown[]; status?: unknown } }
+      | undefined;
+    const statusCountWhere = statusCountArgs?.where;
+
+    expect(statusCountWhere).toEqual(
+      expect.objectContaining({
+        AND: expect.arrayContaining([
+          {
+            id: {
+              in: [requirement.id],
+            },
+          },
+        ]),
+        spaceId: requirement.spaceId,
+      }),
+    );
+    expect(statusCountWhere?.status).toBeUndefined();
+    expect(JSON.stringify(statusCountWhere)).not.toContain("ARCHIVED");
+  });
+
   it("scopes post-save aggregate queries by the saved requirement tenant", async () => {
     const requirement = makeRequirement();
     const saved = {
@@ -239,6 +362,9 @@ describe("PrismaRequirementRepository", () => {
         $transaction: vi.fn(async (handler) => handler(tx)),
         attachment: {
           findMany: attachmentFindMany,
+        },
+        tagAssignment: {
+          findMany: vi.fn(async () => []),
         },
         workItem: {
           findMany: workItemFindMany,
@@ -325,6 +451,9 @@ describe("PrismaRequirementRepository", () => {
         requirement: {
           findFirst: vi.fn(async () => requirement),
         },
+        tagAssignment: {
+          findMany: vi.fn(async () => []),
+        },
         workItem: {
           findMany: vi.fn(async () => [
             task,
@@ -380,6 +509,9 @@ describe("PrismaRequirementRepository", () => {
           }),
         updateMany: vi.fn(async () => ({ count: 1 })),
       },
+      tagAssignment: {
+        updateMany: vi.fn(async () => ({ count: 0 })),
+      },
       timelineEvent: {
         create: timelineEventCreate,
       },
@@ -388,6 +520,9 @@ describe("PrismaRequirementRepository", () => {
       client: {
         $transaction: vi.fn(async (handler) => handler(tx)),
         attachment: {
+          findMany: vi.fn(async () => []),
+        },
+        tagAssignment: {
           findMany: vi.fn(async () => []),
         },
         workItem: {
@@ -480,6 +615,9 @@ describe("PrismaRequirementRepository", () => {
       client: {
         $transaction: vi.fn(async (handler) => handler(tx)),
         attachment: {
+          findMany: vi.fn(async () => []),
+        },
+        tagAssignment: {
           findMany: vi.fn(async () => []),
         },
         workItem: {
@@ -647,6 +785,9 @@ describe("PrismaRequirementRepository", () => {
       client: {
         $transaction: vi.fn(async (handler) => handler(tx)),
         attachment: {
+          findMany: vi.fn(async () => []),
+        },
+        tagAssignment: {
           findMany: vi.fn(async () => []),
         },
         workItem: {

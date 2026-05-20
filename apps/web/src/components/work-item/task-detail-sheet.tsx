@@ -30,6 +30,7 @@ import {
   Paperclip,
   Pencil,
   Send,
+  Tag as TagIcon,
   User2,
 } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
@@ -87,6 +88,7 @@ import { Link } from "../../i18n/routing";
 
 import { useSession } from "../providers/session-provider";
 import { IntakeDetailSheet } from "../intake/intake-detail-sheet";
+import { ObjectTagAssignmentField } from "../tag";
 import { TraceVersionCascadeConfirmDialog } from "../trace-version-cascade-confirm-dialog";
 import { Avatar, AvatarFallback, AvatarImage } from "../ui/avatar";
 import { Badge } from "../ui/badge";
@@ -2379,6 +2381,31 @@ function DetailTab({
               : (item.updatedAgo ?? "—")
           }
         />
+        <FieldRow
+          icon={TagIcon}
+          label={tRoot("tags.field.label")}
+          contentClassName="ml-0 basis-full sm:basis-auto sm:flex-1"
+          rootClassName="items-center flex-wrap sm:col-span-2"
+          value={
+            detail && spaceId ? (
+              <ObjectTagAssignmentField
+                className="w-full"
+                canEdit={canEdit}
+                onTagsChange={() => {
+                  void onSaved();
+                }}
+                organizationId={organizationId}
+                spaceId={spaceId}
+                tags={detail.tags}
+                targetId={detail.id}
+                targetType="WORK_ITEM"
+                testId="task-detail-tags"
+              />
+            ) : (
+              tRoot("tags.field.empty")
+            )
+          }
+        />
       </div>
       <TraceabilitySection
         detail={detail}
@@ -3563,23 +3590,32 @@ function TimelineTab({
 // ---------------------------------------------------------------------------
 
 function FieldRow({
+  contentClassName,
   icon: Icon,
   label,
+  rootClassName,
   value,
 }: {
+  contentClassName?: string;
   icon: typeof User2;
   label: string;
-  value: string;
+  rootClassName?: string;
+  value: React.ReactNode;
 }) {
   return (
-    <div className="flex items-center gap-2">
-      <Icon className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
-      <span className="text-[11px] uppercase tracking-wider text-muted-foreground">
+    <div className={cn("flex min-w-0 items-start gap-2", rootClassName)}>
+      <Icon className="mt-0.5 h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+      <span className="shrink-0 text-[11px] uppercase tracking-wider text-muted-foreground">
         {label}
       </span>
-      <span className="ml-auto truncate font-medium text-foreground">
+      <div
+        className={cn(
+          "ml-auto min-w-0 font-medium text-foreground",
+          contentClassName,
+        )}
+      >
         {value}
-      </span>
+      </div>
     </div>
   );
 }

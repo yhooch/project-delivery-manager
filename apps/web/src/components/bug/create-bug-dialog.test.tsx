@@ -87,11 +87,45 @@ vi.mock("../../lib/workflow-options", () => ({
   ) => options.find((option) => option.isDefault)?.version.id ?? "",
   loadWorkflowVersionOptions: loadWorkflowVersionOptionsMock,
 }));
+vi.mock("../tag", () => ({
+  TagSelectionField: ({
+    onSelectedTagsChange,
+    testId,
+  }: {
+    onSelectedTagsChange: (
+      tags: import("@project-delivery/shared").TagDto[],
+    ) => void;
+    testId?: string;
+  }) => (
+    <button
+      type="button"
+      data-testid={testId}
+      onClick={() =>
+        onSelectedTagsChange([
+          {
+            colorKey: "blue",
+            createdAt: "2026-05-20T00:00:00.000Z",
+            displayName: "#backend",
+            id: "01ARZ3NDEKTSV4RRFFQ69G5FG1",
+            name: "backend",
+            normalizedName: "backend",
+            organizationId: "ORG_01",
+            spaceId: "01ARZ3NDEKTSV4RRFFQ69G5FS1",
+            updatedAt: "2026-05-20T00:00:00.000Z",
+          },
+        ])
+      }
+    >
+      select tag
+    </button>
+  ),
+}));
 
 import { CreateBugDialog } from "./create-bug-dialog";
 
 const spaceId = "01ARZ3NDEKTSV4RRFFQ69G5FS1";
 const organizationId = "ORG_01";
+const tagId = "01ARZ3NDEKTSV4RRFFQ69G5FG1";
 const versionId = "01ARZ3NDEKTSV4RRFFQ69G5FV1";
 const nextVersionId = "01ARZ3NDEKTSV4RRFFQ69G5FV2";
 const requirementId = "01ARZ3NDEKTSV4RRFFQ69G5FR1";
@@ -173,6 +207,33 @@ describe("CreateBugDialog", () => {
         relatedTaskId,
         requirementId,
         title: "Linked bug",
+      }),
+    );
+  });
+
+  it("submits selected tags when creating a bug", async () => {
+    render(
+      <CreateBugDialog
+        open
+        onOpenChange={() => {}}
+        organizationId={organizationId}
+        spaceId={spaceId}
+      />,
+    );
+
+    await screen.findByText("Requirement 1");
+    fireEvent.change(screen.getByTestId("create-bug-title-input"), {
+      target: { value: "Tagged bug" },
+    });
+    fireEvent.click(screen.getByTestId("create-bug-tags"));
+    fireEvent.click(screen.getByTestId("create-bug-submit"));
+
+    await waitFor(() => expect(createBugMock).toHaveBeenCalledTimes(1));
+    expect(createBugMock).toHaveBeenCalledWith(
+      { organizationId, spaceId },
+      expect.objectContaining({
+        tagIds: [tagId],
+        title: "Tagged bug",
       }),
     );
   });

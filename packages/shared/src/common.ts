@@ -54,6 +54,10 @@ export const ApiErrorCodeSchema = z.enum([
   "TRACE_VERSION_CONFLICT",
   "TRACE_VERSION_CHANGE_REQUIRES_CASCADE",
   "TRACE_CASCADE_CONFLICT",
+  "TAG_NOT_FOUND",
+  "TAG_IN_USE",
+  "TAG_TARGET_INVALID",
+  "TAG_NAME_CONFLICT",
 ]);
 
 export type ApiErrorCode = z.infer<typeof ApiErrorCodeSchema>;
@@ -204,5 +208,11 @@ export const ActionFormFieldIdPathParamsSchema = z
 export const AttachmentIdPathParamsSchema = z
   .object({
     attachmentId: UlidSchema,
+  })
+  .strict();
+
+export const TagIdPathParamsSchema = z
+  .object({
+    tagId: UlidSchema,
   })
   .strict();

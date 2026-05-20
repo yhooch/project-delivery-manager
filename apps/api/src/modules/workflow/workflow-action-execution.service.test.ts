@@ -990,6 +990,7 @@ function makeWorkItem(overrides: Partial<ExecutableWorkItem> = {}) {
     type: "TASK",
     workflowVersionId: WORKFLOW_VERSION_ID,
     ...overrides,
+    tags: overrides.tags ?? [],
   } satisfies ExecutableWorkItem;
 
   if (workItem.type === "BUG" && !workItem.bugDetail) {

@@ -2,6 +2,7 @@ import {
   CreateRequirementDraftResponseSchema,
   DeleteRequirementDraftResponseSchema,
   GetRequirementResponseSchema,
+  RequirementListQuerySchema,
   ListRequirementsResponseSchema,
   ListSpaceMembersResponseSchema,
   ListVersionsResponseSchema,
@@ -10,13 +11,14 @@ import {
   type ListRequirementsResponse,
   type PageResult,
   type Requirement,
-  type RequirementStatus,
   type SpaceMemberWithUser,
   type UpdateRequirementRequest,
   type Version,
 } from "@project-delivery/shared";
+import type { z } from "zod";
 
 import { apiClient, type ApiRequestInit } from "./api-client";
+import { normalizeTagApiQuery } from "./tag-query";
 
 export type RequirementApiTransport = {
   delete<TData>(path: string, init?: ApiRequestInit): Promise<{ data: TData }>;
@@ -33,15 +35,9 @@ export type RequirementApiTransport = {
   ): Promise<{ data: TData }>;
 };
 
-export type ListRequirementsInput = {
-  includeDrafts?: boolean;
+export type ListRequirementsInput = z.input<typeof RequirementListQuerySchema> & {
   organizationId?: string;
-  ownerId?: string;
-  page?: number;
-  pageSize?: number;
   spaceId: string;
-  status?: RequirementStatus;
-  versionId?: string;
 };
 
 type RequirementIdentityInput = {
@@ -67,11 +63,12 @@ export async function listRequirements(
   input: ListRequirementsInput,
   api: RequirementApiTransport = defaultApi,
 ): Promise<ListRequirementsResponse> {
-  const { organizationId: _organizationId, spaceId, ...query } = input;
+  const { organizationId: _organizationId, spaceId, ...filters } = input;
+  const query = RequirementListQuerySchema.parse(filters);
   const response = await api.get<PageResult<Requirement>>(
     `/spaces/${spaceId}/requirements`,
     {
-      query,
+      query: normalizeTagApiQuery(query),
     },
   );
 

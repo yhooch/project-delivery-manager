@@ -25,6 +25,7 @@ import {
   type ListBugsResponse,
   type Priority,
   type StatusCategory,
+  type TagMatch,
   type UpdateBugRequest,
 } from "@project-delivery/shared";
 
@@ -70,6 +71,8 @@ export class BugController {
       severity?: BugSeverity;
       relatedTaskId?: string;
       lifecycleBucket?: BugLifecycleFilterBucket;
+      tagIds?: string;
+      tagMatch?: TagMatch;
     },
     @Req() request: RequestWithContext,
   ): Promise<ListBugsResponse> {

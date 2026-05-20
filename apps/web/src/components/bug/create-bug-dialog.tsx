@@ -5,6 +5,7 @@ import type {
   Priority,
   Requirement,
   SpaceMemberWithUser,
+  TagDto,
   Version,
   WorkItem,
 } from "@project-delivery/shared";
@@ -16,6 +17,7 @@ import { toCreateBugRequest } from "../../lib/bug-forms";
 import { createBug } from "../../lib/bug-service";
 import { listRequirements } from "../../lib/requirement-service";
 import { listSpaceMembers } from "../../lib/space-service";
+import { getTagIds } from "../../lib/tag-ui";
 import { listVersions } from "../../lib/version-service";
 import {
   clearIncompatibleTraceSelection,
@@ -44,6 +46,7 @@ import { Label } from "../ui/label";
 import { Textarea } from "../ui/textarea";
 import { SelectMenu } from "../ui/select-menu";
 import { useSession } from "../providers/session-provider";
+import { TagSelectionField } from "../tag";
 
 type CreateBugDialogProps = {
   open: boolean;
@@ -73,6 +76,7 @@ export function CreateBugDialog({
   const t = useTranslations("bugs.dialog");
   const tPriority = useTranslations("bugs.priority");
   const tSeverity = useTranslations("bugs.severity");
+  const tTags = useTranslations("tags.field");
   const tRoot = useTranslations();
   const { currentOrganization, session } = useSession();
   const organizationId =
@@ -92,6 +96,7 @@ export function CreateBugDialog({
   const [assigneeId, setAssigneeId] = useState("");
   const [priority, setPriority] = useState<Priority>("MEDIUM");
   const [dueDate, setDueDate] = useState("");
+  const [selectedTags, setSelectedTags] = useState<TagDto[]>([]);
   const [titleError, setTitleError] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [errorKey, setErrorKey] = useState<string | null>(null);
@@ -196,6 +201,7 @@ export function CreateBugDialog({
     setWorkflowOptions([]);
     setPriority("MEDIUM");
     setDueDate("");
+    setSelectedTags([]);
     setTitleError(false);
     setErrorKey(null);
     setOptionsLoadState("idle");
@@ -280,6 +286,7 @@ export function CreateBugDialog({
           workflowVersionId,
           assigneeId,
           dueDate: toDateInputRequestValue(dueDate),
+          tagIds: getTagIds(selectedTags),
         }),
       );
       onCreated?.();
@@ -560,6 +567,17 @@ export function CreateBugDialog({
                 type="date"
                 value={dueDate}
                 onChange={(event) => setDueDate(event.target.value)}
+              />
+            </div>
+            <div className="col-span-2 flex flex-col gap-1.5">
+              <Label>{tTags("label")}</Label>
+              <TagSelectionField
+                disabled={submitting}
+                onSelectedTagsChange={setSelectedTags}
+                organizationId={organizationId}
+                selectedTags={selectedTags}
+                spaceId={spaceId}
+                testId="create-bug-tags"
               />
             </div>
           </div>

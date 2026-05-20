@@ -5,6 +5,7 @@ import type {
   Priority,
   Requirement,
   SpaceMemberWithUser,
+  TagDto,
   Version,
 } from "@project-delivery/shared";
 import { useTranslations } from "next-intl";
@@ -14,6 +15,7 @@ import { getApiErrorMessageKey } from "../../lib/api-error-messages";
 import { listIntakeItems } from "../../lib/intake-service";
 import { listRequirements } from "../../lib/requirement-service";
 import { listSpaceMembers } from "../../lib/space-service";
+import { getTagIds } from "../../lib/tag-ui";
 import { listVersions } from "../../lib/version-service";
 import {
   clearIncompatibleTraceSelection,
@@ -43,6 +45,7 @@ import { Label } from "../ui/label";
 import { Textarea } from "../ui/textarea";
 import { SelectMenu } from "../ui/select-menu";
 import { useSession } from "../providers/session-provider";
+import { TagSelectionField } from "../tag";
 
 type CreateTaskDialogProps = {
   open: boolean;
@@ -66,6 +69,7 @@ export function CreateTaskDialog({
 }: CreateTaskDialogProps) {
   const t = useTranslations("tasks.dialog");
   const tPriority = useTranslations("workItems.priority");
+  const tTags = useTranslations("tags.field");
   const tRoot = useTranslations();
   const { currentOrganization, session } = useSession();
   const organizationId =
@@ -81,6 +85,7 @@ export function CreateTaskDialog({
   const [assigneeId, setAssigneeId] = useState("");
   const [priority, setPriority] = useState<Priority>("MEDIUM");
   const [dueDate, setDueDate] = useState("");
+  const [selectedTags, setSelectedTags] = useState<TagDto[]>([]);
   const [titleError, setTitleError] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [errorKey, setErrorKey] = useState<string | null>(null);
@@ -186,6 +191,7 @@ export function CreateTaskDialog({
     setWorkflowOptions([]);
     setPriority("MEDIUM");
     setDueDate("");
+    setSelectedTags([]);
     setTitleError(false);
     setErrorKey(null);
     setOptionsLoadState("idle");
@@ -268,6 +274,7 @@ export function CreateTaskDialog({
           workflowVersionId,
           assigneeId,
           dueDate: toDateInputRequestValue(dueDate),
+          tagIds: getTagIds(selectedTags),
         }),
       );
       onCreated?.();
@@ -484,6 +491,17 @@ export function CreateTaskDialog({
                 type="date"
                 value={dueDate}
                 onChange={(event) => setDueDate(event.target.value)}
+              />
+            </div>
+            <div className="flex flex-col gap-1.5 sm:col-span-2">
+              <Label>{tTags("label")}</Label>
+              <TagSelectionField
+                disabled={submitting}
+                onSelectedTagsChange={setSelectedTags}
+                organizationId={organizationId}
+                selectedTags={selectedTags}
+                spaceId={spaceId}
+                testId="create-task-tags"
               />
             </div>
           </div>

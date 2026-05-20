@@ -165,6 +165,44 @@
     "serverMessage": "后端提示",
     "requestId": "请求 ID"
   },
+  "tags": {
+    "badge": {
+      "remove": "移除 {name}"
+    },
+    "picker": {
+      "placeholder": "输入 # 搜索或创建标签",
+      "resultsLabel": "标签搜索结果",
+      "loading": "正在搜索标签…",
+      "empty": "没有匹配标签",
+      "error": "标签加载失败，请重试。",
+      "createError": "标签创建失败，请重试。",
+      "create": "创建 {name}",
+      "select": "选择 {name}"
+    },
+    "filter": {
+      "empty": "未选择标签",
+      "placeholder": "输入 # 添加标签",
+      "remove": "移除 {name}",
+      "clear": "清空标签筛选",
+      "matchMode": "标签匹配方式",
+      "match": {
+        "ANY": "任一",
+        "ALL": "全部"
+      }
+    },
+    "field": {
+      "label": "标签",
+      "empty": "未添加标签",
+      "placeholder": "输入 # 添加标签",
+      "add": "添加标签",
+      "saving": "标签保存中"
+    },
+    "commandPalette": {
+      "results": "标签",
+      "usage": "{count} 次使用",
+      "error": "标签搜索失败，请重试。"
+    }
+  },
   "auth": {
     "brand": {
       "name": "项目交付管理",
@@ -462,6 +500,10 @@
       "TRACE_VERSION_CHANGE_REQUIRES_CASCADE": "版本变更会影响已关联的下游对象，请确认后继续。",
       "TRACE_VERSION_CHANGE_REQUIRES_CASCADE_CONFIRM_SUFFIX": "确认后将同步更新已关联对象的版本，是否继续？",
       "TRACE_CASCADE_CONFLICT": "版本级联更新失败，请刷新关联对象后重试。",
+      "TAG_NOT_FOUND": "标签不存在或已不可用。",
+      "TAG_IN_USE": "标签仍被对象使用，不能删除。",
+      "TAG_TARGET_INVALID": "标签目标无效或已不可用。",
+      "TAG_NAME_CONFLICT": "标签名已存在，请使用已有标签。",
       "UNKNOWN": "操作失败，请稍后重试。"
     }
   },
@@ -2961,6 +3003,24 @@
       },
       "error": "请输入 1 到 30 之间的整数。",
       "hint": "合法范围 1 到 30。修改后异常视图的“长时间未流转”会按新阈值刷新。"
+    },
+    "tags": {
+      "title": "标签",
+      "description": "查看当前空间的标签字典、颜色和使用情况。仅可删除未被对象使用的孤儿标签。",
+      "searchLabel": "搜索标签",
+      "searchPlaceholder": "按标签名搜索",
+      "empty": "当前空间暂无标签",
+      "emptyFiltered": "没有匹配的标签",
+      "usageLabel": "使用数量",
+      "createdAtLabel": "创建时间",
+      "usage": "{count} 次",
+      "status": {
+        "orphan": "未使用",
+        "inUse": "使用中"
+      },
+      "actions": {
+        "delete": "删除孤儿标签 {name}"
+      }
     },
     "members": {
       "title": "空间成员",

@@ -8,6 +8,7 @@ import { cn } from "../../lib/utils";
 import { Avatar, AvatarFallback } from "../ui/avatar";
 import { Badge } from "../ui/badge";
 import { StatusBadge } from "../ui/status-badge";
+import { TagBadgeList } from "../tag";
 import { Tip } from "../ui/tooltip";
 
 const priorityDot: Record<WorkItemViewModel["priority"], string> = {
@@ -59,6 +60,14 @@ export function WorkItemRow({
       <span className="flex-1 truncate text-[13px] font-medium">
         {item.title}
       </span>
+      {item.tags && item.tags.length > 0 ? (
+        <TagBadgeList
+          badgeClassName="min-w-0 max-w-24 shrink"
+          className="hidden max-w-64 shrink-0 flex-nowrap overflow-hidden lg:flex"
+          maxVisible={3}
+          tags={item.tags}
+        />
+      ) : null}
       <StatusBadge
         category={item.statusCategory}
         label={item.statusLabel}

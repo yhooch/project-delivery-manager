@@ -120,6 +120,7 @@ export class RequirementService {
       id: ulid(),
       organizationId: access.space.organizationId,
       spaceId,
+      tagIds: input.tagIds,
       versionId: input.versionId,
       createdById: actorUserId,
     });

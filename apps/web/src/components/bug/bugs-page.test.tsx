@@ -95,13 +95,21 @@ vi.mock("../../lib/v2/lookups", () => ({
   }),
 }));
 
-const { getBugMock, listBugsMock, listRequirementsMock, listWorkItemsMock } =
-  vi.hoisted(() => ({
-    getBugMock: vi.fn(),
-    listBugsMock: vi.fn(),
-    listRequirementsMock: vi.fn(),
-    listWorkItemsMock: vi.fn(),
-  }));
+const {
+  createTagMock,
+  getBugMock,
+  listBugsMock,
+  listRequirementsMock,
+  listTagsMock,
+  listWorkItemsMock,
+} = vi.hoisted(() => ({
+  createTagMock: vi.fn(),
+  getBugMock: vi.fn(),
+  listBugsMock: vi.fn(),
+  listRequirementsMock: vi.fn(),
+  listTagsMock: vi.fn(),
+  listWorkItemsMock: vi.fn(),
+}));
 vi.mock("../../lib/bug-service", () => ({
   getBug: getBugMock,
   listBugs: listBugsMock,
@@ -111,6 +119,10 @@ vi.mock("../../lib/requirement-service", () => ({
 }));
 vi.mock("../../lib/work-item-service", () => ({
   listWorkItems: listWorkItemsMock,
+}));
+vi.mock("../../lib/tag-service", () => ({
+  createTag: createTagMock,
+  listTags: listTagsMock,
 }));
 
 vi.mock("./create-bug-dialog", () => ({
@@ -191,6 +203,23 @@ const REQUIREMENT_ID = "01ARZ3NDEKTSV4RRFFQ69G5FRQ";
 const NEXT_REQUIREMENT_ID = "01ARZ3NDEKTSV4RRFFQ69G5FR2";
 const RELATED_TASK_ID = "01ARZ3NDEKTSV4RRFFQ69G5FTK";
 const NEXT_RELATED_TASK_ID = "01ARZ3NDEKTSV4RRFFQ69G5FT2";
+const TAG_ID = "01ARZ3NDEKTSV4RRFFQ69G5FG1";
+
+function makeTag(overrides: Record<string, unknown> = {}) {
+  return {
+    colorKey: "blue",
+    createdAt: "2026-05-20T00:00:00.000Z",
+    displayName: "#backend",
+    id: TAG_ID,
+    name: "backend",
+    normalizedName: "backend",
+    organizationId: "ORG_01",
+    spaceId: "SPC_01",
+    updatedAt: "2026-05-20T00:00:00.000Z",
+    usageCount: 1,
+    ...overrides,
+  } satisfies import("@project-delivery/shared").TagDto;
+}
 
 function makeBug(overrides: Record<string, unknown> = {}) {
   return {
@@ -213,9 +242,11 @@ function makeBug(overrides: Record<string, unknown> = {}) {
 }
 
 beforeEach(() => {
+  createTagMock.mockReset();
   getBugMock.mockReset();
   listBugsMock.mockReset();
   listRequirementsMock.mockReset();
+  listTagsMock.mockReset();
   listWorkItemsMock.mockReset();
   searchParamsMock.current = new URLSearchParams();
   memberMap.clear();
@@ -753,6 +784,58 @@ describe("BugsPage", () => {
         }),
       ),
     );
+  });
+
+  it("hydrates URL tag filters into the bug query and filter chip", async () => {
+    const tag = makeTag();
+    searchParamsMock.current = new URLSearchParams(
+      `tagIds=${TAG_ID}&tagMatch=ALL`,
+    );
+    listTagsMock.mockResolvedValueOnce({
+      items: [tag],
+      page: 1,
+      pageSize: 20,
+      total: 1,
+    });
+    listBugsMock.mockResolvedValueOnce({
+      items: [makeBug({ tags: [tag], title: "Tagged bug" })],
+      total: 1,
+    });
+
+    render(<BugsPage />);
+
+    expect(await screen.findByText("Tagged bug")).toBeInTheDocument();
+    await waitFor(() =>
+      expect(listBugsMock).toHaveBeenCalledWith(
+        expect.objectContaining({
+          spaceId: "SPC_01",
+          tagIds: TAG_ID,
+          tagMatch: "ANY",
+          type: "BUG",
+        }),
+      ),
+    );
+
+    fireEvent.click(screen.getByTestId("bugs-filter-button"));
+
+    const panel = await screen.findByTestId("bugs-filter-panel");
+    expect(within(panel).getByText("#backend")).toBeInTheDocument();
+  });
+
+  it("does not send tagMatch when no tag filter is active and renders row tags", async () => {
+    const tag = makeTag();
+    listBugsMock.mockResolvedValueOnce({
+      items: [makeBug({ tags: [tag], title: "Bug with visible tag" })],
+      total: 1,
+    });
+
+    render(<BugsPage />);
+
+    expect(await screen.findByText("Bug with visible tag")).toBeInTheDocument();
+    expect(screen.getByText("#backend")).toBeInTheDocument();
+    const [query] = listBugsMock.mock.calls[0];
+    expect(query.tagIds).toBeUndefined();
+    expect(query.tagMatch).toBeUndefined();
   });
 
   it("links requirement and related task filters to the selected version", async () => {

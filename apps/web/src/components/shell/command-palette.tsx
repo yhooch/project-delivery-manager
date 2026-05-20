@@ -17,9 +17,11 @@ import {
   Settings2,
   ShieldAlert,
   Sun,
+  Tag as TagIcon,
   Target,
   Workflow,
 } from "lucide-react";
+import type { TagDto } from "@project-delivery/shared";
 import { useTranslations } from "next-intl";
 import { useEffect, useMemo, useState } from "react";
 
@@ -36,6 +38,8 @@ import {
 import { toThemeMode, type NextThemeMode } from "../../lib/preferences";
 import { listRequirements } from "../../lib/requirement-service";
 import { canManageOrganization } from "../../lib/space-service";
+import { buildTagFilterQueryString } from "../../lib/tag-query";
+import { listTags } from "../../lib/tag-service";
 import { listWorkItems } from "../../lib/work-item-service";
 
 import {
@@ -50,7 +54,8 @@ import {
 } from "../ui/command";
 import { useSession } from "../providers/session-provider";
 import { useTheme } from "../providers/theme-provider";
-import { useRouter } from "../../i18n/routing";
+import { usePathname, useRouter } from "../../i18n/routing";
+import { TagBadge, formatTagDisplayName, normalizeTagInput } from "../tag";
 import {
   buildLiveKey,
   createRecentStorageKey,
@@ -166,6 +171,7 @@ export function useCommandPaletteShortcut({
 }
 
 type SearchResult = RecentEntry;
+type TagSearchResult = TagDto;
 
 const typeIcon: Record<SearchResult["type"], typeof CheckCircle2> = {
   TASK: CheckCircle2,
@@ -199,6 +205,12 @@ function withDetailHref(item: SearchResult): SearchResult {
 }
 
 const PAGE_SIZE = 25;
+const TAG_FILTER_TARGET_PATHS = new Set([
+  "/requirements",
+  "/intake-items",
+  "/work-items",
+  "/bugs",
+]);
 
 type CommandPaletteProps = {
   enabled?: boolean;
@@ -206,11 +218,15 @@ type CommandPaletteProps = {
 
 export function CommandPalette({ enabled = true }: CommandPaletteProps) {
   const t = useTranslations("shell.command");
+  const tTags = useTranslations("tags.commandPalette");
   const tRoot = useTranslations();
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<SearchResult[]>([]);
+  const [tagResults, setTagResults] = useState<TagSearchResult[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [isTagLoading, setIsTagLoading] = useState(false);
+  const [tagSearchFailed, setTagSearchFailed] = useState(false);
   const [hasFetched, setHasFetched] = useState(false);
   const [canPruneRecent, setCanPruneRecent] = useState(false);
   const [recent, setRecent] = useState<SearchResult[]>([]);
@@ -218,6 +234,7 @@ export function CommandPalette({ enabled = true }: CommandPaletteProps) {
     null,
   );
   const router = useRouter();
+  const pathname = usePathname();
   const { setTheme } = useTheme();
   const {
     currentOrganization,
@@ -237,6 +254,7 @@ export function CommandPalette({ enabled = true }: CommandPaletteProps) {
   const effectiveCurrentSpace =
     currentSpace ??
     spacesForCurrentOrganization.find((space) => space.id === spaceId);
+  const effectiveSpaceId = effectiveCurrentSpace?.id ?? spaceId;
   const hasCurrentSpace = Boolean(effectiveCurrentSpace);
   const canCreateTaskInCurrentSpace = canCreateTasks(
     effectiveCurrentSpace?.role,
@@ -261,6 +279,12 @@ export function CommandPalette({ enabled = true }: CommandPaletteProps) {
   const recentStorageKey = useMemo(
     () => createRecentStorageKey(recentScope),
     [recentScope],
+  );
+  const trimmedQuery = query.trim();
+  const isTagQuery = trimmedQuery.startsWith("#");
+  const tagSearchTerm = normalizeTagInput(query);
+  const canSearchTags = Boolean(
+    enabled && open && hasCurrentSpace && effectiveSpaceId && isTagQuery,
   );
 
   useEffect(() => {
@@ -439,6 +463,48 @@ export function CommandPalette({ enabled = true }: CommandPaletteProps) {
     };
   }, [enabled, open, spaceId, organizationId, t]);
 
+  useEffect(() => {
+    if (!canSearchTags || !effectiveSpaceId) {
+      setTagResults([]);
+      setIsTagLoading(false);
+      setTagSearchFailed(false);
+      return;
+    }
+
+    let cancelled = false;
+    setIsTagLoading(true);
+    setTagSearchFailed(false);
+
+    void listTags({
+      includeUsage: true,
+      organizationId,
+      page: 1,
+      pageSize: PAGE_SIZE,
+      query: tagSearchTerm || undefined,
+      spaceId: effectiveSpaceId,
+    })
+      .then((response) => {
+        if (!cancelled) {
+          setTagResults(response.items);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setTagResults([]);
+          setTagSearchFailed(true);
+        }
+      })
+      .finally(() => {
+        if (!cancelled) {
+          setIsTagLoading(false);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [canSearchTags, effectiveSpaceId, organizationId, tagSearchTerm]);
+
   // Reset in-memory fetch state if user switches organization / space.
   useEffect(() => {
     setHasFetched(false);
@@ -457,6 +523,10 @@ export function CommandPalette({ enabled = true }: CommandPaletteProps) {
     const next = writeRecent(itemWithDetailHref, recentScope);
     setRecent(next);
     navigate(itemWithDetailHref.href);
+  };
+
+  const navigateToTag = (tag: TagSearchResult) => {
+    navigate(buildTagFilterHref(tag.id, pathname));
   };
 
   const selectTheme = (theme: NextThemeMode) => {
@@ -503,7 +573,12 @@ export function CommandPalette({ enabled = true }: CommandPaletteProps) {
     });
   }, [canPruneRecent, enabled, open, hasFetched, recentScope, results]);
 
-  const showSearchView = query.trim().length >= 2 && spaceId;
+  const showSearchView = Boolean(
+    (trimmedQuery.length >= 2 && spaceId) || canSearchTags,
+  );
+  const showTagResults = canSearchTags && tagResults.length > 0;
+  const isSearchLoading =
+    isLoading || (canSearchTags && isTagLoading && tagResults.length === 0);
 
   if (!enabled) {
     return null;
@@ -520,7 +595,9 @@ export function CommandPalette({ enabled = true }: CommandPaletteProps) {
       <CommandList>
         {showSearchView ? (
           <>
-            {isLoading && results.length === 0 ? (
+            {isSearchLoading &&
+            results.length === 0 &&
+            tagResults.length === 0 ? (
               <div className="flex items-center justify-center gap-2 px-3 py-6 text-xs text-muted-foreground">
                 <Loader2 className="h-3.5 w-3.5 animate-spin" />
                 <span>{t("searching")}</span>
@@ -528,6 +605,21 @@ export function CommandPalette({ enabled = true }: CommandPaletteProps) {
             ) : (
               <>
                 <CommandEmpty>{t("empty")}</CommandEmpty>
+                {tagSearchFailed ? (
+                  <div
+                    role="alert"
+                    className="mx-2 mb-1 rounded-md border border-destructive/40 bg-destructive/10 px-2.5 py-1.5 text-xs text-destructive"
+                  >
+                    {tTags("error")}
+                  </div>
+                ) : null}
+                {showTagResults && (
+                  <TagSearchGroup
+                    heading={tTags("results")}
+                    items={tagResults}
+                    onSelect={navigateToTag}
+                  />
+                )}
                 {grouped.TASK.length > 0 && (
                   <SearchGroup
                     testId="command-palette-group-tasks"
@@ -777,4 +869,64 @@ function SearchGroup({
       })}
     </CommandGroup>
   );
+}
+
+function TagSearchGroup({
+  heading,
+  items,
+  onSelect,
+}: {
+  heading: string;
+  items: TagSearchResult[];
+  onSelect: (tag: TagSearchResult) => void;
+}) {
+  const tTags = useTranslations("tags.commandPalette");
+
+  return (
+    <CommandGroup heading={heading} data-testid="command-palette-group-tags">
+      {items.map((tag) => (
+        <CommandItem
+          key={tag.id}
+          data-testid="command-palette-item-tag"
+          data-id={tag.id}
+          value={`${formatTagDisplayName(tag)} ${tag.name} ${tag.normalizedName}`}
+          onSelect={() => onSelect(tag)}
+        >
+          <TagIcon className="text-muted-foreground" />
+          <TagBadge tag={tag} className="max-w-[180px]" />
+          {typeof tag.usageCount === "number" ? (
+            <span className="ml-auto shrink-0 text-xs text-muted-foreground">
+              {tTags("usage", { count: tag.usageCount })}
+            </span>
+          ) : null}
+        </CommandItem>
+      ))}
+    </CommandGroup>
+  );
+}
+
+function buildTagFilterHref(tagId: string, pathname: string) {
+  const targetPath = getTagFilterTargetPath(pathname);
+  const queryString = buildTagFilterQueryString({
+    tagIds: [tagId],
+    tagMatch: "ANY",
+  });
+
+  return queryString ? `${targetPath}?${queryString}` : targetPath;
+}
+
+function getTagFilterTargetPath(pathname: string) {
+  const normalized = pathname.replace(/\/+$/u, "") || "/";
+  const withoutLocale =
+    normalized.replace(/^\/[a-z]{2}(?:-[A-Z]{2})?(?=\/)/u, "") || "/";
+
+  if (TAG_FILTER_TARGET_PATHS.has(normalized)) {
+    return normalized;
+  }
+
+  if (TAG_FILTER_TARGET_PATHS.has(withoutLocale)) {
+    return withoutLocale;
+  }
+
+  return "/work-items";
 }

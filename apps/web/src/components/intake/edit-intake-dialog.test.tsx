@@ -244,5 +244,6 @@ function makeIntakeItem(
     status: "PENDING",
     title: "Existing intake",
     ...overrides,
+    tags: [],
   };
 }

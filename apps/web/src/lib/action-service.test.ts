@@ -55,6 +55,7 @@ function createWorkItemFixture(overrides: Partial<WorkItem> = {}): WorkItem {
     type: "TASK",
     workflowVersionId,
     ...overrides,
+    tags: overrides.tags ?? [],
   };
 }
 

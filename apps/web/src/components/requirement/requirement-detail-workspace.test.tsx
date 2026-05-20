@@ -132,6 +132,7 @@ function makeRequirement(overrides: Record<string, unknown> = {}) {
     createdAt: "2026-05-12T00:00:00.000Z",
     updatedAt: "2026-05-12T00:00:00.000Z",
     ...overrides,
+    tags: [],
   } as import("@project-delivery/shared").Requirement;
 }
 

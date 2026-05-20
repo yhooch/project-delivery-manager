@@ -18,6 +18,7 @@ import {
 import type { z } from "zod";
 
 import { apiClient, type ApiRequestInit } from "./api-client";
+import { normalizeTagApiQuery } from "./tag-query";
 
 export type BugApiTransport = {
   get<TData>(path: string, init?: ApiRequestInit): Promise<{ data: TData }>;
@@ -71,7 +72,7 @@ export async function listBugs(
     type: "BUG",
   });
   const response = await api.get<unknown>(`/spaces/${spaceId}/bugs`, {
-    query,
+    query: normalizeTagApiQuery(query),
   });
 
   return ListBugsResponseSchema.parse(response.data);

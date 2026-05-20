@@ -9,6 +9,7 @@ import {
   OrganizationIdPathParamsSchema,
   RequirementIdPathParamsSchema,
   SpaceIdPathParamsSchema,
+  TagIdPathParamsSchema,
   VersionIdPathParamsSchema,
   WorkItemIdPathParamsSchema,
   WorkflowActionIdPathParamsSchema,
@@ -179,6 +180,17 @@ import {
   VersionBoardViewQuerySchema,
   WorkbenchViewQuerySchema,
 } from "./view.ts";
+import {
+  CreateTagRequestSchema,
+  CreateTagResponseSchema,
+  DeleteTagResponseSchema,
+  GetTagAssignmentsQuerySchema,
+  GetTagAssignmentsResponseSchema,
+  ListTagsQuerySchema,
+  ListTagsResponseSchema,
+  ReplaceTagAssignmentsRequestSchema,
+  ReplaceTagAssignmentsResponseSchema,
+} from "./tag.ts";
 
 export type HttpMethod = "get" | "post" | "patch" | "delete";
 
@@ -307,6 +319,14 @@ const attachmentUploadErrors = [
   "UNSUPPORTED_MIME_TYPE",
 ];
 const viewErrors = [...spaceErrors, "VALIDATION_ERROR"];
+const tagErrors = [
+  ...spaceErrors,
+  "TAG_NOT_FOUND",
+  "TAG_IN_USE",
+  "TAG_TARGET_INVALID",
+  "TAG_NAME_CONFLICT",
+  "VALIDATION_ERROR",
+];
 
 function endpoint(contract: ApiEndpointContract): ApiEndpointContract {
   return contract;
@@ -521,6 +541,66 @@ export const apiContracts = [
     requestSchema: UpdateSpaceRequestSchema,
     responseSchema: UpdateSpaceResponseSchema,
     errorCodes: spaceErrors,
+  }),
+  endpoint({
+    operationId: "listTags",
+    method: "get",
+    path: "/spaces/{spaceId}/tags",
+    tags: ["tags"],
+    summary: "List tags in a space",
+    pathSchema: SpaceIdPathParamsSchema,
+    querySchema: ListTagsQuerySchema,
+    requestSchema: EmptyObjectSchema,
+    responseSchema: ListTagsResponseSchema,
+    errorCodes: [...spaceErrors, "VALIDATION_ERROR"],
+  }),
+  endpoint({
+    operationId: "createTag",
+    method: "post",
+    path: "/spaces/{spaceId}/tags",
+    tags: ["tags"],
+    summary: "Create tag in a space",
+    pathSchema: SpaceIdPathParamsSchema,
+    querySchema: EmptyObjectSchema,
+    requestSchema: CreateTagRequestSchema,
+    responseSchema: CreateTagResponseSchema,
+    errorCodes: [...spaceErrors, "VALIDATION_ERROR", "TAG_NAME_CONFLICT"],
+  }),
+  endpoint({
+    operationId: "deleteTag",
+    method: "delete",
+    path: "/tags/{tagId}",
+    tags: ["tags"],
+    summary: "Delete tag",
+    pathSchema: TagIdPathParamsSchema,
+    querySchema: EmptyObjectSchema,
+    requestSchema: EmptyObjectSchema,
+    responseSchema: DeleteTagResponseSchema,
+    errorCodes: [...spaceErrors, "TAG_NOT_FOUND", "TAG_IN_USE"],
+  }),
+  endpoint({
+    operationId: "getTagAssignments",
+    method: "get",
+    path: "/tag-assignments",
+    tags: ["tag-assignments"],
+    summary: "Get tags assigned to a target",
+    pathSchema: EmptyObjectSchema,
+    querySchema: GetTagAssignmentsQuerySchema,
+    requestSchema: EmptyObjectSchema,
+    responseSchema: GetTagAssignmentsResponseSchema,
+    errorCodes: tagErrors,
+  }),
+  endpoint({
+    operationId: "replaceTagAssignments",
+    method: "patch",
+    path: "/tag-assignments",
+    tags: ["tag-assignments"],
+    summary: "Replace tags assigned to a target",
+    pathSchema: EmptyObjectSchema,
+    querySchema: EmptyObjectSchema,
+    requestSchema: ReplaceTagAssignmentsRequestSchema,
+    responseSchema: ReplaceTagAssignmentsResponseSchema,
+    errorCodes: tagErrors,
   }),
   endpoint({
     operationId: "getMyWorkbenchView",

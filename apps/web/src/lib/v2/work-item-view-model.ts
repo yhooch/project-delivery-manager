@@ -1,6 +1,7 @@
 import type {
   SpaceMemberWithUser,
   StatusCategory,
+  TagDto,
   Version,
   ViewWorkItemSummary,
   WorkItem,
@@ -25,6 +26,7 @@ export type WorkItemViewModel = {
   isBlocked?: boolean;
   blockedReason?: string;
   updatedAgo?: string;
+  tags?: readonly TagDto[];
 };
 
 export type WorkItemViewModelLookupHelpers = {
@@ -106,6 +108,7 @@ export function toWorkItemViewModel(
     isBlocked: Boolean(blockedSignal),
     blockedReason: blockedSignal?.reason,
     updatedAgo,
+    tags: "tags" in item && Array.isArray(item.tags) ? item.tags : [],
   };
 }
 
@@ -157,6 +160,7 @@ export function toWorkItemListViewModel(
     isBlocked,
     blockedReason: item.blockedReason,
     updatedAgo: undefined,
+    tags: item.tags,
   };
 }
 

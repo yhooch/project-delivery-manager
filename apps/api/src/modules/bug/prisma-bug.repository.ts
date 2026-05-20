@@ -11,6 +11,11 @@ import { ulid } from "ulid";
 
 import { Prisma } from "../../generated/prisma/client";
 import { PrismaService } from "../../prisma/prisma.service";
+import {
+  findTaggedTargetIds,
+  listTagsByTargets,
+  replaceTagAssignmentsInTransaction,
+} from "../tag/tag-assignment.helpers";
 import { toBugView, type PrismaBugViewRecord } from "./bug.mappers";
 import type { BugRepository } from "./bug.repository";
 import type {
@@ -34,6 +39,12 @@ export class PrismaBugRepository implements BugRepository {
       ...input,
       lifecycleBucket: undefined,
       statusCategory: undefined,
+    });
+    const taggedTargetIds = await findTaggedTargetIds(this.prisma.client, {
+      spaceId,
+      tagIds: input.tagIds,
+      tagMatch: input.tagMatch,
+      targetType: "WORK_ITEM",
     });
 
     if (input.visibility === "PARTICIPANT") {
@@ -60,6 +71,9 @@ export class PrismaBugRepository implements BugRepository {
         in: visibleIds,
       };
     }
+
+    applyTaggedTargetIds(where, taggedTargetIds);
+    applyTaggedTargetIds(countWhere, taggedTargetIds);
 
     const [items, total, statusCategoryGroups, lifecycleGroups] =
       await this.prisma.client.$transaction([
@@ -93,10 +107,24 @@ export class PrismaBugRepository implements BugRepository {
     const stateCodes = await this.findStateCodes(
       lifecycleGroups.map((group) => group.currentStateId),
     );
+    const tagsByBugId = await listTagsByTargets(this.prisma.client, {
+      organizationId: items[0]?.organizationId ?? "",
+      spaceId,
+      targetIds: items.map((item) => item.id),
+      targetType: "WORK_ITEM",
+    });
 
     return {
       items: items.flatMap((item) =>
-        item.bugDetail ? [toBugView(item as PrismaBugViewRecord)] : [],
+        item.bugDetail
+          ? [
+              toBugView(
+                item as PrismaBugViewRecord,
+                undefined,
+                tagsByBugId.get(item.id) ?? [],
+              ),
+            ]
+          : [],
       ),
       lifecycleBucketCounts: toLifecycleBucketCounts(
         lifecycleGroups,
@@ -232,6 +260,15 @@ export class PrismaBugRepository implements BugRepository {
         title: "创建 Bug",
       });
 
+      await replaceTagAssignmentsInTransaction(tx, {
+        assignedById: input.createdById,
+        organizationId: input.organizationId,
+        spaceId: input.spaceId,
+        tagIds: input.tagIds,
+        targetId: workItem.id,
+        targetType: "WORK_ITEM",
+      });
+
       const bug = await findBugRecord(tx, workItem.id);
 
       if (!bug?.bugDetail) {
@@ -241,13 +278,39 @@ export class PrismaBugRepository implements BugRepository {
       return bug;
     });
 
-    return toBugView(created as PrismaBugViewRecord);
+    const tagsByBugId = await listTagsByTargets(this.prisma.client, {
+      organizationId: created.organizationId,
+      spaceId: created.spaceId,
+      targetIds: [created.id],
+      targetType: "WORK_ITEM",
+    });
+
+    return toBugView(
+      created as PrismaBugViewRecord,
+      undefined,
+      tagsByBugId.get(created.id) ?? [],
+    );
   }
 
   async findBugById(bugId: string) {
     const bug = await findBugRecord(this.prisma.client, bugId);
 
-    return bug?.bugDetail ? toBugView(bug as PrismaBugViewRecord) : undefined;
+    if (!bug?.bugDetail) {
+      return undefined;
+    }
+
+    const tagsByBugId = await listTagsByTargets(this.prisma.client, {
+      organizationId: bug.organizationId,
+      spaceId: bug.spaceId,
+      targetIds: [bug.id],
+      targetType: "WORK_ITEM",
+    });
+
+    return toBugView(
+      bug as PrismaBugViewRecord,
+      undefined,
+      tagsByBugId.get(bug.id) ?? [],
+    );
   }
 
   async update(input: UpdateBugInput) {
@@ -395,9 +458,22 @@ export class PrismaBugRepository implements BugRepository {
       return bug;
     });
 
-    return updated?.bugDetail
-      ? toBugView(updated as PrismaBugViewRecord)
-      : undefined;
+    if (!updated?.bugDetail) {
+      return undefined;
+    }
+
+    const tagsByBugId = await listTagsByTargets(this.prisma.client, {
+      organizationId: updated.organizationId,
+      spaceId: updated.spaceId,
+      targetIds: [updated.id],
+      targetType: "WORK_ITEM",
+    });
+
+    return toBugView(
+      updated as PrismaBugViewRecord,
+      undefined,
+      tagsByBugId.get(updated.id) ?? [],
+    );
   }
 
   async isParticipant(spaceId: string, bugId: string, userId: string) {
@@ -708,6 +784,24 @@ function buildListWhere(
   }
 
   return where;
+}
+
+function applyTaggedTargetIds(
+  where: Prisma.WorkItemWhereInput,
+  targetIds: string[] | undefined,
+) {
+  if (!targetIds) {
+    return;
+  }
+
+  where.AND = [
+    ...toArray(where.AND),
+    {
+      id: {
+        in: targetIds,
+      },
+    },
+  ];
 }
 
 function bugLifecycleBucketWhere(

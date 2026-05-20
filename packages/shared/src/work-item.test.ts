@@ -21,6 +21,7 @@ const bug = {
   reporterId: "01ARZ3NDEKTSV4RRFFQ69G5FAV",
   spaceId: "01DRZ3NDEKTSV4RRFFQ69G5FAC",
   statusCategory: "IN_PROGRESS",
+  tags: [],
   title: "Login regression",
   type: "BUG",
   workflowVersionId: "01JRZ3NDEKTSV4RRFFQ69G5FAJ",

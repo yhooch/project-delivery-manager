@@ -10,6 +10,11 @@ import {
   IntakeStatusSchema,
   PrioritySchema,
 } from "./enums.ts";
+import {
+  TagFilterQuerySchema,
+  TagIdListSchema,
+  TagListSchema,
+} from "./tag.ts";
 import { WorkItemSchema } from "./work-item.ts";
 
 export const IntakeSourceObjectSchema = z.record(z.string(), z.unknown());
@@ -30,6 +35,7 @@ export const IntakeItemSchema = z
     priority: PrioritySchema.optional(),
     reporterId: UlidSchema,
     assigneeId: UlidSchema.optional(),
+    tags: TagListSchema,
     acceptedAt: IsoDateTimeSchema.optional(),
     convertedAt: IsoDateTimeSchema.optional(),
     updatedAt: IsoDateTimeSchema.optional(),
@@ -48,6 +54,7 @@ export const CreateIntakeItemRequestSchema = z
     sourceObject: IntakeSourceObjectSchema.optional(),
     priority: PrioritySchema.optional(),
     assigneeId: UlidSchema.optional(),
+    tagIds: TagIdListSchema.optional(),
   })
   .strict();
 
@@ -83,6 +90,7 @@ export const IntakeTaskInputSchema = z
     assigneeId: UlidSchema.optional(),
     dueDate: IsoDateTimeSchema.optional(),
     workflowVersionId: UlidSchema.optional(),
+    tagIds: TagIdListSchema.optional(),
   })
   .strict();
 
@@ -109,7 +117,9 @@ export type ConvertIntakeItemToWorkItemsResponse = z.infer<
   typeof ConvertIntakeItemToWorkItemsResponseSchema
 >;
 
-export const IntakeItemListQuerySchema = PageQuerySchema.extend({
+export const IntakeItemListQuerySchema = PageQuerySchema.merge(
+  TagFilterQuerySchema,
+).extend({
   versionId: UlidSchema.optional(),
   requirementId: UlidSchema.optional(),
   status: IntakeStatusSchema.optional(),

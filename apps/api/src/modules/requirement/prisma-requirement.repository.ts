@@ -5,6 +5,11 @@ import { ulid } from "ulid";
 import { Prisma } from "../../generated/prisma/client";
 import { PrismaService } from "../../prisma/prisma.service";
 import {
+  findTaggedTargetIds,
+  listTagsByTargets,
+  replaceTagAssignmentsInTransaction,
+} from "../tag/tag-assignment.helpers";
+import {
   toRequirement,
   toRequirementRelatedWorkItems,
 } from "./requirement.mappers";
@@ -33,7 +38,7 @@ export class PrismaRequirementRepository implements RequirementRepository {
   ) {}
 
   async createDraft(input: CreateRequirementDraftInput) {
-    const requirement = await this.prisma.client.$transaction(async (tx) => {
+    const result = await this.prisma.client.$transaction(async (tx) => {
       const created = await tx.requirement.create({
         data: {
           id: input.id,
@@ -69,10 +74,19 @@ export class PrismaRequirementRepository implements RequirementRepository {
         title: "创建需求草稿",
       });
 
-      return created;
+      const tags = await replaceTagAssignmentsInTransaction(tx, {
+        assignedById: input.createdById,
+        organizationId: input.organizationId,
+        spaceId: input.spaceId,
+        tagIds: input.tagIds,
+        targetId: created.id,
+        targetType: "REQUIREMENT",
+      });
+
+      return { requirement: created, tags };
     });
 
-    return toRequirement(requirement);
+    return toRequirement(result.requirement, [], undefined, result.tags);
   }
 
   async findById(requirementId: string) {
@@ -87,12 +101,24 @@ export class PrismaRequirementRepository implements RequirementRepository {
       return undefined;
     }
 
-    const [attachments, relatedWorkItems] = await Promise.all([
-      this.listAttachmentRefsForRequirement(requirement),
-      this.listRelatedWorkItemsForRequirement(requirement),
-    ]);
+    const [attachments, relatedWorkItems, tagsByRequirementId] =
+      await Promise.all([
+        this.listAttachmentRefsForRequirement(requirement),
+        this.listRelatedWorkItemsForRequirement(requirement),
+        listTagsByTargets(this.prisma.client, {
+          organizationId: requirement.organizationId,
+          spaceId: requirement.spaceId,
+          targetIds: [requirement.id],
+          targetType: "REQUIREMENT",
+        }),
+      ]);
 
-    return toRequirement(requirement, attachments, relatedWorkItems);
+    return toRequirement(
+      requirement,
+      attachments,
+      relatedWorkItems,
+      tagsByRequirementId.get(requirement.id) ?? [],
+    );
   }
 
   async isParticipant(spaceId: string, requirementId: string, userId: string) {
@@ -124,9 +150,17 @@ export class PrismaRequirementRepository implements RequirementRepository {
         ? await this.listParticipantRequirementIds(spaceId, input.actorUserId)
         : [];
     const countWhere = buildListWhere(spaceId, countInput);
+    const taggedTargetIds = await findTaggedTargetIds(this.prisma.client, {
+      spaceId,
+      tagIds: input.tagIds,
+      tagMatch: input.tagMatch,
+      targetType: "REQUIREMENT",
+    });
 
     applyVisibility(where, input, participantIds);
     applyVisibility(countWhere, countInput, participantIds);
+    applyTaggedTargetIds(where, taggedTargetIds);
+    applyTaggedTargetIds(countWhere, taggedTargetIds);
     const statusGroups = isKnownEmptyIdFilter(countWhere.id)
       ? []
       : await this.prisma.client.requirement.groupBy({
@@ -163,11 +197,20 @@ export class PrismaRequirementRepository implements RequirementRepository {
         where,
       }),
     ]);
-    const [attachmentsByRequirementId, relatedWorkItemsByRequirementId] =
-      await Promise.all([
-        this.listAttachmentRefsByRequirements(requirements),
-        this.listRelatedWorkItemsByRequirements(requirements),
-      ]);
+    const [
+      attachmentsByRequirementId,
+      relatedWorkItemsByRequirementId,
+      tagsByRequirementId,
+    ] = await Promise.all([
+      this.listAttachmentRefsByRequirements(requirements),
+      this.listRelatedWorkItemsByRequirements(requirements),
+      listTagsByTargets(this.prisma.client, {
+        organizationId: requirements[0]?.organizationId ?? "",
+        spaceId,
+        targetIds: requirements.map((requirement) => requirement.id),
+        targetType: "REQUIREMENT",
+      }),
+    ]);
 
     return {
       items: requirements.map((requirement) =>
@@ -175,6 +218,7 @@ export class PrismaRequirementRepository implements RequirementRepository {
           requirement,
           attachmentsByRequirementId.get(requirement.id) ?? [],
           relatedWorkItemsByRequirementId.get(requirement.id),
+          tagsByRequirementId.get(requirement.id) ?? [],
         ),
       ),
       page: input.page,
@@ -402,12 +446,24 @@ export class PrismaRequirementRepository implements RequirementRepository {
       return undefined;
     }
 
-    const [attachments, relatedWorkItems] = await Promise.all([
-      this.listAttachmentRefsForRequirement(updated),
-      this.listRelatedWorkItemsForRequirement(updated),
-    ]);
+    const [attachments, relatedWorkItems, tagsByRequirementId] =
+      await Promise.all([
+        this.listAttachmentRefsForRequirement(updated),
+        this.listRelatedWorkItemsForRequirement(updated),
+        listTagsByTargets(this.prisma.client, {
+          organizationId: updated.organizationId,
+          spaceId: updated.spaceId,
+          targetIds: [updated.id],
+          targetType: "REQUIREMENT",
+        }),
+      ]);
 
-    return toRequirement(updated, attachments, relatedWorkItems);
+    return toRequirement(
+      updated,
+      attachments,
+      relatedWorkItems,
+      tagsByRequirementId.get(updated.id) ?? [],
+    );
   }
 
   async archive(input: ArchiveRequirementInput) {
@@ -471,12 +527,24 @@ export class PrismaRequirementRepository implements RequirementRepository {
       return undefined;
     }
 
-    const [attachments, relatedWorkItems] = await Promise.all([
-      this.listAttachmentRefsForRequirement(updated),
-      this.listRelatedWorkItemsForRequirement(updated),
-    ]);
+    const [attachments, relatedWorkItems, tagsByRequirementId] =
+      await Promise.all([
+        this.listAttachmentRefsForRequirement(updated),
+        this.listRelatedWorkItemsForRequirement(updated),
+        listTagsByTargets(this.prisma.client, {
+          organizationId: updated.organizationId,
+          spaceId: updated.spaceId,
+          targetIds: [updated.id],
+          targetType: "REQUIREMENT",
+        }),
+      ]);
 
-    return toRequirement(updated, attachments, relatedWorkItems);
+    return toRequirement(
+      updated,
+      attachments,
+      relatedWorkItems,
+      tagsByRequirementId.get(updated.id) ?? [],
+    );
   }
 
   async deleteDraft(input: DeleteRequirementDraftInput) {
@@ -502,6 +570,17 @@ export class PrismaRequirementRepository implements RequirementRepository {
         data: {
           deletedAt: now,
           updatedById: input.deletedById,
+        },
+        where: {
+          deletedAt: null,
+          targetId: input.requirementId,
+          targetType: "REQUIREMENT",
+        },
+      });
+
+      await tx.tagAssignment.updateMany({
+        data: {
+          deletedAt: now,
         },
         where: {
           deletedAt: null,
@@ -758,6 +837,24 @@ function applyVisibility(
           },
         },
       ],
+    },
+  ];
+}
+
+function applyTaggedTargetIds(
+  where: Prisma.RequirementWhereInput,
+  targetIds: string[] | undefined,
+) {
+  if (!targetIds) {
+    return;
+  }
+
+  where.AND = [
+    ...toArray(where.AND),
+    {
+      id: {
+        in: targetIds,
+      },
     },
   ];
 }

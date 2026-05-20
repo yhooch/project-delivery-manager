@@ -100,6 +100,16 @@ export type BugDetail = Prisma.BugDetailModel
  */
 export type Attachment = Prisma.AttachmentModel
 /**
+ * Model Tag
+ * 
+ */
+export type Tag = Prisma.TagModel
+/**
+ * Model TagAssignment
+ * 
+ */
+export type TagAssignment = Prisma.TagAssignmentModel
+/**
  * Model WorkflowDefinition
  * 
  */

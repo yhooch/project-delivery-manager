@@ -5,6 +5,7 @@ import type {
   Priority,
   Requirement,
   SpaceMemberWithUser,
+  TagDto,
   Version,
 } from "@project-delivery/shared";
 import { IntakeSourceTypeSchema } from "@project-delivery/shared";
@@ -16,6 +17,7 @@ import { toCreateIntakeItemRequest } from "../../lib/intake-forms";
 import { createIntakeItem } from "../../lib/intake-service";
 import { listRequirements } from "../../lib/requirement-service";
 import { listSpaceMembers } from "../../lib/space-service";
+import { getTagIds } from "../../lib/tag-ui";
 import { listVersions } from "../../lib/version-service";
 import {
   filterTraceOptionsByVersion,
@@ -37,6 +39,7 @@ import { Label } from "../ui/label";
 import { Textarea } from "../ui/textarea";
 import { SelectMenu } from "../ui/select-menu";
 import { useSession } from "../providers/session-provider";
+import { TagSelectionField } from "../tag";
 type CreateIntakeDialogProps = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -60,6 +63,7 @@ export function CreateIntakeDialog({
   const t = useTranslations("intake.dialog");
   const tSourceType = useTranslations("intakeItems.sourceType");
   const tPriority = useTranslations("intakeItems.priority");
+  const tTags = useTranslations("tags.field");
   const tRoot = useTranslations();
   const { currentOrganization, session } = useSession();
   const organizationId =
@@ -75,6 +79,7 @@ export function CreateIntakeDialog({
   const [assigneeId, setAssigneeId] = useState("");
   const [sourceObject, setSourceObject] = useState("");
   const [priority, setPriority] = useState<Priority | "">("");
+  const [selectedTags, setSelectedTags] = useState<TagDto[]>([]);
   const [titleError, setTitleError] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [errorKey, setErrorKey] = useState<string | null>(null);
@@ -136,6 +141,7 @@ export function CreateIntakeDialog({
     setAssigneeId("");
     setSourceObject("");
     setPriority("");
+    setSelectedTags([]);
     setTitleError(false);
     setErrorKey(null);
     setOptionsLoadState("idle");
@@ -205,6 +211,7 @@ export function CreateIntakeDialog({
           versionId: versionId || undefined,
           requirementId: requirementId || undefined,
           priority: priority || undefined,
+          tagIds: getTagIds(selectedTags),
         }),
       );
       onCreated?.();
@@ -402,6 +409,17 @@ export function CreateIntakeDialog({
                 onChange={(event) => setSourceObject(event.target.value)}
                 maxLength={2000}
                 rows={2}
+              />
+            </div>
+            <div className="flex flex-col gap-1.5 sm:col-span-2">
+              <Label>{tTags("label")}</Label>
+              <TagSelectionField
+                disabled={submitting}
+                onSelectedTagsChange={setSelectedTags}
+                organizationId={organizationId}
+                selectedTags={selectedTags}
+                spaceId={spaceId}
+                testId="create-intake-tags"
               />
             </div>
           </div>

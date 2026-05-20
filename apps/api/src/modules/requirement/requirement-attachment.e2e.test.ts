@@ -1545,6 +1545,7 @@ class InMemoryRequirementRepository implements RequirementRepository {
       contentFormat: "TIPTAP_JSON",
       status: "DRAFT",
       attachments: [],
+      tags: [],
       relatedWorkItems: emptyRelatedWorkItems(),
       createdById: input.createdById,
       authorId: input.createdById,
@@ -1782,6 +1783,7 @@ class InMemoryRequirementRepository implements RequirementRepository {
 
     return {
       ...publicRequirement,
+      tags: [...publicRequirement.tags],
       relatedWorkItems: cloneRelatedWorkItems(
         publicRequirement.relatedWorkItems,
       ),

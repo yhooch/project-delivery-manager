@@ -3,6 +3,11 @@ import { ulid } from "ulid";
 
 import { Prisma } from "../../generated/prisma/client";
 import { PrismaService } from "../../prisma/prisma.service";
+import {
+  findTaggedTargetIds,
+  listTagsByTargets,
+  replaceTagAssignmentsInTransaction,
+} from "../tag/tag-assignment.helpers";
 import { assertTraceRefsMatchVersion } from "../trace/trace-version-policy";
 import { toWorkItem } from "../workitem/workitem.mappers";
 import { syncWorkItemRelatedParticipants } from "../workitem/workitem-participants";
@@ -144,6 +149,15 @@ export class PrismaIntakeRepository implements IntakeRepository {
           title: "创建任务",
         });
 
+        await replaceTagAssignmentsInTransaction(tx, {
+          assignedById: input.actorUserId,
+          organizationId: before.organizationId,
+          spaceId: before.spaceId,
+          tagIds: task.tagIds,
+          targetId: workItem.id,
+          targetType: "WORK_ITEM",
+        });
+
         workItems.push(workItem);
       }
 
@@ -181,18 +195,27 @@ export class PrismaIntakeRepository implements IntakeRepository {
       };
     });
 
-    return converted
-      ? {
-          intakeItemId: converted.intakeItemId,
-          workItems: converted.workItems.map((workItem) =>
-            toWorkItem(workItem),
-          ),
-        }
-      : undefined;
+    if (!converted) {
+      return undefined;
+    }
+
+    const tagsByWorkItemId = await listTagsByTargets(this.prisma.client, {
+      organizationId: converted.workItems[0]?.organizationId ?? "",
+      spaceId: converted.workItems[0]?.spaceId ?? "",
+      targetIds: converted.workItems.map((workItem) => workItem.id),
+      targetType: "WORK_ITEM",
+    });
+
+    return {
+      intakeItemId: converted.intakeItemId,
+      workItems: converted.workItems.map((workItem) =>
+        toWorkItem(workItem, undefined, tagsByWorkItemId.get(workItem.id) ?? []),
+      ),
+    };
   }
 
   async create(input: CreateIntakeItemInput) {
-    const item = await this.prisma.client.$transaction(async (tx) => {
+    const result = await this.prisma.client.$transaction(async (tx) => {
       const created = await tx.intakeItem.create({
         data: {
           id: input.id,
@@ -246,10 +269,19 @@ export class PrismaIntakeRepository implements IntakeRepository {
         title: "Intake item created",
       });
 
-      return created;
+      const tags = await replaceTagAssignmentsInTransaction(tx, {
+        assignedById: input.reporterId,
+        organizationId: created.organizationId,
+        spaceId: created.spaceId,
+        tagIds: input.tagIds,
+        targetId: created.id,
+        targetType: "INTAKE_ITEM",
+      });
+
+      return { item: created, tags };
     });
 
-    return toIntakeItem(item);
+    return toIntakeItem(result.item, result.tags);
   }
 
   async findById(intakeItemId: string) {
@@ -260,7 +292,18 @@ export class PrismaIntakeRepository implements IntakeRepository {
       },
     });
 
-    return item ? toIntakeItem(item) : undefined;
+    if (!item) {
+      return undefined;
+    }
+
+    const tagsByItemId = await listTagsByTargets(this.prisma.client, {
+      organizationId: item.organizationId,
+      spaceId: item.spaceId,
+      targetIds: [item.id],
+      targetType: "INTAKE_ITEM",
+    });
+
+    return toIntakeItem(item, tagsByItemId.get(item.id) ?? []);
   }
 
   async countVersionCascadeImpact(input: {
@@ -380,6 +423,16 @@ export class PrismaIntakeRepository implements IntakeRepository {
       },
       participantItemIds,
     );
+    const taggedTargetIds = await findTaggedTargetIds(this.prisma.client, {
+      spaceId,
+      tagIds: input.tagIds,
+      tagMatch: input.tagMatch,
+      targetType: "INTAKE_ITEM",
+    });
+
+    applyTaggedTargetIds(where, taggedTargetIds);
+    applyTaggedTargetIds(countWhere, taggedTargetIds);
+
     const [items, total, statusGroups] = await this.prisma.client.$transaction([
       this.prisma.client.intakeItem.findMany({
         orderBy: buildOrderBy(input),
@@ -398,9 +451,17 @@ export class PrismaIntakeRepository implements IntakeRepository {
         where: countWhere,
       }),
     ]);
+    const tagsByItemId = await listTagsByTargets(this.prisma.client, {
+      organizationId: items[0]?.organizationId ?? "",
+      spaceId,
+      targetIds: items.map((item) => item.id),
+      targetType: "INTAKE_ITEM",
+    });
 
     return {
-      items: items.map(toIntakeItem),
+      items: items.map((item) =>
+        toIntakeItem(item, tagsByItemId.get(item.id) ?? []),
+      ),
       page: input.page,
       pageSize: input.pageSize,
       statusCounts: statusGroups.map((group) => ({
@@ -479,7 +540,18 @@ export class PrismaIntakeRepository implements IntakeRepository {
       return updated;
     });
 
-    return item ? toIntakeItem(item) : undefined;
+    if (!item) {
+      return undefined;
+    }
+
+    const tagsByItemId = await listTagsByTargets(this.prisma.client, {
+      organizationId: item.organizationId,
+      spaceId: item.spaceId,
+      targetIds: [item.id],
+      targetType: "INTAKE_ITEM",
+    });
+
+    return toIntakeItem(item, tagsByItemId.get(item.id) ?? []);
   }
 
   async updateStatus(input: UpdateIntakeItemStatusInput) {
@@ -523,7 +595,18 @@ export class PrismaIntakeRepository implements IntakeRepository {
       return updated;
     });
 
-    return item ? toIntakeItem(item) : undefined;
+    if (!item) {
+      return undefined;
+    }
+
+    const tagsByItemId = await listTagsByTargets(this.prisma.client, {
+      organizationId: item.organizationId,
+      spaceId: item.spaceId,
+      targetIds: [item.id],
+      targetType: "INTAKE_ITEM",
+    });
+
+    return toIntakeItem(item, tagsByItemId.get(item.id) ?? []);
   }
 
   private async listParticipantItemIds(spaceId: string, userId: string) {
@@ -568,6 +651,24 @@ function buildListWhere(
   };
 }
 
+function applyTaggedTargetIds(
+  where: Prisma.IntakeItemWhereInput,
+  targetIds: string[] | undefined,
+) {
+  if (!targetIds) {
+    return;
+  }
+
+  where.AND = [
+    ...toArray(where.AND),
+    {
+      id: {
+        in: targetIds,
+      },
+    },
+  ];
+}
+
 function buildOrderBy(
   input: IntakeItemListInput,
 ): Prisma.IntakeItemOrderByWithRelationInput {
@@ -585,6 +686,14 @@ function buildOrderBy(
     default:
       return { createdAt: direction };
   }
+}
+
+function toArray<T>(value: T | T[] | undefined): T[] {
+  if (!value) {
+    return [];
+  }
+
+  return Array.isArray(value) ? value : [value];
 }
 
 async function replaceAssigneeParticipant(

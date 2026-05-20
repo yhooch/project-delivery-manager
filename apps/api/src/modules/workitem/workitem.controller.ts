@@ -22,6 +22,7 @@ import {
   type ListWorkItemsResponse,
   type Priority,
   type StatusCategory,
+  type TagMatch,
   type UpdateWorkItemRequest,
   type WorkItem,
   type WorkItemDetail,
@@ -63,6 +64,8 @@ export class WorkItemController {
       assigneeId?: string;
       statusCategory?: StatusCategory;
       priority?: Priority;
+      tagIds?: string;
+      tagMatch?: TagMatch;
     },
     @Req() request: RequestWithContext,
   ): Promise<ListWorkItemsResponse> {

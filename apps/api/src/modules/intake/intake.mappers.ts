@@ -1,4 +1,4 @@
-import type { IntakeItem } from "@project-delivery/shared";
+import type { IntakeItem, TagDto } from "@project-delivery/shared";
 
 type PrismaIntakeItemRecord = {
   acceptedAt: Date | null;
@@ -19,7 +19,10 @@ type PrismaIntakeItemRecord = {
   versionId: string | null;
 };
 
-export function toIntakeItem(record: PrismaIntakeItemRecord): IntakeItem {
+export function toIntakeItem(
+  record: PrismaIntakeItemRecord,
+  tags: TagDto[] = [],
+): IntakeItem {
   return {
     id: record.id,
     organizationId: record.organizationId,
@@ -34,6 +37,7 @@ export function toIntakeItem(record: PrismaIntakeItemRecord): IntakeItem {
     priority: record.priority ?? undefined,
     reporterId: record.reporterId,
     assigneeId: record.assigneeId ?? undefined,
+    tags,
     acceptedAt: record.acceptedAt?.toISOString(),
     convertedAt: record.convertedAt?.toISOString(),
     updatedAt: record.updatedAt.toISOString(),

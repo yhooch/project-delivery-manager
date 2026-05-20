@@ -12,6 +12,7 @@ import {
   Requirement,
   SpaceMemberWithUser,
   StatusCategory,
+  TagDto,
   Version,
   WorkItem,
 } from "@project-delivery/shared";
@@ -38,8 +39,13 @@ import {
   useFocusReturn,
   useListKeyboardNav,
 } from "../../lib/hooks/use-list-keyboard-nav";
+import { useTagFilterSelection } from "../../lib/hooks/use-tag-filter-selection";
+import { useUrlTagFilter } from "../../lib/hooks/use-url-tag-filter";
+import { usePathname, useRouter } from "../../i18n/routing";
 import { canCreateBugs } from "../../lib/permission-gates";
 import { listRequirements } from "../../lib/requirement-service";
+import { serializeTagFilterQuery } from "../../lib/tag-query";
+import { collectTagsFromItems } from "../../lib/tag-ui";
 import {
   useSpaceMembers,
   useVersions,
@@ -66,6 +72,7 @@ import { EmptyState, ErrorState, ListSkeleton } from "../v2/states";
 import { PageHeader } from "../v2/page-header";
 
 import { TaskDetailSheet } from "../work-item/task-detail-sheet";
+import { TagBadgeList, TagFilter } from "../tag";
 
 import { CreateBugDialog } from "./create-bug-dialog";
 import { EditBugDialog } from "./edit-bug-dialog";
@@ -112,6 +119,7 @@ const INITIAL_PAGE_INFO = { page: 1, pageSize: LIST_PAGE_SIZE, total: 0 };
 type BugItemViewModel = WorkItemViewModel & {
   lifecycleBucket: Exclude<BugLifecycleBucket, "all">;
   severity: BugSeverity;
+  tags?: readonly TagDto[];
 };
 
 export function BugsPage() {
@@ -121,9 +129,12 @@ export function BugsPage() {
   const tPriority = useTranslations("bugs.priority");
   const tSeverity = useTranslations("bugs.severity");
   const tFilters = useTranslations("bugs.filters");
+  const tTags = useTranslations("tags.field");
   const tApiError = useTranslations();
   const locale = useLocale();
   const searchParams = useSearchParams();
+  const router = useRouter();
+  const pathname = usePathname();
 
   const { currentSpace, status: sessionStatus } = useSession();
   const spaceId = currentSpace?.id;
@@ -172,6 +183,12 @@ export function BugsPage() {
   const requestedBugId =
     normalizeSearchParam(searchParams.get("bugId")) ??
     normalizeSearchParam(searchParams.get("workItemId"));
+  const [tagFilter, setTagFilter] = useUrlTagFilter({
+    fixedTagMatch: "ANY",
+    pathname,
+    router,
+    searchParams,
+  });
   const activeBucket = filters.lifecycleBucket
     ? filters.lifecycleBucket
     : bucketFilter !== "all"
@@ -180,8 +197,15 @@ export function BugsPage() {
         ? (bugBucketByCategory[filters.statusCategory] ?? "all")
         : "all";
   const listScopeKey = useMemo(
-    () => createBugListScopeKey({ filters, organizationId, spaceId }),
-    [filters, organizationId, spaceId],
+    () =>
+      createBugListScopeKey({
+        filters,
+        organizationId,
+        spaceId,
+        tagIds: tagFilter.tagIds,
+        tagMatch: tagFilter.tagMatch,
+      }),
+    [filters, organizationId, spaceId, tagFilter],
   );
   const contextKey = useMemo(
     () => `${organizationId ?? ""}:${spaceId ?? ""}`,
@@ -204,6 +228,14 @@ export function BugsPage() {
     () => filterTraceOptionsByVersion(relatedTasks, filters.versionId ?? ""),
     [filters.versionId, relatedTasks],
   );
+  const sourceTags = useMemo(() => collectTagsFromItems(items), [items]);
+  const { selectedTags: selectedFilterTags, setSelectedTags } =
+    useTagFilterSelection({
+      organizationId,
+      sourceTags,
+      spaceId,
+      tagIds: tagFilter.tagIds,
+    });
 
   const setFilter = useCallback(
     (key: keyof BugListFilterState, value: string) => {
@@ -340,6 +372,9 @@ export function BugsPage() {
           spaceId,
           type: "BUG",
           ...filters,
+          ...(tagFilter.tagIds.length > 0
+            ? serializeTagFilterQuery(tagFilter)
+            : {}),
         });
         if (
           listRequestIdRef.current !== requestId ||
@@ -378,7 +413,7 @@ export function BugsPage() {
         }
       }
     },
-    [filters, listScopeKey, organizationId, spaceId, tApiError],
+    [filters, listScopeKey, organizationId, spaceId, tApiError, tagFilter],
   );
 
   useEffect(() => {
@@ -1003,6 +1038,21 @@ export function BugsPage() {
               ))}
             </SelectMenu>
           </FilterField>
+          <FilterField label={tTags("label")}>
+            <TagFilter
+              allowCreate={false}
+              onChange={(value, selectedTags) => {
+                setSelectedTags(selectedTags);
+                setTagFilter(value);
+              }}
+              organizationId={organizationId}
+              selectedTags={selectedFilterTags}
+              showMatchMode={false}
+              spaceId={spaceId}
+              value={tagFilter}
+              data-testid="bugs-filter-tags"
+            />
+          </FilterField>
         </div>
       )}
 
@@ -1066,8 +1116,16 @@ export function BugsPage() {
                       <span className="font-mono text-[11px] text-muted-foreground">
                         {bug.code}
                       </span>
-                      <span className="min-w-0 flex-1 truncate text-[13px] font-medium">
-                        {bug.title}
+                      <span className="flex min-w-0 flex-1 flex-col gap-1">
+                        <span className="truncate text-[13px] font-medium">
+                          {bug.title}
+                        </span>
+                        <TagBadgeList
+                          badgeClassName="min-w-0 max-w-24 shrink"
+                          className="hidden max-w-full flex-nowrap overflow-hidden sm:flex"
+                          maxVisible={3}
+                          tags={bug.tags}
+                        />
                       </span>
                       <span
                         className={cn(
@@ -1282,6 +1340,7 @@ function toBugViewModel(
     isBlocked,
     blockedReason: bug.blockedReason,
     updatedAgo: undefined,
+    tags: bug.tags,
     lifecycleBucket,
     severity: bug.bugDetail.severity,
   };
@@ -1362,10 +1421,14 @@ function createBugListScopeKey({
   filters,
   organizationId,
   spaceId,
+  tagIds,
+  tagMatch,
 }: {
   filters: BugListFilterState;
   organizationId?: string;
   spaceId?: string;
+  tagIds: readonly string[];
+  tagMatch: string;
 }): string {
   return [
     organizationId ?? "",
@@ -1379,5 +1442,7 @@ function createBugListScopeKey({
     filters.severity ?? "",
     filters.statusCategory ?? "",
     filters.versionId ?? "",
+    tagIds.join(","),
+    tagIds.length > 0 ? tagMatch : "",
   ].join("\u001f");
 }

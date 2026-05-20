@@ -139,6 +139,7 @@ export class BugService {
       spaceId,
       statusCategory: workflow.statusCategory,
       stepsToReproduce: input.stepsToReproduce,
+      tagIds: input.tagIds,
       title: input.title,
       versionId: trace.versionId ?? undefined,
       workflowVersionId: workflow.workflowVersionId,

@@ -19,6 +19,7 @@ const reporterId = "01ARZ3NDEKTSV4RRFFQ69G5FB1";
 const assigneeId = "01ARZ3NDEKTSV4RRFFQ69G5FB2";
 const workflowVersionId = "01ARZ3NDEKTSV4RRFFQ69G5FB3";
 const stateId = "01ARZ3NDEKTSV4RRFFQ69G5FB4";
+const tagId = "01ARZ3NDEKTSV4RRFFQ69G5FB5";
 const permissions = {
   availableActions: [],
   canComment: true,
@@ -51,6 +52,7 @@ function createBugFixture(overrides: Partial<BugView> = {}): BugView {
     versionId,
     workflowVersionId,
     ...overrides,
+    tags: overrides.tags ?? [],
   };
 }
 
@@ -106,6 +108,36 @@ describe("bug service", () => {
         statusCategory: "NOT_STARTED",
         type: "BUG",
         versionId,
+      },
+    });
+  });
+
+  it("keeps tagMatch only when tagIds are active", async () => {
+    const page = createPage([createBugFixture()]);
+    const api = createApi({
+      get: vi.fn(async () => ({ data: page })),
+    });
+
+    await expect(
+      listBugs(
+        {
+          organizationId,
+          page: 1,
+          pageSize: 20,
+          spaceId,
+          tagIds: tagId,
+        },
+        api,
+      ),
+    ).resolves.toEqual(page);
+
+    expect(api.get).toHaveBeenCalledWith(`/spaces/${spaceId}/bugs`, {
+      query: {
+        page: 1,
+        pageSize: 20,
+        tagIds: tagId,
+        tagMatch: "ANY",
+        type: "BUG",
       },
     });
   });

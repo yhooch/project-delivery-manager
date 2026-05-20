@@ -24,6 +24,7 @@ import {
 import type { z } from "zod";
 
 import { apiClient, type ApiRequestInit } from "./api-client";
+import { normalizeTagApiQuery } from "./tag-query";
 
 export type IntakeApiTransport = {
   get<TData>(path: string, init?: ApiRequestInit): Promise<{ data: TData }>;
@@ -73,7 +74,7 @@ export async function listIntakeItems(
   const { organizationId: _organizationId, spaceId, ...filters } = input;
   const query = IntakeItemListQuerySchema.parse(filters);
   const response = await api.get<unknown>(`/spaces/${spaceId}/intake-items`, {
-    query,
+    query: normalizeTagApiQuery(query),
   });
 
   return ListIntakeItemsResponseSchema.parse(response.data);

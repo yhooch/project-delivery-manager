@@ -28,6 +28,7 @@ import {
   Flag,
   GitBranch as GitBranchIcon,
   Hash,
+  Tag as TagIcon,
 } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
 import {
@@ -71,6 +72,7 @@ import {
 import { useRouter } from "../../i18n/routing";
 import { useSession } from "../providers/session-provider";
 import { TraceVersionCascadeConfirmDialog } from "../trace-version-cascade-confirm-dialog";
+import { ObjectTagAssignmentField } from "../tag";
 import { Badge, type BadgeProps } from "../ui/badge";
 import { Button } from "../ui/button";
 import {
@@ -843,6 +845,29 @@ export function RequirementDetailWorkspace({
             </PropertyItem>
 
             <PropertyItem
+              icon={<TagIcon className="h-3.5 w-3.5" />}
+              label={tRoot("tags.field.label")}
+              className="basis-full"
+              contentClassName="flex-1"
+            >
+              <ObjectTagAssignmentField
+                canEdit={canEditRequirement}
+                className="w-full"
+                onTagsChange={(tags) =>
+                  setRequirement((current) =>
+                    current ? { ...current, tags } : current,
+                  )
+                }
+                organizationId={requirement.organizationId}
+                spaceId={requirement.spaceId}
+                tags={requirement.tags}
+                targetId={requirement.id}
+                targetType="REQUIREMENT"
+                testId="requirement-tags"
+              />
+            </PropertyItem>
+
+            <PropertyItem
               icon={<PenLine className="h-3.5 w-3.5" />}
               label={t("detail.fields.author")}
             >
@@ -1026,21 +1051,34 @@ export function RequirementDetailWorkspace({
 }
 
 type PropertyItemProps = {
+  className?: string;
+  contentClassName?: string;
   icon: ReactNode;
   label: string;
   children: ReactNode;
 };
 
-function PropertyItem({ icon, label, children }: PropertyItemProps) {
+function PropertyItem({
+  className,
+  contentClassName,
+  icon,
+  label,
+  children,
+}: PropertyItemProps) {
   return (
-    <div className="flex min-w-0 items-center gap-1.5">
+    <div className={cn("flex min-w-0 items-center gap-1.5", className)}>
       <span className="flex shrink-0 items-center gap-1 text-muted-foreground">
         {icon}
         <span>{label}</span>
       </span>
-      <span className="flex min-w-0 items-center text-foreground/90">
+      <div
+        className={cn(
+          "flex min-w-0 items-center text-foreground/90",
+          contentClassName,
+        )}
+      >
         {children}
-      </span>
+      </div>
     </div>
   );
 }

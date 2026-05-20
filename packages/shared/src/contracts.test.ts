@@ -10,6 +10,8 @@ import {
   CommentQuerySchema,
   CreateBugRequestSchema,
   CreateIntakeItemRequestSchema,
+  CreateRequirementDraftRequestSchema,
+  CreateTagRequestSchema,
   CreateWorkflowActionRequestSchema,
   CreateWorkflowVersionRequestSchema,
   CreateWorkItemRequestSchema,
@@ -25,7 +27,13 @@ import {
   apiContracts,
   PresignAttachmentRequestSchema,
   ListSpacesResponseSchema,
+  ListTagsQuerySchema,
   RequirementSchema,
+  ReplaceTagAssignmentsRequestSchema,
+  TagAssignmentsResponseSchema,
+  TagDtoSchema,
+  TagFilterQuerySchema,
+  TagTargetTypeSchema,
   TimelineQuerySchema,
   UpdateBugRequestSchema,
   UpdateIntakeItemRequestSchema,
@@ -71,6 +79,10 @@ describe("shared contracts", () => {
         "WORKFLOW_ACTION_COMMENT_REQUIRED",
         "WORKFLOW_VERSION_INVALID",
         "SPACE_MEMBER_INVALID",
+        "TAG_NOT_FOUND",
+        "TAG_IN_USE",
+        "TAG_TARGET_INVALID",
+        "TAG_NAME_CONFLICT",
       ]),
     );
   });
@@ -204,6 +216,139 @@ describe("shared contracts", () => {
     expect(errorCodesFor("createComment")).toEqual(
       expect.arrayContaining(targetResolverErrorCodes),
     );
+    expect(errorCodesFor("createTag")).toEqual(
+      expect.arrayContaining(["TAG_NAME_CONFLICT", "VALIDATION_ERROR"]),
+    );
+    expect(errorCodesFor("deleteTag")).toEqual(
+      expect.arrayContaining(["TAG_NOT_FOUND", "TAG_IN_USE"]),
+    );
+    expect(errorCodesFor("replaceTagAssignments")).toEqual(
+      expect.arrayContaining([
+        "TAG_NOT_FOUND",
+        "TAG_TARGET_INVALID",
+        "VALIDATION_ERROR",
+      ]),
+    );
+  });
+
+  it("freezes tag target, filter and assignment contracts", () => {
+    const tagId = "01VRZ3NDEKTSV4RRFFQ69G5FAV";
+    const secondTagId = "01WRZ3NDEKTSV4RRFFQ69G5FAW";
+    const targetId = "01GRZ3NDEKTSV4RRFFQ69G5FAG";
+    const tag = {
+      id: tagId,
+      organizationId: "01BRZ3NDEKTSV4RRFFQ69G5FAA",
+      spaceId: "01DRZ3NDEKTSV4RRFFQ69G5FAC",
+      name: "backend",
+      displayName: "#backend",
+      normalizedName: "backend",
+      colorKey: "blue",
+      usageCount: 3,
+      isOrphan: false,
+      createdAt: "2026-05-13T00:00:00.000Z",
+      updatedAt: "2026-05-13T00:00:00.000Z",
+    };
+
+    expect(TagTargetTypeSchema.options).toEqual([
+      "REQUIREMENT",
+      "INTAKE_ITEM",
+      "WORK_ITEM",
+    ]);
+    expect(CreateTagRequestSchema.parse({ name: "backend" })).toEqual({
+      name: "backend",
+    });
+    expect(CreateTagRequestSchema.parse({ name: "#backend" })).toEqual({
+      name: "#backend",
+    });
+    expect(() => CreateTagRequestSchema.parse({ name: "#" })).toThrow();
+    expect(
+      ListTagsQuerySchema.parse({
+        includeUsage: "true",
+        page: "2",
+        pageSize: "10",
+        query: "release",
+      }),
+    ).toMatchObject({
+      includeUsage: true,
+      page: 2,
+      pageSize: 10,
+      query: "release",
+    });
+    expect(
+      TagFilterQuerySchema.parse({
+        tagIds: `${tagId},${secondTagId}`,
+        tagMatch: "ALL",
+      }),
+    ).toEqual({
+      tagIds: `${tagId},${secondTagId}`,
+      tagMatch: "ALL",
+    });
+    expect(TagFilterQuerySchema.parse({})).toEqual({ tagMatch: "ANY" });
+    expect(
+      CreateRequirementDraftRequestSchema.parse({
+        tagIds: [tagId],
+      }),
+    ).toEqual({
+      tagIds: [tagId],
+    });
+    expect(
+      CreateIntakeItemRequestSchema.parse({
+        title: "Clarify release scope",
+        sourceType: "MEETING_DECISION",
+        tagIds: [tagId],
+      }),
+    ).toMatchObject({
+      tagIds: [tagId],
+    });
+    expect(
+      CreateWorkItemRequestSchema.parse({
+        title: "Implement tags",
+        tagIds: [tagId],
+      }),
+    ).toMatchObject({
+      tagIds: [tagId],
+      type: "TASK",
+    });
+    expect(
+      CreateBugRequestSchema.parse({
+        title: "Tag regression",
+        severity: "MAJOR",
+        tagIds: [tagId],
+      }),
+    ).toMatchObject({
+      severity: "MAJOR",
+      tagIds: [tagId],
+    });
+    expect(
+      ReplaceTagAssignmentsRequestSchema.parse({
+        targetType: "WORK_ITEM",
+        targetId,
+        tagIds: [tagId, secondTagId],
+      }),
+    ).toMatchObject({
+      targetType: "WORK_ITEM",
+      targetId,
+      tagIds: [tagId, secondTagId],
+    });
+    expect(() =>
+      TagDtoSchema.parse({
+        ...tag,
+        displayName: "#wrong",
+      }),
+    ).toThrow();
+    expect(
+      TagAssignmentsResponseSchema.parse({
+        targetType: "WORK_ITEM",
+        targetId,
+        tags: [tag],
+      }).tags[0],
+    ).toMatchObject({
+      id: tagId,
+      name: "backend",
+      displayName: "#backend",
+      normalizedName: "backend",
+      colorKey: "blue",
+    });
   });
 
   it("keeps endpoint contract operation and route identities unique", () => {
@@ -289,6 +434,7 @@ describe("shared contracts", () => {
         priority: "HIGH",
         reporterId: "01ARZ3NDEKTSV4RRFFQ69G5FAV",
         assigneeId: "01BRZ3NDEKTSV4RRFFQ69G5FAA",
+        tags: [],
       }),
     ).toMatchObject({
       reporterId: "01ARZ3NDEKTSV4RRFFQ69G5FAV",
@@ -323,6 +469,7 @@ describe("shared contracts", () => {
         currentStateId: "01KRZ3NDEKTSV4RRFFQ69G5FAK",
         statusCategory: "NOT_STARTED",
         lastStatusChangedAt: "2026-05-13T00:00:00.000Z",
+        tags: [],
         permissions: {
           canEdit: true,
           canComment: true,
@@ -420,6 +567,7 @@ describe("shared contracts", () => {
         currentStateId: "01KRZ3NDEKTSV4RRFFQ69G5FAK",
         statusCategory: "IN_PROGRESS",
         lastStatusChangedAt: "2026-05-13T00:00:00.000Z",
+        tags: [],
         bugDetail: {
           workItemId: "01PRZ3NDEKTSV4RRFFQ69G5FAP",
           severity: "CRITICAL",
@@ -453,6 +601,7 @@ describe("shared contracts", () => {
         currentStateId: "01KRZ3NDEKTSV4RRFFQ69G5FAK",
         statusCategory: "IN_PROGRESS",
         lastStatusChangedAt: "2026-05-13T00:00:00.000Z",
+        tags: [],
         bugDetail: {
           workItemId: "01PRZ3NDEKTSV4RRFFQ69G5FAP",
           severity: "CRITICAL",
@@ -955,6 +1104,7 @@ describe("shared contracts", () => {
       contentJson: { type: "doc", content: [] },
       contentFormat: "TIPTAP_JSON",
       status: "CONFIRMED",
+      tags: [],
       relatedWorkItems: {
         taskCount: 0,
         bugCount: 0,
@@ -1126,10 +1276,39 @@ describe("shared contracts", () => {
     expect(document.paths["/spaces/{spaceId}/bugs"]?.post?.operationId).toBe(
       "createBug",
     );
+    expect(document.paths["/spaces/{spaceId}/tags"]?.get?.operationId).toBe(
+      "listTags",
+    );
+    expect(document.paths["/spaces/{spaceId}/tags"]?.post?.operationId).toBe(
+      "createTag",
+    );
+    expect(document.paths["/spaces/{spaceId}/tags"]?.get?.parameters).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ name: "query", in: "query" }),
+        expect.objectContaining({ name: "includeUsage", in: "query" }),
+      ]),
+    );
+    expect(document.paths["/tags/{tagId}"]?.delete?.operationId).toBe(
+      "deleteTag",
+    );
+    expect(document.paths["/tag-assignments"]?.get?.operationId).toBe(
+      "getTagAssignments",
+    );
+    expect(document.paths["/tag-assignments"]?.patch?.operationId).toBe(
+      "replaceTagAssignments",
+    );
+    expect(document.paths["/spaces/{spaceId}/work-items"]?.get?.parameters).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ name: "tagIds", in: "query" }),
+        expect.objectContaining({ name: "tagMatch", in: "query" }),
+      ]),
+    );
     expect(document.paths["/spaces/{spaceId}/bugs"]?.get?.parameters).toEqual(
       expect.arrayContaining([
         expect.objectContaining({ name: "severity", in: "query" }),
         expect.objectContaining({ name: "relatedTaskId", in: "query" }),
+        expect.objectContaining({ name: "tagIds", in: "query" }),
+        expect.objectContaining({ name: "tagMatch", in: "query" }),
       ]),
     );
     expect(document.paths["/bugs/{id}"]).toBeUndefined();

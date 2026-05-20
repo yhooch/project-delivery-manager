@@ -6,6 +6,7 @@ import type {
   RequirementRelatedWorkItems,
   RequirementStatus,
   StatusCategory,
+  TagDto,
   WorkItemType,
 } from "@project-delivery/shared";
 
@@ -49,6 +50,7 @@ export function toRequirement(
   record: PrismaRequirementRecord,
   attachments: PrismaAttachmentRefRecord[] = [],
   relatedWorkItems: RequirementRelatedWorkItems = emptyRelatedWorkItems(),
+  tags: TagDto[] = [],
 ): Requirement {
   return {
     id: record.id,
@@ -66,6 +68,7 @@ export function toRequirement(
     ownerId: record.ownerId ?? undefined,
     authorId: record.authorId ?? undefined,
     attachments: attachments.map(toAttachmentRef),
+    tags,
     relatedWorkItems,
     createdAt: record.createdAt.toISOString(),
     updatedAt: record.updatedAt.toISOString(),

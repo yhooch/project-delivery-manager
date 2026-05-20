@@ -96,19 +96,29 @@ vi.mock("../../lib/v2/lookups", () => ({
 
 // Service mocks. NOTE: vi.mock is hoisted, so the mock fn must be created
 // via vi.hoisted to be available when the factory runs.
-const { getWorkItemMock, listRequirementsMock, listWorkItemsMock } = vi.hoisted(
-  () => ({
-    getWorkItemMock: vi.fn(),
-    listRequirementsMock: vi.fn(),
-    listWorkItemsMock: vi.fn(),
-  }),
-);
+const {
+  createTagMock,
+  getWorkItemMock,
+  listRequirementsMock,
+  listTagsMock,
+  listWorkItemsMock,
+} = vi.hoisted(() => ({
+  createTagMock: vi.fn(),
+  getWorkItemMock: vi.fn(),
+  listRequirementsMock: vi.fn(),
+  listTagsMock: vi.fn(),
+  listWorkItemsMock: vi.fn(),
+}));
 vi.mock("../../lib/work-item-service", () => ({
   listWorkItems: listWorkItemsMock,
   getWorkItem: getWorkItemMock,
 }));
 vi.mock("../../lib/requirement-service", () => ({
   listRequirements: listRequirementsMock,
+}));
+vi.mock("../../lib/tag-service", () => ({
+  createTag: createTagMock,
+  listTags: listTagsMock,
 }));
 
 // CreateTaskDialog & TaskDetailSheet — mock to inert components so we don't
@@ -156,6 +166,7 @@ import { createRecentStorageKey } from "../shell/recent-opens";
 const ASSIGNEE_ID = "01ARZ3NDEKTSV4RRFFQ69G5FB1";
 const VERSION_ID = "01ARZ3NDEKTSV4RRFFQ69G5FD1";
 const REQUIREMENT_ID = "01ARZ3NDEKTSV4RRFFQ69G5FRQ";
+const TAG_ID = "01ARZ3NDEKTSV4RRFFQ69G5FTG";
 
 function makeTask(overrides: Partial<Record<string, unknown>> = {}) {
   return {
@@ -176,12 +187,36 @@ function makeTask(overrides: Partial<Record<string, unknown>> = {}) {
   } as unknown as import("@project-delivery/shared").WorkItem;
 }
 
+function makeTag(overrides: Record<string, unknown> = {}) {
+  return {
+    id: TAG_ID,
+    organizationId: "ORG_01",
+    spaceId: "SPC_01",
+    name: "backend",
+    displayName: "#backend",
+    normalizedName: "backend",
+    colorKey: "blue",
+    createdAt: "2026-05-19T10:00:00.000Z",
+    updatedAt: "2026-05-19T10:00:00.000Z",
+    ...overrides,
+  } as unknown as import("@project-delivery/shared").TagDto;
+}
+
 // -----------------------------------------------------------------------------
 
 beforeEach(() => {
+  createTagMock.mockReset();
   getWorkItemMock.mockReset();
   listRequirementsMock.mockReset();
+  listTagsMock.mockReset();
   listWorkItemsMock.mockReset();
+  listRequirementsMock.mockResolvedValue({ items: [], total: 0 });
+  listTagsMock.mockResolvedValue({
+    items: [],
+    page: 1,
+    pageSize: 20,
+    total: 0,
+  });
   searchParamsMock.current = new URLSearchParams();
   memberMap.clear();
   versionMap.clear();
@@ -262,6 +297,42 @@ describe("TasksPage", () => {
         }),
       ),
     );
+  });
+
+  it("hydrates URL tag filters into the task query and filter chip", async () => {
+    const tag = makeTag();
+    searchParamsMock.current = new URLSearchParams(
+      `tagIds=${TAG_ID}&tagMatch=ALL`,
+    );
+    listTagsMock.mockResolvedValueOnce({
+      items: [tag],
+      page: 1,
+      pageSize: 20,
+      total: 1,
+    });
+    listWorkItemsMock.mockResolvedValueOnce({
+      items: [makeTask({ tags: [tag], title: "Tagged task" })],
+      total: 1,
+    });
+
+    render(<TasksPage />);
+
+    expect(await screen.findByText("Tagged task")).toBeInTheDocument();
+    await waitFor(() =>
+      expect(listWorkItemsMock).toHaveBeenCalledWith(
+        expect.objectContaining({
+          spaceId: "SPC_01",
+          tagIds: TAG_ID,
+          tagMatch: "ANY",
+          type: "TASK",
+        }),
+      ),
+    );
+
+    fireEvent.click(screen.getByTestId("tasks-filter-button"));
+
+    const panel = await screen.findByTestId("tasks-filter-panel");
+    expect(within(panel).getByText("#backend")).toBeInTheDocument();
   });
 
   it("renders status bucket totals from the paged list response", async () => {

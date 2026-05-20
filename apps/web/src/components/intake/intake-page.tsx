@@ -30,6 +30,8 @@ import {
   useFocusReturn,
   useListKeyboardNav,
 } from "../../lib/hooks/use-list-keyboard-nav";
+import { useTagFilterSelection } from "../../lib/hooks/use-tag-filter-selection";
+import { useUrlTagFilter } from "../../lib/hooks/use-url-tag-filter";
 import {
   acceptIntakeItem,
   deferIntakeItem,
@@ -38,7 +40,10 @@ import {
   rejectIntakeItem,
   type IntakeListFilterState,
 } from "../../lib/intake-service";
+import { usePathname, useRouter } from "../../i18n/routing";
 import { listRequirements } from "../../lib/requirement-service";
+import { serializeTagFilterQuery } from "../../lib/tag-query";
+import { collectTagsFromItems } from "../../lib/tag-ui";
 import { cn } from "../../lib/utils";
 import { useSpaceMembers, useVersions } from "../../lib/v2/lookups";
 import {
@@ -51,6 +56,7 @@ import {
 } from "../../lib/v2/work-item-view-model";
 import { useSession } from "../providers/session-provider";
 import { recordRecentOpen } from "../shell/recent-opens";
+import { TagBadgeList, TagFilter } from "../tag";
 
 import { Avatar, AvatarFallback } from "../ui/avatar";
 import { Badge } from "../ui/badge";
@@ -117,10 +123,19 @@ export function IntakePage() {
   const t = useTranslations("intake");
   const tNav = useTranslations("shell.nav");
   const tIntakeItems = useTranslations("intakeItems");
+  const tTags = useTranslations("tags.field");
   const tRoot = useTranslations();
   const locale = useLocale();
   const searchParams = useSearchParams();
+  const router = useRouter();
+  const pathname = usePathname();
   const requestedIntakeItemId = normalizeSearchParam(searchParams.get("id"));
+  const [tagFilter, setTagFilter] = useUrlTagFilter({
+    fixedTagMatch: "ANY",
+    pathname,
+    router,
+    searchParams,
+  });
   const { currentSpace, session, status: sessionStatus } = useSession();
   const spaceId = session?.defaultSpaceId;
   const organizationId = session?.defaultOrganizationId;
@@ -180,8 +195,10 @@ export function IntakePage() {
         listFilters,
         organizationId,
         spaceId,
+        tagIds: tagFilter.tagIds,
+        tagMatch: tagFilter.tagMatch,
       }),
-    [filter, listFilters, organizationId, spaceId],
+    [filter, listFilters, organizationId, spaceId, tagFilter],
   );
   const contextKey = useMemo(
     () => `${organizationId ?? ""}:${spaceId ?? ""}`,
@@ -197,6 +214,14 @@ export function IntakePage() {
   const paginationFrom = loadedCount > 0 ? 1 : 0;
   const paginationTo = Math.min(loadedCount, pageInfo.total);
   const hasMoreItems = loadedCount < pageInfo.total;
+  const sourceTags = useMemo(() => collectTagsFromItems(items), [items]);
+  const { selectedTags: selectedFilterTags, setSelectedTags } =
+    useTagFilterSelection({
+      organizationId,
+      sourceTags,
+      spaceId,
+      tagIds: tagFilter.tagIds,
+    });
   const filteredRequirements = useMemo(
     () =>
       filterTraceOptionsByVersion(requirements, listFilters.versionId ?? ""),
@@ -275,6 +300,7 @@ export function IntakePage() {
           spaceId,
           status: filter === "all" ? undefined : filter,
           ...listFilters,
+          ...serializeTagFilterQuery(tagFilter),
         });
         if (
           listRequestIdRef.current !== requestId ||
@@ -312,7 +338,7 @@ export function IntakePage() {
         }
       }
     },
-    [filter, listFilters, listScopeKey, organizationId, spaceId],
+    [filter, listFilters, listScopeKey, organizationId, spaceId, tagFilter],
   );
 
   useEffect(() => {
@@ -788,6 +814,7 @@ export function IntakePage() {
         >
           {filtered.map((item) => {
             const isSelected = (selectedItem?.id ?? active?.id) === item.id;
+            const tags = item.tags ?? [];
             const reporterName = displayUserName(item.reporterId, getMember);
             const reporterTip =
               reporterName && reporterName !== "—" ? reporterName : undefined;
@@ -837,6 +864,14 @@ export function IntakePage() {
                   <span className="min-w-0 flex-1 truncate text-[13px] font-medium">
                     {item.title}
                   </span>
+                  {tags.length > 0 ? (
+                    <TagBadgeList
+                      badgeClassName="min-w-0 max-w-24 shrink"
+                      className="hidden max-w-64 shrink-0 flex-nowrap overflow-hidden lg:flex"
+                      maxVisible={3}
+                      tags={tags}
+                    />
+                  ) : null}
                   <Badge variant="outline" className="hidden md:inline-flex">
                     {tIntakeItems(`sourceType.${item.sourceType}`)}
                   </Badge>
@@ -1009,6 +1044,21 @@ export function IntakePage() {
               ))}
             </SelectMenu>
           </FilterField>
+          <FilterField label={tTags("label")}>
+            <TagFilter
+              allowCreate={false}
+              onChange={(value, selectedTags) => {
+                setSelectedTags(selectedTags);
+                setTagFilter(value);
+              }}
+              organizationId={organizationId}
+              selectedTags={selectedFilterTags}
+              showMatchMode={false}
+              spaceId={spaceId}
+              value={tagFilter}
+              data-testid="intake-filter-tags"
+            />
+          </FilterField>
         </div>
       )}
 
@@ -1094,7 +1144,9 @@ export function IntakePage() {
         }
         actionErrorMessage={actionErrorKey ? tRoot(actionErrorKey) : null}
         canComment={canCreateOrCommentIntake}
+        canEditTags={canManageIntake}
         intakeItem={active}
+        onItemChange={handleUpdatedIntakeItem}
         onOpenChange={handleCloseDrawer}
         onOpenWorkItem={openTaskDetail}
         open={Boolean(active)}
@@ -1177,11 +1229,15 @@ function createIntakeListScopeKey({
   listFilters,
   organizationId,
   spaceId,
+  tagIds,
+  tagMatch,
 }: {
   filter: FilterKey;
   listFilters: IntakeListFilterState;
   organizationId?: string;
   spaceId?: string;
+  tagIds: readonly string[];
+  tagMatch: string;
 }): string {
   return [
     organizationId ?? "",
@@ -1194,6 +1250,8 @@ function createIntakeListScopeKey({
     listFilters.sourceType ?? "",
     listFilters.status ?? "",
     listFilters.versionId ?? "",
+    tagIds.join(","),
+    tagIds.length > 0 ? tagMatch : "",
   ].join("\u001f");
 }
 

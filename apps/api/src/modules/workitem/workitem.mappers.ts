@@ -2,6 +2,7 @@ import type {
   PermissionSnapshot,
   Priority,
   StatusCategory,
+  TagDto,
   WorkItem,
   WorkItemDetail,
   WorkItemType,
@@ -33,6 +34,7 @@ type PrismaWorkItemRecord = {
 export function toWorkItem(
   record: PrismaWorkItemRecord,
   permissions?: PermissionSnapshot,
+  tags: TagDto[] = [],
 ): WorkItem {
   return {
     id: record.id,
@@ -55,6 +57,7 @@ export function toWorkItem(
     lastActionAt: record.lastActionAt?.toISOString(),
     blockedReason: record.blockedReason ?? undefined,
     blockedAt: record.blockedAt?.toISOString(),
+    tags,
     permissions,
   };
 }
@@ -84,6 +87,7 @@ export function toWorkItemDetail(
     lastActionAt: record.lastActionAt,
     blockedReason: record.blockedReason,
     blockedAt: record.blockedAt,
+    tags: record.tags,
     permissions,
   };
 }

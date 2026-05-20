@@ -63,6 +63,8 @@ export const ModelName = {
   WorkItem: 'WorkItem',
   BugDetail: 'BugDetail',
   Attachment: 'Attachment',
+  Tag: 'Tag',
+  TagAssignment: 'TagAssignment',
   WorkflowDefinition: 'WorkflowDefinition',
   WorkflowVersion: 'WorkflowVersion',
   WorkflowState: 'WorkflowState',
@@ -348,6 +350,39 @@ export const AttachmentScalarFieldEnum = {
 } as const
 
 export type AttachmentScalarFieldEnum = (typeof AttachmentScalarFieldEnum)[keyof typeof AttachmentScalarFieldEnum]
+
+
+export const TagScalarFieldEnum = {
+  id: 'id',
+  organizationId: 'organizationId',
+  spaceId: 'spaceId',
+  name: 'name',
+  normalizedName: 'normalizedName',
+  colorKey: 'colorKey',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt',
+  createdById: 'createdById',
+  updatedById: 'updatedById',
+  deletedAt: 'deletedAt'
+} as const
+
+export type TagScalarFieldEnum = (typeof TagScalarFieldEnum)[keyof typeof TagScalarFieldEnum]
+
+
+export const TagAssignmentScalarFieldEnum = {
+  id: 'id',
+  organizationId: 'organizationId',
+  spaceId: 'spaceId',
+  tagId: 'tagId',
+  targetType: 'targetType',
+  targetId: 'targetId',
+  assignedById: 'assignedById',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt',
+  deletedAt: 'deletedAt'
+} as const
+
+export type TagAssignmentScalarFieldEnum = (typeof TagAssignmentScalarFieldEnum)[keyof typeof TagAssignmentScalarFieldEnum]
 
 
 export const WorkflowDefinitionScalarFieldEnum = {

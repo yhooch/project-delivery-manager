@@ -553,6 +553,7 @@ export class IntakeService {
       reporterId: item.reporterId,
       requirementId,
       statusCategory: workflow.statusCategory,
+      tagIds: task.tagIds,
       title: task.title ?? item.title,
       versionId,
       workflowVersionId: workflow.workflowVersionId,

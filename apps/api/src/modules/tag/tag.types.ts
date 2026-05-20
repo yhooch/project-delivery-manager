@@ -1,0 +1,65 @@
+import type {
+  GetTagAssignmentsQuery,
+  ListTagsQuery,
+  PageResult,
+  ReplaceTagAssignmentsRequest,
+  TagDto,
+  TagTargetType,
+} from "@project-delivery/shared";
+
+export type TagListInput = ListTagsQuery & {
+  normalizedQuery?: string;
+  organizationId: string;
+  spaceId: string;
+};
+
+export type CreateTagInput = {
+  colorKey: string;
+  createdById: string;
+  id: string;
+  name: string;
+  normalizedName: string;
+  organizationId: string;
+  spaceId: string;
+};
+
+export type SoftDeleteTagInput = {
+  tagId: string;
+  updatedById: string;
+};
+
+export type SoftDeleteTagResult =
+  | {
+      status: "deleted";
+      deletedAt: Date;
+      tag: TagDto;
+    }
+  | {
+      status: "in_use";
+    }
+  | {
+      status: "not_found";
+    };
+
+export type TagListResult = PageResult<TagDto>;
+
+export type TagAssignmentTargetInput = {
+  organizationId: string;
+  spaceId: string;
+  targetId: string;
+  targetType: TagTargetType;
+};
+
+export type ReplaceTagAssignmentsInput = TagAssignmentTargetInput &
+  Pick<ReplaceTagAssignmentsRequest, "tagIds"> & {
+    assignedById: string;
+  };
+
+export type ListTagsByTargetsInput = Omit<
+  TagAssignmentTargetInput,
+  "targetId"
+> & {
+  targetIds: string[];
+};
+
+export type GetTagAssignmentsInput = GetTagAssignmentsQuery;

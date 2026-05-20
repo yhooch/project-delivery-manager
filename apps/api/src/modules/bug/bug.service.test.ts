@@ -948,6 +948,7 @@ function makeBug(overrides: Partial<BugView> = {}): BugView {
     type: "BUG",
     workflowVersionId: WORKFLOW_VERSION_ID,
     ...overrides,
+    tags: overrides.tags ?? [],
     bugDetail: {
       workItemId: id,
       severity: "MAJOR",

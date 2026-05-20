@@ -165,6 +165,44 @@
     "serverMessage": "Server message",
     "requestId": "Request ID"
   },
+  "tags": {
+    "badge": {
+      "remove": "Remove {name}"
+    },
+    "picker": {
+      "placeholder": "Type # to search or create tags",
+      "resultsLabel": "Tag search results",
+      "loading": "Searching tags…",
+      "empty": "No matching tags",
+      "error": "Tags failed to load. Try again.",
+      "createError": "Tag creation failed. Try again.",
+      "create": "Create {name}",
+      "select": "Select {name}"
+    },
+    "filter": {
+      "empty": "No tags selected",
+      "placeholder": "Type # to add tags",
+      "remove": "Remove {name}",
+      "clear": "Clear tag filters",
+      "matchMode": "Tag match mode",
+      "match": {
+        "ANY": "Any",
+        "ALL": "All"
+      }
+    },
+    "field": {
+      "label": "Tags",
+      "empty": "No tags",
+      "placeholder": "Type # to add tags",
+      "add": "Add tags",
+      "saving": "Saving tags"
+    },
+    "commandPalette": {
+      "results": "Tags",
+      "usage": "{count} uses",
+      "error": "Tag search failed. Try again."
+    }
+  },
   "auth": {
     "brand": {
       "name": "Project Delivery Manager",
@@ -462,6 +500,10 @@
       "TRACE_VERSION_CHANGE_REQUIRES_CASCADE": "This version change affects linked downstream objects. Confirm to continue.",
       "TRACE_VERSION_CHANGE_REQUIRES_CASCADE_CONFIRM_SUFFIX": "Confirm to update linked downstream objects to the same version.",
       "TRACE_CASCADE_CONFLICT": "The version cascade update failed. Refresh linked objects and try again.",
+      "TAG_NOT_FOUND": "The tag is unavailable.",
+      "TAG_IN_USE": "The tag is still used by objects and cannot be deleted.",
+      "TAG_TARGET_INVALID": "The tag target is invalid or unavailable.",
+      "TAG_NAME_CONFLICT": "A tag with this name already exists.",
       "UNKNOWN": "The operation failed. Try again later."
     }
   },
@@ -2961,6 +3003,24 @@
       },
       "error": "Enter an integer from 1 to 30.",
       "hint": "Valid range 1 to 30. Updates refresh the \"long stale\" view with the new threshold."
+    },
+    "tags": {
+      "title": "Tags",
+      "description": "Review this space's tag dictionary, colors, and usage. Only orphan tags with no object usage can be deleted.",
+      "searchLabel": "Search tags",
+      "searchPlaceholder": "Search by tag name",
+      "empty": "No tags in this space",
+      "emptyFiltered": "No matching tags",
+      "usageLabel": "Usage",
+      "createdAtLabel": "Created",
+      "usage": "{count}",
+      "status": {
+        "orphan": "Unused",
+        "inUse": "In use"
+      },
+      "actions": {
+        "delete": "Delete orphan tag {name}"
+      }
     },
     "members": {
       "title": "Space members",
