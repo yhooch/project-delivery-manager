@@ -5,14 +5,16 @@ import type {
 } from "@project-delivery/shared";
 
 import { Prisma } from "../../generated/prisma/client";
+import {
+  isTesterVisibleWorkflowState,
+  WORKFLOW_STATE_SEMANTIC_RULES,
+} from "../workflow/workflow-state-semantics";
 
 const WORK_ITEM_READ_ALL_ROLES = new Set<SpaceRole>([
   "SPACE_ADMIN",
   "PM",
   "VIEWER",
 ]);
-
-const TESTER_STATE_TOKENS = ["test", "regression", "测试", "提测", "回归"];
 
 export function canReadAllSpaceWorkItems(role: SpaceRole) {
   return WORK_ITEM_READ_ALL_ROLES.has(role);
@@ -38,7 +40,11 @@ export function isTesterVisibleWorkItem(input: {
     return true;
   }
 
-  return isTestingOrRegressionState(input.currentState);
+  return isTesterVisibleWorkflowState({
+    category: input.statusCategory,
+    code: input.currentState?.code,
+    name: input.currentState?.name,
+  });
 }
 
 export function testerVisibleWorkItemWhere(): Prisma.WorkItemWhereInput {
@@ -66,36 +72,54 @@ export function testerVisibleWorkItemWhere(): Prisma.WorkItemWhereInput {
 
 function testerVisibleWorkflowStateWhere(): Prisma.WorkflowStateWhereInput {
   return {
-    OR: TESTER_STATE_TOKENS.flatMap((token) => [
-      {
-        code: {
-          contains: token,
-          mode: "insensitive" as const,
-        },
-      },
-      {
-        name: {
-          contains: token,
-          mode: "insensitive" as const,
-        },
-      },
-    ]),
+    OR: [
+      ...workflowStateTokenWhere(
+        WORKFLOW_STATE_SEMANTIC_RULES.pendingConfirmTokens,
+      ),
+      ...workflowStateTokenWhere(
+        WORKFLOW_STATE_SEMANTIC_RULES.testerVisibleTokens,
+      ),
+      ...workflowStateExactWhere(
+        WORKFLOW_STATE_SEMANTIC_RULES.pendingRegressionCodes,
+        WORKFLOW_STATE_SEMANTIC_RULES.pendingRegressionNames,
+      ),
+    ],
   };
 }
 
-function isTestingOrRegressionState(
-  state:
-    | {
-        code?: string | null;
-        name?: string | null;
-      }
-    | null
-    | undefined,
-) {
-  const code = state?.code?.toLocaleLowerCase();
-  const name = state?.name?.toLocaleLowerCase();
+function workflowStateTokenWhere(tokens: readonly string[]) {
+  return tokens.flatMap((token) => [
+    {
+      code: {
+        contains: token,
+        mode: "insensitive" as const,
+      },
+    },
+    {
+      name: {
+        contains: token,
+        mode: "insensitive" as const,
+      },
+    },
+  ]);
+}
 
-  return TESTER_STATE_TOKENS.some(
-    (token) => code?.includes(token) || name?.includes(token),
-  );
+function workflowStateExactWhere(
+  codes: readonly string[],
+  names: readonly string[],
+) {
+  return [
+    ...codes.map((code) => ({
+      code: {
+        equals: code,
+        mode: "insensitive" as const,
+      },
+    })),
+    ...names.map((name) => ({
+      name: {
+        equals: name,
+        mode: "insensitive" as const,
+      },
+    })),
+  ];
 }

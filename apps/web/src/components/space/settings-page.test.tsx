@@ -611,7 +611,7 @@ describe("SpaceSettingsPage", () => {
     );
   });
 
-  it("allows SPACE_ADMIN to delete orphan tags and refreshes the list", async () => {
+  it("opens orphan tag delete confirmation, cancels without deleting, and confirms deletion", async () => {
     const tag = makeTag({
       id: "01ARZ3NDEKTSV4RRFFQ69G5F00",
       name: "unused",
@@ -638,16 +638,106 @@ describe("SpaceSettingsPage", () => {
 
     render(<SpaceSettingsPage />);
 
+    const deleteButton = await screen.findByTestId(
+      "space-settings-tag-delete-01ARZ3NDEKTSV4RRFFQ69G5F00",
+    );
+    fireEvent.click(deleteButton);
+
+    const dialog = await screen.findByRole("dialog", {
+      name: "spaceSettings.dialog.deleteOrphanTag.title",
+    });
+    expect(
+      within(dialog).getByText(
+        "spaceSettings.dialog.deleteOrphanTag.description",
+      ),
+    ).toBeInTheDocument();
+    expect(deleteTagMock).not.toHaveBeenCalled();
+
+    fireEvent.click(
+      within(dialog).getByRole("button", {
+        name: "spaceSettings.dialog.deleteOrphanTag.cancel",
+      }),
+    );
+    await waitFor(() =>
+      expect(
+        screen.queryByRole("dialog", {
+          name: "spaceSettings.dialog.deleteOrphanTag.title",
+        }),
+      ).not.toBeInTheDocument(),
+    );
+    expect(deleteTagMock).not.toHaveBeenCalled();
+
     fireEvent.click(
       await screen.findByTestId(
         "space-settings-tag-delete-01ARZ3NDEKTSV4RRFFQ69G5F00",
       ),
+    );
+    fireEvent.click(
+      within(
+        await screen.findByRole("dialog", {
+          name: "spaceSettings.dialog.deleteOrphanTag.title",
+        }),
+      ).getByRole("button", {
+        name: "spaceSettings.dialog.deleteOrphanTag.submit",
+      }),
     );
 
     await waitFor(() =>
       expect(deleteTagMock).toHaveBeenCalledWith("01ARZ3NDEKTSV4RRFFQ69G5F00"),
     );
     await waitFor(() => expect(listTagsMock).toHaveBeenCalledTimes(2));
+  });
+
+  it("disables the orphan tag delete confirmation while deletion is pending", async () => {
+    const tag = makeTag({
+      usageCount: 0,
+      isOrphan: true,
+    });
+    let resolveDelete: (value: unknown) => void = () => {};
+    listTagsMock.mockResolvedValue({
+      items: [tag],
+      page: 1,
+      pageSize: 100,
+      total: 1,
+    });
+    deleteTagMock.mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          resolveDelete = resolve;
+        }),
+    );
+    getSpaceMock.mockResolvedValueOnce(makeSpace());
+    listSpaceMembersMock.mockResolvedValueOnce({ items: [], total: 0 });
+
+    render(<SpaceSettingsPage />);
+
+    fireEvent.click(
+      await screen.findByTestId(
+        "space-settings-tag-delete-01ARZ3NDEKTSV4RRFFQ69G5FTG",
+      ),
+    );
+    const dialog = await screen.findByRole("dialog", {
+      name: "spaceSettings.dialog.deleteOrphanTag.title",
+    });
+    fireEvent.click(
+      within(dialog).getByRole("button", {
+        name: "spaceSettings.dialog.deleteOrphanTag.submit",
+      }),
+    );
+
+    expect(
+      await within(dialog).findByRole("button", {
+        name: "spaceSettings.dialog.deleteOrphanTag.submitting",
+      }),
+    ).toBeDisabled();
+    expect(
+      within(dialog).getByRole("button", {
+        name: "spaceSettings.dialog.deleteOrphanTag.cancel",
+      }),
+    ).toBeDisabled();
+
+    resolveDelete({});
+    await waitFor(() => expect(deleteTagMock).toHaveBeenCalledTimes(1));
   });
 
   it("hides orphan tag delete actions for non-manager space roles", async () => {
@@ -702,6 +792,15 @@ describe("SpaceSettingsPage", () => {
       await screen.findByTestId(
         "space-settings-tag-delete-01ARZ3NDEKTSV4RRFFQ69G5FTG",
       ),
+    );
+    fireEvent.click(
+      within(
+        await screen.findByRole("dialog", {
+          name: "spaceSettings.dialog.deleteOrphanTag.title",
+        }),
+      ).getByRole("button", {
+        name: "spaceSettings.dialog.deleteOrphanTag.submit",
+      }),
     );
 
     expect(

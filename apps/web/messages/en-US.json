@@ -3074,6 +3074,13 @@
       },
       "disableMember": {
         "errorTitle": "Failed to disable member"
+      },
+      "deleteOrphanTag": {
+        "title": "Delete orphan tag",
+        "description": "Delete {name}? This cannot be undone.",
+        "cancel": "Cancel",
+        "submit": "Delete",
+        "submitting": "Deleting…"
       }
     }
   },

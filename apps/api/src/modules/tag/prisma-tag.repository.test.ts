@@ -173,10 +173,46 @@ describe("PrismaTagRepository", () => {
         updatedById: ACTOR_ID,
       },
       where: {
+        assignments: {
+          none: {
+            deletedAt: null,
+          },
+        },
         deletedAt: null,
         id: TAG_ID,
       },
     });
+  });
+
+  it("returns in_use when a concurrent active assignment blocks conditional delete", async () => {
+    const tag = makeTagRecord({ id: TAG_ID });
+    const tagFindFirst = vi
+      .fn()
+      .mockResolvedValueOnce(tag)
+      .mockResolvedValueOnce({ id: TAG_ID });
+    const repository = new PrismaTagRepository({
+      client: {
+        $transaction: vi.fn(async (handler) =>
+          handler({
+            tag: {
+              findFirst: tagFindFirst,
+              updateMany: vi.fn(async () => ({ count: 0 })),
+            },
+            tagAssignment: {
+              count: vi.fn(async () => 0),
+            },
+          }),
+        ),
+      },
+    } as unknown as PrismaService);
+
+    await expect(
+      repository.softDeleteOrphan({
+        tagId: TAG_ID,
+        updatedById: ACTOR_ID,
+      }),
+    ).resolves.toEqual({ status: "in_use" });
+    expect(tagFindFirst).toHaveBeenCalledTimes(2);
   });
 });
 

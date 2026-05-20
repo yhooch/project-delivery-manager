@@ -208,6 +208,70 @@ describe("TargetResolverService", () => {
     });
   });
 
+  it("rejects WORK_ITEM tag writes for non-manager participants under object update policy", async () => {
+    const actorUserId = ulid();
+    const workItemId = ulid();
+    const spaceId = ulid();
+    const organizationId = ulid();
+    const { objectParticipantFindFirst, resolver, spaces, workItemFindFirst } =
+      createResolver();
+
+    workItemFindFirst.mockResolvedValue({
+      id: workItemId,
+      organizationId,
+      spaceId,
+      title: "Work item",
+    });
+    objectParticipantFindFirst.mockResolvedValue({ id: ulid() });
+    vi.mocked(spaces.findAccessibleById).mockResolvedValue({
+      role: "DEVELOPER",
+      space: makeSpace(spaceId, organizationId),
+    });
+
+    await expect(
+      resolver.resolve(actorUserId, "WORK_ITEM", workItemId, {
+        access: "write",
+        writePolicy: "objectUpdate",
+      }),
+    ).rejects.toMatchObject({
+      code: "SPACE_ACCESS_DENIED",
+      status: HttpStatus.FORBIDDEN,
+    });
+  });
+
+  it("allows WORK_ITEM tag writes for managers under object update policy", async () => {
+    const actorUserId = ulid();
+    const workItemId = ulid();
+    const spaceId = ulid();
+    const organizationId = ulid();
+    const { objectParticipantFindFirst, resolver, spaces, workItemFindFirst } =
+      createResolver();
+
+    workItemFindFirst.mockResolvedValue({
+      id: workItemId,
+      organizationId,
+      spaceId,
+      title: "Work item",
+    });
+    objectParticipantFindFirst.mockResolvedValue(undefined);
+    vi.mocked(spaces.findAccessibleById).mockResolvedValue({
+      role: "PM",
+      space: makeSpace(spaceId, organizationId),
+    });
+
+    await expect(
+      resolver.resolve(actorUserId, "WORK_ITEM", workItemId, {
+        access: "write",
+        writePolicy: "objectUpdate",
+      }),
+    ).resolves.toMatchObject({
+      canWrite: true,
+      role: "PM",
+      targetId: workItemId,
+      targetType: "WORK_ITEM",
+    });
+  });
+
   it("allows TESTER to read only Bug or testing WORK_ITEM targets without participation", async () => {
     const actorUserId = ulid();
     const workItemId = ulid();
@@ -428,6 +492,90 @@ describe("TargetResolverService", () => {
     });
   });
 
+  it("uses requirement update semantics for tag writes under object update policy", async () => {
+    const actorUserId = ulid();
+    const requirementId = ulid();
+    const spaceId = ulid();
+    const organizationId = ulid();
+    const { requirements, resolver, spaces } = createResolver();
+
+    vi.mocked(requirements.findById).mockResolvedValue(
+      makeRequirement(requirementId, spaceId, organizationId, "CONFIRMED"),
+    );
+    vi.mocked(requirements.isParticipant).mockResolvedValue(true);
+    vi.mocked(spaces.findAccessibleById).mockResolvedValue({
+      role: "DEVELOPER",
+      space: makeSpace(spaceId, organizationId),
+    });
+
+    await expect(
+      resolver.resolve(actorUserId, "REQUIREMENT", requirementId, {
+        access: "write",
+        writePolicy: "objectUpdate",
+      }),
+    ).rejects.toMatchObject({
+      code: "SPACE_ACCESS_DENIED",
+      status: HttpStatus.FORBIDDEN,
+    });
+
+    vi.mocked(requirements.isParticipant).mockResolvedValue(false);
+    vi.mocked(spaces.findAccessibleById).mockResolvedValue({
+      role: "REQUIREMENT",
+      space: makeSpace(spaceId, organizationId),
+    });
+
+    await expect(
+      resolver.resolve(actorUserId, "REQUIREMENT", requirementId, {
+        access: "write",
+        writePolicy: "objectUpdate",
+      }),
+    ).resolves.toMatchObject({
+      canWrite: true,
+      role: "REQUIREMENT",
+      targetId: requirementId,
+    });
+  });
+
+  it("requires draft requirement participation for tag writes under object update policy", async () => {
+    const actorUserId = ulid();
+    const requirementId = ulid();
+    const spaceId = ulid();
+    const organizationId = ulid();
+    const { requirements, resolver, spaces } = createResolver();
+
+    vi.mocked(requirements.findById).mockResolvedValue(
+      makeRequirement(requirementId, spaceId, organizationId, "DRAFT"),
+    );
+    vi.mocked(requirements.isParticipant).mockResolvedValue(false);
+    vi.mocked(spaces.findAccessibleById).mockResolvedValue({
+      role: "PM",
+      space: makeSpace(spaceId, organizationId),
+    });
+
+    await expect(
+      resolver.resolve(actorUserId, "REQUIREMENT", requirementId, {
+        access: "write",
+        writePolicy: "objectUpdate",
+      }),
+    ).rejects.toMatchObject({
+      code: "REQUIREMENT_NOT_FOUND",
+      status: HttpStatus.NOT_FOUND,
+    });
+
+    vi.mocked(requirements.isParticipant).mockResolvedValue(true);
+
+    await expect(
+      resolver.resolve(actorUserId, "REQUIREMENT", requirementId, {
+        access: "write",
+        writePolicy: "objectUpdate",
+      }),
+    ).resolves.toMatchObject({
+      canWrite: true,
+      role: "PM",
+      targetId: requirementId,
+    });
+  });
+
   it("rejects VIEWER writes to non-draft REQUIREMENT targets even as participant", async () => {
     const actorUserId = ulid();
     const requirementId = ulid();
@@ -492,6 +640,41 @@ describe("TargetResolverService", () => {
       resolver.resolve(actorUserId, "INTAKE_ITEM", intakeItemId),
     ).rejects.toMatchObject({
       code: "INTAKE_ITEM_NOT_FOUND",
+    });
+  });
+
+  it("rejects INTAKE_ITEM tag writes for non-manager participants under object update policy", async () => {
+    const actorUserId = ulid();
+    const intakeItemId = ulid();
+    const spaceId = ulid();
+    const organizationId = ulid();
+    const {
+      intakeItemFindFirst,
+      objectParticipantFindFirst,
+      resolver,
+      spaces,
+    } = createResolver();
+
+    intakeItemFindFirst.mockResolvedValue({
+      id: intakeItemId,
+      organizationId,
+      spaceId,
+      title: "Intake",
+    });
+    objectParticipantFindFirst.mockResolvedValue({ id: ulid() });
+    vi.mocked(spaces.findAccessibleById).mockResolvedValue({
+      role: "DEVELOPER",
+      space: makeSpace(spaceId, organizationId),
+    });
+
+    await expect(
+      resolver.resolve(actorUserId, "INTAKE_ITEM", intakeItemId, {
+        access: "write",
+        writePolicy: "objectUpdate",
+      }),
+    ).rejects.toMatchObject({
+      code: "SPACE_ACCESS_DENIED",
+      status: HttpStatus.FORBIDDEN,
     });
   });
 

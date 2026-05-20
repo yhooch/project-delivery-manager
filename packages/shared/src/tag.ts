@@ -10,36 +10,57 @@ import { TagTargetTypeSchema } from "./enums.ts";
 
 const UlidCsvPattern =
   /^[0-9A-HJKMNP-TV-Z]{26}(,[0-9A-HJKMNP-TV-Z]{26})*$/u;
+const TagNameTokenPattern = /[\p{L}\p{N}]/u;
+export const TagNameMaxLength = 30;
+
+export type NormalizedTagName = {
+  displayName: string;
+  name: string;
+  normalizedName: string;
+};
 
 export const TagNameSchema = z
   .string()
-  .min(1)
-  .max(40)
-  .refine((value) => value.trim().length > 0, {
+  .refine((value) => value.length > 0, {
     message: "tag name must not be blank",
+  })
+  .refine((value) => tagNameLength(value) <= TagNameMaxLength, {
+    message: `tag name must be at most ${TagNameMaxLength} characters`,
+  })
+  .refine((value) => value === normalizeTagNameInput(value).name, {
+    message: "tag name must be normalized",
   })
   .refine((value) => !value.includes("#"), {
     message: "tag name must not contain #",
+  })
+  .refine((value) => hasTagNameToken(value), {
+    message: "tag name must include a letter or number",
   });
 
 export const TagNameInputSchema = z
   .string()
   .min(1)
-  .max(41)
-  .refine((value) => normalizeTagInputName(value).length > 0, {
+  .max(128)
+  .refine((value) => normalizeTagNameInput(value).name.length > 0, {
     message: "tag name must not be blank",
   })
-  .refine((value) => normalizeTagInputName(value).length <= 40, {
-    message: "tag name must be at most 40 characters",
-  })
-  .refine((value) => !normalizeTagInputName(value).includes("#"), {
+  .refine(
+    (value) => tagNameLength(normalizeTagNameInput(value).name) <= TagNameMaxLength,
+    {
+      message: `tag name must be at most ${TagNameMaxLength} characters`,
+    },
+  )
+  .refine((value) => !normalizeTagNameInput(value).name.includes("#"), {
     message: "tag name may only include # as a leading shortcut",
+  })
+  .refine((value) => hasTagNameToken(normalizeTagNameInput(value).name), {
+    message: "tag name must include a letter or number",
   });
 
 export const TagDisplayNameSchema = z
   .string()
   .min(2)
-  .max(41)
+  .max(TagNameMaxLength + 1)
   .startsWith("#");
 
 export const TagColorKeySchema = z
@@ -73,7 +94,16 @@ export const TagDtoSchema = z
     spaceId: UlidSchema,
     name: TagNameSchema,
     displayName: TagDisplayNameSchema,
-    normalizedName: z.string().min(1).max(80),
+    normalizedName: z
+      .string()
+      .min(1)
+      .max(TagNameMaxLength)
+      .refine((value) => !value.includes("#"), {
+        message: "normalizedName must not contain #",
+      })
+      .refine((value) => hasTagNameToken(value), {
+        message: "normalizedName must include a letter or number",
+      }),
     colorKey: TagColorKeySchema,
     usageCount: z.number().int().min(0).optional(),
     isOrphan: z.boolean().optional(),
@@ -167,7 +197,40 @@ export const DeleteTagResponseSchema = EmptyObjectSchema;
 export const GetTagAssignmentsResponseSchema = TagAssignmentsResponseSchema;
 export const ReplaceTagAssignmentsResponseSchema = TagAssignmentsResponseSchema;
 
-function normalizeTagInputName(value: string): string {
-  const trimmed = value.trim();
-  return trimmed.startsWith("#") ? trimmed.slice(1).trim() : trimmed;
+export function normalizeTagNameInput(value: string): NormalizedTagName {
+  const withoutShortcut = stripLeadingShortcut(value);
+  const name = collapseWhitespace(withoutShortcut.trim());
+  const normalizedName = name.toLocaleLowerCase("en-US");
+
+  return {
+    displayName: `#${name}`,
+    name,
+    normalizedName,
+  };
+}
+
+export function normalizeTagSearchQuery(value?: string): string | undefined {
+  if (!value) {
+    return undefined;
+  }
+
+  const normalized = normalizeTagNameInput(value).normalizedName;
+
+  return normalized.length > 0 ? normalized : undefined;
+}
+
+function stripLeadingShortcut(value: string): string {
+  return value.trim().replace(/^#+/u, "").trim();
+}
+
+function collapseWhitespace(value: string): string {
+  return value.replace(/\s+/gu, " ");
+}
+
+function tagNameLength(value: string): number {
+  return [...value].length;
+}
+
+function hasTagNameToken(value: string): boolean {
+  return TagNameTokenPattern.test(value);
 }

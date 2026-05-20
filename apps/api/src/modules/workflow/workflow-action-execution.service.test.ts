@@ -420,6 +420,99 @@ describe("WorkflowActionExecutionService", () => {
     });
   });
 
+  it("sets and clears blocking information from workflow state semantics", async () => {
+    const subject = createSubject("DEVELOPER", {
+      currentStateId: IN_PROGRESS_STATE_ID,
+      statusCategory: "IN_PROGRESS",
+    });
+    subject.repository.actions.set(
+      BLOCK_ACTION_ID,
+      makeAction({
+        code: "ESCALATE_DEPENDENCY",
+        fromState: state("IN_PROGRESS", IN_PROGRESS_STATE_ID, "IN_PROGRESS"),
+        fromStateId: IN_PROGRESS_STATE_ID,
+        id: BLOCK_ACTION_ID,
+        name: "升级依赖",
+        toState: state(
+          "WAITING_DEPENDENCY",
+          BLOCKED_STATE_ID,
+          "WAITING",
+          false,
+          "阻塞处理中",
+        ),
+        toStateId: BLOCKED_STATE_ID,
+      }),
+    );
+    subject.repository.actions.set(
+      UNBLOCK_ACTION_ID,
+      makeAction({
+        code: "DEPENDENCY_READY",
+        fromState: state(
+          "WAITING_DEPENDENCY",
+          BLOCKED_STATE_ID,
+          "WAITING",
+          false,
+          "阻塞处理中",
+        ),
+        fromStateId: BLOCKED_STATE_ID,
+        id: UNBLOCK_ACTION_ID,
+        name: "依赖就绪",
+        toState: state("IN_PROGRESS", IN_PROGRESS_STATE_ID, "IN_PROGRESS"),
+        toStateId: IN_PROGRESS_STATE_ID,
+      }),
+    );
+
+    const blocked = await subject.service.executeAction(
+      ACTOR_ID,
+      WORK_ITEM_ID,
+      BLOCK_ACTION_ID,
+      {
+        comment: "等待接口联调",
+        formValues: {},
+      },
+    );
+
+    expect(blocked).toMatchObject({
+      blockedReason: "等待接口联调",
+      currentStateId: BLOCKED_STATE_ID,
+      statusCategory: "WAITING",
+    });
+    expect(blocked.blockedAt).toBeDefined();
+
+    const unblocked = await subject.service.executeAction(
+      ACTOR_ID,
+      WORK_ITEM_ID,
+      UNBLOCK_ACTION_ID,
+      {
+        formValues: {},
+      },
+    );
+
+    expect(unblocked).toMatchObject({
+      currentStateId: IN_PROGRESS_STATE_ID,
+      statusCategory: "IN_PROGRESS",
+    });
+    expect(unblocked.blockedReason).toBeUndefined();
+    expect(unblocked.blockedAt).toBeUndefined();
+    expect(subject.repository.timelineEvents[0]).toMatchObject({
+      after: {
+        blockedReason: "等待接口联调",
+      },
+      metadata: {
+        actionCode: "ESCALATE_DEPENDENCY",
+      },
+    });
+    expect(subject.repository.timelineEvents[1]).toMatchObject({
+      after: {
+        blockedAt: null,
+        blockedReason: null,
+      },
+      metadata: {
+        actionCode: "DEPENDENCY_READY",
+      },
+    });
+  });
+
   it("validates USER form fields against active space members", async () => {
     const subject = createSubject("TESTER");
     subject.repository.actions.set(
@@ -1029,12 +1122,14 @@ function state(
   id: string,
   category: ExecutableWorkflowAction["toState"]["category"],
   isEnd = false,
+  name = code,
 ) {
   return {
     category,
     code,
     id,
     isEnd,
+    name,
   };
 }
 

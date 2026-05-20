@@ -41,6 +41,7 @@ export type ExecutableWorkflowActionFormField = {
 export type ExecutableWorkflowState = {
   id: string;
   code: string;
+  name: string;
   category: StatusCategory;
   isEnd: boolean;
 };

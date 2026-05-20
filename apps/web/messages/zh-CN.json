@@ -3074,6 +3074,13 @@
       },
       "disableMember": {
         "errorTitle": "禁用失败"
+      },
+      "deleteOrphanTag": {
+        "title": "删除孤儿标签",
+        "description": "确定要删除 {name} 吗？删除后无法恢复。",
+        "cancel": "取消",
+        "submit": "删除",
+        "submitting": "删除中…"
       }
     }
   },

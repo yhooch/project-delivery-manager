@@ -26,6 +26,7 @@ import type {
   ResolvedTargetContext,
   ResolveTargetOptions,
   TargetRecord,
+  TargetWritePolicy,
 } from "./target.types";
 
 const REQUIREMENT_READ_ALL_ROLES = new Set<SpaceRole>([
@@ -94,7 +95,12 @@ export class TargetResolverService {
       throwTargetNotFound(targetType, options.notFoundCode);
     }
 
-    const canWrite = await this.canWriteTarget(actorUserId, target, access.role);
+    const canWrite = await this.canWriteTarget(
+      actorUserId,
+      target,
+      access.role,
+      options.writePolicy ?? "default",
+    );
 
     if (options.access === "write" && !canWrite) {
       await this.auditTargetAccessDenied(actorUserId, target, {
@@ -334,9 +340,14 @@ export class TargetResolverService {
     actorUserId: string,
     target: TargetRecord,
     role: SpaceRole,
+    policy: TargetWritePolicy,
   ) {
     if (role === "VIEWER") {
       return false;
+    }
+
+    if (policy === "objectUpdate") {
+      return this.canUpdateTarget(actorUserId, target, role);
     }
 
     switch (target.targetType) {
@@ -373,6 +384,32 @@ export class TargetResolverService {
           target.targetId,
           actorUserId,
         );
+    }
+  }
+
+  private async canUpdateTarget(
+    actorUserId: string,
+    target: TargetRecord,
+    role: SpaceRole,
+  ) {
+    switch (target.targetType) {
+      case "SPACE":
+      case "VERSION":
+      case "WORK_ITEM":
+      case "INTAKE_ITEM":
+        return MANAGER_ROLES.has(role);
+      case "REQUIREMENT":
+        if (!REQUIREMENT_WRITE_ALL_ROLES.has(role)) {
+          return false;
+        }
+
+        return target.isDraftRequirement
+          ? this.isRequirementParticipant(
+              target.spaceId,
+              target.targetId,
+              actorUserId,
+            )
+          : true;
     }
   }
 

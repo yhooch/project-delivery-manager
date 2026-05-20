@@ -8,6 +8,7 @@ import type {
 } from "@project-delivery/shared";
 
 import { ApiException } from "../../http/api-exception";
+import { AuditService } from "../audit/audit.service";
 import type { RequestMetadata } from "../auth/auth-session.types";
 import { TargetResolverService } from "../target/target-resolver.service";
 import { TAG_REPOSITORY, type TagRepository } from "./tag.repository";
@@ -19,6 +20,8 @@ export class TagAssignmentService {
     private readonly tags: TagRepository,
     @Inject(TargetResolverService)
     private readonly targets: TargetResolverService,
+    @Inject(AuditService)
+    private readonly audit: AuditService,
   ) {}
 
   async get(
@@ -63,8 +66,15 @@ export class TagAssignmentService {
           operation: "replaceTagAssignments",
         },
         notFoundCode: "TAG_TARGET_INVALID",
+        writePolicy: "objectUpdate",
       },
     );
+    const beforeTags = await this.tags.listTagsByTarget({
+      organizationId: target.organizationId,
+      spaceId: target.spaceId,
+      targetId: target.targetId,
+      targetType: input.targetType,
+    });
     const tags = await this.tags.replaceAssignments({
       assignedById: actorUserId,
       organizationId: target.organizationId,
@@ -72,6 +82,24 @@ export class TagAssignmentService {
       tagIds: input.tagIds,
       targetId: target.targetId,
       targetType: input.targetType,
+    });
+
+    await this.audit.record({
+      actionType: "UPDATE",
+      actorId: actorUserId,
+      after: { tags },
+      before: { tags: beforeTags },
+      metadata: {
+        operation: "REPLACE_TAG_ASSIGNMENTS",
+        tagIds: input.tagIds,
+        targetId: input.targetId,
+        targetType: input.targetType,
+      },
+      ...metadata,
+      organizationId: target.organizationId,
+      spaceId: target.spaceId,
+      targetId: target.targetId,
+      targetType: target.targetType,
     });
 
     return {

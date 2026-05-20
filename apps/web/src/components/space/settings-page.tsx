@@ -40,6 +40,14 @@ import { useSession } from "../providers/session-provider";
 import { Avatar, AvatarFallback } from "../ui/avatar";
 import { Badge } from "../ui/badge";
 import { Button } from "../ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "../ui/dialog";
 import { Input } from "../ui/input";
 import { Label } from "../ui/label";
 import { SelectMenu } from "../ui/select-menu";
@@ -124,6 +132,9 @@ export function SpaceSettingsPage() {
     null,
   );
   const [pendingTagId, setPendingTagId] = useState<string | null>(null);
+  const [tagDeleteCandidate, setTagDeleteCandidate] = useState<TagDto | null>(
+    null,
+  );
   const loadSequenceRef = useRef(0);
   const tagLoadSequenceRef = useRef(0);
 
@@ -274,6 +285,7 @@ export function SpaceSettingsPage() {
     setTagErrorKey(null);
     setTagActionErrorKey(null);
     setPendingTagId(null);
+    setTagDeleteCandidate(null);
   }, [spaceId]);
 
   useEffect(() => {
@@ -435,8 +447,9 @@ export function SpaceSettingsPage() {
     }
   }
 
-  async function onDeleteTag(tag: TagDto) {
-    if (!canDeleteOrphanTags || !isTagOrphan(tag)) {
+  async function onConfirmDeleteTag() {
+    const tag = tagDeleteCandidate;
+    if (!tag || !canDeleteOrphanTags || !isTagOrphan(tag)) {
       return;
     }
 
@@ -451,7 +464,16 @@ export function SpaceSettingsPage() {
       await loadTags();
     } finally {
       setPendingTagId(null);
+      setTagDeleteCandidate(null);
     }
+  }
+
+  function onTagDeleteDialogOpenChange(open: boolean) {
+    if (open || pendingTagId) {
+      return;
+    }
+
+    setTagDeleteCandidate(null);
   }
 
   const headerNode = (
@@ -967,7 +989,10 @@ export function SpaceSettingsPage() {
                               size="icon-sm"
                               data-testid={`space-settings-tag-delete-${tag.id}`}
                               disabled={pendingTagId === tag.id}
-                              onClick={() => void onDeleteTag(tag)}
+                              onClick={() => {
+                                setTagActionErrorKey(null);
+                                setTagDeleteCandidate(tag);
+                              }}
                               aria-label={t("tags.actions.delete", {
                                 name: tag.displayName,
                               })}
@@ -1200,6 +1225,42 @@ export function SpaceSettingsPage() {
         open={editRoleMember !== null}
         spaceId={spaceId}
       />
+
+      <Dialog
+        onOpenChange={onTagDeleteDialogOpenChange}
+        open={tagDeleteCandidate !== null}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{t("dialog.deleteOrphanTag.title")}</DialogTitle>
+            <DialogDescription>
+              {t("dialog.deleteOrphanTag.description", {
+                name: tagDeleteCandidate?.displayName ?? "",
+              })}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              disabled={pendingTagId !== null}
+              onClick={() => setTagDeleteCandidate(null)}
+              type="button"
+              variant="secondary"
+            >
+              {t("dialog.deleteOrphanTag.cancel")}
+            </Button>
+            <Button
+              disabled={pendingTagId !== null}
+              onClick={() => void onConfirmDeleteTag()}
+              type="button"
+              variant="destructive"
+            >
+              {pendingTagId
+                ? t("dialog.deleteOrphanTag.submitting")
+                : t("dialog.deleteOrphanTag.submit")}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

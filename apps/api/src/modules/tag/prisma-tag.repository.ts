@@ -150,16 +150,37 @@ export class PrismaTagRepository implements TagRepository {
 
       const deletedAt = new Date();
 
-      await tx.tag.updateMany({
+      const deleted = await tx.tag.updateMany({
         data: {
           deletedAt,
           updatedById: input.updatedById,
         },
         where: {
+          assignments: {
+            none: {
+              deletedAt: null,
+            },
+          },
           deletedAt: null,
           id: input.tagId,
         },
       });
+
+      if (deleted.count === 0) {
+        const stillActive = await tx.tag.findFirst({
+          select: {
+            id: true,
+          },
+          where: {
+            deletedAt: null,
+            id: input.tagId,
+          },
+        });
+
+        return stillActive
+          ? ({ status: "in_use" as const })
+          : ({ status: "not_found" as const });
+      }
 
       return {
         status: "deleted" as const,

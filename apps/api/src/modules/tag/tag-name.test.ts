@@ -20,6 +20,7 @@ describe("tag name helpers", () => {
       "release blocker",
     );
     expect(normalizeTagSearchQuery("   ")).toBeUndefined();
+    expect(normalizeTagSearchQuery("!!!")).toBe("!!!");
   });
 
   it("assigns deterministic controlled color keys", () => {

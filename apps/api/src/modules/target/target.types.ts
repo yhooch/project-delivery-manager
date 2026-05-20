@@ -8,11 +8,13 @@ import type {
 import type { RequestMetadata } from "../auth/auth-session.types";
 
 export type TargetAccessMode = "read" | "write";
+export type TargetWritePolicy = "default" | "objectUpdate";
 
 export type ResolveTargetOptions = {
   access?: TargetAccessMode;
   hideInaccessible?: boolean;
   notFoundCode?: ApiErrorCode;
+  writePolicy?: TargetWritePolicy;
   audit?: RequestMetadata & {
     operation: string;
   };

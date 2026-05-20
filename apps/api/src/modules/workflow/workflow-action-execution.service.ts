@@ -29,10 +29,9 @@ import {
   WORKFLOW_ACTION_EXECUTION_REPOSITORY,
   type WorkflowActionExecutionRepository,
 } from "./workflow-action-execution.repository";
+import { isBlockedWorkflowState } from "./workflow-state-semantics";
 
 const ULID_PATTERN = /^[0-9A-HJKMNP-TV-Z]{26}$/u;
-const BLOCK_ACTION_CODES = new Set(["MARK_BLOCKED"]);
-const UNBLOCK_ACTION_CODES = new Set(["RESOLVE_BLOCKED"]);
 const BUG_FIX_NOTE_KEYS = new Set(["fixNote", "fixSummary"]);
 const BUG_REGRESSION_RESULT_KEYS = new Set([
   "regressionResult",
@@ -236,7 +235,12 @@ export class WorkflowActionExecutionService {
           input,
         );
         const now = new Date();
-        const blockedPatch = buildBlockedPatch(action, formValues, now);
+        const blockedPatch = buildBlockedPatch(
+          action,
+          formValues,
+          now,
+          comment,
+        );
         const bugPatch = buildBugDetailPatch(
           workItem,
           formValues,
@@ -649,38 +653,46 @@ function buildBlockedPatch(
   action: ExecutableWorkflowAction,
   formValues: Record<string, string | number>,
   now: Date,
+  comment: string | undefined,
 ): {
   blockedAt?: Date | null;
   blockedReason?: string | null;
 } {
-  if (BLOCK_ACTION_CODES.has(action.code)) {
-    const blockedReason = String(formValues.blockedReason ?? "").trim();
+  const fromBlocked = isBlockedWorkflowState(action.fromState);
+  const toBlocked = isBlockedWorkflowState(action.toState);
 
-    if (!blockedReason) {
-      throw new ApiException(
-        "WORKFLOW_ACTION_FORM_INVALID",
-        "blockedReason is required when marking a work item as blocked",
-        HttpStatus.BAD_REQUEST,
-        {
-          field: "blockedReason",
-        },
-      );
-    }
-
+  if (toBlocked && !fromBlocked) {
     return {
       blockedAt: now,
-      blockedReason,
+      blockedReason: resolveBlockedReason(formValues, comment) ?? null,
     };
   }
 
-  if (UNBLOCK_ACTION_CODES.has(action.code)) {
+  if (!toBlocked && fromBlocked) {
     return {
       blockedAt: null,
       blockedReason: null,
     };
   }
 
+  if (toBlocked) {
+    const blockedReason = resolveBlockedReason(formValues, comment);
+
+    if (blockedReason !== undefined) {
+      return {
+        blockedReason,
+      };
+    }
+  }
+
   return {};
+}
+
+function resolveBlockedReason(
+  formValues: Record<string, string | number>,
+  comment: string | undefined,
+) {
+  return getOptionalString(formValues.blockedReason)?.trim() || comment;
 }
 
 function buildClosedPatch(

@@ -399,6 +399,7 @@ type PrismaBugDetailRecord = {
 type PrismaWorkflowStateRecord = {
   id: string;
   code: string;
+  name: string;
   category: ExecutableWorkflowState["category"];
   isEnd: boolean;
 };
@@ -489,6 +490,7 @@ function toExecutableState(
     code: record.code,
     id: record.id,
     isEnd: record.isEnd,
+    name: record.name,
   };
 }
 

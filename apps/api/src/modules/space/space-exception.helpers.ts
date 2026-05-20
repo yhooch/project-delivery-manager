@@ -4,6 +4,14 @@ import type {
   ViewExceptionType,
 } from "@project-delivery/shared";
 
+import {
+  isBlockedWorkflowState,
+  isPendingConfirmWorkflowState,
+  isPendingRegressionWorkflowState,
+  isTerminalStatusCategory,
+  WORKFLOW_STATE_SEMANTIC_RULES,
+} from "../workflow/workflow-state-semantics";
+
 export const SPACE_EXCEPTION_TYPES: readonly ViewExceptionType[] = [
   "overdue",
   "blocked",
@@ -12,19 +20,7 @@ export const SPACE_EXCEPTION_TYPES: readonly ViewExceptionType[] = [
   "stale",
 ];
 
-export const SPACE_EXCEPTION_STATE_RULES = {
-  blockedTokens: ["blocked", "阻塞"] as const,
-  pendingConfirmTokens: ["confirm", "待确认", "确认"] as const,
-  pendingRegressionCodes: [
-    "pending_regression",
-    "ready_for_regression",
-  ] as const,
-  pendingRegressionNames: [
-    "Pending regression",
-    "Ready for regression",
-    "待回归",
-  ] as const,
-};
+export const SPACE_EXCEPTION_STATE_RULES = WORKFLOW_STATE_SEMANTIC_RULES;
 
 export type SpaceExceptionWorkItemRecord = {
   blockedAt: Date | null;
@@ -111,17 +107,10 @@ export function buildSpaceExceptionSignals(
 }
 
 export function isBlockedRecord(record: SpaceExceptionWorkItemRecord) {
-  return (
-    !isTerminalStatusCategory(record.statusCategory) &&
-    (includesAnyToken(
-      record.currentState.code,
-      SPACE_EXCEPTION_STATE_RULES.blockedTokens,
-    ) ||
-      includesAnyToken(
-        record.currentState.name,
-        SPACE_EXCEPTION_STATE_RULES.blockedTokens,
-      ))
-  );
+  return isBlockedWorkflowState({
+    ...record.currentState,
+    statusCategory: record.statusCategory,
+  });
 }
 
 export function isOverdueRecord(
@@ -137,16 +126,11 @@ export function isOverdueRecord(
 
 export function isPendingConfirmRecord(record: SpaceExceptionWorkItemRecord) {
   return (
-    !isTerminalStatusCategory(record.statusCategory) &&
     !isPendingRegressionRecord(record) &&
-    (includesAnyToken(
-      record.currentState.code,
-      SPACE_EXCEPTION_STATE_RULES.pendingConfirmTokens,
-    ) ||
-      includesAnyToken(
-        record.currentState.name,
-        SPACE_EXCEPTION_STATE_RULES.pendingConfirmTokens,
-      ))
+    isPendingConfirmWorkflowState({
+      ...record.currentState,
+      statusCategory: record.statusCategory,
+    })
   );
 }
 
@@ -161,35 +145,13 @@ export function isPendingRegressionRecord(
       !record.bugDetail.deletedAt &&
       !record.bugDetail.regressionAt,
     ) &&
-    (matchesAnyValue(
-      record.currentState.code,
-      SPACE_EXCEPTION_STATE_RULES.pendingRegressionCodes,
-    ) ||
-      matchesAnyValue(
-        record.currentState.name,
-        SPACE_EXCEPTION_STATE_RULES.pendingRegressionNames,
-      ))
+    isPendingRegressionWorkflowState({
+      ...record.currentState,
+      statusCategory: record.statusCategory,
+    })
   );
-}
-
-export function isTerminalStatusCategory(statusCategory: StatusCategory) {
-  return statusCategory === "DONE" || statusCategory === "TERMINATED";
 }
 
 export function elapsedDays(from: Date, to: Date) {
   return Math.max(0, Math.floor((to.getTime() - from.getTime()) / 86_400_000));
-}
-
-function includesToken(value: string, token: string) {
-  return value.toLowerCase().includes(token.toLowerCase());
-}
-
-function includesAnyToken(value: string, tokens: readonly string[]) {
-  return tokens.some((token) => includesToken(value, token));
-}
-
-function matchesAnyValue(value: string, values: readonly string[]) {
-  return values.some(
-    (candidate) => value.toLowerCase() === candidate.toLowerCase(),
-  );
 }
