@@ -17,10 +17,8 @@ services:
     volumes:
       - postgres-data:/var/lib/postgresql/data
     healthcheck:
-      test:
-        - CMD-SHELL
-        - >-
-          pg_isready -U "$${POSTGRES_USER}" -d "$${POSTGRES_DB}"
+      test: >-
+        pg_isready -U "$${POSTGRES_USER}" -d "$${POSTGRES_DB}"
       interval: 5s
       timeout: 5s
       retries: 20
@@ -51,28 +49,13 @@ services:
       WEB_APP_URL: ${WEB_APP_URL:?WEB_APP_URL is required}
       TZ: ${MINIO_TIMEZONE:-CST-8}
     entrypoint: ["/bin/sh", "-c"]
-    command: |
-      set -eu
-      until mc alias set prod http://minio:9000 "$$MINIO_ACCESS_KEY" "$$MINIO_SECRET_KEY"; do
-        sleep 2
-      done
-      mc mb --ignore-existing "prod/$$MINIO_BUCKET"
-      cat >/tmp/cors.xml <<EOF
-      <CORSConfiguration>
-        <CORSRule>
-          <AllowedOrigin>$$WEB_APP_URL</AllowedOrigin>
-          <AllowedMethod>GET</AllowedMethod>
-          <AllowedMethod>PUT</AllowedMethod>
-          <AllowedMethod>POST</AllowedMethod>
-          <AllowedMethod>DELETE</AllowedMethod>
-          <AllowedMethod>HEAD</AllowedMethod>
-          <AllowedHeader>*</AllowedHeader>
-          <ExposeHeader>ETag</ExposeHeader>
-          <MaxAgeSeconds>3000</MaxAgeSeconds>
-        </CORSRule>
-      </CORSConfiguration>
-      EOF
-      mc cors set "prod/$$MINIO_BUCKET" /tmp/cors.xml
+    command:
+      - |
+        set -eu
+        until mc alias set prod http://minio:9000 "$$MINIO_ACCESS_KEY" "$$MINIO_SECRET_KEY"; do
+          sleep 2
+        done
+        mc mb --ignore-existing "prod/$$MINIO_BUCKET"
     restart: "no"
 
   api:
@@ -105,10 +88,8 @@ services:
       minio-init:
         condition: service_completed_successfully
     healthcheck:
-      test:
-        - CMD-SHELL
-        - >-
-          node -e "fetch('http://127.0.0.1:3001/api/v1/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
+      test: >-
+        node -e "fetch('http://127.0.0.1:3001/api/v1/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
       interval: 10s
       timeout: 5s
       retries: 12
