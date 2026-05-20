@@ -3075,10 +3075,13 @@ function AttachmentsTab({
     string | null
   >(null);
   const [uploading, setUploading] = useState(false);
+  const [dragDepth, setDragDepth] = useState(0);
   const [openingAttachmentId, setOpeningAttachmentId] = useState<string | null>(
     null,
   );
+  const uploadingRef = useRef(false);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const dropZoneRef = useRef<HTMLDivElement | null>(null);
 
   const currentAttachmentsState =
     attachmentsState.requestKey === requestKey
@@ -3162,50 +3165,79 @@ function AttachmentsTab({
     setUploadError(null);
     setAttachmentActionError(null);
     setUploading(false);
+    uploadingRef.current = false;
+    setDragDepth(0);
     setOpeningAttachmentId(null);
   }, [requestKey]);
 
-  const handleFileChange = useCallback(
-    async (event: React.ChangeEvent<HTMLInputElement>) => {
-      const file = event.target.files?.[0];
-      event.target.value = "";
-      if (!file) {
-        return;
-      }
-      if (!canUploadAttachment) {
+  useEffect(() => {
+    if (canUploadAttachment && spaceId) {
+      dropZoneRef.current?.focus({ preventScroll: true });
+    }
+  }, [canUploadAttachment, requestKey, spaceId]);
+
+  const uploadFiles = useCallback(
+    async (files: File[]) => {
+      if (
+        files.length === 0 ||
+        !canUploadAttachment ||
+        !spaceId ||
+        uploadingRef.current
+      ) {
         return;
       }
       const uploadRequestKey = requestKey;
+      let nextAttachmentCount = attachments.length;
+      let uploadedAny = false;
+      let latestError: string | null = null;
+
       setUploadError(null);
       setAttachmentActionError(null);
+      uploadingRef.current = true;
       setUploading(true);
       try {
-        await uploadAttachment({
-          existingAttachmentCount: attachments.length,
-          file,
-          targetId: item.id,
-          targetType: "WORK_ITEM",
-        });
-        if (latestRequestKeyRef.current !== uploadRequestKey) {
-          return;
+        for (const file of files) {
+          try {
+            await uploadAttachment({
+              existingAttachmentCount: nextAttachmentCount,
+              file,
+              targetId: item.id,
+              targetType: "WORK_ITEM",
+            });
+            if (latestRequestKeyRef.current !== uploadRequestKey) {
+              return;
+            }
+            nextAttachmentCount += 1;
+            uploadedAny = true;
+          } catch (err) {
+            if (latestRequestKeyRef.current !== uploadRequestKey) {
+              return;
+            }
+            if (err instanceof AttachmentUploadError) {
+              latestError = tApiError(
+                `forms.attachments.uploadErrors.${err.code}`,
+              );
+              if (err.code === "ATTACHMENT_LIMIT_EXCEEDED") {
+                break;
+              }
+            } else {
+              latestError = tApiError(getApiErrorMessageKey(err));
+            }
+          }
         }
-        await fetchAttachments();
-        if (latestRequestKeyRef.current === uploadRequestKey) {
+
+        if (uploadedAny) {
+          await fetchAttachments();
+        }
+        if (latestRequestKeyRef.current === uploadRequestKey && uploadedAny) {
           onTimelineRefresh?.();
         }
-      } catch (err) {
-        if (latestRequestKeyRef.current !== uploadRequestKey) {
-          return;
-        }
-        if (err instanceof AttachmentUploadError) {
-          setUploadError(
-            tApiError(`forms.attachments.uploadErrors.${err.code}`),
-          );
-        } else {
-          setUploadError(tApiError(getApiErrorMessageKey(err)));
+        if (latestRequestKeyRef.current === uploadRequestKey && latestError) {
+          setUploadError(latestError);
         }
       } finally {
         if (latestRequestKeyRef.current === uploadRequestKey) {
+          uploadingRef.current = false;
           setUploading(false);
         }
       }
@@ -3217,8 +3249,120 @@ function AttachmentsTab({
       item.id,
       onTimelineRefresh,
       requestKey,
+      spaceId,
       tApiError,
     ],
+  );
+
+  const handleFileChange = useCallback(
+    (event: React.ChangeEvent<HTMLInputElement>) => {
+      const files = getTransferFiles(event.target.files);
+      event.target.value = "";
+      void uploadFiles(files);
+    },
+    [uploadFiles],
+  );
+
+  const handlePaste = useCallback(
+    (event: React.ClipboardEvent<HTMLDivElement>) => {
+      const files = getTransferFiles(event.clipboardData?.files);
+
+      if (
+        files.length === 0 ||
+        !canUploadAttachment ||
+        !spaceId ||
+        uploading ||
+        uploadingRef.current
+      ) {
+        return;
+      }
+
+      event.preventDefault();
+      void uploadFiles(files);
+    },
+    [canUploadAttachment, spaceId, uploadFiles, uploading],
+  );
+
+  const handleDragEnter = useCallback(
+    (event: React.DragEvent<HTMLDivElement>) => {
+      if (!hasTransferFiles(event.dataTransfer)) {
+        return;
+      }
+      if (
+        !canUploadAttachment ||
+        !spaceId ||
+        uploading ||
+        uploadingRef.current
+      ) {
+        return;
+      }
+
+      event.preventDefault();
+      setDragDepth((depth) => depth + 1);
+    },
+    [canUploadAttachment, spaceId, uploading],
+  );
+
+  const handleDragOver = useCallback(
+    (event: React.DragEvent<HTMLDivElement>) => {
+      if (!hasTransferFiles(event.dataTransfer)) {
+        return;
+      }
+      if (
+        !canUploadAttachment ||
+        !spaceId ||
+        uploading ||
+        uploadingRef.current
+      ) {
+        return;
+      }
+
+      event.preventDefault();
+      event.dataTransfer.dropEffect = "copy";
+    },
+    [canUploadAttachment, spaceId, uploading],
+  );
+
+  const handleDragLeave = useCallback(
+    (event: React.DragEvent<HTMLDivElement>) => {
+      if (!hasTransferFiles(event.dataTransfer)) {
+        return;
+      }
+      if (
+        !canUploadAttachment ||
+        !spaceId ||
+        uploading ||
+        uploadingRef.current
+      ) {
+        return;
+      }
+
+      event.preventDefault();
+      setDragDepth((depth) => Math.max(0, depth - 1));
+    },
+    [canUploadAttachment, spaceId, uploading],
+  );
+
+  const handleDrop = useCallback(
+    (event: React.DragEvent<HTMLDivElement>) => {
+      if (!hasTransferFiles(event.dataTransfer)) {
+        return;
+      }
+      if (
+        !canUploadAttachment ||
+        !spaceId ||
+        uploading ||
+        uploadingRef.current
+      ) {
+        return;
+      }
+
+      event.preventDefault();
+      const files = getTransferFiles(event.dataTransfer.files);
+      setDragDepth(0);
+      void uploadFiles(files);
+    },
+    [canUploadAttachment, spaceId, uploadFiles, uploading],
   );
 
   const handleAttachmentAction = useCallback(
@@ -3263,6 +3407,8 @@ function AttachmentsTab({
     [organizationId, requestKey, spaceId, tApiError],
   );
 
+  const dropActive = dragDepth > 0 && canUploadAttachment && Boolean(spaceId);
+
   return (
     <div className="flex h-full flex-col">
       <div className="flex items-center justify-between border-b border-border px-5 py-2.5">
@@ -3274,6 +3420,7 @@ function AttachmentsTab({
             <input
               ref={fileInputRef}
               type="file"
+              multiple
               data-testid="task-attachments-file-input"
               className="hidden"
               onChange={handleFileChange}
@@ -3285,6 +3432,7 @@ function AttachmentsTab({
               className="h-7 text-xs"
               data-testid="task-attachments-upload-button"
               disabled={uploading || !spaceId}
+              title={t("attachments.uploadHint")}
               onClick={() => fileInputRef.current?.click()}
             >
               {uploading ? (
@@ -3309,7 +3457,31 @@ function AttachmentsTab({
           {uploadError ?? attachmentActionError}
         </p>
       )}
-      <div className="flex-1 overflow-y-auto">
+      <div
+        ref={dropZoneRef}
+        aria-label={
+          canUploadAttachment ? t("attachments.dropZoneLabel") : undefined
+        }
+        className={cn(
+          "relative flex-1 overflow-y-auto outline-none transition-colors",
+          canUploadAttachment &&
+            spaceId &&
+            "focus-visible:ring-2 focus-visible:ring-primary/40",
+          dropActive && "bg-primary/5 ring-1 ring-inset ring-primary/40",
+        )}
+        data-testid="task-attachments-drop-zone"
+        tabIndex={canUploadAttachment && spaceId ? 0 : undefined}
+        onDragEnter={handleDragEnter}
+        onDragLeave={handleDragLeave}
+        onDragOver={handleDragOver}
+        onDrop={handleDrop}
+        onPaste={handlePaste}
+      >
+        {dropActive ? (
+          <div className="pointer-events-none absolute inset-2 z-10 flex items-center justify-center rounded-md border border-dashed border-primary/60 bg-background/85 text-xs font-medium text-primary shadow-sm">
+            {t("attachments.dropActive")}
+          </div>
+        ) : null}
         {loading ? (
           <LoadingState label={t("attachments.loading")} />
         ) : error ? (
@@ -3418,6 +3590,23 @@ function AttachmentsTab({
         )}
       </div>
     </div>
+  );
+}
+
+function getTransferFiles(fileList: FileList | null | undefined): File[] {
+  return Array.from(fileList ?? []);
+}
+
+function hasTransferFiles(
+  dataTransfer: DataTransfer | null | undefined,
+): boolean {
+  if (!dataTransfer) {
+    return false;
+  }
+
+  return (
+    Array.from(dataTransfer.types ?? []).includes("Files") ||
+    dataTransfer.files.length > 0
   );
 }
 

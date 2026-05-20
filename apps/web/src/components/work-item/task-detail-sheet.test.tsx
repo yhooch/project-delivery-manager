@@ -21,6 +21,15 @@ function getSelectOptionLabels(select: HTMLSelectElement): string[] {
   return Array.from(select.options, (option) => option.textContent ?? "");
 }
 
+function makeFileTransfer(files: File[]) {
+  return {
+    files,
+    getData: () => "",
+    items: [],
+    types: ["Files"],
+  };
+}
+
 // Stable translator: same memoized fn per namespace across renders.
 const { rootMessages, translatorCache } = vi.hoisted(() => ({
   rootMessages: new Map<string, string>(),
@@ -2324,6 +2333,112 @@ describe("TaskDetailSheet", () => {
     );
   });
 
+  it("uploads files pasted into the attachments tab", async () => {
+    listAttachmentsMock.mockResolvedValue({ items: [], total: 0 });
+    uploadAttachmentMock.mockResolvedValueOnce(undefined);
+
+    render(
+      <TaskDetailSheet item={makeViewModel()} open onOpenChange={() => {}} />,
+    );
+
+    await activateTab(/attachments/i);
+    await waitFor(() => expect(listAttachmentsMock).toHaveBeenCalled());
+
+    const dropZone = screen.getByTestId("task-attachments-drop-zone");
+    const file = new File(["screenshot"], "screenshot.png", {
+      type: "image/png",
+    });
+    fireEvent.paste(dropZone, {
+      clipboardData: makeFileTransfer([file]),
+    });
+
+    await waitFor(() => expect(uploadAttachmentMock).toHaveBeenCalledTimes(1));
+    expect(uploadAttachmentMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        file,
+        targetId: "01ARZ3NDEKTSV4RRFFQ69G5FA1",
+        targetType: "WORK_ITEM",
+      }),
+    );
+  });
+
+  it("uploads dropped files and shows drop feedback", async () => {
+    listAttachmentsMock.mockResolvedValue({ items: [], total: 0 });
+    uploadAttachmentMock.mockResolvedValueOnce(undefined);
+
+    render(
+      <TaskDetailSheet item={makeViewModel()} open onOpenChange={() => {}} />,
+    );
+
+    await activateTab(/attachments/i);
+    await waitFor(() => expect(listAttachmentsMock).toHaveBeenCalled());
+
+    const dropZone = screen.getByTestId("task-attachments-drop-zone");
+    const file = new File(["dragged"], "dragged.pdf", {
+      type: "application/pdf",
+    });
+    fireEvent.dragEnter(dropZone, {
+      dataTransfer: makeFileTransfer([file]),
+    });
+
+    expect(
+      await screen.findByText("taskDetail.attachments.dropActive"),
+    ).toBeInTheDocument();
+
+    fireEvent.drop(dropZone, {
+      dataTransfer: makeFileTransfer([file]),
+    });
+
+    await waitFor(() => expect(uploadAttachmentMock).toHaveBeenCalledTimes(1));
+    expect(uploadAttachmentMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        file,
+        targetId: "01ARZ3NDEKTSV4RRFFQ69G5FA1",
+        targetType: "WORK_ITEM",
+      }),
+    );
+    expect(
+      screen.queryByText("taskDetail.attachments.dropActive"),
+    ).not.toBeInTheDocument();
+  });
+
+  it("uses the WORK_ITEM attachment target when the detail sheet shows a bug", async () => {
+    listAttachmentsMock.mockResolvedValue({ items: [], total: 0 });
+    uploadAttachmentMock.mockResolvedValueOnce(undefined);
+
+    render(
+      <TaskDetailSheet
+        item={makeViewModel({
+          id: "01ARZ3NDEKTSV4RRFFQ69G5FBG",
+          type: "BUG",
+          title: "Bug attachment test",
+        })}
+        open
+        onOpenChange={() => {}}
+      />,
+    );
+
+    await activateTab(/attachments/i);
+    await waitFor(() => expect(listAttachmentsMock).toHaveBeenCalled());
+
+    const dropZone = screen.getByTestId("task-attachments-drop-zone");
+    const file = new File(["bug-shot"], "bug-shot.png", {
+      type: "image/png",
+    });
+    fireEvent.paste(dropZone, {
+      clipboardData: makeFileTransfer([file]),
+    });
+
+    await waitFor(() => expect(uploadAttachmentMock).toHaveBeenCalledTimes(1));
+    expect(uploadAttachmentMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        file,
+        targetId: "01ARZ3NDEKTSV4RRFFQ69G5FBG",
+        targetType: "WORK_ITEM",
+      }),
+    );
+  });
+
   it("refreshes the open timeline after an attachment upload succeeds", async () => {
     listTimelineMock
       .mockResolvedValueOnce({
@@ -2454,6 +2569,18 @@ describe("TaskDetailSheet", () => {
       }),
     ).not.toBeInTheDocument();
     expect(document.body.querySelector('input[type="file"]')).toBeNull();
+
+    const dropZone = screen.getByTestId("task-attachments-drop-zone");
+    const file = new File(["readonly"], "readonly.txt", {
+      type: "text/plain",
+    });
+    fireEvent.paste(dropZone, {
+      clipboardData: makeFileTransfer([file]),
+    });
+    fireEvent.drop(dropZone, {
+      dataTransfer: makeFileTransfer([file]),
+    });
+
     expect(uploadAttachmentMock).not.toHaveBeenCalled();
   });
 
