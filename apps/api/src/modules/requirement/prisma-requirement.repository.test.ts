@@ -8,10 +8,14 @@ describe("PrismaRequirementRepository", () => {
     const requirement = makeRequirement();
     const attachmentFindMany = vi.fn(async () => []);
     const workItemFindMany = vi.fn(async () => []);
+    const bugDetailFindMany = vi.fn(async () => []);
     const prisma = {
       client: {
         attachment: {
           findMany: attachmentFindMany,
+        },
+        bugDetail: {
+          findMany: bugDetailFindMany,
         },
         requirement: {
           findFirst: vi.fn(async () => requirement),
@@ -41,50 +45,33 @@ describe("PrismaRequirementRepository", () => {
       },
     });
     expect(workItemFindMany).toHaveBeenCalledWith({
-      include: {
-        bugDetail: {
-          select: {
-            relatedTask: {
-              select: {
-                organizationId: true,
-                requirementId: true,
-                spaceId: true,
-              },
-            },
-          },
-        },
-      },
       orderBy: [{ type: "asc" }, { createdAt: "asc" }],
+      select: expect.objectContaining({
+        assigneeId: true,
+        createdAt: true,
+        id: true,
+        organizationId: true,
+        requirementId: true,
+        spaceId: true,
+        statusCategory: true,
+        title: true,
+        type: true,
+        versionId: true,
+      }),
       where: {
         deletedAt: null,
         OR: [
           {
             organizationId: requirement.organizationId,
-            requirementId: requirement.id,
-            spaceId: requirement.spaceId,
-          },
-          {
-            bugDetail: {
-              is: {
-                deletedAt: null,
-                relatedTask: {
-                  is: {
-                    deletedAt: null,
-                    organizationId: requirement.organizationId,
-                    requirementId: requirement.id,
-                    spaceId: requirement.spaceId,
-                    type: "TASK",
-                  },
-                },
-              },
+            requirementId: {
+              in: [requirement.id],
             },
-            organizationId: requirement.organizationId,
             spaceId: requirement.spaceId,
-            type: "BUG",
           },
         ],
       },
     });
+    expect(bugDetailFindMany).not.toHaveBeenCalled();
   });
 
   it("scopes requirement list aggregate queries by each requirement tenant", async () => {
@@ -96,11 +83,15 @@ describe("PrismaRequirementRepository", () => {
     });
     const attachmentFindMany = vi.fn(async () => []);
     const workItemFindMany = vi.fn(async () => []);
+    const bugDetailFindMany = vi.fn(async () => []);
     const prisma = {
       client: {
         $transaction: vi.fn(async (queries) => Promise.all(queries)),
         attachment: {
           findMany: attachmentFindMany,
+        },
+        bugDetail: {
+          findMany: bugDetailFindMany,
         },
         objectParticipant: {
           findMany: vi.fn(async () => []),
@@ -149,74 +140,40 @@ describe("PrismaRequirementRepository", () => {
       },
     });
     expect(workItemFindMany).toHaveBeenCalledWith({
-      include: {
-        bugDetail: {
-          select: {
-            relatedTask: {
-              select: {
-                organizationId: true,
-                requirementId: true,
-                spaceId: true,
-              },
-            },
-          },
-        },
-      },
       orderBy: [{ type: "asc" }, { createdAt: "asc" }],
+      select: expect.objectContaining({
+        assigneeId: true,
+        createdAt: true,
+        id: true,
+        organizationId: true,
+        requirementId: true,
+        spaceId: true,
+        statusCategory: true,
+        title: true,
+        type: true,
+        versionId: true,
+      }),
       where: {
         deletedAt: null,
         OR: [
           {
             organizationId: first.organizationId,
-            requirementId: first.id,
+            requirementId: {
+              in: [first.id],
+            },
             spaceId: first.spaceId,
           },
           {
-            bugDetail: {
-              is: {
-                deletedAt: null,
-                relatedTask: {
-                  is: {
-                    deletedAt: null,
-                    organizationId: first.organizationId,
-                    requirementId: first.id,
-                    spaceId: first.spaceId,
-                    type: "TASK",
-                  },
-                },
-              },
-            },
-            organizationId: first.organizationId,
-            spaceId: first.spaceId,
-            type: "BUG",
-          },
-          {
             organizationId: second.organizationId,
-            requirementId: second.id,
-            spaceId: second.spaceId,
-          },
-          {
-            bugDetail: {
-              is: {
-                deletedAt: null,
-                relatedTask: {
-                  is: {
-                    deletedAt: null,
-                    organizationId: second.organizationId,
-                    requirementId: second.id,
-                    spaceId: second.spaceId,
-                    type: "TASK",
-                  },
-                },
-              },
+            requirementId: {
+              in: [second.id],
             },
-            organizationId: second.organizationId,
             spaceId: second.spaceId,
-            type: "BUG",
           },
         ],
       },
     });
+    expect(bugDetailFindMany).not.toHaveBeenCalled();
   });
 
   it("applies tag filters to requirement list and status counts", async () => {
@@ -345,6 +302,7 @@ describe("PrismaRequirementRepository", () => {
     };
     const attachmentFindMany = vi.fn(async () => []);
     const workItemFindMany = vi.fn(async () => []);
+    const bugDetailFindMany = vi.fn(async () => []);
     const tx = {
       requirement: {
         findFirst: vi
@@ -362,6 +320,9 @@ describe("PrismaRequirementRepository", () => {
         $transaction: vi.fn(async (handler) => handler(tx)),
         attachment: {
           findMany: attachmentFindMany,
+        },
+        bugDetail: {
+          findMany: bugDetailFindMany,
         },
         tagAssignment: {
           findMany: vi.fn(async () => []),
@@ -398,18 +359,16 @@ describe("PrismaRequirementRepository", () => {
           OR: expect.arrayContaining([
             expect.objectContaining({
               organizationId: saved.organizationId,
-              requirementId: saved.id,
+              requirementId: {
+                in: [saved.id],
+              },
               spaceId: saved.spaceId,
-            }),
-            expect.objectContaining({
-              organizationId: saved.organizationId,
-              spaceId: saved.spaceId,
-              type: "BUG",
             }),
           ]),
         }),
       }),
     );
+    expect(bugDetailFindMany).not.toHaveBeenCalled();
   });
 
   it("includes bugs related through requirement tasks and de-duplicates direct matches", async () => {
@@ -443,10 +402,24 @@ describe("PrismaRequirementRepository", () => {
         },
       },
     });
+    const workItemFindMany = vi.fn(async () => [task, directAndRelatedBug]);
+    const bugDetailFindMany = vi.fn(async () => [
+      {
+        relatedTaskId: task.id,
+        workItem: relatedBug,
+      },
+      {
+        relatedTaskId: task.id,
+        workItem: directAndRelatedBug,
+      },
+    ]);
     const prisma = {
       client: {
         attachment: {
           findMany: vi.fn(async () => []),
+        },
+        bugDetail: {
+          findMany: bugDetailFindMany,
         },
         requirement: {
           findFirst: vi.fn(async () => requirement),
@@ -455,11 +428,7 @@ describe("PrismaRequirementRepository", () => {
           findMany: vi.fn(async () => []),
         },
         workItem: {
-          findMany: vi.fn(async () => [
-            task,
-            relatedBug,
-            directAndRelatedBug,
-          ]),
+          findMany: workItemFindMany,
         },
       },
     } as unknown as PrismaService;
@@ -476,6 +445,20 @@ describe("PrismaRequirementRepository", () => {
         expect.objectContaining({ id: directAndRelatedBug.id }),
       ],
     });
+    expect(bugDetailFindMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          deletedAt: null,
+          relatedTaskId: {
+            in: [task.id],
+          },
+          workItem: {
+            deletedAt: null,
+            type: "BUG",
+          },
+        }),
+      }),
+    );
   });
 
   it("writes visible timeline events when creating, saving, and archiving requirements", async () => {

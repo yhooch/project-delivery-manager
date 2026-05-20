@@ -1,5 +1,9 @@
 import { Inject, Injectable } from "@nestjs/common";
-import type { RequirementRelatedWorkItems } from "@project-delivery/shared";
+import type {
+  RequirementRelatedWorkItems,
+  StatusCategory,
+  WorkItemType,
+} from "@project-delivery/shared";
 import { ulid } from "ulid";
 
 import { Prisma } from "../../generated/prisma/client";
@@ -29,6 +33,38 @@ type RequirementTenantScope = {
   organizationId: string;
   spaceId: string;
 };
+
+type RelatedRequirementWorkItemRecord = {
+  assigneeId: string | null;
+  createdAt: Date;
+  id: string;
+  organizationId: string;
+  requirementId: string | null;
+  spaceId: string;
+  statusCategory: StatusCategory;
+  title: string;
+  type: WorkItemType;
+  versionId: string | null;
+};
+
+type RequirementScopeFilter = {
+  organizationId: string;
+  requirementIds: string[];
+  spaceId: string;
+};
+
+const relatedWorkItemSelect = {
+  assigneeId: true,
+  createdAt: true,
+  id: true,
+  organizationId: true,
+  requirementId: true,
+  spaceId: true,
+  statusCategory: true,
+  title: true,
+  type: true,
+  versionId: true,
+} satisfies Prisma.WorkItemSelect;
 
 @Injectable()
 export class PrismaRequirementRepository implements RequirementRepository {
@@ -665,52 +701,22 @@ export class PrismaRequirementRepository implements RequirementRepository {
       return result;
     }
 
+    const scopeFilters = buildRequirementScopeFilters(requirements);
     const records = await this.prisma.client.workItem.findMany({
-      include: {
-        bugDetail: {
-          select: {
-            relatedTask: {
-              select: {
-                organizationId: true,
-                requirementId: true,
-                spaceId: true,
-              },
-            },
-          },
-        },
-      },
       orderBy: [{ type: "asc" }, { createdAt: "asc" }],
+      select: relatedWorkItemSelect,
       where: {
         deletedAt: null,
-        OR: requirements.flatMap((requirement) => [
-          {
-            organizationId: requirement.organizationId,
-            requirementId: requirement.id,
-            spaceId: requirement.spaceId,
+        OR: scopeFilters.map((scope) => ({
+          organizationId: scope.organizationId,
+          requirementId: {
+            in: scope.requirementIds,
           },
-          {
-            bugDetail: {
-              is: {
-                deletedAt: null,
-                relatedTask: {
-                  is: {
-                    deletedAt: null,
-                    organizationId: requirement.organizationId,
-                    requirementId: requirement.id,
-                    spaceId: requirement.spaceId,
-                    type: "TASK",
-                  },
-                },
-              },
-            },
-            organizationId: requirement.organizationId,
-            spaceId: requirement.spaceId,
-            type: "BUG",
-          },
-        ]),
+          spaceId: scope.spaceId,
+        })),
       },
     });
-    const grouped = new Map<string, typeof records>();
+    const grouped = new Map<string, RelatedRequirementWorkItemRecord[]>();
     const groupedIds = new Map<string, Set<string>>();
     const requirementIdsByScope = new Map(
       requirements.map((requirement) => [
@@ -722,6 +728,10 @@ export class PrismaRequirementRepository implements RequirementRepository {
         requirement.id,
       ]),
     );
+    const taskScopesById = new Map<
+      string,
+      { organizationId: string; requirementId: string; spaceId: string }
+    >();
 
     for (const record of records) {
       if (record.requirementId) {
@@ -736,26 +746,71 @@ export class PrismaRequirementRepository implements RequirementRepository {
             spaceId: record.spaceId,
           },
         });
-      }
 
-      const relatedTask = record.bugDetail?.relatedTask;
-
-      if (record.type === "BUG" && relatedTask?.requirementId) {
-        addRelatedWorkItemToGroup({
-          grouped,
-          groupedIds,
-          record,
-          requirementId: relatedTask.requirementId,
-          requirementIdsByScope,
-          scope: {
-            organizationId: relatedTask.organizationId,
-            spaceId: relatedTask.spaceId,
-          },
-        });
+        if (record.type === "TASK") {
+          taskScopesById.set(record.id, {
+            organizationId: record.organizationId,
+            requirementId: record.requirementId,
+            spaceId: record.spaceId,
+          });
+        }
       }
     }
 
+    const relatedBugDetails =
+      taskScopesById.size > 0
+        ? await this.prisma.client.bugDetail.findMany({
+            select: {
+              relatedTaskId: true,
+              workItem: {
+                select: relatedWorkItemSelect,
+              },
+            },
+            where: {
+              deletedAt: null,
+              relatedTaskId: {
+                in: [...taskScopesById.keys()],
+              },
+              workItem: {
+                deletedAt: null,
+                type: "BUG",
+              },
+            },
+          })
+        : [];
+
+    for (const detail of relatedBugDetails) {
+      const relatedTaskId = detail.relatedTaskId;
+
+      if (!relatedTaskId) {
+        continue;
+      }
+
+      const taskScope = taskScopesById.get(relatedTaskId);
+
+      if (
+        !taskScope ||
+        detail.workItem.organizationId !== taskScope.organizationId ||
+        detail.workItem.spaceId !== taskScope.spaceId
+      ) {
+        continue;
+      }
+
+      addRelatedWorkItemToGroup({
+        grouped,
+        groupedIds,
+        record: detail.workItem,
+        requirementId: taskScope.requirementId,
+        requirementIdsByScope,
+        scope: {
+          organizationId: taskScope.organizationId,
+          spaceId: taskScope.spaceId,
+        },
+      });
+    }
+
     for (const [requirementId, items] of grouped) {
+      items.sort(compareRelatedWorkItems);
       result.set(requirementId, toRequirementRelatedWorkItems(items));
     }
 
@@ -920,6 +975,53 @@ function toArray<T>(value: T | T[] | undefined): T[] {
   }
 
   return Array.isArray(value) ? value : [value];
+}
+
+function buildRequirementScopeFilters(
+  requirements: RequirementTenantScope[],
+): RequirementScopeFilter[] {
+  const grouped = new Map<
+    string,
+    { organizationId: string; requirementIds: Set<string>; spaceId: string }
+  >();
+
+  for (const requirement of requirements) {
+    const scopeKey = `${requirement.organizationId}:${requirement.spaceId}`;
+    const current = grouped.get(scopeKey) ?? {
+      organizationId: requirement.organizationId,
+      requirementIds: new Set<string>(),
+      spaceId: requirement.spaceId,
+    };
+
+    current.requirementIds.add(requirement.id);
+    grouped.set(scopeKey, current);
+  }
+
+  return [...grouped.values()].map((scope) => ({
+    organizationId: scope.organizationId,
+    requirementIds: [...scope.requirementIds],
+    spaceId: scope.spaceId,
+  }));
+}
+
+function compareRelatedWorkItems(
+  first: RelatedRequirementWorkItemRecord,
+  second: RelatedRequirementWorkItemRecord,
+) {
+  const typeOrder = { TASK: 0, BUG: 1 } satisfies Record<WorkItemType, number>;
+  const typeDelta = typeOrder[first.type] - typeOrder[second.type];
+
+  if (typeDelta !== 0) {
+    return typeDelta;
+  }
+
+  const createdAtDelta = first.createdAt.getTime() - second.createdAt.getTime();
+
+  if (createdAtDelta !== 0) {
+    return createdAtDelta;
+  }
+
+  return first.id.localeCompare(second.id);
 }
 
 function addRelatedWorkItemToGroup<T extends { id: string }>(input: {
