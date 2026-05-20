@@ -3,6 +3,7 @@ import { ulid } from "ulid";
 
 import { Prisma } from "../../generated/prisma/client";
 import { PrismaService } from "../../prisma/prisma.service";
+import { listTagsByTargets } from "../tag/tag-assignment.helpers";
 import { toWorkItem } from "../workitem/workitem.mappers";
 import type {
   CreateWorkflowActionAuditLogInput,
@@ -291,7 +292,21 @@ class PrismaWorkflowActionExecutionTransaction
       },
     });
 
-    return updated ? toExecutableWorkItem(updated) : undefined;
+    if (!updated) {
+      return undefined;
+    }
+
+    const tagsByWorkItemId = await listTagsByTargets(this.tx, {
+      organizationId: updated.organizationId,
+      spaceId: updated.spaceId,
+      targetIds: [updated.id],
+      targetType: "WORK_ITEM",
+    });
+
+    return toExecutableWorkItem(
+      updated,
+      tagsByWorkItemId.get(updated.id) ?? [],
+    );
   }
 
   async replaceAssigneeParticipants(
@@ -414,9 +429,12 @@ type PrismaActionFormFieldRecord = {
   sortOrder: number;
 };
 
-function toExecutableWorkItem(record: PrismaWorkItemRecord): ExecutableWorkItem {
+function toExecutableWorkItem(
+  record: PrismaWorkItemRecord,
+  tags: Parameters<typeof toWorkItem>[2] = [],
+): ExecutableWorkItem {
   return {
-    ...toWorkItem(record),
+    ...toWorkItem(record, undefined, tags),
     bugDetail: record.bugDetail
       ? toExecutableBugDetail(record.bugDetail)
       : undefined,
