@@ -10,6 +10,12 @@
       "createdBy": "Created by {name}",
       "createdTooltip": "Creator: {name} · Created: {date}",
       "creatorTooltip": "Creator: {name}",
+      "justNow": "just now",
+      "listLabel": "{name}",
+      "listLabelWithDate": "{name} · {date}",
+      "minutesAgo": "{count} min ago",
+      "todayAt": "Today {time}",
+      "yesterdayAt": "Yesterday {time}",
       "unknownCreator": "Unknown member"
     },
     "actions": {

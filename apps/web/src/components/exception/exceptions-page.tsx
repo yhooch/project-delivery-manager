@@ -67,11 +67,11 @@ import { Button } from "../ui/button";
 import { SelectMenu } from "../ui/select-menu";
 import { Tip } from "../ui/tooltip";
 import { StatusBadge } from "../ui/status-badge";
-import { ListTagRail, TagFilter } from "../tag";
+import { TagFilter } from "../tag";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../ui/tabs";
 import { TaskDetailSheet } from "../work-item/task-detail-sheet";
-import { CreatedMeta } from "../v2/created-meta";
 import { FilterField, FilterPanel } from "../v2/filter-controls";
+import { ListItemMetaRow } from "../v2/list-item-meta-row";
 import { PageHeader } from "../v2/page-header";
 import { EmptyState, ErrorState, LoadingState } from "../v2/states";
 
@@ -869,30 +869,32 @@ export function ExceptionsPage() {
                         type="button"
                         onClick={() => handleSelect(item)}
                         className={cn(
-                          "flex w-full min-w-0 cursor-pointer items-center gap-3 px-4 py-2.5 text-left transition-colors hover:bg-muted/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary/70 sm:px-6",
+                          "flex w-full min-w-0 cursor-pointer items-start gap-3 px-4 py-2.5 text-left transition-colors hover:bg-muted/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary/70 sm:px-6",
                           isSelected &&
                             "bg-primary/10 shadow-[inset_3px_0_0_hsl(var(--primary))]",
                         )}
                       >
                         {viewItem.type === "BUG" ? (
-                          <Bug className="h-3.5 w-3.5 shrink-0 text-destructive/80" />
+                          <Bug className="mt-0.5 h-3.5 w-3.5 shrink-0 text-destructive/80" />
                         ) : (
-                          <CheckCircle2 className="h-3.5 w-3.5 shrink-0 text-primary/80" />
+                          <CheckCircle2 className="mt-0.5 h-3.5 w-3.5 shrink-0 text-primary/80" />
                         )}
-                        <span className="font-mono text-[11px] text-muted-foreground">
-                          {tRoot(`versionBoard.filters.type.${viewItem.type}`)}
-                        </span>
                         <span className="flex min-w-0 flex-1 flex-col gap-1">
-                          <span className="truncate text-[13px] font-medium">
-                            {viewItem.title}
+                          <span className="flex min-w-0 items-center gap-2">
+                            <span className="shrink-0 font-mono text-[11px] text-muted-foreground">
+                              {tRoot(
+                                `versionBoard.filters.type.${viewItem.type}`,
+                              )}
+                            </span>
+                            <span className="truncate text-[13px] font-medium">
+                              {viewItem.title}
+                            </span>
                           </span>
-                          <ListTagRail
-                            maxVisible={6}
-                            tags={viewItem.tags}
-                          />
-                          <CreatedMeta
+                          <ListItemMetaRow
                             createdAt={viewItem.createdAt}
                             creatorName={viewItem.creatorName}
+                            tagMaxVisible={6}
+                            tags={viewItem.tags}
                           />
                         </span>
                         {(exceptionDetail || exceptionMeta.length > 0) && (

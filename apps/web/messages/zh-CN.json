@@ -10,6 +10,12 @@
       "createdBy": "创建 {name}",
       "createdTooltip": "创建人：{name} · 创建时间：{date}",
       "creatorTooltip": "创建人：{name}",
+      "justNow": "刚刚",
+      "listLabel": "{name}",
+      "listLabelWithDate": "{name} · {date}",
+      "minutesAgo": "{count}分钟前",
+      "todayAt": "今天 {time}",
+      "yesterdayAt": "昨天 {time}",
       "unknownCreator": "未知成员"
     },
     "actions": {

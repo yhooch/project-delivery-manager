@@ -8,9 +8,9 @@ import { cn } from "../../lib/utils";
 import { Avatar, AvatarFallback } from "../ui/avatar";
 import { Badge } from "../ui/badge";
 import { StatusBadge } from "../ui/status-badge";
-import { ListTagRail } from "../tag";
 import { Tip } from "../ui/tooltip";
-import { CreatedMeta } from "./created-meta";
+
+import { ListItemMetaRow } from "./list-item-meta-row";
 
 const priorityDot: Record<WorkItemViewModel["priority"], string> = {
   LOW: "bg-muted-foreground/40",
@@ -46,22 +46,27 @@ export function WorkItemRow({
     >
       <span
         className={cn(
-          "h-1.5 w-1.5 shrink-0 rounded-full",
+          "mt-1.5 h-1.5 w-1.5 shrink-0 self-start rounded-full",
           priorityDot[item.priority],
         )}
       />
       {item.type === "BUG" ? (
-        <Bug className="h-3.5 w-3.5 shrink-0 text-destructive/80" />
+        <Bug className="mt-0.5 h-3.5 w-3.5 shrink-0 self-start text-destructive/80" />
       ) : (
-        <CheckCircle2 className="h-3.5 w-3.5 shrink-0 text-primary/80" />
+        <CheckCircle2 className="mt-0.5 h-3.5 w-3.5 shrink-0 self-start text-primary/80" />
       )}
-      <span className="font-mono text-[11px] text-muted-foreground">
-        {item.code}
-      </span>
       <span className="flex min-w-0 flex-1 flex-col gap-1">
-        <span className="truncate text-[13px] font-medium">{item.title}</span>
-        <ListTagRail tags={item.tags} />
-        <CreatedMeta createdAt={item.createdAt} creatorName={item.creatorName} />
+        <span className="flex min-w-0 items-center gap-2">
+          <span className="shrink-0 font-mono text-[11px] text-muted-foreground">
+            {item.code}
+          </span>
+          <span className="truncate text-[13px] font-medium">{item.title}</span>
+        </span>
+        <ListItemMetaRow
+          createdAt={item.createdAt}
+          creatorName={item.creatorName}
+          tags={item.tags}
+        />
       </span>
       <StatusBadge
         category={item.statusCategory}

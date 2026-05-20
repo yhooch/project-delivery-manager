@@ -56,7 +56,7 @@ import {
 } from "../../lib/v2/work-item-view-model";
 import { useSession } from "../providers/session-provider";
 import { recordRecentOpen } from "../shell/recent-opens";
-import { ListTagRail, TagFilter } from "../tag";
+import { TagFilter } from "../tag";
 
 import { Avatar, AvatarFallback } from "../ui/avatar";
 import { Badge } from "../ui/badge";
@@ -64,9 +64,9 @@ import { Button } from "../ui/button";
 import { StatusBadge } from "../ui/status-badge";
 import { SelectMenu } from "../ui/select-menu";
 import { Tip } from "../ui/tooltip";
-import { CreatedMeta } from "../v2/created-meta";
 import { PageHeader } from "../v2/page-header";
 import { FilterField, FilterPanel } from "../v2/filter-controls";
+import { ListItemMetaRow } from "../v2/list-item-meta-row";
 import {
   EmptyState,
   ErrorState,
@@ -861,22 +861,24 @@ export function IntakePage() {
                 >
                   <span
                     className={cn(
-                      "h-1.5 w-1.5 shrink-0 rounded-full",
+                      "mt-1.5 h-1.5 w-1.5 shrink-0 self-start rounded-full",
                       priorityDot[item.priority ?? "MEDIUM"],
                     )}
                   />
-                  <Target className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
-                  <span className="font-mono text-[11px] text-muted-foreground">
-                    {formatItemCode(item.id)}
-                  </span>
+                  <Target className="mt-0.5 h-3.5 w-3.5 shrink-0 self-start text-muted-foreground" />
                   <span className="flex min-w-0 flex-1 flex-col gap-1">
-                    <span className="truncate text-[13px] font-medium">
-                      {item.title}
+                    <span className="flex min-w-0 items-center gap-2">
+                      <span className="shrink-0 font-mono text-[11px] text-muted-foreground">
+                        {formatItemCode(item.id)}
+                      </span>
+                      <span className="truncate text-[13px] font-medium">
+                        {item.title}
+                      </span>
                     </span>
-                    <ListTagRail tags={tags} />
-                    <CreatedMeta
+                    <ListItemMetaRow
                       createdAt={item.createdAt}
                       creatorName={reporterTip}
+                      tags={tags}
                     />
                   </span>
                   <Badge variant="outline" className="hidden md:inline-flex">

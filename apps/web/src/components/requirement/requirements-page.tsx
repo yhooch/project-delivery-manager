@@ -40,7 +40,7 @@ import {
 } from "../../lib/requirement-service";
 import { serializeTagFilterQuery } from "../../lib/tag-query";
 import { cn } from "../../lib/utils";
-import { ListTagRail, TagFilter } from "../tag";
+import { TagFilter } from "../tag";
 import { useSession } from "../providers/session-provider";
 import { recordRecentOpen } from "../shell/recent-opens";
 
@@ -49,8 +49,8 @@ import { Badge, type BadgeProps } from "../ui/badge";
 import { Button } from "../ui/button";
 import { Tip } from "../ui/tooltip";
 import { SelectMenu } from "../ui/select-menu";
-import { CreatedMeta } from "../v2/created-meta";
 import { FilterField } from "../v2/filter-controls";
+import { ListItemMetaRow } from "../v2/list-item-meta-row";
 import { PageHeader } from "../v2/page-header";
 import {
   EmptyState,
@@ -720,15 +720,15 @@ export function RequirementsPage() {
                         </Badge>
                       ) : null}
                     </div>
-                    <ListTagRail className="mt-1" tags={tags} />
-                    <CreatedMeta
-                      className="mt-0.5"
+                    <ListItemMetaRow
+                      className="mt-1"
                       createdAt={req.createdAt}
                       creatorName={
                         authorName && authorName !== "—"
                           ? authorName
                           : undefined
                       }
+                      tags={tags}
                     />
                     {item.summary ? (
                       <p className="mt-1 line-clamp-1 text-[12px] text-muted-foreground">

@@ -66,10 +66,10 @@ import { recordRecentOpen } from "../shell/recent-opens";
 import { EmptyState, ErrorState, ListSkeleton } from "../v2/states";
 import { FilterField, FilterPanel } from "../v2/filter-controls";
 import { PageHeader } from "../v2/page-header";
-import { CreatedMeta } from "../v2/created-meta";
+import { ListItemMetaRow } from "../v2/list-item-meta-row";
 
 import { TaskDetailSheet } from "../work-item/task-detail-sheet";
-import { ListTagRail, TagFilter } from "../tag";
+import { TagFilter } from "../tag";
 
 import { CreateBugDialog } from "./create-bug-dialog";
 import { EditBugDialog } from "./edit-bug-dialog";
@@ -1097,18 +1097,20 @@ export function BugsPage() {
                       data-selected={activeItem?.id === bug.id}
                       className="flex min-w-0 flex-1 items-center gap-3 rounded-sm text-left cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/70 focus-visible:ring-offset-2 focus-visible:ring-offset-background"
                     >
-                      <Bug className="h-3.5 w-3.5 shrink-0 text-destructive/80" />
-                      <span className="font-mono text-[11px] text-muted-foreground">
-                        {bug.code}
-                      </span>
+                      <Bug className="mt-0.5 h-3.5 w-3.5 shrink-0 self-start text-destructive/80" />
                       <span className="flex min-w-0 flex-1 flex-col gap-1">
-                        <span className="truncate text-[13px] font-medium">
-                          {bug.title}
+                        <span className="flex min-w-0 items-center gap-2">
+                          <span className="shrink-0 font-mono text-[11px] text-muted-foreground">
+                            {bug.code}
+                          </span>
+                          <span className="truncate text-[13px] font-medium">
+                            {bug.title}
+                          </span>
                         </span>
-                        <ListTagRail tags={bug.tags} />
-                        <CreatedMeta
+                        <ListItemMetaRow
                           createdAt={bug.createdAt}
                           creatorName={bug.creatorName}
+                          tags={bug.tags}
                         />
                       </span>
                       <span

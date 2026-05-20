@@ -9,11 +9,13 @@ import { TagBadgeList } from "./tag-assignment-field";
 export function ListTagRail({
   badgeClassName,
   className,
+  listClassName,
   maxVisible = 8,
   tags,
 }: {
   badgeClassName?: string;
   className?: string;
+  listClassName?: string;
   maxVisible?: number;
   tags?: readonly TagDto[];
 }) {
@@ -30,7 +32,7 @@ export function ListTagRail({
     <span className={cn("block min-w-0", className)}>
       <TagBadgeList
         badgeClassName={resolvedBadgeClassName}
-        className="max-h-11 overflow-hidden"
+        className={cn("max-h-11 overflow-hidden", listClassName)}
         maxVisible={maxVisible}
         tags={tags}
       />
