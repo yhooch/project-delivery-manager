@@ -6,6 +6,7 @@ import {
   type RealtimeEvent,
   type RealtimeResyncReason,
 } from "@project-delivery/shared";
+import { ulid } from "ulid";
 
 import {
   REALTIME_REPLAY_DEFAULT_MAX_EVENTS,
@@ -22,6 +23,7 @@ import type {
 export class RealtimeReplayBufferService {
   private readonly events: RealtimeEvent[] = [];
   private readonly maxEvents: number;
+  private readonly streamId: string;
   private readonly ttlMs: number;
   private evictedThroughSequence = 0;
   private expiredThroughSequence = 0;
@@ -36,6 +38,7 @@ export class RealtimeReplayBufferService {
       options?.maxEvents,
       REALTIME_REPLAY_DEFAULT_MAX_EVENTS,
     );
+    this.streamId = options?.streamId ?? ulid();
     this.ttlMs =
       normalizePositiveInteger(
         options?.ttlSeconds,
@@ -45,6 +48,10 @@ export class RealtimeReplayBufferService {
 
   get currentSequence(): number {
     return this.latestSequence;
+  }
+
+  createCursor(sequence: number): string {
+    return `${this.streamId}:${RealtimeSequenceSchema.parse(sequence)}`;
   }
 
   append(event: RealtimeEvent, now: Date = new Date()): RealtimeEvent {
@@ -73,7 +80,13 @@ export class RealtimeReplayBufferService {
       return this.success([]);
     }
 
-    const cursorSequence = this.parseCursor(cursor);
+    const parsedCursor = this.parseCursor(cursor);
+
+    if (parsedCursor.isLegacy || parsedCursor.streamId !== this.streamId) {
+      return this.resync("SERVER_RESTART");
+    }
+
+    const cursorSequence = parsedCursor.sequence;
 
     if (cursorSequence > BigInt(this.latestSequence)) {
       return this.resync("SERVER_RESTART");
@@ -88,9 +101,7 @@ export class RealtimeReplayBufferService {
     const expectedNextSequence = lastSeenSequence + 1;
 
     if (this.events.length === 0) {
-      return this.resync(
-        this.resolveUnavailableReason(expectedNextSequence),
-      );
+      return this.resync(this.resolveUnavailableReason(expectedNextSequence));
     }
 
     const firstReplayIndex = this.events.findIndex(
@@ -104,9 +115,7 @@ export class RealtimeReplayBufferService {
     const firstReplayEvent = this.events[firstReplayIndex];
 
     if (firstReplayEvent.sequence !== expectedNextSequence) {
-      return this.resync(
-        this.resolveUnavailableReason(expectedNextSequence),
-      );
+      return this.resync(this.resolveUnavailableReason(expectedNextSequence));
     }
 
     const replayEvents = this.events.slice(firstReplayIndex);
@@ -124,12 +133,29 @@ export class RealtimeReplayBufferService {
     return [...this.events];
   }
 
-  private parseCursor(cursor: RealtimeReplayCursor): bigint {
-    if (typeof cursor === "string") {
-      return BigInt(RealtimeSequenceCursorSchema.parse(cursor));
+  private parseCursor(cursor: RealtimeReplayCursor): {
+    isLegacy: boolean;
+    sequence: bigint;
+    streamId?: string;
+  } {
+    const cursorText =
+      typeof cursor === "string"
+        ? RealtimeSequenceCursorSchema.parse(cursor)
+        : String(RealtimeSequenceSchema.parse(cursor));
+    const separatorIndex = cursorText.indexOf(":");
+
+    if (separatorIndex === -1) {
+      return {
+        isLegacy: true,
+        sequence: BigInt(cursorText),
+      };
     }
 
-    return BigInt(RealtimeSequenceSchema.parse(cursor));
+    return {
+      isLegacy: false,
+      sequence: BigInt(cursorText.slice(separatorIndex + 1)),
+      streamId: cursorText.slice(0, separatorIndex),
+    };
   }
 
   private prune(now: Date = new Date()): void {

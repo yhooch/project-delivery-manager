@@ -5,6 +5,7 @@ export const REALTIME_REPLAY_OPTIONS = Symbol("REALTIME_REPLAY_OPTIONS");
 
 export type RealtimeReplayOptions = {
   maxEvents: number;
+  streamId?: string;
   ttlSeconds: number;
 };
 

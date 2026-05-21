@@ -78,6 +78,39 @@ describe("RealtimePermissionService", () => {
     ).resolves.toBe(true);
   });
 
+  it("allows recently removed work item participants to receive the invalidation", async () => {
+    const { client, service } = createSubject("DEVELOPER");
+    client.workItem.findFirst.mockResolvedValue({
+      id: "work-item",
+      statusCategory: "IN_PROGRESS",
+      type: "TASK",
+    });
+    client.objectParticipant.findFirst.mockResolvedValueOnce({
+      id: "removed-participant",
+    });
+
+    await expect(
+      service.canReadEvent(REALTIME_ACTOR_ID, createRealtimeEventFixture(1)),
+    ).resolves.toBe(true);
+
+    expect(client.objectParticipant.findFirst).toHaveBeenCalledWith({
+      select: { id: true },
+      where: expect.objectContaining({
+        OR: [
+          { deletedAt: null },
+          {
+            deletedAt: {
+              gte: new Date("2026-05-21T11:55:00.000Z"),
+              lte: new Date("2026-05-21T12:00:00.000Z"),
+            },
+            updatedById: REALTIME_ACTOR_ID,
+          },
+        ],
+        targetType: "WORK_ITEM",
+      }),
+    });
+  });
+
   it("requires participant visibility for draft requirements even for privileged roles", async () => {
     const { client, service } = createSubject("PM");
     client.requirement.findFirst.mockResolvedValue({

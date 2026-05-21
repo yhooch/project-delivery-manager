@@ -11,7 +11,10 @@ export type RealtimeSequence = z.infer<typeof RealtimeSequenceSchema>;
 
 export const RealtimeSequenceCursorSchema = z
   .string()
-  .regex(/^[1-9]\d*$/u, "Expected a positive decimal sequence cursor");
+  .regex(
+    /^(?:[0-9A-HJKMNP-TV-Z]{26}:)?[1-9]\d*$/u,
+    "Expected a positive sequence cursor",
+  );
 export type RealtimeSequenceCursor = z.infer<
   typeof RealtimeSequenceCursorSchema
 >;
@@ -205,7 +208,12 @@ export const RealtimeSseRealtimeMessageSchema = z
   })
   .strict()
   .superRefine((message, ctx) => {
-    if (message.id === String(message.data.sequence)) {
+    const sequenceText = String(message.data.sequence);
+
+    if (
+      message.id === sequenceText ||
+      message.id.endsWith(`:${sequenceText}`)
+    ) {
       return;
     }
 

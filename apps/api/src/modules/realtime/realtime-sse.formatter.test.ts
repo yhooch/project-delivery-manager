@@ -12,8 +12,14 @@ describe("realtime SSE formatter", () => {
   it("formats realtime events with event name, sequence id, JSON data and blank terminator", () => {
     const event = createRealtimeEventFixture(7);
     const formatted = formatRealtimeSseMessage(createRealtimeSseMessage(event));
+    const streamFormatted = formatRealtimeSseMessage(
+      createRealtimeSseMessage(event, "01HRZ3NDEKTSV4RRFFQ69G5FAH:7"),
+    );
 
     expect(formatted).toContain("event: realtime\nid: 7\ndata: {");
+    expect(streamFormatted).toContain(
+      "event: realtime\nid: 01HRZ3NDEKTSV4RRFFQ69G5FAH:7\ndata: {",
+    );
     expect(formatted).toContain(`"id":"${event.id}"`);
     expect(formatted).toContain('"sequence":7');
     expect(formatted).toContain('"target":{"type":"WORK_ITEM"');

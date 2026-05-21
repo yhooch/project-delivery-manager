@@ -90,7 +90,13 @@ export class RealtimeSseController {
         return;
       }
 
-      writeRealtimeSseMessage(response, createRealtimeSseMessage(event));
+      writeRealtimeSseMessage(
+        response,
+        createRealtimeSseMessage(
+          event,
+          this.replayBuffer.createCursor(event.sequence),
+        ),
+      );
     };
 
     const enqueueLiveDelivery = (event: RealtimeEvent) => {

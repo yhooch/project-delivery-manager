@@ -18,6 +18,8 @@ import {
 
 const eventId = "01VRZ3NDEKTSV4RRFFQ69G5FAV";
 const eventId2 = "01VRZ3NDEKTSV4RRFFQ69G5FAW";
+const oldStreamId = "01VRZ3NDEKTSV4RRFFQ69G5FAY";
+const newStreamId = "01VRZ3NDEKTSV4RRFFQ69G5FAZ";
 const actorId = "01ARZ3NDEKTSV4RRFFQ69G5FAV";
 const organizationId = "01BRZ3NDEKTSV4RRFFQ69G5FAA";
 const otherOrganizationId = "01CRZ3NDEKTSV4RRFFQ69G5FAB";
@@ -47,11 +49,7 @@ class FakeRealtimeEventSource implements RealtimeEventSourceLike {
     this.listeners.set(type, [...(this.listeners.get(type) ?? []), listener]);
   }
 
-  emit(
-    type: RealtimeSseEventName,
-    data: unknown,
-    lastEventId = "",
-  ): void {
+  emit(type: RealtimeSseEventName, data: unknown, lastEventId = ""): void {
     for (const listener of this.listeners.get(type) ?? []) {
       listener({
         data: JSON.stringify(data),
@@ -372,5 +370,59 @@ describe("realtime frontend provider", () => {
     });
     expect(timelineInvalidate).toHaveBeenCalledTimes(1);
     expect(timelineInvalidate.mock.calls[0]?.[0].keys).toEqual(["timeline"]);
+  });
+
+  it("clears sequence dedupe when a resync is received", () => {
+    const { factory, sources } = createEventSourceFactory();
+    const listInvalidate = vi.fn<RealtimeInvalidationCallback>();
+
+    render(
+      <RealtimeProvider
+        debounceMs={25}
+        eventSourceFactory={factory}
+        organizationId={organizationId}
+        spaceId={spaceId}
+      >
+        <Subscriber keys={["work-item-list"]} onInvalidate={listInvalidate} />
+      </RealtimeProvider>,
+    );
+
+    act(() => {
+      sources[0]?.emit(
+        "realtime",
+        realtimeEventFixture({ sequence: 1 }),
+        `${oldStreamId}:1`,
+      );
+      vi.advanceTimersByTime(25);
+    });
+
+    expect(listInvalidate).toHaveBeenCalledTimes(1);
+
+    act(() => {
+      sources[0]?.emit("realtime-resync", {
+        reason: "SERVER_RESTART",
+        occurredAt,
+        invalidates: [],
+        scope: {
+          organizationId,
+          spaceId,
+        },
+      });
+      sources[0]?.emit(
+        "realtime",
+        realtimeEventFixture({
+          id: eventId2,
+          sequence: 1,
+        }),
+        `${newStreamId}:1`,
+      );
+      vi.advanceTimersByTime(25);
+    });
+
+    expect(listInvalidate).toHaveBeenCalledTimes(2);
+    expect(listInvalidate.mock.calls[1]?.[0]).toMatchObject({
+      events: [expect.objectContaining({ id: eventId2, sequence: 1 })],
+      resyncs: [expect.objectContaining({ reason: "SERVER_RESTART" })],
+    });
   });
 });

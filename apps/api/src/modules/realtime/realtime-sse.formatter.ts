@@ -11,17 +11,19 @@ import {
 
 export function createRealtimeSseMessage(
   event: RealtimeEvent,
+  id: string = String(event.sequence),
 ): RealtimeSseRealtimeMessage {
   return {
     data: event,
     event: "realtime",
-    id: String(event.sequence),
+    id,
   };
 }
 
-export function createHeartbeatSseMessage(
-  now: Date = new Date(),
-): { data: RealtimeHeartbeat; event: "heartbeat" } {
+export function createHeartbeatSseMessage(now: Date = new Date()): {
+  data: RealtimeHeartbeat;
+  event: "heartbeat";
+} {
   return {
     data: {
       occurredAt: now.toISOString(),

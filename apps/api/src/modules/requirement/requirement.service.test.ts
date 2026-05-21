@@ -232,6 +232,25 @@ describe("RequirementService audit logging", () => {
       cascadeVersionChange: true,
       versionId: VERSION_TWO_ID,
     });
+    expect(subject.realtime.publish).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        invalidates: [
+          "requirement-list",
+          "requirement-detail",
+          "version-board",
+          "intake-list",
+          "work-item-list",
+          "bug-list",
+          "workbench",
+          "space-overview",
+          "exception-view",
+          "timeline",
+        ],
+        hints: expect.objectContaining({
+          suggestFullRefresh: true,
+        }),
+      }),
+    );
   });
 
   it("rejects base64 image data in text and markdown caches", async () => {
@@ -360,7 +379,9 @@ class FakeRequirementRepository implements RequirementRepository {
 
   constructor(public current: Requirement) {}
 
-  async createDraft(input: Parameters<RequirementRepository["createDraft"]>[0]) {
+  async createDraft(
+    input: Parameters<RequirementRepository["createDraft"]>[0],
+  ) {
     this.current = makeRequirement({
       status: "DRAFT",
       versionId: input.versionId,

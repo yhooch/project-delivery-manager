@@ -36,7 +36,7 @@ describe("RealtimePublisherService", () => {
     expect(listener).toHaveBeenNthCalledWith(1, first);
     expect(listener).toHaveBeenNthCalledWith(2, second);
 
-    const replay = buffer.replayAfter("1");
+    const replay = buffer.replayAfter(buffer.createCursor(1));
     expect(replay.ok).toBe(true);
     if (replay.ok) {
       expect(replay.events).toEqual([second]);

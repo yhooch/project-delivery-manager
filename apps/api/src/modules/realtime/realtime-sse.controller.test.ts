@@ -42,6 +42,7 @@ const session = {
   tokenHash: "token-hash",
   userId: REALTIME_ACTOR_ID,
 };
+const SSE_STREAM_ID = "01HRZ3NDEKTSV4RRFFQ69G5FAY";
 
 describe("RealtimeSseController", () => {
   afterEach(() => {
@@ -50,10 +51,7 @@ describe("RealtimeSseController", () => {
 
   it("prefers query lastEventId over Last-Event-ID header and validates header cursors", () => {
     expect(
-      resolveReplayCursor(
-        { lastEventId: "8" },
-        { "last-event-id": "7" },
-      ),
+      resolveReplayCursor({ lastEventId: "8" }, { "last-event-id": "7" }),
     ).toBe("8");
     expect(resolveReplayCursor({}, { "last-event-id": "7" })).toBe("7");
     expect(() => resolveReplayCursor({}, { "last-event-id": "0" })).toThrow(
@@ -69,11 +67,17 @@ describe("RealtimeSseController", () => {
     buffer.append(first);
     buffer.append(second);
 
-    await controller.subscribe({ lastEventId: "1" }, request, response);
+    await controller.subscribe(
+      { lastEventId: buffer.createCursor(1) },
+      request,
+      response,
+    );
 
     expect(response.getHeader("Content-Type")).toContain("text/event-stream");
     expect(response.chunks).toHaveLength(1);
-    expect(response.chunks[0]).toContain("event: realtime\nid: 2\n");
+    expect(response.chunks[0]).toContain(
+      `event: realtime\nid: ${buffer.createCursor(2)}\n`,
+    );
     expect(response.chunks[0]).toContain(`"id":"${second.id}"`);
     expect(response.chunks[0]).toContain('"sequence":2');
     expect(registry.size).toBe(1);
@@ -89,7 +93,11 @@ describe("RealtimeSseController", () => {
     buffer.append(createReplayableRealtimeEventFixture(1));
     buffer.append(createReplayableRealtimeEventFixture(3));
 
-    await controller.subscribe({ lastEventId: "1" }, request, response);
+    await controller.subscribe(
+      { lastEventId: buffer.createCursor(1) },
+      request,
+      response,
+    );
 
     expect(response.chunks).toEqual([
       expect.stringContaining("event: realtime-resync\n"),
@@ -116,10 +124,14 @@ describe("RealtimeSseController", () => {
     buffer.append(hidden);
     buffer.append(visible);
 
-    await controller.subscribe({ lastEventId: "1" }, request, response);
+    await controller.subscribe(
+      { lastEventId: buffer.createCursor(1) },
+      request,
+      response,
+    );
 
     expect(response.chunks).toHaveLength(1);
-    expect(response.chunks[0]).toContain("id: 3\n");
+    expect(response.chunks[0]).toContain(`id: ${buffer.createCursor(3)}\n`);
     expect(response.chunks[0]).toContain(`"id":"${visible.id}"`);
     expect(response.chunks[0]).toContain('"sequence":3');
 
@@ -128,7 +140,7 @@ describe("RealtimeSseController", () => {
     await flushPromises();
 
     expect(response.chunks).toHaveLength(2);
-    expect(response.chunks[1]).toContain("id: 4\n");
+    expect(response.chunks[1]).toContain(`id: ${buffer.createCursor(4)}\n`);
 
     request.emitClose();
   });
@@ -239,12 +251,11 @@ function createSubject() {
   const hub = new RealtimeHubService(registry);
   const buffer = new RealtimeReplayBufferService({
     maxEvents: 1000,
+    streamId: SSE_STREAM_ID,
     ttlSeconds: 300,
   });
   const permissions = {
-    canReadEvent: vi.fn(
-      async (_userId: string, _event: RealtimeEvent) => true,
-    ),
+    canReadEvent: vi.fn(async (_userId: string, _event: RealtimeEvent) => true),
   };
   const controller = new RealtimeSseController(
     hub,

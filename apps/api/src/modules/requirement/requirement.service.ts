@@ -147,11 +147,7 @@ export class RequirementService {
       spaceId: created.spaceId,
       target: { type: "REQUIREMENT", id: created.id },
       operation: "CREATED",
-      invalidates: [
-        "requirement-list",
-        "requirement-detail",
-        "version-board",
-      ],
+      invalidates: ["requirement-list", "requirement-detail", "version-board"],
       hints: {
         targetType: "REQUIREMENT",
         targetId: created.id,
@@ -270,24 +266,24 @@ export class RequirementService {
       versionId,
     )
       ? await this.requirements.countVersionCascadeImpact({
-        nextVersionId: versionId ?? null,
-        requirementId,
-      })
+          nextVersionId: versionId ?? null,
+          requirementId,
+        })
       : undefined;
 
-      if (
-        versionCascadeImpact &&
-        hasTraceVersionCascadeImpact(versionCascadeImpact) &&
-        input.cascadeVersionChange !== true
-      ) {
-        throwTraceVersionChangeRequiresCascade({
-          fromVersionId: existing.versionId,
-          impact: versionCascadeImpact,
-          targetId: requirementId,
-          targetType: "REQUIREMENT",
-          toVersionId: versionId ?? null,
-        });
-      }
+    if (
+      versionCascadeImpact &&
+      hasTraceVersionCascadeImpact(versionCascadeImpact) &&
+      input.cascadeVersionChange !== true
+    ) {
+      throwTraceVersionChangeRequiresCascade({
+        fromVersionId: existing.versionId,
+        impact: versionCascadeImpact,
+        targetId: requirementId,
+        targetType: "REQUIREMENT",
+        toVersionId: versionId ?? null,
+      });
+    }
 
     const saved = await this.requirements.save({
       requirementId,
@@ -332,7 +328,22 @@ export class RequirementService {
       spaceId: saved.spaceId,
       target: { type: "REQUIREMENT", id: saved.id },
       operation: "UPDATED",
-      invalidates: ["requirement-list", "requirement-detail", "version-board"],
+      invalidates: [
+        "requirement-list",
+        "requirement-detail",
+        "version-board",
+        ...(input.cascadeVersionChange === true
+          ? [
+              "intake-list" as const,
+              "work-item-list" as const,
+              "bug-list" as const,
+              "workbench" as const,
+              "space-overview" as const,
+              "exception-view" as const,
+              "timeline" as const,
+            ]
+          : []),
+      ],
       hints: {
         targetType: "REQUIREMENT",
         targetId: saved.id,

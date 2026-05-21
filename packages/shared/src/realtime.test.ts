@@ -19,6 +19,7 @@ const actorId = "01ARZ3NDEKTSV4RRFFQ69G5FAV";
 const organizationId = "01BRZ3NDEKTSV4RRFFQ69G5FAA";
 const spaceId = "01DRZ3NDEKTSV4RRFFQ69G5FAC";
 const workItemId = "01GRZ3NDEKTSV4RRFFQ69G5FAG";
+const realtimeStreamId = "01HRZ3NDEKTSV4RRFFQ69G5FAH";
 const occurredAt = "2026-05-21T10:30:00.000Z";
 
 function realtimeEventFixture() {
@@ -129,6 +130,13 @@ describe("realtime shared contracts", () => {
     expect(RealtimeEventsQuerySchema.parse({ lastEventId: "42" })).toEqual({
       lastEventId: "42",
     });
+    expect(
+      RealtimeEventsQuerySchema.parse({
+        lastEventId: `${realtimeStreamId}:42`,
+      }),
+    ).toEqual({
+      lastEventId: `${realtimeStreamId}:42`,
+    });
     expect(RealtimeEventsQuerySchema.parse({})).toEqual({});
     expect(() =>
       RealtimeEventsQuerySchema.parse({ lastEventId: "0" }),
@@ -144,6 +152,13 @@ describe("realtime shared contracts", () => {
         data: realtimeEventFixture(),
       }).id,
     ).toBe("42");
+    expect(
+      RealtimeSseRealtimeMessageSchema.parse({
+        event: "realtime",
+        id: `${realtimeStreamId}:42`,
+        data: realtimeEventFixture(),
+      }).id,
+    ).toBe(`${realtimeStreamId}:42`);
     expect(() =>
       RealtimeSseRealtimeMessageSchema.parse({
         event: "realtime",

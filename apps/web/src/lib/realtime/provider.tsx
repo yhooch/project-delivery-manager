@@ -144,6 +144,7 @@ export function RealtimeProvider({
         return;
       }
 
+      seenSequencesRef.current.clear();
       pendingRef.current.resyncs.push(resync);
       scheduleFlush();
     },

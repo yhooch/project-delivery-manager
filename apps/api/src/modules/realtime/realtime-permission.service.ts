@@ -25,6 +25,7 @@ const INTAKE_ITEM_READ_ALL_ROLES = new Set<SpaceRole>([
   "PM",
   "VIEWER",
 ]);
+const RECENT_PARTICIPANT_REMOVAL_WINDOW_MS = 5 * 60 * 1000;
 
 @Injectable()
 export class RealtimePermissionService {
@@ -150,7 +151,9 @@ export class RealtimePermissionService {
       return true;
     }
 
-    return this.isObjectParticipant(userId, event, "WORK_ITEM");
+    return this.isObjectParticipant(userId, event, "WORK_ITEM", {
+      includeRecentlyRemoved: true,
+    });
   }
 
   private async canReadRequirementTarget(
@@ -225,12 +228,13 @@ export class RealtimePermissionService {
     userId: string,
     event: RealtimeEvent,
     targetType: ObjectParticipantTargetType,
-    options: { deletedAt?: Date } = {},
+    options: { deletedAt?: Date; includeRecentlyRemoved?: boolean } = {},
   ): Promise<boolean> {
+    const deletedAt = this.resolveParticipantDeletedAtFilter(event, options);
     const participant = await this.prisma.client.objectParticipant.findFirst({
       select: { id: true },
       where: {
-        deletedAt: options.deletedAt ?? null,
+        ...deletedAt,
         organizationId: event.organizationId,
         spaceId: event.spaceId,
         targetId: event.target.id,
@@ -240,6 +244,38 @@ export class RealtimePermissionService {
     });
 
     return Boolean(participant);
+  }
+
+  private resolveParticipantDeletedAtFilter(
+    event: RealtimeEvent,
+    options: { deletedAt?: Date; includeRecentlyRemoved?: boolean },
+  ) {
+    if (options.deletedAt) {
+      return { deletedAt: options.deletedAt };
+    }
+
+    if (options.includeRecentlyRemoved !== true) {
+      return { deletedAt: null };
+    }
+
+    const occurredAtMs = Date.parse(event.occurredAt);
+
+    if (!Number.isFinite(occurredAtMs)) {
+      return { deletedAt: null };
+    }
+
+    return {
+      OR: [
+        { deletedAt: null },
+        {
+          deletedAt: {
+            gte: new Date(occurredAtMs - RECENT_PARTICIPANT_REMOVAL_WINDOW_MS),
+            lte: new Date(occurredAtMs),
+          },
+          updatedById: event.actorId,
+        },
+      ],
+    };
   }
 }
 
