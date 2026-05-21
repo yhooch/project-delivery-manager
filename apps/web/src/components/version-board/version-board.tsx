@@ -30,6 +30,7 @@ import { useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { getApiErrorMessageKey } from "../../lib/api-error-messages";
+import { resolveRequirementDisplayCode } from "../../lib/display-code";
 import { Link, usePathname, useRouter } from "../../i18n/routing";
 import {
   createWorkItemViewModelMapper,
@@ -1492,6 +1493,12 @@ function BoardColumns({
                       ) : (
                         <CheckCircle2 className="h-3 w-3 text-primary/80" />
                       )}
+                      <span
+                        data-testid={`version-board-card-code-${item.id}`}
+                        className="max-w-[5.5rem] shrink-0 truncate font-mono text-[10px] text-foreground"
+                      >
+                        {viewItem.code}
+                      </span>
                       <span className="min-w-0 truncate font-mono text-[10px] text-muted-foreground">
                         {t(`filters.type.${viewItem.type}`)}
                       </span>
@@ -1617,6 +1624,9 @@ function RequirementsTab({
       {requirements.map((req) => {
         const owner = req.ownerId ? getMember(req.ownerId) : undefined;
         const ownerName = owner?.user.name ?? owner?.user.username ?? "—";
+        const displayCode = resolveRequirementDisplayCode(req, {
+          draftLabel: tRequirementStatus("DRAFT"),
+        });
         return (
           <li
             key={req.id}
@@ -1628,8 +1638,16 @@ function RequirementsTab({
               className="flex min-w-0 items-center gap-3 hover:opacity-90"
             >
               <div className="min-w-0 flex-1">
-                <div className="truncate text-sm font-medium">
-                  {req.title || req.id}
+                <div className="flex min-w-0 items-center gap-2">
+                  <span
+                    data-testid={`version-requirement-code-${req.id}`}
+                    className="shrink-0 font-mono text-[11px] text-muted-foreground"
+                  >
+                    {displayCode}
+                  </span>
+                  <span className="truncate text-sm font-medium">
+                    {req.title || req.id}
+                  </span>
                 </div>
                 {req.summary && (
                   <div className="mt-0.5 line-clamp-1 text-xs text-muted-foreground">

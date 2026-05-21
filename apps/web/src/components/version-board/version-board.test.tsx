@@ -345,10 +345,15 @@ function makeVersion(overrides: Record<string, unknown> = {}) {
 function makeSummary(overrides: Record<string, unknown> = {}) {
   return {
     id: "01ARZ3NDEKTSV4RRFFQ69G5FA1",
+    sequence: 1,
+    displayCode: "TASK-1",
     type: "TASK",
+    organizationId: "ORG_01",
+    spaceId: "SPC_01",
     title: "Login work item",
     priority: "MEDIUM",
     assigneeId: "USR_ALICE",
+    reporterId: "USR_ALICE",
     versionId: "01ARZ3NDEKTSV4RRFFQ69G5FV1",
     currentStatus: {
       workflowVersionId: "01ARZ3NDEKTSV4RRFFQ69G5FW1",
@@ -410,6 +415,8 @@ function makeRequirement(overrides: Record<string, unknown> = {}) {
     id: "01ARZ3NDEKTSV4RRFFQ69G5FR1",
     organizationId: "ORG_01",
     spaceId: "SPC_01",
+    sequence: 1,
+    displayCode: "REQ-1",
     versionId: "01ARZ3NDEKTSV4RRFFQ69G5FV1",
     title: "Login requirement",
     summary: "Login flow spec",
@@ -550,6 +557,48 @@ describe("VersionPage", () => {
     // Card itself surfaces.
     expect(await screen.findByText("Login UI")).toBeInTheDocument();
     expect(screen.getByText("开发复核中")).toBeInTheDocument();
+  });
+
+  it("renders display codes on task and bug board cards", async () => {
+    const taskId = "01ARZ3NDEKTSV4RRFFQ69G5FC1";
+    const bugId = "01ARZ3NDEKTSV4RRFFQ69G5FC2";
+    listVersionsMock.mockResolvedValueOnce({
+      items: [makeVersion()],
+      total: 1,
+    });
+    getVersionBoardViewMock.mockResolvedValueOnce(
+      makeBoardResponse([
+        makeSummary({
+          id: taskId,
+          displayCode: "TASK-42",
+          title: "Task with code",
+        }),
+        makeSummary({
+          id: bugId,
+          sequence: 9,
+          displayCode: "BUG-9",
+          type: "BUG",
+          title: "Bug with code",
+          currentStatus: {
+            workflowVersionId: "01ARZ3NDEKTSV4RRFFQ69G5FW1",
+            currentStateId: "01ARZ3NDEKTSV4RRFFQ69G5FCW",
+            stateCode: "WAITING",
+            stateName: "等待处理",
+            statusCategory: "WAITING",
+            lastStatusChangedAt: "2026-05-01T00:00:00.000Z",
+          },
+        }),
+      ]),
+    );
+
+    render(<VersionPage />);
+
+    expect(
+      await screen.findByTestId(`version-board-card-code-${taskId}`),
+    ).toHaveTextContent("TASK-42");
+    expect(
+      screen.getByTestId(`version-board-card-code-${bugId}`),
+    ).toHaveTextContent("BUG-9");
   });
 
   it("loads more items per board column and refreshes the first column pages after detail changes", async () => {
@@ -999,6 +1048,7 @@ describe("VersionPage", () => {
       items: [
         makeRequirement({
           id: "01ARZ3NDEKTSV4RRFFQ69G5FRA",
+          displayCode: "REQ-42",
           title: "Linked requirement",
         }),
       ],
@@ -1015,6 +1065,9 @@ describe("VersionPage", () => {
     expect(
       screen.getByTestId("version-requirement-row-01ARZ3NDEKTSV4RRFFQ69G5FRA"),
     ).toBeInTheDocument();
+    expect(
+      screen.getByTestId("version-requirement-code-01ARZ3NDEKTSV4RRFFQ69G5FRA"),
+    ).toHaveTextContent("REQ-42");
   });
 
   it("shows the requirements empty state when none are linked", async () => {

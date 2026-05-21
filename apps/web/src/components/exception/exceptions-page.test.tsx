@@ -389,6 +389,41 @@ describe("ExceptionsPage", () => {
     expect(screen.getByText("#backend")).toBeInTheDocument();
   });
 
+  it("renders display codes on task and bug exception rows", async () => {
+    const taskId = "01ARZ3NDEKTSV4RRFFQ69G5FE1";
+    const bugId = "01ARZ3NDEKTSV4RRFFQ69G5FE2";
+    getSpaceExceptionsViewMock.mockResolvedValueOnce(
+      makeViewResponse([
+        makeException(
+          makeWorkItem({
+            id: taskId,
+            sequence: 42,
+            displayCode: "TASK-42",
+            title: "Task exception with code",
+          }),
+        ),
+        makeException(
+          makeWorkItem({
+            id: bugId,
+            sequence: 9,
+            displayCode: "BUG-9",
+            type: "BUG",
+            title: "Bug exception with code",
+          }),
+        ),
+      ]),
+    );
+
+    render(<ExceptionsPage />);
+
+    expect(
+      await screen.findByTestId(`exceptions-row-code-overdue-${taskId}`),
+    ).toHaveTextContent("TASK-42");
+    expect(
+      screen.getByTestId(`exceptions-row-code-overdue-${bugId}`),
+    ).toHaveTextContent("BUG-9");
+  });
+
   it("sends selected tag filters to the exceptions view query", async () => {
     const tag = makeTag();
 

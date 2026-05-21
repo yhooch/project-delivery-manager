@@ -886,6 +886,12 @@ export function ExceptionsPage() {
                         )}
                         <span className="flex min-w-0 flex-1 flex-col gap-1">
                           <span className="flex min-w-0 items-center gap-2">
+                            <span
+                              data-testid={`exceptions-row-code-${tab.key}-${item.workItem.id}`}
+                              className="shrink-0 font-mono text-[11px] text-muted-foreground"
+                            >
+                              {viewItem.code}
+                            </span>
                             <span className="shrink-0 font-mono text-[11px] text-muted-foreground">
                               {tRoot(
                                 `versionBoard.filters.type.${viewItem.type}`,
