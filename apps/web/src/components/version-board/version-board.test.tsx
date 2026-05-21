@@ -1244,6 +1244,47 @@ describe("VersionPage", () => {
     expect(listTimelineMock).not.toHaveBeenCalled();
   });
 
+  it("refreshes the board when an item moves from the current version to another version", async () => {
+    listVersionsMock.mockResolvedValue({
+      items: [makeVersion()],
+      total: 1,
+    });
+    getVersionBoardViewMock.mockResolvedValue(makeBoardResponse([]));
+
+    render(<VersionPage />);
+
+    await waitFor(() =>
+      expect(getVersionBoardViewMock).toHaveBeenCalledTimes(1),
+    );
+    await waitFor(() => expect(listRequirementsMock).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(listTimelineMock).toHaveBeenCalledTimes(1));
+    getVersionBoardViewMock.mockClear();
+    listVersionsMock.mockClear();
+    listRequirementsMock.mockClear();
+    listTimelineMock.mockClear();
+
+    await act(async () => {
+      await fireRealtimeKey("version-board", {
+        events: [
+          makeRealtimeEvent({
+            invalidates: ["version-board"],
+            hints: {
+              changedFields: ["versionId"],
+              versionId: "01ARZ3NDEKTSV4RRFFQ69G5FV2",
+            },
+          }),
+        ],
+      });
+    });
+
+    await waitFor(() =>
+      expect(getVersionBoardViewMock).toHaveBeenCalledTimes(1),
+    );
+    expect(listVersionsMock).not.toHaveBeenCalled();
+    expect(listRequirementsMock).not.toHaveBeenCalled();
+    expect(listTimelineMock).not.toHaveBeenCalled();
+  });
+
   it("keeps board DOM and avoids the page error state when a realtime board refresh fails", async () => {
     listVersionsMock.mockResolvedValue({
       items: [makeVersion()],
@@ -1469,6 +1510,55 @@ describe("VersionPage", () => {
     });
 
     expect(listRequirementsMock).not.toHaveBeenCalled();
+    expect(getVersionBoardViewMock).not.toHaveBeenCalled();
+    expect(listVersionsMock).not.toHaveBeenCalled();
+    expect(listTimelineMock).not.toHaveBeenCalled();
+  });
+
+  it("refreshes requirements when a requirement moves from the current version to another version", async () => {
+    listVersionsMock.mockResolvedValue({
+      items: [makeVersion()],
+      total: 1,
+    });
+    getVersionBoardViewMock.mockResolvedValue(makeBoardResponse([]));
+    listRequirementsMock.mockResolvedValue({
+      items: [makeRequirement({ title: "Moved requirement" })],
+      total: 1,
+      page: 1,
+      pageSize: 100,
+    });
+
+    render(<VersionPage />);
+
+    await waitFor(() => expect(listRequirementsMock).toHaveBeenCalledTimes(1));
+    await waitFor(() =>
+      expect(getVersionBoardViewMock).toHaveBeenCalledTimes(1),
+    );
+    await waitFor(() => expect(listTimelineMock).toHaveBeenCalledTimes(1));
+    getVersionBoardViewMock.mockClear();
+    listVersionsMock.mockClear();
+    listRequirementsMock.mockClear();
+    listTimelineMock.mockClear();
+
+    await act(async () => {
+      await fireRealtimeKey("requirement-list", {
+        events: [
+          makeRealtimeEvent({
+            invalidates: ["requirement-list"],
+            targetId: "01ARZ3NDEKTSV4RRFFQ69G5FR2",
+            targetType: "REQUIREMENT",
+            hints: {
+              changedFields: ["versionId"],
+              targetId: "01ARZ3NDEKTSV4RRFFQ69G5FR2",
+              targetType: "REQUIREMENT",
+              versionId: "01ARZ3NDEKTSV4RRFFQ69G5FV2",
+            },
+          }),
+        ],
+      });
+    });
+
+    await waitFor(() => expect(listRequirementsMock).toHaveBeenCalledTimes(1));
     expect(getVersionBoardViewMock).not.toHaveBeenCalled();
     expect(listVersionsMock).not.toHaveBeenCalled();
     expect(listTimelineMock).not.toHaveBeenCalled();

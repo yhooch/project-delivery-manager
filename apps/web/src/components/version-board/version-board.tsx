@@ -227,6 +227,23 @@ function realtimeHintString(
   return typeof value === "string" ? value : undefined;
 }
 
+function realtimeHintStringArray(
+  event: RealtimeEvent,
+  key: "changedFields",
+): string[] {
+  const value = event.hints?.[key];
+  return Array.isArray(value)
+    ? value.filter((item): item is string => typeof item === "string")
+    : [];
+}
+
+function realtimeHintBoolean(
+  event: RealtimeEvent,
+  key: "suggestFullRefresh",
+): boolean {
+  return event.hints?.[key] === true;
+}
+
 function realtimeEventMatchesSpace(
   event: RealtimeEvent,
   spaceId: string | undefined,
@@ -275,11 +292,22 @@ function realtimeEventMayAffectVersion(
 
   const hintedVersionId = realtimeHintString(event, "versionId");
 
-  if (hintedVersionId) {
-    return hintedVersionId === versionId;
+  if (hintedVersionId === versionId) {
+    return true;
   }
 
-  return event.target.type !== "VERSION" || event.target.id === versionId;
+  if (event.target.type === "VERSION") {
+    return event.target.id === versionId;
+  }
+
+  if (
+    realtimeHintBoolean(event, "suggestFullRefresh") ||
+    realtimeHintStringArray(event, "changedFields").includes("versionId")
+  ) {
+    return true;
+  }
+
+  return !hintedVersionId;
 }
 
 function realtimeEventMatchesActiveDetail(

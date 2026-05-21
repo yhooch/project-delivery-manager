@@ -6,13 +6,19 @@ vi.mock("next-intl", () => ({
     namespace ? `${namespace}.${key}` : key,
 }));
 
-vi.mock("../../i18n/routing", () => ({
-  Link: ({ children, href }: { children: React.ReactNode; href: string }) => (
-    <a href={href}>{children}</a>
-  ),
-}));
-
-const { sessionMock, useCommandPaletteShortcutMock } = vi.hoisted(() => ({
+const {
+  pathnameMock,
+  realtimeProviderProps,
+  sessionMock,
+  useCommandPaletteShortcutMock,
+} = vi.hoisted(() => ({
+  pathnameMock: { current: "/" },
+  realtimeProviderProps: {
+    current: [] as Array<{
+      organizationId: string | null | undefined;
+      spaceId: string | null | undefined;
+    }>,
+  },
   sessionMock: {
     current: {
       currentOrganization: undefined as
@@ -45,6 +51,27 @@ const { sessionMock, useCommandPaletteShortcutMock } = vi.hoisted(() => ({
     },
   },
   useCommandPaletteShortcutMock: vi.fn(),
+}));
+
+vi.mock("../../i18n/routing", () => ({
+  Link: ({ children, href }: { children: React.ReactNode; href: string }) => (
+    <a href={href}>{children}</a>
+  ),
+  usePathname: () => pathnameMock.current,
+}));
+vi.mock("../../lib/realtime", () => ({
+  RealtimeProvider: ({
+    children,
+    organizationId,
+    spaceId,
+  }: {
+    children: React.ReactNode;
+    organizationId?: string | null;
+    spaceId?: string | null;
+  }) => {
+    realtimeProviderProps.current.push({ organizationId, spaceId });
+    return <div data-testid="realtime-provider">{children}</div>;
+  },
 }));
 vi.mock("../providers/session-provider", () => ({
   useSession: () => sessionMock.current,
@@ -82,6 +109,8 @@ vi.mock("./top-bar", () => ({
 import { AppShell } from "./app-shell";
 
 beforeEach(() => {
+  pathnameMock.current = "/";
+  realtimeProviderProps.current = [];
   sessionMock.current = {
     currentOrganization: undefined,
     currentSpace: undefined,
@@ -212,6 +241,87 @@ describe("AppShell", () => {
     expect(screen.queryByTestId("onboarding-empty")).not.toBeInTheDocument();
     expect(useCommandPaletteShortcutMock).toHaveBeenCalledWith({
       enabled: true,
+    });
+  });
+
+  it("uses organization-wide realtime scope on the workbench route", () => {
+    sessionMock.current = {
+      currentOrganization: {
+        id: "ORG_01",
+        name: "Org A",
+        role: "OWNER",
+        status: "ACTIVE",
+      },
+      currentSpace: {
+        id: "SPC_01",
+        name: "Space A",
+        organizationId: "ORG_01",
+        status: "ACTIVE",
+      },
+      initializeSession: vi.fn(),
+      session: {
+        organizations: [
+          {
+            id: "ORG_01",
+            name: "Org A",
+            role: "OWNER",
+            status: "ACTIVE",
+          },
+        ],
+      },
+      sessionErrorKey: null,
+      spacesForCurrentOrganization: [
+        { id: "SPC_01", name: "Space A", organizationId: "ORG_01" },
+      ],
+      status: "authenticated",
+    };
+
+    render(<AppShell>Workspace</AppShell>);
+
+    expect(realtimeProviderProps.current).toContainEqual({
+      organizationId: "ORG_01",
+      spaceId: undefined,
+    });
+  });
+
+  it("keeps non-workbench routes scoped to the current space", () => {
+    pathnameMock.current = "/work-items";
+    sessionMock.current = {
+      currentOrganization: {
+        id: "ORG_01",
+        name: "Org A",
+        role: "OWNER",
+        status: "ACTIVE",
+      },
+      currentSpace: {
+        id: "SPC_01",
+        name: "Space A",
+        organizationId: "ORG_01",
+        status: "ACTIVE",
+      },
+      initializeSession: vi.fn(),
+      session: {
+        organizations: [
+          {
+            id: "ORG_01",
+            name: "Org A",
+            role: "OWNER",
+            status: "ACTIVE",
+          },
+        ],
+      },
+      sessionErrorKey: null,
+      spacesForCurrentOrganization: [
+        { id: "SPC_01", name: "Space A", organizationId: "ORG_01" },
+      ],
+      status: "authenticated",
+    };
+
+    render(<AppShell>Workspace</AppShell>);
+
+    expect(realtimeProviderProps.current).toContainEqual({
+      organizationId: "ORG_01",
+      spaceId: "SPC_01",
     });
   });
 

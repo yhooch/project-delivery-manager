@@ -195,7 +195,9 @@ export class RealtimePermissionService {
         : false;
     }
 
-    return this.isObjectParticipant(userId, event, "REQUIREMENT");
+    return this.isObjectParticipant(userId, event, "REQUIREMENT", {
+      includeRecentlyRemoved: true,
+    });
   }
 
   private async canReadIntakeItemTarget(
@@ -221,7 +223,9 @@ export class RealtimePermissionService {
       return true;
     }
 
-    return this.isObjectParticipant(userId, event, "INTAKE_ITEM");
+    return this.isObjectParticipant(userId, event, "INTAKE_ITEM", {
+      includeRecentlyRemoved: true,
+    });
   }
 
   private async isObjectParticipant(

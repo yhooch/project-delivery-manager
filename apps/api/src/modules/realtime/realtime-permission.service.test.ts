@@ -149,6 +149,86 @@ describe("RealtimePermissionService", () => {
     ).resolves.toBe(true);
   });
 
+  it("allows recently removed draft requirement participants to receive the invalidation", async () => {
+    const { client, service } = createSubject("PM");
+    client.requirement.findFirst.mockResolvedValue({
+      deletedAt: null,
+      id: "requirement",
+      status: "DRAFT",
+    });
+    client.objectParticipant.findFirst.mockResolvedValueOnce({
+      id: "removed-participant",
+    });
+
+    await expect(
+      service.canReadEvent(
+        REALTIME_ACTOR_ID,
+        createRealtimeEventFixture(1, {
+          target: {
+            id: "01H00000000000000000000004",
+            type: "REQUIREMENT",
+          },
+        }),
+      ),
+    ).resolves.toBe(true);
+
+    expect(client.objectParticipant.findFirst).toHaveBeenCalledWith({
+      select: { id: true },
+      where: expect.objectContaining({
+        OR: [
+          { deletedAt: null },
+          {
+            deletedAt: {
+              gte: new Date("2026-05-21T11:55:00.000Z"),
+              lte: new Date("2026-05-21T12:00:00.000Z"),
+            },
+            updatedById: REALTIME_ACTOR_ID,
+          },
+        ],
+        targetType: "REQUIREMENT",
+      }),
+    });
+  });
+
+  it("allows recently removed intake participants to receive the invalidation", async () => {
+    const { client, service } = createSubject("DEVELOPER");
+    client.intakeItem.findFirst.mockResolvedValue({
+      id: "intake-item",
+    });
+    client.objectParticipant.findFirst.mockResolvedValueOnce({
+      id: "removed-participant",
+    });
+
+    await expect(
+      service.canReadEvent(
+        REALTIME_ACTOR_ID,
+        createRealtimeEventFixture(1, {
+          target: {
+            id: "01H00000000000000000000004",
+            type: "INTAKE_ITEM",
+          },
+        }),
+      ),
+    ).resolves.toBe(true);
+
+    expect(client.objectParticipant.findFirst).toHaveBeenCalledWith({
+      select: { id: true },
+      where: expect.objectContaining({
+        OR: [
+          { deletedAt: null },
+          {
+            deletedAt: {
+              gte: new Date("2026-05-21T11:55:00.000Z"),
+              lte: new Date("2026-05-21T12:00:00.000Z"),
+            },
+            updatedById: REALTIME_ACTOR_ID,
+          },
+        ],
+        targetType: "INTAKE_ITEM",
+      }),
+    });
+  });
+
   it("allows deleted draft requirement events for participants removed by the same soft delete", async () => {
     const deletedAt = new Date("2026-05-21T12:30:00.000Z");
     const { client, service } = createSubject("PM");

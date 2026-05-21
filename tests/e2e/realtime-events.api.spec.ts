@@ -136,7 +136,9 @@ test.describe("RT-J realtime SSE API 集成验收", () => {
         operation: "UPDATED",
         targetId: task.id,
       });
-      expect(Number(updatedEvent.id)).toBeGreaterThan(Number(createdEvent.id));
+      expect(readCursorSequence(updatedEvent.id)).toBeGreaterThan(
+        readCursorSequence(createdEvent.id),
+      );
       await queryReplay.close();
 
       await expectData(
@@ -415,7 +417,7 @@ async function expectRealtimeEvent(
 
   const realtime = message as RealtimeSseRealtimeMessage;
 
-  expect(realtime.id).toBe(String(realtime.data.sequence));
+  expectRealtimeCursor(realtime.id, realtime.data.sequence);
   expect(realtime.data.target.type).toBe("WORK_ITEM");
 
   for (const key of expected.invalidates) {
@@ -423,6 +425,27 @@ async function expectRealtimeEvent(
   }
 
   return realtime;
+}
+
+function expectRealtimeCursor(cursor: string, sequence: number): void {
+  expect(cursor, "SSE id 应为 replay cursor").toMatch(
+    /^(?:[0-9A-HJKMNP-TV-Z]{26}:)?[1-9]\d*$/u,
+  );
+  expect(readCursorSequence(cursor)).toBe(sequence);
+}
+
+function readCursorSequence(cursor: string): number {
+  const separatorIndex = cursor.lastIndexOf(":");
+  const sequenceText =
+    separatorIndex === -1 ? cursor : cursor.slice(separatorIndex + 1);
+  const sequence = Number(sequenceText);
+
+  expect(
+    Number.isSafeInteger(sequence) && sequence > 0,
+    `SSE cursor sequence 应为正整数: ${cursor}`,
+  ).toBe(true);
+
+  return sequence;
 }
 
 async function expectResyncEvent(

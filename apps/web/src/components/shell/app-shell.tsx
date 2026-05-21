@@ -4,7 +4,7 @@ import { FolderKanban, Loader2, Plus } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useEffect, useState, type ReactNode } from "react";
 
-import { Link } from "../../i18n/routing";
+import { Link, usePathname } from "../../i18n/routing";
 import { RealtimeProvider } from "../../lib/realtime";
 import { canCreateSpaceInOrganization } from "../../lib/space-service";
 import { useSession } from "../providers/session-provider";
@@ -33,6 +33,7 @@ export function AppShell({ children }: AppShellProps) {
   } = useSession();
   const t = useTranslations("shell");
   const tRoot = useTranslations();
+  const pathname = usePathname();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [createSpaceOpen, setCreateSpaceOpen] = useState(false);
   const hasOrganization = Boolean(currentOrganization);
@@ -47,6 +48,9 @@ export function AppShell({ children }: AppShellProps) {
         currentOrganization?.status,
       ),
   );
+  const realtimeSpaceId = isOrganizationWideRealtimePath(pathname)
+    ? undefined
+    : currentSpace?.id;
   useCommandPaletteShortcut({ enabled: hasOrganization });
 
   useEffect(() => {
@@ -174,7 +178,7 @@ export function AppShell({ children }: AppShellProps) {
           ) : (
             <RealtimeProvider
               organizationId={currentOrganization?.id}
-              spaceId={currentSpace?.id}
+              spaceId={realtimeSpaceId}
             >
               {children}
             </RealtimeProvider>
@@ -191,4 +195,8 @@ export function AppShell({ children }: AppShellProps) {
       ) : null}
     </div>
   );
+}
+
+function isOrganizationWideRealtimePath(pathname: string): boolean {
+  return (pathname.replace(/\/+$/u, "") || "/") === "/";
 }
