@@ -1027,13 +1027,29 @@ describe("TasksPage", () => {
   });
 
   it("filters by the search query (case-insensitive)", async () => {
-    listWorkItemsMock.mockResolvedValueOnce({
-      items: [
-        makeTask({ id: "01ARZ3NDEKTSV4RRFFQ69G5F01", title: "Refactor auth" }),
-        makeTask({ id: "01ARZ3NDEKTSV4RRFFQ69G5F02", title: "Polish header" }),
-      ],
-      total: 2,
-    });
+    listWorkItemsMock
+      .mockResolvedValueOnce({
+        items: [
+          makeTask({
+            id: "01ARZ3NDEKTSV4RRFFQ69G5F01",
+            title: "Refactor auth",
+          }),
+          makeTask({
+            id: "01ARZ3NDEKTSV4RRFFQ69G5F02",
+            title: "Polish header",
+          }),
+        ],
+        total: 2,
+      })
+      .mockResolvedValue({
+        items: [
+          makeTask({
+            id: "01ARZ3NDEKTSV4RRFFQ69G5F01",
+            title: "Refactor auth",
+          }),
+        ],
+        total: 1,
+      });
 
     render(<TasksPage />);
 
