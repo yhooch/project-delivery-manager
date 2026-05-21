@@ -109,10 +109,6 @@ export function TasksPage() {
     router,
     searchParams,
   });
-  const recentScope = useMemo(
-    () => ({ organizationId, spaceId }),
-    [organizationId, spaceId],
-  );
   const { members, getMember } = useSpaceMembers(spaceId, organizationId);
   const { versions, getVersion } = useVersions(spaceId, organizationId);
 
@@ -162,9 +158,12 @@ export function TasksPage() {
   );
   const latestListScopeKeyRef = useRef(listScopeKey);
   const listRequestIdRef = useRef(0);
+  const itemsLengthRef = useRef(0);
   const previousContextKeyRef = useRef(contextKey);
   const rowRefs = useRef(new Map<string, HTMLLIElement>());
+  const searchQuery = useMemo(() => normalizeSearchQuery(query), [query]);
   latestListScopeKeyRef.current = listScopeKey;
+  itemsLengthRef.current = items.length;
   const loadedCount = items.length;
   const paginationFrom = loadedCount > 0 ? 1 : 0;
   const paginationTo = Math.min(loadedCount, pageInfo.total);
@@ -200,12 +199,16 @@ export function TasksPage() {
       listRequestIdRef.current = requestId;
       const requestScopeKey = listScopeKey;
       const append = mode === "append";
+      const keepCurrentItems =
+        !append && Boolean(searchQuery) && itemsLengthRef.current > 0;
 
       if (append) {
         setLoadingMore(true);
       } else {
-        setLoading(true);
-        setHasLoadedItems(false);
+        setLoading(!keepCurrentItems);
+        if (!keepCurrentItems) {
+          setHasLoadedItems(false);
+        }
       }
       setErrorMessage(null);
 
@@ -216,6 +219,7 @@ export function TasksPage() {
           pageSize: LIST_PAGE_SIZE,
           spaceId,
           type: "TASK",
+          ...(searchQuery ? { query: searchQuery } : {}),
           ...filters,
           ...serializeTagFilterQuery(tagFilter),
         });
@@ -239,8 +243,10 @@ export function TasksPage() {
           listRequestIdRef.current === requestId &&
           latestListScopeKeyRef.current === requestScopeKey
         ) {
-          const key = getApiErrorMessageKey(error);
-          setErrorMessage(tApiError(key));
+          if (!keepCurrentItems) {
+            const key = getApiErrorMessageKey(error);
+            setErrorMessage(tApiError(key));
+          }
         }
       } finally {
         if (
@@ -256,7 +262,15 @@ export function TasksPage() {
         }
       }
     },
-    [filters, listScopeKey, organizationId, spaceId, tApiError, tagFilter],
+    [
+      filters,
+      listScopeKey,
+      organizationId,
+      searchQuery,
+      spaceId,
+      tApiError,
+      tagFilter,
+    ],
   );
 
   useEffect(() => {
@@ -396,8 +410,8 @@ export function TasksPage() {
 
   const filtered = useMemo(() => {
     return taskViewModels.filter((task) => {
-      if (query.trim()) {
-        const q = query.toLowerCase();
+      if (searchQuery) {
+        const q = searchQuery.toLowerCase();
         return (
           task.title.toLowerCase().includes(q) ||
           task.code.toLowerCase().includes(q)
@@ -405,7 +419,7 @@ export function TasksPage() {
       }
       return true;
     });
-  }, [query, taskViewModels]);
+  }, [searchQuery, taskViewModels]);
 
   const open = useCallback(
     (
@@ -413,15 +427,20 @@ export function TasksPage() {
       options: { focusActions?: boolean } = {},
     ) => {
       captureFocus();
+      const itemOrganizationId = item.organizationId ?? organizationId;
+      const itemSpaceId = item.spaceId ?? spaceId;
+
       recordRecentOpen(
         {
           id: item.id,
           type: "TASK",
-          code: item.code,
+          displayCode: item.code,
           title: item.title,
           href: `/work-items?workItemId=${encodeURIComponent(item.id)}`,
+          organizationId: itemOrganizationId,
+          spaceId: itemSpaceId,
         },
-        recentScope,
+        { organizationId: itemOrganizationId, spaceId: itemSpaceId },
       );
       setActiveItem(item);
       setActionFocusRequest((current) =>
@@ -429,7 +448,7 @@ export function TasksPage() {
       );
       setSheetOpen(true);
     },
-    [captureFocus, recentScope],
+    [captureFocus, organizationId, spaceId],
   );
 
   const openActionArea = useCallback(
@@ -865,8 +884,8 @@ export function TasksPage() {
         item={activeItem}
         open={sheetOpen}
         onOpenChange={handleSheetOpenChange}
-        organizationId={organizationId}
-        spaceId={spaceId}
+        organizationId={activeItem?.organizationId ?? organizationId}
+        spaceId={activeItem?.spaceId ?? spaceId}
         onChanged={() => {
           reloadTagFilterOptions();
           void fetchTasks(1, "replace");
@@ -891,6 +910,11 @@ export function TasksPage() {
 
 function normalizeSearchParam(value: string | null): string | undefined {
   const normalized = value?.trim();
+  return normalized ? normalized : undefined;
+}
+
+function normalizeSearchQuery(value: string): string | undefined {
+  const normalized = value.trim();
   return normalized ? normalized : undefined;
 }
 

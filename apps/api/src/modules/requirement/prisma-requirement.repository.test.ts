@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 
+import type { ObjectCodeAllocator } from "../object-code/object-code.allocator";
 import type { PrismaService } from "../../prisma/prisma.service";
 import { PrismaRequirementRepository } from "./prisma-requirement.repository";
 
@@ -28,7 +29,10 @@ describe("PrismaRequirementRepository", () => {
         },
       },
     } as unknown as PrismaService;
-    const repository = new PrismaRequirementRepository(prisma);
+    const repository = new PrismaRequirementRepository(
+      prisma,
+      makeObjectCodeAllocator(),
+    );
 
     await repository.findById(requirement.id);
 
@@ -52,6 +56,7 @@ describe("PrismaRequirementRepository", () => {
         id: true,
         organizationId: true,
         requirementId: true,
+        sequence: true,
         spaceId: true,
         statusCategory: true,
         title: true,
@@ -72,6 +77,190 @@ describe("PrismaRequirementRepository", () => {
       },
     });
     expect(bugDetailFindMany).not.toHaveBeenCalled();
+  });
+
+  it("does not allocate sequence when creating an empty draft", async () => {
+    const requirement = makeRequirement({ sequence: null, status: "DRAFT" });
+    const objectCodeAllocator = makeObjectCodeAllocator();
+    const requirementCreate = vi.fn(
+      async (_args: { data: Record<string, unknown> }) => requirement,
+    );
+    const tx = {
+      objectParticipant: {
+        create: vi.fn(async () => undefined),
+        findFirst: vi.fn(async () => undefined),
+      },
+      requirement: {
+        create: requirementCreate,
+      },
+      tagAssignment: {
+        updateMany: vi.fn(async () => ({ count: 0 })),
+      },
+      timelineEvent: {
+        create: vi.fn(async () => undefined),
+      },
+    };
+    const prisma = {
+      client: {
+        $transaction: vi.fn(async (handler) => handler(tx)),
+      },
+    } as unknown as PrismaService;
+    const repository = new PrismaRequirementRepository(
+      prisma,
+      objectCodeAllocator,
+    );
+
+    const created = await repository.createDraft({
+      id: requirement.id,
+      organizationId: requirement.organizationId,
+      spaceId: requirement.spaceId,
+      createdById: requirement.authorId,
+    });
+
+    expect(objectCodeAllocator.allocateOne).not.toHaveBeenCalled();
+    const createArgs = (
+      requirementCreate.mock.calls as Array<
+        [{ data: Record<string, unknown> }]
+      >
+    )[0]?.[0];
+
+    expect(createArgs?.data).not.toHaveProperty("sequence");
+    expect(created.sequence).toBeUndefined();
+  });
+
+  it("allocates a requirement sequence on first save only", async () => {
+    const previous = makeRequirement({ sequence: null, status: "DRAFT" });
+    const saved = makeRequirement({
+      ...previous,
+      sequence: 12,
+      status: "CONFIRMED",
+      title: "已保存需求",
+    });
+    const objectCodeAllocator = makeObjectCodeAllocator({ nextSequence: 12 });
+    const requirementUpdateMany = vi.fn(async () => ({ count: 1 }));
+    const tx = {
+      requirement: {
+        findFirst: vi
+          .fn()
+          .mockResolvedValueOnce(previous)
+          .mockResolvedValueOnce(saved),
+        updateMany: requirementUpdateMany,
+      },
+      timelineEvent: {
+        create: vi.fn(async () => undefined),
+      },
+    };
+    const prisma = {
+      client: {
+        $transaction: vi.fn(async (handler) => handler(tx)),
+        attachment: {
+          findMany: vi.fn(async () => []),
+        },
+        bugDetail: {
+          findMany: vi.fn(async () => []),
+        },
+        tagAssignment: {
+          findMany: vi.fn(async () => []),
+        },
+        workItem: {
+          findMany: vi.fn(async () => []),
+        },
+      },
+    } as unknown as PrismaService;
+    const repository = new PrismaRequirementRepository(
+      prisma,
+      objectCodeAllocator,
+    );
+
+    const result = await repository.save({
+      requirementId: previous.id,
+      title: saved.title,
+      contentJson: { type: "doc" },
+      shouldUpdateOwner: false,
+      updatedById: previous.authorId,
+    });
+
+    expect(objectCodeAllocator.allocateOne).toHaveBeenCalledWith(tx, {
+      actorUserId: previous.authorId,
+      objectType: "REQUIREMENT",
+      organizationId: previous.organizationId,
+      spaceId: previous.spaceId,
+    });
+    expect(requirementUpdateMany).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({
+        data: { sequence: 12 },
+        where: expect.objectContaining({
+          id: previous.id,
+          sequence: null,
+        }),
+      }),
+    );
+    expect(result).toMatchObject({
+      sequence: 12,
+      displayCode: "REQ-12",
+    });
+  });
+
+  it("keeps an existing requirement sequence unchanged on later saves", async () => {
+    const previous = makeRequirement({
+      sequence: 12,
+      status: "CONFIRMED",
+    });
+    const saved = makeRequirement({
+      ...previous,
+      title: "再次保存需求",
+    });
+    const objectCodeAllocator = makeObjectCodeAllocator();
+    const requirementUpdateMany = vi.fn(async () => ({ count: 1 }));
+    const tx = {
+      requirement: {
+        findFirst: vi
+          .fn()
+          .mockResolvedValueOnce(previous)
+          .mockResolvedValueOnce(saved),
+        updateMany: requirementUpdateMany,
+      },
+      timelineEvent: {
+        create: vi.fn(async () => undefined),
+      },
+    };
+    const prisma = {
+      client: {
+        $transaction: vi.fn(async (handler) => handler(tx)),
+        attachment: {
+          findMany: vi.fn(async () => []),
+        },
+        bugDetail: {
+          findMany: vi.fn(async () => []),
+        },
+        tagAssignment: {
+          findMany: vi.fn(async () => []),
+        },
+        workItem: {
+          findMany: vi.fn(async () => []),
+        },
+      },
+    } as unknown as PrismaService;
+    const repository = new PrismaRequirementRepository(
+      prisma,
+      objectCodeAllocator,
+    );
+
+    const result = await repository.save({
+      requirementId: previous.id,
+      title: saved.title,
+      contentJson: { type: "doc" },
+      shouldUpdateOwner: false,
+      updatedById: previous.authorId,
+    });
+
+    expect(objectCodeAllocator.allocateOne).not.toHaveBeenCalled();
+    expect(requirementUpdateMany).toHaveBeenCalledTimes(1);
+    expect(result).toMatchObject({
+      sequence: 12,
+      displayCode: "REQ-12",
+    });
   });
 
   it("scopes requirement list aggregate queries by each requirement tenant", async () => {
@@ -109,7 +298,10 @@ describe("PrismaRequirementRepository", () => {
         },
       },
     } as unknown as PrismaService;
-    const repository = new PrismaRequirementRepository(prisma);
+    const repository = new PrismaRequirementRepository(
+      prisma,
+      makeObjectCodeAllocator(),
+    );
 
     await repository.listBySpaceId(first.spaceId, {
       actorUserId: first.authorId,
@@ -147,6 +339,7 @@ describe("PrismaRequirementRepository", () => {
         id: true,
         organizationId: true,
         requirementId: true,
+        sequence: true,
         spaceId: true,
         statusCategory: true,
         title: true,
@@ -209,7 +402,10 @@ describe("PrismaRequirementRepository", () => {
         },
       },
     } as unknown as PrismaService;
-    const repository = new PrismaRequirementRepository(prisma);
+    const repository = new PrismaRequirementRepository(
+      prisma,
+      makeObjectCodeAllocator(),
+    );
 
     const result = await repository.listBySpaceId(requirement.spaceId, {
       actorUserId: requirement.authorId,
@@ -332,7 +528,10 @@ describe("PrismaRequirementRepository", () => {
         },
       },
     } as unknown as PrismaService;
-    const repository = new PrismaRequirementRepository(prisma);
+    const repository = new PrismaRequirementRepository(
+      prisma,
+      makeObjectCodeAllocator(),
+    );
 
     await repository.save({
       requirementId: requirement.id,
@@ -432,7 +631,10 @@ describe("PrismaRequirementRepository", () => {
         },
       },
     } as unknown as PrismaService;
-    const repository = new PrismaRequirementRepository(prisma);
+    const repository = new PrismaRequirementRepository(
+      prisma,
+      makeObjectCodeAllocator(),
+    );
 
     const result = await repository.findById(requirement.id);
 
@@ -513,7 +715,10 @@ describe("PrismaRequirementRepository", () => {
         },
       },
     } as unknown as PrismaService;
-    const repository = new PrismaRequirementRepository(prisma);
+    const repository = new PrismaRequirementRepository(
+      prisma,
+      makeObjectCodeAllocator(),
+    );
 
     await repository.createDraft({
       id: requirement.id,
@@ -608,7 +813,10 @@ describe("PrismaRequirementRepository", () => {
         },
       },
     } as unknown as PrismaService;
-    const repository = new PrismaRequirementRepository(prisma);
+    const repository = new PrismaRequirementRepository(
+      prisma,
+      makeObjectCodeAllocator(),
+    );
 
     await repository.save({
       requirementId: previous.id,
@@ -778,7 +986,10 @@ describe("PrismaRequirementRepository", () => {
         },
       },
     } as unknown as PrismaService;
-    const repository = new PrismaRequirementRepository(prisma);
+    const repository = new PrismaRequirementRepository(
+      prisma,
+      makeObjectCodeAllocator(),
+    );
 
     await repository.save({
       cascadeVersionChange: true,
@@ -847,6 +1058,24 @@ function makeWorkItem(overrides: Partial<WorkItemRecord> = {}) {
 
 type WorkItemRecord = ReturnType<typeof makeBaseWorkItem>;
 
+function makeObjectCodeAllocator(
+  input: { nextSequence?: number; rangeStart?: number } = {},
+) {
+  const nextSequence = input.nextSequence ?? 1;
+  const rangeStart = input.rangeStart ?? nextSequence;
+
+  return {
+    allocateOne: vi.fn(async () => nextSequence),
+    allocateRange: vi.fn(async (_tx, rangeInput: { count: number }) => ({
+      firstValue: rangeStart,
+      lastValue: rangeStart + rangeInput.count - 1,
+    })),
+  } as unknown as ObjectCodeAllocator & {
+    allocateOne: ReturnType<typeof vi.fn>;
+    allocateRange: ReturnType<typeof vi.fn>;
+  };
+}
+
 function makeBaseRequirement() {
   const now = new Date("2026-05-14T12:00:00.000Z");
 
@@ -865,6 +1094,7 @@ function makeBaseRequirement() {
     priority: null,
     ownerId: null as string | null,
     authorId: "01H00000000000000000000005",
+    sequence: null as number | null,
     createdAt: now,
     updatedAt: now,
   };
@@ -880,6 +1110,7 @@ function makeBaseWorkItem() {
     versionId: "01H00000000000000000000004",
     requirementId: "01H00000000000000000000001" as string | null,
     intakeItemId: null as string | null,
+    sequence: null as number | null,
     type: "TASK" as "TASK" | "BUG",
     title: "工作项",
     description: null,

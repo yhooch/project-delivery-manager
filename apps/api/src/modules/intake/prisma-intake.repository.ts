@@ -4,6 +4,8 @@ import { ulid } from "ulid";
 
 import { Prisma } from "../../generated/prisma/client";
 import { PrismaService } from "../../prisma/prisma.service";
+import { ObjectCodeAllocator } from "../object-code/object-code.allocator";
+import { parseObjectCode } from "../object-code/object-code.types";
 import {
   findTaggedTargetIds,
   listTagsByTargets,
@@ -28,6 +30,8 @@ export class PrismaIntakeRepository implements IntakeRepository {
   constructor(
     @Inject(PrismaService)
     private readonly prisma: PrismaService,
+    @Inject(ObjectCodeAllocator)
+    private readonly objectCodeAllocator: ObjectCodeAllocator,
   ) {}
 
   async convertToWorkItems(input: ConvertIntakeItemToWorkItemsInput) {
@@ -61,9 +65,19 @@ export class PrismaIntakeRepository implements IntakeRepository {
         return undefined;
       }
 
+      const sequenceRange =
+        input.tasks.length > 0
+          ? await this.objectCodeAllocator.allocateRange(tx, {
+              actorUserId: input.actorUserId,
+              count: input.tasks.length,
+              objectType: "TASK",
+              organizationId: before.organizationId,
+              spaceId: before.spaceId,
+            })
+          : undefined;
       const workItems = [];
 
-      for (const task of input.tasks) {
+      for (const [index, task] of input.tasks.entries()) {
         const workItem = await tx.workItem.create({
           data: {
             id: task.id,
@@ -78,6 +92,9 @@ export class PrismaIntakeRepository implements IntakeRepository {
             priority: task.priority,
             reporterId: task.reporterId,
             requirementId: task.requirementId,
+            sequence: sequenceRange
+              ? sequenceRange.firstValue + index
+              : undefined,
             spaceId: before.spaceId,
             statusCategory: task.statusCategory,
             title: task.title,
@@ -218,6 +235,12 @@ export class PrismaIntakeRepository implements IntakeRepository {
 
   async create(input: CreateIntakeItemInput) {
     const result = await this.prisma.client.$transaction(async (tx) => {
+      const sequence = await this.objectCodeAllocator.allocateOne(tx, {
+        actorUserId: input.reporterId,
+        objectType: "INTAKE_ITEM",
+        organizationId: input.organizationId,
+        spaceId: input.spaceId,
+      });
       const created = await tx.intakeItem.create({
         data: {
           id: input.id,
@@ -227,6 +250,7 @@ export class PrismaIntakeRepository implements IntakeRepository {
           priority: input.priority,
           reporterId: input.reporterId,
           requirementId: input.requirementId,
+          sequence,
           sourceObject: input.sourceObject as Prisma.InputJsonValue | undefined,
           sourceType: input.sourceType,
           spaceId: input.spaceId,
@@ -635,7 +659,7 @@ function buildListWhere(
   input: IntakeItemListInput,
   participantItemIds: string[] | undefined,
 ): Prisma.IntakeItemWhereInput {
-  return {
+  const where: Prisma.IntakeItemWhereInput = {
     assigneeId: input.assigneeId,
     deletedAt: null,
     id: participantItemIds
@@ -651,6 +675,43 @@ function buildListWhere(
     status: input.status,
     versionId: input.versionId,
   };
+
+  applyListQuery(where, input.query);
+
+  return where;
+}
+
+function applyListQuery(
+  where: Prisma.IntakeItemWhereInput,
+  query: string | undefined,
+) {
+  const trimmed = query?.trim();
+
+  if (!trimmed) {
+    return;
+  }
+
+  const parsed = parseObjectCode(trimmed);
+
+  if (parsed) {
+    where.AND = [
+      ...toArray(where.AND),
+      parsed.objectType === "INTAKE_ITEM"
+        ? { sequence: parsed.sequence }
+        : { id: { in: [] } },
+    ];
+    return;
+  }
+
+  where.AND = [
+    ...toArray(where.AND),
+    {
+      OR: [
+        { title: { contains: trimmed, mode: "insensitive" } },
+        { description: { contains: trimmed, mode: "insensitive" } },
+      ],
+    },
+  ];
 }
 
 function applyTaggedTargetIds(

@@ -647,6 +647,32 @@ describe("MyWorkbench", () => {
     expect(getVersionsMock).toHaveBeenCalledWith("SPC_02", "ORG_01");
   });
 
+  it("shows space context for organization-level work item codes", async () => {
+    getMyWorkbenchViewMock.mockResolvedValueOnce(
+      makeWorkbenchResponse({
+        todos: [
+          makeWorkItemSummary({
+            id: "01ARZ3NDEKTSV4RRFFQ69G5F23",
+            displayCode: "TASK-1",
+            spaceId: "SPC_02",
+            title: "Cross-space duplicate code",
+          }),
+        ],
+      }),
+    );
+
+    render(<MyWorkbench />);
+
+    expect(
+      await screen.findByText("Cross-space duplicate code"),
+    ).toBeInTheDocument();
+    const item = screen.getByText("Cross-space duplicate code").closest("li");
+
+    expect(item).not.toBeNull();
+    expect(within(item as HTMLElement).getByText("TASK-1")).toBeInTheDocument();
+    expect(within(item as HTMLElement).getByText("Space B")).toBeInTheDocument();
+  });
+
   it("uses a readable version fallback instead of a raw ID tail when lookups miss", async () => {
     getVersionsMock.mockResolvedValue([]);
     getMyWorkbenchViewMock.mockResolvedValueOnce(
@@ -824,9 +850,17 @@ describe("MyWorkbench", () => {
           spaceId: "SPC_01",
         }),
       ) ?? "[]",
-    ) as Array<{ href: string; title: string; type: string }>;
+    ) as Array<{
+      displayCode: string;
+      href: string;
+      spaceId: string;
+      title: string;
+      type: string;
+    }>;
     expect(stored[0]).toMatchObject({
-      href: "/work-items",
+      displayCode: "TASK-9G5FRC",
+      href: "/work-items?workItemId=01ARZ3NDEKTSV4RRFFQ69G5FRC",
+      spaceId: "SPC_01",
       title: "Remember workbench item",
       type: "TASK",
     });
@@ -954,6 +988,31 @@ describe("MyWorkbench", () => {
       screen.queryByText("edited the description"),
     ).not.toBeInTheDocument();
     expect(screen.getByText("Workbench task").closest("a")).toBeNull();
+  });
+
+  it("shows space context for organization-level recent activities", async () => {
+    getMyWorkbenchViewMock.mockResolvedValueOnce(
+      makeWorkbenchResponse({
+        recent: [
+          makeRecentActivity({
+            id: "01ARZ3NDEKTSV4RRFFQ69G5FE3",
+            spaceId: "SPC_02",
+            target: {
+              type: "WORK_ITEM",
+              id: "01ARZ3NDEKTSV4RRFFQ69G5FBU",
+              title: "Cross-space recent task",
+            },
+          }),
+        ],
+      }),
+    );
+
+    render(<MyWorkbench />);
+
+    expect(
+      await screen.findByText("Cross-space recent task"),
+    ).toBeInTheDocument();
+    expect(screen.getByText(/· Space B/u)).toBeInTheDocument();
   });
 
   it("links recent activities when the timeline helper can resolve the target", async () => {

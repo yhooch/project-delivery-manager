@@ -1049,9 +1049,17 @@ describe("ExceptionsPage", () => {
           spaceId: "SPC_01",
         }),
       ) ?? "[]",
-    ) as Array<{ href: string; title: string; type: string }>;
+    ) as Array<{
+      displayCode: string;
+      href: string;
+      spaceId: string;
+      title: string;
+      type: string;
+    }>;
     expect(stored[0]).toMatchObject({
-      href: "/work-items",
+      displayCode: "TASK-9G5FRC",
+      href: "/work-items?workItemId=01ARZ3NDEKTSV4RRFFQ69G5FRC",
+      spaceId: "SPC_01",
       title: "Remember exception",
       type: "TASK",
     });

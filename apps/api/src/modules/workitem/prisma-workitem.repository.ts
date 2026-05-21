@@ -3,6 +3,8 @@ import { ulid } from "ulid";
 
 import { Prisma } from "../../generated/prisma/client";
 import { PrismaService } from "../../prisma/prisma.service";
+import { ObjectCodeAllocator } from "../object-code/object-code.allocator";
+import { parseObjectCode } from "../object-code/object-code.types";
 import {
   findTaggedTargetIds,
   listTagsByTargets,
@@ -26,6 +28,8 @@ export class PrismaWorkItemRepository implements WorkItemRepository {
   constructor(
     @Inject(PrismaService)
     private readonly prisma: PrismaService,
+    @Inject(ObjectCodeAllocator)
+    private readonly objectCodeAllocator: ObjectCodeAllocator,
   ) {}
 
   async listBySpaceId(spaceId: string, input: WorkItemListInput) {
@@ -131,6 +135,12 @@ export class PrismaWorkItemRepository implements WorkItemRepository {
 
   async create(input: CreateWorkItemInput) {
     const created = await this.prisma.client.$transaction(async (tx) => {
+      const sequence = await this.objectCodeAllocator.allocateOne(tx, {
+        actorUserId: input.createdById,
+        objectType: "TASK",
+        organizationId: input.organizationId,
+        spaceId: input.spaceId,
+      });
       const workItem = await tx.workItem.create({
         data: {
           id: input.id,
@@ -145,6 +155,7 @@ export class PrismaWorkItemRepository implements WorkItemRepository {
           priority: input.priority,
           reporterId: input.reporterId,
           requirementId: input.requirementId,
+          sequence,
           spaceId: input.spaceId,
           statusCategory: input.statusCategory,
           title: input.title,
@@ -649,7 +660,7 @@ function buildListWhere(
   spaceId: string,
   input: WorkItemListInput,
 ): Prisma.WorkItemWhereInput {
-  return {
+  const where: Prisma.WorkItemWhereInput = {
     assigneeId: input.assigneeId,
     deletedAt: null,
     intakeItemId: input.intakeItemId,
@@ -661,6 +672,43 @@ function buildListWhere(
     type: "TASK",
     versionId: input.versionId,
   };
+
+  applyListQuery(where, input.query);
+
+  return where;
+}
+
+function applyListQuery(
+  where: Prisma.WorkItemWhereInput,
+  query: string | undefined,
+) {
+  const trimmed = query?.trim();
+
+  if (!trimmed) {
+    return;
+  }
+
+  const parsed = parseObjectCode(trimmed);
+
+  if (parsed) {
+    where.AND = [
+      ...toArray(where.AND),
+      parsed.objectType === "TASK"
+        ? { sequence: parsed.sequence }
+        : { id: { in: [] } },
+    ];
+    return;
+  }
+
+  where.AND = [
+    ...toArray(where.AND),
+    {
+      OR: [
+        { title: { contains: trimmed, mode: "insensitive" } },
+        { description: { contains: trimmed, mode: "insensitive" } },
+      ],
+    },
+  ];
 }
 
 function applyTaggedTargetIds(

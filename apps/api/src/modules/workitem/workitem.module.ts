@@ -3,6 +3,7 @@ import { Module } from "@nestjs/common";
 import { PrismaModule } from "../../prisma/prisma.module";
 import { AuthModule } from "../auth/auth.module";
 import { AuditModule } from "../audit/audit.module";
+import { ObjectCodeModule } from "../object-code/object-code.module";
 import { OrganizationModule } from "../organization/organization.module";
 import { SpaceModule } from "../space/space.module";
 import { WorkflowModule } from "../workflow/workflow.module";
@@ -17,6 +18,7 @@ import { WorkItemService } from "./workitem.service";
   imports: [
     AuthModule,
     AuditModule,
+    ObjectCodeModule,
     OrganizationModule,
     PrismaModule,
     SpaceModule,

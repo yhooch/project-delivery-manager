@@ -17,6 +17,7 @@ import {
   TagIdListSchema,
   TagListSchema,
 } from "./tag.ts";
+import { DisplayIdentitySchema } from "./object-code.ts";
 import { PermissionSnapshotSchema } from "./workflow.ts";
 
 const TiptapJsonRecordSchema = z.record(z.string(), z.unknown());
@@ -64,6 +65,8 @@ export type AttachmentRef = z.infer<typeof AttachmentRefSchema>;
 export const RequirementRelatedWorkItemSummarySchema = z
   .object({
     id: UlidSchema,
+    sequence: DisplayIdentitySchema.shape.sequence,
+    displayCode: DisplayIdentitySchema.shape.displayCode,
     type: WorkItemTypeSchema,
     title: z.string().min(1).max(200),
     versionId: UlidSchema.optional(),
@@ -94,6 +97,8 @@ export const RequirementSchema = z
     id: UlidSchema,
     organizationId: UlidSchema,
     spaceId: UlidSchema,
+    sequence: DisplayIdentitySchema.shape.sequence,
+    displayCode: DisplayIdentitySchema.shape.displayCode,
     versionId: UlidSchema.optional(),
     title: z.string().max(200),
     summary: z.string().max(2000).optional(),
@@ -169,6 +174,7 @@ export type UpdateRequirementRequest = z.infer<
 export const RequirementListQuerySchema = PageQuerySchema.merge(
   TagFilterQuerySchema,
 ).extend({
+  query: z.string().trim().min(1).max(200).optional(),
   versionId: UlidSchema.optional(),
   status: RequirementStatusSchema.optional(),
   ownerId: UlidSchema.optional(),

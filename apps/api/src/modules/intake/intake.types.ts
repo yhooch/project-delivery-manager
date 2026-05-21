@@ -16,6 +16,7 @@ export type IntakeItemListInput = {
   page: number;
   pageSize: number;
   priority?: Priority;
+  query?: string;
   reporterId?: string;
   requirementId?: string;
   restrictToParticipantUserId?: string;

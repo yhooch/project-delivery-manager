@@ -24,7 +24,7 @@ import {
 } from "react";
 
 import { getApiErrorMessageKey } from "../../lib/api-error-messages";
-import { formatDisplayCode } from "../../lib/display-code";
+import { resolveWorkItemDisplayCode } from "../../lib/display-code";
 import {
   getBug,
   listBugs,
@@ -125,10 +125,6 @@ export function BugsPage() {
   const { currentSpace, status: sessionStatus } = useSession();
   const spaceId = currentSpace?.id;
   const organizationId = currentSpace?.organizationId;
-  const recentScope = useMemo(
-    () => ({ organizationId, spaceId }),
-    [organizationId, spaceId],
-  );
   const { members, getMember } = useSpaceMembers(spaceId, organizationId);
   const { versions, getVersion } = useVersions(spaceId, organizationId);
 
@@ -538,15 +534,20 @@ export function BugsPage() {
   const openBug = useCallback(
     (bug: BugItemViewModel, options: { focusActions?: boolean } = {}) => {
       captureFocus();
+      const itemOrganizationId = bug.organizationId ?? organizationId;
+      const itemSpaceId = bug.spaceId ?? spaceId;
+
       recordRecentOpen(
         {
           id: bug.id,
           type: "BUG",
-          code: bug.code,
+          displayCode: bug.code,
           title: bug.title,
           href: `/bugs?bugId=${encodeURIComponent(bug.id)}`,
+          organizationId: itemOrganizationId,
+          spaceId: itemSpaceId,
         },
-        recentScope,
+        { organizationId: itemOrganizationId, spaceId: itemSpaceId },
       );
       setActiveItem(bug);
       setActionFocusRequest((current) =>
@@ -554,7 +555,7 @@ export function BugsPage() {
       );
       setSheetOpen(true);
     },
-    [captureFocus, recentScope],
+    [captureFocus, organizationId, spaceId],
   );
 
   const openBugActionArea = useCallback(
@@ -1219,8 +1220,8 @@ export function BugsPage() {
         item={activeItem}
         open={sheetOpen}
         onOpenChange={handleSheetOpenChange}
-        organizationId={organizationId}
-        spaceId={spaceId}
+        organizationId={activeItem?.organizationId ?? organizationId}
+        spaceId={activeItem?.spaceId ?? spaceId}
         onChanged={() => {
           setDetailRevision((revision) => revision + 1);
           reloadTagFilterOptions();
@@ -1293,7 +1294,7 @@ function toBugViewModel(
   lookups: BugLookupHelpers,
   locale: string,
 ): BugItemViewModel {
-  const code = formatDisplayCode("BUG", bug.id);
+  const code = resolveWorkItemDisplayCode(bug);
   const member = bug.assigneeId ? lookups.getMember(bug.assigneeId) : undefined;
   const assigneeName = member?.user.name ?? member?.user.username ?? "";
   const creatorId = bug.createdById ?? bug.reporterId;
@@ -1320,6 +1321,8 @@ function toBugViewModel(
     id: bug.id,
     code,
     type: "BUG",
+    organizationId: bug.organizationId,
+    spaceId: bug.spaceId,
     title: bug.title,
     workflowVersionId: bug.workflowVersionId,
     currentStateId: bug.currentStateId,

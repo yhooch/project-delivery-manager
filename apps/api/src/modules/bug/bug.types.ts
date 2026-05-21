@@ -23,6 +23,7 @@ export type BugListInput = {
   assigneeId?: string;
   statusCategory?: StatusCategory;
   priority?: Priority;
+  query?: string;
   severity?: BugSeverity;
   relatedTaskId?: string;
   tagIds?: string;

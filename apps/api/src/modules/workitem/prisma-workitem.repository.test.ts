@@ -5,6 +5,7 @@ vi.mock("@project-delivery/shared", async () =>
 );
 
 import type { PrismaService } from "../../prisma/prisma.service";
+import type { ObjectCodeAllocator } from "../object-code/object-code.allocator";
 import { PrismaWorkItemRepository } from "./prisma-workitem.repository";
 
 const SPACE_ID = "01H00000000000000000000001";
@@ -28,16 +29,19 @@ describe("PrismaWorkItemRepository", () => {
         },
       ],
     }));
-    const repository = new PrismaWorkItemRepository({
-      client: {
-        workflowBinding: {
-          findFirst: workflowBindingFindFirst,
+    const repository = new PrismaWorkItemRepository(
+      {
+        client: {
+          workflowBinding: {
+            findFirst: workflowBindingFindFirst,
+          },
+          workflowVersion: {
+            findFirst: workflowVersionFindFirst,
+          },
         },
-        workflowVersion: {
-          findFirst: workflowVersionFindFirst,
-        },
-      },
-    } as unknown as PrismaService);
+      } as unknown as PrismaService,
+      makeObjectCodeAllocator(),
+    );
 
     await expect(
       repository.resolveTaskWorkflow(SPACE_ID, WORKFLOW_VERSION_ID),
@@ -81,19 +85,22 @@ describe("PrismaWorkItemRepository", () => {
         statusCategory: "IN_PROGRESS",
       },
     ]);
-    const repository = new PrismaWorkItemRepository({
-      client: {
-        $transaction: vi.fn(async (operations) => Promise.all(operations)),
-        tagAssignment: {
-          findMany: tagAssignmentFindMany,
+    const repository = new PrismaWorkItemRepository(
+      {
+        client: {
+          $transaction: vi.fn(async (operations) => Promise.all(operations)),
+          tagAssignment: {
+            findMany: tagAssignmentFindMany,
+          },
+          workItem: {
+            count: workItemCount,
+            findMany: workItemFindMany,
+            groupBy: workItemGroupBy,
+          },
         },
-        workItem: {
-          count: workItemCount,
-          findMany: workItemFindMany,
-          groupBy: workItemGroupBy,
-        },
-      },
-    } as unknown as PrismaService);
+      } as unknown as PrismaService,
+      makeObjectCodeAllocator(),
+    );
 
     const result = await repository.listBySpaceId(SPACE_ID, {
       actorUserId: ACTOR_ID,
@@ -174,4 +181,144 @@ describe("PrismaWorkItemRepository", () => {
       }),
     );
   });
+
+  it("allocates a TASK sequence inside the create transaction", async () => {
+    const objectCodeAllocator = makeObjectCodeAllocator({ nextSequence: 31 });
+    const workItemCreate = vi.fn(async (args: { data: WorkItemCreateData }) =>
+      makeWorkItem(args.data),
+    );
+    const tx = {
+      objectParticipant: {
+        create: vi.fn(async () => undefined),
+        findFirst: vi.fn(async () => undefined),
+      },
+      tagAssignment: {
+        updateMany: vi.fn(async () => ({ count: 0 })),
+      },
+      timelineEvent: {
+        create: vi.fn(async () => undefined),
+      },
+      workItem: {
+        create: workItemCreate,
+      },
+    };
+    const repository = new PrismaWorkItemRepository(
+      {
+        client: {
+          $transaction: vi.fn(async (handler) => handler(tx)),
+          tagAssignment: {
+            findMany: vi.fn(async () => []),
+          },
+        },
+      } as unknown as PrismaService,
+      objectCodeAllocator,
+    );
+
+    const created = await repository.create({
+      id: "01H00000000000000000000009",
+      createdById: ACTOR_ID,
+      currentStateId: CURRENT_STATE_ID,
+      lastStatusChangedAt: new Date("2026-05-14T12:00:00.000Z"),
+      organizationId: "01H00000000000000000000010",
+      priority: "MEDIUM",
+      relatedUserIds: [],
+      reporterId: ACTOR_ID,
+      spaceId: SPACE_ID,
+      statusCategory: "NOT_STARTED",
+      title: "Sequenced task",
+      workflowVersionId: WORKFLOW_VERSION_ID,
+    });
+
+    expect(objectCodeAllocator.allocateOne).toHaveBeenCalledWith(tx, {
+      actorUserId: ACTOR_ID,
+      objectType: "TASK",
+      organizationId: "01H00000000000000000000010",
+      spaceId: SPACE_ID,
+    });
+    expect(workItemCreate).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        sequence: 31,
+        type: "TASK",
+      }),
+    });
+    expect(created).toMatchObject({
+      sequence: 31,
+      displayCode: "TASK-31",
+    });
+  });
 });
+
+type WorkItemCreateData = {
+  assigneeId?: string;
+  createdById: string;
+  currentStateId: string;
+  description?: string;
+  dueDate?: Date;
+  id: string;
+  intakeItemId?: string;
+  lastStatusChangedAt: Date;
+  organizationId: string;
+  priority: "LOW" | "MEDIUM" | "HIGH" | "URGENT";
+  reporterId: string;
+  requirementId?: string;
+  sequence: number;
+  spaceId: string;
+  statusCategory:
+    | "NOT_STARTED"
+    | "IN_PROGRESS"
+    | "WAITING"
+    | "VERIFYING"
+    | "DONE"
+    | "TERMINATED";
+  title: string;
+  type: "TASK";
+  updatedById: string;
+  versionId?: string;
+  workflowVersionId: string;
+};
+
+function makeWorkItem(data: WorkItemCreateData) {
+  const now = new Date("2026-05-14T12:05:00.000Z");
+
+  return {
+    id: data.id,
+    organizationId: data.organizationId,
+    spaceId: data.spaceId,
+    sequence: data.sequence,
+    versionId: data.versionId ?? null,
+    requirementId: data.requirementId ?? null,
+    intakeItemId: data.intakeItemId ?? null,
+    type: data.type,
+    title: data.title,
+    description: data.description ?? null,
+    priority: data.priority,
+    assigneeId: data.assigneeId ?? null,
+    reporterId: data.reporterId,
+    workflowVersionId: data.workflowVersionId,
+    currentStateId: data.currentStateId,
+    statusCategory: data.statusCategory,
+    dueDate: data.dueDate ?? null,
+    lastStatusChangedAt: data.lastStatusChangedAt,
+    lastActionAt: null,
+    blockedReason: null,
+    blockedAt: null,
+    closedAt: null,
+    createdAt: now,
+    updatedAt: now,
+    createdById: data.createdById,
+    updatedById: data.updatedById,
+    deletedAt: null,
+  };
+}
+
+function makeObjectCodeAllocator(input: { nextSequence?: number } = {}) {
+  const nextSequence = input.nextSequence ?? 1;
+
+  return {
+    allocateOne: vi.fn(async () => nextSequence),
+    allocateRange: vi.fn(),
+  } as unknown as ObjectCodeAllocator & {
+    allocateOne: ReturnType<typeof vi.fn>;
+    allocateRange: ReturnType<typeof vi.fn>;
+  };
+}

@@ -43,7 +43,7 @@ import {
 } from "react";
 
 import { getApiErrorMessageKey } from "../../lib/api-error-messages";
-import { formatDisplayCode } from "../../lib/display-code";
+import { resolveRequirementDisplayCode } from "../../lib/display-code";
 import {
   LOCAL_DRAFT_CACHE_WRITE_DELAY_MS,
   clearRequirementDraftLocalCache,
@@ -643,7 +643,9 @@ export function RequirementDetailWorkspace({
   const ownerLabel = formatOwnerName(form.ownerId, members);
   const authorLabel = formatOwnerName(requirement.authorId, members);
   const versionLabel = formatVersionName(form.versionId, versions);
-  const shortId = formatDisplayCode("REQ", requirement.id);
+  const displayCode = resolveRequirementDisplayCode(requirement, {
+    draftLabel: t("status.DRAFT"),
+  });
   const lastModifiedLabel = formatTimestamp(requirement.updatedAt, locale);
   const canDiscardDraft =
     canEditRequirement &&
@@ -762,7 +764,7 @@ export function RequirementDetailWorkspace({
               label={t("detail.fields.id")}
             >
               <span className="font-mono text-[11px] text-foreground/80">
-                {shortId}
+                {displayCode}
               </span>
             </PropertyItem>
 

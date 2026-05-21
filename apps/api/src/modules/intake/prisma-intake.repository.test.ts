@@ -1,15 +1,18 @@
 import { describe, expect, it, vi } from "vitest";
 
+import type { ObjectCodeAllocator } from "../object-code/object-code.allocator";
 import type { PrismaService } from "../../prisma/prisma.service";
 import { PrismaIntakeRepository } from "./prisma-intake.repository";
 
 describe("PrismaIntakeRepository", () => {
   it("creates intake item creator and reporter participants idempotently", async () => {
-    const item = makeIntakeItem();
+    const item = makeIntakeItem({ sequence: 21 });
+    const objectCodeAllocator = makeObjectCodeAllocator({ nextSequence: 21 });
     const objectParticipantCreate = vi.fn(async () => undefined);
+    const intakeItemCreate = vi.fn(async () => item);
     const tx = {
       intakeItem: {
-        create: vi.fn(async () => item),
+        create: intakeItemCreate,
       },
       objectParticipant: {
         create: objectParticipantCreate,
@@ -31,7 +34,10 @@ describe("PrismaIntakeRepository", () => {
         },
       },
     } as unknown as PrismaService;
-    const repository = new PrismaIntakeRepository(prisma);
+    const repository = new PrismaIntakeRepository(
+      prisma,
+      objectCodeAllocator,
+    );
 
     await repository.create({
       id: item.id,
@@ -42,6 +48,17 @@ describe("PrismaIntakeRepository", () => {
       title: item.title,
     });
 
+    expect(objectCodeAllocator.allocateOne).toHaveBeenCalledWith(tx, {
+      actorUserId: item.reporterId,
+      objectType: "INTAKE_ITEM",
+      organizationId: item.organizationId,
+      spaceId: item.spaceId,
+    });
+    expect(intakeItemCreate).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        sequence: 21,
+      }),
+    });
     expect(objectParticipantCreate).toHaveBeenCalledWith({
       data: expect.objectContaining({
         relationType: "CREATOR",
@@ -58,6 +75,86 @@ describe("PrismaIntakeRepository", () => {
         userId: item.reporterId,
       }),
     });
+  });
+
+  it("allocates continuous TASK sequences when converting an intake item", async () => {
+    const before = makeIntakeItem({
+      sequence: 9,
+      status: "ACCEPTED",
+    });
+    const updated = {
+      ...before,
+      convertedAt: new Date("2026-05-14T12:10:00.000Z"),
+      status: "CONVERTED" as const,
+    };
+    const objectCodeAllocator = makeObjectCodeAllocator({ rangeStart: 41 });
+    const workItemCreate = vi.fn(async (args: { data: WorkItemCreateData }) =>
+      makeWorkItem(args.data),
+    );
+    const tx = {
+      intakeItem: {
+        findFirst: vi
+          .fn()
+          .mockResolvedValueOnce(before)
+          .mockResolvedValueOnce(updated),
+        updateMany: vi.fn(async () => ({ count: 1 })),
+      },
+      objectParticipant: {
+        create: vi.fn(async () => undefined),
+        findFirst: vi.fn(async () => undefined),
+        update: vi.fn(async () => undefined),
+      },
+      tagAssignment: {
+        updateMany: vi.fn(async () => ({ count: 0 })),
+      },
+      timelineEvent: {
+        create: vi.fn(async () => undefined),
+      },
+      workItem: {
+        create: workItemCreate,
+      },
+    };
+    const prisma = {
+      client: {
+        $transaction: vi.fn(async (handler) => handler(tx)),
+        tagAssignment: {
+          findMany: vi.fn(async () => []),
+        },
+      },
+    } as unknown as PrismaService;
+    const repository = new PrismaIntakeRepository(
+      prisma,
+      objectCodeAllocator,
+    );
+
+    const result = await repository.convertToWorkItems({
+      actorUserId: before.reporterId,
+      intakeItemId: before.id,
+      tasks: [
+        makeConvertTask({ id: "01H00000000000000000000121" }),
+        makeConvertTask({ id: "01H00000000000000000000122" }),
+      ],
+    });
+
+    expect(objectCodeAllocator.allocateRange).toHaveBeenCalledWith(tx, {
+      actorUserId: before.reporterId,
+      count: 2,
+      objectType: "TASK",
+      organizationId: before.organizationId,
+      spaceId: before.spaceId,
+    });
+    expect(workItemCreate.mock.calls[0]?.[0].data.sequence).toBe(41);
+    expect(workItemCreate.mock.calls[1]?.[0].data.sequence).toBe(42);
+    expect(result?.workItems).toEqual([
+      expect.objectContaining({
+        sequence: 41,
+        displayCode: "TASK-41",
+      }),
+      expect.objectContaining({
+        sequence: 42,
+        displayCode: "TASK-42",
+      }),
+    ]);
   });
 
   it("rebuilds related work item participants after cascading an intake version", async () => {
@@ -180,7 +277,10 @@ describe("PrismaIntakeRepository", () => {
         },
       },
     } as unknown as PrismaService;
-    const repository = new PrismaIntakeRepository(prisma);
+    const repository = new PrismaIntakeRepository(
+      prisma,
+      makeObjectCodeAllocator(),
+    );
 
     await repository.update({
       cascadeVersionChange: true,
@@ -241,6 +341,8 @@ function makeIntakeItem(
   overrides: {
     assigneeId?: string | null;
     reporterId?: string;
+    sequence?: number | null;
+    status?: "PENDING" | "ACCEPTED" | "DEFERRED" | "REJECTED" | "CONVERTED";
     versionId?: string | null;
   } = {},
 ) {
@@ -257,13 +359,96 @@ function makeIntakeItem(
     priority: null,
     reporterId: overrides.reporterId ?? "01H00000000000000000000113",
     requirementId: null,
+    sequence: overrides.sequence ?? null,
     sourceObject: null,
     sourceType: "AD_HOC" as const,
     spaceId: "01H00000000000000000000114",
-    status: "PENDING" as const,
+    status: overrides.status ?? ("PENDING" as const),
     title: "Intake item",
     updatedAt: now,
     updatedById: null,
     versionId: overrides.versionId ?? null,
+  };
+}
+
+type WorkItemCreateData = ReturnType<typeof makeConvertTask> & {
+  createdById: string;
+  intakeItemId: string;
+  lastStatusChangedAt: Date;
+  organizationId: string;
+  sequence: number;
+  spaceId: string;
+  type: "TASK";
+  updatedById: string;
+};
+
+function makeConvertTask(overrides: { id: string }) {
+  return {
+    id: overrides.id,
+    assigneeId: undefined,
+    currentStateId: "01H00000000000000000000123",
+    description: "Converted task",
+    dueDate: undefined,
+    priority: "MEDIUM" as const,
+    relatedUserIds: [],
+    reporterId: "01H00000000000000000000113",
+    requirementId: undefined,
+    statusCategory: "NOT_STARTED" as const,
+    tagIds: undefined,
+    title: "Converted task",
+    versionId: undefined,
+    workflowVersionId: "01H00000000000000000000124",
+  };
+}
+
+function makeWorkItem(data: WorkItemCreateData) {
+  const now = new Date("2026-05-14T12:15:00.000Z");
+
+  return {
+    id: data.id,
+    organizationId: data.organizationId,
+    spaceId: data.spaceId,
+    sequence: data.sequence,
+    versionId: data.versionId ?? null,
+    requirementId: data.requirementId ?? null,
+    intakeItemId: data.intakeItemId,
+    type: data.type,
+    title: data.title,
+    description: data.description ?? null,
+    priority: data.priority,
+    assigneeId: data.assigneeId ?? null,
+    reporterId: data.reporterId,
+    workflowVersionId: data.workflowVersionId,
+    currentStateId: data.currentStateId,
+    statusCategory: data.statusCategory,
+    dueDate: data.dueDate ?? null,
+    lastStatusChangedAt: data.lastStatusChangedAt,
+    lastActionAt: null,
+    blockedReason: null,
+    blockedAt: null,
+    closedAt: null,
+    createdAt: now,
+    updatedAt: now,
+    createdById: data.createdById,
+    updatedById: data.updatedById,
+    deletedAt: null,
+  };
+}
+
+function makeObjectCodeAllocator(
+  input: { nextSequence?: number; rangeStart?: number } = {},
+) {
+  const nextSequence = input.nextSequence ?? 1;
+  const rangeStart = input.rangeStart ?? nextSequence;
+
+  return {
+    allocateOne: vi.fn(async () => nextSequence),
+    allocateRange: vi.fn(async (_tx, rangeInput: { count: number }) => ({
+      firstValue: rangeStart,
+      lastValue: rangeStart + rangeInput.count - 1,
+    })),
+  } as unknown as ObjectCodeAllocator & {
+    allocateOne: ReturnType<typeof vi.fn>;
+    allocateRange: ReturnType<typeof vi.fn>;
   };
 }

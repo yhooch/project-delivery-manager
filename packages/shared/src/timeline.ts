@@ -13,6 +13,7 @@ import {
   TimelineEventTypeSchema,
   WorkItemTypeSchema,
 } from "./enums.ts";
+import { DisplayIdentitySchema } from "./object-code.ts";
 
 export const ObjectParticipantSchema = z
   .object({
@@ -45,6 +46,8 @@ export const TimelineTargetSchema = z
   .object({
     type: TargetTypeSchema,
     id: UlidSchema,
+    sequence: DisplayIdentitySchema.shape.sequence,
+    displayCode: DisplayIdentitySchema.shape.displayCode,
     title: z.string().min(1).optional(),
   })
   .strict();

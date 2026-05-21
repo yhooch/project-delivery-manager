@@ -6,9 +6,11 @@ export type RecentEntryType = "TASK" | "BUG" | "REQUIREMENT" | "INTAKE";
 export type RecentEntry = {
   id: string;
   type: RecentEntryType;
-  code: string;
+  displayCode: string;
   title: string;
   href: string;
+  organizationId?: string;
+  spaceId?: string;
 };
 
 export const RECENT_STORAGE_KEY = "pdm:command-palette:recent";
@@ -23,20 +25,42 @@ export type RecentScope = {
 // crowding navigation / create / preferences out of the default view.
 export const RECENT_MAX = 6;
 
-function isRecentEntry(value: unknown): value is RecentEntry {
-  if (value === null || typeof value !== "object") return false;
-  const entry = value as Partial<RecentEntry>;
-  return (
+function normalizeRecentEntry(value: unknown): RecentEntry | null {
+  if (value === null || typeof value !== "object") return null;
+  const entry = value as Partial<RecentEntry> & { code?: unknown };
+  const displayCode =
+    typeof entry.displayCode === "string"
+      ? entry.displayCode
+      : typeof entry.code === "string"
+        ? entry.code
+        : undefined;
+
+  if (
     typeof entry.id === "string" &&
     typeof entry.type === "string" &&
     (entry.type === "TASK" ||
       entry.type === "BUG" ||
       entry.type === "REQUIREMENT" ||
       entry.type === "INTAKE") &&
-    typeof entry.code === "string" &&
+    typeof displayCode === "string" &&
     typeof entry.title === "string" &&
     typeof entry.href === "string"
-  );
+  ) {
+    return {
+      id: entry.id,
+      type: entry.type,
+      displayCode,
+      title: entry.title,
+      href: entry.href,
+      organizationId:
+        typeof entry.organizationId === "string"
+          ? entry.organizationId
+          : undefined,
+      spaceId: typeof entry.spaceId === "string" ? entry.spaceId : undefined,
+    };
+  }
+
+  return null;
 }
 
 function entryKey(entry: Pick<RecentEntry, "id" | "type">): string {
@@ -73,11 +97,12 @@ export function readRecent(scope?: RecentScope): RecentEntry[] {
     const seen = new Set<string>();
     const out: RecentEntry[] = [];
     for (const item of parsed) {
-      if (!isRecentEntry(item)) continue;
-      const key = entryKey(item);
+      const entry = normalizeRecentEntry(item);
+      if (!entry) continue;
+      const key = entryKey(entry);
       if (seen.has(key)) continue;
       seen.add(key);
-      out.push(item);
+      out.push(entry);
       if (out.length >= RECENT_MAX) break;
     }
     return out;
@@ -98,10 +123,19 @@ export function writeRecent(
   try {
     const current = readRecent(scope);
     const key = entryKey(entry);
-    const next = [entry, ...current.filter((item) => entryKey(item) !== key)].slice(
-      0,
-      RECENT_MAX,
-    );
+    const normalizedEntry: RecentEntry = {
+      id: entry.id,
+      type: entry.type,
+      displayCode: entry.displayCode,
+      title: entry.title,
+      href: entry.href,
+      organizationId: entry.organizationId,
+      spaceId: entry.spaceId,
+    };
+    const next = [
+      normalizedEntry,
+      ...current.filter((item) => entryKey(item) !== key),
+    ].slice(0, RECENT_MAX);
     window.localStorage.setItem(
       createRecentStorageKey(scope),
       JSON.stringify(next),

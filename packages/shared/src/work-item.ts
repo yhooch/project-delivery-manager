@@ -16,11 +16,14 @@ import {
   TagIdListSchema,
   TagListSchema,
 } from "./tag.ts";
+import { DisplayIdentitySchema } from "./object-code.ts";
 import { PermissionSnapshotSchema } from "./workflow.ts";
 
 export const WorkItemSchema = z
   .object({
     id: UlidSchema,
+    sequence: DisplayIdentitySchema.shape.sequence,
+    displayCode: DisplayIdentitySchema.shape.displayCode,
     type: WorkItemTypeSchema,
     organizationId: UlidSchema,
     spaceId: UlidSchema,
@@ -145,6 +148,7 @@ export type UpdateBugRequest = z.infer<typeof UpdateBugRequestSchema>;
 export const WorkItemListQuerySchema = PageQuerySchema.merge(
   TagFilterQuerySchema,
 ).extend({
+  query: z.string().trim().min(1).max(200).optional(),
   type: z.literal("TASK").optional(),
   versionId: UlidSchema.optional(),
   requirementId: UlidSchema.optional(),
@@ -162,6 +166,7 @@ export const UpdateWorkItemResponseSchema = WorkItemSchema;
 export const BugListQuerySchema = PageQuerySchema.merge(
   TagFilterQuerySchema,
 ).extend({
+  query: z.string().trim().min(1).max(200).optional(),
   type: z.literal("BUG").optional(),
   versionId: UlidSchema.optional(),
   requirementId: UlidSchema.optional(),

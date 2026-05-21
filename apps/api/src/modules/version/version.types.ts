@@ -45,6 +45,7 @@ export type VersionBoardResult = Pick<GetVersionBoardViewResponse, "columns">;
 
 export type VersionBoardWorkItemRecord = {
   id: string;
+  sequence: number | null;
   type: WorkItemType;
   organizationId: string;
   spaceId: string;

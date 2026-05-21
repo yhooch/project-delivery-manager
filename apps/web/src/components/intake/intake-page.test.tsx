@@ -425,6 +425,62 @@ describe("IntakePage", () => {
     expect(getIntakeItemMock).not.toHaveBeenCalled();
   });
 
+  it("uses the opened intake item space for recent opens and detail resources", async () => {
+    const intakeItemId = "01ARZ3NDEKTSV4RRFFQ69G5FCX";
+    searchParamsMock.current = new URLSearchParams(`id=${intakeItemId}`);
+    listIntakeItemsMock.mockResolvedValueOnce({ items: [], total: 0 });
+    getIntakeItemMock.mockResolvedValueOnce(
+      makeIntake({
+        id: intakeItemId,
+        organizationId: "ORG_01",
+        spaceId: "SPC_02",
+        title: "Cross-space intake",
+      }),
+    );
+
+    render(<IntakePage />);
+
+    expect(await screen.findByText("Cross-space intake")).toBeInTheDocument();
+    await waitFor(() =>
+      expect(listWorkItemsMock).toHaveBeenCalledWith(
+        expect.objectContaining({
+          intakeItemId,
+          organizationId: "ORG_01",
+          spaceId: "SPC_02",
+        }),
+      ),
+    );
+    expect(listCommentsMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        organizationId: "ORG_01",
+        spaceId: "SPC_02",
+        targetId: intakeItemId,
+      }),
+    );
+    expect(listTimelineMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        organizationId: "ORG_01",
+        spaceId: "SPC_02",
+        targetId: intakeItemId,
+      }),
+    );
+
+    const stored = JSON.parse(
+      window.localStorage.getItem(
+        createRecentStorageKey({
+          organizationId: "ORG_01",
+          spaceId: "SPC_02",
+        }),
+      ) ?? "[]",
+    ) as Array<Record<string, unknown>>;
+    expect(stored[0]).toMatchObject({
+      id: intakeItemId,
+      spaceId: "SPC_02",
+      title: "Cross-space intake",
+      type: "INTAKE",
+    });
+  });
+
   it("renders intake rows with title, source type and status badge", async () => {
     listIntakeItemsMock.mockResolvedValueOnce({
       items: [

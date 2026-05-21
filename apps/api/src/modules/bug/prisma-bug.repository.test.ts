@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 
+import type { ObjectCodeAllocator } from "../object-code/object-code.allocator";
 import type { PrismaService } from "../../prisma/prisma.service";
 import { PrismaBugRepository } from "./prisma-bug.repository";
 
@@ -50,7 +51,7 @@ function createRepositoryMock(
   } as unknown as PrismaService;
 
   return {
-    repository: new PrismaBugRepository(prisma),
+    repository: new PrismaBugRepository(prisma, makeObjectCodeAllocator()),
     transaction,
     workItemCount,
     workItemFindMany,
@@ -183,4 +184,188 @@ describe("PrismaBugRepository", () => {
       }),
     );
   });
+
+  it("allocates a BUG sequence while keeping bug detail keyed by work item id", async () => {
+    const objectCodeAllocator = makeObjectCodeAllocator({ nextSequence: 51 });
+    const workItemCreate = vi.fn(async (args: { data: BugWorkItemCreateData }) =>
+      makeBugRecord(args.data),
+    );
+    const bugDetailCreate = vi.fn(async () => undefined);
+    const bugRecord = makeBugRecord({
+      id: "01H00000000000000000000010",
+      createdById: "01H00000000000000000000011",
+      currentStateId: "01H00000000000000000000012",
+      lastStatusChangedAt: new Date("2026-05-14T12:00:00.000Z"),
+      organizationId: "01H00000000000000000000013",
+      priority: "HIGH",
+      reporterId: "01H00000000000000000000011",
+      sequence: 51,
+      spaceId: "01H00000000000000000000014",
+      statusCategory: "NOT_STARTED",
+      title: "Sequenced bug",
+      type: "BUG",
+      updatedById: "01H00000000000000000000011",
+      workflowVersionId: "01H00000000000000000000015",
+    });
+    const tx = {
+      bugDetail: {
+        create: bugDetailCreate,
+      },
+      objectParticipant: {
+        create: vi.fn(async () => undefined),
+        findFirst: vi.fn(async () => undefined),
+      },
+      tagAssignment: {
+        updateMany: vi.fn(async () => ({ count: 0 })),
+      },
+      timelineEvent: {
+        create: vi.fn(async () => undefined),
+      },
+      workItem: {
+        create: workItemCreate,
+        findFirst: vi.fn(async () => bugRecord),
+      },
+    };
+    const repository = new PrismaBugRepository(
+      {
+        client: {
+          $transaction: vi.fn(async (handler) => handler(tx)),
+          tagAssignment: {
+            findMany: vi.fn(async () => []),
+          },
+        },
+      } as unknown as PrismaService,
+      objectCodeAllocator,
+    );
+
+    const created = await repository.create({
+      id: bugRecord.id,
+      createdById: bugRecord.createdById,
+      currentStateId: bugRecord.currentStateId,
+      lastStatusChangedAt: bugRecord.lastStatusChangedAt,
+      organizationId: bugRecord.organizationId,
+      priority: bugRecord.priority,
+      relatedUserIds: [],
+      reporterId: bugRecord.reporterId,
+      severity: bugRecord.bugDetail.severity,
+      spaceId: bugRecord.spaceId,
+      statusCategory: bugRecord.statusCategory,
+      title: bugRecord.title,
+      workflowVersionId: bugRecord.workflowVersionId,
+    });
+
+    expect(objectCodeAllocator.allocateOne).toHaveBeenCalledWith(tx, {
+      actorUserId: bugRecord.createdById,
+      objectType: "BUG",
+      organizationId: bugRecord.organizationId,
+      spaceId: bugRecord.spaceId,
+    });
+    expect(workItemCreate).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        id: bugRecord.id,
+        sequence: 51,
+        type: "BUG",
+      }),
+    });
+    expect(bugDetailCreate).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        workItemId: bugRecord.id,
+      }),
+    });
+    expect(created).toMatchObject({
+      id: bugRecord.id,
+      sequence: 51,
+      displayCode: "BUG-51",
+      bugDetail: {
+        workItemId: bugRecord.id,
+      },
+    });
+  });
 });
+
+type BugWorkItemCreateData = {
+  assigneeId?: string;
+  createdById: string;
+  currentStateId: string;
+  description?: string;
+  dueDate?: Date;
+  id: string;
+  intakeItemId?: string;
+  lastStatusChangedAt: Date;
+  organizationId: string;
+  priority: "LOW" | "MEDIUM" | "HIGH" | "URGENT";
+  reporterId: string;
+  requirementId?: string;
+  sequence: number;
+  spaceId: string;
+  statusCategory:
+    | "NOT_STARTED"
+    | "IN_PROGRESS"
+    | "WAITING"
+    | "VERIFYING"
+    | "DONE"
+    | "TERMINATED";
+  title: string;
+  type: "BUG";
+  updatedById: string;
+  versionId?: string;
+  workflowVersionId: string;
+};
+
+function makeBugRecord(data: BugWorkItemCreateData) {
+  const now = new Date("2026-05-14T12:05:00.000Z");
+
+  return {
+    id: data.id,
+    organizationId: data.organizationId,
+    spaceId: data.spaceId,
+    sequence: data.sequence,
+    versionId: data.versionId ?? null,
+    requirementId: data.requirementId ?? null,
+    intakeItemId: data.intakeItemId ?? null,
+    type: data.type,
+    title: data.title,
+    description: data.description ?? null,
+    priority: data.priority,
+    assigneeId: data.assigneeId ?? null,
+    reporterId: data.reporterId,
+    workflowVersionId: data.workflowVersionId,
+    currentStateId: data.currentStateId,
+    statusCategory: data.statusCategory,
+    dueDate: data.dueDate ?? null,
+    lastStatusChangedAt: data.lastStatusChangedAt,
+    lastActionAt: null,
+    blockedReason: null,
+    blockedAt: null,
+    closedAt: null,
+    createdAt: now,
+    updatedAt: now,
+    createdById: data.createdById,
+    updatedById: data.updatedById,
+    deletedAt: null,
+    bugDetail: {
+      workItemId: data.id,
+      severity: "MAJOR" as const,
+      stepsToReproduce: null,
+      expectedResult: null,
+      actualResult: null,
+      fixNote: null,
+      regressionResult: null,
+      regressionById: null,
+      regressionAt: null,
+      relatedTaskId: null,
+    },
+  };
+}
+
+function makeObjectCodeAllocator(input: { nextSequence?: number } = {}) {
+  const nextSequence = input.nextSequence ?? 1;
+
+  return {
+    allocateOne: vi.fn(async () => nextSequence),
+    allocateRange: vi.fn(),
+  } as unknown as ObjectCodeAllocator & {
+    allocateOne: ReturnType<typeof vi.fn>;
+    allocateRange: ReturnType<typeof vi.fn>;
+  };
+}

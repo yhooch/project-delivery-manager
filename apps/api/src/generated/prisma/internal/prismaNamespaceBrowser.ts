@@ -61,6 +61,7 @@ export const ModelName = {
   Requirement: 'Requirement',
   IntakeItem: 'IntakeItem',
   WorkItem: 'WorkItem',
+  ObjectSequenceCounter: 'ObjectSequenceCounter',
   BugDetail: 'BugDetail',
   Attachment: 'Attachment',
   Tag: 'Tag',
@@ -231,6 +232,7 @@ export const RequirementScalarFieldEnum = {
   id: 'id',
   organizationId: 'organizationId',
   spaceId: 'spaceId',
+  sequence: 'sequence',
   versionId: 'versionId',
   title: 'title',
   summary: 'summary',
@@ -256,6 +258,7 @@ export const IntakeItemScalarFieldEnum = {
   id: 'id',
   organizationId: 'organizationId',
   spaceId: 'spaceId',
+  sequence: 'sequence',
   versionId: 'versionId',
   requirementId: 'requirementId',
   title: 'title',
@@ -282,6 +285,7 @@ export const WorkItemScalarFieldEnum = {
   id: 'id',
   organizationId: 'organizationId',
   spaceId: 'spaceId',
+  sequence: 'sequence',
   versionId: 'versionId',
   requirementId: 'requirementId',
   intakeItemId: 'intakeItemId',
@@ -308,6 +312,21 @@ export const WorkItemScalarFieldEnum = {
 } as const
 
 export type WorkItemScalarFieldEnum = (typeof WorkItemScalarFieldEnum)[keyof typeof WorkItemScalarFieldEnum]
+
+
+export const ObjectSequenceCounterScalarFieldEnum = {
+  id: 'id',
+  organizationId: 'organizationId',
+  spaceId: 'spaceId',
+  objectType: 'objectType',
+  nextValue: 'nextValue',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt',
+  createdById: 'createdById',
+  updatedById: 'updatedById'
+} as const
+
+export type ObjectSequenceCounterScalarFieldEnum = (typeof ObjectSequenceCounterScalarFieldEnum)[keyof typeof ObjectSequenceCounterScalarFieldEnum]
 
 
 export const BugDetailScalarFieldEnum = {

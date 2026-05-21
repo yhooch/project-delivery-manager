@@ -276,6 +276,8 @@ export type UserWhereInput = {
   createdTags?: Prisma.TagListRelationFilter
   updatedTags?: Prisma.TagListRelationFilter
   assignedTagAssignments?: Prisma.TagAssignmentListRelationFilter
+  createdObjectSequenceCounters?: Prisma.ObjectSequenceCounterListRelationFilter
+  updatedObjectSequenceCounters?: Prisma.ObjectSequenceCounterListRelationFilter
 }
 
 export type UserOrderByWithRelationInput = {
@@ -315,6 +317,8 @@ export type UserOrderByWithRelationInput = {
   createdTags?: Prisma.TagOrderByRelationAggregateInput
   updatedTags?: Prisma.TagOrderByRelationAggregateInput
   assignedTagAssignments?: Prisma.TagAssignmentOrderByRelationAggregateInput
+  createdObjectSequenceCounters?: Prisma.ObjectSequenceCounterOrderByRelationAggregateInput
+  updatedObjectSequenceCounters?: Prisma.ObjectSequenceCounterOrderByRelationAggregateInput
 }
 
 export type UserWhereUniqueInput = Prisma.AtLeast<{
@@ -357,6 +361,8 @@ export type UserWhereUniqueInput = Prisma.AtLeast<{
   createdTags?: Prisma.TagListRelationFilter
   updatedTags?: Prisma.TagListRelationFilter
   assignedTagAssignments?: Prisma.TagAssignmentListRelationFilter
+  createdObjectSequenceCounters?: Prisma.ObjectSequenceCounterListRelationFilter
+  updatedObjectSequenceCounters?: Prisma.ObjectSequenceCounterListRelationFilter
 }, "id" | "username">
 
 export type UserOrderByWithAggregationInput = {
@@ -436,6 +442,8 @@ export type UserCreateInput = {
   createdTags?: Prisma.TagCreateNestedManyWithoutCreatedByInput
   updatedTags?: Prisma.TagCreateNestedManyWithoutUpdatedByInput
   assignedTagAssignments?: Prisma.TagAssignmentCreateNestedManyWithoutAssignedByInput
+  createdObjectSequenceCounters?: Prisma.ObjectSequenceCounterCreateNestedManyWithoutCreatedByInput
+  updatedObjectSequenceCounters?: Prisma.ObjectSequenceCounterCreateNestedManyWithoutUpdatedByInput
 }
 
 export type UserUncheckedCreateInput = {
@@ -475,6 +483,8 @@ export type UserUncheckedCreateInput = {
   createdTags?: Prisma.TagUncheckedCreateNestedManyWithoutCreatedByInput
   updatedTags?: Prisma.TagUncheckedCreateNestedManyWithoutUpdatedByInput
   assignedTagAssignments?: Prisma.TagAssignmentUncheckedCreateNestedManyWithoutAssignedByInput
+  createdObjectSequenceCounters?: Prisma.ObjectSequenceCounterUncheckedCreateNestedManyWithoutCreatedByInput
+  updatedObjectSequenceCounters?: Prisma.ObjectSequenceCounterUncheckedCreateNestedManyWithoutUpdatedByInput
 }
 
 export type UserUpdateInput = {
@@ -514,6 +524,8 @@ export type UserUpdateInput = {
   createdTags?: Prisma.TagUpdateManyWithoutCreatedByNestedInput
   updatedTags?: Prisma.TagUpdateManyWithoutUpdatedByNestedInput
   assignedTagAssignments?: Prisma.TagAssignmentUpdateManyWithoutAssignedByNestedInput
+  createdObjectSequenceCounters?: Prisma.ObjectSequenceCounterUpdateManyWithoutCreatedByNestedInput
+  updatedObjectSequenceCounters?: Prisma.ObjectSequenceCounterUpdateManyWithoutUpdatedByNestedInput
 }
 
 export type UserUncheckedUpdateInput = {
@@ -553,6 +565,8 @@ export type UserUncheckedUpdateInput = {
   createdTags?: Prisma.TagUncheckedUpdateManyWithoutCreatedByNestedInput
   updatedTags?: Prisma.TagUncheckedUpdateManyWithoutUpdatedByNestedInput
   assignedTagAssignments?: Prisma.TagAssignmentUncheckedUpdateManyWithoutAssignedByNestedInput
+  createdObjectSequenceCounters?: Prisma.ObjectSequenceCounterUncheckedUpdateManyWithoutCreatedByNestedInput
+  updatedObjectSequenceCounters?: Prisma.ObjectSequenceCounterUncheckedUpdateManyWithoutUpdatedByNestedInput
 }
 
 export type UserCreateManyInput = {
@@ -877,6 +891,38 @@ export type UserUpdateOneRequiredWithoutReportedWorkItemsNestedInput = {
   update?: Prisma.XOR<Prisma.XOR<Prisma.UserUpdateToOneWithWhereWithoutReportedWorkItemsInput, Prisma.UserUpdateWithoutReportedWorkItemsInput>, Prisma.UserUncheckedUpdateWithoutReportedWorkItemsInput>
 }
 
+export type UserCreateNestedOneWithoutCreatedObjectSequenceCountersInput = {
+  create?: Prisma.XOR<Prisma.UserCreateWithoutCreatedObjectSequenceCountersInput, Prisma.UserUncheckedCreateWithoutCreatedObjectSequenceCountersInput>
+  connectOrCreate?: Prisma.UserCreateOrConnectWithoutCreatedObjectSequenceCountersInput
+  connect?: Prisma.UserWhereUniqueInput
+}
+
+export type UserCreateNestedOneWithoutUpdatedObjectSequenceCountersInput = {
+  create?: Prisma.XOR<Prisma.UserCreateWithoutUpdatedObjectSequenceCountersInput, Prisma.UserUncheckedCreateWithoutUpdatedObjectSequenceCountersInput>
+  connectOrCreate?: Prisma.UserCreateOrConnectWithoutUpdatedObjectSequenceCountersInput
+  connect?: Prisma.UserWhereUniqueInput
+}
+
+export type UserUpdateOneWithoutCreatedObjectSequenceCountersNestedInput = {
+  create?: Prisma.XOR<Prisma.UserCreateWithoutCreatedObjectSequenceCountersInput, Prisma.UserUncheckedCreateWithoutCreatedObjectSequenceCountersInput>
+  connectOrCreate?: Prisma.UserCreateOrConnectWithoutCreatedObjectSequenceCountersInput
+  upsert?: Prisma.UserUpsertWithoutCreatedObjectSequenceCountersInput
+  disconnect?: Prisma.UserWhereInput | boolean
+  delete?: Prisma.UserWhereInput | boolean
+  connect?: Prisma.UserWhereUniqueInput
+  update?: Prisma.XOR<Prisma.XOR<Prisma.UserUpdateToOneWithWhereWithoutCreatedObjectSequenceCountersInput, Prisma.UserUpdateWithoutCreatedObjectSequenceCountersInput>, Prisma.UserUncheckedUpdateWithoutCreatedObjectSequenceCountersInput>
+}
+
+export type UserUpdateOneWithoutUpdatedObjectSequenceCountersNestedInput = {
+  create?: Prisma.XOR<Prisma.UserCreateWithoutUpdatedObjectSequenceCountersInput, Prisma.UserUncheckedCreateWithoutUpdatedObjectSequenceCountersInput>
+  connectOrCreate?: Prisma.UserCreateOrConnectWithoutUpdatedObjectSequenceCountersInput
+  upsert?: Prisma.UserUpsertWithoutUpdatedObjectSequenceCountersInput
+  disconnect?: Prisma.UserWhereInput | boolean
+  delete?: Prisma.UserWhereInput | boolean
+  connect?: Prisma.UserWhereUniqueInput
+  update?: Prisma.XOR<Prisma.XOR<Prisma.UserUpdateToOneWithWhereWithoutUpdatedObjectSequenceCountersInput, Prisma.UserUpdateWithoutUpdatedObjectSequenceCountersInput>, Prisma.UserUncheckedUpdateWithoutUpdatedObjectSequenceCountersInput>
+}
+
 export type UserCreateNestedOneWithoutRegressedBugDetailsInput = {
   create?: Prisma.XOR<Prisma.UserCreateWithoutRegressedBugDetailsInput, Prisma.UserUncheckedCreateWithoutRegressedBugDetailsInput>
   connectOrCreate?: Prisma.UserCreateOrConnectWithoutRegressedBugDetailsInput
@@ -1067,6 +1113,8 @@ export type UserCreateWithoutSessionsInput = {
   createdTags?: Prisma.TagCreateNestedManyWithoutCreatedByInput
   updatedTags?: Prisma.TagCreateNestedManyWithoutUpdatedByInput
   assignedTagAssignments?: Prisma.TagAssignmentCreateNestedManyWithoutAssignedByInput
+  createdObjectSequenceCounters?: Prisma.ObjectSequenceCounterCreateNestedManyWithoutCreatedByInput
+  updatedObjectSequenceCounters?: Prisma.ObjectSequenceCounterCreateNestedManyWithoutUpdatedByInput
 }
 
 export type UserUncheckedCreateWithoutSessionsInput = {
@@ -1105,6 +1153,8 @@ export type UserUncheckedCreateWithoutSessionsInput = {
   createdTags?: Prisma.TagUncheckedCreateNestedManyWithoutCreatedByInput
   updatedTags?: Prisma.TagUncheckedCreateNestedManyWithoutUpdatedByInput
   assignedTagAssignments?: Prisma.TagAssignmentUncheckedCreateNestedManyWithoutAssignedByInput
+  createdObjectSequenceCounters?: Prisma.ObjectSequenceCounterUncheckedCreateNestedManyWithoutCreatedByInput
+  updatedObjectSequenceCounters?: Prisma.ObjectSequenceCounterUncheckedCreateNestedManyWithoutUpdatedByInput
 }
 
 export type UserCreateOrConnectWithoutSessionsInput = {
@@ -1159,6 +1209,8 @@ export type UserUpdateWithoutSessionsInput = {
   createdTags?: Prisma.TagUpdateManyWithoutCreatedByNestedInput
   updatedTags?: Prisma.TagUpdateManyWithoutUpdatedByNestedInput
   assignedTagAssignments?: Prisma.TagAssignmentUpdateManyWithoutAssignedByNestedInput
+  createdObjectSequenceCounters?: Prisma.ObjectSequenceCounterUpdateManyWithoutCreatedByNestedInput
+  updatedObjectSequenceCounters?: Prisma.ObjectSequenceCounterUpdateManyWithoutUpdatedByNestedInput
 }
 
 export type UserUncheckedUpdateWithoutSessionsInput = {
@@ -1197,6 +1249,8 @@ export type UserUncheckedUpdateWithoutSessionsInput = {
   createdTags?: Prisma.TagUncheckedUpdateManyWithoutCreatedByNestedInput
   updatedTags?: Prisma.TagUncheckedUpdateManyWithoutUpdatedByNestedInput
   assignedTagAssignments?: Prisma.TagAssignmentUncheckedUpdateManyWithoutAssignedByNestedInput
+  createdObjectSequenceCounters?: Prisma.ObjectSequenceCounterUncheckedUpdateManyWithoutCreatedByNestedInput
+  updatedObjectSequenceCounters?: Prisma.ObjectSequenceCounterUncheckedUpdateManyWithoutUpdatedByNestedInput
 }
 
 export type UserCreateWithoutOrganizationsInput = {
@@ -1235,6 +1289,8 @@ export type UserCreateWithoutOrganizationsInput = {
   createdTags?: Prisma.TagCreateNestedManyWithoutCreatedByInput
   updatedTags?: Prisma.TagCreateNestedManyWithoutUpdatedByInput
   assignedTagAssignments?: Prisma.TagAssignmentCreateNestedManyWithoutAssignedByInput
+  createdObjectSequenceCounters?: Prisma.ObjectSequenceCounterCreateNestedManyWithoutCreatedByInput
+  updatedObjectSequenceCounters?: Prisma.ObjectSequenceCounterCreateNestedManyWithoutUpdatedByInput
 }
 
 export type UserUncheckedCreateWithoutOrganizationsInput = {
@@ -1273,6 +1329,8 @@ export type UserUncheckedCreateWithoutOrganizationsInput = {
   createdTags?: Prisma.TagUncheckedCreateNestedManyWithoutCreatedByInput
   updatedTags?: Prisma.TagUncheckedCreateNestedManyWithoutUpdatedByInput
   assignedTagAssignments?: Prisma.TagAssignmentUncheckedCreateNestedManyWithoutAssignedByInput
+  createdObjectSequenceCounters?: Prisma.ObjectSequenceCounterUncheckedCreateNestedManyWithoutCreatedByInput
+  updatedObjectSequenceCounters?: Prisma.ObjectSequenceCounterUncheckedCreateNestedManyWithoutUpdatedByInput
 }
 
 export type UserCreateOrConnectWithoutOrganizationsInput = {
@@ -1327,6 +1385,8 @@ export type UserUpdateWithoutOrganizationsInput = {
   createdTags?: Prisma.TagUpdateManyWithoutCreatedByNestedInput
   updatedTags?: Prisma.TagUpdateManyWithoutUpdatedByNestedInput
   assignedTagAssignments?: Prisma.TagAssignmentUpdateManyWithoutAssignedByNestedInput
+  createdObjectSequenceCounters?: Prisma.ObjectSequenceCounterUpdateManyWithoutCreatedByNestedInput
+  updatedObjectSequenceCounters?: Prisma.ObjectSequenceCounterUpdateManyWithoutUpdatedByNestedInput
 }
 
 export type UserUncheckedUpdateWithoutOrganizationsInput = {
@@ -1365,6 +1425,8 @@ export type UserUncheckedUpdateWithoutOrganizationsInput = {
   createdTags?: Prisma.TagUncheckedUpdateManyWithoutCreatedByNestedInput
   updatedTags?: Prisma.TagUncheckedUpdateManyWithoutUpdatedByNestedInput
   assignedTagAssignments?: Prisma.TagAssignmentUncheckedUpdateManyWithoutAssignedByNestedInput
+  createdObjectSequenceCounters?: Prisma.ObjectSequenceCounterUncheckedUpdateManyWithoutCreatedByNestedInput
+  updatedObjectSequenceCounters?: Prisma.ObjectSequenceCounterUncheckedUpdateManyWithoutUpdatedByNestedInput
 }
 
 export type UserCreateWithoutMembershipsInput = {
@@ -1403,6 +1465,8 @@ export type UserCreateWithoutMembershipsInput = {
   createdTags?: Prisma.TagCreateNestedManyWithoutCreatedByInput
   updatedTags?: Prisma.TagCreateNestedManyWithoutUpdatedByInput
   assignedTagAssignments?: Prisma.TagAssignmentCreateNestedManyWithoutAssignedByInput
+  createdObjectSequenceCounters?: Prisma.ObjectSequenceCounterCreateNestedManyWithoutCreatedByInput
+  updatedObjectSequenceCounters?: Prisma.ObjectSequenceCounterCreateNestedManyWithoutUpdatedByInput
 }
 
 export type UserUncheckedCreateWithoutMembershipsInput = {
@@ -1441,6 +1505,8 @@ export type UserUncheckedCreateWithoutMembershipsInput = {
   createdTags?: Prisma.TagUncheckedCreateNestedManyWithoutCreatedByInput
   updatedTags?: Prisma.TagUncheckedCreateNestedManyWithoutUpdatedByInput
   assignedTagAssignments?: Prisma.TagAssignmentUncheckedCreateNestedManyWithoutAssignedByInput
+  createdObjectSequenceCounters?: Prisma.ObjectSequenceCounterUncheckedCreateNestedManyWithoutCreatedByInput
+  updatedObjectSequenceCounters?: Prisma.ObjectSequenceCounterUncheckedCreateNestedManyWithoutUpdatedByInput
 }
 
 export type UserCreateOrConnectWithoutMembershipsInput = {
@@ -1495,6 +1561,8 @@ export type UserUpdateWithoutMembershipsInput = {
   createdTags?: Prisma.TagUpdateManyWithoutCreatedByNestedInput
   updatedTags?: Prisma.TagUpdateManyWithoutUpdatedByNestedInput
   assignedTagAssignments?: Prisma.TagAssignmentUpdateManyWithoutAssignedByNestedInput
+  createdObjectSequenceCounters?: Prisma.ObjectSequenceCounterUpdateManyWithoutCreatedByNestedInput
+  updatedObjectSequenceCounters?: Prisma.ObjectSequenceCounterUpdateManyWithoutUpdatedByNestedInput
 }
 
 export type UserUncheckedUpdateWithoutMembershipsInput = {
@@ -1533,6 +1601,8 @@ export type UserUncheckedUpdateWithoutMembershipsInput = {
   createdTags?: Prisma.TagUncheckedUpdateManyWithoutCreatedByNestedInput
   updatedTags?: Prisma.TagUncheckedUpdateManyWithoutUpdatedByNestedInput
   assignedTagAssignments?: Prisma.TagAssignmentUncheckedUpdateManyWithoutAssignedByNestedInput
+  createdObjectSequenceCounters?: Prisma.ObjectSequenceCounterUncheckedUpdateManyWithoutCreatedByNestedInput
+  updatedObjectSequenceCounters?: Prisma.ObjectSequenceCounterUncheckedUpdateManyWithoutUpdatedByNestedInput
 }
 
 export type UserCreateWithoutOwnedSpacesInput = {
@@ -1571,6 +1641,8 @@ export type UserCreateWithoutOwnedSpacesInput = {
   createdTags?: Prisma.TagCreateNestedManyWithoutCreatedByInput
   updatedTags?: Prisma.TagCreateNestedManyWithoutUpdatedByInput
   assignedTagAssignments?: Prisma.TagAssignmentCreateNestedManyWithoutAssignedByInput
+  createdObjectSequenceCounters?: Prisma.ObjectSequenceCounterCreateNestedManyWithoutCreatedByInput
+  updatedObjectSequenceCounters?: Prisma.ObjectSequenceCounterCreateNestedManyWithoutUpdatedByInput
 }
 
 export type UserUncheckedCreateWithoutOwnedSpacesInput = {
@@ -1609,6 +1681,8 @@ export type UserUncheckedCreateWithoutOwnedSpacesInput = {
   createdTags?: Prisma.TagUncheckedCreateNestedManyWithoutCreatedByInput
   updatedTags?: Prisma.TagUncheckedCreateNestedManyWithoutUpdatedByInput
   assignedTagAssignments?: Prisma.TagAssignmentUncheckedCreateNestedManyWithoutAssignedByInput
+  createdObjectSequenceCounters?: Prisma.ObjectSequenceCounterUncheckedCreateNestedManyWithoutCreatedByInput
+  updatedObjectSequenceCounters?: Prisma.ObjectSequenceCounterUncheckedCreateNestedManyWithoutUpdatedByInput
 }
 
 export type UserCreateOrConnectWithoutOwnedSpacesInput = {
@@ -1663,6 +1737,8 @@ export type UserUpdateWithoutOwnedSpacesInput = {
   createdTags?: Prisma.TagUpdateManyWithoutCreatedByNestedInput
   updatedTags?: Prisma.TagUpdateManyWithoutUpdatedByNestedInput
   assignedTagAssignments?: Prisma.TagAssignmentUpdateManyWithoutAssignedByNestedInput
+  createdObjectSequenceCounters?: Prisma.ObjectSequenceCounterUpdateManyWithoutCreatedByNestedInput
+  updatedObjectSequenceCounters?: Prisma.ObjectSequenceCounterUpdateManyWithoutUpdatedByNestedInput
 }
 
 export type UserUncheckedUpdateWithoutOwnedSpacesInput = {
@@ -1701,6 +1777,8 @@ export type UserUncheckedUpdateWithoutOwnedSpacesInput = {
   createdTags?: Prisma.TagUncheckedUpdateManyWithoutCreatedByNestedInput
   updatedTags?: Prisma.TagUncheckedUpdateManyWithoutUpdatedByNestedInput
   assignedTagAssignments?: Prisma.TagAssignmentUncheckedUpdateManyWithoutAssignedByNestedInput
+  createdObjectSequenceCounters?: Prisma.ObjectSequenceCounterUncheckedUpdateManyWithoutCreatedByNestedInput
+  updatedObjectSequenceCounters?: Prisma.ObjectSequenceCounterUncheckedUpdateManyWithoutUpdatedByNestedInput
 }
 
 export type UserCreateWithoutSpaceMembershipsInput = {
@@ -1739,6 +1817,8 @@ export type UserCreateWithoutSpaceMembershipsInput = {
   createdTags?: Prisma.TagCreateNestedManyWithoutCreatedByInput
   updatedTags?: Prisma.TagCreateNestedManyWithoutUpdatedByInput
   assignedTagAssignments?: Prisma.TagAssignmentCreateNestedManyWithoutAssignedByInput
+  createdObjectSequenceCounters?: Prisma.ObjectSequenceCounterCreateNestedManyWithoutCreatedByInput
+  updatedObjectSequenceCounters?: Prisma.ObjectSequenceCounterCreateNestedManyWithoutUpdatedByInput
 }
 
 export type UserUncheckedCreateWithoutSpaceMembershipsInput = {
@@ -1777,6 +1857,8 @@ export type UserUncheckedCreateWithoutSpaceMembershipsInput = {
   createdTags?: Prisma.TagUncheckedCreateNestedManyWithoutCreatedByInput
   updatedTags?: Prisma.TagUncheckedCreateNestedManyWithoutUpdatedByInput
   assignedTagAssignments?: Prisma.TagAssignmentUncheckedCreateNestedManyWithoutAssignedByInput
+  createdObjectSequenceCounters?: Prisma.ObjectSequenceCounterUncheckedCreateNestedManyWithoutCreatedByInput
+  updatedObjectSequenceCounters?: Prisma.ObjectSequenceCounterUncheckedCreateNestedManyWithoutUpdatedByInput
 }
 
 export type UserCreateOrConnectWithoutSpaceMembershipsInput = {
@@ -1831,6 +1913,8 @@ export type UserUpdateWithoutSpaceMembershipsInput = {
   createdTags?: Prisma.TagUpdateManyWithoutCreatedByNestedInput
   updatedTags?: Prisma.TagUpdateManyWithoutUpdatedByNestedInput
   assignedTagAssignments?: Prisma.TagAssignmentUpdateManyWithoutAssignedByNestedInput
+  createdObjectSequenceCounters?: Prisma.ObjectSequenceCounterUpdateManyWithoutCreatedByNestedInput
+  updatedObjectSequenceCounters?: Prisma.ObjectSequenceCounterUpdateManyWithoutUpdatedByNestedInput
 }
 
 export type UserUncheckedUpdateWithoutSpaceMembershipsInput = {
@@ -1869,6 +1953,8 @@ export type UserUncheckedUpdateWithoutSpaceMembershipsInput = {
   createdTags?: Prisma.TagUncheckedUpdateManyWithoutCreatedByNestedInput
   updatedTags?: Prisma.TagUncheckedUpdateManyWithoutUpdatedByNestedInput
   assignedTagAssignments?: Prisma.TagAssignmentUncheckedUpdateManyWithoutAssignedByNestedInput
+  createdObjectSequenceCounters?: Prisma.ObjectSequenceCounterUncheckedUpdateManyWithoutCreatedByNestedInput
+  updatedObjectSequenceCounters?: Prisma.ObjectSequenceCounterUncheckedUpdateManyWithoutUpdatedByNestedInput
 }
 
 export type UserCreateWithoutOwnedVersionsInput = {
@@ -1907,6 +1993,8 @@ export type UserCreateWithoutOwnedVersionsInput = {
   createdTags?: Prisma.TagCreateNestedManyWithoutCreatedByInput
   updatedTags?: Prisma.TagCreateNestedManyWithoutUpdatedByInput
   assignedTagAssignments?: Prisma.TagAssignmentCreateNestedManyWithoutAssignedByInput
+  createdObjectSequenceCounters?: Prisma.ObjectSequenceCounterCreateNestedManyWithoutCreatedByInput
+  updatedObjectSequenceCounters?: Prisma.ObjectSequenceCounterCreateNestedManyWithoutUpdatedByInput
 }
 
 export type UserUncheckedCreateWithoutOwnedVersionsInput = {
@@ -1945,6 +2033,8 @@ export type UserUncheckedCreateWithoutOwnedVersionsInput = {
   createdTags?: Prisma.TagUncheckedCreateNestedManyWithoutCreatedByInput
   updatedTags?: Prisma.TagUncheckedCreateNestedManyWithoutUpdatedByInput
   assignedTagAssignments?: Prisma.TagAssignmentUncheckedCreateNestedManyWithoutAssignedByInput
+  createdObjectSequenceCounters?: Prisma.ObjectSequenceCounterUncheckedCreateNestedManyWithoutCreatedByInput
+  updatedObjectSequenceCounters?: Prisma.ObjectSequenceCounterUncheckedCreateNestedManyWithoutUpdatedByInput
 }
 
 export type UserCreateOrConnectWithoutOwnedVersionsInput = {
@@ -1999,6 +2089,8 @@ export type UserUpdateWithoutOwnedVersionsInput = {
   createdTags?: Prisma.TagUpdateManyWithoutCreatedByNestedInput
   updatedTags?: Prisma.TagUpdateManyWithoutUpdatedByNestedInput
   assignedTagAssignments?: Prisma.TagAssignmentUpdateManyWithoutAssignedByNestedInput
+  createdObjectSequenceCounters?: Prisma.ObjectSequenceCounterUpdateManyWithoutCreatedByNestedInput
+  updatedObjectSequenceCounters?: Prisma.ObjectSequenceCounterUpdateManyWithoutUpdatedByNestedInput
 }
 
 export type UserUncheckedUpdateWithoutOwnedVersionsInput = {
@@ -2037,6 +2129,8 @@ export type UserUncheckedUpdateWithoutOwnedVersionsInput = {
   createdTags?: Prisma.TagUncheckedUpdateManyWithoutCreatedByNestedInput
   updatedTags?: Prisma.TagUncheckedUpdateManyWithoutUpdatedByNestedInput
   assignedTagAssignments?: Prisma.TagAssignmentUncheckedUpdateManyWithoutAssignedByNestedInput
+  createdObjectSequenceCounters?: Prisma.ObjectSequenceCounterUncheckedUpdateManyWithoutCreatedByNestedInput
+  updatedObjectSequenceCounters?: Prisma.ObjectSequenceCounterUncheckedUpdateManyWithoutUpdatedByNestedInput
 }
 
 export type UserCreateWithoutOwnedRequirementsInput = {
@@ -2075,6 +2169,8 @@ export type UserCreateWithoutOwnedRequirementsInput = {
   createdTags?: Prisma.TagCreateNestedManyWithoutCreatedByInput
   updatedTags?: Prisma.TagCreateNestedManyWithoutUpdatedByInput
   assignedTagAssignments?: Prisma.TagAssignmentCreateNestedManyWithoutAssignedByInput
+  createdObjectSequenceCounters?: Prisma.ObjectSequenceCounterCreateNestedManyWithoutCreatedByInput
+  updatedObjectSequenceCounters?: Prisma.ObjectSequenceCounterCreateNestedManyWithoutUpdatedByInput
 }
 
 export type UserUncheckedCreateWithoutOwnedRequirementsInput = {
@@ -2113,6 +2209,8 @@ export type UserUncheckedCreateWithoutOwnedRequirementsInput = {
   createdTags?: Prisma.TagUncheckedCreateNestedManyWithoutCreatedByInput
   updatedTags?: Prisma.TagUncheckedCreateNestedManyWithoutUpdatedByInput
   assignedTagAssignments?: Prisma.TagAssignmentUncheckedCreateNestedManyWithoutAssignedByInput
+  createdObjectSequenceCounters?: Prisma.ObjectSequenceCounterUncheckedCreateNestedManyWithoutCreatedByInput
+  updatedObjectSequenceCounters?: Prisma.ObjectSequenceCounterUncheckedCreateNestedManyWithoutUpdatedByInput
 }
 
 export type UserCreateOrConnectWithoutOwnedRequirementsInput = {
@@ -2156,6 +2254,8 @@ export type UserCreateWithoutAuthoredRequirementsInput = {
   createdTags?: Prisma.TagCreateNestedManyWithoutCreatedByInput
   updatedTags?: Prisma.TagCreateNestedManyWithoutUpdatedByInput
   assignedTagAssignments?: Prisma.TagAssignmentCreateNestedManyWithoutAssignedByInput
+  createdObjectSequenceCounters?: Prisma.ObjectSequenceCounterCreateNestedManyWithoutCreatedByInput
+  updatedObjectSequenceCounters?: Prisma.ObjectSequenceCounterCreateNestedManyWithoutUpdatedByInput
 }
 
 export type UserUncheckedCreateWithoutAuthoredRequirementsInput = {
@@ -2194,6 +2294,8 @@ export type UserUncheckedCreateWithoutAuthoredRequirementsInput = {
   createdTags?: Prisma.TagUncheckedCreateNestedManyWithoutCreatedByInput
   updatedTags?: Prisma.TagUncheckedCreateNestedManyWithoutUpdatedByInput
   assignedTagAssignments?: Prisma.TagAssignmentUncheckedCreateNestedManyWithoutAssignedByInput
+  createdObjectSequenceCounters?: Prisma.ObjectSequenceCounterUncheckedCreateNestedManyWithoutCreatedByInput
+  updatedObjectSequenceCounters?: Prisma.ObjectSequenceCounterUncheckedCreateNestedManyWithoutUpdatedByInput
 }
 
 export type UserCreateOrConnectWithoutAuthoredRequirementsInput = {
@@ -2248,6 +2350,8 @@ export type UserUpdateWithoutOwnedRequirementsInput = {
   createdTags?: Prisma.TagUpdateManyWithoutCreatedByNestedInput
   updatedTags?: Prisma.TagUpdateManyWithoutUpdatedByNestedInput
   assignedTagAssignments?: Prisma.TagAssignmentUpdateManyWithoutAssignedByNestedInput
+  createdObjectSequenceCounters?: Prisma.ObjectSequenceCounterUpdateManyWithoutCreatedByNestedInput
+  updatedObjectSequenceCounters?: Prisma.ObjectSequenceCounterUpdateManyWithoutUpdatedByNestedInput
 }
 
 export type UserUncheckedUpdateWithoutOwnedRequirementsInput = {
@@ -2286,6 +2390,8 @@ export type UserUncheckedUpdateWithoutOwnedRequirementsInput = {
   createdTags?: Prisma.TagUncheckedUpdateManyWithoutCreatedByNestedInput
   updatedTags?: Prisma.TagUncheckedUpdateManyWithoutUpdatedByNestedInput
   assignedTagAssignments?: Prisma.TagAssignmentUncheckedUpdateManyWithoutAssignedByNestedInput
+  createdObjectSequenceCounters?: Prisma.ObjectSequenceCounterUncheckedUpdateManyWithoutCreatedByNestedInput
+  updatedObjectSequenceCounters?: Prisma.ObjectSequenceCounterUncheckedUpdateManyWithoutUpdatedByNestedInput
 }
 
 export type UserUpsertWithoutAuthoredRequirementsInput = {
@@ -2335,6 +2441,8 @@ export type UserUpdateWithoutAuthoredRequirementsInput = {
   createdTags?: Prisma.TagUpdateManyWithoutCreatedByNestedInput
   updatedTags?: Prisma.TagUpdateManyWithoutUpdatedByNestedInput
   assignedTagAssignments?: Prisma.TagAssignmentUpdateManyWithoutAssignedByNestedInput
+  createdObjectSequenceCounters?: Prisma.ObjectSequenceCounterUpdateManyWithoutCreatedByNestedInput
+  updatedObjectSequenceCounters?: Prisma.ObjectSequenceCounterUpdateManyWithoutUpdatedByNestedInput
 }
 
 export type UserUncheckedUpdateWithoutAuthoredRequirementsInput = {
@@ -2373,6 +2481,8 @@ export type UserUncheckedUpdateWithoutAuthoredRequirementsInput = {
   createdTags?: Prisma.TagUncheckedUpdateManyWithoutCreatedByNestedInput
   updatedTags?: Prisma.TagUncheckedUpdateManyWithoutUpdatedByNestedInput
   assignedTagAssignments?: Prisma.TagAssignmentUncheckedUpdateManyWithoutAssignedByNestedInput
+  createdObjectSequenceCounters?: Prisma.ObjectSequenceCounterUncheckedUpdateManyWithoutCreatedByNestedInput
+  updatedObjectSequenceCounters?: Prisma.ObjectSequenceCounterUncheckedUpdateManyWithoutUpdatedByNestedInput
 }
 
 export type UserCreateWithoutReportedIntakeItemsInput = {
@@ -2411,6 +2521,8 @@ export type UserCreateWithoutReportedIntakeItemsInput = {
   createdTags?: Prisma.TagCreateNestedManyWithoutCreatedByInput
   updatedTags?: Prisma.TagCreateNestedManyWithoutUpdatedByInput
   assignedTagAssignments?: Prisma.TagAssignmentCreateNestedManyWithoutAssignedByInput
+  createdObjectSequenceCounters?: Prisma.ObjectSequenceCounterCreateNestedManyWithoutCreatedByInput
+  updatedObjectSequenceCounters?: Prisma.ObjectSequenceCounterCreateNestedManyWithoutUpdatedByInput
 }
 
 export type UserUncheckedCreateWithoutReportedIntakeItemsInput = {
@@ -2449,6 +2561,8 @@ export type UserUncheckedCreateWithoutReportedIntakeItemsInput = {
   createdTags?: Prisma.TagUncheckedCreateNestedManyWithoutCreatedByInput
   updatedTags?: Prisma.TagUncheckedCreateNestedManyWithoutUpdatedByInput
   assignedTagAssignments?: Prisma.TagAssignmentUncheckedCreateNestedManyWithoutAssignedByInput
+  createdObjectSequenceCounters?: Prisma.ObjectSequenceCounterUncheckedCreateNestedManyWithoutCreatedByInput
+  updatedObjectSequenceCounters?: Prisma.ObjectSequenceCounterUncheckedCreateNestedManyWithoutUpdatedByInput
 }
 
 export type UserCreateOrConnectWithoutReportedIntakeItemsInput = {
@@ -2492,6 +2606,8 @@ export type UserCreateWithoutAssignedIntakeItemsInput = {
   createdTags?: Prisma.TagCreateNestedManyWithoutCreatedByInput
   updatedTags?: Prisma.TagCreateNestedManyWithoutUpdatedByInput
   assignedTagAssignments?: Prisma.TagAssignmentCreateNestedManyWithoutAssignedByInput
+  createdObjectSequenceCounters?: Prisma.ObjectSequenceCounterCreateNestedManyWithoutCreatedByInput
+  updatedObjectSequenceCounters?: Prisma.ObjectSequenceCounterCreateNestedManyWithoutUpdatedByInput
 }
 
 export type UserUncheckedCreateWithoutAssignedIntakeItemsInput = {
@@ -2530,6 +2646,8 @@ export type UserUncheckedCreateWithoutAssignedIntakeItemsInput = {
   createdTags?: Prisma.TagUncheckedCreateNestedManyWithoutCreatedByInput
   updatedTags?: Prisma.TagUncheckedCreateNestedManyWithoutUpdatedByInput
   assignedTagAssignments?: Prisma.TagAssignmentUncheckedCreateNestedManyWithoutAssignedByInput
+  createdObjectSequenceCounters?: Prisma.ObjectSequenceCounterUncheckedCreateNestedManyWithoutCreatedByInput
+  updatedObjectSequenceCounters?: Prisma.ObjectSequenceCounterUncheckedCreateNestedManyWithoutUpdatedByInput
 }
 
 export type UserCreateOrConnectWithoutAssignedIntakeItemsInput = {
@@ -2584,6 +2702,8 @@ export type UserUpdateWithoutReportedIntakeItemsInput = {
   createdTags?: Prisma.TagUpdateManyWithoutCreatedByNestedInput
   updatedTags?: Prisma.TagUpdateManyWithoutUpdatedByNestedInput
   assignedTagAssignments?: Prisma.TagAssignmentUpdateManyWithoutAssignedByNestedInput
+  createdObjectSequenceCounters?: Prisma.ObjectSequenceCounterUpdateManyWithoutCreatedByNestedInput
+  updatedObjectSequenceCounters?: Prisma.ObjectSequenceCounterUpdateManyWithoutUpdatedByNestedInput
 }
 
 export type UserUncheckedUpdateWithoutReportedIntakeItemsInput = {
@@ -2622,6 +2742,8 @@ export type UserUncheckedUpdateWithoutReportedIntakeItemsInput = {
   createdTags?: Prisma.TagUncheckedUpdateManyWithoutCreatedByNestedInput
   updatedTags?: Prisma.TagUncheckedUpdateManyWithoutUpdatedByNestedInput
   assignedTagAssignments?: Prisma.TagAssignmentUncheckedUpdateManyWithoutAssignedByNestedInput
+  createdObjectSequenceCounters?: Prisma.ObjectSequenceCounterUncheckedUpdateManyWithoutCreatedByNestedInput
+  updatedObjectSequenceCounters?: Prisma.ObjectSequenceCounterUncheckedUpdateManyWithoutUpdatedByNestedInput
 }
 
 export type UserUpsertWithoutAssignedIntakeItemsInput = {
@@ -2671,6 +2793,8 @@ export type UserUpdateWithoutAssignedIntakeItemsInput = {
   createdTags?: Prisma.TagUpdateManyWithoutCreatedByNestedInput
   updatedTags?: Prisma.TagUpdateManyWithoutUpdatedByNestedInput
   assignedTagAssignments?: Prisma.TagAssignmentUpdateManyWithoutAssignedByNestedInput
+  createdObjectSequenceCounters?: Prisma.ObjectSequenceCounterUpdateManyWithoutCreatedByNestedInput
+  updatedObjectSequenceCounters?: Prisma.ObjectSequenceCounterUpdateManyWithoutUpdatedByNestedInput
 }
 
 export type UserUncheckedUpdateWithoutAssignedIntakeItemsInput = {
@@ -2709,6 +2833,8 @@ export type UserUncheckedUpdateWithoutAssignedIntakeItemsInput = {
   createdTags?: Prisma.TagUncheckedUpdateManyWithoutCreatedByNestedInput
   updatedTags?: Prisma.TagUncheckedUpdateManyWithoutUpdatedByNestedInput
   assignedTagAssignments?: Prisma.TagAssignmentUncheckedUpdateManyWithoutAssignedByNestedInput
+  createdObjectSequenceCounters?: Prisma.ObjectSequenceCounterUncheckedUpdateManyWithoutCreatedByNestedInput
+  updatedObjectSequenceCounters?: Prisma.ObjectSequenceCounterUncheckedUpdateManyWithoutUpdatedByNestedInput
 }
 
 export type UserCreateWithoutAssignedWorkItemsInput = {
@@ -2747,6 +2873,8 @@ export type UserCreateWithoutAssignedWorkItemsInput = {
   createdTags?: Prisma.TagCreateNestedManyWithoutCreatedByInput
   updatedTags?: Prisma.TagCreateNestedManyWithoutUpdatedByInput
   assignedTagAssignments?: Prisma.TagAssignmentCreateNestedManyWithoutAssignedByInput
+  createdObjectSequenceCounters?: Prisma.ObjectSequenceCounterCreateNestedManyWithoutCreatedByInput
+  updatedObjectSequenceCounters?: Prisma.ObjectSequenceCounterCreateNestedManyWithoutUpdatedByInput
 }
 
 export type UserUncheckedCreateWithoutAssignedWorkItemsInput = {
@@ -2785,6 +2913,8 @@ export type UserUncheckedCreateWithoutAssignedWorkItemsInput = {
   createdTags?: Prisma.TagUncheckedCreateNestedManyWithoutCreatedByInput
   updatedTags?: Prisma.TagUncheckedCreateNestedManyWithoutUpdatedByInput
   assignedTagAssignments?: Prisma.TagAssignmentUncheckedCreateNestedManyWithoutAssignedByInput
+  createdObjectSequenceCounters?: Prisma.ObjectSequenceCounterUncheckedCreateNestedManyWithoutCreatedByInput
+  updatedObjectSequenceCounters?: Prisma.ObjectSequenceCounterUncheckedCreateNestedManyWithoutUpdatedByInput
 }
 
 export type UserCreateOrConnectWithoutAssignedWorkItemsInput = {
@@ -2828,6 +2958,8 @@ export type UserCreateWithoutReportedWorkItemsInput = {
   createdTags?: Prisma.TagCreateNestedManyWithoutCreatedByInput
   updatedTags?: Prisma.TagCreateNestedManyWithoutUpdatedByInput
   assignedTagAssignments?: Prisma.TagAssignmentCreateNestedManyWithoutAssignedByInput
+  createdObjectSequenceCounters?: Prisma.ObjectSequenceCounterCreateNestedManyWithoutCreatedByInput
+  updatedObjectSequenceCounters?: Prisma.ObjectSequenceCounterCreateNestedManyWithoutUpdatedByInput
 }
 
 export type UserUncheckedCreateWithoutReportedWorkItemsInput = {
@@ -2866,6 +2998,8 @@ export type UserUncheckedCreateWithoutReportedWorkItemsInput = {
   createdTags?: Prisma.TagUncheckedCreateNestedManyWithoutCreatedByInput
   updatedTags?: Prisma.TagUncheckedCreateNestedManyWithoutUpdatedByInput
   assignedTagAssignments?: Prisma.TagAssignmentUncheckedCreateNestedManyWithoutAssignedByInput
+  createdObjectSequenceCounters?: Prisma.ObjectSequenceCounterUncheckedCreateNestedManyWithoutCreatedByInput
+  updatedObjectSequenceCounters?: Prisma.ObjectSequenceCounterUncheckedCreateNestedManyWithoutUpdatedByInput
 }
 
 export type UserCreateOrConnectWithoutReportedWorkItemsInput = {
@@ -2920,6 +3054,8 @@ export type UserUpdateWithoutAssignedWorkItemsInput = {
   createdTags?: Prisma.TagUpdateManyWithoutCreatedByNestedInput
   updatedTags?: Prisma.TagUpdateManyWithoutUpdatedByNestedInput
   assignedTagAssignments?: Prisma.TagAssignmentUpdateManyWithoutAssignedByNestedInput
+  createdObjectSequenceCounters?: Prisma.ObjectSequenceCounterUpdateManyWithoutCreatedByNestedInput
+  updatedObjectSequenceCounters?: Prisma.ObjectSequenceCounterUpdateManyWithoutUpdatedByNestedInput
 }
 
 export type UserUncheckedUpdateWithoutAssignedWorkItemsInput = {
@@ -2958,6 +3094,8 @@ export type UserUncheckedUpdateWithoutAssignedWorkItemsInput = {
   createdTags?: Prisma.TagUncheckedUpdateManyWithoutCreatedByNestedInput
   updatedTags?: Prisma.TagUncheckedUpdateManyWithoutUpdatedByNestedInput
   assignedTagAssignments?: Prisma.TagAssignmentUncheckedUpdateManyWithoutAssignedByNestedInput
+  createdObjectSequenceCounters?: Prisma.ObjectSequenceCounterUncheckedUpdateManyWithoutCreatedByNestedInput
+  updatedObjectSequenceCounters?: Prisma.ObjectSequenceCounterUncheckedUpdateManyWithoutUpdatedByNestedInput
 }
 
 export type UserUpsertWithoutReportedWorkItemsInput = {
@@ -3007,6 +3145,8 @@ export type UserUpdateWithoutReportedWorkItemsInput = {
   createdTags?: Prisma.TagUpdateManyWithoutCreatedByNestedInput
   updatedTags?: Prisma.TagUpdateManyWithoutUpdatedByNestedInput
   assignedTagAssignments?: Prisma.TagAssignmentUpdateManyWithoutAssignedByNestedInput
+  createdObjectSequenceCounters?: Prisma.ObjectSequenceCounterUpdateManyWithoutCreatedByNestedInput
+  updatedObjectSequenceCounters?: Prisma.ObjectSequenceCounterUpdateManyWithoutUpdatedByNestedInput
 }
 
 export type UserUncheckedUpdateWithoutReportedWorkItemsInput = {
@@ -3045,6 +3185,360 @@ export type UserUncheckedUpdateWithoutReportedWorkItemsInput = {
   createdTags?: Prisma.TagUncheckedUpdateManyWithoutCreatedByNestedInput
   updatedTags?: Prisma.TagUncheckedUpdateManyWithoutUpdatedByNestedInput
   assignedTagAssignments?: Prisma.TagAssignmentUncheckedUpdateManyWithoutAssignedByNestedInput
+  createdObjectSequenceCounters?: Prisma.ObjectSequenceCounterUncheckedUpdateManyWithoutCreatedByNestedInput
+  updatedObjectSequenceCounters?: Prisma.ObjectSequenceCounterUncheckedUpdateManyWithoutUpdatedByNestedInput
+}
+
+export type UserCreateWithoutCreatedObjectSequenceCountersInput = {
+  id: string
+  username: string
+  passwordHash: string
+  name: string
+  avatar?: string | null
+  status?: $Enums.UserStatus
+  locale?: $Enums.Locale
+  themeMode?: $Enums.ThemeMode
+  lastLoginAt?: Date | string | null
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  createdById?: string | null
+  updatedById?: string | null
+  deletedAt?: Date | string | null
+  sessions?: Prisma.SessionCreateNestedManyWithoutUserInput
+  organizations?: Prisma.OrganizationCreateNestedManyWithoutOwnerInput
+  memberships?: Prisma.OrganizationMemberCreateNestedManyWithoutUserInput
+  ownedSpaces?: Prisma.SpaceCreateNestedManyWithoutOwnerInput
+  spaceMemberships?: Prisma.SpaceMemberCreateNestedManyWithoutUserInput
+  ownedVersions?: Prisma.VersionCreateNestedManyWithoutOwnerInput
+  ownedRequirements?: Prisma.RequirementCreateNestedManyWithoutOwnerInput
+  authoredRequirements?: Prisma.RequirementCreateNestedManyWithoutAuthorInput
+  uploadedAttachments?: Prisma.AttachmentCreateNestedManyWithoutUploadedByInput
+  publishedWorkflowVersions?: Prisma.WorkflowVersionCreateNestedManyWithoutPublishedByInput
+  objectParticipants?: Prisma.ObjectParticipantCreateNestedManyWithoutUserInput
+  reportedIntakeItems?: Prisma.IntakeItemCreateNestedManyWithoutReporterInput
+  assignedIntakeItems?: Prisma.IntakeItemCreateNestedManyWithoutAssigneeInput
+  reportedWorkItems?: Prisma.WorkItemCreateNestedManyWithoutReporterInput
+  assignedWorkItems?: Prisma.WorkItemCreateNestedManyWithoutAssigneeInput
+  regressedBugDetails?: Prisma.BugDetailCreateNestedManyWithoutRegressionByInput
+  authoredComments?: Prisma.CommentCreateNestedManyWithoutAuthorInput
+  actedTimelineEvents?: Prisma.TimelineEventCreateNestedManyWithoutActorInput
+  actedAuditLogs?: Prisma.AuditLogCreateNestedManyWithoutActorInput
+  createdTags?: Prisma.TagCreateNestedManyWithoutCreatedByInput
+  updatedTags?: Prisma.TagCreateNestedManyWithoutUpdatedByInput
+  assignedTagAssignments?: Prisma.TagAssignmentCreateNestedManyWithoutAssignedByInput
+  updatedObjectSequenceCounters?: Prisma.ObjectSequenceCounterCreateNestedManyWithoutUpdatedByInput
+}
+
+export type UserUncheckedCreateWithoutCreatedObjectSequenceCountersInput = {
+  id: string
+  username: string
+  passwordHash: string
+  name: string
+  avatar?: string | null
+  status?: $Enums.UserStatus
+  locale?: $Enums.Locale
+  themeMode?: $Enums.ThemeMode
+  lastLoginAt?: Date | string | null
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  createdById?: string | null
+  updatedById?: string | null
+  deletedAt?: Date | string | null
+  sessions?: Prisma.SessionUncheckedCreateNestedManyWithoutUserInput
+  organizations?: Prisma.OrganizationUncheckedCreateNestedManyWithoutOwnerInput
+  memberships?: Prisma.OrganizationMemberUncheckedCreateNestedManyWithoutUserInput
+  ownedSpaces?: Prisma.SpaceUncheckedCreateNestedManyWithoutOwnerInput
+  spaceMemberships?: Prisma.SpaceMemberUncheckedCreateNestedManyWithoutUserInput
+  ownedVersions?: Prisma.VersionUncheckedCreateNestedManyWithoutOwnerInput
+  ownedRequirements?: Prisma.RequirementUncheckedCreateNestedManyWithoutOwnerInput
+  authoredRequirements?: Prisma.RequirementUncheckedCreateNestedManyWithoutAuthorInput
+  uploadedAttachments?: Prisma.AttachmentUncheckedCreateNestedManyWithoutUploadedByInput
+  publishedWorkflowVersions?: Prisma.WorkflowVersionUncheckedCreateNestedManyWithoutPublishedByInput
+  objectParticipants?: Prisma.ObjectParticipantUncheckedCreateNestedManyWithoutUserInput
+  reportedIntakeItems?: Prisma.IntakeItemUncheckedCreateNestedManyWithoutReporterInput
+  assignedIntakeItems?: Prisma.IntakeItemUncheckedCreateNestedManyWithoutAssigneeInput
+  reportedWorkItems?: Prisma.WorkItemUncheckedCreateNestedManyWithoutReporterInput
+  assignedWorkItems?: Prisma.WorkItemUncheckedCreateNestedManyWithoutAssigneeInput
+  regressedBugDetails?: Prisma.BugDetailUncheckedCreateNestedManyWithoutRegressionByInput
+  authoredComments?: Prisma.CommentUncheckedCreateNestedManyWithoutAuthorInput
+  actedTimelineEvents?: Prisma.TimelineEventUncheckedCreateNestedManyWithoutActorInput
+  actedAuditLogs?: Prisma.AuditLogUncheckedCreateNestedManyWithoutActorInput
+  createdTags?: Prisma.TagUncheckedCreateNestedManyWithoutCreatedByInput
+  updatedTags?: Prisma.TagUncheckedCreateNestedManyWithoutUpdatedByInput
+  assignedTagAssignments?: Prisma.TagAssignmentUncheckedCreateNestedManyWithoutAssignedByInput
+  updatedObjectSequenceCounters?: Prisma.ObjectSequenceCounterUncheckedCreateNestedManyWithoutUpdatedByInput
+}
+
+export type UserCreateOrConnectWithoutCreatedObjectSequenceCountersInput = {
+  where: Prisma.UserWhereUniqueInput
+  create: Prisma.XOR<Prisma.UserCreateWithoutCreatedObjectSequenceCountersInput, Prisma.UserUncheckedCreateWithoutCreatedObjectSequenceCountersInput>
+}
+
+export type UserCreateWithoutUpdatedObjectSequenceCountersInput = {
+  id: string
+  username: string
+  passwordHash: string
+  name: string
+  avatar?: string | null
+  status?: $Enums.UserStatus
+  locale?: $Enums.Locale
+  themeMode?: $Enums.ThemeMode
+  lastLoginAt?: Date | string | null
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  createdById?: string | null
+  updatedById?: string | null
+  deletedAt?: Date | string | null
+  sessions?: Prisma.SessionCreateNestedManyWithoutUserInput
+  organizations?: Prisma.OrganizationCreateNestedManyWithoutOwnerInput
+  memberships?: Prisma.OrganizationMemberCreateNestedManyWithoutUserInput
+  ownedSpaces?: Prisma.SpaceCreateNestedManyWithoutOwnerInput
+  spaceMemberships?: Prisma.SpaceMemberCreateNestedManyWithoutUserInput
+  ownedVersions?: Prisma.VersionCreateNestedManyWithoutOwnerInput
+  ownedRequirements?: Prisma.RequirementCreateNestedManyWithoutOwnerInput
+  authoredRequirements?: Prisma.RequirementCreateNestedManyWithoutAuthorInput
+  uploadedAttachments?: Prisma.AttachmentCreateNestedManyWithoutUploadedByInput
+  publishedWorkflowVersions?: Prisma.WorkflowVersionCreateNestedManyWithoutPublishedByInput
+  objectParticipants?: Prisma.ObjectParticipantCreateNestedManyWithoutUserInput
+  reportedIntakeItems?: Prisma.IntakeItemCreateNestedManyWithoutReporterInput
+  assignedIntakeItems?: Prisma.IntakeItemCreateNestedManyWithoutAssigneeInput
+  reportedWorkItems?: Prisma.WorkItemCreateNestedManyWithoutReporterInput
+  assignedWorkItems?: Prisma.WorkItemCreateNestedManyWithoutAssigneeInput
+  regressedBugDetails?: Prisma.BugDetailCreateNestedManyWithoutRegressionByInput
+  authoredComments?: Prisma.CommentCreateNestedManyWithoutAuthorInput
+  actedTimelineEvents?: Prisma.TimelineEventCreateNestedManyWithoutActorInput
+  actedAuditLogs?: Prisma.AuditLogCreateNestedManyWithoutActorInput
+  createdTags?: Prisma.TagCreateNestedManyWithoutCreatedByInput
+  updatedTags?: Prisma.TagCreateNestedManyWithoutUpdatedByInput
+  assignedTagAssignments?: Prisma.TagAssignmentCreateNestedManyWithoutAssignedByInput
+  createdObjectSequenceCounters?: Prisma.ObjectSequenceCounterCreateNestedManyWithoutCreatedByInput
+}
+
+export type UserUncheckedCreateWithoutUpdatedObjectSequenceCountersInput = {
+  id: string
+  username: string
+  passwordHash: string
+  name: string
+  avatar?: string | null
+  status?: $Enums.UserStatus
+  locale?: $Enums.Locale
+  themeMode?: $Enums.ThemeMode
+  lastLoginAt?: Date | string | null
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  createdById?: string | null
+  updatedById?: string | null
+  deletedAt?: Date | string | null
+  sessions?: Prisma.SessionUncheckedCreateNestedManyWithoutUserInput
+  organizations?: Prisma.OrganizationUncheckedCreateNestedManyWithoutOwnerInput
+  memberships?: Prisma.OrganizationMemberUncheckedCreateNestedManyWithoutUserInput
+  ownedSpaces?: Prisma.SpaceUncheckedCreateNestedManyWithoutOwnerInput
+  spaceMemberships?: Prisma.SpaceMemberUncheckedCreateNestedManyWithoutUserInput
+  ownedVersions?: Prisma.VersionUncheckedCreateNestedManyWithoutOwnerInput
+  ownedRequirements?: Prisma.RequirementUncheckedCreateNestedManyWithoutOwnerInput
+  authoredRequirements?: Prisma.RequirementUncheckedCreateNestedManyWithoutAuthorInput
+  uploadedAttachments?: Prisma.AttachmentUncheckedCreateNestedManyWithoutUploadedByInput
+  publishedWorkflowVersions?: Prisma.WorkflowVersionUncheckedCreateNestedManyWithoutPublishedByInput
+  objectParticipants?: Prisma.ObjectParticipantUncheckedCreateNestedManyWithoutUserInput
+  reportedIntakeItems?: Prisma.IntakeItemUncheckedCreateNestedManyWithoutReporterInput
+  assignedIntakeItems?: Prisma.IntakeItemUncheckedCreateNestedManyWithoutAssigneeInput
+  reportedWorkItems?: Prisma.WorkItemUncheckedCreateNestedManyWithoutReporterInput
+  assignedWorkItems?: Prisma.WorkItemUncheckedCreateNestedManyWithoutAssigneeInput
+  regressedBugDetails?: Prisma.BugDetailUncheckedCreateNestedManyWithoutRegressionByInput
+  authoredComments?: Prisma.CommentUncheckedCreateNestedManyWithoutAuthorInput
+  actedTimelineEvents?: Prisma.TimelineEventUncheckedCreateNestedManyWithoutActorInput
+  actedAuditLogs?: Prisma.AuditLogUncheckedCreateNestedManyWithoutActorInput
+  createdTags?: Prisma.TagUncheckedCreateNestedManyWithoutCreatedByInput
+  updatedTags?: Prisma.TagUncheckedCreateNestedManyWithoutUpdatedByInput
+  assignedTagAssignments?: Prisma.TagAssignmentUncheckedCreateNestedManyWithoutAssignedByInput
+  createdObjectSequenceCounters?: Prisma.ObjectSequenceCounterUncheckedCreateNestedManyWithoutCreatedByInput
+}
+
+export type UserCreateOrConnectWithoutUpdatedObjectSequenceCountersInput = {
+  where: Prisma.UserWhereUniqueInput
+  create: Prisma.XOR<Prisma.UserCreateWithoutUpdatedObjectSequenceCountersInput, Prisma.UserUncheckedCreateWithoutUpdatedObjectSequenceCountersInput>
+}
+
+export type UserUpsertWithoutCreatedObjectSequenceCountersInput = {
+  update: Prisma.XOR<Prisma.UserUpdateWithoutCreatedObjectSequenceCountersInput, Prisma.UserUncheckedUpdateWithoutCreatedObjectSequenceCountersInput>
+  create: Prisma.XOR<Prisma.UserCreateWithoutCreatedObjectSequenceCountersInput, Prisma.UserUncheckedCreateWithoutCreatedObjectSequenceCountersInput>
+  where?: Prisma.UserWhereInput
+}
+
+export type UserUpdateToOneWithWhereWithoutCreatedObjectSequenceCountersInput = {
+  where?: Prisma.UserWhereInput
+  data: Prisma.XOR<Prisma.UserUpdateWithoutCreatedObjectSequenceCountersInput, Prisma.UserUncheckedUpdateWithoutCreatedObjectSequenceCountersInput>
+}
+
+export type UserUpdateWithoutCreatedObjectSequenceCountersInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  username?: Prisma.StringFieldUpdateOperationsInput | string
+  passwordHash?: Prisma.StringFieldUpdateOperationsInput | string
+  name?: Prisma.StringFieldUpdateOperationsInput | string
+  avatar?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  status?: Prisma.EnumUserStatusFieldUpdateOperationsInput | $Enums.UserStatus
+  locale?: Prisma.EnumLocaleFieldUpdateOperationsInput | $Enums.Locale
+  themeMode?: Prisma.EnumThemeModeFieldUpdateOperationsInput | $Enums.ThemeMode
+  lastLoginAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  createdById?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  updatedById?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  deletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  sessions?: Prisma.SessionUpdateManyWithoutUserNestedInput
+  organizations?: Prisma.OrganizationUpdateManyWithoutOwnerNestedInput
+  memberships?: Prisma.OrganizationMemberUpdateManyWithoutUserNestedInput
+  ownedSpaces?: Prisma.SpaceUpdateManyWithoutOwnerNestedInput
+  spaceMemberships?: Prisma.SpaceMemberUpdateManyWithoutUserNestedInput
+  ownedVersions?: Prisma.VersionUpdateManyWithoutOwnerNestedInput
+  ownedRequirements?: Prisma.RequirementUpdateManyWithoutOwnerNestedInput
+  authoredRequirements?: Prisma.RequirementUpdateManyWithoutAuthorNestedInput
+  uploadedAttachments?: Prisma.AttachmentUpdateManyWithoutUploadedByNestedInput
+  publishedWorkflowVersions?: Prisma.WorkflowVersionUpdateManyWithoutPublishedByNestedInput
+  objectParticipants?: Prisma.ObjectParticipantUpdateManyWithoutUserNestedInput
+  reportedIntakeItems?: Prisma.IntakeItemUpdateManyWithoutReporterNestedInput
+  assignedIntakeItems?: Prisma.IntakeItemUpdateManyWithoutAssigneeNestedInput
+  reportedWorkItems?: Prisma.WorkItemUpdateManyWithoutReporterNestedInput
+  assignedWorkItems?: Prisma.WorkItemUpdateManyWithoutAssigneeNestedInput
+  regressedBugDetails?: Prisma.BugDetailUpdateManyWithoutRegressionByNestedInput
+  authoredComments?: Prisma.CommentUpdateManyWithoutAuthorNestedInput
+  actedTimelineEvents?: Prisma.TimelineEventUpdateManyWithoutActorNestedInput
+  actedAuditLogs?: Prisma.AuditLogUpdateManyWithoutActorNestedInput
+  createdTags?: Prisma.TagUpdateManyWithoutCreatedByNestedInput
+  updatedTags?: Prisma.TagUpdateManyWithoutUpdatedByNestedInput
+  assignedTagAssignments?: Prisma.TagAssignmentUpdateManyWithoutAssignedByNestedInput
+  updatedObjectSequenceCounters?: Prisma.ObjectSequenceCounterUpdateManyWithoutUpdatedByNestedInput
+}
+
+export type UserUncheckedUpdateWithoutCreatedObjectSequenceCountersInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  username?: Prisma.StringFieldUpdateOperationsInput | string
+  passwordHash?: Prisma.StringFieldUpdateOperationsInput | string
+  name?: Prisma.StringFieldUpdateOperationsInput | string
+  avatar?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  status?: Prisma.EnumUserStatusFieldUpdateOperationsInput | $Enums.UserStatus
+  locale?: Prisma.EnumLocaleFieldUpdateOperationsInput | $Enums.Locale
+  themeMode?: Prisma.EnumThemeModeFieldUpdateOperationsInput | $Enums.ThemeMode
+  lastLoginAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  createdById?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  updatedById?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  deletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  sessions?: Prisma.SessionUncheckedUpdateManyWithoutUserNestedInput
+  organizations?: Prisma.OrganizationUncheckedUpdateManyWithoutOwnerNestedInput
+  memberships?: Prisma.OrganizationMemberUncheckedUpdateManyWithoutUserNestedInput
+  ownedSpaces?: Prisma.SpaceUncheckedUpdateManyWithoutOwnerNestedInput
+  spaceMemberships?: Prisma.SpaceMemberUncheckedUpdateManyWithoutUserNestedInput
+  ownedVersions?: Prisma.VersionUncheckedUpdateManyWithoutOwnerNestedInput
+  ownedRequirements?: Prisma.RequirementUncheckedUpdateManyWithoutOwnerNestedInput
+  authoredRequirements?: Prisma.RequirementUncheckedUpdateManyWithoutAuthorNestedInput
+  uploadedAttachments?: Prisma.AttachmentUncheckedUpdateManyWithoutUploadedByNestedInput
+  publishedWorkflowVersions?: Prisma.WorkflowVersionUncheckedUpdateManyWithoutPublishedByNestedInput
+  objectParticipants?: Prisma.ObjectParticipantUncheckedUpdateManyWithoutUserNestedInput
+  reportedIntakeItems?: Prisma.IntakeItemUncheckedUpdateManyWithoutReporterNestedInput
+  assignedIntakeItems?: Prisma.IntakeItemUncheckedUpdateManyWithoutAssigneeNestedInput
+  reportedWorkItems?: Prisma.WorkItemUncheckedUpdateManyWithoutReporterNestedInput
+  assignedWorkItems?: Prisma.WorkItemUncheckedUpdateManyWithoutAssigneeNestedInput
+  regressedBugDetails?: Prisma.BugDetailUncheckedUpdateManyWithoutRegressionByNestedInput
+  authoredComments?: Prisma.CommentUncheckedUpdateManyWithoutAuthorNestedInput
+  actedTimelineEvents?: Prisma.TimelineEventUncheckedUpdateManyWithoutActorNestedInput
+  actedAuditLogs?: Prisma.AuditLogUncheckedUpdateManyWithoutActorNestedInput
+  createdTags?: Prisma.TagUncheckedUpdateManyWithoutCreatedByNestedInput
+  updatedTags?: Prisma.TagUncheckedUpdateManyWithoutUpdatedByNestedInput
+  assignedTagAssignments?: Prisma.TagAssignmentUncheckedUpdateManyWithoutAssignedByNestedInput
+  updatedObjectSequenceCounters?: Prisma.ObjectSequenceCounterUncheckedUpdateManyWithoutUpdatedByNestedInput
+}
+
+export type UserUpsertWithoutUpdatedObjectSequenceCountersInput = {
+  update: Prisma.XOR<Prisma.UserUpdateWithoutUpdatedObjectSequenceCountersInput, Prisma.UserUncheckedUpdateWithoutUpdatedObjectSequenceCountersInput>
+  create: Prisma.XOR<Prisma.UserCreateWithoutUpdatedObjectSequenceCountersInput, Prisma.UserUncheckedCreateWithoutUpdatedObjectSequenceCountersInput>
+  where?: Prisma.UserWhereInput
+}
+
+export type UserUpdateToOneWithWhereWithoutUpdatedObjectSequenceCountersInput = {
+  where?: Prisma.UserWhereInput
+  data: Prisma.XOR<Prisma.UserUpdateWithoutUpdatedObjectSequenceCountersInput, Prisma.UserUncheckedUpdateWithoutUpdatedObjectSequenceCountersInput>
+}
+
+export type UserUpdateWithoutUpdatedObjectSequenceCountersInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  username?: Prisma.StringFieldUpdateOperationsInput | string
+  passwordHash?: Prisma.StringFieldUpdateOperationsInput | string
+  name?: Prisma.StringFieldUpdateOperationsInput | string
+  avatar?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  status?: Prisma.EnumUserStatusFieldUpdateOperationsInput | $Enums.UserStatus
+  locale?: Prisma.EnumLocaleFieldUpdateOperationsInput | $Enums.Locale
+  themeMode?: Prisma.EnumThemeModeFieldUpdateOperationsInput | $Enums.ThemeMode
+  lastLoginAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  createdById?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  updatedById?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  deletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  sessions?: Prisma.SessionUpdateManyWithoutUserNestedInput
+  organizations?: Prisma.OrganizationUpdateManyWithoutOwnerNestedInput
+  memberships?: Prisma.OrganizationMemberUpdateManyWithoutUserNestedInput
+  ownedSpaces?: Prisma.SpaceUpdateManyWithoutOwnerNestedInput
+  spaceMemberships?: Prisma.SpaceMemberUpdateManyWithoutUserNestedInput
+  ownedVersions?: Prisma.VersionUpdateManyWithoutOwnerNestedInput
+  ownedRequirements?: Prisma.RequirementUpdateManyWithoutOwnerNestedInput
+  authoredRequirements?: Prisma.RequirementUpdateManyWithoutAuthorNestedInput
+  uploadedAttachments?: Prisma.AttachmentUpdateManyWithoutUploadedByNestedInput
+  publishedWorkflowVersions?: Prisma.WorkflowVersionUpdateManyWithoutPublishedByNestedInput
+  objectParticipants?: Prisma.ObjectParticipantUpdateManyWithoutUserNestedInput
+  reportedIntakeItems?: Prisma.IntakeItemUpdateManyWithoutReporterNestedInput
+  assignedIntakeItems?: Prisma.IntakeItemUpdateManyWithoutAssigneeNestedInput
+  reportedWorkItems?: Prisma.WorkItemUpdateManyWithoutReporterNestedInput
+  assignedWorkItems?: Prisma.WorkItemUpdateManyWithoutAssigneeNestedInput
+  regressedBugDetails?: Prisma.BugDetailUpdateManyWithoutRegressionByNestedInput
+  authoredComments?: Prisma.CommentUpdateManyWithoutAuthorNestedInput
+  actedTimelineEvents?: Prisma.TimelineEventUpdateManyWithoutActorNestedInput
+  actedAuditLogs?: Prisma.AuditLogUpdateManyWithoutActorNestedInput
+  createdTags?: Prisma.TagUpdateManyWithoutCreatedByNestedInput
+  updatedTags?: Prisma.TagUpdateManyWithoutUpdatedByNestedInput
+  assignedTagAssignments?: Prisma.TagAssignmentUpdateManyWithoutAssignedByNestedInput
+  createdObjectSequenceCounters?: Prisma.ObjectSequenceCounterUpdateManyWithoutCreatedByNestedInput
+}
+
+export type UserUncheckedUpdateWithoutUpdatedObjectSequenceCountersInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  username?: Prisma.StringFieldUpdateOperationsInput | string
+  passwordHash?: Prisma.StringFieldUpdateOperationsInput | string
+  name?: Prisma.StringFieldUpdateOperationsInput | string
+  avatar?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  status?: Prisma.EnumUserStatusFieldUpdateOperationsInput | $Enums.UserStatus
+  locale?: Prisma.EnumLocaleFieldUpdateOperationsInput | $Enums.Locale
+  themeMode?: Prisma.EnumThemeModeFieldUpdateOperationsInput | $Enums.ThemeMode
+  lastLoginAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  createdById?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  updatedById?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  deletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  sessions?: Prisma.SessionUncheckedUpdateManyWithoutUserNestedInput
+  organizations?: Prisma.OrganizationUncheckedUpdateManyWithoutOwnerNestedInput
+  memberships?: Prisma.OrganizationMemberUncheckedUpdateManyWithoutUserNestedInput
+  ownedSpaces?: Prisma.SpaceUncheckedUpdateManyWithoutOwnerNestedInput
+  spaceMemberships?: Prisma.SpaceMemberUncheckedUpdateManyWithoutUserNestedInput
+  ownedVersions?: Prisma.VersionUncheckedUpdateManyWithoutOwnerNestedInput
+  ownedRequirements?: Prisma.RequirementUncheckedUpdateManyWithoutOwnerNestedInput
+  authoredRequirements?: Prisma.RequirementUncheckedUpdateManyWithoutAuthorNestedInput
+  uploadedAttachments?: Prisma.AttachmentUncheckedUpdateManyWithoutUploadedByNestedInput
+  publishedWorkflowVersions?: Prisma.WorkflowVersionUncheckedUpdateManyWithoutPublishedByNestedInput
+  objectParticipants?: Prisma.ObjectParticipantUncheckedUpdateManyWithoutUserNestedInput
+  reportedIntakeItems?: Prisma.IntakeItemUncheckedUpdateManyWithoutReporterNestedInput
+  assignedIntakeItems?: Prisma.IntakeItemUncheckedUpdateManyWithoutAssigneeNestedInput
+  reportedWorkItems?: Prisma.WorkItemUncheckedUpdateManyWithoutReporterNestedInput
+  assignedWorkItems?: Prisma.WorkItemUncheckedUpdateManyWithoutAssigneeNestedInput
+  regressedBugDetails?: Prisma.BugDetailUncheckedUpdateManyWithoutRegressionByNestedInput
+  authoredComments?: Prisma.CommentUncheckedUpdateManyWithoutAuthorNestedInput
+  actedTimelineEvents?: Prisma.TimelineEventUncheckedUpdateManyWithoutActorNestedInput
+  actedAuditLogs?: Prisma.AuditLogUncheckedUpdateManyWithoutActorNestedInput
+  createdTags?: Prisma.TagUncheckedUpdateManyWithoutCreatedByNestedInput
+  updatedTags?: Prisma.TagUncheckedUpdateManyWithoutUpdatedByNestedInput
+  assignedTagAssignments?: Prisma.TagAssignmentUncheckedUpdateManyWithoutAssignedByNestedInput
+  createdObjectSequenceCounters?: Prisma.ObjectSequenceCounterUncheckedUpdateManyWithoutCreatedByNestedInput
 }
 
 export type UserCreateWithoutRegressedBugDetailsInput = {
@@ -3083,6 +3577,8 @@ export type UserCreateWithoutRegressedBugDetailsInput = {
   createdTags?: Prisma.TagCreateNestedManyWithoutCreatedByInput
   updatedTags?: Prisma.TagCreateNestedManyWithoutUpdatedByInput
   assignedTagAssignments?: Prisma.TagAssignmentCreateNestedManyWithoutAssignedByInput
+  createdObjectSequenceCounters?: Prisma.ObjectSequenceCounterCreateNestedManyWithoutCreatedByInput
+  updatedObjectSequenceCounters?: Prisma.ObjectSequenceCounterCreateNestedManyWithoutUpdatedByInput
 }
 
 export type UserUncheckedCreateWithoutRegressedBugDetailsInput = {
@@ -3121,6 +3617,8 @@ export type UserUncheckedCreateWithoutRegressedBugDetailsInput = {
   createdTags?: Prisma.TagUncheckedCreateNestedManyWithoutCreatedByInput
   updatedTags?: Prisma.TagUncheckedCreateNestedManyWithoutUpdatedByInput
   assignedTagAssignments?: Prisma.TagAssignmentUncheckedCreateNestedManyWithoutAssignedByInput
+  createdObjectSequenceCounters?: Prisma.ObjectSequenceCounterUncheckedCreateNestedManyWithoutCreatedByInput
+  updatedObjectSequenceCounters?: Prisma.ObjectSequenceCounterUncheckedCreateNestedManyWithoutUpdatedByInput
 }
 
 export type UserCreateOrConnectWithoutRegressedBugDetailsInput = {
@@ -3175,6 +3673,8 @@ export type UserUpdateWithoutRegressedBugDetailsInput = {
   createdTags?: Prisma.TagUpdateManyWithoutCreatedByNestedInput
   updatedTags?: Prisma.TagUpdateManyWithoutUpdatedByNestedInput
   assignedTagAssignments?: Prisma.TagAssignmentUpdateManyWithoutAssignedByNestedInput
+  createdObjectSequenceCounters?: Prisma.ObjectSequenceCounterUpdateManyWithoutCreatedByNestedInput
+  updatedObjectSequenceCounters?: Prisma.ObjectSequenceCounterUpdateManyWithoutUpdatedByNestedInput
 }
 
 export type UserUncheckedUpdateWithoutRegressedBugDetailsInput = {
@@ -3213,6 +3713,8 @@ export type UserUncheckedUpdateWithoutRegressedBugDetailsInput = {
   createdTags?: Prisma.TagUncheckedUpdateManyWithoutCreatedByNestedInput
   updatedTags?: Prisma.TagUncheckedUpdateManyWithoutUpdatedByNestedInput
   assignedTagAssignments?: Prisma.TagAssignmentUncheckedUpdateManyWithoutAssignedByNestedInput
+  createdObjectSequenceCounters?: Prisma.ObjectSequenceCounterUncheckedUpdateManyWithoutCreatedByNestedInput
+  updatedObjectSequenceCounters?: Prisma.ObjectSequenceCounterUncheckedUpdateManyWithoutUpdatedByNestedInput
 }
 
 export type UserCreateWithoutUploadedAttachmentsInput = {
@@ -3251,6 +3753,8 @@ export type UserCreateWithoutUploadedAttachmentsInput = {
   createdTags?: Prisma.TagCreateNestedManyWithoutCreatedByInput
   updatedTags?: Prisma.TagCreateNestedManyWithoutUpdatedByInput
   assignedTagAssignments?: Prisma.TagAssignmentCreateNestedManyWithoutAssignedByInput
+  createdObjectSequenceCounters?: Prisma.ObjectSequenceCounterCreateNestedManyWithoutCreatedByInput
+  updatedObjectSequenceCounters?: Prisma.ObjectSequenceCounterCreateNestedManyWithoutUpdatedByInput
 }
 
 export type UserUncheckedCreateWithoutUploadedAttachmentsInput = {
@@ -3289,6 +3793,8 @@ export type UserUncheckedCreateWithoutUploadedAttachmentsInput = {
   createdTags?: Prisma.TagUncheckedCreateNestedManyWithoutCreatedByInput
   updatedTags?: Prisma.TagUncheckedCreateNestedManyWithoutUpdatedByInput
   assignedTagAssignments?: Prisma.TagAssignmentUncheckedCreateNestedManyWithoutAssignedByInput
+  createdObjectSequenceCounters?: Prisma.ObjectSequenceCounterUncheckedCreateNestedManyWithoutCreatedByInput
+  updatedObjectSequenceCounters?: Prisma.ObjectSequenceCounterUncheckedCreateNestedManyWithoutUpdatedByInput
 }
 
 export type UserCreateOrConnectWithoutUploadedAttachmentsInput = {
@@ -3343,6 +3849,8 @@ export type UserUpdateWithoutUploadedAttachmentsInput = {
   createdTags?: Prisma.TagUpdateManyWithoutCreatedByNestedInput
   updatedTags?: Prisma.TagUpdateManyWithoutUpdatedByNestedInput
   assignedTagAssignments?: Prisma.TagAssignmentUpdateManyWithoutAssignedByNestedInput
+  createdObjectSequenceCounters?: Prisma.ObjectSequenceCounterUpdateManyWithoutCreatedByNestedInput
+  updatedObjectSequenceCounters?: Prisma.ObjectSequenceCounterUpdateManyWithoutUpdatedByNestedInput
 }
 
 export type UserUncheckedUpdateWithoutUploadedAttachmentsInput = {
@@ -3381,6 +3889,8 @@ export type UserUncheckedUpdateWithoutUploadedAttachmentsInput = {
   createdTags?: Prisma.TagUncheckedUpdateManyWithoutCreatedByNestedInput
   updatedTags?: Prisma.TagUncheckedUpdateManyWithoutUpdatedByNestedInput
   assignedTagAssignments?: Prisma.TagAssignmentUncheckedUpdateManyWithoutAssignedByNestedInput
+  createdObjectSequenceCounters?: Prisma.ObjectSequenceCounterUncheckedUpdateManyWithoutCreatedByNestedInput
+  updatedObjectSequenceCounters?: Prisma.ObjectSequenceCounterUncheckedUpdateManyWithoutUpdatedByNestedInput
 }
 
 export type UserCreateWithoutCreatedTagsInput = {
@@ -3419,6 +3929,8 @@ export type UserCreateWithoutCreatedTagsInput = {
   actedAuditLogs?: Prisma.AuditLogCreateNestedManyWithoutActorInput
   updatedTags?: Prisma.TagCreateNestedManyWithoutUpdatedByInput
   assignedTagAssignments?: Prisma.TagAssignmentCreateNestedManyWithoutAssignedByInput
+  createdObjectSequenceCounters?: Prisma.ObjectSequenceCounterCreateNestedManyWithoutCreatedByInput
+  updatedObjectSequenceCounters?: Prisma.ObjectSequenceCounterCreateNestedManyWithoutUpdatedByInput
 }
 
 export type UserUncheckedCreateWithoutCreatedTagsInput = {
@@ -3457,6 +3969,8 @@ export type UserUncheckedCreateWithoutCreatedTagsInput = {
   actedAuditLogs?: Prisma.AuditLogUncheckedCreateNestedManyWithoutActorInput
   updatedTags?: Prisma.TagUncheckedCreateNestedManyWithoutUpdatedByInput
   assignedTagAssignments?: Prisma.TagAssignmentUncheckedCreateNestedManyWithoutAssignedByInput
+  createdObjectSequenceCounters?: Prisma.ObjectSequenceCounterUncheckedCreateNestedManyWithoutCreatedByInput
+  updatedObjectSequenceCounters?: Prisma.ObjectSequenceCounterUncheckedCreateNestedManyWithoutUpdatedByInput
 }
 
 export type UserCreateOrConnectWithoutCreatedTagsInput = {
@@ -3500,6 +4014,8 @@ export type UserCreateWithoutUpdatedTagsInput = {
   actedAuditLogs?: Prisma.AuditLogCreateNestedManyWithoutActorInput
   createdTags?: Prisma.TagCreateNestedManyWithoutCreatedByInput
   assignedTagAssignments?: Prisma.TagAssignmentCreateNestedManyWithoutAssignedByInput
+  createdObjectSequenceCounters?: Prisma.ObjectSequenceCounterCreateNestedManyWithoutCreatedByInput
+  updatedObjectSequenceCounters?: Prisma.ObjectSequenceCounterCreateNestedManyWithoutUpdatedByInput
 }
 
 export type UserUncheckedCreateWithoutUpdatedTagsInput = {
@@ -3538,6 +4054,8 @@ export type UserUncheckedCreateWithoutUpdatedTagsInput = {
   actedAuditLogs?: Prisma.AuditLogUncheckedCreateNestedManyWithoutActorInput
   createdTags?: Prisma.TagUncheckedCreateNestedManyWithoutCreatedByInput
   assignedTagAssignments?: Prisma.TagAssignmentUncheckedCreateNestedManyWithoutAssignedByInput
+  createdObjectSequenceCounters?: Prisma.ObjectSequenceCounterUncheckedCreateNestedManyWithoutCreatedByInput
+  updatedObjectSequenceCounters?: Prisma.ObjectSequenceCounterUncheckedCreateNestedManyWithoutUpdatedByInput
 }
 
 export type UserCreateOrConnectWithoutUpdatedTagsInput = {
@@ -3592,6 +4110,8 @@ export type UserUpdateWithoutCreatedTagsInput = {
   actedAuditLogs?: Prisma.AuditLogUpdateManyWithoutActorNestedInput
   updatedTags?: Prisma.TagUpdateManyWithoutUpdatedByNestedInput
   assignedTagAssignments?: Prisma.TagAssignmentUpdateManyWithoutAssignedByNestedInput
+  createdObjectSequenceCounters?: Prisma.ObjectSequenceCounterUpdateManyWithoutCreatedByNestedInput
+  updatedObjectSequenceCounters?: Prisma.ObjectSequenceCounterUpdateManyWithoutUpdatedByNestedInput
 }
 
 export type UserUncheckedUpdateWithoutCreatedTagsInput = {
@@ -3630,6 +4150,8 @@ export type UserUncheckedUpdateWithoutCreatedTagsInput = {
   actedAuditLogs?: Prisma.AuditLogUncheckedUpdateManyWithoutActorNestedInput
   updatedTags?: Prisma.TagUncheckedUpdateManyWithoutUpdatedByNestedInput
   assignedTagAssignments?: Prisma.TagAssignmentUncheckedUpdateManyWithoutAssignedByNestedInput
+  createdObjectSequenceCounters?: Prisma.ObjectSequenceCounterUncheckedUpdateManyWithoutCreatedByNestedInput
+  updatedObjectSequenceCounters?: Prisma.ObjectSequenceCounterUncheckedUpdateManyWithoutUpdatedByNestedInput
 }
 
 export type UserUpsertWithoutUpdatedTagsInput = {
@@ -3679,6 +4201,8 @@ export type UserUpdateWithoutUpdatedTagsInput = {
   actedAuditLogs?: Prisma.AuditLogUpdateManyWithoutActorNestedInput
   createdTags?: Prisma.TagUpdateManyWithoutCreatedByNestedInput
   assignedTagAssignments?: Prisma.TagAssignmentUpdateManyWithoutAssignedByNestedInput
+  createdObjectSequenceCounters?: Prisma.ObjectSequenceCounterUpdateManyWithoutCreatedByNestedInput
+  updatedObjectSequenceCounters?: Prisma.ObjectSequenceCounterUpdateManyWithoutUpdatedByNestedInput
 }
 
 export type UserUncheckedUpdateWithoutUpdatedTagsInput = {
@@ -3717,6 +4241,8 @@ export type UserUncheckedUpdateWithoutUpdatedTagsInput = {
   actedAuditLogs?: Prisma.AuditLogUncheckedUpdateManyWithoutActorNestedInput
   createdTags?: Prisma.TagUncheckedUpdateManyWithoutCreatedByNestedInput
   assignedTagAssignments?: Prisma.TagAssignmentUncheckedUpdateManyWithoutAssignedByNestedInput
+  createdObjectSequenceCounters?: Prisma.ObjectSequenceCounterUncheckedUpdateManyWithoutCreatedByNestedInput
+  updatedObjectSequenceCounters?: Prisma.ObjectSequenceCounterUncheckedUpdateManyWithoutUpdatedByNestedInput
 }
 
 export type UserCreateWithoutAssignedTagAssignmentsInput = {
@@ -3755,6 +4281,8 @@ export type UserCreateWithoutAssignedTagAssignmentsInput = {
   actedAuditLogs?: Prisma.AuditLogCreateNestedManyWithoutActorInput
   createdTags?: Prisma.TagCreateNestedManyWithoutCreatedByInput
   updatedTags?: Prisma.TagCreateNestedManyWithoutUpdatedByInput
+  createdObjectSequenceCounters?: Prisma.ObjectSequenceCounterCreateNestedManyWithoutCreatedByInput
+  updatedObjectSequenceCounters?: Prisma.ObjectSequenceCounterCreateNestedManyWithoutUpdatedByInput
 }
 
 export type UserUncheckedCreateWithoutAssignedTagAssignmentsInput = {
@@ -3793,6 +4321,8 @@ export type UserUncheckedCreateWithoutAssignedTagAssignmentsInput = {
   actedAuditLogs?: Prisma.AuditLogUncheckedCreateNestedManyWithoutActorInput
   createdTags?: Prisma.TagUncheckedCreateNestedManyWithoutCreatedByInput
   updatedTags?: Prisma.TagUncheckedCreateNestedManyWithoutUpdatedByInput
+  createdObjectSequenceCounters?: Prisma.ObjectSequenceCounterUncheckedCreateNestedManyWithoutCreatedByInput
+  updatedObjectSequenceCounters?: Prisma.ObjectSequenceCounterUncheckedCreateNestedManyWithoutUpdatedByInput
 }
 
 export type UserCreateOrConnectWithoutAssignedTagAssignmentsInput = {
@@ -3847,6 +4377,8 @@ export type UserUpdateWithoutAssignedTagAssignmentsInput = {
   actedAuditLogs?: Prisma.AuditLogUpdateManyWithoutActorNestedInput
   createdTags?: Prisma.TagUpdateManyWithoutCreatedByNestedInput
   updatedTags?: Prisma.TagUpdateManyWithoutUpdatedByNestedInput
+  createdObjectSequenceCounters?: Prisma.ObjectSequenceCounterUpdateManyWithoutCreatedByNestedInput
+  updatedObjectSequenceCounters?: Prisma.ObjectSequenceCounterUpdateManyWithoutUpdatedByNestedInput
 }
 
 export type UserUncheckedUpdateWithoutAssignedTagAssignmentsInput = {
@@ -3885,6 +4417,8 @@ export type UserUncheckedUpdateWithoutAssignedTagAssignmentsInput = {
   actedAuditLogs?: Prisma.AuditLogUncheckedUpdateManyWithoutActorNestedInput
   createdTags?: Prisma.TagUncheckedUpdateManyWithoutCreatedByNestedInput
   updatedTags?: Prisma.TagUncheckedUpdateManyWithoutUpdatedByNestedInput
+  createdObjectSequenceCounters?: Prisma.ObjectSequenceCounterUncheckedUpdateManyWithoutCreatedByNestedInput
+  updatedObjectSequenceCounters?: Prisma.ObjectSequenceCounterUncheckedUpdateManyWithoutUpdatedByNestedInput
 }
 
 export type UserCreateWithoutPublishedWorkflowVersionsInput = {
@@ -3923,6 +4457,8 @@ export type UserCreateWithoutPublishedWorkflowVersionsInput = {
   createdTags?: Prisma.TagCreateNestedManyWithoutCreatedByInput
   updatedTags?: Prisma.TagCreateNestedManyWithoutUpdatedByInput
   assignedTagAssignments?: Prisma.TagAssignmentCreateNestedManyWithoutAssignedByInput
+  createdObjectSequenceCounters?: Prisma.ObjectSequenceCounterCreateNestedManyWithoutCreatedByInput
+  updatedObjectSequenceCounters?: Prisma.ObjectSequenceCounterCreateNestedManyWithoutUpdatedByInput
 }
 
 export type UserUncheckedCreateWithoutPublishedWorkflowVersionsInput = {
@@ -3961,6 +4497,8 @@ export type UserUncheckedCreateWithoutPublishedWorkflowVersionsInput = {
   createdTags?: Prisma.TagUncheckedCreateNestedManyWithoutCreatedByInput
   updatedTags?: Prisma.TagUncheckedCreateNestedManyWithoutUpdatedByInput
   assignedTagAssignments?: Prisma.TagAssignmentUncheckedCreateNestedManyWithoutAssignedByInput
+  createdObjectSequenceCounters?: Prisma.ObjectSequenceCounterUncheckedCreateNestedManyWithoutCreatedByInput
+  updatedObjectSequenceCounters?: Prisma.ObjectSequenceCounterUncheckedCreateNestedManyWithoutUpdatedByInput
 }
 
 export type UserCreateOrConnectWithoutPublishedWorkflowVersionsInput = {
@@ -4015,6 +4553,8 @@ export type UserUpdateWithoutPublishedWorkflowVersionsInput = {
   createdTags?: Prisma.TagUpdateManyWithoutCreatedByNestedInput
   updatedTags?: Prisma.TagUpdateManyWithoutUpdatedByNestedInput
   assignedTagAssignments?: Prisma.TagAssignmentUpdateManyWithoutAssignedByNestedInput
+  createdObjectSequenceCounters?: Prisma.ObjectSequenceCounterUpdateManyWithoutCreatedByNestedInput
+  updatedObjectSequenceCounters?: Prisma.ObjectSequenceCounterUpdateManyWithoutUpdatedByNestedInput
 }
 
 export type UserUncheckedUpdateWithoutPublishedWorkflowVersionsInput = {
@@ -4053,6 +4593,8 @@ export type UserUncheckedUpdateWithoutPublishedWorkflowVersionsInput = {
   createdTags?: Prisma.TagUncheckedUpdateManyWithoutCreatedByNestedInput
   updatedTags?: Prisma.TagUncheckedUpdateManyWithoutUpdatedByNestedInput
   assignedTagAssignments?: Prisma.TagAssignmentUncheckedUpdateManyWithoutAssignedByNestedInput
+  createdObjectSequenceCounters?: Prisma.ObjectSequenceCounterUncheckedUpdateManyWithoutCreatedByNestedInput
+  updatedObjectSequenceCounters?: Prisma.ObjectSequenceCounterUncheckedUpdateManyWithoutUpdatedByNestedInput
 }
 
 export type UserCreateWithoutObjectParticipantsInput = {
@@ -4091,6 +4633,8 @@ export type UserCreateWithoutObjectParticipantsInput = {
   createdTags?: Prisma.TagCreateNestedManyWithoutCreatedByInput
   updatedTags?: Prisma.TagCreateNestedManyWithoutUpdatedByInput
   assignedTagAssignments?: Prisma.TagAssignmentCreateNestedManyWithoutAssignedByInput
+  createdObjectSequenceCounters?: Prisma.ObjectSequenceCounterCreateNestedManyWithoutCreatedByInput
+  updatedObjectSequenceCounters?: Prisma.ObjectSequenceCounterCreateNestedManyWithoutUpdatedByInput
 }
 
 export type UserUncheckedCreateWithoutObjectParticipantsInput = {
@@ -4129,6 +4673,8 @@ export type UserUncheckedCreateWithoutObjectParticipantsInput = {
   createdTags?: Prisma.TagUncheckedCreateNestedManyWithoutCreatedByInput
   updatedTags?: Prisma.TagUncheckedCreateNestedManyWithoutUpdatedByInput
   assignedTagAssignments?: Prisma.TagAssignmentUncheckedCreateNestedManyWithoutAssignedByInput
+  createdObjectSequenceCounters?: Prisma.ObjectSequenceCounterUncheckedCreateNestedManyWithoutCreatedByInput
+  updatedObjectSequenceCounters?: Prisma.ObjectSequenceCounterUncheckedCreateNestedManyWithoutUpdatedByInput
 }
 
 export type UserCreateOrConnectWithoutObjectParticipantsInput = {
@@ -4183,6 +4729,8 @@ export type UserUpdateWithoutObjectParticipantsInput = {
   createdTags?: Prisma.TagUpdateManyWithoutCreatedByNestedInput
   updatedTags?: Prisma.TagUpdateManyWithoutUpdatedByNestedInput
   assignedTagAssignments?: Prisma.TagAssignmentUpdateManyWithoutAssignedByNestedInput
+  createdObjectSequenceCounters?: Prisma.ObjectSequenceCounterUpdateManyWithoutCreatedByNestedInput
+  updatedObjectSequenceCounters?: Prisma.ObjectSequenceCounterUpdateManyWithoutUpdatedByNestedInput
 }
 
 export type UserUncheckedUpdateWithoutObjectParticipantsInput = {
@@ -4221,6 +4769,8 @@ export type UserUncheckedUpdateWithoutObjectParticipantsInput = {
   createdTags?: Prisma.TagUncheckedUpdateManyWithoutCreatedByNestedInput
   updatedTags?: Prisma.TagUncheckedUpdateManyWithoutUpdatedByNestedInput
   assignedTagAssignments?: Prisma.TagAssignmentUncheckedUpdateManyWithoutAssignedByNestedInput
+  createdObjectSequenceCounters?: Prisma.ObjectSequenceCounterUncheckedUpdateManyWithoutCreatedByNestedInput
+  updatedObjectSequenceCounters?: Prisma.ObjectSequenceCounterUncheckedUpdateManyWithoutUpdatedByNestedInput
 }
 
 export type UserCreateWithoutAuthoredCommentsInput = {
@@ -4259,6 +4809,8 @@ export type UserCreateWithoutAuthoredCommentsInput = {
   createdTags?: Prisma.TagCreateNestedManyWithoutCreatedByInput
   updatedTags?: Prisma.TagCreateNestedManyWithoutUpdatedByInput
   assignedTagAssignments?: Prisma.TagAssignmentCreateNestedManyWithoutAssignedByInput
+  createdObjectSequenceCounters?: Prisma.ObjectSequenceCounterCreateNestedManyWithoutCreatedByInput
+  updatedObjectSequenceCounters?: Prisma.ObjectSequenceCounterCreateNestedManyWithoutUpdatedByInput
 }
 
 export type UserUncheckedCreateWithoutAuthoredCommentsInput = {
@@ -4297,6 +4849,8 @@ export type UserUncheckedCreateWithoutAuthoredCommentsInput = {
   createdTags?: Prisma.TagUncheckedCreateNestedManyWithoutCreatedByInput
   updatedTags?: Prisma.TagUncheckedCreateNestedManyWithoutUpdatedByInput
   assignedTagAssignments?: Prisma.TagAssignmentUncheckedCreateNestedManyWithoutAssignedByInput
+  createdObjectSequenceCounters?: Prisma.ObjectSequenceCounterUncheckedCreateNestedManyWithoutCreatedByInput
+  updatedObjectSequenceCounters?: Prisma.ObjectSequenceCounterUncheckedCreateNestedManyWithoutUpdatedByInput
 }
 
 export type UserCreateOrConnectWithoutAuthoredCommentsInput = {
@@ -4351,6 +4905,8 @@ export type UserUpdateWithoutAuthoredCommentsInput = {
   createdTags?: Prisma.TagUpdateManyWithoutCreatedByNestedInput
   updatedTags?: Prisma.TagUpdateManyWithoutUpdatedByNestedInput
   assignedTagAssignments?: Prisma.TagAssignmentUpdateManyWithoutAssignedByNestedInput
+  createdObjectSequenceCounters?: Prisma.ObjectSequenceCounterUpdateManyWithoutCreatedByNestedInput
+  updatedObjectSequenceCounters?: Prisma.ObjectSequenceCounterUpdateManyWithoutUpdatedByNestedInput
 }
 
 export type UserUncheckedUpdateWithoutAuthoredCommentsInput = {
@@ -4389,6 +4945,8 @@ export type UserUncheckedUpdateWithoutAuthoredCommentsInput = {
   createdTags?: Prisma.TagUncheckedUpdateManyWithoutCreatedByNestedInput
   updatedTags?: Prisma.TagUncheckedUpdateManyWithoutUpdatedByNestedInput
   assignedTagAssignments?: Prisma.TagAssignmentUncheckedUpdateManyWithoutAssignedByNestedInput
+  createdObjectSequenceCounters?: Prisma.ObjectSequenceCounterUncheckedUpdateManyWithoutCreatedByNestedInput
+  updatedObjectSequenceCounters?: Prisma.ObjectSequenceCounterUncheckedUpdateManyWithoutUpdatedByNestedInput
 }
 
 export type UserCreateWithoutActedTimelineEventsInput = {
@@ -4427,6 +4985,8 @@ export type UserCreateWithoutActedTimelineEventsInput = {
   createdTags?: Prisma.TagCreateNestedManyWithoutCreatedByInput
   updatedTags?: Prisma.TagCreateNestedManyWithoutUpdatedByInput
   assignedTagAssignments?: Prisma.TagAssignmentCreateNestedManyWithoutAssignedByInput
+  createdObjectSequenceCounters?: Prisma.ObjectSequenceCounterCreateNestedManyWithoutCreatedByInput
+  updatedObjectSequenceCounters?: Prisma.ObjectSequenceCounterCreateNestedManyWithoutUpdatedByInput
 }
 
 export type UserUncheckedCreateWithoutActedTimelineEventsInput = {
@@ -4465,6 +5025,8 @@ export type UserUncheckedCreateWithoutActedTimelineEventsInput = {
   createdTags?: Prisma.TagUncheckedCreateNestedManyWithoutCreatedByInput
   updatedTags?: Prisma.TagUncheckedCreateNestedManyWithoutUpdatedByInput
   assignedTagAssignments?: Prisma.TagAssignmentUncheckedCreateNestedManyWithoutAssignedByInput
+  createdObjectSequenceCounters?: Prisma.ObjectSequenceCounterUncheckedCreateNestedManyWithoutCreatedByInput
+  updatedObjectSequenceCounters?: Prisma.ObjectSequenceCounterUncheckedCreateNestedManyWithoutUpdatedByInput
 }
 
 export type UserCreateOrConnectWithoutActedTimelineEventsInput = {
@@ -4519,6 +5081,8 @@ export type UserUpdateWithoutActedTimelineEventsInput = {
   createdTags?: Prisma.TagUpdateManyWithoutCreatedByNestedInput
   updatedTags?: Prisma.TagUpdateManyWithoutUpdatedByNestedInput
   assignedTagAssignments?: Prisma.TagAssignmentUpdateManyWithoutAssignedByNestedInput
+  createdObjectSequenceCounters?: Prisma.ObjectSequenceCounterUpdateManyWithoutCreatedByNestedInput
+  updatedObjectSequenceCounters?: Prisma.ObjectSequenceCounterUpdateManyWithoutUpdatedByNestedInput
 }
 
 export type UserUncheckedUpdateWithoutActedTimelineEventsInput = {
@@ -4557,6 +5121,8 @@ export type UserUncheckedUpdateWithoutActedTimelineEventsInput = {
   createdTags?: Prisma.TagUncheckedUpdateManyWithoutCreatedByNestedInput
   updatedTags?: Prisma.TagUncheckedUpdateManyWithoutUpdatedByNestedInput
   assignedTagAssignments?: Prisma.TagAssignmentUncheckedUpdateManyWithoutAssignedByNestedInput
+  createdObjectSequenceCounters?: Prisma.ObjectSequenceCounterUncheckedUpdateManyWithoutCreatedByNestedInput
+  updatedObjectSequenceCounters?: Prisma.ObjectSequenceCounterUncheckedUpdateManyWithoutUpdatedByNestedInput
 }
 
 export type UserCreateWithoutActedAuditLogsInput = {
@@ -4595,6 +5161,8 @@ export type UserCreateWithoutActedAuditLogsInput = {
   createdTags?: Prisma.TagCreateNestedManyWithoutCreatedByInput
   updatedTags?: Prisma.TagCreateNestedManyWithoutUpdatedByInput
   assignedTagAssignments?: Prisma.TagAssignmentCreateNestedManyWithoutAssignedByInput
+  createdObjectSequenceCounters?: Prisma.ObjectSequenceCounterCreateNestedManyWithoutCreatedByInput
+  updatedObjectSequenceCounters?: Prisma.ObjectSequenceCounterCreateNestedManyWithoutUpdatedByInput
 }
 
 export type UserUncheckedCreateWithoutActedAuditLogsInput = {
@@ -4633,6 +5201,8 @@ export type UserUncheckedCreateWithoutActedAuditLogsInput = {
   createdTags?: Prisma.TagUncheckedCreateNestedManyWithoutCreatedByInput
   updatedTags?: Prisma.TagUncheckedCreateNestedManyWithoutUpdatedByInput
   assignedTagAssignments?: Prisma.TagAssignmentUncheckedCreateNestedManyWithoutAssignedByInput
+  createdObjectSequenceCounters?: Prisma.ObjectSequenceCounterUncheckedCreateNestedManyWithoutCreatedByInput
+  updatedObjectSequenceCounters?: Prisma.ObjectSequenceCounterUncheckedCreateNestedManyWithoutUpdatedByInput
 }
 
 export type UserCreateOrConnectWithoutActedAuditLogsInput = {
@@ -4687,6 +5257,8 @@ export type UserUpdateWithoutActedAuditLogsInput = {
   createdTags?: Prisma.TagUpdateManyWithoutCreatedByNestedInput
   updatedTags?: Prisma.TagUpdateManyWithoutUpdatedByNestedInput
   assignedTagAssignments?: Prisma.TagAssignmentUpdateManyWithoutAssignedByNestedInput
+  createdObjectSequenceCounters?: Prisma.ObjectSequenceCounterUpdateManyWithoutCreatedByNestedInput
+  updatedObjectSequenceCounters?: Prisma.ObjectSequenceCounterUpdateManyWithoutUpdatedByNestedInput
 }
 
 export type UserUncheckedUpdateWithoutActedAuditLogsInput = {
@@ -4725,6 +5297,8 @@ export type UserUncheckedUpdateWithoutActedAuditLogsInput = {
   createdTags?: Prisma.TagUncheckedUpdateManyWithoutCreatedByNestedInput
   updatedTags?: Prisma.TagUncheckedUpdateManyWithoutUpdatedByNestedInput
   assignedTagAssignments?: Prisma.TagAssignmentUncheckedUpdateManyWithoutAssignedByNestedInput
+  createdObjectSequenceCounters?: Prisma.ObjectSequenceCounterUncheckedUpdateManyWithoutCreatedByNestedInput
+  updatedObjectSequenceCounters?: Prisma.ObjectSequenceCounterUncheckedUpdateManyWithoutUpdatedByNestedInput
 }
 
 
@@ -4755,6 +5329,8 @@ export type UserCountOutputType = {
   createdTags: number
   updatedTags: number
   assignedTagAssignments: number
+  createdObjectSequenceCounters: number
+  updatedObjectSequenceCounters: number
 }
 
 export type UserCountOutputTypeSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
@@ -4780,6 +5356,8 @@ export type UserCountOutputTypeSelect<ExtArgs extends runtime.Types.Extensions.I
   createdTags?: boolean | UserCountOutputTypeCountCreatedTagsArgs
   updatedTags?: boolean | UserCountOutputTypeCountUpdatedTagsArgs
   assignedTagAssignments?: boolean | UserCountOutputTypeCountAssignedTagAssignmentsArgs
+  createdObjectSequenceCounters?: boolean | UserCountOutputTypeCountCreatedObjectSequenceCountersArgs
+  updatedObjectSequenceCounters?: boolean | UserCountOutputTypeCountUpdatedObjectSequenceCountersArgs
 }
 
 /**
@@ -4946,6 +5524,20 @@ export type UserCountOutputTypeCountAssignedTagAssignmentsArgs<ExtArgs extends r
   where?: Prisma.TagAssignmentWhereInput
 }
 
+/**
+ * UserCountOutputType without action
+ */
+export type UserCountOutputTypeCountCreatedObjectSequenceCountersArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  where?: Prisma.ObjectSequenceCounterWhereInput
+}
+
+/**
+ * UserCountOutputType without action
+ */
+export type UserCountOutputTypeCountUpdatedObjectSequenceCountersArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  where?: Prisma.ObjectSequenceCounterWhereInput
+}
+
 
 export type UserSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
   id?: boolean
@@ -4984,6 +5576,8 @@ export type UserSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = r
   createdTags?: boolean | Prisma.User$createdTagsArgs<ExtArgs>
   updatedTags?: boolean | Prisma.User$updatedTagsArgs<ExtArgs>
   assignedTagAssignments?: boolean | Prisma.User$assignedTagAssignmentsArgs<ExtArgs>
+  createdObjectSequenceCounters?: boolean | Prisma.User$createdObjectSequenceCountersArgs<ExtArgs>
+  updatedObjectSequenceCounters?: boolean | Prisma.User$updatedObjectSequenceCountersArgs<ExtArgs>
   _count?: boolean | Prisma.UserCountOutputTypeDefaultArgs<ExtArgs>
 }, ExtArgs["result"]["user"]>
 
@@ -5062,6 +5656,8 @@ export type UserInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = 
   createdTags?: boolean | Prisma.User$createdTagsArgs<ExtArgs>
   updatedTags?: boolean | Prisma.User$updatedTagsArgs<ExtArgs>
   assignedTagAssignments?: boolean | Prisma.User$assignedTagAssignmentsArgs<ExtArgs>
+  createdObjectSequenceCounters?: boolean | Prisma.User$createdObjectSequenceCountersArgs<ExtArgs>
+  updatedObjectSequenceCounters?: boolean | Prisma.User$updatedObjectSequenceCountersArgs<ExtArgs>
   _count?: boolean | Prisma.UserCountOutputTypeDefaultArgs<ExtArgs>
 }
 export type UserIncludeCreateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {}
@@ -5092,6 +5688,8 @@ export type $UserPayload<ExtArgs extends runtime.Types.Extensions.InternalArgs =
     createdTags: Prisma.$TagPayload<ExtArgs>[]
     updatedTags: Prisma.$TagPayload<ExtArgs>[]
     assignedTagAssignments: Prisma.$TagAssignmentPayload<ExtArgs>[]
+    createdObjectSequenceCounters: Prisma.$ObjectSequenceCounterPayload<ExtArgs>[]
+    updatedObjectSequenceCounters: Prisma.$ObjectSequenceCounterPayload<ExtArgs>[]
   }
   scalars: runtime.Types.Extensions.GetPayloadResult<{
     id: string
@@ -5524,6 +6122,8 @@ export interface Prisma__UserClient<T, Null = never, ExtArgs extends runtime.Typ
   createdTags<T extends Prisma.User$createdTagsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.User$createdTagsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$TagPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   updatedTags<T extends Prisma.User$updatedTagsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.User$updatedTagsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$TagPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   assignedTagAssignments<T extends Prisma.User$assignedTagAssignmentsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.User$assignedTagAssignmentsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$TagAssignmentPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
+  createdObjectSequenceCounters<T extends Prisma.User$createdObjectSequenceCountersArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.User$createdObjectSequenceCountersArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$ObjectSequenceCounterPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
+  updatedObjectSequenceCounters<T extends Prisma.User$updatedObjectSequenceCountersArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.User$updatedObjectSequenceCountersArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$ObjectSequenceCounterPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   /**
    * Attaches callbacks for the resolution and/or rejection of the Promise.
    * @param onfulfilled The callback to execute when the Promise is resolved.
@@ -6485,6 +7085,54 @@ export type User$assignedTagAssignmentsArgs<ExtArgs extends runtime.Types.Extens
   take?: number
   skip?: number
   distinct?: Prisma.TagAssignmentScalarFieldEnum | Prisma.TagAssignmentScalarFieldEnum[]
+}
+
+/**
+ * User.createdObjectSequenceCounters
+ */
+export type User$createdObjectSequenceCountersArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  /**
+   * Select specific fields to fetch from the ObjectSequenceCounter
+   */
+  select?: Prisma.ObjectSequenceCounterSelect<ExtArgs> | null
+  /**
+   * Omit specific fields from the ObjectSequenceCounter
+   */
+  omit?: Prisma.ObjectSequenceCounterOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.ObjectSequenceCounterInclude<ExtArgs> | null
+  where?: Prisma.ObjectSequenceCounterWhereInput
+  orderBy?: Prisma.ObjectSequenceCounterOrderByWithRelationInput | Prisma.ObjectSequenceCounterOrderByWithRelationInput[]
+  cursor?: Prisma.ObjectSequenceCounterWhereUniqueInput
+  take?: number
+  skip?: number
+  distinct?: Prisma.ObjectSequenceCounterScalarFieldEnum | Prisma.ObjectSequenceCounterScalarFieldEnum[]
+}
+
+/**
+ * User.updatedObjectSequenceCounters
+ */
+export type User$updatedObjectSequenceCountersArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  /**
+   * Select specific fields to fetch from the ObjectSequenceCounter
+   */
+  select?: Prisma.ObjectSequenceCounterSelect<ExtArgs> | null
+  /**
+   * Omit specific fields from the ObjectSequenceCounter
+   */
+  omit?: Prisma.ObjectSequenceCounterOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.ObjectSequenceCounterInclude<ExtArgs> | null
+  where?: Prisma.ObjectSequenceCounterWhereInput
+  orderBy?: Prisma.ObjectSequenceCounterOrderByWithRelationInput | Prisma.ObjectSequenceCounterOrderByWithRelationInput[]
+  cursor?: Prisma.ObjectSequenceCounterWhereUniqueInput
+  take?: number
+  skip?: number
+  distinct?: Prisma.ObjectSequenceCounterScalarFieldEnum | Prisma.ObjectSequenceCounterScalarFieldEnum[]
 }
 
 /**

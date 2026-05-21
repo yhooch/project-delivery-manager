@@ -91,7 +91,7 @@ export function formatTimelineEvent(
     eventLabel,
     translateMessage: options.translateMessage,
   });
-  const targetTitle = normalizeString(event.target.title);
+  const targetTitle = formatTimelineTargetTitle(event.target);
   const commentPreview = readString(event.metadata, "commentPreview");
   const fileName = readString(event.metadata, "fileName");
   const attachmentMeta = formatAttachmentMeta(event.metadata);
@@ -159,6 +159,17 @@ function resolveActionLabel({
   }
 
   return actionName ?? actionCode ?? eventLabel;
+}
+
+function formatTimelineTargetTitle(eventTarget: TimelineEvent["target"]) {
+  const title = normalizeString(eventTarget.title);
+  const displayCode = normalizeString(eventTarget.displayCode);
+
+  if (!displayCode) {
+    return title;
+  }
+
+  return title ? `${displayCode} ${title}` : displayCode;
 }
 
 function selectSummary({

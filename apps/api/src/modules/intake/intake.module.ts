@@ -3,6 +3,7 @@ import { Module } from "@nestjs/common";
 import { PrismaModule } from "../../prisma/prisma.module";
 import { AuthModule } from "../auth/auth.module";
 import { AuditModule } from "../audit/audit.module";
+import { ObjectCodeModule } from "../object-code/object-code.module";
 import { OrganizationModule } from "../organization/organization.module";
 import { RequirementModule } from "../requirement/requirement.module";
 import { SpaceModule } from "../space/space.module";
@@ -19,6 +20,7 @@ import { PrismaIntakeRepository } from "./prisma-intake.repository";
   imports: [
     AuthModule,
     AuditModule,
+    ObjectCodeModule,
     OrganizationModule,
     PrismaModule,
     RequirementModule,

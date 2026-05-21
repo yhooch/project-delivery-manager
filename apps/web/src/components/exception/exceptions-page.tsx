@@ -459,9 +459,14 @@ export function ExceptionsPage() {
         {
           id: item.id,
           type: item.type,
-          code: item.code,
+          displayCode: item.code,
           title: item.title,
-          href: item.type === "BUG" ? "/bugs" : "/work-items",
+          href:
+            item.type === "BUG"
+              ? `/bugs?bugId=${encodeURIComponent(item.id)}`
+              : `/work-items?workItemId=${encodeURIComponent(item.id)}`,
+          organizationId,
+          spaceId,
         },
         { organizationId, spaceId },
       );

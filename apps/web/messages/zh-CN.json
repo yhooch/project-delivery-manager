@@ -595,6 +595,10 @@
       "TAG_IN_USE": "标签仍被对象使用，不能删除。",
       "TAG_TARGET_INVALID": "标签目标无效或已不可用。",
       "TAG_NAME_CONFLICT": "标签名已存在，请使用已有标签。",
+      "OBJECT_CODE_INVALID": "编号格式无效，请检查后重试。",
+      "OBJECT_CODE_NOT_FOUND": "未找到该编号对应的对象。",
+      "OBJECT_CODE_AMBIGUOUS": "该编号在多个空间中存在，请提供空间上下文。",
+      "SPACE_CONTEXT_REQUIRED": "缺少空间上下文，请先选择项目空间。",
       "UNKNOWN": "操作失败，请稍后重试。"
     }
   },
@@ -732,7 +736,16 @@
       "empty": "未匹配到任何结果",
       "searching": "搜索中…",
       "untitled": "未命名",
+      "draftCode": "草稿",
       "recent": "最近打开",
+      "lookup": {
+        "invalid": "编号格式无效，请输入 REQ-12、INTAKE-8、TASK-42 或 BUG-17。",
+        "notFound": "未找到该编号对应的对象。",
+        "ambiguous": "该编号在多个空间中存在，请先切换到目标空间后再搜索。",
+        "spaceContextRequired": "缺少空间上下文，请先选择项目空间后再搜索该编号。",
+        "missingOrganization": "缺少组织上下文，请先选择组织后再搜索该编号。",
+        "failed": "编号查询失败，请稍后重试。"
+      },
       "dialog": {
         "title": "命令面板",
         "description": "搜索并执行命令"

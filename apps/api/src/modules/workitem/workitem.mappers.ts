@@ -8,8 +8,11 @@ import type {
   WorkItemType,
 } from "@project-delivery/shared";
 
+import { formatDisplayCode } from "../object-code/object-code.types";
+
 type PrismaWorkItemRecord = {
   id: string;
+  sequence: number | null;
   type: WorkItemType;
   organizationId: string;
   spaceId: string;
@@ -40,6 +43,7 @@ export function toWorkItem(
 ): WorkItem {
   return {
     id: record.id,
+    ...toWorkItemDisplayIdentity(record.type, record.sequence),
     type: record.type,
     organizationId: record.organizationId,
     spaceId: record.spaceId,
@@ -72,6 +76,8 @@ export function toWorkItemDetail(
 ): WorkItemDetail {
   return {
     id: record.id,
+    sequence: record.sequence,
+    displayCode: record.displayCode,
     type: record.type,
     organizationId: record.organizationId,
     spaceId: record.spaceId,
@@ -96,4 +102,16 @@ export function toWorkItemDetail(
     tags: record.tags,
     permissions,
   };
+}
+
+function toWorkItemDisplayIdentity(
+  type: WorkItemType,
+  sequence: number | null | undefined,
+) {
+  return sequence == null
+    ? {}
+    : {
+        sequence,
+        displayCode: formatDisplayCode(type, sequence),
+      };
 }

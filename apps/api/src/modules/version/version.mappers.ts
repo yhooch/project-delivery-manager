@@ -10,6 +10,7 @@ import {
   isPendingConfirmRecord,
   isPendingRegressionRecord,
 } from "../space/space-exception.helpers";
+import { formatDisplayCode } from "../object-code/object-code.types";
 import type { VersionBoardWorkItemRecord } from "./version.types";
 
 type PrismaVersionRecord = {
@@ -92,6 +93,7 @@ export function toVersionBoardWorkItemSummary(
     },
     createdAt: record.createdAt.toISOString(),
     createdById: record.createdById ?? undefined,
+    ...toWorkItemDisplayIdentity(record.type, record.sequence),
     dueDate: record.dueDate?.toISOString(),
     exceptionSignals,
     id: record.id,
@@ -106,6 +108,18 @@ export function toVersionBoardWorkItemSummary(
     type: record.type,
     versionId: record.versionId ?? undefined,
   });
+}
+
+function toWorkItemDisplayIdentity(
+  type: VersionBoardWorkItemRecord["type"],
+  sequence: number | null | undefined,
+) {
+  return sequence == null
+    ? {}
+    : {
+        sequence,
+        displayCode: formatDisplayCode(type, sequence),
+      };
 }
 
 function removeUndefined<T extends Record<string, unknown>>(value: T): T {

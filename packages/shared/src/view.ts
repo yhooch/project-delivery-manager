@@ -14,6 +14,7 @@ import {
 import { SpaceOverviewSchema } from "./space.ts";
 import { TagFilterQuerySchema, TagListSchema, TagMatchSchema } from "./tag.ts";
 import { TimelineEventSchema } from "./timeline.ts";
+import { DisplayIdentitySchema } from "./object-code.ts";
 import { WorkflowActionSummarySchema } from "./workflow.ts";
 
 export const ViewAppliedFiltersSchema = z
@@ -134,6 +135,8 @@ export type ViewExceptionSignal = z.infer<typeof ViewExceptionSignalSchema>;
 export const ViewWorkItemSummarySchema = z
   .object({
     id: UlidSchema,
+    sequence: DisplayIdentitySchema.shape.sequence,
+    displayCode: DisplayIdentitySchema.shape.displayCode,
     type: WorkItemTypeSchema,
     organizationId: UlidSchema,
     spaceId: UlidSchema,

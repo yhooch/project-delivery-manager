@@ -296,6 +296,7 @@ export type SpaceWhereInput = {
   timelineEvents?: Prisma.TimelineEventListRelationFilter
   tags?: Prisma.TagListRelationFilter
   tagAssignments?: Prisma.TagAssignmentListRelationFilter
+  objectSequenceCounters?: Prisma.ObjectSequenceCounterListRelationFilter
 }
 
 export type SpaceOrderByWithRelationInput = {
@@ -328,6 +329,7 @@ export type SpaceOrderByWithRelationInput = {
   timelineEvents?: Prisma.TimelineEventOrderByRelationAggregateInput
   tags?: Prisma.TagOrderByRelationAggregateInput
   tagAssignments?: Prisma.TagAssignmentOrderByRelationAggregateInput
+  objectSequenceCounters?: Prisma.ObjectSequenceCounterOrderByRelationAggregateInput
 }
 
 export type SpaceWhereUniqueInput = Prisma.AtLeast<{
@@ -363,6 +365,7 @@ export type SpaceWhereUniqueInput = Prisma.AtLeast<{
   timelineEvents?: Prisma.TimelineEventListRelationFilter
   tags?: Prisma.TagListRelationFilter
   tagAssignments?: Prisma.TagAssignmentListRelationFilter
+  objectSequenceCounters?: Prisma.ObjectSequenceCounterListRelationFilter
 }, "id">
 
 export type SpaceOrderByWithAggregationInput = {
@@ -433,6 +436,7 @@ export type SpaceCreateInput = {
   timelineEvents?: Prisma.TimelineEventCreateNestedManyWithoutSpaceInput
   tags?: Prisma.TagCreateNestedManyWithoutSpaceInput
   tagAssignments?: Prisma.TagAssignmentCreateNestedManyWithoutSpaceInput
+  objectSequenceCounters?: Prisma.ObjectSequenceCounterCreateNestedManyWithoutSpaceInput
 }
 
 export type SpaceUncheckedCreateInput = {
@@ -463,6 +467,7 @@ export type SpaceUncheckedCreateInput = {
   timelineEvents?: Prisma.TimelineEventUncheckedCreateNestedManyWithoutSpaceInput
   tags?: Prisma.TagUncheckedCreateNestedManyWithoutSpaceInput
   tagAssignments?: Prisma.TagAssignmentUncheckedCreateNestedManyWithoutSpaceInput
+  objectSequenceCounters?: Prisma.ObjectSequenceCounterUncheckedCreateNestedManyWithoutSpaceInput
 }
 
 export type SpaceUpdateInput = {
@@ -493,6 +498,7 @@ export type SpaceUpdateInput = {
   timelineEvents?: Prisma.TimelineEventUpdateManyWithoutSpaceNestedInput
   tags?: Prisma.TagUpdateManyWithoutSpaceNestedInput
   tagAssignments?: Prisma.TagAssignmentUpdateManyWithoutSpaceNestedInput
+  objectSequenceCounters?: Prisma.ObjectSequenceCounterUpdateManyWithoutSpaceNestedInput
 }
 
 export type SpaceUncheckedUpdateInput = {
@@ -523,6 +529,7 @@ export type SpaceUncheckedUpdateInput = {
   timelineEvents?: Prisma.TimelineEventUncheckedUpdateManyWithoutSpaceNestedInput
   tags?: Prisma.TagUncheckedUpdateManyWithoutSpaceNestedInput
   tagAssignments?: Prisma.TagAssignmentUncheckedUpdateManyWithoutSpaceNestedInput
+  objectSequenceCounters?: Prisma.ObjectSequenceCounterUncheckedUpdateManyWithoutSpaceNestedInput
 }
 
 export type SpaceCreateManyInput = {
@@ -813,6 +820,20 @@ export type SpaceUpdateOneRequiredWithoutWorkItemsNestedInput = {
   update?: Prisma.XOR<Prisma.XOR<Prisma.SpaceUpdateToOneWithWhereWithoutWorkItemsInput, Prisma.SpaceUpdateWithoutWorkItemsInput>, Prisma.SpaceUncheckedUpdateWithoutWorkItemsInput>
 }
 
+export type SpaceCreateNestedOneWithoutObjectSequenceCountersInput = {
+  create?: Prisma.XOR<Prisma.SpaceCreateWithoutObjectSequenceCountersInput, Prisma.SpaceUncheckedCreateWithoutObjectSequenceCountersInput>
+  connectOrCreate?: Prisma.SpaceCreateOrConnectWithoutObjectSequenceCountersInput
+  connect?: Prisma.SpaceWhereUniqueInput
+}
+
+export type SpaceUpdateOneRequiredWithoutObjectSequenceCountersNestedInput = {
+  create?: Prisma.XOR<Prisma.SpaceCreateWithoutObjectSequenceCountersInput, Prisma.SpaceUncheckedCreateWithoutObjectSequenceCountersInput>
+  connectOrCreate?: Prisma.SpaceCreateOrConnectWithoutObjectSequenceCountersInput
+  upsert?: Prisma.SpaceUpsertWithoutObjectSequenceCountersInput
+  connect?: Prisma.SpaceWhereUniqueInput
+  update?: Prisma.XOR<Prisma.XOR<Prisma.SpaceUpdateToOneWithWhereWithoutObjectSequenceCountersInput, Prisma.SpaceUpdateWithoutObjectSequenceCountersInput>, Prisma.SpaceUncheckedUpdateWithoutObjectSequenceCountersInput>
+}
+
 export type SpaceCreateNestedOneWithoutAttachmentsInput = {
   create?: Prisma.XOR<Prisma.SpaceCreateWithoutAttachmentsInput, Prisma.SpaceUncheckedCreateWithoutAttachmentsInput>
   connectOrCreate?: Prisma.SpaceCreateOrConnectWithoutAttachmentsInput
@@ -968,6 +989,7 @@ export type SpaceCreateWithoutOwnerInput = {
   timelineEvents?: Prisma.TimelineEventCreateNestedManyWithoutSpaceInput
   tags?: Prisma.TagCreateNestedManyWithoutSpaceInput
   tagAssignments?: Prisma.TagAssignmentCreateNestedManyWithoutSpaceInput
+  objectSequenceCounters?: Prisma.ObjectSequenceCounterCreateNestedManyWithoutSpaceInput
 }
 
 export type SpaceUncheckedCreateWithoutOwnerInput = {
@@ -997,6 +1019,7 @@ export type SpaceUncheckedCreateWithoutOwnerInput = {
   timelineEvents?: Prisma.TimelineEventUncheckedCreateNestedManyWithoutSpaceInput
   tags?: Prisma.TagUncheckedCreateNestedManyWithoutSpaceInput
   tagAssignments?: Prisma.TagAssignmentUncheckedCreateNestedManyWithoutSpaceInput
+  objectSequenceCounters?: Prisma.ObjectSequenceCounterUncheckedCreateNestedManyWithoutSpaceInput
 }
 
 export type SpaceCreateOrConnectWithoutOwnerInput = {
@@ -1071,6 +1094,7 @@ export type SpaceCreateWithoutOrganizationInput = {
   timelineEvents?: Prisma.TimelineEventCreateNestedManyWithoutSpaceInput
   tags?: Prisma.TagCreateNestedManyWithoutSpaceInput
   tagAssignments?: Prisma.TagAssignmentCreateNestedManyWithoutSpaceInput
+  objectSequenceCounters?: Prisma.ObjectSequenceCounterCreateNestedManyWithoutSpaceInput
 }
 
 export type SpaceUncheckedCreateWithoutOrganizationInput = {
@@ -1100,6 +1124,7 @@ export type SpaceUncheckedCreateWithoutOrganizationInput = {
   timelineEvents?: Prisma.TimelineEventUncheckedCreateNestedManyWithoutSpaceInput
   tags?: Prisma.TagUncheckedCreateNestedManyWithoutSpaceInput
   tagAssignments?: Prisma.TagAssignmentUncheckedCreateNestedManyWithoutSpaceInput
+  objectSequenceCounters?: Prisma.ObjectSequenceCounterUncheckedCreateNestedManyWithoutSpaceInput
 }
 
 export type SpaceCreateOrConnectWithoutOrganizationInput = {
@@ -1155,6 +1180,7 @@ export type SpaceCreateWithoutMembersInput = {
   timelineEvents?: Prisma.TimelineEventCreateNestedManyWithoutSpaceInput
   tags?: Prisma.TagCreateNestedManyWithoutSpaceInput
   tagAssignments?: Prisma.TagAssignmentCreateNestedManyWithoutSpaceInput
+  objectSequenceCounters?: Prisma.ObjectSequenceCounterCreateNestedManyWithoutSpaceInput
 }
 
 export type SpaceUncheckedCreateWithoutMembersInput = {
@@ -1184,6 +1210,7 @@ export type SpaceUncheckedCreateWithoutMembersInput = {
   timelineEvents?: Prisma.TimelineEventUncheckedCreateNestedManyWithoutSpaceInput
   tags?: Prisma.TagUncheckedCreateNestedManyWithoutSpaceInput
   tagAssignments?: Prisma.TagAssignmentUncheckedCreateNestedManyWithoutSpaceInput
+  objectSequenceCounters?: Prisma.ObjectSequenceCounterUncheckedCreateNestedManyWithoutSpaceInput
 }
 
 export type SpaceCreateOrConnectWithoutMembersInput = {
@@ -1229,6 +1256,7 @@ export type SpaceUpdateWithoutMembersInput = {
   timelineEvents?: Prisma.TimelineEventUpdateManyWithoutSpaceNestedInput
   tags?: Prisma.TagUpdateManyWithoutSpaceNestedInput
   tagAssignments?: Prisma.TagAssignmentUpdateManyWithoutSpaceNestedInput
+  objectSequenceCounters?: Prisma.ObjectSequenceCounterUpdateManyWithoutSpaceNestedInput
 }
 
 export type SpaceUncheckedUpdateWithoutMembersInput = {
@@ -1258,6 +1286,7 @@ export type SpaceUncheckedUpdateWithoutMembersInput = {
   timelineEvents?: Prisma.TimelineEventUncheckedUpdateManyWithoutSpaceNestedInput
   tags?: Prisma.TagUncheckedUpdateManyWithoutSpaceNestedInput
   tagAssignments?: Prisma.TagAssignmentUncheckedUpdateManyWithoutSpaceNestedInput
+  objectSequenceCounters?: Prisma.ObjectSequenceCounterUncheckedUpdateManyWithoutSpaceNestedInput
 }
 
 export type SpaceCreateWithoutVersionsInput = {
@@ -1287,6 +1316,7 @@ export type SpaceCreateWithoutVersionsInput = {
   timelineEvents?: Prisma.TimelineEventCreateNestedManyWithoutSpaceInput
   tags?: Prisma.TagCreateNestedManyWithoutSpaceInput
   tagAssignments?: Prisma.TagAssignmentCreateNestedManyWithoutSpaceInput
+  objectSequenceCounters?: Prisma.ObjectSequenceCounterCreateNestedManyWithoutSpaceInput
 }
 
 export type SpaceUncheckedCreateWithoutVersionsInput = {
@@ -1316,6 +1346,7 @@ export type SpaceUncheckedCreateWithoutVersionsInput = {
   timelineEvents?: Prisma.TimelineEventUncheckedCreateNestedManyWithoutSpaceInput
   tags?: Prisma.TagUncheckedCreateNestedManyWithoutSpaceInput
   tagAssignments?: Prisma.TagAssignmentUncheckedCreateNestedManyWithoutSpaceInput
+  objectSequenceCounters?: Prisma.ObjectSequenceCounterUncheckedCreateNestedManyWithoutSpaceInput
 }
 
 export type SpaceCreateOrConnectWithoutVersionsInput = {
@@ -1361,6 +1392,7 @@ export type SpaceUpdateWithoutVersionsInput = {
   timelineEvents?: Prisma.TimelineEventUpdateManyWithoutSpaceNestedInput
   tags?: Prisma.TagUpdateManyWithoutSpaceNestedInput
   tagAssignments?: Prisma.TagAssignmentUpdateManyWithoutSpaceNestedInput
+  objectSequenceCounters?: Prisma.ObjectSequenceCounterUpdateManyWithoutSpaceNestedInput
 }
 
 export type SpaceUncheckedUpdateWithoutVersionsInput = {
@@ -1390,6 +1422,7 @@ export type SpaceUncheckedUpdateWithoutVersionsInput = {
   timelineEvents?: Prisma.TimelineEventUncheckedUpdateManyWithoutSpaceNestedInput
   tags?: Prisma.TagUncheckedUpdateManyWithoutSpaceNestedInput
   tagAssignments?: Prisma.TagAssignmentUncheckedUpdateManyWithoutSpaceNestedInput
+  objectSequenceCounters?: Prisma.ObjectSequenceCounterUncheckedUpdateManyWithoutSpaceNestedInput
 }
 
 export type SpaceCreateWithoutRequirementsInput = {
@@ -1419,6 +1452,7 @@ export type SpaceCreateWithoutRequirementsInput = {
   timelineEvents?: Prisma.TimelineEventCreateNestedManyWithoutSpaceInput
   tags?: Prisma.TagCreateNestedManyWithoutSpaceInput
   tagAssignments?: Prisma.TagAssignmentCreateNestedManyWithoutSpaceInput
+  objectSequenceCounters?: Prisma.ObjectSequenceCounterCreateNestedManyWithoutSpaceInput
 }
 
 export type SpaceUncheckedCreateWithoutRequirementsInput = {
@@ -1448,6 +1482,7 @@ export type SpaceUncheckedCreateWithoutRequirementsInput = {
   timelineEvents?: Prisma.TimelineEventUncheckedCreateNestedManyWithoutSpaceInput
   tags?: Prisma.TagUncheckedCreateNestedManyWithoutSpaceInput
   tagAssignments?: Prisma.TagAssignmentUncheckedCreateNestedManyWithoutSpaceInput
+  objectSequenceCounters?: Prisma.ObjectSequenceCounterUncheckedCreateNestedManyWithoutSpaceInput
 }
 
 export type SpaceCreateOrConnectWithoutRequirementsInput = {
@@ -1493,6 +1528,7 @@ export type SpaceUpdateWithoutRequirementsInput = {
   timelineEvents?: Prisma.TimelineEventUpdateManyWithoutSpaceNestedInput
   tags?: Prisma.TagUpdateManyWithoutSpaceNestedInput
   tagAssignments?: Prisma.TagAssignmentUpdateManyWithoutSpaceNestedInput
+  objectSequenceCounters?: Prisma.ObjectSequenceCounterUpdateManyWithoutSpaceNestedInput
 }
 
 export type SpaceUncheckedUpdateWithoutRequirementsInput = {
@@ -1522,6 +1558,7 @@ export type SpaceUncheckedUpdateWithoutRequirementsInput = {
   timelineEvents?: Prisma.TimelineEventUncheckedUpdateManyWithoutSpaceNestedInput
   tags?: Prisma.TagUncheckedUpdateManyWithoutSpaceNestedInput
   tagAssignments?: Prisma.TagAssignmentUncheckedUpdateManyWithoutSpaceNestedInput
+  objectSequenceCounters?: Prisma.ObjectSequenceCounterUncheckedUpdateManyWithoutSpaceNestedInput
 }
 
 export type SpaceCreateWithoutIntakeItemsInput = {
@@ -1551,6 +1588,7 @@ export type SpaceCreateWithoutIntakeItemsInput = {
   timelineEvents?: Prisma.TimelineEventCreateNestedManyWithoutSpaceInput
   tags?: Prisma.TagCreateNestedManyWithoutSpaceInput
   tagAssignments?: Prisma.TagAssignmentCreateNestedManyWithoutSpaceInput
+  objectSequenceCounters?: Prisma.ObjectSequenceCounterCreateNestedManyWithoutSpaceInput
 }
 
 export type SpaceUncheckedCreateWithoutIntakeItemsInput = {
@@ -1580,6 +1618,7 @@ export type SpaceUncheckedCreateWithoutIntakeItemsInput = {
   timelineEvents?: Prisma.TimelineEventUncheckedCreateNestedManyWithoutSpaceInput
   tags?: Prisma.TagUncheckedCreateNestedManyWithoutSpaceInput
   tagAssignments?: Prisma.TagAssignmentUncheckedCreateNestedManyWithoutSpaceInput
+  objectSequenceCounters?: Prisma.ObjectSequenceCounterUncheckedCreateNestedManyWithoutSpaceInput
 }
 
 export type SpaceCreateOrConnectWithoutIntakeItemsInput = {
@@ -1625,6 +1664,7 @@ export type SpaceUpdateWithoutIntakeItemsInput = {
   timelineEvents?: Prisma.TimelineEventUpdateManyWithoutSpaceNestedInput
   tags?: Prisma.TagUpdateManyWithoutSpaceNestedInput
   tagAssignments?: Prisma.TagAssignmentUpdateManyWithoutSpaceNestedInput
+  objectSequenceCounters?: Prisma.ObjectSequenceCounterUpdateManyWithoutSpaceNestedInput
 }
 
 export type SpaceUncheckedUpdateWithoutIntakeItemsInput = {
@@ -1654,6 +1694,7 @@ export type SpaceUncheckedUpdateWithoutIntakeItemsInput = {
   timelineEvents?: Prisma.TimelineEventUncheckedUpdateManyWithoutSpaceNestedInput
   tags?: Prisma.TagUncheckedUpdateManyWithoutSpaceNestedInput
   tagAssignments?: Prisma.TagAssignmentUncheckedUpdateManyWithoutSpaceNestedInput
+  objectSequenceCounters?: Prisma.ObjectSequenceCounterUncheckedUpdateManyWithoutSpaceNestedInput
 }
 
 export type SpaceCreateWithoutWorkItemsInput = {
@@ -1683,6 +1724,7 @@ export type SpaceCreateWithoutWorkItemsInput = {
   timelineEvents?: Prisma.TimelineEventCreateNestedManyWithoutSpaceInput
   tags?: Prisma.TagCreateNestedManyWithoutSpaceInput
   tagAssignments?: Prisma.TagAssignmentCreateNestedManyWithoutSpaceInput
+  objectSequenceCounters?: Prisma.ObjectSequenceCounterCreateNestedManyWithoutSpaceInput
 }
 
 export type SpaceUncheckedCreateWithoutWorkItemsInput = {
@@ -1712,6 +1754,7 @@ export type SpaceUncheckedCreateWithoutWorkItemsInput = {
   timelineEvents?: Prisma.TimelineEventUncheckedCreateNestedManyWithoutSpaceInput
   tags?: Prisma.TagUncheckedCreateNestedManyWithoutSpaceInput
   tagAssignments?: Prisma.TagAssignmentUncheckedCreateNestedManyWithoutSpaceInput
+  objectSequenceCounters?: Prisma.ObjectSequenceCounterUncheckedCreateNestedManyWithoutSpaceInput
 }
 
 export type SpaceCreateOrConnectWithoutWorkItemsInput = {
@@ -1757,6 +1800,7 @@ export type SpaceUpdateWithoutWorkItemsInput = {
   timelineEvents?: Prisma.TimelineEventUpdateManyWithoutSpaceNestedInput
   tags?: Prisma.TagUpdateManyWithoutSpaceNestedInput
   tagAssignments?: Prisma.TagAssignmentUpdateManyWithoutSpaceNestedInput
+  objectSequenceCounters?: Prisma.ObjectSequenceCounterUpdateManyWithoutSpaceNestedInput
 }
 
 export type SpaceUncheckedUpdateWithoutWorkItemsInput = {
@@ -1781,6 +1825,143 @@ export type SpaceUncheckedUpdateWithoutWorkItemsInput = {
   workflowBindings?: Prisma.WorkflowBindingUncheckedUpdateManyWithoutSpaceNestedInput
   objectParticipants?: Prisma.ObjectParticipantUncheckedUpdateManyWithoutSpaceNestedInput
   intakeItems?: Prisma.IntakeItemUncheckedUpdateManyWithoutSpaceNestedInput
+  auditLogs?: Prisma.AuditLogUncheckedUpdateManyWithoutSpaceNestedInput
+  comments?: Prisma.CommentUncheckedUpdateManyWithoutSpaceNestedInput
+  timelineEvents?: Prisma.TimelineEventUncheckedUpdateManyWithoutSpaceNestedInput
+  tags?: Prisma.TagUncheckedUpdateManyWithoutSpaceNestedInput
+  tagAssignments?: Prisma.TagAssignmentUncheckedUpdateManyWithoutSpaceNestedInput
+  objectSequenceCounters?: Prisma.ObjectSequenceCounterUncheckedUpdateManyWithoutSpaceNestedInput
+}
+
+export type SpaceCreateWithoutObjectSequenceCountersInput = {
+  id: string
+  name: string
+  code: string
+  description?: string | null
+  status?: $Enums.SpaceStatus
+  staleThresholdDays?: number
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  createdById?: string | null
+  updatedById?: string | null
+  deletedAt?: Date | string | null
+  organization: Prisma.OrganizationCreateNestedOneWithoutSpacesInput
+  owner?: Prisma.UserCreateNestedOneWithoutOwnedSpacesInput
+  members?: Prisma.SpaceMemberCreateNestedManyWithoutSpaceInput
+  versions?: Prisma.VersionCreateNestedManyWithoutSpaceInput
+  requirements?: Prisma.RequirementCreateNestedManyWithoutSpaceInput
+  attachments?: Prisma.AttachmentCreateNestedManyWithoutSpaceInput
+  workflowDefinitions?: Prisma.WorkflowDefinitionCreateNestedManyWithoutSpaceInput
+  workflowBindings?: Prisma.WorkflowBindingCreateNestedManyWithoutSpaceInput
+  objectParticipants?: Prisma.ObjectParticipantCreateNestedManyWithoutSpaceInput
+  intakeItems?: Prisma.IntakeItemCreateNestedManyWithoutSpaceInput
+  workItems?: Prisma.WorkItemCreateNestedManyWithoutSpaceInput
+  auditLogs?: Prisma.AuditLogCreateNestedManyWithoutSpaceInput
+  comments?: Prisma.CommentCreateNestedManyWithoutSpaceInput
+  timelineEvents?: Prisma.TimelineEventCreateNestedManyWithoutSpaceInput
+  tags?: Prisma.TagCreateNestedManyWithoutSpaceInput
+  tagAssignments?: Prisma.TagAssignmentCreateNestedManyWithoutSpaceInput
+}
+
+export type SpaceUncheckedCreateWithoutObjectSequenceCountersInput = {
+  id: string
+  organizationId: string
+  name: string
+  code: string
+  description?: string | null
+  ownerId?: string | null
+  status?: $Enums.SpaceStatus
+  staleThresholdDays?: number
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  createdById?: string | null
+  updatedById?: string | null
+  deletedAt?: Date | string | null
+  members?: Prisma.SpaceMemberUncheckedCreateNestedManyWithoutSpaceInput
+  versions?: Prisma.VersionUncheckedCreateNestedManyWithoutSpaceInput
+  requirements?: Prisma.RequirementUncheckedCreateNestedManyWithoutSpaceInput
+  attachments?: Prisma.AttachmentUncheckedCreateNestedManyWithoutSpaceInput
+  workflowDefinitions?: Prisma.WorkflowDefinitionUncheckedCreateNestedManyWithoutSpaceInput
+  workflowBindings?: Prisma.WorkflowBindingUncheckedCreateNestedManyWithoutSpaceInput
+  objectParticipants?: Prisma.ObjectParticipantUncheckedCreateNestedManyWithoutSpaceInput
+  intakeItems?: Prisma.IntakeItemUncheckedCreateNestedManyWithoutSpaceInput
+  workItems?: Prisma.WorkItemUncheckedCreateNestedManyWithoutSpaceInput
+  auditLogs?: Prisma.AuditLogUncheckedCreateNestedManyWithoutSpaceInput
+  comments?: Prisma.CommentUncheckedCreateNestedManyWithoutSpaceInput
+  timelineEvents?: Prisma.TimelineEventUncheckedCreateNestedManyWithoutSpaceInput
+  tags?: Prisma.TagUncheckedCreateNestedManyWithoutSpaceInput
+  tagAssignments?: Prisma.TagAssignmentUncheckedCreateNestedManyWithoutSpaceInput
+}
+
+export type SpaceCreateOrConnectWithoutObjectSequenceCountersInput = {
+  where: Prisma.SpaceWhereUniqueInput
+  create: Prisma.XOR<Prisma.SpaceCreateWithoutObjectSequenceCountersInput, Prisma.SpaceUncheckedCreateWithoutObjectSequenceCountersInput>
+}
+
+export type SpaceUpsertWithoutObjectSequenceCountersInput = {
+  update: Prisma.XOR<Prisma.SpaceUpdateWithoutObjectSequenceCountersInput, Prisma.SpaceUncheckedUpdateWithoutObjectSequenceCountersInput>
+  create: Prisma.XOR<Prisma.SpaceCreateWithoutObjectSequenceCountersInput, Prisma.SpaceUncheckedCreateWithoutObjectSequenceCountersInput>
+  where?: Prisma.SpaceWhereInput
+}
+
+export type SpaceUpdateToOneWithWhereWithoutObjectSequenceCountersInput = {
+  where?: Prisma.SpaceWhereInput
+  data: Prisma.XOR<Prisma.SpaceUpdateWithoutObjectSequenceCountersInput, Prisma.SpaceUncheckedUpdateWithoutObjectSequenceCountersInput>
+}
+
+export type SpaceUpdateWithoutObjectSequenceCountersInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  name?: Prisma.StringFieldUpdateOperationsInput | string
+  code?: Prisma.StringFieldUpdateOperationsInput | string
+  description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  status?: Prisma.EnumSpaceStatusFieldUpdateOperationsInput | $Enums.SpaceStatus
+  staleThresholdDays?: Prisma.IntFieldUpdateOperationsInput | number
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  createdById?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  updatedById?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  deletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  organization?: Prisma.OrganizationUpdateOneRequiredWithoutSpacesNestedInput
+  owner?: Prisma.UserUpdateOneWithoutOwnedSpacesNestedInput
+  members?: Prisma.SpaceMemberUpdateManyWithoutSpaceNestedInput
+  versions?: Prisma.VersionUpdateManyWithoutSpaceNestedInput
+  requirements?: Prisma.RequirementUpdateManyWithoutSpaceNestedInput
+  attachments?: Prisma.AttachmentUpdateManyWithoutSpaceNestedInput
+  workflowDefinitions?: Prisma.WorkflowDefinitionUpdateManyWithoutSpaceNestedInput
+  workflowBindings?: Prisma.WorkflowBindingUpdateManyWithoutSpaceNestedInput
+  objectParticipants?: Prisma.ObjectParticipantUpdateManyWithoutSpaceNestedInput
+  intakeItems?: Prisma.IntakeItemUpdateManyWithoutSpaceNestedInput
+  workItems?: Prisma.WorkItemUpdateManyWithoutSpaceNestedInput
+  auditLogs?: Prisma.AuditLogUpdateManyWithoutSpaceNestedInput
+  comments?: Prisma.CommentUpdateManyWithoutSpaceNestedInput
+  timelineEvents?: Prisma.TimelineEventUpdateManyWithoutSpaceNestedInput
+  tags?: Prisma.TagUpdateManyWithoutSpaceNestedInput
+  tagAssignments?: Prisma.TagAssignmentUpdateManyWithoutSpaceNestedInput
+}
+
+export type SpaceUncheckedUpdateWithoutObjectSequenceCountersInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  organizationId?: Prisma.StringFieldUpdateOperationsInput | string
+  name?: Prisma.StringFieldUpdateOperationsInput | string
+  code?: Prisma.StringFieldUpdateOperationsInput | string
+  description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  ownerId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  status?: Prisma.EnumSpaceStatusFieldUpdateOperationsInput | $Enums.SpaceStatus
+  staleThresholdDays?: Prisma.IntFieldUpdateOperationsInput | number
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  createdById?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  updatedById?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  deletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  members?: Prisma.SpaceMemberUncheckedUpdateManyWithoutSpaceNestedInput
+  versions?: Prisma.VersionUncheckedUpdateManyWithoutSpaceNestedInput
+  requirements?: Prisma.RequirementUncheckedUpdateManyWithoutSpaceNestedInput
+  attachments?: Prisma.AttachmentUncheckedUpdateManyWithoutSpaceNestedInput
+  workflowDefinitions?: Prisma.WorkflowDefinitionUncheckedUpdateManyWithoutSpaceNestedInput
+  workflowBindings?: Prisma.WorkflowBindingUncheckedUpdateManyWithoutSpaceNestedInput
+  objectParticipants?: Prisma.ObjectParticipantUncheckedUpdateManyWithoutSpaceNestedInput
+  intakeItems?: Prisma.IntakeItemUncheckedUpdateManyWithoutSpaceNestedInput
+  workItems?: Prisma.WorkItemUncheckedUpdateManyWithoutSpaceNestedInput
   auditLogs?: Prisma.AuditLogUncheckedUpdateManyWithoutSpaceNestedInput
   comments?: Prisma.CommentUncheckedUpdateManyWithoutSpaceNestedInput
   timelineEvents?: Prisma.TimelineEventUncheckedUpdateManyWithoutSpaceNestedInput
@@ -1815,6 +1996,7 @@ export type SpaceCreateWithoutAttachmentsInput = {
   timelineEvents?: Prisma.TimelineEventCreateNestedManyWithoutSpaceInput
   tags?: Prisma.TagCreateNestedManyWithoutSpaceInput
   tagAssignments?: Prisma.TagAssignmentCreateNestedManyWithoutSpaceInput
+  objectSequenceCounters?: Prisma.ObjectSequenceCounterCreateNestedManyWithoutSpaceInput
 }
 
 export type SpaceUncheckedCreateWithoutAttachmentsInput = {
@@ -1844,6 +2026,7 @@ export type SpaceUncheckedCreateWithoutAttachmentsInput = {
   timelineEvents?: Prisma.TimelineEventUncheckedCreateNestedManyWithoutSpaceInput
   tags?: Prisma.TagUncheckedCreateNestedManyWithoutSpaceInput
   tagAssignments?: Prisma.TagAssignmentUncheckedCreateNestedManyWithoutSpaceInput
+  objectSequenceCounters?: Prisma.ObjectSequenceCounterUncheckedCreateNestedManyWithoutSpaceInput
 }
 
 export type SpaceCreateOrConnectWithoutAttachmentsInput = {
@@ -1889,6 +2072,7 @@ export type SpaceUpdateWithoutAttachmentsInput = {
   timelineEvents?: Prisma.TimelineEventUpdateManyWithoutSpaceNestedInput
   tags?: Prisma.TagUpdateManyWithoutSpaceNestedInput
   tagAssignments?: Prisma.TagAssignmentUpdateManyWithoutSpaceNestedInput
+  objectSequenceCounters?: Prisma.ObjectSequenceCounterUpdateManyWithoutSpaceNestedInput
 }
 
 export type SpaceUncheckedUpdateWithoutAttachmentsInput = {
@@ -1918,6 +2102,7 @@ export type SpaceUncheckedUpdateWithoutAttachmentsInput = {
   timelineEvents?: Prisma.TimelineEventUncheckedUpdateManyWithoutSpaceNestedInput
   tags?: Prisma.TagUncheckedUpdateManyWithoutSpaceNestedInput
   tagAssignments?: Prisma.TagAssignmentUncheckedUpdateManyWithoutSpaceNestedInput
+  objectSequenceCounters?: Prisma.ObjectSequenceCounterUncheckedUpdateManyWithoutSpaceNestedInput
 }
 
 export type SpaceCreateWithoutTagsInput = {
@@ -1947,6 +2132,7 @@ export type SpaceCreateWithoutTagsInput = {
   comments?: Prisma.CommentCreateNestedManyWithoutSpaceInput
   timelineEvents?: Prisma.TimelineEventCreateNestedManyWithoutSpaceInput
   tagAssignments?: Prisma.TagAssignmentCreateNestedManyWithoutSpaceInput
+  objectSequenceCounters?: Prisma.ObjectSequenceCounterCreateNestedManyWithoutSpaceInput
 }
 
 export type SpaceUncheckedCreateWithoutTagsInput = {
@@ -1976,6 +2162,7 @@ export type SpaceUncheckedCreateWithoutTagsInput = {
   comments?: Prisma.CommentUncheckedCreateNestedManyWithoutSpaceInput
   timelineEvents?: Prisma.TimelineEventUncheckedCreateNestedManyWithoutSpaceInput
   tagAssignments?: Prisma.TagAssignmentUncheckedCreateNestedManyWithoutSpaceInput
+  objectSequenceCounters?: Prisma.ObjectSequenceCounterUncheckedCreateNestedManyWithoutSpaceInput
 }
 
 export type SpaceCreateOrConnectWithoutTagsInput = {
@@ -2021,6 +2208,7 @@ export type SpaceUpdateWithoutTagsInput = {
   comments?: Prisma.CommentUpdateManyWithoutSpaceNestedInput
   timelineEvents?: Prisma.TimelineEventUpdateManyWithoutSpaceNestedInput
   tagAssignments?: Prisma.TagAssignmentUpdateManyWithoutSpaceNestedInput
+  objectSequenceCounters?: Prisma.ObjectSequenceCounterUpdateManyWithoutSpaceNestedInput
 }
 
 export type SpaceUncheckedUpdateWithoutTagsInput = {
@@ -2050,6 +2238,7 @@ export type SpaceUncheckedUpdateWithoutTagsInput = {
   comments?: Prisma.CommentUncheckedUpdateManyWithoutSpaceNestedInput
   timelineEvents?: Prisma.TimelineEventUncheckedUpdateManyWithoutSpaceNestedInput
   tagAssignments?: Prisma.TagAssignmentUncheckedUpdateManyWithoutSpaceNestedInput
+  objectSequenceCounters?: Prisma.ObjectSequenceCounterUncheckedUpdateManyWithoutSpaceNestedInput
 }
 
 export type SpaceCreateWithoutTagAssignmentsInput = {
@@ -2079,6 +2268,7 @@ export type SpaceCreateWithoutTagAssignmentsInput = {
   comments?: Prisma.CommentCreateNestedManyWithoutSpaceInput
   timelineEvents?: Prisma.TimelineEventCreateNestedManyWithoutSpaceInput
   tags?: Prisma.TagCreateNestedManyWithoutSpaceInput
+  objectSequenceCounters?: Prisma.ObjectSequenceCounterCreateNestedManyWithoutSpaceInput
 }
 
 export type SpaceUncheckedCreateWithoutTagAssignmentsInput = {
@@ -2108,6 +2298,7 @@ export type SpaceUncheckedCreateWithoutTagAssignmentsInput = {
   comments?: Prisma.CommentUncheckedCreateNestedManyWithoutSpaceInput
   timelineEvents?: Prisma.TimelineEventUncheckedCreateNestedManyWithoutSpaceInput
   tags?: Prisma.TagUncheckedCreateNestedManyWithoutSpaceInput
+  objectSequenceCounters?: Prisma.ObjectSequenceCounterUncheckedCreateNestedManyWithoutSpaceInput
 }
 
 export type SpaceCreateOrConnectWithoutTagAssignmentsInput = {
@@ -2153,6 +2344,7 @@ export type SpaceUpdateWithoutTagAssignmentsInput = {
   comments?: Prisma.CommentUpdateManyWithoutSpaceNestedInput
   timelineEvents?: Prisma.TimelineEventUpdateManyWithoutSpaceNestedInput
   tags?: Prisma.TagUpdateManyWithoutSpaceNestedInput
+  objectSequenceCounters?: Prisma.ObjectSequenceCounterUpdateManyWithoutSpaceNestedInput
 }
 
 export type SpaceUncheckedUpdateWithoutTagAssignmentsInput = {
@@ -2182,6 +2374,7 @@ export type SpaceUncheckedUpdateWithoutTagAssignmentsInput = {
   comments?: Prisma.CommentUncheckedUpdateManyWithoutSpaceNestedInput
   timelineEvents?: Prisma.TimelineEventUncheckedUpdateManyWithoutSpaceNestedInput
   tags?: Prisma.TagUncheckedUpdateManyWithoutSpaceNestedInput
+  objectSequenceCounters?: Prisma.ObjectSequenceCounterUncheckedUpdateManyWithoutSpaceNestedInput
 }
 
 export type SpaceCreateWithoutWorkflowDefinitionsInput = {
@@ -2211,6 +2404,7 @@ export type SpaceCreateWithoutWorkflowDefinitionsInput = {
   timelineEvents?: Prisma.TimelineEventCreateNestedManyWithoutSpaceInput
   tags?: Prisma.TagCreateNestedManyWithoutSpaceInput
   tagAssignments?: Prisma.TagAssignmentCreateNestedManyWithoutSpaceInput
+  objectSequenceCounters?: Prisma.ObjectSequenceCounterCreateNestedManyWithoutSpaceInput
 }
 
 export type SpaceUncheckedCreateWithoutWorkflowDefinitionsInput = {
@@ -2240,6 +2434,7 @@ export type SpaceUncheckedCreateWithoutWorkflowDefinitionsInput = {
   timelineEvents?: Prisma.TimelineEventUncheckedCreateNestedManyWithoutSpaceInput
   tags?: Prisma.TagUncheckedCreateNestedManyWithoutSpaceInput
   tagAssignments?: Prisma.TagAssignmentUncheckedCreateNestedManyWithoutSpaceInput
+  objectSequenceCounters?: Prisma.ObjectSequenceCounterUncheckedCreateNestedManyWithoutSpaceInput
 }
 
 export type SpaceCreateOrConnectWithoutWorkflowDefinitionsInput = {
@@ -2285,6 +2480,7 @@ export type SpaceUpdateWithoutWorkflowDefinitionsInput = {
   timelineEvents?: Prisma.TimelineEventUpdateManyWithoutSpaceNestedInput
   tags?: Prisma.TagUpdateManyWithoutSpaceNestedInput
   tagAssignments?: Prisma.TagAssignmentUpdateManyWithoutSpaceNestedInput
+  objectSequenceCounters?: Prisma.ObjectSequenceCounterUpdateManyWithoutSpaceNestedInput
 }
 
 export type SpaceUncheckedUpdateWithoutWorkflowDefinitionsInput = {
@@ -2314,6 +2510,7 @@ export type SpaceUncheckedUpdateWithoutWorkflowDefinitionsInput = {
   timelineEvents?: Prisma.TimelineEventUncheckedUpdateManyWithoutSpaceNestedInput
   tags?: Prisma.TagUncheckedUpdateManyWithoutSpaceNestedInput
   tagAssignments?: Prisma.TagAssignmentUncheckedUpdateManyWithoutSpaceNestedInput
+  objectSequenceCounters?: Prisma.ObjectSequenceCounterUncheckedUpdateManyWithoutSpaceNestedInput
 }
 
 export type SpaceCreateWithoutWorkflowBindingsInput = {
@@ -2343,6 +2540,7 @@ export type SpaceCreateWithoutWorkflowBindingsInput = {
   timelineEvents?: Prisma.TimelineEventCreateNestedManyWithoutSpaceInput
   tags?: Prisma.TagCreateNestedManyWithoutSpaceInput
   tagAssignments?: Prisma.TagAssignmentCreateNestedManyWithoutSpaceInput
+  objectSequenceCounters?: Prisma.ObjectSequenceCounterCreateNestedManyWithoutSpaceInput
 }
 
 export type SpaceUncheckedCreateWithoutWorkflowBindingsInput = {
@@ -2372,6 +2570,7 @@ export type SpaceUncheckedCreateWithoutWorkflowBindingsInput = {
   timelineEvents?: Prisma.TimelineEventUncheckedCreateNestedManyWithoutSpaceInput
   tags?: Prisma.TagUncheckedCreateNestedManyWithoutSpaceInput
   tagAssignments?: Prisma.TagAssignmentUncheckedCreateNestedManyWithoutSpaceInput
+  objectSequenceCounters?: Prisma.ObjectSequenceCounterUncheckedCreateNestedManyWithoutSpaceInput
 }
 
 export type SpaceCreateOrConnectWithoutWorkflowBindingsInput = {
@@ -2417,6 +2616,7 @@ export type SpaceUpdateWithoutWorkflowBindingsInput = {
   timelineEvents?: Prisma.TimelineEventUpdateManyWithoutSpaceNestedInput
   tags?: Prisma.TagUpdateManyWithoutSpaceNestedInput
   tagAssignments?: Prisma.TagAssignmentUpdateManyWithoutSpaceNestedInput
+  objectSequenceCounters?: Prisma.ObjectSequenceCounterUpdateManyWithoutSpaceNestedInput
 }
 
 export type SpaceUncheckedUpdateWithoutWorkflowBindingsInput = {
@@ -2446,6 +2646,7 @@ export type SpaceUncheckedUpdateWithoutWorkflowBindingsInput = {
   timelineEvents?: Prisma.TimelineEventUncheckedUpdateManyWithoutSpaceNestedInput
   tags?: Prisma.TagUncheckedUpdateManyWithoutSpaceNestedInput
   tagAssignments?: Prisma.TagAssignmentUncheckedUpdateManyWithoutSpaceNestedInput
+  objectSequenceCounters?: Prisma.ObjectSequenceCounterUncheckedUpdateManyWithoutSpaceNestedInput
 }
 
 export type SpaceCreateWithoutObjectParticipantsInput = {
@@ -2475,6 +2676,7 @@ export type SpaceCreateWithoutObjectParticipantsInput = {
   timelineEvents?: Prisma.TimelineEventCreateNestedManyWithoutSpaceInput
   tags?: Prisma.TagCreateNestedManyWithoutSpaceInput
   tagAssignments?: Prisma.TagAssignmentCreateNestedManyWithoutSpaceInput
+  objectSequenceCounters?: Prisma.ObjectSequenceCounterCreateNestedManyWithoutSpaceInput
 }
 
 export type SpaceUncheckedCreateWithoutObjectParticipantsInput = {
@@ -2504,6 +2706,7 @@ export type SpaceUncheckedCreateWithoutObjectParticipantsInput = {
   timelineEvents?: Prisma.TimelineEventUncheckedCreateNestedManyWithoutSpaceInput
   tags?: Prisma.TagUncheckedCreateNestedManyWithoutSpaceInput
   tagAssignments?: Prisma.TagAssignmentUncheckedCreateNestedManyWithoutSpaceInput
+  objectSequenceCounters?: Prisma.ObjectSequenceCounterUncheckedCreateNestedManyWithoutSpaceInput
 }
 
 export type SpaceCreateOrConnectWithoutObjectParticipantsInput = {
@@ -2549,6 +2752,7 @@ export type SpaceUpdateWithoutObjectParticipantsInput = {
   timelineEvents?: Prisma.TimelineEventUpdateManyWithoutSpaceNestedInput
   tags?: Prisma.TagUpdateManyWithoutSpaceNestedInput
   tagAssignments?: Prisma.TagAssignmentUpdateManyWithoutSpaceNestedInput
+  objectSequenceCounters?: Prisma.ObjectSequenceCounterUpdateManyWithoutSpaceNestedInput
 }
 
 export type SpaceUncheckedUpdateWithoutObjectParticipantsInput = {
@@ -2578,6 +2782,7 @@ export type SpaceUncheckedUpdateWithoutObjectParticipantsInput = {
   timelineEvents?: Prisma.TimelineEventUncheckedUpdateManyWithoutSpaceNestedInput
   tags?: Prisma.TagUncheckedUpdateManyWithoutSpaceNestedInput
   tagAssignments?: Prisma.TagAssignmentUncheckedUpdateManyWithoutSpaceNestedInput
+  objectSequenceCounters?: Prisma.ObjectSequenceCounterUncheckedUpdateManyWithoutSpaceNestedInput
 }
 
 export type SpaceCreateWithoutCommentsInput = {
@@ -2607,6 +2812,7 @@ export type SpaceCreateWithoutCommentsInput = {
   timelineEvents?: Prisma.TimelineEventCreateNestedManyWithoutSpaceInput
   tags?: Prisma.TagCreateNestedManyWithoutSpaceInput
   tagAssignments?: Prisma.TagAssignmentCreateNestedManyWithoutSpaceInput
+  objectSequenceCounters?: Prisma.ObjectSequenceCounterCreateNestedManyWithoutSpaceInput
 }
 
 export type SpaceUncheckedCreateWithoutCommentsInput = {
@@ -2636,6 +2842,7 @@ export type SpaceUncheckedCreateWithoutCommentsInput = {
   timelineEvents?: Prisma.TimelineEventUncheckedCreateNestedManyWithoutSpaceInput
   tags?: Prisma.TagUncheckedCreateNestedManyWithoutSpaceInput
   tagAssignments?: Prisma.TagAssignmentUncheckedCreateNestedManyWithoutSpaceInput
+  objectSequenceCounters?: Prisma.ObjectSequenceCounterUncheckedCreateNestedManyWithoutSpaceInput
 }
 
 export type SpaceCreateOrConnectWithoutCommentsInput = {
@@ -2681,6 +2888,7 @@ export type SpaceUpdateWithoutCommentsInput = {
   timelineEvents?: Prisma.TimelineEventUpdateManyWithoutSpaceNestedInput
   tags?: Prisma.TagUpdateManyWithoutSpaceNestedInput
   tagAssignments?: Prisma.TagAssignmentUpdateManyWithoutSpaceNestedInput
+  objectSequenceCounters?: Prisma.ObjectSequenceCounterUpdateManyWithoutSpaceNestedInput
 }
 
 export type SpaceUncheckedUpdateWithoutCommentsInput = {
@@ -2710,6 +2918,7 @@ export type SpaceUncheckedUpdateWithoutCommentsInput = {
   timelineEvents?: Prisma.TimelineEventUncheckedUpdateManyWithoutSpaceNestedInput
   tags?: Prisma.TagUncheckedUpdateManyWithoutSpaceNestedInput
   tagAssignments?: Prisma.TagAssignmentUncheckedUpdateManyWithoutSpaceNestedInput
+  objectSequenceCounters?: Prisma.ObjectSequenceCounterUncheckedUpdateManyWithoutSpaceNestedInput
 }
 
 export type SpaceCreateWithoutTimelineEventsInput = {
@@ -2739,6 +2948,7 @@ export type SpaceCreateWithoutTimelineEventsInput = {
   comments?: Prisma.CommentCreateNestedManyWithoutSpaceInput
   tags?: Prisma.TagCreateNestedManyWithoutSpaceInput
   tagAssignments?: Prisma.TagAssignmentCreateNestedManyWithoutSpaceInput
+  objectSequenceCounters?: Prisma.ObjectSequenceCounterCreateNestedManyWithoutSpaceInput
 }
 
 export type SpaceUncheckedCreateWithoutTimelineEventsInput = {
@@ -2768,6 +2978,7 @@ export type SpaceUncheckedCreateWithoutTimelineEventsInput = {
   comments?: Prisma.CommentUncheckedCreateNestedManyWithoutSpaceInput
   tags?: Prisma.TagUncheckedCreateNestedManyWithoutSpaceInput
   tagAssignments?: Prisma.TagAssignmentUncheckedCreateNestedManyWithoutSpaceInput
+  objectSequenceCounters?: Prisma.ObjectSequenceCounterUncheckedCreateNestedManyWithoutSpaceInput
 }
 
 export type SpaceCreateOrConnectWithoutTimelineEventsInput = {
@@ -2813,6 +3024,7 @@ export type SpaceUpdateWithoutTimelineEventsInput = {
   comments?: Prisma.CommentUpdateManyWithoutSpaceNestedInput
   tags?: Prisma.TagUpdateManyWithoutSpaceNestedInput
   tagAssignments?: Prisma.TagAssignmentUpdateManyWithoutSpaceNestedInput
+  objectSequenceCounters?: Prisma.ObjectSequenceCounterUpdateManyWithoutSpaceNestedInput
 }
 
 export type SpaceUncheckedUpdateWithoutTimelineEventsInput = {
@@ -2842,6 +3054,7 @@ export type SpaceUncheckedUpdateWithoutTimelineEventsInput = {
   comments?: Prisma.CommentUncheckedUpdateManyWithoutSpaceNestedInput
   tags?: Prisma.TagUncheckedUpdateManyWithoutSpaceNestedInput
   tagAssignments?: Prisma.TagAssignmentUncheckedUpdateManyWithoutSpaceNestedInput
+  objectSequenceCounters?: Prisma.ObjectSequenceCounterUncheckedUpdateManyWithoutSpaceNestedInput
 }
 
 export type SpaceCreateWithoutAuditLogsInput = {
@@ -2871,6 +3084,7 @@ export type SpaceCreateWithoutAuditLogsInput = {
   timelineEvents?: Prisma.TimelineEventCreateNestedManyWithoutSpaceInput
   tags?: Prisma.TagCreateNestedManyWithoutSpaceInput
   tagAssignments?: Prisma.TagAssignmentCreateNestedManyWithoutSpaceInput
+  objectSequenceCounters?: Prisma.ObjectSequenceCounterCreateNestedManyWithoutSpaceInput
 }
 
 export type SpaceUncheckedCreateWithoutAuditLogsInput = {
@@ -2900,6 +3114,7 @@ export type SpaceUncheckedCreateWithoutAuditLogsInput = {
   timelineEvents?: Prisma.TimelineEventUncheckedCreateNestedManyWithoutSpaceInput
   tags?: Prisma.TagUncheckedCreateNestedManyWithoutSpaceInput
   tagAssignments?: Prisma.TagAssignmentUncheckedCreateNestedManyWithoutSpaceInput
+  objectSequenceCounters?: Prisma.ObjectSequenceCounterUncheckedCreateNestedManyWithoutSpaceInput
 }
 
 export type SpaceCreateOrConnectWithoutAuditLogsInput = {
@@ -2945,6 +3160,7 @@ export type SpaceUpdateWithoutAuditLogsInput = {
   timelineEvents?: Prisma.TimelineEventUpdateManyWithoutSpaceNestedInput
   tags?: Prisma.TagUpdateManyWithoutSpaceNestedInput
   tagAssignments?: Prisma.TagAssignmentUpdateManyWithoutSpaceNestedInput
+  objectSequenceCounters?: Prisma.ObjectSequenceCounterUpdateManyWithoutSpaceNestedInput
 }
 
 export type SpaceUncheckedUpdateWithoutAuditLogsInput = {
@@ -2974,6 +3190,7 @@ export type SpaceUncheckedUpdateWithoutAuditLogsInput = {
   timelineEvents?: Prisma.TimelineEventUncheckedUpdateManyWithoutSpaceNestedInput
   tags?: Prisma.TagUncheckedUpdateManyWithoutSpaceNestedInput
   tagAssignments?: Prisma.TagAssignmentUncheckedUpdateManyWithoutSpaceNestedInput
+  objectSequenceCounters?: Prisma.ObjectSequenceCounterUncheckedUpdateManyWithoutSpaceNestedInput
 }
 
 export type SpaceCreateManyOwnerInput = {
@@ -3018,6 +3235,7 @@ export type SpaceUpdateWithoutOwnerInput = {
   timelineEvents?: Prisma.TimelineEventUpdateManyWithoutSpaceNestedInput
   tags?: Prisma.TagUpdateManyWithoutSpaceNestedInput
   tagAssignments?: Prisma.TagAssignmentUpdateManyWithoutSpaceNestedInput
+  objectSequenceCounters?: Prisma.ObjectSequenceCounterUpdateManyWithoutSpaceNestedInput
 }
 
 export type SpaceUncheckedUpdateWithoutOwnerInput = {
@@ -3047,6 +3265,7 @@ export type SpaceUncheckedUpdateWithoutOwnerInput = {
   timelineEvents?: Prisma.TimelineEventUncheckedUpdateManyWithoutSpaceNestedInput
   tags?: Prisma.TagUncheckedUpdateManyWithoutSpaceNestedInput
   tagAssignments?: Prisma.TagAssignmentUncheckedUpdateManyWithoutSpaceNestedInput
+  objectSequenceCounters?: Prisma.ObjectSequenceCounterUncheckedUpdateManyWithoutSpaceNestedInput
 }
 
 export type SpaceUncheckedUpdateManyWithoutOwnerInput = {
@@ -3106,6 +3325,7 @@ export type SpaceUpdateWithoutOrganizationInput = {
   timelineEvents?: Prisma.TimelineEventUpdateManyWithoutSpaceNestedInput
   tags?: Prisma.TagUpdateManyWithoutSpaceNestedInput
   tagAssignments?: Prisma.TagAssignmentUpdateManyWithoutSpaceNestedInput
+  objectSequenceCounters?: Prisma.ObjectSequenceCounterUpdateManyWithoutSpaceNestedInput
 }
 
 export type SpaceUncheckedUpdateWithoutOrganizationInput = {
@@ -3135,6 +3355,7 @@ export type SpaceUncheckedUpdateWithoutOrganizationInput = {
   timelineEvents?: Prisma.TimelineEventUncheckedUpdateManyWithoutSpaceNestedInput
   tags?: Prisma.TagUncheckedUpdateManyWithoutSpaceNestedInput
   tagAssignments?: Prisma.TagAssignmentUncheckedUpdateManyWithoutSpaceNestedInput
+  objectSequenceCounters?: Prisma.ObjectSequenceCounterUncheckedUpdateManyWithoutSpaceNestedInput
 }
 
 export type SpaceUncheckedUpdateManyWithoutOrganizationInput = {
@@ -3172,6 +3393,7 @@ export type SpaceCountOutputType = {
   timelineEvents: number
   tags: number
   tagAssignments: number
+  objectSequenceCounters: number
 }
 
 export type SpaceCountOutputTypeSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
@@ -3189,6 +3411,7 @@ export type SpaceCountOutputTypeSelect<ExtArgs extends runtime.Types.Extensions.
   timelineEvents?: boolean | SpaceCountOutputTypeCountTimelineEventsArgs
   tags?: boolean | SpaceCountOutputTypeCountTagsArgs
   tagAssignments?: boolean | SpaceCountOutputTypeCountTagAssignmentsArgs
+  objectSequenceCounters?: boolean | SpaceCountOutputTypeCountObjectSequenceCountersArgs
 }
 
 /**
@@ -3299,6 +3522,13 @@ export type SpaceCountOutputTypeCountTagAssignmentsArgs<ExtArgs extends runtime.
   where?: Prisma.TagAssignmentWhereInput
 }
 
+/**
+ * SpaceCountOutputType without action
+ */
+export type SpaceCountOutputTypeCountObjectSequenceCountersArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  where?: Prisma.ObjectSequenceCounterWhereInput
+}
+
 
 export type SpaceSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
   id?: boolean
@@ -3330,6 +3560,7 @@ export type SpaceSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = 
   timelineEvents?: boolean | Prisma.Space$timelineEventsArgs<ExtArgs>
   tags?: boolean | Prisma.Space$tagsArgs<ExtArgs>
   tagAssignments?: boolean | Prisma.Space$tagAssignmentsArgs<ExtArgs>
+  objectSequenceCounters?: boolean | Prisma.Space$objectSequenceCountersArgs<ExtArgs>
   _count?: boolean | Prisma.SpaceCountOutputTypeDefaultArgs<ExtArgs>
 }, ExtArgs["result"]["space"]>
 
@@ -3403,6 +3634,7 @@ export type SpaceInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs =
   timelineEvents?: boolean | Prisma.Space$timelineEventsArgs<ExtArgs>
   tags?: boolean | Prisma.Space$tagsArgs<ExtArgs>
   tagAssignments?: boolean | Prisma.Space$tagAssignmentsArgs<ExtArgs>
+  objectSequenceCounters?: boolean | Prisma.Space$objectSequenceCountersArgs<ExtArgs>
   _count?: boolean | Prisma.SpaceCountOutputTypeDefaultArgs<ExtArgs>
 }
 export type SpaceIncludeCreateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
@@ -3433,6 +3665,7 @@ export type $SpacePayload<ExtArgs extends runtime.Types.Extensions.InternalArgs 
     timelineEvents: Prisma.$TimelineEventPayload<ExtArgs>[]
     tags: Prisma.$TagPayload<ExtArgs>[]
     tagAssignments: Prisma.$TagAssignmentPayload<ExtArgs>[]
+    objectSequenceCounters: Prisma.$ObjectSequenceCounterPayload<ExtArgs>[]
   }
   scalars: runtime.Types.Extensions.GetPayloadResult<{
     id: string
@@ -3858,6 +4091,7 @@ export interface Prisma__SpaceClient<T, Null = never, ExtArgs extends runtime.Ty
   timelineEvents<T extends Prisma.Space$timelineEventsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Space$timelineEventsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$TimelineEventPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   tags<T extends Prisma.Space$tagsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Space$tagsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$TagPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   tagAssignments<T extends Prisma.Space$tagAssignmentsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Space$tagAssignmentsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$TagAssignmentPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
+  objectSequenceCounters<T extends Prisma.Space$objectSequenceCountersArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Space$objectSequenceCountersArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$ObjectSequenceCounterPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   /**
    * Attaches callbacks for the resolution and/or rejection of the Promise.
    * @param onfulfilled The callback to execute when the Promise is resolved.
@@ -4653,6 +4887,30 @@ export type Space$tagAssignmentsArgs<ExtArgs extends runtime.Types.Extensions.In
   take?: number
   skip?: number
   distinct?: Prisma.TagAssignmentScalarFieldEnum | Prisma.TagAssignmentScalarFieldEnum[]
+}
+
+/**
+ * Space.objectSequenceCounters
+ */
+export type Space$objectSequenceCountersArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  /**
+   * Select specific fields to fetch from the ObjectSequenceCounter
+   */
+  select?: Prisma.ObjectSequenceCounterSelect<ExtArgs> | null
+  /**
+   * Omit specific fields from the ObjectSequenceCounter
+   */
+  omit?: Prisma.ObjectSequenceCounterOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.ObjectSequenceCounterInclude<ExtArgs> | null
+  where?: Prisma.ObjectSequenceCounterWhereInput
+  orderBy?: Prisma.ObjectSequenceCounterOrderByWithRelationInput | Prisma.ObjectSequenceCounterOrderByWithRelationInput[]
+  cursor?: Prisma.ObjectSequenceCounterWhereUniqueInput
+  take?: number
+  skip?: number
+  distinct?: Prisma.ObjectSequenceCounterScalarFieldEnum | Prisma.ObjectSequenceCounterScalarFieldEnum[]
 }
 
 /**

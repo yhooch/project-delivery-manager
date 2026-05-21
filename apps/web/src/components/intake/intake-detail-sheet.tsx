@@ -29,7 +29,7 @@ import type React from "react";
 import { getApiErrorMessageKey } from "../../lib/api-error-messages";
 import { toCreateCommentRequest } from "../../lib/comment-forms";
 import { createComment, listComments } from "../../lib/comment-service";
-import { formatDisplayCode } from "../../lib/display-code";
+import { resolveIntakeDisplayCode } from "../../lib/display-code";
 import { getIntakeItem } from "../../lib/intake-service";
 import { cn } from "../../lib/utils";
 import { listTimeline } from "../../lib/timeline-service";
@@ -259,7 +259,7 @@ function IntakeDetailContent({
       <SheetHeader className="px-5 py-4">
         <div className="flex items-center gap-2 text-[11px] font-mono text-muted-foreground">
           <Target className="h-3.5 w-3.5" />
-          <span>{formatItemCode(intakeItem.id)}</span>
+          <span>{formatItemCode(intakeItem)}</span>
           <ChevronRight className="h-3 w-3" />
           <span>{tIntakeItems(`sourceType.${intakeItem.sourceType}`)}</span>
         </div>
@@ -1142,8 +1142,8 @@ function formatDateTime(value: string, locale: string): string | undefined {
   }
 }
 
-function formatItemCode(id: string): string {
-  return formatDisplayCode("INTAKE", id);
+function formatItemCode(intakeItem: IntakeItem): string {
+  return resolveIntakeDisplayCode(intakeItem);
 }
 
 function initialOf(id: string): string {

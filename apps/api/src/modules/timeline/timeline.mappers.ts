@@ -3,7 +3,10 @@ import type {
   TimelineActor,
   TimelineEvent,
   TimelineEventType,
+  WorkItemType,
 } from "@project-delivery/shared";
+
+import { formatDisplayCode } from "../object-code/object-code.types";
 
 type TimelineActorRecord = {
   avatar: string | null;
@@ -28,19 +31,31 @@ type PrismaTimelineEventRecord = {
   title: string;
 };
 
+export type TimelineTargetIdentityRecord = {
+  sequence?: number | null;
+  title?: string;
+  workItemType?: WorkItemType | null;
+};
+
 export function toTimelineEvent(
   record: PrismaTimelineEventRecord,
-  targetTitle?: string,
+  targetIdentity?: string | TimelineTargetIdentityRecord,
 ): TimelineEvent {
+  const target =
+    typeof targetIdentity === "string"
+      ? { title: targetIdentity }
+      : targetIdentity;
+
   return {
     id: record.id,
     organizationId: record.organizationId,
     spaceId: record.spaceId,
-    target: {
+    target: removeUndefined({
       type: record.targetType,
       id: record.targetId,
-      title: targetTitle,
-    },
+      title: nonEmptyTitle(target?.title),
+      ...toTimelineTargetDisplayIdentity(record.targetType, target),
+    }),
     eventType: record.eventType,
     actor: toTimelineActor(record.actor),
     title: record.title,
@@ -50,6 +65,46 @@ export function toTimelineEvent(
     metadata: toOptionalRecord(record.metadata),
     createdAt: record.createdAt.toISOString(),
   };
+}
+
+function toTimelineTargetDisplayIdentity(
+  targetType: TargetType,
+  target?: TimelineTargetIdentityRecord,
+) {
+  const sequence = target?.sequence ?? null;
+
+  if (sequence == null) {
+    return {};
+  }
+
+  if (targetType === "REQUIREMENT") {
+    return {
+      sequence,
+      displayCode: formatDisplayCode("REQUIREMENT", sequence),
+    };
+  }
+
+  if (targetType === "INTAKE_ITEM") {
+    return {
+      sequence,
+      displayCode: formatDisplayCode("INTAKE_ITEM", sequence),
+    };
+  }
+
+  if (targetType === "WORK_ITEM" && target?.workItemType) {
+    return {
+      sequence,
+      displayCode: formatDisplayCode(target.workItemType, sequence),
+    };
+  }
+
+  return {};
+}
+
+function nonEmptyTitle(title: string | undefined): string | undefined {
+  const trimmed = title?.trim();
+
+  return trimmed ? title : undefined;
 }
 
 function toTimelineActor(record: TimelineActorRecord): TimelineActor {
@@ -67,4 +122,10 @@ function toOptionalRecord(value: unknown): Record<string, unknown> | undefined {
   }
 
   return value as Record<string, unknown>;
+}
+
+function removeUndefined<T extends Record<string, unknown>>(value: T): T {
+  return Object.fromEntries(
+    Object.entries(value).filter(([, entryValue]) => entryValue !== undefined),
+  ) as T;
 }

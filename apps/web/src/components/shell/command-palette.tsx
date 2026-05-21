@@ -21,15 +21,23 @@ import {
   Target,
   Workflow,
 } from "lucide-react";
-import type { TagDto } from "@project-delivery/shared";
+import type { ObjectCodeLookupResult, TagDto } from "@project-delivery/shared";
 import { useTranslations } from "next-intl";
 import { useEffect, useMemo, useState } from "react";
 
 import { getApiErrorMessageKey } from "../../lib/api-error-messages";
+import { ApiClientError } from "../../lib/api-client";
 import { listBugs } from "../../lib/bug-service";
-import { formatDisplayCode } from "../../lib/display-code";
+import {
+  isObjectDisplayCodeLike,
+  normalizeObjectDisplayCodeQuery,
+  resolveIntakeDisplayCode,
+  resolveRequirementDisplayCode,
+  resolveWorkItemDisplayCode,
+} from "../../lib/display-code";
 import { isEditableTarget } from "../../lib/hooks/use-list-keyboard-nav";
 import { listIntakeItems } from "../../lib/intake-service";
+import { lookupObjectCode } from "../../lib/object-code-service";
 import {
   canCreateBugs,
   canCreateTasks,
@@ -170,7 +178,10 @@ export function useCommandPaletteShortcut({
   }, [enabled, router]);
 }
 
-type SearchResult = RecentEntry;
+type SearchResult = RecentEntry & {
+  organizationId?: string;
+  spaceLabel?: string;
+};
 type TagSearchResult = TagDto;
 
 const typeIcon: Record<SearchResult["type"], typeof CheckCircle2> = {
@@ -224,9 +235,12 @@ export function CommandPalette({ enabled = true }: CommandPaletteProps) {
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<SearchResult[]>([]);
   const [tagResults, setTagResults] = useState<TagSearchResult[]>([]);
+  const [lookupResult, setLookupResult] = useState<SearchResult | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isTagLoading, setIsTagLoading] = useState(false);
+  const [isLookupLoading, setIsLookupLoading] = useState(false);
   const [tagSearchFailed, setTagSearchFailed] = useState(false);
+  const [lookupErrorKey, setLookupErrorKey] = useState<string | null>(null);
   const [hasFetched, setHasFetched] = useState(false);
   const [canPruneRecent, setCanPruneRecent] = useState(false);
   const [recent, setRecent] = useState<SearchResult[]>([]);
@@ -282,6 +296,18 @@ export function CommandPalette({ enabled = true }: CommandPaletteProps) {
   );
   const trimmedQuery = query.trim();
   const isTagQuery = trimmedQuery.startsWith("#");
+  const normalizedObjectCodeQuery = isTagQuery
+    ? null
+    : normalizeObjectDisplayCodeQuery(trimmedQuery);
+  const isObjectCodeLikeQuery =
+    !isTagQuery && isObjectDisplayCodeLike(trimmedQuery);
+  const lookupSpaceId = shouldUseSpaceScopedObjectLookup(pathname)
+    ? effectiveSpaceId
+    : undefined;
+  const listSearchQuery =
+    !isTagQuery && !normalizedObjectCodeQuery && trimmedQuery.length >= 2
+      ? trimmedQuery
+      : undefined;
   const tagSearchTerm = normalizeTagInput(query);
   const canSearchTags = Boolean(
     enabled && open && hasCurrentSpace && effectiveSpaceId && isTagQuery,
@@ -309,6 +335,9 @@ export function CommandPalette({ enabled = true }: CommandPaletteProps) {
 
     if (!open) {
       setQuery("");
+      setLookupResult(null);
+      setLookupErrorKey(null);
+      setIsLookupLoading(false);
     } else {
       setSwitchSpaceErrorKey(null);
       setRecent(readRecent(recentScope).map(withDetailHref));
@@ -336,8 +365,8 @@ export function CommandPalette({ enabled = true }: CommandPaletteProps) {
     };
   }, [enabled, recentScope, recentStorageKey]);
 
-  // MVP list APIs do not expose a query/search parameter yet, so fetch a
-  // bounded larger page and let cmdk filter the local result set.
+  // Fetch a bounded page for default/local fuzzy matching; when the user types
+  // a normal keyword, pass it through to the list APIs as a server-side query.
   useEffect(() => {
     if (!enabled || !open || !spaceId) return;
 
@@ -355,12 +384,14 @@ export function CommandPalette({ enabled = true }: CommandPaletteProps) {
             organizationId,
             page: 1,
             pageSize: PAGE_SIZE,
+            ...(listSearchQuery ? { query: listSearchQuery } : {}),
           }),
           listBugs({
             spaceId,
             organizationId,
             page: 1,
             pageSize: PAGE_SIZE,
+            ...(listSearchQuery ? { query: listSearchQuery } : {}),
           }),
           listRequirements({
             spaceId,
@@ -368,27 +399,34 @@ export function CommandPalette({ enabled = true }: CommandPaletteProps) {
             page: 1,
             pageSize: PAGE_SIZE,
             includeDrafts: true,
+            ...(listSearchQuery ? { query: listSearchQuery } : {}),
           }),
           listIntakeItems({
             spaceId,
             organizationId,
             page: 1,
             pageSize: PAGE_SIZE,
+            ...(listSearchQuery ? { query: listSearchQuery } : {}),
           }),
         ]);
 
         if (cancelled) return;
 
         const merged: SearchResult[] = [];
-        let canPrune = true;
+        let canPrune = !listSearchQuery;
         if (tasks.status === "fulfilled") {
           canPrune = canPrune && tasks.value.items.length >= tasks.value.total;
           for (const item of tasks.value.items) {
             merged.push({
               id: item.id,
               type: "TASK",
-              code: formatDisplayCode("TASK", item.id),
+              displayCode: resolveWorkItemDisplayCode({
+                ...item,
+                type: "TASK",
+              }),
               title: item.title,
+              organizationId: item.organizationId,
+              spaceId: item.spaceId,
               href: getDetailHref({
                 id: item.id,
                 type: "TASK",
@@ -406,8 +444,13 @@ export function CommandPalette({ enabled = true }: CommandPaletteProps) {
             merged.push({
               id: item.id,
               type: "BUG",
-              code: formatDisplayCode("BUG", item.id),
+              displayCode: resolveWorkItemDisplayCode({
+                ...item,
+                type: "BUG",
+              }),
               title: item.title,
+              organizationId: item.organizationId,
+              spaceId: item.spaceId,
               href: getDetailHref({ id: item.id, type: "BUG", href: "/bugs" }),
             });
           }
@@ -422,8 +465,12 @@ export function CommandPalette({ enabled = true }: CommandPaletteProps) {
             merged.push({
               id: item.id,
               type: "REQUIREMENT",
-              code: formatDisplayCode("REQ", item.id),
+              displayCode: resolveRequirementDisplayCode(item, {
+                draftLabel: t("draftCode"),
+              }),
               title: item.title || t("untitled"),
+              organizationId: item.organizationId,
+              spaceId: item.spaceId,
               href: `/requirements/${item.id}`,
             });
           }
@@ -437,8 +484,10 @@ export function CommandPalette({ enabled = true }: CommandPaletteProps) {
             merged.push({
               id: item.id,
               type: "INTAKE",
-              code: formatDisplayCode("INK", item.id),
+              displayCode: resolveIntakeDisplayCode(item),
               title: item.title,
+              organizationId: item.organizationId,
+              spaceId: item.spaceId,
               href: getDetailHref({
                 id: item.id,
                 type: "INTAKE",
@@ -461,7 +510,7 @@ export function CommandPalette({ enabled = true }: CommandPaletteProps) {
     return () => {
       cancelled = true;
     };
-  }, [enabled, open, spaceId, organizationId, t]);
+  }, [enabled, listSearchQuery, open, spaceId, organizationId, t]);
 
   useEffect(() => {
     if (!canSearchTags || !effectiveSpaceId) {
@@ -505,12 +554,92 @@ export function CommandPalette({ enabled = true }: CommandPaletteProps) {
     };
   }, [canSearchTags, effectiveSpaceId, organizationId, tagSearchTerm]);
 
+  useEffect(() => {
+    if (!enabled || !open || isTagQuery || trimmedQuery.length < 2) {
+      setLookupResult(null);
+      setLookupErrorKey(null);
+      setIsLookupLoading(false);
+      return;
+    }
+
+    if (!isObjectCodeLikeQuery) {
+      setLookupResult(null);
+      setLookupErrorKey(null);
+      setIsLookupLoading(false);
+      return;
+    }
+
+    if (!normalizedObjectCodeQuery) {
+      setLookupResult(null);
+      setLookupErrorKey("lookup.invalid");
+      setIsLookupLoading(false);
+      return;
+    }
+
+    if (!organizationId) {
+      setLookupResult(null);
+      setLookupErrorKey("lookup.missingOrganization");
+      setIsLookupLoading(false);
+      return;
+    }
+
+    let cancelled = false;
+    setIsLookupLoading(true);
+    setLookupErrorKey(null);
+
+    void lookupObjectCode({
+      code: normalizedObjectCodeQuery,
+      organizationId,
+      ...(lookupSpaceId ? { spaceId: lookupSpaceId } : {}),
+    })
+      .then((result) => {
+        if (!cancelled) {
+          setLookupResult(
+            toSearchResultFromObjectCodeLookup(
+              result,
+              spacesForCurrentOrganization,
+              lookupSpaceId,
+            ),
+          );
+        }
+      })
+      .catch((error) => {
+        if (!cancelled) {
+          setLookupResult(null);
+          setLookupErrorKey(getObjectCodeLookupErrorKey(error));
+        }
+      })
+      .finally(() => {
+        if (!cancelled) {
+          setIsLookupLoading(false);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    effectiveSpaceId,
+    enabled,
+    isObjectCodeLikeQuery,
+    isTagQuery,
+    lookupSpaceId,
+    normalizedObjectCodeQuery,
+    open,
+    organizationId,
+    spacesForCurrentOrganization,
+    trimmedQuery.length,
+  ]);
+
   // Reset in-memory fetch state if user switches organization / space.
   useEffect(() => {
     setHasFetched(false);
     setCanPruneRecent(false);
     setResults([]);
     setRecent([]);
+    setLookupResult(null);
+    setLookupErrorKey(null);
+    setIsLookupLoading(false);
   }, [enabled, organizationId, spaceId]);
 
   const navigate = (href: string) => {
@@ -520,8 +649,14 @@ export function CommandPalette({ enabled = true }: CommandPaletteProps) {
 
   const navigateAndRemember = (item: SearchResult) => {
     const itemWithDetailHref = withDetailHref(item);
-    const next = writeRecent(itemWithDetailHref, recentScope);
-    setRecent(next);
+    const targetRecentScope = {
+      organizationId: itemWithDetailHref.organizationId ?? organizationId,
+      spaceId: itemWithDetailHref.spaceId ?? spaceId,
+    };
+    const next = writeRecent(itemWithDetailHref, targetRecentScope);
+    if (createRecentStorageKey(targetRecentScope) === recentStorageKey) {
+      setRecent(next);
+    }
     navigate(itemWithDetailHref.href);
   };
 
@@ -547,6 +682,18 @@ export function CommandPalette({ enabled = true }: CommandPaletteProps) {
     }
   };
 
+  const searchResults = useMemo(() => {
+    if (!lookupResult) {
+      return results;
+    }
+
+    const lookupKey = buildLiveKey(lookupResult.type, lookupResult.id);
+    return [
+      lookupResult,
+      ...results.filter((item) => buildLiveKey(item.type, item.id) !== lookupKey),
+    ];
+  }, [lookupResult, results]);
+
   const grouped = useMemo(() => {
     const out: Record<SearchResult["type"], SearchResult[]> = {
       TASK: [],
@@ -554,9 +701,9 @@ export function CommandPalette({ enabled = true }: CommandPaletteProps) {
       REQUIREMENT: [],
       INTAKE: [],
     };
-    for (const r of results) out[r.type].push(r);
+    for (const r of searchResults) out[r.type].push(r);
     return out;
-  }, [results]);
+  }, [searchResults]);
 
   // Once an entity fetch completes, soft-delete any recent entry whose
   // underlying item is no longer surfaced by its service (e.g. it has been
@@ -573,12 +720,14 @@ export function CommandPalette({ enabled = true }: CommandPaletteProps) {
     });
   }, [canPruneRecent, enabled, open, hasFetched, recentScope, results]);
 
-  const showSearchView = Boolean(
-    (trimmedQuery.length >= 2 && spaceId) || canSearchTags,
-  );
+  const showSearchView = isTagQuery
+    ? canSearchTags
+    : Boolean(trimmedQuery.length >= 2 && (spaceId || organizationId));
   const showTagResults = canSearchTags && tagResults.length > 0;
   const isSearchLoading =
-    isLoading || (canSearchTags && isTagLoading && tagResults.length === 0);
+    isLoading ||
+    isLookupLoading ||
+    (canSearchTags && isTagLoading && tagResults.length === 0);
 
   if (!enabled) {
     return null;
@@ -611,6 +760,15 @@ export function CommandPalette({ enabled = true }: CommandPaletteProps) {
                     className="mx-2 mb-1 rounded-md border border-destructive/40 bg-destructive/10 px-2.5 py-1.5 text-xs text-destructive"
                   >
                     {tTags("error")}
+                  </div>
+                ) : null}
+                {lookupErrorKey ? (
+                  <div
+                    role="alert"
+                    data-testid="command-palette-lookup-error"
+                    className="mx-2 mb-1 rounded-md border border-destructive/40 bg-destructive/10 px-2.5 py-1.5 text-xs text-destructive"
+                  >
+                    {t(lookupErrorKey)}
                   </div>
                 ) : null}
                 {showTagResults && (
@@ -856,14 +1014,19 @@ function SearchGroup({
             data-testid={itemTestIdPrefix ?? "command-palette-item"}
             data-id={item.id}
             data-type={item.type.toLowerCase()}
-            value={`${item.code} ${item.title}`}
+            value={`${item.displayCode} ${item.title} ${item.spaceLabel ?? ""}`}
             onSelect={() => onSelect(item)}
           >
             <Icon className={typeIconColor[item.type]} />
             <span className="font-mono text-[10px] text-muted-foreground">
-              {item.code}
+              {item.displayCode}
             </span>
             <span className="truncate">{item.title}</span>
+            {item.spaceLabel ? (
+              <span className="ml-auto shrink-0 text-[10px] text-muted-foreground">
+                {item.spaceLabel}
+              </span>
+            ) : null}
           </CommandItem>
         );
       })}
@@ -905,6 +1068,67 @@ function TagSearchGroup({
   );
 }
 
+function toSearchResultFromObjectCodeLookup(
+  result: ObjectCodeLookupResult,
+  spaces: Array<{ code?: string; id: string; name: string }>,
+  currentSpaceId: string | undefined,
+): SearchResult {
+  const type = resolveLookupResultType(result);
+  const space = spaces.find((item) => item.id === result.spaceId);
+  const showSpace = !currentSpaceId || currentSpaceId !== result.spaceId;
+  const spaceLabel = showSpace
+    ? (space?.code ? `${space.name} · ${space.code}` : space?.name)
+    : undefined;
+
+  return {
+    id: result.id,
+    type,
+    displayCode: result.displayCode,
+    title: result.title,
+    href: getDetailHref({
+      id: result.id,
+      type,
+      href: type === "REQUIREMENT" ? `/requirements/${result.id}` : "/",
+    }),
+    organizationId: result.organizationId,
+    spaceId: result.spaceId,
+    spaceLabel,
+  };
+}
+
+function resolveLookupResultType(
+  result: ObjectCodeLookupResult,
+): SearchResult["type"] {
+  if (result.type === "REQUIREMENT") {
+    return "REQUIREMENT";
+  }
+
+  if (result.type === "INTAKE_ITEM") {
+    return "INTAKE";
+  }
+
+  return result.workItemType === "BUG" ? "BUG" : "TASK";
+}
+
+function getObjectCodeLookupErrorKey(error: unknown): string {
+  if (error instanceof ApiClientError) {
+    if (error.error.code === "OBJECT_CODE_INVALID") {
+      return "lookup.invalid";
+    }
+    if (error.error.code === "OBJECT_CODE_NOT_FOUND") {
+      return "lookup.notFound";
+    }
+    if (error.error.code === "OBJECT_CODE_AMBIGUOUS") {
+      return "lookup.ambiguous";
+    }
+    if (error.error.code === "SPACE_CONTEXT_REQUIRED") {
+      return "lookup.spaceContextRequired";
+    }
+  }
+
+  return "lookup.failed";
+}
+
 function buildTagFilterHref(tagId: string, pathname: string) {
   const targetPath = getTagFilterTargetPath(pathname);
   const queryString = buildTagFilterQueryString({
@@ -916,9 +1140,8 @@ function buildTagFilterHref(tagId: string, pathname: string) {
 }
 
 function getTagFilterTargetPath(pathname: string) {
-  const normalized = pathname.replace(/\/+$/u, "") || "/";
-  const withoutLocale =
-    normalized.replace(/^\/[a-z]{2}(?:-[A-Z]{2})?(?=\/)/u, "") || "/";
+  const normalized = normalizeAppPathname(pathname);
+  const withoutLocale = normalized;
 
   if (TAG_FILTER_TARGET_PATHS.has(normalized)) {
     return normalized;
@@ -929,4 +1152,30 @@ function getTagFilterTargetPath(pathname: string) {
   }
 
   return "/work-items";
+}
+
+function shouldUseSpaceScopedObjectLookup(pathname: string): boolean {
+  const normalized = normalizeAppPathname(pathname);
+  const spaceScopedPrefixes = [
+    "/bugs",
+    "/exceptions",
+    "/intake-items",
+    "/requirements",
+    "/settings",
+    "/versions",
+    "/work-items",
+    "/workflow",
+  ];
+
+  return spaceScopedPrefixes.some(
+    (prefix) => normalized === prefix || normalized.startsWith(`${prefix}/`),
+  );
+}
+
+function normalizeAppPathname(pathname: string): string {
+  const normalized = pathname.replace(/\/+$/u, "") || "/";
+
+  return (
+    normalized.replace(/^\/[a-z]{2}(?:-[A-Z]{2})?(?=\/)/u, "") || "/"
+  );
 }

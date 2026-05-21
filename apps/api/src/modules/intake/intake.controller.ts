@@ -64,6 +64,7 @@ export class IntakeController {
       page: number;
       pageSize: number;
       priority?: Priority;
+      query?: string;
       reporterId?: string;
       requirementId?: string;
       sortBy?: string;

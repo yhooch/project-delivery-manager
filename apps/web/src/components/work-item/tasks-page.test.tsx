@@ -405,6 +405,8 @@ describe("TasksPage", () => {
     getWorkItemMock.mockResolvedValueOnce(
       makeTask({
         id: "01ARZ3NDEKTSV4RRFFQ69G5FDL",
+        displayCode: "TASK-42",
+        spaceId: "SPC_02",
         title: "Deep linked task",
       }),
     );
@@ -424,6 +426,19 @@ describe("TasksPage", () => {
     expect(
       screen.getByTestId("task-detail-sheet-item-title"),
     ).toHaveTextContent("Deep linked task");
+    expect(screen.getByTestId("task-detail-sheet-space-id")).toHaveTextContent(
+      "SPC_02",
+    );
+    const stored = JSON.parse(
+      window.localStorage.getItem(
+        createRecentStorageKey({ organizationId: "ORG_01", spaceId: "SPC_02" }),
+      ) ?? "[]",
+    ) as Array<Record<string, unknown>>;
+    expect(stored[0]).toMatchObject({
+      displayCode: "TASK-42",
+      id: "01ARZ3NDEKTSV4RRFFQ69G5FDL",
+      spaceId: "SPC_02",
+    });
   });
 
   it("renders task rows with real assignee name from the member lookup", async () => {
@@ -632,6 +647,17 @@ describe("TasksPage", () => {
       .mockResolvedValueOnce({
         items: [
           makeTask({
+            id: "01ARZ3NDEKTSV4RRFFQ69G5S03",
+            title: "Backend-only search hit",
+          }),
+        ],
+        page: 1,
+        pageSize: 1,
+        total: 2,
+      })
+      .mockResolvedValueOnce({
+        items: [
+          makeTask({
             id: "01ARZ3NDEKTSV4RRFFQ69G5S02",
             title: "Needle task",
           }),
@@ -648,6 +674,7 @@ describe("TasksPage", () => {
       target: { value: "needle" },
     });
 
+    await waitFor(() => expect(listWorkItemsMock).toHaveBeenCalledTimes(2));
     expect(screen.getByText("tasks.states.empty.title")).toBeInTheDocument();
     fireEvent.click(
       screen.getByRole("button", { name: "tasks.pagination.loadMore" }),
@@ -657,6 +684,9 @@ describe("TasksPage", () => {
       expect(listWorkItemsMock).toHaveBeenLastCalledWith(
         expect.objectContaining({ page: 2, pageSize: 100 }),
       ),
+    );
+    expect(listWorkItemsMock).toHaveBeenLastCalledWith(
+      expect.objectContaining({ query: "needle" }),
     );
     expect(await screen.findByText("Needle task")).toBeInTheDocument();
   });
@@ -1013,5 +1043,46 @@ describe("TasksPage", () => {
 
     expect(screen.getByText("Refactor auth")).toBeInTheDocument();
     expect(screen.queryByText("Polish header")).not.toBeInTheDocument();
+  });
+
+  it("refetches the first task page when the search query changes", async () => {
+    listWorkItemsMock
+      .mockResolvedValueOnce({
+        items: [
+          makeTask({
+            id: "01ARZ3NDEKTSV4RRFFQ69G5F01",
+            title: "Loaded first page",
+          }),
+        ],
+        total: 1,
+      })
+      .mockResolvedValueOnce({
+        items: [
+          makeTask({
+            displayCode: "TASK-42",
+            id: "01ARZ3NDEKTSV4RRFFQ69G5F42",
+            title: "Loaded TASK-42",
+          }),
+        ],
+        total: 1,
+      });
+
+    render(<TasksPage />);
+
+    expect(await screen.findByText("Loaded first page")).toBeInTheDocument();
+    fireEvent.change(screen.getByPlaceholderText("tasks.search.placeholder"), {
+      target: { value: "TASK-42" },
+    });
+
+    await waitFor(() => expect(listWorkItemsMock).toHaveBeenCalledTimes(2));
+    expect(listWorkItemsMock).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        page: 1,
+        query: "TASK-42",
+        spaceId: "SPC_01",
+        type: "TASK",
+      }),
+    );
+    expect(await screen.findByText("Loaded TASK-42")).toBeInTheDocument();
   });
 });

@@ -3,6 +3,8 @@ import { ulid } from "ulid";
 
 import { Prisma } from "../../generated/prisma/client";
 import { PrismaService } from "../../prisma/prisma.service";
+import { ObjectCodeAllocator } from "../object-code/object-code.allocator";
+import { parseObjectCode } from "../object-code/object-code.types";
 import {
   findTaggedTargetIds,
   listTagsByTargets,
@@ -24,6 +26,8 @@ export class PrismaBugRepository implements BugRepository {
   constructor(
     @Inject(PrismaService)
     private readonly prisma: PrismaService,
+    @Inject(ObjectCodeAllocator)
+    private readonly objectCodeAllocator: ObjectCodeAllocator,
   ) {}
 
   async listBySpaceId(spaceId: string, input: BugListInput) {
@@ -119,6 +123,12 @@ export class PrismaBugRepository implements BugRepository {
 
   async create(input: CreateBugInput) {
     const created = await this.prisma.client.$transaction(async (tx) => {
+      const sequence = await this.objectCodeAllocator.allocateOne(tx, {
+        actorUserId: input.createdById,
+        objectType: "BUG",
+        organizationId: input.organizationId,
+        spaceId: input.spaceId,
+      });
       const workItem = await tx.workItem.create({
         data: {
           id: input.id,
@@ -133,6 +143,7 @@ export class PrismaBugRepository implements BugRepository {
           priority: input.priority,
           reporterId: input.reporterId,
           requirementId: input.requirementId,
+          sequence,
           spaceId: input.spaceId,
           statusCategory: input.statusCategory,
           title: input.title,
@@ -735,8 +746,42 @@ function buildListWhere(
   };
 
   applyCreatedByFilter(where, input.createdById);
+  applyListQuery(where, input.query);
 
   return where;
+}
+
+function applyListQuery(
+  where: Prisma.WorkItemWhereInput,
+  query: string | undefined,
+) {
+  const trimmed = query?.trim();
+
+  if (!trimmed) {
+    return;
+  }
+
+  const parsed = parseObjectCode(trimmed);
+
+  if (parsed) {
+    where.AND = [
+      ...toArray(where.AND),
+      parsed.objectType === "BUG"
+        ? { sequence: parsed.sequence }
+        : { id: { in: [] } },
+    ];
+    return;
+  }
+
+  where.AND = [
+    ...toArray(where.AND),
+    {
+      OR: [
+        { title: { contains: trimmed, mode: "insensitive" } },
+        { description: { contains: trimmed, mode: "insensitive" } },
+      ],
+    },
+  ];
 }
 
 function applyCreatedByFilter(

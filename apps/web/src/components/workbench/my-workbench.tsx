@@ -63,6 +63,7 @@ type WorkbenchItemViewModel = WorkItemViewModel & {
   listKey?: string;
   organizationId?: string;
   preferredActionId?: string;
+  spaceLabel?: string;
   spaceId?: string;
 };
 
@@ -124,6 +125,18 @@ export function MyWorkbench() {
   const workbenchContextKey = `${organizationId ?? ""}:${selectedSpaceId ?? ""}`;
   const selectedSpace = spacesForCurrentOrganization.find(
     (space) => space.id === selectedSpaceId,
+  );
+  const getOrganizationSpaceLabel = useCallback(
+    (itemSpaceId?: string) => {
+      if (selectedSpaceId || !itemSpaceId) {
+        return undefined;
+      }
+
+      return spacesForCurrentOrganization.find(
+        (space) => space.id === itemSpaceId,
+      )?.name;
+    },
+    [selectedSpaceId, spacesForCurrentOrganization],
   );
   // Lookups: hooks return empty results gracefully when spaceId is undefined.
   const { getMember, members: selectedSpaceMembers } = useSpaceMembers(
@@ -420,9 +433,14 @@ export function MyWorkbench() {
         {
           id: item.id,
           type: item.type,
-          code: item.code,
+          displayCode: item.code,
           title: item.title,
-          href: item.type === "BUG" ? "/bugs" : "/work-items",
+          href:
+            item.type === "BUG"
+              ? `/bugs?bugId=${encodeURIComponent(item.id)}`
+              : `/work-items?workItemId=${encodeURIComponent(item.id)}`,
+          organizationId: itemOrganizationId,
+          spaceId: itemSpaceId,
         },
         { organizationId: itemOrganizationId, spaceId: itemSpaceId },
       );
@@ -481,10 +499,11 @@ export function MyWorkbench() {
             lookupHelpers,
             t("time.justNow"),
             t("versionFallback"),
+            getOrganizationSpaceLabel,
           ),
         )
         .map(withWorkbenchListKey("todo")),
-    [view, locale, lookupHelpers, t],
+    [getOrganizationSpaceLabel, view, locale, lookupHelpers, t],
   );
   const assignedTaskItems = useMemo(
     () =>
@@ -495,10 +514,11 @@ export function MyWorkbench() {
             lookupHelpers,
             t("time.justNow"),
             t("versionFallback"),
+            getOrganizationSpaceLabel,
           ),
         )
         .map(withWorkbenchListKey("assigned-task")),
-    [view, locale, lookupHelpers, t],
+    [getOrganizationSpaceLabel, view, locale, lookupHelpers, t],
   );
   const assignedBugItems = useMemo(
     () =>
@@ -509,10 +529,11 @@ export function MyWorkbench() {
             lookupHelpers,
             t("time.justNow"),
             t("versionFallback"),
+            getOrganizationSpaceLabel,
           ),
         )
         .map(withWorkbenchListKey("assigned-bug")),
-    [view, locale, lookupHelpers, t],
+    [getOrganizationSpaceLabel, view, locale, lookupHelpers, t],
   );
   const actionItems = useMemo(() => {
     const toWorkItem = toWorkbenchItem(
@@ -520,6 +541,7 @@ export function MyWorkbench() {
       lookupHelpers,
       t("time.justNow"),
       t("versionFallback"),
+      getOrganizationSpaceLabel,
     );
 
     return (view?.sections.actionTodos.items.items ?? [])
@@ -530,7 +552,7 @@ export function MyWorkbench() {
         preferredActionId: todo.availableAction.id,
       }))
       .map(withWorkbenchListKey("action"));
-  }, [view, locale, lookupHelpers, t, tRoot]);
+  }, [getOrganizationSpaceLabel, view, locale, lookupHelpers, t, tRoot]);
   const pendingConfirmItems = useMemo(
     () =>
       (view?.sections.pendingConfirm.items.items ?? [])
@@ -540,10 +562,11 @@ export function MyWorkbench() {
             lookupHelpers,
             t("time.justNow"),
             t("versionFallback"),
+            getOrganizationSpaceLabel,
           ),
         )
         .map(withWorkbenchListKey("pending-confirm")),
-    [view, locale, lookupHelpers, t],
+    [getOrganizationSpaceLabel, view, locale, lookupHelpers, t],
   );
   const dueSoonItems = useMemo(
     () =>
@@ -554,10 +577,11 @@ export function MyWorkbench() {
             lookupHelpers,
             t("time.justNow"),
             t("versionFallback"),
+            getOrganizationSpaceLabel,
           ),
         )
         .map(withWorkbenchListKey("due-soon")),
-    [view, locale, lookupHelpers, t],
+    [getOrganizationSpaceLabel, view, locale, lookupHelpers, t],
   );
   const blockedItems = useMemo(
     () =>
@@ -568,10 +592,11 @@ export function MyWorkbench() {
             lookupHelpers,
             t("time.justNow"),
             t("versionFallback"),
+            getOrganizationSpaceLabel,
           ),
         )
         .map(withWorkbenchListKey("blocked")),
-    [view, locale, lookupHelpers, t],
+    [getOrganizationSpaceLabel, view, locale, lookupHelpers, t],
   );
   const recentEvents = view?.sections.recentActivities.items.items ?? [];
 
@@ -909,6 +934,7 @@ export function MyWorkbench() {
               {recentEvents.map((event) => (
                 <TimelineEventItem
                   key={event.id}
+                  contextLabel={getOrganizationSpaceLabel(event.spaceId)}
                   density="compact"
                   event={event}
                   href={getTimelineEventHref(event)}
@@ -1250,6 +1276,14 @@ function ItemList({
                   <span className="font-mono text-[10px] text-muted-foreground shrink-0">
                     {item.code}
                   </span>
+                  {item.spaceLabel ? (
+                    <>
+                      <span className="w-1 h-1 rounded-full bg-border" />
+                      <span className="hidden sm:inline-block truncate text-[10px] text-muted-foreground shrink">
+                        {item.spaceLabel}
+                      </span>
+                    </>
+                  ) : null}
                   <span className="w-1 h-1 rounded-full bg-border" />
                   <span className="text-[10px] text-muted-foreground flex items-center gap-1.5 shrink-0">
                     <span
@@ -1325,6 +1359,7 @@ function toWorkbenchItem(
   lookups?: WorkbenchLookupHelpers,
   justNowLabel?: string,
   unknownVersionLabel?: string,
+  getSpaceLabel?: (spaceId?: string) => string | undefined,
 ) {
   const toViewModel = createWorkItemViewModelMapper({
     locale,
@@ -1336,6 +1371,7 @@ function toWorkbenchItem(
   return (item: ViewWorkItemSummary): WorkbenchItemViewModel => ({
     ...toViewModel(item),
     organizationId: item.organizationId,
+    spaceLabel: getSpaceLabel?.(item.spaceId),
     spaceId: item.spaceId,
   });
 }

@@ -21,11 +21,15 @@ import type {
 
 import { Prisma } from "../../generated/prisma/client";
 import { PrismaService } from "../../prisma/prisma.service";
+import { formatDisplayCode } from "../object-code/object-code.types";
 import {
   findTaggedTargetIds,
   listTagsByTargets,
 } from "../tag/tag-assignment.helpers";
-import { toTimelineEvent } from "../timeline/timeline.mappers";
+import {
+  toTimelineEvent,
+  type TimelineTargetIdentityRecord,
+} from "../timeline/timeline.mappers";
 import {
   canReadAllSpaceWorkItems,
   testerVisibleWorkItemWhere,
@@ -1433,7 +1437,7 @@ export class PrismaSpaceRepository implements SpaceRepository {
         where,
       }),
     ]);
-    const targetTitles = await this.findTimelineTargetTitles(
+    const targetIdentities = await this.findTimelineTargetIdentities(
       events.map((event) => ({
         id: event.targetId,
         type: event.targetType,
@@ -1442,7 +1446,10 @@ export class PrismaSpaceRepository implements SpaceRepository {
 
     return {
       items: events.map((event) =>
-        toTimelineEvent(event, targetTitles.get(timelineTargetKey(event))),
+        toTimelineEvent(
+          event,
+          targetIdentities.get(timelineTargetKey(event)),
+        ),
       ),
       page: input.page,
       pageSize: input.pageSize,
@@ -1450,10 +1457,10 @@ export class PrismaSpaceRepository implements SpaceRepository {
     };
   }
 
-  private async findTimelineTargetTitles(
+  private async findTimelineTargetIdentities(
     targets: Array<{ id: string; type: TargetType }>,
   ) {
-    const titles = new Map<string, string>();
+    const identities = new Map<string, TimelineTargetIdentityRecord>();
     const idsByType = new Map<TargetType, string[]>();
 
     for (const target of targets) {
@@ -1464,77 +1471,127 @@ export class PrismaSpaceRepository implements SpaceRepository {
     }
 
     if (idsByType.size === 0) {
-      return titles;
+      return identities;
     }
 
-    const [workItems, requirements, intakeItems, versions] = await Promise.all([
-      this.prisma.client.workItem.findMany({
-        select: {
-          id: true,
-          title: true,
-        },
-        where: {
-          deletedAt: null,
-          id: {
-            in: unique(idsByType.get("WORK_ITEM") ?? []),
-          },
-        },
-      }),
-      this.prisma.client.requirement.findMany({
-        select: {
-          id: true,
-          title: true,
-        },
-        where: {
-          deletedAt: null,
-          id: {
-            in: unique(idsByType.get("REQUIREMENT") ?? []),
-          },
-        },
-      }),
-      this.prisma.client.intakeItem.findMany({
-        select: {
-          id: true,
-          title: true,
-        },
-        where: {
-          deletedAt: null,
-          id: {
-            in: unique(idsByType.get("INTAKE_ITEM") ?? []),
-          },
-        },
-      }),
-      this.prisma.client.version.findMany({
-        select: {
-          id: true,
-          name: true,
-        },
-        where: {
-          deletedAt: null,
-          id: {
-            in: unique(idsByType.get("VERSION") ?? []),
-          },
-        },
-      }),
-    ]);
+    const spaceIds = unique(idsByType.get("SPACE") ?? []);
+    const workItemIds = unique(idsByType.get("WORK_ITEM") ?? []);
+    const requirementIds = unique(idsByType.get("REQUIREMENT") ?? []);
+    const intakeItemIds = unique(idsByType.get("INTAKE_ITEM") ?? []);
+    const versionIds = unique(idsByType.get("VERSION") ?? []);
+    const [spaces, workItems, requirements, intakeItems, versions] =
+      await Promise.all([
+        spaceIds.length > 0
+          ? this.prisma.client.space.findMany({
+              select: {
+                id: true,
+                name: true,
+              },
+              where: {
+                deletedAt: null,
+                id: {
+                  in: spaceIds,
+                },
+              },
+            })
+          : Promise.resolve([]),
+        workItemIds.length > 0
+          ? this.prisma.client.workItem.findMany({
+              select: {
+                id: true,
+                sequence: true,
+                title: true,
+                type: true,
+              },
+              where: {
+                deletedAt: null,
+                id: {
+                  in: workItemIds,
+                },
+              },
+            })
+          : Promise.resolve([]),
+        requirementIds.length > 0
+          ? this.prisma.client.requirement.findMany({
+              select: {
+                id: true,
+                sequence: true,
+                title: true,
+              },
+              where: {
+                deletedAt: null,
+                id: {
+                  in: requirementIds,
+                },
+              },
+            })
+          : Promise.resolve([]),
+        intakeItemIds.length > 0
+          ? this.prisma.client.intakeItem.findMany({
+              select: {
+                id: true,
+                sequence: true,
+                title: true,
+              },
+              where: {
+                deletedAt: null,
+                id: {
+                  in: intakeItemIds,
+                },
+              },
+            })
+          : Promise.resolve([]),
+        versionIds.length > 0
+          ? this.prisma.client.version.findMany({
+              select: {
+                id: true,
+                name: true,
+              },
+              where: {
+                deletedAt: null,
+                id: {
+                  in: versionIds,
+                },
+              },
+            })
+          : Promise.resolve([]),
+      ]);
+
+    for (const item of spaces) {
+      setTimelineTargetIdentity(identities, "SPACE", item.id, {
+        title: item.name,
+      });
+    }
 
     for (const item of workItems) {
-      setTimelineTitle(titles, "WORK_ITEM", item.id, item.title);
+      setTimelineTargetIdentity(identities, "WORK_ITEM", item.id, {
+        sequence: item.sequence,
+        title: item.title,
+        workItemType: item.type,
+      });
     }
 
     for (const item of requirements) {
-      setTimelineTitle(titles, "REQUIREMENT", item.id, item.title);
+      setTimelineTargetIdentity(identities, "REQUIREMENT", item.id, {
+        sequence: item.sequence,
+        title: item.title,
+      });
     }
 
     for (const item of intakeItems) {
-      setTimelineTitle(titles, "INTAKE_ITEM", item.id, item.title);
+      setTimelineTargetIdentity(identities, "INTAKE_ITEM", item.id, {
+        sequence: item.sequence,
+        title: item.title,
+      });
     }
 
     for (const item of versions) {
-      setTimelineTitle(titles, "VERSION", item.id, item.name);
+      setTimelineTargetIdentity(identities, "VERSION", item.id, {
+        title: item.name,
+      });
     }
 
-    return titles;
+    return identities;
   }
 
   private async listVisibleTimelineTargetRefs(
@@ -1959,6 +2016,7 @@ type ViewWorkItemRecord = {
   priority: ViewWorkItemSummary["priority"];
   reporterId: string;
   requirementId: string | null;
+  sequence: number | null;
   spaceId: string;
   statusCategory: StatusCategory;
   title: string;
@@ -2352,17 +2410,22 @@ function timelineTargetKey(target: {
   return `${target.targetType}:${target.targetId}`;
 }
 
-function setTimelineTitle(
-  titles: Map<string, string>,
+function setTimelineTargetIdentity(
+  identities: Map<string, TimelineTargetIdentityRecord>,
   type: TargetType,
   id: string,
-  title: string,
+  identity: TimelineTargetIdentityRecord,
 ) {
-  if (title.trim().length === 0) {
+  const title = identity.title?.trim();
+
+  if (!title && identity.sequence == null) {
     return;
   }
 
-  titles.set(`${type}:${id}`, title);
+  identities.set(`${type}:${id}`, {
+    ...identity,
+    title: title ? identity.title : undefined,
+  });
 }
 
 function toViewWorkItemSummary(
@@ -2372,6 +2435,7 @@ function toViewWorkItemSummary(
 ): ViewWorkItemSummary {
   return {
     id: record.id,
+    ...toWorkItemDisplayIdentity(record.type, record.sequence),
     type: record.type,
     organizationId: record.organizationId,
     spaceId: record.spaceId,
@@ -2401,6 +2465,18 @@ function toViewWorkItemSummary(
     },
     exceptionSignals: buildExceptionSignals(record, context, now),
   };
+}
+
+function toWorkItemDisplayIdentity(
+  type: ViewWorkItemSummary["type"],
+  sequence: number | null | undefined,
+) {
+  return sequence == null
+    ? {}
+    : {
+        sequence,
+        displayCode: formatDisplayCode(type, sequence),
+      };
 }
 
 function buildExceptionSignals(

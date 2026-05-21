@@ -1,5 +1,7 @@
 import type { IntakeItem, TagDto } from "@project-delivery/shared";
 
+import { formatDisplayCode } from "../object-code/object-code.types";
+
 type PrismaIntakeItemRecord = {
   acceptedAt: Date | null;
   assigneeId: string | null;
@@ -11,6 +13,7 @@ type PrismaIntakeItemRecord = {
   priority: IntakeItem["priority"] | null;
   reporterId: string;
   requirementId: string | null;
+  sequence: number | null;
   sourceObject: unknown;
   sourceType: IntakeItem["sourceType"];
   spaceId: string;
@@ -26,6 +29,7 @@ export function toIntakeItem(
 ): IntakeItem {
   return {
     id: record.id,
+    ...toIntakeDisplayIdentity(record.sequence),
     organizationId: record.organizationId,
     spaceId: record.spaceId,
     versionId: record.versionId ?? undefined,
@@ -44,6 +48,15 @@ export function toIntakeItem(
     createdAt: record.createdAt?.toISOString(),
     updatedAt: record.updatedAt.toISOString(),
   };
+}
+
+function toIntakeDisplayIdentity(sequence: number | null | undefined) {
+  return sequence == null
+    ? {}
+    : {
+        sequence,
+        displayCode: formatDisplayCode("INTAKE_ITEM", sequence),
+      };
 }
 
 function toSourceObject(value: unknown): Record<string, unknown> | undefined {

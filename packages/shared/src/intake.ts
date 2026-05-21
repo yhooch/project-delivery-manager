@@ -15,6 +15,7 @@ import {
   TagIdListSchema,
   TagListSchema,
 } from "./tag.ts";
+import { DisplayIdentitySchema } from "./object-code.ts";
 import { WorkItemSchema } from "./work-item.ts";
 
 export const IntakeSourceObjectSchema = z.record(z.string(), z.unknown());
@@ -25,6 +26,8 @@ export const IntakeItemSchema = z
     id: UlidSchema,
     organizationId: UlidSchema,
     spaceId: UlidSchema,
+    sequence: DisplayIdentitySchema.shape.sequence,
+    displayCode: DisplayIdentitySchema.shape.displayCode,
     versionId: UlidSchema.optional(),
     requirementId: UlidSchema.optional(),
     title: z.string().min(1).max(200),
@@ -121,6 +124,7 @@ export type ConvertIntakeItemToWorkItemsResponse = z.infer<
 export const IntakeItemListQuerySchema = PageQuerySchema.merge(
   TagFilterQuerySchema,
 ).extend({
+  query: z.string().trim().min(1).max(200).optional(),
   versionId: UlidSchema.optional(),
   requirementId: UlidSchema.optional(),
   status: IntakeStatusSchema.optional(),

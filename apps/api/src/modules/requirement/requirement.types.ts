@@ -18,6 +18,7 @@ export type RequirementListInput = {
   ownerId?: string;
   page: number;
   pageSize: number;
+  query?: string;
   sortBy?: string;
   sortOrder?: "asc" | "desc";
   status?: RequirementStatus;

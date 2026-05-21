@@ -34,6 +34,7 @@ import {
 
 type TimelineEventItemProps = {
   className?: string;
+  contextLabel?: string;
   density?: "compact" | "full";
   event: TimelineEvent;
   href?: string | null;
@@ -47,6 +48,7 @@ type TimelineEventItemProps = {
 
 export function TimelineEventItem({
   className,
+  contextLabel,
   density = "full",
   event,
   href,
@@ -182,7 +184,7 @@ export function TimelineEventItem({
             compact ? "truncate" : "",
           )}
         >
-          {timestamp}
+          {contextLabel ? `${timestamp} · ${contextLabel}` : timestamp}
         </div>
       </div>
     </div>

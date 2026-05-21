@@ -68,6 +68,7 @@ export class BugController {
       assigneeId?: string;
       statusCategory?: StatusCategory;
       priority?: Priority;
+      query?: string;
       severity?: BugSeverity;
       relatedTaskId?: string;
       tagIds?: string;

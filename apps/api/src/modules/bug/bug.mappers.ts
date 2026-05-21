@@ -31,7 +31,7 @@ export function toBugView(
   tags: TagDto[] = [],
 ): BugView {
   return {
-    ...toWorkItem(record, permissions, tags),
+    ...toWorkItem({ ...record, type: "BUG" }, permissions, tags),
     type: "BUG",
     bugDetail: toBugDetail(record.bugDetail),
   };

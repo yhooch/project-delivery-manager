@@ -18,6 +18,7 @@ import { BugModule } from "./modules/bug/bug.module";
 import { SessionParsingMiddleware } from "./modules/auth/session-parsing.middleware";
 import { CommentModule } from "./modules/comment/comment.module";
 import { IntakeModule } from "./modules/intake/intake.module";
+import { ObjectCodeModule } from "./modules/object-code/object-code.module";
 import { OrganizationModule } from "./modules/organization/organization.module";
 import { RequirementModule } from "./modules/requirement/requirement.module";
 import { SpaceModule } from "./modules/space/space.module";
@@ -41,6 +42,7 @@ import { PrismaModule } from "./prisma/prisma.module";
     VersionModule,
     RequirementModule,
     IntakeModule,
+    ObjectCodeModule,
     WorkItemModule,
     BugModule,
     AttachmentModule,

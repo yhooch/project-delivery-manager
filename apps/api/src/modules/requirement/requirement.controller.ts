@@ -57,6 +57,7 @@ export class RequirementController {
       pageSize: number;
       sortBy?: string;
       sortOrder?: "asc" | "desc";
+      query?: string;
       status?: RequirementStatus;
       tagIds?: string;
       tagMatch?: TagMatch;

@@ -53,6 +53,28 @@ describe("work item view models", () => {
     expect(viewModel.isBlocked).toBe(false);
   });
 
+  it("uses backend displayCode for list items", () => {
+    const viewModel = toWorkItemListViewModel(
+      makeWorkItem({ displayCode: "TASK-42" }),
+      {
+        locale: "zh-CN",
+      },
+    );
+
+    expect(viewModel.code).toBe("TASK-42");
+  });
+
+  it("uses backend displayCode for view summaries", () => {
+    const viewModel = toWorkItemViewModel(
+      makeSummary({ displayCode: "BUG-17", type: "BUG" }),
+      {
+        locale: "zh-CN",
+      },
+    );
+
+    expect(viewModel.code).toBe("BUG-17");
+  });
+
   it("marks list items as blocked when blockedAt is present", () => {
     const viewModel = toWorkItemListViewModel(
       makeWorkItem({

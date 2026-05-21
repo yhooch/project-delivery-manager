@@ -1023,6 +1023,80 @@ describe("PrismaSpaceRepository", () => {
     expect(pendingRegressionWhere).not.toContain("VERIFYING");
   });
 
+  it("maps workbench work item summaries with readable display code", async () => {
+    const spaceId = "01TRZ3NDEKTSV4RRFFQ69G5SPC";
+    const workItem = {
+      assigneeId: null,
+      blockedAt: null,
+      blockedReason: null,
+      bugDetail: null,
+      createdAt: new Date("2026-05-13T12:00:00.000Z"),
+      createdById: null,
+      currentState: {
+        category: "IN_PROGRESS",
+        code: "in_progress",
+        id: "01TRZ3NDEKTSV4RRFFQ69G5STA",
+        name: "In progress",
+      },
+      currentStateId: "01TRZ3NDEKTSV4RRFFQ69G5STA",
+      dueDate: null,
+      id: "01TRZ3NDEKTSV4RRFFQ69G5WID",
+      intakeItemId: null,
+      lastActionAt: null,
+      lastStatusChangedAt: new Date("2026-05-13T12:00:00.000Z"),
+      organizationId: "01TRZ3NDEKTSV4RRFFQ69G5ORG",
+      priority: "MEDIUM",
+      reporterId: "01TRZ3NDEKTSV4RRFFQ69G5USR",
+      requirementId: null,
+      sequence: 42,
+      spaceId,
+      statusCategory: "IN_PROGRESS",
+      title: "Readable task",
+      type: "TASK",
+      versionId: null,
+      workflowVersionId: "01TRZ3NDEKTSV4RRFFQ69G5WFV",
+    };
+    const prisma = {
+      client: {
+        $transaction: vi.fn(async (operations: Promise<unknown>[]) =>
+          Promise.all(operations),
+        ),
+        workItem: {
+          count: vi.fn(async () => 1),
+          findMany: vi.fn(async () => [workItem]),
+        },
+      },
+    } as unknown as PrismaService;
+    const repository = new PrismaSpaceRepository(prisma);
+    const internals = repository as unknown as RepositoryInternals;
+
+    const result = (await internals.pageWorkItemSummaries(
+      { id: workItem.id },
+      { page: 1, pageSize: 20 },
+      {
+        accessBySpaceId: new Map(),
+        accesses: [{ spaceId, staleThresholdDays: 3 }],
+        participantIntakeItemIds: [],
+        participantRequirementIds: [],
+        participantSpaceIds: [],
+        participantWorkItemIds: [],
+        readAllSpaceIds: [spaceId],
+        requirementNonDraftReadAllSpaceIds: [],
+        requirementReadAllSpaceIds: [],
+        intakeItemReadAllSpaceIds: [],
+        spaceIds: [spaceId],
+        testerSpaceIds: [],
+        testerWorkItemIds: [],
+      },
+      new Date("2026-05-13T12:00:00.000Z"),
+    )) as PageResult<{ displayCode?: string; sequence?: number }>;
+
+    expect(result.items[0]).toMatchObject({
+      sequence: 42,
+      displayCode: "TASK-42",
+    });
+  });
+
   it("includes non-work-item timeline events for read-all space roles", async () => {
     const organizationId = "01TRZ3NDEKTSV4RRFFQ69G5ORG";
     const spaceId = "01TRZ3NDEKTSV4RRFFQ69G5SPC";
@@ -1057,12 +1131,20 @@ describe("PrismaSpaceRepository", () => {
         ),
         intakeItem: {
           findMany: vi.fn(async () => [
-            { id: "01TRZ3NDEKTSV4RRFFQ69G5IN1", title: "Intake A" },
+            {
+              id: "01TRZ3NDEKTSV4RRFFQ69G5IN1",
+              sequence: 3,
+              title: "Intake A",
+            },
           ]),
         },
         requirement: {
           findMany: vi.fn(async () => [
-            { id: "01TRZ3NDEKTSV4RRFFQ69G5RQ1", title: "Requirement A" },
+            {
+              id: "01TRZ3NDEKTSV4RRFFQ69G5RQ1",
+              sequence: 2,
+              title: "Requirement A",
+            },
           ]),
         },
         timelineEvent: {
@@ -1076,7 +1158,12 @@ describe("PrismaSpaceRepository", () => {
         },
         workItem: {
           findMany: vi.fn(async () => [
-            { id: "01TRZ3NDEKTSV4RRFFQ69G5WI1", title: "Task A" },
+            {
+              id: "01TRZ3NDEKTSV4RRFFQ69G5WI1",
+              sequence: 1,
+              title: "Task A",
+              type: "TASK",
+            },
           ]),
         },
       },
@@ -1144,14 +1231,24 @@ describe("PrismaSpaceRepository", () => {
       }),
     );
     expect(result.items.map((item) => item.target)).toEqual([
-      { id: "01TRZ3NDEKTSV4RRFFQ69G5WI1", title: "Task A", type: "WORK_ITEM" },
+      {
+        id: "01TRZ3NDEKTSV4RRFFQ69G5WI1",
+        sequence: 1,
+        displayCode: "TASK-1",
+        title: "Task A",
+        type: "WORK_ITEM",
+      },
       {
         id: "01TRZ3NDEKTSV4RRFFQ69G5RQ1",
+        sequence: 2,
+        displayCode: "REQ-2",
         title: "Requirement A",
         type: "REQUIREMENT",
       },
       {
         id: "01TRZ3NDEKTSV4RRFFQ69G5IN1",
+        sequence: 3,
+        displayCode: "INTAKE-3",
         title: "Intake A",
         type: "INTAKE_ITEM",
       },

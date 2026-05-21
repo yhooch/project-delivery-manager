@@ -8,6 +8,8 @@ import { ulid } from "ulid";
 
 import { Prisma } from "../../generated/prisma/client";
 import { PrismaService } from "../../prisma/prisma.service";
+import { ObjectCodeAllocator } from "../object-code/object-code.allocator";
+import { parseObjectCode } from "../object-code/object-code.types";
 import {
   findTaggedTargetIds,
   listTagsByTargets,
@@ -41,6 +43,7 @@ type RelatedRequirementWorkItemRecord = {
   id: string;
   organizationId: string;
   requirementId: string | null;
+  sequence: number | null;
   spaceId: string;
   statusCategory: StatusCategory;
   title: string;
@@ -60,6 +63,7 @@ const relatedWorkItemSelect = {
   id: true,
   organizationId: true,
   requirementId: true,
+  sequence: true,
   spaceId: true,
   statusCategory: true,
   title: true,
@@ -72,6 +76,8 @@ export class PrismaRequirementRepository implements RequirementRepository {
   constructor(
     @Inject(PrismaService)
     private readonly prisma: PrismaService,
+    @Inject(ObjectCodeAllocator)
+    private readonly objectCodeAllocator: ObjectCodeAllocator,
   ) {}
 
   async createDraft(input: CreateRequirementDraftInput) {
@@ -393,6 +399,26 @@ export class PrismaRequirementRepository implements RequirementRepository {
 
       if (result.count === 0) {
         return undefined;
+      }
+
+      if (previous.sequence == null) {
+        const sequence = await this.objectCodeAllocator.allocateOne(tx, {
+          actorUserId: input.updatedById,
+          objectType: "REQUIREMENT",
+          organizationId: previous.organizationId,
+          spaceId: previous.spaceId,
+        });
+
+        await tx.requirement.updateMany({
+          data: {
+            sequence,
+          },
+          where: {
+            deletedAt: null,
+            id: input.requirementId,
+            sequence: null,
+          },
+        });
       }
 
       const requirement = await tx.requirement.findFirst({
@@ -849,6 +875,7 @@ function buildListWhere(
 
   if (input.status) {
     where.status = input.status;
+    applyListQuery(where, input.query);
     return where;
   }
 
@@ -858,7 +885,43 @@ function buildListWhere(
     };
   }
 
+  applyListQuery(where, input.query);
+
   return where;
+}
+
+function applyListQuery(
+  where: Prisma.RequirementWhereInput,
+  query: string | undefined,
+) {
+  const trimmed = query?.trim();
+
+  if (!trimmed) {
+    return;
+  }
+
+  const parsed = parseObjectCode(trimmed);
+
+  if (parsed) {
+    where.AND = [
+      ...toArray(where.AND),
+      parsed.objectType === "REQUIREMENT"
+        ? { sequence: parsed.sequence }
+        : { id: { in: [] } },
+    ];
+    return;
+  }
+
+  where.AND = [
+    ...toArray(where.AND),
+    {
+      OR: [
+        { title: { contains: trimmed, mode: "insensitive" } },
+        { summary: { contains: trimmed, mode: "insensitive" } },
+        { contentText: { contains: trimmed, mode: "insensitive" } },
+      ],
+    },
+  ];
 }
 
 function applyVisibility(

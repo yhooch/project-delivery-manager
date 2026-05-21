@@ -265,6 +265,16 @@ export const WorkItemType = {
 export type WorkItemType = (typeof WorkItemType)[keyof typeof WorkItemType]
 
 
+export const ObjectSequenceObjectType = {
+  REQUIREMENT: 'REQUIREMENT',
+  INTAKE_ITEM: 'INTAKE_ITEM',
+  TASK: 'TASK',
+  BUG: 'BUG'
+} as const
+
+export type ObjectSequenceObjectType = (typeof ObjectSequenceObjectType)[keyof typeof ObjectSequenceObjectType]
+
+
 export const BugSeverity = {
   BLOCKER: 'BLOCKER',
   CRITICAL: 'CRITICAL',

@@ -586,6 +586,8 @@ describe("BugsPage", () => {
     getBugMock.mockResolvedValueOnce(
       makeBug({
         id: "01ARZ3NDEKTSV4RRFFQ69G5FDL",
+        displayCode: "BUG-42",
+        spaceId: "SPC_02",
         title: "Deep linked bug",
       }),
     );
@@ -605,6 +607,19 @@ describe("BugsPage", () => {
     expect(
       screen.getByTestId("task-detail-sheet-item-title"),
     ).toHaveTextContent("Deep linked bug");
+    expect(screen.getByTestId("task-detail-sheet-space-id")).toHaveTextContent(
+      "SPC_02",
+    );
+    const stored = JSON.parse(
+      window.localStorage.getItem(
+        createRecentStorageKey({ organizationId: "ORG_01", spaceId: "SPC_02" }),
+      ) ?? "[]",
+    ) as Array<Record<string, unknown>>;
+    expect(stored[0]).toMatchObject({
+      displayCode: "BUG-42",
+      id: "01ARZ3NDEKTSV4RRFFQ69G5FDL",
+      spaceId: "SPC_02",
+    });
   });
 
   it("opens a bug detail sheet from a workItemId deep link", async () => {

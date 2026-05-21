@@ -10,6 +10,8 @@ import type {
   WorkItemType,
 } from "@project-delivery/shared";
 
+import { formatDisplayCode } from "../object-code/object-code.types";
+
 type PrismaRequirementRecord = {
   authorId: string | null;
   contentFormat: "TIPTAP_JSON";
@@ -21,6 +23,7 @@ type PrismaRequirementRecord = {
   organizationId: string;
   ownerId: string | null;
   priority: Requirement["priority"] | null;
+  sequence: number | null;
   spaceId: string;
   status: RequirementStatus;
   summary: string | null;
@@ -40,6 +43,7 @@ type PrismaAttachmentRefRecord = {
 type PrismaRelatedWorkItemRecord = {
   assigneeId: string | null;
   id: string;
+  sequence: number | null;
   statusCategory: StatusCategory;
   title: string;
   type: WorkItemType;
@@ -54,6 +58,7 @@ export function toRequirement(
 ): Requirement {
   return {
     id: record.id,
+    ...toRequirementDisplayIdentity(record.sequence),
     organizationId: record.organizationId,
     spaceId: record.spaceId,
     versionId: record.versionId ?? undefined,
@@ -114,12 +119,34 @@ function toRelatedWorkItemSummary(
 ): RequirementRelatedWorkItemSummary {
   return {
     id: record.id,
+    ...toWorkItemDisplayIdentity(record.type, record.sequence),
     type: record.type,
     title: record.title,
     versionId: record.versionId ?? undefined,
     assigneeId: record.assigneeId ?? undefined,
     statusCategory: record.statusCategory,
   };
+}
+
+function toRequirementDisplayIdentity(sequence: number | null | undefined) {
+  return sequence == null
+    ? {}
+    : {
+        sequence,
+        displayCode: formatDisplayCode("REQUIREMENT", sequence),
+      };
+}
+
+function toWorkItemDisplayIdentity(
+  type: WorkItemType,
+  sequence: number | null | undefined,
+) {
+  return sequence == null
+    ? {}
+    : {
+        sequence,
+        displayCode: formatDisplayCode(type, sequence),
+      };
 }
 
 function emptyRelatedWorkItems(): RequirementRelatedWorkItems {

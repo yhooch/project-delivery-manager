@@ -22,6 +22,7 @@ export type WorkItemListInput = {
   assigneeId?: string;
   statusCategory?: StatusCategory;
   priority?: Priority;
+  query?: string;
   tagIds?: string;
   tagMatch?: TagMatch;
 };

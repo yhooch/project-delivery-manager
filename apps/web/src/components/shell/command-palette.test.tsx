@@ -91,12 +91,14 @@ const {
   listRequirementsMock,
   listIntakeItemsMock,
   listTagsMock,
+  lookupObjectCodeMock,
 } = vi.hoisted(() => ({
   listWorkItemsMock: vi.fn(),
   listBugsMock: vi.fn(),
   listRequirementsMock: vi.fn(),
   listIntakeItemsMock: vi.fn(),
   listTagsMock: vi.fn(),
+  lookupObjectCodeMock: vi.fn(),
 }));
 vi.mock("../../lib/work-item-service", () => ({
   listWorkItems: listWorkItemsMock,
@@ -113,12 +115,16 @@ vi.mock("../../lib/intake-service", () => ({
 vi.mock("../../lib/tag-service", () => ({
   listTags: listTagsMock,
 }));
+vi.mock("../../lib/object-code-service", () => ({
+  lookupObjectCode: lookupObjectCodeMock,
+}));
 
 import {
   CommandPalette,
   openCommandPalette,
   useCommandPaletteShortcut,
 } from "./command-palette";
+import { ApiClientError } from "../../lib/api-client";
 import { createRecentStorageKey, RECENT_MAX } from "./recent-opens";
 
 const RECENT_KEY = createRecentStorageKey({
@@ -132,6 +138,7 @@ beforeEach(() => {
   listRequirementsMock.mockReset();
   listIntakeItemsMock.mockReset();
   listTagsMock.mockReset();
+  lookupObjectCodeMock.mockReset();
   routerPushMock.mockReset();
   themeSetMock.mockReset();
   pathnameMock.current = "/";
@@ -139,28 +146,50 @@ beforeEach(() => {
     items: [
       {
         id: "01ARZ3NDEKTSV4RRFFQ69G5FT1",
+        displayCode: "TASK-1",
         title: "Task A",
+        type: "TASK",
       },
       {
         id: "01ARZ3NDEKTSV4RRFFQ69G5FT2",
+        displayCode: "TASK-2",
         title: "Task B",
+        type: "TASK",
       },
     ],
     total: 2,
   });
   listBugsMock.mockResolvedValue({
-    items: [{ id: "01ARZ3NDEKTSV4RRFFQ69G5FB1", title: "Bug Alpha" }],
+    items: [
+      {
+        id: "01ARZ3NDEKTSV4RRFFQ69G5FB1",
+        displayCode: "BUG-1",
+        title: "Bug Alpha",
+        type: "BUG",
+      },
+    ],
     total: 1,
   });
   listRequirementsMock.mockResolvedValue({
     items: [
-      { id: "01ARZ3NDEKTSV4RRFFQ69G5FR1", title: "Req One" },
-      { id: "01ARZ3NDEKTSV4RRFFQ69G5FR2", title: "" },
+      {
+        id: "01ARZ3NDEKTSV4RRFFQ69G5FR1",
+        displayCode: "REQ-1",
+        status: "CONFIRMED",
+        title: "Req One",
+      },
+      { id: "01ARZ3NDEKTSV4RRFFQ69G5FR2", status: "DRAFT", title: "" },
     ],
     total: 2,
   });
   listIntakeItemsMock.mockResolvedValue({
-    items: [{ id: "01ARZ3NDEKTSV4RRFFQ69G5FI1", title: "Intake one" }],
+    items: [
+      {
+        id: "01ARZ3NDEKTSV4RRFFQ69G5FI1",
+        displayCode: "INTAKE-1",
+        title: "Intake one",
+      },
+    ],
     total: 1,
   });
   listTagsMock.mockResolvedValue({
@@ -645,6 +674,130 @@ describe("CommandPalette", () => {
     ).not.toBeInTheDocument();
   });
 
+  it("resolves full display codes through organization-level object-code lookup before navigation", async () => {
+    lookupObjectCodeMock.mockResolvedValueOnce({
+      id: "01ARZ3NDEKTSV4RRFFQ69G5FLK",
+      type: "WORK_ITEM",
+      workItemType: "TASK",
+      organizationId: "ORG_01",
+      spaceId: "SPC_01",
+      sequence: 42,
+      displayCode: "TASK-42",
+      title: "Lookup task",
+    });
+
+    render(<CommandPalette />);
+    openCommandPalette();
+
+    const input = await screen.findByPlaceholderText(
+      "shell.command.placeholder",
+    );
+    fireEvent.change(input, { target: { value: "task-42" } });
+
+    await waitFor(() =>
+      expect(lookupObjectCodeMock).toHaveBeenCalledWith({
+        code: "TASK-42",
+        organizationId: "ORG_01",
+      }),
+    );
+    expect(await screen.findByText("Space A")).toBeInTheDocument();
+    fireEvent.click(await screen.findByText("Lookup task"));
+
+    expect(routerPushMock).toHaveBeenCalledWith(
+      "/work-items?workItemId=01ARZ3NDEKTSV4RRFFQ69G5FLK",
+    );
+    const stored = JSON.parse(
+      window.localStorage.getItem(RECENT_KEY) ?? "[]",
+    ) as Array<Record<string, unknown>>;
+    expect(stored[0]).toMatchObject({
+      id: "01ARZ3NDEKTSV4RRFFQ69G5FLK",
+      displayCode: "TASK-42",
+      spaceId: "SPC_01",
+    });
+    expect(stored[0]).not.toHaveProperty("code");
+  });
+
+  it("keeps display-code lookup scoped on space-specific routes", async () => {
+    pathnameMock.current = "/work-items";
+    lookupObjectCodeMock.mockResolvedValueOnce({
+      id: "01ARZ3NDEKTSV4RRFFQ69G5FLK",
+      type: "WORK_ITEM",
+      workItemType: "TASK",
+      organizationId: "ORG_01",
+      spaceId: "SPC_01",
+      sequence: 42,
+      displayCode: "TASK-42",
+      title: "Lookup task",
+    });
+
+    render(<CommandPalette />);
+    openCommandPalette();
+
+    const input = await screen.findByPlaceholderText(
+      "shell.command.placeholder",
+    );
+    fireEvent.change(input, { target: { value: "task-42" } });
+
+    await waitFor(() =>
+      expect(lookupObjectCodeMock).toHaveBeenCalledWith({
+        code: "TASK-42",
+        organizationId: "ORG_01",
+        spaceId: "SPC_01",
+      }),
+    );
+  });
+
+  it("shows a localized lookup error for invalid display-code queries", async () => {
+    render(<CommandPalette />);
+    openCommandPalette();
+
+    const input = await screen.findByPlaceholderText(
+      "shell.command.placeholder",
+    );
+    fireEvent.change(input, { target: { value: "REQ-0" } });
+
+    expect(await screen.findByTestId("command-palette-lookup-error"))
+      .toHaveTextContent("shell.command.lookup.invalid");
+    expect(lookupObjectCodeMock).not.toHaveBeenCalled();
+  });
+
+  it("shows a localized lookup error when a display code is not found", async () => {
+    lookupObjectCodeMock.mockRejectedValueOnce(
+      new ApiClientError(
+        {
+          code: "OBJECT_CODE_NOT_FOUND",
+          message: "not found",
+          requestId: "REQ_404",
+        },
+        new Response(null, { status: 404 }),
+      ),
+    );
+
+    render(<CommandPalette />);
+    openCommandPalette();
+
+    const input = await screen.findByPlaceholderText(
+      "shell.command.placeholder",
+    );
+    fireEvent.change(input, { target: { value: "BUG-404" } });
+
+    expect(await screen.findByTestId("command-palette-lookup-error"))
+      .toHaveTextContent("shell.command.lookup.notFound");
+  });
+
+  it("uses INTAKE display codes for intake search results", async () => {
+    render(<CommandPalette />);
+    openCommandPalette();
+
+    const input = await screen.findByPlaceholderText(
+      "shell.command.placeholder",
+    );
+    fireEvent.change(input, { target: { value: "intake" } });
+
+    expect(await screen.findByText("INTAKE-1")).toBeInTheDocument();
+    expect(screen.queryByText("INK-9G5FI1")).not.toBeInTheDocument();
+  });
+
   it("searches current-space tags with # and opens the current object list with tag filters", async () => {
     pathnameMock.current = "/bugs";
 
@@ -712,7 +865,7 @@ describe("CommandPalette", () => {
     const input = await screen.findByPlaceholderText(
       "shell.command.placeholder",
     );
-    fireEvent.change(input, { target: { value: "REQ" } });
+    fireEvent.change(input, { target: { value: "untitled" } });
 
     await waitFor(() => {
       expect(

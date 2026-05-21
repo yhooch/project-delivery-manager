@@ -25,7 +25,7 @@ import { useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { getApiErrorMessageKey } from "../../lib/api-error-messages";
-import { formatDisplayCode } from "../../lib/display-code";
+import { resolveIntakeDisplayCode } from "../../lib/display-code";
 import {
   useFocusReturn,
   useListKeyboardNav,
@@ -152,10 +152,6 @@ export function IntakePage() {
     currentSpaceRole,
     currentSpaceStatus,
   );
-  const recentScope = useMemo(
-    () => ({ organizationId, spaceId }),
-    [organizationId, spaceId],
-  );
   const { members, getMember } = useSpaceMembers(spaceId, organizationId);
   const { versions, getVersion } = useVersions(spaceId, organizationId);
 
@@ -182,6 +178,11 @@ export function IntakePage() {
   const [selectedTask, setSelectedTask] = useState<WorkItemViewModel | null>(
     null,
   );
+  const activeOrganizationId = active?.organizationId ?? organizationId;
+  const activeSpaceId = active?.spaceId ?? spaceId;
+  const selectedTaskOrganizationId =
+    selectedTask?.organizationId ?? activeOrganizationId;
+  const selectedTaskSpaceId = selectedTask?.spaceId ?? activeSpaceId;
   const [taskSheetOpen, setTaskSheetOpen] = useState(false);
   const [relatedTasksRefreshVersion, setRelatedTasksRefreshVersion] =
     useState(0);
@@ -462,20 +463,25 @@ export function IntakePage() {
   const openItem = useCallback(
     (item: IntakeItem) => {
       captureFocus();
+      const itemOrganizationId = item.organizationId ?? organizationId;
+      const itemSpaceId = item.spaceId ?? spaceId;
+
       recordRecentOpen(
         {
           id: item.id,
           type: "INTAKE",
-          code: formatItemCode(item.id),
+          displayCode: formatItemCode(item),
           title: item.title,
           href: `/intake-items?id=${encodeURIComponent(item.id)}`,
+          organizationId: itemOrganizationId,
+          spaceId: itemSpaceId,
         },
-        recentScope,
+        { organizationId: itemOrganizationId, spaceId: itemSpaceId },
       );
       setActive(item);
       setSelectedItem(item);
     },
-    [captureFocus, recentScope],
+    [captureFocus, organizationId, spaceId],
   );
 
   const focusRow = useCallback((itemId: string) => {
@@ -599,7 +605,10 @@ export function IntakePage() {
     action: StatusActionKind,
     target: IntakeItem | null = active,
   ) {
-    if (!target || !spaceId || !canManageIntake) {
+    const targetOrganizationId = target?.organizationId ?? organizationId;
+    const targetSpaceId = target?.spaceId ?? spaceId;
+
+    if (!target || !targetSpaceId || !canManageIntake) {
       return;
     }
 
@@ -622,7 +631,11 @@ export function IntakePage() {
     setActive(optimistic);
 
     try {
-      const context = { intakeItemId: target.id, organizationId, spaceId };
+      const context = {
+        intakeItemId: target.id,
+        organizationId: targetOrganizationId,
+        spaceId: targetSpaceId,
+      };
       const updated =
         action === "accept"
           ? await acceptIntakeItem(context)
@@ -869,7 +882,7 @@ export function IntakePage() {
                   <span className="flex min-w-0 flex-1 flex-col gap-1">
                     <span className="flex min-w-0 items-center gap-2">
                       <span className="shrink-0 font-mono text-[11px] text-muted-foreground">
-                        {formatItemCode(item.id)}
+                        {formatItemCode(item)}
                       </span>
                       <span className="truncate text-[13px] font-medium">
                         {item.title}
@@ -1157,18 +1170,18 @@ export function IntakePage() {
         onOpenChange={handleCloseDrawer}
         onOpenWorkItem={openTaskDetail}
         open={Boolean(active)}
-        organizationId={organizationId}
+        organizationId={activeOrganizationId}
         relatedTasksRefreshVersion={relatedTasksRefreshVersion}
         showRelatedTasksListLink
-        spaceId={spaceId}
+        spaceId={activeSpaceId}
       />
 
       <TaskDetailSheet
         item={selectedTask}
         open={taskSheetOpen}
         onOpenChange={closeTaskSheet}
-        organizationId={organizationId}
-        spaceId={spaceId}
+        organizationId={selectedTaskOrganizationId}
+        spaceId={selectedTaskSpaceId}
         onChanged={() => {
           setRelatedTasksRefreshVersion((version) => version + 1);
           reloadTagFilterOptions();
@@ -1188,18 +1201,18 @@ export function IntakePage() {
         />
       )}
 
-      {spaceId && canManageIntake && (
+      {activeSpaceId && canManageIntake && (
         <EditIntakeDialog
           open={editOpen}
           onOpenChange={setEditOpen}
-          organizationId={organizationId}
-          spaceId={spaceId}
+          organizationId={activeOrganizationId}
+          spaceId={activeSpaceId}
           intakeItem={active}
           onUpdated={handleUpdatedIntakeItem}
         />
       )}
 
-      {spaceId && canManageIntake && (
+      {activeSpaceId && canManageIntake && (
         <ConvertIntakeDialog
           open={convertOpen}
           onOpenChange={(next) => {
@@ -1208,8 +1221,8 @@ export function IntakePage() {
               setConvertTarget(null);
             }
           }}
-          organizationId={organizationId}
-          spaceId={spaceId}
+          organizationId={activeOrganizationId}
+          spaceId={activeSpaceId}
           intakeItem={convertTarget}
           onConverted={handleConvertedIntakeItem}
         />
@@ -1264,8 +1277,8 @@ function displayVersionName(
   return getVersion(versionId)?.name ?? "—";
 }
 
-function formatItemCode(id: string): string {
-  return formatDisplayCode("INTAKE", id);
+function formatItemCode(item: IntakeItem): string {
+  return resolveIntakeDisplayCode(item);
 }
 
 function initialOf(id: string): string {

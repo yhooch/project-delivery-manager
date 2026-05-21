@@ -4,6 +4,7 @@ export * from "./common.ts";
 export * from "./contracts.ts";
 export * from "./enums.ts";
 export * from "./intake.ts";
+export * from "./object-code.ts";
 export * from "./openapi.ts";
 export * from "./organization.ts";
 export * from "./requirement.ts";

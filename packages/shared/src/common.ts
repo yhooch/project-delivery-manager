@@ -58,6 +58,10 @@ export const ApiErrorCodeSchema = z.enum([
   "TAG_IN_USE",
   "TAG_TARGET_INVALID",
   "TAG_NAME_CONFLICT",
+  "OBJECT_CODE_INVALID",
+  "OBJECT_CODE_NOT_FOUND",
+  "OBJECT_CODE_AMBIGUOUS",
+  "SPACE_CONTEXT_REQUIRED",
 ]);
 
 export type ApiErrorCode = z.infer<typeof ApiErrorCodeSchema>;

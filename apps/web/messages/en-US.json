@@ -595,6 +595,10 @@
       "TAG_IN_USE": "The tag is still used by objects and cannot be deleted.",
       "TAG_TARGET_INVALID": "The tag target is invalid or unavailable.",
       "TAG_NAME_CONFLICT": "A tag with this name already exists.",
+      "OBJECT_CODE_INVALID": "The code format is invalid.",
+      "OBJECT_CODE_NOT_FOUND": "No object was found for that code.",
+      "OBJECT_CODE_AMBIGUOUS": "That code exists in multiple spaces. Provide space context.",
+      "SPACE_CONTEXT_REQUIRED": "Space context is required. Select a project space.",
       "UNKNOWN": "The operation failed. Try again later."
     }
   },
@@ -732,7 +736,16 @@
       "empty": "No results",
       "searching": "Searching…",
       "untitled": "Untitled",
+      "draftCode": "Draft",
       "recent": "Recently opened",
+      "lookup": {
+        "invalid": "Invalid code. Use REQ-12, INTAKE-8, TASK-42, or BUG-17.",
+        "notFound": "No object was found for that code.",
+        "ambiguous": "That code exists in multiple spaces. Switch to the target space and search again.",
+        "spaceContextRequired": "Space context is required. Select a project space and search again.",
+        "missingOrganization": "Organization context is required. Select an organization and search again.",
+        "failed": "Code lookup failed. Try again later."
+      },
       "dialog": {
         "title": "Command palette",
         "description": "Search and execute commands"

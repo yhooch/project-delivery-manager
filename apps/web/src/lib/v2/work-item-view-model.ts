@@ -7,13 +7,15 @@ import type {
   WorkItem,
 } from "@project-delivery/shared";
 
-import { formatDisplayCode } from "../display-code";
+import { resolveWorkItemDisplayCode } from "../display-code";
 
 export type WorkItemViewModel = {
   id: string;
   listKey?: string;
   code: string;
   type: "TASK" | "BUG";
+  organizationId?: string;
+  spaceId?: string;
   title: string;
   contextLabel?: string;
   workflowVersionId: string;
@@ -72,7 +74,7 @@ export function toWorkItemViewModel(
     unknownVersionLabel,
   }: WorkItemViewModelOptions,
 ): WorkItemViewModel {
-  const code = formatDisplayCode(item.type === "BUG" ? "BUG" : "TASK", item.id);
+  const code = resolveWorkItemDisplayCode(item);
   const isOverdue = item.exceptionSignals.some(
     (signal) => signal.type === "overdue",
   );
@@ -104,6 +106,8 @@ export function toWorkItemViewModel(
     id: item.id,
     code,
     type: item.type,
+    organizationId: item.organizationId,
+    spaceId: item.spaceId,
     title: item.title,
     workflowVersionId: item.currentStatus.workflowVersionId,
     currentStateId: item.currentStatus.currentStateId,
@@ -140,7 +144,7 @@ export function toWorkItemListViewModel(
     unknownVersionLabel,
   }: WorkItemViewModelOptions,
 ): WorkItemViewModel {
-  const code = formatDisplayCode(item.type, item.id);
+  const code = resolveWorkItemDisplayCode(item);
   const member = item.assigneeId
     ? lookups?.getMember(item.assigneeId, item.spaceId)
     : undefined;
@@ -172,6 +176,8 @@ export function toWorkItemListViewModel(
     id: item.id,
     code,
     type: item.type,
+    organizationId: item.organizationId,
+    spaceId: item.spaceId,
     title: item.title,
     workflowVersionId: item.workflowVersionId,
     currentStateId: item.currentStateId,

@@ -21,7 +21,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { Link, usePathname, useRouter } from "../../i18n/routing";
 import { getApiErrorMessageKey } from "../../lib/api-error-messages";
-import { formatDisplayCode } from "../../lib/display-code";
+import { resolveRequirementDisplayCode } from "../../lib/display-code";
 import { useListKeyboardNav } from "../../lib/hooks/use-list-keyboard-nav";
 import { useTagFilterOptions } from "../../lib/hooks/use-tag-filter-options";
 import { useTagFilterSelection } from "../../lib/hooks/use-tag-filter-selection";
@@ -406,12 +406,14 @@ export function RequirementsPage() {
         {
           id: item.id,
           type: "REQUIREMENT",
-          code: formatRequirementCode(item.id),
+          displayCode: formatRequirementCode(item, t("status.DRAFT")),
           title:
             titleOverride ??
             normalizeDisplayText(item.title) ??
             getRequirementFallbackTitle(item, t),
           href: `/requirements/${item.id}`,
+          organizationId: item.organizationId,
+          spaceId: item.spaceId,
         },
         recentScope,
       );
@@ -706,7 +708,7 @@ export function RequirementsPage() {
                   <div className="min-w-0 flex-1">
                     <div className="flex min-w-0 items-center gap-2">
                       <span className="shrink-0 font-mono text-[11px] text-muted-foreground">
-                        {formatRequirementCode(req.id)}
+                        {formatRequirementCode(req, t("status.DRAFT"))}
                       </span>
                       <span className="truncate text-[13px] font-medium">
                         {item.title}
@@ -885,8 +887,11 @@ export function RequirementsPage() {
   );
 }
 
-function formatRequirementCode(id: string): string {
-  return formatDisplayCode("REQ", id);
+function formatRequirementCode(
+  requirement: Requirement,
+  draftLabel: string,
+): string {
+  return resolveRequirementDisplayCode(requirement, { draftLabel });
 }
 
 function createRequirementListDisplayItem({

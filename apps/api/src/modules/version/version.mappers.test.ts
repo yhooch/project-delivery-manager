@@ -6,6 +6,18 @@ import type { VersionBoardWorkItemRecord } from "./version.types";
 const now = new Date("2026-05-13T12:00:00.000Z");
 
 describe("version board work item mapper", () => {
+  it("maps board work item display code from type and sequence", () => {
+    expect(
+      toVersionBoardWorkItemSummary(workItem({ sequence: 31, type: "BUG" }), {
+        now,
+        staleThresholdDays: 3,
+      }),
+    ).toMatchObject({
+      sequence: 31,
+      displayCode: "BUG-31",
+    });
+  });
+
   it("does not infer confirm or regression exceptions from broad status categories", () => {
     const waiting = toVersionBoardWorkItemSummary(
       workItem({
@@ -205,6 +217,7 @@ function workItem(
     priority: "MEDIUM",
     reporterId: "reporter_1",
     requirementId: null,
+    sequence: 3,
     spaceId: "space_1",
     statusCategory: "IN_PROGRESS",
     title: "Implement login",

@@ -64,6 +64,7 @@ export class WorkItemController {
       assigneeId?: string;
       statusCategory?: StatusCategory;
       priority?: Priority;
+      query?: string;
       tagIds?: string;
       tagMatch?: TagMatch;
     },

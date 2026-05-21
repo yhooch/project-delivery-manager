@@ -2,7 +2,10 @@ import { Inject, Injectable } from "@nestjs/common";
 
 import { Prisma } from "../../generated/prisma/client";
 import { PrismaService } from "../../prisma/prisma.service";
-import { toTimelineEvent } from "./timeline.mappers";
+import {
+  toTimelineEvent,
+  type TimelineTargetIdentityRecord,
+} from "./timeline.mappers";
 import type { TimelineRepository } from "./timeline.repository";
 import type {
   CreateTimelineEventInput,
@@ -40,9 +43,12 @@ export class PrismaTimelineRepository implements TimelineRepository {
         where,
       }),
     ]);
+    const targetIdentity =
+      (await this.findTimelineTargetIdentity(input)) ??
+      (input.targetTitle ? { title: input.targetTitle } : undefined);
 
     return {
-      items: events.map((event) => toTimelineEvent(event, input.targetTitle)),
+      items: events.map((event) => toTimelineEvent(event, targetIdentity)),
       page: input.page,
       pageSize: input.pageSize,
       total,
@@ -71,7 +77,115 @@ export class PrismaTimelineRepository implements TimelineRepository {
         actor: true,
       },
     });
+    const targetIdentity =
+      (await this.findTimelineTargetIdentity(input)) ??
+      (input.targetTitle ? { title: input.targetTitle } : undefined);
 
-    return toTimelineEvent(event, input.targetTitle);
+    return toTimelineEvent(event, targetIdentity);
+  }
+
+  private async findTimelineTargetIdentity(input: {
+    organizationId: string;
+    spaceId: string;
+    targetId: string;
+    targetTitle?: string;
+    targetType: CreateTimelineEventInput["targetType"];
+  }): Promise<TimelineTargetIdentityRecord | undefined> {
+    switch (input.targetType) {
+      case "SPACE": {
+        const space = await this.prisma.client.space.findFirst({
+          select: {
+            name: true,
+          },
+          where: {
+            deletedAt: null,
+            id: input.targetId,
+            organizationId: input.organizationId,
+          },
+        });
+
+        return space ? { title: space.name } : undefined;
+      }
+      case "VERSION": {
+        const version = await this.prisma.client.version.findFirst({
+          select: {
+            name: true,
+          },
+          where: {
+            deletedAt: null,
+            id: input.targetId,
+            organizationId: input.organizationId,
+            spaceId: input.spaceId,
+          },
+        });
+
+        return version ? { title: version.name } : undefined;
+      }
+      case "REQUIREMENT": {
+        const requirement = await this.prisma.client.requirement.findFirst({
+          select: {
+            sequence: true,
+            title: true,
+          },
+          where: {
+            deletedAt: null,
+            id: input.targetId,
+            organizationId: input.organizationId,
+            spaceId: input.spaceId,
+          },
+        });
+
+        return requirement
+          ? {
+              sequence: requirement.sequence,
+              title: requirement.title,
+            }
+          : undefined;
+      }
+      case "INTAKE_ITEM": {
+        const intakeItem = await this.prisma.client.intakeItem.findFirst({
+          select: {
+            sequence: true,
+            title: true,
+          },
+          where: {
+            deletedAt: null,
+            id: input.targetId,
+            organizationId: input.organizationId,
+            spaceId: input.spaceId,
+          },
+        });
+
+        return intakeItem
+          ? {
+              sequence: intakeItem.sequence,
+              title: intakeItem.title,
+            }
+          : undefined;
+      }
+      case "WORK_ITEM": {
+        const workItem = await this.prisma.client.workItem.findFirst({
+          select: {
+            sequence: true,
+            title: true,
+            type: true,
+          },
+          where: {
+            deletedAt: null,
+            id: input.targetId,
+            organizationId: input.organizationId,
+            spaceId: input.spaceId,
+          },
+        });
+
+        return workItem
+          ? {
+              sequence: workItem.sequence,
+              title: workItem.title,
+              workItemType: workItem.type,
+            }
+          : undefined;
+      }
+    }
   }
 }

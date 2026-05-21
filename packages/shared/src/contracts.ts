@@ -171,6 +171,10 @@ import {
   UpdateUserPreferencesResponseSchema,
 } from "./user.ts";
 import {
+  ObjectCodeLookupQuerySchema,
+  ObjectCodeLookupResultSchema,
+} from "./object-code.ts";
+import {
   GetMyWorkbenchViewResponseSchema,
   GetSpaceExceptionsViewResponseSchema,
   GetSpaceOverviewViewResponseSchema,
@@ -329,6 +333,16 @@ const tagErrors = [
   "TAG_NAME_CONFLICT",
   "VALIDATION_ERROR",
 ];
+const objectCodeLookupErrors = [
+  "UNAUTHORIZED",
+  "ORGANIZATION_ACCESS_DENIED",
+  "SPACE_ACCESS_DENIED",
+  "OBJECT_CODE_INVALID",
+  "OBJECT_CODE_NOT_FOUND",
+  "OBJECT_CODE_AMBIGUOUS",
+  "SPACE_CONTEXT_REQUIRED",
+  "VALIDATION_ERROR",
+];
 
 function endpoint(contract: ApiEndpointContract): ApiEndpointContract {
   return contract;
@@ -406,6 +420,18 @@ export const apiContracts = [
     requestSchema: ChangePasswordRequestSchema,
     responseSchema: ChangePasswordResponseSchema,
     errorCodes: ["UNAUTHORIZED", "INVALID_CREDENTIALS", "VALIDATION_ERROR"],
+  }),
+  endpoint({
+    operationId: "getObjectCodeLookup",
+    method: "get",
+    path: "/object-code-lookup",
+    tags: ["object-code"],
+    summary: "Lookup an object by display code",
+    pathSchema: EmptyObjectSchema,
+    querySchema: ObjectCodeLookupQuerySchema,
+    requestSchema: EmptyObjectSchema,
+    responseSchema: ObjectCodeLookupResultSchema,
+    errorCodes: objectCodeLookupErrors,
   }),
   endpoint({
     operationId: "listOrganizations",
