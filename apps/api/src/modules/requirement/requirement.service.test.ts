@@ -1,8 +1,10 @@
+import { Logger } from "@nestjs/common";
 import type { Requirement, SpaceRole } from "@project-delivery/shared";
 import { describe, expect, it, vi } from "vitest";
 
 import type { AuditService } from "../audit/audit.service";
 import type { OrganizationRepository } from "../organization/organization.repository";
+import type { RealtimePublisherService } from "../realtime/realtime-publisher.service";
 import type { SpaceRepository } from "../space/space.repository";
 import type { VersionRepository } from "../version/version.repository";
 import type { RequirementRepository } from "./requirement.repository";
@@ -36,6 +38,23 @@ describe("RequirementService audit logging", () => {
         spaceId: SPACE_ID,
         targetId: REQUIREMENT_ID,
         targetType: "REQUIREMENT",
+      }),
+    );
+    expect(subject.realtime.publish).toHaveBeenCalledWith(
+      expect.objectContaining({
+        actorId: ACTOR_ID,
+        operation: "CREATED",
+        target: { type: "REQUIREMENT", id: draft.id },
+        invalidates: [
+          "requirement-list",
+          "requirement-detail",
+          "version-board",
+        ],
+        hints: expect.objectContaining({
+          targetId: draft.id,
+          targetType: "REQUIREMENT",
+          versionId: VERSION_ID,
+        }),
       }),
     );
 
@@ -72,6 +91,15 @@ describe("RequirementService audit logging", () => {
         targetType: "REQUIREMENT",
       }),
     );
+    expect(subject.realtime.publish).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        operation: "UPDATED",
+        target: { type: "REQUIREMENT", id: REQUIREMENT_ID },
+        hints: expect.objectContaining({
+          changedFields: expect.arrayContaining(["contentJson", "title"]),
+        }),
+      }),
+    );
   });
 
   it("writes audit logs for archiving and deleting empty drafts", async () => {
@@ -100,6 +128,13 @@ describe("RequirementService audit logging", () => {
         targetType: "REQUIREMENT",
       }),
     );
+    expect(subject.realtime.publish).toHaveBeenCalledWith(
+      expect.objectContaining({
+        operation: "STATUS_CHANGED",
+        target: { type: "REQUIREMENT", id: REQUIREMENT_ID },
+        hints: expect.objectContaining({ changedFields: ["status"] }),
+      }),
+    );
 
     subject.requirements.current = makeRequirement({
       authorId: ACTOR_ID,
@@ -125,6 +160,33 @@ describe("RequirementService audit logging", () => {
         targetType: "REQUIREMENT",
       }),
     );
+    expect(subject.realtime.publish).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        operation: "DELETED",
+        target: { type: "REQUIREMENT", id: REQUIREMENT_ID },
+      }),
+    );
+  });
+
+  it("logs realtime publish failures without failing the write", async () => {
+    const subject = createSubject();
+    const logger = vi
+      .spyOn(Logger.prototype, "error")
+      .mockImplementation(() => undefined);
+    subject.realtime.publish.mockImplementationOnce(() => {
+      throw new Error("publish failed");
+    });
+
+    await expect(
+      subject.service.createDraft(ACTOR_ID, SPACE_ID, {}),
+    ).resolves.toMatchObject({
+      id: REQUIREMENT_ID,
+    });
+    expect(logger).toHaveBeenCalledWith(
+      "Failed to publish requirement realtime event",
+      expect.stringContaining("publish failed"),
+    );
+    logger.mockRestore();
   });
 
   it("requires cascade confirmation before moving a requirement to another version with downstream links", async () => {
@@ -270,16 +332,19 @@ function createSubject(
     findMemberByUserId: vi.fn(),
   } as unknown as OrganizationRepository;
   const audit = createAuditService();
+  const realtime = createRealtimePublisher();
 
   return {
     audit,
     requirements,
+    realtime,
     service: new RequirementService(
       requirements,
       spaces,
       versions,
       organizations,
       audit,
+      realtime,
     ),
   };
 }
@@ -295,8 +360,11 @@ class FakeRequirementRepository implements RequirementRepository {
 
   constructor(public current: Requirement) {}
 
-  async createDraft() {
-    this.current = makeRequirement({ status: "DRAFT" });
+  async createDraft(input: Parameters<RequirementRepository["createDraft"]>[0]) {
+    this.current = makeRequirement({
+      status: "DRAFT",
+      versionId: input.versionId,
+    });
     return this.current;
   }
 
@@ -352,6 +420,14 @@ function createAuditService() {
     record: vi.fn(),
   } as unknown as AuditService & {
     record: ReturnType<typeof vi.fn>;
+  };
+}
+
+function createRealtimePublisher() {
+  return {
+    publish: vi.fn(),
+  } as unknown as RealtimePublisherService & {
+    publish: ReturnType<typeof vi.fn>;
   };
 }
 

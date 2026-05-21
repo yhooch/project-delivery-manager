@@ -43,6 +43,15 @@ import {
 } from "../../lib/intake-service";
 import { usePathname, useRouter } from "../../i18n/routing";
 import { listRequirements } from "../../lib/requirement-service";
+import {
+  isRealtimeRefreshMode,
+  realtimeContextIncludesTarget,
+  resolveRefreshMode,
+  shouldShowBlockingRefreshState,
+  shouldSurfaceRefreshError,
+  useRealtimeInvalidation,
+  type RefreshModeOptions,
+} from "../../lib/realtime";
 import { serializeTagFilterQuery } from "../../lib/tag-query";
 import { cn } from "../../lib/utils";
 import { useSpaceMembers, useVersions } from "../../lib/v2/lookups";
@@ -102,6 +111,7 @@ const SOURCE_TYPES: IntakeSourceType[] = [
 const PRIORITY_FILTERS: Priority[] = ["LOW", "MEDIUM", "HIGH", "URGENT"];
 const LIST_PAGE_SIZE = 100;
 const INITIAL_PAGE_INFO = { page: 1, pageSize: LIST_PAGE_SIZE, total: 0 };
+const INTAKE_REALTIME_KEYS = ["intake-list"] as const;
 
 const intakeStatusToCategory: Record<IntakeStatus, StatusCategory> = {
   PENDING: "NOT_STARTED",
@@ -209,10 +219,12 @@ export function IntakePage() {
   );
   const latestListScopeKeyRef = useRef(listScopeKey);
   const listRequestIdRef = useRef(0);
+  const pageInfoRef = useRef(pageInfo);
   const previousContextKeyRef = useRef(contextKey);
   const rowRefs = useRef(new Map<string, HTMLLIElement>());
   const primaryActionButtonRef = useRef<HTMLButtonElement | null>(null);
   latestListScopeKeyRef.current = listScopeKey;
+  pageInfoRef.current = pageInfo;
   const loadedCount = items.length;
   const paginationFrom = loadedCount > 0 ? 1 : 0;
   const paginationTo = Math.min(loadedCount, pageInfo.total);
@@ -282,7 +294,12 @@ export function IntakePage() {
   );
 
   const loadItems = useCallback(
-    async (page = 1, mode: "replace" | "append" = "replace") => {
+    async (
+      page = 1,
+      mode: "replace" | "append" = "replace",
+      options?: RefreshModeOptions,
+    ) => {
+      const refreshMode = resolveRefreshMode(options);
       if (!spaceId) {
         return;
       }
@@ -291,20 +308,27 @@ export function IntakePage() {
       listRequestIdRef.current = requestId;
       const requestScopeKey = listScopeKey;
       const append = mode === "append";
+      const realtimeRefresh = isRealtimeRefreshMode(refreshMode);
+      const pageSize =
+        !append && realtimeRefresh
+          ? Math.max(LIST_PAGE_SIZE, pageInfoRef.current.page * LIST_PAGE_SIZE)
+          : LIST_PAGE_SIZE;
 
       if (append) {
         setIsLoadingMore(true);
-      } else {
+      } else if (shouldShowBlockingRefreshState(refreshMode)) {
         setIsLoading(true);
         setHasLoadedItems(false);
       }
-      setErrorKey(null);
+      if (shouldSurfaceRefreshError(refreshMode)) {
+        setErrorKey(null);
+      }
 
       try {
         const result = await listIntakeItems({
           organizationId,
           page,
-          pageSize: LIST_PAGE_SIZE,
+          pageSize,
           spaceId,
           status: filter === "all" ? undefined : filter,
           ...listFilters,
@@ -320,8 +344,8 @@ export function IntakePage() {
           append ? [...current, ...result.items] : result.items,
         );
         setPageInfo({
-          page: result.page ?? page,
-          pageSize: result.pageSize ?? LIST_PAGE_SIZE,
+          page: realtimeRefresh ? pageInfoRef.current.page : (result.page ?? page),
+          pageSize: result.pageSize ?? pageSize,
           total: result.total ?? result.items.length,
         });
         setStatusCounts(result.statusCounts ?? []);
@@ -330,7 +354,9 @@ export function IntakePage() {
           listRequestIdRef.current === requestId &&
           latestListScopeKeyRef.current === requestScopeKey
         ) {
-          setErrorKey(getApiErrorMessageKey(error));
+          if (shouldSurfaceRefreshError(refreshMode)) {
+            setErrorKey(getApiErrorMessageKey(error));
+          }
         }
       } finally {
         if (
@@ -364,8 +390,56 @@ export function IntakePage() {
       }
       return;
     }
-    void loadItems(1, "replace");
+    void loadItems(1, "replace", { mode: "initial" });
   }, [loadItems, sessionStatus, spaceId]);
+
+  const refreshActiveItem = useCallback(
+    async (options?: RefreshModeOptions) => {
+      const target = active;
+      const targetSpaceId = target?.spaceId ?? spaceId;
+      if (!target || !targetSpaceId) {
+        return;
+      }
+
+      try {
+        const updated = await getIntakeItem({
+          intakeItemId: target.id,
+          organizationId: target.organizationId ?? organizationId,
+          spaceId: targetSpaceId,
+        });
+        setItems((current) =>
+          current.map((item) => (item.id === updated.id ? updated : item)),
+        );
+        setSelectedItem((current) =>
+          current?.id === updated.id ? updated : current,
+        );
+        setActive((current) =>
+          current?.id === updated.id ? updated : current,
+        );
+        reloadTagFilterOptions();
+      } catch (error) {
+        const refreshMode = resolveRefreshMode(options);
+        if (shouldSurfaceRefreshError(refreshMode)) {
+          setActionErrorKey(getApiErrorMessageKey(error));
+        }
+      }
+    },
+    [active, organizationId, reloadTagFilterOptions, spaceId],
+  );
+
+  useRealtimeInvalidation(INTAKE_REALTIME_KEYS, (context) => {
+    void loadItems(1, "replace", { mode: "realtime" });
+
+    if (
+      active &&
+      realtimeContextIncludesTarget(context, {
+        id: active.id,
+        type: "INTAKE_ITEM",
+      })
+    ) {
+      void refreshActiveItem({ mode: "realtime" });
+    }
+  });
 
   useEffect(() => {
     if (previousContextKeyRef.current === contextKey) {

@@ -1,4 +1,5 @@
 import {
+  act,
   cleanup,
   fireEvent,
   render,
@@ -113,6 +114,34 @@ const { getSpaceExceptionsViewMock } = vi.hoisted(() => ({
 vi.mock("../../lib/view-service", () => ({
   getSpaceExceptionsView: getSpaceExceptionsViewMock,
 }));
+
+type RealtimeCallback = (context: {
+  events: unknown[];
+  keys: string[];
+  lastEventId: string | null;
+  mode: "realtime";
+  resyncs: unknown[];
+}) => void | Promise<void>;
+
+const { realtimeCallbacks } = vi.hoisted(() => ({
+  realtimeCallbacks: new Map<string, RealtimeCallback>(),
+}));
+vi.mock("../../lib/realtime", async () => {
+  const actual =
+    await vi.importActual<typeof import("../../lib/realtime")>(
+      "../../lib/realtime",
+    );
+
+  return {
+    ...actual,
+    useRealtimeInvalidation: (
+      keys: readonly string[],
+      callback: RealtimeCallback,
+    ) => {
+      keys.forEach((key) => realtimeCallbacks.set(key, callback));
+    },
+  };
+});
 
 const { listTagFilterOptionsMock, listTagsMock } = vi.hoisted(() => ({
   listTagFilterOptionsMock: vi.fn(),
@@ -293,6 +322,7 @@ function makeViewResponse(
 
 beforeEach(() => {
   getSpaceExceptionsViewMock.mockReset();
+  realtimeCallbacks.clear();
   listTagFilterOptionsMock.mockReset();
   listTagsMock.mockReset();
   routerMock.replace.mockReset();
@@ -897,6 +927,195 @@ describe("ExceptionsPage", () => {
     );
 
     expect(await screen.findByText("New exception row")).toBeInTheDocument();
+  });
+
+  it("keeps the current exception list while realtime refresh is pending", async () => {
+    searchParamsMock.current = new URLSearchParams({
+      assigneeId: "01ARZ3NDEKTSV4RRFFQ69G5FB1",
+      exceptionType: "blocked",
+    });
+    let resolveRealtime: (
+      value: ReturnType<typeof makeViewResponse>,
+    ) => void = () => {};
+    getSpaceExceptionsViewMock
+      .mockResolvedValueOnce(
+        makeViewResponse(
+          [
+            makeException(
+              makeWorkItem({
+                id: "01ARZ3NDEKTSV4RRFFQ69G5R01",
+                title: "Blocked page one",
+                exceptionSignals: [
+                  { type: "blocked", reason: "Waiting on API" },
+                ],
+              }),
+              "blocked",
+            ),
+          ],
+          {
+            assigneeId: "01ARZ3NDEKTSV4RRFFQ69G5FB1",
+            exceptionType: "blocked",
+          },
+          { page: 1, pageSize: 200, total: 201 },
+        ),
+      )
+      .mockResolvedValueOnce(
+        makeViewResponse(
+          [
+            makeException(
+              makeWorkItem({
+                id: "01ARZ3NDEKTSV4RRFFQ69G5R02",
+                title: "Blocked page two before realtime",
+                exceptionSignals: [
+                  { type: "blocked", reason: "Waiting on API" },
+                ],
+              }),
+              "blocked",
+            ),
+          ],
+          {
+            assigneeId: "01ARZ3NDEKTSV4RRFFQ69G5FB1",
+            exceptionType: "blocked",
+          },
+          { page: 2, pageSize: 200, total: 201 },
+        ),
+      )
+      .mockImplementationOnce(
+        () =>
+          new Promise((resolve) => {
+            resolveRealtime = resolve;
+          }),
+      );
+
+    render(<ExceptionsPage />);
+
+    expect(await screen.findByText("Blocked page one")).toBeInTheDocument();
+    fireEvent.click(screen.getByTestId("exceptions-pagination-next"));
+
+    expect(
+      await screen.findByText("Blocked page two before realtime"),
+    ).toBeInTheDocument();
+
+    for (const key of [
+      "exception-view",
+      "work-item-list",
+      "bug-list",
+      "version-board",
+      "space-overview",
+    ]) {
+      expect(realtimeCallbacks.has(key)).toBe(true);
+    }
+
+    const callback = realtimeCallbacks.get("work-item-list");
+    if (!callback) {
+      throw new Error("Expected exception realtime callback to be registered");
+    }
+
+    await act(async () => {
+      await callback({
+        events: [],
+        keys: ["work-item-list"],
+        lastEventId: null,
+        mode: "realtime",
+        resyncs: [],
+      });
+    });
+
+    await waitFor(() =>
+      expect(getSpaceExceptionsViewMock).toHaveBeenCalledTimes(3),
+    );
+    expect(getSpaceExceptionsViewMock.mock.calls[2]![0]).toMatchObject({
+      assigneeId: "01ARZ3NDEKTSV4RRFFQ69G5FB1",
+      exceptionType: "blocked",
+      page: 2,
+      pageSize: 200,
+    });
+    expect(
+      screen.getByText("Blocked page two before realtime"),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByText("spaceExceptions.states.loadingList"),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByText("spaceExceptions.errorTitle"),
+    ).not.toBeInTheDocument();
+
+    await act(async () => {
+      resolveRealtime(
+        makeViewResponse(
+          [
+            makeException(
+              makeWorkItem({
+                id: "01ARZ3NDEKTSV4RRFFQ69G5R03",
+                title: "Blocked page two after realtime",
+                exceptionSignals: [
+                  { type: "blocked", reason: "Waiting on API" },
+                ],
+              }),
+              "blocked",
+            ),
+          ],
+          {
+            assigneeId: "01ARZ3NDEKTSV4RRFFQ69G5FB1",
+            exceptionType: "blocked",
+          },
+          { page: 2, pageSize: 200, total: 201 },
+        ),
+      );
+    });
+
+    expect(
+      await screen.findByText("Blocked page two after realtime"),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByText("Blocked page two before realtime"),
+    ).not.toBeInTheDocument();
+  });
+
+  it("keeps the current exception list when realtime refresh fails", async () => {
+    getSpaceExceptionsViewMock
+      .mockResolvedValueOnce(
+        makeViewResponse([
+          makeException(
+            makeWorkItem({
+              id: "01ARZ3NDEKTSV4RRFFQ69G5RF1",
+              title: "Realtime failure preserved exception",
+            }),
+          ),
+        ]),
+      )
+      .mockRejectedValueOnce(new Error("realtime failed"));
+
+    render(<ExceptionsPage />);
+
+    expect(
+      await screen.findByText("Realtime failure preserved exception"),
+    ).toBeInTheDocument();
+
+    const callback = realtimeCallbacks.get("exception-view");
+    if (!callback) {
+      throw new Error("Expected exception realtime callback to be registered");
+    }
+
+    await act(async () => {
+      await callback({
+        events: [],
+        keys: ["exception-view"],
+        lastEventId: null,
+        mode: "realtime",
+        resyncs: [],
+      });
+    });
+
+    await waitFor(() =>
+      expect(getSpaceExceptionsViewMock).toHaveBeenCalledTimes(2),
+    );
+    expect(
+      screen.getByText("Realtime failure preserved exception"),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByText("spaceExceptions.errorTitle"),
+    ).not.toBeInTheDocument();
   });
 
   it("renders stale and evidence metadata for exception rows", async () => {

@@ -24,6 +24,14 @@ import {
   useFocusReturn,
   useListKeyboardNav,
 } from "../../lib/hooks/use-list-keyboard-nav";
+import {
+  resolveRefreshMode,
+  shouldClearDataForRefresh,
+  shouldShowBlockingRefreshState,
+  shouldSurfaceRefreshError,
+  useRealtimeInvalidation,
+  type RefreshModeOptions,
+} from "../../lib/realtime";
 import { getTimelineEventHref } from "../../lib/timeline-links";
 import { cn } from "../../lib/utils";
 import { translateWorkflowActionName } from "../../lib/workflow-display";
@@ -74,6 +82,8 @@ type WorkbenchFilterState = {
   versionId?: string;
   workItemType?: WorkItemType;
 };
+
+const WORKBENCH_REALTIME_KEYS = ["workbench"] as const;
 
 export function MyWorkbench() {
   const t = useTranslations("workbench");
@@ -338,7 +348,8 @@ export function MyWorkbench() {
     setFilters({});
   }, []);
 
-  const fetchView = useCallback(async () => {
+  const fetchView = useCallback(async (options?: RefreshModeOptions) => {
+    const mode = resolveRefreshMode(options);
     if (!organizationId) {
       requestSeq.current += 1;
       setView(null);
@@ -349,9 +360,15 @@ export function MyWorkbench() {
 
     const requestId = requestSeq.current + 1;
     requestSeq.current = requestId;
-    setView(null);
-    setIsLoading(true);
-    setErrorKey(null);
+    if (shouldClearDataForRefresh(mode)) {
+      setView(null);
+    }
+    if (shouldShowBlockingRefreshState(mode)) {
+      setIsLoading(true);
+    }
+    if (shouldSurfaceRefreshError(mode)) {
+      setErrorKey(null);
+    }
 
     try {
       const next = await getMyWorkbenchView({
@@ -363,11 +380,14 @@ export function MyWorkbench() {
         return;
       }
       setView(next);
+      setErrorKey(null);
     } catch (error) {
       if (requestSeq.current !== requestId) {
         return;
       }
-      setErrorKey(getApiErrorMessageKey(error));
+      if (shouldSurfaceRefreshError(mode)) {
+        setErrorKey(getApiErrorMessageKey(error));
+      }
     } finally {
       if (requestSeq.current === requestId) {
         setIsLoading(false);
@@ -376,12 +396,16 @@ export function MyWorkbench() {
   }, [filters, organizationId, selectedSpaceId]);
 
   useEffect(() => {
-    void fetchView();
+    void fetchView({ mode: "initial" });
 
     return () => {
       requestSeq.current += 1;
     };
   }, [fetchView]);
+
+  useRealtimeInvalidation(WORKBENCH_REALTIME_KEYS, () => {
+    void fetchView({ mode: "realtime" });
+  });
 
   const registerWorkbenchItemButton = useCallback(
     (key: string, node: HTMLButtonElement | null) => {
@@ -694,7 +718,7 @@ export function MyWorkbench() {
         <ErrorState
           title={t("errorTitle")}
           message={tRoot(errorKey)}
-          onRetry={() => void fetchView()}
+          onRetry={() => void fetchView({ mode: "manual" })}
         />
       </div>
     );
@@ -958,7 +982,7 @@ export function MyWorkbench() {
         spaceId={activeItemContext?.spaceId ?? selectedSpaceId}
         organizationId={activeItemContext?.organizationId ?? organizationId}
         onChanged={() => {
-          void fetchView();
+          void fetchView({ mode: "manual" });
         }}
       />
     </div>

@@ -20,6 +20,7 @@ import { CommentModule } from "./modules/comment/comment.module";
 import { IntakeModule } from "./modules/intake/intake.module";
 import { ObjectCodeModule } from "./modules/object-code/object-code.module";
 import { OrganizationModule } from "./modules/organization/organization.module";
+import { RealtimeModule } from "./modules/realtime/realtime.module";
 import { RequirementModule } from "./modules/requirement/requirement.module";
 import { SpaceModule } from "./modules/space/space.module";
 import { TagModule } from "./modules/tag/tag.module";
@@ -38,6 +39,7 @@ import { PrismaModule } from "./prisma/prisma.module";
     }),
     AuthModule,
     OrganizationModule,
+    RealtimeModule,
     SpaceModule,
     VersionModule,
     RequirementModule,

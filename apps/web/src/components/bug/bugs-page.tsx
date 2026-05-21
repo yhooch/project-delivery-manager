@@ -40,6 +40,14 @@ import { useUrlTagFilter } from "../../lib/hooks/use-url-tag-filter";
 import { usePathname, useRouter } from "../../i18n/routing";
 import { canCreateBugs } from "../../lib/permission-gates";
 import { listRequirements } from "../../lib/requirement-service";
+import {
+  isRealtimeRefreshMode,
+  resolveRefreshMode,
+  shouldShowBlockingRefreshState,
+  shouldSurfaceRefreshError,
+  useRealtimeInvalidation,
+  type RefreshModeOptions,
+} from "../../lib/realtime";
 import { serializeTagFilterQuery } from "../../lib/tag-query";
 import {
   useSpaceMembers,
@@ -102,6 +110,7 @@ const SEVERITY_FILTERS: BugSeverity[] = [
 ];
 const LIST_PAGE_SIZE = 100;
 const INITIAL_PAGE_INFO = { page: 1, pageSize: LIST_PAGE_SIZE, total: 0 };
+const BUGS_REALTIME_KEYS = ["bug-list"] as const;
 
 type BugItemViewModel = WorkItemViewModel & {
   severity: BugSeverity;
@@ -187,9 +196,11 @@ export function BugsPage() {
   );
   const latestListScopeKeyRef = useRef(listScopeKey);
   const listRequestIdRef = useRef(0);
+  const pageInfoRef = useRef(pageInfo);
   const previousContextKeyRef = useRef(contextKey);
   const rowRefs = useRef(new Map<string, HTMLLIElement>());
   latestListScopeKeyRef.current = listScopeKey;
+  pageInfoRef.current = pageInfo;
   const loadedCount = items.length;
   const paginationFrom = loadedCount > 0 ? 1 : 0;
   const paginationTo = Math.min(loadedCount, pageInfo.total);
@@ -310,7 +321,12 @@ export function BugsPage() {
   );
 
   const fetchBugs = useCallback(
-    async (page = 1, mode: "replace" | "append" = "replace") => {
+    async (
+      page = 1,
+      mode: "replace" | "append" = "replace",
+      options?: RefreshModeOptions,
+    ) => {
+      const refreshMode = resolveRefreshMode(options);
       if (!spaceId) {
         return;
       }
@@ -319,20 +335,27 @@ export function BugsPage() {
       listRequestIdRef.current = requestId;
       const requestScopeKey = listScopeKey;
       const append = mode === "append";
+      const realtimeRefresh = isRealtimeRefreshMode(refreshMode);
+      const pageSize =
+        !append && realtimeRefresh
+          ? Math.max(LIST_PAGE_SIZE, pageInfoRef.current.page * LIST_PAGE_SIZE)
+          : LIST_PAGE_SIZE;
 
       if (append) {
         setLoadingMore(true);
-      } else {
+      } else if (shouldShowBlockingRefreshState(refreshMode)) {
         setLoading(true);
         setHasLoadedItems(false);
       }
-      setErrorMessage(null);
+      if (shouldSurfaceRefreshError(refreshMode)) {
+        setErrorMessage(null);
+      }
 
       try {
         const result = await listBugs({
           organizationId,
           page,
-          pageSize: LIST_PAGE_SIZE,
+          pageSize,
           spaceId,
           type: "BUG",
           ...filters,
@@ -350,8 +373,8 @@ export function BugsPage() {
           append ? [...current, ...result.items] : result.items,
         );
         setPageInfo({
-          page: result.page ?? page,
-          pageSize: result.pageSize ?? LIST_PAGE_SIZE,
+          page: realtimeRefresh ? pageInfoRef.current.page : (result.page ?? page),
+          pageSize: result.pageSize ?? pageSize,
           total: result.total ?? result.items.length,
         });
         setStatusCategoryCounts(result.statusCategoryCounts ?? []);
@@ -360,8 +383,10 @@ export function BugsPage() {
           listRequestIdRef.current === requestId &&
           latestListScopeKeyRef.current === requestScopeKey
         ) {
-          const key = getApiErrorMessageKey(error);
-          setErrorMessage(tApiError(key));
+          if (shouldSurfaceRefreshError(refreshMode)) {
+            const key = getApiErrorMessageKey(error);
+            setErrorMessage(tApiError(key));
+          }
         }
       } finally {
         if (
@@ -382,7 +407,7 @@ export function BugsPage() {
 
   useEffect(() => {
     if (spaceId) {
-      void fetchBugs(1, "replace");
+      void fetchBugs(1, "replace", { mode: "initial" });
     } else {
       listRequestIdRef.current += 1;
       setItems([]);
@@ -393,6 +418,10 @@ export function BugsPage() {
       setHasLoadedItems(false);
     }
   }, [fetchBugs, spaceId]);
+
+  useRealtimeInvalidation(BUGS_REALTIME_KEYS, () => {
+    void fetchBugs(1, "replace", { mode: "realtime" });
+  });
 
   useEffect(() => {
     if (previousContextKeyRef.current === contextKey) {

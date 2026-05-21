@@ -13,7 +13,9 @@ import {
   type PageResult,
   type PresignAttachmentRequest,
   type PresignAttachmentResponse,
+  type RealtimeInvalidationKey,
   type SpaceRole,
+  type WorkItemType,
 } from "@project-delivery/shared";
 import { ulid } from "ulid";
 
@@ -21,6 +23,7 @@ import { ApiException } from "../../http/api-exception";
 import { auditAccessDenied } from "../audit/audit-access-denied";
 import { AuditService } from "../audit/audit.service";
 import type { RequestMetadata } from "../auth/auth-session.types";
+import { RealtimePublisherService } from "../realtime/realtime-publisher.service";
 import {
   REQUIREMENT_REPOSITORY,
   type RequirementRepository,
@@ -60,6 +63,8 @@ export class AttachmentService {
     private readonly audit: AuditService,
     @Inject(ATTACHMENT_OBJECT_STORAGE)
     private readonly objectStorage: AttachmentObjectStorage,
+    @Inject(RealtimePublisherService)
+    private readonly realtime: RealtimePublisherService,
   ) {}
 
   async presign(
@@ -146,6 +151,26 @@ export class AttachmentService {
       spaceId: target.spaceId,
       targetId: created.id,
       targetType: "ATTACHMENT",
+    });
+
+    this.safePublishRealtime({
+      actorId: actorUserId,
+      organizationId: target.organizationId,
+      spaceId: target.spaceId,
+      target: { type: input.targetType, id: target.targetId },
+      operation: "ATTACHMENT_CHANGED",
+      invalidates: attachmentInvalidates(
+        input.targetType,
+        target.targetWorkItemType,
+      ),
+      hints: {
+        targetType: input.targetType,
+        targetId: target.targetId,
+        spaceId: target.spaceId,
+        ...(target.targetWorkItemType
+          ? { workItemType: target.targetWorkItemType }
+          : {}),
+      },
     });
 
     return created;
@@ -481,6 +506,38 @@ export class AttachmentService {
     }
 
     throw error;
+  }
+
+  private safePublishRealtime(
+    input: Parameters<RealtimePublisherService["publish"]>[0],
+  ) {
+    try {
+      this.realtime.publish(input);
+    } catch (error) {
+      this.logger.error(
+        "Failed to publish attachment realtime event",
+        error instanceof Error ? error.stack : String(error),
+      );
+    }
+  }
+}
+
+function attachmentInvalidates(
+  targetType: AttachmentTargetType,
+  workItemType: WorkItemType | undefined,
+): RealtimeInvalidationKey[] {
+  switch (targetType) {
+    case "REQUIREMENT":
+      return ["attachments", "timeline", "requirement-detail"];
+    case "WORK_ITEM":
+      return [
+        "attachments",
+        "timeline",
+        workItemType === "BUG" ? "bug-list" : "work-item-list",
+        "version-board",
+        "workbench",
+        "space-overview",
+      ];
   }
 }
 

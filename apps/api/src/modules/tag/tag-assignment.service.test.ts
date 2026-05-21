@@ -3,6 +3,7 @@ import type { TagDto } from "@project-delivery/shared";
 import { describe, expect, it, vi } from "vitest";
 
 import type { AuditService } from "../audit/audit.service";
+import type { RealtimePublisherService } from "../realtime/realtime-publisher.service";
 import type { TargetResolverService } from "../target/target-resolver.service";
 import { TagAssignmentService } from "./tag-assignment.service";
 import type { TagRepository } from "./tag.repository";
@@ -21,7 +22,7 @@ describe("TagAssignmentService", () => {
       makeTag({ id: TAG_ID, name: "Before" }),
       makeTag({ id: SECOND_TAG_ID, name: "After" }),
     ];
-    const { audit, service, tags, targets } = createSubject({
+    const { audit, realtime, service, tags, targets } = createSubject({
       beforeTags: [beforeTag],
       replacedTags: afterTags,
     });
@@ -84,6 +85,34 @@ describe("TagAssignmentService", () => {
         targetType: "WORK_ITEM",
       }),
     );
+    expect(realtime.publish).toHaveBeenCalledWith(
+      expect.objectContaining({
+        operation: "TAG_CHANGED",
+        target: { type: "WORK_ITEM", id: TARGET_ID },
+        invalidates: expect.arrayContaining(["work-item-list", "version-board"]),
+        hints: expect.objectContaining({
+          changedFields: ["tagIds"],
+          targetId: TARGET_ID,
+          targetType: "WORK_ITEM",
+        }),
+      }),
+    );
+  });
+
+  it("does not publish realtime events when assignment ids do not change", async () => {
+    const beforeTags = [makeTag({ id: TAG_ID })];
+    const { realtime, service } = createSubject({
+      beforeTags,
+      replacedTags: [makeTag({ id: TAG_ID })],
+    });
+
+    await service.replace(ACTOR_ID, {
+      targetId: TARGET_ID,
+      targetType: "WORK_ITEM",
+      tagIds: [TAG_ID],
+    });
+
+    expect(realtime.publish).not.toHaveBeenCalled();
   });
 
   it("does not swallow assignment replacement errors", async () => {
@@ -169,12 +198,22 @@ function createSubject(input: {
   } as unknown as AuditService & {
     record: ReturnType<typeof vi.fn>;
   };
+  const realtime = createRealtimePublisher();
 
   return {
     audit,
-    service: new TagAssignmentService(tags, targets, audit),
+    realtime,
+    service: new TagAssignmentService(tags, targets, audit, realtime),
     tags,
     targets,
+  };
+}
+
+function createRealtimePublisher() {
+  return {
+    publish: vi.fn(),
+  } as unknown as RealtimePublisherService & {
+    publish: ReturnType<typeof vi.fn>;
   };
 }
 

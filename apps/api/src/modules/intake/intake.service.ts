@@ -1,4 +1,4 @@
-import { HttpStatus, Inject, Injectable } from "@nestjs/common";
+import { HttpStatus, Inject, Injectable, Logger } from "@nestjs/common";
 import {
   type ConvertIntakeItemToWorkItemsRequest,
   type ConvertIntakeItemToWorkItemsResponse,
@@ -20,6 +20,7 @@ import {
   ORGANIZATION_REPOSITORY,
   type OrganizationRepository,
 } from "../organization/organization.repository";
+import { RealtimePublisherService } from "../realtime/realtime-publisher.service";
 import {
   REQUIREMENT_REPOSITORY,
   type RequirementRepository,
@@ -57,6 +58,8 @@ const FULL_SPACE_INTAKE_READER_ROLES = new Set<SpaceRole>([
 
 @Injectable()
 export class IntakeService {
+  private readonly logger = new Logger(IntakeService.name);
+
   constructor(
     @Inject(INTAKE_REPOSITORY)
     private readonly intakeItems: IntakeRepository,
@@ -72,6 +75,8 @@ export class IntakeService {
     private readonly workItems: WorkItemRepository,
     @Inject(AuditService)
     private readonly audit: AuditService,
+    @Inject(RealtimePublisherService)
+    private readonly realtime: RealtimePublisherService,
   ) {}
 
   async list(
@@ -135,6 +140,24 @@ export class IntakeService {
       spaceId: created.spaceId,
       targetId: created.id,
       targetType: "INTAKE_ITEM",
+    });
+
+    this.safePublishRealtime({
+      actorId: actorUserId,
+      organizationId: created.organizationId,
+      spaceId: created.spaceId,
+      target: { type: "INTAKE_ITEM", id: created.id },
+      operation: "CREATED",
+      invalidates: ["intake-list"],
+      hints: {
+        targetType: "INTAKE_ITEM",
+        targetId: created.id,
+        spaceId: created.spaceId,
+        ...(created.versionId ? { versionId: created.versionId } : {}),
+        ...(created.requirementId
+          ? { requirementId: created.requirementId }
+          : {}),
+      },
     });
 
     return created;
@@ -232,6 +255,41 @@ export class IntakeService {
       spaceId: item.spaceId,
       targetId: intakeItemId,
       targetType: "INTAKE_ITEM",
+    });
+
+    this.safePublishRealtime({
+      actorId: actorUserId,
+      organizationId: updated.organizationId,
+      spaceId: updated.spaceId,
+      target: { type: "INTAKE_ITEM", id: updated.id },
+      operation: "UPDATED",
+      invalidates: [
+        "intake-list",
+        ...(input.cascadeVersionChange === true
+          ? [
+              "work-item-list" as const,
+              "bug-list" as const,
+              "version-board" as const,
+              "workbench" as const,
+              "space-overview" as const,
+              "exception-view" as const,
+              "timeline" as const,
+            ]
+          : []),
+      ],
+      hints: {
+        targetType: "INTAKE_ITEM",
+        targetId: updated.id,
+        spaceId: updated.spaceId,
+        ...(updated.versionId ? { versionId: updated.versionId } : {}),
+        ...(updated.requirementId
+          ? { requirementId: updated.requirementId }
+          : {}),
+        changedFields: changedFieldsFromIntakeUpdate(input),
+        ...(input.cascadeVersionChange === true
+          ? { suggestFullRefresh: true }
+          : {}),
+      },
     });
 
     return updated;
@@ -350,6 +408,52 @@ export class IntakeService {
         targetType: "INTAKE_ITEM",
       });
 
+      for (const workItem of converted.workItems) {
+        this.safePublishRealtime({
+          actorId: actorUserId,
+          organizationId: workItem.organizationId,
+          spaceId: workItem.spaceId,
+          target: { type: "WORK_ITEM", id: workItem.id },
+          operation: "CREATED",
+          invalidates: [
+            "work-item-list",
+            "version-board",
+            "workbench",
+            "space-overview",
+            "exception-view",
+            "timeline",
+          ],
+          hints: {
+            targetType: "WORK_ITEM",
+            targetId: workItem.id,
+            spaceId: workItem.spaceId,
+            workItemType: "TASK",
+            ...(workItem.versionId ? { versionId: workItem.versionId } : {}),
+            ...(workItem.requirementId
+              ? { requirementId: workItem.requirementId }
+              : {}),
+            intakeItemId,
+          },
+        });
+      }
+
+      this.safePublishRealtime({
+        actorId: actorUserId,
+        organizationId: item.organizationId,
+        spaceId: item.spaceId,
+        target: { type: "INTAKE_ITEM", id: intakeItemId },
+        operation: "STATUS_CHANGED",
+        invalidates: ["intake-list", "work-item-list", "version-board"],
+        hints: {
+          targetType: "INTAKE_ITEM",
+          targetId: intakeItemId,
+          spaceId: item.spaceId,
+          ...(item.versionId ? { versionId: item.versionId } : {}),
+          changedFields: ["status"],
+          suggestFullRefresh: true,
+        },
+      });
+
       return converted;
     }
 
@@ -404,7 +508,36 @@ export class IntakeService {
       targetType: "INTAKE_ITEM",
     });
 
+    this.safePublishRealtime({
+      actorId: actorUserId,
+      organizationId: updated.organizationId,
+      spaceId: updated.spaceId,
+      target: { type: "INTAKE_ITEM", id: updated.id },
+      operation: "STATUS_CHANGED",
+      invalidates: ["intake-list"],
+      hints: {
+        targetType: "INTAKE_ITEM",
+        targetId: updated.id,
+        spaceId: updated.spaceId,
+        ...(updated.versionId ? { versionId: updated.versionId } : {}),
+        changedFields: ["status"],
+      },
+    });
+
     return updated;
+  }
+
+  private safePublishRealtime(
+    input: Parameters<RealtimePublisherService["publish"]>[0],
+  ) {
+    try {
+      this.realtime.publish(input);
+    } catch (error) {
+      this.logger.error(
+        "Failed to publish intake realtime event",
+        error instanceof Error ? error.stack : String(error),
+      );
+    }
   }
 
   private async validateReferences(
@@ -736,6 +869,10 @@ function throwSpaceAccessDenied(): never {
     "Space access denied",
     HttpStatus.FORBIDDEN,
   );
+}
+
+function changedFieldsFromIntakeUpdate(input: UpdateIntakeItemRequest) {
+  return Object.keys(input).filter((field) => field !== "cascadeVersionChange");
 }
 
 function throwIntakeItemNotFound(): never {

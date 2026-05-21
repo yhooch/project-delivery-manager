@@ -7,6 +7,7 @@ export * from "./intake.ts";
 export * from "./object-code.ts";
 export * from "./openapi.ts";
 export * from "./organization.ts";
+export * from "./realtime.ts";
 export * from "./requirement.ts";
 export * from "./space.ts";
 export * from "./tag.ts";

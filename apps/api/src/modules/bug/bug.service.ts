@@ -3,6 +3,7 @@ import {
   type BugView,
   type CreateBugRequest,
   type ListBugsResponse,
+  type RealtimeOperation,
   type SpaceRole,
   type UpdateBugRequest,
 } from "@project-delivery/shared";
@@ -13,6 +14,7 @@ import {
   ORGANIZATION_REPOSITORY,
   type OrganizationRepository,
 } from "../organization/organization.repository";
+import { RealtimePublisherService } from "../realtime/realtime-publisher.service";
 import {
   SPACE_REPOSITORY,
   type SpaceRepository,
@@ -48,6 +50,8 @@ export class BugService {
     private readonly organizations: OrganizationRepository,
     @Inject(WorkflowActionExecutionService)
     private readonly workflowActions: WorkflowActionExecutionService,
+    @Inject(RealtimePublisherService)
+    private readonly realtime: RealtimePublisherService,
   ) {}
 
   async list(
@@ -158,6 +162,39 @@ export class BugService {
       spaceId: created.spaceId,
       targetId: created.id,
       targetType: "WORK_ITEM",
+    });
+
+    this.safePublishRealtime({
+      actorId: actorUserId,
+      organizationId: created.organizationId,
+      spaceId: created.spaceId,
+      target: { type: "WORK_ITEM", id: created.id },
+      operation: "CREATED",
+      invalidates: [
+        "bug-list",
+        "version-board",
+        "workbench",
+        "space-overview",
+        "exception-view",
+        "timeline",
+      ],
+      hints: {
+        targetType: "WORK_ITEM",
+        targetId: created.id,
+        spaceId: created.spaceId,
+        workItemType: "BUG",
+        ...(created.versionId ? { versionId: created.versionId } : {}),
+        ...(created.requirementId
+          ? { requirementId: created.requirementId }
+          : {}),
+        ...(created.intakeItemId ? { intakeItemId: created.intakeItemId } : {}),
+        ...(created.bugDetail.relatedTaskId
+          ? {
+              relatedTargetType: "WORK_ITEM" as const,
+              relatedTargetId: created.bugDetail.relatedTaskId,
+            }
+          : {}),
+      },
     });
 
     return {
@@ -301,6 +338,42 @@ export class BugService {
       spaceId: updated.spaceId,
       targetId: updated.id,
       targetType: "WORK_ITEM",
+    });
+
+    const changedFields = changedFieldsFromBugUpdate(input);
+
+    this.safePublishRealtime({
+      actorId: actorUserId,
+      organizationId: updated.organizationId,
+      spaceId: updated.spaceId,
+      target: { type: "WORK_ITEM", id: updated.id },
+      operation: resolveBugRealtimeOperation(changedFields),
+      invalidates: [
+        "bug-list",
+        "version-board",
+        "workbench",
+        "space-overview",
+        "exception-view",
+        "timeline",
+      ],
+      hints: {
+        targetType: "WORK_ITEM",
+        targetId: updated.id,
+        spaceId: updated.spaceId,
+        workItemType: "BUG",
+        ...(updated.versionId ? { versionId: updated.versionId } : {}),
+        ...(updated.requirementId
+          ? { requirementId: updated.requirementId }
+          : {}),
+        ...(updated.intakeItemId ? { intakeItemId: updated.intakeItemId } : {}),
+        ...(updated.bugDetail.relatedTaskId
+          ? {
+              relatedTargetType: "WORK_ITEM" as const,
+              relatedTargetId: updated.bugDetail.relatedTaskId,
+            }
+          : {}),
+        changedFields,
+      },
     });
 
     return {
@@ -682,6 +755,19 @@ export class BugService {
       );
     }
   }
+
+  private safePublishRealtime(
+    input: Parameters<RealtimePublisherService["publish"]>[0],
+  ) {
+    try {
+      this.realtime.publish(input);
+    } catch (error) {
+      this.logger.error(
+        "Failed to publish bug realtime event",
+        error instanceof Error ? error.stack : String(error),
+      );
+    }
+  }
 }
 
 function canReadAllSpaceBugs(role: SpaceRole) {
@@ -712,6 +798,22 @@ function parseOptionalDate(value: string | null | undefined, field: string) {
 
 function toTimelineDate(value: Date | null | undefined) {
   return value instanceof Date ? value.toISOString() : value;
+}
+
+function changedFieldsFromBugUpdate(input: UpdateBugRequest) {
+  return Object.keys(input);
+}
+
+function resolveBugRealtimeOperation(changedFields: string[]): RealtimeOperation {
+  if (changedFields.length === 1 && changedFields[0] === "assigneeId") {
+    return "ASSIGNEE_CHANGED";
+  }
+
+  if (changedFields.length === 1 && changedFields[0] === "versionId") {
+    return "VERSION_CHANGED";
+  }
+
+  return "UPDATED";
 }
 
 function selectOptional<T>(value: T | null | undefined, fallback?: T) {

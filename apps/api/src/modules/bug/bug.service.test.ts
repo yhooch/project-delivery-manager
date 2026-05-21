@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import type {
   BugView,
@@ -8,6 +8,7 @@ import type {
   SpaceRole,
 } from "@project-delivery/shared";
 import type { OrganizationRepository } from "../organization/organization.repository";
+import type { RealtimePublisherService } from "../realtime/realtime-publisher.service";
 import type { SpaceRepository } from "../space/space.repository";
 import type { SpaceAccess } from "../space/space.types";
 import type { WorkflowActionExecutionService } from "../workflow/workflow-action-execution.service";
@@ -137,6 +138,24 @@ describe("BugService", () => {
           targetType: "WORK_ITEM",
         }),
       ]),
+    );
+    expect(subject.realtime.publish).toHaveBeenCalledWith(
+      expect.objectContaining({
+        operation: "CREATED",
+        target: { type: "WORK_ITEM", id: created.id },
+        invalidates: expect.arrayContaining([
+          "bug-list",
+          "version-board",
+          "timeline",
+        ]),
+        hints: expect.objectContaining({
+          relatedTargetId: RELATED_TASK_ID,
+          relatedTargetType: "WORK_ITEM",
+          targetType: "WORK_ITEM",
+          versionId: VERSION_ID,
+          workItemType: "BUG",
+        }),
+      }),
     );
   });
 
@@ -399,6 +418,26 @@ describe("BugService", () => {
         }),
       ]),
     );
+    expect(subject.realtime.publish).toHaveBeenCalledWith(
+      expect.objectContaining({
+        operation: "UPDATED",
+        target: { type: "WORK_ITEM", id: BUG_ID },
+        invalidates: expect.arrayContaining([
+          "bug-list",
+          "version-board",
+          "timeline",
+        ]),
+        hints: expect.objectContaining({
+          changedFields: expect.arrayContaining([
+            "assigneeId",
+            "relatedTaskId",
+            "severity",
+          ]),
+          relatedTargetId: RELATED_TASK_ID,
+          workItemType: "BUG",
+        }),
+      }),
+    );
   });
 
   it("does not map lifecycle fields through direct BUG patch updates", async () => {
@@ -622,6 +661,7 @@ function createSubject(role: SpaceRole, actorUserId = ACTOR_ID) {
   const spaces = new FakeSpaceRepository();
   const organizations = new FakeOrganizationRepository();
   const permissionResolver = createPermissionResolver(role);
+  const realtime = createRealtimePublisher();
 
   spaces.addAccess(actorUserId, role);
   spaces.addMember(actorUserId, role);
@@ -630,14 +670,24 @@ function createSubject(role: SpaceRole, actorUserId = ACTOR_ID) {
   return {
     bugs,
     organizations,
+    realtime,
     service: new BugService(
       bugs,
       spaces as unknown as SpaceRepository,
       organizations as unknown as OrganizationRepository,
       permissionResolver as unknown as WorkflowActionExecutionService,
+      realtime,
     ),
     permissionResolver,
     spaces,
+  };
+}
+
+function createRealtimePublisher() {
+  return {
+    publish: vi.fn(),
+  } as unknown as RealtimePublisherService & {
+    publish: ReturnType<typeof vi.fn>;
   };
 }
 

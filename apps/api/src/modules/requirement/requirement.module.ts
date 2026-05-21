@@ -5,6 +5,7 @@ import { AuthModule } from "../auth/auth.module";
 import { AuditModule } from "../audit/audit.module";
 import { ObjectCodeModule } from "../object-code/object-code.module";
 import { OrganizationModule } from "../organization/organization.module";
+import { RealtimeModule } from "../realtime/realtime.module";
 import { SpaceModule } from "../space/space.module";
 import { VersionModule } from "../version/version.module";
 import { PrismaRequirementRepository } from "./prisma-requirement.repository";
@@ -21,6 +22,7 @@ import { RequirementService } from "./requirement.service";
     ObjectCodeModule,
     OrganizationModule,
     PrismaModule,
+    RealtimeModule,
     SpaceModule,
     VersionModule,
   ],

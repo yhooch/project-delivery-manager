@@ -1,4 +1,4 @@
-import { HttpStatus, Inject, Injectable } from "@nestjs/common";
+import { HttpStatus, Inject, Injectable, Logger } from "@nestjs/common";
 import {
   type CreateVersionRequest,
   type GetVersionBoardViewResponse,
@@ -18,6 +18,7 @@ import {
   ORGANIZATION_REPOSITORY,
   type OrganizationRepository,
 } from "../organization/organization.repository";
+import { RealtimePublisherService } from "../realtime/realtime-publisher.service";
 import {
   SPACE_REPOSITORY,
   type SpaceRepository,
@@ -44,6 +45,8 @@ type WithRequirementStatsVisibility<T> = T & {
 
 @Injectable()
 export class VersionService {
+  private readonly logger = new Logger(VersionService.name);
+
   constructor(
     @Inject(VERSION_REPOSITORY)
     private readonly versions: VersionRepository,
@@ -53,6 +56,8 @@ export class VersionService {
     private readonly organizations: OrganizationRepository,
     @Inject(AuditService)
     private readonly audit: AuditService,
+    @Inject(RealtimePublisherService)
+    private readonly realtime: RealtimePublisherService,
   ) {}
 
   async list(
@@ -121,6 +126,21 @@ export class VersionService {
       spaceId: created.spaceId,
       targetId: created.id,
       targetType: "VERSION",
+    });
+
+    this.safePublishRealtime({
+      actorId: actorUserId,
+      organizationId: created.organizationId,
+      spaceId: created.spaceId,
+      target: { type: "VERSION", id: created.id },
+      operation: "CREATED",
+      invalidates: ["version-board", "space-overview"],
+      hints: {
+        targetType: "VERSION",
+        targetId: created.id,
+        spaceId: created.spaceId,
+        versionId: created.id,
+      },
     });
 
     return created;
@@ -237,7 +257,36 @@ export class VersionService {
       targetType: "VERSION",
     });
 
+    this.safePublishRealtime({
+      actorId: actorUserId,
+      organizationId: updated.organizationId,
+      spaceId: updated.spaceId,
+      target: { type: "VERSION", id: updated.id },
+      operation: "UPDATED",
+      invalidates: ["version-board", "space-overview"],
+      hints: {
+        targetType: "VERSION",
+        targetId: updated.id,
+        spaceId: updated.spaceId,
+        versionId: updated.id,
+        changedFields: changedFieldsFromVersionUpdate(input),
+      },
+    });
+
     return updated;
+  }
+
+  private safePublishRealtime(
+    input: Parameters<RealtimePublisherService["publish"]>[0],
+  ) {
+    try {
+      this.realtime.publish(input);
+    } catch (error) {
+      this.logger.error(
+        "Failed to publish version realtime event",
+        error instanceof Error ? error.stack : String(error),
+      );
+    }
   }
 
   private async requireSpaceAccess(userId: string, spaceId: string) {
@@ -406,6 +455,10 @@ function withRequirementStatsVisibility<T>(
     ...input,
     requirementStatsVisibility: "SPACE",
   };
+}
+
+function changedFieldsFromVersionUpdate(input: UpdateVersionRequest) {
+  return Object.keys(input);
 }
 
 function parseOptionalDate(value: string | undefined, field: string) {

@@ -9,6 +9,7 @@ import type {
 } from "@project-delivery/shared";
 import type { AuditService } from "../audit/audit.service";
 import type { OrganizationRepository } from "../organization/organization.repository";
+import type { RealtimePublisherService } from "../realtime/realtime-publisher.service";
 import type { SpaceRepository } from "../space/space.repository";
 import type { SpaceAccess } from "../space/space.types";
 import type { WorkflowActionExecutionService } from "../workflow/workflow-action-execution.service";
@@ -108,6 +109,25 @@ describe("WorkItemService", () => {
         spaceId: SPACE_ID,
         targetId: created.id,
         targetType: "WORK_ITEM",
+      }),
+    );
+    expect(subject.realtime.publish).toHaveBeenCalledWith(
+      expect.objectContaining({
+        operation: "CREATED",
+        target: { type: "WORK_ITEM", id: created.id },
+        invalidates: expect.arrayContaining([
+          "work-item-list",
+          "version-board",
+          "timeline",
+        ]),
+        hints: expect.objectContaining({
+          intakeItemId: INTAKE_ITEM_ID,
+          requirementId: REQUIREMENT_ID,
+          targetId: created.id,
+          targetType: "WORK_ITEM",
+          versionId: VERSION_ID,
+          workItemType: "TASK",
+        }),
       }),
     );
   });
@@ -387,6 +407,25 @@ describe("WorkItemService", () => {
         targetType: "WORK_ITEM",
       }),
     );
+    expect(subject.realtime.publish).toHaveBeenCalledWith(
+      expect.objectContaining({
+        operation: "UPDATED",
+        target: { type: "WORK_ITEM", id: WORK_ITEM_ID },
+        invalidates: expect.arrayContaining([
+          "work-item-list",
+          "version-board",
+          "timeline",
+        ]),
+        hints: expect.objectContaining({
+          changedFields: expect.arrayContaining([
+            "assigneeId",
+            "dueDate",
+            "priority",
+          ]),
+          workItemType: "TASK",
+        }),
+      }),
+    );
   });
 
   it("allows independent TASK version edits without requirement or intake links", async () => {
@@ -598,6 +637,7 @@ function createSubject(role: SpaceRole, actorUserId = ACTOR_ID) {
   const spaces = new FakeSpaceRepository();
   const organizations = new FakeOrganizationRepository();
   const audit = createAuditService();
+  const realtime = createRealtimePublisher();
 
   spaces.addAccess(actorUserId, role);
   spaces.addMember(actorUserId, role);
@@ -606,6 +646,7 @@ function createSubject(role: SpaceRole, actorUserId = ACTOR_ID) {
   return {
     audit,
     organizations,
+    realtime,
     service: new WorkItemService(
       workItems,
       spaces as unknown as SpaceRepository,
@@ -614,6 +655,7 @@ function createSubject(role: SpaceRole, actorUserId = ACTOR_ID) {
         role,
       ) as unknown as WorkflowActionExecutionService,
       audit,
+      realtime,
     ),
     spaces,
     workItems,
@@ -625,6 +667,14 @@ function createAuditService() {
     record: vi.fn(),
   } as unknown as AuditService & {
     record: ReturnType<typeof vi.fn>;
+  };
+}
+
+function createRealtimePublisher() {
+  return {
+    publish: vi.fn(),
+  } as unknown as RealtimePublisherService & {
+    publish: ReturnType<typeof vi.fn>;
   };
 }
 

@@ -28,6 +28,14 @@ import { useTagFilterSelection } from "../../lib/hooks/use-tag-filter-selection"
 import { useUrlTagFilter } from "../../lib/hooks/use-url-tag-filter";
 import { canCreateTasks } from "../../lib/permission-gates";
 import { listRequirements } from "../../lib/requirement-service";
+import {
+  isRealtimeRefreshMode,
+  resolveRefreshMode,
+  shouldShowBlockingRefreshState,
+  shouldSurfaceRefreshError,
+  useRealtimeInvalidation,
+  type RefreshModeOptions,
+} from "../../lib/realtime";
 import { usePathname, useRouter } from "../../i18n/routing";
 import { serializeTagFilterQuery } from "../../lib/tag-query";
 import {
@@ -73,6 +81,12 @@ const STATUS_FILTERS: StatusCategory[] = [
 const PRIORITY_FILTERS: Priority[] = ["LOW", "MEDIUM", "HIGH", "URGENT"];
 const LIST_PAGE_SIZE = 100;
 const INITIAL_PAGE_INFO = { page: 1, pageSize: LIST_PAGE_SIZE, total: 0 };
+const TASKS_REALTIME_KEYS = [
+  "work-item-list",
+  "timeline",
+  "comments",
+  "attachments",
+] as const;
 
 export function TasksPage() {
   const tNav = useTranslations("shell.nav");
@@ -159,11 +173,13 @@ export function TasksPage() {
   const latestListScopeKeyRef = useRef(listScopeKey);
   const listRequestIdRef = useRef(0);
   const itemsLengthRef = useRef(0);
+  const pageInfoRef = useRef(pageInfo);
   const previousContextKeyRef = useRef(contextKey);
   const rowRefs = useRef(new Map<string, HTMLLIElement>());
   const searchQuery = useMemo(() => normalizeSearchQuery(query), [query]);
   latestListScopeKeyRef.current = listScopeKey;
   itemsLengthRef.current = items.length;
+  pageInfoRef.current = pageInfo;
   const loadedCount = items.length;
   const paginationFrom = loadedCount > 0 ? 1 : 0;
   const paginationTo = Math.min(loadedCount, pageInfo.total);
@@ -190,7 +206,12 @@ export function TasksPage() {
   );
 
   const fetchTasks = useCallback(
-    async (page = 1, mode: "replace" | "append" = "replace") => {
+    async (
+      page = 1,
+      mode: "replace" | "append" = "replace",
+      options?: RefreshModeOptions,
+    ) => {
+      const refreshMode = resolveRefreshMode(options);
       if (!spaceId) {
         return;
       }
@@ -199,24 +220,33 @@ export function TasksPage() {
       listRequestIdRef.current = requestId;
       const requestScopeKey = listScopeKey;
       const append = mode === "append";
+      const realtimeRefresh = isRealtimeRefreshMode(refreshMode);
+      const pageSize =
+        !append && realtimeRefresh
+          ? Math.max(LIST_PAGE_SIZE, pageInfoRef.current.page * LIST_PAGE_SIZE)
+          : LIST_PAGE_SIZE;
       const keepCurrentItems =
-        !append && Boolean(searchQuery) && itemsLengthRef.current > 0;
+        !append &&
+        (realtimeRefresh || Boolean(searchQuery)) &&
+        itemsLengthRef.current > 0;
 
       if (append) {
         setLoadingMore(true);
-      } else {
+      } else if (shouldShowBlockingRefreshState(refreshMode)) {
         setLoading(!keepCurrentItems);
         if (!keepCurrentItems) {
           setHasLoadedItems(false);
         }
       }
-      setErrorMessage(null);
+      if (shouldSurfaceRefreshError(refreshMode)) {
+        setErrorMessage(null);
+      }
 
       try {
         const result = await listWorkItems({
           organizationId,
           page,
-          pageSize: LIST_PAGE_SIZE,
+          pageSize,
           spaceId,
           type: "TASK",
           ...(searchQuery ? { query: searchQuery } : {}),
@@ -233,8 +263,8 @@ export function TasksPage() {
           append ? [...current, ...result.items] : result.items,
         );
         setPageInfo({
-          page: result.page ?? page,
-          pageSize: result.pageSize ?? LIST_PAGE_SIZE,
+          page: realtimeRefresh ? pageInfoRef.current.page : (result.page ?? page),
+          pageSize: result.pageSize ?? pageSize,
           total: result.total ?? result.items.length,
         });
         setStatusCategoryCounts(result.statusCategoryCounts ?? []);
@@ -243,7 +273,7 @@ export function TasksPage() {
           listRequestIdRef.current === requestId &&
           latestListScopeKeyRef.current === requestScopeKey
         ) {
-          if (!keepCurrentItems) {
+          if (shouldSurfaceRefreshError(refreshMode) && !keepCurrentItems) {
             const key = getApiErrorMessageKey(error);
             setErrorMessage(tApiError(key));
           }
@@ -275,7 +305,7 @@ export function TasksPage() {
 
   useEffect(() => {
     if (spaceId) {
-      void fetchTasks(1, "replace");
+      void fetchTasks(1, "replace", { mode: "initial" });
     } else {
       listRequestIdRef.current += 1;
       setItems([]);
@@ -286,6 +316,10 @@ export function TasksPage() {
       setHasLoadedItems(false);
     }
   }, [fetchTasks, spaceId]);
+
+  useRealtimeInvalidation(TASKS_REALTIME_KEYS, () => {
+    void fetchTasks(1, "replace", { mode: "realtime" });
+  });
 
   useEffect(() => {
     if (previousContextKeyRef.current === contextKey) {

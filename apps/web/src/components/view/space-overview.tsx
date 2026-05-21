@@ -26,6 +26,14 @@ import { useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { getApiErrorMessageKey } from "../../lib/api-error-messages";
+import {
+  resolveRefreshMode,
+  shouldClearDataForRefresh,
+  shouldShowBlockingRefreshState,
+  shouldSurfaceRefreshError,
+  useRealtimeInvalidation,
+  type RefreshModeOptions,
+} from "../../lib/realtime";
 import { getTimelineEventHref } from "../../lib/timeline-links";
 import { useVersions } from "../../lib/v2/lookups";
 import { getSpaceOverviewView } from "../../lib/view-service";
@@ -78,6 +86,8 @@ const versionStatusToCategory: Record<string, StatusCategory> = {
   RELEASED: "DONE",
   ARCHIVED: "TERMINATED",
 };
+
+const SPACE_OVERVIEW_REALTIME_KEYS = ["space-overview"] as const;
 
 export function SpaceOverview() {
   const t = useTranslations("spaceOverview");
@@ -136,15 +146,22 @@ export function SpaceOverview() {
     versionsLoading,
   ]);
 
-  const fetchView = useCallback(async () => {
+  const fetchView = useCallback(async (options?: RefreshModeOptions) => {
     if (!spaceId) {
       return;
     }
+    const mode = resolveRefreshMode(options);
     const requestId = requestSeq.current + 1;
     requestSeq.current = requestId;
-    setView(null);
-    setIsLoading(true);
-    setErrorKey(null);
+    if (shouldClearDataForRefresh(mode)) {
+      setView(null);
+    }
+    if (shouldShowBlockingRefreshState(mode)) {
+      setIsLoading(true);
+    }
+    if (shouldSurfaceRefreshError(mode)) {
+      setErrorKey(null);
+    }
     try {
       const next = await getSpaceOverviewView({
         spaceId,
@@ -153,9 +170,12 @@ export function SpaceOverview() {
       });
       if (requestSeq.current !== requestId) return;
       setView(next);
+      setErrorKey(null);
     } catch (error) {
       if (requestSeq.current !== requestId) return;
-      setErrorKey(getApiErrorMessageKey(error));
+      if (shouldSurfaceRefreshError(mode)) {
+        setErrorKey(getApiErrorMessageKey(error));
+      }
     } finally {
       if (requestSeq.current === requestId) setIsLoading(false);
     }
@@ -168,11 +188,15 @@ export function SpaceOverview() {
       setIsLoading(false);
       return;
     }
-    void fetchView();
+    void fetchView({ mode: "initial" });
     return () => {
       requestSeq.current += 1;
     };
   }, [fetchView, spaceId]);
+
+  useRealtimeInvalidation(SPACE_OVERVIEW_REALTIME_KEYS, () => {
+    void fetchView({ mode: "realtime" });
+  });
 
   const setVersionFilter = useCallback(
     (versionId: string | undefined) => {
@@ -297,7 +321,7 @@ export function SpaceOverview() {
               variant="ghost"
               size="sm"
               className="text-xs"
-              onClick={() => void fetchView()}
+              onClick={() => void fetchView({ mode: "manual" })}
               data-testid="space-overview-refresh"
               disabled={isLoading}
               aria-busy={isLoading}
@@ -318,7 +342,7 @@ export function SpaceOverview() {
           <ErrorState
             title={t("errorTitle")}
             message={tRoot(errorKey)}
-            onRetry={() => void fetchView()}
+            onRetry={() => void fetchView({ mode: "manual" })}
           />
         ) : (
           <div className="mx-auto flex max-w-6xl flex-col gap-10">

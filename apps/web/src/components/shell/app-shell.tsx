@@ -5,6 +5,7 @@ import { useTranslations } from "next-intl";
 import { useEffect, useState, type ReactNode } from "react";
 
 import { Link } from "../../i18n/routing";
+import { RealtimeProvider } from "../../lib/realtime";
 import { canCreateSpaceInOrganization } from "../../lib/space-service";
 import { useSession } from "../providers/session-provider";
 import { Button } from "../ui/button";
@@ -171,7 +172,12 @@ export function AppShell({ children }: AppShellProps) {
               </div>
             </div>
           ) : (
-            children
+            <RealtimeProvider
+              organizationId={currentOrganization?.id}
+              spaceId={currentSpace?.id}
+            >
+              {children}
+            </RealtimeProvider>
           )}
         </main>
       </div>

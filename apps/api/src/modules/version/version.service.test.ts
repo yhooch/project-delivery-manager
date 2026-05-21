@@ -10,6 +10,7 @@ import type {
 } from "@project-delivery/shared";
 import type { AuditService } from "../audit/audit.service";
 import type { OrganizationRepository } from "../organization/organization.repository";
+import type { RealtimePublisherService } from "../realtime/realtime-publisher.service";
 import type { SpaceRepository } from "../space/space.repository";
 import type { SpaceAccess } from "../space/space.types";
 import type { VersionRepository } from "./version.repository";
@@ -70,6 +71,18 @@ describe("VersionService board view", () => {
         targetType: "VERSION",
       }),
     );
+    expect(subject.realtime.publish).toHaveBeenCalledWith(
+      expect.objectContaining({
+        operation: "CREATED",
+        target: { type: "VERSION", id: created.id },
+        invalidates: ["version-board", "space-overview"],
+        hints: expect.objectContaining({
+          targetId: created.id,
+          targetType: "VERSION",
+          versionId: created.id,
+        }),
+      }),
+    );
 
     await subject.service.update(
       ACTOR_ID,
@@ -91,6 +104,15 @@ describe("VersionService board view", () => {
         spaceId: SPACE_ID,
         targetId: created.id,
         targetType: "VERSION",
+      }),
+    );
+    expect(subject.realtime.publish).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        operation: "UPDATED",
+        target: { type: "VERSION", id: created.id },
+        hints: expect.objectContaining({
+          changedFields: ["name"],
+        }),
       }),
     );
   });
@@ -296,15 +318,18 @@ function createSubject(role: SpaceRole) {
   const spaces = new FakeSpaceRepository(role);
   const organizations = new FakeOrganizationRepository();
   const audit = createAuditService();
+  const realtime = createRealtimePublisher();
 
   return {
     audit,
     organizations,
+    realtime,
     service: new VersionService(
       versions,
       spaces as unknown as SpaceRepository,
       organizations as unknown as OrganizationRepository,
       audit,
+      realtime,
     ),
     spaces,
     versions,
@@ -316,6 +341,14 @@ function createAuditService() {
     record: vi.fn(),
   } as unknown as AuditService & {
     record: ReturnType<typeof vi.fn>;
+  };
+}
+
+function createRealtimePublisher() {
+  return {
+    publish: vi.fn(),
+  } as unknown as RealtimePublisherService & {
+    publish: ReturnType<typeof vi.fn>;
   };
 }
 

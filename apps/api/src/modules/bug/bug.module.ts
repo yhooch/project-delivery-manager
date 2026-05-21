@@ -4,6 +4,7 @@ import { PrismaModule } from "../../prisma/prisma.module";
 import { AuthModule } from "../auth/auth.module";
 import { ObjectCodeModule } from "../object-code/object-code.module";
 import { OrganizationModule } from "../organization/organization.module";
+import { RealtimeModule } from "../realtime/realtime.module";
 import { SpaceModule } from "../space/space.module";
 import { WorkflowModule } from "../workflow/workflow.module";
 import { BugController } from "./bug.controller";
@@ -19,6 +20,7 @@ import { PrismaBugRepository } from "./prisma-bug.repository";
     ObjectCodeModule,
     OrganizationModule,
     PrismaModule,
+    RealtimeModule,
     SpaceModule,
     WorkflowModule,
   ],

@@ -3,6 +3,7 @@ import { Module } from "@nestjs/common";
 import { PrismaModule } from "../../prisma/prisma.module";
 import { AuthModule } from "../auth/auth.module";
 import { AuditModule } from "../audit/audit.module";
+import { RealtimeModule } from "../realtime/realtime.module";
 import { RequirementModule } from "../requirement/requirement.module";
 import { SpaceModule } from "../space/space.module";
 import { TargetModule } from "../target/target.module";
@@ -20,6 +21,7 @@ import { S3AttachmentObjectStorage } from "./storage/s3-attachment-object-storag
     AuthModule,
     AuditModule,
     PrismaModule,
+    RealtimeModule,
     RequirementModule,
     SpaceModule,
     TargetModule,

@@ -51,6 +51,14 @@ import { getBug, updateBug } from "../../lib/bug-service";
 import { createComment, listComments } from "../../lib/comment-service";
 import { listIntakeItems } from "../../lib/intake-service";
 import { listRequirements } from "../../lib/requirement-service";
+import {
+  realtimeContextIncludesTarget,
+  resolveRefreshMode,
+  shouldShowBlockingRefreshState,
+  shouldSurfaceRefreshError,
+  useRealtimeInvalidation,
+  type RefreshModeOptions,
+} from "../../lib/realtime";
 import { listTimeline } from "../../lib/timeline-service";
 import { cn } from "../../lib/utils";
 import {
@@ -125,6 +133,15 @@ const BUG_SEVERITIES: BugSeverity[] = [
   "MINOR",
   "TRIVIAL",
 ];
+const WORK_ITEM_DETAIL_REALTIME_KEYS = [
+  "work-item-list",
+  "bug-list",
+  "timeline",
+  "comments",
+  "attachments",
+] as const;
+const WORK_ITEM_COMMENTS_REALTIME_KEYS = ["comments"] as const;
+const WORK_ITEM_ATTACHMENTS_REALTIME_KEYS = ["attachments"] as const;
 
 type Props = {
   item: WorkItemViewModel | null;
@@ -613,7 +630,8 @@ function TaskDetailSheetBody({
     },
     [countRequestKey],
   );
-  const fetchSubresourceCounts = useCallback(async () => {
+  const fetchSubresourceCounts = useCallback(async (options?: RefreshModeOptions) => {
+    const refreshMode = resolveRefreshMode(options, "initial");
     const nextRequestKey = countRequestKey;
     countRequestSeqRef.current += 1;
     const requestSeq = countRequestSeqRef.current;
@@ -629,11 +647,13 @@ function TaskDetailSheetBody({
       return;
     }
 
-    setCountState({
-      attachments: null,
-      comments: null,
-      requestKey: nextRequestKey,
-    });
+    if (shouldShowBlockingRefreshState(refreshMode)) {
+      setCountState({
+        attachments: null,
+        comments: null,
+        requestKey: nextRequestKey,
+      });
+    }
 
     const [commentsResult, attachmentsResult] = await Promise.allSettled([
       listComments({
@@ -686,8 +706,38 @@ function TaskDetailSheetBody({
   }, [countRequestKey, item.id, organizationId, spaceId]);
 
   useEffect(() => {
-    void fetchSubresourceCounts();
+    void fetchSubresourceCounts({ mode: "initial" });
   }, [fetchSubresourceCounts]);
+
+  useRealtimeInvalidation(WORK_ITEM_DETAIL_REALTIME_KEYS, (context) => {
+    if (
+      !realtimeContextIncludesTarget(context, {
+        id: item.id,
+        type: "WORK_ITEM",
+      })
+    ) {
+      return;
+    }
+
+    const keys = new Set(context.keys);
+    const shouldRefreshDetail =
+      (isBug && keys.has("bug-list")) ||
+      (!isBug && keys.has("work-item-list"));
+
+    if (shouldRefreshDetail) {
+      void permissionState.fetchPermissions({ mode: "realtime" });
+    }
+    if (
+      keys.has("comments") ||
+      keys.has("attachments") ||
+      keys.has("timeline")
+    ) {
+      void fetchSubresourceCounts({ mode: "realtime" });
+    }
+    if (keys.has("timeline")) {
+      refreshTimeline();
+    }
+  });
 
   return (
     <>
@@ -949,7 +999,7 @@ function TabCount({ count }: { count: number | null }) {
 type WorkItemPermissionState = {
   detail: SheetDetail | null;
   error: string | null;
-  fetchPermissions: () => Promise<void>;
+  fetchPermissions: (options?: RefreshModeOptions) => Promise<void>;
   loading: boolean;
   permissions: PermissionSnapshot | null;
   setPermissions: (permissions: PermissionSnapshot | null) => void;
@@ -1010,18 +1060,23 @@ function useWorkItemPermissions({
     [requestKey],
   );
 
-  const fetchPermissions = useCallback(async () => {
+  const fetchPermissions = useCallback(async (options?: RefreshModeOptions) => {
+    const refreshMode = resolveRefreshMode(options, "initial");
     requestSeqRef.current += 1;
     const requestSeq = requestSeqRef.current;
     const nextRequestKey = requestKey;
     const requestItem = { id: item.id, type: item.type };
 
-    setState({
-      detail: null,
-      error: null,
-      loading: true,
-      permissions: null,
-      requestKey: nextRequestKey,
+    setState((current) => {
+      const sameRequestKey = current.requestKey === nextRequestKey;
+
+      return {
+        detail: sameRequestKey ? current.detail : null,
+        error: shouldSurfaceRefreshError(refreshMode) ? null : current.error,
+        loading: shouldShowBlockingRefreshState(refreshMode),
+        permissions: sameRequestKey ? current.permissions : null,
+        requestKey: nextRequestKey,
+      };
     });
 
     const isLatestRequest = () =>
@@ -1047,18 +1102,22 @@ function useWorkItemPermissions({
       if (!isLatestRequest()) return;
 
       const key = getApiErrorMessageKey(err);
-      setState({
-        detail: null,
-        error: tApiError(key),
+      setState((current) => ({
+        detail: shouldSurfaceRefreshError(refreshMode) ? null : current.detail,
+        error: shouldSurfaceRefreshError(refreshMode)
+          ? tApiError(key)
+          : current.error,
         loading: false,
-        permissions: null,
+        permissions: shouldSurfaceRefreshError(refreshMode)
+          ? null
+          : current.permissions,
         requestKey: nextRequestKey,
-      });
+      }));
     }
   }, [item.id, item.type, organizationId, requestKey, spaceId, tApiError]);
 
   useEffect(() => {
-    void fetchPermissions();
+    void fetchPermissions({ mode: "initial" });
   }, [fetchPermissions]);
 
   const currentState =
@@ -1774,6 +1833,8 @@ function DetailTab({
   const [saveError, setSaveError] = useState<string | null>(null);
   const [pendingCascadeConfirm, setPendingCascadeConfirm] =
     useState<PendingTraceCascadeConfirm | null>(null);
+  const editTargetKey = `${item.id}:${detail?.id ?? ""}`;
+  const previousEditTargetKeyRef = useRef(editTargetKey);
 
   const resetEditDraft = useCallback(() => {
     setTitle(detail?.title ?? item.title);
@@ -1811,8 +1872,20 @@ function DetailTab({
   ]);
 
   useEffect(() => {
+    if (previousEditTargetKeyRef.current === editTargetKey) {
+      return;
+    }
+
+    previousEditTargetKeyRef.current = editTargetKey;
+    setEditing(false);
     resetEditDraft();
-  }, [resetEditDraft]);
+  }, [editTargetKey, resetEditDraft]);
+
+  useEffect(() => {
+    if (!editing) {
+      resetEditDraft();
+    }
+  }, [editing, resetEditDraft]);
 
   const startEdit = () => {
     resetEditDraft();
@@ -2813,7 +2886,8 @@ function CommentsTab({
   const loading = currentCommentsState.loading;
   const error = currentCommentsState.error;
 
-  const fetchComments = useCallback(async () => {
+  const fetchComments = useCallback(async (options?: RefreshModeOptions) => {
+    const refreshMode = resolveRefreshMode(options, "initial");
     const nextRequestKey = requestKey;
     requestSeqRef.current += 1;
     const requestSeq = requestSeqRef.current;
@@ -2828,11 +2902,15 @@ function CommentsTab({
       return;
     }
 
-    setCommentsState({
-      comments: [],
-      error: null,
-      loading: true,
-      requestKey: nextRequestKey,
+    setCommentsState((current) => {
+      const sameRequestKey = current.requestKey === nextRequestKey;
+
+      return {
+        comments: sameRequestKey ? current.comments : [],
+        error: shouldSurfaceRefreshError(refreshMode) ? null : current.error,
+        loading: shouldShowBlockingRefreshState(refreshMode),
+        requestKey: nextRequestKey,
+      };
     });
 
     const isLatestRequest = () =>
@@ -2857,12 +2935,14 @@ function CommentsTab({
     } catch (err) {
       if (!isLatestRequest()) return;
       const key = getApiErrorMessageKey(err);
-      setCommentsState({
-        comments: [],
-        error: tApiError(key),
-        loading: false,
-        requestKey: nextRequestKey,
-      });
+      if (shouldSurfaceRefreshError(refreshMode)) {
+        setCommentsState({
+          comments: [],
+          error: tApiError(key),
+          loading: false,
+          requestKey: nextRequestKey,
+        });
+      }
     } finally {
       if (isLatestRequest()) {
         setCommentsState((current) =>
@@ -2875,8 +2955,19 @@ function CommentsTab({
   }, [item.id, onCountChange, organizationId, requestKey, spaceId, tApiError]);
 
   useEffect(() => {
-    void fetchComments();
+    void fetchComments({ mode: "initial" });
   }, [fetchComments]);
+
+  useRealtimeInvalidation(WORK_ITEM_COMMENTS_REALTIME_KEYS, (context) => {
+    if (
+      realtimeContextIncludesTarget(context, {
+        id: item.id,
+        type: "WORK_ITEM",
+      })
+    ) {
+      void fetchComments({ mode: "realtime" });
+    }
+  });
 
   useEffect(() => {
     setDraft("");
@@ -3096,7 +3187,8 @@ function AttachmentsTab({
   const loading = currentAttachmentsState.loading;
   const error = currentAttachmentsState.error;
 
-  const fetchAttachments = useCallback(async () => {
+  const fetchAttachments = useCallback(async (options?: RefreshModeOptions) => {
+    const refreshMode = resolveRefreshMode(options, "initial");
     const nextRequestKey = requestKey;
     requestSeqRef.current += 1;
     const requestSeq = requestSeqRef.current;
@@ -3111,11 +3203,15 @@ function AttachmentsTab({
       return;
     }
 
-    setAttachmentsState({
-      attachments: [],
-      error: null,
-      loading: true,
-      requestKey: nextRequestKey,
+    setAttachmentsState((current) => {
+      const sameRequestKey = current.requestKey === nextRequestKey;
+
+      return {
+        attachments: sameRequestKey ? current.attachments : [],
+        error: shouldSurfaceRefreshError(refreshMode) ? null : current.error,
+        loading: shouldShowBlockingRefreshState(refreshMode),
+        requestKey: nextRequestKey,
+      };
     });
 
     const isLatestRequest = () =>
@@ -3140,12 +3236,14 @@ function AttachmentsTab({
     } catch (err) {
       if (!isLatestRequest()) return;
       const key = getApiErrorMessageKey(err);
-      setAttachmentsState({
-        attachments: [],
-        error: tApiError(key),
-        loading: false,
-        requestKey: nextRequestKey,
-      });
+      if (shouldSurfaceRefreshError(refreshMode)) {
+        setAttachmentsState({
+          attachments: [],
+          error: tApiError(key),
+          loading: false,
+          requestKey: nextRequestKey,
+        });
+      }
     } finally {
       if (isLatestRequest()) {
         setAttachmentsState((current) =>
@@ -3158,8 +3256,19 @@ function AttachmentsTab({
   }, [item.id, onCountChange, organizationId, requestKey, spaceId, tApiError]);
 
   useEffect(() => {
-    void fetchAttachments();
+    void fetchAttachments({ mode: "initial" });
   }, [fetchAttachments]);
+
+  useRealtimeInvalidation(WORK_ITEM_ATTACHMENTS_REALTIME_KEYS, (context) => {
+    if (
+      realtimeContextIncludesTarget(context, {
+        id: item.id,
+        type: "WORK_ITEM",
+      })
+    ) {
+      void fetchAttachments({ mode: "realtime" });
+    }
+  });
 
   useEffect(() => {
     setUploadError(null);
@@ -3672,7 +3781,8 @@ function TimelineTab({
   const loading = currentTimelineState.loading;
   const error = currentTimelineState.error;
 
-  const fetchEvents = useCallback(async () => {
+  const fetchEvents = useCallback(async (options?: RefreshModeOptions) => {
+    const refreshMode = resolveRefreshMode(options, "initial");
     const nextRequestKey = requestKey;
     requestSeqRef.current += 1;
     const requestSeq = requestSeqRef.current;
@@ -3687,11 +3797,15 @@ function TimelineTab({
       return;
     }
 
-    setTimelineState({
-      error: null,
-      events: [],
-      loading: true,
-      requestKey: nextRequestKey,
+    setTimelineState((current) => {
+      const sameRequestKey = current.requestKey === nextRequestKey;
+
+      return {
+        error: shouldSurfaceRefreshError(refreshMode) ? null : current.error,
+        events: sameRequestKey ? current.events : [],
+        loading: shouldShowBlockingRefreshState(refreshMode),
+        requestKey: nextRequestKey,
+      };
     });
 
     const isLatestRequest = () =>
@@ -3715,12 +3829,14 @@ function TimelineTab({
     } catch (err) {
       if (!isLatestRequest()) return;
       const key = getApiErrorMessageKey(err);
-      setTimelineState({
-        error: tApiError(key),
-        events: [],
-        loading: false,
-        requestKey: nextRequestKey,
-      });
+      if (shouldSurfaceRefreshError(refreshMode)) {
+        setTimelineState({
+          error: tApiError(key),
+          events: [],
+          loading: false,
+          requestKey: nextRequestKey,
+        });
+      }
     } finally {
       if (isLatestRequest()) {
         setTimelineState((current) =>
@@ -3733,7 +3849,7 @@ function TimelineTab({
   }, [item.id, organizationId, requestKey, spaceId, tApiError]);
 
   useEffect(() => {
-    void fetchEvents();
+    void fetchEvents({ mode: refreshVersion > 0 ? "realtime" : "initial" });
   }, [fetchEvents, refreshVersion]);
 
   if (loading) {

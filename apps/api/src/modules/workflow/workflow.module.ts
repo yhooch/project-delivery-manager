@@ -2,6 +2,7 @@ import { Module } from "@nestjs/common";
 
 import { PrismaModule } from "../../prisma/prisma.module";
 import { AuthModule } from "../auth/auth.module";
+import { RealtimeModule } from "../realtime/realtime.module";
 import { PrismaWorkflowActionExecutionRepository } from "./prisma-workflow-action-execution.repository";
 import { PrismaWorkflowConfigRepository } from "./prisma-workflow-config.repository";
 import { WORKFLOW_ACTION_EXECUTION_REPOSITORY } from "./workflow-action-execution.repository";
@@ -18,7 +19,7 @@ import { WorkflowVersionPublisherService } from "./workflow-version-publisher.se
 @Module({
   controllers: [WorkflowActionExecutionController, WorkflowConfigController],
   exports: [WorkflowActionExecutionService, WorkflowDefaultInitializerService],
-  imports: [AuthModule, PrismaModule],
+  imports: [AuthModule, PrismaModule, RealtimeModule],
   providers: [
     WorkflowActionExecutionService,
     WorkflowConfigService,

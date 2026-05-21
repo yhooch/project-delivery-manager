@@ -1,4 +1,5 @@
 import {
+  act,
   cleanup,
   fireEvent,
   render,
@@ -117,6 +118,34 @@ vi.mock("../../lib/view-service", () => ({
   getSpaceOverviewView: getSpaceOverviewViewMock,
 }));
 
+type RealtimeCallback = (context: {
+  events: unknown[];
+  keys: string[];
+  lastEventId: string | null;
+  mode: "realtime";
+  resyncs: unknown[];
+}) => void | Promise<void>;
+
+const { realtimeCallbacks } = vi.hoisted(() => ({
+  realtimeCallbacks: new Map<string, RealtimeCallback>(),
+}));
+vi.mock("../../lib/realtime", async () => {
+  const actual =
+    await vi.importActual<typeof import("../../lib/realtime")>(
+      "../../lib/realtime",
+    );
+
+  return {
+    ...actual,
+    useRealtimeInvalidation: (
+      keys: readonly string[],
+      callback: RealtimeCallback,
+    ) => {
+      keys.forEach((key) => realtimeCallbacks.set(key, callback));
+    },
+  };
+});
+
 const versionsMock = vi.hoisted(() => ({
   current: [] as { id: string; name: string }[],
 }));
@@ -197,6 +226,7 @@ function makeOverview(overrides: Record<string, unknown> = {}) {
 }
 
 beforeEach(() => {
+  realtimeCallbacks.clear();
   getSpaceOverviewViewMock.mockReset();
   routerMock.replace.mockReset();
   routerMock.push.mockReset();
@@ -445,6 +475,128 @@ describe("SpaceOverview", () => {
         screen.getByText("spaceOverview.exceptions.empty"),
       ).toBeInTheDocument(),
     );
+  });
+
+  it("keeps the current overview DOM while realtime refresh is pending", async () => {
+    let resolveRealtime: (value: ReturnType<typeof makeOverview>) => void =
+      () => {};
+    getSpaceOverviewViewMock
+      .mockResolvedValueOnce(
+        makeOverview({
+          currentVersion: {
+            id: "V_OLD",
+            name: "Old realtime overview version",
+            target: "Old realtime target",
+            targetDate: "2026-06-01T00:00:00.000Z",
+            status: "IN_PROGRESS",
+          },
+        }),
+      )
+      .mockImplementationOnce(
+        () =>
+          new Promise((resolve) => {
+            resolveRealtime = resolve;
+          }),
+      );
+
+    render(<SpaceOverview />);
+
+    expect(
+      await screen.findByText("Old realtime overview version"),
+    ).toBeInTheDocument();
+
+    const callback = realtimeCallbacks.get("space-overview");
+    if (!callback) {
+      throw new Error("Expected overview realtime callback to be registered");
+    }
+
+    await act(async () => {
+      await callback({
+        events: [],
+        keys: ["space-overview"],
+        lastEventId: null,
+        mode: "realtime",
+        resyncs: [],
+      });
+    });
+
+    await waitFor(() =>
+      expect(getSpaceOverviewViewMock).toHaveBeenCalledTimes(2),
+    );
+    expect(
+      screen.getByText("Old realtime overview version"),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByText("spaceOverview.states.loading.title"),
+    ).not.toBeInTheDocument();
+
+    await act(async () => {
+      resolveRealtime(
+        makeOverview({
+          currentVersion: {
+            id: "V_NEW",
+            name: "New realtime overview version",
+            target: "New realtime target",
+            targetDate: "2026-07-01T00:00:00.000Z",
+            status: "IN_PROGRESS",
+          },
+        }),
+      );
+    });
+
+    expect(
+      await screen.findByText("New realtime overview version"),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByText("Old realtime overview version"),
+    ).not.toBeInTheDocument();
+  });
+
+  it("keeps the current overview and skips the error page when realtime refresh fails", async () => {
+    getSpaceOverviewViewMock
+      .mockResolvedValueOnce(
+        makeOverview({
+          currentVersion: {
+            id: "V_OLD",
+            name: "Realtime failure preserved version",
+            target: "Old target",
+            targetDate: "2026-06-01T00:00:00.000Z",
+            status: "IN_PROGRESS",
+          },
+        }),
+      )
+      .mockRejectedValueOnce(new Error("realtime failed"));
+
+    render(<SpaceOverview />);
+
+    expect(
+      await screen.findByText("Realtime failure preserved version"),
+    ).toBeInTheDocument();
+
+    const callback = realtimeCallbacks.get("space-overview");
+    if (!callback) {
+      throw new Error("Expected overview realtime callback to be registered");
+    }
+
+    await act(async () => {
+      await callback({
+        events: [],
+        keys: ["space-overview"],
+        lastEventId: null,
+        mode: "realtime",
+        resyncs: [],
+      });
+    });
+
+    await waitFor(() =>
+      expect(getSpaceOverviewViewMock).toHaveBeenCalledTimes(2),
+    );
+    expect(
+      screen.getByText("Realtime failure preserved version"),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByText("spaceOverview.errorTitle"),
+    ).not.toBeInTheDocument();
   });
 
   it("renders the unauthenticated empty state when session is null", async () => {

@@ -1,4 +1,5 @@
 import {
+  act,
   cleanup,
   fireEvent,
   render,
@@ -233,6 +234,34 @@ vi.mock("../../lib/timeline-service", () => ({
   listTimeline: listTimelineMock,
 }));
 
+type RealtimeCallback = (context: {
+  events: unknown[];
+  keys: string[];
+  lastEventId: string | null;
+  mode: "realtime";
+  resyncs: unknown[];
+}) => void | Promise<void>;
+
+const { realtimeCallbacks } = vi.hoisted(() => ({
+  realtimeCallbacks: new Map<string, RealtimeCallback>(),
+}));
+vi.mock("../../lib/realtime", async () => {
+  const actual =
+    await vi.importActual<typeof import("../../lib/realtime")>(
+      "../../lib/realtime",
+    );
+
+  return {
+    ...actual,
+    useRealtimeInvalidation: (
+      keys: readonly string[],
+      callback: RealtimeCallback,
+    ) => {
+      keys.forEach((key) => realtimeCallbacks.set(key, callback));
+    },
+  };
+});
+
 // Inert dialogs/sheets so Radix portals stay quiet. Each mock captures the
 // `onCreated` / `onUpdated` / `onChanged` callbacks so tests can invoke them
 // to assert refresh behaviour.
@@ -241,6 +270,7 @@ const { capturedHandlers } = vi.hoisted(() => ({
     createVersionOnCreated: null as ((v: unknown) => void) | null,
     editVersionOnUpdated: null as ((v: unknown) => void) | null,
     detailSheetOnChanged: null as (() => void) | null,
+    detailSheetMountSeq: 0,
     createTaskOnCreated: null as (() => void) | null,
     createTaskInitialVersionId: null as string | undefined | null,
   },
@@ -261,31 +291,40 @@ vi.mock("../work-item/create-task-dialog", () => ({
     return open ? <div data-testid="create-task-dialog-open" /> : null;
   },
 }));
-vi.mock("../work-item/task-detail-sheet", () => ({
-  TaskDetailSheet: ({
-    item,
-    open,
-    onChanged,
-  }: {
-    item: { id: string; title: string } | null;
-    open: boolean;
-    onChanged?: () => void;
-  }) => {
-    capturedHandlers.detailSheetOnChanged = onChanged ?? null;
-    return open && item ? (
-      <div data-testid="task-detail-sheet-open">
-        <span data-testid="task-detail-sheet-item-title">{item.title}</span>
-        <button
-          type="button"
-          data-testid="task-detail-sheet-fire-changed"
-          onClick={() => onChanged?.()}
-        >
-          fire-change
-        </button>
-      </div>
-    ) : null;
-  },
-}));
+vi.mock("../work-item/task-detail-sheet", async () => {
+  const React = await import("react");
+
+  return {
+    TaskDetailSheet: ({
+      item,
+      open,
+      onChanged,
+    }: {
+      item: { id: string; title: string } | null;
+      open: boolean;
+      onChanged?: () => void;
+    }) => {
+      const [mountId] = React.useState(() => {
+        capturedHandlers.detailSheetMountSeq += 1;
+        return capturedHandlers.detailSheetMountSeq;
+      });
+
+      capturedHandlers.detailSheetOnChanged = onChanged ?? null;
+      return open && item ? (
+        <div data-testid="task-detail-sheet-open" data-mount-id={mountId}>
+          <span data-testid="task-detail-sheet-item-title">{item.title}</span>
+          <button
+            type="button"
+            data-testid="task-detail-sheet-fire-changed"
+            onClick={() => onChanged?.()}
+          >
+            fire-change
+          </button>
+        </div>
+      ) : null;
+    },
+  };
+});
 vi.mock("./create-version-dialog", () => ({
   CreateVersionDialog: ({
     open,
@@ -454,9 +493,63 @@ async function openBoardFilters() {
   return screen.findByTestId("version-board-filter-panel");
 }
 
+function makeRealtimeEvent({
+  invalidates,
+  targetId = "01ARZ3NDEKTSV4RRFFQ69G5FA1",
+  targetType = "WORK_ITEM",
+  hints = {},
+}: {
+  invalidates: string[];
+  targetId?: string;
+  targetType?: string;
+  hints?: Record<string, unknown>;
+}) {
+  return {
+    id: `01ARZ3NDEKTSV4RRFFQ69G5E${invalidates[0]?.slice(0, 1) ?? "X"}`,
+    sequence: 1,
+    occurredAt: "2026-05-03T00:00:00.000Z",
+    actorId: "USR_ALICE",
+    organizationId: "ORG_01",
+    spaceId: "SPC_01",
+    target: {
+      type: targetType,
+      id: targetId,
+    },
+    operation: "UPDATED",
+    invalidates,
+    hints: {
+      spaceId: "SPC_01",
+      ...hints,
+    },
+  };
+}
+
+async function fireRealtimeKey(
+  key: string,
+  options: {
+    events?: unknown[];
+    keys?: string[];
+    resyncs?: unknown[];
+  } = {},
+) {
+  const callback = realtimeCallbacks.get(key);
+  if (!callback) {
+    throw new Error(`Expected realtime callback for ${key}`);
+  }
+
+  await callback({
+    events: options.events ?? [],
+    keys: options.keys ?? [key],
+    lastEventId: null,
+    mode: "realtime",
+    resyncs: options.resyncs ?? [],
+  });
+}
+
 // -----------------------------------------------------------------------------
 
 beforeEach(() => {
+  realtimeCallbacks.clear();
   listVersionsMock.mockReset();
   getVersionBoardViewMock.mockReset();
   listRequirementsMock.mockReset();
@@ -469,6 +562,7 @@ beforeEach(() => {
   capturedHandlers.createVersionOnCreated = null;
   capturedHandlers.editVersionOnUpdated = null;
   capturedHandlers.detailSheetOnChanged = null;
+  capturedHandlers.detailSheetMountSeq = 0;
   capturedHandlers.createTaskOnCreated = null;
   capturedHandlers.createTaskInitialVersionId = null;
   sessionMock.current = {
@@ -1038,6 +1132,163 @@ describe("VersionPage", () => {
     await waitFor(() => expect(listTimelineMock).toHaveBeenCalledTimes(2));
   });
 
+  it("keeps board cards and the open sheet while realtime board refresh is pending", async () => {
+    let resolveRealtimeBoard: (
+      value: ReturnType<typeof makeBoardResponse>,
+    ) => void = () => {};
+    listVersionsMock.mockResolvedValue({
+      items: [makeVersion()],
+      total: 1,
+    });
+    getVersionBoardViewMock
+      .mockResolvedValueOnce(
+        makeBoardResponse([
+          makeSummary({
+            id: "01ARZ3NDEKTSV4RRFFQ69G5RB1",
+            title: "Old realtime board card",
+          }),
+        ]),
+      )
+      .mockImplementationOnce(
+        () =>
+          new Promise((resolve) => {
+            resolveRealtimeBoard = resolve;
+          }),
+      );
+
+    render(<VersionPage />);
+
+    fireEvent.click(await screen.findByText("Old realtime board card"));
+    expect(
+      await screen.findByTestId("task-detail-sheet-open"),
+    ).toHaveTextContent("Old realtime board card");
+
+    await act(async () => {
+      await fireRealtimeKey("version-board");
+    });
+
+    await waitFor(() =>
+      expect(getVersionBoardViewMock).toHaveBeenCalledTimes(2),
+    );
+    expect(
+      screen.getByTestId("version-board-card-01ARZ3NDEKTSV4RRFFQ69G5RB1"),
+    ).toBeInTheDocument();
+    expect(screen.getByTestId("task-detail-sheet-open")).toHaveTextContent(
+      "Old realtime board card",
+    );
+
+    await act(async () => {
+      resolveRealtimeBoard(
+        makeBoardResponse([
+          makeSummary({
+            id: "01ARZ3NDEKTSV4RRFFQ69G5RB2",
+            title: "New realtime board card",
+          }),
+        ]),
+      );
+    });
+
+    expect(
+      await screen.findByTestId(
+        "version-board-card-01ARZ3NDEKTSV4RRFFQ69G5RB2",
+      ),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByTestId("version-board-card-01ARZ3NDEKTSV4RRFFQ69G5RB1"),
+    ).not.toBeInTheDocument();
+    expect(screen.getByTestId("task-detail-sheet-open")).toBeInTheDocument();
+  });
+
+  it("refreshes only the board for a current-version version-board invalidation", async () => {
+    listVersionsMock.mockResolvedValue({
+      items: [makeVersion()],
+      total: 1,
+    });
+    getVersionBoardViewMock.mockResolvedValue(
+      makeBoardResponse([
+        makeSummary({
+          id: "01ARZ3NDEKTSV4RRFFQ69G5VK1",
+          title: "Realtime board partition",
+        }),
+      ]),
+    );
+
+    render(<VersionPage />);
+
+    await waitFor(() =>
+      expect(getVersionBoardViewMock).toHaveBeenCalledTimes(1),
+    );
+    await waitFor(() => expect(listRequirementsMock).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(listTimelineMock).toHaveBeenCalledTimes(1));
+    getVersionBoardViewMock.mockClear();
+    listVersionsMock.mockClear();
+    listRequirementsMock.mockClear();
+    listTimelineMock.mockClear();
+
+    await act(async () => {
+      await fireRealtimeKey("version-board", {
+        events: [
+          makeRealtimeEvent({
+            invalidates: ["version-board"],
+            hints: { versionId: "01ARZ3NDEKTSV4RRFFQ69G5FV1" },
+          }),
+        ],
+      });
+    });
+
+    await waitFor(() =>
+      expect(getVersionBoardViewMock).toHaveBeenCalledTimes(1),
+    );
+    expect(listVersionsMock).not.toHaveBeenCalled();
+    expect(listRequirementsMock).not.toHaveBeenCalled();
+    expect(listTimelineMock).not.toHaveBeenCalled();
+  });
+
+  it("keeps board DOM and avoids the page error state when a realtime board refresh fails", async () => {
+    listVersionsMock.mockResolvedValue({
+      items: [makeVersion()],
+      total: 1,
+    });
+    getVersionBoardViewMock
+      .mockResolvedValueOnce(
+        makeBoardResponse([
+          makeSummary({
+            id: "01ARZ3NDEKTSV4RRFFQ69G5RF1",
+            title: "Stable card after realtime failure",
+          }),
+        ]),
+      )
+      .mockRejectedValueOnce(new Error("realtime board failed"));
+
+    render(<VersionPage />);
+
+    expect(
+      await screen.findByText("Stable card after realtime failure"),
+    ).toBeInTheDocument();
+
+    await act(async () => {
+      await fireRealtimeKey("version-board", {
+        events: [
+          makeRealtimeEvent({
+            invalidates: ["version-board"],
+            hints: { versionId: "01ARZ3NDEKTSV4RRFFQ69G5FV1" },
+          }),
+        ],
+      });
+    });
+
+    await waitFor(() =>
+      expect(getVersionBoardViewMock).toHaveBeenCalledTimes(2),
+    );
+    expect(
+      screen.getByText("Stable card after realtime failure"),
+    ).toBeInTheDocument();
+    expect(screen.getByTestId("version-board-columns")).toBeInTheDocument();
+    expect(
+      screen.queryByText("versionBoard.states.error.title"),
+    ).not.toBeInTheDocument();
+  });
+
   it("switches to the requirements tab and calls listRequirements", async () => {
     listVersionsMock.mockResolvedValue({
       items: [makeVersion()],
@@ -1068,6 +1319,159 @@ describe("VersionPage", () => {
     expect(
       screen.getByTestId("version-requirement-code-01ARZ3NDEKTSV4RRFFQ69G5FRA"),
     ).toHaveTextContent("REQ-42");
+  });
+
+  it("keeps requirement rows while realtime requirement refresh is pending", async () => {
+    let resolveRealtimeRequirements: (value: {
+      items: ReturnType<typeof makeRequirement>[];
+      page: number;
+      pageSize: number;
+      total: number;
+    }) => void = () => {};
+    listVersionsMock.mockResolvedValue({
+      items: [makeVersion()],
+      total: 1,
+    });
+    getVersionBoardViewMock.mockResolvedValue(makeBoardResponse([]));
+    listRequirementsMock
+      .mockResolvedValueOnce({
+        items: [
+          makeRequirement({
+            id: "01ARZ3NDEKTSV4RRFFQ69G5RR1",
+            title: "Old realtime requirement",
+          }),
+        ],
+        total: 1,
+        page: 1,
+        pageSize: 100,
+      })
+      .mockImplementationOnce(
+        () =>
+          new Promise((resolve) => {
+            resolveRealtimeRequirements = resolve;
+          }),
+      );
+
+    render(<VersionPage />);
+
+    await waitFor(() => expect(listRequirementsMock).toHaveBeenCalledTimes(1));
+    fireEvent.click(await screen.findByTestId("version-tab-requirements"));
+    expect(await screen.findByText("Old realtime requirement")).toBeInTheDocument();
+
+    await act(async () => {
+      await fireRealtimeKey("requirement-list");
+    });
+
+    await waitFor(() => expect(listRequirementsMock).toHaveBeenCalledTimes(2));
+    expect(screen.getByText("Old realtime requirement")).toBeInTheDocument();
+    expect(
+      screen.queryByText("versionBoard.requirements.loading"),
+    ).not.toBeInTheDocument();
+
+    await act(async () => {
+      resolveRealtimeRequirements({
+        items: [
+          makeRequirement({
+            id: "01ARZ3NDEKTSV4RRFFQ69G5RR2",
+            title: "New realtime requirement",
+          }),
+        ],
+        total: 1,
+        page: 1,
+        pageSize: 100,
+      });
+    });
+
+    expect(await screen.findByText("New realtime requirement")).toBeInTheDocument();
+    expect(
+      screen.queryByText("Old realtime requirement"),
+    ).not.toBeInTheDocument();
+  });
+
+  it("refreshes only requirements for requirement-detail invalidations", async () => {
+    listVersionsMock.mockResolvedValue({
+      items: [makeVersion()],
+      total: 1,
+    });
+    getVersionBoardViewMock.mockResolvedValue(makeBoardResponse([]));
+    listRequirementsMock.mockResolvedValue({
+      items: [makeRequirement({ title: "Partitioned requirement" })],
+      total: 1,
+      page: 1,
+      pageSize: 100,
+    });
+
+    render(<VersionPage />);
+
+    await waitFor(() => expect(listRequirementsMock).toHaveBeenCalledTimes(1));
+    await waitFor(() =>
+      expect(getVersionBoardViewMock).toHaveBeenCalledTimes(1),
+    );
+    await waitFor(() => expect(listTimelineMock).toHaveBeenCalledTimes(1));
+    getVersionBoardViewMock.mockClear();
+    listVersionsMock.mockClear();
+    listRequirementsMock.mockClear();
+    listTimelineMock.mockClear();
+
+    await act(async () => {
+      await fireRealtimeKey("requirement-detail", {
+        events: [
+          makeRealtimeEvent({
+            invalidates: ["requirement-detail"],
+            targetId: "01ARZ3NDEKTSV4RRFFQ69G5FR1",
+            targetType: "REQUIREMENT",
+            hints: {
+              targetId: "01ARZ3NDEKTSV4RRFFQ69G5FR1",
+              targetType: "REQUIREMENT",
+              versionId: "01ARZ3NDEKTSV4RRFFQ69G5FV1",
+            },
+          }),
+        ],
+      });
+    });
+
+    await waitFor(() => expect(listRequirementsMock).toHaveBeenCalledTimes(1));
+    expect(getVersionBoardViewMock).not.toHaveBeenCalled();
+    expect(listVersionsMock).not.toHaveBeenCalled();
+    expect(listTimelineMock).not.toHaveBeenCalled();
+  });
+
+  it("ignores requirement invalidations for another version", async () => {
+    listVersionsMock.mockResolvedValue({
+      items: [makeVersion()],
+      total: 1,
+    });
+    getVersionBoardViewMock.mockResolvedValue(makeBoardResponse([]));
+
+    render(<VersionPage />);
+
+    await waitFor(() => expect(listRequirementsMock).toHaveBeenCalledTimes(1));
+    getVersionBoardViewMock.mockClear();
+    listVersionsMock.mockClear();
+    listRequirementsMock.mockClear();
+    listTimelineMock.mockClear();
+
+    await act(async () => {
+      await fireRealtimeKey("requirement-list", {
+        events: [
+          makeRealtimeEvent({
+            invalidates: ["requirement-list"],
+            targetId: "01ARZ3NDEKTSV4RRFFQ69G5FR2",
+            targetType: "REQUIREMENT",
+            hints: {
+              targetId: "01ARZ3NDEKTSV4RRFFQ69G5FR2",
+              targetType: "REQUIREMENT",
+              versionId: "01ARZ3NDEKTSV4RRFFQ69G5FV2",
+            },
+          }),
+        ],
+      });
+    });
+
+    expect(listRequirementsMock).not.toHaveBeenCalled();
+    expect(getVersionBoardViewMock).not.toHaveBeenCalled();
+    expect(listVersionsMock).not.toHaveBeenCalled();
+    expect(listTimelineMock).not.toHaveBeenCalled();
   });
 
   it("shows the requirements empty state when none are linked", async () => {
@@ -1128,6 +1532,215 @@ describe("VersionPage", () => {
     );
     expect(timelineRow.textContent).toContain("Version timeline target");
     expect(timelineRow.textContent).not.toContain("version moved");
+  });
+
+  it("keeps timeline rows while realtime timeline refresh is pending", async () => {
+    let resolveRealtimeTimeline: (value: {
+      items: ReturnType<typeof makeTimelineEvent>[];
+      page: number;
+      pageSize: number;
+      total: number;
+    }) => void = () => {};
+    listVersionsMock.mockResolvedValue({
+      items: [makeVersion()],
+      total: 1,
+    });
+    getVersionBoardViewMock.mockResolvedValue(makeBoardResponse([]));
+    listTimelineMock
+      .mockResolvedValueOnce({
+        items: [
+          makeTimelineEvent({
+            id: "01ARZ3NDEKTSV4RRFFQ69G5TR1",
+            target: {
+              type: "VERSION",
+              id: "01ARZ3NDEKTSV4RRFFQ69G5FV1",
+              title: "Old realtime timeline target",
+            },
+          }),
+        ],
+        total: 1,
+        page: 1,
+        pageSize: 50,
+      })
+      .mockImplementationOnce(
+        () =>
+          new Promise((resolve) => {
+            resolveRealtimeTimeline = resolve;
+          }),
+      );
+
+    render(<VersionPage />);
+
+    await waitFor(() => expect(listTimelineMock).toHaveBeenCalledTimes(1));
+    fireEvent.click(await screen.findByTestId("version-tab-timeline"));
+    expect(
+      await screen.findByTestId(
+        "version-timeline-row-01ARZ3NDEKTSV4RRFFQ69G5TR1",
+      ),
+    ).toBeInTheDocument();
+
+    await act(async () => {
+      await fireRealtimeKey("timeline");
+    });
+
+    await waitFor(() => expect(listTimelineMock).toHaveBeenCalledTimes(2));
+    expect(
+      screen.getByTestId("version-timeline-row-01ARZ3NDEKTSV4RRFFQ69G5TR1"),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByText("versionBoard.timeline.loading"),
+    ).not.toBeInTheDocument();
+
+    await act(async () => {
+      resolveRealtimeTimeline({
+        items: [
+          makeTimelineEvent({
+            id: "01ARZ3NDEKTSV4RRFFQ69G5TR2",
+            target: {
+              type: "VERSION",
+              id: "01ARZ3NDEKTSV4RRFFQ69G5FV1",
+              title: "New realtime timeline target",
+            },
+          }),
+        ],
+        total: 1,
+        page: 1,
+        pageSize: 50,
+      });
+    });
+
+    expect(
+      await screen.findByTestId(
+        "version-timeline-row-01ARZ3NDEKTSV4RRFFQ69G5TR2",
+      ),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByTestId(
+        "version-timeline-row-01ARZ3NDEKTSV4RRFFQ69G5TR1",
+      ),
+    ).not.toBeInTheDocument();
+  });
+
+  it("refreshes only timeline for current-version timeline invalidations", async () => {
+    listVersionsMock.mockResolvedValue({
+      items: [makeVersion()],
+      total: 1,
+    });
+    getVersionBoardViewMock.mockResolvedValue(makeBoardResponse([]));
+
+    render(<VersionPage />);
+
+    await waitFor(() => expect(listTimelineMock).toHaveBeenCalledTimes(1));
+    await waitFor(() =>
+      expect(getVersionBoardViewMock).toHaveBeenCalledTimes(1),
+    );
+    await waitFor(() => expect(listRequirementsMock).toHaveBeenCalledTimes(1));
+    getVersionBoardViewMock.mockClear();
+    listVersionsMock.mockClear();
+    listRequirementsMock.mockClear();
+    listTimelineMock.mockClear();
+
+    await act(async () => {
+      await fireRealtimeKey("timeline", {
+        events: [
+          makeRealtimeEvent({
+            invalidates: ["timeline"],
+            targetId: "01ARZ3NDEKTSV4RRFFQ69G5FV1",
+            targetType: "VERSION",
+            hints: {
+              targetId: "01ARZ3NDEKTSV4RRFFQ69G5FV1",
+              targetType: "VERSION",
+              versionId: "01ARZ3NDEKTSV4RRFFQ69G5FV1",
+            },
+          }),
+        ],
+      });
+    });
+
+    await waitFor(() => expect(listTimelineMock).toHaveBeenCalledTimes(1));
+    expect(getVersionBoardViewMock).not.toHaveBeenCalled();
+    expect(listVersionsMock).not.toHaveBeenCalled();
+    expect(listRequirementsMock).not.toHaveBeenCalled();
+  });
+
+  it("keeps the detail sheet open and refreshes its subresource mount for comments and attachments keys", async () => {
+    const activeTaskId = "01ARZ3NDEKTSV4RRFFQ69G5DS1";
+    listVersionsMock.mockResolvedValue({
+      items: [makeVersion()],
+      total: 1,
+    });
+    getVersionBoardViewMock.mockResolvedValue(
+      makeBoardResponse([
+        makeSummary({
+          id: activeTaskId,
+          title: "Open detail for subresources",
+        }),
+      ]),
+    );
+
+    render(<VersionPage />);
+
+    fireEvent.click(await screen.findByText("Open detail for subresources"));
+    const firstMountId = (
+      await screen.findByTestId("task-detail-sheet-open")
+    ).getAttribute("data-mount-id");
+    getVersionBoardViewMock.mockClear();
+    listVersionsMock.mockClear();
+    listRequirementsMock.mockClear();
+    listTimelineMock.mockClear();
+
+    await act(async () => {
+      await fireRealtimeKey("comments", {
+        events: [
+          makeRealtimeEvent({
+            invalidates: ["comments"],
+            targetId: activeTaskId,
+            hints: {
+              targetId: activeTaskId,
+              targetType: "WORK_ITEM",
+            },
+          }),
+        ],
+      });
+    });
+
+    const secondMountId = screen
+      .getByTestId("task-detail-sheet-open")
+      .getAttribute("data-mount-id");
+    expect(secondMountId).not.toBe(firstMountId);
+    expect(screen.getByTestId("task-detail-sheet-open")).toHaveTextContent(
+      "Open detail for subresources",
+    );
+    expect(getVersionBoardViewMock).not.toHaveBeenCalled();
+    expect(listVersionsMock).not.toHaveBeenCalled();
+    expect(listRequirementsMock).not.toHaveBeenCalled();
+    expect(listTimelineMock).not.toHaveBeenCalled();
+
+    await act(async () => {
+      await fireRealtimeKey("attachments", {
+        events: [
+          makeRealtimeEvent({
+            invalidates: ["attachments"],
+            targetId: activeTaskId,
+            hints: {
+              targetId: activeTaskId,
+              targetType: "WORK_ITEM",
+            },
+          }),
+        ],
+      });
+    });
+
+    expect(
+      screen.getByTestId("task-detail-sheet-open").getAttribute("data-mount-id"),
+    ).not.toBe(secondMountId);
+    expect(screen.getByTestId("task-detail-sheet-open")).toHaveTextContent(
+      "Open detail for subresources",
+    );
+    expect(getVersionBoardViewMock).not.toHaveBeenCalled();
+    expect(listVersionsMock).not.toHaveBeenCalled();
+    expect(listRequirementsMock).not.toHaveBeenCalled();
+    expect(listTimelineMock).not.toHaveBeenCalled();
   });
 
   it("renders the timeline error state when timeline loading returns 404", async () => {

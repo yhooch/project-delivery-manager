@@ -1,4 +1,5 @@
 import {
+  act,
   cleanup,
   fireEvent,
   render,
@@ -99,6 +100,34 @@ const { getMyWorkbenchViewMock } = vi.hoisted(() => ({
 vi.mock("../../lib/view-service", () => ({
   getMyWorkbenchView: getMyWorkbenchViewMock,
 }));
+
+type RealtimeCallback = (context: {
+  events: unknown[];
+  keys: string[];
+  lastEventId: string | null;
+  mode: "realtime";
+  resyncs: unknown[];
+}) => void | Promise<void>;
+
+const { realtimeCallbacks } = vi.hoisted(() => ({
+  realtimeCallbacks: new Map<string, RealtimeCallback>(),
+}));
+vi.mock("../../lib/realtime", async () => {
+  const actual =
+    await vi.importActual<typeof import("../../lib/realtime")>(
+      "../../lib/realtime",
+    );
+
+  return {
+    ...actual,
+    useRealtimeInvalidation: (
+      keys: readonly string[],
+      callback: RealtimeCallback,
+    ) => {
+      keys.forEach((key) => realtimeCallbacks.set(key, callback));
+    },
+  };
+});
 
 const { getMembersMock, getVersionsMock } = vi.hoisted(() => ({
   getMembersMock: vi.fn(),
@@ -309,6 +338,7 @@ function makeWorkbenchResponse(
 }
 
 beforeEach(() => {
+  realtimeCallbacks.clear();
   getMyWorkbenchViewMock.mockReset();
   getMembersMock.mockReset();
   getMembersMock.mockResolvedValue([]);
@@ -870,6 +900,76 @@ describe("MyWorkbench", () => {
     await waitFor(() =>
       expect(getMyWorkbenchViewMock).toHaveBeenCalledTimes(2),
     );
+  });
+
+  it("keeps the current workbench DOM while realtime refresh is pending", async () => {
+    let resolveRealtime: (
+      value: ReturnType<typeof makeWorkbenchResponse>,
+    ) => void = () => {};
+    getMyWorkbenchViewMock
+      .mockResolvedValueOnce(
+        makeWorkbenchResponse({
+          todos: [
+            makeWorkItemSummary({
+              id: "01ARZ3NDEKTSV4RRFFQ69G5RT1",
+              title: "Old realtime workbench item",
+            }),
+          ],
+        }),
+      )
+      .mockImplementationOnce(
+        () =>
+          new Promise((resolve) => {
+            resolveRealtime = resolve;
+          }),
+      );
+
+    render(<MyWorkbench />);
+
+    expect(
+      await screen.findByText("Old realtime workbench item"),
+    ).toBeInTheDocument();
+
+    const callback = realtimeCallbacks.get("workbench");
+    if (!callback) {
+      throw new Error("Expected workbench realtime callback to be registered");
+    }
+
+    await act(async () => {
+      await callback({
+        events: [],
+        keys: ["workbench"],
+        lastEventId: null,
+        mode: "realtime",
+        resyncs: [],
+      });
+    });
+
+    await waitFor(() =>
+      expect(getMyWorkbenchViewMock).toHaveBeenCalledTimes(2),
+    );
+    expect(screen.getByText("Old realtime workbench item")).toBeInTheDocument();
+    expect(screen.queryByText("workbench.errorTitle")).not.toBeInTheDocument();
+
+    await act(async () => {
+      resolveRealtime(
+        makeWorkbenchResponse({
+          todos: [
+            makeWorkItemSummary({
+              id: "01ARZ3NDEKTSV4RRFFQ69G5RT2",
+              title: "New realtime workbench item",
+            }),
+          ],
+        }),
+      );
+    });
+
+    expect(
+      await screen.findByText("New realtime workbench item"),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByText("Old realtime workbench item"),
+    ).not.toBeInTheDocument();
   });
 
   it("supports J/K/Enter/E/Escape keyboard paths and restores focus after closing detail", async () => {

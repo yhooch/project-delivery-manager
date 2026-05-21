@@ -1,9 +1,10 @@
-import { HttpStatus, Inject, Injectable } from "@nestjs/common";
+import { HttpStatus, Inject, Injectable, Logger } from "@nestjs/common";
 import type {
   CreateTagRequest,
   ListTagFilterOptionsQuery,
   ListTagsQuery,
   PageResult,
+  RealtimeInvalidationKey,
   SpaceRole,
   TagDto,
 } from "@project-delivery/shared";
@@ -13,6 +14,7 @@ import { ApiException } from "../../http/api-exception";
 import { auditAccessDenied } from "../audit/audit-access-denied";
 import { AuditService } from "../audit/audit.service";
 import type { RequestMetadata } from "../auth/auth-session.types";
+import { RealtimePublisherService } from "../realtime/realtime-publisher.service";
 import {
   SPACE_REPOSITORY,
   type SpaceRepository,
@@ -29,6 +31,8 @@ const TAG_DELETE_ROLES = new Set<SpaceRole>(["SPACE_ADMIN", "PM"]);
 
 @Injectable()
 export class TagService {
+  private readonly logger = new Logger(TagService.name);
+
   constructor(
     @Inject(TAG_REPOSITORY)
     private readonly tags: TagRepository,
@@ -36,6 +40,8 @@ export class TagService {
     private readonly spaces: SpaceRepository,
     @Inject(AuditService)
     private readonly audit: AuditService,
+    @Inject(RealtimePublisherService)
+    private readonly realtime: RealtimePublisherService,
   ) {}
 
   async list(
@@ -114,6 +120,22 @@ export class TagService {
       targetType: "TAG",
     });
 
+    this.safePublishRealtime({
+      actorId: actorUserId,
+      organizationId: created.organizationId,
+      spaceId: created.spaceId,
+      target: { type: "SPACE", id: created.spaceId },
+      operation: "TAG_CHANGED",
+      invalidates: tagInvalidates(),
+      hints: {
+        targetType: "SPACE",
+        targetId: created.spaceId,
+        spaceId: created.spaceId,
+        tagId: created.id,
+        changedFields: ["tags"],
+      },
+    });
+
     return created;
   }
 
@@ -163,7 +185,36 @@ export class TagService {
       targetType: "TAG",
     });
 
+    this.safePublishRealtime({
+      actorId: actorUserId,
+      organizationId: tag.organizationId,
+      spaceId: tag.spaceId,
+      target: { type: "SPACE", id: tag.spaceId },
+      operation: "TAG_CHANGED",
+      invalidates: tagInvalidates(),
+      hints: {
+        targetType: "SPACE",
+        targetId: tag.spaceId,
+        spaceId: tag.spaceId,
+        tagId: tag.id,
+        changedFields: ["tags"],
+      },
+    });
+
     return {};
+  }
+
+  private safePublishRealtime(
+    input: Parameters<RealtimePublisherService["publish"]>[0],
+  ) {
+    try {
+      this.realtime.publish(input);
+    } catch (error) {
+      this.logger.error(
+        "Failed to publish tag realtime event",
+        error instanceof Error ? error.stack : String(error),
+      );
+    }
   }
 
   private async requireSpaceAccess(userId: string, spaceId: string) {
@@ -243,6 +294,19 @@ function throwSpaceAccessDenied(): never {
     "Space access denied",
     HttpStatus.FORBIDDEN,
   );
+}
+
+function tagInvalidates(): RealtimeInvalidationKey[] {
+  return [
+    "work-item-list",
+    "bug-list",
+    "requirement-list",
+    "intake-list",
+    "version-board",
+    "workbench",
+    "space-overview",
+    "exception-view",
+  ];
 }
 
 function throwTagNotFound(): never {

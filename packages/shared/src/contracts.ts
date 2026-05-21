@@ -175,6 +175,10 @@ import {
   ObjectCodeLookupResultSchema,
 } from "./object-code.ts";
 import {
+  RealtimeEventsQuerySchema,
+  RealtimeSseMessageSchema,
+} from "./realtime.ts";
+import {
   GetMyWorkbenchViewResponseSchema,
   GetSpaceExceptionsViewResponseSchema,
   GetSpaceOverviewViewResponseSchema,
@@ -210,6 +214,8 @@ export type ApiEndpointContract = {
   querySchema: z.ZodType;
   requestSchema: z.ZodType;
   responseSchema: z.ZodType;
+  responseContentType?: "application/json" | "text/event-stream";
+  responseWrapped?: boolean;
   errorCodes: readonly string[];
 };
 
@@ -396,6 +402,20 @@ export const apiContracts = [
     requestSchema: EmptyObjectSchema,
     responseSchema: GetAuthSessionResponseSchema,
     errorCodes: ["UNAUTHORIZED"],
+  }),
+  endpoint({
+    operationId: "getRealtimeEvents",
+    method: "get",
+    path: "/realtime/events",
+    tags: ["realtime"],
+    summary: "Subscribe to realtime invalidation events",
+    pathSchema: EmptyObjectSchema,
+    querySchema: RealtimeEventsQuerySchema,
+    requestSchema: EmptyObjectSchema,
+    responseSchema: RealtimeSseMessageSchema,
+    responseContentType: "text/event-stream",
+    responseWrapped: false,
+    errorCodes: ["UNAUTHORIZED", "VALIDATION_ERROR"],
   }),
   endpoint({
     operationId: "updateUserPreferences",

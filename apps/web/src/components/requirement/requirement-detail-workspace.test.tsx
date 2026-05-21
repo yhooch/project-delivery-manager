@@ -1,4 +1,5 @@
 import {
+  act,
   cleanup,
   fireEvent,
   render,
@@ -76,6 +77,19 @@ const {
   listRequirementVersionsMock: vi.fn(),
   updateRequirementMock: vi.fn(),
 }));
+const realtimeInvalidationHandlers = vi.hoisted(
+  () =>
+    [] as {
+      callback: (context: {
+        events: { hints?: Record<string, unknown>; target: { id: string; type: string } }[];
+        keys: string[];
+        lastEventId: string | null;
+        mode: "realtime";
+        resyncs: unknown[];
+      }) => void | Promise<void>;
+      keys: readonly string[];
+    }[],
+);
 vi.mock("../../lib/requirement-service", () => ({
   archiveRequirement: archiveRequirementMock,
   deleteRequirementDraft: deleteRequirementDraftMock,
@@ -84,6 +98,28 @@ vi.mock("../../lib/requirement-service", () => ({
   listRequirementVersions: listRequirementVersionsMock,
   updateRequirement: updateRequirementMock,
 }));
+vi.mock("../../lib/realtime", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("../../lib/realtime")>();
+
+  return {
+    ...actual,
+    useRealtimeInvalidation: (
+      keys: readonly string[],
+      callback: (context: {
+        events: {
+          hints?: Record<string, unknown>;
+          target: { id: string; type: string };
+        }[];
+        keys: string[];
+        lastEventId: string | null;
+        mode: "realtime";
+        resyncs: unknown[];
+      }) => void | Promise<void>,
+    ) => {
+      realtimeInvalidationHandlers.push({ callback, keys });
+    },
+  };
+});
 
 const editorSlotMock = vi.hoisted(() => vi.fn());
 vi.mock("./requirement-content-editor-slot", () => ({
@@ -156,6 +192,7 @@ beforeEach(() => {
   listRequirementVersionsMock.mockReset();
   updateRequirementMock.mockReset();
   routerPushMock.mockReset();
+  realtimeInvalidationHandlers.length = 0;
 
   deleteRequirementDraftMock.mockResolvedValue({});
   listRequirementVersionsMock.mockResolvedValue({ items: [], total: 0 });
@@ -170,6 +207,30 @@ beforeEach(() => {
 afterEach(() => {
   cleanup();
 });
+
+async function dispatchRealtimeInvalidation(
+  key: string,
+  event: { target: { id: string; type: string }; hints?: Record<string, unknown> },
+) {
+  const matchingHandlers = realtimeInvalidationHandlers.filter((handler) =>
+    handler.keys.includes(key),
+  );
+  const latestHandler = matchingHandlers.at(-1);
+
+  if (!latestHandler) {
+    return;
+  }
+
+  await act(async () => {
+    await latestHandler.callback({
+      events: [event],
+      keys: [key],
+      lastEventId: "1",
+      mode: "realtime",
+      resyncs: [],
+    });
+  });
+}
 
 describe("RequirementDetailWorkspace", () => {
   it("does not let a writer role override explicit canEdit=false", async () => {
@@ -241,6 +302,32 @@ describe("RequirementDetailWorkspace", () => {
     );
 
     expect(updateRequirementMock).not.toHaveBeenCalled();
+  });
+
+  it("keeps dirty form input when realtime refreshes the requirement", async () => {
+    getRequirementMock.mockResolvedValue(
+      makeRequirement({ title: "Remote title" }),
+    );
+    getRequirementMock.mockResolvedValueOnce(
+      makeRequirement({ title: "Initial title" }),
+    );
+
+    render(
+      <RequirementDetailWorkspace requirementId="01ARZ3NDEKTSV4RRFFQ69G5FA1" />,
+    );
+
+    const titleInput = await screen.findByDisplayValue("Initial title");
+    fireEvent.change(titleInput, { target: { value: "Local draft title" } });
+
+    await dispatchRealtimeInvalidation("requirement-detail", {
+      target: { id: "01ARZ3NDEKTSV4RRFFQ69G5FA1", type: "REQUIREMENT" },
+    });
+
+    await waitFor(() =>
+      expect(getRequirementMock.mock.calls.length).toBeGreaterThanOrEqual(2),
+    );
+    expect(screen.getByDisplayValue("Local draft title")).toBeInTheDocument();
+    expect(screen.queryByDisplayValue("Remote title")).not.toBeInTheDocument();
   });
 
   it("updates priority through the themed property dropdown", async () => {

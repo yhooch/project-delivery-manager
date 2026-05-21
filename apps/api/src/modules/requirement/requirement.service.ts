@@ -1,4 +1,4 @@
-import { HttpStatus, Inject, Injectable } from "@nestjs/common";
+import { HttpStatus, Inject, Injectable, Logger } from "@nestjs/common";
 import {
   type CreateRequirementDraftRequest,
   type ListRequirementsResponse,
@@ -18,6 +18,7 @@ import {
   ORGANIZATION_REPOSITORY,
   type OrganizationRepository,
 } from "../organization/organization.repository";
+import { RealtimePublisherService } from "../realtime/realtime-publisher.service";
 import {
   SPACE_REPOSITORY,
   type SpaceRepository,
@@ -54,6 +55,8 @@ const REQUIREMENT_NON_DRAFT_READ_ALL_ROLES = new Set<SpaceRole>([
 
 @Injectable()
 export class RequirementService {
+  private readonly logger = new Logger(RequirementService.name);
+
   constructor(
     @Inject(REQUIREMENT_REPOSITORY)
     private readonly requirements: RequirementRepository,
@@ -65,6 +68,8 @@ export class RequirementService {
     private readonly organizations: OrganizationRepository,
     @Inject(AuditService)
     private readonly audit: AuditService,
+    @Inject(RealtimePublisherService)
+    private readonly realtime: RealtimePublisherService,
   ) {}
 
   async list(
@@ -136,6 +141,25 @@ export class RequirementService {
       targetType: "REQUIREMENT",
     });
 
+    this.safePublishRealtime({
+      actorId: actorUserId,
+      organizationId: created.organizationId,
+      spaceId: created.spaceId,
+      target: { type: "REQUIREMENT", id: created.id },
+      operation: "CREATED",
+      invalidates: [
+        "requirement-list",
+        "requirement-detail",
+        "version-board",
+      ],
+      hints: {
+        targetType: "REQUIREMENT",
+        targetId: created.id,
+        spaceId: created.spaceId,
+        ...(created.versionId ? { versionId: created.versionId } : {}),
+      },
+    });
+
     return withPermissions(created, access.role);
   }
 
@@ -198,6 +222,26 @@ export class RequirementService {
         spaceId: existing.spaceId,
         targetId: requirementId,
         targetType: "REQUIREMENT",
+      });
+
+      this.safePublishRealtime({
+        actorId: actorUserId,
+        organizationId: archived.organizationId,
+        spaceId: archived.spaceId,
+        target: { type: "REQUIREMENT", id: archived.id },
+        operation: "STATUS_CHANGED",
+        invalidates: [
+          "requirement-list",
+          "requirement-detail",
+          "version-board",
+        ],
+        hints: {
+          targetType: "REQUIREMENT",
+          targetId: archived.id,
+          spaceId: archived.spaceId,
+          ...(archived.versionId ? { versionId: archived.versionId } : {}),
+          changedFields: ["status"],
+        },
       });
 
       return withPermissions(archived, access.role);
@@ -282,6 +326,25 @@ export class RequirementService {
       targetType: "REQUIREMENT",
     });
 
+    this.safePublishRealtime({
+      actorId: actorUserId,
+      organizationId: saved.organizationId,
+      spaceId: saved.spaceId,
+      target: { type: "REQUIREMENT", id: saved.id },
+      operation: "UPDATED",
+      invalidates: ["requirement-list", "requirement-detail", "version-board"],
+      hints: {
+        targetType: "REQUIREMENT",
+        targetId: saved.id,
+        spaceId: saved.spaceId,
+        ...(saved.versionId ? { versionId: saved.versionId } : {}),
+        changedFields: changedFieldsFromRequirementUpdate(input),
+        ...(input.cascadeVersionChange === true
+          ? { suggestFullRefresh: true }
+          : {}),
+      },
+    });
+
     return withPermissions(saved, access.role);
   }
 
@@ -315,6 +378,34 @@ export class RequirementService {
       targetId: requirementId,
       targetType: "REQUIREMENT",
     });
+
+    this.safePublishRealtime({
+      actorId: actorUserId,
+      organizationId: existing.organizationId,
+      spaceId: existing.spaceId,
+      target: { type: "REQUIREMENT", id: requirementId },
+      operation: "DELETED",
+      invalidates: ["requirement-list", "requirement-detail", "version-board"],
+      hints: {
+        targetType: "REQUIREMENT",
+        targetId: requirementId,
+        spaceId: existing.spaceId,
+        ...(existing.versionId ? { versionId: existing.versionId } : {}),
+      },
+    });
+  }
+
+  private safePublishRealtime(
+    input: Parameters<RealtimePublisherService["publish"]>[0],
+  ) {
+    try {
+      this.realtime.publish(input);
+    } catch (error) {
+      this.logger.error(
+        "Failed to publish requirement realtime event",
+        error instanceof Error ? error.stack : String(error),
+      );
+    }
   }
 
   private async requireExistingRequirement(requirementId: string) {
@@ -585,6 +676,10 @@ function toCascadeAuditMetadata(
       workItemIds: impact.workItemIds ?? [],
     },
   };
+}
+
+function changedFieldsFromRequirementUpdate(input: UpdateRequirementRequest) {
+  return Object.keys(input).filter((field) => field !== "cascadeVersionChange");
 }
 
 function withPermissions(

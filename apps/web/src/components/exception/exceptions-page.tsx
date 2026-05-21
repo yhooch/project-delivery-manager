@@ -39,6 +39,13 @@ import { useTagFilterOptions } from "../../lib/hooks/use-tag-filter-options";
 import { useTagFilterSelection } from "../../lib/hooks/use-tag-filter-selection";
 import { useUrlTagFilter } from "../../lib/hooks/use-url-tag-filter";
 import { canManageSpace } from "../../lib/permission-gates";
+import {
+  resolveRefreshMode,
+  shouldShowBlockingRefreshState,
+  shouldSurfaceRefreshError,
+  useRealtimeInvalidation,
+  type RefreshModeOptions,
+} from "../../lib/realtime";
 import { usePathname, useRouter } from "../../i18n/routing";
 import {
   normalizeTagApiQuery,
@@ -122,6 +129,13 @@ const exceptionFilterControls: M4ViewFilterControlModel[] =
   );
 
 const EXCEPTIONS_PAGE_SIZE = 200;
+const EXCEPTIONS_REALTIME_KEYS = [
+  "exception-view",
+  "work-item-list",
+  "bug-list",
+  "version-board",
+  "space-overview",
+] as const;
 
 type ExceptionFilterValues = {
   assigneeId?: string;
@@ -278,18 +292,26 @@ export function ExceptionsPage() {
     versionsLoading,
   ]);
 
-  const fetchView = useCallback(async () => {
+  const fetchView = useCallback(async (options?: RefreshModeOptions) => {
+    const mode = resolveRefreshMode(options);
     if (!spaceId) {
       requestSeq.current += 1;
       setView(null);
       setIsLoading(false);
+      if (shouldSurfaceRefreshError(mode)) {
+        setErrorKey(null);
+      }
       return;
     }
 
     const requestId = requestSeq.current + 1;
     requestSeq.current = requestId;
-    setIsLoading(true);
-    setErrorKey(null);
+    if (shouldShowBlockingRefreshState(mode)) {
+      setIsLoading(true);
+    }
+    if (shouldSurfaceRefreshError(mode)) {
+      setErrorKey(null);
+    }
 
     try {
       const next = await getSpaceExceptionsView({
@@ -308,11 +330,14 @@ export function ExceptionsPage() {
         return;
       }
       setView(next);
+      setErrorKey(null);
     } catch (error) {
       if (requestSeq.current !== requestId) {
         return;
       }
-      setErrorKey(getApiErrorMessageKey(error));
+      if (shouldSurfaceRefreshError(mode)) {
+        setErrorKey(getApiErrorMessageKey(error));
+      }
     } finally {
       if (requestSeq.current === requestId) {
         setIsLoading(false);
@@ -360,8 +385,16 @@ export function ExceptionsPage() {
   }, [spaceId]);
 
   useEffect(() => {
-    void fetchView();
+    void fetchView({ mode: "initial" });
+
+    return () => {
+      requestSeq.current += 1;
+    };
   }, [fetchView]);
+
+  useRealtimeInvalidation(EXCEPTIONS_REALTIME_KEYS, () => {
+    void fetchView({ mode: "realtime" });
+  });
 
   const viewMatchesRequest = useMemo(
     () =>

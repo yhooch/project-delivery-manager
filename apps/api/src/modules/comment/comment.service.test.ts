@@ -3,6 +3,7 @@ import { ulid } from "ulid";
 import { describe, expect, it, vi } from "vitest";
 
 import type { AuditService } from "../audit/audit.service";
+import type { RealtimePublisherService } from "../realtime/realtime-publisher.service";
 import type { TargetResolverService } from "../target/target-resolver.service";
 import type { CommentRepository } from "./comment.repository";
 import { CommentService } from "./comment.service";
@@ -29,7 +30,8 @@ describe("CommentService", () => {
       })),
     } as unknown as TargetResolverService;
     const audit = createAuditService();
-    const service = new CommentService(comments, targets, audit);
+    const realtime = createRealtimePublisher();
+    const service = new CommentService(comments, targets, audit, realtime);
 
     await service.create(
       actorUserId,
@@ -73,6 +75,17 @@ describe("CommentService", () => {
         targetType: "COMMENT",
       }),
     );
+    expect(realtime.publish).toHaveBeenCalledWith(
+      expect.objectContaining({
+        operation: "COMMENTED",
+        target: { type: "WORK_ITEM", id: workItemId },
+        invalidates: expect.arrayContaining(["comments", "timeline"]),
+        hints: expect.objectContaining({
+          targetId: workItemId,
+          targetType: "WORK_ITEM",
+        }),
+      }),
+    );
   });
 
   it("does not create comments when WORK_ITEM visibility resolution rejects", async () => {
@@ -88,7 +101,8 @@ describe("CommentService", () => {
       }),
     } as unknown as TargetResolverService;
     const audit = createAuditService();
-    const service = new CommentService(comments, targets, audit);
+    const realtime = createRealtimePublisher();
+    const service = new CommentService(comments, targets, audit, realtime);
 
     await expect(
       service.create(actorUserId, {
@@ -99,6 +113,7 @@ describe("CommentService", () => {
     ).rejects.toThrow("not visible");
     expect(comments.create).not.toHaveBeenCalled();
     expect(audit.record).not.toHaveBeenCalled();
+    expect(realtime.publish).not.toHaveBeenCalled();
   });
 });
 
@@ -107,6 +122,14 @@ function createAuditService() {
     record: vi.fn(),
   } as unknown as AuditService & {
     record: ReturnType<typeof vi.fn>;
+  };
+}
+
+function createRealtimePublisher() {
+  return {
+    publish: vi.fn(),
+  } as unknown as RealtimePublisherService & {
+    publish: ReturnType<typeof vi.fn>;
   };
 }
 

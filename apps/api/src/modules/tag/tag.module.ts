@@ -3,6 +3,7 @@ import { Module } from "@nestjs/common";
 import { PrismaModule } from "../../prisma/prisma.module";
 import { AuditModule } from "../audit/audit.module";
 import { AuthModule } from "../auth/auth.module";
+import { RealtimeModule } from "../realtime/realtime.module";
 import { SpaceModule } from "../space/space.module";
 import { TargetModule } from "../target/target.module";
 import { PrismaTagRepository } from "./prisma-tag.repository";
@@ -14,7 +15,7 @@ import { TagService } from "./tag.service";
 @Module({
   controllers: [TagController],
   exports: [TAG_REPOSITORY, TagAssignmentService, TagService],
-  imports: [AuthModule, AuditModule, PrismaModule, SpaceModule, TargetModule],
+  imports: [AuthModule, AuditModule, PrismaModule, RealtimeModule, SpaceModule, TargetModule],
   providers: [
     TagAssignmentService,
     TagService,

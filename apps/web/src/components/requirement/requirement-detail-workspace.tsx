@@ -45,6 +45,14 @@ import {
 import { getApiErrorMessageKey } from "../../lib/api-error-messages";
 import { resolveRequirementDisplayCode } from "../../lib/display-code";
 import {
+  realtimeContextIncludesTarget,
+  resolveRefreshMode,
+  shouldShowBlockingRefreshState,
+  shouldSurfaceRefreshError,
+  useRealtimeInvalidation,
+  type RefreshModeOptions,
+} from "../../lib/realtime";
+import {
   LOCAL_DRAFT_CACHE_WRITE_DELAY_MS,
   clearRequirementDraftLocalCache,
   createEmptyRequirementDraftCacheForm,
@@ -92,6 +100,13 @@ import {
 import { RequirementContentEditorSlot } from "./requirement-content-editor-slot";
 
 const PRIORITIES: Priority[] = ["LOW", "MEDIUM", "HIGH", "URGENT"];
+const REQUIREMENT_DETAIL_REALTIME_KEYS = [
+  "requirement-detail",
+  "requirement-list",
+  "comments",
+  "attachments",
+  "timeline",
+] as const;
 const STATUS_VARIANT: Record<RequirementStatus, BadgeProps["variant"]> = {
   DRAFT: "outline",
   CONFIRMED: "primary",
@@ -157,6 +172,9 @@ export function RequirementDetailWorkspace({
       requirement: null,
     },
   );
+  const loadRequestSeqRef = useRef(0);
+  const latestRequestKeyRef = useRef("");
+  const formDirtyRef = useRef(false);
 
   const currentSpace = useMemo(
     () =>
@@ -204,17 +222,33 @@ export function RequirementDetailWorkspace({
       ].join(":"),
     [organizationId, requirementId, spaceId],
   );
+  const isFormDirty = useMemo(
+    () =>
+      requirement
+        ? !areRequirementFormsEqual(form, requirementToFormState(requirement))
+        : false,
+    [form, requirement],
+  );
+  latestRequestKeyRef.current = requestKey;
+  formDirtyRef.current = isFormDirty;
 
-  useEffect(() => {
-    if (status !== "authenticated") {
-      return;
-    }
+  const loadRequirement = useCallback(
+    async (options?: RefreshModeOptions) => {
+      const refreshMode = resolveRefreshMode(options, "initial");
+      loadRequestSeqRef.current += 1;
+      const requestSeq = loadRequestSeqRef.current;
+      const nextRequestKey = requestKey;
 
-    let isActive = true;
+      if (shouldShowBlockingRefreshState(refreshMode)) {
+        setIsLoading(true);
+      }
+      if (shouldSurfaceRefreshError(refreshMode)) {
+        setErrorKey(null);
+      }
 
-    async function load() {
-      setIsLoading(true);
-      setErrorKey(null);
+      const isLatestRequest = () =>
+        requestSeq === loadRequestSeqRef.current &&
+        latestRequestKeyRef.current === nextRequestKey;
 
       try {
         const nextRequirement = await getRequirement({
@@ -233,45 +267,61 @@ export function RequirementDetailWorkspace({
           }),
         ]);
 
-        if (!isActive) {
+        if (!isLatestRequest()) {
           return;
         }
 
+        const canReplaceForm =
+          shouldShowBlockingRefreshState(refreshMode) || !formDirtyRef.current;
         setRequirement(nextRequirement);
         setVersions(versionPage.items);
         setMembers(memberPage.items);
-        const nextForm = requirementToFormState(nextRequirement);
-        const cachedForm = resolveRequirementDraftCacheForm(
-          nextRequirement,
-          nextForm,
-          session?.user.id,
-        );
-        setForm(cachedForm.form);
-        setDidRestoreLocalDraftCache(cachedForm.restored);
+
+        if (canReplaceForm) {
+          const nextForm = requirementToFormState(nextRequirement);
+          const cachedForm = resolveRequirementDraftCacheForm(
+            nextRequirement,
+            nextForm,
+            session?.user.id,
+          );
+          setForm(cachedForm.form);
+          setDidRestoreLocalDraftCache(cachedForm.restored);
+        }
       } catch (error) {
-        if (isActive) {
+        if (isLatestRequest() && shouldSurfaceRefreshError(refreshMode)) {
           setErrorKey(getApiErrorMessageKey(error));
         }
       } finally {
-        if (isActive) {
+        if (isLatestRequest()) {
           setIsLoading(false);
         }
       }
+    },
+    [organizationId, requestKey, requirementId, session?.user.id, spaceId],
+  );
+
+  useEffect(() => {
+    if (status !== "authenticated") {
+      return;
     }
 
-    void load();
+    void loadRequirement({ mode: "initial" });
 
     return () => {
-      isActive = false;
+      loadRequestSeqRef.current += 1;
     };
-  }, [
-    organizationId,
-    requestKey,
-    requirementId,
-    session?.user.id,
-    spaceId,
-    status,
-  ]);
+  }, [loadRequirement, status]);
+
+  useRealtimeInvalidation(REQUIREMENT_DETAIL_REALTIME_KEYS, (context) => {
+    if (
+      realtimeContextIncludesTarget(context, {
+        id: requirementId,
+        type: "REQUIREMENT",
+      })
+    ) {
+      void loadRequirement({ mode: "realtime" });
+    }
+  });
 
   useEffect(() => {
     resizeTitleInput(titleInputRef.current);
@@ -1316,6 +1366,23 @@ function formStateToSaveRequest(
     title: form.title.trim(),
     versionId: optionalText(form.versionId) ?? null,
   };
+}
+
+function areRequirementFormsEqual(
+  left: RequirementFormState,
+  right: RequirementFormState,
+): boolean {
+  return (
+    left.title === right.title &&
+    left.summary === right.summary &&
+    left.ownerId === right.ownerId &&
+    left.priority === right.priority &&
+    left.versionId === right.versionId &&
+    left.content.contentText === right.content.contentText &&
+    left.content.contentMarkdownCache === right.content.contentMarkdownCache &&
+    JSON.stringify(left.content.contentJson) ===
+      JSON.stringify(right.content.contentJson)
+  );
 }
 
 function isEmptyDraftRequirement(

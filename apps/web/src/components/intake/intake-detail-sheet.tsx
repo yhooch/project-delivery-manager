@@ -31,6 +31,14 @@ import { toCreateCommentRequest } from "../../lib/comment-forms";
 import { createComment, listComments } from "../../lib/comment-service";
 import { resolveIntakeDisplayCode } from "../../lib/display-code";
 import { getIntakeItem } from "../../lib/intake-service";
+import {
+  realtimeContextIncludesTarget,
+  resolveRefreshMode,
+  shouldShowBlockingRefreshState,
+  shouldSurfaceRefreshError,
+  useRealtimeInvalidation,
+  type RefreshModeOptions,
+} from "../../lib/realtime";
 import { cn } from "../../lib/utils";
 import { listTimeline } from "../../lib/timeline-service";
 import {
@@ -63,6 +71,13 @@ const INITIAL_RELATED_TASKS_PAGE_INFO = {
   pageSize: RELATED_TASKS_PAGE_SIZE,
   total: 0,
 };
+const INTAKE_DETAIL_REALTIME_KEYS = [
+  "intake-list",
+  "comments",
+  "timeline",
+] as const;
+const INTAKE_COMMENTS_REALTIME_KEYS = ["comments"] as const;
+const INTAKE_TIMELINE_REALTIME_KEYS = ["timeline"] as const;
 
 const intakeStatusToCategory: Record<IntakeStatus, StatusCategory> = {
   PENDING: "NOT_STARTED",
@@ -118,6 +133,13 @@ export function IntakeDetailSheet({
   const [loadFailed, setLoadFailed] = useState(false);
   const [timelineRefreshVersion, setTimelineRefreshVersion] = useState(0);
   const effectiveItem = intakeItem ?? loadedItem;
+  const effectiveItemId = intakeItem?.id ?? intakeItemId;
+  const detailRequestKey = `${organizationId ?? ""}:${spaceId ?? ""}:${
+    effectiveItemId ?? ""
+  }`;
+  const latestDetailRequestKeyRef = useRef(detailRequestKey);
+  const detailRequestSeqRef = useRef(0);
+  latestDetailRequestKeyRef.current = detailRequestKey;
 
   function handleTagsChange(tags: IntakeItem["tags"]) {
     if (!effectiveItem) {
@@ -131,40 +153,95 @@ export function IntakeDetailSheet({
     onItemChange?.(updated);
   }
 
+  const loadDetailItem = useCallback(
+    async (options?: RefreshModeOptions) => {
+      const refreshMode = resolveRefreshMode(options, "initial");
+      const requestIntakeItemId = effectiveItemId;
+      const requestKey = detailRequestKey;
+      detailRequestSeqRef.current += 1;
+      const requestSeq = detailRequestSeqRef.current;
+
+      if (!open || !requestIntakeItemId || !spaceId) {
+        return;
+      }
+
+      if (!intakeItem && shouldShowBlockingRefreshState(refreshMode)) {
+        setLoading(true);
+        setLoadFailed(false);
+        setLoadedItem(null);
+      }
+
+      const isLatestRequest = () =>
+        requestSeq === detailRequestSeqRef.current &&
+        latestDetailRequestKeyRef.current === requestKey;
+
+      try {
+        const item = await getIntakeItem({
+          intakeItemId: requestIntakeItemId,
+          organizationId,
+          spaceId,
+        });
+        if (!isLatestRequest()) {
+          return;
+        }
+        if (intakeItem) {
+          onItemChange?.(item);
+        } else {
+          setLoadedItem(item);
+        }
+        setLoadFailed(false);
+      } catch {
+        if (!isLatestRequest() || !shouldSurfaceRefreshError(refreshMode)) {
+          return;
+        }
+        setLoadFailed(true);
+      } finally {
+        if (isLatestRequest() && !intakeItem) {
+          setLoading(false);
+        }
+      }
+    },
+    [
+      detailRequestKey,
+      effectiveItemId,
+      intakeItem,
+      onItemChange,
+      open,
+      organizationId,
+      spaceId,
+    ],
+  );
+
   useEffect(() => {
     if (!open || intakeItem || !intakeItemId || !spaceId) {
+      detailRequestSeqRef.current += 1;
       setLoadedItem(null);
       setLoading(false);
       setLoadFailed(false);
       return;
     }
 
-    let cancelled = false;
-    setLoading(true);
-    setLoadFailed(false);
-    setLoadedItem(null);
-
-    void getIntakeItem({ intakeItemId, organizationId, spaceId })
-      .then((item) => {
-        if (!cancelled) {
-          setLoadedItem(item);
-        }
-      })
-      .catch(() => {
-        if (!cancelled) {
-          setLoadFailed(true);
-        }
-      })
-      .finally(() => {
-        if (!cancelled) {
-          setLoading(false);
-        }
-      });
+    void loadDetailItem({ mode: "initial" });
 
     return () => {
-      cancelled = true;
+      detailRequestSeqRef.current += 1;
     };
-  }, [intakeItem, intakeItemId, open, organizationId, spaceId]);
+  }, [intakeItem, intakeItemId, loadDetailItem, open, spaceId]);
+
+  useRealtimeInvalidation(INTAKE_DETAIL_REALTIME_KEYS, (context) => {
+    if (
+      !open ||
+      !effectiveItemId ||
+      !realtimeContextIncludesTarget(context, {
+        id: effectiveItemId,
+        type: "INTAKE_ITEM",
+      })
+    ) {
+      return;
+    }
+
+    void loadDetailItem({ mode: "realtime" });
+  });
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
@@ -765,13 +842,18 @@ function IntakeCommentsSection({
   const [submitting, setSubmitting] = useState(false);
   const [submitErrorKey, setSubmitErrorKey] = useState<string | null>(null);
 
-  const fetchComments = useCallback(async () => {
+  const fetchComments = useCallback(async (options?: RefreshModeOptions) => {
+    const refreshMode = resolveRefreshMode(options, "initial");
     if (!spaceId) {
       return;
     }
 
-    setLoading(true);
-    setErrorKey(null);
+    if (shouldShowBlockingRefreshState(refreshMode)) {
+      setLoading(true);
+    }
+    if (shouldSurfaceRefreshError(refreshMode)) {
+      setErrorKey(null);
+    }
 
     try {
       const result = await listComments({
@@ -782,15 +864,28 @@ function IntakeCommentsSection({
       });
       setComments(result.items);
     } catch (error) {
-      setErrorKey(getApiErrorMessageKey(error));
+      if (shouldSurfaceRefreshError(refreshMode)) {
+        setErrorKey(getApiErrorMessageKey(error));
+      }
     } finally {
       setLoading(false);
     }
   }, [intakeItem.id, organizationId, spaceId]);
 
   useEffect(() => {
-    void fetchComments();
+    void fetchComments({ mode: "initial" });
   }, [fetchComments]);
+
+  useRealtimeInvalidation(INTAKE_COMMENTS_REALTIME_KEYS, (context) => {
+    if (
+      realtimeContextIncludesTarget(context, {
+        id: intakeItem.id,
+        type: "INTAKE_ITEM",
+      })
+    ) {
+      void fetchComments({ mode: "realtime" });
+    }
+  });
 
   const handleSubmit = async () => {
     if (!draft.trim() || !spaceId || !canComment) {
@@ -963,13 +1058,18 @@ function IntakeTimelineSection({
   const [errorKey, setErrorKey] = useState<string | null>(null);
   const tTimelineEvent = useTranslations("common.timeline.event");
 
-  const fetchEvents = useCallback(async () => {
+  const fetchEvents = useCallback(async (options?: RefreshModeOptions) => {
+    const refreshMode = resolveRefreshMode(options, "initial");
     if (!spaceId) {
       return;
     }
 
-    setLoading(true);
-    setErrorKey(null);
+    if (shouldShowBlockingRefreshState(refreshMode)) {
+      setLoading(true);
+    }
+    if (shouldSurfaceRefreshError(refreshMode)) {
+      setErrorKey(null);
+    }
 
     try {
       const result = await listTimeline({
@@ -980,15 +1080,28 @@ function IntakeTimelineSection({
       });
       setEvents(result.items);
     } catch (error) {
-      setErrorKey(getApiErrorMessageKey(error));
+      if (shouldSurfaceRefreshError(refreshMode)) {
+        setErrorKey(getApiErrorMessageKey(error));
+      }
     } finally {
       setLoading(false);
     }
   }, [intakeItem.id, organizationId, spaceId]);
 
   useEffect(() => {
-    void fetchEvents();
+    void fetchEvents({ mode: refreshVersion > 0 ? "realtime" : "initial" });
   }, [fetchEvents, refreshVersion]);
+
+  useRealtimeInvalidation(INTAKE_TIMELINE_REALTIME_KEYS, (context) => {
+    if (
+      realtimeContextIncludesTarget(context, {
+        id: intakeItem.id,
+        type: "INTAKE_ITEM",
+      })
+    ) {
+      void fetchEvents({ mode: "realtime" });
+    }
+  });
 
   return (
     <section className="mt-6" data-testid="intake-timeline-section">

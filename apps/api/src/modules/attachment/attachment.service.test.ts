@@ -10,6 +10,7 @@ import { ulid } from "ulid";
 import { describe, expect, it, vi } from "vitest";
 
 import type { AuditService } from "../audit/audit.service";
+import type { RealtimePublisherService } from "../realtime/realtime-publisher.service";
 import type { RequirementRepository } from "../requirement/requirement.repository";
 import type { TargetResolverService } from "../target/target-resolver.service";
 import {
@@ -80,7 +81,7 @@ describe("AttachmentService", () => {
     const spaceId = ulid();
     const workItemId = ulid();
     const fileKey = validFileKey("WORK_ITEM", workItemId);
-    const { service, attachments, audit, objectStorage, targets } =
+    const { service, attachments, audit, objectStorage, realtime, targets } =
       createServiceFixture({
         organizationId,
         spaceId,
@@ -140,6 +141,18 @@ describe("AttachmentService", () => {
         requestId: "req-attachment",
         spaceId,
         targetType: "ATTACHMENT",
+      }),
+    );
+    expect(realtime.publish).toHaveBeenCalledWith(
+      expect.objectContaining({
+        operation: "ATTACHMENT_CHANGED",
+        target: { type: "WORK_ITEM", id: workItemId },
+        invalidates: expect.arrayContaining(["attachments", "timeline"]),
+        hints: expect.objectContaining({
+          targetId: workItemId,
+          targetType: "WORK_ITEM",
+          workItemType: "BUG",
+        }),
       }),
     );
   });
@@ -578,18 +591,21 @@ function createServiceFixture(
   };
   const audit = createAuditService();
   const objectStorage = options.objectStorage ?? createObjectStorage();
+  const realtime = createRealtimePublisher();
   const service = new AttachmentService(
     attachments,
     {} as RequirementRepository,
     targets,
     audit,
     objectStorage,
+    realtime,
   );
 
   return {
     attachments,
     audit,
     objectStorage,
+    realtime,
     service,
     targets,
   };
@@ -655,5 +671,13 @@ function createAuditService() {
     record: vi.fn(),
   } as unknown as AuditService & {
     record: ReturnType<typeof vi.fn>;
+  };
+}
+
+function createRealtimePublisher() {
+  return {
+    publish: vi.fn(),
+  } as unknown as RealtimePublisherService & {
+    publish: ReturnType<typeof vi.fn>;
   };
 }

@@ -1,6 +1,7 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import type { SpaceRole } from "@project-delivery/shared";
+import type { RealtimePublisherService } from "../realtime/realtime-publisher.service";
 import { WorkflowActionExecutionService } from "./workflow-action-execution.service";
 import type {
   CreateWorkflowActionAuditLogInput,
@@ -127,6 +128,26 @@ describe("WorkflowActionExecutionService", () => {
       },
       targetId: WORK_ITEM_ID,
     });
+    expect(subject.realtime.publish).toHaveBeenCalledWith(
+      expect.objectContaining({
+        operation: "STATUS_CHANGED",
+        target: { type: "WORK_ITEM", id: WORK_ITEM_ID },
+        invalidates: expect.arrayContaining([
+          "work-item-list",
+          "bug-list",
+          "version-board",
+          "timeline",
+        ]),
+        hints: expect.objectContaining({
+          actionId: START_ACTION_ID,
+          changedFields: expect.arrayContaining([
+            "currentStateId",
+            "statusCategory",
+          ]),
+          workItemType: "TASK",
+        }),
+      }),
+    );
   });
 
   it("rejects actions whose fromStateId does not match the current state", async () => {
@@ -914,10 +935,20 @@ function createSubject(
   repository.participantKeys.add(
     `${SPACE_ID}:${WORK_ITEM_ID}:${ACTOR_ID}:ASSIGNEE`,
   );
+  const realtime = createRealtimePublisher();
 
   return {
+    realtime,
     repository,
-    service: new WorkflowActionExecutionService(repository),
+    service: new WorkflowActionExecutionService(repository, realtime),
+  };
+}
+
+function createRealtimePublisher() {
+  return {
+    publish: vi.fn(),
+  } as unknown as RealtimePublisherService & {
+    publish: ReturnType<typeof vi.fn>;
   };
 }
 

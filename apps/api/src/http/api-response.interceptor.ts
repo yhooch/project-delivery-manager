@@ -8,6 +8,11 @@ import type { ApiResponse } from "@project-delivery/shared";
 import { map, type Observable } from "rxjs";
 
 import { getRequestId, type RequestWithContext } from "./request-context";
+import { isRealtimeSseResponse } from "../modules/realtime/realtime-sse.stream";
+
+type ResponseWithHeaders = {
+  getHeader?: (name: string) => number | string | string[] | undefined;
+};
 
 @Injectable()
 export class ApiResponseInterceptor<T>
@@ -18,9 +23,14 @@ export class ApiResponseInterceptor<T>
     next: CallHandler<T>,
   ): Observable<ApiResponse<T>> {
     const request = context.switchToHttp().getRequest<RequestWithContext>();
+    const response = context.switchToHttp().getResponse<ResponseWithHeaders>();
 
     return next.handle().pipe(
       map((data) => {
+        if (isRealtimeSseResponse(response)) {
+          return data as ApiResponse<T>;
+        }
+
         if (isApiResponse(data)) {
           return data as ApiResponse<T>;
         }

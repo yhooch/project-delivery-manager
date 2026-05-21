@@ -28,6 +28,14 @@ import { useTagFilterSelection } from "../../lib/hooks/use-tag-filter-selection"
 import { useUrlTagFilter } from "../../lib/hooks/use-url-tag-filter";
 import { canWriteRequirements } from "../../lib/permission-gates";
 import {
+  isRealtimeRefreshMode,
+  resolveRefreshMode,
+  shouldShowBlockingRefreshState,
+  shouldSurfaceRefreshError,
+  useRealtimeInvalidation,
+  type RefreshModeOptions,
+} from "../../lib/realtime";
+import {
   createRequirementDraftLocalCacheKey,
   isRequirementDraftCacheNewerThanRequirement,
   readRequirementDraftLocalCache,
@@ -74,6 +82,10 @@ const statusVariant: Record<Requirement["status"], BadgeProps["variant"]> = {
 };
 const LIST_PAGE_SIZE = 100;
 const INITIAL_PAGE_INFO = { page: 1, pageSize: LIST_PAGE_SIZE, total: 0 };
+const REQUIREMENTS_REALTIME_KEYS = [
+  "requirement-list",
+  "requirement-detail",
+] as const;
 
 export function RequirementsPage() {
   const t = useTranslations("requirements");
@@ -160,9 +172,11 @@ export function RequirementsPage() {
   );
   const latestListScopeKeyRef = useRef(listScopeKey);
   const listRequestIdRef = useRef(0);
+  const pageInfoRef = useRef(pageInfo);
   const latestFilterOptionsScopeKeyRef = useRef(contextKey);
   const filterOptionsRequestIdRef = useRef(0);
   latestListScopeKeyRef.current = listScopeKey;
+  pageInfoRef.current = pageInfo;
   latestFilterOptionsScopeKeyRef.current = contextKey;
   const loadedCount = items.length;
   const paginationFrom = loadedCount > 0 ? 1 : 0;
@@ -182,7 +196,12 @@ export function RequirementsPage() {
     });
 
   const loadItems = useCallback(
-    async (page = 1, mode: "replace" | "append" = "replace") => {
+    async (
+      page = 1,
+      mode: "replace" | "append" = "replace",
+      options?: RefreshModeOptions,
+    ) => {
+      const refreshMode = resolveRefreshMode(options);
       if (!spaceId) {
         return;
       }
@@ -191,20 +210,27 @@ export function RequirementsPage() {
       listRequestIdRef.current = requestId;
       const requestScopeKey = listScopeKey;
       const append = mode === "append";
+      const realtimeRefresh = isRealtimeRefreshMode(refreshMode);
+      const pageSize =
+        !append && realtimeRefresh
+          ? Math.max(LIST_PAGE_SIZE, pageInfoRef.current.page * LIST_PAGE_SIZE)
+          : LIST_PAGE_SIZE;
 
       if (append) {
         setIsLoadingMore(true);
-      } else {
+      } else if (shouldShowBlockingRefreshState(refreshMode)) {
         setIsLoading(true);
       }
-      setErrorKey(null);
+      if (shouldSurfaceRefreshError(refreshMode)) {
+        setErrorKey(null);
+      }
 
       try {
         const result = await listRequirements({
           organizationId,
           spaceId,
           page,
-          pageSize: LIST_PAGE_SIZE,
+          pageSize,
           ...serializeTagFilterQuery(tagFilter),
           ...toRequirementListQuery(filter),
           ownerId: optionalFilterValue(effectiveSelectedOwnerId),
@@ -220,8 +246,8 @@ export function RequirementsPage() {
           append ? [...current, ...result.items] : result.items,
         );
         setPageInfo({
-          page: result.page ?? page,
-          pageSize: result.pageSize ?? LIST_PAGE_SIZE,
+          page: realtimeRefresh ? pageInfoRef.current.page : (result.page ?? page),
+          pageSize: result.pageSize ?? pageSize,
           total: result.total ?? result.items.length,
         });
         setStatusCounts(result.statusCounts ?? []);
@@ -230,7 +256,9 @@ export function RequirementsPage() {
           listRequestIdRef.current === requestId &&
           latestListScopeKeyRef.current === requestScopeKey
         ) {
-          setErrorKey(getApiErrorMessageKey(error));
+          if (shouldSurfaceRefreshError(refreshMode)) {
+            setErrorKey(getApiErrorMessageKey(error));
+          }
         }
       } finally {
         if (
@@ -300,8 +328,12 @@ export function RequirementsPage() {
       }
       return;
     }
-    void loadItems(1, "replace");
+    void loadItems(1, "replace", { mode: "initial" });
   }, [loadItems, sessionStatus, spaceId]);
+
+  useRealtimeInvalidation(REQUIREMENTS_REALTIME_KEYS, () => {
+    void loadItems(1, "replace", { mode: "realtime" });
+  });
 
   useEffect(() => {
     if (sessionStatus !== "authenticated" || !spaceId) {

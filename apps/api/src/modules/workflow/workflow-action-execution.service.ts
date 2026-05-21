@@ -10,6 +10,7 @@ import type {
 } from "@project-delivery/shared";
 
 import { ApiException } from "../../http/api-exception";
+import { RealtimePublisherService } from "../realtime/realtime-publisher.service";
 import { toWorkItemDetail } from "../workitem/workitem.mappers";
 import { canManageDeliveryObject } from "../workitem/delivery-object-permissions";
 import {
@@ -68,6 +69,8 @@ export class WorkflowActionExecutionService {
   constructor(
     @Inject(WORKFLOW_ACTION_EXECUTION_REPOSITORY)
     private readonly executions: WorkflowActionExecutionRepository,
+    @Inject(RealtimePublisherService)
+    private readonly realtime: RealtimePublisherService,
   ) {}
 
   async resolvePermissionSnapshot(
@@ -397,6 +400,36 @@ export class WorkflowActionExecutionService {
       });
 
       await this.createAuditLogSafely(result.audit);
+      this.safePublishRealtime({
+        actorId: actorUserId,
+        organizationId: result.detail.organizationId,
+        spaceId: result.detail.spaceId,
+        target: { type: "WORK_ITEM", id: result.detail.id },
+        operation: "STATUS_CHANGED",
+        invalidates: [
+          "work-item-list",
+          "bug-list",
+          "version-board",
+          "workbench",
+          "space-overview",
+          "exception-view",
+          "timeline",
+        ],
+        hints: {
+          targetType: "WORK_ITEM",
+          targetId: result.detail.id,
+          spaceId: result.detail.spaceId,
+          workItemType: result.detail.type,
+          ...(result.detail.versionId
+            ? { versionId: result.detail.versionId }
+            : {}),
+          changedFields: changedFieldsFromAudit(
+            result.audit.before,
+            result.audit.after,
+          ),
+          actionId,
+        },
+      });
 
       return result.detail;
     } catch (error) {
@@ -426,6 +459,19 @@ export class WorkflowActionExecutionService {
       this.logger.error(
         `Failed to write workflow action audit log requestId=${requestId}: ${message}`,
         error instanceof Error ? error.stack : undefined,
+      );
+    }
+  }
+
+  private safePublishRealtime(
+    input: Parameters<RealtimePublisherService["publish"]>[0],
+  ) {
+    try {
+      this.realtime.publish(input);
+    } catch (error) {
+      this.logger.error(
+        "Failed to publish workflow action realtime event",
+        error instanceof Error ? error.stack : String(error),
       );
     }
   }
@@ -960,6 +1006,19 @@ function buildAuditSnapshot(workItem: ExecutableWorkItem) {
     currentStateId: workItem.currentStateId,
     statusCategory: workItem.statusCategory,
   });
+}
+
+function changedFieldsFromAudit(
+  before: Record<string, unknown> | undefined,
+  after: Record<string, unknown> | undefined,
+) {
+  if (!before || !after) {
+    return [];
+  }
+
+  return Object.keys(after).filter(
+    (field) => JSON.stringify(before[field]) !== JSON.stringify(after[field]),
+  );
 }
 
 function buildAuditLogInput(

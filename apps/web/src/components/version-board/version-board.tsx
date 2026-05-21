@@ -4,6 +4,7 @@ import type {
   GetVersionBoardViewResponse,
   PageResult,
   RecordStatus,
+  RealtimeEvent,
   Requirement,
   SpaceRole,
   StatusCategory,
@@ -46,6 +47,15 @@ import { listVersions } from "../../lib/version-service";
 import { getVersionBoardView } from "../../lib/view-service";
 import { useFocusReturn } from "../../lib/hooks/use-list-keyboard-nav";
 import { useSpaceMembers } from "../../lib/v2/lookups";
+import {
+  resolveRefreshMode,
+  shouldClearDataForRefresh,
+  shouldShowBlockingRefreshState,
+  shouldSurfaceRefreshError,
+  useRealtimeInvalidation,
+  type RealtimeInvalidationContext,
+  type RefreshModeOptions,
+} from "../../lib/realtime";
 
 import { Avatar, AvatarFallback, AvatarImage } from "../ui/avatar";
 import { Badge } from "../ui/badge";
@@ -109,6 +119,17 @@ const DEFAULT_VERSION_STATUS_ORDER: VersionStatus[] = [
   "RELEASED",
   "ARCHIVED",
 ];
+
+const VERSION_PAGE_REALTIME_KEYS = [
+  "version-board",
+  "requirement-list",
+  "requirement-detail",
+  "timeline",
+  "comments",
+  "attachments",
+] as const;
+
+type VersionPageRealtimeKey = (typeof VERSION_PAGE_REALTIME_KEYS)[number];
 
 function getDefaultVersionId(
   versions: Version[],
@@ -191,6 +212,134 @@ function emptyBoardColumnPage(
     pageSize,
     total: 0,
   };
+}
+
+function realtimeHintString(
+  event: RealtimeEvent,
+  key:
+    | "spaceId"
+    | "targetId"
+    | "targetType"
+    | "versionId"
+    | "workItemId",
+): string | undefined {
+  const value = event.hints?.[key];
+  return typeof value === "string" ? value : undefined;
+}
+
+function realtimeEventMatchesSpace(
+  event: RealtimeEvent,
+  spaceId: string | undefined,
+): boolean {
+  const eventSpaceId = realtimeHintString(event, "spaceId") ?? event.spaceId;
+  return !spaceId || !eventSpaceId || eventSpaceId === spaceId;
+}
+
+function realtimeEventTargetsVersionMetadata(event: RealtimeEvent): boolean {
+  return (
+    event.target.type === "VERSION" ||
+    realtimeHintString(event, "targetType") === "VERSION"
+  );
+}
+
+function realtimeEventMatchesVersion(
+  event: RealtimeEvent,
+  versionId: string | null,
+  spaceId: string | undefined,
+): boolean {
+  if (!realtimeEventMatchesSpace(event, spaceId)) {
+    return false;
+  }
+
+  const hintedVersionId = realtimeHintString(event, "versionId");
+
+  if (hintedVersionId) {
+    return hintedVersionId === versionId;
+  }
+
+  if (event.target.type === "VERSION") {
+    return event.target.id === versionId;
+  }
+
+  return false;
+}
+
+function realtimeEventMayAffectVersion(
+  event: RealtimeEvent,
+  versionId: string | null,
+  spaceId: string | undefined,
+): boolean {
+  if (!realtimeEventMatchesSpace(event, spaceId)) {
+    return false;
+  }
+
+  const hintedVersionId = realtimeHintString(event, "versionId");
+
+  if (hintedVersionId) {
+    return hintedVersionId === versionId;
+  }
+
+  return event.target.type !== "VERSION" || event.target.id === versionId;
+}
+
+function realtimeEventMatchesActiveDetail(
+  event: RealtimeEvent,
+  activeItemId: string | undefined,
+  spaceId: string | undefined,
+): boolean {
+  if (!activeItemId || !realtimeEventMatchesSpace(event, spaceId)) {
+    return false;
+  }
+
+  const hintedWorkItemId = realtimeHintString(event, "workItemId");
+  if (hintedWorkItemId) {
+    return hintedWorkItemId === activeItemId;
+  }
+
+  const hintedTargetType = realtimeHintString(event, "targetType");
+  const hintedTargetId = realtimeHintString(event, "targetId");
+  if (hintedTargetType === "WORK_ITEM" && hintedTargetId) {
+    return hintedTargetId === activeItemId;
+  }
+
+  return event.target.type === "WORK_ITEM" && event.target.id === activeItemId;
+}
+
+function shouldRefreshRealtimeResource(
+  context: RealtimeInvalidationContext,
+  key: VersionPageRealtimeKey,
+  matchesEvent: (event: RealtimeEvent) => boolean,
+): boolean {
+  if (!context.keys.includes(key)) {
+    return false;
+  }
+
+  const hasMatchingResync = context.resyncs.some(
+    (resync) => resync.invalidates.length === 0 || resync.invalidates.includes(key),
+  );
+  if (hasMatchingResync) {
+    return true;
+  }
+
+  const matchingEvents = context.events.filter((event) =>
+    event.invalidates.includes(key),
+  );
+
+  if (matchingEvents.length === 0) {
+    return true;
+  }
+
+  return matchingEvents.some(matchesEvent);
+}
+
+function shouldRefreshAnyRealtimeResource(
+  context: RealtimeInvalidationContext,
+  keys: readonly VersionPageRealtimeKey[],
+  matchesEvent: (event: RealtimeEvent) => boolean,
+): boolean {
+  return keys.some((key) =>
+    shouldRefreshRealtimeResource(context, key, matchesEvent),
+  );
 }
 
 function mergeBoardColumnPage(
@@ -320,6 +469,7 @@ export function VersionPage() {
     spaceId?: string;
   } | null>(null);
   const [sheetOpen, setSheetOpen] = useState(false);
+  const [detailRefreshToken, setDetailRefreshToken] = useState(0);
   const [createWorkItemDialogOpen, setCreateWorkItemDialogOpen] =
     useState(false);
   const [createVersionDialogOpen, setCreateVersionDialogOpen] = useState(false);
@@ -349,6 +499,7 @@ export function VersionPage() {
     setActiveItem(null);
     setActiveItemContext(null);
     setSheetOpen(false);
+    setDetailRefreshToken(0);
     setCreateWorkItemDialogOpen(false);
     setCreateVersionDialogOpen(false);
     setEditVersionDialogOpen(false);
@@ -383,7 +534,8 @@ export function VersionPage() {
     [commitVersionId, replaceVersionParam],
   );
 
-  const fetchVersions = useCallback(async () => {
+  const fetchVersions = useCallback(async (options?: RefreshModeOptions) => {
+    const mode = resolveRefreshMode(options);
     if (!spaceId) {
       versionsRequestSeq.current += 1;
       setVersions([]);
@@ -393,8 +545,12 @@ export function VersionPage() {
     }
     const requestId = versionsRequestSeq.current + 1;
     versionsRequestSeq.current = requestId;
-    setIsLoadingVersions(true);
-    setErrorKey(null);
+    if (shouldShowBlockingRefreshState(mode)) {
+      setIsLoadingVersions(true);
+    }
+    if (shouldSurfaceRefreshError(mode)) {
+      setErrorKey(null);
+    }
     try {
       const page = await listVersions({
         spaceId,
@@ -416,9 +572,12 @@ export function VersionPage() {
         replaceVersionParam(nextVersionId ?? undefined);
       }
       commitVersionId(nextVersionId ?? null);
+      setErrorKey(null);
     } catch (error) {
       if (versionsRequestSeq.current !== requestId) return;
-      setErrorKey(getApiErrorMessageKey(error));
+      if (shouldSurfaceRefreshError(mode)) {
+        setErrorKey(getApiErrorMessageKey(error));
+      }
     } finally {
       if (versionsRequestSeq.current === requestId) {
         setIsLoadingVersions(false);
@@ -433,7 +592,7 @@ export function VersionPage() {
   ]);
 
   useEffect(() => {
-    void fetchVersions();
+    void fetchVersions({ mode: "initial" });
   }, [fetchVersions]);
 
   useEffect(() => {
@@ -446,18 +605,27 @@ export function VersionPage() {
     }
   }, [commitVersionId, versionIdParam, versions]);
 
-  const fetchBoard = useCallback(async () => {
+  const fetchBoard = useCallback(async (options?: RefreshModeOptions) => {
+    const mode = resolveRefreshMode(options);
     if (!versionId) {
       boardRequestSeq.current += 1;
-      setBoard(null);
+      if (shouldClearDataForRefresh(mode)) {
+        setBoard(null);
+      }
       setIsLoadingBoard(false);
       return;
     }
     const requestId = boardRequestSeq.current + 1;
     boardRequestSeq.current = requestId;
-    setBoard(null);
-    setIsLoadingBoard(true);
-    setErrorKey(null);
+    if (shouldClearDataForRefresh(mode)) {
+      setBoard(null);
+    }
+    if (shouldShowBlockingRefreshState(mode)) {
+      setIsLoadingBoard(true);
+    }
+    if (shouldSurfaceRefreshError(mode)) {
+      setErrorKey(null);
+    }
     try {
       const next = await getVersionBoardView({
         versionId,
@@ -471,9 +639,12 @@ export function VersionPage() {
       });
       if (boardRequestSeq.current !== requestId) return;
       setBoard(next);
+      setErrorKey(null);
     } catch (error) {
       if (boardRequestSeq.current !== requestId) return;
-      setErrorKey(getApiErrorMessageKey(error));
+      if (shouldSurfaceRefreshError(mode)) {
+        setErrorKey(getApiErrorMessageKey(error));
+      }
     } finally {
       if (boardRequestSeq.current === requestId) {
         setIsLoadingBoard(false);
@@ -489,23 +660,32 @@ export function VersionPage() {
   ]);
 
   useEffect(() => {
-    if (versionId) void fetchBoard();
+    if (versionId) void fetchBoard({ mode: "initial" });
   }, [fetchBoard, versionId]);
 
-  const fetchRequirements = useCallback(async () => {
+  const fetchRequirements = useCallback(async (options?: RefreshModeOptions) => {
+    const mode = resolveRefreshMode(options);
     if (!versionId || !spaceId) {
       requirementsRequestSeq.current += 1;
-      setRequirements([]);
-      setRequirementsTotal(0);
+      if (shouldClearDataForRefresh(mode)) {
+        setRequirements([]);
+        setRequirementsTotal(0);
+      }
       setIsLoadingRequirements(false);
       return;
     }
     const requestId = requirementsRequestSeq.current + 1;
     requirementsRequestSeq.current = requestId;
-    setRequirements([]);
-    setRequirementsTotal(0);
-    setIsLoadingRequirements(true);
-    setRequirementsErrorKey(null);
+    if (shouldClearDataForRefresh(mode)) {
+      setRequirements([]);
+      setRequirementsTotal(0);
+    }
+    if (shouldShowBlockingRefreshState(mode)) {
+      setIsLoadingRequirements(true);
+    }
+    if (shouldSurfaceRefreshError(mode)) {
+      setRequirementsErrorKey(null);
+    }
     try {
       const page = await listRequirements({
         spaceId,
@@ -517,10 +697,13 @@ export function VersionPage() {
       if (requirementsRequestSeq.current !== requestId) return;
       setRequirements(page.items);
       setRequirementsTotal(page.total ?? page.items.length);
+      setRequirementsErrorKey(null);
     } catch (error) {
       if (requirementsRequestSeq.current !== requestId) return;
-      setRequirementsTotal(0);
-      setRequirementsErrorKey(getApiErrorMessageKey(error));
+      if (shouldSurfaceRefreshError(mode)) {
+        setRequirementsTotal(0);
+        setRequirementsErrorKey(getApiErrorMessageKey(error));
+      }
     } finally {
       if (requirementsRequestSeq.current === requestId) {
         setIsLoadingRequirements(false);
@@ -528,18 +711,27 @@ export function VersionPage() {
     }
   }, [organizationId, spaceId, versionId]);
 
-  const fetchTimeline = useCallback(async () => {
+  const fetchTimeline = useCallback(async (options?: RefreshModeOptions) => {
+    const mode = resolveRefreshMode(options);
     if (!versionId || !spaceId) {
       timelineRequestSeq.current += 1;
-      setTimeline([]);
+      if (shouldClearDataForRefresh(mode)) {
+        setTimeline([]);
+      }
       setIsLoadingTimeline(false);
       return;
     }
     const requestId = timelineRequestSeq.current + 1;
     timelineRequestSeq.current = requestId;
-    setTimeline([]);
-    setIsLoadingTimeline(true);
-    setTimelineErrorKey(null);
+    if (shouldClearDataForRefresh(mode)) {
+      setTimeline([]);
+    }
+    if (shouldShowBlockingRefreshState(mode)) {
+      setIsLoadingTimeline(true);
+    }
+    if (shouldSurfaceRefreshError(mode)) {
+      setTimelineErrorKey(null);
+    }
     try {
       const page = await listTimeline({
         spaceId,
@@ -551,9 +743,12 @@ export function VersionPage() {
       });
       if (timelineRequestSeq.current !== requestId) return;
       setTimeline(page.items);
+      setTimelineErrorKey(null);
     } catch (error) {
       if (timelineRequestSeq.current !== requestId) return;
-      setTimelineErrorKey(getApiErrorMessageKey(error));
+      if (shouldSurfaceRefreshError(mode)) {
+        setTimelineErrorKey(getApiErrorMessageKey(error));
+      }
     } finally {
       if (timelineRequestSeq.current === requestId) {
         setIsLoadingTimeline(false);
@@ -570,8 +765,8 @@ export function VersionPage() {
       setTimeline([]);
       return;
     }
-    void fetchRequirements();
-    void fetchTimeline();
+    void fetchRequirements({ mode: "initial" });
+    void fetchTimeline({ mode: "initial" });
   }, [fetchRequirements, fetchTimeline, versionId]);
 
   // -------------------------------------------------------------------------
@@ -689,19 +884,78 @@ export function VersionPage() {
       ...prev.filter((v) => v.id !== created.id),
     ]);
     selectVersion(created.id);
-    void fetchVersions();
+    void fetchVersions({ mode: "manual" });
   };
 
   const handleVersionUpdated = (updated: Version) => {
     setVersions((prev) => prev.map((v) => (v.id === updated.id ? updated : v)));
-    void fetchVersions();
+    void fetchVersions({ mode: "manual" });
   };
 
-  const refreshVersionContext = useCallback(() => {
-    void fetchBoard();
-    void fetchVersions();
-    void fetchTimeline();
-  }, [fetchBoard, fetchTimeline, fetchVersions]);
+  const refreshVersionContext = useCallback(
+    (options?: RefreshModeOptions) => {
+      const mode = resolveRefreshMode(options);
+      void fetchBoard({ mode });
+      void fetchVersions({ mode });
+      void fetchTimeline({ mode });
+    },
+    [fetchBoard, fetchTimeline, fetchVersions],
+  );
+
+  useRealtimeInvalidation(VERSION_PAGE_REALTIME_KEYS, (context) => {
+    const refreshOptions = { mode: "realtime" } satisfies RefreshModeOptions;
+    const currentVersionId = versionIdRef.current;
+    const activeDetailItemId =
+      sheetOpen && activeItemContext?.contextKey === versionContextKey
+        ? activeItem?.id
+        : undefined;
+
+    if (
+      shouldRefreshRealtimeResource(context, "version-board", (event) =>
+        realtimeEventMayAffectVersion(event, currentVersionId, spaceId),
+      )
+    ) {
+      void fetchBoard(refreshOptions);
+    }
+
+    if (
+      shouldRefreshRealtimeResource(context, "version-board", (event) =>
+        realtimeEventMatchesSpace(event, spaceId) &&
+        realtimeEventTargetsVersionMetadata(event),
+      )
+    ) {
+      void fetchVersions(refreshOptions);
+    }
+
+    if (
+      shouldRefreshAnyRealtimeResource(
+        context,
+        ["requirement-list", "requirement-detail"],
+        (event) => realtimeEventMayAffectVersion(event, currentVersionId, spaceId),
+      )
+    ) {
+      void fetchRequirements(refreshOptions);
+    }
+
+    if (
+      shouldRefreshRealtimeResource(context, "timeline", (event) =>
+        realtimeEventMatchesVersion(event, currentVersionId, spaceId),
+      )
+    ) {
+      void fetchTimeline(refreshOptions);
+    }
+
+    if (
+      shouldRefreshAnyRealtimeResource(
+        context,
+        ["timeline", "comments", "attachments"],
+        (event) =>
+          realtimeEventMatchesActiveDetail(event, activeDetailItemId, spaceId),
+      )
+    ) {
+      setDetailRefreshToken((token) => token + 1);
+    }
+  });
 
   const loadMoreColumn = useCallback(
     async (category: StatusCategory) => {
@@ -1006,8 +1260,8 @@ export function VersionPage() {
         title={t("states.error.title")}
         message={tRoot(errorKey)}
         onRetry={() => {
-          if (!versionId) void fetchVersions();
-          else void fetchBoard();
+          if (!versionId) void fetchVersions({ mode: "manual" });
+          else void fetchBoard({ mode: "manual" });
         }}
       />
     );
@@ -1131,7 +1385,7 @@ export function VersionPage() {
               tRequirementStatus={tRequirementStatus}
               t={t}
               onRetry={() => {
-                void fetchRequirements();
+                void fetchRequirements({ mode: "manual" });
               }}
             />
           </TabsContent>
@@ -1146,7 +1400,7 @@ export function VersionPage() {
               tTimelineEvent={tTimelineEvent}
               t={t}
               onRetry={() => {
-                void fetchTimeline();
+                void fetchTimeline({ mode: "manual" });
               }}
             />
           </TabsContent>
@@ -1160,6 +1414,9 @@ export function VersionPage() {
   const detailSheetOpen =
     sheetOpen && activeItemContext?.contextKey === versionContextKey;
   const detailSheetItem = detailSheetOpen ? activeItem : null;
+  const detailSheetKey = detailSheetItem
+    ? `${versionContextKey}:${detailSheetItem.id}:${detailRefreshToken}`
+    : `${versionContextKey}:empty`;
 
   return (
     <div
@@ -1175,6 +1432,7 @@ export function VersionPage() {
       {versionSummary}
       <div className="flex min-w-0 flex-1 flex-col overflow-hidden">{body}</div>
       <TaskDetailSheet
+        key={detailSheetKey}
         item={detailSheetItem}
         open={detailSheetOpen}
         onOpenChange={handleSheetOpenChange}

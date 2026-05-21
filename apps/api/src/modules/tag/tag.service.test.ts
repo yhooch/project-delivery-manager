@@ -3,6 +3,7 @@ import type { Space, SpaceRole, TagDto } from "@project-delivery/shared";
 import { describe, expect, it, vi } from "vitest";
 
 import type { AuditService } from "../audit/audit.service";
+import type { RealtimePublisherService } from "../realtime/realtime-publisher.service";
 import type { SpaceRepository } from "../space/space.repository";
 import type { SpaceAccess } from "../space/space.types";
 import type { TagRepository } from "./tag.repository";
@@ -102,6 +103,23 @@ describe("TagService", () => {
         targetType: "TAG",
       }),
     );
+    expect(subject.realtime.publish).toHaveBeenCalledWith(
+      expect.objectContaining({
+        operation: "TAG_CHANGED",
+        target: { type: "SPACE", id: SPACE_ID },
+        invalidates: expect.arrayContaining([
+          "work-item-list",
+          "bug-list",
+          "requirement-list",
+          "intake-list",
+        ]),
+        hints: expect.objectContaining({
+          tagId: created.id,
+          targetId: SPACE_ID,
+          targetType: "SPACE",
+        }),
+      }),
+    );
   });
 
   it("returns an existing active tag for the same normalized name", async () => {
@@ -121,6 +139,7 @@ describe("TagService", () => {
     expect(result).toBe(existing);
     expect(subject.tags.createInput).toBeUndefined();
     expect(subject.audit.record).not.toHaveBeenCalled();
+    expect(subject.realtime.publish).not.toHaveBeenCalled();
   });
 
   it("rejects viewer tag creation and audits the denial", async () => {
@@ -141,6 +160,7 @@ describe("TagService", () => {
         targetType: "SPACE",
       }),
     );
+    expect(subject.realtime.publish).not.toHaveBeenCalled();
   });
 
   it("soft deletes orphan tags for PM and writes audit", async () => {
@@ -170,6 +190,17 @@ describe("TagService", () => {
         spaceId: SPACE_ID,
         targetId: TAG_ID,
         targetType: "TAG",
+      }),
+    );
+    expect(subject.realtime.publish).toHaveBeenCalledWith(
+      expect.objectContaining({
+        operation: "TAG_CHANGED",
+        target: { type: "SPACE", id: SPACE_ID },
+        hints: expect.objectContaining({
+          tagId: TAG_ID,
+          targetId: SPACE_ID,
+          targetType: "SPACE",
+        }),
       }),
     );
   });
@@ -223,10 +254,17 @@ function createSubject(role: SpaceRole) {
   const tags = new FakeTagRepository();
   const spaces = new FakeSpaceRepository(role);
   const audit = createAuditService();
+  const realtime = createRealtimePublisher();
 
   return {
     audit,
-    service: new TagService(tags, spaces as unknown as SpaceRepository, audit),
+    realtime,
+    service: new TagService(
+      tags,
+      spaces as unknown as SpaceRepository,
+      audit,
+      realtime,
+    ),
     spaces,
     tags,
   };
@@ -237,6 +275,14 @@ function createAuditService() {
     record: vi.fn(),
   } as unknown as AuditService & {
     record: ReturnType<typeof vi.fn>;
+  };
+}
+
+function createRealtimePublisher() {
+  return {
+    publish: vi.fn(),
+  } as unknown as RealtimePublisherService & {
+    publish: ReturnType<typeof vi.fn>;
   };
 }
 

@@ -160,6 +160,19 @@ const {
   listWorkItemsMock: vi.fn(),
   listRequirementsMock: vi.fn(),
 }));
+const realtimeInvalidationHandlers = vi.hoisted(
+  () =>
+    [] as {
+      callback: (context: {
+        events: { hints?: Record<string, unknown>; target: { id: string; type: string } }[];
+        keys: string[];
+        lastEventId: string | null;
+        mode: "realtime";
+        resyncs: unknown[];
+      }) => void | Promise<void>;
+      keys: readonly string[];
+    }[],
+);
 
 vi.mock("../../lib/work-item-service", () => ({
   getWorkItem: getWorkItemMock,
@@ -203,6 +216,28 @@ vi.mock("../../lib/attachment-service", () => {
 vi.mock("../../lib/timeline-service", () => ({
   listTimeline: listTimelineMock,
 }));
+vi.mock("../../lib/realtime", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("../../lib/realtime")>();
+
+  return {
+    ...actual,
+    useRealtimeInvalidation: (
+      keys: readonly string[],
+      callback: (context: {
+        events: {
+          hints?: Record<string, unknown>;
+          target: { id: string; type: string };
+        }[];
+        keys: string[];
+        lastEventId: string | null;
+        mode: "realtime";
+        resyncs: unknown[];
+      }) => void | Promise<void>,
+    ) => {
+      realtimeInvalidationHandlers.push({ callback, keys });
+    },
+  };
+});
 
 import type { WorkItemViewModel } from "../../lib/v2/work-item-view-model";
 import { ApiClientError } from "../../lib/api-client";
@@ -322,6 +357,7 @@ beforeEach(() => {
   listIntakeItemsMock.mockReset();
   listWorkItemsMock.mockReset();
   listRequirementsMock.mockReset();
+  realtimeInvalidationHandlers.length = 0;
 
   // Default success values to prevent fallbacks from masking failures.
   getBugMock.mockResolvedValue(makeBugResponse());
@@ -354,6 +390,30 @@ beforeEach(() => {
 afterEach(() => {
   cleanup();
 });
+
+async function dispatchRealtimeInvalidation(
+  key: string,
+  event: { target: { id: string; type: string }; hints?: Record<string, unknown> },
+) {
+  const matchingHandlers = realtimeInvalidationHandlers.filter((handler) =>
+    handler.keys.includes(key),
+  );
+  const latestHandler = matchingHandlers.at(-1);
+
+  if (!latestHandler) {
+    return;
+  }
+
+  await act(async () => {
+    await latestHandler.callback({
+      events: [event],
+      keys: [key],
+      lastEventId: "1",
+      mode: "realtime",
+      resyncs: [],
+    });
+  });
+}
 
 describe("TaskDetailSheet", () => {
   it.each([
@@ -556,6 +616,50 @@ describe("TaskDetailSheet", () => {
     });
     expect(screen.getByTestId("task-timeline-tab")).not.toHaveTextContent("3");
     expect(screen.getByTestId("task-timeline-tab")).not.toHaveTextContent("2");
+  });
+
+  it("refreshes realtime comments without clearing the local draft", async () => {
+    let comments = [
+      {
+        id: "COMMENT_OLD",
+        author: { id: "USER_OLD", name: "Old User" },
+        body: "old comment",
+        createdAt: "2026-05-12T00:00:00.000Z",
+      },
+    ];
+    listCommentsMock.mockImplementation(
+      async (input: { pageSize?: number } | undefined) =>
+        input?.pageSize === 1
+          ? { items: [], total: comments.length }
+          : { items: comments, total: comments.length },
+    );
+
+    render(
+      <TaskDetailSheet item={makeViewModel()} open onOpenChange={() => {}} />,
+    );
+
+    await activateTab(/taskDetail\.tabs\.comments/u);
+    expect(await screen.findByText("old comment")).toBeInTheDocument();
+    fireEvent.change(screen.getByTestId("task-comments-input"), {
+      target: { value: "local draft" },
+    });
+
+    comments = [
+      {
+        id: "COMMENT_NEW",
+        author: { id: "USER_NEW", name: "New User" },
+        body: "new realtime comment",
+        createdAt: "2026-05-12T00:01:00.000Z",
+      },
+    ];
+    await dispatchRealtimeInvalidation("comments", {
+      target: { id: "01ARZ3NDEKTSV4RRFFQ69G5FA1", type: "WORK_ITEM" },
+    });
+
+    expect(await screen.findByText("new realtime comment")).toBeInTheDocument();
+    expect(screen.getByTestId("task-comments-input")).toHaveValue(
+      "local draft",
+    );
   });
 
   it("renders workflow action fields and submits the populated payload", async () => {

@@ -1,7 +1,8 @@
-import { HttpStatus, Inject, Injectable } from "@nestjs/common";
+import { HttpStatus, Inject, Injectable, Logger } from "@nestjs/common";
 import {
   type CreateWorkItemRequest,
   type ListWorkItemsResponse,
+  type RealtimeOperation,
   type SpaceRole,
   type UpdateWorkItemRequest,
   type WorkItem,
@@ -17,6 +18,7 @@ import {
   ORGANIZATION_REPOSITORY,
   type OrganizationRepository,
 } from "../organization/organization.repository";
+import { RealtimePublisherService } from "../realtime/realtime-publisher.service";
 import {
   SPACE_REPOSITORY,
   type SpaceRepository,
@@ -46,6 +48,8 @@ import {
 
 @Injectable()
 export class WorkItemService {
+  private readonly logger = new Logger(WorkItemService.name);
+
   constructor(
     @Inject(WORK_ITEM_REPOSITORY)
     private readonly workItems: WorkItemRepository,
@@ -57,6 +61,8 @@ export class WorkItemService {
     private readonly workflowActions: WorkflowActionExecutionService,
     @Inject(AuditService)
     private readonly audit: AuditService,
+    @Inject(RealtimePublisherService)
+    private readonly realtime: RealtimePublisherService,
   ) {}
 
   async list(
@@ -170,6 +176,33 @@ export class WorkItemService {
       spaceId: created.spaceId,
       targetId: created.id,
       targetType: "WORK_ITEM",
+    });
+
+    this.safePublishRealtime({
+      actorId: actorUserId,
+      organizationId: created.organizationId,
+      spaceId: created.spaceId,
+      target: { type: "WORK_ITEM", id: created.id },
+      operation: "CREATED",
+      invalidates: [
+        "work-item-list",
+        "version-board",
+        "workbench",
+        "space-overview",
+        "exception-view",
+        "timeline",
+      ],
+      hints: {
+        targetType: "WORK_ITEM",
+        targetId: created.id,
+        spaceId: created.spaceId,
+        workItemType: "TASK",
+        ...(created.versionId ? { versionId: created.versionId } : {}),
+        ...(created.requirementId
+          ? { requirementId: created.requirementId }
+          : {}),
+        ...(created.intakeItemId ? { intakeItemId: created.intakeItemId } : {}),
+      },
     });
 
     return created;
@@ -319,7 +352,54 @@ export class WorkItemService {
       targetType: "WORK_ITEM",
     });
 
+    const changedFields = changedFieldsFromWorkItemUpdate(input);
+
+    this.safePublishRealtime({
+      actorId: actorUserId,
+      organizationId: updated.organizationId,
+      spaceId: updated.spaceId,
+      target: { type: "WORK_ITEM", id: updated.id },
+      operation: resolveWorkItemRealtimeOperation(changedFields),
+      invalidates: [
+        "work-item-list",
+        ...(input.cascadeVersionChange === true ? ["bug-list" as const] : []),
+        "version-board",
+        "workbench",
+        "space-overview",
+        "exception-view",
+        "timeline",
+      ],
+      hints: {
+        targetType: "WORK_ITEM",
+        targetId: updated.id,
+        spaceId: updated.spaceId,
+        workItemType: "TASK",
+        ...(updated.versionId ? { versionId: updated.versionId } : {}),
+        ...(updated.requirementId
+          ? { requirementId: updated.requirementId }
+          : {}),
+        ...(updated.intakeItemId ? { intakeItemId: updated.intakeItemId } : {}),
+        changedFields,
+        ...(input.cascadeVersionChange === true
+          ? { suggestFullRefresh: true }
+          : {}),
+      },
+    });
+
     return updated;
+  }
+
+  private safePublishRealtime(
+    input: Parameters<RealtimePublisherService["publish"]>[0],
+  ) {
+    try {
+      this.realtime.publish(input);
+    } catch (error) {
+      this.logger.error(
+        "Failed to publish work item realtime event",
+        error instanceof Error ? error.stack : String(error),
+      );
+    }
   }
 
   private async requireVisibleWorkItem(
@@ -542,6 +622,24 @@ function resolveWorkItemVisibility(
   }
 
   return "PARTICIPANT";
+}
+
+function changedFieldsFromWorkItemUpdate(input: UpdateWorkItemRequest) {
+  return Object.keys(input).filter((field) => field !== "cascadeVersionChange");
+}
+
+function resolveWorkItemRealtimeOperation(
+  changedFields: string[],
+): RealtimeOperation {
+  if (changedFields.length === 1 && changedFields[0] === "assigneeId") {
+    return "ASSIGNEE_CHANGED";
+  }
+
+  if (changedFields.length === 1 && changedFields[0] === "versionId") {
+    return "VERSION_CHANGED";
+  }
+
+  return "UPDATED";
 }
 
 function parseOptionalDate(value: string | null | undefined, field: string) {

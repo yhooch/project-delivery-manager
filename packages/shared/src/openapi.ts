@@ -92,6 +92,20 @@ function normalizePath(path: string): string {
   return path.replaceAll(/{/g, "{").replaceAll("}", "}");
 }
 
+function buildSuccessContent(contract: ApiEndpointContract): JsonSchema {
+  const responseContentType = contract.responseContentType ?? "application/json";
+  const responseSchema =
+    contract.responseWrapped === false
+      ? contract.responseSchema
+      : apiResponseSchema(contract.responseSchema);
+
+  return {
+    [responseContentType]: {
+      schema: schemaToJsonSchema(responseSchema),
+    },
+  };
+}
+
 export function generateOpenApiDocument(): OpenApiDocument {
   const document: OpenApiDocument = {
     openapi: "3.1.0",
@@ -125,13 +139,7 @@ export function generateOpenApiDocument(): OpenApiDocument {
         responses: {
           "200": {
             description: "Success",
-            content: {
-              "application/json": {
-                schema: schemaToJsonSchema(
-                  apiResponseSchema(contract.responseSchema),
-                ),
-              },
-            },
+            content: buildSuccessContent(contract),
           },
           default: {
             description: contract.errorCodes.join(", "),

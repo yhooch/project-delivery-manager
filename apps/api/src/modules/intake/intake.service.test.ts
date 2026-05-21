@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from "vitest";
 import type { SpaceRole } from "@project-delivery/shared";
 import type { AuditService } from "../audit/audit.service";
 import type { OrganizationRepository } from "../organization/organization.repository";
+import type { RealtimePublisherService } from "../realtime/realtime-publisher.service";
 import type { RequirementRepository } from "../requirement/requirement.repository";
 import type { SpaceRepository } from "../space/space.repository";
 import type { VersionRepository } from "../version/version.repository";
@@ -55,7 +56,7 @@ describe("IntakeService", () => {
   });
 
   it("denies writes for VIEWER", async () => {
-    const { audit, service } = createSubject({ role: "VIEWER" });
+    const { audit, realtime, service } = createSubject({ role: "VIEWER" });
 
     await expect(
       service.create(
@@ -86,10 +87,13 @@ describe("IntakeService", () => {
         targetType: "SPACE",
       }),
     );
+    expect(realtime.publish).not.toHaveBeenCalled();
   });
 
   it("creates an intake item with actor as reporter after validating references", async () => {
-    const { audit, intakeItems, service } = createSubject({ role: "PM" });
+    const { audit, intakeItems, realtime, service } = createSubject({
+      role: "PM",
+    });
 
     await service.create(
       ACTOR_USER_ID,
@@ -127,6 +131,19 @@ describe("IntakeService", () => {
         spaceId: SPACE_ID,
         targetId: INTAKE_ITEM_ID,
         targetType: "INTAKE_ITEM",
+      }),
+    );
+    expect(realtime.publish).toHaveBeenCalledWith(
+      expect.objectContaining({
+        operation: "CREATED",
+        target: { type: "INTAKE_ITEM", id: INTAKE_ITEM_ID },
+        invalidates: ["intake-list"],
+        hints: expect.objectContaining({
+          requirementId: REQUIREMENT_ID,
+          targetId: INTAKE_ITEM_ID,
+          targetType: "INTAKE_ITEM",
+          versionId: VERSION_ID,
+        }),
       }),
     );
   });
@@ -183,7 +200,7 @@ describe("IntakeService", () => {
   });
 
   it("allows PM to update intake fields after validating references", async () => {
-    const { intakeItems, service } = createSubject({ role: "PM" });
+    const { intakeItems, realtime, service } = createSubject({ role: "PM" });
 
     await service.update(ACTOR_USER_ID, INTAKE_ITEM_ID, {
       assigneeId: ASSIGNEE_ID,
@@ -197,6 +214,16 @@ describe("IntakeService", () => {
         shouldUpdateAssignee: true,
         title: "Updated intake",
         updatedById: ACTOR_USER_ID,
+      }),
+    );
+    expect(realtime.publish).toHaveBeenCalledWith(
+      expect.objectContaining({
+        operation: "UPDATED",
+        target: { type: "INTAKE_ITEM", id: INTAKE_ITEM_ID },
+        invalidates: ["intake-list"],
+        hints: expect.objectContaining({
+          changedFields: expect.arrayContaining(["assigneeId", "title"]),
+        }),
       }),
     );
   });
@@ -355,7 +382,7 @@ describe("IntakeService", () => {
   });
 
   it("accepts pending intake items and rejects illegal status changes", async () => {
-    const { audit, intakeItems, service } = createSubject({
+    const { audit, intakeItems, realtime, service } = createSubject({
       item: intakeItem({ status: "PENDING" }),
       role: "PM",
     });
@@ -382,6 +409,13 @@ describe("IntakeService", () => {
         targetType: "INTAKE_ITEM",
       }),
     );
+    expect(realtime.publish).toHaveBeenCalledWith(
+      expect.objectContaining({
+        operation: "STATUS_CHANGED",
+        target: { type: "INTAKE_ITEM", id: INTAKE_ITEM_ID },
+        hints: expect.objectContaining({ changedFields: ["status"] }),
+      }),
+    );
 
     const converted = createSubject({
       item: intakeItem({ status: "CONVERTED" }),
@@ -404,6 +438,21 @@ describe("IntakeService", () => {
     ).rejects.toMatchObject({
       code: "VALIDATION_ERROR",
     });
+  });
+
+  it("does not publish realtime events for no-op intake status transitions", async () => {
+    const { intakeItems, realtime, service } = createSubject({
+      item: intakeItem({ status: "ACCEPTED" }),
+      role: "PM",
+    });
+
+    await expect(
+      service.accept(ACTOR_USER_ID, INTAKE_ITEM_ID),
+    ).resolves.toMatchObject({
+      status: "ACCEPTED",
+    });
+    expect(intakeItems.updateStatus).not.toHaveBeenCalled();
+    expect(realtime.publish).not.toHaveBeenCalled();
   });
 
   it.each(["DEVELOPER", "TESTER", "MEMBER"] as const)(
@@ -456,7 +505,7 @@ describe("IntakeService", () => {
   );
 
   it("converts an accepted intake item to one TASK with inherited context", async () => {
-    const { audit, intakeItems, service } = createSubject({
+    const { audit, intakeItems, realtime, service } = createSubject({
       item: intakeItem({
         assigneeId: ASSIGNEE_ID,
         requirementId: REQUIREMENT_ID,
@@ -545,6 +594,23 @@ describe("IntakeService", () => {
         spaceId: SPACE_ID,
         targetId: WORK_ITEM_ID,
         targetType: "WORK_ITEM",
+      }),
+    );
+    expect(realtime.publish).toHaveBeenCalledWith(
+      expect.objectContaining({
+        operation: "CREATED",
+        target: { type: "WORK_ITEM", id: WORK_ITEM_ID },
+        hints: expect.objectContaining({
+          intakeItemId: INTAKE_ITEM_ID,
+          workItemType: "TASK",
+        }),
+      }),
+    );
+    expect(realtime.publish).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        operation: "STATUS_CHANGED",
+        target: { type: "INTAKE_ITEM", id: INTAKE_ITEM_ID },
+        invalidates: ["intake-list", "work-item-list", "version-board"],
       }),
     );
   });
@@ -894,12 +960,14 @@ function createSubject(input: {
     update: vi.fn(),
   } satisfies WorkItemRepository;
   const audit = createAuditService();
+  const realtime = createRealtimePublisher();
 
   return {
     audit,
     intakeItems,
     organizations,
     requirements,
+    realtime,
     service: new IntakeService(
       intakeItems,
       spaces as unknown as SpaceRepository,
@@ -908,6 +976,7 @@ function createSubject(input: {
       organizations as unknown as OrganizationRepository,
       workItems,
       audit,
+      realtime,
     ),
     spaces,
     versions,
@@ -920,6 +989,14 @@ function createAuditService() {
     record: vi.fn(),
   } as unknown as AuditService & {
     record: ReturnType<typeof vi.fn>;
+  };
+}
+
+function createRealtimePublisher() {
+  return {
+    publish: vi.fn(),
+  } as unknown as RealtimePublisherService & {
+    publish: ReturnType<typeof vi.fn>;
   };
 }
 
