@@ -3,6 +3,7 @@ import { ulid } from "ulid";
 
 import { Prisma } from "../../generated/prisma/client";
 import { PrismaService } from "../../prisma/prisma.service";
+import { createTimelineEventRecord } from "../timeline/timeline-event-writer";
 import { toComment } from "./comment.mappers";
 import type { CommentRepository } from "./comment.repository";
 import type {
@@ -70,22 +71,20 @@ export class PrismaCommentRepository implements CommentRepository {
       });
 
       await ensureCommenterParticipant(tx, input);
-      await tx.timelineEvent.create({
-        data: {
-          id: input.timelineEventId,
-          organizationId: input.organizationId,
-          spaceId: input.spaceId,
-          targetType: input.targetType,
-          targetId: input.targetId,
-          eventType: "COMMENTED",
-          actorId: input.authorId,
-          title: "Commented",
-          metadata: {
-            commentId: input.id,
-          },
-          createdById: input.authorId,
-          updatedById: input.authorId,
+      await createTimelineEventRecord(tx, {
+        actorUserId: input.authorId,
+        eventType: "COMMENTED",
+        id: input.timelineEventId,
+        metadata: {
+          commentId: input.id,
+          commentPreview: previewComment(input.body) || undefined,
         },
+        organizationId: input.organizationId,
+        spaceId: input.spaceId,
+        targetId: input.targetId,
+        targetType: input.targetType,
+        targetWorkItemType: input.targetWorkItemType,
+        title: "Commented",
       });
 
       return created;
@@ -93,6 +92,10 @@ export class PrismaCommentRepository implements CommentRepository {
 
     return toComment(comment);
   }
+}
+
+function previewComment(body: string) {
+  return body.trim().replace(/\s+/gu, " ").slice(0, 120);
 }
 
 async function ensureCommenterParticipant(

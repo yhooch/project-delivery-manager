@@ -28,6 +28,7 @@ export type ResolvedTargetContext = {
   title?: string;
   role: SpaceRole;
   canWrite: boolean;
+  workItemType?: WorkItemType;
 };
 
 export type TargetRecord = {

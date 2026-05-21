@@ -32,6 +32,84 @@
         "ATTACHMENT_ADDED": "新增附件",
         "CLOSED": "关闭",
         "REOPENED": "重新打开"
+      },
+      "change": {
+        "field": {
+          "title": "标题",
+          "name": "名称",
+          "description": "描述",
+          "priority": "优先级",
+          "assigneeId": "负责人",
+          "reporterId": "报告人",
+          "ownerId": "负责人",
+          "versionId": "版本",
+          "requirementId": "需求",
+          "intakeItemId": "事项",
+          "status": "状态",
+          "statusCategory": "状态归类",
+          "currentStateId": "流程状态",
+          "blockedAt": "阻塞时间",
+          "blockedReason": "阻塞原因",
+          "closedAt": "关闭时间",
+          "dueDate": "截止日期",
+          "severity": "严重程度",
+          "expectedResult": "预期结果",
+          "actualResult": "实际结果",
+          "stepsToReproduce": "复现步骤",
+          "relatedTaskId": "关联任务",
+          "convertedAt": "转化时间",
+          "contentText": "正文",
+          "summary": "摘要",
+          "sourceObject": "来源对象",
+          "sourceType": "来源类型",
+          "target": "目标",
+          "targetDate": "目标日期",
+          "releaseDate": "发布日期",
+          "startDate": "开始日期"
+        },
+        "value": {
+          "empty": "空",
+          "reference": "已设置",
+          "boolean": {
+            "true": "是",
+            "false": "否"
+          },
+          "priority": {
+            "LOW": "低",
+            "MEDIUM": "中",
+            "HIGH": "高",
+            "URGENT": "紧急"
+          },
+          "status": {
+            "DRAFT": "草稿",
+            "CONFIRMED": "已确认",
+            "ARCHIVED": "已归档",
+            "PENDING": "待处理",
+            "ACCEPTED": "已接受",
+            "DEFERRED": "已延后",
+            "REJECTED": "已拒绝",
+            "CONVERTED": "已转化",
+            "PLANNED": "已计划",
+            "IN_PROGRESS": "进行中",
+            "RELEASED": "已发布",
+            "CLOSED": "已关闭"
+          },
+          "statusCategory": {
+            "NOT_STARTED": "未开始",
+            "IN_PROGRESS": "进行中",
+            "WAITING": "等待中",
+            "VERIFYING": "验证中",
+            "DONE": "已完成",
+            "TERMINATED": "已终止"
+          },
+          "severity": {
+            "BLOCKER": "阻断",
+            "CRITICAL": "严重",
+            "MAJOR": "主要",
+            "MINOR": "次要",
+            "TRIVIAL": "轻微"
+          }
+        }
       }
     },
     "workflowDefaults": {

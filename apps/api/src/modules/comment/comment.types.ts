@@ -2,6 +2,7 @@ import type {
   Comment,
   CommentTargetType,
   PageResult,
+  WorkItemType,
 } from "@project-delivery/shared";
 
 export type CommentListInput = {
@@ -23,5 +24,6 @@ export type CreateCommentInput = {
   spaceId: string;
   targetId: string;
   targetType: CommentTargetType;
+  targetWorkItemType?: WorkItemType;
   timelineEventId: string;
 };

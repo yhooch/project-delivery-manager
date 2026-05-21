@@ -78,6 +78,7 @@ export class CommentService {
       spaceId: target.spaceId,
       targetType: input.targetType,
       targetId: target.targetId,
+      targetWorkItemType: target.workItemType,
       authorId: actorUserId,
       body: input.body,
       timelineEventId: ulid(),

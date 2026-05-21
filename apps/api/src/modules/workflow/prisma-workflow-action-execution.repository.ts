@@ -4,6 +4,7 @@ import { ulid } from "ulid";
 import { Prisma } from "../../generated/prisma/client";
 import { PrismaService } from "../../prisma/prisma.service";
 import { listTagsByTargets } from "../tag/tag-assignment.helpers";
+import { createTimelineEventRecord } from "../timeline/timeline-event-writer";
 import { toWorkItem } from "../workitem/workitem.mappers";
 import type {
   CreateWorkflowActionAuditLogInput,
@@ -316,23 +317,10 @@ class PrismaWorkflowActionExecutionTransaction
   }
 
   async createTimelineEvent(input: CreateWorkflowActionTimelineInput) {
-    await this.tx.timelineEvent.create({
-      data: {
-        id: ulid(),
-        actorId: input.actorUserId,
-        after: toJson(input.after),
-        before: toJson(input.before),
-        createdById: input.actorUserId,
-        detail: input.detail,
-        eventType: input.eventType,
-        metadata: toJson(input.metadata),
-        organizationId: input.organizationId,
-        spaceId: input.spaceId,
-        targetId: input.targetId,
-        targetType: "WORK_ITEM",
-        title: input.title,
-        updatedById: input.actorUserId,
-      },
+    await createTimelineEventRecord(this.tx, {
+      ...input,
+      targetType: "WORK_ITEM",
+      targetWorkItemType: input.targetWorkItemType,
     });
   }
 

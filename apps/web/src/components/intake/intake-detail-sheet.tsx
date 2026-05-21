@@ -31,7 +31,6 @@ import { toCreateCommentRequest } from "../../lib/comment-forms";
 import { createComment, listComments } from "../../lib/comment-service";
 import { formatDisplayCode } from "../../lib/display-code";
 import { getIntakeItem } from "../../lib/intake-service";
-import { getTimelineEventLabel } from "../../lib/timeline-display";
 import { cn } from "../../lib/utils";
 import { listTimeline } from "../../lib/timeline-service";
 import {
@@ -43,6 +42,7 @@ import { listWorkItems } from "../../lib/work-item-service";
 import { Link } from "../../i18n/routing";
 
 import { ObjectTagAssignmentField } from "../tag";
+import { TimelineEventItem } from "../timeline/timeline-event-item";
 import { Avatar, AvatarFallback } from "../ui/avatar";
 import { Badge } from "../ui/badge";
 import { Button } from "../ui/button";
@@ -1023,39 +1023,14 @@ function IntakeTimelineSection({
             data-testid="intake-timeline-list"
           >
             {events.map((event) => (
-              <li
+              <TimelineEventItem
                 key={event.id}
-                data-testid="intake-timeline-item"
-                className="flex gap-3 px-3 py-3"
-              >
-                <Avatar className="h-7 w-7">
-                  <AvatarFallback>{initialOf(event.actor.name)}</AvatarFallback>
-                </Avatar>
-                <div className="min-w-0 flex-1 text-[13px]">
-                  <div>
-                    <span className="font-medium">{event.actor.name}</span>
-                    <span className="text-muted-foreground">
-                      {" "}
-                      {getTimelineEventLabel(
-                        event.eventType,
-                        tTimelineEvent,
-                      )}{" "}
-                    </span>
-                    {event.detail && (
-                      <span className="font-mono text-[12px] text-foreground">
-                        {event.detail}
-                      </span>
-                    )}
-                  </div>
-                  <div className="mt-0.5 text-[11px] text-muted-foreground">
-                    {formatOptionalDateTime(
-                      event.createdAt,
-                      locale,
-                      tRoot("common.emptyValue"),
-                    )}
-                  </div>
-                </div>
-              </li>
+                className="px-3 py-3"
+                event={event}
+                locale={locale}
+                testId="intake-timeline-item"
+                translateEventType={tTimelineEvent}
+              />
             ))}
           </ul>
         )}

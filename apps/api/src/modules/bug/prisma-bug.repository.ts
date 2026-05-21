@@ -8,6 +8,7 @@ import {
   listTagsByTargets,
   replaceTagAssignmentsInTransaction,
 } from "../tag/tag-assignment.helpers";
+import { createTimelineEventRecord } from "../timeline/timeline-event-writer";
 import { toBugView, type PrismaBugViewRecord } from "./bug.mappers";
 import type { BugRepository } from "./bug.repository";
 import type {
@@ -211,6 +212,7 @@ export class PrismaBugRepository implements BugRepository {
         organizationId: input.organizationId,
         spaceId: input.spaceId,
         targetId: workItem.id,
+        targetWorkItemType: "BUG",
         title: "创建 Bug",
       });
 
@@ -388,6 +390,7 @@ export class PrismaBugRepository implements BugRepository {
           organizationId: bug.organizationId,
           spaceId: bug.spaceId,
           targetId: bug.id,
+          targetWorkItemType: "BUG",
           title: "更新 Bug",
         });
       }
@@ -405,6 +408,7 @@ export class PrismaBugRepository implements BugRepository {
           organizationId: bug.organizationId,
           spaceId: bug.spaceId,
           targetId: bug.id,
+          targetWorkItemType: "BUG",
           title: "负责人变更",
         });
       }
@@ -892,24 +896,13 @@ async function createTimelineEvent(
     organizationId: string;
     spaceId: string;
     targetId: string;
+    targetWorkItemType: "BUG";
     title: string;
   },
 ) {
-  await tx.timelineEvent.create({
-    data: {
-      id: ulid(),
-      actorId: input.actorUserId,
-      after: toJson(input.after),
-      before: toJson(input.before),
-      createdById: input.actorUserId,
-      eventType: input.eventType,
-      organizationId: input.organizationId,
-      spaceId: input.spaceId,
-      targetId: input.targetId,
-      targetType: "WORK_ITEM",
-      title: input.title,
-      updatedById: input.actorUserId,
-    },
+  await createTimelineEventRecord(tx, {
+    ...input,
+    targetType: "WORK_ITEM",
   });
 }
 

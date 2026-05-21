@@ -11,7 +11,7 @@ import { PrismaAttachmentRepository } from "./prisma-attachment.repository";
 
 describe("PrismaAttachmentRepository", () => {
   it("uses tenant target scope for count, list, and find read queries", async () => {
-    const input = createAttachmentInput();
+    const input = createAttachmentInput({ targetWorkItemType: "BUG" });
     const record = {
       ...input,
       createdAt: new Date("2026-05-15T00:00:00.000Z"),
@@ -93,7 +93,7 @@ describe("PrismaAttachmentRepository", () => {
   });
 
   it("locks the target and enforces the per-target count inside attachment create transaction", async () => {
-    const input = createAttachmentInput();
+    const input = createAttachmentInput({ targetWorkItemType: "BUG" });
     const tx = {
       $queryRaw: vi.fn(async () => [{ id: input.targetId }]),
       attachment: {
@@ -132,6 +132,16 @@ describe("PrismaAttachmentRepository", () => {
       },
     });
     expect(tx.attachment.create).toHaveBeenCalledTimes(1);
+    expect(tx.timelineEvent.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          metadata: expect.objectContaining({
+            fileName: input.fileName,
+            targetWorkItemType: "BUG",
+          }),
+        }),
+      }),
+    );
   });
 
   it("rejects creation when the locked transaction sees the target already at the attachment limit", async () => {

@@ -2,6 +2,7 @@ import type {
   Attachment,
   AttachmentMimeType,
   AttachmentTargetType,
+  WorkItemType,
 } from "@project-delivery/shared";
 
 export type AttachmentTargetContext = {
@@ -9,6 +10,7 @@ export type AttachmentTargetContext = {
   spaceId: string;
   targetId: string;
   targetType: AttachmentTargetType;
+  targetWorkItemType?: WorkItemType;
 };
 
 export type CreateAttachmentInput = {
@@ -21,6 +23,7 @@ export type CreateAttachmentInput = {
   fileKey: string;
   mimeType: AttachmentMimeType;
   size: number;
+  targetWorkItemType?: WorkItemType;
   uploadedById: string;
 };
 

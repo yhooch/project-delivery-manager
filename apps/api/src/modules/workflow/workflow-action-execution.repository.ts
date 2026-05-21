@@ -6,6 +6,7 @@ import type {
   SpaceRole,
   StatusCategory,
   TimelineEventType,
+  WorkItemType,
   WorkflowActorRelation,
   WorkItem,
 } from "@project-delivery/shared";
@@ -99,6 +100,7 @@ export type CreateWorkflowActionTimelineInput = {
   organizationId: string;
   spaceId: string;
   targetId: string;
+  targetWorkItemType: WorkItemType;
   title: string;
 };
 

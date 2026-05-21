@@ -110,10 +110,14 @@ describe("WorkflowActionExecutionService", () => {
       metadata: {
         actionCode: "START_PROGRESS",
         actionId: START_ACTION_ID,
+        actionName: "开始处理",
+        fromStateName: "PENDING",
         fromStateId: PENDING_STATE_ID,
         toStateId: IN_PROGRESS_STATE_ID,
+        toStateName: "IN_PROGRESS",
       },
       targetId: WORK_ITEM_ID,
+      targetWorkItemType: "TASK",
     });
     expect(subject.repository.auditLogs).toHaveLength(1);
     expect(subject.repository.auditLogs[0]).toMatchObject({

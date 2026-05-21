@@ -5,11 +5,11 @@ import type {
   StatusCategory,
   ViewWorkItemSummary,
 } from "@project-delivery/shared";
-import { ulid } from "ulid";
 
 import { Prisma } from "../../generated/prisma/client";
 import { PrismaService } from "../../prisma/prisma.service";
 import { SPACE_EXCEPTION_STATE_RULES } from "../space/space-exception.helpers";
+import { createTimelineEventRecord } from "../timeline/timeline-event-writer";
 import { testerVisibleWorkItemWhere } from "../workitem/workitem-visibility";
 import { toVersion, toVersionBoardWorkItemSummary } from "./version.mappers";
 import type { VersionRepository } from "./version.repository";
@@ -834,26 +834,8 @@ async function createTimelineEvent(
     title: string;
   },
 ) {
-  await tx.timelineEvent.create({
-    data: {
-      id: ulid(),
-      actorId: input.actorUserId,
-      after: toJson(input.after),
-      before: toJson(input.before),
-      createdById: input.actorUserId,
-      eventType: input.eventType,
-      organizationId: input.organizationId,
-      spaceId: input.spaceId,
-      targetId: input.targetId,
-      targetType: "VERSION",
-      title: input.title,
-      updatedById: input.actorUserId,
-    },
+  await createTimelineEventRecord(tx, {
+    ...input,
+    targetType: "VERSION",
   });
-}
-
-function toJson(value: Record<string, unknown> | undefined) {
-  return value && Object.keys(value).length > 0
-    ? (value as Prisma.InputJsonObject)
-    : undefined;
 }

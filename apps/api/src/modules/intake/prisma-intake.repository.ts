@@ -1,4 +1,5 @@
 import { Inject, Injectable } from "@nestjs/common";
+import type { WorkItemType } from "@project-delivery/shared";
 import { ulid } from "ulid";
 
 import { Prisma } from "../../generated/prisma/client";
@@ -8,6 +9,7 @@ import {
   listTagsByTargets,
   replaceTagAssignmentsInTransaction,
 } from "../tag/tag-assignment.helpers";
+import { createTimelineEventRecord } from "../timeline/timeline-event-writer";
 import { assertTraceRefsMatchVersion } from "../trace/trace-version-policy";
 import { toWorkItem } from "../workitem/workitem.mappers";
 import { syncWorkItemRelatedParticipants } from "../workitem/workitem-participants";
@@ -819,30 +821,25 @@ async function createTimelineEvent(
   tx: Prisma.TransactionClient,
   input: {
     actorUserId: string;
-    after?: Prisma.InputJsonValue;
-    before?: Prisma.InputJsonValue;
+    after?: Record<string, unknown>;
+    before?: Record<string, unknown>;
     eventType: "CREATED" | "UPDATED" | "STATUS_CHANGED";
     item: IntakeItemRecord;
-    metadata?: Prisma.InputJsonValue;
+    metadata?: Record<string, unknown>;
     title: string;
   },
 ) {
-  await tx.timelineEvent.create({
-    data: {
-      id: ulid(),
-      actorId: input.actorUserId,
-      after: input.after,
-      before: input.before,
-      createdById: input.actorUserId,
-      eventType: input.eventType,
-      metadata: input.metadata,
-      organizationId: input.item.organizationId,
-      spaceId: input.item.spaceId,
-      targetId: input.item.id,
-      targetType: "INTAKE_ITEM",
-      title: input.title,
-      updatedById: input.actorUserId,
-    },
+  await createTimelineEventRecord(tx, {
+    actorUserId: input.actorUserId,
+    after: input.after,
+    before: input.before,
+    eventType: input.eventType,
+    metadata: input.metadata,
+    organizationId: input.item.organizationId,
+    spaceId: input.item.spaceId,
+    targetId: input.item.id,
+    targetType: "INTAKE_ITEM",
+    title: input.title,
   });
 }
 
@@ -857,20 +854,16 @@ async function createWorkItemTimelineEvent(
     title: string;
   },
 ) {
-  await tx.timelineEvent.create({
-    data: {
-      id: ulid(),
-      actorId: input.actorUserId,
-      after: toJson(input.after),
-      createdById: input.actorUserId,
-      eventType: "CREATED",
-      organizationId: input.organizationId,
-      spaceId: input.spaceId,
-      targetId: input.targetId,
-      targetType: "WORK_ITEM",
-      title: input.title,
-      updatedById: input.actorUserId,
-    },
+  await createTimelineEventRecord(tx, {
+    actorUserId: input.actorUserId,
+    after: input.after,
+    eventType: "CREATED",
+    organizationId: input.organizationId,
+    spaceId: input.spaceId,
+    targetId: input.targetId,
+    targetType: "WORK_ITEM",
+    targetWorkItemType: "TASK",
+    title: input.title,
   });
 }
 
@@ -932,6 +925,7 @@ async function cascadeIntakeTraceVersion(
       id: true,
       organizationId: true,
       spaceId: true,
+      type: true,
       versionId: true,
     },
     where: {
@@ -1004,6 +998,7 @@ async function cascadeIntakeTraceVersion(
       sourceTargetType: "INTAKE_ITEM",
       spaceId: item.spaceId,
       targetId: item.id,
+      targetWorkItemType: item.type,
     });
   }
 
@@ -1024,28 +1019,25 @@ async function createTraceVersionCascadeTimelineEvent(
     sourceTargetType: "INTAKE_ITEM";
     spaceId: string;
     targetId: string;
+    targetWorkItemType: WorkItemType;
   },
 ) {
-  await tx.timelineEvent.create({
-    data: {
-      id: ulid(),
-      actorId: input.actorUserId,
-      after: toJson({ versionId: input.nextVersionId }),
-      before: toJson({ versionId: input.beforeVersionId }),
-      createdById: input.actorUserId,
-      eventType: "UPDATED",
-      metadata: toJson({
-        operation: "TRACE_VERSION_CASCADE",
-        sourceTargetId: input.sourceTargetId,
-        sourceTargetType: input.sourceTargetType,
-      }),
-      organizationId: input.organizationId,
-      spaceId: input.spaceId,
-      targetId: input.targetId,
-      targetType: "WORK_ITEM",
-      title: "级联更新版本",
-      updatedById: input.actorUserId,
+  await createTimelineEventRecord(tx, {
+    actorUserId: input.actorUserId,
+    after: { versionId: input.nextVersionId },
+    before: { versionId: input.beforeVersionId },
+    eventType: "UPDATED",
+    metadata: {
+      operation: "TRACE_VERSION_CASCADE",
+      sourceTargetId: input.sourceTargetId,
+      sourceTargetType: input.sourceTargetType,
     },
+    organizationId: input.organizationId,
+    spaceId: input.spaceId,
+    targetId: input.targetId,
+    targetType: "WORK_ITEM",
+    targetWorkItemType: input.targetWorkItemType,
+    title: "级联更新版本",
   });
 }
 
@@ -1159,12 +1151,6 @@ function changedFields(before: IntakeItemRecord, after: IntakeItemRecord) {
   ];
 
   return fields.filter((field) => before[field] !== after[field]);
-}
-
-function toJson(value: Record<string, unknown> | undefined) {
-  return value && Object.keys(value).length > 0
-    ? (value as Prisma.InputJsonObject)
-    : undefined;
 }
 
 function unique(values: readonly string[]) {

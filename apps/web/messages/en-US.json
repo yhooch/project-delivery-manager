@@ -32,6 +32,84 @@
         "ATTACHMENT_ADDED": "Attachment added",
         "CLOSED": "Closed",
         "REOPENED": "Reopened"
+      },
+      "change": {
+        "field": {
+          "title": "Title",
+          "name": "Name",
+          "description": "Description",
+          "priority": "Priority",
+          "assigneeId": "Assignee",
+          "reporterId": "Reporter",
+          "ownerId": "Owner",
+          "versionId": "Version",
+          "requirementId": "Requirement",
+          "intakeItemId": "Intake item",
+          "status": "Status",
+          "statusCategory": "Status category",
+          "currentStateId": "Workflow state",
+          "blockedAt": "Blocked at",
+          "blockedReason": "Blocked reason",
+          "closedAt": "Closed at",
+          "dueDate": "Due date",
+          "severity": "Severity",
+          "expectedResult": "Expected result",
+          "actualResult": "Actual result",
+          "stepsToReproduce": "Steps to reproduce",
+          "relatedTaskId": "Related task",
+          "convertedAt": "Converted at",
+          "contentText": "Body",
+          "summary": "Summary",
+          "sourceObject": "Source object",
+          "sourceType": "Source type",
+          "target": "Target",
+          "targetDate": "Target date",
+          "releaseDate": "Release date",
+          "startDate": "Start date"
+        },
+        "value": {
+          "empty": "Empty",
+          "reference": "Set",
+          "boolean": {
+            "true": "Yes",
+            "false": "No"
+          },
+          "priority": {
+            "LOW": "Low",
+            "MEDIUM": "Medium",
+            "HIGH": "High",
+            "URGENT": "Urgent"
+          },
+          "status": {
+            "DRAFT": "Draft",
+            "CONFIRMED": "Confirmed",
+            "ARCHIVED": "Archived",
+            "PENDING": "Pending",
+            "ACCEPTED": "Accepted",
+            "DEFERRED": "Deferred",
+            "REJECTED": "Rejected",
+            "CONVERTED": "Converted",
+            "PLANNED": "Planned",
+            "IN_PROGRESS": "In progress",
+            "RELEASED": "Released",
+            "CLOSED": "Closed"
+          },
+          "statusCategory": {
+            "NOT_STARTED": "Not started",
+            "IN_PROGRESS": "In progress",
+            "WAITING": "Waiting",
+            "VERIFYING": "Verifying",
+            "DONE": "Done",
+            "TERMINATED": "Terminated"
+          },
+          "severity": {
+            "BLOCKER": "Blocker",
+            "CRITICAL": "Critical",
+            "MAJOR": "Major",
+            "MINOR": "Minor",
+            "TRIVIAL": "Trivial"
+          }
+        }
       }
     },
     "workflowDefaults": {

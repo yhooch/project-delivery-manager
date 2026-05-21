@@ -3,10 +3,10 @@ import {
   AttachmentMaxCountPerTarget,
   type AttachmentTargetType,
 } from "@project-delivery/shared";
-import { ulid } from "ulid";
 
 import { Prisma } from "../../generated/prisma/client";
 import { PrismaService } from "../../prisma/prisma.service";
+import { createTimelineEventRecord } from "../timeline/timeline-event-writer";
 import { toAttachment } from "./attachment.mappers";
 import {
   AttachmentLimitExceededError,
@@ -82,26 +82,22 @@ export class PrismaAttachmentRepository implements AttachmentRepository {
         },
       });
 
-      await tx.timelineEvent.create({
-        data: {
-          id: ulid(),
-          organizationId: input.organizationId,
-          spaceId: input.spaceId,
-          targetType: input.targetType,
-          targetId: input.targetId,
-          eventType: "ATTACHMENT_ADDED",
-          actorId: input.uploadedById,
-          title: "Attachment added",
-          metadata: {
-            attachmentId: input.id,
-            fileName: input.fileName,
-            fileKey: input.fileKey,
-            mimeType: input.mimeType,
-            size: input.size,
-          } satisfies Prisma.InputJsonObject,
-          createdById: input.uploadedById,
-          updatedById: input.uploadedById,
+      await createTimelineEventRecord(tx, {
+        actorUserId: input.uploadedById,
+        eventType: "ATTACHMENT_ADDED",
+        metadata: {
+          attachmentId: input.id,
+          fileName: input.fileName,
+          fileKey: input.fileKey,
+          mimeType: input.mimeType,
+          size: input.size,
         },
+        organizationId: input.organizationId,
+        spaceId: input.spaceId,
+        targetId: input.targetId,
+        targetType: input.targetType,
+        targetWorkItemType: input.targetWorkItemType,
+        title: "Attachment added",
       });
 
       return created;

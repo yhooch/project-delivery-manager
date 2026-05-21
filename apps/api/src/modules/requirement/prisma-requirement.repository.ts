@@ -13,6 +13,7 @@ import {
   listTagsByTargets,
   replaceTagAssignmentsInTransaction,
 } from "../tag/tag-assignment.helpers";
+import { createTimelineEventRecord } from "../timeline/timeline-event-writer";
 import {
   toRequirement,
   toRequirementRelatedWorkItems,
@@ -1104,21 +1105,9 @@ async function createTimelineEvent(
     title: string;
   },
 ) {
-  await tx.timelineEvent.create({
-    data: {
-      id: ulid(),
-      actorId: input.actorUserId,
-      after: toJson(input.after),
-      before: toJson(input.before),
-      createdById: input.actorUserId,
-      eventType: input.eventType,
-      organizationId: input.organizationId,
-      spaceId: input.spaceId,
-      targetId: input.targetId,
-      targetType: "REQUIREMENT",
-      title: input.title,
-      updatedById: input.actorUserId,
-    },
+  await createTimelineEventRecord(tx, {
+    ...input,
+    targetType: "REQUIREMENT",
   });
 }
 
@@ -1194,6 +1183,7 @@ async function cascadeRequirementTraceVersion(
               id: true,
               organizationId: true,
               spaceId: true,
+              type: true,
               versionId: true,
             },
             where: {
@@ -1268,6 +1258,7 @@ async function cascadeRequirementTraceVersion(
         spaceId: item.spaceId,
         targetId: item.id,
         targetType: "WORK_ITEM",
+        targetWorkItemType: item.type,
       });
     }
   }
@@ -1292,28 +1283,25 @@ async function createTraceVersionCascadeTimelineEvent(
     spaceId: string;
     targetId: string;
     targetType: "INTAKE_ITEM" | "WORK_ITEM";
+    targetWorkItemType?: WorkItemType;
   },
 ) {
-  await tx.timelineEvent.create({
-    data: {
-      id: ulid(),
-      actorId: input.actorUserId,
-      after: toJson({ versionId: input.nextVersionId }),
-      before: toJson({ versionId: input.beforeVersionId }),
-      createdById: input.actorUserId,
-      eventType: "UPDATED",
-      metadata: toJson({
-        operation: "TRACE_VERSION_CASCADE",
-        sourceTargetId: input.sourceTargetId,
-        sourceTargetType: input.sourceTargetType,
-      }),
-      organizationId: input.organizationId,
-      spaceId: input.spaceId,
-      targetId: input.targetId,
-      targetType: input.targetType,
-      title: "级联更新版本",
-      updatedById: input.actorUserId,
+  await createTimelineEventRecord(tx, {
+    actorUserId: input.actorUserId,
+    after: { versionId: input.nextVersionId },
+    before: { versionId: input.beforeVersionId },
+    eventType: "UPDATED",
+    metadata: {
+      operation: "TRACE_VERSION_CASCADE",
+      sourceTargetId: input.sourceTargetId,
+      sourceTargetType: input.sourceTargetType,
     },
+    organizationId: input.organizationId,
+    spaceId: input.spaceId,
+    targetId: input.targetId,
+    targetType: input.targetType,
+    targetWorkItemType: input.targetWorkItemType,
+    title: "级联更新版本",
   });
 }
 
@@ -1391,12 +1379,6 @@ async function assertNoRequirementCascadeConflicts(
       versionId: input.nextVersionId,
     });
   }
-}
-
-function toJson(value: Record<string, unknown> | undefined) {
-  return value && Object.keys(value).length > 0
-    ? (value as Prisma.InputJsonObject)
-    : undefined;
 }
 
 async function ensureParticipant(

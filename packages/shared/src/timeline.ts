@@ -11,6 +11,7 @@ import {
   ObjectParticipantTargetTypeSchema,
   TargetTypeSchema,
   TimelineEventTypeSchema,
+  WorkItemTypeSchema,
 } from "./enums.ts";
 
 export const ObjectParticipantSchema = z
@@ -50,6 +51,40 @@ export const TimelineTargetSchema = z
 
 export type TimelineTarget = z.infer<typeof TimelineTargetSchema>;
 
+export const TimelineEventMetadataSchema = z
+  .object({
+    actionCode: z.string().min(1).optional(),
+    actionId: UlidSchema.optional(),
+    actionName: z.string().min(1).optional(),
+    attachmentId: UlidSchema.optional(),
+    changedFields: z.array(z.string().min(1)).optional(),
+    commentId: UlidSchema.optional(),
+    commentPreview: z.string().min(1).optional(),
+    fileKey: z.string().min(1).optional(),
+    fileName: z.string().min(1).optional(),
+    formValues: z.record(z.string(), z.string().or(z.number())).optional(),
+    fromStateCode: z.string().min(1).optional(),
+    fromStateId: UlidSchema.optional(),
+    fromStateName: z.string().min(1).optional(),
+    lifecycleEvent: z.string().min(1).optional(),
+    mimeType: z.string().min(1).optional(),
+    operation: z.string().min(1).optional(),
+    size: z.number().int().nonnegative().optional(),
+    sourceTargetId: UlidSchema.optional(),
+    sourceTargetType: z.string().min(1).optional(),
+    targetWorkItemType: WorkItemTypeSchema.optional(),
+    toStateCode: z.string().min(1).optional(),
+    toStateId: UlidSchema.optional(),
+    toStateName: z.string().min(1).optional(),
+    workItemIds: z.array(UlidSchema).optional(),
+    workItemType: WorkItemTypeSchema.optional(),
+  })
+  .catchall(z.unknown());
+
+export type TimelineEventMetadata = z.infer<
+  typeof TimelineEventMetadataSchema
+>;
+
 export const TimelineEventSchema = z
   .object({
     id: UlidSchema,
@@ -62,7 +97,7 @@ export const TimelineEventSchema = z
     detail: z.string().optional(),
     before: z.record(z.string(), z.unknown()).optional(),
     after: z.record(z.string(), z.unknown()).optional(),
-    metadata: z.record(z.string(), z.unknown()).optional(),
+    metadata: TimelineEventMetadataSchema.optional(),
     createdAt: IsoDateTimeSchema,
   })
   .strict();

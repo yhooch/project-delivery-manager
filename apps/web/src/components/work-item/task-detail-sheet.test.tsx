@@ -829,7 +829,7 @@ describe("TaskDetailSheet", () => {
             target: {
               type: "WORK_ITEM",
               id: "01ARZ3NDEKTSV4RRFFQ69G5FA1",
-              title: "Task",
+              title: "Initial timeline task",
             },
             eventType: "CREATED",
             actor: { id: "USR_01", username: "tester", name: "Tester" },
@@ -852,6 +852,7 @@ describe("TaskDetailSheet", () => {
             },
             eventType: "ACTION_EXECUTED",
             actor: { id: "USR_01", username: "tester", name: "Tester" },
+            metadata: { actionName: "Complete" },
             title: "completed the task",
             createdAt: "2026-05-13T00:00:00.000Z",
           },
@@ -867,15 +868,14 @@ describe("TaskDetailSheet", () => {
     expect(
       await screen.findByText("common.timeline.event.CREATED"),
     ).toBeInTheDocument();
+    expect(screen.getByText("Initial timeline task")).toBeInTheDocument();
     expect(screen.queryByText("created the task")).not.toBeInTheDocument();
 
     fireEvent.click(await screen.findByRole("button", { name: "Complete" }));
 
     await waitFor(() => expect(executeActionMock).toHaveBeenCalledTimes(1));
     await waitFor(() => expect(listTimelineMock).toHaveBeenCalledTimes(2));
-    expect(
-      await screen.findByText("common.timeline.event.ACTION_EXECUTED"),
-    ).toBeInTheDocument();
+    expect(await screen.findByText("Complete")).toBeInTheDocument();
     expect(screen.queryByText("completed the task")).not.toBeInTheDocument();
   });
 
@@ -2450,7 +2450,7 @@ describe("TaskDetailSheet", () => {
             target: {
               type: "WORK_ITEM",
               id: "01ARZ3NDEKTSV4RRFFQ69G5FA1",
-              title: "Task",
+              title: "Attachment timeline task",
             },
             eventType: "CREATED",
             actor: { id: "USR_01", username: "tester", name: "Tester" },
@@ -2473,6 +2473,7 @@ describe("TaskDetailSheet", () => {
             },
             eventType: "ATTACHMENT_ADDED",
             actor: { id: "USR_01", username: "tester", name: "Tester" },
+            metadata: { fileName: "hello.txt" },
             title: "uploaded an attachment",
             createdAt: "2026-05-13T00:00:00.000Z",
           },
@@ -2490,6 +2491,7 @@ describe("TaskDetailSheet", () => {
     expect(
       await screen.findByText("common.timeline.event.CREATED"),
     ).toBeInTheDocument();
+    expect(screen.getByText("Attachment timeline task")).toBeInTheDocument();
     expect(screen.queryByText("created the task")).not.toBeInTheDocument();
     await activateTab(/attachments/i);
 
@@ -2505,6 +2507,7 @@ describe("TaskDetailSheet", () => {
     expect(
       await screen.findByText("common.timeline.event.ATTACHMENT_ADDED"),
     ).toBeInTheDocument();
+    expect(screen.getByText("hello.txt")).toBeInTheDocument();
     expect(
       screen.queryByText("uploaded an attachment"),
     ).not.toBeInTheDocument();
@@ -2594,7 +2597,7 @@ describe("TaskDetailSheet", () => {
           target: {
             type: "WORK_ITEM",
             id: "01ARZ3NDEKTSV4RRFFQ69G5FA1",
-            title: "Task",
+            title: "Timeline task target",
           },
           eventType: "CREATED",
           actor: {
@@ -2618,6 +2621,7 @@ describe("TaskDetailSheet", () => {
     expect(
       await screen.findByText("common.timeline.event.CREATED"),
     ).toBeInTheDocument();
+    expect(screen.getByText("Timeline task target")).toBeInTheDocument();
     expect(screen.queryByText("created the task")).not.toBeInTheDocument();
   });
 

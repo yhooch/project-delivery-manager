@@ -31,7 +31,6 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { getApiErrorMessageKey } from "../../lib/api-error-messages";
 import { Link, usePathname, useRouter } from "../../i18n/routing";
-import { getTimelineEventLabel } from "../../lib/timeline-display";
 import {
   createWorkItemViewModelMapper,
   type WorkItemViewModel,
@@ -39,6 +38,7 @@ import {
 import { cn } from "../../lib/utils";
 import { useSession } from "../providers/session-provider";
 import { recordRecentOpen } from "../shell/recent-opens";
+import { TimelineEventItem } from "../timeline/timeline-event-item";
 import { listRequirements } from "../../lib/requirement-service";
 import { listTimeline } from "../../lib/timeline-service";
 import { listVersions } from "../../lib/version-service";
@@ -1700,43 +1700,16 @@ function TimelineTab({
   }
   return (
     <ul className="space-y-3 px-6 py-4">
-      {events.map((event) => {
-        const actorName = event.actor.name || t("timeline.unknownActor");
-        const eventLabel = getTimelineEventLabel(
-          event.eventType,
-          tTimelineEvent,
-        );
-        return (
-          <li
-            key={event.id}
-            data-testid={`version-timeline-row-${event.id}`}
-            className="flex gap-3"
-          >
-            <Tip content={actorName}>
-              <Avatar className="h-7 w-7">
-                {event.actor.avatar && (
-                  <AvatarImage src={event.actor.avatar} alt={actorName} />
-                )}
-                <AvatarFallback>{initialOf(actorName)}</AvatarFallback>
-              </Avatar>
-            </Tip>
-            <div className="flex-1 text-[13px]">
-              <div>
-                <span className="font-medium">{actorName}</span>
-                <span className="text-muted-foreground"> · {eventLabel}</span>
-                {event.detail && (
-                  <span className="ml-1 font-mono text-[12px] text-foreground">
-                    {event.detail}
-                  </span>
-                )}
-              </div>
-              <div className="mt-0.5 text-[11px] text-muted-foreground">
-                {formatDateTime(event.createdAt, locale)}
-              </div>
-            </div>
-          </li>
-        );
-      })}
+      {events.map((event) => (
+        <TimelineEventItem
+          key={event.id}
+          event={event}
+          locale={locale}
+          testId={`version-timeline-row-${event.id}`}
+          translateEventType={tTimelineEvent}
+          unknownActorLabel={t("timeline.unknownActor")}
+        />
+      ))}
     </ul>
   );
 }

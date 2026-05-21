@@ -85,6 +85,7 @@ describe("AttachmentService", () => {
         organizationId,
         spaceId,
         targetId: workItemId,
+        targetWorkItemType: "BUG",
       });
 
     const created = await service.create(
@@ -119,6 +120,7 @@ describe("AttachmentService", () => {
         spaceId,
         targetId: workItemId,
         targetType: "WORK_ITEM",
+        targetWorkItemType: "BUG",
         uploadedById: actorUserId,
       }),
     );
@@ -514,6 +516,7 @@ function createServiceFixture(
     organizationId?: string;
     spaceId?: string;
     targetId?: string;
+    targetWorkItemType?: "BUG" | "TASK";
   } = {},
 ) {
   const organizationId = options.organizationId ?? ulid();
@@ -568,6 +571,7 @@ function createServiceFixture(
       title: "Task",
       role: "PM" as const,
       canWrite: true,
+      workItemType: options.targetWorkItemType,
     })),
   } as unknown as TargetResolverService & {
     resolve: ReturnType<typeof vi.fn>;

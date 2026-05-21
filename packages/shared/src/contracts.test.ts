@@ -36,6 +36,8 @@ import {
   TagFilterQuerySchema,
   TagTargetTypeSchema,
   TimelineQuerySchema,
+  TimelineEventMetadataSchema,
+  TimelineEventSchema,
   UpdateBugRequestSchema,
   UpdateIntakeItemRequestSchema,
   UpdateWorkItemRequestSchema,
@@ -1004,6 +1006,57 @@ describe("shared contracts", () => {
         targetId: "01GRZ3NDEKTSV4RRFFQ69G5FAG",
       }),
     ).toMatchObject({ targetType: "WORK_ITEM" });
+  });
+
+  it("accepts machine-readable timeline metadata for recent activity rendering", () => {
+    expect(
+      TimelineEventMetadataSchema.parse({
+        actionName: "Start progress",
+        attachmentId: "01HRZ3NDEKTSV4RRFFQ69G5FAJ",
+        changedFields: ["priority", "assigneeId"],
+        commentId: "01HRZ3NDEKTSV4RRFFQ69G5FAK",
+        commentPreview: "Looks good",
+        fileName: "spec.pdf",
+        fromStateName: "Pending",
+        mimeType: "application/pdf",
+        size: 1024,
+        targetWorkItemType: "BUG",
+        toStateName: "In progress",
+      }),
+    ).toMatchObject({
+      targetWorkItemType: "BUG",
+      changedFields: ["priority", "assigneeId"],
+    });
+
+    expect(
+      TimelineEventSchema.parse({
+        id: "01HRZ3NDEKTSV4RRFFQ69G5FAM",
+        organizationId: "01BRZ3NDEKTSV4RRFFQ69G5FAA",
+        spaceId: "01CRZ3NDEKTSV4RRFFQ69G5FAB",
+        target: {
+          type: "WORK_ITEM",
+          id: "01GRZ3NDEKTSV4RRFFQ69G5FAG",
+          title: "Fix checkout",
+        },
+        eventType: "ACTION_EXECUTED",
+        actor: {
+          id: "01ERZ3NDEKTSV4RRFFQ69G5FAD",
+          username: "alice",
+          name: "Alice",
+        },
+        title: "Action executed",
+        metadata: {
+          actionName: "Start progress",
+          fromStateName: "Pending",
+          targetWorkItemType: "BUG",
+          toStateName: "In progress",
+        },
+        createdAt: "2026-05-20T00:00:00.000Z",
+      }).metadata,
+    ).toMatchObject({
+      actionName: "Start progress",
+      targetWorkItemType: "BUG",
+    });
   });
 
   it("accepts the no-organization app session empty state", () => {

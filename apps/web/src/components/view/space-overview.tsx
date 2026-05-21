@@ -26,17 +26,15 @@ import { useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { getApiErrorMessageKey } from "../../lib/api-error-messages";
-import { getTimelineEventLabel } from "../../lib/timeline-display";
 import { getTimelineEventHref } from "../../lib/timeline-links";
 import { useVersions } from "../../lib/v2/lookups";
 import { getSpaceOverviewView } from "../../lib/view-service";
 import { Link, usePathname, useRouter } from "../../i18n/routing";
 import { useSession } from "../providers/session-provider";
 
-import { Avatar, AvatarFallback } from "../ui/avatar";
+import { TimelineEventItem } from "../timeline/timeline-event-item";
 import { Button } from "../ui/button";
 import { SelectMenu } from "../ui/select-menu";
-import { Tip } from "../ui/tooltip";
 import { getStatusCategoryDotClass, StatusBadge } from "../ui/status-badge";
 import { PageHeader } from "../v2/page-header";
 import { EmptyState, ErrorState, LoadingState } from "../v2/states";
@@ -599,58 +597,18 @@ export function SpaceOverview() {
                       </div>
                     ) : (
                       <ul className="relative flex flex-col gap-4 before:absolute before:inset-y-0 before:left-3 before:w-px before:bg-border/50">
-                        {recentEvents.map((event) => {
-                          const href = getTimelineEventHref(event);
-                          const inner = (
-                            <div className="flex gap-3">
-                              <Tip content={event.actor.name}>
-                                <Avatar className="h-6 w-6 border-4 border-background z-10 shrink-0 bg-muted">
-                                  <AvatarFallback className="text-[9px] bg-transparent text-muted-foreground">
-                                    {initialOf(event.actor.name)}
-                                  </AvatarFallback>
-                                </Avatar>
-                              </Tip>
-                              <div className="flex-1 text-[13px] min-w-0 pt-0.5">
-                                <div className="leading-snug">
-                                  <span className="font-medium text-foreground/90">
-                                    {event.actor.name}
-                                  </span>
-                                  <span className="text-muted-foreground px-1.5">
-                                    {getTimelineEventLabel(
-                                      event.eventType,
-                                      tTimelineEvent,
-                                    )}
-                                  </span>
-                                  {event.target.title && (
-                                    <span className="font-medium text-foreground inline-block truncate max-w-full align-bottom">
-                                      {event.target.title}
-                                    </span>
-                                  )}
-                                </div>
-                                <div className="mt-1 text-[11px] font-medium text-muted-foreground/60">
-                                  {formatTimeAgo(
-                                    event.createdAt,
-                                    locale,
-                                    t("time.justNow"),
-                                  )}
-                                </div>
-                              </div>
-                            </div>
-                          );
-                          if (href) {
-                            return (
-                              <li key={event.id}>
-                                <Link
-                                  href={href as never}
-                                  className="block -mx-2 -my-2 rounded-lg p-2 transition-colors hover:bg-muted/40"
-                                >
-                                  {inner}
-                                </Link>
-                              </li>
-                            );
-                          }
-                          return <li key={event.id}>{inner}</li>;
-                        })}
+                        {recentEvents.map((event) => (
+                          <TimelineEventItem
+                            key={event.id}
+                            density="compact"
+                            event={event}
+                            href={getTimelineEventHref(event)}
+                            locale={locale}
+                            justNowLabel={t("time.justNow")}
+                            timeStyle="relative"
+                            translateEventType={tTimelineEvent}
+                          />
+                        ))}
                       </ul>
                     )}
                   </div>
@@ -821,40 +779,6 @@ function VersionFilter({
       </SelectMenu>
     </span>
   );
-}
-
-function initialOf(value: string) {
-  const trimmed = value.trim();
-  if (!trimmed) return "?";
-  return trimmed.slice(0, 1).toUpperCase();
-}
-
-function formatTimeAgo(value: string, locale: string, justNowLabel: string) {
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return "";
-
-  const diffMs = Date.now() - date.getTime();
-  const diffMin = Math.round(diffMs / 60_000);
-
-  if (Math.abs(diffMin) < 1) {
-    return justNowLabel;
-  }
-
-  const rtf = new Intl.RelativeTimeFormat(locale, { numeric: "auto" });
-
-  if (Math.abs(diffMin) < 60) {
-    return rtf.format(-diffMin, "minute");
-  }
-
-  const diffHour = Math.round(diffMin / 60);
-
-  if (Math.abs(diffHour) < 24) {
-    return rtf.format(-diffHour, "hour");
-  }
-
-  const diffDay = Math.round(diffHour / 24);
-
-  return rtf.format(-diffDay, "day");
 }
 
 function normalizeSearchParam(value: string | null): string | undefined {

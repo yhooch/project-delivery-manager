@@ -50,7 +50,6 @@ import { toUpdateBugRequest } from "../../lib/bug-forms";
 import { getBug, updateBug } from "../../lib/bug-service";
 import { createComment, listComments } from "../../lib/comment-service";
 import { listIntakeItems } from "../../lib/intake-service";
-import { getTimelineEventLabel } from "../../lib/timeline-display";
 import { listRequirements } from "../../lib/requirement-service";
 import { listTimeline } from "../../lib/timeline-service";
 import { cn } from "../../lib/utils";
@@ -90,6 +89,7 @@ import { Link } from "../../i18n/routing";
 import { useSession } from "../providers/session-provider";
 import { IntakeDetailSheet } from "../intake/intake-detail-sheet";
 import { ObjectTagAssignmentField } from "../tag";
+import { TimelineEventItem } from "../timeline/timeline-event-item";
 import { TraceVersionCascadeConfirmDialog } from "../trace-version-cascade-confirm-dialog";
 import { Avatar, AvatarFallback, AvatarImage } from "../ui/avatar";
 import { Badge } from "../ui/badge";
@@ -3765,42 +3765,15 @@ function TimelineTab({
 
   return (
     <ul data-testid="task-timeline-list" className="space-y-3 px-5 py-4">
-      {events.map((event) => {
-        const initial =
-          event.actor.name.trim().slice(0, 1).toUpperCase() || "?";
-
-        return (
-          <li
-            key={event.id}
-            data-testid="task-timeline-item"
-            className="flex gap-3"
-          >
-            <Avatar className="h-7 w-7">
-              {event.actor.avatar && (
-                <AvatarImage src={event.actor.avatar} alt={event.actor.name} />
-              )}
-              <AvatarFallback>{initial}</AvatarFallback>
-            </Avatar>
-            <div className="flex-1 text-[13px]">
-              <div>
-                <span className="font-medium">{event.actor.name}</span>
-                <span className="text-muted-foreground">
-                  {" "}
-                  {getTimelineEventLabel(event.eventType, tTimelineEvent)}{" "}
-                </span>
-                {event.detail && (
-                  <span className="font-mono text-[12px] text-foreground">
-                    {event.detail}
-                  </span>
-                )}
-              </div>
-              <div className="mt-0.5 text-[11px] text-muted-foreground">
-                {formatDateTime(event.createdAt, locale)}
-              </div>
-            </div>
-          </li>
-        );
-      })}
+      {events.map((event) => (
+        <TimelineEventItem
+          key={event.id}
+          event={event}
+          locale={locale}
+          testId="task-timeline-item"
+          translateEventType={tTimelineEvent}
+        />
+      ))}
     </ul>
   );
 }

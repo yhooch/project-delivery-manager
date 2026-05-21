@@ -8,6 +8,7 @@ import {
   listTagsByTargets,
   replaceTagAssignmentsInTransaction,
 } from "../tag/tag-assignment.helpers";
+import { createTimelineEventRecord } from "../timeline/timeline-event-writer";
 import { assertTraceRefsMatchVersion } from "../trace/trace-version-policy";
 import { toWorkItem } from "./workitem.mappers";
 import { syncWorkItemRelatedParticipants } from "./workitem-participants";
@@ -208,6 +209,7 @@ export class PrismaWorkItemRepository implements WorkItemRepository {
         organizationId: input.organizationId,
         spaceId: input.spaceId,
         targetId: workItem.id,
+        targetWorkItemType: "TASK",
         title: "创建任务",
       });
 
@@ -393,6 +395,7 @@ export class PrismaWorkItemRepository implements WorkItemRepository {
           organizationId: workItem.organizationId,
           spaceId: workItem.spaceId,
           targetId: workItem.id,
+          targetWorkItemType: "TASK",
           title: "更新任务",
         });
       }
@@ -410,6 +413,7 @@ export class PrismaWorkItemRepository implements WorkItemRepository {
           organizationId: workItem.organizationId,
           spaceId: workItem.spaceId,
           targetId: workItem.id,
+          targetWorkItemType: "TASK",
           title: "负责人变更",
         });
       }
@@ -846,6 +850,7 @@ async function cascadeTaskTraceVersion(
         sourceTargetId: input.workItemId,
         spaceId: bug.spaceId,
         targetId: bug.id,
+        targetWorkItemType: "BUG",
       });
     }
   }
@@ -921,28 +926,25 @@ async function createTraceVersionCascadeTimelineEvent(
     sourceTargetId: string;
     spaceId: string;
     targetId: string;
+    targetWorkItemType: "BUG";
   },
 ) {
-  await tx.timelineEvent.create({
-    data: {
-      id: ulid(),
-      actorId: input.actorUserId,
-      after: toJson({ versionId: input.nextVersionId }),
-      before: toJson({ versionId: input.beforeVersionId }),
-      createdById: input.actorUserId,
-      eventType: "UPDATED",
-      metadata: toJson({
-        operation: "TRACE_VERSION_CASCADE",
-        sourceTargetId: input.sourceTargetId,
-        sourceTargetType: "TASK",
-      }),
-      organizationId: input.organizationId,
-      spaceId: input.spaceId,
-      targetId: input.targetId,
-      targetType: "WORK_ITEM",
-      title: "级联更新版本",
-      updatedById: input.actorUserId,
+  await createTimelineEventRecord(tx, {
+    actorUserId: input.actorUserId,
+    after: { versionId: input.nextVersionId },
+    before: { versionId: input.beforeVersionId },
+    eventType: "UPDATED",
+    metadata: {
+      operation: "TRACE_VERSION_CASCADE",
+      sourceTargetId: input.sourceTargetId,
+      sourceTargetType: "TASK",
     },
+    organizationId: input.organizationId,
+    spaceId: input.spaceId,
+    targetId: input.targetId,
+    targetType: "WORK_ITEM",
+    targetWorkItemType: input.targetWorkItemType,
+    title: "级联更新版本",
   });
 }
 
@@ -956,31 +958,14 @@ async function createTimelineEvent(
     organizationId: string;
     spaceId: string;
     targetId: string;
+    targetWorkItemType: "TASK";
     title: string;
   },
 ) {
-  await tx.timelineEvent.create({
-    data: {
-      id: ulid(),
-      actorId: input.actorUserId,
-      after: toJson(input.after),
-      before: toJson(input.before),
-      createdById: input.actorUserId,
-      eventType: input.eventType,
-      organizationId: input.organizationId,
-      spaceId: input.spaceId,
-      targetId: input.targetId,
-      targetType: "WORK_ITEM",
-      title: input.title,
-      updatedById: input.actorUserId,
-    },
+  await createTimelineEventRecord(tx, {
+    ...input,
+    targetType: "WORK_ITEM",
   });
-}
-
-function toJson(value: Record<string, unknown> | undefined) {
-  return value && Object.keys(value).length > 0
-    ? (value as Prisma.InputJsonObject)
-    : undefined;
 }
 
 function hasOwn(target: Record<string, unknown>, key: string) {

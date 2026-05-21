@@ -307,6 +307,7 @@ export class WorkflowActionExecutionService {
             organizationId: updated.organizationId,
             spaceId: updated.spaceId,
             targetId: updated.id,
+            targetWorkItemType: updated.type,
             title: "变更负责人",
           });
         }
@@ -326,6 +327,7 @@ export class WorkflowActionExecutionService {
           organizationId: updated.organizationId,
           spaceId: updated.spaceId,
           targetId: updated.id,
+          targetWorkItemType: updated.type,
           title: `执行动作：${action.name}`,
         });
 
@@ -342,6 +344,7 @@ export class WorkflowActionExecutionService {
             organizationId: updated.organizationId,
             spaceId: updated.spaceId,
             targetId: updated.id,
+            targetWorkItemType: updated.type,
             title:
               lifecycleEvent === "CLOSED" ? "关闭工作项" : "重新打开工作项",
           });
@@ -887,9 +890,11 @@ function buildTimelineMetadata(
     formValues,
     fromStateCode: action.fromState.code,
     fromStateId: action.fromStateId,
+    fromStateName: action.fromState.name,
     lifecycleEvent: resolveLifecycleEvent(action),
     toStateCode: action.toState.code,
     toStateId: action.toStateId,
+    toStateName: action.toState.name,
   });
 }
 

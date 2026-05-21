@@ -122,6 +122,7 @@ export class AttachmentService {
       spaceId: target.spaceId,
       targetType: input.targetType,
       targetId: input.targetId,
+      targetWorkItemType: target.targetWorkItemType,
       fileName: input.fileName,
       fileKey: input.fileKey,
       mimeType: file.mimeType,
@@ -321,6 +322,7 @@ export class AttachmentService {
       spaceId: target.spaceId,
       targetType: input.targetType,
       targetId: target.targetId,
+      targetWorkItemType: target.workItemType,
     };
   }
 
@@ -352,6 +354,7 @@ export class AttachmentService {
       spaceId: target.spaceId,
       targetType: input.targetType,
       targetId: target.targetId,
+      targetWorkItemType: target.workItemType,
     };
   }
 

@@ -1048,6 +1048,11 @@ describe("VersionPage", () => {
       items: [
         makeTimelineEvent({
           id: "01ARZ3NDEKTSV4RRFFQ69G5FT1",
+          target: {
+            type: "VERSION",
+            id: "01ARZ3NDEKTSV4RRFFQ69G5FV1",
+            title: "Version timeline target",
+          },
           title: "version moved",
         }),
       ],
@@ -1068,6 +1073,7 @@ describe("VersionPage", () => {
     expect(timelineRow.textContent).toContain(
       "common.timeline.event.STATUS_CHANGED",
     );
+    expect(timelineRow.textContent).toContain("Version timeline target");
     expect(timelineRow.textContent).not.toContain("version moved");
   });
 

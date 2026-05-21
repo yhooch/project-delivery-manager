@@ -24,7 +24,6 @@ import {
   useFocusReturn,
   useListKeyboardNav,
 } from "../../lib/hooks/use-list-keyboard-nav";
-import { getTimelineEventLabel } from "../../lib/timeline-display";
 import { getTimelineEventHref } from "../../lib/timeline-links";
 import { cn } from "../../lib/utils";
 import { translateWorkflowActionName } from "../../lib/workflow-display";
@@ -55,6 +54,7 @@ import { Button } from "../ui/button";
 import { SelectMenu } from "../ui/select-menu";
 import { getStatusCategoryDotClass } from "../ui/status-badge";
 import { Tip } from "../ui/tooltip";
+import { TimelineEventItem } from "../timeline/timeline-event-item";
 
 import { EmptyState, ErrorState, ListSkeleton } from "../v2/states";
 import { TaskDetailSheet } from "../work-item/task-detail-sheet";
@@ -906,60 +906,18 @@ export function MyWorkbench() {
             <p className="text-xs text-muted-foreground">{t("empty.recent")}</p>
           ) : (
             <ul className="relative flex flex-col gap-5 before:absolute before:inset-y-0 before:left-3 before:w-px before:bg-border/50">
-              {recentEvents.map((event) => {
-                const href = getTimelineEventHref(event);
-                const inner = (
-                  <div className="flex gap-4">
-                    <Tip content={event.actor.name}>
-                      <Avatar className="h-6 w-6 cursor-pointer border-4 border-background ring-2 ring-background z-10 shrink-0 bg-muted">
-                        <AvatarFallback className="text-[9px] text-muted-foreground bg-transparent">
-                          {initialOf(event.actor.name)}
-                        </AvatarFallback>
-                      </Avatar>
-                    </Tip>
-                    <div className="flex-1 text-[13px] min-w-0 pt-0.5">
-                      <div className="leading-snug">
-                        <span className="font-medium text-foreground/90">
-                          {event.actor.name}
-                        </span>
-                        <span className="text-muted-foreground px-1.5">
-                          {getTimelineEventLabel(
-                            event.eventType,
-                            tTimelineEvent,
-                          )}
-                        </span>
-                        {event.target.title && (
-                          <span className="font-medium text-foreground inline-block truncate max-w-full align-bottom">
-                            {event.target.title}
-                          </span>
-                        )}
-                      </div>
-                      <div className="mt-1 text-[11px] font-medium text-muted-foreground/60">
-                        {formatTimeAgo(
-                          event.createdAt,
-                          locale,
-                          t("time.justNow"),
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                );
-
-                if (href) {
-                  return (
-                    <li key={event.id}>
-                      <Link
-                        href={href as never}
-                        className="block -mx-2 -my-2 rounded-lg p-2 transition-colors hover:bg-muted/40"
-                      >
-                        {inner}
-                      </Link>
-                    </li>
-                  );
-                }
-
-                return <li key={event.id}>{inner}</li>;
-              })}
+              {recentEvents.map((event) => (
+                <TimelineEventItem
+                  key={event.id}
+                  density="compact"
+                  event={event}
+                  href={getTimelineEventHref(event)}
+                  locale={locale}
+                  justNowLabel={t("time.justNow")}
+                  timeStyle="relative"
+                  translateEventType={tTimelineEvent}
+                />
+              ))}
             </ul>
           )}
         </aside>
@@ -1430,45 +1388,4 @@ function uniqueVersions(versions: Version[]): Version[] {
   }
 
   return result;
-}
-
-function initialOf(value: string) {
-  const trimmed = value.trim();
-
-  if (!trimmed) {
-    return "?";
-  }
-
-  return trimmed.slice(0, 1).toUpperCase();
-}
-
-function formatTimeAgo(value: string, locale: string, justNowLabel = "") {
-  const date = new Date(value);
-
-  if (Number.isNaN(date.getTime())) {
-    return "";
-  }
-
-  const diffMs = Date.now() - date.getTime();
-  const diffMin = Math.round(diffMs / 60_000);
-
-  if (Math.abs(diffMin) < 1) {
-    return justNowLabel;
-  }
-
-  const rtf = new Intl.RelativeTimeFormat(locale, { numeric: "auto" });
-
-  if (Math.abs(diffMin) < 60) {
-    return rtf.format(-diffMin, "minute");
-  }
-
-  const diffHour = Math.round(diffMin / 60);
-
-  if (Math.abs(diffHour) < 24) {
-    return rtf.format(-diffHour, "hour");
-  }
-
-  const diffDay = Math.round(diffHour / 24);
-
-  return rtf.format(-diffDay, "day");
 }
