@@ -201,6 +201,17 @@ import {
   ReplaceTagAssignmentsRequestSchema,
   ReplaceTagAssignmentsResponseSchema,
 } from "./tag.ts";
+import {
+  CheckUpdateRequestSchema,
+  CheckUpdateResponseSchema,
+  CreateUpdateJobRequestSchema,
+  CreateUpdateJobResponseSchema,
+  GetUpdateJobResponseSchema,
+  GetUpdateStatusResponseSchema,
+  RollbackUpdateJobRequestSchema,
+  RollbackUpdateJobResponseSchema,
+  UpdateJobIdPathParamsSchema,
+} from "./update.ts";
 
 export type HttpMethod = "get" | "post" | "patch" | "delete";
 
@@ -349,6 +360,18 @@ const objectCodeLookupErrors = [
   "SPACE_CONTEXT_REQUIRED",
   "VALIDATION_ERROR",
 ];
+const updateErrors = [
+  "UNAUTHORIZED",
+  "PLATFORM_OPERATOR_REQUIRED",
+  "UPDATE_ACCESS_DENIED",
+  "UPDATE_PROVIDER_UNAVAILABLE",
+  "UPDATE_MANIFEST_INVALID",
+  "UPDATE_UPDATER_TOO_OLD",
+  "UPDATE_VERSION_INCOMPATIBLE",
+  "UPDATE_JOB_NOT_FOUND",
+  "UPDATE_JOB_CONFLICT",
+  "VALIDATION_ERROR",
+];
 
 function endpoint(contract: ApiEndpointContract): ApiEndpointContract {
   return contract;
@@ -452,6 +475,66 @@ export const apiContracts = [
     requestSchema: EmptyObjectSchema,
     responseSchema: ObjectCodeLookupResultSchema,
     errorCodes: objectCodeLookupErrors,
+  }),
+  endpoint({
+    operationId: "getUpdateStatus",
+    method: "get",
+    path: "/system/update/status",
+    tags: ["system-update"],
+    summary: "Get system updater status",
+    pathSchema: EmptyObjectSchema,
+    querySchema: EmptyObjectSchema,
+    requestSchema: EmptyObjectSchema,
+    responseSchema: GetUpdateStatusResponseSchema,
+    errorCodes: updateErrors,
+  }),
+  endpoint({
+    operationId: "checkUpdate",
+    method: "post",
+    path: "/system/update/check",
+    tags: ["system-update"],
+    summary: "Check for available system updates",
+    pathSchema: EmptyObjectSchema,
+    querySchema: EmptyObjectSchema,
+    requestSchema: CheckUpdateRequestSchema,
+    responseSchema: CheckUpdateResponseSchema,
+    errorCodes: updateErrors,
+  }),
+  endpoint({
+    operationId: "createUpdateJob",
+    method: "post",
+    path: "/system/update/jobs",
+    tags: ["system-update"],
+    summary: "Create a system update job",
+    pathSchema: EmptyObjectSchema,
+    querySchema: EmptyObjectSchema,
+    requestSchema: CreateUpdateJobRequestSchema,
+    responseSchema: CreateUpdateJobResponseSchema,
+    errorCodes: updateErrors,
+  }),
+  endpoint({
+    operationId: "getUpdateJob",
+    method: "get",
+    path: "/system/update/jobs/{jobId}",
+    tags: ["system-update"],
+    summary: "Get a system update job",
+    pathSchema: UpdateJobIdPathParamsSchema,
+    querySchema: EmptyObjectSchema,
+    requestSchema: EmptyObjectSchema,
+    responseSchema: GetUpdateJobResponseSchema,
+    errorCodes: updateErrors,
+  }),
+  endpoint({
+    operationId: "rollbackUpdateJob",
+    method: "post",
+    path: "/system/update/jobs/{jobId}/rollback",
+    tags: ["system-update"],
+    summary: "Rollback a system update job",
+    pathSchema: UpdateJobIdPathParamsSchema,
+    querySchema: EmptyObjectSchema,
+    requestSchema: RollbackUpdateJobRequestSchema,
+    responseSchema: RollbackUpdateJobResponseSchema,
+    errorCodes: updateErrors,
   }),
   endpoint({
     operationId: "listOrganizations",

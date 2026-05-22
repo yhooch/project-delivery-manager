@@ -13,6 +13,7 @@ export * from "./runtime-version.ts";
 export * from "./space.ts";
 export * from "./tag.ts";
 export * from "./timeline.ts";
+export * from "./update.ts";
 export * from "./user.ts";
 export * from "./version.ts";
 export * from "./view.ts";

@@ -599,6 +599,18 @@
       "OBJECT_CODE_NOT_FOUND": "No object was found for that code.",
       "OBJECT_CODE_AMBIGUOUS": "That code exists in multiple spaces. Provide space context.",
       "SPACE_CONTEXT_REQUIRED": "Space context is required. Select a project space.",
+      "UPDATE_ACCESS_DENIED": "You do not have permission to run updater operations.",
+      "PLATFORM_OPERATOR_REQUIRED": "A platform operator role is required for updater operations.",
+      "UPDATE_MANIFEST_INVALID": "The update manifest is invalid.",
+      "UPDATE_CHECKSUM_MISMATCH": "The package checksum does not match the manifest.",
+      "UPDATE_SIGNATURE_INVALID": "The update signature is invalid.",
+      "UPDATE_UPDATER_TOO_OLD": "The local updater is too old for this release.",
+      "UPDATE_VERSION_INCOMPATIBLE": "This release cannot be applied from the current version.",
+      "UPDATE_DIGEST_MISMATCH": "An image digest does not match the manifest.",
+      "UPDATE_PACKAGE_SECRET_DETECTED": "The update package contains a forbidden secret.",
+      "UPDATE_PROVIDER_UNAVAILABLE": "The update provider is unavailable.",
+      "UPDATE_JOB_NOT_FOUND": "The update job was not found.",
+      "UPDATE_JOB_CONFLICT": "Another update job is already active.",
       "UNKNOWN": "The operation failed. Try again later."
     }
   },
@@ -630,6 +642,7 @@
       "intake": "Intake",
       "workflow": "Workflow",
       "spaceSettings": "Space settings",
+      "upgrade": "Upgrade center",
       "organization": "Organization settings"
     },
     "status": {
@@ -778,6 +791,7 @@
         "workflow": "Workflow",
         "spaces": "Project space management",
         "spaceSettings": "Space settings",
+        "upgrade": "Upgrade center",
         "organization": "Organization settings"
       }
     },
@@ -798,6 +812,156 @@
       "submit": "Create organization",
       "submitting": "Creating",
       "error": "Failed to create organization. Try again later."
+    }
+  },
+  "upgradeCenter": {
+    "page": {
+      "eyebrow": "System operations",
+      "title": "Upgrade center",
+      "description": "Inspect release manifests, updater jobs, logs, backups, and rollback status."
+    },
+    "actions": {
+      "refresh": "Refresh",
+      "check": "Check updates",
+      "dryRun": "Create dry-run",
+      "apply": "Start upgrade",
+      "rollback": "Rollback",
+      "confirmApply": "I confirm the checked manifest can be applied"
+    },
+    "summary": {
+      "version": "Current version",
+      "commit": "Commit",
+      "channel": "Channel",
+      "phase": "Updater phase",
+      "activeJob": "Active job",
+      "updatedAt": "Status updated"
+    },
+    "tabs": {
+      "overview": "Overview",
+      "components": "Components",
+      "progress": "Progress",
+      "logs": "Logs",
+      "rollback": "Rollback"
+    },
+    "sections": {
+      "release": "Detected release",
+      "check": "Update check",
+      "images": "Images",
+      "migrations": "Component scope",
+      "job": "Job progress",
+      "logs": "Step logs",
+      "rollback": "Rollback state",
+      "backups": "Backups"
+    },
+    "fields": {
+      "version": "Version",
+      "commit": "Commit",
+      "channel": "Channel",
+      "publishedAt": "Published at",
+      "minUpgradeableVersion": "Min upgradeable version",
+      "minUpdaterVersion": "Min updater version",
+      "nginxConfigVersion": "Nginx config version",
+      "maintenance": "Maintenance mode",
+      "checkStatus": "Check status",
+      "currentVersion": "Current version",
+      "latestVersion": "Latest version",
+      "checkedAt": "Checked at",
+      "blockedReason": "Blocked reason",
+      "dbSchemaMigrations": "Database migrations",
+      "systemDataMigrations": "System data migrations",
+      "jobId": "Job ID",
+      "jobStatus": "Job status",
+      "dryRun": "Dry-run",
+      "createdAt": "Created at",
+      "updatedAt": "Updated at",
+      "startedAt": "Started at",
+      "finishedAt": "Finished at",
+      "errorCode": "Failure code",
+      "errorMessage": "Failure reason",
+      "step": "Step",
+      "status": "Status",
+      "rollbackSupported": "Rollback supported",
+      "rollbackStatus": "Rollback status",
+      "targetVersion": "Target version",
+      "rollbackNotes": "Notes"
+    },
+    "labels": {
+      "blocked": "Blocked",
+      "maintenance": "Maintenance required"
+    },
+    "states": {
+      "loading": "Loading updater status",
+      "noManifest": "No manifest is loaded. Check updates or open an existing job.",
+      "noCheck": "No update check has been run in this session.",
+      "noCheckShort": "Not checked",
+      "noJob": "No update job is selected.",
+      "noLogs": "No step logs are available.",
+      "noBackups": "No backups are reported.",
+      "none": "None"
+    },
+    "common": {
+      "unknown": "Unknown",
+      "none": "None"
+    },
+    "boolean": {
+      "true": "Yes",
+      "false": "No"
+    },
+    "phase": {
+      "idle": "Idle",
+      "checking": "Checking",
+      "preparing": "Preparing",
+      "applying": "Applying",
+      "verifying": "Verifying",
+      "rollback": "Rollback",
+      "failed": "Failed"
+    },
+    "checkStatus": {
+      "current": "Current",
+      "available": "Available",
+      "blocked": "Blocked",
+      "failed": "Failed"
+    },
+    "jobStatus": {
+      "queued": "Queued",
+      "running": "Running",
+      "succeeded": "Succeeded",
+      "failed": "Failed",
+      "rolled_back": "Rolled back"
+    },
+    "stepStatus": {
+      "pending": "Pending",
+      "running": "Running",
+      "succeeded": "Succeeded",
+      "failed": "Failed",
+      "skipped": "Skipped"
+    },
+    "rollbackStatus": {
+      "not_started": "Not started",
+      "ready": "Ready",
+      "running": "Running",
+      "succeeded": "Succeeded",
+      "failed": "Failed"
+    },
+    "risk": {
+      "low": "Low risk",
+      "medium": "Medium risk",
+      "high": "High risk",
+      "critical": "Critical risk"
+    },
+    "errors": {
+      "UPDATE_ACCESS_DENIED": "Access denied",
+      "PLATFORM_OPERATOR_REQUIRED": "Platform operator required",
+      "UPDATE_MANIFEST_INVALID": "Invalid manifest",
+      "UPDATE_CHECKSUM_MISMATCH": "Checksum mismatch",
+      "UPDATE_SIGNATURE_INVALID": "Invalid signature",
+      "UPDATE_UPDATER_TOO_OLD": "Updater too old",
+      "UPDATE_VERSION_INCOMPATIBLE": "Version incompatible",
+      "UPDATE_DIGEST_MISMATCH": "Digest mismatch",
+      "UPDATE_PACKAGE_SECRET_DETECTED": "Secret detected",
+      "UPDATE_PROVIDER_UNAVAILABLE": "Provider unavailable",
+      "UPDATE_JOB_NOT_FOUND": "Job not found",
+      "UPDATE_JOB_CONFLICT": "Job conflict"
     }
   },
   "versionBoard": {

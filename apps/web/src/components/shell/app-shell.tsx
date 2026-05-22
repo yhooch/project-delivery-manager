@@ -41,6 +41,7 @@ export function AppShell({ children }: AppShellProps) {
     hasOrganization &&
     spacesForCurrentOrganization.length === 0 &&
     !currentSpace;
+  const bypassNoSpacesEmpty = isNoSpaceBypassPath(pathname);
   const canCreateSpace = Boolean(
     session?.capabilities?.canCreateSpace &&
       canCreateSpaceInOrganization(
@@ -144,7 +145,7 @@ export function AppShell({ children }: AppShellProps) {
         <main className="flex-1 overflow-auto bg-background">
           {!hasOrganization ? (
             <OnboardingEmpty />
-          ) : hasNoSpacesInCurrentOrganization ? (
+          ) : hasNoSpacesInCurrentOrganization && !bypassNoSpacesEmpty ? (
             <div
               data-testid="app-shell-no-spaces-empty"
               className="flex h-full items-center justify-center px-4"
@@ -198,5 +199,10 @@ export function AppShell({ children }: AppShellProps) {
 }
 
 function isOrganizationWideRealtimePath(pathname: string): boolean {
-  return (pathname.replace(/\/+$/u, "") || "/") === "/";
+  const normalized = pathname.replace(/\/+$/u, "") || "/";
+  return normalized === "/" || normalized === "/upgrade";
+}
+
+function isNoSpaceBypassPath(pathname: string): boolean {
+  return (pathname.replace(/\/+$/u, "") || "/") === "/upgrade";
 }

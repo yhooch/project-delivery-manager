@@ -314,6 +314,7 @@ describe("CommandPalette", () => {
     expect(
       screen.getByText("shell.command.nav.organization"),
     ).toBeInTheDocument();
+    expect(screen.getByText("shell.command.nav.upgrade")).toBeInTheDocument();
     // Switch-space items render space names.
     expect(screen.getByText("Space A")).toBeInTheDocument();
     expect(screen.getByText("Space B")).toBeInTheDocument();
@@ -331,6 +332,10 @@ describe("CommandPalette", () => {
       await screen.findByTestId("command-palette-nav-organization"),
     );
     expect(routerPushMock).toHaveBeenCalledWith("/organization");
+
+    openCommandPalette();
+    fireEvent.click(await screen.findByTestId("command-palette-nav-upgrade"));
+    expect(routerPushMock).toHaveBeenCalledWith("/upgrade");
   });
 
   it("gates settings by current space and organization by OWNER/ADMIN role", async () => {

@@ -18,6 +18,11 @@ export { Prisma }
 export * as $Enums from './enums.ts'
 export * from './enums.ts';
 /**
+ * Model SystemDataMigration
+ *
+ */
+export type SystemDataMigration = Prisma.SystemDataMigrationModel
+/**
  * Model User
  *
  */

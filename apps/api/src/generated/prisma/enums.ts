@@ -311,3 +311,12 @@ export const ActionFormFieldType = {
 } as const
 
 export type ActionFormFieldType = (typeof ActionFormFieldType)[keyof typeof ActionFormFieldType]
+
+
+export const SystemDataMigrationStatus = {
+  PENDING: 'PENDING',
+  APPLIED: 'APPLIED',
+  FAILED: 'FAILED'
+} as const
+
+export type SystemDataMigrationStatus = (typeof SystemDataMigrationStatus)[keyof typeof SystemDataMigrationStatus]

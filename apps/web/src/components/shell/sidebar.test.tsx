@@ -95,6 +95,9 @@ describe("Sidebar", () => {
     expect(
       screen.getByRole("link", { name: /shell\.nav\.spaceSettings/u }),
     ).toHaveAttribute("href", "/settings");
+    expect(
+      screen.getByRole("link", { name: /shell\.nav\.upgrade/u }),
+    ).toHaveAttribute("href", "/upgrade");
 
     expect(
       within(screen.getByTestId("sidebar-nav-group-deliver")).queryByRole(
