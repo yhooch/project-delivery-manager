@@ -51,7 +51,6 @@ export const AnyNull = runtime.AnyNull
 
 
 export const ModelName = {
-  SystemDataMigration: 'SystemDataMigration',
   User: 'User',
   Session: 'Session',
   Organization: 'Organization',
@@ -93,20 +92,6 @@ export const TransactionIsolationLevel = runtime.makeStrictEnum({
 } as const)
 
 export type TransactionIsolationLevel = (typeof TransactionIsolationLevel)[keyof typeof TransactionIsolationLevel]
-
-
-export const SystemDataMigrationScalarFieldEnum = {
-  id: 'id',
-  migrationId: 'migrationId',
-  checksum: 'checksum',
-  status: 'status',
-  appliedAt: 'appliedAt',
-  errorMessage: 'errorMessage',
-  createdAt: 'createdAt',
-  updatedAt: 'updatedAt'
-} as const
-
-export type SystemDataMigrationScalarFieldEnum = (typeof SystemDataMigrationScalarFieldEnum)[keyof typeof SystemDataMigrationScalarFieldEnum]
 
 
 export const UserScalarFieldEnum = {

@@ -23,7 +23,6 @@ import { OrganizationModule } from "./modules/organization/organization.module";
 import { RealtimeModule } from "./modules/realtime/realtime.module";
 import { RequirementModule } from "./modules/requirement/requirement.module";
 import { SpaceModule } from "./modules/space/space.module";
-import { SystemUpdateModule } from "./modules/system-update/system-update.module";
 import { TagModule } from "./modules/tag/tag.module";
 import { TimelineModule } from "./modules/timeline/timeline.module";
 import { VersionModule } from "./modules/version/version.module";
@@ -51,7 +50,6 @@ import { PrismaModule } from "./prisma/prisma.module";
     AttachmentModule,
     CommentModule,
     TagModule,
-    SystemUpdateModule,
     TimelineModule,
     WorkflowModule,
     PrismaModule,

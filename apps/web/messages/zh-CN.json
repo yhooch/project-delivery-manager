@@ -599,18 +599,6 @@
       "OBJECT_CODE_NOT_FOUND": "未找到该编号对应的对象。",
       "OBJECT_CODE_AMBIGUOUS": "该编号在多个空间中存在，请提供空间上下文。",
       "SPACE_CONTEXT_REQUIRED": "缺少空间上下文，请先选择项目空间。",
-      "UPDATE_ACCESS_DENIED": "你没有权限执行升级操作。",
-      "PLATFORM_OPERATOR_REQUIRED": "升级操作需要平台运维角色。",
-      "UPDATE_MANIFEST_INVALID": "升级清单无效。",
-      "UPDATE_CHECKSUM_MISMATCH": "升级包校验和与清单不一致。",
-      "UPDATE_SIGNATURE_INVALID": "升级签名无效。",
-      "UPDATE_UPDATER_TOO_OLD": "本地升级器版本过低，无法应用该版本。",
-      "UPDATE_VERSION_INCOMPATIBLE": "当前版本不满足该发布版本的升级条件。",
-      "UPDATE_DIGEST_MISMATCH": "镜像 digest 与清单不一致。",
-      "UPDATE_PACKAGE_SECRET_DETECTED": "升级包包含被禁止的密钥信息。",
-      "UPDATE_PROVIDER_UNAVAILABLE": "升级源暂不可用。",
-      "UPDATE_JOB_NOT_FOUND": "升级任务不存在。",
-      "UPDATE_JOB_CONFLICT": "已有升级任务正在执行。",
       "UNKNOWN": "操作失败，请稍后重试。"
     }
   },
@@ -642,7 +630,6 @@
       "intake": "事项池",
       "workflow": "流程配置",
       "spaceSettings": "空间设置",
-      "upgrade": "升级中心",
       "organization": "组织设置"
     },
     "status": {
@@ -791,7 +778,6 @@
         "workflow": "流程配置",
         "spaces": "项目空间管理",
         "spaceSettings": "空间设置",
-        "upgrade": "升级中心",
         "organization": "组织设置"
       }
     },
@@ -812,156 +798,6 @@
       "submit": "创建组织",
       "submitting": "创建中",
       "error": "创建组织失败，请稍后重试。"
-    }
-  },
-  "upgradeCenter": {
-    "page": {
-      "eyebrow": "系统运维",
-      "title": "升级中心",
-      "description": "查看发布清单、升级任务、日志、备份和回滚状态。"
-    },
-    "actions": {
-      "refresh": "刷新",
-      "check": "检测更新",
-      "dryRun": "创建 dry-run",
-      "apply": "发起升级",
-      "rollback": "回滚",
-      "confirmApply": "确认已核对清单且可以应用"
-    },
-    "summary": {
-      "version": "当前版本",
-      "commit": "Commit",
-      "channel": "Channel",
-      "phase": "升级器阶段",
-      "activeJob": "运行任务",
-      "updatedAt": "状态更新时间"
-    },
-    "tabs": {
-      "overview": "概览",
-      "components": "组件",
-      "progress": "进度",
-      "logs": "日志",
-      "rollback": "回滚"
-    },
-    "sections": {
-      "release": "检测到的版本",
-      "check": "更新检测",
-      "images": "镜像",
-      "migrations": "组件范围",
-      "job": "任务进度",
-      "logs": "步骤日志",
-      "rollback": "回滚状态",
-      "backups": "备份"
-    },
-    "fields": {
-      "version": "版本",
-      "commit": "Commit",
-      "channel": "Channel",
-      "publishedAt": "发布时间",
-      "minUpgradeableVersion": "最低可升级版本",
-      "minUpdaterVersion": "最低升级器版本",
-      "nginxConfigVersion": "Nginx 配置版本",
-      "maintenance": "维护模式",
-      "checkStatus": "检测状态",
-      "currentVersion": "当前版本",
-      "latestVersion": "最新版本",
-      "checkedAt": "检测时间",
-      "blockedReason": "阻塞原因",
-      "dbSchemaMigrations": "数据库迁移",
-      "systemDataMigrations": "系统数据迁移",
-      "jobId": "任务 ID",
-      "jobStatus": "任务状态",
-      "dryRun": "Dry-run",
-      "createdAt": "创建时间",
-      "updatedAt": "更新时间",
-      "startedAt": "开始时间",
-      "finishedAt": "完成时间",
-      "errorCode": "失败代码",
-      "errorMessage": "失败原因",
-      "step": "步骤",
-      "status": "状态",
-      "rollbackSupported": "支持回滚",
-      "rollbackStatus": "回滚状态",
-      "targetVersion": "目标版本",
-      "rollbackNotes": "备注"
-    },
-    "labels": {
-      "blocked": "已阻塞",
-      "maintenance": "需要维护模式"
-    },
-    "states": {
-      "loading": "正在加载升级器状态",
-      "noManifest": "尚未加载清单，请检测更新或打开已有任务。",
-      "noCheck": "当前会话尚未执行更新检测。",
-      "noCheckShort": "未检测",
-      "noJob": "尚未选择升级任务。",
-      "noLogs": "暂无步骤日志。",
-      "noBackups": "暂无备份信息。",
-      "none": "无"
-    },
-    "common": {
-      "unknown": "未知",
-      "none": "无"
-    },
-    "boolean": {
-      "true": "是",
-      "false": "否"
-    },
-    "phase": {
-      "idle": "空闲",
-      "checking": "检测中",
-      "preparing": "准备中",
-      "applying": "应用中",
-      "verifying": "验证中",
-      "rollback": "回滚中",
-      "failed": "失败"
-    },
-    "checkStatus": {
-      "current": "已是最新",
-      "available": "有新版本",
-      "blocked": "已阻塞",
-      "failed": "检测失败"
-    },
-    "jobStatus": {
-      "queued": "排队中",
-      "running": "运行中",
-      "succeeded": "成功",
-      "failed": "失败",
-      "rolled_back": "已回滚"
-    },
-    "stepStatus": {
-      "pending": "等待中",
-      "running": "运行中",
-      "succeeded": "成功",
-      "failed": "失败",
-      "skipped": "已跳过"
-    },
-    "rollbackStatus": {
-      "not_started": "未开始",
-      "ready": "就绪",
-      "running": "运行中",
-      "succeeded": "成功",
-      "failed": "失败"
-    },
-    "risk": {
-      "low": "低风险",
-      "medium": "中风险",
-      "high": "高风险",
-      "critical": "严重风险"
-    },
-    "errors": {
-      "UPDATE_ACCESS_DENIED": "访问被拒绝",
-      "PLATFORM_OPERATOR_REQUIRED": "需要平台运维角色",
-      "UPDATE_MANIFEST_INVALID": "清单无效",
-      "UPDATE_CHECKSUM_MISMATCH": "校验和不一致",
-      "UPDATE_SIGNATURE_INVALID": "签名无效",
-      "UPDATE_UPDATER_TOO_OLD": "升级器版本过低",
-      "UPDATE_VERSION_INCOMPATIBLE": "版本不兼容",
-      "UPDATE_DIGEST_MISMATCH": "Digest 不一致",
-      "UPDATE_PACKAGE_SECRET_DETECTED": "检测到密钥",
-      "UPDATE_PROVIDER_UNAVAILABLE": "升级源不可用",
-      "UPDATE_JOB_NOT_FOUND": "任务不存在",
-      "UPDATE_JOB_CONFLICT": "任务冲突"
     }
   },
   "versionBoard": {

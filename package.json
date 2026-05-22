@@ -23,12 +23,7 @@
     "test:e2e:full": "bash scripts/e2e/run.sh",
     "test:e2e:local": "bash scripts/e2e/run-local.sh",
     "e2e:up": "bash scripts/e2e/up.sh",
-    "e2e:down": "bash scripts/e2e/down.sh",
-    "upd:pack": "tsx scripts/upd/release-cli.ts pack",
-    "upd:validate": "tsx scripts/upd/release-cli.ts validate",
-    "upd:checksums": "tsx scripts/upd/release-cli.ts checksums",
-    "upd:state": "tsx scripts/upd/state-cli.ts",
-    "upd:test": "vitest run scripts/upd/upd.test.ts"
+    "e2e:down": "bash scripts/e2e/down.sh"
   },
   "pnpm": {
     "onlyBuiltDependencies": [

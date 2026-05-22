@@ -13,7 +13,6 @@ import {
   Loader2,
   Monitor,
   Moon,
-  Package,
   Plus,
   Settings2,
   ShieldAlert,
@@ -140,7 +139,6 @@ export function useCommandPaletteShortcut({
           v: "/versions",
           r: "/requirements",
           b: "/bugs",
-          u: "/upgrade",
         };
         const route = routes[next.key.toLowerCase()];
         clearSequence();
@@ -895,14 +893,6 @@ export function CommandPalette({ enabled = true }: CommandPaletteProps) {
               <CommandItem onSelect={() => navigate("/workflow")}>
                 <Workflow className="text-muted-foreground" />
                 <span>{t("nav.workflow")}</span>
-              </CommandItem>
-              <CommandItem
-                data-testid="command-palette-nav-upgrade"
-                onSelect={() => navigate("/upgrade")}
-              >
-                <Package className="text-muted-foreground" />
-                <span>{t("nav.upgrade")}</span>
-                <CommandShortcut>G U</CommandShortcut>
               </CommandItem>
               {hasCurrentSpace && (
                 <CommandItem

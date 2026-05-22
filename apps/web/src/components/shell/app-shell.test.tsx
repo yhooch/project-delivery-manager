@@ -361,43 +361,6 @@ describe("AppShell", () => {
     expect(screen.queryByText("Workspace")).not.toBeInTheDocument();
   });
 
-  it("lets the system upgrade route render when the organization has no spaces", () => {
-    pathnameMock.current = "/upgrade";
-    sessionMock.current = {
-      currentOrganization: {
-        id: "ORG_01",
-        name: "Org A",
-        role: "OWNER",
-        status: "ACTIVE",
-      },
-      currentSpace: undefined,
-      initializeSession: vi.fn(),
-      session: {
-        capabilities: { canCreateSpace: true },
-        organizations: [
-          {
-            id: "ORG_01",
-            name: "Org A",
-            role: "OWNER",
-            status: "ACTIVE",
-          },
-        ],
-      },
-      sessionErrorKey: null,
-      spacesForCurrentOrganization: [],
-      status: "authenticated",
-    };
-
-    render(<AppShell>Workspace</AppShell>);
-
-    expect(screen.queryByTestId("app-shell-no-spaces-empty")).not.toBeInTheDocument();
-    expect(screen.getByText("Workspace")).toBeInTheDocument();
-    expect(realtimeProviderProps.current).toContainEqual({
-      organizationId: "ORG_01",
-      spaceId: undefined,
-    });
-  });
-
   it("hides the no-spaces create action for a MEMBER organization even when backend capability is true", () => {
     sessionMock.current = {
       currentOrganization: {

@@ -40,7 +40,6 @@ import {
   TimelineEventSchema,
   UpdateBugRequestSchema,
   UpdateIntakeItemRequestSchema,
-  UpdateManifestSchema,
   UpdateWorkItemRequestSchema,
   UpdateRequirementRequestSchema,
   VersionSchema,
@@ -87,10 +86,6 @@ describe("shared contracts", () => {
         "TAG_IN_USE",
         "TAG_TARGET_INVALID",
         "TAG_NAME_CONFLICT",
-        "PLATFORM_OPERATOR_REQUIRED",
-        "UPDATE_ACCESS_DENIED",
-        "UPDATE_PROVIDER_UNAVAILABLE",
-        "UPDATE_JOB_NOT_FOUND",
       ]),
     );
   });
@@ -237,76 +232,6 @@ describe("shared contracts", () => {
         "VALIDATION_ERROR",
       ]),
     );
-    expect(errorCodesFor("getUpdateStatus")).toEqual(
-      expect.arrayContaining([
-        "UNAUTHORIZED",
-        "PLATFORM_OPERATOR_REQUIRED",
-        "UPDATE_ACCESS_DENIED",
-        "UPDATE_PROVIDER_UNAVAILABLE",
-      ]),
-    );
-    expect(errorCodesFor("createUpdateJob")).toEqual(
-      expect.arrayContaining(["UPDATE_MANIFEST_INVALID", "VALIDATION_ERROR"]),
-    );
-    expect(errorCodesFor("rollbackUpdateJob")).toEqual(
-      expect.arrayContaining(["UPDATE_JOB_NOT_FOUND", "UPDATE_JOB_CONFLICT"]),
-    );
-  });
-
-  it("registers the UPD system update endpoints with manifestSchemaVersion", () => {
-    const updateContracts = apiContracts.filter((contract) =>
-      contract.path.startsWith("/system/update"),
-    );
-
-    expect(
-      updateContracts.map((contract) => [
-        contract.method,
-        contract.path,
-        contract.operationId,
-      ]),
-    ).toEqual([
-      ["get", "/system/update/status", "getUpdateStatus"],
-      ["post", "/system/update/check", "checkUpdate"],
-      ["post", "/system/update/jobs", "createUpdateJob"],
-      ["get", "/system/update/jobs/{jobId}", "getUpdateJob"],
-      ["post", "/system/update/jobs/{jobId}/rollback", "rollbackUpdateJob"],
-    ]);
-    expect(
-      UpdateManifestSchema.parse({
-        manifestSchemaVersion: 1,
-        version: "1.2.3",
-        commit: "abc123",
-        channel: "stable",
-        publishedAt: "2026-05-22T00:00:00.000Z",
-        minUpgradeableVersion: "1.0.0",
-        minUpdaterVersion: "1.0.0",
-        requiresMaintenance: false,
-        riskLevel: "low",
-        images: {
-          api: {
-            image: "registry.example.com/api@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
-            digest:
-              "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
-          },
-          web: {
-            image: "registry.example.com/web@sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
-            digest:
-              "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
-          },
-        },
-        nginx: {
-          configVersion: "2026-05-22",
-          templatePath: "nginx/default.conf",
-          sha256: "c".repeat(64),
-          rollbackSupported: true,
-        },
-        checksums: {
-          "nginx/default.conf": "c".repeat(64),
-        },
-      }),
-    ).toMatchObject({
-      manifestSchemaVersion: 1,
-    });
   });
 
   it("freezes tag target, filter and assignment contracts", () => {

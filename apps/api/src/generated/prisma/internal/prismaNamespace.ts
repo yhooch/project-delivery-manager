@@ -384,7 +384,6 @@ type FieldRefInputType<Model, FieldType> = Model extends never ? never : FieldRe
 
 
 export const ModelName = {
-  SystemDataMigration: 'SystemDataMigration',
   User: 'User',
   Session: 'Session',
   Organization: 'Organization',
@@ -425,84 +424,10 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
     omit: GlobalOmitOptions
   }
   meta: {
-    modelProps: "systemDataMigration" | "user" | "session" | "organization" | "organizationMember" | "space" | "spaceMember" | "version" | "requirement" | "intakeItem" | "workItem" | "objectSequenceCounter" | "bugDetail" | "attachment" | "tag" | "tagAssignment" | "workflowDefinition" | "workflowVersion" | "workflowState" | "workflowAction" | "actionFormField" | "workflowBinding" | "objectParticipant" | "comment" | "timelineEvent" | "auditLog"
+    modelProps: "user" | "session" | "organization" | "organizationMember" | "space" | "spaceMember" | "version" | "requirement" | "intakeItem" | "workItem" | "objectSequenceCounter" | "bugDetail" | "attachment" | "tag" | "tagAssignment" | "workflowDefinition" | "workflowVersion" | "workflowState" | "workflowAction" | "actionFormField" | "workflowBinding" | "objectParticipant" | "comment" | "timelineEvent" | "auditLog"
     txIsolationLevel: TransactionIsolationLevel
   }
   model: {
-    SystemDataMigration: {
-      payload: Prisma.$SystemDataMigrationPayload<ExtArgs>
-      fields: Prisma.SystemDataMigrationFieldRefs
-      operations: {
-        findUnique: {
-          args: Prisma.SystemDataMigrationFindUniqueArgs<ExtArgs>
-          result: runtime.Types.Utils.PayloadToResult<Prisma.$SystemDataMigrationPayload> | null
-        }
-        findUniqueOrThrow: {
-          args: Prisma.SystemDataMigrationFindUniqueOrThrowArgs<ExtArgs>
-          result: runtime.Types.Utils.PayloadToResult<Prisma.$SystemDataMigrationPayload>
-        }
-        findFirst: {
-          args: Prisma.SystemDataMigrationFindFirstArgs<ExtArgs>
-          result: runtime.Types.Utils.PayloadToResult<Prisma.$SystemDataMigrationPayload> | null
-        }
-        findFirstOrThrow: {
-          args: Prisma.SystemDataMigrationFindFirstOrThrowArgs<ExtArgs>
-          result: runtime.Types.Utils.PayloadToResult<Prisma.$SystemDataMigrationPayload>
-        }
-        findMany: {
-          args: Prisma.SystemDataMigrationFindManyArgs<ExtArgs>
-          result: runtime.Types.Utils.PayloadToResult<Prisma.$SystemDataMigrationPayload>[]
-        }
-        create: {
-          args: Prisma.SystemDataMigrationCreateArgs<ExtArgs>
-          result: runtime.Types.Utils.PayloadToResult<Prisma.$SystemDataMigrationPayload>
-        }
-        createMany: {
-          args: Prisma.SystemDataMigrationCreateManyArgs<ExtArgs>
-          result: BatchPayload
-        }
-        createManyAndReturn: {
-          args: Prisma.SystemDataMigrationCreateManyAndReturnArgs<ExtArgs>
-          result: runtime.Types.Utils.PayloadToResult<Prisma.$SystemDataMigrationPayload>[]
-        }
-        delete: {
-          args: Prisma.SystemDataMigrationDeleteArgs<ExtArgs>
-          result: runtime.Types.Utils.PayloadToResult<Prisma.$SystemDataMigrationPayload>
-        }
-        update: {
-          args: Prisma.SystemDataMigrationUpdateArgs<ExtArgs>
-          result: runtime.Types.Utils.PayloadToResult<Prisma.$SystemDataMigrationPayload>
-        }
-        deleteMany: {
-          args: Prisma.SystemDataMigrationDeleteManyArgs<ExtArgs>
-          result: BatchPayload
-        }
-        updateMany: {
-          args: Prisma.SystemDataMigrationUpdateManyArgs<ExtArgs>
-          result: BatchPayload
-        }
-        updateManyAndReturn: {
-          args: Prisma.SystemDataMigrationUpdateManyAndReturnArgs<ExtArgs>
-          result: runtime.Types.Utils.PayloadToResult<Prisma.$SystemDataMigrationPayload>[]
-        }
-        upsert: {
-          args: Prisma.SystemDataMigrationUpsertArgs<ExtArgs>
-          result: runtime.Types.Utils.PayloadToResult<Prisma.$SystemDataMigrationPayload>
-        }
-        aggregate: {
-          args: Prisma.SystemDataMigrationAggregateArgs<ExtArgs>
-          result: runtime.Types.Utils.Optional<Prisma.AggregateSystemDataMigration>
-        }
-        groupBy: {
-          args: Prisma.SystemDataMigrationGroupByArgs<ExtArgs>
-          result: runtime.Types.Utils.Optional<Prisma.SystemDataMigrationGroupByOutputType>[]
-        }
-        count: {
-          args: Prisma.SystemDataMigrationCountArgs<ExtArgs>
-          result: runtime.Types.Utils.Optional<Prisma.SystemDataMigrationCountAggregateOutputType> | number
-        }
-      }
-    }
     User: {
       payload: Prisma.$UserPayload<ExtArgs>
       fields: Prisma.UserFieldRefs
@@ -2392,20 +2317,6 @@ export const TransactionIsolationLevel = runtime.makeStrictEnum({
 export type TransactionIsolationLevel = (typeof TransactionIsolationLevel)[keyof typeof TransactionIsolationLevel]
 
 
-export const SystemDataMigrationScalarFieldEnum = {
-  id: 'id',
-  migrationId: 'migrationId',
-  checksum: 'checksum',
-  status: 'status',
-  appliedAt: 'appliedAt',
-  errorMessage: 'errorMessage',
-  createdAt: 'createdAt',
-  updatedAt: 'updatedAt'
-} as const
-
-export type SystemDataMigrationScalarFieldEnum = (typeof SystemDataMigrationScalarFieldEnum)[keyof typeof SystemDataMigrationScalarFieldEnum]
-
-
 export const UserScalarFieldEnum = {
   id: 'id',
   username: 'username',
@@ -2978,34 +2889,6 @@ export type ListStringFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaMod
 
 
 /**
- * Reference to a field of type 'SystemDataMigrationStatus'
- */
-export type EnumSystemDataMigrationStatusFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'SystemDataMigrationStatus'>
-
-
-
-/**
- * Reference to a field of type 'SystemDataMigrationStatus[]'
- */
-export type ListEnumSystemDataMigrationStatusFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'SystemDataMigrationStatus[]'>
-
-
-
-/**
- * Reference to a field of type 'DateTime'
- */
-export type DateTimeFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'DateTime'>
-
-
-
-/**
- * Reference to a field of type 'DateTime[]'
- */
-export type ListDateTimeFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'DateTime[]'>
-
-
-
-/**
  * Reference to a field of type 'UserStatus'
  */
 export type EnumUserStatusFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'UserStatus'>
@@ -3044,6 +2927,20 @@ export type EnumThemeModeFieldRefInput<$PrismaModel> = FieldRefInputType<$Prisma
  * Reference to a field of type 'ThemeMode[]'
  */
 export type ListEnumThemeModeFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'ThemeMode[]'>
+
+
+
+/**
+ * Reference to a field of type 'DateTime'
+ */
+export type DateTimeFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'DateTime'>
+
+
+
+/**
+ * Reference to a field of type 'DateTime[]'
+ */
+export type ListDateTimeFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'DateTime[]'>
 
 
 
@@ -3597,7 +3494,6 @@ export type PrismaClientOptions = ({
   queryPlanCacheMaxSize?: number
 }
 export type GlobalOmitConfig = {
-  systemDataMigration?: Prisma.SystemDataMigrationOmit
   user?: Prisma.UserOmit
   session?: Prisma.SessionOmit
   organization?: Prisma.OrganizationOmit
