@@ -382,9 +382,18 @@ export class PrismaRequirementRepository implements RequirementRepository {
         data: {
           title: input.title,
           summary: input.summary,
-          contentJson: input.contentJson as Prisma.InputJsonValue,
+          contentFormat: input.contentFormat,
+          contentJson:
+            input.contentFormat === "TIPTAP_JSON"
+              ? (input.contentJson as Prisma.InputJsonValue)
+              : {},
+          contentMarkdown:
+            input.contentFormat === "MARKDOWN" ? input.contentMarkdown : null,
           contentText: input.contentText,
-          contentMarkdownCache: input.contentMarkdownCache,
+          contentMarkdownCache:
+            input.contentFormat === "TIPTAP_JSON"
+              ? input.contentMarkdownCache
+              : null,
           versionId: input.versionId,
           priority: input.priority,
           ownerId: input.shouldUpdateOwner ? input.ownerId : undefined,

@@ -53,6 +53,7 @@ import {
   collectAttachmentImageIds,
   containsBase64Image,
   createContentEditorValue,
+  createEditorValueFromMarkdown,
   createEditorValueFromTiptapJson,
   createTiptapDocumentFromText,
   createTiptapDocumentForEditing,
@@ -60,6 +61,10 @@ import {
   type AttachmentImageDisplayUrls,
   type RequirementContentEditorValue,
 } from "../../lib/requirement-editor-content";
+import {
+  parseRequirementMarkdown,
+  type RequirementMarkdownBlock,
+} from "../../lib/requirement-markdown-content";
 import { cn } from "../../lib/utils";
 import { Button } from "../ui/button";
 import {
@@ -146,6 +151,11 @@ const RequirementImage = ImageExtension.extend({
   },
 });
 
+const EMPTY_TIPTAP_DOCUMENT = {
+  content: [{ type: "paragraph" }],
+  type: "doc",
+};
+
 export function RequirementContentEditorSlot({
   attachmentCount = 0,
   canUploadImages = false,
@@ -170,9 +180,13 @@ export function RequirementContentEditorSlot({
     open: false,
     to: 0,
   });
+  const tiptapContentJson =
+    value.contentFormat === "TIPTAP_JSON"
+      ? value.contentJson
+      : EMPTY_TIPTAP_DOCUMENT;
   const normalizedInitialContent = useMemo(
-    () => createTiptapDocumentForEditing(value.contentJson, imageDisplayUrls),
-    [imageDisplayUrls, value.contentJson],
+    () => createTiptapDocumentForEditing(tiptapContentJson, imageDisplayUrls),
+    [imageDisplayUrls, tiptapContentJson],
   );
   const editor = useEditor({
     content: normalizedInitialContent,
@@ -269,6 +283,10 @@ export function RequirementContentEditorSlot({
   }, [imageDisplayUrls]);
 
   useEffect(() => {
+    if (value.contentFormat !== "TIPTAP_JSON") {
+      return;
+    }
+
     const attachmentIds = collectAttachmentImageIds(value.contentJson);
     const missingAttachmentIds = attachmentIds.filter(
       (attachmentId) => !imageDisplayUrls[attachmentId],
@@ -317,7 +335,7 @@ export function RequirementContentEditorSlot({
     return () => {
       cancelled = true;
     };
-  }, [imageDisplayUrls, value.contentJson]);
+  }, [imageDisplayUrls, value]);
 
   useEffect(() => {
     editor?.setEditable(!disabled);
@@ -339,6 +357,10 @@ export function RequirementContentEditorSlot({
   }, [editor, imageDisplayUrls]);
 
   useEffect(() => {
+    if (value.contentFormat !== "TIPTAP_JSON") {
+      return;
+    }
+
     if (!editor || editor.isFocused) {
       return;
     }
@@ -351,7 +373,7 @@ export function RequirementContentEditorSlot({
     if (JSON.stringify(editor.getJSON()) !== JSON.stringify(sanitized)) {
       editor.commands.setContent(sanitized, { emitUpdate: false });
     }
-  }, [editor, imageDisplayUrls, value.contentJson]);
+  }, [editor, imageDisplayUrls, value]);
 
   function applyLink() {
     if (!editor) {
@@ -540,6 +562,16 @@ export function RequirementContentEditorSlot({
   }
 
   const hasUploadError = uploads.some((item) => item.status === "failed");
+
+  if (value.contentFormat === "MARKDOWN") {
+    return (
+      <RequirementMarkdownEditor
+        disabled={disabled}
+        onChange={onChange}
+        value={value.contentMarkdown}
+      />
+    );
+  }
 
   return (
     <section
@@ -785,6 +817,171 @@ export function RequirementContentEditorSlot({
         </div>
       ) : null}
     </section>
+  );
+}
+
+function RequirementMarkdownEditor({
+  disabled,
+  onChange,
+  value,
+}: {
+  disabled?: boolean;
+  onChange: (value: RequirementContentEditorValue) => void;
+  value: string;
+}) {
+  const t = useTranslations("requirements.editor");
+
+  return (
+    <section
+      className="flex flex-col gap-3"
+      aria-labelledby="requirement-editor-title"
+    >
+      <div className="flex flex-col gap-0.5">
+        <h3
+          id="requirement-editor-title"
+          className="text-sm font-semibold text-foreground"
+        >
+          {t("title")}
+        </h3>
+        <p className="text-xs text-muted-foreground">{t("description")}</p>
+      </div>
+
+      {disabled ? (
+        <RequirementMarkdownPreview markdown={value} />
+      ) : (
+        <textarea
+          aria-label={t("ariaLabel")}
+          className={cn(
+            "min-h-[18rem] w-full resize-y rounded-md border border-border/60 bg-background/60 px-3 py-2",
+            "font-mono text-sm leading-6 text-foreground outline-none",
+            "placeholder:text-muted-foreground/50",
+            "focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
+          )}
+          onChange={(event) =>
+            onChange(createEditorValueFromMarkdown(event.target.value))
+          }
+          placeholder={t("placeholder")}
+          value={value}
+        />
+      )}
+    </section>
+  );
+}
+
+function RequirementMarkdownPreview({ markdown }: { markdown: string }) {
+  const blocks = parseRequirementMarkdown(markdown);
+
+  if (blocks.length === 0) {
+    return <div className="min-h-24 rounded-md bg-muted/20" />;
+  }
+
+  return (
+    <div className="flex min-h-24 flex-col gap-3 rounded-md bg-muted/20 px-3 py-3 text-sm leading-6 text-foreground">
+      {blocks.map((block, index) => renderMarkdownBlock(block, index))}
+    </div>
+  );
+}
+
+function renderMarkdownBlock(block: RequirementMarkdownBlock, index: number) {
+  switch (block.type) {
+    case "heading":
+      return renderMarkdownHeading(block, index);
+    case "paragraph":
+      return (
+        <p className="whitespace-pre-wrap" key={index}>
+          {block.text}
+        </p>
+      );
+    case "blockquote":
+      return (
+        <blockquote
+          className="whitespace-pre-wrap border-l-2 border-border pl-3 text-muted-foreground"
+          key={index}
+        >
+          {block.text}
+        </blockquote>
+      );
+    case "code":
+      return (
+        <pre
+          className="overflow-x-auto rounded-md bg-muted px-3 py-2 font-mono text-xs leading-5"
+          key={index}
+        >
+          <code>{block.text}</code>
+        </pre>
+      );
+    case "list":
+      return block.ordered ? (
+        <ol className="list-decimal space-y-1 pl-5" key={index}>
+          {block.items.map((item, itemIndex) => (
+            <li className="pl-1" key={itemIndex}>
+              {item.text}
+            </li>
+          ))}
+        </ol>
+      ) : (
+        <ul className="space-y-1 pl-1" key={index}>
+          {block.items.map((item, itemIndex) => (
+            <li className="flex items-start gap-2" key={itemIndex}>
+              {typeof item.checked === "boolean" ? (
+                <input
+                  checked={item.checked}
+                  className="mt-1 h-3.5 w-3.5"
+                  disabled
+                  readOnly
+                  type="checkbox"
+                />
+              ) : (
+                <span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-muted-foreground" />
+              )}
+              <span>{item.text}</span>
+            </li>
+          ))}
+        </ul>
+      );
+    case "image":
+      return (
+        <div
+          className="rounded-md border border-dashed border-border px-3 py-2 text-xs text-muted-foreground"
+          key={index}
+        >
+          {block.alt || block.src}
+        </div>
+      );
+    case "horizontalRule":
+      return <hr className="border-border" key={index} />;
+  }
+}
+
+function renderMarkdownHeading(
+  block: Extract<RequirementMarkdownBlock, { type: "heading" }>,
+  index: number,
+) {
+  const className =
+    block.level <= 2
+      ? "text-lg font-semibold leading-7"
+      : "text-base font-semibold leading-6";
+
+  if (block.level === 1) {
+    return (
+      <h2 className={className} key={index}>
+        {block.text}
+      </h2>
+    );
+  }
+
+  if (block.level === 2) {
+    return (
+      <h3 className={className} key={index}>
+        {block.text}
+      </h3>
+    );
+  }
+
+  return (
+    <h4 className={className} key={index}>
+      {block.text}
+    </h4>
   );
 }
 

@@ -19,7 +19,9 @@ import { BugModule } from "./modules/bug/bug.module";
 import { SessionParsingMiddleware } from "./modules/auth/session-parsing.middleware";
 import { CommentModule } from "./modules/comment/comment.module";
 import { IntakeModule } from "./modules/intake/intake.module";
+import { McpModule } from "./modules/mcp/mcp.module";
 import { ObjectCodeModule } from "./modules/object-code/object-code.module";
+import { OAuthModule } from "./modules/oauth/oauth.module";
 import { OrganizationModule } from "./modules/organization/organization.module";
 import { RealtimeModule } from "./modules/realtime/realtime.module";
 import { RequirementModule } from "./modules/requirement/requirement.module";
@@ -46,6 +48,8 @@ import { PrismaModule } from "./prisma/prisma.module";
     RequirementModule,
     IntakeModule,
     ObjectCodeModule,
+    OAuthModule,
+    McpModule,
     WorkItemModule,
     BugModule,
     AttachmentModule,

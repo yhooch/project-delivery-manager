@@ -47,6 +47,7 @@ const USER_SIDE_EFFECT_FORM_FIELD_KEYS = new Set([
 
 export type WorkflowActionRequestMetadata = {
   ip?: string;
+  metadata?: Record<string, unknown>;
   requestId?: string;
   userAgent?: string;
 };
@@ -1035,6 +1036,7 @@ function buildAuditLogInput(
     before: context.before,
     ip: requestMetadata.ip,
     metadata: removeUndefined({
+      ...requestMetadata.metadata,
       actionCode: context.action?.code,
       actionId: context.action?.id ?? context.actionId,
       actionName: context.action?.name,
@@ -1043,6 +1045,7 @@ function buildAuditLogInput(
       formValues: context.formValues,
       operation: resolveWorkflowActionAuditOperation(actionType, error),
       requestId: requestMetadata.requestId,
+      resultStatus: error ? "ERROR" : "SUCCESS",
     }),
     organizationId: context.organizationId,
     requestId: requestMetadata.requestId,

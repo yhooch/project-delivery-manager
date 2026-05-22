@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest";
 
-import { toRequirement, toRequirementRelatedWorkItems } from "./requirement.mappers";
+import {
+  toRequirement,
+  toRequirementRelatedWorkItems,
+} from "./requirement.mappers";
 
 describe("requirement mappers", () => {
   it("maps requirement display identity when sequence is present", () => {
@@ -10,6 +13,7 @@ describe("requirement mappers", () => {
           authorId: null,
           contentFormat: "TIPTAP_JSON",
           contentJson: {},
+          contentMarkdown: null,
           contentMarkdownCache: null,
           contentText: null,
           createdAt: new Date("2026-05-13T12:00:00.000Z"),
@@ -39,6 +43,7 @@ describe("requirement mappers", () => {
         authorId: null,
         contentFormat: "TIPTAP_JSON",
         contentJson: {},
+        contentMarkdown: null,
         contentMarkdownCache: null,
         contentText: null,
         createdAt: new Date("2026-05-13T12:00:00.000Z"),
@@ -59,6 +64,38 @@ describe("requirement mappers", () => {
 
     expect(requirement.sequence).toBeUndefined();
     expect(requirement.displayCode).toBeUndefined();
+  });
+
+  it("maps Markdown requirements without exposing Tiptap JSON cache fields", () => {
+    expect(
+      toRequirement(
+        {
+          authorId: null,
+          contentFormat: "MARKDOWN",
+          contentJson: {},
+          contentMarkdown: "# Scope\n\nShip Markdown.",
+          contentMarkdownCache: null,
+          contentText: "Scope\n\nShip Markdown.",
+          createdAt: new Date("2026-05-13T12:00:00.000Z"),
+          id: "01H00000000000000000000030",
+          organizationId: "01H00000000000000000000031",
+          ownerId: null,
+          priority: null,
+          sequence: 3,
+          spaceId: "01H00000000000000000000032",
+          status: "CONFIRMED",
+          summary: null,
+          title: "Markdown requirement",
+          updatedAt: new Date("2026-05-13T12:30:00.000Z"),
+          versionId: null,
+        },
+        [],
+      ),
+    ).toMatchObject({
+      contentFormat: "MARKDOWN",
+      contentMarkdown: "# Scope\n\nShip Markdown.",
+      contentText: "Scope\n\nShip Markdown.",
+    });
   });
 
   it("groups related work items into task and bug summaries", () => {

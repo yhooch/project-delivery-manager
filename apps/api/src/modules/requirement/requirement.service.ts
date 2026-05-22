@@ -245,6 +245,7 @@ export class RequirementService {
 
     this.assertCanSave(existing);
     this.assertValidContent(input);
+    const saveContent = toSaveRequirementContent(input);
 
     const versionId = Object.prototype.hasOwnProperty.call(input, "versionId")
       ? input.versionId
@@ -285,20 +286,28 @@ export class RequirementService {
       });
     }
 
-    const saved = await this.requirements.save({
+    const saveBase = {
       requirementId,
       title: input.title,
       summary: input.summary,
-      contentJson: input.contentJson,
-      contentText: input.contentText,
-      contentMarkdownCache: input.contentMarkdownCache,
       versionId,
       cascadeVersionChange: input.cascadeVersionChange,
       priority: input.priority,
       ownerId: input.ownerId,
       shouldUpdateOwner: Object.prototype.hasOwnProperty.call(input, "ownerId"),
       updatedById: actorUserId,
-    });
+    };
+    const saved = await this.requirements.save(
+      saveContent.contentFormat === "MARKDOWN"
+        ? {
+            ...saveBase,
+            ...saveContent,
+          }
+        : {
+            ...saveBase,
+            ...saveContent,
+          },
+    );
 
     if (!saved) {
       throwRequirementNotFound();
@@ -584,7 +593,41 @@ export class RequirementService {
   }
 
   private assertValidContent(input: SaveRequirementRequest) {
-    if (Object.keys(input.contentJson).length === 0) {
+    if (
+      containsBase64ImageData(input.contentText) ||
+      containsBase64ImageData(input.contentMarkdownCache)
+    ) {
+      throw new ApiException(
+        "VALIDATION_ERROR",
+        "requirement content must not contain base64 images",
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+
+    if (resolveSaveContentFormat(input) === "MARKDOWN") {
+      if (!hasText(input.contentMarkdown)) {
+        throw new ApiException(
+          "VALIDATION_ERROR",
+          "contentMarkdown must contain Markdown content",
+          HttpStatus.BAD_REQUEST,
+        );
+      }
+
+      if (
+        containsBase64ImageData(input.contentMarkdown) ||
+        containsDisallowedMarkdownImage(input.contentMarkdown)
+      ) {
+        throw new ApiException(
+          "VALIDATION_ERROR",
+          "Markdown content must not contain unsafe images",
+          HttpStatus.BAD_REQUEST,
+        );
+      }
+
+      return;
+    }
+
+    if (!input.contentJson || Object.keys(input.contentJson).length === 0) {
       throw new ApiException(
         "VALIDATION_ERROR",
         "contentJson must contain a Tiptap document",
@@ -596,17 +639,6 @@ export class RequirementService {
       throw new ApiException(
         "VALIDATION_ERROR",
         "contentJson must be a valid Tiptap document without base64 images",
-        HttpStatus.BAD_REQUEST,
-      );
-    }
-
-    if (
-      containsBase64ImageData(input.contentText) ||
-      containsBase64ImageData(input.contentMarkdownCache)
-    ) {
-      throw new ApiException(
-        "VALIDATION_ERROR",
-        "requirement content must not contain base64 images",
         HttpStatus.BAD_REQUEST,
       );
     }
@@ -736,14 +768,108 @@ function throwRequirementNotFound(): never {
 }
 
 function isEmptyDraftRequirement(requirement: Requirement): boolean {
+  const hasContent =
+    requirement.contentFormat === "MARKDOWN"
+      ? hasText(requirement.contentMarkdown)
+      : hasText(requirement.contentMarkdownCache) ||
+        hasMeaningfulTiptapContent(requirement.contentJson);
+
   return (
     requirement.title.trim().length === 0 &&
     !hasText(requirement.summary) &&
     !hasText(requirement.contentText) &&
-    !hasText(requirement.contentMarkdownCache) &&
-    !hasMeaningfulTiptapContent(requirement.contentJson) &&
+    !hasContent &&
     (requirement.attachments?.length ?? 0) === 0
   );
+}
+
+type SaveRequirementContentInput =
+  | {
+      contentFormat: "TIPTAP_JSON";
+      contentJson: NonNullable<SaveRequirementRequest["contentJson"]>;
+      contentMarkdownCache?: string;
+      contentText?: string;
+    }
+  | {
+      contentFormat: "MARKDOWN";
+      contentMarkdown: string;
+      contentText?: string;
+    };
+
+function toSaveRequirementContent(
+  input: SaveRequirementRequest,
+): SaveRequirementContentInput {
+  if (resolveSaveContentFormat(input) === "MARKDOWN") {
+    const contentMarkdown = input.contentMarkdown ?? "";
+
+    return {
+      contentFormat: "MARKDOWN",
+      contentMarkdown,
+      contentText:
+        input.contentText ?? extractTextFromMarkdown(contentMarkdown),
+    };
+  }
+
+  return {
+    contentFormat: "TIPTAP_JSON",
+    contentJson: input.contentJson ?? {},
+    contentMarkdownCache: input.contentMarkdownCache,
+    contentText: input.contentText,
+  };
+}
+
+function resolveSaveContentFormat(
+  input: SaveRequirementRequest,
+): "TIPTAP_JSON" | "MARKDOWN" {
+  return (
+    input.contentFormat ??
+    (input.contentMarkdown !== undefined && input.contentJson === undefined
+      ? "MARKDOWN"
+      : "TIPTAP_JSON")
+  );
+}
+
+function containsDisallowedMarkdownImage(markdown: string): boolean {
+  return extractMarkdownImageTargets(markdown).some(
+    (target) => !isAllowedMarkdownImageTarget(target),
+  );
+}
+
+function extractMarkdownImageTargets(markdown: string): string[] {
+  return Array.from(
+    markdown.matchAll(/!\[[^\]\n]*\]\(([^)\n]*)\)/gu),
+    (match) => normalizeMarkdownLinkTarget(match[1] ?? ""),
+  ).filter((target) => target.length > 0);
+}
+
+function normalizeMarkdownLinkTarget(raw: string): string {
+  const target = raw.trim().split(/\s+/u)[0] ?? "";
+
+  return target.replace(/^<|>$/gu, "");
+}
+
+function isAllowedMarkdownImageTarget(target: string): boolean {
+  return /^attachment:\/\/[A-Za-z0-9._~%-]+$/u.test(target);
+}
+
+function extractTextFromMarkdown(markdown: string): string | undefined {
+  const text = markdown
+    .replace(/!\[([^\]\n]*)\]\([^\n)]*\)/gu, "$1")
+    .replace(/\[([^\]\n]+)\]\([^\n)]*\)/gu, "$1")
+    .split("\n")
+    .map((line) =>
+      line
+        .replace(/^\s{0,3}#{1,6}\s+/u, "")
+        .replace(/^\s{0,3}>\s?/u, "")
+        .replace(/^\s*[-*+]\s+\[[ xX]\]\s+/u, "")
+        .replace(/^\s*([-*+]|\d+[.)])\s+/u, "")
+        .replace(/[`*_~]/gu, "")
+        .trim(),
+    )
+    .filter((line) => line.length > 0)
+    .join("\n\n");
+
+  return text.length > 0 ? text : undefined;
 }
 
 function hasMeaningfulTiptapContent(value: unknown): boolean {
@@ -769,7 +895,7 @@ function hasMeaningfulTiptapContent(value: unknown): boolean {
   return hasMeaningfulTiptapContent(value.content);
 }
 
-function hasText(value: string | undefined): boolean {
+function hasText(value: string | undefined): value is string {
   return typeof value === "string" && value.trim().length > 0;
 }
 

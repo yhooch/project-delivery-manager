@@ -48,11 +48,19 @@ export function createRequirementDraftCacheForm(
   requirement: Requirement,
 ): RequirementDraftCacheFormState {
   return {
-    content: createContentEditorValue({
-      contentJson: requirement.contentJson,
-      contentMarkdownCache: requirement.contentMarkdownCache,
-      contentText: requirement.contentText,
-    }),
+    content:
+      requirement.contentFormat === "MARKDOWN"
+        ? createContentEditorValue({
+            contentFormat: "MARKDOWN",
+            contentMarkdown: requirement.contentMarkdown,
+            contentText: requirement.contentText,
+          })
+        : createContentEditorValue({
+            contentFormat: "TIPTAP_JSON",
+            contentJson: requirement.contentJson,
+            contentMarkdownCache: requirement.contentMarkdownCache,
+            contentText: requirement.contentText,
+          }),
     ownerId: requirement.ownerId ?? "",
     priority: requirement.priority ?? "",
     summary: requirement.summary ?? "",
@@ -266,9 +274,15 @@ function parseRequirementContentEditorValue(
   }
 
   return createContentEditorValue({
+    contentFormat:
+      value.contentFormat === "MARKDOWN" ? "MARKDOWN" : "TIPTAP_JSON",
     contentJson: isPlainRecord(value.contentJson)
       ? value.contentJson
       : undefined,
+    contentMarkdown:
+      typeof value.contentMarkdown === "string"
+        ? value.contentMarkdown
+        : undefined,
     contentMarkdownCache:
       typeof value.contentMarkdownCache === "string"
         ? value.contentMarkdownCache

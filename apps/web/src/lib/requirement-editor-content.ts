@@ -1,18 +1,47 @@
-export type RequirementContentEditorValue = {
+import {
+  MARKDOWN_ATTACHMENT_IMAGE_SRC_PREFIX,
+  createMarkdownEditorValue,
+} from "./requirement-markdown-content";
+
+export type RequirementTiptapContentEditorValue = {
+  contentFormat: "TIPTAP_JSON";
   contentJson: Record<string, unknown>;
   contentMarkdownCache?: string;
   contentText: string;
 };
 
-export const ATTACHMENT_IMAGE_SRC_PREFIX = "attachment://";
+export type RequirementMarkdownContentEditorValue = {
+  contentFormat: "MARKDOWN";
+  contentJson?: never;
+  contentMarkdown: string;
+  contentMarkdownCache?: never;
+  contentText: string;
+};
+
+export type RequirementContentEditorValue =
+  | RequirementTiptapContentEditorValue
+  | RequirementMarkdownContentEditorValue;
+
+export const ATTACHMENT_IMAGE_SRC_PREFIX = MARKDOWN_ATTACHMENT_IMAGE_SRC_PREFIX;
 
 export type AttachmentImageDisplayUrls = Readonly<Record<string, string>>;
 
 export function createContentEditorValue(input: {
+  contentFormat?: "TIPTAP_JSON" | "MARKDOWN";
   contentJson?: Record<string, unknown>;
+  contentMarkdown?: string;
   contentMarkdownCache?: string;
   contentText?: string;
 }): RequirementContentEditorValue {
+  if (
+    input.contentFormat === "MARKDOWN" ||
+    (input.contentMarkdown !== undefined && input.contentJson === undefined)
+  ) {
+    return createEditorValueFromMarkdown(
+      input.contentMarkdown ?? input.contentText ?? "",
+    );
+  }
+
   const contentText =
     input.contentText ??
     input.contentMarkdownCache ??
@@ -23,6 +52,7 @@ export function createContentEditorValue(input: {
   );
 
   return {
+    contentFormat: "TIPTAP_JSON",
     contentJson,
     contentMarkdownCache: input.contentMarkdownCache ?? contentText,
     contentText,
@@ -36,10 +66,17 @@ export function createEditorValueFromTiptapJson(
   const contentText = extractTextFromTiptapJson(sanitized) ?? "";
 
   return {
+    contentFormat: "TIPTAP_JSON",
     contentJson: sanitized,
     contentMarkdownCache: serializeTiptapJsonToMarkdown(sanitized),
     contentText,
   };
+}
+
+export function createEditorValueFromMarkdown(
+  contentMarkdown: string,
+): RequirementContentEditorValue {
+  return createMarkdownEditorValue(contentMarkdown);
 }
 
 export function createTiptapDocumentFromText(
@@ -70,7 +107,9 @@ export function createTiptapDocumentFromText(
   };
 }
 
-export function sanitizeTiptapDocument(value: unknown): Record<string, unknown> {
+export function sanitizeTiptapDocument(
+  value: unknown,
+): Record<string, unknown> {
   const sanitized = sanitizeTiptapValue(value);
 
   if (!isRecord(sanitized) || sanitized.type !== "doc") {
@@ -251,11 +290,7 @@ function serializeList(
 
   return items
     .map((item, index) =>
-      serializeListItem(
-        item,
-        ordered ? `${start + index}. ` : "- ",
-        indent,
-      ),
+      serializeListItem(item, ordered ? `${start + index}. ` : "- ", indent),
     )
     .filter((item) => item.length > 0)
     .join("\n");
@@ -538,7 +573,9 @@ function hydrateAttachmentImageSources(
 
   if (value.type === "image" && isRecord(value.attrs)) {
     const attachmentId = getAttachmentIdFromImageAttrs(value.attrs);
-    const displayUrl = attachmentId ? imageDisplayUrls[attachmentId] : undefined;
+    const displayUrl = attachmentId
+      ? imageDisplayUrls[attachmentId]
+      : undefined;
     const result = hydrateRecord(value, imageDisplayUrls);
 
     if (displayUrl && isRecord(result.attrs)) {
@@ -567,10 +604,7 @@ function hydrateRecord(
   return result;
 }
 
-function collectAttachmentImageIdsFromValue(
-  value: unknown,
-  ids: Set<string>,
-) {
+function collectAttachmentImageIdsFromValue(value: unknown, ids: Set<string>) {
   if (Array.isArray(value)) {
     value.forEach((item) => collectAttachmentImageIdsFromValue(item, ids));
     return;
@@ -656,8 +690,13 @@ function getAttachmentIdFromImageAttrs(
 }
 
 function isTransientImageAttr(key: string): boolean {
-  return ["displayUrl", "downloadUrl", "imageUrl", "previewUrl", "resolvedUrl"]
-    .includes(key);
+  return [
+    "displayUrl",
+    "downloadUrl",
+    "imageUrl",
+    "previewUrl",
+    "resolvedUrl",
+  ].includes(key);
 }
 
 function isBase64ImageSource(value: unknown): boolean {

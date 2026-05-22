@@ -1,9 +1,11 @@
 import {
   Injectable,
+  SetMetadata,
   type CallHandler,
   type ExecutionContext,
   type NestInterceptor,
 } from "@nestjs/common";
+import { Reflector } from "@nestjs/core";
 import type { ApiResponse } from "@project-delivery/shared";
 import { map, type Observable } from "rxjs";
 
@@ -14,10 +16,18 @@ type ResponseWithHeaders = {
   getHeader?: (name: string) => number | string | string[] | undefined;
 };
 
+export const SKIP_API_RESPONSE_METADATA = "api:skip-response";
+
+export function SkipApiResponse() {
+  return SetMetadata(SKIP_API_RESPONSE_METADATA, true);
+}
+
 @Injectable()
 export class ApiResponseInterceptor<T>
   implements NestInterceptor<T, ApiResponse<T>>
 {
+  constructor(private readonly reflector?: Reflector) {}
+
   intercept(
     context: ExecutionContext,
     next: CallHandler<T>,
@@ -27,6 +37,10 @@ export class ApiResponseInterceptor<T>
 
     return next.handle().pipe(
       map((data) => {
+        if (this.shouldSkipApiResponse(context)) {
+          return data as ApiResponse<T>;
+        }
+
         if (isRealtimeSseResponse(response)) {
           return data as ApiResponse<T>;
         }
@@ -40,6 +54,15 @@ export class ApiResponseInterceptor<T>
           requestId: getRequestId(request),
         };
       }),
+    );
+  }
+
+  private shouldSkipApiResponse(context: ExecutionContext): boolean {
+    return (
+      this.reflector?.getAllAndOverride<boolean>(SKIP_API_RESPONSE_METADATA, [
+        context.getHandler(),
+        context.getClass(),
+      ]) ?? false
     );
   }
 }

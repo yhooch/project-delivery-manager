@@ -156,7 +156,9 @@ export async function registerLoginCreateOrgAndSpace({
   }
 
   // 5) Refresh the page so the session picks up the freshly minted space.
-  await page.reload({ waitUntil: "networkidle" });
+  // The app may keep long-lived framework/runtime requests open, so waiting
+  // for "networkidle" can hang even after the shell has rendered correctly.
+  await page.reload({ waitUntil: "domcontentloaded" });
   await expect(page.getByTestId("org-switcher-current-name")).toHaveText(
     orgName,
     { timeout: 10_000 },

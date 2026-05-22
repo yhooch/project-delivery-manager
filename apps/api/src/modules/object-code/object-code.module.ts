@@ -14,7 +14,7 @@ import { ObjectCodeService } from "./object-code.service";
 
 @Module({
   controllers: [ObjectCodeController],
-  exports: [ObjectCodeAllocator],
+  exports: [ObjectCodeAllocator, ObjectCodeService],
   imports: [AuthModule, OrganizationModule, PrismaModule, SpaceModule],
   providers: [
     ObjectCodeAllocator,

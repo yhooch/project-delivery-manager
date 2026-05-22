@@ -179,6 +179,13 @@ import {
   RealtimeSseMessageSchema,
 } from "./realtime.ts";
 import {
+  ListAuthorizedMcpClientsResponseSchema,
+  McpJsonRpcClientMessageSchema,
+  McpJsonRpcResponseSchema,
+  RevokeAuthorizedMcpClientRequestSchema,
+  RevokeAuthorizedMcpClientResponseSchema,
+} from "./mcp.ts";
+import {
   GetMyWorkbenchViewResponseSchema,
   GetSpaceExceptionsViewResponseSchema,
   GetSpaceOverviewViewResponseSchema,
@@ -349,6 +356,17 @@ const objectCodeLookupErrors = [
   "SPACE_CONTEXT_REQUIRED",
   "VALIDATION_ERROR",
 ];
+const mcpEndpointErrors = [
+  "MCP_UNAUTHORIZED",
+  "MCP_INSUFFICIENT_SCOPE",
+  "MCP_TOOL_NOT_FOUND",
+  "MCP_TOOL_ARGUMENT_INVALID",
+  "MCP_IDEMPOTENCY_CONFLICT",
+  "MCP_CLIENT_NOT_FOUND",
+  "MCP_CONSENT_REQUIRED",
+  "MCP_CONSENT_REVOKED",
+  "VALIDATION_ERROR",
+];
 
 function endpoint(contract: ApiEndpointContract): ApiEndpointContract {
   return contract;
@@ -416,6 +434,43 @@ export const apiContracts = [
     responseContentType: "text/event-stream",
     responseWrapped: false,
     errorCodes: ["UNAUTHORIZED", "VALIDATION_ERROR"],
+  }),
+  endpoint({
+    operationId: "handleMcpStreamableHttp",
+    method: "post",
+    path: "/mcp",
+    tags: ["mcp"],
+    summary: "Handle MCP Streamable HTTP JSON-RPC messages",
+    pathSchema: EmptyObjectSchema,
+    querySchema: EmptyObjectSchema,
+    requestSchema: McpJsonRpcClientMessageSchema,
+    responseSchema: McpJsonRpcResponseSchema,
+    responseWrapped: false,
+    errorCodes: mcpEndpointErrors,
+  }),
+  endpoint({
+    operationId: "listAuthorizedMcpClients",
+    method: "get",
+    path: "/users/me/mcp/authorized-clients",
+    tags: ["mcp"],
+    summary: "List current user's authorized MCP clients",
+    pathSchema: EmptyObjectSchema,
+    querySchema: EmptyObjectSchema,
+    requestSchema: EmptyObjectSchema,
+    responseSchema: ListAuthorizedMcpClientsResponseSchema,
+    errorCodes: ["UNAUTHORIZED"],
+  }),
+  endpoint({
+    operationId: "revokeAuthorizedMcpClient",
+    method: "post",
+    path: "/users/me/mcp/authorized-clients/revoke",
+    tags: ["mcp"],
+    summary: "Revoke current user's MCP client authorization",
+    pathSchema: EmptyObjectSchema,
+    querySchema: EmptyObjectSchema,
+    requestSchema: RevokeAuthorizedMcpClientRequestSchema,
+    responseSchema: RevokeAuthorizedMcpClientResponseSchema,
+    errorCodes: ["UNAUTHORIZED", "MCP_CLIENT_NOT_FOUND", "VALIDATION_ERROR"],
   }),
   endpoint({
     operationId: "updateUserPreferences",

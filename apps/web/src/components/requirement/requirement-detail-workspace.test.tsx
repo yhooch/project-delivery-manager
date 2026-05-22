@@ -81,7 +81,10 @@ const realtimeInvalidationHandlers = vi.hoisted(
   () =>
     [] as {
       callback: (context: {
-        events: { hints?: Record<string, unknown>; target: { id: string; type: string } }[];
+        events: {
+          hints?: Record<string, unknown>;
+          target: { id: string; type: string };
+        }[];
         keys: string[];
         lastEventId: string | null;
         mode: "realtime";
@@ -124,6 +127,7 @@ vi.mock("../../lib/realtime", async (importOriginal) => {
 const editorSlotMock = vi.hoisted(() => vi.fn());
 vi.mock("./requirement-content-editor-slot", () => ({
   createContentEditorValue: () => ({
+    contentFormat: "TIPTAP_JSON",
     contentJson: { type: "doc", content: [] },
     contentMarkdownCache: "",
     contentText: "",
@@ -210,7 +214,10 @@ afterEach(() => {
 
 async function dispatchRealtimeInvalidation(
   key: string,
-  event: { target: { id: string; type: string }; hints?: Record<string, unknown> },
+  event: {
+    target: { id: string; type: string };
+    hints?: Record<string, unknown>;
+  },
 ) {
   const matchingHandlers = realtimeInvalidationHandlers.filter((handler) =>
     handler.keys.includes(key),
@@ -399,6 +406,55 @@ describe("RequirementDetailWorkspace", () => {
         expect.objectContaining({ versionId: null }),
       ),
     );
+  });
+
+  it("saves Markdown requirements without sending Tiptap JSON fields", async () => {
+    getRequirementMock.mockResolvedValueOnce(
+      makeRequirement({
+        contentFormat: "MARKDOWN",
+        contentJson: undefined,
+        contentMarkdown: "# Scope\n\nShip Markdown.",
+        contentMarkdownCache: undefined,
+        contentText: "Scope\n\nShip Markdown.",
+      }),
+    );
+    updateRequirementMock.mockResolvedValueOnce(
+      makeRequirement({
+        contentFormat: "MARKDOWN",
+        contentJson: undefined,
+        contentMarkdown: "# Scope\n\nShip Markdown.",
+        contentMarkdownCache: undefined,
+        contentText: "Scope\n\nShip Markdown.",
+      }),
+    );
+
+    render(
+      <RequirementDetailWorkspace requirementId="01ARZ3NDEKTSV4RRFFQ69G5FA1" />,
+    );
+
+    expect(
+      await screen.findByDisplayValue("Permissioned requirement"),
+    ).toBeInTheDocument();
+    fireEvent.click(
+      screen.getByRole("button", { name: "requirements.detail.save" }),
+    );
+
+    await waitFor(() =>
+      expect(updateRequirementMock).toHaveBeenCalledWith(
+        expect.any(Object),
+        expect.objectContaining({
+          contentFormat: "MARKDOWN",
+          contentMarkdown: "# Scope\n\nShip Markdown.",
+          contentText: "Scope\n\nShip Markdown.",
+        }),
+      ),
+    );
+    const body = updateRequirementMock.mock.calls[0]?.[1] as Record<
+      string,
+      unknown
+    >;
+    expect(body).not.toHaveProperty("contentJson");
+    expect(body).not.toHaveProperty("contentMarkdownCache");
   });
 
   it("reflects selected version and owner before saving", async () => {

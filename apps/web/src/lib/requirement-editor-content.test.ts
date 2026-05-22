@@ -5,6 +5,7 @@ import {
   collectAttachmentImageIds,
   createContentEditorValue,
   createTiptapDocumentForEditing,
+  createEditorValueFromMarkdown,
   createEditorValueFromTiptapJson,
   sanitizeTiptapDocument,
 } from "./requirement-editor-content";
@@ -284,6 +285,7 @@ describe("requirement editor content", () => {
         "Line one  \nLine two",
       ].join("\n\n"),
     );
+    expect(value.contentFormat).toBe("TIPTAP_JSON");
     expect(value.contentText).toContain("Overview");
     expect(value.contentText).toContain("bold");
     expect(value.contentText).not.toContain("**bold**");
@@ -295,6 +297,7 @@ describe("requirement editor content", () => {
         contentText: "Legacy text",
       }),
     ).toEqual({
+      contentFormat: "TIPTAP_JSON",
       contentJson: {
         content: [
           {
@@ -306,6 +309,16 @@ describe("requirement editor content", () => {
       },
       contentMarkdownCache: "Legacy text",
       contentText: "Legacy text",
+    });
+  });
+
+  it("creates Markdown editor values from Markdown source", () => {
+    expect(
+      createEditorValueFromMarkdown("# Scope\n\n- Ship Markdown safely."),
+    ).toEqual({
+      contentFormat: "MARKDOWN",
+      contentMarkdown: "# Scope\n\n- Ship Markdown safely.",
+      contentText: "Scope\n\nShip Markdown safely.",
     });
   });
 });

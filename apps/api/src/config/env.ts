@@ -30,7 +30,41 @@ const QueryLogModeEnvSchema = z.preprocess((value) => {
 export const EnvSchema = z
   .object({
     DATABASE_URL: z.string().url(),
+    API_PUBLIC_URL: z.string().url().default("http://localhost:3001"),
     HTTP_ACCESS_LOG_ENABLED: BooleanEnvSchema.optional(),
+    MCP_CANONICAL_RESOURCE_URI: z.string().url().optional(),
+    MCP_CLIENT_METADATA_CACHE_SECONDS: z.coerce
+      .number()
+      .int()
+      .positive()
+      .optional(),
+    MCP_CLIENT_METADATA_MAX_BYTES: z.coerce
+      .number()
+      .int()
+      .positive()
+      .optional(),
+    MCP_CLIENT_METADATA_TIMEOUT_MS: z.coerce
+      .number()
+      .int()
+      .positive()
+      .optional(),
+    MCP_OAUTH_ACCESS_TOKEN_TTL_SECONDS: z.coerce
+      .number()
+      .int()
+      .positive()
+      .optional(),
+    MCP_OAUTH_AUTHORIZATION_CODE_TTL_SECONDS: z.coerce
+      .number()
+      .int()
+      .positive()
+      .optional(),
+    MCP_OAUTH_ISSUER: z.string().url().optional(),
+    MCP_OAUTH_PRE_REGISTERED_CLIENTS: z.string().optional(),
+    MCP_OAUTH_REFRESH_TOKEN_TTL_SECONDS: z.coerce
+      .number()
+      .int()
+      .positive()
+      .optional(),
     MINIO_ACCESS_KEY: z.string().min(1).optional(),
     MINIO_AUTO_CREATE_BUCKET: BooleanEnvSchema.optional(),
     MINIO_BUCKET: z.string().min(1).optional(),
@@ -93,6 +127,20 @@ export const EnvSchema = z
       env.MINIO_PUBLIC_ENDPOINT ?? DEFAULT_MINIO_PUBLIC_ENDPOINT,
     MINIO_REGION: env.MINIO_REGION ?? DEFAULT_MINIO_REGION,
     MINIO_SECRET_KEY: env.MINIO_SECRET_KEY ?? "minioadmin",
+    MCP_CLIENT_METADATA_CACHE_SECONDS:
+      env.MCP_CLIENT_METADATA_CACHE_SECONDS ?? 60 * 60,
+    MCP_CLIENT_METADATA_MAX_BYTES:
+      env.MCP_CLIENT_METADATA_MAX_BYTES ?? 64 * 1024,
+    MCP_CLIENT_METADATA_TIMEOUT_MS:
+      env.MCP_CLIENT_METADATA_TIMEOUT_MS ?? 3_000,
+    MCP_OAUTH_ACCESS_TOKEN_TTL_SECONDS:
+      env.MCP_OAUTH_ACCESS_TOKEN_TTL_SECONDS ?? 60 * 60,
+    MCP_OAUTH_AUTHORIZATION_CODE_TTL_SECONDS:
+      env.MCP_OAUTH_AUTHORIZATION_CODE_TTL_SECONDS ?? 5 * 60,
+    MCP_OAUTH_PRE_REGISTERED_CLIENTS:
+      env.MCP_OAUTH_PRE_REGISTERED_CLIENTS ?? "[]",
+    MCP_OAUTH_REFRESH_TOKEN_TTL_SECONDS:
+      env.MCP_OAUTH_REFRESH_TOKEN_TTL_SECONDS ?? 60 * 60 * 24 * 30,
     HTTP_ACCESS_LOG_ENABLED: env.HTTP_ACCESS_LOG_ENABLED ?? true,
     QUERY_LOG_INCLUDE_PARAMS: env.QUERY_LOG_INCLUDE_PARAMS ?? true,
     QUERY_LOG_MODE: env.QUERY_LOG_MODE ?? "slow",

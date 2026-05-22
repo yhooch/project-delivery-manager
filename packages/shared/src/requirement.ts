@@ -28,6 +28,14 @@ const RequirementContentTextSchema = z
     message: "content text must not contain base64 image data",
   });
 
+export const RequirementContentFormatSchema = z.enum([
+  "TIPTAP_JSON",
+  "MARKDOWN",
+]);
+export type RequirementContentFormat = z.infer<
+  typeof RequirementContentFormatSchema
+>;
+
 export const TiptapJsonSchema = TiptapJsonRecordSchema.superRefine(
   (value, context) => {
     if (containsBase64ImageData(value)) {
@@ -92,34 +100,128 @@ export type RequirementRelatedWorkItems = z.infer<
   typeof RequirementRelatedWorkItemsSchema
 >;
 
-export const RequirementSchema = z
+const RequirementBaseSchema = z.object({
+  id: UlidSchema,
+  organizationId: UlidSchema,
+  spaceId: UlidSchema,
+  sequence: DisplayIdentitySchema.shape.sequence,
+  displayCode: DisplayIdentitySchema.shape.displayCode,
+  versionId: UlidSchema.optional(),
+  title: z.string().max(200),
+  summary: z.string().max(2000).optional(),
+  contentText: RequirementContentTextSchema.optional(),
+  status: RequirementStatusSchema,
+  priority: PrioritySchema.optional(),
+  ownerId: UlidSchema.optional(),
+  authorId: UlidSchema.optional(),
+  attachments: z.array(AttachmentRefSchema).optional(),
+  tags: TagListSchema,
+  permissions: PermissionSnapshotSchema.optional(),
+  relatedWorkItems: RequirementRelatedWorkItemsSchema,
+  createdAt: IsoDateTimeSchema,
+  updatedAt: IsoDateTimeSchema,
+});
+
+const TiptapRequirementSchema = RequirementBaseSchema.extend({
+  contentFormat: z.literal("TIPTAP_JSON"),
+  contentJson: TiptapJsonSchema,
+  contentMarkdown: z.never().optional(),
+  contentMarkdownCache: RequirementContentTextSchema.optional(),
+}).strict();
+
+const MarkdownRequirementSchema = RequirementBaseSchema.extend({
+  contentFormat: z.literal("MARKDOWN"),
+  contentJson: z.never().optional(),
+  contentMarkdown: RequirementContentTextSchema,
+  contentMarkdownCache: z.never().optional(),
+}).strict();
+
+export const RequirementSchema = z.discriminatedUnion("contentFormat", [
+  TiptapRequirementSchema,
+  MarkdownRequirementSchema,
+]);
+
+export type Requirement = z.infer<typeof RequirementSchema>;
+
+const SaveRequirementBaseSchema = z
   .object({
-    id: UlidSchema,
-    organizationId: UlidSchema,
-    spaceId: UlidSchema,
-    sequence: DisplayIdentitySchema.shape.sequence,
-    displayCode: DisplayIdentitySchema.shape.displayCode,
-    versionId: UlidSchema.optional(),
-    title: z.string().max(200),
+    title: z.string().min(1).max(200),
     summary: z.string().max(2000).optional(),
-    contentJson: TiptapJsonSchema,
+    contentFormat: RequirementContentFormatSchema.optional(),
+    contentJson: TiptapJsonSchema.optional(),
+    contentMarkdown: RequirementContentTextSchema.optional(),
     contentText: RequirementContentTextSchema.optional(),
     contentMarkdownCache: RequirementContentTextSchema.optional(),
-    contentFormat: z.literal("TIPTAP_JSON"),
-    status: RequirementStatusSchema,
+    versionId: UlidSchema.nullable().optional(),
+    cascadeVersionChange: z.boolean().optional(),
     priority: PrioritySchema.optional(),
     ownerId: UlidSchema.optional(),
-    authorId: UlidSchema.optional(),
-    attachments: z.array(AttachmentRefSchema).optional(),
-    tags: TagListSchema,
-    permissions: PermissionSnapshotSchema.optional(),
-    relatedWorkItems: RequirementRelatedWorkItemsSchema,
-    createdAt: IsoDateTimeSchema,
-    updatedAt: IsoDateTimeSchema,
   })
   .strict();
 
-export type Requirement = z.infer<typeof RequirementSchema>;
+export const SaveRequirementRequestSchema =
+  SaveRequirementBaseSchema.superRefine((value, context) => {
+    const contentFormat =
+      value.contentFormat ??
+      (value.contentMarkdown !== undefined && value.contentJson === undefined
+        ? "MARKDOWN"
+        : "TIPTAP_JSON");
+
+    if (contentFormat === "TIPTAP_JSON" && value.contentJson === undefined) {
+      context.addIssue({
+        code: "custom",
+        message: "contentJson is required for TIPTAP_JSON requirements",
+        path: ["contentJson"],
+      });
+    }
+
+    if (
+      contentFormat === "TIPTAP_JSON" &&
+      value.contentMarkdown !== undefined
+    ) {
+      context.addIssue({
+        code: "custom",
+        message: "contentMarkdown is only valid for MARKDOWN requirements",
+        path: ["contentMarkdown"],
+      });
+    }
+
+    if (
+      contentFormat === "MARKDOWN" &&
+      (value.contentMarkdown === undefined ||
+        value.contentMarkdown.trim().length === 0)
+    ) {
+      context.addIssue({
+        code: "custom",
+        message: "contentMarkdown is required for MARKDOWN requirements",
+        path: ["contentMarkdown"],
+      });
+    }
+
+    if (contentFormat === "MARKDOWN" && value.contentJson !== undefined) {
+      context.addIssue({
+        code: "custom",
+        message: "contentJson is only valid for TIPTAP_JSON requirements",
+        path: ["contentJson"],
+      });
+    }
+
+    if (
+      contentFormat === "MARKDOWN" &&
+      value.contentMarkdownCache !== undefined
+    ) {
+      context.addIssue({
+        code: "custom",
+        message:
+          "contentMarkdownCache is only a TIPTAP_JSON export cache, not MARKDOWN source",
+        path: ["contentMarkdownCache"],
+      });
+    }
+  });
+
+export type SaveRequirementRequest = z.infer<
+  typeof SaveRequirementRequestSchema
+>;
 
 const CreateRequirementDraftBodySchema = z
   .object({
@@ -133,24 +235,6 @@ export const CreateRequirementDraftRequestSchema =
 
 export type CreateRequirementDraftRequest = z.infer<
   typeof CreateRequirementDraftRequestSchema
->;
-
-export const SaveRequirementRequestSchema = z
-  .object({
-    title: z.string().min(1).max(200),
-    summary: z.string().max(2000).optional(),
-    contentJson: TiptapJsonSchema,
-    contentText: RequirementContentTextSchema.optional(),
-    contentMarkdownCache: RequirementContentTextSchema.optional(),
-    versionId: UlidSchema.nullable().optional(),
-    cascadeVersionChange: z.boolean().optional(),
-    priority: PrioritySchema.optional(),
-    ownerId: UlidSchema.optional(),
-  })
-  .strict();
-
-export type SaveRequirementRequest = z.infer<
-  typeof SaveRequirementRequestSchema
 >;
 
 export const ArchiveRequirementRequestSchema = z

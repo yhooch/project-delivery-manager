@@ -1,9 +1,10 @@
 "use client";
 
-import { KeyRound, LogOut } from "lucide-react";
+import { KeyRound, LogOut, UserRound } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useState } from "react";
 
+import { Link } from "../../i18n/routing";
 import { useSession } from "../providers/session-provider";
 import { Avatar, AvatarFallback } from "../ui/avatar";
 import { Button } from "../ui/button";
@@ -47,6 +48,16 @@ export function UserMenu() {
             </span>
           </DropdownMenuLabel>
           <DropdownMenuSeparator />
+          <DropdownMenuItem
+            asChild
+            data-testid="user-menu-personal-settings"
+            className="gap-2 text-xs"
+          >
+            <Link href="/personal-settings">
+              <UserRound className="h-3.5 w-3.5 text-muted-foreground" />
+              {t("personalSettings")}
+            </Link>
+          </DropdownMenuItem>
           <DropdownMenuItem
             data-testid="user-menu-change-password"
             onSelect={() => {

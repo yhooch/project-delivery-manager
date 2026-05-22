@@ -17,7 +17,7 @@ import { PrismaIntakeRepository } from "./prisma-intake.repository";
 
 @Module({
   controllers: [IntakeController],
-  exports: [INTAKE_REPOSITORY],
+  exports: [INTAKE_REPOSITORY, IntakeService],
   imports: [
     AuthModule,
     AuditModule,

@@ -41,7 +41,7 @@ function createRequirementFixture(
     versionId,
     ...overrides,
     tags: overrides.tags ?? [],
-  };
+  } as Requirement;
 }
 
 function createPage(items: Requirement[]): PageResult<Requirement> {
@@ -178,9 +178,12 @@ describe("requirement service", () => {
     expect(api.post).toHaveBeenCalledWith(`/spaces/${spaceId}/requirements`, {
       versionId,
     });
-    expect(api.patch).toHaveBeenLastCalledWith(`/requirements/${requirementId}`, {
-      status: "ARCHIVED",
-    });
+    expect(api.patch).toHaveBeenLastCalledWith(
+      `/requirements/${requirementId}`,
+      {
+        status: "ARCHIVED",
+      },
+    );
     expect(api.delete).toHaveBeenCalledWith(`/requirements/${requirementId}`);
   });
 });

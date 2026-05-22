@@ -39,13 +39,11 @@ export type CreateRequirementDraftInput = {
   tagIds?: string[];
 };
 
-export type SaveRequirementInput = {
+type SaveRequirementBaseInput = {
   requirementId: string;
   title: string;
   summary?: string;
-  contentJson: SaveRequirementRequest["contentJson"];
   contentText?: string;
-  contentMarkdownCache?: string;
   versionId?: string | null;
   cascadeVersionChange?: boolean;
   priority?: Priority;
@@ -53,6 +51,23 @@ export type SaveRequirementInput = {
   shouldUpdateOwner: boolean;
   updatedById: string;
 };
+
+type SaveTiptapRequirementInput = {
+  contentFormat: "TIPTAP_JSON";
+  contentJson: NonNullable<SaveRequirementRequest["contentJson"]>;
+  contentMarkdown?: never;
+  contentMarkdownCache?: string;
+};
+
+type SaveMarkdownRequirementInput = {
+  contentFormat: "MARKDOWN";
+  contentJson?: never;
+  contentMarkdown: string;
+  contentMarkdownCache?: never;
+};
+
+export type SaveRequirementInput = SaveRequirementBaseInput &
+  (SaveTiptapRequirementInput | SaveMarkdownRequirementInput);
 
 export type RequirementVersionCascadeImpact = TraceVersionCascadeImpact & {
   intakeItemCount: number;

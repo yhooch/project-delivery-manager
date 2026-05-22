@@ -50,6 +50,36 @@ export type User = Prisma.UserModel
  */
 export type Session = Prisma.SessionModel
 /**
+ * Model McpOAuthClient
+ *
+ */
+export type McpOAuthClient = Prisma.McpOAuthClientModel
+/**
+ * Model McpOAuthAuthorization
+ *
+ */
+export type McpOAuthAuthorization = Prisma.McpOAuthAuthorizationModel
+/**
+ * Model McpOAuthAuthorizationCode
+ *
+ */
+export type McpOAuthAuthorizationCode = Prisma.McpOAuthAuthorizationCodeModel
+/**
+ * Model McpOAuthAccessToken
+ *
+ */
+export type McpOAuthAccessToken = Prisma.McpOAuthAccessTokenModel
+/**
+ * Model McpOAuthRefreshToken
+ *
+ */
+export type McpOAuthRefreshToken = Prisma.McpOAuthRefreshTokenModel
+/**
+ * Model McpToolInvocation
+ *
+ */
+export type McpToolInvocation = Prisma.McpToolInvocationModel
+/**
  * Model Organization
  *
  */

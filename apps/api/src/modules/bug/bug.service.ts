@@ -154,10 +154,10 @@ export class BugService {
       actionType: "CREATE",
       actorId: actorUserId,
       after: toAuditRecord(created),
-      metadata: {
+      metadata: mergeAuditMetadata(auditMetadata, {
         operation: "createBug",
         workItemType: "BUG",
-      },
+      }),
       organizationId: created.organizationId,
       spaceId: created.spaceId,
       targetId: created.id,
@@ -330,10 +330,10 @@ export class BugService {
       actorId: actorUserId,
       after: toAuditRecord(updated),
       before: toAuditRecord(bug),
-      metadata: {
+      metadata: mergeAuditMetadata(auditMetadata, {
         operation: "updateBug",
         workItemType: "BUG",
-      },
+      }),
       organizationId: updated.organizationId,
       spaceId: updated.spaceId,
       targetId: updated.id,
@@ -478,10 +478,11 @@ export class BugService {
         ...auditMetadata,
         actionType: "ACCESS_DENIED",
         actorId: userId,
-        metadata: {
+        metadata: mergeAuditMetadata(auditMetadata, {
           operation,
+          resultStatus: "ERROR",
           reason: getBugCreateDeniedReason(access.role),
-        },
+        }),
         organizationId: access.space.organizationId,
         spaceId,
         targetId: spaceId,
@@ -697,10 +698,11 @@ export class BugService {
       ...auditMetadata,
       actionType: "ACCESS_DENIED",
       actorId: actorUserId,
-      metadata: {
+      metadata: mergeAuditMetadata(auditMetadata, {
         operation,
+        resultStatus: "ERROR",
         reason,
-      },
+      }),
       organizationId: context.organizationId,
       spaceId: context.spaceId,
       targetId: context.spaceId,
@@ -719,11 +721,12 @@ export class BugService {
       ...auditMetadata,
       actionType: "ACCESS_DENIED",
       actorId: actorUserId,
-      metadata: {
+      metadata: mergeAuditMetadata(auditMetadata, {
         operation,
+        resultStatus: "ERROR",
         reason,
         workItemType: "BUG",
-      },
+      }),
       organizationId: bug.organizationId,
       spaceId: bug.spaceId,
       targetId: bug.id,
@@ -772,6 +775,16 @@ export class BugService {
 
 function canReadAllSpaceBugs(role: SpaceRole) {
   return SPACE_BUG_READ_ALL_ROLES.has(role);
+}
+
+function mergeAuditMetadata(
+  auditMetadata: AuditMetadata,
+  metadata: Record<string, unknown>,
+) {
+  return {
+    ...auditMetadata.metadata,
+    ...metadata,
+  };
 }
 
 function parseOptionalDate(value: string | null | undefined, field: string) {

@@ -13,6 +13,15 @@ export type LegacySessionContext = {
   organizationId?: string;
 };
 
+export type McpOAuthPrincipalContext = {
+  accessTokenId: string;
+  authorizationId: string;
+  clientId: string;
+  resource: string;
+  scopes: string[];
+  userId: string;
+};
+
 export type HeaderValue = string | string[] | undefined;
 
 export type RequestWithContext = {
@@ -20,6 +29,7 @@ export type RequestWithContext = {
   currentUser?: AuthenticatedUserContext;
   headers?: Record<string, HeaderValue>;
   ip?: string;
+  mcpPrincipal?: McpOAuthPrincipalContext;
   protocol?: string;
   requestId?: string;
   session?: SessionContext;

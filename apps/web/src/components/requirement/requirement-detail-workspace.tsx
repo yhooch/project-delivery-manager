@@ -1356,15 +1356,29 @@ function requirementToFormState(
 function formStateToSaveRequest(
   form: RequirementFormState,
 ): UpdateRequirementRequest {
-  return {
-    contentJson: form.content.contentJson,
-    contentMarkdownCache: optionalText(form.content.contentMarkdownCache ?? ""),
-    contentText: optionalText(form.content.contentText),
+  const common = {
     ownerId: optionalText(form.ownerId),
     priority: form.priority || undefined,
     summary: optionalText(form.summary),
     title: form.title.trim(),
     versionId: optionalText(form.versionId) ?? null,
+  };
+
+  if (form.content.contentFormat === "MARKDOWN") {
+    return {
+      ...common,
+      contentFormat: "MARKDOWN",
+      contentMarkdown: form.content.contentMarkdown,
+      contentText: optionalText(form.content.contentText),
+    };
+  }
+
+  return {
+    ...common,
+    contentFormat: "TIPTAP_JSON",
+    contentJson: form.content.contentJson,
+    contentMarkdownCache: optionalText(form.content.contentMarkdownCache ?? ""),
+    contentText: optionalText(form.content.contentText),
   };
 }
 
@@ -1378,10 +1392,17 @@ function areRequirementFormsEqual(
     left.ownerId === right.ownerId &&
     left.priority === right.priority &&
     left.versionId === right.versionId &&
+    left.content.contentFormat === right.content.contentFormat &&
     left.content.contentText === right.content.contentText &&
-    left.content.contentMarkdownCache === right.content.contentMarkdownCache &&
-    JSON.stringify(left.content.contentJson) ===
-      JSON.stringify(right.content.contentJson)
+    (left.content.contentFormat === "MARKDOWN" &&
+    right.content.contentFormat === "MARKDOWN"
+      ? left.content.contentMarkdown === right.content.contentMarkdown
+      : left.content.contentFormat === "TIPTAP_JSON" &&
+        right.content.contentFormat === "TIPTAP_JSON" &&
+        left.content.contentMarkdownCache ===
+          right.content.contentMarkdownCache &&
+        JSON.stringify(left.content.contentJson) ===
+          JSON.stringify(right.content.contentJson))
   );
 }
 
@@ -1394,7 +1415,9 @@ function isEmptyDraftRequirement(
     form.title.trim().length === 0 &&
     form.summary.trim().length === 0 &&
     form.content.contentText.trim().length === 0 &&
-    !hasMeaningfulTiptapContent(form.content.contentJson) &&
+    (form.content.contentFormat === "MARKDOWN"
+      ? form.content.contentMarkdown.trim().length === 0
+      : !hasMeaningfulTiptapContent(form.content.contentJson)) &&
     (requirement.attachments?.length ?? 0) === 0
   );
 }

@@ -13,7 +13,7 @@ import { SpaceService } from "./space.service";
 
 @Module({
   controllers: [SpaceController],
-  exports: [SPACE_REPOSITORY],
+  exports: [SPACE_REPOSITORY, SpaceService],
   imports: [
     AuthModule,
     AuditModule,

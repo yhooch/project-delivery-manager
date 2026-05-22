@@ -14,8 +14,9 @@ import { formatDisplayCode } from "../object-code/object-code.types";
 
 type PrismaRequirementRecord = {
   authorId: string | null;
-  contentFormat: "TIPTAP_JSON";
+  contentFormat: "TIPTAP_JSON" | "MARKDOWN";
   contentJson: unknown;
+  contentMarkdown: string | null;
   contentMarkdownCache: string | null;
   contentText: string | null;
   createdAt: Date;
@@ -56,7 +57,7 @@ export function toRequirement(
   relatedWorkItems: RequirementRelatedWorkItems = emptyRelatedWorkItems(),
   tags: TagDto[] = [],
 ): Requirement {
-  return {
+  const base = {
     id: record.id,
     ...toRequirementDisplayIdentity(record.sequence),
     organizationId: record.organizationId,
@@ -64,10 +65,7 @@ export function toRequirement(
     versionId: record.versionId ?? undefined,
     title: record.title,
     summary: record.summary ?? undefined,
-    contentJson: toTiptapJson(record.contentJson),
     contentText: record.contentText ?? undefined,
-    contentMarkdownCache: record.contentMarkdownCache ?? undefined,
-    contentFormat: record.contentFormat,
     status: record.status,
     priority: record.priority ?? undefined,
     ownerId: record.ownerId ?? undefined,
@@ -77,6 +75,21 @@ export function toRequirement(
     relatedWorkItems,
     createdAt: record.createdAt.toISOString(),
     updatedAt: record.updatedAt.toISOString(),
+  };
+
+  if (record.contentFormat === "MARKDOWN") {
+    return {
+      ...base,
+      contentFormat: "MARKDOWN",
+      contentMarkdown: record.contentMarkdown ?? "",
+    };
+  }
+
+  return {
+    ...base,
+    contentFormat: "TIPTAP_JSON",
+    contentJson: toTiptapJson(record.contentJson),
+    contentMarkdownCache: record.contentMarkdownCache ?? undefined,
   };
 }
 

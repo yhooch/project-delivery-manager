@@ -46,6 +46,7 @@ vi.mock("next-intl", () => ({
 
 function makeValue(contentJson: Record<string, unknown>) {
   return {
+    contentFormat: "TIPTAP_JSON" as const,
     contentJson,
     contentMarkdownCache: "",
     contentText: "",
@@ -497,5 +498,60 @@ describe("RequirementContentEditorSlot image drop", () => {
     expect(
       screen.queryByText("requirements.editor.uploadErrors.UPLOAD_FAILED"),
     ).not.toBeInTheDocument();
+  });
+});
+
+describe("RequirementContentEditorSlot markdown mode", () => {
+  it("edits Markdown source and emits Markdown editor values", () => {
+    const onChange = vi.fn();
+
+    render(
+      <RequirementContentEditorSlot
+        onChange={onChange}
+        value={{
+          contentFormat: "MARKDOWN",
+          contentMarkdown: "# Scope",
+          contentText: "Scope",
+        }}
+      />,
+    );
+
+    const editor = screen.getByRole("textbox", {
+      name: "requirements.editor.ariaLabel",
+    });
+    fireEvent.change(editor, {
+      target: { value: "# Scope\n\n- Ship Markdown safely." },
+    });
+
+    expect(onChange).toHaveBeenCalledWith({
+      contentFormat: "MARKDOWN",
+      contentMarkdown: "# Scope\n\n- Ship Markdown safely.",
+      contentText: "Scope\n\nShip Markdown safely.",
+    });
+  });
+
+  it("renders Markdown preview with React text nodes when disabled", () => {
+    render(
+      <RequirementContentEditorSlot
+        disabled
+        onChange={vi.fn()}
+        value={{
+          contentFormat: "MARKDOWN",
+          contentMarkdown: [
+            "## Overview",
+            "",
+            "> <script>alert(1)</script>",
+            "",
+            "![remote](https://example.com/remote.png)",
+          ].join("\n"),
+          contentText: "Overview",
+        }}
+      />,
+    );
+
+    expect(screen.getByRole("heading", { name: "Overview" })).toBeVisible();
+    expect(screen.getByText("<script>alert(1)</script>")).toBeVisible();
+    expect(screen.getByText("[image: remote]")).toBeVisible();
+    expect(screen.queryByRole("textbox")).toBeNull();
   });
 });

@@ -114,6 +114,7 @@ export type ParticipantInput = {
 export type AuditMetadata = {
   requestId?: string;
   ip?: string;
+  metadata?: Record<string, unknown>;
   userAgent?: string;
 };
 

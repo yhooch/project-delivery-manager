@@ -599,7 +599,109 @@
       "OBJECT_CODE_NOT_FOUND": "No object was found for that code.",
       "OBJECT_CODE_AMBIGUOUS": "That code exists in multiple spaces. Provide space context.",
       "SPACE_CONTEXT_REQUIRED": "Space context is required. Select a project space.",
+      "MCP_UNAUTHORIZED": "MCP authorization has expired. Authorize the client again.",
+      "MCP_INSUFFICIENT_SCOPE": "The MCP client is missing the required scope for this action.",
+      "MCP_TOOL_NOT_FOUND": "The MCP tool is unavailable or has not been enabled.",
+      "MCP_TOOL_ARGUMENT_INVALID": "The MCP tool arguments did not pass validation.",
+      "MCP_IDEMPOTENCY_CONFLICT": "The MCP idempotency key was already used with different arguments.",
+      "MCP_CLIENT_NOT_FOUND": "The MCP client is unavailable or disabled.",
+      "MCP_CONSENT_REQUIRED": "Authorize this MCP client before continuing.",
+      "MCP_CONSENT_REVOKED": "This MCP client authorization has been revoked.",
       "UNKNOWN": "The operation failed. Try again later."
+    }
+  },
+  "mcp": {
+    "scopes": {
+      "mcp:read": "Read workspace data",
+      "mcp:write:requirement": "Write requirements",
+      "mcp:write:intake": "Write intake items",
+      "mcp:write:workitem": "Write work items",
+      "mcp:write:bug": "Write bugs",
+      "mcp:write:comment": "Write comments",
+      "mcp:write:tag": "Write tags",
+      "mcp:execute:workflow": "Execute workflow actions"
+    }
+  },
+  "oauth": {
+    "mcpAuthorize": {
+      "eyebrow": "MCP authorization",
+      "title": "Confirm authorization request",
+      "description": "{clientName} is requesting access to your project delivery workspace.",
+      "fields": {
+        "source": "Client source",
+        "redirectHost": "Redirect host",
+        "registrationMode": "Registration mode",
+        "resource": "Resource",
+        "scopes": "Scopes"
+      },
+      "registrationMode": {
+        "PRE_REGISTERED": "Pre-registered client",
+        "CLIENT_ID_METADATA_DOCUMENT": "Client metadata document"
+      },
+      "risk": {
+        "title": "Authorization risk",
+        "description": "After confirmation, this client can access or modify data within your account permissions for the scopes above. Verify the client name, source, and redirect host before continuing.",
+        "localhostTitle": "Local redirect risk",
+        "localhostDescription": "This request returns the authorization code to localhost or a local machine address. Continue only if you just started authorization from a local app."
+      },
+      "states": {
+        "sessionLoading": "Checking sign-in state",
+        "loading": "Loading authorization request",
+        "error": {
+          "title": "Unable to load authorization request"
+        },
+        "unauthenticated": {
+          "title": "Sign-in required",
+          "description": "Sign in before confirming MCP client authorization. Reopen the authorization link after signing in."
+        }
+      },
+      "actions": {
+        "signIn": "Go to sign in",
+        "retry": "Retry",
+        "reject": "Deny / go back",
+        "rejecting": "Returning",
+        "confirm": "Confirm authorization",
+        "confirming": "Authorizing"
+      }
+    }
+  },
+  "personalSettings": {
+    "eyebrow": "Personal settings",
+    "title": "Personal settings",
+    "description": "View and manage MCP clients authorized for your account.",
+    "fields": {
+      "clientId": "Client ID",
+      "source": "Source",
+      "unknownSource": "No source provided",
+      "scopes": "Scopes",
+      "authorizedAt": "Authorized at",
+      "lastUsedAt": "Last used",
+      "neverUsed": "Not used yet"
+    },
+    "status": {
+      "ACTIVE": "Authorized",
+      "REVOKED": "Revoked",
+      "EXPIRED": "Expired"
+    },
+    "states": {
+      "loading": "Loading authorized clients",
+      "error": {
+        "title": "Unable to load authorized clients"
+      },
+      "empty": {
+        "title": "No authorized clients",
+        "description": "MCP clients will appear here after you authorize them."
+      },
+      "unauthenticated": {
+        "title": "Sign-in required",
+        "description": "Sign in to view personal settings."
+      }
+    },
+    "actions": {
+      "refresh": "Refresh",
+      "retry": "Retry",
+      "revoke": "Revoke",
+      "revoking": "Revoking"
     }
   },
   "shell": {
@@ -684,6 +786,7 @@
       "openMenu": "Open user menu",
       "profile": "Profile",
       "preferences": "Preferences",
+      "personalSettings": "Personal settings",
       "changePassword": "Change password",
       "logout": "Sign out"
     },

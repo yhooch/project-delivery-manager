@@ -1,6 +1,6 @@
 import "reflect-metadata";
 
-import { type INestApplication } from "@nestjs/common";
+import { RequestMethod, type INestApplication } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { NestFactory } from "@nestjs/core";
 import cookieParser from "cookie-parser";
@@ -9,7 +9,34 @@ import { AppModule } from "./app.module";
 
 export function configureApp(app: INestApplication): INestApplication {
   app.use(cookieParser());
-  app.setGlobalPrefix("api/v1");
+  app.setGlobalPrefix("api/v1", {
+    exclude: [
+      {
+        path: ".well-known/oauth-protected-resource",
+        method: RequestMethod.GET,
+      },
+      {
+        path: ".well-known/oauth-authorization-server",
+        method: RequestMethod.GET,
+      },
+      {
+        path: "oauth/authorize",
+        method: RequestMethod.GET,
+      },
+      {
+        path: "oauth/token",
+        method: RequestMethod.POST,
+      },
+      {
+        path: "oauth/register",
+        method: RequestMethod.POST,
+      },
+      {
+        path: "oauth/revoke",
+        method: RequestMethod.POST,
+      },
+    ],
+  });
   return app;
 }
 

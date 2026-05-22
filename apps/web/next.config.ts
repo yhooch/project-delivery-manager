@@ -12,6 +12,26 @@ const nextConfig: NextConfig = {
         source: "/api/v1/:path*",
         destination: `${apiProxyTarget}/api/v1/:path*`,
       },
+      {
+        source: "/.well-known/:path*",
+        destination: `${apiProxyTarget}/.well-known/:path*`,
+      },
+      {
+        source: "/oauth/authorize",
+        destination: `${apiProxyTarget}/oauth/authorize`,
+      },
+      {
+        source: "/oauth/token",
+        destination: `${apiProxyTarget}/oauth/token`,
+      },
+      {
+        source: "/oauth/register",
+        destination: `${apiProxyTarget}/oauth/register`,
+      },
+      {
+        source: "/oauth/revoke",
+        destination: `${apiProxyTarget}/oauth/revoke`,
+      },
     ];
   },
 };

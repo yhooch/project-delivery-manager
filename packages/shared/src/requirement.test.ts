@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   CreateRequirementDraftRequestSchema,
+  RequirementSchema,
   UpdateRequirementRequestSchema,
 } from "./requirement.ts";
 
@@ -40,6 +41,62 @@ describe("requirement schemas", () => {
     ).toThrow();
   });
 
+  it("accepts Markdown as a requirement content source", () => {
+    expect(
+      RequirementSchema.parse({
+        id: "01FRZ3NDEKTSV4RRFFQ69G5FAE",
+        organizationId: "01BRZ3NDEKTSV4RRFFQ69G5FAA",
+        spaceId: "01DRZ3NDEKTSV4RRFFQ69G5FAC",
+        title: "Markdown requirement",
+        contentFormat: "MARKDOWN",
+        contentMarkdown: "# Scope\n\nShip the MCP contract.",
+        contentText: "Scope\n\nShip the MCP contract.",
+        status: "CONFIRMED",
+        tags: [],
+        relatedWorkItems: {
+          taskCount: 0,
+          bugCount: 0,
+          tasks: [],
+          bugs: [],
+        },
+        createdAt: "2026-05-22T00:00:00.000Z",
+        updatedAt: "2026-05-22T00:00:00.000Z",
+      }),
+    ).toMatchObject({
+      contentFormat: "MARKDOWN",
+      contentMarkdown: "# Scope\n\nShip the MCP contract.",
+    });
+
+    expect(
+      UpdateRequirementRequestSchema.parse({
+        title: "Markdown requirement",
+        contentFormat: "MARKDOWN",
+        contentMarkdown: "# Scope",
+      }),
+    ).toMatchObject({
+      contentFormat: "MARKDOWN",
+      contentMarkdown: "# Scope",
+    });
+
+    expect(() =>
+      UpdateRequirementRequestSchema.parse({
+        title: "Mixed content",
+        contentFormat: "MARKDOWN",
+        contentJson: { type: "doc", content: [] },
+        contentMarkdown: "# Scope",
+      }),
+    ).toThrow();
+
+    expect(() =>
+      UpdateRequirementRequestSchema.parse({
+        title: "Wrong cache",
+        contentFormat: "MARKDOWN",
+        contentMarkdown: "# Scope",
+        contentMarkdownCache: "# Cached export",
+      }),
+    ).toThrow();
+  });
+
   it("rejects base64 image data anywhere in requirement content", () => {
     expect(() =>
       UpdateRequirementRequestSchema.parse({
@@ -71,6 +128,14 @@ describe("requirement schemas", () => {
         title: "Markdown cache",
         contentJson: { type: "doc", content: [] },
         contentMarkdownCache: "![inline](data:image/jpeg;base64,AAAA)",
+      }),
+    ).toThrow();
+
+    expect(() =>
+      UpdateRequirementRequestSchema.parse({
+        title: "Markdown source",
+        contentFormat: "MARKDOWN",
+        contentMarkdown: "![inline](data:image/gif;base64,AAAA)",
       }),
     ).toThrow();
   });

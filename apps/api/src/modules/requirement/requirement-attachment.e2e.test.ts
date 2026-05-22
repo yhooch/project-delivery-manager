@@ -932,7 +932,18 @@ describe("requirement and attachment API", () => {
     body:
       | {
           contentJson: SaveRequirementRequest["contentJson"];
+          contentFormat?: "TIPTAP_JSON";
           contentMarkdownCache?: string;
+          contentText?: string;
+          ownerId?: string;
+          priority?: Priority;
+          summary?: string;
+          title: string;
+          versionId?: string;
+        }
+      | {
+          contentFormat: "MARKDOWN";
+          contentMarkdown: string;
           contentText?: string;
           ownerId?: string;
           priority?: Priority;
@@ -1619,27 +1630,44 @@ class InMemoryRequirementRepository implements RequirementRepository {
       return undefined;
     }
 
-    requirement.title = input.title;
-    requirement.summary = input.summary ?? requirement.summary;
-    requirement.contentJson = input.contentJson;
-    requirement.contentText = input.contentText ?? requirement.contentText;
-    requirement.contentMarkdownCache =
-      input.contentMarkdownCache ?? requirement.contentMarkdownCache;
+    const content =
+      input.contentFormat === "MARKDOWN"
+        ? {
+            contentFormat: "MARKDOWN" as const,
+            contentMarkdown: input.contentMarkdown,
+            contentText: input.contentText ?? requirement.contentText,
+          }
+        : {
+            contentFormat: "TIPTAP_JSON" as const,
+            contentJson: input.contentJson,
+            contentMarkdownCache:
+              input.contentMarkdownCache ?? requirement.contentMarkdownCache,
+            contentText: input.contentText ?? requirement.contentText,
+          };
+    const updated = {
+      ...requirement,
+      ...content,
+      title: input.title,
+      summary: input.summary ?? requirement.summary,
+    };
+
     if (input.versionId !== undefined) {
-      requirement.versionId = input.versionId ?? undefined;
+      updated.versionId = input.versionId ?? undefined;
     }
-    requirement.priority = input.priority ?? requirement.priority;
-    requirement.status = "CONFIRMED";
-    requirement.updatedAt = new Date().toISOString();
+    updated.priority = input.priority ?? requirement.priority;
+    updated.status = "CONFIRMED";
+    updated.updatedAt = new Date().toISOString();
     if (input.shouldUpdateOwner) {
-      requirement.ownerId = input.ownerId;
+      updated.ownerId = input.ownerId;
       if (input.ownerId) {
         this.removeParticipants(requirement.id, "ASSIGNEE", input.ownerId);
         this.ensureParticipant(requirement.id, input.ownerId, "ASSIGNEE");
       }
     }
 
-    return this.toPublic(requirement);
+    this.records.set(updated.id, updated as InternalRequirement);
+
+    return this.toPublic(updated as InternalRequirement);
   }
 
   async archive(

@@ -42,6 +42,7 @@ export type RequirementMinAggregateOutputType = {
   versionId: string | null
   title: string | null
   summary: string | null
+  contentMarkdown: string | null
   contentText: string | null
   contentMarkdownCache: string | null
   contentFormat: $Enums.ContentFormat | null
@@ -64,6 +65,7 @@ export type RequirementMaxAggregateOutputType = {
   versionId: string | null
   title: string | null
   summary: string | null
+  contentMarkdown: string | null
   contentText: string | null
   contentMarkdownCache: string | null
   contentFormat: $Enums.ContentFormat | null
@@ -87,6 +89,7 @@ export type RequirementCountAggregateOutputType = {
   title: number
   summary: number
   contentJson: number
+  contentMarkdown: number
   contentText: number
   contentMarkdownCache: number
   contentFormat: number
@@ -119,6 +122,7 @@ export type RequirementMinAggregateInputType = {
   versionId?: true
   title?: true
   summary?: true
+  contentMarkdown?: true
   contentText?: true
   contentMarkdownCache?: true
   contentFormat?: true
@@ -141,6 +145,7 @@ export type RequirementMaxAggregateInputType = {
   versionId?: true
   title?: true
   summary?: true
+  contentMarkdown?: true
   contentText?: true
   contentMarkdownCache?: true
   contentFormat?: true
@@ -164,6 +169,7 @@ export type RequirementCountAggregateInputType = {
   title?: true
   summary?: true
   contentJson?: true
+  contentMarkdown?: true
   contentText?: true
   contentMarkdownCache?: true
   contentFormat?: true
@@ -274,6 +280,7 @@ export type RequirementGroupByOutputType = {
   title: string
   summary: string | null
   contentJson: runtime.JsonValue
+  contentMarkdown: string | null
   contentText: string | null
   contentMarkdownCache: string | null
   contentFormat: $Enums.ContentFormat
@@ -320,6 +327,7 @@ export type RequirementWhereInput = {
   title?: Prisma.StringFilter<"Requirement"> | string
   summary?: Prisma.StringNullableFilter<"Requirement"> | string | null
   contentJson?: Prisma.JsonFilter<"Requirement">
+  contentMarkdown?: Prisma.StringNullableFilter<"Requirement"> | string | null
   contentText?: Prisma.StringNullableFilter<"Requirement"> | string | null
   contentMarkdownCache?: Prisma.StringNullableFilter<"Requirement"> | string | null
   contentFormat?: Prisma.EnumContentFormatFilter<"Requirement"> | $Enums.ContentFormat
@@ -350,6 +358,7 @@ export type RequirementOrderByWithRelationInput = {
   title?: Prisma.SortOrder
   summary?: Prisma.SortOrderInput | Prisma.SortOrder
   contentJson?: Prisma.SortOrder
+  contentMarkdown?: Prisma.SortOrderInput | Prisma.SortOrder
   contentText?: Prisma.SortOrderInput | Prisma.SortOrder
   contentMarkdownCache?: Prisma.SortOrderInput | Prisma.SortOrder
   contentFormat?: Prisma.SortOrder
@@ -383,6 +392,7 @@ export type RequirementWhereUniqueInput = Prisma.AtLeast<{
   title?: Prisma.StringFilter<"Requirement"> | string
   summary?: Prisma.StringNullableFilter<"Requirement"> | string | null
   contentJson?: Prisma.JsonFilter<"Requirement">
+  contentMarkdown?: Prisma.StringNullableFilter<"Requirement"> | string | null
   contentText?: Prisma.StringNullableFilter<"Requirement"> | string | null
   contentMarkdownCache?: Prisma.StringNullableFilter<"Requirement"> | string | null
   contentFormat?: Prisma.EnumContentFormatFilter<"Requirement"> | $Enums.ContentFormat
@@ -413,6 +423,7 @@ export type RequirementOrderByWithAggregationInput = {
   title?: Prisma.SortOrder
   summary?: Prisma.SortOrderInput | Prisma.SortOrder
   contentJson?: Prisma.SortOrder
+  contentMarkdown?: Prisma.SortOrderInput | Prisma.SortOrder
   contentText?: Prisma.SortOrderInput | Prisma.SortOrder
   contentMarkdownCache?: Prisma.SortOrderInput | Prisma.SortOrder
   contentFormat?: Prisma.SortOrder
@@ -444,6 +455,7 @@ export type RequirementScalarWhereWithAggregatesInput = {
   title?: Prisma.StringWithAggregatesFilter<"Requirement"> | string
   summary?: Prisma.StringNullableWithAggregatesFilter<"Requirement"> | string | null
   contentJson?: Prisma.JsonWithAggregatesFilter<"Requirement">
+  contentMarkdown?: Prisma.StringNullableWithAggregatesFilter<"Requirement"> | string | null
   contentText?: Prisma.StringNullableWithAggregatesFilter<"Requirement"> | string | null
   contentMarkdownCache?: Prisma.StringNullableWithAggregatesFilter<"Requirement"> | string | null
   contentFormat?: Prisma.EnumContentFormatWithAggregatesFilter<"Requirement"> | $Enums.ContentFormat
@@ -464,6 +476,7 @@ export type RequirementCreateInput = {
   title?: string
   summary?: string | null
   contentJson?: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  contentMarkdown?: string | null
   contentText?: string | null
   contentMarkdownCache?: string | null
   contentFormat?: $Enums.ContentFormat
@@ -492,6 +505,7 @@ export type RequirementUncheckedCreateInput = {
   title?: string
   summary?: string | null
   contentJson?: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  contentMarkdown?: string | null
   contentText?: string | null
   contentMarkdownCache?: string | null
   contentFormat?: $Enums.ContentFormat
@@ -514,6 +528,7 @@ export type RequirementUpdateInput = {
   title?: Prisma.StringFieldUpdateOperationsInput | string
   summary?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   contentJson?: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  contentMarkdown?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   contentText?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   contentMarkdownCache?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   contentFormat?: Prisma.EnumContentFormatFieldUpdateOperationsInput | $Enums.ContentFormat
@@ -542,6 +557,7 @@ export type RequirementUncheckedUpdateInput = {
   title?: Prisma.StringFieldUpdateOperationsInput | string
   summary?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   contentJson?: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  contentMarkdown?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   contentText?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   contentMarkdownCache?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   contentFormat?: Prisma.EnumContentFormatFieldUpdateOperationsInput | $Enums.ContentFormat
@@ -567,6 +583,7 @@ export type RequirementCreateManyInput = {
   title?: string
   summary?: string | null
   contentJson?: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  contentMarkdown?: string | null
   contentText?: string | null
   contentMarkdownCache?: string | null
   contentFormat?: $Enums.ContentFormat
@@ -587,6 +604,7 @@ export type RequirementUpdateManyMutationInput = {
   title?: Prisma.StringFieldUpdateOperationsInput | string
   summary?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   contentJson?: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  contentMarkdown?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   contentText?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   contentMarkdownCache?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   contentFormat?: Prisma.EnumContentFormatFieldUpdateOperationsInput | $Enums.ContentFormat
@@ -608,6 +626,7 @@ export type RequirementUncheckedUpdateManyInput = {
   title?: Prisma.StringFieldUpdateOperationsInput | string
   summary?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   contentJson?: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  contentMarkdown?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   contentText?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   contentMarkdownCache?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   contentFormat?: Prisma.EnumContentFormatFieldUpdateOperationsInput | $Enums.ContentFormat
@@ -641,6 +660,7 @@ export type RequirementCountOrderByAggregateInput = {
   title?: Prisma.SortOrder
   summary?: Prisma.SortOrder
   contentJson?: Prisma.SortOrder
+  contentMarkdown?: Prisma.SortOrder
   contentText?: Prisma.SortOrder
   contentMarkdownCache?: Prisma.SortOrder
   contentFormat?: Prisma.SortOrder
@@ -667,6 +687,7 @@ export type RequirementMaxOrderByAggregateInput = {
   versionId?: Prisma.SortOrder
   title?: Prisma.SortOrder
   summary?: Prisma.SortOrder
+  contentMarkdown?: Prisma.SortOrder
   contentText?: Prisma.SortOrder
   contentMarkdownCache?: Prisma.SortOrder
   contentFormat?: Prisma.SortOrder
@@ -689,6 +710,7 @@ export type RequirementMinOrderByAggregateInput = {
   versionId?: Prisma.SortOrder
   title?: Prisma.SortOrder
   summary?: Prisma.SortOrder
+  contentMarkdown?: Prisma.SortOrder
   contentText?: Prisma.SortOrder
   contentMarkdownCache?: Prisma.SortOrder
   contentFormat?: Prisma.SortOrder
@@ -980,6 +1002,7 @@ export type RequirementCreateWithoutOwnerInput = {
   title?: string
   summary?: string | null
   contentJson?: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  contentMarkdown?: string | null
   contentText?: string | null
   contentMarkdownCache?: string | null
   contentFormat?: $Enums.ContentFormat
@@ -1007,6 +1030,7 @@ export type RequirementUncheckedCreateWithoutOwnerInput = {
   title?: string
   summary?: string | null
   contentJson?: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  contentMarkdown?: string | null
   contentText?: string | null
   contentMarkdownCache?: string | null
   contentFormat?: $Enums.ContentFormat
@@ -1038,6 +1062,7 @@ export type RequirementCreateWithoutAuthorInput = {
   title?: string
   summary?: string | null
   contentJson?: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  contentMarkdown?: string | null
   contentText?: string | null
   contentMarkdownCache?: string | null
   contentFormat?: $Enums.ContentFormat
@@ -1065,6 +1090,7 @@ export type RequirementUncheckedCreateWithoutAuthorInput = {
   title?: string
   summary?: string | null
   contentJson?: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  contentMarkdown?: string | null
   contentText?: string | null
   contentMarkdownCache?: string | null
   contentFormat?: $Enums.ContentFormat
@@ -1118,6 +1144,7 @@ export type RequirementScalarWhereInput = {
   title?: Prisma.StringFilter<"Requirement"> | string
   summary?: Prisma.StringNullableFilter<"Requirement"> | string | null
   contentJson?: Prisma.JsonFilter<"Requirement">
+  contentMarkdown?: Prisma.StringNullableFilter<"Requirement"> | string | null
   contentText?: Prisma.StringNullableFilter<"Requirement"> | string | null
   contentMarkdownCache?: Prisma.StringNullableFilter<"Requirement"> | string | null
   contentFormat?: Prisma.EnumContentFormatFilter<"Requirement"> | $Enums.ContentFormat
@@ -1154,6 +1181,7 @@ export type RequirementCreateWithoutOrganizationInput = {
   title?: string
   summary?: string | null
   contentJson?: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  contentMarkdown?: string | null
   contentText?: string | null
   contentMarkdownCache?: string | null
   contentFormat?: $Enums.ContentFormat
@@ -1180,6 +1208,7 @@ export type RequirementUncheckedCreateWithoutOrganizationInput = {
   title?: string
   summary?: string | null
   contentJson?: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  contentMarkdown?: string | null
   contentText?: string | null
   contentMarkdownCache?: string | null
   contentFormat?: $Enums.ContentFormat
@@ -1228,6 +1257,7 @@ export type RequirementCreateWithoutSpaceInput = {
   title?: string
   summary?: string | null
   contentJson?: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  contentMarkdown?: string | null
   contentText?: string | null
   contentMarkdownCache?: string | null
   contentFormat?: $Enums.ContentFormat
@@ -1254,6 +1284,7 @@ export type RequirementUncheckedCreateWithoutSpaceInput = {
   title?: string
   summary?: string | null
   contentJson?: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  contentMarkdown?: string | null
   contentText?: string | null
   contentMarkdownCache?: string | null
   contentFormat?: $Enums.ContentFormat
@@ -1302,6 +1333,7 @@ export type RequirementCreateWithoutVersionInput = {
   title?: string
   summary?: string | null
   contentJson?: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  contentMarkdown?: string | null
   contentText?: string | null
   contentMarkdownCache?: string | null
   contentFormat?: $Enums.ContentFormat
@@ -1328,6 +1360,7 @@ export type RequirementUncheckedCreateWithoutVersionInput = {
   title?: string
   summary?: string | null
   contentJson?: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  contentMarkdown?: string | null
   contentText?: string | null
   contentMarkdownCache?: string | null
   contentFormat?: $Enums.ContentFormat
@@ -1376,6 +1409,7 @@ export type RequirementCreateWithoutIntakeItemsInput = {
   title?: string
   summary?: string | null
   contentJson?: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  contentMarkdown?: string | null
   contentText?: string | null
   contentMarkdownCache?: string | null
   contentFormat?: $Enums.ContentFormat
@@ -1403,6 +1437,7 @@ export type RequirementUncheckedCreateWithoutIntakeItemsInput = {
   title?: string
   summary?: string | null
   contentJson?: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  contentMarkdown?: string | null
   contentText?: string | null
   contentMarkdownCache?: string | null
   contentFormat?: $Enums.ContentFormat
@@ -1440,6 +1475,7 @@ export type RequirementUpdateWithoutIntakeItemsInput = {
   title?: Prisma.StringFieldUpdateOperationsInput | string
   summary?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   contentJson?: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  contentMarkdown?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   contentText?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   contentMarkdownCache?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   contentFormat?: Prisma.EnumContentFormatFieldUpdateOperationsInput | $Enums.ContentFormat
@@ -1467,6 +1503,7 @@ export type RequirementUncheckedUpdateWithoutIntakeItemsInput = {
   title?: Prisma.StringFieldUpdateOperationsInput | string
   summary?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   contentJson?: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  contentMarkdown?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   contentText?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   contentMarkdownCache?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   contentFormat?: Prisma.EnumContentFormatFieldUpdateOperationsInput | $Enums.ContentFormat
@@ -1488,6 +1525,7 @@ export type RequirementCreateWithoutWorkItemsInput = {
   title?: string
   summary?: string | null
   contentJson?: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  contentMarkdown?: string | null
   contentText?: string | null
   contentMarkdownCache?: string | null
   contentFormat?: $Enums.ContentFormat
@@ -1515,6 +1553,7 @@ export type RequirementUncheckedCreateWithoutWorkItemsInput = {
   title?: string
   summary?: string | null
   contentJson?: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  contentMarkdown?: string | null
   contentText?: string | null
   contentMarkdownCache?: string | null
   contentFormat?: $Enums.ContentFormat
@@ -1552,6 +1591,7 @@ export type RequirementUpdateWithoutWorkItemsInput = {
   title?: Prisma.StringFieldUpdateOperationsInput | string
   summary?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   contentJson?: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  contentMarkdown?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   contentText?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   contentMarkdownCache?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   contentFormat?: Prisma.EnumContentFormatFieldUpdateOperationsInput | $Enums.ContentFormat
@@ -1579,6 +1619,7 @@ export type RequirementUncheckedUpdateWithoutWorkItemsInput = {
   title?: Prisma.StringFieldUpdateOperationsInput | string
   summary?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   contentJson?: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  contentMarkdown?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   contentText?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   contentMarkdownCache?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   contentFormat?: Prisma.EnumContentFormatFieldUpdateOperationsInput | $Enums.ContentFormat
@@ -1603,6 +1644,7 @@ export type RequirementCreateManyOwnerInput = {
   title?: string
   summary?: string | null
   contentJson?: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  contentMarkdown?: string | null
   contentText?: string | null
   contentMarkdownCache?: string | null
   contentFormat?: $Enums.ContentFormat
@@ -1625,6 +1667,7 @@ export type RequirementCreateManyAuthorInput = {
   title?: string
   summary?: string | null
   contentJson?: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  contentMarkdown?: string | null
   contentText?: string | null
   contentMarkdownCache?: string | null
   contentFormat?: $Enums.ContentFormat
@@ -1644,6 +1687,7 @@ export type RequirementUpdateWithoutOwnerInput = {
   title?: Prisma.StringFieldUpdateOperationsInput | string
   summary?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   contentJson?: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  contentMarkdown?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   contentText?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   contentMarkdownCache?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   contentFormat?: Prisma.EnumContentFormatFieldUpdateOperationsInput | $Enums.ContentFormat
@@ -1671,6 +1715,7 @@ export type RequirementUncheckedUpdateWithoutOwnerInput = {
   title?: Prisma.StringFieldUpdateOperationsInput | string
   summary?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   contentJson?: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  contentMarkdown?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   contentText?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   contentMarkdownCache?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   contentFormat?: Prisma.EnumContentFormatFieldUpdateOperationsInput | $Enums.ContentFormat
@@ -1695,6 +1740,7 @@ export type RequirementUncheckedUpdateManyWithoutOwnerInput = {
   title?: Prisma.StringFieldUpdateOperationsInput | string
   summary?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   contentJson?: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  contentMarkdown?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   contentText?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   contentMarkdownCache?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   contentFormat?: Prisma.EnumContentFormatFieldUpdateOperationsInput | $Enums.ContentFormat
@@ -1714,6 +1760,7 @@ export type RequirementUpdateWithoutAuthorInput = {
   title?: Prisma.StringFieldUpdateOperationsInput | string
   summary?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   contentJson?: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  contentMarkdown?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   contentText?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   contentMarkdownCache?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   contentFormat?: Prisma.EnumContentFormatFieldUpdateOperationsInput | $Enums.ContentFormat
@@ -1741,6 +1788,7 @@ export type RequirementUncheckedUpdateWithoutAuthorInput = {
   title?: Prisma.StringFieldUpdateOperationsInput | string
   summary?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   contentJson?: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  contentMarkdown?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   contentText?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   contentMarkdownCache?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   contentFormat?: Prisma.EnumContentFormatFieldUpdateOperationsInput | $Enums.ContentFormat
@@ -1765,6 +1813,7 @@ export type RequirementUncheckedUpdateManyWithoutAuthorInput = {
   title?: Prisma.StringFieldUpdateOperationsInput | string
   summary?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   contentJson?: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  contentMarkdown?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   contentText?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   contentMarkdownCache?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   contentFormat?: Prisma.EnumContentFormatFieldUpdateOperationsInput | $Enums.ContentFormat
@@ -1786,6 +1835,7 @@ export type RequirementCreateManyOrganizationInput = {
   title?: string
   summary?: string | null
   contentJson?: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  contentMarkdown?: string | null
   contentText?: string | null
   contentMarkdownCache?: string | null
   contentFormat?: $Enums.ContentFormat
@@ -1806,6 +1856,7 @@ export type RequirementUpdateWithoutOrganizationInput = {
   title?: Prisma.StringFieldUpdateOperationsInput | string
   summary?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   contentJson?: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  contentMarkdown?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   contentText?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   contentMarkdownCache?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   contentFormat?: Prisma.EnumContentFormatFieldUpdateOperationsInput | $Enums.ContentFormat
@@ -1832,6 +1883,7 @@ export type RequirementUncheckedUpdateWithoutOrganizationInput = {
   title?: Prisma.StringFieldUpdateOperationsInput | string
   summary?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   contentJson?: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  contentMarkdown?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   contentText?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   contentMarkdownCache?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   contentFormat?: Prisma.EnumContentFormatFieldUpdateOperationsInput | $Enums.ContentFormat
@@ -1856,6 +1908,7 @@ export type RequirementUncheckedUpdateManyWithoutOrganizationInput = {
   title?: Prisma.StringFieldUpdateOperationsInput | string
   summary?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   contentJson?: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  contentMarkdown?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   contentText?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   contentMarkdownCache?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   contentFormat?: Prisma.EnumContentFormatFieldUpdateOperationsInput | $Enums.ContentFormat
@@ -1878,6 +1931,7 @@ export type RequirementCreateManySpaceInput = {
   title?: string
   summary?: string | null
   contentJson?: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  contentMarkdown?: string | null
   contentText?: string | null
   contentMarkdownCache?: string | null
   contentFormat?: $Enums.ContentFormat
@@ -1898,6 +1952,7 @@ export type RequirementUpdateWithoutSpaceInput = {
   title?: Prisma.StringFieldUpdateOperationsInput | string
   summary?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   contentJson?: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  contentMarkdown?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   contentText?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   contentMarkdownCache?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   contentFormat?: Prisma.EnumContentFormatFieldUpdateOperationsInput | $Enums.ContentFormat
@@ -1924,6 +1979,7 @@ export type RequirementUncheckedUpdateWithoutSpaceInput = {
   title?: Prisma.StringFieldUpdateOperationsInput | string
   summary?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   contentJson?: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  contentMarkdown?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   contentText?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   contentMarkdownCache?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   contentFormat?: Prisma.EnumContentFormatFieldUpdateOperationsInput | $Enums.ContentFormat
@@ -1948,6 +2004,7 @@ export type RequirementUncheckedUpdateManyWithoutSpaceInput = {
   title?: Prisma.StringFieldUpdateOperationsInput | string
   summary?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   contentJson?: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  contentMarkdown?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   contentText?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   contentMarkdownCache?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   contentFormat?: Prisma.EnumContentFormatFieldUpdateOperationsInput | $Enums.ContentFormat
@@ -1970,6 +2027,7 @@ export type RequirementCreateManyVersionInput = {
   title?: string
   summary?: string | null
   contentJson?: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  contentMarkdown?: string | null
   contentText?: string | null
   contentMarkdownCache?: string | null
   contentFormat?: $Enums.ContentFormat
@@ -1990,6 +2048,7 @@ export type RequirementUpdateWithoutVersionInput = {
   title?: Prisma.StringFieldUpdateOperationsInput | string
   summary?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   contentJson?: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  contentMarkdown?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   contentText?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   contentMarkdownCache?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   contentFormat?: Prisma.EnumContentFormatFieldUpdateOperationsInput | $Enums.ContentFormat
@@ -2016,6 +2075,7 @@ export type RequirementUncheckedUpdateWithoutVersionInput = {
   title?: Prisma.StringFieldUpdateOperationsInput | string
   summary?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   contentJson?: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  contentMarkdown?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   contentText?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   contentMarkdownCache?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   contentFormat?: Prisma.EnumContentFormatFieldUpdateOperationsInput | $Enums.ContentFormat
@@ -2040,6 +2100,7 @@ export type RequirementUncheckedUpdateManyWithoutVersionInput = {
   title?: Prisma.StringFieldUpdateOperationsInput | string
   summary?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   contentJson?: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  contentMarkdown?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   contentText?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   contentMarkdownCache?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   contentFormat?: Prisma.EnumContentFormatFieldUpdateOperationsInput | $Enums.ContentFormat
@@ -2103,6 +2164,7 @@ export type RequirementSelect<ExtArgs extends runtime.Types.Extensions.InternalA
   title?: boolean
   summary?: boolean
   contentJson?: boolean
+  contentMarkdown?: boolean
   contentText?: boolean
   contentMarkdownCache?: boolean
   contentFormat?: boolean
@@ -2134,6 +2196,7 @@ export type RequirementSelectCreateManyAndReturn<ExtArgs extends runtime.Types.E
   title?: boolean
   summary?: boolean
   contentJson?: boolean
+  contentMarkdown?: boolean
   contentText?: boolean
   contentMarkdownCache?: boolean
   contentFormat?: boolean
@@ -2162,6 +2225,7 @@ export type RequirementSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.E
   title?: boolean
   summary?: boolean
   contentJson?: boolean
+  contentMarkdown?: boolean
   contentText?: boolean
   contentMarkdownCache?: boolean
   contentFormat?: boolean
@@ -2190,6 +2254,7 @@ export type RequirementSelectScalar = {
   title?: boolean
   summary?: boolean
   contentJson?: boolean
+  contentMarkdown?: boolean
   contentText?: boolean
   contentMarkdownCache?: boolean
   contentFormat?: boolean
@@ -2204,7 +2269,7 @@ export type RequirementSelectScalar = {
   deletedAt?: boolean
 }
 
-export type RequirementOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "organizationId" | "spaceId" | "sequence" | "versionId" | "title" | "summary" | "contentJson" | "contentText" | "contentMarkdownCache" | "contentFormat" | "status" | "priority" | "ownerId" | "authorId" | "createdAt" | "updatedAt" | "createdById" | "updatedById" | "deletedAt", ExtArgs["result"]["requirement"]>
+export type RequirementOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "organizationId" | "spaceId" | "sequence" | "versionId" | "title" | "summary" | "contentJson" | "contentMarkdown" | "contentText" | "contentMarkdownCache" | "contentFormat" | "status" | "priority" | "ownerId" | "authorId" | "createdAt" | "updatedAt" | "createdById" | "updatedById" | "deletedAt", ExtArgs["result"]["requirement"]>
 export type RequirementInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   organization?: boolean | Prisma.OrganizationDefaultArgs<ExtArgs>
   space?: boolean | Prisma.SpaceDefaultArgs<ExtArgs>
@@ -2250,6 +2315,7 @@ export type $RequirementPayload<ExtArgs extends runtime.Types.Extensions.Interna
     title: string
     summary: string | null
     contentJson: runtime.JsonValue
+    contentMarkdown: string | null
     contentText: string | null
     contentMarkdownCache: string | null
     contentFormat: $Enums.ContentFormat
@@ -2700,6 +2766,7 @@ export interface RequirementFieldRefs {
   readonly title: Prisma.FieldRef<"Requirement", 'String'>
   readonly summary: Prisma.FieldRef<"Requirement", 'String'>
   readonly contentJson: Prisma.FieldRef<"Requirement", 'Json'>
+  readonly contentMarkdown: Prisma.FieldRef<"Requirement", 'String'>
   readonly contentText: Prisma.FieldRef<"Requirement", 'String'>
   readonly contentMarkdownCache: Prisma.FieldRef<"Requirement", 'String'>
   readonly contentFormat: Prisma.FieldRef<"Requirement", 'ContentFormat'>

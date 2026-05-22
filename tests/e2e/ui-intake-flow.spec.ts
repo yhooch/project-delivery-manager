@@ -66,7 +66,7 @@ test.describe("UI 需求池页面主链路", () => {
 
     const sheet = page.getByTestId("intake-detail-sheet");
     await expect(sheet).toBeVisible({ timeout: 10_000 });
-    await expect(sheet.getByText(title, { exact: false })).toBeVisible();
+    await expect(sheet.getByRole("heading", { name: title })).toBeVisible();
 
     await page.getByTestId("intake-accept-button").click();
     await expect(page.getByTestId("intake-convert-button")).toBeVisible({

@@ -66,6 +66,9 @@ services:
     environment:
       NODE_ENV: production
       DATABASE_URL: postgresql://${POSTGRES_USER:-crm}:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}@postgres:5432/${POSTGRES_DB:-crm_manager}
+      API_PUBLIC_URL: ${API_PUBLIC_URL:?API_PUBLIC_URL is required}
+      MCP_OAUTH_ISSUER: ${MCP_OAUTH_ISSUER:?MCP_OAUTH_ISSUER is required}
+      MCP_CANONICAL_RESOURCE_URI: ${MCP_CANONICAL_RESOURCE_URI:?MCP_CANONICAL_RESOURCE_URI is required}
       WEB_APP_URL: ${WEB_APP_URL:?WEB_APP_URL is required}
       SESSION_COOKIE_NAME: ${SESSION_COOKIE_NAME:-pdm_session}
       SESSION_COOKIE_SECURE: ${SESSION_COOKIE_SECURE:-false}

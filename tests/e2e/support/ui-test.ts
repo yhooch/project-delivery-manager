@@ -106,7 +106,8 @@ function ignoreRequestFailure(request: Request): boolean {
     isBrowserMetadataRequest(pathname) ||
     isSourceMapRequest(pathname) ||
     isAbortedNextStaticRequest(request, parsed) ||
-    isAbortedNextRscRequest(request, parsed)
+    isAbortedNextRscRequest(request, parsed) ||
+    isAbortedRealtimeEventsRequest(request, parsed)
   );
 }
 
@@ -122,6 +123,14 @@ function isAbortedNextRscRequest(request: Request, url: URL): boolean {
   return (
     request.method() === "GET" &&
     url.searchParams.has("_rsc") &&
+    request.failure()?.errorText === "net::ERR_ABORTED"
+  );
+}
+
+function isAbortedRealtimeEventsRequest(request: Request, url: URL): boolean {
+  return (
+    request.method() === "GET" &&
+    url.pathname === "/api/v1/realtime/events" &&
     request.failure()?.errorText === "net::ERR_ABORTED"
   );
 }

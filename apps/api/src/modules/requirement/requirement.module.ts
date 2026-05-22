@@ -15,7 +15,7 @@ import { RequirementService } from "./requirement.service";
 
 @Module({
   controllers: [RequirementController],
-  exports: [REQUIREMENT_REPOSITORY],
+  exports: [REQUIREMENT_REPOSITORY, RequirementService],
   imports: [
     AuthModule,
     AuditModule,

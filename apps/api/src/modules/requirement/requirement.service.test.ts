@@ -286,6 +286,45 @@ describe("RequirementService audit logging", () => {
     expect(subject.requirements.savedInput).toBeUndefined();
   });
 
+  it("saves Markdown requirements with Markdown source and derived search text", async () => {
+    const subject = createSubject({
+      current: makeRequirement({ status: "CONFIRMED" }),
+    });
+
+    await subject.service.update(ACTOR_ID, REQUIREMENT_ID, {
+      contentFormat: "MARKDOWN",
+      contentMarkdown: "# Scope\n\n- Ship Markdown safely.",
+      title: "Markdown requirement",
+    });
+
+    expect(subject.requirements.savedInput).toMatchObject({
+      contentFormat: "MARKDOWN",
+      contentMarkdown: "# Scope\n\n- Ship Markdown safely.",
+      contentText: "Scope\n\nShip Markdown safely.",
+    });
+    expect(subject.requirements.savedInput).not.toHaveProperty("contentJson");
+    expect(subject.requirements.savedInput).not.toHaveProperty(
+      "contentMarkdownCache",
+    );
+  });
+
+  it("rejects Markdown image targets outside attachment references", async () => {
+    const subject = createSubject({
+      current: makeRequirement({ status: "CONFIRMED" }),
+    });
+
+    await expect(
+      subject.service.update(ACTOR_ID, REQUIREMENT_ID, {
+        contentFormat: "MARKDOWN",
+        contentMarkdown: "![remote](https://example.com/image.png)",
+        title: "Unsafe Markdown image",
+      }),
+    ).rejects.toMatchObject({
+      code: "VALIDATION_ERROR",
+    });
+    expect(subject.requirements.savedInput).toBeUndefined();
+  });
+
   it("saves explicit requirement version clearing when there is no downstream impact", async () => {
     const subject = createSubject({
       current: makeRequirement({
@@ -412,14 +451,29 @@ class FakeRequirementRepository implements RequirementRepository {
 
   async save(input: Parameters<RequirementRepository["save"]>[0]) {
     this.savedInput = input;
-    this.current = makeRequirement({
+    const content =
+      input.contentFormat === "MARKDOWN"
+        ? {
+            contentFormat: "MARKDOWN" as const,
+            contentMarkdown: input.contentMarkdown,
+            contentText: input.contentText,
+          }
+        : {
+            contentFormat: "TIPTAP_JSON" as const,
+            contentJson: input.contentJson,
+            contentMarkdownCache: input.contentMarkdownCache,
+            contentText: input.contentText,
+          };
+
+    this.current = {
       ...this.current,
+      ...content,
       status: "CONFIRMED",
       title: input.title ?? this.current.title,
       ...(input.versionId !== undefined
         ? { versionId: input.versionId ?? undefined }
         : {}),
-    });
+    } as Requirement;
     return this.current;
   }
 
@@ -472,5 +526,5 @@ function makeRequirement(overrides: Partial<Requirement> = {}): Requirement {
     updatedAt: "2026-05-13T00:00:00.000Z",
     ...overrides,
     tags: overrides.tags ?? [],
-  };
+  } as Requirement;
 }

@@ -119,9 +119,7 @@ describe("PrismaRequirementRepository", () => {
 
     expect(objectCodeAllocator.allocateOne).not.toHaveBeenCalled();
     const createArgs = (
-      requirementCreate.mock.calls as Array<
-        [{ data: Record<string, unknown> }]
-      >
+      requirementCreate.mock.calls as Array<[{ data: Record<string, unknown> }]>
     )[0]?.[0];
 
     expect(createArgs?.data).not.toHaveProperty("sequence");
@@ -175,6 +173,7 @@ describe("PrismaRequirementRepository", () => {
     const result = await repository.save({
       requirementId: previous.id,
       title: saved.title,
+      contentFormat: "TIPTAP_JSON",
       contentJson: { type: "doc" },
       shouldUpdateOwner: false,
       updatedById: previous.authorId,
@@ -250,6 +249,7 @@ describe("PrismaRequirementRepository", () => {
     const result = await repository.save({
       requirementId: previous.id,
       title: saved.title,
+      contentFormat: "TIPTAP_JSON",
       contentJson: { type: "doc" },
       shouldUpdateOwner: false,
       updatedById: previous.authorId,
@@ -536,6 +536,7 @@ describe("PrismaRequirementRepository", () => {
     await repository.save({
       requirementId: requirement.id,
       title: saved.title,
+      contentFormat: "TIPTAP_JSON",
       contentJson: { type: "doc" },
       contentText: "需求内容",
       shouldUpdateOwner: false,
@@ -568,6 +569,84 @@ describe("PrismaRequirementRepository", () => {
       }),
     );
     expect(bugDetailFindMany).not.toHaveBeenCalled();
+  });
+
+  it("stores Markdown source content without keeping a Tiptap cache as source", async () => {
+    const previous = makeRequirement({ status: "DRAFT" });
+    const saved = makeRequirement({
+      ...previous,
+      contentFormat: "MARKDOWN",
+      contentJson: {},
+      contentMarkdown: "# 范围\n\n交付 Markdown 需求。",
+      contentMarkdownCache: null,
+      contentText: "范围\n\n交付 Markdown 需求。",
+      status: "CONFIRMED",
+      title: "Markdown 需求",
+    });
+    const requirementUpdateMany = vi.fn(async () => ({ count: 1 }));
+    const tx = {
+      requirement: {
+        findFirst: vi
+          .fn()
+          .mockResolvedValueOnce(previous)
+          .mockResolvedValueOnce(saved),
+        updateMany: requirementUpdateMany,
+      },
+      timelineEvent: {
+        create: vi.fn(async () => undefined),
+      },
+    };
+    const prisma = {
+      client: {
+        $transaction: vi.fn(async (handler) => handler(tx)),
+        attachment: {
+          findMany: vi.fn(async () => []),
+        },
+        bugDetail: {
+          findMany: vi.fn(async () => []),
+        },
+        tagAssignment: {
+          findMany: vi.fn(async () => []),
+        },
+        workItem: {
+          findMany: vi.fn(async () => []),
+        },
+      },
+    } as unknown as PrismaService;
+    const repository = new PrismaRequirementRepository(
+      prisma,
+      makeObjectCodeAllocator(),
+    );
+
+    const result = await repository.save({
+      requirementId: previous.id,
+      title: "Markdown 需求",
+      contentFormat: "MARKDOWN",
+      contentMarkdown: "# 范围\n\n交付 Markdown 需求。",
+      contentText: "范围\n\n交付 Markdown 需求。",
+      shouldUpdateOwner: false,
+      updatedById: previous.authorId,
+    });
+
+    expect(requirementUpdateMany).toHaveBeenNthCalledWith(
+      1,
+      expect.objectContaining({
+        data: expect.objectContaining({
+          contentFormat: "MARKDOWN",
+          contentJson: {},
+          contentMarkdown: "# 范围\n\n交付 Markdown 需求。",
+          contentMarkdownCache: null,
+          contentText: "范围\n\n交付 Markdown 需求。",
+        }),
+      }),
+    );
+    expect(result).toMatchObject({
+      contentFormat: "MARKDOWN",
+      contentMarkdown: "# 范围\n\n交付 Markdown 需求。",
+      contentText: "范围\n\n交付 Markdown 需求。",
+    });
+    expect(result).not.toHaveProperty("contentJson");
+    expect(result).not.toHaveProperty("contentMarkdownCache");
   });
 
   it("includes bugs related through requirement tasks and de-duplicates direct matches", async () => {
@@ -730,6 +809,7 @@ describe("PrismaRequirementRepository", () => {
     await repository.save({
       requirementId: requirement.id,
       title: "已保存需求",
+      contentFormat: "TIPTAP_JSON",
       contentJson: { type: "doc" },
       contentText: "需求内容",
       shouldUpdateOwner: false,
@@ -821,6 +901,7 @@ describe("PrismaRequirementRepository", () => {
     await repository.save({
       requirementId: previous.id,
       title: "已保存需求",
+      contentFormat: "TIPTAP_JSON",
       contentJson: { type: "doc" },
       contentText: "需求内容",
       ownerId: nextOwnerId,
@@ -993,6 +1074,7 @@ describe("PrismaRequirementRepository", () => {
 
     await repository.save({
       cascadeVersionChange: true,
+      contentFormat: "TIPTAP_JSON",
       contentJson: { type: "doc" },
       contentText: "需求内容",
       requirementId: previous.id,
@@ -1087,9 +1169,10 @@ function makeBaseRequirement() {
     title: "",
     summary: null,
     contentJson: {},
-    contentText: null,
-    contentMarkdownCache: null,
-    contentFormat: "TIPTAP_JSON" as const,
+    contentMarkdown: null as string | null,
+    contentText: null as string | null,
+    contentMarkdownCache: null as string | null,
+    contentFormat: "TIPTAP_JSON" as "TIPTAP_JSON" | "MARKDOWN",
     status: "DRAFT" as "DRAFT" | "CONFIRMED" | "ARCHIVED",
     priority: null,
     ownerId: null as string | null,

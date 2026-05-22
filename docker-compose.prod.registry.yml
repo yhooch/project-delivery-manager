@@ -1,0 +1,29 @@
+# Private registry override for production deployments.
+#
+# Use this file together with docker-compose.prod.yml when the deployment host
+# should pull images from a domestic private registry instead of building or
+# pulling public Docker Hub images directly.
+services:
+  postgres:
+    image: ${POSTGRES_IMAGE:?POSTGRES_IMAGE is required}
+    pull_policy: always
+
+  minio:
+    image: ${MINIO_IMAGE:?MINIO_IMAGE is required}
+    pull_policy: always
+
+  minio-init:
+    image: ${MINIO_MC_IMAGE:?MINIO_MC_IMAGE is required}
+    pull_policy: always
+
+  api:
+    image: ${API_IMAGE:?API_IMAGE is required}
+    pull_policy: always
+
+  web:
+    image: ${WEB_IMAGE:?WEB_IMAGE is required}
+    pull_policy: always
+
+  nginx:
+    image: ${NGINX_IMAGE:?NGINX_IMAGE is required}
+    pull_policy: always

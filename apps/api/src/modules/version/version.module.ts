@@ -13,7 +13,7 @@ import { VersionService } from "./version.service";
 
 @Module({
   controllers: [VersionController],
-  exports: [VERSION_REPOSITORY],
+  exports: [VERSION_REPOSITORY, VersionService],
   imports: [
     AuthModule,
     AuditModule,

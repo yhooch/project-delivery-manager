@@ -599,7 +599,109 @@
       "OBJECT_CODE_NOT_FOUND": "未找到该编号对应的对象。",
       "OBJECT_CODE_AMBIGUOUS": "该编号在多个空间中存在，请提供空间上下文。",
       "SPACE_CONTEXT_REQUIRED": "缺少空间上下文，请先选择项目空间。",
+      "MCP_UNAUTHORIZED": "MCP 授权已失效，请重新授权客户端。",
+      "MCP_INSUFFICIENT_SCOPE": "MCP 客户端缺少执行该操作所需的授权范围。",
+      "MCP_TOOL_NOT_FOUND": "MCP 工具不存在或尚未开放。",
+      "MCP_TOOL_ARGUMENT_INVALID": "MCP 工具参数未通过校验。",
+      "MCP_IDEMPOTENCY_CONFLICT": "MCP 幂等键已被不同请求使用，请更换幂等键后重试。",
+      "MCP_CLIENT_NOT_FOUND": "MCP 客户端不存在或已停用。",
+      "MCP_CONSENT_REQUIRED": "需要先授权该 MCP 客户端。",
+      "MCP_CONSENT_REVOKED": "该 MCP 客户端授权已撤销。",
       "UNKNOWN": "操作失败，请稍后重试。"
+    }
+  },
+  "mcp": {
+    "scopes": {
+      "mcp:read": "读取工作台数据",
+      "mcp:write:requirement": "写入需求",
+      "mcp:write:intake": "写入事项池",
+      "mcp:write:workitem": "写入工作项",
+      "mcp:write:bug": "写入 Bug",
+      "mcp:write:comment": "写入评论",
+      "mcp:write:tag": "写入标签",
+      "mcp:execute:workflow": "执行流程动作"
+    }
+  },
+  "oauth": {
+    "mcpAuthorize": {
+      "eyebrow": "MCP 授权",
+      "title": "确认授权请求",
+      "description": "{clientName} 正在请求访问你的项目交付工作台。",
+      "fields": {
+        "source": "客户端来源",
+        "redirectHost": "回调主机",
+        "registrationMode": "注册方式",
+        "resource": "资源",
+        "scopes": "授权范围"
+      },
+      "registrationMode": {
+        "PRE_REGISTERED": "预注册客户端",
+        "CLIENT_ID_METADATA_DOCUMENT": "客户端元数据文档"
+      },
+      "risk": {
+        "title": "授权风险提示",
+        "description": "确认后，该客户端可在你当前账号权限范围内使用上方授权范围访问或修改数据。请确认客户端名称、来源和回调主机都可信。",
+        "localhostTitle": "本地回调风险提示",
+        "localhostDescription": "该请求会把授权码回调到 localhost 或本机地址。只有在你刚刚从本机应用发起授权时才应继续。"
+      },
+      "states": {
+        "sessionLoading": "正在确认登录状态",
+        "loading": "正在读取授权请求",
+        "error": {
+          "title": "无法加载授权请求"
+        },
+        "unauthenticated": {
+          "title": "需要登录",
+          "description": "登录后才能确认 MCP 客户端授权。登录完成后请重新打开授权链接。"
+        }
+      },
+      "actions": {
+        "signIn": "前往登录",
+        "retry": "重试",
+        "reject": "拒绝/返回",
+        "rejecting": "正在返回",
+        "confirm": "确认授权",
+        "confirming": "正在授权"
+      }
+    }
+  },
+  "personalSettings": {
+    "eyebrow": "个人设置",
+    "title": "个人设置",
+    "description": "查看并管理当前账号已授权的 MCP 客户端。",
+    "fields": {
+      "clientId": "Client ID",
+      "source": "来源",
+      "unknownSource": "未提供来源",
+      "scopes": "授权范围",
+      "authorizedAt": "授权时间",
+      "lastUsedAt": "最近使用",
+      "neverUsed": "尚未使用"
+    },
+    "status": {
+      "ACTIVE": "已授权",
+      "REVOKED": "已撤销",
+      "EXPIRED": "已过期"
+    },
+    "states": {
+      "loading": "正在加载已授权客户端",
+      "error": {
+        "title": "无法加载已授权客户端"
+      },
+      "empty": {
+        "title": "暂无已授权客户端",
+        "description": "当你授权 MCP 客户端后，它们会显示在这里。"
+      },
+      "unauthenticated": {
+        "title": "需要登录",
+        "description": "登录后才能查看个人设置。"
+      }
+    },
+    "actions": {
+      "refresh": "刷新",
+      "retry": "重试",
+      "revoke": "撤销",
+      "revoking": "撤销中"
     }
   },
   "shell": {
@@ -684,6 +786,7 @@
       "openMenu": "打开用户菜单",
       "profile": "个人资料",
       "preferences": "偏好设置",
+      "personalSettings": "个人设置",
       "changePassword": "修改密码",
       "logout": "退出登录"
     },

@@ -20,6 +20,31 @@ enum SessionRevocationReason {
   ADMIN
 }
 
+enum McpOAuthClientStatus {
+  ACTIVE
+  DISABLED
+  REVOKED
+}
+
+enum McpOAuthClientRegistrationMode {
+  PRE_REGISTERED
+  CLIENT_ID_METADATA_DOCUMENT
+  DYNAMIC_CLIENT_REGISTRATION
+}
+
+enum McpOAuthAuthorizationStatus {
+  ACTIVE
+  REVOKED
+  EXPIRED
+}
+
+enum McpOAuthTokenRevocationReason {
+  ROTATED
+  REVOKED
+  AUTHORIZATION_REVOKED
+  EXPIRED
+}
+
 enum OrganizationStatus {
   ACTIVE
   DISABLED
@@ -102,6 +127,7 @@ enum IntakeSourceType {
 
 enum ContentFormat {
   TIPTAP_JSON
+  MARKDOWN
 }
 
 enum Priority {
@@ -259,6 +285,10 @@ model User {
   assignedTagAssignments    TagAssignment[]      @relation("TagAssignmentAssignedBy")
   createdObjectSequenceCounters ObjectSequenceCounter[] @relation("ObjectSequenceCounterCreatedBy")
   updatedObjectSequenceCounters ObjectSequenceCounter[] @relation("ObjectSequenceCounterUpdatedBy")
+  mcpOAuthAuthorizations    McpOAuthAuthorization[]
+  mcpOAuthAuthorizationCodes McpOAuthAuthorizationCode[]
+  mcpOAuthAccessTokens      McpOAuthAccessToken[]
+  mcpOAuthRefreshTokens     McpOAuthRefreshToken[]
 
   @@map("users")
 }
@@ -285,6 +315,159 @@ model Session {
   @@index([tokenHash])
   @@index([expiresAt])
   @@map("sessions")
+}
+
+model McpOAuthClient {
+  id                         String                         @id @db.Char(26)
+  clientId                   String                         @unique @map("client_id") @db.VarChar(200)
+  clientName                 String                         @map("client_name") @db.VarChar(120)
+  clientUri                  String?                        @map("client_uri") @db.VarChar(500)
+  logoUri                    String?                        @map("logo_uri") @db.VarChar(500)
+  redirectUris               String[]                       @map("redirect_uris")
+  scopes                     String[]
+  status                     McpOAuthClientStatus           @default(ACTIVE)
+  registrationMode           McpOAuthClientRegistrationMode @map("registration_mode")
+  metadataDocumentUri        String?                        @map("metadata_document_uri") @db.VarChar(500)
+  metadataDocumentFetchedAt  DateTime? @db.Timestamptz(3)   @map("metadata_document_fetched_at")
+  metadataDocumentExpiresAt  DateTime? @db.Timestamptz(3)   @map("metadata_document_expires_at")
+  createdAt                  DateTime @db.Timestamptz(3)    @default(now()) @map("created_at")
+  updatedAt                  DateTime @db.Timestamptz(3)    @updatedAt @map("updated_at")
+  deletedAt                  DateTime? @db.Timestamptz(3)   @map("deleted_at")
+
+  authorizations    McpOAuthAuthorization[]
+  authorizationCodes McpOAuthAuthorizationCode[]
+  accessTokens      McpOAuthAccessToken[]
+  refreshTokens     McpOAuthRefreshToken[]
+
+  @@index([status])
+  @@map("mcp_oauth_clients")
+}
+
+model McpOAuthAuthorization {
+  id             String                      @id @db.Char(26)
+  userId         String                      @map("user_id") @db.Char(26)
+  clientId       String                      @map("client_id") @db.VarChar(200)
+  resource       String                      @db.VarChar(500)
+  scopes         String[]
+  status         McpOAuthAuthorizationStatus @default(ACTIVE)
+  authorizedAt   DateTime @db.Timestamptz(3) @default(now()) @map("authorized_at")
+  lastUsedAt     DateTime? @db.Timestamptz(3) @map("last_used_at")
+  expiresAt      DateTime? @db.Timestamptz(3) @map("expires_at")
+  revokedAt      DateTime? @db.Timestamptz(3) @map("revoked_at")
+  createdAt      DateTime @db.Timestamptz(3) @default(now()) @map("created_at")
+  updatedAt      DateTime @db.Timestamptz(3) @updatedAt @map("updated_at")
+
+  user               User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  client             McpOAuthClient @relation(fields: [clientId], references: [clientId], onDelete: Cascade)
+  authorizationCodes McpOAuthAuthorizationCode[]
+  accessTokens       McpOAuthAccessToken[]
+  refreshTokens      McpOAuthRefreshToken[]
+
+  @@unique([userId, clientId, resource])
+  @@index([userId, status])
+  @@index([clientId])
+  @@map("mcp_oauth_authorizations")
+}
+
+model McpOAuthAuthorizationCode {
+  id                  String @id @db.Char(26)
+  codeHash            String @unique @map("code_hash") @db.VarChar(128)
+  authorizationId     String @map("authorization_id") @db.Char(26)
+  userId              String @map("user_id") @db.Char(26)
+  clientId            String @map("client_id") @db.VarChar(200)
+  redirectUri         String @map("redirect_uri") @db.VarChar(500)
+  resource            String @db.VarChar(500)
+  scopes              String[]
+  codeChallenge       String @map("code_challenge") @db.VarChar(128)
+  codeChallengeMethod String @default("S256") @map("code_challenge_method") @db.VarChar(16)
+  expiresAt           DateTime @db.Timestamptz(3) @map("expires_at")
+  consumedAt          DateTime? @db.Timestamptz(3) @map("consumed_at")
+  createdAt           DateTime @db.Timestamptz(3) @default(now()) @map("created_at")
+
+  authorization McpOAuthAuthorization @relation(fields: [authorizationId], references: [id], onDelete: Cascade)
+  user          User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  client        McpOAuthClient @relation(fields: [clientId], references: [clientId], onDelete: Cascade)
+
+  @@index([authorizationId])
+  @@index([clientId])
+  @@index([expiresAt])
+  @@map("mcp_oauth_authorization_codes")
+}
+
+model McpOAuthAccessToken {
+  id               String @id @db.Char(26)
+  tokenHash        String @unique @map("token_hash") @db.VarChar(128)
+  authorizationId  String @map("authorization_id") @db.Char(26)
+  userId           String @map("user_id") @db.Char(26)
+  clientId         String @map("client_id") @db.VarChar(200)
+  resource         String @db.VarChar(500)
+  scopes           String[]
+  expiresAt        DateTime @db.Timestamptz(3) @map("expires_at")
+  revokedAt        DateTime? @db.Timestamptz(3) @map("revoked_at")
+  revocationReason McpOAuthTokenRevocationReason? @map("revocation_reason")
+  lastUsedAt       DateTime? @db.Timestamptz(3) @map("last_used_at")
+  createdAt        DateTime @db.Timestamptz(3) @default(now()) @map("created_at")
+
+  authorization McpOAuthAuthorization @relation(fields: [authorizationId], references: [id], onDelete: Cascade)
+  user          User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  client        McpOAuthClient @relation(fields: [clientId], references: [clientId], onDelete: Cascade)
+
+  @@index([authorizationId])
+  @@index([userId])
+  @@index([clientId])
+  @@index([expiresAt])
+  @@map("mcp_oauth_access_tokens")
+}
+
+model McpOAuthRefreshToken {
+  id               String @id @db.Char(26)
+  tokenHash        String @unique @map("token_hash") @db.VarChar(128)
+  authorizationId  String @map("authorization_id") @db.Char(26)
+  userId           String @map("user_id") @db.Char(26)
+  clientId         String @map("client_id") @db.VarChar(200)
+  resource         String @db.VarChar(500)
+  scopes           String[]
+  expiresAt        DateTime @db.Timestamptz(3) @map("expires_at")
+  revokedAt        DateTime? @db.Timestamptz(3) @map("revoked_at")
+  revocationReason McpOAuthTokenRevocationReason? @map("revocation_reason")
+  createdAt        DateTime @db.Timestamptz(3) @default(now()) @map("created_at")
+
+  authorization McpOAuthAuthorization @relation(fields: [authorizationId], references: [id], onDelete: Cascade)
+  user          User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  client        McpOAuthClient @relation(fields: [clientId], references: [clientId], onDelete: Cascade)
+
+  @@index([authorizationId])
+  @@index([userId])
+  @@index([clientId])
+  @@index([expiresAt])
+  @@map("mcp_oauth_refresh_tokens")
+}
+
+model McpToolInvocation {
+  id             String   @id @db.Char(26)
+  userId         String   @map("user_id") @db.Char(26)
+  clientId       String   @map("client_id") @db.VarChar(200)
+  toolName       String   @map("tool_name") @db.VarChar(128)
+  idempotencyKey String   @map("idempotency_key") @db.VarChar(120)
+  requestHash    String   @map("request_hash") @db.VarChar(128)
+  requestId      String?  @map("request_id") @db.VarChar(128)
+  source         String   @default("MCP") @db.VarChar(32)
+  organizationId String   @map("organization_id") @db.Char(26)
+  spaceId        String   @map("space_id") @db.Char(26)
+  inputSummary   Json     @map("input_summary")
+  resultStatus   String   @default("PENDING") @map("result_status") @db.VarChar(32)
+  result         Json?
+  errorCode      String?  @map("error_code") @db.VarChar(80)
+  completedAt    DateTime? @db.Timestamptz(3) @map("completed_at")
+  createdAt      DateTime @db.Timestamptz(3) @default(now()) @map("created_at")
+  updatedAt      DateTime @db.Timestamptz(3) @updatedAt @map("updated_at")
+
+  @@unique([userId, clientId, toolName, idempotencyKey], map: "mcp_tool_invocations_idempotency_key")
+  @@index([organizationId, spaceId])
+  @@index([requestId])
+  @@index([resultStatus])
+  @@index([createdAt])
+  @@map("mcp_tool_invocations")
 }
 
 model Organization {
@@ -450,6 +633,7 @@ model Requirement {
   title                String            @default("") @db.VarChar(200)
   summary              String?           @db.VarChar(2000)
   contentJson          Json              @default("{}") @map("content_json")
+  contentMarkdown      String?           @map("content_markdown") @db.Text
   contentText          String?           @map("content_text") @db.Text
   contentMarkdownCache String?           @map("content_markdown_cache") @db.Text
   contentFormat        ContentFormat     @default(TIPTAP_JSON) @map("content_format")
