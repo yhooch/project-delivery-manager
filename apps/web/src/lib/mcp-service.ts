@@ -1,6 +1,8 @@
 import {
   ListAuthorizedMcpClientsResponseSchema,
+  McpAuthorizeApprovalPath,
   McpAuthorizePath,
+  McpOAuthApproveAuthorizationResponseSchema,
   McpOAuthAuthorizeContextSchema,
   RevokeAuthorizedMcpClientRequestSchema,
   RevokeAuthorizedMcpClientResponseSchema,
@@ -39,8 +41,6 @@ export type McpOAuthAuthorizeErrorInput = {
 const defaultApi: McpApiTransport = apiClient;
 const apiPrefixSuffix = "/api/v1";
 const accessDeniedDescription = "The user denied the authorization request.";
-const authorizeConsentParam = "consent";
-const authorizeConsentValue = "approve";
 
 export class McpOAuthAuthorizeError extends Error {
   readonly code: string;
@@ -98,10 +98,29 @@ export async function getMcpOAuthAuthorizeContext(
   return McpOAuthAuthorizeContextSchema.parse(payload);
 }
 
+export async function approveMcpOAuthAuthorization(
+  query: string | URLSearchParams,
+  fetcher: McpOAuthAuthorizeFetch = getDefaultFetch(),
+): Promise<string> {
+  const response = await fetcher(createMcpOAuthApproveAuthorizeUrl(query), {
+    credentials: "include",
+    headers: {
+      Accept: "application/json",
+    },
+    method: "POST",
+  });
+  const payload = await readJson(response);
+
+  if (!response.ok) {
+    throw toMcpOAuthAuthorizeError(payload, response);
+  }
+
+  return McpOAuthApproveAuthorizationResponseSchema.parse(payload).redirectTo;
+}
+
 export function createMcpOAuthAuthorizeUrl(
   query: string | URLSearchParams,
   basePath = getMcpOAuthBasePath(),
-  options: { approve?: boolean } = {},
 ): string {
   const url = createUrl(basePath, McpAuthorizePath);
   const searchParams = toSearchParams(query);
@@ -110,10 +129,6 @@ export function createMcpOAuthAuthorizeUrl(
     url.searchParams.append(key, value);
   });
 
-  if (options.approve) {
-    url.searchParams.set(authorizeConsentParam, authorizeConsentValue);
-  }
-
   return formatUrl(url, basePath);
 }
 
@@ -121,7 +136,14 @@ export function createMcpOAuthApproveAuthorizeUrl(
   query: string | URLSearchParams,
   basePath = getMcpOAuthBasePath(),
 ): string {
-  return createMcpOAuthAuthorizeUrl(query, basePath, { approve: true });
+  const url = createUrl(basePath, McpAuthorizeApprovalPath);
+  const searchParams = toSearchParams(query);
+
+  searchParams.forEach((value, key) => {
+    url.searchParams.append(key, value);
+  });
+
+  return formatUrl(url, basePath);
 }
 
 export function createMcpOAuthAccessDeniedUrl(

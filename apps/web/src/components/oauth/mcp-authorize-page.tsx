@@ -25,8 +25,8 @@ import {
 import { Link } from "../../i18n/routing";
 import {
   McpOAuthAuthorizeError,
+  approveMcpOAuthAuthorization,
   createMcpOAuthAccessDeniedUrl,
-  createMcpOAuthApproveAuthorizeUrl,
   getMcpOAuthAuthorizeContext,
   isUnauthorizedMcpOAuthAuthorizeError,
 } from "../../lib/mcp-service";
@@ -73,9 +73,16 @@ export function McpAuthorizePage() {
     void load();
   }, [load]);
 
-  function handleConfirm() {
+  async function handleConfirm() {
     setIsConfirming(true);
-    window.location.assign(createMcpOAuthApproveAuthorizeUrl(queryString));
+    setError(null);
+
+    try {
+      window.location.assign(await approveMcpOAuthAuthorization(queryString));
+    } catch (nextError) {
+      setError(nextError);
+      setIsConfirming(false);
+    }
   }
 
   function handleReject() {

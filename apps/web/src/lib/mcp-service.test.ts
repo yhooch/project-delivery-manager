@@ -6,6 +6,7 @@ import { describe, expect, it, vi } from "vitest";
 
 import {
   McpOAuthAuthorizeError,
+  approveMcpOAuthAuthorization,
   createMcpOAuthAccessDeniedUrl,
   createMcpOAuthApproveAuthorizeUrl,
   createMcpOAuthAuthorizeUrl,
@@ -110,13 +111,40 @@ describe("mcp service", () => {
     ).toBe("https://api.example.com/api-root/oauth/authorize?client_id=abc");
   });
 
-  it("builds OAuth approve URLs with internal consent", () => {
+  it("builds OAuth approve URLs without query-driven consent", () => {
     expect(
       createMcpOAuthApproveAuthorizeUrl(
         "client_id=abc&scope=mcp%3Aread",
         "",
       ),
-    ).toBe("/oauth/authorize?client_id=abc&scope=mcp%3Aread&consent=approve");
+    ).toBe("/oauth/authorize/approve?client_id=abc&scope=mcp%3Aread");
+  });
+
+  it("posts OAuth approval and returns the redirect URL", async () => {
+    const fetcher = vi.fn(async () => {
+      return new Response(
+        JSON.stringify({
+          redirectTo:
+            "https://mcp-client.example.com/oauth/callback?code=code-1",
+        }),
+        { status: 200 },
+      );
+    });
+
+    await expect(
+      approveMcpOAuthAuthorization("client_id=abc", fetcher),
+    ).resolves.toBe(
+      "https://mcp-client.example.com/oauth/callback?code=code-1",
+    );
+
+    expect(fetcher).toHaveBeenCalledWith(
+      "/oauth/authorize/approve?client_id=abc",
+      expect.objectContaining({
+        credentials: "include",
+        headers: { Accept: "application/json" },
+        method: "POST",
+      }),
+    );
   });
 
   it("loads raw OAuth authorize context with JSON accept headers", async () => {

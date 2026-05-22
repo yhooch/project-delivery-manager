@@ -52,6 +52,8 @@ const REQUIREMENT_NON_DRAFT_READ_ALL_ROLES = new Set<SpaceRole>([
   "REQUIREMENT",
   "VIEWER",
 ]);
+type ValidateRequirementCreationInput = CreateRequirementDraftRequest &
+  SaveRequirementRequest;
 
 @Injectable()
 export class RequirementService {
@@ -157,6 +159,33 @@ export class RequirementService {
     });
 
     return withPermissions(created, access.role);
+  }
+
+  async validateCreateRequest(
+    actorUserId: string,
+    spaceId: string,
+    input: ValidateRequirementCreationInput,
+    metadata: RequestMetadata = {},
+  ): Promise<void> {
+    const access = await this.requireRequirementWriter(actorUserId, spaceId, {
+      metadata,
+      operation: "createRequirement",
+      targetId: spaceId,
+      targetType: "SPACE",
+    });
+
+    this.assertValidContent(input);
+
+    if (input.versionId) {
+      await this.requireVersionInSpace(spaceId, input.versionId);
+    }
+    if (input.ownerId) {
+      await this.requireActiveSpaceOwner(
+        access.space.organizationId,
+        spaceId,
+        input.ownerId,
+      );
+    }
   }
 
   async get(actorUserId: string, requirementId: string): Promise<Requirement> {

@@ -9,6 +9,7 @@ import { z } from "zod";
 import { ulid } from "ulid";
 
 import { PrismaService } from "../../prisma/prisma.service";
+import { OAuthProtocolError } from "./oauth-protocol.error";
 import { McpScopeRuntimeSchema } from "./oauth-scopes";
 import type {
   CreateAuthorizationCodeInput,
@@ -321,7 +322,10 @@ export class PrismaMcpOAuthRepository implements McpOAuthRepository {
       });
 
       if (result.count !== 1) {
-        throw new Error("Refresh token was already rotated");
+        throw new OAuthProtocolError(
+          "invalid_grant",
+          "Refresh token is invalid",
+        );
       }
 
       await tx.mcpOAuthAccessToken.create({

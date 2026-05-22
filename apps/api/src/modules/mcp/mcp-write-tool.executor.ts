@@ -315,6 +315,21 @@ export class McpWriteToolExecutor {
     switch (toolName) {
       case "crm.requirement.create": {
         const input = args as McpCreateRequirementRequest;
+        await this.requirements.validateCreateRequest(
+          principal.userId,
+          input.spaceId,
+          {
+            contentFormat: "MARKDOWN",
+            contentMarkdown: input.contentMarkdown,
+            ownerId: input.ownerId,
+            priority: input.priority,
+            summary: input.summary,
+            tagIds: input.tagIds,
+            title: input.title,
+            versionId: input.versionId,
+          },
+          metadata,
+        );
         const draft = await this.requirements.createDraft(
           principal.userId,
           input.spaceId,

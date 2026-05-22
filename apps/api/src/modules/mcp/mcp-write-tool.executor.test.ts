@@ -40,7 +40,11 @@ describe("McpWriteToolExecutor", () => {
     waitForReplay: MockFn;
   };
   let intakeItems: { create: MockFn };
-  let requirements: { createDraft: MockFn; update: MockFn };
+  let requirements: {
+    createDraft: MockFn;
+    update: MockFn;
+    validateCreateRequest: MockFn;
+  };
   let spaces: { getOverview: MockFn };
   let tagAssignments: { replace: MockFn };
   let targets: { resolve: MockFn };
@@ -68,6 +72,7 @@ describe("McpWriteToolExecutor", () => {
     requirements = {
       createDraft: vi.fn(),
       update: vi.fn(),
+      validateCreateRequest: vi.fn(async () => undefined),
     };
     spaces = {
       getOverview: vi.fn(async () => ({ space: { id: SPACE_ID } })),
@@ -290,6 +295,57 @@ describe("McpWriteToolExecutor", () => {
         }),
       }),
     });
+  });
+
+  it("validates requirement create before writing a draft", async () => {
+    requirements.validateCreateRequest.mockRejectedValueOnce(
+      new ApiException(
+        "SPACE_MEMBER_NOT_FOUND",
+        "Requirement owner must be an active space member",
+        HttpStatus.NOT_FOUND,
+      ),
+    );
+
+    const result = await executor.execute(
+      contract("crm.requirement.create"),
+      {
+        organizationId: ORGANIZATION_ID,
+        spaceId: SPACE_ID,
+        idempotencyKey: "requirement-create-1",
+        title: "Create requirement",
+        contentFormat: "MARKDOWN",
+        contentMarkdown: "Initial requirement",
+        ownerId: "01HRZ3NDEKTSV4RRFFQ69G5FB4",
+      },
+      principal(),
+      {
+        requestId: "req-requirement",
+      },
+    );
+
+    expect(result).toMatchObject({
+      isError: true,
+      structuredContent: {
+        error: {
+          code: "SPACE_MEMBER_NOT_FOUND",
+        },
+      },
+    });
+    expect(requirements.validateCreateRequest).toHaveBeenCalledWith(
+      USER_ID,
+      SPACE_ID,
+      expect.objectContaining({
+        contentFormat: "MARKDOWN",
+        contentMarkdown: "Initial requirement",
+        ownerId: "01HRZ3NDEKTSV4RRFFQ69G5FB4",
+        title: "Create requirement",
+      }),
+      expect.objectContaining({
+        requestId: "req-requirement",
+      }),
+    );
+    expect(requirements.createDraft).not.toHaveBeenCalled();
+    expect(requirements.update).not.toHaveBeenCalled();
   });
 
   it("replays completed idempotent results without invoking the business service", async () => {

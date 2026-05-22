@@ -19,6 +19,7 @@ import {
   McpOAuthTokenRequestSchema,
   RevokeAuthorizedMcpClientRequestSchema,
   type ListAuthorizedMcpClientsResponse,
+  type McpOAuthApproveAuthorizationResponse,
   type McpOAuthAuthorizeQuery,
   type McpOAuthDynamicClientRegistrationResponse,
   type RevokeAuthorizedMcpClientRequest,
@@ -46,8 +47,6 @@ type RawResponse = {
   json(body: unknown): void;
 };
 
-const authorizeConsentParam = "consent";
-const authorizeConsentValue = "approve";
 const webMcpAuthorizePath = "/zh-CN/oauth/mcp/authorize";
 
 @Controller()
@@ -87,9 +86,8 @@ export class OAuthController {
     @Req() request: RequestWithContext,
     @Res() response: RawResponse,
   ): Promise<void> {
-    const { approved, oauthQuery } = extractAuthorizeConsent(query);
     const parsed = McpOAuthAuthorizeQuerySchema.safeParse(
-      withDefaultResource(oauthQuery, this.oauthConfig.getCanonicalResource()),
+      withDefaultResource(query, this.oauthConfig.getCanonicalResource()),
     );
 
     if (!parsed.success) {
@@ -97,7 +95,7 @@ export class OAuthController {
       return;
     }
 
-    if (!wantsJson(request) && !approved) {
+    if (!wantsJson(request)) {
       response.redirect(
         HttpStatus.FOUND,
         buildWebAuthorizeUrl(
@@ -122,13 +120,48 @@ export class OAuthController {
         request.session.userId,
       );
 
-      if (wantsJson(request)) {
-        response.status(HttpStatus.OK).json(prepared.context);
-        return;
-      }
+      response.status(HttpStatus.OK).json(prepared.context);
+    } catch (error) {
+      writeOAuthError(response, error);
+    }
+  }
 
+  @Post("authorize/approve")
+  @HttpCode(HttpStatus.OK)
+  @UseGuards(WriteOriginGuard)
+  async approveAuthorization(
+    @Query() query: unknown,
+    @Req() request: RequestWithContext,
+    @Res() response: RawResponse,
+  ): Promise<void> {
+    const parsed = McpOAuthAuthorizeQuerySchema.safeParse(
+      withDefaultResource(query, this.oauthConfig.getCanonicalResource()),
+    );
+
+    if (!parsed.success) {
+      writeValidationError(response, parsed.error);
+      return;
+    }
+
+    if (!request.session) {
+      throw new ApiException(
+        "UNAUTHORIZED",
+        "Authentication is required",
+        HttpStatus.UNAUTHORIZED,
+      );
+    }
+
+    try {
+      const prepared = await this.oauth.prepareAuthorization(
+        parsed.data,
+        request.session.userId,
+      );
       const result = await prepared.grant();
-      response.redirect(HttpStatus.FOUND, result.redirectTo);
+      const body: McpOAuthApproveAuthorizationResponse = {
+        redirectTo: result.redirectTo,
+      };
+
+      response.status(HttpStatus.OK).json(body);
     } catch (error) {
       writeOAuthError(response, error);
     }
@@ -232,25 +265,6 @@ function wantsJson(request: RequestWithContext): boolean {
   return firstHeaderValue(request.headers?.accept)?.includes(
     "application/json",
   ) ?? false;
-}
-
-function extractAuthorizeConsent(query: unknown): {
-  approved: boolean;
-  oauthQuery: unknown;
-} {
-  if (!isRecord(query)) {
-    return {
-      approved: false,
-      oauthQuery: query,
-    };
-  }
-
-  const { [authorizeConsentParam]: consent, ...oauthQuery } = query;
-
-  return {
-    approved: consent === authorizeConsentValue,
-    oauthQuery,
-  };
 }
 
 function withDefaultResource(input: unknown, resource: string): unknown {

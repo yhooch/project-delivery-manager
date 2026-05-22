@@ -1,9 +1,9 @@
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import type { McpOAuthAuthorizeContext } from "@project-delivery/shared";
 import type { ReactNode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const createMcpOAuthApproveAuthorizeUrlMock = vi.hoisted(() => vi.fn());
+const approveMcpOAuthAuthorizationMock = vi.hoisted(() => vi.fn());
 const getMcpOAuthAuthorizeContextMock = vi.hoisted(() => vi.fn());
 const sessionMock = vi.hoisted(() => ({
   value: {
@@ -52,7 +52,7 @@ vi.mock("../../lib/mcp-service", async () => {
 
   return {
     ...actual,
-    createMcpOAuthApproveAuthorizeUrl: createMcpOAuthApproveAuthorizeUrlMock,
+    approveMcpOAuthAuthorization: approveMcpOAuthAuthorizationMock,
     getMcpOAuthAuthorizeContext: getMcpOAuthAuthorizeContextMock,
   };
 });
@@ -86,8 +86,8 @@ function createContext(
 }
 
 beforeEach(() => {
-  createMcpOAuthApproveAuthorizeUrlMock.mockReset();
-  createMcpOAuthApproveAuthorizeUrlMock.mockReturnValue("#approved");
+  approveMcpOAuthAuthorizationMock.mockReset();
+  approveMcpOAuthAuthorizationMock.mockResolvedValue("#approved");
   getMcpOAuthAuthorizeContextMock.mockReset();
   sessionMock.value = {
     status: "authenticated",
@@ -124,10 +124,12 @@ describe("McpAuthorizePage", () => {
 
     fireEvent.click(confirm);
 
-    expect(createMcpOAuthApproveAuthorizeUrlMock).toHaveBeenCalledWith(
+    await waitFor(() => {
+      expect(window.location.hash).toBe("#approved");
+    });
+    expect(approveMcpOAuthAuthorizationMock).toHaveBeenCalledWith(
       authorizeQuery,
     );
-    expect(window.location.hash).toBe("#approved");
   });
 
   it("shows a sign-in entry when the user is not authenticated", () => {

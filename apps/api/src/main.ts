@@ -24,6 +24,10 @@ export function configureApp(app: INestApplication): INestApplication {
         method: RequestMethod.GET,
       },
       {
+        path: "oauth/authorize/approve",
+        method: RequestMethod.POST,
+      },
+      {
         path: "oauth/token",
         method: RequestMethod.POST,
       },

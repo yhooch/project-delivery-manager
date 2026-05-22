@@ -165,7 +165,7 @@ describe("OAuthController", () => {
     expect(response.statusCode).toBe(HttpStatus.OK);
   });
 
-  it("grants a code after HTML authorize requests include approval consent", async () => {
+  it("does not grant a code from an approval consent query parameter", async () => {
     const { controller, grant } = createSubject();
     const response = new MockResponse();
 
@@ -178,11 +178,28 @@ describe("OAuthController", () => {
       response,
     );
 
-    expect(grant).toHaveBeenCalledOnce();
+    expect(grant).not.toHaveBeenCalled();
     expect(response.redirectStatus).toBe(HttpStatus.FOUND);
     expect(response.redirectTo).toBe(
-      "http://localhost:4555/callback?code=code-1&state=state-1",
+      "http://localhost:3000/zh-CN/oauth/mcp/authorize?response_type=code&client_id=test-mcp-client&redirect_uri=http%3A%2F%2Flocalhost%3A4555%2Fcallback&code_challenge=abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQ&code_challenge_method=S256&scope=mcp%3Aread&resource=http%3A%2F%2Flocalhost%3A3001%2Fapi%2Fv1%2Fmcp&state=state-1",
     );
+  });
+
+  it("grants a code through the approved authorize endpoint", async () => {
+    const { controller, grant } = createSubject();
+    const response = new MockResponse();
+
+    await controller.approveAuthorization(
+      authorizeQuery(),
+      request({ accept: "application/json", withSession: true }),
+      response,
+    );
+
+    expect(grant).toHaveBeenCalledOnce();
+    expect(response.statusCode).toBe(HttpStatus.OK);
+    expect(response.body).toEqual({
+      redirectTo: "http://localhost:4555/callback?code=code-1&state=state-1",
+    });
   });
 
   it("ignores approval consent for JSON authorize requests", async () => {

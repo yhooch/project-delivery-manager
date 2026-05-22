@@ -56,6 +56,7 @@ export const McpProtectedResourceMetadataPath =
 export const McpAuthorizationServerMetadataPath =
   "/.well-known/oauth-authorization-server";
 export const McpAuthorizePath = "/oauth/authorize";
+export const McpAuthorizeApprovalPath = "/oauth/authorize/approve";
 export const McpTokenPath = "/oauth/token";
 export const McpRevokePath = "/oauth/revoke";
 export const McpRegisterPath = "/oauth/register";
@@ -331,6 +332,16 @@ export const McpOAuthAuthorizeContextSchema = z
 
 export type McpOAuthAuthorizeContext = z.infer<
   typeof McpOAuthAuthorizeContextSchema
+>;
+
+export const McpOAuthApproveAuthorizationResponseSchema = z
+  .object({
+    redirectTo: z.url(),
+  })
+  .strict();
+
+export type McpOAuthApproveAuthorizationResponse = z.infer<
+  typeof McpOAuthApproveAuthorizationResponseSchema
 >;
 
 const McpOAuthTokenBaseSchema = z.object({
