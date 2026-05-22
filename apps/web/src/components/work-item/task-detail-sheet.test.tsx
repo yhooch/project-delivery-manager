@@ -2849,8 +2849,8 @@ describe("TaskDetailSheet", () => {
       "href",
       `/requirements/${requirementId}`,
     );
-    expect(requirementLink).not.toHaveAttribute("target");
-    expect(requirementLink).not.toHaveAttribute("rel");
+    expect(requirementLink).toHaveAttribute("target", "_blank");
+    expect(requirementLink).toHaveAttribute("rel", "noopener noreferrer");
 
     fireEvent.click(screen.getByTestId("task-intake-link"));
 

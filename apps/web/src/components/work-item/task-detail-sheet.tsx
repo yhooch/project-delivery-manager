@@ -2799,6 +2799,8 @@ function TraceabilityRow({
           className="ml-auto cursor-pointer truncate font-medium text-primary underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           data-testid="task-requirement-link"
           href={link.href}
+          rel="noopener noreferrer"
+          target="_blank"
         >
           {value}
         </Link>
