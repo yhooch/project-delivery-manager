@@ -35,8 +35,13 @@ describe("API infrastructure", () => {
     expect(response.headers["x-request-id"]).toBe("test-request-id");
     expect(response.body).toEqual({
       data: {
+        buildTime: expect.any(String),
+        channel: expect.any(String),
+        commit: expect.any(String),
+        imageDigest: expect.any(String),
         service: "api",
         status: "ok",
+        version: expect.any(String),
       },
       requestId: "test-request-id",
     });

@@ -59,12 +59,21 @@ services:
     restart: "no"
 
   api:
+    image: ${PDM_API_IMAGE:-pdm-api:local}
+    pull_policy: ${PDM_API_PULL_POLICY:-build}
     build:
       context: .
       dockerfile: Dockerfile.api
     restart: unless-stopped
     environment:
       NODE_ENV: production
+      PDM_RELEASE_ID: ${PDM_RELEASE_ID:-local-build}
+      PDM_API_IMAGE: ${PDM_API_IMAGE:-pdm-api:local}
+      API_VERSION: ${PDM_APP_VERSION:-local-build}
+      API_COMMIT: ${PDM_COMMIT:-unknown}
+      API_BUILD_TIME: ${PDM_BUILD_TIME:-unknown}
+      API_IMAGE_DIGEST: ${PDM_API_IMAGE_DIGEST:-unknown}
+      API_CHANNEL: ${PDM_RELEASE_CHANNEL:-development}
       DATABASE_URL: postgresql://${POSTGRES_USER:-crm}:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}@postgres:5432/${POSTGRES_DB:-crm_manager}
       WEB_APP_URL: ${WEB_APP_URL:?WEB_APP_URL is required}
       SESSION_COOKIE_NAME: ${SESSION_COOKIE_NAME:-pdm_session}
@@ -95,6 +104,8 @@ services:
       retries: 12
 
   web:
+    image: ${PDM_WEB_IMAGE:-pdm-web:local}
+    pull_policy: ${PDM_WEB_PULL_POLICY:-build}
     build:
       context: .
       dockerfile: Dockerfile.web
@@ -103,6 +114,13 @@ services:
     restart: unless-stopped
     environment:
       NODE_ENV: production
+      PDM_RELEASE_ID: ${PDM_RELEASE_ID:-local-build}
+      PDM_WEB_IMAGE: ${PDM_WEB_IMAGE:-pdm-web:local}
+      WEB_VERSION: ${PDM_APP_VERSION:-local-build}
+      WEB_COMMIT: ${PDM_COMMIT:-unknown}
+      WEB_BUILD_TIME: ${PDM_BUILD_TIME:-unknown}
+      WEB_IMAGE_DIGEST: ${PDM_WEB_IMAGE_DIGEST:-unknown}
+      WEB_CHANNEL: ${PDM_RELEASE_CHANNEL:-development}
       API_PROXY_TARGET: http://api:3001
       NEXT_PUBLIC_API_BASE_PATH: /api/v1
       PORT: "3000"
@@ -119,7 +137,7 @@ services:
     ports:
       - "${HTTP_PORT:-80}:80"
     volumes:
-      - ./deploy/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+      - ./deploy/nginx/active:/etc/nginx/conf.d:ro
     depends_on:
       web:
         condition: service_started
