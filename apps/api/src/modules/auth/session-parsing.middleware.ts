@@ -1,6 +1,7 @@
 import { Inject, Injectable, type NestMiddleware } from "@nestjs/common";
 
 import type { RequestWithContext } from "../../http/request-context";
+import { updateRequestLogContext } from "../../observability/request-log-context";
 import { AuthSessionService } from "./auth-session.service";
 
 type Response = unknown;
@@ -23,6 +24,9 @@ export class SessionParsingMiddleware implements NestMiddleware {
     if (context) {
       request.session = context.session;
       request.currentUser = context.user;
+      updateRequestLogContext({
+        userId: context.user.id,
+      });
     }
 
     next();

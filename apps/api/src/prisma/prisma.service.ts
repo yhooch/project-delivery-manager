@@ -1,4 +1,4 @@
-import { Inject, Injectable, type OnModuleDestroy } from "@nestjs/common";
+import { Inject, Injectable, Logger, type OnModuleDestroy } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { PrismaPg } from "@prisma/adapter-pg";
 
@@ -7,17 +7,29 @@ import {
   PrismaClient,
   type PrismaClient as PrismaClientInstance,
 } from "../generated/prisma/client";
+import {
+  logPrismaQueryEvent,
+  shouldEnablePrismaQueryEvents,
+} from "../observability/prisma-query-logger";
 
 type PrismaClientConstructor = new (
   options: Prisma.PrismaClientOptions,
 ) => PrismaClientInstance;
+
+type PrismaClientWithQueryEvents = PrismaClientInstance & {
+  $on(
+    eventType: "query",
+    callback: (event: Prisma.QueryEvent) => void,
+  ): PrismaClientWithQueryEvents;
+};
 
 const PrismaClientWithOptions =
   PrismaClient as unknown as PrismaClientConstructor;
 
 @Injectable()
 export class PrismaService implements OnModuleDestroy {
-  private prisma?: PrismaClientInstance;
+  private readonly logger = new Logger(PrismaService.name);
+  private prisma?: PrismaClientWithQueryEvents;
 
   constructor(
     @Inject(ConfigService)
@@ -25,7 +37,10 @@ export class PrismaService implements OnModuleDestroy {
   ) {}
 
   get client(): PrismaClientInstance {
-    this.prisma ??= new PrismaClientWithOptions(this.createClientOptions());
+    if (!this.prisma) {
+      this.prisma = this.createClient();
+    }
+
     return this.prisma;
   }
 
@@ -43,6 +58,20 @@ export class PrismaService implements OnModuleDestroy {
     await this.disconnect();
   }
 
+  private createClient(): PrismaClientWithQueryEvents {
+    const client = new PrismaClientWithOptions(
+      this.createClientOptions(),
+    ) as PrismaClientWithQueryEvents;
+
+    if (shouldEnablePrismaQueryEvents(this.config)) {
+      client.$on("query", (event) => {
+        logPrismaQueryEvent(event, this.config, this.logger);
+      });
+    }
+
+    return client;
+  }
+
   private createClientOptions(): Prisma.PrismaClientOptions {
     const databaseUrl = this.config.get<string>("DATABASE_URL");
 
@@ -57,12 +86,20 @@ export class PrismaService implements OnModuleDestroy {
       return {
         accelerateUrl: databaseUrl,
         errorFormat: "minimal",
+        log: this.createPrismaLogOptions(),
       };
     }
 
     return {
       adapter: new PrismaPg({ connectionString: databaseUrl }),
       errorFormat: "minimal",
+      log: this.createPrismaLogOptions(),
     } as Prisma.PrismaClientOptions;
+  }
+
+  private createPrismaLogOptions(): Prisma.PrismaClientOptions["log"] {
+    return shouldEnablePrismaQueryEvents(this.config)
+      ? [{ emit: "event", level: "query" }]
+      : [];
   }
 }

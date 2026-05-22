@@ -12,6 +12,7 @@ import { validateEnv } from "./config/env";
 import { ApiResponseInterceptor } from "./http/api-response.interceptor";
 import { GlobalExceptionFilter } from "./http/global-exception.filter";
 import { RequestIdMiddleware } from "./http/request-id.middleware";
+import { HttpObservabilityMiddleware } from "./observability/http-observability.middleware";
 import { AuthModule } from "./modules/auth/auth.module";
 import { AttachmentModule } from "./modules/attachment/attachment.module";
 import { BugModule } from "./modules/bug/bug.module";
@@ -64,11 +65,16 @@ import { PrismaModule } from "./prisma/prisma.module";
       useClass: ApiResponseInterceptor,
     },
     SessionParsingMiddleware,
+    HttpObservabilityMiddleware,
   ],
 })
 export class AppModule implements NestModule {
   configure(consumer: MiddlewareConsumer): void {
     consumer.apply(RequestIdMiddleware).forRoutes({
+      method: RequestMethod.ALL,
+      path: "{*path}",
+    });
+    consumer.apply(HttpObservabilityMiddleware).forRoutes({
       method: RequestMethod.ALL,
       path: "{*path}",
     });
