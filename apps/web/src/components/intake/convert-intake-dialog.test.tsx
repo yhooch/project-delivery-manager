@@ -67,11 +67,54 @@ vi.mock("../../lib/workflow-options", () => ({
   ) => options.find((option) => option.isDefault)?.version.id ?? "",
   loadWorkflowVersionOptions: loadWorkflowVersionOptionsMock,
 }));
+vi.mock("../tag", () => ({
+  TagSelectionField: ({
+    onSelectedTagsChange,
+    selectedTags,
+    testId,
+  }: {
+    onSelectedTagsChange: (
+      tags: import("@project-delivery/shared").TagDto[],
+    ) => void;
+    selectedTags: import("@project-delivery/shared").TagDto[];
+    testId?: string;
+  }) => {
+    const tag = {
+      colorKey: "blue",
+      createdAt: "2026-05-20T00:00:00.000Z",
+      displayName: "#backend",
+      id: "01ARZ3NDEKTSV4RRFFQ69G5FT1",
+      name: "backend",
+      normalizedName: "backend",
+      organizationId: "ORG_01",
+      spaceId: "01ARZ3NDEKTSV4RRFFQ69G5FS1",
+      updatedAt: "2026-05-20T00:00:00.000Z",
+    };
+
+    return (
+      <button
+        type="button"
+        data-testid={testId}
+        data-selected={selectedTags.map((item) => item.id).join(",")}
+        onClick={() =>
+          onSelectedTagsChange(
+            selectedTags.some((item) => item.id === tag.id)
+              ? selectedTags
+              : [...selectedTags, tag],
+          )
+        }
+      >
+        select tag
+      </button>
+    );
+  },
+}));
 
 import type {
   IntakeItem,
   Requirement,
   SpaceMemberWithUser,
+  TagDto,
   Version,
 } from "@project-delivery/shared";
 
@@ -87,6 +130,23 @@ const requirementTwoId = "01ARZ3NDEKTSV4RRFFQ69G5FR2";
 const unversionedRequirementId = "01ARZ3NDEKTSV4RRFFQ69G5FR3";
 const assigneeId = "01ARZ3NDEKTSV4RRFFQ69G5FA1";
 const workflowVersionId = "01ARZ3NDEKTSV4RRFFQ69G5FW2";
+const selectedTagId = "01ARZ3NDEKTSV4RRFFQ69G5FT1";
+const intakeTagId = "01ARZ3NDEKTSV4RRFFQ69G5FT2";
+
+function makeTag(overrides: Partial<TagDto> = {}): TagDto {
+  return {
+    colorKey: "green",
+    createdAt: "2026-05-20T00:00:00.000Z",
+    displayName: "#frontend",
+    id: intakeTagId,
+    name: "frontend",
+    normalizedName: "frontend",
+    organizationId,
+    spaceId,
+    updatedAt: "2026-05-20T00:00:00.000Z",
+    ...overrides,
+  };
+}
 
 function makeIntake(overrides: Partial<IntakeItem> = {}): IntakeItem {
   return {
@@ -272,6 +332,47 @@ describe("ConvertIntakeDialog", () => {
             expect.objectContaining({
               title: "Follow-up task",
               workflowVersionId,
+            }),
+          ],
+        },
+      ),
+    );
+  });
+
+  it("submits inherited and selected tags for converted task rows", async () => {
+    const intakeTag = makeTag();
+
+    render(
+      <ConvertIntakeDialog
+        open
+        onOpenChange={vi.fn()}
+        organizationId={organizationId}
+        spaceId={spaceId}
+        intakeItem={makeIntake({ tags: [intakeTag] })}
+      />,
+    );
+
+    expect(
+      await screen.findByDisplayValue("Checkout scope"),
+    ).toBeInTheDocument();
+    expect(screen.getByTestId("convert-task-tags-0")).toHaveAttribute(
+      "data-selected",
+      intakeTagId,
+    );
+
+    fireEvent.click(screen.getByTestId("convert-task-tags-0"));
+    fireEvent.click(
+      screen.getByRole("button", { name: "intake.dialog.convert.submit" }),
+    );
+
+    await waitFor(() =>
+      expect(convertIntakeItemToWorkItemsMock).toHaveBeenCalledWith(
+        { intakeItemId, organizationId, spaceId },
+        {
+          tasks: [
+            expect.objectContaining({
+              tagIds: [intakeTagId, selectedTagId],
+              title: "Checkout scope",
             }),
           ],
         },

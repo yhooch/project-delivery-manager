@@ -86,6 +86,7 @@ export function CreateTaskDialog({
   const [priority, setPriority] = useState<Priority>("MEDIUM");
   const [dueDate, setDueDate] = useState("");
   const [selectedTags, setSelectedTags] = useState<TagDto[]>([]);
+  const [tagsEdited, setTagsEdited] = useState(false);
   const [titleError, setTitleError] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [errorKey, setErrorKey] = useState<string | null>(null);
@@ -192,6 +193,7 @@ export function CreateTaskDialog({
     setPriority("MEDIUM");
     setDueDate("");
     setSelectedTags([]);
+    setTagsEdited(false);
     setTitleError(false);
     setErrorKey(null);
     setOptionsLoadState("idle");
@@ -206,12 +208,21 @@ export function CreateTaskDialog({
 
   function handleVersionChange(nextVersionId: string) {
     setVersionId(nextVersionId);
-    setRequirementId((current) =>
-      clearIncompatibleTraceSelection(requirements, current, nextVersionId),
+    const nextRequirementId = clearIncompatibleTraceSelection(
+      requirements,
+      requirementId,
+      nextVersionId,
     );
-    setIntakeItemId((current) =>
-      clearIncompatibleTraceSelection(intakeItems, current, nextVersionId),
+    const nextIntakeItemId = clearIncompatibleTraceSelection(
+      intakeItems,
+      intakeItemId,
+      nextVersionId,
     );
+    setRequirementId(nextRequirementId);
+    setIntakeItemId(nextIntakeItemId);
+    if (!tagsEdited) {
+      setSelectedTags(resolveInheritedTags(nextRequirementId, nextIntakeItemId));
+    }
   }
 
   function handleRequirementChange(nextRequirementId: string) {
@@ -221,6 +232,9 @@ export function CreateTaskDialog({
       (requirement) => requirement.id === nextRequirementId,
     );
     setVersionId(inheritVersionFromTraceOption(nextRequirement, versionId));
+    if (!tagsEdited && !intakeItemId) {
+      setSelectedTags(resolveInheritedTags(nextRequirementId, ""));
+    }
   }
 
   function handleIntakeItemChange(nextIntakeItemId: string) {
@@ -241,6 +255,36 @@ export function CreateTaskDialog({
     if (nextIntakeItem?.requirementId) {
       setRequirementId(nextIntakeItem.requirementId);
     }
+    if (!tagsEdited) {
+      setSelectedTags(
+        resolveInheritedTags(
+          nextIntakeItem?.requirementId ?? requirementId,
+          nextIntakeItemId,
+        ),
+      );
+    }
+  }
+
+  function handleSelectedTagsChange(nextTags: TagDto[]) {
+    setTagsEdited(true);
+    setSelectedTags(nextTags);
+  }
+
+  function resolveInheritedTags(
+    nextRequirementId: string,
+    nextIntakeItemId: string,
+  ): TagDto[] {
+    const nextIntakeItem = intakeItems.find(
+      (intakeItem) => intakeItem.id === nextIntakeItemId,
+    );
+    if (nextIntakeItem) {
+      return [...(nextIntakeItem.tags ?? [])];
+    }
+
+    const nextRequirement = requirements.find(
+      (requirement) => requirement.id === nextRequirementId,
+    );
+    return [...(nextRequirement?.tags ?? [])];
   }
 
   function handleOpenChange(next: boolean) {
@@ -497,7 +541,7 @@ export function CreateTaskDialog({
               <Label>{tTags("label")}</Label>
               <TagSelectionField
                 disabled={submitting}
-                onSelectedTagsChange={setSelectedTags}
+                onSelectedTagsChange={handleSelectedTagsChange}
                 organizationId={organizationId}
                 selectedTags={selectedTags}
                 spaceId={spaceId}

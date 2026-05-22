@@ -6,6 +6,7 @@ import type {
   Priority,
   Requirement,
   SpaceMemberWithUser,
+  TagDto,
   Version,
 } from "@project-delivery/shared";
 import { Plus, Trash2 } from "lucide-react";
@@ -17,6 +18,7 @@ import { toConvertIntakeItemRequest } from "../../lib/intake-forms";
 import { convertIntakeItemToWorkItems } from "../../lib/intake-service";
 import { listRequirements } from "../../lib/requirement-service";
 import { listSpaceMembers } from "../../lib/space-service";
+import { getTagIds } from "../../lib/tag-ui";
 import { listVersions } from "../../lib/version-service";
 import {
   filterTraceOptionsByVersion,
@@ -44,6 +46,7 @@ import { Label } from "../ui/label";
 import { Textarea } from "../ui/textarea";
 import { SelectMenu } from "../ui/select-menu";
 import { useSession } from "../providers/session-provider";
+import { TagSelectionField } from "../tag";
 
 type ConvertIntakeDialogProps = {
   open: boolean;
@@ -63,6 +66,7 @@ type TaskRow = {
   dueDate: string;
   priority: Priority;
   requirementId: string;
+  selectedTags: TagDto[];
   title: string;
   versionId: string;
   workflowVersionId: string;
@@ -79,6 +83,7 @@ function makeRow(
     dueDate: "",
     priority: intakeItem?.priority ?? "MEDIUM",
     requirementId: intakeItem?.requirementId ?? "",
+    selectedTags: [...(intakeItem?.tags ?? [])],
     title: includeTitle ? (intakeItem?.title ?? "") : "",
     versionId: intakeItem?.versionId ?? "",
     workflowVersionId,
@@ -96,6 +101,7 @@ export function ConvertIntakeDialog({
   const t = useTranslations("intake.dialog");
   const tIntakeItems = useTranslations("intakeItems");
   const tPriority = useTranslations("intakeItems.priority");
+  const tTags = useTranslations("tags.field");
   const tRoot = useTranslations();
   const { currentOrganization, session } = useSession();
   const organizationId =
@@ -266,6 +272,9 @@ export function ConvertIntakeDialog({
               : undefined,
             priority: row.priority,
             requirementId: row.requirementId || undefined,
+            ...(row.selectedTags.length > 0
+              ? { tagIds: getTagIds(row.selectedTags) }
+              : {}),
             title: row.title,
             versionId: row.versionId || undefined,
             workflowVersionId: row.workflowVersionId || undefined,
@@ -529,6 +538,19 @@ export function ConvertIntakeDialog({
                         );
                       })}
                     </SelectMenu>
+                  </div>
+                  <div className="flex flex-col gap-1.5 sm:col-span-2">
+                    <Label>{tTags("label")}</Label>
+                    <TagSelectionField
+                      disabled={submitting}
+                      onSelectedTagsChange={(selectedTags) =>
+                        updateRow(index, { selectedTags })
+                      }
+                      organizationId={organizationId}
+                      selectedTags={row.selectedTags}
+                      spaceId={spaceId}
+                      testId={`convert-task-tags-${index}`}
+                    />
                   </div>
                 </div>
               </div>

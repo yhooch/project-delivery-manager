@@ -93,6 +93,50 @@ vi.mock("../../lib/workflow-options", () => ({
   ) => options.find((option) => option.isDefault)?.version.id ?? "",
   loadWorkflowVersionOptions: loadWorkflowVersionOptionsMock,
 }));
+vi.mock("../tag", () => ({
+  TagSelectionField: ({
+    onSelectedTagsChange,
+    selectedTags,
+    testId,
+  }: {
+    onSelectedTagsChange: (
+      tags: import("@project-delivery/shared").TagDto[],
+    ) => void;
+    selectedTags: import("@project-delivery/shared").TagDto[];
+    testId?: string;
+  }) => {
+    const tag = {
+      colorKey: "blue",
+      createdAt: "2026-05-20T00:00:00.000Z",
+      displayName: "#manual",
+      id: "01ARZ3NDEKTSV4RRFFQ69G5FT3",
+      name: "manual",
+      normalizedName: "manual",
+      organizationId: "ORG_01",
+      spaceId: "01ARZ3NDEKTSV4RRFFQ69G5FS1",
+      updatedAt: "2026-05-20T00:00:00.000Z",
+    };
+
+    return (
+      <button
+        type="button"
+        data-testid={testId}
+        data-selected={selectedTags.map((item) => item.id).join(",")}
+        onClick={() =>
+          onSelectedTagsChange(
+            selectedTags.some((item) => item.id === tag.id)
+              ? selectedTags
+              : [...selectedTags, tag],
+          )
+        }
+      >
+        select tag
+      </button>
+    );
+  },
+}));
+
+import type { TagDto } from "@project-delivery/shared";
 
 import { CreateTaskDialog } from "./create-task-dialog";
 
@@ -108,6 +152,24 @@ const versionId = "01ARZ3NDEKTSV4RRFFQ69G5FV1";
 const versionTwoId = "01ARZ3NDEKTSV4RRFFQ69G5FV2";
 const workflowVersionId = "01ARZ3NDEKTSV4RRFFQ69G5FW1";
 const workflowVersionTwoId = "01ARZ3NDEKTSV4RRFFQ69G5FW2";
+const requirementTagId = "01ARZ3NDEKTSV4RRFFQ69G5FT1";
+const intakeTagId = "01ARZ3NDEKTSV4RRFFQ69G5FT2";
+const manualTagId = "01ARZ3NDEKTSV4RRFFQ69G5FT3";
+const intakeTwoTagId = "01ARZ3NDEKTSV4RRFFQ69G5FT4";
+
+function makeTag(id: string, name: string): TagDto {
+  return {
+    colorKey: "green",
+    createdAt: "2026-05-20T00:00:00.000Z",
+    displayName: `#${name}`,
+    id,
+    name,
+    normalizedName: name,
+    organizationId,
+    spaceId,
+    updatedAt: "2026-05-20T00:00:00.000Z",
+  };
+}
 
 beforeEach(() => {
   createWorkItemMock.mockReset();
@@ -166,6 +228,149 @@ describe("CreateTaskDialog", () => {
         intakeItemId,
         requirementId,
         title: "Linked task",
+      }),
+    );
+  });
+
+  it("inherits requirement tags when no intake item is selected", async () => {
+    listRequirementsMock.mockResolvedValue({
+      items: [
+        {
+          id: requirementId,
+          tags: [makeTag(requirementTagId, "frontend")],
+          title: "Requirement tagged",
+        },
+      ],
+      total: 1,
+    });
+    listIntakeItemsMock.mockResolvedValue({ items: [], total: 0 });
+
+    render(
+      <CreateTaskDialog
+        open
+        onOpenChange={() => {}}
+        organizationId={organizationId}
+        spaceId={spaceId}
+      />,
+    );
+
+    await screen.findByText("Requirement tagged");
+    fireEvent.change(screen.getByTestId("create-task-title-input"), {
+      target: { value: "Task from requirement" },
+    });
+    fireEvent.change(screen.getByTestId("create-task-requirement-select"), {
+      target: { value: requirementId },
+    });
+    fireEvent.click(screen.getByTestId("create-task-submit"));
+
+    await waitFor(() => expect(createWorkItemMock).toHaveBeenCalledTimes(1));
+    expect(createWorkItemMock).toHaveBeenCalledWith(
+      { organizationId, spaceId },
+      expect.objectContaining({
+        tagIds: [requirementTagId],
+        title: "Task from requirement",
+      }),
+    );
+  });
+
+  it("prefers intake item tags over requirement tags", async () => {
+    listRequirementsMock.mockResolvedValue({
+      items: [
+        {
+          id: requirementId,
+          tags: [makeTag(requirementTagId, "frontend")],
+          title: "Requirement tagged",
+        },
+      ],
+      total: 1,
+    });
+    listIntakeItemsMock.mockResolvedValue({
+      items: [
+        {
+          id: intakeItemId,
+          requirementId,
+          tags: [makeTag(intakeTagId, "intake")],
+          title: "Intake tagged",
+        },
+      ],
+      total: 1,
+    });
+
+    render(
+      <CreateTaskDialog
+        open
+        onOpenChange={() => {}}
+        organizationId={organizationId}
+        spaceId={spaceId}
+      />,
+    );
+
+    await screen.findByText("Intake tagged");
+    fireEvent.change(screen.getByTestId("create-task-title-input"), {
+      target: { value: "Task from intake" },
+    });
+    fireEvent.change(screen.getByTestId("create-task-intake-select"), {
+      target: { value: intakeItemId },
+    });
+    fireEvent.click(screen.getByTestId("create-task-submit"));
+
+    await waitFor(() => expect(createWorkItemMock).toHaveBeenCalledTimes(1));
+    expect(createWorkItemMock).toHaveBeenCalledWith(
+      { organizationId, spaceId },
+      expect.objectContaining({
+        requirementId,
+        tagIds: [intakeTagId],
+        title: "Task from intake",
+      }),
+    );
+  });
+
+  it("does not overwrite manually edited tags when the intake item changes", async () => {
+    listIntakeItemsMock.mockResolvedValue({
+      items: [
+        {
+          id: intakeItemId,
+          tags: [makeTag(intakeTagId, "intake")],
+          title: "Intake tagged",
+        },
+        {
+          id: intakeItemTwoId,
+          tags: [makeTag(intakeTwoTagId, "other")],
+          title: "Other intake",
+        },
+      ],
+      total: 2,
+    });
+
+    render(
+      <CreateTaskDialog
+        open
+        onOpenChange={() => {}}
+        organizationId={organizationId}
+        spaceId={spaceId}
+      />,
+    );
+
+    await screen.findByText("Intake tagged");
+    fireEvent.change(screen.getByTestId("create-task-title-input"), {
+      target: { value: "Manual tagged task" },
+    });
+    fireEvent.change(screen.getByTestId("create-task-intake-select"), {
+      target: { value: intakeItemId },
+    });
+    fireEvent.click(screen.getByTestId("create-task-tags"));
+    fireEvent.change(screen.getByTestId("create-task-intake-select"), {
+      target: { value: intakeItemTwoId },
+    });
+    fireEvent.click(screen.getByTestId("create-task-submit"));
+
+    await waitFor(() => expect(createWorkItemMock).toHaveBeenCalledTimes(1));
+    expect(createWorkItemMock).toHaveBeenCalledWith(
+      { organizationId, spaceId },
+      expect.objectContaining({
+        intakeItemId: intakeItemTwoId,
+        tagIds: [intakeTagId, manualTagId],
+        title: "Manual tagged task",
       }),
     );
   });

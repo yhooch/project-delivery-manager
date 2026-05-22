@@ -44,6 +44,50 @@ vi.mock("../providers/session-provider", () => ({
     session: { defaultOrganizationId: sessionOrganizationId },
   }),
 }));
+vi.mock("../tag", () => ({
+  TagSelectionField: ({
+    onSelectedTagsChange,
+    selectedTags,
+    testId,
+  }: {
+    onSelectedTagsChange: (
+      tags: import("@project-delivery/shared").TagDto[],
+    ) => void;
+    selectedTags: import("@project-delivery/shared").TagDto[];
+    testId?: string;
+  }) => {
+    const tag = {
+      colorKey: "blue",
+      createdAt: "2026-05-20T00:00:00.000Z",
+      displayName: "#manual",
+      id: "01ARZ3NDEKTSV4RRFFQ69G5FT3",
+      name: "manual",
+      normalizedName: "manual",
+      organizationId: sessionOrganizationId,
+      spaceId: "01ARZ3NDEKTSV4RRFFQ69G5FS1",
+      updatedAt: "2026-05-20T00:00:00.000Z",
+    };
+
+    return (
+      <button
+        type="button"
+        data-testid={testId}
+        data-selected={selectedTags.map((item) => item.id).join(",")}
+        onClick={() =>
+          onSelectedTagsChange(
+            selectedTags.some((item) => item.id === tag.id)
+              ? selectedTags
+              : [...selectedTags, tag],
+          )
+        }
+      >
+        select tag
+      </button>
+    );
+  },
+}));
+
+import type { TagDto } from "@project-delivery/shared";
 
 import { CreateIntakeDialog } from "./create-intake-dialog";
 
@@ -55,6 +99,23 @@ const versionTwoId = "01ARZ3NDEKTSV4RRFFQ69G5FV2";
 const requirementId = "01ARZ3NDEKTSV4RRFFQ69G5FR1";
 const requirementTwoId = "01ARZ3NDEKTSV4RRFFQ69G5FR2";
 const unversionedRequirementId = "01ARZ3NDEKTSV4RRFFQ69G5FR3";
+const requirementTagId = "01ARZ3NDEKTSV4RRFFQ69G5FT1";
+const requirementTwoTagId = "01ARZ3NDEKTSV4RRFFQ69G5FT2";
+const manualTagId = "01ARZ3NDEKTSV4RRFFQ69G5FT3";
+
+function makeTag(id: string, name: string): TagDto {
+  return {
+    colorKey: "green",
+    createdAt: "2026-05-20T00:00:00.000Z",
+    displayName: `#${name}`,
+    id,
+    name,
+    normalizedName: name,
+    organizationId,
+    spaceId,
+    updatedAt: "2026-05-20T00:00:00.000Z",
+  };
+}
 
 beforeEach(() => {
   createIntakeItemMock.mockReset();
@@ -250,5 +311,85 @@ describe("CreateIntakeDialog", () => {
 
     await waitFor(() => expect(versionSelect.value).toBe(versionId));
     expect(requirementSelect.value).toBe(requirementId);
+  });
+
+  it("inherits requirement tags when creating an intake item", async () => {
+    listRequirementsMock.mockResolvedValue({
+      items: [
+        {
+          id: requirementId,
+          tags: [makeTag(requirementTagId, "frontend")],
+          title: "Requirement v1",
+          versionId,
+        },
+      ],
+      total: 1,
+    });
+
+    render(
+      <CreateIntakeDialog open onOpenChange={vi.fn()} spaceId={spaceId} />,
+    );
+
+    await screen.findByText("Requirement v1");
+    fireEvent.change(screen.getByTestId("create-intake-title-input"), {
+      target: { value: "Tagged intake" },
+    });
+    fireEvent.change(screen.getByTestId("create-intake-requirement-select"), {
+      target: { value: requirementId },
+    });
+    fireEvent.click(screen.getByTestId("create-intake-submit"));
+
+    await waitFor(() => expect(createIntakeItemMock).toHaveBeenCalledTimes(1));
+    expect(createIntakeItemMock).toHaveBeenCalledWith(
+      { organizationId, spaceId },
+      expect.objectContaining({
+        tagIds: [requirementTagId],
+        title: "Tagged intake",
+      }),
+    );
+  });
+
+  it("does not overwrite manually edited tags when the requirement changes", async () => {
+    listRequirementsMock.mockResolvedValue({
+      items: [
+        {
+          id: requirementId,
+          tags: [makeTag(requirementTagId, "frontend")],
+          title: "Requirement v1",
+        },
+        {
+          id: requirementTwoId,
+          tags: [makeTag(requirementTwoTagId, "backend")],
+          title: "Requirement v2",
+        },
+      ],
+      total: 2,
+    });
+
+    render(
+      <CreateIntakeDialog open onOpenChange={vi.fn()} spaceId={spaceId} />,
+    );
+
+    await screen.findByText("Requirement v1");
+    fireEvent.change(screen.getByTestId("create-intake-title-input"), {
+      target: { value: "Manual tagged intake" },
+    });
+    fireEvent.change(screen.getByTestId("create-intake-requirement-select"), {
+      target: { value: requirementId },
+    });
+    fireEvent.click(screen.getByTestId("create-intake-tags"));
+    fireEvent.change(screen.getByTestId("create-intake-requirement-select"), {
+      target: { value: requirementTwoId },
+    });
+    fireEvent.click(screen.getByTestId("create-intake-submit"));
+
+    await waitFor(() => expect(createIntakeItemMock).toHaveBeenCalledTimes(1));
+    expect(createIntakeItemMock).toHaveBeenCalledWith(
+      { organizationId, spaceId },
+      expect.objectContaining({
+        tagIds: [requirementTagId, manualTagId],
+        title: "Manual tagged intake",
+      }),
+    );
   });
 });

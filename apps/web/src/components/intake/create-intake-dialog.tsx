@@ -80,6 +80,7 @@ export function CreateIntakeDialog({
   const [sourceObject, setSourceObject] = useState("");
   const [priority, setPriority] = useState<Priority | "">("");
   const [selectedTags, setSelectedTags] = useState<TagDto[]>([]);
+  const [tagsEdited, setTagsEdited] = useState(false);
   const [titleError, setTitleError] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [errorKey, setErrorKey] = useState<string | null>(null);
@@ -142,6 +143,7 @@ export function CreateIntakeDialog({
     setSourceObject("");
     setPriority("");
     setSelectedTags([]);
+    setTagsEdited(false);
     setTitleError(false);
     setErrorKey(null);
     setOptionsLoadState("idle");
@@ -169,6 +171,9 @@ export function CreateIntakeDialog({
       !isTraceOptionCompatibleWithVersion(selectedRequirement, nextVersionId)
     ) {
       setRequirementId("");
+      if (!tagsEdited) {
+        setSelectedTags([]);
+      }
     }
   }
 
@@ -179,6 +184,14 @@ export function CreateIntakeDialog({
       (requirement) => requirement.id === nextRequirementId,
     );
     setVersionId(inheritVersionFromTraceOption(nextRequirement, versionId));
+    if (!tagsEdited) {
+      setSelectedTags([...(nextRequirement?.tags ?? [])]);
+    }
+  }
+
+  function handleSelectedTagsChange(nextTags: TagDto[]) {
+    setTagsEdited(true);
+    setSelectedTags(nextTags);
   }
 
   function handleOpenChange(next: boolean) {
@@ -415,7 +428,7 @@ export function CreateIntakeDialog({
               <Label>{tTags("label")}</Label>
               <TagSelectionField
                 disabled={submitting}
-                onSelectedTagsChange={setSelectedTags}
+                onSelectedTagsChange={handleSelectedTagsChange}
                 organizationId={organizationId}
                 selectedTags={selectedTags}
                 spaceId={spaceId}
