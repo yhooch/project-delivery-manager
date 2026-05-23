@@ -908,6 +908,37 @@ describe("RequirementsPage", () => {
     });
   });
 
+  it("creates a Markdown draft when the user selects Markdown format", async () => {
+    listRequirementsMock.mockResolvedValueOnce({ items: [], total: 0 });
+    createRequirementDraftMock.mockResolvedValueOnce(
+      makeRequirement({
+        contentFormat: "MARKDOWN",
+        contentMarkdown: "",
+        contentJson: undefined,
+        id: "01ARZ3NDEKTSV4RRFFQ69G5FMDN",
+      }),
+    );
+
+    render(<RequirementsPage />);
+
+    await waitFor(() => expect(listRequirementsMock).toHaveBeenCalled());
+
+    fireEvent.change(screen.getByTestId("requirements-create-format"), {
+      target: { value: "MARKDOWN" },
+    });
+    fireEvent.click(screen.getByTestId("requirements-create-button"));
+
+    await waitFor(() =>
+      expect(createRequirementDraftMock).toHaveBeenCalledWith(
+        { organizationId: "ORG_01", spaceId: "SPC_01" },
+        { contentFormat: "MARKDOWN" },
+      ),
+    );
+    expect(routerPushMock).toHaveBeenCalledWith(
+      "/requirements/01ARZ3NDEKTSV4RRFFQ69G5FMDN",
+    );
+  });
+
   it("does not create a draft from the button for VIEWER role", async () => {
     sessionMock.current = {
       ...sessionMock.current,

@@ -502,6 +502,73 @@ describe("RequirementContentEditorSlot image drop", () => {
 });
 
 describe("RequirementContentEditorSlot markdown mode", () => {
+  it("shows the current format and converts rich text to Markdown safely", () => {
+    const { onChange } = renderEditor({
+      value: makeValue({
+        content: [
+          {
+            content: [{ text: "Scope", type: "text" }],
+            type: "paragraph",
+          },
+          {
+            attrs: {
+              alt: "attached.png",
+              attachmentId: "ATTACHMENT_01",
+              src: "https://cdn.example/temp.png",
+            },
+            type: "image",
+          },
+          {
+            attrs: {
+              alt: "remote.png",
+              src: "https://example.com/remote.png",
+            },
+            type: "image",
+          },
+        ],
+        type: "doc",
+      }),
+    });
+
+    const richTextFormat = screen.getByRole("button", {
+      name: "requirements.editor.contentFormat.richText",
+    });
+    const markdownFormat = screen.getByRole("button", {
+      name: "requirements.editor.contentFormat.markdown",
+    });
+    const formatGroup = screen.getByRole("group", {
+      name: [
+        "requirements.editor.contentFormat.richText",
+        "requirements.editor.contentFormat.markdown",
+      ].join(" / "),
+    });
+
+    expect(richTextFormat).toHaveAttribute("aria-pressed", "true");
+    expect(formatGroup).toContainElement(richTextFormat);
+    expect(formatGroup.parentElement).toHaveClass("ml-auto");
+    onChange.mockClear();
+
+    fireEvent.click(markdownFormat);
+
+    expect(onChange).toHaveBeenCalledWith({
+      contentFormat: "MARKDOWN",
+      contentMarkdown: [
+        "Scope",
+        "",
+        "![attached.png](attachment://ATTACHMENT_01)",
+        "",
+        "[image: remote.png]",
+      ].join("\n"),
+      contentText: "Scope\n\nattached.png\n\n[image: remote.png]",
+    });
+    expect(JSON.stringify(onChange.mock.calls)).not.toContain(
+      "https://example.com",
+    );
+    expect(JSON.stringify(onChange.mock.calls)).not.toContain(
+      "https://cdn.example",
+    );
+  });
+
   it("edits Markdown source and emits Markdown editor values", () => {
     const onChange = vi.fn();
 
@@ -527,6 +594,63 @@ describe("RequirementContentEditorSlot markdown mode", () => {
       contentFormat: "MARKDOWN",
       contentMarkdown: "# Scope\n\n- Ship Markdown safely.",
       contentText: "Scope\n\nShip Markdown safely.",
+    });
+  });
+
+  it("blocks switching non-empty Markdown to rich text with an inline message", () => {
+    const onChange = vi.fn();
+
+    render(
+      <RequirementContentEditorSlot
+        onChange={onChange}
+        value={{
+          contentFormat: "MARKDOWN",
+          contentMarkdown: "# Scope",
+          contentText: "Scope",
+        }}
+      />,
+    );
+
+    fireEvent.click(
+      screen.getByRole("button", {
+        name: "requirements.editor.contentFormat.richText",
+      }),
+    );
+
+    expect(onChange).not.toHaveBeenCalled();
+    expect(screen.getByRole("alert")).toHaveTextContent(
+      "requirements.editor.formatSwitchErrors.MARKDOWN_TO_TIPTAP_NON_EMPTY",
+    );
+  });
+
+  it("switches empty Markdown to rich text", () => {
+    const onChange = vi.fn();
+
+    render(
+      <RequirementContentEditorSlot
+        onChange={onChange}
+        value={{
+          contentFormat: "MARKDOWN",
+          contentMarkdown: "  ",
+          contentText: "",
+        }}
+      />,
+    );
+
+    fireEvent.click(
+      screen.getByRole("button", {
+        name: "requirements.editor.contentFormat.richText",
+      }),
+    );
+
+    expect(onChange).toHaveBeenCalledWith({
+      contentFormat: "TIPTAP_JSON",
+      contentJson: {
+        content: [{ type: "paragraph" }],
+        type: "doc",
+      },
+      contentMarkdownCache: "",
+      contentText: "",
     });
   });
 

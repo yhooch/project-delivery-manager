@@ -52,6 +52,7 @@ import {
 import {
   collectAttachmentImageIds,
   containsBase64Image,
+  convertRequirementContentEditorValueFormat,
   createContentEditorValue,
   createEditorValueFromMarkdown,
   createEditorValueFromTiptapJson,
@@ -59,6 +60,7 @@ import {
   createTiptapDocumentForEditing,
   sanitizeTiptapDocument,
   type AttachmentImageDisplayUrls,
+  type RequirementContentFormat,
   type RequirementContentEditorValue,
 } from "../../lib/requirement-editor-content";
 import {
@@ -167,9 +169,11 @@ export function RequirementContentEditorSlot({
 }: RequirementContentEditorSlotProps) {
   const t = useTranslations("requirements.editor");
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const valueRef = useRef(value);
   const [localAttachmentCount, setLocalAttachmentCount] =
     useState(attachmentCount);
   const [uploads, setUploads] = useState<UploadItem[]>([]);
+  const [formatSwitchMessage, setFormatSwitchMessage] = useState<string>();
   const [imageDisplayUrls, setImageDisplayUrls] = useState<
     Record<string, string>
   >({});
@@ -257,6 +261,10 @@ export function RequirementContentEditorSlot({
     ],
     immediatelyRender: false,
     onUpdate: ({ editor: activeEditor }) => {
+      if (valueRef.current.contentFormat !== "TIPTAP_JSON") {
+        return;
+      }
+
       const rawContentJson = activeEditor.getJSON();
       const contentJson = sanitizeTiptapDocument(rawContentJson);
 
@@ -277,6 +285,10 @@ export function RequirementContentEditorSlot({
   useEffect(() => {
     setLocalAttachmentCount(attachmentCount);
   }, [attachmentCount]);
+
+  useEffect(() => {
+    valueRef.current = value;
+  }, [value]);
 
   useEffect(() => {
     imageDisplayUrlsRef.current = imageDisplayUrls;
@@ -561,13 +573,30 @@ export function RequirementContentEditorSlot({
     void uploadFiles(files);
   }
 
+  function onContentFormatChange(nextFormat: RequirementContentFormat) {
+    const result = convertRequirementContentEditorValueFormat(
+      value,
+      nextFormat,
+    );
+
+    if (result.ok) {
+      setFormatSwitchMessage(undefined);
+      onChange(result.value);
+      return;
+    }
+
+    setFormatSwitchMessage(t(`formatSwitchErrors.${result.reason}`));
+  }
+
   const hasUploadError = uploads.some((item) => item.status === "failed");
 
   if (value.contentFormat === "MARKDOWN") {
     return (
       <RequirementMarkdownEditor
         disabled={disabled}
+        formatSwitchMessage={formatSwitchMessage}
         onChange={onChange}
+        onFormatChange={onContentFormatChange}
         value={value.contentMarkdown}
       />
     );
@@ -709,6 +738,12 @@ export function RequirementContentEditorSlot({
             label={t("toolbar.redo")}
             onClick={() => editor?.chain().focus().redo().run()}
           />
+          <ToolbarDivider />
+          <ContentFormatSelector
+            disabled={disabled}
+            onChange={onContentFormatChange}
+            value={value.contentFormat}
+          />
         </div>
         <input
           accept="image/png,image/jpeg,image/gif,image/webp,image/svg+xml"
@@ -722,6 +757,7 @@ export function RequirementContentEditorSlot({
           className="tiptap-editor resize-y overflow-auto"
           editor={editor}
         />
+        <FormatSwitchMessage message={formatSwitchMessage} />
       </div>
       <Dialog
         open={linkDialog.open}
@@ -822,11 +858,15 @@ export function RequirementContentEditorSlot({
 
 function RequirementMarkdownEditor({
   disabled,
+  formatSwitchMessage,
   onChange,
+  onFormatChange,
   value,
 }: {
   disabled?: boolean;
+  formatSwitchMessage?: string;
   onChange: (value: RequirementContentEditorValue) => void;
+  onFormatChange: (format: RequirementContentFormat) => void;
   value: string;
 }) {
   const t = useTranslations("requirements.editor");
@@ -845,6 +885,19 @@ function RequirementMarkdownEditor({
         </h3>
         <p className="text-xs text-muted-foreground">{t("description")}</p>
       </div>
+
+      <div
+        className="flex flex-wrap items-center gap-1 rounded-md border border-border/60 bg-background/60 px-2 py-1"
+        role="toolbar"
+        aria-label={t("toolbarLabel")}
+      >
+        <ContentFormatSelector
+          disabled={disabled}
+          onChange={onFormatChange}
+          value="MARKDOWN"
+        />
+      </div>
+      <FormatSwitchMessage message={formatSwitchMessage} />
 
       {disabled ? (
         <RequirementMarkdownPreview markdown={value} />
@@ -865,6 +918,75 @@ function RequirementMarkdownEditor({
         />
       )}
     </section>
+  );
+}
+
+function ContentFormatSelector({
+  disabled,
+  onChange,
+  value,
+}: {
+  disabled?: boolean;
+  onChange: (format: RequirementContentFormat) => void;
+  value: RequirementContentFormat;
+}) {
+  const t = useTranslations("requirements.editor");
+  const options: Array<{
+    label: string;
+    value: RequirementContentFormat;
+  }> = [
+    { label: t("contentFormat.richText"), value: "TIPTAP_JSON" },
+    { label: t("contentFormat.markdown"), value: "MARKDOWN" },
+  ];
+
+  return (
+    <div className="ml-auto flex items-center px-1">
+      <div
+        aria-label={options.map((option) => option.label).join(" / ")}
+        className="inline-flex h-7 shrink-0 overflow-hidden rounded-md border border-border/60 bg-background"
+        role="group"
+      >
+        {options.map((option) => {
+          const selected = option.value === value;
+
+          return (
+            <button
+              aria-pressed={selected}
+              className={cn(
+                "min-w-14 px-2 text-xs font-medium transition-colors",
+                "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 focus-visible:ring-offset-background",
+                selected
+                  ? "bg-primary text-primary-foreground"
+                  : "text-muted-foreground hover:bg-muted hover:text-foreground",
+                "disabled:cursor-not-allowed disabled:opacity-60",
+              )}
+              disabled={disabled}
+              key={option.value}
+              onClick={() => {
+                if (!selected) {
+                  onChange(option.value);
+                }
+              }}
+              type="button"
+            >
+              {option.label}
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function FormatSwitchMessage({ message }: { message?: string }) {
+  if (!message) {
+    return null;
+  }
+
+  return (
+    <p className="text-xs text-destructive" role="alert">
+      {message}
+    </p>
   );
 }
 

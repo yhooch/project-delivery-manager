@@ -189,6 +189,25 @@ describe("RequirementService audit logging", () => {
     logger.mockRestore();
   });
 
+  it("creates Markdown drafts without exposing JSON content", async () => {
+    const subject = createSubject();
+
+    const draft = await subject.service.createDraft(ACTOR_ID, SPACE_ID, {
+      contentFormat: "MARKDOWN",
+    });
+
+    expect(subject.requirements.createdInput).toMatchObject({
+      contentFormat: "MARKDOWN",
+    });
+    expect(draft).toMatchObject({
+      contentFormat: "MARKDOWN",
+      contentMarkdown: "",
+      status: "DRAFT",
+    });
+    expect(draft).not.toHaveProperty("contentJson");
+    expect(draft).not.toHaveProperty("contentMarkdownCache");
+  });
+
   it("requires cascade confirmation before moving a requirement to another version with downstream links", async () => {
     const subject = createSubject({
       current: makeRequirement({
@@ -415,16 +434,31 @@ class FakeRequirementRepository implements RequirementRepository {
     workItemCount: 0,
   };
   savedInput?: Parameters<RequirementRepository["save"]>[0];
+  createdInput?: Parameters<RequirementRepository["createDraft"]>[0];
 
   constructor(public current: Requirement) {}
 
   async createDraft(
     input: Parameters<RequirementRepository["createDraft"]>[0],
   ) {
+    this.createdInput = input;
     this.current = makeRequirement({
       status: "DRAFT",
       versionId: input.versionId,
     });
+    if (input.contentFormat === "MARKDOWN") {
+      this.current = {
+        ...this.current,
+        contentFormat: "MARKDOWN",
+        contentMarkdown: "",
+      } as Requirement;
+      const markdownDraft = this.current as {
+        contentJson?: unknown;
+        contentMarkdownCache?: unknown;
+      };
+      delete markdownDraft.contentJson;
+      delete markdownDraft.contentMarkdownCache;
+    }
     return this.current;
   }
 

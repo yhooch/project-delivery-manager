@@ -1,6 +1,7 @@
 import type {
   ListRequirementsResponse,
   Priority,
+  RequirementContentFormat,
   RequirementStatus,
   SaveRequirementRequest,
   TagMatch,
@@ -34,6 +35,7 @@ export type CreateRequirementDraftInput = {
   id: string;
   organizationId: string;
   spaceId: string;
+  contentFormat?: RequirementContentFormat;
   versionId?: string;
   createdById: string;
   tagIds?: string[];

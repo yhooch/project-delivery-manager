@@ -127,6 +127,7 @@ export class RequirementService {
       id: ulid(),
       organizationId: access.space.organizationId,
       spaceId,
+      contentFormat: input.contentFormat ?? "TIPTAP_JSON",
       tagIds: input.tagIds,
       versionId: input.versionId,
       createdById: actorUserId,
@@ -326,17 +327,10 @@ export class RequirementService {
       shouldUpdateOwner: Object.prototype.hasOwnProperty.call(input, "ownerId"),
       updatedById: actorUserId,
     };
-    const saved = await this.requirements.save(
-      saveContent.contentFormat === "MARKDOWN"
-        ? {
-            ...saveBase,
-            ...saveContent,
-          }
-        : {
-            ...saveBase,
-            ...saveContent,
-          },
-    );
+    const saved = await this.requirements.save({
+      ...saveBase,
+      ...saveContent,
+    });
 
     if (!saved) {
       throwRequirementNotFound();

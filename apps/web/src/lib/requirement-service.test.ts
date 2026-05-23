@@ -186,6 +186,34 @@ describe("requirement service", () => {
     );
     expect(api.delete).toHaveBeenCalledWith(`/requirements/${requirementId}`);
   });
+
+  it("creates Markdown drafts with the requested content format", async () => {
+    const draft = createRequirementFixture({
+      contentFormat: "MARKDOWN",
+      contentJson: undefined,
+      contentMarkdown: "",
+    });
+    const api = createApi({
+      post: vi.fn(async () => ({ data: draft })),
+    });
+
+    await expect(
+      createRequirementDraft(
+        {
+          organizationId,
+          spaceId,
+        },
+        {
+          contentFormat: "MARKDOWN",
+        },
+        api,
+      ),
+    ).resolves.toEqual(draft);
+
+    expect(api.post).toHaveBeenCalledWith(`/spaces/${spaceId}/requirements`, {
+      contentFormat: "MARKDOWN",
+    });
+  });
 });
 
 function isArchiveBody(body: unknown): body is { status: "ARCHIVED" } {

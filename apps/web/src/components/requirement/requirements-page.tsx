@@ -45,6 +45,7 @@ import {
   listRequirementAssignableMembers,
   listRequirementVersions,
   listRequirements,
+  type RequirementDraftContentFormat,
 } from "../../lib/requirement-service";
 import { serializeTagFilterQuery } from "../../lib/tag-query";
 import { cn } from "../../lib/utils";
@@ -86,6 +87,8 @@ const REQUIREMENTS_REALTIME_KEYS = [
   "requirement-list",
   "requirement-detail",
 ] as const;
+const DEFAULT_CREATE_CONTENT_FORMAT: RequirementDraftContentFormat =
+  "TIPTAP_JSON";
 
 export function RequirementsPage() {
   const t = useTranslations("requirements");
@@ -130,6 +133,8 @@ export function RequirementsPage() {
     [],
   );
   const [isCreating, setIsCreating] = useState(false);
+  const [createContentFormat, setCreateContentFormat] =
+    useState<RequirementDraftContentFormat>(DEFAULT_CREATE_CONTENT_FORMAT);
   const [activeId, setActiveId] = useState<string | undefined>(undefined);
   const [handledCreateLinkKey, setHandledCreateLinkKey] = useState<
     string | null
@@ -246,7 +251,9 @@ export function RequirementsPage() {
           append ? [...current, ...result.items] : result.items,
         );
         setPageInfo({
-          page: realtimeRefresh ? pageInfoRef.current.page : (result.page ?? page),
+          page: realtimeRefresh
+            ? pageInfoRef.current.page
+            : (result.page ?? page),
           pageSize: result.pageSize ?? pageSize,
           total: result.total ?? result.items.length,
         });
@@ -494,37 +501,40 @@ export function RequirementsPage() {
     onEdit: openRequirement,
   });
 
-  const handleCreateDraft = useCallback(async () => {
-    if (!spaceId || isCreating) {
-      return;
-    }
-    if (!canCreateRequirement) {
-      setCreateDenied(true);
-      return;
-    }
-    setIsCreating(true);
-    setErrorKey(null);
-    setCreateDenied(false);
+  const handleCreateDraft = useCallback(
+    async (contentFormat: RequirementDraftContentFormat) => {
+      if (!spaceId || isCreating) {
+        return;
+      }
+      if (!canCreateRequirement) {
+        setCreateDenied(true);
+        return;
+      }
+      setIsCreating(true);
+      setErrorKey(null);
+      setCreateDenied(false);
 
-    try {
-      const draft = await createRequirementDraft(
-        { organizationId, spaceId },
-        {},
-      );
-      rememberRequirement(draft);
-      router.push(`/requirements/${draft.id}`);
-    } catch (error) {
-      setErrorKey(getApiErrorMessageKey(error));
-      setIsCreating(false);
-    }
-  }, [
-    canCreateRequirement,
-    isCreating,
-    organizationId,
-    rememberRequirement,
-    router,
-    spaceId,
-  ]);
+      try {
+        const draft = await createRequirementDraft(
+          { organizationId, spaceId },
+          createRequirementDraftInput(contentFormat),
+        );
+        rememberRequirement(draft);
+        router.push(`/requirements/${draft.id}`);
+      } catch (error) {
+        setErrorKey(getApiErrorMessageKey(error));
+        setIsCreating(false);
+      }
+    },
+    [
+      canCreateRequirement,
+      isCreating,
+      organizationId,
+      rememberRequirement,
+      router,
+      spaceId,
+    ],
+  );
 
   const clearCreateLinkQuery = useCallback(() => {
     const params = new URLSearchParams(searchParams.toString());
@@ -555,7 +565,7 @@ export function RequirementsPage() {
       setCreateDenied(true);
       return;
     }
-    void handleCreateDraft();
+    void handleCreateDraft(DEFAULT_CREATE_CONTENT_FORMAT);
   }, [
     canCreateRequirement,
     clearCreateLinkQuery,
@@ -590,21 +600,41 @@ export function RequirementsPage() {
         <FileText className="h-3 w-3" />
         {t("actions.myDrafts")}
       </Button>
-      <Button
-        size="sm"
-        className="text-xs"
-        data-testid="requirements-create-button"
-        onClick={() => {
-          void handleCreateDraft();
-        }}
-        type="button"
-        disabled={!spaceId || isCreating || !canCreateRequirement}
-        aria-disabled={!spaceId || isCreating || !canCreateRequirement}
-        title={!canCreateRequirement ? t("page.createReadonly") : undefined}
-      >
-        <Plus className="h-3 w-3" />
-        {isCreating ? t("dialog.create.submitting") : t("page.create")}
-      </Button>
+      <div className="flex min-w-0 items-center gap-1">
+        <SelectMenu
+          aria-label={t("createFormat.label")}
+          className="h-8 text-xs"
+          containerClassName="w-[7.5rem]"
+          contentClassName="w-36"
+          data-testid="requirements-create-format"
+          disabled={!spaceId || isCreating || !canCreateRequirement}
+          menuAlign="end"
+          onChange={(event) =>
+            setCreateContentFormat(
+              event.target.value as RequirementDraftContentFormat,
+            )
+          }
+          value={createContentFormat}
+        >
+          <option value="TIPTAP_JSON">{t("createFormat.richText")}</option>
+          <option value="MARKDOWN">{t("createFormat.markdown")}</option>
+        </SelectMenu>
+        <Button
+          size="sm"
+          className="text-xs"
+          data-testid="requirements-create-button"
+          onClick={() => {
+            void handleCreateDraft(createContentFormat);
+          }}
+          type="button"
+          disabled={!spaceId || isCreating || !canCreateRequirement}
+          aria-disabled={!spaceId || isCreating || !canCreateRequirement}
+          title={!canCreateRequirement ? t("page.createReadonly") : undefined}
+        >
+          <Plus className="h-3 w-3" />
+          {isCreating ? t("dialog.create.submitting") : t("page.create")}
+        </Button>
+      </div>
     </>
   );
   const paginationFooter =
@@ -1025,6 +1055,16 @@ function toRequirementListQuery(filter: FilterKey): {
 
 function optionalFilterValue(value: string): string | undefined {
   return value.trim() ? value : undefined;
+}
+
+function createRequirementDraftInput(
+  contentFormat: RequirementDraftContentFormat,
+): { contentFormat?: RequirementDraftContentFormat } {
+  if (contentFormat === "TIPTAP_JSON") {
+    return {};
+  }
+
+  return { contentFormat };
 }
 
 function getRequirementStatusCount(

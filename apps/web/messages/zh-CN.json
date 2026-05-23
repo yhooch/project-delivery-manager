@@ -1071,6 +1071,11 @@
       "myDrafts": "本人草稿",
       "retry": "重试"
     },
+    "createFormat": {
+      "label": "新建需求格式",
+      "richText": "富文本",
+      "markdown": "Markdown"
+    },
     "dialog": {
       "create": {
         "title": "新建需求",
@@ -1225,6 +1230,13 @@
       "unknownFile": "未命名文件",
       "uploading": "正在上传图片",
       "retry": "重试",
+      "contentFormat": {
+        "richText": "富文本",
+        "markdown": "Markdown"
+      },
+      "formatSwitchErrors": {
+        "MARKDOWN_TO_TIPTAP_NON_EMPTY": "Markdown 正文暂不支持直接转换为富文本，请清空正文后切换，或继续使用 Markdown 编辑。"
+      },
       "toolbar": {
         "bold": "加粗",
         "italic": "斜体",

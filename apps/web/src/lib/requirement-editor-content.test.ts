@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   containsBase64Image,
   collectAttachmentImageIds,
+  convertRequirementContentEditorValueFormat,
   createContentEditorValue,
   createTiptapDocumentForEditing,
   createEditorValueFromMarkdown,
@@ -319,6 +320,91 @@ describe("requirement editor content", () => {
       contentFormat: "MARKDOWN",
       contentMarkdown: "# Scope\n\n- Ship Markdown safely.",
       contentText: "Scope\n\nShip Markdown safely.",
+    });
+  });
+
+  it("converts Tiptap JSON to safe Markdown and downgrades non-attachment images", () => {
+    const result = convertRequirementContentEditorValueFormat(
+      createEditorValueFromTiptapJson({
+        content: [
+          {
+            content: [{ text: "Scope", type: "text" }],
+            type: "paragraph",
+          },
+          {
+            attrs: {
+              alt: "attached.png",
+              attachmentId: "ATTACHMENT_01",
+              src: minioDownloadUrl,
+            },
+            type: "image",
+          },
+          {
+            attrs: {
+              alt: "remote.png",
+              src: "https://example.com/remote.png",
+            },
+            type: "image",
+          },
+          {
+            attrs: {
+              alt: "inline.png",
+              src: "data:image/png;base64,AAAA",
+            },
+            type: "image",
+          },
+        ],
+        type: "doc",
+      }),
+      "MARKDOWN",
+    );
+
+    expect(result).toEqual({
+      ok: true,
+      value: {
+        contentFormat: "MARKDOWN",
+        contentMarkdown: [
+          "Scope",
+          "",
+          "![attached.png](attachment://ATTACHMENT_01)",
+          "",
+          "[image: remote.png]",
+        ].join("\n"),
+        contentText: "Scope\n\nattached.png\n\n[image: remote.png]",
+      },
+    });
+    expect(JSON.stringify(result)).not.toContain("data:image");
+    expect(JSON.stringify(result)).not.toContain("https://example.com");
+    expect(JSON.stringify(result)).not.toContain("X-Amz-Signature");
+  });
+
+  it("only converts non-empty Markdown to Tiptap when the body is empty", () => {
+    expect(
+      convertRequirementContentEditorValueFormat(
+        createEditorValueFromMarkdown(""),
+        "TIPTAP_JSON",
+      ),
+    ).toEqual({
+      ok: true,
+      value: {
+        contentFormat: "TIPTAP_JSON",
+        contentJson: {
+          content: [{ type: "paragraph" }],
+          type: "doc",
+        },
+        contentMarkdownCache: "",
+        contentText: "",
+      },
+    });
+
+    expect(
+      convertRequirementContentEditorValueFormat(
+        createEditorValueFromMarkdown("# Scope"),
+        "TIPTAP_JSON",
+      ),
+    ).toEqual({
+      ok: false,
+      reason: "MARKDOWN_TO_TIPTAP_NON_EMPTY",
     });
   });
 });

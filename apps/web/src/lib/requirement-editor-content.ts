@@ -18,6 +18,8 @@ export type RequirementMarkdownContentEditorValue = {
   contentText: string;
 };
 
+export type RequirementContentFormat = "TIPTAP_JSON" | "MARKDOWN";
+
 export type RequirementContentEditorValue =
   | RequirementTiptapContentEditorValue
   | RequirementMarkdownContentEditorValue;
@@ -26,8 +28,18 @@ export const ATTACHMENT_IMAGE_SRC_PREFIX = MARKDOWN_ATTACHMENT_IMAGE_SRC_PREFIX;
 
 export type AttachmentImageDisplayUrls = Readonly<Record<string, string>>;
 
+export type RequirementContentFormatConversionResult =
+  | {
+      ok: true;
+      value: RequirementContentEditorValue;
+    }
+  | {
+      ok: false;
+      reason: "MARKDOWN_TO_TIPTAP_NON_EMPTY";
+    };
+
 export function createContentEditorValue(input: {
-  contentFormat?: "TIPTAP_JSON" | "MARKDOWN";
+  contentFormat?: RequirementContentFormat;
   contentJson?: Record<string, unknown>;
   contentMarkdown?: string;
   contentMarkdownCache?: string;
@@ -68,7 +80,7 @@ export function createEditorValueFromTiptapJson(
   return {
     contentFormat: "TIPTAP_JSON",
     contentJson: sanitized,
-    contentMarkdownCache: serializeTiptapJsonToMarkdown(sanitized),
+    contentMarkdownCache: serializeTiptapJsonToSafeMarkdown(sanitized),
     contentText,
   };
 }
@@ -77,6 +89,49 @@ export function createEditorValueFromMarkdown(
   contentMarkdown: string,
 ): RequirementContentEditorValue {
   return createMarkdownEditorValue(contentMarkdown);
+}
+
+export function convertRequirementContentEditorValueFormat(
+  value: RequirementContentEditorValue,
+  targetFormat: RequirementContentFormat,
+): RequirementContentFormatConversionResult {
+  if (value.contentFormat === targetFormat) {
+    return {
+      ok: true,
+      value,
+    };
+  }
+
+  if (targetFormat === "MARKDOWN") {
+    return {
+      ok: true,
+      value: createEditorValueFromMarkdown(
+        serializeTiptapJsonToMarkdown(value.contentJson),
+      ),
+    };
+  }
+
+  if (isRequirementContentEditorValueEmpty(value)) {
+    return {
+      ok: true,
+      value: createEditorValueFromTiptapJson(createTiptapDocumentFromText("")),
+    };
+  }
+
+  return {
+    ok: false,
+    reason: "MARKDOWN_TO_TIPTAP_NON_EMPTY",
+  };
+}
+
+export function isRequirementContentEditorValueEmpty(
+  value: RequirementContentEditorValue,
+): boolean {
+  if (value.contentFormat === "MARKDOWN") {
+    return value.contentMarkdown.trim().length === 0;
+  }
+
+  return serializeTiptapJsonToMarkdown(value.contentJson).trim().length === 0;
 }
 
 export function createTiptapDocumentFromText(
@@ -165,8 +220,13 @@ export function containsBase64Image(value: unknown): boolean {
   return containsBase64Image(value.content);
 }
 
-function serializeTiptapJsonToMarkdown(value: unknown): string {
+export function serializeTiptapJsonToMarkdown(value: unknown): string {
   return serializeBlock(value, 0).trim();
+}
+
+function serializeTiptapJsonToSafeMarkdown(value: unknown): string {
+  return createMarkdownEditorValue(serializeTiptapJsonToMarkdown(value))
+    .contentMarkdown;
 }
 
 function serializeBlock(value: unknown, indent: number): string {
@@ -417,18 +477,18 @@ function serializeBlockquote(
 function serializeImage(value: Record<string, unknown>): string {
   const attrs = isRecord(value.attrs) ? value.attrs : {};
   const attachmentId = getAttachmentIdFromImageAttrs(attrs);
-  const src =
-    attachmentId !== undefined
-      ? createAttachmentImageSource(attachmentId)
-      : typeof attrs.src === "string" && attrs.src.trim().length > 0
-        ? attrs.src.trim()
-        : "attachment://image";
   const alt =
     getStringAttr(attrs, "alt") ??
     getStringAttr(attrs, "title") ??
     getStringAttr(attrs, "fileName") ??
     attachmentId ??
     "attachment";
+
+  if (!attachmentId) {
+    return `[image: ${escapeMarkdownText(alt)}]`;
+  }
+
+  const src = createAttachmentImageSource(attachmentId);
 
   return `![${escapeImageAlt(alt)}](${escapeMarkdownUrl(src)})`;
 }

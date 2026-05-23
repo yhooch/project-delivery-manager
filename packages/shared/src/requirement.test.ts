@@ -11,6 +11,22 @@ describe("requirement schemas", () => {
     expect(CreateRequirementDraftRequestSchema.parse(undefined)).toEqual({});
   });
 
+  it("accepts an optional content format for draft creation", () => {
+    expect(
+      CreateRequirementDraftRequestSchema.parse({
+        contentFormat: "MARKDOWN",
+      }),
+    ).toEqual({
+      contentFormat: "MARKDOWN",
+    });
+
+    expect(() =>
+      CreateRequirementDraftRequestSchema.parse({
+        contentFormat: "HTML",
+      }),
+    ).toThrow();
+  });
+
   it("accepts valid Tiptap documents and rejects malformed content", () => {
     expect(
       UpdateRequirementRequestSchema.parse({

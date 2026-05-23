@@ -123,7 +123,70 @@ describe("PrismaRequirementRepository", () => {
     )[0]?.[0];
 
     expect(createArgs?.data).not.toHaveProperty("sequence");
+    expect(createArgs?.data).toMatchObject({
+      contentFormat: "TIPTAP_JSON",
+    });
     expect(created.sequence).toBeUndefined();
+  });
+
+  it("persists and maps Markdown draft content format", async () => {
+    const requirement = makeRequirement({
+      contentFormat: "MARKDOWN",
+      contentMarkdown: "",
+      contentJson: {},
+      sequence: null,
+      status: "DRAFT",
+    });
+    const requirementCreate = vi.fn(
+      async (_args: { data: Record<string, unknown> }) => requirement,
+    );
+    const tx = {
+      objectParticipant: {
+        create: vi.fn(async () => undefined),
+        findFirst: vi.fn(async () => undefined),
+      },
+      requirement: {
+        create: requirementCreate,
+      },
+      tagAssignment: {
+        updateMany: vi.fn(async () => ({ count: 0 })),
+      },
+      timelineEvent: {
+        create: vi.fn(async () => undefined),
+      },
+    };
+    const prisma = {
+      client: {
+        $transaction: vi.fn(async (handler) => handler(tx)),
+      },
+    } as unknown as PrismaService;
+    const repository = new PrismaRequirementRepository(
+      prisma,
+      makeObjectCodeAllocator(),
+    );
+
+    const created = await repository.createDraft({
+      id: requirement.id,
+      organizationId: requirement.organizationId,
+      spaceId: requirement.spaceId,
+      contentFormat: "MARKDOWN",
+      createdById: requirement.authorId,
+    });
+    const createArgs = (
+      requirementCreate.mock.calls as Array<[{ data: Record<string, unknown> }]>
+    )[0]?.[0];
+
+    expect(createArgs?.data).toMatchObject({
+      contentFormat: "MARKDOWN",
+      contentMarkdown: "",
+    });
+    expect(created).toMatchObject({
+      contentFormat: "MARKDOWN",
+      contentMarkdown: "",
+      status: "DRAFT",
+    });
+    expect(created).not.toHaveProperty("contentJson");
+    expect(created).not.toHaveProperty("contentMarkdownCache");
   });
 
   it("allocates a requirement sequence on first save only", async () => {

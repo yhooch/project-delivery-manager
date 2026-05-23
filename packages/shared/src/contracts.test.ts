@@ -294,9 +294,11 @@ describe("shared contracts", () => {
     expect(TagFilterQuerySchema.parse({})).toEqual({ tagMatch: "ANY" });
     expect(
       CreateRequirementDraftRequestSchema.parse({
+        contentFormat: "MARKDOWN",
         tagIds: [tagId],
       }),
     ).toEqual({
+      contentFormat: "MARKDOWN",
       tagIds: [tagId],
     });
     expect(

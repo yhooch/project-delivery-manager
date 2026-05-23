@@ -81,12 +81,15 @@ export class PrismaRequirementRepository implements RequirementRepository {
   ) {}
 
   async createDraft(input: CreateRequirementDraftInput) {
+    const contentFormat = input.contentFormat ?? "TIPTAP_JSON";
     const result = await this.prisma.client.$transaction(async (tx) => {
       const created = await tx.requirement.create({
         data: {
           id: input.id,
           organizationId: input.organizationId,
           spaceId: input.spaceId,
+          contentFormat,
+          ...(contentFormat === "MARKDOWN" ? { contentMarkdown: "" } : {}),
           versionId: input.versionId,
           authorId: input.createdById,
           createdById: input.createdById,

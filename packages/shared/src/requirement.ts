@@ -225,6 +225,7 @@ export type SaveRequirementRequest = z.infer<
 
 const CreateRequirementDraftBodySchema = z
   .object({
+    contentFormat: RequirementContentFormatSchema.optional(),
     versionId: UlidSchema.optional(),
     tagIds: TagIdListSchema.optional(),
   })

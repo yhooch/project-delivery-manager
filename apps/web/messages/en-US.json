@@ -1071,6 +1071,11 @@
       "myDrafts": "My drafts",
       "retry": "Retry"
     },
+    "createFormat": {
+      "label": "New requirement format",
+      "richText": "Rich text",
+      "markdown": "Markdown"
+    },
     "dialog": {
       "create": {
         "title": "New requirement",
@@ -1225,6 +1230,13 @@
       "unknownFile": "Unnamed file",
       "uploading": "Uploading image",
       "retry": "Retry",
+      "contentFormat": {
+        "richText": "Rich text",
+        "markdown": "Markdown"
+      },
+      "formatSwitchErrors": {
+        "MARKDOWN_TO_TIPTAP_NON_EMPTY": "Markdown body content cannot be converted directly to rich text yet. Clear the body before switching, or continue editing in Markdown."
+      },
       "toolbar": {
         "bold": "Bold",
         "italic": "Italic",

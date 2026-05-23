@@ -11,6 +11,7 @@ import {
   type ListRequirementsResponse,
   type PageResult,
   type Requirement,
+  type RequirementContentFormat,
   type SpaceMemberWithUser,
   type UpdateRequirementRequest,
   type Version,
@@ -35,10 +36,16 @@ export type RequirementApiTransport = {
   ): Promise<{ data: TData }>;
 };
 
-export type ListRequirementsInput = z.input<typeof RequirementListQuerySchema> & {
+export type ListRequirementsInput = z.input<
+  typeof RequirementListQuerySchema
+> & {
   organizationId?: string;
   spaceId: string;
 };
+
+export type RequirementDraftContentFormat = RequirementContentFormat;
+
+export type CreateRequirementDraftInput = CreateRequirementDraftRequest;
 
 type RequirementIdentityInput = {
   organizationId?: string;
@@ -77,7 +84,7 @@ export async function listRequirements(
 
 export async function createRequirementDraft(
   context: WriteRequirementInput,
-  input: CreateRequirementDraftRequest = {},
+  input: CreateRequirementDraftInput = {},
   api: RequirementApiTransport = defaultApi,
 ): Promise<Requirement> {
   const { organizationId: _organizationId, spaceId } = context;
