@@ -50,6 +50,24 @@ Register/login -> Organization -> Project space -> Version
 - MCP server integration for AI agents, protected by OAuth 2.1 + PKCE and scoped
   Bearer tokens.
 
+## Screenshots
+
+| My workbench | Version board |
+| --- | --- |
+| ![My workbench with todos, workflow actions, and recent activity](docs/assets/screenshots/my-workbench.png) | ![Version task and bug board with workflow columns](docs/assets/screenshots/version-board.png) |
+
+| Workflow configuration | Task list |
+| --- | --- |
+| ![Configurable task and bug workflows](docs/assets/screenshots/workflow-config.png) | ![Task list with status filters and version metadata](docs/assets/screenshots/task-list.png) |
+
+| MCP client authorizations | Organization settings |
+| --- | --- |
+| ![MCP client authorization list with scoped access](docs/assets/screenshots/mcp-clients.png) | ![Organization profile and member management](docs/assets/screenshots/organization-settings.png) |
+
+| Account access |
+| --- |
+| ![Workspace sign-in page](docs/assets/screenshots/sign-in.png) |
+
 ## MCP And AI Agent Access
 
 PDM exposes selected product delivery capabilities through Model Context

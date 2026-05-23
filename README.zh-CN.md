@@ -41,6 +41,24 @@ MCP、OAuth、Next.js、NestJS、Prisma、PostgreSQL。
 - 中英文界面，支持浅色、深色和跟随系统主题。
 - 面向 AI Agent 的 MCP Server 接入，使用 OAuth 2.1 + PKCE 和 scoped Bearer token 保护。
 
+## 界面截图
+
+| 我的工作台 | 版本看板 |
+| --- | --- |
+| ![包含待办、流程动作和最近动态的我的工作台](docs/assets/screenshots/my-workbench.png) | ![包含流程列的版本任务和 Bug 看板](docs/assets/screenshots/version-board.png) |
+
+| 流程配置 | 任务列表 |
+| --- | --- |
+| ![可配置的任务和 Bug 流程](docs/assets/screenshots/workflow-config.png) | ![包含状态筛选和版本信息的任务列表](docs/assets/screenshots/task-list.png) |
+
+| MCP 客户端授权 | 组织设置 |
+| --- | --- |
+| ![带作用域权限的 MCP 客户端授权列表](docs/assets/screenshots/mcp-clients.png) | ![组织资料和成员管理](docs/assets/screenshots/organization-settings.png) |
+
+| 账号访问 |
+| --- |
+| ![工作空间登录页](docs/assets/screenshots/sign-in.png) |
+
 ## MCP 与 AI Agent 接入
 
 PDM 通过 Model Context Protocol 暴露一组受控的产品交付能力。第一阶段 MCP 能力包括
