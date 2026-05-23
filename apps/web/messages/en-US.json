@@ -1234,10 +1234,31 @@
         "richText": "Rich text",
         "markdown": "Markdown"
       },
-      "formatSwitchErrors": {
-        "MARKDOWN_TO_TIPTAP_NON_EMPTY": "Markdown body content cannot be converted directly to rich text yet. Clear the body before switching, or continue editing in Markdown."
+      "markdownViewMode": {
+        "label": "Markdown view mode",
+        "edit": "Source",
+        "preview": "Preview"
+      },
+      "markdownCommands": {
+        "boldPlaceholder": "bold text",
+        "italicPlaceholder": "italic text",
+        "codeBlockPlaceholder": "code",
+        "linkLabel": "link text",
+        "table": {
+          "column1": "Column 1",
+          "column2": "Column 2",
+          "column3": "Column 3",
+          "cell": "Content"
+        }
+      },
+      "markdownConvertDialog": {
+        "title": "Convert to rich text",
+        "description": "Convert Markdown body content to rich text. Some syntax may be downgraded. Confirm to switch to rich text editing.",
+        "confirm": "Convert",
+        "cancel": "Cancel"
       },
       "toolbar": {
+        "heading": "Heading",
         "bold": "Bold",
         "italic": "Italic",
         "strike": "Strikethrough",

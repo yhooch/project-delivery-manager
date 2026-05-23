@@ -274,7 +274,7 @@ export class RequirementService {
     }
 
     this.assertCanSave(existing);
-    this.assertValidContent(input);
+    this.assertValidContent(input, existing);
     const saveContent = toSaveRequirementContent(input);
 
     const versionId = Object.prototype.hasOwnProperty.call(input, "versionId")
@@ -615,7 +615,10 @@ export class RequirementService {
     }
   }
 
-  private assertValidContent(input: SaveRequirementRequest) {
+  private assertValidContent(
+    input: SaveRequirementRequest,
+    requirement?: Requirement,
+  ) {
     if (
       containsBase64ImageData(input.contentText) ||
       containsBase64ImageData(input.contentMarkdownCache)
@@ -646,6 +649,11 @@ export class RequirementService {
           HttpStatus.BAD_REQUEST,
         );
       }
+
+      this.assertValidMarkdownAttachmentImages(
+        input.contentMarkdown,
+        requirement,
+      );
 
       return;
     }
@@ -700,6 +708,52 @@ export class RequirementService {
         "Only empty draft requirements can be deleted",
         HttpStatus.BAD_REQUEST,
       );
+    }
+  }
+
+  private assertValidMarkdownAttachmentImages(
+    markdown: string,
+    requirement?: Requirement,
+  ) {
+    const attachmentIds = extractMarkdownAttachmentImageIds(markdown);
+
+    if (attachmentIds.length === 0) {
+      return;
+    }
+
+    if (!requirement) {
+      throw new ApiException(
+        "VALIDATION_ERROR",
+        "Markdown image attachments can only be referenced after uploading them to an existing requirement",
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+
+    const attachmentsById = new Map(
+      (requirement.attachments ?? []).map((attachment) => [
+        attachment.id,
+        attachment,
+      ]),
+    );
+
+    for (const attachmentId of new Set(attachmentIds)) {
+      const attachment = attachmentsById.get(attachmentId);
+
+      if (!attachment) {
+        throw new ApiException(
+          "VALIDATION_ERROR",
+          "Markdown image attachment must belong to the current requirement",
+          HttpStatus.BAD_REQUEST,
+        );
+      }
+
+      if (!attachment.mimeType.toLowerCase().startsWith("image/")) {
+        throw new ApiException(
+          "VALIDATION_ERROR",
+          "Markdown image attachment must reference an image attachment",
+          HttpStatus.BAD_REQUEST,
+        );
+      }
     }
   }
 }
@@ -856,6 +910,12 @@ function containsDisallowedMarkdownImage(markdown: string): boolean {
   return extractMarkdownImageTargets(markdown).some(
     (target) => !isAllowedMarkdownImageTarget(target),
   );
+}
+
+function extractMarkdownAttachmentImageIds(markdown: string): string[] {
+  return extractMarkdownImageTargets(markdown)
+    .filter((target) => target.startsWith("attachment://"))
+    .map((target) => target.slice("attachment://".length));
 }
 
 function extractMarkdownImageTargets(markdown: string): string[] {

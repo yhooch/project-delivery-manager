@@ -16,6 +16,7 @@ import {
   Bold,
   Code2,
   Columns3,
+  Heading2,
   ImagePlus,
   Italic,
   Link2,
@@ -40,6 +41,8 @@ import {
   useRef,
   useState,
   type ChangeEvent,
+  type ClipboardEvent,
+  type DragEvent,
   type FormEvent,
 } from "react";
 
@@ -58,12 +61,20 @@ import {
   createEditorValueFromTiptapJson,
   createTiptapDocumentFromText,
   createTiptapDocumentForEditing,
+  isRequirementContentEditorValueEmpty,
   sanitizeTiptapDocument,
   type AttachmentImageDisplayUrls,
   type RequirementContentFormat,
   type RequirementContentEditorValue,
 } from "../../lib/requirement-editor-content";
 import {
+  applyMarkdownEditorCommand,
+  insertMarkdownAttachmentImage,
+  type MarkdownEditorCommandOptions,
+  type MarkdownEditorSelection,
+} from "../../lib/requirement-markdown-editor-commands";
+import {
+  getAttachmentIdFromMarkdownImageSrc,
   parseRequirementMarkdown,
   type RequirementMarkdownBlock,
 } from "../../lib/requirement-markdown-content";
@@ -101,6 +112,7 @@ type UploadItem = {
   id: string;
   retryable: boolean;
   status: "failed" | "uploading";
+  target: "markdown" | "tiptap";
 };
 
 type LinkDialogState = {
@@ -173,7 +185,8 @@ export function RequirementContentEditorSlot({
   const [localAttachmentCount, setLocalAttachmentCount] =
     useState(attachmentCount);
   const [uploads, setUploads] = useState<UploadItem[]>([]);
-  const [formatSwitchMessage, setFormatSwitchMessage] = useState<string>();
+  const [markdownConversionDialogOpen, setMarkdownConversionDialogOpen] =
+    useState(false);
   const [imageDisplayUrls, setImageDisplayUrls] = useState<
     Record<string, string>
   >({});
@@ -207,7 +220,7 @@ export function RequirementContentEditorSlot({
         }
 
         event.preventDefault();
-        void uploadFiles(files);
+        void uploadImageFiles(files, "tiptap", insertUploadedImage);
         return true;
       },
       handleDrop: (_view, event) => {
@@ -218,7 +231,7 @@ export function RequirementContentEditorSlot({
         }
 
         event.preventDefault();
-        void uploadFiles(files);
+        void uploadImageFiles(files, "tiptap", insertUploadedImage);
         return true;
       },
     },
@@ -430,15 +443,21 @@ export function RequirementContentEditorSlot({
     }));
   }
 
-  async function uploadFiles(files: File[]) {
-    if (!editor || disabled) {
+  async function uploadImageFiles(
+    files: File[],
+    target: UploadItem["target"],
+    onUploaded: (attachment: Attachment, imageUrl: string) => void,
+  ) {
+    if (disabled) {
       return;
     }
 
     if (!canUploadImages || !requirementId) {
       setUploads((current) => [
         ...current,
-        ...files.map((file) => createFailedUpload(file, "DRAFT_REQUIRED")),
+        ...files.map((file) =>
+          createFailedUpload(file, "DRAFT_REQUIRED", target),
+        ),
       ]);
       return;
     }
@@ -446,7 +465,7 @@ export function RequirementContentEditorSlot({
     let nextAttachmentCount = localAttachmentCount;
 
     for (const file of files) {
-      const item = createUploadingItem(file);
+      const item = createUploadingItem(file, target);
       setUploads((current) => [...current, item]);
 
       try {
@@ -461,7 +480,7 @@ export function RequirementContentEditorSlot({
           ...current,
           [result.attachment.id]: result.imageUrl,
         }));
-        insertUploadedImage(result.attachment, result.imageUrl);
+        onUploaded(result.attachment, result.imageUrl);
         onAttachmentUploaded?.(toAttachmentRef(result.attachment));
         setUploads((current) =>
           current.filter((upload) => upload.id !== item.id),
@@ -484,7 +503,10 @@ export function RequirementContentEditorSlot({
     }
   }
 
-  async function retryUpload(item: UploadItem) {
+  async function retryUpload(
+    item: UploadItem,
+    onUploaded: (attachment: Attachment, imageUrl: string) => void,
+  ) {
     setUploads((current) =>
       current.map((upload) =>
         upload.id === item.id
@@ -525,7 +547,7 @@ export function RequirementContentEditorSlot({
         ...current,
         [result.attachment.id]: result.imageUrl,
       }));
-      insertUploadedImage(result.attachment, result.imageUrl);
+      onUploaded(result.attachment, result.imageUrl);
       onAttachmentUploaded?.(toAttachmentRef(result.attachment));
       setUploads((current) =>
         current.filter((upload) => upload.id !== item.id),
@@ -570,33 +592,52 @@ export function RequirementContentEditorSlot({
   function onFileInputChange(event: ChangeEvent<HTMLInputElement>) {
     const files = Array.from(event.target.files ?? []);
     event.target.value = "";
-    void uploadFiles(files);
+    void uploadImageFiles(files, "tiptap", insertUploadedImage);
   }
 
   function onContentFormatChange(nextFormat: RequirementContentFormat) {
+    if (
+      value.contentFormat === "MARKDOWN" &&
+      nextFormat === "TIPTAP_JSON" &&
+      !isRequirementContentEditorValueEmpty(value)
+    ) {
+      setMarkdownConversionDialogOpen(true);
+      return;
+    }
+
+    commitContentFormatChange(nextFormat);
+  }
+
+  function commitContentFormatChange(nextFormat: RequirementContentFormat) {
     const result = convertRequirementContentEditorValueFormat(
       value,
       nextFormat,
     );
 
-    if (result.ok) {
-      setFormatSwitchMessage(undefined);
-      onChange(result.value);
-      return;
-    }
-
-    setFormatSwitchMessage(t(`formatSwitchErrors.${result.reason}`));
+    onChange(result.value);
   }
 
-  const hasUploadError = uploads.some((item) => item.status === "failed");
+  function confirmMarkdownConversion() {
+    setMarkdownConversionDialogOpen(false);
+    commitContentFormatChange("TIPTAP_JSON");
+  }
 
   if (value.contentFormat === "MARKDOWN") {
     return (
       <RequirementMarkdownEditor
+        canUploadImages={canUploadImages}
         disabled={disabled}
-        formatSwitchMessage={formatSwitchMessage}
+        imageDisplayUrls={imageDisplayUrls}
+        markdownConversionDialogOpen={markdownConversionDialogOpen}
         onChange={onChange}
+        onConfirmMarkdownConversion={confirmMarkdownConversion}
         onFormatChange={onContentFormatChange}
+        onMarkdownConversionDialogOpenChange={setMarkdownConversionDialogOpen}
+        onRetryUpload={retryUpload}
+        onUploadImages={(files, onUploaded) =>
+          uploadImageFiles(files, "markdown", onUploaded)
+        }
+        uploads={uploads.filter((item) => item.target === "markdown")}
         value={value.contentMarkdown}
       />
     );
@@ -757,7 +798,6 @@ export function RequirementContentEditorSlot({
           className="tiptap-editor resize-y overflow-auto"
           editor={editor}
         />
-        <FormatSwitchMessage message={formatSwitchMessage} />
       </div>
       <Dialog
         open={linkDialog.open}
@@ -797,79 +837,206 @@ export function RequirementContentEditorSlot({
       {!canUploadImages && !disabled ? (
         <p className="text-xs text-muted-foreground">{t("draftUploadOnly")}</p>
       ) : null}
-      {uploads.length > 0 ? (
-        <div
-          className={cn(
-            "flex flex-col gap-2 rounded-md border bg-card px-3 py-2",
-            hasUploadError
-              ? "border-destructive/40 bg-destructive/5"
-              : "border-border/60",
-          )}
-          aria-live="polite"
-        >
-          {uploads.map((item) => (
-            <div className="flex items-center gap-3 text-sm" key={item.id}>
-              <div
-                className={cn(
-                  "flex h-7 w-7 shrink-0 items-center justify-center rounded-md",
-                  item.status === "uploading"
-                    ? "bg-muted text-muted-foreground"
-                    : "bg-destructive/10 text-destructive",
-                )}
-              >
-                {item.status === "uploading" ? (
-                  <Loader2
-                    aria-hidden="true"
-                    className="animate-spin"
-                    size={16}
-                    strokeWidth={2}
-                  />
-                ) : (
-                  <XCircle aria-hidden="true" size={16} strokeWidth={2} />
-                )}
-              </div>
-              <div className="flex min-w-0 flex-1 flex-col gap-0.5">
-                <strong className="truncate text-sm font-medium text-foreground">
-                  {item.file.name || t("unknownFile")}
-                </strong>
-                <span className="text-xs text-muted-foreground">
-                  {item.status === "uploading"
-                    ? t("uploading")
-                    : t(`uploadErrors.${item.errorCode ?? "UPLOAD_FAILED"}`)}
-                </span>
-              </div>
-              {item.status === "failed" && item.retryable ? (
-                <Button
-                  onClick={() => void retryUpload(item)}
-                  size="sm"
-                  type="button"
-                  variant="secondary"
-                >
-                  {t("retry")}
-                </Button>
-              ) : null}
-            </div>
-          ))}
-        </div>
-      ) : null}
+      <UploadList
+        onRetry={(item) => void retryUpload(item, insertUploadedImage)}
+        uploads={uploads.filter((item) => item.target === "tiptap")}
+      />
     </section>
   );
 }
 
 function RequirementMarkdownEditor({
+  canUploadImages,
   disabled,
-  formatSwitchMessage,
+  imageDisplayUrls,
+  markdownConversionDialogOpen,
   onChange,
+  onConfirmMarkdownConversion,
   onFormatChange,
+  onMarkdownConversionDialogOpenChange,
+  onRetryUpload,
+  onUploadImages,
+  uploads,
   value,
 }: {
+  canUploadImages: boolean;
   disabled?: boolean;
-  formatSwitchMessage?: string;
+  imageDisplayUrls: Record<string, string>;
+  markdownConversionDialogOpen: boolean;
   onChange: (value: RequirementContentEditorValue) => void;
+  onConfirmMarkdownConversion: () => void;
   onFormatChange: (format: RequirementContentFormat) => void;
+  onMarkdownConversionDialogOpenChange: (open: boolean) => void;
+  onRetryUpload: (
+    item: UploadItem,
+    onUploaded: (attachment: Attachment, imageUrl: string) => void,
+  ) => void;
+  onUploadImages: (
+    files: File[],
+    onUploaded: (attachment: Attachment, imageUrl: string) => void,
+  ) => void;
+  uploads: UploadItem[];
   value: string;
 }) {
   const t = useTranslations("requirements.editor");
+  const markdownFileInputRef = useRef<HTMLInputElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const [viewMode, setViewMode] = useState<"edit" | "preview">("edit");
+  const [selection, setSelection] = useState<MarkdownEditorSelection>({
+    end: 0,
+    start: 0,
+  });
+  const [markdownLinkDialog, setMarkdownLinkDialog] = useState({
+    href: "",
+    open: false,
+  });
+  const markdownCommandOptions = useMemo<MarkdownEditorCommandOptions>(
+    () => ({
+      boldPlaceholder: t("markdownCommands.boldPlaceholder"),
+      codeBlockPlaceholder: t("markdownCommands.codeBlockPlaceholder"),
+      italicPlaceholder: t("markdownCommands.italicPlaceholder"),
+      linkLabel: t("markdownCommands.linkLabel"),
+      tableTemplate: [
+        `| ${t("markdownCommands.table.column1")} | ${t("markdownCommands.table.column2")} | ${t("markdownCommands.table.column3")} |`,
+        "| --- | --- | --- |",
+        `| ${t("markdownCommands.table.cell")} | ${t("markdownCommands.table.cell")} | ${t("markdownCommands.table.cell")} |`,
+      ].join("\n"),
+    }),
+    [t],
+  );
+
+  function captureSelection() {
+    const textarea = textareaRef.current;
+
+    if (!textarea) {
+      return selection;
+    }
+
+    const nextSelection = {
+      end: textarea.selectionEnd,
+      start: textarea.selectionStart,
+    };
+
+    setSelection(nextSelection);
+    return nextSelection;
+  }
+
+  function updateMarkdownValue(nextValue: string) {
+    onChange(createEditorValueFromMarkdown(nextValue));
+  }
+
+  function applyCommand(
+    command: Parameters<typeof applyMarkdownEditorCommand>[0]["command"],
+  ) {
+    const result = applyMarkdownEditorCommand({
+      command,
+      options: markdownCommandOptions,
+      selection: captureSelection(),
+      value,
+    });
+
+    updateMarkdownValue(result.value);
+    focusTextareaSelection(result.selection);
+  }
+
+  function focusTextareaSelection(nextSelection: MarkdownEditorSelection) {
+    const requestFrame =
+      typeof window.requestAnimationFrame === "function"
+        ? window.requestAnimationFrame.bind(window)
+        : (callback: FrameRequestCallback) =>
+            window.setTimeout(() => callback(Date.now()), 0);
+
+    requestFrame(() => {
+      const textarea = textareaRef.current;
+
+      if (!textarea) {
+        return;
+      }
+
+      textarea.focus();
+      textarea.setSelectionRange(nextSelection.start, nextSelection.end);
+      setSelection(nextSelection);
+    });
+  }
+
+  function submitMarkdownLink(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+
+    const href = markdownLinkDialog.href.trim();
+
+    if (href.length > 0) {
+      applyCommand({ href, type: "link" });
+    }
+
+    setMarkdownLinkDialog({ href: "", open: false });
+  }
+
+  function insertMarkdownImage(attachment: Attachment) {
+    const result = insertMarkdownAttachmentImage({
+      attachmentId: attachment.id,
+      fileName: attachment.fileName,
+      selection: captureSelection(),
+      value,
+    });
+
+    updateMarkdownValue(result.value);
+    focusTextareaSelection(result.selection);
+  }
+
+  function uploadMarkdownImages(files: File[]) {
+    const imageFiles = getImageFiles(files);
+
+    if (imageFiles.length === 0) {
+      return;
+    }
+
+    onUploadImages(imageFiles, insertMarkdownImage);
+  }
+
+  function onMarkdownPaste(event: ClipboardEvent<HTMLTextAreaElement>) {
+    const files = getImageFiles(event.clipboardData?.files);
+
+    if (files.length === 0) {
+      return;
+    }
+
+    event.preventDefault();
+    uploadMarkdownImages(files);
+  }
+
+  function onMarkdownDrop(event: DragEvent<HTMLTextAreaElement>) {
+    const files = getImageFiles(event.dataTransfer?.files);
+
+    if (files.length === 0) {
+      return;
+    }
+
+    event.preventDefault();
+    uploadMarkdownImages(files);
+  }
+
+  if (disabled) {
+    return (
+      <section
+        className="flex flex-col gap-3"
+        aria-labelledby="requirement-editor-title"
+      >
+        <div className="flex flex-col gap-0.5">
+          <h3
+            id="requirement-editor-title"
+            className="text-sm font-semibold text-foreground"
+          >
+            {t("title")}
+          </h3>
+          <p className="text-xs text-muted-foreground">{t("description")}</p>
+        </div>
+        <RequirementMarkdownPreview
+          imageDisplayUrls={imageDisplayUrls}
+          markdown={value}
+        />
+      </section>
+    );
+  }
 
   return (
     <section
@@ -891,16 +1058,108 @@ function RequirementMarkdownEditor({
         role="toolbar"
         aria-label={t("toolbarLabel")}
       >
-        <ContentFormatSelector
+        <ToolbarButton
           disabled={disabled}
-          onChange={onFormatChange}
-          value="MARKDOWN"
+          icon={Heading2}
+          label={t("toolbar.heading")}
+          onClick={() => applyCommand({ level: 2, type: "heading" })}
         />
+        <ToolbarButton
+          disabled={disabled}
+          icon={Bold}
+          label={t("toolbar.bold")}
+          onClick={() => applyCommand({ type: "bold" })}
+        />
+        <ToolbarButton
+          disabled={disabled}
+          icon={Italic}
+          label={t("toolbar.italic")}
+          onClick={() => applyCommand({ type: "italic" })}
+        />
+        <ToolbarDivider />
+        <ToolbarButton
+          disabled={disabled}
+          icon={List}
+          label={t("toolbar.bulletList")}
+          onClick={() => applyCommand({ type: "bulletList" })}
+        />
+        <ToolbarButton
+          disabled={disabled}
+          icon={ListOrdered}
+          label={t("toolbar.orderedList")}
+          onClick={() => applyCommand({ type: "orderedList" })}
+        />
+        <ToolbarButton
+          disabled={disabled}
+          icon={ListTodo}
+          label={t("toolbar.taskList")}
+          onClick={() => applyCommand({ type: "taskList" })}
+        />
+        <ToolbarDivider />
+        <ToolbarButton
+          disabled={disabled}
+          icon={Quote}
+          label={t("toolbar.blockquote")}
+          onClick={() => applyCommand({ type: "blockquote" })}
+        />
+        <ToolbarButton
+          disabled={disabled}
+          icon={Code2}
+          label={t("toolbar.codeBlock")}
+          onClick={() => applyCommand({ type: "codeBlock" })}
+        />
+        <ToolbarButton
+          disabled={disabled}
+          icon={Link2}
+          label={t("toolbar.link")}
+          onClick={() => {
+            captureSelection();
+            setMarkdownLinkDialog({ href: "", open: true });
+          }}
+        />
+        <ToolbarButton
+          disabled={disabled}
+          icon={Table2}
+          label={t("toolbar.insertTable")}
+          onClick={() => applyCommand({ type: "table" })}
+        />
+        <ToolbarButton
+          disabled={disabled || !canUploadImages}
+          icon={ImagePlus}
+          label={t("toolbar.uploadImage")}
+          onClick={() => markdownFileInputRef.current?.click()}
+        />
+        <div className="ml-auto flex flex-wrap items-center gap-1">
+          <div
+            aria-label={t("markdownViewMode.label")}
+            className="inline-flex h-7 shrink-0 overflow-hidden rounded-md border border-border/60 bg-background"
+            role="group"
+          >
+            <MarkdownViewModeButton
+              label={t("markdownViewMode.edit")}
+              onClick={() => setViewMode("edit")}
+              selected={viewMode === "edit"}
+            />
+            <MarkdownViewModeButton
+              label={t("markdownViewMode.preview")}
+              onClick={() => setViewMode("preview")}
+              selected={viewMode === "preview"}
+            />
+          </div>
+          <ContentFormatSelector
+            className=""
+            disabled={disabled}
+            onChange={onFormatChange}
+            value="MARKDOWN"
+          />
+        </div>
       </div>
-      <FormatSwitchMessage message={formatSwitchMessage} />
 
-      {disabled ? (
-        <RequirementMarkdownPreview markdown={value} />
+      {viewMode === "preview" ? (
+        <RequirementMarkdownPreview
+          imageDisplayUrls={imageDisplayUrls}
+          markdown={value}
+        />
       ) : (
         <textarea
           aria-label={t("ariaLabel")}
@@ -913,19 +1172,106 @@ function RequirementMarkdownEditor({
           onChange={(event) =>
             onChange(createEditorValueFromMarkdown(event.target.value))
           }
+          onClick={captureSelection}
+          onDrop={onMarkdownDrop}
+          onKeyUp={captureSelection}
+          onPaste={onMarkdownPaste}
+          onSelect={captureSelection}
           placeholder={t("placeholder")}
+          ref={textareaRef}
           value={value}
         />
       )}
+      <input
+        accept="image/png,image/jpeg,image/gif,image/webp,image/svg+xml"
+        className="sr-only"
+        disabled={disabled || !canUploadImages}
+        onChange={(event) => {
+          const files = Array.from(event.target.files ?? []);
+          event.target.value = "";
+          uploadMarkdownImages(files);
+        }}
+        ref={markdownFileInputRef}
+        type="file"
+      />
+      <Dialog
+        open={markdownLinkDialog.open}
+        onOpenChange={(open) =>
+          setMarkdownLinkDialog((current) => ({
+            ...current,
+            open,
+          }))
+        }
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{t("linkPrompt")}</DialogTitle>
+            <DialogDescription className="sr-only">
+              {t("linkPrompt")}
+            </DialogDescription>
+          </DialogHeader>
+          <form className="flex flex-col gap-3" onSubmit={submitMarkdownLink}>
+            <Input
+              aria-label={t("linkPrompt")}
+              autoFocus
+              onChange={(event) =>
+                setMarkdownLinkDialog((current) => ({
+                  ...current,
+                  href: event.target.value,
+                }))
+              }
+              placeholder={t("linkPlaceholder")}
+              value={markdownLinkDialog.href}
+            />
+            <DialogFooter>
+              <Button type="submit">{t("toolbar.link")}</Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+      {!canUploadImages ? (
+        <p className="text-xs text-muted-foreground">{t("draftUploadOnly")}</p>
+      ) : null}
+      <UploadList
+        onRetry={(item) => void onRetryUpload(item, insertMarkdownImage)}
+        uploads={uploads}
+      />
+      <Dialog
+        open={markdownConversionDialogOpen}
+        onOpenChange={onMarkdownConversionDialogOpenChange}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{t("markdownConvertDialog.title")}</DialogTitle>
+            <DialogDescription>
+              {t("markdownConvertDialog.description")}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              onClick={() => onMarkdownConversionDialogOpenChange(false)}
+              type="button"
+              variant="outline"
+            >
+              {t("markdownConvertDialog.cancel")}
+            </Button>
+            <Button onClick={onConfirmMarkdownConversion} type="button">
+              {t("markdownConvertDialog.confirm")}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </section>
   );
 }
 
 function ContentFormatSelector({
+  className = "ml-auto",
   disabled,
   onChange,
   value,
 }: {
+  className?: string;
   disabled?: boolean;
   onChange: (format: RequirementContentFormat) => void;
   value: RequirementContentFormat;
@@ -940,7 +1286,7 @@ function ContentFormatSelector({
   ];
 
   return (
-    <div className="ml-auto flex items-center px-1">
+    <div className={cn(className, "flex items-center px-1")}>
       <div
         aria-label={options.map((option) => option.label).join(" / ")}
         className="inline-flex h-7 shrink-0 overflow-hidden rounded-md border border-border/60 bg-background"
@@ -978,20 +1324,164 @@ function ContentFormatSelector({
   );
 }
 
-function FormatSwitchMessage({ message }: { message?: string }) {
-  if (!message) {
+function UploadList({
+  onRetry,
+  uploads,
+}: {
+  onRetry: (item: UploadItem) => void;
+  uploads: UploadItem[];
+}) {
+  const t = useTranslations("requirements.editor");
+  const hasUploadError = uploads.some((item) => item.status === "failed");
+
+  if (uploads.length === 0) {
     return null;
   }
 
   return (
-    <p className="text-xs text-destructive" role="alert">
-      {message}
-    </p>
+    <div
+      className={cn(
+        "flex flex-col gap-2 rounded-md border bg-card px-3 py-2",
+        hasUploadError
+          ? "border-destructive/40 bg-destructive/5"
+          : "border-border/60",
+      )}
+      aria-live="polite"
+    >
+      {uploads.map((item) => (
+        <div className="flex items-center gap-3 text-sm" key={item.id}>
+          <div
+            className={cn(
+              "flex h-7 w-7 shrink-0 items-center justify-center rounded-md",
+              item.status === "uploading"
+                ? "bg-muted text-muted-foreground"
+                : "bg-destructive/10 text-destructive",
+            )}
+          >
+            {item.status === "uploading" ? (
+              <Loader2
+                aria-hidden="true"
+                className="animate-spin"
+                size={16}
+                strokeWidth={2}
+              />
+            ) : (
+              <XCircle aria-hidden="true" size={16} strokeWidth={2} />
+            )}
+          </div>
+          <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+            <strong className="truncate text-sm font-medium text-foreground">
+              {item.file.name || t("unknownFile")}
+            </strong>
+            <span className="text-xs text-muted-foreground">
+              {item.status === "uploading"
+                ? t("uploading")
+                : t(`uploadErrors.${item.errorCode ?? "UPLOAD_FAILED"}`)}
+            </span>
+          </div>
+          {item.status === "failed" && item.retryable ? (
+            <Button
+              onClick={() => onRetry(item)}
+              size="sm"
+              type="button"
+              variant="secondary"
+            >
+              {t("retry")}
+            </Button>
+          ) : null}
+        </div>
+      ))}
+    </div>
   );
 }
 
-function RequirementMarkdownPreview({ markdown }: { markdown: string }) {
-  const blocks = parseRequirementMarkdown(markdown);
+function RequirementMarkdownPreview({
+  imageDisplayUrls,
+  markdown,
+}: {
+  imageDisplayUrls: Record<string, string>;
+  markdown: string;
+}) {
+  const blocks = useMemo(() => parseRequirementMarkdown(markdown), [markdown]);
+  const [resolvedImageUrls, setResolvedImageUrls] =
+    useState<Record<string, string>>(imageDisplayUrls);
+  const [failedImageIds, setFailedImageIds] = useState<Set<string>>(
+    () => new Set(),
+  );
+
+  useEffect(() => {
+    if (Object.keys(imageDisplayUrls).length === 0) {
+      return;
+    }
+
+    setResolvedImageUrls((current) => ({
+      ...current,
+      ...imageDisplayUrls,
+    }));
+  }, [imageDisplayUrls]);
+
+  useEffect(() => {
+    const attachmentIds = blocks
+      .filter(
+        (block): block is Extract<RequirementMarkdownBlock, { type: "image" }> =>
+          block.type === "image",
+      )
+      .map((block) => getAttachmentIdFromMarkdownImageSrc(block.src))
+      .filter((id): id is string => Boolean(id));
+    const missingAttachmentIds = Array.from(new Set(attachmentIds)).filter(
+      (attachmentId) =>
+        !resolvedImageUrls[attachmentId] && !failedImageIds.has(attachmentId),
+    );
+
+    if (missingAttachmentIds.length === 0) {
+      return;
+    }
+
+    let cancelled = false;
+
+    void Promise.all(
+      missingAttachmentIds.map(async (attachmentId) => {
+        try {
+          const result = await getAttachmentDownloadUrl({ attachmentId });
+
+          return [attachmentId, result.downloadUrl] as const;
+        } catch {
+          return [attachmentId, undefined] as const;
+        }
+      }),
+    ).then((results) => {
+      if (cancelled) {
+        return;
+      }
+
+      setResolvedImageUrls((current) => {
+        const next = { ...current };
+
+        results.forEach(([attachmentId, downloadUrl]) => {
+          if (downloadUrl) {
+            next[attachmentId] = downloadUrl;
+          }
+        });
+
+        return next;
+      });
+      setFailedImageIds((current) => {
+        const next = new Set(current);
+
+        results.forEach(([attachmentId, downloadUrl]) => {
+          if (!downloadUrl) {
+            next.add(attachmentId);
+          }
+        });
+
+        return next;
+      });
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [blocks, failedImageIds, resolvedImageUrls]);
 
   if (blocks.length === 0) {
     return <div className="min-h-24 rounded-md bg-muted/20" />;
@@ -999,12 +1489,18 @@ function RequirementMarkdownPreview({ markdown }: { markdown: string }) {
 
   return (
     <div className="flex min-h-24 flex-col gap-3 rounded-md bg-muted/20 px-3 py-3 text-sm leading-6 text-foreground">
-      {blocks.map((block, index) => renderMarkdownBlock(block, index))}
+      {blocks.map((block, index) =>
+        renderMarkdownBlock(block, index, resolvedImageUrls),
+      )}
     </div>
   );
 }
 
-function renderMarkdownBlock(block: RequirementMarkdownBlock, index: number) {
+function renderMarkdownBlock(
+  block: RequirementMarkdownBlock,
+  index: number,
+  imageDisplayUrls: Record<string, string>,
+) {
   switch (block.type) {
     case "heading":
       return renderMarkdownHeading(block, index);
@@ -1062,17 +1558,39 @@ function renderMarkdownBlock(block: RequirementMarkdownBlock, index: number) {
         </ul>
       );
     case "image":
-      return (
-        <div
-          className="rounded-md border border-dashed border-border px-3 py-2 text-xs text-muted-foreground"
-          key={index}
-        >
-          {block.alt || block.src}
-        </div>
-      );
+      return renderMarkdownImageBlock(block, index, imageDisplayUrls);
     case "horizontalRule":
       return <hr className="border-border" key={index} />;
   }
+}
+
+function renderMarkdownImageBlock(
+  block: Extract<RequirementMarkdownBlock, { type: "image" }>,
+  index: number,
+  imageDisplayUrls: Record<string, string>,
+) {
+  const attachmentId = getAttachmentIdFromMarkdownImageSrc(block.src);
+  const imageUrl = attachmentId ? imageDisplayUrls[attachmentId] : undefined;
+
+  if (imageUrl) {
+    return (
+      <img
+        alt={block.alt}
+        className="max-h-80 max-w-full rounded-md border border-border/60 object-contain"
+        key={index}
+        src={imageUrl}
+      />
+    );
+  }
+
+  return (
+    <div
+      className="rounded-md border border-dashed border-border px-3 py-2 text-xs text-muted-foreground"
+      key={index}
+    >
+      {block.alt || block.src}
+    </div>
+  );
 }
 
 function renderMarkdownHeading(
@@ -1104,6 +1622,35 @@ function renderMarkdownHeading(
     <h4 className={className} key={index}>
       {block.text}
     </h4>
+  );
+}
+
+function MarkdownViewModeButton({
+  label,
+  onClick,
+  selected,
+}: {
+  label: string;
+  onClick: () => void;
+  selected: boolean;
+}) {
+  return (
+    <button
+      aria-label={label}
+      aria-pressed={selected}
+      className={cn(
+        "inline-flex h-7 min-w-12 items-center justify-center px-2 text-xs font-medium text-muted-foreground transition-colors",
+        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 focus-visible:ring-offset-background",
+        selected
+          ? "bg-muted text-foreground"
+          : "hover:bg-muted/70 hover:text-foreground",
+      )}
+      onClick={onClick}
+      title={label}
+      type="button"
+    >
+      {label}
+    </button>
   );
 }
 
@@ -1144,16 +1691,20 @@ function ToolbarDivider() {
   return <span className="mx-1 h-4 w-px bg-border/60" aria-hidden="true" />;
 }
 
-function createUploadingItem(file: File): UploadItem {
+function createUploadingItem(
+  file: File,
+  target: UploadItem["target"],
+): UploadItem {
   return {
     file,
     id: `${file.name}-${file.size}-${Date.now()}-${Math.random()}`,
     retryable: false,
     status: "uploading",
+    target,
   };
 }
 
-function getImageFiles(fileList: FileList | null | undefined): File[] {
+function getImageFiles(fileList: FileList | File[] | null | undefined): File[] {
   return Array.from(fileList ?? []).filter((file) =>
     file.type.startsWith("image/"),
   );
@@ -1162,6 +1713,7 @@ function getImageFiles(fileList: FileList | null | undefined): File[] {
 function createFailedUpload(
   file: File,
   code: AttachmentUploadErrorCode,
+  target: UploadItem["target"],
 ): UploadItem {
   return {
     file,
@@ -1169,6 +1721,7 @@ function createFailedUpload(
     id: `${file.name}-${file.size}-${Date.now()}-${Math.random()}`,
     retryable: false,
     status: "failed",
+    target,
   };
 }
 

@@ -193,6 +193,24 @@ export function isAllowedMarkdownImageTarget(target: string): boolean {
   );
 }
 
+export function getAttachmentIdFromMarkdownImageSrc(
+  src: string,
+): string | undefined {
+  const target = normalizeMarkdownLinkTarget(src);
+
+  if (!isAllowedMarkdownImageTarget(target)) {
+    return undefined;
+  }
+
+  const encoded = target.slice(MARKDOWN_ATTACHMENT_IMAGE_SRC_PREFIX.length);
+
+  try {
+    return decodeURIComponent(encoded);
+  } catch {
+    return encoded;
+  }
+}
+
 function sanitizeMarkdownImage(alt: string, rawTarget: string): string {
   const target = normalizeMarkdownLinkTarget(rawTarget);
   const safeAlt = sanitizeMarkdownImageAlt(alt);

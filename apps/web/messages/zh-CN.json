@@ -1234,10 +1234,31 @@
         "richText": "富文本",
         "markdown": "Markdown"
       },
-      "formatSwitchErrors": {
-        "MARKDOWN_TO_TIPTAP_NON_EMPTY": "Markdown 正文暂不支持直接转换为富文本，请清空正文后切换，或继续使用 Markdown 编辑。"
+      "markdownViewMode": {
+        "label": "Markdown 视图模式",
+        "edit": "源码",
+        "preview": "预览"
+      },
+      "markdownCommands": {
+        "boldPlaceholder": "加粗文本",
+        "italicPlaceholder": "斜体文本",
+        "codeBlockPlaceholder": "代码",
+        "linkLabel": "链接文本",
+        "table": {
+          "column1": "列 1",
+          "column2": "列 2",
+          "column3": "列 3",
+          "cell": "内容"
+        }
+      },
+      "markdownConvertDialog": {
+        "title": "转换为富文本",
+        "description": "将 Markdown 正文转换为富文本，部分语法可能降级。确认后会切换到富文本编辑。",
+        "confirm": "确认转换",
+        "cancel": "取消"
       },
       "toolbar": {
+        "heading": "标题",
         "bold": "加粗",
         "italic": "斜体",
         "strike": "删除线",

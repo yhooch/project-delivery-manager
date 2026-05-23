@@ -5,6 +5,7 @@ import {
   collectAttachmentImageIds,
   convertRequirementContentEditorValueFormat,
   createContentEditorValue,
+  createTiptapDocumentFromMarkdown,
   createTiptapDocumentForEditing,
   createEditorValueFromMarkdown,
   createEditorValueFromTiptapJson,
@@ -378,7 +379,7 @@ describe("requirement editor content", () => {
     expect(JSON.stringify(result)).not.toContain("X-Amz-Signature");
   });
 
-  it("only converts non-empty Markdown to Tiptap when the body is empty", () => {
+  it("converts empty Markdown to an empty Tiptap document", () => {
     expect(
       convertRequirementContentEditorValueFormat(
         createEditorValueFromMarkdown(""),
@@ -396,15 +397,278 @@ describe("requirement editor content", () => {
         contentText: "",
       },
     });
+  });
 
+  it("converts supported Markdown blocks to Tiptap JSON", () => {
     expect(
       convertRequirementContentEditorValueFormat(
-        createEditorValueFromMarkdown("# Scope"),
+        createEditorValueFromMarkdown(
+          [
+            "# Scope",
+            "",
+            "Use **bold**, *italic*, ~~strike~~, `code`, [link](https://example.com/spec)",
+            "",
+            "> Quote",
+            "",
+            "- Bullet",
+            "",
+            "2. Ordered",
+            "",
+            "- [x] Done",
+            "- [ ] Todo",
+            "",
+            "```ts",
+            "const value = 1;",
+            "```",
+            "",
+            "---",
+            "",
+            "![diagram.png](attachment://ATTACHMENT_01)",
+          ].join("\n"),
+        ),
         "TIPTAP_JSON",
       ),
     ).toEqual({
-      ok: false,
-      reason: "MARKDOWN_TO_TIPTAP_NON_EMPTY",
+      ok: true,
+      value: expect.objectContaining({
+        contentFormat: "TIPTAP_JSON",
+        contentJson: {
+          content: [
+            {
+              attrs: { level: 1 },
+              content: [{ text: "Scope", type: "text" }],
+              type: "heading",
+            },
+            {
+              content: [
+                { text: "Use ", type: "text" },
+                {
+                  marks: [{ type: "bold" }],
+                  text: "bold",
+                  type: "text",
+                },
+                { text: ", ", type: "text" },
+                {
+                  marks: [{ type: "italic" }],
+                  text: "italic",
+                  type: "text",
+                },
+                { text: ", ", type: "text" },
+                {
+                  marks: [{ type: "strike" }],
+                  text: "strike",
+                  type: "text",
+                },
+                { text: ", ", type: "text" },
+                {
+                  marks: [{ type: "code" }],
+                  text: "code",
+                  type: "text",
+                },
+                { text: ", ", type: "text" },
+                {
+                  marks: [
+                    {
+                      attrs: { href: "https://example.com/spec" },
+                      type: "link",
+                    },
+                  ],
+                  text: "link",
+                  type: "text",
+                },
+              ],
+              type: "paragraph",
+            },
+            {
+              content: [
+                {
+                  content: [{ text: "Quote", type: "text" }],
+                  type: "paragraph",
+                },
+              ],
+              type: "blockquote",
+            },
+            {
+              content: [
+                {
+                  content: [
+                    {
+                      content: [{ text: "Bullet", type: "text" }],
+                      type: "paragraph",
+                    },
+                  ],
+                  type: "listItem",
+                },
+              ],
+              type: "bulletList",
+            },
+            {
+              attrs: { start: 2 },
+              content: [
+                {
+                  content: [
+                    {
+                      content: [{ text: "Ordered", type: "text" }],
+                      type: "paragraph",
+                    },
+                  ],
+                  type: "listItem",
+                },
+              ],
+              type: "orderedList",
+            },
+            {
+              content: [
+                {
+                  attrs: { checked: true },
+                  content: [
+                    {
+                      content: [{ text: "Done", type: "text" }],
+                      type: "paragraph",
+                    },
+                  ],
+                  type: "taskItem",
+                },
+                {
+                  attrs: { checked: false },
+                  content: [
+                    {
+                      content: [{ text: "Todo", type: "text" }],
+                      type: "paragraph",
+                    },
+                  ],
+                  type: "taskItem",
+                },
+              ],
+              type: "taskList",
+            },
+            {
+              attrs: { language: "ts" },
+              content: [{ text: "const value = 1;", type: "text" }],
+              type: "codeBlock",
+            },
+            { type: "horizontalRule" },
+            {
+              attrs: {
+                alt: "diagram.png",
+                attachmentId: "ATTACHMENT_01",
+                fileName: "diagram.png",
+                src: "attachment://ATTACHMENT_01",
+                title: "diagram.png",
+              },
+              type: "image",
+            },
+          ],
+          type: "doc",
+        },
+      }),
+    });
+  });
+
+  it("converts simple GFM tables to Tiptap table nodes", () => {
+    expect(
+      createTiptapDocumentFromMarkdown(
+        [
+          "| Field | Value |",
+          "| --- | --- |",
+          "| Owner | Product |",
+          "| Status | Draft |",
+        ].join("\n"),
+      ),
+    ).toEqual({
+      content: [
+        {
+          content: [
+            {
+              content: [
+                {
+                  content: [
+                    {
+                      content: [{ text: "Field", type: "text" }],
+                      type: "paragraph",
+                    },
+                  ],
+                  type: "tableHeader",
+                },
+                {
+                  content: [
+                    {
+                      content: [{ text: "Value", type: "text" }],
+                      type: "paragraph",
+                    },
+                  ],
+                  type: "tableHeader",
+                },
+              ],
+              type: "tableRow",
+            },
+            {
+              content: [
+                {
+                  content: [
+                    {
+                      content: [{ text: "Owner", type: "text" }],
+                      type: "paragraph",
+                    },
+                  ],
+                  type: "tableCell",
+                },
+                {
+                  content: [
+                    {
+                      content: [{ text: "Product", type: "text" }],
+                      type: "paragraph",
+                    },
+                  ],
+                  type: "tableCell",
+                },
+              ],
+              type: "tableRow",
+            },
+            {
+              content: [
+                {
+                  content: [
+                    {
+                      content: [{ text: "Status", type: "text" }],
+                      type: "paragraph",
+                    },
+                  ],
+                  type: "tableCell",
+                },
+                {
+                  content: [
+                    {
+                      content: [{ text: "Draft", type: "text" }],
+                      type: "paragraph",
+                    },
+                  ],
+                  type: "tableCell",
+                },
+              ],
+              type: "tableRow",
+            },
+          ],
+          type: "table",
+        },
+      ],
+      type: "doc",
+    });
+  });
+
+  it("downgrades remote Markdown images before converting to Tiptap", () => {
+    expect(
+      createTiptapDocumentFromMarkdown(
+        "![remote](https://example.com/remote.png)",
+      ),
+    ).toEqual({
+      content: [
+        {
+          content: [{ text: "[image: remote]", type: "text" }],
+          type: "paragraph",
+        },
+      ],
+      type: "doc",
     });
   });
 });

@@ -1,6 +1,8 @@
 import {
   MARKDOWN_ATTACHMENT_IMAGE_SRC_PREFIX,
   createMarkdownEditorValue,
+  getAttachmentIdFromMarkdownImageSrc,
+  sanitizeRequirementMarkdown,
 } from "./requirement-markdown-content";
 
 export type RequirementTiptapContentEditorValue = {
@@ -29,14 +31,10 @@ export const ATTACHMENT_IMAGE_SRC_PREFIX = MARKDOWN_ATTACHMENT_IMAGE_SRC_PREFIX;
 export type AttachmentImageDisplayUrls = Readonly<Record<string, string>>;
 
 export type RequirementContentFormatConversionResult =
-  | {
-      ok: true;
-      value: RequirementContentEditorValue;
-    }
-  | {
-      ok: false;
-      reason: "MARKDOWN_TO_TIPTAP_NON_EMPTY";
-    };
+  {
+    ok: true;
+    value: RequirementContentEditorValue;
+  };
 
 export function createContentEditorValue(input: {
   contentFormat?: RequirementContentFormat;
@@ -111,16 +109,18 @@ export function convertRequirementContentEditorValueFormat(
     };
   }
 
-  if (isRequirementContentEditorValueEmpty(value)) {
+  if (value.contentFormat === "MARKDOWN") {
     return {
       ok: true,
-      value: createEditorValueFromTiptapJson(createTiptapDocumentFromText("")),
+      value: createEditorValueFromTiptapJson(
+        createTiptapDocumentFromMarkdown(value.contentMarkdown),
+      ),
     };
   }
 
   return {
-    ok: false,
-    reason: "MARKDOWN_TO_TIPTAP_NON_EMPTY",
+    ok: true,
+    value,
   };
 }
 
@@ -160,6 +160,548 @@ export function createTiptapDocumentFromText(
     content: content.length > 0 ? content : [{ type: "paragraph" }],
     type: "doc",
   };
+}
+
+export function createTiptapDocumentFromMarkdown(
+  markdown: string,
+): Record<string, unknown> {
+  const lines = sanitizeRequirementMarkdown(markdown).split("\n");
+  const content: Record<string, unknown>[] = [];
+  let index = 0;
+
+  while (index < lines.length) {
+    const line = lines[index] ?? "";
+    const trimmed = line.trim();
+
+    if (trimmed.length === 0) {
+      index += 1;
+      continue;
+    }
+
+    const codeFence = trimmed.match(/^```([A-Za-z0-9_-]*)\s*$/u);
+    if (codeFence) {
+      const codeLines: string[] = [];
+      index += 1;
+
+      while (index < lines.length && lines[index]?.trim() !== "```") {
+        codeLines.push(lines[index] ?? "");
+        index += 1;
+      }
+
+      if (index < lines.length) {
+        index += 1;
+      }
+
+      content.push(createCodeBlockNode(codeLines.join("\n"), codeFence[1]));
+      continue;
+    }
+
+    const table = parseMarkdownTable(lines, index);
+    if (table) {
+      content.push(table.node);
+      index = table.nextIndex;
+      continue;
+    }
+
+    const image = parseMarkdownImageNode(trimmed);
+    if (image) {
+      content.push(image);
+      index += 1;
+      continue;
+    }
+
+    const heading = trimmed.match(/^(#{1,6})\s+(.+)$/u);
+    if (heading) {
+      content.push({
+        attrs: { level: heading[1].length },
+        content: parseMarkdownInlineNodes(heading[2] ?? ""),
+        type: "heading",
+      });
+      index += 1;
+      continue;
+    }
+
+    if (/^(-{3,}|\*{3,}|_{3,})$/u.test(trimmed)) {
+      content.push({ type: "horizontalRule" });
+      index += 1;
+      continue;
+    }
+
+    if (isMarkdownBlockquoteLine(line)) {
+      const quoteLines: string[] = [];
+
+      while (
+        index < lines.length &&
+        isMarkdownBlockquoteLine(lines[index] ?? "")
+      ) {
+        quoteLines.push((lines[index] ?? "").replace(/^\s{0,3}>\s?/u, ""));
+        index += 1;
+      }
+
+      content.push({
+        content: [createParagraphNode(quoteLines.join("\n"))],
+        type: "blockquote",
+      });
+      continue;
+    }
+
+    const list = parseMarkdownList(lines, index);
+    if (list) {
+      content.push(list.node);
+      index = list.nextIndex;
+      continue;
+    }
+
+    const paragraphLines: string[] = [];
+
+    while (
+      index < lines.length &&
+      (lines[index] ?? "").trim().length > 0 &&
+      !startsMarkdownSpecialBlock(lines, index)
+    ) {
+      paragraphLines.push(lines[index] ?? "");
+      index += 1;
+    }
+
+    content.push(createParagraphNode(paragraphLines.join("\n")));
+  }
+
+  return {
+    content: content.length > 0 ? content : [{ type: "paragraph" }],
+    type: "doc",
+  };
+}
+
+function parseMarkdownTable(
+  lines: string[],
+  startIndex: number,
+):
+  | {
+      nextIndex: number;
+      node: Record<string, unknown>;
+    }
+  | undefined {
+  const header = parseMarkdownTableRow(lines[startIndex] ?? "");
+  const delimiter = lines[startIndex + 1] ?? "";
+
+  if (!header || !isMarkdownTableDelimiter(delimiter)) {
+    return undefined;
+  }
+
+  const rows: Record<string, unknown>[] = [
+    createMarkdownTableRow(header, "tableHeader"),
+  ];
+  let index = startIndex + 2;
+
+  while (index < lines.length) {
+    const cells = parseMarkdownTableRow(lines[index] ?? "");
+
+    if (!cells) {
+      break;
+    }
+
+    rows.push(createMarkdownTableRow(cells, "tableCell"));
+    index += 1;
+  }
+
+  return {
+    nextIndex: index,
+    node: {
+      content: rows,
+      type: "table",
+    },
+  };
+}
+
+function parseMarkdownTableRow(line: string): string[] | undefined {
+  const trimmed = line.trim();
+
+  if (!trimmed.includes("|")) {
+    return undefined;
+  }
+
+  const normalized = trimmed.replace(/^\|/u, "").replace(/\|$/u, "");
+  const cells = normalized.split("|").map((cell) => cell.trim());
+
+  return cells.length >= 2 ? cells : undefined;
+}
+
+function isMarkdownTableDelimiter(line: string): boolean {
+  const cells = parseMarkdownTableRow(line);
+
+  return Boolean(
+    cells &&
+      cells.length >= 2 &&
+      cells.every((cell) => /^:?-{3,}:?$/u.test(cell)),
+  );
+}
+
+function createMarkdownTableRow(
+  cells: string[],
+  cellType: "tableCell" | "tableHeader",
+): Record<string, unknown> {
+  return {
+    content: cells.map((cell) => ({
+      content: [createParagraphNode(cell)],
+      type: cellType,
+    })),
+    type: "tableRow",
+  };
+}
+
+function parseMarkdownImageNode(
+  line: string,
+): Record<string, unknown> | undefined {
+  const match = line.match(/^!\[([^\]\n]*)\]\(([^)\n]*)\)$/u);
+
+  if (!match) {
+    return undefined;
+  }
+
+  const attachmentId = getAttachmentIdFromMarkdownImageSrc(match[2] ?? "");
+
+  if (!attachmentId) {
+    return undefined;
+  }
+
+  const alt = sanitizeMarkdownImageText(match[1] ?? "");
+  const attrs: Record<string, unknown> = {
+    alt,
+    attachmentId,
+    fileName: alt,
+    src: createAttachmentImageSource(attachmentId),
+    title: alt,
+  };
+
+  return {
+    attrs,
+    type: "image",
+  };
+}
+
+function parseMarkdownList(
+  lines: string[],
+  startIndex: number,
+):
+  | {
+      nextIndex: number;
+      node: Record<string, unknown>;
+    }
+  | undefined {
+  const first = parseMarkdownListItem(lines[startIndex] ?? "");
+
+  if (!first) {
+    return undefined;
+  }
+
+  const items = [first];
+  let index = startIndex + 1;
+
+  while (index < lines.length) {
+    const item = parseMarkdownListItem(lines[index] ?? "");
+
+    if (!item || item.kind !== first.kind) {
+      break;
+    }
+
+    items.push(item);
+    index += 1;
+  }
+
+  if (first.kind === "task") {
+    return {
+      nextIndex: index,
+      node: {
+        content: items.map((item) => ({
+          attrs: { checked: item.checked === true },
+          content: [createParagraphNode(item.text)],
+          type: "taskItem",
+        })),
+        type: "taskList",
+      },
+    };
+  }
+
+  return {
+    nextIndex: index,
+    node: {
+      attrs: first.kind === "ordered" ? { start: first.order ?? 1 } : undefined,
+      content: items.map((item) => ({
+        content: [createParagraphNode(item.text)],
+        type: "listItem",
+      })),
+      type: first.kind === "ordered" ? "orderedList" : "bulletList",
+    },
+  };
+}
+
+function parseMarkdownListItem(line: string):
+  | {
+      checked?: boolean;
+      kind: "bullet" | "ordered" | "task";
+      order?: number;
+      text: string;
+    }
+  | undefined {
+  const task = line.match(/^\s*[-*+]\s+\[([ xX])\]\s+(.*)$/u);
+
+  if (task) {
+    return {
+      checked: task[1].toLowerCase() === "x",
+      kind: "task",
+      text: task[2] ?? "",
+    };
+  }
+
+  const ordered = line.match(/^\s*(\d+)[.)]\s+(.*)$/u);
+
+  if (ordered) {
+    return {
+      kind: "ordered",
+      order: Number(ordered[1]),
+      text: ordered[2] ?? "",
+    };
+  }
+
+  const bullet = line.match(/^\s*[-*+]\s+(.*)$/u);
+
+  if (bullet) {
+    return {
+      kind: "bullet",
+      text: bullet[1] ?? "",
+    };
+  }
+
+  return undefined;
+}
+
+function createCodeBlockNode(
+  text: string,
+  language: string | undefined,
+): Record<string, unknown> {
+  const node: Record<string, unknown> = {
+    type: "codeBlock",
+  };
+
+  if (language) {
+    node.attrs = { language };
+  }
+
+  if (text.length > 0) {
+    node.content = [{ text, type: "text" }];
+  }
+
+  return node;
+}
+
+function createParagraphNode(text: string): Record<string, unknown> {
+  const content = parseMarkdownInlineNodesWithBreaks(text);
+
+  return content.length > 0
+    ? {
+        content,
+        type: "paragraph",
+      }
+    : {
+        type: "paragraph",
+      };
+}
+
+function parseMarkdownInlineNodesWithBreaks(
+  text: string,
+): Record<string, unknown>[] {
+  return text
+    .split("\n")
+    .flatMap((line, index) =>
+      index === 0
+        ? parseMarkdownInlineNodes(line)
+        : [{ type: "hardBreak" }, ...parseMarkdownInlineNodes(line)],
+    );
+}
+
+function parseMarkdownInlineNodes(
+  text: string,
+  inheritedMarks: Record<string, unknown>[] = [],
+): Record<string, unknown>[] {
+  const nodes: Record<string, unknown>[] = [];
+  let index = 0;
+
+  while (index < text.length) {
+    const token = parseMarkdownInlineToken(text, index, inheritedMarks);
+
+    if (token) {
+      nodes.push(...token.nodes);
+      index = token.nextIndex;
+      continue;
+    }
+
+    const nextSpecial = findNextMarkdownInlineSpecial(text, index + 1);
+    const end = nextSpecial === -1 ? text.length : nextSpecial;
+
+    pushMarkdownTextNode(nodes, text.slice(index, end), inheritedMarks);
+    index = end;
+  }
+
+  return nodes;
+}
+
+function parseMarkdownInlineToken(
+  text: string,
+  index: number,
+  inheritedMarks: Record<string, unknown>[],
+):
+  | {
+      nextIndex: number;
+      nodes: Record<string, unknown>[];
+    }
+  | undefined {
+  if (text[index] === "`") {
+    const end = text.indexOf("`", index + 1);
+
+    if (end !== -1) {
+      return {
+        nextIndex: end + 1,
+        nodes: [
+          createMarkdownTextNode(text.slice(index + 1, end), [
+            ...inheritedMarks,
+            { type: "code" },
+          ]),
+        ],
+      };
+    }
+  }
+
+  if (text.startsWith("[", index)) {
+    const match = text.slice(index).match(/^\[([^\]\n]+)\]\(([^)\n]+)\)/u);
+
+    if (match) {
+      const href = match[2].trim();
+      const mark = {
+        attrs: { href },
+        type: "link",
+      };
+
+      return {
+        nextIndex: index + match[0].length,
+        nodes: parseMarkdownInlineNodes(match[1], [...inheritedMarks, mark]),
+      };
+    }
+  }
+
+  const delimited = parseDelimitedMarkdownInlineToken(
+    text,
+    index,
+    inheritedMarks,
+  );
+
+  if (delimited) {
+    return delimited;
+  }
+
+  return undefined;
+}
+
+function parseDelimitedMarkdownInlineToken(
+  text: string,
+  index: number,
+  inheritedMarks: Record<string, unknown>[],
+):
+  | {
+      nextIndex: number;
+      nodes: Record<string, unknown>[];
+    }
+  | undefined {
+  const candidates: Array<{
+    marker: string;
+    mark: Record<string, unknown>;
+  }> = [
+    { marker: "**", mark: { type: "bold" } },
+    { marker: "__", mark: { type: "bold" } },
+    { marker: "~~", mark: { type: "strike" } },
+    { marker: "*", mark: { type: "italic" } },
+    { marker: "_", mark: { type: "italic" } },
+  ];
+  const candidate = candidates.find(({ marker }) =>
+    text.startsWith(marker, index),
+  );
+
+  if (!candidate) {
+    return undefined;
+  }
+
+  const contentStart = index + candidate.marker.length;
+  const end = text.indexOf(candidate.marker, contentStart);
+
+  if (end === -1 || end === contentStart) {
+    return undefined;
+  }
+
+  return {
+    nextIndex: end + candidate.marker.length,
+    nodes: parseMarkdownInlineNodes(text.slice(contentStart, end), [
+      ...inheritedMarks,
+      candidate.mark,
+    ]),
+  };
+}
+
+function findNextMarkdownInlineSpecial(text: string, start: number): number {
+  const indexes = ["`", "[", "*", "_", "~"]
+    .map((marker) => text.indexOf(marker, start))
+    .filter((item) => item !== -1);
+
+  return indexes.length > 0 ? Math.min(...indexes) : -1;
+}
+
+function pushMarkdownTextNode(
+  nodes: Record<string, unknown>[],
+  text: string,
+  marks: Record<string, unknown>[],
+) {
+  const node = createMarkdownTextNode(text, marks);
+
+  if (node.text.length > 0) {
+    nodes.push(node);
+  }
+}
+
+function createMarkdownTextNode(
+  text: string,
+  marks: Record<string, unknown>[],
+): Record<string, unknown> & { text: string } {
+  return marks.length > 0
+    ? {
+        marks,
+        text,
+        type: "text",
+      }
+    : {
+        text,
+        type: "text",
+      };
+}
+
+function startsMarkdownSpecialBlock(lines: string[], index: number): boolean {
+  const line = lines[index] ?? "";
+  const trimmed = line.trim();
+
+  return Boolean(
+    trimmed.match(/^```([A-Za-z0-9_-]*)\s*$/u) ||
+      parseMarkdownImageNode(trimmed) ||
+      trimmed.match(/^(#{1,6})\s+(.+)$/u) ||
+      /^(-{3,}|\*{3,}|_{3,})$/u.test(trimmed) ||
+      isMarkdownBlockquoteLine(line) ||
+      parseMarkdownListItem(line) ||
+      parseMarkdownTable(lines, index),
+  );
+}
+
+function isMarkdownBlockquoteLine(line: string): boolean {
+  return /^\s{0,3}>\s?/u.test(line);
+}
+
+function sanitizeMarkdownImageText(text: string): string {
+  return text.replace(/[[\]\n\r]/gu, "").trim();
 }
 
 export function sanitizeTiptapDocument(
@@ -322,6 +864,10 @@ function serializeMarkedText(text: string, marks: unknown): string {
 
   if (markList.some((mark) => mark.type === "italic")) {
     result = `*${result}*`;
+  }
+
+  if (markList.some((mark) => mark.type === "strike")) {
+    result = `~~${result}~~`;
   }
 
   return result;

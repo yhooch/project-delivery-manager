@@ -16,6 +16,9 @@ const ACTOR_ID = "01H00000000000000000000002";
 const VERSION_ID = "01H00000000000000000000003";
 const REQUIREMENT_ID = "01H00000000000000000000004";
 const VERSION_TWO_ID = "01H00000000000000000000005";
+const IMAGE_ATTACHMENT_ID = "01H00000000000000000000006";
+const FILE_ATTACHMENT_ID = "01H00000000000000000000007";
+const MISSING_ATTACHMENT_ID = "01H00000000000000000000008";
 
 describe("RequirementService audit logging", () => {
   it("writes audit logs for draft creation and saving", async () => {
@@ -344,6 +347,103 @@ describe("RequirementService audit logging", () => {
     expect(subject.requirements.savedInput).toBeUndefined();
   });
 
+  it("saves Markdown image references to current requirement image attachments", async () => {
+    const subject = createSubject({
+      current: makeRequirement({
+        attachments: [
+          makeAttachmentRef({
+            id: IMAGE_ATTACHMENT_ID,
+            mimeType: "image/png",
+          }),
+        ],
+        status: "CONFIRMED",
+      }),
+    });
+
+    await subject.service.update(ACTOR_ID, REQUIREMENT_ID, {
+      contentFormat: "MARKDOWN",
+      contentMarkdown: [
+        "# Scope",
+        "",
+        `![screenshot](attachment://${IMAGE_ATTACHMENT_ID})`,
+        `![same screenshot](attachment://${IMAGE_ATTACHMENT_ID})`,
+      ].join("\n"),
+      title: "Markdown requirement with image",
+    });
+
+    expect(subject.requirements.savedInput).toMatchObject({
+      contentFormat: "MARKDOWN",
+      contentMarkdown: expect.stringContaining(
+        `attachment://${IMAGE_ATTACHMENT_ID}`,
+      ),
+    });
+  });
+
+  it("rejects Markdown image references to missing attachments", async () => {
+    const subject = createSubject({
+      current: makeRequirement({
+        attachments: [
+          makeAttachmentRef({
+            id: IMAGE_ATTACHMENT_ID,
+            mimeType: "image/png",
+          }),
+        ],
+        status: "CONFIRMED",
+      }),
+    });
+
+    await expect(
+      subject.service.update(ACTOR_ID, REQUIREMENT_ID, {
+        contentFormat: "MARKDOWN",
+        contentMarkdown: `![missing](attachment://${MISSING_ATTACHMENT_ID})`,
+        title: "Markdown requirement with missing image",
+      }),
+    ).rejects.toMatchObject({
+      code: "VALIDATION_ERROR",
+    });
+    expect(subject.requirements.savedInput).toBeUndefined();
+  });
+
+  it("rejects Markdown image references to non-image attachments", async () => {
+    const subject = createSubject({
+      current: makeRequirement({
+        attachments: [
+          makeAttachmentRef({
+            id: FILE_ATTACHMENT_ID,
+            mimeType: "application/pdf",
+          }),
+        ],
+        status: "CONFIRMED",
+      }),
+    });
+
+    await expect(
+      subject.service.update(ACTOR_ID, REQUIREMENT_ID, {
+        contentFormat: "MARKDOWN",
+        contentMarkdown: `![file](attachment://${FILE_ATTACHMENT_ID})`,
+        title: "Markdown requirement with file image",
+      }),
+    ).rejects.toMatchObject({
+      code: "VALIDATION_ERROR",
+    });
+    expect(subject.requirements.savedInput).toBeUndefined();
+  });
+
+  it("rejects attachment image references during create validation", async () => {
+    const subject = createSubject();
+
+    await expect(
+      subject.service.validateCreateRequest(ACTOR_ID, SPACE_ID, {
+        contentFormat: "MARKDOWN",
+        contentMarkdown: `![uploaded](attachment://${IMAGE_ATTACHMENT_ID})`,
+        title: "Markdown create request",
+      }),
+    ).rejects.toMatchObject({
+      code: "VALIDATION_ERROR",
+    });
+    expect(subject.requirements.savedInput).toBeUndefined();
+  });
+
   it("saves explicit requirement version clearing when there is no downstream impact", async () => {
     const subject = createSubject({
       current: makeRequirement({
@@ -561,4 +661,17 @@ function makeRequirement(overrides: Partial<Requirement> = {}): Requirement {
     ...overrides,
     tags: overrides.tags ?? [],
   } as Requirement;
+}
+
+function makeAttachmentRef(
+  overrides: Pick<NonNullable<Requirement["attachments"]>[number], "id"> &
+    Partial<NonNullable<Requirement["attachments"]>[number]>,
+): NonNullable<Requirement["attachments"]>[number] {
+  return {
+    fileKey: `requirements/${REQUIREMENT_ID}/${overrides.id}`,
+    fileName: "attachment.png",
+    mimeType: "image/png",
+    size: 1024,
+    ...overrides,
+  };
 }

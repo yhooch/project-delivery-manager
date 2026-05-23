@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   createMarkdownEditorValue,
+  getAttachmentIdFromMarkdownImageSrc,
   isAllowedMarkdownImageTarget,
   parseRequirementMarkdown,
   sanitizeRequirementMarkdown,
@@ -101,5 +102,14 @@ describe("requirement markdown content", () => {
     expect(isAllowedMarkdownImageTarget("https://example.com/image.png")).toBe(
       false,
     );
+  });
+
+  it("decodes attachment image ids from markdown image sources", () => {
+    expect(
+      getAttachmentIdFromMarkdownImageSrc("attachment://ATTACHMENT%2001"),
+    ).toBe("ATTACHMENT 01");
+    expect(
+      getAttachmentIdFromMarkdownImageSrc("https://example.com/image.png"),
+    ).toBeUndefined();
   });
 });

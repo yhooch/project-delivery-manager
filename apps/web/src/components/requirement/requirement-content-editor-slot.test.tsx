@@ -597,7 +597,315 @@ describe("RequirementContentEditorSlot markdown mode", () => {
     });
   });
 
-  it("blocks switching non-empty Markdown to rich text with an inline message", () => {
+  it("shows compact Markdown commands and toggles between edit and preview", () => {
+    render(
+      <RequirementContentEditorSlot
+        onChange={vi.fn()}
+        value={{
+          contentFormat: "MARKDOWN",
+          contentMarkdown: "## Scope",
+          contentText: "Scope",
+        }}
+      />,
+    );
+
+    expect(
+      screen.getByRole("button", {
+        name: "requirements.editor.toolbar.heading",
+      }),
+    ).toBeEnabled();
+    expect(
+      screen.getByRole("button", {
+        name: "requirements.editor.toolbar.insertTable",
+      }),
+    ).toBeEnabled();
+    const sourceButton = screen.getByRole("button", {
+      name: "requirements.editor.markdownViewMode.edit",
+    });
+    const previewButton = screen.getByRole("button", {
+      name: "requirements.editor.markdownViewMode.preview",
+    });
+
+    expect(sourceButton).toHaveAttribute("aria-pressed", "true");
+    expect(sourceButton).toHaveClass("bg-muted", "text-foreground");
+    expect(sourceButton).not.toHaveClass(
+      "bg-primary",
+      "text-primary-foreground",
+    );
+    expect(sourceButton).toHaveTextContent(
+      "requirements.editor.markdownViewMode.edit",
+    );
+    expect(sourceButton.querySelector("svg")).toBeNull();
+    expect(previewButton).toHaveTextContent(
+      "requirements.editor.markdownViewMode.preview",
+    );
+    expect(previewButton.querySelector("svg")).toBeNull();
+    expect(
+      screen.getByRole("button", {
+        name: "requirements.editor.contentFormat.markdown",
+      }),
+    ).toHaveClass("bg-primary", "text-primary-foreground");
+
+    fireEvent.click(previewButton);
+
+    expect(previewButton).toHaveClass("bg-muted", "text-foreground");
+    expect(previewButton).not.toHaveClass(
+      "bg-primary",
+      "text-primary-foreground",
+    );
+    expect(screen.queryByRole("textbox")).toBeNull();
+    expect(screen.getByRole("heading", { name: "Scope" })).toBeVisible();
+
+    fireEvent.click(sourceButton);
+
+    expect(
+      screen.getByRole("textbox", {
+        name: "requirements.editor.ariaLabel",
+      }),
+    ).toBeVisible();
+  });
+
+  it("applies Markdown toolbar commands to the textarea selection", () => {
+    const onChange = vi.fn();
+
+    render(
+      <RequirementContentEditorSlot
+        onChange={onChange}
+        value={{
+          contentFormat: "MARKDOWN",
+          contentMarkdown: "Scope",
+          contentText: "Scope",
+        }}
+      />,
+    );
+
+    const editor = screen.getByRole("textbox", {
+      name: "requirements.editor.ariaLabel",
+    }) as HTMLTextAreaElement;
+    editor.setSelectionRange(0, 5);
+    fireEvent.select(editor);
+    fireEvent.click(
+      screen.getByRole("button", {
+        name: "requirements.editor.toolbar.bold",
+      }),
+    );
+
+    expect(onChange).toHaveBeenCalledWith({
+      contentFormat: "MARKDOWN",
+      contentMarkdown: "**Scope**",
+      contentText: "Scope",
+    });
+  });
+
+  it("uses localized Markdown placeholders from messages", () => {
+    const onChange = vi.fn();
+
+    render(
+      <RequirementContentEditorSlot
+        onChange={onChange}
+        value={{
+          contentFormat: "MARKDOWN",
+          contentMarkdown: "",
+          contentText: "",
+        }}
+      />,
+    );
+
+    fireEvent.click(
+      screen.getByRole("button", {
+        name: "requirements.editor.toolbar.bold",
+      }),
+    );
+
+    expect(onChange).toHaveBeenCalledWith({
+      contentFormat: "MARKDOWN",
+      contentMarkdown:
+        "**requirements.editor.markdownCommands.boldPlaceholder**",
+      contentText: "requirements.editor.markdownCommands.boldPlaceholder",
+    });
+  });
+
+  it("uses the localized Markdown table template from messages", () => {
+    const onChange = vi.fn();
+
+    render(
+      <RequirementContentEditorSlot
+        onChange={onChange}
+        value={{
+          contentFormat: "MARKDOWN",
+          contentMarkdown: "",
+          contentText: "",
+        }}
+      />,
+    );
+
+    fireEvent.click(
+      screen.getByRole("button", {
+        name: "requirements.editor.toolbar.insertTable",
+      }),
+    );
+
+    expect(onChange).toHaveBeenCalledWith({
+      contentFormat: "MARKDOWN",
+      contentMarkdown: [
+        "| requirements.editor.markdownCommands.table.column1 | requirements.editor.markdownCommands.table.column2 | requirements.editor.markdownCommands.table.column3 |",
+        "| --- | --- | --- |",
+        "| requirements.editor.markdownCommands.table.cell | requirements.editor.markdownCommands.table.cell | requirements.editor.markdownCommands.table.cell |",
+      ].join("\n"),
+      contentText: [
+        "| requirements.editor.markdownCommands.table.column1 | requirements.editor.markdownCommands.table.column2 | requirements.editor.markdownCommands.table.column3 |",
+        "| --- | --- | --- |",
+        "| requirements.editor.markdownCommands.table.cell | requirements.editor.markdownCommands.table.cell | requirements.editor.markdownCommands.table.cell |",
+      ].join("\n"),
+    });
+  });
+
+  it("inserts Markdown links through the dialog without window.prompt", async () => {
+    const promptSpy = vi.spyOn(window, "prompt").mockReturnValue(null);
+    const onChange = vi.fn();
+
+    render(
+      <RequirementContentEditorSlot
+        onChange={onChange}
+        value={{
+          contentFormat: "MARKDOWN",
+          contentMarkdown: "Spec",
+          contentText: "Spec",
+        }}
+      />,
+    );
+
+    const editor = screen.getByRole("textbox", {
+      name: "requirements.editor.ariaLabel",
+    }) as HTMLTextAreaElement;
+    editor.setSelectionRange(0, 4);
+    fireEvent.select(editor);
+    fireEvent.click(
+      screen.getByRole("button", {
+        name: "requirements.editor.toolbar.link",
+      }),
+    );
+
+    const dialog = await screen.findByRole("dialog");
+    fireEvent.change(
+      within(dialog).getByRole("textbox", {
+        name: "requirements.editor.linkPrompt",
+      }),
+      {
+        target: { value: "https://example.com/spec" },
+      },
+    );
+    fireEvent.click(
+      within(dialog).getByRole("button", {
+        name: "requirements.editor.toolbar.link",
+      }),
+    );
+
+    expect(onChange).toHaveBeenCalledWith({
+      contentFormat: "MARKDOWN",
+      contentMarkdown: "[Spec](https://example.com/spec)",
+      contentText: "Spec",
+    });
+    expect(promptSpy).not.toHaveBeenCalled();
+  });
+
+  it("uploads pasted Markdown images and inserts stable attachment markdown", async () => {
+    const onAttachmentUploaded = vi.fn();
+    const onChange = vi.fn();
+    const imageFile = new File(["image-bytes"], "diagram.png", {
+      type: "image/png",
+    });
+
+    uploadRequirementImageMock.mockResolvedValueOnce({
+      attachment: {
+        fileKey: "requirements/REQ_01/diagram.png",
+        fileName: "diagram.png",
+        id: "ATTACHMENT_01",
+        mimeType: "image/png",
+        previewUrl: "https://cdn.example/diagram-preview.png",
+        size: imageFile.size,
+      },
+      imageUrl: "https://cdn.example/diagram.png",
+    });
+
+    render(
+      <RequirementContentEditorSlot
+        canUploadImages
+        onAttachmentUploaded={onAttachmentUploaded}
+        onChange={onChange}
+        requirementId="REQ_01"
+        value={{
+          contentFormat: "MARKDOWN",
+          contentMarkdown: "Before",
+          contentText: "Before",
+        }}
+      />,
+    );
+
+    const editor = screen.getByRole("textbox", {
+      name: "requirements.editor.ariaLabel",
+    }) as HTMLTextAreaElement;
+    editor.setSelectionRange(6, 6);
+    fireEvent.select(editor);
+    fireEvent.paste(editor, {
+      clipboardData: makeDropDataTransfer([imageFile]),
+    });
+
+    await waitFor(() =>
+      expect(uploadRequirementImageMock).toHaveBeenCalledWith({
+        existingAttachmentCount: 0,
+        file: imageFile,
+        requirementId: "REQ_01",
+      }),
+    );
+    await waitFor(() =>
+      expect(onChange).toHaveBeenCalledWith({
+        contentFormat: "MARKDOWN",
+        contentMarkdown: "Before\n\n![diagram.png](attachment://ATTACHMENT_01)",
+        contentText: "Before\n\ndiagram.png",
+      }),
+    );
+    expect(onAttachmentUploaded).toHaveBeenCalledWith({
+      fileKey: "requirements/REQ_01/diagram.png",
+      fileName: "diagram.png",
+      id: "ATTACHMENT_01",
+      mimeType: "image/png",
+      previewUrl: "https://cdn.example/diagram-preview.png",
+      size: imageFile.size,
+    });
+  });
+
+  it("ignores non-image Markdown paste files", () => {
+    const textFile = new File(["plain text"], "notes.txt", {
+      type: "text/plain",
+    });
+
+    render(
+      <RequirementContentEditorSlot
+        canUploadImages
+        onChange={vi.fn()}
+        requirementId="REQ_01"
+        value={{
+          contentFormat: "MARKDOWN",
+          contentMarkdown: "Before",
+          contentText: "Before",
+        }}
+      />,
+    );
+
+    fireEvent.paste(
+      screen.getByRole("textbox", {
+        name: "requirements.editor.ariaLabel",
+      }),
+      {
+        clipboardData: makeDropDataTransfer([textFile]),
+      },
+    );
+
+    expect(uploadRequirementImageMock).not.toHaveBeenCalled();
+  });
+
+  it("asks for confirmation before converting non-empty Markdown to rich text", async () => {
     const onChange = vi.fn();
 
     render(
@@ -618,9 +926,116 @@ describe("RequirementContentEditorSlot markdown mode", () => {
     );
 
     expect(onChange).not.toHaveBeenCalled();
-    expect(screen.getByRole("alert")).toHaveTextContent(
-      "requirements.editor.formatSwitchErrors.MARKDOWN_TO_TIPTAP_NON_EMPTY",
+    const dialog = await screen.findByRole("dialog");
+
+    expect(dialog).toHaveTextContent(
+      "requirements.editor.markdownConvertDialog.title",
     );
+    expect(dialog).toHaveTextContent(
+      "requirements.editor.markdownConvertDialog.description",
+    );
+  });
+
+  it("keeps Markdown when Markdown to rich text conversion is cancelled", async () => {
+    const onChange = vi.fn();
+
+    render(
+      <RequirementContentEditorSlot
+        onChange={onChange}
+        value={{
+          contentFormat: "MARKDOWN",
+          contentMarkdown: "# Scope",
+          contentText: "Scope",
+        }}
+      />,
+    );
+
+    fireEvent.click(
+      screen.getByRole("button", {
+        name: "requirements.editor.contentFormat.richText",
+      }),
+    );
+
+    const dialog = await screen.findByRole("dialog");
+    fireEvent.click(
+      within(dialog).getByRole("button", {
+        name: "requirements.editor.markdownConvertDialog.cancel",
+      }),
+    );
+
+    expect(onChange).not.toHaveBeenCalled();
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+  });
+
+  it("converts non-empty Markdown to rich text after confirmation", async () => {
+    const onChange = vi.fn();
+
+    render(
+      <RequirementContentEditorSlot
+        onChange={onChange}
+        value={{
+          contentFormat: "MARKDOWN",
+          contentMarkdown: [
+            "# Scope",
+            "",
+            "Use **bold** and [link](https://example.com/spec)",
+          ].join("\n"),
+          contentText: "Scope\n\nUse bold and link",
+        }}
+      />,
+    );
+
+    fireEvent.click(
+      screen.getByRole("button", {
+        name: "requirements.editor.contentFormat.richText",
+      }),
+    );
+
+    const dialog = await screen.findByRole("dialog");
+    fireEvent.click(
+      within(dialog).getByRole("button", {
+        name: "requirements.editor.markdownConvertDialog.confirm",
+      }),
+    );
+
+    expect(onChange).toHaveBeenCalledWith({
+      contentFormat: "TIPTAP_JSON",
+      contentJson: {
+        content: [
+          {
+            attrs: { level: 1 },
+            content: [{ text: "Scope", type: "text" }],
+            type: "heading",
+          },
+          {
+            content: [
+              { text: "Use ", type: "text" },
+              {
+                marks: [{ type: "bold" }],
+                text: "bold",
+                type: "text",
+              },
+              { text: " and ", type: "text" },
+              {
+                marks: [
+                  {
+                    attrs: { href: "https://example.com/spec" },
+                    type: "link",
+                  },
+                ],
+                text: "link",
+                type: "text",
+              },
+            ],
+            type: "paragraph",
+          },
+        ],
+        type: "doc",
+      },
+      contentMarkdownCache:
+        "# Scope\n\nUse **bold** and [link](https://example.com/spec)",
+      contentText: "Scope\n\nUse\n\nbold\n\nand\n\nlink",
+    });
   });
 
   it("switches empty Markdown to rich text", () => {
@@ -677,5 +1092,44 @@ describe("RequirementContentEditorSlot markdown mode", () => {
     expect(screen.getByText("<script>alert(1)</script>")).toBeVisible();
     expect(screen.getByText("[image: remote]")).toBeVisible();
     expect(screen.queryByRole("textbox")).toBeNull();
+    expect(
+      screen.queryByRole("button", {
+        name: "requirements.editor.markdownViewMode.edit",
+      }),
+    ).toBeNull();
+    expect(
+      screen.queryByRole("button", {
+        name: "requirements.editor.markdownViewMode.preview",
+      }),
+    ).toBeNull();
+  });
+
+  it("resolves Markdown attachment preview images to temporary URLs", async () => {
+    getAttachmentDownloadUrlMock.mockResolvedValueOnce({
+      downloadUrl: "https://cdn.example/attached.png",
+      expiresInSeconds: 300,
+    });
+
+    render(
+      <RequirementContentEditorSlot
+        disabled
+        onChange={vi.fn()}
+        value={{
+          contentFormat: "MARKDOWN",
+          contentMarkdown: "![attached](attachment://ATTACHMENT_01)",
+          contentText: "attached",
+        }}
+      />,
+    );
+
+    await waitFor(() =>
+      expect(getAttachmentDownloadUrlMock).toHaveBeenCalledWith({
+        attachmentId: "ATTACHMENT_01",
+      }),
+    );
+    expect(await screen.findByRole("img", { name: "attached" })).toHaveAttribute(
+      "src",
+      "https://cdn.example/attached.png",
+    );
   });
 });
