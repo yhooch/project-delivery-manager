@@ -206,29 +206,6 @@ release-sensitive checks are full API/UI E2E in a complete PostgreSQL + MinIO +
 API + Web environment, plus OAuth/MCP Inspector or equivalent end-to-end
 verification for the MCP surface.
 
-## Suggested GitHub Topics
-
-If this repository is published on GitHub, these topics will make it easier to
-discover:
-
-```text
-project-management
-product-management
-product-delivery
-requirements-management
-issue-tracker
-bug-tracker
-workflow-engine
-saas
-mcp
-oauth2
-nextjs
-nestjs
-prisma
-postgresql
-typescript
-```
-
 ## License
 
 This project is licensed under the [MIT License](LICENSE).

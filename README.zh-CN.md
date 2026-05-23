@@ -192,28 +192,6 @@ MVP 主产品链路、标签、用户可读业务编号、实时刷新和主要 
 发布相关的剩余检查包括：在完整 PostgreSQL + MinIO + API + Web 环境中运行完整 API/UI
 E2E，以及使用 MCP Inspector 或等价客户端完成 OAuth/MCP 端到端验证。
 
-## 建议 GitHub Topics
-
-如果将本仓库发布到 GitHub，建议添加这些 topics 以提升可发现性：
-
-```text
-project-management
-product-management
-product-delivery
-requirements-management
-issue-tracker
-bug-tracker
-workflow-engine
-saas
-mcp
-oauth2
-nextjs
-nestjs
-prisma
-postgresql
-typescript
-```
-
 ## License
 
 本项目使用 [MIT License](LICENSE) 开源许可。
