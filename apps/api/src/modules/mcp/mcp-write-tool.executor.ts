@@ -16,7 +16,9 @@ import {
   type McpToolName,
   type McpToolResult,
   type McpWriteContext,
+  type McpWriteTargetSelectionSource,
   type ReplaceTagAssignmentsRequest,
+  type SpaceRole,
   type TargetType,
   type UpdateWorkItemRequest,
 } from "@project-delivery/shared";
@@ -29,6 +31,10 @@ import type { RequestMetadata } from "../auth/auth-session.types";
 import { BugService } from "../bug/bug.service";
 import { CommentService } from "../comment/comment.service";
 import { IntakeService } from "../intake/intake.service";
+import {
+  ORGANIZATION_REPOSITORY,
+  type OrganizationRepository,
+} from "../organization/organization.repository";
 import { RequirementService } from "../requirement/requirement.service";
 import { SpaceService } from "../space/space.service";
 import { TagAssignmentService } from "../tag/tag-assignment.service";
@@ -45,6 +51,26 @@ type ToolExecution = {
 type McpBusinessMetadata = RequestMetadata & {
   metadata: Record<string, unknown>;
 };
+type WriteTargetSelectionValidation =
+  | {
+      accepted: true;
+      organizationName?: string;
+      reason: string;
+      spaceName?: string;
+      source: Exclude<
+        McpWriteTargetSelectionSource,
+        "MCP_CONTEXT_FALLBACK"
+      >;
+    }
+  | {
+      accepted: false;
+      details: Record<string, unknown>;
+      message: string;
+      organizationName?: string;
+      reason: string;
+      spaceName?: string;
+      source?: McpWriteTargetSelectionSource;
+    };
 type CreateCommentRequest = z.infer<typeof CreateCommentRequestSchema>;
 type CreateIntakeArgs = McpWriteContext & CreateIntakeItemRequest;
 type CreateTaskArgs = McpWriteContext & CreateWorkItemRequest;
@@ -73,11 +99,22 @@ const WRITE_TOOL_NAMES = new Set<McpToolName>([
   "pdm.tag.replace_assignments",
 ]);
 
+const MCP_AUTO_WRITABLE_SPACE_ROLES = new Set<SpaceRole>([
+  "SPACE_ADMIN",
+  "PM",
+  "DEVELOPER",
+  "TESTER",
+  "REQUIREMENT",
+  "MEMBER",
+]);
+
 @Injectable()
 export class McpWriteToolExecutor {
   constructor(
     @Inject(McpIdempotencyService)
     private readonly idempotency: McpIdempotencyService,
+    @Inject(ORGANIZATION_REPOSITORY)
+    private readonly organizations: OrganizationRepository,
     @Inject(SpaceService)
     private readonly spaces: SpaceService,
     @Inject(RequirementService)
@@ -102,13 +139,138 @@ export class McpWriteToolExecutor {
     return WRITE_TOOL_NAMES.has(name);
   }
 
+  private async inspectWriteTargetSelection(
+    userId: string,
+    context: McpWriteContext,
+  ): Promise<WriteTargetSelectionValidation> {
+    const [organizations, spaces] = await Promise.all([
+      this.organizations.listSessionSummaries(userId),
+      this.organizations.listSessionSpaceSummaries(userId),
+    ]);
+    const organization = organizations.find(
+      (item) => item.id === context.organizationId,
+    );
+    const space = spaces.find((item) => item.id === context.spaceId);
+
+    if (!organization || !space || space.organizationId !== organization.id) {
+      throw new ApiException(
+        "SPACE_ACCESS_DENIED",
+        "MCP write target is not an accessible organization and project space pair.",
+        HttpStatus.FORBIDDEN,
+        {
+          organizationId: context.organizationId,
+          spaceId: context.spaceId,
+        },
+      );
+    }
+
+    const writableSpaces = spaces.filter(
+      (item) =>
+        item.status === "ACTIVE" &&
+        MCP_AUTO_WRITABLE_SPACE_ROLES.has(item.role),
+    );
+    const sharedDetails = {
+      organizationId: context.organizationId,
+      spaceId: context.spaceId,
+      targetOrganizationName: organization.name,
+      targetSelectionSource: context.targetSelectionSource ?? "MISSING",
+      targetSpaceName: space.name,
+      writableSpaceCount: writableSpaces.length,
+    };
+
+    if (context.targetSelectionSource === "USER_EXPLICIT") {
+      return {
+        accepted: true,
+        organizationName: organization.name,
+        reason: "The MCP write target was explicitly selected by the user.",
+        source: "USER_EXPLICIT",
+        spaceName: space.name,
+      };
+    }
+
+    if (context.targetSelectionSource === "SINGLE_WRITABLE_SPACE") {
+      const onlyWritableSpace = writableSpaces[0];
+
+      if (
+        writableSpaces.length === 1 &&
+        onlyWritableSpace?.id === context.spaceId &&
+        onlyWritableSpace.organizationId === context.organizationId
+      ) {
+        return {
+          accepted: true,
+          organizationName: organization.name,
+          reason: "The user has exactly one writable project space.",
+          source: "SINGLE_WRITABLE_SPACE",
+          spaceName: space.name,
+        };
+      }
+
+      return {
+        accepted: false,
+        details: {
+          ...sharedDetails,
+          allowedSources: ["USER_EXPLICIT"],
+        },
+        message:
+          "MCP write target must be explicitly selected when more than one writable project space is available.",
+        organizationName: organization.name,
+        reason:
+          "Multiple or mismatched writable project spaces require the user to choose the organization and project space.",
+        source: context.targetSelectionSource,
+        spaceName: space.name,
+      };
+    }
+
+    return {
+      accepted: false,
+      details: {
+        ...sharedDetails,
+        allowedSources: ["USER_EXPLICIT", "SINGLE_WRITABLE_SPACE"],
+      },
+      message:
+        "MCP write target must be explicitly selected. Do not use pdm.context.get fallback suggestions as write targets.",
+      organizationName: organization.name,
+      reason:
+        "The provided target selection source is missing or is a context fallback suggestion.",
+      source: context.targetSelectionSource,
+      spaceName: space.name,
+    };
+  }
+
   async execute(
     contract: McpToolContract,
     args: unknown,
     principal: McpOAuthPrincipalContext,
     requestMetadata: RequestMetadata,
   ): Promise<McpToolResult> {
-    const writeContext = parseWriteContext(args);
+    let writeContext: McpWriteContext;
+    let targetSelection: WriteTargetSelectionValidation;
+
+    try {
+      writeContext = parseWriteContext(args);
+      targetSelection = await this.inspectWriteTargetSelection(
+        principal.userId,
+        writeContext,
+      );
+    } catch (error) {
+      return toolErrorFromException(error);
+    }
+
+    if (!targetSelection.accepted) {
+      if (writeContext.dryRun === true) {
+        return toolSuccess(
+          "Dry run requires an explicit MCP write target.",
+          dryRunSelectionResult(contract.name, writeContext, targetSelection),
+        );
+      }
+
+      return toolError(
+        "SPACE_CONTEXT_REQUIRED",
+        targetSelection.message,
+        targetSelection.details,
+      );
+    }
+
     const scope = {
       clientId: principal.clientId,
       idempotencyKey: writeContext.idempotencyKey,
@@ -148,13 +310,20 @@ export class McpWriteToolExecutor {
       case "reserved": {
         const result =
           writeContext.dryRun === true
-            ? await this.executeDryRun(contract, args, principal, writeContext)
+            ? await this.executeDryRun(
+                contract,
+                args,
+                principal,
+                writeContext,
+                targetSelection,
+              )
             : await this.invokeWriteTool(
                 contract,
                 args,
                 principal,
                 requestMetadata,
                 inputSummary,
+                targetSelection,
               );
         await this.idempotency.complete({
           invocationId: reservation.invocationId,
@@ -170,6 +339,7 @@ export class McpWriteToolExecutor {
     args: unknown,
     principal: McpOAuthPrincipalContext,
     writeContext: McpWriteContext,
+    targetSelection: Extract<WriteTargetSelectionValidation, { accepted: true }>,
   ): Promise<McpToolResult> {
     const validationResult = await this.invokeAsToolResult(contract, async () => {
       await this.validateContextOnly(contract.name, args, principal);
@@ -177,13 +347,20 @@ export class McpWriteToolExecutor {
       return {
         message: "Dry run validated. No business changes were committed.",
         output: McpDryRunResultSchema.parse({
+          canWrite: true,
           committed: false,
           dryRun: true,
-          message: "Input schema and accessible organization/space context validated.",
+          message:
+            "Input schema, target selection and accessible organization/space context validated.",
           organizationId: writeContext.organizationId,
+          reason: targetSelection.reason,
+          requiresConfirmation: false,
           spaceId: writeContext.spaceId,
+          targetOrganizationName: targetSelection.organizationName,
+          targetSelectionSource: targetSelection.source,
+          targetSpaceName: targetSelection.spaceName,
           toolName: contract.name,
-          validated: ["inputSchema", "spaceContext"],
+          validated: ["inputSchema", "targetSelection", "spaceContext"],
         }),
       };
     });
@@ -197,6 +374,7 @@ export class McpWriteToolExecutor {
     principal: McpOAuthPrincipalContext,
     requestMetadata: RequestMetadata,
     inputSummary: Record<string, unknown>,
+    targetSelection: Extract<WriteTargetSelectionValidation, { accepted: true }>,
   ): Promise<McpToolResult> {
     return this.invokeAsToolResult(contract, async () => {
       await this.validateContextOnly(contract.name, args, principal);
@@ -208,6 +386,7 @@ export class McpWriteToolExecutor {
         organizationId: context.organizationId,
         requestMetadata,
         spaceId: context.spaceId,
+        targetSelectionSource: targetSelection.source,
         toolName: contract.name,
         userId: principal.userId,
       });
@@ -477,6 +656,7 @@ function omitWriteContext<TInput extends McpWriteContext>(
     idempotencyKey: _idempotencyKey,
     organizationId: _organizationId,
     spaceId: _spaceId,
+    targetSelectionSource: _targetSelectionSource,
     ...rest
   } = input;
 
@@ -493,6 +673,7 @@ function parseWriteContext(args: unknown): McpWriteContext {
     idempotencyKey: args.idempotencyKey,
     organizationId: args.organizationId,
     spaceId: args.spaceId,
+    targetSelectionSource: args.targetSelectionSource,
   });
 }
 
@@ -502,6 +683,10 @@ function buildBusinessMetadata(input: {
   organizationId: string;
   requestMetadata: RequestMetadata;
   spaceId: string;
+  targetSelectionSource: Exclude<
+    McpWriteTargetSelectionSource,
+    "MCP_CONTEXT_FALLBACK"
+  >;
   toolName: McpToolName;
   userId: string;
 }): McpBusinessMetadata {
@@ -515,10 +700,33 @@ function buildBusinessMetadata(input: {
       resultStatus: "SUCCESS",
       source: "MCP",
       spaceId: input.spaceId,
+      targetSelectionSource: input.targetSelectionSource,
       toolName: input.toolName,
       userId: input.userId,
     },
   };
+}
+
+function dryRunSelectionResult(
+  toolName: McpToolName,
+  context: McpWriteContext,
+  targetSelection: Extract<WriteTargetSelectionValidation, { accepted: false }>,
+) {
+  return McpDryRunResultSchema.parse({
+    canWrite: false,
+    committed: false,
+    dryRun: true,
+    message: targetSelection.message,
+    organizationId: context.organizationId,
+    reason: targetSelection.reason,
+    requiresConfirmation: true,
+    spaceId: context.spaceId,
+    targetOrganizationName: targetSelection.organizationName,
+    targetSelectionSource: targetSelection.source,
+    targetSpaceName: targetSelection.spaceName,
+    toolName,
+    validated: ["inputSchema"],
+  });
 }
 
 function summarizeInput(
@@ -545,6 +753,7 @@ function summarizeInput(
     organizationId: record.organizationId,
     spaceId: record.spaceId,
     targetId: record.targetId ?? record.workItemId,
+    targetSelectionSource: record.targetSelectionSource,
     targetType: record.targetType,
     text: textSummary,
     toolName,

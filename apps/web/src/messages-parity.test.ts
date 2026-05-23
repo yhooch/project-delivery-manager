@@ -43,4 +43,18 @@ describe("message catalog parity", () => {
       );
     }
   });
+
+  it("keeps MCP authorize registration mode copy available in every locale", () => {
+    for (const locale of ["zh-CN", "en-US"] as const) {
+      const keys = new Set(flattenKeys(readMessages(locale)));
+
+      expect([...keys]).toEqual(
+        expect.arrayContaining([
+          "oauth.mcpAuthorize.registrationMode.PRE_REGISTERED",
+          "oauth.mcpAuthorize.registrationMode.CLIENT_ID_METADATA_DOCUMENT",
+          "oauth.mcpAuthorize.registrationMode.DYNAMIC_CLIENT_REGISTRATION",
+        ]),
+      );
+    }
+  });
 });

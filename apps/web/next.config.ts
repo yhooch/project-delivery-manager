@@ -21,6 +21,10 @@ const nextConfig: NextConfig = {
         destination: `${apiProxyTarget}/oauth/authorize`,
       },
       {
+        source: "/oauth/authorize/approve",
+        destination: `${apiProxyTarget}/oauth/authorize/approve`,
+      },
+      {
         source: "/oauth/token",
         destination: `${apiProxyTarget}/oauth/token`,
       },

@@ -5,6 +5,7 @@ import {
   McpBearerChallengeSchema,
   McpCanonicalResourceUriSchema,
   McpCreateRequirementRequestSchema,
+  McpContextSchema,
   McpDryRunResultSchema,
   McpEndpointPolicy,
   McpEndpointPolicySchema,
@@ -229,6 +230,9 @@ describe("MCP and OAuth shared contracts", () => {
           "spaceId",
           "idempotencyKey",
         ]),
+        properties: expect.objectContaining({
+          targetSelectionSource: expect.any(Object),
+        }),
       });
     }
 
@@ -255,6 +259,7 @@ describe("MCP and OAuth shared contracts", () => {
       organizationId,
       spaceId,
       idempotencyKey: "req-create-2026-05-22",
+      targetSelectionSource: "USER_EXPLICIT",
       dryRun: true,
       title: "Create MCP contract",
       contentFormat: "MARKDOWN",
@@ -268,6 +273,7 @@ describe("MCP and OAuth shared contracts", () => {
       dryRun: true,
       organizationId,
       spaceId,
+      targetSelectionSource: "USER_EXPLICIT",
     });
     expect(
       McpCreateRequirementRequestSchema.safeParse({
@@ -279,11 +285,14 @@ describe("MCP and OAuth shared contracts", () => {
 
   it("allows dryRun result content for first-phase write tool outputs", () => {
     const dryRunResult = McpDryRunResultSchema.parse({
+      canWrite: true,
       committed: false,
       dryRun: true,
       message: "Input schema and space context validated.",
       organizationId,
+      requiresConfirmation: false,
       spaceId,
+      targetSelectionSource: "USER_EXPLICIT",
       toolName: "pdm.requirement.create",
       validated: ["inputSchema", "spaceContext"],
     });
@@ -295,6 +304,58 @@ describe("MCP and OAuth shared contracts", () => {
       committed: false,
       dryRun: true,
     });
+  });
+
+  it("separates MCP context suggestions from write targets", () => {
+    const context = McpContextSchema.parse({
+      user: {
+        id: "01ARZ3NDEKTSV4RRFFQ69G5FAV",
+        username: "agent",
+        name: "Agent User",
+        status: "ACTIVE",
+        preferences: {
+          locale: "zh-CN",
+          themeMode: "SYSTEM",
+        },
+      },
+      organizations: [
+        {
+          id: organizationId,
+          name: "Org",
+          code: "org",
+          role: "OWNER",
+          status: "ACTIVE",
+        },
+      ],
+      spaces: [
+        {
+          id: spaceId,
+          name: "Space",
+          code: "space",
+          organizationId,
+          role: "PM",
+          status: "ACTIVE",
+        },
+      ],
+      readSuggestedOrganizationId: organizationId,
+      readSuggestedSpaceId: spaceId,
+      writableSpaceCount: 1,
+      singleWritableSpaceId: spaceId,
+      selectionSource: "SINGLE_CANDIDATE",
+      writeRequiresExplicitTarget: true,
+      capabilities: {
+        canCreateOrganization: true,
+        canCreateSpace: true,
+      },
+    });
+
+    expect(context).toMatchObject({
+      readSuggestedOrganizationId: organizationId,
+      singleWritableSpaceId: spaceId,
+      writeRequiresExplicitTarget: true,
+    });
+    expect("defaultOrganizationId" in context).toBe(false);
+    expect("defaultSpaceId" in context).toBe(false);
   });
 
   it("separates tool business failures from JSON-RPC protocol errors", () => {

@@ -636,7 +636,8 @@
       },
       "registrationMode": {
         "PRE_REGISTERED": "Pre-registered client",
-        "CLIENT_ID_METADATA_DOCUMENT": "Client metadata document"
+        "CLIENT_ID_METADATA_DOCUMENT": "Client metadata document",
+        "DYNAMIC_CLIENT_REGISTRATION": "Dynamic client registration"
       },
       "risk": {
         "title": "Authorization risk",

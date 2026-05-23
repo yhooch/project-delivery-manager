@@ -11,6 +11,7 @@ import type { McpOAuthPrincipalContext } from "../../http/request-context";
 import type { BugService } from "../bug/bug.service";
 import type { CommentService } from "../comment/comment.service";
 import type { IntakeService } from "../intake/intake.service";
+import type { OrganizationRepository } from "../organization/organization.repository";
 import type { RequirementService } from "../requirement/requirement.service";
 import type { SpaceService } from "../space/space.service";
 import type { TagAssignmentService } from "../tag/tag-assignment.service";
@@ -25,6 +26,7 @@ type MockFn = ReturnType<typeof vi.fn>;
 const USER_ID = "01HX0000000000000000000000";
 const ORGANIZATION_ID = "01HRZ3NDEKTSV4RRFFQ69G5FAV";
 const SPACE_ID = "01HRZ3NDEKTSV4RRFFQ69G5FAW";
+const OTHER_SPACE_ID = "01HRZ3NDEKTSV4RRFFQ69G5FAT";
 const WORK_ITEM_ID = "01HRZ3NDEKTSV4RRFFQ69G5FAZ";
 const WORKFLOW_VERSION_ID = "01HRZ3NDEKTSV4RRFFQ69G5FB2";
 const WORKFLOW_STATE_ID = "01HRZ3NDEKTSV4RRFFQ69G5FB3";
@@ -40,6 +42,10 @@ describe("McpWriteToolExecutor", () => {
     waitForReplay: MockFn;
   };
   let intakeItems: { create: MockFn };
+  let organizations: {
+    listSessionSpaceSummaries: MockFn;
+    listSessionSummaries: MockFn;
+  };
   let requirements: {
     createDraft: MockFn;
     update: MockFn;
@@ -69,6 +75,27 @@ describe("McpWriteToolExecutor", () => {
     intakeItems = {
       create: vi.fn(),
     };
+    organizations = {
+      listSessionSummaries: vi.fn(async () => [
+        {
+          code: "org",
+          id: ORGANIZATION_ID,
+          name: "Default Org",
+          role: "OWNER",
+          status: "ACTIVE",
+        },
+      ]),
+      listSessionSpaceSummaries: vi.fn(async () => [
+        {
+          code: "space",
+          id: SPACE_ID,
+          name: "Default Space",
+          organizationId: ORGANIZATION_ID,
+          role: "PM",
+          status: "ACTIVE",
+        },
+      ]),
+    };
     requirements = {
       createDraft: vi.fn(),
       update: vi.fn(),
@@ -93,6 +120,7 @@ describe("McpWriteToolExecutor", () => {
     };
     executor = new McpWriteToolExecutor(
       idempotency as unknown as McpIdempotencyService,
+      organizations as unknown as OrganizationRepository,
       spaces as unknown as SpaceService,
       requirements as unknown as RequirementService,
       intakeItems as unknown as IntakeService,
@@ -112,6 +140,7 @@ describe("McpWriteToolExecutor", () => {
         organizationId: ORGANIZATION_ID,
         spaceId: SPACE_ID,
         idempotencyKey: "task-dry-run-1",
+        targetSelectionSource: "USER_EXPLICIT",
         dryRun: true,
         title: "Dry run task",
       },
@@ -123,10 +152,15 @@ describe("McpWriteToolExecutor", () => {
 
     expect(result).toMatchObject({
       structuredContent: {
+        canWrite: true,
         committed: false,
         dryRun: true,
         organizationId: ORGANIZATION_ID,
+        requiresConfirmation: false,
         spaceId: SPACE_ID,
+        targetOrganizationName: "Default Org",
+        targetSelectionSource: "USER_EXPLICIT",
+        targetSpaceName: "Default Space",
         toolName: "pdm.work_item.create_task",
       },
     });
@@ -157,6 +191,118 @@ describe("McpWriteToolExecutor", () => {
     expect(workItems.create).not.toHaveBeenCalled();
   });
 
+  it("returns a confirmation dryRun result when the write target source is missing", async () => {
+    const result = await executor.execute(
+      contract("pdm.work_item.create_task"),
+      {
+        organizationId: ORGANIZATION_ID,
+        spaceId: SPACE_ID,
+        idempotencyKey: "task-dry-run-confirm-1",
+        dryRun: true,
+        title: "Dry run task",
+      },
+      principal(),
+      {
+        requestId: "req-confirm",
+      },
+    );
+
+    expect(result).toMatchObject({
+      structuredContent: {
+        canWrite: false,
+        committed: false,
+        dryRun: true,
+        requiresConfirmation: true,
+        targetOrganizationName: "Default Org",
+        targetSpaceName: "Default Space",
+        toolName: "pdm.work_item.create_task",
+      },
+    });
+    expect(idempotency.reserve).not.toHaveBeenCalled();
+    expect(workItems.create).not.toHaveBeenCalled();
+  });
+
+  it("rejects committed writes that use MCP context fallback targets", async () => {
+    const result = await executor.execute(
+      contract("pdm.work_item.create_task"),
+      {
+        organizationId: ORGANIZATION_ID,
+        spaceId: SPACE_ID,
+        idempotencyKey: "task-fallback-1",
+        targetSelectionSource: "MCP_CONTEXT_FALLBACK",
+        title: "Fallback write",
+      },
+      principal(),
+      {
+        requestId: "req-fallback",
+      },
+    );
+
+    expect(result).toMatchObject({
+      isError: true,
+      structuredContent: {
+        error: {
+          code: "SPACE_CONTEXT_REQUIRED",
+          details: {
+            targetSelectionSource: "MCP_CONTEXT_FALLBACK",
+          },
+        },
+      },
+    });
+    expect(idempotency.reserve).not.toHaveBeenCalled();
+    expect(workItems.create).not.toHaveBeenCalled();
+  });
+
+  it("rejects SINGLE_WRITABLE_SPACE when more than one writable space is available", async () => {
+    organizations.listSessionSpaceSummaries.mockResolvedValueOnce([
+      {
+        code: "space",
+        id: SPACE_ID,
+        name: "Default Space",
+        organizationId: ORGANIZATION_ID,
+        role: "PM",
+        status: "ACTIVE",
+      },
+      {
+        code: "other",
+        id: OTHER_SPACE_ID,
+        name: "Other Space",
+        organizationId: ORGANIZATION_ID,
+        role: "PM",
+        status: "ACTIVE",
+      },
+    ]);
+
+    const result = await executor.execute(
+      contract("pdm.work_item.create_task"),
+      {
+        organizationId: ORGANIZATION_ID,
+        spaceId: SPACE_ID,
+        idempotencyKey: "task-single-rejected-1",
+        targetSelectionSource: "SINGLE_WRITABLE_SPACE",
+        title: "Auto target write",
+      },
+      principal(),
+      {
+        requestId: "req-single",
+      },
+    );
+
+    expect(result).toMatchObject({
+      isError: true,
+      structuredContent: {
+        error: {
+          code: "SPACE_CONTEXT_REQUIRED",
+          details: {
+            writableSpaceCount: 2,
+          },
+        },
+      },
+    });
+    expect(idempotency.reserve).not.toHaveBeenCalled();
+    expect(workItems.create).not.toHaveBeenCalled();
+  });
+
   it("returns MCP_IDEMPOTENCY_CONFLICT when a key is reused with different arguments", async () => {
     idempotency.reserve.mockResolvedValueOnce({
       details: {
@@ -174,6 +320,7 @@ describe("McpWriteToolExecutor", () => {
         organizationId: ORGANIZATION_ID,
         spaceId: SPACE_ID,
         idempotencyKey: "task-create-1",
+        targetSelectionSource: "USER_EXPLICIT",
         title: "Create task",
       },
       principal(),
@@ -200,6 +347,7 @@ describe("McpWriteToolExecutor", () => {
         organizationId: ORGANIZATION_ID,
         spaceId: SPACE_ID,
         idempotencyKey: "task-create-1",
+        targetSelectionSource: "USER_EXPLICIT",
         title: "Create task",
         priority: "HIGH",
       },
@@ -225,6 +373,7 @@ describe("McpWriteToolExecutor", () => {
           resultStatus: "SUCCESS",
           source: "MCP",
           spaceId: SPACE_ID,
+          targetSelectionSource: "USER_EXPLICIT",
           toolName: "pdm.work_item.create_task",
           userId: USER_ID,
         }),
@@ -264,6 +413,7 @@ describe("McpWriteToolExecutor", () => {
         organizationId: ORGANIZATION_ID,
         spaceId: SPACE_ID,
         idempotencyKey: "viewer-task-create-1",
+        targetSelectionSource: "USER_EXPLICIT",
         title: "Viewer write attempt",
       },
       principal(),
@@ -312,6 +462,7 @@ describe("McpWriteToolExecutor", () => {
         organizationId: ORGANIZATION_ID,
         spaceId: SPACE_ID,
         idempotencyKey: "requirement-create-1",
+        targetSelectionSource: "USER_EXPLICIT",
         title: "Create requirement",
         contentFormat: "MARKDOWN",
         contentMarkdown: "Initial requirement",
@@ -372,6 +523,7 @@ describe("McpWriteToolExecutor", () => {
         organizationId: ORGANIZATION_ID,
         spaceId: SPACE_ID,
         idempotencyKey: "task-create-1",
+        targetSelectionSource: "USER_EXPLICIT",
         title: "Create task",
       },
       principal(),

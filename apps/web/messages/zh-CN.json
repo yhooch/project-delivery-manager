@@ -636,7 +636,8 @@
       },
       "registrationMode": {
         "PRE_REGISTERED": "预注册客户端",
-        "CLIENT_ID_METADATA_DOCUMENT": "客户端元数据文档"
+        "CLIENT_ID_METADATA_DOCUMENT": "客户端元数据文档",
+        "DYNAMIC_CLIENT_REGISTRATION": "动态客户端注册"
       },
       "risk": {
         "title": "授权风险提示",

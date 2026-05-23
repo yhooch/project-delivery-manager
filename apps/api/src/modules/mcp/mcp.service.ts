@@ -11,12 +11,15 @@ import {
   McpToolsListRequestSchema,
   McpToolsListResultSchema,
   type ApiErrorCode,
+  type AppSession,
   type McpJsonRpcErrorCode,
   type McpJsonRpcResponse,
   type McpJsonRpcResponseId,
+  type McpContext,
   type McpToolName,
   type McpToolResult,
   type ObjectCodeLookupQuery,
+  type SpaceRole,
   type SpaceExceptionsViewQuery,
   type SpaceOverviewViewQuery,
   type TargetType,
@@ -79,6 +82,15 @@ type TimelineToolInput = {
   targetId: string;
   targetType: TargetType;
 };
+
+const MCP_AUTO_WRITABLE_SPACE_ROLES = new Set<SpaceRole>([
+  "SPACE_ADMIN",
+  "PM",
+  "DEVELOPER",
+  "TESTER",
+  "REQUIREMENT",
+  "MEMBER",
+]);
 
 export type McpHttpErrorBody = {
   code: ApiErrorCode;
@@ -509,8 +521,34 @@ export class McpService {
       );
     }
 
-    return this.appSessions.buildForUser(toSessionUser(user));
+    const session = await this.appSessions.buildForUser(toSessionUser(user));
+
+    return toMcpContext(session);
   }
+}
+
+function toMcpContext(session: AppSession): McpContext {
+  const writableSpaces = session.spaces.filter(
+    (space) =>
+      space.status === "ACTIVE" &&
+      MCP_AUTO_WRITABLE_SPACE_ROLES.has(space.role),
+  );
+  const hasSingleCandidate =
+    session.organizations.length === 1 && session.spaces.length === 1;
+
+  return {
+    user: session.user,
+    organizations: session.organizations,
+    spaces: session.spaces,
+    readSuggestedOrganizationId: session.defaultOrganizationId,
+    readSuggestedSpaceId: session.defaultSpaceId,
+    writableSpaceCount: writableSpaces.length,
+    singleWritableSpaceId:
+      writableSpaces.length === 1 ? writableSpaces[0]?.id : undefined,
+    selectionSource: hasSingleCandidate ? "SINGLE_CANDIDATE" : "FALLBACK",
+    writeRequiresExplicitTarget: true,
+    capabilities: session.capabilities,
+  };
 }
 
 function validateProtocolVersionHeader(

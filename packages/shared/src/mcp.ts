@@ -48,7 +48,12 @@ import {
   TagIdListSchema,
 } from "./tag.ts";
 import { PrioritySchema } from "./enums.ts";
-import { AppSessionSchema } from "./auth.ts";
+import {
+  AppSessionCapabilitiesSchema,
+  SessionOrganizationSummarySchema,
+  SessionSpaceSummarySchema,
+} from "./auth.ts";
+import { SessionUserSchema } from "./user.ts";
 
 export const McpEndpointPath = "/api/v1/mcp";
 export const McpProtectedResourceMetadataPath =
@@ -520,11 +525,51 @@ export const McpWriteContextSchema = z
     organizationId: UlidSchema,
     spaceId: UlidSchema,
     idempotencyKey: z.string().min(8).max(120),
+    targetSelectionSource: z
+      .enum([
+        "USER_EXPLICIT",
+        "SINGLE_WRITABLE_SPACE",
+        "MCP_CONTEXT_FALLBACK",
+      ])
+      .optional()
+      .describe(
+        "Required for committed writes. Use USER_EXPLICIT only after the user names the organization and project space. Use SINGLE_WRITABLE_SPACE only when pdm.context.get shows exactly one writable project space. Never use MCP_CONTEXT_FALLBACK for committed writes.",
+      ),
     dryRun: z.boolean().optional(),
   })
   .strict();
 
 export type McpWriteContext = z.infer<typeof McpWriteContextSchema>;
+export const McpWriteTargetSelectionSourceSchema =
+  McpWriteContextSchema.shape.targetSelectionSource.unwrap();
+export type McpWriteTargetSelectionSource = z.infer<
+  typeof McpWriteTargetSelectionSourceSchema
+>;
+
+export const McpContextSelectionSourceSchema = z.enum([
+  "SINGLE_CANDIDATE",
+  "FALLBACK",
+]);
+export type McpContextSelectionSource = z.infer<
+  typeof McpContextSelectionSourceSchema
+>;
+
+export const McpContextSchema = z
+  .object({
+    user: SessionUserSchema,
+    organizations: z.array(SessionOrganizationSummarySchema),
+    spaces: z.array(SessionSpaceSummarySchema),
+    readSuggestedOrganizationId: UlidSchema.optional(),
+    readSuggestedSpaceId: UlidSchema.optional(),
+    writableSpaceCount: z.number().int().min(0),
+    singleWritableSpaceId: UlidSchema.optional(),
+    selectionSource: McpContextSelectionSourceSchema,
+    writeRequiresExplicitTarget: z.literal(true),
+    capabilities: AppSessionCapabilitiesSchema,
+  })
+  .strict();
+
+export type McpContext = z.infer<typeof McpContextSchema>;
 
 export const McpIdempotencyScopeSchema = z
   .object({
@@ -679,8 +724,14 @@ export const McpDryRunResultSchema = z
     toolName: McpToolNameSchema,
     organizationId: UlidSchema,
     spaceId: UlidSchema,
+    targetSelectionSource: McpWriteTargetSelectionSourceSchema.optional(),
+    canWrite: z.boolean(),
+    requiresConfirmation: z.boolean(),
+    targetOrganizationName: z.string().min(1).max(120).optional(),
+    targetSpaceName: z.string().min(1).max(120).optional(),
     validated: z.array(z.string().min(1)).min(1),
     message: z.string().min(1).max(500),
+    reason: z.string().min(1).max(500).optional(),
   })
   .strict();
 
@@ -736,15 +787,19 @@ function writeOutputSchema(schema: z.ZodType): z.ZodType {
   return z.union([schema, McpDryRunResultSchema]);
 }
 
+const WriteTargetPolicyDescription =
+  " Do not use pdm.context.get fallback suggestions as write targets. Set targetSelectionSource=USER_EXPLICIT after the user names the organization and project space, or SINGLE_WRITABLE_SPACE only when there is exactly one writable project space.";
+
 export const mcpToolContracts = [
   tool({
     name: "pdm.context.get",
     title: "Get PDM context",
-    description: "Return current user, organization, space and capability context.",
+    description:
+      "Return current user, organization, space and capability context. Returned suggestions are for reading/navigation only and are not write targets.",
     scopes: ["mcp:read"],
     annotations: ReadToolAnnotations,
     inputSchema: EmptyObjectSchema,
-    outputSchema: AppSessionSchema,
+    outputSchema: McpContextSchema,
   }),
   tool({
     name: "pdm.object.lookup_code",
@@ -803,7 +858,8 @@ export const mcpToolContracts = [
   tool({
     name: "pdm.requirement.create",
     title: "Create Markdown requirement",
-    description: "Create a confirmed requirement from Markdown content.",
+    description:
+      `Create a confirmed requirement from Markdown content.${WriteTargetPolicyDescription}`,
     scopes: ["mcp:write:requirement"],
     annotations: CreateToolAnnotations,
     inputSchema: McpCreateRequirementRequestSchema,
@@ -821,7 +877,8 @@ export const mcpToolContracts = [
   tool({
     name: "pdm.intake.create",
     title: "Create intake item",
-    description: "Create an intake item in a project space.",
+    description:
+      `Create an intake item in a project space.${WriteTargetPolicyDescription}`,
     scopes: ["mcp:write:intake"],
     annotations: CreateToolAnnotations,
     inputSchema: McpCreateIntakeRequestSchema,
@@ -839,7 +896,8 @@ export const mcpToolContracts = [
   tool({
     name: "pdm.work_item.create_task",
     title: "Create task",
-    description: "Create a task work item in a project space.",
+    description:
+      `Create a task work item in a project space.${WriteTargetPolicyDescription}`,
     scopes: ["mcp:write:workitem"],
     annotations: CreateToolAnnotations,
     inputSchema: McpCreateTaskRequestSchema,
@@ -848,7 +906,8 @@ export const mcpToolContracts = [
   tool({
     name: "pdm.work_item.update",
     title: "Update work item",
-    description: "Update editable task or work item fields.",
+    description:
+      `Update editable task or work item fields.${WriteTargetPolicyDescription}`,
     scopes: ["mcp:write:workitem"],
     annotations: UpdateToolAnnotations,
     inputSchema: McpUpdateWorkItemRequestSchema,
@@ -857,7 +916,8 @@ export const mcpToolContracts = [
   tool({
     name: "pdm.work_item.execute_action",
     title: "Execute workflow action",
-    description: "Execute an available workflow action on a work item.",
+    description:
+      `Execute an available workflow action on a work item.${WriteTargetPolicyDescription}`,
     scopes: ["mcp:execute:workflow"],
     annotations: UpdateToolAnnotations,
     inputSchema: McpExecuteWorkItemActionRequestSchema,
@@ -875,7 +935,7 @@ export const mcpToolContracts = [
   tool({
     name: "pdm.bug.create",
     title: "Create bug",
-    description: "Create a bug in a project space.",
+    description: `Create a bug in a project space.${WriteTargetPolicyDescription}`,
     scopes: ["mcp:write:bug"],
     annotations: CreateToolAnnotations,
     inputSchema: McpCreateBugRequestSchema,
@@ -884,7 +944,8 @@ export const mcpToolContracts = [
   tool({
     name: "pdm.comment.create",
     title: "Create comment",
-    description: "Add a comment to a requirement, intake item or work item.",
+    description:
+      `Add a comment to a requirement, intake item or work item.${WriteTargetPolicyDescription}`,
     scopes: ["mcp:write:comment"],
     annotations: CreateToolAnnotations,
     inputSchema: McpCreateCommentRequestSchema,
@@ -893,7 +954,8 @@ export const mcpToolContracts = [
   tool({
     name: "pdm.tag.replace_assignments",
     title: "Replace tag assignments",
-    description: "Replace all tags assigned to a requirement, intake item or work item.",
+    description:
+      `Replace all tags assigned to a requirement, intake item or work item.${WriteTargetPolicyDescription}`,
     scopes: ["mcp:write:tag"],
     annotations: UpdateToolAnnotations,
     inputSchema: McpReplaceTagAssignmentsRequestSchema,

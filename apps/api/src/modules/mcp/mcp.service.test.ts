@@ -1,5 +1,5 @@
 import { HttpStatus } from "@nestjs/common";
-import type { AppSession } from "@project-delivery/shared";
+import type { AppSession, McpContext } from "@project-delivery/shared";
 import {
   mcpToolRegistry,
   type McpJsonRpcResponse,
@@ -304,7 +304,7 @@ describe("McpService", () => {
     );
     const result = body.result as {
       content: Array<{ text: string; type: string }>;
-      structuredContent: AppSession;
+      structuredContent: McpContext;
     };
 
     expect(appSessions.buildForUser).toHaveBeenCalledWith(
@@ -318,6 +318,9 @@ describe("McpService", () => {
       text: "PDM context returned.",
     });
     expect(result.structuredContent.user.id).toBe(USER_ID);
+    expect(result.structuredContent.writableSpaceCount).toBe(0);
+    expect(result.structuredContent.writeRequiresExplicitTarget).toBe(true);
+    expect(result.structuredContent).not.toHaveProperty("defaultSpaceId");
   });
 
   it("executes first-phase read tools through existing business services", async () => {
