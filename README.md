@@ -231,5 +231,4 @@ typescript
 
 ## License
 
-No license file is currently included. Add a `LICENSE` file before publishing
-the repository publicly.
+This project is licensed under the [MIT License](LICENSE).

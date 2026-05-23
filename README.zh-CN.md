@@ -216,4 +216,4 @@ typescript
 
 ## License
 
-当前仓库还没有包含 license 文件。公开发布前建议添加 `LICENSE` 文件。
+本项目使用 [MIT License](LICENSE) 开源许可。
