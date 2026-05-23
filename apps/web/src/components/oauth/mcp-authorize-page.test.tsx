@@ -78,7 +78,7 @@ function createContext(
     redirectHostname: "localhost",
     redirectIsLocalhost: true,
     redirectUri: "http://localhost:4321/callback",
-    resource: "https://crm.example.com/api/v1/mcp",
+    resource: "https://pdm.example.com/api/v1/mcp",
     scopes: ["mcp:read", "mcp:write:requirement"],
     state: "state-1",
     ...overrides,

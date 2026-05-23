@@ -19,9 +19,9 @@ import {
 
 const clientId = "https://mcp-client.example.com/metadata.json";
 const redirectUri = "https://mcp-client.example.com/oauth/callback";
-const resource = "https://crm.example.com/api/v1/mcp";
+const resource = "https://pdm.example.com/api/v1/mcp";
 const authorizeQuery =
-  "response_type=code&client_id=https%3A%2F%2Fmcp-client.example.com%2Fmetadata.json&redirect_uri=https%3A%2F%2Fmcp-client.example.com%2Foauth%2Fcallback&code_challenge=abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789&code_challenge_method=S256&scope=mcp%3Aread&state=state-1&resource=https%3A%2F%2Fcrm.example.com%2Fapi%2Fv1%2Fmcp";
+  "response_type=code&client_id=https%3A%2F%2Fmcp-client.example.com%2Fmetadata.json&redirect_uri=https%3A%2F%2Fmcp-client.example.com%2Foauth%2Fcallback&code_challenge=abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789&code_challenge_method=S256&scope=mcp%3Aread&state=state-1&resource=https%3A%2F%2Fpdm.example.com%2Fapi%2Fv1%2Fmcp";
 
 function createApi(
   overrides: Partial<Record<keyof McpApiTransport, unknown>>,

@@ -63,14 +63,14 @@ type ExecuteWorkItemActionArgs = McpWriteContext &
   };
 
 const WRITE_TOOL_NAMES = new Set<McpToolName>([
-  "crm.requirement.create",
-  "crm.intake.create",
-  "crm.work_item.create_task",
-  "crm.work_item.update",
-  "crm.work_item.execute_action",
-  "crm.bug.create",
-  "crm.comment.create",
-  "crm.tag.replace_assignments",
+  "pdm.requirement.create",
+  "pdm.intake.create",
+  "pdm.work_item.create_task",
+  "pdm.work_item.update",
+  "pdm.work_item.execute_action",
+  "pdm.bug.create",
+  "pdm.comment.create",
+  "pdm.tag.replace_assignments",
 ]);
 
 @Injectable()
@@ -250,7 +250,7 @@ export class McpWriteToolExecutor {
     });
 
     switch (toolName) {
-      case "crm.comment.create": {
+      case "pdm.comment.create": {
         const input = args as CreateCommentArgs;
         await this.validateTargetContext(
           principal.userId,
@@ -260,7 +260,7 @@ export class McpWriteToolExecutor {
         );
         return;
       }
-      case "crm.tag.replace_assignments": {
+      case "pdm.tag.replace_assignments": {
         const input = args as ReplaceTagAssignmentsArgs;
         await this.validateTargetContext(
           principal.userId,
@@ -270,8 +270,8 @@ export class McpWriteToolExecutor {
         );
         return;
       }
-      case "crm.work_item.update":
-      case "crm.work_item.execute_action": {
+      case "pdm.work_item.update":
+      case "pdm.work_item.execute_action": {
         const input = args as UpdateWorkItemArgs | ExecuteWorkItemActionArgs;
         await this.validateTargetContext(
           principal.userId,
@@ -313,7 +313,7 @@ export class McpWriteToolExecutor {
     metadata: McpBusinessMetadata,
   ): Promise<ToolExecution> {
     switch (toolName) {
-      case "crm.requirement.create": {
+      case "pdm.requirement.create": {
         const input = args as McpCreateRequirementRequest;
         await this.requirements.validateCreateRequest(
           principal.userId,
@@ -359,7 +359,7 @@ export class McpWriteToolExecutor {
           output: requirement,
         };
       }
-      case "crm.intake.create": {
+      case "pdm.intake.create": {
         const input = args as CreateIntakeArgs;
         const item = await this.intakeItems.create(
           principal.userId,
@@ -373,7 +373,7 @@ export class McpWriteToolExecutor {
           output: item,
         };
       }
-      case "crm.work_item.create_task": {
+      case "pdm.work_item.create_task": {
         const input = args as CreateTaskArgs;
         const workItem = await this.workItems.create(
           principal.userId,
@@ -387,7 +387,7 @@ export class McpWriteToolExecutor {
           output: workItem,
         };
       }
-      case "crm.bug.create": {
+      case "pdm.bug.create": {
         const input = args as CreateBugArgs;
         const bug = await this.bugs.create(
           principal.userId,
@@ -401,7 +401,7 @@ export class McpWriteToolExecutor {
           output: bug,
         };
       }
-      case "crm.comment.create": {
+      case "pdm.comment.create": {
         const input = args as CreateCommentArgs;
         const comment = await this.comments.create(
           principal.userId,
@@ -414,7 +414,7 @@ export class McpWriteToolExecutor {
           output: comment,
         };
       }
-      case "crm.tag.replace_assignments": {
+      case "pdm.tag.replace_assignments": {
         const input = args as ReplaceTagAssignmentsArgs;
         const assignments = await this.tagAssignments.replace(
           principal.userId,
@@ -427,7 +427,7 @@ export class McpWriteToolExecutor {
           output: assignments,
         };
       }
-      case "crm.work_item.update": {
+      case "pdm.work_item.update": {
         const input = args as UpdateWorkItemArgs;
         const { workItemId, ...updateInput } = omitWriteContext(input);
         const updated = await this.workItems.update(
@@ -443,7 +443,7 @@ export class McpWriteToolExecutor {
           output: detail,
         };
       }
-      case "crm.work_item.execute_action": {
+      case "pdm.work_item.execute_action": {
         const input = args as ExecuteWorkItemActionArgs;
         const { actionId, workItemId, ...executeInput } =
           omitWriteContext(input);

@@ -649,25 +649,25 @@ const McpReplaceTagAssignmentsRequestSchema = McpWriteContextSchema.merge(
 );
 
 export const McpToolNameSchema = z.enum([
-  "crm.context.get",
-  "crm.object.lookup_code",
-  "crm.workbench.get",
-  "crm.space.overview_get",
-  "crm.version.board_get",
-  "crm.exceptions.list",
-  "crm.requirement.get",
-  "crm.requirement.create",
-  "crm.intake.list",
-  "crm.intake.create",
-  "crm.work_item.get",
-  "crm.work_item.create_task",
-  "crm.work_item.update",
-  "crm.work_item.execute_action",
-  "crm.bug.get",
-  "crm.bug.create",
-  "crm.comment.create",
-  "crm.tag.replace_assignments",
-  "crm.timeline.list",
+  "pdm.context.get",
+  "pdm.object.lookup_code",
+  "pdm.workbench.get",
+  "pdm.space.overview_get",
+  "pdm.version.board_get",
+  "pdm.exceptions.list",
+  "pdm.requirement.get",
+  "pdm.requirement.create",
+  "pdm.intake.list",
+  "pdm.intake.create",
+  "pdm.work_item.get",
+  "pdm.work_item.create_task",
+  "pdm.work_item.update",
+  "pdm.work_item.execute_action",
+  "pdm.bug.get",
+  "pdm.bug.create",
+  "pdm.comment.create",
+  "pdm.tag.replace_assignments",
+  "pdm.timeline.list",
 ]);
 
 export type McpToolName = z.infer<typeof McpToolNameSchema>;
@@ -738,8 +738,8 @@ function writeOutputSchema(schema: z.ZodType): z.ZodType {
 
 export const mcpToolContracts = [
   tool({
-    name: "crm.context.get",
-    title: "Get CRM context",
+    name: "pdm.context.get",
+    title: "Get PDM context",
     description: "Return current user, organization, space and capability context.",
     scopes: ["mcp:read"],
     annotations: ReadToolAnnotations,
@@ -747,7 +747,7 @@ export const mcpToolContracts = [
     outputSchema: AppSessionSchema,
   }),
   tool({
-    name: "crm.object.lookup_code",
+    name: "pdm.object.lookup_code",
     title: "Lookup object by display code",
     description: "Resolve REQ-n, INTAKE-n, TASK-n or BUG-n within allowed scope.",
     scopes: ["mcp:read"],
@@ -756,7 +756,7 @@ export const mcpToolContracts = [
     outputSchema: ObjectCodeLookupResultSchema,
   }),
   tool({
-    name: "crm.workbench.get",
+    name: "pdm.workbench.get",
     title: "Get my workbench",
     description: "Return the current user's workbench view.",
     scopes: ["mcp:read"],
@@ -765,7 +765,7 @@ export const mcpToolContracts = [
     outputSchema: GetMyWorkbenchViewResponseSchema,
   }),
   tool({
-    name: "crm.space.overview_get",
+    name: "pdm.space.overview_get",
     title: "Get space overview",
     description: "Return operational overview for a project space.",
     scopes: ["mcp:read"],
@@ -774,7 +774,7 @@ export const mcpToolContracts = [
     outputSchema: GetSpaceOverviewViewResponseSchema,
   }),
   tool({
-    name: "crm.version.board_get",
+    name: "pdm.version.board_get",
     title: "Get version board",
     description: "Return the version board grouped by status category.",
     scopes: ["mcp:read"],
@@ -783,7 +783,7 @@ export const mcpToolContracts = [
     outputSchema: GetVersionBoardViewResponseSchema,
   }),
   tool({
-    name: "crm.exceptions.list",
+    name: "pdm.exceptions.list",
     title: "List space exceptions",
     description: "Return overdue, blocked, pending and stale work item signals.",
     scopes: ["mcp:read"],
@@ -792,7 +792,7 @@ export const mcpToolContracts = [
     outputSchema: GetSpaceExceptionsViewResponseSchema,
   }),
   tool({
-    name: "crm.requirement.get",
+    name: "pdm.requirement.get",
     title: "Get requirement",
     description: "Return requirement detail visible to the current user.",
     scopes: ["mcp:read"],
@@ -801,7 +801,7 @@ export const mcpToolContracts = [
     outputSchema: RequirementSchema,
   }),
   tool({
-    name: "crm.requirement.create",
+    name: "pdm.requirement.create",
     title: "Create Markdown requirement",
     description: "Create a confirmed requirement from Markdown content.",
     scopes: ["mcp:write:requirement"],
@@ -810,7 +810,7 @@ export const mcpToolContracts = [
     outputSchema: writeOutputSchema(RequirementSchema),
   }),
   tool({
-    name: "crm.intake.list",
+    name: "pdm.intake.list",
     title: "List intake items",
     description: "Return intake items in a project space.",
     scopes: ["mcp:read"],
@@ -819,7 +819,7 @@ export const mcpToolContracts = [
     outputSchema: ListIntakeItemsResponseSchema,
   }),
   tool({
-    name: "crm.intake.create",
+    name: "pdm.intake.create",
     title: "Create intake item",
     description: "Create an intake item in a project space.",
     scopes: ["mcp:write:intake"],
@@ -828,7 +828,7 @@ export const mcpToolContracts = [
     outputSchema: writeOutputSchema(IntakeItemSchema),
   }),
   tool({
-    name: "crm.work_item.get",
+    name: "pdm.work_item.get",
     title: "Get work item",
     description: "Return task or work item detail visible to the current user.",
     scopes: ["mcp:read"],
@@ -837,7 +837,7 @@ export const mcpToolContracts = [
     outputSchema: GetWorkItemResponseSchema,
   }),
   tool({
-    name: "crm.work_item.create_task",
+    name: "pdm.work_item.create_task",
     title: "Create task",
     description: "Create a task work item in a project space.",
     scopes: ["mcp:write:workitem"],
@@ -846,7 +846,7 @@ export const mcpToolContracts = [
     outputSchema: writeOutputSchema(CreateWorkItemResponseSchema),
   }),
   tool({
-    name: "crm.work_item.update",
+    name: "pdm.work_item.update",
     title: "Update work item",
     description: "Update editable task or work item fields.",
     scopes: ["mcp:write:workitem"],
@@ -855,7 +855,7 @@ export const mcpToolContracts = [
     outputSchema: writeOutputSchema(GetWorkItemResponseSchema),
   }),
   tool({
-    name: "crm.work_item.execute_action",
+    name: "pdm.work_item.execute_action",
     title: "Execute workflow action",
     description: "Execute an available workflow action on a work item.",
     scopes: ["mcp:execute:workflow"],
@@ -864,7 +864,7 @@ export const mcpToolContracts = [
     outputSchema: writeOutputSchema(GetWorkItemResponseSchema),
   }),
   tool({
-    name: "crm.bug.get",
+    name: "pdm.bug.get",
     title: "Get bug",
     description: "Return bug detail visible to the current user.",
     scopes: ["mcp:read"],
@@ -873,7 +873,7 @@ export const mcpToolContracts = [
     outputSchema: GetBugResponseSchema,
   }),
   tool({
-    name: "crm.bug.create",
+    name: "pdm.bug.create",
     title: "Create bug",
     description: "Create a bug in a project space.",
     scopes: ["mcp:write:bug"],
@@ -882,7 +882,7 @@ export const mcpToolContracts = [
     outputSchema: writeOutputSchema(CreateBugResponseSchema),
   }),
   tool({
-    name: "crm.comment.create",
+    name: "pdm.comment.create",
     title: "Create comment",
     description: "Add a comment to a requirement, intake item or work item.",
     scopes: ["mcp:write:comment"],
@@ -891,7 +891,7 @@ export const mcpToolContracts = [
     outputSchema: writeOutputSchema(CreateCommentResponseSchema),
   }),
   tool({
-    name: "crm.tag.replace_assignments",
+    name: "pdm.tag.replace_assignments",
     title: "Replace tag assignments",
     description: "Replace all tags assigned to a requirement, intake item or work item.",
     scopes: ["mcp:write:tag"],
@@ -900,7 +900,7 @@ export const mcpToolContracts = [
     outputSchema: writeOutputSchema(ReplaceTagAssignmentsResponseSchema),
   }),
   tool({
-    name: "crm.timeline.list",
+    name: "pdm.timeline.list",
     title: "List timeline events",
     description: "Return timeline events for a supported target object.",
     scopes: ["mcp:read"],

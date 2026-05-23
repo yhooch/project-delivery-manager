@@ -61,7 +61,7 @@ export class OAuthService {
       resource: this.oauthConfig.getCanonicalResource(),
       authorization_servers: [this.oauthConfig.getIssuer()],
       scopes_supported: [...MCP_SCOPE_VALUES],
-      resource_name: "Project Delivery MCP",
+      resource_name: "PDM MCP",
       bearer_methods_supported: ["header"],
     };
   }

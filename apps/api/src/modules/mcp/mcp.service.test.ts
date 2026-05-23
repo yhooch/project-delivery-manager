@@ -286,7 +286,7 @@ describe("McpService", () => {
     });
   });
 
-  it("executes crm.context.get as the first smoke tool", async () => {
+  it("executes pdm.context.get as the first smoke tool", async () => {
     const body = expectJsonRpc(
       await service.handle(
         {
@@ -294,7 +294,7 @@ describe("McpService", () => {
           id: "call-1",
           method: "tools/call",
           params: {
-            name: "crm.context.get",
+            name: "pdm.context.get",
             arguments: {},
           },
         },
@@ -315,14 +315,14 @@ describe("McpService", () => {
     );
     expect(result.content[0]).toMatchObject({
       type: "text",
-      text: "CRM context returned.",
+      text: "PDM context returned.",
     });
     expect(result.structuredContent.user.id).toBe(USER_ID);
   });
 
   it("executes first-phase read tools through existing business services", async () => {
     const lookup = expectJsonRpc(
-      await callTool(service, "crm.object.lookup_code", {
+      await callTool(service, "pdm.object.lookup_code", {
         organizationId: ORGANIZATION_ID,
         code: "REQ-1",
       }),
@@ -338,7 +338,7 @@ describe("McpService", () => {
       code: "REQ-1",
     });
 
-    await callTool(service, "crm.workbench.get", {
+    await callTool(service, "pdm.workbench.get", {
       organizationId: ORGANIZATION_ID,
       page: 1,
       pageSize: 20,
@@ -349,7 +349,7 @@ describe("McpService", () => {
       pageSize: 20,
     });
 
-    await callTool(service, "crm.space.overview_get", {
+    await callTool(service, "pdm.space.overview_get", {
       organizationId: ORGANIZATION_ID,
       spaceId: SPACE_ID,
     });
@@ -357,7 +357,7 @@ describe("McpService", () => {
       organizationId: ORGANIZATION_ID,
     });
 
-    await callTool(service, "crm.version.board_get", {
+    await callTool(service, "pdm.version.board_get", {
       versionId: VERSION_ID,
       page: 1,
       pageSize: 20,
@@ -367,7 +367,7 @@ describe("McpService", () => {
       pageSize: 20,
     });
 
-    await callTool(service, "crm.exceptions.list", {
+    await callTool(service, "pdm.exceptions.list", {
       spaceId: SPACE_ID,
       page: 1,
       pageSize: 20,
@@ -377,12 +377,12 @@ describe("McpService", () => {
       pageSize: 20,
     });
 
-    await callTool(service, "crm.requirement.get", {
+    await callTool(service, "pdm.requirement.get", {
       requirementId: REQUIREMENT_ID,
     });
     expect(requirements.get).toHaveBeenCalledWith(USER_ID, REQUIREMENT_ID);
 
-    await callTool(service, "crm.intake.list", {
+    await callTool(service, "pdm.intake.list", {
       spaceId: SPACE_ID,
       page: 1,
       pageSize: 20,
@@ -393,17 +393,17 @@ describe("McpService", () => {
       tagMatch: "ANY",
     });
 
-    await callTool(service, "crm.work_item.get", {
+    await callTool(service, "pdm.work_item.get", {
       workItemId: WORK_ITEM_ID,
     });
     expect(workItems.get).toHaveBeenCalledWith(USER_ID, WORK_ITEM_ID);
 
-    await callTool(service, "crm.bug.get", {
+    await callTool(service, "pdm.bug.get", {
       bugId: BUG_ID,
     });
     expect(bugs.get).toHaveBeenCalledWith(USER_ID, BUG_ID);
 
-    await callTool(service, "crm.timeline.list", {
+    await callTool(service, "pdm.timeline.list", {
       targetType: "WORK_ITEM",
       targetId: WORK_ITEM_ID,
       page: 1,
@@ -427,7 +427,7 @@ describe("McpService", () => {
     );
 
     const body = expectJsonRpc(
-      await callTool(service, "crm.object.lookup_code", {
+      await callTool(service, "pdm.object.lookup_code", {
         organizationId: ORGANIZATION_ID,
         code: "REQ-404",
       }),
@@ -455,7 +455,7 @@ describe("McpService", () => {
           id: "call-missing",
           method: "tools/call",
           params: {
-            name: "crm.missing",
+            name: "pdm.missing",
             arguments: {},
           },
         },
@@ -479,7 +479,7 @@ describe("McpService", () => {
           id: "call-invalid",
           method: "tools/call",
           params: {
-            name: "crm.context.get",
+            name: "pdm.context.get",
             arguments: {
               unexpected: true,
             },
@@ -502,13 +502,13 @@ describe("McpService", () => {
 
   it("dispatches first-phase write tools to the write executor", async () => {
     writeTools.canExecute.mockImplementation(
-      (name: string) => name === "crm.requirement.create",
+      (name: string) => name === "pdm.requirement.create",
     );
 
     const body = expectJsonRpc(
       await callTool(
         service,
-        "crm.requirement.create",
+        "pdm.requirement.create",
         {
           organizationId: ORGANIZATION_ID,
           spaceId: SPACE_ID,
@@ -523,7 +523,7 @@ describe("McpService", () => {
 
     expect(writeTools.execute).toHaveBeenCalledWith(
       expect.objectContaining({
-        name: "crm.requirement.create",
+        name: "pdm.requirement.create",
       }),
       expect.objectContaining({
         title: "Create requirement",
@@ -548,7 +548,7 @@ describe("McpService", () => {
         id: "call-write",
         method: "tools/call",
         params: {
-          name: "crm.requirement.create",
+          name: "pdm.requirement.create",
           arguments: {},
         },
       },

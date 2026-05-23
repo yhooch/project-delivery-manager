@@ -225,11 +225,11 @@ export class McpService {
         },
       },
       serverInfo: {
-        name: "project-delivery-crm",
+        name: "pdm",
         version: "0.1.0",
       },
       instructions:
-        "Use tools/list to discover available CRM tools before calling tools.",
+        "Use tools/list to discover available PDM tools before calling tools.",
     });
 
     return rpcSuccess(parsed.data.id, result);
@@ -392,12 +392,12 @@ export class McpService {
     principal: McpOAuthPrincipalContext,
   ): Promise<ToolExecution | undefined> {
     switch (contract.name) {
-      case "crm.context.get":
+      case "pdm.context.get":
         return {
-          message: "CRM context returned.",
+          message: "PDM context returned.",
           output: await this.getContext(principal),
         };
-      case "crm.object.lookup_code":
+      case "pdm.object.lookup_code":
         return {
           message: "Object code resolved.",
           output: await this.objectCodes.lookup(
@@ -405,7 +405,7 @@ export class McpService {
             args as ObjectCodeLookupQuery,
           ),
         };
-      case "crm.workbench.get":
+      case "pdm.workbench.get":
         return {
           message: "Workbench returned.",
           output: await this.spaces.getMyWorkbench(
@@ -413,7 +413,7 @@ export class McpService {
             args as WorkbenchViewQuery,
           ),
         };
-      case "crm.space.overview_get": {
+      case "pdm.space.overview_get": {
         const { spaceId, ...query } = args as SpaceOverviewToolInput;
 
         return {
@@ -425,7 +425,7 @@ export class McpService {
           ),
         };
       }
-      case "crm.version.board_get": {
+      case "pdm.version.board_get": {
         const { versionId, ...query } = args as VersionBoardToolInput;
 
         return {
@@ -437,7 +437,7 @@ export class McpService {
           ),
         };
       }
-      case "crm.exceptions.list": {
+      case "pdm.exceptions.list": {
         const { spaceId, ...query } = args as SpaceExceptionsToolInput;
 
         return {
@@ -449,7 +449,7 @@ export class McpService {
           ),
         };
       }
-      case "crm.requirement.get":
+      case "pdm.requirement.get":
         return {
           message: "Requirement returned.",
           output: await this.requirements.get(
@@ -457,7 +457,7 @@ export class McpService {
             (args as RequirementGetToolInput).requirementId,
           ),
         };
-      case "crm.intake.list": {
+      case "pdm.intake.list": {
         const { spaceId, ...query } = args as IntakeListToolInput;
 
         return {
@@ -469,7 +469,7 @@ export class McpService {
           ),
         };
       }
-      case "crm.work_item.get":
+      case "pdm.work_item.get":
         return {
           message: "Work item returned.",
           output: await this.workItems.get(
@@ -477,7 +477,7 @@ export class McpService {
             (args as WorkItemGetToolInput).workItemId,
           ),
         };
-      case "crm.bug.get":
+      case "pdm.bug.get":
         return {
           message: "Bug returned.",
           output: await this.bugs.get(
@@ -485,7 +485,7 @@ export class McpService {
             (args as BugGetToolInput).bugId,
           ),
         };
-      case "crm.timeline.list":
+      case "pdm.timeline.list":
         return {
           message: "Timeline returned.",
           output: await this.timelines.list(

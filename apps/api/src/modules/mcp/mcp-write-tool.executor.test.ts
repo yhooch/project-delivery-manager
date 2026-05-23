@@ -107,7 +107,7 @@ describe("McpWriteToolExecutor", () => {
 
   it("validates dryRun context through idempotency without mutating business state", async () => {
     const result = await executor.execute(
-      contract("crm.work_item.create_task"),
+      contract("pdm.work_item.create_task"),
       {
         organizationId: ORGANIZATION_ID,
         spaceId: SPACE_ID,
@@ -127,7 +127,7 @@ describe("McpWriteToolExecutor", () => {
         dryRun: true,
         organizationId: ORGANIZATION_ID,
         spaceId: SPACE_ID,
-        toolName: "crm.work_item.create_task",
+        toolName: "pdm.work_item.create_task",
       },
     });
     expect(spaces.getOverview).toHaveBeenCalledWith(USER_ID, SPACE_ID, {
@@ -141,7 +141,7 @@ describe("McpWriteToolExecutor", () => {
         requestHash: expect.any(String),
         requestId: "req-1",
         spaceId: SPACE_ID,
-        toolName: "crm.work_item.create_task",
+        toolName: "pdm.work_item.create_task",
         userId: USER_ID,
       }),
     );
@@ -163,13 +163,13 @@ describe("McpWriteToolExecutor", () => {
         code: "MCP_IDEMPOTENCY_CONFLICT",
         idempotencyKey: "task-create-1",
         message: "Same idempotency key was used with different arguments.",
-        toolName: "crm.work_item.create_task",
+        toolName: "pdm.work_item.create_task",
       },
       kind: "conflict",
     });
 
     const result = await executor.execute(
-      contract("crm.work_item.create_task"),
+      contract("pdm.work_item.create_task"),
       {
         organizationId: ORGANIZATION_ID,
         spaceId: SPACE_ID,
@@ -195,7 +195,7 @@ describe("McpWriteToolExecutor", () => {
 
   it("creates tasks through WorkItemService and completes the idempotency record", async () => {
     const result = await executor.execute(
-      contract("crm.work_item.create_task"),
+      contract("pdm.work_item.create_task"),
       {
         organizationId: ORGANIZATION_ID,
         spaceId: SPACE_ID,
@@ -225,7 +225,7 @@ describe("McpWriteToolExecutor", () => {
           resultStatus: "SUCCESS",
           source: "MCP",
           spaceId: SPACE_ID,
-          toolName: "crm.work_item.create_task",
+          toolName: "pdm.work_item.create_task",
           userId: USER_ID,
         }),
         requestId: "req-1",
@@ -259,7 +259,7 @@ describe("McpWriteToolExecutor", () => {
     );
 
     const result = await executor.execute(
-      contract("crm.work_item.create_task"),
+      contract("pdm.work_item.create_task"),
       {
         organizationId: ORGANIZATION_ID,
         spaceId: SPACE_ID,
@@ -307,7 +307,7 @@ describe("McpWriteToolExecutor", () => {
     );
 
     const result = await executor.execute(
-      contract("crm.requirement.create"),
+      contract("pdm.requirement.create"),
       {
         organizationId: ORGANIZATION_ID,
         spaceId: SPACE_ID,
@@ -367,7 +367,7 @@ describe("McpWriteToolExecutor", () => {
     });
 
     const result = await executor.execute(
-      contract("crm.work_item.create_task"),
+      contract("pdm.work_item.create_task"),
       {
         organizationId: ORGANIZATION_ID,
         spaceId: SPACE_ID,

@@ -33,7 +33,7 @@ import {
 
 const organizationId = "01BRZ3NDEKTSV4RRFFQ69G5FAA";
 const spaceId = "01DRZ3NDEKTSV4RRFFQ69G5FAC";
-const resource = "https://crm.example.com/api/v1/mcp";
+const resource = "https://pdm.example.com/api/v1/mcp";
 
 describe("MCP and OAuth shared contracts", () => {
   it("freezes MCP scopes, resource URI and Bearer challenge details", () => {
@@ -66,7 +66,7 @@ describe("MCP and OAuth shared contracts", () => {
     expect(
       McpBearerChallengeSchema.parse({
         scheme: "Bearer",
-        resource_metadata: `https://crm.example.com${McpProtectedResourceMetadataPath}`,
+        resource_metadata: `https://pdm.example.com${McpProtectedResourceMetadataPath}`,
         resource,
         scope: "mcp:write:tag",
         error: "insufficient_scope",
@@ -89,7 +89,7 @@ describe("MCP and OAuth shared contracts", () => {
     expect(
       McpProtectedResourceMetadataSchema.parse({
         resource,
-        authorization_servers: ["https://crm.example.com"],
+        authorization_servers: ["https://pdm.example.com"],
         scopes_supported: ["mcp:read", "mcp:write:requirement"],
       }),
     ).toMatchObject({
@@ -210,14 +210,14 @@ describe("MCP and OAuth shared contracts", () => {
       (tool) => !tool.annotations.readOnlyHint,
     );
     expect(writeTools.map((tool) => tool.name)).toEqual([
-      "crm.requirement.create",
-      "crm.intake.create",
-      "crm.work_item.create_task",
-      "crm.work_item.update",
-      "crm.work_item.execute_action",
-      "crm.bug.create",
-      "crm.comment.create",
-      "crm.tag.replace_assignments",
+      "pdm.requirement.create",
+      "pdm.intake.create",
+      "pdm.work_item.create_task",
+      "pdm.work_item.update",
+      "pdm.work_item.execute_action",
+      "pdm.bug.create",
+      "pdm.comment.create",
+      "pdm.tag.replace_assignments",
     ]);
 
     for (const tool of writeTools) {
@@ -233,11 +233,11 @@ describe("MCP and OAuth shared contracts", () => {
     }
 
     expect(
-      mcpToolRegistry.find((tool) => tool.name === "crm.work_item.update")
+      mcpToolRegistry.find((tool) => tool.name === "pdm.work_item.update")
         ?.annotations.destructiveHint,
     ).toBe(true);
     expect(
-      mcpToolRegistry.find((tool) => tool.name === "crm.context.get")
+      mcpToolRegistry.find((tool) => tool.name === "pdm.context.get")
         ?.annotations.readOnlyHint,
     ).toBe(true);
     expect(
@@ -245,7 +245,7 @@ describe("MCP and OAuth shared contracts", () => {
         tools: mcpToolRegistry,
       }).tools[0],
     ).toMatchObject({
-      name: "crm.context.get",
+      name: "pdm.context.get",
       scopes: ["mcp:read"],
     });
   });
@@ -284,11 +284,11 @@ describe("MCP and OAuth shared contracts", () => {
       message: "Input schema and space context validated.",
       organizationId,
       spaceId,
-      toolName: "crm.requirement.create",
+      toolName: "pdm.requirement.create",
       validated: ["inputSchema", "spaceContext"],
     });
     const createRequirement = mcpToolContracts.find(
-      (tool) => tool.name === "crm.requirement.create",
+      (tool) => tool.name === "pdm.requirement.create",
     );
 
     expect(createRequirement?.outputSchema.parse(dryRunResult)).toMatchObject({
@@ -342,7 +342,7 @@ describe("MCP and OAuth shared contracts", () => {
         id: "call-1",
         method: "tools/call",
         params: {
-          name: "crm.requirement.create",
+          name: "pdm.requirement.create",
           arguments: {},
         },
       }),
@@ -356,18 +356,18 @@ describe("MCP and OAuth shared contracts", () => {
       McpIdempotencyScopeSchema.parse({
         userId: "01ARZ3NDEKTSV4RRFFQ69G5FAV",
         clientId: "claude-desktop",
-        toolName: "crm.requirement.create",
+        toolName: "pdm.requirement.create",
         idempotencyKey: "req-create-2026-05-22",
         requestHash: "a".repeat(64),
       }),
     ).toMatchObject({
       clientId: "claude-desktop",
-      toolName: "crm.requirement.create",
+      toolName: "pdm.requirement.create",
     });
     expect(
       McpIdempotencyConflictDetailsSchema.parse({
         code: "MCP_IDEMPOTENCY_CONFLICT",
-        toolName: "crm.requirement.create",
+        toolName: "pdm.requirement.create",
         idempotencyKey: "req-create-2026-05-22",
         message: "Same idempotency key was used with different arguments.",
       }),
