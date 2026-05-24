@@ -34,7 +34,10 @@ import {
 } from "../../lib/realtime";
 import { getTimelineEventHref } from "../../lib/timeline-links";
 import { cn } from "../../lib/utils";
-import { translateWorkflowActionName } from "../../lib/workflow-display";
+import {
+  translateWorkflowActionName,
+  translateWorkflowStateName,
+} from "../../lib/workflow-display";
 import {
   getMembers,
   getVersions,
@@ -523,11 +526,12 @@ export function MyWorkbench() {
             lookupHelpers,
             t("time.justNow"),
             t("versionFallback"),
+            (state) => translateWorkflowStateName(tRoot, state),
             getOrganizationSpaceLabel,
           ),
         )
         .map(withWorkbenchListKey("todo")),
-    [getOrganizationSpaceLabel, view, locale, lookupHelpers, t],
+    [getOrganizationSpaceLabel, view, locale, lookupHelpers, t, tRoot],
   );
   const assignedTaskItems = useMemo(
     () =>
@@ -538,11 +542,12 @@ export function MyWorkbench() {
             lookupHelpers,
             t("time.justNow"),
             t("versionFallback"),
+            (state) => translateWorkflowStateName(tRoot, state),
             getOrganizationSpaceLabel,
           ),
         )
         .map(withWorkbenchListKey("assigned-task")),
-    [getOrganizationSpaceLabel, view, locale, lookupHelpers, t],
+    [getOrganizationSpaceLabel, view, locale, lookupHelpers, t, tRoot],
   );
   const assignedBugItems = useMemo(
     () =>
@@ -553,11 +558,12 @@ export function MyWorkbench() {
             lookupHelpers,
             t("time.justNow"),
             t("versionFallback"),
+            (state) => translateWorkflowStateName(tRoot, state),
             getOrganizationSpaceLabel,
           ),
         )
         .map(withWorkbenchListKey("assigned-bug")),
-    [getOrganizationSpaceLabel, view, locale, lookupHelpers, t],
+    [getOrganizationSpaceLabel, view, locale, lookupHelpers, t, tRoot],
   );
   const actionItems = useMemo(() => {
     const toWorkItem = toWorkbenchItem(
@@ -565,6 +571,7 @@ export function MyWorkbench() {
       lookupHelpers,
       t("time.justNow"),
       t("versionFallback"),
+      (state) => translateWorkflowStateName(tRoot, state),
       getOrganizationSpaceLabel,
     );
 
@@ -586,11 +593,12 @@ export function MyWorkbench() {
             lookupHelpers,
             t("time.justNow"),
             t("versionFallback"),
+            (state) => translateWorkflowStateName(tRoot, state),
             getOrganizationSpaceLabel,
           ),
         )
         .map(withWorkbenchListKey("pending-confirm")),
-    [getOrganizationSpaceLabel, view, locale, lookupHelpers, t],
+    [getOrganizationSpaceLabel, view, locale, lookupHelpers, t, tRoot],
   );
   const dueSoonItems = useMemo(
     () =>
@@ -601,11 +609,12 @@ export function MyWorkbench() {
             lookupHelpers,
             t("time.justNow"),
             t("versionFallback"),
+            (state) => translateWorkflowStateName(tRoot, state),
             getOrganizationSpaceLabel,
           ),
         )
         .map(withWorkbenchListKey("due-soon")),
-    [getOrganizationSpaceLabel, view, locale, lookupHelpers, t],
+    [getOrganizationSpaceLabel, view, locale, lookupHelpers, t, tRoot],
   );
   const blockedItems = useMemo(
     () =>
@@ -616,11 +625,12 @@ export function MyWorkbench() {
             lookupHelpers,
             t("time.justNow"),
             t("versionFallback"),
+            (state) => translateWorkflowStateName(tRoot, state),
             getOrganizationSpaceLabel,
           ),
         )
         .map(withWorkbenchListKey("blocked")),
-    [getOrganizationSpaceLabel, view, locale, lookupHelpers, t],
+    [getOrganizationSpaceLabel, view, locale, lookupHelpers, t, tRoot],
   );
   const recentEvents = view?.sections.recentActivities.items.items ?? [];
 
@@ -1383,6 +1393,7 @@ function toWorkbenchItem(
   lookups?: WorkbenchLookupHelpers,
   justNowLabel?: string,
   unknownVersionLabel?: string,
+  workflowStateLabel?: (state: { code?: string; name: string }) => string,
   getSpaceLabel?: (spaceId?: string) => string | undefined,
 ) {
   const toViewModel = createWorkItemViewModelMapper({
@@ -1390,6 +1401,7 @@ function toWorkbenchItem(
     lookups,
     justNowLabel,
     unknownVersionLabel,
+    workflowStateLabel,
   });
 
   return (item: ViewWorkItemSummary): WorkbenchItemViewModel => ({

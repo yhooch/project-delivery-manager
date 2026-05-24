@@ -9,15 +9,25 @@ import {
 } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-const { translatorCache } = vi.hoisted(() => ({
-  translatorCache: new Map<string, (key: string) => string>(),
+const { rootTranslations, translatorCache } = vi.hoisted(() => ({
+  rootTranslations: {
+    "common.workflowDefaults.actions.START_PROGRESS": "开始处理",
+    "common.workflowDefaults.states.IN_PROGRESS": "处理中",
+  } as Record<string, string>,
+  translatorCache: new Map<
+    string,
+    ((key: string) => string) & { has?: (key: string) => boolean }
+  >(),
 }));
 vi.mock("next-intl", () => ({
   useTranslations: (namespace?: string) => {
     const key = namespace ?? "__root__";
     let fn = translatorCache.get(key);
     if (!fn) {
-      fn = (k: string) => (namespace ? `${namespace}.${k}` : k);
+      fn = (k: string) =>
+        namespace ? `${namespace}.${k}` : (rootTranslations[k] ?? k);
+      fn.has = (k: string) =>
+        namespace ? false : Object.hasOwn(rootTranslations, k);
       translatorCache.set(key, fn);
     }
     return fn;
@@ -646,6 +656,46 @@ describe("MyWorkbench", () => {
     expect(
       screen.queryByRole("heading", { name: "workbench.sections.risk" }),
     ).not.toBeInTheDocument();
+  });
+
+  it("localizes default workflow action and state labels by stable code", async () => {
+    getMyWorkbenchViewMock.mockResolvedValueOnce(
+      makeWorkbenchResponse({
+        actionTodos: [
+          makeActionTodo(
+            makeWorkItemSummary({
+              currentStatus: {
+                workflowVersionId: "01ARZ3NDEKTSV4RRFFQ69G5FW1",
+                currentStateId: "01ARZ3NDEKTSV4RRFFQ69G5FCS",
+                stateCode: "IN_PROGRESS",
+                stateName: "In progress",
+                statusCategory: "IN_PROGRESS",
+                lastStatusChangedAt: "2026-05-10T00:00:00.000Z",
+              },
+            }),
+            {
+              availableAction: {
+                code: "START_PROGRESS",
+                formFields: [],
+                fromStateId: "01ARZ3NDEKTSV4RRFFQ69G5FCS",
+                id: "01ARZ3NDEKTSV4RRFFQ69G5AC1",
+                name: "Start progress",
+                order: 0,
+                requiresComment: false,
+                toStateId: "01ARZ3NDEKTSV4RRFFQ69G5FCT",
+              },
+            },
+          ),
+        ],
+      }),
+    );
+
+    render(<MyWorkbench />);
+
+    expect(await screen.findByText("开始处理")).toBeInTheDocument();
+    expect(screen.getByText("处理中")).toBeInTheDocument();
+    expect(screen.queryByText("Start progress")).not.toBeInTheDocument();
+    expect(screen.queryByText("In progress")).not.toBeInTheDocument();
   });
 
   it("preloads organization-level version names by item space without leaking ID tails", async () => {

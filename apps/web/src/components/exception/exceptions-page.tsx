@@ -54,7 +54,10 @@ import {
 } from "../../lib/tag-query";
 import { getSpace } from "../../lib/space-service";
 import { cn } from "../../lib/utils";
-import { translateExceptionReason } from "../../lib/workflow-display";
+import {
+  translateExceptionReason,
+  translateWorkflowStateName,
+} from "../../lib/workflow-display";
 import {
   createWorkItemViewModelMapper,
   type WorkItemViewModel,
@@ -473,6 +476,7 @@ export function ExceptionsPage() {
       const viewItem = createWorkItemViewModelMapper({
         locale,
         lookups: { getMember, getVersion },
+        workflowStateLabel: (state) => translateWorkflowStateName(tRoot, state),
       })(item.workItem);
       const blockedSignal = item.exceptions.find(
         (signal) => signal.type === "blocked",
@@ -483,7 +487,7 @@ export function ExceptionsPage() {
         blockedReason: viewItem.blockedReason ?? blockedSignal?.reason,
       };
     },
-    [getMember, getVersion, locale],
+    [getMember, getVersion, locale, tRoot],
   );
 
   const rememberWorkItem = useCallback(

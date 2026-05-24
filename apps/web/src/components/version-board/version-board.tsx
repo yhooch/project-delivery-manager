@@ -47,6 +47,7 @@ import { listVersions } from "../../lib/version-service";
 import { getVersionBoardView } from "../../lib/view-service";
 import { useFocusReturn } from "../../lib/hooks/use-list-keyboard-nav";
 import { useSpaceMembers } from "../../lib/v2/lookups";
+import { translateWorkflowStateName } from "../../lib/workflow-display";
 import {
   resolveRefreshMode,
   shouldClearDataForRefresh,
@@ -869,6 +870,7 @@ export function VersionPage() {
         getMember: (userId) => getMember(userId),
         getVersion: (nextVersionId) => getVersionLookup(nextVersionId),
       },
+      workflowStateLabel: (state) => translateWorkflowStateName(tRoot, state),
     })(summary);
     recordRecentOpen(
       {
@@ -1394,6 +1396,7 @@ export function VersionPage() {
                   onLoadMore={loadMoreColumn}
                   openItem={openItem}
                   t={t}
+                  tRoot={tRoot}
                 />
               )}
             </div>
@@ -1690,6 +1693,7 @@ function BoardColumns({
   onLoadMore,
   openItem,
   t,
+  tRoot,
 }: {
   grouped: {
     category: StatusCategory;
@@ -1706,6 +1710,7 @@ function BoardColumns({
   onLoadMore: (category: StatusCategory) => void;
   openItem: (summary: ViewWorkItemSummary) => void;
   t: ReturnType<typeof useTranslations<"versionBoard">>;
+  tRoot: ReturnType<typeof useTranslations>;
 }) {
   return (
     <div
@@ -1764,6 +1769,8 @@ function BoardColumns({
                     getMember: (userId) => getMember(userId),
                     getVersion: (versionId) => getVersion(versionId),
                   },
+                  workflowStateLabel: (state) =>
+                    translateWorkflowStateName(tRoot, state),
                 })(item);
                 return (
                   <button
