@@ -17,8 +17,11 @@ import type {
 import {
   AlertCircle,
   Bug,
+  ChevronDown,
+  ChevronUp,
   CheckCircle2,
   Clock,
+  FileText,
   Filter,
   Pencil,
   Plus,
@@ -28,7 +31,14 @@ import {
 } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
 import { useSearchParams } from "next/navigation";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ReactNode,
+} from "react";
 
 import { getApiErrorMessageKey } from "../../lib/api-error-messages";
 import { resolveRequirementDisplayCode } from "../../lib/display-code";
@@ -62,6 +72,13 @@ import { Avatar, AvatarFallback, AvatarImage } from "../ui/avatar";
 import { Badge } from "../ui/badge";
 import { Button } from "../ui/button";
 import { SelectMenu } from "../ui/select-menu";
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+} from "../ui/sheet";
 import { getStatusCategoryDotClass, StatusBadge } from "../ui/status-badge";
 import { Tip } from "../ui/tooltip";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../ui/tabs";
@@ -114,6 +131,8 @@ const VERSION_STATUS_VARIANT: Record<
 };
 
 const BOARD_COLUMN_PAGE_SIZE = 50;
+const BOARD_COLUMN_INITIAL_VISIBLE_ITEMS = 5;
+const BOARD_COLUMN_EXPAND_STEP = 10;
 const DEFAULT_VERSION_STATUS_ORDER: VersionStatus[] = [
   "IN_PROGRESS",
   "PLANNED",
@@ -467,6 +486,9 @@ export function VersionPage() {
   const [isLoadingBoard, setIsLoadingBoard] = useState(false);
   const [loadingColumnCategory, setLoadingColumnCategory] =
     useState<StatusCategory | null>(null);
+  const [columnVisibleCounts, setColumnVisibleCounts] = useState<
+    Partial<Record<StatusCategory, number>>
+  >({});
   const [filters, setFilters] = useState<BoardFilters>(EMPTY_FILTERS);
   const [filterOpen, setFilterOpen] = useState(false);
 
@@ -503,6 +525,7 @@ export function VersionPage() {
     useState(false);
   const [createVersionDialogOpen, setCreateVersionDialogOpen] = useState(false);
   const [editVersionDialogOpen, setEditVersionDialogOpen] = useState(false);
+  const [versionDetailSheetOpen, setVersionDetailSheetOpen] = useState(false);
   const { captureFocus, restoreFocus } = useFocusReturn();
   const commitVersionId = useCallback((nextVersionId: string | null) => {
     versionIdRef.current = nextVersionId;
@@ -518,6 +541,7 @@ export function VersionPage() {
     commitVersionId(null);
     setBoard(null);
     setLoadingColumnCategory(null);
+    setColumnVisibleCounts({});
     setRequirements([]);
     setRequirementsTotal(0);
     setTimeline([]);
@@ -532,6 +556,7 @@ export function VersionPage() {
     setCreateWorkItemDialogOpen(false);
     setCreateVersionDialogOpen(false);
     setEditVersionDialogOpen(false);
+    setVersionDetailSheetOpen(false);
   }, [commitVersionId, organizationId, spaceId]);
 
   // -------------------------------------------------------------------------
@@ -556,6 +581,7 @@ export function VersionPage() {
   const selectVersion = useCallback(
     (nextVersionId: string, syncUrl = true) => {
       commitVersionId(nextVersionId);
+      setColumnVisibleCounts({});
       if (syncUrl) {
         replaceVersionParam(nextVersionId);
       }
@@ -691,6 +717,15 @@ export function VersionPage() {
   useEffect(() => {
     if (versionId) void fetchBoard({ mode: "initial" });
   }, [fetchBoard, versionId]);
+
+  useEffect(() => {
+    setColumnVisibleCounts({});
+  }, [
+    filters.assigneeId,
+    filters.statusCategory,
+    filters.workItemType,
+    versionId,
+  ]);
 
   const fetchRequirements = useCallback(async (options?: RefreshModeOptions) => {
     const mode = resolveRefreshMode(options);
@@ -848,9 +883,34 @@ export function VersionPage() {
   const updateBoardFilters = useCallback(
     (next: BoardFilters | ((prev: BoardFilters) => BoardFilters)) => {
       setFilters(next);
+      setColumnVisibleCounts({});
     },
     [],
   );
+
+  const expandBoardColumn = useCallback(
+    (category: StatusCategory, loadedCount: number) => {
+      setColumnVisibleCounts((current) => {
+        const visibleCount =
+          current[category] ?? BOARD_COLUMN_INITIAL_VISIBLE_ITEMS;
+        return {
+          ...current,
+          [category]: Math.min(
+            loadedCount,
+            visibleCount + BOARD_COLUMN_EXPAND_STEP,
+          ),
+        };
+      });
+    },
+    [],
+  );
+
+  const collapseBoardColumn = useCallback((category: StatusCategory) => {
+    setColumnVisibleCounts((current) => ({
+      ...current,
+      [category]: BOARD_COLUMN_INITIAL_VISIBLE_ITEMS,
+    }));
+  }, []);
 
   const getVersionLookup = useCallback(
     (targetVersionId: string) =>
@@ -1055,7 +1115,9 @@ export function VersionPage() {
     ? getMember(currentVersion.ownerId)
     : undefined;
   const ownerName = owner?.user.name ?? owner?.user.username ?? "";
-  const versionTarget = currentVersion?.target?.trim() || tHero("targetNone");
+  const fullVersionTarget = currentVersion?.target?.trim() ?? "";
+  const versionDescription = currentVersion?.description?.trim() ?? "";
+  const versionTarget = fullVersionTarget || tHero("targetNone");
 
   const versionSummary = currentVersion ? (
     <div
@@ -1100,16 +1162,27 @@ export function VersionPage() {
             aria-hidden
           />
 
-          <span className="flex min-w-0 items-center gap-1 sm:max-w-[36rem] xl:max-w-[42rem]">
+          <span className="flex min-w-0 items-center gap-1.5 sm:max-w-[40rem] xl:max-w-[48rem]">
             <span className="shrink-0">{tHero("target")}</span>
             <Tip content={versionTarget}>
               <span
                 data-testid="version-hero-target"
-                className="truncate font-medium text-foreground"
+                className="min-w-0 truncate font-medium text-foreground"
               >
                 {versionTarget}
               </span>
             </Tip>
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              data-testid="version-hero-detail-open"
+              className="h-6 shrink-0 px-1.5 text-[11px]"
+              onClick={() => setVersionDetailSheetOpen(true)}
+            >
+              <FileText className="h-3 w-3" />
+              {tHero("viewDetails")}
+            </Button>
           </span>
         </div>
 
@@ -1313,7 +1386,7 @@ export function VersionPage() {
     );
   } else {
     body = (
-      <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
+      <div className="flex min-w-0 flex-1 flex-col">
         <Tabs
           value={activeTab}
           onValueChange={(value) => {
@@ -1323,7 +1396,7 @@ export function VersionPage() {
               setFilterOpen(false);
             }
           }}
-          className="flex min-w-0 flex-1 flex-col overflow-hidden"
+          className="flex min-w-0 flex-1 flex-col"
         >
           <div className="flex min-w-0 border-b border-border px-4 py-3 sm:px-6">
             <div className="-mx-1 overflow-x-auto px-1">
@@ -1379,19 +1452,22 @@ export function VersionPage() {
 
           <TabsContent
             value="board"
-            className="mt-0 flex min-w-0 flex-1 flex-col overflow-hidden"
+            className="mt-0 flex min-w-0 flex-1 flex-col"
           >
-            <div className="min-w-0 flex-1 overflow-x-hidden overflow-y-auto xl:overflow-hidden">
+            <div className="min-w-0 flex-1 overflow-x-hidden">
               {isLoadingBoard && !board ? (
                 <LoadingState label={t("states.loadingBoard")} />
               ) : (
                 <BoardColumns
                   grouped={grouped}
+                  columnVisibleCounts={columnVisibleCounts}
                   loadingColumnCategory={loadingColumnCategory}
                   locale={locale}
                   getMember={getMember}
                   getVersion={getVersionLookup}
                   canCreateNotStartedTask={canCreateNotStartedTask}
+                  onExpandColumn={expandBoardColumn}
+                  onCollapseColumn={collapseBoardColumn}
                   onNewTask={() => setCreateWorkItemDialogOpen(true)}
                   onLoadMore={loadMoreColumn}
                   openItem={openItem}
@@ -1452,7 +1528,7 @@ export function VersionPage() {
   return (
     <div
       data-testid="version-board-page"
-      className="flex h-full min-w-0 flex-col"
+      className="flex min-h-full min-w-0 flex-col"
     >
       <PageHeader
         eyebrow={tShell("group.deliver")}
@@ -1461,7 +1537,7 @@ export function VersionPage() {
         actions={headerActions}
       />
       {versionSummary}
-      <div className="flex min-w-0 flex-1 flex-col overflow-hidden">{body}</div>
+      <div className="flex min-w-0 flex-1 flex-col">{body}</div>
       <TaskDetailSheet
         key={detailSheetKey}
         item={detailSheetItem}
@@ -1473,6 +1549,143 @@ export function VersionPage() {
           refreshVersionContext();
         }}
       />
+      <Sheet
+        open={versionDetailSheetOpen && Boolean(currentVersion)}
+        onOpenChange={setVersionDetailSheetOpen}
+      >
+        <SheetContent
+          className="flex flex-col gap-0 p-0"
+          data-testid="version-detail-sheet"
+        >
+          <SheetHeader className="pr-14">
+            <div className="flex min-w-0 items-start justify-between gap-3">
+              <div className="min-w-0">
+                <SheetTitle className="truncate">
+                  {currentVersion?.name ?? t("title")}
+                </SheetTitle>
+                <SheetDescription>
+                  {tHero("detailSheetDescription", {
+                    version: currentVersion?.name ?? "",
+                  })}
+                </SheetDescription>
+              </div>
+              {canManageVersions ? (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="mt-0.5 shrink-0 text-xs"
+                  data-testid="version-detail-edit-version"
+                  onClick={() => {
+                    setVersionDetailSheetOpen(false);
+                    setEditVersionDialogOpen(true);
+                  }}
+                >
+                  <Pencil className="h-3 w-3" />
+                  {t("actions.editVersion")}
+                </Button>
+              ) : null}
+            </div>
+          </SheetHeader>
+          <div className="min-h-0 flex-1 overflow-y-auto px-5 py-4">
+            <section className="border-b border-border pb-4">
+              <h3 className="text-xs font-semibold uppercase text-muted-foreground">
+                {tHero("target")}
+              </h3>
+              <div
+                data-testid="version-detail-target"
+                className="mt-2 whitespace-pre-wrap break-words text-sm leading-6 text-foreground"
+              >
+                {fullVersionTarget || tHero("targetNone")}
+              </div>
+            </section>
+            <section className="border-b border-border py-4">
+              <h3 className="text-xs font-semibold uppercase text-muted-foreground">
+                {tHero("description")}
+              </h3>
+              <div
+                data-testid="version-detail-description"
+                className="mt-2 whitespace-pre-wrap break-words text-sm leading-6 text-foreground"
+              >
+                {versionDescription || tHero("descriptionNone")}
+              </div>
+            </section>
+            <section className="border-b border-border py-4">
+              <h3 className="text-xs font-semibold uppercase text-muted-foreground">
+                {tHero("metadata")}
+              </h3>
+              <dl className="mt-3 grid grid-cols-1 gap-3 text-sm sm:grid-cols-2">
+                <VersionDetailField label={tHero("owner")}>
+                  <span data-testid="version-detail-owner">
+                    {ownerName || tHero("ownerNone")}
+                  </span>
+                </VersionDetailField>
+                <VersionDetailField label={tHero("status")}>
+                  {currentVersion ? (
+                    <Badge
+                      data-testid="version-detail-status"
+                      variant={
+                        VERSION_STATUS_VARIANT[currentVersion.status] ??
+                        "default"
+                      }
+                      className="uppercase"
+                    >
+                      {tVersionStatus(currentVersion.status)}
+                    </Badge>
+                  ) : (
+                    "—"
+                  )}
+                </VersionDetailField>
+                <VersionDetailField label={tHero("dateStart")}>
+                  <span data-testid="version-detail-date-start">
+                    {formatDateOnly(currentVersion?.startDate, locale)}
+                  </span>
+                </VersionDetailField>
+                <VersionDetailField label={tHero("dateTarget")}>
+                  <span data-testid="version-detail-date-target">
+                    {formatDateOnly(currentVersion?.targetDate, locale)}
+                  </span>
+                </VersionDetailField>
+                <VersionDetailField label={tHero("dateRelease")}>
+                  <span data-testid="version-detail-date-release">
+                    {formatDateOnly(currentVersion?.releaseDate, locale)}
+                  </span>
+                </VersionDetailField>
+              </dl>
+            </section>
+            <section className="pt-4">
+              <h3 className="text-xs font-semibold uppercase text-muted-foreground">
+                {tHero("stats")}
+              </h3>
+              {currentVersion ? (
+                <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-4">
+                  <VersionDetailStat
+                    testId="version-detail-kpi-requirementCount"
+                    label={tHero("kpi.requirementCount")}
+                    value={currentVersion.stats.requirementCount}
+                  />
+                  <VersionDetailStat
+                    testId="version-detail-kpi-taskCount"
+                    label={tHero("kpi.taskCount")}
+                    value={currentVersion.stats.taskCount}
+                  />
+                  <VersionDetailStat
+                    testId="version-detail-kpi-bugCount"
+                    label={tHero("kpi.bugCount")}
+                    value={currentVersion.stats.bugCount}
+                  />
+                  <VersionDetailStat
+                    testId="version-detail-kpi-blockedCount"
+                    label={tHero("kpi.blockedCount")}
+                    value={currentVersion.stats.blockedCount}
+                    emphasize={currentVersion.stats.blockedCount > 0}
+                  />
+                </div>
+              ) : null}
+            </section>
+          </div>
+        </SheetContent>
+      </Sheet>
       {spaceId && canCreateWorkItem ? (
         <CreateTaskDialog
           open={createWorkItemDialogOpen}
@@ -1504,6 +1717,50 @@ export function VersionPage() {
           />
         </>
       ) : null}
+    </div>
+  );
+}
+
+function VersionDetailField({
+  label,
+  children,
+}: {
+  label: string;
+  children: ReactNode;
+}) {
+  return (
+    <div>
+      <dt className="text-xs text-muted-foreground">{label}</dt>
+      <dd className="mt-1 font-medium text-foreground">{children}</dd>
+    </div>
+  );
+}
+
+function VersionDetailStat({
+  testId,
+  label,
+  value,
+  emphasize = false,
+}: {
+  testId: string;
+  label: string;
+  value: number;
+  emphasize?: boolean;
+}) {
+  return (
+    <div
+      data-testid={testId}
+      className="rounded-md border border-border bg-muted/20 px-3 py-2"
+    >
+      <div
+        className={cn(
+          "font-mono text-lg font-semibold",
+          emphasize ? "text-destructive" : "text-foreground",
+        )}
+      >
+        {value}
+      </div>
+      <div className="mt-0.5 text-xs text-muted-foreground">{label}</div>
     </div>
   );
 }
@@ -1684,11 +1941,14 @@ function KpiInline({
 
 function BoardColumns({
   grouped,
+  columnVisibleCounts,
   loadingColumnCategory,
   locale,
   getMember,
   getVersion,
   canCreateNotStartedTask,
+  onExpandColumn,
+  onCollapseColumn,
   onNewTask,
   onLoadMore,
   openItem,
@@ -1701,11 +1961,14 @@ function BoardColumns({
     pageInfo: PageResult<ViewWorkItemSummary>;
     total: number;
   }[];
+  columnVisibleCounts: Partial<Record<StatusCategory, number>>;
   loadingColumnCategory: StatusCategory | null;
   locale: string;
   getMember: ReturnType<typeof useSpaceMembers>["getMember"];
   getVersion: (versionId: string) => Version | undefined;
   canCreateNotStartedTask: boolean;
+  onExpandColumn: (category: StatusCategory, loadedCount: number) => void;
+  onCollapseColumn: (category: StatusCategory) => void;
   onNewTask: () => void;
   onLoadMore: (category: StatusCategory) => void;
   openItem: (summary: ViewWorkItemSummary) => void;
@@ -1715,19 +1978,30 @@ function BoardColumns({
   return (
     <div
       data-testid="version-board-columns"
-      className="grid min-h-full min-w-0 grid-cols-1 gap-3 px-4 py-4 md:grid-cols-2 xl:h-full xl:grid-cols-6"
+      className="grid min-w-0 grid-cols-1 items-start gap-3 px-4 py-4 md:grid-cols-2 xl:grid-cols-6"
     >
       {grouped.map(({ category, items, pageInfo, total }) => {
         const hasMore = items.length < total;
         const isLoadingMore = loadingColumnCategory === category;
         const showCreateTask =
           category === "NOT_STARTED" && canCreateNotStartedTask;
+        const visibleCount =
+          columnVisibleCounts[category] ?? BOARD_COLUMN_INITIAL_VISIBLE_ITEMS;
+        const visibleItems = items.slice(0, visibleCount);
+        const hiddenLoadedCount = items.length - visibleItems.length;
+        const hasHiddenLoaded = hiddenLoadedCount > 0;
+        const expandCount = Math.min(
+          BOARD_COLUMN_EXPAND_STEP,
+          hiddenLoadedCount,
+        );
+        const isExpanded =
+          visibleItems.length > BOARD_COLUMN_INITIAL_VISIBLE_ITEMS;
 
         return (
           <div
             key={category}
             data-testid={`version-board-column-${category}`}
-            className="flex min-h-0 min-w-0 flex-col rounded-lg border border-border bg-card/30"
+            className="flex min-w-0 flex-col rounded-lg border border-border bg-card/30"
           >
             <header className="flex shrink-0 items-center gap-2 border-b border-border px-3 py-2.5">
               <span
@@ -1743,7 +2017,10 @@ function BoardColumns({
                 {total}
               </span>
             </header>
-            <div className="min-h-0 flex-1 space-y-2 overflow-y-auto p-2">
+            <div
+              data-testid={`version-board-column-items-${category}`}
+              className="space-y-2 p-2"
+            >
               {showCreateTask ? (
                 <Button
                   type="button"
@@ -1762,7 +2039,7 @@ function BoardColumns({
                   —
                 </div>
               )}
-              {items.map((item) => {
+              {visibleItems.map((item) => {
                 const viewItem = createWorkItemViewModelMapper({
                   locale,
                   lookups: {
@@ -1839,7 +2116,22 @@ function BoardColumns({
                   </button>
                 );
               })}
-              {hasMore ? (
+              {hasHiddenLoaded ? (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="h-8 w-full text-xs"
+                  data-testid={`version-board-column-expand-${category}`}
+                  onClick={() => onExpandColumn(category, items.length)}
+                >
+                  <ChevronDown className="h-3 w-3" />
+                  {t("pagination.columnExpandMore", {
+                    count: expandCount,
+                  })}
+                </Button>
+              ) : null}
+              {!hasHiddenLoaded && hasMore ? (
                 <Button
                   type="button"
                   variant="outline"
@@ -1855,6 +2147,19 @@ function BoardColumns({
                         loaded: items.length,
                         total: pageInfo.total,
                       })}
+                </Button>
+              ) : null}
+              {isExpanded ? (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="h-8 w-full text-xs text-muted-foreground"
+                  data-testid={`version-board-column-collapse-${category}`}
+                  onClick={() => onCollapseColumn(category)}
+                >
+                  <ChevronUp className="h-3 w-3" />
+                  {t("pagination.columnCollapse")}
                 </Button>
               ) : null}
             </div>

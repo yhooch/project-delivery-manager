@@ -631,6 +631,26 @@ describe("VersionPage", () => {
     expect(versionHero.closest("header")).toBeNull();
     const target = screen.getByTestId("version-hero-target");
     expect(target).toHaveTextContent("Ship login");
+    fireEvent.click(screen.getByTestId("version-hero-detail-open"));
+    expect(
+      await screen.findByTestId("version-detail-sheet"),
+    ).toBeInTheDocument();
+    expect(screen.getByTestId("version-detail-target")).toHaveTextContent(
+      "Ship login",
+    );
+    expect(screen.getByTestId("version-detail-description")).toHaveTextContent(
+      "Initial release",
+    );
+    expect(screen.getByTestId("version-detail-owner")).toHaveTextContent(
+      "Alice",
+    );
+    expect(
+      screen.getByTestId("version-detail-kpi-blockedCount").textContent,
+    ).toContain("1");
+    fireEvent.click(screen.getByTestId("version-detail-edit-version"));
+    expect(
+      await screen.findByTestId("edit-version-dialog-open"),
+    ).toBeInTheDocument();
     // KPI cells render with stats values.
     expect(
       screen.getByTestId("version-hero-kpi-requirementCount").textContent,
@@ -809,9 +829,49 @@ describe("VersionPage", () => {
     expect(columns.className).toContain("grid-cols-1");
     expect(columns.className).toContain("md:grid-cols-2");
     expect(columns.className).toContain("xl:grid-cols-6");
+    expect(columns.className).not.toContain("xl:h-full");
     expect(screen.getByTestId("version-board-page").className).toContain(
       "min-w-0",
     );
+  });
+
+  it("shows only an initial set of board cards and expands a column in place", async () => {
+    const items = Array.from({ length: 7 }, (_, index) =>
+      makeSummary({
+        id: `01ARZ3NDEKTSV4RRFFQ69G5E${String(index + 1).padStart(2, "0")}`,
+        title: `Expandable card ${index + 1}`,
+      }),
+    );
+    listVersionsMock.mockResolvedValueOnce({
+      items: [makeVersion()],
+      total: 1,
+    });
+    getVersionBoardViewMock.mockResolvedValueOnce(makeBoardResponse(items));
+
+    render(<VersionPage />);
+
+    expect(await screen.findByText("Expandable card 1")).toBeInTheDocument();
+    expect(screen.getByText("Expandable card 5")).toBeInTheDocument();
+    expect(screen.queryByText("Expandable card 6")).not.toBeInTheDocument();
+    expect(
+      screen.getByTestId("version-board-column-items-IN_PROGRESS").className,
+    ).not.toContain("overflow-y-auto");
+
+    fireEvent.click(
+      screen.getByTestId("version-board-column-expand-IN_PROGRESS"),
+    );
+
+    expect(await screen.findByText("Expandable card 6")).toBeInTheDocument();
+    expect(screen.getByText("Expandable card 7")).toBeInTheDocument();
+    expect(
+      screen.getByTestId("version-board-column-collapse-IN_PROGRESS"),
+    ).toBeInTheDocument();
+
+    fireEvent.click(
+      screen.getByTestId("version-board-column-collapse-IN_PROGRESS"),
+    );
+
+    expect(screen.queryByText("Expandable card 6")).not.toBeInTheDocument();
   });
 
   it("renders compact tab counts from board totals and requirement total while timeline has no count", async () => {
@@ -1052,6 +1112,10 @@ describe("VersionPage", () => {
       "—",
     );
     expect(screen.getByTestId("version-hero-target")).toHaveTextContent(
+      "versionBoard.hero.targetNone",
+    );
+    fireEvent.click(screen.getByTestId("version-hero-detail-open"));
+    expect(await screen.findByTestId("version-detail-target")).toHaveTextContent(
       "versionBoard.hero.targetNone",
     );
   });
