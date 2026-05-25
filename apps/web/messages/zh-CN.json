@@ -1103,11 +1103,6 @@
       "myDrafts": "本人草稿",
       "retry": "重试"
     },
-    "createFormat": {
-      "label": "新建需求格式",
-      "richText": "富文本",
-      "markdown": "Markdown"
-    },
     "dialog": {
       "create": {
         "title": "新建需求",

@@ -45,7 +45,6 @@ import {
   listRequirementAssignableMembers,
   listRequirementVersions,
   listRequirements,
-  type RequirementDraftContentFormat,
 } from "../../lib/requirement-service";
 import { serializeTagFilterQuery } from "../../lib/tag-query";
 import { cn } from "../../lib/utils";
@@ -87,8 +86,6 @@ const REQUIREMENTS_REALTIME_KEYS = [
   "requirement-list",
   "requirement-detail",
 ] as const;
-const DEFAULT_CREATE_CONTENT_FORMAT: RequirementDraftContentFormat =
-  "TIPTAP_JSON";
 
 export function RequirementsPage() {
   const t = useTranslations("requirements");
@@ -133,8 +130,6 @@ export function RequirementsPage() {
     [],
   );
   const [isCreating, setIsCreating] = useState(false);
-  const [createContentFormat, setCreateContentFormat] =
-    useState<RequirementDraftContentFormat>(DEFAULT_CREATE_CONTENT_FORMAT);
   const [activeId, setActiveId] = useState<string | undefined>(undefined);
   const [handledCreateLinkKey, setHandledCreateLinkKey] = useState<
     string | null
@@ -502,7 +497,7 @@ export function RequirementsPage() {
   });
 
   const handleCreateDraft = useCallback(
-    async (contentFormat: RequirementDraftContentFormat) => {
+    async () => {
       if (!spaceId || isCreating) {
         return;
       }
@@ -515,10 +510,7 @@ export function RequirementsPage() {
       setCreateDenied(false);
 
       try {
-        const draft = await createRequirementDraft(
-          { organizationId, spaceId },
-          createRequirementDraftInput(contentFormat),
-        );
+        const draft = await createRequirementDraft({ organizationId, spaceId });
         rememberRequirement(draft);
         router.push(`/requirements/${draft.id}`);
       } catch (error) {
@@ -565,7 +557,7 @@ export function RequirementsPage() {
       setCreateDenied(true);
       return;
     }
-    void handleCreateDraft(DEFAULT_CREATE_CONTENT_FORMAT);
+    void handleCreateDraft();
   }, [
     canCreateRequirement,
     clearCreateLinkQuery,
@@ -600,41 +592,21 @@ export function RequirementsPage() {
         <FileText className="h-3 w-3" />
         {t("actions.myDrafts")}
       </Button>
-      <div className="flex min-w-0 items-center gap-1">
-        <SelectMenu
-          aria-label={t("createFormat.label")}
-          className="h-8 text-xs"
-          containerClassName="w-[7.5rem]"
-          contentClassName="w-36"
-          data-testid="requirements-create-format"
-          disabled={!spaceId || isCreating || !canCreateRequirement}
-          menuAlign="end"
-          onChange={(event) =>
-            setCreateContentFormat(
-              event.target.value as RequirementDraftContentFormat,
-            )
-          }
-          value={createContentFormat}
-        >
-          <option value="TIPTAP_JSON">{t("createFormat.richText")}</option>
-          <option value="MARKDOWN">{t("createFormat.markdown")}</option>
-        </SelectMenu>
-        <Button
-          size="sm"
-          className="text-xs"
-          data-testid="requirements-create-button"
-          onClick={() => {
-            void handleCreateDraft(createContentFormat);
-          }}
-          type="button"
-          disabled={!spaceId || isCreating || !canCreateRequirement}
-          aria-disabled={!spaceId || isCreating || !canCreateRequirement}
-          title={!canCreateRequirement ? t("page.createReadonly") : undefined}
-        >
-          <Plus className="h-3 w-3" />
-          {isCreating ? t("dialog.create.submitting") : t("page.create")}
-        </Button>
-      </div>
+      <Button
+        size="sm"
+        className="text-xs"
+        data-testid="requirements-create-button"
+        onClick={() => {
+          void handleCreateDraft();
+        }}
+        type="button"
+        disabled={!spaceId || isCreating || !canCreateRequirement}
+        aria-disabled={!spaceId || isCreating || !canCreateRequirement}
+        title={!canCreateRequirement ? t("page.createReadonly") : undefined}
+      >
+        <Plus className="h-3 w-3" />
+        {isCreating ? t("dialog.create.submitting") : t("page.create")}
+      </Button>
     </>
   );
   const paginationFooter =
@@ -1055,16 +1027,6 @@ function toRequirementListQuery(filter: FilterKey): {
 
 function optionalFilterValue(value: string): string | undefined {
   return value.trim() ? value : undefined;
-}
-
-function createRequirementDraftInput(
-  contentFormat: RequirementDraftContentFormat,
-): { contentFormat?: RequirementDraftContentFormat } {
-  if (contentFormat === "TIPTAP_JSON") {
-    return {};
-  }
-
-  return { contentFormat };
 }
 
 function getRequirementStatusCount(

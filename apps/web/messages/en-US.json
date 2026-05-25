@@ -1103,11 +1103,6 @@
       "myDrafts": "My drafts",
       "retry": "Retry"
     },
-    "createFormat": {
-      "label": "New requirement format",
-      "richText": "Rich text",
-      "markdown": "Markdown"
-    },
     "dialog": {
       "create": {
         "title": "New requirement",
