@@ -4,19 +4,18 @@ import {
   McpAuthorizePath,
   McpOAuthApproveAuthorizationResponseSchema,
   McpOAuthAuthorizeContextSchema,
+  McpProtectedResourceMetadataPath,
+  McpProtectedResourceMetadataSchema,
   RevokeAuthorizedMcpClientRequestSchema,
   RevokeAuthorizedMcpClientResponseSchema,
   type ApiError,
   type ListAuthorizedMcpClientsResponse,
   type McpOAuthAuthorizeContext,
+  type McpProtectedResourceMetadata,
   type RevokeAuthorizedMcpClientResponse,
 } from "@project-delivery/shared";
 
-import {
-  API_BASE_PATH,
-  apiClient,
-  type ApiRequestInit,
-} from "./api-client";
+import { API_BASE_PATH, apiClient, type ApiRequestInit } from "./api-client";
 
 export type McpApiTransport = {
   get<TData>(path: string, init?: ApiRequestInit): Promise<{ data: TData }>;
@@ -57,10 +56,9 @@ export class McpOAuthAuthorizeError extends Error {
 export async function listAuthorizedMcpClients(
   api: McpApiTransport = defaultApi,
 ): Promise<ListAuthorizedMcpClientsResponse> {
-  const response =
-    await api.get<ListAuthorizedMcpClientsResponse>(
-      "/users/me/mcp/authorized-clients",
-    );
+  const response = await api.get<ListAuthorizedMcpClientsResponse>(
+    "/users/me/mcp/authorized-clients",
+  );
 
   return ListAuthorizedMcpClientsResponseSchema.parse(response.data);
 }
@@ -76,6 +74,24 @@ export async function revokeAuthorizedMcpClient(
   );
 
   return RevokeAuthorizedMcpClientResponseSchema.parse(response.data);
+}
+
+export async function getMcpProtectedResourceMetadata(
+  fetcher: McpOAuthAuthorizeFetch = getDefaultFetch(),
+): Promise<McpProtectedResourceMetadata> {
+  const response = await fetcher(createMcpProtectedResourceMetadataUrl(), {
+    headers: {
+      Accept: "application/json",
+    },
+    method: "GET",
+  });
+  const payload = await readJson(response);
+
+  if (!response.ok) {
+    throw toMcpOAuthAuthorizeError(payload, response);
+  }
+
+  return McpProtectedResourceMetadataSchema.parse(payload);
 }
 
 export async function getMcpOAuthAuthorizeContext(
@@ -116,6 +132,14 @@ export async function approveMcpOAuthAuthorization(
   }
 
   return McpOAuthApproveAuthorizationResponseSchema.parse(payload).redirectTo;
+}
+
+export function createMcpProtectedResourceMetadataUrl(
+  basePath = getMcpOAuthBasePath(),
+): string {
+  const url = createUrl(basePath, McpProtectedResourceMetadataPath);
+
+  return formatUrl(url, basePath);
 }
 
 export function createMcpOAuthAuthorizeUrl(
@@ -194,7 +218,9 @@ function createUrl(basePath: string, path: string): URL {
 }
 
 function formatUrl(url: URL, basePath: string): string {
-  return isAbsoluteUrl(basePath) ? url.toString() : `${url.pathname}${url.search}`;
+  return isAbsoluteUrl(basePath)
+    ? url.toString()
+    : `${url.pathname}${url.search}`;
 }
 
 function toSearchParams(query: string | URLSearchParams): URLSearchParams {

@@ -3,10 +3,14 @@
 import type {
   AuthorizedMcpClient,
   McpAuthorizedClientStatus,
+  McpProtectedResourceMetadata,
   McpScope,
 } from "@project-delivery/shared";
 import {
+  Check,
+  Copy,
   ExternalLink,
+  Info,
   RefreshCw,
   ShieldCheck,
   Unplug,
@@ -25,6 +29,7 @@ import {
   type ApiErrorMessageKey,
 } from "../../lib/api-error-messages";
 import {
+  getMcpProtectedResourceMetadata,
   listAuthorizedMcpClients,
   revokeAuthorizedMcpClient,
 } from "../../lib/mcp-service";
@@ -64,8 +69,16 @@ export function PersonalSettingsPage() {
   const [errorKey, setErrorKey] = useState<ApiErrorMessageKey | null>(null);
   const [actionErrorKey, setActionErrorKey] =
     useState<ApiErrorMessageKey | null>(null);
+  const [metadata, setMetadata] = useState<McpProtectedResourceMetadata | null>(
+    null,
+  );
+  const [metadataLoading, setMetadataLoading] = useState(false);
+  const [metadataError, setMetadataError] = useState(false);
   const [pendingClientId, setPendingClientId] = useState<string | null>(null);
+  const [copiedKey, setCopiedKey] = useState<string | null>(null);
   const loadSequenceRef = useRef(0);
+  const metadataSequenceRef = useRef(0);
+  const copyResetRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const load = useCallback(
     async ({ silent = false }: LoadOptions = {}) => {
@@ -101,9 +114,42 @@ export function PersonalSettingsPage() {
     [session, status],
   );
 
+  const loadMetadata = useCallback(async () => {
+    const sequence = ++metadataSequenceRef.current;
+    setMetadataLoading(true);
+    setMetadataError(false);
+
+    try {
+      const nextMetadata = await getMcpProtectedResourceMetadata();
+      if (metadataSequenceRef.current !== sequence) return;
+      setMetadata(nextMetadata);
+    } catch {
+      if (metadataSequenceRef.current !== sequence) return;
+      setMetadataError(true);
+    } finally {
+      if (metadataSequenceRef.current === sequence) {
+        setMetadataLoading(false);
+      }
+    }
+  }, []);
+
   useEffect(() => {
     void load();
   }, [load]);
+
+  useEffect(() => {
+    if (status === "authenticated") {
+      void loadMetadata();
+    }
+  }, [loadMetadata, status]);
+
+  useEffect(() => {
+    return () => {
+      if (copyResetRef.current) {
+        clearTimeout(copyResetRef.current);
+      }
+    };
+  }, []);
 
   async function handleRevoke(client: AuthorizedMcpClient) {
     setPendingClientId(client.clientId);
@@ -119,6 +165,27 @@ export function PersonalSettingsPage() {
     }
   }
 
+  async function handleCopy(key: string, value: string) {
+    if (typeof navigator === "undefined" || !navigator.clipboard) return;
+
+    try {
+      await navigator.clipboard.writeText(value);
+    } catch {
+      return;
+    }
+
+    setCopiedKey(key);
+
+    if (copyResetRef.current) {
+      clearTimeout(copyResetRef.current);
+    }
+
+    copyResetRef.current = setTimeout(() => {
+      setCopiedKey(null);
+      copyResetRef.current = null;
+    }, 1600);
+  }
+
   return (
     <div className="flex h-full flex-col">
       <PageHeader
@@ -130,11 +197,17 @@ export function PersonalSettingsPage() {
             type="button"
             size="sm"
             variant="outline"
-            onClick={() => void load()}
-            disabled={isLoading}
+            onClick={() => {
+              void load();
+              void loadMetadata();
+            }}
+            disabled={isLoading || metadataLoading}
           >
             <RefreshCw
-              className={cn("h-3.5 w-3.5", isLoading && "animate-spin")}
+              className={cn(
+                "h-3.5 w-3.5",
+                (isLoading || metadataLoading) && "animate-spin",
+              )}
             />
             {t("actions.refresh")}
           </Button>
@@ -158,39 +231,219 @@ export function PersonalSettingsPage() {
             title={t("states.unauthenticated.title")}
             message={t("states.unauthenticated.description")}
           />
-        ) : isLoading ? (
-          <div className="overflow-hidden rounded-md border border-border bg-card">
-            <ListSkeleton rows={5} />
-          </div>
-        ) : errorKey ? (
-          <ErrorState
-            title={t("states.error.title")}
-            message={tRoot(errorKey)}
-            onRetry={() => void load()}
-            retryLabel={t("actions.retry")}
-          />
-        ) : clients.length === 0 ? (
-          <EmptyState
-            icon={<ShieldCheck className="h-4 w-4" />}
-            title={t("states.empty.title")}
-            description={t("states.empty.description")}
-          />
         ) : (
-          <ul className="overflow-hidden rounded-md border border-border bg-card">
-            {clients.map((client) => (
-              <AuthorizedClientItem
-                key={client.clientId}
-                client={client}
-                locale={locale}
-                pending={pendingClientId === client.clientId}
-                onRevoke={() => void handleRevoke(client)}
-                t={t}
-                tScopes={tScopes}
-              />
-            ))}
-          </ul>
+          <>
+            <McpConnectionGuide
+              metadata={metadata}
+              loading={metadataLoading}
+              hasError={metadataError}
+              copiedKey={copiedKey}
+              onCopy={(key, value) => void handleCopy(key, value)}
+              onRetry={() => void loadMetadata()}
+              t={t}
+              tScopes={tScopes}
+            />
+
+            <section
+              aria-labelledby="authorized-mcp-clients-heading"
+              className="mt-4"
+            >
+              <div className="mb-2 flex items-center justify-between gap-3">
+                <h2
+                  id="authorized-mcp-clients-heading"
+                  className="text-sm font-semibold text-foreground"
+                >
+                  {t("clients.title")}
+                </h2>
+              </div>
+
+              {isLoading ? (
+                <div className="overflow-hidden rounded-md border border-border bg-card">
+                  <ListSkeleton rows={5} />
+                </div>
+              ) : errorKey ? (
+                <ErrorState
+                  title={t("states.error.title")}
+                  message={tRoot(errorKey)}
+                  onRetry={() => void load()}
+                  retryLabel={t("actions.retry")}
+                />
+              ) : clients.length === 0 ? (
+                <EmptyState
+                  icon={<ShieldCheck className="h-4 w-4" />}
+                  title={t("states.empty.title")}
+                  description={t("states.empty.description")}
+                />
+              ) : (
+                <ul className="overflow-hidden rounded-md border border-border bg-card">
+                  {clients.map((client) => (
+                    <AuthorizedClientItem
+                      key={client.clientId}
+                      client={client}
+                      locale={locale}
+                      pending={pendingClientId === client.clientId}
+                      onRevoke={() => void handleRevoke(client)}
+                      t={t}
+                      tScopes={tScopes}
+                    />
+                  ))}
+                </ul>
+              )}
+            </section>
+          </>
         )}
       </div>
+    </div>
+  );
+}
+
+function McpConnectionGuide({
+  copiedKey,
+  hasError,
+  loading,
+  metadata,
+  onCopy,
+  onRetry,
+  t,
+  tScopes,
+}: {
+  copiedKey: string | null;
+  hasError: boolean;
+  loading: boolean;
+  metadata: McpProtectedResourceMetadata | null;
+  onCopy: (key: string, value: string) => void;
+  onRetry: () => void;
+  t: TranslationFn;
+  tScopes: TranslationFn;
+}) {
+  const resourceUrl = metadata?.resource;
+  const showLoading = loading || (!metadata && !hasError);
+
+  return (
+    <section
+      aria-labelledby="mcp-connection-guide-heading"
+      className="rounded-md border border-border bg-card p-4"
+      data-testid="personal-settings-mcp-guide"
+    >
+      <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+        <div className="min-w-0">
+          <div className="flex items-center gap-2">
+            <Info className="h-4 w-4 shrink-0 text-primary" />
+            <h2
+              id="mcp-connection-guide-heading"
+              className="text-sm font-semibold text-foreground"
+            >
+              {t("guide.title")}
+            </h2>
+          </div>
+          <p className="mt-1 max-w-3xl text-xs leading-5 text-muted-foreground">
+            {t("guide.description")}
+          </p>
+        </div>
+        {hasError && (
+          <Button type="button" size="sm" variant="outline" onClick={onRetry}>
+            <RefreshCw className="h-3.5 w-3.5" />
+            {t("actions.retry")}
+          </Button>
+        )}
+      </div>
+
+      {showLoading ? (
+        <div className="mt-4 grid gap-2">
+          <div className="h-12 animate-pulse rounded-md bg-muted" />
+          <div className="h-12 animate-pulse rounded-md bg-muted" />
+        </div>
+      ) : hasError || !metadata ? (
+        <div
+          role="status"
+          className="mt-4 rounded-md border border-dashed border-border bg-muted/30 px-3 py-2 text-xs leading-5 text-muted-foreground"
+        >
+          {t("guide.states.error")}
+        </div>
+      ) : (
+        <div className="mt-4 grid gap-4">
+          <div className="grid gap-2">
+            <GuideEndpointRow
+              label={t("guide.fields.resourceUrl")}
+              value={resourceUrl}
+              copyKey="resource"
+              copiedKey={copiedKey}
+              onCopy={onCopy}
+              t={t}
+            />
+          </div>
+
+          <div>
+            <div className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+              {t("guide.fields.scopes")}
+            </div>
+            <div className="mt-2 flex flex-wrap gap-1.5">
+              {metadata.scopes_supported.map((scope) => (
+                <Badge key={scope} variant="outline">
+                  {scopeLabel(scope, tScopes)}
+                </Badge>
+              ))}
+            </div>
+          </div>
+
+          <div className="border-t border-border pt-4">
+            <div>
+              <div className="text-xs font-semibold text-foreground">
+                {t("guide.steps.title")}
+              </div>
+              <ol className="mt-2 list-decimal space-y-1 pl-4 text-xs leading-5 text-muted-foreground">
+                <li>{t("guide.steps.resource")}</li>
+                <li>{t("guide.steps.oauth")}</li>
+                <li>{t("guide.steps.review")}</li>
+              </ol>
+            </div>
+          </div>
+        </div>
+      )}
+    </section>
+  );
+}
+
+function GuideEndpointRow({
+  copiedKey,
+  copyKey,
+  label,
+  onCopy,
+  t,
+  value,
+}: {
+  copiedKey: string | null;
+  copyKey: string;
+  label: string;
+  onCopy: (key: string, value: string) => void;
+  t: TranslationFn;
+  value?: string;
+}) {
+  if (!value) return null;
+
+  const copied = copiedKey === copyKey;
+
+  return (
+    <div className="grid gap-2 rounded-md border border-border bg-background px-3 py-2 sm:grid-cols-[10rem_minmax(0,1fr)_auto] sm:items-center">
+      <div className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+        {label}
+      </div>
+      <code className="min-w-0 break-all rounded bg-muted px-2 py-1 font-mono text-[11px] text-foreground">
+        {value}
+      </code>
+      <Button
+        type="button"
+        size="icon-sm"
+        variant="ghost"
+        aria-label={`${copied ? t("actions.copied") : t("actions.copy")} ${label}`}
+        onClick={() => onCopy(copyKey, value)}
+      >
+        {copied ? (
+          <Check className="h-3.5 w-3.5 text-success" />
+        ) : (
+          <Copy className="h-3.5 w-3.5" />
+        )}
+      </Button>
     </div>
   );
 }
@@ -289,13 +542,7 @@ function AuthorizedClientItem({
   );
 }
 
-function Field({
-  children,
-  label,
-}: {
-  children: ReactNode;
-  label: string;
-}) {
+function Field({ children, label }: { children: ReactNode; label: string }) {
   return (
     <div className="min-w-0">
       <div className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
@@ -306,10 +553,7 @@ function Field({
   );
 }
 
-function scopeLabel(
-  scope: McpScope,
-  tScopes: TranslationFn,
-): string {
+function scopeLabel(scope: McpScope, tScopes: TranslationFn): string {
   return tScopes(scope);
 }
 

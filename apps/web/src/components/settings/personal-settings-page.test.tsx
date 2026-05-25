@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const listAuthorizedMcpClientsMock = vi.hoisted(() => vi.fn());
 const revokeAuthorizedMcpClientMock = vi.hoisted(() => vi.fn());
+const getMcpProtectedResourceMetadataMock = vi.hoisted(() => vi.fn());
 const sessionMock = vi.hoisted(() => ({
   value: {
     session: {
@@ -27,6 +28,7 @@ vi.mock("../providers/session-provider", () => ({
 }));
 
 vi.mock("../../lib/mcp-service", () => ({
+  getMcpProtectedResourceMetadata: getMcpProtectedResourceMetadataMock,
   listAuthorizedMcpClients: listAuthorizedMcpClientsMock,
   revokeAuthorizedMcpClient: revokeAuthorizedMcpClientMock,
 }));
@@ -34,6 +36,7 @@ vi.mock("../../lib/mcp-service", () => ({
 import { PersonalSettingsPage } from "./personal-settings-page";
 
 const clientId = "https://mcp-client.example.com/metadata.json";
+const resourceUrl = "https://pdm.example.com/api/v1/mcp";
 
 function createClient(overrides = {}) {
   return {
@@ -48,9 +51,22 @@ function createClient(overrides = {}) {
   };
 }
 
+function createMetadata(overrides = {}) {
+  return {
+    authorization_servers: ["https://pdm.example.com"],
+    bearer_methods_supported: ["header"],
+    resource: resourceUrl,
+    resource_name: "PDM MCP",
+    scopes_supported: ["mcp:read", "mcp:write:requirement"],
+    ...overrides,
+  };
+}
+
 beforeEach(() => {
   listAuthorizedMcpClientsMock.mockReset();
   revokeAuthorizedMcpClientMock.mockReset();
+  getMcpProtectedResourceMetadataMock.mockReset();
+  getMcpProtectedResourceMetadataMock.mockResolvedValue(createMetadata());
   sessionMock.value = {
     session: {
       user: {
@@ -64,6 +80,26 @@ beforeEach(() => {
 });
 
 describe("PersonalSettingsPage", () => {
+  it("renders MCP connection guidance from protected resource metadata", async () => {
+    listAuthorizedMcpClientsMock.mockResolvedValueOnce([]);
+
+    render(<PersonalSettingsPage />);
+
+    expect(
+      await screen.findByText("personalSettings.guide.title"),
+    ).toBeInTheDocument();
+    expect(await screen.findByText(resourceUrl)).toBeInTheDocument();
+    expect(
+      screen.queryByText(
+        "https://pdm.example.com/.well-known/oauth-protected-resource",
+      ),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByText("https://pdm.example.com"),
+    ).not.toBeInTheDocument();
+    expect(getMcpProtectedResourceMetadataMock).toHaveBeenCalledTimes(1);
+  });
+
   it("renders authorized MCP client details", async () => {
     listAuthorizedMcpClientsMock.mockResolvedValueOnce([createClient()]);
 
@@ -72,11 +108,15 @@ describe("PersonalSettingsPage", () => {
     expect(await screen.findByText("Claude Desktop")).toBeInTheDocument();
     expect(screen.getByText(clientId)).toBeInTheDocument();
     expect(screen.getByText("mcp-client.example.com")).toBeInTheDocument();
-    expect(screen.getByText("personalSettings.status.ACTIVE")).toBeInTheDocument();
-    expect(screen.getByText("mcp.scopes.mcp:read")).toBeInTheDocument();
     expect(
-      screen.getByText("mcp.scopes.mcp:write:requirement"),
+      screen.getByText("personalSettings.status.ACTIVE"),
     ).toBeInTheDocument();
+    expect(screen.getAllByText("mcp.scopes.mcp:read").length).toBeGreaterThan(
+      0,
+    );
+    expect(
+      screen.getAllByText("mcp.scopes.mcp:write:requirement").length,
+    ).toBeGreaterThan(0);
   });
 
   it("revokes a client and refreshes the list", async () => {

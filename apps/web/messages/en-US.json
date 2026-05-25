@@ -669,7 +669,27 @@
   "personalSettings": {
     "eyebrow": "Personal settings",
     "title": "Personal settings",
-    "description": "View and manage MCP clients authorized for your account.",
+    "description": "Connect OAuth-capable MCP clients and manage the clients authorized for your account.",
+    "clients": {
+      "title": "Authorized MCP clients"
+    },
+    "guide": {
+      "title": "Connect MCP",
+      "description": "Configure the MCP Resource URL in an OAuth-capable MCP client. The client discovers the authorization server from metadata and can call PDM tools after you approve access.",
+      "fields": {
+        "resourceUrl": "Resource URL",
+        "scopes": "Supported scopes"
+      },
+      "states": {
+        "error": "MCP connection information is temporarily unavailable. Refresh and try again, or confirm /.well-known/oauth-protected-resource is reachable."
+      },
+      "steps": {
+        "title": "Connection steps",
+        "resource": "Add an HTTP MCP server in your MCP client and use the Resource URL above.",
+        "oauth": "Complete OAuth sign-in and authorization in the client, then verify the client source, redirect host, and requested scopes.",
+        "review": "Return here after authorization to review the client record; revoke it from the list when it is no longer needed."
+      }
+    },
     "fields": {
       "clientId": "Client ID",
       "source": "Source",
@@ -699,6 +719,8 @@
       }
     },
     "actions": {
+      "copy": "Copy",
+      "copied": "Copied",
       "refresh": "Refresh",
       "retry": "Retry",
       "revoke": "Revoke",

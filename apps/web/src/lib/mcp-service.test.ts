@@ -1,15 +1,18 @@
 import type {
   ListAuthorizedMcpClientsResponse,
   McpOAuthAuthorizeContext,
+  McpProtectedResourceMetadata,
 } from "@project-delivery/shared";
 import { describe, expect, it, vi } from "vitest";
 
 import {
   McpOAuthAuthorizeError,
   approveMcpOAuthAuthorization,
+  createMcpProtectedResourceMetadataUrl,
   createMcpOAuthAccessDeniedUrl,
   createMcpOAuthApproveAuthorizeUrl,
   createMcpOAuthAuthorizeUrl,
+  getMcpProtectedResourceMetadata,
   getMcpOAuthAuthorizeContext,
   getMcpOAuthBasePath,
   listAuthorizedMcpClients,
@@ -77,9 +80,7 @@ describe("mcp service", () => {
 
     await expect(listAuthorizedMcpClients(api)).resolves.toEqual(clients);
 
-    expect(api.get).toHaveBeenCalledWith(
-      "/users/me/mcp/authorized-clients",
-    );
+    expect(api.get).toHaveBeenCalledWith("/users/me/mcp/authorized-clients");
   });
 
   it("revokes an authorized MCP client through the current-user endpoint", async () => {
@@ -100,6 +101,9 @@ describe("mcp service", () => {
       "https://api.example.com",
     );
     expect(getMcpOAuthBasePath("/api/v1")).toBe("");
+    expect(createMcpProtectedResourceMetadataUrl("")).toBe(
+      "/.well-known/oauth-protected-resource",
+    );
     expect(
       createMcpOAuthAuthorizeUrl("client_id=abc&scope=mcp%3Aread", ""),
     ).toBe("/oauth/authorize?client_id=abc&scope=mcp%3Aread");
@@ -113,11 +117,33 @@ describe("mcp service", () => {
 
   it("builds OAuth approve URLs without query-driven consent", () => {
     expect(
-      createMcpOAuthApproveAuthorizeUrl(
-        "client_id=abc&scope=mcp%3Aread",
-        "",
-      ),
+      createMcpOAuthApproveAuthorizeUrl("client_id=abc&scope=mcp%3Aread", ""),
     ).toBe("/oauth/authorize/approve?client_id=abc&scope=mcp%3Aread");
+  });
+
+  it("loads protected resource metadata with JSON accept headers", async () => {
+    const metadata: McpProtectedResourceMetadata = {
+      authorization_servers: ["https://pdm.example.com"],
+      bearer_methods_supported: ["header"],
+      resource,
+      resource_name: "PDM MCP",
+      scopes_supported: ["mcp:read", "mcp:write:requirement"],
+    };
+    const fetcher = vi.fn(async () => {
+      return new Response(JSON.stringify(metadata), { status: 200 });
+    });
+
+    await expect(getMcpProtectedResourceMetadata(fetcher)).resolves.toEqual(
+      metadata,
+    );
+
+    expect(fetcher).toHaveBeenCalledWith(
+      "/.well-known/oauth-protected-resource",
+      expect.objectContaining({
+        headers: { Accept: "application/json" },
+        method: "GET",
+      }),
+    );
   });
 
   it("posts OAuth approval and returns the redirect URL", async () => {

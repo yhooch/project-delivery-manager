@@ -669,7 +669,27 @@
   "personalSettings": {
     "eyebrow": "个人设置",
     "title": "个人设置",
-    "description": "查看并管理当前账号已授权的 MCP 客户端。",
+    "description": "接入支持 OAuth 的 MCP 客户端，并管理当前账号已授权的客户端。",
+    "clients": {
+      "title": "已授权 MCP 客户端"
+    },
+    "guide": {
+      "title": "接入 MCP",
+      "description": "将 MCP Resource URL 配置到支持 OAuth 的 MCP 客户端中。客户端会通过 metadata 地址发现授权服务器，并在你确认授权后获取可调用的 PDM tools。",
+      "fields": {
+        "resourceUrl": "Resource URL",
+        "scopes": "支持范围"
+      },
+      "states": {
+        "error": "暂时无法读取 MCP 接入信息。请刷新后重试，或确认 /.well-known/oauth-protected-resource 可以访问。"
+      },
+      "steps": {
+        "title": "接入步骤",
+        "resource": "在 MCP 客户端中添加 HTTP MCP server，地址使用上方 Resource URL。",
+        "oauth": "按客户端提示完成 OAuth 登录和授权，确认客户端来源、回调主机和请求范围可信。",
+        "review": "授权完成后回到本页查看客户端记录；不再使用时可以在列表中撤销。"
+      }
+    },
     "fields": {
       "clientId": "Client ID",
       "source": "来源",
@@ -699,6 +719,8 @@
       }
     },
     "actions": {
+      "copy": "复制",
+      "copied": "已复制",
       "refresh": "刷新",
       "retry": "重试",
       "revoke": "撤销",
