@@ -5,6 +5,7 @@ import {
   screen,
   waitFor,
 } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const { translatorCache } = vi.hoisted(() => ({
@@ -315,6 +316,54 @@ describe("OrganizationPage", () => {
       name: "organization.members.actions.disable",
     });
     expect(disableBtn).toBeDisabled();
+  });
+
+  it("shows a tooltip for the change organization role icon button", async () => {
+    const user = userEvent.setup();
+    listOrganizationMembersMock.mockResolvedValueOnce({
+      items: [makeOrgMember()],
+      total: 1,
+    });
+
+    render(<OrganizationPage />);
+
+    const editRoleButton = await screen.findByTestId(
+      "organization-member-edit-role-OM_01",
+    );
+    const tooltipTrigger = editRoleButton.closest(
+      "[data-state]",
+    ) as HTMLElement;
+
+    expect(tooltipTrigger).toBeInTheDocument();
+    await user.hover(tooltipTrigger);
+
+    expect(await screen.findByRole("tooltip")).toHaveTextContent(
+      "organization.members.actions.changeRole",
+    );
+  });
+
+  it("shows a tooltip for the disable organization member icon button", async () => {
+    const user = userEvent.setup();
+    listOrganizationMembersMock.mockResolvedValueOnce({
+      items: [makeOrgMember()],
+      total: 1,
+    });
+
+    render(<OrganizationPage />);
+
+    const disableButton = await screen.findByTestId(
+      "organization-member-disable-OM_01",
+    );
+    const tooltipTrigger = disableButton.closest(
+      "[data-state]",
+    ) as HTMLElement;
+
+    expect(tooltipTrigger).toBeInTheDocument();
+    await user.hover(tooltipTrigger);
+
+    expect(await screen.findByRole("tooltip")).toHaveTextContent(
+      "organization.members.actions.disable",
+    );
   });
 
   it("updates an organization member role", async () => {

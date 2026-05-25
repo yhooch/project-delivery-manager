@@ -52,6 +52,7 @@ import { Input } from "../ui/input";
 import { Label } from "../ui/label";
 import { SelectMenu } from "../ui/select-menu";
 import { Textarea } from "../ui/textarea";
+import { Tip } from "../ui/tooltip";
 import { EmptyState, ErrorState, ListSkeleton } from "../v2/states";
 import { PageHeader } from "../v2/page-header";
 
@@ -1089,6 +1090,9 @@ export function SpaceSettingsPage() {
                         ownerMember?.userId === member.userId &&
                         Boolean(space.ownerId);
                       const identity = getSpaceMemberIdentity(member);
+                      const changeRoleLabel = t("members.actions.changeRole", {
+                        username: identity.username,
+                      });
                       return (
                         <li
                           key={member.id}
@@ -1147,23 +1151,25 @@ export function SpaceSettingsPage() {
                               )}
                             </div>
                             <div className="flex items-center gap-1 opacity-100 transition-opacity sm:opacity-0 sm:group-focus-within:opacity-100 sm:group-hover:opacity-100">
-                              <Button
-                                variant="ghost"
-                                size="icon-sm"
-                                data-testid={`space-settings-member-edit-${member.id}`}
-                                disabled={
-                                  !writeAllowed ||
-                                  pendingMemberId === member.id ||
-                                  member.status === "DISABLED"
-                                }
-                                onClick={() => setEditRoleMember(member)}
-                                aria-label={t("members.actions.changeRole", {
-                                  username: identity.username,
-                                })}
-                                className="hover:bg-muted"
-                              >
-                                <ShieldCheck className="h-4 w-4 text-muted-foreground" />
-                              </Button>
+                              <Tip content={changeRoleLabel}>
+                                <span className="inline-flex">
+                                  <Button
+                                    variant="ghost"
+                                    size="icon-sm"
+                                    data-testid={`space-settings-member-edit-${member.id}`}
+                                    disabled={
+                                      !writeAllowed ||
+                                      pendingMemberId === member.id ||
+                                      member.status === "DISABLED"
+                                    }
+                                    onClick={() => setEditRoleMember(member)}
+                                    aria-label={changeRoleLabel}
+                                    className="hover:bg-muted"
+                                  >
+                                    <ShieldCheck className="h-4 w-4 text-muted-foreground" />
+                                  </Button>
+                                </span>
+                              </Tip>
                               <Button
                                 variant="ghost"
                                 size="icon-sm"

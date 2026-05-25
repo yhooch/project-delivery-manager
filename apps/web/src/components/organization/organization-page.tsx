@@ -32,6 +32,7 @@ import {
 import { Input } from "../ui/input";
 import { Label } from "../ui/label";
 import { SelectMenu } from "../ui/select-menu";
+import { Tip } from "../ui/tooltip";
 import { EmptyState, ErrorState, ListSkeleton } from "../v2/states";
 import { PageHeader } from "../v2/page-header";
 
@@ -329,6 +330,12 @@ export function OrganizationPage() {
             activeOwnerCount <= 1;
           const displayName = getOrganizationMemberDisplayName(member);
           const username = getOrganizationMemberUsername(member);
+          const changeRoleLabel = t("members.actions.changeRole", {
+            username,
+          });
+          const disableLabel = t("members.actions.disable", {
+            username,
+          });
 
           return (
             <li
@@ -379,39 +386,43 @@ export function OrganizationPage() {
                 </div>
                 {canManageMembers ? (
                   <div className="flex items-center gap-1 opacity-100 transition-opacity sm:opacity-0 sm:group-focus-within:opacity-100 sm:group-hover:opacity-100">
-                    <Button
-                      variant="ghost"
-                      size="icon-sm"
-                      data-testid={`organization-member-edit-role-${member.id}`}
-                      disabled={
-                        member.status === "DISABLED" ||
-                        pendingMemberId === member.id
-                      }
-                      onClick={() => setEditRoleMember(member)}
-                      aria-label={t("members.actions.changeRole", {
-                        username,
-                      })}
-                      className="hover:bg-muted"
-                    >
-                      <ShieldCheck className="h-4 w-4 text-muted-foreground" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon-sm"
-                      data-testid={`organization-member-disable-${member.id}`}
-                      disabled={
-                        isLastActiveOwner ||
-                        member.status === "DISABLED" ||
-                        pendingMemberId === member.id
-                      }
-                      onClick={() => setDisableMember(member)}
-                      aria-label={t("members.actions.disable", {
-                        username,
-                      })}
-                      className="hover:bg-destructive/10 hover:text-destructive"
-                    >
-                      <Ban className="h-4 w-4 text-muted-foreground" />
-                    </Button>
+                    <Tip content={changeRoleLabel}>
+                      <span className="inline-flex">
+                        <Button
+                          variant="ghost"
+                          size="icon-sm"
+                          data-testid={`organization-member-edit-role-${member.id}`}
+                          disabled={
+                            member.status === "DISABLED" ||
+                            pendingMemberId === member.id
+                          }
+                          onClick={() => setEditRoleMember(member)}
+                          aria-label={changeRoleLabel}
+                          className="hover:bg-muted"
+                        >
+                          <ShieldCheck className="h-4 w-4 text-muted-foreground" />
+                        </Button>
+                      </span>
+                    </Tip>
+                    <Tip content={disableLabel}>
+                      <span className="inline-flex">
+                        <Button
+                          variant="ghost"
+                          size="icon-sm"
+                          data-testid={`organization-member-disable-${member.id}`}
+                          disabled={
+                            isLastActiveOwner ||
+                            member.status === "DISABLED" ||
+                            pendingMemberId === member.id
+                          }
+                          onClick={() => setDisableMember(member)}
+                          aria-label={disableLabel}
+                          className="hover:bg-destructive/10 hover:text-destructive"
+                        >
+                          <Ban className="h-4 w-4 text-muted-foreground" />
+                        </Button>
+                      </span>
+                    </Tip>
                   </div>
                 ) : null}
               </div>

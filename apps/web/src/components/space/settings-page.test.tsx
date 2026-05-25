@@ -317,6 +317,31 @@ describe("SpaceSettingsPage", () => {
     ).toBeInTheDocument();
   });
 
+  it("shows a tooltip for the change space role icon button", async () => {
+    const user = userEvent.setup();
+    getSpaceMock.mockResolvedValueOnce(makeSpace());
+    listSpaceMembersMock.mockResolvedValueOnce({
+      items: [makeMember()],
+      total: 1,
+    });
+
+    render(<SpaceSettingsPage />);
+
+    const editRoleButton = await screen.findByTestId(
+      "space-settings-member-edit-SPM_01",
+    );
+    const tooltipTrigger = editRoleButton.closest(
+      "[data-state]",
+    ) as HTMLElement;
+
+    expect(tooltipTrigger).toBeInTheDocument();
+    await user.hover(tooltipTrigger);
+
+    expect(await screen.findByRole("tooltip")).toHaveTextContent(
+      "spaceSettings.members.actions.changeRole",
+    );
+  });
+
   it("renders an error state when the load rejects", async () => {
     getSpaceMock.mockRejectedValueOnce(new Error("boom"));
     listSpaceMembersMock.mockRejectedValueOnce(new Error("boom"));
