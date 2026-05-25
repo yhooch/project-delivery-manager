@@ -288,13 +288,13 @@ async function readLimitedText(response: Response, maxBytes: number): Promise<st
 
 function parseMetadataScopes(scope: string | undefined): McpScope[] {
   if (!scope) {
-    return ["mcp:read"];
+    return [...ALL_MCP_SCOPES];
   }
 
   const scopes = scope.split(/\s+/u).filter(Boolean);
 
   if (scopes.length === 0) {
-    return ["mcp:read"];
+    return [...ALL_MCP_SCOPES];
   }
 
   return scopes.filter((scopeValue): scopeValue is McpScope =>

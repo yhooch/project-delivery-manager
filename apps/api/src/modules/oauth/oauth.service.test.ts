@@ -7,7 +7,7 @@ import type {
   McpOAuthTokenRequest,
   McpScope,
 } from "@project-delivery/shared";
-import { beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { ulid } from "ulid";
 
 import { McpBearerAuthenticationError } from "./mcp-bearer-auth.error";
@@ -77,6 +77,10 @@ describe("OAuthService", () => {
       oauthConfig,
       metadata,
     );
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
   });
 
   it("exposes dynamic client registration in authorization server metadata", () => {
@@ -196,6 +200,146 @@ describe("OAuthService", () => {
     expect(repository.refreshTokens[0]?.tokenHash).not.toBe(
       tokenResponse.refresh_token,
     );
+  });
+
+  it("allows loopback redirect URIs to use a dynamic request port", async () => {
+    const clientId = "loopback-client";
+    const redirectUri = "http://localhost:42866/callback";
+
+    await repository.upsertClient({
+      id: ulid(),
+      clientId,
+      clientName: "Loopback Client",
+      redirectUris: ["http://localhost/callback"],
+      scopes: ["mcp:read"],
+      status: "ACTIVE",
+      registrationMode: "CLIENT_ID_METADATA_DOCUMENT",
+      metadataDocumentUri: "https://client.example.com/metadata.json",
+      metadataDocumentFetchedAt: new Date(),
+      metadataDocumentExpiresAt: new Date(Date.now() + 60_000),
+    });
+
+    const prepared = await service.prepareAuthorization(
+      {
+        ...authorizeQuery("mcp:read"),
+        client_id: clientId,
+        redirect_uri: redirectUri,
+      },
+      USER_ID,
+    );
+    const grant = await prepared.grant();
+    const code = new URL(grant.redirectTo).searchParams.get("code") ?? "";
+
+    await expect(
+      service.exchangeToken({
+        grant_type: "authorization_code",
+        client_id: clientId,
+        code,
+        redirect_uri: redirectUri,
+        code_verifier: VERIFIER,
+        resource: RESOURCE,
+      }),
+    ).resolves.toMatchObject({
+      scope: "mcp:read",
+      token_type: "Bearer",
+    });
+  });
+
+  it("does not allow loopback redirect port changes when a port is registered", async () => {
+    const clientId = "fixed-port-client";
+
+    await repository.upsertClient({
+      id: ulid(),
+      clientId,
+      clientName: "Fixed Port Client",
+      redirectUris: ["http://localhost:4555/callback"],
+      scopes: ["mcp:read"],
+      status: "ACTIVE",
+      registrationMode: "CLIENT_ID_METADATA_DOCUMENT",
+      metadataDocumentUri: "https://client.example.com/metadata.json",
+      metadataDocumentFetchedAt: new Date(),
+      metadataDocumentExpiresAt: new Date(Date.now() + 60_000),
+    });
+
+    await expect(
+      service.prepareAuthorization(
+        {
+          ...authorizeQuery("mcp:read"),
+          client_id: clientId,
+          redirect_uri: "http://localhost:42866/callback",
+        },
+        USER_ID,
+      ),
+    ).rejects.toMatchObject({
+      error: "invalid_request",
+      message: "redirect_uri does not exactly match the client registration",
+    });
+  });
+
+  it("refreshes metadata clients when cached scopes are stale", async () => {
+    const clientId = "https://8.8.8.8/oauth-client.json";
+
+    await repository.upsertClient({
+      id: ulid(),
+      clientId,
+      clientName: "Stale Metadata Client",
+      redirectUris: ["http://localhost/callback"],
+      scopes: ["mcp:read"],
+      status: "ACTIVE",
+      registrationMode: "CLIENT_ID_METADATA_DOCUMENT",
+      metadataDocumentUri: clientId,
+      metadataDocumentFetchedAt: new Date(),
+      metadataDocumentExpiresAt: new Date(Date.now() + 60_000),
+    });
+
+    const fetcher = vi.fn(async () => {
+      return new Response(
+        JSON.stringify({
+          client_id: clientId,
+          client_name: "Refreshed Metadata Client",
+          redirect_uris: ["http://localhost/callback"],
+          grant_types: ["authorization_code", "refresh_token"],
+          response_types: ["code"],
+          token_endpoint_auth_method: "none",
+        }),
+        { status: 200 },
+      );
+    });
+    vi.stubGlobal("fetch", fetcher);
+
+    await expect(
+      service.prepareAuthorization(
+        {
+          ...authorizeQuery("mcp:read mcp:write:requirement"),
+          client_id: clientId,
+          redirect_uri: "http://localhost:42866/callback",
+        },
+        USER_ID,
+      ),
+    ).resolves.toMatchObject({
+      context: {
+        client: {
+          clientName: "Refreshed Metadata Client",
+          scopes: [
+            "mcp:read",
+            "mcp:write:requirement",
+            "mcp:write:intake",
+            "mcp:write:workitem",
+            "mcp:write:bug",
+            "mcp:write:comment",
+            "mcp:write:tag",
+            "mcp:execute:workflow",
+          ],
+        },
+      },
+    });
+    expect(fetcher).toHaveBeenCalledWith(new URL(clientId), {
+      headers: {
+        Accept: "application/json",
+      },
+      redirect: "error",
+      signal: expect.any(AbortSignal),
+    });
   });
 
   it("rejects authorization requests for a non-canonical resource", async () => {

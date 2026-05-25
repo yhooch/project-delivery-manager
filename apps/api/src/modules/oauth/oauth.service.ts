@@ -124,10 +124,15 @@ export class OAuthService {
     const now = new Date();
     this.assertCanonicalResource(query.resource);
 
-    const client = await this.resolveClient(query.client_id, now);
+    let client = await this.resolveClient(query.client_id, now);
     assertRedirectUriAllowed(client, query.redirect_uri);
     const scopes = parseScopeString(query.scope);
-    assertScopesAllowed(client, scopes);
+    client = await this.ensureScopesAllowed(
+      client,
+      query.client_id,
+      scopes,
+      now,
+    );
 
     const context = buildAuthorizeContext(client, query, scopes);
 
@@ -569,6 +574,26 @@ export class OAuthService {
       );
     }
   }
+
+  private async ensureScopesAllowed(
+    client: StoredMcpOAuthClient,
+    clientId: string,
+    scopes: McpScope[],
+    now: Date,
+  ): Promise<StoredMcpOAuthClient> {
+    try {
+      assertScopesAllowed(client, scopes);
+      return client;
+    } catch (error) {
+      if (!shouldRefreshMetadataClientForScopes(client, error)) {
+        throw error;
+      }
+
+      const refreshed = await this.refreshMetadataClient(clientId, now);
+      assertScopesAllowed(refreshed, scopes);
+      return refreshed;
+    }
+  }
 }
 
 function parseScopeString(scope: string): McpScope[] {
@@ -591,12 +616,54 @@ function assertRedirectUriAllowed(
   client: StoredMcpOAuthClient,
   redirectUri: string,
 ): void {
-  if (!client.redirectUris.includes(redirectUri)) {
+  if (
+    !client.redirectUris.some((allowed) =>
+      redirectUriMatches(allowed, redirectUri),
+    )
+  ) {
     throw new OAuthProtocolError(
       "invalid_request",
       "redirect_uri does not exactly match the client registration",
     );
   }
+}
+
+function redirectUriMatches(
+  registeredUri: string,
+  requestedUri: string,
+): boolean {
+  if (registeredUri === requestedUri) {
+    return true;
+  }
+
+  try {
+    const registered = new URL(registeredUri);
+    const requested = new URL(requestedUri);
+
+    return isLoopbackPortVariant(registered, requested);
+  } catch {
+    return false;
+  }
+}
+
+function isLoopbackPortVariant(registered: URL, requested: URL): boolean {
+  return (
+    registered.protocol === "http:" &&
+    requested.protocol === "http:" &&
+    isLocalhostRedirect(registered) &&
+    isLocalhostRedirect(requested) &&
+    normalizeLoopbackHostname(registered.hostname) ===
+      normalizeLoopbackHostname(requested.hostname) &&
+    registered.port === "" &&
+    requested.port !== "" &&
+    registered.pathname === requested.pathname &&
+    registered.search === requested.search &&
+    registered.hash === requested.hash
+  );
+}
+
+function normalizeLoopbackHostname(hostname: string): string {
+  return hostname.toLowerCase().replace(/^\[|\]$/gu, "");
 }
 
 function assertScopesAllowed(
@@ -609,6 +676,17 @@ function assertScopesAllowed(
       "Requested scope is not registered for this client",
     );
   }
+}
+
+function shouldRefreshMetadataClientForScopes(
+  client: StoredMcpOAuthClient,
+  error: unknown,
+): boolean {
+  return (
+    error instanceof OAuthProtocolError &&
+    error.error === "invalid_scope" &&
+    client.registrationMode === "CLIENT_ID_METADATA_DOCUMENT"
+  );
 }
 
 function buildAuthorizeContext(
