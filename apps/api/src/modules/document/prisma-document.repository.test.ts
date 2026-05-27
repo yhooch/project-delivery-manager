@@ -53,11 +53,32 @@ describe("PrismaDocumentRepository", () => {
         documentLink: {
           findMany: vi.fn(async () => []),
         },
+        mcpOAuthClient: {
+          findMany: vi.fn(async () => [
+            {
+              clientId: "codex-client",
+              clientName: "Codex",
+            },
+            {
+              clientId: "claude-code-client",
+              clientName: "Claude Code",
+            },
+          ]),
+        },
         tagAssignment: {
           findMany: vi.fn(async () => []),
         },
         timelineEvent: {
           findMany: timelineEventFindMany,
+        },
+        user: {
+          findMany: vi.fn(async () => [
+            {
+              id: document.createdById,
+              name: "Ada Lovelace",
+              username: "ada",
+            },
+          ]),
         },
       },
     } as unknown as PrismaService;
@@ -67,6 +88,10 @@ describe("PrismaDocumentRepository", () => {
       id: document.id,
       attachments: [{ fileName: "handoff.md", size: 1024 }],
       comments: [{ authorName: "Alice", body: "Looks current" }],
+      createdByName: "Ada Lovelace",
+      createdMcpClientName: "Codex",
+      lastEditedByName: "Ada Lovelace",
+      lastEditedMcpClientName: "Claude Code",
       timeline: [{ actorName: "Taylor", changeType: "Document content updated" }],
     });
 
@@ -104,14 +129,14 @@ function makeDocumentRecord() {
     contentText: "Agent handoff",
     createdAt: new Date("2026-05-27T00:00:00.000Z"),
     createdById: "01H00000000000000000000004",
-    createdMcpClientId: null,
-    createdVia: "USER",
+    createdMcpClientId: "codex-client",
+    createdVia: "MCP_CLIENT",
     deletedAt: null,
     id: "01H00000000000000000000001",
     lastEditedAt: new Date("2026-05-27T00:00:00.000Z"),
     lastEditedById: "01H00000000000000000000004",
-    lastEditedMcpClientId: null,
-    lastEditedVia: "USER",
+    lastEditedMcpClientId: "claude-code-client",
+    lastEditedVia: "MCP_CLIENT",
     organizationId: "01H00000000000000000000002",
     revision: 1,
     sourceAttachmentId: null,

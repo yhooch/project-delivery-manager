@@ -16,6 +16,7 @@ import {
   toDocumentDetail,
   toDocumentLink,
   toDocumentRevision,
+  type DocumentActorDisplayContext,
 } from "./document.mappers";
 import type { DocumentRepository } from "./document.repository";
 import type {
@@ -220,37 +221,39 @@ export class PrismaDocumentRepository implements DocumentRepository {
   }
 
   private async loadDocumentContext(document: PrismaDocumentRecord) {
-    const [links, chunks, tagsByDocumentId] = await Promise.all([
-      this.prisma.client.documentLink.findMany({
-        orderBy: {
-          createdAt: "asc",
-        },
-        where: {
-          deletedAt: null,
-          documentId: document.id,
+    const [links, chunks, tagsByDocumentId, actorContextByDocumentId] =
+      await Promise.all([
+        this.prisma.client.documentLink.findMany({
+          orderBy: {
+            createdAt: "asc",
+          },
+          where: {
+            deletedAt: null,
+            documentId: document.id,
+            organizationId: document.organizationId,
+            spaceId: document.spaceId,
+          },
+        }),
+        this.prisma.client.documentChunk.findMany({
+          orderBy: {
+            ordinal: "asc",
+          },
+          take: 20,
+          where: {
+            documentId: document.id,
+            organizationId: document.organizationId,
+            revision: document.revision,
+            spaceId: document.spaceId,
+          },
+        }),
+        listTagsByTargets(this.prisma.client, {
           organizationId: document.organizationId,
           spaceId: document.spaceId,
-        },
-      }),
-      this.prisma.client.documentChunk.findMany({
-        orderBy: {
-          ordinal: "asc",
-        },
-        take: 20,
-        where: {
-          documentId: document.id,
-          organizationId: document.organizationId,
-          revision: document.revision,
-          spaceId: document.spaceId,
-        },
-      }),
-      listTagsByTargets(this.prisma.client, {
-        organizationId: document.organizationId,
-        spaceId: document.spaceId,
-        targetIds: [document.id],
-        targetType: "DOCUMENT",
-      }),
-    ]);
+          targetIds: [document.id],
+          targetType: "DOCUMENT",
+        }),
+        this.loadDocumentActorContexts([document]),
+      ]);
     const hydratedLinks = await this.hydrateLinks(
       links,
       document.organizationId,
@@ -261,7 +264,86 @@ export class PrismaDocumentRepository implements DocumentRepository {
       chunks,
       links: hydratedLinks,
       tags: tagsByDocumentId.get(document.id) ?? [],
+      ...actorContextByDocumentId.get(document.id),
     };
+  }
+
+  private async loadDocumentActorContexts(
+    documents: PrismaDocumentRecord[],
+  ): Promise<Map<string, DocumentActorDisplayContext>> {
+    const result = new Map<string, DocumentActorDisplayContext>();
+
+    if (documents.length === 0) {
+      return result;
+    }
+
+    const userIds = new Set<string>();
+    const clientIds = new Set<string>();
+
+    for (const document of documents) {
+      userIds.add(document.createdById ?? document.lastEditedById);
+      userIds.add(document.lastEditedById);
+      if (document.createdMcpClientId) {
+        clientIds.add(document.createdMcpClientId);
+      }
+      if (document.lastEditedMcpClientId) {
+        clientIds.add(document.lastEditedMcpClientId);
+      }
+    }
+
+    const [users, clients] = await Promise.all([
+      userIds.size > 0
+        ? this.prisma.client.user.findMany({
+            select: {
+              id: true,
+              name: true,
+              username: true,
+            },
+            where: {
+              id: {
+                in: [...userIds],
+              },
+            },
+          })
+        : [],
+      clientIds.size > 0
+        ? this.prisma.client.mcpOAuthClient.findMany({
+            select: {
+              clientId: true,
+              clientName: true,
+            },
+            where: {
+              clientId: {
+                in: [...clientIds],
+              },
+            },
+          })
+        : [],
+    ]);
+
+    const userNamesById = new Map(
+      users.map((user) => [user.id, nonEmptyString(user.name) ?? user.username]),
+    );
+    const clientNamesById = new Map(
+      clients.map((client) => [client.clientId, client.clientName]),
+    );
+
+    for (const document of documents) {
+      const createdById = document.createdById ?? document.lastEditedById;
+
+      result.set(document.id, {
+        createdByName: userNamesById.get(createdById),
+        createdMcpClientName: document.createdMcpClientId
+          ? clientNamesById.get(document.createdMcpClientId)
+          : undefined,
+        lastEditedByName: userNamesById.get(document.lastEditedById),
+        lastEditedMcpClientName: document.lastEditedMcpClientId
+          ? clientNamesById.get(document.lastEditedMcpClientId)
+          : undefined,
+      });
+    }
+
+    return result;
   }
 
   private async findLiveDocument(documentId: string) {
@@ -295,23 +377,26 @@ export class PrismaDocumentRepository implements DocumentRepository {
       this.prisma.client.document.count({ where }),
     ]);
     const targetIds = documents.map((document) => document.id);
-    const [tagsByDocumentId, linksByDocumentId] = await Promise.all([
-      listTagsByTargets(this.prisma.client, {
-        organizationId: input.organizationId,
-        spaceId: input.spaceId,
-        targetIds,
-        targetType: "DOCUMENT",
-      }),
-      this.listLinksByDocumentIds({
-        documentIds: targetIds,
-        organizationId: input.organizationId,
-        spaceId: input.spaceId,
-      }),
-    ]);
+    const [tagsByDocumentId, linksByDocumentId, actorContextByDocumentId] =
+      await Promise.all([
+        listTagsByTargets(this.prisma.client, {
+          organizationId: input.organizationId,
+          spaceId: input.spaceId,
+          targetIds,
+          targetType: "DOCUMENT",
+        }),
+        this.listLinksByDocumentIds({
+          documentIds: targetIds,
+          organizationId: input.organizationId,
+          spaceId: input.spaceId,
+        }),
+        this.loadDocumentActorContexts(documents),
+      ]);
 
     return {
       items: documents.map((document) =>
         toDocument(document, {
+          ...actorContextByDocumentId.get(document.id),
           links: linksByDocumentId.get(document.id) ?? [],
           tags: tagsByDocumentId.get(document.id) ?? [],
         }),
@@ -1160,6 +1245,12 @@ function documentTargetWhere(document: PrismaDocumentRecord) {
 
 function formatDisplayCode(prefix: "REQ" | "INTAKE" | WorkItemType, sequence: number | null) {
   return sequence ? `${prefix}-${sequence}` : undefined;
+}
+
+function nonEmptyString(value: string | null | undefined) {
+  const trimmed = value?.trim();
+
+  return trimmed ? trimmed : undefined;
 }
 
 function toDocumentOrderBy(

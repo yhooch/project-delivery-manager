@@ -2,7 +2,6 @@
 
 import {
   Archive,
-  Bot,
   Clock3,
   Download,
   FileText,
@@ -68,7 +67,6 @@ import {
 } from "../../lib/document-forms";
 import {
   formatDocumentRelativeTimestamp,
-  getDocumentActorKey,
   getDocumentLinkDisplayCode,
   getDocumentLinkHref,
   getDocumentSourceKey,
@@ -100,6 +98,8 @@ import {
   ActorBadge,
   DocumentLinksSummary,
   SourceBadge,
+  formatDocumentCreatedMeta,
+  formatDocumentEditedMeta,
 } from "./documents-page";
 import {
   DocumentMarkdownViewer,
@@ -592,18 +592,11 @@ export function DocumentDetailPage({ documentId }: DocumentDetailPageProps) {
                   actorType={document.lastEditedVia}
                   mcpClientName={document.lastEditedMcpClientName}
                 />
-                {document.lastEditedMcpClientName ? (
-                  <Badge variant="outline">
-                    <Bot className="h-3 w-3" aria-hidden="true" />
-                    {document.lastEditedMcpClientName}
-                  </Badge>
-                ) : null}
               </div>
-              <p className="mt-2 text-xs text-muted-foreground">
-                {t("detail.lastEdited", {
-                  time: formatDocumentRelativeTimestamp(document.lastEditedAt, locale),
-                })}
-              </p>
+              <div className="mt-2 grid gap-1 text-xs text-muted-foreground">
+                <p>{formatDocumentCreatedMeta(document, locale, t)}</p>
+                <p>{formatDocumentEditedMeta(document, locale, t)}</p>
+              </div>
             </div>
             <div className="flex shrink-0 flex-wrap gap-2">
               {editMode ? (
@@ -1301,15 +1294,26 @@ function DocumentContextRail({
             <p className="text-xs text-muted-foreground">{t("rail.noTimeline")}</p>
           ) : null}
         </RailSection>
-        <div className="border-t border-border pt-3 text-[11px] text-muted-foreground">
-          <div>{t(getDocumentSourceKey(document.sourceType))}</div>
+        <dl className="grid gap-2 border-t border-border pt-3 text-[11px] text-muted-foreground">
           <div>
-            {t(getDocumentActorKey(document.lastEditedVia))}
-            {document.lastEditedMcpClientName
-              ? ` · ${document.lastEditedMcpClientName}`
-              : ""}
+            <dt className="font-medium text-foreground">{t("rail.created")}</dt>
+            <dd>{formatDocumentCreatedMeta(document, locale, t)}</dd>
           </div>
-        </div>
+          <div>
+            <dt className="font-medium text-foreground">{t("rail.edited")}</dt>
+            <dd>{formatDocumentEditedMeta(document, locale, t)}</dd>
+          </div>
+          <div className="grid grid-cols-2 gap-2">
+            <div>
+              <dt className="font-medium text-foreground">{t("rail.source")}</dt>
+              <dd>{t(getDocumentSourceKey(document.sourceType))}</dd>
+            </div>
+            <div>
+              <dt className="font-medium text-foreground">{t("rail.revision")}</dt>
+              <dd>{document.revision}</dd>
+            </div>
+          </div>
+        </dl>
       </div>
     </aside>
   );

@@ -41,6 +41,13 @@ type PrismaDocumentRecord = {
   updatedAt: Date;
 };
 
+export type DocumentActorDisplayContext = {
+  createdByName?: string;
+  createdMcpClientName?: string;
+  lastEditedByName?: string;
+  lastEditedMcpClientName?: string;
+};
+
 type PrismaDocumentRevisionRecord = {
   actorType: DocumentActorType;
   actorUserId: string;
@@ -118,7 +125,7 @@ export function toDocument(
     chunks?: PrismaDocumentChunkRecord[];
     links?: PrismaDocumentLinkRecord[];
     tags?: TagDto[];
-  } = {},
+  } & DocumentActorDisplayContext = {},
 ): Document {
   return removeUndefined({
     id: record.id,
@@ -132,11 +139,15 @@ export function toDocument(
     status: record.status,
     revision: record.revision,
     createdById: record.createdById ?? record.lastEditedById,
+    createdByName: input.createdByName,
     createdVia: record.createdVia,
     createdMcpClientId: record.createdMcpClientId ?? undefined,
+    createdMcpClientName: input.createdMcpClientName,
     lastEditedById: record.lastEditedById,
+    lastEditedByName: input.lastEditedByName,
     lastEditedVia: record.lastEditedVia,
     lastEditedMcpClientId: record.lastEditedMcpClientId ?? undefined,
+    lastEditedMcpClientName: input.lastEditedMcpClientName,
     lastEditedAt: record.lastEditedAt.toISOString(),
     archivedAt: record.archivedAt?.toISOString(),
     deletedAt: record.deletedAt?.toISOString(),

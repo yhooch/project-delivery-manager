@@ -40,10 +40,12 @@ export type DocumentSummary = {
   contentSnippet?: string | null;
   createdAt: string;
   createdById?: string | null;
+  createdByName?: string | null;
   createdMcpClientName?: string | null;
   createdVia?: DocumentActorType;
   id: string;
   lastEditedAt: string;
+  lastEditedByName?: string | null;
   lastEditedMcpClientName?: string | null;
   lastEditedVia: DocumentActorType;
   links?: DocumentLinkSummary[];
@@ -194,10 +196,12 @@ const documentSummaryBaseSchema = z
     contentText: z.string().optional(),
     createdAt: z.string(),
     createdById: z.string().nullish(),
+    createdByName: z.string().nullish(),
     createdMcpClientName: z.string().nullish(),
     createdVia: documentActorSchema.optional(),
     id: z.string(),
     lastEditedAt: z.string(),
+    lastEditedByName: z.string().nullish(),
     lastEditedMcpClientName: z.string().nullish(),
     lastEditedVia: documentActorSchema,
     links: z.array(linkSchema).optional(),

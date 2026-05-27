@@ -7,10 +7,17 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 vi.mock("next-intl", () => ({
   useLocale: () => "en-US",
   useTranslations: (namespace?: string) => {
-    return (key: string, values?: Record<string, unknown>) =>
-      `${namespace ? `${namespace}.` : ""}${key}${
-        values?.time ? ` ${values.time}` : ""
+    return (key: string, values?: Record<string, unknown>) => {
+      const renderedValues = values
+        ? Object.values(values)
+            .filter((value) => value !== undefined && value !== null)
+            .join(" ")
+        : "";
+
+      return `${namespace ? `${namespace}.` : ""}${key}${
+        renderedValues ? ` ${renderedValues}` : ""
       }`;
+    };
   },
 }));
 
@@ -179,8 +186,13 @@ function createDocument() {
     ],
     contentMarkdown: "# Launch plan\n\nReview TASK-42.",
     createdAt: "2026-05-27T10:00:00.000Z",
+    createdByName: "Ada",
+    createdMcpClientName: "Codex",
+    createdVia: "MCP_CLIENT",
     id: "DOC_01",
     lastEditedAt: "2026-05-27T11:00:00.000Z",
+    lastEditedByName: "Ada",
+    lastEditedMcpClientName: "Claude Code",
     lastEditedVia: "MCP_CLIENT",
     links: [
       {
@@ -270,6 +282,8 @@ describe("DocumentDetailPage", () => {
     expect(screen.getByTestId("document-linked-resources")).toBeVisible();
     expect(screen.getByTestId("document-context-rail")).toBeVisible();
     expect(screen.getAllByText("REQ-12")[0]).toBeVisible();
+    expect(screen.getAllByText(/documents\.meta\.createdViaClient Ada Codex/u)[0]).toBeVisible();
+    expect(screen.getAllByText(/documents\.meta\.editedViaClient Ada Claude Code/u)[0]).toBeVisible();
   });
 
   it("opens the lightweight edit panel and saves with base revision", async () => {

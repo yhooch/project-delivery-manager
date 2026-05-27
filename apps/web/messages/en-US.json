@@ -963,8 +963,8 @@
     "filters": {
       "all": "All",
       "createdByMe": "Created by me",
-      "mcpCreated": "Model created",
-      "recentMcpEdited": "Recently model edited",
+      "mcpCreated": "Model generated",
+      "recentMcpEdited": "Edited through model",
       "archived": "Archived"
     },
     "status": {
@@ -976,11 +976,27 @@
       "UPLOAD_MARKDOWN": "Markdown import",
       "PASTE_MARKDOWN": "Pasted Markdown",
       "PASTE_TEXT": "Pasted text",
-      "MCP_CREATED": "Model created"
+      "MCP_CREATED": "Model generated"
     },
     "actor": {
-      "user": "Recently edited by user",
-      "mcpClient": "Recently edited by model"
+      "user": "Manual edit",
+      "mcpClient": "Through MCP",
+      "viaClient": "Through {client}"
+    },
+    "meta": {
+      "unknownUser": "Unknown member",
+      "mcpClientFallback": "MCP",
+      "createdViaClient": "{actor} created through {client} · {time}",
+      "createdViaSource": "{actor} created via {source} · {time}",
+      "editedViaClient": "{actor} edited through {client} · {time}",
+      "editedByUser": "{actor} edited manually · {time}",
+      "sourceAction": {
+        "UPLOAD_DOCX": "Word upload",
+        "UPLOAD_MARKDOWN": "Markdown upload",
+        "PASTE_MARKDOWN": "Markdown paste",
+        "PASTE_TEXT": "text paste",
+        "MCP_CREATED": "model"
+      }
     },
     "list": {
       "document": "Document",
@@ -1075,7 +1091,11 @@
       "noAttachments": "No attachments",
       "timeline": "Timeline",
       "noTimeline": "No timeline",
-      "unknownActor": "Unknown member"
+      "unknownActor": "Unknown member",
+      "created": "Created",
+      "edited": "Recent edit",
+      "source": "Source",
+      "revision": "Revision"
     },
     "markdown": {
       "empty": "No body content",

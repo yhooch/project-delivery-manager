@@ -59,6 +59,10 @@ import { Textarea } from "../ui/textarea";
 
 const PAGE_SIZE = 50;
 const DOCUMENTS_REALTIME_KEYS = ["document-list", "resource-documents"] as const;
+type DocumentTranslator = (
+  key: string,
+  values?: Record<string, number | string>,
+) => string;
 
 export function DocumentsPage() {
   const t = useTranslations("documents");
@@ -280,6 +284,9 @@ function DocumentList({
                   </Badge>
                 ) : null}
               </div>
+              <p className="mt-1 truncate text-xs text-muted-foreground">
+                {formatDocumentCreatedMeta(document, locale, t)}
+              </p>
               {document.contentSnippet ? (
                 <p className="mt-1 line-clamp-2 text-xs leading-5 text-muted-foreground">
                   {document.contentSnippet}
@@ -296,7 +303,7 @@ function DocumentList({
             </div>
             <DocumentLinksSummary links={document.links ?? []} />
             <div className="flex flex-col gap-1 text-xs text-muted-foreground md:items-end md:text-right">
-              <span>{formatDocumentRelativeTimestamp(document.lastEditedAt, locale)}</span>
+              <span>{formatDocumentEditedMeta(document, locale, t)}</span>
               <span>{t("list.revision", { revision: document.revision })}</span>
             </div>
           </Link>
@@ -316,7 +323,7 @@ function DocumentLinksSummary({ links }: { links: DocumentSummary["links"] }) {
   }
 
   return (
-    <div className="flex min-w-0 flex-wrap gap-1">
+    <div className="flex min-w-0 flex-wrap content-start items-start gap-1">
       {visible.map((link) => (
         <span
           key={link.id}
@@ -359,9 +366,76 @@ function ActorBadge({
   return (
     <Badge variant={actorType === "MCP_CLIENT" ? "info" : "default"}>
       {actorType === "MCP_CLIENT" ? <Bot className="h-3 w-3" aria-hidden="true" /> : null}
-      {mcpClientName ?? t(getDocumentActorKey(actorType))}
+      {actorType === "MCP_CLIENT"
+        ? t("actor.viaClient", {
+            client: getMcpClientDisplayName(mcpClientName, t),
+          })
+        : t(getDocumentActorKey(actorType))}
     </Badge>
   );
+}
+
+export function formatDocumentCreatedMeta(
+  document: DocumentSummary,
+  locale: string,
+  t: DocumentTranslator,
+) {
+  const actor = getUserDisplayName(document.createdByName, t);
+  const time = formatDocumentRelativeTimestamp(document.createdAt, locale);
+  const createdVia =
+    document.createdVia ??
+    (document.sourceType === "MCP_CREATED" ? "MCP_CLIENT" : "USER");
+
+  if (createdVia === "MCP_CLIENT") {
+    return t("meta.createdViaClient", {
+      actor,
+      client: getMcpClientDisplayName(document.createdMcpClientName, t),
+      time,
+    });
+  }
+
+  return t("meta.createdViaSource", {
+    actor,
+    source: t(`meta.sourceAction.${document.sourceType}`),
+    time,
+  });
+}
+
+export function formatDocumentEditedMeta(
+  document: DocumentSummary,
+  locale: string,
+  t: DocumentTranslator,
+) {
+  const actor = getUserDisplayName(document.lastEditedByName, t);
+  const time = formatDocumentRelativeTimestamp(document.lastEditedAt, locale);
+
+  if (document.lastEditedVia === "MCP_CLIENT") {
+    return t("meta.editedViaClient", {
+      actor,
+      client: getMcpClientDisplayName(document.lastEditedMcpClientName, t),
+      time,
+    });
+  }
+
+  return t("meta.editedByUser", {
+    actor,
+    time,
+  });
+}
+
+function getUserDisplayName(value: string | null | undefined, t: DocumentTranslator) {
+  const trimmed = value?.trim();
+
+  return trimmed || t("meta.unknownUser");
+}
+
+function getMcpClientDisplayName(
+  value: string | null | undefined,
+  t: DocumentTranslator,
+) {
+  const trimmed = value?.trim();
+
+  return trimmed || t("meta.mcpClientFallback");
 }
 
 function DocumentsEmptyState({

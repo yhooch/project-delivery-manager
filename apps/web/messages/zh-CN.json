@@ -963,8 +963,8 @@
     "filters": {
       "all": "全部",
       "createdByMe": "我创建",
-      "mcpCreated": "模型创建",
-      "recentMcpEdited": "最近模型修改",
+      "mcpCreated": "模型生成",
+      "recentMcpEdited": "通过模型修改",
       "archived": "已归档"
     },
     "status": {
@@ -976,11 +976,27 @@
       "UPLOAD_MARKDOWN": "Markdown 导入",
       "PASTE_MARKDOWN": "粘贴 Markdown",
       "PASTE_TEXT": "粘贴文本",
-      "MCP_CREATED": "模型创建"
+      "MCP_CREATED": "模型生成"
     },
     "actor": {
-      "user": "最近由用户修改",
-      "mcpClient": "最近由模型修改"
+      "user": "手动编辑",
+      "mcpClient": "通过 MCP",
+      "viaClient": "通过 {client}"
+    },
+    "meta": {
+      "unknownUser": "未知成员",
+      "mcpClientFallback": "MCP",
+      "createdViaClient": "{actor} 通过 {client} 创建 · {time}",
+      "createdViaSource": "{actor} {source} 创建 · {time}",
+      "editedViaClient": "{actor} 通过 {client} 修改 · {time}",
+      "editedByUser": "{actor} 手动编辑 · {time}",
+      "sourceAction": {
+        "UPLOAD_DOCX": "上传 Word",
+        "UPLOAD_MARKDOWN": "上传 Markdown",
+        "PASTE_MARKDOWN": "粘贴 Markdown",
+        "PASTE_TEXT": "粘贴文本",
+        "MCP_CREATED": "通过模型"
+      }
     },
     "list": {
       "document": "文档",
@@ -1075,7 +1091,11 @@
       "noAttachments": "暂无附件",
       "timeline": "时间线",
       "noTimeline": "暂无时间线",
-      "unknownActor": "未知成员"
+      "unknownActor": "未知成员",
+      "created": "创建",
+      "edited": "最近编辑",
+      "source": "来源",
+      "revision": "Revision"
     },
     "markdown": {
       "empty": "暂无正文",
