@@ -147,4 +147,25 @@ describe("TimelineEventItem", () => {
     await user.hover(detail);
     expect(await screen.findByRole("tooltip")).toHaveTextContent(longDetail);
   });
+
+  it("preserves multiline change values in full density", () => {
+    render(
+      <TimelineEventItem
+        event={makeEvent({
+          after: { description: "After line one\nAfter line two" },
+          before: { description: "Before line one\nBefore line two" },
+        })}
+        locale="zh-CN"
+        translateEventType={(key) => `common.timeline.event.${key}`}
+      />,
+    );
+
+    const change = screen.getByTestId("timeline-change-item");
+    const value = change.querySelector(".whitespace-pre-wrap");
+    expect(change).not.toHaveClass("truncate");
+    expect(value).toHaveClass("break-words");
+    expect(value?.textContent).toBe(
+      "Before line one\nBefore line two -> After line one\nAfter line two",
+    );
+  });
 });

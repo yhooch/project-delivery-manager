@@ -303,6 +303,27 @@ describe("timeline display", () => {
     ]);
   });
 
+  it("keeps full multiline text values in field changes", () => {
+    const longBefore =
+      "Before line one keeps important context that should not be clipped\nBefore line two keeps the reproduction notes";
+    const longAfter =
+      "After line one keeps the updated context that should not be clipped\nAfter line two keeps the verification notes";
+    const display = formatTimelineEvent(
+      makeEvent({
+        after: { description: longAfter },
+        before: { description: longBefore },
+      }),
+      {
+        translateEventType: (key) => `timeline.${key}`,
+        translateMessage,
+      },
+    );
+
+    expect(display.changes).toEqual([
+      { after: longAfter, before: longBefore, field: "描述" },
+    ]);
+  });
+
   it("covers common timeline change fields without exposing raw keys", () => {
     const rawReference = "01ARZ3NDEKTSV4RRFFQ69G5RAW";
     const rawBeforeState = "01ARZ3NDEKTSV4RRFFQ69G5OLD";

@@ -1186,6 +1186,46 @@ describe("TaskDetailSheet", () => {
     expect(screen.getByText("Reporter Name")).toBeInTheDocument();
   });
 
+  it("preserves line breaks in task detail descriptions", async () => {
+    getWorkItemMock.mockResolvedValueOnce(
+      makeDetailResponse({
+        description: "First detail line\nSecond detail line",
+      }),
+    );
+
+    render(
+      <TaskDetailSheet
+        item={makeViewModel({ title: "Multiline task" })}
+        open
+        onOpenChange={() => {}}
+      />,
+    );
+
+    const description = await screen.findByTestId("task-detail-description");
+    expect(description).toHaveClass("whitespace-pre-wrap", "break-words");
+    expect(description.textContent).toBe("First detail line\nSecond detail line");
+  });
+
+  it("preserves line breaks in bug detail descriptions", async () => {
+    getBugMock.mockResolvedValueOnce(
+      makeBugResponse({
+        description: "Bug first line\nBug second line",
+      }),
+    );
+
+    render(
+      <TaskDetailSheet
+        item={makeViewModel({ type: "BUG", title: "Multiline bug" })}
+        open
+        onOpenChange={() => {}}
+      />,
+    );
+
+    const description = await screen.findByTestId("task-detail-description");
+    expect(description).toHaveClass("whitespace-pre-wrap", "break-words");
+    expect(description.textContent).toBe("Bug first line\nBug second line");
+  });
+
   it("updates editable task fields when PermissionSnapshot.canEdit is true", async () => {
     const onChanged = vi.fn();
     const assigneeId = "01ARZ3NDEKTSV4RRFFQ69G5FAS";

@@ -2523,7 +2523,10 @@ function DetailTab({
         <h3 className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
           {t("description.title")}
         </h3>
-        <p className="text-sm leading-relaxed text-muted-foreground">
+        <p
+          data-testid="task-detail-description"
+          className="whitespace-pre-wrap break-words text-sm leading-relaxed text-muted-foreground"
+        >
           {detail?.description?.trim() || t("description.empty")}
         </p>
       </div>

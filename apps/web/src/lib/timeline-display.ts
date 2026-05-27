@@ -42,6 +42,10 @@ type TimelineChangeValueSide = "after" | "before";
 const CHANGE_FIELD_MESSAGE_PREFIX = "common.timeline.change.field";
 const CHANGE_VALUE_MESSAGE_PREFIX = "common.timeline.change.value";
 
+type FormatValueOptions = {
+  truncate?: boolean;
+};
+
 const REFERENCE_CHANGE_FIELDS = new Set([
   "assigneeId",
   "currentStateId",
@@ -374,7 +378,7 @@ function formatChangeValue(
     return translateChangeValue(translateMessage, "empty");
   }
 
-  const formatted = formatValue(value);
+  const formatted = formatValue(value, { truncate: false });
   if (!formatted) {
     return translateChangeValue(translateMessage, "empty");
   }
@@ -549,13 +553,18 @@ function formatFormValue(
   );
 }
 
-function formatValue(value: unknown): string | undefined {
+function formatValue(
+  value: unknown,
+  options: FormatValueOptions = {},
+): string | undefined {
+  const shouldTruncate = options.truncate ?? true;
+
   if (value === undefined || value === null || value === "") {
     return undefined;
   }
 
   if (typeof value === "string") {
-    return truncate(value);
+    return shouldTruncate ? truncate(value) : value;
   }
 
   if (typeof value === "number" || typeof value === "boolean") {
@@ -563,23 +572,24 @@ function formatValue(value: unknown): string | undefined {
   }
 
   if (Array.isArray(value)) {
-    return truncate(
-      value
-        .map((item) => formatValue(item))
-        .filter(Boolean)
-        .join(", "),
-    );
+    const formatted = value
+      .map((item) => formatValue(item, options))
+      .filter(Boolean)
+      .join(", ");
+    return shouldTruncate ? truncate(formatted) : formatted;
   }
 
   if (typeof value === "object") {
     try {
-      return truncate(JSON.stringify(value));
+      const formatted = JSON.stringify(value);
+      return shouldTruncate ? truncate(formatted) : formatted;
     } catch {
       return undefined;
     }
   }
 
-  return truncate(String(value));
+  const formatted = String(value);
+  return shouldTruncate ? truncate(formatted) : formatted;
 }
 
 function isEmptyValue(value: unknown): boolean {

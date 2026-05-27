@@ -166,12 +166,16 @@ export function TimelineEventItem({
 
               return (
                 <OverflowTip key={change.field} content={changeText}>
-                  <li className="min-w-0 truncate">
+                  <li
+                    className="grid min-w-0 grid-cols-[auto_minmax(0,1fr)] gap-x-1.5"
+                    data-testid="timeline-change-item"
+                  >
                     <span className="font-medium text-foreground/80">
                       {change.field}
                     </span>
-                    <span> {change.before ?? "-"} -&gt; </span>
-                    <span>{change.after ?? "-"}</span>
+                    <span className="min-w-0 whitespace-pre-wrap break-words">
+                      {change.before ?? "-"} -&gt; {change.after ?? "-"}
+                    </span>
                   </li>
                 </OverflowTip>
               );
