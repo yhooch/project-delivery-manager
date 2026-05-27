@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import { act, render, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -110,8 +110,35 @@ describe("DocumentsPage", () => {
         filter: "all",
         page: 1,
         pageSize: 50,
+        sortBy: "lastEditedAt",
+        sortOrder: "desc",
         spaceId: "SPC_01",
       }),
+    );
+  });
+
+  it("reloads with the selected sort option", async () => {
+    listDocumentsMock.mockResolvedValue({ items: [], total: 0 });
+
+    render(<DocumentsPage />);
+
+    await screen.findByTestId("documents-empty-state");
+    listDocumentsMock.mockClear();
+
+    await act(async () => {
+      fireEvent.change(screen.getByTestId("documents-sort-select"), {
+        target: { value: "recentCreated" },
+      });
+    });
+
+    await waitFor(() =>
+      expect(listDocumentsMock).toHaveBeenCalledWith(
+        expect.objectContaining({
+          page: 1,
+          sortBy: "createdAt",
+          sortOrder: "desc",
+        }),
+      ),
     );
   });
 
@@ -157,9 +184,12 @@ describe("DocumentsPage", () => {
     );
     expect(screen.getByText("Launch plan")).toBeVisible();
     expect(screen.getByText("REQ-12")).toBeVisible();
-    expect(screen.getByText("documents.source.MCP_CREATED")).toBeVisible();
-    expect(screen.getByText(/documents\.meta\.createdViaClient Ada Codex/u)).toBeVisible();
-    expect(screen.getByText(/documents\.meta\.editedViaClient Ada Claude Code/u)).toBeVisible();
+    expect(
+      screen.getByText(/documents\.meta\.createdViaClient Ada Codex/u),
+    ).toBeVisible();
+    expect(
+      screen.queryByText(/documents\.meta\.editedViaClient/u),
+    ).not.toBeInTheDocument();
   });
 
   it("refreshes the list after document realtime invalidation", async () => {

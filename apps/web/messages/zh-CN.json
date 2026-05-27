@@ -958,7 +958,10 @@
       "searchLabel": "搜索文档",
       "searchPlaceholder": "搜索标题或正文",
       "filtersLabel": "文档筛选",
-      "loading": "正在加载文档…"
+      "loading": "正在加载文档…",
+      "loadMore": "加载更多（{count}）",
+      "sortLabel": "排序",
+      "densityLabel": "显示密度"
     },
     "filters": {
       "all": "全部",
@@ -999,9 +1002,6 @@
       }
     },
     "list": {
-      "document": "文档",
-      "resources": "关联资源",
-      "updated": "最近编辑",
       "revision": "Revision {revision}",
       "noResources": "暂无关联资源",
       "moreResources": "+{count} 个"
@@ -1048,7 +1048,11 @@
       "reimport": "重新导入"
     },
     "edit": {
+      "titleLabel": "文档标题",
       "contentLabel": "Markdown 正文",
+      "contentViewLabel": "正文视图",
+      "sourceTab": "源码",
+      "previewTab": "预览",
       "tagsLabel": "标签",
       "linksLabel": "关联资源",
       "linksPlaceholder": "输入 REQ-12、INTAKE-8、TASK-42、BUG-17，用逗号分隔",
@@ -1095,7 +1099,8 @@
       "created": "创建",
       "edited": "最近编辑",
       "source": "来源",
-      "revision": "Revision"
+      "revision": "Revision",
+      "viewAll": "查看全部（{count}）"
     },
     "markdown": {
       "empty": "暂无正文",
@@ -1103,6 +1108,21 @@
       "image": "图片",
       "openImage": "打开图片链接",
       "objectLookupFailed": "编号查询失败"
+    },
+    "sort": {
+      "recentEdited": "最近编辑",
+      "recentCreated": "最近创建",
+      "title": "标题"
+    },
+    "density": {
+      "comfortable": "舒适",
+      "compact": "紧凑"
+    },
+    "group": {
+      "today": "今天",
+      "thisWeek": "本周",
+      "thisMonth": "本月",
+      "earlier": "更早"
     }
   },
   "versionBoard": {

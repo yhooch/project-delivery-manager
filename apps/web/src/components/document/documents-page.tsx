@@ -1,13 +1,16 @@
 "use client";
 
 import {
+  AlignJustify,
   Archive,
   Bot,
   FilePlus2,
   FileText,
+  List,
   Loader2,
   Search,
   Upload,
+  User,
 } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
 import {
@@ -18,9 +21,13 @@ import {
   type FormEvent,
 } from "react";
 
-import { Link, useRouter } from "../../i18n/routing";
+import { Link } from "../../i18n/routing";
 import { getApiErrorMessageKey } from "../../lib/api-error-messages";
-import type { DocumentFilterKey, DocumentSummary } from "../../lib/document-service";
+import type {
+  DocumentFilterKey,
+  DocumentSortBy,
+  DocumentSummary,
+} from "../../lib/document-service";
 import {
   importDocxDocument,
   importMarkdownDocument,
@@ -42,6 +49,7 @@ import {
 } from "../../lib/document-view-model";
 import { useRealtimeInvalidation } from "../../lib/realtime";
 import { cn } from "../../lib/utils";
+import { useDocumentCreate } from "./document-create-context";
 import { useSession } from "../providers/session-provider";
 import { TagBadgeList } from "../tag";
 import { Badge } from "../ui/badge";
@@ -55,10 +63,29 @@ import {
   DialogTitle,
 } from "../ui/dialog";
 import { Input } from "../ui/input";
+import { SelectMenu } from "../ui/select-menu";
 import { Textarea } from "../ui/textarea";
 
 const PAGE_SIZE = 50;
 const DOCUMENTS_REALTIME_KEYS = ["document-list", "resource-documents"] as const;
+const DENSITY_STORAGE_KEY = "documents.list.density";
+
+const SORT_OPTIONS = {
+  recentEdited: { dateField: "lastEditedAt", sortBy: "lastEditedAt", sortOrder: "desc" },
+  recentCreated: { dateField: "createdAt", sortBy: "createdAt", sortOrder: "desc" },
+  title: { dateField: null, sortBy: "title", sortOrder: "asc" },
+} as const satisfies Record<
+  string,
+  {
+    dateField: "lastEditedAt" | "createdAt" | null;
+    sortBy: DocumentSortBy;
+    sortOrder: "asc" | "desc";
+  }
+>;
+
+type DocumentSortKey = keyof typeof SORT_OPTIONS;
+type DocumentDensity = "comfortable" | "compact";
+
 type DocumentTranslator = (
   key: string,
   values?: Record<string, number | string>,
@@ -68,18 +95,32 @@ export function DocumentsPage() {
   const t = useTranslations("documents");
   const tRoot = useTranslations();
   const locale = useLocale();
-  const router = useRouter();
   const { currentOrganization, currentSpace, session, status } = useSession();
   const organizationId =
     currentOrganization?.id ?? session?.defaultOrganizationId;
   const spaceId = currentSpace?.id ?? session?.defaultSpaceId;
   const [items, setItems] = useState<DocumentSummary[]>([]);
+  const [total, setTotal] = useState(0);
+  const [page, setPage] = useState(1);
   const [query, setQuery] = useState("");
+  const [debouncedQuery, setDebouncedQuery] = useState("");
   const [filter, setFilter] = useState<DocumentFilterKey>("all");
   const [isLoading, setIsLoading] = useState(false);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [errorKey, setErrorKey] = useState<string | null>(null);
-  const [importOpen, setImportOpen] = useState(false);
-  const [pasteOpen, setPasteOpen] = useState(false);
+  const [sort, setSort] = useState<DocumentSortKey>("recentEdited");
+  const [density, setDensity] = useState<DocumentDensity>("comfortable");
+
+  useEffect(() => {
+    const stored = window.localStorage.getItem(DENSITY_STORAGE_KEY);
+    if (stored === "comfortable" || stored === "compact") {
+      setDensity(stored);
+    }
+  }, []);
+
+  useEffect(() => {
+    window.localStorage.setItem(DENSITY_STORAGE_KEY, density);
+  }, [density]);
 
   const loadDocuments = useCallback(async (options?: { realtime?: boolean }) => {
     if (!spaceId) {
@@ -99,21 +140,71 @@ export function DocumentsPage() {
         organizationId,
         page: 1,
         pageSize: PAGE_SIZE,
-        query,
+        query: debouncedQuery,
+        sortBy: SORT_OPTIONS[sort].sortBy,
+        sortOrder: SORT_OPTIONS[sort].sortOrder,
         spaceId,
       });
       setItems(result.items);
+      setTotal(result.total);
+      setPage(1);
     } catch (error) {
       if (!isRealtime) {
         setErrorKey(getApiErrorMessageKey(error));
         setItems([]);
+        setTotal(0);
       }
     } finally {
       if (!isRealtime) {
         setIsLoading(false);
       }
     }
-  }, [filter, organizationId, query, session?.user?.id, spaceId]);
+  }, [filter, organizationId, debouncedQuery, session?.user?.id, sort, spaceId]);
+
+  const loadMore = useCallback(async () => {
+    if (!spaceId || isLoadingMore) {
+      return;
+    }
+
+    const nextPage = page + 1;
+    setIsLoadingMore(true);
+    try {
+      const result = await listDocuments({
+        currentUserId: session?.user?.id,
+        filter,
+        organizationId,
+        page: nextPage,
+        pageSize: PAGE_SIZE,
+        query: debouncedQuery,
+        sortBy: SORT_OPTIONS[sort].sortBy,
+        sortOrder: SORT_OPTIONS[sort].sortOrder,
+        spaceId,
+      });
+      setItems((current) => [...current, ...result.items]);
+      setTotal(result.total);
+      setPage(nextPage);
+    } catch (error) {
+      setErrorKey(getApiErrorMessageKey(error));
+    } finally {
+      setIsLoadingMore(false);
+    }
+  }, [
+    debouncedQuery,
+    filter,
+    isLoadingMore,
+    organizationId,
+    page,
+    session?.user?.id,
+    sort,
+    spaceId,
+  ]);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedQuery(query.trim());
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [query]);
 
   useEffect(() => {
     if (status !== "authenticated") {
@@ -134,40 +225,14 @@ export function DocumentsPage() {
   return (
     <div className="mx-auto flex w-full max-w-7xl flex-col gap-5 px-4 py-5 md:px-6">
       <section className="flex flex-col gap-4 border-b border-border pb-5">
-        <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
-          <div className="min-w-0">
-            <p className="text-xs font-medium uppercase text-muted-foreground">
-              {currentOrganization?.name ?? t("unknownOrganization")}
-            </p>
-            <h1 className="mt-1 truncate text-2xl font-semibold tracking-normal text-foreground">
-              {currentSpace?.name ?? t("unknownSpace")}
-            </h1>
-            <p className="mt-1 max-w-2xl text-sm text-muted-foreground">
-              {t("home.subtitle")}
-            </p>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => setPasteOpen(true)}
-              data-testid="documents-paste-button"
-            >
-              <FilePlus2 className="h-4 w-4" aria-hidden="true" />
-              {t("home.paste")}
-            </Button>
-            <Button
-              type="button"
-              onClick={() => setImportOpen(true)}
-              data-testid="documents-import-button"
-            >
-              <Upload className="h-4 w-4" aria-hidden="true" />
-              {t("home.import")}
-            </Button>
-          </div>
-        </div>
+        <h1 className="sr-only">
+          {currentSpace?.name ?? t("unknownSpace")}
+        </h1>
+        <p className="max-w-2xl text-sm text-muted-foreground">
+          {t("home.subtitle")}
+        </p>
 
-        <div className="flex flex-col gap-3 xl:flex-row xl:items-center">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
           <label className="relative min-w-0 flex-1">
             <span className="sr-only">{t("home.searchLabel")}</span>
             <Search
@@ -182,27 +247,72 @@ export function DocumentsPage() {
               onChange={(event) => setQuery(event.target.value)}
             />
           </label>
-          <div
-            className="flex gap-1 overflow-x-auto pb-1 xl:pb-0"
-            aria-label={t("home.filtersLabel")}
-          >
-            {getDocumentFilterKeys().map((key) => (
-              <button
-                key={key}
-                type="button"
-                className={cn(
-                  "inline-flex h-8 shrink-0 items-center rounded-md border px-3 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
-                  filter === key
-                    ? "border-primary bg-primary/10 text-primary"
-                    : "border-border bg-background text-muted-foreground hover:bg-muted hover:text-foreground",
-                )}
-                data-testid={`documents-filter-${key.replace(/[A-Z]/gu, (m) => `-${m.toLowerCase()}`)}`}
-                onClick={() => setFilter(key)}
-              >
-                {t(`filters.${key}`)}
-              </button>
-            ))}
+          <div className="flex shrink-0 items-center gap-2">
+            <SelectMenu
+              aria-label={t("home.sortLabel")}
+              className="h-9 w-36"
+              data-testid="documents-sort-select"
+              value={sort}
+              onChange={(event) => setSort(event.target.value as DocumentSortKey)}
+            >
+              {(Object.keys(SORT_OPTIONS) as DocumentSortKey[]).map((key) => (
+                <option key={key} value={key}>
+                  {t(`sort.${key}`)}
+                </option>
+              ))}
+            </SelectMenu>
+            <div
+              className="flex h-9 shrink-0 items-center rounded-md border border-border p-0.5"
+              role="group"
+              aria-label={t("home.densityLabel")}
+            >
+              {(["comfortable", "compact"] as DocumentDensity[]).map((value) => {
+                const Icon = value === "comfortable" ? List : AlignJustify;
+                return (
+                  <button
+                    key={value}
+                    type="button"
+                    aria-pressed={density === value}
+                    aria-label={t(`density.${value}`)}
+                    title={t(`density.${value}`)}
+                    className={cn(
+                      "flex h-8 w-8 items-center justify-center rounded transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                      density === value
+                        ? "bg-primary/10 text-primary"
+                        : "text-muted-foreground hover:bg-muted hover:text-foreground",
+                    )}
+                    data-testid={`documents-density-${value}`}
+                    onClick={() => setDensity(value)}
+                  >
+                    <Icon className="h-4 w-4" aria-hidden="true" />
+                  </button>
+                );
+              })}
+            </div>
           </div>
+        </div>
+
+        <div
+          className="flex gap-1 overflow-x-auto pb-1"
+          aria-label={t("home.filtersLabel")}
+        >
+          {getDocumentFilterKeys().map((key) => (
+            <button
+              key={key}
+              type="button"
+              aria-pressed={filter === key}
+              className={cn(
+                "inline-flex h-8 shrink-0 items-center rounded-md border px-3 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                filter === key
+                  ? "border-primary bg-primary/10 text-primary"
+                  : "border-border bg-background text-muted-foreground hover:bg-muted hover:text-foreground",
+              )}
+              data-testid={`documents-filter-${key.replace(/[A-Z]/gu, (m) => `-${m.toLowerCase()}`)}`}
+              onClick={() => setFilter(key)}
+            >
+              {t(`filters.${key}`)}
+            </button>
+          ))}
         </div>
       </section>
 
@@ -223,93 +333,212 @@ export function DocumentsPage() {
         </div>
       ) : null}
 
-      {showEmpty ? <DocumentsEmptyState onImport={() => setImportOpen(true)} onPaste={() => setPasteOpen(true)} /> : null}
+      {showEmpty ? <DocumentsEmptyState /> : null}
 
       {!isLoading && items.length > 0 ? (
-        <DocumentList items={items} locale={locale} />
+        <DocumentList
+          dateField={SORT_OPTIONS[sort].dateField}
+          density={density}
+          items={items}
+          locale={locale}
+        />
       ) : null}
 
-      <DocumentImportDialog
-        open={importOpen}
-        organizationId={organizationId}
-        spaceId={spaceId}
-        onCreated={(documentId) => router.push(`/documents/${documentId}`)}
-        onOpenChange={setImportOpen}
-      />
-      <DocumentPasteDialog
-        open={pasteOpen}
-        organizationId={organizationId}
-        spaceId={spaceId}
-        onCreated={(documentId) => router.push(`/documents/${documentId}`)}
-        onOpenChange={setPasteOpen}
-      />
+      {!isLoading && items.length > 0 && items.length < total ? (
+        <div className="flex justify-center">
+          <Button
+            type="button"
+            variant="outline"
+            disabled={isLoadingMore}
+            onClick={() => void loadMore()}
+            data-testid="documents-load-more"
+          >
+            {isLoadingMore ? (
+              <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
+            ) : null}
+            {t("home.loadMore", { count: total - items.length })}
+          </Button>
+        </div>
+      ) : null}
     </div>
   );
 }
 
+type DocumentGroupKey = "today" | "thisWeek" | "thisMonth" | "earlier";
+
+function getDateBucket(iso: string): DocumentGroupKey {
+  const date = new Date(iso);
+  const now = new Date();
+  const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  if (date >= startOfToday) {
+    return "today";
+  }
+  const weekAgo = new Date(startOfToday);
+  weekAgo.setDate(weekAgo.getDate() - 7);
+  if (date >= weekAgo) {
+    return "thisWeek";
+  }
+  const monthAgo = new Date(startOfToday);
+  monthAgo.setMonth(monthAgo.getMonth() - 1);
+  if (date >= monthAgo) {
+    return "thisMonth";
+  }
+  return "earlier";
+}
+
+function groupDocumentsByDate(
+  items: DocumentSummary[],
+  dateField: "lastEditedAt" | "createdAt" | null,
+): { items: DocumentSummary[]; key: DocumentGroupKey | "all" }[] {
+  if (!dateField) {
+    return [{ items, key: "all" }];
+  }
+  const order: DocumentGroupKey[] = ["today", "thisWeek", "thisMonth", "earlier"];
+  const buckets = new Map<DocumentGroupKey, DocumentSummary[]>();
+  for (const item of items) {
+    const value = dateField === "createdAt" ? item.createdAt : item.lastEditedAt;
+    const bucket = getDateBucket(value);
+    const list = buckets.get(bucket) ?? [];
+    list.push(item);
+    buckets.set(bucket, list);
+  }
+  return order
+    .filter((key) => buckets.has(key))
+    .map((key) => ({ items: buckets.get(key) ?? [], key }));
+}
+
 function DocumentList({
+  dateField,
+  density,
   items,
   locale,
 }: {
+  dateField: "lastEditedAt" | "createdAt" | null;
+  density: DocumentDensity;
   items: DocumentSummary[];
   locale: string;
 }) {
   const t = useTranslations("documents");
+  const groups = groupDocumentsByDate(items, dateField);
 
   return (
-    <div className="overflow-hidden rounded-md border border-border bg-card" data-testid="documents-list">
-      <div className="hidden grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)_minmax(12rem,0.9fr)] gap-4 border-b border-border bg-muted/40 px-4 py-2 text-xs font-medium text-muted-foreground md:grid">
-        <span>{t("list.document")}</span>
-        <span>{t("list.resources")}</span>
-        <span>{t("list.updated")}</span>
-      </div>
+    <div
+      className="overflow-hidden rounded-md border border-border bg-card"
+      data-testid="documents-list"
+    >
       <div className="divide-y divide-border">
-        {items.map((document) => (
-          <Link
-            key={document.id}
-            href={`/documents/${document.id}`}
-            className="grid gap-3 px-4 py-4 transition-colors hover:bg-muted/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring md:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)_minmax(12rem,0.9fr)]"
-            data-testid="documents-list-item"
-          >
-            <div className="min-w-0">
-              <div className="flex min-w-0 items-center gap-2">
-                <FileText className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />
-                <span className="truncate text-sm font-semibold text-foreground">
-                  {document.title || t("untitled")}
-                </span>
-                {document.status === "ARCHIVED" ? (
-                  <Badge className="shrink-0" variant="default">
-                    <Archive className="h-3 w-3" aria-hidden="true" />
-                    {t("status.ARCHIVED")}
-                  </Badge>
-                ) : null}
-              </div>
-              <p className="mt-1 truncate text-xs text-muted-foreground">
-                {formatDocumentCreatedMeta(document, locale, t)}
-              </p>
-              {document.contentSnippet ? (
-                <p className="mt-1 line-clamp-2 text-xs leading-5 text-muted-foreground">
-                  {document.contentSnippet}
-                </p>
-              ) : null}
-              <div className="mt-2 flex flex-wrap items-center gap-1.5">
-                <SourceBadge sourceType={document.sourceType} />
-                <ActorBadge
-                  actorType={document.lastEditedVia}
-                  mcpClientName={document.lastEditedMcpClientName}
+        {groups.map((group) => (
+          <div key={group.key}>
+            {group.key !== "all" ? (
+              <h2
+                className="bg-muted/40 px-4 py-1.5 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground"
+                data-testid={`documents-group-${group.key}`}
+              >
+                {t(`group.${group.key}`)}
+              </h2>
+            ) : null}
+            <div className="divide-y divide-border">
+              {group.items.map((document) => (
+                <DocumentRow
+                  key={document.id}
+                  density={density}
+                  document={document}
+                  locale={locale}
                 />
-                <TagBadgeList tags={document.tags ?? []} />
-              </div>
+              ))}
             </div>
-            <DocumentLinksSummary links={document.links ?? []} />
-            <div className="flex flex-col gap-1 text-xs text-muted-foreground md:items-end md:text-right">
-              <span>{formatDocumentEditedMeta(document, locale, t)}</span>
-              <span>{t("list.revision", { revision: document.revision })}</span>
-            </div>
-          </Link>
+          </div>
         ))}
       </div>
     </div>
+  );
+}
+
+function DocumentRow({
+  density,
+  document,
+  locale,
+}: {
+  density: DocumentDensity;
+  document: DocumentSummary;
+  locale: string;
+}) {
+  const t = useTranslations("documents");
+  const isAi =
+    document.sourceType === "MCP_CREATED" || document.lastEditedVia === "MCP_CLIENT";
+  const SourceIcon = isAi ? Bot : User;
+  const revisionLabel = t("list.revision", { revision: document.revision });
+
+  return (
+    <Link
+      href={`/documents/${document.id}`}
+      className={cn(
+        "block px-4 transition-colors hover:bg-muted/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+        density === "compact" ? "py-2" : "py-3",
+      )}
+      data-testid="documents-list-item"
+    >
+      <div className="flex min-w-0 items-center gap-2">
+        <SourceIcon
+          className="h-4 w-4 shrink-0 text-muted-foreground"
+          aria-hidden="true"
+        />
+        <span className="truncate text-sm font-semibold text-foreground">
+          {document.title || t("untitled")}
+        </span>
+        {document.status === "ARCHIVED" ? (
+          <Badge className="shrink-0" variant="default">
+            <Archive className="h-3 w-3" aria-hidden="true" />
+            {t("status.ARCHIVED")}
+          </Badge>
+        ) : null}
+        <span
+          className="ml-auto shrink-0 text-[11px] text-muted-foreground"
+          title={revisionLabel}
+        >
+          {revisionLabel}
+        </span>
+      </div>
+      <div
+        className={cn(
+          "flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground",
+          density === "compact" ? "mt-0.5" : "mt-1",
+        )}
+      >
+        <span>{formatDocumentCreatedMeta(document, locale, t)}</span>
+        <DocumentRowLinks links={document.links ?? []} />
+        <TagBadgeList tags={document.tags ?? []} />
+      </div>
+    </Link>
+  );
+}
+
+function DocumentRowLinks({ links }: { links: DocumentSummary["links"] }) {
+  const t = useTranslations("documents");
+  const all = (links ?? []).filter((link) => link.targetType !== "DOCUMENT");
+  if (all.length === 0) {
+    return null;
+  }
+  const visible = all.slice(0, 3);
+  const overflow = all.length - visible.length;
+
+  return (
+    <span className="inline-flex flex-wrap items-center gap-1">
+      {visible.map((link) => (
+        <span
+          key={link.id}
+          className="inline-flex items-center rounded border border-border bg-background px-1.5 py-0.5 font-mono text-[11px] text-foreground"
+          title={link.title}
+        >
+          {getDocumentLinkDisplayCode(link)}
+        </span>
+      ))}
+      {overflow > 0 ? (
+        <span className="text-[11px] text-muted-foreground">
+          {t("list.moreResources", { count: overflow })}
+        </span>
+      ) : null}
+    </span>
   );
 }
 
@@ -438,14 +667,9 @@ function getMcpClientDisplayName(
   return trimmed || t("meta.mcpClientFallback");
 }
 
-function DocumentsEmptyState({
-  onImport,
-  onPaste,
-}: {
-  onImport: () => void;
-  onPaste: () => void;
-}) {
+function DocumentsEmptyState() {
   const t = useTranslations("documents");
+  const { openImport, openPaste } = useDocumentCreate();
   return (
     <section
       className="flex min-h-80 flex-col items-center justify-center rounded-md border border-dashed border-border bg-card px-5 py-10 text-center"
@@ -459,11 +683,11 @@ function DocumentsEmptyState({
         {t("empty.description")}
       </p>
       <div className="mt-5 flex flex-wrap justify-center gap-2">
-        <Button type="button" onClick={onImport}>
+        <Button type="button" onClick={openImport} data-testid="documents-empty-import-button">
           <Upload className="h-4 w-4" aria-hidden="true" />
           {t("home.import")}
         </Button>
-        <Button type="button" variant="outline" onClick={onPaste}>
+        <Button type="button" variant="outline" onClick={openPaste} data-testid="documents-empty-paste-button">
           <FilePlus2 className="h-4 w-4" aria-hidden="true" />
           {t("home.paste")}
         </Button>
@@ -671,4 +895,10 @@ function DocumentPasteDialog({
   );
 }
 
-export { DocumentLinksSummary, SourceBadge, ActorBadge };
+export {
+  ActorBadge,
+  DocumentImportDialog,
+  DocumentLinksSummary,
+  DocumentPasteDialog,
+  SourceBadge,
+};

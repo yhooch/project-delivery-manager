@@ -50,7 +50,7 @@ export function DocumentMarkdownViewer({
   return (
     <article
       className={cn(
-        "document-markdown max-w-none text-sm leading-7 text-foreground",
+        "document-markdown max-w-[70ch] text-sm leading-7 text-foreground",
         className,
       )}
       data-testid="document-markdown-viewer"
@@ -146,21 +146,46 @@ export function DocumentMarkdownViewer({
           );
         }
 
-        if (block.kind === "tableRow") {
+        if (block.kind === "table") {
           return (
-            <div
-              key={index}
-              className="my-1 grid gap-2 rounded-md border border-border bg-card px-3 py-2 text-xs sm:grid-flow-col sm:auto-cols-fr"
-            >
-              {block.cells.map((cell, cellIndex) => (
-                <span key={cellIndex} className="min-w-0">
-                  <InlineTokens
-                    organizationId={organizationId}
-                    spaceId={spaceId}
-                    tokens={cell}
-                  />
-                </span>
-              ))}
+            <div key={index} className="my-4 overflow-x-auto">
+              <table className="w-full border-collapse text-xs">
+                <thead>
+                  <tr className="border-b border-border bg-muted/40 text-left">
+                    {block.header.map((cell, cellIndex) => (
+                      <th
+                        key={cellIndex}
+                        scope="col"
+                        className="px-3 py-2 font-semibold text-foreground"
+                      >
+                        <InlineTokens
+                          organizationId={organizationId}
+                          spaceId={spaceId}
+                          tokens={cell}
+                        />
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {block.rows.map((row, rowIndex) => (
+                    <tr key={rowIndex} className="border-b border-border last:border-0">
+                      {row.map((cell, cellIndex) => (
+                        <td
+                          key={cellIndex}
+                          className="px-3 py-2 align-top text-muted-foreground"
+                        >
+                          <InlineTokens
+                            organizationId={organizationId}
+                            spaceId={spaceId}
+                            tokens={cell}
+                          />
+                        </td>
+                      ))}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
           );
         }

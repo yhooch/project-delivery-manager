@@ -12,7 +12,11 @@ export type MarkdownBlock =
   | { kind: "code"; code: string; language?: string }
   | { inlines: MarkdownInlineToken[]; kind: "quote" }
   | { items: MarkdownInlineToken[][]; kind: "list"; ordered: boolean }
-  | { cells: MarkdownInlineToken[][]; kind: "tableRow" }
+  | {
+      header: MarkdownInlineToken[][];
+      kind: "table";
+      rows: MarkdownInlineToken[][][];
+    }
   | { kind: "rule" };
 
 export type MarkdownHeading = {
@@ -46,8 +50,10 @@ export function markdownToPlainText(markdown: string): string {
       if (block.kind === "list") {
         return block.items.map(tokensToText).join("\n");
       }
-      if (block.kind === "tableRow") {
-        return block.cells.map(tokensToText).join(" ");
+      if (block.kind === "table") {
+        return [block.header, ...block.rows]
+          .map((row) => row.map(tokensToText).join(" "))
+          .join("\n");
       }
       if (block.kind === "paragraph" || block.kind === "quote") {
         return tokensToText(block.inlines);
@@ -142,10 +148,14 @@ export function parseMarkdown(markdown: string): MarkdownBlock[] {
         }
         i += 1;
       }
-      for (const rowLine of rowLines) {
+      if (rowLines.length > 0) {
+        const [headerLine, ...bodyLines] = rowLines;
         blocks.push({
-          cells: splitTableRow(rowLine).map(tokenizeInline),
-          kind: "tableRow",
+          header: splitTableRow(headerLine ?? "").map(tokenizeInline),
+          kind: "table",
+          rows: bodyLines.map((rowLine) =>
+            splitTableRow(rowLine).map(tokenizeInline),
+          ),
         });
       }
       continue;

@@ -1,14 +1,19 @@
 "use client";
 
-import { BookOpen, ChevronLeft, Loader2 } from "lucide-react";
+import { BookOpen, ChevronLeft, FilePlus2, Loader2, Upload } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { useEffect, type ReactNode } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 
-import { Link } from "../../i18n/routing";
+import { Link, useRouter } from "../../i18n/routing";
 import { RealtimeProvider } from "../../lib/realtime";
 import { useSession } from "../providers/session-provider";
 import { Button } from "../ui/button";
 import { CommandPalette, useCommandPaletteShortcut } from "../shell/command-palette";
+import { DocumentCreateProvider } from "./document-create-context";
+import {
+  DocumentImportDialog,
+  DocumentPasteDialog,
+} from "./documents-page";
 
 type DocumentShellProps = {
   children: ReactNode;
@@ -18,6 +23,8 @@ export function DocumentShell({ children }: DocumentShellProps) {
   const t = useTranslations("shell.documents");
   const tShell = useTranslations("shell");
   const tRoot = useTranslations();
+  const tCreate = useTranslations("documents.home");
+  const router = useRouter();
   const {
     currentOrganization,
     currentSpace,
@@ -27,6 +34,16 @@ export function DocumentShell({ children }: DocumentShellProps) {
     status,
   } = useSession();
   const hasOrganization = Boolean(currentOrganization);
+  const [importOpen, setImportOpen] = useState(false);
+  const [pasteOpen, setPasteOpen] = useState(false);
+
+  const createActions = useMemo(
+    () => ({
+      openImport: () => setImportOpen(true),
+      openPaste: () => setPasteOpen(true),
+    }),
+    [],
+  );
 
   useCommandPaletteShortcut({ enabled: hasOrganization });
 
@@ -86,36 +103,79 @@ export function DocumentShell({ children }: DocumentShellProps) {
     );
   }
 
+  const organizationId = currentOrganization?.id ?? session.defaultOrganizationId;
+  const spaceId = currentSpace?.id ?? session.defaultSpaceId;
+
   return (
-    <div className="min-h-screen bg-background text-foreground">
-      <header className="sticky top-0 z-30 flex h-12 items-center justify-between border-b border-border bg-background/95 px-4 backdrop-blur md:px-6">
-        <div className="flex min-w-0 items-center gap-2">
-          <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-foreground text-background">
-            <BookOpen className="h-4 w-4" aria-hidden="true" />
-          </div>
-          <div className="min-w-0">
-            <div className="truncate text-sm font-semibold">{t("title")}</div>
-            <div className="hidden truncate text-[11px] text-muted-foreground sm:block">
-              {currentSpace?.name ?? t("noSpace")}
+    <DocumentCreateProvider value={createActions}>
+      <div className="min-h-screen bg-background text-foreground">
+        <header className="sticky top-0 z-30 flex h-12 items-center justify-between gap-2 border-b border-border bg-background/95 px-4 backdrop-blur md:px-6">
+          <div className="flex min-w-0 items-center gap-2">
+            <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-foreground text-background">
+              <BookOpen className="h-4 w-4" aria-hidden="true" />
+            </div>
+            <div className="min-w-0">
+              <div className="truncate text-sm font-semibold">{t("title")}</div>
+              <div className="hidden truncate text-[11px] text-muted-foreground sm:block">
+                {currentSpace?.name ?? t("noSpace")}
+              </div>
             </div>
           </div>
-        </div>
-        <Button asChild size="sm" variant="outline">
-          <Link href="/">
-            <ChevronLeft className="h-3.5 w-3.5" aria-hidden="true" />
-            {t("backToWorkspace")}
-          </Link>
-        </Button>
-      </header>
-      <main className="min-h-[calc(100vh-3rem)]">
-        <RealtimeProvider
-          organizationId={currentOrganization?.id ?? session.defaultOrganizationId}
-          spaceId={currentSpace?.id ?? session.defaultSpaceId}
-        >
-          {children}
-        </RealtimeProvider>
-      </main>
-      {hasOrganization ? <CommandPalette /> : null}
-    </div>
+          <div className="flex shrink-0 items-center gap-2">
+            {hasOrganization ? (
+              <>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  aria-label={tCreate("paste")}
+                  onClick={createActions.openPaste}
+                  data-testid="documents-paste-button"
+                >
+                  <FilePlus2 className="h-4 w-4" aria-hidden="true" />
+                  <span className="hidden sm:inline">{tCreate("paste")}</span>
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  aria-label={tCreate("import")}
+                  onClick={createActions.openImport}
+                  data-testid="documents-import-button"
+                >
+                  <Upload className="h-4 w-4" aria-hidden="true" />
+                  <span className="hidden sm:inline">{tCreate("import")}</span>
+                </Button>
+              </>
+            ) : null}
+            <Button asChild size="sm" variant="ghost">
+              <Link href="/">
+                <ChevronLeft className="h-3.5 w-3.5" aria-hidden="true" />
+                <span className="hidden sm:inline">{t("backToWorkspace")}</span>
+              </Link>
+            </Button>
+          </div>
+        </header>
+        <main className="min-h-[calc(100vh-3rem)]">
+          <RealtimeProvider organizationId={organizationId} spaceId={spaceId}>
+            {children}
+          </RealtimeProvider>
+        </main>
+        {hasOrganization ? <CommandPalette /> : null}
+        <DocumentImportDialog
+          open={importOpen}
+          organizationId={organizationId}
+          spaceId={spaceId}
+          onCreated={(documentId) => router.push(`/documents/${documentId}`)}
+          onOpenChange={setImportOpen}
+        />
+        <DocumentPasteDialog
+          open={pasteOpen}
+          organizationId={organizationId}
+          spaceId={spaceId}
+          onCreated={(documentId) => router.push(`/documents/${documentId}`)}
+          onOpenChange={setPasteOpen}
+        />
+      </div>
+    </DocumentCreateProvider>
   );
 }

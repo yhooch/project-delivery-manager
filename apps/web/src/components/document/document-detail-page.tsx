@@ -2,6 +2,7 @@
 
 import {
   Archive,
+  ChevronRight,
   Clock3,
   Download,
   FileText,
@@ -140,6 +141,7 @@ export function DocumentDetailPage({ documentId }: DocumentDetailPageProps) {
   const [conflict, setConflict] = useState(false);
   const [hasRealtimeRevision, setHasRealtimeRevision] = useState(false);
   const [editMode, setEditMode] = useState(false);
+  const [contentPreview, setContentPreview] = useState(false);
   const [reimportFile, setReimportFile] = useState<File | null>(null);
   const [commentBody, setCommentBody] = useState("");
   const [isCommenting, setIsCommenting] = useState(false);
@@ -294,9 +296,11 @@ export function DocumentDetailPage({ documentId }: DocumentDetailPageProps) {
     };
   }, [document, documentSearch, editMode]);
 
+  const headingsSource =
+    editMode && form ? form.contentMarkdown : document?.contentMarkdown ?? "";
   const headings = useMemo<MarkdownHeading[]>(
-    () => getDocumentMarkdownHeadings(document?.contentMarkdown ?? ""),
-    [document?.contentMarkdown],
+    () => getDocumentMarkdownHeadings(headingsSource),
+    [headingsSource],
   );
 
   const save = async (event: FormEvent) => {
@@ -547,11 +551,9 @@ export function DocumentDetailPage({ documentId }: DocumentDetailPageProps) {
 
   return (
     <>
-      <form
-        className="mx-auto grid w-full max-w-7xl gap-6 px-4 py-5 lg:grid-cols-[minmax(0,1fr)_18rem] lg:px-6"
-        onSubmit={(event) => void save(event)}
-      >
+      <div className="mx-auto grid w-full max-w-7xl gap-6 px-4 py-5 lg:grid-cols-[minmax(0,1fr)_18rem] lg:px-6">
       <div className="min-w-0">
+        <form onSubmit={(event) => void save(event)}>
         <div className="mb-5 flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground">
           <Link className="hover:text-foreground hover:underline" href="/">
             {currentOrganization?.name ?? t("unknownOrganization")}
@@ -569,6 +571,7 @@ export function DocumentDetailPage({ documentId }: DocumentDetailPageProps) {
             <div className="min-w-0 flex-1">
               {editMode ? (
                 <Input
+                  aria-label={t("edit.titleLabel")}
                   className="h-auto px-0 py-1 text-2xl font-semibold tracking-normal shadow-none md:text-3xl"
                   data-testid="document-title-input"
                   value={form.title}
@@ -625,7 +628,10 @@ export function DocumentDetailPage({ documentId }: DocumentDetailPageProps) {
                   <Button
                     type="button"
                     variant="outline"
-                    onClick={() => setEditMode(true)}
+                    onClick={() => {
+                      setContentPreview(false);
+                      setEditMode(true);
+                    }}
                     data-testid="document-edit-button"
                   >
                     <Pencil className="h-4 w-4" aria-hidden="true" />
@@ -664,7 +670,7 @@ export function DocumentDetailPage({ documentId }: DocumentDetailPageProps) {
                   ) : (
                     <Button
                       type="button"
-                      variant="outline"
+                      variant="ghost"
                       disabled={isArchiving}
                       onClick={() => void archive()}
                     >
@@ -731,21 +737,62 @@ export function DocumentDetailPage({ documentId }: DocumentDetailPageProps) {
 
         {editMode ? (
           <section className="mt-5 grid gap-5" data-testid="document-edit-panel">
-            <label className="grid gap-1.5 text-sm">
-              <span className="font-medium">{t("edit.contentLabel")}</span>
-              <Textarea
-                className="min-h-[28rem] font-mono text-xs leading-5"
-                data-testid="document-content-input"
-                value={form.contentMarkdown}
-                onChange={(event) =>
-                  setForm((current) =>
-                    current
-                      ? { ...current, contentMarkdown: event.target.value }
-                      : current,
-                  )
-                }
-              />
-            </label>
+            <div className="grid gap-1.5 text-sm">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <span className="font-medium" id="document-content-label">
+                  {t("edit.contentLabel")}
+                </span>
+                <div
+                  className="flex gap-1"
+                  role="group"
+                  aria-label={t("edit.contentViewLabel")}
+                >
+                  {([false, true] as const).map((preview) => (
+                    <button
+                      key={preview ? "preview" : "source"}
+                      type="button"
+                      aria-pressed={contentPreview === preview}
+                      className={cn(
+                        "inline-flex h-7 items-center rounded-md border px-2.5 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                        contentPreview === preview
+                          ? "border-primary bg-primary/10 text-primary"
+                          : "border-border bg-background text-muted-foreground hover:bg-muted hover:text-foreground",
+                      )}
+                      data-testid={
+                        preview
+                          ? "document-content-preview-tab"
+                          : "document-content-source-tab"
+                      }
+                      onClick={() => setContentPreview(preview)}
+                    >
+                      {preview ? t("edit.previewTab") : t("edit.sourceTab")}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              {contentPreview ? (
+                <DocumentMarkdownViewer
+                  className="min-h-[28rem] rounded-md border border-border p-4"
+                  markdown={form.contentMarkdown}
+                  organizationId={document.organizationId}
+                  spaceId={document.spaceId}
+                />
+              ) : (
+                <Textarea
+                  aria-labelledby="document-content-label"
+                  className="min-h-[28rem] font-mono text-xs leading-5"
+                  data-testid="document-content-input"
+                  value={form.contentMarkdown}
+                  onChange={(event) =>
+                    setForm((current) =>
+                      current
+                        ? { ...current, contentMarkdown: event.target.value }
+                        : current,
+                    )
+                  }
+                />
+              )}
+            </div>
             {spaceId ? (
               <div className="grid gap-1.5 text-sm">
                 <span className="font-medium">{t("edit.tagsLabel")}</span>
@@ -820,6 +867,7 @@ export function DocumentDetailPage({ documentId }: DocumentDetailPageProps) {
             spaceId={document.spaceId}
           />
         )}
+        </form>
 
         <DocumentManagementSections
           attachmentErrorKey={attachmentErrorKey}
@@ -840,7 +888,7 @@ export function DocumentDetailPage({ documentId }: DocumentDetailPageProps) {
         headings={headings}
         locale={locale}
       />
-      </form>
+      </div>
       <DocumentDeleteDialog
         documentTitle={document.title || t("untitled")}
         isDeleting={isDeleting}
@@ -1030,7 +1078,11 @@ function DocumentManagementSections({
 
   return (
     <div className="mt-8 grid gap-6 border-t border-border pt-6">
-      <section className="grid gap-3" data-testid="document-comments-section">
+      <section
+        id="document-comments"
+        className="grid scroll-mt-20 gap-3"
+        data-testid="document-comments-section"
+      >
         <div className="flex items-center gap-2 text-sm font-semibold">
           <MessageSquare className="h-4 w-4 text-muted-foreground" />
           {t("comments.title")}
@@ -1093,7 +1145,11 @@ function DocumentManagementSections({
         )}
       </section>
 
-      <section className="grid gap-3" data-testid="document-attachments-section">
+      <section
+        id="document-attachments"
+        className="grid scroll-mt-20 gap-3"
+        data-testid="document-attachments-section"
+      >
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div className="flex items-center gap-2 text-sm font-semibold">
             <Paperclip className="h-4 w-4 text-muted-foreground" />
@@ -1259,29 +1315,20 @@ function DocumentContextRail({
           <TagBadgeList tags={document.tags ?? []} emptyLabel={t("rail.noTags")} />
         </RailSection>
         <RailSection icon={<MessageSquare className="h-4 w-4" />} title={t("rail.comments")}>
-          {(document.comments ?? []).slice(0, 2).map((comment) => (
-            <div key={comment.id} className="rounded-md bg-muted/40 px-2 py-1.5 text-xs">
-              <div className="font-medium text-foreground">
-                {comment.authorName ?? t("rail.unknownActor")}
-              </div>
-              <div className="mt-0.5 line-clamp-2 text-muted-foreground">
-                {comment.body}
-              </div>
-            </div>
-          ))}
-          {(document.comments ?? []).length === 0 ? (
-            <p className="text-xs text-muted-foreground">{t("rail.noComments")}</p>
-          ) : null}
+          <RailJumpLink
+            count={(document.comments ?? []).length}
+            emptyLabel={t("rail.noComments")}
+            href="#document-comments"
+            label={t("rail.viewAll", { count: (document.comments ?? []).length })}
+          />
         </RailSection>
         <RailSection icon={<Paperclip className="h-4 w-4" />} title={t("rail.attachments")}>
-          {(document.attachments ?? []).slice(0, 3).map((attachment) => (
-            <div key={attachment.id} className="truncate text-xs text-muted-foreground">
-              {attachment.fileName}
-            </div>
-          ))}
-          {(document.attachments ?? []).length === 0 ? (
-            <p className="text-xs text-muted-foreground">{t("rail.noAttachments")}</p>
-          ) : null}
+          <RailJumpLink
+            count={(document.attachments ?? []).length}
+            emptyLabel={t("rail.noAttachments")}
+            href="#document-attachments"
+            label={t("rail.viewAll", { count: (document.attachments ?? []).length })}
+          />
         </RailSection>
         <RailSection icon={<Clock3 className="h-4 w-4" />} title={t("rail.timeline")}>
           {(document.timeline ?? []).slice(0, 3).map((event) => (
@@ -1336,6 +1383,32 @@ function RailSection({
       </h2>
       {children}
     </section>
+  );
+}
+
+function RailJumpLink({
+  count,
+  emptyLabel,
+  href,
+  label,
+}: {
+  count: number;
+  emptyLabel: string;
+  href: string;
+  label: string;
+}) {
+  if (count === 0) {
+    return <p className="text-xs text-muted-foreground">{emptyLabel}</p>;
+  }
+
+  return (
+    <a
+      href={href}
+      className="flex items-center justify-between gap-2 rounded px-2 py-1 text-xs text-muted-foreground hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+    >
+      <span className="truncate">{label}</span>
+      <ChevronRight className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+    </a>
   );
 }
 

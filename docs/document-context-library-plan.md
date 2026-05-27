@@ -98,16 +98,21 @@ Word 导入后转换为 Markdown；原始 Word 文件作为来源附件保留。
 ### 4.1 文档首页
 
 `/documents` 继续作为独立文档子系统入口，不复用主应用 `(app)` 的 Sidebar/TopBar，
-但需要保留当前登录态、组织和空间上下文。
+而是使用文档子系统自有顶栏，保留当前登录态、组织和空间上下文。
 
-页面主体建议：
+页面布局（已实现）：
 
-- 顶部：当前空间、导入按钮、粘贴内容入口、搜索框、筛选入口。
-- 列表视图：标题、标签、关联资源、来源标记、创建人、创建工具/来源、创建时间、最近编辑人、最近编辑工具/来源、最近更新时间。
-- 快速筛选：全部、我创建、模型生成、通过模型修改、已归档。
+- 子系统顶栏（列表与详情共用）：文档入口标识与当前空间名、导入与粘贴入口、返回工作台。
+  导入/粘贴作为全局快速沉淀入口常驻顶栏，窄屏降级为图标按钮，因此列表页头不再重复展示组织/空间大标题。
+- 列表控制条：搜索框（输入防抖）、排序（最近编辑 / 最近创建 / 标题）、显示密度切换（舒适 / 紧凑，本地记忆偏好）；
+  快速筛选（全部、我创建、模型生成、通过模型修改、已归档）单独一行。
+- 列表行：来源图标（用户 / 模型）+ 标题 + 归档标记 + revision；次行展示创建信息
+  （创建人、创建工具/来源、创建时间）、关联业务对象（版本 / 需求 / 事项 / 任务 / Bug；文档型关联不在列表展示）与标签。
+  为突出“最近沉淀”，列表行只展示创建信息，最近编辑信息在详情页查看。
+- 按日期排序（最近编辑 / 最近创建）时按 今天 / 本周 / 本月 / 更早 分组；超过单页数量提供“加载更多”。
 - 空态：引导用户导入 Markdown、Word 或粘贴大模型输出。
 
-主按钮文案建议使用“导入文档”，弱化“新建文档”。
+主按钮文案使用“导入”，弱化“新建文档”。
 
 ### 4.2 文档详情页
 
@@ -127,18 +132,19 @@ Word 导入后转换为 Markdown；原始 Word 文件作为来源附件保留。
   - 版本、需求、事项、任务、Bug、其他文档以 chip 展示。
   - 点击 chip 进入对应资源详情页或打开对应详情抽屉。
 - 正文区：
-  - Markdown 渲染阅读模式。
+  - Markdown 渲染阅读模式，阅读宽度受限以保证可读行长（约 70 字符）。
   - 标题自动生成目录锚点。
+  - 表格以语义化 `table` 渲染（表头加强），不拆成独立行卡片。
   - 正文中的 `REQ-12`、`INTAKE-8`、`TASK-42`、`BUG-17` 自动识别为可点击链接。
   - Markdown 渲染必须做 XSS 清洗；链接只允许 `http`、`https`、`mailto`、系统内部链接和受控附件链接。
   - 远程图片默认不直接内嵌渲染；第一版优先展示为可点击链接或占位，避免绕过附件权限。
 - 右侧上下文栏：
-  - 本文目录。
+  - 本文目录（编辑态基于编辑草稿实时计算）。
   - 关联资源。
   - 关联文档。
   - 标签。
-  - 附件。
-  - 最近评论。
+  - 附件：计数 + 跳转到正文下方附件区，不在右栏重复展示完整列表。
+  - 最近评论：计数 + 跳转到正文下方评论区，不在右栏重复展示完整内容。
   - 时间线入口。
   - 创建信息、最近编辑信息、来源和 revision。
 - 操作区：
@@ -157,7 +163,7 @@ Word 导入后转换为 Markdown；原始 Word 文件作为来源附件保留。
 点击“编辑”后进入轻量编辑模式：
 
 - 标题变为输入框。
-- 正文变为 Markdown 源码编辑区或轻量 Markdown 编辑器。
+- 正文变为 Markdown 源码编辑区，并提供“源码 / 预览”切换（预览复用阅读渲染）。
 - 可编辑标签和关联资源。
 - 保存时提交 `baseRevision`。
 - 保存成功后退出编辑模式，写时间线。
@@ -300,7 +306,7 @@ type DocumentChangeType =
   | "DELETED";
 ```
 
-文档列表和详情页都需要展示创建信息与最近编辑信息；详情页标题区和上下文栏都展示完整来源信息，避免用户只看到“模型生成”却无法判断具体用户和工具。
+列表行只展示创建信息（创建人、创建工具/来源、创建时间）以突出沉淀来源，并通过来源图标区分用户与模型；详情页标题区和上下文栏展示完整来源信息（创建与最近编辑），避免用户只看到“模型生成”却无法判断具体用户和工具。
 
 ## 8. 数据模型草案
 
@@ -598,26 +604,26 @@ MCP 搜索需要返回适合模型消费的结果：
 - `/documents`：文档首页。
 - `/documents/:documentId`：文档详情/资源页。
 
-主要组件：
+主要组件（已实现）：
 
-- `DocumentsPage`
-- `DocumentImportDialog`
-- `DocumentPasteDialog`
-- `DocumentList`
-- `DocumentSourceBadge`
-- `DocumentDetailPage`
-- `DocumentMarkdownViewer`
-- `DocumentEditPanel`
-- `DocumentContextRail`
-- `DocumentLinkedResources`
-- `DocumentRevisionHistory`
-- `DocumentComments`
+- `DocumentShell`：文档子系统外壳与共用顶栏，承载导入/粘贴入口与对话框、返回工作台、Cmd+K。
+- `DocumentCreateProvider` / `useDocumentCreate`：顶栏与空态共享的导入/粘贴入口。
+- `DocumentsPage`、`DocumentList`（含 `DocumentRow`、`DocumentRowLinks`）。
+- `DocumentImportDialog`、`DocumentPasteDialog`。
+- `SourceBadge`、`ActorBadge`：来源与操作者标记（详情页与原列表沿用）。
+- `DocumentDetailPage`、`DocumentMarkdownViewer`、`DocumentContextRail`。
+- `DocumentManagementSections`：详情页评论与附件区。
+- `DocumentDeleteDialog`。
+
+文档历史版本 UI（`DocumentRevisionHistory`）后续再做；revision 已落库可支撑。
 
 实现要求：
 
 - 可见文案全部进入 `zh-CN` / `en-US`。
 - UI E2E 使用 `data-testid`，不依赖中文/英文文案。
 - 浅色/深色下 Markdown 正文、代码块、表格、引用、链接和标记徽章均可读。
+- 列表排序透传后端 `sortBy` / `sortOrder`；日期分组与显示密度为前端能力，导入/粘贴入口经 `DocumentShell` 全局提供。
+- 下拉控件统一复用 `SelectMenu`，与系统其他列表筛选保持一致。
 - Cmd+K 增加当前空间“文档”分组；输入业务编号时继续优先走对象编号 lookup，输入普通关键词时可同时搜索文档标题和正文命中片段。
 - Markdown 渲染器和清洗器如需新增依赖，必须由主 agent 统一评审。
 

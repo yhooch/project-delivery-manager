@@ -93,6 +93,11 @@ export type DocumentPageResult<TItem> = {
   total: number;
 };
 
+export type DocumentSortBy =
+  | "lastEditedAt"
+  | "createdAt"
+  | "title";
+
 export type ListDocumentsInput = {
   currentUserId?: string;
   filter?: DocumentFilterKey;
@@ -100,6 +105,8 @@ export type ListDocumentsInput = {
   page?: number;
   pageSize?: number;
   query?: string;
+  sortBy?: DocumentSortBy;
+  sortOrder?: "asc" | "desc";
   spaceId: string;
   tagIds?: string[];
   tagMatch?: "ANY" | "ALL";
@@ -293,6 +300,8 @@ export async function listDocuments(
       page: query.page ?? 1,
       pageSize: query.pageSize ?? 50,
       query: optionalString(query.query),
+      sortBy: query.sortBy,
+      sortOrder: query.sortOrder,
       ...toDocumentListFilterQuery(filter, currentUserId),
       tagIds: query.tagIds,
       tagMatch: query.tagMatch,

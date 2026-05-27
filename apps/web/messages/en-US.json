@@ -958,7 +958,10 @@
       "searchLabel": "Search documents",
       "searchPlaceholder": "Search title or body",
       "filtersLabel": "Document filters",
-      "loading": "Loading documents…"
+      "loading": "Loading documents…",
+      "loadMore": "Load more ({count})",
+      "sortLabel": "Sort",
+      "densityLabel": "Display density"
     },
     "filters": {
       "all": "All",
@@ -999,9 +1002,6 @@
       }
     },
     "list": {
-      "document": "Document",
-      "resources": "Linked resources",
-      "updated": "Recent edit",
       "revision": "Revision {revision}",
       "noResources": "No linked resources",
       "moreResources": "+{count} more"
@@ -1048,7 +1048,11 @@
       "reimport": "Reimport"
     },
     "edit": {
+      "titleLabel": "Document title",
       "contentLabel": "Markdown body",
+      "contentViewLabel": "Content view",
+      "sourceTab": "Source",
+      "previewTab": "Preview",
       "tagsLabel": "Tags",
       "linksLabel": "Linked resources",
       "linksPlaceholder": "Enter REQ-12, INTAKE-8, TASK-42, BUG-17 separated by commas",
@@ -1095,7 +1099,8 @@
       "created": "Created",
       "edited": "Recent edit",
       "source": "Source",
-      "revision": "Revision"
+      "revision": "Revision",
+      "viewAll": "View all ({count})"
     },
     "markdown": {
       "empty": "No body content",
@@ -1103,6 +1108,21 @@
       "image": "Image",
       "openImage": "Open image link",
       "objectLookupFailed": "Code lookup failed"
+    },
+    "sort": {
+      "recentEdited": "Recently edited",
+      "recentCreated": "Recently created",
+      "title": "Title"
+    },
+    "density": {
+      "comfortable": "Comfortable",
+      "compact": "Compact"
+    },
+    "group": {
+      "today": "Today",
+      "thisWeek": "This week",
+      "thisMonth": "This month",
+      "earlier": "Earlier"
     }
   },
   "versionBoard": {
