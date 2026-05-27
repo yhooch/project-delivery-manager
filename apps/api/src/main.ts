@@ -50,6 +50,12 @@ async function bootstrap() {
 
   const config = app.get(ConfigService);
   const port = config.get<number>("PORT") ?? 3001;
+  const host = config.get<string>("HOST");
+  if (host) {
+    await app.listen(port, host);
+    return;
+  }
+
   await app.listen(port);
 }
 
