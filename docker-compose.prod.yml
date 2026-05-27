@@ -46,7 +46,6 @@ services:
       MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY:?MINIO_ACCESS_KEY is required}
       MINIO_SECRET_KEY: ${MINIO_SECRET_KEY:?MINIO_SECRET_KEY is required}
       MINIO_BUCKET: ${MINIO_BUCKET:-crm-manager-attachments}
-      WEB_APP_URL: ${WEB_APP_URL:?WEB_APP_URL is required}
       TZ: ${MINIO_TIMEZONE:-CST-8}
     entrypoint: ["/bin/sh", "-c"]
     command:
@@ -56,6 +55,22 @@ services:
           sleep 2
         done
         mc mb --ignore-existing "prod/$$MINIO_BUCKET"
+        cat >/tmp/prod-cors.xml <<'CORS'
+        <CORSConfiguration>
+          <CORSRule>
+            <AllowedOrigin>*</AllowedOrigin>
+            <AllowedMethod>GET</AllowedMethod>
+            <AllowedMethod>PUT</AllowedMethod>
+            <AllowedMethod>POST</AllowedMethod>
+            <AllowedMethod>DELETE</AllowedMethod>
+            <AllowedMethod>HEAD</AllowedMethod>
+            <AllowedHeader>*</AllowedHeader>
+            <ExposeHeader>ETag</ExposeHeader>
+            <MaxAgeSeconds>3000</MaxAgeSeconds>
+          </CORSRule>
+        </CORSConfiguration>
+        CORS
+        mc cors set "prod/$$MINIO_BUCKET" /tmp/prod-cors.xml
     restart: "no"
 
   api:

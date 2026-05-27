@@ -215,6 +215,11 @@ Compose:
 
 For HTTP deployment, `SESSION_COOKIE_SECURE=false` must match the actual origin.
 When moving to HTTPS, switch it back to secure cookie behavior.
+Public and private browser entry points are accepted when the request `Host`
+matches the browser `Origin`; `WEB_APP_URL` remains the primary OAuth/MCP
+address. `MINIO_PUBLIC_ENDPOINT` must be reachable from both public and private
+browsers; if the two networks need different MinIO addresses, route or
+reverse-proxy them so both entry points can use it.
 
 ## Current Status
 

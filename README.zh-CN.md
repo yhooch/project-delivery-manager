@@ -202,7 +202,10 @@ corepack pnpm test:e2e:list
 - [docs/production-private-registry.md](docs/production-private-registry.md)
 
 HTTP 部署时，`SESSION_COOKIE_SECURE=false` 必须和实际访问 origin 匹配。切换到 HTTPS
-后，应恢复 secure cookie 口径。
+后，应恢复 secure cookie 口径。公网和私网入口会按请求 `Host` 与浏览器 `Origin`
+同源自动放行；`WEB_APP_URL` 仍作为 OAuth/MCP 等主访问地址。`MINIO_PUBLIC_ENDPOINT`
+必须是公网和私网浏览器都能访问的地址；如果两种网络需要不同 MinIO 地址，需要分别
+保证路由或反向代理可达。
 
 ## 当前状态
 

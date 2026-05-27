@@ -28,9 +28,10 @@ export class WriteOriginGuard implements CanActivate {
       throwInvalidOrigin();
     }
 
-    const allowedOrigins = getAllowedOrigins(this.config);
-
-    if (!allowedOrigins.has(sourceOrigin)) {
+    if (
+      !isConfiguredAppOrigin(this.config, sourceOrigin) &&
+      !matchesRequestHost(request, sourceOrigin)
+    ) {
       throwInvalidOrigin();
     }
 
@@ -49,22 +50,48 @@ function getSourceOrigin(request: RequestWithContext): string | undefined {
   return referer ? safeOrigin(referer) : undefined;
 }
 
-function getAllowedOrigins(config: ConfigService): Set<string> {
-  const origins = new Set<string>();
+function isConfiguredAppOrigin(
+  config: ConfigService,
+  sourceOrigin: string,
+): boolean {
   const configuredOrigin = safeOrigin(
     config.get<string>("WEB_APP_URL") ?? "http://localhost:3000",
   );
 
-  if (configuredOrigin) {
-    origins.add(configuredOrigin);
+  if (sourceOrigin === configuredOrigin) {
+    return true;
   }
 
   if ((config.get<string>("NODE_ENV") ?? "development") !== "production") {
-    origins.add("http://localhost:3000");
-    origins.add("http://127.0.0.1:3000");
+    return (
+      sourceOrigin === "http://localhost:3000" ||
+      sourceOrigin === "http://127.0.0.1:3000"
+    );
   }
 
-  return origins;
+  return false;
+}
+
+function matchesRequestHost(
+  request: RequestWithContext,
+  sourceOrigin: string,
+): boolean {
+  const requestHost = firstHeaderValue(request.headers?.host);
+
+  if (!requestHost) {
+    return false;
+  }
+
+  try {
+    const sourceUrl = new URL(sourceOrigin);
+    const requestUrl = new URL(`${sourceUrl.protocol}//${requestHost.trim()}`);
+
+    return (
+      sourceUrl.host.toLowerCase() === requestUrl.host.toLowerCase()
+    );
+  } catch {
+    return false;
+  }
 }
 
 function safeOrigin(value: string): string | undefined {
