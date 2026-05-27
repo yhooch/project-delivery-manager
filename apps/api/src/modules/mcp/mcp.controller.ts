@@ -98,7 +98,7 @@ export class McpController {
     if (result.kind === "auth-error") {
       response.setHeader(
         "WWW-Authenticate",
-        this.oauth.buildBearerChallenge(result.challenge),
+        this.oauth.buildBearerChallenge(result.challenge, request),
       );
       writeJson(response, result.status, result.body);
       return;
@@ -114,16 +114,21 @@ export class McpController {
     try {
       return await this.oauth.validateBearerToken(
         getHeader(request.headers, "authorization"),
+        [],
+        request,
       );
     } catch (error) {
       if (error instanceof McpBearerAuthenticationError) {
         response.setHeader(
           "WWW-Authenticate",
-          this.oauth.buildBearerChallenge({
-            error: error.challengeError,
-            errorDescription: error.message,
-            scope: error.requiredScope,
-          }),
+          this.oauth.buildBearerChallenge(
+            {
+              error: error.challengeError,
+              errorDescription: error.message,
+              scope: error.requiredScope,
+            },
+            request,
+          ),
         );
         writeJson(response, error.status, {
           code:
@@ -161,7 +166,10 @@ function accepts(request: RequestWithContext, mediaType: string): boolean {
     .some((part) => mediaRangeMatches(part, mediaType));
 }
 
-function mediaRangeMatches(rangeWithParams: string, mediaType: string): boolean {
+function mediaRangeMatches(
+  rangeWithParams: string,
+  mediaType: string,
+): boolean {
   const [range = "", ...params] = rangeWithParams
     .split(";")
     .map((part) => part.trim().toLowerCase());

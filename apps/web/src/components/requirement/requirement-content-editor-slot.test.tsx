@@ -7,12 +7,11 @@ import {
 } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-const { getAttachmentDownloadUrlMock, uploadRequirementImageMock } = vi.hoisted(
-  () => ({
-    getAttachmentDownloadUrlMock: vi.fn(),
+const { createAttachmentDownloadUrlMock, uploadRequirementImageMock } =
+  vi.hoisted(() => ({
+    createAttachmentDownloadUrlMock: vi.fn(),
     uploadRequirementImageMock: vi.fn(),
-  }),
-);
+  }));
 
 vi.mock("../../lib/attachment-service", () => {
   class AttachmentUploadError extends Error {
@@ -29,7 +28,7 @@ vi.mock("../../lib/attachment-service", () => {
 
   return {
     AttachmentUploadError,
-    getAttachmentDownloadUrl: getAttachmentDownloadUrlMock,
+    createAttachmentDownloadUrl: createAttachmentDownloadUrlMock,
     uploadRequirementImage: uploadRequirementImageMock,
   };
 });
@@ -141,7 +140,10 @@ function imageNodes(contentJson: Record<string, unknown>) {
 }
 
 beforeEach(() => {
-  getAttachmentDownloadUrlMock.mockReset();
+  createAttachmentDownloadUrlMock.mockReset();
+  createAttachmentDownloadUrlMock.mockImplementation(
+    (attachmentId: string) => `/api/v1/attachments/${attachmentId}/download`,
+  );
   uploadRequirementImageMock.mockReset();
   if (!document.elementFromPoint) {
     document.elementFromPoint = () =>
@@ -351,10 +353,9 @@ describe("RequirementContentEditorSlot link extension", () => {
 
 describe("RequirementContentEditorSlot image drop", () => {
   it("resolves stable attachment image refs to temporary URLs for editing", async () => {
-    getAttachmentDownloadUrlMock.mockResolvedValueOnce({
-      downloadUrl: "https://cdn.example/resolved.png",
-      expiresInSeconds: 300,
-    });
+    createAttachmentDownloadUrlMock.mockReturnValueOnce(
+      "https://cdn.example/resolved.png",
+    );
 
     renderEditor({
       value: makeValue({
@@ -373,9 +374,9 @@ describe("RequirementContentEditorSlot image drop", () => {
     });
 
     await waitFor(() =>
-      expect(getAttachmentDownloadUrlMock).toHaveBeenCalledWith({
-        attachmentId: "ATTACHMENT_01",
-      }),
+      expect(createAttachmentDownloadUrlMock).toHaveBeenCalledWith(
+        "ATTACHMENT_01",
+      ),
     );
     await waitFor(() =>
       expect(
@@ -1105,10 +1106,9 @@ describe("RequirementContentEditorSlot markdown mode", () => {
   });
 
   it("resolves Markdown attachment preview images to temporary URLs", async () => {
-    getAttachmentDownloadUrlMock.mockResolvedValueOnce({
-      downloadUrl: "https://cdn.example/attached.png",
-      expiresInSeconds: 300,
-    });
+    createAttachmentDownloadUrlMock.mockReturnValueOnce(
+      "https://cdn.example/attached.png",
+    );
 
     render(
       <RequirementContentEditorSlot
@@ -1123,13 +1123,12 @@ describe("RequirementContentEditorSlot markdown mode", () => {
     );
 
     await waitFor(() =>
-      expect(getAttachmentDownloadUrlMock).toHaveBeenCalledWith({
-        attachmentId: "ATTACHMENT_01",
-      }),
+      expect(createAttachmentDownloadUrlMock).toHaveBeenCalledWith(
+        "ATTACHMENT_01",
+      ),
     );
-    expect(await screen.findByRole("img", { name: "attached" })).toHaveAttribute(
-      "src",
-      "https://cdn.example/attached.png",
-    );
+    expect(
+      await screen.findByRole("img", { name: "attached" }),
+    ).toHaveAttribute("src", "https://cdn.example/attached.png");
   });
 });

@@ -41,7 +41,7 @@ import { ApiClientError } from "../../lib/api-client";
 import { toExecuteActionRequest } from "../../lib/action-forms";
 import {
   AttachmentUploadError,
-  getAttachmentDownloadUrl,
+  createAttachmentDownloadUrl,
   listAttachments,
   uploadAttachment,
 } from "../../lib/attachment-service";
@@ -3480,7 +3480,7 @@ function AttachmentsTab({
   );
 
   const handleAttachmentAction = useCallback(
-    async (attachment: Attachment, action: "download" | "preview") => {
+    (attachment: Attachment, action: "download" | "preview") => {
       if (!spaceId) {
         return;
       }
@@ -3491,20 +3491,16 @@ function AttachmentsTab({
       setOpeningAttachmentId(actionId);
 
       try {
-        const result = await getAttachmentDownloadUrl({
-          attachmentId: attachment.id,
-          organizationId,
-          spaceId,
-        });
+        const downloadUrl = createAttachmentDownloadUrl(attachment.id);
 
         if (latestRequestKeyRef.current !== actionRequestKey) {
           return;
         }
 
         if (action === "preview") {
-          window.open(result.downloadUrl, "_blank", "noopener,noreferrer");
+          window.open(downloadUrl, "_blank", "noopener,noreferrer");
         } else {
-          triggerAttachmentDownload(result.downloadUrl, attachment.fileName);
+          triggerAttachmentDownload(downloadUrl, attachment.fileName);
         }
       } catch (err) {
         if (latestRequestKeyRef.current !== actionRequestKey) {
@@ -3518,7 +3514,7 @@ function AttachmentsTab({
         }
       }
     },
-    [organizationId, requestKey, spaceId, tApiError],
+    [requestKey, spaceId, tApiError],
   );
 
   const dropActive = dragDepth > 0 && canUploadAttachment && Boolean(spaceId);

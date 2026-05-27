@@ -9,8 +9,8 @@ import { describe, expect, it, vi } from "vitest";
 import { ApiClientError } from "./api-client";
 import {
   AttachmentUploadError,
+  createAttachmentDownloadUrl,
   createAttachmentUploadFailure,
-  getAttachmentDownloadUrl,
   listAttachments,
   uploadAttachment,
   uploadRequirementImage,
@@ -24,8 +24,7 @@ const spaceId = "01ARZ3NDEKTSV4RRFFQ69G5FAW";
 const requirementId = "01ARZ3NDEKTSV4RRFFQ69G5FAY";
 const attachmentId = "01ARZ3NDEKTSV4RRFFQ69G5FB0";
 const fileKey = `attachments/requirement/${requirementId}/01ARZ3NDEKTSV4RRFFQ69G5FB1-wireframe.png`;
-const uploadUrl = `http://127.0.0.1:9000/project-attachments/${fileKey}?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Signature=test-upload`;
-const downloadUrl = `http://127.0.0.1:9000/project-attachments/${fileKey}?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Signature=test-download`;
+const downloadUrl = `/api/v1/attachments/${attachmentId}/download`;
 
 function createImageFile() {
   return new File(["image"], "wireframe.png", {
@@ -61,33 +60,17 @@ function createPage(items: Attachment[]): PageResult<Attachment> {
 function createApi(): AttachmentApiTransport {
   return {
     get: vi.fn(async () => ({
-      data: {
-        downloadUrl,
-        expiresInSeconds: 300,
-      } as unknown,
+      data: createPage([createAttachmentFixture()]) as unknown,
     })) as AttachmentApiTransport["get"],
-    post: vi.fn(async (path: string) => {
-      if (path === "/attachments/presign") {
-        return {
-          data: {
-            expiresInSeconds: 600,
-            fileKey,
-            uploadUrl,
-          } as unknown,
-        };
-      }
-
-      return {
-        data: createAttachmentFixture() as unknown,
-      };
-    }) as AttachmentApiTransport["post"],
+    post: vi.fn(async () => ({
+      data: createAttachmentFixture() as unknown,
+    })) as AttachmentApiTransport["post"],
   };
 }
 
 describe("attachment service", () => {
-  it("uploads requirement images through presign, object upload, register, and download-url", async () => {
+  it("uploads requirement images through the API", async () => {
     const api = createApi();
-    const uploadObject = vi.fn(async () => undefined);
     const file = createImageFile();
 
     await expect(
@@ -98,37 +81,26 @@ describe("attachment service", () => {
           requirementId,
         },
         api,
-        uploadObject,
       ),
     ).resolves.toEqual({
       attachment: createAttachmentFixture(),
       imageUrl: downloadUrl,
     });
 
-    expect(api.post).toHaveBeenNthCalledWith(1, "/attachments/presign", {
-      fileName: "wireframe.png",
-      mimeType: "image/png",
+    const formData = vi.mocked(api.post).mock.calls[0]?.[1];
+    expect(api.post).toHaveBeenCalledWith("/attachments", expect.any(FormData));
+    expect(formData).toBeInstanceOf(FormData);
+    expect((formData as FormData).get("targetId")).toBe(requirementId);
+    expect((formData as FormData).get("targetType")).toBe("REQUIREMENT");
+    expect((formData as FormData).get("file")).toMatchObject({
+      name: file.name,
       size: file.size,
-      targetId: requirementId,
-      targetType: "REQUIREMENT",
+      type: file.type,
     });
-    expect(uploadObject).toHaveBeenCalledWith(uploadUrl, file, "image/png");
-    expect(api.post).toHaveBeenNthCalledWith(2, "/attachments", {
-      fileKey,
-      fileName: "wireframe.png",
-      mimeType: "image/png",
-      size: file.size,
-      targetId: requirementId,
-      targetType: "REQUIREMENT",
-    });
-    expect(api.get).toHaveBeenCalledWith(
-      `/attachments/${attachmentId}/download-url`,
-    );
   });
 
-  it("uploads WORK_ITEM attachments with the same presign and register flow", async () => {
+  it("uploads WORK_ITEM attachments through the same API endpoint", async () => {
     const api = createApi();
-    const uploadObject = vi.fn(async () => undefined);
     const file = new File(["note"], "note.md", {
       type: "text/markdown",
     });
@@ -143,21 +115,9 @@ describe("attachment service", () => {
     } satisfies Attachment;
     const workItemApi = {
       ...api,
-      post: vi.fn(async (path: string) => {
-        if (path === "/attachments/presign") {
-          return {
-            data: {
-              expiresInSeconds: 600,
-              fileKey,
-              uploadUrl,
-            } as unknown,
-          };
-        }
-
-        return {
-          data: workItemAttachment as unknown,
-        };
-      }) as AttachmentApiTransport["post"],
+      post: vi.fn(async () => ({
+        data: workItemAttachment as unknown,
+      })) as AttachmentApiTransport["post"],
     };
 
     await expect(
@@ -169,31 +129,23 @@ describe("attachment service", () => {
           targetType: "WORK_ITEM",
         },
         workItemApi,
-        uploadObject,
       ),
     ).resolves.toEqual({
       attachment: workItemAttachment,
-      downloadUrl,
+      downloadUrl: `/api/v1/attachments/${workItemAttachment.id}/download`,
     });
 
-    expect(workItemApi.post).toHaveBeenNthCalledWith(
-      1,
-      "/attachments/presign",
-      {
-        fileName: "note.md",
-        mimeType: "text/markdown",
-        size: file.size,
-        targetId: workItemId,
-        targetType: "WORK_ITEM",
-      },
+    const formData = vi.mocked(workItemApi.post).mock.calls[0]?.[1];
+    expect(workItemApi.post).toHaveBeenCalledWith(
+      "/attachments",
+      expect.any(FormData),
     );
-    expect(workItemApi.post).toHaveBeenNthCalledWith(2, "/attachments", {
-      fileKey,
-      fileName: "note.md",
-      mimeType: "text/markdown",
+    expect((formData as FormData).get("targetId")).toBe(workItemId);
+    expect((formData as FormData).get("targetType")).toBe("WORK_ITEM");
+    expect((formData as FormData).get("file")).toMatchObject({
+      name: file.name,
       size: file.size,
-      targetId: workItemId,
-      targetType: "WORK_ITEM",
+      type: file.type,
     });
   });
 
@@ -231,55 +183,8 @@ describe("attachment service", () => {
     });
   });
 
-  it("gets a signed attachment download URL by attachment id", async () => {
-    const api = createApi();
-
-    await expect(
-      getAttachmentDownloadUrl(
-        {
-          attachmentId,
-          organizationId,
-          spaceId,
-        },
-        api,
-      ),
-    ).resolves.toEqual({
-      downloadUrl,
-      expiresInSeconds: 300,
-    });
-
-    expect(api.get).toHaveBeenCalledWith(
-      `/attachments/${attachmentId}/download-url`,
-    );
-  });
-
-  it("uploads presigned MinIO objects through fetch before registering", async () => {
-    const api = createApi();
-    const file = createImageFile();
-    const fetchSpy = vi.fn(async () => new Response(null, { status: 200 }));
-    vi.stubGlobal("fetch", fetchSpy);
-
-    try {
-      await uploadRequirementImage(
-        {
-          existingAttachmentCount: 0,
-          file,
-          requirementId,
-        },
-        api,
-      );
-
-      expect(fetchSpy).toHaveBeenCalledWith(uploadUrl, {
-        body: file,
-        headers: {
-          "Content-Type": "image/png",
-        },
-        method: "PUT",
-      });
-      expect(api.post).toHaveBeenCalledTimes(2);
-    } finally {
-      vi.unstubAllGlobals();
-    }
+  it("builds same-origin attachment download URLs by attachment id", () => {
+    expect(createAttachmentDownloadUrl(attachmentId)).toBe(downloadUrl);
   });
 
   it("rejects image files that exceed size, MIME, or count limits", () => {
@@ -335,38 +240,35 @@ describe("attachment service", () => {
     ).toBe("text/plain");
   });
 
-  it("keeps failed MinIO object uploads retryable and does not register the attachment", async () => {
-    const api = createApi();
+  it("keeps API upload failures retryable", async () => {
     const file = createImageFile();
-    const fetchSpy = vi.fn(async () => new Response(null, { status: 500 }));
-    vi.stubGlobal("fetch", fetchSpy);
-
-    try {
-      await expect(
-        uploadRequirementImage(
+    const api = {
+      ...createApi(),
+      post: vi.fn(async () => {
+        throw new ApiClientError(
           {
-            existingAttachmentCount: 0,
-            file,
-            requirementId,
+            code: "INTERNAL_SERVER_ERROR",
+            message: "Upload failed",
+            requestId: "req_attachment",
           },
-          api,
-        ),
-      ).rejects.toMatchObject({
-        code: "UPLOAD_FAILED",
-        retryable: true,
-      } satisfies Partial<AttachmentUploadError>);
+          new Response(null, { status: 500 }),
+        );
+      }) as AttachmentApiTransport["post"],
+    };
 
-      expect(fetchSpy).toHaveBeenCalledWith(uploadUrl, {
-        body: file,
-        headers: {
-          "Content-Type": "image/png",
+    await expect(
+      uploadRequirementImage(
+        {
+          existingAttachmentCount: 0,
+          file,
+          requirementId,
         },
-        method: "PUT",
-      });
-      expect(api.post).toHaveBeenCalledTimes(1);
-    } finally {
-      vi.unstubAllGlobals();
-    }
+        api,
+      ),
+    ).rejects.toMatchObject({
+      code: "UPLOAD_FAILED",
+      retryable: true,
+    } satisfies Partial<AttachmentUploadError>);
   });
 
   it("maps upload failures into retryable localized form state", () => {

@@ -5,20 +5,18 @@ import {
   DeleteObjectCommand,
   GetObjectCommand,
   HeadBucketCommand,
-  HeadObjectCommand,
   NotFound,
   PutObjectCommand,
   S3Client,
   S3ServiceException,
   type CreateBucketConfiguration,
 } from "@aws-sdk/client-s3";
-import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 
 import type {
-  AttachmentObjectMetadata,
+  AttachmentGetObjectInput,
+  AttachmentGetObjectResult,
   AttachmentObjectStorage,
-  AttachmentPresignDownloadInput,
-  AttachmentPresignUploadInput,
+  AttachmentPutObjectInput,
 } from "./attachment-object-storage";
 
 @Injectable()
@@ -27,7 +25,6 @@ export class S3AttachmentObjectStorage
 {
   private readonly bucket: string;
   private readonly internalClient: S3Client;
-  private readonly publicClient: S3Client;
   private readonly autoCreateBucket: boolean;
   private readonly region: string;
 
@@ -56,10 +53,6 @@ export class S3AttachmentObjectStorage
       ...clientConfig,
       endpoint: requireConfig(config, "MINIO_INTERNAL_ENDPOINT"),
     });
-    this.publicClient = new S3Client({
-      ...clientConfig,
-      endpoint: requireConfig(config, "MINIO_PUBLIC_ENDPOINT"),
-    });
   }
 
   async onModuleInit(): Promise<void> {
@@ -70,51 +63,41 @@ export class S3AttachmentObjectStorage
     await this.createBucketIfMissing();
   }
 
-  async createPresignedUploadUrl(
-    input: AttachmentPresignUploadInput,
-  ): Promise<string> {
-    return getSignedUrl(
-      this.publicClient,
+  async putObject(input: AttachmentPutObjectInput): Promise<void> {
+    await this.internalClient.send(
       new PutObjectCommand({
+        Body: input.body,
         Bucket: this.bucket,
         ContentLength: input.size,
         ContentType: input.mimeType,
         Key: input.key,
       }),
-      {
-        expiresIn: input.expiresInSeconds,
-        signableHeaders: new Set(["content-type"]),
-      },
     );
   }
 
-  async createPresignedDownloadUrl(
-    input: AttachmentPresignDownloadInput,
-  ): Promise<string> {
-    return getSignedUrl(
-      this.publicClient,
-      new GetObjectCommand({
-        Bucket: this.bucket,
-        Key: input.key,
-      }),
-      { expiresIn: input.expiresInSeconds },
-    );
-  }
-
-  async statObject(key: string): Promise<AttachmentObjectMetadata | undefined> {
+  async getObject(
+    input: AttachmentGetObjectInput,
+  ): Promise<AttachmentGetObjectResult | undefined> {
     try {
       const object = await this.internalClient.send(
-        new HeadObjectCommand({
+        new GetObjectCommand({
           Bucket: this.bucket,
-          Key: key,
+          Key: input.key,
         }),
       );
 
-      if (object.ContentLength === undefined || !object.ContentType) {
+      if (
+        !object.Body ||
+        object.ContentLength === undefined ||
+        !object.ContentType
+      ) {
         return undefined;
       }
 
+      const bytes = await object.Body.transformToByteArray();
+
       return {
+        body: Buffer.from(bytes),
         mimeType: object.ContentType,
         size: object.ContentLength,
       };
@@ -170,8 +153,8 @@ export class S3AttachmentObjectStorage
     }
 
     return {
-      LocationConstraint:
-        this.region as CreateBucketConfiguration["LocationConstraint"],
+      LocationConstraint: this
+        .region as CreateBucketConfiguration["LocationConstraint"],
     };
   }
 }

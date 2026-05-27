@@ -4,18 +4,20 @@ import {
   AttachmentListQuerySchema,
   AttachmentMimeTypeSchema,
   CreateAttachmentResponseSchema,
-  GetAttachmentDownloadUrlResponseSchema,
   ListAttachmentsResponseSchema,
-  PresignAttachmentResponseSchema,
   type Attachment,
   type AttachmentTargetType,
-  type GetAttachmentDownloadUrlResponse,
   type AttachmentMimeType,
   type PageResult,
 } from "@project-delivery/shared";
 import { z } from "zod";
 
-import { ApiClientError, apiClient, type ApiRequestInit } from "./api-client";
+import {
+  API_BASE_PATH,
+  ApiClientError,
+  apiClient,
+  type ApiRequestInit,
+} from "./api-client";
 
 export type AttachmentApiTransport = {
   get<TData>(path: string, init?: ApiRequestInit): Promise<{ data: TData }>;
@@ -25,12 +27,6 @@ export type AttachmentApiTransport = {
     init?: ApiRequestInit,
   ): Promise<{ data: TData }>;
 };
-
-export type UploadObject = (
-  uploadUrl: string,
-  file: File,
-  mimeType: AttachmentMimeType,
-) => Promise<void>;
 
 export type AttachmentUploadErrorCode =
   | "ACCESS_DENIED"
@@ -73,12 +69,6 @@ export type ListAttachmentsInput = z.input<typeof AttachmentListQuerySchema> & {
   spaceId: string;
 };
 
-export type GetAttachmentDownloadUrlInput = {
-  attachmentId: string;
-  organizationId?: string;
-  spaceId?: string;
-};
-
 export type AttachmentUploadFailure = {
   code: AttachmentUploadErrorCode;
   fileName: string;
@@ -113,24 +103,10 @@ export const attachmentUploadFailureSchema = z
   .strict();
 
 const defaultApi: AttachmentApiTransport = apiClient;
-const defaultUploadObject: UploadObject = async (uploadUrl, file, mimeType) => {
-  const response = await fetch(uploadUrl, {
-    body: file,
-    headers: {
-      "Content-Type": mimeType,
-    },
-    method: "PUT",
-  });
-
-  if (!response.ok) {
-    throw new AttachmentUploadError("UPLOAD_FAILED", true);
-  }
-};
 
 export async function uploadRequirementImage(
   input: UploadRequirementImageInput,
   api: AttachmentApiTransport = defaultApi,
-  uploadObject: UploadObject = defaultUploadObject,
 ): Promise<UploadRequirementImageResult> {
   const result = await uploadAttachment(
     {
@@ -141,7 +117,6 @@ export async function uploadRequirementImage(
       targetType: "REQUIREMENT",
     },
     api,
-    uploadObject,
   );
 
   return {
@@ -153,61 +128,30 @@ export async function uploadRequirementImage(
 export async function uploadAttachment(
   input: UploadAttachmentInput,
   api: AttachmentApiTransport = defaultApi,
-  uploadObject: UploadObject = defaultUploadObject,
 ): Promise<UploadAttachmentResult> {
-  const mimeType = validateAttachmentFile(input);
+  validateAttachmentFile(input);
 
   try {
-    const presignResponse = await api.post<unknown>("/attachments/presign", {
-      fileName: input.file.name,
-      mimeType,
-      size: input.file.size,
-      targetId: input.targetId,
-      targetType: input.targetType,
-    });
-    const presign = PresignAttachmentResponseSchema.parse(presignResponse.data);
+    const formData = new FormData();
+    formData.set("targetId", input.targetId);
+    formData.set("targetType", input.targetType);
+    formData.set("file", input.file, input.file.name);
 
-    await uploadObject(presign.uploadUrl, input.file, mimeType);
-
-    const attachmentResponse = await api.post<unknown>("/attachments", {
-      fileKey: presign.fileKey,
-      fileName: input.file.name,
-      mimeType,
-      size: input.file.size,
-      targetId: input.targetId,
-      targetType: input.targetType,
-    });
+    const attachmentResponse = await api.post<unknown>(
+      "/attachments",
+      formData,
+    );
     const attachment = CreateAttachmentResponseSchema.parse(
       attachmentResponse.data,
-    );
-    const download = await getAttachmentDownloadUrl(
-      { attachmentId: attachment.id },
-      api,
     );
 
     return {
       attachment,
-      downloadUrl: download.downloadUrl,
+      downloadUrl: createAttachmentDownloadUrl(attachment.id),
     };
   } catch (error) {
     throw mapAttachmentUploadError(error);
   }
-}
-
-export async function getAttachmentDownloadUrl(
-  input: GetAttachmentDownloadUrlInput,
-  api: AttachmentApiTransport = defaultApi,
-): Promise<GetAttachmentDownloadUrlResponse> {
-  const {
-    attachmentId,
-    organizationId: _organizationId,
-    spaceId: _spaceId,
-  } = input;
-  const response = await api.get<unknown>(
-    `/attachments/${attachmentId}/download-url`,
-  );
-
-  return GetAttachmentDownloadUrlResponseSchema.parse(response.data);
 }
 
 export async function listAttachments(
@@ -277,6 +221,10 @@ export function createAttachmentUploadFailure(
 
 function isImageMimeType(mimeType: AttachmentMimeType): boolean {
   return mimeType.startsWith("image/");
+}
+
+export function createAttachmentDownloadUrl(attachmentId: string): string {
+  return `${API_BASE_PATH}/attachments/${encodeURIComponent(attachmentId)}/download`;
 }
 
 function mapAttachmentUploadError(error: unknown): AttachmentUploadError {

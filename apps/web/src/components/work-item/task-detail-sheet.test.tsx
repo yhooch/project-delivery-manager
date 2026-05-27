@@ -134,7 +134,7 @@ const {
   executeActionMock,
   listCommentsMock,
   createCommentMock,
-  getAttachmentDownloadUrlMock,
+  createAttachmentDownloadUrlMock,
   listAttachmentsMock,
   uploadAttachmentMock,
   listTimelineMock,
@@ -150,7 +150,7 @@ const {
   executeActionMock: vi.fn(),
   listCommentsMock: vi.fn(),
   createCommentMock: vi.fn(),
-  getAttachmentDownloadUrlMock: vi.fn(),
+  createAttachmentDownloadUrlMock: vi.fn(),
   listAttachmentsMock: vi.fn(),
   uploadAttachmentMock: vi.fn(),
   listTimelineMock: vi.fn(),
@@ -164,7 +164,10 @@ const realtimeInvalidationHandlers = vi.hoisted(
   () =>
     [] as {
       callback: (context: {
-        events: { hints?: Record<string, unknown>; target: { id: string; type: string } }[];
+        events: {
+          hints?: Record<string, unknown>;
+          target: { id: string; type: string };
+        }[];
         keys: string[];
         lastEventId: string | null;
         mode: "realtime";
@@ -208,7 +211,7 @@ vi.mock("../../lib/attachment-service", () => {
   }
   return {
     AttachmentUploadError,
-    getAttachmentDownloadUrl: getAttachmentDownloadUrlMock,
+    createAttachmentDownloadUrl: createAttachmentDownloadUrlMock,
     listAttachments: listAttachmentsMock,
     uploadAttachment: uploadAttachmentMock,
   };
@@ -246,8 +249,7 @@ import { TaskDetailSheet } from "./task-detail-sheet";
 
 // -----------------------------------------------------------------------------
 
-const minioDesignDownloadUrl =
-  "http://127.0.0.1:9000/project-attachments/design.png?X-Amz-Signature=test";
+const attachmentDownloadUrl = "/api/v1/attachments/design/download";
 
 function makeViewModel(
   overrides: Partial<WorkItemViewModel> = {},
@@ -348,7 +350,7 @@ beforeEach(() => {
   executeActionMock.mockReset();
   listCommentsMock.mockReset();
   createCommentMock.mockReset();
-  getAttachmentDownloadUrlMock.mockReset();
+  createAttachmentDownloadUrlMock.mockReset();
   listAttachmentsMock.mockReset();
   uploadAttachmentMock.mockReset();
   listTimelineMock.mockReset();
@@ -363,10 +365,7 @@ beforeEach(() => {
   getBugMock.mockResolvedValue(makeBugResponse());
   updateBugMock.mockResolvedValue(makeBugResponse());
   getWorkItemMock.mockResolvedValue(makeDetailResponse());
-  getAttachmentDownloadUrlMock.mockResolvedValue({
-    downloadUrl: minioDesignDownloadUrl,
-    expiresInSeconds: 300,
-  });
+  createAttachmentDownloadUrlMock.mockReturnValue(attachmentDownloadUrl);
   listCommentsMock.mockResolvedValue({ items: [], total: 0 });
   listAttachmentsMock.mockResolvedValue({ items: [], total: 0 });
   listTimelineMock.mockResolvedValue({ items: [], total: 0 });
@@ -393,7 +392,10 @@ afterEach(() => {
 
 async function dispatchRealtimeInvalidation(
   key: string,
-  event: { target: { id: string; type: string }; hints?: Record<string, unknown> },
+  event: {
+    target: { id: string; type: string };
+    hints?: Record<string, unknown>;
+  },
 ) {
   const matchingHandlers = realtimeInvalidationHandlers.filter((handler) =>
     handler.keys.includes(key),
@@ -1203,7 +1205,9 @@ describe("TaskDetailSheet", () => {
 
     const description = await screen.findByTestId("task-detail-description");
     expect(description).toHaveClass("whitespace-pre-wrap", "break-words");
-    expect(description.textContent).toBe("First detail line\nSecond detail line");
+    expect(description.textContent).toBe(
+      "First detail line\nSecond detail line",
+    );
   });
 
   it("preserves line breaks in bug detail descriptions", async () => {
@@ -2399,7 +2403,7 @@ describe("TaskDetailSheet", () => {
     ).toBeInTheDocument();
   });
 
-  it("uses the signed download-url endpoint for attachment preview", async () => {
+  it("uses the API attachment download endpoint for attachment preview", async () => {
     const openSpy = vi.spyOn(window, "open").mockImplementation(() => null);
     listAttachmentsMock.mockResolvedValue({
       items: [
@@ -2419,10 +2423,7 @@ describe("TaskDetailSheet", () => {
       ],
       total: 1,
     });
-    getAttachmentDownloadUrlMock.mockResolvedValueOnce({
-      downloadUrl: minioDesignDownloadUrl,
-      expiresInSeconds: 300,
-    });
+    createAttachmentDownloadUrlMock.mockReturnValueOnce(attachmentDownloadUrl);
 
     render(
       <TaskDetailSheet item={makeViewModel()} open onOpenChange={() => {}} />,
@@ -2434,14 +2435,12 @@ describe("TaskDetailSheet", () => {
     );
 
     await waitFor(() =>
-      expect(getAttachmentDownloadUrlMock).toHaveBeenCalledWith({
-        attachmentId: "01ARZ3NDEKTSV4RRFFQ69G5FAT1",
-        organizationId: "ORG_01",
-        spaceId: "SPC_01",
-      }),
+      expect(createAttachmentDownloadUrlMock).toHaveBeenCalledWith(
+        "01ARZ3NDEKTSV4RRFFQ69G5FAT1",
+      ),
     );
     expect(openSpy).toHaveBeenCalledWith(
-      minioDesignDownloadUrl,
+      attachmentDownloadUrl,
       "_blank",
       "noopener,noreferrer",
     );

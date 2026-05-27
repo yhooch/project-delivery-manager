@@ -5,23 +5,25 @@ export type AttachmentObjectMetadata = {
   size: number;
 };
 
-export type AttachmentPresignUploadInput = {
-  expiresInSeconds: number;
+export type AttachmentPutObjectInput = {
+  body: Buffer;
   key: string;
   mimeType: string;
   size: number;
 };
 
-export type AttachmentPresignDownloadInput = {
-  expiresInSeconds: number;
+export type AttachmentGetObjectResult = AttachmentObjectMetadata & {
+  body: Buffer;
+};
+
+export type AttachmentGetObjectInput = {
   key: string;
 };
 
 export type AttachmentObjectStorage = {
-  createPresignedDownloadUrl(
-    input: AttachmentPresignDownloadInput,
-  ): Promise<string>;
-  createPresignedUploadUrl(input: AttachmentPresignUploadInput): Promise<string>;
   deleteObjectIfExists(key: string): Promise<void>;
-  statObject(key: string): Promise<AttachmentObjectMetadata | undefined>;
+  getObject(
+    input: AttachmentGetObjectInput,
+  ): Promise<AttachmentGetObjectResult | undefined>;
+  putObject(input: AttachmentPutObjectInput): Promise<void>;
 };

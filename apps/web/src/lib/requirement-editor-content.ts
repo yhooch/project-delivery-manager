@@ -1324,20 +1324,17 @@ function isTransientAttachmentImageSource(value: unknown): boolean {
       key.toLowerCase(),
     );
 
-    return (
-      url.pathname.includes("/download-url") ||
-      paramNames.some((key) =>
-        [
-          "awsaccesskeyid",
-          "expires",
-          "signature",
-          "x-amz-algorithm",
-          "x-amz-credential",
-          "x-amz-expires",
-          "x-amz-signature",
-          "x-amz-security-token",
-        ].includes(key),
-      )
+    return paramNames.some((key) =>
+      [
+        "awsaccesskeyid",
+        "expires",
+        "signature",
+        "x-amz-algorithm",
+        "x-amz-credential",
+        "x-amz-expires",
+        "x-amz-signature",
+        "x-amz-security-token",
+      ].includes(key),
     );
   } catch {
     return false;

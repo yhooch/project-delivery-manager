@@ -9,22 +9,23 @@ import {
   Post,
   Query,
   Req,
+  Res,
+  UploadedFile,
   UseGuards,
+  UseInterceptors,
 } from "@nestjs/common";
+import { FileInterceptor } from "@nestjs/platform-express";
 import {
   AttachmentListQuerySchema,
   AttachmentIdPathParamsSchema,
-  CreateAttachmentRequestSchema,
-  PresignAttachmentRequestSchema,
   type Attachment,
   type AttachmentTargetType,
-  type CreateAttachmentRequest,
-  type GetAttachmentDownloadUrlResponse,
   type PageResult,
-  type PresignAttachmentRequest,
-  type PresignAttachmentResponse,
+  UploadAttachmentRequestSchema,
 } from "@project-delivery/shared";
 
+import { ApiException } from "../../http/api-exception";
+import { SkipApiResponse } from "../../http/api-response.interceptor";
 import type { RequestWithContext } from "../../http/request-context";
 import { ZodValidationPipe } from "../../http/zod-validation.pipe";
 import { CurrentUserService } from "../auth/current-user.service";
@@ -32,6 +33,19 @@ import { getRequestMetadata } from "../auth/request-metadata";
 import { RequireSessionGuard } from "../auth/session.guard";
 import { WriteOriginGuard } from "../auth/write-origin.guard";
 import { AttachmentService } from "./attachment.service";
+
+type UploadedAttachmentFile = {
+  buffer?: Buffer;
+  mimetype?: string;
+  originalname?: string;
+  size?: number;
+};
+
+type RawDownloadResponse = {
+  end(body: Buffer): void;
+  setHeader(name: string, value: string | number): void;
+  status(statusCode: number): RawDownloadResponse;
+};
 
 @Controller("attachments")
 @UseGuards(RequireSessionGuard)
@@ -43,36 +57,23 @@ export class AttachmentController {
     private readonly currentUser: CurrentUserService,
   ) {}
 
-  @Post("presign")
-  @HttpCode(HttpStatus.OK)
-  @UseGuards(WriteOriginGuard)
-  async presign(
-    @Body(new ZodValidationPipe(PresignAttachmentRequestSchema))
-    body: PresignAttachmentRequest,
-    @Req() request: RequestWithContext,
-  ): Promise<PresignAttachmentResponse> {
-    const session = this.currentUser.requireSession(request);
-
-    return this.attachments.presign(
-      session.userId,
-      body,
-      getRequestMetadata(request),
-    );
-  }
-
   @Post()
   @HttpCode(HttpStatus.OK)
   @UseGuards(WriteOriginGuard)
-  async create(
-    @Body(new ZodValidationPipe(CreateAttachmentRequestSchema))
-    body: CreateAttachmentRequest,
+  @UseInterceptors(FileInterceptor("file"))
+  async upload(
+    @Body(new ZodValidationPipe(UploadAttachmentRequestSchema))
+    body: { targetId: string; targetType: AttachmentTargetType },
+    @UploadedFile() file: UploadedAttachmentFile | undefined,
     @Req() request: RequestWithContext,
   ): Promise<Attachment> {
     const session = this.currentUser.requireSession(request);
+    const uploadFile = requireUploadedFile(file);
 
-    return this.attachments.create(
+    return this.attachments.upload(
       session.userId,
       body,
+      uploadFile,
       getRequestMetadata(request),
     );
   }
@@ -95,14 +96,55 @@ export class AttachmentController {
     return this.attachments.list(session.userId, query);
   }
 
-  @Get(":attachmentId/download-url")
-  async getDownloadUrl(
+  @Get(":attachmentId/download")
+  @SkipApiResponse()
+  async download(
     @Param(new ZodValidationPipe(AttachmentIdPathParamsSchema))
     params: { attachmentId: string },
     @Req() request: RequestWithContext,
-  ): Promise<GetAttachmentDownloadUrlResponse> {
+    @Res() response: RawDownloadResponse,
+  ): Promise<void> {
     const session = this.currentUser.requireSession(request);
+    const download = await this.attachments.download(
+      session.userId,
+      params.attachmentId,
+    );
 
-    return this.attachments.getDownloadUrl(session.userId, params.attachmentId);
+    response.status(HttpStatus.OK);
+    response.setHeader("Content-Type", download.mimeType);
+    response.setHeader("Content-Length", download.size);
+    response.setHeader(
+      "Content-Disposition",
+      `inline; filename*=UTF-8''${encodeURIComponent(download.attachment.fileName)}`,
+    );
+    response.end(download.body);
   }
+}
+
+function requireUploadedFile(file: UploadedAttachmentFile | undefined) {
+  if (
+    !file?.buffer ||
+    !file.originalname ||
+    !file.mimetype ||
+    typeof file.size !== "number"
+  ) {
+    throw new ApiException(
+      "VALIDATION_ERROR",
+      "Attachment file is required",
+      HttpStatus.BAD_REQUEST,
+    );
+  }
+
+  return {
+    buffer: file.buffer,
+    fileName: normalizeUploadedFileName(file.originalname),
+    mimeType: file.mimetype,
+    size: file.size,
+  };
+}
+
+function normalizeUploadedFileName(fileName: string): string {
+  const decoded = Buffer.from(fileName, "latin1").toString("utf8");
+
+  return decoded.includes("\uFFFD") ? fileName : decoded;
 }

@@ -1,7 +1,6 @@
 import { z } from "zod";
 
 const DEFAULT_MINIO_INTERNAL_ENDPOINT = "http://localhost:9000";
-const DEFAULT_MINIO_PUBLIC_ENDPOINT = "http://localhost:9000";
 const DEFAULT_MINIO_BUCKET = "project-delivery-attachments";
 const DEFAULT_MINIO_REGION = "us-east-1";
 
@@ -70,7 +69,6 @@ export const EnvSchema = z
     MINIO_BUCKET: z.string().min(1).optional(),
     MINIO_FORCE_PATH_STYLE: BooleanEnvSchema.optional(),
     MINIO_INTERNAL_ENDPOINT: z.string().url().optional(),
-    MINIO_PUBLIC_ENDPOINT: z.string().url().optional(),
     MINIO_REGION: z.string().min(1).optional(),
     MINIO_SECRET_KEY: z.string().min(1).optional(),
     NODE_ENV: z
@@ -100,7 +98,6 @@ export const EnvSchema = z
       "MINIO_BUCKET",
       "MINIO_FORCE_PATH_STYLE",
       "MINIO_INTERNAL_ENDPOINT",
-      "MINIO_PUBLIC_ENDPOINT",
       "MINIO_REGION",
       "MINIO_SECRET_KEY",
     ] as const;
@@ -123,8 +120,6 @@ export const EnvSchema = z
     MINIO_FORCE_PATH_STYLE: env.MINIO_FORCE_PATH_STYLE ?? true,
     MINIO_INTERNAL_ENDPOINT:
       env.MINIO_INTERNAL_ENDPOINT ?? DEFAULT_MINIO_INTERNAL_ENDPOINT,
-    MINIO_PUBLIC_ENDPOINT:
-      env.MINIO_PUBLIC_ENDPOINT ?? DEFAULT_MINIO_PUBLIC_ENDPOINT,
     MINIO_REGION: env.MINIO_REGION ?? DEFAULT_MINIO_REGION,
     MINIO_SECRET_KEY: env.MINIO_SECRET_KEY ?? "minioadmin",
     MCP_CLIENT_METADATA_CACHE_SECONDS:

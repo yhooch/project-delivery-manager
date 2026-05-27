@@ -1,5 +1,5 @@
 import { HttpStatus } from "@nestjs/common";
-import { ConfigService } from "@nestjs/config";
+import type { ConfigService } from "@nestjs/config";
 import type {
   McpOAuthAuthorizeContext,
   McpOAuthAuthorizeQuery,
@@ -34,7 +34,10 @@ describe("OAuthController", () => {
       registration_endpoint: "http://localhost:3001/oauth/register",
     });
 
-    discovery.getAuthorizationServerMetadata(response);
+    discovery.getAuthorizationServerMetadata(
+      request({ accept: "application/json" }),
+      response,
+    );
 
     expect(response.statusCode).toBe(HttpStatus.OK);
     expect(response.body).toMatchObject({
@@ -124,7 +127,7 @@ describe("OAuthController", () => {
 
     expect(response.redirectStatus).toBe(HttpStatus.FOUND);
     expect(response.redirectTo).toBe(
-      "http://localhost:3000/zh-CN/oauth/mcp/authorize?response_type=code&client_id=test-mcp-client&redirect_uri=http%3A%2F%2Flocalhost%3A4555%2Fcallback&code_challenge=abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQ&code_challenge_method=S256&scope=mcp%3Aread&resource=http%3A%2F%2Flocalhost%3A3001%2Fapi%2Fv1%2Fmcp&state=state-1",
+      "http://localhost:3001/zh-CN/oauth/mcp/authorize?response_type=code&client_id=test-mcp-client&redirect_uri=http%3A%2F%2Flocalhost%3A4555%2Fcallback&code_challenge=abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQ&code_challenge_method=S256&scope=mcp%3Aread&resource=http%3A%2F%2Flocalhost%3A3001%2Fapi%2Fv1%2Fmcp&state=state-1",
     );
     expect(oauth.prepareAuthorization).not.toHaveBeenCalled();
   });
@@ -142,6 +145,9 @@ describe("OAuthController", () => {
     expect(oauth.prepareAuthorization).toHaveBeenCalledWith(
       authorizeQuery(),
       userId,
+      expect.objectContaining({
+        headers: expect.objectContaining({ host: "localhost:3001" }),
+      }),
     );
     expect(response.statusCode).toBe(HttpStatus.OK);
     expect(response.body).toEqual(authorizeContext());
@@ -161,6 +167,9 @@ describe("OAuthController", () => {
     expect(oauth.prepareAuthorization).toHaveBeenCalledWith(
       authorizeQuery(),
       userId,
+      expect.objectContaining({
+        headers: expect.objectContaining({ host: "localhost:3001" }),
+      }),
     );
     expect(response.statusCode).toBe(HttpStatus.OK);
   });
@@ -181,7 +190,7 @@ describe("OAuthController", () => {
     expect(grant).not.toHaveBeenCalled();
     expect(response.redirectStatus).toBe(HttpStatus.FOUND);
     expect(response.redirectTo).toBe(
-      "http://localhost:3000/zh-CN/oauth/mcp/authorize?response_type=code&client_id=test-mcp-client&redirect_uri=http%3A%2F%2Flocalhost%3A4555%2Fcallback&code_challenge=abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQ&code_challenge_method=S256&scope=mcp%3Aread&resource=http%3A%2F%2Flocalhost%3A3001%2Fapi%2Fv1%2Fmcp&state=state-1",
+      "http://localhost:3001/zh-CN/oauth/mcp/authorize?response_type=code&client_id=test-mcp-client&redirect_uri=http%3A%2F%2Flocalhost%3A4555%2Fcallback&code_challenge=abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQ&code_challenge_method=S256&scope=mcp%3Aread&resource=http%3A%2F%2Flocalhost%3A3001%2Fapi%2Fv1%2Fmcp&state=state-1",
     );
   });
 
@@ -239,17 +248,23 @@ describe("OAuthController", () => {
         redirect_uri: redirectUri,
         code_verifier: "a".repeat(43),
       },
+      request({ accept: "application/json" }),
       response,
     );
 
-    expect(oauth.exchangeToken).toHaveBeenCalledWith({
-      grant_type: "authorization_code",
-      client_id: clientId,
-      code: "code-1",
-      redirect_uri: redirectUri,
-      code_verifier: "a".repeat(43),
-      resource,
-    });
+    expect(oauth.exchangeToken).toHaveBeenCalledWith(
+      {
+        grant_type: "authorization_code",
+        client_id: clientId,
+        code: "code-1",
+        redirect_uri: redirectUri,
+        code_verifier: "a".repeat(43),
+        resource,
+      },
+      expect.objectContaining({
+        headers: expect.objectContaining({ host: "localhost:3001" }),
+      }),
+    );
     expect(response.statusCode).toBe(HttpStatus.OK);
   });
 });
@@ -269,20 +284,13 @@ function createSubject() {
     registerDynamicClient: vi.fn(),
   };
   const config = {
-    get: vi.fn((key: string) => {
-      if (key === "WEB_APP_URL") {
-        return "http://localhost:3000";
-      }
-
-      return undefined;
-    }),
-  };
+    get: vi.fn(() => undefined),
+  } as unknown as ConfigService;
 
   return {
     controller: new OAuthController(
       oauth as unknown as OAuthService,
-      config as unknown as ConfigService,
-      new OAuthConfigService(config as unknown as ConfigService),
+      new OAuthConfigService(config),
     ),
     discovery: new OAuthDiscoveryController(oauth as unknown as OAuthService),
     grant,
@@ -300,7 +308,9 @@ function request({
   return {
     headers: {
       accept,
+      host: "localhost:3001",
     },
+    protocol: "http",
     session: withSession
       ? {
           id: "session-id",

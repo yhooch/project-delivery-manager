@@ -21,7 +21,10 @@ import { z } from "zod";
 import { ulid } from "ulid";
 
 import { ApiException } from "../../http/api-exception";
-import type { McpOAuthPrincipalContext } from "../../http/request-context";
+import type {
+  McpOAuthPrincipalContext,
+  RequestWithContext,
+} from "../../http/request-context";
 import { McpBearerAuthenticationError } from "./mcp-bearer-auth.error";
 import { OAuthClientMetadataService } from "./oauth-client-metadata.service";
 import { OAuthConfigService } from "./oauth-config.service";
@@ -56,29 +59,39 @@ export class OAuthService {
     private readonly clientMetadata: OAuthClientMetadataService,
   ) {}
 
-  getProtectedResourceMetadata(): McpProtectedResourceMetadata {
+  getProtectedResourceMetadata(
+    request?: RequestWithContext,
+  ): McpProtectedResourceMetadata {
     return {
-      resource: this.oauthConfig.getCanonicalResource(),
-      authorization_servers: [this.oauthConfig.getIssuer()],
+      resource: this.oauthConfig.getCanonicalResource(request),
+      authorization_servers: [this.oauthConfig.getIssuer(request)],
       scopes_supported: [...MCP_SCOPE_VALUES],
       resource_name: "PDM MCP",
       bearer_methods_supported: ["header"],
     };
   }
 
-  getAuthorizationServerMetadata(): McpAuthorizationServerMetadata {
+  getAuthorizationServerMetadata(
+    request?: RequestWithContext,
+  ): McpAuthorizationServerMetadata {
     return {
-      issuer: this.oauthConfig.getIssuer(),
-      authorization_endpoint: this.oauthConfig.absoluteUrl(McpAuthorizePath),
-      token_endpoint: this.oauthConfig.absoluteUrl(McpTokenPath),
-      revocation_endpoint: this.oauthConfig.absoluteUrl(McpRevokePath),
+      issuer: this.oauthConfig.getIssuer(request),
+      authorization_endpoint: this.oauthConfig.absoluteUrl(
+        McpAuthorizePath,
+        request,
+      ),
+      token_endpoint: this.oauthConfig.absoluteUrl(McpTokenPath, request),
+      revocation_endpoint: this.oauthConfig.absoluteUrl(McpRevokePath, request),
       response_types_supported: ["code"],
       grant_types_supported: ["authorization_code", "refresh_token"],
       code_challenge_methods_supported: ["S256"],
       scopes_supported: [...MCP_SCOPE_VALUES],
       token_endpoint_auth_methods_supported: ["none"],
       client_id_metadata_document_supported: true,
-      registration_endpoint: this.oauthConfig.absoluteUrl(McpRegisterPath),
+      registration_endpoint: this.oauthConfig.absoluteUrl(
+        McpRegisterPath,
+        request,
+      ),
     };
   }
 
@@ -120,9 +133,10 @@ export class OAuthService {
   async prepareAuthorization(
     query: McpOAuthAuthorizeQuery,
     userId: string,
+    request?: RequestWithContext,
   ): Promise<PreparedAuthorization> {
     const now = new Date();
-    this.assertCanonicalResource(query.resource);
+    this.assertCanonicalResource(query.resource, request);
 
     let client = await this.resolveClient(query.client_id, now);
     assertRedirectUriAllowed(client, query.redirect_uri);
@@ -173,8 +187,9 @@ export class OAuthService {
 
   async exchangeToken(
     request: McpOAuthTokenRequest,
+    httpRequest?: RequestWithContext,
   ): Promise<McpOAuthTokenResponse> {
-    this.assertCanonicalResource(request.resource);
+    this.assertCanonicalResource(request.resource, httpRequest);
 
     if (request.grant_type === "authorization_code") {
       return this.exchangeAuthorizationCode(request);
@@ -250,6 +265,7 @@ export class OAuthService {
   async validateBearerToken(
     authorizationHeader: string | undefined,
     requiredScopes: McpScope[] = [],
+    request?: RequestWithContext,
   ): Promise<McpOAuthPrincipalContext> {
     const token = parseBearerToken(authorizationHeader);
 
@@ -268,7 +284,10 @@ export class OAuthService {
       now,
     );
 
-    if (!accessToken || accessToken.resource !== this.oauthConfig.getCanonicalResource()) {
+    if (
+      !accessToken ||
+      accessToken.resource !== this.oauthConfig.getCanonicalResource(request)
+    ) {
       throw new McpBearerAuthenticationError(
         HttpStatus.UNAUTHORIZED,
         "invalid_token",
@@ -303,16 +322,21 @@ export class OAuthService {
     };
   }
 
-  buildBearerChallenge(input: {
-    error?: "invalid_token" | "insufficient_scope";
-    errorDescription?: string;
-    scope?: string;
-  } = {}): string {
+  buildBearerChallenge(
+    input: {
+      error?: "invalid_token" | "insufficient_scope";
+      errorDescription?: string;
+      scope?: string;
+    } = {},
+    request?: RequestWithContext,
+  ): string {
     const parts = [
       `resource_metadata="${escapeHeaderValue(
-        this.oauthConfig.getProtectedResourceMetadataUrl(),
+        this.oauthConfig.getProtectedResourceMetadataUrl(request),
       )}"`,
-      `resource="${escapeHeaderValue(this.oauthConfig.getCanonicalResource())}"`,
+      `resource="${escapeHeaderValue(
+        this.oauthConfig.getCanonicalResource(request),
+      )}"`,
     ];
 
     if (input.scope) {
@@ -332,10 +356,12 @@ export class OAuthService {
     return `Bearer ${parts.join(", ")}`;
   }
 
-  private async exchangeAuthorizationCode(request: Extract<
-    McpOAuthTokenRequest,
-    { grant_type: "authorization_code" }
-  >): Promise<McpOAuthTokenResponse> {
+  private async exchangeAuthorizationCode(
+    request: Extract<
+      McpOAuthTokenRequest,
+      { grant_type: "authorization_code" }
+    >,
+  ): Promise<McpOAuthTokenResponse> {
     const now = new Date();
     const client = await this.resolveClient(request.client_id, now);
     assertRedirectUriAllowed(client, request.redirect_uri);
@@ -372,10 +398,9 @@ export class OAuthService {
     });
   }
 
-  private async exchangeRefreshToken(request: Extract<
-    McpOAuthTokenRequest,
-    { grant_type: "refresh_token" }
-  >): Promise<McpOAuthTokenResponse> {
+  private async exchangeRefreshToken(
+    request: Extract<McpOAuthTokenRequest, { grant_type: "refresh_token" }>,
+  ): Promise<McpOAuthTokenResponse> {
     const now = new Date();
     await this.resolveClient(request.client_id, now);
 
@@ -463,8 +488,11 @@ export class OAuthService {
     };
   }
 
-  private assertCanonicalResource(resource: string): void {
-    if (resource !== this.oauthConfig.getCanonicalResource()) {
+  private assertCanonicalResource(
+    resource: string,
+    request?: RequestWithContext,
+  ): void {
+    if (resource !== this.oauthConfig.getCanonicalResource(request)) {
       throw new OAuthProtocolError(
         "invalid_request",
         "OAuth resource does not match this MCP server",
@@ -480,7 +508,10 @@ export class OAuthService {
 
     if (existing) {
       if (existing.status !== "ACTIVE") {
-        throw new OAuthProtocolError("invalid_client", "OAuth client is disabled");
+        throw new OAuthProtocolError(
+          "invalid_client",
+          "OAuth client is disabled",
+        );
       }
 
       if (
@@ -532,7 +563,10 @@ export class OAuthService {
       });
     }
 
-    throw new OAuthProtocolError("invalid_client", "OAuth client was not found");
+    throw new OAuthProtocolError(
+      "invalid_client",
+      "OAuth client was not found",
+    );
   }
 
   private async refreshMetadataClient(

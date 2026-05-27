@@ -9,8 +9,6 @@ import { AttachmentTargetTypeSchema } from "./enums.ts";
 
 export const AttachmentMaxSizeBytes = 20 * 1024 * 1024;
 export const AttachmentMaxCountPerTarget = 20;
-export const PresignedUploadUrlExpiresInSeconds = 10 * 60;
-export const AttachmentDownloadUrlExpiresInSeconds = 5 * 60;
 
 export const AttachmentMimeTypeSchema = z.enum([
   "image/png",
@@ -43,10 +41,6 @@ const AttachmentStoredMetadataSchema = z.object({
   mimeType: AttachmentMimeTypeSchema,
   size: AttachmentSizeSchema,
 });
-const AttachmentUploadMetadataSchema = z.object({
-  mimeType: z.string().min(1),
-  size: z.number().int().positive(),
-});
 
 export const AttachmentSchema = z
   .object({
@@ -66,54 +60,15 @@ export const AttachmentSchema = z
 
 export type Attachment = z.infer<typeof AttachmentSchema>;
 
-export const PresignAttachmentRequestSchema = z
+export const UploadAttachmentRequestSchema = z
   .object({
     targetType: AttachmentTargetTypeSchema,
     targetId: UlidSchema,
-    fileName: z.string().min(1),
-  })
-  .extend(AttachmentUploadMetadataSchema.shape)
-  .strict();
-
-export type PresignAttachmentRequest = z.infer<
-  typeof PresignAttachmentRequestSchema
->;
-
-export const PresignAttachmentResponseSchema = z
-  .object({
-    uploadUrl: z.url(),
-    fileKey: z.string().min(1),
-    expiresInSeconds: z.number().int().positive(),
   })
   .strict();
 
-export type PresignAttachmentResponse = z.infer<
-  typeof PresignAttachmentResponseSchema
->;
-
-export const CreateAttachmentRequestSchema = z
-  .object({
-    targetType: AttachmentTargetTypeSchema,
-    targetId: UlidSchema,
-    fileName: z.string().min(1),
-    fileKey: z.string().min(1),
-  })
-  .extend(AttachmentUploadMetadataSchema.shape)
-  .strict();
-
-export type CreateAttachmentRequest = z.infer<
-  typeof CreateAttachmentRequestSchema
->;
-
-export const GetAttachmentDownloadUrlResponseSchema = z
-  .object({
-    downloadUrl: z.url(),
-    expiresInSeconds: z.number().int().positive(),
-  })
-  .strict();
-
-export type GetAttachmentDownloadUrlResponse = z.infer<
-  typeof GetAttachmentDownloadUrlResponseSchema
+export type UploadAttachmentRequest = z.infer<
+  typeof UploadAttachmentRequestSchema
 >;
 
 export const AttachmentListQuerySchema = PageQuerySchema.extend({

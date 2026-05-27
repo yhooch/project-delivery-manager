@@ -32,9 +32,6 @@ services:
       MINIO_ROOT_PASSWORD: ${MINIO_SECRET_KEY:?MINIO_SECRET_KEY is required}
       MINIO_REGION_NAME: ${MINIO_REGION:-us-east-1}
       TZ: ${MINIO_TIMEZONE:-CST-8}
-    ports:
-      - "${MINIO_PUBLIC_PORT:-9000}:9000"
-      - "127.0.0.1:${MINIO_CONSOLE_PORT:-9001}:9001"
     volumes:
       - minio-data:/data
   minio-init:
@@ -55,22 +52,6 @@ services:
           sleep 2
         done
         mc mb --ignore-existing "prod/$$MINIO_BUCKET"
-        cat >/tmp/prod-cors.xml <<'CORS'
-        <CORSConfiguration>
-          <CORSRule>
-            <AllowedOrigin>*</AllowedOrigin>
-            <AllowedMethod>GET</AllowedMethod>
-            <AllowedMethod>PUT</AllowedMethod>
-            <AllowedMethod>POST</AllowedMethod>
-            <AllowedMethod>DELETE</AllowedMethod>
-            <AllowedMethod>HEAD</AllowedMethod>
-            <AllowedHeader>*</AllowedHeader>
-            <ExposeHeader>ETag</ExposeHeader>
-            <MaxAgeSeconds>3000</MaxAgeSeconds>
-          </CORSRule>
-        </CORSConfiguration>
-        CORS
-        mc cors set "prod/$$MINIO_BUCKET" /tmp/prod-cors.xml
     restart: "no"
 
   api:
@@ -81,14 +62,9 @@ services:
     environment:
       NODE_ENV: production
       DATABASE_URL: postgresql://${POSTGRES_USER:-crm}:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}@postgres:5432/${POSTGRES_DB:-crm_manager}
-      API_PUBLIC_URL: ${API_PUBLIC_URL:?API_PUBLIC_URL is required}
-      MCP_OAUTH_ISSUER: ${MCP_OAUTH_ISSUER:?MCP_OAUTH_ISSUER is required}
-      MCP_CANONICAL_RESOURCE_URI: ${MCP_CANONICAL_RESOURCE_URI:?MCP_CANONICAL_RESOURCE_URI is required}
-      WEB_APP_URL: ${WEB_APP_URL:?WEB_APP_URL is required}
       SESSION_COOKIE_NAME: ${SESSION_COOKIE_NAME:-pdm_session}
       SESSION_COOKIE_SECURE: ${SESSION_COOKIE_SECURE:-false}
       MINIO_INTERNAL_ENDPOINT: http://minio:9000
-      MINIO_PUBLIC_ENDPOINT: ${MINIO_PUBLIC_ENDPOINT:?MINIO_PUBLIC_ENDPOINT is required}
       MINIO_BUCKET: ${MINIO_BUCKET:-crm-manager-attachments}
       MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY:?MINIO_ACCESS_KEY is required}
       MINIO_SECRET_KEY: ${MINIO_SECRET_KEY:?MINIO_SECRET_KEY is required}

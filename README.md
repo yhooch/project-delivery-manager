@@ -99,7 +99,7 @@ by the existing organization, project-space, object, role, and workflow rules.
 | Shared contracts | Zod schemas in `packages/shared` |
 | UI | Tailwind CSS, Radix UI primitives, lucide-react |
 | Editor | Tiptap plus Markdown mode |
-| File storage | MinIO / S3-compatible presigned URLs |
+| File storage | MinIO behind the API |
 | Realtime | Server-Sent Events |
 | E2E | Playwright |
 | Unit tests | Vitest |
@@ -216,10 +216,9 @@ Compose:
 For HTTP deployment, `SESSION_COOKIE_SECURE=false` must match the actual origin.
 When moving to HTTPS, switch it back to secure cookie behavior.
 Public and private browser entry points are accepted when the request `Host`
-matches the browser `Origin`; `WEB_APP_URL` remains the primary OAuth/MCP
-address. `MINIO_PUBLIC_ENDPOINT` must be reachable from both public and private
-browsers; if the two networks need different MinIO addresses, route or
-reverse-proxy them so both entry points can use it.
+matches the browser `Origin`. OAuth/MCP metadata is derived from the current
+request `Host`, and attachment upload/download flows go through the API to the
+internal MinIO service. Production only needs the Nginx port exposed.
 
 ## Current Status
 

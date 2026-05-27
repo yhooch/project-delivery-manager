@@ -48,7 +48,7 @@ import {
 
 import {
   AttachmentUploadError,
-  getAttachmentDownloadUrl,
+  createAttachmentDownloadUrl,
   uploadRequirementImage,
   type AttachmentUploadErrorCode,
 } from "../../lib/attachment-service";
@@ -321,45 +321,15 @@ export function RequirementContentEditorSlot({
       return;
     }
 
-    let cancelled = false;
+    setImageDisplayUrls((current) => {
+      const next = { ...current };
 
-    void Promise.all(
-      missingAttachmentIds.map(async (attachmentId) => {
-        try {
-          const result = await getAttachmentDownloadUrl({ attachmentId });
-
-          return [attachmentId, result.downloadUrl] as const;
-        } catch {
-          return null;
-        }
-      }),
-    ).then((results) => {
-      if (cancelled) {
-        return;
-      }
-
-      const resolvedResults = results.filter(
-        (result): result is readonly [string, string] => result !== null,
-      );
-
-      if (resolvedResults.length === 0) {
-        return;
-      }
-
-      setImageDisplayUrls((current) => {
-        const next = { ...current };
-
-        resolvedResults.forEach((result) => {
-          next[result[0]] = result[1];
-        });
-
-        return next;
+      missingAttachmentIds.forEach((attachmentId) => {
+        next[attachmentId] = createAttachmentDownloadUrl(attachmentId);
       });
-    });
 
-    return () => {
-      cancelled = true;
-    };
+      return next;
+    });
   }, [imageDisplayUrls, value]);
 
   useEffect(() => {
@@ -1405,9 +1375,6 @@ function RequirementMarkdownPreview({
   const blocks = useMemo(() => parseRequirementMarkdown(markdown), [markdown]);
   const [resolvedImageUrls, setResolvedImageUrls] =
     useState<Record<string, string>>(imageDisplayUrls);
-  const [failedImageIds, setFailedImageIds] = useState<Set<string>>(
-    () => new Set(),
-  );
 
   useEffect(() => {
     if (Object.keys(imageDisplayUrls).length === 0) {
@@ -1423,65 +1390,31 @@ function RequirementMarkdownPreview({
   useEffect(() => {
     const attachmentIds = blocks
       .filter(
-        (block): block is Extract<RequirementMarkdownBlock, { type: "image" }> =>
+        (
+          block,
+        ): block is Extract<RequirementMarkdownBlock, { type: "image" }> =>
           block.type === "image",
       )
       .map((block) => getAttachmentIdFromMarkdownImageSrc(block.src))
       .filter((id): id is string => Boolean(id));
     const missingAttachmentIds = Array.from(new Set(attachmentIds)).filter(
-      (attachmentId) =>
-        !resolvedImageUrls[attachmentId] && !failedImageIds.has(attachmentId),
+      (attachmentId) => !resolvedImageUrls[attachmentId],
     );
 
     if (missingAttachmentIds.length === 0) {
       return;
     }
 
-    let cancelled = false;
+    setResolvedImageUrls((current) => {
+      const next = { ...current };
 
-    void Promise.all(
-      missingAttachmentIds.map(async (attachmentId) => {
-        try {
-          const result = await getAttachmentDownloadUrl({ attachmentId });
-
-          return [attachmentId, result.downloadUrl] as const;
-        } catch {
-          return [attachmentId, undefined] as const;
-        }
-      }),
-    ).then((results) => {
-      if (cancelled) {
-        return;
-      }
-
-      setResolvedImageUrls((current) => {
-        const next = { ...current };
-
-        results.forEach(([attachmentId, downloadUrl]) => {
-          if (downloadUrl) {
-            next[attachmentId] = downloadUrl;
-          }
-        });
-
-        return next;
+      missingAttachmentIds.forEach((attachmentId) => {
+        next[attachmentId] = createAttachmentDownloadUrl(attachmentId);
       });
-      setFailedImageIds((current) => {
-        const next = new Set(current);
 
-        results.forEach(([attachmentId, downloadUrl]) => {
-          if (!downloadUrl) {
-            next.add(attachmentId);
-          }
-        });
-
-        return next;
-      });
+      return next;
     });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [blocks, failedImageIds, resolvedImageUrls]);
+  }, [blocks, resolvedImageUrls]);
 
   if (blocks.length === 0) {
     return <div className="min-h-24 rounded-md bg-muted/20" />;

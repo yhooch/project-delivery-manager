@@ -38,17 +38,21 @@ export class McpBearerAuthGuard implements CanActivate {
       request.mcpPrincipal = await this.oauth.validateBearerToken(
         firstHeaderValue(request.headers?.authorization),
         this.getRequiredScopes(context),
+        request,
       );
       return true;
     } catch (error) {
       if (error instanceof McpBearerAuthenticationError) {
         response.setHeader(
           "WWW-Authenticate",
-          this.oauth.buildBearerChallenge({
-            error: error.challengeError,
-            errorDescription: error.message,
-            scope: error.requiredScope,
-          }),
+          this.oauth.buildBearerChallenge(
+            {
+              error: error.challengeError,
+              errorDescription: error.message,
+              scope: error.requiredScope,
+            },
+            request,
+          ),
         );
 
         throw new ApiException(

@@ -88,7 +88,7 @@ access token；业务权限仍由现有组织、项目空间、对象、角色�
 | 共享契约 | `packages/shared` 中的 Zod schemas |
 | UI | Tailwind CSS、Radix UI primitives、lucide-react |
 | 编辑器 | Tiptap + Markdown 模式 |
-| 文件存储 | MinIO / S3-compatible presigned URLs |
+| 文件存储 | API 内网访问 MinIO |
 | 实时能力 | Server-Sent Events |
 | E2E | Playwright |
 | 单元测试 | Vitest |
@@ -203,9 +203,8 @@ corepack pnpm test:e2e:list
 
 HTTP 部署时，`SESSION_COOKIE_SECURE=false` 必须和实际访问 origin 匹配。切换到 HTTPS
 后，应恢复 secure cookie 口径。公网和私网入口会按请求 `Host` 与浏览器 `Origin`
-同源自动放行；`WEB_APP_URL` 仍作为 OAuth/MCP 等主访问地址。`MINIO_PUBLIC_ENDPOINT`
-必须是公网和私网浏览器都能访问的地址；如果两种网络需要不同 MinIO 地址，需要分别
-保证路由或反向代理可达。
+同源自动放行。OAuth/MCP 元数据按当前请求 `Host` 生成；附件上传、下载都经 API
+访问内网 MinIO。生产环境只需要暴露 Nginx 端口。
 
 ## 当前状态
 

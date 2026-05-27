@@ -1,9 +1,7 @@
 import { Logger } from "@nestjs/common";
 import {
-  AttachmentDownloadUrlExpiresInSeconds,
   AttachmentMaxCountPerTarget,
   AttachmentMaxSizeBytes,
-  PresignedUploadUrlExpiresInSeconds,
   type Attachment,
 } from "@project-delivery/shared";
 import { ulid } from "ulid";
@@ -18,37 +16,46 @@ import {
   AttachmentTargetNotFoundError,
   type AttachmentRepository,
 } from "./attachment.repository";
-import { AttachmentService } from "./attachment.service";
+import {
+  AttachmentService,
+  type AttachmentUploadFile,
+} from "./attachment.service";
 import type { CreateAttachmentInput } from "./attachment.types";
 import type { AttachmentObjectStorage } from "./storage/attachment-object-storage";
 
 describe("AttachmentService", () => {
-  it("uses the object storage adapter to presign uploads with plain object keys", async () => {
+  it("uploads files through the object storage adapter and registers the attachment", async () => {
     const actorUserId = ulid();
+    const organizationId = ulid();
+    const spaceId = ulid();
     const workItemId = ulid();
-    const { service, attachments, objectStorage, targets } =
+    const { service, attachments, audit, objectStorage, realtime, targets } =
       createServiceFixture({
+        organizationId,
+        spaceId,
         targetId: workItemId,
+        targetWorkItemType: "BUG",
       });
 
-    const presign = await service.presign(actorUserId, {
-      targetType: "WORK_ITEM",
-      targetId: workItemId,
-      fileName: "spec.pdf",
-      mimeType: "application/pdf",
-      size: 1024,
-    });
+    const created = await service.upload(
+      actorUserId,
+      {
+        targetType: "WORK_ITEM",
+        targetId: workItemId,
+      },
+      uploadFile({
+        fileName: "spec.pdf",
+        mimeType: "application/pdf",
+        size: 1024,
+      }),
+      { requestId: "req-attachment" },
+    );
 
-    expect(presign).toEqual({
-      uploadUrl: "https://minio.example.test/upload",
-      fileKey: expect.stringMatching(
-        new RegExp(
-          `^attachments/work_item/${workItemId}/[0-9A-HJKMNP-TV-Z]{26}-spec\\.pdf$`,
-        ),
+    expect(created.fileKey).toMatch(
+      new RegExp(
+        `^attachments/work_item/${workItemId}/[0-9A-HJKMNP-TV-Z]{26}-spec\\.pdf$`,
       ),
-      expiresInSeconds: PresignedUploadUrlExpiresInSeconds,
-    });
-    expect(presign.fileKey).not.toContain("~");
+    );
     expect(targets.resolve).toHaveBeenCalledWith(
       actorUserId,
       "WORK_ITEM",
@@ -61,62 +68,21 @@ describe("AttachmentService", () => {
     );
     expect(attachments.countByTarget).toHaveBeenCalledWith(
       expect.objectContaining({
-        organizationId: expect.any(String),
-        spaceId: expect.any(String),
-        targetId: workItemId,
-        targetType: "WORK_ITEM",
-      }),
-    );
-    expect(objectStorage.createPresignedUploadUrl).toHaveBeenCalledWith({
-      expiresInSeconds: PresignedUploadUrlExpiresInSeconds,
-      key: presign.fileKey,
-      mimeType: "application/pdf",
-      size: 1024,
-    });
-  });
-
-  it("registers uploaded WORK_ITEM attachments after object metadata matches", async () => {
-    const actorUserId = ulid();
-    const organizationId = ulid();
-    const spaceId = ulid();
-    const workItemId = ulid();
-    const fileKey = validFileKey("WORK_ITEM", workItemId);
-    const { service, attachments, audit, objectStorage, realtime, targets } =
-      createServiceFixture({
         organizationId,
         spaceId,
         targetId: workItemId,
-        targetWorkItemType: "BUG",
-      });
-
-    const created = await service.create(
-      actorUserId,
-      {
         targetType: "WORK_ITEM",
-        targetId: workItemId,
-        fileName: "spec.pdf",
-        fileKey,
-        mimeType: "application/pdf",
-        size: 1024,
-      },
-      { requestId: "req-attachment" },
-    );
-
-    expect(objectStorage.statObject).toHaveBeenCalledWith(fileKey);
-    expect(objectStorage.deleteObjectIfExists).not.toHaveBeenCalled();
-    expect(targets.resolve).toHaveBeenCalledWith(
-      actorUserId,
-      "WORK_ITEM",
-      workItemId,
-      expect.objectContaining({
-        access: "write",
-        hideInaccessible: true,
-        notFoundCode: "ATTACHMENT_TARGET_NOT_FOUND",
       }),
     );
+    expect(objectStorage.putObject).toHaveBeenCalledWith({
+      body: expect.any(Buffer),
+      key: created.fileKey,
+      mimeType: "application/pdf",
+      size: 1024,
+    });
     expect(attachments.create).toHaveBeenCalledWith(
       expect.objectContaining({
-        fileKey,
+        fileKey: created.fileKey,
         organizationId,
         spaceId,
         targetId: workItemId,
@@ -125,7 +91,6 @@ describe("AttachmentService", () => {
         uploadedById: actorUserId,
       }),
     );
-    expect(created.fileKey).toBe(fileKey);
     expect(audit.record).toHaveBeenCalledWith(
       expect.objectContaining({
         actionType: "CREATE",
@@ -157,155 +122,7 @@ describe("AttachmentService", () => {
     );
   });
 
-  it("does not register attachments when the uploaded object is missing", async () => {
-    const actorUserId = ulid();
-    const workItemId = ulid();
-    const fileKey = validFileKey("WORK_ITEM", workItemId);
-    const objectStorage = createObjectStorage({
-      statObject: vi.fn(async () => undefined),
-    });
-    const { service, attachments, audit } = createServiceFixture({
-      objectStorage,
-      targetId: workItemId,
-    });
-
-    await expect(
-      service.create(actorUserId, {
-        targetType: "WORK_ITEM",
-        targetId: workItemId,
-        fileName: "spec.pdf",
-        fileKey,
-        mimeType: "application/pdf",
-        size: 1024,
-      }),
-    ).rejects.toMatchObject({
-      code: "VALIDATION_ERROR",
-      message: "Uploaded attachment object does not exist",
-    });
-    expect(attachments.create).not.toHaveBeenCalled();
-    expect(audit.record).not.toHaveBeenCalled();
-    expect(objectStorage.deleteObjectIfExists).not.toHaveBeenCalled();
-  });
-
-  it("rejects uploaded objects whose size does not match registration", async () => {
-    const actorUserId = ulid();
-    const workItemId = ulid();
-    const fileKey = validFileKey("WORK_ITEM", workItemId);
-    const objectStorage = createObjectStorage({
-      statObject: vi.fn(async () => ({
-        mimeType: "application/pdf",
-        size: 2048,
-      })),
-    });
-    const { service, attachments } = createServiceFixture({
-      objectStorage,
-      targetId: workItemId,
-    });
-
-    await expect(
-      service.create(actorUserId, {
-        targetType: "WORK_ITEM",
-        targetId: workItemId,
-        fileName: "spec.pdf",
-        fileKey,
-        mimeType: "application/pdf",
-        size: 1024,
-      }),
-    ).rejects.toMatchObject({
-      code: "VALIDATION_ERROR",
-      details: {
-        actualSize: 2048,
-        expectedSize: 1024,
-      },
-      message: "Uploaded attachment size does not match registration",
-    });
-    expect(objectStorage.deleteObjectIfExists).toHaveBeenCalledWith(fileKey);
-    expect(attachments.create).not.toHaveBeenCalled();
-  });
-
-  it("rejects uploaded objects whose MIME type does not match registration", async () => {
-    const actorUserId = ulid();
-    const workItemId = ulid();
-    const fileKey = validFileKey("WORK_ITEM", workItemId);
-    const objectStorage = createObjectStorage({
-      statObject: vi.fn(async () => ({
-        mimeType: "text/plain",
-        size: 1024,
-      })),
-    });
-    const { service, attachments } = createServiceFixture({
-      objectStorage,
-      targetId: workItemId,
-    });
-
-    await expect(
-      service.create(actorUserId, {
-        targetType: "WORK_ITEM",
-        targetId: workItemId,
-        fileName: "spec.pdf",
-        fileKey,
-        mimeType: "application/pdf",
-        size: 1024,
-      }),
-    ).rejects.toMatchObject({
-      code: "VALIDATION_ERROR",
-      details: {
-        actualMimeType: "text/plain",
-        expectedMimeType: "application/pdf",
-      },
-      message: "Uploaded attachment MIME type does not match registration",
-    });
-    expect(objectStorage.deleteObjectIfExists).toHaveBeenCalledWith(fileKey);
-    expect(attachments.create).not.toHaveBeenCalled();
-  });
-
-  it("keeps the original mismatch error when best-effort object deletion fails", async () => {
-    const actorUserId = ulid();
-    const workItemId = ulid();
-    const fileKey = validFileKey("WORK_ITEM", workItemId);
-    const logger = vi
-      .spyOn(Logger.prototype, "warn")
-      .mockImplementation(() => undefined);
-    const objectStorage = createObjectStorage({
-      deleteObjectIfExists: vi.fn(async () => {
-        throw new Error("delete failed");
-      }),
-      statObject: vi.fn(async () => ({
-        mimeType: "application/pdf",
-        size: 2048,
-      })),
-    });
-    const { service, attachments } = createServiceFixture({
-      objectStorage,
-      targetId: workItemId,
-    });
-
-    await expect(
-      service.create(actorUserId, {
-        targetType: "WORK_ITEM",
-        targetId: workItemId,
-        fileName: "spec.pdf",
-        fileKey,
-        mimeType: "application/pdf",
-        size: 1024,
-      }),
-    ).rejects.toMatchObject({
-      code: "VALIDATION_ERROR",
-      details: {
-        actualSize: 2048,
-        expectedSize: 1024,
-      },
-      message: "Uploaded attachment size does not match registration",
-    });
-    expect(objectStorage.deleteObjectIfExists).toHaveBeenCalledWith(fileKey);
-    expect(logger).toHaveBeenCalledWith(
-      expect.stringContaining("Failed to delete mismatched attachment object"),
-    );
-    expect(attachments.create).not.toHaveBeenCalled();
-    logger.mockRestore();
-  });
-
-  it("signs download URLs after resolving current read permission", async () => {
+  it("downloads files after resolving current read permission", async () => {
     const actorUserId = ulid();
     const organizationId = ulid();
     const spaceId = ulid();
@@ -327,9 +144,8 @@ describe("AttachmentService", () => {
         targetId: workItemId,
       });
 
-    const download = await service.getDownloadUrl(actorUserId, attachment.id);
+    const download = await service.download(actorUserId, attachment.id);
 
-    expect(targets.resolve).toHaveBeenCalledTimes(1);
     expect(targets.resolve).toHaveBeenCalledWith(
       actorUserId,
       "WORK_ITEM",
@@ -349,17 +165,18 @@ describe("AttachmentService", () => {
       targetId: workItemId,
       targetType: "WORK_ITEM",
     });
-    expect(objectStorage.createPresignedDownloadUrl).toHaveBeenCalledWith({
-      expiresInSeconds: AttachmentDownloadUrlExpiresInSeconds,
+    expect(objectStorage.getObject).toHaveBeenCalledWith({
       key: attachment.fileKey,
     });
     expect(download).toEqual({
-      downloadUrl: "https://minio.example.test/download",
-      expiresInSeconds: AttachmentDownloadUrlExpiresInSeconds,
+      attachment,
+      body: Buffer.from("stored-file"),
+      mimeType: "application/pdf",
+      size: 11,
     });
   });
 
-  it("does not sign download URLs when the attachment row does not match the resolved target context", async () => {
+  it("does not download files when the attachment row does not match the resolved target context", async () => {
     const actorUserId = ulid();
     const organizationId = ulid();
     const spaceId = ulid();
@@ -382,24 +199,16 @@ describe("AttachmentService", () => {
     vi.mocked(attachments.findById).mockResolvedValueOnce(undefined);
 
     await expect(
-      service.getDownloadUrl(actorUserId, attachment.id),
+      service.download(actorUserId, attachment.id),
     ).rejects.toMatchObject({
       code: "ATTACHMENT_TARGET_NOT_FOUND",
     });
-    expect(attachments.findById).toHaveBeenCalledWith({
-      attachmentId: attachment.id,
-      organizationId,
-      spaceId,
-      targetId: workItemId,
-      targetType: "WORK_ITEM",
-    });
-    expect(objectStorage.createPresignedDownloadUrl).not.toHaveBeenCalled();
+    expect(objectStorage.getObject).not.toHaveBeenCalled();
   });
 
-  it("does not create attachments when WORK_ITEM visibility resolution rejects", async () => {
+  it("does not upload files when WORK_ITEM visibility resolution rejects", async () => {
     const actorUserId = ulid();
     const workItemId = ulid();
-    const fileKey = validFileKey("WORK_ITEM", workItemId);
     const { service, attachments, audit, objectStorage, targets } =
       createServiceFixture({
         targetId: workItemId,
@@ -407,16 +216,16 @@ describe("AttachmentService", () => {
     vi.mocked(targets.resolve).mockRejectedValueOnce(new Error("not visible"));
 
     await expect(
-      service.create(actorUserId, {
-        targetType: "WORK_ITEM",
-        targetId: workItemId,
-        fileName: "spec.pdf",
-        fileKey,
-        mimeType: "application/pdf",
-        size: 1024,
-      }),
+      service.upload(
+        actorUserId,
+        {
+          targetType: "WORK_ITEM",
+          targetId: workItemId,
+        },
+        uploadFile(),
+      ),
     ).rejects.toThrow("not visible");
-    expect(objectStorage.statObject).not.toHaveBeenCalled();
+    expect(objectStorage.putObject).not.toHaveBeenCalled();
     expect(attachments.create).not.toHaveBeenCalled();
     expect(audit.record).not.toHaveBeenCalled();
   });
@@ -430,74 +239,85 @@ describe("AttachmentService", () => {
     });
 
     await expect(
-      service.presign(actorUserId, {
-        targetType: "WORK_ITEM",
-        targetId: workItemId,
-        fileName: "large.pdf",
-        mimeType: "application/pdf",
-        size: AttachmentMaxSizeBytes + 1,
-      }),
+      service.upload(
+        actorUserId,
+        {
+          targetType: "WORK_ITEM",
+          targetId: workItemId,
+        },
+        uploadFile({ fileName: "large.pdf", size: AttachmentMaxSizeBytes + 1 }),
+      ),
     ).rejects.toMatchObject({
       code: "FILE_TOO_LARGE",
     });
     await expect(
-      service.presign(actorUserId, {
-        targetType: "WORK_ITEM",
-        targetId: workItemId,
-        fileName: "payload.bin",
-        mimeType: "application/octet-stream",
-        size: 1024,
-      } as unknown as Parameters<AttachmentService["presign"]>[1]),
+      service.upload(
+        actorUserId,
+        {
+          targetType: "WORK_ITEM",
+          targetId: workItemId,
+        },
+        uploadFile({
+          fileName: "payload.bin",
+          mimeType: "application/octet-stream",
+        }),
+      ),
     ).rejects.toMatchObject({
       code: "UNSUPPORTED_MIME_TYPE",
     });
     await expect(
-      service.presign(actorUserId, {
-        targetType: "WORK_ITEM",
-        targetId: workItemId,
-        fileName: "fractional.pdf",
-        mimeType: "application/pdf",
-        size: 1024.5,
-      }),
+      service.upload(
+        actorUserId,
+        {
+          targetType: "WORK_ITEM",
+          targetId: workItemId,
+        },
+        uploadFile({ fileName: "fractional.pdf", size: 1024.5 }),
+      ),
     ).rejects.toMatchObject({
       code: "VALIDATION_ERROR",
     });
     await expect(
-      service.presign(actorUserId, {
-        targetType: "WORK_ITEM",
-        targetId: workItemId,
-        fileName: "spec.pdf",
-        mimeType: "application/pdf",
-        size: 1024,
-      }),
+      service.upload(
+        actorUserId,
+        {
+          targetType: "WORK_ITEM",
+          targetId: workItemId,
+        },
+        uploadFile(),
+      ),
     ).rejects.toMatchObject({
       code: "ATTACHMENT_LIMIT_EXCEEDED",
     });
-    expect(objectStorage.createPresignedUploadUrl).not.toHaveBeenCalled();
+    expect(objectStorage.putObject).not.toHaveBeenCalled();
     expect(attachments.create).not.toHaveBeenCalled();
   });
 
-  it("maps concurrent repository failures to public attachment error codes", async () => {
+  it("deletes uploaded objects when repository creation fails", async () => {
     const actorUserId = ulid();
     const workItemId = ulid();
-    const fileKey = validFileKey("WORK_ITEM", workItemId);
     const limitFixture = createServiceFixture({
       createError: new AttachmentLimitExceededError(),
       targetId: workItemId,
     });
 
     await expect(
-      limitFixture.service.create(actorUserId, {
-        targetType: "WORK_ITEM",
-        targetId: workItemId,
-        fileName: "spec.pdf",
-        fileKey,
-        mimeType: "application/pdf",
-        size: 1024,
-      }),
+      limitFixture.service.upload(
+        actorUserId,
+        {
+          targetType: "WORK_ITEM",
+          targetId: workItemId,
+        },
+        uploadFile(),
+      ),
     ).rejects.toMatchObject({
       code: "ATTACHMENT_LIMIT_EXCEEDED",
     });
+    expect(
+      limitFixture.objectStorage.deleteObjectIfExists,
+    ).toHaveBeenCalledWith(
+      expect.stringMatching(`^attachments/work_item/${workItemId}/`),
+    );
 
     const targetFixture = createServiceFixture({
       createError: new AttachmentTargetNotFoundError(),
@@ -505,18 +325,55 @@ describe("AttachmentService", () => {
     });
 
     await expect(
-      targetFixture.service.create(actorUserId, {
-        targetType: "WORK_ITEM",
-        targetId: workItemId,
-        fileName: "spec.pdf",
-        fileKey,
-        mimeType: "application/pdf",
-        size: 1024,
-      }),
+      targetFixture.service.upload(
+        actorUserId,
+        {
+          targetType: "WORK_ITEM",
+          targetId: workItemId,
+        },
+        uploadFile(),
+      ),
     ).rejects.toMatchObject({
       code: "ATTACHMENT_TARGET_NOT_FOUND",
     });
     expect(targetFixture.audit.record).not.toHaveBeenCalled();
+  });
+
+  it("keeps the original create error when best-effort object deletion fails", async () => {
+    const actorUserId = ulid();
+    const workItemId = ulid();
+    const logger = vi
+      .spyOn(Logger.prototype, "warn")
+      .mockImplementation(() => undefined);
+    const objectStorage = createObjectStorage({
+      deleteObjectIfExists: vi.fn(async () => {
+        throw new Error("delete failed");
+      }),
+    });
+    const { service } = createServiceFixture({
+      createError: new AttachmentLimitExceededError(),
+      objectStorage,
+      targetId: workItemId,
+    });
+
+    await expect(
+      service.upload(
+        actorUserId,
+        {
+          targetType: "WORK_ITEM",
+          targetId: workItemId,
+        },
+        uploadFile(),
+      ),
+    ).rejects.toMatchObject({
+      code: "ATTACHMENT_LIMIT_EXCEEDED",
+    });
+    expect(logger).toHaveBeenCalledWith(
+      expect.stringContaining(
+        "Failed to delete unregistered attachment object",
+      ),
+    );
+    logger.mockRestore();
   });
 });
 
@@ -543,7 +400,10 @@ function createServiceFixture(
       }
 
       return fakeAttachment(input.id, input.fileKey, input.targetId, {
+        fileName: input.fileName,
+        mimeType: input.mimeType,
         organizationId: input.organizationId,
+        size: input.size,
         spaceId: input.spaceId,
         targetType: input.targetType,
         uploadedById: input.uploadedById,
@@ -615,27 +475,33 @@ function createObjectStorage(
   overrides: Partial<MockAttachmentObjectStorage> = {},
 ): MockAttachmentObjectStorage {
   return {
-    createPresignedDownloadUrl: vi.fn(
-      async () => "https://minio.example.test/download",
-    ),
-    createPresignedUploadUrl: vi.fn(
-      async () => "https://minio.example.test/upload",
-    ),
     deleteObjectIfExists: vi.fn(async () => undefined),
-    statObject: vi.fn(async () => ({
-      mimeType: "application/pdf; charset=utf-8",
-      size: 1024,
+    getObject: vi.fn(async () => ({
+      body: Buffer.from("stored-file"),
+      mimeType: "application/pdf",
+      size: 11,
     })),
+    putObject: vi.fn(async () => undefined),
     ...overrides,
   } as MockAttachmentObjectStorage;
 }
 
 type MockAttachmentObjectStorage = AttachmentObjectStorage & {
-  createPresignedDownloadUrl: ReturnType<typeof vi.fn>;
-  createPresignedUploadUrl: ReturnType<typeof vi.fn>;
   deleteObjectIfExists: ReturnType<typeof vi.fn>;
-  statObject: ReturnType<typeof vi.fn>;
+  getObject: ReturnType<typeof vi.fn>;
+  putObject: ReturnType<typeof vi.fn>;
 };
+
+function uploadFile(overrides: Partial<AttachmentUploadFile> = {}) {
+  const size = overrides.size ?? 1024;
+
+  return {
+    buffer: overrides.buffer ?? Buffer.alloc(Math.max(Math.floor(size), 0)),
+    fileName: overrides.fileName ?? "spec.pdf",
+    mimeType: overrides.mimeType ?? "application/pdf",
+    size,
+  };
+}
 
 function validFileKey(
   targetType: "REQUIREMENT" | "WORK_ITEM",

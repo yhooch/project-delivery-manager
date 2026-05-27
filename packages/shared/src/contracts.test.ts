@@ -25,7 +25,7 @@ import {
   IntakeSourceTypeSchema,
   PermissionSnapshotSchema,
   apiContracts,
-  PresignAttachmentRequestSchema,
+  UploadAttachmentRequestSchema,
   ListTagFilterOptionsQuerySchema,
   ListSpacesResponseSchema,
   ListTagsQuerySchema,
@@ -194,7 +194,7 @@ describe("shared contracts", () => {
         "VALIDATION_ERROR",
       ]),
     );
-    expect(errorCodesFor("presignAttachment")).toEqual(
+    expect(errorCodesFor("createAttachment")).toEqual(
       expect.arrayContaining([
         "ATTACHMENT_TARGET_NOT_FOUND",
         "ATTACHMENT_LIMIT_EXCEEDED",
@@ -1254,52 +1254,31 @@ describe("shared contracts", () => {
 
   it("keeps M1 attachment request validation structural at the shared boundary", () => {
     expect(() =>
-      PresignAttachmentRequestSchema.parse({
+      UploadAttachmentRequestSchema.parse({
         targetType: "REQUIREMENT",
         targetId: "01FRZ3NDEKTSV4RRFFQ69G5FAE",
-        fileName: "design.png",
-        mimeType: "image/png",
-        size: 1024,
       }),
     ).not.toThrow();
 
     expect(
-      PresignAttachmentRequestSchema.safeParse({
+      UploadAttachmentRequestSchema.safeParse({
         targetType: "REQUIREMENT",
         targetId: "01FRZ3NDEKTSV4RRFFQ69G5FAE",
-        fileName: "payload.bin",
-        mimeType: "application/octet-stream",
-        size: 1024,
       }).success,
     ).toBe(true);
 
     expect(
-      PresignAttachmentRequestSchema.safeParse({
+      UploadAttachmentRequestSchema.safeParse({
         targetType: "REQUIREMENT",
         targetId: "01FRZ3NDEKTSV4RRFFQ69G5FAE",
-        fileName: "huge.pdf",
-        mimeType: "application/pdf",
-        size: 20 * 1024 * 1024 + 1,
-      }).success,
-    ).toBe(true);
-
-    expect(
-      PresignAttachmentRequestSchema.safeParse({
-        targetType: "REQUIREMENT",
-        targetId: "01FRZ3NDEKTSV4RRFFQ69G5FAE",
-        fileName: "empty.txt",
-        mimeType: "",
-        size: 1024,
+        fileName: "extra-field.txt",
       }).success,
     ).toBe(false);
 
     expect(
-      PresignAttachmentRequestSchema.safeParse({
+      UploadAttachmentRequestSchema.safeParse({
         targetType: "REQUIREMENT",
-        targetId: "01FRZ3NDEKTSV4RRFFQ69G5FAE",
-        fileName: "fractional.pdf",
-        mimeType: "application/pdf",
-        size: 1024.5,
+        targetId: "invalid",
       }).success,
     ).toBe(false);
   });
@@ -1343,8 +1322,7 @@ describe("shared contracts", () => {
       "listTags",
     );
     expect(
-      document.paths["/spaces/{spaceId}/tag-filter-options"]?.get
-        ?.operationId,
+      document.paths["/spaces/{spaceId}/tag-filter-options"]?.get?.operationId,
     ).toBe("listTagFilterOptions");
     expect(
       document.paths["/spaces/{spaceId}/tag-filter-options"]?.get?.parameters,
@@ -1371,7 +1349,9 @@ describe("shared contracts", () => {
     expect(document.paths["/tag-assignments"]?.patch?.operationId).toBe(
       "replaceTagAssignments",
     );
-    expect(document.paths["/spaces/{spaceId}/work-items"]?.get?.parameters).toEqual(
+    expect(
+      document.paths["/spaces/{spaceId}/work-items"]?.get?.parameters,
+    ).toEqual(
       expect.arrayContaining([
         expect.objectContaining({ name: "tagIds", in: "query" }),
         expect.objectContaining({ name: "tagMatch", in: "query" }),
@@ -1460,8 +1440,8 @@ describe("shared contracts", () => {
         expect.objectContaining({ name: "tagMatch", in: "query" }),
       ]),
     );
-    expect(
-      document.paths["/attachments/presign"]?.post?.["x-error-codes"],
-    ).toContain("DRAFT_REQUIREMENT_REQUIRED");
+    expect(document.paths["/attachments"]?.post?.["x-error-codes"]).toContain(
+      "DRAFT_REQUIREMENT_REQUIRED",
+    );
   });
 });

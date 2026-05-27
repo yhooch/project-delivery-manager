@@ -1,20 +1,15 @@
 import { HttpStatus, Inject, Injectable, Logger } from "@nestjs/common";
 import {
-  AttachmentDownloadUrlExpiresInSeconds,
   AttachmentMaxCountPerTarget,
   AttachmentMaxSizeBytes,
   AttachmentMimeTypeSchema,
-  PresignedUploadUrlExpiresInSeconds,
   type Attachment,
   type AttachmentMimeType,
   type AttachmentTargetType,
-  type CreateAttachmentRequest,
-  type GetAttachmentDownloadUrlResponse,
   type PageResult,
-  type PresignAttachmentRequest,
-  type PresignAttachmentResponse,
   type RealtimeInvalidationKey,
   type SpaceRole,
+  type UploadAttachmentRequest,
   type WorkItemType,
 } from "@project-delivery/shared";
 import { ulid } from "ulid";
@@ -38,7 +33,6 @@ import {
 import type { AttachmentTargetContext } from "./attachment.types";
 import {
   ATTACHMENT_OBJECT_STORAGE,
-  type AttachmentObjectMetadata,
   type AttachmentObjectStorage,
 } from "./storage/attachment-object-storage";
 
@@ -47,6 +41,20 @@ const REQUIREMENT_WRITER_ROLES = new Set<SpaceRole>([
   "PM",
   "REQUIREMENT",
 ]);
+
+export type AttachmentUploadFile = {
+  buffer: Buffer;
+  fileName: string;
+  mimeType: string;
+  size: number;
+};
+
+export type AttachmentDownload = {
+  attachment: Attachment;
+  body: Buffer;
+  mimeType: string;
+  size: number;
+};
 
 @Injectable()
 export class AttachmentService {
@@ -67,12 +75,14 @@ export class AttachmentService {
     private readonly realtime: RealtimePublisherService,
   ) {}
 
-  async presign(
+  async upload(
     actorUserId: string,
-    input: PresignAttachmentRequest,
+    input: UploadAttachmentRequest,
+    file: AttachmentUploadFile,
     metadata: RequestMetadata = {},
-  ): Promise<PresignAttachmentResponse> {
-    this.assertFileConstraints(input);
+  ): Promise<Attachment> {
+    const parsedFile = this.assertFileConstraints(file);
+
     const target = await this.requireWritableAttachmentTarget(
       actorUserId,
       input,
@@ -83,55 +93,27 @@ export class AttachmentService {
     const fileKey = createFileKey(
       input.targetType,
       input.targetId,
-      input.fileName,
+      file.fileName,
     );
-    const uploadUrl = await this.objectStorage.createPresignedUploadUrl({
-      expiresInSeconds: PresignedUploadUrlExpiresInSeconds,
+
+    await this.objectStorage.putObject({
+      body: file.buffer,
       key: fileKey,
-      mimeType: input.mimeType,
-      size: input.size,
+      mimeType: parsedFile.mimeType,
+      size: file.size,
     });
 
-    return {
-      uploadUrl,
-      fileKey,
-      expiresInSeconds: PresignedUploadUrlExpiresInSeconds,
-    };
-  }
-
-  async create(
-    actorUserId: string,
-    input: CreateAttachmentRequest,
-    metadata: RequestMetadata = {},
-  ): Promise<Attachment> {
-    const file = this.assertFileConstraints(input);
-    if (!isExpectedFileKey(input.targetType, input.targetId, input.fileKey)) {
-      throw new ApiException(
-        "VALIDATION_ERROR",
-        "fileKey does not match attachment target",
-        HttpStatus.BAD_REQUEST,
-      );
-    }
-
-    const target = await this.requireWritableAttachmentTarget(
-      actorUserId,
-      input,
-      metadata,
-    );
-    await this.assertAttachmentCountLimit(target);
-    await this.assertUploadedObjectMatches(input);
-
-    const created = await this.createAttachmentOrThrowPublicError({
+    const created = await this.createAttachmentAfterObjectUpload(fileKey, {
       id: ulid(),
       organizationId: target.organizationId,
       spaceId: target.spaceId,
       targetType: input.targetType,
       targetId: input.targetId,
       targetWorkItemType: target.targetWorkItemType,
-      fileName: input.fileName,
-      fileKey: input.fileKey,
-      mimeType: file.mimeType,
-      size: input.size,
+      fileName: file.fileName,
+      fileKey,
+      mimeType: parsedFile.mimeType,
+      size: file.size,
       uploadedById: actorUserId,
     });
 
@@ -140,9 +122,9 @@ export class AttachmentService {
       actorId: actorUserId,
       after: created,
       metadata: {
-        fileName: input.fileName,
-        mimeType: file.mimeType,
-        size: input.size,
+        fileName: file.fileName,
+        mimeType: parsedFile.mimeType,
+        size: file.size,
         targetId: input.targetId,
         targetType: input.targetType,
       },
@@ -200,10 +182,10 @@ export class AttachmentService {
     });
   }
 
-  async getDownloadUrl(
+  async download(
     actorUserId: string,
     attachmentId: string,
-  ): Promise<GetAttachmentDownloadUrlResponse> {
+  ): Promise<AttachmentDownload> {
     const attachmentContext =
       await this.attachments.findTargetContextById(attachmentId);
 
@@ -228,14 +210,19 @@ export class AttachmentService {
       throwAttachmentTargetNotFound();
     }
 
-    const downloadUrl = await this.objectStorage.createPresignedDownloadUrl({
-      expiresInSeconds: AttachmentDownloadUrlExpiresInSeconds,
+    const object = await this.objectStorage.getObject({
       key: attachment.fileKey,
     });
 
+    if (!object) {
+      throwAttachmentTargetNotFound();
+    }
+
     return {
-      downloadUrl,
-      expiresInSeconds: AttachmentDownloadUrlExpiresInSeconds,
+      attachment,
+      body: object.body,
+      mimeType: object.mimeType,
+      size: object.size,
     };
   }
 
@@ -408,6 +395,36 @@ export class AttachmentService {
     }
   }
 
+  private async createAttachmentAfterObjectUpload(
+    fileKey: string,
+    input: Parameters<AttachmentRepository["create"]>[0],
+  ): Promise<Attachment> {
+    try {
+      return await this.createAttachmentOrThrowPublicError(input);
+    } catch (error) {
+      return await this.deleteUploadedObjectAfterCreateFailure(fileKey, error);
+    }
+  }
+
+  private async deleteUploadedObjectAfterCreateFailure(
+    fileKey: string,
+    error: unknown,
+  ): Promise<never> {
+    try {
+      await this.objectStorage.deleteObjectIfExists(fileKey);
+    } catch (deleteError) {
+      this.logger.warn(
+        `Failed to delete unregistered attachment object ${fileKey}: ${
+          deleteError instanceof Error
+            ? deleteError.message
+            : String(deleteError)
+        }`,
+      );
+    }
+
+    throw error;
+  }
+
   private assertFileConstraints(input: { mimeType: string; size: number }): {
     mimeType: AttachmentMimeType;
   } {
@@ -445,67 +462,6 @@ export class AttachmentService {
     return {
       mimeType: mimeType.data,
     };
-  }
-
-  private async assertUploadedObjectMatches(
-    input: CreateAttachmentRequest,
-  ): Promise<void> {
-    const object = await this.objectStorage.statObject(input.fileKey);
-
-    if (!object) {
-      throw new ApiException(
-        "VALIDATION_ERROR",
-        "Uploaded attachment object does not exist",
-        HttpStatus.BAD_REQUEST,
-      );
-    }
-    if (object.size !== input.size) {
-      await this.rejectUploadedObjectMismatch(
-        input.fileKey,
-        new ApiException(
-          "VALIDATION_ERROR",
-          "Uploaded attachment size does not match registration",
-          HttpStatus.BAD_REQUEST,
-          {
-            actualSize: object.size,
-            expectedSize: input.size,
-          },
-        ),
-      );
-    }
-    if (!mimeTypesMatch(object, input.mimeType)) {
-      await this.rejectUploadedObjectMismatch(
-        input.fileKey,
-        new ApiException(
-          "VALIDATION_ERROR",
-          "Uploaded attachment MIME type does not match registration",
-          HttpStatus.BAD_REQUEST,
-          {
-            actualMimeType: object.mimeType,
-            expectedMimeType: input.mimeType,
-          },
-        ),
-      );
-    }
-  }
-
-  private async rejectUploadedObjectMismatch(
-    fileKey: string,
-    error: ApiException,
-  ): Promise<never> {
-    try {
-      await this.objectStorage.deleteObjectIfExists(fileKey);
-    } catch (deleteError) {
-      this.logger.warn(
-        `Failed to delete mismatched attachment object ${fileKey}: ${
-          deleteError instanceof Error
-            ? deleteError.message
-            : String(deleteError)
-        }`,
-      );
-    }
-
-    throw error;
   }
 
   private safePublishRealtime(
@@ -549,29 +505,6 @@ function createFileKey(
   return `attachments/${targetType.toLowerCase()}/${targetId}/${ulid()}-${sanitizeFileName(fileName)}`;
 }
 
-function isExpectedFileKey(
-  targetType: "REQUIREMENT" | "WORK_ITEM",
-  targetId: string,
-  fileKey: string,
-): boolean {
-  const prefix = `attachments/${targetType.toLowerCase()}/${targetId}/`;
-
-  if (!fileKey.startsWith(prefix)) {
-    return false;
-  }
-
-  const objectName = fileKey.slice(prefix.length);
-
-  return /^[0-9A-HJKMNP-TV-Z]{26}-.+$/u.test(objectName);
-}
-
-function mimeTypesMatch(
-  object: AttachmentObjectMetadata,
-  expected: string,
-): boolean {
-  return normalizeMimeType(object.mimeType) === normalizeMimeType(expected);
-}
-
 function sanitizeFileName(fileName: string): string {
   const sanitized = fileName
     .trim()
@@ -580,10 +513,6 @@ function sanitizeFileName(fileName: string): string {
     .replace(/^-+|-+$/gu, "");
 
   return sanitized || "file";
-}
-
-function normalizeMimeType(mimeType: string): string {
-  return mimeType.split(";")[0]?.trim().toLowerCase() ?? "";
 }
 
 function throwAttachmentTargetNotFound(): never {

@@ -6,13 +6,12 @@ import {
   CreateAttachmentResponseSchema,
   CreateIntakeItemResponseSchema,
   CreateRequirementDraftResponseSchema,
-  GetAttachmentDownloadUrlResponseSchema,
   GetRequirementResponseSchema,
   ListAttachmentsResponseSchema,
   ListWorkItemsResponseSchema,
-  PresignAttachmentResponseSchema,
 } from "../../packages/shared/src/index";
 
+import { apiPath } from "./support/m0-env";
 import {
   addOrganizationMember,
   addSpaceMember,
@@ -35,6 +34,7 @@ import {
   getPrismaClient,
   getWorkItem,
   listWorkItemTimeline,
+  m3UnsafeAuthHeaders,
   patch,
   post,
   registerAndLoginUser,
@@ -473,49 +473,39 @@ async function assertRequirementImageUploadChain(
   actor: M3User,
   requirementId: string,
 ) {
+  const body = Buffer.alloc(512, "a");
   const file = {
     fileName: `requirement-image-${requirementId}.png`,
     mimeType: "image/png",
-    size: 512,
+    size: body.length,
     targetId: requirementId,
     targetType: "REQUIREMENT",
   } as const;
-  const presigned = await expectData(
-    await post(actor, "/attachments/presign", file),
-    PresignAttachmentResponseSchema,
-    "POST /attachments/presign for requirement image",
-  );
-
-  expect(presigned.fileKey).toContain(`/requirement/${requirementId}/`);
-  expect(decodeURIComponent(new URL(presigned.uploadUrl).pathname)).toContain(
-    `/${presigned.fileKey}`,
-  );
-
-  const uploadResponse = await actor.context.put(presigned.uploadUrl, {
-    data: Buffer.alloc(file.size, "a"),
-    headers: {
-      "Content-Type": file.mimeType,
-    },
-  });
-  expect(uploadResponse.ok()).toBe(true);
-
   const attachment = await expectData(
-    await post(actor, "/attachments", {
-      ...file,
-      fileKey: presigned.fileKey,
+    await actor.context.post(apiPath("/attachments"), {
+      headers: m3UnsafeAuthHeaders(actor),
+      multipart: {
+        file: {
+          buffer: body,
+          mimeType: file.mimeType,
+          name: file.fileName,
+        },
+        targetId: file.targetId,
+        targetType: file.targetType,
+      },
     }),
     CreateAttachmentResponseSchema,
     "POST /attachments for requirement image",
   );
 
   expect(attachment).toMatchObject({
-    fileKey: presigned.fileKey,
     fileName: file.fileName,
     mimeType: file.mimeType,
     size: file.size,
     targetId: requirementId,
     targetType: "REQUIREMENT",
   });
+  expect(attachment.fileKey).toContain(`/requirement/${requirementId}/`);
 
   const attachments = await expectData(
     await get(
@@ -536,14 +526,13 @@ async function assertRequirementImageUploadChain(
     attachment.id,
   );
 
-  const downloadUrl = await expectData(
-    await get(actor, `/attachments/${attachment.id}/download-url`),
-    GetAttachmentDownloadUrlResponseSchema,
-    "GET /attachments/:attachmentId/download-url",
+  const downloadResponse = await get(
+    actor,
+    `/attachments/${attachment.id}/download`,
   );
-  expect(downloadUrl.downloadUrl).toContain(
-    encodeURI(presigned.fileKey),
-  );
+  expect(downloadResponse.ok()).toBe(true);
+  expect(downloadResponse.headers()["content-type"]).toContain(file.mimeType);
+  expect(await downloadResponse.body()).toEqual(body);
 }
 
 async function assertIntakeMultiTaskBreakdown(input: {

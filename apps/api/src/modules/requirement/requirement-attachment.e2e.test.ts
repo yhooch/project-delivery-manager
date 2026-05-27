@@ -517,40 +517,17 @@ describe("requirement and attachment API", () => {
     await developerAgent.get(`/api/v1/requirements/${draft.id}`).expect(404);
   });
 
-  it("presigns, registers, and downloads requirement attachments", async () => {
+  it("uploads and downloads requirement attachments through the API", async () => {
     const { agent, viewerAgent, requirementUser, space } =
       await setupRequirementSpace("m1g_attachment_success", "REQUIREMENT");
     const draft = (await createRequirement(agent, space.id, {}).expect(200))
       .body.data as Requirement;
 
-    const presign = (
-      await presignAttachment(agent, {
-        targetType: "REQUIREMENT",
-        targetId: draft.id,
-        fileName: "设计图.png",
-        mimeType: "image/png",
-        size: 1024,
-      }).expect(200)
-    ).body.data as {
-      expiresInSeconds: number;
-      fileKey: string;
-      uploadUrl: string;
-    };
-
-    expect(presign).toMatchObject({
-      expiresInSeconds: 600,
-    });
-    expect(presign.fileKey).toContain(`attachments/requirement/${draft.id}/`);
-    expect(presign.uploadUrl).toContain(
-      "http://127.0.0.1:9000/crm-manager-attachments/",
-    );
-
     const attachment = (
-      await createAttachment(agent, {
+      await uploadAttachment(agent, {
         targetType: "REQUIREMENT",
         targetId: draft.id,
         fileName: "设计图.png",
-        fileKey: presign.fileKey,
         mimeType: "image/png",
         size: 1024,
       }).expect(200)
@@ -560,36 +537,22 @@ describe("requirement and attachment API", () => {
       targetType: "REQUIREMENT",
       targetId: draft.id,
       fileName: "设计图.png",
-      fileKey: presign.fileKey,
+      fileKey: expect.stringContaining(`attachments/requirement/${draft.id}/`),
       mimeType: "image/png",
       size: 1024,
       uploadedById: requirementUser.id,
     });
 
-    await createAttachment(agent, {
-      targetType: "REQUIREMENT",
-      targetId: draft.id,
-      fileName: "设计图.png",
-      fileKey: presign.fileKey,
-      mimeType: "image/png",
-      size: 2048,
-    })
-      .expect(400)
-      .expect(({ body }) => {
-        expect(body.code).toBe("VALIDATION_ERROR");
-      });
-
     await agent
-      .get(`/api/v1/attachments/${attachment.id}/download-url`)
+      .get(`/api/v1/attachments/${attachment.id}/download`)
       .expect(200)
-      .expect(({ body }) => {
-        expect(body.data.expiresInSeconds).toBe(300);
-        expect(body.data.downloadUrl).toContain(
-          "http://127.0.0.1:9000/crm-manager-attachments/",
-        );
+      .expect(({ body, headers }) => {
+        expect(headers["content-type"]).toContain("image/png");
+        expect(Buffer.isBuffer(body)).toBe(true);
+        expect((body as Buffer).toString()).toBe("x".repeat(1024));
       });
     await viewerAgent
-      .get(`/api/v1/attachments/${attachment.id}/download-url`)
+      .get(`/api/v1/attachments/${attachment.id}/download`)
       .expect(404)
       .expect(({ body }) => {
         expect(body.code).toBe("ATTACHMENT_TARGET_NOT_FOUND");
@@ -603,21 +566,11 @@ describe("requirement and attachment API", () => {
     );
     const draft = (await createRequirement(agent, space.id, {}).expect(200))
       .body.data as Requirement;
-    const presign = (
-      await presignAttachment(agent, {
-        targetType: "REQUIREMENT",
-        targetId: draft.id,
-        fileName: "visible.png",
-        mimeType: "image/png",
-        size: 1024,
-      }).expect(200)
-    ).body.data as { fileKey: string };
     const visible = (
-      await createAttachment(agent, {
+      await uploadAttachment(agent, {
         targetType: "REQUIREMENT",
         targetId: draft.id,
         fileName: "visible.png",
-        fileKey: presign.fileKey,
         mimeType: "image/png",
         size: 1024,
       }).expect(200)
@@ -650,20 +603,18 @@ describe("requirement and attachment API", () => {
       });
 
     await agent
-      .get(`/api/v1/attachments/${dirtyOrganizationAttachment.id}/download-url`)
+      .get(`/api/v1/attachments/${dirtyOrganizationAttachment.id}/download`)
       .expect(404)
       .expect(({ body }) => {
         expect(body.code).toBe("ATTACHMENT_TARGET_NOT_FOUND");
       });
     await agent
-      .get(`/api/v1/attachments/${dirtySpaceAttachment.id}/download-url`)
+      .get(`/api/v1/attachments/${dirtySpaceAttachment.id}/download`)
       .expect(404)
       .expect(({ body }) => {
         expect(body.code).toBe("ATTACHMENT_TARGET_NOT_FOUND");
       });
-    await agent
-      .get(`/api/v1/attachments/${visible.id}/download-url`)
-      .expect(200);
+    await agent.get(`/api/v1/attachments/${visible.id}/download`).expect(200);
 
     const countDraft = (
       await createRequirement(agent, space.id, {}).expect(200)
@@ -675,7 +626,7 @@ describe("requirement and attachment API", () => {
       countDraft.id,
       AttachmentMaxCountPerTarget,
     );
-    await presignAttachment(agent, {
+    await uploadAttachment(agent, {
       targetType: "REQUIREMENT",
       targetId: countDraft.id,
       fileName: "not-blocked-by-dirty.png",
@@ -692,7 +643,7 @@ describe("requirement and attachment API", () => {
     const draft = (await createRequirement(agent, space.id, {}).expect(200))
       .body.data as Requirement;
 
-    await presignAttachment(agent, {
+    await uploadAttachment(agent, {
       targetType: "REQUIREMENT",
       targetId: ulid(),
       fileName: "missing.png",
@@ -703,7 +654,7 @@ describe("requirement and attachment API", () => {
       .expect(({ body }) => {
         expect(body.code).toBe("ATTACHMENT_TARGET_NOT_FOUND");
       });
-    await presignAttachment(outsiderAgent, {
+    await uploadAttachment(outsiderAgent, {
       targetType: "REQUIREMENT",
       targetId: draft.id,
       fileName: "denied.png",
@@ -714,7 +665,7 @@ describe("requirement and attachment API", () => {
       .expect(({ body }) => {
         expect(body.code).toBe("ATTACHMENT_TARGET_NOT_FOUND");
       });
-    await presignAttachment(agent, {
+    await uploadAttachment(agent, {
       targetType: "REQUIREMENT",
       targetId: draft.id,
       fileName: "large.png",
@@ -725,37 +676,10 @@ describe("requirement and attachment API", () => {
       .expect(({ body }) => {
         expect(body.code).toBe("FILE_TOO_LARGE");
       });
-    await agent
-      .post("/api/v1/attachments/presign")
-      .set("Origin", ORIGIN)
-      .send({
-        targetType: "REQUIREMENT",
-        targetId: draft.id,
-        fileName: "bad.exe",
-        mimeType: "application/x-msdownload",
-        size: 1024,
-      })
-      .expect(400)
-      .expect(({ body }) => {
-        expect(body.code).toBe("UNSUPPORTED_MIME_TYPE");
-      });
-    await createAttachment(agent, {
-      targetType: "REQUIREMENT",
-      targetId: draft.id,
-      fileName: "large.png",
-      fileKey: `attachments/requirement/${draft.id}/large.png`,
-      mimeType: "image/png",
-      size: AttachmentMaxSizeBytes + 1,
-    })
-      .expect(400)
-      .expect(({ body }) => {
-        expect(body.code).toBe("FILE_TOO_LARGE");
-      });
-    await createAttachment(agent, {
+    await uploadAttachment(agent, {
       targetType: "REQUIREMENT",
       targetId: draft.id,
       fileName: "bad.exe",
-      fileKey: `attachments/requirement/${draft.id}/bad.exe`,
       mimeType: "application/x-msdownload",
       size: 1024,
     })
@@ -768,7 +692,7 @@ describe("requirement and attachment API", () => {
       title: "已确认需求",
       contentJson: tiptapDoc("已确认需求"),
     }).expect(200);
-    await presignAttachment(agent, {
+    await uploadAttachment(agent, {
       targetType: "REQUIREMENT",
       targetId: draft.id,
       fileName: "confirmed.png",
@@ -790,7 +714,7 @@ describe("requirement and attachment API", () => {
       limitedDraft.id,
       AttachmentMaxCountPerTarget,
     );
-    await presignAttachment(agent, {
+    await uploadAttachment(agent, {
       targetType: "REQUIREMENT",
       targetId: limitedDraft.id,
       fileName: "overflow.png",
@@ -967,7 +891,7 @@ describe("requirement and attachment API", () => {
       .set("Origin", ORIGIN);
   }
 
-  function presignAttachment(
+  function uploadAttachment(
     agent: request.Agent,
     body: {
       fileName: string;
@@ -978,23 +902,14 @@ describe("requirement and attachment API", () => {
     },
   ) {
     return agent
-      .post("/api/v1/attachments/presign")
+      .post("/api/v1/attachments")
       .set("Origin", ORIGIN)
-      .send(body);
-  }
-
-  function createAttachment(
-    agent: request.Agent,
-    body: {
-      fileKey: string;
-      fileName: string;
-      mimeType: string;
-      size: number;
-      targetId: string;
-      targetType: AttachmentTargetType;
-    },
-  ) {
-    return agent.post("/api/v1/attachments").set("Origin", ORIGIN).send(body);
+      .field("targetType", body.targetType)
+      .field("targetId", body.targetId)
+      .attach("file", Buffer.from("x".repeat(body.size)), {
+        contentType: body.mimeType,
+        filename: body.fileName,
+      });
   }
 
   function listAttachments(
@@ -1820,20 +1735,19 @@ class InMemoryRequirementRepository implements RequirementRepository {
 }
 
 function createAttachmentObjectStorage(): AttachmentObjectStorage {
+  const objects = new Map<
+    string,
+    { body: Buffer; mimeType: string; size: number }
+  >();
+
   return {
-    createPresignedDownloadUrl: async ({ key }) =>
-      `http://127.0.0.1:9000/crm-manager-attachments/${encodeURIComponent(
-        key,
-      )}?X-Amz-Expires=300`,
-    createPresignedUploadUrl: async ({ key }) =>
-      `http://127.0.0.1:9000/crm-manager-attachments/${encodeURIComponent(
-        key,
-      )}?X-Amz-Expires=600`,
-    deleteObjectIfExists: async () => undefined,
-    statObject: async () => ({
-      mimeType: "image/png",
-      size: 1024,
-    }),
+    deleteObjectIfExists: async (key) => {
+      objects.delete(key);
+    },
+    getObject: async ({ key }) => objects.get(key),
+    putObject: async ({ body, key, mimeType, size }) => {
+      objects.set(key, { body, mimeType, size });
+    },
   };
 }
 

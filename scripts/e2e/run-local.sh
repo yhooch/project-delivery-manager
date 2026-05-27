@@ -30,6 +30,7 @@ E2E_MINIO_DATA_DIR="${E2E_MINIO_DATA_DIR:-/tmp/crm-manager-minio-e2e}"
 E2E_MINIO_PORT="${E2E_MINIO_PORT:-59000}"
 E2E_MINIO_CONSOLE_PORT="${E2E_MINIO_CONSOLE_PORT:-59001}"
 E2E_WAIT_MINIO_SECS="${E2E_WAIT_MINIO_SECS:-60}"
+LOCAL_MINIO_ENDPOINT="http://127.0.0.1:${E2E_MINIO_PORT}"
 PORT="${PORT:-3001}"
 WEB_PORT="${WEB_PORT:-3000}"
 E2E_WAIT_API_SECS="${E2E_WAIT_API_SECS:-90}"
@@ -52,8 +53,7 @@ export WEB_APP_URL="${WEB_APP_URL:-http://127.0.0.1:${WEB_PORT}}"
 export API_PROXY_TARGET="${API_PROXY_TARGET:-http://127.0.0.1:${PORT}}"
 export E2E_API_URL="${E2E_API_URL:-http://127.0.0.1:${PORT}/api/v1}"
 export E2E_WEB_URL="${E2E_WEB_URL:-http://127.0.0.1:${WEB_PORT}}"
-export MINIO_PUBLIC_ENDPOINT="${MINIO_PUBLIC_ENDPOINT:-http://127.0.0.1:${E2E_MINIO_PORT}}"
-export MINIO_INTERNAL_ENDPOINT="${MINIO_INTERNAL_ENDPOINT:-${MINIO_PUBLIC_ENDPOINT}}"
+export MINIO_INTERNAL_ENDPOINT="${MINIO_INTERNAL_ENDPOINT:-${LOCAL_MINIO_ENDPOINT}}"
 export MINIO_BUCKET="${MINIO_BUCKET:-crm-manager-attachments-e2e-local}"
 export MINIO_ACCESS_KEY="${MINIO_ACCESS_KEY:-e2e-minio}"
 export MINIO_SECRET_KEY="${MINIO_SECRET_KEY:-e2e-minio-secret}"
@@ -388,16 +388,16 @@ EOF
 ensure_minio() {
   require_minio_cmds
 
-  local minio_health="${MINIO_PUBLIC_ENDPOINT%/}/minio/health/ready"
+  local minio_health="${LOCAL_MINIO_ENDPOINT%/}/minio/health/ready"
   local code
   code="$(http_status "${minio_health}")"
   if [ "${code}" = "200" ]; then
-    log "Reusing ready MinIO at ${MINIO_PUBLIC_ENDPOINT}."
+    log "Reusing ready MinIO at ${LOCAL_MINIO_ENDPOINT}."
   else
     local minio_log="${RUN_DIR}/minio.log"
     : >"${minio_log}"
     mkdir -p -- "${E2E_MINIO_DATA_DIR}"
-    log "Starting local MinIO on ${MINIO_PUBLIC_ENDPOINT} (console :${E2E_MINIO_CONSOLE_PORT})."
+    log "Starting local MinIO on ${LOCAL_MINIO_ENDPOINT} (console :${E2E_MINIO_CONSOLE_PORT})."
     start_background "local MinIO" "${MINIO_PID_FILE}" "${minio_log}" -- \
       env \
         MINIO_ROOT_USER="${MINIO_ACCESS_KEY}" \
@@ -416,7 +416,7 @@ ensure_minio() {
   create_cors_file
   log "Initializing MinIO bucket '${MINIO_BUCKET}' and CORS."
   MC_CONFIG_DIR="${mc_config_dir}" mc alias set e2e-local \
-    "${MINIO_PUBLIC_ENDPOINT}" \
+    "${LOCAL_MINIO_ENDPOINT}" \
     "${MINIO_ACCESS_KEY}" \
     "${MINIO_SECRET_KEY}" >/dev/null
   MC_CONFIG_DIR="${mc_config_dir}" mc mb --ignore-existing "e2e-local/${MINIO_BUCKET}" >/dev/null
@@ -451,7 +451,6 @@ start_api() {
       SESSION_COOKIE_NAME="${SESSION_COOKIE_NAME}" \
       WEB_APP_URL="${WEB_APP_URL}" \
       MINIO_INTERNAL_ENDPOINT="${MINIO_INTERNAL_ENDPOINT}" \
-      MINIO_PUBLIC_ENDPOINT="${MINIO_PUBLIC_ENDPOINT}" \
       MINIO_BUCKET="${MINIO_BUCKET}" \
       MINIO_ACCESS_KEY="${MINIO_ACCESS_KEY}" \
       MINIO_SECRET_KEY="${MINIO_SECRET_KEY}" \
@@ -517,7 +516,7 @@ start_web
 log "Step 5/5: running Playwright E2E suite."
 log "  E2E_API_URL=${E2E_API_URL} E2E_WEB_URL=${E2E_WEB_URL}"
 log "  DATABASE_URL database=$(database_name_from_url "${DATABASE_URL}")"
-log "  MINIO_PUBLIC_ENDPOINT=${MINIO_PUBLIC_ENDPOINT} MINIO_BUCKET=${MINIO_BUCKET}"
+log "  MINIO_INTERNAL_ENDPOINT=${MINIO_INTERNAL_ENDPOINT} MINIO_BUCKET=${MINIO_BUCKET}"
 
 corepack pnpm test:e2e "$@"
 

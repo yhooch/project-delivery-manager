@@ -11,7 +11,6 @@ import {
   Res,
   UseGuards,
 } from "@nestjs/common";
-import { ConfigService } from "@nestjs/config";
 import {
   McpOAuthAuthorizeQuerySchema,
   McpOAuthDynamicClientRegistrationRequestSchema,
@@ -57,15 +56,23 @@ export class OAuthDiscoveryController {
   ) {}
 
   @Get(".well-known/oauth-protected-resource")
-  getProtectedResourceMetadata(@Res() response: RawResponse): void {
-    response.status(HttpStatus.OK).json(this.oauth.getProtectedResourceMetadata());
+  getProtectedResourceMetadata(
+    @Req() request: RequestWithContext,
+    @Res() response: RawResponse,
+  ): void {
+    response
+      .status(HttpStatus.OK)
+      .json(this.oauth.getProtectedResourceMetadata(request));
   }
 
   @Get(".well-known/oauth-authorization-server")
-  getAuthorizationServerMetadata(@Res() response: RawResponse): void {
+  getAuthorizationServerMetadata(
+    @Req() request: RequestWithContext,
+    @Res() response: RawResponse,
+  ): void {
     response
       .status(HttpStatus.OK)
-      .json(this.oauth.getAuthorizationServerMetadata());
+      .json(this.oauth.getAuthorizationServerMetadata(request));
   }
 }
 
@@ -74,8 +81,6 @@ export class OAuthController {
   constructor(
     @Inject(OAuthService)
     private readonly oauth: OAuthService,
-    @Inject(ConfigService)
-    private readonly config: ConfigService,
     @Inject(OAuthConfigService)
     private readonly oauthConfig: OAuthConfigService,
   ) {}
@@ -87,7 +92,10 @@ export class OAuthController {
     @Res() response: RawResponse,
   ): Promise<void> {
     const parsed = McpOAuthAuthorizeQuerySchema.safeParse(
-      withDefaultResource(query, this.oauthConfig.getCanonicalResource()),
+      withDefaultResource(
+        query,
+        this.oauthConfig.getCanonicalResource(request),
+      ),
     );
 
     if (!parsed.success) {
@@ -98,10 +106,7 @@ export class OAuthController {
     if (!wantsJson(request)) {
       response.redirect(
         HttpStatus.FOUND,
-        buildWebAuthorizeUrl(
-          this.config.get<string>("WEB_APP_URL") ?? "http://localhost:3000",
-          parsed.data,
-        ),
+        buildWebAuthorizeUrl(this.oauthConfig.getIssuer(request), parsed.data),
       );
       return;
     }
@@ -118,6 +123,7 @@ export class OAuthController {
       const prepared = await this.oauth.prepareAuthorization(
         parsed.data,
         request.session.userId,
+        request,
       );
 
       response.status(HttpStatus.OK).json(prepared.context);
@@ -135,7 +141,10 @@ export class OAuthController {
     @Res() response: RawResponse,
   ): Promise<void> {
     const parsed = McpOAuthAuthorizeQuerySchema.safeParse(
-      withDefaultResource(query, this.oauthConfig.getCanonicalResource()),
+      withDefaultResource(
+        query,
+        this.oauthConfig.getCanonicalResource(request),
+      ),
     );
 
     if (!parsed.success) {
@@ -155,6 +164,7 @@ export class OAuthController {
       const prepared = await this.oauth.prepareAuthorization(
         parsed.data,
         request.session.userId,
+        request,
       );
       const result = await prepared.grant();
       const body: McpOAuthApproveAuthorizationResponse = {
@@ -171,10 +181,11 @@ export class OAuthController {
   @HttpCode(HttpStatus.OK)
   async token(
     @Body() body: unknown,
+    @Req() request: RequestWithContext,
     @Res() response: RawResponse,
   ): Promise<void> {
     const parsed = McpOAuthTokenRequestSchema.safeParse(
-      withDefaultResource(body, this.oauthConfig.getCanonicalResource()),
+      withDefaultResource(body, this.oauthConfig.getCanonicalResource(request)),
     );
 
     if (!parsed.success) {
@@ -183,7 +194,10 @@ export class OAuthController {
     }
 
     try {
-      const tokenResponse = await this.oauth.exchangeToken(parsed.data);
+      const tokenResponse = await this.oauth.exchangeToken(
+        parsed.data,
+        request,
+      );
       response.status(HttpStatus.OK).json(tokenResponse);
     } catch (error) {
       writeOAuthError(response, error);
@@ -195,7 +209,8 @@ export class OAuthController {
     @Body() body: unknown,
     @Res() response: RawResponse,
   ): Promise<void> {
-    const parsed = McpOAuthDynamicClientRegistrationRequestSchema.safeParse(body);
+    const parsed =
+      McpOAuthDynamicClientRegistrationRequestSchema.safeParse(body);
 
     if (!parsed.success) {
       writeDynamicClientRegistrationValidationError(response, parsed.error);
@@ -262,9 +277,10 @@ export class AuthorizedMcpClientsController {
 }
 
 function wantsJson(request: RequestWithContext): boolean {
-  return firstHeaderValue(request.headers?.accept)?.includes(
-    "application/json",
-  ) ?? false;
+  return (
+    firstHeaderValue(request.headers?.accept)?.includes("application/json") ??
+    false
+  );
 }
 
 function withDefaultResource(input: unknown, resource: string): unknown {
@@ -319,10 +335,7 @@ function writeOAuthError(response: RawResponse, error: unknown): void {
   throw error;
 }
 
-function writeValidationError(
-  response: RawResponse,
-  error: z.ZodError,
-): void {
+function writeValidationError(response: RawResponse, error: z.ZodError): void {
   response.status(HttpStatus.BAD_REQUEST).json({
     error: "invalid_request",
     error_description: error.issues
