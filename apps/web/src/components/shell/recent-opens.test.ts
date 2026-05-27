@@ -94,4 +94,27 @@ describe("recent opens", () => {
 
     window.removeEventListener("pdm:command-palette:recent-changed", listener);
   });
+
+  it("persists document entries without requiring a DOC display code", () => {
+    recordRecentOpen(
+      {
+        id: "DOC_01",
+        type: "DOCUMENT",
+        displayCode: "Document",
+        title: "Launch plan",
+        href: "/documents/DOC_01",
+        organizationId: "ORG_01",
+        spaceId: "SPC_01",
+      },
+      scope,
+    );
+
+    expect(readRecent(scope)[0]).toMatchObject({
+      id: "DOC_01",
+      type: "DOCUMENT",
+      displayCode: "Document",
+      title: "Launch plan",
+      href: "/documents/DOC_01",
+    });
+  });
 });

@@ -18,6 +18,7 @@ import {
   ExecuteActionRequestSchema,
   GetAuthSessionQuerySchema,
   GetBugResponseSchema,
+  GetDocumentResponseSchema,
   GetMyWorkbenchViewResponseSchema,
   GetSpaceOverviewViewResponseSchema,
   GetWorkItemResponseSchema,
@@ -28,6 +29,7 @@ import {
   UploadAttachmentRequestSchema,
   ListTagFilterOptionsQuerySchema,
   ListSpacesResponseSchema,
+  ListDocumentsResponseSchema,
   ListTagsQuerySchema,
   RequirementSchema,
   ReplaceTagAssignmentsRequestSchema,
@@ -86,6 +88,11 @@ describe("shared contracts", () => {
         "TAG_IN_USE",
         "TAG_TARGET_INVALID",
         "TAG_NAME_CONFLICT",
+        "DOCUMENT_NOT_FOUND",
+        "DOCUMENT_EDIT_CONFLICT",
+        "DOCUMENT_LINK_TARGET_INVALID",
+        "DOCUMENT_IMPORT_FAILED",
+        "DOCUMENT_IMPORT_UNSUPPORTED_TYPE",
       ]),
     );
   });
@@ -204,6 +211,23 @@ describe("shared contracts", () => {
         "VALIDATION_ERROR",
       ]),
     );
+    expect(errorCodesFor("pasteDocument")).toEqual(
+      expect.arrayContaining(["DOCUMENT_NOT_FOUND", "VALIDATION_ERROR"]),
+    );
+    expect(errorCodesFor("updateDocumentContent")).toEqual(
+      expect.arrayContaining([
+        "DOCUMENT_NOT_FOUND",
+        "DOCUMENT_EDIT_CONFLICT",
+        "VALIDATION_ERROR",
+      ]),
+    );
+    expect(errorCodesFor("importDocxDocument")).toEqual(
+      expect.arrayContaining([
+        "DOCUMENT_IMPORT_FAILED",
+        "DOCUMENT_IMPORT_UNSUPPORTED_TYPE",
+        "FILE_TOO_LARGE",
+      ]),
+    );
     expect(errorCodesFor("listAttachments")).toEqual(
       expect.arrayContaining([
         "ATTACHMENT_TARGET_NOT_FOUND",
@@ -234,6 +258,59 @@ describe("shared contracts", () => {
     );
   });
 
+  it("keeps document list light while document get returns detail context", () => {
+    const baseDocument = {
+      id: "01H00000000000000000000001",
+      organizationId: "01H00000000000000000000002",
+      spaceId: "01H00000000000000000000003",
+      title: "Agent handoff",
+      contentMarkdown: "# Agent handoff",
+      contentText: "Agent handoff",
+      sourceType: "MCP_CREATED",
+      status: "ACTIVE",
+      revision: 1,
+      createdById: "01H00000000000000000000004",
+      createdVia: "MCP_CLIENT",
+      lastEditedById: "01H00000000000000000000004",
+      lastEditedVia: "MCP_CLIENT",
+      lastEditedAt: "2026-05-27T00:00:00.000Z",
+      createdAt: "2026-05-27T00:00:00.000Z",
+      updatedAt: "2026-05-27T00:00:00.000Z",
+    };
+
+    expect(
+      GetDocumentResponseSchema.safeParse({
+        ...baseDocument,
+        attachments: [],
+        comments: [],
+        timeline: [],
+      }).success,
+    ).toBe(true);
+    expect(
+      ListDocumentsResponseSchema.safeParse({
+        items: [baseDocument],
+        page: 1,
+        pageSize: 20,
+        total: 1,
+      }).success,
+    ).toBe(true);
+    expect(
+      ListDocumentsResponseSchema.safeParse({
+        items: [
+          {
+            ...baseDocument,
+            attachments: [],
+            comments: [],
+            timeline: [],
+          },
+        ],
+        page: 1,
+        pageSize: 20,
+        total: 1,
+      }).success,
+    ).toBe(false);
+  });
+
   it("freezes tag target, filter and assignment contracts", () => {
     const tagId = "01VRZ3NDEKTSV4RRFFQ69G5FAV";
     const secondTagId = "01WRZ3NDEKTSV4RRFFQ69G5FAW";
@@ -256,6 +333,7 @@ describe("shared contracts", () => {
       "REQUIREMENT",
       "INTAKE_ITEM",
       "WORK_ITEM",
+      "DOCUMENT",
     ]);
     expect(CreateTagRequestSchema.parse({ name: "backend" })).toEqual({
       name: "backend",

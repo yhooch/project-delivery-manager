@@ -186,6 +186,21 @@ export class PrismaTimelineRepository implements TimelineRepository {
             }
           : undefined;
       }
+      case "DOCUMENT": {
+        const document = await this.prisma.client.document.findFirst({
+          select: {
+            title: true,
+          },
+          where: {
+            deletedAt: null,
+            id: input.targetId,
+            organizationId: input.organizationId,
+            spaceId: input.spaceId,
+          },
+        });
+
+        return document ? { title: document.title } : undefined;
+      }
     }
   }
 }

@@ -2,6 +2,7 @@
 
 import {
   AlertTriangle,
+  BookOpen,
   Building2,
   CheckCircle2,
   FileText,
@@ -118,6 +119,11 @@ export function Sidebar({ className, onNavigate }: SidebarProps) {
           href: "/intake-items",
           label: tShell("intake"),
           icon: Target,
+        },
+        {
+          href: "/documents",
+          label: tShell("documents"),
+          icon: BookOpen,
         },
       ],
     },

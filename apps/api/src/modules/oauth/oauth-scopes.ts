@@ -8,6 +8,7 @@ export const MCP_SCOPE_VALUES = [
   "mcp:write:workitem",
   "mcp:write:bug",
   "mcp:write:comment",
+  "mcp:write:document",
   "mcp:write:tag",
   "mcp:execute:workflow",
 ] as const satisfies readonly McpScope[];

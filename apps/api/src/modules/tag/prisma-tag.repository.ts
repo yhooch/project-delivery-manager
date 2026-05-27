@@ -255,6 +255,11 @@ export class PrismaTagRepository implements TagRepository {
           targetIds: await this.listIntakeTargetIds(input),
           targetType: "INTAKE_ITEM",
         };
+      case "DOCUMENT":
+        return {
+          targetIds: await this.listDocumentTargetIds(input),
+          targetType: "DOCUMENT",
+        };
       case "SPACE_EXCEPTION":
         return {
           targetIds: await this.listSpaceExceptionTargetIds(input),
@@ -317,6 +322,24 @@ export class PrismaTagRepository implements TagRepository {
     });
 
     return items.map((item) => item.id);
+  }
+
+  private async listDocumentTargetIds(
+    input: Pick<TagFilterOptionsInput, "organizationId" | "spaceId">,
+  ): Promise<string[]> {
+    const documents = await this.prisma.client.document.findMany({
+      distinct: ["id"],
+      select: {
+        id: true,
+      },
+      where: {
+        deletedAt: null,
+        organizationId: input.organizationId,
+        spaceId: input.spaceId,
+      },
+    });
+
+    return documents.map((document) => document.id);
   }
 
   private async listSpaceExceptionTargetIds(

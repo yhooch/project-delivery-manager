@@ -134,6 +134,8 @@ export class TargetResolverService {
         return this.findIntakeItemTarget(targetId);
       case "WORK_ITEM":
         return this.findWorkItemTarget(targetId);
+      case "DOCUMENT":
+        return this.findDocumentTarget(targetId);
     }
   }
 
@@ -272,6 +274,35 @@ export class TargetResolverService {
       : undefined;
   }
 
+  private async findDocumentTarget(
+    targetId: string,
+  ): Promise<TargetRecord | undefined> {
+    const document = await this.prisma.client.document.findFirst({
+      select: {
+        createdById: true,
+        id: true,
+        organizationId: true,
+        spaceId: true,
+        title: true,
+      },
+      where: {
+        deletedAt: null,
+        id: targetId,
+      },
+    });
+
+    return document
+      ? {
+          createdById: document.createdById,
+          organizationId: document.organizationId,
+          spaceId: document.spaceId,
+          targetId: document.id,
+          targetType: "DOCUMENT",
+          title: nonEmptyTitle(document.title),
+        }
+      : undefined;
+  }
+
   private async canReadTarget(
     actorUserId: string,
     target: TargetRecord,
@@ -280,6 +311,7 @@ export class TargetResolverService {
     switch (target.targetType) {
       case "SPACE":
       case "VERSION":
+      case "DOCUMENT":
         return true;
       case "WORK_ITEM":
         if (canReadAllSpaceWorkItems(role)) {
@@ -354,6 +386,8 @@ export class TargetResolverService {
       case "SPACE":
       case "VERSION":
         return MANAGER_ROLES.has(role);
+      case "DOCUMENT":
+        return MANAGER_ROLES.has(role) || target.createdById === actorUserId;
       case "WORK_ITEM":
       case "INTAKE_ITEM":
         if (MANAGER_ROLES.has(role)) {
@@ -398,6 +432,8 @@ export class TargetResolverService {
       case "WORK_ITEM":
       case "INTAKE_ITEM":
         return MANAGER_ROLES.has(role);
+      case "DOCUMENT":
+        return MANAGER_ROLES.has(role) || target.createdById === actorUserId;
       case "REQUIREMENT":
         if (!REQUIREMENT_WRITE_ALL_ROLES.has(role)) {
           return false;
@@ -497,6 +533,7 @@ function targetNotFoundCode(targetType: TargetType): ApiErrorCode {
     case "WORK_ITEM":
       return "WORK_ITEM_NOT_FOUND";
     case "VERSION":
+    case "DOCUMENT":
       return "NOT_FOUND";
   }
 }

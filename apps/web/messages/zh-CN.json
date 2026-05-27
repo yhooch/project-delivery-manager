@@ -578,6 +578,11 @@
       "SPACE_MEMBER_INVALID": "所选空间成员无效或已不可用。",
       "WORK_ITEM_NOT_FOUND": "工作项不存在或已不可用。",
       "REQUIREMENT_NOT_FOUND": "需求不存在或已不可用。",
+      "DOCUMENT_NOT_FOUND": "文档不存在或已不可用。",
+      "DOCUMENT_EDIT_CONFLICT": "文档已有新版本，请刷新后重试。",
+      "DOCUMENT_LINK_TARGET_INVALID": "文档关联资源无效或已不可用。",
+      "DOCUMENT_IMPORT_FAILED": "文档导入失败，请检查文件后重试。",
+      "DOCUMENT_IMPORT_UNSUPPORTED_TYPE": "不支持该文档文件类型。",
       "TARGET_REQUIRED_FOR_ATTACHMENT": "附件必须关联目标对象。",
       "ATTACHMENT_TARGET_NOT_FOUND": "附件关联的目标不存在。",
       "ATTACHMENT_LIMIT_EXCEEDED": "附件数量已达到上限，请删除部分附件后重试。",
@@ -618,6 +623,7 @@
       "mcp:write:workitem": "写入工作项",
       "mcp:write:bug": "写入 Bug",
       "mcp:write:comment": "写入评论",
+      "mcp:write:document": "写入文档",
       "mcp:write:tag": "写入标签",
       "mcp:execute:workflow": "执行流程动作"
     }
@@ -753,6 +759,7 @@
       "exceptions": "异常",
       "requirements": "需求",
       "intake": "事项池",
+      "documents": "文档",
       "workflow": "流程配置",
       "spaceSettings": "空间设置",
       "organization": "组织设置"
@@ -767,6 +774,13 @@
       "title": "需要登录",
       "description": "登录后才能继续访问工作台。",
       "action": "前往登录"
+    },
+    "documents": {
+      "documentTitle": "文档 - 项目交付管理",
+      "title": "文档",
+      "backToWorkspace": "返回工作台",
+      "noSpace": "未选择空间",
+      "workspaceLabel": "文档工作区"
     },
     "sessionError": {
       "title": "会话初始化失败",
@@ -858,11 +872,12 @@
       }
     },
     "command": {
-      "placeholder": "输入命令或搜索任务、Bug、需求、事项",
+      "placeholder": "输入命令或搜索任务、Bug、需求、事项、文档",
       "empty": "未匹配到任何结果",
       "searching": "搜索中…",
       "untitled": "未命名",
       "draftCode": "草稿",
+      "documentLabel": "文档",
       "recent": "最近打开",
       "lookup": {
         "invalid": "编号格式无效，请输入 REQ-12、INTAKE-8、TASK-42 或 BUG-17。",
@@ -890,7 +905,8 @@
         "tasks": "任务",
         "bugs": "Bug",
         "requirements": "需求",
-        "intake": "事项"
+        "intake": "事项",
+        "documents": "文档"
       },
       "nav": {
         "workbench": "我的工作台",
@@ -900,6 +916,7 @@
         "bugs": "Bug",
         "exceptions": "异常",
         "requirements": "需求",
+        "documents": "文档",
         "intake": "事项池",
         "workflow": "流程配置",
         "spaces": "项目空间管理",
@@ -924,6 +941,148 @@
       "submit": "创建组织",
       "submitting": "创建中",
       "error": "创建组织失败，请稍后重试。"
+    }
+  },
+  "documents": {
+    "title": "文档",
+    "untitled": "未命名文档",
+    "unknownOrganization": "未选择组织",
+    "unknownSpace": "未选择空间",
+    "recent": {
+      "document": "文档"
+    },
+    "home": {
+      "subtitle": "沉淀导入、粘贴和模型创建的项目上下文，供团队和 Agent 快速检索复用。",
+      "import": "导入文档",
+      "paste": "粘贴内容",
+      "searchLabel": "搜索文档",
+      "searchPlaceholder": "搜索标题或正文",
+      "filtersLabel": "文档筛选",
+      "loading": "正在加载文档…"
+    },
+    "filters": {
+      "all": "全部",
+      "createdByMe": "我创建",
+      "mcpCreated": "模型创建",
+      "recentMcpEdited": "最近模型修改",
+      "archived": "已归档"
+    },
+    "status": {
+      "ACTIVE": "活跃",
+      "ARCHIVED": "已归档"
+    },
+    "source": {
+      "UPLOAD_DOCX": "Word 导入",
+      "UPLOAD_MARKDOWN": "Markdown 导入",
+      "PASTE_MARKDOWN": "粘贴 Markdown",
+      "PASTE_TEXT": "粘贴文本",
+      "MCP_CREATED": "模型创建"
+    },
+    "actor": {
+      "user": "最近由用户修改",
+      "mcpClient": "最近由模型修改"
+    },
+    "list": {
+      "document": "文档",
+      "resources": "关联资源",
+      "updated": "最近编辑",
+      "revision": "Revision {revision}",
+      "noResources": "暂无关联资源",
+      "moreResources": "+{count} 个"
+    },
+    "empty": {
+      "title": "还没有文档",
+      "description": "导入 Markdown、Word，或直接粘贴大模型输出，建立当前空间的上下文库。"
+    },
+    "importDialog": {
+      "title": "导入文档",
+      "description": "支持 .md、.markdown 和 .docx；Word 转换由后端处理。",
+      "titleLabel": "标题",
+      "titlePlaceholder": "可选，留空时使用文件或正文标题",
+      "fileLabel": "文件",
+      "unsupported": "仅支持 Markdown 或 .docx 文件。",
+      "cancel": "取消",
+      "submit": "导入"
+    },
+    "pasteDialog": {
+      "title": "粘贴内容",
+      "description": "把 Markdown 或纯文本沉淀为一篇文档。",
+      "titleLabel": "标题",
+      "titlePlaceholder": "可选，留空时使用第一个一级标题",
+      "contentLabel": "正文",
+      "contentPlaceholder": "# 方案标题\n\n粘贴内容…",
+      "cancel": "取消",
+      "submit": "保存为文档"
+    },
+    "detail": {
+      "loading": "正在加载文档…",
+      "lastEdited": "最近编辑：{time}",
+      "noLinks": "暂无关联资源",
+      "conflict": "文档已有新版本，请刷新后再编辑。",
+      "newVersion": "文档已有新版本，当前编辑内容尚未被覆盖。"
+    },
+    "actions": {
+      "edit": "编辑",
+      "save": "保存",
+      "cancel": "取消",
+      "archive": "归档",
+      "restore": "恢复",
+      "delete": "删除",
+      "refresh": "刷新",
+      "reimport": "重新导入"
+    },
+    "edit": {
+      "contentLabel": "Markdown 正文",
+      "tagsLabel": "标签",
+      "linksLabel": "关联资源",
+      "linksPlaceholder": "输入 REQ-12、INTAKE-8、TASK-42、BUG-17，用逗号分隔",
+      "documentsLabel": "其他文档",
+      "noLinkedDocuments": "暂无关联的其他文档",
+      "documentsSearchLabel": "按标题或正文搜索当前空间文档",
+      "documentsSearchPlaceholder": "搜索文档",
+      "documentsSearching": "正在搜索文档…",
+      "documentsNoResults": "没有匹配的文档",
+      "removeLinkedDocument": "移除关联文档 {title}",
+      "reimportLabel": "上传 .md 或 .docx 替换正文"
+    },
+    "comments": {
+      "title": "评论",
+      "placeholder": "输入评论…",
+      "submit": "发送评论",
+      "empty": "暂无评论"
+    },
+    "attachments": {
+      "title": "附件",
+      "upload": "上传附件",
+      "download": "下载",
+      "empty": "暂无附件"
+    },
+    "deleteDialog": {
+      "title": "删除文档",
+      "description": "确认删除“{title}”？删除后将返回文档列表。",
+      "cancel": "取消",
+      "confirm": "删除"
+    },
+    "rail": {
+      "toc": "目录",
+      "noToc": "暂无标题",
+      "resources": "资源",
+      "tags": "标签",
+      "noTags": "暂无标签",
+      "comments": "评论",
+      "noComments": "暂无评论",
+      "attachments": "附件",
+      "noAttachments": "暂无附件",
+      "timeline": "时间线",
+      "noTimeline": "暂无时间线",
+      "unknownActor": "未知成员"
+    },
+    "markdown": {
+      "empty": "暂无正文",
+      "remoteImage": "远程图片已降级为链接",
+      "image": "图片",
+      "openImage": "打开图片链接",
+      "objectLookupFailed": "编号查询失败"
     }
   },
   "versionBoard": {

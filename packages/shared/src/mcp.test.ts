@@ -5,6 +5,7 @@ import {
   McpBearerChallengeSchema,
   McpCanonicalResourceUriSchema,
   McpCreateRequirementRequestSchema,
+  McpCreateDocumentFromMarkdownRequestSchema,
   McpContextSchema,
   McpDryRunResultSchema,
   McpEndpointPolicy,
@@ -45,6 +46,7 @@ describe("MCP and OAuth shared contracts", () => {
       "mcp:write:workitem",
       "mcp:write:bug",
       "mcp:write:comment",
+      "mcp:write:document",
       "mcp:write:tag",
       "mcp:execute:workflow",
     ]);
@@ -195,7 +197,7 @@ describe("MCP and OAuth shared contracts", () => {
   });
 
   it("freezes tools/list registry schemas, scopes and annotations", () => {
-    expect(McpToolRegistrySchema.parse(mcpToolRegistry)).toHaveLength(19);
+    expect(McpToolRegistrySchema.parse(mcpToolRegistry)).toHaveLength(26);
     expect(mcpToolContracts).toHaveLength(McpToolNameSchema.options.length);
     expect(new Set(mcpToolRegistry.map((tool) => tool.name)).size).toBe(
       mcpToolRegistry.length,
@@ -218,6 +220,11 @@ describe("MCP and OAuth shared contracts", () => {
       "pdm.work_item.execute_action",
       "pdm.bug.create",
       "pdm.comment.create",
+      "pdm.document.create_from_markdown",
+      "pdm.document.append_content",
+      "pdm.document.replace_content",
+      "pdm.document.update_metadata",
+      "pdm.document.link_resources",
       "pdm.tag.replace_assignments",
     ]);
 
@@ -244,6 +251,27 @@ describe("MCP and OAuth shared contracts", () => {
       mcpToolRegistry.find((tool) => tool.name === "pdm.context.get")
         ?.annotations.readOnlyHint,
     ).toBe(true);
+    expect(
+      mcpToolRegistry.find((tool) => tool.name === "pdm.document.search")
+        ?.scopes,
+    ).toEqual(["mcp:read"]);
+    expect(
+      mcpToolRegistry.find((tool) => tool.name === "pdm.document.append_content")
+        ?.inputSchema,
+    ).toMatchObject({
+      required: expect.arrayContaining(["baseRevision", "documentId"]),
+    });
+    expect(
+      mcpToolRegistry.find(
+        (tool) => tool.name === "pdm.document.link_resources",
+      )?.inputSchema,
+    ).toMatchObject({
+      required: expect.arrayContaining(["baseRevision", "documentId"]),
+    });
+    expect(
+      mcpToolRegistry.find((tool) => tool.name === "pdm.comment.create")
+        ?.description,
+    ).toContain("document");
     expect(
       McpToolsListResultSchema.parse({
         tools: mcpToolRegistry,
@@ -279,6 +307,33 @@ describe("MCP and OAuth shared contracts", () => {
       McpCreateRequirementRequestSchema.safeParse({
         ...input,
         idempotencyKey: undefined,
+      }).success,
+    ).toBe(false);
+  });
+
+  it("requires write context for MCP Markdown document creation", () => {
+    const input = {
+      organizationId,
+      spaceId,
+      idempotencyKey: "doc-create-2026-05-27",
+      targetSelectionSource: "USER_EXPLICIT",
+      dryRun: true,
+      title: "Agent handoff",
+      contentMarkdown: "# Agent handoff\n\nNext steps.",
+      tagIds: ["01VRZ3NDEKTSV4RRFFQ69G5FAV"],
+    };
+
+    expect(McpCreateDocumentFromMarkdownRequestSchema.parse(input)).toMatchObject({
+      contentMarkdown: "# Agent handoff\n\nNext steps.",
+      dryRun: true,
+      organizationId,
+      spaceId,
+      targetSelectionSource: "USER_EXPLICIT",
+    });
+    expect(
+      McpCreateDocumentFromMarkdownRequestSchema.safeParse({
+        ...input,
+        sourceType: "PASTE_MARKDOWN",
       }).success,
     ).toBe(false);
   });

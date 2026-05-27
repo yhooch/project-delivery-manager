@@ -38,6 +38,7 @@ export type TargetRecord = {
   targetType: TargetType;
   title?: string;
   isDraftRequirement?: boolean;
+  createdById?: string | null;
   statusCategory?: StatusCategory;
   workItemType?: WorkItemType;
   currentState?: {

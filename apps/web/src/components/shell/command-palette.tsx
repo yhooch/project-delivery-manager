@@ -6,6 +6,7 @@ import {
   CheckCircle2,
   Cog,
   FileText,
+  Files,
   FolderKanban,
   GitBranch,
   Inbox,
@@ -28,6 +29,7 @@ import { useEffect, useMemo, useState } from "react";
 import { getApiErrorMessageKey } from "../../lib/api-error-messages";
 import { ApiClientError } from "../../lib/api-client";
 import { listBugs } from "../../lib/bug-service";
+import { listDocuments } from "../../lib/document-service";
 import {
   isObjectDisplayCodeLike,
   normalizeObjectDisplayCodeQuery,
@@ -189,6 +191,7 @@ const typeIcon: Record<SearchResult["type"], typeof CheckCircle2> = {
   BUG: BugIcon,
   REQUIREMENT: FileText,
   INTAKE: Target,
+  DOCUMENT: Files,
 };
 
 const typeIconColor: Record<SearchResult["type"], string> = {
@@ -196,6 +199,7 @@ const typeIconColor: Record<SearchResult["type"], string> = {
   BUG: "text-destructive/80",
   REQUIREMENT: "text-info/80",
   INTAKE: "text-muted-foreground",
+  DOCUMENT: "text-primary/80",
 };
 
 function getDetailHref(item: Pick<SearchResult, "id" | "href" | "type">) {
@@ -207,6 +211,9 @@ function getDetailHref(item: Pick<SearchResult, "id" | "href" | "type">) {
   }
   if (item.type === "INTAKE") {
     return `/intake-items?id=${encodeURIComponent(item.id)}`;
+  }
+  if (item.type === "DOCUMENT") {
+    return `/documents/${encodeURIComponent(item.id)}`;
   }
   return item.href;
 }
@@ -221,6 +228,7 @@ const TAG_FILTER_TARGET_PATHS = new Set([
   "/intake-items",
   "/work-items",
   "/bugs",
+  "/documents",
 ]);
 
 type CommandPaletteProps = {
@@ -378,37 +386,45 @@ export function CommandPalette({ enabled = true }: CommandPaletteProps) {
 
     void (async () => {
       try {
-        const [tasks, bugs, requirements, intake] = await Promise.allSettled([
-          listWorkItems({
-            spaceId,
-            organizationId,
-            page: 1,
-            pageSize: PAGE_SIZE,
-            ...(listSearchQuery ? { query: listSearchQuery } : {}),
-          }),
-          listBugs({
-            spaceId,
-            organizationId,
-            page: 1,
-            pageSize: PAGE_SIZE,
-            ...(listSearchQuery ? { query: listSearchQuery } : {}),
-          }),
-          listRequirements({
-            spaceId,
-            organizationId,
-            page: 1,
-            pageSize: PAGE_SIZE,
-            includeDrafts: true,
-            ...(listSearchQuery ? { query: listSearchQuery } : {}),
-          }),
-          listIntakeItems({
-            spaceId,
-            organizationId,
-            page: 1,
-            pageSize: PAGE_SIZE,
-            ...(listSearchQuery ? { query: listSearchQuery } : {}),
-          }),
-        ]);
+        const [tasks, bugs, requirements, intake, documents] =
+          await Promise.allSettled([
+            listWorkItems({
+              spaceId,
+              organizationId,
+              page: 1,
+              pageSize: PAGE_SIZE,
+              ...(listSearchQuery ? { query: listSearchQuery } : {}),
+            }),
+            listBugs({
+              spaceId,
+              organizationId,
+              page: 1,
+              pageSize: PAGE_SIZE,
+              ...(listSearchQuery ? { query: listSearchQuery } : {}),
+            }),
+            listRequirements({
+              spaceId,
+              organizationId,
+              page: 1,
+              pageSize: PAGE_SIZE,
+              includeDrafts: true,
+              ...(listSearchQuery ? { query: listSearchQuery } : {}),
+            }),
+            listIntakeItems({
+              spaceId,
+              organizationId,
+              page: 1,
+              pageSize: PAGE_SIZE,
+              ...(listSearchQuery ? { query: listSearchQuery } : {}),
+            }),
+            listDocuments({
+              spaceId,
+              organizationId,
+              page: 1,
+              pageSize: PAGE_SIZE,
+              ...(listSearchQuery ? { query: listSearchQuery } : {}),
+            }),
+          ]);
 
         if (cancelled) return;
 
@@ -493,6 +509,23 @@ export function CommandPalette({ enabled = true }: CommandPaletteProps) {
                 type: "INTAKE",
                 href: "/intake-items",
               }),
+            });
+          }
+        } else {
+          canPrune = false;
+        }
+        if (documents.status === "fulfilled") {
+          canPrune =
+            canPrune && documents.value.items.length >= documents.value.total;
+          for (const item of documents.value.items) {
+            merged.push({
+              id: item.id,
+              type: "DOCUMENT",
+              displayCode: t("documentLabel"),
+              title: item.title || t("untitled"),
+              organizationId: item.organizationId,
+              spaceId: item.spaceId,
+              href: `/documents/${item.id}`,
             });
           }
         } else {
@@ -700,6 +733,7 @@ export function CommandPalette({ enabled = true }: CommandPaletteProps) {
       BUG: [],
       REQUIREMENT: [],
       INTAKE: [],
+      DOCUMENT: [],
     };
     for (const r of searchResults) out[r.type].push(r);
     return out;
@@ -814,6 +848,15 @@ export function CommandPalette({ enabled = true }: CommandPaletteProps) {
                     onSelect={navigateAndRemember}
                   />
                 )}
+                {grouped.DOCUMENT.length > 0 && (
+                  <SearchGroup
+                    testId="command-palette-group-documents"
+                    itemTestIdPrefix="command-palette-item-document"
+                    heading={t("results.documents")}
+                    items={grouped.DOCUMENT}
+                    onSelect={navigateAndRemember}
+                  />
+                )}
                 {/* In search view, real results take priority; "recent" sinks
                     to the bottom as a fallback shortcut row. */}
                 {recent.length > 0 && (
@@ -885,6 +928,10 @@ export function CommandPalette({ enabled = true }: CommandPaletteProps) {
                 <FileText className="text-muted-foreground" />
                 <span>{t("nav.requirements")}</span>
                 <CommandShortcut>G R</CommandShortcut>
+              </CommandItem>
+              <CommandItem onSelect={() => navigate("/documents")}>
+                <Files className="text-muted-foreground" />
+                <span>{t("nav.documents")}</span>
               </CommandItem>
               <CommandItem onSelect={() => navigate("/intake-items")}>
                 <Target className="text-muted-foreground" />
@@ -1161,6 +1208,7 @@ function shouldUseSpaceScopedObjectLookup(pathname: string): boolean {
     "/exceptions",
     "/intake-items",
     "/requirements",
+    "/documents",
     "/settings",
     "/versions",
     "/work-items",

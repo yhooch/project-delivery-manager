@@ -1,7 +1,12 @@
 // localStorage-backed "recently opened" helper for the command palette.
 // Kept intentionally framework-agnostic so it can be unit-tested in isolation.
 
-export type RecentEntryType = "TASK" | "BUG" | "REQUIREMENT" | "INTAKE";
+export type RecentEntryType =
+  | "TASK"
+  | "BUG"
+  | "REQUIREMENT"
+  | "INTAKE"
+  | "DOCUMENT";
 
 export type RecentEntry = {
   id: string;
@@ -41,7 +46,8 @@ function normalizeRecentEntry(value: unknown): RecentEntry | null {
     (entry.type === "TASK" ||
       entry.type === "BUG" ||
       entry.type === "REQUIREMENT" ||
-      entry.type === "INTAKE") &&
+      entry.type === "INTAKE" ||
+      entry.type === "DOCUMENT") &&
     typeof displayCode === "string" &&
     typeof entry.title === "string" &&
     typeof entry.href === "string"

@@ -302,6 +302,17 @@ export class AttachmentService {
       );
     }
 
+    if (input.targetType === "DOCUMENT") {
+      return this.requireWritableResolvedAttachmentTarget(
+        actorUserId,
+        {
+          targetId: input.targetId,
+          targetType: "DOCUMENT",
+        },
+        metadata,
+      );
+    }
+
     return this.requireWritableResolvedAttachmentTarget(
       actorUserId,
       {
@@ -494,11 +505,19 @@ function attachmentInvalidates(
         "workbench",
         "space-overview",
       ];
+    case "DOCUMENT":
+      return [
+        "attachments",
+        "timeline",
+        "document-attachments",
+        "document-timeline",
+        "document-detail",
+      ];
   }
 }
 
 function createFileKey(
-  targetType: "REQUIREMENT" | "WORK_ITEM",
+  targetType: AttachmentTargetType,
   targetId: string,
   fileName: string,
 ): string {

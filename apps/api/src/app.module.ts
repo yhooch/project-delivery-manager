@@ -18,6 +18,7 @@ import { AttachmentModule } from "./modules/attachment/attachment.module";
 import { BugModule } from "./modules/bug/bug.module";
 import { SessionParsingMiddleware } from "./modules/auth/session-parsing.middleware";
 import { CommentModule } from "./modules/comment/comment.module";
+import { DocumentModule } from "./modules/document/document.module";
 import { IntakeModule } from "./modules/intake/intake.module";
 import { McpModule } from "./modules/mcp/mcp.module";
 import { ObjectCodeModule } from "./modules/object-code/object-code.module";
@@ -52,6 +53,7 @@ import { PrismaModule } from "./prisma/prisma.module";
     McpModule,
     WorkItemModule,
     BugModule,
+    DocumentModule,
     AttachmentModule,
     CommentModule,
     TagModule,

@@ -6,6 +6,25 @@ import {
   UlidSchema,
 } from "./common.ts";
 import {
+  AppendDocumentContentRequestSchema,
+  DocumentListQuerySchema,
+  GetDocumentResponseSchema,
+  ListDocumentsResponseSchema,
+  PasteDocumentRequestSchema,
+  ReplaceDocumentLinksRequestSchema,
+  ReplaceDocumentLinksResponseSchema,
+  UpdateDocumentContentRequestSchema,
+  UpdateDocumentMetadataRequestSchema,
+  UpdateDocumentMetadataResponseSchema,
+  UpdateDocumentContentResponseSchema,
+  CreateDocumentResponseSchema,
+  type AppendDocumentContentRequest,
+  type PasteDocumentRequest,
+  type ReplaceDocumentLinksRequest,
+  type UpdateDocumentContentRequest,
+  type UpdateDocumentMetadataRequest,
+} from "./document.ts";
+import {
   CreateIntakeItemRequestSchema,
   IntakeItemListQuerySchema,
   IntakeItemSchema,
@@ -95,6 +114,7 @@ export const McpScopeSchema = z.enum([
   "mcp:write:workitem",
   "mcp:write:bug",
   "mcp:write:comment",
+  "mcp:write:document",
   "mcp:write:tag",
   "mcp:execute:workflow",
 ]);
@@ -641,6 +661,12 @@ const BugIdToolInputSchema = z
   })
   .strict();
 
+const DocumentIdToolInputSchema = z
+  .object({
+    documentId: UlidSchema,
+  })
+  .strict();
+
 const VersionBoardToolInputSchema = z
   .object({
     versionId: UlidSchema,
@@ -689,6 +715,59 @@ const McpCreateCommentRequestSchema = McpWriteContextSchema.merge(
   CreateCommentRequestSchema,
 );
 
+export const McpCreateDocumentFromMarkdownRequestSchema =
+  McpWriteContextSchema.merge(
+    PasteDocumentRequestSchema.omit({
+      sourceType: true,
+    }),
+  );
+
+export type McpCreateDocumentFromMarkdownRequest = McpWriteContext & {
+  contentMarkdown: PasteDocumentRequest["contentMarkdown"];
+  links?: PasteDocumentRequest["links"];
+  tagIds?: PasteDocumentRequest["tagIds"];
+  title?: PasteDocumentRequest["title"];
+};
+
+export const McpAppendDocumentContentRequestSchema = McpWriteContextSchema.merge(
+  DocumentIdToolInputSchema,
+).merge(AppendDocumentContentRequestSchema);
+
+export type McpAppendDocumentContentRequest = McpWriteContext &
+  AppendDocumentContentRequest & {
+    documentId: string;
+  };
+
+export const McpReplaceDocumentContentRequestSchema =
+  McpWriteContextSchema.merge(DocumentIdToolInputSchema).merge(
+    UpdateDocumentContentRequestSchema,
+  );
+
+export type McpReplaceDocumentContentRequest = McpWriteContext &
+  UpdateDocumentContentRequest & {
+    documentId: string;
+  };
+
+export const McpUpdateDocumentMetadataRequestSchema =
+  McpWriteContextSchema.merge(DocumentIdToolInputSchema).merge(
+    UpdateDocumentMetadataRequestSchema,
+  );
+
+export type McpUpdateDocumentMetadataRequest = McpWriteContext &
+  UpdateDocumentMetadataRequest & {
+    documentId: string;
+  };
+
+export const McpLinkDocumentResourcesRequestSchema =
+  McpWriteContextSchema.merge(DocumentIdToolInputSchema).merge(
+    ReplaceDocumentLinksRequestSchema,
+  );
+
+export type McpLinkDocumentResourcesRequest = McpWriteContext &
+  ReplaceDocumentLinksRequest & {
+    documentId: string;
+  };
+
 const McpReplaceTagAssignmentsRequestSchema = McpWriteContextSchema.merge(
   ReplaceTagAssignmentsRequestSchema,
 );
@@ -711,6 +790,13 @@ export const McpToolNameSchema = z.enum([
   "pdm.bug.get",
   "pdm.bug.create",
   "pdm.comment.create",
+  "pdm.document.search",
+  "pdm.document.get",
+  "pdm.document.create_from_markdown",
+  "pdm.document.append_content",
+  "pdm.document.replace_content",
+  "pdm.document.update_metadata",
+  "pdm.document.link_resources",
   "pdm.tag.replace_assignments",
   "pdm.timeline.list",
 ]);
@@ -945,11 +1031,79 @@ export const mcpToolContracts = [
     name: "pdm.comment.create",
     title: "Create comment",
     description:
-      `Add a comment to a requirement, intake item or work item.${WriteTargetPolicyDescription}`,
+      `Add a comment to a requirement, intake item, work item or document.${WriteTargetPolicyDescription}`,
     scopes: ["mcp:write:comment"],
     annotations: CreateToolAnnotations,
     inputSchema: McpCreateCommentRequestSchema,
     outputSchema: writeOutputSchema(CreateCommentResponseSchema),
+  }),
+  tool({
+    name: "pdm.document.search",
+    title: "Search documents",
+    description: "Search documents in a project space.",
+    scopes: ["mcp:read"],
+    annotations: ReadToolAnnotations,
+    inputSchema: SpaceToolContextSchema.merge(DocumentListQuerySchema),
+    outputSchema: ListDocumentsResponseSchema,
+  }),
+  tool({
+    name: "pdm.document.get",
+    title: "Get document",
+    description: "Return document detail visible to the current user.",
+    scopes: ["mcp:read"],
+    annotations: ReadToolAnnotations,
+    inputSchema: DocumentIdToolInputSchema,
+    outputSchema: GetDocumentResponseSchema,
+  }),
+  tool({
+    name: "pdm.document.create_from_markdown",
+    title: "Create document from Markdown",
+    description:
+      `Create a document from Markdown content.${WriteTargetPolicyDescription}`,
+    scopes: ["mcp:write:document"],
+    annotations: CreateToolAnnotations,
+    inputSchema: McpCreateDocumentFromMarkdownRequestSchema,
+    outputSchema: writeOutputSchema(CreateDocumentResponseSchema),
+  }),
+  tool({
+    name: "pdm.document.append_content",
+    title: "Append document content",
+    description:
+      `Append Markdown content to a document. Requires baseRevision.${WriteTargetPolicyDescription}`,
+    scopes: ["mcp:write:document"],
+    annotations: UpdateToolAnnotations,
+    inputSchema: McpAppendDocumentContentRequestSchema,
+    outputSchema: writeOutputSchema(UpdateDocumentContentResponseSchema),
+  }),
+  tool({
+    name: "pdm.document.replace_content",
+    title: "Replace document content",
+    description:
+      `Replace a document's full Markdown content. Requires baseRevision.${WriteTargetPolicyDescription}`,
+    scopes: ["mcp:write:document"],
+    annotations: UpdateToolAnnotations,
+    inputSchema: McpReplaceDocumentContentRequestSchema,
+    outputSchema: writeOutputSchema(UpdateDocumentContentResponseSchema),
+  }),
+  tool({
+    name: "pdm.document.update_metadata",
+    title: "Update document metadata",
+    description:
+      `Update document title, tags or linked resources.${WriteTargetPolicyDescription}`,
+    scopes: ["mcp:write:document"],
+    annotations: UpdateToolAnnotations,
+    inputSchema: McpUpdateDocumentMetadataRequestSchema,
+    outputSchema: writeOutputSchema(UpdateDocumentMetadataResponseSchema),
+  }),
+  tool({
+    name: "pdm.document.link_resources",
+    title: "Link document resources",
+    description:
+      `Replace the resources linked to a document. Requires baseRevision.${WriteTargetPolicyDescription}`,
+    scopes: ["mcp:write:document"],
+    annotations: UpdateToolAnnotations,
+    inputSchema: McpLinkDocumentResourcesRequestSchema,
+    outputSchema: writeOutputSchema(ReplaceDocumentLinksResponseSchema),
   }),
   tool({
     name: "pdm.tag.replace_assignments",

@@ -158,6 +158,7 @@ function toTargetType(targetType: TagTargetType): TargetType {
     case "REQUIREMENT":
     case "INTAKE_ITEM":
     case "WORK_ITEM":
+    case "DOCUMENT":
       return targetType;
   }
 
@@ -196,5 +197,7 @@ function tagAssignmentInvalidates(
         "space-overview",
         "exception-view",
       ];
+    case "DOCUMENT":
+      return ["document-list", "document-detail"];
   }
 }

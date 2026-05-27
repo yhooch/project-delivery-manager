@@ -90,6 +90,7 @@ const {
   listBugsMock,
   listRequirementsMock,
   listIntakeItemsMock,
+  listDocumentsMock,
   listTagsMock,
   lookupObjectCodeMock,
 } = vi.hoisted(() => ({
@@ -97,6 +98,7 @@ const {
   listBugsMock: vi.fn(),
   listRequirementsMock: vi.fn(),
   listIntakeItemsMock: vi.fn(),
+  listDocumentsMock: vi.fn(),
   listTagsMock: vi.fn(),
   lookupObjectCodeMock: vi.fn(),
 }));
@@ -111,6 +113,9 @@ vi.mock("../../lib/requirement-service", () => ({
 }));
 vi.mock("../../lib/intake-service", () => ({
   listIntakeItems: listIntakeItemsMock,
+}));
+vi.mock("../../lib/document-service", () => ({
+  listDocuments: listDocumentsMock,
 }));
 vi.mock("../../lib/tag-service", () => ({
   listTags: listTagsMock,
@@ -137,6 +142,7 @@ beforeEach(() => {
   listBugsMock.mockReset();
   listRequirementsMock.mockReset();
   listIntakeItemsMock.mockReset();
+  listDocumentsMock.mockReset();
   listTagsMock.mockReset();
   lookupObjectCodeMock.mockReset();
   routerPushMock.mockReset();
@@ -191,6 +197,10 @@ beforeEach(() => {
       },
     ],
     total: 1,
+  });
+  listDocumentsMock.mockResolvedValue({
+    items: [],
+    total: 0,
   });
   listTagsMock.mockResolvedValue({
     items: [

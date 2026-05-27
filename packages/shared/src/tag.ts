@@ -130,6 +130,7 @@ export const TagFilterOptionScopeSchema = z.enum([
   "BUG",
   "REQUIREMENT",
   "INTAKE_ITEM",
+  "DOCUMENT",
   "SPACE_EXCEPTION",
 ]);
 export type TagFilterOptionScope = z.infer<

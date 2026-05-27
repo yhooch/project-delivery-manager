@@ -16,7 +16,7 @@ import { S3AttachmentObjectStorage } from "./storage/s3-attachment-object-storag
 
 @Module({
   controllers: [AttachmentController],
-  exports: [ATTACHMENT_REPOSITORY],
+  exports: [ATTACHMENT_OBJECT_STORAGE, ATTACHMENT_REPOSITORY],
   imports: [
     AuthModule,
     AuditModule,

@@ -18,16 +18,22 @@ export const TargetTypeSchema = z.enum([
   "REQUIREMENT",
   "INTAKE_ITEM",
   "WORK_ITEM",
+  "DOCUMENT",
 ]);
 export type TargetType = z.infer<typeof TargetTypeSchema>;
 
-export const AttachmentTargetTypeSchema = z.enum(["REQUIREMENT", "WORK_ITEM"]);
+export const AttachmentTargetTypeSchema = z.enum([
+  "REQUIREMENT",
+  "WORK_ITEM",
+  "DOCUMENT",
+]);
 export type AttachmentTargetType = z.infer<typeof AttachmentTargetTypeSchema>;
 
 export const CommentTargetTypeSchema = z.enum([
   "REQUIREMENT",
   "INTAKE_ITEM",
   "WORK_ITEM",
+  "DOCUMENT",
 ]);
 export type CommentTargetType = z.infer<typeof CommentTargetTypeSchema>;
 
@@ -35,6 +41,7 @@ export const ObjectParticipantTargetTypeSchema = z.enum([
   "REQUIREMENT",
   "INTAKE_ITEM",
   "WORK_ITEM",
+  "DOCUMENT",
 ]);
 export type ObjectParticipantTargetType = z.infer<
   typeof ObjectParticipantTargetTypeSchema
@@ -44,6 +51,7 @@ export const TagTargetTypeSchema = z.enum([
   "REQUIREMENT",
   "INTAKE_ITEM",
   "WORK_ITEM",
+  "DOCUMENT",
 ]);
 export type TagTargetType = z.infer<typeof TagTargetTypeSchema>;
 
@@ -183,6 +191,46 @@ export const BugSeveritySchema = z.enum([
   "TRIVIAL",
 ]);
 export type BugSeverity = z.infer<typeof BugSeveritySchema>;
+
+export const DocumentSourceTypeSchema = z.enum([
+  "UPLOAD_DOCX",
+  "UPLOAD_MARKDOWN",
+  "PASTE_MARKDOWN",
+  "PASTE_TEXT",
+  "MCP_CREATED",
+]);
+export type DocumentSourceType = z.infer<typeof DocumentSourceTypeSchema>;
+
+export const DocumentActorTypeSchema = z.enum(["USER", "MCP_CLIENT"]);
+export type DocumentActorType = z.infer<typeof DocumentActorTypeSchema>;
+
+export const DocumentStatusSchema = z.enum(["ACTIVE", "ARCHIVED"]);
+export type DocumentStatus = z.infer<typeof DocumentStatusSchema>;
+
+export const DocumentChangeTypeSchema = z.enum([
+  "CREATED",
+  "IMPORTED",
+  "REIMPORTED",
+  "METADATA_UPDATED",
+  "CONTENT_EDITED",
+  "CONTENT_APPENDED",
+  "CONTENT_REPLACED",
+  "ARCHIVED",
+  "RESTORED",
+  "DELETED",
+]);
+export type DocumentChangeType = z.infer<typeof DocumentChangeTypeSchema>;
+
+export const DocumentLinkTargetTypeSchema = z.enum([
+  "DOCUMENT",
+  "VERSION",
+  "REQUIREMENT",
+  "INTAKE_ITEM",
+  "WORK_ITEM",
+]);
+export type DocumentLinkTargetType = z.infer<
+  typeof DocumentLinkTargetTypeSchema
+>;
 
 export const ViewExceptionTypeSchema = z.enum([
   "overdue",

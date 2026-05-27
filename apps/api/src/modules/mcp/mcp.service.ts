@@ -18,6 +18,7 @@ import {
   type McpContext,
   type McpToolName,
   type McpToolResult,
+  type DocumentListQuery,
   type ObjectCodeLookupQuery,
   type SpaceRole,
   type SpaceExceptionsViewQuery,
@@ -34,6 +35,7 @@ import type { McpOAuthPrincipalContext } from "../../http/request-context";
 import { toSessionUser } from "../auth/auth-session.builder";
 import type { RequestMetadata } from "../auth/auth-session.types";
 import { BugService } from "../bug/bug.service";
+import { DocumentService } from "../document/document.service";
 import {
   USER_REPOSITORY,
   type UserRepository,
@@ -64,6 +66,12 @@ type WorkItemGetToolInput = {
 };
 type BugGetToolInput = {
   bugId: string;
+};
+type DocumentGetToolInput = {
+  documentId: string;
+};
+type DocumentSearchToolInput = DocumentListQuery & {
+  spaceId: string;
 };
 type SpaceOverviewToolInput = SpaceOverviewViewQuery & {
   spaceId: string;
@@ -168,6 +176,8 @@ export class McpService {
     private readonly workItems: WorkItemService,
     @Inject(BugService)
     private readonly bugs: BugService,
+    @Inject(DocumentService)
+    private readonly documents: DocumentService,
     @Inject(TimelineService)
     private readonly timelines: TimelineService,
     @Inject(McpWriteToolExecutor)
@@ -495,6 +505,22 @@ export class McpService {
           output: await this.bugs.get(
             principal.userId,
             (args as BugGetToolInput).bugId,
+          ),
+        };
+      case "pdm.document.search": {
+        const { spaceId, ...query } = args as DocumentSearchToolInput;
+
+        return {
+          message: "Documents returned.",
+          output: await this.documents.list(principal.userId, spaceId, query),
+        };
+      }
+      case "pdm.document.get":
+        return {
+          message: "Document returned.",
+          output: await this.documents.get(
+            principal.userId,
+            (args as DocumentGetToolInput).documentId,
           ),
         };
       case "pdm.timeline.list":

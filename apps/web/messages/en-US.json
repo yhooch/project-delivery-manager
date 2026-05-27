@@ -578,6 +578,11 @@
       "SPACE_MEMBER_INVALID": "The selected space member is invalid or unavailable.",
       "WORK_ITEM_NOT_FOUND": "The work item is unavailable.",
       "REQUIREMENT_NOT_FOUND": "The requirement is unavailable.",
+      "DOCUMENT_NOT_FOUND": "The document is unavailable.",
+      "DOCUMENT_EDIT_CONFLICT": "The document has a newer revision. Refresh and try again.",
+      "DOCUMENT_LINK_TARGET_INVALID": "The linked document resource is invalid or unavailable.",
+      "DOCUMENT_IMPORT_FAILED": "Document import failed. Check the file and try again.",
+      "DOCUMENT_IMPORT_UNSUPPORTED_TYPE": "This document file type is not supported.",
       "TARGET_REQUIRED_FOR_ATTACHMENT": "An attachment must be linked to a target.",
       "ATTACHMENT_TARGET_NOT_FOUND": "The attachment target is unavailable.",
       "ATTACHMENT_LIMIT_EXCEEDED": "The attachment limit has been reached. Remove some attachments and try again.",
@@ -618,6 +623,7 @@
       "mcp:write:workitem": "Write work items",
       "mcp:write:bug": "Write bugs",
       "mcp:write:comment": "Write comments",
+      "mcp:write:document": "Write documents",
       "mcp:write:tag": "Write tags",
       "mcp:execute:workflow": "Execute workflow actions"
     }
@@ -753,6 +759,7 @@
       "exceptions": "Exceptions",
       "requirements": "Requirements",
       "intake": "Intake",
+      "documents": "Documents",
       "workflow": "Workflow",
       "spaceSettings": "Space settings",
       "organization": "Organization settings"
@@ -767,6 +774,13 @@
       "title": "Sign-in required",
       "description": "Sign in to continue to the workspace.",
       "action": "Go to sign in"
+    },
+    "documents": {
+      "documentTitle": "Documents - Project Delivery Manager",
+      "title": "Documents",
+      "backToWorkspace": "Back to workspace",
+      "noSpace": "No space selected",
+      "workspaceLabel": "Documents workspace"
     },
     "sessionError": {
       "title": "Session initialization failed",
@@ -858,11 +872,12 @@
       }
     },
     "command": {
-      "placeholder": "Type a command or search tasks, bugs, requirements, intake",
+      "placeholder": "Type a command or search tasks, bugs, requirements, intake, documents",
       "empty": "No results",
       "searching": "Searching…",
       "untitled": "Untitled",
       "draftCode": "Draft",
+      "documentLabel": "Document",
       "recent": "Recently opened",
       "lookup": {
         "invalid": "Invalid code. Use REQ-12, INTAKE-8, TASK-42, or BUG-17.",
@@ -890,7 +905,8 @@
         "tasks": "Tasks",
         "bugs": "Bugs",
         "requirements": "Requirements",
-        "intake": "Intake"
+        "intake": "Intake",
+        "documents": "Documents"
       },
       "nav": {
         "workbench": "My workbench",
@@ -900,6 +916,7 @@
         "bugs": "Bugs",
         "exceptions": "Exceptions",
         "requirements": "Requirements",
+        "documents": "Documents",
         "intake": "Intake",
         "workflow": "Workflow",
         "spaces": "Project space management",
@@ -924,6 +941,148 @@
       "submit": "Create organization",
       "submitting": "Creating",
       "error": "Failed to create organization. Try again later."
+    }
+  },
+  "documents": {
+    "title": "Documents",
+    "untitled": "Untitled document",
+    "unknownOrganization": "No organization selected",
+    "unknownSpace": "No space selected",
+    "recent": {
+      "document": "Document"
+    },
+    "home": {
+      "subtitle": "Capture imported, pasted, and model-created project context so the team and agents can find and reuse it.",
+      "import": "Import document",
+      "paste": "Paste content",
+      "searchLabel": "Search documents",
+      "searchPlaceholder": "Search title or body",
+      "filtersLabel": "Document filters",
+      "loading": "Loading documents…"
+    },
+    "filters": {
+      "all": "All",
+      "createdByMe": "Created by me",
+      "mcpCreated": "Model created",
+      "recentMcpEdited": "Recently model edited",
+      "archived": "Archived"
+    },
+    "status": {
+      "ACTIVE": "Active",
+      "ARCHIVED": "Archived"
+    },
+    "source": {
+      "UPLOAD_DOCX": "Word import",
+      "UPLOAD_MARKDOWN": "Markdown import",
+      "PASTE_MARKDOWN": "Pasted Markdown",
+      "PASTE_TEXT": "Pasted text",
+      "MCP_CREATED": "Model created"
+    },
+    "actor": {
+      "user": "Recently edited by user",
+      "mcpClient": "Recently edited by model"
+    },
+    "list": {
+      "document": "Document",
+      "resources": "Linked resources",
+      "updated": "Recent edit",
+      "revision": "Revision {revision}",
+      "noResources": "No linked resources",
+      "moreResources": "+{count} more"
+    },
+    "empty": {
+      "title": "No documents yet",
+      "description": "Import Markdown or Word, or paste model output to build this space's context library."
+    },
+    "importDialog": {
+      "title": "Import document",
+      "description": "Supports .md, .markdown, and .docx. Word conversion is handled by the backend.",
+      "titleLabel": "Title",
+      "titlePlaceholder": "Optional. Uses the file or body heading when empty.",
+      "fileLabel": "File",
+      "unsupported": "Only Markdown or .docx files are supported.",
+      "cancel": "Cancel",
+      "submit": "Import"
+    },
+    "pasteDialog": {
+      "title": "Paste content",
+      "description": "Save Markdown or plain text as a document.",
+      "titleLabel": "Title",
+      "titlePlaceholder": "Optional. Uses the first H1 when empty.",
+      "contentLabel": "Body",
+      "contentPlaceholder": "# Plan title\n\nPaste content…",
+      "cancel": "Cancel",
+      "submit": "Save as document"
+    },
+    "detail": {
+      "loading": "Loading document…",
+      "lastEdited": "Last edited: {time}",
+      "noLinks": "No linked resources",
+      "conflict": "This document has a newer revision. Refresh before editing.",
+      "newVersion": "This document has a newer revision. Your current edits were not overwritten."
+    },
+    "actions": {
+      "edit": "Edit",
+      "save": "Save",
+      "cancel": "Cancel",
+      "archive": "Archive",
+      "restore": "Restore",
+      "delete": "Delete",
+      "refresh": "Refresh",
+      "reimport": "Reimport"
+    },
+    "edit": {
+      "contentLabel": "Markdown body",
+      "tagsLabel": "Tags",
+      "linksLabel": "Linked resources",
+      "linksPlaceholder": "Enter REQ-12, INTAKE-8, TASK-42, BUG-17 separated by commas",
+      "documentsLabel": "Other documents",
+      "noLinkedDocuments": "No linked documents",
+      "documentsSearchLabel": "Search current space documents by title or body",
+      "documentsSearchPlaceholder": "Search documents",
+      "documentsSearching": "Searching documents…",
+      "documentsNoResults": "No matching documents",
+      "removeLinkedDocument": "Remove linked document {title}",
+      "reimportLabel": "Upload .md or .docx to replace the body"
+    },
+    "comments": {
+      "title": "Comments",
+      "placeholder": "Write a comment…",
+      "submit": "Send comment",
+      "empty": "No comments"
+    },
+    "attachments": {
+      "title": "Attachments",
+      "upload": "Upload attachment",
+      "download": "Download",
+      "empty": "No attachments"
+    },
+    "deleteDialog": {
+      "title": "Delete document",
+      "description": "Delete “{title}”? You will return to the document list after deletion.",
+      "cancel": "Cancel",
+      "confirm": "Delete"
+    },
+    "rail": {
+      "toc": "Contents",
+      "noToc": "No headings",
+      "resources": "Resources",
+      "tags": "Tags",
+      "noTags": "No tags",
+      "comments": "Comments",
+      "noComments": "No comments",
+      "attachments": "Attachments",
+      "noAttachments": "No attachments",
+      "timeline": "Timeline",
+      "noTimeline": "No timeline",
+      "unknownActor": "Unknown member"
+    },
+    "markdown": {
+      "empty": "No body content",
+      "remoteImage": "Remote image downgraded to a link",
+      "image": "Image",
+      "openImage": "Open image link",
+      "objectLookupFailed": "Code lookup failed"
     }
   },
   "versionBoard": {

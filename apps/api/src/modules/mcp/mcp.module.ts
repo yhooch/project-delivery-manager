@@ -3,6 +3,7 @@ import { Module } from "@nestjs/common";
 import { PrismaModule } from "../../prisma/prisma.module";
 import { BugModule } from "../bug/bug.module";
 import { CommentModule } from "../comment/comment.module";
+import { DocumentModule } from "../document/document.module";
 import { IdentityModule } from "../identity/identity.module";
 import { IntakeModule } from "../intake/intake.module";
 import { ObjectCodeModule } from "../object-code/object-code.module";
@@ -28,6 +29,7 @@ import { PrismaMcpIdempotencyRepository } from "./prisma-mcp-idempotency.reposit
   imports: [
     BugModule,
     CommentModule,
+    DocumentModule,
     IdentityModule,
     IntakeModule,
     ObjectCodeModule,

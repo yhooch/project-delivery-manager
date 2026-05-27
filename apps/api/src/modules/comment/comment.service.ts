@@ -70,13 +70,15 @@ export class CommentService {
       actorUserId,
       input.targetType,
       input.targetId,
-      {
-        access: "write",
-        audit: {
-          ...metadata,
-          operation: "createComment",
-        },
-      },
+      input.targetType === "DOCUMENT"
+        ? {}
+        : {
+            access: "write",
+            audit: {
+              ...metadata,
+              operation: "createComment",
+            },
+          },
     );
 
     const created = await this.comments.create({
@@ -156,5 +158,7 @@ function commentInvalidates(
         "workbench",
         "space-overview",
       ];
+    case "DOCUMENT":
+      return ["comments", "timeline", "document-comments", "document-timeline"];
   }
 }

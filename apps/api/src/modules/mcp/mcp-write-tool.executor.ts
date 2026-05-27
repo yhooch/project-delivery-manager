@@ -12,9 +12,14 @@ import {
   type CreateIntakeItemRequest,
   type CreateWorkItemRequest,
   type ExecuteActionRequest,
+  type McpAppendDocumentContentRequest,
+  type McpCreateDocumentFromMarkdownRequest,
   type McpCreateRequirementRequest,
+  type McpLinkDocumentResourcesRequest,
+  type McpReplaceDocumentContentRequest,
   type McpToolName,
   type McpToolResult,
+  type McpUpdateDocumentMetadataRequest,
   type McpWriteContext,
   type McpWriteTargetSelectionSource,
   type ReplaceTagAssignmentsRequest,
@@ -30,6 +35,7 @@ import type { McpOAuthPrincipalContext } from "../../http/request-context";
 import type { RequestMetadata } from "../auth/auth-session.types";
 import { BugService } from "../bug/bug.service";
 import { CommentService } from "../comment/comment.service";
+import { DocumentService } from "../document/document.service";
 import { IntakeService } from "../intake/intake.service";
 import {
   ORGANIZATION_REPOSITORY,
@@ -96,6 +102,11 @@ const WRITE_TOOL_NAMES = new Set<McpToolName>([
   "pdm.work_item.execute_action",
   "pdm.bug.create",
   "pdm.comment.create",
+  "pdm.document.create_from_markdown",
+  "pdm.document.append_content",
+  "pdm.document.replace_content",
+  "pdm.document.update_metadata",
+  "pdm.document.link_resources",
   "pdm.tag.replace_assignments",
 ]);
 
@@ -127,6 +138,8 @@ export class McpWriteToolExecutor {
     private readonly bugs: BugService,
     @Inject(CommentService)
     private readonly comments: CommentService,
+    @Inject(DocumentService)
+    private readonly documents: DocumentService,
     @Inject(TagAssignmentService)
     private readonly tagAssignments: TagAssignmentService,
     @Inject(WorkflowActionExecutionService)
@@ -460,6 +473,60 @@ export class McpWriteToolExecutor {
         );
         return;
       }
+      case "pdm.document.append_content":
+      case "pdm.document.replace_content": {
+        const input = args as
+          | McpAppendDocumentContentRequest
+          | McpReplaceDocumentContentRequest;
+        await this.validateDocumentContext(
+          principal.userId,
+          input.documentId,
+          context,
+          input.baseRevision,
+        );
+        return;
+      }
+      case "pdm.document.update_metadata": {
+        const input = args as McpUpdateDocumentMetadataRequest;
+        await this.validateDocumentContext(
+          principal.userId,
+          input.documentId,
+          context,
+        );
+        await this.validateDocumentLinkTargets(
+          principal.userId,
+          input.links,
+          input.documentId,
+          context,
+        );
+        return;
+      }
+      case "pdm.document.link_resources": {
+        const input = args as McpLinkDocumentResourcesRequest;
+        await this.validateDocumentContext(
+          principal.userId,
+          input.documentId,
+          context,
+          input.baseRevision,
+        );
+        await this.validateDocumentLinkTargets(
+          principal.userId,
+          input.links,
+          input.documentId,
+          context,
+        );
+        return;
+      }
+      case "pdm.document.create_from_markdown": {
+        const input = args as McpCreateDocumentFromMarkdownRequest;
+        await this.validateDocumentLinkTargets(
+          principal.userId,
+          input.links,
+          undefined,
+          context,
+        );
+        return;
+      }
       default:
         return;
     }
@@ -482,6 +549,72 @@ export class McpWriteToolExecutor {
         "Target does not belong to the provided MCP organization and space context.",
         HttpStatus.FORBIDDEN,
       );
+    }
+  }
+
+  private async validateDocumentContext(
+    actorUserId: string,
+    documentId: string,
+    context: McpWriteContext,
+    baseRevision?: number,
+  ): Promise<void> {
+    const document = await this.documents.get(actorUserId, documentId);
+
+    if (
+      document.organizationId !== context.organizationId ||
+      document.spaceId !== context.spaceId
+    ) {
+      throw new ApiException(
+        "SPACE_ACCESS_DENIED",
+        "Document does not belong to the provided MCP organization and space context.",
+        HttpStatus.FORBIDDEN,
+      );
+    }
+
+    if (baseRevision !== undefined && document.revision !== baseRevision) {
+      throw new ApiException(
+        "DOCUMENT_EDIT_CONFLICT",
+        "Document revision conflict",
+        HttpStatus.CONFLICT,
+      );
+    }
+  }
+
+  private async validateDocumentLinkTargets(
+    actorUserId: string,
+    links: Array<{ targetId: string; targetType: TargetType }> | undefined,
+    documentId: string | undefined,
+    context: McpWriteContext,
+  ): Promise<void> {
+    for (const link of links ?? []) {
+      if (link.targetType === "DOCUMENT" && link.targetId === documentId) {
+        throw new ApiException(
+          "DOCUMENT_LINK_TARGET_INVALID",
+          "Document link target is invalid",
+          HttpStatus.BAD_REQUEST,
+        );
+      }
+
+      const target = await this.targets.resolve(
+        actorUserId,
+        link.targetType,
+        link.targetId,
+        {
+          hideInaccessible: true,
+          notFoundCode: "DOCUMENT_LINK_TARGET_INVALID",
+        },
+      );
+
+      if (
+        target.organizationId !== context.organizationId ||
+        target.spaceId !== context.spaceId
+      ) {
+        throw new ApiException(
+          "DOCUMENT_LINK_TARGET_INVALID",
+          "Document link target is invalid",
+          HttpStatus.BAD_REQUEST,
+        );
+      }
     }
   }
 
@@ -591,6 +724,85 @@ export class McpWriteToolExecutor {
         return {
           message: "Comment created.",
           output: comment,
+        };
+      }
+      case "pdm.document.create_from_markdown": {
+        const input = args as McpCreateDocumentFromMarkdownRequest;
+        const document = await this.documents.createFromMarkdown(
+          principal.userId,
+          input.spaceId,
+          omitWriteContext(input),
+          metadata,
+          mcpDocumentActor(principal.clientId),
+        );
+
+        return {
+          message: "Document created.",
+          output: document,
+        };
+      }
+      case "pdm.document.append_content": {
+        const input = args as McpAppendDocumentContentRequest;
+        const { documentId, ...appendInput } = omitWriteContext(input);
+        const document = await this.documents.appendContent(
+          principal.userId,
+          documentId,
+          appendInput,
+          metadata,
+          mcpDocumentActor(principal.clientId),
+        );
+
+        return {
+          message: "Document content appended.",
+          output: document,
+        };
+      }
+      case "pdm.document.replace_content": {
+        const input = args as McpReplaceDocumentContentRequest;
+        const { documentId, ...replaceInput } = omitWriteContext(input);
+        const document = await this.documents.updateContent(
+          principal.userId,
+          documentId,
+          replaceInput,
+          metadata,
+          mcpDocumentActor(principal.clientId),
+        );
+
+        return {
+          message: "Document content replaced.",
+          output: document,
+        };
+      }
+      case "pdm.document.update_metadata": {
+        const input = args as McpUpdateDocumentMetadataRequest;
+        const { documentId, ...metadataInput } = omitWriteContext(input);
+        const document = await this.documents.updateMetadata(
+          principal.userId,
+          documentId,
+          metadataInput,
+          metadata,
+          mcpDocumentActor(principal.clientId),
+        );
+
+        return {
+          message: "Document metadata updated.",
+          output: document,
+        };
+      }
+      case "pdm.document.link_resources": {
+        const input = args as McpLinkDocumentResourcesRequest;
+        const { documentId, ...linkInput } = omitWriteContext(input);
+        const links = await this.documents.replaceLinks(
+          principal.userId,
+          documentId,
+          linkInput,
+          metadata,
+          mcpDocumentActor(principal.clientId),
+        );
+
+        return {
+          message: "Document resources linked.",
+          output: links,
         };
       }
       case "pdm.tag.replace_assignments": {
@@ -707,6 +919,13 @@ function buildBusinessMetadata(input: {
   };
 }
 
+function mcpDocumentActor(clientId: string) {
+  return {
+    actorType: "MCP_CLIENT" as const,
+    mcpClientId: clientId,
+  };
+}
+
 function dryRunSelectionResult(
   toolName: McpToolName,
   context: McpWriteContext,
@@ -734,7 +953,13 @@ function summarizeInput(
   args: unknown,
 ): Record<string, unknown> {
   const record = isRecord(args) ? args : {};
-  const textFields = ["body", "contentMarkdown", "description", "title"];
+  const textFields = [
+    "appendMarkdown",
+    "body",
+    "contentMarkdown",
+    "description",
+    "title",
+  ];
   const textSummary = Object.fromEntries(
     textFields
       .filter((key) => typeof record[key] === "string")
@@ -752,7 +977,7 @@ function summarizeInput(
     idempotencyKey: record.idempotencyKey,
     organizationId: record.organizationId,
     spaceId: record.spaceId,
-    targetId: record.targetId ?? record.workItemId,
+    targetId: record.targetId ?? record.workItemId ?? record.documentId,
     targetSelectionSource: record.targetSelectionSource,
     targetType: record.targetType,
     text: textSummary,

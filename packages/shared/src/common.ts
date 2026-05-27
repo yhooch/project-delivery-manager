@@ -58,6 +58,11 @@ export const ApiErrorCodeSchema = z.enum([
   "TAG_IN_USE",
   "TAG_TARGET_INVALID",
   "TAG_NAME_CONFLICT",
+  "DOCUMENT_NOT_FOUND",
+  "DOCUMENT_EDIT_CONFLICT",
+  "DOCUMENT_LINK_TARGET_INVALID",
+  "DOCUMENT_IMPORT_FAILED",
+  "DOCUMENT_IMPORT_UNSUPPORTED_TYPE",
   "OBJECT_CODE_INVALID",
   "OBJECT_CODE_NOT_FOUND",
   "OBJECT_CODE_AMBIGUOUS",
@@ -172,6 +177,12 @@ export const RequirementIdPathParamsSchema = z
 export const WorkItemIdPathParamsSchema = z
   .object({
     workItemId: UlidSchema,
+  })
+  .strict();
+
+export const DocumentIdPathParamsSchema = z
+  .object({
+    documentId: UlidSchema,
   })
   .strict();
 

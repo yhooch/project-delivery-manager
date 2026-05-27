@@ -152,29 +152,34 @@ enum TargetType {
   REQUIREMENT
   INTAKE_ITEM
   WORK_ITEM
+  DOCUMENT
 }
 
 enum AttachmentTargetType {
   REQUIREMENT
   WORK_ITEM
+  DOCUMENT
 }
 
 enum CommentTargetType {
   REQUIREMENT
   INTAKE_ITEM
   WORK_ITEM
+  DOCUMENT
 }
 
 enum ObjectParticipantTargetType {
   REQUIREMENT
   INTAKE_ITEM
   WORK_ITEM
+  DOCUMENT
 }
 
 enum TagTargetType {
   REQUIREMENT
   INTAKE_ITEM
   WORK_ITEM
+  DOCUMENT
 }
 
 enum ObjectParticipantRelation {
@@ -222,6 +227,45 @@ enum BugSeverity {
   MAJOR
   MINOR
   TRIVIAL
+}
+
+enum DocumentSourceType {
+  UPLOAD_DOCX
+  UPLOAD_MARKDOWN
+  PASTE_MARKDOWN
+  PASTE_TEXT
+  MCP_CREATED
+}
+
+enum DocumentActorType {
+  USER
+  MCP_CLIENT
+}
+
+enum DocumentStatus {
+  ACTIVE
+  ARCHIVED
+}
+
+enum DocumentChangeType {
+  CREATED
+  IMPORTED
+  REIMPORTED
+  METADATA_UPDATED
+  CONTENT_EDITED
+  CONTENT_APPENDED
+  CONTENT_REPLACED
+  ARCHIVED
+  RESTORED
+  DELETED
+}
+
+enum DocumentLinkTargetType {
+  DOCUMENT
+  VERSION
+  REQUIREMENT
+  INTAKE_ITEM
+  WORK_ITEM
 }
 
 enum TimelineEventType {
@@ -499,6 +543,10 @@ model Organization {
   timelineEvents      TimelineEvent[]
   tags                Tag[]
   tagAssignments      TagAssignment[]
+  documents           Document[]
+  documentRevisions   DocumentRevision[]
+  documentLinks       DocumentLink[]
+  documentChunks      DocumentChunk[]
   objectSequenceCounters ObjectSequenceCounter[]
 
   @@index([ownerId])
@@ -557,6 +605,10 @@ model Space {
   timelineEvents      TimelineEvent[]
   tags                Tag[]
   tagAssignments      TagAssignment[]
+  documents           Document[]
+  documentRevisions   DocumentRevision[]
+  documentLinks       DocumentLink[]
+  documentChunks      DocumentChunk[]
   objectSequenceCounters ObjectSequenceCounter[]
 
   @@index([organizationId])
@@ -850,6 +902,127 @@ model Attachment {
   @@index([organizationId, spaceId, targetType, targetId, deletedAt, createdAt], map: "attachments_org_space_target_deleted_created_idx")
   @@index([uploadedById])
   @@map("attachments")
+}
+
+model Document {
+  id                    String             @id @db.Char(26)
+  organizationId        String             @map("organization_id") @db.Char(26)
+  spaceId               String             @map("space_id") @db.Char(26)
+  title                 String             @db.VarChar(200)
+  contentMarkdown       String             @map("content_markdown") @db.Text
+  contentText           String             @map("content_text") @db.Text
+  sourceType            DocumentSourceType @map("source_type")
+  sourceAttachmentId    String?            @map("source_attachment_id") @db.Char(26)
+  status                DocumentStatus     @default(ACTIVE)
+  revision              Int                @default(1)
+  createdVia            DocumentActorType  @default(USER) @map("created_via")
+  createdMcpClientId    String?            @map("created_mcp_client_id") @db.VarChar(200)
+  lastEditedById        String             @map("last_edited_by_id") @db.Char(26)
+  lastEditedVia         DocumentActorType  @default(USER) @map("last_edited_via")
+  lastEditedMcpClientId String?            @map("last_edited_mcp_client_id") @db.VarChar(200)
+  lastEditedAt          DateTime @db.Timestamptz(3) @default(now()) @map("last_edited_at")
+  archivedAt            DateTime? @db.Timestamptz(3) @map("archived_at")
+  createdAt             DateTime @db.Timestamptz(3) @default(now()) @map("created_at")
+  updatedAt             DateTime @db.Timestamptz(3) @updatedAt @map("updated_at")
+  createdById           String?            @map("created_by_id") @db.Char(26)
+  updatedById           String?            @map("updated_by_id") @db.Char(26)
+  deletedAt             DateTime? @db.Timestamptz(3) @map("deleted_at")
+
+  organization Organization       @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  space        Space              @relation(fields: [spaceId], references: [id], onDelete: Cascade)
+  revisions    DocumentRevision[]
+  links        DocumentLink[]
+  chunks       DocumentChunk[]
+
+  @@index([organizationId])
+  @@index([spaceId])
+  @@index([status])
+  @@index([sourceType])
+  @@index([createdById])
+  @@index([lastEditedById])
+  @@index([sourceAttachmentId])
+  @@index([spaceId, status, updatedAt])
+  @@index([spaceId, deletedAt, updatedAt])
+  @@index([spaceId, lastEditedAt])
+  @@map("documents")
+}
+
+model DocumentRevision {
+  id                    String             @id @db.Char(26)
+  organizationId        String             @map("organization_id") @db.Char(26)
+  spaceId               String             @map("space_id") @db.Char(26)
+  documentId            String             @map("document_id") @db.Char(26)
+  revision              Int
+  title                 String             @db.VarChar(200)
+  contentMarkdown       String             @map("content_markdown") @db.Text
+  contentText           String             @map("content_text") @db.Text
+  changeType            DocumentChangeType @map("change_type")
+  actorType             DocumentActorType  @map("actor_type")
+  actorUserId           String             @map("actor_user_id") @db.Char(26)
+  mcpClientId           String?            @map("mcp_client_id") @db.VarChar(200)
+  requestId             String?            @map("request_id") @db.VarChar(128)
+  createdAt             DateTime @db.Timestamptz(3) @default(now()) @map("created_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  space        Space        @relation(fields: [spaceId], references: [id], onDelete: Cascade)
+  document     Document     @relation(fields: [documentId], references: [id], onDelete: Cascade)
+
+  @@unique([documentId, revision], map: "document_revisions_document_revision_key")
+  @@index([organizationId])
+  @@index([spaceId])
+  @@index([documentId])
+  @@index([spaceId, documentId, revision])
+  @@index([actorUserId])
+  @@index([createdAt])
+  @@map("document_revisions")
+}
+
+model DocumentLink {
+  id             String                 @id @db.Char(26)
+  organizationId String                 @map("organization_id") @db.Char(26)
+  spaceId        String                 @map("space_id") @db.Char(26)
+  documentId     String                 @map("document_id") @db.Char(26)
+  targetType     DocumentLinkTargetType @map("target_type")
+  targetId       String                 @map("target_id") @db.Char(26)
+  createdById    String                 @map("created_by_id") @db.Char(26)
+  createdAt      DateTime @db.Timestamptz(3) @default(now()) @map("created_at")
+  updatedAt      DateTime @db.Timestamptz(3) @updatedAt @map("updated_at")
+  deletedAt      DateTime? @db.Timestamptz(3) @map("deleted_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  space        Space        @relation(fields: [spaceId], references: [id], onDelete: Cascade)
+  document     Document     @relation(fields: [documentId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId])
+  @@index([spaceId])
+  @@index([documentId])
+  @@index([targetType, targetId])
+  @@index([spaceId, documentId, deletedAt])
+  @@index([spaceId, targetType, targetId, deletedAt])
+  @@map("document_links")
+}
+
+model DocumentChunk {
+  id             String   @id @db.Char(26)
+  organizationId String   @map("organization_id") @db.Char(26)
+  spaceId        String   @map("space_id") @db.Char(26)
+  documentId     String   @map("document_id") @db.Char(26)
+  revision       Int
+  ordinal        Int
+  headingPath    String?  @map("heading_path") @db.VarChar(1000)
+  contentText    String   @map("content_text") @db.Text
+  createdAt      DateTime @db.Timestamptz(3) @default(now()) @map("created_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  space        Space        @relation(fields: [spaceId], references: [id], onDelete: Cascade)
+  document     Document     @relation(fields: [documentId], references: [id], onDelete: Cascade)
+
+  @@unique([documentId, revision, ordinal], map: "document_chunks_document_revision_ordinal_key")
+  @@index([organizationId])
+  @@index([spaceId])
+  @@index([documentId])
+  @@index([spaceId, documentId, revision, ordinal])
+  @@map("document_chunks")
 }
 
 model Tag {

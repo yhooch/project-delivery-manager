@@ -10,6 +10,7 @@ import { ApiException } from "../../http/api-exception";
 import type { McpOAuthPrincipalContext } from "../../http/request-context";
 import type { BugService } from "../bug/bug.service";
 import type { CommentService } from "../comment/comment.service";
+import type { DocumentService } from "../document/document.service";
 import type { IntakeService } from "../intake/intake.service";
 import type { OrganizationRepository } from "../organization/organization.repository";
 import type { RequirementService } from "../requirement/requirement.service";
@@ -27,6 +28,7 @@ const USER_ID = "01HX0000000000000000000000";
 const ORGANIZATION_ID = "01HRZ3NDEKTSV4RRFFQ69G5FAV";
 const SPACE_ID = "01HRZ3NDEKTSV4RRFFQ69G5FAW";
 const OTHER_SPACE_ID = "01HRZ3NDEKTSV4RRFFQ69G5FAT";
+const DOCUMENT_ID = "01HRZ3NDEKTSV4RRFFQ69G5FAY";
 const WORK_ITEM_ID = "01HRZ3NDEKTSV4RRFFQ69G5FAZ";
 const WORKFLOW_VERSION_ID = "01HRZ3NDEKTSV4RRFFQ69G5FB2";
 const WORKFLOW_STATE_ID = "01HRZ3NDEKTSV4RRFFQ69G5FB3";
@@ -35,6 +37,14 @@ const now = "2026-05-22T00:00:00.000Z";
 describe("McpWriteToolExecutor", () => {
   let bugs: { create: MockFn };
   let comments: { create: MockFn };
+  let documents: {
+    appendContent: MockFn;
+    createFromMarkdown: MockFn;
+    get: MockFn;
+    replaceLinks: MockFn;
+    updateContent: MockFn;
+    updateMetadata: MockFn;
+  };
   let executor: McpWriteToolExecutor;
   let idempotency: {
     complete: MockFn;
@@ -63,6 +73,14 @@ describe("McpWriteToolExecutor", () => {
     };
     comments = {
       create: vi.fn(),
+    };
+    documents = {
+      appendContent: vi.fn(async () => document),
+      createFromMarkdown: vi.fn(async () => document),
+      get: vi.fn(async () => document),
+      replaceLinks: vi.fn(async () => ({ items: [] })),
+      updateContent: vi.fn(async () => ({ ...document, revision: 2 })),
+      updateMetadata: vi.fn(async () => ({ ...document, title: "Updated" })),
     };
     idempotency = {
       complete: vi.fn(async () => undefined),
@@ -127,6 +145,7 @@ describe("McpWriteToolExecutor", () => {
       workItems as unknown as WorkItemService,
       bugs as unknown as BugService,
       comments as unknown as CommentService,
+      documents as unknown as DocumentService,
       tagAssignments as unknown as TagAssignmentService,
       workflowActions as unknown as WorkflowActionExecutionService,
       targets as unknown as TargetResolverService,
@@ -534,6 +553,214 @@ describe("McpWriteToolExecutor", () => {
     expect(workItems.create).not.toHaveBeenCalled();
     expect(idempotency.complete).not.toHaveBeenCalled();
   });
+
+  it("dry-runs document append by validating document context and baseRevision only", async () => {
+    const result = await executor.execute(
+      contract("pdm.document.append_content"),
+      {
+        organizationId: ORGANIZATION_ID,
+        spaceId: SPACE_ID,
+        idempotencyKey: "document-append-dry-1",
+        targetSelectionSource: "USER_EXPLICIT",
+        dryRun: true,
+        documentId: DOCUMENT_ID,
+        baseRevision: 1,
+        appendMarkdown: "New section",
+      },
+      principal(),
+      {
+        requestId: "req-document-dry",
+      },
+    );
+
+    expect(result).toMatchObject({
+      structuredContent: {
+        committed: false,
+        dryRun: true,
+        toolName: "pdm.document.append_content",
+      },
+    });
+    expect(documents.get).toHaveBeenCalledWith(USER_ID, DOCUMENT_ID);
+    expect(documents.appendContent).not.toHaveBeenCalled();
+  });
+
+  it("dry-runs document link replacement by validating baseRevision", async () => {
+    const result = await executor.execute(
+      contract("pdm.document.link_resources"),
+      {
+        organizationId: ORGANIZATION_ID,
+        spaceId: SPACE_ID,
+        idempotencyKey: "document-link-dry-1",
+        targetSelectionSource: "USER_EXPLICIT",
+        dryRun: true,
+        documentId: DOCUMENT_ID,
+        baseRevision: 1,
+        links: [],
+      },
+      principal(),
+      {
+        requestId: "req-document-link-dry",
+      },
+    );
+
+    expect(result).toMatchObject({
+      structuredContent: {
+        committed: false,
+        dryRun: true,
+        toolName: "pdm.document.link_resources",
+      },
+    });
+    expect(documents.get).toHaveBeenCalledWith(USER_ID, DOCUMENT_ID);
+    expect(documents.replaceLinks).not.toHaveBeenCalled();
+  });
+
+  it("creates documents with MCP actor metadata through DocumentService", async () => {
+    const result = await executor.execute(
+      contract("pdm.document.create_from_markdown"),
+      {
+        organizationId: ORGANIZATION_ID,
+        spaceId: SPACE_ID,
+        idempotencyKey: "document-create-1",
+        targetSelectionSource: "USER_EXPLICIT",
+        title: "Agent handoff",
+        contentMarkdown: "# Agent handoff",
+      },
+      principal(),
+      {
+        requestId: "req-document-create",
+      },
+    );
+
+    expect(documents.createFromMarkdown).toHaveBeenCalledWith(
+      USER_ID,
+      SPACE_ID,
+      {
+        title: "Agent handoff",
+        contentMarkdown: "# Agent handoff",
+      },
+      expect.objectContaining({
+        metadata: expect.objectContaining({
+          clientId: "test-client",
+          source: "MCP",
+          toolName: "pdm.document.create_from_markdown",
+        }),
+        requestId: "req-document-create",
+      }),
+      {
+        actorType: "MCP_CLIENT",
+        mcpClientId: "test-client",
+      },
+    );
+    expect(result).toMatchObject({
+      structuredContent: {
+        id: DOCUMENT_ID,
+        createdVia: "MCP_CLIENT",
+      },
+    });
+  });
+
+  it("rejects stale document content writes before invoking DocumentService mutators", async () => {
+    const result = await executor.execute(
+      contract("pdm.document.replace_content"),
+      {
+        organizationId: ORGANIZATION_ID,
+        spaceId: SPACE_ID,
+        idempotencyKey: "document-replace-stale-1",
+        targetSelectionSource: "USER_EXPLICIT",
+        documentId: DOCUMENT_ID,
+        baseRevision: 99,
+        contentMarkdown: "# Updated",
+      },
+      principal(),
+      {
+        requestId: "req-document-stale",
+      },
+    );
+
+    expect(result).toMatchObject({
+      isError: true,
+      structuredContent: {
+        error: {
+          code: "DOCUMENT_EDIT_CONFLICT",
+        },
+      },
+    });
+    expect(documents.updateContent).not.toHaveBeenCalled();
+  });
+
+  it("rejects stale document link replacements before invoking DocumentService mutators", async () => {
+    const result = await executor.execute(
+      contract("pdm.document.link_resources"),
+      {
+        organizationId: ORGANIZATION_ID,
+        spaceId: SPACE_ID,
+        idempotencyKey: "document-link-stale-1",
+        targetSelectionSource: "USER_EXPLICIT",
+        documentId: DOCUMENT_ID,
+        baseRevision: 99,
+        links: [],
+      },
+      principal(),
+      {
+        requestId: "req-document-link-stale",
+      },
+    );
+
+    expect(result).toMatchObject({
+      isError: true,
+      structuredContent: {
+        error: {
+          code: "DOCUMENT_EDIT_CONFLICT",
+        },
+      },
+    });
+    expect(documents.replaceLinks).not.toHaveBeenCalled();
+  });
+
+  it("passes MCP actor metadata when replacing document links", async () => {
+    const result = await executor.execute(
+      contract("pdm.document.link_resources"),
+      {
+        organizationId: ORGANIZATION_ID,
+        spaceId: SPACE_ID,
+        idempotencyKey: "document-link-1",
+        targetSelectionSource: "USER_EXPLICIT",
+        documentId: DOCUMENT_ID,
+        baseRevision: 1,
+        links: [],
+      },
+      principal(),
+      {
+        requestId: "req-document-link",
+      },
+    );
+
+    expect(documents.replaceLinks).toHaveBeenCalledWith(
+      USER_ID,
+      DOCUMENT_ID,
+      {
+        baseRevision: 1,
+        links: [],
+      },
+      expect.objectContaining({
+        metadata: expect.objectContaining({
+          clientId: "test-client",
+          source: "MCP",
+          toolName: "pdm.document.link_resources",
+        }),
+        requestId: "req-document-link",
+      }),
+      {
+        actorType: "MCP_CLIENT",
+        mcpClientId: "test-client",
+      },
+    );
+    expect(result).toMatchObject({
+      structuredContent: {
+        items: [],
+      },
+    });
+  });
 });
 
 function contract(name: McpToolName) {
@@ -572,4 +799,28 @@ const workItem = {
   statusCategory: "NOT_STARTED",
   lastStatusChangedAt: now,
   tags: [],
+};
+
+const document = {
+  id: DOCUMENT_ID,
+  organizationId: ORGANIZATION_ID,
+  spaceId: SPACE_ID,
+  title: "Agent handoff",
+  contentMarkdown: "# Agent handoff",
+  contentText: "Agent handoff",
+  sourceType: "MCP_CREATED",
+  status: "ACTIVE",
+  revision: 1,
+  createdById: USER_ID,
+  createdVia: "MCP_CLIENT",
+  createdMcpClientId: "test-client",
+  lastEditedById: USER_ID,
+  lastEditedVia: "MCP_CLIENT",
+  lastEditedMcpClientId: "test-client",
+  lastEditedAt: now,
+  tags: [],
+  links: [],
+  chunks: [],
+  createdAt: now,
+  updatedAt: now,
 };

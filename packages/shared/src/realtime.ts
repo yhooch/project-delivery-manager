@@ -59,6 +59,13 @@ export const RealtimeInvalidationKeySchema = z.enum([
   "timeline",
   "comments",
   "attachments",
+  "document-list",
+  "document-detail",
+  "document-links",
+  "document-comments",
+  "document-attachments",
+  "document-timeline",
+  "resource-documents",
 ]);
 export type RealtimeInvalidationKey = z.infer<
   typeof RealtimeInvalidationKeySchema

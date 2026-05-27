@@ -9,6 +9,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { ApiException } from "../../http/api-exception";
 import type { McpOAuthPrincipalContext } from "../../http/request-context";
 import type { BugService } from "../bug/bug.service";
+import type { DocumentService } from "../document/document.service";
 import type { UserRepository } from "../identity/identity.repository";
 import type { IdentityUser } from "../identity/identity.types";
 import type { IntakeService } from "../intake/intake.service";
@@ -35,6 +36,7 @@ const VERSION_ID = "01HRZ3NDEKTSV4RRFFQ69G5FAX";
 const REQUIREMENT_ID = "01HRZ3NDEKTSV4RRFFQ69G5FAY";
 const WORK_ITEM_ID = "01HRZ3NDEKTSV4RRFFQ69G5FAZ";
 const BUG_ID = "01HRZ3NDEKTSV4RRFFQ69G5FB0";
+const DOCUMENT_ID = "01HRZ3NDEKTSV4RRFFQ69G5FB1";
 const WORKFLOW_VERSION_ID = "01HRZ3NDEKTSV4RRFFQ69G5FB2";
 const WORKFLOW_STATE_ID = "01HRZ3NDEKTSV4RRFFQ69G5FB3";
 const TIMELINE_EVENT_ID = "01HRZ3NDEKTSV4RRFFQ69G5FB4";
@@ -44,6 +46,7 @@ const PROTOCOL_VERSION = "2025-11-25";
 describe("McpService", () => {
   let appSessions: { buildForUser: MockFn };
   let bugs: { get: MockFn };
+  let documents: { get: MockFn; list: MockFn };
   let intakeItems: { list: MockFn };
   let objectCodes: { lookup: MockFn };
   let requirements: { get: MockFn };
@@ -65,6 +68,10 @@ describe("McpService", () => {
     };
     bugs = {
       get: vi.fn(async () => bugDetail),
+    };
+    documents = {
+      get: vi.fn(async () => documentDetail),
+      list: vi.fn(async () => documentList),
     };
     intakeItems = {
       list: vi.fn(async () => intakeList),
@@ -116,6 +123,7 @@ describe("McpService", () => {
       intakeItems as unknown as IntakeService,
       workItems as unknown as WorkItemService,
       bugs as unknown as BugService,
+      documents as unknown as DocumentService,
       timelines as unknown as TimelineService,
       writeTools as unknown as McpWriteToolExecutor,
     );
@@ -406,6 +414,24 @@ describe("McpService", () => {
     });
     expect(bugs.get).toHaveBeenCalledWith(USER_ID, BUG_ID);
 
+    await callTool(service, "pdm.document.search", {
+      spaceId: SPACE_ID,
+      page: 1,
+      pageSize: 20,
+      query: "handoff",
+    });
+    expect(documents.list).toHaveBeenCalledWith(USER_ID, SPACE_ID, {
+      page: 1,
+      pageSize: 20,
+      query: "handoff",
+      tagMatch: "ANY",
+    });
+
+    await callTool(service, "pdm.document.get", {
+      documentId: DOCUMENT_ID,
+    });
+    expect(documents.get).toHaveBeenCalledWith(USER_ID, DOCUMENT_ID);
+
     await callTool(service, "pdm.timeline.list", {
       targetType: "WORK_ITEM",
       targetId: WORK_ITEM_ID,
@@ -530,6 +556,47 @@ describe("McpService", () => {
       }),
       expect.objectContaining({
         title: "Create requirement",
+      }),
+      expect.objectContaining({
+        clientId: "test-client",
+        userId: USER_ID,
+      }),
+      {},
+    );
+    expect(body.result).toMatchObject({
+      structuredContent: {
+        id: REQUIREMENT_ID,
+      },
+    });
+  });
+
+  it("requires document write scope before dispatching document writes", async () => {
+    writeTools.canExecute.mockImplementation(
+      (name: string) => name === "pdm.document.create_from_markdown",
+    );
+
+    const body = expectJsonRpc(
+      await callTool(
+        service,
+        "pdm.document.create_from_markdown",
+        {
+          organizationId: ORGANIZATION_ID,
+          spaceId: SPACE_ID,
+          idempotencyKey: "document-create-1",
+          targetSelectionSource: "USER_EXPLICIT",
+          title: "Agent handoff",
+          contentMarkdown: "# Agent handoff",
+        },
+        ["mcp:write:document"],
+      ),
+    );
+
+    expect(writeTools.execute).toHaveBeenCalledWith(
+      expect.objectContaining({
+        name: "pdm.document.create_from_markdown",
+      }),
+      expect.objectContaining({
+        contentMarkdown: "# Agent handoff",
       }),
       expect.objectContaining({
         clientId: "test-client",
@@ -821,6 +888,35 @@ const bugDetail = {
     severity: "MAJOR",
   },
 };
+
+const documentDetail = {
+  id: DOCUMENT_ID,
+  organizationId: ORGANIZATION_ID,
+  spaceId: SPACE_ID,
+  title: "Agent handoff",
+  contentMarkdown: "# Agent handoff",
+  contentText: "Agent handoff",
+  sourceType: "MCP_CREATED",
+  status: "ACTIVE",
+  revision: 1,
+  createdById: USER_ID,
+  createdVia: "MCP_CLIENT",
+  createdMcpClientId: "test-client",
+  lastEditedById: USER_ID,
+  lastEditedVia: "MCP_CLIENT",
+  lastEditedMcpClientId: "test-client",
+  lastEditedAt: now,
+  tags: [],
+  links: [],
+  chunks: [],
+  attachments: [],
+  comments: [],
+  timeline: [],
+  createdAt: now,
+  updatedAt: now,
+};
+
+const documentList = page([documentDetail]);
 
 const timelinePage = {
   ...page([

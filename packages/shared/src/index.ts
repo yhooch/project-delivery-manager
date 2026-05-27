@@ -3,6 +3,7 @@ export * from "./auth.ts";
 export * from "./common.ts";
 export * from "./mcp.ts";
 export * from "./contracts.ts";
+export * from "./document.ts";
 export * from "./enums.ts";
 export * from "./intake.ts";
 export * from "./object-code.ts";

@@ -80,6 +80,8 @@ export class RealtimePermissionService {
         return this.canReadRequirementTarget(userId, event, role);
       case "INTAKE_ITEM":
         return this.canReadIntakeItemTarget(userId, event, role);
+      case "DOCUMENT":
+        return this.canReadDocumentTarget(event);
     }
   }
 
@@ -226,6 +228,20 @@ export class RealtimePermissionService {
     return this.isObjectParticipant(userId, event, "INTAKE_ITEM", {
       includeRecentlyRemoved: true,
     });
+  }
+
+  private async canReadDocumentTarget(event: RealtimeEvent): Promise<boolean> {
+    const document = await this.prisma.client.document.findFirst({
+      select: { id: true },
+      where: {
+        deletedAt: event.operation === "DELETED" ? { not: null } : null,
+        id: event.target.id,
+        organizationId: event.organizationId,
+        spaceId: event.spaceId,
+      },
+    });
+
+    return Boolean(document);
   }
 
   private async isObjectParticipant(

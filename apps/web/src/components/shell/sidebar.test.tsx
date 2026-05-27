@@ -96,6 +96,18 @@ describe("Sidebar", () => {
       screen.getByRole("link", { name: /shell\.nav\.spaceSettings/u }),
     ).toHaveAttribute("href", "/settings");
 
+    const documentGroup = screen.getByTestId("sidebar-nav-group-document");
+    expect(
+      within(documentGroup)
+        .getAllByRole("link")
+        .map((link) => link.getAttribute("href")),
+    ).toEqual(["/requirements", "/intake-items", "/documents"]);
+    expect(
+      within(documentGroup).getByRole("link", {
+        name: /shell\.nav\.documents/u,
+      }),
+    ).toHaveAttribute("href", "/documents");
+
     expect(
       within(screen.getByTestId("sidebar-nav-group-deliver")).queryByRole(
         "link",

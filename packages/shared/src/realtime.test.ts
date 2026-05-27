@@ -79,6 +79,13 @@ describe("realtime shared contracts", () => {
       "timeline",
       "comments",
       "attachments",
+      "document-list",
+      "document-detail",
+      "document-links",
+      "document-comments",
+      "document-attachments",
+      "document-timeline",
+      "resource-documents",
     ]);
     expect(RealtimeResyncReasonSchema.options).toEqual([
       "REPLAY_MISS",
