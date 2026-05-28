@@ -1588,7 +1588,7 @@ export function VersionPage() {
             </div>
           </SheetHeader>
           <div className="min-h-0 flex-1 overflow-y-auto px-5 py-4">
-            <section className="border-b border-border pb-4">
+            <section className="border-b border-border/60 pb-4">
               <h3 className="text-xs font-semibold uppercase text-muted-foreground">
                 {tHero("target")}
               </h3>
@@ -1599,7 +1599,7 @@ export function VersionPage() {
                 {fullVersionTarget || tHero("targetNone")}
               </div>
             </section>
-            <section className="border-b border-border py-4">
+            <section className="border-b border-border/60 py-4">
               <h3 className="text-xs font-semibold uppercase text-muted-foreground">
                 {tHero("description")}
               </h3>
@@ -1610,7 +1610,7 @@ export function VersionPage() {
                 {versionDescription || tHero("descriptionNone")}
               </div>
             </section>
-            <section className="border-b border-border py-4">
+            <section className="border-b border-border/60 py-4">
               <h3 className="text-xs font-semibold uppercase text-muted-foreground">
                 {tHero("metadata")}
               </h3>
