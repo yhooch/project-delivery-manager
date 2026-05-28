@@ -52,7 +52,6 @@ import { Link } from "../../i18n/routing";
 import { ObjectTagAssignmentField } from "../tag";
 import { TimelineEventItem } from "../timeline/timeline-event-item";
 import { Avatar, AvatarFallback } from "../ui/avatar";
-import { Badge } from "../ui/badge";
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
 import {
@@ -340,7 +339,7 @@ function IntakeDetailContent({
           <ChevronRight className="h-3 w-3" />
           <span>{tIntakeItems(`sourceType.${intakeItem.sourceType}`)}</span>
         </div>
-        <SheetTitle className="mt-1 text-base leading-snug">
+        <SheetTitle className="mt-1 leading-snug">
           {intakeItem.title}
         </SheetTitle>
         {spaceId ? (
@@ -359,25 +358,25 @@ function IntakeDetailContent({
         <SheetDescription className="sr-only">
           {t("detail.sheetDescription")}
         </SheetDescription>
-        <div className="mt-3 flex flex-wrap items-center gap-2">
+        <div className="mt-3 flex flex-wrap items-center gap-1.5 text-[11px]">
           <StatusBadge
             category={intakeStatusToCategory[intakeItem.status]}
             label={tIntakeItems(`status.${intakeItem.status}`)}
           />
-          <Badge variant="outline">
+          <span className="inline-flex items-center rounded-md bg-muted/60 px-1.5 py-0.5 font-medium text-muted-foreground">
             {tIntakeItems(`sourceType.${intakeItem.sourceType}`)}
-          </Badge>
+          </span>
           {intakeItem.versionId && (
-            <Badge variant="outline" className="gap-1">
+            <span className="inline-flex items-center gap-1 rounded-md bg-muted/60 px-1.5 py-0.5 font-medium text-muted-foreground">
               <GitBranch className="h-2.5 w-2.5" />
               {displayVersionName(intakeItem.versionId, getVersion)}
-            </Badge>
+            </span>
           )}
         </div>
       </SheetHeader>
 
       {actionBar ? (
-        <div className="flex min-w-0 flex-col gap-2 border-b border-border bg-muted/30 px-5 py-2.5 sm:flex-row sm:items-center">
+        <div className="flex min-w-0 flex-col gap-2 px-5 py-2 sm:flex-row sm:items-center">
           <span className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
             {t("detail.actions")}
           </span>
@@ -388,7 +387,7 @@ function IntakeDetailContent({
       ) : null}
 
       {actionErrorMessage && (
-        <div className="border-b border-border bg-destructive/5 px-5 py-2 text-[12px] text-destructive">
+        <div className="mx-5 mt-2 rounded-md bg-destructive/10 px-3 py-2 text-[12px] text-destructive">
           {actionErrorMessage}
         </div>
       )}
@@ -736,7 +735,7 @@ function RelatedTasksSection({
       ) : (
         <>
           <ul
-            className="divide-y divide-border rounded-md border border-border"
+            className="divide-y divide-border/60"
             data-testid="intake-related-tasks-list"
           >
             {tasks.map((task) => (
@@ -921,7 +920,7 @@ function IntakeCommentsSection({
       <h3 className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
         {tIntakeItems("comments.title")}
       </h3>
-      <div className="mt-2 rounded-md border border-border">
+      <div className="mt-2">
         {loading ? (
           <LoadingState
             className="h-28"
@@ -945,7 +944,7 @@ function IntakeCommentsSection({
           />
         ) : (
           <ul
-            className="divide-y divide-border"
+            className="grid gap-0.5"
             data-testid="intake-comments-list"
           >
             {comments.map((comment) => {
@@ -957,7 +956,7 @@ function IntakeCommentsSection({
                 <li
                   key={comment.id}
                   data-testid="intake-comment-item"
-                  className="flex gap-3 px-3 py-3"
+                  className="flex gap-3 rounded-lg px-3 py-2 transition-colors hover:bg-muted/40"
                 >
                   <Avatar className="h-7 w-7">
                     <AvatarFallback>{initial}</AvatarFallback>
@@ -983,12 +982,12 @@ function IntakeCommentsSection({
           </ul>
         )}
         {submitErrorKey && (
-          <p className="border-t border-border bg-destructive/10 px-3 py-2 text-[11px] text-destructive">
+          <p className="mt-2 rounded-md bg-destructive/10 px-3 py-2 text-[11px] text-destructive">
             {tRoot(submitErrorKey)}
           </p>
         )}
         {canComment ? (
-          <div className="flex gap-2 border-t border-border p-3">
+          <div className="mt-3 flex gap-2 rounded-lg bg-muted/40 p-3">
             <Input
               data-testid="intake-comment-input"
               value={draft}
@@ -1024,7 +1023,7 @@ function IntakeCommentsSection({
         ) : (
           <p
             data-testid="intake-comments-readonly"
-            className="border-t border-border px-3 py-2 text-[11px] text-muted-foreground"
+            className="mt-2 px-3 py-2 text-[11px] text-muted-foreground"
           >
             {tRoot("intakeItems.permissions.commentReadonly")}
           </p>
@@ -1108,7 +1107,7 @@ function IntakeTimelineSection({
       <h3 className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
         {tIntakeItems("timeline.title")}
       </h3>
-      <div className="mt-2 rounded-md border border-border">
+      <div className="mt-2">
         {loading ? (
           <LoadingState
             className="h-28"
@@ -1132,13 +1131,13 @@ function IntakeTimelineSection({
           />
         ) : (
           <ul
-            className="divide-y divide-border"
+            className="grid gap-0.5"
             data-testid="intake-timeline-list"
           >
             {events.map((event) => (
               <TimelineEventItem
                 key={event.id}
-                className="px-3 py-3"
+                className="rounded-lg px-3 py-2 transition-colors hover:bg-muted/40"
                 event={event}
                 locale={locale}
                 testId="intake-timeline-item"

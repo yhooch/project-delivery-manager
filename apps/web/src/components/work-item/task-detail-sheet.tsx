@@ -100,7 +100,6 @@ import { ObjectTagAssignmentField } from "../tag";
 import { TimelineEventItem } from "../timeline/timeline-event-item";
 import { TraceVersionCascadeConfirmDialog } from "../trace-version-cascade-confirm-dialog";
 import { Avatar, AvatarFallback, AvatarImage } from "../ui/avatar";
-import { Badge } from "../ui/badge";
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
 import { Kbd } from "../ui/kbd";
@@ -757,7 +756,7 @@ function TaskDetailSheetBody({
             <ChevronRight className="h-3 w-3" />
             <span className="truncate">{versionName}</span>
           </div>
-          <SheetTitle className="mt-1 text-base leading-snug">
+          <SheetTitle className="mt-1 leading-snug">
             {detail?.title ?? item.title}
           </SheetTitle>
           {detail && spaceId ? (
@@ -779,11 +778,13 @@ function TaskDetailSheetBody({
           <SheetDescription className="sr-only">
             {isBug ? t("sheetDescription.bug") : t("sheetDescription.task")}
           </SheetDescription>
-          <div className="mt-3 flex flex-wrap items-center gap-2">
+          <div className="mt-3 flex flex-wrap items-center gap-1.5 text-[11px]">
             <StatusBadge category={statusCategory} label={statusLabel} />
-            <Badge
-              variant="outline"
-              className={cn("gap-1", priorityColor[priority])}
+            <span
+              className={cn(
+                "inline-flex items-center gap-1 rounded-md bg-muted/60 px-1.5 py-0.5 font-medium",
+                priorityColor[priority],
+              )}
             >
               <span
                 className={cn(
@@ -795,18 +796,19 @@ function TaskDetailSheetBody({
                 )}
               />
               {t(`priority.${priority}`)}
-            </Badge>
+            </span>
             {dueDate && (
-              <Badge
-                variant="outline"
+              <span
                 className={cn(
-                  "gap-1",
-                  item.isOverdue && "border-destructive/40 text-destructive",
+                  "inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 font-medium",
+                  item.isOverdue
+                    ? "bg-destructive/10 text-destructive"
+                    : "bg-muted/60 text-muted-foreground",
                 )}
               >
                 <Clock className="h-2.5 w-2.5" />
                 {t("fields.due")} {dueDate}
-              </Badge>
+              </span>
             )}
           </div>
         </SheetHeader>
@@ -826,7 +828,7 @@ function TaskDetailSheetBody({
         />
 
         {isBlocked && blockedReason && (
-          <div className="border-b border-border bg-warning/10 px-5 py-2.5">
+          <div className="mx-5 mt-2 rounded-md bg-warning/10 px-3 py-2">
             <div className="flex items-start gap-2">
               <AlertCircle className="mt-0.5 h-3.5 w-3.5 shrink-0 text-warning" />
               <div className="text-xs">
@@ -1332,7 +1334,7 @@ function ActionBar({
       aria-label={t("actions.label")}
       tabIndex={-1}
       data-testid="task-actions-region"
-      className="flex flex-col gap-1.5 border-b border-border bg-muted/30 px-5 py-2.5 outline-none focus:ring-2 focus:ring-ring"
+      className="flex flex-col gap-1.5 px-5 py-2 outline-none focus:ring-2 focus:ring-ring"
     >
       <div className="flex items-center gap-1.5">
         <span className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
@@ -1455,7 +1457,7 @@ function ActionExecutionForm({
   return (
     <div
       data-testid="task-action-form"
-      className="rounded-md border border-border bg-background p-3"
+      className="rounded-lg bg-muted/40 p-3"
     >
       <div className="grid gap-3 sm:grid-cols-2">
         {action.formFields.map((field) => (
@@ -2215,7 +2217,7 @@ function DetailTab({
       {editing && detail && (
         <form
           data-testid="task-edit-form"
-          className="mb-5 rounded-md border border-border bg-muted/20 p-3"
+          className="mb-5 rounded-lg bg-muted/40 p-3"
           onSubmit={submitEdit}
           noValidate
         >
@@ -3072,14 +3074,14 @@ function CommentsTab({
         )}
       </div>
       {submitError && (
-        <p className="border-t border-border bg-destructive/10 px-5 py-2 text-[11px] text-destructive">
+        <p className="mx-5 mt-2 rounded-md bg-destructive/10 px-3 py-2 text-[11px] text-destructive">
           {t("comments.submitErrorTitle")}: {submitError}
         </p>
       )}
       {canComment ? (
         <div
           data-testid="task-comments-panel"
-          className="flex items-center gap-2 border-t border-border px-5 py-3"
+          className="flex items-center gap-2 px-5 py-3"
         >
           <Input
             data-testid="task-comments-input"
@@ -3117,7 +3119,7 @@ function CommentsTab({
       ) : (
         <p
           data-testid="task-comments-readonly"
-          className="border-t border-border px-5 py-3 text-[11px] text-muted-foreground"
+          className="px-5 py-3 text-[11px] text-muted-foreground"
         >
           {t("comments.readonly")}
         </p>
@@ -3521,7 +3523,7 @@ function AttachmentsTab({
 
   return (
     <div className="flex h-full flex-col">
-      <div className="flex items-center justify-between border-b border-border px-5 py-2.5">
+      <div className="flex items-center justify-between px-5 py-2.5">
         <span className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
           {t("tabs.attachments")}
         </span>
@@ -3563,7 +3565,7 @@ function AttachmentsTab({
         )}
       </div>
       {(uploadError || attachmentActionError) && (
-        <p className="border-b border-border bg-destructive/10 px-5 py-2 text-[11px] text-destructive">
+        <p className="mx-5 mb-2 rounded-md bg-destructive/10 px-3 py-2 text-[11px] text-destructive">
           {uploadError ?? attachmentActionError}
         </p>
       )}
@@ -3612,7 +3614,7 @@ function AttachmentsTab({
         ) : (
           <ul
             data-testid="task-attachments-list"
-            className="divide-y divide-border"
+            className="divide-y divide-border/60"
           >
             {attachments.map((attachment) => {
               const uploader = displayUser(
