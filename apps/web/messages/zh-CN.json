@@ -536,7 +536,7 @@
       "uploadErrors": {
         "ACCESS_DENIED": "当前账号无权上传附件。",
         "ATTACHMENT_LIMIT_EXCEEDED": "当前对象最多只能上传 20 个附件。",
-        "DRAFT_REQUIRED": "图片只能上传到草稿需求，请先回到草稿再重试。",
+        "DRAFT_REQUIRED": "图片仅支持上传到草稿需求；当前需求状态不允许上传图片。",
         "FILE_TOO_LARGE": "单个文件不能超过 20MB。",
         "TARGET_NOT_FOUND": "附件目标不存在或当前账号无权访问。",
         "UNSUPPORTED_MIME_TYPE": "不支持该文件类型。",
@@ -557,16 +557,16 @@
       "INVALID_CREDENTIALS": "用户名或密码不正确。",
       "RATE_LIMITED": "操作过于频繁，请稍后再试。",
       "ORGANIZATION_NOT_FOUND": "组织不存在或已不可用。",
-      "ORGANIZATION_ACCESS_DENIED": "当前账号无法访问该组织。",
+      "ORGANIZATION_ACCESS_DENIED": "当前账号无法访问该组织，或没有执行组织管理操作的权限。",
       "CROSS_ORGANIZATION_ACCESS_DENIED": "不能跨组织访问该资源。",
       "ORGANIZATION_MEMBER_NOT_FOUND": "组织成员不存在或已不可用。",
       "SPACE_NOT_FOUND": "空间不存在或已不可用。",
-      "SPACE_ACCESS_DENIED": "当前账号无法访问该空间。",
+      "SPACE_ACCESS_DENIED": "当前账号无法访问该空间，或没有执行该空间内操作的权限。",
       "SPACE_MEMBER_NOT_FOUND": "空间成员不存在或已不可用。",
       "SPACE_MEMBER_MUST_BELONG_TO_ORGANIZATION": "空间成员必须先属于组织。",
       "LAST_ORGANIZATION_OWNER_REQUIRED": "组织必须保留至少一名所有者。",
       "WORKFLOW_NOT_FOUND": "流程不存在或已不可用。",
-      "WORKFLOW_VERSION_NOT_FOUND": "流程版本不存在或已不可用。",
+      "WORKFLOW_VERSION_NOT_FOUND": "流程版本不存在、已不可用或不属于当前空间。",
       "WORKFLOW_VERSION_ALREADY_PUBLISHED": "流程版本已发布，不能重复发布。",
       "WORKFLOW_VERSION_INVALID": "流程版本与当前工作项不匹配。",
       "WORKFLOW_PUBLISH_VALIDATION_FAILED": "流程发布校验失败。",
@@ -576,11 +576,11 @@
       "WORKFLOW_ACTION_FORM_INVALID": "流程动作表单未通过校验。",
       "WORKFLOW_ACTION_COMMENT_REQUIRED": "执行该流程动作必须填写评论。",
       "SPACE_MEMBER_INVALID": "所选空间成员无效或已不可用。",
-      "WORK_ITEM_NOT_FOUND": "工作项不存在或已不可用。",
-      "REQUIREMENT_NOT_FOUND": "需求不存在或已不可用。",
-      "DOCUMENT_NOT_FOUND": "文档不存在或已不可用。",
+      "WORK_ITEM_NOT_FOUND": "工作项不存在、已不可用或当前账号无权访问。",
+      "REQUIREMENT_NOT_FOUND": "需求不存在、已不可用或当前账号无权访问。",
+      "DOCUMENT_NOT_FOUND": "文档不存在、已不可用或不在当前空间。",
       "DOCUMENT_EDIT_CONFLICT": "文档已有新版本，请刷新后重试。",
-      "DOCUMENT_FOLDER_ACCESS_DENIED": "当前账号无权访问该文档目录。",
+      "DOCUMENT_FOLDER_ACCESS_DENIED": "当前账号没有执行该文档目录操作的权限。",
       "DOCUMENT_FOLDER_CROSS_SPACE_DENIED": "不能跨空间移动或访问文档目录。",
       "DOCUMENT_FOLDER_DEPTH_EXCEEDED": "文件夹层级已达到上限。",
       "DOCUMENT_FOLDER_MOVE_CYCLE": "不能把文件夹移动到自身或子文件夹下。",
@@ -588,16 +588,16 @@
       "DOCUMENT_FOLDER_NOT_EMPTY": "文件夹不是空的，不能删除。",
       "DOCUMENT_FOLDER_NOT_FOUND": "文档文件夹不存在或已不可用。",
       "DOCUMENT_FOLDER_VERSION_CONFLICT": "文件夹已有新版本，请刷新后重试。",
-      "DOCUMENT_LINK_TARGET_INVALID": "文档关联资源无效或已不可用。",
+      "DOCUMENT_LINK_TARGET_INVALID": "文档关联资源无效、已不可用或当前账号无权访问。",
       "DOCUMENT_IMPORT_FAILED": "文档导入失败，请检查文件后重试。",
       "DOCUMENT_IMPORT_UNSUPPORTED_TYPE": "不支持该文档文件类型。",
       "TARGET_REQUIRED_FOR_ATTACHMENT": "附件必须关联目标对象。",
-      "ATTACHMENT_TARGET_NOT_FOUND": "附件关联的目标不存在。",
+      "ATTACHMENT_TARGET_NOT_FOUND": "附件或关联目标不存在、已不可用或当前账号无权访问。",
       "ATTACHMENT_LIMIT_EXCEEDED": "附件数量已达到上限，请删除部分附件后重试。",
       "FILE_TOO_LARGE": "文件过大，请压缩或选择较小的文件。",
       "UNSUPPORTED_MIME_TYPE": "不支持该文件类型，请更换文件后重试。",
       "DRAFT_REQUIREMENT_REQUIRED": "只能处理草稿需求。",
-      "INTAKE_ITEM_NOT_FOUND": "入口事项不存在或已不可用。",
+      "INTAKE_ITEM_NOT_FOUND": "入口事项不存在、已不可用或当前账号无权访问。",
       "INTAKE_ITEM_NOT_ACCEPTED": "入口事项尚未接受。",
       "INTAKE_ITEM_ALREADY_CONVERTED": "入口事项已转换。",
       "TRACE_VERSION_CONFLICT": "关联对象的版本不一致，请调整需求、事项或工作项版本。",
@@ -606,10 +606,10 @@
       "TRACE_CASCADE_CONFLICT": "版本级联更新失败，请刷新关联对象后重试。",
       "TAG_NOT_FOUND": "标签不存在或已不可用。",
       "TAG_IN_USE": "标签仍被对象使用，不能删除。",
-      "TAG_TARGET_INVALID": "标签目标无效或已不可用。",
+      "TAG_TARGET_INVALID": "标签目标无效、已不可用或当前账号无权访问。",
       "TAG_NAME_CONFLICT": "标签名已存在，请使用已有标签。",
       "OBJECT_CODE_INVALID": "编号格式无效，请检查后重试。",
-      "OBJECT_CODE_NOT_FOUND": "未找到该编号对应的对象。",
+      "OBJECT_CODE_NOT_FOUND": "当前权限范围内未找到该编号对应的对象。",
       "OBJECT_CODE_AMBIGUOUS": "该编号在多个空间中存在，请提供空间上下文。",
       "SPACE_CONTEXT_REQUIRED": "缺少空间上下文，请先选择项目空间。",
       "MCP_UNAUTHORIZED": "MCP 授权已失效，请重新授权客户端。",
@@ -807,7 +807,7 @@
     },
     "noSpaces": {
       "title": "当前组织还没有项目空间",
-      "description": "你可以创建项目空间开始交付协作，也可以等待管理员将你加入已有空间。",
+      "description": "当前组织暂无可进入的项目空间；有权限的成员可创建空间，或等待管理员加入已有空间。",
       "waitingHint": "访问权限准备好后，刷新会话即可进入对应空间。"
     },
     "organizationSwitcher": {
@@ -891,7 +891,7 @@
       "recent": "最近打开",
       "lookup": {
         "invalid": "编号格式无效，请输入 REQ-12、INTAKE-8、TASK-42 或 BUG-17。",
-        "notFound": "未找到该编号对应的对象。",
+        "notFound": "当前权限范围内未找到该编号对应的对象。",
         "ambiguous": "该编号在多个空间中存在，请先切换到目标空间后再搜索。",
         "spaceContextRequired": "缺少空间上下文，请先选择项目空间后再搜索该编号。",
         "missingOrganization": "缺少组织上下文，请先选择组织后再搜索该编号。",
@@ -1197,7 +1197,7 @@
       "remoteImage": "远程图片已降级为链接",
       "image": "图片",
       "openImage": "打开图片链接",
-      "objectLookupFailed": "编号查询失败"
+      "objectLookupFailed": "当前上下文无法解析该编号"
     },
     "sort": {
       "recentEdited": "最近编辑",
@@ -1222,11 +1222,11 @@
     "filterAll": "全部负责人",
     "filterTask": "筛选",
     "newWorkItem": "新建任务",
-    "newWorkItemReadonly": "当前空间角色不能新建任务。",
+    "newWorkItemReadonly": "当前空间不可新建任务，请确认空间状态或操作权限。",
     "actions": {
       "editVersion": "编辑版本",
       "newVersion": "新建版本",
-      "manageReadonly": "需要空间管理员或项目经理角色。"
+      "manageReadonly": "当前空间不可管理版本，请确认空间状态或操作权限。"
     },
     "tabs": {
       "board": "任务/Bug 看板",
@@ -1383,7 +1383,7 @@
       "description": "管理当前空间的需求草稿、确认状态和关联工作项。",
       "filter": "筛选",
       "create": "新建草稿",
-      "createReadonly": "当前空间角色不能新建需求草稿。"
+      "createReadonly": "当前空间不可新建需求草稿，请确认空间状态或操作权限。"
     },
     "actions": {
       "refresh": "刷新",
@@ -1540,7 +1540,7 @@
       "ariaLabel": "需求正文编辑器",
       "toolbarLabel": "正文编辑工具栏",
       "placeholder": "输入需求背景、范围、验收要点，或粘贴/拖入图片。",
-      "draftUploadOnly": "图片上传仅支持草稿需求；已确认需求可继续编辑文字内容。",
+      "draftUploadOnly": "当前需求状态或权限不允许上传图片。",
       "linkPrompt": "输入链接地址",
       "linkPlaceholder": "https://example.com/spec",
       "unknownFile": "未命名文件",
@@ -1595,7 +1595,7 @@
       "uploadErrors": {
         "ACCESS_DENIED": "当前账号无权上传附件。",
         "ATTACHMENT_LIMIT_EXCEEDED": "当前对象最多只能上传 20 个附件。",
-        "DRAFT_REQUIRED": "图片只能上传到草稿需求，请先回到草稿再重试。",
+        "DRAFT_REQUIRED": "图片仅支持上传到草稿需求；当前需求状态不允许上传图片。",
         "FILE_TOO_LARGE": "单个文件不能超过 20MB。",
         "TARGET_NOT_FOUND": "附件目标不存在或当前账号无权访问。",
         "UNSUPPORTED_MIME_TYPE": "仅支持 PNG、JPEG、GIF、WebP 或 SVG 图片。",
@@ -2639,7 +2639,7 @@
       "publishing": "发布中"
     },
     "permissions": {
-      "readonly": "当前空间角色只能查看流程配置，不能编辑。"
+      "readonly": "当前空间不可编辑流程配置，请确认空间状态或操作权限。"
     },
     "states": {
       "loading": {
@@ -2864,7 +2864,7 @@
       "description": "查看版本、编辑状态/动作/字段、发布或停用流程版本。",
       "backToList": "返回流程列表",
       "noVersionSelected": "请先选择版本，或为该流程创建草稿版本。",
-      "readonlyHint": "已发布版本不可修改，如需变更请新建版本。",
+      "readonlyHint": "当前版本不可编辑；只有草稿版本且具备流程管理权限时才能修改。",
       "toolbar": {
         "versionLabel": "版本",
         "versionOption": "v{version} · {status}",
@@ -3302,7 +3302,7 @@
       },
       "submit": "保存阈值",
       "submitting": "保存中",
-      "readonly": "当前空间角色只能查看阈值，不能修改。",
+      "readonly": "当前空间不可修改阈值，请确认空间状态或操作权限。",
       "readonlyValue": "{count} 天",
       "saved": "阈值已保存，异常结果已刷新。",
       "cancel": "取消"
@@ -3455,7 +3455,7 @@
       "errorTitle": "加载评论失败",
       "submitErrorTitle": "发送评论失败",
       "emptyTitle": "暂无评论",
-      "emptyDescription": "成为第一个发表评论的人",
+      "emptyDescription": "暂无评论；有评论权限的成员可在这里补充讨论。",
       "readonly": "当前权限不能发表评论",
       "retry": "重试"
     },
@@ -3463,7 +3463,7 @@
       "loading": "加载附件中…",
       "errorTitle": "加载附件失败",
       "emptyTitle": "暂无附件",
-      "emptyDescription": "拖拽、粘贴或上传文件，团队成员可在这里查看和下载",
+      "emptyDescription": "暂无附件；有上传权限的成员可在这里补充文件。",
       "uploadAction": "上传附件",
       "uploadHint": "选择文件，也可拖拽或粘贴到附件区域",
       "dropZoneLabel": "附件上传区域",
@@ -3522,7 +3522,7 @@
     "actions": {
       "save": "保存",
       "saving": "保存中",
-      "viewerOnlyHint": "需要空间管理员或项目经理角色"
+      "viewerOnlyHint": "当前空间不可修改设置，请确认空间状态或操作权限"
     },
     "overview": {
       "title": "空间概览",

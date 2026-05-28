@@ -536,7 +536,7 @@
       "uploadErrors": {
         "ACCESS_DENIED": "Your account cannot upload attachments.",
         "ATTACHMENT_LIMIT_EXCEEDED": "This object can have at most 20 attachments.",
-        "DRAFT_REQUIRED": "Images can only be uploaded to draft requirements. Return to a draft before retrying.",
+        "DRAFT_REQUIRED": "Images can only be uploaded to draft requirements. The current requirement status does not allow image uploads.",
         "FILE_TOO_LARGE": "A single file cannot exceed 20MB.",
         "TARGET_NOT_FOUND": "The attachment target is unavailable or this account cannot access it.",
         "UNSUPPORTED_MIME_TYPE": "This file type is not supported.",
@@ -557,16 +557,16 @@
       "INVALID_CREDENTIALS": "The username or password is incorrect.",
       "RATE_LIMITED": "Too many attempts. Try again later.",
       "ORGANIZATION_NOT_FOUND": "The organization is unavailable.",
-      "ORGANIZATION_ACCESS_DENIED": "Your account cannot access this organization.",
+      "ORGANIZATION_ACCESS_DENIED": "Your account cannot access this organization or perform organization management actions.",
       "CROSS_ORGANIZATION_ACCESS_DENIED": "Cross-organization access is not allowed.",
       "ORGANIZATION_MEMBER_NOT_FOUND": "The organization member is unavailable.",
       "SPACE_NOT_FOUND": "The space is unavailable.",
-      "SPACE_ACCESS_DENIED": "Your account cannot access this space.",
+      "SPACE_ACCESS_DENIED": "Your account cannot access this space or perform this action in the space.",
       "SPACE_MEMBER_NOT_FOUND": "The space member is unavailable.",
       "SPACE_MEMBER_MUST_BELONG_TO_ORGANIZATION": "The space member must belong to the organization first.",
       "LAST_ORGANIZATION_OWNER_REQUIRED": "The organization must keep at least one owner.",
       "WORKFLOW_NOT_FOUND": "The workflow is unavailable.",
-      "WORKFLOW_VERSION_NOT_FOUND": "The workflow version is unavailable.",
+      "WORKFLOW_VERSION_NOT_FOUND": "The workflow version is unavailable or does not belong to the current space.",
       "WORKFLOW_VERSION_ALREADY_PUBLISHED": "The workflow version has already been published.",
       "WORKFLOW_VERSION_INVALID": "The workflow version does not match the current work item.",
       "WORKFLOW_PUBLISH_VALIDATION_FAILED": "Workflow publish validation failed.",
@@ -576,11 +576,11 @@
       "WORKFLOW_ACTION_FORM_INVALID": "The workflow action form did not pass validation.",
       "WORKFLOW_ACTION_COMMENT_REQUIRED": "A comment is required for this workflow action.",
       "SPACE_MEMBER_INVALID": "The selected space member is invalid or unavailable.",
-      "WORK_ITEM_NOT_FOUND": "The work item is unavailable.",
-      "REQUIREMENT_NOT_FOUND": "The requirement is unavailable.",
-      "DOCUMENT_NOT_FOUND": "The document is unavailable.",
+      "WORK_ITEM_NOT_FOUND": "The work item is unavailable or this account cannot access it.",
+      "REQUIREMENT_NOT_FOUND": "The requirement is unavailable or this account cannot access it.",
+      "DOCUMENT_NOT_FOUND": "The document is unavailable or outside the current space.",
       "DOCUMENT_EDIT_CONFLICT": "The document has a newer revision. Refresh and try again.",
-      "DOCUMENT_FOLDER_ACCESS_DENIED": "Your account cannot access this document folder.",
+      "DOCUMENT_FOLDER_ACCESS_DENIED": "Your account cannot perform this document folder action.",
       "DOCUMENT_FOLDER_CROSS_SPACE_DENIED": "Document folders cannot be moved or accessed across spaces.",
       "DOCUMENT_FOLDER_DEPTH_EXCEEDED": "The folder nesting limit has been reached.",
       "DOCUMENT_FOLDER_MOVE_CYCLE": "A folder cannot be moved under itself or one of its children.",
@@ -588,16 +588,16 @@
       "DOCUMENT_FOLDER_NOT_EMPTY": "Only empty folders can be deleted.",
       "DOCUMENT_FOLDER_NOT_FOUND": "The document folder is unavailable.",
       "DOCUMENT_FOLDER_VERSION_CONFLICT": "The folder has a newer version. Refresh and try again.",
-      "DOCUMENT_LINK_TARGET_INVALID": "The linked document resource is invalid or unavailable.",
+      "DOCUMENT_LINK_TARGET_INVALID": "The linked document resource is invalid, unavailable, or inaccessible to this account.",
       "DOCUMENT_IMPORT_FAILED": "Document import failed. Check the file and try again.",
       "DOCUMENT_IMPORT_UNSUPPORTED_TYPE": "This document file type is not supported.",
       "TARGET_REQUIRED_FOR_ATTACHMENT": "An attachment must be linked to a target.",
-      "ATTACHMENT_TARGET_NOT_FOUND": "The attachment target is unavailable.",
+      "ATTACHMENT_TARGET_NOT_FOUND": "The attachment or linked target is unavailable or this account cannot access it.",
       "ATTACHMENT_LIMIT_EXCEEDED": "The attachment limit has been reached. Remove some attachments and try again.",
       "FILE_TOO_LARGE": "The file is too large. Compress it or choose a smaller file.",
       "UNSUPPORTED_MIME_TYPE": "This file type is not supported. Choose a different file.",
       "DRAFT_REQUIREMENT_REQUIRED": "Only draft requirements can be processed.",
-      "INTAKE_ITEM_NOT_FOUND": "The intake item is unavailable.",
+      "INTAKE_ITEM_NOT_FOUND": "The intake item is unavailable or this account cannot access it.",
       "INTAKE_ITEM_NOT_ACCEPTED": "The intake item has not been accepted.",
       "INTAKE_ITEM_ALREADY_CONVERTED": "The intake item has already been converted.",
       "TRACE_VERSION_CONFLICT": "The linked objects use inconsistent versions. Adjust the requirement, intake item, or work item version.",
@@ -606,10 +606,10 @@
       "TRACE_CASCADE_CONFLICT": "The version cascade update failed. Refresh linked objects and try again.",
       "TAG_NOT_FOUND": "The tag is unavailable.",
       "TAG_IN_USE": "The tag is still used by objects and cannot be deleted.",
-      "TAG_TARGET_INVALID": "The tag target is invalid or unavailable.",
+      "TAG_TARGET_INVALID": "The tag target is invalid, unavailable, or this account cannot access it.",
       "TAG_NAME_CONFLICT": "A tag with this name already exists.",
       "OBJECT_CODE_INVALID": "The code format is invalid.",
-      "OBJECT_CODE_NOT_FOUND": "No object was found for that code.",
+      "OBJECT_CODE_NOT_FOUND": "No object matching this code was found within your permission scope.",
       "OBJECT_CODE_AMBIGUOUS": "That code exists in multiple spaces. Provide space context.",
       "SPACE_CONTEXT_REQUIRED": "Space context is required. Select a project space.",
       "MCP_UNAUTHORIZED": "MCP authorization has expired. Authorize the client again.",
@@ -807,7 +807,7 @@
     },
     "noSpaces": {
       "title": "No project spaces yet",
-      "description": "Create a project space to start delivery work, or wait for an administrator to add you to an existing space.",
+      "description": "There are no project spaces available in this organization. Members with permission can create one, or wait for an administrator to add them to an existing space.",
       "waitingHint": "You can stay signed in while access is being prepared."
     },
     "organizationSwitcher": {
@@ -891,7 +891,7 @@
       "recent": "Recently opened",
       "lookup": {
         "invalid": "Invalid code. Use REQ-12, INTAKE-8, TASK-42, or BUG-17.",
-        "notFound": "No object was found for that code.",
+        "notFound": "No object matching this code was found within your permission scope.",
         "ambiguous": "That code exists in multiple spaces. Switch to the target space and search again.",
         "spaceContextRequired": "Space context is required. Select a project space and search again.",
         "missingOrganization": "Organization context is required. Select an organization and search again.",
@@ -1197,7 +1197,7 @@
       "remoteImage": "Remote image downgraded to a link",
       "image": "Image",
       "openImage": "Open image link",
-      "objectLookupFailed": "Code lookup failed"
+      "objectLookupFailed": "This code cannot be resolved in the current context"
     },
     "sort": {
       "recentEdited": "Recently edited",
@@ -1222,11 +1222,11 @@
     "filterAll": "All assignees",
     "filterTask": "Filter",
     "newWorkItem": "New task",
-    "newWorkItemReadonly": "Your space role cannot create tasks.",
+    "newWorkItemReadonly": "Tasks cannot be created in the current space. Check the space status or your permission.",
     "actions": {
       "editVersion": "Edit version",
       "newVersion": "New version",
-      "manageReadonly": "Requires space admin or project manager role."
+      "manageReadonly": "Versions cannot be managed in the current space. Check the space status or your permission."
     },
     "tabs": {
       "board": "Task / Bug board",
@@ -1383,7 +1383,7 @@
       "description": "Manage requirement drafts, confirmed requirements, and linked work items for this space.",
       "filter": "Filter",
       "create": "New draft",
-      "createReadonly": "Your space role cannot create requirement drafts."
+      "createReadonly": "Requirement drafts cannot be created in the current space. Check the space status or your permission."
     },
     "actions": {
       "refresh": "Refresh",
@@ -1540,7 +1540,7 @@
       "ariaLabel": "Requirement body editor",
       "toolbarLabel": "Body editor toolbar",
       "placeholder": "Write background, scope, acceptance points, or paste/drop an image.",
-      "draftUploadOnly": "Image upload is only available for draft requirements. Confirmed requirements can still edit text.",
+      "draftUploadOnly": "The current requirement status or permission does not allow image uploads.",
       "linkPrompt": "Enter link URL",
       "linkPlaceholder": "https://example.com/spec",
       "unknownFile": "Unnamed file",
@@ -1595,7 +1595,7 @@
       "uploadErrors": {
         "ACCESS_DENIED": "Your account cannot upload attachments.",
         "ATTACHMENT_LIMIT_EXCEEDED": "This object can have at most 20 attachments.",
-        "DRAFT_REQUIRED": "Images can only be uploaded to draft requirements. Return to a draft before retrying.",
+        "DRAFT_REQUIRED": "Images can only be uploaded to draft requirements. The current requirement status does not allow image uploads.",
         "FILE_TOO_LARGE": "A single file cannot exceed 20MB.",
         "TARGET_NOT_FOUND": "The attachment target is unavailable or this account cannot access it.",
         "UNSUPPORTED_MIME_TYPE": "Only PNG, JPEG, GIF, WebP, or SVG images are supported.",
@@ -2639,7 +2639,7 @@
       "publishing": "Publishing"
     },
     "permissions": {
-      "readonly": "Your space role can view workflow configuration but cannot edit it."
+      "readonly": "Workflow configuration cannot be edited in the current space. Check the space status or your permission."
     },
     "states": {
       "loading": {
@@ -2864,7 +2864,7 @@
       "description": "View versions, edit states/actions/fields, publish or disable workflow versions.",
       "backToList": "Back to list",
       "noVersionSelected": "Select a version, or create a draft for this workflow.",
-      "readonlyHint": "Published versions are read-only. Create a new version to apply changes.",
+      "readonlyHint": "This version cannot be edited. Only draft versions with workflow management permission can be changed.",
       "toolbar": {
         "versionLabel": "Version",
         "versionOption": "v{version} · {status}",
@@ -3302,7 +3302,7 @@
       },
       "submit": "Save threshold",
       "submitting": "Saving",
-      "readonly": "Your space role can view the threshold but cannot change it.",
+      "readonly": "The threshold cannot be changed in the current space. Check the space status or your permission.",
       "readonlyValue": "{count} days",
       "saved": "Threshold saved and exception results refreshed.",
       "cancel": "Cancel"
@@ -3455,7 +3455,7 @@
       "errorTitle": "Failed to load comments",
       "submitErrorTitle": "Failed to post comment",
       "emptyTitle": "No comments yet",
-      "emptyDescription": "Be the first to leave a comment",
+      "emptyDescription": "No comments yet. Members with comment permission can add discussion here.",
       "readonly": "Current permission cannot post comments",
       "retry": "Retry"
     },
@@ -3463,7 +3463,7 @@
       "loading": "Loading attachments…",
       "errorTitle": "Failed to load attachments",
       "emptyTitle": "No attachments",
-      "emptyDescription": "Drag, paste, or upload files for the team to view and download",
+      "emptyDescription": "No attachments yet. Members with upload permission can add files here.",
       "uploadAction": "Upload",
       "uploadHint": "Choose files, or drag and paste into the attachment area",
       "dropZoneLabel": "Attachment upload area",
@@ -3522,7 +3522,7 @@
     "actions": {
       "save": "Save",
       "saving": "Saving",
-      "viewerOnlyHint": "Requires space admin or project manager role"
+      "viewerOnlyHint": "Settings cannot be changed in the current space. Check the space status or your permission"
     },
     "overview": {
       "title": "Space overview",
