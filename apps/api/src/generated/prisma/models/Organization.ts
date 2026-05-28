@@ -240,6 +240,7 @@ export type OrganizationWhereInput = {
   tags?: Prisma.TagListRelationFilter
   tagAssignments?: Prisma.TagAssignmentListRelationFilter
   documents?: Prisma.DocumentListRelationFilter
+  documentFolders?: Prisma.DocumentFolderListRelationFilter
   documentRevisions?: Prisma.DocumentRevisionListRelationFilter
   documentLinks?: Prisma.DocumentLinkListRelationFilter
   documentChunks?: Prisma.DocumentChunkListRelationFilter
@@ -275,6 +276,7 @@ export type OrganizationOrderByWithRelationInput = {
   tags?: Prisma.TagOrderByRelationAggregateInput
   tagAssignments?: Prisma.TagAssignmentOrderByRelationAggregateInput
   documents?: Prisma.DocumentOrderByRelationAggregateInput
+  documentFolders?: Prisma.DocumentFolderOrderByRelationAggregateInput
   documentRevisions?: Prisma.DocumentRevisionOrderByRelationAggregateInput
   documentLinks?: Prisma.DocumentLinkOrderByRelationAggregateInput
   documentChunks?: Prisma.DocumentChunkOrderByRelationAggregateInput
@@ -313,6 +315,7 @@ export type OrganizationWhereUniqueInput = Prisma.AtLeast<{
   tags?: Prisma.TagListRelationFilter
   tagAssignments?: Prisma.TagAssignmentListRelationFilter
   documents?: Prisma.DocumentListRelationFilter
+  documentFolders?: Prisma.DocumentFolderListRelationFilter
   documentRevisions?: Prisma.DocumentRevisionListRelationFilter
   documentLinks?: Prisma.DocumentLinkListRelationFilter
   documentChunks?: Prisma.DocumentChunkListRelationFilter
@@ -379,6 +382,7 @@ export type OrganizationCreateInput = {
   tags?: Prisma.TagCreateNestedManyWithoutOrganizationInput
   tagAssignments?: Prisma.TagAssignmentCreateNestedManyWithoutOrganizationInput
   documents?: Prisma.DocumentCreateNestedManyWithoutOrganizationInput
+  documentFolders?: Prisma.DocumentFolderCreateNestedManyWithoutOrganizationInput
   documentRevisions?: Prisma.DocumentRevisionCreateNestedManyWithoutOrganizationInput
   documentLinks?: Prisma.DocumentLinkCreateNestedManyWithoutOrganizationInput
   documentChunks?: Prisma.DocumentChunkCreateNestedManyWithoutOrganizationInput
@@ -413,6 +417,7 @@ export type OrganizationUncheckedCreateInput = {
   tags?: Prisma.TagUncheckedCreateNestedManyWithoutOrganizationInput
   tagAssignments?: Prisma.TagAssignmentUncheckedCreateNestedManyWithoutOrganizationInput
   documents?: Prisma.DocumentUncheckedCreateNestedManyWithoutOrganizationInput
+  documentFolders?: Prisma.DocumentFolderUncheckedCreateNestedManyWithoutOrganizationInput
   documentRevisions?: Prisma.DocumentRevisionUncheckedCreateNestedManyWithoutOrganizationInput
   documentLinks?: Prisma.DocumentLinkUncheckedCreateNestedManyWithoutOrganizationInput
   documentChunks?: Prisma.DocumentChunkUncheckedCreateNestedManyWithoutOrganizationInput
@@ -447,6 +452,7 @@ export type OrganizationUpdateInput = {
   tags?: Prisma.TagUpdateManyWithoutOrganizationNestedInput
   tagAssignments?: Prisma.TagAssignmentUpdateManyWithoutOrganizationNestedInput
   documents?: Prisma.DocumentUpdateManyWithoutOrganizationNestedInput
+  documentFolders?: Prisma.DocumentFolderUpdateManyWithoutOrganizationNestedInput
   documentRevisions?: Prisma.DocumentRevisionUpdateManyWithoutOrganizationNestedInput
   documentLinks?: Prisma.DocumentLinkUpdateManyWithoutOrganizationNestedInput
   documentChunks?: Prisma.DocumentChunkUpdateManyWithoutOrganizationNestedInput
@@ -481,6 +487,7 @@ export type OrganizationUncheckedUpdateInput = {
   tags?: Prisma.TagUncheckedUpdateManyWithoutOrganizationNestedInput
   tagAssignments?: Prisma.TagAssignmentUncheckedUpdateManyWithoutOrganizationNestedInput
   documents?: Prisma.DocumentUncheckedUpdateManyWithoutOrganizationNestedInput
+  documentFolders?: Prisma.DocumentFolderUncheckedUpdateManyWithoutOrganizationNestedInput
   documentRevisions?: Prisma.DocumentRevisionUncheckedUpdateManyWithoutOrganizationNestedInput
   documentLinks?: Prisma.DocumentLinkUncheckedUpdateManyWithoutOrganizationNestedInput
   documentChunks?: Prisma.DocumentChunkUncheckedUpdateManyWithoutOrganizationNestedInput
@@ -765,6 +772,20 @@ export type OrganizationUpdateOneRequiredWithoutDocumentsNestedInput = {
   update?: Prisma.XOR<Prisma.XOR<Prisma.OrganizationUpdateToOneWithWhereWithoutDocumentsInput, Prisma.OrganizationUpdateWithoutDocumentsInput>, Prisma.OrganizationUncheckedUpdateWithoutDocumentsInput>
 }
 
+export type OrganizationCreateNestedOneWithoutDocumentFoldersInput = {
+  create?: Prisma.XOR<Prisma.OrganizationCreateWithoutDocumentFoldersInput, Prisma.OrganizationUncheckedCreateWithoutDocumentFoldersInput>
+  connectOrCreate?: Prisma.OrganizationCreateOrConnectWithoutDocumentFoldersInput
+  connect?: Prisma.OrganizationWhereUniqueInput
+}
+
+export type OrganizationUpdateOneRequiredWithoutDocumentFoldersNestedInput = {
+  create?: Prisma.XOR<Prisma.OrganizationCreateWithoutDocumentFoldersInput, Prisma.OrganizationUncheckedCreateWithoutDocumentFoldersInput>
+  connectOrCreate?: Prisma.OrganizationCreateOrConnectWithoutDocumentFoldersInput
+  upsert?: Prisma.OrganizationUpsertWithoutDocumentFoldersInput
+  connect?: Prisma.OrganizationWhereUniqueInput
+  update?: Prisma.XOR<Prisma.XOR<Prisma.OrganizationUpdateToOneWithWhereWithoutDocumentFoldersInput, Prisma.OrganizationUpdateWithoutDocumentFoldersInput>, Prisma.OrganizationUncheckedUpdateWithoutDocumentFoldersInput>
+}
+
 export type OrganizationCreateNestedOneWithoutDocumentRevisionsInput = {
   create?: Prisma.XOR<Prisma.OrganizationCreateWithoutDocumentRevisionsInput, Prisma.OrganizationUncheckedCreateWithoutDocumentRevisionsInput>
   connectOrCreate?: Prisma.OrganizationCreateOrConnectWithoutDocumentRevisionsInput
@@ -946,6 +967,7 @@ export type OrganizationCreateWithoutOwnerInput = {
   tags?: Prisma.TagCreateNestedManyWithoutOrganizationInput
   tagAssignments?: Prisma.TagAssignmentCreateNestedManyWithoutOrganizationInput
   documents?: Prisma.DocumentCreateNestedManyWithoutOrganizationInput
+  documentFolders?: Prisma.DocumentFolderCreateNestedManyWithoutOrganizationInput
   documentRevisions?: Prisma.DocumentRevisionCreateNestedManyWithoutOrganizationInput
   documentLinks?: Prisma.DocumentLinkCreateNestedManyWithoutOrganizationInput
   documentChunks?: Prisma.DocumentChunkCreateNestedManyWithoutOrganizationInput
@@ -979,6 +1001,7 @@ export type OrganizationUncheckedCreateWithoutOwnerInput = {
   tags?: Prisma.TagUncheckedCreateNestedManyWithoutOrganizationInput
   tagAssignments?: Prisma.TagAssignmentUncheckedCreateNestedManyWithoutOrganizationInput
   documents?: Prisma.DocumentUncheckedCreateNestedManyWithoutOrganizationInput
+  documentFolders?: Prisma.DocumentFolderUncheckedCreateNestedManyWithoutOrganizationInput
   documentRevisions?: Prisma.DocumentRevisionUncheckedCreateNestedManyWithoutOrganizationInput
   documentLinks?: Prisma.DocumentLinkUncheckedCreateNestedManyWithoutOrganizationInput
   documentChunks?: Prisma.DocumentChunkUncheckedCreateNestedManyWithoutOrganizationInput
@@ -1054,6 +1077,7 @@ export type OrganizationCreateWithoutMembersInput = {
   tags?: Prisma.TagCreateNestedManyWithoutOrganizationInput
   tagAssignments?: Prisma.TagAssignmentCreateNestedManyWithoutOrganizationInput
   documents?: Prisma.DocumentCreateNestedManyWithoutOrganizationInput
+  documentFolders?: Prisma.DocumentFolderCreateNestedManyWithoutOrganizationInput
   documentRevisions?: Prisma.DocumentRevisionCreateNestedManyWithoutOrganizationInput
   documentLinks?: Prisma.DocumentLinkCreateNestedManyWithoutOrganizationInput
   documentChunks?: Prisma.DocumentChunkCreateNestedManyWithoutOrganizationInput
@@ -1087,6 +1111,7 @@ export type OrganizationUncheckedCreateWithoutMembersInput = {
   tags?: Prisma.TagUncheckedCreateNestedManyWithoutOrganizationInput
   tagAssignments?: Prisma.TagAssignmentUncheckedCreateNestedManyWithoutOrganizationInput
   documents?: Prisma.DocumentUncheckedCreateNestedManyWithoutOrganizationInput
+  documentFolders?: Prisma.DocumentFolderUncheckedCreateNestedManyWithoutOrganizationInput
   documentRevisions?: Prisma.DocumentRevisionUncheckedCreateNestedManyWithoutOrganizationInput
   documentLinks?: Prisma.DocumentLinkUncheckedCreateNestedManyWithoutOrganizationInput
   documentChunks?: Prisma.DocumentChunkUncheckedCreateNestedManyWithoutOrganizationInput
@@ -1136,6 +1161,7 @@ export type OrganizationUpdateWithoutMembersInput = {
   tags?: Prisma.TagUpdateManyWithoutOrganizationNestedInput
   tagAssignments?: Prisma.TagAssignmentUpdateManyWithoutOrganizationNestedInput
   documents?: Prisma.DocumentUpdateManyWithoutOrganizationNestedInput
+  documentFolders?: Prisma.DocumentFolderUpdateManyWithoutOrganizationNestedInput
   documentRevisions?: Prisma.DocumentRevisionUpdateManyWithoutOrganizationNestedInput
   documentLinks?: Prisma.DocumentLinkUpdateManyWithoutOrganizationNestedInput
   documentChunks?: Prisma.DocumentChunkUpdateManyWithoutOrganizationNestedInput
@@ -1169,6 +1195,7 @@ export type OrganizationUncheckedUpdateWithoutMembersInput = {
   tags?: Prisma.TagUncheckedUpdateManyWithoutOrganizationNestedInput
   tagAssignments?: Prisma.TagAssignmentUncheckedUpdateManyWithoutOrganizationNestedInput
   documents?: Prisma.DocumentUncheckedUpdateManyWithoutOrganizationNestedInput
+  documentFolders?: Prisma.DocumentFolderUncheckedUpdateManyWithoutOrganizationNestedInput
   documentRevisions?: Prisma.DocumentRevisionUncheckedUpdateManyWithoutOrganizationNestedInput
   documentLinks?: Prisma.DocumentLinkUncheckedUpdateManyWithoutOrganizationNestedInput
   documentChunks?: Prisma.DocumentChunkUncheckedUpdateManyWithoutOrganizationNestedInput
@@ -1202,6 +1229,7 @@ export type OrganizationCreateWithoutSpacesInput = {
   tags?: Prisma.TagCreateNestedManyWithoutOrganizationInput
   tagAssignments?: Prisma.TagAssignmentCreateNestedManyWithoutOrganizationInput
   documents?: Prisma.DocumentCreateNestedManyWithoutOrganizationInput
+  documentFolders?: Prisma.DocumentFolderCreateNestedManyWithoutOrganizationInput
   documentRevisions?: Prisma.DocumentRevisionCreateNestedManyWithoutOrganizationInput
   documentLinks?: Prisma.DocumentLinkCreateNestedManyWithoutOrganizationInput
   documentChunks?: Prisma.DocumentChunkCreateNestedManyWithoutOrganizationInput
@@ -1235,6 +1263,7 @@ export type OrganizationUncheckedCreateWithoutSpacesInput = {
   tags?: Prisma.TagUncheckedCreateNestedManyWithoutOrganizationInput
   tagAssignments?: Prisma.TagAssignmentUncheckedCreateNestedManyWithoutOrganizationInput
   documents?: Prisma.DocumentUncheckedCreateNestedManyWithoutOrganizationInput
+  documentFolders?: Prisma.DocumentFolderUncheckedCreateNestedManyWithoutOrganizationInput
   documentRevisions?: Prisma.DocumentRevisionUncheckedCreateNestedManyWithoutOrganizationInput
   documentLinks?: Prisma.DocumentLinkUncheckedCreateNestedManyWithoutOrganizationInput
   documentChunks?: Prisma.DocumentChunkUncheckedCreateNestedManyWithoutOrganizationInput
@@ -1284,6 +1313,7 @@ export type OrganizationUpdateWithoutSpacesInput = {
   tags?: Prisma.TagUpdateManyWithoutOrganizationNestedInput
   tagAssignments?: Prisma.TagAssignmentUpdateManyWithoutOrganizationNestedInput
   documents?: Prisma.DocumentUpdateManyWithoutOrganizationNestedInput
+  documentFolders?: Prisma.DocumentFolderUpdateManyWithoutOrganizationNestedInput
   documentRevisions?: Prisma.DocumentRevisionUpdateManyWithoutOrganizationNestedInput
   documentLinks?: Prisma.DocumentLinkUpdateManyWithoutOrganizationNestedInput
   documentChunks?: Prisma.DocumentChunkUpdateManyWithoutOrganizationNestedInput
@@ -1317,6 +1347,7 @@ export type OrganizationUncheckedUpdateWithoutSpacesInput = {
   tags?: Prisma.TagUncheckedUpdateManyWithoutOrganizationNestedInput
   tagAssignments?: Prisma.TagAssignmentUncheckedUpdateManyWithoutOrganizationNestedInput
   documents?: Prisma.DocumentUncheckedUpdateManyWithoutOrganizationNestedInput
+  documentFolders?: Prisma.DocumentFolderUncheckedUpdateManyWithoutOrganizationNestedInput
   documentRevisions?: Prisma.DocumentRevisionUncheckedUpdateManyWithoutOrganizationNestedInput
   documentLinks?: Prisma.DocumentLinkUncheckedUpdateManyWithoutOrganizationNestedInput
   documentChunks?: Prisma.DocumentChunkUncheckedUpdateManyWithoutOrganizationNestedInput
@@ -1350,6 +1381,7 @@ export type OrganizationCreateWithoutSpaceMembersInput = {
   tags?: Prisma.TagCreateNestedManyWithoutOrganizationInput
   tagAssignments?: Prisma.TagAssignmentCreateNestedManyWithoutOrganizationInput
   documents?: Prisma.DocumentCreateNestedManyWithoutOrganizationInput
+  documentFolders?: Prisma.DocumentFolderCreateNestedManyWithoutOrganizationInput
   documentRevisions?: Prisma.DocumentRevisionCreateNestedManyWithoutOrganizationInput
   documentLinks?: Prisma.DocumentLinkCreateNestedManyWithoutOrganizationInput
   documentChunks?: Prisma.DocumentChunkCreateNestedManyWithoutOrganizationInput
@@ -1383,6 +1415,7 @@ export type OrganizationUncheckedCreateWithoutSpaceMembersInput = {
   tags?: Prisma.TagUncheckedCreateNestedManyWithoutOrganizationInput
   tagAssignments?: Prisma.TagAssignmentUncheckedCreateNestedManyWithoutOrganizationInput
   documents?: Prisma.DocumentUncheckedCreateNestedManyWithoutOrganizationInput
+  documentFolders?: Prisma.DocumentFolderUncheckedCreateNestedManyWithoutOrganizationInput
   documentRevisions?: Prisma.DocumentRevisionUncheckedCreateNestedManyWithoutOrganizationInput
   documentLinks?: Prisma.DocumentLinkUncheckedCreateNestedManyWithoutOrganizationInput
   documentChunks?: Prisma.DocumentChunkUncheckedCreateNestedManyWithoutOrganizationInput
@@ -1432,6 +1465,7 @@ export type OrganizationUpdateWithoutSpaceMembersInput = {
   tags?: Prisma.TagUpdateManyWithoutOrganizationNestedInput
   tagAssignments?: Prisma.TagAssignmentUpdateManyWithoutOrganizationNestedInput
   documents?: Prisma.DocumentUpdateManyWithoutOrganizationNestedInput
+  documentFolders?: Prisma.DocumentFolderUpdateManyWithoutOrganizationNestedInput
   documentRevisions?: Prisma.DocumentRevisionUpdateManyWithoutOrganizationNestedInput
   documentLinks?: Prisma.DocumentLinkUpdateManyWithoutOrganizationNestedInput
   documentChunks?: Prisma.DocumentChunkUpdateManyWithoutOrganizationNestedInput
@@ -1465,6 +1499,7 @@ export type OrganizationUncheckedUpdateWithoutSpaceMembersInput = {
   tags?: Prisma.TagUncheckedUpdateManyWithoutOrganizationNestedInput
   tagAssignments?: Prisma.TagAssignmentUncheckedUpdateManyWithoutOrganizationNestedInput
   documents?: Prisma.DocumentUncheckedUpdateManyWithoutOrganizationNestedInput
+  documentFolders?: Prisma.DocumentFolderUncheckedUpdateManyWithoutOrganizationNestedInput
   documentRevisions?: Prisma.DocumentRevisionUncheckedUpdateManyWithoutOrganizationNestedInput
   documentLinks?: Prisma.DocumentLinkUncheckedUpdateManyWithoutOrganizationNestedInput
   documentChunks?: Prisma.DocumentChunkUncheckedUpdateManyWithoutOrganizationNestedInput
@@ -1498,6 +1533,7 @@ export type OrganizationCreateWithoutVersionsInput = {
   tags?: Prisma.TagCreateNestedManyWithoutOrganizationInput
   tagAssignments?: Prisma.TagAssignmentCreateNestedManyWithoutOrganizationInput
   documents?: Prisma.DocumentCreateNestedManyWithoutOrganizationInput
+  documentFolders?: Prisma.DocumentFolderCreateNestedManyWithoutOrganizationInput
   documentRevisions?: Prisma.DocumentRevisionCreateNestedManyWithoutOrganizationInput
   documentLinks?: Prisma.DocumentLinkCreateNestedManyWithoutOrganizationInput
   documentChunks?: Prisma.DocumentChunkCreateNestedManyWithoutOrganizationInput
@@ -1531,6 +1567,7 @@ export type OrganizationUncheckedCreateWithoutVersionsInput = {
   tags?: Prisma.TagUncheckedCreateNestedManyWithoutOrganizationInput
   tagAssignments?: Prisma.TagAssignmentUncheckedCreateNestedManyWithoutOrganizationInput
   documents?: Prisma.DocumentUncheckedCreateNestedManyWithoutOrganizationInput
+  documentFolders?: Prisma.DocumentFolderUncheckedCreateNestedManyWithoutOrganizationInput
   documentRevisions?: Prisma.DocumentRevisionUncheckedCreateNestedManyWithoutOrganizationInput
   documentLinks?: Prisma.DocumentLinkUncheckedCreateNestedManyWithoutOrganizationInput
   documentChunks?: Prisma.DocumentChunkUncheckedCreateNestedManyWithoutOrganizationInput
@@ -1580,6 +1617,7 @@ export type OrganizationUpdateWithoutVersionsInput = {
   tags?: Prisma.TagUpdateManyWithoutOrganizationNestedInput
   tagAssignments?: Prisma.TagAssignmentUpdateManyWithoutOrganizationNestedInput
   documents?: Prisma.DocumentUpdateManyWithoutOrganizationNestedInput
+  documentFolders?: Prisma.DocumentFolderUpdateManyWithoutOrganizationNestedInput
   documentRevisions?: Prisma.DocumentRevisionUpdateManyWithoutOrganizationNestedInput
   documentLinks?: Prisma.DocumentLinkUpdateManyWithoutOrganizationNestedInput
   documentChunks?: Prisma.DocumentChunkUpdateManyWithoutOrganizationNestedInput
@@ -1613,6 +1651,7 @@ export type OrganizationUncheckedUpdateWithoutVersionsInput = {
   tags?: Prisma.TagUncheckedUpdateManyWithoutOrganizationNestedInput
   tagAssignments?: Prisma.TagAssignmentUncheckedUpdateManyWithoutOrganizationNestedInput
   documents?: Prisma.DocumentUncheckedUpdateManyWithoutOrganizationNestedInput
+  documentFolders?: Prisma.DocumentFolderUncheckedUpdateManyWithoutOrganizationNestedInput
   documentRevisions?: Prisma.DocumentRevisionUncheckedUpdateManyWithoutOrganizationNestedInput
   documentLinks?: Prisma.DocumentLinkUncheckedUpdateManyWithoutOrganizationNestedInput
   documentChunks?: Prisma.DocumentChunkUncheckedUpdateManyWithoutOrganizationNestedInput
@@ -1646,6 +1685,7 @@ export type OrganizationCreateWithoutRequirementsInput = {
   tags?: Prisma.TagCreateNestedManyWithoutOrganizationInput
   tagAssignments?: Prisma.TagAssignmentCreateNestedManyWithoutOrganizationInput
   documents?: Prisma.DocumentCreateNestedManyWithoutOrganizationInput
+  documentFolders?: Prisma.DocumentFolderCreateNestedManyWithoutOrganizationInput
   documentRevisions?: Prisma.DocumentRevisionCreateNestedManyWithoutOrganizationInput
   documentLinks?: Prisma.DocumentLinkCreateNestedManyWithoutOrganizationInput
   documentChunks?: Prisma.DocumentChunkCreateNestedManyWithoutOrganizationInput
@@ -1679,6 +1719,7 @@ export type OrganizationUncheckedCreateWithoutRequirementsInput = {
   tags?: Prisma.TagUncheckedCreateNestedManyWithoutOrganizationInput
   tagAssignments?: Prisma.TagAssignmentUncheckedCreateNestedManyWithoutOrganizationInput
   documents?: Prisma.DocumentUncheckedCreateNestedManyWithoutOrganizationInput
+  documentFolders?: Prisma.DocumentFolderUncheckedCreateNestedManyWithoutOrganizationInput
   documentRevisions?: Prisma.DocumentRevisionUncheckedCreateNestedManyWithoutOrganizationInput
   documentLinks?: Prisma.DocumentLinkUncheckedCreateNestedManyWithoutOrganizationInput
   documentChunks?: Prisma.DocumentChunkUncheckedCreateNestedManyWithoutOrganizationInput
@@ -1728,6 +1769,7 @@ export type OrganizationUpdateWithoutRequirementsInput = {
   tags?: Prisma.TagUpdateManyWithoutOrganizationNestedInput
   tagAssignments?: Prisma.TagAssignmentUpdateManyWithoutOrganizationNestedInput
   documents?: Prisma.DocumentUpdateManyWithoutOrganizationNestedInput
+  documentFolders?: Prisma.DocumentFolderUpdateManyWithoutOrganizationNestedInput
   documentRevisions?: Prisma.DocumentRevisionUpdateManyWithoutOrganizationNestedInput
   documentLinks?: Prisma.DocumentLinkUpdateManyWithoutOrganizationNestedInput
   documentChunks?: Prisma.DocumentChunkUpdateManyWithoutOrganizationNestedInput
@@ -1761,6 +1803,7 @@ export type OrganizationUncheckedUpdateWithoutRequirementsInput = {
   tags?: Prisma.TagUncheckedUpdateManyWithoutOrganizationNestedInput
   tagAssignments?: Prisma.TagAssignmentUncheckedUpdateManyWithoutOrganizationNestedInput
   documents?: Prisma.DocumentUncheckedUpdateManyWithoutOrganizationNestedInput
+  documentFolders?: Prisma.DocumentFolderUncheckedUpdateManyWithoutOrganizationNestedInput
   documentRevisions?: Prisma.DocumentRevisionUncheckedUpdateManyWithoutOrganizationNestedInput
   documentLinks?: Prisma.DocumentLinkUncheckedUpdateManyWithoutOrganizationNestedInput
   documentChunks?: Prisma.DocumentChunkUncheckedUpdateManyWithoutOrganizationNestedInput
@@ -1794,6 +1837,7 @@ export type OrganizationCreateWithoutIntakeItemsInput = {
   tags?: Prisma.TagCreateNestedManyWithoutOrganizationInput
   tagAssignments?: Prisma.TagAssignmentCreateNestedManyWithoutOrganizationInput
   documents?: Prisma.DocumentCreateNestedManyWithoutOrganizationInput
+  documentFolders?: Prisma.DocumentFolderCreateNestedManyWithoutOrganizationInput
   documentRevisions?: Prisma.DocumentRevisionCreateNestedManyWithoutOrganizationInput
   documentLinks?: Prisma.DocumentLinkCreateNestedManyWithoutOrganizationInput
   documentChunks?: Prisma.DocumentChunkCreateNestedManyWithoutOrganizationInput
@@ -1827,6 +1871,7 @@ export type OrganizationUncheckedCreateWithoutIntakeItemsInput = {
   tags?: Prisma.TagUncheckedCreateNestedManyWithoutOrganizationInput
   tagAssignments?: Prisma.TagAssignmentUncheckedCreateNestedManyWithoutOrganizationInput
   documents?: Prisma.DocumentUncheckedCreateNestedManyWithoutOrganizationInput
+  documentFolders?: Prisma.DocumentFolderUncheckedCreateNestedManyWithoutOrganizationInput
   documentRevisions?: Prisma.DocumentRevisionUncheckedCreateNestedManyWithoutOrganizationInput
   documentLinks?: Prisma.DocumentLinkUncheckedCreateNestedManyWithoutOrganizationInput
   documentChunks?: Prisma.DocumentChunkUncheckedCreateNestedManyWithoutOrganizationInput
@@ -1876,6 +1921,7 @@ export type OrganizationUpdateWithoutIntakeItemsInput = {
   tags?: Prisma.TagUpdateManyWithoutOrganizationNestedInput
   tagAssignments?: Prisma.TagAssignmentUpdateManyWithoutOrganizationNestedInput
   documents?: Prisma.DocumentUpdateManyWithoutOrganizationNestedInput
+  documentFolders?: Prisma.DocumentFolderUpdateManyWithoutOrganizationNestedInput
   documentRevisions?: Prisma.DocumentRevisionUpdateManyWithoutOrganizationNestedInput
   documentLinks?: Prisma.DocumentLinkUpdateManyWithoutOrganizationNestedInput
   documentChunks?: Prisma.DocumentChunkUpdateManyWithoutOrganizationNestedInput
@@ -1909,6 +1955,7 @@ export type OrganizationUncheckedUpdateWithoutIntakeItemsInput = {
   tags?: Prisma.TagUncheckedUpdateManyWithoutOrganizationNestedInput
   tagAssignments?: Prisma.TagAssignmentUncheckedUpdateManyWithoutOrganizationNestedInput
   documents?: Prisma.DocumentUncheckedUpdateManyWithoutOrganizationNestedInput
+  documentFolders?: Prisma.DocumentFolderUncheckedUpdateManyWithoutOrganizationNestedInput
   documentRevisions?: Prisma.DocumentRevisionUncheckedUpdateManyWithoutOrganizationNestedInput
   documentLinks?: Prisma.DocumentLinkUncheckedUpdateManyWithoutOrganizationNestedInput
   documentChunks?: Prisma.DocumentChunkUncheckedUpdateManyWithoutOrganizationNestedInput
@@ -1942,6 +1989,7 @@ export type OrganizationCreateWithoutWorkItemsInput = {
   tags?: Prisma.TagCreateNestedManyWithoutOrganizationInput
   tagAssignments?: Prisma.TagAssignmentCreateNestedManyWithoutOrganizationInput
   documents?: Prisma.DocumentCreateNestedManyWithoutOrganizationInput
+  documentFolders?: Prisma.DocumentFolderCreateNestedManyWithoutOrganizationInput
   documentRevisions?: Prisma.DocumentRevisionCreateNestedManyWithoutOrganizationInput
   documentLinks?: Prisma.DocumentLinkCreateNestedManyWithoutOrganizationInput
   documentChunks?: Prisma.DocumentChunkCreateNestedManyWithoutOrganizationInput
@@ -1975,6 +2023,7 @@ export type OrganizationUncheckedCreateWithoutWorkItemsInput = {
   tags?: Prisma.TagUncheckedCreateNestedManyWithoutOrganizationInput
   tagAssignments?: Prisma.TagAssignmentUncheckedCreateNestedManyWithoutOrganizationInput
   documents?: Prisma.DocumentUncheckedCreateNestedManyWithoutOrganizationInput
+  documentFolders?: Prisma.DocumentFolderUncheckedCreateNestedManyWithoutOrganizationInput
   documentRevisions?: Prisma.DocumentRevisionUncheckedCreateNestedManyWithoutOrganizationInput
   documentLinks?: Prisma.DocumentLinkUncheckedCreateNestedManyWithoutOrganizationInput
   documentChunks?: Prisma.DocumentChunkUncheckedCreateNestedManyWithoutOrganizationInput
@@ -2024,6 +2073,7 @@ export type OrganizationUpdateWithoutWorkItemsInput = {
   tags?: Prisma.TagUpdateManyWithoutOrganizationNestedInput
   tagAssignments?: Prisma.TagAssignmentUpdateManyWithoutOrganizationNestedInput
   documents?: Prisma.DocumentUpdateManyWithoutOrganizationNestedInput
+  documentFolders?: Prisma.DocumentFolderUpdateManyWithoutOrganizationNestedInput
   documentRevisions?: Prisma.DocumentRevisionUpdateManyWithoutOrganizationNestedInput
   documentLinks?: Prisma.DocumentLinkUpdateManyWithoutOrganizationNestedInput
   documentChunks?: Prisma.DocumentChunkUpdateManyWithoutOrganizationNestedInput
@@ -2057,6 +2107,7 @@ export type OrganizationUncheckedUpdateWithoutWorkItemsInput = {
   tags?: Prisma.TagUncheckedUpdateManyWithoutOrganizationNestedInput
   tagAssignments?: Prisma.TagAssignmentUncheckedUpdateManyWithoutOrganizationNestedInput
   documents?: Prisma.DocumentUncheckedUpdateManyWithoutOrganizationNestedInput
+  documentFolders?: Prisma.DocumentFolderUncheckedUpdateManyWithoutOrganizationNestedInput
   documentRevisions?: Prisma.DocumentRevisionUncheckedUpdateManyWithoutOrganizationNestedInput
   documentLinks?: Prisma.DocumentLinkUncheckedUpdateManyWithoutOrganizationNestedInput
   documentChunks?: Prisma.DocumentChunkUncheckedUpdateManyWithoutOrganizationNestedInput
@@ -2091,6 +2142,7 @@ export type OrganizationCreateWithoutObjectSequenceCountersInput = {
   tags?: Prisma.TagCreateNestedManyWithoutOrganizationInput
   tagAssignments?: Prisma.TagAssignmentCreateNestedManyWithoutOrganizationInput
   documents?: Prisma.DocumentCreateNestedManyWithoutOrganizationInput
+  documentFolders?: Prisma.DocumentFolderCreateNestedManyWithoutOrganizationInput
   documentRevisions?: Prisma.DocumentRevisionCreateNestedManyWithoutOrganizationInput
   documentLinks?: Prisma.DocumentLinkCreateNestedManyWithoutOrganizationInput
   documentChunks?: Prisma.DocumentChunkCreateNestedManyWithoutOrganizationInput
@@ -2124,6 +2176,7 @@ export type OrganizationUncheckedCreateWithoutObjectSequenceCountersInput = {
   tags?: Prisma.TagUncheckedCreateNestedManyWithoutOrganizationInput
   tagAssignments?: Prisma.TagAssignmentUncheckedCreateNestedManyWithoutOrganizationInput
   documents?: Prisma.DocumentUncheckedCreateNestedManyWithoutOrganizationInput
+  documentFolders?: Prisma.DocumentFolderUncheckedCreateNestedManyWithoutOrganizationInput
   documentRevisions?: Prisma.DocumentRevisionUncheckedCreateNestedManyWithoutOrganizationInput
   documentLinks?: Prisma.DocumentLinkUncheckedCreateNestedManyWithoutOrganizationInput
   documentChunks?: Prisma.DocumentChunkUncheckedCreateNestedManyWithoutOrganizationInput
@@ -2173,6 +2226,7 @@ export type OrganizationUpdateWithoutObjectSequenceCountersInput = {
   tags?: Prisma.TagUpdateManyWithoutOrganizationNestedInput
   tagAssignments?: Prisma.TagAssignmentUpdateManyWithoutOrganizationNestedInput
   documents?: Prisma.DocumentUpdateManyWithoutOrganizationNestedInput
+  documentFolders?: Prisma.DocumentFolderUpdateManyWithoutOrganizationNestedInput
   documentRevisions?: Prisma.DocumentRevisionUpdateManyWithoutOrganizationNestedInput
   documentLinks?: Prisma.DocumentLinkUpdateManyWithoutOrganizationNestedInput
   documentChunks?: Prisma.DocumentChunkUpdateManyWithoutOrganizationNestedInput
@@ -2206,6 +2260,7 @@ export type OrganizationUncheckedUpdateWithoutObjectSequenceCountersInput = {
   tags?: Prisma.TagUncheckedUpdateManyWithoutOrganizationNestedInput
   tagAssignments?: Prisma.TagAssignmentUncheckedUpdateManyWithoutOrganizationNestedInput
   documents?: Prisma.DocumentUncheckedUpdateManyWithoutOrganizationNestedInput
+  documentFolders?: Prisma.DocumentFolderUncheckedUpdateManyWithoutOrganizationNestedInput
   documentRevisions?: Prisma.DocumentRevisionUncheckedUpdateManyWithoutOrganizationNestedInput
   documentLinks?: Prisma.DocumentLinkUncheckedUpdateManyWithoutOrganizationNestedInput
   documentChunks?: Prisma.DocumentChunkUncheckedUpdateManyWithoutOrganizationNestedInput
@@ -2238,6 +2293,7 @@ export type OrganizationCreateWithoutAttachmentsInput = {
   tags?: Prisma.TagCreateNestedManyWithoutOrganizationInput
   tagAssignments?: Prisma.TagAssignmentCreateNestedManyWithoutOrganizationInput
   documents?: Prisma.DocumentCreateNestedManyWithoutOrganizationInput
+  documentFolders?: Prisma.DocumentFolderCreateNestedManyWithoutOrganizationInput
   documentRevisions?: Prisma.DocumentRevisionCreateNestedManyWithoutOrganizationInput
   documentLinks?: Prisma.DocumentLinkCreateNestedManyWithoutOrganizationInput
   documentChunks?: Prisma.DocumentChunkCreateNestedManyWithoutOrganizationInput
@@ -2271,6 +2327,7 @@ export type OrganizationUncheckedCreateWithoutAttachmentsInput = {
   tags?: Prisma.TagUncheckedCreateNestedManyWithoutOrganizationInput
   tagAssignments?: Prisma.TagAssignmentUncheckedCreateNestedManyWithoutOrganizationInput
   documents?: Prisma.DocumentUncheckedCreateNestedManyWithoutOrganizationInput
+  documentFolders?: Prisma.DocumentFolderUncheckedCreateNestedManyWithoutOrganizationInput
   documentRevisions?: Prisma.DocumentRevisionUncheckedCreateNestedManyWithoutOrganizationInput
   documentLinks?: Prisma.DocumentLinkUncheckedCreateNestedManyWithoutOrganizationInput
   documentChunks?: Prisma.DocumentChunkUncheckedCreateNestedManyWithoutOrganizationInput
@@ -2320,6 +2377,7 @@ export type OrganizationUpdateWithoutAttachmentsInput = {
   tags?: Prisma.TagUpdateManyWithoutOrganizationNestedInput
   tagAssignments?: Prisma.TagAssignmentUpdateManyWithoutOrganizationNestedInput
   documents?: Prisma.DocumentUpdateManyWithoutOrganizationNestedInput
+  documentFolders?: Prisma.DocumentFolderUpdateManyWithoutOrganizationNestedInput
   documentRevisions?: Prisma.DocumentRevisionUpdateManyWithoutOrganizationNestedInput
   documentLinks?: Prisma.DocumentLinkUpdateManyWithoutOrganizationNestedInput
   documentChunks?: Prisma.DocumentChunkUpdateManyWithoutOrganizationNestedInput
@@ -2353,6 +2411,7 @@ export type OrganizationUncheckedUpdateWithoutAttachmentsInput = {
   tags?: Prisma.TagUncheckedUpdateManyWithoutOrganizationNestedInput
   tagAssignments?: Prisma.TagAssignmentUncheckedUpdateManyWithoutOrganizationNestedInput
   documents?: Prisma.DocumentUncheckedUpdateManyWithoutOrganizationNestedInput
+  documentFolders?: Prisma.DocumentFolderUncheckedUpdateManyWithoutOrganizationNestedInput
   documentRevisions?: Prisma.DocumentRevisionUncheckedUpdateManyWithoutOrganizationNestedInput
   documentLinks?: Prisma.DocumentLinkUncheckedUpdateManyWithoutOrganizationNestedInput
   documentChunks?: Prisma.DocumentChunkUncheckedUpdateManyWithoutOrganizationNestedInput
@@ -2386,6 +2445,7 @@ export type OrganizationCreateWithoutDocumentsInput = {
   timelineEvents?: Prisma.TimelineEventCreateNestedManyWithoutOrganizationInput
   tags?: Prisma.TagCreateNestedManyWithoutOrganizationInput
   tagAssignments?: Prisma.TagAssignmentCreateNestedManyWithoutOrganizationInput
+  documentFolders?: Prisma.DocumentFolderCreateNestedManyWithoutOrganizationInput
   documentRevisions?: Prisma.DocumentRevisionCreateNestedManyWithoutOrganizationInput
   documentLinks?: Prisma.DocumentLinkCreateNestedManyWithoutOrganizationInput
   documentChunks?: Prisma.DocumentChunkCreateNestedManyWithoutOrganizationInput
@@ -2419,6 +2479,7 @@ export type OrganizationUncheckedCreateWithoutDocumentsInput = {
   timelineEvents?: Prisma.TimelineEventUncheckedCreateNestedManyWithoutOrganizationInput
   tags?: Prisma.TagUncheckedCreateNestedManyWithoutOrganizationInput
   tagAssignments?: Prisma.TagAssignmentUncheckedCreateNestedManyWithoutOrganizationInput
+  documentFolders?: Prisma.DocumentFolderUncheckedCreateNestedManyWithoutOrganizationInput
   documentRevisions?: Prisma.DocumentRevisionUncheckedCreateNestedManyWithoutOrganizationInput
   documentLinks?: Prisma.DocumentLinkUncheckedCreateNestedManyWithoutOrganizationInput
   documentChunks?: Prisma.DocumentChunkUncheckedCreateNestedManyWithoutOrganizationInput
@@ -2468,6 +2529,7 @@ export type OrganizationUpdateWithoutDocumentsInput = {
   timelineEvents?: Prisma.TimelineEventUpdateManyWithoutOrganizationNestedInput
   tags?: Prisma.TagUpdateManyWithoutOrganizationNestedInput
   tagAssignments?: Prisma.TagAssignmentUpdateManyWithoutOrganizationNestedInput
+  documentFolders?: Prisma.DocumentFolderUpdateManyWithoutOrganizationNestedInput
   documentRevisions?: Prisma.DocumentRevisionUpdateManyWithoutOrganizationNestedInput
   documentLinks?: Prisma.DocumentLinkUpdateManyWithoutOrganizationNestedInput
   documentChunks?: Prisma.DocumentChunkUpdateManyWithoutOrganizationNestedInput
@@ -2501,6 +2563,159 @@ export type OrganizationUncheckedUpdateWithoutDocumentsInput = {
   timelineEvents?: Prisma.TimelineEventUncheckedUpdateManyWithoutOrganizationNestedInput
   tags?: Prisma.TagUncheckedUpdateManyWithoutOrganizationNestedInput
   tagAssignments?: Prisma.TagAssignmentUncheckedUpdateManyWithoutOrganizationNestedInput
+  documentFolders?: Prisma.DocumentFolderUncheckedUpdateManyWithoutOrganizationNestedInput
+  documentRevisions?: Prisma.DocumentRevisionUncheckedUpdateManyWithoutOrganizationNestedInput
+  documentLinks?: Prisma.DocumentLinkUncheckedUpdateManyWithoutOrganizationNestedInput
+  documentChunks?: Prisma.DocumentChunkUncheckedUpdateManyWithoutOrganizationNestedInput
+  objectSequenceCounters?: Prisma.ObjectSequenceCounterUncheckedUpdateManyWithoutOrganizationNestedInput
+}
+
+export type OrganizationCreateWithoutDocumentFoldersInput = {
+  id: string
+  name: string
+  code: string
+  status?: $Enums.OrganizationStatus
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  createdById?: string | null
+  updatedById?: string | null
+  deletedAt?: Date | string | null
+  owner?: Prisma.UserCreateNestedOneWithoutOrganizationsInput
+  members?: Prisma.OrganizationMemberCreateNestedManyWithoutOrganizationInput
+  spaces?: Prisma.SpaceCreateNestedManyWithoutOrganizationInput
+  spaceMembers?: Prisma.SpaceMemberCreateNestedManyWithoutOrganizationInput
+  versions?: Prisma.VersionCreateNestedManyWithoutOrganizationInput
+  requirements?: Prisma.RequirementCreateNestedManyWithoutOrganizationInput
+  attachments?: Prisma.AttachmentCreateNestedManyWithoutOrganizationInput
+  workflowDefinitions?: Prisma.WorkflowDefinitionCreateNestedManyWithoutOrganizationInput
+  workflowBindings?: Prisma.WorkflowBindingCreateNestedManyWithoutOrganizationInput
+  objectParticipants?: Prisma.ObjectParticipantCreateNestedManyWithoutOrganizationInput
+  intakeItems?: Prisma.IntakeItemCreateNestedManyWithoutOrganizationInput
+  workItems?: Prisma.WorkItemCreateNestedManyWithoutOrganizationInput
+  auditLogs?: Prisma.AuditLogCreateNestedManyWithoutOrganizationInput
+  comments?: Prisma.CommentCreateNestedManyWithoutOrganizationInput
+  timelineEvents?: Prisma.TimelineEventCreateNestedManyWithoutOrganizationInput
+  tags?: Prisma.TagCreateNestedManyWithoutOrganizationInput
+  tagAssignments?: Prisma.TagAssignmentCreateNestedManyWithoutOrganizationInput
+  documents?: Prisma.DocumentCreateNestedManyWithoutOrganizationInput
+  documentRevisions?: Prisma.DocumentRevisionCreateNestedManyWithoutOrganizationInput
+  documentLinks?: Prisma.DocumentLinkCreateNestedManyWithoutOrganizationInput
+  documentChunks?: Prisma.DocumentChunkCreateNestedManyWithoutOrganizationInput
+  objectSequenceCounters?: Prisma.ObjectSequenceCounterCreateNestedManyWithoutOrganizationInput
+}
+
+export type OrganizationUncheckedCreateWithoutDocumentFoldersInput = {
+  id: string
+  name: string
+  code: string
+  ownerId?: string | null
+  status?: $Enums.OrganizationStatus
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  createdById?: string | null
+  updatedById?: string | null
+  deletedAt?: Date | string | null
+  members?: Prisma.OrganizationMemberUncheckedCreateNestedManyWithoutOrganizationInput
+  spaces?: Prisma.SpaceUncheckedCreateNestedManyWithoutOrganizationInput
+  spaceMembers?: Prisma.SpaceMemberUncheckedCreateNestedManyWithoutOrganizationInput
+  versions?: Prisma.VersionUncheckedCreateNestedManyWithoutOrganizationInput
+  requirements?: Prisma.RequirementUncheckedCreateNestedManyWithoutOrganizationInput
+  attachments?: Prisma.AttachmentUncheckedCreateNestedManyWithoutOrganizationInput
+  workflowDefinitions?: Prisma.WorkflowDefinitionUncheckedCreateNestedManyWithoutOrganizationInput
+  workflowBindings?: Prisma.WorkflowBindingUncheckedCreateNestedManyWithoutOrganizationInput
+  objectParticipants?: Prisma.ObjectParticipantUncheckedCreateNestedManyWithoutOrganizationInput
+  intakeItems?: Prisma.IntakeItemUncheckedCreateNestedManyWithoutOrganizationInput
+  workItems?: Prisma.WorkItemUncheckedCreateNestedManyWithoutOrganizationInput
+  auditLogs?: Prisma.AuditLogUncheckedCreateNestedManyWithoutOrganizationInput
+  comments?: Prisma.CommentUncheckedCreateNestedManyWithoutOrganizationInput
+  timelineEvents?: Prisma.TimelineEventUncheckedCreateNestedManyWithoutOrganizationInput
+  tags?: Prisma.TagUncheckedCreateNestedManyWithoutOrganizationInput
+  tagAssignments?: Prisma.TagAssignmentUncheckedCreateNestedManyWithoutOrganizationInput
+  documents?: Prisma.DocumentUncheckedCreateNestedManyWithoutOrganizationInput
+  documentRevisions?: Prisma.DocumentRevisionUncheckedCreateNestedManyWithoutOrganizationInput
+  documentLinks?: Prisma.DocumentLinkUncheckedCreateNestedManyWithoutOrganizationInput
+  documentChunks?: Prisma.DocumentChunkUncheckedCreateNestedManyWithoutOrganizationInput
+  objectSequenceCounters?: Prisma.ObjectSequenceCounterUncheckedCreateNestedManyWithoutOrganizationInput
+}
+
+export type OrganizationCreateOrConnectWithoutDocumentFoldersInput = {
+  where: Prisma.OrganizationWhereUniqueInput
+  create: Prisma.XOR<Prisma.OrganizationCreateWithoutDocumentFoldersInput, Prisma.OrganizationUncheckedCreateWithoutDocumentFoldersInput>
+}
+
+export type OrganizationUpsertWithoutDocumentFoldersInput = {
+  update: Prisma.XOR<Prisma.OrganizationUpdateWithoutDocumentFoldersInput, Prisma.OrganizationUncheckedUpdateWithoutDocumentFoldersInput>
+  create: Prisma.XOR<Prisma.OrganizationCreateWithoutDocumentFoldersInput, Prisma.OrganizationUncheckedCreateWithoutDocumentFoldersInput>
+  where?: Prisma.OrganizationWhereInput
+}
+
+export type OrganizationUpdateToOneWithWhereWithoutDocumentFoldersInput = {
+  where?: Prisma.OrganizationWhereInput
+  data: Prisma.XOR<Prisma.OrganizationUpdateWithoutDocumentFoldersInput, Prisma.OrganizationUncheckedUpdateWithoutDocumentFoldersInput>
+}
+
+export type OrganizationUpdateWithoutDocumentFoldersInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  name?: Prisma.StringFieldUpdateOperationsInput | string
+  code?: Prisma.StringFieldUpdateOperationsInput | string
+  status?: Prisma.EnumOrganizationStatusFieldUpdateOperationsInput | $Enums.OrganizationStatus
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  createdById?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  updatedById?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  deletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  owner?: Prisma.UserUpdateOneWithoutOrganizationsNestedInput
+  members?: Prisma.OrganizationMemberUpdateManyWithoutOrganizationNestedInput
+  spaces?: Prisma.SpaceUpdateManyWithoutOrganizationNestedInput
+  spaceMembers?: Prisma.SpaceMemberUpdateManyWithoutOrganizationNestedInput
+  versions?: Prisma.VersionUpdateManyWithoutOrganizationNestedInput
+  requirements?: Prisma.RequirementUpdateManyWithoutOrganizationNestedInput
+  attachments?: Prisma.AttachmentUpdateManyWithoutOrganizationNestedInput
+  workflowDefinitions?: Prisma.WorkflowDefinitionUpdateManyWithoutOrganizationNestedInput
+  workflowBindings?: Prisma.WorkflowBindingUpdateManyWithoutOrganizationNestedInput
+  objectParticipants?: Prisma.ObjectParticipantUpdateManyWithoutOrganizationNestedInput
+  intakeItems?: Prisma.IntakeItemUpdateManyWithoutOrganizationNestedInput
+  workItems?: Prisma.WorkItemUpdateManyWithoutOrganizationNestedInput
+  auditLogs?: Prisma.AuditLogUpdateManyWithoutOrganizationNestedInput
+  comments?: Prisma.CommentUpdateManyWithoutOrganizationNestedInput
+  timelineEvents?: Prisma.TimelineEventUpdateManyWithoutOrganizationNestedInput
+  tags?: Prisma.TagUpdateManyWithoutOrganizationNestedInput
+  tagAssignments?: Prisma.TagAssignmentUpdateManyWithoutOrganizationNestedInput
+  documents?: Prisma.DocumentUpdateManyWithoutOrganizationNestedInput
+  documentRevisions?: Prisma.DocumentRevisionUpdateManyWithoutOrganizationNestedInput
+  documentLinks?: Prisma.DocumentLinkUpdateManyWithoutOrganizationNestedInput
+  documentChunks?: Prisma.DocumentChunkUpdateManyWithoutOrganizationNestedInput
+  objectSequenceCounters?: Prisma.ObjectSequenceCounterUpdateManyWithoutOrganizationNestedInput
+}
+
+export type OrganizationUncheckedUpdateWithoutDocumentFoldersInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  name?: Prisma.StringFieldUpdateOperationsInput | string
+  code?: Prisma.StringFieldUpdateOperationsInput | string
+  ownerId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  status?: Prisma.EnumOrganizationStatusFieldUpdateOperationsInput | $Enums.OrganizationStatus
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  createdById?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  updatedById?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  deletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  members?: Prisma.OrganizationMemberUncheckedUpdateManyWithoutOrganizationNestedInput
+  spaces?: Prisma.SpaceUncheckedUpdateManyWithoutOrganizationNestedInput
+  spaceMembers?: Prisma.SpaceMemberUncheckedUpdateManyWithoutOrganizationNestedInput
+  versions?: Prisma.VersionUncheckedUpdateManyWithoutOrganizationNestedInput
+  requirements?: Prisma.RequirementUncheckedUpdateManyWithoutOrganizationNestedInput
+  attachments?: Prisma.AttachmentUncheckedUpdateManyWithoutOrganizationNestedInput
+  workflowDefinitions?: Prisma.WorkflowDefinitionUncheckedUpdateManyWithoutOrganizationNestedInput
+  workflowBindings?: Prisma.WorkflowBindingUncheckedUpdateManyWithoutOrganizationNestedInput
+  objectParticipants?: Prisma.ObjectParticipantUncheckedUpdateManyWithoutOrganizationNestedInput
+  intakeItems?: Prisma.IntakeItemUncheckedUpdateManyWithoutOrganizationNestedInput
+  workItems?: Prisma.WorkItemUncheckedUpdateManyWithoutOrganizationNestedInput
+  auditLogs?: Prisma.AuditLogUncheckedUpdateManyWithoutOrganizationNestedInput
+  comments?: Prisma.CommentUncheckedUpdateManyWithoutOrganizationNestedInput
+  timelineEvents?: Prisma.TimelineEventUncheckedUpdateManyWithoutOrganizationNestedInput
+  tags?: Prisma.TagUncheckedUpdateManyWithoutOrganizationNestedInput
+  tagAssignments?: Prisma.TagAssignmentUncheckedUpdateManyWithoutOrganizationNestedInput
+  documents?: Prisma.DocumentUncheckedUpdateManyWithoutOrganizationNestedInput
   documentRevisions?: Prisma.DocumentRevisionUncheckedUpdateManyWithoutOrganizationNestedInput
   documentLinks?: Prisma.DocumentLinkUncheckedUpdateManyWithoutOrganizationNestedInput
   documentChunks?: Prisma.DocumentChunkUncheckedUpdateManyWithoutOrganizationNestedInput
@@ -2535,6 +2750,7 @@ export type OrganizationCreateWithoutDocumentRevisionsInput = {
   tags?: Prisma.TagCreateNestedManyWithoutOrganizationInput
   tagAssignments?: Prisma.TagAssignmentCreateNestedManyWithoutOrganizationInput
   documents?: Prisma.DocumentCreateNestedManyWithoutOrganizationInput
+  documentFolders?: Prisma.DocumentFolderCreateNestedManyWithoutOrganizationInput
   documentLinks?: Prisma.DocumentLinkCreateNestedManyWithoutOrganizationInput
   documentChunks?: Prisma.DocumentChunkCreateNestedManyWithoutOrganizationInput
   objectSequenceCounters?: Prisma.ObjectSequenceCounterCreateNestedManyWithoutOrganizationInput
@@ -2568,6 +2784,7 @@ export type OrganizationUncheckedCreateWithoutDocumentRevisionsInput = {
   tags?: Prisma.TagUncheckedCreateNestedManyWithoutOrganizationInput
   tagAssignments?: Prisma.TagAssignmentUncheckedCreateNestedManyWithoutOrganizationInput
   documents?: Prisma.DocumentUncheckedCreateNestedManyWithoutOrganizationInput
+  documentFolders?: Prisma.DocumentFolderUncheckedCreateNestedManyWithoutOrganizationInput
   documentLinks?: Prisma.DocumentLinkUncheckedCreateNestedManyWithoutOrganizationInput
   documentChunks?: Prisma.DocumentChunkUncheckedCreateNestedManyWithoutOrganizationInput
   objectSequenceCounters?: Prisma.ObjectSequenceCounterUncheckedCreateNestedManyWithoutOrganizationInput
@@ -2617,6 +2834,7 @@ export type OrganizationUpdateWithoutDocumentRevisionsInput = {
   tags?: Prisma.TagUpdateManyWithoutOrganizationNestedInput
   tagAssignments?: Prisma.TagAssignmentUpdateManyWithoutOrganizationNestedInput
   documents?: Prisma.DocumentUpdateManyWithoutOrganizationNestedInput
+  documentFolders?: Prisma.DocumentFolderUpdateManyWithoutOrganizationNestedInput
   documentLinks?: Prisma.DocumentLinkUpdateManyWithoutOrganizationNestedInput
   documentChunks?: Prisma.DocumentChunkUpdateManyWithoutOrganizationNestedInput
   objectSequenceCounters?: Prisma.ObjectSequenceCounterUpdateManyWithoutOrganizationNestedInput
@@ -2650,6 +2868,7 @@ export type OrganizationUncheckedUpdateWithoutDocumentRevisionsInput = {
   tags?: Prisma.TagUncheckedUpdateManyWithoutOrganizationNestedInput
   tagAssignments?: Prisma.TagAssignmentUncheckedUpdateManyWithoutOrganizationNestedInput
   documents?: Prisma.DocumentUncheckedUpdateManyWithoutOrganizationNestedInput
+  documentFolders?: Prisma.DocumentFolderUncheckedUpdateManyWithoutOrganizationNestedInput
   documentLinks?: Prisma.DocumentLinkUncheckedUpdateManyWithoutOrganizationNestedInput
   documentChunks?: Prisma.DocumentChunkUncheckedUpdateManyWithoutOrganizationNestedInput
   objectSequenceCounters?: Prisma.ObjectSequenceCounterUncheckedUpdateManyWithoutOrganizationNestedInput
@@ -2683,6 +2902,7 @@ export type OrganizationCreateWithoutDocumentLinksInput = {
   tags?: Prisma.TagCreateNestedManyWithoutOrganizationInput
   tagAssignments?: Prisma.TagAssignmentCreateNestedManyWithoutOrganizationInput
   documents?: Prisma.DocumentCreateNestedManyWithoutOrganizationInput
+  documentFolders?: Prisma.DocumentFolderCreateNestedManyWithoutOrganizationInput
   documentRevisions?: Prisma.DocumentRevisionCreateNestedManyWithoutOrganizationInput
   documentChunks?: Prisma.DocumentChunkCreateNestedManyWithoutOrganizationInput
   objectSequenceCounters?: Prisma.ObjectSequenceCounterCreateNestedManyWithoutOrganizationInput
@@ -2716,6 +2936,7 @@ export type OrganizationUncheckedCreateWithoutDocumentLinksInput = {
   tags?: Prisma.TagUncheckedCreateNestedManyWithoutOrganizationInput
   tagAssignments?: Prisma.TagAssignmentUncheckedCreateNestedManyWithoutOrganizationInput
   documents?: Prisma.DocumentUncheckedCreateNestedManyWithoutOrganizationInput
+  documentFolders?: Prisma.DocumentFolderUncheckedCreateNestedManyWithoutOrganizationInput
   documentRevisions?: Prisma.DocumentRevisionUncheckedCreateNestedManyWithoutOrganizationInput
   documentChunks?: Prisma.DocumentChunkUncheckedCreateNestedManyWithoutOrganizationInput
   objectSequenceCounters?: Prisma.ObjectSequenceCounterUncheckedCreateNestedManyWithoutOrganizationInput
@@ -2765,6 +2986,7 @@ export type OrganizationUpdateWithoutDocumentLinksInput = {
   tags?: Prisma.TagUpdateManyWithoutOrganizationNestedInput
   tagAssignments?: Prisma.TagAssignmentUpdateManyWithoutOrganizationNestedInput
   documents?: Prisma.DocumentUpdateManyWithoutOrganizationNestedInput
+  documentFolders?: Prisma.DocumentFolderUpdateManyWithoutOrganizationNestedInput
   documentRevisions?: Prisma.DocumentRevisionUpdateManyWithoutOrganizationNestedInput
   documentChunks?: Prisma.DocumentChunkUpdateManyWithoutOrganizationNestedInput
   objectSequenceCounters?: Prisma.ObjectSequenceCounterUpdateManyWithoutOrganizationNestedInput
@@ -2798,6 +3020,7 @@ export type OrganizationUncheckedUpdateWithoutDocumentLinksInput = {
   tags?: Prisma.TagUncheckedUpdateManyWithoutOrganizationNestedInput
   tagAssignments?: Prisma.TagAssignmentUncheckedUpdateManyWithoutOrganizationNestedInput
   documents?: Prisma.DocumentUncheckedUpdateManyWithoutOrganizationNestedInput
+  documentFolders?: Prisma.DocumentFolderUncheckedUpdateManyWithoutOrganizationNestedInput
   documentRevisions?: Prisma.DocumentRevisionUncheckedUpdateManyWithoutOrganizationNestedInput
   documentChunks?: Prisma.DocumentChunkUncheckedUpdateManyWithoutOrganizationNestedInput
   objectSequenceCounters?: Prisma.ObjectSequenceCounterUncheckedUpdateManyWithoutOrganizationNestedInput
@@ -2831,6 +3054,7 @@ export type OrganizationCreateWithoutDocumentChunksInput = {
   tags?: Prisma.TagCreateNestedManyWithoutOrganizationInput
   tagAssignments?: Prisma.TagAssignmentCreateNestedManyWithoutOrganizationInput
   documents?: Prisma.DocumentCreateNestedManyWithoutOrganizationInput
+  documentFolders?: Prisma.DocumentFolderCreateNestedManyWithoutOrganizationInput
   documentRevisions?: Prisma.DocumentRevisionCreateNestedManyWithoutOrganizationInput
   documentLinks?: Prisma.DocumentLinkCreateNestedManyWithoutOrganizationInput
   objectSequenceCounters?: Prisma.ObjectSequenceCounterCreateNestedManyWithoutOrganizationInput
@@ -2864,6 +3088,7 @@ export type OrganizationUncheckedCreateWithoutDocumentChunksInput = {
   tags?: Prisma.TagUncheckedCreateNestedManyWithoutOrganizationInput
   tagAssignments?: Prisma.TagAssignmentUncheckedCreateNestedManyWithoutOrganizationInput
   documents?: Prisma.DocumentUncheckedCreateNestedManyWithoutOrganizationInput
+  documentFolders?: Prisma.DocumentFolderUncheckedCreateNestedManyWithoutOrganizationInput
   documentRevisions?: Prisma.DocumentRevisionUncheckedCreateNestedManyWithoutOrganizationInput
   documentLinks?: Prisma.DocumentLinkUncheckedCreateNestedManyWithoutOrganizationInput
   objectSequenceCounters?: Prisma.ObjectSequenceCounterUncheckedCreateNestedManyWithoutOrganizationInput
@@ -2913,6 +3138,7 @@ export type OrganizationUpdateWithoutDocumentChunksInput = {
   tags?: Prisma.TagUpdateManyWithoutOrganizationNestedInput
   tagAssignments?: Prisma.TagAssignmentUpdateManyWithoutOrganizationNestedInput
   documents?: Prisma.DocumentUpdateManyWithoutOrganizationNestedInput
+  documentFolders?: Prisma.DocumentFolderUpdateManyWithoutOrganizationNestedInput
   documentRevisions?: Prisma.DocumentRevisionUpdateManyWithoutOrganizationNestedInput
   documentLinks?: Prisma.DocumentLinkUpdateManyWithoutOrganizationNestedInput
   objectSequenceCounters?: Prisma.ObjectSequenceCounterUpdateManyWithoutOrganizationNestedInput
@@ -2946,6 +3172,7 @@ export type OrganizationUncheckedUpdateWithoutDocumentChunksInput = {
   tags?: Prisma.TagUncheckedUpdateManyWithoutOrganizationNestedInput
   tagAssignments?: Prisma.TagAssignmentUncheckedUpdateManyWithoutOrganizationNestedInput
   documents?: Prisma.DocumentUncheckedUpdateManyWithoutOrganizationNestedInput
+  documentFolders?: Prisma.DocumentFolderUncheckedUpdateManyWithoutOrganizationNestedInput
   documentRevisions?: Prisma.DocumentRevisionUncheckedUpdateManyWithoutOrganizationNestedInput
   documentLinks?: Prisma.DocumentLinkUncheckedUpdateManyWithoutOrganizationNestedInput
   objectSequenceCounters?: Prisma.ObjectSequenceCounterUncheckedUpdateManyWithoutOrganizationNestedInput
@@ -2978,6 +3205,7 @@ export type OrganizationCreateWithoutTagsInput = {
   timelineEvents?: Prisma.TimelineEventCreateNestedManyWithoutOrganizationInput
   tagAssignments?: Prisma.TagAssignmentCreateNestedManyWithoutOrganizationInput
   documents?: Prisma.DocumentCreateNestedManyWithoutOrganizationInput
+  documentFolders?: Prisma.DocumentFolderCreateNestedManyWithoutOrganizationInput
   documentRevisions?: Prisma.DocumentRevisionCreateNestedManyWithoutOrganizationInput
   documentLinks?: Prisma.DocumentLinkCreateNestedManyWithoutOrganizationInput
   documentChunks?: Prisma.DocumentChunkCreateNestedManyWithoutOrganizationInput
@@ -3011,6 +3239,7 @@ export type OrganizationUncheckedCreateWithoutTagsInput = {
   timelineEvents?: Prisma.TimelineEventUncheckedCreateNestedManyWithoutOrganizationInput
   tagAssignments?: Prisma.TagAssignmentUncheckedCreateNestedManyWithoutOrganizationInput
   documents?: Prisma.DocumentUncheckedCreateNestedManyWithoutOrganizationInput
+  documentFolders?: Prisma.DocumentFolderUncheckedCreateNestedManyWithoutOrganizationInput
   documentRevisions?: Prisma.DocumentRevisionUncheckedCreateNestedManyWithoutOrganizationInput
   documentLinks?: Prisma.DocumentLinkUncheckedCreateNestedManyWithoutOrganizationInput
   documentChunks?: Prisma.DocumentChunkUncheckedCreateNestedManyWithoutOrganizationInput
@@ -3060,6 +3289,7 @@ export type OrganizationUpdateWithoutTagsInput = {
   timelineEvents?: Prisma.TimelineEventUpdateManyWithoutOrganizationNestedInput
   tagAssignments?: Prisma.TagAssignmentUpdateManyWithoutOrganizationNestedInput
   documents?: Prisma.DocumentUpdateManyWithoutOrganizationNestedInput
+  documentFolders?: Prisma.DocumentFolderUpdateManyWithoutOrganizationNestedInput
   documentRevisions?: Prisma.DocumentRevisionUpdateManyWithoutOrganizationNestedInput
   documentLinks?: Prisma.DocumentLinkUpdateManyWithoutOrganizationNestedInput
   documentChunks?: Prisma.DocumentChunkUpdateManyWithoutOrganizationNestedInput
@@ -3093,6 +3323,7 @@ export type OrganizationUncheckedUpdateWithoutTagsInput = {
   timelineEvents?: Prisma.TimelineEventUncheckedUpdateManyWithoutOrganizationNestedInput
   tagAssignments?: Prisma.TagAssignmentUncheckedUpdateManyWithoutOrganizationNestedInput
   documents?: Prisma.DocumentUncheckedUpdateManyWithoutOrganizationNestedInput
+  documentFolders?: Prisma.DocumentFolderUncheckedUpdateManyWithoutOrganizationNestedInput
   documentRevisions?: Prisma.DocumentRevisionUncheckedUpdateManyWithoutOrganizationNestedInput
   documentLinks?: Prisma.DocumentLinkUncheckedUpdateManyWithoutOrganizationNestedInput
   documentChunks?: Prisma.DocumentChunkUncheckedUpdateManyWithoutOrganizationNestedInput
@@ -3126,6 +3357,7 @@ export type OrganizationCreateWithoutTagAssignmentsInput = {
   timelineEvents?: Prisma.TimelineEventCreateNestedManyWithoutOrganizationInput
   tags?: Prisma.TagCreateNestedManyWithoutOrganizationInput
   documents?: Prisma.DocumentCreateNestedManyWithoutOrganizationInput
+  documentFolders?: Prisma.DocumentFolderCreateNestedManyWithoutOrganizationInput
   documentRevisions?: Prisma.DocumentRevisionCreateNestedManyWithoutOrganizationInput
   documentLinks?: Prisma.DocumentLinkCreateNestedManyWithoutOrganizationInput
   documentChunks?: Prisma.DocumentChunkCreateNestedManyWithoutOrganizationInput
@@ -3159,6 +3391,7 @@ export type OrganizationUncheckedCreateWithoutTagAssignmentsInput = {
   timelineEvents?: Prisma.TimelineEventUncheckedCreateNestedManyWithoutOrganizationInput
   tags?: Prisma.TagUncheckedCreateNestedManyWithoutOrganizationInput
   documents?: Prisma.DocumentUncheckedCreateNestedManyWithoutOrganizationInput
+  documentFolders?: Prisma.DocumentFolderUncheckedCreateNestedManyWithoutOrganizationInput
   documentRevisions?: Prisma.DocumentRevisionUncheckedCreateNestedManyWithoutOrganizationInput
   documentLinks?: Prisma.DocumentLinkUncheckedCreateNestedManyWithoutOrganizationInput
   documentChunks?: Prisma.DocumentChunkUncheckedCreateNestedManyWithoutOrganizationInput
@@ -3208,6 +3441,7 @@ export type OrganizationUpdateWithoutTagAssignmentsInput = {
   timelineEvents?: Prisma.TimelineEventUpdateManyWithoutOrganizationNestedInput
   tags?: Prisma.TagUpdateManyWithoutOrganizationNestedInput
   documents?: Prisma.DocumentUpdateManyWithoutOrganizationNestedInput
+  documentFolders?: Prisma.DocumentFolderUpdateManyWithoutOrganizationNestedInput
   documentRevisions?: Prisma.DocumentRevisionUpdateManyWithoutOrganizationNestedInput
   documentLinks?: Prisma.DocumentLinkUpdateManyWithoutOrganizationNestedInput
   documentChunks?: Prisma.DocumentChunkUpdateManyWithoutOrganizationNestedInput
@@ -3241,6 +3475,7 @@ export type OrganizationUncheckedUpdateWithoutTagAssignmentsInput = {
   timelineEvents?: Prisma.TimelineEventUncheckedUpdateManyWithoutOrganizationNestedInput
   tags?: Prisma.TagUncheckedUpdateManyWithoutOrganizationNestedInput
   documents?: Prisma.DocumentUncheckedUpdateManyWithoutOrganizationNestedInput
+  documentFolders?: Prisma.DocumentFolderUncheckedUpdateManyWithoutOrganizationNestedInput
   documentRevisions?: Prisma.DocumentRevisionUncheckedUpdateManyWithoutOrganizationNestedInput
   documentLinks?: Prisma.DocumentLinkUncheckedUpdateManyWithoutOrganizationNestedInput
   documentChunks?: Prisma.DocumentChunkUncheckedUpdateManyWithoutOrganizationNestedInput
@@ -3274,6 +3509,7 @@ export type OrganizationCreateWithoutWorkflowDefinitionsInput = {
   tags?: Prisma.TagCreateNestedManyWithoutOrganizationInput
   tagAssignments?: Prisma.TagAssignmentCreateNestedManyWithoutOrganizationInput
   documents?: Prisma.DocumentCreateNestedManyWithoutOrganizationInput
+  documentFolders?: Prisma.DocumentFolderCreateNestedManyWithoutOrganizationInput
   documentRevisions?: Prisma.DocumentRevisionCreateNestedManyWithoutOrganizationInput
   documentLinks?: Prisma.DocumentLinkCreateNestedManyWithoutOrganizationInput
   documentChunks?: Prisma.DocumentChunkCreateNestedManyWithoutOrganizationInput
@@ -3307,6 +3543,7 @@ export type OrganizationUncheckedCreateWithoutWorkflowDefinitionsInput = {
   tags?: Prisma.TagUncheckedCreateNestedManyWithoutOrganizationInput
   tagAssignments?: Prisma.TagAssignmentUncheckedCreateNestedManyWithoutOrganizationInput
   documents?: Prisma.DocumentUncheckedCreateNestedManyWithoutOrganizationInput
+  documentFolders?: Prisma.DocumentFolderUncheckedCreateNestedManyWithoutOrganizationInput
   documentRevisions?: Prisma.DocumentRevisionUncheckedCreateNestedManyWithoutOrganizationInput
   documentLinks?: Prisma.DocumentLinkUncheckedCreateNestedManyWithoutOrganizationInput
   documentChunks?: Prisma.DocumentChunkUncheckedCreateNestedManyWithoutOrganizationInput
@@ -3356,6 +3593,7 @@ export type OrganizationUpdateWithoutWorkflowDefinitionsInput = {
   tags?: Prisma.TagUpdateManyWithoutOrganizationNestedInput
   tagAssignments?: Prisma.TagAssignmentUpdateManyWithoutOrganizationNestedInput
   documents?: Prisma.DocumentUpdateManyWithoutOrganizationNestedInput
+  documentFolders?: Prisma.DocumentFolderUpdateManyWithoutOrganizationNestedInput
   documentRevisions?: Prisma.DocumentRevisionUpdateManyWithoutOrganizationNestedInput
   documentLinks?: Prisma.DocumentLinkUpdateManyWithoutOrganizationNestedInput
   documentChunks?: Prisma.DocumentChunkUpdateManyWithoutOrganizationNestedInput
@@ -3389,6 +3627,7 @@ export type OrganizationUncheckedUpdateWithoutWorkflowDefinitionsInput = {
   tags?: Prisma.TagUncheckedUpdateManyWithoutOrganizationNestedInput
   tagAssignments?: Prisma.TagAssignmentUncheckedUpdateManyWithoutOrganizationNestedInput
   documents?: Prisma.DocumentUncheckedUpdateManyWithoutOrganizationNestedInput
+  documentFolders?: Prisma.DocumentFolderUncheckedUpdateManyWithoutOrganizationNestedInput
   documentRevisions?: Prisma.DocumentRevisionUncheckedUpdateManyWithoutOrganizationNestedInput
   documentLinks?: Prisma.DocumentLinkUncheckedUpdateManyWithoutOrganizationNestedInput
   documentChunks?: Prisma.DocumentChunkUncheckedUpdateManyWithoutOrganizationNestedInput
@@ -3422,6 +3661,7 @@ export type OrganizationCreateWithoutWorkflowBindingsInput = {
   tags?: Prisma.TagCreateNestedManyWithoutOrganizationInput
   tagAssignments?: Prisma.TagAssignmentCreateNestedManyWithoutOrganizationInput
   documents?: Prisma.DocumentCreateNestedManyWithoutOrganizationInput
+  documentFolders?: Prisma.DocumentFolderCreateNestedManyWithoutOrganizationInput
   documentRevisions?: Prisma.DocumentRevisionCreateNestedManyWithoutOrganizationInput
   documentLinks?: Prisma.DocumentLinkCreateNestedManyWithoutOrganizationInput
   documentChunks?: Prisma.DocumentChunkCreateNestedManyWithoutOrganizationInput
@@ -3455,6 +3695,7 @@ export type OrganizationUncheckedCreateWithoutWorkflowBindingsInput = {
   tags?: Prisma.TagUncheckedCreateNestedManyWithoutOrganizationInput
   tagAssignments?: Prisma.TagAssignmentUncheckedCreateNestedManyWithoutOrganizationInput
   documents?: Prisma.DocumentUncheckedCreateNestedManyWithoutOrganizationInput
+  documentFolders?: Prisma.DocumentFolderUncheckedCreateNestedManyWithoutOrganizationInput
   documentRevisions?: Prisma.DocumentRevisionUncheckedCreateNestedManyWithoutOrganizationInput
   documentLinks?: Prisma.DocumentLinkUncheckedCreateNestedManyWithoutOrganizationInput
   documentChunks?: Prisma.DocumentChunkUncheckedCreateNestedManyWithoutOrganizationInput
@@ -3504,6 +3745,7 @@ export type OrganizationUpdateWithoutWorkflowBindingsInput = {
   tags?: Prisma.TagUpdateManyWithoutOrganizationNestedInput
   tagAssignments?: Prisma.TagAssignmentUpdateManyWithoutOrganizationNestedInput
   documents?: Prisma.DocumentUpdateManyWithoutOrganizationNestedInput
+  documentFolders?: Prisma.DocumentFolderUpdateManyWithoutOrganizationNestedInput
   documentRevisions?: Prisma.DocumentRevisionUpdateManyWithoutOrganizationNestedInput
   documentLinks?: Prisma.DocumentLinkUpdateManyWithoutOrganizationNestedInput
   documentChunks?: Prisma.DocumentChunkUpdateManyWithoutOrganizationNestedInput
@@ -3537,6 +3779,7 @@ export type OrganizationUncheckedUpdateWithoutWorkflowBindingsInput = {
   tags?: Prisma.TagUncheckedUpdateManyWithoutOrganizationNestedInput
   tagAssignments?: Prisma.TagAssignmentUncheckedUpdateManyWithoutOrganizationNestedInput
   documents?: Prisma.DocumentUncheckedUpdateManyWithoutOrganizationNestedInput
+  documentFolders?: Prisma.DocumentFolderUncheckedUpdateManyWithoutOrganizationNestedInput
   documentRevisions?: Prisma.DocumentRevisionUncheckedUpdateManyWithoutOrganizationNestedInput
   documentLinks?: Prisma.DocumentLinkUncheckedUpdateManyWithoutOrganizationNestedInput
   documentChunks?: Prisma.DocumentChunkUncheckedUpdateManyWithoutOrganizationNestedInput
@@ -3570,6 +3813,7 @@ export type OrganizationCreateWithoutObjectParticipantsInput = {
   tags?: Prisma.TagCreateNestedManyWithoutOrganizationInput
   tagAssignments?: Prisma.TagAssignmentCreateNestedManyWithoutOrganizationInput
   documents?: Prisma.DocumentCreateNestedManyWithoutOrganizationInput
+  documentFolders?: Prisma.DocumentFolderCreateNestedManyWithoutOrganizationInput
   documentRevisions?: Prisma.DocumentRevisionCreateNestedManyWithoutOrganizationInput
   documentLinks?: Prisma.DocumentLinkCreateNestedManyWithoutOrganizationInput
   documentChunks?: Prisma.DocumentChunkCreateNestedManyWithoutOrganizationInput
@@ -3603,6 +3847,7 @@ export type OrganizationUncheckedCreateWithoutObjectParticipantsInput = {
   tags?: Prisma.TagUncheckedCreateNestedManyWithoutOrganizationInput
   tagAssignments?: Prisma.TagAssignmentUncheckedCreateNestedManyWithoutOrganizationInput
   documents?: Prisma.DocumentUncheckedCreateNestedManyWithoutOrganizationInput
+  documentFolders?: Prisma.DocumentFolderUncheckedCreateNestedManyWithoutOrganizationInput
   documentRevisions?: Prisma.DocumentRevisionUncheckedCreateNestedManyWithoutOrganizationInput
   documentLinks?: Prisma.DocumentLinkUncheckedCreateNestedManyWithoutOrganizationInput
   documentChunks?: Prisma.DocumentChunkUncheckedCreateNestedManyWithoutOrganizationInput
@@ -3652,6 +3897,7 @@ export type OrganizationUpdateWithoutObjectParticipantsInput = {
   tags?: Prisma.TagUpdateManyWithoutOrganizationNestedInput
   tagAssignments?: Prisma.TagAssignmentUpdateManyWithoutOrganizationNestedInput
   documents?: Prisma.DocumentUpdateManyWithoutOrganizationNestedInput
+  documentFolders?: Prisma.DocumentFolderUpdateManyWithoutOrganizationNestedInput
   documentRevisions?: Prisma.DocumentRevisionUpdateManyWithoutOrganizationNestedInput
   documentLinks?: Prisma.DocumentLinkUpdateManyWithoutOrganizationNestedInput
   documentChunks?: Prisma.DocumentChunkUpdateManyWithoutOrganizationNestedInput
@@ -3685,6 +3931,7 @@ export type OrganizationUncheckedUpdateWithoutObjectParticipantsInput = {
   tags?: Prisma.TagUncheckedUpdateManyWithoutOrganizationNestedInput
   tagAssignments?: Prisma.TagAssignmentUncheckedUpdateManyWithoutOrganizationNestedInput
   documents?: Prisma.DocumentUncheckedUpdateManyWithoutOrganizationNestedInput
+  documentFolders?: Prisma.DocumentFolderUncheckedUpdateManyWithoutOrganizationNestedInput
   documentRevisions?: Prisma.DocumentRevisionUncheckedUpdateManyWithoutOrganizationNestedInput
   documentLinks?: Prisma.DocumentLinkUncheckedUpdateManyWithoutOrganizationNestedInput
   documentChunks?: Prisma.DocumentChunkUncheckedUpdateManyWithoutOrganizationNestedInput
@@ -3718,6 +3965,7 @@ export type OrganizationCreateWithoutCommentsInput = {
   tags?: Prisma.TagCreateNestedManyWithoutOrganizationInput
   tagAssignments?: Prisma.TagAssignmentCreateNestedManyWithoutOrganizationInput
   documents?: Prisma.DocumentCreateNestedManyWithoutOrganizationInput
+  documentFolders?: Prisma.DocumentFolderCreateNestedManyWithoutOrganizationInput
   documentRevisions?: Prisma.DocumentRevisionCreateNestedManyWithoutOrganizationInput
   documentLinks?: Prisma.DocumentLinkCreateNestedManyWithoutOrganizationInput
   documentChunks?: Prisma.DocumentChunkCreateNestedManyWithoutOrganizationInput
@@ -3751,6 +3999,7 @@ export type OrganizationUncheckedCreateWithoutCommentsInput = {
   tags?: Prisma.TagUncheckedCreateNestedManyWithoutOrganizationInput
   tagAssignments?: Prisma.TagAssignmentUncheckedCreateNestedManyWithoutOrganizationInput
   documents?: Prisma.DocumentUncheckedCreateNestedManyWithoutOrganizationInput
+  documentFolders?: Prisma.DocumentFolderUncheckedCreateNestedManyWithoutOrganizationInput
   documentRevisions?: Prisma.DocumentRevisionUncheckedCreateNestedManyWithoutOrganizationInput
   documentLinks?: Prisma.DocumentLinkUncheckedCreateNestedManyWithoutOrganizationInput
   documentChunks?: Prisma.DocumentChunkUncheckedCreateNestedManyWithoutOrganizationInput
@@ -3800,6 +4049,7 @@ export type OrganizationUpdateWithoutCommentsInput = {
   tags?: Prisma.TagUpdateManyWithoutOrganizationNestedInput
   tagAssignments?: Prisma.TagAssignmentUpdateManyWithoutOrganizationNestedInput
   documents?: Prisma.DocumentUpdateManyWithoutOrganizationNestedInput
+  documentFolders?: Prisma.DocumentFolderUpdateManyWithoutOrganizationNestedInput
   documentRevisions?: Prisma.DocumentRevisionUpdateManyWithoutOrganizationNestedInput
   documentLinks?: Prisma.DocumentLinkUpdateManyWithoutOrganizationNestedInput
   documentChunks?: Prisma.DocumentChunkUpdateManyWithoutOrganizationNestedInput
@@ -3833,6 +4083,7 @@ export type OrganizationUncheckedUpdateWithoutCommentsInput = {
   tags?: Prisma.TagUncheckedUpdateManyWithoutOrganizationNestedInput
   tagAssignments?: Prisma.TagAssignmentUncheckedUpdateManyWithoutOrganizationNestedInput
   documents?: Prisma.DocumentUncheckedUpdateManyWithoutOrganizationNestedInput
+  documentFolders?: Prisma.DocumentFolderUncheckedUpdateManyWithoutOrganizationNestedInput
   documentRevisions?: Prisma.DocumentRevisionUncheckedUpdateManyWithoutOrganizationNestedInput
   documentLinks?: Prisma.DocumentLinkUncheckedUpdateManyWithoutOrganizationNestedInput
   documentChunks?: Prisma.DocumentChunkUncheckedUpdateManyWithoutOrganizationNestedInput
@@ -3866,6 +4117,7 @@ export type OrganizationCreateWithoutTimelineEventsInput = {
   tags?: Prisma.TagCreateNestedManyWithoutOrganizationInput
   tagAssignments?: Prisma.TagAssignmentCreateNestedManyWithoutOrganizationInput
   documents?: Prisma.DocumentCreateNestedManyWithoutOrganizationInput
+  documentFolders?: Prisma.DocumentFolderCreateNestedManyWithoutOrganizationInput
   documentRevisions?: Prisma.DocumentRevisionCreateNestedManyWithoutOrganizationInput
   documentLinks?: Prisma.DocumentLinkCreateNestedManyWithoutOrganizationInput
   documentChunks?: Prisma.DocumentChunkCreateNestedManyWithoutOrganizationInput
@@ -3899,6 +4151,7 @@ export type OrganizationUncheckedCreateWithoutTimelineEventsInput = {
   tags?: Prisma.TagUncheckedCreateNestedManyWithoutOrganizationInput
   tagAssignments?: Prisma.TagAssignmentUncheckedCreateNestedManyWithoutOrganizationInput
   documents?: Prisma.DocumentUncheckedCreateNestedManyWithoutOrganizationInput
+  documentFolders?: Prisma.DocumentFolderUncheckedCreateNestedManyWithoutOrganizationInput
   documentRevisions?: Prisma.DocumentRevisionUncheckedCreateNestedManyWithoutOrganizationInput
   documentLinks?: Prisma.DocumentLinkUncheckedCreateNestedManyWithoutOrganizationInput
   documentChunks?: Prisma.DocumentChunkUncheckedCreateNestedManyWithoutOrganizationInput
@@ -3948,6 +4201,7 @@ export type OrganizationUpdateWithoutTimelineEventsInput = {
   tags?: Prisma.TagUpdateManyWithoutOrganizationNestedInput
   tagAssignments?: Prisma.TagAssignmentUpdateManyWithoutOrganizationNestedInput
   documents?: Prisma.DocumentUpdateManyWithoutOrganizationNestedInput
+  documentFolders?: Prisma.DocumentFolderUpdateManyWithoutOrganizationNestedInput
   documentRevisions?: Prisma.DocumentRevisionUpdateManyWithoutOrganizationNestedInput
   documentLinks?: Prisma.DocumentLinkUpdateManyWithoutOrganizationNestedInput
   documentChunks?: Prisma.DocumentChunkUpdateManyWithoutOrganizationNestedInput
@@ -3981,6 +4235,7 @@ export type OrganizationUncheckedUpdateWithoutTimelineEventsInput = {
   tags?: Prisma.TagUncheckedUpdateManyWithoutOrganizationNestedInput
   tagAssignments?: Prisma.TagAssignmentUncheckedUpdateManyWithoutOrganizationNestedInput
   documents?: Prisma.DocumentUncheckedUpdateManyWithoutOrganizationNestedInput
+  documentFolders?: Prisma.DocumentFolderUncheckedUpdateManyWithoutOrganizationNestedInput
   documentRevisions?: Prisma.DocumentRevisionUncheckedUpdateManyWithoutOrganizationNestedInput
   documentLinks?: Prisma.DocumentLinkUncheckedUpdateManyWithoutOrganizationNestedInput
   documentChunks?: Prisma.DocumentChunkUncheckedUpdateManyWithoutOrganizationNestedInput
@@ -4014,6 +4269,7 @@ export type OrganizationCreateWithoutAuditLogsInput = {
   tags?: Prisma.TagCreateNestedManyWithoutOrganizationInput
   tagAssignments?: Prisma.TagAssignmentCreateNestedManyWithoutOrganizationInput
   documents?: Prisma.DocumentCreateNestedManyWithoutOrganizationInput
+  documentFolders?: Prisma.DocumentFolderCreateNestedManyWithoutOrganizationInput
   documentRevisions?: Prisma.DocumentRevisionCreateNestedManyWithoutOrganizationInput
   documentLinks?: Prisma.DocumentLinkCreateNestedManyWithoutOrganizationInput
   documentChunks?: Prisma.DocumentChunkCreateNestedManyWithoutOrganizationInput
@@ -4047,6 +4303,7 @@ export type OrganizationUncheckedCreateWithoutAuditLogsInput = {
   tags?: Prisma.TagUncheckedCreateNestedManyWithoutOrganizationInput
   tagAssignments?: Prisma.TagAssignmentUncheckedCreateNestedManyWithoutOrganizationInput
   documents?: Prisma.DocumentUncheckedCreateNestedManyWithoutOrganizationInput
+  documentFolders?: Prisma.DocumentFolderUncheckedCreateNestedManyWithoutOrganizationInput
   documentRevisions?: Prisma.DocumentRevisionUncheckedCreateNestedManyWithoutOrganizationInput
   documentLinks?: Prisma.DocumentLinkUncheckedCreateNestedManyWithoutOrganizationInput
   documentChunks?: Prisma.DocumentChunkUncheckedCreateNestedManyWithoutOrganizationInput
@@ -4096,6 +4353,7 @@ export type OrganizationUpdateWithoutAuditLogsInput = {
   tags?: Prisma.TagUpdateManyWithoutOrganizationNestedInput
   tagAssignments?: Prisma.TagAssignmentUpdateManyWithoutOrganizationNestedInput
   documents?: Prisma.DocumentUpdateManyWithoutOrganizationNestedInput
+  documentFolders?: Prisma.DocumentFolderUpdateManyWithoutOrganizationNestedInput
   documentRevisions?: Prisma.DocumentRevisionUpdateManyWithoutOrganizationNestedInput
   documentLinks?: Prisma.DocumentLinkUpdateManyWithoutOrganizationNestedInput
   documentChunks?: Prisma.DocumentChunkUpdateManyWithoutOrganizationNestedInput
@@ -4129,6 +4387,7 @@ export type OrganizationUncheckedUpdateWithoutAuditLogsInput = {
   tags?: Prisma.TagUncheckedUpdateManyWithoutOrganizationNestedInput
   tagAssignments?: Prisma.TagAssignmentUncheckedUpdateManyWithoutOrganizationNestedInput
   documents?: Prisma.DocumentUncheckedUpdateManyWithoutOrganizationNestedInput
+  documentFolders?: Prisma.DocumentFolderUncheckedUpdateManyWithoutOrganizationNestedInput
   documentRevisions?: Prisma.DocumentRevisionUncheckedUpdateManyWithoutOrganizationNestedInput
   documentLinks?: Prisma.DocumentLinkUncheckedUpdateManyWithoutOrganizationNestedInput
   documentChunks?: Prisma.DocumentChunkUncheckedUpdateManyWithoutOrganizationNestedInput
@@ -4174,6 +4433,7 @@ export type OrganizationUpdateWithoutOwnerInput = {
   tags?: Prisma.TagUpdateManyWithoutOrganizationNestedInput
   tagAssignments?: Prisma.TagAssignmentUpdateManyWithoutOrganizationNestedInput
   documents?: Prisma.DocumentUpdateManyWithoutOrganizationNestedInput
+  documentFolders?: Prisma.DocumentFolderUpdateManyWithoutOrganizationNestedInput
   documentRevisions?: Prisma.DocumentRevisionUpdateManyWithoutOrganizationNestedInput
   documentLinks?: Prisma.DocumentLinkUpdateManyWithoutOrganizationNestedInput
   documentChunks?: Prisma.DocumentChunkUpdateManyWithoutOrganizationNestedInput
@@ -4207,6 +4467,7 @@ export type OrganizationUncheckedUpdateWithoutOwnerInput = {
   tags?: Prisma.TagUncheckedUpdateManyWithoutOrganizationNestedInput
   tagAssignments?: Prisma.TagAssignmentUncheckedUpdateManyWithoutOrganizationNestedInput
   documents?: Prisma.DocumentUncheckedUpdateManyWithoutOrganizationNestedInput
+  documentFolders?: Prisma.DocumentFolderUncheckedUpdateManyWithoutOrganizationNestedInput
   documentRevisions?: Prisma.DocumentRevisionUncheckedUpdateManyWithoutOrganizationNestedInput
   documentLinks?: Prisma.DocumentLinkUncheckedUpdateManyWithoutOrganizationNestedInput
   documentChunks?: Prisma.DocumentChunkUncheckedUpdateManyWithoutOrganizationNestedInput
@@ -4248,6 +4509,7 @@ export type OrganizationCountOutputType = {
   tags: number
   tagAssignments: number
   documents: number
+  documentFolders: number
   documentRevisions: number
   documentLinks: number
   documentChunks: number
@@ -4272,6 +4534,7 @@ export type OrganizationCountOutputTypeSelect<ExtArgs extends runtime.Types.Exte
   tags?: boolean | OrganizationCountOutputTypeCountTagsArgs
   tagAssignments?: boolean | OrganizationCountOutputTypeCountTagAssignmentsArgs
   documents?: boolean | OrganizationCountOutputTypeCountDocumentsArgs
+  documentFolders?: boolean | OrganizationCountOutputTypeCountDocumentFoldersArgs
   documentRevisions?: boolean | OrganizationCountOutputTypeCountDocumentRevisionsArgs
   documentLinks?: boolean | OrganizationCountOutputTypeCountDocumentLinksArgs
   documentChunks?: boolean | OrganizationCountOutputTypeCountDocumentChunksArgs
@@ -4410,6 +4673,13 @@ export type OrganizationCountOutputTypeCountDocumentsArgs<ExtArgs extends runtim
 /**
  * OrganizationCountOutputType without action
  */
+export type OrganizationCountOutputTypeCountDocumentFoldersArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  where?: Prisma.DocumentFolderWhereInput
+}
+
+/**
+ * OrganizationCountOutputType without action
+ */
 export type OrganizationCountOutputTypeCountDocumentRevisionsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   where?: Prisma.DocumentRevisionWhereInput
 }
@@ -4465,6 +4735,7 @@ export type OrganizationSelect<ExtArgs extends runtime.Types.Extensions.Internal
   tags?: boolean | Prisma.Organization$tagsArgs<ExtArgs>
   tagAssignments?: boolean | Prisma.Organization$tagAssignmentsArgs<ExtArgs>
   documents?: boolean | Prisma.Organization$documentsArgs<ExtArgs>
+  documentFolders?: boolean | Prisma.Organization$documentFoldersArgs<ExtArgs>
   documentRevisions?: boolean | Prisma.Organization$documentRevisionsArgs<ExtArgs>
   documentLinks?: boolean | Prisma.Organization$documentLinksArgs<ExtArgs>
   documentChunks?: boolean | Prisma.Organization$documentChunksArgs<ExtArgs>
@@ -4533,6 +4804,7 @@ export type OrganizationInclude<ExtArgs extends runtime.Types.Extensions.Interna
   tags?: boolean | Prisma.Organization$tagsArgs<ExtArgs>
   tagAssignments?: boolean | Prisma.Organization$tagAssignmentsArgs<ExtArgs>
   documents?: boolean | Prisma.Organization$documentsArgs<ExtArgs>
+  documentFolders?: boolean | Prisma.Organization$documentFoldersArgs<ExtArgs>
   documentRevisions?: boolean | Prisma.Organization$documentRevisionsArgs<ExtArgs>
   documentLinks?: boolean | Prisma.Organization$documentLinksArgs<ExtArgs>
   documentChunks?: boolean | Prisma.Organization$documentChunksArgs<ExtArgs>
@@ -4567,6 +4839,7 @@ export type $OrganizationPayload<ExtArgs extends runtime.Types.Extensions.Intern
     tags: Prisma.$TagPayload<ExtArgs>[]
     tagAssignments: Prisma.$TagAssignmentPayload<ExtArgs>[]
     documents: Prisma.$DocumentPayload<ExtArgs>[]
+    documentFolders: Prisma.$DocumentFolderPayload<ExtArgs>[]
     documentRevisions: Prisma.$DocumentRevisionPayload<ExtArgs>[]
     documentLinks: Prisma.$DocumentLinkPayload<ExtArgs>[]
     documentChunks: Prisma.$DocumentChunkPayload<ExtArgs>[]
@@ -4995,6 +5268,7 @@ export interface Prisma__OrganizationClient<T, Null = never, ExtArgs extends run
   tags<T extends Prisma.Organization$tagsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Organization$tagsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$TagPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   tagAssignments<T extends Prisma.Organization$tagAssignmentsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Organization$tagAssignmentsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$TagAssignmentPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   documents<T extends Prisma.Organization$documentsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Organization$documentsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$DocumentPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
+  documentFolders<T extends Prisma.Organization$documentFoldersArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Organization$documentFoldersArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$DocumentFolderPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   documentRevisions<T extends Prisma.Organization$documentRevisionsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Organization$documentRevisionsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$DocumentRevisionPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   documentLinks<T extends Prisma.Organization$documentLinksArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Organization$documentLinksArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$DocumentLinkPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   documentChunks<T extends Prisma.Organization$documentChunksArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Organization$documentChunksArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$DocumentChunkPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
@@ -5863,6 +6137,30 @@ export type Organization$documentsArgs<ExtArgs extends runtime.Types.Extensions.
   take?: number
   skip?: number
   distinct?: Prisma.DocumentScalarFieldEnum | Prisma.DocumentScalarFieldEnum[]
+}
+
+/**
+ * Organization.documentFolders
+ */
+export type Organization$documentFoldersArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  /**
+   * Select specific fields to fetch from the DocumentFolder
+   */
+  select?: Prisma.DocumentFolderSelect<ExtArgs> | null
+  /**
+   * Omit specific fields from the DocumentFolder
+   */
+  omit?: Prisma.DocumentFolderOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.DocumentFolderInclude<ExtArgs> | null
+  where?: Prisma.DocumentFolderWhereInput
+  orderBy?: Prisma.DocumentFolderOrderByWithRelationInput | Prisma.DocumentFolderOrderByWithRelationInput[]
+  cursor?: Prisma.DocumentFolderWhereUniqueInput
+  take?: number
+  skip?: number
+  distinct?: Prisma.DocumentFolderScalarFieldEnum | Prisma.DocumentFolderScalarFieldEnum[]
 }
 
 /**

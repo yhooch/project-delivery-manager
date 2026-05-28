@@ -1,11 +1,14 @@
 "use client";
 
+import { useDraggable } from "@dnd-kit/core";
 import {
   AlignJustify,
   Archive,
   Bot,
   FilePlus2,
   FileText,
+  GripVertical,
+  ListChecks,
   List,
   Loader2,
   Search,
@@ -13,15 +16,17 @@ import {
   User,
 } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
+import { useSearchParams } from "next/navigation";
 import {
   useCallback,
   useEffect,
+  useMemo,
   useState,
   type ChangeEvent,
   type FormEvent,
 } from "react";
 
-import { Link } from "../../i18n/routing";
+import { Link, useRouter } from "../../i18n/routing";
 import { getApiErrorMessageKey } from "../../lib/api-error-messages";
 import type {
   DocumentFilterKey,
@@ -50,6 +55,14 @@ import {
 import { useRealtimeInvalidation } from "../../lib/realtime";
 import { cn } from "../../lib/utils";
 import { useDocumentCreate } from "./document-create-context";
+import {
+  DOCUMENT_LIST_REFRESH_EVENT,
+  createDocumentDirectoryHref,
+  getDocumentDirectorySelection,
+  getDocumentFilterForDirectoryView,
+  type DocumentDragDataPayload,
+  type DocumentDirectoryView,
+} from "./document-directory-model";
 import { useSession } from "../providers/session-provider";
 import { TagBadgeList } from "../tag";
 import { Badge } from "../ui/badge";
@@ -69,6 +82,7 @@ import { Textarea } from "../ui/textarea";
 const PAGE_SIZE = 50;
 const DOCUMENTS_REALTIME_KEYS = ["document-list", "resource-documents"] as const;
 const DENSITY_STORAGE_KEY = "documents.list.density";
+export const DOCUMENTS_LAST_LIST_HREF_STORAGE_KEY = "documents.lastListHref";
 
 const SORT_OPTIONS = {
   recentEdited: { dateField: "lastEditedAt", sortBy: "lastEditedAt", sortOrder: "desc" },
@@ -95,21 +109,45 @@ export function DocumentsPage() {
   const t = useTranslations("documents");
   const tRoot = useTranslations();
   const locale = useLocale();
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const { currentOrganization, currentSpace, session, status } = useSession();
   const organizationId =
     currentOrganization?.id ?? session?.defaultOrganizationId;
   const spaceId = currentSpace?.id ?? session?.defaultSpaceId;
+  const searchParamsString = searchParams.toString();
   const [items, setItems] = useState<DocumentSummary[]>([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
   const [query, setQuery] = useState("");
   const [debouncedQuery, setDebouncedQuery] = useState("");
-  const [filter, setFilter] = useState<DocumentFilterKey>("all");
   const [isLoading, setIsLoading] = useState(false);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [errorKey, setErrorKey] = useState<string | null>(null);
   const [sort, setSort] = useState<DocumentSortKey>("recentEdited");
   const [density, setDensity] = useState<DocumentDensity>("comfortable");
+  const [isSelectionMode, setIsSelectionMode] = useState(false);
+  const [selectedDocumentIds, setSelectedDocumentIds] = useState<Set<string>>(
+    () => new Set(),
+  );
+  const directorySelection = useMemo(
+    () =>
+      getDocumentDirectorySelection(
+        new URLSearchParams(searchParamsString),
+      ),
+    [searchParamsString],
+  );
+  const currentListHref = useMemo(
+    () =>
+      searchParamsString ? `/documents?${searchParamsString}` : "/documents",
+    [searchParamsString],
+  );
+  const filter = getDocumentFilterForDirectoryView(directorySelection.view);
+  const selectedDocuments = useMemo(
+    () => items.filter((item) => selectedDocumentIds.has(item.id)),
+    [items, selectedDocumentIds],
+  );
+  const { openImport, openPaste } = useDocumentCreate();
 
   useEffect(() => {
     const stored = window.localStorage.getItem(DENSITY_STORAGE_KEY);
@@ -121,6 +159,13 @@ export function DocumentsPage() {
   useEffect(() => {
     window.localStorage.setItem(DENSITY_STORAGE_KEY, density);
   }, [density]);
+
+  useEffect(() => {
+    window.sessionStorage.setItem(
+      DOCUMENTS_LAST_LIST_HREF_STORAGE_KEY,
+      currentListHref,
+    );
+  }, [currentListHref]);
 
   const loadDocuments = useCallback(async (options?: { realtime?: boolean }) => {
     if (!spaceId) {
@@ -137,6 +182,8 @@ export function DocumentsPage() {
       const result = await listDocuments({
         currentUserId: session?.user?.id,
         filter,
+        folderId: directorySelection.folderId,
+        includeDescendants: directorySelection.includeDescendants,
         organizationId,
         page: 1,
         pageSize: PAGE_SIZE,
@@ -144,6 +191,7 @@ export function DocumentsPage() {
         sortBy: SORT_OPTIONS[sort].sortBy,
         sortOrder: SORT_OPTIONS[sort].sortOrder,
         spaceId,
+        unfiled: directorySelection.view === "unfiled",
       });
       setItems(result.items);
       setTotal(result.total);
@@ -159,7 +207,17 @@ export function DocumentsPage() {
         setIsLoading(false);
       }
     }
-  }, [filter, organizationId, debouncedQuery, session?.user?.id, sort, spaceId]);
+  }, [
+    debouncedQuery,
+    directorySelection.folderId,
+    directorySelection.includeDescendants,
+    directorySelection.view,
+    filter,
+    organizationId,
+    session?.user?.id,
+    sort,
+    spaceId,
+  ]);
 
   const loadMore = useCallback(async () => {
     if (!spaceId || isLoadingMore) {
@@ -172,6 +230,8 @@ export function DocumentsPage() {
       const result = await listDocuments({
         currentUserId: session?.user?.id,
         filter,
+        folderId: directorySelection.folderId,
+        includeDescendants: directorySelection.includeDescendants,
         organizationId,
         page: nextPage,
         pageSize: PAGE_SIZE,
@@ -179,6 +239,7 @@ export function DocumentsPage() {
         sortBy: SORT_OPTIONS[sort].sortBy,
         sortOrder: SORT_OPTIONS[sort].sortOrder,
         spaceId,
+        unfiled: directorySelection.view === "unfiled",
       });
       setItems((current) => [...current, ...result.items]);
       setTotal(result.total);
@@ -190,6 +251,9 @@ export function DocumentsPage() {
     }
   }, [
     debouncedQuery,
+    directorySelection.folderId,
+    directorySelection.includeDescendants,
+    directorySelection.view,
     filter,
     isLoadingMore,
     organizationId,
@@ -220,6 +284,67 @@ export function DocumentsPage() {
     void loadDocuments({ realtime: true });
   });
 
+  useEffect(() => {
+    const handleDragRefresh = (event: Event) => {
+      const detail = (event as CustomEvent<{ clearDocumentSelection?: boolean }>)
+        .detail;
+      if (detail?.clearDocumentSelection) {
+        setSelectedDocumentIds(new Set());
+      }
+      if (status !== "authenticated") {
+        return;
+      }
+      void loadDocuments({ realtime: true });
+    };
+
+    window.addEventListener(DOCUMENT_LIST_REFRESH_EVENT, handleDragRefresh);
+    return () =>
+      window.removeEventListener(DOCUMENT_LIST_REFRESH_EVENT, handleDragRefresh);
+  }, [loadDocuments, status]);
+
+  useEffect(() => {
+    const visibleIds = new Set(items.map((item) => item.id));
+    setSelectedDocumentIds((current) => {
+      const next = new Set(
+        [...current].filter((documentId) => visibleIds.has(documentId)),
+      );
+      return next.size === current.size ? current : next;
+    });
+  }, [items]);
+
+  const updateFilter = useCallback(
+    (key: DocumentFilterKey) => {
+      const view = getDirectoryViewForFilter(key);
+      router.replace(createDocumentDirectoryHref({ view }) as never, {
+        scroll: false,
+      });
+    },
+    [router],
+  );
+
+  const toggleDocumentSelection = useCallback((documentId: string) => {
+    setSelectedDocumentIds((current) => {
+      const next = new Set(current);
+      if (next.has(documentId)) {
+        next.delete(documentId);
+      } else {
+        next.add(documentId);
+      }
+      return next;
+    });
+  }, []);
+
+  const clearDocumentSelection = useCallback(() => {
+    setSelectedDocumentIds(new Set());
+  }, []);
+
+  const toggleSelectionMode = useCallback(() => {
+    if (isSelectionMode) {
+      setSelectedDocumentIds(new Set());
+    }
+    setIsSelectionMode(!isSelectionMode);
+  }, [isSelectionMode]);
+
   const showEmpty = !isLoading && !errorKey && items.length === 0;
 
   return (
@@ -231,6 +356,33 @@ export function DocumentsPage() {
         <p className="max-w-2xl text-sm text-muted-foreground">
           {t("home.subtitle")}
         </p>
+
+        <div
+          className="flex flex-wrap items-center gap-2"
+          data-testid="documents-create-actions"
+        >
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            aria-label={t("home.paste")}
+            onClick={openPaste}
+            data-testid="documents-paste-button"
+          >
+            <FilePlus2 className="h-4 w-4" aria-hidden="true" />
+            {t("home.paste")}
+          </Button>
+          <Button
+            type="button"
+            size="sm"
+            aria-label={t("home.import")}
+            onClick={openImport}
+            data-testid="documents-import-button"
+          >
+            <Upload className="h-4 w-4" aria-hidden="true" />
+            {t("home.import")}
+          </Button>
+        </div>
 
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
           <label className="relative min-w-0 flex-1">
@@ -261,6 +413,21 @@ export function DocumentsPage() {
                 </option>
               ))}
             </SelectMenu>
+            <Button
+              type="button"
+              size="default"
+              variant={isSelectionMode ? "secondary" : "outline"}
+              aria-pressed={isSelectionMode}
+              aria-label={
+                isSelectionMode ? t("selection.done") : t("selection.select")
+              }
+              title={isSelectionMode ? t("selection.done") : t("selection.select")}
+              data-testid="documents-selection-mode-toggle"
+              onClick={toggleSelectionMode}
+            >
+              <ListChecks className="h-4 w-4" aria-hidden="true" />
+              {isSelectionMode ? t("selection.done") : t("selection.select")}
+            </Button>
             <div
               className="flex h-9 shrink-0 items-center rounded-md border border-border p-0.5"
               role="group"
@@ -308,7 +475,7 @@ export function DocumentsPage() {
                   : "border-border bg-background text-muted-foreground hover:bg-muted hover:text-foreground",
               )}
               data-testid={`documents-filter-${key.replace(/[A-Z]/gu, (m) => `-${m.toLowerCase()}`)}`}
-              onClick={() => setFilter(key)}
+              onClick={() => updateFilter(key)}
             >
               {t(`filters.${key}`)}
             </button>
@@ -335,12 +502,33 @@ export function DocumentsPage() {
 
       {showEmpty ? <DocumentsEmptyState /> : null}
 
+      {selectedDocumentIds.size > 0 ? (
+        <div
+          className="flex min-h-9 items-center justify-between gap-2 rounded-md border border-border bg-muted/30 px-3 text-xs text-muted-foreground"
+          data-testid="documents-selection-toolbar"
+        >
+          <span>{t("selection.count", { count: selectedDocumentIds.size })}</span>
+          <Button
+            type="button"
+            size="sm"
+            variant="ghost"
+            onClick={clearDocumentSelection}
+          >
+            {t("selection.clear")}
+          </Button>
+        </div>
+      ) : null}
+
       {!isLoading && items.length > 0 ? (
         <DocumentList
           dateField={SORT_OPTIONS[sort].dateField}
           density={density}
           items={items}
           locale={locale}
+          selectionMode={isSelectionMode}
+          selectedDocumentIds={selectedDocumentIds}
+          selectedDocuments={selectedDocuments}
+          onToggleDocumentSelection={toggleDocumentSelection}
         />
       ) : null}
 
@@ -362,6 +550,24 @@ export function DocumentsPage() {
       ) : null}
     </div>
   );
+}
+
+function getDirectoryViewForFilter(
+  filter: DocumentFilterKey,
+): DocumentDirectoryView {
+  if (filter === "createdByMe") {
+    return "createdByMe";
+  }
+  if (filter === "archived") {
+    return "archived";
+  }
+  if (filter === "mcpCreated") {
+    return "mcpCreated";
+  }
+  if (filter === "recentMcpEdited") {
+    return "recentMcpEdited";
+  }
+  return "all";
 }
 
 type DocumentGroupKey = "today" | "thisWeek" | "thisMonth" | "earlier";
@@ -412,11 +618,19 @@ function DocumentList({
   density,
   items,
   locale,
+  onToggleDocumentSelection,
+  selectionMode,
+  selectedDocumentIds,
+  selectedDocuments,
 }: {
   dateField: "lastEditedAt" | "createdAt" | null;
   density: DocumentDensity;
   items: DocumentSummary[];
   locale: string;
+  onToggleDocumentSelection: (documentId: string) => void;
+  selectionMode: boolean;
+  selectedDocumentIds: Set<string>;
+  selectedDocuments: DocumentSummary[];
 }) {
   const t = useTranslations("documents");
   const groups = groupDocumentsByDate(items, dateField);
@@ -444,6 +658,10 @@ function DocumentList({
                   density={density}
                   document={document}
                   locale={locale}
+                  onToggleSelection={onToggleDocumentSelection}
+                  selectionMode={selectionMode}
+                  selected={selectedDocumentIds.has(document.id)}
+                  selectedDocuments={selectedDocuments}
                 />
               ))}
             </div>
@@ -458,58 +676,119 @@ function DocumentRow({
   density,
   document,
   locale,
+  onToggleSelection,
+  selectionMode,
+  selected,
+  selectedDocuments,
 }: {
   density: DocumentDensity;
   document: DocumentSummary;
   locale: string;
+  onToggleSelection: (documentId: string) => void;
+  selectionMode: boolean;
+  selected: boolean;
+  selectedDocuments: DocumentSummary[];
 }) {
   const t = useTranslations("documents");
   const isAi =
     document.sourceType === "MCP_CREATED" || document.lastEditedVia === "MCP_CLIENT";
   const SourceIcon = isAi ? Bot : User;
   const revisionLabel = t("list.revision", { revision: document.revision });
+  const dragDocuments =
+    selectionMode && selected && selectedDocuments.length > 0
+      ? selectedDocuments
+      : [document];
+  const draggable = useDraggable({
+    id: `document:${document.id}`,
+    data: {
+      documents: dragDocuments.map((item) => ({
+        folderId: item.folderId ?? null,
+        id: item.id,
+        revision: item.revision,
+        title: item.title,
+      })),
+      type: "document",
+    } satisfies DocumentDragDataPayload,
+  });
 
   return (
-    <Link
-      href={`/documents/${document.id}`}
+    <div
+      ref={draggable.setNodeRef}
       className={cn(
-        "block px-4 transition-colors hover:bg-muted/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+        "group flex min-w-0 items-start gap-2 px-4 transition-colors hover:bg-muted/40",
         density === "compact" ? "py-2" : "py-3",
+        draggable.isDragging && "opacity-50",
       )}
       data-testid="documents-list-item"
     >
-      <div className="flex min-w-0 items-center gap-2">
-        <SourceIcon
-          className="h-4 w-4 shrink-0 text-muted-foreground"
-          aria-hidden="true"
+      {selectionMode ? (
+        <input
+          type="checkbox"
+          aria-label={t("list.selectDocument", {
+            title: document.title || t("untitled"),
+          })}
+          checked={selected}
+          className="mt-1 h-4 w-4 shrink-0 rounded border-border text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          data-testid="documents-list-select"
+          onChange={() => onToggleSelection(document.id)}
         />
-        <span className="truncate text-sm font-semibold text-foreground">
-          {document.title || t("untitled")}
-        </span>
-        {document.status === "ARCHIVED" ? (
-          <Badge className="shrink-0" variant="default">
-            <Archive className="h-3 w-3" aria-hidden="true" />
-            {t("status.ARCHIVED")}
-          </Badge>
-        ) : null}
-        <span
-          className="ml-auto shrink-0 text-[11px] text-muted-foreground"
-          title={revisionLabel}
-        >
-          {revisionLabel}
-        </span>
-      </div>
-      <div
-        className={cn(
-          "flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground",
-          density === "compact" ? "mt-0.5" : "mt-1",
-        )}
+      ) : null}
+      <Button
+        aria-label={
+          selectionMode && selected && selectedDocuments.length > 1
+            ? t("list.dragSelected", { count: selectedDocuments.length })
+            : t("list.dragDocument", { title: document.title || t("untitled") })
+        }
+        className="mt-0.5 h-7 w-6 shrink-0 cursor-grab text-muted-foreground opacity-0 active:cursor-grabbing group-focus-within:opacity-100 group-hover:opacity-100"
+        data-testid="documents-list-drag-handle"
+        size="icon-sm"
+        type="button"
+        variant="ghost"
+        ref={draggable.setActivatorNodeRef}
+        style={{ touchAction: "none" }}
+        {...draggable.attributes}
+        {...draggable.listeners}
       >
-        <span>{formatDocumentCreatedMeta(document, locale, t)}</span>
-        <DocumentRowLinks links={document.links ?? []} />
-        <TagBadgeList tags={document.tags ?? []} />
-      </div>
-    </Link>
+        <GripVertical className="h-4 w-4" aria-hidden="true" />
+      </Button>
+      <Link
+        href={`/documents/${document.id}`}
+        className="min-w-0 flex-1 rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        data-testid="documents-list-item-link"
+      >
+        <div className="flex min-w-0 items-center gap-2">
+          <SourceIcon
+            className="h-4 w-4 shrink-0 text-muted-foreground"
+            aria-hidden="true"
+          />
+          <span className="truncate text-sm font-semibold text-foreground">
+            {document.title || t("untitled")}
+          </span>
+          {document.status === "ARCHIVED" ? (
+            <Badge className="shrink-0" variant="default">
+              <Archive className="h-3 w-3" aria-hidden="true" />
+              {t("status.ARCHIVED")}
+            </Badge>
+          ) : null}
+          <span
+            className="ml-auto shrink-0 text-[11px] text-muted-foreground"
+            title={revisionLabel}
+          >
+            {revisionLabel}
+          </span>
+        </div>
+        <div
+          className={cn(
+            "flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground",
+            density === "compact" ? "mt-0.5" : "mt-1",
+          )}
+        >
+          <span>{formatDocumentCreatedMeta(document, locale, t)}</span>
+          <DocumentRowLinks links={document.links ?? []} />
+          <TagBadgeList tags={document.tags ?? []} />
+        </div>
+      </Link>
+    </div>
   );
 }
 
@@ -669,7 +948,6 @@ function getMcpClientDisplayName(
 
 function DocumentsEmptyState() {
   const t = useTranslations("documents");
-  const { openImport, openPaste } = useDocumentCreate();
   return (
     <section
       className="flex min-h-80 flex-col items-center justify-center rounded-md border border-dashed border-border bg-card px-5 py-10 text-center"
@@ -682,27 +960,19 @@ function DocumentsEmptyState() {
       <p className="mt-2 max-w-lg text-sm text-muted-foreground">
         {t("empty.description")}
       </p>
-      <div className="mt-5 flex flex-wrap justify-center gap-2">
-        <Button type="button" onClick={openImport} data-testid="documents-empty-import-button">
-          <Upload className="h-4 w-4" aria-hidden="true" />
-          {t("home.import")}
-        </Button>
-        <Button type="button" variant="outline" onClick={openPaste} data-testid="documents-empty-paste-button">
-          <FilePlus2 className="h-4 w-4" aria-hidden="true" />
-          {t("home.paste")}
-        </Button>
-      </div>
     </section>
   );
 }
 
 function DocumentImportDialog({
+  folderId,
   onCreated,
   onOpenChange,
   open,
   organizationId,
   spaceId,
 }: {
+  folderId?: string | null;
   onCreated: (documentId: string) => void;
   onOpenChange: (open: boolean) => void;
   open: boolean;
@@ -730,8 +1000,14 @@ function DocumentImportDialog({
       const kind = getImportKind(file);
       const document =
         kind === "docx"
-          ? await importDocxDocument({ organizationId, spaceId }, { file, title })
-          : await importMarkdownDocument({ organizationId, spaceId }, { file, title });
+          ? await importDocxDocument(
+              { organizationId, spaceId },
+              { file, folderId, title },
+            )
+          : await importMarkdownDocument(
+              { organizationId, spaceId },
+              { file, folderId, title },
+            );
       onOpenChange(false);
       onCreated(document.id);
     } catch (error) {
@@ -792,12 +1068,14 @@ function DocumentImportDialog({
 }
 
 function DocumentPasteDialog({
+  folderId,
   onCreated,
   onOpenChange,
   open,
   organizationId,
   spaceId,
 }: {
+  folderId?: string | null;
   onCreated: (documentId: string) => void;
   onOpenChange: (open: boolean) => void;
   open: boolean;
@@ -825,6 +1103,7 @@ function DocumentPasteDialog({
         { organizationId, spaceId },
         {
           contentMarkdown: form.contentMarkdown,
+          folderId,
           sourceType: form.sourceType,
           title: normalizeDocumentTitle(form.title, form.contentMarkdown),
         },

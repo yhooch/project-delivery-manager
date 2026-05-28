@@ -1,5 +1,9 @@
 import { Inject, Injectable } from "@nestjs/common";
-import type { DocumentLink, WorkItemType } from "@project-delivery/shared";
+import type {
+  DocumentFolderPathItem,
+  DocumentLink,
+  WorkItemType,
+} from "@project-delivery/shared";
 import { ulid } from "ulid";
 
 import { Prisma } from "../../generated/prisma/client";
@@ -22,7 +26,10 @@ import type { DocumentRepository } from "./document.repository";
 import type {
   CreateDocumentInput,
   DocumentListInput,
+  DocumentBatchMutationResult,
   DocumentMutationResult,
+  MoveDocumentsToFolderInput,
+  MoveDocumentToFolderInput,
   ReplaceDocumentLinksInput,
   UpdateDocumentContentInput,
   UpdateDocumentMetadataInput,
@@ -65,6 +72,7 @@ export class PrismaDocumentRepository implements DocumentRepository {
           id: input.id,
           organizationId: input.organizationId,
           spaceId: input.spaceId,
+          folderId: input.folderId,
           title: input.title,
           contentMarkdown: input.contentMarkdown,
           contentText: input.contentText,
@@ -221,7 +229,7 @@ export class PrismaDocumentRepository implements DocumentRepository {
   }
 
   private async loadDocumentContext(document: PrismaDocumentRecord) {
-    const [links, chunks, tagsByDocumentId, actorContextByDocumentId] =
+    const [links, chunks, tagsByDocumentId, actorContextByDocumentId, folderPaths] =
       await Promise.all([
         this.prisma.client.documentLink.findMany({
           orderBy: {
@@ -253,6 +261,7 @@ export class PrismaDocumentRepository implements DocumentRepository {
           targetType: "DOCUMENT",
         }),
         this.loadDocumentActorContexts([document]),
+        this.loadDocumentFolderPaths([document]),
       ]);
     const hydratedLinks = await this.hydrateLinks(
       links,
@@ -264,8 +273,51 @@ export class PrismaDocumentRepository implements DocumentRepository {
       chunks,
       links: hydratedLinks,
       tags: tagsByDocumentId.get(document.id) ?? [],
+      folderPath: folderPaths.get(document.id),
       ...actorContextByDocumentId.get(document.id),
     };
+  }
+
+  private async hydrateDocuments(documents: PrismaDocumentRecord[]) {
+    if (documents.length === 0) {
+      return [];
+    }
+
+    const first = documents[0];
+    if (!first) {
+      return [];
+    }
+
+    const targetIds = documents.map((document) => document.id);
+    const [
+      tagsByDocumentId,
+      linksByDocumentId,
+      actorContextByDocumentId,
+      folderPathsByDocumentId,
+    ] = await Promise.all([
+      listTagsByTargets(this.prisma.client, {
+        organizationId: first.organizationId,
+        spaceId: first.spaceId,
+        targetIds,
+        targetType: "DOCUMENT",
+      }),
+      this.listLinksByDocumentIds({
+        documentIds: targetIds,
+        organizationId: first.organizationId,
+        spaceId: first.spaceId,
+      }),
+      this.loadDocumentActorContexts(documents),
+      this.loadDocumentFolderPaths(documents),
+    ]);
+
+    return documents.map((document) =>
+      toDocument(document, {
+        ...actorContextByDocumentId.get(document.id),
+        folderPath: folderPathsByDocumentId.get(document.id),
+        links: linksByDocumentId.get(document.id) ?? [],
+        tags: tagsByDocumentId.get(document.id) ?? [],
+      }),
+    );
   }
 
   private async loadDocumentActorContexts(
@@ -346,6 +398,47 @@ export class PrismaDocumentRepository implements DocumentRepository {
     return result;
   }
 
+  private async loadDocumentFolderPaths(
+    documents: PrismaDocumentRecord[],
+  ): Promise<Map<string, DocumentFolderPathItem[]>> {
+    const result = new Map<string, DocumentFolderPathItem[]>();
+    const folderIds = [
+      ...new Set(
+        documents
+          .map((document) => document.folderId)
+          .filter((folderId): folderId is string => Boolean(folderId)),
+      ),
+    ];
+
+    if (folderIds.length === 0) {
+      return result;
+    }
+
+    const spaceIds = [...new Set(documents.map((document) => document.spaceId))];
+    const folders = await this.prisma.client.documentFolder.findMany({
+      select: {
+        id: true,
+        name: true,
+        parentId: true,
+      },
+      where: {
+        deletedAt: null,
+        spaceId: { in: spaceIds },
+      },
+    });
+    const foldersById = new Map(folders.map((folder) => [folder.id, folder]));
+
+    for (const document of documents) {
+      if (!document.folderId) {
+        continue;
+      }
+
+      result.set(document.id, buildFolderPath(document.folderId, foldersById));
+    }
+
+    return result;
+  }
+
   private async findLiveDocument(documentId: string) {
     return this.prisma.client.document.findFirst({
       where: {
@@ -376,31 +469,8 @@ export class PrismaDocumentRepository implements DocumentRepository {
       }),
       this.prisma.client.document.count({ where }),
     ]);
-    const targetIds = documents.map((document) => document.id);
-    const [tagsByDocumentId, linksByDocumentId, actorContextByDocumentId] =
-      await Promise.all([
-        listTagsByTargets(this.prisma.client, {
-          organizationId: input.organizationId,
-          spaceId: input.spaceId,
-          targetIds,
-          targetType: "DOCUMENT",
-        }),
-        this.listLinksByDocumentIds({
-          documentIds: targetIds,
-          organizationId: input.organizationId,
-          spaceId: input.spaceId,
-        }),
-        this.loadDocumentActorContexts(documents),
-      ]);
-
     return {
-      items: documents.map((document) =>
-        toDocument(document, {
-          ...actorContextByDocumentId.get(document.id),
-          links: linksByDocumentId.get(document.id) ?? [],
-          tags: tagsByDocumentId.get(document.id) ?? [],
-        }),
-      ),
+      items: await this.hydrateDocuments(documents),
       page: input.page,
       pageSize: input.pageSize,
       total,
@@ -728,6 +798,181 @@ export class PrismaDocumentRepository implements DocumentRepository {
     return hydratedLinks.map(toDocumentLink);
   }
 
+  async moveToFolder(
+    input: MoveDocumentToFolderInput,
+  ): Promise<DocumentMutationResult> {
+    const result = await this.prisma.client.$transaction(async (tx) => {
+      const existing = await tx.document.findFirst({
+        where: {
+          deletedAt: null,
+          id: input.documentId,
+        },
+      });
+
+      if (!existing) {
+        return { status: "not_found" as const };
+      }
+      if (
+        input.baseRevision !== undefined &&
+        existing.revision !== input.baseRevision
+      ) {
+        return { status: "conflict" as const };
+      }
+
+      const updated = await tx.document.update({
+        data: {
+          folderId: input.folderId ?? null,
+          lastEditedAt: new Date(),
+          lastEditedById: input.actorUserId,
+          lastEditedVia: input.actorType,
+          lastEditedMcpClientId: input.mcpClientId ?? null,
+          revision: existing.revision + 1,
+          updatedById: input.actorUserId,
+        },
+        where: {
+          id: existing.id,
+        },
+      });
+
+      await createRevision(tx, input, {
+        changeType: "METADATA_UPDATED",
+        documentId: updated.id,
+        organizationId: updated.organizationId,
+        revision: updated.revision,
+        spaceId: updated.spaceId,
+        title: updated.title,
+        contentMarkdown: updated.contentMarkdown,
+        contentText: updated.contentText,
+      });
+      await createTimelineEventRecord(tx, {
+        actorUserId: input.actorUserId,
+        after: {
+          folderId: updated.folderId,
+          revision: updated.revision,
+        },
+        before: {
+          folderId: existing.folderId,
+          revision: existing.revision,
+        },
+        eventType: "UPDATED",
+        metadata: {
+          operation: "DOCUMENT_FOLDER_UPDATED",
+        },
+        organizationId: updated.organizationId,
+        spaceId: updated.spaceId,
+        targetId: updated.id,
+        targetType: "DOCUMENT",
+        title: "Document folder updated",
+      });
+
+      return { status: "updated" as const, document: updated };
+    });
+
+    return result.status === "updated"
+      ? {
+          status: "updated",
+          document:
+            (await this.findById(result.document.id)) ?? toDocument(result.document),
+        }
+      : result;
+  }
+
+  async moveManyToFolder(
+    input: MoveDocumentsToFolderInput,
+  ): Promise<DocumentBatchMutationResult> {
+    const result = await this.prisma.client.$transaction(async (tx) => {
+      const existingDocuments = await tx.document.findMany({
+        where: {
+          deletedAt: null,
+          id: { in: input.documentIds },
+        },
+      });
+
+      if (existingDocuments.length !== input.documentIds.length) {
+        return { status: "not_found" as const };
+      }
+      if (
+        existingDocuments.some(
+          (document) =>
+            document.organizationId !== input.organizationId ||
+            document.spaceId !== input.spaceId,
+        )
+      ) {
+        return { status: "not_found" as const };
+      }
+
+      const documentsById = new Map(
+        existingDocuments.map((document) => [document.id, document]),
+      );
+      const updatedDocuments: PrismaDocumentRecord[] = [];
+
+      for (const documentId of input.documentIds) {
+        const existing = documentsById.get(documentId);
+
+        if (!existing) {
+          return { status: "not_found" as const };
+        }
+
+        const updated = await tx.document.update({
+          data: {
+            folderId: input.folderId ?? null,
+            lastEditedAt: new Date(),
+            lastEditedById: input.actorUserId,
+            lastEditedVia: input.actorType,
+            lastEditedMcpClientId: input.mcpClientId ?? null,
+            revision: existing.revision + 1,
+            updatedById: input.actorUserId,
+          },
+          where: {
+            id: existing.id,
+          },
+        });
+
+        await createRevision(tx, input, {
+          changeType: "METADATA_UPDATED",
+          documentId: updated.id,
+          organizationId: updated.organizationId,
+          revision: updated.revision,
+          spaceId: updated.spaceId,
+          title: updated.title,
+          contentMarkdown: updated.contentMarkdown,
+          contentText: updated.contentText,
+        });
+        await createTimelineEventRecord(tx, {
+          actorUserId: input.actorUserId,
+          after: {
+            folderId: updated.folderId,
+            revision: updated.revision,
+          },
+          before: {
+            folderId: existing.folderId,
+            revision: existing.revision,
+          },
+          eventType: "UPDATED",
+          metadata: {
+            operation: "DOCUMENT_FOLDER_UPDATED",
+          },
+          organizationId: updated.organizationId,
+          spaceId: updated.spaceId,
+          targetId: updated.id,
+          targetType: "DOCUMENT",
+          title: "Document folder updated",
+        });
+
+        updatedDocuments.push(updated);
+      }
+
+      return { status: "updated" as const, documents: updatedDocuments };
+    });
+
+    return result.status === "updated"
+      ? {
+          status: "updated",
+          documents: await this.hydrateDocuments(result.documents),
+        }
+      : result;
+  }
+
   async replaceLinks(
     input: ReplaceDocumentLinksInput,
   ): Promise<DocumentMutationResult> {
@@ -890,6 +1135,7 @@ export class PrismaDocumentRepository implements DocumentRepository {
       ...(input.sourceType ? { sourceType: input.sourceType } : {}),
       ...(input.lastEditedVia ? { lastEditedVia: input.lastEditedVia } : {}),
       ...(input.createdById ? { createdById: input.createdById } : {}),
+      ...(await this.buildFolderWhere(input)),
       ...(input.query
         ? {
             OR: [
@@ -960,6 +1206,58 @@ export class PrismaDocumentRepository implements DocumentRepository {
     }
 
     return result;
+  }
+
+  private async buildFolderWhere(
+    input: Pick<
+      DocumentListInput,
+      "folderId" | "includeDescendants" | "unfiled"
+    >,
+  ): Promise<Prisma.DocumentWhereInput> {
+    if (input.folderId) {
+      return {
+        folderId: {
+          in: input.includeDescendants
+            ? [
+                input.folderId,
+                ...(await this.listFolderDescendantIds(input.folderId)),
+              ]
+            : [input.folderId],
+        },
+      };
+    }
+
+    return input.unfiled === true ? { folderId: null } : {};
+  }
+
+  private async listFolderDescendantIds(folderId: string): Promise<string[]> {
+    const folder = await this.prisma.client.documentFolder.findFirst({
+      select: {
+        id: true,
+        spaceId: true,
+      },
+      where: {
+        deletedAt: null,
+        id: folderId,
+      },
+    });
+
+    if (!folder) {
+      return [];
+    }
+
+    const folders = await this.prisma.client.documentFolder.findMany({
+      select: {
+        id: true,
+        parentId: true,
+      },
+      where: {
+        deletedAt: null,
+        spaceId: folder.spaceId,
+      },
+    });
+
+    return collectFolderDescendantIds(folder.id, folders);
   }
 
   private async hydrateLinks(
@@ -1251,6 +1549,59 @@ function nonEmptyString(value: string | null | undefined) {
   const trimmed = value?.trim();
 
   return trimmed ? trimmed : undefined;
+}
+
+function buildFolderPath(
+  folderId: string,
+  foldersById: Map<string, { id: string; name: string; parentId: string | null }>,
+): DocumentFolderPathItem[] {
+  const path: DocumentFolderPathItem[] = [];
+  const seen = new Set<string>();
+  let current = foldersById.get(folderId);
+
+  while (current && !seen.has(current.id)) {
+    seen.add(current.id);
+    path.unshift({
+      id: current.id,
+      name: current.name,
+    });
+    current = current.parentId ? foldersById.get(current.parentId) : undefined;
+  }
+
+  return path;
+}
+
+function collectFolderDescendantIds(
+  folderId: string,
+  folders: Array<{ id: string; parentId: string | null }>,
+) {
+  const childrenByParentId = new Map<string, string[]>();
+
+  for (const folder of folders) {
+    if (!folder.parentId) {
+      continue;
+    }
+    childrenByParentId.set(folder.parentId, [
+      ...(childrenByParentId.get(folder.parentId) ?? []),
+      folder.id,
+    ]);
+  }
+
+  const result: string[] = [];
+  const queue = [...(childrenByParentId.get(folderId) ?? [])];
+
+  while (queue.length > 0) {
+    const current = queue.shift();
+
+    if (!current) {
+      continue;
+    }
+
+    result.push(current);
+    queue.push(...(childrenByParentId.get(current) ?? []));
+  }
+
+  return result;
 }
 
 function toDocumentOrderBy(

@@ -544,6 +544,7 @@ model Organization {
   tags                Tag[]
   tagAssignments      TagAssignment[]
   documents           Document[]
+  documentFolders     DocumentFolder[]
   documentRevisions   DocumentRevision[]
   documentLinks       DocumentLink[]
   documentChunks      DocumentChunk[]
@@ -606,6 +607,7 @@ model Space {
   tags                Tag[]
   tagAssignments      TagAssignment[]
   documents           Document[]
+  documentFolders     DocumentFolder[]
   documentRevisions   DocumentRevision[]
   documentLinks       DocumentLink[]
   documentChunks      DocumentChunk[]
@@ -908,6 +910,7 @@ model Document {
   id                    String             @id @db.Char(26)
   organizationId        String             @map("organization_id") @db.Char(26)
   spaceId               String             @map("space_id") @db.Char(26)
+  folderId              String?            @map("folder_id") @db.Char(26)
   title                 String             @db.VarChar(200)
   contentMarkdown       String             @map("content_markdown") @db.Text
   contentText           String             @map("content_text") @db.Text
@@ -930,6 +933,7 @@ model Document {
 
   organization Organization       @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   space        Space              @relation(fields: [spaceId], references: [id], onDelete: Cascade)
+  folder       DocumentFolder?    @relation(fields: [folderId], references: [id], onDelete: SetNull)
   revisions    DocumentRevision[]
   links        DocumentLink[]
   chunks       DocumentChunk[]
@@ -937,14 +941,46 @@ model Document {
   @@index([organizationId])
   @@index([spaceId])
   @@index([status])
+  @@index([folderId])
   @@index([sourceType])
   @@index([createdById])
   @@index([lastEditedById])
   @@index([sourceAttachmentId])
   @@index([spaceId, status, updatedAt])
+  @@index([spaceId, folderId, deletedAt, lastEditedAt])
   @@index([spaceId, deletedAt, updatedAt])
   @@index([spaceId, lastEditedAt])
   @@map("documents")
+}
+
+model DocumentFolder {
+  id             String    @id @db.Char(26)
+  organizationId String    @map("organization_id") @db.Char(26)
+  spaceId        String    @map("space_id") @db.Char(26)
+  parentId       String?   @map("parent_id") @db.Char(26)
+  name           String    @db.VarChar(120)
+  normalizedName String    @map("normalized_name") @db.VarChar(160)
+  sortOrder      Int       @default(0) @map("sort_order")
+  depth          Int
+  version        Int       @default(1)
+  createdById    String    @map("created_by_id") @db.Char(26)
+  updatedById    String    @map("updated_by_id") @db.Char(26)
+  deletedAt      DateTime? @db.Timestamptz(3) @map("deleted_at")
+  createdAt      DateTime  @db.Timestamptz(3) @default(now()) @map("created_at")
+  updatedAt      DateTime  @db.Timestamptz(3) @updatedAt @map("updated_at")
+
+  organization Organization     @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  space        Space            @relation(fields: [spaceId], references: [id], onDelete: Cascade)
+  parent       DocumentFolder?  @relation("DocumentFolderHierarchy", fields: [parentId], references: [id], onDelete: Restrict)
+  children     DocumentFolder[] @relation("DocumentFolderHierarchy")
+  documents    Document[]
+
+  @@index([organizationId])
+  @@index([spaceId])
+  @@index([parentId])
+  @@index([createdById])
+  @@index([spaceId, parentId, deletedAt, sortOrder])
+  @@map("document_folders")
 }
 
 model DocumentRevision {

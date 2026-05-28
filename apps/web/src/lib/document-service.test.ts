@@ -2,13 +2,21 @@ import { describe, expect, it, vi } from "vitest";
 
 import {
   archiveDocument,
+  createDocumentFolder,
   deleteDocument,
+  deleteDocumentFolder,
   getDocument,
   importDocxDocument,
   importMarkdownDocument,
+  listDocumentFolders,
   listDocuments,
+  moveDocumentFolder,
+  moveDocumentsToFolder,
+  moveDocumentToFolder,
   reimportDocument,
+  reorderDocumentFolders,
   restoreDocument,
+  updateDocumentFolder,
   updateDocument,
   type DocumentApiTransport,
   type DocumentDetail,
@@ -74,7 +82,10 @@ describe("document service", () => {
           currentUserId: "USER_01",
           tagIds: ["TAG_01"],
           tagMatch: "ANY",
-        },
+        folderId: "FLD_01",
+        includeDescendants: true,
+        unfiled: false,
+      },
         api,
       ),
     ).resolves.toMatchObject({
@@ -88,8 +99,33 @@ describe("document service", () => {
         page: 2,
         pageSize: 25,
         query: "launch",
+        folderId: "FLD_01",
+        includeDescendants: true,
+        unfiled: undefined,
         tagIds: ["TAG_01"],
         tagMatch: "ANY",
+      },
+    });
+  });
+
+  it("lists unfiled documents through an explicit query flag", async () => {
+    const api = createApi();
+
+    await listDocuments(
+      {
+        page: 1,
+        pageSize: 25,
+        spaceId,
+        unfiled: true,
+      },
+      api,
+    );
+
+    expect(api.get).toHaveBeenCalledWith(`/spaces/${spaceId}/documents`, {
+      query: {
+        page: 1,
+        pageSize: 25,
+        unfiled: true,
       },
     });
   });
@@ -102,7 +138,7 @@ describe("document service", () => {
     });
 
     await importMarkdownDocument({ spaceId }, { file: md, title: "Plan" }, api);
-    await importDocxDocument({ spaceId }, { file: docx }, api);
+    await importDocxDocument({ spaceId }, { file: docx, folderId: "FLD_01" }, api);
 
     const markdownBody = vi.mocked(api.post).mock.calls[0]?.[1];
     const docxBody = vi.mocked(api.post).mock.calls[1]?.[1];
@@ -123,6 +159,7 @@ describe("document service", () => {
       expect.any(FormData),
     );
     expect(docxBody).toBeInstanceOf(FormData);
+    expect((docxBody as FormData).get("folderId")).toBe("FLD_01");
   });
 
   it("sends baseRevision in reimport FormData", async () => {
@@ -205,5 +242,220 @@ describe("document service", () => {
       `/documents/${documentId}/restore`,
     );
     expect(api.delete).toHaveBeenCalledWith(`/documents/${documentId}`);
+  });
+
+  it("manages document folders and moves documents between folders", async () => {
+    const api = {
+      ...createApi(),
+      get: vi.fn(async (path: string) => ({
+        data:
+          path === `/documents/${documentId}`
+            ? createDocumentFixture({ folderId: "FLD_02", revision: 4 })
+            : [
+                {
+                  depth: 0,
+                  descendantDocumentCount: 2,
+                  documentCount: 1,
+                  id: "FLD_01",
+                  name: "Plans",
+                  parentId: null,
+                  sortOrder: 0,
+                  spaceId,
+                  version: 1,
+                },
+              ],
+      })),
+      post: vi.fn(async () => ({
+        data: {
+          depth: 0,
+          descendantDocumentCount: 0,
+          documentCount: 0,
+          id: "FLD_02",
+          name: "Archive",
+          parentId: null,
+          sortOrder: 1,
+          spaceId,
+          version: 1,
+        },
+      })),
+      patch: vi
+        .fn()
+        .mockResolvedValueOnce({
+          data: {
+            depth: 0,
+            descendantDocumentCount: 0,
+            documentCount: 0,
+            id: "FLD_01",
+            name: "Renamed",
+            parentId: null,
+            sortOrder: 0,
+            spaceId,
+            version: 2,
+          },
+        })
+        .mockResolvedValueOnce({
+          data: createDocumentFixture({ folderId: "FLD_02", revision: 4 }),
+        }),
+    } as DocumentApiTransport;
+
+    await expect(listDocumentFolders({ spaceId }, api)).resolves.toMatchObject([
+      { id: "FLD_01", name: "Plans" },
+    ]);
+    await createDocumentFolder(
+      { name: "Archive", parentId: null, spaceId },
+      api,
+    );
+    await updateDocumentFolder(
+      { folderId: "FLD_01", name: "Renamed", version: 1 },
+      api,
+    );
+    await moveDocumentFolder(
+      { folderId: "FLD_01", parentId: "FLD_02", version: 1 },
+      api,
+    );
+    await moveDocumentToFolder(
+      {
+        baseRevision: 3,
+        documentId,
+        folderId: "FLD_02",
+        spaceId,
+      },
+      api,
+    );
+    await deleteDocumentFolder({ folderId: "FLD_01", spaceId }, api);
+
+    expect(api.get).toHaveBeenCalledWith(`/spaces/${spaceId}/document-folders`);
+    expect(api.get).toHaveBeenCalledWith(`/documents/${documentId}`);
+    expect(api.post).toHaveBeenNthCalledWith(
+      1,
+      `/spaces/${spaceId}/document-folders`,
+      { name: "Archive" },
+    );
+    expect(api.patch).toHaveBeenNthCalledWith(
+      1,
+      "/document-folders/FLD_01",
+      { name: "Renamed", version: 1 },
+    );
+    expect(api.post).toHaveBeenNthCalledWith(
+      2,
+      "/document-folders/FLD_01/move",
+      { parentId: "FLD_02", version: 1 },
+    );
+    expect(api.patch).toHaveBeenNthCalledWith(
+      2,
+      `/documents/${documentId}/folder`,
+      {
+        baseRevision: 3,
+        folderId: "FLD_02",
+      },
+    );
+    expect(api.delete).toHaveBeenCalledWith("/document-folders/FLD_01");
+  });
+
+  it("reorders document folders and forwards move sort order", async () => {
+    const api = {
+      ...createApi(),
+      post: vi.fn(async (path: string) => ({
+        data: path.endsWith("/reorder")
+          ? {
+              items: [
+                {
+                  depth: 0,
+                  descendantDocumentCount: 0,
+                  documentCount: 0,
+                  id: "FLD_02",
+                  name: "Archive",
+                  parentId: null,
+                  sortOrder: 0,
+                  spaceId,
+                  version: 2,
+                },
+              ],
+            }
+          : {
+              depth: 1,
+              descendantDocumentCount: 0,
+              documentCount: 0,
+              id: "FLD_01",
+              name: "Plans",
+              parentId: "FLD_02",
+              sortOrder: 2048,
+              spaceId,
+              version: 2,
+            },
+      })),
+    } as DocumentApiTransport;
+
+    await reorderDocumentFolders(
+      {
+        orderedFolderIds: ["FLD_02", "FLD_01"],
+        parentId: null,
+        spaceId,
+      },
+      api,
+    );
+    await moveDocumentFolder(
+      {
+        folderId: "FLD_01",
+        parentId: "FLD_02",
+        sortOrder: 2048,
+        version: 1,
+      },
+      api,
+    );
+
+    expect(api.post).toHaveBeenNthCalledWith(
+      1,
+      `/spaces/${spaceId}/document-folders/reorder`,
+      {
+        orderedFolderIds: ["FLD_02", "FLD_01"],
+        parentId: null,
+      },
+    );
+    expect(api.post).toHaveBeenNthCalledWith(
+      2,
+      "/document-folders/FLD_01/move",
+      {
+        parentId: "FLD_02",
+        sortOrder: 2048,
+        version: 1,
+      },
+    );
+  });
+
+  it("moves multiple documents to a folder through the batch endpoint", async () => {
+    const api = {
+      ...createApi(),
+      patch: vi.fn(async () => ({
+        data: {
+          items: [
+            createDocumentFixture({ folderId: "FLD_02", id: "DOC_01" }),
+            createDocumentFixture({ folderId: "FLD_02", id: "DOC_02" }),
+          ],
+        },
+      })),
+    } as DocumentApiTransport;
+
+    await expect(
+      moveDocumentsToFolder(
+        {
+          documentIds: ["DOC_01", "DOC_02"],
+          folderId: "FLD_02",
+          spaceId,
+        },
+        api,
+      ),
+    ).resolves.toMatchObject([
+      { folderId: "FLD_02", id: "DOC_01" },
+      { folderId: "FLD_02", id: "DOC_02" },
+    ]);
+
+    expect(api.patch).toHaveBeenCalledWith(
+      `/spaces/${spaceId}/documents/folder`,
+      {
+        documentIds: ["DOC_01", "DOC_02"],
+        folderId: "FLD_02",
+      },
+    );
   });
 });

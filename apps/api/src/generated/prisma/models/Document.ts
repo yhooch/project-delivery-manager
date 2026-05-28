@@ -38,6 +38,7 @@ export type DocumentMinAggregateOutputType = {
   id: string | null
   organizationId: string | null
   spaceId: string | null
+  folderId: string | null
   title: string | null
   contentMarkdown: string | null
   contentText: string | null
@@ -63,6 +64,7 @@ export type DocumentMaxAggregateOutputType = {
   id: string | null
   organizationId: string | null
   spaceId: string | null
+  folderId: string | null
   title: string | null
   contentMarkdown: string | null
   contentText: string | null
@@ -88,6 +90,7 @@ export type DocumentCountAggregateOutputType = {
   id: number
   organizationId: number
   spaceId: number
+  folderId: number
   title: number
   contentMarkdown: number
   contentText: number
@@ -123,6 +126,7 @@ export type DocumentMinAggregateInputType = {
   id?: true
   organizationId?: true
   spaceId?: true
+  folderId?: true
   title?: true
   contentMarkdown?: true
   contentText?: true
@@ -148,6 +152,7 @@ export type DocumentMaxAggregateInputType = {
   id?: true
   organizationId?: true
   spaceId?: true
+  folderId?: true
   title?: true
   contentMarkdown?: true
   contentText?: true
@@ -173,6 +178,7 @@ export type DocumentCountAggregateInputType = {
   id?: true
   organizationId?: true
   spaceId?: true
+  folderId?: true
   title?: true
   contentMarkdown?: true
   contentText?: true
@@ -285,6 +291,7 @@ export type DocumentGroupByOutputType = {
   id: string
   organizationId: string
   spaceId: string
+  folderId: string | null
   title: string
   contentMarkdown: string
   contentText: string
@@ -333,6 +340,7 @@ export type DocumentWhereInput = {
   id?: Prisma.StringFilter<"Document"> | string
   organizationId?: Prisma.StringFilter<"Document"> | string
   spaceId?: Prisma.StringFilter<"Document"> | string
+  folderId?: Prisma.StringNullableFilter<"Document"> | string | null
   title?: Prisma.StringFilter<"Document"> | string
   contentMarkdown?: Prisma.StringFilter<"Document"> | string
   contentText?: Prisma.StringFilter<"Document"> | string
@@ -354,6 +362,7 @@ export type DocumentWhereInput = {
   deletedAt?: Prisma.DateTimeNullableFilter<"Document"> | Date | string | null
   organization?: Prisma.XOR<Prisma.OrganizationScalarRelationFilter, Prisma.OrganizationWhereInput>
   space?: Prisma.XOR<Prisma.SpaceScalarRelationFilter, Prisma.SpaceWhereInput>
+  folder?: Prisma.XOR<Prisma.DocumentFolderNullableScalarRelationFilter, Prisma.DocumentFolderWhereInput> | null
   revisions?: Prisma.DocumentRevisionListRelationFilter
   links?: Prisma.DocumentLinkListRelationFilter
   chunks?: Prisma.DocumentChunkListRelationFilter
@@ -363,6 +372,7 @@ export type DocumentOrderByWithRelationInput = {
   id?: Prisma.SortOrder
   organizationId?: Prisma.SortOrder
   spaceId?: Prisma.SortOrder
+  folderId?: Prisma.SortOrderInput | Prisma.SortOrder
   title?: Prisma.SortOrder
   contentMarkdown?: Prisma.SortOrder
   contentText?: Prisma.SortOrder
@@ -384,6 +394,7 @@ export type DocumentOrderByWithRelationInput = {
   deletedAt?: Prisma.SortOrderInput | Prisma.SortOrder
   organization?: Prisma.OrganizationOrderByWithRelationInput
   space?: Prisma.SpaceOrderByWithRelationInput
+  folder?: Prisma.DocumentFolderOrderByWithRelationInput
   revisions?: Prisma.DocumentRevisionOrderByRelationAggregateInput
   links?: Prisma.DocumentLinkOrderByRelationAggregateInput
   chunks?: Prisma.DocumentChunkOrderByRelationAggregateInput
@@ -396,6 +407,7 @@ export type DocumentWhereUniqueInput = Prisma.AtLeast<{
   NOT?: Prisma.DocumentWhereInput | Prisma.DocumentWhereInput[]
   organizationId?: Prisma.StringFilter<"Document"> | string
   spaceId?: Prisma.StringFilter<"Document"> | string
+  folderId?: Prisma.StringNullableFilter<"Document"> | string | null
   title?: Prisma.StringFilter<"Document"> | string
   contentMarkdown?: Prisma.StringFilter<"Document"> | string
   contentText?: Prisma.StringFilter<"Document"> | string
@@ -417,6 +429,7 @@ export type DocumentWhereUniqueInput = Prisma.AtLeast<{
   deletedAt?: Prisma.DateTimeNullableFilter<"Document"> | Date | string | null
   organization?: Prisma.XOR<Prisma.OrganizationScalarRelationFilter, Prisma.OrganizationWhereInput>
   space?: Prisma.XOR<Prisma.SpaceScalarRelationFilter, Prisma.SpaceWhereInput>
+  folder?: Prisma.XOR<Prisma.DocumentFolderNullableScalarRelationFilter, Prisma.DocumentFolderWhereInput> | null
   revisions?: Prisma.DocumentRevisionListRelationFilter
   links?: Prisma.DocumentLinkListRelationFilter
   chunks?: Prisma.DocumentChunkListRelationFilter
@@ -426,6 +439,7 @@ export type DocumentOrderByWithAggregationInput = {
   id?: Prisma.SortOrder
   organizationId?: Prisma.SortOrder
   spaceId?: Prisma.SortOrder
+  folderId?: Prisma.SortOrderInput | Prisma.SortOrder
   title?: Prisma.SortOrder
   contentMarkdown?: Prisma.SortOrder
   contentText?: Prisma.SortOrder
@@ -459,6 +473,7 @@ export type DocumentScalarWhereWithAggregatesInput = {
   id?: Prisma.StringWithAggregatesFilter<"Document"> | string
   organizationId?: Prisma.StringWithAggregatesFilter<"Document"> | string
   spaceId?: Prisma.StringWithAggregatesFilter<"Document"> | string
+  folderId?: Prisma.StringNullableWithAggregatesFilter<"Document"> | string | null
   title?: Prisma.StringWithAggregatesFilter<"Document"> | string
   contentMarkdown?: Prisma.StringWithAggregatesFilter<"Document"> | string
   contentText?: Prisma.StringWithAggregatesFilter<"Document"> | string
@@ -503,6 +518,7 @@ export type DocumentCreateInput = {
   deletedAt?: Date | string | null
   organization: Prisma.OrganizationCreateNestedOneWithoutDocumentsInput
   space: Prisma.SpaceCreateNestedOneWithoutDocumentsInput
+  folder?: Prisma.DocumentFolderCreateNestedOneWithoutDocumentsInput
   revisions?: Prisma.DocumentRevisionCreateNestedManyWithoutDocumentInput
   links?: Prisma.DocumentLinkCreateNestedManyWithoutDocumentInput
   chunks?: Prisma.DocumentChunkCreateNestedManyWithoutDocumentInput
@@ -512,6 +528,7 @@ export type DocumentUncheckedCreateInput = {
   id: string
   organizationId: string
   spaceId: string
+  folderId?: string | null
   title: string
   contentMarkdown: string
   contentText: string
@@ -559,6 +576,7 @@ export type DocumentUpdateInput = {
   deletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   organization?: Prisma.OrganizationUpdateOneRequiredWithoutDocumentsNestedInput
   space?: Prisma.SpaceUpdateOneRequiredWithoutDocumentsNestedInput
+  folder?: Prisma.DocumentFolderUpdateOneWithoutDocumentsNestedInput
   revisions?: Prisma.DocumentRevisionUpdateManyWithoutDocumentNestedInput
   links?: Prisma.DocumentLinkUpdateManyWithoutDocumentNestedInput
   chunks?: Prisma.DocumentChunkUpdateManyWithoutDocumentNestedInput
@@ -568,6 +586,7 @@ export type DocumentUncheckedUpdateInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   organizationId?: Prisma.StringFieldUpdateOperationsInput | string
   spaceId?: Prisma.StringFieldUpdateOperationsInput | string
+  folderId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   title?: Prisma.StringFieldUpdateOperationsInput | string
   contentMarkdown?: Prisma.StringFieldUpdateOperationsInput | string
   contentText?: Prisma.StringFieldUpdateOperationsInput | string
@@ -596,6 +615,7 @@ export type DocumentCreateManyInput = {
   id: string
   organizationId: string
   spaceId: string
+  folderId?: string | null
   title: string
   contentMarkdown: string
   contentText: string
@@ -644,6 +664,7 @@ export type DocumentUncheckedUpdateManyInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   organizationId?: Prisma.StringFieldUpdateOperationsInput | string
   spaceId?: Prisma.StringFieldUpdateOperationsInput | string
+  folderId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   title?: Prisma.StringFieldUpdateOperationsInput | string
   contentMarkdown?: Prisma.StringFieldUpdateOperationsInput | string
   contentText?: Prisma.StringFieldUpdateOperationsInput | string
@@ -679,6 +700,7 @@ export type DocumentCountOrderByAggregateInput = {
   id?: Prisma.SortOrder
   organizationId?: Prisma.SortOrder
   spaceId?: Prisma.SortOrder
+  folderId?: Prisma.SortOrder
   title?: Prisma.SortOrder
   contentMarkdown?: Prisma.SortOrder
   contentText?: Prisma.SortOrder
@@ -708,6 +730,7 @@ export type DocumentMaxOrderByAggregateInput = {
   id?: Prisma.SortOrder
   organizationId?: Prisma.SortOrder
   spaceId?: Prisma.SortOrder
+  folderId?: Prisma.SortOrder
   title?: Prisma.SortOrder
   contentMarkdown?: Prisma.SortOrder
   contentText?: Prisma.SortOrder
@@ -733,6 +756,7 @@ export type DocumentMinOrderByAggregateInput = {
   id?: Prisma.SortOrder
   organizationId?: Prisma.SortOrder
   spaceId?: Prisma.SortOrder
+  folderId?: Prisma.SortOrder
   title?: Prisma.SortOrder
   contentMarkdown?: Prisma.SortOrder
   contentText?: Prisma.SortOrder
@@ -859,6 +883,48 @@ export type EnumDocumentActorTypeFieldUpdateOperationsInput = {
   set?: $Enums.DocumentActorType
 }
 
+export type DocumentCreateNestedManyWithoutFolderInput = {
+  create?: Prisma.XOR<Prisma.DocumentCreateWithoutFolderInput, Prisma.DocumentUncheckedCreateWithoutFolderInput> | Prisma.DocumentCreateWithoutFolderInput[] | Prisma.DocumentUncheckedCreateWithoutFolderInput[]
+  connectOrCreate?: Prisma.DocumentCreateOrConnectWithoutFolderInput | Prisma.DocumentCreateOrConnectWithoutFolderInput[]
+  createMany?: Prisma.DocumentCreateManyFolderInputEnvelope
+  connect?: Prisma.DocumentWhereUniqueInput | Prisma.DocumentWhereUniqueInput[]
+}
+
+export type DocumentUncheckedCreateNestedManyWithoutFolderInput = {
+  create?: Prisma.XOR<Prisma.DocumentCreateWithoutFolderInput, Prisma.DocumentUncheckedCreateWithoutFolderInput> | Prisma.DocumentCreateWithoutFolderInput[] | Prisma.DocumentUncheckedCreateWithoutFolderInput[]
+  connectOrCreate?: Prisma.DocumentCreateOrConnectWithoutFolderInput | Prisma.DocumentCreateOrConnectWithoutFolderInput[]
+  createMany?: Prisma.DocumentCreateManyFolderInputEnvelope
+  connect?: Prisma.DocumentWhereUniqueInput | Prisma.DocumentWhereUniqueInput[]
+}
+
+export type DocumentUpdateManyWithoutFolderNestedInput = {
+  create?: Prisma.XOR<Prisma.DocumentCreateWithoutFolderInput, Prisma.DocumentUncheckedCreateWithoutFolderInput> | Prisma.DocumentCreateWithoutFolderInput[] | Prisma.DocumentUncheckedCreateWithoutFolderInput[]
+  connectOrCreate?: Prisma.DocumentCreateOrConnectWithoutFolderInput | Prisma.DocumentCreateOrConnectWithoutFolderInput[]
+  upsert?: Prisma.DocumentUpsertWithWhereUniqueWithoutFolderInput | Prisma.DocumentUpsertWithWhereUniqueWithoutFolderInput[]
+  createMany?: Prisma.DocumentCreateManyFolderInputEnvelope
+  set?: Prisma.DocumentWhereUniqueInput | Prisma.DocumentWhereUniqueInput[]
+  disconnect?: Prisma.DocumentWhereUniqueInput | Prisma.DocumentWhereUniqueInput[]
+  delete?: Prisma.DocumentWhereUniqueInput | Prisma.DocumentWhereUniqueInput[]
+  connect?: Prisma.DocumentWhereUniqueInput | Prisma.DocumentWhereUniqueInput[]
+  update?: Prisma.DocumentUpdateWithWhereUniqueWithoutFolderInput | Prisma.DocumentUpdateWithWhereUniqueWithoutFolderInput[]
+  updateMany?: Prisma.DocumentUpdateManyWithWhereWithoutFolderInput | Prisma.DocumentUpdateManyWithWhereWithoutFolderInput[]
+  deleteMany?: Prisma.DocumentScalarWhereInput | Prisma.DocumentScalarWhereInput[]
+}
+
+export type DocumentUncheckedUpdateManyWithoutFolderNestedInput = {
+  create?: Prisma.XOR<Prisma.DocumentCreateWithoutFolderInput, Prisma.DocumentUncheckedCreateWithoutFolderInput> | Prisma.DocumentCreateWithoutFolderInput[] | Prisma.DocumentUncheckedCreateWithoutFolderInput[]
+  connectOrCreate?: Prisma.DocumentCreateOrConnectWithoutFolderInput | Prisma.DocumentCreateOrConnectWithoutFolderInput[]
+  upsert?: Prisma.DocumentUpsertWithWhereUniqueWithoutFolderInput | Prisma.DocumentUpsertWithWhereUniqueWithoutFolderInput[]
+  createMany?: Prisma.DocumentCreateManyFolderInputEnvelope
+  set?: Prisma.DocumentWhereUniqueInput | Prisma.DocumentWhereUniqueInput[]
+  disconnect?: Prisma.DocumentWhereUniqueInput | Prisma.DocumentWhereUniqueInput[]
+  delete?: Prisma.DocumentWhereUniqueInput | Prisma.DocumentWhereUniqueInput[]
+  connect?: Prisma.DocumentWhereUniqueInput | Prisma.DocumentWhereUniqueInput[]
+  update?: Prisma.DocumentUpdateWithWhereUniqueWithoutFolderInput | Prisma.DocumentUpdateWithWhereUniqueWithoutFolderInput[]
+  updateMany?: Prisma.DocumentUpdateManyWithWhereWithoutFolderInput | Prisma.DocumentUpdateManyWithWhereWithoutFolderInput[]
+  deleteMany?: Prisma.DocumentScalarWhereInput | Prisma.DocumentScalarWhereInput[]
+}
+
 export type DocumentCreateNestedOneWithoutRevisionsInput = {
   create?: Prisma.XOR<Prisma.DocumentCreateWithoutRevisionsInput, Prisma.DocumentUncheckedCreateWithoutRevisionsInput>
   connectOrCreate?: Prisma.DocumentCreateOrConnectWithoutRevisionsInput
@@ -923,6 +989,7 @@ export type DocumentCreateWithoutOrganizationInput = {
   updatedById?: string | null
   deletedAt?: Date | string | null
   space: Prisma.SpaceCreateNestedOneWithoutDocumentsInput
+  folder?: Prisma.DocumentFolderCreateNestedOneWithoutDocumentsInput
   revisions?: Prisma.DocumentRevisionCreateNestedManyWithoutDocumentInput
   links?: Prisma.DocumentLinkCreateNestedManyWithoutDocumentInput
   chunks?: Prisma.DocumentChunkCreateNestedManyWithoutDocumentInput
@@ -931,6 +998,7 @@ export type DocumentCreateWithoutOrganizationInput = {
 export type DocumentUncheckedCreateWithoutOrganizationInput = {
   id: string
   spaceId: string
+  folderId?: string | null
   title: string
   contentMarkdown: string
   contentText: string
@@ -988,6 +1056,7 @@ export type DocumentScalarWhereInput = {
   id?: Prisma.StringFilter<"Document"> | string
   organizationId?: Prisma.StringFilter<"Document"> | string
   spaceId?: Prisma.StringFilter<"Document"> | string
+  folderId?: Prisma.StringNullableFilter<"Document"> | string | null
   title?: Prisma.StringFilter<"Document"> | string
   contentMarkdown?: Prisma.StringFilter<"Document"> | string
   contentText?: Prisma.StringFilter<"Document"> | string
@@ -1031,6 +1100,7 @@ export type DocumentCreateWithoutSpaceInput = {
   updatedById?: string | null
   deletedAt?: Date | string | null
   organization: Prisma.OrganizationCreateNestedOneWithoutDocumentsInput
+  folder?: Prisma.DocumentFolderCreateNestedOneWithoutDocumentsInput
   revisions?: Prisma.DocumentRevisionCreateNestedManyWithoutDocumentInput
   links?: Prisma.DocumentLinkCreateNestedManyWithoutDocumentInput
   chunks?: Prisma.DocumentChunkCreateNestedManyWithoutDocumentInput
@@ -1039,6 +1109,7 @@ export type DocumentCreateWithoutSpaceInput = {
 export type DocumentUncheckedCreateWithoutSpaceInput = {
   id: string
   organizationId: string
+  folderId?: string | null
   title: string
   contentMarkdown: string
   contentText: string
@@ -1089,6 +1160,88 @@ export type DocumentUpdateManyWithWhereWithoutSpaceInput = {
   data: Prisma.XOR<Prisma.DocumentUpdateManyMutationInput, Prisma.DocumentUncheckedUpdateManyWithoutSpaceInput>
 }
 
+export type DocumentCreateWithoutFolderInput = {
+  id: string
+  title: string
+  contentMarkdown: string
+  contentText: string
+  sourceType: $Enums.DocumentSourceType
+  sourceAttachmentId?: string | null
+  status?: $Enums.DocumentStatus
+  revision?: number
+  createdVia?: $Enums.DocumentActorType
+  createdMcpClientId?: string | null
+  lastEditedById: string
+  lastEditedVia?: $Enums.DocumentActorType
+  lastEditedMcpClientId?: string | null
+  lastEditedAt?: Date | string
+  archivedAt?: Date | string | null
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  createdById?: string | null
+  updatedById?: string | null
+  deletedAt?: Date | string | null
+  organization: Prisma.OrganizationCreateNestedOneWithoutDocumentsInput
+  space: Prisma.SpaceCreateNestedOneWithoutDocumentsInput
+  revisions?: Prisma.DocumentRevisionCreateNestedManyWithoutDocumentInput
+  links?: Prisma.DocumentLinkCreateNestedManyWithoutDocumentInput
+  chunks?: Prisma.DocumentChunkCreateNestedManyWithoutDocumentInput
+}
+
+export type DocumentUncheckedCreateWithoutFolderInput = {
+  id: string
+  organizationId: string
+  spaceId: string
+  title: string
+  contentMarkdown: string
+  contentText: string
+  sourceType: $Enums.DocumentSourceType
+  sourceAttachmentId?: string | null
+  status?: $Enums.DocumentStatus
+  revision?: number
+  createdVia?: $Enums.DocumentActorType
+  createdMcpClientId?: string | null
+  lastEditedById: string
+  lastEditedVia?: $Enums.DocumentActorType
+  lastEditedMcpClientId?: string | null
+  lastEditedAt?: Date | string
+  archivedAt?: Date | string | null
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  createdById?: string | null
+  updatedById?: string | null
+  deletedAt?: Date | string | null
+  revisions?: Prisma.DocumentRevisionUncheckedCreateNestedManyWithoutDocumentInput
+  links?: Prisma.DocumentLinkUncheckedCreateNestedManyWithoutDocumentInput
+  chunks?: Prisma.DocumentChunkUncheckedCreateNestedManyWithoutDocumentInput
+}
+
+export type DocumentCreateOrConnectWithoutFolderInput = {
+  where: Prisma.DocumentWhereUniqueInput
+  create: Prisma.XOR<Prisma.DocumentCreateWithoutFolderInput, Prisma.DocumentUncheckedCreateWithoutFolderInput>
+}
+
+export type DocumentCreateManyFolderInputEnvelope = {
+  data: Prisma.DocumentCreateManyFolderInput | Prisma.DocumentCreateManyFolderInput[]
+  skipDuplicates?: boolean
+}
+
+export type DocumentUpsertWithWhereUniqueWithoutFolderInput = {
+  where: Prisma.DocumentWhereUniqueInput
+  update: Prisma.XOR<Prisma.DocumentUpdateWithoutFolderInput, Prisma.DocumentUncheckedUpdateWithoutFolderInput>
+  create: Prisma.XOR<Prisma.DocumentCreateWithoutFolderInput, Prisma.DocumentUncheckedCreateWithoutFolderInput>
+}
+
+export type DocumentUpdateWithWhereUniqueWithoutFolderInput = {
+  where: Prisma.DocumentWhereUniqueInput
+  data: Prisma.XOR<Prisma.DocumentUpdateWithoutFolderInput, Prisma.DocumentUncheckedUpdateWithoutFolderInput>
+}
+
+export type DocumentUpdateManyWithWhereWithoutFolderInput = {
+  where: Prisma.DocumentScalarWhereInput
+  data: Prisma.XOR<Prisma.DocumentUpdateManyMutationInput, Prisma.DocumentUncheckedUpdateManyWithoutFolderInput>
+}
+
 export type DocumentCreateWithoutRevisionsInput = {
   id: string
   title: string
@@ -1112,6 +1265,7 @@ export type DocumentCreateWithoutRevisionsInput = {
   deletedAt?: Date | string | null
   organization: Prisma.OrganizationCreateNestedOneWithoutDocumentsInput
   space: Prisma.SpaceCreateNestedOneWithoutDocumentsInput
+  folder?: Prisma.DocumentFolderCreateNestedOneWithoutDocumentsInput
   links?: Prisma.DocumentLinkCreateNestedManyWithoutDocumentInput
   chunks?: Prisma.DocumentChunkCreateNestedManyWithoutDocumentInput
 }
@@ -1120,6 +1274,7 @@ export type DocumentUncheckedCreateWithoutRevisionsInput = {
   id: string
   organizationId: string
   spaceId: string
+  folderId?: string | null
   title: string
   contentMarkdown: string
   contentText: string
@@ -1182,6 +1337,7 @@ export type DocumentUpdateWithoutRevisionsInput = {
   deletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   organization?: Prisma.OrganizationUpdateOneRequiredWithoutDocumentsNestedInput
   space?: Prisma.SpaceUpdateOneRequiredWithoutDocumentsNestedInput
+  folder?: Prisma.DocumentFolderUpdateOneWithoutDocumentsNestedInput
   links?: Prisma.DocumentLinkUpdateManyWithoutDocumentNestedInput
   chunks?: Prisma.DocumentChunkUpdateManyWithoutDocumentNestedInput
 }
@@ -1190,6 +1346,7 @@ export type DocumentUncheckedUpdateWithoutRevisionsInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   organizationId?: Prisma.StringFieldUpdateOperationsInput | string
   spaceId?: Prisma.StringFieldUpdateOperationsInput | string
+  folderId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   title?: Prisma.StringFieldUpdateOperationsInput | string
   contentMarkdown?: Prisma.StringFieldUpdateOperationsInput | string
   contentText?: Prisma.StringFieldUpdateOperationsInput | string
@@ -1236,6 +1393,7 @@ export type DocumentCreateWithoutLinksInput = {
   deletedAt?: Date | string | null
   organization: Prisma.OrganizationCreateNestedOneWithoutDocumentsInput
   space: Prisma.SpaceCreateNestedOneWithoutDocumentsInput
+  folder?: Prisma.DocumentFolderCreateNestedOneWithoutDocumentsInput
   revisions?: Prisma.DocumentRevisionCreateNestedManyWithoutDocumentInput
   chunks?: Prisma.DocumentChunkCreateNestedManyWithoutDocumentInput
 }
@@ -1244,6 +1402,7 @@ export type DocumentUncheckedCreateWithoutLinksInput = {
   id: string
   organizationId: string
   spaceId: string
+  folderId?: string | null
   title: string
   contentMarkdown: string
   contentText: string
@@ -1306,6 +1465,7 @@ export type DocumentUpdateWithoutLinksInput = {
   deletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   organization?: Prisma.OrganizationUpdateOneRequiredWithoutDocumentsNestedInput
   space?: Prisma.SpaceUpdateOneRequiredWithoutDocumentsNestedInput
+  folder?: Prisma.DocumentFolderUpdateOneWithoutDocumentsNestedInput
   revisions?: Prisma.DocumentRevisionUpdateManyWithoutDocumentNestedInput
   chunks?: Prisma.DocumentChunkUpdateManyWithoutDocumentNestedInput
 }
@@ -1314,6 +1474,7 @@ export type DocumentUncheckedUpdateWithoutLinksInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   organizationId?: Prisma.StringFieldUpdateOperationsInput | string
   spaceId?: Prisma.StringFieldUpdateOperationsInput | string
+  folderId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   title?: Prisma.StringFieldUpdateOperationsInput | string
   contentMarkdown?: Prisma.StringFieldUpdateOperationsInput | string
   contentText?: Prisma.StringFieldUpdateOperationsInput | string
@@ -1360,6 +1521,7 @@ export type DocumentCreateWithoutChunksInput = {
   deletedAt?: Date | string | null
   organization: Prisma.OrganizationCreateNestedOneWithoutDocumentsInput
   space: Prisma.SpaceCreateNestedOneWithoutDocumentsInput
+  folder?: Prisma.DocumentFolderCreateNestedOneWithoutDocumentsInput
   revisions?: Prisma.DocumentRevisionCreateNestedManyWithoutDocumentInput
   links?: Prisma.DocumentLinkCreateNestedManyWithoutDocumentInput
 }
@@ -1368,6 +1530,7 @@ export type DocumentUncheckedCreateWithoutChunksInput = {
   id: string
   organizationId: string
   spaceId: string
+  folderId?: string | null
   title: string
   contentMarkdown: string
   contentText: string
@@ -1430,6 +1593,7 @@ export type DocumentUpdateWithoutChunksInput = {
   deletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   organization?: Prisma.OrganizationUpdateOneRequiredWithoutDocumentsNestedInput
   space?: Prisma.SpaceUpdateOneRequiredWithoutDocumentsNestedInput
+  folder?: Prisma.DocumentFolderUpdateOneWithoutDocumentsNestedInput
   revisions?: Prisma.DocumentRevisionUpdateManyWithoutDocumentNestedInput
   links?: Prisma.DocumentLinkUpdateManyWithoutDocumentNestedInput
 }
@@ -1438,6 +1602,7 @@ export type DocumentUncheckedUpdateWithoutChunksInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   organizationId?: Prisma.StringFieldUpdateOperationsInput | string
   spaceId?: Prisma.StringFieldUpdateOperationsInput | string
+  folderId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   title?: Prisma.StringFieldUpdateOperationsInput | string
   contentMarkdown?: Prisma.StringFieldUpdateOperationsInput | string
   contentText?: Prisma.StringFieldUpdateOperationsInput | string
@@ -1464,6 +1629,7 @@ export type DocumentUncheckedUpdateWithoutChunksInput = {
 export type DocumentCreateManyOrganizationInput = {
   id: string
   spaceId: string
+  folderId?: string | null
   title: string
   contentMarkdown: string
   contentText: string
@@ -1507,6 +1673,7 @@ export type DocumentUpdateWithoutOrganizationInput = {
   updatedById?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   deletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   space?: Prisma.SpaceUpdateOneRequiredWithoutDocumentsNestedInput
+  folder?: Prisma.DocumentFolderUpdateOneWithoutDocumentsNestedInput
   revisions?: Prisma.DocumentRevisionUpdateManyWithoutDocumentNestedInput
   links?: Prisma.DocumentLinkUpdateManyWithoutDocumentNestedInput
   chunks?: Prisma.DocumentChunkUpdateManyWithoutDocumentNestedInput
@@ -1515,6 +1682,7 @@ export type DocumentUpdateWithoutOrganizationInput = {
 export type DocumentUncheckedUpdateWithoutOrganizationInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   spaceId?: Prisma.StringFieldUpdateOperationsInput | string
+  folderId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   title?: Prisma.StringFieldUpdateOperationsInput | string
   contentMarkdown?: Prisma.StringFieldUpdateOperationsInput | string
   contentText?: Prisma.StringFieldUpdateOperationsInput | string
@@ -1542,6 +1710,7 @@ export type DocumentUncheckedUpdateWithoutOrganizationInput = {
 export type DocumentUncheckedUpdateManyWithoutOrganizationInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   spaceId?: Prisma.StringFieldUpdateOperationsInput | string
+  folderId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   title?: Prisma.StringFieldUpdateOperationsInput | string
   contentMarkdown?: Prisma.StringFieldUpdateOperationsInput | string
   contentText?: Prisma.StringFieldUpdateOperationsInput | string
@@ -1566,6 +1735,7 @@ export type DocumentUncheckedUpdateManyWithoutOrganizationInput = {
 export type DocumentCreateManySpaceInput = {
   id: string
   organizationId: string
+  folderId?: string | null
   title: string
   contentMarkdown: string
   contentText: string
@@ -1609,6 +1779,7 @@ export type DocumentUpdateWithoutSpaceInput = {
   updatedById?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   deletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   organization?: Prisma.OrganizationUpdateOneRequiredWithoutDocumentsNestedInput
+  folder?: Prisma.DocumentFolderUpdateOneWithoutDocumentsNestedInput
   revisions?: Prisma.DocumentRevisionUpdateManyWithoutDocumentNestedInput
   links?: Prisma.DocumentLinkUpdateManyWithoutDocumentNestedInput
   chunks?: Prisma.DocumentChunkUpdateManyWithoutDocumentNestedInput
@@ -1617,6 +1788,7 @@ export type DocumentUpdateWithoutSpaceInput = {
 export type DocumentUncheckedUpdateWithoutSpaceInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   organizationId?: Prisma.StringFieldUpdateOperationsInput | string
+  folderId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   title?: Prisma.StringFieldUpdateOperationsInput | string
   contentMarkdown?: Prisma.StringFieldUpdateOperationsInput | string
   contentText?: Prisma.StringFieldUpdateOperationsInput | string
@@ -1644,6 +1816,113 @@ export type DocumentUncheckedUpdateWithoutSpaceInput = {
 export type DocumentUncheckedUpdateManyWithoutSpaceInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   organizationId?: Prisma.StringFieldUpdateOperationsInput | string
+  folderId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  title?: Prisma.StringFieldUpdateOperationsInput | string
+  contentMarkdown?: Prisma.StringFieldUpdateOperationsInput | string
+  contentText?: Prisma.StringFieldUpdateOperationsInput | string
+  sourceType?: Prisma.EnumDocumentSourceTypeFieldUpdateOperationsInput | $Enums.DocumentSourceType
+  sourceAttachmentId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  status?: Prisma.EnumDocumentStatusFieldUpdateOperationsInput | $Enums.DocumentStatus
+  revision?: Prisma.IntFieldUpdateOperationsInput | number
+  createdVia?: Prisma.EnumDocumentActorTypeFieldUpdateOperationsInput | $Enums.DocumentActorType
+  createdMcpClientId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  lastEditedById?: Prisma.StringFieldUpdateOperationsInput | string
+  lastEditedVia?: Prisma.EnumDocumentActorTypeFieldUpdateOperationsInput | $Enums.DocumentActorType
+  lastEditedMcpClientId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  lastEditedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  archivedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  createdById?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  updatedById?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  deletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+}
+
+export type DocumentCreateManyFolderInput = {
+  id: string
+  organizationId: string
+  spaceId: string
+  title: string
+  contentMarkdown: string
+  contentText: string
+  sourceType: $Enums.DocumentSourceType
+  sourceAttachmentId?: string | null
+  status?: $Enums.DocumentStatus
+  revision?: number
+  createdVia?: $Enums.DocumentActorType
+  createdMcpClientId?: string | null
+  lastEditedById: string
+  lastEditedVia?: $Enums.DocumentActorType
+  lastEditedMcpClientId?: string | null
+  lastEditedAt?: Date | string
+  archivedAt?: Date | string | null
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  createdById?: string | null
+  updatedById?: string | null
+  deletedAt?: Date | string | null
+}
+
+export type DocumentUpdateWithoutFolderInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  title?: Prisma.StringFieldUpdateOperationsInput | string
+  contentMarkdown?: Prisma.StringFieldUpdateOperationsInput | string
+  contentText?: Prisma.StringFieldUpdateOperationsInput | string
+  sourceType?: Prisma.EnumDocumentSourceTypeFieldUpdateOperationsInput | $Enums.DocumentSourceType
+  sourceAttachmentId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  status?: Prisma.EnumDocumentStatusFieldUpdateOperationsInput | $Enums.DocumentStatus
+  revision?: Prisma.IntFieldUpdateOperationsInput | number
+  createdVia?: Prisma.EnumDocumentActorTypeFieldUpdateOperationsInput | $Enums.DocumentActorType
+  createdMcpClientId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  lastEditedById?: Prisma.StringFieldUpdateOperationsInput | string
+  lastEditedVia?: Prisma.EnumDocumentActorTypeFieldUpdateOperationsInput | $Enums.DocumentActorType
+  lastEditedMcpClientId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  lastEditedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  archivedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  createdById?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  updatedById?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  deletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  organization?: Prisma.OrganizationUpdateOneRequiredWithoutDocumentsNestedInput
+  space?: Prisma.SpaceUpdateOneRequiredWithoutDocumentsNestedInput
+  revisions?: Prisma.DocumentRevisionUpdateManyWithoutDocumentNestedInput
+  links?: Prisma.DocumentLinkUpdateManyWithoutDocumentNestedInput
+  chunks?: Prisma.DocumentChunkUpdateManyWithoutDocumentNestedInput
+}
+
+export type DocumentUncheckedUpdateWithoutFolderInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  organizationId?: Prisma.StringFieldUpdateOperationsInput | string
+  spaceId?: Prisma.StringFieldUpdateOperationsInput | string
+  title?: Prisma.StringFieldUpdateOperationsInput | string
+  contentMarkdown?: Prisma.StringFieldUpdateOperationsInput | string
+  contentText?: Prisma.StringFieldUpdateOperationsInput | string
+  sourceType?: Prisma.EnumDocumentSourceTypeFieldUpdateOperationsInput | $Enums.DocumentSourceType
+  sourceAttachmentId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  status?: Prisma.EnumDocumentStatusFieldUpdateOperationsInput | $Enums.DocumentStatus
+  revision?: Prisma.IntFieldUpdateOperationsInput | number
+  createdVia?: Prisma.EnumDocumentActorTypeFieldUpdateOperationsInput | $Enums.DocumentActorType
+  createdMcpClientId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  lastEditedById?: Prisma.StringFieldUpdateOperationsInput | string
+  lastEditedVia?: Prisma.EnumDocumentActorTypeFieldUpdateOperationsInput | $Enums.DocumentActorType
+  lastEditedMcpClientId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  lastEditedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  archivedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  createdById?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  updatedById?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  deletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  revisions?: Prisma.DocumentRevisionUncheckedUpdateManyWithoutDocumentNestedInput
+  links?: Prisma.DocumentLinkUncheckedUpdateManyWithoutDocumentNestedInput
+  chunks?: Prisma.DocumentChunkUncheckedUpdateManyWithoutDocumentNestedInput
+}
+
+export type DocumentUncheckedUpdateManyWithoutFolderInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  organizationId?: Prisma.StringFieldUpdateOperationsInput | string
+  spaceId?: Prisma.StringFieldUpdateOperationsInput | string
   title?: Prisma.StringFieldUpdateOperationsInput | string
   contentMarkdown?: Prisma.StringFieldUpdateOperationsInput | string
   contentText?: Prisma.StringFieldUpdateOperationsInput | string
@@ -1718,6 +1997,7 @@ export type DocumentSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs
   id?: boolean
   organizationId?: boolean
   spaceId?: boolean
+  folderId?: boolean
   title?: boolean
   contentMarkdown?: boolean
   contentText?: boolean
@@ -1739,6 +2019,7 @@ export type DocumentSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs
   deletedAt?: boolean
   organization?: boolean | Prisma.OrganizationDefaultArgs<ExtArgs>
   space?: boolean | Prisma.SpaceDefaultArgs<ExtArgs>
+  folder?: boolean | Prisma.Document$folderArgs<ExtArgs>
   revisions?: boolean | Prisma.Document$revisionsArgs<ExtArgs>
   links?: boolean | Prisma.Document$linksArgs<ExtArgs>
   chunks?: boolean | Prisma.Document$chunksArgs<ExtArgs>
@@ -1749,6 +2030,7 @@ export type DocumentSelectCreateManyAndReturn<ExtArgs extends runtime.Types.Exte
   id?: boolean
   organizationId?: boolean
   spaceId?: boolean
+  folderId?: boolean
   title?: boolean
   contentMarkdown?: boolean
   contentText?: boolean
@@ -1770,12 +2052,14 @@ export type DocumentSelectCreateManyAndReturn<ExtArgs extends runtime.Types.Exte
   deletedAt?: boolean
   organization?: boolean | Prisma.OrganizationDefaultArgs<ExtArgs>
   space?: boolean | Prisma.SpaceDefaultArgs<ExtArgs>
+  folder?: boolean | Prisma.Document$folderArgs<ExtArgs>
 }, ExtArgs["result"]["document"]>
 
 export type DocumentSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
   id?: boolean
   organizationId?: boolean
   spaceId?: boolean
+  folderId?: boolean
   title?: boolean
   contentMarkdown?: boolean
   contentText?: boolean
@@ -1797,12 +2081,14 @@ export type DocumentSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.Exte
   deletedAt?: boolean
   organization?: boolean | Prisma.OrganizationDefaultArgs<ExtArgs>
   space?: boolean | Prisma.SpaceDefaultArgs<ExtArgs>
+  folder?: boolean | Prisma.Document$folderArgs<ExtArgs>
 }, ExtArgs["result"]["document"]>
 
 export type DocumentSelectScalar = {
   id?: boolean
   organizationId?: boolean
   spaceId?: boolean
+  folderId?: boolean
   title?: boolean
   contentMarkdown?: boolean
   contentText?: boolean
@@ -1824,10 +2110,11 @@ export type DocumentSelectScalar = {
   deletedAt?: boolean
 }
 
-export type DocumentOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "organizationId" | "spaceId" | "title" | "contentMarkdown" | "contentText" | "sourceType" | "sourceAttachmentId" | "status" | "revision" | "createdVia" | "createdMcpClientId" | "lastEditedById" | "lastEditedVia" | "lastEditedMcpClientId" | "lastEditedAt" | "archivedAt" | "createdAt" | "updatedAt" | "createdById" | "updatedById" | "deletedAt", ExtArgs["result"]["document"]>
+export type DocumentOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "organizationId" | "spaceId" | "folderId" | "title" | "contentMarkdown" | "contentText" | "sourceType" | "sourceAttachmentId" | "status" | "revision" | "createdVia" | "createdMcpClientId" | "lastEditedById" | "lastEditedVia" | "lastEditedMcpClientId" | "lastEditedAt" | "archivedAt" | "createdAt" | "updatedAt" | "createdById" | "updatedById" | "deletedAt", ExtArgs["result"]["document"]>
 export type DocumentInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   organization?: boolean | Prisma.OrganizationDefaultArgs<ExtArgs>
   space?: boolean | Prisma.SpaceDefaultArgs<ExtArgs>
+  folder?: boolean | Prisma.Document$folderArgs<ExtArgs>
   revisions?: boolean | Prisma.Document$revisionsArgs<ExtArgs>
   links?: boolean | Prisma.Document$linksArgs<ExtArgs>
   chunks?: boolean | Prisma.Document$chunksArgs<ExtArgs>
@@ -1836,10 +2123,12 @@ export type DocumentInclude<ExtArgs extends runtime.Types.Extensions.InternalArg
 export type DocumentIncludeCreateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   organization?: boolean | Prisma.OrganizationDefaultArgs<ExtArgs>
   space?: boolean | Prisma.SpaceDefaultArgs<ExtArgs>
+  folder?: boolean | Prisma.Document$folderArgs<ExtArgs>
 }
 export type DocumentIncludeUpdateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   organization?: boolean | Prisma.OrganizationDefaultArgs<ExtArgs>
   space?: boolean | Prisma.SpaceDefaultArgs<ExtArgs>
+  folder?: boolean | Prisma.Document$folderArgs<ExtArgs>
 }
 
 export type $DocumentPayload<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
@@ -1847,6 +2136,7 @@ export type $DocumentPayload<ExtArgs extends runtime.Types.Extensions.InternalAr
   objects: {
     organization: Prisma.$OrganizationPayload<ExtArgs>
     space: Prisma.$SpacePayload<ExtArgs>
+    folder: Prisma.$DocumentFolderPayload<ExtArgs> | null
     revisions: Prisma.$DocumentRevisionPayload<ExtArgs>[]
     links: Prisma.$DocumentLinkPayload<ExtArgs>[]
     chunks: Prisma.$DocumentChunkPayload<ExtArgs>[]
@@ -1855,6 +2145,7 @@ export type $DocumentPayload<ExtArgs extends runtime.Types.Extensions.InternalAr
     id: string
     organizationId: string
     spaceId: string
+    folderId: string | null
     title: string
     contentMarkdown: string
     contentText: string
@@ -2270,6 +2561,7 @@ export interface Prisma__DocumentClient<T, Null = never, ExtArgs extends runtime
   readonly [Symbol.toStringTag]: "PrismaPromise"
   organization<T extends Prisma.OrganizationDefaultArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.OrganizationDefaultArgs<ExtArgs>>): Prisma.Prisma__OrganizationClient<runtime.Types.Result.GetResult<Prisma.$OrganizationPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | Null, Null, ExtArgs, GlobalOmitOptions>
   space<T extends Prisma.SpaceDefaultArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.SpaceDefaultArgs<ExtArgs>>): Prisma.Prisma__SpaceClient<runtime.Types.Result.GetResult<Prisma.$SpacePayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | Null, Null, ExtArgs, GlobalOmitOptions>
+  folder<T extends Prisma.Document$folderArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Document$folderArgs<ExtArgs>>): Prisma.Prisma__DocumentFolderClient<runtime.Types.Result.GetResult<Prisma.$DocumentFolderPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
   revisions<T extends Prisma.Document$revisionsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Document$revisionsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$DocumentRevisionPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   links<T extends Prisma.Document$linksArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Document$linksArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$DocumentLinkPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   chunks<T extends Prisma.Document$chunksArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Document$chunksArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$DocumentChunkPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
@@ -2305,6 +2597,7 @@ export interface DocumentFieldRefs {
   readonly id: Prisma.FieldRef<"Document", 'String'>
   readonly organizationId: Prisma.FieldRef<"Document", 'String'>
   readonly spaceId: Prisma.FieldRef<"Document", 'String'>
+  readonly folderId: Prisma.FieldRef<"Document", 'String'>
   readonly title: Prisma.FieldRef<"Document", 'String'>
   readonly contentMarkdown: Prisma.FieldRef<"Document", 'String'>
   readonly contentText: Prisma.FieldRef<"Document", 'String'>
@@ -2722,6 +3015,25 @@ export type DocumentDeleteManyArgs<ExtArgs extends runtime.Types.Extensions.Inte
    * Limit how many Documents to delete.
    */
   limit?: number
+}
+
+/**
+ * Document.folder
+ */
+export type Document$folderArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  /**
+   * Select specific fields to fetch from the DocumentFolder
+   */
+  select?: Prisma.DocumentFolderSelect<ExtArgs> | null
+  /**
+   * Omit specific fields from the DocumentFolder
+   */
+  omit?: Prisma.DocumentFolderOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.DocumentFolderInclude<ExtArgs> | null
+  where?: Prisma.DocumentFolderWhereInput
 }
 
 /**

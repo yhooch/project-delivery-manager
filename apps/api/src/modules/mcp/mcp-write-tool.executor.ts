@@ -13,12 +13,17 @@ import {
   type CreateWorkItemRequest,
   type ExecuteActionRequest,
   type McpAppendDocumentContentRequest,
+  type McpCreateDocumentFolderRequest,
   type McpCreateDocumentFromMarkdownRequest,
   type McpCreateRequirementRequest,
+  type McpDeleteDocumentFolderRequest,
   type McpLinkDocumentResourcesRequest,
+  type McpMoveDocumentFolderRequest,
+  type McpMoveDocumentToFolderRequest,
   type McpReplaceDocumentContentRequest,
   type McpToolName,
   type McpToolResult,
+  type McpUpdateDocumentFolderRequest,
   type McpUpdateDocumentMetadataRequest,
   type McpWriteContext,
   type McpWriteTargetSelectionSource,
@@ -35,6 +40,7 @@ import type { McpOAuthPrincipalContext } from "../../http/request-context";
 import type { RequestMetadata } from "../auth/auth-session.types";
 import { BugService } from "../bug/bug.service";
 import { CommentService } from "../comment/comment.service";
+import { DocumentFolderService } from "../document/document-folder.service";
 import { DocumentService } from "../document/document.service";
 import { IntakeService } from "../intake/intake.service";
 import {
@@ -82,8 +88,13 @@ type CreateIntakeArgs = McpWriteContext & CreateIntakeItemRequest;
 type CreateTaskArgs = McpWriteContext & CreateWorkItemRequest;
 type CreateBugArgs = McpWriteContext & CreateBugRequest;
 type CreateCommentArgs = McpWriteContext & CreateCommentRequest;
+type CreateDocumentFolderArgs = McpCreateDocumentFolderRequest;
+type DeleteDocumentFolderArgs = McpDeleteDocumentFolderRequest;
+type MoveDocumentFolderArgs = McpMoveDocumentFolderRequest;
+type MoveDocumentToFolderArgs = McpMoveDocumentToFolderRequest;
 type ReplaceTagAssignmentsArgs = McpWriteContext &
   ReplaceTagAssignmentsRequest;
+type UpdateDocumentFolderArgs = McpUpdateDocumentFolderRequest;
 type UpdateWorkItemArgs = McpWriteContext &
   UpdateWorkItemRequest & {
     workItemId: string;
@@ -102,11 +113,16 @@ const WRITE_TOOL_NAMES = new Set<McpToolName>([
   "pdm.work_item.execute_action",
   "pdm.bug.create",
   "pdm.comment.create",
+  "pdm.document_folder.create",
+  "pdm.document_folder.update",
+  "pdm.document_folder.move",
+  "pdm.document_folder.delete",
   "pdm.document.create_from_markdown",
   "pdm.document.append_content",
   "pdm.document.replace_content",
   "pdm.document.update_metadata",
   "pdm.document.link_resources",
+  "pdm.document.move_to_folder",
   "pdm.tag.replace_assignments",
 ]);
 
@@ -138,6 +154,8 @@ export class McpWriteToolExecutor {
     private readonly bugs: BugService,
     @Inject(CommentService)
     private readonly comments: CommentService,
+    @Inject(DocumentFolderService)
+    private readonly documentFolders: DocumentFolderService,
     @Inject(DocumentService)
     private readonly documents: DocumentService,
     @Inject(TagAssignmentService)
@@ -517,8 +535,57 @@ export class McpWriteToolExecutor {
         );
         return;
       }
+      case "pdm.document_folder.create": {
+        const input = args as CreateDocumentFolderArgs;
+        await this.validateDocumentFolderContext(
+          input.parentId,
+          context,
+        );
+        return;
+      }
+      case "pdm.document_folder.update":
+      case "pdm.document_folder.delete": {
+        const input = args as UpdateDocumentFolderArgs | DeleteDocumentFolderArgs;
+        await this.validateDocumentFolderContext(
+          input.folderId,
+          context,
+        );
+        return;
+      }
+      case "pdm.document_folder.move": {
+        const input = args as MoveDocumentFolderArgs;
+        await this.validateDocumentFolderContext(
+          input.folderId,
+          context,
+        );
+        await this.validateDocumentFolderContext(
+          input.parentId ?? undefined,
+          context,
+        );
+        return;
+      }
+      case "pdm.document.move_to_folder": {
+        const input = args as MoveDocumentToFolderArgs;
+        await this.validateDocumentContext(
+          principal.userId,
+          input.documentId,
+          context,
+          input.baseRevision,
+        );
+        await this.validateDocumentFolderContext(
+          input.folderId ?? undefined,
+          context,
+        );
+        return;
+      }
       case "pdm.document.create_from_markdown": {
         const input = args as McpCreateDocumentFromMarkdownRequest;
+        if (input.folderId) {
+          await this.validateDocumentFolderContext(
+            input.folderId,
+            context,
+          );
+        }
         await this.validateDocumentLinkTargets(
           principal.userId,
           input.links,
@@ -578,6 +645,20 @@ export class McpWriteToolExecutor {
         HttpStatus.CONFLICT,
       );
     }
+  }
+
+  private async validateDocumentFolderContext(
+    folderId: string | undefined,
+    context: McpWriteContext,
+  ): Promise<void> {
+    if (!folderId) {
+      return;
+    }
+
+    await this.documentFolders.requireFolderInSpace(folderId, {
+      organizationId: context.organizationId,
+      spaceId: context.spaceId,
+    });
   }
 
   private async validateDocumentLinkTargets(
@@ -726,6 +807,64 @@ export class McpWriteToolExecutor {
           output: comment,
         };
       }
+      case "pdm.document_folder.create": {
+        const input = args as CreateDocumentFolderArgs;
+        const folder = await this.documentFolders.create(
+          principal.userId,
+          input.spaceId,
+          omitWriteContext(input),
+          metadata,
+        );
+
+        return {
+          message: "Document folder created.",
+          output: folder,
+        };
+      }
+      case "pdm.document_folder.update": {
+        const input = args as UpdateDocumentFolderArgs;
+        const { folderId, ...updateInput } = omitWriteContext(input);
+        const folder = await this.documentFolders.update(
+          principal.userId,
+          folderId,
+          updateInput,
+          metadata,
+        );
+
+        return {
+          message: "Document folder updated.",
+          output: folder,
+        };
+      }
+      case "pdm.document_folder.move": {
+        const input = args as MoveDocumentFolderArgs;
+        const { folderId, ...moveInput } = omitWriteContext(input);
+        const folder = await this.documentFolders.move(
+          principal.userId,
+          folderId,
+          moveInput,
+          metadata,
+        );
+
+        return {
+          message: "Document folder moved.",
+          output: folder,
+        };
+      }
+      case "pdm.document_folder.delete": {
+        const input = args as DeleteDocumentFolderArgs;
+        const { folderId } = omitWriteContext(input);
+        const output = await this.documentFolders.delete(
+          principal.userId,
+          folderId,
+          metadata,
+        );
+
+        return {
+          message: "Document folder deleted.",
+          output,
+        };
+      }
       case "pdm.document.create_from_markdown": {
         const input = args as McpCreateDocumentFromMarkdownRequest;
         const document = await this.documents.createFromMarkdown(
@@ -803,6 +942,22 @@ export class McpWriteToolExecutor {
         return {
           message: "Document resources linked.",
           output: links,
+        };
+      }
+      case "pdm.document.move_to_folder": {
+        const input = args as MoveDocumentToFolderArgs;
+        const { documentId, ...moveInput } = omitWriteContext(input);
+        const document = await this.documents.moveToFolder(
+          principal.userId,
+          documentId,
+          moveInput,
+          metadata,
+          mcpDocumentActor(principal.clientId),
+        );
+
+        return {
+          message: "Document moved to folder.",
+          output: document,
         };
       }
       case "pdm.tag.replace_assignments": {
@@ -977,7 +1132,11 @@ function summarizeInput(
     idempotencyKey: record.idempotencyKey,
     organizationId: record.organizationId,
     spaceId: record.spaceId,
-    targetId: record.targetId ?? record.workItemId ?? record.documentId,
+    targetId:
+      record.targetId ??
+      record.workItemId ??
+      record.documentId ??
+      record.folderId,
     targetSelectionSource: record.targetSelectionSource,
     targetType: record.targetType,
     text: textSummary,

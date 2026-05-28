@@ -3,10 +3,15 @@ import { describe, expect, it } from "vitest";
 import {
   AppendDocumentContentRequestSchema,
   DocumentDetailSchema,
+  DocumentFolderTreeNodeSchema,
   DocumentLinkTargetSchema,
+  DocumentListQuerySchema,
   DocumentSchema,
+  MoveDocumentsToFolderRequestSchema,
+  MoveDocumentToFolderRequestSchema,
   PasteDocumentRequestSchema,
   ReplaceDocumentLinksRequestSchema,
+  ReorderDocumentFoldersRequestSchema,
   UpdateDocumentContentRequestSchema,
 } from "./document.ts";
 import {
@@ -101,6 +106,13 @@ describe("document contracts", () => {
       id: ID,
       organizationId: SECOND_ID,
       spaceId: THIRD_ID,
+      folderId: SECOND_ID,
+      folderPath: [
+        {
+          id: SECOND_ID,
+          name: "Research",
+        },
+      ],
       title: "Plan",
       contentMarkdown: "# Plan",
       contentText: "Plan",
@@ -135,6 +147,106 @@ describe("document contracts", () => {
     });
 
     expect(document.links?.[0]?.targetType).toBe("WORK_ITEM");
+    expect(document.folderPath?.[0]?.name).toBe("Research");
+  });
+
+  it("validates document folders and folder-aware document inputs", () => {
+    expect(
+      DocumentFolderTreeNodeSchema.parse({
+        id: ID,
+        organizationId: SECOND_ID,
+        spaceId: THIRD_ID,
+        parentId: SECOND_ID,
+        name: "Architecture",
+        sortOrder: 10,
+        depth: 1,
+        version: 2,
+        createdById: ID,
+        updatedById: SECOND_ID,
+        createdAt: "2026-05-27T00:00:00.000Z",
+        updatedAt: "2026-05-27T00:00:00.000Z",
+        documentCount: 3,
+        descendantDocumentCount: 8,
+        children: [],
+      }),
+    ).toMatchObject({
+      name: "Architecture",
+      descendantDocumentCount: 8,
+    });
+
+    expect(
+      PasteDocumentRequestSchema.parse({
+        contentMarkdown: "# In folder",
+        folderId: ID,
+      }),
+    ).toMatchObject({
+      folderId: ID,
+    });
+    expect(
+      DocumentListQuerySchema.parse({
+        page: 1,
+        pageSize: 20,
+        folderId: ID,
+        includeDescendants: "true",
+      }),
+    ).toMatchObject({
+      folderId: ID,
+      includeDescendants: true,
+    });
+    expect(
+      DocumentListQuerySchema.parse({
+        page: 1,
+        pageSize: 20,
+        unfiled: "true",
+      }),
+    ).toMatchObject({
+      unfiled: true,
+    });
+    expect(() =>
+      DocumentListQuerySchema.parse({
+        page: 1,
+        pageSize: 20,
+        folderId: ID,
+        unfiled: true,
+      }),
+    ).toThrow();
+    expect(
+      MoveDocumentToFolderRequestSchema.parse({
+        folderId: null,
+        baseRevision: 1,
+      }),
+    ).toEqual({
+      folderId: null,
+      baseRevision: 1,
+    });
+    expect(
+      MoveDocumentsToFolderRequestSchema.parse({
+        documentIds: [ID, SECOND_ID],
+        folderId: null,
+      }),
+    ).toEqual({
+      documentIds: [ID, SECOND_ID],
+      folderId: null,
+    });
+    expect(
+      MoveDocumentsToFolderRequestSchema.safeParse({
+        documentIds: [ID, ID],
+      }).success,
+    ).toBe(false);
+    expect(
+      ReorderDocumentFoldersRequestSchema.parse({
+        parentId: null,
+        orderedFolderIds: [ID, SECOND_ID, THIRD_ID],
+      }),
+    ).toEqual({
+      parentId: null,
+      orderedFolderIds: [ID, SECOND_ID, THIRD_ID],
+    });
+    expect(
+      ReorderDocumentFoldersRequestSchema.safeParse({
+        orderedFolderIds: [ID, ID],
+      }).success,
+    ).toBe(false);
   });
 
   it("validates detail-only document context without changing base document DTO", () => {

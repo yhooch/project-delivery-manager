@@ -2,10 +2,12 @@
 
 import {
   Archive,
+  ChevronLeft,
   ChevronRight,
   Clock3,
   Download,
   FileText,
+  FolderInput,
   Link2,
   Loader2,
   MessageSquare,
@@ -24,6 +26,7 @@ import {
 } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
 import {
+  Fragment,
   useCallback,
   useEffect,
   useMemo,
@@ -33,7 +36,11 @@ import {
   type FormEvent,
   type ReactNode,
 } from "react";
-import type { Attachment, Comment, TimelineEvent } from "@project-delivery/shared";
+import type {
+  Attachment,
+  Comment,
+  TimelineEvent,
+} from "@project-delivery/shared";
 
 import { Link, useRouter } from "../../i18n/routing";
 import { getApiErrorMessageKey } from "../../lib/api-error-messages";
@@ -47,6 +54,7 @@ import {
 import { createComment, listComments } from "../../lib/comment-service";
 import type {
   DocumentDetail,
+  DocumentFolder,
   DocumentLinkSummary,
   DocumentSummary,
 } from "../../lib/document-service";
@@ -54,7 +62,9 @@ import {
   archiveDocument,
   deleteDocument,
   getDocument,
+  listDocumentFolders,
   listDocuments,
+  moveDocumentToFolder,
   reimportDocument,
   restoreDocument,
   updateDocument,
@@ -94,10 +104,18 @@ import {
   DialogTitle,
 } from "../ui/dialog";
 import { Input } from "../ui/input";
+import { SelectMenu } from "../ui/select-menu";
 import { Textarea } from "../ui/textarea";
+import { useDocumentDirectory } from "./document-directory-context";
+import {
+  createDocumentDirectoryHref,
+  flattenDocumentFolders,
+  normalizeDocumentFolderTree,
+} from "./document-directory-model";
 import {
   ActorBadge,
   DocumentLinksSummary,
+  DOCUMENTS_LAST_LIST_HREF_STORAGE_KEY,
   SourceBadge,
   formatDocumentCreatedMeta,
   formatDocumentEditedMeta,
@@ -121,12 +139,45 @@ const DOCUMENT_DETAIL_REALTIME_KEYS = [
 ] as const;
 const DOCUMENT_LINK_SEARCH_PAGE_SIZE = 8;
 
+function isValidDocumentListHref(href: string | null): href is string {
+  return href === "/documents" || href?.startsWith("/documents?") === true;
+}
+
+function readStoredDocumentListHref(): string | null {
+  if (typeof window === "undefined") {
+    return null;
+  }
+
+  try {
+    const href = window.sessionStorage.getItem(
+      DOCUMENTS_LAST_LIST_HREF_STORAGE_KEY,
+    );
+    return isValidDocumentListHref(href) ? href : null;
+  } catch {
+    return null;
+  }
+}
+
+function getDocumentBackToListFallbackHref(document: DocumentDetail | null) {
+  if (document?.folderId) {
+    return createDocumentDirectoryHref({
+      folderId: document.folderId,
+      view: "folder",
+    });
+  }
+  if (document?.status === "ARCHIVED") {
+    return createDocumentDirectoryHref({ view: "archived" });
+  }
+  return "/documents";
+}
+
 export function DocumentDetailPage({ documentId }: DocumentDetailPageProps) {
   const t = useTranslations("documents");
   const tRoot = useTranslations();
   const locale = useLocale();
   const router = useRouter();
   const { currentOrganization, currentSpace, session, status } = useSession();
+  const { setActiveDocumentFolderId } = useDocumentDirectory();
   const organizationId =
     currentOrganization?.id ?? session?.defaultOrganizationId;
   const [document, setDocument] = useState<DocumentDetail | null>(null);
@@ -137,6 +188,7 @@ export function DocumentDetailPage({ documentId }: DocumentDetailPageProps) {
   const [isRestoring, setIsRestoring] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [moveFolderDialogOpen, setMoveFolderDialogOpen] = useState(false);
   const [errorKey, setErrorKey] = useState<string | null>(null);
   const [conflict, setConflict] = useState(false);
   const [hasRealtimeRevision, setHasRealtimeRevision] = useState(false);
@@ -160,7 +212,22 @@ export function DocumentDetailPage({ documentId }: DocumentDetailPageProps) {
   >(null);
   const formRef = useRef<DocumentEditForm | null>(null);
   const editModeRef = useRef(false);
-  const spaceId = document?.spaceId ?? currentSpace?.id ?? session?.defaultSpaceId;
+  const spaceId =
+    document?.spaceId ?? currentSpace?.id ?? session?.defaultSpaceId;
+  const [storedListHref, setStoredListHref] = useState<string | null>(null);
+  const backToListHref = useMemo(
+    () => storedListHref ?? getDocumentBackToListFallbackHref(document),
+    [document, storedListHref],
+  );
+
+  useEffect(() => {
+    setStoredListHref(readStoredDocumentListHref());
+  }, [documentId]);
+
+  useEffect(() => {
+    setActiveDocumentFolderId(document?.folderId);
+    return () => setActiveDocumentFolderId(undefined);
+  }, [document?.folderId, setActiveDocumentFolderId]);
 
   useEffect(() => {
     formRef.current = form;
@@ -170,61 +237,64 @@ export function DocumentDetailPage({ documentId }: DocumentDetailPageProps) {
     editModeRef.current = editMode;
   }, [editMode]);
 
-  const loadDocument = useCallback(async (options?: { realtime?: boolean; preserveForm?: boolean }) => {
-    const isRealtime = options?.realtime === true;
-    const preserveForm =
-      options?.preserveForm ?? (isRealtime && editModeRef.current);
+  const loadDocument = useCallback(
+    async (options?: { realtime?: boolean; preserveForm?: boolean }) => {
+      const isRealtime = options?.realtime === true;
+      const preserveForm =
+        options?.preserveForm ?? (isRealtime && editModeRef.current);
 
-    if (!isRealtime) {
-      setIsLoading(true);
-      setErrorKey(null);
-    }
-    try {
-      const next = await getDocumentWithSubresources({
-        documentId,
-        organizationId,
-        spaceId,
-      });
-      setDocument(next);
-      if (preserveForm) {
-        const baseRevision = formRef.current?.baseRevision;
-        setForm((current) => current ?? createDocumentEditForm(next));
-        if (baseRevision !== undefined && next.revision > baseRevision) {
-          setHasRealtimeRevision(true);
+      if (!isRealtime) {
+        setIsLoading(true);
+        setErrorKey(null);
+      }
+      try {
+        const next = await getDocumentWithSubresources({
+          documentId,
+          organizationId,
+          spaceId,
+        });
+        setDocument(next);
+        if (preserveForm) {
+          const baseRevision = formRef.current?.baseRevision;
+          setForm((current) => current ?? createDocumentEditForm(next));
+          if (baseRevision !== undefined && next.revision > baseRevision) {
+            setHasRealtimeRevision(true);
+          }
+        } else {
+          const nextForm = createDocumentEditForm(next);
+          setForm(nextForm);
+          formRef.current = nextForm;
+          setHasRealtimeRevision(false);
         }
-      } else {
-        const nextForm = createDocumentEditForm(next);
-        setForm(nextForm);
-        formRef.current = nextForm;
-        setHasRealtimeRevision(false);
+        if (!isRealtime) {
+          recordRecentOpen(
+            {
+              displayCode: "Document",
+              href: `/documents/${next.id}`,
+              id: next.id,
+              organizationId: next.organizationId,
+              spaceId: next.spaceId,
+              title: next.title || "Untitled document",
+              type: "DOCUMENT",
+            },
+            { organizationId: next.organizationId, spaceId: next.spaceId },
+          );
+        }
+        if (!preserveForm) {
+          setConflict(false);
+        }
+      } catch (error) {
+        if (!isRealtime) {
+          setErrorKey(getApiErrorMessageKey(error));
+        }
+      } finally {
+        if (!isRealtime) {
+          setIsLoading(false);
+        }
       }
-      if (!isRealtime) {
-        recordRecentOpen(
-          {
-            displayCode: "Document",
-            href: `/documents/${next.id}`,
-            id: next.id,
-            organizationId: next.organizationId,
-            spaceId: next.spaceId,
-            title: next.title || "Untitled document",
-            type: "DOCUMENT",
-          },
-          { organizationId: next.organizationId, spaceId: next.spaceId },
-        );
-      }
-      if (!preserveForm) {
-        setConflict(false);
-      }
-    } catch (error) {
-      if (!isRealtime) {
-        setErrorKey(getApiErrorMessageKey(error));
-      }
-    } finally {
-      if (!isRealtime) {
-        setIsLoading(false);
-      }
-    }
-  }, [documentId, organizationId, spaceId]);
+    },
+    [documentId, organizationId, spaceId],
+  );
 
   useEffect(() => {
     if (status !== "authenticated") {
@@ -276,7 +346,8 @@ export function DocumentDetailPage({ documentId }: DocumentDetailPageProps) {
         );
         setDocumentSearchResults(
           result.items.filter(
-            (item) => item.id !== document.id && !selectedDocumentIds.has(item.id),
+            (item) =>
+              item.id !== document.id && !selectedDocumentIds.has(item.id),
           ),
         );
       })
@@ -297,7 +368,7 @@ export function DocumentDetailPage({ documentId }: DocumentDetailPageProps) {
   }, [document, documentSearch, editMode]);
 
   const headingsSource =
-    editMode && form ? form.contentMarkdown : document?.contentMarkdown ?? "";
+    editMode && form ? form.contentMarkdown : (document?.contentMarkdown ?? "");
   const headings = useMemo<MarkdownHeading[]>(
     () => getDocumentMarkdownHeadings(headingsSource),
     [headingsSource],
@@ -324,9 +395,14 @@ export function DocumentDetailPage({ documentId }: DocumentDetailPageProps) {
       }));
       const next = await updateDocument({
         baseRevision: form.baseRevision,
-        contentMarkdown: form.contentMarkdown,
+        ...(form.contentMarkdown !== document.contentMarkdown
+          ? { contentMarkdown: form.contentMarkdown }
+          : {}),
         documentId: document.id,
-        linkTargets: dedupeLinkTargets([...linkedDocumentTargets, ...linkTargets]),
+        linkTargets: dedupeLinkTargets([
+          ...linkedDocumentTargets,
+          ...linkTargets,
+        ]),
         tagIds: getDocumentTagIds(form.selectedTags),
         title: form.title.trim() || t("untitled"),
       });
@@ -458,7 +534,9 @@ export function DocumentDetailPage({ documentId }: DocumentDetailPageProps) {
     }
   };
 
-  const uploadDocumentAttachment = async (event: ChangeEvent<HTMLInputElement>) => {
+  const uploadDocumentAttachment = async (
+    event: ChangeEvent<HTMLInputElement>,
+  ) => {
     const file = event.target.files?.[0] ?? null;
     event.target.value = "";
     if (!document || !file) {
@@ -493,7 +571,9 @@ export function DocumentDetailPage({ documentId }: DocumentDetailPageProps) {
     setForm((current) => {
       if (
         !current ||
-        current.linkedDocuments.some((link) => link.targetId === linkedDocument.id)
+        current.linkedDocuments.some(
+          (link) => link.targetId === linkedDocument.id,
+        )
       ) {
         return current;
       }
@@ -551,343 +631,416 @@ export function DocumentDetailPage({ documentId }: DocumentDetailPageProps) {
 
   return (
     <>
-      <div className="mx-auto grid w-full max-w-7xl gap-6 px-4 py-5 lg:grid-cols-[minmax(0,1fr)_18rem] lg:px-6">
-      <div className="min-w-0">
-        <form onSubmit={(event) => void save(event)}>
-        <div className="mb-5 flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground">
-          <Link className="hover:text-foreground hover:underline" href="/">
-            {currentOrganization?.name ?? t("unknownOrganization")}
-          </Link>
-          <span>/</span>
-          <Link className="hover:text-foreground hover:underline" href="/documents">
-            {currentSpace?.name ?? t("unknownSpace")}
-          </Link>
-          <span>/</span>
-          <span>{t("title")}</span>
-        </div>
-
-        <section className="border-b border-border pb-5">
-          <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
-            <div className="min-w-0 flex-1">
-              {editMode ? (
-                <Input
-                  aria-label={t("edit.titleLabel")}
-                  className="h-auto px-0 py-1 text-2xl font-semibold tracking-normal shadow-none md:text-3xl"
-                  data-testid="document-title-input"
-                  value={form.title}
-                  onChange={(event) =>
-                    setForm((current) =>
-                      current ? { ...current, title: event.target.value } : current,
-                    )
-                  }
-                />
-              ) : (
-                <h1 className="break-words text-2xl font-semibold tracking-normal text-foreground md:text-3xl">
-                  {document.title || t("untitled")}
-                </h1>
-              )}
-              <div className="mt-3 flex flex-wrap items-center gap-1.5">
-                <Badge variant={document.status === "ARCHIVED" ? "default" : "success"}>
-                  {t(`status.${document.status}`)}
-                </Badge>
-                <SourceBadge sourceType={document.sourceType} />
-                <ActorBadge
-                  actorType={document.lastEditedVia}
-                  mcpClientName={document.lastEditedMcpClientName}
-                />
-              </div>
-              <div className="mt-2 grid gap-1 text-xs text-muted-foreground">
-                <p>{formatDocumentCreatedMeta(document, locale, t)}</p>
-                <p>{formatDocumentEditedMeta(document, locale, t)}</p>
-              </div>
+      <div className="mx-auto grid w-full max-w-[96rem] gap-6 px-4 py-5 lg:grid-cols-[12rem_minmax(0,1fr)] lg:px-6 xl:grid-cols-[13rem_minmax(0,1fr)_18rem]">
+        <DocumentTocRail headings={headings} />
+        <div className="min-w-0">
+          <form onSubmit={(event) => void save(event)}>
+            <div
+              className="sticky top-12 z-20 mb-4 border-b border-border bg-background/95 py-2 backdrop-blur supports-[backdrop-filter]:bg-background/80"
+              data-testid="document-back-to-list-bar"
+            >
+              <Button asChild size="sm" variant="ghost" className="-ml-2">
+                <Link
+                  href={backToListHref}
+                  data-testid="document-back-to-list"
+                >
+                  <ChevronLeft className="h-4 w-4" aria-hidden="true" />
+                  {t("actions.backToList")}
+                </Link>
+              </Button>
             </div>
-            <div className="flex shrink-0 flex-wrap gap-2">
-              {editMode ? (
-                <>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() => {
-                      const nextForm = createDocumentEditForm(document);
-                      setForm(nextForm);
-                      formRef.current = nextForm;
-                      setEditMode(false);
-                      setConflict(false);
-                      setHasRealtimeRevision(false);
-                    }}
-                  >
-                    {t("actions.cancel")}
-                  </Button>
-                  <Button type="submit" disabled={isSaving} data-testid="document-save-button">
-                    {isSaving ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> : <Save className="h-4 w-4" aria-hidden="true" />}
-                    {t("actions.save")}
-                  </Button>
-                </>
-              ) : (
-                <>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() => {
-                      setContentPreview(false);
-                      setEditMode(true);
-                    }}
-                    data-testid="document-edit-button"
-                  >
-                    <Pencil className="h-4 w-4" aria-hidden="true" />
-                    {t("actions.edit")}
-                  </Button>
-                  {document.status === "ARCHIVED" ? (
-                    <>
+            <div className="mb-5 flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground">
+              <Link className="hover:text-foreground hover:underline" href="/">
+                {currentOrganization?.name ?? t("unknownOrganization")}
+              </Link>
+              <span>/</span>
+              <Link
+                className="hover:text-foreground hover:underline"
+                href="/documents"
+              >
+                {currentSpace?.name ?? t("unknownSpace")}
+              </Link>
+              <span>/</span>
+              <span>{t("title")}</span>
+            </div>
+
+            <section className="border-b border-border pb-5">
+              <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+                <div className="min-w-0 flex-1">
+                  {editMode ? (
+                    <Input
+                      aria-label={t("edit.titleLabel")}
+                      className="h-auto px-0 py-1 text-2xl font-semibold tracking-normal shadow-none md:text-3xl"
+                      data-testid="document-title-input"
+                      value={form.title}
+                      onChange={(event) =>
+                        setForm((current) =>
+                          current
+                            ? { ...current, title: event.target.value }
+                            : current,
+                        )
+                      }
+                    />
+                  ) : (
+                    <h1 className="break-words text-2xl font-semibold tracking-normal text-foreground md:text-3xl">
+                      {document.title || t("untitled")}
+                    </h1>
+                  )}
+                  <div className="mt-3 flex flex-wrap items-center gap-1.5">
+                    <Badge
+                      variant={
+                        document.status === "ARCHIVED" ? "default" : "success"
+                      }
+                    >
+                      {t(`status.${document.status}`)}
+                    </Badge>
+                    <SourceBadge sourceType={document.sourceType} />
+                    <ActorBadge
+                      actorType={document.lastEditedVia}
+                      mcpClientName={document.lastEditedMcpClientName}
+                    />
+                  </div>
+                  <div className="mt-2 grid gap-1 text-xs text-muted-foreground">
+                    <p>{formatDocumentCreatedMeta(document, locale, t)}</p>
+                    <p>{formatDocumentEditedMeta(document, locale, t)}</p>
+                  </div>
+                </div>
+                <div className="flex shrink-0 flex-wrap gap-2">
+                  {editMode ? (
+                    <Fragment key="document-edit-actions">
                       <Button
+                        key="document-cancel-button"
                         type="button"
                         variant="outline"
-                        disabled={isRestoring}
-                        onClick={() => void restore()}
-                        data-testid="document-restore-button"
+                        onClick={() => {
+                          const nextForm = createDocumentEditForm(document);
+                          setForm(nextForm);
+                          formRef.current = nextForm;
+                          setEditMode(false);
+                          setConflict(false);
+                          setHasRealtimeRevision(false);
+                        }}
                       >
-                        {isRestoring ? (
+                        {t("actions.cancel")}
+                      </Button>
+                      <Button
+                        key="document-save-button"
+                        type="submit"
+                        disabled={isSaving}
+                        data-testid="document-save-button"
+                      >
+                        {isSaving ? (
                           <Loader2
                             className="h-4 w-4 animate-spin"
                             aria-hidden="true"
                           />
                         ) : (
-                          <RotateCcw className="h-4 w-4" aria-hidden="true" />
+                          <Save className="h-4 w-4" aria-hidden="true" />
                         )}
-                        {t("actions.restore")}
+                        {t("actions.save")}
+                      </Button>
+                    </Fragment>
+                  ) : (
+                    <Fragment key="document-view-actions">
+                      <Button
+                        key="document-move-folder-button"
+                        type="button"
+                        variant="outline"
+                        onClick={() => setMoveFolderDialogOpen(true)}
+                        data-testid="document-move-folder-button"
+                      >
+                        <FolderInput className="h-4 w-4" aria-hidden="true" />
+                        {t("actions.moveToFolder")}
                       </Button>
                       <Button
+                        key="document-edit-button"
                         type="button"
-                        variant="destructive"
-                        disabled={isDeleting}
-                        onClick={() => setDeleteDialogOpen(true)}
-                        data-testid="document-delete-button"
+                        variant="outline"
+                        onClick={(event) => {
+                          event.preventDefault();
+                          setContentPreview(false);
+                          setEditMode(true);
+                        }}
+                        data-testid="document-edit-button"
                       >
-                        <Trash2 className="h-4 w-4" aria-hidden="true" />
-                        {t("actions.delete")}
+                        <Pencil className="h-4 w-4" aria-hidden="true" />
+                        {t("actions.edit")}
                       </Button>
-                    </>
-                  ) : (
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      disabled={isArchiving}
-                      onClick={() => void archive()}
-                    >
-                      {isArchiving ? (
-                        <Loader2
-                          className="h-4 w-4 animate-spin"
-                          aria-hidden="true"
-                        />
+                      {document.status === "ARCHIVED" ? (
+                        <>
+                          <Button
+                            key="document-restore-button"
+                            type="button"
+                            variant="outline"
+                            disabled={isRestoring}
+                            onClick={() => void restore()}
+                            data-testid="document-restore-button"
+                          >
+                            {isRestoring ? (
+                              <Loader2
+                                className="h-4 w-4 animate-spin"
+                                aria-hidden="true"
+                              />
+                            ) : (
+                              <RotateCcw
+                                className="h-4 w-4"
+                                aria-hidden="true"
+                              />
+                            )}
+                            {t("actions.restore")}
+                          </Button>
+                          <Button
+                            key="document-delete-button"
+                            type="button"
+                            variant="destructive"
+                            disabled={isDeleting}
+                            onClick={() => setDeleteDialogOpen(true)}
+                            data-testid="document-delete-button"
+                          >
+                            <Trash2 className="h-4 w-4" aria-hidden="true" />
+                            {t("actions.delete")}
+                          </Button>
+                        </>
                       ) : (
-                        <Archive className="h-4 w-4" aria-hidden="true" />
+                        <Button
+                          key="document-archive-button"
+                          type="button"
+                          variant="ghost"
+                          disabled={isArchiving}
+                          onClick={() => void archive()}
+                        >
+                          {isArchiving ? (
+                            <Loader2
+                              className="h-4 w-4 animate-spin"
+                              aria-hidden="true"
+                            />
+                          ) : (
+                            <Archive className="h-4 w-4" aria-hidden="true" />
+                          )}
+                          {t("actions.archive")}
+                        </Button>
                       )}
-                      {t("actions.archive")}
-                    </Button>
+                    </Fragment>
                   )}
-                </>
-              )}
-            </div>
-          </div>
-
-          <LinkedResourceChips links={document.links ?? []} />
-        </section>
-
-        {hasRealtimeRevision ? (
-          <div
-            role="status"
-            className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-md border border-warning/40 bg-warning/10 px-4 py-3 text-sm text-warning"
-            data-testid="document-new-version-alert"
-          >
-            <span>{t("detail.newVersion")}</span>
-            <Button
-              size="sm"
-              type="button"
-              variant="outline"
-              onClick={() => void loadDocument()}
-            >
-              <RefreshCw className="h-4 w-4" aria-hidden="true" />
-              {t("actions.refresh")}
-            </Button>
-          </div>
-        ) : null}
-
-        {conflict ? (
-          <div
-            role="alert"
-            className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-md border border-warning/40 bg-warning/10 px-4 py-3 text-sm text-warning"
-            data-testid="document-conflict-alert"
-          >
-            <span>{t("detail.conflict")}</span>
-            <Button size="sm" type="button" variant="outline" onClick={() => void loadDocument()}>
-              <RefreshCw className="h-4 w-4" aria-hidden="true" />
-              {t("actions.refresh")}
-            </Button>
-          </div>
-        ) : null}
-
-        {errorKey ? (
-          <div
-            role="alert"
-            className="mt-4 rounded-md border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive"
-          >
-            {tRoot(errorKey)}
-          </div>
-        ) : null}
-
-        {editMode ? (
-          <section className="mt-5 grid gap-5" data-testid="document-edit-panel">
-            <div className="grid gap-1.5 text-sm">
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                <span className="font-medium" id="document-content-label">
-                  {t("edit.contentLabel")}
-                </span>
-                <div
-                  className="flex gap-1"
-                  role="group"
-                  aria-label={t("edit.contentViewLabel")}
-                >
-                  {([false, true] as const).map((preview) => (
-                    <button
-                      key={preview ? "preview" : "source"}
-                      type="button"
-                      aria-pressed={contentPreview === preview}
-                      className={cn(
-                        "inline-flex h-7 items-center rounded-md border px-2.5 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
-                        contentPreview === preview
-                          ? "border-primary bg-primary/10 text-primary"
-                          : "border-border bg-background text-muted-foreground hover:bg-muted hover:text-foreground",
-                      )}
-                      data-testid={
-                        preview
-                          ? "document-content-preview-tab"
-                          : "document-content-source-tab"
-                      }
-                      onClick={() => setContentPreview(preview)}
-                    >
-                      {preview ? t("edit.previewTab") : t("edit.sourceTab")}
-                    </button>
-                  ))}
                 </div>
               </div>
-              {contentPreview ? (
-                <DocumentMarkdownViewer
-                  className="min-h-[28rem] rounded-md border border-border p-4"
-                  markdown={form.contentMarkdown}
-                  organizationId={document.organizationId}
-                  spaceId={document.spaceId}
-                />
-              ) : (
-                <Textarea
-                  aria-labelledby="document-content-label"
-                  className="min-h-[28rem] font-mono text-xs leading-5"
-                  data-testid="document-content-input"
-                  value={form.contentMarkdown}
-                  onChange={(event) =>
-                    setForm((current) =>
-                      current
-                        ? { ...current, contentMarkdown: event.target.value }
-                        : current,
-                    )
-                  }
-                />
-              )}
-            </div>
-            {spaceId ? (
-              <div className="grid gap-1.5 text-sm">
-                <span className="font-medium">{t("edit.tagsLabel")}</span>
-                <TagSelectionField
-                  organizationId={organizationId}
-                  selectedTags={form.selectedTags}
-                  spaceId={spaceId}
-                  testId="document-tags-field"
-                  onSelectedTagsChange={(tags) =>
-                    setForm((current) =>
-                      current ? { ...current, selectedTags: tags } : current,
-                    )
-                  }
-                />
-              </div>
-            ) : null}
-            <label className="grid gap-1.5 text-sm">
-              <span className="font-medium">{t("edit.linksLabel")}</span>
-              <Input
-                data-testid="document-links-input"
-                value={form.linkedResourceCodes}
-                onChange={(event) =>
-                  setForm((current) =>
-                    current
-                      ? { ...current, linkedResourceCodes: event.target.value }
-                      : current,
-                  )
-                }
-                placeholder={t("edit.linksPlaceholder")}
-              />
-            </label>
-            <LinkedDocumentSelector
-              errorKey={documentSearchErrorKey}
-              isLoading={isSearchingDocuments}
-              onAddDocument={addLinkedDocument}
-              onQueryChange={setDocumentSearch}
-              onRemoveDocument={removeLinkedDocument}
-              query={documentSearch}
-              results={documentSearchResults}
-              selectedDocuments={form.linkedDocuments}
-            />
-            <div className="grid gap-2 rounded-md border border-border bg-muted/30 p-3">
-              <label className="grid gap-1.5 text-sm">
-                <span className="font-medium">{t("edit.reimportLabel")}</span>
-                <Input
-                  accept=".md,.markdown,.docx"
-                  data-testid="document-reimport-input"
-                  type="file"
-                  onChange={(event: ChangeEvent<HTMLInputElement>) =>
-                    setReimportFile(event.target.files?.[0] ?? null)
-                  }
-                />
-              </label>
-              <div>
+
+              <LinkedResourceChips links={document.links ?? []} />
+            </section>
+
+            {hasRealtimeRevision ? (
+              <div
+                role="status"
+                className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-md border border-warning/40 bg-warning/10 px-4 py-3 text-sm text-warning"
+                data-testid="document-new-version-alert"
+              >
+                <span>{t("detail.newVersion")}</span>
                 <Button
+                  size="sm"
                   type="button"
                   variant="outline"
-                  disabled={!reimportFile || !getImportKind(reimportFile) || isSaving}
-                  onClick={() => void reimport()}
+                  onClick={() => void loadDocument()}
                 >
                   <RefreshCw className="h-4 w-4" aria-hidden="true" />
-                  {t("actions.reimport")}
+                  {t("actions.refresh")}
                 </Button>
               </div>
-            </div>
-          </section>
-        ) : (
-          <DocumentMarkdownViewer
-            className="mt-6"
-            markdown={document.contentMarkdown}
-            organizationId={document.organizationId}
-            spaceId={document.spaceId}
+            ) : null}
+
+            {conflict ? (
+              <div
+                role="alert"
+                className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-md border border-warning/40 bg-warning/10 px-4 py-3 text-sm text-warning"
+                data-testid="document-conflict-alert"
+              >
+                <span>{t("detail.conflict")}</span>
+                <Button
+                  size="sm"
+                  type="button"
+                  variant="outline"
+                  onClick={() => void loadDocument()}
+                >
+                  <RefreshCw className="h-4 w-4" aria-hidden="true" />
+                  {t("actions.refresh")}
+                </Button>
+              </div>
+            ) : null}
+
+            {errorKey ? (
+              <div
+                role="alert"
+                className="mt-4 rounded-md border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive"
+              >
+                {tRoot(errorKey)}
+              </div>
+            ) : null}
+
+            {editMode ? (
+              <section
+                className="mt-5 grid gap-5"
+                data-testid="document-edit-panel"
+              >
+                <div className="grid gap-1.5 text-sm">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <span className="font-medium" id="document-content-label">
+                      {t("edit.contentLabel")}
+                    </span>
+                    <div
+                      className="flex gap-1"
+                      role="group"
+                      aria-label={t("edit.contentViewLabel")}
+                    >
+                      {([false, true] as const).map((preview) => (
+                        <button
+                          key={preview ? "preview" : "source"}
+                          type="button"
+                          aria-pressed={contentPreview === preview}
+                          className={cn(
+                            "inline-flex h-7 items-center rounded-md border px-2.5 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                            contentPreview === preview
+                              ? "border-primary bg-primary/10 text-primary"
+                              : "border-border bg-background text-muted-foreground hover:bg-muted hover:text-foreground",
+                          )}
+                          data-testid={
+                            preview
+                              ? "document-content-preview-tab"
+                              : "document-content-source-tab"
+                          }
+                          onClick={() => setContentPreview(preview)}
+                        >
+                          {preview ? t("edit.previewTab") : t("edit.sourceTab")}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  {contentPreview ? (
+                    <DocumentMarkdownViewer
+                      className="min-h-[28rem] rounded-md border border-border p-4"
+                      markdown={form.contentMarkdown}
+                      organizationId={document.organizationId}
+                      spaceId={document.spaceId}
+                    />
+                  ) : (
+                    <Textarea
+                      aria-labelledby="document-content-label"
+                      className="min-h-[28rem] font-mono text-xs leading-5"
+                      data-testid="document-content-input"
+                      value={form.contentMarkdown}
+                      onChange={(event) =>
+                        setForm((current) =>
+                          current
+                            ? {
+                                ...current,
+                                contentMarkdown: event.target.value,
+                              }
+                            : current,
+                        )
+                      }
+                    />
+                  )}
+                </div>
+                {spaceId ? (
+                  <div className="grid gap-1.5 text-sm">
+                    <span className="font-medium">{t("edit.tagsLabel")}</span>
+                    <TagSelectionField
+                      organizationId={organizationId}
+                      selectedTags={form.selectedTags}
+                      spaceId={spaceId}
+                      testId="document-tags-field"
+                      onSelectedTagsChange={(tags) =>
+                        setForm((current) =>
+                          current
+                            ? { ...current, selectedTags: tags }
+                            : current,
+                        )
+                      }
+                    />
+                  </div>
+                ) : null}
+                <label className="grid gap-1.5 text-sm">
+                  <span className="font-medium">{t("edit.linksLabel")}</span>
+                  <Input
+                    data-testid="document-links-input"
+                    value={form.linkedResourceCodes}
+                    onChange={(event) =>
+                      setForm((current) =>
+                        current
+                          ? {
+                              ...current,
+                              linkedResourceCodes: event.target.value,
+                            }
+                          : current,
+                      )
+                    }
+                    placeholder={t("edit.linksPlaceholder")}
+                  />
+                </label>
+                <LinkedDocumentSelector
+                  errorKey={documentSearchErrorKey}
+                  isLoading={isSearchingDocuments}
+                  onAddDocument={addLinkedDocument}
+                  onQueryChange={setDocumentSearch}
+                  onRemoveDocument={removeLinkedDocument}
+                  query={documentSearch}
+                  results={documentSearchResults}
+                  selectedDocuments={form.linkedDocuments}
+                />
+                <div className="grid gap-2 rounded-md border border-border bg-muted/30 p-3">
+                  <label className="grid gap-1.5 text-sm">
+                    <span className="font-medium">
+                      {t("edit.reimportLabel")}
+                    </span>
+                    <Input
+                      accept=".md,.markdown,.docx"
+                      data-testid="document-reimport-input"
+                      type="file"
+                      onChange={(event: ChangeEvent<HTMLInputElement>) =>
+                        setReimportFile(event.target.files?.[0] ?? null)
+                      }
+                    />
+                  </label>
+                  <div>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      disabled={
+                        !reimportFile ||
+                        !getImportKind(reimportFile) ||
+                        isSaving
+                      }
+                      onClick={() => void reimport()}
+                    >
+                      <RefreshCw className="h-4 w-4" aria-hidden="true" />
+                      {t("actions.reimport")}
+                    </Button>
+                  </div>
+                </div>
+              </section>
+            ) : (
+              <DocumentMarkdownViewer
+                className="mt-6"
+                markdown={document.contentMarkdown}
+                organizationId={document.organizationId}
+                spaceId={document.spaceId}
+              />
+            )}
+          </form>
+
+          <DocumentManagementSections
+            attachmentErrorKey={attachmentErrorKey}
+            commentBody={commentBody}
+            commentErrorKey={commentErrorKey}
+            document={document}
+            isCommenting={isCommenting}
+            isUploadingAttachment={isUploadingAttachment}
+            locale={locale}
+            onAttachmentChange={(event) => void uploadDocumentAttachment(event)}
+            onCommentBodyChange={setCommentBody}
+            onSubmitComment={() => void submitComment()}
           />
-        )}
-        </form>
+        </div>
 
-        <DocumentManagementSections
-          attachmentErrorKey={attachmentErrorKey}
-          commentBody={commentBody}
-          commentErrorKey={commentErrorKey}
-          document={document}
-          isCommenting={isCommenting}
-          isUploadingAttachment={isUploadingAttachment}
-          locale={locale}
-          onAttachmentChange={(event) => void uploadDocumentAttachment(event)}
-          onCommentBodyChange={setCommentBody}
-          onSubmitComment={() => void submitComment()}
-        />
-      </div>
-
-      <DocumentContextRail
-        document={document}
-        headings={headings}
-        locale={locale}
-      />
+        <DocumentContextRail document={document} locale={locale} />
       </div>
       <DocumentDeleteDialog
         documentTitle={document.title || t("untitled")}
@@ -895,6 +1048,21 @@ export function DocumentDetailPage({ documentId }: DocumentDetailPageProps) {
         onConfirm={() => void remove()}
         onOpenChange={setDeleteDialogOpen}
         open={deleteDialogOpen}
+      />
+      <DocumentMoveFolderDialog
+        baseRevision={document.revision}
+        currentFolderId={document.folderId ?? null}
+        documentId={document.id}
+        onMoved={(next) => {
+          setDocument(next);
+          setForm(createDocumentEditForm(next));
+          setActiveDocumentFolderId(next.folderId);
+          setHasRealtimeRevision(false);
+        }}
+        onOpenChange={setMoveFolderDialogOpen}
+        open={moveFolderDialogOpen}
+        organizationId={document.organizationId}
+        spaceId={document.spaceId}
       />
     </>
   );
@@ -908,12 +1076,17 @@ function LinkedResourceChips({
   const t = useTranslations("documents");
   if (links.length === 0) {
     return (
-      <p className="mt-4 text-sm text-muted-foreground">{t("detail.noLinks")}</p>
+      <p className="mt-4 text-sm text-muted-foreground">
+        {t("detail.noLinks")}
+      </p>
     );
   }
 
   return (
-    <div className="mt-4 flex flex-wrap gap-1.5" data-testid="document-linked-resources">
+    <div
+      className="mt-4 flex flex-wrap gap-1.5"
+      data-testid="document-linked-resources"
+    >
       {links.map((link) => (
         <Button key={link.id} asChild size="sm" variant="outline">
           <Link href={getDocumentLinkHref(link)}>
@@ -970,7 +1143,9 @@ function LinkedDocumentSelector({
                 })}
               >
                 <FileText className="h-3.5 w-3.5" aria-hidden="true" />
-                <span className="max-w-48 truncate">{linkedDocument.title}</span>
+                <span className="max-w-48 truncate">
+                  {linkedDocument.title}
+                </span>
                 <X className="h-3.5 w-3.5" aria-hidden="true" />
               </Button>
             ))}
@@ -1243,7 +1418,9 @@ function DocumentDeleteDialog({
       <DialogContent data-testid="document-delete-dialog">
         <DialogHeader>
           <DialogTitle>{t("title")}</DialogTitle>
-          <DialogDescription>{t("description", { title: documentTitle })}</DialogDescription>
+          <DialogDescription>
+            {t("description", { title: documentTitle })}
+          </DialogDescription>
         </DialogHeader>
         <DialogFooter>
           <Button
@@ -1274,23 +1451,168 @@ function DocumentDeleteDialog({
   );
 }
 
-function DocumentContextRail({
-  document,
-  headings,
-  locale,
+function DocumentMoveFolderDialog({
+  baseRevision,
+  currentFolderId,
+  documentId,
+  onMoved,
+  onOpenChange,
+  open,
+  organizationId,
+  spaceId,
 }: {
-  document: DocumentDetail;
-  headings: MarkdownHeading[];
-  locale: string;
+  baseRevision: number;
+  currentFolderId: string | null;
+  documentId: string;
+  onMoved: (document: DocumentDetail) => void;
+  onOpenChange: (open: boolean) => void;
+  open: boolean;
+  organizationId?: string;
+  spaceId: string;
 }) {
+  const t = useTranslations("documents.moveDialog");
+  const tRoot = useTranslations();
+  const [folders, setFolders] = useState<DocumentFolder[]>([]);
+  const [selectedFolderId, setSelectedFolderId] = useState(
+    currentFolderId ?? "",
+  );
+  const [isLoading, setIsLoading] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [errorKey, setErrorKey] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!open) {
+      return;
+    }
+
+    let cancelled = false;
+    setSelectedFolderId(currentFolderId ?? "");
+    setIsLoading(true);
+    setErrorKey(null);
+    void listDocumentFolders({ organizationId, spaceId })
+      .then((next) => {
+        if (!cancelled) {
+          setFolders(next);
+        }
+      })
+      .catch((error) => {
+        if (!cancelled) {
+          setErrorKey(getApiErrorMessageKey(error));
+        }
+      })
+      .finally(() => {
+        if (!cancelled) {
+          setIsLoading(false);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [currentFolderId, open, organizationId, spaceId]);
+
+  const flatFolders = useMemo(
+    () => flattenDocumentFolders(normalizeDocumentFolderTree(folders)),
+    [folders],
+  );
+
+  const submit = async (event: FormEvent) => {
+    event.preventDefault();
+    setIsSaving(true);
+    setErrorKey(null);
+    try {
+      const next = await moveDocumentToFolder({
+        baseRevision,
+        documentId,
+        folderId: selectedFolderId || null,
+        organizationId,
+        spaceId,
+      });
+      onMoved(next);
+      onOpenChange(false);
+    } catch (error) {
+      setErrorKey(getApiErrorMessageKey(error));
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent data-testid="document-move-folder-dialog">
+        <form className="grid gap-4" onSubmit={(event) => void submit(event)}>
+          <DialogHeader>
+            <DialogTitle>{t("title")}</DialogTitle>
+            <DialogDescription>{t("description")}</DialogDescription>
+          </DialogHeader>
+
+          <label className="grid gap-1.5 text-sm">
+            <span className="font-medium">{t("folderLabel")}</span>
+            <SelectMenu
+              value={selectedFolderId}
+              disabled={isLoading}
+              onChange={(event) => setSelectedFolderId(event.target.value)}
+              data-testid="document-move-folder-select"
+            >
+              <option value="">{t("unfiled")}</option>
+              {flatFolders.map(({ depth, folder }) => (
+                <option key={folder.id} value={folder.id}>
+                  {`${"\u00A0\u00A0".repeat(depth)}${folder.name}`}
+                </option>
+              ))}
+            </SelectMenu>
+          </label>
+
+          {isLoading ? (
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
+              {t("loading")}
+            </div>
+          ) : null}
+
+          {errorKey ? (
+            <p className="text-sm text-destructive" role="alert">
+              {tRoot(errorKey)}
+            </p>
+          ) : null}
+
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              disabled={isSaving}
+              onClick={() => onOpenChange(false)}
+            >
+              {t("cancel")}
+            </Button>
+            <Button type="submit" disabled={isSaving || isLoading}>
+              {isSaving ? (
+                <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
+              ) : null}
+              {t("submit")}
+            </Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function DocumentTocRail({ headings }: { headings: MarkdownHeading[] }) {
   const t = useTranslations("documents");
 
   return (
     <aside className="min-w-0 lg:sticky lg:top-16 lg:max-h-[calc(100vh-5rem)] lg:overflow-y-auto">
-      <div className="grid gap-4 rounded-md border border-border bg-card p-4" data-testid="document-context-rail">
-        <RailSection icon={<FileText className="h-4 w-4" />} title={t("rail.toc")}>
+      <div
+        className="rounded-md border border-border bg-card p-4"
+        data-testid="document-toc-rail"
+      >
+        <RailSection
+          icon={<FileText className="h-4 w-4" />}
+          title={t("rail.toc")}
+        >
           {headings.length > 0 ? (
-            <nav className="grid gap-1">
+            <nav aria-label={t("rail.toc")} className="grid gap-1">
               {headings.slice(0, 12).map((heading) => (
                 <a
                   key={heading.id}
@@ -1308,37 +1630,80 @@ function DocumentContextRail({
             <p className="text-xs text-muted-foreground">{t("rail.noToc")}</p>
           )}
         </RailSection>
-        <RailSection icon={<Link2 className="h-4 w-4" />} title={t("rail.resources")}>
+      </div>
+    </aside>
+  );
+}
+
+function DocumentContextRail({
+  document,
+  locale,
+}: {
+  document: DocumentDetail;
+  locale: string;
+}) {
+  const t = useTranslations("documents");
+
+  return (
+    <aside className="min-w-0 lg:col-span-2 xl:col-span-1 xl:sticky xl:top-16 xl:max-h-[calc(100vh-5rem)] xl:overflow-y-auto">
+      <div
+        className="grid gap-4 rounded-md border border-border bg-card p-4"
+        data-testid="document-context-rail"
+      >
+        <RailSection
+          icon={<Link2 className="h-4 w-4" />}
+          title={t("rail.resources")}
+        >
           <DocumentLinksSummary links={document.links ?? []} />
         </RailSection>
         <RailSection icon={<Tags className="h-4 w-4" />} title={t("rail.tags")}>
-          <TagBadgeList tags={document.tags ?? []} emptyLabel={t("rail.noTags")} />
+          <TagBadgeList
+            tags={document.tags ?? []}
+            emptyLabel={t("rail.noTags")}
+          />
         </RailSection>
-        <RailSection icon={<MessageSquare className="h-4 w-4" />} title={t("rail.comments")}>
+        <RailSection
+          icon={<MessageSquare className="h-4 w-4" />}
+          title={t("rail.comments")}
+        >
           <RailJumpLink
             count={(document.comments ?? []).length}
             emptyLabel={t("rail.noComments")}
             href="#document-comments"
-            label={t("rail.viewAll", { count: (document.comments ?? []).length })}
+            label={t("rail.viewAll", {
+              count: (document.comments ?? []).length,
+            })}
           />
         </RailSection>
-        <RailSection icon={<Paperclip className="h-4 w-4" />} title={t("rail.attachments")}>
+        <RailSection
+          icon={<Paperclip className="h-4 w-4" />}
+          title={t("rail.attachments")}
+        >
           <RailJumpLink
             count={(document.attachments ?? []).length}
             emptyLabel={t("rail.noAttachments")}
             href="#document-attachments"
-            label={t("rail.viewAll", { count: (document.attachments ?? []).length })}
+            label={t("rail.viewAll", {
+              count: (document.attachments ?? []).length,
+            })}
           />
         </RailSection>
-        <RailSection icon={<Clock3 className="h-4 w-4" />} title={t("rail.timeline")}>
+        <RailSection
+          icon={<Clock3 className="h-4 w-4" />}
+          title={t("rail.timeline")}
+        >
           {(document.timeline ?? []).slice(0, 3).map((event) => (
             <div key={event.id} className="text-xs text-muted-foreground">
               <div className="text-foreground">{event.changeType}</div>
-              <div>{formatDocumentRelativeTimestamp(event.createdAt, locale)}</div>
+              <div>
+                {formatDocumentRelativeTimestamp(event.createdAt, locale)}
+              </div>
             </div>
           ))}
           {(document.timeline ?? []).length === 0 ? (
-            <p className="text-xs text-muted-foreground">{t("rail.noTimeline")}</p>
+            <p className="text-xs text-muted-foreground">
+              {t("rail.noTimeline")}
+            </p>
           ) : null}
         </RailSection>
         <dl className="grid gap-2 border-t border-border pt-3 text-[11px] text-muted-foreground">
@@ -1352,11 +1717,15 @@ function DocumentContextRail({
           </div>
           <div className="grid grid-cols-2 gap-2">
             <div>
-              <dt className="font-medium text-foreground">{t("rail.source")}</dt>
+              <dt className="font-medium text-foreground">
+                {t("rail.source")}
+              </dt>
               <dd>{t(getDocumentSourceKey(document.sourceType))}</dd>
             </div>
             <div>
-              <dt className="font-medium text-foreground">{t("rail.revision")}</dt>
+              <dt className="font-medium text-foreground">
+                {t("rail.revision")}
+              </dt>
               <dd>{document.revision}</dd>
             </div>
           </div>
@@ -1509,7 +1878,10 @@ async function resolveLinkTargets({
 }
 
 function dedupeLinkTargets(
-  targets: Array<{ targetId: string; targetType: DocumentLinkSummary["targetType"] }>,
+  targets: Array<{
+    targetId: string;
+    targetType: DocumentLinkSummary["targetType"];
+  }>,
 ) {
   const seen = new Set<string>();
   return targets.filter((target) => {

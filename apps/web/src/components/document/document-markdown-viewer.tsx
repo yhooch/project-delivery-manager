@@ -24,6 +24,8 @@ type DocumentMarkdownViewerProps = {
   spaceId?: string;
 };
 
+const DOCUMENT_MARKDOWN_HEADING_SCROLL_MARGIN_CLASS = "scroll-mt-28";
+
 export function DocumentMarkdownViewer({
   className,
   markdown,
@@ -69,7 +71,8 @@ export function DocumentMarkdownViewer({
               key={`${block.id}-${index}`}
               id={block.id}
               className={cn(
-                "scroll-mt-20 font-semibold tracking-normal text-foreground",
+                DOCUMENT_MARKDOWN_HEADING_SCROLL_MARGIN_CLASS,
+                "font-semibold tracking-normal text-foreground",
                 block.level === 1 && "mb-3 mt-2 text-2xl leading-9",
                 block.level === 2 && "mb-2 mt-8 text-xl leading-8",
                 block.level === 3 && "mb-2 mt-6 text-base leading-7",

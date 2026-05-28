@@ -23,7 +23,7 @@ export function getDocumentActorKey(actorType: DocumentActorType): string {
 }
 
 export function getDocumentFilterKeys(): DocumentFilterKey[] {
-  return ["all", "createdByMe", "mcpCreated", "recentMcpEdited", "archived"];
+  return ["all", "createdByMe", "archived"];
 }
 
 export function isDocumentArchived(document: Pick<DocumentSummary, "status">) {

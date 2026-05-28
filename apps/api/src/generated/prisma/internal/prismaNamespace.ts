@@ -404,6 +404,7 @@ export const ModelName = {
   BugDetail: 'BugDetail',
   Attachment: 'Attachment',
   Document: 'Document',
+  DocumentFolder: 'DocumentFolder',
   DocumentRevision: 'DocumentRevision',
   DocumentLink: 'DocumentLink',
   DocumentChunk: 'DocumentChunk',
@@ -434,7 +435,7 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
     omit: GlobalOmitOptions
   }
   meta: {
-    modelProps: "user" | "session" | "mcpOAuthClient" | "mcpOAuthAuthorization" | "mcpOAuthAuthorizationCode" | "mcpOAuthAccessToken" | "mcpOAuthRefreshToken" | "mcpToolInvocation" | "organization" | "organizationMember" | "space" | "spaceMember" | "version" | "requirement" | "intakeItem" | "workItem" | "objectSequenceCounter" | "bugDetail" | "attachment" | "document" | "documentRevision" | "documentLink" | "documentChunk" | "tag" | "tagAssignment" | "workflowDefinition" | "workflowVersion" | "workflowState" | "workflowAction" | "actionFormField" | "workflowBinding" | "objectParticipant" | "comment" | "timelineEvent" | "auditLog"
+    modelProps: "user" | "session" | "mcpOAuthClient" | "mcpOAuthAuthorization" | "mcpOAuthAuthorizationCode" | "mcpOAuthAccessToken" | "mcpOAuthRefreshToken" | "mcpToolInvocation" | "organization" | "organizationMember" | "space" | "spaceMember" | "version" | "requirement" | "intakeItem" | "workItem" | "objectSequenceCounter" | "bugDetail" | "attachment" | "document" | "documentFolder" | "documentRevision" | "documentLink" | "documentChunk" | "tag" | "tagAssignment" | "workflowDefinition" | "workflowVersion" | "workflowState" | "workflowAction" | "actionFormField" | "workflowBinding" | "objectParticipant" | "comment" | "timelineEvent" | "auditLog"
     txIsolationLevel: TransactionIsolationLevel
   }
   model: {
@@ -1915,6 +1916,80 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
         count: {
           args: Prisma.DocumentCountArgs<ExtArgs>
           result: runtime.Types.Utils.Optional<Prisma.DocumentCountAggregateOutputType> | number
+        }
+      }
+    }
+    DocumentFolder: {
+      payload: Prisma.$DocumentFolderPayload<ExtArgs>
+      fields: Prisma.DocumentFolderFieldRefs
+      operations: {
+        findUnique: {
+          args: Prisma.DocumentFolderFindUniqueArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$DocumentFolderPayload> | null
+        }
+        findUniqueOrThrow: {
+          args: Prisma.DocumentFolderFindUniqueOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$DocumentFolderPayload>
+        }
+        findFirst: {
+          args: Prisma.DocumentFolderFindFirstArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$DocumentFolderPayload> | null
+        }
+        findFirstOrThrow: {
+          args: Prisma.DocumentFolderFindFirstOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$DocumentFolderPayload>
+        }
+        findMany: {
+          args: Prisma.DocumentFolderFindManyArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$DocumentFolderPayload>[]
+        }
+        create: {
+          args: Prisma.DocumentFolderCreateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$DocumentFolderPayload>
+        }
+        createMany: {
+          args: Prisma.DocumentFolderCreateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        createManyAndReturn: {
+          args: Prisma.DocumentFolderCreateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$DocumentFolderPayload>[]
+        }
+        delete: {
+          args: Prisma.DocumentFolderDeleteArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$DocumentFolderPayload>
+        }
+        update: {
+          args: Prisma.DocumentFolderUpdateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$DocumentFolderPayload>
+        }
+        deleteMany: {
+          args: Prisma.DocumentFolderDeleteManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateMany: {
+          args: Prisma.DocumentFolderUpdateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateManyAndReturn: {
+          args: Prisma.DocumentFolderUpdateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$DocumentFolderPayload>[]
+        }
+        upsert: {
+          args: Prisma.DocumentFolderUpsertArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$DocumentFolderPayload>
+        }
+        aggregate: {
+          args: Prisma.DocumentFolderAggregateArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AggregateDocumentFolder>
+        }
+        groupBy: {
+          args: Prisma.DocumentFolderGroupByArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.DocumentFolderGroupByOutputType>[]
+        }
+        count: {
+          args: Prisma.DocumentFolderCountArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.DocumentFolderCountAggregateOutputType> | number
         }
       }
     }
@@ -3465,6 +3540,7 @@ export const DocumentScalarFieldEnum = {
   id: 'id',
   organizationId: 'organizationId',
   spaceId: 'spaceId',
+  folderId: 'folderId',
   title: 'title',
   contentMarkdown: 'contentMarkdown',
   contentText: 'contentText',
@@ -3487,6 +3563,26 @@ export const DocumentScalarFieldEnum = {
 } as const
 
 export type DocumentScalarFieldEnum = (typeof DocumentScalarFieldEnum)[keyof typeof DocumentScalarFieldEnum]
+
+
+export const DocumentFolderScalarFieldEnum = {
+  id: 'id',
+  organizationId: 'organizationId',
+  spaceId: 'spaceId',
+  parentId: 'parentId',
+  name: 'name',
+  normalizedName: 'normalizedName',
+  sortOrder: 'sortOrder',
+  depth: 'depth',
+  version: 'version',
+  createdById: 'createdById',
+  updatedById: 'updatedById',
+  deletedAt: 'deletedAt',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+} as const
+
+export type DocumentFolderScalarFieldEnum = (typeof DocumentFolderScalarFieldEnum)[keyof typeof DocumentFolderScalarFieldEnum]
 
 
 export const DocumentRevisionScalarFieldEnum = {
@@ -4586,6 +4682,7 @@ export type GlobalOmitConfig = {
   bugDetail?: Prisma.BugDetailOmit
   attachment?: Prisma.AttachmentOmit
   document?: Prisma.DocumentOmit
+  documentFolder?: Prisma.DocumentFolderOmit
   documentRevision?: Prisma.DocumentRevisionOmit
   documentLink?: Prisma.DocumentLinkOmit
   documentChunk?: Prisma.DocumentChunkOmit

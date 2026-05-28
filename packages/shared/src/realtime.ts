@@ -60,6 +60,7 @@ export const RealtimeInvalidationKeySchema = z.enum([
   "comments",
   "attachments",
   "document-list",
+  "document-directory",
   "document-detail",
   "document-links",
   "document-comments",

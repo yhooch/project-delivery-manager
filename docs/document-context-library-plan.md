@@ -1,9 +1,9 @@
 # 文档上下文库方案与实施计划
 
-> 状态：本地讨论稿，待用户确认后再回写 Notion 事实源。
+> 状态：本地讨论稿与本轮落地记录，待用户确认后再回写 Notion 事实源。
 >
 > 来源：2026-05-27 文档页功能头脑风暴。当前 Notion 事实源只确认 `/documents`
-> 是独立空白文档子系统入口；本文描述的是后续实现提案，不代表既有已确认产品范围。
+> 是独立空白文档子系统入口；本文描述的是后续实现提案和本地落地口径，不代表既有已确认产品范围。
 
 ## 1. 背景与目标
 
@@ -22,7 +22,9 @@ MCP 能力。新增文档页的主要目标不是做一个完整在线文档编�
 
 ## 2. 产品范围
 
-### 2.1 第一版要做
+### 2.1 本地提案/本轮落地要做
+
+> 本节是当前仓库本地方案与实现记录；在回写 Notion 前，不作为正式需求事实源。
 
 - 空间级文档库。
 - 文档列表、搜索、筛选、归档。
@@ -35,17 +37,18 @@ MCP 能力。新增文档页的主要目标不是做一个完整在线文档编�
 - 文档关联版本、需求、事项、任务、Bug 和其他文档。
 - 文档评论、附件、时间线。
 - 文档标签复用当前空间标签能力。
+- 空间级共享文档目录树：文件夹用于组织和导航，文档至多归属一个文件夹，未归档文档保留为空 `folderId`。
 - 文档进入 Cmd+K 搜索范围，支持按标题、正文命中片段和关联资源快速打开。
 - 文档创建来源和最近编辑来源清晰标记：用户导入、用户粘贴、用户编辑、模型创建、模型修改。
 - 基于 `revision` / `baseRevision` 的简单并发保护。
 
-### 2.2 第一版不做
+### 2.2 本地提案/本轮落地不做
 
 - 不做 Notion 式块编辑器。
 - 不做多人实时协同编辑、光标协同、CRDT/OT。
 - 不做复杂在线富文本编辑。
 - 不做模板管理。
-- 不做复杂目录树权限。
+- 不做文件夹级私有权限、单文件夹 ACL、多位置挂载、递归删除或外链分享；目录树只承担空间内组织能力。
 - 不做单篇文档私有权限、分享链接、外部公开访问。
 - 不做文档审批流。
 - 不做完整版本 diff 或复杂合并。
@@ -102,19 +105,19 @@ Word 导入后转换为 Markdown；原始 Word 文件作为来源附件保留。
 
 页面布局（已实现）：
 
-- 子系统顶栏（列表与详情共用）：文档入口标识与当前空间名、导入与粘贴入口、返回工作台。
-  导入/粘贴作为全局快速沉淀入口常驻顶栏，窄屏降级为图标按钮，因此列表页头不再重复展示组织/空间大标题。
+- 子系统顶栏（列表与详情共用）：文档入口标识与当前空间名、返回工作台。
+  顶栏不承载导入/粘贴创建入口，避免详情页出现列表级创建操作。
+- 页面创建操作区：位于文档首页说明文案下方、搜索框上方，按“粘贴内容”“导入文档”顺序展示创建入口。
 - 列表控制条：搜索框（输入防抖）、排序（最近编辑 / 最近创建 / 标题）、显示密度切换（舒适 / 紧凑，本地记忆偏好）；
   快速筛选（全部、我创建、模型生成、通过模型修改、已归档）单独一行。
 - 列表行：来源图标（用户 / 模型）+ 标题 + 归档标记 + revision；次行展示创建信息
   （创建人、创建工具/来源、创建时间）、关联业务对象（版本 / 需求 / 事项 / 任务 / Bug；文档型关联不在列表展示）与标签。
   为突出“最近沉淀”，列表行只展示创建信息，最近编辑信息在详情页查看。
 - 按日期排序（最近编辑 / 最近创建）时按 今天 / 本周 / 本月 / 更早 分组；超过单页数量提供“加载更多”。
-- 空态：引导用户导入 Markdown、Word 或粘贴大模型输出。
+- 空态：保留暂无文档说明和图标，不再重复展示导入/粘贴 CTA。
+- 左侧文档目录：仅在 `/documents` 列表页展示空间级共享文件夹树；虚拟入口固定为全部文档、我的文档、已归档。文件夹树首次加载默认折叠有子级的节点，但会自动展开当前选中文件夹或当前文档所属文件夹的祖先链；标题行固定展示“包含子目录”开关，未选中文件夹时禁用并说明原因，选中文件夹时按 URL 状态开关；标题行提供树级“展开全部 / 收起全部”，收起全部仍保留当前选中项祖先链可见。目录支持选择文件夹、单个文件夹拖拽移动/同级排序，以及将单个或多个已选文档批量拖入目标文件夹。
 
 主按钮文案使用“导入”，弱化“新建文档”。
-
-后续方向：可能在 `DocumentShell` 层引入左栏“文档目录”，列表与详情共用；具体形态与是否将详情页目录移至左栏见 §17 待确认项。
 
 ### 4.2 文档详情页
 
@@ -122,6 +125,7 @@ Word 导入后转换为 Markdown；原始 Word 文件作为来源附件保留。
 
 结构建议：
 
+- 顶部返回操作：详情内容区顶部提供 sticky“返回文档列表”条，固定在文档子系统顶栏下方，长文档滚动到底部时仍可见；返回目标优先回到用户进入详情前的 `/documents` 列表 URL，保留目录、文件夹、包含子目录和搜索筛选 query；没有可用历史上下文时按文档文件夹、归档状态、全部文档依次降级。左侧本文目录跳转到正文标题锚点时，标题滚动偏移需要覆盖子系统顶栏和 sticky 返回条。
 - 顶部面包屑：组织 / 项目空间 / 文档。
 - 标题区：
   - 文档标题。
@@ -140,8 +144,10 @@ Word 导入后转换为 Markdown；原始 Word 文件作为来源附件保留。
   - 正文中的 `REQ-12`、`INTAKE-8`、`TASK-42`、`BUG-17` 自动识别为可点击链接。
   - Markdown 渲染必须做 XSS 清洗；链接只允许 `http`、`https`、`mailto`、系统内部链接和受控附件链接。
   - 远程图片默认不直接内嵌渲染；第一版优先展示为可点击链接或占位，避免绕过附件权限。
+- 左侧本文目录：
+  - 基于当前文档 Markdown 标题实时生成；编辑态基于编辑草稿实时计算。
+  - 该区域只表示当前文档的标题目录，不展示文档库文件夹树。
 - 右侧上下文栏：
-  - 本文目录（编辑态基于编辑草稿实时计算）。
   - 关联资源。
   - 关联文档。
   - 标签。
@@ -551,12 +557,21 @@ MCP 搜索需要返回适合模型消费的结果：
 
 建议接口：
 
+- `GET /spaces/:spaceId/document-folders`
+- `POST /spaces/:spaceId/document-folders`
+- `POST /spaces/:spaceId/document-folders/reorder`
+- `PATCH /document-folders/:folderId`
+- `POST /document-folders/:folderId/move`
+- `POST /document-folders/:folderId/reorder`
+- `DELETE /document-folders/:folderId`
 - `GET /spaces/:spaceId/documents`
+- `PATCH /spaces/:spaceId/documents/folder`
 - `POST /spaces/:spaceId/documents/import-markdown`
 - `POST /spaces/:spaceId/documents/import-docx`
 - `POST /spaces/:spaceId/documents/paste`
 - `GET /documents/:documentId`
 - `PATCH /documents/:documentId/metadata`
+- `PATCH /documents/:documentId/folder`
 - `PATCH /documents/:documentId/content`
 - `POST /documents/:documentId/content/append`
 - `POST /documents/:documentId/reimport`
@@ -575,6 +590,11 @@ MCP 搜索需要返回适合模型消费的结果：
 
 建议第一版工具：
 
+- `pdm.document_folder.list`
+- `pdm.document_folder.create`
+- `pdm.document_folder.update`
+- `pdm.document_folder.move`
+- `pdm.document_folder.delete`
 - `pdm.document.search`
 - `pdm.document.get`
 - `pdm.document.create_from_markdown`
@@ -582,6 +602,15 @@ MCP 搜索需要返回适合模型消费的结果：
 - `pdm.document.replace_content`
 - `pdm.document.update_metadata`
 - `pdm.document.link_resources`
+- `pdm.document.move_to_folder`
+
+目录相关补充：
+
+- `pdm.document.search` 支持 `folderId` 与 `includeDescendants`，用于搜索指定文件夹及其子树。
+- `pdm.document.create_from_markdown` 支持 `folderId`，模型可直接把文档创建到目标目录。
+- `pdm.document_folder.create` 创建根级目录时省略 `parentId`；`pdm.document_folder.move` 移动到根级时传 `parentId: null`。
+- 拖拽落地使用 REST 契约：文件夹同级排序走 `POST /spaces/:spaceId/document-folders/reorder`，多个文档拖入文件夹走 `PATCH /spaces/:spaceId/documents/folder`，避免前端循环调用单项移动接口。
+- 目录写工具复用 `mcp:write:document` scope；读目录复用 `mcp:read`。
 
 文档评论不新增专用 MCP tool，复用既有 `pdm.comment.create`，但需要把 `DOCUMENT`
 加入评论目标类型。
@@ -608,12 +637,12 @@ MCP 搜索需要返回适合模型消费的结果：
 
 主要组件（已实现）：
 
-- `DocumentShell`：文档子系统外壳与共用顶栏，承载导入/粘贴入口与对话框、返回工作台、Cmd+K。
-- `DocumentCreateProvider` / `useDocumentCreate`：顶栏与空态共享的导入/粘贴入口。
-- `DocumentsPage`、`DocumentList`（含 `DocumentRow`、`DocumentRowLinks`）。
+- `DocumentShell`：文档子系统外壳与共用顶栏，承载导入/粘贴对话框、返回工作台、Cmd+K；列表页渲染文档目录树，详情页不渲染文件夹树。
+- `DocumentCreateProvider` / `useDocumentCreate`：列表页页面创建操作区触发 `DocumentShell` 内的导入/粘贴对话框。
+- `DocumentsPage`、`DocumentList`（含 `DocumentRow`、`DocumentRowLinks`）：列表保留详情链接，默认不展示多选控件；点击“选择”进入选择模式后显示多选控件，文档拖拽手柄保持可用；拖拽已选文档时按当前选择批量移动，拖拽未选中文档时只移动该文档。
 - `DocumentImportDialog`、`DocumentPasteDialog`。
 - `SourceBadge`、`ActorBadge`：来源与操作者标记（详情页与原列表沿用）。
-- `DocumentDetailPage`、`DocumentMarkdownViewer`、`DocumentContextRail`。
+- `DocumentDetailPage`、`DocumentMarkdownViewer`、`DocumentTocRail`、`DocumentContextRail`：详情页在内容区顶部显式提供 sticky 返回文档列表入口，固定在文档子系统顶栏下方，并复用最近一次 `/documents` 列表 URL 作为返回目标。
 - `DocumentManagementSections`：详情页评论与附件区。
 - `DocumentDeleteDialog`。
 
@@ -624,7 +653,8 @@ MCP 搜索需要返回适合模型消费的结果：
 - 可见文案全部进入 `zh-CN` / `en-US`。
 - UI E2E 使用 `data-testid`，不依赖中文/英文文案。
 - 浅色/深色下 Markdown 正文、代码块、表格、引用、链接和标记徽章均可读。
-- 列表排序透传后端 `sortBy` / `sortOrder`；日期分组与显示密度为前端能力，导入/粘贴入口经 `DocumentShell` 全局提供。
+- 列表排序透传后端 `sortBy` / `sortOrder`；日期分组与显示密度为前端能力，导入/粘贴入口位于列表页搜索框上方的页面创建操作区。
+- 文档目录拖拽只在 `/documents` 列表页启用；虚拟视图不是 drop target。文件夹首版只支持单个文件夹拖动/排序，不做批量文件夹拖拽，避免多子树循环和排序冲突。
 - 下拉控件统一复用 `SelectMenu`，与系统其他列表筛选保持一致。
 - Cmd+K 增加当前空间“文档”分组；输入业务编号时继续优先走对象编号 lookup，输入普通关键词时可同时搜索文档标题和正文命中片段。
 - Markdown 渲染器和清洗器如需新增依赖，必须由主 agent 统一评审。
@@ -636,6 +666,7 @@ MCP 搜索需要返回适合模型消费的结果：
 失效 key 建议：
 
 - `document-list`
+- `document-directory`
 - `document-detail`
 - `document-links`
 - `document-comments`
@@ -671,6 +702,7 @@ MCP 搜索需要返回适合模型消费的结果：
 目标：
 
 - 新增 `documents`、`document_revisions`、`document_links`、`document_chunks`。
+- 新增 `document_folders`，并在 `documents` 上增加可空 `folderId`。
 - 扩展 `TargetType`、`CommentTargetType`、`AttachmentTargetType`、`TagTargetType` 支持 `DOCUMENT`。
 - 新增 shared schema 和 OpenAPI 输出。
 - 增加文档导入大小、正文大小和支持 MIME 的配置项。
@@ -681,6 +713,10 @@ MCP 搜索需要返回适合模型消费的结果：
 - `revision` 递增和 `baseRevision` 校验。
 - 文档软删除、归档和索引。
 - 文档标签、评论、附件、时间线目标解析。
+- 目录树深度、同级重名、移动防循环、删除空目录约束。
+- 文件夹根级语义必须明确：创建根级文件夹时不传 `parentId`；移动文件夹到根级时使用 `parentId: null`。
+- 文档列表支持 `folderId`、`includeDescendants` 和 `unfiled`。
+- 拖拽排序契约：文件夹同级重排使用 `POST /spaces/:spaceId/document-folders/reorder` 一次请求提交完整同级顺序；文档批量拖拽使用 `PATCH /spaces/:spaceId/documents/folder` 一次请求移动多个文档到目标文件夹。UI 首版不支持把文档拖到全部文档、我的文档、已归档等虚拟入口，也不把拖拽作为唯一移动方式。
 - `document_links` 未删除记录唯一约束和按目标反查索引。
 - `document_chunks` 按 `spaceId + documentId + revision + ordinal` 排序索引，以及按正文搜索所需索引。
 
@@ -780,7 +816,8 @@ MCP 搜索需要返回适合模型消费的结果：
 
 目标：
 
-- 实现 `pdm.document.search/get/create_from_markdown/append_content/replace_content/update_metadata/link_resources`。
+- 实现 `pdm.document_folder.list/create/update/move/delete`。
+- 实现 `pdm.document.search/get/create_from_markdown/append_content/replace_content/update_metadata/link_resources/move_to_folder`。
 - 接入 `mcp:write:document` scope。
 - 写工具支持幂等、dryRun、baseRevision、审计、时间线和 realtime。
 - 扩展既有 `pdm.comment.create` 支持文档评论。
@@ -791,10 +828,12 @@ MCP 搜索需要返回适合模型消费的结果：
 - `VIEWER` 即使拥有写 scope 也不能写。
 - 编号 lookup 和文档搜索不泄露无权限对象。
 - 搜索返回命中片段，不返回维护型摘要。
+- 目录写入复用文档 scope 和业务权限，目录读工具走 `mcp:read`。
 
 验收：
 
 - MCP client 可创建文档、追加内容、替换正文。
+- MCP client 可创建/移动/删除空文件夹，并可把文档创建或移动到指定文件夹。
 - Web 页面可通过实时刷新看到 MCP 写入结果。
 - 幂等冲突正确返回。
 
@@ -862,9 +901,9 @@ MCP 搜索需要返回适合模型消费的结果：
 - `DOCUMENT_REVISION_NOT_FOUND`
 - `MCP_DOCUMENT_SCOPE_REQUIRED`
 
-## 17. 待确认项
+## 17. 待确认项与本轮落地状态
 
-以下是实现前需要用户最终确认的口径。本文给出推荐默认值：
+以下是方案阶段需要用户最终确认的口径。已在本轮本地落地的项会明确标注为“本地已实现”；在回写 Notion 前，它仍不是正式需求事实源。
 
 1. 文档第一版是否只做空间级，不做组织级文档？
    - 推荐：只做空间级。
@@ -890,15 +929,14 @@ MCP 搜索需要返回适合模型消费的结果：
 8. 文档正文和导入文件大小限制是多少？
    - 推荐：先沿用附件单文件 `20MB` 上限，正文 Markdown 落库前增加更小的可配置上限，具体数值在实现前按数据库和页面渲染成本确认。
 
-9. 是否引入子系统左栏“文档目录”？（后续方向，第一版未做）
-   - 设想：在 `DocumentShell` 层提供左栏，列表与详情共用；列表页左栏为文档目录，详情页左栏为同一目录（高亮当前文档）并可叠加本页 TOC。届时详情页目录是否移至左栏一并评估。
-   - 待定形态（工作量从小到大）：
-     - 标签分组：复用现有空间标签，零数据模型改动。
-     - 关联资源分组：按需求 / 版本等聚合文档。
-     - 扁平 + 分组锚点：今天/本周… 或 A–Z，纯前端。
-     - 真·文件夹树：需新增 folder 数据模型与迁移，与 §2.2「不做复杂目录树」冲突，最重。
-   - 待定项：是否需要折叠 / 拖拽 / 排序；移动端降级（抽屉等）。
-   - 推荐：先不做；待形态确认后在 `DocumentShell` 统一实现，避免列表/详情各搭一套与重复返工。
+9. 子系统左栏“文档目录”（本地已实现，待回写 Notion 后转为正式口径）
+   - 落地状态：已在当前仓库实现空间级共享文件夹树，不再是待实现项；仅在 `/documents` 列表页作为文档库目录展示。
+   - 详情页职责：`/documents/:documentId` 左侧展示当前文档的 Markdown 标题目录；右侧只保留关联资源、标签、评论、附件、时间线和创建/编辑元信息。文档文件夹归属通过“移动到文件夹”操作处理，不在详情页常驻文件夹树。
+   - 已实现能力：创建文件夹、重命名、移动文件夹、同级批量重排、删除空文件夹、移动单个或多个文档到文件夹、导入/粘贴/模型创建时指定 `folderId`、按 `folderId`/子树搜索。
+   - 目录交互：文件夹树默认折叠有子级的节点；当前选中文件夹或当前文档所属文件夹的祖先链自动展开，避免当前项不可见。用户手动展开/收起后，普通刷新不应重置其选择；树级“收起全部”仍保留当前项祖先链可见。“包含子目录”按钮在文件夹标题行常驻展示，未处于文件夹上下文时禁用并通过 tooltip/aria 说明。
+   - 拖拽口径：文件夹拖拽首版只支持单个文件夹移动/排序；文档拖拽必须支持多选后批量拖到目标文件夹。批量文件夹拖拽首版不做，避免多子树循环和排序冲突。
+   - 明确不做：文件夹级私有权限、多位置挂载、递归删除、目录外链分享、拖拽作为唯一操作路径。
+   - MCP 落地：新增 `pdm.document_folder.*` 工具，扩展文档创建/搜索/移动工具，目录写入统一使用 `mcp:write:document`。
 
 ## 18. 推荐结论
 

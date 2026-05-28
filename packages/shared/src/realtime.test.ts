@@ -80,6 +80,7 @@ describe("realtime shared contracts", () => {
       "comments",
       "attachments",
       "document-list",
+      "document-directory",
       "document-detail",
       "document-links",
       "document-comments",

@@ -71,6 +71,7 @@ export const ModelName = {
   BugDetail: 'BugDetail',
   Attachment: 'Attachment',
   Document: 'Document',
+  DocumentFolder: 'DocumentFolder',
   DocumentRevision: 'DocumentRevision',
   DocumentLink: 'DocumentLink',
   DocumentChunk: 'DocumentChunk',
@@ -502,6 +503,7 @@ export const DocumentScalarFieldEnum = {
   id: 'id',
   organizationId: 'organizationId',
   spaceId: 'spaceId',
+  folderId: 'folderId',
   title: 'title',
   contentMarkdown: 'contentMarkdown',
   contentText: 'contentText',
@@ -524,6 +526,26 @@ export const DocumentScalarFieldEnum = {
 } as const
 
 export type DocumentScalarFieldEnum = (typeof DocumentScalarFieldEnum)[keyof typeof DocumentScalarFieldEnum]
+
+
+export const DocumentFolderScalarFieldEnum = {
+  id: 'id',
+  organizationId: 'organizationId',
+  spaceId: 'spaceId',
+  parentId: 'parentId',
+  name: 'name',
+  normalizedName: 'normalizedName',
+  sortOrder: 'sortOrder',
+  depth: 'depth',
+  version: 'version',
+  createdById: 'createdById',
+  updatedById: 'updatedById',
+  deletedAt: 'deletedAt',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+} as const
+
+export type DocumentFolderScalarFieldEnum = (typeof DocumentFolderScalarFieldEnum)[keyof typeof DocumentFolderScalarFieldEnum]
 
 
 export const DocumentRevisionScalarFieldEnum = {

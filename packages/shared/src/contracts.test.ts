@@ -90,6 +90,9 @@ describe("shared contracts", () => {
         "TAG_NAME_CONFLICT",
         "DOCUMENT_NOT_FOUND",
         "DOCUMENT_EDIT_CONFLICT",
+        "DOCUMENT_FOLDER_NOT_FOUND",
+        "DOCUMENT_FOLDER_NAME_CONFLICT",
+        "DOCUMENT_FOLDER_NOT_EMPTY",
         "DOCUMENT_LINK_TARGET_INVALID",
         "DOCUMENT_IMPORT_FAILED",
         "DOCUMENT_IMPORT_UNSUPPORTED_TYPE",
@@ -212,7 +215,42 @@ describe("shared contracts", () => {
       ]),
     );
     expect(errorCodesFor("pasteDocument")).toEqual(
-      expect.arrayContaining(["DOCUMENT_NOT_FOUND", "VALIDATION_ERROR"]),
+      expect.arrayContaining([
+        "DOCUMENT_FOLDER_NOT_FOUND",
+        "DOCUMENT_NOT_FOUND",
+        "VALIDATION_ERROR",
+      ]),
+    );
+    expect(errorCodesFor("createDocumentFolder")).toEqual(
+      expect.arrayContaining([
+        "DOCUMENT_FOLDER_DEPTH_EXCEEDED",
+        "DOCUMENT_FOLDER_NAME_CONFLICT",
+        "VALIDATION_ERROR",
+      ]),
+    );
+    expect(errorCodesFor("moveDocumentFolder")).toEqual(
+      expect.arrayContaining([
+        "DOCUMENT_FOLDER_MOVE_CYCLE",
+        "DOCUMENT_FOLDER_VERSION_CONFLICT",
+      ]),
+    );
+    expect(errorCodesFor("reorderDocumentFolders")).toEqual(
+      expect.arrayContaining([
+        "DOCUMENT_FOLDER_ACCESS_DENIED",
+        "DOCUMENT_FOLDER_NOT_FOUND",
+      ]),
+    );
+    expect(errorCodesFor("deleteDocumentFolder")).toEqual(
+      expect.arrayContaining(["DOCUMENT_FOLDER_NOT_EMPTY"]),
+    );
+    expect(errorCodesFor("moveDocumentToFolder")).toEqual(
+      expect.arrayContaining([
+        "DOCUMENT_EDIT_CONFLICT",
+        "DOCUMENT_FOLDER_NOT_FOUND",
+      ]),
+    );
+    expect(errorCodesFor("moveDocumentsToFolder")).toEqual(
+      expect.arrayContaining(["DOCUMENT_NOT_FOUND", "DOCUMENT_FOLDER_NOT_FOUND"]),
     );
     expect(errorCodesFor("updateDocumentContent")).toEqual(
       expect.arrayContaining([

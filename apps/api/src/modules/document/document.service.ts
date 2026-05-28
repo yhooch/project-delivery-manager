@@ -9,6 +9,8 @@ import type {
   DocumentListQuery,
   ImportDocxDocumentRequest,
   ImportMarkdownDocumentRequest,
+  MoveDocumentsToFolderRequest,
+  MoveDocumentToFolderRequest,
   PageResult,
   PasteDocumentRequest,
   ReimportDocumentRequest,
@@ -48,6 +50,7 @@ import {
   DOCUMENT_REPOSITORY,
   type DocumentRepository,
 } from "./document.repository";
+import { DocumentFolderService } from "./document-folder.service";
 
 const DOCUMENT_WRITER_DENIED_ROLES = new Set<SpaceRole>(["VIEWER"]);
 const DOCUMENT_MANAGER_ROLES = new Set<SpaceRole>(["SPACE_ADMIN", "PM"]);
@@ -83,6 +86,8 @@ export class DocumentService {
     private readonly realtime: RealtimePublisherService,
     @Inject(ATTACHMENT_OBJECT_STORAGE)
     private readonly objectStorage: AttachmentObjectStorage,
+    @Inject(DocumentFolderService)
+    private readonly folders: DocumentFolderService,
   ) {}
 
   async list(
@@ -91,6 +96,13 @@ export class DocumentService {
     input: DocumentListQuery,
   ): Promise<PageResult<Document>> {
     const access = await this.requireSpaceReader(actorUserId, spaceId);
+
+    if (input.folderId) {
+      await this.folders.requireFolderInSpace(input.folderId, {
+        organizationId: access.space.organizationId,
+        spaceId,
+      });
+    }
 
     return this.documents.list({
       ...input,
@@ -128,11 +140,16 @@ export class DocumentService {
       organizationId: access.space.organizationId,
       spaceId,
     });
+    await this.validateFolder(input.folderId, {
+      organizationId: access.space.organizationId,
+      spaceId,
+    });
     const document = await this.documents.create({
       ...normalized,
       actorType: "USER",
       actorUserId,
       chunks: buildDocumentChunks(normalized.contentMarkdown),
+      folderId: input.folderId,
       id: documentId,
       links,
       organizationId: access.space.organizationId,
@@ -145,6 +162,7 @@ export class DocumentService {
     await this.recordAudit("CREATE", actorUserId, document, undefined, metadata);
     this.publishDocumentRealtime(actorUserId, document, "CREATED", [
       "document-list",
+      "document-directory",
       "document-detail",
       "document-timeline",
       "resource-documents",
@@ -158,7 +176,7 @@ export class DocumentService {
     spaceId: string,
     input: Pick<
       PasteDocumentRequest,
-      "contentMarkdown" | "links" | "tagIds" | "title"
+      "contentMarkdown" | "folderId" | "links" | "tagIds" | "title"
     >,
     metadata: RequestMetadata = {},
     actor: DocumentActorContext = userDocumentActor(),
@@ -175,11 +193,16 @@ export class DocumentService {
       organizationId: access.space.organizationId,
       spaceId,
     });
+    await this.validateFolder(input.folderId, {
+      organizationId: access.space.organizationId,
+      spaceId,
+    });
     const document = await this.documents.create({
       ...normalized,
       actorType: actor.actorType,
       actorUserId,
       chunks: buildDocumentChunks(normalized.contentMarkdown),
+      folderId: input.folderId,
       id: documentId,
       links,
       mcpClientId: actor.mcpClientId,
@@ -193,6 +216,7 @@ export class DocumentService {
     await this.recordAudit("CREATE", actorUserId, document, undefined, metadata);
     this.publishDocumentRealtime(actorUserId, document, "CREATED", [
       "document-list",
+      "document-directory",
       "document-detail",
       "document-timeline",
       "resource-documents",
@@ -291,7 +315,8 @@ export class DocumentService {
       actorType: actor.actorType,
       actorUserId,
       baseRevision: input.baseRevision,
-      changeType: "CONTENT_REPLACED",
+      changeType:
+        actor.actorType === "MCP_CLIENT" ? "CONTENT_REPLACED" : "CONTENT_EDITED",
       chunks: buildDocumentChunks(normalized.contentMarkdown),
       contentMarkdown: normalized.contentMarkdown,
       contentText: normalized.contentText,
@@ -499,6 +524,106 @@ export class DocumentService {
     return this.documents.listChunks({ documentId, ...input });
   }
 
+  async moveToFolder(
+    actorUserId: string,
+    documentId: string,
+    input: MoveDocumentToFolderRequest,
+    metadata: RequestMetadata = {},
+    actor: DocumentActorContext = userDocumentActor(),
+  ): Promise<Document> {
+    const existing = await this.requireEditableDocument(actorUserId, documentId);
+
+    await this.validateFolder(input.folderId ?? undefined, {
+      organizationId: existing.organizationId,
+      spaceId: existing.spaceId,
+    });
+
+    const result = await this.documents.moveToFolder({
+      actorType: actor.actorType,
+      actorUserId,
+      baseRevision: input.baseRevision,
+      documentId,
+      folderId: input.folderId ?? undefined,
+      mcpClientId: actor.mcpClientId,
+      requestId: metadata.requestId,
+    });
+    const updated = this.requireUpdatedResult(result);
+
+    await this.recordAudit("UPDATE", actorUserId, updated, existing, metadata);
+    this.publishDocumentRealtime(actorUserId, updated, "UPDATED", [
+      "document-directory",
+      "document-list",
+      "document-detail",
+      "document-timeline",
+    ]);
+
+    return updated;
+  }
+
+  async moveManyToFolder(
+    actorUserId: string,
+    spaceId: string,
+    input: MoveDocumentsToFolderRequest,
+    metadata: RequestMetadata = {},
+    actor: DocumentActorContext = userDocumentActor(),
+  ): Promise<{ items: Document[] }> {
+    const access = await this.requireSpaceReader(actorUserId, spaceId);
+
+    await this.validateFolder(input.folderId ?? undefined, {
+      organizationId: access.space.organizationId,
+      spaceId,
+    });
+
+    const existingDocuments = await Promise.all(
+      input.documentIds.map((documentId) =>
+        this.requireEditableDocument(actorUserId, documentId),
+      ),
+    );
+
+    for (const document of existingDocuments) {
+      if (
+        document.organizationId !== access.space.organizationId ||
+        document.spaceId !== spaceId
+      ) {
+        throwDocumentNotFound();
+      }
+    }
+
+    const result = await this.documents.moveManyToFolder({
+      actorType: actor.actorType,
+      actorUserId,
+      documentIds: input.documentIds,
+      folderId: input.folderId ?? undefined,
+      mcpClientId: actor.mcpClientId,
+      organizationId: access.space.organizationId,
+      requestId: metadata.requestId,
+      spaceId,
+    });
+    const updated = this.requireBatchUpdatedResult(result);
+    const existingById = new Map(
+      existingDocuments.map((document) => [document.id, document]),
+    );
+
+    await Promise.all(
+      updated.documents.map((document) =>
+        this.recordAudit(
+          "UPDATE",
+          actorUserId,
+          document,
+          existingById.get(document.id),
+          metadata,
+        ),
+      ),
+    );
+    this.publishDocumentBatchRealtime(actorUserId, {
+      documentCount: updated.documents.length,
+      organizationId: access.space.organizationId,
+      spaceId,
+    });
+
+    return { items: updated.documents };
+  }
+
   async listLinksByTarget(actorUserId: string, input: DocumentLinksByTargetQuery) {
     const target = await this.targets.resolve(
       actorUserId,
@@ -547,6 +672,10 @@ export class DocumentService {
       organizationId: access.space.organizationId,
       spaceId,
     });
+    await this.validateFolder(input.folderId, {
+      organizationId: access.space.organizationId,
+      spaceId,
+    });
     const fileKey = createSourceFileKey(documentId, file.fileName);
 
     await this.objectStorage.putObject({
@@ -562,6 +691,7 @@ export class DocumentService {
         actorType: "USER",
         actorUserId,
         chunks: buildDocumentChunks(normalized.contentMarkdown),
+        folderId: input.folderId,
         id: documentId,
         links,
         organizationId: access.space.organizationId,
@@ -580,6 +710,7 @@ export class DocumentService {
       await this.recordAudit("CREATE", actorUserId, document, undefined, metadata);
       this.publishDocumentRealtime(actorUserId, document, "CREATED", [
         "document-list",
+        "document-directory",
         "document-detail",
         "document-timeline",
         "document-attachments",
@@ -728,6 +859,17 @@ export class DocumentService {
     return input.links;
   }
 
+  private async validateFolder(
+    folderId: string | undefined,
+    input: { organizationId: string; spaceId: string },
+  ) {
+    if (!folderId) {
+      return;
+    }
+
+    await this.folders.requireFolderInSpace(folderId, input);
+  }
+
   private requireUpdatedResult(
     result: Awaited<ReturnType<DocumentRepository["updateContent"]>>,
   ): Document {
@@ -743,6 +885,16 @@ export class DocumentService {
     }
 
     return result.document;
+  }
+
+  private requireBatchUpdatedResult(
+    result: Awaited<ReturnType<DocumentRepository["moveManyToFolder"]>>,
+  ) {
+    if (result.status === "not_found") {
+      throwDocumentNotFound();
+    }
+
+    return result;
   }
 
   private async updateState(
@@ -772,7 +924,12 @@ export class DocumentService {
       actorUserId,
       updated,
       changeType === "DELETED" ? "DELETED" : "STATUS_CHANGED",
-      ["document-list", "document-detail", "document-timeline"],
+      [
+        "document-directory",
+        "document-list",
+        "document-detail",
+        "document-timeline",
+      ],
     );
 
     return updated;
@@ -823,6 +980,44 @@ export class DocumentService {
     } catch (error) {
       this.logger.error(
         "Failed to publish document realtime event",
+        error instanceof Error ? error.stack : String(error),
+      );
+    }
+  }
+
+  private publishDocumentBatchRealtime(
+    actorUserId: string,
+    input: {
+      documentCount: number;
+      organizationId: string;
+      spaceId: string;
+    },
+  ) {
+    try {
+      this.realtime.publish({
+        actorId: actorUserId,
+        organizationId: input.organizationId,
+        spaceId: input.spaceId,
+        target: { type: "SPACE", id: input.spaceId },
+        operation: "UPDATED",
+        invalidates: [
+          "document-directory",
+          "document-list",
+          "document-detail",
+          "document-timeline",
+        ],
+        hints: {
+          targetType: "SPACE",
+          targetId: input.spaceId,
+          spaceId: input.spaceId,
+          changedFields: ["folderId"],
+          documentCount: input.documentCount,
+          suggestFullRefresh: true,
+        },
+      });
+    } catch (error) {
+      this.logger.error(
+        "Failed to publish document batch realtime event",
         error instanceof Error ? error.stack : String(error),
       );
     }

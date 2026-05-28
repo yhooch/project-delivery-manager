@@ -7,10 +7,13 @@ import type {
 import type {
   CreateDocumentInput,
   DocumentChunkListResult,
+  DocumentBatchMutationResult,
   DocumentLinkListResult,
   DocumentListInput,
   DocumentListResult,
   DocumentMutationResult,
+  MoveDocumentsToFolderInput,
+  MoveDocumentToFolderInput,
   DocumentRevisionListResult,
   ReplaceDocumentLinksInput,
   UpdateDocumentContentInput,
@@ -44,6 +47,10 @@ export type DocumentRepository = {
     page: number;
     pageSize: number;
   }): Promise<DocumentRevisionListResult>;
+  moveManyToFolder(
+    input: MoveDocumentsToFolderInput,
+  ): Promise<DocumentBatchMutationResult>;
+  moveToFolder(input: MoveDocumentToFolderInput): Promise<DocumentMutationResult>;
   replaceLinks(input: ReplaceDocumentLinksInput): Promise<DocumentMutationResult>;
   updateContent(input: UpdateDocumentContentInput): Promise<DocumentMutationResult>;
   updateMetadata(

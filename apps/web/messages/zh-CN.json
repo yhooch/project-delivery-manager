@@ -580,6 +580,14 @@
       "REQUIREMENT_NOT_FOUND": "需求不存在或已不可用。",
       "DOCUMENT_NOT_FOUND": "文档不存在或已不可用。",
       "DOCUMENT_EDIT_CONFLICT": "文档已有新版本，请刷新后重试。",
+      "DOCUMENT_FOLDER_ACCESS_DENIED": "当前账号无权访问该文档目录。",
+      "DOCUMENT_FOLDER_CROSS_SPACE_DENIED": "不能跨空间移动或访问文档目录。",
+      "DOCUMENT_FOLDER_DEPTH_EXCEEDED": "文件夹层级已达到上限。",
+      "DOCUMENT_FOLDER_MOVE_CYCLE": "不能把文件夹移动到自身或子文件夹下。",
+      "DOCUMENT_FOLDER_NAME_CONFLICT": "同级目录下已存在同名文件夹。",
+      "DOCUMENT_FOLDER_NOT_EMPTY": "文件夹不是空的，不能删除。",
+      "DOCUMENT_FOLDER_NOT_FOUND": "文档文件夹不存在或已不可用。",
+      "DOCUMENT_FOLDER_VERSION_CONFLICT": "文件夹已有新版本，请刷新后重试。",
       "DOCUMENT_LINK_TARGET_INVALID": "文档关联资源无效或已不可用。",
       "DOCUMENT_IMPORT_FAILED": "文档导入失败，请检查文件后重试。",
       "DOCUMENT_IMPORT_UNSUPPORTED_TYPE": "不支持该文档文件类型。",
@@ -778,6 +786,8 @@
     "documents": {
       "documentTitle": "文档 - 项目交付管理",
       "title": "文档",
+      "directory": "文档目录",
+      "closeDirectory": "关闭文档目录",
       "backToWorkspace": "返回工作台",
       "noSpace": "未选择空间",
       "workspaceLabel": "文档工作区"
@@ -1003,8 +1013,17 @@
     },
     "list": {
       "revision": "Revision {revision}",
+      "selectDocument": "选择文档 {title}",
+      "dragDocument": "拖拽文档 {title}",
+      "dragSelected": "拖拽已选的 {count} 个文档",
       "noResources": "暂无关联资源",
       "moreResources": "+{count} 个"
+    },
+    "selection": {
+      "count": "已选择 {count} 个文档",
+      "clear": "清除选择",
+      "select": "选择",
+      "done": "完成"
     },
     "empty": {
       "title": "还没有文档",
@@ -1038,6 +1057,7 @@
       "newVersion": "文档已有新版本，当前编辑内容尚未被覆盖。"
     },
     "actions": {
+      "backToList": "返回文档列表",
       "edit": "编辑",
       "save": "保存",
       "cancel": "取消",
@@ -1045,7 +1065,8 @@
       "restore": "恢复",
       "delete": "删除",
       "refresh": "刷新",
-      "reimport": "重新导入"
+      "reimport": "重新导入",
+      "moveToFolder": "移动到"
     },
     "edit": {
       "titleLabel": "文档标题",
@@ -1082,6 +1103,75 @@
       "description": "确认删除“{title}”？删除后将返回文档列表。",
       "cancel": "取消",
       "confirm": "删除"
+    },
+    "moveDialog": {
+      "title": "移动文档",
+      "description": "选择这篇文档所在的目录。文档只能属于一个主目录。",
+      "folderLabel": "目标目录",
+      "unfiled": "未归档",
+      "loading": "正在加载目录…",
+      "cancel": "取消",
+      "submit": "移动"
+    },
+    "directory": {
+      "title": "文档目录",
+      "viewsLabel": "文档视图",
+      "folders": "文件夹",
+      "createRoot": "新建根文件夹",
+      "collapse": "收起文档目录",
+      "expand": "展开文档目录",
+      "includeDescendants": "包含子目录",
+      "includeDescendantsActive": "已包含子目录",
+      "includeDescendantsDisabled": "选择文件夹后可包含子目录",
+      "expandAllFolders": "展开全部文件夹",
+      "collapseAllFolders": "收起全部文件夹",
+      "toggleAllFoldersDisabled": "暂无可展开或收起的文件夹",
+      "emptyFolders": "暂无文件夹",
+      "toggleFolder": "展开或收起 {name}",
+      "folderActions": "{name} 的文件夹操作",
+      "createChild": "新建子文件夹",
+      "rename": "重命名",
+      "move": "移动到",
+      "delete": "删除",
+      "drag": {
+        "folderHandle": "拖拽文件夹 {name}",
+        "rootDrop": "拖到这里移至根目录",
+        "documentsOverlay": "移动 {count} 个文档",
+        "folderOverlay": "移动文件夹 {name}",
+        "invalidTarget": "不能把文件夹移动到自身或子目录下。",
+        "depthExceeded": "移动后会超过目录最大层级。",
+        "moveFailed": "移动失败：{message}"
+      },
+      "views": {
+        "all": "全部文档",
+        "createdByMe": "我的文档",
+        "archived": "已归档"
+      },
+      "dialog": {
+        "title": {
+          "create": "新建文件夹",
+          "rename": "重命名文件夹",
+          "move": "移动文件夹",
+          "delete": "删除文件夹"
+        },
+        "description": {
+          "create": "在文档目录根级创建一个共享文件夹。",
+          "createChild": "在“{name}”下创建一个子文件夹。",
+          "rename": "更新“{name}”的名称。",
+          "move": "选择“{name}”的新父级。",
+          "delete": "删除空文件夹“{name}”。非空文件夹会被拒绝。"
+        },
+        "nameLabel": "文件夹名称",
+        "parentLabel": "父级目录",
+        "root": "根目录",
+        "cancel": "取消",
+        "submit": {
+          "create": "创建",
+          "rename": "保存",
+          "move": "移动",
+          "delete": "删除"
+        }
+      }
     },
     "rail": {
       "toc": "目录",

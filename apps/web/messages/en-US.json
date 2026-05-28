@@ -580,6 +580,14 @@
       "REQUIREMENT_NOT_FOUND": "The requirement is unavailable.",
       "DOCUMENT_NOT_FOUND": "The document is unavailable.",
       "DOCUMENT_EDIT_CONFLICT": "The document has a newer revision. Refresh and try again.",
+      "DOCUMENT_FOLDER_ACCESS_DENIED": "Your account cannot access this document folder.",
+      "DOCUMENT_FOLDER_CROSS_SPACE_DENIED": "Document folders cannot be moved or accessed across spaces.",
+      "DOCUMENT_FOLDER_DEPTH_EXCEEDED": "The folder nesting limit has been reached.",
+      "DOCUMENT_FOLDER_MOVE_CYCLE": "A folder cannot be moved under itself or one of its children.",
+      "DOCUMENT_FOLDER_NAME_CONFLICT": "A folder with this name already exists under the same parent.",
+      "DOCUMENT_FOLDER_NOT_EMPTY": "Only empty folders can be deleted.",
+      "DOCUMENT_FOLDER_NOT_FOUND": "The document folder is unavailable.",
+      "DOCUMENT_FOLDER_VERSION_CONFLICT": "The folder has a newer version. Refresh and try again.",
       "DOCUMENT_LINK_TARGET_INVALID": "The linked document resource is invalid or unavailable.",
       "DOCUMENT_IMPORT_FAILED": "Document import failed. Check the file and try again.",
       "DOCUMENT_IMPORT_UNSUPPORTED_TYPE": "This document file type is not supported.",
@@ -778,6 +786,8 @@
     "documents": {
       "documentTitle": "Documents - Project Delivery Manager",
       "title": "Documents",
+      "directory": "Document directory",
+      "closeDirectory": "Close document directory",
       "backToWorkspace": "Back to workspace",
       "noSpace": "No space selected",
       "workspaceLabel": "Documents workspace"
@@ -1003,8 +1013,17 @@
     },
     "list": {
       "revision": "Revision {revision}",
+      "selectDocument": "Select document {title}",
+      "dragDocument": "Drag document {title}",
+      "dragSelected": "Drag {count} selected documents",
       "noResources": "No linked resources",
       "moreResources": "+{count} more"
+    },
+    "selection": {
+      "count": "{count} documents selected",
+      "clear": "Clear selection",
+      "select": "Select",
+      "done": "Done"
     },
     "empty": {
       "title": "No documents yet",
@@ -1038,6 +1057,7 @@
       "newVersion": "This document has a newer revision. Your current edits were not overwritten."
     },
     "actions": {
+      "backToList": "Back to documents",
       "edit": "Edit",
       "save": "Save",
       "cancel": "Cancel",
@@ -1045,7 +1065,8 @@
       "restore": "Restore",
       "delete": "Delete",
       "refresh": "Refresh",
-      "reimport": "Reimport"
+      "reimport": "Reimport",
+      "moveToFolder": "Move to"
     },
     "edit": {
       "titleLabel": "Document title",
@@ -1082,6 +1103,75 @@
       "description": "Delete “{title}”? You will return to the document list after deletion.",
       "cancel": "Cancel",
       "confirm": "Delete"
+    },
+    "moveDialog": {
+      "title": "Move document",
+      "description": "Choose where this document belongs. A document can belong to one primary folder.",
+      "folderLabel": "Target folder",
+      "unfiled": "Unfiled",
+      "loading": "Loading folders…",
+      "cancel": "Cancel",
+      "submit": "Move"
+    },
+    "directory": {
+      "title": "Document directory",
+      "viewsLabel": "Document views",
+      "folders": "Folders",
+      "createRoot": "New root folder",
+      "collapse": "Collapse document directory",
+      "expand": "Expand document directory",
+      "includeDescendants": "Include subfolders",
+      "includeDescendantsActive": "Including subfolders",
+      "includeDescendantsDisabled": "Select a folder to include subfolders",
+      "expandAllFolders": "Expand all folders",
+      "collapseAllFolders": "Collapse all folders",
+      "toggleAllFoldersDisabled": "No folders can be expanded or collapsed",
+      "emptyFolders": "No folders yet",
+      "toggleFolder": "Expand or collapse {name}",
+      "folderActions": "Folder actions for {name}",
+      "createChild": "New child folder",
+      "rename": "Rename",
+      "move": "Move to",
+      "delete": "Delete",
+      "drag": {
+        "folderHandle": "Drag folder {name}",
+        "rootDrop": "Drop here to move to root",
+        "documentsOverlay": "Move {count} documents",
+        "folderOverlay": "Move folder {name}",
+        "invalidTarget": "A folder cannot be moved into itself or its descendant.",
+        "depthExceeded": "This move would exceed the maximum folder depth.",
+        "moveFailed": "Move failed: {message}"
+      },
+      "views": {
+        "all": "All documents",
+        "createdByMe": "My documents",
+        "archived": "Archived"
+      },
+      "dialog": {
+        "title": {
+          "create": "New folder",
+          "rename": "Rename folder",
+          "move": "Move folder",
+          "delete": "Delete folder"
+        },
+        "description": {
+          "create": "Create a shared folder at the document directory root.",
+          "createChild": "Create a child folder under “{name}”.",
+          "rename": "Update the name of “{name}”.",
+          "move": "Choose a new parent for “{name}”.",
+          "delete": "Delete empty folder “{name}”. Non-empty folders will be rejected."
+        },
+        "nameLabel": "Folder name",
+        "parentLabel": "Parent folder",
+        "root": "Root",
+        "cancel": "Cancel",
+        "submit": {
+          "create": "Create",
+          "rename": "Save",
+          "move": "Move",
+          "delete": "Delete"
+        }
+      }
     },
     "rail": {
       "toc": "Contents",

@@ -43,6 +43,7 @@ export type DocumentSummary = {
   createdByName?: string | null;
   createdMcpClientName?: string | null;
   createdVia?: DocumentActorType;
+  folderId?: string | null;
   id: string;
   lastEditedAt: string;
   lastEditedByName?: string | null;
@@ -98,9 +99,27 @@ export type DocumentSortBy =
   | "createdAt"
   | "title";
 
+export type DocumentFolder = {
+  children?: DocumentFolder[];
+  createdAt?: string;
+  depth: number;
+  descendantDocumentCount: number;
+  documentCount: number;
+  id: string;
+  name: string;
+  organizationId?: string;
+  parentId?: string | null;
+  sortOrder: number;
+  spaceId: string;
+  updatedAt?: string;
+  version: number;
+};
+
 export type ListDocumentsInput = {
   currentUserId?: string;
   filter?: DocumentFilterKey;
+  folderId?: string | null;
+  includeDescendants?: boolean;
   organizationId?: string;
   page?: number;
   pageSize?: number;
@@ -110,10 +129,12 @@ export type ListDocumentsInput = {
   spaceId: string;
   tagIds?: string[];
   tagMatch?: "ANY" | "ALL";
+  unfiled?: boolean;
 };
 
 export type PasteDocumentInput = {
   contentMarkdown: string;
+  folderId?: string | null;
   sourceType?: "PASTE_MARKDOWN" | "PASTE_TEXT";
   tagIds?: string[];
   title: string;
@@ -121,6 +142,7 @@ export type PasteDocumentInput = {
 
 export type ImportDocumentInput = {
   file: File;
+  folderId?: string | null;
   title?: string;
 };
 
@@ -196,6 +218,43 @@ const linkSchema = z
   })
   .passthrough();
 
+const documentFolderSchema: z.ZodType<DocumentFolder> = z.lazy(() =>
+  z
+    .object({
+      children: z.array(documentFolderSchema).optional(),
+      createdAt: z.string().optional(),
+      depth: z.number().catch(0),
+      descendantDocumentCount: z.number().catch(0),
+      documentCount: z.number().catch(0),
+      id: z.string(),
+      name: z.string().catch(""),
+      organizationId: z.string().optional(),
+      parentId: z.string().nullish(),
+      sortOrder: z.number().catch(0),
+      spaceId: z.string(),
+      updatedAt: z.string().optional(),
+      version: z.number().catch(0),
+    })
+    .passthrough()
+    .transform((folder) => ({
+      ...folder,
+      parentId: folder.parentId ?? null,
+    })),
+);
+
+const documentFolderListSchema = z
+  .union([
+    z.array(documentFolderSchema),
+    z
+      .object({
+        folders: z.array(documentFolderSchema).optional(),
+        items: z.array(documentFolderSchema).optional(),
+      })
+      .passthrough()
+      .transform((value) => value.items ?? value.folders ?? []),
+  ])
+  .transform((folders) => folders);
+
 const documentSummaryBaseSchema = z
   .object({
     archivedAt: z.string().nullish(),
@@ -206,6 +265,7 @@ const documentSummaryBaseSchema = z
     createdByName: z.string().nullish(),
     createdMcpClientName: z.string().nullish(),
     createdVia: documentActorSchema.optional(),
+    folderId: z.string().nullish(),
     id: z.string(),
     lastEditedAt: z.string(),
     lastEditedByName: z.string().nullish(),
@@ -299,6 +359,10 @@ export async function listDocuments(
     query: normalizeTagApiQuery({
       page: query.page ?? 1,
       pageSize: query.pageSize ?? 50,
+      folderId:
+        query.folderId === null ? undefined : optionalString(query.folderId),
+      includeDescendants: query.includeDescendants || undefined,
+      unfiled: query.unfiled || undefined,
       query: optionalString(query.query),
       sortBy: query.sortBy,
       sortOrder: query.sortOrder,
@@ -330,6 +394,7 @@ export async function pasteDocument(
     `/spaces/${spaceId}/documents/paste`,
     {
       contentMarkdown: input.contentMarkdown,
+      ...(input.folderId !== undefined ? { folderId: input.folderId } : {}),
       sourceType: input.sourceType ?? "PASTE_MARKDOWN",
       tagIds: input.tagIds ?? [],
       title: input.title,
@@ -400,6 +465,164 @@ export async function updateDocument(
   return document;
 }
 
+export async function listDocumentFolders(
+  input: { organizationId?: string; spaceId: string },
+  api: DocumentApiTransport = defaultApi,
+): Promise<DocumentFolder[]> {
+  const response = await api.get<unknown>(
+    `/spaces/${input.spaceId}/document-folders`,
+  );
+
+  return documentFolderListSchema.parse(response.data);
+}
+
+export async function createDocumentFolder(
+  input: {
+    name: string;
+    organizationId?: string;
+    parentId?: string | null;
+    spaceId: string;
+  },
+  api: DocumentApiTransport = defaultApi,
+): Promise<DocumentFolder> {
+  const response = await api.post<unknown>(
+    `/spaces/${input.spaceId}/document-folders`,
+    {
+      name: input.name,
+      ...(input.parentId ? { parentId: input.parentId } : {}),
+    },
+  );
+
+  return documentFolderSchema.parse(response.data);
+}
+
+export async function updateDocumentFolder(
+  input: {
+    folderId: string;
+    name?: string;
+    organizationId?: string;
+    spaceId?: string;
+    version?: number;
+  },
+  api: DocumentApiTransport = defaultApi,
+): Promise<DocumentFolder> {
+  const response = await api.patch<unknown>(
+    `/document-folders/${input.folderId}`,
+    {
+      ...(input.name !== undefined ? { name: input.name } : {}),
+      ...(input.version !== undefined ? { version: input.version } : {}),
+    },
+  );
+
+  return documentFolderSchema.parse(response.data);
+}
+
+export async function moveDocumentFolder(
+  input: {
+    folderId: string;
+    organizationId?: string;
+    parentId?: string | null;
+    sortOrder?: number;
+    spaceId?: string;
+    version?: number;
+  },
+  api: DocumentApiTransport = defaultApi,
+): Promise<DocumentFolder> {
+  const response = await api.post<unknown>(
+    `/document-folders/${input.folderId}/move`,
+    {
+      parentId: input.parentId ?? null,
+      ...(input.sortOrder !== undefined ? { sortOrder: input.sortOrder } : {}),
+      ...(input.version !== undefined ? { version: input.version } : {}),
+    },
+  );
+
+  return documentFolderSchema.parse(response.data);
+}
+
+export async function reorderDocumentFolders(
+  input: {
+    orderedFolderIds: string[];
+    organizationId?: string;
+    parentId?: string | null;
+    spaceId: string;
+  },
+  api: DocumentApiTransport = defaultApi,
+): Promise<DocumentFolder[]> {
+  const response = await api.post<unknown>(
+    `/spaces/${input.spaceId}/document-folders/reorder`,
+    {
+      orderedFolderIds: input.orderedFolderIds,
+      ...(input.parentId !== undefined ? { parentId: input.parentId } : {}),
+    },
+  );
+
+  return documentFolderListSchema.parse(response.data);
+}
+
+export async function deleteDocumentFolder(
+  input: {
+    folderId: string;
+    organizationId?: string;
+    spaceId?: string;
+  },
+  api: DocumentApiTransport = defaultApi,
+): Promise<void> {
+  await api.delete<unknown>(`/document-folders/${input.folderId}`);
+}
+
+export async function moveDocumentToFolder(
+  input: {
+    baseRevision: number;
+    documentId: string;
+    folderId: string | null;
+    organizationId?: string;
+    spaceId?: string;
+  },
+  api: DocumentApiTransport = defaultApi,
+): Promise<DocumentDetail> {
+  const response = await api.patch<unknown>(
+    `/documents/${input.documentId}/folder`,
+    {
+      baseRevision: input.baseRevision,
+      folderId: input.folderId,
+    },
+  );
+
+  const document = documentSummarySchema.parse(response.data);
+  return getDocument({ documentId: document.id }, api);
+}
+
+export async function moveDocumentsToFolder(
+  input: {
+    documentIds: string[];
+    folderId: string | null;
+    organizationId?: string;
+    spaceId: string;
+  },
+  api: DocumentApiTransport = defaultApi,
+): Promise<DocumentSummary[]> {
+  const response = await api.patch<unknown>(
+    `/spaces/${input.spaceId}/documents/folder`,
+    {
+      documentIds: input.documentIds,
+      folderId: input.folderId,
+    },
+  );
+
+  return z
+    .union([
+      z.array(documentSummarySchema),
+      z
+        .object({
+          items: z.array(documentSummarySchema).optional(),
+        })
+        .passthrough()
+        .transform((value) => value.items ?? []),
+    ])
+    .parse(response.data);
+}
+
 export async function reimportDocument(
   input: { documentId: string } & ReimportDocumentInput,
   api: DocumentApiTransport = defaultApi,
@@ -450,6 +673,9 @@ function importDocumentFile(
   formData.set("file", input.file, input.file.name);
   if (input.title?.trim()) {
     formData.set("title", input.title.trim());
+  }
+  if (input.folderId !== undefined && input.folderId !== null) {
+    formData.set("folderId", input.folderId);
   }
 
   return api

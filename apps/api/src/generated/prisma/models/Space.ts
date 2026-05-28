@@ -297,6 +297,7 @@ export type SpaceWhereInput = {
   tags?: Prisma.TagListRelationFilter
   tagAssignments?: Prisma.TagAssignmentListRelationFilter
   documents?: Prisma.DocumentListRelationFilter
+  documentFolders?: Prisma.DocumentFolderListRelationFilter
   documentRevisions?: Prisma.DocumentRevisionListRelationFilter
   documentLinks?: Prisma.DocumentLinkListRelationFilter
   documentChunks?: Prisma.DocumentChunkListRelationFilter
@@ -334,6 +335,7 @@ export type SpaceOrderByWithRelationInput = {
   tags?: Prisma.TagOrderByRelationAggregateInput
   tagAssignments?: Prisma.TagAssignmentOrderByRelationAggregateInput
   documents?: Prisma.DocumentOrderByRelationAggregateInput
+  documentFolders?: Prisma.DocumentFolderOrderByRelationAggregateInput
   documentRevisions?: Prisma.DocumentRevisionOrderByRelationAggregateInput
   documentLinks?: Prisma.DocumentLinkOrderByRelationAggregateInput
   documentChunks?: Prisma.DocumentChunkOrderByRelationAggregateInput
@@ -374,6 +376,7 @@ export type SpaceWhereUniqueInput = Prisma.AtLeast<{
   tags?: Prisma.TagListRelationFilter
   tagAssignments?: Prisma.TagAssignmentListRelationFilter
   documents?: Prisma.DocumentListRelationFilter
+  documentFolders?: Prisma.DocumentFolderListRelationFilter
   documentRevisions?: Prisma.DocumentRevisionListRelationFilter
   documentLinks?: Prisma.DocumentLinkListRelationFilter
   documentChunks?: Prisma.DocumentChunkListRelationFilter
@@ -449,6 +452,7 @@ export type SpaceCreateInput = {
   tags?: Prisma.TagCreateNestedManyWithoutSpaceInput
   tagAssignments?: Prisma.TagAssignmentCreateNestedManyWithoutSpaceInput
   documents?: Prisma.DocumentCreateNestedManyWithoutSpaceInput
+  documentFolders?: Prisma.DocumentFolderCreateNestedManyWithoutSpaceInput
   documentRevisions?: Prisma.DocumentRevisionCreateNestedManyWithoutSpaceInput
   documentLinks?: Prisma.DocumentLinkCreateNestedManyWithoutSpaceInput
   documentChunks?: Prisma.DocumentChunkCreateNestedManyWithoutSpaceInput
@@ -484,6 +488,7 @@ export type SpaceUncheckedCreateInput = {
   tags?: Prisma.TagUncheckedCreateNestedManyWithoutSpaceInput
   tagAssignments?: Prisma.TagAssignmentUncheckedCreateNestedManyWithoutSpaceInput
   documents?: Prisma.DocumentUncheckedCreateNestedManyWithoutSpaceInput
+  documentFolders?: Prisma.DocumentFolderUncheckedCreateNestedManyWithoutSpaceInput
   documentRevisions?: Prisma.DocumentRevisionUncheckedCreateNestedManyWithoutSpaceInput
   documentLinks?: Prisma.DocumentLinkUncheckedCreateNestedManyWithoutSpaceInput
   documentChunks?: Prisma.DocumentChunkUncheckedCreateNestedManyWithoutSpaceInput
@@ -519,6 +524,7 @@ export type SpaceUpdateInput = {
   tags?: Prisma.TagUpdateManyWithoutSpaceNestedInput
   tagAssignments?: Prisma.TagAssignmentUpdateManyWithoutSpaceNestedInput
   documents?: Prisma.DocumentUpdateManyWithoutSpaceNestedInput
+  documentFolders?: Prisma.DocumentFolderUpdateManyWithoutSpaceNestedInput
   documentRevisions?: Prisma.DocumentRevisionUpdateManyWithoutSpaceNestedInput
   documentLinks?: Prisma.DocumentLinkUpdateManyWithoutSpaceNestedInput
   documentChunks?: Prisma.DocumentChunkUpdateManyWithoutSpaceNestedInput
@@ -554,6 +560,7 @@ export type SpaceUncheckedUpdateInput = {
   tags?: Prisma.TagUncheckedUpdateManyWithoutSpaceNestedInput
   tagAssignments?: Prisma.TagAssignmentUncheckedUpdateManyWithoutSpaceNestedInput
   documents?: Prisma.DocumentUncheckedUpdateManyWithoutSpaceNestedInput
+  documentFolders?: Prisma.DocumentFolderUncheckedUpdateManyWithoutSpaceNestedInput
   documentRevisions?: Prisma.DocumentRevisionUncheckedUpdateManyWithoutSpaceNestedInput
   documentLinks?: Prisma.DocumentLinkUncheckedUpdateManyWithoutSpaceNestedInput
   documentChunks?: Prisma.DocumentChunkUncheckedUpdateManyWithoutSpaceNestedInput
@@ -890,6 +897,20 @@ export type SpaceUpdateOneRequiredWithoutDocumentsNestedInput = {
   update?: Prisma.XOR<Prisma.XOR<Prisma.SpaceUpdateToOneWithWhereWithoutDocumentsInput, Prisma.SpaceUpdateWithoutDocumentsInput>, Prisma.SpaceUncheckedUpdateWithoutDocumentsInput>
 }
 
+export type SpaceCreateNestedOneWithoutDocumentFoldersInput = {
+  create?: Prisma.XOR<Prisma.SpaceCreateWithoutDocumentFoldersInput, Prisma.SpaceUncheckedCreateWithoutDocumentFoldersInput>
+  connectOrCreate?: Prisma.SpaceCreateOrConnectWithoutDocumentFoldersInput
+  connect?: Prisma.SpaceWhereUniqueInput
+}
+
+export type SpaceUpdateOneRequiredWithoutDocumentFoldersNestedInput = {
+  create?: Prisma.XOR<Prisma.SpaceCreateWithoutDocumentFoldersInput, Prisma.SpaceUncheckedCreateWithoutDocumentFoldersInput>
+  connectOrCreate?: Prisma.SpaceCreateOrConnectWithoutDocumentFoldersInput
+  upsert?: Prisma.SpaceUpsertWithoutDocumentFoldersInput
+  connect?: Prisma.SpaceWhereUniqueInput
+  update?: Prisma.XOR<Prisma.XOR<Prisma.SpaceUpdateToOneWithWhereWithoutDocumentFoldersInput, Prisma.SpaceUpdateWithoutDocumentFoldersInput>, Prisma.SpaceUncheckedUpdateWithoutDocumentFoldersInput>
+}
+
 export type SpaceCreateNestedOneWithoutDocumentRevisionsInput = {
   create?: Prisma.XOR<Prisma.SpaceCreateWithoutDocumentRevisionsInput, Prisma.SpaceUncheckedCreateWithoutDocumentRevisionsInput>
   connectOrCreate?: Prisma.SpaceCreateOrConnectWithoutDocumentRevisionsInput
@@ -1074,6 +1095,7 @@ export type SpaceCreateWithoutOwnerInput = {
   tags?: Prisma.TagCreateNestedManyWithoutSpaceInput
   tagAssignments?: Prisma.TagAssignmentCreateNestedManyWithoutSpaceInput
   documents?: Prisma.DocumentCreateNestedManyWithoutSpaceInput
+  documentFolders?: Prisma.DocumentFolderCreateNestedManyWithoutSpaceInput
   documentRevisions?: Prisma.DocumentRevisionCreateNestedManyWithoutSpaceInput
   documentLinks?: Prisma.DocumentLinkCreateNestedManyWithoutSpaceInput
   documentChunks?: Prisma.DocumentChunkCreateNestedManyWithoutSpaceInput
@@ -1108,6 +1130,7 @@ export type SpaceUncheckedCreateWithoutOwnerInput = {
   tags?: Prisma.TagUncheckedCreateNestedManyWithoutSpaceInput
   tagAssignments?: Prisma.TagAssignmentUncheckedCreateNestedManyWithoutSpaceInput
   documents?: Prisma.DocumentUncheckedCreateNestedManyWithoutSpaceInput
+  documentFolders?: Prisma.DocumentFolderUncheckedCreateNestedManyWithoutSpaceInput
   documentRevisions?: Prisma.DocumentRevisionUncheckedCreateNestedManyWithoutSpaceInput
   documentLinks?: Prisma.DocumentLinkUncheckedCreateNestedManyWithoutSpaceInput
   documentChunks?: Prisma.DocumentChunkUncheckedCreateNestedManyWithoutSpaceInput
@@ -1187,6 +1210,7 @@ export type SpaceCreateWithoutOrganizationInput = {
   tags?: Prisma.TagCreateNestedManyWithoutSpaceInput
   tagAssignments?: Prisma.TagAssignmentCreateNestedManyWithoutSpaceInput
   documents?: Prisma.DocumentCreateNestedManyWithoutSpaceInput
+  documentFolders?: Prisma.DocumentFolderCreateNestedManyWithoutSpaceInput
   documentRevisions?: Prisma.DocumentRevisionCreateNestedManyWithoutSpaceInput
   documentLinks?: Prisma.DocumentLinkCreateNestedManyWithoutSpaceInput
   documentChunks?: Prisma.DocumentChunkCreateNestedManyWithoutSpaceInput
@@ -1221,6 +1245,7 @@ export type SpaceUncheckedCreateWithoutOrganizationInput = {
   tags?: Prisma.TagUncheckedCreateNestedManyWithoutSpaceInput
   tagAssignments?: Prisma.TagAssignmentUncheckedCreateNestedManyWithoutSpaceInput
   documents?: Prisma.DocumentUncheckedCreateNestedManyWithoutSpaceInput
+  documentFolders?: Prisma.DocumentFolderUncheckedCreateNestedManyWithoutSpaceInput
   documentRevisions?: Prisma.DocumentRevisionUncheckedCreateNestedManyWithoutSpaceInput
   documentLinks?: Prisma.DocumentLinkUncheckedCreateNestedManyWithoutSpaceInput
   documentChunks?: Prisma.DocumentChunkUncheckedCreateNestedManyWithoutSpaceInput
@@ -1281,6 +1306,7 @@ export type SpaceCreateWithoutMembersInput = {
   tags?: Prisma.TagCreateNestedManyWithoutSpaceInput
   tagAssignments?: Prisma.TagAssignmentCreateNestedManyWithoutSpaceInput
   documents?: Prisma.DocumentCreateNestedManyWithoutSpaceInput
+  documentFolders?: Prisma.DocumentFolderCreateNestedManyWithoutSpaceInput
   documentRevisions?: Prisma.DocumentRevisionCreateNestedManyWithoutSpaceInput
   documentLinks?: Prisma.DocumentLinkCreateNestedManyWithoutSpaceInput
   documentChunks?: Prisma.DocumentChunkCreateNestedManyWithoutSpaceInput
@@ -1315,6 +1341,7 @@ export type SpaceUncheckedCreateWithoutMembersInput = {
   tags?: Prisma.TagUncheckedCreateNestedManyWithoutSpaceInput
   tagAssignments?: Prisma.TagAssignmentUncheckedCreateNestedManyWithoutSpaceInput
   documents?: Prisma.DocumentUncheckedCreateNestedManyWithoutSpaceInput
+  documentFolders?: Prisma.DocumentFolderUncheckedCreateNestedManyWithoutSpaceInput
   documentRevisions?: Prisma.DocumentRevisionUncheckedCreateNestedManyWithoutSpaceInput
   documentLinks?: Prisma.DocumentLinkUncheckedCreateNestedManyWithoutSpaceInput
   documentChunks?: Prisma.DocumentChunkUncheckedCreateNestedManyWithoutSpaceInput
@@ -1365,6 +1392,7 @@ export type SpaceUpdateWithoutMembersInput = {
   tags?: Prisma.TagUpdateManyWithoutSpaceNestedInput
   tagAssignments?: Prisma.TagAssignmentUpdateManyWithoutSpaceNestedInput
   documents?: Prisma.DocumentUpdateManyWithoutSpaceNestedInput
+  documentFolders?: Prisma.DocumentFolderUpdateManyWithoutSpaceNestedInput
   documentRevisions?: Prisma.DocumentRevisionUpdateManyWithoutSpaceNestedInput
   documentLinks?: Prisma.DocumentLinkUpdateManyWithoutSpaceNestedInput
   documentChunks?: Prisma.DocumentChunkUpdateManyWithoutSpaceNestedInput
@@ -1399,6 +1427,7 @@ export type SpaceUncheckedUpdateWithoutMembersInput = {
   tags?: Prisma.TagUncheckedUpdateManyWithoutSpaceNestedInput
   tagAssignments?: Prisma.TagAssignmentUncheckedUpdateManyWithoutSpaceNestedInput
   documents?: Prisma.DocumentUncheckedUpdateManyWithoutSpaceNestedInput
+  documentFolders?: Prisma.DocumentFolderUncheckedUpdateManyWithoutSpaceNestedInput
   documentRevisions?: Prisma.DocumentRevisionUncheckedUpdateManyWithoutSpaceNestedInput
   documentLinks?: Prisma.DocumentLinkUncheckedUpdateManyWithoutSpaceNestedInput
   documentChunks?: Prisma.DocumentChunkUncheckedUpdateManyWithoutSpaceNestedInput
@@ -1433,6 +1462,7 @@ export type SpaceCreateWithoutVersionsInput = {
   tags?: Prisma.TagCreateNestedManyWithoutSpaceInput
   tagAssignments?: Prisma.TagAssignmentCreateNestedManyWithoutSpaceInput
   documents?: Prisma.DocumentCreateNestedManyWithoutSpaceInput
+  documentFolders?: Prisma.DocumentFolderCreateNestedManyWithoutSpaceInput
   documentRevisions?: Prisma.DocumentRevisionCreateNestedManyWithoutSpaceInput
   documentLinks?: Prisma.DocumentLinkCreateNestedManyWithoutSpaceInput
   documentChunks?: Prisma.DocumentChunkCreateNestedManyWithoutSpaceInput
@@ -1467,6 +1497,7 @@ export type SpaceUncheckedCreateWithoutVersionsInput = {
   tags?: Prisma.TagUncheckedCreateNestedManyWithoutSpaceInput
   tagAssignments?: Prisma.TagAssignmentUncheckedCreateNestedManyWithoutSpaceInput
   documents?: Prisma.DocumentUncheckedCreateNestedManyWithoutSpaceInput
+  documentFolders?: Prisma.DocumentFolderUncheckedCreateNestedManyWithoutSpaceInput
   documentRevisions?: Prisma.DocumentRevisionUncheckedCreateNestedManyWithoutSpaceInput
   documentLinks?: Prisma.DocumentLinkUncheckedCreateNestedManyWithoutSpaceInput
   documentChunks?: Prisma.DocumentChunkUncheckedCreateNestedManyWithoutSpaceInput
@@ -1517,6 +1548,7 @@ export type SpaceUpdateWithoutVersionsInput = {
   tags?: Prisma.TagUpdateManyWithoutSpaceNestedInput
   tagAssignments?: Prisma.TagAssignmentUpdateManyWithoutSpaceNestedInput
   documents?: Prisma.DocumentUpdateManyWithoutSpaceNestedInput
+  documentFolders?: Prisma.DocumentFolderUpdateManyWithoutSpaceNestedInput
   documentRevisions?: Prisma.DocumentRevisionUpdateManyWithoutSpaceNestedInput
   documentLinks?: Prisma.DocumentLinkUpdateManyWithoutSpaceNestedInput
   documentChunks?: Prisma.DocumentChunkUpdateManyWithoutSpaceNestedInput
@@ -1551,6 +1583,7 @@ export type SpaceUncheckedUpdateWithoutVersionsInput = {
   tags?: Prisma.TagUncheckedUpdateManyWithoutSpaceNestedInput
   tagAssignments?: Prisma.TagAssignmentUncheckedUpdateManyWithoutSpaceNestedInput
   documents?: Prisma.DocumentUncheckedUpdateManyWithoutSpaceNestedInput
+  documentFolders?: Prisma.DocumentFolderUncheckedUpdateManyWithoutSpaceNestedInput
   documentRevisions?: Prisma.DocumentRevisionUncheckedUpdateManyWithoutSpaceNestedInput
   documentLinks?: Prisma.DocumentLinkUncheckedUpdateManyWithoutSpaceNestedInput
   documentChunks?: Prisma.DocumentChunkUncheckedUpdateManyWithoutSpaceNestedInput
@@ -1585,6 +1618,7 @@ export type SpaceCreateWithoutRequirementsInput = {
   tags?: Prisma.TagCreateNestedManyWithoutSpaceInput
   tagAssignments?: Prisma.TagAssignmentCreateNestedManyWithoutSpaceInput
   documents?: Prisma.DocumentCreateNestedManyWithoutSpaceInput
+  documentFolders?: Prisma.DocumentFolderCreateNestedManyWithoutSpaceInput
   documentRevisions?: Prisma.DocumentRevisionCreateNestedManyWithoutSpaceInput
   documentLinks?: Prisma.DocumentLinkCreateNestedManyWithoutSpaceInput
   documentChunks?: Prisma.DocumentChunkCreateNestedManyWithoutSpaceInput
@@ -1619,6 +1653,7 @@ export type SpaceUncheckedCreateWithoutRequirementsInput = {
   tags?: Prisma.TagUncheckedCreateNestedManyWithoutSpaceInput
   tagAssignments?: Prisma.TagAssignmentUncheckedCreateNestedManyWithoutSpaceInput
   documents?: Prisma.DocumentUncheckedCreateNestedManyWithoutSpaceInput
+  documentFolders?: Prisma.DocumentFolderUncheckedCreateNestedManyWithoutSpaceInput
   documentRevisions?: Prisma.DocumentRevisionUncheckedCreateNestedManyWithoutSpaceInput
   documentLinks?: Prisma.DocumentLinkUncheckedCreateNestedManyWithoutSpaceInput
   documentChunks?: Prisma.DocumentChunkUncheckedCreateNestedManyWithoutSpaceInput
@@ -1669,6 +1704,7 @@ export type SpaceUpdateWithoutRequirementsInput = {
   tags?: Prisma.TagUpdateManyWithoutSpaceNestedInput
   tagAssignments?: Prisma.TagAssignmentUpdateManyWithoutSpaceNestedInput
   documents?: Prisma.DocumentUpdateManyWithoutSpaceNestedInput
+  documentFolders?: Prisma.DocumentFolderUpdateManyWithoutSpaceNestedInput
   documentRevisions?: Prisma.DocumentRevisionUpdateManyWithoutSpaceNestedInput
   documentLinks?: Prisma.DocumentLinkUpdateManyWithoutSpaceNestedInput
   documentChunks?: Prisma.DocumentChunkUpdateManyWithoutSpaceNestedInput
@@ -1703,6 +1739,7 @@ export type SpaceUncheckedUpdateWithoutRequirementsInput = {
   tags?: Prisma.TagUncheckedUpdateManyWithoutSpaceNestedInput
   tagAssignments?: Prisma.TagAssignmentUncheckedUpdateManyWithoutSpaceNestedInput
   documents?: Prisma.DocumentUncheckedUpdateManyWithoutSpaceNestedInput
+  documentFolders?: Prisma.DocumentFolderUncheckedUpdateManyWithoutSpaceNestedInput
   documentRevisions?: Prisma.DocumentRevisionUncheckedUpdateManyWithoutSpaceNestedInput
   documentLinks?: Prisma.DocumentLinkUncheckedUpdateManyWithoutSpaceNestedInput
   documentChunks?: Prisma.DocumentChunkUncheckedUpdateManyWithoutSpaceNestedInput
@@ -1737,6 +1774,7 @@ export type SpaceCreateWithoutIntakeItemsInput = {
   tags?: Prisma.TagCreateNestedManyWithoutSpaceInput
   tagAssignments?: Prisma.TagAssignmentCreateNestedManyWithoutSpaceInput
   documents?: Prisma.DocumentCreateNestedManyWithoutSpaceInput
+  documentFolders?: Prisma.DocumentFolderCreateNestedManyWithoutSpaceInput
   documentRevisions?: Prisma.DocumentRevisionCreateNestedManyWithoutSpaceInput
   documentLinks?: Prisma.DocumentLinkCreateNestedManyWithoutSpaceInput
   documentChunks?: Prisma.DocumentChunkCreateNestedManyWithoutSpaceInput
@@ -1771,6 +1809,7 @@ export type SpaceUncheckedCreateWithoutIntakeItemsInput = {
   tags?: Prisma.TagUncheckedCreateNestedManyWithoutSpaceInput
   tagAssignments?: Prisma.TagAssignmentUncheckedCreateNestedManyWithoutSpaceInput
   documents?: Prisma.DocumentUncheckedCreateNestedManyWithoutSpaceInput
+  documentFolders?: Prisma.DocumentFolderUncheckedCreateNestedManyWithoutSpaceInput
   documentRevisions?: Prisma.DocumentRevisionUncheckedCreateNestedManyWithoutSpaceInput
   documentLinks?: Prisma.DocumentLinkUncheckedCreateNestedManyWithoutSpaceInput
   documentChunks?: Prisma.DocumentChunkUncheckedCreateNestedManyWithoutSpaceInput
@@ -1821,6 +1860,7 @@ export type SpaceUpdateWithoutIntakeItemsInput = {
   tags?: Prisma.TagUpdateManyWithoutSpaceNestedInput
   tagAssignments?: Prisma.TagAssignmentUpdateManyWithoutSpaceNestedInput
   documents?: Prisma.DocumentUpdateManyWithoutSpaceNestedInput
+  documentFolders?: Prisma.DocumentFolderUpdateManyWithoutSpaceNestedInput
   documentRevisions?: Prisma.DocumentRevisionUpdateManyWithoutSpaceNestedInput
   documentLinks?: Prisma.DocumentLinkUpdateManyWithoutSpaceNestedInput
   documentChunks?: Prisma.DocumentChunkUpdateManyWithoutSpaceNestedInput
@@ -1855,6 +1895,7 @@ export type SpaceUncheckedUpdateWithoutIntakeItemsInput = {
   tags?: Prisma.TagUncheckedUpdateManyWithoutSpaceNestedInput
   tagAssignments?: Prisma.TagAssignmentUncheckedUpdateManyWithoutSpaceNestedInput
   documents?: Prisma.DocumentUncheckedUpdateManyWithoutSpaceNestedInput
+  documentFolders?: Prisma.DocumentFolderUncheckedUpdateManyWithoutSpaceNestedInput
   documentRevisions?: Prisma.DocumentRevisionUncheckedUpdateManyWithoutSpaceNestedInput
   documentLinks?: Prisma.DocumentLinkUncheckedUpdateManyWithoutSpaceNestedInput
   documentChunks?: Prisma.DocumentChunkUncheckedUpdateManyWithoutSpaceNestedInput
@@ -1889,6 +1930,7 @@ export type SpaceCreateWithoutWorkItemsInput = {
   tags?: Prisma.TagCreateNestedManyWithoutSpaceInput
   tagAssignments?: Prisma.TagAssignmentCreateNestedManyWithoutSpaceInput
   documents?: Prisma.DocumentCreateNestedManyWithoutSpaceInput
+  documentFolders?: Prisma.DocumentFolderCreateNestedManyWithoutSpaceInput
   documentRevisions?: Prisma.DocumentRevisionCreateNestedManyWithoutSpaceInput
   documentLinks?: Prisma.DocumentLinkCreateNestedManyWithoutSpaceInput
   documentChunks?: Prisma.DocumentChunkCreateNestedManyWithoutSpaceInput
@@ -1923,6 +1965,7 @@ export type SpaceUncheckedCreateWithoutWorkItemsInput = {
   tags?: Prisma.TagUncheckedCreateNestedManyWithoutSpaceInput
   tagAssignments?: Prisma.TagAssignmentUncheckedCreateNestedManyWithoutSpaceInput
   documents?: Prisma.DocumentUncheckedCreateNestedManyWithoutSpaceInput
+  documentFolders?: Prisma.DocumentFolderUncheckedCreateNestedManyWithoutSpaceInput
   documentRevisions?: Prisma.DocumentRevisionUncheckedCreateNestedManyWithoutSpaceInput
   documentLinks?: Prisma.DocumentLinkUncheckedCreateNestedManyWithoutSpaceInput
   documentChunks?: Prisma.DocumentChunkUncheckedCreateNestedManyWithoutSpaceInput
@@ -1973,6 +2016,7 @@ export type SpaceUpdateWithoutWorkItemsInput = {
   tags?: Prisma.TagUpdateManyWithoutSpaceNestedInput
   tagAssignments?: Prisma.TagAssignmentUpdateManyWithoutSpaceNestedInput
   documents?: Prisma.DocumentUpdateManyWithoutSpaceNestedInput
+  documentFolders?: Prisma.DocumentFolderUpdateManyWithoutSpaceNestedInput
   documentRevisions?: Prisma.DocumentRevisionUpdateManyWithoutSpaceNestedInput
   documentLinks?: Prisma.DocumentLinkUpdateManyWithoutSpaceNestedInput
   documentChunks?: Prisma.DocumentChunkUpdateManyWithoutSpaceNestedInput
@@ -2007,6 +2051,7 @@ export type SpaceUncheckedUpdateWithoutWorkItemsInput = {
   tags?: Prisma.TagUncheckedUpdateManyWithoutSpaceNestedInput
   tagAssignments?: Prisma.TagAssignmentUncheckedUpdateManyWithoutSpaceNestedInput
   documents?: Prisma.DocumentUncheckedUpdateManyWithoutSpaceNestedInput
+  documentFolders?: Prisma.DocumentFolderUncheckedUpdateManyWithoutSpaceNestedInput
   documentRevisions?: Prisma.DocumentRevisionUncheckedUpdateManyWithoutSpaceNestedInput
   documentLinks?: Prisma.DocumentLinkUncheckedUpdateManyWithoutSpaceNestedInput
   documentChunks?: Prisma.DocumentChunkUncheckedUpdateManyWithoutSpaceNestedInput
@@ -2042,6 +2087,7 @@ export type SpaceCreateWithoutObjectSequenceCountersInput = {
   tags?: Prisma.TagCreateNestedManyWithoutSpaceInput
   tagAssignments?: Prisma.TagAssignmentCreateNestedManyWithoutSpaceInput
   documents?: Prisma.DocumentCreateNestedManyWithoutSpaceInput
+  documentFolders?: Prisma.DocumentFolderCreateNestedManyWithoutSpaceInput
   documentRevisions?: Prisma.DocumentRevisionCreateNestedManyWithoutSpaceInput
   documentLinks?: Prisma.DocumentLinkCreateNestedManyWithoutSpaceInput
   documentChunks?: Prisma.DocumentChunkCreateNestedManyWithoutSpaceInput
@@ -2076,6 +2122,7 @@ export type SpaceUncheckedCreateWithoutObjectSequenceCountersInput = {
   tags?: Prisma.TagUncheckedCreateNestedManyWithoutSpaceInput
   tagAssignments?: Prisma.TagAssignmentUncheckedCreateNestedManyWithoutSpaceInput
   documents?: Prisma.DocumentUncheckedCreateNestedManyWithoutSpaceInput
+  documentFolders?: Prisma.DocumentFolderUncheckedCreateNestedManyWithoutSpaceInput
   documentRevisions?: Prisma.DocumentRevisionUncheckedCreateNestedManyWithoutSpaceInput
   documentLinks?: Prisma.DocumentLinkUncheckedCreateNestedManyWithoutSpaceInput
   documentChunks?: Prisma.DocumentChunkUncheckedCreateNestedManyWithoutSpaceInput
@@ -2126,6 +2173,7 @@ export type SpaceUpdateWithoutObjectSequenceCountersInput = {
   tags?: Prisma.TagUpdateManyWithoutSpaceNestedInput
   tagAssignments?: Prisma.TagAssignmentUpdateManyWithoutSpaceNestedInput
   documents?: Prisma.DocumentUpdateManyWithoutSpaceNestedInput
+  documentFolders?: Prisma.DocumentFolderUpdateManyWithoutSpaceNestedInput
   documentRevisions?: Prisma.DocumentRevisionUpdateManyWithoutSpaceNestedInput
   documentLinks?: Prisma.DocumentLinkUpdateManyWithoutSpaceNestedInput
   documentChunks?: Prisma.DocumentChunkUpdateManyWithoutSpaceNestedInput
@@ -2160,6 +2208,7 @@ export type SpaceUncheckedUpdateWithoutObjectSequenceCountersInput = {
   tags?: Prisma.TagUncheckedUpdateManyWithoutSpaceNestedInput
   tagAssignments?: Prisma.TagAssignmentUncheckedUpdateManyWithoutSpaceNestedInput
   documents?: Prisma.DocumentUncheckedUpdateManyWithoutSpaceNestedInput
+  documentFolders?: Prisma.DocumentFolderUncheckedUpdateManyWithoutSpaceNestedInput
   documentRevisions?: Prisma.DocumentRevisionUncheckedUpdateManyWithoutSpaceNestedInput
   documentLinks?: Prisma.DocumentLinkUncheckedUpdateManyWithoutSpaceNestedInput
   documentChunks?: Prisma.DocumentChunkUncheckedUpdateManyWithoutSpaceNestedInput
@@ -2193,6 +2242,7 @@ export type SpaceCreateWithoutAttachmentsInput = {
   tags?: Prisma.TagCreateNestedManyWithoutSpaceInput
   tagAssignments?: Prisma.TagAssignmentCreateNestedManyWithoutSpaceInput
   documents?: Prisma.DocumentCreateNestedManyWithoutSpaceInput
+  documentFolders?: Prisma.DocumentFolderCreateNestedManyWithoutSpaceInput
   documentRevisions?: Prisma.DocumentRevisionCreateNestedManyWithoutSpaceInput
   documentLinks?: Prisma.DocumentLinkCreateNestedManyWithoutSpaceInput
   documentChunks?: Prisma.DocumentChunkCreateNestedManyWithoutSpaceInput
@@ -2227,6 +2277,7 @@ export type SpaceUncheckedCreateWithoutAttachmentsInput = {
   tags?: Prisma.TagUncheckedCreateNestedManyWithoutSpaceInput
   tagAssignments?: Prisma.TagAssignmentUncheckedCreateNestedManyWithoutSpaceInput
   documents?: Prisma.DocumentUncheckedCreateNestedManyWithoutSpaceInput
+  documentFolders?: Prisma.DocumentFolderUncheckedCreateNestedManyWithoutSpaceInput
   documentRevisions?: Prisma.DocumentRevisionUncheckedCreateNestedManyWithoutSpaceInput
   documentLinks?: Prisma.DocumentLinkUncheckedCreateNestedManyWithoutSpaceInput
   documentChunks?: Prisma.DocumentChunkUncheckedCreateNestedManyWithoutSpaceInput
@@ -2277,6 +2328,7 @@ export type SpaceUpdateWithoutAttachmentsInput = {
   tags?: Prisma.TagUpdateManyWithoutSpaceNestedInput
   tagAssignments?: Prisma.TagAssignmentUpdateManyWithoutSpaceNestedInput
   documents?: Prisma.DocumentUpdateManyWithoutSpaceNestedInput
+  documentFolders?: Prisma.DocumentFolderUpdateManyWithoutSpaceNestedInput
   documentRevisions?: Prisma.DocumentRevisionUpdateManyWithoutSpaceNestedInput
   documentLinks?: Prisma.DocumentLinkUpdateManyWithoutSpaceNestedInput
   documentChunks?: Prisma.DocumentChunkUpdateManyWithoutSpaceNestedInput
@@ -2311,6 +2363,7 @@ export type SpaceUncheckedUpdateWithoutAttachmentsInput = {
   tags?: Prisma.TagUncheckedUpdateManyWithoutSpaceNestedInput
   tagAssignments?: Prisma.TagAssignmentUncheckedUpdateManyWithoutSpaceNestedInput
   documents?: Prisma.DocumentUncheckedUpdateManyWithoutSpaceNestedInput
+  documentFolders?: Prisma.DocumentFolderUncheckedUpdateManyWithoutSpaceNestedInput
   documentRevisions?: Prisma.DocumentRevisionUncheckedUpdateManyWithoutSpaceNestedInput
   documentLinks?: Prisma.DocumentLinkUncheckedUpdateManyWithoutSpaceNestedInput
   documentChunks?: Prisma.DocumentChunkUncheckedUpdateManyWithoutSpaceNestedInput
@@ -2345,6 +2398,7 @@ export type SpaceCreateWithoutDocumentsInput = {
   timelineEvents?: Prisma.TimelineEventCreateNestedManyWithoutSpaceInput
   tags?: Prisma.TagCreateNestedManyWithoutSpaceInput
   tagAssignments?: Prisma.TagAssignmentCreateNestedManyWithoutSpaceInput
+  documentFolders?: Prisma.DocumentFolderCreateNestedManyWithoutSpaceInput
   documentRevisions?: Prisma.DocumentRevisionCreateNestedManyWithoutSpaceInput
   documentLinks?: Prisma.DocumentLinkCreateNestedManyWithoutSpaceInput
   documentChunks?: Prisma.DocumentChunkCreateNestedManyWithoutSpaceInput
@@ -2379,6 +2433,7 @@ export type SpaceUncheckedCreateWithoutDocumentsInput = {
   timelineEvents?: Prisma.TimelineEventUncheckedCreateNestedManyWithoutSpaceInput
   tags?: Prisma.TagUncheckedCreateNestedManyWithoutSpaceInput
   tagAssignments?: Prisma.TagAssignmentUncheckedCreateNestedManyWithoutSpaceInput
+  documentFolders?: Prisma.DocumentFolderUncheckedCreateNestedManyWithoutSpaceInput
   documentRevisions?: Prisma.DocumentRevisionUncheckedCreateNestedManyWithoutSpaceInput
   documentLinks?: Prisma.DocumentLinkUncheckedCreateNestedManyWithoutSpaceInput
   documentChunks?: Prisma.DocumentChunkUncheckedCreateNestedManyWithoutSpaceInput
@@ -2429,6 +2484,7 @@ export type SpaceUpdateWithoutDocumentsInput = {
   timelineEvents?: Prisma.TimelineEventUpdateManyWithoutSpaceNestedInput
   tags?: Prisma.TagUpdateManyWithoutSpaceNestedInput
   tagAssignments?: Prisma.TagAssignmentUpdateManyWithoutSpaceNestedInput
+  documentFolders?: Prisma.DocumentFolderUpdateManyWithoutSpaceNestedInput
   documentRevisions?: Prisma.DocumentRevisionUpdateManyWithoutSpaceNestedInput
   documentLinks?: Prisma.DocumentLinkUpdateManyWithoutSpaceNestedInput
   documentChunks?: Prisma.DocumentChunkUpdateManyWithoutSpaceNestedInput
@@ -2463,6 +2519,163 @@ export type SpaceUncheckedUpdateWithoutDocumentsInput = {
   timelineEvents?: Prisma.TimelineEventUncheckedUpdateManyWithoutSpaceNestedInput
   tags?: Prisma.TagUncheckedUpdateManyWithoutSpaceNestedInput
   tagAssignments?: Prisma.TagAssignmentUncheckedUpdateManyWithoutSpaceNestedInput
+  documentFolders?: Prisma.DocumentFolderUncheckedUpdateManyWithoutSpaceNestedInput
+  documentRevisions?: Prisma.DocumentRevisionUncheckedUpdateManyWithoutSpaceNestedInput
+  documentLinks?: Prisma.DocumentLinkUncheckedUpdateManyWithoutSpaceNestedInput
+  documentChunks?: Prisma.DocumentChunkUncheckedUpdateManyWithoutSpaceNestedInput
+  objectSequenceCounters?: Prisma.ObjectSequenceCounterUncheckedUpdateManyWithoutSpaceNestedInput
+}
+
+export type SpaceCreateWithoutDocumentFoldersInput = {
+  id: string
+  name: string
+  code: string
+  description?: string | null
+  status?: $Enums.SpaceStatus
+  staleThresholdDays?: number
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  createdById?: string | null
+  updatedById?: string | null
+  deletedAt?: Date | string | null
+  organization: Prisma.OrganizationCreateNestedOneWithoutSpacesInput
+  owner?: Prisma.UserCreateNestedOneWithoutOwnedSpacesInput
+  members?: Prisma.SpaceMemberCreateNestedManyWithoutSpaceInput
+  versions?: Prisma.VersionCreateNestedManyWithoutSpaceInput
+  requirements?: Prisma.RequirementCreateNestedManyWithoutSpaceInput
+  attachments?: Prisma.AttachmentCreateNestedManyWithoutSpaceInput
+  workflowDefinitions?: Prisma.WorkflowDefinitionCreateNestedManyWithoutSpaceInput
+  workflowBindings?: Prisma.WorkflowBindingCreateNestedManyWithoutSpaceInput
+  objectParticipants?: Prisma.ObjectParticipantCreateNestedManyWithoutSpaceInput
+  intakeItems?: Prisma.IntakeItemCreateNestedManyWithoutSpaceInput
+  workItems?: Prisma.WorkItemCreateNestedManyWithoutSpaceInput
+  auditLogs?: Prisma.AuditLogCreateNestedManyWithoutSpaceInput
+  comments?: Prisma.CommentCreateNestedManyWithoutSpaceInput
+  timelineEvents?: Prisma.TimelineEventCreateNestedManyWithoutSpaceInput
+  tags?: Prisma.TagCreateNestedManyWithoutSpaceInput
+  tagAssignments?: Prisma.TagAssignmentCreateNestedManyWithoutSpaceInput
+  documents?: Prisma.DocumentCreateNestedManyWithoutSpaceInput
+  documentRevisions?: Prisma.DocumentRevisionCreateNestedManyWithoutSpaceInput
+  documentLinks?: Prisma.DocumentLinkCreateNestedManyWithoutSpaceInput
+  documentChunks?: Prisma.DocumentChunkCreateNestedManyWithoutSpaceInput
+  objectSequenceCounters?: Prisma.ObjectSequenceCounterCreateNestedManyWithoutSpaceInput
+}
+
+export type SpaceUncheckedCreateWithoutDocumentFoldersInput = {
+  id: string
+  organizationId: string
+  name: string
+  code: string
+  description?: string | null
+  ownerId?: string | null
+  status?: $Enums.SpaceStatus
+  staleThresholdDays?: number
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  createdById?: string | null
+  updatedById?: string | null
+  deletedAt?: Date | string | null
+  members?: Prisma.SpaceMemberUncheckedCreateNestedManyWithoutSpaceInput
+  versions?: Prisma.VersionUncheckedCreateNestedManyWithoutSpaceInput
+  requirements?: Prisma.RequirementUncheckedCreateNestedManyWithoutSpaceInput
+  attachments?: Prisma.AttachmentUncheckedCreateNestedManyWithoutSpaceInput
+  workflowDefinitions?: Prisma.WorkflowDefinitionUncheckedCreateNestedManyWithoutSpaceInput
+  workflowBindings?: Prisma.WorkflowBindingUncheckedCreateNestedManyWithoutSpaceInput
+  objectParticipants?: Prisma.ObjectParticipantUncheckedCreateNestedManyWithoutSpaceInput
+  intakeItems?: Prisma.IntakeItemUncheckedCreateNestedManyWithoutSpaceInput
+  workItems?: Prisma.WorkItemUncheckedCreateNestedManyWithoutSpaceInput
+  auditLogs?: Prisma.AuditLogUncheckedCreateNestedManyWithoutSpaceInput
+  comments?: Prisma.CommentUncheckedCreateNestedManyWithoutSpaceInput
+  timelineEvents?: Prisma.TimelineEventUncheckedCreateNestedManyWithoutSpaceInput
+  tags?: Prisma.TagUncheckedCreateNestedManyWithoutSpaceInput
+  tagAssignments?: Prisma.TagAssignmentUncheckedCreateNestedManyWithoutSpaceInput
+  documents?: Prisma.DocumentUncheckedCreateNestedManyWithoutSpaceInput
+  documentRevisions?: Prisma.DocumentRevisionUncheckedCreateNestedManyWithoutSpaceInput
+  documentLinks?: Prisma.DocumentLinkUncheckedCreateNestedManyWithoutSpaceInput
+  documentChunks?: Prisma.DocumentChunkUncheckedCreateNestedManyWithoutSpaceInput
+  objectSequenceCounters?: Prisma.ObjectSequenceCounterUncheckedCreateNestedManyWithoutSpaceInput
+}
+
+export type SpaceCreateOrConnectWithoutDocumentFoldersInput = {
+  where: Prisma.SpaceWhereUniqueInput
+  create: Prisma.XOR<Prisma.SpaceCreateWithoutDocumentFoldersInput, Prisma.SpaceUncheckedCreateWithoutDocumentFoldersInput>
+}
+
+export type SpaceUpsertWithoutDocumentFoldersInput = {
+  update: Prisma.XOR<Prisma.SpaceUpdateWithoutDocumentFoldersInput, Prisma.SpaceUncheckedUpdateWithoutDocumentFoldersInput>
+  create: Prisma.XOR<Prisma.SpaceCreateWithoutDocumentFoldersInput, Prisma.SpaceUncheckedCreateWithoutDocumentFoldersInput>
+  where?: Prisma.SpaceWhereInput
+}
+
+export type SpaceUpdateToOneWithWhereWithoutDocumentFoldersInput = {
+  where?: Prisma.SpaceWhereInput
+  data: Prisma.XOR<Prisma.SpaceUpdateWithoutDocumentFoldersInput, Prisma.SpaceUncheckedUpdateWithoutDocumentFoldersInput>
+}
+
+export type SpaceUpdateWithoutDocumentFoldersInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  name?: Prisma.StringFieldUpdateOperationsInput | string
+  code?: Prisma.StringFieldUpdateOperationsInput | string
+  description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  status?: Prisma.EnumSpaceStatusFieldUpdateOperationsInput | $Enums.SpaceStatus
+  staleThresholdDays?: Prisma.IntFieldUpdateOperationsInput | number
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  createdById?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  updatedById?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  deletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  organization?: Prisma.OrganizationUpdateOneRequiredWithoutSpacesNestedInput
+  owner?: Prisma.UserUpdateOneWithoutOwnedSpacesNestedInput
+  members?: Prisma.SpaceMemberUpdateManyWithoutSpaceNestedInput
+  versions?: Prisma.VersionUpdateManyWithoutSpaceNestedInput
+  requirements?: Prisma.RequirementUpdateManyWithoutSpaceNestedInput
+  attachments?: Prisma.AttachmentUpdateManyWithoutSpaceNestedInput
+  workflowDefinitions?: Prisma.WorkflowDefinitionUpdateManyWithoutSpaceNestedInput
+  workflowBindings?: Prisma.WorkflowBindingUpdateManyWithoutSpaceNestedInput
+  objectParticipants?: Prisma.ObjectParticipantUpdateManyWithoutSpaceNestedInput
+  intakeItems?: Prisma.IntakeItemUpdateManyWithoutSpaceNestedInput
+  workItems?: Prisma.WorkItemUpdateManyWithoutSpaceNestedInput
+  auditLogs?: Prisma.AuditLogUpdateManyWithoutSpaceNestedInput
+  comments?: Prisma.CommentUpdateManyWithoutSpaceNestedInput
+  timelineEvents?: Prisma.TimelineEventUpdateManyWithoutSpaceNestedInput
+  tags?: Prisma.TagUpdateManyWithoutSpaceNestedInput
+  tagAssignments?: Prisma.TagAssignmentUpdateManyWithoutSpaceNestedInput
+  documents?: Prisma.DocumentUpdateManyWithoutSpaceNestedInput
+  documentRevisions?: Prisma.DocumentRevisionUpdateManyWithoutSpaceNestedInput
+  documentLinks?: Prisma.DocumentLinkUpdateManyWithoutSpaceNestedInput
+  documentChunks?: Prisma.DocumentChunkUpdateManyWithoutSpaceNestedInput
+  objectSequenceCounters?: Prisma.ObjectSequenceCounterUpdateManyWithoutSpaceNestedInput
+}
+
+export type SpaceUncheckedUpdateWithoutDocumentFoldersInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  organizationId?: Prisma.StringFieldUpdateOperationsInput | string
+  name?: Prisma.StringFieldUpdateOperationsInput | string
+  code?: Prisma.StringFieldUpdateOperationsInput | string
+  description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  ownerId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  status?: Prisma.EnumSpaceStatusFieldUpdateOperationsInput | $Enums.SpaceStatus
+  staleThresholdDays?: Prisma.IntFieldUpdateOperationsInput | number
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  createdById?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  updatedById?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  deletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  members?: Prisma.SpaceMemberUncheckedUpdateManyWithoutSpaceNestedInput
+  versions?: Prisma.VersionUncheckedUpdateManyWithoutSpaceNestedInput
+  requirements?: Prisma.RequirementUncheckedUpdateManyWithoutSpaceNestedInput
+  attachments?: Prisma.AttachmentUncheckedUpdateManyWithoutSpaceNestedInput
+  workflowDefinitions?: Prisma.WorkflowDefinitionUncheckedUpdateManyWithoutSpaceNestedInput
+  workflowBindings?: Prisma.WorkflowBindingUncheckedUpdateManyWithoutSpaceNestedInput
+  objectParticipants?: Prisma.ObjectParticipantUncheckedUpdateManyWithoutSpaceNestedInput
+  intakeItems?: Prisma.IntakeItemUncheckedUpdateManyWithoutSpaceNestedInput
+  workItems?: Prisma.WorkItemUncheckedUpdateManyWithoutSpaceNestedInput
+  auditLogs?: Prisma.AuditLogUncheckedUpdateManyWithoutSpaceNestedInput
+  comments?: Prisma.CommentUncheckedUpdateManyWithoutSpaceNestedInput
+  timelineEvents?: Prisma.TimelineEventUncheckedUpdateManyWithoutSpaceNestedInput
+  tags?: Prisma.TagUncheckedUpdateManyWithoutSpaceNestedInput
+  tagAssignments?: Prisma.TagAssignmentUncheckedUpdateManyWithoutSpaceNestedInput
+  documents?: Prisma.DocumentUncheckedUpdateManyWithoutSpaceNestedInput
   documentRevisions?: Prisma.DocumentRevisionUncheckedUpdateManyWithoutSpaceNestedInput
   documentLinks?: Prisma.DocumentLinkUncheckedUpdateManyWithoutSpaceNestedInput
   documentChunks?: Prisma.DocumentChunkUncheckedUpdateManyWithoutSpaceNestedInput
@@ -2498,6 +2711,7 @@ export type SpaceCreateWithoutDocumentRevisionsInput = {
   tags?: Prisma.TagCreateNestedManyWithoutSpaceInput
   tagAssignments?: Prisma.TagAssignmentCreateNestedManyWithoutSpaceInput
   documents?: Prisma.DocumentCreateNestedManyWithoutSpaceInput
+  documentFolders?: Prisma.DocumentFolderCreateNestedManyWithoutSpaceInput
   documentLinks?: Prisma.DocumentLinkCreateNestedManyWithoutSpaceInput
   documentChunks?: Prisma.DocumentChunkCreateNestedManyWithoutSpaceInput
   objectSequenceCounters?: Prisma.ObjectSequenceCounterCreateNestedManyWithoutSpaceInput
@@ -2532,6 +2746,7 @@ export type SpaceUncheckedCreateWithoutDocumentRevisionsInput = {
   tags?: Prisma.TagUncheckedCreateNestedManyWithoutSpaceInput
   tagAssignments?: Prisma.TagAssignmentUncheckedCreateNestedManyWithoutSpaceInput
   documents?: Prisma.DocumentUncheckedCreateNestedManyWithoutSpaceInput
+  documentFolders?: Prisma.DocumentFolderUncheckedCreateNestedManyWithoutSpaceInput
   documentLinks?: Prisma.DocumentLinkUncheckedCreateNestedManyWithoutSpaceInput
   documentChunks?: Prisma.DocumentChunkUncheckedCreateNestedManyWithoutSpaceInput
   objectSequenceCounters?: Prisma.ObjectSequenceCounterUncheckedCreateNestedManyWithoutSpaceInput
@@ -2582,6 +2797,7 @@ export type SpaceUpdateWithoutDocumentRevisionsInput = {
   tags?: Prisma.TagUpdateManyWithoutSpaceNestedInput
   tagAssignments?: Prisma.TagAssignmentUpdateManyWithoutSpaceNestedInput
   documents?: Prisma.DocumentUpdateManyWithoutSpaceNestedInput
+  documentFolders?: Prisma.DocumentFolderUpdateManyWithoutSpaceNestedInput
   documentLinks?: Prisma.DocumentLinkUpdateManyWithoutSpaceNestedInput
   documentChunks?: Prisma.DocumentChunkUpdateManyWithoutSpaceNestedInput
   objectSequenceCounters?: Prisma.ObjectSequenceCounterUpdateManyWithoutSpaceNestedInput
@@ -2616,6 +2832,7 @@ export type SpaceUncheckedUpdateWithoutDocumentRevisionsInput = {
   tags?: Prisma.TagUncheckedUpdateManyWithoutSpaceNestedInput
   tagAssignments?: Prisma.TagAssignmentUncheckedUpdateManyWithoutSpaceNestedInput
   documents?: Prisma.DocumentUncheckedUpdateManyWithoutSpaceNestedInput
+  documentFolders?: Prisma.DocumentFolderUncheckedUpdateManyWithoutSpaceNestedInput
   documentLinks?: Prisma.DocumentLinkUncheckedUpdateManyWithoutSpaceNestedInput
   documentChunks?: Prisma.DocumentChunkUncheckedUpdateManyWithoutSpaceNestedInput
   objectSequenceCounters?: Prisma.ObjectSequenceCounterUncheckedUpdateManyWithoutSpaceNestedInput
@@ -2650,6 +2867,7 @@ export type SpaceCreateWithoutDocumentLinksInput = {
   tags?: Prisma.TagCreateNestedManyWithoutSpaceInput
   tagAssignments?: Prisma.TagAssignmentCreateNestedManyWithoutSpaceInput
   documents?: Prisma.DocumentCreateNestedManyWithoutSpaceInput
+  documentFolders?: Prisma.DocumentFolderCreateNestedManyWithoutSpaceInput
   documentRevisions?: Prisma.DocumentRevisionCreateNestedManyWithoutSpaceInput
   documentChunks?: Prisma.DocumentChunkCreateNestedManyWithoutSpaceInput
   objectSequenceCounters?: Prisma.ObjectSequenceCounterCreateNestedManyWithoutSpaceInput
@@ -2684,6 +2902,7 @@ export type SpaceUncheckedCreateWithoutDocumentLinksInput = {
   tags?: Prisma.TagUncheckedCreateNestedManyWithoutSpaceInput
   tagAssignments?: Prisma.TagAssignmentUncheckedCreateNestedManyWithoutSpaceInput
   documents?: Prisma.DocumentUncheckedCreateNestedManyWithoutSpaceInput
+  documentFolders?: Prisma.DocumentFolderUncheckedCreateNestedManyWithoutSpaceInput
   documentRevisions?: Prisma.DocumentRevisionUncheckedCreateNestedManyWithoutSpaceInput
   documentChunks?: Prisma.DocumentChunkUncheckedCreateNestedManyWithoutSpaceInput
   objectSequenceCounters?: Prisma.ObjectSequenceCounterUncheckedCreateNestedManyWithoutSpaceInput
@@ -2734,6 +2953,7 @@ export type SpaceUpdateWithoutDocumentLinksInput = {
   tags?: Prisma.TagUpdateManyWithoutSpaceNestedInput
   tagAssignments?: Prisma.TagAssignmentUpdateManyWithoutSpaceNestedInput
   documents?: Prisma.DocumentUpdateManyWithoutSpaceNestedInput
+  documentFolders?: Prisma.DocumentFolderUpdateManyWithoutSpaceNestedInput
   documentRevisions?: Prisma.DocumentRevisionUpdateManyWithoutSpaceNestedInput
   documentChunks?: Prisma.DocumentChunkUpdateManyWithoutSpaceNestedInput
   objectSequenceCounters?: Prisma.ObjectSequenceCounterUpdateManyWithoutSpaceNestedInput
@@ -2768,6 +2988,7 @@ export type SpaceUncheckedUpdateWithoutDocumentLinksInput = {
   tags?: Prisma.TagUncheckedUpdateManyWithoutSpaceNestedInput
   tagAssignments?: Prisma.TagAssignmentUncheckedUpdateManyWithoutSpaceNestedInput
   documents?: Prisma.DocumentUncheckedUpdateManyWithoutSpaceNestedInput
+  documentFolders?: Prisma.DocumentFolderUncheckedUpdateManyWithoutSpaceNestedInput
   documentRevisions?: Prisma.DocumentRevisionUncheckedUpdateManyWithoutSpaceNestedInput
   documentChunks?: Prisma.DocumentChunkUncheckedUpdateManyWithoutSpaceNestedInput
   objectSequenceCounters?: Prisma.ObjectSequenceCounterUncheckedUpdateManyWithoutSpaceNestedInput
@@ -2802,6 +3023,7 @@ export type SpaceCreateWithoutDocumentChunksInput = {
   tags?: Prisma.TagCreateNestedManyWithoutSpaceInput
   tagAssignments?: Prisma.TagAssignmentCreateNestedManyWithoutSpaceInput
   documents?: Prisma.DocumentCreateNestedManyWithoutSpaceInput
+  documentFolders?: Prisma.DocumentFolderCreateNestedManyWithoutSpaceInput
   documentRevisions?: Prisma.DocumentRevisionCreateNestedManyWithoutSpaceInput
   documentLinks?: Prisma.DocumentLinkCreateNestedManyWithoutSpaceInput
   objectSequenceCounters?: Prisma.ObjectSequenceCounterCreateNestedManyWithoutSpaceInput
@@ -2836,6 +3058,7 @@ export type SpaceUncheckedCreateWithoutDocumentChunksInput = {
   tags?: Prisma.TagUncheckedCreateNestedManyWithoutSpaceInput
   tagAssignments?: Prisma.TagAssignmentUncheckedCreateNestedManyWithoutSpaceInput
   documents?: Prisma.DocumentUncheckedCreateNestedManyWithoutSpaceInput
+  documentFolders?: Prisma.DocumentFolderUncheckedCreateNestedManyWithoutSpaceInput
   documentRevisions?: Prisma.DocumentRevisionUncheckedCreateNestedManyWithoutSpaceInput
   documentLinks?: Prisma.DocumentLinkUncheckedCreateNestedManyWithoutSpaceInput
   objectSequenceCounters?: Prisma.ObjectSequenceCounterUncheckedCreateNestedManyWithoutSpaceInput
@@ -2886,6 +3109,7 @@ export type SpaceUpdateWithoutDocumentChunksInput = {
   tags?: Prisma.TagUpdateManyWithoutSpaceNestedInput
   tagAssignments?: Prisma.TagAssignmentUpdateManyWithoutSpaceNestedInput
   documents?: Prisma.DocumentUpdateManyWithoutSpaceNestedInput
+  documentFolders?: Prisma.DocumentFolderUpdateManyWithoutSpaceNestedInput
   documentRevisions?: Prisma.DocumentRevisionUpdateManyWithoutSpaceNestedInput
   documentLinks?: Prisma.DocumentLinkUpdateManyWithoutSpaceNestedInput
   objectSequenceCounters?: Prisma.ObjectSequenceCounterUpdateManyWithoutSpaceNestedInput
@@ -2920,6 +3144,7 @@ export type SpaceUncheckedUpdateWithoutDocumentChunksInput = {
   tags?: Prisma.TagUncheckedUpdateManyWithoutSpaceNestedInput
   tagAssignments?: Prisma.TagAssignmentUncheckedUpdateManyWithoutSpaceNestedInput
   documents?: Prisma.DocumentUncheckedUpdateManyWithoutSpaceNestedInput
+  documentFolders?: Prisma.DocumentFolderUncheckedUpdateManyWithoutSpaceNestedInput
   documentRevisions?: Prisma.DocumentRevisionUncheckedUpdateManyWithoutSpaceNestedInput
   documentLinks?: Prisma.DocumentLinkUncheckedUpdateManyWithoutSpaceNestedInput
   objectSequenceCounters?: Prisma.ObjectSequenceCounterUncheckedUpdateManyWithoutSpaceNestedInput
@@ -2953,6 +3178,7 @@ export type SpaceCreateWithoutTagsInput = {
   timelineEvents?: Prisma.TimelineEventCreateNestedManyWithoutSpaceInput
   tagAssignments?: Prisma.TagAssignmentCreateNestedManyWithoutSpaceInput
   documents?: Prisma.DocumentCreateNestedManyWithoutSpaceInput
+  documentFolders?: Prisma.DocumentFolderCreateNestedManyWithoutSpaceInput
   documentRevisions?: Prisma.DocumentRevisionCreateNestedManyWithoutSpaceInput
   documentLinks?: Prisma.DocumentLinkCreateNestedManyWithoutSpaceInput
   documentChunks?: Prisma.DocumentChunkCreateNestedManyWithoutSpaceInput
@@ -2987,6 +3213,7 @@ export type SpaceUncheckedCreateWithoutTagsInput = {
   timelineEvents?: Prisma.TimelineEventUncheckedCreateNestedManyWithoutSpaceInput
   tagAssignments?: Prisma.TagAssignmentUncheckedCreateNestedManyWithoutSpaceInput
   documents?: Prisma.DocumentUncheckedCreateNestedManyWithoutSpaceInput
+  documentFolders?: Prisma.DocumentFolderUncheckedCreateNestedManyWithoutSpaceInput
   documentRevisions?: Prisma.DocumentRevisionUncheckedCreateNestedManyWithoutSpaceInput
   documentLinks?: Prisma.DocumentLinkUncheckedCreateNestedManyWithoutSpaceInput
   documentChunks?: Prisma.DocumentChunkUncheckedCreateNestedManyWithoutSpaceInput
@@ -3037,6 +3264,7 @@ export type SpaceUpdateWithoutTagsInput = {
   timelineEvents?: Prisma.TimelineEventUpdateManyWithoutSpaceNestedInput
   tagAssignments?: Prisma.TagAssignmentUpdateManyWithoutSpaceNestedInput
   documents?: Prisma.DocumentUpdateManyWithoutSpaceNestedInput
+  documentFolders?: Prisma.DocumentFolderUpdateManyWithoutSpaceNestedInput
   documentRevisions?: Prisma.DocumentRevisionUpdateManyWithoutSpaceNestedInput
   documentLinks?: Prisma.DocumentLinkUpdateManyWithoutSpaceNestedInput
   documentChunks?: Prisma.DocumentChunkUpdateManyWithoutSpaceNestedInput
@@ -3071,6 +3299,7 @@ export type SpaceUncheckedUpdateWithoutTagsInput = {
   timelineEvents?: Prisma.TimelineEventUncheckedUpdateManyWithoutSpaceNestedInput
   tagAssignments?: Prisma.TagAssignmentUncheckedUpdateManyWithoutSpaceNestedInput
   documents?: Prisma.DocumentUncheckedUpdateManyWithoutSpaceNestedInput
+  documentFolders?: Prisma.DocumentFolderUncheckedUpdateManyWithoutSpaceNestedInput
   documentRevisions?: Prisma.DocumentRevisionUncheckedUpdateManyWithoutSpaceNestedInput
   documentLinks?: Prisma.DocumentLinkUncheckedUpdateManyWithoutSpaceNestedInput
   documentChunks?: Prisma.DocumentChunkUncheckedUpdateManyWithoutSpaceNestedInput
@@ -3105,6 +3334,7 @@ export type SpaceCreateWithoutTagAssignmentsInput = {
   timelineEvents?: Prisma.TimelineEventCreateNestedManyWithoutSpaceInput
   tags?: Prisma.TagCreateNestedManyWithoutSpaceInput
   documents?: Prisma.DocumentCreateNestedManyWithoutSpaceInput
+  documentFolders?: Prisma.DocumentFolderCreateNestedManyWithoutSpaceInput
   documentRevisions?: Prisma.DocumentRevisionCreateNestedManyWithoutSpaceInput
   documentLinks?: Prisma.DocumentLinkCreateNestedManyWithoutSpaceInput
   documentChunks?: Prisma.DocumentChunkCreateNestedManyWithoutSpaceInput
@@ -3139,6 +3369,7 @@ export type SpaceUncheckedCreateWithoutTagAssignmentsInput = {
   timelineEvents?: Prisma.TimelineEventUncheckedCreateNestedManyWithoutSpaceInput
   tags?: Prisma.TagUncheckedCreateNestedManyWithoutSpaceInput
   documents?: Prisma.DocumentUncheckedCreateNestedManyWithoutSpaceInput
+  documentFolders?: Prisma.DocumentFolderUncheckedCreateNestedManyWithoutSpaceInput
   documentRevisions?: Prisma.DocumentRevisionUncheckedCreateNestedManyWithoutSpaceInput
   documentLinks?: Prisma.DocumentLinkUncheckedCreateNestedManyWithoutSpaceInput
   documentChunks?: Prisma.DocumentChunkUncheckedCreateNestedManyWithoutSpaceInput
@@ -3189,6 +3420,7 @@ export type SpaceUpdateWithoutTagAssignmentsInput = {
   timelineEvents?: Prisma.TimelineEventUpdateManyWithoutSpaceNestedInput
   tags?: Prisma.TagUpdateManyWithoutSpaceNestedInput
   documents?: Prisma.DocumentUpdateManyWithoutSpaceNestedInput
+  documentFolders?: Prisma.DocumentFolderUpdateManyWithoutSpaceNestedInput
   documentRevisions?: Prisma.DocumentRevisionUpdateManyWithoutSpaceNestedInput
   documentLinks?: Prisma.DocumentLinkUpdateManyWithoutSpaceNestedInput
   documentChunks?: Prisma.DocumentChunkUpdateManyWithoutSpaceNestedInput
@@ -3223,6 +3455,7 @@ export type SpaceUncheckedUpdateWithoutTagAssignmentsInput = {
   timelineEvents?: Prisma.TimelineEventUncheckedUpdateManyWithoutSpaceNestedInput
   tags?: Prisma.TagUncheckedUpdateManyWithoutSpaceNestedInput
   documents?: Prisma.DocumentUncheckedUpdateManyWithoutSpaceNestedInput
+  documentFolders?: Prisma.DocumentFolderUncheckedUpdateManyWithoutSpaceNestedInput
   documentRevisions?: Prisma.DocumentRevisionUncheckedUpdateManyWithoutSpaceNestedInput
   documentLinks?: Prisma.DocumentLinkUncheckedUpdateManyWithoutSpaceNestedInput
   documentChunks?: Prisma.DocumentChunkUncheckedUpdateManyWithoutSpaceNestedInput
@@ -3257,6 +3490,7 @@ export type SpaceCreateWithoutWorkflowDefinitionsInput = {
   tags?: Prisma.TagCreateNestedManyWithoutSpaceInput
   tagAssignments?: Prisma.TagAssignmentCreateNestedManyWithoutSpaceInput
   documents?: Prisma.DocumentCreateNestedManyWithoutSpaceInput
+  documentFolders?: Prisma.DocumentFolderCreateNestedManyWithoutSpaceInput
   documentRevisions?: Prisma.DocumentRevisionCreateNestedManyWithoutSpaceInput
   documentLinks?: Prisma.DocumentLinkCreateNestedManyWithoutSpaceInput
   documentChunks?: Prisma.DocumentChunkCreateNestedManyWithoutSpaceInput
@@ -3291,6 +3525,7 @@ export type SpaceUncheckedCreateWithoutWorkflowDefinitionsInput = {
   tags?: Prisma.TagUncheckedCreateNestedManyWithoutSpaceInput
   tagAssignments?: Prisma.TagAssignmentUncheckedCreateNestedManyWithoutSpaceInput
   documents?: Prisma.DocumentUncheckedCreateNestedManyWithoutSpaceInput
+  documentFolders?: Prisma.DocumentFolderUncheckedCreateNestedManyWithoutSpaceInput
   documentRevisions?: Prisma.DocumentRevisionUncheckedCreateNestedManyWithoutSpaceInput
   documentLinks?: Prisma.DocumentLinkUncheckedCreateNestedManyWithoutSpaceInput
   documentChunks?: Prisma.DocumentChunkUncheckedCreateNestedManyWithoutSpaceInput
@@ -3341,6 +3576,7 @@ export type SpaceUpdateWithoutWorkflowDefinitionsInput = {
   tags?: Prisma.TagUpdateManyWithoutSpaceNestedInput
   tagAssignments?: Prisma.TagAssignmentUpdateManyWithoutSpaceNestedInput
   documents?: Prisma.DocumentUpdateManyWithoutSpaceNestedInput
+  documentFolders?: Prisma.DocumentFolderUpdateManyWithoutSpaceNestedInput
   documentRevisions?: Prisma.DocumentRevisionUpdateManyWithoutSpaceNestedInput
   documentLinks?: Prisma.DocumentLinkUpdateManyWithoutSpaceNestedInput
   documentChunks?: Prisma.DocumentChunkUpdateManyWithoutSpaceNestedInput
@@ -3375,6 +3611,7 @@ export type SpaceUncheckedUpdateWithoutWorkflowDefinitionsInput = {
   tags?: Prisma.TagUncheckedUpdateManyWithoutSpaceNestedInput
   tagAssignments?: Prisma.TagAssignmentUncheckedUpdateManyWithoutSpaceNestedInput
   documents?: Prisma.DocumentUncheckedUpdateManyWithoutSpaceNestedInput
+  documentFolders?: Prisma.DocumentFolderUncheckedUpdateManyWithoutSpaceNestedInput
   documentRevisions?: Prisma.DocumentRevisionUncheckedUpdateManyWithoutSpaceNestedInput
   documentLinks?: Prisma.DocumentLinkUncheckedUpdateManyWithoutSpaceNestedInput
   documentChunks?: Prisma.DocumentChunkUncheckedUpdateManyWithoutSpaceNestedInput
@@ -3409,6 +3646,7 @@ export type SpaceCreateWithoutWorkflowBindingsInput = {
   tags?: Prisma.TagCreateNestedManyWithoutSpaceInput
   tagAssignments?: Prisma.TagAssignmentCreateNestedManyWithoutSpaceInput
   documents?: Prisma.DocumentCreateNestedManyWithoutSpaceInput
+  documentFolders?: Prisma.DocumentFolderCreateNestedManyWithoutSpaceInput
   documentRevisions?: Prisma.DocumentRevisionCreateNestedManyWithoutSpaceInput
   documentLinks?: Prisma.DocumentLinkCreateNestedManyWithoutSpaceInput
   documentChunks?: Prisma.DocumentChunkCreateNestedManyWithoutSpaceInput
@@ -3443,6 +3681,7 @@ export type SpaceUncheckedCreateWithoutWorkflowBindingsInput = {
   tags?: Prisma.TagUncheckedCreateNestedManyWithoutSpaceInput
   tagAssignments?: Prisma.TagAssignmentUncheckedCreateNestedManyWithoutSpaceInput
   documents?: Prisma.DocumentUncheckedCreateNestedManyWithoutSpaceInput
+  documentFolders?: Prisma.DocumentFolderUncheckedCreateNestedManyWithoutSpaceInput
   documentRevisions?: Prisma.DocumentRevisionUncheckedCreateNestedManyWithoutSpaceInput
   documentLinks?: Prisma.DocumentLinkUncheckedCreateNestedManyWithoutSpaceInput
   documentChunks?: Prisma.DocumentChunkUncheckedCreateNestedManyWithoutSpaceInput
@@ -3493,6 +3732,7 @@ export type SpaceUpdateWithoutWorkflowBindingsInput = {
   tags?: Prisma.TagUpdateManyWithoutSpaceNestedInput
   tagAssignments?: Prisma.TagAssignmentUpdateManyWithoutSpaceNestedInput
   documents?: Prisma.DocumentUpdateManyWithoutSpaceNestedInput
+  documentFolders?: Prisma.DocumentFolderUpdateManyWithoutSpaceNestedInput
   documentRevisions?: Prisma.DocumentRevisionUpdateManyWithoutSpaceNestedInput
   documentLinks?: Prisma.DocumentLinkUpdateManyWithoutSpaceNestedInput
   documentChunks?: Prisma.DocumentChunkUpdateManyWithoutSpaceNestedInput
@@ -3527,6 +3767,7 @@ export type SpaceUncheckedUpdateWithoutWorkflowBindingsInput = {
   tags?: Prisma.TagUncheckedUpdateManyWithoutSpaceNestedInput
   tagAssignments?: Prisma.TagAssignmentUncheckedUpdateManyWithoutSpaceNestedInput
   documents?: Prisma.DocumentUncheckedUpdateManyWithoutSpaceNestedInput
+  documentFolders?: Prisma.DocumentFolderUncheckedUpdateManyWithoutSpaceNestedInput
   documentRevisions?: Prisma.DocumentRevisionUncheckedUpdateManyWithoutSpaceNestedInput
   documentLinks?: Prisma.DocumentLinkUncheckedUpdateManyWithoutSpaceNestedInput
   documentChunks?: Prisma.DocumentChunkUncheckedUpdateManyWithoutSpaceNestedInput
@@ -3561,6 +3802,7 @@ export type SpaceCreateWithoutObjectParticipantsInput = {
   tags?: Prisma.TagCreateNestedManyWithoutSpaceInput
   tagAssignments?: Prisma.TagAssignmentCreateNestedManyWithoutSpaceInput
   documents?: Prisma.DocumentCreateNestedManyWithoutSpaceInput
+  documentFolders?: Prisma.DocumentFolderCreateNestedManyWithoutSpaceInput
   documentRevisions?: Prisma.DocumentRevisionCreateNestedManyWithoutSpaceInput
   documentLinks?: Prisma.DocumentLinkCreateNestedManyWithoutSpaceInput
   documentChunks?: Prisma.DocumentChunkCreateNestedManyWithoutSpaceInput
@@ -3595,6 +3837,7 @@ export type SpaceUncheckedCreateWithoutObjectParticipantsInput = {
   tags?: Prisma.TagUncheckedCreateNestedManyWithoutSpaceInput
   tagAssignments?: Prisma.TagAssignmentUncheckedCreateNestedManyWithoutSpaceInput
   documents?: Prisma.DocumentUncheckedCreateNestedManyWithoutSpaceInput
+  documentFolders?: Prisma.DocumentFolderUncheckedCreateNestedManyWithoutSpaceInput
   documentRevisions?: Prisma.DocumentRevisionUncheckedCreateNestedManyWithoutSpaceInput
   documentLinks?: Prisma.DocumentLinkUncheckedCreateNestedManyWithoutSpaceInput
   documentChunks?: Prisma.DocumentChunkUncheckedCreateNestedManyWithoutSpaceInput
@@ -3645,6 +3888,7 @@ export type SpaceUpdateWithoutObjectParticipantsInput = {
   tags?: Prisma.TagUpdateManyWithoutSpaceNestedInput
   tagAssignments?: Prisma.TagAssignmentUpdateManyWithoutSpaceNestedInput
   documents?: Prisma.DocumentUpdateManyWithoutSpaceNestedInput
+  documentFolders?: Prisma.DocumentFolderUpdateManyWithoutSpaceNestedInput
   documentRevisions?: Prisma.DocumentRevisionUpdateManyWithoutSpaceNestedInput
   documentLinks?: Prisma.DocumentLinkUpdateManyWithoutSpaceNestedInput
   documentChunks?: Prisma.DocumentChunkUpdateManyWithoutSpaceNestedInput
@@ -3679,6 +3923,7 @@ export type SpaceUncheckedUpdateWithoutObjectParticipantsInput = {
   tags?: Prisma.TagUncheckedUpdateManyWithoutSpaceNestedInput
   tagAssignments?: Prisma.TagAssignmentUncheckedUpdateManyWithoutSpaceNestedInput
   documents?: Prisma.DocumentUncheckedUpdateManyWithoutSpaceNestedInput
+  documentFolders?: Prisma.DocumentFolderUncheckedUpdateManyWithoutSpaceNestedInput
   documentRevisions?: Prisma.DocumentRevisionUncheckedUpdateManyWithoutSpaceNestedInput
   documentLinks?: Prisma.DocumentLinkUncheckedUpdateManyWithoutSpaceNestedInput
   documentChunks?: Prisma.DocumentChunkUncheckedUpdateManyWithoutSpaceNestedInput
@@ -3713,6 +3958,7 @@ export type SpaceCreateWithoutCommentsInput = {
   tags?: Prisma.TagCreateNestedManyWithoutSpaceInput
   tagAssignments?: Prisma.TagAssignmentCreateNestedManyWithoutSpaceInput
   documents?: Prisma.DocumentCreateNestedManyWithoutSpaceInput
+  documentFolders?: Prisma.DocumentFolderCreateNestedManyWithoutSpaceInput
   documentRevisions?: Prisma.DocumentRevisionCreateNestedManyWithoutSpaceInput
   documentLinks?: Prisma.DocumentLinkCreateNestedManyWithoutSpaceInput
   documentChunks?: Prisma.DocumentChunkCreateNestedManyWithoutSpaceInput
@@ -3747,6 +3993,7 @@ export type SpaceUncheckedCreateWithoutCommentsInput = {
   tags?: Prisma.TagUncheckedCreateNestedManyWithoutSpaceInput
   tagAssignments?: Prisma.TagAssignmentUncheckedCreateNestedManyWithoutSpaceInput
   documents?: Prisma.DocumentUncheckedCreateNestedManyWithoutSpaceInput
+  documentFolders?: Prisma.DocumentFolderUncheckedCreateNestedManyWithoutSpaceInput
   documentRevisions?: Prisma.DocumentRevisionUncheckedCreateNestedManyWithoutSpaceInput
   documentLinks?: Prisma.DocumentLinkUncheckedCreateNestedManyWithoutSpaceInput
   documentChunks?: Prisma.DocumentChunkUncheckedCreateNestedManyWithoutSpaceInput
@@ -3797,6 +4044,7 @@ export type SpaceUpdateWithoutCommentsInput = {
   tags?: Prisma.TagUpdateManyWithoutSpaceNestedInput
   tagAssignments?: Prisma.TagAssignmentUpdateManyWithoutSpaceNestedInput
   documents?: Prisma.DocumentUpdateManyWithoutSpaceNestedInput
+  documentFolders?: Prisma.DocumentFolderUpdateManyWithoutSpaceNestedInput
   documentRevisions?: Prisma.DocumentRevisionUpdateManyWithoutSpaceNestedInput
   documentLinks?: Prisma.DocumentLinkUpdateManyWithoutSpaceNestedInput
   documentChunks?: Prisma.DocumentChunkUpdateManyWithoutSpaceNestedInput
@@ -3831,6 +4079,7 @@ export type SpaceUncheckedUpdateWithoutCommentsInput = {
   tags?: Prisma.TagUncheckedUpdateManyWithoutSpaceNestedInput
   tagAssignments?: Prisma.TagAssignmentUncheckedUpdateManyWithoutSpaceNestedInput
   documents?: Prisma.DocumentUncheckedUpdateManyWithoutSpaceNestedInput
+  documentFolders?: Prisma.DocumentFolderUncheckedUpdateManyWithoutSpaceNestedInput
   documentRevisions?: Prisma.DocumentRevisionUncheckedUpdateManyWithoutSpaceNestedInput
   documentLinks?: Prisma.DocumentLinkUncheckedUpdateManyWithoutSpaceNestedInput
   documentChunks?: Prisma.DocumentChunkUncheckedUpdateManyWithoutSpaceNestedInput
@@ -3865,6 +4114,7 @@ export type SpaceCreateWithoutTimelineEventsInput = {
   tags?: Prisma.TagCreateNestedManyWithoutSpaceInput
   tagAssignments?: Prisma.TagAssignmentCreateNestedManyWithoutSpaceInput
   documents?: Prisma.DocumentCreateNestedManyWithoutSpaceInput
+  documentFolders?: Prisma.DocumentFolderCreateNestedManyWithoutSpaceInput
   documentRevisions?: Prisma.DocumentRevisionCreateNestedManyWithoutSpaceInput
   documentLinks?: Prisma.DocumentLinkCreateNestedManyWithoutSpaceInput
   documentChunks?: Prisma.DocumentChunkCreateNestedManyWithoutSpaceInput
@@ -3899,6 +4149,7 @@ export type SpaceUncheckedCreateWithoutTimelineEventsInput = {
   tags?: Prisma.TagUncheckedCreateNestedManyWithoutSpaceInput
   tagAssignments?: Prisma.TagAssignmentUncheckedCreateNestedManyWithoutSpaceInput
   documents?: Prisma.DocumentUncheckedCreateNestedManyWithoutSpaceInput
+  documentFolders?: Prisma.DocumentFolderUncheckedCreateNestedManyWithoutSpaceInput
   documentRevisions?: Prisma.DocumentRevisionUncheckedCreateNestedManyWithoutSpaceInput
   documentLinks?: Prisma.DocumentLinkUncheckedCreateNestedManyWithoutSpaceInput
   documentChunks?: Prisma.DocumentChunkUncheckedCreateNestedManyWithoutSpaceInput
@@ -3949,6 +4200,7 @@ export type SpaceUpdateWithoutTimelineEventsInput = {
   tags?: Prisma.TagUpdateManyWithoutSpaceNestedInput
   tagAssignments?: Prisma.TagAssignmentUpdateManyWithoutSpaceNestedInput
   documents?: Prisma.DocumentUpdateManyWithoutSpaceNestedInput
+  documentFolders?: Prisma.DocumentFolderUpdateManyWithoutSpaceNestedInput
   documentRevisions?: Prisma.DocumentRevisionUpdateManyWithoutSpaceNestedInput
   documentLinks?: Prisma.DocumentLinkUpdateManyWithoutSpaceNestedInput
   documentChunks?: Prisma.DocumentChunkUpdateManyWithoutSpaceNestedInput
@@ -3983,6 +4235,7 @@ export type SpaceUncheckedUpdateWithoutTimelineEventsInput = {
   tags?: Prisma.TagUncheckedUpdateManyWithoutSpaceNestedInput
   tagAssignments?: Prisma.TagAssignmentUncheckedUpdateManyWithoutSpaceNestedInput
   documents?: Prisma.DocumentUncheckedUpdateManyWithoutSpaceNestedInput
+  documentFolders?: Prisma.DocumentFolderUncheckedUpdateManyWithoutSpaceNestedInput
   documentRevisions?: Prisma.DocumentRevisionUncheckedUpdateManyWithoutSpaceNestedInput
   documentLinks?: Prisma.DocumentLinkUncheckedUpdateManyWithoutSpaceNestedInput
   documentChunks?: Prisma.DocumentChunkUncheckedUpdateManyWithoutSpaceNestedInput
@@ -4017,6 +4270,7 @@ export type SpaceCreateWithoutAuditLogsInput = {
   tags?: Prisma.TagCreateNestedManyWithoutSpaceInput
   tagAssignments?: Prisma.TagAssignmentCreateNestedManyWithoutSpaceInput
   documents?: Prisma.DocumentCreateNestedManyWithoutSpaceInput
+  documentFolders?: Prisma.DocumentFolderCreateNestedManyWithoutSpaceInput
   documentRevisions?: Prisma.DocumentRevisionCreateNestedManyWithoutSpaceInput
   documentLinks?: Prisma.DocumentLinkCreateNestedManyWithoutSpaceInput
   documentChunks?: Prisma.DocumentChunkCreateNestedManyWithoutSpaceInput
@@ -4051,6 +4305,7 @@ export type SpaceUncheckedCreateWithoutAuditLogsInput = {
   tags?: Prisma.TagUncheckedCreateNestedManyWithoutSpaceInput
   tagAssignments?: Prisma.TagAssignmentUncheckedCreateNestedManyWithoutSpaceInput
   documents?: Prisma.DocumentUncheckedCreateNestedManyWithoutSpaceInput
+  documentFolders?: Prisma.DocumentFolderUncheckedCreateNestedManyWithoutSpaceInput
   documentRevisions?: Prisma.DocumentRevisionUncheckedCreateNestedManyWithoutSpaceInput
   documentLinks?: Prisma.DocumentLinkUncheckedCreateNestedManyWithoutSpaceInput
   documentChunks?: Prisma.DocumentChunkUncheckedCreateNestedManyWithoutSpaceInput
@@ -4101,6 +4356,7 @@ export type SpaceUpdateWithoutAuditLogsInput = {
   tags?: Prisma.TagUpdateManyWithoutSpaceNestedInput
   tagAssignments?: Prisma.TagAssignmentUpdateManyWithoutSpaceNestedInput
   documents?: Prisma.DocumentUpdateManyWithoutSpaceNestedInput
+  documentFolders?: Prisma.DocumentFolderUpdateManyWithoutSpaceNestedInput
   documentRevisions?: Prisma.DocumentRevisionUpdateManyWithoutSpaceNestedInput
   documentLinks?: Prisma.DocumentLinkUpdateManyWithoutSpaceNestedInput
   documentChunks?: Prisma.DocumentChunkUpdateManyWithoutSpaceNestedInput
@@ -4135,6 +4391,7 @@ export type SpaceUncheckedUpdateWithoutAuditLogsInput = {
   tags?: Prisma.TagUncheckedUpdateManyWithoutSpaceNestedInput
   tagAssignments?: Prisma.TagAssignmentUncheckedUpdateManyWithoutSpaceNestedInput
   documents?: Prisma.DocumentUncheckedUpdateManyWithoutSpaceNestedInput
+  documentFolders?: Prisma.DocumentFolderUncheckedUpdateManyWithoutSpaceNestedInput
   documentRevisions?: Prisma.DocumentRevisionUncheckedUpdateManyWithoutSpaceNestedInput
   documentLinks?: Prisma.DocumentLinkUncheckedUpdateManyWithoutSpaceNestedInput
   documentChunks?: Prisma.DocumentChunkUncheckedUpdateManyWithoutSpaceNestedInput
@@ -4184,6 +4441,7 @@ export type SpaceUpdateWithoutOwnerInput = {
   tags?: Prisma.TagUpdateManyWithoutSpaceNestedInput
   tagAssignments?: Prisma.TagAssignmentUpdateManyWithoutSpaceNestedInput
   documents?: Prisma.DocumentUpdateManyWithoutSpaceNestedInput
+  documentFolders?: Prisma.DocumentFolderUpdateManyWithoutSpaceNestedInput
   documentRevisions?: Prisma.DocumentRevisionUpdateManyWithoutSpaceNestedInput
   documentLinks?: Prisma.DocumentLinkUpdateManyWithoutSpaceNestedInput
   documentChunks?: Prisma.DocumentChunkUpdateManyWithoutSpaceNestedInput
@@ -4218,6 +4476,7 @@ export type SpaceUncheckedUpdateWithoutOwnerInput = {
   tags?: Prisma.TagUncheckedUpdateManyWithoutSpaceNestedInput
   tagAssignments?: Prisma.TagAssignmentUncheckedUpdateManyWithoutSpaceNestedInput
   documents?: Prisma.DocumentUncheckedUpdateManyWithoutSpaceNestedInput
+  documentFolders?: Prisma.DocumentFolderUncheckedUpdateManyWithoutSpaceNestedInput
   documentRevisions?: Prisma.DocumentRevisionUncheckedUpdateManyWithoutSpaceNestedInput
   documentLinks?: Prisma.DocumentLinkUncheckedUpdateManyWithoutSpaceNestedInput
   documentChunks?: Prisma.DocumentChunkUncheckedUpdateManyWithoutSpaceNestedInput
@@ -4282,6 +4541,7 @@ export type SpaceUpdateWithoutOrganizationInput = {
   tags?: Prisma.TagUpdateManyWithoutSpaceNestedInput
   tagAssignments?: Prisma.TagAssignmentUpdateManyWithoutSpaceNestedInput
   documents?: Prisma.DocumentUpdateManyWithoutSpaceNestedInput
+  documentFolders?: Prisma.DocumentFolderUpdateManyWithoutSpaceNestedInput
   documentRevisions?: Prisma.DocumentRevisionUpdateManyWithoutSpaceNestedInput
   documentLinks?: Prisma.DocumentLinkUpdateManyWithoutSpaceNestedInput
   documentChunks?: Prisma.DocumentChunkUpdateManyWithoutSpaceNestedInput
@@ -4316,6 +4576,7 @@ export type SpaceUncheckedUpdateWithoutOrganizationInput = {
   tags?: Prisma.TagUncheckedUpdateManyWithoutSpaceNestedInput
   tagAssignments?: Prisma.TagAssignmentUncheckedUpdateManyWithoutSpaceNestedInput
   documents?: Prisma.DocumentUncheckedUpdateManyWithoutSpaceNestedInput
+  documentFolders?: Prisma.DocumentFolderUncheckedUpdateManyWithoutSpaceNestedInput
   documentRevisions?: Prisma.DocumentRevisionUncheckedUpdateManyWithoutSpaceNestedInput
   documentLinks?: Prisma.DocumentLinkUncheckedUpdateManyWithoutSpaceNestedInput
   documentChunks?: Prisma.DocumentChunkUncheckedUpdateManyWithoutSpaceNestedInput
@@ -4358,6 +4619,7 @@ export type SpaceCountOutputType = {
   tags: number
   tagAssignments: number
   documents: number
+  documentFolders: number
   documentRevisions: number
   documentLinks: number
   documentChunks: number
@@ -4380,6 +4642,7 @@ export type SpaceCountOutputTypeSelect<ExtArgs extends runtime.Types.Extensions.
   tags?: boolean | SpaceCountOutputTypeCountTagsArgs
   tagAssignments?: boolean | SpaceCountOutputTypeCountTagAssignmentsArgs
   documents?: boolean | SpaceCountOutputTypeCountDocumentsArgs
+  documentFolders?: boolean | SpaceCountOutputTypeCountDocumentFoldersArgs
   documentRevisions?: boolean | SpaceCountOutputTypeCountDocumentRevisionsArgs
   documentLinks?: boolean | SpaceCountOutputTypeCountDocumentLinksArgs
   documentChunks?: boolean | SpaceCountOutputTypeCountDocumentChunksArgs
@@ -4504,6 +4767,13 @@ export type SpaceCountOutputTypeCountDocumentsArgs<ExtArgs extends runtime.Types
 /**
  * SpaceCountOutputType without action
  */
+export type SpaceCountOutputTypeCountDocumentFoldersArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  where?: Prisma.DocumentFolderWhereInput
+}
+
+/**
+ * SpaceCountOutputType without action
+ */
 export type SpaceCountOutputTypeCountDocumentRevisionsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   where?: Prisma.DocumentRevisionWhereInput
 }
@@ -4561,6 +4831,7 @@ export type SpaceSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = 
   tags?: boolean | Prisma.Space$tagsArgs<ExtArgs>
   tagAssignments?: boolean | Prisma.Space$tagAssignmentsArgs<ExtArgs>
   documents?: boolean | Prisma.Space$documentsArgs<ExtArgs>
+  documentFolders?: boolean | Prisma.Space$documentFoldersArgs<ExtArgs>
   documentRevisions?: boolean | Prisma.Space$documentRevisionsArgs<ExtArgs>
   documentLinks?: boolean | Prisma.Space$documentLinksArgs<ExtArgs>
   documentChunks?: boolean | Prisma.Space$documentChunksArgs<ExtArgs>
@@ -4639,6 +4910,7 @@ export type SpaceInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs =
   tags?: boolean | Prisma.Space$tagsArgs<ExtArgs>
   tagAssignments?: boolean | Prisma.Space$tagAssignmentsArgs<ExtArgs>
   documents?: boolean | Prisma.Space$documentsArgs<ExtArgs>
+  documentFolders?: boolean | Prisma.Space$documentFoldersArgs<ExtArgs>
   documentRevisions?: boolean | Prisma.Space$documentRevisionsArgs<ExtArgs>
   documentLinks?: boolean | Prisma.Space$documentLinksArgs<ExtArgs>
   documentChunks?: boolean | Prisma.Space$documentChunksArgs<ExtArgs>
@@ -4674,6 +4946,7 @@ export type $SpacePayload<ExtArgs extends runtime.Types.Extensions.InternalArgs 
     tags: Prisma.$TagPayload<ExtArgs>[]
     tagAssignments: Prisma.$TagAssignmentPayload<ExtArgs>[]
     documents: Prisma.$DocumentPayload<ExtArgs>[]
+    documentFolders: Prisma.$DocumentFolderPayload<ExtArgs>[]
     documentRevisions: Prisma.$DocumentRevisionPayload<ExtArgs>[]
     documentLinks: Prisma.$DocumentLinkPayload<ExtArgs>[]
     documentChunks: Prisma.$DocumentChunkPayload<ExtArgs>[]
@@ -5104,6 +5377,7 @@ export interface Prisma__SpaceClient<T, Null = never, ExtArgs extends runtime.Ty
   tags<T extends Prisma.Space$tagsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Space$tagsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$TagPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   tagAssignments<T extends Prisma.Space$tagAssignmentsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Space$tagAssignmentsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$TagAssignmentPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   documents<T extends Prisma.Space$documentsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Space$documentsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$DocumentPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
+  documentFolders<T extends Prisma.Space$documentFoldersArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Space$documentFoldersArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$DocumentFolderPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   documentRevisions<T extends Prisma.Space$documentRevisionsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Space$documentRevisionsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$DocumentRevisionPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   documentLinks<T extends Prisma.Space$documentLinksArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Space$documentLinksArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$DocumentLinkPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   documentChunks<T extends Prisma.Space$documentChunksArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Space$documentChunksArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$DocumentChunkPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
@@ -5927,6 +6201,30 @@ export type Space$documentsArgs<ExtArgs extends runtime.Types.Extensions.Interna
   take?: number
   skip?: number
   distinct?: Prisma.DocumentScalarFieldEnum | Prisma.DocumentScalarFieldEnum[]
+}
+
+/**
+ * Space.documentFolders
+ */
+export type Space$documentFoldersArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  /**
+   * Select specific fields to fetch from the DocumentFolder
+   */
+  select?: Prisma.DocumentFolderSelect<ExtArgs> | null
+  /**
+   * Omit specific fields from the DocumentFolder
+   */
+  omit?: Prisma.DocumentFolderOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.DocumentFolderInclude<ExtArgs> | null
+  where?: Prisma.DocumentFolderWhereInput
+  orderBy?: Prisma.DocumentFolderOrderByWithRelationInput | Prisma.DocumentFolderOrderByWithRelationInput[]
+  cursor?: Prisma.DocumentFolderWhereUniqueInput
+  take?: number
+  skip?: number
+  distinct?: Prisma.DocumentFolderScalarFieldEnum | Prisma.DocumentFolderScalarFieldEnum[]
 }
 
 /**

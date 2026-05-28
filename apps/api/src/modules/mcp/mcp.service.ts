@@ -16,9 +16,11 @@ import {
   type McpJsonRpcResponse,
   type McpJsonRpcResponseId,
   type McpContext,
+  type McpDocumentSearchRequest,
   type McpToolName,
   type McpToolResult,
   type DocumentListQuery,
+  type McpListDocumentFoldersRequest,
   type ObjectCodeLookupQuery,
   type SpaceRole,
   type SpaceExceptionsViewQuery,
@@ -35,6 +37,7 @@ import type { McpOAuthPrincipalContext } from "../../http/request-context";
 import { toSessionUser } from "../auth/auth-session.builder";
 import type { RequestMetadata } from "../auth/auth-session.types";
 import { BugService } from "../bug/bug.service";
+import { DocumentFolderService } from "../document/document-folder.service";
 import { DocumentService } from "../document/document.service";
 import {
   USER_REPOSITORY,
@@ -70,9 +73,8 @@ type BugGetToolInput = {
 type DocumentGetToolInput = {
   documentId: string;
 };
-type DocumentSearchToolInput = DocumentListQuery & {
-  spaceId: string;
-};
+type DocumentSearchToolInput = McpDocumentSearchRequest;
+type DocumentFolderListToolInput = McpListDocumentFoldersRequest;
 type SpaceOverviewToolInput = SpaceOverviewViewQuery & {
   spaceId: string;
 };
@@ -176,6 +178,8 @@ export class McpService {
     private readonly workItems: WorkItemService,
     @Inject(BugService)
     private readonly bugs: BugService,
+    @Inject(DocumentFolderService)
+    private readonly documentFolders: DocumentFolderService,
     @Inject(DocumentService)
     private readonly documents: DocumentService,
     @Inject(TimelineService)
@@ -507,12 +511,24 @@ export class McpService {
             (args as BugGetToolInput).bugId,
           ),
         };
+      case "pdm.document_folder.list": {
+        const { spaceId } = args as DocumentFolderListToolInput;
+
+        return {
+          message: "Document folders returned.",
+          output: await this.documentFolders.list(principal.userId, spaceId),
+        };
+      }
       case "pdm.document.search": {
         const { spaceId, ...query } = args as DocumentSearchToolInput;
 
         return {
           message: "Documents returned.",
-          output: await this.documents.list(principal.userId, spaceId, query),
+          output: await this.documents.list(
+            principal.userId,
+            spaceId,
+            query as DocumentListQuery,
+          ),
         };
       }
       case "pdm.document.get":

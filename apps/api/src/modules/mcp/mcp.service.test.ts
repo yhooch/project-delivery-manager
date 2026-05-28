@@ -9,6 +9,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { ApiException } from "../../http/api-exception";
 import type { McpOAuthPrincipalContext } from "../../http/request-context";
 import type { BugService } from "../bug/bug.service";
+import type { DocumentFolderService } from "../document/document-folder.service";
 import type { DocumentService } from "../document/document.service";
 import type { UserRepository } from "../identity/identity.repository";
 import type { IdentityUser } from "../identity/identity.types";
@@ -37,6 +38,7 @@ const REQUIREMENT_ID = "01HRZ3NDEKTSV4RRFFQ69G5FAY";
 const WORK_ITEM_ID = "01HRZ3NDEKTSV4RRFFQ69G5FAZ";
 const BUG_ID = "01HRZ3NDEKTSV4RRFFQ69G5FB0";
 const DOCUMENT_ID = "01HRZ3NDEKTSV4RRFFQ69G5FB1";
+const FOLDER_ID = "01HRZ3NDEKTSV4RRFFQ69G5FB5";
 const WORKFLOW_VERSION_ID = "01HRZ3NDEKTSV4RRFFQ69G5FB2";
 const WORKFLOW_STATE_ID = "01HRZ3NDEKTSV4RRFFQ69G5FB3";
 const TIMELINE_EVENT_ID = "01HRZ3NDEKTSV4RRFFQ69G5FB4";
@@ -47,6 +49,9 @@ describe("McpService", () => {
   let appSessions: { buildForUser: MockFn };
   let bugs: { get: MockFn };
   let documents: { get: MockFn; list: MockFn };
+  let documentFolders: {
+    list: MockFn;
+  };
   let intakeItems: { list: MockFn };
   let objectCodes: { lookup: MockFn };
   let requirements: { get: MockFn };
@@ -72,6 +77,9 @@ describe("McpService", () => {
     documents = {
       get: vi.fn(async () => documentDetail),
       list: vi.fn(async () => documentList),
+    };
+    documentFolders = {
+      list: vi.fn(async () => documentFolderList),
     };
     intakeItems = {
       list: vi.fn(async () => intakeList),
@@ -123,6 +131,7 @@ describe("McpService", () => {
       intakeItems as unknown as IntakeService,
       workItems as unknown as WorkItemService,
       bugs as unknown as BugService,
+      documentFolders as unknown as DocumentFolderService,
       documents as unknown as DocumentService,
       timelines as unknown as TimelineService,
       writeTools as unknown as McpWriteToolExecutor,
@@ -414,6 +423,11 @@ describe("McpService", () => {
     });
     expect(bugs.get).toHaveBeenCalledWith(USER_ID, BUG_ID);
 
+    await callTool(service, "pdm.document_folder.list", {
+      spaceId: SPACE_ID,
+    });
+    expect(documentFolders.list).toHaveBeenCalledWith(USER_ID, SPACE_ID);
+
     await callTool(service, "pdm.document.search", {
       spaceId: SPACE_ID,
       page: 1,
@@ -424,6 +438,21 @@ describe("McpService", () => {
       page: 1,
       pageSize: 20,
       query: "handoff",
+      tagMatch: "ANY",
+    });
+
+    await callTool(service, "pdm.document.search", {
+      spaceId: SPACE_ID,
+      page: 1,
+      pageSize: 20,
+      folderId: FOLDER_ID,
+      includeDescendants: true,
+    });
+    expect(documents.list).toHaveBeenCalledWith(USER_ID, SPACE_ID, {
+      folderId: FOLDER_ID,
+      includeDescendants: true,
+      page: 1,
+      pageSize: 20,
       tagMatch: "ANY",
     });
 
@@ -597,6 +626,46 @@ describe("McpService", () => {
       }),
       expect.objectContaining({
         contentMarkdown: "# Agent handoff",
+      }),
+      expect.objectContaining({
+        clientId: "test-client",
+        userId: USER_ID,
+      }),
+      {},
+    );
+    expect(body.result).toMatchObject({
+      structuredContent: {
+        id: REQUIREMENT_ID,
+      },
+    });
+  });
+
+  it("uses document write scope for document folder writes", async () => {
+    writeTools.canExecute.mockImplementation(
+      (name: string) => name === "pdm.document_folder.create",
+    );
+
+    const body = expectJsonRpc(
+      await callTool(
+        service,
+        "pdm.document_folder.create",
+        {
+          organizationId: ORGANIZATION_ID,
+          spaceId: SPACE_ID,
+          idempotencyKey: "folder-create-1",
+          targetSelectionSource: "USER_EXPLICIT",
+          name: "Research",
+        },
+        ["mcp:write:document"],
+      ),
+    );
+
+    expect(writeTools.execute).toHaveBeenCalledWith(
+      expect.objectContaining({
+        name: "pdm.document_folder.create",
+      }),
+      expect.objectContaining({
+        name: "Research",
       }),
       expect.objectContaining({
         clientId: "test-client",
@@ -917,6 +986,27 @@ const documentDetail = {
 };
 
 const documentList = page([documentDetail]);
+
+const documentFolder = {
+  id: FOLDER_ID,
+  organizationId: ORGANIZATION_ID,
+  spaceId: SPACE_ID,
+  name: "Research",
+  sortOrder: 0,
+  depth: 0,
+  version: 1,
+  createdById: USER_ID,
+  updatedById: USER_ID,
+  createdAt: now,
+  updatedAt: now,
+  children: [],
+  documentCount: 1,
+  descendantDocumentCount: 1,
+};
+
+const documentFolderList = {
+  items: [documentFolder],
+};
 
 const timelinePage = {
   ...page([

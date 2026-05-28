@@ -7,6 +7,8 @@ import {
   McpCreateRequirementRequestSchema,
   McpCreateDocumentFromMarkdownRequestSchema,
   McpContextSchema,
+  McpCreateDocumentFolderRequestSchema,
+  McpDocumentSearchRequestSchema,
   McpDryRunResultSchema,
   McpEndpointPolicy,
   McpEndpointPolicySchema,
@@ -35,6 +37,7 @@ import {
 
 const organizationId = "01BRZ3NDEKTSV4RRFFQ69G5FAA";
 const spaceId = "01DRZ3NDEKTSV4RRFFQ69G5FAC";
+const folderId = "01FRZ3NDEKTSV4RRFFQ69G5FAD";
 const resource = "https://pdm.example.com/api/v1/mcp";
 
 describe("MCP and OAuth shared contracts", () => {
@@ -197,7 +200,7 @@ describe("MCP and OAuth shared contracts", () => {
   });
 
   it("freezes tools/list registry schemas, scopes and annotations", () => {
-    expect(McpToolRegistrySchema.parse(mcpToolRegistry)).toHaveLength(26);
+    expect(McpToolRegistrySchema.parse(mcpToolRegistry)).toHaveLength(32);
     expect(mcpToolContracts).toHaveLength(McpToolNameSchema.options.length);
     expect(new Set(mcpToolRegistry.map((tool) => tool.name)).size).toBe(
       mcpToolRegistry.length,
@@ -220,11 +223,16 @@ describe("MCP and OAuth shared contracts", () => {
       "pdm.work_item.execute_action",
       "pdm.bug.create",
       "pdm.comment.create",
+      "pdm.document_folder.create",
+      "pdm.document_folder.update",
+      "pdm.document_folder.move",
+      "pdm.document_folder.delete",
       "pdm.document.create_from_markdown",
       "pdm.document.append_content",
       "pdm.document.replace_content",
       "pdm.document.update_metadata",
       "pdm.document.link_resources",
+      "pdm.document.move_to_folder",
       "pdm.tag.replace_assignments",
     ]);
 
@@ -255,6 +263,27 @@ describe("MCP and OAuth shared contracts", () => {
       mcpToolRegistry.find((tool) => tool.name === "pdm.document.search")
         ?.scopes,
     ).toEqual(["mcp:read"]);
+    expect(
+      mcpToolRegistry.find((tool) => tool.name === "pdm.document.search")
+        ?.inputSchema,
+    ).toMatchObject({
+      properties: expect.objectContaining({
+        folderId: expect.any(Object),
+        includeDescendants: expect.any(Object),
+      }),
+    });
+    expect(
+      mcpToolRegistry.find((tool) => tool.name === "pdm.document_folder.list")
+        ?.scopes,
+    ).toEqual(["mcp:read"]);
+    expect(
+      mcpToolRegistry.find((tool) => tool.name === "pdm.document_folder.create")
+        ?.scopes,
+    ).toEqual(["mcp:write:document"]);
+    expect(
+      mcpToolRegistry.find((tool) => tool.name === "pdm.document.move_to_folder")
+        ?.scopes,
+    ).toEqual(["mcp:write:document"]);
     expect(
       mcpToolRegistry.find((tool) => tool.name === "pdm.document.append_content")
         ?.inputSchema,
@@ -320,12 +349,14 @@ describe("MCP and OAuth shared contracts", () => {
       dryRun: true,
       title: "Agent handoff",
       contentMarkdown: "# Agent handoff\n\nNext steps.",
+      folderId,
       tagIds: ["01VRZ3NDEKTSV4RRFFQ69G5FAV"],
     };
 
     expect(McpCreateDocumentFromMarkdownRequestSchema.parse(input)).toMatchObject({
       contentMarkdown: "# Agent handoff\n\nNext steps.",
       dryRun: true,
+      folderId,
       organizationId,
       spaceId,
       targetSelectionSource: "USER_EXPLICIT",
@@ -334,6 +365,44 @@ describe("MCP and OAuth shared contracts", () => {
       McpCreateDocumentFromMarkdownRequestSchema.safeParse({
         ...input,
         sourceType: "PASTE_MARKDOWN",
+      }).success,
+    ).toBe(false);
+  });
+
+  it("freezes MCP document folder inputs and folder-aware search", () => {
+    expect(
+      McpCreateDocumentFolderRequestSchema.parse({
+        organizationId,
+        spaceId,
+        idempotencyKey: "folder-create-2026-05-27",
+        targetSelectionSource: "USER_EXPLICIT",
+        name: "Research",
+        parentId: folderId,
+      }),
+    ).toMatchObject({
+      name: "Research",
+      parentId: folderId,
+      targetSelectionSource: "USER_EXPLICIT",
+    });
+    expect(
+      McpDocumentSearchRequestSchema.parse({
+        spaceId,
+        page: 1,
+        pageSize: 20,
+        folderId,
+        includeDescendants: true,
+      }),
+    ).toMatchObject({
+      folderId,
+      includeDescendants: true,
+      tagMatch: "ANY",
+    });
+    expect(
+      McpDocumentSearchRequestSchema.safeParse({
+        spaceId,
+        page: 1,
+        pageSize: 20,
+        includeDescendants: true,
       }).success,
     ).toBe(false);
   });

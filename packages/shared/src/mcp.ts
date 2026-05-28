@@ -7,18 +7,31 @@ import {
 } from "./common.ts";
 import {
   AppendDocumentContentRequestSchema,
+  CreateDocumentFolderRequestSchema,
+  CreateDocumentFolderResponseSchema,
   DocumentListQuerySchema,
+  ListDocumentFoldersResponseSchema,
   GetDocumentResponseSchema,
+  DeleteDocumentFolderResponseSchema,
+  DocumentFolderSchema,
   ListDocumentsResponseSchema,
+  MoveDocumentFolderRequestSchema,
+  MoveDocumentFolderResponseSchema,
+  MoveDocumentToFolderRequestSchema,
+  MoveDocumentToFolderResponseSchema,
   PasteDocumentRequestSchema,
   ReplaceDocumentLinksRequestSchema,
   ReplaceDocumentLinksResponseSchema,
+  UpdateDocumentFolderRequestSchema,
+  UpdateDocumentFolderResponseSchema,
   UpdateDocumentContentRequestSchema,
   UpdateDocumentMetadataRequestSchema,
   UpdateDocumentMetadataResponseSchema,
   UpdateDocumentContentResponseSchema,
   CreateDocumentResponseSchema,
   type AppendDocumentContentRequest,
+  type DocumentListQuery,
+  type DocumentFolder,
   type PasteDocumentRequest,
   type ReplaceDocumentLinksRequest,
   type UpdateDocumentContentRequest,
@@ -667,6 +680,83 @@ const DocumentIdToolInputSchema = z
   })
   .strict();
 
+const DocumentFolderIdToolInputSchema = z
+  .object({
+    folderId: UlidSchema,
+  })
+  .strict();
+
+export const McpListDocumentFoldersRequestSchema = SpaceToolContextSchema;
+
+export type McpListDocumentFoldersRequest = z.infer<
+  typeof McpListDocumentFoldersRequestSchema
+>;
+
+export const McpListDocumentFoldersResponseSchema =
+  ListDocumentFoldersResponseSchema;
+
+export type McpListDocumentFoldersResponse = z.infer<
+  typeof McpListDocumentFoldersResponseSchema
+>;
+
+export const McpDocumentFolderSchema = DocumentFolderSchema;
+export type McpDocumentFolder = DocumentFolder;
+
+export const McpCreateDocumentFolderRequestSchema =
+  McpWriteContextSchema.merge(CreateDocumentFolderRequestSchema);
+
+export type McpCreateDocumentFolderRequest = z.infer<
+  typeof McpCreateDocumentFolderRequestSchema
+>;
+
+export const McpUpdateDocumentFolderRequestSchema =
+  McpWriteContextSchema.merge(DocumentFolderIdToolInputSchema).merge(
+    UpdateDocumentFolderRequestSchema,
+  );
+
+export type McpUpdateDocumentFolderRequest = z.infer<
+  typeof McpUpdateDocumentFolderRequestSchema
+>;
+
+export const McpMoveDocumentFolderRequestSchema =
+  McpWriteContextSchema.merge(DocumentFolderIdToolInputSchema).merge(
+    MoveDocumentFolderRequestSchema,
+  );
+
+export type McpMoveDocumentFolderRequest = z.infer<
+  typeof McpMoveDocumentFolderRequestSchema
+>;
+
+export const McpDeleteDocumentFolderRequestSchema =
+  McpWriteContextSchema.merge(DocumentFolderIdToolInputSchema);
+
+export type McpDeleteDocumentFolderRequest = z.infer<
+  typeof McpDeleteDocumentFolderRequestSchema
+>;
+
+export const McpDeleteDocumentFolderResponseSchema =
+  DeleteDocumentFolderResponseSchema;
+
+export type McpDeleteDocumentFolderResponse = z.infer<
+  typeof McpDeleteDocumentFolderResponseSchema
+>;
+
+export const McpDocumentSearchRequestSchema = SpaceToolContextSchema.merge(
+  DocumentListQuerySchema,
+).superRefine((value, context) => {
+  if (value.includeDescendants === true && !value.folderId) {
+    context.addIssue({
+      code: "custom",
+      message: "includeDescendants requires folderId",
+      path: ["includeDescendants"],
+    });
+  }
+});
+
+export type McpDocumentSearchRequest = DocumentListQuery & {
+  spaceId: string;
+};
+
 const VersionBoardToolInputSchema = z
   .object({
     versionId: UlidSchema,
@@ -724,6 +814,7 @@ export const McpCreateDocumentFromMarkdownRequestSchema =
 
 export type McpCreateDocumentFromMarkdownRequest = McpWriteContext & {
   contentMarkdown: PasteDocumentRequest["contentMarkdown"];
+  folderId?: string;
   links?: PasteDocumentRequest["links"];
   tagIds?: PasteDocumentRequest["tagIds"];
   title?: PasteDocumentRequest["title"];
@@ -768,6 +859,17 @@ export type McpLinkDocumentResourcesRequest = McpWriteContext &
     documentId: string;
   };
 
+export const McpMoveDocumentToFolderRequestSchema =
+  McpWriteContextSchema.merge(DocumentIdToolInputSchema).merge(
+    MoveDocumentToFolderRequestSchema,
+  );
+
+export type McpMoveDocumentToFolderRequest = McpWriteContext & {
+  baseRevision?: number;
+  documentId: string;
+  folderId?: string | null;
+};
+
 const McpReplaceTagAssignmentsRequestSchema = McpWriteContextSchema.merge(
   ReplaceTagAssignmentsRequestSchema,
 );
@@ -790,6 +892,11 @@ export const McpToolNameSchema = z.enum([
   "pdm.bug.get",
   "pdm.bug.create",
   "pdm.comment.create",
+  "pdm.document_folder.list",
+  "pdm.document_folder.create",
+  "pdm.document_folder.update",
+  "pdm.document_folder.move",
+  "pdm.document_folder.delete",
   "pdm.document.search",
   "pdm.document.get",
   "pdm.document.create_from_markdown",
@@ -797,6 +904,7 @@ export const McpToolNameSchema = z.enum([
   "pdm.document.replace_content",
   "pdm.document.update_metadata",
   "pdm.document.link_resources",
+  "pdm.document.move_to_folder",
   "pdm.tag.replace_assignments",
   "pdm.timeline.list",
 ]);
@@ -1038,12 +1146,62 @@ export const mcpToolContracts = [
     outputSchema: writeOutputSchema(CreateCommentResponseSchema),
   }),
   tool({
+    name: "pdm.document_folder.list",
+    title: "List document folders",
+    description:
+      "Return the shared document folder tree for a project space as preorder nodes with counts.",
+    scopes: ["mcp:read"],
+    annotations: ReadToolAnnotations,
+    inputSchema: McpListDocumentFoldersRequestSchema,
+    outputSchema: McpListDocumentFoldersResponseSchema,
+  }),
+  tool({
+    name: "pdm.document_folder.create",
+    title: "Create document folder",
+    description:
+      `Create a shared document folder in a project space.${WriteTargetPolicyDescription}`,
+    scopes: ["mcp:write:document"],
+    annotations: CreateToolAnnotations,
+    inputSchema: McpCreateDocumentFolderRequestSchema,
+    outputSchema: writeOutputSchema(CreateDocumentFolderResponseSchema),
+  }),
+  tool({
+    name: "pdm.document_folder.update",
+    title: "Update document folder",
+    description:
+      `Rename a shared document folder.${WriteTargetPolicyDescription}`,
+    scopes: ["mcp:write:document"],
+    annotations: UpdateToolAnnotations,
+    inputSchema: McpUpdateDocumentFolderRequestSchema,
+    outputSchema: writeOutputSchema(UpdateDocumentFolderResponseSchema),
+  }),
+  tool({
+    name: "pdm.document_folder.move",
+    title: "Move document folder",
+    description:
+      `Move a shared document folder under another folder or back to the root.${WriteTargetPolicyDescription}`,
+    scopes: ["mcp:write:document"],
+    annotations: UpdateToolAnnotations,
+    inputSchema: McpMoveDocumentFolderRequestSchema,
+    outputSchema: writeOutputSchema(MoveDocumentFolderResponseSchema),
+  }),
+  tool({
+    name: "pdm.document_folder.delete",
+    title: "Delete document folder",
+    description:
+      `Delete an empty shared document folder.${WriteTargetPolicyDescription}`,
+    scopes: ["mcp:write:document"],
+    annotations: UpdateToolAnnotations,
+    inputSchema: McpDeleteDocumentFolderRequestSchema,
+    outputSchema: writeOutputSchema(McpDeleteDocumentFolderResponseSchema),
+  }),
+  tool({
     name: "pdm.document.search",
     title: "Search documents",
     description: "Search documents in a project space.",
     scopes: ["mcp:read"],
     annotations: ReadToolAnnotations,
-    inputSchema: SpaceToolContextSchema.merge(DocumentListQuerySchema),
+    inputSchema: McpDocumentSearchRequestSchema,
     outputSchema: ListDocumentsResponseSchema,
   }),
   tool({
@@ -1104,6 +1262,16 @@ export const mcpToolContracts = [
     annotations: UpdateToolAnnotations,
     inputSchema: McpLinkDocumentResourcesRequestSchema,
     outputSchema: writeOutputSchema(ReplaceDocumentLinksResponseSchema),
+  }),
+  tool({
+    name: "pdm.document.move_to_folder",
+    title: "Move document to folder",
+    description:
+      `Move a document into a shared folder, or pass folderId=null to move it to Unfiled.${WriteTargetPolicyDescription}`,
+    scopes: ["mcp:write:document"],
+    annotations: UpdateToolAnnotations,
+    inputSchema: McpMoveDocumentToFolderRequestSchema,
+    outputSchema: writeOutputSchema(MoveDocumentToFolderResponseSchema),
   }),
   tool({
     name: "pdm.tag.replace_assignments",

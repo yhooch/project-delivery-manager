@@ -4,6 +4,61 @@ import type { PrismaService } from "../../prisma/prisma.service";
 import { PrismaDocumentRepository } from "./prisma-document.repository";
 
 describe("PrismaDocumentRepository", () => {
+  it("filters unfiled documents with a null folder condition", async () => {
+    const documentFindMany = vi.fn(async () => []);
+    const documentCount = vi.fn(async () => 0);
+    const prisma = {
+      client: {
+        $transaction: vi.fn(async (queries) => Promise.all(queries)),
+        document: {
+          count: documentCount,
+          findMany: documentFindMany,
+        },
+        documentLink: {
+          findMany: vi.fn(async () => []),
+        },
+        documentFolder: {
+          findMany: vi.fn(async () => []),
+        },
+        mcpOAuthClient: {
+          findMany: vi.fn(async () => []),
+        },
+        tagAssignment: {
+          findMany: vi.fn(async () => []),
+        },
+        user: {
+          findMany: vi.fn(async () => []),
+        },
+      },
+    } as unknown as PrismaService;
+    const repository = new PrismaDocumentRepository(prisma);
+
+    await expect(
+      repository.list({
+        organizationId: "01H00000000000000000000002",
+        page: 1,
+        pageSize: 20,
+        spaceId: "01H00000000000000000000003",
+        unfiled: true,
+      }),
+    ).resolves.toMatchObject({
+      items: [],
+      total: 0,
+    });
+    expect(documentFindMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          folderId: null,
+        }),
+      }),
+    );
+    expect(documentCount).toHaveBeenCalledWith({
+      where: expect.objectContaining({
+        folderId: null,
+      }),
+    });
+  });
+
   it("loads document detail overviews through tenant-scoped DOCUMENT target queries", async () => {
     const document = makeDocumentRecord();
     const attachmentFindMany = vi.fn(async () => [
@@ -46,6 +101,9 @@ describe("PrismaDocumentRepository", () => {
         },
         document: {
           findFirst: vi.fn(async () => document),
+        },
+        documentFolder: {
+          findMany: vi.fn(async () => []),
         },
         documentChunk: {
           findMany: vi.fn(async () => []),
@@ -132,6 +190,7 @@ function makeDocumentRecord() {
     createdMcpClientId: "codex-client",
     createdVia: "MCP_CLIENT",
     deletedAt: null,
+    folderId: null,
     id: "01H00000000000000000000001",
     lastEditedAt: new Date("2026-05-27T00:00:00.000Z"),
     lastEditedById: "01H00000000000000000000004",

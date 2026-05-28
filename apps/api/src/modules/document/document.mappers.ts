@@ -6,6 +6,8 @@ import type {
   DocumentChunk,
   DocumentCommentOverview,
   DocumentDetail,
+  DocumentFolder,
+  DocumentFolderPathItem,
   DocumentLink,
   DocumentLinkTargetType,
   DocumentRevision,
@@ -26,6 +28,7 @@ type PrismaDocumentRecord = {
   createdMcpClientId: string | null;
   createdVia: DocumentActorType;
   deletedAt: Date | null;
+  folderId: string | null;
   id: string;
   lastEditedAt: Date;
   lastEditedById: string;
@@ -39,6 +42,22 @@ type PrismaDocumentRecord = {
   status: DocumentStatus;
   title: string;
   updatedAt: Date;
+};
+
+type PrismaDocumentFolderRecord = {
+  createdAt: Date;
+  createdById: string;
+  deletedAt: Date | null;
+  depth: number;
+  id: string;
+  name: string;
+  organizationId: string;
+  parentId: string | null;
+  sortOrder: number;
+  spaceId: string;
+  updatedAt: Date;
+  updatedById: string;
+  version: number;
 };
 
 export type DocumentActorDisplayContext = {
@@ -123,6 +142,7 @@ export function toDocument(
   record: PrismaDocumentRecord,
   input: {
     chunks?: PrismaDocumentChunkRecord[];
+    folderPath?: DocumentFolderPathItem[];
     links?: PrismaDocumentLinkRecord[];
     tags?: TagDto[];
   } & DocumentActorDisplayContext = {},
@@ -131,6 +151,8 @@ export function toDocument(
     id: record.id,
     organizationId: record.organizationId,
     spaceId: record.spaceId,
+    folderId: record.folderId ?? undefined,
+    folderPath: input.folderPath,
     title: record.title,
     contentMarkdown: record.contentMarkdown,
     contentText: record.contentText,
@@ -154,6 +176,26 @@ export function toDocument(
     tags: input.tags,
     links: input.links?.map(toDocumentLink),
     chunks: input.chunks?.map(toDocumentChunk),
+    createdAt: record.createdAt.toISOString(),
+    updatedAt: record.updatedAt.toISOString(),
+  });
+}
+
+export function toDocumentFolder(
+  record: PrismaDocumentFolderRecord,
+): DocumentFolder {
+  return removeUndefined({
+    id: record.id,
+    organizationId: record.organizationId,
+    spaceId: record.spaceId,
+    parentId: record.parentId ?? undefined,
+    name: record.name,
+    sortOrder: record.sortOrder,
+    depth: record.depth,
+    version: record.version,
+    createdById: record.createdById,
+    updatedById: record.updatedById,
+    deletedAt: record.deletedAt?.toISOString(),
     createdAt: record.createdAt.toISOString(),
     updatedAt: record.updatedAt.toISOString(),
   });

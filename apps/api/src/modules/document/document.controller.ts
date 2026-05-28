@@ -30,6 +30,8 @@ import {
   DocumentListQuerySchema,
   ImportDocxDocumentRequestSchema,
   ImportMarkdownDocumentRequestSchema,
+  MoveDocumentsToFolderRequestSchema,
+  MoveDocumentToFolderRequestSchema,
   PageQuerySchema,
   PasteDocumentRequestSchema,
   ReimportDocumentRequestSchema,
@@ -45,6 +47,8 @@ import {
   type DocumentLinksByTargetQuery,
   type DocumentListQuery,
   type PageResult,
+  type MoveDocumentsToFolderRequest,
+  type MoveDocumentToFolderRequest,
   type PasteDocumentRequest,
   type ReimportDocumentRequest,
   type ReplaceDocumentLinksRequest,
@@ -81,6 +85,7 @@ export const documentImportMulterOptions = {
 };
 
 type MultipartDocumentMetadata = {
+  folderId?: string;
   links?: string;
   tagIds?: string;
   title?: string;
@@ -121,6 +126,26 @@ export class DocumentController {
     const session = this.currentUser.requireSession(request);
 
     return this.documents.list(session.userId, params.spaceId, query);
+  }
+
+  @Patch("spaces/:spaceId/documents/folder")
+  @HttpCode(HttpStatus.OK)
+  @UseGuards(WriteOriginGuard)
+  async moveManyToFolder(
+    @Param(new ZodValidationPipe(SpaceIdPathParamsSchema))
+    params: { spaceId: string },
+    @Body(new ZodValidationPipe(MoveDocumentsToFolderRequestSchema))
+    body: MoveDocumentsToFolderRequest,
+    @Req() request: RequestWithContext,
+  ): Promise<{ items: Document[] }> {
+    const session = this.currentUser.requireSession(request);
+
+    return this.documents.moveManyToFolder(
+      session.userId,
+      params.spaceId,
+      body,
+      getRequestMetadata(request),
+    );
   }
 
   @Post("spaces/:spaceId/documents/paste")
@@ -217,6 +242,26 @@ export class DocumentController {
     const session = this.currentUser.requireSession(request);
 
     return this.documents.updateMetadata(
+      session.userId,
+      params.documentId,
+      body,
+      getRequestMetadata(request),
+    );
+  }
+
+  @Patch("documents/:documentId/folder")
+  @HttpCode(HttpStatus.OK)
+  @UseGuards(WriteOriginGuard)
+  async moveToFolder(
+    @Param(new ZodValidationPipe(DocumentIdPathParamsSchema))
+    params: { documentId: string },
+    @Body(new ZodValidationPipe(MoveDocumentToFolderRequestSchema))
+    body: MoveDocumentToFolderRequest,
+    @Req() request: RequestWithContext,
+  ): Promise<Document> {
+    const session = this.currentUser.requireSession(request);
+
+    return this.documents.moveToFolder(
       session.userId,
       params.documentId,
       body,
@@ -449,6 +494,7 @@ function parseMultipartMetadata<T>(
   schema: { parse(value: unknown): T },
 ): T {
   return schema.parse({
+    folderId: body.folderId,
     title: body.title,
     tagIds: parseJsonField(body.tagIds),
     links: parseJsonField(body.links),

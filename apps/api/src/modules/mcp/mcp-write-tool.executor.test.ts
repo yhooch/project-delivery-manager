@@ -10,6 +10,7 @@ import { ApiException } from "../../http/api-exception";
 import type { McpOAuthPrincipalContext } from "../../http/request-context";
 import type { BugService } from "../bug/bug.service";
 import type { CommentService } from "../comment/comment.service";
+import type { DocumentFolderService } from "../document/document-folder.service";
 import type { DocumentService } from "../document/document.service";
 import type { IntakeService } from "../intake/intake.service";
 import type { OrganizationRepository } from "../organization/organization.repository";
@@ -29,6 +30,8 @@ const ORGANIZATION_ID = "01HRZ3NDEKTSV4RRFFQ69G5FAV";
 const SPACE_ID = "01HRZ3NDEKTSV4RRFFQ69G5FAW";
 const OTHER_SPACE_ID = "01HRZ3NDEKTSV4RRFFQ69G5FAT";
 const DOCUMENT_ID = "01HRZ3NDEKTSV4RRFFQ69G5FAY";
+const FOLDER_ID = "01HRZ3NDEKTSV4RRFFQ69G5FB5";
+const PARENT_FOLDER_ID = "01HRZ3NDEKTSV4RRFFQ69G5FB6";
 const WORK_ITEM_ID = "01HRZ3NDEKTSV4RRFFQ69G5FAZ";
 const WORKFLOW_VERSION_ID = "01HRZ3NDEKTSV4RRFFQ69G5FB2";
 const WORKFLOW_STATE_ID = "01HRZ3NDEKTSV4RRFFQ69G5FB3";
@@ -41,9 +44,17 @@ describe("McpWriteToolExecutor", () => {
     appendContent: MockFn;
     createFromMarkdown: MockFn;
     get: MockFn;
+    moveToFolder: MockFn;
     replaceLinks: MockFn;
     updateContent: MockFn;
     updateMetadata: MockFn;
+  };
+  let documentFolders: {
+    create: MockFn;
+    delete: MockFn;
+    move: MockFn;
+    requireFolderInSpace: MockFn;
+    update: MockFn;
   };
   let executor: McpWriteToolExecutor;
   let idempotency: {
@@ -78,9 +89,19 @@ describe("McpWriteToolExecutor", () => {
       appendContent: vi.fn(async () => document),
       createFromMarkdown: vi.fn(async () => document),
       get: vi.fn(async () => document),
+      moveToFolder: vi.fn(async () => document),
       replaceLinks: vi.fn(async () => ({ items: [] })),
       updateContent: vi.fn(async () => ({ ...document, revision: 2 })),
       updateMetadata: vi.fn(async () => ({ ...document, title: "Updated" })),
+    };
+    documentFolders = {
+      create: vi.fn(async () => folder),
+      delete: vi.fn(async () => ({})),
+      move: vi.fn(async () => folder),
+      requireFolderInSpace: vi.fn(async (folderId: string) =>
+        folderId === PARENT_FOLDER_ID ? parentFolder : folder,
+      ),
+      update: vi.fn(async () => ({ ...folder, name: "Updated" })),
     };
     idempotency = {
       complete: vi.fn(async () => undefined),
@@ -145,6 +166,7 @@ describe("McpWriteToolExecutor", () => {
       workItems as unknown as WorkItemService,
       bugs as unknown as BugService,
       comments as unknown as CommentService,
+      documentFolders as unknown as DocumentFolderService,
       documents as unknown as DocumentService,
       tagAssignments as unknown as TagAssignmentService,
       workflowActions as unknown as WorkflowActionExecutionService,
@@ -659,6 +681,151 @@ describe("McpWriteToolExecutor", () => {
     });
   });
 
+  it("creates document folders through DocumentFolderService", async () => {
+    const result = await executor.execute(
+      contract("pdm.document_folder.create"),
+      {
+        organizationId: ORGANIZATION_ID,
+        spaceId: SPACE_ID,
+        idempotencyKey: "folder-create-1",
+        targetSelectionSource: "USER_EXPLICIT",
+        name: "Research",
+        parentId: PARENT_FOLDER_ID,
+      },
+      principal(),
+      {
+        requestId: "req-folder-create",
+      },
+    );
+
+    expect(documentFolders.requireFolderInSpace).toHaveBeenCalledWith(
+      PARENT_FOLDER_ID,
+      {
+        organizationId: ORGANIZATION_ID,
+        spaceId: SPACE_ID,
+      },
+    );
+    expect(documentFolders.create).toHaveBeenCalledWith(
+      USER_ID,
+      SPACE_ID,
+      {
+        name: "Research",
+        parentId: PARENT_FOLDER_ID,
+      },
+      expect.objectContaining({
+        metadata: expect.objectContaining({
+          source: "MCP",
+          toolName: "pdm.document_folder.create",
+        }),
+        requestId: "req-folder-create",
+      }),
+    );
+    expect(result).toMatchObject({
+      structuredContent: {
+        id: FOLDER_ID,
+        name: "Research",
+      },
+    });
+  });
+
+  it("creates documents in folders through DocumentService", async () => {
+    const result = await executor.execute(
+      contract("pdm.document.create_from_markdown"),
+      {
+        organizationId: ORGANIZATION_ID,
+        spaceId: SPACE_ID,
+        idempotencyKey: "document-create-in-folder-1",
+        targetSelectionSource: "USER_EXPLICIT",
+        title: "Folder handoff",
+        contentMarkdown: "# Folder handoff",
+        folderId: FOLDER_ID,
+      },
+      principal(),
+      {
+        requestId: "req-document-folder-create",
+      },
+    );
+
+    expect(documentFolders.requireFolderInSpace).toHaveBeenCalledWith(FOLDER_ID, {
+      organizationId: ORGANIZATION_ID,
+      spaceId: SPACE_ID,
+    });
+    expect(documents.createFromMarkdown).toHaveBeenCalledWith(
+      USER_ID,
+      SPACE_ID,
+      {
+        title: "Folder handoff",
+        contentMarkdown: "# Folder handoff",
+        folderId: FOLDER_ID,
+      },
+      expect.objectContaining({
+        metadata: expect.objectContaining({
+          source: "MCP",
+          toolName: "pdm.document.create_from_markdown",
+        }),
+        requestId: "req-document-folder-create",
+      }),
+      {
+        actorType: "MCP_CLIENT",
+        mcpClientId: "test-client",
+      },
+    );
+    expect(result).toMatchObject({
+      structuredContent: {
+        id: DOCUMENT_ID,
+      },
+    });
+  });
+
+  it("moves documents into folders after validating revision and folder context", async () => {
+    const result = await executor.execute(
+      contract("pdm.document.move_to_folder"),
+      {
+        organizationId: ORGANIZATION_ID,
+        spaceId: SPACE_ID,
+        idempotencyKey: "document-move-folder-1",
+        targetSelectionSource: "USER_EXPLICIT",
+        documentId: DOCUMENT_ID,
+        folderId: FOLDER_ID,
+        baseRevision: 1,
+      },
+      principal(),
+      {
+        requestId: "req-document-move-folder",
+      },
+    );
+
+    expect(documents.get).toHaveBeenCalledWith(USER_ID, DOCUMENT_ID);
+    expect(documentFolders.requireFolderInSpace).toHaveBeenCalledWith(FOLDER_ID, {
+      organizationId: ORGANIZATION_ID,
+      spaceId: SPACE_ID,
+    });
+    expect(documents.moveToFolder).toHaveBeenCalledWith(
+      USER_ID,
+      DOCUMENT_ID,
+      {
+        baseRevision: 1,
+        folderId: FOLDER_ID,
+      },
+      expect.objectContaining({
+        metadata: expect.objectContaining({
+          source: "MCP",
+          toolName: "pdm.document.move_to_folder",
+        }),
+        requestId: "req-document-move-folder",
+      }),
+      {
+        actorType: "MCP_CLIENT",
+        mcpClientId: "test-client",
+      },
+    );
+    expect(result).toMatchObject({
+      structuredContent: {
+        id: DOCUMENT_ID,
+      },
+    });
+  });
+
   it("rejects stale document content writes before invoking DocumentService mutators", async () => {
     const result = await executor.execute(
       contract("pdm.document.replace_content"),
@@ -821,6 +988,35 @@ const document = {
   tags: [],
   links: [],
   chunks: [],
+  createdAt: now,
+  updatedAt: now,
+};
+
+const parentFolder = {
+  id: PARENT_FOLDER_ID,
+  organizationId: ORGANIZATION_ID,
+  spaceId: SPACE_ID,
+  name: "Knowledge",
+  depth: 0,
+  sortOrder: 0,
+  version: 1,
+  createdById: USER_ID,
+  updatedById: USER_ID,
+  createdAt: now,
+  updatedAt: now,
+};
+
+const folder = {
+  id: FOLDER_ID,
+  organizationId: ORGANIZATION_ID,
+  spaceId: SPACE_ID,
+  parentId: PARENT_FOLDER_ID,
+  name: "Research",
+  depth: 1,
+  sortOrder: 0,
+  version: 1,
+  createdById: USER_ID,
+  updatedById: USER_ID,
   createdAt: now,
   updatedAt: now,
 };

@@ -3,6 +3,8 @@ import type {
   DocumentActorType,
   DocumentChangeType,
   DocumentChunk,
+  DocumentFolder,
+  DocumentFolderTreeNode,
   DocumentLink,
   DocumentLinkTarget,
   DocumentRevision,
@@ -32,6 +34,7 @@ export type CreateDocumentInput = DocumentActorInput & {
   id: string;
   organizationId: string;
   spaceId: string;
+  folderId?: string;
   title: string;
   contentMarkdown: string;
   contentText: string;
@@ -52,6 +55,9 @@ export type DocumentListInput = {
   sourceType?: DocumentSourceType;
   lastEditedVia?: DocumentActorType;
   createdById?: string;
+  folderId?: string;
+  includeDescendants?: boolean;
+  unfiled?: boolean;
   tagIds?: string;
   tagMatch?: "ANY" | "ALL";
   linkedTargetType?: DocumentLinkTarget["targetType"];
@@ -86,6 +92,19 @@ export type UpdateDocumentStateInput = DocumentActorInput & {
   changeType: Extract<DocumentChangeType, "ARCHIVED" | "RESTORED" | "DELETED">;
 };
 
+export type MoveDocumentToFolderInput = DocumentActorInput & {
+  baseRevision?: number;
+  documentId: string;
+  folderId?: string;
+};
+
+export type MoveDocumentsToFolderInput = DocumentActorInput & {
+  documentIds: string[];
+  folderId?: string;
+  organizationId: string;
+  spaceId: string;
+};
+
 export type ReplaceDocumentLinksInput = DocumentActorInput & {
   baseRevision: number;
   documentId: string;
@@ -112,3 +131,88 @@ export type DocumentLinkListResult = PageResult<DocumentLink>;
 export type DocumentRecordWithTags = Document & {
   tags?: TagDto[];
 };
+
+export type CreateDocumentFolderInput = {
+  createdById: string;
+  id: string;
+  name: string;
+  normalizedName: string;
+  organizationId: string;
+  parentId?: string;
+  sortOrder?: number;
+  spaceId: string;
+};
+
+export type UpdateDocumentFolderInput = {
+  folderId: string;
+  name: string;
+  normalizedName: string;
+  updatedById: string;
+  version?: number;
+};
+
+export type MoveDocumentFolderInput = {
+  folderId: string;
+  parentId?: string;
+  sortOrder?: number;
+  updatedById: string;
+  version?: number;
+};
+
+export type ReorderDocumentFolderInput = {
+  folderId: string;
+  sortOrder: number;
+  updatedById: string;
+  version?: number;
+};
+
+export type ReorderDocumentFoldersInput = {
+  orderedFolderIds: string[];
+  organizationId: string;
+  parentId?: string;
+  spaceId: string;
+  updatedById: string;
+};
+
+export type DeleteDocumentFolderInput = {
+  folderId: string;
+  updatedById: string;
+};
+
+export type DocumentFolderTreeResult = {
+  items: DocumentFolderTreeNode[];
+};
+
+export type DocumentBatchMutationResult =
+  | {
+      documents: Document[];
+      status: "updated";
+    }
+  | {
+      status: "not_found";
+    };
+
+export type DocumentFolderMutationResult =
+  | {
+      folder: DocumentFolder;
+      status: "updated";
+    }
+  | {
+      status:
+        | "cross_space"
+        | "cycle"
+        | "depth_exceeded"
+        | "name_conflict"
+        | "not_empty"
+        | "not_found"
+        | "version_conflict";
+    };
+
+export type DocumentFolderTreeMutationResult =
+  | {
+      status: "updated";
+      tree: DocumentFolderTreeResult;
+    }
+  | {
+      status: "cross_space" | "not_found";
+    };

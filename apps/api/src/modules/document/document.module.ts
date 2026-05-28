@@ -7,14 +7,23 @@ import { AuthModule } from "../auth/auth.module";
 import { RealtimeModule } from "../realtime/realtime.module";
 import { SpaceModule } from "../space/space.module";
 import { TargetModule } from "../target/target.module";
+import { DocumentFolderController } from "./document-folder.controller";
+import { DOCUMENT_FOLDER_REPOSITORY } from "./document-folder.repository";
+import { DocumentFolderService } from "./document-folder.service";
 import { DocumentController } from "./document.controller";
 import { DOCUMENT_REPOSITORY } from "./document.repository";
 import { DocumentService } from "./document.service";
+import { PrismaDocumentFolderRepository } from "./prisma-document-folder.repository";
 import { PrismaDocumentRepository } from "./prisma-document.repository";
 
 @Module({
-  controllers: [DocumentController],
-  exports: [DOCUMENT_REPOSITORY, DocumentService],
+  controllers: [DocumentController, DocumentFolderController],
+  exports: [
+    DOCUMENT_FOLDER_REPOSITORY,
+    DOCUMENT_REPOSITORY,
+    DocumentFolderService,
+    DocumentService,
+  ],
   imports: [
     AttachmentModule,
     AuthModule,
@@ -25,7 +34,12 @@ import { PrismaDocumentRepository } from "./prisma-document.repository";
     TargetModule,
   ],
   providers: [
+    DocumentFolderService,
     DocumentService,
+    {
+      provide: DOCUMENT_FOLDER_REPOSITORY,
+      useClass: PrismaDocumentFolderRepository,
+    },
     {
       provide: DOCUMENT_REPOSITORY,
       useClass: PrismaDocumentRepository,

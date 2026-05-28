@@ -1,10 +1,21 @@
 // @vitest-environment jsdom
 
-import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from "@testing-library/react";
 import type { ReactNode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const routerPushMock = vi.hoisted(() => vi.fn());
+const { routerPushMock, routerReplaceMock, searchParamsMock } = vi.hoisted(() => ({
+  routerPushMock: vi.fn(),
+  routerReplaceMock: vi.fn(),
+  searchParamsMock: { current: new URLSearchParams() },
+}));
 vi.mock("../../i18n/routing", () => ({
   Link: ({
     children,
@@ -18,7 +29,11 @@ vi.mock("../../i18n/routing", () => ({
       {children}
     </a>
   ),
-  useRouter: () => ({ push: routerPushMock }),
+  useRouter: () => ({ push: routerPushMock, replace: routerReplaceMock }),
+}));
+
+vi.mock("next/navigation", () => ({
+  useSearchParams: () => searchParamsMock.current,
 }));
 
 vi.mock("next-intl", () => ({
@@ -81,10 +96,33 @@ vi.mock("../../lib/realtime", () => ({
   },
 }));
 
+import { DocumentCreateProvider } from "./document-create-context";
 import { DocumentsPage } from "./documents-page";
 
+type CreateActions = {
+  openImport: () => void;
+  openPaste: () => void;
+};
+
+function renderDocumentsPage(
+  actions: CreateActions = {
+    openImport: vi.fn(),
+    openPaste: vi.fn(),
+  },
+) {
+  return render(
+    <DocumentCreateProvider value={actions}>
+      <DocumentsPage />
+    </DocumentCreateProvider>,
+  );
+}
+
 beforeEach(() => {
+  window.localStorage.clear();
+  window.sessionStorage.clear();
   routerPushMock.mockReset();
+  routerReplaceMock.mockReset();
+  searchParamsMock.current = new URLSearchParams();
   listDocumentsMock.mockReset();
   realtimeCallbacks.clear();
   sessionMock.current = {
@@ -99,12 +137,35 @@ beforeEach(() => {
 });
 
 describe("DocumentsPage", () => {
+  it("stores the current document list href for detail page return navigation", async () => {
+    searchParamsMock.current = new URLSearchParams(
+      "directoryView=folder&folderId=FLD_01&includeDescendants=true&query=launch",
+    );
+    listDocumentsMock.mockResolvedValue({ items: [], total: 0 });
+
+    renderDocumentsPage();
+
+    await waitFor(() =>
+      expect(window.sessionStorage.getItem("documents.lastListHref")).toBe(
+        "/documents?directoryView=folder&folderId=FLD_01&includeDescendants=true&query=launch",
+      ),
+    );
+  });
+
   it("renders the empty state when the space has no documents", async () => {
     listDocumentsMock.mockResolvedValue({ items: [], total: 0 });
 
-    render(<DocumentsPage />);
+    renderDocumentsPage();
 
-    expect(await screen.findByTestId("documents-empty-state")).toBeVisible();
+    const emptyState = await screen.findByTestId("documents-empty-state");
+    expect(emptyState).toBeVisible();
+    expect(within(emptyState).queryByRole("button")).not.toBeInTheDocument();
+    expect(
+      screen.queryByTestId("documents-empty-import-button"),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByTestId("documents-empty-paste-button"),
+    ).not.toBeInTheDocument();
     expect(listDocumentsMock).toHaveBeenCalledWith(
       expect.objectContaining({
         filter: "all",
@@ -117,10 +178,52 @@ describe("DocumentsPage", () => {
     );
   });
 
+  it("renders page-level creation actions and calls the provider", async () => {
+    const openImport = vi.fn();
+    const openPaste = vi.fn();
+    listDocumentsMock.mockResolvedValue({ items: [], total: 0 });
+
+    renderDocumentsPage({ openImport, openPaste });
+
+    await screen.findByTestId("documents-empty-state");
+    const actions = screen.getByTestId("documents-create-actions");
+    const pasteButton = within(actions).getByTestId("documents-paste-button");
+    const importButton = within(actions).getByTestId("documents-import-button");
+
+    expect(pasteButton).toBeVisible();
+    expect(importButton).toBeVisible();
+    expect(
+      (pasteButton.compareDocumentPosition(importButton) &
+        Node.DOCUMENT_POSITION_FOLLOWING) !==
+        0,
+    ).toBe(true);
+
+    fireEvent.click(pasteButton);
+    expect(openPaste).toHaveBeenCalledTimes(1);
+
+    fireEvent.click(importButton);
+    expect(openImport).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not expose model-generated document filters", async () => {
+    listDocumentsMock.mockResolvedValue({ items: [], total: 0 });
+
+    renderDocumentsPage();
+
+    await screen.findByTestId("documents-empty-state");
+
+    expect(
+      screen.queryByTestId("documents-filter-mcp-created"),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByTestId("documents-filter-recent-mcp-edited"),
+    ).not.toBeInTheDocument();
+  });
+
   it("reloads with the selected sort option", async () => {
     listDocumentsMock.mockResolvedValue({ items: [], total: 0 });
 
-    render(<DocumentsPage />);
+    renderDocumentsPage();
 
     await screen.findByTestId("documents-empty-state");
     listDocumentsMock.mockClear();
@@ -139,6 +242,43 @@ describe("DocumentsPage", () => {
           sortOrder: "desc",
         }),
       ),
+    );
+  });
+
+  it("reads the selected folder from the document directory URL", async () => {
+    searchParamsMock.current = new URLSearchParams(
+      "directoryView=folder&folderId=FLD_01&includeDescendants=true",
+    );
+    listDocumentsMock.mockResolvedValue({ items: [], total: 0 });
+
+    renderDocumentsPage();
+
+    await screen.findByTestId("documents-empty-state");
+
+    expect(listDocumentsMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        filter: "all",
+        folderId: "FLD_01",
+        includeDescendants: true,
+        spaceId: "SPC_01",
+      }),
+    );
+  });
+
+  it("reads the unfiled document directory view from the URL", async () => {
+    searchParamsMock.current = new URLSearchParams("directoryView=unfiled");
+    listDocumentsMock.mockResolvedValue({ items: [], total: 0 });
+
+    renderDocumentsPage();
+
+    await screen.findByTestId("documents-empty-state");
+
+    expect(listDocumentsMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        folderId: null,
+        includeDescendants: false,
+        unfiled: true,
+      }),
     );
   });
 
@@ -177,7 +317,7 @@ describe("DocumentsPage", () => {
       total: 1,
     });
 
-    render(<DocumentsPage />);
+    renderDocumentsPage();
 
     await waitFor(() =>
       expect(screen.getByTestId("documents-list")).toBeVisible(),
@@ -189,6 +329,85 @@ describe("DocumentsPage", () => {
     ).toBeVisible();
     expect(
       screen.queryByText(/documents\.meta\.editedViaClient/u),
+    ).not.toBeInTheDocument();
+  });
+
+  it("supports selecting multiple documents while keeping detail links", async () => {
+    listDocumentsMock.mockResolvedValue({
+      items: [
+        {
+          contentSnippet: "Launch scope",
+          createdAt: "2026-05-27T10:00:00.000Z",
+          id: "DOC_01",
+          lastEditedAt: "2026-05-27T11:00:00.000Z",
+          lastEditedVia: "USER",
+          organizationId: "ORG_01",
+          revision: 2,
+          sourceType: "UPLOAD_MARKDOWN",
+          spaceId: "SPC_01",
+          status: "ACTIVE",
+          title: "Launch plan",
+          updatedAt: "2026-05-27T11:00:00.000Z",
+        },
+        {
+          contentSnippet: "Retro notes",
+          createdAt: "2026-05-26T10:00:00.000Z",
+          id: "DOC_02",
+          lastEditedAt: "2026-05-26T11:00:00.000Z",
+          lastEditedVia: "USER",
+          organizationId: "ORG_01",
+          revision: 1,
+          sourceType: "PASTE_MARKDOWN",
+          spaceId: "SPC_01",
+          status: "ACTIVE",
+          title: "Retro",
+          updatedAt: "2026-05-26T11:00:00.000Z",
+        },
+      ],
+      total: 2,
+    });
+
+    renderDocumentsPage();
+
+    await waitFor(() =>
+      expect(screen.getByTestId("documents-list")).toBeVisible(),
+    );
+
+    const links = screen.getAllByTestId("documents-list-item-link");
+    expect(links[0]).toHaveAttribute("href", "/documents/DOC_01");
+    expect(links[1]).toHaveAttribute("href", "/documents/DOC_02");
+    expect(screen.getAllByTestId("documents-list-drag-handle")).toHaveLength(2);
+    expect(screen.queryByTestId("documents-list-select")).not.toBeInTheDocument();
+    expect(
+      screen.getByRole("button", {
+        name: "documents.list.dragDocument Launch plan",
+      }),
+    ).toBeVisible();
+
+    fireEvent.click(
+      screen.getByRole("button", { name: "documents.selection.select" }),
+    );
+
+    const checkboxes = screen.getAllByTestId("documents-list-select");
+    fireEvent.click(checkboxes[0] as HTMLElement);
+    fireEvent.click(checkboxes[1] as HTMLElement);
+
+    expect(screen.getByTestId("documents-selection-toolbar")).toHaveTextContent(
+      "documents.selection.count 2",
+    );
+    expect(
+      screen.getAllByRole("button", {
+        name: "documents.list.dragSelected 2",
+      }),
+    ).toHaveLength(2);
+
+    fireEvent.click(
+      screen.getByRole("button", { name: "documents.selection.done" }),
+    );
+
+    expect(screen.queryByTestId("documents-list-select")).not.toBeInTheDocument();
+    expect(
+      screen.queryByTestId("documents-selection-toolbar"),
     ).not.toBeInTheDocument();
   });
 
@@ -233,7 +452,7 @@ describe("DocumentsPage", () => {
         total: 1,
       });
 
-    render(<DocumentsPage />);
+    renderDocumentsPage();
 
     expect((await screen.findAllByText("Before realtime"))[0]).toBeVisible();
     const callback = realtimeCallbacks.get("document-list");

@@ -1,6 +1,14 @@
 // @vitest-environment jsdom
 
-import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import type { ReactNode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -66,7 +74,9 @@ const {
   archiveDocumentMock,
   deleteDocumentMock,
   getDocumentMock,
+  listDocumentFoldersMock,
   listDocumentsMock,
+  moveDocumentToFolderMock,
   reimportDocumentMock,
   restoreDocumentMock,
   updateDocumentMock,
@@ -74,21 +84,25 @@ const {
   archiveDocumentMock: vi.fn(),
   deleteDocumentMock: vi.fn(),
   getDocumentMock: vi.fn(),
+  listDocumentFoldersMock: vi.fn(),
   listDocumentsMock: vi.fn(),
+  moveDocumentToFolderMock: vi.fn(),
   reimportDocumentMock: vi.fn(),
   restoreDocumentMock: vi.fn(),
   updateDocumentMock: vi.fn(),
 }));
 vi.mock("../../lib/document-service", async () => {
-  const actual = await vi.importActual<typeof import("../../lib/document-service")>(
-    "../../lib/document-service",
-  );
+  const actual = await vi.importActual<
+    typeof import("../../lib/document-service")
+  >("../../lib/document-service");
   return {
     ...actual,
     archiveDocument: archiveDocumentMock,
     deleteDocument: deleteDocumentMock,
     getDocument: getDocumentMock,
+    listDocumentFolders: listDocumentFoldersMock,
     listDocuments: listDocumentsMock,
+    moveDocumentToFolder: moveDocumentToFolderMock,
     reimportDocument: reimportDocumentMock,
     restoreDocument: restoreDocumentMock,
     updateDocument: updateDocumentMock,
@@ -152,7 +166,8 @@ vi.mock("../../lib/realtime", () => ({
     (context.resyncs?.length ?? 0) > 0 ||
     (context.events ?? []).some(
       (event) =>
-        (event.target?.id === target.id && event.target?.type === target.type) ||
+        (event.target?.id === target.id &&
+          event.target?.type === target.type) ||
         (event.hints?.targetId === target.id &&
           event.hints?.targetType === target.type),
     ),
@@ -189,6 +204,7 @@ function createDocument() {
     createdByName: "Ada",
     createdMcpClientName: "Codex",
     createdVia: "MCP_CLIENT",
+    folderId: "FLD_01",
     id: "DOC_01",
     lastEditedAt: "2026-05-27T11:00:00.000Z",
     lastEditedByName: "Ada",
@@ -222,11 +238,14 @@ function createDocument() {
 }
 
 beforeEach(() => {
+  window.sessionStorage.clear();
   routerPushMock.mockReset();
   archiveDocumentMock.mockReset();
   deleteDocumentMock.mockReset();
   getDocumentMock.mockReset();
+  listDocumentFoldersMock.mockReset();
   listDocumentsMock.mockReset();
+  moveDocumentToFolderMock.mockReset();
   reimportDocumentMock.mockReset();
   restoreDocumentMock.mockReset();
   updateDocumentMock.mockReset();
@@ -258,6 +277,35 @@ beforeEach(() => {
     ...createDocument(),
     status: "ARCHIVED",
   });
+  listDocumentFoldersMock.mockResolvedValue([
+    {
+      depth: 0,
+      descendantDocumentCount: 1,
+      documentCount: 1,
+      id: "FLD_01",
+      name: "Plans",
+      parentId: null,
+      sortOrder: 0,
+      spaceId: "SPC_01",
+      version: 1,
+    },
+    {
+      depth: 0,
+      descendantDocumentCount: 0,
+      documentCount: 0,
+      id: "FLD_02",
+      name: "Archive",
+      parentId: null,
+      sortOrder: 1,
+      spaceId: "SPC_01",
+      version: 1,
+    },
+  ]);
+  moveDocumentToFolderMock.mockResolvedValue({
+    ...createDocument(),
+    folderId: "FLD_02",
+    revision: 4,
+  });
   restoreDocumentMock.mockResolvedValue(createDocument());
   deleteDocumentMock.mockResolvedValue(undefined);
   uploadAttachmentMock.mockResolvedValue(undefined);
@@ -278,12 +326,96 @@ describe("DocumentDetailPage", () => {
     render(<DocumentDetailPage documentId="DOC_01" />);
 
     expect((await screen.findAllByText("Launch plan"))[0]).toBeVisible();
-    expect(screen.getByTestId("document-markdown-viewer")).toBeVisible();
+    const markdownViewer = screen.getByTestId("document-markdown-viewer");
+    expect(markdownViewer).toBeVisible();
+    const markdownHeading = within(markdownViewer).getByRole("heading", {
+      level: 1,
+      name: "Launch plan",
+    });
+    expect(markdownHeading).toHaveAttribute("id", "launch-plan");
+    expect(markdownHeading).toHaveClass("scroll-mt-28");
     expect(screen.getByTestId("document-linked-resources")).toBeVisible();
+    expect(screen.getByTestId("document-toc-rail")).toBeVisible();
     expect(screen.getByTestId("document-context-rail")).toBeVisible();
+    expect(
+      within(screen.getByTestId("document-toc-rail")).getByRole("link", {
+        name: "Launch plan",
+      }),
+    ).toHaveAttribute("href", "#launch-plan");
+    expect(
+      within(screen.getByTestId("document-context-rail")).queryByText(
+        "documents.rail.toc",
+      ),
+    ).not.toBeInTheDocument();
     expect(screen.getAllByText("REQ-12")[0]).toBeVisible();
-    expect(screen.getAllByText(/documents\.meta\.createdViaClient Ada Codex/u)[0]).toBeVisible();
-    expect(screen.getAllByText(/documents\.meta\.editedViaClient Ada Claude Code/u)[0]).toBeVisible();
+    expect(
+      screen.getAllByText(/documents\.meta\.createdViaClient Ada Codex/u)[0],
+    ).toBeVisible();
+    expect(
+      screen.getAllByText(
+        /documents\.meta\.editedViaClient Ada Claude Code/u,
+      )[0],
+    ).toBeVisible();
+  });
+
+  it("uses the stored document list href for the back-to-list action", async () => {
+    window.sessionStorage.setItem(
+      "documents.lastListHref",
+      "/documents?directoryView=folder&folderId=FLD_99&includeDescendants=true&query=launch",
+    );
+
+    render(<DocumentDetailPage documentId="DOC_01" />);
+
+    const backLink = await screen.findByTestId("document-back-to-list");
+    const backLinkBar = screen.getByTestId("document-back-to-list-bar");
+
+    expect(backLinkBar).toContainElement(backLink);
+    expect(backLinkBar).toHaveClass("sticky", "top-12", "z-20");
+    await waitFor(() =>
+      expect(backLink).toHaveAttribute(
+        "href",
+        "/documents?directoryView=folder&folderId=FLD_99&includeDescendants=true&query=launch",
+      ),
+    );
+  });
+
+  it("falls back to the document folder when no stored list href exists", async () => {
+    render(<DocumentDetailPage documentId="DOC_01" />);
+
+    expect(await screen.findByTestId("document-back-to-list")).toHaveAttribute(
+      "href",
+      "/documents?directoryView=folder&folderId=FLD_01",
+    );
+  });
+
+  it("falls back to the archived list for archived documents without a folder", async () => {
+    getDocumentMock.mockResolvedValueOnce({
+      ...createDocument(),
+      folderId: null,
+      status: "ARCHIVED",
+    });
+
+    render(<DocumentDetailPage documentId="DOC_01" />);
+
+    expect(await screen.findByTestId("document-back-to-list")).toHaveAttribute(
+      "href",
+      "/documents?directoryView=archived",
+    );
+  });
+
+  it("falls back to all documents for active documents without a folder", async () => {
+    getDocumentMock.mockResolvedValueOnce({
+      ...createDocument(),
+      folderId: null,
+      status: "ACTIVE",
+    });
+
+    render(<DocumentDetailPage documentId="DOC_01" />);
+
+    expect(await screen.findByTestId("document-back-to-list")).toHaveAttribute(
+      "href",
+      "/documents",
+    );
   });
 
   it("opens the lightweight edit panel and saves with base revision", async () => {
@@ -301,6 +433,40 @@ describe("DocumentDetailPage", () => {
           baseRevision: 3,
           documentId: "DOC_01",
           title: "Updated plan",
+        }),
+      ),
+    );
+    expect(updateDocumentMock.mock.calls[0]?.[0]).not.toHaveProperty(
+      "contentMarkdown",
+    );
+  });
+
+  it("enters edit mode without submitting the update form", async () => {
+    const user = userEvent.setup();
+    render(<DocumentDetailPage documentId="DOC_01" />);
+
+    await user.click(await screen.findByTestId("document-edit-button"));
+
+    expect(await screen.findByTestId("document-edit-panel")).toBeVisible();
+    expect(screen.getByTestId("document-save-button")).toBeVisible();
+    expect(updateDocumentMock).not.toHaveBeenCalled();
+  });
+
+  it("sends edited markdown content when the body changes", async () => {
+    render(<DocumentDetailPage documentId="DOC_01" />);
+
+    fireEvent.click(await screen.findByTestId("document-edit-button"));
+    fireEvent.change(screen.getByTestId("document-content-input"), {
+      target: { value: "# Updated body" },
+    });
+    fireEvent.click(screen.getByTestId("document-save-button"));
+
+    await waitFor(() =>
+      expect(updateDocumentMock).toHaveBeenCalledWith(
+        expect.objectContaining({
+          baseRevision: 3,
+          contentMarkdown: "# Updated body",
+          documentId: "DOC_01",
         }),
       ),
     );
@@ -330,7 +496,9 @@ describe("DocumentDetailPage", () => {
       });
     });
 
-    expect(await screen.findByTestId("document-new-version-alert")).toBeVisible();
+    expect(
+      await screen.findByTestId("document-new-version-alert"),
+    ).toBeVisible();
     expect(screen.getByTestId("document-content-input")).toHaveValue(
       "# Local draft",
     );
@@ -360,10 +528,15 @@ describe("DocumentDetailPage", () => {
     render(<DocumentDetailPage documentId="DOC_01" />);
 
     fireEvent.click(await screen.findByTestId("document-edit-button"));
-    fireEvent.change(screen.getByTestId("document-linked-document-search-input"), {
-      target: { value: "related" },
-    });
-    fireEvent.click(await screen.findByTestId("document-linked-document-result"));
+    fireEvent.change(
+      screen.getByTestId("document-linked-document-search-input"),
+      {
+        target: { value: "related" },
+      },
+    );
+    fireEvent.click(
+      await screen.findByTestId("document-linked-document-result"),
+    );
     fireEvent.click(screen.getByTestId("document-save-button"));
 
     await waitFor(() =>
@@ -372,6 +545,27 @@ describe("DocumentDetailPage", () => {
           linkTargets: expect.arrayContaining([
             { targetId: "DOC_02", targetType: "DOCUMENT" },
           ]),
+        }),
+      ),
+    );
+  });
+
+  it("moves a document to another folder", async () => {
+    render(<DocumentDetailPage documentId="DOC_01" />);
+
+    fireEvent.click(await screen.findByTestId("document-move-folder-button"));
+    await screen.findByTestId("document-move-folder-dialog");
+    fireEvent.change(screen.getByTestId("document-move-folder-select"), {
+      target: { value: "FLD_02" },
+    });
+    fireEvent.click(screen.getByText("documents.moveDialog.submit"));
+
+    await waitFor(() =>
+      expect(moveDocumentToFolderMock).toHaveBeenCalledWith(
+        expect.objectContaining({
+          baseRevision: 3,
+          documentId: "DOC_01",
+          folderId: "FLD_02",
         }),
       ),
     );
@@ -434,7 +628,9 @@ describe("DocumentDetailPage", () => {
     fireEvent.click(await screen.findByTestId("document-delete-button"));
     fireEvent.click(await screen.findByTestId("document-delete-confirm"));
 
-    await waitFor(() => expect(deleteDocumentMock).toHaveBeenCalledWith("DOC_01"));
+    await waitFor(() =>
+      expect(deleteDocumentMock).toHaveBeenCalledWith("DOC_01"),
+    );
     expect(routerPushMock).toHaveBeenCalledWith("/documents");
   });
 });

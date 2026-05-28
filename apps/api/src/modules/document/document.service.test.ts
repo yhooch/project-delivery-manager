@@ -21,6 +21,7 @@ import type { RealtimePublisherService } from "../realtime/realtime-publisher.se
 import type { SpaceRepository } from "../space/space.repository";
 import type { TargetResolverService } from "../target/target-resolver.service";
 import type { AttachmentObjectStorage } from "../attachment/storage/attachment-object-storage";
+import type { DocumentFolderService } from "./document-folder.service";
 import type { DocumentRepository } from "./document.repository";
 import {
   DocumentDocxConversionTimeoutMs,
@@ -33,6 +34,7 @@ const ORGANIZATION_ID = "01H00000000000000000000003";
 const SPACE_ID = "01H00000000000000000000004";
 const DOCUMENT_ID = "01H00000000000000000000005";
 const TARGET_ID = "01H00000000000000000000006";
+const SECOND_DOCUMENT_ID = "01H00000000000000000000007";
 
 describe("DocumentService", () => {
   beforeEach(() => {
@@ -131,7 +133,12 @@ describe("DocumentService", () => {
     ).resolves.toMatchObject({
       revision: 2,
     });
-    expect(documents.updateContent).toHaveBeenCalled();
+    expect(documents.updateContent).toHaveBeenCalledWith(
+      expect.objectContaining({
+        changeType: "CONTENT_EDITED",
+        documentId: DOCUMENT_ID,
+      }),
+    );
     expect(audit.record).toHaveBeenCalledWith(
       expect.objectContaining({
         actionType: "UPDATE",
@@ -142,6 +149,46 @@ describe("DocumentService", () => {
     expect(realtime.publish).toHaveBeenCalledWith(
       expect.objectContaining({
         target: { type: "DOCUMENT", id: DOCUMENT_ID },
+      }),
+    );
+  });
+
+  it("records MCP full content updates as content replacements", async () => {
+    const existing = fakeDocument({ createdById: ACTOR_ID, revision: 1 });
+    const updated = fakeDocument({
+      createdById: ACTOR_ID,
+      lastEditedVia: "MCP_CLIENT",
+      revision: 2,
+    });
+    const { documents, service } = createSubject({
+      document: existing,
+      role: "PM",
+      updateContentResult: { status: "updated", document: updated },
+    });
+
+    await expect(
+      service.updateContent(
+        ACTOR_ID,
+        DOCUMENT_ID,
+        {
+          baseRevision: 1,
+          contentMarkdown: "# replaced",
+        },
+        { requestId: "req-document-replace" },
+        {
+          actorType: "MCP_CLIENT",
+          mcpClientId: "codex",
+        },
+      ),
+    ).resolves.toMatchObject({
+      revision: 2,
+    });
+    expect(documents.updateContent).toHaveBeenCalledWith(
+      expect.objectContaining({
+        actorType: "MCP_CLIENT",
+        changeType: "CONTENT_REPLACED",
+        documentId: DOCUMENT_ID,
+        mcpClientId: "codex",
       }),
     );
   });
@@ -204,6 +251,115 @@ describe("DocumentService", () => {
       expect.objectContaining({
         invalidates: expect.arrayContaining(["document-list", "document-links"]),
         target: { type: "DOCUMENT", id: DOCUMENT_ID },
+      }),
+    );
+  });
+
+  it("moves a document into a folder with audit and directory invalidation", async () => {
+    const folderId = "01H00000000000000000000008";
+    const existing = fakeDocument({ createdById: ACTOR_ID, revision: 1 });
+    const updated = fakeDocument({
+      createdById: ACTOR_ID,
+      folderId,
+      revision: 2,
+    });
+    const { audit, documents, folders, realtime, service } = createSubject({
+      document: existing,
+      moveToFolderResult: { status: "updated", document: updated },
+    });
+
+    await expect(
+      service.moveToFolder(ACTOR_ID, DOCUMENT_ID, {
+        baseRevision: 1,
+        folderId,
+      }),
+    ).resolves.toMatchObject({
+      folderId,
+      revision: 2,
+    });
+    expect(folders.requireFolderInSpace).toHaveBeenCalledWith(folderId, {
+      organizationId: ORGANIZATION_ID,
+      spaceId: SPACE_ID,
+    });
+    expect(documents.moveToFolder).toHaveBeenCalledWith(
+      expect.objectContaining({
+        baseRevision: 1,
+        documentId: DOCUMENT_ID,
+        folderId,
+      }),
+    );
+    expect(audit.record).toHaveBeenCalledWith(
+      expect.objectContaining({
+        actionType: "UPDATE",
+        targetId: DOCUMENT_ID,
+      }),
+    );
+    expect(realtime.publish).toHaveBeenCalledWith(
+      expect.objectContaining({
+        invalidates: expect.arrayContaining(["document-directory"]),
+      }),
+    );
+  });
+
+  it("moves multiple documents into a folder with one directory invalidation", async () => {
+    const folderId = "01H00000000000000000000008";
+    const first = fakeDocument({ createdById: ACTOR_ID, id: DOCUMENT_ID });
+    const second = fakeDocument({
+      createdById: ACTOR_ID,
+      id: SECOND_DOCUMENT_ID,
+    });
+    const updatedFirst = fakeDocument({
+      createdById: ACTOR_ID,
+      folderId,
+      id: DOCUMENT_ID,
+      revision: 2,
+    });
+    const updatedSecond = fakeDocument({
+      createdById: ACTOR_ID,
+      folderId,
+      id: SECOND_DOCUMENT_ID,
+      revision: 2,
+    });
+    const { audit, documents, folders, realtime, service } = createSubject({
+      documentsById: new Map([
+        [DOCUMENT_ID, first],
+        [SECOND_DOCUMENT_ID, second],
+      ]),
+      moveManyToFolderResult: {
+        status: "updated",
+        documents: [updatedFirst, updatedSecond],
+      },
+    });
+
+    await expect(
+      service.moveManyToFolder(ACTOR_ID, SPACE_ID, {
+        documentIds: [DOCUMENT_ID, SECOND_DOCUMENT_ID],
+        folderId,
+      }),
+    ).resolves.toEqual({
+      items: [updatedFirst, updatedSecond],
+    });
+    expect(folders.requireFolderInSpace).toHaveBeenCalledWith(folderId, {
+      organizationId: ORGANIZATION_ID,
+      spaceId: SPACE_ID,
+    });
+    expect(documents.moveManyToFolder).toHaveBeenCalledWith(
+      expect.objectContaining({
+        documentIds: [DOCUMENT_ID, SECOND_DOCUMENT_ID],
+        folderId,
+        organizationId: ORGANIZATION_ID,
+        spaceId: SPACE_ID,
+      }),
+    );
+    expect(audit.record).toHaveBeenCalledTimes(2);
+    expect(realtime.publish).toHaveBeenCalledTimes(1);
+    expect(realtime.publish).toHaveBeenCalledWith(
+      expect.objectContaining({
+        invalidates: expect.arrayContaining([
+          "document-directory",
+          "document-list",
+        ]),
+        target: { type: "SPACE", id: SPACE_ID },
       }),
     );
   });
@@ -282,7 +438,12 @@ describe("DocumentService", () => {
 function createSubject(input: {
   document?: Document;
   documentDetail?: DocumentDetail;
+  documentsById?: Map<string, Document>;
+  moveManyToFolderResult?: Awaited<
+    ReturnType<DocumentRepository["moveManyToFolder"]>
+  >;
   replaceLinksResult?: Awaited<ReturnType<DocumentRepository["replaceLinks"]>>;
+  moveToFolderResult?: Awaited<ReturnType<DocumentRepository["moveToFolder"]>>;
   role?: "DEVELOPER" | "PM" | "VIEWER";
   targetSpaceId?: string;
   updateContentResult?: Awaited<ReturnType<DocumentRepository["updateContent"]>>;
@@ -297,13 +458,27 @@ function createSubject(input: {
         title: createInput.title,
       }),
     ),
-    findById: vi.fn(async () => document),
+    findById: vi.fn(async (documentId) =>
+      input.documentsById?.get(documentId) ?? document,
+    ),
     findDetailById: vi.fn(async () => input.documentDetail ?? fakeDocumentDetail(document)),
     list: vi.fn(),
     listChunks: vi.fn(),
     listLinks: vi.fn(async () => []),
     listLinksByTarget: vi.fn(),
     listRevisions: vi.fn(),
+    moveToFolder: vi.fn(async () =>
+      input.moveToFolderResult ?? {
+        status: "updated",
+        document: fakeDocument({ revision: document.revision + 1 }),
+      },
+    ),
+    moveManyToFolder: vi.fn(async () =>
+      input.moveManyToFolderResult ?? {
+        status: "updated",
+        documents: [fakeDocument({ revision: document.revision + 1 })],
+      },
+    ),
     replaceLinks: vi.fn(async () =>
       input.replaceLinksResult ?? {
         status: "updated",
@@ -365,6 +540,11 @@ function createSubject(input: {
   } as unknown as AttachmentObjectStorage & {
     putObject: ReturnType<typeof vi.fn>;
   };
+  const folders = {
+    requireFolderInSpace: vi.fn(),
+  } as unknown as DocumentFolderService & {
+    requireFolderInSpace: ReturnType<typeof vi.fn>;
+  };
 
   return {
     audit,
@@ -378,9 +558,11 @@ function createSubject(input: {
       audit,
       realtime,
       objectStorage,
+      folders,
     ),
     spaces,
     targets,
+    folders,
   };
 }
 
@@ -389,6 +571,7 @@ function fakeDocument(input: Partial<Document> = {}): Document {
     id: input.id ?? DOCUMENT_ID,
     organizationId: input.organizationId ?? ORGANIZATION_ID,
     spaceId: input.spaceId ?? SPACE_ID,
+    folderId: input.folderId,
     title: input.title ?? "Document",
     contentMarkdown: input.contentMarkdown ?? "# Document",
     contentText: input.contentText ?? "Document",
