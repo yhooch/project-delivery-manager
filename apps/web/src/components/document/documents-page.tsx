@@ -733,13 +733,14 @@ function DocumentRow({
       <div
         ref={draggable.setNodeRef}
         className={cn(
-          "group flex min-w-0 items-center gap-2 rounded-md py-1 pl-2.5 pr-1.5 transition-colors",
+          "group flex min-w-0 items-center gap-1.5 rounded-md py-1 pl-1 pr-1.5 transition-colors",
           selected
             ? "bg-primary/10 hover:bg-primary/15"
             : "hover:bg-muted/50",
           draggable.isDragging && "opacity-50",
         )}
         data-testid="documents-list-item"
+        {...draggable.listeners}
       >
         {selectionMode ? (
           <input
@@ -753,6 +754,25 @@ function DocumentRow({
             onChange={() => onToggleSelection(document.id)}
           />
         ) : null}
+
+        <Button
+          aria-label={
+            selectionMode && selected && selectedDocuments.length > 1
+              ? t("list.dragSelected", { count: selectedDocuments.length })
+              : t("list.dragDocument", { title: document.title || t("untitled") })
+          }
+          className="h-5 w-4 shrink-0 cursor-grab text-muted-foreground opacity-0 transition-opacity active:cursor-grabbing group-focus-within:opacity-100 group-hover:opacity-100"
+          data-testid="documents-list-drag-handle"
+          size="icon-sm"
+          type="button"
+          variant="ghost"
+          ref={draggable.setActivatorNodeRef}
+          style={{ touchAction: "none" }}
+          {...draggable.attributes}
+          {...draggable.listeners}
+        >
+          <GripVertical className="h-3.5 w-3.5" aria-hidden="true" />
+        </Button>
 
         <SourceIcon
           className={cn(
@@ -768,6 +788,7 @@ function DocumentRow({
 
         <Link
           href={`/documents/${document.id}`}
+          draggable={false}
           className="flex min-w-0 flex-1 items-center gap-2 rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           data-testid="documents-list-item-link"
         >
@@ -795,25 +816,6 @@ function DocumentRow({
             v{document.revision}
           </span>
         </Link>
-
-        <Button
-          aria-label={
-            selectionMode && selected && selectedDocuments.length > 1
-              ? t("list.dragSelected", { count: selectedDocuments.length })
-              : t("list.dragDocument", { title: document.title || t("untitled") })
-          }
-          className="h-5 w-5 shrink-0 cursor-grab text-muted-foreground opacity-0 transition-opacity active:cursor-grabbing group-focus-within:opacity-100 group-hover:opacity-100"
-          data-testid="documents-list-drag-handle"
-          size="icon-sm"
-          type="button"
-          variant="ghost"
-          ref={draggable.setActivatorNodeRef}
-          style={{ touchAction: "none" }}
-          {...draggable.attributes}
-          {...draggable.listeners}
-        >
-          <GripVertical className="h-3.5 w-3.5" aria-hidden="true" />
-        </Button>
       </div>
     );
   }
@@ -822,13 +824,14 @@ function DocumentRow({
     <div
       ref={draggable.setNodeRef}
       className={cn(
-        "group flex min-w-0 items-start gap-3 rounded-lg py-2.5 pl-3 pr-2 transition-colors",
+        "group flex min-w-0 items-start gap-2 rounded-lg py-2.5 pl-1.5 pr-2 transition-colors",
         selected
           ? "bg-primary/10 hover:bg-primary/15"
           : "hover:bg-muted/50",
         draggable.isDragging && "opacity-50",
       )}
       data-testid="documents-list-item"
+      {...draggable.listeners}
     >
       {selectionMode ? (
         <input
@@ -842,6 +845,25 @@ function DocumentRow({
           onChange={() => onToggleSelection(document.id)}
         />
       ) : null}
+
+      <Button
+        aria-label={
+          selectionMode && selected && selectedDocuments.length > 1
+            ? t("list.dragSelected", { count: selectedDocuments.length })
+            : t("list.dragDocument", { title: document.title || t("untitled") })
+        }
+        className="mt-0.5 h-7 w-5 shrink-0 cursor-grab text-muted-foreground opacity-0 transition-opacity active:cursor-grabbing group-focus-within:opacity-100 group-hover:opacity-100"
+        data-testid="documents-list-drag-handle"
+        size="icon-sm"
+        type="button"
+        variant="ghost"
+        ref={draggable.setActivatorNodeRef}
+        style={{ touchAction: "none" }}
+        {...draggable.attributes}
+        {...draggable.listeners}
+      >
+        <GripVertical className="h-4 w-4" aria-hidden="true" />
+      </Button>
 
       <div
         className={cn(
@@ -859,6 +881,7 @@ function DocumentRow({
 
       <Link
         href={`/documents/${document.id}`}
+        draggable={false}
         className="min-w-0 flex-1 rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
         data-testid="documents-list-item-link"
       >
@@ -902,25 +925,6 @@ function DocumentRow({
           </div>
         ) : null}
       </Link>
-
-      <Button
-        aria-label={
-          selectionMode && selected && selectedDocuments.length > 1
-            ? t("list.dragSelected", { count: selectedDocuments.length })
-            : t("list.dragDocument", { title: document.title || t("untitled") })
-        }
-        className="mt-0.5 h-7 w-6 shrink-0 cursor-grab text-muted-foreground opacity-0 transition-opacity active:cursor-grabbing group-focus-within:opacity-100 group-hover:opacity-100"
-        data-testid="documents-list-drag-handle"
-        size="icon-sm"
-        type="button"
-        variant="ghost"
-        ref={draggable.setActivatorNodeRef}
-        style={{ touchAction: "none" }}
-        {...draggable.attributes}
-        {...draggable.listeners}
-      >
-        <GripVertical className="h-4 w-4" aria-hidden="true" />
-      </Button>
     </div>
   );
 }

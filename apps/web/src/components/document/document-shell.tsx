@@ -13,6 +13,8 @@ import {
 import {
   BookOpen,
   ChevronLeft,
+  FileText,
+  Folder,
   Loader2,
   PanelLeft,
 } from "lucide-react";
@@ -34,7 +36,6 @@ import {
   reorderDocumentFolders,
 } from "../../lib/document-service";
 import { RealtimeProvider } from "../../lib/realtime";
-import { cn } from "../../lib/utils";
 import { useSession } from "../providers/session-provider";
 import { Button } from "../ui/button";
 import { Sheet, SheetContent, SheetTitle } from "../ui/sheet";
@@ -492,17 +493,44 @@ function DocumentDragDropLayer({
 }
 
 function DocumentDragOverlay({ drag }: { drag: DocumentDragDataPayload }) {
-  const t = useTranslations("documents.directory.drag");
+  const tDrag = useTranslations("documents.directory.drag");
+  const tDocs = useTranslations("documents");
+
+  if (drag.type === "document-folder") {
+    return (
+      <div className="inline-flex max-w-72 items-center gap-2 rounded-md border border-border/60 bg-background px-3 py-2 text-xs font-medium text-foreground shadow-lg">
+        <Folder
+          className="h-3.5 w-3.5 shrink-0 text-muted-foreground"
+          aria-hidden="true"
+        />
+        <span className="truncate">{drag.name}</span>
+      </div>
+    );
+  }
+
+  const [first, ...rest] = drag.documents;
+  const firstTitle = first?.title?.trim() || tDocs("untitled");
+  const extraCount = rest.length;
 
   return (
     <div
-      className={cn(
-        "max-w-64 truncate rounded-md border border-border bg-background px-3 py-2 text-xs font-medium text-foreground shadow-lg",
-      )}
+      aria-label={
+        extraCount > 0
+          ? tDrag("documentsOverlay", { count: drag.documents.length })
+          : firstTitle
+      }
+      className="inline-flex max-w-72 items-center gap-2 rounded-md border border-border/60 bg-background px-3 py-2 text-xs font-medium text-foreground shadow-lg"
     >
-      {drag.type === "document"
-        ? t("documentsOverlay", { count: drag.documents.length })
-        : t("folderOverlay", { name: drag.name })}
+      <FileText
+        className="h-3.5 w-3.5 shrink-0 text-muted-foreground"
+        aria-hidden="true"
+      />
+      <span className="min-w-0 flex-1 truncate">{firstTitle}</span>
+      {extraCount > 0 ? (
+        <span className="shrink-0 rounded bg-muted px-1.5 py-0.5 text-[10px] tabular-nums text-muted-foreground">
+          +{extraCount}
+        </span>
+      ) : null}
     </div>
   );
 }
