@@ -728,12 +728,101 @@ function DocumentRow({
     } satisfies DocumentDragDataPayload,
   });
 
+  if (isCompact) {
+    return (
+      <div
+        ref={draggable.setNodeRef}
+        className={cn(
+          "group flex min-w-0 items-center gap-2 rounded-md py-1 pl-2.5 pr-1.5 transition-colors",
+          selected
+            ? "bg-primary/10 hover:bg-primary/15"
+            : "hover:bg-muted/50",
+          draggable.isDragging && "opacity-50",
+        )}
+        data-testid="documents-list-item"
+      >
+        {selectionMode ? (
+          <input
+            type="checkbox"
+            aria-label={t("list.selectDocument", {
+              title: document.title || t("untitled"),
+            })}
+            checked={selected}
+            className="h-3.5 w-3.5 shrink-0 rounded border-border text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            data-testid="documents-list-select"
+            onChange={() => onToggleSelection(document.id)}
+          />
+        ) : null}
+
+        <SourceIcon
+          className={cn(
+            "h-3.5 w-3.5 shrink-0",
+            isArchived
+              ? "text-muted-foreground/70"
+              : isAi
+                ? "text-info"
+                : "text-muted-foreground",
+          )}
+          aria-hidden="true"
+        />
+
+        <Link
+          href={`/documents/${document.id}`}
+          className="flex min-w-0 flex-1 items-center gap-2 rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          data-testid="documents-list-item-link"
+        >
+          <span
+            className={cn(
+              "min-w-0 flex-1 truncate text-sm",
+              isArchived
+                ? "text-muted-foreground"
+                : "text-foreground",
+            )}
+          >
+            {document.title || t("untitled")}
+          </span>
+          {isArchived ? (
+            <Archive
+              className="h-3.5 w-3.5 shrink-0 text-muted-foreground"
+              aria-label={t("status.ARCHIVED")}
+            />
+          ) : null}
+          <DocumentRowLinks links={document.links ?? []} />
+          <span
+            className="shrink-0 rounded bg-muted/60 px-1.5 py-0.5 font-mono text-[10px] text-muted-foreground"
+            title={revisionLabel}
+          >
+            v{document.revision}
+          </span>
+        </Link>
+
+        <Button
+          aria-label={
+            selectionMode && selected && selectedDocuments.length > 1
+              ? t("list.dragSelected", { count: selectedDocuments.length })
+              : t("list.dragDocument", { title: document.title || t("untitled") })
+          }
+          className="h-5 w-5 shrink-0 cursor-grab text-muted-foreground opacity-0 transition-opacity active:cursor-grabbing group-focus-within:opacity-100 group-hover:opacity-100"
+          data-testid="documents-list-drag-handle"
+          size="icon-sm"
+          type="button"
+          variant="ghost"
+          ref={draggable.setActivatorNodeRef}
+          style={{ touchAction: "none" }}
+          {...draggable.attributes}
+          {...draggable.listeners}
+        >
+          <GripVertical className="h-3.5 w-3.5" aria-hidden="true" />
+        </Button>
+      </div>
+    );
+  }
+
   return (
     <div
       ref={draggable.setNodeRef}
       className={cn(
-        "group flex min-w-0 items-start gap-3 rounded-lg pl-3 pr-2 transition-colors",
-        isCompact ? "py-2" : "py-2.5",
+        "group flex min-w-0 items-start gap-3 rounded-lg py-2.5 pl-3 pr-2 transition-colors",
         selected
           ? "bg-primary/10 hover:bg-primary/15"
           : "hover:bg-muted/50",
@@ -741,7 +830,6 @@ function DocumentRow({
       )}
       data-testid="documents-list-item"
     >
-
       {selectionMode ? (
         <input
           type="checkbox"
@@ -749,10 +837,7 @@ function DocumentRow({
             title: document.title || t("untitled"),
           })}
           checked={selected}
-          className={cn(
-            "h-4 w-4 shrink-0 rounded border-border text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
-            isCompact ? "mt-1" : "mt-1.5",
-          )}
+          className="mt-1.5 h-4 w-4 shrink-0 rounded border-border text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           data-testid="documents-list-select"
           onChange={() => onToggleSelection(document.id)}
         />
@@ -760,8 +845,7 @@ function DocumentRow({
 
       <div
         className={cn(
-          "flex shrink-0 items-center justify-center rounded-md",
-          isCompact ? "h-6 w-6" : "h-8 w-8",
+          "flex h-8 w-8 shrink-0 items-center justify-center rounded-md",
           isArchived
             ? "bg-muted text-muted-foreground/70"
             : isAi
@@ -770,7 +854,7 @@ function DocumentRow({
         )}
         aria-hidden="true"
       >
-        <SourceIcon className={isCompact ? "h-3.5 w-3.5" : "h-4 w-4"} />
+        <SourceIcon className="h-4 w-4" />
       </div>
 
       <Link
@@ -781,8 +865,7 @@ function DocumentRow({
         <div className="flex min-w-0 items-center gap-2">
           <span
             className={cn(
-              "truncate font-semibold text-foreground",
-              isCompact ? "text-sm" : "text-[15px] leading-snug",
+              "truncate text-[15px] font-semibold leading-snug text-foreground",
               isArchived && "text-muted-foreground",
             )}
           >
@@ -804,32 +887,20 @@ function DocumentRow({
             v{document.revision}
           </span>
         </div>
-        {isCompact ? (
-          <div className="mt-0.5 flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
-            <span className="truncate">
-              {formatDocumentCreatedMeta(document, locale, t)}
-            </span>
+        <div className="mt-1 min-w-0 text-xs text-muted-foreground">
+          <span className="block truncate">
+            {formatDocumentCreatedMeta(document, locale, t)}
+          </span>
+        </div>
+        {((document.links ?? []).some(
+          (link) => link.targetType !== "DOCUMENT",
+        ) ||
+          (document.tags ?? []).length > 0) ? (
+          <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
             <DocumentRowLinks links={document.links ?? []} />
             <TagBadgeList tags={document.tags ?? []} />
           </div>
-        ) : (
-          <>
-            <div className="mt-1 min-w-0 text-xs text-muted-foreground">
-              <span className="block truncate">
-                {formatDocumentCreatedMeta(document, locale, t)}
-              </span>
-            </div>
-            {((document.links ?? []).some(
-              (link) => link.targetType !== "DOCUMENT",
-            ) ||
-              (document.tags ?? []).length > 0) ? (
-              <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
-                <DocumentRowLinks links={document.links ?? []} />
-                <TagBadgeList tags={document.tags ?? []} />
-              </div>
-            ) : null}
-          </>
-        )}
+        ) : null}
       </Link>
 
       <Button
