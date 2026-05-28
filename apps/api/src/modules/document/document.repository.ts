@@ -1,5 +1,6 @@
 import type {
   Document,
+  DocumentChunk,
   DocumentDetail,
   DocumentLink,
 } from "@project-delivery/shared";
@@ -16,6 +17,7 @@ import type {
   MoveDocumentToFolderInput,
   DocumentRevisionListResult,
   ReplaceDocumentLinksInput,
+  SearchCurrentRevisionChunksInput,
   UpdateDocumentContentInput,
   UpdateDocumentMetadataInput,
   UpdateDocumentStateInput,
@@ -33,6 +35,9 @@ export type DocumentRepository = {
     page: number;
     pageSize: number;
   }): Promise<DocumentChunkListResult>;
+  searchCurrentRevisionChunks(
+    input: SearchCurrentRevisionChunksInput,
+  ): Promise<DocumentChunk[]>;
   listLinks(documentId: string): Promise<DocumentLink[]>;
   listLinksByTarget(input: {
     organizationId: string;
@@ -50,9 +55,15 @@ export type DocumentRepository = {
   moveManyToFolder(
     input: MoveDocumentsToFolderInput,
   ): Promise<DocumentBatchMutationResult>;
-  moveToFolder(input: MoveDocumentToFolderInput): Promise<DocumentMutationResult>;
-  replaceLinks(input: ReplaceDocumentLinksInput): Promise<DocumentMutationResult>;
-  updateContent(input: UpdateDocumentContentInput): Promise<DocumentMutationResult>;
+  moveToFolder(
+    input: MoveDocumentToFolderInput,
+  ): Promise<DocumentMutationResult>;
+  replaceLinks(
+    input: ReplaceDocumentLinksInput,
+  ): Promise<DocumentMutationResult>;
+  updateContent(
+    input: UpdateDocumentContentInput,
+  ): Promise<DocumentMutationResult>;
   updateMetadata(
     input: UpdateDocumentMetadataInput,
   ): Promise<DocumentMutationResult>;

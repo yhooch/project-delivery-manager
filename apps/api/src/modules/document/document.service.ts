@@ -4,9 +4,12 @@ import type {
   Document,
   DocumentActorType,
   DocumentDetail,
+  DocumentListItem,
   DocumentLinkTarget,
   DocumentLinksByTargetQuery,
   DocumentListQuery,
+  McpDocumentSearchHit,
+  McpDocumentSearchResponse,
   ImportDocxDocumentRequest,
   ImportMarkdownDocumentRequest,
   MoveDocumentsToFolderRequest,
@@ -54,6 +57,8 @@ import { DocumentFolderService } from "./document-folder.service";
 
 const DOCUMENT_WRITER_DENIED_ROLES = new Set<SpaceRole>(["VIEWER"]);
 const DOCUMENT_MANAGER_ROLES = new Set<SpaceRole>(["SPACE_ADMIN", "PM"]);
+const MCP_DOCUMENT_SEARCH_MAX_HITS_PER_DOCUMENT = 3;
+const MCP_DOCUMENT_SEARCH_SNIPPET_MAX_LENGTH = 320;
 export const DocumentDocxConversionTimeoutMs = 10_000;
 
 type DocumentActorContext = {
@@ -67,7 +72,10 @@ type ConvertToMarkdown = (
     convertImage?: unknown;
     externalFileAccess?: boolean;
   },
-) => Promise<{ value: string; messages: Array<{ type: string; message: string }> }>;
+) => Promise<{
+  value: string;
+  messages: Array<{ type: string; message: string }>;
+}>;
 
 @Injectable()
 export class DocumentService {
@@ -94,7 +102,7 @@ export class DocumentService {
     actorUserId: string,
     spaceId: string,
     input: DocumentListQuery,
-  ): Promise<PageResult<Document>> {
+  ): Promise<PageResult<DocumentListItem>> {
     const access = await this.requireSpaceReader(actorUserId, spaceId);
 
     if (input.folderId) {
@@ -111,8 +119,76 @@ export class DocumentService {
     });
   }
 
+  async searchForMcp(
+    actorUserId: string,
+    spaceId: string,
+    input: DocumentListQuery,
+  ): Promise<McpDocumentSearchResponse> {
+    const query = normalizeSearchText(input.query ?? "");
+    const listInput = { ...input };
+
+    if (query) {
+      listInput.query = query;
+    } else {
+      delete listInput.query;
+    }
+
+    const listResult = await this.list(actorUserId, spaceId, listInput);
+    const items = listResult.items.map((document) => ({
+      ...document,
+      hits: [] as McpDocumentSearchHit[],
+    }));
+    const firstItem = items[0];
+
+    if (!query || !firstItem) {
+      return {
+        ...listResult,
+        items,
+      };
+    }
+
+    const chunks = await this.documents.searchCurrentRevisionChunks({
+      documents: items.map((document) => ({
+        documentId: document.id,
+        revision: document.revision,
+      })),
+      maxHitsPerDocument: MCP_DOCUMENT_SEARCH_MAX_HITS_PER_DOCUMENT,
+      organizationId: firstItem.organizationId,
+      query,
+      spaceId,
+    });
+    const hitsByDocumentId = new Map<string, McpDocumentSearchHit[]>();
+
+    for (const chunk of chunks) {
+      const current = hitsByDocumentId.get(chunk.documentId) ?? [];
+
+      if (current.length >= MCP_DOCUMENT_SEARCH_MAX_HITS_PER_DOCUMENT) {
+        continue;
+      }
+
+      current.push({
+        chunkId: chunk.id,
+        ordinal: chunk.ordinal,
+        ...(chunk.headingPath ? { headingPath: chunk.headingPath } : {}),
+        snippet: buildSearchSnippet(chunk.contentText, query),
+      });
+      hitsByDocumentId.set(chunk.documentId, current);
+    }
+
+    return {
+      ...listResult,
+      items: items.map((document) => ({
+        ...document,
+        hits: hitsByDocumentId.get(document.id) ?? [],
+      })),
+    };
+  }
+
   async get(actorUserId: string, documentId: string): Promise<DocumentDetail> {
-    const document = await this.requireReadableDocument(actorUserId, documentId);
+    const document = await this.requireReadableDocument(
+      actorUserId,
+      documentId,
+    );
     const detail = await this.documents.findDetailById(document.id);
 
     if (!detail) {
@@ -159,7 +235,13 @@ export class DocumentService {
       tagIds: input.tagIds,
     });
 
-    await this.recordAudit("CREATE", actorUserId, document, undefined, metadata);
+    await this.recordAudit(
+      "CREATE",
+      actorUserId,
+      document,
+      undefined,
+      metadata,
+    );
     this.publishDocumentRealtime(actorUserId, document, "CREATED", [
       "document-list",
       "document-directory",
@@ -208,12 +290,19 @@ export class DocumentService {
       mcpClientId: actor.mcpClientId,
       organizationId: access.space.organizationId,
       requestId: metadata.requestId,
-      sourceType: actor.actorType === "MCP_CLIENT" ? "MCP_CREATED" : "PASTE_MARKDOWN",
+      sourceType:
+        actor.actorType === "MCP_CLIENT" ? "MCP_CREATED" : "PASTE_MARKDOWN",
       spaceId,
       tagIds: input.tagIds,
     });
 
-    await this.recordAudit("CREATE", actorUserId, document, undefined, metadata);
+    await this.recordAudit(
+      "CREATE",
+      actorUserId,
+      document,
+      undefined,
+      metadata,
+    );
     this.publishDocumentRealtime(actorUserId, document, "CREATED", [
       "document-list",
       "document-directory",
@@ -232,7 +321,13 @@ export class DocumentService {
     file: UploadedDocumentFile,
     metadata: RequestMetadata = {},
   ): Promise<Document> {
-    return this.createFromUploadedMarkdown(actorUserId, spaceId, input, file, metadata);
+    return this.createFromUploadedMarkdown(
+      actorUserId,
+      spaceId,
+      input,
+      file,
+      metadata,
+    );
   }
 
   async importDocx(
@@ -263,7 +358,10 @@ export class DocumentService {
     metadata: RequestMetadata = {},
     actor: DocumentActorContext = userDocumentActor(),
   ): Promise<Document> {
-    const existing = await this.requireEditableDocument(actorUserId, documentId);
+    const existing = await this.requireEditableDocument(
+      actorUserId,
+      documentId,
+    );
     const links =
       input.links === undefined
         ? undefined
@@ -305,7 +403,10 @@ export class DocumentService {
     metadata: RequestMetadata = {},
     actor: DocumentActorContext = userDocumentActor(),
   ): Promise<Document> {
-    const existing = await this.requireEditableDocument(actorUserId, documentId);
+    const existing = await this.requireEditableDocument(
+      actorUserId,
+      documentId,
+    );
     const normalized = normalizeMarkdownSource({
       contentMarkdown: input.contentMarkdown,
       fallbackTitle: existing.title,
@@ -316,7 +417,9 @@ export class DocumentService {
       actorUserId,
       baseRevision: input.baseRevision,
       changeType:
-        actor.actorType === "MCP_CLIENT" ? "CONTENT_REPLACED" : "CONTENT_EDITED",
+        actor.actorType === "MCP_CLIENT"
+          ? "CONTENT_REPLACED"
+          : "CONTENT_EDITED",
       chunks: buildDocumentChunks(normalized.contentMarkdown),
       contentMarkdown: normalized.contentMarkdown,
       contentText: normalized.contentText,
@@ -343,7 +446,10 @@ export class DocumentService {
     metadata: RequestMetadata = {},
     actor: DocumentActorContext = userDocumentActor(),
   ): Promise<Document> {
-    const existing = await this.requireEditableDocument(actorUserId, documentId);
+    const existing = await this.requireEditableDocument(
+      actorUserId,
+      documentId,
+    );
     const contentMarkdown = `${existing.contentMarkdown.trimEnd()}\n\n${input.appendMarkdown.trim()}`;
     assertDocumentFile(() => assertMarkdownSize(contentMarkdown));
     const normalized = normalizeMarkdownSource({
@@ -382,9 +488,14 @@ export class DocumentService {
     file: UploadedDocumentFile,
     metadata: RequestMetadata = {},
   ): Promise<Document> {
-    const existing = await this.requireEditableDocument(actorUserId, documentId);
+    const existing = await this.requireEditableDocument(
+      actorUserId,
+      documentId,
+    );
     const markdown = file.fileName.toLowerCase().endsWith(".docx")
-      ? await this.convertDocxToMarkdown(assertAndReturn(file, assertDocxImportFile))
+      ? await this.convertDocxToMarkdown(
+          assertAndReturn(file, assertDocxImportFile),
+        )
       : readMarkdownFile(assertAndReturn(file, assertMarkdownImportFile));
     const normalized = normalizeMarkdownSource({
       contentMarkdown: markdown,
@@ -420,7 +531,13 @@ export class DocumentService {
       });
       const updated = this.requireUpdatedResult(result);
 
-      await this.recordAudit("UPDATE", actorUserId, updated, existing, metadata);
+      await this.recordAudit(
+        "UPDATE",
+        actorUserId,
+        updated,
+        existing,
+        metadata,
+      );
       this.publishDocumentRealtime(actorUserId, updated, "UPDATED", [
         "document-list",
         "document-detail",
@@ -484,7 +601,10 @@ export class DocumentService {
     metadata: RequestMetadata = {},
     actor: DocumentActorContext = userDocumentActor(),
   ) {
-    const existing = await this.requireEditableDocument(actorUserId, documentId);
+    const existing = await this.requireEditableDocument(
+      actorUserId,
+      documentId,
+    );
     const links = await this.validateLinks(actorUserId, {
       documentId,
       links: normalizeDocumentLinks(input.links),
@@ -531,7 +651,10 @@ export class DocumentService {
     metadata: RequestMetadata = {},
     actor: DocumentActorContext = userDocumentActor(),
   ): Promise<Document> {
-    const existing = await this.requireEditableDocument(actorUserId, documentId);
+    const existing = await this.requireEditableDocument(
+      actorUserId,
+      documentId,
+    );
 
     await this.validateFolder(input.folderId ?? undefined, {
       organizationId: existing.organizationId,
@@ -624,7 +747,10 @@ export class DocumentService {
     return { items: updated.documents };
   }
 
-  async listLinksByTarget(actorUserId: string, input: DocumentLinksByTargetQuery) {
+  async listLinksByTarget(
+    actorUserId: string,
+    input: DocumentLinksByTargetQuery,
+  ) {
     const target = await this.targets.resolve(
       actorUserId,
       input.targetType,
@@ -707,7 +833,13 @@ export class DocumentService {
         tagIds: input.tagIds,
       });
 
-      await this.recordAudit("CREATE", actorUserId, document, undefined, metadata);
+      await this.recordAudit(
+        "CREATE",
+        actorUserId,
+        document,
+        undefined,
+        metadata,
+      );
       this.publishDocumentRealtime(actorUserId, document, "CREATED", [
         "document-list",
         "document-directory",
@@ -724,7 +856,9 @@ export class DocumentService {
     }
   }
 
-  private async convertDocxToMarkdown(file: UploadedDocumentFile): Promise<string> {
+  private async convertDocxToMarkdown(
+    file: UploadedDocumentFile,
+  ): Promise<string> {
     assertDocumentFile(() => assertDocxImportFile(file));
     try {
       assertSafeDocxZip(file);
@@ -746,7 +880,9 @@ export class DocumentService {
       );
 
       if (result.messages.some((message) => message.type === "error")) {
-        throw new Error(result.messages.map((message) => message.message).join("; "));
+        throw new Error(
+          result.messages.map((message) => message.message).join("; "),
+        );
       }
 
       const markdown = stripBase64Images(result.value).trim();
@@ -762,7 +898,11 @@ export class DocumentService {
         throw error;
       }
       if (isCodedError(error, "FILE_TOO_LARGE")) {
-        throw new ApiException("FILE_TOO_LARGE", "File is too large", HttpStatus.BAD_REQUEST);
+        throw new ApiException(
+          "FILE_TOO_LARGE",
+          "File is too large",
+          HttpStatus.BAD_REQUEST,
+        );
       }
       throw new ApiException(
         "DOCUMENT_IMPORT_FAILED",
@@ -791,12 +931,16 @@ export class DocumentService {
     actorUserId: string,
     documentId: string,
   ): Promise<Document> {
-    const document = await this.requireReadableDocument(actorUserId, documentId);
+    const document = await this.requireReadableDocument(
+      actorUserId,
+      documentId,
+    );
     const access = await this.requireSpaceReader(actorUserId, document.spaceId);
 
     if (
       DOCUMENT_WRITER_DENIED_ROLES.has(access.role) ||
-      (!DOCUMENT_MANAGER_ROLES.has(access.role) && document.createdById !== actorUserId)
+      (!DOCUMENT_MANAGER_ROLES.has(access.role) &&
+        document.createdById !== actorUserId)
     ) {
       throwSpaceAccessDenied();
     }
@@ -834,7 +978,10 @@ export class DocumentService {
     },
   ): Promise<DocumentLinkTarget[]> {
     for (const link of input.links) {
-      if (link.targetType === "DOCUMENT" && link.targetId === input.documentId) {
+      if (
+        link.targetType === "DOCUMENT" &&
+        link.targetId === input.documentId
+      ) {
         throwDocumentLinkTargetInvalid();
       }
 
@@ -903,7 +1050,10 @@ export class DocumentService {
     changeType: "ARCHIVED" | "RESTORED" | "DELETED",
     metadata: RequestMetadata,
   ): Promise<Document> {
-    const existing = await this.requireEditableDocument(actorUserId, documentId);
+    const existing = await this.requireEditableDocument(
+      actorUserId,
+      documentId,
+    );
     const result = await this.documents.updateState({
       actorType: "USER",
       actorUserId,
@@ -959,7 +1109,9 @@ export class DocumentService {
     actorUserId: string,
     document: Pick<Document, "id" | "organizationId" | "spaceId" | "revision">,
     operation: Parameters<RealtimePublisherService["publish"]>[0]["operation"],
-    invalidates: Parameters<RealtimePublisherService["publish"]>[0]["invalidates"],
+    invalidates: Parameters<
+      RealtimePublisherService["publish"]
+    >[0]["invalidates"],
   ) {
     try {
       this.realtime.publish({
@@ -1066,7 +1218,11 @@ function assertDocumentFile(assertion: () => void): void {
       throw error;
     }
     if (isCodedError(error, "FILE_TOO_LARGE")) {
-      throw new ApiException("FILE_TOO_LARGE", "File is too large", HttpStatus.BAD_REQUEST);
+      throw new ApiException(
+        "FILE_TOO_LARGE",
+        "File is too large",
+        HttpStatus.BAD_REQUEST,
+      );
     }
     if (isCodedError(error, "DOCUMENT_IMPORT_UNSUPPORTED_TYPE")) {
       throw new ApiException(
@@ -1128,6 +1284,44 @@ function sanitizeFileName(fileName: string) {
 
 function titleFromFileName(fileName: string) {
   return fileName.replace(/\.[^.]+$/u, "").trim() || "Imported document";
+}
+
+function buildSearchSnippet(contentText: string, query: string) {
+  const text = normalizeSearchText(contentText);
+  const normalizedQuery = normalizeSearchText(query);
+
+  if (text.length <= MCP_DOCUMENT_SEARCH_SNIPPET_MAX_LENGTH) {
+    return text;
+  }
+
+  const matchIndex = normalizedQuery
+    ? text.toLowerCase().indexOf(normalizedQuery.toLowerCase())
+    : -1;
+  const anchor = matchIndex >= 0 ? matchIndex : 0;
+  const queryLength = matchIndex >= 0 ? normalizedQuery.length : 0;
+  const contextBudget = Math.max(
+    0,
+    MCP_DOCUMENT_SEARCH_SNIPPET_MAX_LENGTH - queryLength,
+  );
+  let start = Math.max(0, anchor - Math.floor(contextBudget / 2));
+  let end = Math.min(
+    text.length,
+    start + MCP_DOCUMENT_SEARCH_SNIPPET_MAX_LENGTH,
+  );
+
+  start = Math.max(
+    0,
+    Math.min(start, Math.max(0, end - MCP_DOCUMENT_SEARCH_SNIPPET_MAX_LENGTH)),
+  );
+  end = Math.min(text.length, start + MCP_DOCUMENT_SEARCH_SNIPPET_MAX_LENGTH);
+
+  return `${start > 0 ? "..." : ""}${text.slice(start, end).trim()}${
+    end < text.length ? "..." : ""
+  }`;
+}
+
+function normalizeSearchText(value: string) {
+  return value.replace(/\s+/gu, " ").trim();
 }
 
 function throwDocumentNotFound(): never {

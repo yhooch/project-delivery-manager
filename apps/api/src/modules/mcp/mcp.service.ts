@@ -19,7 +19,6 @@ import {
   type McpDocumentSearchRequest,
   type McpToolName,
   type McpToolResult,
-  type DocumentListQuery,
   type McpListDocumentFoldersRequest,
   type ObjectCodeLookupQuery,
   type SpaceRole,
@@ -524,10 +523,10 @@ export class McpService {
 
         return {
           message: "Documents returned.",
-          output: await this.documents.list(
+          output: await this.documents.searchForMcp(
             principal.userId,
             spaceId,
-            query as DocumentListQuery,
+            query,
           ),
         };
       }

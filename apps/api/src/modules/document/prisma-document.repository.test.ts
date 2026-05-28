@@ -47,6 +47,10 @@ describe("PrismaDocumentRepository", () => {
     });
     expect(documentFindMany).toHaveBeenCalledWith(
       expect.objectContaining({
+        select: expect.not.objectContaining({
+          contentMarkdown: true,
+          contentText: true,
+        }),
         where: expect.objectContaining({
           folderId: null,
         }),
@@ -68,6 +72,7 @@ describe("PrismaDocumentRepository", () => {
         size: 1024,
       },
     ]);
+    const attachmentCount = vi.fn(async () => 12);
     const commentFindMany = vi.fn(async () => [
       {
         id: "01H00000000000000000000007",
@@ -79,6 +84,7 @@ describe("PrismaDocumentRepository", () => {
         createdAt: new Date("2026-05-27T01:00:00.000Z"),
       },
     ]);
+    const commentCount = vi.fn(async () => 21);
     const timelineEventFindMany = vi.fn(async () => [
       {
         id: "01H00000000000000000000008",
@@ -91,12 +97,15 @@ describe("PrismaDocumentRepository", () => {
         title: "Document content updated",
       },
     ]);
+    const timelineEventCount = vi.fn(async () => 34);
     const prisma = {
       client: {
         attachment: {
+          count: attachmentCount,
           findMany: attachmentFindMany,
         },
         comment: {
+          count: commentCount,
           findMany: commentFindMany,
         },
         document: {
@@ -127,6 +136,7 @@ describe("PrismaDocumentRepository", () => {
           findMany: vi.fn(async () => []),
         },
         timelineEvent: {
+          count: timelineEventCount,
           findMany: timelineEventFindMany,
         },
         user: {
@@ -142,16 +152,23 @@ describe("PrismaDocumentRepository", () => {
     } as unknown as PrismaService;
     const repository = new PrismaDocumentRepository(prisma);
 
-    await expect(repository.findDetailById(document.id)).resolves.toMatchObject({
-      id: document.id,
-      attachments: [{ fileName: "handoff.md", size: 1024 }],
-      comments: [{ authorName: "Alice", body: "Looks current" }],
-      createdByName: "Ada Lovelace",
-      createdMcpClientName: "Codex",
-      lastEditedByName: "Ada Lovelace",
-      lastEditedMcpClientName: "Claude Code",
-      timeline: [{ actorName: "Taylor", changeType: "Document content updated" }],
-    });
+    await expect(repository.findDetailById(document.id)).resolves.toMatchObject(
+      {
+        id: document.id,
+        attachments: [{ fileName: "handoff.md", size: 1024 }],
+        attachmentTotal: 12,
+        comments: [{ authorName: "Alice", body: "Looks current" }],
+        commentTotal: 21,
+        createdByName: "Ada Lovelace",
+        createdMcpClientName: "Codex",
+        lastEditedByName: "Ada Lovelace",
+        lastEditedMcpClientName: "Claude Code",
+        timeline: [
+          { actorName: "Taylor", changeType: "Document content updated" },
+        ],
+        timelineTotal: 34,
+      },
+    );
 
     const scopedDocumentTargetWhere = {
       deletedAt: null,
@@ -165,10 +182,16 @@ describe("PrismaDocumentRepository", () => {
       take: 5,
       where: scopedDocumentTargetWhere,
     });
+    expect(attachmentCount).toHaveBeenCalledWith({
+      where: scopedDocumentTargetWhere,
+    });
     expect(commentFindMany).toHaveBeenCalledWith({
       include: { author: true },
       orderBy: { createdAt: "desc" },
       take: 5,
+      where: scopedDocumentTargetWhere,
+    });
+    expect(commentCount).toHaveBeenCalledWith({
       where: scopedDocumentTargetWhere,
     });
     expect(timelineEventFindMany).toHaveBeenCalledWith({
@@ -176,6 +199,89 @@ describe("PrismaDocumentRepository", () => {
       orderBy: { createdAt: "desc" },
       take: 5,
       where: scopedDocumentTargetWhere,
+    });
+    expect(timelineEventCount).toHaveBeenCalledWith({
+      where: scopedDocumentTargetWhere,
+    });
+  });
+
+  it("searches current revision chunks with normalized whitespace and per-document limits", async () => {
+    const first = makeDocumentRecord();
+    const second = {
+      ...makeDocumentRecord(),
+      id: "01H00000000000000000000009",
+      revision: 2,
+    };
+    const documentChunkFindMany = vi.fn(async () => [
+      makeChunkRecord({
+        contentText: "Alpha\nBeta matching chunk",
+        documentId: first.id,
+        ordinal: 0,
+        revision: first.revision,
+      }),
+      makeChunkRecord({
+        contentText: "Alpha Beta second match",
+        documentId: first.id,
+        id: "01H00000000000000000000010",
+        ordinal: 1,
+        revision: first.revision,
+      }),
+      makeChunkRecord({
+        contentText: "Alpha Beta current revision",
+        documentId: second.id,
+        id: "01H00000000000000000000011",
+        ordinal: 0,
+        revision: second.revision,
+      }),
+      makeChunkRecord({
+        contentText: "Old Alpha Beta revision",
+        documentId: second.id,
+        id: "01H00000000000000000000012",
+        ordinal: 0,
+        revision: 1,
+      }),
+    ]);
+    const prisma = {
+      client: {
+        documentChunk: {
+          findMany: documentChunkFindMany,
+        },
+      },
+    } as unknown as PrismaService;
+    const repository = new PrismaDocumentRepository(prisma);
+
+    await expect(
+      repository.searchCurrentRevisionChunks({
+        documents: [
+          { documentId: first.id, revision: first.revision },
+          { documentId: second.id, revision: second.revision },
+        ],
+        maxHitsPerDocument: 1,
+        organizationId: first.organizationId,
+        query: "alpha beta",
+        spaceId: first.spaceId,
+      }),
+    ).resolves.toMatchObject([
+      {
+        documentId: first.id,
+        ordinal: 0,
+      },
+      {
+        documentId: second.id,
+        ordinal: 0,
+        revision: second.revision,
+      },
+    ]);
+    expect(documentChunkFindMany).toHaveBeenCalledWith({
+      orderBy: [{ documentId: "asc" }, { ordinal: "asc" }],
+      where: {
+        OR: [
+          { documentId: first.id, revision: first.revision },
+          { documentId: second.id, revision: second.revision },
+        ],
+        organizationId: first.organizationId,
+        spaceId: first.spaceId,
+      },
     });
   });
 });
@@ -205,4 +311,24 @@ function makeDocumentRecord() {
     title: "Agent handoff",
     updatedAt: new Date("2026-05-27T00:00:00.000Z"),
   } as const;
+}
+
+function makeChunkRecord(input: {
+  contentText: string;
+  documentId: string;
+  id?: string;
+  ordinal: number;
+  revision: number;
+}) {
+  return {
+    id: input.id ?? "01H00000000000000000000013",
+    organizationId: "01H00000000000000000000002",
+    spaceId: "01H00000000000000000000003",
+    documentId: input.documentId,
+    revision: input.revision,
+    ordinal: input.ordinal,
+    headingPath: null,
+    contentText: input.contentText,
+    createdAt: new Date("2026-05-27T00:00:00.000Z"),
+  };
 }

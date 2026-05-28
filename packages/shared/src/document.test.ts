@@ -282,6 +282,7 @@ describe("document contracts", () => {
             size: 1024,
           },
         ],
+        attachmentTotal: 12,
         comments: [
           {
             id: SECOND_ID,
@@ -290,6 +291,7 @@ describe("document contracts", () => {
             createdAt: "2026-05-27T01:00:00.000Z",
           },
         ],
+        commentTotal: 21,
         timeline: [
           {
             id: THIRD_ID,
@@ -298,11 +300,15 @@ describe("document contracts", () => {
             createdAt: "2026-05-27T00:30:00.000Z",
           },
         ],
+        timelineTotal: 34,
       }),
     ).toMatchObject({
       attachments: [{ fileName: "handoff.md" }],
+      attachmentTotal: 12,
       comments: [{ authorName: "Alice" }],
+      commentTotal: 21,
       timeline: [{ changeType: "Document created" }],
+      timelineTotal: 34,
     });
 
     expect(

@@ -1,5 +1,6 @@
 import { Inject, Injectable } from "@nestjs/common";
 import type {
+  DocumentChunk,
   DocumentFolderPathItem,
   DocumentLink,
   WorkItemType,
@@ -18,6 +19,7 @@ import {
   toDocument,
   toDocumentChunk,
   toDocumentDetail,
+  toDocumentListItem,
   toDocumentLink,
   toDocumentRevision,
   type DocumentActorDisplayContext,
@@ -31,6 +33,7 @@ import type {
   MoveDocumentsToFolderInput,
   MoveDocumentToFolderInput,
   ReplaceDocumentLinksInput,
+  SearchCurrentRevisionChunksInput,
   UpdateDocumentContentInput,
   UpdateDocumentMetadataInput,
   UpdateDocumentStateInput,
@@ -55,8 +58,31 @@ type HydratedDocumentLinkRecord = DocumentLinkRecord & {
 };
 
 type PrismaDocumentRecord = Parameters<typeof toDocument>[0];
+type PrismaDocumentListRecord = Parameters<typeof toDocumentListItem>[0];
 
 const DOCUMENT_DETAIL_OVERVIEW_LIMIT = 5;
+const documentListSelect = {
+  archivedAt: true,
+  createdAt: true,
+  createdById: true,
+  createdMcpClientId: true,
+  createdVia: true,
+  deletedAt: true,
+  folderId: true,
+  id: true,
+  lastEditedAt: true,
+  lastEditedById: true,
+  lastEditedMcpClientId: true,
+  lastEditedVia: true,
+  organizationId: true,
+  revision: true,
+  sourceAttachmentId: true,
+  sourceType: true,
+  spaceId: true,
+  status: true,
+  title: true,
+  updatedAt: true,
+} satisfies Prisma.DocumentSelect;
 
 @Injectable()
 export class PrismaDocumentRepository implements DocumentRepository {
@@ -189,14 +215,26 @@ export class PrismaDocumentRepository implements DocumentRepository {
       return undefined;
     }
 
-    const [context, attachments, comments, timeline] = await Promise.all([
+    const targetWhere = documentTargetWhere(document);
+    const [
+      context,
+      attachments,
+      attachmentTotal,
+      comments,
+      commentTotal,
+      timeline,
+      timelineTotal,
+    ] = await Promise.all([
       this.loadDocumentContext(document),
       this.prisma.client.attachment.findMany({
         orderBy: {
           createdAt: "desc",
         },
         take: DOCUMENT_DETAIL_OVERVIEW_LIMIT,
-        where: documentTargetWhere(document),
+        where: targetWhere,
+      }),
+      this.prisma.client.attachment.count({
+        where: targetWhere,
       }),
       this.prisma.client.comment.findMany({
         include: {
@@ -206,7 +244,10 @@ export class PrismaDocumentRepository implements DocumentRepository {
           createdAt: "desc",
         },
         take: DOCUMENT_DETAIL_OVERVIEW_LIMIT,
-        where: documentTargetWhere(document),
+        where: targetWhere,
+      }),
+      this.prisma.client.comment.count({
+        where: targetWhere,
       }),
       this.prisma.client.timelineEvent.findMany({
         include: {
@@ -216,53 +257,64 @@ export class PrismaDocumentRepository implements DocumentRepository {
           createdAt: "desc",
         },
         take: DOCUMENT_DETAIL_OVERVIEW_LIMIT,
-        where: documentTargetWhere(document),
+        where: targetWhere,
+      }),
+      this.prisma.client.timelineEvent.count({
+        where: targetWhere,
       }),
     ]);
 
     return toDocumentDetail(document, {
       ...context,
       attachments,
+      attachmentTotal,
       comments,
+      commentTotal,
       timeline,
+      timelineTotal,
     });
   }
 
   private async loadDocumentContext(document: PrismaDocumentRecord) {
-    const [links, chunks, tagsByDocumentId, actorContextByDocumentId, folderPaths] =
-      await Promise.all([
-        this.prisma.client.documentLink.findMany({
-          orderBy: {
-            createdAt: "asc",
-          },
-          where: {
-            deletedAt: null,
-            documentId: document.id,
-            organizationId: document.organizationId,
-            spaceId: document.spaceId,
-          },
-        }),
-        this.prisma.client.documentChunk.findMany({
-          orderBy: {
-            ordinal: "asc",
-          },
-          take: 20,
-          where: {
-            documentId: document.id,
-            organizationId: document.organizationId,
-            revision: document.revision,
-            spaceId: document.spaceId,
-          },
-        }),
-        listTagsByTargets(this.prisma.client, {
+    const [
+      links,
+      chunks,
+      tagsByDocumentId,
+      actorContextByDocumentId,
+      folderPaths,
+    ] = await Promise.all([
+      this.prisma.client.documentLink.findMany({
+        orderBy: {
+          createdAt: "asc",
+        },
+        where: {
+          deletedAt: null,
+          documentId: document.id,
           organizationId: document.organizationId,
           spaceId: document.spaceId,
-          targetIds: [document.id],
-          targetType: "DOCUMENT",
-        }),
-        this.loadDocumentActorContexts([document]),
-        this.loadDocumentFolderPaths([document]),
-      ]);
+        },
+      }),
+      this.prisma.client.documentChunk.findMany({
+        orderBy: {
+          ordinal: "asc",
+        },
+        take: 20,
+        where: {
+          documentId: document.id,
+          organizationId: document.organizationId,
+          revision: document.revision,
+          spaceId: document.spaceId,
+        },
+      }),
+      listTagsByTargets(this.prisma.client, {
+        organizationId: document.organizationId,
+        spaceId: document.spaceId,
+        targetIds: [document.id],
+        targetType: "DOCUMENT",
+      }),
+      this.loadDocumentActorContexts([document]),
+      this.loadDocumentFolderPaths([document]),
+    ]);
     const hydratedLinks = await this.hydrateLinks(
       links,
       document.organizationId,
@@ -320,8 +372,52 @@ export class PrismaDocumentRepository implements DocumentRepository {
     );
   }
 
+  private async hydrateDocumentListItems(
+    documents: PrismaDocumentListRecord[],
+  ) {
+    if (documents.length === 0) {
+      return [];
+    }
+
+    const first = documents[0];
+    if (!first) {
+      return [];
+    }
+
+    const targetIds = documents.map((document) => document.id);
+    const [
+      tagsByDocumentId,
+      linksByDocumentId,
+      actorContextByDocumentId,
+      folderPathsByDocumentId,
+    ] = await Promise.all([
+      listTagsByTargets(this.prisma.client, {
+        organizationId: first.organizationId,
+        spaceId: first.spaceId,
+        targetIds,
+        targetType: "DOCUMENT",
+      }),
+      this.listLinksByDocumentIds({
+        documentIds: targetIds,
+        organizationId: first.organizationId,
+        spaceId: first.spaceId,
+      }),
+      this.loadDocumentActorContexts(documents),
+      this.loadDocumentFolderPaths(documents),
+    ]);
+
+    return documents.map((document) =>
+      toDocumentListItem(document, {
+        ...actorContextByDocumentId.get(document.id),
+        folderPath: folderPathsByDocumentId.get(document.id),
+        links: linksByDocumentId.get(document.id) ?? [],
+        tags: tagsByDocumentId.get(document.id) ?? [],
+      }),
+    );
+  }
+
   private async loadDocumentActorContexts(
-    documents: PrismaDocumentRecord[],
+    documents: PrismaDocumentListRecord[],
   ): Promise<Map<string, DocumentActorDisplayContext>> {
     const result = new Map<string, DocumentActorDisplayContext>();
 
@@ -374,7 +470,10 @@ export class PrismaDocumentRepository implements DocumentRepository {
     ]);
 
     const userNamesById = new Map(
-      users.map((user) => [user.id, nonEmptyString(user.name) ?? user.username]),
+      users.map((user) => [
+        user.id,
+        nonEmptyString(user.name) ?? user.username,
+      ]),
     );
     const clientNamesById = new Map(
       clients.map((client) => [client.clientId, client.clientName]),
@@ -399,7 +498,7 @@ export class PrismaDocumentRepository implements DocumentRepository {
   }
 
   private async loadDocumentFolderPaths(
-    documents: PrismaDocumentRecord[],
+    documents: PrismaDocumentListRecord[],
   ): Promise<Map<string, DocumentFolderPathItem[]>> {
     const result = new Map<string, DocumentFolderPathItem[]>();
     const folderIds = [
@@ -414,7 +513,9 @@ export class PrismaDocumentRepository implements DocumentRepository {
       return result;
     }
 
-    const spaceIds = [...new Set(documents.map((document) => document.spaceId))];
+    const spaceIds = [
+      ...new Set(documents.map((document) => document.spaceId)),
+    ];
     const folders = await this.prisma.client.documentFolder.findMany({
       select: {
         id: true,
@@ -463,6 +564,7 @@ export class PrismaDocumentRepository implements DocumentRepository {
     const [documents, total] = await this.prisma.client.$transaction([
       this.prisma.client.document.findMany({
         orderBy: toDocumentOrderBy(input),
+        select: documentListSelect,
         skip: (input.page - 1) * input.pageSize,
         take: input.pageSize,
         where,
@@ -470,7 +572,7 @@ export class PrismaDocumentRepository implements DocumentRepository {
       this.prisma.client.document.count({ where }),
     ]);
     return {
-      items: await this.hydrateDocuments(documents),
+      items: await this.hydrateDocumentListItems(documents),
       page: input.page,
       pageSize: input.pageSize,
       total,
@@ -569,7 +671,8 @@ export class PrismaDocumentRepository implements DocumentRepository {
       ? {
           status: "updated",
           document:
-            (await this.findById(result.document.id)) ?? toDocument(result.document),
+            (await this.findById(result.document.id)) ??
+            toDocument(result.document),
         }
       : result;
   }
@@ -614,7 +717,9 @@ export class PrismaDocumentRepository implements DocumentRepository {
         data: {
           contentMarkdown: input.contentMarkdown,
           contentText: input.contentText,
-          ...(sourceAttachment ? { sourceAttachmentId: sourceAttachment.id } : {}),
+          ...(sourceAttachment
+            ? { sourceAttachmentId: sourceAttachment.id }
+            : {}),
           lastEditedAt: new Date(),
           lastEditedById: input.actorUserId,
           lastEditedVia: input.actorType,
@@ -668,12 +773,15 @@ export class PrismaDocumentRepository implements DocumentRepository {
       ? {
           status: "updated",
           document:
-            (await this.findById(result.document.id)) ?? toDocument(result.document),
+            (await this.findById(result.document.id)) ??
+            toDocument(result.document),
         }
       : result;
   }
 
-  async updateState(input: UpdateDocumentStateInput): Promise<DocumentMutationResult> {
+  async updateState(
+    input: UpdateDocumentStateInput,
+  ): Promise<DocumentMutationResult> {
     const result = await this.prisma.client.$transaction(async (tx) => {
       const existing = await tx.document.findFirst({
         where: {
@@ -734,7 +842,8 @@ export class PrismaDocumentRepository implements DocumentRepository {
           revision: existing.revision,
           status: existing.status,
         },
-        eventType: input.changeType === "DELETED" ? "UPDATED" : "STATUS_CHANGED",
+        eventType:
+          input.changeType === "DELETED" ? "UPDATED" : "STATUS_CHANGED",
         metadata: { operation: input.changeType },
         organizationId: updated.organizationId,
         spaceId: updated.spaceId,
@@ -750,7 +859,8 @@ export class PrismaDocumentRepository implements DocumentRepository {
       ? {
           status: "updated",
           document:
-            (await this.findById(result.document.id)) ?? toDocument(result.document),
+            (await this.findById(result.document.id)) ??
+            toDocument(result.document),
         }
       : result;
   }
@@ -872,7 +982,8 @@ export class PrismaDocumentRepository implements DocumentRepository {
       ? {
           status: "updated",
           document:
-            (await this.findById(result.document.id)) ?? toDocument(result.document),
+            (await this.findById(result.document.id)) ??
+            toDocument(result.document),
         }
       : result;
   }
@@ -1047,7 +1158,8 @@ export class PrismaDocumentRepository implements DocumentRepository {
       ? {
           status: "updated",
           document:
-            (await this.findById(result.document.id)) ?? toDocument(result.document),
+            (await this.findById(result.document.id)) ??
+            toDocument(result.document),
         }
       : result;
   }
@@ -1086,6 +1198,53 @@ export class PrismaDocumentRepository implements DocumentRepository {
       pageSize: input.pageSize,
       total,
     };
+  }
+
+  async searchCurrentRevisionChunks(input: SearchCurrentRevisionChunksInput) {
+    const normalizedQuery = normalizeSearchText(input.query);
+
+    if (
+      input.documents.length === 0 ||
+      normalizedQuery === "" ||
+      input.maxHitsPerDocument <= 0
+    ) {
+      return [];
+    }
+
+    const chunks = await this.prisma.client.documentChunk.findMany({
+      orderBy: [{ documentId: "asc" }, { ordinal: "asc" }],
+      where: {
+        organizationId: input.organizationId,
+        spaceId: input.spaceId,
+        OR: input.documents.map((document) => ({
+          documentId: document.documentId,
+          revision: document.revision,
+        })),
+      },
+    });
+    const normalizedQueryLower = normalizedQuery.toLowerCase();
+    const countsByDocumentId = new Map<string, number>();
+    const result: DocumentChunk[] = [];
+
+    for (const chunk of chunks) {
+      const currentCount = countsByDocumentId.get(chunk.documentId) ?? 0;
+
+      if (currentCount >= input.maxHitsPerDocument) {
+        continue;
+      }
+      if (
+        !normalizeSearchText(chunk.contentText)
+          .toLowerCase()
+          .includes(normalizedQueryLower)
+      ) {
+        continue;
+      }
+
+      countsByDocumentId.set(chunk.documentId, currentCount + 1);
+      result.push(toDocumentChunk(chunk));
+    }
+
+    return result;
   }
 
   async listLinksByTarget(input: {
@@ -1332,16 +1491,22 @@ export class PrismaDocumentRepository implements DocumentRepository {
       });
     }
     for (const target of requirements) {
-      summaries.set(linkKey({ targetId: target.id, targetType: "REQUIREMENT" }), {
-        displayCode: formatDisplayCode("REQ", target.sequence),
-        title: target.title,
-      });
+      summaries.set(
+        linkKey({ targetId: target.id, targetType: "REQUIREMENT" }),
+        {
+          displayCode: formatDisplayCode("REQ", target.sequence),
+          title: target.title,
+        },
+      );
     }
     for (const target of intakeItems) {
-      summaries.set(linkKey({ targetId: target.id, targetType: "INTAKE_ITEM" }), {
-        displayCode: formatDisplayCode("INTAKE", target.sequence),
-        title: target.title,
-      });
+      summaries.set(
+        linkKey({ targetId: target.id, targetType: "INTAKE_ITEM" }),
+        {
+          displayCode: formatDisplayCode("INTAKE", target.sequence),
+          title: target.title,
+        },
+      );
     }
     for (const target of workItems) {
       summaries.set(linkKey({ targetId: target.id, targetType: "WORK_ITEM" }), {
@@ -1497,7 +1662,9 @@ async function replaceLinksInTransaction(
   }
 
   for (const link of links) {
-    const existing = existingLinks.find((entry) => linkKey(entry) === linkKey(link));
+    const existing = existingLinks.find(
+      (entry) => linkKey(entry) === linkKey(link),
+    );
 
     if (existing?.deletedAt === null) {
       continue;
@@ -1541,7 +1708,10 @@ function documentTargetWhere(document: PrismaDocumentRecord) {
   };
 }
 
-function formatDisplayCode(prefix: "REQ" | "INTAKE" | WorkItemType, sequence: number | null) {
+function formatDisplayCode(
+  prefix: "REQ" | "INTAKE" | WorkItemType,
+  sequence: number | null,
+) {
   return sequence ? `${prefix}-${sequence}` : undefined;
 }
 
@@ -1551,9 +1721,16 @@ function nonEmptyString(value: string | null | undefined) {
   return trimmed ? trimmed : undefined;
 }
 
+function normalizeSearchText(value: string) {
+  return value.replace(/\s+/gu, " ").trim();
+}
+
 function buildFolderPath(
   folderId: string,
-  foldersById: Map<string, { id: string; name: string; parentId: string | null }>,
+  foldersById: Map<
+    string,
+    { id: string; name: string; parentId: string | null }
+  >,
 ): DocumentFolderPathItem[] {
   const path: DocumentFolderPathItem[] = [];
   const seen = new Set<string>();

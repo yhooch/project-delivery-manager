@@ -4,17 +4,18 @@ import {
   EmptyObjectSchema,
   IsoDateTimeSchema,
   UlidSchema,
+  pageResultSchema,
 } from "./common.ts";
 import {
   AppendDocumentContentRequestSchema,
   CreateDocumentFolderRequestSchema,
   CreateDocumentFolderResponseSchema,
   DocumentListQuerySchema,
+  DocumentListItemSchema,
   ListDocumentFoldersResponseSchema,
   GetDocumentResponseSchema,
   DeleteDocumentFolderResponseSchema,
   DocumentFolderSchema,
-  ListDocumentsResponseSchema,
   MoveDocumentFolderRequestSchema,
   MoveDocumentFolderResponseSchema,
   MoveDocumentToFolderRequestSchema,
@@ -173,9 +174,7 @@ export const McpOAuthClientStatusSchema = z.enum([
   "DISABLED",
   "REVOKED",
 ]);
-export type McpOAuthClientStatus = z.infer<
-  typeof McpOAuthClientStatusSchema
->;
+export type McpOAuthClientStatus = z.infer<typeof McpOAuthClientStatusSchema>;
 
 export const McpOAuthClientRegistrationModeSchema = z.enum([
   "PRE_REGISTERED",
@@ -395,21 +394,20 @@ export const McpOAuthAuthorizationCodeTokenRequestSchema =
     code_verifier: z.string().min(43).max(128),
   }).strict();
 
-export const McpOAuthRefreshTokenRequestSchema =
-  McpOAuthTokenBaseSchema.extend({
+export const McpOAuthRefreshTokenRequestSchema = McpOAuthTokenBaseSchema.extend(
+  {
     grant_type: z.literal("refresh_token"),
     refresh_token: z.string().min(1),
     scope: McpScopeStringSchema.optional(),
-  }).strict();
+  },
+).strict();
 
 export const McpOAuthTokenRequestSchema = z.discriminatedUnion("grant_type", [
   McpOAuthAuthorizationCodeTokenRequestSchema,
   McpOAuthRefreshTokenRequestSchema,
 ]);
 
-export type McpOAuthTokenRequest = z.infer<
-  typeof McpOAuthTokenRequestSchema
->;
+export type McpOAuthTokenRequest = z.infer<typeof McpOAuthTokenRequestSchema>;
 
 export const McpOAuthTokenResponseSchema = z
   .object({
@@ -421,9 +419,7 @@ export const McpOAuthTokenResponseSchema = z
   })
   .strict();
 
-export type McpOAuthTokenResponse = z.infer<
-  typeof McpOAuthTokenResponseSchema
->;
+export type McpOAuthTokenResponse = z.infer<typeof McpOAuthTokenResponseSchema>;
 
 export const McpOAuthRevocationRequestSchema = z
   .object({
@@ -559,11 +555,7 @@ export const McpWriteContextSchema = z
     spaceId: UlidSchema,
     idempotencyKey: z.string().min(8).max(120),
     targetSelectionSource: z
-      .enum([
-        "USER_EXPLICIT",
-        "SINGLE_WRITABLE_SPACE",
-        "MCP_CONTEXT_FALLBACK",
-      ])
+      .enum(["USER_EXPLICIT", "SINGLE_WRITABLE_SPACE", "MCP_CONTEXT_FALLBACK"])
       .optional()
       .describe(
         "Required for committed writes. Use USER_EXPLICIT only after the user names the organization and project space. Use SINGLE_WRITABLE_SPACE only when pdm.context.get shows exactly one writable project space. Never use MCP_CONTEXT_FALLBACK for committed writes.",
@@ -614,9 +606,7 @@ export const McpIdempotencyScopeSchema = z
   })
   .strict();
 
-export type McpIdempotencyScope = z.infer<
-  typeof McpIdempotencyScopeSchema
->;
+export type McpIdempotencyScope = z.infer<typeof McpIdempotencyScopeSchema>;
 
 export const McpIdempotencyConflictDetailsSchema = z
   .object({
@@ -702,33 +692,33 @@ export type McpListDocumentFoldersResponse = z.infer<
 export const McpDocumentFolderSchema = DocumentFolderSchema;
 export type McpDocumentFolder = DocumentFolder;
 
-export const McpCreateDocumentFolderRequestSchema =
-  McpWriteContextSchema.merge(CreateDocumentFolderRequestSchema);
+export const McpCreateDocumentFolderRequestSchema = McpWriteContextSchema.merge(
+  CreateDocumentFolderRequestSchema,
+);
 
 export type McpCreateDocumentFolderRequest = z.infer<
   typeof McpCreateDocumentFolderRequestSchema
 >;
 
-export const McpUpdateDocumentFolderRequestSchema =
-  McpWriteContextSchema.merge(DocumentFolderIdToolInputSchema).merge(
-    UpdateDocumentFolderRequestSchema,
-  );
+export const McpUpdateDocumentFolderRequestSchema = McpWriteContextSchema.merge(
+  DocumentFolderIdToolInputSchema,
+).merge(UpdateDocumentFolderRequestSchema);
 
 export type McpUpdateDocumentFolderRequest = z.infer<
   typeof McpUpdateDocumentFolderRequestSchema
 >;
 
-export const McpMoveDocumentFolderRequestSchema =
-  McpWriteContextSchema.merge(DocumentFolderIdToolInputSchema).merge(
-    MoveDocumentFolderRequestSchema,
-  );
+export const McpMoveDocumentFolderRequestSchema = McpWriteContextSchema.merge(
+  DocumentFolderIdToolInputSchema,
+).merge(MoveDocumentFolderRequestSchema);
 
 export type McpMoveDocumentFolderRequest = z.infer<
   typeof McpMoveDocumentFolderRequestSchema
 >;
 
-export const McpDeleteDocumentFolderRequestSchema =
-  McpWriteContextSchema.merge(DocumentFolderIdToolInputSchema);
+export const McpDeleteDocumentFolderRequestSchema = McpWriteContextSchema.merge(
+  DocumentFolderIdToolInputSchema,
+);
 
 export type McpDeleteDocumentFolderRequest = z.infer<
   typeof McpDeleteDocumentFolderRequestSchema
@@ -757,6 +747,33 @@ export type McpDocumentSearchRequest = DocumentListQuery & {
   spaceId: string;
 };
 
+export const McpDocumentSearchHitSchema = z
+  .object({
+    chunkId: UlidSchema,
+    ordinal: z.number().int().min(0),
+    headingPath: z.string().min(1).max(1000).optional(),
+    snippet: z.string().min(1).max(400),
+  })
+  .strict();
+
+export type McpDocumentSearchHit = z.infer<typeof McpDocumentSearchHitSchema>;
+
+export const McpDocumentSearchResultSchema = DocumentListItemSchema.extend({
+  hits: z.array(McpDocumentSearchHitSchema).max(3),
+}).strict();
+
+export type McpDocumentSearchResult = z.infer<
+  typeof McpDocumentSearchResultSchema
+>;
+
+export const McpDocumentSearchResponseSchema = pageResultSchema(
+  McpDocumentSearchResultSchema,
+);
+
+export type McpDocumentSearchResponse = z.infer<
+  typeof McpDocumentSearchResponseSchema
+>;
+
 const VersionBoardToolInputSchema = z
   .object({
     versionId: UlidSchema,
@@ -764,14 +781,17 @@ const VersionBoardToolInputSchema = z
   .merge(VersionBoardViewQuerySchema)
   .strict();
 
-const SpaceOverviewToolInputSchema =
-  SpaceToolContextSchema.merge(SpaceOverviewViewQuerySchema);
+const SpaceOverviewToolInputSchema = SpaceToolContextSchema.merge(
+  SpaceOverviewViewQuerySchema,
+);
 
-const SpaceExceptionsToolInputSchema =
-  SpaceToolContextSchema.merge(SpaceExceptionsViewQuerySchema);
+const SpaceExceptionsToolInputSchema = SpaceToolContextSchema.merge(
+  SpaceExceptionsViewQuerySchema,
+);
 
-const IntakeListToolInputSchema =
-  SpaceToolContextSchema.merge(IntakeItemListQuerySchema);
+const IntakeListToolInputSchema = SpaceToolContextSchema.merge(
+  IntakeItemListQuerySchema,
+);
 
 const McpCreateIntakeRequestSchema = McpWriteContextSchema.merge(
   CreateIntakeItemRequestSchema,
@@ -820,9 +840,10 @@ export type McpCreateDocumentFromMarkdownRequest = McpWriteContext & {
   title?: PasteDocumentRequest["title"];
 };
 
-export const McpAppendDocumentContentRequestSchema = McpWriteContextSchema.merge(
-  DocumentIdToolInputSchema,
-).merge(AppendDocumentContentRequestSchema);
+export const McpAppendDocumentContentRequestSchema =
+  McpWriteContextSchema.merge(DocumentIdToolInputSchema).merge(
+    AppendDocumentContentRequestSchema,
+  );
 
 export type McpAppendDocumentContentRequest = McpWriteContext &
   AppendDocumentContentRequest & {
@@ -859,10 +880,9 @@ export type McpLinkDocumentResourcesRequest = McpWriteContext &
     documentId: string;
   };
 
-export const McpMoveDocumentToFolderRequestSchema =
-  McpWriteContextSchema.merge(DocumentIdToolInputSchema).merge(
-    MoveDocumentToFolderRequestSchema,
-  );
+export const McpMoveDocumentToFolderRequestSchema = McpWriteContextSchema.merge(
+  DocumentIdToolInputSchema,
+).merge(MoveDocumentToFolderRequestSchema);
 
 export type McpMoveDocumentToFolderRequest = McpWriteContext & {
   baseRevision?: number;
@@ -998,7 +1018,8 @@ export const mcpToolContracts = [
   tool({
     name: "pdm.object.lookup_code",
     title: "Lookup object by display code",
-    description: "Resolve REQ-n, INTAKE-n, TASK-n or BUG-n within allowed scope.",
+    description:
+      "Resolve REQ-n, INTAKE-n, TASK-n or BUG-n within allowed scope.",
     scopes: ["mcp:read"],
     annotations: ReadToolAnnotations,
     inputSchema: ObjectCodeLookupQuerySchema,
@@ -1034,7 +1055,8 @@ export const mcpToolContracts = [
   tool({
     name: "pdm.exceptions.list",
     title: "List space exceptions",
-    description: "Return overdue, blocked, pending and stale work item signals.",
+    description:
+      "Return overdue, blocked, pending and stale work item signals.",
     scopes: ["mcp:read"],
     annotations: ReadToolAnnotations,
     inputSchema: SpaceExceptionsToolInputSchema,
@@ -1052,8 +1074,7 @@ export const mcpToolContracts = [
   tool({
     name: "pdm.requirement.create",
     title: "Create Markdown requirement",
-    description:
-      `Create a confirmed requirement from Markdown content.${WriteTargetPolicyDescription}`,
+    description: `Create a confirmed requirement from Markdown content.${WriteTargetPolicyDescription}`,
     scopes: ["mcp:write:requirement"],
     annotations: CreateToolAnnotations,
     inputSchema: McpCreateRequirementRequestSchema,
@@ -1071,8 +1092,7 @@ export const mcpToolContracts = [
   tool({
     name: "pdm.intake.create",
     title: "Create intake item",
-    description:
-      `Create an intake item in a project space.${WriteTargetPolicyDescription}`,
+    description: `Create an intake item in a project space.${WriteTargetPolicyDescription}`,
     scopes: ["mcp:write:intake"],
     annotations: CreateToolAnnotations,
     inputSchema: McpCreateIntakeRequestSchema,
@@ -1090,8 +1110,7 @@ export const mcpToolContracts = [
   tool({
     name: "pdm.work_item.create_task",
     title: "Create task",
-    description:
-      `Create a task work item in a project space.${WriteTargetPolicyDescription}`,
+    description: `Create a task work item in a project space.${WriteTargetPolicyDescription}`,
     scopes: ["mcp:write:workitem"],
     annotations: CreateToolAnnotations,
     inputSchema: McpCreateTaskRequestSchema,
@@ -1100,8 +1119,7 @@ export const mcpToolContracts = [
   tool({
     name: "pdm.work_item.update",
     title: "Update work item",
-    description:
-      `Update editable task or work item fields.${WriteTargetPolicyDescription}`,
+    description: `Update editable task or work item fields.${WriteTargetPolicyDescription}`,
     scopes: ["mcp:write:workitem"],
     annotations: UpdateToolAnnotations,
     inputSchema: McpUpdateWorkItemRequestSchema,
@@ -1110,8 +1128,7 @@ export const mcpToolContracts = [
   tool({
     name: "pdm.work_item.execute_action",
     title: "Execute workflow action",
-    description:
-      `Execute an available workflow action on a work item.${WriteTargetPolicyDescription}`,
+    description: `Execute an available workflow action on a work item.${WriteTargetPolicyDescription}`,
     scopes: ["mcp:execute:workflow"],
     annotations: UpdateToolAnnotations,
     inputSchema: McpExecuteWorkItemActionRequestSchema,
@@ -1138,8 +1155,7 @@ export const mcpToolContracts = [
   tool({
     name: "pdm.comment.create",
     title: "Create comment",
-    description:
-      `Add a comment to a requirement, intake item, work item or document.${WriteTargetPolicyDescription}`,
+    description: `Add a comment to a requirement, intake item, work item or document.${WriteTargetPolicyDescription}`,
     scopes: ["mcp:write:comment"],
     annotations: CreateToolAnnotations,
     inputSchema: McpCreateCommentRequestSchema,
@@ -1158,8 +1174,7 @@ export const mcpToolContracts = [
   tool({
     name: "pdm.document_folder.create",
     title: "Create document folder",
-    description:
-      `Create a shared document folder in a project space.${WriteTargetPolicyDescription}`,
+    description: `Create a shared document folder in a project space.${WriteTargetPolicyDescription}`,
     scopes: ["mcp:write:document"],
     annotations: CreateToolAnnotations,
     inputSchema: McpCreateDocumentFolderRequestSchema,
@@ -1168,8 +1183,7 @@ export const mcpToolContracts = [
   tool({
     name: "pdm.document_folder.update",
     title: "Update document folder",
-    description:
-      `Rename a shared document folder.${WriteTargetPolicyDescription}`,
+    description: `Rename a shared document folder.${WriteTargetPolicyDescription}`,
     scopes: ["mcp:write:document"],
     annotations: UpdateToolAnnotations,
     inputSchema: McpUpdateDocumentFolderRequestSchema,
@@ -1178,8 +1192,7 @@ export const mcpToolContracts = [
   tool({
     name: "pdm.document_folder.move",
     title: "Move document folder",
-    description:
-      `Move a shared document folder under another folder or back to the root.${WriteTargetPolicyDescription}`,
+    description: `Move a shared document folder under another folder or back to the root.${WriteTargetPolicyDescription}`,
     scopes: ["mcp:write:document"],
     annotations: UpdateToolAnnotations,
     inputSchema: McpMoveDocumentFolderRequestSchema,
@@ -1188,8 +1201,7 @@ export const mcpToolContracts = [
   tool({
     name: "pdm.document_folder.delete",
     title: "Delete document folder",
-    description:
-      `Delete an empty shared document folder.${WriteTargetPolicyDescription}`,
+    description: `Delete an empty shared document folder.${WriteTargetPolicyDescription}`,
     scopes: ["mcp:write:document"],
     annotations: UpdateToolAnnotations,
     inputSchema: McpDeleteDocumentFolderRequestSchema,
@@ -1202,7 +1214,7 @@ export const mcpToolContracts = [
     scopes: ["mcp:read"],
     annotations: ReadToolAnnotations,
     inputSchema: McpDocumentSearchRequestSchema,
-    outputSchema: ListDocumentsResponseSchema,
+    outputSchema: McpDocumentSearchResponseSchema,
   }),
   tool({
     name: "pdm.document.get",
@@ -1216,8 +1228,7 @@ export const mcpToolContracts = [
   tool({
     name: "pdm.document.create_from_markdown",
     title: "Create document from Markdown",
-    description:
-      `Create a document from Markdown content.${WriteTargetPolicyDescription}`,
+    description: `Create a document from Markdown content.${WriteTargetPolicyDescription}`,
     scopes: ["mcp:write:document"],
     annotations: CreateToolAnnotations,
     inputSchema: McpCreateDocumentFromMarkdownRequestSchema,
@@ -1226,8 +1237,7 @@ export const mcpToolContracts = [
   tool({
     name: "pdm.document.append_content",
     title: "Append document content",
-    description:
-      `Append Markdown content to a document. Requires baseRevision.${WriteTargetPolicyDescription}`,
+    description: `Append Markdown content to a document. Requires baseRevision.${WriteTargetPolicyDescription}`,
     scopes: ["mcp:write:document"],
     annotations: UpdateToolAnnotations,
     inputSchema: McpAppendDocumentContentRequestSchema,
@@ -1236,8 +1246,7 @@ export const mcpToolContracts = [
   tool({
     name: "pdm.document.replace_content",
     title: "Replace document content",
-    description:
-      `Replace a document's full Markdown content. Requires baseRevision.${WriteTargetPolicyDescription}`,
+    description: `Replace a document's full Markdown content. Requires baseRevision.${WriteTargetPolicyDescription}`,
     scopes: ["mcp:write:document"],
     annotations: UpdateToolAnnotations,
     inputSchema: McpReplaceDocumentContentRequestSchema,
@@ -1246,8 +1255,7 @@ export const mcpToolContracts = [
   tool({
     name: "pdm.document.update_metadata",
     title: "Update document metadata",
-    description:
-      `Update document title, tags or linked resources.${WriteTargetPolicyDescription}`,
+    description: `Update document title, tags or linked resources.${WriteTargetPolicyDescription}`,
     scopes: ["mcp:write:document"],
     annotations: UpdateToolAnnotations,
     inputSchema: McpUpdateDocumentMetadataRequestSchema,
@@ -1256,8 +1264,7 @@ export const mcpToolContracts = [
   tool({
     name: "pdm.document.link_resources",
     title: "Link document resources",
-    description:
-      `Replace the resources linked to a document. Requires baseRevision.${WriteTargetPolicyDescription}`,
+    description: `Replace the resources linked to a document. Requires baseRevision.${WriteTargetPolicyDescription}`,
     scopes: ["mcp:write:document"],
     annotations: UpdateToolAnnotations,
     inputSchema: McpLinkDocumentResourcesRequestSchema,
@@ -1266,8 +1273,7 @@ export const mcpToolContracts = [
   tool({
     name: "pdm.document.move_to_folder",
     title: "Move document to folder",
-    description:
-      `Move a document into a shared folder, or pass folderId=null to move it to Unfiled.${WriteTargetPolicyDescription}`,
+    description: `Move a document into a shared folder, or pass folderId=null to move it to Unfiled.${WriteTargetPolicyDescription}`,
     scopes: ["mcp:write:document"],
     annotations: UpdateToolAnnotations,
     inputSchema: McpMoveDocumentToFolderRequestSchema,
@@ -1276,8 +1282,7 @@ export const mcpToolContracts = [
   tool({
     name: "pdm.tag.replace_assignments",
     title: "Replace tag assignments",
-    description:
-      `Replace all tags assigned to a requirement, intake item or work item.${WriteTargetPolicyDescription}`,
+    description: `Replace all tags assigned to a requirement, intake item or work item.${WriteTargetPolicyDescription}`,
     scopes: ["mcp:write:tag"],
     annotations: UpdateToolAnnotations,
     inputSchema: McpReplaceTagAssignmentsRequestSchema,
@@ -1341,9 +1346,7 @@ export const McpToolBusinessErrorSchema = z
   })
   .strict();
 
-export type McpToolBusinessError = z.infer<
-  typeof McpToolBusinessErrorSchema
->;
+export type McpToolBusinessError = z.infer<typeof McpToolBusinessErrorSchema>;
 
 export const McpToolResultSchema = z
   .object({
@@ -1370,16 +1373,12 @@ export const McpJsonRpcRequestIdSchema = z.union([
   z.string().min(1),
   z.number().int(),
 ]);
-export type McpJsonRpcRequestId = z.infer<
-  typeof McpJsonRpcRequestIdSchema
->;
+export type McpJsonRpcRequestId = z.infer<typeof McpJsonRpcRequestIdSchema>;
 
 export const McpJsonRpcResponseIdSchema = McpJsonRpcRequestIdSchema.or(
   z.null(),
 );
-export type McpJsonRpcResponseId = z.infer<
-  typeof McpJsonRpcResponseIdSchema
->;
+export type McpJsonRpcResponseId = z.infer<typeof McpJsonRpcResponseIdSchema>;
 
 export const McpServerCapabilitiesSchema = z
   .object({
@@ -1420,9 +1419,7 @@ export const McpInitializeResultSchema = z
   })
   .strict();
 
-export type McpInitializeResult = z.infer<
-  typeof McpInitializeResultSchema
->;
+export type McpInitializeResult = z.infer<typeof McpInitializeResultSchema>;
 
 export const McpToolsListParamsSchema = z
   .object({

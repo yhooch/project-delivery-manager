@@ -43,6 +43,7 @@ import {
   type AppendDocumentContentRequest,
   type Document,
   type DocumentDetail,
+  type DocumentListItem,
   type DocumentLink,
   type DocumentLinksByTargetQuery,
   type DocumentListQuery,
@@ -97,11 +98,13 @@ export class DocumentImportUploadErrorInterceptor implements NestInterceptor {
     _context: ExecutionContext,
     next: CallHandler,
   ): Observable<unknown> | Promise<Observable<unknown>> {
-    return next.handle().pipe(
-      catchError((error: unknown) =>
-        throwError(() => mapDocumentImportUploadException(error)),
-      ),
-    );
+    return next
+      .handle()
+      .pipe(
+        catchError((error: unknown) =>
+          throwError(() => mapDocumentImportUploadException(error)),
+        ),
+      );
   }
 }
 
@@ -122,7 +125,7 @@ export class DocumentController {
     @Query(new ZodValidationPipe(DocumentListQuerySchema))
     query: DocumentListQuery,
     @Req() request: RequestWithContext,
-  ): Promise<PageResult<Document>> {
+  ): Promise<PageResult<DocumentListItem>> {
     const session = this.currentUser.requireSession(request);
 
     return this.documents.list(session.userId, params.spaceId, query);
@@ -396,7 +399,11 @@ export class DocumentController {
   ) {
     const session = this.currentUser.requireSession(request);
 
-    return this.documents.listRevisions(session.userId, params.documentId, query);
+    return this.documents.listRevisions(
+      session.userId,
+      params.documentId,
+      query,
+    );
   }
 
   @Get("documents/:documentId/links")
@@ -467,7 +474,9 @@ export function mapDocumentImportUploadException(error: unknown): unknown {
   return error;
 }
 
-function requireUploadedFile(file: UploadedFileInput | undefined): UploadedDocumentFile {
+function requireUploadedFile(
+  file: UploadedFileInput | undefined,
+): UploadedDocumentFile {
   if (
     !file?.buffer ||
     !file.originalname ||

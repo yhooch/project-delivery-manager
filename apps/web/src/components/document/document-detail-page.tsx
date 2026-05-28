@@ -547,7 +547,8 @@ export function DocumentDetailPage({ documentId }: DocumentDetailPageProps) {
     setAttachmentErrorKey(null);
     try {
       await uploadAttachment({
-        existingAttachmentCount: document.attachments?.length ?? 0,
+        existingAttachmentCount:
+          document.attachmentTotal ?? document.attachments?.length ?? 0,
         file,
         targetId: document.id,
         targetType: "DOCUMENT",
@@ -640,10 +641,7 @@ export function DocumentDetailPage({ documentId }: DocumentDetailPageProps) {
               data-testid="document-back-to-list-bar"
             >
               <Button asChild size="sm" variant="ghost" className="-ml-2">
-                <Link
-                  href={backToListHref}
-                  data-testid="document-back-to-list"
-                >
+                <Link href={backToListHref} data-testid="document-back-to-list">
                   <ChevronLeft className="h-4 w-4" aria-hidden="true" />
                   {t("actions.backToList")}
                 </Link>
@@ -1643,6 +1641,10 @@ function DocumentContextRail({
   locale: string;
 }) {
   const t = useTranslations("documents");
+  const commentTotal = document.commentTotal ?? document.comments?.length ?? 0;
+  const attachmentTotal =
+    document.attachmentTotal ?? document.attachments?.length ?? 0;
+  const timelineItems = document.timeline ?? [];
 
   return (
     <aside className="min-w-0 lg:col-span-2 xl:col-span-1 xl:sticky xl:top-16 xl:max-h-[calc(100vh-5rem)] xl:overflow-y-auto">
@@ -1667,11 +1669,11 @@ function DocumentContextRail({
           title={t("rail.comments")}
         >
           <RailJumpLink
-            count={(document.comments ?? []).length}
+            count={commentTotal}
             emptyLabel={t("rail.noComments")}
             href="#document-comments"
             label={t("rail.viewAll", {
-              count: (document.comments ?? []).length,
+              count: commentTotal,
             })}
           />
         </RailSection>
@@ -1680,11 +1682,11 @@ function DocumentContextRail({
           title={t("rail.attachments")}
         >
           <RailJumpLink
-            count={(document.attachments ?? []).length}
+            count={attachmentTotal}
             emptyLabel={t("rail.noAttachments")}
             href="#document-attachments"
             label={t("rail.viewAll", {
-              count: (document.attachments ?? []).length,
+              count: attachmentTotal,
             })}
           />
         </RailSection>
@@ -1692,7 +1694,7 @@ function DocumentContextRail({
           icon={<Clock3 className="h-4 w-4" />}
           title={t("rail.timeline")}
         >
-          {(document.timeline ?? []).slice(0, 3).map((event) => (
+          {timelineItems.slice(0, 3).map((event) => (
             <div key={event.id} className="text-xs text-muted-foreground">
               <div className="text-foreground">{event.changeType}</div>
               <div>
@@ -1700,7 +1702,7 @@ function DocumentContextRail({
               </div>
             </div>
           ))}
-          {(document.timeline ?? []).length === 0 ? (
+          {(document.timelineTotal ?? timelineItems.length) === 0 ? (
             <p className="text-xs text-muted-foreground">
               {t("rail.noTimeline")}
             </p>
@@ -1820,14 +1822,26 @@ async function getDocumentWithSubresources(input: {
       attachments.status === "fulfilled"
         ? attachments.value.items.map(toDocumentAttachmentSummary)
         : document.attachments,
+    attachmentTotal:
+      attachments.status === "fulfilled"
+        ? attachments.value.total
+        : document.attachmentTotal,
     comments:
       comments.status === "fulfilled"
         ? comments.value.items.map(toDocumentCommentSummary)
         : document.comments,
+    commentTotal:
+      comments.status === "fulfilled"
+        ? comments.value.total
+        : document.commentTotal,
     timeline:
       timeline.status === "fulfilled"
         ? timeline.value.items.map(toDocumentTimelineSummary)
         : document.timeline,
+    timelineTotal:
+      timeline.status === "fulfilled"
+        ? timeline.value.total
+        : document.timelineTotal,
   };
 }
 

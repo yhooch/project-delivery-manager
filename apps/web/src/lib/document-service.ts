@@ -62,9 +62,12 @@ export type DocumentSummary = {
 
 export type DocumentDetail = DocumentSummary & {
   attachments?: DocumentAttachmentSummary[];
+  attachmentTotal?: number;
   comments?: DocumentCommentSummary[];
+  commentTotal?: number;
   contentMarkdown: string;
   timeline?: DocumentTimelineSummary[];
+  timelineTotal?: number;
 };
 
 export type DocumentAttachmentSummary = {
@@ -94,10 +97,7 @@ export type DocumentPageResult<TItem> = {
   total: number;
 };
 
-export type DocumentSortBy =
-  | "lastEditedAt"
-  | "createdAt"
-  | "title";
+export type DocumentSortBy = "lastEditedAt" | "createdAt" | "title";
 
 export type DocumentFolder = {
   children?: DocumentFolder[];
@@ -259,7 +259,6 @@ const documentSummaryBaseSchema = z
   .object({
     archivedAt: z.string().nullish(),
     contentSnippet: z.string().nullish(),
-    contentText: z.string().optional(),
     createdAt: z.string(),
     createdById: z.string().nullish(),
     createdByName: z.string().nullish(),
@@ -300,6 +299,7 @@ const documentDetailSchema = documentSummaryBaseSchema
           .passthrough(),
       )
       .optional(),
+    attachmentTotal: z.number().optional(),
     comments: z
       .array(
         z
@@ -312,6 +312,7 @@ const documentDetailSchema = documentSummaryBaseSchema
           .passthrough(),
       )
       .optional(),
+    commentTotal: z.number().optional(),
     contentMarkdown: z.string().catch(""),
     timeline: z
       .array(
@@ -325,14 +326,18 @@ const documentDetailSchema = documentSummaryBaseSchema
           .passthrough(),
       )
       .optional(),
+    timelineTotal: z.number().optional(),
   })
   .passthrough()
   .transform((document) => ({
     ...toDocumentSummary(document),
     attachments: document.attachments,
+    attachmentTotal: document.attachmentTotal,
     comments: document.comments,
+    commentTotal: document.commentTotal,
     contentMarkdown: document.contentMarkdown,
     timeline: document.timeline,
+    timelineTotal: document.timelineTotal,
   }));
 
 const documentPageSchema = z
@@ -451,10 +456,13 @@ export async function updateDocument(
   }
 
   if (contentMarkdown !== undefined) {
-    const response = await api.patch<unknown>(`/documents/${documentId}/content`, {
-      baseRevision: document?.revision ?? input.baseRevision,
-      contentMarkdown,
-    });
+    const response = await api.patch<unknown>(
+      `/documents/${documentId}/content`,
+      {
+        baseRevision: document?.revision ?? input.baseRevision,
+        contentMarkdown,
+      },
+    );
     document = documentDetailSchema.parse(response.data);
   }
 
@@ -688,24 +696,13 @@ function optionalString(value: string | undefined) {
   return trimmed ? trimmed : undefined;
 }
 
-function toDocumentSummary<TDocument extends { contentSnippet?: string | null; contentText?: string }>(
-  document: TDocument,
-) {
+function toDocumentSummary<
+  TDocument extends { contentSnippet?: string | null },
+>(document: TDocument) {
   return {
     ...document,
-    contentSnippet:
-      document.contentSnippet ?? createContentSnippet(document.contentText),
+    contentSnippet: document.contentSnippet ?? undefined,
   };
-}
-
-function createContentSnippet(contentText: string | undefined) {
-  const normalized = contentText?.replace(/\s+/gu, " ").trim();
-
-  if (!normalized) {
-    return undefined;
-  }
-
-  return normalized.length > 180 ? `${normalized.slice(0, 177)}...` : normalized;
 }
 
 function toDocumentListFilterQuery(

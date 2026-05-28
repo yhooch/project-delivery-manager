@@ -8,6 +8,7 @@ import type {
   DocumentDetail,
   DocumentFolder,
   DocumentFolderPathItem,
+  DocumentListItem,
   DocumentLink,
   DocumentLinkTargetType,
   DocumentRevision,
@@ -43,6 +44,11 @@ type PrismaDocumentRecord = {
   title: string;
   updatedAt: Date;
 };
+
+type PrismaDocumentListRecord = Omit<
+  PrismaDocumentRecord,
+  "contentMarkdown" | "contentText"
+>;
 
 type PrismaDocumentFolderRecord = {
   createdAt: Date;
@@ -181,6 +187,47 @@ export function toDocument(
   });
 }
 
+export function toDocumentListItem(
+  record: PrismaDocumentListRecord,
+  input: {
+    contentSnippet?: string;
+    folderPath?: DocumentFolderPathItem[];
+    links?: PrismaDocumentLinkRecord[];
+    tags?: TagDto[];
+  } & DocumentActorDisplayContext = {},
+): DocumentListItem {
+  return removeUndefined({
+    id: record.id,
+    organizationId: record.organizationId,
+    spaceId: record.spaceId,
+    folderId: record.folderId ?? undefined,
+    folderPath: input.folderPath,
+    title: record.title,
+    contentSnippet: input.contentSnippet,
+    sourceType: record.sourceType,
+    sourceAttachmentId: record.sourceAttachmentId ?? undefined,
+    status: record.status,
+    revision: record.revision,
+    createdById: record.createdById ?? record.lastEditedById,
+    createdByName: input.createdByName,
+    createdVia: record.createdVia,
+    createdMcpClientId: record.createdMcpClientId ?? undefined,
+    createdMcpClientName: input.createdMcpClientName,
+    lastEditedById: record.lastEditedById,
+    lastEditedByName: input.lastEditedByName,
+    lastEditedVia: record.lastEditedVia,
+    lastEditedMcpClientId: record.lastEditedMcpClientId ?? undefined,
+    lastEditedMcpClientName: input.lastEditedMcpClientName,
+    lastEditedAt: record.lastEditedAt.toISOString(),
+    archivedAt: record.archivedAt?.toISOString(),
+    deletedAt: record.deletedAt?.toISOString(),
+    tags: input.tags,
+    links: input.links?.map(toDocumentLink),
+    createdAt: record.createdAt.toISOString(),
+    updatedAt: record.updatedAt.toISOString(),
+  });
+}
+
 export function toDocumentFolder(
   record: PrismaDocumentFolderRecord,
 ): DocumentFolder {
@@ -205,18 +252,24 @@ export function toDocumentDetail(
   record: PrismaDocumentRecord,
   input: {
     attachments?: PrismaDocumentAttachmentOverviewRecord[];
+    attachmentTotal?: number;
     chunks?: PrismaDocumentChunkRecord[];
     comments?: PrismaDocumentCommentOverviewRecord[];
+    commentTotal?: number;
     links?: PrismaDocumentLinkRecord[];
     tags?: TagDto[];
     timeline?: PrismaDocumentTimelineOverviewRecord[];
+    timelineTotal?: number;
   } = {},
 ): DocumentDetail {
   return {
     ...toDocument(record, input),
     attachments: (input.attachments ?? []).map(toDocumentAttachmentOverview),
+    attachmentTotal: input.attachmentTotal ?? input.attachments?.length ?? 0,
     comments: (input.comments ?? []).map(toDocumentCommentOverview),
+    commentTotal: input.commentTotal ?? input.comments?.length ?? 0,
     timeline: (input.timeline ?? []).map(toDocumentTimelineOverview),
+    timelineTotal: input.timelineTotal ?? input.timeline?.length ?? 0,
   };
 }
 
@@ -258,7 +311,9 @@ export function toDocumentLink(record: PrismaDocumentLinkRecord): DocumentLink {
   });
 }
 
-export function toDocumentChunk(record: PrismaDocumentChunkRecord): DocumentChunk {
+export function toDocumentChunk(
+  record: PrismaDocumentChunkRecord,
+): DocumentChunk {
   return removeUndefined({
     id: record.id,
     organizationId: record.organizationId,

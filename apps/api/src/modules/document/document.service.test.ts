@@ -1,4 +1,9 @@
-import type { Document, DocumentDetail } from "@project-delivery/shared";
+import type {
+  Document,
+  DocumentChunk,
+  DocumentDetail,
+  DocumentListItem,
+} from "@project-delivery/shared";
 import { ulid } from "ulid";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -76,6 +81,90 @@ describe("DocumentService", () => {
     expect(documents.findById).toHaveBeenCalledWith(DOCUMENT_ID);
     expect(spaces.findAccessibleById).toHaveBeenCalledWith(ACTOR_ID, SPACE_ID);
     expect(documents.findDetailById).toHaveBeenCalledWith(DOCUMENT_ID);
+  });
+
+  it("returns MCP search results with per-document chunk hit snippets", async () => {
+    const contentText = `${"before ".repeat(80)}Target\n Insight${" after".repeat(
+      80,
+    )}`;
+    const chunk = fakeChunk({
+      contentText,
+      headingPath: "Findings",
+    });
+    const { documents, service } = createSubject({
+      document: fakeDocument({
+        contentText: "Title match only",
+        title: "Title match",
+      }),
+      searchChunks: [chunk],
+    });
+
+    const result = await service.searchForMcp(ACTOR_ID, SPACE_ID, {
+      page: 1,
+      pageSize: 20,
+      query: "target insight",
+      tagMatch: "ANY",
+    });
+
+    expect(documents.list).toHaveBeenCalledWith(
+      expect.objectContaining({
+        organizationId: ORGANIZATION_ID,
+        query: "target insight",
+        spaceId: SPACE_ID,
+      }),
+    );
+    expect(documents.searchCurrentRevisionChunks).toHaveBeenCalledWith(
+      expect.objectContaining({
+        documents: [{ documentId: DOCUMENT_ID, revision: 1 }],
+        maxHitsPerDocument: 3,
+        organizationId: ORGANIZATION_ID,
+        query: "target insight",
+        spaceId: SPACE_ID,
+      }),
+    );
+    const hit = result.items[0]?.hits[0];
+
+    expect(result.items[0]).not.toHaveProperty("contentMarkdown");
+    expect(result.items[0]).not.toHaveProperty("contentText");
+    expect(result.items[0]?.hits).toEqual([
+      expect.objectContaining({
+        chunkId: chunk.id,
+        headingPath: "Findings",
+        ordinal: 0,
+        snippet: expect.stringContaining("Target Insight"),
+      }),
+    ]);
+    expect(hit).toBeDefined();
+    if (!hit) {
+      throw new Error("Expected MCP search hit.");
+    }
+    expect(hit.snippet.length).toBeLessThan(
+      normalizeForTest(contentText).length,
+    );
+  });
+
+  it("returns empty MCP search hits when query is omitted", async () => {
+    const { documents, service } = createSubject({
+      document: fakeDocument({
+        title: "Title-only handoff",
+      }),
+    });
+
+    await expect(
+      service.searchForMcp(ACTOR_ID, SPACE_ID, {
+        page: 1,
+        pageSize: 20,
+        tagMatch: "ANY",
+      }),
+    ).resolves.toMatchObject({
+      items: [
+        {
+          hits: [],
+          title: "Title-only handoff",
+        },
+      ],
+    });
+    expect(documents.searchCurrentRevisionChunks).not.toHaveBeenCalled();
   });
 
   it("rejects stale content updates with DOCUMENT_EDIT_CONFLICT before audit", async () => {
@@ -249,7 +338,10 @@ describe("DocumentService", () => {
     );
     expect(realtime.publish).toHaveBeenCalledWith(
       expect.objectContaining({
-        invalidates: expect.arrayContaining(["document-list", "document-links"]),
+        invalidates: expect.arrayContaining([
+          "document-list",
+          "document-links",
+        ]),
         target: { type: "DOCUMENT", id: DOCUMENT_ID },
       }),
     );
@@ -435,19 +527,29 @@ describe("DocumentService", () => {
   });
 });
 
-function createSubject(input: {
-  document?: Document;
-  documentDetail?: DocumentDetail;
-  documentsById?: Map<string, Document>;
-  moveManyToFolderResult?: Awaited<
-    ReturnType<DocumentRepository["moveManyToFolder"]>
-  >;
-  replaceLinksResult?: Awaited<ReturnType<DocumentRepository["replaceLinks"]>>;
-  moveToFolderResult?: Awaited<ReturnType<DocumentRepository["moveToFolder"]>>;
-  role?: "DEVELOPER" | "PM" | "VIEWER";
-  targetSpaceId?: string;
-  updateContentResult?: Awaited<ReturnType<DocumentRepository["updateContent"]>>;
-} = {}) {
+function createSubject(
+  input: {
+    document?: Document;
+    documentDetail?: DocumentDetail;
+    documentsById?: Map<string, Document>;
+    listResult?: Awaited<ReturnType<DocumentRepository["list"]>>;
+    searchChunks?: DocumentChunk[];
+    moveManyToFolderResult?: Awaited<
+      ReturnType<DocumentRepository["moveManyToFolder"]>
+    >;
+    replaceLinksResult?: Awaited<
+      ReturnType<DocumentRepository["replaceLinks"]>
+    >;
+    moveToFolderResult?: Awaited<
+      ReturnType<DocumentRepository["moveToFolder"]>
+    >;
+    role?: "DEVELOPER" | "PM" | "VIEWER";
+    targetSpaceId?: string;
+    updateContentResult?: Awaited<
+      ReturnType<DocumentRepository["updateContent"]>
+    >;
+  } = {},
+) {
   const document = input.document ?? fakeDocument({ createdById: OWNER_ID });
   const documents = {
     create: vi.fn(async (createInput) =>
@@ -458,38 +560,53 @@ function createSubject(input: {
         title: createInput.title,
       }),
     ),
-    findById: vi.fn(async (documentId) =>
-      input.documentsById?.get(documentId) ?? document,
+    findById: vi.fn(
+      async (documentId) => input.documentsById?.get(documentId) ?? document,
     ),
-    findDetailById: vi.fn(async () => input.documentDetail ?? fakeDocumentDetail(document)),
-    list: vi.fn(),
+    findDetailById: vi.fn(
+      async () => input.documentDetail ?? fakeDocumentDetail(document),
+    ),
+    list: vi.fn(
+      async () =>
+        input.listResult ?? {
+          items: [fakeDocumentListItem(document)],
+          page: 1,
+          pageSize: 20,
+          total: 1,
+        },
+    ),
     listChunks: vi.fn(),
+    searchCurrentRevisionChunks: vi.fn(async () => input.searchChunks ?? []),
     listLinks: vi.fn(async () => []),
     listLinksByTarget: vi.fn(),
     listRevisions: vi.fn(),
-    moveToFolder: vi.fn(async () =>
-      input.moveToFolderResult ?? {
-        status: "updated",
-        document: fakeDocument({ revision: document.revision + 1 }),
-      },
+    moveToFolder: vi.fn(
+      async () =>
+        input.moveToFolderResult ?? {
+          status: "updated",
+          document: fakeDocument({ revision: document.revision + 1 }),
+        },
     ),
-    moveManyToFolder: vi.fn(async () =>
-      input.moveManyToFolderResult ?? {
-        status: "updated",
-        documents: [fakeDocument({ revision: document.revision + 1 })],
-      },
+    moveManyToFolder: vi.fn(
+      async () =>
+        input.moveManyToFolderResult ?? {
+          status: "updated",
+          documents: [fakeDocument({ revision: document.revision + 1 })],
+        },
     ),
-    replaceLinks: vi.fn(async () =>
-      input.replaceLinksResult ?? {
-        status: "updated",
-        document: fakeDocument({ revision: document.revision + 1 }),
-      },
+    replaceLinks: vi.fn(
+      async () =>
+        input.replaceLinksResult ?? {
+          status: "updated",
+          document: fakeDocument({ revision: document.revision + 1 }),
+        },
     ),
-    updateContent: vi.fn(async () =>
-      input.updateContentResult ?? {
-        status: "updated",
-        document: fakeDocument({ revision: document.revision + 1 }),
-      },
+    updateContent: vi.fn(
+      async () =>
+        input.updateContentResult ?? {
+          status: "updated",
+          document: fakeDocument({ revision: document.revision + 1 }),
+        },
     ),
     updateMetadata: vi.fn(),
     updateState: vi.fn(),
@@ -588,13 +705,50 @@ function fakeDocument(input: Partial<Document> = {}): Document {
   };
 }
 
-function fakeDocumentDetail(input: Partial<DocumentDetail> = {}): DocumentDetail {
+function fakeDocumentDetail(
+  input: Partial<DocumentDetail> = {},
+): DocumentDetail {
   return {
     ...fakeDocument(input),
     attachments: input.attachments ?? [],
+    attachmentTotal: input.attachmentTotal ?? input.attachments?.length ?? 0,
     comments: input.comments ?? [],
+    commentTotal: input.commentTotal ?? input.comments?.length ?? 0,
     timeline: input.timeline ?? [],
+    timelineTotal: input.timelineTotal ?? input.timeline?.length ?? 0,
   };
+}
+
+function fakeDocumentListItem(input: Document): DocumentListItem {
+  const {
+    contentMarkdown: _contentMarkdown,
+    contentText: _contentText,
+    chunks: _chunks,
+    ...item
+  } = input;
+
+  return item;
+}
+
+function fakeChunk(input: Partial<DocumentChunk> = {}): DocumentChunk {
+  const chunk = {
+    id: input.id ?? "01H00000000000000000000008",
+    organizationId: input.organizationId ?? ORGANIZATION_ID,
+    spaceId: input.spaceId ?? SPACE_ID,
+    documentId: input.documentId ?? DOCUMENT_ID,
+    revision: input.revision ?? 1,
+    ordinal: input.ordinal ?? 0,
+    contentText: input.contentText ?? "Agent handoff",
+    createdAt: input.createdAt ?? "2026-05-27T00:00:00.000Z",
+  };
+
+  return input.headingPath
+    ? { ...chunk, headingPath: input.headingPath }
+    : chunk;
+}
+
+function normalizeForTest(value: string) {
+  return value.replace(/\s+/gu, " ").trim();
 }
 
 function docxUploadFile() {
@@ -603,7 +757,8 @@ function docxUploadFile() {
   return {
     buffer,
     fileName: "document.docx",
-    mimeType: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    mimeType:
+      "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
     size: buffer.length,
   };
 }

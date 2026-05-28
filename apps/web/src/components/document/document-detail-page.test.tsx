@@ -358,6 +358,34 @@ describe("DocumentDetailPage", () => {
     ).toBeVisible();
   });
 
+  it("uses subresource totals in the context rail", async () => {
+    listCommentsMock.mockResolvedValueOnce({
+      items: [
+        {
+          author: { name: "Ada", username: "ada" },
+          body: "First visible comment",
+          createdAt: "2026-05-27T12:00:00.000Z",
+          id: "CMT_01",
+        },
+      ],
+      total: 9,
+    });
+    listAttachmentsMock.mockResolvedValueOnce({
+      items: [{ fileName: "source.docx", id: "ATT_01", size: 1024 }],
+      total: 7,
+    });
+
+    render(<DocumentDetailPage documentId="DOC_01" />);
+
+    const rail = await screen.findByTestId("document-context-rail");
+    expect(
+      within(rail).getByRole("link", { name: /documents\.rail\.viewAll 9/u }),
+    ).toHaveAttribute("href", "#document-comments");
+    expect(
+      within(rail).getByRole("link", { name: /documents\.rail\.viewAll 7/u }),
+    ).toHaveAttribute("href", "#document-attachments");
+  });
+
   it("uses the stored document list href for the back-to-list action", async () => {
     window.sessionStorage.setItem(
       "documents.lastListHref",

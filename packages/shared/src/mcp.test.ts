@@ -9,6 +9,7 @@ import {
   McpContextSchema,
   McpCreateDocumentFolderRequestSchema,
   McpDocumentSearchRequestSchema,
+  McpDocumentSearchResponseSchema,
   McpDryRunResultSchema,
   McpEndpointPolicy,
   McpEndpointPolicySchema,
@@ -84,9 +85,9 @@ describe("MCP and OAuth shared contracts", () => {
   });
 
   it("freezes OAuth discovery, PKCE and authorized client metadata boundaries", () => {
-    expect(McpOAuthRedirectUriSchema.parse("http://localhost:3000/callback")).toBe(
-      "http://localhost:3000/callback",
-    );
+    expect(
+      McpOAuthRedirectUriSchema.parse("http://localhost:3000/callback"),
+    ).toBe("http://localhost:3000/callback");
     expect(
       McpOAuthRedirectUriSchema.safeParse("http://agent.example.com/callback")
         .success,
@@ -281,12 +282,14 @@ describe("MCP and OAuth shared contracts", () => {
         ?.scopes,
     ).toEqual(["mcp:write:document"]);
     expect(
-      mcpToolRegistry.find((tool) => tool.name === "pdm.document.move_to_folder")
-        ?.scopes,
+      mcpToolRegistry.find(
+        (tool) => tool.name === "pdm.document.move_to_folder",
+      )?.scopes,
     ).toEqual(["mcp:write:document"]);
     expect(
-      mcpToolRegistry.find((tool) => tool.name === "pdm.document.append_content")
-        ?.inputSchema,
+      mcpToolRegistry.find(
+        (tool) => tool.name === "pdm.document.append_content",
+      )?.inputSchema,
     ).toMatchObject({
       required: expect.arrayContaining(["baseRevision", "documentId"]),
     });
@@ -353,7 +356,9 @@ describe("MCP and OAuth shared contracts", () => {
       tagIds: ["01VRZ3NDEKTSV4RRFFQ69G5FAV"],
     };
 
-    expect(McpCreateDocumentFromMarkdownRequestSchema.parse(input)).toMatchObject({
+    expect(
+      McpCreateDocumentFromMarkdownRequestSchema.parse(input),
+    ).toMatchObject({
       contentMarkdown: "# Agent handoff\n\nNext steps.",
       dryRun: true,
       folderId,
@@ -370,6 +375,23 @@ describe("MCP and OAuth shared contracts", () => {
   });
 
   it("freezes MCP document folder inputs and folder-aware search", () => {
+    const document = {
+      id: "01GRZ3NDEKTSV4RRFFQ69G5FAE",
+      organizationId,
+      spaceId,
+      title: "Agent handoff",
+      sourceType: "PASTE_MARKDOWN",
+      status: "ACTIVE",
+      revision: 1,
+      createdById: "01HRZ3NDEKTSV4RRFFQ69G5FAF",
+      createdVia: "USER",
+      lastEditedById: "01HRZ3NDEKTSV4RRFFQ69G5FAF",
+      lastEditedVia: "USER",
+      lastEditedAt: "2026-05-27T00:00:00.000Z",
+      createdAt: "2026-05-27T00:00:00.000Z",
+      updatedAt: "2026-05-27T00:00:00.000Z",
+    };
+
     expect(
       McpCreateDocumentFolderRequestSchema.parse({
         organizationId,
@@ -403,6 +425,59 @@ describe("MCP and OAuth shared contracts", () => {
         page: 1,
         pageSize: 20,
         includeDescendants: true,
+      }).success,
+    ).toBe(false);
+    expect(
+      McpDocumentSearchResponseSchema.parse({
+        items: [
+          {
+            ...document,
+            hits: [
+              {
+                chunkId: "01JRZ3NDEKTSV4RRFFQ69G5FAG",
+                ordinal: 2,
+                headingPath: "Context / Decisions",
+                snippet: "The handoff keeps the next agent focused.",
+              },
+            ],
+          },
+          {
+            ...document,
+            id: "01KRZ3NDEKTSV4RRFFQ69G5FAH",
+            title: "Title-only handoff",
+            hits: [],
+          },
+        ],
+        page: 1,
+        pageSize: 20,
+        total: 2,
+      }).items,
+    ).toEqual([
+      expect.objectContaining({
+        hits: [
+          expect.objectContaining({
+            ordinal: 2,
+            snippet: expect.stringContaining("handoff"),
+          }),
+        ],
+      }),
+      expect.objectContaining({
+        hits: [],
+      }),
+    ]);
+    expect(
+      McpDocumentSearchResponseSchema.safeParse({
+        items: [
+          {
+            ...document,
+            contentMarkdown: "# Agent handoff",
+            contentText: "Agent handoff",
+            hits: [],
+          },
+        ],
+        page: 1,
+        pageSize: 20,
+        total: 1,
       }).success,
     ).toBe(false);
   });

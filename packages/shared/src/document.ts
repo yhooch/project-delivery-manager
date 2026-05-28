@@ -13,11 +13,7 @@ import {
   DocumentStatusSchema,
   WorkItemTypeSchema,
 } from "./enums.ts";
-import {
-  TagFilterQuerySchema,
-  TagIdListSchema,
-  TagListSchema,
-} from "./tag.ts";
+import { TagFilterQuerySchema, TagIdListSchema, TagListSchema } from "./tag.ts";
 
 export const DocumentMaxImportSizeBytes = 20 * 1024 * 1024;
 export const DocumentMaxMarkdownBytes = 2 * 1024 * 1024;
@@ -181,6 +177,17 @@ export const DocumentSchema = z
   .strict();
 export type Document = z.infer<typeof DocumentSchema>;
 
+export const DocumentListItemSchema = DocumentSchema.omit({
+  chunks: true,
+  contentMarkdown: true,
+  contentText: true,
+})
+  .extend({
+    contentSnippet: z.string().min(1).max(400).optional(),
+  })
+  .strict();
+export type DocumentListItem = z.infer<typeof DocumentListItemSchema>;
+
 export const DocumentCommentOverviewSchema = z
   .object({
     id: UlidSchema,
@@ -218,8 +225,11 @@ export type DocumentTimelineOverview = z.infer<
 
 export const DocumentDetailSchema = DocumentSchema.extend({
   attachments: z.array(DocumentAttachmentOverviewSchema),
+  attachmentTotal: z.number().int().min(0),
   comments: z.array(DocumentCommentOverviewSchema),
+  commentTotal: z.number().int().min(0),
   timeline: z.array(DocumentTimelineOverviewSchema),
+  timelineTotal: z.number().int().min(0),
 }).strict();
 export type DocumentDetail = z.infer<typeof DocumentDetailSchema>;
 
@@ -247,7 +257,9 @@ export const PasteDocumentRequestSchema = z
   .object({
     title: DocumentTitleSchema.optional(),
     contentMarkdown: DocumentMarkdownSchema,
-    sourceType: z.enum(["PASTE_MARKDOWN", "PASTE_TEXT"]).default("PASTE_MARKDOWN"),
+    sourceType: z
+      .enum(["PASTE_MARKDOWN", "PASTE_TEXT"])
+      .default("PASTE_MARKDOWN"),
     folderId: UlidSchema.optional(),
     tagIds: TagIdListSchema.optional(),
     links: z.array(DocumentLinkTargetSchema).max(100).optional(),
@@ -432,7 +444,9 @@ export type DocumentLinksByTargetQuery = z.infer<
   typeof DocumentLinksByTargetQuerySchema
 >;
 
-export const ListDocumentsResponseSchema = pageResultSchema(DocumentSchema);
+export const ListDocumentsResponseSchema = pageResultSchema(
+  DocumentListItemSchema,
+);
 export const ListDocumentFoldersResponseSchema = z
   .object({
     items: z.array(DocumentFolderTreeNodeSchema),
@@ -468,9 +482,8 @@ export const ListDocumentLinksResponseSchema = z
   .strict();
 export const ReplaceDocumentLinksResponseSchema =
   ListDocumentLinksResponseSchema;
-export const ListDocumentChunksResponseSchema = pageResultSchema(
-  DocumentChunkSchema,
-);
+export const ListDocumentChunksResponseSchema =
+  pageResultSchema(DocumentChunkSchema);
 export const ListDocumentLinksByTargetResponseSchema =
   pageResultSchema(DocumentLinkSchema);
 

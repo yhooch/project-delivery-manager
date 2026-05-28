@@ -5,6 +5,7 @@ import type {
   DocumentChunk,
   DocumentFolder,
   DocumentFolderTreeNode,
+  DocumentListItem,
   DocumentLink,
   DocumentLinkTarget,
   DocumentRevision,
@@ -66,6 +67,17 @@ export type DocumentListInput = {
   sortOrder?: "asc" | "desc";
 };
 
+export type SearchCurrentRevisionChunksInput = {
+  documents: Array<{
+    documentId: string;
+    revision: number;
+  }>;
+  maxHitsPerDocument: number;
+  organizationId: string;
+  query: string;
+  spaceId: string;
+};
+
 export type UpdateDocumentMetadataInput = DocumentActorInput & {
   documentId: string;
   baseRevision?: number;
@@ -123,7 +135,7 @@ export type DocumentMutationResult =
       status: "not_found";
     };
 
-export type DocumentListResult = PageResult<Document>;
+export type DocumentListResult = PageResult<DocumentListItem>;
 export type DocumentRevisionListResult = PageResult<DocumentRevision>;
 export type DocumentChunkListResult = PageResult<DocumentChunk>;
 export type DocumentLinkListResult = PageResult<DocumentLink>;

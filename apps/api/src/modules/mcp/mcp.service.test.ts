@@ -48,7 +48,7 @@ const PROTOCOL_VERSION = "2025-11-25";
 describe("McpService", () => {
   let appSessions: { buildForUser: MockFn };
   let bugs: { get: MockFn };
-  let documents: { get: MockFn; list: MockFn };
+  let documents: { get: MockFn; list: MockFn; searchForMcp: MockFn };
   let documentFolders: {
     list: MockFn;
   };
@@ -77,6 +77,7 @@ describe("McpService", () => {
     documents = {
       get: vi.fn(async () => documentDetail),
       list: vi.fn(async () => documentList),
+      searchForMcp: vi.fn(async () => mcpDocumentSearchResult),
     };
     documentFolders = {
       list: vi.fn(async () => documentFolderList),
@@ -428,13 +429,35 @@ describe("McpService", () => {
     });
     expect(documentFolders.list).toHaveBeenCalledWith(USER_ID, SPACE_ID);
 
-    await callTool(service, "pdm.document.search", {
-      spaceId: SPACE_ID,
-      page: 1,
-      pageSize: 20,
-      query: "handoff",
+    const documentSearch = expectJsonRpc(
+      await callTool(service, "pdm.document.search", {
+        spaceId: SPACE_ID,
+        page: 1,
+        pageSize: 20,
+        query: "handoff",
+      }),
+    );
+    expect(documentSearch.result).toMatchObject({
+      structuredContent: {
+        items: [
+          {
+            hits: [
+              {
+                ordinal: 0,
+                snippet: "Agent handoff",
+              },
+            ],
+          },
+        ],
+      },
     });
-    expect(documents.list).toHaveBeenCalledWith(USER_ID, SPACE_ID, {
+    expect(documentSearch.result).not.toHaveProperty(
+      "structuredContent.items.0.contentMarkdown",
+    );
+    expect(documentSearch.result).not.toHaveProperty(
+      "structuredContent.items.0.contentText",
+    );
+    expect(documents.searchForMcp).toHaveBeenCalledWith(USER_ID, SPACE_ID, {
       page: 1,
       pageSize: 20,
       query: "handoff",
@@ -448,7 +471,7 @@ describe("McpService", () => {
       folderId: FOLDER_ID,
       includeDescendants: true,
     });
-    expect(documents.list).toHaveBeenCalledWith(USER_ID, SPACE_ID, {
+    expect(documents.searchForMcp).toHaveBeenCalledWith(USER_ID, SPACE_ID, {
       folderId: FOLDER_ID,
       includeDescendants: true,
       page: 1,
@@ -555,7 +578,6 @@ describe("McpService", () => {
         },
       },
     });
-
   });
 
   it("dispatches first-phase write tools to the write executor", async () => {
@@ -979,13 +1001,50 @@ const documentDetail = {
   links: [],
   chunks: [],
   attachments: [],
+  attachmentTotal: 0,
   comments: [],
+  commentTotal: 0,
   timeline: [],
+  timelineTotal: 0,
   createdAt: now,
   updatedAt: now,
 };
 
-const documentList = page([documentDetail]);
+const documentListItem = {
+  id: DOCUMENT_ID,
+  organizationId: ORGANIZATION_ID,
+  spaceId: SPACE_ID,
+  title: "Agent handoff",
+  sourceType: "MCP_CREATED",
+  status: "ACTIVE",
+  revision: 1,
+  createdById: USER_ID,
+  createdVia: "MCP_CLIENT",
+  createdMcpClientId: "test-client",
+  lastEditedById: USER_ID,
+  lastEditedVia: "MCP_CLIENT",
+  lastEditedMcpClientId: "test-client",
+  lastEditedAt: now,
+  tags: [],
+  links: [],
+  createdAt: now,
+  updatedAt: now,
+};
+
+const documentList = page([documentListItem]);
+
+const mcpDocumentSearchResult = page([
+  {
+    ...documentListItem,
+    hits: [
+      {
+        chunkId: "01HRZ3NDEKTSV4RRFFQ69G5FB6",
+        ordinal: 0,
+        snippet: "Agent handoff",
+      },
+    ],
+  },
+]);
 
 const documentFolder = {
   id: FOLDER_ID,

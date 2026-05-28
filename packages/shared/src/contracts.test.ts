@@ -250,7 +250,10 @@ describe("shared contracts", () => {
       ]),
     );
     expect(errorCodesFor("moveDocumentsToFolder")).toEqual(
-      expect.arrayContaining(["DOCUMENT_NOT_FOUND", "DOCUMENT_FOLDER_NOT_FOUND"]),
+      expect.arrayContaining([
+        "DOCUMENT_NOT_FOUND",
+        "DOCUMENT_FOLDER_NOT_FOUND",
+      ]),
     );
     expect(errorCodesFor("updateDocumentContent")).toEqual(
       expect.arrayContaining([
@@ -320,8 +323,25 @@ describe("shared contracts", () => {
       GetDocumentResponseSchema.safeParse({
         ...baseDocument,
         attachments: [],
+        attachmentTotal: 0,
         comments: [],
+        commentTotal: 0,
         timeline: [],
+        timelineTotal: 0,
+      }).success,
+    ).toBe(true);
+    const {
+      contentMarkdown: _contentMarkdown,
+      contentText: _contentText,
+      ...listItem
+    } = baseDocument;
+
+    expect(
+      ListDocumentsResponseSchema.safeParse({
+        items: [listItem],
+        page: 1,
+        pageSize: 20,
+        total: 1,
       }).success,
     ).toBe(true);
     expect(
@@ -331,7 +351,7 @@ describe("shared contracts", () => {
         pageSize: 20,
         total: 1,
       }).success,
-    ).toBe(true);
+    ).toBe(false);
     expect(
       ListDocumentsResponseSchema.safeParse({
         items: [
