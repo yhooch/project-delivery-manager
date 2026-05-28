@@ -302,7 +302,7 @@ export function CreateBugDialog({
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent
         data-testid="create-bug-dialog"
-        className="max-h-[90vh] overflow-y-auto"
+        className="max-h-[90vh] max-w-2xl overflow-y-auto"
       >
         <DialogHeader>
           <DialogTitle>{t("create.title")}</DialogTitle>

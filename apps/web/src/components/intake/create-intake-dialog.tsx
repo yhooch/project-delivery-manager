@@ -238,7 +238,10 @@ export function CreateIntakeDialog({
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent data-testid="create-intake-dialog">
+      <DialogContent
+        data-testid="create-intake-dialog"
+        className="max-w-2xl"
+      >
         <DialogHeader>
           <DialogTitle>{t("create.title")}</DialogTitle>
           <DialogDescription>{t("create.description")}</DialogDescription>
