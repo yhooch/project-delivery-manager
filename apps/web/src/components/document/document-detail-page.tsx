@@ -93,7 +93,6 @@ import { cn } from "../../lib/utils";
 import { useSession } from "../providers/session-provider";
 import { TagBadgeList, TagSelectionField } from "../tag";
 import { recordRecentOpen } from "../shell/recent-opens";
-import { Badge } from "../ui/badge";
 import { Button } from "../ui/button";
 import {
   Dialog,
@@ -237,6 +236,8 @@ export function DocumentDetailPage({ documentId }: DocumentDetailPageProps) {
     editModeRef.current = editMode;
   }, [editMode]);
 
+  const documentLabel = tRoot("shell.command.documentLabel");
+  const untitledLabel = t("untitled");
   const loadDocument = useCallback(
     async (options?: { realtime?: boolean; preserveForm?: boolean }) => {
       const isRealtime = options?.realtime === true;
@@ -269,12 +270,12 @@ export function DocumentDetailPage({ documentId }: DocumentDetailPageProps) {
         if (!isRealtime) {
           recordRecentOpen(
             {
-              displayCode: "Document",
+              displayCode: documentLabel,
               href: `/documents/${next.id}`,
               id: next.id,
               organizationId: next.organizationId,
               spaceId: next.spaceId,
-              title: next.title || "Untitled document",
+              title: next.title || untitledLabel,
               type: "DOCUMENT",
             },
             { organizationId: next.organizationId, spaceId: next.spaceId },
@@ -293,7 +294,7 @@ export function DocumentDetailPage({ documentId }: DocumentDetailPageProps) {
         }
       }
     },
-    [documentId, organizationId, spaceId],
+    [documentId, organizationId, spaceId, documentLabel, untitledLabel],
   );
 
   useEffect(() => {
@@ -637,38 +638,38 @@ export function DocumentDetailPage({ documentId }: DocumentDetailPageProps) {
         <div className="min-w-0">
           <form onSubmit={(event) => void save(event)}>
             <div
-              className="sticky top-12 z-20 mb-4 border-b border-border bg-background/95 py-2 backdrop-blur supports-[backdrop-filter]:bg-background/80"
+              className="sticky top-12 z-20 mb-3 bg-background/80 py-1.5 backdrop-blur-md supports-[backdrop-filter]:bg-background/70"
               data-testid="document-back-to-list-bar"
             >
-              <Button asChild size="sm" variant="ghost" className="-ml-2">
+              <Button asChild size="sm" variant="ghost" className="-ml-2 text-muted-foreground hover:text-foreground">
                 <Link href={backToListHref} data-testid="document-back-to-list">
                   <ChevronLeft className="h-4 w-4" aria-hidden="true" />
                   {t("actions.backToList")}
                 </Link>
               </Button>
             </div>
-            <div className="mb-5 flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground">
+            <div className="mb-3 flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground">
               <Link className="hover:text-foreground hover:underline" href="/">
                 {currentOrganization?.name ?? t("unknownOrganization")}
               </Link>
-              <span>/</span>
+              <ChevronRight className="h-3 w-3 opacity-50" aria-hidden="true" />
               <Link
                 className="hover:text-foreground hover:underline"
                 href="/documents"
               >
                 {currentSpace?.name ?? t("unknownSpace")}
               </Link>
-              <span>/</span>
-              <span>{t("title")}</span>
+              <ChevronRight className="h-3 w-3 opacity-50" aria-hidden="true" />
+              <span className="text-foreground/80">{t("title")}</span>
             </div>
 
-            <section className="border-b border-border pb-5">
+            <section className="pb-5">
               <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
                 <div className="min-w-0 flex-1">
                   {editMode ? (
                     <Input
                       aria-label={t("edit.titleLabel")}
-                      className="h-auto px-0 py-1 text-2xl font-semibold tracking-normal shadow-none md:text-3xl"
+                      className="h-auto border-0 px-0 py-1 text-2xl font-semibold tracking-tight shadow-none focus-visible:ring-0 md:text-3xl"
                       data-testid="document-title-input"
                       value={form.title}
                       onChange={(event) =>
@@ -680,27 +681,30 @@ export function DocumentDetailPage({ documentId }: DocumentDetailPageProps) {
                       }
                     />
                   ) : (
-                    <h1 className="break-words text-2xl font-semibold tracking-normal text-foreground md:text-3xl">
+                    <h1 className="break-words text-2xl font-semibold tracking-tight text-foreground md:text-3xl">
                       {document.title || t("untitled")}
                     </h1>
                   )}
-                  <div className="mt-3 flex flex-wrap items-center gap-1.5">
-                    <Badge
-                      variant={
-                        document.status === "ARCHIVED" ? "default" : "success"
-                      }
-                    >
-                      {t(`status.${document.status}`)}
-                    </Badge>
+                  <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1.5 text-xs text-muted-foreground">
+                    {document.status === "ARCHIVED" ? (
+                      <span className="inline-flex items-center gap-1 rounded bg-muted px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+                        <Archive className="h-3 w-3" aria-hidden="true" />
+                        {t("status.ARCHIVED")}
+                      </span>
+                    ) : null}
                     <SourceBadge sourceType={document.sourceType} />
                     <ActorBadge
                       actorType={document.lastEditedVia}
                       mcpClientName={document.lastEditedMcpClientName}
                     />
-                  </div>
-                  <div className="mt-2 grid gap-1 text-xs text-muted-foreground">
-                    <p>{formatDocumentCreatedMeta(document, locale, t)}</p>
-                    <p>{formatDocumentEditedMeta(document, locale, t)}</p>
+                    <span aria-hidden="true" className="hidden h-3 w-px bg-border/60 sm:block" />
+                    <span className="truncate">
+                      {formatDocumentCreatedMeta(document, locale, t)}
+                    </span>
+                    <span aria-hidden="true" className="hidden h-3 w-px bg-border/60 sm:block" />
+                    <span className="truncate">
+                      {formatDocumentEditedMeta(document, locale, t)}
+                    </span>
                   </div>
                 </div>
                 <div className="flex shrink-0 flex-wrap gap-2">
@@ -829,14 +833,15 @@ export function DocumentDetailPage({ documentId }: DocumentDetailPageProps) {
             {hasRealtimeRevision ? (
               <div
                 role="status"
-                className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-md border border-warning/40 bg-warning/10 px-4 py-3 text-sm text-warning"
+                className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-lg bg-warning/10 px-4 py-2.5 text-sm text-warning"
                 data-testid="document-new-version-alert"
               >
                 <span>{t("detail.newVersion")}</span>
                 <Button
                   size="sm"
                   type="button"
-                  variant="outline"
+                  variant="ghost"
+                  className="text-warning hover:bg-warning/15 hover:text-warning"
                   onClick={() => void loadDocument()}
                 >
                   <RefreshCw className="h-4 w-4" aria-hidden="true" />
@@ -848,14 +853,15 @@ export function DocumentDetailPage({ documentId }: DocumentDetailPageProps) {
             {conflict ? (
               <div
                 role="alert"
-                className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-md border border-warning/40 bg-warning/10 px-4 py-3 text-sm text-warning"
+                className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-lg bg-warning/10 px-4 py-2.5 text-sm text-warning"
                 data-testid="document-conflict-alert"
               >
                 <span>{t("detail.conflict")}</span>
                 <Button
                   size="sm"
                   type="button"
-                  variant="outline"
+                  variant="ghost"
+                  className="text-warning hover:bg-warning/15 hover:text-warning"
                   onClick={() => void loadDocument()}
                 >
                   <RefreshCw className="h-4 w-4" aria-hidden="true" />
@@ -867,7 +873,7 @@ export function DocumentDetailPage({ documentId }: DocumentDetailPageProps) {
             {errorKey ? (
               <div
                 role="alert"
-                className="mt-4 rounded-md border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive"
+                className="mt-4 rounded-lg bg-destructive/10 px-4 py-2.5 text-sm text-destructive"
               >
                 {tRoot(errorKey)}
               </div>
@@ -878,13 +884,13 @@ export function DocumentDetailPage({ documentId }: DocumentDetailPageProps) {
                 className="mt-5 grid gap-5"
                 data-testid="document-edit-panel"
               >
-                <div className="grid gap-1.5 text-sm">
+                <div className="grid gap-2 text-sm">
                   <div className="flex flex-wrap items-center justify-between gap-2">
                     <span className="font-medium" id="document-content-label">
                       {t("edit.contentLabel")}
                     </span>
                     <div
-                      className="flex gap-1"
+                      className="inline-flex items-center rounded-md bg-muted/50 p-0.5"
                       role="group"
                       aria-label={t("edit.contentViewLabel")}
                     >
@@ -894,10 +900,10 @@ export function DocumentDetailPage({ documentId }: DocumentDetailPageProps) {
                           type="button"
                           aria-pressed={contentPreview === preview}
                           className={cn(
-                            "inline-flex h-7 items-center rounded-md border px-2.5 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                            "inline-flex h-6 items-center rounded px-2.5 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
                             contentPreview === preview
-                              ? "border-primary bg-primary/10 text-primary"
-                              : "border-border bg-background text-muted-foreground hover:bg-muted hover:text-foreground",
+                              ? "bg-background text-foreground shadow-sm"
+                              : "text-muted-foreground hover:text-foreground",
                           )}
                           data-testid={
                             preview
@@ -913,7 +919,7 @@ export function DocumentDetailPage({ documentId }: DocumentDetailPageProps) {
                   </div>
                   {contentPreview ? (
                     <DocumentMarkdownViewer
-                      className="min-h-[28rem] rounded-md border border-border p-4"
+                      className="min-h-[28rem] rounded-lg bg-muted/30 p-4"
                       markdown={form.contentMarkdown}
                       organizationId={document.organizationId}
                       spaceId={document.spaceId}
@@ -983,7 +989,7 @@ export function DocumentDetailPage({ documentId }: DocumentDetailPageProps) {
                   results={documentSearchResults}
                   selectedDocuments={form.linkedDocuments}
                 />
-                <div className="grid gap-2 rounded-md border border-border bg-muted/30 p-3">
+                <div className="grid gap-2 rounded-lg bg-muted/40 p-3">
                   <label className="grid gap-1.5 text-sm">
                     <span className="font-medium">
                       {t("edit.reimportLabel")}
@@ -1086,14 +1092,16 @@ function LinkedResourceChips({
       data-testid="document-linked-resources"
     >
       {links.map((link) => (
-        <Button key={link.id} asChild size="sm" variant="outline">
-          <Link href={getDocumentLinkHref(link)}>
-            <span className="font-mono text-[11px]">
-              {getDocumentLinkDisplayCode(link)}
-            </span>
-            <span className="max-w-44 truncate">{link.title}</span>
-          </Link>
-        </Button>
+        <Link
+          key={link.id}
+          href={getDocumentLinkHref(link)}
+          className="inline-flex max-w-full items-center gap-1.5 rounded-md bg-muted px-2 py-1 text-xs text-foreground/80 transition-colors hover:bg-muted/70 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        >
+          <span className="font-mono text-[11px] text-foreground">
+            {getDocumentLinkDisplayCode(link)}
+          </span>
+          <span className="max-w-44 truncate">{link.title}</span>
+        </Link>
       ))}
     </div>
   );
@@ -1123,7 +1131,7 @@ function LinkedDocumentSelector({
   const hasQuery = query.trim().length > 0;
 
   return (
-    <div className="grid gap-2 rounded-md border border-border bg-muted/30 p-3">
+    <div className="grid gap-2 rounded-lg bg-muted/40 p-3">
       <div className="grid gap-1.5">
         <span className="text-sm font-medium">{t("edit.documentsLabel")}</span>
         {selectedDocuments.length > 0 ? (
@@ -1197,7 +1205,7 @@ function LinkedDocumentSelector({
             <button
               key={result.id}
               type="button"
-              className="flex min-h-10 items-center gap-2 rounded-md border border-border bg-background px-2 py-1.5 text-left text-sm transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              className="flex min-h-10 items-center gap-2 rounded-md bg-background px-2 py-1.5 text-left text-sm transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               data-testid="document-linked-document-result"
               onClick={() => onAddDocument(result)}
             >
@@ -1250,18 +1258,24 @@ function DocumentManagementSections({
   const attachments = document.attachments ?? [];
 
   return (
-    <div className="mt-8 grid gap-6 border-t border-border pt-6">
+    <div className="mt-10 grid gap-8">
       <section
         id="document-comments"
         className="grid scroll-mt-20 gap-3"
         data-testid="document-comments-section"
       >
-        <div className="flex items-center gap-2 text-sm font-semibold">
-          <MessageSquare className="h-4 w-4 text-muted-foreground" />
-          {t("comments.title")}
+        <div className="flex items-baseline gap-2">
+          <MessageSquare className="h-3.5 w-3.5 self-center text-muted-foreground" />
+          <span className="text-sm font-semibold">{t("comments.title")}</span>
+          {comments.length > 0 ? (
+            <span className="text-[11px] tabular-nums text-muted-foreground/70">
+              {comments.length}
+            </span>
+          ) : null}
         </div>
-        <div className="grid gap-2">
+        <div className="grid gap-2 rounded-lg bg-muted/40 p-3">
           <Textarea
+            className="border-0 bg-background shadow-sm focus-visible:ring-1"
             data-testid="document-comment-input"
             minLength={1}
             maxLength={8000}
@@ -1274,6 +1288,7 @@ function DocumentManagementSections({
           <div className="flex justify-end">
             <Button
               type="button"
+              size="sm"
               disabled={!commentBody.trim() || isCommenting}
               onClick={onSubmitComment}
               data-testid="document-comment-submit"
@@ -1293,13 +1308,13 @@ function DocumentManagementSections({
           </p>
         ) : null}
         {comments.length > 0 ? (
-          <div className="grid gap-2">
+          <div className="grid gap-1.5">
             {comments.map((comment) => (
               <article
                 key={comment.id}
-                className="rounded-md border border-border bg-card px-3 py-2"
+                className="rounded-lg px-3 py-2 transition-colors hover:bg-muted/30"
               >
-                <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+                <div className="flex flex-wrap items-baseline gap-2 text-xs text-muted-foreground">
                   <span className="font-medium text-foreground">
                     {comment.authorName ?? t("rail.unknownActor")}
                   </span>
@@ -1324,9 +1339,16 @@ function DocumentManagementSections({
         data-testid="document-attachments-section"
       >
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <div className="flex items-center gap-2 text-sm font-semibold">
-            <Paperclip className="h-4 w-4 text-muted-foreground" />
-            {t("attachments.title")}
+          <div className="flex items-baseline gap-2">
+            <Paperclip className="h-3.5 w-3.5 self-center text-muted-foreground" />
+            <span className="text-sm font-semibold">
+              {t("attachments.title")}
+            </span>
+            {attachments.length > 0 ? (
+              <span className="text-[11px] tabular-nums text-muted-foreground/70">
+                {attachments.length}
+              </span>
+            ) : null}
           </div>
           <input
             ref={fileInputRef}
@@ -1338,6 +1360,7 @@ function DocumentManagementSections({
           />
           <Button
             type="button"
+            size="sm"
             variant="outline"
             disabled={isUploadingAttachment}
             onClick={() => fileInputRef.current?.click()}
@@ -1357,21 +1380,26 @@ function DocumentManagementSections({
           </p>
         ) : null}
         {attachments.length > 0 ? (
-          <div className="divide-y divide-border rounded-md border border-border bg-card">
+          <ul className="grid gap-0.5">
             {attachments.map((attachment) => (
-              <div
+              <li
                 key={attachment.id}
-                className="flex flex-wrap items-center justify-between gap-3 px-3 py-2"
+                className="flex flex-wrap items-center justify-between gap-3 rounded-lg px-3 py-2 transition-colors hover:bg-muted/40"
               >
-                <div className="min-w-0">
-                  <div className="truncate text-sm font-medium text-foreground">
-                    {attachment.fileName}
+                <div className="flex min-w-0 items-center gap-2.5">
+                  <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-muted text-muted-foreground">
+                    <Paperclip className="h-3.5 w-3.5" aria-hidden="true" />
                   </div>
-                  {attachment.size ? (
-                    <div className="text-xs text-muted-foreground">
-                      {formatBytes(attachment.size)}
+                  <div className="min-w-0">
+                    <div className="truncate text-sm font-medium text-foreground">
+                      {attachment.fileName}
                     </div>
-                  ) : null}
+                    {attachment.size ? (
+                      <div className="text-xs text-muted-foreground">
+                        {formatBytes(attachment.size)}
+                      </div>
+                    ) : null}
+                  </div>
                 </div>
                 <Button asChild variant="ghost" size="sm">
                   <a
@@ -1383,9 +1411,9 @@ function DocumentManagementSections({
                     {t("attachments.download")}
                   </a>
                 </Button>
-              </div>
+              </li>
             ))}
-          </div>
+          </ul>
         ) : (
           <p className="text-sm text-muted-foreground">
             {t("attachments.empty")}
@@ -1601,21 +1629,18 @@ function DocumentTocRail({ headings }: { headings: MarkdownHeading[] }) {
 
   return (
     <aside className="min-w-0 lg:sticky lg:top-16 lg:max-h-[calc(100vh-5rem)] lg:overflow-y-auto">
-      <div
-        className="rounded-md border border-border bg-card p-4"
-        data-testid="document-toc-rail"
-      >
+      <div className="px-1" data-testid="document-toc-rail">
         <RailSection
-          icon={<FileText className="h-4 w-4" />}
+          icon={<FileText className="h-3.5 w-3.5" />}
           title={t("rail.toc")}
         >
           {headings.length > 0 ? (
-            <nav aria-label={t("rail.toc")} className="grid gap-1">
+            <nav aria-label={t("rail.toc")} className="grid gap-px">
               {headings.slice(0, 12).map((heading) => (
                 <a
                   key={heading.id}
                   className={cn(
-                    "truncate rounded px-2 py-1 text-xs text-muted-foreground hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                    "truncate rounded px-2 py-1 text-xs text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
                     heading.level > 2 && "pl-4",
                   )}
                   href={`#${heading.id}`}
@@ -1625,7 +1650,7 @@ function DocumentTocRail({ headings }: { headings: MarkdownHeading[] }) {
               ))}
             </nav>
           ) : (
-            <p className="text-xs text-muted-foreground">{t("rail.noToc")}</p>
+            <p className="px-2 text-xs text-muted-foreground">{t("rail.noToc")}</p>
           )}
         </RailSection>
       </div>
@@ -1641,6 +1666,7 @@ function DocumentContextRail({
   locale: string;
 }) {
   const t = useTranslations("documents");
+  const tTimelineEvent = useTranslations("common.timeline.event");
   const commentTotal = document.commentTotal ?? document.comments?.length ?? 0;
   const attachmentTotal =
     document.attachmentTotal ?? document.attachments?.length ?? 0;
@@ -1649,23 +1675,23 @@ function DocumentContextRail({
   return (
     <aside className="min-w-0 lg:col-span-2 xl:col-span-1 xl:sticky xl:top-16 xl:max-h-[calc(100vh-5rem)] xl:overflow-y-auto">
       <div
-        className="grid gap-4 rounded-md border border-border bg-card p-4"
+        className="grid gap-5 px-1"
         data-testid="document-context-rail"
       >
         <RailSection
-          icon={<Link2 className="h-4 w-4" />}
+          icon={<Link2 className="h-3.5 w-3.5" />}
           title={t("rail.resources")}
         >
           <DocumentLinksSummary links={document.links ?? []} />
         </RailSection>
-        <RailSection icon={<Tags className="h-4 w-4" />} title={t("rail.tags")}>
+        <RailSection icon={<Tags className="h-3.5 w-3.5" />} title={t("rail.tags")}>
           <TagBadgeList
             tags={document.tags ?? []}
             emptyLabel={t("rail.noTags")}
           />
         </RailSection>
         <RailSection
-          icon={<MessageSquare className="h-4 w-4" />}
+          icon={<MessageSquare className="h-3.5 w-3.5" />}
           title={t("rail.comments")}
         >
           <RailJumpLink
@@ -1678,7 +1704,7 @@ function DocumentContextRail({
           />
         </RailSection>
         <RailSection
-          icon={<Paperclip className="h-4 w-4" />}
+          icon={<Paperclip className="h-3.5 w-3.5" />}
           title={t("rail.attachments")}
         >
           <RailJumpLink
@@ -1691,24 +1717,35 @@ function DocumentContextRail({
           />
         </RailSection>
         <RailSection
-          icon={<Clock3 className="h-4 w-4" />}
+          icon={<Clock3 className="h-3.5 w-3.5" />}
           title={t("rail.timeline")}
         >
-          {timelineItems.slice(0, 3).map((event) => (
-            <div key={event.id} className="text-xs text-muted-foreground">
-              <div className="text-foreground">{event.changeType}</div>
-              <div>
-                {formatDocumentRelativeTimestamp(event.createdAt, locale)}
+          <div className="grid gap-1.5">
+            {timelineItems.slice(0, 3).map((event) => (
+              <div key={event.id} className="text-xs">
+                <div className="flex min-w-0 items-baseline gap-1.5 text-foreground">
+                  {event.actorName ? (
+                    <span className="truncate font-medium">
+                      {event.actorName}
+                    </span>
+                  ) : null}
+                  <span className="truncate text-muted-foreground">
+                    {tTimelineEvent(event.eventType)}
+                  </span>
+                </div>
+                <div className="text-muted-foreground/80">
+                  {formatDocumentRelativeTimestamp(event.createdAt, locale)}
+                </div>
               </div>
-            </div>
-          ))}
-          {(document.timelineTotal ?? timelineItems.length) === 0 ? (
-            <p className="text-xs text-muted-foreground">
-              {t("rail.noTimeline")}
-            </p>
-          ) : null}
+            ))}
+            {(document.timelineTotal ?? timelineItems.length) === 0 ? (
+              <p className="text-xs text-muted-foreground">
+                {t("rail.noTimeline")}
+              </p>
+            ) : null}
+          </div>
         </RailSection>
-        <dl className="grid gap-2 border-t border-border pt-3 text-[11px] text-muted-foreground">
+        <dl className="grid gap-2.5 rounded-lg bg-muted/40 px-3 py-3 text-[11px] text-muted-foreground">
           <div>
             <dt className="font-medium text-foreground">{t("rail.created")}</dt>
             <dd>{formatDocumentCreatedMeta(document, locale, t)}</dd>
@@ -1748,7 +1785,7 @@ function RailSection({
 }) {
   return (
     <section className="grid gap-2">
-      <h2 className="flex items-center gap-1.5 text-xs font-semibold uppercase text-muted-foreground">
+      <h2 className="flex items-center gap-1.5 px-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-muted-foreground/80">
         {icon}
         {title}
       </h2>
@@ -1866,6 +1903,7 @@ function toDocumentTimelineSummary(event: TimelineEvent) {
   return {
     actorName: event.actor.name || event.actor.username,
     changeType: event.title || event.eventType,
+    eventType: event.eventType,
     createdAt: event.createdAt,
     id: event.id,
   };

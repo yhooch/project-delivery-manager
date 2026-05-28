@@ -196,7 +196,7 @@ export function DocumentShell({ children }: DocumentShellProps) {
         value={{ activeDocumentFolderId, setActiveDocumentFolderId }}
       >
         <div className="min-h-screen bg-background text-foreground">
-          <header className="sticky top-0 z-30 flex h-12 items-center justify-between gap-2 border-b border-border bg-background/95 px-4 backdrop-blur md:px-6">
+          <header className="sticky top-0 z-30 flex h-12 items-center justify-between gap-2 border-b border-border/60 bg-background/80 px-4 backdrop-blur-md md:px-6">
             <div className="flex min-w-0 items-center gap-2">
               {showDocumentDirectory ? (
                 <Button
@@ -210,11 +210,11 @@ export function DocumentShell({ children }: DocumentShellProps) {
                   <PanelLeft className="h-4 w-4" aria-hidden="true" />
                 </Button>
               ) : null}
-              <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-foreground text-background">
+              <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-primary to-primary/70 text-primary-foreground shadow-sm">
                 <BookOpen className="h-4 w-4" aria-hidden="true" />
               </div>
               <div className="min-w-0">
-                <div className="truncate text-sm font-semibold">
+                <div className="truncate text-sm font-semibold tracking-tight">
                   {t("title")}
                 </div>
                 <div className="hidden truncate text-[11px] text-muted-foreground sm:block">

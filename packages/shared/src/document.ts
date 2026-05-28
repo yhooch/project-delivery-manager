@@ -11,6 +11,7 @@ import {
   DocumentLinkTargetTypeSchema,
   DocumentSourceTypeSchema,
   DocumentStatusSchema,
+  TimelineEventTypeSchema,
   WorkItemTypeSchema,
 } from "./enums.ts";
 import { TagFilterQuerySchema, TagIdListSchema, TagListSchema } from "./tag.ts";
@@ -216,6 +217,7 @@ export const DocumentTimelineOverviewSchema = z
     id: UlidSchema,
     actorName: z.string().min(1).max(200).optional(),
     changeType: z.string().min(1).max(200),
+    eventType: TimelineEventTypeSchema,
     createdAt: IsoDateTimeSchema,
   })
   .strict();

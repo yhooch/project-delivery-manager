@@ -355,6 +355,7 @@ function toDocumentTimelineOverview(
     id: record.id,
     actorName: nonEmptyString(record.actor.name) ?? record.actor.username,
     changeType: nonEmptyString(record.title) ?? record.eventType,
+    eventType: record.eventType,
     createdAt: record.createdAt.toISOString(),
   });
 }

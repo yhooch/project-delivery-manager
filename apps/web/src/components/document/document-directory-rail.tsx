@@ -352,13 +352,14 @@ export function DocumentDirectoryRail({
     return (
       <aside
         className={cn(
-          "hidden w-12 shrink-0 border-r border-border bg-card/40 lg:flex lg:flex-col lg:items-center lg:gap-2 lg:py-3",
+          "hidden w-12 shrink-0 border-r border-border/60 bg-gradient-to-b from-muted/30 to-background lg:flex lg:flex-col lg:items-center lg:gap-3 lg:py-3",
           className,
         )}
         data-testid="document-directory-rail-collapsed"
       >
         <Button
           aria-label={t("expand")}
+          className="h-8 w-8"
           size="icon-sm"
           type="button"
           variant="ghost"
@@ -366,8 +367,44 @@ export function DocumentDirectoryRail({
         >
           <ChevronsRight className="h-4 w-4" aria-hidden="true" />
         </Button>
-        <div className="h-px w-6 bg-border" />
-        <Files className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
+        <div className="h-px w-6 bg-border/60" />
+        <div className="flex flex-col items-center gap-1.5">
+          {VIRTUAL_VIEWS.map(({ icon: Icon, view }) => {
+            const isActive =
+              !isDocumentDetailPath(pathname) && selection.view === view;
+            return (
+              <Tip key={view} content={t(`views.${view}`)}>
+                <button
+                  type="button"
+                  aria-label={t(`views.${view}`)}
+                  className={cn(
+                    "flex h-8 w-8 items-center justify-center rounded-lg transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                    isActive
+                      ? "bg-primary/15 text-primary"
+                      : "text-muted-foreground hover:bg-muted hover:text-foreground",
+                  )}
+                  onClick={() => navigateToSelection({ view })}
+                >
+                  <Icon className="h-4 w-4" aria-hidden="true" />
+                </button>
+              </Tip>
+            );
+          })}
+        </div>
+        <div className="mt-auto">
+          <Tip content={t("createRoot")}>
+            <Button
+              aria-label={t("createRoot")}
+              className="h-8 w-8"
+              size="icon-sm"
+              type="button"
+              variant="ghost"
+              onClick={() => setOperation({ type: "create" })}
+            >
+              <Plus className="h-4 w-4" aria-hidden="true" />
+            </Button>
+          </Tip>
+        </div>
       </aside>
     );
   }
@@ -375,47 +412,57 @@ export function DocumentDirectoryRail({
   return (
     <aside
       className={cn(
-        "flex h-full min-h-0 w-full flex-col bg-card/40 text-sm lg:w-72 lg:shrink-0 lg:border-r lg:border-border",
+        "relative flex h-full min-h-0 w-full flex-col bg-gradient-to-b from-muted/30 to-background text-sm lg:w-72 lg:shrink-0 lg:border-r lg:border-border/60",
         className,
       )}
       data-testid="document-directory-rail"
     >
       <div
         className={cn(
-          "flex h-12 shrink-0 items-center justify-between gap-2 border-b border-border px-3",
+          "flex h-12 shrink-0 items-center justify-between gap-2 px-3",
           mobile && "pr-12",
         )}
       >
         <div className="flex min-w-0 items-center gap-2">
-          <FolderOpen className="h-4 w-4 shrink-0 text-muted-foreground" />
-          <div className="truncate text-sm font-semibold">{t("title")}</div>
+          <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary">
+            <FolderOpen className="h-3.5 w-3.5" aria-hidden="true" />
+          </div>
+          <div className="truncate text-[13px] font-semibold tracking-tight">
+            {t("title")}
+          </div>
         </div>
-        <div className="flex shrink-0 items-center gap-1">
-          <Button
-            aria-label={t("createRoot")}
-            size="icon-sm"
-            type="button"
-            variant="ghost"
-            onClick={() => setOperation({ type: "create" })}
-          >
-            <Plus className="h-4 w-4" aria-hidden="true" />
-          </Button>
-          {!mobile ? (
+        <div className="flex shrink-0 items-center gap-0.5">
+          <Tip content={t("createRoot")}>
             <Button
-              aria-label={t("collapse")}
+              aria-label={t("createRoot")}
+              className="h-7 w-7 text-muted-foreground hover:text-foreground"
               size="icon-sm"
               type="button"
               variant="ghost"
-              onClick={() => onCollapsedChange?.(true)}
+              onClick={() => setOperation({ type: "create" })}
             >
-              <ChevronsLeft className="h-4 w-4" aria-hidden="true" />
+              <Plus className="h-4 w-4" aria-hidden="true" />
             </Button>
+          </Tip>
+          {!mobile ? (
+            <Tip content={t("collapse")}>
+              <Button
+                aria-label={t("collapse")}
+                className="h-7 w-7 text-muted-foreground hover:text-foreground"
+                size="icon-sm"
+                type="button"
+                variant="ghost"
+                onClick={() => onCollapsedChange?.(true)}
+              >
+                <ChevronsLeft className="h-4 w-4" aria-hidden="true" />
+              </Button>
+            </Tip>
           ) : null}
         </div>
       </div>
 
-      <div className="min-h-0 flex-1 overflow-y-auto px-2 py-3">
-        <nav aria-label={t("viewsLabel")} className="grid gap-1">
+      <div className="min-h-0 flex-1 overflow-y-auto px-3 pb-4 pt-1">
+        <nav aria-label={t("viewsLabel")} className="grid gap-0.5">
           {VIRTUAL_VIEWS.map(({ icon: Icon, view }) => (
             <DirectoryNavButton
               key={view}
@@ -429,11 +476,11 @@ export function DocumentDirectoryRail({
           ))}
         </nav>
 
-        <div className="mt-4 flex items-center justify-between gap-2 px-2">
-          <h2 className="text-[11px] font-semibold uppercase text-muted-foreground">
+        <div className="mt-5 flex items-center justify-between gap-2 px-1">
+          <h2 className="text-[10px] font-semibold uppercase tracking-[0.08em] text-muted-foreground/80">
             {t("folders")}
           </h2>
-          <div className="flex shrink-0 items-center gap-1">
+          <div className="flex shrink-0 items-center gap-0.5">
             <HeaderIconTip
               content={includeDescendantsActionLabel}
               disabled={!canToggleIncludeDescendants}
@@ -446,9 +493,9 @@ export function DocumentDirectoryRail({
                     : undefined
                 }
                 className={cn(
-                  "h-7 w-7",
+                  "h-6 w-6",
                   selection.includeDescendants
-                    ? "bg-primary/10 text-primary hover:bg-primary/10 hover:text-primary"
+                    ? "bg-primary/15 text-primary hover:bg-primary/15 hover:text-primary"
                     : "text-muted-foreground hover:text-foreground",
                 )}
                 disabled={!canToggleIncludeDescendants}
@@ -464,7 +511,7 @@ export function DocumentDirectoryRail({
                   })
                 }
               >
-                <FolderTree className="h-4 w-4" aria-hidden="true" />
+                <FolderTree className="h-3.5 w-3.5" aria-hidden="true" />
               </Button>
             </HeaderIconTip>
             <HeaderIconTip
@@ -473,7 +520,7 @@ export function DocumentDirectoryRail({
             >
               <Button
                 aria-label={folderTreeToggleLabel}
-                className="h-7 w-7 text-muted-foreground hover:text-foreground"
+                className="h-6 w-6 text-muted-foreground hover:text-foreground"
                 disabled={!hasCollapsibleFolders}
                 size="icon-sm"
                 title={folderTreeToggleLabel}
@@ -482,9 +529,9 @@ export function DocumentDirectoryRail({
                 onClick={toggleAllFolders}
               >
                 {allFoldersExpanded ? (
-                  <ChevronsUp className="h-4 w-4" aria-hidden="true" />
+                  <ChevronsUp className="h-3.5 w-3.5" aria-hidden="true" />
                 ) : (
-                  <ChevronsDown className="h-4 w-4" aria-hidden="true" />
+                  <ChevronsDown className="h-3.5 w-3.5" aria-hidden="true" />
                 )}
               </Button>
             </HeaderIconTip>
@@ -501,9 +548,9 @@ export function DocumentDirectoryRail({
         ) : null}
 
         {!isLoading && !errorKey && tree.length === 0 ? (
-          <p className="mt-3 px-2 text-xs text-muted-foreground">
-            {t("emptyFolders")}
-          </p>
+          <div className="mt-3 flex flex-col items-start gap-1 rounded-lg border border-dashed border-border/60 bg-card/60 px-3 py-2.5">
+            <p className="text-xs text-muted-foreground">{t("emptyFolders")}</p>
+          </div>
         ) : null}
 
         {tree.length > 0 ? (
@@ -579,14 +626,29 @@ function DirectoryNavButton({
       type="button"
       aria-current={active ? "page" : undefined}
       className={cn(
-        "flex min-h-8 w-full items-center gap-2 rounded-md px-2 text-left text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+        "group/nav relative flex min-h-9 w-full items-center gap-2.5 rounded-lg px-2 text-left text-sm font-medium transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
         active
           ? "bg-primary/10 text-primary"
-          : "text-muted-foreground hover:bg-muted hover:text-foreground",
+          : "text-foreground/70 hover:bg-muted/70 hover:text-foreground",
       )}
       onClick={onClick}
     >
-      {icon}
+      {active ? (
+        <span
+          aria-hidden="true"
+          className="absolute inset-y-1.5 left-0 w-0.5 rounded-r-full bg-primary"
+        />
+      ) : null}
+      <span
+        className={cn(
+          "flex h-7 w-7 shrink-0 items-center justify-center rounded-md transition-colors",
+          active
+            ? "bg-primary/20 text-primary"
+            : "bg-muted/60 text-muted-foreground group-hover/nav:bg-background group-hover/nav:text-foreground",
+        )}
+      >
+        {icon}
+      </span>
       <span className="min-w-0 flex-1 truncate">{label}</span>
     </button>
   );
@@ -718,26 +780,38 @@ function FolderTreeNode({
       />
       <div
         ref={folderDrop.setNodeRef}
-        className="min-w-0"
+        className="relative min-w-0"
         data-document-drop-target="folder"
         data-testid="document-folder-row-frame"
         style={{ paddingLeft: `${indent}px` }}
       >
+        {level > 0
+          ? Array.from({ length: level }).map((_, depth) => (
+              <span
+                key={depth}
+                aria-hidden="true"
+                className="pointer-events-none absolute inset-y-0 w-px bg-border/60"
+                style={{
+                  left: `${depth * FOLDER_TREE_INDENT_PX + 14}px`,
+                }}
+              />
+            ))
+          : null}
         <div
           className={cn(
-            "group grid min-h-8 min-w-0 grid-cols-[1.75rem_1.75rem_minmax(0,1fr)_1.75rem] items-center gap-0.5 rounded-md pr-1 transition-colors",
+            "group relative grid min-h-8 min-w-0 grid-cols-[1.5rem_1.5rem_minmax(0,1fr)_1.5rem] items-center gap-0.5 rounded-lg pr-1 transition-all",
             isActive
-              ? "bg-primary/10 text-primary"
-              : "text-muted-foreground hover:bg-muted hover:text-foreground",
+              ? "bg-primary/12 text-primary shadow-sm ring-1 ring-primary/20"
+              : "text-foreground/80 hover:bg-muted/70 hover:text-foreground",
             folderDrop.isOver &&
               canDropIntoFolder &&
-              "bg-primary/10 text-primary ring-1 ring-primary/30",
+              "bg-primary/15 text-primary ring-1 ring-primary/40",
           )}
           data-testid="document-folder-row"
         >
           <Button
             aria-label={t("drag.folderHandle", { name: folder.name })}
-            className="h-7 w-7 cursor-grab text-muted-foreground opacity-0 active:cursor-grabbing group-focus-within:opacity-100 group-hover:opacity-100"
+            className="h-6 w-6 cursor-grab text-muted-foreground opacity-0 transition-opacity active:cursor-grabbing group-focus-within:opacity-100 group-hover:opacity-100"
             data-testid="document-folder-drag-handle"
             size="icon-sm"
             type="button"
@@ -747,14 +821,19 @@ function FolderTreeNode({
             {...draggable.attributes}
             {...draggable.listeners}
           >
-            <GripVertical className="h-4 w-4" aria-hidden="true" />
+            <GripVertical className="h-3.5 w-3.5" aria-hidden="true" />
           </Button>
           {hasChildren ? (
             <button
               type="button"
               aria-label={t("toggleFolder", { name: folder.name })}
               aria-expanded={!isCollapsed}
-              className="flex h-7 w-7 items-center justify-center rounded hover:bg-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              className={cn(
+                "flex h-6 w-6 items-center justify-center rounded transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                isActive
+                  ? "hover:bg-primary/10"
+                  : "hover:bg-background",
+              )}
               onClick={() => onToggle(folder.id)}
             >
               {isCollapsed ? (
@@ -766,30 +845,43 @@ function FolderTreeNode({
           ) : (
             <span
               aria-hidden="true"
-              className="h-7 w-7"
+              className="h-6 w-6"
               data-testid="document-folder-toggle-spacer"
             />
           )}
           <button
             type="button"
             aria-current={isActive ? "page" : undefined}
-            className="flex min-w-0 items-center gap-1.5 rounded py-1 pr-1 text-left text-xs font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            className="flex min-w-0 items-center gap-1.5 rounded py-1.5 pr-1 text-left text-[13px] font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             onClick={() => onSelect(folder.id)}
           >
             {isActive ? (
-              <FolderOpen className="h-4 w-4 shrink-0" aria-hidden="true" />
+              <FolderOpen
+                className="h-3.5 w-3.5 shrink-0 text-primary"
+                aria-hidden="true"
+              />
             ) : (
-              <Folder className="h-4 w-4 shrink-0" aria-hidden="true" />
+              <Folder
+                className="h-3.5 w-3.5 shrink-0 text-muted-foreground"
+                aria-hidden="true"
+              />
             )}
             <span className="min-w-0 flex-1 truncate">{folder.name}</span>
             {count > 0 ? (
-              <span className="inline-flex h-5 min-w-6 shrink-0 items-center justify-center rounded bg-muted px-1.5 text-[10px] text-muted-foreground">
+              <span
+                className={cn(
+                  "inline-flex h-4 min-w-5 shrink-0 items-center justify-center rounded-full px-1 text-[10px] font-medium tabular-nums",
+                  isActive
+                    ? "bg-primary/20 text-primary"
+                    : "bg-muted text-muted-foreground",
+                )}
+              >
                 {count}
               </span>
             ) : (
               <span
                 aria-hidden="true"
-                className="h-5 min-w-6 shrink-0"
+                className="h-4 min-w-5 shrink-0"
                 data-testid="document-folder-count-spacer"
               />
             )}
@@ -798,12 +890,12 @@ function FolderTreeNode({
             <DropdownMenuTrigger asChild>
               <Button
                 aria-label={t("folderActions", { name: folder.name })}
-                className="h-7 w-7 opacity-0 group-focus-within:opacity-100 group-hover:opacity-100"
+                className="h-6 w-6 opacity-0 transition-opacity group-focus-within:opacity-100 group-hover:opacity-100"
                 size="icon-sm"
                 type="button"
                 variant="ghost"
               >
-                <MoreHorizontal className="h-4 w-4" aria-hidden="true" />
+                <MoreHorizontal className="h-3.5 w-3.5" aria-hidden="true" />
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-44">
@@ -878,10 +970,11 @@ function FolderRootDropTarget({ siblingIds }: { siblingIds: string[] }) {
     <div
       ref={rootDrop.setNodeRef}
       className={cn(
-        "mb-1 flex min-h-7 items-center rounded-md border border-dashed border-border px-2 text-[11px] text-muted-foreground transition-colors",
+        "mb-1 flex min-h-7 items-center rounded-lg border border-dashed border-border/60 bg-card/40 px-2 text-[11px] text-muted-foreground transition-all",
+        canDropToRoot && "border-border",
         rootDrop.isOver &&
           canDropToRoot &&
-          "border-primary/50 bg-primary/10 text-primary",
+          "border-primary/60 bg-primary/10 text-primary shadow-sm",
       )}
       data-document-folder-root-drop-target="true"
       data-testid="document-folder-root-drop-target"

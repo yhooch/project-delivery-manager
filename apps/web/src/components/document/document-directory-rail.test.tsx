@@ -220,7 +220,7 @@ describe("DocumentDirectoryRail", () => {
 
     screen.getAllByTestId("document-folder-row").forEach((row) => {
       expect(row).toHaveClass(
-        "grid-cols-[1.75rem_1.75rem_minmax(0,1fr)_1.75rem]",
+        "grid-cols-[1.5rem_1.5rem_minmax(0,1fr)_1.5rem]",
       );
     });
     expect(screen.getByTestId("document-folder-toggle-spacer")).toBeVisible();

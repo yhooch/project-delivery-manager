@@ -228,6 +228,7 @@ function createDocument() {
     timeline: [
       {
         changeType: "CONTENT_REPLACED",
+        eventType: "UPDATED",
         createdAt: "2026-05-27T12:00:00.000Z",
         id: "EVT_01",
       },

@@ -346,19 +346,24 @@ export function DocumentsPage() {
   }, [isSelectionMode]);
 
   const showEmpty = !isLoading && !errorKey && items.length === 0;
+  const filterKeys = getDocumentFilterKeys();
 
   return (
-    <div className="mx-auto flex w-full max-w-7xl flex-col gap-5 px-4 py-5 md:px-6">
-      <section className="flex flex-col gap-4 border-b border-border pb-5">
-        <h1 className="sr-only">
-          {currentSpace?.name ?? t("unknownSpace")}
-        </h1>
-        <p className="max-w-2xl text-sm text-muted-foreground">
-          {t("home.subtitle")}
-        </p>
-
+    <div className="mx-auto flex w-full max-w-7xl flex-col gap-4 px-4 py-5 md:px-6">
+      <header className="flex flex-wrap items-start justify-between gap-3">
+        <div className="min-w-0">
+          <h1 className="sr-only">
+            {currentSpace?.name ?? t("unknownSpace")}
+          </h1>
+          <p className="text-sm font-medium text-foreground">
+            {currentSpace?.name ?? t("unknownSpace")}
+          </p>
+          <p className="mt-0.5 max-w-xl text-xs text-muted-foreground">
+            {t("home.subtitle")}
+          </p>
+        </div>
         <div
-          className="flex flex-wrap items-center gap-2"
+          className="flex shrink-0 items-center gap-2"
           data-testid="documents-create-actions"
         >
           <Button
@@ -383,105 +388,131 @@ export function DocumentsPage() {
             {t("home.import")}
           </Button>
         </div>
+      </header>
 
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-          <label className="relative min-w-0 flex-1">
-            <span className="sr-only">{t("home.searchLabel")}</span>
-            <Search
-              className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground"
-              aria-hidden="true"
-            />
-            <Input
-              className="pl-9"
-              data-testid="documents-search-input"
-              placeholder={t("home.searchPlaceholder")}
-              value={query}
-              onChange={(event) => setQuery(event.target.value)}
-            />
-          </label>
-          <div className="flex shrink-0 items-center gap-2">
-            <SelectMenu
-              aria-label={t("home.sortLabel")}
-              className="h-9 w-36"
-              data-testid="documents-sort-select"
-              value={sort}
-              onChange={(event) => setSort(event.target.value as DocumentSortKey)}
-            >
-              {(Object.keys(SORT_OPTIONS) as DocumentSortKey[]).map((key) => (
-                <option key={key} value={key}>
-                  {t(`sort.${key}`)}
-                </option>
-              ))}
-            </SelectMenu>
-            <Button
-              type="button"
-              size="default"
-              variant={isSelectionMode ? "secondary" : "outline"}
-              aria-pressed={isSelectionMode}
-              aria-label={
-                isSelectionMode ? t("selection.done") : t("selection.select")
-              }
-              title={isSelectionMode ? t("selection.done") : t("selection.select")}
-              data-testid="documents-selection-mode-toggle"
-              onClick={toggleSelectionMode}
-            >
-              <ListChecks className="h-4 w-4" aria-hidden="true" />
-              {isSelectionMode ? t("selection.done") : t("selection.select")}
-            </Button>
-            <div
-              className="flex h-9 shrink-0 items-center rounded-md border border-border p-0.5"
-              role="group"
-              aria-label={t("home.densityLabel")}
-            >
-              {(["comfortable", "compact"] as DocumentDensity[]).map((value) => {
-                const Icon = value === "comfortable" ? List : AlignJustify;
-                return (
-                  <button
-                    key={value}
-                    type="button"
-                    aria-pressed={density === value}
-                    aria-label={t(`density.${value}`)}
-                    title={t(`density.${value}`)}
-                    className={cn(
-                      "flex h-8 w-8 items-center justify-center rounded transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
-                      density === value
-                        ? "bg-primary/10 text-primary"
-                        : "text-muted-foreground hover:bg-muted hover:text-foreground",
-                    )}
-                    data-testid={`documents-density-${value}`}
-                    onClick={() => setDensity(value)}
-                  >
-                    <Icon className="h-4 w-4" aria-hidden="true" />
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-        </div>
-
-        <div
-          className="flex gap-1 overflow-x-auto pb-1"
-          aria-label={t("home.filtersLabel")}
-        >
-          {getDocumentFilterKeys().map((key) => (
+      <div
+        className="relative -mx-1 flex gap-1 overflow-x-auto px-1"
+        role="tablist"
+        aria-label={t("home.filtersLabel")}
+      >
+        {filterKeys.map((key) => {
+          const active = filter === key;
+          return (
             <button
               key={key}
               type="button"
-              aria-pressed={filter === key}
+              role="tab"
+              aria-selected={active}
               className={cn(
-                "inline-flex h-8 shrink-0 items-center rounded-md border px-3 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
-                filter === key
-                  ? "border-primary bg-primary/10 text-primary"
-                  : "border-border bg-background text-muted-foreground hover:bg-muted hover:text-foreground",
+                "relative inline-flex h-9 shrink-0 items-center gap-1.5 rounded-none border-b-2 px-3 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                active
+                  ? "border-primary text-foreground"
+                  : "border-transparent text-muted-foreground hover:text-foreground",
               )}
               data-testid={`documents-filter-${key.replace(/[A-Z]/gu, (m) => `-${m.toLowerCase()}`)}`}
               onClick={() => updateFilter(key)}
             >
               {t(`filters.${key}`)}
             </button>
-          ))}
+          );
+        })}
+        <span
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-x-0 bottom-0 border-b border-border/60"
+        />
+      </div>
+
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-2">
+        <label className="relative min-w-0 flex-1">
+          <span className="sr-only">{t("home.searchLabel")}</span>
+          <Search
+            className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground"
+            aria-hidden="true"
+          />
+          <Input
+            className="h-9 pl-9"
+            data-testid="documents-search-input"
+            placeholder={t("home.searchPlaceholder")}
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+          />
+        </label>
+        <div className="flex shrink-0 items-center gap-2">
+          <SelectMenu
+            aria-label={t("home.sortLabel")}
+            className="h-9 w-36"
+            data-testid="documents-sort-select"
+            value={sort}
+            onChange={(event) => setSort(event.target.value as DocumentSortKey)}
+          >
+            {(Object.keys(SORT_OPTIONS) as DocumentSortKey[]).map((key) => (
+              <option key={key} value={key}>
+                {t(`sort.${key}`)}
+              </option>
+            ))}
+          </SelectMenu>
+          <div
+            className="flex h-9 shrink-0 items-center rounded-md bg-muted/50 p-0.5"
+            role="group"
+            aria-label={t("home.densityLabel")}
+          >
+            {(["comfortable", "compact"] as DocumentDensity[]).map((value) => {
+              const Icon = value === "comfortable" ? List : AlignJustify;
+              return (
+                <button
+                  key={value}
+                  type="button"
+                  aria-pressed={density === value}
+                  aria-label={t(`density.${value}`)}
+                  title={t(`density.${value}`)}
+                  className={cn(
+                    "flex h-8 w-8 items-center justify-center rounded transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                    density === value
+                      ? "bg-primary/10 text-primary"
+                      : "text-muted-foreground hover:bg-muted hover:text-foreground",
+                  )}
+                  data-testid={`documents-density-${value}`}
+                  onClick={() => setDensity(value)}
+                >
+                  <Icon className="h-4 w-4" aria-hidden="true" />
+                </button>
+              );
+            })}
+          </div>
+          <Button
+            type="button"
+            size="default"
+            variant={isSelectionMode ? "secondary" : "outline"}
+            aria-pressed={isSelectionMode}
+            aria-label={
+              isSelectionMode ? t("selection.done") : t("selection.select")
+            }
+            title={isSelectionMode ? t("selection.done") : t("selection.select")}
+            data-testid="documents-selection-mode-toggle"
+            onClick={toggleSelectionMode}
+          >
+            <ListChecks className="h-4 w-4" aria-hidden="true" />
+            {isSelectionMode ? t("selection.done") : t("selection.select")}
+          </Button>
         </div>
-      </section>
+      </div>
+
+      {selectedDocumentIds.size > 0 ? (
+        <div
+          className="sticky top-12 z-20 flex h-10 items-center justify-between gap-2 rounded-md bg-primary/10 px-3 text-xs font-medium text-foreground shadow-sm"
+          data-testid="documents-selection-toolbar"
+        >
+          <span>{t("selection.count", { count: selectedDocumentIds.size })}</span>
+          <Button
+            type="button"
+            size="sm"
+            variant="ghost"
+            onClick={clearDocumentSelection}
+          >
+            {t("selection.clear")}
+          </Button>
+        </div>
+      ) : null}
 
       {errorKey ? (
         <div
@@ -502,23 +533,6 @@ export function DocumentsPage() {
 
       {showEmpty ? <DocumentsEmptyState /> : null}
 
-      {selectedDocumentIds.size > 0 ? (
-        <div
-          className="flex min-h-9 items-center justify-between gap-2 rounded-md border border-border bg-muted/30 px-3 text-xs text-muted-foreground"
-          data-testid="documents-selection-toolbar"
-        >
-          <span>{t("selection.count", { count: selectedDocumentIds.size })}</span>
-          <Button
-            type="button"
-            size="sm"
-            variant="ghost"
-            onClick={clearDocumentSelection}
-          >
-            {t("selection.clear")}
-          </Button>
-        </div>
-      ) : null}
-
       {!isLoading && items.length > 0 ? (
         <DocumentList
           dateField={SORT_OPTIONS[sort].dateField}
@@ -533,7 +547,7 @@ export function DocumentsPage() {
       ) : null}
 
       {!isLoading && items.length > 0 && items.length < total ? (
-        <div className="flex justify-center">
+        <div className="flex justify-center pt-1">
           <Button
             type="button"
             variant="outline"
@@ -636,25 +650,26 @@ function DocumentList({
   const groups = groupDocumentsByDate(items, dateField);
 
   return (
-    <div
-      className="overflow-hidden rounded-md border border-border bg-card"
-      data-testid="documents-list"
-    >
-      <div className="divide-y divide-border">
-        {groups.map((group) => (
-          <div key={group.key}>
-            {group.key !== "all" ? (
-              <h2
-                className="bg-muted/40 px-4 py-1.5 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground"
-                data-testid={`documents-group-${group.key}`}
-              >
+    <div className="flex flex-col gap-5" data-testid="documents-list">
+      {groups.map((group) => (
+        <section key={group.key} className="flex flex-col gap-1.5">
+          {group.key !== "all" ? (
+            <header
+              className="flex items-baseline gap-2 px-1"
+              data-testid={`documents-group-${group.key}`}
+            >
+              <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                 {t(`group.${group.key}`)}
               </h2>
-            ) : null}
-            <div className="divide-y divide-border">
-              {group.items.map((document) => (
+              <span className="text-[11px] tabular-nums text-muted-foreground/70">
+                {group.items.length}
+              </span>
+            </header>
+          ) : null}
+          <ul>
+            {group.items.map((document) => (
+              <li key={document.id}>
                 <DocumentRow
-                  key={document.id}
                   density={density}
                   document={document}
                   locale={locale}
@@ -663,11 +678,11 @@ function DocumentList({
                   selected={selectedDocumentIds.has(document.id)}
                   selectedDocuments={selectedDocuments}
                 />
-              ))}
-            </div>
-          </div>
-        ))}
-      </div>
+              </li>
+            ))}
+          </ul>
+        </section>
+      ))}
     </div>
   );
 }
@@ -693,6 +708,8 @@ function DocumentRow({
   const isAi =
     document.sourceType === "MCP_CREATED" || document.lastEditedVia === "MCP_CLIENT";
   const SourceIcon = isAi ? Bot : User;
+  const isArchived = document.status === "ARCHIVED";
+  const isCompact = density === "compact";
   const revisionLabel = t("list.revision", { revision: document.revision });
   const dragDocuments =
     selectionMode && selected && selectedDocuments.length > 0
@@ -715,12 +732,16 @@ function DocumentRow({
     <div
       ref={draggable.setNodeRef}
       className={cn(
-        "group flex min-w-0 items-start gap-2 px-4 transition-colors hover:bg-muted/40",
-        density === "compact" ? "py-2" : "py-3",
+        "group flex min-w-0 items-start gap-3 rounded-lg pl-3 pr-2 transition-colors",
+        isCompact ? "py-2" : "py-2.5",
+        selected
+          ? "bg-primary/10 hover:bg-primary/15"
+          : "hover:bg-muted/50",
         draggable.isDragging && "opacity-50",
       )}
       data-testid="documents-list-item"
     >
+
       {selectionMode ? (
         <input
           type="checkbox"
@@ -728,18 +749,96 @@ function DocumentRow({
             title: document.title || t("untitled"),
           })}
           checked={selected}
-          className="mt-1 h-4 w-4 shrink-0 rounded border-border text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          className={cn(
+            "h-4 w-4 shrink-0 rounded border-border text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+            isCompact ? "mt-1" : "mt-1.5",
+          )}
           data-testid="documents-list-select"
           onChange={() => onToggleSelection(document.id)}
         />
       ) : null}
+
+      <div
+        className={cn(
+          "flex shrink-0 items-center justify-center rounded-md",
+          isCompact ? "h-6 w-6" : "h-8 w-8",
+          isArchived
+            ? "bg-muted text-muted-foreground/70"
+            : isAi
+              ? "bg-info/10 text-info"
+              : "bg-muted text-foreground",
+        )}
+        aria-hidden="true"
+      >
+        <SourceIcon className={isCompact ? "h-3.5 w-3.5" : "h-4 w-4"} />
+      </div>
+
+      <Link
+        href={`/documents/${document.id}`}
+        className="min-w-0 flex-1 rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        data-testid="documents-list-item-link"
+      >
+        <div className="flex min-w-0 items-center gap-2">
+          <span
+            className={cn(
+              "truncate font-semibold text-foreground",
+              isCompact ? "text-sm" : "text-[15px] leading-snug",
+              isArchived && "text-muted-foreground",
+            )}
+          >
+            {document.title || t("untitled")}
+          </span>
+          {isArchived ? (
+            <span
+              className="inline-flex shrink-0 items-center gap-1 rounded bg-muted px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-muted-foreground"
+              title={t("status.ARCHIVED")}
+            >
+              <Archive className="h-3 w-3" aria-hidden="true" />
+              {t("status.ARCHIVED")}
+            </span>
+          ) : null}
+          <span
+            className="ml-auto shrink-0 rounded bg-muted/60 px-1.5 py-0.5 font-mono text-[10px] text-muted-foreground"
+            title={revisionLabel}
+          >
+            v{document.revision}
+          </span>
+        </div>
+        {isCompact ? (
+          <div className="mt-0.5 flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
+            <span className="truncate">
+              {formatDocumentCreatedMeta(document, locale, t)}
+            </span>
+            <DocumentRowLinks links={document.links ?? []} />
+            <TagBadgeList tags={document.tags ?? []} />
+          </div>
+        ) : (
+          <>
+            <div className="mt-1 min-w-0 text-xs text-muted-foreground">
+              <span className="block truncate">
+                {formatDocumentCreatedMeta(document, locale, t)}
+              </span>
+            </div>
+            {((document.links ?? []).some(
+              (link) => link.targetType !== "DOCUMENT",
+            ) ||
+              (document.tags ?? []).length > 0) ? (
+              <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
+                <DocumentRowLinks links={document.links ?? []} />
+                <TagBadgeList tags={document.tags ?? []} />
+              </div>
+            ) : null}
+          </>
+        )}
+      </Link>
+
       <Button
         aria-label={
           selectionMode && selected && selectedDocuments.length > 1
             ? t("list.dragSelected", { count: selectedDocuments.length })
             : t("list.dragDocument", { title: document.title || t("untitled") })
         }
-        className="mt-0.5 h-7 w-6 shrink-0 cursor-grab text-muted-foreground opacity-0 active:cursor-grabbing group-focus-within:opacity-100 group-hover:opacity-100"
+        className="mt-0.5 h-7 w-6 shrink-0 cursor-grab text-muted-foreground opacity-0 transition-opacity active:cursor-grabbing group-focus-within:opacity-100 group-hover:opacity-100"
         data-testid="documents-list-drag-handle"
         size="icon-sm"
         type="button"
@@ -751,43 +850,6 @@ function DocumentRow({
       >
         <GripVertical className="h-4 w-4" aria-hidden="true" />
       </Button>
-      <Link
-        href={`/documents/${document.id}`}
-        className="min-w-0 flex-1 rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-        data-testid="documents-list-item-link"
-      >
-        <div className="flex min-w-0 items-center gap-2">
-          <SourceIcon
-            className="h-4 w-4 shrink-0 text-muted-foreground"
-            aria-hidden="true"
-          />
-          <span className="truncate text-sm font-semibold text-foreground">
-            {document.title || t("untitled")}
-          </span>
-          {document.status === "ARCHIVED" ? (
-            <Badge className="shrink-0" variant="default">
-              <Archive className="h-3 w-3" aria-hidden="true" />
-              {t("status.ARCHIVED")}
-            </Badge>
-          ) : null}
-          <span
-            className="ml-auto shrink-0 text-[11px] text-muted-foreground"
-            title={revisionLabel}
-          >
-            {revisionLabel}
-          </span>
-        </div>
-        <div
-          className={cn(
-            "flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground",
-            density === "compact" ? "mt-0.5" : "mt-1",
-          )}
-        >
-          <span>{formatDocumentCreatedMeta(document, locale, t)}</span>
-          <DocumentRowLinks links={document.links ?? []} />
-          <TagBadgeList tags={document.tags ?? []} />
-        </div>
-      </Link>
     </div>
   );
 }
@@ -806,7 +868,7 @@ function DocumentRowLinks({ links }: { links: DocumentSummary["links"] }) {
       {visible.map((link) => (
         <span
           key={link.id}
-          className="inline-flex items-center rounded border border-border bg-background px-1.5 py-0.5 font-mono text-[11px] text-foreground"
+          className="inline-flex items-center rounded-md bg-muted px-1.5 py-0.5 font-mono text-[11px] leading-none text-foreground"
           title={link.title}
         >
           {getDocumentLinkDisplayCode(link)}
@@ -950,14 +1012,22 @@ function DocumentsEmptyState() {
   const t = useTranslations("documents");
   return (
     <section
-      className="flex min-h-80 flex-col items-center justify-center rounded-md border border-dashed border-border bg-card px-5 py-10 text-center"
+      className="flex min-h-96 flex-col items-center justify-center rounded-lg border border-dashed border-border bg-gradient-to-b from-card to-muted/30 px-6 py-14 text-center"
       data-testid="documents-empty-state"
     >
-      <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-primary/10 text-primary">
-        <FileText className="h-6 w-6" aria-hidden="true" />
+      <div className="relative">
+        <div
+          aria-hidden="true"
+          className="absolute inset-0 -m-3 rounded-2xl bg-primary/5 blur-md"
+        />
+        <div className="relative flex h-14 w-14 items-center justify-center rounded-xl bg-primary/10 text-primary">
+          <FileText className="h-7 w-7" aria-hidden="true" />
+        </div>
       </div>
-      <h2 className="mt-4 text-base font-semibold">{t("empty.title")}</h2>
-      <p className="mt-2 max-w-lg text-sm text-muted-foreground">
+      <h2 className="mt-5 text-base font-semibold text-foreground">
+        {t("empty.title")}
+      </h2>
+      <p className="mt-2 max-w-md text-sm leading-relaxed text-muted-foreground">
         {t("empty.description")}
       </p>
     </section>

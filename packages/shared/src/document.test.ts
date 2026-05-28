@@ -297,6 +297,7 @@ describe("document contracts", () => {
             id: THIRD_ID,
             actorName: "Alice",
             changeType: "Document created",
+            eventType: "CREATED",
             createdAt: "2026-05-27T00:30:00.000Z",
           },
         ],

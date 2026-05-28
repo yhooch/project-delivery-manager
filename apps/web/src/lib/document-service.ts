@@ -1,4 +1,4 @@
-import type { TagDto } from "@project-delivery/shared";
+import type { TagDto, TimelineEventType } from "@project-delivery/shared";
 import { z } from "zod";
 
 import { apiClient, type ApiRequestInit } from "./api-client";
@@ -86,6 +86,7 @@ export type DocumentCommentSummary = {
 export type DocumentTimelineSummary = {
   actorName?: string | null;
   changeType: string;
+  eventType: TimelineEventType;
   createdAt: string;
   id: string;
 };
@@ -320,6 +321,17 @@ const documentDetailSchema = documentSummaryBaseSchema
           .object({
             actorName: z.string().nullish(),
             changeType: z.string(),
+            eventType: z.enum([
+              "CREATED",
+              "UPDATED",
+              "STATUS_CHANGED",
+              "ACTION_EXECUTED",
+              "ASSIGNEE_CHANGED",
+              "COMMENTED",
+              "ATTACHMENT_ADDED",
+              "CLOSED",
+              "REOPENED",
+            ]),
             createdAt: z.string(),
             id: z.string(),
           })
