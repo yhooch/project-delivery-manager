@@ -115,7 +115,7 @@ packages/
 prisma/       Prisma schema and migrations
 tests/e2e/    Playwright API and UI E2E tests
 deploy/       nginx production entrypoint config
-docs/         deployment and implementation notes
+docs/         README screenshot assets
 ```
 
 ## Requirements
@@ -211,7 +211,6 @@ Compose:
 - [Dockerfile.web](Dockerfile.web)
 - [deploy/nginx.conf](deploy/nginx.conf)
 - [.env.prod.example](.env.prod.example)
-- [docs/production-private-registry.md](docs/production-private-registry.md)
 
 For HTTP deployment, `SESSION_COOKIE_SECURE=false` must match the actual origin.
 When moving to HTTPS, switch it back to secure cookie behavior.

@@ -104,7 +104,7 @@ packages/
 prisma/       Prisma schema 和 migrations
 tests/e2e/    Playwright API 和 UI E2E 测试
 deploy/       nginx 生产入口配置
-docs/         部署和实施说明
+docs/         README 截图资源
 ```
 
 ## 环境要求
@@ -199,7 +199,6 @@ corepack pnpm test:e2e:list
 - [Dockerfile.web](Dockerfile.web)
 - [deploy/nginx.conf](deploy/nginx.conf)
 - [.env.prod.example](.env.prod.example)
-- [docs/production-private-registry.md](docs/production-private-registry.md)
 
 HTTP 部署时，`SESSION_COOKIE_SECURE=false` 必须和实际访问 origin 匹配。切换到 HTTPS
 后，应恢复 secure cookie 口径。公网和私网入口会按请求 `Host` 与浏览器 `Origin`
