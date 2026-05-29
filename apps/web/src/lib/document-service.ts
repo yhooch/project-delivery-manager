@@ -147,6 +147,8 @@ export type ListDocumentsInput = {
   folderId?: string | null;
   includeDescendants?: boolean;
   kind?: DocumentKind;
+  linkedTargetId?: string;
+  linkedTargetType?: DocumentLinkTargetType;
   organizationId?: string;
   page?: number;
   pageSize?: number;
@@ -157,6 +159,14 @@ export type ListDocumentsInput = {
   tagIds?: string[];
   tagMatch?: "ANY" | "ALL";
   unfiled?: boolean;
+};
+
+export type ListReferencingDocumentsInput = {
+  organizationId?: string;
+  page?: number;
+  pageSize?: number;
+  spaceId: string;
+  targetDocumentId: string;
 };
 
 export type PasteDocumentInput = {
@@ -466,6 +476,8 @@ export async function listDocuments(
       kind: query.kind,
       unfiled: query.unfiled || undefined,
       query: optionalString(query.query),
+      linkedTargetId: optionalString(query.linkedTargetId),
+      linkedTargetType: query.linkedTargetType,
       sortBy: query.sortBy,
       sortOrder: query.sortOrder,
       ...toDocumentListFilterQuery(filter, currentUserId),
@@ -475,6 +487,25 @@ export async function listDocuments(
   });
 
   return documentPageSchema.parse(response.data);
+}
+
+export async function listReferencingDocuments(
+  input: ListReferencingDocumentsInput,
+  api: DocumentApiTransport = defaultApi,
+): Promise<DocumentPageResult<DocumentSummary>> {
+  return listDocuments(
+    {
+      linkedTargetId: input.targetDocumentId,
+      linkedTargetType: "DOCUMENT",
+      organizationId: input.organizationId,
+      page: input.page,
+      pageSize: input.pageSize,
+      sortBy: "lastEditedAt",
+      sortOrder: "desc",
+      spaceId: input.spaceId,
+    },
+    api,
+  );
 }
 
 export async function getDocument(

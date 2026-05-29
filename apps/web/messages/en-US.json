@@ -1036,6 +1036,15 @@
       "noResources": "No linked resources",
       "moreResources": "+{count} more"
     },
+    "references": {
+      "documentTitle": "Referenced by",
+      "requirementTitle": "Referencing this requirement",
+      "loading": "Loading referencing documents…",
+      "empty": "No documents reference this content",
+      "count": "{count} references",
+      "more": "{count} more referencing documents",
+      "untitled": "Untitled document"
+    },
     "selection": {
       "count": "{count} documents selected",
       "clear": "Clear selection",

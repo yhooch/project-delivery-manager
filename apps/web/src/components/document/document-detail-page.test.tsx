@@ -85,6 +85,7 @@ const {
   getDocumentMock,
   listDocumentFoldersMock,
   listDocumentsMock,
+  listReferencingDocumentsMock,
   moveDocumentToFolderMock,
   reimportDocumentMock,
   restoreDocumentMock,
@@ -98,6 +99,7 @@ const {
   getDocumentMock: vi.fn(),
   listDocumentFoldersMock: vi.fn(),
   listDocumentsMock: vi.fn(),
+  listReferencingDocumentsMock: vi.fn(),
   moveDocumentToFolderMock: vi.fn(),
   reimportDocumentMock: vi.fn(),
   restoreDocumentMock: vi.fn(),
@@ -117,6 +119,7 @@ vi.mock("../../lib/document-service", async () => {
     getDocument: getDocumentMock,
     listDocumentFolders: listDocumentFoldersMock,
     listDocuments: listDocumentsMock,
+    listReferencingDocuments: listReferencingDocumentsMock,
     moveDocumentToFolder: moveDocumentToFolderMock,
     reimportDocument: reimportDocumentMock,
     restoreDocument: restoreDocumentMock,
@@ -266,6 +269,7 @@ beforeEach(() => {
   getDocumentMock.mockReset();
   listDocumentFoldersMock.mockReset();
   listDocumentsMock.mockReset();
+  listReferencingDocumentsMock.mockReset();
   moveDocumentToFolderMock.mockReset();
   reimportDocumentMock.mockReset();
   restoreDocumentMock.mockReset();
@@ -281,6 +285,8 @@ beforeEach(() => {
   listCommentsMock.mockResolvedValue({ items: [], total: 0 });
   listAttachmentsMock.mockResolvedValue({ items: [], total: 0 });
   listTimelineMock.mockResolvedValue({ items: [], total: 0 });
+  listDocumentsMock.mockResolvedValue({ items: [], total: 0 });
+  listReferencingDocumentsMock.mockResolvedValue({ items: [], total: 0 });
   lookupObjectCodeMock.mockResolvedValue({
     displayCode: "REQ-12",
     id: "REQ_01",
@@ -395,6 +401,49 @@ describe("DocumentDetailPage", () => {
         /documents\.meta\.editedViaClient Ada Claude Code/u,
       )[0],
     ).toBeVisible();
+    await waitFor(() =>
+      expect(listReferencingDocumentsMock).toHaveBeenCalledWith(
+        expect.objectContaining({
+          page: 1,
+          pageSize: 5,
+          spaceId: "SPC_01",
+          targetDocumentId: "DOC_01",
+        }),
+      ),
+    );
+  });
+
+  it("shows documents that reference the current document", async () => {
+    listReferencingDocumentsMock.mockResolvedValueOnce({
+      items: [
+        {
+          contentFormat: "MARKDOWN",
+          createdAt: "2026-05-27T10:00:00.000Z",
+          id: "DOC_REF",
+          kind: "GENERAL",
+          lastEditedAt: "2026-05-28T10:00:00.000Z",
+          lastEditedVia: "USER",
+          organizationId: "ORG_01",
+          revision: 1,
+          sourceType: "PASTE_MARKDOWN",
+          spaceId: "SPC_01",
+          status: "ACTIVE",
+          title: "Referencing note",
+          updatedAt: "2026-05-28T10:00:00.000Z",
+        },
+      ],
+      total: 1,
+    });
+
+    render(<DocumentDetailPage documentId="DOC_01" />);
+
+    const references = await screen.findByTestId(
+      "referencing-documents-section",
+    );
+    expect(references).toHaveTextContent("Referencing note");
+    expect(
+      within(references).getByTestId("referencing-document-link"),
+    ).toHaveAttribute("href", "/documents/DOC_REF");
   });
 
   it("renders rich-text requirement exports in the document reader", async () => {

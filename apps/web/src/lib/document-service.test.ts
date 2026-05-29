@@ -11,6 +11,7 @@ import {
   importMarkdownDocument,
   listDocumentFolders,
   listDocuments,
+  listReferencingDocuments,
   moveDocumentFolder,
   moveDocumentsToFolder,
   moveDocumentToFolder,
@@ -87,6 +88,8 @@ describe("document service", () => {
           tagMatch: "ANY",
           folderId: "FLD_01",
           includeDescendants: true,
+          linkedTargetId: "REQ_01",
+          linkedTargetType: "DOCUMENT",
           unfiled: false,
         },
         api,
@@ -102,11 +105,38 @@ describe("document service", () => {
         page: 2,
         pageSize: 25,
         query: "launch",
+        linkedTargetId: "REQ_01",
+        linkedTargetType: "DOCUMENT",
         folderId: "FLD_01",
         includeDescendants: true,
         unfiled: undefined,
         tagIds: ["TAG_01"],
         tagMatch: "ANY",
+      },
+    });
+  });
+
+  it("lists documents that reference a document target", async () => {
+    const api = createApi();
+
+    await listReferencingDocuments(
+      {
+        page: 1,
+        pageSize: 5,
+        spaceId,
+        targetDocumentId: documentId,
+      },
+      api,
+    );
+
+    expect(api.get).toHaveBeenCalledWith(`/spaces/${spaceId}/documents`, {
+      query: {
+        page: 1,
+        pageSize: 5,
+        linkedTargetId: documentId,
+        linkedTargetType: "DOCUMENT",
+        sortBy: "lastEditedAt",
+        sortOrder: "desc",
       },
     });
   });

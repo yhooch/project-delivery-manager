@@ -81,6 +81,7 @@ import {
 import { isLocale } from "../../i18n/locales";
 import { useRouter } from "../../i18n/routing";
 import { useSession } from "../providers/session-provider";
+import { ReferencingDocumentsSection } from "../document/referencing-documents-section";
 import { TraceVersionCascadeConfirmDialog } from "../trace-version-cascade-confirm-dialog";
 import { ObjectTagAssignmentField } from "../tag";
 import { Badge, type BadgeProps } from "../ui/badge";
@@ -138,6 +139,7 @@ export function RequirementDetailWorkspace({
   requirementId,
 }: RequirementDetailWorkspaceProps) {
   const t = useTranslations("requirements");
+  const tDocuments = useTranslations("documents");
   const tRoot = useTranslations();
   const locale = useLocale();
   const router = useRouter();
@@ -1009,6 +1011,13 @@ export function RequirementDetailWorkspace({
 
         {/* Related work items — minimal, flat section */}
         <RelatedWorkItemsSection requirement={requirement} t={t} />
+
+        <ReferencingDocumentsSection
+          organizationId={requirement.organizationId}
+          spaceId={requirement.spaceId}
+          targetDocumentId={requirement.id}
+          title={tDocuments("references.requirementTitle")}
+        />
       </form>
 
       <TraceVersionCascadeConfirmDialog

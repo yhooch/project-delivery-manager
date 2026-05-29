@@ -6,6 +6,7 @@ import {
   screen,
   waitFor,
 } from "@testing-library/react";
+import type { ReactNode } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const { translatorCache } = vi.hoisted(() => ({
@@ -28,6 +29,18 @@ const { routerPushMock } = vi.hoisted(() => ({
   routerPushMock: vi.fn(),
 }));
 vi.mock("../../i18n/routing", () => ({
+  Link: ({
+    children,
+    href,
+    ...props
+  }: {
+    children: ReactNode;
+    href: string;
+  }) => (
+    <a href={href} {...props}>
+      {children}
+    </a>
+  ),
   useRouter: () => ({ push: routerPushMock }),
 }));
 
@@ -101,6 +114,20 @@ vi.mock("../../lib/requirement-service", () => ({
   listRequirementVersions: listRequirementVersionsMock,
   updateRequirement: updateRequirementMock,
 }));
+
+const { listReferencingDocumentsMock } = vi.hoisted(() => ({
+  listReferencingDocumentsMock: vi.fn(),
+}));
+vi.mock("../../lib/document-service", async () => {
+  const actual = await vi.importActual<
+    typeof import("../../lib/document-service")
+  >("../../lib/document-service");
+
+  return {
+    ...actual,
+    listReferencingDocuments: listReferencingDocumentsMock,
+  };
+});
 vi.mock("../../lib/realtime", async (importOriginal) => {
   const actual = await importOriginal<typeof import("../../lib/realtime")>();
 
@@ -195,6 +222,7 @@ beforeEach(() => {
   getRequirementMock.mockReset();
   listRequirementAssignableMembersMock.mockReset();
   listRequirementVersionsMock.mockReset();
+  listReferencingDocumentsMock.mockReset();
   updateRequirementMock.mockReset();
   routerPushMock.mockReset();
   realtimeInvalidationHandlers.length = 0;
@@ -205,6 +233,7 @@ beforeEach(() => {
     items: [],
     total: 0,
   });
+  listReferencingDocumentsMock.mockResolvedValue({ items: [], total: 0 });
   updateRequirementMock.mockResolvedValue(makeRequirement());
   window.localStorage.clear();
 });
@@ -241,6 +270,47 @@ async function dispatchRealtimeInvalidation(
 }
 
 describe("RequirementDetailWorkspace", () => {
+  it("shows documents that reference the requirement document", async () => {
+    getRequirementMock.mockResolvedValueOnce(makeRequirement());
+    listReferencingDocumentsMock.mockResolvedValueOnce({
+      items: [
+        {
+          contentFormat: "MARKDOWN",
+          createdAt: "2026-05-27T10:00:00.000Z",
+          id: "DOC_REF",
+          kind: "GENERAL",
+          lastEditedAt: "2026-05-28T10:00:00.000Z",
+          lastEditedVia: "USER",
+          organizationId: "ORG_01",
+          revision: 1,
+          sourceType: "PASTE_MARKDOWN",
+          spaceId: "SPC_01",
+          status: "ACTIVE",
+          title: "Requirement reference note",
+          updatedAt: "2026-05-28T10:00:00.000Z",
+        },
+      ],
+      total: 1,
+    });
+
+    render(
+      <RequirementDetailWorkspace requirementId="01ARZ3NDEKTSV4RRFFQ69G5FA1" />,
+    );
+
+    const references = await screen.findByTestId(
+      "referencing-documents-section",
+    );
+    expect(references).toHaveTextContent("Requirement reference note");
+    expect(listReferencingDocumentsMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        page: 1,
+        pageSize: 5,
+        spaceId: "SPC_01",
+        targetDocumentId: "01ARZ3NDEKTSV4RRFFQ69G5FA1",
+      }),
+    );
+  });
+
   it("does not let a writer role override explicit canEdit=false", async () => {
     getRequirementMock.mockResolvedValueOnce(
       makeRequirement({

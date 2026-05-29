@@ -1036,6 +1036,15 @@
       "noResources": "暂无关联资源",
       "moreResources": "+{count} 个"
     },
+    "references": {
+      "documentTitle": "引用此文档",
+      "requirementTitle": "引用此需求",
+      "loading": "正在加载引用文档…",
+      "empty": "暂无文档引用此内容",
+      "count": "{count} 个引用",
+      "more": "还有 {count} 个引用文档",
+      "untitled": "未命名文档"
+    },
     "selection": {
       "count": "已选择 {count} 个文档",
       "clear": "清除选择",

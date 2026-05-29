@@ -137,6 +137,7 @@ import {
   getDocumentMarkdownHeadings,
   type MarkdownHeading,
 } from "./document-markdown-viewer";
+import { ReferencingDocumentsSection } from "./referencing-documents-section";
 
 type DocumentDetailPageProps = {
   documentId: string;
@@ -2200,6 +2201,19 @@ function DocumentContextRail({
           title={t("rail.resources")}
         >
           <DocumentLinksSummary links={document.links ?? []} />
+        </RailSection>
+        <RailSection
+          icon={<FileText className="h-3.5 w-3.5" />}
+          title={t("references.documentTitle")}
+        >
+          <ReferencingDocumentsSection
+            compact
+            hideHeader
+            organizationId={document.organizationId}
+            spaceId={document.spaceId}
+            targetDocumentId={document.id}
+            title={t("references.documentTitle")}
+          />
         </RailSection>
         <RailSection
           icon={<Tags className="h-3.5 w-3.5" />}
