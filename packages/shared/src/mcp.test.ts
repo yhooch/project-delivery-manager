@@ -25,6 +25,7 @@ import {
   McpProtectedResourceMetadataPath,
   McpProtectedResourceMetadataSchema,
   McpScopeSchema,
+  McpReplaceDocumentContentRequestSchema,
   McpToolErrorResultSchema,
   McpToolNameSchema,
   McpToolRegistrySchema,
@@ -310,6 +311,25 @@ describe("MCP and OAuth shared contracts", () => {
     ).toMatchObject({
       required: expect.arrayContaining(["baseRevision", "documentId"]),
     });
+    const replaceContentSchema = mcpToolRegistry.find(
+      (tool) => tool.name === "pdm.document.replace_content",
+    )?.inputSchema;
+    expect(replaceContentSchema).toMatchObject({
+      type: "object",
+      required: expect.arrayContaining([
+        "baseRevision",
+        "contentMarkdown",
+        "documentId",
+      ]),
+      properties: expect.objectContaining({
+        contentMarkdown: expect.objectContaining({
+          maxLength: 2 * 1024 * 1024,
+          minLength: 1,
+          type: "string",
+        }),
+      }),
+    });
+    expect(replaceContentSchema).not.toHaveProperty("allOf");
     expect(
       mcpToolRegistry.find((tool) => tool.name === "pdm.comment.create")
         ?.description,
@@ -380,6 +400,33 @@ describe("MCP and OAuth shared contracts", () => {
       McpCreateDocumentFromMarkdownRequestSchema.safeParse({
         ...input,
         sourceType: "PASTE_MARKDOWN",
+      }).success,
+    ).toBe(false);
+  });
+
+  it("requires full Markdown content for MCP document replacement", () => {
+    const input = {
+      organizationId,
+      spaceId,
+      idempotencyKey: "doc-replace-2026-05-29",
+      targetSelectionSource: "USER_EXPLICIT",
+      documentId: "01GRZ3NDEKTSV4RRFFQ69G5FAV",
+      baseRevision: 1,
+      contentMarkdown: "# Replacement\n\nNew body.",
+    };
+
+    expect(McpReplaceDocumentContentRequestSchema.parse(input)).toMatchObject({
+      baseRevision: 1,
+      contentMarkdown: "# Replacement\n\nNew body.",
+      documentId: "01GRZ3NDEKTSV4RRFFQ69G5FAV",
+      organizationId,
+      spaceId,
+      targetSelectionSource: "USER_EXPLICIT",
+    });
+    expect(
+      McpReplaceDocumentContentRequestSchema.safeParse({
+        ...input,
+        contentFormat: "TIPTAP_JSON",
       }).success,
     ).toBe(false);
   });

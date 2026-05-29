@@ -861,6 +861,53 @@ describe("McpWriteToolExecutor", () => {
     expect(documents.updateContent).not.toHaveBeenCalled();
   });
 
+  it("routes document content replacement to content updates without replacing links", async () => {
+    const result = await executor.execute(
+      contract("pdm.document.replace_content"),
+      {
+        organizationId: ORGANIZATION_ID,
+        spaceId: SPACE_ID,
+        idempotencyKey: "document-replace-1",
+        targetSelectionSource: "USER_EXPLICIT",
+        documentId: DOCUMENT_ID,
+        baseRevision: 1,
+        contentMarkdown: "# Updated",
+      },
+      principal(),
+      {
+        requestId: "req-document-replace",
+      },
+    );
+
+    expect(documents.updateContent).toHaveBeenCalledWith(
+      USER_ID,
+      DOCUMENT_ID,
+      {
+        baseRevision: 1,
+        contentMarkdown: "# Updated",
+      },
+      expect.objectContaining({
+        metadata: expect.objectContaining({
+          source: "MCP",
+          toolName: "pdm.document.replace_content",
+        }),
+        requestId: "req-document-replace",
+      }),
+      {
+        actorType: "MCP_CLIENT",
+        mcpClientId: "test-client",
+      },
+    );
+    expect(documents.updateMetadata).not.toHaveBeenCalled();
+    expect(documents.replaceLinks).not.toHaveBeenCalled();
+    expect(result).toMatchObject({
+      structuredContent: {
+        id: DOCUMENT_ID,
+        revision: 2,
+      },
+    });
+  });
+
   it("rejects stale document link replacements before invoking DocumentService mutators", async () => {
     const result = await executor.execute(
       contract("pdm.document.link_resources"),

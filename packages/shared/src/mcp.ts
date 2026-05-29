@@ -20,6 +20,7 @@ import {
   GetDocumentResponseSchema,
   DeleteDocumentFolderResponseSchema,
   DocumentFolderSchema,
+  DocumentMaxMarkdownBytes,
   MoveDocumentFolderRequestSchema,
   MoveDocumentFolderResponseSchema,
   MoveDocumentToFolderRequestSchema,
@@ -41,7 +42,6 @@ import {
   type DocumentFolder,
   type PasteDocumentRequest,
   type ReplaceDocumentLinksRequest,
-  type UpdateDocumentContentRequest,
   type UpdateDocumentMetadataRequest,
 } from "./document.ts";
 import {
@@ -856,15 +856,38 @@ export type McpAppendDocumentContentRequest = McpWriteContext &
     documentId: string;
   };
 
-export const McpReplaceDocumentContentRequestSchema = z.intersection(
-  McpWriteContextSchema.merge(DocumentIdToolInputSchema),
-  UpdateDocumentContentRequestSchema,
-);
+const McpReplaceDocumentContentBodySchema = z
+  .object({
+    baseRevision: z.coerce.number().int().positive(),
+    contentFormat: z.literal("MARKDOWN").optional(),
+    contentMarkdown: z.string().min(1).max(DocumentMaxMarkdownBytes),
+  })
+  .strict()
+  .superRefine((value, context) => {
+    const parsed = UpdateDocumentContentRequestSchema.safeParse({
+      baseRevision: value.baseRevision,
+      contentFormat: value.contentFormat,
+      contentMarkdown: value.contentMarkdown,
+    });
 
-export type McpReplaceDocumentContentRequest = McpWriteContext &
-  UpdateDocumentContentRequest & {
-    documentId: string;
-  };
+    if (parsed.success) {
+      return;
+    }
+
+    context.addIssue({
+      code: "custom",
+      message: parsed.error.issues.map((issue) => issue.message).join("; "),
+    });
+  });
+
+export const McpReplaceDocumentContentRequestSchema =
+  McpWriteContextSchema.merge(DocumentIdToolInputSchema).merge(
+    McpReplaceDocumentContentBodySchema,
+  );
+
+export type McpReplaceDocumentContentRequest = z.infer<
+  typeof McpReplaceDocumentContentRequestSchema
+>;
 
 export const McpUpdateDocumentMetadataRequestSchema =
   McpWriteContextSchema.merge(DocumentIdToolInputSchema).merge(
