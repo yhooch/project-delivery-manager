@@ -5,6 +5,7 @@ import {
   render,
   screen,
   waitFor,
+  within,
 } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -300,7 +301,7 @@ describe("RequirementDetailWorkspace", () => {
     const references = await screen.findByTestId(
       "referencing-documents-section",
     );
-    expect(references).toHaveTextContent("Requirement reference note");
+    await within(references).findByText("Requirement reference note");
     expect(listReferencingDocumentsMock).toHaveBeenCalledWith(
       expect.objectContaining({
         page: 1,
