@@ -365,10 +365,12 @@ describe("DocumentDetailPage", () => {
     expect((await screen.findAllByText("Launch plan"))[0]).toBeVisible();
     const markdownViewer = screen.getByTestId("document-markdown-viewer");
     expect(markdownViewer).toBeVisible();
+    expect(markdownViewer).toHaveClass("w-full", "min-w-0");
     const markdownHeading = within(markdownViewer).getByRole("heading", {
       level: 1,
       name: "Launch plan",
     });
+    expect(markdownHeading).toHaveClass("max-w-full", "break-words");
     expect(markdownHeading).toHaveAttribute("id", "launch-plan");
     expect(markdownHeading).toHaveClass("scroll-mt-28");
     expect(screen.getByTestId("document-linked-resources")).toBeVisible();

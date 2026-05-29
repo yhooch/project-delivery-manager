@@ -25,6 +25,7 @@ type DocumentMarkdownViewerProps = {
 };
 
 const DOCUMENT_MARKDOWN_HEADING_SCROLL_MARGIN_CLASS = "scroll-mt-28";
+const DOCUMENT_MARKDOWN_PROSE_WIDTH_CLASS = "max-w-full break-words";
 
 export function DocumentMarkdownViewer({
   className,
@@ -52,7 +53,7 @@ export function DocumentMarkdownViewer({
   return (
     <article
       className={cn(
-        "document-markdown max-w-[70ch] text-sm leading-7 text-foreground",
+        "document-markdown w-full min-w-0 text-sm leading-7 text-foreground",
         className,
       )}
       data-testid="document-markdown-viewer"
@@ -72,6 +73,7 @@ export function DocumentMarkdownViewer({
               id={block.id}
               className={cn(
                 DOCUMENT_MARKDOWN_HEADING_SCROLL_MARGIN_CLASS,
+                DOCUMENT_MARKDOWN_PROSE_WIDTH_CLASS,
                 "font-semibold tracking-normal text-foreground",
                 block.level === 1 && "mb-3 mt-2 text-2xl leading-9",
                 block.level === 2 && "mb-2 mt-8 text-xl leading-8",
@@ -90,7 +92,10 @@ export function DocumentMarkdownViewer({
 
         if (block.kind === "paragraph") {
           return (
-            <p key={index} className="my-3">
+            <p
+              key={index}
+              className={cn("my-3", DOCUMENT_MARKDOWN_PROSE_WIDTH_CLASS)}
+            >
               <InlineTokens
                 organizationId={organizationId}
                 spaceId={spaceId}
@@ -104,7 +109,10 @@ export function DocumentMarkdownViewer({
           return (
             <blockquote
               key={index}
-              className="my-4 border-l-2 border-border pl-4 text-muted-foreground"
+              className={cn(
+                "my-4 border-l-2 border-border pl-4 text-muted-foreground",
+                DOCUMENT_MARKDOWN_PROSE_WIDTH_CLASS,
+              )}
             >
               <InlineTokens
                 organizationId={organizationId}
@@ -119,7 +127,7 @@ export function DocumentMarkdownViewer({
           return (
             <pre
               key={index}
-              className="my-4 overflow-x-auto rounded-md border border-border bg-muted/60 p-3 font-mono text-xs leading-6 text-foreground"
+              className="my-4 w-full overflow-x-auto rounded-md border border-border bg-muted/60 p-3 font-mono text-xs leading-6 text-foreground"
             >
               <code>{block.code}</code>
             </pre>
@@ -133,6 +141,7 @@ export function DocumentMarkdownViewer({
               key={index}
               className={cn(
                 "my-3 space-y-1 pl-5",
+                DOCUMENT_MARKDOWN_PROSE_WIDTH_CLASS,
                 block.ordered ? "list-decimal" : "list-disc",
               )}
             >
@@ -151,15 +160,15 @@ export function DocumentMarkdownViewer({
 
         if (block.kind === "table") {
           return (
-            <div key={index} className="my-4 overflow-x-auto">
-              <table className="w-full border-collapse text-xs">
+            <div key={index} className="my-4 w-full overflow-x-auto">
+              <table className="w-full min-w-[48rem] border-collapse text-xs">
                 <thead>
                   <tr className="border-b border-border bg-muted/40 text-left">
                     {block.header.map((cell, cellIndex) => (
                       <th
                         key={cellIndex}
                         scope="col"
-                        className="px-3 py-2 font-semibold text-foreground"
+                        className="whitespace-nowrap px-3 py-2 font-semibold text-foreground"
                       >
                         <InlineTokens
                           organizationId={organizationId}
@@ -172,7 +181,10 @@ export function DocumentMarkdownViewer({
                 </thead>
                 <tbody>
                   {block.rows.map((row, rowIndex) => (
-                    <tr key={rowIndex} className="border-b border-border last:border-0">
+                    <tr
+                      key={rowIndex}
+                      className="border-b border-border last:border-0"
+                    >
                       {row.map((cell, cellIndex) => (
                         <td
                           key={cellIndex}
@@ -193,7 +205,15 @@ export function DocumentMarkdownViewer({
           );
         }
 
-        return <hr key={index} className="my-6 border-border" />;
+        return (
+          <hr
+            key={index}
+            className={cn(
+              "my-6 border-border",
+              DOCUMENT_MARKDOWN_PROSE_WIDTH_CLASS,
+            )}
+          />
+        );
       })}
     </article>
   );
@@ -245,7 +265,7 @@ function InlineToken({
   }
   if (token.kind === "code") {
     return (
-      <code className="rounded bg-muted px-1 py-0.5 font-mono text-[0.85em]">
+      <code className="whitespace-nowrap rounded bg-muted px-1 py-0.5 font-mono text-[0.85em]">
         {token.text}
       </code>
     );
