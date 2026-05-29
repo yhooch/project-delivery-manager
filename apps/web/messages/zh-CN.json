@@ -1029,7 +1029,7 @@
       }
     },
     "list": {
-      "revision": "Revision {revision}",
+      "revision": "修订 {revision}",
       "selectDocument": "选择文档 {title}",
       "dragDocument": "拖拽文档 {title}",
       "dragSelected": "拖拽已选的 {count} 个文档",
@@ -1224,7 +1224,7 @@
       "created": "创建",
       "edited": "最近编辑",
       "source": "来源",
-      "revision": "Revision",
+      "revision": "修订号",
       "viewAll": "查看全部（{count}）"
     },
     "markdown": {
