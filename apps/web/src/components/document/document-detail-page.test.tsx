@@ -467,6 +467,35 @@ describe("DocumentDetailPage", () => {
     ).not.toBeInTheDocument();
   });
 
+  it("wraps long inline code without splitting short identifiers", async () => {
+    getDocumentMock.mockResolvedValueOnce({
+      ...createDocument(),
+      contentMarkdown:
+        "# Inline code\n\n`SD-001` uses `speaker_tts_play_start / speaker_audio_play_start`.",
+      title: "Inline code",
+    });
+
+    render(<DocumentDetailPage documentId="DOC_01" />);
+
+    const markdownViewer = await screen.findByTestId(
+      "document-markdown-viewer",
+    );
+    expect(
+      within(markdownViewer).getByRole("heading", {
+        level: 1,
+        name: "Inline code",
+      }),
+    ).toBeVisible();
+    expect(within(markdownViewer).getByText("SD-001")).toHaveClass(
+      "whitespace-nowrap",
+    );
+    expect(
+      within(markdownViewer).getByText(
+        "speaker_tts_play_start / speaker_audio_play_start",
+      ),
+    ).toHaveClass("break-words");
+  });
+
   it("converts general documents to requirements from the document detail", async () => {
     render(<DocumentDetailPage documentId="DOC_01" />);
 

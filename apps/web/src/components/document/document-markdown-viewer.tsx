@@ -264,8 +264,15 @@ function InlineToken({
     return <strong className="font-semibold">{token.text}</strong>;
   }
   if (token.kind === "code") {
+    const shouldKeepCodeTokenOnOneLine = token.text.length <= 16;
+
     return (
-      <code className="whitespace-nowrap rounded bg-muted px-1 py-0.5 font-mono text-[0.85em]">
+      <code
+        className={cn(
+          "rounded bg-muted px-1 py-0.5 font-mono text-[0.85em]",
+          shouldKeepCodeTokenOnOneLine ? "whitespace-nowrap" : "break-words",
+        )}
+      >
         {token.text}
       </code>
     );

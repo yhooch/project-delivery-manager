@@ -824,9 +824,9 @@ export function DocumentDetailPage({ documentId }: DocumentDetailPageProps) {
 
   return (
     <>
-      <div className="mx-auto grid w-full max-w-[96rem] gap-6 px-4 py-5 lg:grid-cols-[12rem_minmax(0,1fr)] lg:px-6 xl:grid-cols-[13rem_minmax(0,1fr)_18rem]">
+      <div className="mx-auto grid w-full max-w-[88rem] gap-6 px-4 py-5 lg:grid-cols-[12rem_minmax(0,1fr)] lg:px-6 xl:grid-cols-[13rem_minmax(0,1fr)_18rem]">
         <DocumentTocRail headings={headings} />
-        <div className="min-w-0">
+        <div className="min-w-0 max-w-[52rem]">
           <form onSubmit={(event) => void save(event)}>
             <div
               className="sticky top-12 z-20 mb-3 bg-background/80 py-1.5 backdrop-blur-md supports-[backdrop-filter]:bg-background/70"
