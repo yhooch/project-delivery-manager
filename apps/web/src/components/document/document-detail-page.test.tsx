@@ -395,7 +395,7 @@ describe("DocumentDetailPage", () => {
     ).toBeVisible();
   });
 
-  it("shows requirement documents as managed content with a requirement view link", async () => {
+  it("renders rich-text requirement exports in the document reader", async () => {
     getDocumentMock.mockResolvedValueOnce({
       ...createDocument(),
       contentFormat: "TIPTAP_JSON",
@@ -419,14 +419,16 @@ describe("DocumentDetailPage", () => {
     expect(
       screen.getByTestId("document-open-requirement-button"),
     ).toHaveAttribute("href", "/requirements/REQ_01");
+    const markdownViewer = screen.getByTestId("document-markdown-viewer");
+    expect(markdownViewer).toHaveTextContent("Requirement body");
     expect(
-      screen.getByTestId("document-managed-content-panel"),
-    ).toHaveTextContent("documents.detail.requirementManaged");
+      within(markdownViewer).getByRole("heading", {
+        level: 1,
+        name: "Requirement body",
+      }),
+    ).toBeVisible();
     expect(
-      screen.getByTestId("document-managed-content-preview"),
-    ).toHaveTextContent("# Requirement body");
-    expect(
-      screen.queryByTestId("document-markdown-viewer"),
+      screen.queryByTestId("document-managed-content-panel"),
     ).not.toBeInTheDocument();
     expect(
       screen.queryByTestId("document-edit-button"),

@@ -1407,7 +1407,7 @@ function DocumentContentReadView({ document }: { document: DocumentDetail }) {
     );
   }
 
-  if (document.kind === "GENERAL" && document.contentFormat === "TIPTAP_JSON") {
+  if (document.contentFormat === "TIPTAP_JSON") {
     return (
       <DocumentMarkdownViewer
         className="mt-6"
