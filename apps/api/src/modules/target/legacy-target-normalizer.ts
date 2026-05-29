@@ -12,6 +12,11 @@ export type CanonicalTargetForDocumentRequirement = {
   targetKind?: DocumentRequirementKind;
 };
 
+const RECENT_ACTIVITY_INVALIDATES = [
+  "workbench",
+  "space-overview",
+] as const satisfies readonly RealtimeInvalidationKey[];
+
 export function canonicalizeTargetForDocumentRequirement(
   targetType: LegacyTargetTypeInput,
   targetKind?: DocumentRequirementKind,
@@ -79,4 +84,32 @@ export function withDocumentRequirementInvalidates(
   }
 
   return [...new Set([...invalidates, ...documentRequirementInvalidates])];
+}
+
+export function withRecentActivityInvalidates(
+  invalidates: RealtimeInvalidationKey[],
+): RealtimeInvalidationKey[] {
+  return [
+    ...new Set<RealtimeInvalidationKey>([
+      ...invalidates,
+      ...RECENT_ACTIVITY_INVALIDATES,
+    ]),
+  ];
+}
+
+export function withDocumentRecentActivityInvalidates(
+  targetType: LegacyTargetTypeInput,
+  invalidates: RealtimeInvalidationKey[],
+  targetKind?: DocumentRequirementKind,
+): RealtimeInvalidationKey[] {
+  const normalized = canonicalizeTargetForDocumentRequirement(
+    targetType,
+    targetKind,
+  );
+
+  if (normalized.canonicalTargetType !== "DOCUMENT") {
+    return invalidates;
+  }
+
+  return withRecentActivityInvalidates(invalidates);
 }

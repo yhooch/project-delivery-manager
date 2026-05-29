@@ -219,6 +219,8 @@ describe("AttachmentService", () => {
           "document-attachments",
           "document-timeline",
           "document-detail",
+          "workbench",
+          "space-overview",
         ]),
         hints: expect.objectContaining({
           canonicalTargetType: "DOCUMENT",

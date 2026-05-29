@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   legacyRequirementRealtimeHints,
   normalizeLegacyRequirementTarget,
+  withDocumentRecentActivityInvalidates,
   withDocumentRequirementInvalidates,
 } from "./legacy-target-normalizer";
 
@@ -67,5 +68,22 @@ describe("legacy target normalizer", () => {
       "document-timeline",
       "document-detail",
     ]);
+  });
+
+  it("extends document invalidations with recent activity aggregates", () => {
+    expect(
+      withDocumentRecentActivityInvalidates("DOCUMENT", [
+        "document-comments",
+        "document-timeline",
+      ]),
+    ).toEqual([
+      "document-comments",
+      "document-timeline",
+      "workbench",
+      "space-overview",
+    ]);
+    expect(
+      withDocumentRecentActivityInvalidates("WORK_ITEM", ["timeline"]),
+    ).toEqual(["timeline"]);
   });
 });

@@ -18,6 +18,7 @@ import {
   SPACE_REPOSITORY,
   type SpaceRepository,
 } from "../space/space.repository";
+import { withRecentActivityInvalidates } from "../target/legacy-target-normalizer";
 import {
   DOCUMENT_FOLDER_REPOSITORY,
   type DocumentFolderRepository,
@@ -350,7 +351,7 @@ export class DocumentFolderService {
         spaceId: folder.spaceId,
         target: { type: "SPACE", id: folder.spaceId },
         operation,
-        invalidates: ["document-directory"],
+        invalidates: withRecentActivityInvalidates(["document-directory"]),
         hints: {
           targetType: "SPACE",
           targetId: folder.spaceId,
@@ -382,7 +383,7 @@ export class DocumentFolderService {
         spaceId: input.spaceId,
         target: { type: "SPACE", id: input.spaceId },
         operation: "UPDATED",
-        invalidates: ["document-directory"],
+        invalidates: withRecentActivityInvalidates(["document-directory"]),
         hints: {
           targetType: "SPACE",
           targetId: input.spaceId,

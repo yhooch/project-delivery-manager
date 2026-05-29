@@ -15,6 +15,7 @@ import type { RequestMetadata } from "../auth/auth-session.types";
 import { RealtimePublisherService } from "../realtime/realtime-publisher.service";
 import {
   legacyRequirementRealtimeHints,
+  withDocumentRecentActivityInvalidates,
   withDocumentRequirementInvalidates,
 } from "../target/legacy-target-normalizer";
 import { TargetResolverService } from "../target/target-resolver.service";
@@ -157,10 +158,14 @@ function commentInvalidates(
 ): RealtimeInvalidationKey[] {
   switch (targetType) {
     case "DOCUMENT":
-      return withDocumentRequirementInvalidates(
+      return withDocumentRecentActivityInvalidates(
         targetType,
-        ["comments", "timeline", "document-comments", "document-timeline"],
-        ["requirement-detail"],
+        withDocumentRequirementInvalidates(
+          targetType,
+          ["comments", "timeline", "document-comments", "document-timeline"],
+          ["requirement-detail"],
+          targetKind,
+        ),
         targetKind,
       );
     case "INTAKE_ITEM":

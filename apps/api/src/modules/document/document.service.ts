@@ -38,6 +38,10 @@ import {
 } from "../space/space.repository";
 import { TargetResolverService } from "../target/target-resolver.service";
 import {
+  withDocumentRecentActivityInvalidates,
+  withRecentActivityInvalidates,
+} from "../target/legacy-target-normalizer";
+import {
   ATTACHMENT_OBJECT_STORAGE,
   type AttachmentObjectStorage,
 } from "../attachment/storage/attachment-object-storage";
@@ -1462,7 +1466,10 @@ export class DocumentService {
         spaceId: document.spaceId,
         target: { type: "DOCUMENT", id: document.id },
         operation,
-        invalidates,
+        invalidates: withDocumentRecentActivityInvalidates(
+          "DOCUMENT",
+          invalidates,
+        ),
         hints: {
           targetType: "DOCUMENT",
           targetId: document.id,
@@ -1494,12 +1501,12 @@ export class DocumentService {
         spaceId: input.spaceId,
         target: { type: "SPACE", id: input.spaceId },
         operation: "UPDATED",
-        invalidates: [
+        invalidates: withRecentActivityInvalidates([
           "document-directory",
           "document-list",
           "document-detail",
           "document-timeline",
-        ],
+        ]),
         hints: {
           targetType: "SPACE",
           targetId: input.spaceId,

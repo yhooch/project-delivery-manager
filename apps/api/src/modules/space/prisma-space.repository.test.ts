@@ -1045,6 +1045,11 @@ describe("PrismaSpaceRepository", () => {
         "01TRZ3NDEKTSV4RRFFQ69G5RQ1",
       ),
       timelineEvent(
+        "01TRZ3NDEKTSV4RRFFQ69G5EV5",
+        "DOCUMENT",
+        "01TRZ3NDEKTSV4RRFFQ69G5DC1",
+      ),
+      timelineEvent(
         "01TRZ3NDEKTSV4RRFFQ69G5EV3",
         "INTAKE_ITEM",
         "01TRZ3NDEKTSV4RRFFQ69G5IN1",
@@ -1077,6 +1082,12 @@ describe("PrismaSpaceRepository", () => {
               kind: "REQUIREMENT",
               sequence: 2,
               title: "Requirement A",
+            },
+            {
+              id: "01TRZ3NDEKTSV4RRFFQ69G5DC1",
+              kind: "GENERAL",
+              sequence: null,
+              title: "Document A",
             },
           ]),
         },
@@ -1133,11 +1144,19 @@ describe("PrismaSpaceRepository", () => {
             {
               OR: expect.arrayContaining([
                 {
+                  targetId: spaceId,
+                  targetType: "SPACE",
+                },
+                {
                   targetId: "01TRZ3NDEKTSV4RRFFQ69G5WI1",
                   targetType: "WORK_ITEM",
                 },
                 {
                   targetId: "01TRZ3NDEKTSV4RRFFQ69G5RQ1",
+                  targetType: "DOCUMENT",
+                },
+                {
+                  targetId: "01TRZ3NDEKTSV4RRFFQ69G5DC1",
                   targetType: "DOCUMENT",
                 },
                 {
@@ -1155,7 +1174,7 @@ describe("PrismaSpaceRepository", () => {
             in: [spaceId],
           },
           targetType: {
-            in: ["WORK_ITEM", "DOCUMENT", "INTAKE_ITEM", "VERSION"],
+            in: ["SPACE", "WORK_ITEM", "DOCUMENT", "INTAKE_ITEM", "VERSION"],
           },
         }),
       }),
@@ -1176,6 +1195,11 @@ describe("PrismaSpaceRepository", () => {
         type: "DOCUMENT",
       },
       {
+        id: "01TRZ3NDEKTSV4RRFFQ69G5DC1",
+        title: "Document A",
+        type: "DOCUMENT",
+      },
+      {
         id: "01TRZ3NDEKTSV4RRFFQ69G5IN1",
         sequence: 3,
         displayCode: "INTAKE-3",
@@ -1186,10 +1210,10 @@ describe("PrismaSpaceRepository", () => {
     ]);
   });
 
-  it("uses space membership to expose requirement document activity", async () => {
+  it("uses space membership to expose non-draft document activity", async () => {
     const organizationId = "01TRZ3NDEKTSV4RRFFQ69G5ORG";
     const spaceId = "01TRZ3NDEKTSV4RRFFQ69G5SPC";
-    const requirementFindMany = vi.fn(async () => [
+    const documentFindMany = vi.fn(async () => [
       { id: "01TRZ3NDEKTSV4RRFFQ69G5RQ1", title: "Confirmed Requirement" },
     ]);
     const timelineFindMany = vi.fn(async () => []);
@@ -1202,7 +1226,7 @@ describe("PrismaSpaceRepository", () => {
           findMany: vi.fn(async () => []),
         },
         document: {
-          findMany: requirementFindMany,
+          findMany: documentFindMany,
         },
         timelineEvent: {
           count: vi.fn(async () => 0),
@@ -1241,13 +1265,15 @@ describe("PrismaSpaceRepository", () => {
       organizationId,
     );
 
-    expect(requirementFindMany).toHaveBeenNthCalledWith(
+    expect(documentFindMany).toHaveBeenNthCalledWith(
       1,
       expect.objectContaining({
         where: expect.objectContaining({
-          kind: "REQUIREMENT",
           spaceId: {
             in: [spaceId],
+          },
+          status: {
+            not: "DRAFT",
           },
         }),
       }),
@@ -1257,12 +1283,16 @@ describe("PrismaSpaceRepository", () => {
         where: expect.objectContaining({
           AND: expect.arrayContaining([
             {
-              OR: [
+              OR: expect.arrayContaining([
+                {
+                  targetId: spaceId,
+                  targetType: "SPACE",
+                },
                 {
                   targetId: "01TRZ3NDEKTSV4RRFFQ69G5RQ1",
                   targetType: "DOCUMENT",
                 },
-              ],
+              ]),
             },
           ]),
         }),

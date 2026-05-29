@@ -65,7 +65,11 @@ describe("DocumentFolderService", () => {
     );
     expect(realtime.publish).toHaveBeenCalledWith(
       expect.objectContaining({
-        invalidates: ["document-directory"],
+        invalidates: expect.arrayContaining([
+          "document-directory",
+          "workbench",
+          "space-overview",
+        ]),
         target: { type: "SPACE", id: SPACE_ID },
       }),
     );
@@ -136,7 +140,11 @@ describe("DocumentFolderService", () => {
     expect(realtime.publish).toHaveBeenCalledTimes(1);
     expect(realtime.publish).toHaveBeenCalledWith(
       expect.objectContaining({
-        invalidates: ["document-directory"],
+        invalidates: expect.arrayContaining([
+          "document-directory",
+          "workbench",
+          "space-overview",
+        ]),
         target: { type: "SPACE", id: SPACE_ID },
       }),
     );

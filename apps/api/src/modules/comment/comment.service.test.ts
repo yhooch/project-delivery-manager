@@ -159,6 +159,8 @@ describe("CommentService", () => {
           "requirement-detail",
           "document-comments",
           "document-timeline",
+          "workbench",
+          "space-overview",
         ]),
         hints: expect.objectContaining({
           canonicalTargetType: "DOCUMENT",

@@ -238,6 +238,7 @@ describe("DocumentService", () => {
     );
     expect(realtime.publish).toHaveBeenCalledWith(
       expect.objectContaining({
+        invalidates: expect.arrayContaining(["workbench", "space-overview"]),
         target: { type: "DOCUMENT", id: DOCUMENT_ID },
       }),
     );

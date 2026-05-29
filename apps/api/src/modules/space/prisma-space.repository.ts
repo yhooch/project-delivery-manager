@@ -74,6 +74,7 @@ const DEFAULT_WORKFLOW_CODES = ["DEVELOPMENT_TASK", "GENERAL_TASK", "BUG"];
 const TERMINAL_STATUS_CATEGORIES: StatusCategory[] = ["DONE", "TERMINATED"];
 const DUE_SOON_DAYS = 7;
 const RECENT_ACTIVITY_TARGET_TYPES = [
+  "SPACE",
   "WORK_ITEM",
   "DOCUMENT",
   "INTAKE_ITEM",
@@ -1632,7 +1633,7 @@ export class PrismaSpaceRepository implements SpaceRepository {
           ]
         : []),
     ];
-    const [versions, requirements, intakeItems] = await Promise.all([
+    const [versions, documents, intakeItems] = await Promise.all([
       context.spaceIds.length > 0
         ? this.prisma.client.version.findMany({
             select: {
@@ -1655,10 +1656,12 @@ export class PrismaSpaceRepository implements SpaceRepository {
             },
             where: {
               deletedAt: null,
-              kind: REQUIREMENT_DOCUMENT_KIND,
               organizationId: filters.organizationId,
               spaceId: {
                 in: context.spaceIds,
+              },
+              status: {
+                not: "DRAFT",
               },
               versionId: filters.versionId,
             },
@@ -1680,12 +1683,18 @@ export class PrismaSpaceRepository implements SpaceRepository {
     ]);
 
     return [
+      ...(filters.versionId
+        ? []
+        : context.spaceIds.map((spaceId) => ({
+            id: spaceId,
+            type: "SPACE" as const,
+          }))),
       ...versions.map((version) => ({
         id: version.id,
         type: "VERSION" as const,
       })),
-      ...requirements.map((requirement) => ({
-        id: requirement.id,
+      ...documents.map((document) => ({
+        id: document.id,
         type: "DOCUMENT" as const,
       })),
       ...intakeItems.map((item) => ({

@@ -25,6 +25,7 @@ import {
 } from "../requirement/requirement.repository";
 import {
   legacyRequirementRealtimeHints,
+  withDocumentRecentActivityInvalidates,
   withDocumentRequirementInvalidates,
 } from "../target/legacy-target-normalizer";
 import { TargetResolverService } from "../target/target-resolver.service";
@@ -482,8 +483,9 @@ function attachmentInvalidates(
 ): RealtimeInvalidationKey[] {
   switch (targetType) {
     case "DOCUMENT":
-      if (targetKind === "REQUIREMENT") {
-        return withDocumentRequirementInvalidates(
+      return withDocumentRecentActivityInvalidates(
+        targetType,
+        withDocumentRequirementInvalidates(
           targetType,
           [
             "attachments",
@@ -494,19 +496,7 @@ function attachmentInvalidates(
           ],
           ["requirement-detail"],
           targetKind,
-        );
-      }
-
-      return withDocumentRequirementInvalidates(
-        targetType,
-        [
-          "attachments",
-          "timeline",
-          "document-attachments",
-          "document-timeline",
-          "document-detail",
-        ],
-        ["requirement-detail"],
+        ),
         targetKind,
       );
     case "WORK_ITEM":
