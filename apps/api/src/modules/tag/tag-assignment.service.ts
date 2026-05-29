@@ -1,4 +1,4 @@
-import { HttpStatus, Inject, Injectable, Logger } from "@nestjs/common";
+import { Inject, Injectable, Logger } from "@nestjs/common";
 import type {
   GetTagAssignmentsQuery,
   RealtimeInvalidationKey,
@@ -6,14 +6,16 @@ import type {
   TagAssignmentsResponse,
   TagDto,
   TagTargetType,
-  TargetType,
   WorkItemType,
 } from "@project-delivery/shared";
 
-import { ApiException } from "../../http/api-exception";
 import { AuditService } from "../audit/audit.service";
 import type { RequestMetadata } from "../auth/auth-session.types";
 import { RealtimePublisherService } from "../realtime/realtime-publisher.service";
+import {
+  legacyRequirementRealtimeHints,
+  withDocumentRequirementInvalidates,
+} from "../target/legacy-target-normalizer";
 import { TargetResolverService } from "../target/target-resolver.service";
 import { TAG_REPOSITORY, type TagRepository } from "./tag.repository";
 
@@ -38,7 +40,7 @@ export class TagAssignmentService {
   ): Promise<TagAssignmentsResponse> {
     const target = await this.targets.resolve(
       actorUserId,
-      toTargetType(input.targetType),
+      input.targetType,
       input.targetId,
       {
         notFoundCode: "TAG_TARGET_INVALID",
@@ -65,7 +67,7 @@ export class TagAssignmentService {
   ): Promise<TagAssignmentsResponse> {
     const target = await this.targets.resolve(
       actorUserId,
-      toTargetType(input.targetType),
+      input.targetType,
       input.targetId,
       {
         access: "write",
@@ -120,12 +122,17 @@ export class TagAssignmentService {
         invalidates: tagAssignmentInvalidates(
           input.targetType,
           target.workItemType,
+          target.targetKind === "REQUIREMENT" ? "REQUIREMENT" : undefined,
         ),
         hints: {
-          targetType: target.targetType,
-          targetId: target.targetId,
-          spaceId: target.spaceId,
-          ...(target.workItemType ? { workItemType: target.workItemType } : {}),
+          ...legacyRequirementRealtimeHints({
+            targetType: target.targetType,
+            targetId: target.targetId,
+            targetKind:
+              target.targetKind === "REQUIREMENT" ? "REQUIREMENT" : undefined,
+            spaceId: target.spaceId,
+            workItemType: target.workItemType,
+          }),
           changedFields: ["tagIds"],
           suggestFullRefresh: true,
         },
@@ -153,22 +160,6 @@ export class TagAssignmentService {
   }
 }
 
-function toTargetType(targetType: TagTargetType): TargetType {
-  switch (targetType) {
-    case "REQUIREMENT":
-    case "INTAKE_ITEM":
-    case "WORK_ITEM":
-    case "DOCUMENT":
-      return targetType;
-  }
-
-  throw new ApiException(
-    "TAG_TARGET_INVALID",
-    "Tag target type is invalid",
-    HttpStatus.BAD_REQUEST,
-  );
-}
-
 function haveTagAssignmentsChanged(beforeTags: TagDto[], afterTags: TagDto[]) {
   const beforeIds = beforeTags.map((tag) => tag.id).sort();
   const afterIds = afterTags.map((tag) => tag.id).sort();
@@ -183,10 +174,16 @@ function haveTagAssignmentsChanged(beforeTags: TagDto[], afterTags: TagDto[]) {
 function tagAssignmentInvalidates(
   targetType: TagTargetType,
   workItemType: WorkItemType | undefined,
+  targetKind?: "REQUIREMENT",
 ): RealtimeInvalidationKey[] {
   switch (targetType) {
-    case "REQUIREMENT":
-      return ["requirement-list", "requirement-detail", "version-board"];
+    case "DOCUMENT":
+      return withDocumentRequirementInvalidates(
+        targetType,
+        ["document-list", "document-detail"],
+        ["requirement-list", "requirement-detail", "version-board"],
+        targetKind,
+      );
     case "INTAKE_ITEM":
       return ["intake-list"];
     case "WORK_ITEM":
@@ -197,7 +194,5 @@ function tagAssignmentInvalidates(
         "space-overview",
         "exception-view",
       ];
-    case "DOCUMENT":
-      return ["document-list", "document-detail"];
   }
 }

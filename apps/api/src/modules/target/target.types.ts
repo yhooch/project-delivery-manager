@@ -1,5 +1,6 @@
 import type {
   ApiErrorCode,
+  DocumentKind,
   StatusCategory,
   SpaceRole,
   TargetType,
@@ -25,6 +26,7 @@ export type ResolvedTargetContext = {
   spaceId: string;
   targetId: string;
   targetType: TargetType;
+  targetKind?: DocumentKind;
   title?: string;
   role: SpaceRole;
   canWrite: boolean;
@@ -36,6 +38,7 @@ export type TargetRecord = {
   spaceId: string;
   targetId: string;
   targetType: TargetType;
+  targetKind?: DocumentKind;
   title?: string;
   isDraftRequirement?: boolean;
   createdById?: string | null;

@@ -172,7 +172,7 @@ describe("PrismaAttachmentRepository", () => {
     expect(tx.timelineEvent.create).not.toHaveBeenCalled();
   });
 
-  it.each(["WORK_ITEM", "REQUIREMENT"] as const)(
+  it.each(["WORK_ITEM", "DOCUMENT"] as const)(
     "rejects creation when the locked transaction finds no live %s target",
     async (targetType) => {
       const input = createAttachmentInput({ targetType });

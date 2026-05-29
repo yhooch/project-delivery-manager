@@ -40,22 +40,24 @@ describe("RequirementService audit logging", () => {
         requestId: "req-requirement-create",
         spaceId: SPACE_ID,
         targetId: REQUIREMENT_ID,
-        targetType: "REQUIREMENT",
+        targetType: "DOCUMENT",
       }),
     );
     expect(subject.realtime.publish).toHaveBeenCalledWith(
       expect.objectContaining({
         actorId: ACTOR_ID,
         operation: "CREATED",
-        target: { type: "REQUIREMENT", id: draft.id },
+        target: { type: "DOCUMENT", id: draft.id },
         invalidates: [
           "requirement-list",
           "requirement-detail",
           "version-board",
         ],
         hints: expect.objectContaining({
+          requirementId: draft.id,
+          targetKind: "REQUIREMENT",
           targetId: draft.id,
-          targetType: "REQUIREMENT",
+          targetType: "DOCUMENT",
           versionId: VERSION_ID,
         }),
       }),
@@ -67,6 +69,7 @@ describe("RequirementService audit logging", () => {
       ACTOR_ID,
       REQUIREMENT_ID,
       {
+        baseRevision: 1,
         contentJson: {
           content: [{ text: "Confirmed scope", type: "text" }],
           type: "doc",
@@ -82,24 +85,29 @@ describe("RequirementService audit logging", () => {
         actionType: "UPDATE",
         actorId: ACTOR_ID,
         after: expect.objectContaining({
-          status: "CONFIRMED",
+          status: "ACTIVE",
           title: "Confirmed requirement",
         }),
         before: expect.objectContaining({ status: "DRAFT" }),
-        metadata: { operation: "SAVE" },
+        metadata: expect.objectContaining({
+          operation: "SAVE",
+          targetKind: "REQUIREMENT",
+        }),
         organizationId: ORGANIZATION_ID,
         requestId: "req-requirement-save",
         spaceId: SPACE_ID,
         targetId: REQUIREMENT_ID,
-        targetType: "REQUIREMENT",
+        targetType: "DOCUMENT",
       }),
     );
     expect(subject.realtime.publish).toHaveBeenLastCalledWith(
       expect.objectContaining({
         operation: "UPDATED",
-        target: { type: "REQUIREMENT", id: REQUIREMENT_ID },
+        target: { type: "DOCUMENT", id: REQUIREMENT_ID },
         hints: expect.objectContaining({
           changedFields: expect.arrayContaining(["contentJson", "title"]),
+          targetKind: "REQUIREMENT",
+          targetType: "DOCUMENT",
         }),
       }),
     );
@@ -107,13 +115,13 @@ describe("RequirementService audit logging", () => {
 
   it("writes audit logs for archiving and deleting empty drafts", async () => {
     const subject = createSubject({
-      current: makeRequirement({ status: "CONFIRMED", title: "Archived req" }),
+      current: makeRequirement({ status: "ACTIVE", title: "Archived req" }),
     });
 
     await subject.service.update(
       ACTOR_ID,
       REQUIREMENT_ID,
-      { status: "ARCHIVED" },
+      { baseRevision: 1, status: "ARCHIVED" },
       { requestId: "req-requirement-archive" },
     );
 
@@ -122,20 +130,27 @@ describe("RequirementService audit logging", () => {
         actionType: "UPDATE",
         actorId: ACTOR_ID,
         after: expect.objectContaining({ status: "ARCHIVED" }),
-        before: expect.objectContaining({ status: "CONFIRMED" }),
-        metadata: { operation: "ARCHIVE" },
+        before: expect.objectContaining({ status: "ACTIVE" }),
+        metadata: expect.objectContaining({
+          operation: "ARCHIVE",
+          targetKind: "REQUIREMENT",
+        }),
         organizationId: ORGANIZATION_ID,
         requestId: "req-requirement-archive",
         spaceId: SPACE_ID,
         targetId: REQUIREMENT_ID,
-        targetType: "REQUIREMENT",
+        targetType: "DOCUMENT",
       }),
     );
     expect(subject.realtime.publish).toHaveBeenCalledWith(
       expect.objectContaining({
         operation: "STATUS_CHANGED",
-        target: { type: "REQUIREMENT", id: REQUIREMENT_ID },
-        hints: expect.objectContaining({ changedFields: ["status"] }),
+        target: { type: "DOCUMENT", id: REQUIREMENT_ID },
+        hints: expect.objectContaining({
+          changedFields: ["status"],
+          targetKind: "REQUIREMENT",
+          targetType: "DOCUMENT",
+        }),
       }),
     );
 
@@ -155,18 +170,21 @@ describe("RequirementService audit logging", () => {
         actionType: "DELETE",
         actorId: ACTOR_ID,
         before: expect.objectContaining({ status: "DRAFT", title: "" }),
-        metadata: { operation: "DELETE_EMPTY_DRAFT" },
+        metadata: expect.objectContaining({
+          operation: "DELETE_EMPTY_DRAFT",
+          targetKind: "REQUIREMENT",
+        }),
         organizationId: ORGANIZATION_ID,
         requestId: "req-requirement-delete",
         spaceId: SPACE_ID,
         targetId: REQUIREMENT_ID,
-        targetType: "REQUIREMENT",
+        targetType: "DOCUMENT",
       }),
     );
     expect(subject.realtime.publish).toHaveBeenLastCalledWith(
       expect.objectContaining({
         operation: "DELETED",
-        target: { type: "REQUIREMENT", id: REQUIREMENT_ID },
+        target: { type: "DOCUMENT", id: REQUIREMENT_ID },
       }),
     );
   });
@@ -214,7 +232,7 @@ describe("RequirementService audit logging", () => {
   it("requires cascade confirmation before moving a requirement to another version with downstream links", async () => {
     const subject = createSubject({
       current: makeRequirement({
-        status: "CONFIRMED",
+        status: "ACTIVE",
         versionId: VERSION_ID,
       }),
     });
@@ -227,6 +245,7 @@ describe("RequirementService audit logging", () => {
 
     await expect(
       subject.service.update(ACTOR_ID, REQUIREMENT_ID, {
+        baseRevision: 1,
         contentJson: {
           content: [{ text: "Move scope", type: "text" }],
           type: "doc",
@@ -241,6 +260,7 @@ describe("RequirementService audit logging", () => {
     expect(subject.requirements.savedInput).toBeUndefined();
 
     await subject.service.update(ACTOR_ID, REQUIREMENT_ID, {
+      baseRevision: 1,
       contentJson: {
         content: [{ text: "Move scope", type: "text" }],
         type: "doc",
@@ -277,11 +297,12 @@ describe("RequirementService audit logging", () => {
 
   it("rejects base64 image data in text and markdown caches", async () => {
     const subject = createSubject({
-      current: makeRequirement({ status: "CONFIRMED" }),
+      current: makeRequirement({ status: "ACTIVE" }),
     });
 
     await expect(
       subject.service.update(ACTOR_ID, REQUIREMENT_ID, {
+        baseRevision: 1,
         contentJson: {
           content: [{ text: "Scope", type: "text" }],
           type: "doc",
@@ -295,6 +316,7 @@ describe("RequirementService audit logging", () => {
 
     await expect(
       subject.service.update(ACTOR_ID, REQUIREMENT_ID, {
+        baseRevision: 1,
         contentJson: {
           content: [{ text: "Scope", type: "text" }],
           type: "doc",
@@ -310,10 +332,11 @@ describe("RequirementService audit logging", () => {
 
   it("saves Markdown requirements with Markdown source and derived search text", async () => {
     const subject = createSubject({
-      current: makeRequirement({ status: "CONFIRMED" }),
+      current: makeRequirement({ status: "ACTIVE" }),
     });
 
     await subject.service.update(ACTOR_ID, REQUIREMENT_ID, {
+      baseRevision: 1,
       contentFormat: "MARKDOWN",
       contentMarkdown: "# Scope\n\n- Ship Markdown safely.",
       title: "Markdown requirement",
@@ -330,13 +353,34 @@ describe("RequirementService audit logging", () => {
     );
   });
 
+  it("allows requirement writers to update draft requirements without participant membership", async () => {
+    const subject = createSubject({
+      current: makeRequirement({ status: "DRAFT" }),
+      isParticipant: false,
+      role: "REQUIREMENT",
+    });
+
+    await subject.service.update(ACTOR_ID, REQUIREMENT_ID, {
+      baseRevision: 1,
+      contentFormat: "MARKDOWN",
+      contentMarkdown: "# Draft scope",
+      title: "Draft requirement",
+    });
+
+    expect(subject.requirements.savedInput).toMatchObject({
+      contentFormat: "MARKDOWN",
+      title: "Draft requirement",
+    });
+  });
+
   it("rejects Markdown image targets outside attachment references", async () => {
     const subject = createSubject({
-      current: makeRequirement({ status: "CONFIRMED" }),
+      current: makeRequirement({ status: "ACTIVE" }),
     });
 
     await expect(
       subject.service.update(ACTOR_ID, REQUIREMENT_ID, {
+        baseRevision: 1,
         contentFormat: "MARKDOWN",
         contentMarkdown: "![remote](https://example.com/image.png)",
         title: "Unsafe Markdown image",
@@ -356,11 +400,12 @@ describe("RequirementService audit logging", () => {
             mimeType: "image/png",
           }),
         ],
-        status: "CONFIRMED",
+        status: "ACTIVE",
       }),
     });
 
     await subject.service.update(ACTOR_ID, REQUIREMENT_ID, {
+      baseRevision: 1,
       contentFormat: "MARKDOWN",
       contentMarkdown: [
         "# Scope",
@@ -388,12 +433,13 @@ describe("RequirementService audit logging", () => {
             mimeType: "image/png",
           }),
         ],
-        status: "CONFIRMED",
+        status: "ACTIVE",
       }),
     });
 
     await expect(
       subject.service.update(ACTOR_ID, REQUIREMENT_ID, {
+        baseRevision: 1,
         contentFormat: "MARKDOWN",
         contentMarkdown: `![missing](attachment://${MISSING_ATTACHMENT_ID})`,
         title: "Markdown requirement with missing image",
@@ -413,12 +459,13 @@ describe("RequirementService audit logging", () => {
             mimeType: "application/pdf",
           }),
         ],
-        status: "CONFIRMED",
+        status: "ACTIVE",
       }),
     });
 
     await expect(
       subject.service.update(ACTOR_ID, REQUIREMENT_ID, {
+        baseRevision: 1,
         contentFormat: "MARKDOWN",
         contentMarkdown: `![file](attachment://${FILE_ATTACHMENT_ID})`,
         title: "Markdown requirement with file image",
@@ -447,12 +494,13 @@ describe("RequirementService audit logging", () => {
   it("saves explicit requirement version clearing when there is no downstream impact", async () => {
     const subject = createSubject({
       current: makeRequirement({
-        status: "CONFIRMED",
+        status: "ACTIVE",
         versionId: VERSION_ID,
       }),
     });
 
     await subject.service.update(ACTOR_ID, REQUIREMENT_ID, {
+      baseRevision: 1,
       contentJson: {
         content: [{ text: "Clear version", type: "text" }],
         type: "doc",
@@ -470,11 +518,13 @@ describe("RequirementService audit logging", () => {
 function createSubject(
   input: {
     current?: Requirement;
+    isParticipant?: boolean;
     role?: SpaceRole;
   } = {},
 ) {
   const requirements = new FakeRequirementRepository(
     input.current ?? makeRequirement({ status: "DRAFT" }),
+    input.isParticipant ?? true,
   );
   const spaces = {
     findAccessibleById: vi.fn(async () => ({
@@ -536,7 +586,10 @@ class FakeRequirementRepository implements RequirementRepository {
   savedInput?: Parameters<RequirementRepository["save"]>[0];
   createdInput?: Parameters<RequirementRepository["createDraft"]>[0];
 
-  constructor(public current: Requirement) {}
+  constructor(
+    public current: Requirement,
+    private readonly participant: boolean,
+  ) {}
 
   async createDraft(
     input: Parameters<RequirementRepository["createDraft"]>[0],
@@ -567,7 +620,7 @@ class FakeRequirementRepository implements RequirementRepository {
   }
 
   async isParticipant() {
-    return true;
+    return this.participant;
   }
 
   async listBySpaceId() {
@@ -602,7 +655,7 @@ class FakeRequirementRepository implements RequirementRepository {
     this.current = {
       ...this.current,
       ...content,
-      status: "CONFIRMED",
+      status: "ACTIVE",
       title: input.title ?? this.current.title,
       ...(input.versionId !== undefined
         ? { versionId: input.versionId ?? undefined }
@@ -654,6 +707,7 @@ function makeRequirement(overrides: Partial<Requirement> = {}): Requirement {
       taskCount: 0,
       tasks: [],
     },
+    revision: 1,
     spaceId: SPACE_ID,
     status: "DRAFT",
     title: "Draft requirement",

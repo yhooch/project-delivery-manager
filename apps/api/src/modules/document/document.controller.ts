@@ -25,9 +25,11 @@ import {
 import { FileInterceptor } from "@nestjs/platform-express";
 import {
   AppendDocumentContentRequestSchema,
+  CancelRequirementRequestSchema,
   DocumentIdPathParamsSchema,
   DocumentLinksByTargetQuerySchema,
   DocumentListQuerySchema,
+  ConvertDocumentToRequirementRequestSchema,
   ImportDocxDocumentRequestSchema,
   ImportMarkdownDocumentRequestSchema,
   MoveDocumentsToFolderRequestSchema,
@@ -36,11 +38,15 @@ import {
   PasteDocumentRequestSchema,
   ReimportDocumentRequestSchema,
   ReplaceDocumentLinksRequestSchema,
+  RequirementIdPathParamsSchema,
   SpaceIdPathParamsSchema,
   UpdateDocumentContentRequestSchema,
   UpdateDocumentMetadataRequestSchema,
   DocumentMaxImportSizeBytes,
   type AppendDocumentContentRequest,
+  type CancelRequirementPreflightResponse,
+  type CancelRequirementRequest,
+  type ConvertDocumentToRequirementRequest,
   type Document,
   type DocumentDetail,
   type DocumentListItem,
@@ -287,6 +293,94 @@ export class DocumentController {
     return this.documents.updateContent(
       session.userId,
       params.documentId,
+      body,
+      getRequestMetadata(request),
+    );
+  }
+
+  @Post("documents/:documentId/convert-to-requirement")
+  @HttpCode(HttpStatus.OK)
+  @UseGuards(WriteOriginGuard)
+  async convertToRequirement(
+    @Param(new ZodValidationPipe(DocumentIdPathParamsSchema))
+    params: { documentId: string },
+    @Body(new ZodValidationPipe(ConvertDocumentToRequirementRequestSchema))
+    body: ConvertDocumentToRequirementRequest,
+    @Req() request: RequestWithContext,
+  ): Promise<Document> {
+    const session = this.currentUser.requireSession(request);
+
+    return this.documents.convertToRequirement(
+      session.userId,
+      params.documentId,
+      body,
+      getRequestMetadata(request),
+    );
+  }
+
+  @Get("documents/:documentId/cancel-requirement")
+  async cancelRequirementPreflight(
+    @Param(new ZodValidationPipe(DocumentIdPathParamsSchema))
+    params: { documentId: string },
+    @Req() request: RequestWithContext,
+  ): Promise<CancelRequirementPreflightResponse> {
+    const session = this.currentUser.requireSession(request);
+
+    return this.documents.cancelRequirementPreflight(
+      session.userId,
+      params.documentId,
+    );
+  }
+
+  @Post("documents/:documentId/cancel-requirement")
+  @HttpCode(HttpStatus.OK)
+  @UseGuards(WriteOriginGuard)
+  async cancelRequirement(
+    @Param(new ZodValidationPipe(DocumentIdPathParamsSchema))
+    params: { documentId: string },
+    @Body(new ZodValidationPipe(CancelRequirementRequestSchema))
+    body: CancelRequirementRequest,
+    @Req() request: RequestWithContext,
+  ): Promise<Document> {
+    const session = this.currentUser.requireSession(request);
+
+    return this.documents.cancelRequirement(
+      session.userId,
+      params.documentId,
+      body,
+      getRequestMetadata(request),
+    );
+  }
+
+  @Get("requirements/:requirementId/cancel/preflight")
+  async cancelRequirementFromRequirementRoutePreflight(
+    @Param(new ZodValidationPipe(RequirementIdPathParamsSchema))
+    params: { requirementId: string },
+    @Req() request: RequestWithContext,
+  ): Promise<CancelRequirementPreflightResponse> {
+    const session = this.currentUser.requireSession(request);
+
+    return this.documents.cancelRequirementPreflight(
+      session.userId,
+      params.requirementId,
+    );
+  }
+
+  @Post("requirements/:requirementId/cancel")
+  @HttpCode(HttpStatus.OK)
+  @UseGuards(WriteOriginGuard)
+  async cancelRequirementFromRequirementRoute(
+    @Param(new ZodValidationPipe(RequirementIdPathParamsSchema))
+    params: { requirementId: string },
+    @Body(new ZodValidationPipe(CancelRequirementRequestSchema))
+    body: CancelRequirementRequest,
+    @Req() request: RequestWithContext,
+  ): Promise<Document> {
+    const session = this.currentUser.requireSession(request);
+
+    return this.documents.cancelRequirement(
+      session.userId,
+      params.requirementId,
       body,
       getRequestMetadata(request),
     );

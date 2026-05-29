@@ -1,9 +1,9 @@
 import { HttpStatus, Inject, Injectable, Optional } from "@nestjs/common";
 import type {
   ApiErrorCode,
+  LegacyTargetTypeInput,
   ObjectParticipantTargetType,
   SpaceRole,
-  TargetType,
 } from "@project-delivery/shared";
 
 import { ApiException } from "../../http/api-exception";
@@ -29,17 +29,6 @@ import type {
   TargetWritePolicy,
 } from "./target.types";
 
-const REQUIREMENT_READ_ALL_ROLES = new Set<SpaceRole>([
-  "SPACE_ADMIN",
-  "PM",
-  "REQUIREMENT",
-]);
-const REQUIREMENT_NON_DRAFT_READ_ALL_ROLES = new Set<SpaceRole>([
-  "SPACE_ADMIN",
-  "PM",
-  "VIEWER",
-  "REQUIREMENT",
-]);
 const INTAKE_ITEM_READ_ALL_ROLES = new Set<SpaceRole>([
   "SPACE_ADMIN",
   "PM",
@@ -68,7 +57,7 @@ export class TargetResolverService {
 
   async resolve(
     actorUserId: string,
-    targetType: TargetType,
+    targetType: LegacyTargetTypeInput,
     targetId: string,
     options: ResolveTargetOptions = {},
   ): Promise<ResolvedTargetContext> {
@@ -120,7 +109,7 @@ export class TargetResolverService {
   }
 
   private async findTarget(
-    targetType: TargetType,
+    targetType: LegacyTargetTypeInput,
     targetId: string,
   ): Promise<TargetRecord | undefined> {
     switch (targetType) {
@@ -197,16 +186,37 @@ export class TargetResolverService {
   ): Promise<TargetRecord | undefined> {
     const requirement = await this.requirements.findById(targetId);
 
-    return requirement
-      ? {
-          organizationId: requirement.organizationId,
-          spaceId: requirement.spaceId,
-          targetId: requirement.id,
-          targetType: "REQUIREMENT",
-          title: nonEmptyTitle(requirement.title),
-          isDraftRequirement: requirement.status === "DRAFT",
-        }
-      : undefined;
+    if (requirement) {
+      return {
+        organizationId: requirement.organizationId,
+        spaceId: requirement.spaceId,
+        targetId: requirement.id,
+        targetKind: "REQUIREMENT",
+        targetType: "DOCUMENT",
+        title: nonEmptyTitle(requirement.title),
+        isDraftRequirement: requirement.status === "DRAFT",
+      };
+    }
+
+    const document = await this.prisma.client.document?.findFirst({
+      select: {
+        id: true,
+        kind: true,
+      },
+      where: {
+        deletedAt: null,
+        id: targetId,
+      },
+    });
+
+    if (!document) {
+      return undefined;
+    }
+    if (document.kind !== "REQUIREMENT") {
+      throwTargetKindConflict(document.kind);
+    }
+
+    return undefined;
   }
 
   private async findIntakeItemTarget(
@@ -281,8 +291,10 @@ export class TargetResolverService {
       select: {
         createdById: true,
         id: true,
+        kind: true,
         organizationId: true,
         spaceId: true,
+        status: true,
         title: true,
       },
       where: {
@@ -291,16 +303,33 @@ export class TargetResolverService {
       },
     });
 
-    return document
-      ? {
-          createdById: document.createdById,
-          organizationId: document.organizationId,
-          spaceId: document.spaceId,
-          targetId: document.id,
-          targetType: "DOCUMENT",
-          title: nonEmptyTitle(document.title),
-        }
-      : undefined;
+    if (!document) {
+      const requirement = await this.requirements.findById(targetId);
+
+      return requirement
+        ? {
+            organizationId: requirement.organizationId,
+            spaceId: requirement.spaceId,
+            targetId: requirement.id,
+            targetKind: "REQUIREMENT",
+            targetType: "DOCUMENT",
+            title: nonEmptyTitle(requirement.title),
+            isDraftRequirement: requirement.status === "DRAFT",
+          }
+        : undefined;
+    }
+
+    return {
+      createdById: document.createdById,
+      organizationId: document.organizationId,
+      spaceId: document.spaceId,
+      targetId: document.id,
+      targetKind: document.kind,
+      targetType: "DOCUMENT",
+      title: nonEmptyTitle(document.title),
+      isDraftRequirement:
+        document.kind === "REQUIREMENT" && document.status === "DRAFT",
+    };
   }
 
   private async canReadTarget(
@@ -331,27 +360,6 @@ export class TargetResolverService {
         return this.isObjectParticipant(
           target.spaceId,
           target.targetType,
-          target.targetId,
-          actorUserId,
-        );
-      case "REQUIREMENT":
-        if (target.isDraftRequirement) {
-          return this.isRequirementParticipant(
-            target.spaceId,
-            target.targetId,
-            actorUserId,
-          );
-        }
-
-        if (
-          REQUIREMENT_READ_ALL_ROLES.has(role) ||
-          REQUIREMENT_NON_DRAFT_READ_ALL_ROLES.has(role)
-        ) {
-          return true;
-        }
-
-        return this.isRequirementParticipant(
-          target.spaceId,
           target.targetId,
           actorUserId,
         );
@@ -387,6 +395,9 @@ export class TargetResolverService {
       case "VERSION":
         return MANAGER_ROLES.has(role);
       case "DOCUMENT":
+        if (target.targetKind === "REQUIREMENT") {
+          return this.canWriteRequirementTarget(actorUserId, target, role);
+        }
         return MANAGER_ROLES.has(role) || target.createdById === actorUserId;
       case "WORK_ITEM":
       case "INTAKE_ITEM":
@@ -397,24 +408,6 @@ export class TargetResolverService {
         return this.isObjectParticipant(
           target.spaceId,
           target.targetType,
-          target.targetId,
-          actorUserId,
-        );
-      case "REQUIREMENT":
-        if (target.isDraftRequirement) {
-          return this.isRequirementParticipant(
-            target.spaceId,
-            target.targetId,
-            actorUserId,
-          );
-        }
-
-        if (REQUIREMENT_WRITE_ALL_ROLES.has(role)) {
-          return true;
-        }
-
-        return this.isRequirementParticipant(
-          target.spaceId,
           target.targetId,
           actorUserId,
         );
@@ -433,20 +426,27 @@ export class TargetResolverService {
       case "INTAKE_ITEM":
         return MANAGER_ROLES.has(role);
       case "DOCUMENT":
-        return MANAGER_ROLES.has(role) || target.createdById === actorUserId;
-      case "REQUIREMENT":
-        if (!REQUIREMENT_WRITE_ALL_ROLES.has(role)) {
-          return false;
+        if (target.targetKind === "REQUIREMENT") {
+          return canUpdateRequirementTarget(role);
         }
-
-        return target.isDraftRequirement
-          ? this.isRequirementParticipant(
-              target.spaceId,
-              target.targetId,
-              actorUserId,
-            )
-          : true;
+        return MANAGER_ROLES.has(role) || target.createdById === actorUserId;
     }
+  }
+
+  private async canWriteRequirementTarget(
+    actorUserId: string,
+    target: TargetRecord,
+    role: SpaceRole,
+  ) {
+    if (REQUIREMENT_WRITE_ALL_ROLES.has(role)) {
+      return true;
+    }
+
+    return this.isRequirementParticipant(
+      target.spaceId,
+      target.targetId,
+      actorUserId,
+    );
   }
 
   private async isObjectParticipant(
@@ -515,14 +515,14 @@ function nonEmptyTitle(title: string): string | undefined {
 }
 
 function throwTargetNotFound(
-  targetType: TargetType,
+  targetType: LegacyTargetTypeInput,
   overrideCode?: ApiErrorCode,
 ): never {
   const code = overrideCode ?? targetNotFoundCode(targetType);
   throw new ApiException(code, "Target not found", HttpStatus.NOT_FOUND);
 }
 
-function targetNotFoundCode(targetType: TargetType): ApiErrorCode {
+function targetNotFoundCode(targetType: LegacyTargetTypeInput): ApiErrorCode {
   switch (targetType) {
     case "SPACE":
       return "SPACE_NOT_FOUND";
@@ -538,10 +538,26 @@ function targetNotFoundCode(targetType: TargetType): ApiErrorCode {
   }
 }
 
+function canUpdateRequirementTarget(role: SpaceRole) {
+  return REQUIREMENT_WRITE_ALL_ROLES.has(role);
+}
+
 function throwSpaceAccessDenied(): never {
   throw new ApiException(
     "SPACE_ACCESS_DENIED",
     "Space access denied",
     HttpStatus.FORBIDDEN,
+  );
+}
+
+function throwTargetKindConflict(kind: string): never {
+  throw new ApiException(
+    "CONFLICT",
+    "Target is no longer a requirement",
+    HttpStatus.CONFLICT,
+    {
+      targetKind: kind,
+      targetType: "DOCUMENT",
+    },
   );
 }

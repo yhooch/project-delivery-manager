@@ -503,23 +503,28 @@ export class PrismaWorkItemRepository implements WorkItemRepository {
   }
 
   async findRequirementInSpace(spaceId: string, requirementId: string) {
-    const requirement = await this.prisma.client.requirement.findFirst({
+    const requirement = await this.prisma.client.document.findFirst({
       select: {
         ownerId: true,
+        sequence: true,
+        status: true,
         versionId: true,
       },
       where: {
         deletedAt: null,
         id: requirementId,
+        kind: "REQUIREMENT",
         spaceId,
       },
     });
 
     return requirement
-      ? {
-          requirementOwnerId: requirement.ownerId ?? undefined,
-          requirementVersionId: requirement.versionId ?? undefined,
-        }
+        ? {
+            requirementOwnerId: requirement.ownerId ?? undefined,
+            requirementSequence: requirement.sequence ?? undefined,
+            requirementStatus: requirement.status,
+            requirementVersionId: requirement.versionId ?? undefined,
+          }
       : undefined;
   }
 
@@ -932,7 +937,11 @@ async function assertNoTaskCascadeConflicts(
         select: { versionId: true },
       },
       requirement: {
-        select: { versionId: true },
+        select: {
+          deletedAt: true,
+          kind: true,
+          versionId: true,
+        },
       },
     },
     where: {
@@ -949,7 +958,10 @@ async function assertNoTaskCascadeConflicts(
         workItemId: bug.id,
       },
       refs: [
-        { label: "requirement", versionId: bug.requirement?.versionId },
+        {
+          label: "requirement",
+          versionId: requirementDocumentVersionId(bug.requirement),
+        },
         { label: "intakeItem", versionId: bug.intakeItem?.versionId },
         {
           label: "relatedTask",
@@ -962,6 +974,18 @@ async function assertNoTaskCascadeConflicts(
       versionId: input.nextVersionId,
     });
   }
+}
+
+function requirementDocumentVersionId(
+  requirement: {
+    deletedAt: Date | null;
+    kind: string;
+    versionId: string | null;
+  } | null,
+) {
+  return requirement?.kind === "REQUIREMENT" && requirement.deletedAt === null
+    ? requirement.versionId
+    : undefined;
 }
 
 async function createTraceVersionCascadeTimelineEvent(

@@ -405,7 +405,7 @@ describe("space API", () => {
     );
     spaces.recordOverviewParticipant({
       targetId: visibleRequirementId,
-      targetType: "REQUIREMENT",
+      targetType: "DOCUMENT",
       userId: developer?.id ?? "",
     });
 
@@ -1832,7 +1832,7 @@ class InMemorySpaceRepository implements SpaceRepository {
           this.overviewParticipants.some(
             (participant) =>
               participant.targetId === item.id &&
-              participant.targetType === "REQUIREMENT" &&
+              participant.targetType === "DOCUMENT" &&
               participant.userId === input.actorUserId,
           )),
     );

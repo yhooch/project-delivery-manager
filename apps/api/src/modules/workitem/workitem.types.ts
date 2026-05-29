@@ -1,4 +1,5 @@
 import type {
+  DocumentStatus,
   ObjectParticipantRelation,
   ListWorkItemsResponse,
   Priority,
@@ -38,6 +39,8 @@ export type WorkItemWorkflowSelection = {
 export type WorkItemLinkedUsers = {
   versionOwnerId?: string;
   requirementOwnerId?: string;
+  requirementSequence?: number;
+  requirementStatus?: DocumentStatus;
   requirementVersionId?: string;
   intakeReporterId?: string;
   intakeAssigneeId?: string;

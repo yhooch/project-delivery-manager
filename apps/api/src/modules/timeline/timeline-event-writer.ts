@@ -1,5 +1,5 @@
 import type {
-  TargetType,
+  LegacyTargetTypeInput,
   TimelineEventMetadata,
   TimelineEventType,
   WorkItemType,
@@ -7,6 +7,7 @@ import type {
 import { ulid } from "ulid";
 
 import { Prisma } from "../../generated/prisma/client";
+import { canonicalizeTargetForDocumentRequirement } from "../target/legacy-target-normalizer";
 
 export type CreateTimelineEventRecordInput = {
   actorUserId: string;
@@ -19,7 +20,7 @@ export type CreateTimelineEventRecordInput = {
   organizationId: string;
   spaceId: string;
   targetId: string;
-  targetType: TargetType;
+  targetType: LegacyTargetTypeInput;
   targetWorkItemType?: WorkItemType;
   title: string;
 };
@@ -28,6 +29,10 @@ export async function createTimelineEventRecord(
   tx: Prisma.TransactionClient,
   input: CreateTimelineEventRecordInput,
 ) {
+  const canonicalTarget = canonicalizeTargetForDocumentRequirement(
+    input.targetType,
+    input.metadata?.["targetKind"] === "REQUIREMENT" ? "REQUIREMENT" : undefined,
+  );
   await tx.timelineEvent.create({
     data: {
       id: input.id ?? ulid(),
@@ -42,13 +47,15 @@ export async function createTimelineEventRecord(
           after: input.after,
           before: input.before,
           metadata: input.metadata,
+          targetKind: canonicalTarget.targetKind,
+          targetType: canonicalTarget.canonicalTargetType,
           targetWorkItemType: input.targetWorkItemType,
         }),
       ),
       organizationId: input.organizationId,
       spaceId: input.spaceId,
       targetId: input.targetId,
-      targetType: input.targetType,
+      targetType: canonicalTarget.canonicalTargetType,
       title: input.title,
       updatedById: input.actorUserId,
     },
@@ -59,10 +66,21 @@ export function normalizeTimelineMetadata(input: {
   after?: Record<string, unknown>;
   before?: Record<string, unknown>;
   metadata?: TimelineEventMetadata;
+  targetKind?: "REQUIREMENT";
+  targetType?: LegacyTargetTypeInput;
   targetWorkItemType?: WorkItemType;
 }): TimelineEventMetadata | undefined {
+  const canonical = input.targetType
+    ? canonicalizeTargetForDocumentRequirement(input.targetType, input.targetKind)
+    : undefined;
   const metadata: TimelineEventMetadata = removeUndefined({
     ...(input.metadata ?? {}),
+    ...(canonical?.targetKind
+      ? {
+          canonicalTargetType: canonical.canonicalTargetType,
+          targetKind: canonical.targetKind,
+        }
+      : {}),
     ...(input.targetWorkItemType
       ? { targetWorkItemType: input.targetWorkItemType }
       : {}),

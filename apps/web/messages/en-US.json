@@ -82,6 +82,7 @@
           },
           "status": {
             "DRAFT": "Draft",
+            "ACTIVE": "Confirmed",
             "CONFIRMED": "Confirmed",
             "ARCHIVED": "Archived",
             "PENDING": "Pending",
@@ -578,6 +579,7 @@
       "SPACE_MEMBER_INVALID": "The selected space member is invalid or unavailable.",
       "WORK_ITEM_NOT_FOUND": "The work item is unavailable or this account cannot access it.",
       "REQUIREMENT_NOT_FOUND": "The requirement is unavailable or this account cannot access it.",
+      "REQUIREMENT_REFERENCE_INVALID": "Only active, numbered requirements can be linked.",
       "DOCUMENT_NOT_FOUND": "The document is unavailable or outside the current space.",
       "DOCUMENT_EDIT_CONFLICT": "The document has a newer revision. Refresh and try again.",
       "DOCUMENT_FOLDER_ACCESS_DENIED": "Your account cannot perform this document folder action.",
@@ -981,15 +983,27 @@
       "archived": "Archived"
     },
     "status": {
+      "DRAFT": "Draft",
       "ACTIVE": "Active",
       "ARCHIVED": "Archived"
     },
+    "kind": {
+      "GENERAL": "Document",
+      "REQUIREMENT": "Requirement"
+    },
+    "contentFormat": {
+      "MARKDOWN": "Markdown",
+      "TIPTAP_JSON": "Rich text"
+    },
     "source": {
+      "USER_CREATED": "Manual",
       "UPLOAD_DOCX": "Word import",
       "UPLOAD_MARKDOWN": "Markdown import",
       "PASTE_MARKDOWN": "Pasted Markdown",
       "PASTE_TEXT": "Pasted text",
-      "MCP_CREATED": "Model generated"
+      "MCP_CREATED": "Model generated",
+      "MIGRATED_DOCUMENT": "Migrated document",
+      "MIGRATED_REQUIREMENT": "Migrated requirement"
     },
     "actor": {
       "user": "Manual edit",
@@ -1004,11 +1018,14 @@
       "editedViaClient": "{actor} edited through {client} · {time}",
       "editedByUser": "{actor} edited manually · {time}",
       "sourceAction": {
+        "USER_CREATED": "manual create",
         "UPLOAD_DOCX": "Word upload",
         "UPLOAD_MARKDOWN": "Markdown upload",
         "PASTE_MARKDOWN": "Markdown paste",
         "PASTE_TEXT": "text paste",
-        "MCP_CREATED": "model"
+        "MCP_CREATED": "model",
+        "MIGRATED_DOCUMENT": "migration",
+        "MIGRATED_REQUIREMENT": "requirement migration"
       }
     },
     "list": {
@@ -1054,10 +1071,16 @@
       "lastEdited": "Last edited: {time}",
       "noLinks": "No linked resources",
       "conflict": "This document has a newer revision. Refresh before editing.",
-      "newVersion": "This document has a newer revision. Your current edits were not overwritten."
+      "newVersion": "This document has a newer revision. Your current edits were not overwritten.",
+      "requirementManaged": "Requirement content is managed by the requirement workflow. Open the requirement view to inspect or edit it with the correct permissions.",
+      "richTextReadOnly": "This document uses rich-text content. The Markdown editor is disabled here to avoid saving a lossy conversion.",
+      "noManagedPreview": "No text preview is available."
     },
     "actions": {
       "backToList": "Back to documents",
+      "openRequirementView": "Open requirement view",
+      "convertToRequirement": "Convert to requirement",
+      "cancelRequirement": "Cancel requirement",
       "edit": "Edit",
       "save": "Save",
       "cancel": "Cancel",
@@ -1103,6 +1126,18 @@
       "description": "Delete “{title}”? You will return to the document list after deletion.",
       "cancel": "Cancel",
       "confirm": "Delete"
+    },
+    "cancelRequirementDialog": {
+      "title": "Cancel requirement",
+      "description": "The body, attachments, comments, tags, and folder stay on the document. It will leave the requirement list.",
+      "descriptionWithReferences": "There are {count} delivery references. Choose whether to reject this operation or unlink them before continuing.",
+      "referenceModeLabel": "Reference handling",
+      "referenceModeReject": "Reject if referenced",
+      "referenceModeUnlink": "Unlink and cancel",
+      "reasonLabel": "Reason",
+      "reasonPlaceholder": "Optional",
+      "cancel": "Cancel",
+      "confirm": "Cancel requirement"
     },
     "moveDialog": {
       "title": "Move document",
@@ -1417,6 +1452,7 @@
     },
     "status": {
       "DRAFT": "Draft",
+      "ACTIVE": "Confirmed",
       "CONFIRMED": "Confirmed",
       "ARCHIVED": "Archived"
     },

@@ -31,6 +31,7 @@ import { getApiErrorMessageKey } from "../../lib/api-error-messages";
 import type {
   DocumentFilterKey,
   DocumentSortBy,
+  DocumentStatus,
   DocumentSummary,
 } from "../../lib/document-service";
 import {
@@ -48,9 +49,11 @@ import {
 import {
   formatDocumentRelativeTimestamp,
   getDocumentActorKey,
+  getDocumentDisplayCode,
   getDocumentFilterKeys,
   getDocumentLinkDisplayCode,
   getDocumentSourceKey,
+  isRequirementDocument,
 } from "../../lib/document-view-model";
 import { useRealtimeInvalidation } from "../../lib/realtime";
 import { cn } from "../../lib/utils";
@@ -80,13 +83,24 @@ import { SelectMenu } from "../ui/select-menu";
 import { Textarea } from "../ui/textarea";
 
 const PAGE_SIZE = 50;
-const DOCUMENTS_REALTIME_KEYS = ["document-list", "resource-documents"] as const;
+const DOCUMENTS_REALTIME_KEYS = [
+  "document-list",
+  "resource-documents",
+] as const;
 const DENSITY_STORAGE_KEY = "documents.list.density";
 export const DOCUMENTS_LAST_LIST_HREF_STORAGE_KEY = "documents.lastListHref";
 
 const SORT_OPTIONS = {
-  recentEdited: { dateField: "lastEditedAt", sortBy: "lastEditedAt", sortOrder: "desc" },
-  recentCreated: { dateField: "createdAt", sortBy: "createdAt", sortOrder: "desc" },
+  recentEdited: {
+    dateField: "lastEditedAt",
+    sortBy: "lastEditedAt",
+    sortOrder: "desc",
+  },
+  recentCreated: {
+    dateField: "createdAt",
+    sortBy: "createdAt",
+    sortOrder: "desc",
+  },
   title: { dateField: null, sortBy: "title", sortOrder: "asc" },
 } as const satisfies Record<
   string,
@@ -132,9 +146,7 @@ export function DocumentsPage() {
   );
   const directorySelection = useMemo(
     () =>
-      getDocumentDirectorySelection(
-        new URLSearchParams(searchParamsString),
-      ),
+      getDocumentDirectorySelection(new URLSearchParams(searchParamsString)),
     [searchParamsString],
   );
   const currentListHref = useMemo(
@@ -167,57 +179,60 @@ export function DocumentsPage() {
     );
   }, [currentListHref]);
 
-  const loadDocuments = useCallback(async (options?: { realtime?: boolean }) => {
-    if (!spaceId) {
-      setItems([]);
-      return;
-    }
-
-    const isRealtime = options?.realtime === true;
-    if (!isRealtime) {
-      setIsLoading(true);
-      setErrorKey(null);
-    }
-    try {
-      const result = await listDocuments({
-        currentUserId: session?.user?.id,
-        filter,
-        folderId: directorySelection.folderId,
-        includeDescendants: directorySelection.includeDescendants,
-        organizationId,
-        page: 1,
-        pageSize: PAGE_SIZE,
-        query: debouncedQuery,
-        sortBy: SORT_OPTIONS[sort].sortBy,
-        sortOrder: SORT_OPTIONS[sort].sortOrder,
-        spaceId,
-        unfiled: directorySelection.view === "unfiled",
-      });
-      setItems(result.items);
-      setTotal(result.total);
-      setPage(1);
-    } catch (error) {
-      if (!isRealtime) {
-        setErrorKey(getApiErrorMessageKey(error));
+  const loadDocuments = useCallback(
+    async (options?: { realtime?: boolean }) => {
+      if (!spaceId) {
         setItems([]);
-        setTotal(0);
+        return;
       }
-    } finally {
+
+      const isRealtime = options?.realtime === true;
       if (!isRealtime) {
-        setIsLoading(false);
+        setIsLoading(true);
+        setErrorKey(null);
       }
-    }
-  }, [
-    debouncedQuery,
-    directorySelection.folderId,
-    directorySelection.includeDescendants,
-    directorySelection.view,
-    filter,
-    organizationId,
-    session?.user?.id,
-    sort,
-    spaceId,
-  ]);
+      try {
+        const result = await listDocuments({
+          currentUserId: session?.user?.id,
+          filter,
+          folderId: directorySelection.folderId,
+          includeDescendants: directorySelection.includeDescendants,
+          organizationId,
+          page: 1,
+          pageSize: PAGE_SIZE,
+          query: debouncedQuery,
+          sortBy: SORT_OPTIONS[sort].sortBy,
+          sortOrder: SORT_OPTIONS[sort].sortOrder,
+          spaceId,
+          unfiled: directorySelection.view === "unfiled",
+        });
+        setItems(result.items);
+        setTotal(result.total);
+        setPage(1);
+      } catch (error) {
+        if (!isRealtime) {
+          setErrorKey(getApiErrorMessageKey(error));
+          setItems([]);
+          setTotal(0);
+        }
+      } finally {
+        if (!isRealtime) {
+          setIsLoading(false);
+        }
+      }
+    },
+    [
+      debouncedQuery,
+      directorySelection.folderId,
+      directorySelection.includeDescendants,
+      directorySelection.view,
+      filter,
+      organizationId,
+      session?.user?.id,
+      sort,
+      spaceId,
+    ],
+  );
 
   const loadMore = useCallback(async () => {
     if (!spaceId || isLoadingMore) {
@@ -286,8 +301,9 @@ export function DocumentsPage() {
 
   useEffect(() => {
     const handleDragRefresh = (event: Event) => {
-      const detail = (event as CustomEvent<{ clearDocumentSelection?: boolean }>)
-        .detail;
+      const detail = (
+        event as CustomEvent<{ clearDocumentSelection?: boolean }>
+      ).detail;
       if (detail?.clearDocumentSelection) {
         setSelectedDocumentIds(new Set());
       }
@@ -299,7 +315,10 @@ export function DocumentsPage() {
 
     window.addEventListener(DOCUMENT_LIST_REFRESH_EVENT, handleDragRefresh);
     return () =>
-      window.removeEventListener(DOCUMENT_LIST_REFRESH_EVENT, handleDragRefresh);
+      window.removeEventListener(
+        DOCUMENT_LIST_REFRESH_EVENT,
+        handleDragRefresh,
+      );
   }, [loadDocuments, status]);
 
   useEffect(() => {
@@ -352,9 +371,7 @@ export function DocumentsPage() {
     <div className="mx-auto flex w-full max-w-7xl flex-col gap-4 px-4 py-5 md:px-6">
       <header className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0">
-          <h1 className="sr-only">
-            {currentSpace?.name ?? t("unknownSpace")}
-          </h1>
+          <h1 className="sr-only">{currentSpace?.name ?? t("unknownSpace")}</h1>
           <p className="text-sm font-medium text-foreground">
             {currentSpace?.name ?? t("unknownSpace")}
           </p>
@@ -487,7 +504,9 @@ export function DocumentsPage() {
             aria-label={
               isSelectionMode ? t("selection.done") : t("selection.select")
             }
-            title={isSelectionMode ? t("selection.done") : t("selection.select")}
+            title={
+              isSelectionMode ? t("selection.done") : t("selection.select")
+            }
             data-testid="documents-selection-mode-toggle"
             onClick={toggleSelectionMode}
           >
@@ -502,7 +521,9 @@ export function DocumentsPage() {
           className="sticky top-12 z-20 flex h-10 items-center justify-between gap-2 rounded-md bg-primary/10 px-3 text-xs font-medium text-foreground shadow-sm"
           data-testid="documents-selection-toolbar"
         >
-          <span>{t("selection.count", { count: selectedDocumentIds.size })}</span>
+          <span>
+            {t("selection.count", { count: selectedDocumentIds.size })}
+          </span>
           <Button
             type="button"
             size="sm"
@@ -589,7 +610,11 @@ type DocumentGroupKey = "today" | "thisWeek" | "thisMonth" | "earlier";
 function getDateBucket(iso: string): DocumentGroupKey {
   const date = new Date(iso);
   const now = new Date();
-  const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const startOfToday = new Date(
+    now.getFullYear(),
+    now.getMonth(),
+    now.getDate(),
+  );
   if (date >= startOfToday) {
     return "today";
   }
@@ -613,10 +638,16 @@ function groupDocumentsByDate(
   if (!dateField) {
     return [{ items, key: "all" }];
   }
-  const order: DocumentGroupKey[] = ["today", "thisWeek", "thisMonth", "earlier"];
+  const order: DocumentGroupKey[] = [
+    "today",
+    "thisWeek",
+    "thisMonth",
+    "earlier",
+  ];
   const buckets = new Map<DocumentGroupKey, DocumentSummary[]>();
   for (const item of items) {
-    const value = dateField === "createdAt" ? item.createdAt : item.lastEditedAt;
+    const value =
+      dateField === "createdAt" ? item.createdAt : item.lastEditedAt;
     const bucket = getDateBucket(value);
     const list = buckets.get(bucket) ?? [];
     list.push(item);
@@ -706,8 +737,11 @@ function DocumentRow({
 }) {
   const t = useTranslations("documents");
   const isAi =
-    document.sourceType === "MCP_CREATED" || document.lastEditedVia === "MCP_CLIENT";
-  const SourceIcon = isAi ? Bot : User;
+    document.sourceType === "MCP_CREATED" ||
+    document.lastEditedVia === "MCP_CLIENT";
+  const isRequirement = isRequirementDocument(document);
+  const displayCode = getDocumentDisplayCode(document);
+  const SourceIcon = isRequirement ? ListChecks : isAi ? Bot : User;
   const isArchived = document.status === "ARCHIVED";
   const isCompact = density === "compact";
   const revisionLabel = t("list.revision", { revision: document.revision });
@@ -734,9 +768,7 @@ function DocumentRow({
         ref={draggable.setNodeRef}
         className={cn(
           "group flex min-w-0 items-center gap-1.5 rounded-md py-1 pl-1 pr-1.5 transition-colors",
-          selected
-            ? "bg-primary/10 hover:bg-primary/15"
-            : "hover:bg-muted/50",
+          selected ? "bg-primary/10 hover:bg-primary/15" : "hover:bg-muted/50",
           draggable.isDragging && "opacity-50",
         )}
         data-testid="documents-list-item"
@@ -759,7 +791,9 @@ function DocumentRow({
           aria-label={
             selectionMode && selected && selectedDocuments.length > 1
               ? t("list.dragSelected", { count: selectedDocuments.length })
-              : t("list.dragDocument", { title: document.title || t("untitled") })
+              : t("list.dragDocument", {
+                  title: document.title || t("untitled"),
+                })
           }
           className="h-5 w-4 shrink-0 cursor-grab text-muted-foreground opacity-0 transition-opacity active:cursor-grabbing group-focus-within:opacity-100 group-hover:opacity-100"
           data-testid="documents-list-drag-handle"
@@ -779,9 +813,11 @@ function DocumentRow({
             "h-3.5 w-3.5 shrink-0",
             isArchived
               ? "text-muted-foreground/70"
-              : isAi
-                ? "text-info"
-                : "text-muted-foreground",
+              : isRequirement
+                ? "text-primary"
+                : isAi
+                  ? "text-info"
+                  : "text-muted-foreground",
           )}
           aria-hidden="true"
         />
@@ -795,13 +831,17 @@ function DocumentRow({
           <span
             className={cn(
               "min-w-0 flex-1 truncate text-sm",
-              isArchived
-                ? "text-muted-foreground"
-                : "text-foreground",
+              isArchived ? "text-muted-foreground" : "text-foreground",
             )}
           >
             {document.title || t("untitled")}
           </span>
+          {isRequirement ? (
+            <RequirementDocumentBadge
+              displayCode={displayCode}
+              status={document.status}
+            />
+          ) : null}
           {isArchived ? (
             <Archive
               className="h-3.5 w-3.5 shrink-0 text-muted-foreground"
@@ -825,9 +865,7 @@ function DocumentRow({
       ref={draggable.setNodeRef}
       className={cn(
         "group flex min-w-0 items-start gap-2 rounded-lg py-2.5 pl-1.5 pr-2 transition-colors",
-        selected
-          ? "bg-primary/10 hover:bg-primary/15"
-          : "hover:bg-muted/50",
+        selected ? "bg-primary/10 hover:bg-primary/15" : "hover:bg-muted/50",
         draggable.isDragging && "opacity-50",
       )}
       data-testid="documents-list-item"
@@ -870,9 +908,11 @@ function DocumentRow({
           "flex h-8 w-8 shrink-0 items-center justify-center rounded-md",
           isArchived
             ? "bg-muted text-muted-foreground/70"
-            : isAi
-              ? "bg-info/10 text-info"
-              : "bg-muted text-foreground",
+            : isRequirement
+              ? "bg-primary/10 text-primary"
+              : isAi
+                ? "bg-info/10 text-info"
+                : "bg-muted text-foreground",
         )}
         aria-hidden="true"
       >
@@ -886,6 +926,12 @@ function DocumentRow({
         data-testid="documents-list-item-link"
       >
         <div className="flex min-w-0 items-center gap-2">
+          {isRequirement ? (
+            <RequirementDocumentBadge
+              displayCode={displayCode}
+              status={document.status}
+            />
+          ) : null}
           <span
             className={cn(
               "truncate text-[15px] font-semibold leading-snug text-foreground",
@@ -915,10 +961,9 @@ function DocumentRow({
             {formatDocumentCreatedMeta(document, locale, t)}
           </span>
         </div>
-        {((document.links ?? []).some(
+        {(document.links ?? []).some(
           (link) => link.targetType !== "DOCUMENT",
-        ) ||
-          (document.tags ?? []).length > 0) ? (
+        ) || (document.tags ?? []).length > 0 ? (
           <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
             <DocumentRowLinks links={document.links ?? []} />
             <TagBadgeList tags={document.tags ?? []} />
@@ -926,6 +971,32 @@ function DocumentRow({
         ) : null}
       </Link>
     </div>
+  );
+}
+
+function RequirementDocumentBadge({
+  displayCode,
+  status,
+}: {
+  displayCode: string | null;
+  status: DocumentStatus;
+}) {
+  const t = useTranslations("documents");
+  return (
+    <span
+      className="inline-flex shrink-0 items-center gap-1 rounded bg-primary/10 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-primary"
+      data-testid="document-requirement-badge"
+      title={t("kind.REQUIREMENT")}
+    >
+      {displayCode ? (
+        <span className="font-mono" data-testid="document-display-code">
+          {displayCode}
+        </span>
+      ) : (
+        t("kind.REQUIREMENT")
+      )}
+      <span className="text-primary/70">{t(`status.${status}`)}</span>
+    </span>
   );
 }
 
@@ -964,7 +1035,11 @@ function DocumentLinksSummary({ links }: { links: DocumentSummary["links"] }) {
   const overflow = Math.max((links ?? []).length - visible.length, 0);
 
   if (visible.length === 0) {
-    return <span className="text-xs text-muted-foreground">{t("list.noResources")}</span>;
+    return (
+      <span className="text-xs text-muted-foreground">
+        {t("list.noResources")}
+      </span>
+    );
   }
 
   return (
@@ -990,11 +1065,17 @@ function DocumentLinksSummary({ links }: { links: DocumentSummary["links"] }) {
   );
 }
 
-function SourceBadge({ sourceType }: { sourceType: DocumentSummary["sourceType"] }) {
+function SourceBadge({
+  sourceType,
+}: {
+  sourceType: DocumentSummary["sourceType"];
+}) {
   const t = useTranslations("documents");
   return (
     <Badge variant={sourceType === "MCP_CREATED" ? "info" : "outline"}>
-      {sourceType === "MCP_CREATED" ? <Bot className="h-3 w-3" aria-hidden="true" /> : null}
+      {sourceType === "MCP_CREATED" ? (
+        <Bot className="h-3 w-3" aria-hidden="true" />
+      ) : null}
       {t(getDocumentSourceKey(sourceType))}
     </Badge>
   );
@@ -1010,7 +1091,9 @@ function ActorBadge({
   const t = useTranslations("documents");
   return (
     <Badge variant={actorType === "MCP_CLIENT" ? "info" : "default"}>
-      {actorType === "MCP_CLIENT" ? <Bot className="h-3 w-3" aria-hidden="true" /> : null}
+      {actorType === "MCP_CLIENT" ? (
+        <Bot className="h-3 w-3" aria-hidden="true" />
+      ) : null}
       {actorType === "MCP_CLIENT"
         ? t("actor.viaClient", {
             client: getMcpClientDisplayName(mcpClientName, t),
@@ -1068,7 +1151,10 @@ export function formatDocumentEditedMeta(
   });
 }
 
-function getUserDisplayName(value: string | null | undefined, t: DocumentTranslator) {
+function getUserDisplayName(
+  value: string | null | undefined,
+  t: DocumentTranslator,
+) {
   const trimmed = value?.trim();
 
   return trimmed || t("meta.unknownUser");
@@ -1198,11 +1284,17 @@ function DocumentImportDialog({
             </p>
           ) : null}
           <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => onOpenChange(false)}
+            >
               {t("cancel")}
             </Button>
             <Button type="submit" disabled={!canSubmit || isSaving}>
-              {isSaving ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> : null}
+              {isSaving ? (
+                <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
+              ) : null}
               {t("submit")}
             </Button>
           </DialogFooter>
@@ -1276,7 +1368,10 @@ function DocumentPasteDialog({
               data-testid="document-paste-title-input"
               value={form.title}
               onChange={(event) =>
-                setForm((current) => ({ ...current, title: event.target.value }))
+                setForm((current) => ({
+                  ...current,
+                  title: event.target.value,
+                }))
               }
               placeholder={t("titlePlaceholder")}
             />
@@ -1302,14 +1397,20 @@ function DocumentPasteDialog({
             </p>
           ) : null}
           <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => onOpenChange(false)}
+            >
               {t("cancel")}
             </Button>
             <Button
               type="submit"
               disabled={!spaceId || !form.contentMarkdown.trim() || isSaving}
             >
-              {isSaving ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> : null}
+              {isSaving ? (
+                <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
+              ) : null}
               {t("submit")}
             </Button>
           </DialogFooter>

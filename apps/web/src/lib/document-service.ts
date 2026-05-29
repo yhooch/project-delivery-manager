@@ -1,18 +1,27 @@
-import type { TagDto, TimelineEventType } from "@project-delivery/shared";
+import type {
+  DocumentContentFormat,
+  DocumentKind,
+  Priority,
+  TagDto,
+  TimelineEventType,
+} from "@project-delivery/shared";
 import { z } from "zod";
 
 import { apiClient, type ApiRequestInit } from "./api-client";
 import { normalizeTagApiQuery } from "./tag-query";
 
 export type DocumentSourceType =
+  | "USER_CREATED"
   | "UPLOAD_DOCX"
   | "UPLOAD_MARKDOWN"
   | "PASTE_MARKDOWN"
   | "PASTE_TEXT"
-  | "MCP_CREATED";
+  | "MCP_CREATED"
+  | "MIGRATED_DOCUMENT"
+  | "MIGRATED_REQUIREMENT";
 
 export type DocumentActorType = "USER" | "MCP_CLIENT";
-export type DocumentStatus = "ACTIVE" | "ARCHIVED";
+export type DocumentStatus = "DRAFT" | "ACTIVE" | "ARCHIVED";
 export type DocumentFilterKey =
   | "all"
   | "createdByMe"
@@ -25,6 +34,10 @@ export type DocumentLinkTargetType =
   | "REQUIREMENT"
   | "INTAKE_ITEM"
   | "WORK_ITEM";
+export type DocumentLinkWriteTargetType = Exclude<
+  DocumentLinkTargetType,
+  "REQUIREMENT"
+>;
 
 export type DocumentLinkSummary = {
   displayCode?: string | null;
@@ -37,27 +50,39 @@ export type DocumentLinkSummary = {
 
 export type DocumentSummary = {
   archivedAt?: string | null;
+  authorId?: string | null;
   contentSnippet?: string | null;
+  contentFormat: DocumentContentFormat;
+  contentJson?: Record<string, unknown> | null;
+  contentMarkdownCache?: string | null;
+  contentText?: string | null;
   createdAt: string;
   createdById?: string | null;
   createdByName?: string | null;
   createdMcpClientName?: string | null;
   createdVia?: DocumentActorType;
+  displayCode?: string | null;
   folderId?: string | null;
   id: string;
+  kind: DocumentKind;
   lastEditedAt: string;
   lastEditedByName?: string | null;
   lastEditedMcpClientName?: string | null;
   lastEditedVia: DocumentActorType;
   links?: DocumentLinkSummary[];
   organizationId: string;
+  ownerId?: string | null;
+  priority?: Priority | null;
   revision: number;
+  sequence?: number | null;
   sourceType: DocumentSourceType;
   spaceId: string;
   status: DocumentStatus;
+  summary?: string | null;
   tags?: TagDto[];
   title: string;
   updatedAt: string;
+  versionId?: string | null;
 };
 
 export type DocumentDetail = DocumentSummary & {
@@ -121,6 +146,7 @@ export type ListDocumentsInput = {
   filter?: DocumentFilterKey;
   folderId?: string | null;
   includeDescendants?: boolean;
+  kind?: DocumentKind;
   organizationId?: string;
   page?: number;
   pageSize?: number;
@@ -149,10 +175,14 @@ export type ImportDocumentInput = {
 
 export type UpdateDocumentInput = {
   baseRevision: number;
+  contentFormat?: DocumentContentFormat;
+  contentJson?: Record<string, unknown>;
   contentMarkdown?: string;
+  contentMarkdownCache?: string;
+  contentText?: string;
   linkTargets?: Array<{
     targetId: string;
-    targetType: DocumentLinkTargetType;
+    targetType: DocumentLinkWriteTargetType;
   }>;
   tagIds?: string[];
   title?: string;
@@ -161,6 +191,30 @@ export type UpdateDocumentInput = {
 export type ReimportDocumentInput = {
   baseRevision: number;
   file: File;
+};
+
+export type ConvertDocumentToRequirementInput = {
+  activate?: boolean;
+  baseRevision: number;
+  documentId: string;
+  ownerId?: string;
+  priority?: Priority;
+  summary?: string;
+  title?: string;
+  versionId?: string | null;
+};
+
+export type CancelRequirementInput = {
+  baseRevision: number;
+  documentId: string;
+  reason?: string;
+  referenceMode: "REJECT_IF_REFERENCED" | "UNLINK_REFERENCES";
+};
+
+export type CancelRequirementPreflight = {
+  canCancel: boolean;
+  modeRequired?: "REJECT_IF_REFERENCED" | "UNLINK_REFERENCES";
+  referenceCount: number;
 };
 
 export type DocumentApiTransport = {
@@ -182,13 +236,21 @@ const defaultApi: DocumentApiTransport = apiClient;
 
 const documentActorSchema = z.enum(["USER", "MCP_CLIENT"]);
 const documentSourceSchema = z.enum([
+  "USER_CREATED",
   "UPLOAD_DOCX",
   "UPLOAD_MARKDOWN",
   "PASTE_MARKDOWN",
   "PASTE_TEXT",
   "MCP_CREATED",
+  "MIGRATED_DOCUMENT",
+  "MIGRATED_REQUIREMENT",
 ]);
-const documentStatusSchema = z.enum(["ACTIVE", "ARCHIVED"]);
+const documentStatusSchema = z.enum(["DRAFT", "ACTIVE", "ARCHIVED"]);
+const documentKindSchema = z.enum(["GENERAL", "REQUIREMENT"]).catch("GENERAL");
+const documentContentFormatSchema = z
+  .enum(["MARKDOWN", "TIPTAP_JSON"])
+  .catch("MARKDOWN");
+const prioritySchema = z.enum(["LOW", "MEDIUM", "HIGH", "URGENT"]);
 const linkTargetSchema = z.enum([
   "DOCUMENT",
   "VERSION",
@@ -259,27 +321,39 @@ const documentFolderListSchema = z
 const documentSummaryBaseSchema = z
   .object({
     archivedAt: z.string().nullish(),
+    authorId: z.string().nullish(),
     contentSnippet: z.string().nullish(),
+    contentFormat: documentContentFormatSchema.default("MARKDOWN"),
+    contentJson: z.record(z.string(), z.unknown()).nullish().catch(undefined),
+    contentMarkdownCache: z.string().nullish(),
+    contentText: z.string().nullish(),
     createdAt: z.string(),
     createdById: z.string().nullish(),
     createdByName: z.string().nullish(),
     createdMcpClientName: z.string().nullish(),
     createdVia: documentActorSchema.optional(),
+    displayCode: z.string().nullish(),
     folderId: z.string().nullish(),
     id: z.string(),
+    kind: documentKindSchema.default("GENERAL"),
     lastEditedAt: z.string(),
     lastEditedByName: z.string().nullish(),
     lastEditedMcpClientName: z.string().nullish(),
     lastEditedVia: documentActorSchema,
     links: z.array(linkSchema).optional(),
     organizationId: z.string(),
+    ownerId: z.string().nullish(),
+    priority: prioritySchema.nullish(),
     revision: z.number(),
+    sequence: z.number().nullish(),
     sourceType: documentSourceSchema,
     spaceId: z.string(),
     status: documentStatusSchema,
+    summary: z.string().nullish(),
     tags: z.array(tagSchema).optional(),
     title: z.string(),
     updatedAt: z.string(),
+    versionId: z.string().nullish(),
   })
   .passthrough();
 
@@ -352,6 +426,16 @@ const documentDetailSchema = documentSummaryBaseSchema
     timelineTotal: document.timelineTotal,
   }));
 
+const cancelRequirementPreflightSchema = z
+  .object({
+    canCancel: z.boolean(),
+    modeRequired: z
+      .enum(["REJECT_IF_REFERENCED", "UNLINK_REFERENCES"])
+      .optional(),
+    referenceCount: z.number().catch(0),
+  })
+  .passthrough();
+
 const documentPageSchema = z
   .object({
     items: z.array(documentSummarySchema),
@@ -379,6 +463,7 @@ export async function listDocuments(
       folderId:
         query.folderId === null ? undefined : optionalString(query.folderId),
       includeDescendants: query.includeDescendants || undefined,
+      kind: query.kind,
       unfiled: query.unfiled || undefined,
       query: optionalString(query.query),
       sortBy: query.sortBy,
@@ -399,6 +484,55 @@ export async function getDocument(
   const response = await api.get<unknown>(`/documents/${input.documentId}`);
 
   return documentDetailSchema.parse(response.data);
+}
+
+export async function convertDocumentToRequirement(
+  input: ConvertDocumentToRequirementInput,
+  api: DocumentApiTransport = defaultApi,
+): Promise<DocumentDetail> {
+  const response = await api.post<unknown>(
+    `/documents/${input.documentId}/convert-to-requirement`,
+    {
+      activate: input.activate,
+      baseRevision: input.baseRevision,
+      ownerId: input.ownerId,
+      priority: input.priority,
+      summary: input.summary,
+      title: input.title,
+      versionId: input.versionId,
+    },
+  );
+  const document = documentSummarySchema.parse(response.data);
+
+  return getDocument({ documentId: document.id }, api);
+}
+
+export async function cancelRequirement(
+  input: CancelRequirementInput,
+  api: DocumentApiTransport = defaultApi,
+): Promise<DocumentDetail> {
+  const response = await api.post<unknown>(
+    `/documents/${input.documentId}/cancel-requirement`,
+    {
+      baseRevision: input.baseRevision,
+      reason: input.reason,
+      referenceMode: input.referenceMode,
+    },
+  );
+  const document = documentSummarySchema.parse(response.data);
+
+  return getDocument({ documentId: document.id }, api);
+}
+
+export async function getCancelRequirementPreflight(
+  input: { documentId: string },
+  api: DocumentApiTransport = defaultApi,
+): Promise<CancelRequirementPreflight> {
+  const response = await api.get<unknown>(
+    `/documents/${input.documentId}/cancel-requirement`,
+  );
+
+  return cancelRequirementPreflightSchema.parse(response.data);
 }
 
 export async function pasteDocument(
@@ -449,7 +583,16 @@ export async function updateDocument(
   input: { documentId: string } & UpdateDocumentInput,
   api: DocumentApiTransport = defaultApi,
 ): Promise<DocumentDetail> {
-  const { contentMarkdown, documentId, linkTargets, ...metadata } = input;
+  const {
+    contentFormat,
+    contentJson,
+    contentMarkdown,
+    contentMarkdownCache,
+    contentText,
+    documentId,
+    linkTargets,
+    ...metadata
+  } = input;
   let document: DocumentDetail | null = null;
 
   if (
@@ -467,13 +610,22 @@ export async function updateDocument(
     document = documentDetailSchema.parse(response.data);
   }
 
-  if (contentMarkdown !== undefined) {
+  if (contentMarkdown !== undefined || contentJson !== undefined) {
     const response = await api.patch<unknown>(
       `/documents/${documentId}/content`,
-      {
-        baseRevision: document?.revision ?? input.baseRevision,
-        contentMarkdown,
-      },
+      contentFormat === "TIPTAP_JSON"
+        ? {
+            baseRevision: document?.revision ?? input.baseRevision,
+            contentFormat,
+            contentJson,
+            contentMarkdownCache,
+            contentText,
+          }
+        : {
+            baseRevision: document?.revision ?? input.baseRevision,
+            ...(contentFormat ? { contentFormat } : {}),
+            contentMarkdown,
+          },
     );
     document = documentDetailSchema.parse(response.data);
   }

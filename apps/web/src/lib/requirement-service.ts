@@ -129,10 +129,14 @@ export async function updateRequirement(
 }
 
 export async function archiveRequirement(
-  context: RequirementIdentityInput,
+  context: RequirementIdentityInput & { baseRevision: number },
   api: RequirementApiTransport = defaultApi,
 ): Promise<Requirement> {
-  return updateRequirement(context, { status: "ARCHIVED" }, api);
+  return updateRequirement(
+    context,
+    { baseRevision: context.baseRevision, status: "ARCHIVED" },
+    api,
+  );
 }
 
 export async function deleteRequirementDraft(

@@ -43,7 +43,7 @@ function createAttachmentFixture(): Attachment {
     size: 5,
     spaceId,
     targetId: requirementId,
-    targetType: "REQUIREMENT",
+    targetType: "DOCUMENT",
     uploadedById: "01ARZ3NDEKTSV4RRFFQ69G5FB2",
   };
 }
@@ -91,7 +91,7 @@ describe("attachment service", () => {
     expect(api.post).toHaveBeenCalledWith("/attachments", expect.any(FormData));
     expect(formData).toBeInstanceOf(FormData);
     expect((formData as FormData).get("targetId")).toBe(requirementId);
-    expect((formData as FormData).get("targetType")).toBe("REQUIREMENT");
+    expect((formData as FormData).get("targetType")).toBe("DOCUMENT");
     expect((formData as FormData).get("file")).toMatchObject({
       name: file.name,
       size: file.size,
@@ -167,7 +167,7 @@ describe("attachment service", () => {
           pageSize: 20,
           spaceId,
           targetId: requirementId,
-          targetType: "REQUIREMENT",
+          targetType: "DOCUMENT",
         },
         api,
       ),
@@ -178,7 +178,7 @@ describe("attachment service", () => {
         page: 1,
         pageSize: 20,
         targetId: requirementId,
-        targetType: "REQUIREMENT",
+        targetType: "DOCUMENT",
       },
     });
   });

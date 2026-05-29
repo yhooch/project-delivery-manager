@@ -18,6 +18,7 @@ export type ObjectCodeLookupRepositoryInput = {
   actorUserId: string;
   organizationId: string;
   objectType: ObjectCodeType;
+  includeHistorical?: boolean;
   sequence: number;
   spaceId?: string;
 };

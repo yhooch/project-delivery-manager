@@ -27,6 +27,7 @@ import type { SpaceRepository } from "../space/space.repository";
 import type { TargetResolverService } from "../target/target-resolver.service";
 import type { AttachmentObjectStorage } from "../attachment/storage/attachment-object-storage";
 import type { DocumentFolderService } from "./document-folder.service";
+import type { DocumentKindTransitionService } from "./document-kind-transition.service";
 import type { DocumentRepository } from "./document.repository";
 import {
   DocumentDocxConversionTimeoutMs,
@@ -238,6 +239,196 @@ describe("DocumentService", () => {
     expect(realtime.publish).toHaveBeenCalledWith(
       expect.objectContaining({
         target: { type: "DOCUMENT", id: DOCUMENT_ID },
+      }),
+    );
+  });
+
+  it("rejects Markdown content updates for TIPTAP documents", async () => {
+    const existing = fakeDocument({
+      contentFormat: "TIPTAP_JSON",
+      createdById: ACTOR_ID,
+    });
+    const { documents, service } = createSubject({
+      document: existing,
+      role: "PM",
+    });
+
+    await expect(
+      service.updateContent(ACTOR_ID, DOCUMENT_ID, {
+        baseRevision: 1,
+        contentMarkdown: "# overwritten",
+      }),
+    ).rejects.toMatchObject({
+      code: "VALIDATION_ERROR",
+    });
+    expect(documents.updateContent).not.toHaveBeenCalled();
+  });
+
+  it("uses requirement write permissions for requirement document edits", async () => {
+    const existing = fakeDocument({
+      kind: "REQUIREMENT",
+      createdById: ACTOR_ID,
+    });
+    const { documents, service, targets } = createSubject({
+      document: existing,
+      role: "DEVELOPER",
+      targetResolveError: Object.assign(new Error("denied"), {
+        code: "SPACE_ACCESS_DENIED",
+      }),
+    });
+
+    await expect(
+      service.updateMetadata(ACTOR_ID, DOCUMENT_ID, {
+        baseRevision: 1,
+        title: "Bypass attempt",
+      }),
+    ).rejects.toMatchObject({
+      code: "SPACE_ACCESS_DENIED",
+    });
+    expect(targets.resolve).toHaveBeenCalledWith(
+      ACTOR_ID,
+      "REQUIREMENT",
+      DOCUMENT_ID,
+      expect.objectContaining({
+        access: "write",
+        writePolicy: "objectUpdate",
+      }),
+    );
+    expect(documents.updateMetadata).not.toHaveBeenCalled();
+  });
+
+  it("rejects requirement document state changes through generic document APIs", async () => {
+    const existing = fakeDocument({
+      kind: "REQUIREMENT",
+      createdById: ACTOR_ID,
+    });
+    const { documents, service } = createSubject({
+      document: existing,
+      role: "PM",
+    });
+
+    await expect(service.archive(ACTOR_ID, DOCUMENT_ID)).rejects.toMatchObject({
+      code: "VALIDATION_ERROR",
+    });
+    await expect(service.delete(ACTOR_ID, DOCUMENT_ID)).rejects.toMatchObject({
+      code: "VALIDATION_ERROR",
+    });
+    expect(documents.updateState).not.toHaveBeenCalled();
+  });
+
+  it("converts a general document to a requirement without copying content", async () => {
+    const existing = fakeDocument({ createdById: ACTOR_ID, revision: 1 });
+    const updated = fakeDocument({
+      createdById: ACTOR_ID,
+      kind: "REQUIREMENT",
+      revision: 2,
+      sequence: 12,
+      versionId: TARGET_ID,
+    });
+    const { audit, kindTransitions, realtime, service, targets } =
+      createSubject({
+        convertToRequirementResult: { status: "updated", document: updated },
+        document: existing,
+        role: "PM",
+      });
+
+    await expect(
+      service.convertToRequirement(ACTOR_ID, DOCUMENT_ID, {
+        baseRevision: 1,
+        versionId: TARGET_ID,
+        priority: "MEDIUM",
+      }),
+    ).resolves.toMatchObject({
+      id: DOCUMENT_ID,
+      kind: "REQUIREMENT",
+      revision: 2,
+    });
+    expect(targets.resolve).toHaveBeenCalledWith(
+      ACTOR_ID,
+      "VERSION",
+      TARGET_ID,
+      expect.objectContaining({ hideInaccessible: true }),
+    );
+    expect(kindTransitions.convertToRequirement).toHaveBeenCalledWith(
+      expect.objectContaining({
+        baseRevision: 1,
+        documentId: DOCUMENT_ID,
+        priority: "MEDIUM",
+        versionId: TARGET_ID,
+      }),
+    );
+    expect(audit.record).toHaveBeenCalledWith(
+      expect.objectContaining({
+        actionType: "UPDATE",
+        targetId: DOCUMENT_ID,
+        targetType: "DOCUMENT",
+      }),
+    );
+    expect(realtime.publish).toHaveBeenCalledWith(
+      expect.objectContaining({
+        invalidates: expect.arrayContaining([
+          "document-list",
+          "requirement-list",
+        ]),
+      }),
+    );
+  });
+
+  it("preflights requirement cancellation references", async () => {
+    const existing = fakeDocument({
+      kind: "REQUIREMENT",
+      createdById: ACTOR_ID,
+    });
+    const { kindTransitions, service } = createSubject({
+      cancelRequirementPreflightResult: {
+        status: "ok",
+        referenceCount: 2,
+      },
+      document: existing,
+      role: "PM",
+    });
+
+    await expect(
+      service.cancelRequirementPreflight(ACTOR_ID, DOCUMENT_ID),
+    ).resolves.toEqual({
+      canCancel: false,
+      referenceCount: 2,
+      modeRequired: "UNLINK_REFERENCES",
+    });
+    expect(kindTransitions.cancelRequirementPreflight).toHaveBeenCalledWith(
+      DOCUMENT_ID,
+    );
+  });
+
+  it("rejects requirement cancellation when references exist in reject mode", async () => {
+    const existing = fakeDocument({
+      kind: "REQUIREMENT",
+      createdById: ACTOR_ID,
+    });
+    const { kindTransitions, service } = createSubject({
+      cancelRequirementResult: {
+        status: "referenced",
+        referenceCount: 3,
+      },
+      document: existing,
+      role: "PM",
+    });
+
+    await expect(
+      service.cancelRequirement(ACTOR_ID, DOCUMENT_ID, {
+        baseRevision: 1,
+        referenceMode: "REJECT_IF_REFERENCED",
+      }),
+    ).rejects.toMatchObject({
+      code: "CONFLICT",
+      details: {
+        referenceCount: 3,
+      },
+    });
+    expect(kindTransitions.cancelRequirement).toHaveBeenCalledWith(
+      expect.objectContaining({
+        documentId: DOCUMENT_ID,
+        referenceMode: "REJECT_IF_REFERENCED",
       }),
     );
   });
@@ -534,6 +725,15 @@ function createSubject(
     documentsById?: Map<string, Document>;
     listResult?: Awaited<ReturnType<DocumentRepository["list"]>>;
     searchChunks?: DocumentChunk[];
+    cancelRequirementPreflightResult?: Awaited<
+      ReturnType<DocumentKindTransitionService["cancelRequirementPreflight"]>
+    >;
+    cancelRequirementResult?: Awaited<
+      ReturnType<DocumentKindTransitionService["cancelRequirement"]>
+    >;
+    convertToRequirementResult?: Awaited<
+      ReturnType<DocumentKindTransitionService["convertToRequirement"]>
+    >;
     moveManyToFolderResult?: Awaited<
       ReturnType<DocumentRepository["moveManyToFolder"]>
     >;
@@ -544,6 +744,7 @@ function createSubject(
       ReturnType<DocumentRepository["moveToFolder"]>
     >;
     role?: "DEVELOPER" | "PM" | "VIEWER";
+    targetResolveError?: Error;
     targetSpaceId?: string;
     updateContentResult?: Awaited<
       ReturnType<DocumentRepository["updateContent"]>
@@ -609,8 +810,44 @@ function createSubject(
         },
     ),
     updateMetadata: vi.fn(),
-    updateState: vi.fn(),
+    updateState: vi.fn(async () => ({
+      status: "updated",
+      document: fakeDocument({ revision: document.revision + 1 }),
+    })),
   } as unknown as DocumentRepository & Record<string, ReturnType<typeof vi.fn>>;
+  const kindTransitions = {
+    cancelRequirement: vi.fn(
+      async () =>
+        input.cancelRequirementResult ?? {
+          status: "updated",
+          document: fakeDocument({
+            kind: "GENERAL",
+            revision: document.revision + 1,
+          }),
+        },
+    ),
+    cancelRequirementPreflight: vi.fn(
+      async () =>
+        input.cancelRequirementPreflightResult ?? {
+          status: "ok",
+          referenceCount: 0,
+        },
+    ),
+    convertToRequirement: vi.fn(
+      async () =>
+        input.convertToRequirementResult ?? {
+          status: "updated",
+          document: fakeDocument({
+            kind: "REQUIREMENT",
+            revision: document.revision + 1,
+          }),
+        },
+    ),
+  } as unknown as DocumentKindTransitionService & {
+    cancelRequirement: ReturnType<typeof vi.fn>;
+    cancelRequirementPreflight: ReturnType<typeof vi.fn>;
+    convertToRequirement: ReturnType<typeof vi.fn>;
+  };
   const spaces = {
     findAccessibleById: vi.fn(async () => ({
       role: input.role ?? "PM",
@@ -625,18 +862,38 @@ function createSubject(
         updatedAt: new Date().toISOString(),
       },
     })),
-  } as unknown as SpaceRepository & {
-    findAccessibleById: ReturnType<typeof vi.fn>;
-  };
-  const targets = {
-    resolve: vi.fn(async () => ({
-      canWrite: true,
+    findMemberByUserId: vi.fn(async () => ({
+      id: "01H00000000000000000000009",
       organizationId: ORGANIZATION_ID,
       role: "PM",
-      spaceId: input.targetSpaceId ?? SPACE_ID,
-      targetId: TARGET_ID,
-      targetType: "WORK_ITEM",
+      spaceId: SPACE_ID,
+      status: "ACTIVE",
+      user: {
+        id: OWNER_ID,
+        name: "Owner",
+        username: "owner",
+      },
+      userId: OWNER_ID,
     })),
+  } as unknown as SpaceRepository & {
+    findAccessibleById: ReturnType<typeof vi.fn>;
+    findMemberByUserId: ReturnType<typeof vi.fn>;
+  };
+  const targets = {
+    resolve: vi.fn(async () => {
+      if (input.targetResolveError) {
+        throw input.targetResolveError;
+      }
+
+      return {
+        canWrite: true,
+        organizationId: ORGANIZATION_ID,
+        role: "PM",
+        spaceId: input.targetSpaceId ?? SPACE_ID,
+        targetId: TARGET_ID,
+        targetType: "WORK_ITEM",
+      };
+    }),
   } as unknown as TargetResolverService & {
     resolve: ReturnType<typeof vi.fn>;
   };
@@ -666,6 +923,7 @@ function createSubject(
   return {
     audit,
     documents,
+    kindTransitions,
     objectStorage,
     realtime,
     service: new DocumentService(
@@ -676,6 +934,7 @@ function createSubject(
       realtime,
       objectStorage,
       folders,
+      kindTransitions,
     ),
     spaces,
     targets,
@@ -684,17 +943,32 @@ function createSubject(
 }
 
 function fakeDocument(input: Partial<Document> = {}): Document {
+  const contentFormat = input.contentFormat ?? "MARKDOWN";
+
   return {
     id: input.id ?? DOCUMENT_ID,
     organizationId: input.organizationId ?? ORGANIZATION_ID,
     spaceId: input.spaceId ?? SPACE_ID,
     folderId: input.folderId,
+    kind: input.kind ?? "GENERAL",
+    sequence: input.sequence,
+    displayCode: input.displayCode,
+    versionId: input.versionId,
     title: input.title ?? "Document",
-    contentMarkdown: input.contentMarkdown ?? "# Document",
+    contentFormat,
+    ...(contentFormat === "MARKDOWN"
+      ? { contentMarkdown: input.contentMarkdown ?? "# Document" }
+      : {
+          contentJson: input.contentJson ?? { type: "doc" },
+          contentMarkdownCache: input.contentMarkdownCache,
+        }),
     contentText: input.contentText ?? "Document",
     sourceType: input.sourceType ?? "PASTE_MARKDOWN",
     status: input.status ?? "ACTIVE",
     revision: input.revision ?? 1,
+    priority: input.priority,
+    ownerId: input.ownerId,
+    authorId: input.authorId,
     createdById: input.createdById ?? OWNER_ID,
     createdVia: input.createdVia ?? "USER",
     lastEditedById: input.lastEditedById ?? OWNER_ID,
@@ -721,7 +995,9 @@ function fakeDocumentDetail(
 
 function fakeDocumentListItem(input: Document): DocumentListItem {
   const {
+    contentJson: _contentJson,
     contentMarkdown: _contentMarkdown,
+    contentMarkdownCache: _contentMarkdownCache,
     contentText: _contentText,
     chunks: _chunks,
     ...item

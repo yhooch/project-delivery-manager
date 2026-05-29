@@ -211,14 +211,5 @@ async function lockAttachmentTarget(
     return rows.length > 0;
   }
 
-  const rows = await tx.$queryRaw<Array<{ id: string }>>`
-    SELECT id
-    FROM requirements
-    WHERE id = ${targetId}
-      AND organization_id = ${organizationId}
-      AND space_id = ${spaceId}
-      AND deleted_at IS NULL
-    FOR UPDATE
-  `;
-  return rows.length > 0;
+  return false;
 }

@@ -181,7 +181,7 @@ beforeEach(() => {
       {
         id: "01ARZ3NDEKTSV4RRFFQ69G5FR1",
         displayCode: "REQ-1",
-        status: "CONFIRMED",
+        status: "ACTIVE",
         title: "Req One",
       },
       { id: "01ARZ3NDEKTSV4RRFFQ69G5FR2", status: "DRAFT", title: "" },

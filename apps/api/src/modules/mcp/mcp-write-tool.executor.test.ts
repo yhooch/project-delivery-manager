@@ -746,10 +746,13 @@ describe("McpWriteToolExecutor", () => {
       },
     );
 
-    expect(documentFolders.requireFolderInSpace).toHaveBeenCalledWith(FOLDER_ID, {
-      organizationId: ORGANIZATION_ID,
-      spaceId: SPACE_ID,
-    });
+    expect(documentFolders.requireFolderInSpace).toHaveBeenCalledWith(
+      FOLDER_ID,
+      {
+        organizationId: ORGANIZATION_ID,
+        spaceId: SPACE_ID,
+      },
+    );
     expect(documents.createFromMarkdown).toHaveBeenCalledWith(
       USER_ID,
       SPACE_ID,
@@ -796,10 +799,13 @@ describe("McpWriteToolExecutor", () => {
     );
 
     expect(documents.get).toHaveBeenCalledWith(USER_ID, DOCUMENT_ID);
-    expect(documentFolders.requireFolderInSpace).toHaveBeenCalledWith(FOLDER_ID, {
-      organizationId: ORGANIZATION_ID,
-      spaceId: SPACE_ID,
-    });
+    expect(documentFolders.requireFolderInSpace).toHaveBeenCalledWith(
+      FOLDER_ID,
+      {
+        organizationId: ORGANIZATION_ID,
+        spaceId: SPACE_ID,
+      },
+    );
     expect(documents.moveToFolder).toHaveBeenCalledWith(
       USER_ID,
       DOCUMENT_ID,
@@ -928,6 +934,43 @@ describe("McpWriteToolExecutor", () => {
       },
     });
   });
+
+  it("requires requirement write scope for generic document writes to requirement documents", async () => {
+    documents.get.mockResolvedValueOnce({
+      ...document,
+      kind: "REQUIREMENT",
+    });
+
+    const result = await executor.execute(
+      contract("pdm.document.update_metadata"),
+      {
+        organizationId: ORGANIZATION_ID,
+        spaceId: SPACE_ID,
+        idempotencyKey: "requirement-document-metadata-1",
+        targetSelectionSource: "USER_EXPLICIT",
+        documentId: DOCUMENT_ID,
+        tagIds: [],
+      },
+      principal(["mcp:write:document"]),
+      {
+        requestId: "req-requirement-document-metadata",
+      },
+    );
+
+    expect(result).toMatchObject({
+      isError: true,
+      structuredContent: {
+        error: {
+          code: "MCP_INSUFFICIENT_SCOPE",
+          details: {
+            documentId: DOCUMENT_ID,
+            requiredScope: "mcp:write:requirement",
+          },
+        },
+      },
+    });
+    expect(documents.updateMetadata).not.toHaveBeenCalled();
+  });
 });
 
 function contract(name: McpToolName) {
@@ -940,13 +983,15 @@ function contract(name: McpToolName) {
   return found;
 }
 
-function principal(): McpOAuthPrincipalContext {
+function principal(
+  scopes: string[] = ["mcp:write:workitem"],
+): McpOAuthPrincipalContext {
   return {
     accessTokenId: "access-token-id",
     authorizationId: "authorization-id",
     clientId: "test-client",
     resource: "http://localhost:3001/api/v1/mcp",
-    scopes: ["mcp:write:workitem"],
+    scopes,
     userId: USER_ID,
   };
 }

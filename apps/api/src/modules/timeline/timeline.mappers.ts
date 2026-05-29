@@ -32,6 +32,7 @@ type PrismaTimelineEventRecord = {
 };
 
 export type TimelineTargetIdentityRecord = {
+  targetKind?: "REQUIREMENT";
   sequence?: number | null;
   title?: string;
   workItemType?: WorkItemType | null;
@@ -77,7 +78,7 @@ function toTimelineTargetDisplayIdentity(
     return {};
   }
 
-  if (targetType === "REQUIREMENT") {
+  if (targetType === "DOCUMENT" && target?.targetKind === "REQUIREMENT") {
     return {
       sequence,
       displayCode: formatDisplayCode("REQUIREMENT", sequence),

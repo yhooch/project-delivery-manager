@@ -49,10 +49,16 @@ vi.mock("../../i18n/routing", () => ({
 const sessionMock = vi.hoisted(() => ({
   current: {
     currentOrganization: { id: "ORG_01", name: "Org A" },
-    currentSpace: { id: "SPC_01", name: "Space A" },
+    currentSpace: {
+      id: "SPC_01",
+      name: "Space A",
+      role: "PM",
+      status: "ACTIVE",
+    },
     session: {
       defaultOrganizationId: "ORG_01",
       defaultSpaceId: "SPC_01",
+      user: { id: "USER_01" },
     },
     status: "authenticated",
   },
@@ -72,7 +78,10 @@ vi.mock("../tag", () => ({
 
 const {
   archiveDocumentMock,
+  cancelRequirementMock,
+  convertDocumentToRequirementMock,
   deleteDocumentMock,
+  getCancelRequirementPreflightMock,
   getDocumentMock,
   listDocumentFoldersMock,
   listDocumentsMock,
@@ -82,7 +91,10 @@ const {
   updateDocumentMock,
 } = vi.hoisted(() => ({
   archiveDocumentMock: vi.fn(),
+  cancelRequirementMock: vi.fn(),
+  convertDocumentToRequirementMock: vi.fn(),
   deleteDocumentMock: vi.fn(),
+  getCancelRequirementPreflightMock: vi.fn(),
   getDocumentMock: vi.fn(),
   listDocumentFoldersMock: vi.fn(),
   listDocumentsMock: vi.fn(),
@@ -98,7 +110,10 @@ vi.mock("../../lib/document-service", async () => {
   return {
     ...actual,
     archiveDocument: archiveDocumentMock,
+    cancelRequirement: cancelRequirementMock,
+    convertDocumentToRequirement: convertDocumentToRequirementMock,
     deleteDocument: deleteDocumentMock,
+    getCancelRequirementPreflight: getCancelRequirementPreflightMock,
     getDocument: getDocumentMock,
     listDocumentFolders: listDocumentFoldersMock,
     listDocuments: listDocumentsMock,
@@ -199,6 +214,7 @@ function createDocument() {
         id: "CMT_01",
       },
     ],
+    contentFormat: "MARKDOWN",
     contentMarkdown: "# Launch plan\n\nReview TASK-42.",
     createdAt: "2026-05-27T10:00:00.000Z",
     createdByName: "Ada",
@@ -206,6 +222,7 @@ function createDocument() {
     createdVia: "MCP_CLIENT",
     folderId: "FLD_01",
     id: "DOC_01",
+    kind: "GENERAL",
     lastEditedAt: "2026-05-27T11:00:00.000Z",
     lastEditedByName: "Ada",
     lastEditedMcpClientName: "Claude Code",
@@ -242,7 +259,10 @@ beforeEach(() => {
   window.sessionStorage.clear();
   routerPushMock.mockReset();
   archiveDocumentMock.mockReset();
+  cancelRequirementMock.mockReset();
+  convertDocumentToRequirementMock.mockReset();
   deleteDocumentMock.mockReset();
+  getCancelRequirementPreflightMock.mockReset();
   getDocumentMock.mockReset();
   listDocumentFoldersMock.mockReset();
   listDocumentsMock.mockReset();
@@ -309,6 +329,22 @@ beforeEach(() => {
   });
   restoreDocumentMock.mockResolvedValue(createDocument());
   deleteDocumentMock.mockResolvedValue(undefined);
+  convertDocumentToRequirementMock.mockResolvedValue({
+    ...createDocument(),
+    displayCode: "REQ-13",
+    id: "DOC_01",
+    kind: "REQUIREMENT",
+    sequence: 13,
+  });
+  getCancelRequirementPreflightMock.mockResolvedValue({
+    canCancel: true,
+    referenceCount: 0,
+  });
+  cancelRequirementMock.mockResolvedValue({
+    ...createDocument(),
+    kind: "GENERAL",
+    revision: 4,
+  });
   uploadAttachmentMock.mockResolvedValue(undefined);
   createCommentMock.mockResolvedValue({
     author: { id: "USER_01", name: "Ada", username: "ada" },
@@ -357,6 +393,158 @@ describe("DocumentDetailPage", () => {
         /documents\.meta\.editedViaClient Ada Claude Code/u,
       )[0],
     ).toBeVisible();
+  });
+
+  it("shows requirement documents as managed content with a requirement view link", async () => {
+    getDocumentMock.mockResolvedValueOnce({
+      ...createDocument(),
+      contentFormat: "TIPTAP_JSON",
+      contentJson: { content: [], type: "doc" },
+      contentMarkdown: "",
+      contentMarkdownCache: "# Requirement body",
+      displayCode: "REQ-12",
+      id: "REQ_01",
+      kind: "REQUIREMENT",
+      sequence: 12,
+      summary: "Requirement summary",
+      title: "Requirement document",
+    });
+
+    render(<DocumentDetailPage documentId="REQ_01" />);
+
+    expect(await screen.findByText("Requirement document")).toBeVisible();
+    expect(
+      screen.getByTestId("document-requirement-identity"),
+    ).toHaveTextContent("REQ-12");
+    expect(
+      screen.getByTestId("document-open-requirement-button"),
+    ).toHaveAttribute("href", "/requirements/REQ_01");
+    expect(
+      screen.getByTestId("document-managed-content-panel"),
+    ).toHaveTextContent("documents.detail.requirementManaged");
+    expect(
+      screen.getByTestId("document-managed-content-preview"),
+    ).toHaveTextContent("# Requirement body");
+    expect(
+      screen.queryByTestId("document-markdown-viewer"),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByTestId("document-edit-button"),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByTestId("document-archive-button"),
+    ).not.toBeInTheDocument();
+  });
+
+  it("renders Markdown requirement documents in the document reader", async () => {
+    getDocumentMock.mockResolvedValueOnce({
+      ...createDocument(),
+      contentMarkdown: "# Requirement markdown",
+      displayCode: "REQ-12",
+      id: "REQ_01",
+      kind: "REQUIREMENT",
+      sequence: 12,
+      title: "Markdown requirement document",
+    });
+
+    render(<DocumentDetailPage documentId="REQ_01" />);
+
+    expect(
+      await screen.findByText("Markdown requirement document"),
+    ).toBeVisible();
+    expect(screen.getByTestId("document-markdown-viewer")).toHaveTextContent(
+      "Requirement markdown",
+    );
+    expect(
+      screen.queryByTestId("document-managed-content-panel"),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByTestId("document-edit-button"),
+    ).not.toBeInTheDocument();
+  });
+
+  it("converts general documents to requirements from the document detail", async () => {
+    render(<DocumentDetailPage documentId="DOC_01" />);
+
+    fireEvent.click(
+      await screen.findByTestId("document-convert-requirement-button"),
+    );
+
+    await waitFor(() =>
+      expect(convertDocumentToRequirementMock).toHaveBeenCalledWith({
+        activate: true,
+        baseRevision: 3,
+        documentId: "DOC_01",
+        title: "Launch plan",
+      }),
+    );
+    expect(routerPushMock).toHaveBeenCalledWith("/requirements/DOC_01");
+  });
+
+  it("cancels requirement semantics through the controlled dialog", async () => {
+    getDocumentMock.mockResolvedValueOnce({
+      ...createDocument(),
+      displayCode: "REQ-12",
+      id: "REQ_01",
+      kind: "REQUIREMENT",
+      sequence: 12,
+      title: "Requirement document",
+    });
+    getCancelRequirementPreflightMock.mockResolvedValueOnce({
+      canCancel: false,
+      modeRequired: "UNLINK_REFERENCES",
+      referenceCount: 2,
+    });
+
+    render(<DocumentDetailPage documentId="REQ_01" />);
+
+    fireEvent.click(
+      await screen.findByTestId("document-cancel-requirement-button"),
+    );
+    await waitFor(() =>
+      expect(getCancelRequirementPreflightMock).toHaveBeenCalledWith({
+        documentId: "REQ_01",
+      }),
+    );
+    const confirmButton = await screen.findByTestId(
+      "document-cancel-requirement-confirm",
+    );
+    await waitFor(() => expect(confirmButton).not.toBeDisabled());
+    fireEvent.click(confirmButton);
+
+    await waitFor(() =>
+      expect(cancelRequirementMock).toHaveBeenCalledWith({
+        baseRevision: 3,
+        documentId: "REQ_01",
+        reason: undefined,
+        referenceMode: "UNLINK_REFERENCES",
+      }),
+    );
+  });
+
+  it("renders rich-text document exports in the reader while keeping edit mode closed", async () => {
+    getDocumentMock.mockResolvedValueOnce({
+      ...createDocument(),
+      contentFormat: "TIPTAP_JSON",
+      contentJson: { content: [], type: "doc" },
+      contentMarkdown: "",
+      contentMarkdownCache: "# Rich text export",
+      title: "Rich text doc",
+    });
+
+    render(<DocumentDetailPage documentId="DOC_01" />);
+
+    expect(await screen.findByText("Rich text doc")).toBeVisible();
+    expect(screen.getByTestId("document-markdown-viewer")).toHaveTextContent(
+      "Rich text export",
+    );
+    expect(
+      screen.queryByTestId("document-managed-content-panel"),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByTestId("document-content-input"),
+    ).not.toBeInTheDocument();
+    expect(screen.getByTestId("document-edit-button")).toBeInTheDocument();
   });
 
   it("uses subresource totals in the context rail", async () => {
@@ -467,6 +655,21 @@ describe("DocumentDetailPage", () => {
     );
     expect(updateDocumentMock.mock.calls[0]?.[0]).not.toHaveProperty(
       "contentMarkdown",
+    );
+  });
+
+  it("writes requirement resource codes as document link targets", async () => {
+    render(<DocumentDetailPage documentId="DOC_01" />);
+
+    fireEvent.click(await screen.findByTestId("document-edit-button"));
+    fireEvent.click(screen.getByTestId("document-save-button"));
+
+    await waitFor(() =>
+      expect(updateDocumentMock).toHaveBeenCalledWith(
+        expect.objectContaining({
+          linkTargets: [{ targetId: "REQ_01", targetType: "DOCUMENT" }],
+        }),
+      ),
     );
   });
 

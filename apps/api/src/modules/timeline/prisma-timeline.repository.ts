@@ -12,6 +12,8 @@ import type {
   TimelineListInput,
 } from "./timeline.types";
 
+const REQUIREMENT_DOCUMENT_KIND = "REQUIREMENT" as const;
+
 @Injectable()
 export class PrismaTimelineRepository implements TimelineRepository {
   constructor(
@@ -121,27 +123,6 @@ export class PrismaTimelineRepository implements TimelineRepository {
 
         return version ? { title: version.name } : undefined;
       }
-      case "REQUIREMENT": {
-        const requirement = await this.prisma.client.requirement.findFirst({
-          select: {
-            sequence: true,
-            title: true,
-          },
-          where: {
-            deletedAt: null,
-            id: input.targetId,
-            organizationId: input.organizationId,
-            spaceId: input.spaceId,
-          },
-        });
-
-        return requirement
-          ? {
-              sequence: requirement.sequence,
-              title: requirement.title,
-            }
-          : undefined;
-      }
       case "INTAKE_ITEM": {
         const intakeItem = await this.prisma.client.intakeItem.findFirst({
           select: {
@@ -189,6 +170,8 @@ export class PrismaTimelineRepository implements TimelineRepository {
       case "DOCUMENT": {
         const document = await this.prisma.client.document.findFirst({
           select: {
+            kind: true,
+            sequence: true,
             title: true,
           },
           where: {
@@ -199,7 +182,16 @@ export class PrismaTimelineRepository implements TimelineRepository {
           },
         });
 
-        return document ? { title: document.title } : undefined;
+        return document
+          ? {
+              sequence: document.sequence,
+              targetKind:
+                document.kind === REQUIREMENT_DOCUMENT_KIND
+                  ? REQUIREMENT_DOCUMENT_KIND
+                  : undefined,
+              title: document.title,
+            }
+          : undefined;
       }
     }
   }

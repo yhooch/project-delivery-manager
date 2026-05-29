@@ -155,6 +155,7 @@ function makeRequirement(overrides: Record<string, unknown> = {}) {
     id: "01ARZ3NDEKTSV4RRFFQ69G5FA1",
     organizationId: "ORG_01",
     spaceId: "SPC_01",
+    kind: "REQUIREMENT",
     title: "Permissioned requirement",
     summary: "Summary",
     contentJson: { type: "doc", content: [] },
@@ -327,7 +328,7 @@ describe("RequirementDetailWorkspace", () => {
     fireEvent.change(titleInput, { target: { value: "Local draft title" } });
 
     await dispatchRealtimeInvalidation("requirement-detail", {
-      target: { id: "01ARZ3NDEKTSV4RRFFQ69G5FA1", type: "REQUIREMENT" },
+      target: { id: "01ARZ3NDEKTSV4RRFFQ69G5FA1", type: "DOCUMENT" },
     });
 
     await waitFor(() =>

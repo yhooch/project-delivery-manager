@@ -828,6 +828,9 @@ function workItemSection(title: string) {
 const objectCodeLookup = {
   id: REQUIREMENT_ID,
   type: "REQUIREMENT",
+  targetType: "DOCUMENT",
+  targetId: REQUIREMENT_ID,
+  kind: "REQUIREMENT",
   organizationId: ORGANIZATION_ID,
   sequence: 1,
   displayCode: "REQ-1",

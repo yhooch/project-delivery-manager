@@ -31,6 +31,8 @@ describe("ObjectCodeService", () => {
     ).resolves.toEqual({
       id: record.id,
       type: "WORK_ITEM",
+      targetType: "WORK_ITEM",
+      targetId: record.id,
       workItemType: "TASK",
       organizationId: ORGANIZATION_ID,
       spaceId: SPACE_ID,
@@ -66,6 +68,8 @@ describe("ObjectCodeService", () => {
     ).resolves.toEqual({
       id: record.id,
       type: "WORK_ITEM",
+      targetType: "WORK_ITEM",
+      targetId: record.id,
       workItemType: "BUG",
       organizationId: ORGANIZATION_ID,
       spaceId: SPACE_ID,
@@ -114,6 +118,8 @@ function makeWorkItemRecord(
 ): ObjectCodeLookupRecord {
   return {
     type: "WORK_ITEM",
+    targetType: "WORK_ITEM",
+    targetId: overrides.id,
     organizationId: ORGANIZATION_ID,
     spaceId: SPACE_ID,
     isParticipant: false,

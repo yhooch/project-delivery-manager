@@ -144,6 +144,7 @@ function makeRequirement(overrides: Record<string, unknown> = {}) {
     id: "01ARZ3NDEKTSV4RRFFQ69G5FA1",
     organizationId: "ORG_01",
     spaceId: "SPC_01",
+    kind: "REQUIREMENT",
     title: "Authentication refresh",
     summary: "Refresh login + register flow with magic link",
     status: "DRAFT",
@@ -305,7 +306,7 @@ describe("RequirementsPage", () => {
         makeRequirement({
           id: "01ARZ3NDEKTSV4RRFFQ69G5F01",
           title: "Onboarding redesign",
-          status: "CONFIRMED",
+          status: "ACTIVE",
         }),
       ],
       total: 1,
@@ -319,7 +320,7 @@ describe("RequirementsPage", () => {
         page: 1,
         pageSize: 100,
         spaceId: "SPC_01",
-        status: "CONFIRMED",
+        status: "ACTIVE",
       }),
     );
     expect(listRequirementsMock.mock.calls[0][0]).not.toMatchObject({
@@ -327,7 +328,7 @@ describe("RequirementsPage", () => {
     });
     expect(await screen.findByText("Onboarding redesign")).toBeInTheDocument();
     expect(
-      screen.getByText("requirements.status.CONFIRMED"),
+      screen.getByText("requirements.status.ACTIVE"),
     ).toBeInTheDocument();
     expect(await screen.findByText("M1 Release")).toBeInTheDocument();
     expect(screen.queryByText("PM User (pm)")).not.toBeInTheDocument();
@@ -340,12 +341,12 @@ describe("RequirementsPage", () => {
       items: [
         makeRequirement({
           title: "Loaded requirement",
-          status: "CONFIRMED",
+          status: "ACTIVE",
         }),
       ],
       statusCounts: [
         { status: "DRAFT", count: 3 },
-        { status: "CONFIRMED", count: 8 },
+        { status: "ACTIVE", count: 8 },
         { status: "ARCHIVED", count: 2 },
       ],
       total: 10,
@@ -377,12 +378,12 @@ describe("RequirementsPage", () => {
         makeRequirement({
           id: "01ARZ3NDEKTSV4RRFFQ69G5FK1",
           title: "First semantic requirement",
-          status: "CONFIRMED",
+          status: "ACTIVE",
         }),
         makeRequirement({
           id: "01ARZ3NDEKTSV4RRFFQ69G5FK2",
           title: "Second semantic requirement",
-          status: "CONFIRMED",
+          status: "ACTIVE",
         }),
       ],
       total: 2,
@@ -475,7 +476,7 @@ describe("RequirementsPage", () => {
         makeRequirement({
           id: "01ARZ3NDEKTSV4RRFFQ69G5F01",
           title: "Current scope",
-          status: "CONFIRMED",
+          status: "ACTIVE",
         }),
       ],
       total: 1,
@@ -653,7 +654,7 @@ describe("RequirementsPage", () => {
         makeRequirement({
           id: "01ARZ3NDEKTSV4RRFFQ69G5F04",
           title: "Confirmed requirement",
-          status: "CONFIRMED",
+          status: "ACTIVE",
         }),
       ],
       total: 1,
@@ -938,7 +939,7 @@ describe("RequirementsPage", () => {
         makeRequirement({
           id: "01ARZ3NDEKTSV4RRFFQ69G5FRC",
           title: "Remember requirement",
-          status: "CONFIRMED",
+          status: "ACTIVE",
         }),
       ],
       total: 1,

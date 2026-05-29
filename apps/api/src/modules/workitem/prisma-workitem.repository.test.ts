@@ -182,6 +182,51 @@ describe("PrismaWorkItemRepository", () => {
     );
   });
 
+  it("looks up linked requirements from requirement documents", async () => {
+    const documentFindFirst = vi.fn(async () => ({
+      ownerId: ACTOR_ID,
+      sequence: 12,
+      status: "ACTIVE",
+      versionId: WORKFLOW_VERSION_ID,
+    }));
+    const repository = new PrismaWorkItemRepository(
+      {
+        client: {
+          document: {
+            findFirst: documentFindFirst,
+          },
+        },
+      } as unknown as PrismaService,
+      makeObjectCodeAllocator(),
+    );
+
+    await expect(
+      repository.findRequirementInSpace(
+        SPACE_ID,
+        "01H00000000000000000000009",
+      ),
+    ).resolves.toEqual({
+      requirementOwnerId: ACTOR_ID,
+      requirementSequence: 12,
+      requirementStatus: "ACTIVE",
+      requirementVersionId: WORKFLOW_VERSION_ID,
+    });
+    expect(documentFindFirst).toHaveBeenCalledWith({
+      select: {
+        ownerId: true,
+        sequence: true,
+        status: true,
+        versionId: true,
+      },
+      where: {
+        deletedAt: null,
+        id: "01H00000000000000000000009",
+        kind: "REQUIREMENT",
+        spaceId: SPACE_ID,
+      },
+    });
+  });
+
   it("allocates a TASK sequence inside the create transaction", async () => {
     const objectCodeAllocator = makeObjectCodeAllocator({ nextSequence: 31 });
     const workItemCreate = vi.fn(async (args: { data: WorkItemCreateData }) =>

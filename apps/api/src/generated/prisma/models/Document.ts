@@ -27,10 +27,12 @@ export type AggregateDocument = {
 }
 
 export type DocumentAvgAggregateOutputType = {
+  sequence: number | null
   revision: number | null
 }
 
 export type DocumentSumAggregateOutputType = {
+  sequence: number | null
   revision: number | null
 }
 
@@ -39,12 +41,21 @@ export type DocumentMinAggregateOutputType = {
   organizationId: string | null
   spaceId: string | null
   folderId: string | null
+  kind: $Enums.DocumentKind | null
   title: string | null
+  summary: string | null
+  contentFormat: $Enums.ContentFormat | null
   contentMarkdown: string | null
   contentText: string | null
+  contentMarkdownCache: string | null
   sourceType: $Enums.DocumentSourceType | null
   sourceAttachmentId: string | null
   status: $Enums.DocumentStatus | null
+  sequence: number | null
+  versionId: string | null
+  priority: $Enums.Priority | null
+  ownerId: string | null
+  authorId: string | null
   revision: number | null
   createdVia: $Enums.DocumentActorType | null
   createdMcpClientId: string | null
@@ -65,12 +76,21 @@ export type DocumentMaxAggregateOutputType = {
   organizationId: string | null
   spaceId: string | null
   folderId: string | null
+  kind: $Enums.DocumentKind | null
   title: string | null
+  summary: string | null
+  contentFormat: $Enums.ContentFormat | null
   contentMarkdown: string | null
   contentText: string | null
+  contentMarkdownCache: string | null
   sourceType: $Enums.DocumentSourceType | null
   sourceAttachmentId: string | null
   status: $Enums.DocumentStatus | null
+  sequence: number | null
+  versionId: string | null
+  priority: $Enums.Priority | null
+  ownerId: string | null
+  authorId: string | null
   revision: number | null
   createdVia: $Enums.DocumentActorType | null
   createdMcpClientId: string | null
@@ -91,12 +111,22 @@ export type DocumentCountAggregateOutputType = {
   organizationId: number
   spaceId: number
   folderId: number
+  kind: number
   title: number
+  summary: number
+  contentFormat: number
+  contentJson: number
   contentMarkdown: number
   contentText: number
+  contentMarkdownCache: number
   sourceType: number
   sourceAttachmentId: number
   status: number
+  sequence: number
+  versionId: number
+  priority: number
+  ownerId: number
+  authorId: number
   revision: number
   createdVia: number
   createdMcpClientId: number
@@ -115,10 +145,12 @@ export type DocumentCountAggregateOutputType = {
 
 
 export type DocumentAvgAggregateInputType = {
+  sequence?: true
   revision?: true
 }
 
 export type DocumentSumAggregateInputType = {
+  sequence?: true
   revision?: true
 }
 
@@ -127,12 +159,21 @@ export type DocumentMinAggregateInputType = {
   organizationId?: true
   spaceId?: true
   folderId?: true
+  kind?: true
   title?: true
+  summary?: true
+  contentFormat?: true
   contentMarkdown?: true
   contentText?: true
+  contentMarkdownCache?: true
   sourceType?: true
   sourceAttachmentId?: true
   status?: true
+  sequence?: true
+  versionId?: true
+  priority?: true
+  ownerId?: true
+  authorId?: true
   revision?: true
   createdVia?: true
   createdMcpClientId?: true
@@ -153,12 +194,21 @@ export type DocumentMaxAggregateInputType = {
   organizationId?: true
   spaceId?: true
   folderId?: true
+  kind?: true
   title?: true
+  summary?: true
+  contentFormat?: true
   contentMarkdown?: true
   contentText?: true
+  contentMarkdownCache?: true
   sourceType?: true
   sourceAttachmentId?: true
   status?: true
+  sequence?: true
+  versionId?: true
+  priority?: true
+  ownerId?: true
+  authorId?: true
   revision?: true
   createdVia?: true
   createdMcpClientId?: true
@@ -179,12 +229,22 @@ export type DocumentCountAggregateInputType = {
   organizationId?: true
   spaceId?: true
   folderId?: true
+  kind?: true
   title?: true
+  summary?: true
+  contentFormat?: true
+  contentJson?: true
   contentMarkdown?: true
   contentText?: true
+  contentMarkdownCache?: true
   sourceType?: true
   sourceAttachmentId?: true
   status?: true
+  sequence?: true
+  versionId?: true
+  priority?: true
+  ownerId?: true
+  authorId?: true
   revision?: true
   createdVia?: true
   createdMcpClientId?: true
@@ -292,12 +352,22 @@ export type DocumentGroupByOutputType = {
   organizationId: string
   spaceId: string
   folderId: string | null
+  kind: $Enums.DocumentKind
   title: string
-  contentMarkdown: string
+  summary: string | null
+  contentFormat: $Enums.ContentFormat
+  contentJson: runtime.JsonValue | null
+  contentMarkdown: string | null
   contentText: string
+  contentMarkdownCache: string | null
   sourceType: $Enums.DocumentSourceType
   sourceAttachmentId: string | null
   status: $Enums.DocumentStatus
+  sequence: number | null
+  versionId: string | null
+  priority: $Enums.Priority | null
+  ownerId: string | null
+  authorId: string | null
   revision: number
   createdVia: $Enums.DocumentActorType
   createdMcpClientId: string | null
@@ -341,12 +411,22 @@ export type DocumentWhereInput = {
   organizationId?: Prisma.StringFilter<"Document"> | string
   spaceId?: Prisma.StringFilter<"Document"> | string
   folderId?: Prisma.StringNullableFilter<"Document"> | string | null
+  kind?: Prisma.EnumDocumentKindFilter<"Document"> | $Enums.DocumentKind
   title?: Prisma.StringFilter<"Document"> | string
-  contentMarkdown?: Prisma.StringFilter<"Document"> | string
+  summary?: Prisma.StringNullableFilter<"Document"> | string | null
+  contentFormat?: Prisma.EnumContentFormatFilter<"Document"> | $Enums.ContentFormat
+  contentJson?: Prisma.JsonNullableFilter<"Document">
+  contentMarkdown?: Prisma.StringNullableFilter<"Document"> | string | null
   contentText?: Prisma.StringFilter<"Document"> | string
+  contentMarkdownCache?: Prisma.StringNullableFilter<"Document"> | string | null
   sourceType?: Prisma.EnumDocumentSourceTypeFilter<"Document"> | $Enums.DocumentSourceType
   sourceAttachmentId?: Prisma.StringNullableFilter<"Document"> | string | null
   status?: Prisma.EnumDocumentStatusFilter<"Document"> | $Enums.DocumentStatus
+  sequence?: Prisma.IntNullableFilter<"Document"> | number | null
+  versionId?: Prisma.StringNullableFilter<"Document"> | string | null
+  priority?: Prisma.EnumPriorityNullableFilter<"Document"> | $Enums.Priority | null
+  ownerId?: Prisma.StringNullableFilter<"Document"> | string | null
+  authorId?: Prisma.StringNullableFilter<"Document"> | string | null
   revision?: Prisma.IntFilter<"Document"> | number
   createdVia?: Prisma.EnumDocumentActorTypeFilter<"Document"> | $Enums.DocumentActorType
   createdMcpClientId?: Prisma.StringNullableFilter<"Document"> | string | null
@@ -363,9 +443,15 @@ export type DocumentWhereInput = {
   organization?: Prisma.XOR<Prisma.OrganizationScalarRelationFilter, Prisma.OrganizationWhereInput>
   space?: Prisma.XOR<Prisma.SpaceScalarRelationFilter, Prisma.SpaceWhereInput>
   folder?: Prisma.XOR<Prisma.DocumentFolderNullableScalarRelationFilter, Prisma.DocumentFolderWhereInput> | null
+  version?: Prisma.XOR<Prisma.VersionNullableScalarRelationFilter, Prisma.VersionWhereInput> | null
+  owner?: Prisma.XOR<Prisma.UserNullableScalarRelationFilter, Prisma.UserWhereInput> | null
+  author?: Prisma.XOR<Prisma.UserNullableScalarRelationFilter, Prisma.UserWhereInput> | null
   revisions?: Prisma.DocumentRevisionListRelationFilter
   links?: Prisma.DocumentLinkListRelationFilter
   chunks?: Prisma.DocumentChunkListRelationFilter
+  codeHistory?: Prisma.DocumentCodeHistoryListRelationFilter
+  requirementIntakeItems?: Prisma.IntakeItemListRelationFilter
+  requirementWorkItems?: Prisma.WorkItemListRelationFilter
 }
 
 export type DocumentOrderByWithRelationInput = {
@@ -373,12 +459,22 @@ export type DocumentOrderByWithRelationInput = {
   organizationId?: Prisma.SortOrder
   spaceId?: Prisma.SortOrder
   folderId?: Prisma.SortOrderInput | Prisma.SortOrder
+  kind?: Prisma.SortOrder
   title?: Prisma.SortOrder
-  contentMarkdown?: Prisma.SortOrder
+  summary?: Prisma.SortOrderInput | Prisma.SortOrder
+  contentFormat?: Prisma.SortOrder
+  contentJson?: Prisma.SortOrderInput | Prisma.SortOrder
+  contentMarkdown?: Prisma.SortOrderInput | Prisma.SortOrder
   contentText?: Prisma.SortOrder
+  contentMarkdownCache?: Prisma.SortOrderInput | Prisma.SortOrder
   sourceType?: Prisma.SortOrder
   sourceAttachmentId?: Prisma.SortOrderInput | Prisma.SortOrder
   status?: Prisma.SortOrder
+  sequence?: Prisma.SortOrderInput | Prisma.SortOrder
+  versionId?: Prisma.SortOrderInput | Prisma.SortOrder
+  priority?: Prisma.SortOrderInput | Prisma.SortOrder
+  ownerId?: Prisma.SortOrderInput | Prisma.SortOrder
+  authorId?: Prisma.SortOrderInput | Prisma.SortOrder
   revision?: Prisma.SortOrder
   createdVia?: Prisma.SortOrder
   createdMcpClientId?: Prisma.SortOrderInput | Prisma.SortOrder
@@ -395,9 +491,15 @@ export type DocumentOrderByWithRelationInput = {
   organization?: Prisma.OrganizationOrderByWithRelationInput
   space?: Prisma.SpaceOrderByWithRelationInput
   folder?: Prisma.DocumentFolderOrderByWithRelationInput
+  version?: Prisma.VersionOrderByWithRelationInput
+  owner?: Prisma.UserOrderByWithRelationInput
+  author?: Prisma.UserOrderByWithRelationInput
   revisions?: Prisma.DocumentRevisionOrderByRelationAggregateInput
   links?: Prisma.DocumentLinkOrderByRelationAggregateInput
   chunks?: Prisma.DocumentChunkOrderByRelationAggregateInput
+  codeHistory?: Prisma.DocumentCodeHistoryOrderByRelationAggregateInput
+  requirementIntakeItems?: Prisma.IntakeItemOrderByRelationAggregateInput
+  requirementWorkItems?: Prisma.WorkItemOrderByRelationAggregateInput
 }
 
 export type DocumentWhereUniqueInput = Prisma.AtLeast<{
@@ -408,12 +510,22 @@ export type DocumentWhereUniqueInput = Prisma.AtLeast<{
   organizationId?: Prisma.StringFilter<"Document"> | string
   spaceId?: Prisma.StringFilter<"Document"> | string
   folderId?: Prisma.StringNullableFilter<"Document"> | string | null
+  kind?: Prisma.EnumDocumentKindFilter<"Document"> | $Enums.DocumentKind
   title?: Prisma.StringFilter<"Document"> | string
-  contentMarkdown?: Prisma.StringFilter<"Document"> | string
+  summary?: Prisma.StringNullableFilter<"Document"> | string | null
+  contentFormat?: Prisma.EnumContentFormatFilter<"Document"> | $Enums.ContentFormat
+  contentJson?: Prisma.JsonNullableFilter<"Document">
+  contentMarkdown?: Prisma.StringNullableFilter<"Document"> | string | null
   contentText?: Prisma.StringFilter<"Document"> | string
+  contentMarkdownCache?: Prisma.StringNullableFilter<"Document"> | string | null
   sourceType?: Prisma.EnumDocumentSourceTypeFilter<"Document"> | $Enums.DocumentSourceType
   sourceAttachmentId?: Prisma.StringNullableFilter<"Document"> | string | null
   status?: Prisma.EnumDocumentStatusFilter<"Document"> | $Enums.DocumentStatus
+  sequence?: Prisma.IntNullableFilter<"Document"> | number | null
+  versionId?: Prisma.StringNullableFilter<"Document"> | string | null
+  priority?: Prisma.EnumPriorityNullableFilter<"Document"> | $Enums.Priority | null
+  ownerId?: Prisma.StringNullableFilter<"Document"> | string | null
+  authorId?: Prisma.StringNullableFilter<"Document"> | string | null
   revision?: Prisma.IntFilter<"Document"> | number
   createdVia?: Prisma.EnumDocumentActorTypeFilter<"Document"> | $Enums.DocumentActorType
   createdMcpClientId?: Prisma.StringNullableFilter<"Document"> | string | null
@@ -430,9 +542,15 @@ export type DocumentWhereUniqueInput = Prisma.AtLeast<{
   organization?: Prisma.XOR<Prisma.OrganizationScalarRelationFilter, Prisma.OrganizationWhereInput>
   space?: Prisma.XOR<Prisma.SpaceScalarRelationFilter, Prisma.SpaceWhereInput>
   folder?: Prisma.XOR<Prisma.DocumentFolderNullableScalarRelationFilter, Prisma.DocumentFolderWhereInput> | null
+  version?: Prisma.XOR<Prisma.VersionNullableScalarRelationFilter, Prisma.VersionWhereInput> | null
+  owner?: Prisma.XOR<Prisma.UserNullableScalarRelationFilter, Prisma.UserWhereInput> | null
+  author?: Prisma.XOR<Prisma.UserNullableScalarRelationFilter, Prisma.UserWhereInput> | null
   revisions?: Prisma.DocumentRevisionListRelationFilter
   links?: Prisma.DocumentLinkListRelationFilter
   chunks?: Prisma.DocumentChunkListRelationFilter
+  codeHistory?: Prisma.DocumentCodeHistoryListRelationFilter
+  requirementIntakeItems?: Prisma.IntakeItemListRelationFilter
+  requirementWorkItems?: Prisma.WorkItemListRelationFilter
 }, "id">
 
 export type DocumentOrderByWithAggregationInput = {
@@ -440,12 +558,22 @@ export type DocumentOrderByWithAggregationInput = {
   organizationId?: Prisma.SortOrder
   spaceId?: Prisma.SortOrder
   folderId?: Prisma.SortOrderInput | Prisma.SortOrder
+  kind?: Prisma.SortOrder
   title?: Prisma.SortOrder
-  contentMarkdown?: Prisma.SortOrder
+  summary?: Prisma.SortOrderInput | Prisma.SortOrder
+  contentFormat?: Prisma.SortOrder
+  contentJson?: Prisma.SortOrderInput | Prisma.SortOrder
+  contentMarkdown?: Prisma.SortOrderInput | Prisma.SortOrder
   contentText?: Prisma.SortOrder
+  contentMarkdownCache?: Prisma.SortOrderInput | Prisma.SortOrder
   sourceType?: Prisma.SortOrder
   sourceAttachmentId?: Prisma.SortOrderInput | Prisma.SortOrder
   status?: Prisma.SortOrder
+  sequence?: Prisma.SortOrderInput | Prisma.SortOrder
+  versionId?: Prisma.SortOrderInput | Prisma.SortOrder
+  priority?: Prisma.SortOrderInput | Prisma.SortOrder
+  ownerId?: Prisma.SortOrderInput | Prisma.SortOrder
+  authorId?: Prisma.SortOrderInput | Prisma.SortOrder
   revision?: Prisma.SortOrder
   createdVia?: Prisma.SortOrder
   createdMcpClientId?: Prisma.SortOrderInput | Prisma.SortOrder
@@ -474,12 +602,22 @@ export type DocumentScalarWhereWithAggregatesInput = {
   organizationId?: Prisma.StringWithAggregatesFilter<"Document"> | string
   spaceId?: Prisma.StringWithAggregatesFilter<"Document"> | string
   folderId?: Prisma.StringNullableWithAggregatesFilter<"Document"> | string | null
+  kind?: Prisma.EnumDocumentKindWithAggregatesFilter<"Document"> | $Enums.DocumentKind
   title?: Prisma.StringWithAggregatesFilter<"Document"> | string
-  contentMarkdown?: Prisma.StringWithAggregatesFilter<"Document"> | string
+  summary?: Prisma.StringNullableWithAggregatesFilter<"Document"> | string | null
+  contentFormat?: Prisma.EnumContentFormatWithAggregatesFilter<"Document"> | $Enums.ContentFormat
+  contentJson?: Prisma.JsonNullableWithAggregatesFilter<"Document">
+  contentMarkdown?: Prisma.StringNullableWithAggregatesFilter<"Document"> | string | null
   contentText?: Prisma.StringWithAggregatesFilter<"Document"> | string
+  contentMarkdownCache?: Prisma.StringNullableWithAggregatesFilter<"Document"> | string | null
   sourceType?: Prisma.EnumDocumentSourceTypeWithAggregatesFilter<"Document"> | $Enums.DocumentSourceType
   sourceAttachmentId?: Prisma.StringNullableWithAggregatesFilter<"Document"> | string | null
   status?: Prisma.EnumDocumentStatusWithAggregatesFilter<"Document"> | $Enums.DocumentStatus
+  sequence?: Prisma.IntNullableWithAggregatesFilter<"Document"> | number | null
+  versionId?: Prisma.StringNullableWithAggregatesFilter<"Document"> | string | null
+  priority?: Prisma.EnumPriorityNullableWithAggregatesFilter<"Document"> | $Enums.Priority | null
+  ownerId?: Prisma.StringNullableWithAggregatesFilter<"Document"> | string | null
+  authorId?: Prisma.StringNullableWithAggregatesFilter<"Document"> | string | null
   revision?: Prisma.IntWithAggregatesFilter<"Document"> | number
   createdVia?: Prisma.EnumDocumentActorTypeWithAggregatesFilter<"Document"> | $Enums.DocumentActorType
   createdMcpClientId?: Prisma.StringNullableWithAggregatesFilter<"Document"> | string | null
@@ -497,12 +635,19 @@ export type DocumentScalarWhereWithAggregatesInput = {
 
 export type DocumentCreateInput = {
   id: string
+  kind?: $Enums.DocumentKind
   title: string
-  contentMarkdown: string
+  summary?: string | null
+  contentFormat?: $Enums.ContentFormat
+  contentJson?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  contentMarkdown?: string | null
   contentText: string
+  contentMarkdownCache?: string | null
   sourceType: $Enums.DocumentSourceType
   sourceAttachmentId?: string | null
   status?: $Enums.DocumentStatus
+  sequence?: number | null
+  priority?: $Enums.Priority | null
   revision?: number
   createdVia?: $Enums.DocumentActorType
   createdMcpClientId?: string | null
@@ -519,9 +664,15 @@ export type DocumentCreateInput = {
   organization: Prisma.OrganizationCreateNestedOneWithoutDocumentsInput
   space: Prisma.SpaceCreateNestedOneWithoutDocumentsInput
   folder?: Prisma.DocumentFolderCreateNestedOneWithoutDocumentsInput
+  version?: Prisma.VersionCreateNestedOneWithoutDocumentsInput
+  owner?: Prisma.UserCreateNestedOneWithoutOwnedDocumentsInput
+  author?: Prisma.UserCreateNestedOneWithoutAuthoredDocumentsInput
   revisions?: Prisma.DocumentRevisionCreateNestedManyWithoutDocumentInput
   links?: Prisma.DocumentLinkCreateNestedManyWithoutDocumentInput
   chunks?: Prisma.DocumentChunkCreateNestedManyWithoutDocumentInput
+  codeHistory?: Prisma.DocumentCodeHistoryCreateNestedManyWithoutDocumentInput
+  requirementIntakeItems?: Prisma.IntakeItemCreateNestedManyWithoutRequirementInput
+  requirementWorkItems?: Prisma.WorkItemCreateNestedManyWithoutRequirementInput
 }
 
 export type DocumentUncheckedCreateInput = {
@@ -529,12 +680,22 @@ export type DocumentUncheckedCreateInput = {
   organizationId: string
   spaceId: string
   folderId?: string | null
+  kind?: $Enums.DocumentKind
   title: string
-  contentMarkdown: string
+  summary?: string | null
+  contentFormat?: $Enums.ContentFormat
+  contentJson?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  contentMarkdown?: string | null
   contentText: string
+  contentMarkdownCache?: string | null
   sourceType: $Enums.DocumentSourceType
   sourceAttachmentId?: string | null
   status?: $Enums.DocumentStatus
+  sequence?: number | null
+  versionId?: string | null
+  priority?: $Enums.Priority | null
+  ownerId?: string | null
+  authorId?: string | null
   revision?: number
   createdVia?: $Enums.DocumentActorType
   createdMcpClientId?: string | null
@@ -551,16 +712,26 @@ export type DocumentUncheckedCreateInput = {
   revisions?: Prisma.DocumentRevisionUncheckedCreateNestedManyWithoutDocumentInput
   links?: Prisma.DocumentLinkUncheckedCreateNestedManyWithoutDocumentInput
   chunks?: Prisma.DocumentChunkUncheckedCreateNestedManyWithoutDocumentInput
+  codeHistory?: Prisma.DocumentCodeHistoryUncheckedCreateNestedManyWithoutDocumentInput
+  requirementIntakeItems?: Prisma.IntakeItemUncheckedCreateNestedManyWithoutRequirementInput
+  requirementWorkItems?: Prisma.WorkItemUncheckedCreateNestedManyWithoutRequirementInput
 }
 
 export type DocumentUpdateInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
+  kind?: Prisma.EnumDocumentKindFieldUpdateOperationsInput | $Enums.DocumentKind
   title?: Prisma.StringFieldUpdateOperationsInput | string
-  contentMarkdown?: Prisma.StringFieldUpdateOperationsInput | string
+  summary?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  contentFormat?: Prisma.EnumContentFormatFieldUpdateOperationsInput | $Enums.ContentFormat
+  contentJson?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  contentMarkdown?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   contentText?: Prisma.StringFieldUpdateOperationsInput | string
+  contentMarkdownCache?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   sourceType?: Prisma.EnumDocumentSourceTypeFieldUpdateOperationsInput | $Enums.DocumentSourceType
   sourceAttachmentId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   status?: Prisma.EnumDocumentStatusFieldUpdateOperationsInput | $Enums.DocumentStatus
+  sequence?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  priority?: Prisma.NullableEnumPriorityFieldUpdateOperationsInput | $Enums.Priority | null
   revision?: Prisma.IntFieldUpdateOperationsInput | number
   createdVia?: Prisma.EnumDocumentActorTypeFieldUpdateOperationsInput | $Enums.DocumentActorType
   createdMcpClientId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -577,9 +748,15 @@ export type DocumentUpdateInput = {
   organization?: Prisma.OrganizationUpdateOneRequiredWithoutDocumentsNestedInput
   space?: Prisma.SpaceUpdateOneRequiredWithoutDocumentsNestedInput
   folder?: Prisma.DocumentFolderUpdateOneWithoutDocumentsNestedInput
+  version?: Prisma.VersionUpdateOneWithoutDocumentsNestedInput
+  owner?: Prisma.UserUpdateOneWithoutOwnedDocumentsNestedInput
+  author?: Prisma.UserUpdateOneWithoutAuthoredDocumentsNestedInput
   revisions?: Prisma.DocumentRevisionUpdateManyWithoutDocumentNestedInput
   links?: Prisma.DocumentLinkUpdateManyWithoutDocumentNestedInput
   chunks?: Prisma.DocumentChunkUpdateManyWithoutDocumentNestedInput
+  codeHistory?: Prisma.DocumentCodeHistoryUpdateManyWithoutDocumentNestedInput
+  requirementIntakeItems?: Prisma.IntakeItemUpdateManyWithoutRequirementNestedInput
+  requirementWorkItems?: Prisma.WorkItemUpdateManyWithoutRequirementNestedInput
 }
 
 export type DocumentUncheckedUpdateInput = {
@@ -587,12 +764,22 @@ export type DocumentUncheckedUpdateInput = {
   organizationId?: Prisma.StringFieldUpdateOperationsInput | string
   spaceId?: Prisma.StringFieldUpdateOperationsInput | string
   folderId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  kind?: Prisma.EnumDocumentKindFieldUpdateOperationsInput | $Enums.DocumentKind
   title?: Prisma.StringFieldUpdateOperationsInput | string
-  contentMarkdown?: Prisma.StringFieldUpdateOperationsInput | string
+  summary?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  contentFormat?: Prisma.EnumContentFormatFieldUpdateOperationsInput | $Enums.ContentFormat
+  contentJson?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  contentMarkdown?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   contentText?: Prisma.StringFieldUpdateOperationsInput | string
+  contentMarkdownCache?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   sourceType?: Prisma.EnumDocumentSourceTypeFieldUpdateOperationsInput | $Enums.DocumentSourceType
   sourceAttachmentId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   status?: Prisma.EnumDocumentStatusFieldUpdateOperationsInput | $Enums.DocumentStatus
+  sequence?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  versionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  priority?: Prisma.NullableEnumPriorityFieldUpdateOperationsInput | $Enums.Priority | null
+  ownerId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  authorId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   revision?: Prisma.IntFieldUpdateOperationsInput | number
   createdVia?: Prisma.EnumDocumentActorTypeFieldUpdateOperationsInput | $Enums.DocumentActorType
   createdMcpClientId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -609,6 +796,9 @@ export type DocumentUncheckedUpdateInput = {
   revisions?: Prisma.DocumentRevisionUncheckedUpdateManyWithoutDocumentNestedInput
   links?: Prisma.DocumentLinkUncheckedUpdateManyWithoutDocumentNestedInput
   chunks?: Prisma.DocumentChunkUncheckedUpdateManyWithoutDocumentNestedInput
+  codeHistory?: Prisma.DocumentCodeHistoryUncheckedUpdateManyWithoutDocumentNestedInput
+  requirementIntakeItems?: Prisma.IntakeItemUncheckedUpdateManyWithoutRequirementNestedInput
+  requirementWorkItems?: Prisma.WorkItemUncheckedUpdateManyWithoutRequirementNestedInput
 }
 
 export type DocumentCreateManyInput = {
@@ -616,12 +806,22 @@ export type DocumentCreateManyInput = {
   organizationId: string
   spaceId: string
   folderId?: string | null
+  kind?: $Enums.DocumentKind
   title: string
-  contentMarkdown: string
+  summary?: string | null
+  contentFormat?: $Enums.ContentFormat
+  contentJson?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  contentMarkdown?: string | null
   contentText: string
+  contentMarkdownCache?: string | null
   sourceType: $Enums.DocumentSourceType
   sourceAttachmentId?: string | null
   status?: $Enums.DocumentStatus
+  sequence?: number | null
+  versionId?: string | null
+  priority?: $Enums.Priority | null
+  ownerId?: string | null
+  authorId?: string | null
   revision?: number
   createdVia?: $Enums.DocumentActorType
   createdMcpClientId?: string | null
@@ -639,12 +839,19 @@ export type DocumentCreateManyInput = {
 
 export type DocumentUpdateManyMutationInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
+  kind?: Prisma.EnumDocumentKindFieldUpdateOperationsInput | $Enums.DocumentKind
   title?: Prisma.StringFieldUpdateOperationsInput | string
-  contentMarkdown?: Prisma.StringFieldUpdateOperationsInput | string
+  summary?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  contentFormat?: Prisma.EnumContentFormatFieldUpdateOperationsInput | $Enums.ContentFormat
+  contentJson?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  contentMarkdown?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   contentText?: Prisma.StringFieldUpdateOperationsInput | string
+  contentMarkdownCache?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   sourceType?: Prisma.EnumDocumentSourceTypeFieldUpdateOperationsInput | $Enums.DocumentSourceType
   sourceAttachmentId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   status?: Prisma.EnumDocumentStatusFieldUpdateOperationsInput | $Enums.DocumentStatus
+  sequence?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  priority?: Prisma.NullableEnumPriorityFieldUpdateOperationsInput | $Enums.Priority | null
   revision?: Prisma.IntFieldUpdateOperationsInput | number
   createdVia?: Prisma.EnumDocumentActorTypeFieldUpdateOperationsInput | $Enums.DocumentActorType
   createdMcpClientId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -665,12 +872,22 @@ export type DocumentUncheckedUpdateManyInput = {
   organizationId?: Prisma.StringFieldUpdateOperationsInput | string
   spaceId?: Prisma.StringFieldUpdateOperationsInput | string
   folderId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  kind?: Prisma.EnumDocumentKindFieldUpdateOperationsInput | $Enums.DocumentKind
   title?: Prisma.StringFieldUpdateOperationsInput | string
-  contentMarkdown?: Prisma.StringFieldUpdateOperationsInput | string
+  summary?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  contentFormat?: Prisma.EnumContentFormatFieldUpdateOperationsInput | $Enums.ContentFormat
+  contentJson?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  contentMarkdown?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   contentText?: Prisma.StringFieldUpdateOperationsInput | string
+  contentMarkdownCache?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   sourceType?: Prisma.EnumDocumentSourceTypeFieldUpdateOperationsInput | $Enums.DocumentSourceType
   sourceAttachmentId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   status?: Prisma.EnumDocumentStatusFieldUpdateOperationsInput | $Enums.DocumentStatus
+  sequence?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  versionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  priority?: Prisma.NullableEnumPriorityFieldUpdateOperationsInput | $Enums.Priority | null
+  ownerId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  authorId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   revision?: Prisma.IntFieldUpdateOperationsInput | number
   createdVia?: Prisma.EnumDocumentActorTypeFieldUpdateOperationsInput | $Enums.DocumentActorType
   createdMcpClientId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -696,17 +913,32 @@ export type DocumentOrderByRelationAggregateInput = {
   _count?: Prisma.SortOrder
 }
 
+export type DocumentNullableScalarRelationFilter = {
+  is?: Prisma.DocumentWhereInput | null
+  isNot?: Prisma.DocumentWhereInput | null
+}
+
 export type DocumentCountOrderByAggregateInput = {
   id?: Prisma.SortOrder
   organizationId?: Prisma.SortOrder
   spaceId?: Prisma.SortOrder
   folderId?: Prisma.SortOrder
+  kind?: Prisma.SortOrder
   title?: Prisma.SortOrder
+  summary?: Prisma.SortOrder
+  contentFormat?: Prisma.SortOrder
+  contentJson?: Prisma.SortOrder
   contentMarkdown?: Prisma.SortOrder
   contentText?: Prisma.SortOrder
+  contentMarkdownCache?: Prisma.SortOrder
   sourceType?: Prisma.SortOrder
   sourceAttachmentId?: Prisma.SortOrder
   status?: Prisma.SortOrder
+  sequence?: Prisma.SortOrder
+  versionId?: Prisma.SortOrder
+  priority?: Prisma.SortOrder
+  ownerId?: Prisma.SortOrder
+  authorId?: Prisma.SortOrder
   revision?: Prisma.SortOrder
   createdVia?: Prisma.SortOrder
   createdMcpClientId?: Prisma.SortOrder
@@ -723,6 +955,7 @@ export type DocumentCountOrderByAggregateInput = {
 }
 
 export type DocumentAvgOrderByAggregateInput = {
+  sequence?: Prisma.SortOrder
   revision?: Prisma.SortOrder
 }
 
@@ -731,12 +964,21 @@ export type DocumentMaxOrderByAggregateInput = {
   organizationId?: Prisma.SortOrder
   spaceId?: Prisma.SortOrder
   folderId?: Prisma.SortOrder
+  kind?: Prisma.SortOrder
   title?: Prisma.SortOrder
+  summary?: Prisma.SortOrder
+  contentFormat?: Prisma.SortOrder
   contentMarkdown?: Prisma.SortOrder
   contentText?: Prisma.SortOrder
+  contentMarkdownCache?: Prisma.SortOrder
   sourceType?: Prisma.SortOrder
   sourceAttachmentId?: Prisma.SortOrder
   status?: Prisma.SortOrder
+  sequence?: Prisma.SortOrder
+  versionId?: Prisma.SortOrder
+  priority?: Prisma.SortOrder
+  ownerId?: Prisma.SortOrder
+  authorId?: Prisma.SortOrder
   revision?: Prisma.SortOrder
   createdVia?: Prisma.SortOrder
   createdMcpClientId?: Prisma.SortOrder
@@ -757,12 +999,21 @@ export type DocumentMinOrderByAggregateInput = {
   organizationId?: Prisma.SortOrder
   spaceId?: Prisma.SortOrder
   folderId?: Prisma.SortOrder
+  kind?: Prisma.SortOrder
   title?: Prisma.SortOrder
+  summary?: Prisma.SortOrder
+  contentFormat?: Prisma.SortOrder
   contentMarkdown?: Prisma.SortOrder
   contentText?: Prisma.SortOrder
+  contentMarkdownCache?: Prisma.SortOrder
   sourceType?: Prisma.SortOrder
   sourceAttachmentId?: Prisma.SortOrder
   status?: Prisma.SortOrder
+  sequence?: Prisma.SortOrder
+  versionId?: Prisma.SortOrder
+  priority?: Prisma.SortOrder
+  ownerId?: Prisma.SortOrder
+  authorId?: Prisma.SortOrder
   revision?: Prisma.SortOrder
   createdVia?: Prisma.SortOrder
   createdMcpClientId?: Prisma.SortOrder
@@ -779,12 +1030,97 @@ export type DocumentMinOrderByAggregateInput = {
 }
 
 export type DocumentSumOrderByAggregateInput = {
+  sequence?: Prisma.SortOrder
   revision?: Prisma.SortOrder
 }
 
 export type DocumentScalarRelationFilter = {
   is?: Prisma.DocumentWhereInput
   isNot?: Prisma.DocumentWhereInput
+}
+
+export type DocumentCreateNestedManyWithoutOwnerInput = {
+  create?: Prisma.XOR<Prisma.DocumentCreateWithoutOwnerInput, Prisma.DocumentUncheckedCreateWithoutOwnerInput> | Prisma.DocumentCreateWithoutOwnerInput[] | Prisma.DocumentUncheckedCreateWithoutOwnerInput[]
+  connectOrCreate?: Prisma.DocumentCreateOrConnectWithoutOwnerInput | Prisma.DocumentCreateOrConnectWithoutOwnerInput[]
+  createMany?: Prisma.DocumentCreateManyOwnerInputEnvelope
+  connect?: Prisma.DocumentWhereUniqueInput | Prisma.DocumentWhereUniqueInput[]
+}
+
+export type DocumentCreateNestedManyWithoutAuthorInput = {
+  create?: Prisma.XOR<Prisma.DocumentCreateWithoutAuthorInput, Prisma.DocumentUncheckedCreateWithoutAuthorInput> | Prisma.DocumentCreateWithoutAuthorInput[] | Prisma.DocumentUncheckedCreateWithoutAuthorInput[]
+  connectOrCreate?: Prisma.DocumentCreateOrConnectWithoutAuthorInput | Prisma.DocumentCreateOrConnectWithoutAuthorInput[]
+  createMany?: Prisma.DocumentCreateManyAuthorInputEnvelope
+  connect?: Prisma.DocumentWhereUniqueInput | Prisma.DocumentWhereUniqueInput[]
+}
+
+export type DocumentUncheckedCreateNestedManyWithoutOwnerInput = {
+  create?: Prisma.XOR<Prisma.DocumentCreateWithoutOwnerInput, Prisma.DocumentUncheckedCreateWithoutOwnerInput> | Prisma.DocumentCreateWithoutOwnerInput[] | Prisma.DocumentUncheckedCreateWithoutOwnerInput[]
+  connectOrCreate?: Prisma.DocumentCreateOrConnectWithoutOwnerInput | Prisma.DocumentCreateOrConnectWithoutOwnerInput[]
+  createMany?: Prisma.DocumentCreateManyOwnerInputEnvelope
+  connect?: Prisma.DocumentWhereUniqueInput | Prisma.DocumentWhereUniqueInput[]
+}
+
+export type DocumentUncheckedCreateNestedManyWithoutAuthorInput = {
+  create?: Prisma.XOR<Prisma.DocumentCreateWithoutAuthorInput, Prisma.DocumentUncheckedCreateWithoutAuthorInput> | Prisma.DocumentCreateWithoutAuthorInput[] | Prisma.DocumentUncheckedCreateWithoutAuthorInput[]
+  connectOrCreate?: Prisma.DocumentCreateOrConnectWithoutAuthorInput | Prisma.DocumentCreateOrConnectWithoutAuthorInput[]
+  createMany?: Prisma.DocumentCreateManyAuthorInputEnvelope
+  connect?: Prisma.DocumentWhereUniqueInput | Prisma.DocumentWhereUniqueInput[]
+}
+
+export type DocumentUpdateManyWithoutOwnerNestedInput = {
+  create?: Prisma.XOR<Prisma.DocumentCreateWithoutOwnerInput, Prisma.DocumentUncheckedCreateWithoutOwnerInput> | Prisma.DocumentCreateWithoutOwnerInput[] | Prisma.DocumentUncheckedCreateWithoutOwnerInput[]
+  connectOrCreate?: Prisma.DocumentCreateOrConnectWithoutOwnerInput | Prisma.DocumentCreateOrConnectWithoutOwnerInput[]
+  upsert?: Prisma.DocumentUpsertWithWhereUniqueWithoutOwnerInput | Prisma.DocumentUpsertWithWhereUniqueWithoutOwnerInput[]
+  createMany?: Prisma.DocumentCreateManyOwnerInputEnvelope
+  set?: Prisma.DocumentWhereUniqueInput | Prisma.DocumentWhereUniqueInput[]
+  disconnect?: Prisma.DocumentWhereUniqueInput | Prisma.DocumentWhereUniqueInput[]
+  delete?: Prisma.DocumentWhereUniqueInput | Prisma.DocumentWhereUniqueInput[]
+  connect?: Prisma.DocumentWhereUniqueInput | Prisma.DocumentWhereUniqueInput[]
+  update?: Prisma.DocumentUpdateWithWhereUniqueWithoutOwnerInput | Prisma.DocumentUpdateWithWhereUniqueWithoutOwnerInput[]
+  updateMany?: Prisma.DocumentUpdateManyWithWhereWithoutOwnerInput | Prisma.DocumentUpdateManyWithWhereWithoutOwnerInput[]
+  deleteMany?: Prisma.DocumentScalarWhereInput | Prisma.DocumentScalarWhereInput[]
+}
+
+export type DocumentUpdateManyWithoutAuthorNestedInput = {
+  create?: Prisma.XOR<Prisma.DocumentCreateWithoutAuthorInput, Prisma.DocumentUncheckedCreateWithoutAuthorInput> | Prisma.DocumentCreateWithoutAuthorInput[] | Prisma.DocumentUncheckedCreateWithoutAuthorInput[]
+  connectOrCreate?: Prisma.DocumentCreateOrConnectWithoutAuthorInput | Prisma.DocumentCreateOrConnectWithoutAuthorInput[]
+  upsert?: Prisma.DocumentUpsertWithWhereUniqueWithoutAuthorInput | Prisma.DocumentUpsertWithWhereUniqueWithoutAuthorInput[]
+  createMany?: Prisma.DocumentCreateManyAuthorInputEnvelope
+  set?: Prisma.DocumentWhereUniqueInput | Prisma.DocumentWhereUniqueInput[]
+  disconnect?: Prisma.DocumentWhereUniqueInput | Prisma.DocumentWhereUniqueInput[]
+  delete?: Prisma.DocumentWhereUniqueInput | Prisma.DocumentWhereUniqueInput[]
+  connect?: Prisma.DocumentWhereUniqueInput | Prisma.DocumentWhereUniqueInput[]
+  update?: Prisma.DocumentUpdateWithWhereUniqueWithoutAuthorInput | Prisma.DocumentUpdateWithWhereUniqueWithoutAuthorInput[]
+  updateMany?: Prisma.DocumentUpdateManyWithWhereWithoutAuthorInput | Prisma.DocumentUpdateManyWithWhereWithoutAuthorInput[]
+  deleteMany?: Prisma.DocumentScalarWhereInput | Prisma.DocumentScalarWhereInput[]
+}
+
+export type DocumentUncheckedUpdateManyWithoutOwnerNestedInput = {
+  create?: Prisma.XOR<Prisma.DocumentCreateWithoutOwnerInput, Prisma.DocumentUncheckedCreateWithoutOwnerInput> | Prisma.DocumentCreateWithoutOwnerInput[] | Prisma.DocumentUncheckedCreateWithoutOwnerInput[]
+  connectOrCreate?: Prisma.DocumentCreateOrConnectWithoutOwnerInput | Prisma.DocumentCreateOrConnectWithoutOwnerInput[]
+  upsert?: Prisma.DocumentUpsertWithWhereUniqueWithoutOwnerInput | Prisma.DocumentUpsertWithWhereUniqueWithoutOwnerInput[]
+  createMany?: Prisma.DocumentCreateManyOwnerInputEnvelope
+  set?: Prisma.DocumentWhereUniqueInput | Prisma.DocumentWhereUniqueInput[]
+  disconnect?: Prisma.DocumentWhereUniqueInput | Prisma.DocumentWhereUniqueInput[]
+  delete?: Prisma.DocumentWhereUniqueInput | Prisma.DocumentWhereUniqueInput[]
+  connect?: Prisma.DocumentWhereUniqueInput | Prisma.DocumentWhereUniqueInput[]
+  update?: Prisma.DocumentUpdateWithWhereUniqueWithoutOwnerInput | Prisma.DocumentUpdateWithWhereUniqueWithoutOwnerInput[]
+  updateMany?: Prisma.DocumentUpdateManyWithWhereWithoutOwnerInput | Prisma.DocumentUpdateManyWithWhereWithoutOwnerInput[]
+  deleteMany?: Prisma.DocumentScalarWhereInput | Prisma.DocumentScalarWhereInput[]
+}
+
+export type DocumentUncheckedUpdateManyWithoutAuthorNestedInput = {
+  create?: Prisma.XOR<Prisma.DocumentCreateWithoutAuthorInput, Prisma.DocumentUncheckedCreateWithoutAuthorInput> | Prisma.DocumentCreateWithoutAuthorInput[] | Prisma.DocumentUncheckedCreateWithoutAuthorInput[]
+  connectOrCreate?: Prisma.DocumentCreateOrConnectWithoutAuthorInput | Prisma.DocumentCreateOrConnectWithoutAuthorInput[]
+  upsert?: Prisma.DocumentUpsertWithWhereUniqueWithoutAuthorInput | Prisma.DocumentUpsertWithWhereUniqueWithoutAuthorInput[]
+  createMany?: Prisma.DocumentCreateManyAuthorInputEnvelope
+  set?: Prisma.DocumentWhereUniqueInput | Prisma.DocumentWhereUniqueInput[]
+  disconnect?: Prisma.DocumentWhereUniqueInput | Prisma.DocumentWhereUniqueInput[]
+  delete?: Prisma.DocumentWhereUniqueInput | Prisma.DocumentWhereUniqueInput[]
+  connect?: Prisma.DocumentWhereUniqueInput | Prisma.DocumentWhereUniqueInput[]
+  update?: Prisma.DocumentUpdateWithWhereUniqueWithoutAuthorInput | Prisma.DocumentUpdateWithWhereUniqueWithoutAuthorInput[]
+  updateMany?: Prisma.DocumentUpdateManyWithWhereWithoutAuthorInput | Prisma.DocumentUpdateManyWithWhereWithoutAuthorInput[]
+  deleteMany?: Prisma.DocumentScalarWhereInput | Prisma.DocumentScalarWhereInput[]
 }
 
 export type DocumentCreateNestedManyWithoutOrganizationInput = {
@@ -871,6 +1207,88 @@ export type DocumentUncheckedUpdateManyWithoutSpaceNestedInput = {
   deleteMany?: Prisma.DocumentScalarWhereInput | Prisma.DocumentScalarWhereInput[]
 }
 
+export type DocumentCreateNestedManyWithoutVersionInput = {
+  create?: Prisma.XOR<Prisma.DocumentCreateWithoutVersionInput, Prisma.DocumentUncheckedCreateWithoutVersionInput> | Prisma.DocumentCreateWithoutVersionInput[] | Prisma.DocumentUncheckedCreateWithoutVersionInput[]
+  connectOrCreate?: Prisma.DocumentCreateOrConnectWithoutVersionInput | Prisma.DocumentCreateOrConnectWithoutVersionInput[]
+  createMany?: Prisma.DocumentCreateManyVersionInputEnvelope
+  connect?: Prisma.DocumentWhereUniqueInput | Prisma.DocumentWhereUniqueInput[]
+}
+
+export type DocumentUncheckedCreateNestedManyWithoutVersionInput = {
+  create?: Prisma.XOR<Prisma.DocumentCreateWithoutVersionInput, Prisma.DocumentUncheckedCreateWithoutVersionInput> | Prisma.DocumentCreateWithoutVersionInput[] | Prisma.DocumentUncheckedCreateWithoutVersionInput[]
+  connectOrCreate?: Prisma.DocumentCreateOrConnectWithoutVersionInput | Prisma.DocumentCreateOrConnectWithoutVersionInput[]
+  createMany?: Prisma.DocumentCreateManyVersionInputEnvelope
+  connect?: Prisma.DocumentWhereUniqueInput | Prisma.DocumentWhereUniqueInput[]
+}
+
+export type DocumentUpdateManyWithoutVersionNestedInput = {
+  create?: Prisma.XOR<Prisma.DocumentCreateWithoutVersionInput, Prisma.DocumentUncheckedCreateWithoutVersionInput> | Prisma.DocumentCreateWithoutVersionInput[] | Prisma.DocumentUncheckedCreateWithoutVersionInput[]
+  connectOrCreate?: Prisma.DocumentCreateOrConnectWithoutVersionInput | Prisma.DocumentCreateOrConnectWithoutVersionInput[]
+  upsert?: Prisma.DocumentUpsertWithWhereUniqueWithoutVersionInput | Prisma.DocumentUpsertWithWhereUniqueWithoutVersionInput[]
+  createMany?: Prisma.DocumentCreateManyVersionInputEnvelope
+  set?: Prisma.DocumentWhereUniqueInput | Prisma.DocumentWhereUniqueInput[]
+  disconnect?: Prisma.DocumentWhereUniqueInput | Prisma.DocumentWhereUniqueInput[]
+  delete?: Prisma.DocumentWhereUniqueInput | Prisma.DocumentWhereUniqueInput[]
+  connect?: Prisma.DocumentWhereUniqueInput | Prisma.DocumentWhereUniqueInput[]
+  update?: Prisma.DocumentUpdateWithWhereUniqueWithoutVersionInput | Prisma.DocumentUpdateWithWhereUniqueWithoutVersionInput[]
+  updateMany?: Prisma.DocumentUpdateManyWithWhereWithoutVersionInput | Prisma.DocumentUpdateManyWithWhereWithoutVersionInput[]
+  deleteMany?: Prisma.DocumentScalarWhereInput | Prisma.DocumentScalarWhereInput[]
+}
+
+export type DocumentUncheckedUpdateManyWithoutVersionNestedInput = {
+  create?: Prisma.XOR<Prisma.DocumentCreateWithoutVersionInput, Prisma.DocumentUncheckedCreateWithoutVersionInput> | Prisma.DocumentCreateWithoutVersionInput[] | Prisma.DocumentUncheckedCreateWithoutVersionInput[]
+  connectOrCreate?: Prisma.DocumentCreateOrConnectWithoutVersionInput | Prisma.DocumentCreateOrConnectWithoutVersionInput[]
+  upsert?: Prisma.DocumentUpsertWithWhereUniqueWithoutVersionInput | Prisma.DocumentUpsertWithWhereUniqueWithoutVersionInput[]
+  createMany?: Prisma.DocumentCreateManyVersionInputEnvelope
+  set?: Prisma.DocumentWhereUniqueInput | Prisma.DocumentWhereUniqueInput[]
+  disconnect?: Prisma.DocumentWhereUniqueInput | Prisma.DocumentWhereUniqueInput[]
+  delete?: Prisma.DocumentWhereUniqueInput | Prisma.DocumentWhereUniqueInput[]
+  connect?: Prisma.DocumentWhereUniqueInput | Prisma.DocumentWhereUniqueInput[]
+  update?: Prisma.DocumentUpdateWithWhereUniqueWithoutVersionInput | Prisma.DocumentUpdateWithWhereUniqueWithoutVersionInput[]
+  updateMany?: Prisma.DocumentUpdateManyWithWhereWithoutVersionInput | Prisma.DocumentUpdateManyWithWhereWithoutVersionInput[]
+  deleteMany?: Prisma.DocumentScalarWhereInput | Prisma.DocumentScalarWhereInput[]
+}
+
+export type DocumentCreateNestedOneWithoutRequirementIntakeItemsInput = {
+  create?: Prisma.XOR<Prisma.DocumentCreateWithoutRequirementIntakeItemsInput, Prisma.DocumentUncheckedCreateWithoutRequirementIntakeItemsInput>
+  connectOrCreate?: Prisma.DocumentCreateOrConnectWithoutRequirementIntakeItemsInput
+  connect?: Prisma.DocumentWhereUniqueInput
+}
+
+export type DocumentUpdateOneWithoutRequirementIntakeItemsNestedInput = {
+  create?: Prisma.XOR<Prisma.DocumentCreateWithoutRequirementIntakeItemsInput, Prisma.DocumentUncheckedCreateWithoutRequirementIntakeItemsInput>
+  connectOrCreate?: Prisma.DocumentCreateOrConnectWithoutRequirementIntakeItemsInput
+  upsert?: Prisma.DocumentUpsertWithoutRequirementIntakeItemsInput
+  disconnect?: Prisma.DocumentWhereInput | boolean
+  delete?: Prisma.DocumentWhereInput | boolean
+  connect?: Prisma.DocumentWhereUniqueInput
+  update?: Prisma.XOR<Prisma.XOR<Prisma.DocumentUpdateToOneWithWhereWithoutRequirementIntakeItemsInput, Prisma.DocumentUpdateWithoutRequirementIntakeItemsInput>, Prisma.DocumentUncheckedUpdateWithoutRequirementIntakeItemsInput>
+}
+
+export type DocumentCreateNestedOneWithoutRequirementWorkItemsInput = {
+  create?: Prisma.XOR<Prisma.DocumentCreateWithoutRequirementWorkItemsInput, Prisma.DocumentUncheckedCreateWithoutRequirementWorkItemsInput>
+  connectOrCreate?: Prisma.DocumentCreateOrConnectWithoutRequirementWorkItemsInput
+  connect?: Prisma.DocumentWhereUniqueInput
+}
+
+export type DocumentUpdateOneWithoutRequirementWorkItemsNestedInput = {
+  create?: Prisma.XOR<Prisma.DocumentCreateWithoutRequirementWorkItemsInput, Prisma.DocumentUncheckedCreateWithoutRequirementWorkItemsInput>
+  connectOrCreate?: Prisma.DocumentCreateOrConnectWithoutRequirementWorkItemsInput
+  upsert?: Prisma.DocumentUpsertWithoutRequirementWorkItemsInput
+  disconnect?: Prisma.DocumentWhereInput | boolean
+  delete?: Prisma.DocumentWhereInput | boolean
+  connect?: Prisma.DocumentWhereUniqueInput
+  update?: Prisma.XOR<Prisma.XOR<Prisma.DocumentUpdateToOneWithWhereWithoutRequirementWorkItemsInput, Prisma.DocumentUpdateWithoutRequirementWorkItemsInput>, Prisma.DocumentUncheckedUpdateWithoutRequirementWorkItemsInput>
+}
+
+export type EnumDocumentKindFieldUpdateOperationsInput = {
+  set?: $Enums.DocumentKind
+}
+
+export type EnumContentFormatFieldUpdateOperationsInput = {
+  set?: $Enums.ContentFormat
+}
+
 export type EnumDocumentSourceTypeFieldUpdateOperationsInput = {
   set?: $Enums.DocumentSourceType
 }
@@ -939,6 +1357,20 @@ export type DocumentUpdateOneRequiredWithoutRevisionsNestedInput = {
   update?: Prisma.XOR<Prisma.XOR<Prisma.DocumentUpdateToOneWithWhereWithoutRevisionsInput, Prisma.DocumentUpdateWithoutRevisionsInput>, Prisma.DocumentUncheckedUpdateWithoutRevisionsInput>
 }
 
+export type DocumentCreateNestedOneWithoutCodeHistoryInput = {
+  create?: Prisma.XOR<Prisma.DocumentCreateWithoutCodeHistoryInput, Prisma.DocumentUncheckedCreateWithoutCodeHistoryInput>
+  connectOrCreate?: Prisma.DocumentCreateOrConnectWithoutCodeHistoryInput
+  connect?: Prisma.DocumentWhereUniqueInput
+}
+
+export type DocumentUpdateOneRequiredWithoutCodeHistoryNestedInput = {
+  create?: Prisma.XOR<Prisma.DocumentCreateWithoutCodeHistoryInput, Prisma.DocumentUncheckedCreateWithoutCodeHistoryInput>
+  connectOrCreate?: Prisma.DocumentCreateOrConnectWithoutCodeHistoryInput
+  upsert?: Prisma.DocumentUpsertWithoutCodeHistoryInput
+  connect?: Prisma.DocumentWhereUniqueInput
+  update?: Prisma.XOR<Prisma.XOR<Prisma.DocumentUpdateToOneWithWhereWithoutCodeHistoryInput, Prisma.DocumentUpdateWithoutCodeHistoryInput>, Prisma.DocumentUncheckedUpdateWithoutCodeHistoryInput>
+}
+
 export type DocumentCreateNestedOneWithoutLinksInput = {
   create?: Prisma.XOR<Prisma.DocumentCreateWithoutLinksInput, Prisma.DocumentUncheckedCreateWithoutLinksInput>
   connectOrCreate?: Prisma.DocumentCreateOrConnectWithoutLinksInput
@@ -967,14 +1399,21 @@ export type DocumentUpdateOneRequiredWithoutChunksNestedInput = {
   update?: Prisma.XOR<Prisma.XOR<Prisma.DocumentUpdateToOneWithWhereWithoutChunksInput, Prisma.DocumentUpdateWithoutChunksInput>, Prisma.DocumentUncheckedUpdateWithoutChunksInput>
 }
 
-export type DocumentCreateWithoutOrganizationInput = {
+export type DocumentCreateWithoutOwnerInput = {
   id: string
+  kind?: $Enums.DocumentKind
   title: string
-  contentMarkdown: string
+  summary?: string | null
+  contentFormat?: $Enums.ContentFormat
+  contentJson?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  contentMarkdown?: string | null
   contentText: string
+  contentMarkdownCache?: string | null
   sourceType: $Enums.DocumentSourceType
   sourceAttachmentId?: string | null
   status?: $Enums.DocumentStatus
+  sequence?: number | null
+  priority?: $Enums.Priority | null
   revision?: number
   createdVia?: $Enums.DocumentActorType
   createdMcpClientId?: string | null
@@ -988,23 +1427,39 @@ export type DocumentCreateWithoutOrganizationInput = {
   createdById?: string | null
   updatedById?: string | null
   deletedAt?: Date | string | null
+  organization: Prisma.OrganizationCreateNestedOneWithoutDocumentsInput
   space: Prisma.SpaceCreateNestedOneWithoutDocumentsInput
   folder?: Prisma.DocumentFolderCreateNestedOneWithoutDocumentsInput
+  version?: Prisma.VersionCreateNestedOneWithoutDocumentsInput
+  author?: Prisma.UserCreateNestedOneWithoutAuthoredDocumentsInput
   revisions?: Prisma.DocumentRevisionCreateNestedManyWithoutDocumentInput
   links?: Prisma.DocumentLinkCreateNestedManyWithoutDocumentInput
   chunks?: Prisma.DocumentChunkCreateNestedManyWithoutDocumentInput
+  codeHistory?: Prisma.DocumentCodeHistoryCreateNestedManyWithoutDocumentInput
+  requirementIntakeItems?: Prisma.IntakeItemCreateNestedManyWithoutRequirementInput
+  requirementWorkItems?: Prisma.WorkItemCreateNestedManyWithoutRequirementInput
 }
 
-export type DocumentUncheckedCreateWithoutOrganizationInput = {
+export type DocumentUncheckedCreateWithoutOwnerInput = {
   id: string
+  organizationId: string
   spaceId: string
   folderId?: string | null
+  kind?: $Enums.DocumentKind
   title: string
-  contentMarkdown: string
+  summary?: string | null
+  contentFormat?: $Enums.ContentFormat
+  contentJson?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  contentMarkdown?: string | null
   contentText: string
+  contentMarkdownCache?: string | null
   sourceType: $Enums.DocumentSourceType
   sourceAttachmentId?: string | null
   status?: $Enums.DocumentStatus
+  sequence?: number | null
+  versionId?: string | null
+  priority?: $Enums.Priority | null
+  authorId?: string | null
   revision?: number
   createdVia?: $Enums.DocumentActorType
   createdMcpClientId?: string | null
@@ -1021,6 +1476,264 @@ export type DocumentUncheckedCreateWithoutOrganizationInput = {
   revisions?: Prisma.DocumentRevisionUncheckedCreateNestedManyWithoutDocumentInput
   links?: Prisma.DocumentLinkUncheckedCreateNestedManyWithoutDocumentInput
   chunks?: Prisma.DocumentChunkUncheckedCreateNestedManyWithoutDocumentInput
+  codeHistory?: Prisma.DocumentCodeHistoryUncheckedCreateNestedManyWithoutDocumentInput
+  requirementIntakeItems?: Prisma.IntakeItemUncheckedCreateNestedManyWithoutRequirementInput
+  requirementWorkItems?: Prisma.WorkItemUncheckedCreateNestedManyWithoutRequirementInput
+}
+
+export type DocumentCreateOrConnectWithoutOwnerInput = {
+  where: Prisma.DocumentWhereUniqueInput
+  create: Prisma.XOR<Prisma.DocumentCreateWithoutOwnerInput, Prisma.DocumentUncheckedCreateWithoutOwnerInput>
+}
+
+export type DocumentCreateManyOwnerInputEnvelope = {
+  data: Prisma.DocumentCreateManyOwnerInput | Prisma.DocumentCreateManyOwnerInput[]
+  skipDuplicates?: boolean
+}
+
+export type DocumentCreateWithoutAuthorInput = {
+  id: string
+  kind?: $Enums.DocumentKind
+  title: string
+  summary?: string | null
+  contentFormat?: $Enums.ContentFormat
+  contentJson?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  contentMarkdown?: string | null
+  contentText: string
+  contentMarkdownCache?: string | null
+  sourceType: $Enums.DocumentSourceType
+  sourceAttachmentId?: string | null
+  status?: $Enums.DocumentStatus
+  sequence?: number | null
+  priority?: $Enums.Priority | null
+  revision?: number
+  createdVia?: $Enums.DocumentActorType
+  createdMcpClientId?: string | null
+  lastEditedById: string
+  lastEditedVia?: $Enums.DocumentActorType
+  lastEditedMcpClientId?: string | null
+  lastEditedAt?: Date | string
+  archivedAt?: Date | string | null
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  createdById?: string | null
+  updatedById?: string | null
+  deletedAt?: Date | string | null
+  organization: Prisma.OrganizationCreateNestedOneWithoutDocumentsInput
+  space: Prisma.SpaceCreateNestedOneWithoutDocumentsInput
+  folder?: Prisma.DocumentFolderCreateNestedOneWithoutDocumentsInput
+  version?: Prisma.VersionCreateNestedOneWithoutDocumentsInput
+  owner?: Prisma.UserCreateNestedOneWithoutOwnedDocumentsInput
+  revisions?: Prisma.DocumentRevisionCreateNestedManyWithoutDocumentInput
+  links?: Prisma.DocumentLinkCreateNestedManyWithoutDocumentInput
+  chunks?: Prisma.DocumentChunkCreateNestedManyWithoutDocumentInput
+  codeHistory?: Prisma.DocumentCodeHistoryCreateNestedManyWithoutDocumentInput
+  requirementIntakeItems?: Prisma.IntakeItemCreateNestedManyWithoutRequirementInput
+  requirementWorkItems?: Prisma.WorkItemCreateNestedManyWithoutRequirementInput
+}
+
+export type DocumentUncheckedCreateWithoutAuthorInput = {
+  id: string
+  organizationId: string
+  spaceId: string
+  folderId?: string | null
+  kind?: $Enums.DocumentKind
+  title: string
+  summary?: string | null
+  contentFormat?: $Enums.ContentFormat
+  contentJson?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  contentMarkdown?: string | null
+  contentText: string
+  contentMarkdownCache?: string | null
+  sourceType: $Enums.DocumentSourceType
+  sourceAttachmentId?: string | null
+  status?: $Enums.DocumentStatus
+  sequence?: number | null
+  versionId?: string | null
+  priority?: $Enums.Priority | null
+  ownerId?: string | null
+  revision?: number
+  createdVia?: $Enums.DocumentActorType
+  createdMcpClientId?: string | null
+  lastEditedById: string
+  lastEditedVia?: $Enums.DocumentActorType
+  lastEditedMcpClientId?: string | null
+  lastEditedAt?: Date | string
+  archivedAt?: Date | string | null
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  createdById?: string | null
+  updatedById?: string | null
+  deletedAt?: Date | string | null
+  revisions?: Prisma.DocumentRevisionUncheckedCreateNestedManyWithoutDocumentInput
+  links?: Prisma.DocumentLinkUncheckedCreateNestedManyWithoutDocumentInput
+  chunks?: Prisma.DocumentChunkUncheckedCreateNestedManyWithoutDocumentInput
+  codeHistory?: Prisma.DocumentCodeHistoryUncheckedCreateNestedManyWithoutDocumentInput
+  requirementIntakeItems?: Prisma.IntakeItemUncheckedCreateNestedManyWithoutRequirementInput
+  requirementWorkItems?: Prisma.WorkItemUncheckedCreateNestedManyWithoutRequirementInput
+}
+
+export type DocumentCreateOrConnectWithoutAuthorInput = {
+  where: Prisma.DocumentWhereUniqueInput
+  create: Prisma.XOR<Prisma.DocumentCreateWithoutAuthorInput, Prisma.DocumentUncheckedCreateWithoutAuthorInput>
+}
+
+export type DocumentCreateManyAuthorInputEnvelope = {
+  data: Prisma.DocumentCreateManyAuthorInput | Prisma.DocumentCreateManyAuthorInput[]
+  skipDuplicates?: boolean
+}
+
+export type DocumentUpsertWithWhereUniqueWithoutOwnerInput = {
+  where: Prisma.DocumentWhereUniqueInput
+  update: Prisma.XOR<Prisma.DocumentUpdateWithoutOwnerInput, Prisma.DocumentUncheckedUpdateWithoutOwnerInput>
+  create: Prisma.XOR<Prisma.DocumentCreateWithoutOwnerInput, Prisma.DocumentUncheckedCreateWithoutOwnerInput>
+}
+
+export type DocumentUpdateWithWhereUniqueWithoutOwnerInput = {
+  where: Prisma.DocumentWhereUniqueInput
+  data: Prisma.XOR<Prisma.DocumentUpdateWithoutOwnerInput, Prisma.DocumentUncheckedUpdateWithoutOwnerInput>
+}
+
+export type DocumentUpdateManyWithWhereWithoutOwnerInput = {
+  where: Prisma.DocumentScalarWhereInput
+  data: Prisma.XOR<Prisma.DocumentUpdateManyMutationInput, Prisma.DocumentUncheckedUpdateManyWithoutOwnerInput>
+}
+
+export type DocumentScalarWhereInput = {
+  AND?: Prisma.DocumentScalarWhereInput | Prisma.DocumentScalarWhereInput[]
+  OR?: Prisma.DocumentScalarWhereInput[]
+  NOT?: Prisma.DocumentScalarWhereInput | Prisma.DocumentScalarWhereInput[]
+  id?: Prisma.StringFilter<"Document"> | string
+  organizationId?: Prisma.StringFilter<"Document"> | string
+  spaceId?: Prisma.StringFilter<"Document"> | string
+  folderId?: Prisma.StringNullableFilter<"Document"> | string | null
+  kind?: Prisma.EnumDocumentKindFilter<"Document"> | $Enums.DocumentKind
+  title?: Prisma.StringFilter<"Document"> | string
+  summary?: Prisma.StringNullableFilter<"Document"> | string | null
+  contentFormat?: Prisma.EnumContentFormatFilter<"Document"> | $Enums.ContentFormat
+  contentJson?: Prisma.JsonNullableFilter<"Document">
+  contentMarkdown?: Prisma.StringNullableFilter<"Document"> | string | null
+  contentText?: Prisma.StringFilter<"Document"> | string
+  contentMarkdownCache?: Prisma.StringNullableFilter<"Document"> | string | null
+  sourceType?: Prisma.EnumDocumentSourceTypeFilter<"Document"> | $Enums.DocumentSourceType
+  sourceAttachmentId?: Prisma.StringNullableFilter<"Document"> | string | null
+  status?: Prisma.EnumDocumentStatusFilter<"Document"> | $Enums.DocumentStatus
+  sequence?: Prisma.IntNullableFilter<"Document"> | number | null
+  versionId?: Prisma.StringNullableFilter<"Document"> | string | null
+  priority?: Prisma.EnumPriorityNullableFilter<"Document"> | $Enums.Priority | null
+  ownerId?: Prisma.StringNullableFilter<"Document"> | string | null
+  authorId?: Prisma.StringNullableFilter<"Document"> | string | null
+  revision?: Prisma.IntFilter<"Document"> | number
+  createdVia?: Prisma.EnumDocumentActorTypeFilter<"Document"> | $Enums.DocumentActorType
+  createdMcpClientId?: Prisma.StringNullableFilter<"Document"> | string | null
+  lastEditedById?: Prisma.StringFilter<"Document"> | string
+  lastEditedVia?: Prisma.EnumDocumentActorTypeFilter<"Document"> | $Enums.DocumentActorType
+  lastEditedMcpClientId?: Prisma.StringNullableFilter<"Document"> | string | null
+  lastEditedAt?: Prisma.DateTimeFilter<"Document"> | Date | string
+  archivedAt?: Prisma.DateTimeNullableFilter<"Document"> | Date | string | null
+  createdAt?: Prisma.DateTimeFilter<"Document"> | Date | string
+  updatedAt?: Prisma.DateTimeFilter<"Document"> | Date | string
+  createdById?: Prisma.StringNullableFilter<"Document"> | string | null
+  updatedById?: Prisma.StringNullableFilter<"Document"> | string | null
+  deletedAt?: Prisma.DateTimeNullableFilter<"Document"> | Date | string | null
+}
+
+export type DocumentUpsertWithWhereUniqueWithoutAuthorInput = {
+  where: Prisma.DocumentWhereUniqueInput
+  update: Prisma.XOR<Prisma.DocumentUpdateWithoutAuthorInput, Prisma.DocumentUncheckedUpdateWithoutAuthorInput>
+  create: Prisma.XOR<Prisma.DocumentCreateWithoutAuthorInput, Prisma.DocumentUncheckedCreateWithoutAuthorInput>
+}
+
+export type DocumentUpdateWithWhereUniqueWithoutAuthorInput = {
+  where: Prisma.DocumentWhereUniqueInput
+  data: Prisma.XOR<Prisma.DocumentUpdateWithoutAuthorInput, Prisma.DocumentUncheckedUpdateWithoutAuthorInput>
+}
+
+export type DocumentUpdateManyWithWhereWithoutAuthorInput = {
+  where: Prisma.DocumentScalarWhereInput
+  data: Prisma.XOR<Prisma.DocumentUpdateManyMutationInput, Prisma.DocumentUncheckedUpdateManyWithoutAuthorInput>
+}
+
+export type DocumentCreateWithoutOrganizationInput = {
+  id: string
+  kind?: $Enums.DocumentKind
+  title: string
+  summary?: string | null
+  contentFormat?: $Enums.ContentFormat
+  contentJson?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  contentMarkdown?: string | null
+  contentText: string
+  contentMarkdownCache?: string | null
+  sourceType: $Enums.DocumentSourceType
+  sourceAttachmentId?: string | null
+  status?: $Enums.DocumentStatus
+  sequence?: number | null
+  priority?: $Enums.Priority | null
+  revision?: number
+  createdVia?: $Enums.DocumentActorType
+  createdMcpClientId?: string | null
+  lastEditedById: string
+  lastEditedVia?: $Enums.DocumentActorType
+  lastEditedMcpClientId?: string | null
+  lastEditedAt?: Date | string
+  archivedAt?: Date | string | null
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  createdById?: string | null
+  updatedById?: string | null
+  deletedAt?: Date | string | null
+  space: Prisma.SpaceCreateNestedOneWithoutDocumentsInput
+  folder?: Prisma.DocumentFolderCreateNestedOneWithoutDocumentsInput
+  version?: Prisma.VersionCreateNestedOneWithoutDocumentsInput
+  owner?: Prisma.UserCreateNestedOneWithoutOwnedDocumentsInput
+  author?: Prisma.UserCreateNestedOneWithoutAuthoredDocumentsInput
+  revisions?: Prisma.DocumentRevisionCreateNestedManyWithoutDocumentInput
+  links?: Prisma.DocumentLinkCreateNestedManyWithoutDocumentInput
+  chunks?: Prisma.DocumentChunkCreateNestedManyWithoutDocumentInput
+  codeHistory?: Prisma.DocumentCodeHistoryCreateNestedManyWithoutDocumentInput
+  requirementIntakeItems?: Prisma.IntakeItemCreateNestedManyWithoutRequirementInput
+  requirementWorkItems?: Prisma.WorkItemCreateNestedManyWithoutRequirementInput
+}
+
+export type DocumentUncheckedCreateWithoutOrganizationInput = {
+  id: string
+  spaceId: string
+  folderId?: string | null
+  kind?: $Enums.DocumentKind
+  title: string
+  summary?: string | null
+  contentFormat?: $Enums.ContentFormat
+  contentJson?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  contentMarkdown?: string | null
+  contentText: string
+  contentMarkdownCache?: string | null
+  sourceType: $Enums.DocumentSourceType
+  sourceAttachmentId?: string | null
+  status?: $Enums.DocumentStatus
+  sequence?: number | null
+  versionId?: string | null
+  priority?: $Enums.Priority | null
+  ownerId?: string | null
+  authorId?: string | null
+  revision?: number
+  createdVia?: $Enums.DocumentActorType
+  createdMcpClientId?: string | null
+  lastEditedById: string
+  lastEditedVia?: $Enums.DocumentActorType
+  lastEditedMcpClientId?: string | null
+  lastEditedAt?: Date | string
+  archivedAt?: Date | string | null
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  createdById?: string | null
+  updatedById?: string | null
+  deletedAt?: Date | string | null
+  revisions?: Prisma.DocumentRevisionUncheckedCreateNestedManyWithoutDocumentInput
+  links?: Prisma.DocumentLinkUncheckedCreateNestedManyWithoutDocumentInput
+  chunks?: Prisma.DocumentChunkUncheckedCreateNestedManyWithoutDocumentInput
+  codeHistory?: Prisma.DocumentCodeHistoryUncheckedCreateNestedManyWithoutDocumentInput
+  requirementIntakeItems?: Prisma.IntakeItemUncheckedCreateNestedManyWithoutRequirementInput
+  requirementWorkItems?: Prisma.WorkItemUncheckedCreateNestedManyWithoutRequirementInput
 }
 
 export type DocumentCreateOrConnectWithoutOrganizationInput = {
@@ -1049,43 +1762,21 @@ export type DocumentUpdateManyWithWhereWithoutOrganizationInput = {
   data: Prisma.XOR<Prisma.DocumentUpdateManyMutationInput, Prisma.DocumentUncheckedUpdateManyWithoutOrganizationInput>
 }
 
-export type DocumentScalarWhereInput = {
-  AND?: Prisma.DocumentScalarWhereInput | Prisma.DocumentScalarWhereInput[]
-  OR?: Prisma.DocumentScalarWhereInput[]
-  NOT?: Prisma.DocumentScalarWhereInput | Prisma.DocumentScalarWhereInput[]
-  id?: Prisma.StringFilter<"Document"> | string
-  organizationId?: Prisma.StringFilter<"Document"> | string
-  spaceId?: Prisma.StringFilter<"Document"> | string
-  folderId?: Prisma.StringNullableFilter<"Document"> | string | null
-  title?: Prisma.StringFilter<"Document"> | string
-  contentMarkdown?: Prisma.StringFilter<"Document"> | string
-  contentText?: Prisma.StringFilter<"Document"> | string
-  sourceType?: Prisma.EnumDocumentSourceTypeFilter<"Document"> | $Enums.DocumentSourceType
-  sourceAttachmentId?: Prisma.StringNullableFilter<"Document"> | string | null
-  status?: Prisma.EnumDocumentStatusFilter<"Document"> | $Enums.DocumentStatus
-  revision?: Prisma.IntFilter<"Document"> | number
-  createdVia?: Prisma.EnumDocumentActorTypeFilter<"Document"> | $Enums.DocumentActorType
-  createdMcpClientId?: Prisma.StringNullableFilter<"Document"> | string | null
-  lastEditedById?: Prisma.StringFilter<"Document"> | string
-  lastEditedVia?: Prisma.EnumDocumentActorTypeFilter<"Document"> | $Enums.DocumentActorType
-  lastEditedMcpClientId?: Prisma.StringNullableFilter<"Document"> | string | null
-  lastEditedAt?: Prisma.DateTimeFilter<"Document"> | Date | string
-  archivedAt?: Prisma.DateTimeNullableFilter<"Document"> | Date | string | null
-  createdAt?: Prisma.DateTimeFilter<"Document"> | Date | string
-  updatedAt?: Prisma.DateTimeFilter<"Document"> | Date | string
-  createdById?: Prisma.StringNullableFilter<"Document"> | string | null
-  updatedById?: Prisma.StringNullableFilter<"Document"> | string | null
-  deletedAt?: Prisma.DateTimeNullableFilter<"Document"> | Date | string | null
-}
-
 export type DocumentCreateWithoutSpaceInput = {
   id: string
+  kind?: $Enums.DocumentKind
   title: string
-  contentMarkdown: string
+  summary?: string | null
+  contentFormat?: $Enums.ContentFormat
+  contentJson?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  contentMarkdown?: string | null
   contentText: string
+  contentMarkdownCache?: string | null
   sourceType: $Enums.DocumentSourceType
   sourceAttachmentId?: string | null
   status?: $Enums.DocumentStatus
+  sequence?: number | null
+  priority?: $Enums.Priority | null
   revision?: number
   createdVia?: $Enums.DocumentActorType
   createdMcpClientId?: string | null
@@ -1101,21 +1792,37 @@ export type DocumentCreateWithoutSpaceInput = {
   deletedAt?: Date | string | null
   organization: Prisma.OrganizationCreateNestedOneWithoutDocumentsInput
   folder?: Prisma.DocumentFolderCreateNestedOneWithoutDocumentsInput
+  version?: Prisma.VersionCreateNestedOneWithoutDocumentsInput
+  owner?: Prisma.UserCreateNestedOneWithoutOwnedDocumentsInput
+  author?: Prisma.UserCreateNestedOneWithoutAuthoredDocumentsInput
   revisions?: Prisma.DocumentRevisionCreateNestedManyWithoutDocumentInput
   links?: Prisma.DocumentLinkCreateNestedManyWithoutDocumentInput
   chunks?: Prisma.DocumentChunkCreateNestedManyWithoutDocumentInput
+  codeHistory?: Prisma.DocumentCodeHistoryCreateNestedManyWithoutDocumentInput
+  requirementIntakeItems?: Prisma.IntakeItemCreateNestedManyWithoutRequirementInput
+  requirementWorkItems?: Prisma.WorkItemCreateNestedManyWithoutRequirementInput
 }
 
 export type DocumentUncheckedCreateWithoutSpaceInput = {
   id: string
   organizationId: string
   folderId?: string | null
+  kind?: $Enums.DocumentKind
   title: string
-  contentMarkdown: string
+  summary?: string | null
+  contentFormat?: $Enums.ContentFormat
+  contentJson?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  contentMarkdown?: string | null
   contentText: string
+  contentMarkdownCache?: string | null
   sourceType: $Enums.DocumentSourceType
   sourceAttachmentId?: string | null
   status?: $Enums.DocumentStatus
+  sequence?: number | null
+  versionId?: string | null
+  priority?: $Enums.Priority | null
+  ownerId?: string | null
+  authorId?: string | null
   revision?: number
   createdVia?: $Enums.DocumentActorType
   createdMcpClientId?: string | null
@@ -1132,6 +1839,9 @@ export type DocumentUncheckedCreateWithoutSpaceInput = {
   revisions?: Prisma.DocumentRevisionUncheckedCreateNestedManyWithoutDocumentInput
   links?: Prisma.DocumentLinkUncheckedCreateNestedManyWithoutDocumentInput
   chunks?: Prisma.DocumentChunkUncheckedCreateNestedManyWithoutDocumentInput
+  codeHistory?: Prisma.DocumentCodeHistoryUncheckedCreateNestedManyWithoutDocumentInput
+  requirementIntakeItems?: Prisma.IntakeItemUncheckedCreateNestedManyWithoutRequirementInput
+  requirementWorkItems?: Prisma.WorkItemUncheckedCreateNestedManyWithoutRequirementInput
 }
 
 export type DocumentCreateOrConnectWithoutSpaceInput = {
@@ -1160,14 +1870,21 @@ export type DocumentUpdateManyWithWhereWithoutSpaceInput = {
   data: Prisma.XOR<Prisma.DocumentUpdateManyMutationInput, Prisma.DocumentUncheckedUpdateManyWithoutSpaceInput>
 }
 
-export type DocumentCreateWithoutFolderInput = {
+export type DocumentCreateWithoutVersionInput = {
   id: string
+  kind?: $Enums.DocumentKind
   title: string
-  contentMarkdown: string
+  summary?: string | null
+  contentFormat?: $Enums.ContentFormat
+  contentJson?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  contentMarkdown?: string | null
   contentText: string
+  contentMarkdownCache?: string | null
   sourceType: $Enums.DocumentSourceType
   sourceAttachmentId?: string | null
   status?: $Enums.DocumentStatus
+  sequence?: number | null
+  priority?: $Enums.Priority | null
   revision?: number
   createdVia?: $Enums.DocumentActorType
   createdMcpClientId?: string | null
@@ -1183,21 +1900,37 @@ export type DocumentCreateWithoutFolderInput = {
   deletedAt?: Date | string | null
   organization: Prisma.OrganizationCreateNestedOneWithoutDocumentsInput
   space: Prisma.SpaceCreateNestedOneWithoutDocumentsInput
+  folder?: Prisma.DocumentFolderCreateNestedOneWithoutDocumentsInput
+  owner?: Prisma.UserCreateNestedOneWithoutOwnedDocumentsInput
+  author?: Prisma.UserCreateNestedOneWithoutAuthoredDocumentsInput
   revisions?: Prisma.DocumentRevisionCreateNestedManyWithoutDocumentInput
   links?: Prisma.DocumentLinkCreateNestedManyWithoutDocumentInput
   chunks?: Prisma.DocumentChunkCreateNestedManyWithoutDocumentInput
+  codeHistory?: Prisma.DocumentCodeHistoryCreateNestedManyWithoutDocumentInput
+  requirementIntakeItems?: Prisma.IntakeItemCreateNestedManyWithoutRequirementInput
+  requirementWorkItems?: Prisma.WorkItemCreateNestedManyWithoutRequirementInput
 }
 
-export type DocumentUncheckedCreateWithoutFolderInput = {
+export type DocumentUncheckedCreateWithoutVersionInput = {
   id: string
   organizationId: string
   spaceId: string
+  folderId?: string | null
+  kind?: $Enums.DocumentKind
   title: string
-  contentMarkdown: string
+  summary?: string | null
+  contentFormat?: $Enums.ContentFormat
+  contentJson?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  contentMarkdown?: string | null
   contentText: string
+  contentMarkdownCache?: string | null
   sourceType: $Enums.DocumentSourceType
   sourceAttachmentId?: string | null
   status?: $Enums.DocumentStatus
+  sequence?: number | null
+  priority?: $Enums.Priority | null
+  ownerId?: string | null
+  authorId?: string | null
   revision?: number
   createdVia?: $Enums.DocumentActorType
   createdMcpClientId?: string | null
@@ -1214,6 +1947,477 @@ export type DocumentUncheckedCreateWithoutFolderInput = {
   revisions?: Prisma.DocumentRevisionUncheckedCreateNestedManyWithoutDocumentInput
   links?: Prisma.DocumentLinkUncheckedCreateNestedManyWithoutDocumentInput
   chunks?: Prisma.DocumentChunkUncheckedCreateNestedManyWithoutDocumentInput
+  codeHistory?: Prisma.DocumentCodeHistoryUncheckedCreateNestedManyWithoutDocumentInput
+  requirementIntakeItems?: Prisma.IntakeItemUncheckedCreateNestedManyWithoutRequirementInput
+  requirementWorkItems?: Prisma.WorkItemUncheckedCreateNestedManyWithoutRequirementInput
+}
+
+export type DocumentCreateOrConnectWithoutVersionInput = {
+  where: Prisma.DocumentWhereUniqueInput
+  create: Prisma.XOR<Prisma.DocumentCreateWithoutVersionInput, Prisma.DocumentUncheckedCreateWithoutVersionInput>
+}
+
+export type DocumentCreateManyVersionInputEnvelope = {
+  data: Prisma.DocumentCreateManyVersionInput | Prisma.DocumentCreateManyVersionInput[]
+  skipDuplicates?: boolean
+}
+
+export type DocumentUpsertWithWhereUniqueWithoutVersionInput = {
+  where: Prisma.DocumentWhereUniqueInput
+  update: Prisma.XOR<Prisma.DocumentUpdateWithoutVersionInput, Prisma.DocumentUncheckedUpdateWithoutVersionInput>
+  create: Prisma.XOR<Prisma.DocumentCreateWithoutVersionInput, Prisma.DocumentUncheckedCreateWithoutVersionInput>
+}
+
+export type DocumentUpdateWithWhereUniqueWithoutVersionInput = {
+  where: Prisma.DocumentWhereUniqueInput
+  data: Prisma.XOR<Prisma.DocumentUpdateWithoutVersionInput, Prisma.DocumentUncheckedUpdateWithoutVersionInput>
+}
+
+export type DocumentUpdateManyWithWhereWithoutVersionInput = {
+  where: Prisma.DocumentScalarWhereInput
+  data: Prisma.XOR<Prisma.DocumentUpdateManyMutationInput, Prisma.DocumentUncheckedUpdateManyWithoutVersionInput>
+}
+
+export type DocumentCreateWithoutRequirementIntakeItemsInput = {
+  id: string
+  kind?: $Enums.DocumentKind
+  title: string
+  summary?: string | null
+  contentFormat?: $Enums.ContentFormat
+  contentJson?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  contentMarkdown?: string | null
+  contentText: string
+  contentMarkdownCache?: string | null
+  sourceType: $Enums.DocumentSourceType
+  sourceAttachmentId?: string | null
+  status?: $Enums.DocumentStatus
+  sequence?: number | null
+  priority?: $Enums.Priority | null
+  revision?: number
+  createdVia?: $Enums.DocumentActorType
+  createdMcpClientId?: string | null
+  lastEditedById: string
+  lastEditedVia?: $Enums.DocumentActorType
+  lastEditedMcpClientId?: string | null
+  lastEditedAt?: Date | string
+  archivedAt?: Date | string | null
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  createdById?: string | null
+  updatedById?: string | null
+  deletedAt?: Date | string | null
+  organization: Prisma.OrganizationCreateNestedOneWithoutDocumentsInput
+  space: Prisma.SpaceCreateNestedOneWithoutDocumentsInput
+  folder?: Prisma.DocumentFolderCreateNestedOneWithoutDocumentsInput
+  version?: Prisma.VersionCreateNestedOneWithoutDocumentsInput
+  owner?: Prisma.UserCreateNestedOneWithoutOwnedDocumentsInput
+  author?: Prisma.UserCreateNestedOneWithoutAuthoredDocumentsInput
+  revisions?: Prisma.DocumentRevisionCreateNestedManyWithoutDocumentInput
+  links?: Prisma.DocumentLinkCreateNestedManyWithoutDocumentInput
+  chunks?: Prisma.DocumentChunkCreateNestedManyWithoutDocumentInput
+  codeHistory?: Prisma.DocumentCodeHistoryCreateNestedManyWithoutDocumentInput
+  requirementWorkItems?: Prisma.WorkItemCreateNestedManyWithoutRequirementInput
+}
+
+export type DocumentUncheckedCreateWithoutRequirementIntakeItemsInput = {
+  id: string
+  organizationId: string
+  spaceId: string
+  folderId?: string | null
+  kind?: $Enums.DocumentKind
+  title: string
+  summary?: string | null
+  contentFormat?: $Enums.ContentFormat
+  contentJson?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  contentMarkdown?: string | null
+  contentText: string
+  contentMarkdownCache?: string | null
+  sourceType: $Enums.DocumentSourceType
+  sourceAttachmentId?: string | null
+  status?: $Enums.DocumentStatus
+  sequence?: number | null
+  versionId?: string | null
+  priority?: $Enums.Priority | null
+  ownerId?: string | null
+  authorId?: string | null
+  revision?: number
+  createdVia?: $Enums.DocumentActorType
+  createdMcpClientId?: string | null
+  lastEditedById: string
+  lastEditedVia?: $Enums.DocumentActorType
+  lastEditedMcpClientId?: string | null
+  lastEditedAt?: Date | string
+  archivedAt?: Date | string | null
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  createdById?: string | null
+  updatedById?: string | null
+  deletedAt?: Date | string | null
+  revisions?: Prisma.DocumentRevisionUncheckedCreateNestedManyWithoutDocumentInput
+  links?: Prisma.DocumentLinkUncheckedCreateNestedManyWithoutDocumentInput
+  chunks?: Prisma.DocumentChunkUncheckedCreateNestedManyWithoutDocumentInput
+  codeHistory?: Prisma.DocumentCodeHistoryUncheckedCreateNestedManyWithoutDocumentInput
+  requirementWorkItems?: Prisma.WorkItemUncheckedCreateNestedManyWithoutRequirementInput
+}
+
+export type DocumentCreateOrConnectWithoutRequirementIntakeItemsInput = {
+  where: Prisma.DocumentWhereUniqueInput
+  create: Prisma.XOR<Prisma.DocumentCreateWithoutRequirementIntakeItemsInput, Prisma.DocumentUncheckedCreateWithoutRequirementIntakeItemsInput>
+}
+
+export type DocumentUpsertWithoutRequirementIntakeItemsInput = {
+  update: Prisma.XOR<Prisma.DocumentUpdateWithoutRequirementIntakeItemsInput, Prisma.DocumentUncheckedUpdateWithoutRequirementIntakeItemsInput>
+  create: Prisma.XOR<Prisma.DocumentCreateWithoutRequirementIntakeItemsInput, Prisma.DocumentUncheckedCreateWithoutRequirementIntakeItemsInput>
+  where?: Prisma.DocumentWhereInput
+}
+
+export type DocumentUpdateToOneWithWhereWithoutRequirementIntakeItemsInput = {
+  where?: Prisma.DocumentWhereInput
+  data: Prisma.XOR<Prisma.DocumentUpdateWithoutRequirementIntakeItemsInput, Prisma.DocumentUncheckedUpdateWithoutRequirementIntakeItemsInput>
+}
+
+export type DocumentUpdateWithoutRequirementIntakeItemsInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  kind?: Prisma.EnumDocumentKindFieldUpdateOperationsInput | $Enums.DocumentKind
+  title?: Prisma.StringFieldUpdateOperationsInput | string
+  summary?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  contentFormat?: Prisma.EnumContentFormatFieldUpdateOperationsInput | $Enums.ContentFormat
+  contentJson?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  contentMarkdown?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  contentText?: Prisma.StringFieldUpdateOperationsInput | string
+  contentMarkdownCache?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  sourceType?: Prisma.EnumDocumentSourceTypeFieldUpdateOperationsInput | $Enums.DocumentSourceType
+  sourceAttachmentId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  status?: Prisma.EnumDocumentStatusFieldUpdateOperationsInput | $Enums.DocumentStatus
+  sequence?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  priority?: Prisma.NullableEnumPriorityFieldUpdateOperationsInput | $Enums.Priority | null
+  revision?: Prisma.IntFieldUpdateOperationsInput | number
+  createdVia?: Prisma.EnumDocumentActorTypeFieldUpdateOperationsInput | $Enums.DocumentActorType
+  createdMcpClientId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  lastEditedById?: Prisma.StringFieldUpdateOperationsInput | string
+  lastEditedVia?: Prisma.EnumDocumentActorTypeFieldUpdateOperationsInput | $Enums.DocumentActorType
+  lastEditedMcpClientId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  lastEditedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  archivedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  createdById?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  updatedById?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  deletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  organization?: Prisma.OrganizationUpdateOneRequiredWithoutDocumentsNestedInput
+  space?: Prisma.SpaceUpdateOneRequiredWithoutDocumentsNestedInput
+  folder?: Prisma.DocumentFolderUpdateOneWithoutDocumentsNestedInput
+  version?: Prisma.VersionUpdateOneWithoutDocumentsNestedInput
+  owner?: Prisma.UserUpdateOneWithoutOwnedDocumentsNestedInput
+  author?: Prisma.UserUpdateOneWithoutAuthoredDocumentsNestedInput
+  revisions?: Prisma.DocumentRevisionUpdateManyWithoutDocumentNestedInput
+  links?: Prisma.DocumentLinkUpdateManyWithoutDocumentNestedInput
+  chunks?: Prisma.DocumentChunkUpdateManyWithoutDocumentNestedInput
+  codeHistory?: Prisma.DocumentCodeHistoryUpdateManyWithoutDocumentNestedInput
+  requirementWorkItems?: Prisma.WorkItemUpdateManyWithoutRequirementNestedInput
+}
+
+export type DocumentUncheckedUpdateWithoutRequirementIntakeItemsInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  organizationId?: Prisma.StringFieldUpdateOperationsInput | string
+  spaceId?: Prisma.StringFieldUpdateOperationsInput | string
+  folderId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  kind?: Prisma.EnumDocumentKindFieldUpdateOperationsInput | $Enums.DocumentKind
+  title?: Prisma.StringFieldUpdateOperationsInput | string
+  summary?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  contentFormat?: Prisma.EnumContentFormatFieldUpdateOperationsInput | $Enums.ContentFormat
+  contentJson?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  contentMarkdown?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  contentText?: Prisma.StringFieldUpdateOperationsInput | string
+  contentMarkdownCache?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  sourceType?: Prisma.EnumDocumentSourceTypeFieldUpdateOperationsInput | $Enums.DocumentSourceType
+  sourceAttachmentId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  status?: Prisma.EnumDocumentStatusFieldUpdateOperationsInput | $Enums.DocumentStatus
+  sequence?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  versionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  priority?: Prisma.NullableEnumPriorityFieldUpdateOperationsInput | $Enums.Priority | null
+  ownerId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  authorId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  revision?: Prisma.IntFieldUpdateOperationsInput | number
+  createdVia?: Prisma.EnumDocumentActorTypeFieldUpdateOperationsInput | $Enums.DocumentActorType
+  createdMcpClientId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  lastEditedById?: Prisma.StringFieldUpdateOperationsInput | string
+  lastEditedVia?: Prisma.EnumDocumentActorTypeFieldUpdateOperationsInput | $Enums.DocumentActorType
+  lastEditedMcpClientId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  lastEditedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  archivedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  createdById?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  updatedById?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  deletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  revisions?: Prisma.DocumentRevisionUncheckedUpdateManyWithoutDocumentNestedInput
+  links?: Prisma.DocumentLinkUncheckedUpdateManyWithoutDocumentNestedInput
+  chunks?: Prisma.DocumentChunkUncheckedUpdateManyWithoutDocumentNestedInput
+  codeHistory?: Prisma.DocumentCodeHistoryUncheckedUpdateManyWithoutDocumentNestedInput
+  requirementWorkItems?: Prisma.WorkItemUncheckedUpdateManyWithoutRequirementNestedInput
+}
+
+export type DocumentCreateWithoutRequirementWorkItemsInput = {
+  id: string
+  kind?: $Enums.DocumentKind
+  title: string
+  summary?: string | null
+  contentFormat?: $Enums.ContentFormat
+  contentJson?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  contentMarkdown?: string | null
+  contentText: string
+  contentMarkdownCache?: string | null
+  sourceType: $Enums.DocumentSourceType
+  sourceAttachmentId?: string | null
+  status?: $Enums.DocumentStatus
+  sequence?: number | null
+  priority?: $Enums.Priority | null
+  revision?: number
+  createdVia?: $Enums.DocumentActorType
+  createdMcpClientId?: string | null
+  lastEditedById: string
+  lastEditedVia?: $Enums.DocumentActorType
+  lastEditedMcpClientId?: string | null
+  lastEditedAt?: Date | string
+  archivedAt?: Date | string | null
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  createdById?: string | null
+  updatedById?: string | null
+  deletedAt?: Date | string | null
+  organization: Prisma.OrganizationCreateNestedOneWithoutDocumentsInput
+  space: Prisma.SpaceCreateNestedOneWithoutDocumentsInput
+  folder?: Prisma.DocumentFolderCreateNestedOneWithoutDocumentsInput
+  version?: Prisma.VersionCreateNestedOneWithoutDocumentsInput
+  owner?: Prisma.UserCreateNestedOneWithoutOwnedDocumentsInput
+  author?: Prisma.UserCreateNestedOneWithoutAuthoredDocumentsInput
+  revisions?: Prisma.DocumentRevisionCreateNestedManyWithoutDocumentInput
+  links?: Prisma.DocumentLinkCreateNestedManyWithoutDocumentInput
+  chunks?: Prisma.DocumentChunkCreateNestedManyWithoutDocumentInput
+  codeHistory?: Prisma.DocumentCodeHistoryCreateNestedManyWithoutDocumentInput
+  requirementIntakeItems?: Prisma.IntakeItemCreateNestedManyWithoutRequirementInput
+}
+
+export type DocumentUncheckedCreateWithoutRequirementWorkItemsInput = {
+  id: string
+  organizationId: string
+  spaceId: string
+  folderId?: string | null
+  kind?: $Enums.DocumentKind
+  title: string
+  summary?: string | null
+  contentFormat?: $Enums.ContentFormat
+  contentJson?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  contentMarkdown?: string | null
+  contentText: string
+  contentMarkdownCache?: string | null
+  sourceType: $Enums.DocumentSourceType
+  sourceAttachmentId?: string | null
+  status?: $Enums.DocumentStatus
+  sequence?: number | null
+  versionId?: string | null
+  priority?: $Enums.Priority | null
+  ownerId?: string | null
+  authorId?: string | null
+  revision?: number
+  createdVia?: $Enums.DocumentActorType
+  createdMcpClientId?: string | null
+  lastEditedById: string
+  lastEditedVia?: $Enums.DocumentActorType
+  lastEditedMcpClientId?: string | null
+  lastEditedAt?: Date | string
+  archivedAt?: Date | string | null
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  createdById?: string | null
+  updatedById?: string | null
+  deletedAt?: Date | string | null
+  revisions?: Prisma.DocumentRevisionUncheckedCreateNestedManyWithoutDocumentInput
+  links?: Prisma.DocumentLinkUncheckedCreateNestedManyWithoutDocumentInput
+  chunks?: Prisma.DocumentChunkUncheckedCreateNestedManyWithoutDocumentInput
+  codeHistory?: Prisma.DocumentCodeHistoryUncheckedCreateNestedManyWithoutDocumentInput
+  requirementIntakeItems?: Prisma.IntakeItemUncheckedCreateNestedManyWithoutRequirementInput
+}
+
+export type DocumentCreateOrConnectWithoutRequirementWorkItemsInput = {
+  where: Prisma.DocumentWhereUniqueInput
+  create: Prisma.XOR<Prisma.DocumentCreateWithoutRequirementWorkItemsInput, Prisma.DocumentUncheckedCreateWithoutRequirementWorkItemsInput>
+}
+
+export type DocumentUpsertWithoutRequirementWorkItemsInput = {
+  update: Prisma.XOR<Prisma.DocumentUpdateWithoutRequirementWorkItemsInput, Prisma.DocumentUncheckedUpdateWithoutRequirementWorkItemsInput>
+  create: Prisma.XOR<Prisma.DocumentCreateWithoutRequirementWorkItemsInput, Prisma.DocumentUncheckedCreateWithoutRequirementWorkItemsInput>
+  where?: Prisma.DocumentWhereInput
+}
+
+export type DocumentUpdateToOneWithWhereWithoutRequirementWorkItemsInput = {
+  where?: Prisma.DocumentWhereInput
+  data: Prisma.XOR<Prisma.DocumentUpdateWithoutRequirementWorkItemsInput, Prisma.DocumentUncheckedUpdateWithoutRequirementWorkItemsInput>
+}
+
+export type DocumentUpdateWithoutRequirementWorkItemsInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  kind?: Prisma.EnumDocumentKindFieldUpdateOperationsInput | $Enums.DocumentKind
+  title?: Prisma.StringFieldUpdateOperationsInput | string
+  summary?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  contentFormat?: Prisma.EnumContentFormatFieldUpdateOperationsInput | $Enums.ContentFormat
+  contentJson?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  contentMarkdown?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  contentText?: Prisma.StringFieldUpdateOperationsInput | string
+  contentMarkdownCache?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  sourceType?: Prisma.EnumDocumentSourceTypeFieldUpdateOperationsInput | $Enums.DocumentSourceType
+  sourceAttachmentId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  status?: Prisma.EnumDocumentStatusFieldUpdateOperationsInput | $Enums.DocumentStatus
+  sequence?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  priority?: Prisma.NullableEnumPriorityFieldUpdateOperationsInput | $Enums.Priority | null
+  revision?: Prisma.IntFieldUpdateOperationsInput | number
+  createdVia?: Prisma.EnumDocumentActorTypeFieldUpdateOperationsInput | $Enums.DocumentActorType
+  createdMcpClientId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  lastEditedById?: Prisma.StringFieldUpdateOperationsInput | string
+  lastEditedVia?: Prisma.EnumDocumentActorTypeFieldUpdateOperationsInput | $Enums.DocumentActorType
+  lastEditedMcpClientId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  lastEditedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  archivedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  createdById?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  updatedById?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  deletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  organization?: Prisma.OrganizationUpdateOneRequiredWithoutDocumentsNestedInput
+  space?: Prisma.SpaceUpdateOneRequiredWithoutDocumentsNestedInput
+  folder?: Prisma.DocumentFolderUpdateOneWithoutDocumentsNestedInput
+  version?: Prisma.VersionUpdateOneWithoutDocumentsNestedInput
+  owner?: Prisma.UserUpdateOneWithoutOwnedDocumentsNestedInput
+  author?: Prisma.UserUpdateOneWithoutAuthoredDocumentsNestedInput
+  revisions?: Prisma.DocumentRevisionUpdateManyWithoutDocumentNestedInput
+  links?: Prisma.DocumentLinkUpdateManyWithoutDocumentNestedInput
+  chunks?: Prisma.DocumentChunkUpdateManyWithoutDocumentNestedInput
+  codeHistory?: Prisma.DocumentCodeHistoryUpdateManyWithoutDocumentNestedInput
+  requirementIntakeItems?: Prisma.IntakeItemUpdateManyWithoutRequirementNestedInput
+}
+
+export type DocumentUncheckedUpdateWithoutRequirementWorkItemsInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  organizationId?: Prisma.StringFieldUpdateOperationsInput | string
+  spaceId?: Prisma.StringFieldUpdateOperationsInput | string
+  folderId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  kind?: Prisma.EnumDocumentKindFieldUpdateOperationsInput | $Enums.DocumentKind
+  title?: Prisma.StringFieldUpdateOperationsInput | string
+  summary?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  contentFormat?: Prisma.EnumContentFormatFieldUpdateOperationsInput | $Enums.ContentFormat
+  contentJson?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  contentMarkdown?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  contentText?: Prisma.StringFieldUpdateOperationsInput | string
+  contentMarkdownCache?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  sourceType?: Prisma.EnumDocumentSourceTypeFieldUpdateOperationsInput | $Enums.DocumentSourceType
+  sourceAttachmentId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  status?: Prisma.EnumDocumentStatusFieldUpdateOperationsInput | $Enums.DocumentStatus
+  sequence?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  versionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  priority?: Prisma.NullableEnumPriorityFieldUpdateOperationsInput | $Enums.Priority | null
+  ownerId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  authorId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  revision?: Prisma.IntFieldUpdateOperationsInput | number
+  createdVia?: Prisma.EnumDocumentActorTypeFieldUpdateOperationsInput | $Enums.DocumentActorType
+  createdMcpClientId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  lastEditedById?: Prisma.StringFieldUpdateOperationsInput | string
+  lastEditedVia?: Prisma.EnumDocumentActorTypeFieldUpdateOperationsInput | $Enums.DocumentActorType
+  lastEditedMcpClientId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  lastEditedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  archivedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  createdById?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  updatedById?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  deletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  revisions?: Prisma.DocumentRevisionUncheckedUpdateManyWithoutDocumentNestedInput
+  links?: Prisma.DocumentLinkUncheckedUpdateManyWithoutDocumentNestedInput
+  chunks?: Prisma.DocumentChunkUncheckedUpdateManyWithoutDocumentNestedInput
+  codeHistory?: Prisma.DocumentCodeHistoryUncheckedUpdateManyWithoutDocumentNestedInput
+  requirementIntakeItems?: Prisma.IntakeItemUncheckedUpdateManyWithoutRequirementNestedInput
+}
+
+export type DocumentCreateWithoutFolderInput = {
+  id: string
+  kind?: $Enums.DocumentKind
+  title: string
+  summary?: string | null
+  contentFormat?: $Enums.ContentFormat
+  contentJson?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  contentMarkdown?: string | null
+  contentText: string
+  contentMarkdownCache?: string | null
+  sourceType: $Enums.DocumentSourceType
+  sourceAttachmentId?: string | null
+  status?: $Enums.DocumentStatus
+  sequence?: number | null
+  priority?: $Enums.Priority | null
+  revision?: number
+  createdVia?: $Enums.DocumentActorType
+  createdMcpClientId?: string | null
+  lastEditedById: string
+  lastEditedVia?: $Enums.DocumentActorType
+  lastEditedMcpClientId?: string | null
+  lastEditedAt?: Date | string
+  archivedAt?: Date | string | null
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  createdById?: string | null
+  updatedById?: string | null
+  deletedAt?: Date | string | null
+  organization: Prisma.OrganizationCreateNestedOneWithoutDocumentsInput
+  space: Prisma.SpaceCreateNestedOneWithoutDocumentsInput
+  version?: Prisma.VersionCreateNestedOneWithoutDocumentsInput
+  owner?: Prisma.UserCreateNestedOneWithoutOwnedDocumentsInput
+  author?: Prisma.UserCreateNestedOneWithoutAuthoredDocumentsInput
+  revisions?: Prisma.DocumentRevisionCreateNestedManyWithoutDocumentInput
+  links?: Prisma.DocumentLinkCreateNestedManyWithoutDocumentInput
+  chunks?: Prisma.DocumentChunkCreateNestedManyWithoutDocumentInput
+  codeHistory?: Prisma.DocumentCodeHistoryCreateNestedManyWithoutDocumentInput
+  requirementIntakeItems?: Prisma.IntakeItemCreateNestedManyWithoutRequirementInput
+  requirementWorkItems?: Prisma.WorkItemCreateNestedManyWithoutRequirementInput
+}
+
+export type DocumentUncheckedCreateWithoutFolderInput = {
+  id: string
+  organizationId: string
+  spaceId: string
+  kind?: $Enums.DocumentKind
+  title: string
+  summary?: string | null
+  contentFormat?: $Enums.ContentFormat
+  contentJson?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  contentMarkdown?: string | null
+  contentText: string
+  contentMarkdownCache?: string | null
+  sourceType: $Enums.DocumentSourceType
+  sourceAttachmentId?: string | null
+  status?: $Enums.DocumentStatus
+  sequence?: number | null
+  versionId?: string | null
+  priority?: $Enums.Priority | null
+  ownerId?: string | null
+  authorId?: string | null
+  revision?: number
+  createdVia?: $Enums.DocumentActorType
+  createdMcpClientId?: string | null
+  lastEditedById: string
+  lastEditedVia?: $Enums.DocumentActorType
+  lastEditedMcpClientId?: string | null
+  lastEditedAt?: Date | string
+  archivedAt?: Date | string | null
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  createdById?: string | null
+  updatedById?: string | null
+  deletedAt?: Date | string | null
+  revisions?: Prisma.DocumentRevisionUncheckedCreateNestedManyWithoutDocumentInput
+  links?: Prisma.DocumentLinkUncheckedCreateNestedManyWithoutDocumentInput
+  chunks?: Prisma.DocumentChunkUncheckedCreateNestedManyWithoutDocumentInput
+  codeHistory?: Prisma.DocumentCodeHistoryUncheckedCreateNestedManyWithoutDocumentInput
+  requirementIntakeItems?: Prisma.IntakeItemUncheckedCreateNestedManyWithoutRequirementInput
+  requirementWorkItems?: Prisma.WorkItemUncheckedCreateNestedManyWithoutRequirementInput
 }
 
 export type DocumentCreateOrConnectWithoutFolderInput = {
@@ -1244,12 +2448,19 @@ export type DocumentUpdateManyWithWhereWithoutFolderInput = {
 
 export type DocumentCreateWithoutRevisionsInput = {
   id: string
+  kind?: $Enums.DocumentKind
   title: string
-  contentMarkdown: string
+  summary?: string | null
+  contentFormat?: $Enums.ContentFormat
+  contentJson?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  contentMarkdown?: string | null
   contentText: string
+  contentMarkdownCache?: string | null
   sourceType: $Enums.DocumentSourceType
   sourceAttachmentId?: string | null
   status?: $Enums.DocumentStatus
+  sequence?: number | null
+  priority?: $Enums.Priority | null
   revision?: number
   createdVia?: $Enums.DocumentActorType
   createdMcpClientId?: string | null
@@ -1266,8 +2477,14 @@ export type DocumentCreateWithoutRevisionsInput = {
   organization: Prisma.OrganizationCreateNestedOneWithoutDocumentsInput
   space: Prisma.SpaceCreateNestedOneWithoutDocumentsInput
   folder?: Prisma.DocumentFolderCreateNestedOneWithoutDocumentsInput
+  version?: Prisma.VersionCreateNestedOneWithoutDocumentsInput
+  owner?: Prisma.UserCreateNestedOneWithoutOwnedDocumentsInput
+  author?: Prisma.UserCreateNestedOneWithoutAuthoredDocumentsInput
   links?: Prisma.DocumentLinkCreateNestedManyWithoutDocumentInput
   chunks?: Prisma.DocumentChunkCreateNestedManyWithoutDocumentInput
+  codeHistory?: Prisma.DocumentCodeHistoryCreateNestedManyWithoutDocumentInput
+  requirementIntakeItems?: Prisma.IntakeItemCreateNestedManyWithoutRequirementInput
+  requirementWorkItems?: Prisma.WorkItemCreateNestedManyWithoutRequirementInput
 }
 
 export type DocumentUncheckedCreateWithoutRevisionsInput = {
@@ -1275,12 +2492,22 @@ export type DocumentUncheckedCreateWithoutRevisionsInput = {
   organizationId: string
   spaceId: string
   folderId?: string | null
+  kind?: $Enums.DocumentKind
   title: string
-  contentMarkdown: string
+  summary?: string | null
+  contentFormat?: $Enums.ContentFormat
+  contentJson?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  contentMarkdown?: string | null
   contentText: string
+  contentMarkdownCache?: string | null
   sourceType: $Enums.DocumentSourceType
   sourceAttachmentId?: string | null
   status?: $Enums.DocumentStatus
+  sequence?: number | null
+  versionId?: string | null
+  priority?: $Enums.Priority | null
+  ownerId?: string | null
+  authorId?: string | null
   revision?: number
   createdVia?: $Enums.DocumentActorType
   createdMcpClientId?: string | null
@@ -1296,6 +2523,9 @@ export type DocumentUncheckedCreateWithoutRevisionsInput = {
   deletedAt?: Date | string | null
   links?: Prisma.DocumentLinkUncheckedCreateNestedManyWithoutDocumentInput
   chunks?: Prisma.DocumentChunkUncheckedCreateNestedManyWithoutDocumentInput
+  codeHistory?: Prisma.DocumentCodeHistoryUncheckedCreateNestedManyWithoutDocumentInput
+  requirementIntakeItems?: Prisma.IntakeItemUncheckedCreateNestedManyWithoutRequirementInput
+  requirementWorkItems?: Prisma.WorkItemUncheckedCreateNestedManyWithoutRequirementInput
 }
 
 export type DocumentCreateOrConnectWithoutRevisionsInput = {
@@ -1316,12 +2546,19 @@ export type DocumentUpdateToOneWithWhereWithoutRevisionsInput = {
 
 export type DocumentUpdateWithoutRevisionsInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
+  kind?: Prisma.EnumDocumentKindFieldUpdateOperationsInput | $Enums.DocumentKind
   title?: Prisma.StringFieldUpdateOperationsInput | string
-  contentMarkdown?: Prisma.StringFieldUpdateOperationsInput | string
+  summary?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  contentFormat?: Prisma.EnumContentFormatFieldUpdateOperationsInput | $Enums.ContentFormat
+  contentJson?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  contentMarkdown?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   contentText?: Prisma.StringFieldUpdateOperationsInput | string
+  contentMarkdownCache?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   sourceType?: Prisma.EnumDocumentSourceTypeFieldUpdateOperationsInput | $Enums.DocumentSourceType
   sourceAttachmentId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   status?: Prisma.EnumDocumentStatusFieldUpdateOperationsInput | $Enums.DocumentStatus
+  sequence?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  priority?: Prisma.NullableEnumPriorityFieldUpdateOperationsInput | $Enums.Priority | null
   revision?: Prisma.IntFieldUpdateOperationsInput | number
   createdVia?: Prisma.EnumDocumentActorTypeFieldUpdateOperationsInput | $Enums.DocumentActorType
   createdMcpClientId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -1338,8 +2575,14 @@ export type DocumentUpdateWithoutRevisionsInput = {
   organization?: Prisma.OrganizationUpdateOneRequiredWithoutDocumentsNestedInput
   space?: Prisma.SpaceUpdateOneRequiredWithoutDocumentsNestedInput
   folder?: Prisma.DocumentFolderUpdateOneWithoutDocumentsNestedInput
+  version?: Prisma.VersionUpdateOneWithoutDocumentsNestedInput
+  owner?: Prisma.UserUpdateOneWithoutOwnedDocumentsNestedInput
+  author?: Prisma.UserUpdateOneWithoutAuthoredDocumentsNestedInput
   links?: Prisma.DocumentLinkUpdateManyWithoutDocumentNestedInput
   chunks?: Prisma.DocumentChunkUpdateManyWithoutDocumentNestedInput
+  codeHistory?: Prisma.DocumentCodeHistoryUpdateManyWithoutDocumentNestedInput
+  requirementIntakeItems?: Prisma.IntakeItemUpdateManyWithoutRequirementNestedInput
+  requirementWorkItems?: Prisma.WorkItemUpdateManyWithoutRequirementNestedInput
 }
 
 export type DocumentUncheckedUpdateWithoutRevisionsInput = {
@@ -1347,12 +2590,22 @@ export type DocumentUncheckedUpdateWithoutRevisionsInput = {
   organizationId?: Prisma.StringFieldUpdateOperationsInput | string
   spaceId?: Prisma.StringFieldUpdateOperationsInput | string
   folderId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  kind?: Prisma.EnumDocumentKindFieldUpdateOperationsInput | $Enums.DocumentKind
   title?: Prisma.StringFieldUpdateOperationsInput | string
-  contentMarkdown?: Prisma.StringFieldUpdateOperationsInput | string
+  summary?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  contentFormat?: Prisma.EnumContentFormatFieldUpdateOperationsInput | $Enums.ContentFormat
+  contentJson?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  contentMarkdown?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   contentText?: Prisma.StringFieldUpdateOperationsInput | string
+  contentMarkdownCache?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   sourceType?: Prisma.EnumDocumentSourceTypeFieldUpdateOperationsInput | $Enums.DocumentSourceType
   sourceAttachmentId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   status?: Prisma.EnumDocumentStatusFieldUpdateOperationsInput | $Enums.DocumentStatus
+  sequence?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  versionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  priority?: Prisma.NullableEnumPriorityFieldUpdateOperationsInput | $Enums.Priority | null
+  ownerId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  authorId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   revision?: Prisma.IntFieldUpdateOperationsInput | number
   createdVia?: Prisma.EnumDocumentActorTypeFieldUpdateOperationsInput | $Enums.DocumentActorType
   createdMcpClientId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -1368,16 +2621,26 @@ export type DocumentUncheckedUpdateWithoutRevisionsInput = {
   deletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   links?: Prisma.DocumentLinkUncheckedUpdateManyWithoutDocumentNestedInput
   chunks?: Prisma.DocumentChunkUncheckedUpdateManyWithoutDocumentNestedInput
+  codeHistory?: Prisma.DocumentCodeHistoryUncheckedUpdateManyWithoutDocumentNestedInput
+  requirementIntakeItems?: Prisma.IntakeItemUncheckedUpdateManyWithoutRequirementNestedInput
+  requirementWorkItems?: Prisma.WorkItemUncheckedUpdateManyWithoutRequirementNestedInput
 }
 
-export type DocumentCreateWithoutLinksInput = {
+export type DocumentCreateWithoutCodeHistoryInput = {
   id: string
+  kind?: $Enums.DocumentKind
   title: string
-  contentMarkdown: string
+  summary?: string | null
+  contentFormat?: $Enums.ContentFormat
+  contentJson?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  contentMarkdown?: string | null
   contentText: string
+  contentMarkdownCache?: string | null
   sourceType: $Enums.DocumentSourceType
   sourceAttachmentId?: string | null
   status?: $Enums.DocumentStatus
+  sequence?: number | null
+  priority?: $Enums.Priority | null
   revision?: number
   createdVia?: $Enums.DocumentActorType
   createdMcpClientId?: string | null
@@ -1394,8 +2657,194 @@ export type DocumentCreateWithoutLinksInput = {
   organization: Prisma.OrganizationCreateNestedOneWithoutDocumentsInput
   space: Prisma.SpaceCreateNestedOneWithoutDocumentsInput
   folder?: Prisma.DocumentFolderCreateNestedOneWithoutDocumentsInput
+  version?: Prisma.VersionCreateNestedOneWithoutDocumentsInput
+  owner?: Prisma.UserCreateNestedOneWithoutOwnedDocumentsInput
+  author?: Prisma.UserCreateNestedOneWithoutAuthoredDocumentsInput
+  revisions?: Prisma.DocumentRevisionCreateNestedManyWithoutDocumentInput
+  links?: Prisma.DocumentLinkCreateNestedManyWithoutDocumentInput
+  chunks?: Prisma.DocumentChunkCreateNestedManyWithoutDocumentInput
+  requirementIntakeItems?: Prisma.IntakeItemCreateNestedManyWithoutRequirementInput
+  requirementWorkItems?: Prisma.WorkItemCreateNestedManyWithoutRequirementInput
+}
+
+export type DocumentUncheckedCreateWithoutCodeHistoryInput = {
+  id: string
+  organizationId: string
+  spaceId: string
+  folderId?: string | null
+  kind?: $Enums.DocumentKind
+  title: string
+  summary?: string | null
+  contentFormat?: $Enums.ContentFormat
+  contentJson?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  contentMarkdown?: string | null
+  contentText: string
+  contentMarkdownCache?: string | null
+  sourceType: $Enums.DocumentSourceType
+  sourceAttachmentId?: string | null
+  status?: $Enums.DocumentStatus
+  sequence?: number | null
+  versionId?: string | null
+  priority?: $Enums.Priority | null
+  ownerId?: string | null
+  authorId?: string | null
+  revision?: number
+  createdVia?: $Enums.DocumentActorType
+  createdMcpClientId?: string | null
+  lastEditedById: string
+  lastEditedVia?: $Enums.DocumentActorType
+  lastEditedMcpClientId?: string | null
+  lastEditedAt?: Date | string
+  archivedAt?: Date | string | null
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  createdById?: string | null
+  updatedById?: string | null
+  deletedAt?: Date | string | null
+  revisions?: Prisma.DocumentRevisionUncheckedCreateNestedManyWithoutDocumentInput
+  links?: Prisma.DocumentLinkUncheckedCreateNestedManyWithoutDocumentInput
+  chunks?: Prisma.DocumentChunkUncheckedCreateNestedManyWithoutDocumentInput
+  requirementIntakeItems?: Prisma.IntakeItemUncheckedCreateNestedManyWithoutRequirementInput
+  requirementWorkItems?: Prisma.WorkItemUncheckedCreateNestedManyWithoutRequirementInput
+}
+
+export type DocumentCreateOrConnectWithoutCodeHistoryInput = {
+  where: Prisma.DocumentWhereUniqueInput
+  create: Prisma.XOR<Prisma.DocumentCreateWithoutCodeHistoryInput, Prisma.DocumentUncheckedCreateWithoutCodeHistoryInput>
+}
+
+export type DocumentUpsertWithoutCodeHistoryInput = {
+  update: Prisma.XOR<Prisma.DocumentUpdateWithoutCodeHistoryInput, Prisma.DocumentUncheckedUpdateWithoutCodeHistoryInput>
+  create: Prisma.XOR<Prisma.DocumentCreateWithoutCodeHistoryInput, Prisma.DocumentUncheckedCreateWithoutCodeHistoryInput>
+  where?: Prisma.DocumentWhereInput
+}
+
+export type DocumentUpdateToOneWithWhereWithoutCodeHistoryInput = {
+  where?: Prisma.DocumentWhereInput
+  data: Prisma.XOR<Prisma.DocumentUpdateWithoutCodeHistoryInput, Prisma.DocumentUncheckedUpdateWithoutCodeHistoryInput>
+}
+
+export type DocumentUpdateWithoutCodeHistoryInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  kind?: Prisma.EnumDocumentKindFieldUpdateOperationsInput | $Enums.DocumentKind
+  title?: Prisma.StringFieldUpdateOperationsInput | string
+  summary?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  contentFormat?: Prisma.EnumContentFormatFieldUpdateOperationsInput | $Enums.ContentFormat
+  contentJson?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  contentMarkdown?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  contentText?: Prisma.StringFieldUpdateOperationsInput | string
+  contentMarkdownCache?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  sourceType?: Prisma.EnumDocumentSourceTypeFieldUpdateOperationsInput | $Enums.DocumentSourceType
+  sourceAttachmentId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  status?: Prisma.EnumDocumentStatusFieldUpdateOperationsInput | $Enums.DocumentStatus
+  sequence?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  priority?: Prisma.NullableEnumPriorityFieldUpdateOperationsInput | $Enums.Priority | null
+  revision?: Prisma.IntFieldUpdateOperationsInput | number
+  createdVia?: Prisma.EnumDocumentActorTypeFieldUpdateOperationsInput | $Enums.DocumentActorType
+  createdMcpClientId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  lastEditedById?: Prisma.StringFieldUpdateOperationsInput | string
+  lastEditedVia?: Prisma.EnumDocumentActorTypeFieldUpdateOperationsInput | $Enums.DocumentActorType
+  lastEditedMcpClientId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  lastEditedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  archivedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  createdById?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  updatedById?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  deletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  organization?: Prisma.OrganizationUpdateOneRequiredWithoutDocumentsNestedInput
+  space?: Prisma.SpaceUpdateOneRequiredWithoutDocumentsNestedInput
+  folder?: Prisma.DocumentFolderUpdateOneWithoutDocumentsNestedInput
+  version?: Prisma.VersionUpdateOneWithoutDocumentsNestedInput
+  owner?: Prisma.UserUpdateOneWithoutOwnedDocumentsNestedInput
+  author?: Prisma.UserUpdateOneWithoutAuthoredDocumentsNestedInput
+  revisions?: Prisma.DocumentRevisionUpdateManyWithoutDocumentNestedInput
+  links?: Prisma.DocumentLinkUpdateManyWithoutDocumentNestedInput
+  chunks?: Prisma.DocumentChunkUpdateManyWithoutDocumentNestedInput
+  requirementIntakeItems?: Prisma.IntakeItemUpdateManyWithoutRequirementNestedInput
+  requirementWorkItems?: Prisma.WorkItemUpdateManyWithoutRequirementNestedInput
+}
+
+export type DocumentUncheckedUpdateWithoutCodeHistoryInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  organizationId?: Prisma.StringFieldUpdateOperationsInput | string
+  spaceId?: Prisma.StringFieldUpdateOperationsInput | string
+  folderId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  kind?: Prisma.EnumDocumentKindFieldUpdateOperationsInput | $Enums.DocumentKind
+  title?: Prisma.StringFieldUpdateOperationsInput | string
+  summary?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  contentFormat?: Prisma.EnumContentFormatFieldUpdateOperationsInput | $Enums.ContentFormat
+  contentJson?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  contentMarkdown?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  contentText?: Prisma.StringFieldUpdateOperationsInput | string
+  contentMarkdownCache?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  sourceType?: Prisma.EnumDocumentSourceTypeFieldUpdateOperationsInput | $Enums.DocumentSourceType
+  sourceAttachmentId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  status?: Prisma.EnumDocumentStatusFieldUpdateOperationsInput | $Enums.DocumentStatus
+  sequence?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  versionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  priority?: Prisma.NullableEnumPriorityFieldUpdateOperationsInput | $Enums.Priority | null
+  ownerId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  authorId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  revision?: Prisma.IntFieldUpdateOperationsInput | number
+  createdVia?: Prisma.EnumDocumentActorTypeFieldUpdateOperationsInput | $Enums.DocumentActorType
+  createdMcpClientId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  lastEditedById?: Prisma.StringFieldUpdateOperationsInput | string
+  lastEditedVia?: Prisma.EnumDocumentActorTypeFieldUpdateOperationsInput | $Enums.DocumentActorType
+  lastEditedMcpClientId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  lastEditedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  archivedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  createdById?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  updatedById?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  deletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  revisions?: Prisma.DocumentRevisionUncheckedUpdateManyWithoutDocumentNestedInput
+  links?: Prisma.DocumentLinkUncheckedUpdateManyWithoutDocumentNestedInput
+  chunks?: Prisma.DocumentChunkUncheckedUpdateManyWithoutDocumentNestedInput
+  requirementIntakeItems?: Prisma.IntakeItemUncheckedUpdateManyWithoutRequirementNestedInput
+  requirementWorkItems?: Prisma.WorkItemUncheckedUpdateManyWithoutRequirementNestedInput
+}
+
+export type DocumentCreateWithoutLinksInput = {
+  id: string
+  kind?: $Enums.DocumentKind
+  title: string
+  summary?: string | null
+  contentFormat?: $Enums.ContentFormat
+  contentJson?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  contentMarkdown?: string | null
+  contentText: string
+  contentMarkdownCache?: string | null
+  sourceType: $Enums.DocumentSourceType
+  sourceAttachmentId?: string | null
+  status?: $Enums.DocumentStatus
+  sequence?: number | null
+  priority?: $Enums.Priority | null
+  revision?: number
+  createdVia?: $Enums.DocumentActorType
+  createdMcpClientId?: string | null
+  lastEditedById: string
+  lastEditedVia?: $Enums.DocumentActorType
+  lastEditedMcpClientId?: string | null
+  lastEditedAt?: Date | string
+  archivedAt?: Date | string | null
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  createdById?: string | null
+  updatedById?: string | null
+  deletedAt?: Date | string | null
+  organization: Prisma.OrganizationCreateNestedOneWithoutDocumentsInput
+  space: Prisma.SpaceCreateNestedOneWithoutDocumentsInput
+  folder?: Prisma.DocumentFolderCreateNestedOneWithoutDocumentsInput
+  version?: Prisma.VersionCreateNestedOneWithoutDocumentsInput
+  owner?: Prisma.UserCreateNestedOneWithoutOwnedDocumentsInput
+  author?: Prisma.UserCreateNestedOneWithoutAuthoredDocumentsInput
   revisions?: Prisma.DocumentRevisionCreateNestedManyWithoutDocumentInput
   chunks?: Prisma.DocumentChunkCreateNestedManyWithoutDocumentInput
+  codeHistory?: Prisma.DocumentCodeHistoryCreateNestedManyWithoutDocumentInput
+  requirementIntakeItems?: Prisma.IntakeItemCreateNestedManyWithoutRequirementInput
+  requirementWorkItems?: Prisma.WorkItemCreateNestedManyWithoutRequirementInput
 }
 
 export type DocumentUncheckedCreateWithoutLinksInput = {
@@ -1403,12 +2852,22 @@ export type DocumentUncheckedCreateWithoutLinksInput = {
   organizationId: string
   spaceId: string
   folderId?: string | null
+  kind?: $Enums.DocumentKind
   title: string
-  contentMarkdown: string
+  summary?: string | null
+  contentFormat?: $Enums.ContentFormat
+  contentJson?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  contentMarkdown?: string | null
   contentText: string
+  contentMarkdownCache?: string | null
   sourceType: $Enums.DocumentSourceType
   sourceAttachmentId?: string | null
   status?: $Enums.DocumentStatus
+  sequence?: number | null
+  versionId?: string | null
+  priority?: $Enums.Priority | null
+  ownerId?: string | null
+  authorId?: string | null
   revision?: number
   createdVia?: $Enums.DocumentActorType
   createdMcpClientId?: string | null
@@ -1424,6 +2883,9 @@ export type DocumentUncheckedCreateWithoutLinksInput = {
   deletedAt?: Date | string | null
   revisions?: Prisma.DocumentRevisionUncheckedCreateNestedManyWithoutDocumentInput
   chunks?: Prisma.DocumentChunkUncheckedCreateNestedManyWithoutDocumentInput
+  codeHistory?: Prisma.DocumentCodeHistoryUncheckedCreateNestedManyWithoutDocumentInput
+  requirementIntakeItems?: Prisma.IntakeItemUncheckedCreateNestedManyWithoutRequirementInput
+  requirementWorkItems?: Prisma.WorkItemUncheckedCreateNestedManyWithoutRequirementInput
 }
 
 export type DocumentCreateOrConnectWithoutLinksInput = {
@@ -1444,12 +2906,19 @@ export type DocumentUpdateToOneWithWhereWithoutLinksInput = {
 
 export type DocumentUpdateWithoutLinksInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
+  kind?: Prisma.EnumDocumentKindFieldUpdateOperationsInput | $Enums.DocumentKind
   title?: Prisma.StringFieldUpdateOperationsInput | string
-  contentMarkdown?: Prisma.StringFieldUpdateOperationsInput | string
+  summary?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  contentFormat?: Prisma.EnumContentFormatFieldUpdateOperationsInput | $Enums.ContentFormat
+  contentJson?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  contentMarkdown?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   contentText?: Prisma.StringFieldUpdateOperationsInput | string
+  contentMarkdownCache?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   sourceType?: Prisma.EnumDocumentSourceTypeFieldUpdateOperationsInput | $Enums.DocumentSourceType
   sourceAttachmentId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   status?: Prisma.EnumDocumentStatusFieldUpdateOperationsInput | $Enums.DocumentStatus
+  sequence?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  priority?: Prisma.NullableEnumPriorityFieldUpdateOperationsInput | $Enums.Priority | null
   revision?: Prisma.IntFieldUpdateOperationsInput | number
   createdVia?: Prisma.EnumDocumentActorTypeFieldUpdateOperationsInput | $Enums.DocumentActorType
   createdMcpClientId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -1466,8 +2935,14 @@ export type DocumentUpdateWithoutLinksInput = {
   organization?: Prisma.OrganizationUpdateOneRequiredWithoutDocumentsNestedInput
   space?: Prisma.SpaceUpdateOneRequiredWithoutDocumentsNestedInput
   folder?: Prisma.DocumentFolderUpdateOneWithoutDocumentsNestedInput
+  version?: Prisma.VersionUpdateOneWithoutDocumentsNestedInput
+  owner?: Prisma.UserUpdateOneWithoutOwnedDocumentsNestedInput
+  author?: Prisma.UserUpdateOneWithoutAuthoredDocumentsNestedInput
   revisions?: Prisma.DocumentRevisionUpdateManyWithoutDocumentNestedInput
   chunks?: Prisma.DocumentChunkUpdateManyWithoutDocumentNestedInput
+  codeHistory?: Prisma.DocumentCodeHistoryUpdateManyWithoutDocumentNestedInput
+  requirementIntakeItems?: Prisma.IntakeItemUpdateManyWithoutRequirementNestedInput
+  requirementWorkItems?: Prisma.WorkItemUpdateManyWithoutRequirementNestedInput
 }
 
 export type DocumentUncheckedUpdateWithoutLinksInput = {
@@ -1475,12 +2950,22 @@ export type DocumentUncheckedUpdateWithoutLinksInput = {
   organizationId?: Prisma.StringFieldUpdateOperationsInput | string
   spaceId?: Prisma.StringFieldUpdateOperationsInput | string
   folderId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  kind?: Prisma.EnumDocumentKindFieldUpdateOperationsInput | $Enums.DocumentKind
   title?: Prisma.StringFieldUpdateOperationsInput | string
-  contentMarkdown?: Prisma.StringFieldUpdateOperationsInput | string
+  summary?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  contentFormat?: Prisma.EnumContentFormatFieldUpdateOperationsInput | $Enums.ContentFormat
+  contentJson?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  contentMarkdown?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   contentText?: Prisma.StringFieldUpdateOperationsInput | string
+  contentMarkdownCache?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   sourceType?: Prisma.EnumDocumentSourceTypeFieldUpdateOperationsInput | $Enums.DocumentSourceType
   sourceAttachmentId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   status?: Prisma.EnumDocumentStatusFieldUpdateOperationsInput | $Enums.DocumentStatus
+  sequence?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  versionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  priority?: Prisma.NullableEnumPriorityFieldUpdateOperationsInput | $Enums.Priority | null
+  ownerId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  authorId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   revision?: Prisma.IntFieldUpdateOperationsInput | number
   createdVia?: Prisma.EnumDocumentActorTypeFieldUpdateOperationsInput | $Enums.DocumentActorType
   createdMcpClientId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -1496,16 +2981,26 @@ export type DocumentUncheckedUpdateWithoutLinksInput = {
   deletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   revisions?: Prisma.DocumentRevisionUncheckedUpdateManyWithoutDocumentNestedInput
   chunks?: Prisma.DocumentChunkUncheckedUpdateManyWithoutDocumentNestedInput
+  codeHistory?: Prisma.DocumentCodeHistoryUncheckedUpdateManyWithoutDocumentNestedInput
+  requirementIntakeItems?: Prisma.IntakeItemUncheckedUpdateManyWithoutRequirementNestedInput
+  requirementWorkItems?: Prisma.WorkItemUncheckedUpdateManyWithoutRequirementNestedInput
 }
 
 export type DocumentCreateWithoutChunksInput = {
   id: string
+  kind?: $Enums.DocumentKind
   title: string
-  contentMarkdown: string
+  summary?: string | null
+  contentFormat?: $Enums.ContentFormat
+  contentJson?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  contentMarkdown?: string | null
   contentText: string
+  contentMarkdownCache?: string | null
   sourceType: $Enums.DocumentSourceType
   sourceAttachmentId?: string | null
   status?: $Enums.DocumentStatus
+  sequence?: number | null
+  priority?: $Enums.Priority | null
   revision?: number
   createdVia?: $Enums.DocumentActorType
   createdMcpClientId?: string | null
@@ -1522,8 +3017,14 @@ export type DocumentCreateWithoutChunksInput = {
   organization: Prisma.OrganizationCreateNestedOneWithoutDocumentsInput
   space: Prisma.SpaceCreateNestedOneWithoutDocumentsInput
   folder?: Prisma.DocumentFolderCreateNestedOneWithoutDocumentsInput
+  version?: Prisma.VersionCreateNestedOneWithoutDocumentsInput
+  owner?: Prisma.UserCreateNestedOneWithoutOwnedDocumentsInput
+  author?: Prisma.UserCreateNestedOneWithoutAuthoredDocumentsInput
   revisions?: Prisma.DocumentRevisionCreateNestedManyWithoutDocumentInput
   links?: Prisma.DocumentLinkCreateNestedManyWithoutDocumentInput
+  codeHistory?: Prisma.DocumentCodeHistoryCreateNestedManyWithoutDocumentInput
+  requirementIntakeItems?: Prisma.IntakeItemCreateNestedManyWithoutRequirementInput
+  requirementWorkItems?: Prisma.WorkItemCreateNestedManyWithoutRequirementInput
 }
 
 export type DocumentUncheckedCreateWithoutChunksInput = {
@@ -1531,12 +3032,22 @@ export type DocumentUncheckedCreateWithoutChunksInput = {
   organizationId: string
   spaceId: string
   folderId?: string | null
+  kind?: $Enums.DocumentKind
   title: string
-  contentMarkdown: string
+  summary?: string | null
+  contentFormat?: $Enums.ContentFormat
+  contentJson?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  contentMarkdown?: string | null
   contentText: string
+  contentMarkdownCache?: string | null
   sourceType: $Enums.DocumentSourceType
   sourceAttachmentId?: string | null
   status?: $Enums.DocumentStatus
+  sequence?: number | null
+  versionId?: string | null
+  priority?: $Enums.Priority | null
+  ownerId?: string | null
+  authorId?: string | null
   revision?: number
   createdVia?: $Enums.DocumentActorType
   createdMcpClientId?: string | null
@@ -1552,6 +3063,9 @@ export type DocumentUncheckedCreateWithoutChunksInput = {
   deletedAt?: Date | string | null
   revisions?: Prisma.DocumentRevisionUncheckedCreateNestedManyWithoutDocumentInput
   links?: Prisma.DocumentLinkUncheckedCreateNestedManyWithoutDocumentInput
+  codeHistory?: Prisma.DocumentCodeHistoryUncheckedCreateNestedManyWithoutDocumentInput
+  requirementIntakeItems?: Prisma.IntakeItemUncheckedCreateNestedManyWithoutRequirementInput
+  requirementWorkItems?: Prisma.WorkItemUncheckedCreateNestedManyWithoutRequirementInput
 }
 
 export type DocumentCreateOrConnectWithoutChunksInput = {
@@ -1572,12 +3086,19 @@ export type DocumentUpdateToOneWithWhereWithoutChunksInput = {
 
 export type DocumentUpdateWithoutChunksInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
+  kind?: Prisma.EnumDocumentKindFieldUpdateOperationsInput | $Enums.DocumentKind
   title?: Prisma.StringFieldUpdateOperationsInput | string
-  contentMarkdown?: Prisma.StringFieldUpdateOperationsInput | string
+  summary?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  contentFormat?: Prisma.EnumContentFormatFieldUpdateOperationsInput | $Enums.ContentFormat
+  contentJson?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  contentMarkdown?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   contentText?: Prisma.StringFieldUpdateOperationsInput | string
+  contentMarkdownCache?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   sourceType?: Prisma.EnumDocumentSourceTypeFieldUpdateOperationsInput | $Enums.DocumentSourceType
   sourceAttachmentId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   status?: Prisma.EnumDocumentStatusFieldUpdateOperationsInput | $Enums.DocumentStatus
+  sequence?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  priority?: Prisma.NullableEnumPriorityFieldUpdateOperationsInput | $Enums.Priority | null
   revision?: Prisma.IntFieldUpdateOperationsInput | number
   createdVia?: Prisma.EnumDocumentActorTypeFieldUpdateOperationsInput | $Enums.DocumentActorType
   createdMcpClientId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -1594,8 +3115,14 @@ export type DocumentUpdateWithoutChunksInput = {
   organization?: Prisma.OrganizationUpdateOneRequiredWithoutDocumentsNestedInput
   space?: Prisma.SpaceUpdateOneRequiredWithoutDocumentsNestedInput
   folder?: Prisma.DocumentFolderUpdateOneWithoutDocumentsNestedInput
+  version?: Prisma.VersionUpdateOneWithoutDocumentsNestedInput
+  owner?: Prisma.UserUpdateOneWithoutOwnedDocumentsNestedInput
+  author?: Prisma.UserUpdateOneWithoutAuthoredDocumentsNestedInput
   revisions?: Prisma.DocumentRevisionUpdateManyWithoutDocumentNestedInput
   links?: Prisma.DocumentLinkUpdateManyWithoutDocumentNestedInput
+  codeHistory?: Prisma.DocumentCodeHistoryUpdateManyWithoutDocumentNestedInput
+  requirementIntakeItems?: Prisma.IntakeItemUpdateManyWithoutRequirementNestedInput
+  requirementWorkItems?: Prisma.WorkItemUpdateManyWithoutRequirementNestedInput
 }
 
 export type DocumentUncheckedUpdateWithoutChunksInput = {
@@ -1603,12 +3130,22 @@ export type DocumentUncheckedUpdateWithoutChunksInput = {
   organizationId?: Prisma.StringFieldUpdateOperationsInput | string
   spaceId?: Prisma.StringFieldUpdateOperationsInput | string
   folderId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  kind?: Prisma.EnumDocumentKindFieldUpdateOperationsInput | $Enums.DocumentKind
   title?: Prisma.StringFieldUpdateOperationsInput | string
-  contentMarkdown?: Prisma.StringFieldUpdateOperationsInput | string
+  summary?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  contentFormat?: Prisma.EnumContentFormatFieldUpdateOperationsInput | $Enums.ContentFormat
+  contentJson?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  contentMarkdown?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   contentText?: Prisma.StringFieldUpdateOperationsInput | string
+  contentMarkdownCache?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   sourceType?: Prisma.EnumDocumentSourceTypeFieldUpdateOperationsInput | $Enums.DocumentSourceType
   sourceAttachmentId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   status?: Prisma.EnumDocumentStatusFieldUpdateOperationsInput | $Enums.DocumentStatus
+  sequence?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  versionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  priority?: Prisma.NullableEnumPriorityFieldUpdateOperationsInput | $Enums.Priority | null
+  ownerId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  authorId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   revision?: Prisma.IntFieldUpdateOperationsInput | number
   createdVia?: Prisma.EnumDocumentActorTypeFieldUpdateOperationsInput | $Enums.DocumentActorType
   createdMcpClientId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -1624,18 +3161,335 @@ export type DocumentUncheckedUpdateWithoutChunksInput = {
   deletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   revisions?: Prisma.DocumentRevisionUncheckedUpdateManyWithoutDocumentNestedInput
   links?: Prisma.DocumentLinkUncheckedUpdateManyWithoutDocumentNestedInput
+  codeHistory?: Prisma.DocumentCodeHistoryUncheckedUpdateManyWithoutDocumentNestedInput
+  requirementIntakeItems?: Prisma.IntakeItemUncheckedUpdateManyWithoutRequirementNestedInput
+  requirementWorkItems?: Prisma.WorkItemUncheckedUpdateManyWithoutRequirementNestedInput
+}
+
+export type DocumentCreateManyOwnerInput = {
+  id: string
+  organizationId: string
+  spaceId: string
+  folderId?: string | null
+  kind?: $Enums.DocumentKind
+  title: string
+  summary?: string | null
+  contentFormat?: $Enums.ContentFormat
+  contentJson?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  contentMarkdown?: string | null
+  contentText: string
+  contentMarkdownCache?: string | null
+  sourceType: $Enums.DocumentSourceType
+  sourceAttachmentId?: string | null
+  status?: $Enums.DocumentStatus
+  sequence?: number | null
+  versionId?: string | null
+  priority?: $Enums.Priority | null
+  authorId?: string | null
+  revision?: number
+  createdVia?: $Enums.DocumentActorType
+  createdMcpClientId?: string | null
+  lastEditedById: string
+  lastEditedVia?: $Enums.DocumentActorType
+  lastEditedMcpClientId?: string | null
+  lastEditedAt?: Date | string
+  archivedAt?: Date | string | null
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  createdById?: string | null
+  updatedById?: string | null
+  deletedAt?: Date | string | null
+}
+
+export type DocumentCreateManyAuthorInput = {
+  id: string
+  organizationId: string
+  spaceId: string
+  folderId?: string | null
+  kind?: $Enums.DocumentKind
+  title: string
+  summary?: string | null
+  contentFormat?: $Enums.ContentFormat
+  contentJson?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  contentMarkdown?: string | null
+  contentText: string
+  contentMarkdownCache?: string | null
+  sourceType: $Enums.DocumentSourceType
+  sourceAttachmentId?: string | null
+  status?: $Enums.DocumentStatus
+  sequence?: number | null
+  versionId?: string | null
+  priority?: $Enums.Priority | null
+  ownerId?: string | null
+  revision?: number
+  createdVia?: $Enums.DocumentActorType
+  createdMcpClientId?: string | null
+  lastEditedById: string
+  lastEditedVia?: $Enums.DocumentActorType
+  lastEditedMcpClientId?: string | null
+  lastEditedAt?: Date | string
+  archivedAt?: Date | string | null
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  createdById?: string | null
+  updatedById?: string | null
+  deletedAt?: Date | string | null
+}
+
+export type DocumentUpdateWithoutOwnerInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  kind?: Prisma.EnumDocumentKindFieldUpdateOperationsInput | $Enums.DocumentKind
+  title?: Prisma.StringFieldUpdateOperationsInput | string
+  summary?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  contentFormat?: Prisma.EnumContentFormatFieldUpdateOperationsInput | $Enums.ContentFormat
+  contentJson?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  contentMarkdown?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  contentText?: Prisma.StringFieldUpdateOperationsInput | string
+  contentMarkdownCache?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  sourceType?: Prisma.EnumDocumentSourceTypeFieldUpdateOperationsInput | $Enums.DocumentSourceType
+  sourceAttachmentId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  status?: Prisma.EnumDocumentStatusFieldUpdateOperationsInput | $Enums.DocumentStatus
+  sequence?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  priority?: Prisma.NullableEnumPriorityFieldUpdateOperationsInput | $Enums.Priority | null
+  revision?: Prisma.IntFieldUpdateOperationsInput | number
+  createdVia?: Prisma.EnumDocumentActorTypeFieldUpdateOperationsInput | $Enums.DocumentActorType
+  createdMcpClientId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  lastEditedById?: Prisma.StringFieldUpdateOperationsInput | string
+  lastEditedVia?: Prisma.EnumDocumentActorTypeFieldUpdateOperationsInput | $Enums.DocumentActorType
+  lastEditedMcpClientId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  lastEditedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  archivedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  createdById?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  updatedById?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  deletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  organization?: Prisma.OrganizationUpdateOneRequiredWithoutDocumentsNestedInput
+  space?: Prisma.SpaceUpdateOneRequiredWithoutDocumentsNestedInput
+  folder?: Prisma.DocumentFolderUpdateOneWithoutDocumentsNestedInput
+  version?: Prisma.VersionUpdateOneWithoutDocumentsNestedInput
+  author?: Prisma.UserUpdateOneWithoutAuthoredDocumentsNestedInput
+  revisions?: Prisma.DocumentRevisionUpdateManyWithoutDocumentNestedInput
+  links?: Prisma.DocumentLinkUpdateManyWithoutDocumentNestedInput
+  chunks?: Prisma.DocumentChunkUpdateManyWithoutDocumentNestedInput
+  codeHistory?: Prisma.DocumentCodeHistoryUpdateManyWithoutDocumentNestedInput
+  requirementIntakeItems?: Prisma.IntakeItemUpdateManyWithoutRequirementNestedInput
+  requirementWorkItems?: Prisma.WorkItemUpdateManyWithoutRequirementNestedInput
+}
+
+export type DocumentUncheckedUpdateWithoutOwnerInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  organizationId?: Prisma.StringFieldUpdateOperationsInput | string
+  spaceId?: Prisma.StringFieldUpdateOperationsInput | string
+  folderId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  kind?: Prisma.EnumDocumentKindFieldUpdateOperationsInput | $Enums.DocumentKind
+  title?: Prisma.StringFieldUpdateOperationsInput | string
+  summary?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  contentFormat?: Prisma.EnumContentFormatFieldUpdateOperationsInput | $Enums.ContentFormat
+  contentJson?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  contentMarkdown?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  contentText?: Prisma.StringFieldUpdateOperationsInput | string
+  contentMarkdownCache?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  sourceType?: Prisma.EnumDocumentSourceTypeFieldUpdateOperationsInput | $Enums.DocumentSourceType
+  sourceAttachmentId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  status?: Prisma.EnumDocumentStatusFieldUpdateOperationsInput | $Enums.DocumentStatus
+  sequence?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  versionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  priority?: Prisma.NullableEnumPriorityFieldUpdateOperationsInput | $Enums.Priority | null
+  authorId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  revision?: Prisma.IntFieldUpdateOperationsInput | number
+  createdVia?: Prisma.EnumDocumentActorTypeFieldUpdateOperationsInput | $Enums.DocumentActorType
+  createdMcpClientId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  lastEditedById?: Prisma.StringFieldUpdateOperationsInput | string
+  lastEditedVia?: Prisma.EnumDocumentActorTypeFieldUpdateOperationsInput | $Enums.DocumentActorType
+  lastEditedMcpClientId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  lastEditedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  archivedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  createdById?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  updatedById?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  deletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  revisions?: Prisma.DocumentRevisionUncheckedUpdateManyWithoutDocumentNestedInput
+  links?: Prisma.DocumentLinkUncheckedUpdateManyWithoutDocumentNestedInput
+  chunks?: Prisma.DocumentChunkUncheckedUpdateManyWithoutDocumentNestedInput
+  codeHistory?: Prisma.DocumentCodeHistoryUncheckedUpdateManyWithoutDocumentNestedInput
+  requirementIntakeItems?: Prisma.IntakeItemUncheckedUpdateManyWithoutRequirementNestedInput
+  requirementWorkItems?: Prisma.WorkItemUncheckedUpdateManyWithoutRequirementNestedInput
+}
+
+export type DocumentUncheckedUpdateManyWithoutOwnerInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  organizationId?: Prisma.StringFieldUpdateOperationsInput | string
+  spaceId?: Prisma.StringFieldUpdateOperationsInput | string
+  folderId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  kind?: Prisma.EnumDocumentKindFieldUpdateOperationsInput | $Enums.DocumentKind
+  title?: Prisma.StringFieldUpdateOperationsInput | string
+  summary?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  contentFormat?: Prisma.EnumContentFormatFieldUpdateOperationsInput | $Enums.ContentFormat
+  contentJson?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  contentMarkdown?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  contentText?: Prisma.StringFieldUpdateOperationsInput | string
+  contentMarkdownCache?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  sourceType?: Prisma.EnumDocumentSourceTypeFieldUpdateOperationsInput | $Enums.DocumentSourceType
+  sourceAttachmentId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  status?: Prisma.EnumDocumentStatusFieldUpdateOperationsInput | $Enums.DocumentStatus
+  sequence?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  versionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  priority?: Prisma.NullableEnumPriorityFieldUpdateOperationsInput | $Enums.Priority | null
+  authorId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  revision?: Prisma.IntFieldUpdateOperationsInput | number
+  createdVia?: Prisma.EnumDocumentActorTypeFieldUpdateOperationsInput | $Enums.DocumentActorType
+  createdMcpClientId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  lastEditedById?: Prisma.StringFieldUpdateOperationsInput | string
+  lastEditedVia?: Prisma.EnumDocumentActorTypeFieldUpdateOperationsInput | $Enums.DocumentActorType
+  lastEditedMcpClientId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  lastEditedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  archivedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  createdById?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  updatedById?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  deletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+}
+
+export type DocumentUpdateWithoutAuthorInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  kind?: Prisma.EnumDocumentKindFieldUpdateOperationsInput | $Enums.DocumentKind
+  title?: Prisma.StringFieldUpdateOperationsInput | string
+  summary?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  contentFormat?: Prisma.EnumContentFormatFieldUpdateOperationsInput | $Enums.ContentFormat
+  contentJson?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  contentMarkdown?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  contentText?: Prisma.StringFieldUpdateOperationsInput | string
+  contentMarkdownCache?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  sourceType?: Prisma.EnumDocumentSourceTypeFieldUpdateOperationsInput | $Enums.DocumentSourceType
+  sourceAttachmentId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  status?: Prisma.EnumDocumentStatusFieldUpdateOperationsInput | $Enums.DocumentStatus
+  sequence?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  priority?: Prisma.NullableEnumPriorityFieldUpdateOperationsInput | $Enums.Priority | null
+  revision?: Prisma.IntFieldUpdateOperationsInput | number
+  createdVia?: Prisma.EnumDocumentActorTypeFieldUpdateOperationsInput | $Enums.DocumentActorType
+  createdMcpClientId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  lastEditedById?: Prisma.StringFieldUpdateOperationsInput | string
+  lastEditedVia?: Prisma.EnumDocumentActorTypeFieldUpdateOperationsInput | $Enums.DocumentActorType
+  lastEditedMcpClientId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  lastEditedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  archivedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  createdById?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  updatedById?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  deletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  organization?: Prisma.OrganizationUpdateOneRequiredWithoutDocumentsNestedInput
+  space?: Prisma.SpaceUpdateOneRequiredWithoutDocumentsNestedInput
+  folder?: Prisma.DocumentFolderUpdateOneWithoutDocumentsNestedInput
+  version?: Prisma.VersionUpdateOneWithoutDocumentsNestedInput
+  owner?: Prisma.UserUpdateOneWithoutOwnedDocumentsNestedInput
+  revisions?: Prisma.DocumentRevisionUpdateManyWithoutDocumentNestedInput
+  links?: Prisma.DocumentLinkUpdateManyWithoutDocumentNestedInput
+  chunks?: Prisma.DocumentChunkUpdateManyWithoutDocumentNestedInput
+  codeHistory?: Prisma.DocumentCodeHistoryUpdateManyWithoutDocumentNestedInput
+  requirementIntakeItems?: Prisma.IntakeItemUpdateManyWithoutRequirementNestedInput
+  requirementWorkItems?: Prisma.WorkItemUpdateManyWithoutRequirementNestedInput
+}
+
+export type DocumentUncheckedUpdateWithoutAuthorInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  organizationId?: Prisma.StringFieldUpdateOperationsInput | string
+  spaceId?: Prisma.StringFieldUpdateOperationsInput | string
+  folderId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  kind?: Prisma.EnumDocumentKindFieldUpdateOperationsInput | $Enums.DocumentKind
+  title?: Prisma.StringFieldUpdateOperationsInput | string
+  summary?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  contentFormat?: Prisma.EnumContentFormatFieldUpdateOperationsInput | $Enums.ContentFormat
+  contentJson?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  contentMarkdown?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  contentText?: Prisma.StringFieldUpdateOperationsInput | string
+  contentMarkdownCache?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  sourceType?: Prisma.EnumDocumentSourceTypeFieldUpdateOperationsInput | $Enums.DocumentSourceType
+  sourceAttachmentId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  status?: Prisma.EnumDocumentStatusFieldUpdateOperationsInput | $Enums.DocumentStatus
+  sequence?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  versionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  priority?: Prisma.NullableEnumPriorityFieldUpdateOperationsInput | $Enums.Priority | null
+  ownerId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  revision?: Prisma.IntFieldUpdateOperationsInput | number
+  createdVia?: Prisma.EnumDocumentActorTypeFieldUpdateOperationsInput | $Enums.DocumentActorType
+  createdMcpClientId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  lastEditedById?: Prisma.StringFieldUpdateOperationsInput | string
+  lastEditedVia?: Prisma.EnumDocumentActorTypeFieldUpdateOperationsInput | $Enums.DocumentActorType
+  lastEditedMcpClientId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  lastEditedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  archivedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  createdById?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  updatedById?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  deletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  revisions?: Prisma.DocumentRevisionUncheckedUpdateManyWithoutDocumentNestedInput
+  links?: Prisma.DocumentLinkUncheckedUpdateManyWithoutDocumentNestedInput
+  chunks?: Prisma.DocumentChunkUncheckedUpdateManyWithoutDocumentNestedInput
+  codeHistory?: Prisma.DocumentCodeHistoryUncheckedUpdateManyWithoutDocumentNestedInput
+  requirementIntakeItems?: Prisma.IntakeItemUncheckedUpdateManyWithoutRequirementNestedInput
+  requirementWorkItems?: Prisma.WorkItemUncheckedUpdateManyWithoutRequirementNestedInput
+}
+
+export type DocumentUncheckedUpdateManyWithoutAuthorInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  organizationId?: Prisma.StringFieldUpdateOperationsInput | string
+  spaceId?: Prisma.StringFieldUpdateOperationsInput | string
+  folderId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  kind?: Prisma.EnumDocumentKindFieldUpdateOperationsInput | $Enums.DocumentKind
+  title?: Prisma.StringFieldUpdateOperationsInput | string
+  summary?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  contentFormat?: Prisma.EnumContentFormatFieldUpdateOperationsInput | $Enums.ContentFormat
+  contentJson?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  contentMarkdown?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  contentText?: Prisma.StringFieldUpdateOperationsInput | string
+  contentMarkdownCache?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  sourceType?: Prisma.EnumDocumentSourceTypeFieldUpdateOperationsInput | $Enums.DocumentSourceType
+  sourceAttachmentId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  status?: Prisma.EnumDocumentStatusFieldUpdateOperationsInput | $Enums.DocumentStatus
+  sequence?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  versionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  priority?: Prisma.NullableEnumPriorityFieldUpdateOperationsInput | $Enums.Priority | null
+  ownerId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  revision?: Prisma.IntFieldUpdateOperationsInput | number
+  createdVia?: Prisma.EnumDocumentActorTypeFieldUpdateOperationsInput | $Enums.DocumentActorType
+  createdMcpClientId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  lastEditedById?: Prisma.StringFieldUpdateOperationsInput | string
+  lastEditedVia?: Prisma.EnumDocumentActorTypeFieldUpdateOperationsInput | $Enums.DocumentActorType
+  lastEditedMcpClientId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  lastEditedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  archivedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  createdById?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  updatedById?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  deletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
 }
 
 export type DocumentCreateManyOrganizationInput = {
   id: string
   spaceId: string
   folderId?: string | null
+  kind?: $Enums.DocumentKind
   title: string
-  contentMarkdown: string
+  summary?: string | null
+  contentFormat?: $Enums.ContentFormat
+  contentJson?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  contentMarkdown?: string | null
   contentText: string
+  contentMarkdownCache?: string | null
   sourceType: $Enums.DocumentSourceType
   sourceAttachmentId?: string | null
   status?: $Enums.DocumentStatus
+  sequence?: number | null
+  versionId?: string | null
+  priority?: $Enums.Priority | null
+  ownerId?: string | null
+  authorId?: string | null
   revision?: number
   createdVia?: $Enums.DocumentActorType
   createdMcpClientId?: string | null
@@ -1653,12 +3507,19 @@ export type DocumentCreateManyOrganizationInput = {
 
 export type DocumentUpdateWithoutOrganizationInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
+  kind?: Prisma.EnumDocumentKindFieldUpdateOperationsInput | $Enums.DocumentKind
   title?: Prisma.StringFieldUpdateOperationsInput | string
-  contentMarkdown?: Prisma.StringFieldUpdateOperationsInput | string
+  summary?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  contentFormat?: Prisma.EnumContentFormatFieldUpdateOperationsInput | $Enums.ContentFormat
+  contentJson?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  contentMarkdown?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   contentText?: Prisma.StringFieldUpdateOperationsInput | string
+  contentMarkdownCache?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   sourceType?: Prisma.EnumDocumentSourceTypeFieldUpdateOperationsInput | $Enums.DocumentSourceType
   sourceAttachmentId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   status?: Prisma.EnumDocumentStatusFieldUpdateOperationsInput | $Enums.DocumentStatus
+  sequence?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  priority?: Prisma.NullableEnumPriorityFieldUpdateOperationsInput | $Enums.Priority | null
   revision?: Prisma.IntFieldUpdateOperationsInput | number
   createdVia?: Prisma.EnumDocumentActorTypeFieldUpdateOperationsInput | $Enums.DocumentActorType
   createdMcpClientId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -1674,21 +3535,37 @@ export type DocumentUpdateWithoutOrganizationInput = {
   deletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   space?: Prisma.SpaceUpdateOneRequiredWithoutDocumentsNestedInput
   folder?: Prisma.DocumentFolderUpdateOneWithoutDocumentsNestedInput
+  version?: Prisma.VersionUpdateOneWithoutDocumentsNestedInput
+  owner?: Prisma.UserUpdateOneWithoutOwnedDocumentsNestedInput
+  author?: Prisma.UserUpdateOneWithoutAuthoredDocumentsNestedInput
   revisions?: Prisma.DocumentRevisionUpdateManyWithoutDocumentNestedInput
   links?: Prisma.DocumentLinkUpdateManyWithoutDocumentNestedInput
   chunks?: Prisma.DocumentChunkUpdateManyWithoutDocumentNestedInput
+  codeHistory?: Prisma.DocumentCodeHistoryUpdateManyWithoutDocumentNestedInput
+  requirementIntakeItems?: Prisma.IntakeItemUpdateManyWithoutRequirementNestedInput
+  requirementWorkItems?: Prisma.WorkItemUpdateManyWithoutRequirementNestedInput
 }
 
 export type DocumentUncheckedUpdateWithoutOrganizationInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   spaceId?: Prisma.StringFieldUpdateOperationsInput | string
   folderId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  kind?: Prisma.EnumDocumentKindFieldUpdateOperationsInput | $Enums.DocumentKind
   title?: Prisma.StringFieldUpdateOperationsInput | string
-  contentMarkdown?: Prisma.StringFieldUpdateOperationsInput | string
+  summary?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  contentFormat?: Prisma.EnumContentFormatFieldUpdateOperationsInput | $Enums.ContentFormat
+  contentJson?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  contentMarkdown?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   contentText?: Prisma.StringFieldUpdateOperationsInput | string
+  contentMarkdownCache?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   sourceType?: Prisma.EnumDocumentSourceTypeFieldUpdateOperationsInput | $Enums.DocumentSourceType
   sourceAttachmentId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   status?: Prisma.EnumDocumentStatusFieldUpdateOperationsInput | $Enums.DocumentStatus
+  sequence?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  versionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  priority?: Prisma.NullableEnumPriorityFieldUpdateOperationsInput | $Enums.Priority | null
+  ownerId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  authorId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   revision?: Prisma.IntFieldUpdateOperationsInput | number
   createdVia?: Prisma.EnumDocumentActorTypeFieldUpdateOperationsInput | $Enums.DocumentActorType
   createdMcpClientId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -1705,18 +3582,31 @@ export type DocumentUncheckedUpdateWithoutOrganizationInput = {
   revisions?: Prisma.DocumentRevisionUncheckedUpdateManyWithoutDocumentNestedInput
   links?: Prisma.DocumentLinkUncheckedUpdateManyWithoutDocumentNestedInput
   chunks?: Prisma.DocumentChunkUncheckedUpdateManyWithoutDocumentNestedInput
+  codeHistory?: Prisma.DocumentCodeHistoryUncheckedUpdateManyWithoutDocumentNestedInput
+  requirementIntakeItems?: Prisma.IntakeItemUncheckedUpdateManyWithoutRequirementNestedInput
+  requirementWorkItems?: Prisma.WorkItemUncheckedUpdateManyWithoutRequirementNestedInput
 }
 
 export type DocumentUncheckedUpdateManyWithoutOrganizationInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   spaceId?: Prisma.StringFieldUpdateOperationsInput | string
   folderId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  kind?: Prisma.EnumDocumentKindFieldUpdateOperationsInput | $Enums.DocumentKind
   title?: Prisma.StringFieldUpdateOperationsInput | string
-  contentMarkdown?: Prisma.StringFieldUpdateOperationsInput | string
+  summary?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  contentFormat?: Prisma.EnumContentFormatFieldUpdateOperationsInput | $Enums.ContentFormat
+  contentJson?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  contentMarkdown?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   contentText?: Prisma.StringFieldUpdateOperationsInput | string
+  contentMarkdownCache?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   sourceType?: Prisma.EnumDocumentSourceTypeFieldUpdateOperationsInput | $Enums.DocumentSourceType
   sourceAttachmentId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   status?: Prisma.EnumDocumentStatusFieldUpdateOperationsInput | $Enums.DocumentStatus
+  sequence?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  versionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  priority?: Prisma.NullableEnumPriorityFieldUpdateOperationsInput | $Enums.Priority | null
+  ownerId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  authorId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   revision?: Prisma.IntFieldUpdateOperationsInput | number
   createdVia?: Prisma.EnumDocumentActorTypeFieldUpdateOperationsInput | $Enums.DocumentActorType
   createdMcpClientId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -1736,12 +3626,22 @@ export type DocumentCreateManySpaceInput = {
   id: string
   organizationId: string
   folderId?: string | null
+  kind?: $Enums.DocumentKind
   title: string
-  contentMarkdown: string
+  summary?: string | null
+  contentFormat?: $Enums.ContentFormat
+  contentJson?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  contentMarkdown?: string | null
   contentText: string
+  contentMarkdownCache?: string | null
   sourceType: $Enums.DocumentSourceType
   sourceAttachmentId?: string | null
   status?: $Enums.DocumentStatus
+  sequence?: number | null
+  versionId?: string | null
+  priority?: $Enums.Priority | null
+  ownerId?: string | null
+  authorId?: string | null
   revision?: number
   createdVia?: $Enums.DocumentActorType
   createdMcpClientId?: string | null
@@ -1759,12 +3659,19 @@ export type DocumentCreateManySpaceInput = {
 
 export type DocumentUpdateWithoutSpaceInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
+  kind?: Prisma.EnumDocumentKindFieldUpdateOperationsInput | $Enums.DocumentKind
   title?: Prisma.StringFieldUpdateOperationsInput | string
-  contentMarkdown?: Prisma.StringFieldUpdateOperationsInput | string
+  summary?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  contentFormat?: Prisma.EnumContentFormatFieldUpdateOperationsInput | $Enums.ContentFormat
+  contentJson?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  contentMarkdown?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   contentText?: Prisma.StringFieldUpdateOperationsInput | string
+  contentMarkdownCache?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   sourceType?: Prisma.EnumDocumentSourceTypeFieldUpdateOperationsInput | $Enums.DocumentSourceType
   sourceAttachmentId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   status?: Prisma.EnumDocumentStatusFieldUpdateOperationsInput | $Enums.DocumentStatus
+  sequence?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  priority?: Prisma.NullableEnumPriorityFieldUpdateOperationsInput | $Enums.Priority | null
   revision?: Prisma.IntFieldUpdateOperationsInput | number
   createdVia?: Prisma.EnumDocumentActorTypeFieldUpdateOperationsInput | $Enums.DocumentActorType
   createdMcpClientId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -1780,21 +3687,37 @@ export type DocumentUpdateWithoutSpaceInput = {
   deletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   organization?: Prisma.OrganizationUpdateOneRequiredWithoutDocumentsNestedInput
   folder?: Prisma.DocumentFolderUpdateOneWithoutDocumentsNestedInput
+  version?: Prisma.VersionUpdateOneWithoutDocumentsNestedInput
+  owner?: Prisma.UserUpdateOneWithoutOwnedDocumentsNestedInput
+  author?: Prisma.UserUpdateOneWithoutAuthoredDocumentsNestedInput
   revisions?: Prisma.DocumentRevisionUpdateManyWithoutDocumentNestedInput
   links?: Prisma.DocumentLinkUpdateManyWithoutDocumentNestedInput
   chunks?: Prisma.DocumentChunkUpdateManyWithoutDocumentNestedInput
+  codeHistory?: Prisma.DocumentCodeHistoryUpdateManyWithoutDocumentNestedInput
+  requirementIntakeItems?: Prisma.IntakeItemUpdateManyWithoutRequirementNestedInput
+  requirementWorkItems?: Prisma.WorkItemUpdateManyWithoutRequirementNestedInput
 }
 
 export type DocumentUncheckedUpdateWithoutSpaceInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   organizationId?: Prisma.StringFieldUpdateOperationsInput | string
   folderId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  kind?: Prisma.EnumDocumentKindFieldUpdateOperationsInput | $Enums.DocumentKind
   title?: Prisma.StringFieldUpdateOperationsInput | string
-  contentMarkdown?: Prisma.StringFieldUpdateOperationsInput | string
+  summary?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  contentFormat?: Prisma.EnumContentFormatFieldUpdateOperationsInput | $Enums.ContentFormat
+  contentJson?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  contentMarkdown?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   contentText?: Prisma.StringFieldUpdateOperationsInput | string
+  contentMarkdownCache?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   sourceType?: Prisma.EnumDocumentSourceTypeFieldUpdateOperationsInput | $Enums.DocumentSourceType
   sourceAttachmentId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   status?: Prisma.EnumDocumentStatusFieldUpdateOperationsInput | $Enums.DocumentStatus
+  sequence?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  versionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  priority?: Prisma.NullableEnumPriorityFieldUpdateOperationsInput | $Enums.Priority | null
+  ownerId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  authorId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   revision?: Prisma.IntFieldUpdateOperationsInput | number
   createdVia?: Prisma.EnumDocumentActorTypeFieldUpdateOperationsInput | $Enums.DocumentActorType
   createdMcpClientId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -1811,18 +3734,183 @@ export type DocumentUncheckedUpdateWithoutSpaceInput = {
   revisions?: Prisma.DocumentRevisionUncheckedUpdateManyWithoutDocumentNestedInput
   links?: Prisma.DocumentLinkUncheckedUpdateManyWithoutDocumentNestedInput
   chunks?: Prisma.DocumentChunkUncheckedUpdateManyWithoutDocumentNestedInput
+  codeHistory?: Prisma.DocumentCodeHistoryUncheckedUpdateManyWithoutDocumentNestedInput
+  requirementIntakeItems?: Prisma.IntakeItemUncheckedUpdateManyWithoutRequirementNestedInput
+  requirementWorkItems?: Prisma.WorkItemUncheckedUpdateManyWithoutRequirementNestedInput
 }
 
 export type DocumentUncheckedUpdateManyWithoutSpaceInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   organizationId?: Prisma.StringFieldUpdateOperationsInput | string
   folderId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  kind?: Prisma.EnumDocumentKindFieldUpdateOperationsInput | $Enums.DocumentKind
   title?: Prisma.StringFieldUpdateOperationsInput | string
-  contentMarkdown?: Prisma.StringFieldUpdateOperationsInput | string
+  summary?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  contentFormat?: Prisma.EnumContentFormatFieldUpdateOperationsInput | $Enums.ContentFormat
+  contentJson?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  contentMarkdown?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   contentText?: Prisma.StringFieldUpdateOperationsInput | string
+  contentMarkdownCache?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   sourceType?: Prisma.EnumDocumentSourceTypeFieldUpdateOperationsInput | $Enums.DocumentSourceType
   sourceAttachmentId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   status?: Prisma.EnumDocumentStatusFieldUpdateOperationsInput | $Enums.DocumentStatus
+  sequence?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  versionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  priority?: Prisma.NullableEnumPriorityFieldUpdateOperationsInput | $Enums.Priority | null
+  ownerId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  authorId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  revision?: Prisma.IntFieldUpdateOperationsInput | number
+  createdVia?: Prisma.EnumDocumentActorTypeFieldUpdateOperationsInput | $Enums.DocumentActorType
+  createdMcpClientId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  lastEditedById?: Prisma.StringFieldUpdateOperationsInput | string
+  lastEditedVia?: Prisma.EnumDocumentActorTypeFieldUpdateOperationsInput | $Enums.DocumentActorType
+  lastEditedMcpClientId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  lastEditedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  archivedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  createdById?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  updatedById?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  deletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+}
+
+export type DocumentCreateManyVersionInput = {
+  id: string
+  organizationId: string
+  spaceId: string
+  folderId?: string | null
+  kind?: $Enums.DocumentKind
+  title: string
+  summary?: string | null
+  contentFormat?: $Enums.ContentFormat
+  contentJson?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  contentMarkdown?: string | null
+  contentText: string
+  contentMarkdownCache?: string | null
+  sourceType: $Enums.DocumentSourceType
+  sourceAttachmentId?: string | null
+  status?: $Enums.DocumentStatus
+  sequence?: number | null
+  priority?: $Enums.Priority | null
+  ownerId?: string | null
+  authorId?: string | null
+  revision?: number
+  createdVia?: $Enums.DocumentActorType
+  createdMcpClientId?: string | null
+  lastEditedById: string
+  lastEditedVia?: $Enums.DocumentActorType
+  lastEditedMcpClientId?: string | null
+  lastEditedAt?: Date | string
+  archivedAt?: Date | string | null
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  createdById?: string | null
+  updatedById?: string | null
+  deletedAt?: Date | string | null
+}
+
+export type DocumentUpdateWithoutVersionInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  kind?: Prisma.EnumDocumentKindFieldUpdateOperationsInput | $Enums.DocumentKind
+  title?: Prisma.StringFieldUpdateOperationsInput | string
+  summary?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  contentFormat?: Prisma.EnumContentFormatFieldUpdateOperationsInput | $Enums.ContentFormat
+  contentJson?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  contentMarkdown?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  contentText?: Prisma.StringFieldUpdateOperationsInput | string
+  contentMarkdownCache?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  sourceType?: Prisma.EnumDocumentSourceTypeFieldUpdateOperationsInput | $Enums.DocumentSourceType
+  sourceAttachmentId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  status?: Prisma.EnumDocumentStatusFieldUpdateOperationsInput | $Enums.DocumentStatus
+  sequence?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  priority?: Prisma.NullableEnumPriorityFieldUpdateOperationsInput | $Enums.Priority | null
+  revision?: Prisma.IntFieldUpdateOperationsInput | number
+  createdVia?: Prisma.EnumDocumentActorTypeFieldUpdateOperationsInput | $Enums.DocumentActorType
+  createdMcpClientId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  lastEditedById?: Prisma.StringFieldUpdateOperationsInput | string
+  lastEditedVia?: Prisma.EnumDocumentActorTypeFieldUpdateOperationsInput | $Enums.DocumentActorType
+  lastEditedMcpClientId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  lastEditedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  archivedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  createdById?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  updatedById?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  deletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  organization?: Prisma.OrganizationUpdateOneRequiredWithoutDocumentsNestedInput
+  space?: Prisma.SpaceUpdateOneRequiredWithoutDocumentsNestedInput
+  folder?: Prisma.DocumentFolderUpdateOneWithoutDocumentsNestedInput
+  owner?: Prisma.UserUpdateOneWithoutOwnedDocumentsNestedInput
+  author?: Prisma.UserUpdateOneWithoutAuthoredDocumentsNestedInput
+  revisions?: Prisma.DocumentRevisionUpdateManyWithoutDocumentNestedInput
+  links?: Prisma.DocumentLinkUpdateManyWithoutDocumentNestedInput
+  chunks?: Prisma.DocumentChunkUpdateManyWithoutDocumentNestedInput
+  codeHistory?: Prisma.DocumentCodeHistoryUpdateManyWithoutDocumentNestedInput
+  requirementIntakeItems?: Prisma.IntakeItemUpdateManyWithoutRequirementNestedInput
+  requirementWorkItems?: Prisma.WorkItemUpdateManyWithoutRequirementNestedInput
+}
+
+export type DocumentUncheckedUpdateWithoutVersionInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  organizationId?: Prisma.StringFieldUpdateOperationsInput | string
+  spaceId?: Prisma.StringFieldUpdateOperationsInput | string
+  folderId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  kind?: Prisma.EnumDocumentKindFieldUpdateOperationsInput | $Enums.DocumentKind
+  title?: Prisma.StringFieldUpdateOperationsInput | string
+  summary?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  contentFormat?: Prisma.EnumContentFormatFieldUpdateOperationsInput | $Enums.ContentFormat
+  contentJson?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  contentMarkdown?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  contentText?: Prisma.StringFieldUpdateOperationsInput | string
+  contentMarkdownCache?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  sourceType?: Prisma.EnumDocumentSourceTypeFieldUpdateOperationsInput | $Enums.DocumentSourceType
+  sourceAttachmentId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  status?: Prisma.EnumDocumentStatusFieldUpdateOperationsInput | $Enums.DocumentStatus
+  sequence?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  priority?: Prisma.NullableEnumPriorityFieldUpdateOperationsInput | $Enums.Priority | null
+  ownerId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  authorId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  revision?: Prisma.IntFieldUpdateOperationsInput | number
+  createdVia?: Prisma.EnumDocumentActorTypeFieldUpdateOperationsInput | $Enums.DocumentActorType
+  createdMcpClientId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  lastEditedById?: Prisma.StringFieldUpdateOperationsInput | string
+  lastEditedVia?: Prisma.EnumDocumentActorTypeFieldUpdateOperationsInput | $Enums.DocumentActorType
+  lastEditedMcpClientId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  lastEditedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  archivedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  createdById?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  updatedById?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  deletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  revisions?: Prisma.DocumentRevisionUncheckedUpdateManyWithoutDocumentNestedInput
+  links?: Prisma.DocumentLinkUncheckedUpdateManyWithoutDocumentNestedInput
+  chunks?: Prisma.DocumentChunkUncheckedUpdateManyWithoutDocumentNestedInput
+  codeHistory?: Prisma.DocumentCodeHistoryUncheckedUpdateManyWithoutDocumentNestedInput
+  requirementIntakeItems?: Prisma.IntakeItemUncheckedUpdateManyWithoutRequirementNestedInput
+  requirementWorkItems?: Prisma.WorkItemUncheckedUpdateManyWithoutRequirementNestedInput
+}
+
+export type DocumentUncheckedUpdateManyWithoutVersionInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  organizationId?: Prisma.StringFieldUpdateOperationsInput | string
+  spaceId?: Prisma.StringFieldUpdateOperationsInput | string
+  folderId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  kind?: Prisma.EnumDocumentKindFieldUpdateOperationsInput | $Enums.DocumentKind
+  title?: Prisma.StringFieldUpdateOperationsInput | string
+  summary?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  contentFormat?: Prisma.EnumContentFormatFieldUpdateOperationsInput | $Enums.ContentFormat
+  contentJson?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  contentMarkdown?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  contentText?: Prisma.StringFieldUpdateOperationsInput | string
+  contentMarkdownCache?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  sourceType?: Prisma.EnumDocumentSourceTypeFieldUpdateOperationsInput | $Enums.DocumentSourceType
+  sourceAttachmentId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  status?: Prisma.EnumDocumentStatusFieldUpdateOperationsInput | $Enums.DocumentStatus
+  sequence?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  priority?: Prisma.NullableEnumPriorityFieldUpdateOperationsInput | $Enums.Priority | null
+  ownerId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  authorId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   revision?: Prisma.IntFieldUpdateOperationsInput | number
   createdVia?: Prisma.EnumDocumentActorTypeFieldUpdateOperationsInput | $Enums.DocumentActorType
   createdMcpClientId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -1842,12 +3930,22 @@ export type DocumentCreateManyFolderInput = {
   id: string
   organizationId: string
   spaceId: string
+  kind?: $Enums.DocumentKind
   title: string
-  contentMarkdown: string
+  summary?: string | null
+  contentFormat?: $Enums.ContentFormat
+  contentJson?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  contentMarkdown?: string | null
   contentText: string
+  contentMarkdownCache?: string | null
   sourceType: $Enums.DocumentSourceType
   sourceAttachmentId?: string | null
   status?: $Enums.DocumentStatus
+  sequence?: number | null
+  versionId?: string | null
+  priority?: $Enums.Priority | null
+  ownerId?: string | null
+  authorId?: string | null
   revision?: number
   createdVia?: $Enums.DocumentActorType
   createdMcpClientId?: string | null
@@ -1865,12 +3963,19 @@ export type DocumentCreateManyFolderInput = {
 
 export type DocumentUpdateWithoutFolderInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
+  kind?: Prisma.EnumDocumentKindFieldUpdateOperationsInput | $Enums.DocumentKind
   title?: Prisma.StringFieldUpdateOperationsInput | string
-  contentMarkdown?: Prisma.StringFieldUpdateOperationsInput | string
+  summary?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  contentFormat?: Prisma.EnumContentFormatFieldUpdateOperationsInput | $Enums.ContentFormat
+  contentJson?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  contentMarkdown?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   contentText?: Prisma.StringFieldUpdateOperationsInput | string
+  contentMarkdownCache?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   sourceType?: Prisma.EnumDocumentSourceTypeFieldUpdateOperationsInput | $Enums.DocumentSourceType
   sourceAttachmentId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   status?: Prisma.EnumDocumentStatusFieldUpdateOperationsInput | $Enums.DocumentStatus
+  sequence?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  priority?: Prisma.NullableEnumPriorityFieldUpdateOperationsInput | $Enums.Priority | null
   revision?: Prisma.IntFieldUpdateOperationsInput | number
   createdVia?: Prisma.EnumDocumentActorTypeFieldUpdateOperationsInput | $Enums.DocumentActorType
   createdMcpClientId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -1886,21 +3991,37 @@ export type DocumentUpdateWithoutFolderInput = {
   deletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   organization?: Prisma.OrganizationUpdateOneRequiredWithoutDocumentsNestedInput
   space?: Prisma.SpaceUpdateOneRequiredWithoutDocumentsNestedInput
+  version?: Prisma.VersionUpdateOneWithoutDocumentsNestedInput
+  owner?: Prisma.UserUpdateOneWithoutOwnedDocumentsNestedInput
+  author?: Prisma.UserUpdateOneWithoutAuthoredDocumentsNestedInput
   revisions?: Prisma.DocumentRevisionUpdateManyWithoutDocumentNestedInput
   links?: Prisma.DocumentLinkUpdateManyWithoutDocumentNestedInput
   chunks?: Prisma.DocumentChunkUpdateManyWithoutDocumentNestedInput
+  codeHistory?: Prisma.DocumentCodeHistoryUpdateManyWithoutDocumentNestedInput
+  requirementIntakeItems?: Prisma.IntakeItemUpdateManyWithoutRequirementNestedInput
+  requirementWorkItems?: Prisma.WorkItemUpdateManyWithoutRequirementNestedInput
 }
 
 export type DocumentUncheckedUpdateWithoutFolderInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   organizationId?: Prisma.StringFieldUpdateOperationsInput | string
   spaceId?: Prisma.StringFieldUpdateOperationsInput | string
+  kind?: Prisma.EnumDocumentKindFieldUpdateOperationsInput | $Enums.DocumentKind
   title?: Prisma.StringFieldUpdateOperationsInput | string
-  contentMarkdown?: Prisma.StringFieldUpdateOperationsInput | string
+  summary?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  contentFormat?: Prisma.EnumContentFormatFieldUpdateOperationsInput | $Enums.ContentFormat
+  contentJson?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  contentMarkdown?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   contentText?: Prisma.StringFieldUpdateOperationsInput | string
+  contentMarkdownCache?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   sourceType?: Prisma.EnumDocumentSourceTypeFieldUpdateOperationsInput | $Enums.DocumentSourceType
   sourceAttachmentId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   status?: Prisma.EnumDocumentStatusFieldUpdateOperationsInput | $Enums.DocumentStatus
+  sequence?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  versionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  priority?: Prisma.NullableEnumPriorityFieldUpdateOperationsInput | $Enums.Priority | null
+  ownerId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  authorId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   revision?: Prisma.IntFieldUpdateOperationsInput | number
   createdVia?: Prisma.EnumDocumentActorTypeFieldUpdateOperationsInput | $Enums.DocumentActorType
   createdMcpClientId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -1917,18 +4038,31 @@ export type DocumentUncheckedUpdateWithoutFolderInput = {
   revisions?: Prisma.DocumentRevisionUncheckedUpdateManyWithoutDocumentNestedInput
   links?: Prisma.DocumentLinkUncheckedUpdateManyWithoutDocumentNestedInput
   chunks?: Prisma.DocumentChunkUncheckedUpdateManyWithoutDocumentNestedInput
+  codeHistory?: Prisma.DocumentCodeHistoryUncheckedUpdateManyWithoutDocumentNestedInput
+  requirementIntakeItems?: Prisma.IntakeItemUncheckedUpdateManyWithoutRequirementNestedInput
+  requirementWorkItems?: Prisma.WorkItemUncheckedUpdateManyWithoutRequirementNestedInput
 }
 
 export type DocumentUncheckedUpdateManyWithoutFolderInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   organizationId?: Prisma.StringFieldUpdateOperationsInput | string
   spaceId?: Prisma.StringFieldUpdateOperationsInput | string
+  kind?: Prisma.EnumDocumentKindFieldUpdateOperationsInput | $Enums.DocumentKind
   title?: Prisma.StringFieldUpdateOperationsInput | string
-  contentMarkdown?: Prisma.StringFieldUpdateOperationsInput | string
+  summary?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  contentFormat?: Prisma.EnumContentFormatFieldUpdateOperationsInput | $Enums.ContentFormat
+  contentJson?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  contentMarkdown?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   contentText?: Prisma.StringFieldUpdateOperationsInput | string
+  contentMarkdownCache?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   sourceType?: Prisma.EnumDocumentSourceTypeFieldUpdateOperationsInput | $Enums.DocumentSourceType
   sourceAttachmentId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   status?: Prisma.EnumDocumentStatusFieldUpdateOperationsInput | $Enums.DocumentStatus
+  sequence?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  versionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  priority?: Prisma.NullableEnumPriorityFieldUpdateOperationsInput | $Enums.Priority | null
+  ownerId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  authorId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   revision?: Prisma.IntFieldUpdateOperationsInput | number
   createdVia?: Prisma.EnumDocumentActorTypeFieldUpdateOperationsInput | $Enums.DocumentActorType
   createdMcpClientId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -1953,12 +4087,18 @@ export type DocumentCountOutputType = {
   revisions: number
   links: number
   chunks: number
+  codeHistory: number
+  requirementIntakeItems: number
+  requirementWorkItems: number
 }
 
 export type DocumentCountOutputTypeSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   revisions?: boolean | DocumentCountOutputTypeCountRevisionsArgs
   links?: boolean | DocumentCountOutputTypeCountLinksArgs
   chunks?: boolean | DocumentCountOutputTypeCountChunksArgs
+  codeHistory?: boolean | DocumentCountOutputTypeCountCodeHistoryArgs
+  requirementIntakeItems?: boolean | DocumentCountOutputTypeCountRequirementIntakeItemsArgs
+  requirementWorkItems?: boolean | DocumentCountOutputTypeCountRequirementWorkItemsArgs
 }
 
 /**
@@ -1992,18 +4132,49 @@ export type DocumentCountOutputTypeCountChunksArgs<ExtArgs extends runtime.Types
   where?: Prisma.DocumentChunkWhereInput
 }
 
+/**
+ * DocumentCountOutputType without action
+ */
+export type DocumentCountOutputTypeCountCodeHistoryArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  where?: Prisma.DocumentCodeHistoryWhereInput
+}
+
+/**
+ * DocumentCountOutputType without action
+ */
+export type DocumentCountOutputTypeCountRequirementIntakeItemsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  where?: Prisma.IntakeItemWhereInput
+}
+
+/**
+ * DocumentCountOutputType without action
+ */
+export type DocumentCountOutputTypeCountRequirementWorkItemsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  where?: Prisma.WorkItemWhereInput
+}
+
 
 export type DocumentSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
   id?: boolean
   organizationId?: boolean
   spaceId?: boolean
   folderId?: boolean
+  kind?: boolean
   title?: boolean
+  summary?: boolean
+  contentFormat?: boolean
+  contentJson?: boolean
   contentMarkdown?: boolean
   contentText?: boolean
+  contentMarkdownCache?: boolean
   sourceType?: boolean
   sourceAttachmentId?: boolean
   status?: boolean
+  sequence?: boolean
+  versionId?: boolean
+  priority?: boolean
+  ownerId?: boolean
+  authorId?: boolean
   revision?: boolean
   createdVia?: boolean
   createdMcpClientId?: boolean
@@ -2020,9 +4191,15 @@ export type DocumentSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs
   organization?: boolean | Prisma.OrganizationDefaultArgs<ExtArgs>
   space?: boolean | Prisma.SpaceDefaultArgs<ExtArgs>
   folder?: boolean | Prisma.Document$folderArgs<ExtArgs>
+  version?: boolean | Prisma.Document$versionArgs<ExtArgs>
+  owner?: boolean | Prisma.Document$ownerArgs<ExtArgs>
+  author?: boolean | Prisma.Document$authorArgs<ExtArgs>
   revisions?: boolean | Prisma.Document$revisionsArgs<ExtArgs>
   links?: boolean | Prisma.Document$linksArgs<ExtArgs>
   chunks?: boolean | Prisma.Document$chunksArgs<ExtArgs>
+  codeHistory?: boolean | Prisma.Document$codeHistoryArgs<ExtArgs>
+  requirementIntakeItems?: boolean | Prisma.Document$requirementIntakeItemsArgs<ExtArgs>
+  requirementWorkItems?: boolean | Prisma.Document$requirementWorkItemsArgs<ExtArgs>
   _count?: boolean | Prisma.DocumentCountOutputTypeDefaultArgs<ExtArgs>
 }, ExtArgs["result"]["document"]>
 
@@ -2031,12 +4208,22 @@ export type DocumentSelectCreateManyAndReturn<ExtArgs extends runtime.Types.Exte
   organizationId?: boolean
   spaceId?: boolean
   folderId?: boolean
+  kind?: boolean
   title?: boolean
+  summary?: boolean
+  contentFormat?: boolean
+  contentJson?: boolean
   contentMarkdown?: boolean
   contentText?: boolean
+  contentMarkdownCache?: boolean
   sourceType?: boolean
   sourceAttachmentId?: boolean
   status?: boolean
+  sequence?: boolean
+  versionId?: boolean
+  priority?: boolean
+  ownerId?: boolean
+  authorId?: boolean
   revision?: boolean
   createdVia?: boolean
   createdMcpClientId?: boolean
@@ -2053,6 +4240,9 @@ export type DocumentSelectCreateManyAndReturn<ExtArgs extends runtime.Types.Exte
   organization?: boolean | Prisma.OrganizationDefaultArgs<ExtArgs>
   space?: boolean | Prisma.SpaceDefaultArgs<ExtArgs>
   folder?: boolean | Prisma.Document$folderArgs<ExtArgs>
+  version?: boolean | Prisma.Document$versionArgs<ExtArgs>
+  owner?: boolean | Prisma.Document$ownerArgs<ExtArgs>
+  author?: boolean | Prisma.Document$authorArgs<ExtArgs>
 }, ExtArgs["result"]["document"]>
 
 export type DocumentSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
@@ -2060,12 +4250,22 @@ export type DocumentSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.Exte
   organizationId?: boolean
   spaceId?: boolean
   folderId?: boolean
+  kind?: boolean
   title?: boolean
+  summary?: boolean
+  contentFormat?: boolean
+  contentJson?: boolean
   contentMarkdown?: boolean
   contentText?: boolean
+  contentMarkdownCache?: boolean
   sourceType?: boolean
   sourceAttachmentId?: boolean
   status?: boolean
+  sequence?: boolean
+  versionId?: boolean
+  priority?: boolean
+  ownerId?: boolean
+  authorId?: boolean
   revision?: boolean
   createdVia?: boolean
   createdMcpClientId?: boolean
@@ -2082,6 +4282,9 @@ export type DocumentSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.Exte
   organization?: boolean | Prisma.OrganizationDefaultArgs<ExtArgs>
   space?: boolean | Prisma.SpaceDefaultArgs<ExtArgs>
   folder?: boolean | Prisma.Document$folderArgs<ExtArgs>
+  version?: boolean | Prisma.Document$versionArgs<ExtArgs>
+  owner?: boolean | Prisma.Document$ownerArgs<ExtArgs>
+  author?: boolean | Prisma.Document$authorArgs<ExtArgs>
 }, ExtArgs["result"]["document"]>
 
 export type DocumentSelectScalar = {
@@ -2089,12 +4292,22 @@ export type DocumentSelectScalar = {
   organizationId?: boolean
   spaceId?: boolean
   folderId?: boolean
+  kind?: boolean
   title?: boolean
+  summary?: boolean
+  contentFormat?: boolean
+  contentJson?: boolean
   contentMarkdown?: boolean
   contentText?: boolean
+  contentMarkdownCache?: boolean
   sourceType?: boolean
   sourceAttachmentId?: boolean
   status?: boolean
+  sequence?: boolean
+  versionId?: boolean
+  priority?: boolean
+  ownerId?: boolean
+  authorId?: boolean
   revision?: boolean
   createdVia?: boolean
   createdMcpClientId?: boolean
@@ -2110,25 +4323,37 @@ export type DocumentSelectScalar = {
   deletedAt?: boolean
 }
 
-export type DocumentOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "organizationId" | "spaceId" | "folderId" | "title" | "contentMarkdown" | "contentText" | "sourceType" | "sourceAttachmentId" | "status" | "revision" | "createdVia" | "createdMcpClientId" | "lastEditedById" | "lastEditedVia" | "lastEditedMcpClientId" | "lastEditedAt" | "archivedAt" | "createdAt" | "updatedAt" | "createdById" | "updatedById" | "deletedAt", ExtArgs["result"]["document"]>
+export type DocumentOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "organizationId" | "spaceId" | "folderId" | "kind" | "title" | "summary" | "contentFormat" | "contentJson" | "contentMarkdown" | "contentText" | "contentMarkdownCache" | "sourceType" | "sourceAttachmentId" | "status" | "sequence" | "versionId" | "priority" | "ownerId" | "authorId" | "revision" | "createdVia" | "createdMcpClientId" | "lastEditedById" | "lastEditedVia" | "lastEditedMcpClientId" | "lastEditedAt" | "archivedAt" | "createdAt" | "updatedAt" | "createdById" | "updatedById" | "deletedAt", ExtArgs["result"]["document"]>
 export type DocumentInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   organization?: boolean | Prisma.OrganizationDefaultArgs<ExtArgs>
   space?: boolean | Prisma.SpaceDefaultArgs<ExtArgs>
   folder?: boolean | Prisma.Document$folderArgs<ExtArgs>
+  version?: boolean | Prisma.Document$versionArgs<ExtArgs>
+  owner?: boolean | Prisma.Document$ownerArgs<ExtArgs>
+  author?: boolean | Prisma.Document$authorArgs<ExtArgs>
   revisions?: boolean | Prisma.Document$revisionsArgs<ExtArgs>
   links?: boolean | Prisma.Document$linksArgs<ExtArgs>
   chunks?: boolean | Prisma.Document$chunksArgs<ExtArgs>
+  codeHistory?: boolean | Prisma.Document$codeHistoryArgs<ExtArgs>
+  requirementIntakeItems?: boolean | Prisma.Document$requirementIntakeItemsArgs<ExtArgs>
+  requirementWorkItems?: boolean | Prisma.Document$requirementWorkItemsArgs<ExtArgs>
   _count?: boolean | Prisma.DocumentCountOutputTypeDefaultArgs<ExtArgs>
 }
 export type DocumentIncludeCreateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   organization?: boolean | Prisma.OrganizationDefaultArgs<ExtArgs>
   space?: boolean | Prisma.SpaceDefaultArgs<ExtArgs>
   folder?: boolean | Prisma.Document$folderArgs<ExtArgs>
+  version?: boolean | Prisma.Document$versionArgs<ExtArgs>
+  owner?: boolean | Prisma.Document$ownerArgs<ExtArgs>
+  author?: boolean | Prisma.Document$authorArgs<ExtArgs>
 }
 export type DocumentIncludeUpdateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   organization?: boolean | Prisma.OrganizationDefaultArgs<ExtArgs>
   space?: boolean | Prisma.SpaceDefaultArgs<ExtArgs>
   folder?: boolean | Prisma.Document$folderArgs<ExtArgs>
+  version?: boolean | Prisma.Document$versionArgs<ExtArgs>
+  owner?: boolean | Prisma.Document$ownerArgs<ExtArgs>
+  author?: boolean | Prisma.Document$authorArgs<ExtArgs>
 }
 
 export type $DocumentPayload<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
@@ -2137,21 +4362,37 @@ export type $DocumentPayload<ExtArgs extends runtime.Types.Extensions.InternalAr
     organization: Prisma.$OrganizationPayload<ExtArgs>
     space: Prisma.$SpacePayload<ExtArgs>
     folder: Prisma.$DocumentFolderPayload<ExtArgs> | null
+    version: Prisma.$VersionPayload<ExtArgs> | null
+    owner: Prisma.$UserPayload<ExtArgs> | null
+    author: Prisma.$UserPayload<ExtArgs> | null
     revisions: Prisma.$DocumentRevisionPayload<ExtArgs>[]
     links: Prisma.$DocumentLinkPayload<ExtArgs>[]
     chunks: Prisma.$DocumentChunkPayload<ExtArgs>[]
+    codeHistory: Prisma.$DocumentCodeHistoryPayload<ExtArgs>[]
+    requirementIntakeItems: Prisma.$IntakeItemPayload<ExtArgs>[]
+    requirementWorkItems: Prisma.$WorkItemPayload<ExtArgs>[]
   }
   scalars: runtime.Types.Extensions.GetPayloadResult<{
     id: string
     organizationId: string
     spaceId: string
     folderId: string | null
+    kind: $Enums.DocumentKind
     title: string
-    contentMarkdown: string
+    summary: string | null
+    contentFormat: $Enums.ContentFormat
+    contentJson: runtime.JsonValue | null
+    contentMarkdown: string | null
     contentText: string
+    contentMarkdownCache: string | null
     sourceType: $Enums.DocumentSourceType
     sourceAttachmentId: string | null
     status: $Enums.DocumentStatus
+    sequence: number | null
+    versionId: string | null
+    priority: $Enums.Priority | null
+    ownerId: string | null
+    authorId: string | null
     revision: number
     createdVia: $Enums.DocumentActorType
     createdMcpClientId: string | null
@@ -2562,9 +4803,15 @@ export interface Prisma__DocumentClient<T, Null = never, ExtArgs extends runtime
   organization<T extends Prisma.OrganizationDefaultArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.OrganizationDefaultArgs<ExtArgs>>): Prisma.Prisma__OrganizationClient<runtime.Types.Result.GetResult<Prisma.$OrganizationPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | Null, Null, ExtArgs, GlobalOmitOptions>
   space<T extends Prisma.SpaceDefaultArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.SpaceDefaultArgs<ExtArgs>>): Prisma.Prisma__SpaceClient<runtime.Types.Result.GetResult<Prisma.$SpacePayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | Null, Null, ExtArgs, GlobalOmitOptions>
   folder<T extends Prisma.Document$folderArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Document$folderArgs<ExtArgs>>): Prisma.Prisma__DocumentFolderClient<runtime.Types.Result.GetResult<Prisma.$DocumentFolderPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
+  version<T extends Prisma.Document$versionArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Document$versionArgs<ExtArgs>>): Prisma.Prisma__VersionClient<runtime.Types.Result.GetResult<Prisma.$VersionPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
+  owner<T extends Prisma.Document$ownerArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Document$ownerArgs<ExtArgs>>): Prisma.Prisma__UserClient<runtime.Types.Result.GetResult<Prisma.$UserPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
+  author<T extends Prisma.Document$authorArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Document$authorArgs<ExtArgs>>): Prisma.Prisma__UserClient<runtime.Types.Result.GetResult<Prisma.$UserPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
   revisions<T extends Prisma.Document$revisionsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Document$revisionsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$DocumentRevisionPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   links<T extends Prisma.Document$linksArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Document$linksArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$DocumentLinkPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   chunks<T extends Prisma.Document$chunksArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Document$chunksArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$DocumentChunkPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
+  codeHistory<T extends Prisma.Document$codeHistoryArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Document$codeHistoryArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$DocumentCodeHistoryPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
+  requirementIntakeItems<T extends Prisma.Document$requirementIntakeItemsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Document$requirementIntakeItemsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$IntakeItemPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
+  requirementWorkItems<T extends Prisma.Document$requirementWorkItemsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Document$requirementWorkItemsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$WorkItemPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   /**
    * Attaches callbacks for the resolution and/or rejection of the Promise.
    * @param onfulfilled The callback to execute when the Promise is resolved.
@@ -2598,12 +4845,22 @@ export interface DocumentFieldRefs {
   readonly organizationId: Prisma.FieldRef<"Document", 'String'>
   readonly spaceId: Prisma.FieldRef<"Document", 'String'>
   readonly folderId: Prisma.FieldRef<"Document", 'String'>
+  readonly kind: Prisma.FieldRef<"Document", 'DocumentKind'>
   readonly title: Prisma.FieldRef<"Document", 'String'>
+  readonly summary: Prisma.FieldRef<"Document", 'String'>
+  readonly contentFormat: Prisma.FieldRef<"Document", 'ContentFormat'>
+  readonly contentJson: Prisma.FieldRef<"Document", 'Json'>
   readonly contentMarkdown: Prisma.FieldRef<"Document", 'String'>
   readonly contentText: Prisma.FieldRef<"Document", 'String'>
+  readonly contentMarkdownCache: Prisma.FieldRef<"Document", 'String'>
   readonly sourceType: Prisma.FieldRef<"Document", 'DocumentSourceType'>
   readonly sourceAttachmentId: Prisma.FieldRef<"Document", 'String'>
   readonly status: Prisma.FieldRef<"Document", 'DocumentStatus'>
+  readonly sequence: Prisma.FieldRef<"Document", 'Int'>
+  readonly versionId: Prisma.FieldRef<"Document", 'String'>
+  readonly priority: Prisma.FieldRef<"Document", 'Priority'>
+  readonly ownerId: Prisma.FieldRef<"Document", 'String'>
+  readonly authorId: Prisma.FieldRef<"Document", 'String'>
   readonly revision: Prisma.FieldRef<"Document", 'Int'>
   readonly createdVia: Prisma.FieldRef<"Document", 'DocumentActorType'>
   readonly createdMcpClientId: Prisma.FieldRef<"Document", 'String'>
@@ -3037,6 +5294,63 @@ export type Document$folderArgs<ExtArgs extends runtime.Types.Extensions.Interna
 }
 
 /**
+ * Document.version
+ */
+export type Document$versionArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  /**
+   * Select specific fields to fetch from the Version
+   */
+  select?: Prisma.VersionSelect<ExtArgs> | null
+  /**
+   * Omit specific fields from the Version
+   */
+  omit?: Prisma.VersionOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.VersionInclude<ExtArgs> | null
+  where?: Prisma.VersionWhereInput
+}
+
+/**
+ * Document.owner
+ */
+export type Document$ownerArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  /**
+   * Select specific fields to fetch from the User
+   */
+  select?: Prisma.UserSelect<ExtArgs> | null
+  /**
+   * Omit specific fields from the User
+   */
+  omit?: Prisma.UserOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.UserInclude<ExtArgs> | null
+  where?: Prisma.UserWhereInput
+}
+
+/**
+ * Document.author
+ */
+export type Document$authorArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  /**
+   * Select specific fields to fetch from the User
+   */
+  select?: Prisma.UserSelect<ExtArgs> | null
+  /**
+   * Omit specific fields from the User
+   */
+  omit?: Prisma.UserOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.UserInclude<ExtArgs> | null
+  where?: Prisma.UserWhereInput
+}
+
+/**
  * Document.revisions
  */
 export type Document$revisionsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
@@ -3106,6 +5420,78 @@ export type Document$chunksArgs<ExtArgs extends runtime.Types.Extensions.Interna
   take?: number
   skip?: number
   distinct?: Prisma.DocumentChunkScalarFieldEnum | Prisma.DocumentChunkScalarFieldEnum[]
+}
+
+/**
+ * Document.codeHistory
+ */
+export type Document$codeHistoryArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  /**
+   * Select specific fields to fetch from the DocumentCodeHistory
+   */
+  select?: Prisma.DocumentCodeHistorySelect<ExtArgs> | null
+  /**
+   * Omit specific fields from the DocumentCodeHistory
+   */
+  omit?: Prisma.DocumentCodeHistoryOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.DocumentCodeHistoryInclude<ExtArgs> | null
+  where?: Prisma.DocumentCodeHistoryWhereInput
+  orderBy?: Prisma.DocumentCodeHistoryOrderByWithRelationInput | Prisma.DocumentCodeHistoryOrderByWithRelationInput[]
+  cursor?: Prisma.DocumentCodeHistoryWhereUniqueInput
+  take?: number
+  skip?: number
+  distinct?: Prisma.DocumentCodeHistoryScalarFieldEnum | Prisma.DocumentCodeHistoryScalarFieldEnum[]
+}
+
+/**
+ * Document.requirementIntakeItems
+ */
+export type Document$requirementIntakeItemsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  /**
+   * Select specific fields to fetch from the IntakeItem
+   */
+  select?: Prisma.IntakeItemSelect<ExtArgs> | null
+  /**
+   * Omit specific fields from the IntakeItem
+   */
+  omit?: Prisma.IntakeItemOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.IntakeItemInclude<ExtArgs> | null
+  where?: Prisma.IntakeItemWhereInput
+  orderBy?: Prisma.IntakeItemOrderByWithRelationInput | Prisma.IntakeItemOrderByWithRelationInput[]
+  cursor?: Prisma.IntakeItemWhereUniqueInput
+  take?: number
+  skip?: number
+  distinct?: Prisma.IntakeItemScalarFieldEnum | Prisma.IntakeItemScalarFieldEnum[]
+}
+
+/**
+ * Document.requirementWorkItems
+ */
+export type Document$requirementWorkItemsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  /**
+   * Select specific fields to fetch from the WorkItem
+   */
+  select?: Prisma.WorkItemSelect<ExtArgs> | null
+  /**
+   * Omit specific fields from the WorkItem
+   */
+  omit?: Prisma.WorkItemOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.WorkItemInclude<ExtArgs> | null
+  where?: Prisma.WorkItemWhereInput
+  orderBy?: Prisma.WorkItemOrderByWithRelationInput | Prisma.WorkItemOrderByWithRelationInput[]
+  cursor?: Prisma.WorkItemWhereUniqueInput
+  take?: number
+  skip?: number
+  distinct?: Prisma.WorkItemScalarFieldEnum | Prisma.WorkItemScalarFieldEnum[]
 }
 
 /**

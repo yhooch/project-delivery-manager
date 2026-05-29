@@ -4,7 +4,7 @@ import type {
   Requirement,
   RequirementRelatedWorkItemSummary,
   RequirementRelatedWorkItems,
-  RequirementStatus,
+  DocumentStatus,
   StatusCategory,
   TagDto,
   WorkItemType,
@@ -24,9 +24,10 @@ type PrismaRequirementRecord = {
   organizationId: string;
   ownerId: string | null;
   priority: Requirement["priority"] | null;
+  revision?: number | null;
   sequence: number | null;
   spaceId: string;
-  status: RequirementStatus;
+  status: DocumentStatus | "CONFIRMED";
   summary: string | null;
   title: string;
   updatedAt: Date;
@@ -60,13 +61,15 @@ export function toRequirement(
   const base = {
     id: record.id,
     ...toRequirementDisplayIdentity(record.sequence),
+    revision: record.revision ?? undefined,
     organizationId: record.organizationId,
     spaceId: record.spaceId,
+    kind: "REQUIREMENT" as const,
     versionId: record.versionId ?? undefined,
     title: record.title,
     summary: record.summary ?? undefined,
     contentText: record.contentText ?? undefined,
-    status: record.status,
+    status: toDocumentStatus(record.status),
     priority: record.priority ?? undefined,
     ownerId: record.ownerId ?? undefined,
     authorId: record.authorId ?? undefined,
@@ -91,6 +94,12 @@ export function toRequirement(
     contentJson: toTiptapJson(record.contentJson),
     contentMarkdownCache: record.contentMarkdownCache ?? undefined,
   };
+}
+
+function toDocumentStatus(
+  status: PrismaRequirementRecord["status"],
+): DocumentStatus {
+  return status === "CONFIRMED" ? "ACTIVE" : status;
 }
 
 export function toRequirementRelatedWorkItems(

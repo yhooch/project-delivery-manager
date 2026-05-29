@@ -4,10 +4,6 @@ import type { PrismaService } from "../../prisma/prisma.service";
 import { PrismaVersionRepository } from "./prisma-version.repository";
 import type { VersionStatsScope } from "./version.types";
 
-type VersionStatsScopeWithRequirementVisibility = VersionStatsScope & {
-  requirementStatsVisibility?: "SPACE";
-};
-
 describe("PrismaVersionRepository", () => {
   it("writes VERSION timeline events when creating and updating versions", async () => {
     const version = makeVersionRecord();
@@ -33,7 +29,7 @@ describe("PrismaVersionRepository", () => {
     const prisma = {
       client: {
         $transaction: vi.fn(async (handler) => handler(tx)),
-        requirement: {
+        document: {
           groupBy: vi.fn(async () => []),
         },
         workItem: {
@@ -102,12 +98,10 @@ describe("PrismaVersionRepository", () => {
         { versionId: version.id, type: "TASK", _count: { _all: 2 } },
         { versionId: version.id, type: "BUG", _count: { _all: 1 } },
       ])
-      .mockResolvedValueOnce([
-        { versionId: version.id, _count: { _all: 1 } },
-      ]);
+      .mockResolvedValueOnce([{ versionId: version.id, _count: { _all: 1 } }]);
     const prisma = {
       client: {
-        requirement: {
+        document: {
           groupBy: vi.fn(async () => [
             { versionId: version.id, _count: { _all: 3 } },
           ]),
@@ -241,7 +235,7 @@ describe("PrismaVersionRepository", () => {
       },
       {
         targetId: requirementId,
-        targetType: "REQUIREMENT",
+        targetType: "DOCUMENT",
       },
     ]);
     const prisma = {
@@ -249,7 +243,7 @@ describe("PrismaVersionRepository", () => {
         objectParticipant: {
           findMany: objectParticipantFindMany,
         },
-        requirement: {
+        document: {
           groupBy: requirementGroupBy,
         },
         version: {
@@ -262,9 +256,8 @@ describe("PrismaVersionRepository", () => {
     } as unknown as PrismaService;
     const repository = new PrismaVersionRepository(prisma);
 
-    const statsScope: VersionStatsScopeWithRequirementVisibility = {
+    const statsScope: VersionStatsScope = {
       actorUserId: "01H00000000000000000000013",
-      requirementStatsVisibility: "SPACE",
       spaceId: version.spaceId,
       visibility: "PARTICIPANT",
     };
@@ -287,7 +280,7 @@ describe("PrismaVersionRepository", () => {
         deletedAt: null,
         spaceId: version.spaceId,
         targetType: {
-          in: ["WORK_ITEM", "REQUIREMENT"],
+          in: ["WORK_ITEM"],
         },
         userId: "01H00000000000000000000013",
       },
@@ -299,6 +292,7 @@ describe("PrismaVersionRepository", () => {
       },
       where: {
         deletedAt: null,
+        kind: "REQUIREMENT",
         spaceId: version.spaceId,
         versionId: {
           in: [version.id],

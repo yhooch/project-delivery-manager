@@ -12,7 +12,16 @@ export type OrganizationRole = z.infer<typeof OrganizationRoleSchema>;
 export const RecordStatusSchema = z.enum(["ACTIVE", "DISABLED"]);
 export type RecordStatus = z.infer<typeof RecordStatusSchema>;
 
-export const TargetTypeSchema = z.enum([
+export const CanonicalTargetTypeSchema = z.enum([
+  "SPACE",
+  "VERSION",
+  "DOCUMENT",
+  "INTAKE_ITEM",
+  "WORK_ITEM",
+]);
+export type CanonicalTargetType = z.infer<typeof CanonicalTargetTypeSchema>;
+
+export const LegacyTargetTypeInputSchema = z.enum([
   "SPACE",
   "VERSION",
   "REQUIREMENT",
@@ -20,25 +29,53 @@ export const TargetTypeSchema = z.enum([
   "WORK_ITEM",
   "DOCUMENT",
 ]);
+export type LegacyTargetTypeInput = z.infer<
+  typeof LegacyTargetTypeInputSchema
+>;
+
+export const TargetTypeSchema = CanonicalTargetTypeSchema;
 export type TargetType = z.infer<typeof TargetTypeSchema>;
 
-export const AttachmentTargetTypeSchema = z.enum([
+export const LegacyAttachmentTargetTypeInputSchema = z.enum([
   "REQUIREMENT",
   "WORK_ITEM",
   "DOCUMENT",
 ]);
+export type LegacyAttachmentTargetTypeInput = z.infer<
+  typeof LegacyAttachmentTargetTypeInputSchema
+>;
+
+export const AttachmentTargetTypeSchema = z.enum(["WORK_ITEM", "DOCUMENT"]);
 export type AttachmentTargetType = z.infer<typeof AttachmentTargetTypeSchema>;
 
-export const CommentTargetTypeSchema = z.enum([
+export const LegacyCommentTargetTypeInputSchema = z.enum([
   "REQUIREMENT",
+  "INTAKE_ITEM",
+  "WORK_ITEM",
+  "DOCUMENT",
+]);
+export type LegacyCommentTargetTypeInput = z.infer<
+  typeof LegacyCommentTargetTypeInputSchema
+>;
+
+export const CommentTargetTypeSchema = z.enum([
   "INTAKE_ITEM",
   "WORK_ITEM",
   "DOCUMENT",
 ]);
 export type CommentTargetType = z.infer<typeof CommentTargetTypeSchema>;
 
-export const ObjectParticipantTargetTypeSchema = z.enum([
+export const LegacyObjectParticipantTargetTypeInputSchema = z.enum([
   "REQUIREMENT",
+  "INTAKE_ITEM",
+  "WORK_ITEM",
+  "DOCUMENT",
+]);
+export type LegacyObjectParticipantTargetTypeInput = z.infer<
+  typeof LegacyObjectParticipantTargetTypeInputSchema
+>;
+
+export const ObjectParticipantTargetTypeSchema = z.enum([
   "INTAKE_ITEM",
   "WORK_ITEM",
   "DOCUMENT",
@@ -47,8 +84,17 @@ export type ObjectParticipantTargetType = z.infer<
   typeof ObjectParticipantTargetTypeSchema
 >;
 
-export const TagTargetTypeSchema = z.enum([
+export const LegacyTagTargetTypeInputSchema = z.enum([
   "REQUIREMENT",
+  "INTAKE_ITEM",
+  "WORK_ITEM",
+  "DOCUMENT",
+]);
+export type LegacyTagTargetTypeInput = z.infer<
+  typeof LegacyTagTargetTypeInputSchema
+>;
+
+export const TagTargetTypeSchema = z.enum([
   "INTAKE_ITEM",
   "WORK_ITEM",
   "DOCUMENT",
@@ -192,19 +238,33 @@ export const BugSeveritySchema = z.enum([
 ]);
 export type BugSeverity = z.infer<typeof BugSeveritySchema>;
 
+export const DocumentKindSchema = z.enum(["GENERAL", "REQUIREMENT"]);
+export type DocumentKind = z.infer<typeof DocumentKindSchema>;
+
+export const DocumentContentFormatSchema = z.enum([
+  "TIPTAP_JSON",
+  "MARKDOWN",
+]);
+export type DocumentContentFormat = z.infer<
+  typeof DocumentContentFormatSchema
+>;
+
 export const DocumentSourceTypeSchema = z.enum([
+  "USER_CREATED",
   "UPLOAD_DOCX",
   "UPLOAD_MARKDOWN",
   "PASTE_MARKDOWN",
   "PASTE_TEXT",
   "MCP_CREATED",
+  "MIGRATED_DOCUMENT",
+  "MIGRATED_REQUIREMENT",
 ]);
 export type DocumentSourceType = z.infer<typeof DocumentSourceTypeSchema>;
 
 export const DocumentActorTypeSchema = z.enum(["USER", "MCP_CLIENT"]);
 export type DocumentActorType = z.infer<typeof DocumentActorTypeSchema>;
 
-export const DocumentStatusSchema = z.enum(["ACTIVE", "ARCHIVED"]);
+export const DocumentStatusSchema = z.enum(["DRAFT", "ACTIVE", "ARCHIVED"]);
 export type DocumentStatus = z.infer<typeof DocumentStatusSchema>;
 
 export const DocumentChangeTypeSchema = z.enum([
@@ -218,18 +278,30 @@ export const DocumentChangeTypeSchema = z.enum([
   "ARCHIVED",
   "RESTORED",
   "DELETED",
+  "CONVERTED_TO_REQUIREMENT",
+  "CANCELLED_REQUIREMENT",
 ]);
 export type DocumentChangeType = z.infer<typeof DocumentChangeTypeSchema>;
 
 export const DocumentLinkTargetTypeSchema = z.enum([
   "DOCUMENT",
   "VERSION",
-  "REQUIREMENT",
   "INTAKE_ITEM",
   "WORK_ITEM",
 ]);
 export type DocumentLinkTargetType = z.infer<
   typeof DocumentLinkTargetTypeSchema
+>;
+
+export const LegacyDocumentLinkTargetTypeInputSchema = z.enum([
+  "DOCUMENT",
+  "VERSION",
+  "REQUIREMENT",
+  "INTAKE_ITEM",
+  "WORK_ITEM",
+]);
+export type LegacyDocumentLinkTargetTypeInput = z.infer<
+  typeof LegacyDocumentLinkTargetTypeInputSchema
 >;
 
 export const ViewExceptionTypeSchema = z.enum([

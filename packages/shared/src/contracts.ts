@@ -210,6 +210,11 @@ import {
 import {
   AppendDocumentContentRequestSchema,
   ArchiveDocumentResponseSchema,
+  CancelRequirementPreflightResponseSchema,
+  CancelRequirementRequestSchema,
+  CancelRequirementResponseSchema,
+  ConvertDocumentToRequirementRequestSchema,
+  ConvertDocumentToRequirementResponseSchema,
   CreateDocumentResponseSchema,
   CreateDocumentFolderRequestSchema,
   CreateDocumentFolderResponseSchema,
@@ -328,6 +333,7 @@ const executeActionErrors = [
 const linkedTargetErrors = [
   "NOT_FOUND",
   "REQUIREMENT_NOT_FOUND",
+  "REQUIREMENT_REFERENCE_INVALID",
   "INTAKE_ITEM_NOT_FOUND",
 ];
 const traceVersionErrors = [
@@ -349,6 +355,7 @@ const intakeReferenceErrors = [
   ...intakeItemErrors,
   "NOT_FOUND",
   "REQUIREMENT_NOT_FOUND",
+  "REQUIREMENT_REFERENCE_INVALID",
   ...traceVersionErrors,
 ];
 const workItemErrors = [
@@ -972,6 +979,30 @@ export const apiContracts = [
     errorCodes: [...requirementItemErrors, "DRAFT_REQUIREMENT_REQUIRED"],
   }),
   endpoint({
+    operationId: "cancelRequirementViaRequirementRoutePreflight",
+    method: "get",
+    path: "/requirements/{requirementId}/cancel/preflight",
+    tags: ["requirements"],
+    summary: "Preflight requirement cancellation",
+    pathSchema: RequirementIdPathParamsSchema,
+    querySchema: EmptyObjectSchema,
+    requestSchema: EmptyObjectSchema,
+    responseSchema: CancelRequirementPreflightResponseSchema,
+    errorCodes: documentErrors,
+  }),
+  endpoint({
+    operationId: "cancelRequirementViaRequirementRoute",
+    method: "post",
+    path: "/requirements/{requirementId}/cancel",
+    tags: ["requirements"],
+    summary: "Cancel requirement semantics and keep the document",
+    pathSchema: RequirementIdPathParamsSchema,
+    querySchema: EmptyObjectSchema,
+    requestSchema: CancelRequirementRequestSchema,
+    responseSchema: CancelRequirementResponseSchema,
+    errorCodes: documentErrors,
+  }),
+  endpoint({
     operationId: "listIntakeItems",
     method: "get",
     path: "/spaces/{spaceId}/intake-items",
@@ -1069,6 +1100,7 @@ export const apiContracts = [
       ...intakeItemErrors,
       "NOT_FOUND",
       "REQUIREMENT_NOT_FOUND",
+      "REQUIREMENT_REFERENCE_INVALID",
       "WORKFLOW_VERSION_NOT_FOUND",
       "INTAKE_ITEM_NOT_ACCEPTED",
       "INTAKE_ITEM_ALREADY_CONVERTED",
@@ -1478,7 +1510,9 @@ export const apiContracts = [
     path: "/document-folders/{folderId}",
     tags: ["document-folders"],
     summary: "Rename a document folder",
-    pathSchema: z.object({ folderId: DocumentIdPathParamsSchema.shape.documentId }).strict(),
+    pathSchema: z
+      .object({ folderId: DocumentIdPathParamsSchema.shape.documentId })
+      .strict(),
     querySchema: EmptyObjectSchema,
     requestSchema: UpdateDocumentFolderRequestSchema,
     responseSchema: UpdateDocumentFolderResponseSchema,
@@ -1490,7 +1524,9 @@ export const apiContracts = [
     path: "/document-folders/{folderId}/move",
     tags: ["document-folders"],
     summary: "Move a document folder",
-    pathSchema: z.object({ folderId: DocumentIdPathParamsSchema.shape.documentId }).strict(),
+    pathSchema: z
+      .object({ folderId: DocumentIdPathParamsSchema.shape.documentId })
+      .strict(),
     querySchema: EmptyObjectSchema,
     requestSchema: MoveDocumentFolderRequestSchema,
     responseSchema: MoveDocumentFolderResponseSchema,
@@ -1502,7 +1538,9 @@ export const apiContracts = [
     path: "/document-folders/{folderId}/reorder",
     tags: ["document-folders"],
     summary: "Reorder a document folder",
-    pathSchema: z.object({ folderId: DocumentIdPathParamsSchema.shape.documentId }).strict(),
+    pathSchema: z
+      .object({ folderId: DocumentIdPathParamsSchema.shape.documentId })
+      .strict(),
     querySchema: EmptyObjectSchema,
     requestSchema: ReorderDocumentFolderRequestSchema,
     responseSchema: ReorderDocumentFolderResponseSchema,
@@ -1514,7 +1552,9 @@ export const apiContracts = [
     path: "/document-folders/{folderId}",
     tags: ["document-folders"],
     summary: "Delete an empty document folder",
-    pathSchema: z.object({ folderId: DocumentIdPathParamsSchema.shape.documentId }).strict(),
+    pathSchema: z
+      .object({ folderId: DocumentIdPathParamsSchema.shape.documentId })
+      .strict(),
     querySchema: EmptyObjectSchema,
     requestSchema: EmptyObjectSchema,
     responseSchema: DeleteDocumentFolderResponseSchema,
@@ -1626,6 +1666,42 @@ export const apiContracts = [
     querySchema: EmptyObjectSchema,
     requestSchema: UpdateDocumentContentRequestSchema,
     responseSchema: UpdateDocumentContentResponseSchema,
+    errorCodes: documentErrors,
+  }),
+  endpoint({
+    operationId: "convertDocumentToRequirement",
+    method: "post",
+    path: "/documents/{documentId}/convert-to-requirement",
+    tags: ["documents"],
+    summary: "Convert a document to a requirement",
+    pathSchema: DocumentIdPathParamsSchema,
+    querySchema: EmptyObjectSchema,
+    requestSchema: ConvertDocumentToRequirementRequestSchema,
+    responseSchema: ConvertDocumentToRequirementResponseSchema,
+    errorCodes: documentErrors,
+  }),
+  endpoint({
+    operationId: "cancelRequirementPreflight",
+    method: "get",
+    path: "/documents/{documentId}/cancel-requirement",
+    tags: ["documents"],
+    summary: "Preflight requirement cancellation",
+    pathSchema: DocumentIdPathParamsSchema,
+    querySchema: EmptyObjectSchema,
+    requestSchema: EmptyObjectSchema,
+    responseSchema: CancelRequirementPreflightResponseSchema,
+    errorCodes: documentErrors,
+  }),
+  endpoint({
+    operationId: "cancelRequirement",
+    method: "post",
+    path: "/documents/{documentId}/cancel-requirement",
+    tags: ["documents"],
+    summary: "Cancel requirement semantics and keep the document",
+    pathSchema: DocumentIdPathParamsSchema,
+    querySchema: EmptyObjectSchema,
+    requestSchema: CancelRequirementRequestSchema,
+    responseSchema: CancelRequirementResponseSchema,
     errorCodes: documentErrors,
   }),
   endpoint({

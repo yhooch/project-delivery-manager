@@ -13,6 +13,10 @@ import type { z } from "zod";
 import { AuditService } from "../audit/audit.service";
 import type { RequestMetadata } from "../auth/auth-session.types";
 import { RealtimePublisherService } from "../realtime/realtime-publisher.service";
+import {
+  legacyRequirementRealtimeHints,
+  withDocumentRequirementInvalidates,
+} from "../target/legacy-target-normalizer";
 import { TargetResolverService } from "../target/target-resolver.service";
 import {
   COMMENT_REPOSITORY,
@@ -114,13 +118,19 @@ export class CommentService {
       spaceId: target.spaceId,
       target: { type: input.targetType, id: target.targetId },
       operation: "COMMENTED",
-      invalidates: commentInvalidates(input.targetType, target.workItemType),
-      hints: {
-        targetType: input.targetType,
+      invalidates: commentInvalidates(
+        input.targetType,
+        target.workItemType,
+        target.targetKind === "REQUIREMENT" ? "REQUIREMENT" : undefined,
+      ),
+      hints: legacyRequirementRealtimeHints({
+        targetType: target.targetType,
         targetId: target.targetId,
+        targetKind:
+          target.targetKind === "REQUIREMENT" ? "REQUIREMENT" : undefined,
         spaceId: target.spaceId,
-        ...(target.workItemType ? { workItemType: target.workItemType } : {}),
-      },
+        workItemType: target.workItemType,
+      }),
     });
 
     return created;
@@ -143,10 +153,16 @@ export class CommentService {
 function commentInvalidates(
   targetType: CommentTargetType,
   workItemType: WorkItemType | undefined,
+  targetKind?: "REQUIREMENT",
 ): RealtimeInvalidationKey[] {
   switch (targetType) {
-    case "REQUIREMENT":
-      return ["comments", "timeline", "requirement-detail"];
+    case "DOCUMENT":
+      return withDocumentRequirementInvalidates(
+        targetType,
+        ["comments", "timeline", "document-comments", "document-timeline"],
+        ["requirement-detail"],
+        targetKind,
+      );
     case "INTAKE_ITEM":
       return ["comments", "timeline", "intake-list"];
     case "WORK_ITEM":
@@ -158,7 +174,5 @@ function commentInvalidates(
         "workbench",
         "space-overview",
       ];
-    case "DOCUMENT":
-      return ["comments", "timeline", "document-comments", "document-timeline"];
   }
 }

@@ -32,6 +32,9 @@ type SpaceRoleCarrier = {
   };
 };
 
+const REQUIREMENT_DOCUMENT_KIND = "REQUIREMENT" as const;
+const REQUIREMENT_OBJECT_CODE_TARGET_TYPE = "DOCUMENT" as const;
+
 @Injectable()
 export class PrismaObjectCodeRepository implements ObjectCodeRepository {
   constructor(
@@ -68,7 +71,7 @@ export class PrismaObjectCodeRepository implements ObjectCodeRepository {
   private async findRequirements(
     input: ObjectCodeLookupRepositoryInput,
   ): Promise<LookupRecordWithoutParticipant[]> {
-    const requirements = await this.prisma.client.requirement.findMany({
+    const requirements = await this.prisma.client.document.findMany({
       select: {
         id: true,
         organizationId: true,
@@ -80,6 +83,7 @@ export class PrismaObjectCodeRepository implements ObjectCodeRepository {
       },
       where: {
         deletedAt: null,
+        kind: REQUIREMENT_DOCUMENT_KIND,
         organizationId: input.organizationId,
         sequence: input.sequence,
         spaceId: input.spaceId,
@@ -90,26 +94,87 @@ export class PrismaObjectCodeRepository implements ObjectCodeRepository {
       },
     });
 
-    return requirements.flatMap((record) => {
-      const role = readRole(record);
+    if (requirements.length > 0) {
+      return requirements.flatMap((record) =>
+        toRequirementLookupRecord(record, record.sequence),
+      );
+    }
 
-      if (!role || record.sequence === null) {
-        return [];
-      }
+    const activeCodeHistory =
+      await this.prisma.client.documentCodeHistory.findMany({
+        select: {
+          sequence: true,
+          document: {
+            select: {
+              id: true,
+              organizationId: true,
+              sequence: true,
+              spaceId: true,
+              status: true,
+              title: true,
+              space: roleSelect(input.actorUserId),
+            },
+          },
+        },
+        where: {
+          codeStatus: "ASSIGNED",
+          kind: REQUIREMENT_DOCUMENT_KIND,
+          organizationId: input.organizationId,
+          sequence: input.sequence,
+          spaceId: input.spaceId,
+          document: {
+            deletedAt: null,
+            kind: REQUIREMENT_DOCUMENT_KIND,
+            status: {
+              not: "DRAFT",
+            },
+            space: accessibleSpaceWhere(input),
+          },
+        },
+      });
 
-      return {
-        id: record.id,
-        type: "REQUIREMENT" as const,
-        organizationId: record.organizationId,
-        objectType: "REQUIREMENT" as const,
-        sequence: record.sequence,
-        displayCode: formatDisplayCode("REQUIREMENT", record.sequence),
-        spaceId: record.spaceId,
-        title: record.title,
-        role,
-        requirementStatus: record.status,
-      };
-    });
+    if (activeCodeHistory.length > 0) {
+      return activeCodeHistory.flatMap((history) =>
+        toRequirementLookupRecord(history.document, history.sequence),
+      );
+    }
+
+    if (!input.includeHistorical) {
+      return [];
+    }
+
+    const historicalCodeHistory =
+      await this.prisma.client.documentCodeHistory.findMany({
+        select: {
+          codeStatus: true,
+          displayCode: true,
+          sequence: true,
+          document: {
+            select: {
+              deletedAt: true,
+              id: true,
+              kind: true,
+              organizationId: true,
+              sequence: true,
+              spaceId: true,
+              status: true,
+              title: true,
+              space: roleSelect(input.actorUserId),
+            },
+          },
+        },
+        where: {
+          kind: REQUIREMENT_DOCUMENT_KIND,
+          organizationId: input.organizationId,
+          sequence: input.sequence,
+          spaceId: input.spaceId,
+          document: {
+            space: accessibleSpaceWhere(input),
+          },
+        },
+      });
+
+    return historicalCodeHistory.flatMap(toHistoricalRequirementLookupRecord);
   }
 
   private async findIntakeItems(
@@ -143,6 +208,8 @@ export class PrismaObjectCodeRepository implements ObjectCodeRepository {
       return {
         id: record.id,
         type: "INTAKE_ITEM" as const,
+        targetType: "INTAKE_ITEM" as const,
+        targetId: record.id,
         organizationId: record.organizationId,
         objectType: "INTAKE_ITEM" as const,
         sequence: record.sequence,
@@ -195,6 +262,8 @@ export class PrismaObjectCodeRepository implements ObjectCodeRepository {
       return {
         id: record.id,
         type: "WORK_ITEM" as const,
+        targetType: "WORK_ITEM" as const,
+        targetId: record.id,
         workItemType: record.type as WorkItemType,
         organizationId: record.organizationId,
         objectType: input.objectType,
@@ -285,9 +354,9 @@ function readRole(record: SpaceRoleCarrier): SpaceRole | undefined {
 
 function toParticipantTargetType(
   objectType: ObjectCodeType,
-): "REQUIREMENT" | "INTAKE_ITEM" | "WORK_ITEM" {
+): "DOCUMENT" | "INTAKE_ITEM" | "WORK_ITEM" {
   if (objectType === "REQUIREMENT") {
-    return "REQUIREMENT";
+    return REQUIREMENT_OBJECT_CODE_TARGET_TYPE;
   }
 
   if (objectType === "INTAKE_ITEM") {
@@ -295,4 +364,92 @@ function toParticipantTargetType(
   }
 
   return "WORK_ITEM";
+}
+
+function toRequirementLookupRecord(
+  record: SpaceRoleCarrier & {
+    id: string;
+    organizationId: string;
+    sequence: number | null;
+    spaceId: string;
+    status: "DRAFT" | "ACTIVE" | "ARCHIVED";
+    title: string;
+  },
+  sequence: number | null,
+): LookupRecordWithoutParticipant[] {
+  const role = readRole(record);
+
+  if (!role || sequence === null) {
+    return [];
+  }
+
+  return [
+    {
+      id: record.id,
+      type: "REQUIREMENT" as const,
+      targetType: "DOCUMENT" as const,
+      targetId: record.id,
+      kind: "REQUIREMENT" as const,
+      organizationId: record.organizationId,
+      objectType: "REQUIREMENT" as const,
+      sequence,
+      displayCode: formatDisplayCode("REQUIREMENT", sequence),
+      spaceId: record.spaceId,
+      title: record.title,
+      role,
+      requirementStatus:
+        record.status === "ACTIVE" ? "CONFIRMED" : record.status,
+    },
+  ];
+}
+
+function toHistoricalRequirementLookupRecord(history: {
+  codeStatus: "ASSIGNED" | "CANCELLED" | "DELETED";
+  displayCode: string;
+  sequence: number;
+  document: SpaceRoleCarrier & {
+    deletedAt: Date | null;
+    id: string;
+    kind: "GENERAL" | "REQUIREMENT";
+    organizationId: string;
+    sequence: number | null;
+    spaceId: string;
+    status: "DRAFT" | "ACTIVE" | "ARCHIVED";
+    title: string;
+  };
+}): LookupRecordWithoutParticipant[] {
+  const role = readRole(history.document);
+
+  if (!role) {
+    return [];
+  }
+
+  return [
+    {
+      id: history.document.id,
+      type: "REQUIREMENT" as const,
+      targetType: "DOCUMENT" as const,
+      targetId: history.document.id,
+      kind: history.document.kind,
+      ...(history.document.kind === "REQUIREMENT"
+        ? {}
+        : { previousKind: "REQUIREMENT" as const }),
+      codeStatus: history.codeStatus,
+      organizationId: history.document.organizationId,
+      objectType: "REQUIREMENT" as const,
+      sequence: history.sequence,
+      displayCode: history.displayCode,
+      spaceId: history.document.spaceId,
+      title: history.document.title,
+      role,
+      ...(history.document.kind === "REQUIREMENT"
+        ? {
+            requirementStatus:
+              history.document.status === "ACTIVE"
+                ? ("CONFIRMED" as const)
+                : history.document.status,
+          }
+        : {}),
+    },
+  ];
 }

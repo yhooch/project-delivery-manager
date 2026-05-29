@@ -24,6 +24,8 @@ import {
   GetWorkItemResponseSchema,
   IntakeItemSchema,
   IntakeSourceTypeSchema,
+  LegacyAttachmentTargetTypeInputSchema,
+  LegacyTagTargetTypeInputSchema,
   PermissionSnapshotSchema,
   apiContracts,
   UploadAttachmentRequestSchema,
@@ -73,6 +75,7 @@ describe("shared contracts", () => {
         "FILE_TOO_LARGE",
         "UNSUPPORTED_MIME_TYPE",
         "DRAFT_REQUIREMENT_REQUIRED",
+        "REQUIREMENT_REFERENCE_INVALID",
         "INTAKE_ITEM_NOT_FOUND",
         "INTAKE_ITEM_NOT_ACCEPTED",
         "INTAKE_ITEM_ALREADY_CONVERTED",
@@ -142,6 +145,7 @@ describe("shared contracts", () => {
         "VALIDATION_ERROR",
         "NOT_FOUND",
         "REQUIREMENT_NOT_FOUND",
+        "REQUIREMENT_REFERENCE_INVALID",
         "INTAKE_ITEM_NOT_FOUND",
         "TRACE_VERSION_CONFLICT",
         "WORKFLOW_VERSION_NOT_FOUND",
@@ -152,6 +156,7 @@ describe("shared contracts", () => {
         "VALIDATION_ERROR",
         "NOT_FOUND",
         "REQUIREMENT_NOT_FOUND",
+        "REQUIREMENT_REFERENCE_INVALID",
         "INTAKE_ITEM_NOT_FOUND",
         "WORK_ITEM_NOT_FOUND",
         "TRACE_VERSION_CONFLICT",
@@ -175,6 +180,7 @@ describe("shared contracts", () => {
         "VALIDATION_ERROR",
         "NOT_FOUND",
         "REQUIREMENT_NOT_FOUND",
+        "REQUIREMENT_REFERENCE_INVALID",
         "WORKFLOW_VERSION_NOT_FOUND",
         "INTAKE_ITEM_NOT_ACCEPTED",
         "INTAKE_ITEM_ALREADY_CONVERTED",
@@ -388,11 +394,13 @@ describe("shared contracts", () => {
     };
 
     expect(TagTargetTypeSchema.options).toEqual([
-      "REQUIREMENT",
       "INTAKE_ITEM",
       "WORK_ITEM",
       "DOCUMENT",
     ]);
+    expect(LegacyTagTargetTypeInputSchema.parse("REQUIREMENT")).toBe(
+      "REQUIREMENT",
+    );
     expect(CreateTagRequestSchema.parse({ name: "backend" })).toEqual({
       name: "backend",
     });
@@ -1302,7 +1310,7 @@ describe("shared contracts", () => {
       title: "Requirement",
       contentJson: { type: "doc", content: [] },
       contentFormat: "TIPTAP_JSON",
-      status: "CONFIRMED",
+      status: "ACTIVE",
       tags: [],
       relatedWorkItems: {
         taskCount: 0,
@@ -1374,6 +1382,7 @@ describe("shared contracts", () => {
   it("accepts both requirement save and archive request semantics", () => {
     expect(
       UpdateRequirementRequestSchema.parse({
+        baseRevision: 1,
         title: "Requirement",
         contentJson: { type: "doc", content: [] },
         contentText: "Requirement",
@@ -1383,22 +1392,27 @@ describe("shared contracts", () => {
 
     expect(
       UpdateRequirementRequestSchema.parse({
+        baseRevision: 2,
         status: "ARCHIVED",
       }),
-    ).toEqual({ status: "ARCHIVED" });
+    ).toEqual({ baseRevision: 2, status: "ARCHIVED" });
   });
 
   it("keeps M1 attachment request validation structural at the shared boundary", () => {
+    expect(LegacyAttachmentTargetTypeInputSchema.parse("REQUIREMENT")).toBe(
+      "REQUIREMENT",
+    );
+
     expect(() =>
       UploadAttachmentRequestSchema.parse({
-        targetType: "REQUIREMENT",
+        targetType: "DOCUMENT",
         targetId: "01FRZ3NDEKTSV4RRFFQ69G5FAE",
       }),
     ).not.toThrow();
 
     expect(
       UploadAttachmentRequestSchema.safeParse({
-        targetType: "REQUIREMENT",
+        targetType: "DOCUMENT",
         targetId: "01FRZ3NDEKTSV4RRFFQ69G5FAE",
       }).success,
     ).toBe(true);
@@ -1407,13 +1421,20 @@ describe("shared contracts", () => {
       UploadAttachmentRequestSchema.safeParse({
         targetType: "REQUIREMENT",
         targetId: "01FRZ3NDEKTSV4RRFFQ69G5FAE",
+      }).success,
+    ).toBe(false);
+
+    expect(
+      UploadAttachmentRequestSchema.safeParse({
+        targetType: "DOCUMENT",
+        targetId: "01FRZ3NDEKTSV4RRFFQ69G5FAE",
         fileName: "extra-field.txt",
       }).success,
     ).toBe(false);
 
     expect(
       UploadAttachmentRequestSchema.safeParse({
-        targetType: "REQUIREMENT",
+        targetType: "DOCUMENT",
         targetId: "invalid",
       }).success,
     ).toBe(false);

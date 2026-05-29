@@ -5,24 +5,33 @@ import type {
   DocumentChangeType,
   DocumentChunk,
   DocumentCommentOverview,
+  DocumentContentFormat,
   DocumentDetail,
   DocumentFolder,
   DocumentFolderPathItem,
+  DocumentKind,
   DocumentListItem,
   DocumentLink,
   DocumentLinkTargetType,
   DocumentRevision,
   DocumentSourceType,
   DocumentStatus,
+  Priority,
   DocumentTimelineOverview,
   TagDto,
   TimelineEventType,
   WorkItemType,
 } from "@project-delivery/shared";
 
+import { formatDisplayCode } from "../object-code/object-code.types";
+
 type PrismaDocumentRecord = {
   archivedAt: Date | null;
-  contentMarkdown: string;
+  authorId: string | null;
+  contentFormat: DocumentContentFormat;
+  contentJson: unknown;
+  contentMarkdown: string | null;
+  contentMarkdownCache: string | null;
   contentText: string;
   createdAt: Date;
   createdById: string | null;
@@ -31,23 +40,29 @@ type PrismaDocumentRecord = {
   deletedAt: Date | null;
   folderId: string | null;
   id: string;
+  kind: DocumentKind;
   lastEditedAt: Date;
   lastEditedById: string;
   lastEditedMcpClientId: string | null;
   lastEditedVia: DocumentActorType;
+  ownerId: string | null;
   organizationId: string;
+  priority: Priority | null;
   revision: number;
+  sequence: number | null;
   sourceAttachmentId: string | null;
   sourceType: DocumentSourceType;
   spaceId: string;
   status: DocumentStatus;
+  summary: string | null;
   title: string;
   updatedAt: Date;
+  versionId: string | null;
 };
 
 type PrismaDocumentListRecord = Omit<
   PrismaDocumentRecord,
-  "contentMarkdown" | "contentText"
+  "contentJson" | "contentMarkdown" | "contentMarkdownCache" | "contentText"
 >;
 
 type PrismaDocumentFolderRecord = {
@@ -77,16 +92,21 @@ type PrismaDocumentRevisionRecord = {
   actorType: DocumentActorType;
   actorUserId: string;
   changeType: DocumentChangeType;
-  contentMarkdown: string;
+  contentFormat: DocumentContentFormat;
+  contentJson: unknown;
+  contentMarkdown: string | null;
+  contentMarkdownCache: string | null;
   contentText: string;
   createdAt: Date;
   documentId: string;
   id: string;
+  kind: DocumentKind;
   mcpClientId: string | null;
   organizationId: string;
   requestId: string | null;
   revision: number;
   spaceId: string;
+  summary: string | null;
   title: string;
 };
 
@@ -159,13 +179,30 @@ export function toDocument(
     spaceId: record.spaceId,
     folderId: record.folderId ?? undefined,
     folderPath: input.folderPath,
+    kind: record.kind,
+    sequence: record.sequence ?? undefined,
+    displayCode:
+      record.kind === "REQUIREMENT" && record.sequence !== null
+        ? formatDisplayCode("REQUIREMENT", record.sequence)
+        : undefined,
+    versionId: record.versionId ?? undefined,
     title: record.title,
-    contentMarkdown: record.contentMarkdown,
+    summary: record.summary ?? undefined,
+    contentFormat: record.contentFormat,
+    contentJson:
+      record.contentFormat === "TIPTAP_JSON"
+        ? toPlainRecord(record.contentJson)
+        : undefined,
+    contentMarkdown: record.contentMarkdown ?? undefined,
+    contentMarkdownCache: record.contentMarkdownCache ?? undefined,
     contentText: record.contentText,
     sourceType: record.sourceType,
     sourceAttachmentId: record.sourceAttachmentId ?? undefined,
     status: record.status,
     revision: record.revision,
+    priority: record.priority ?? undefined,
+    ownerId: record.ownerId ?? undefined,
+    authorId: record.authorId ?? undefined,
     createdById: record.createdById ?? record.lastEditedById,
     createdByName: input.createdByName,
     createdVia: record.createdVia,
@@ -202,12 +239,24 @@ export function toDocumentListItem(
     spaceId: record.spaceId,
     folderId: record.folderId ?? undefined,
     folderPath: input.folderPath,
+    kind: record.kind,
+    sequence: record.sequence ?? undefined,
+    displayCode:
+      record.kind === "REQUIREMENT" && record.sequence !== null
+        ? formatDisplayCode("REQUIREMENT", record.sequence)
+        : undefined,
+    versionId: record.versionId ?? undefined,
     title: record.title,
+    summary: record.summary ?? undefined,
+    contentFormat: record.contentFormat,
     contentSnippet: input.contentSnippet,
     sourceType: record.sourceType,
     sourceAttachmentId: record.sourceAttachmentId ?? undefined,
     status: record.status,
     revision: record.revision,
+    priority: record.priority ?? undefined,
+    ownerId: record.ownerId ?? undefined,
+    authorId: record.authorId ?? undefined,
     createdById: record.createdById ?? record.lastEditedById,
     createdByName: input.createdByName,
     createdVia: record.createdVia,
@@ -282,8 +331,16 @@ export function toDocumentRevision(
     spaceId: record.spaceId,
     documentId: record.documentId,
     revision: record.revision,
+    kind: record.kind,
     title: record.title,
-    contentMarkdown: record.contentMarkdown,
+    summary: record.summary ?? undefined,
+    contentFormat: record.contentFormat,
+    contentJson:
+      record.contentFormat === "TIPTAP_JSON"
+        ? toPlainRecord(record.contentJson)
+        : undefined,
+    contentMarkdown: record.contentMarkdown ?? undefined,
+    contentMarkdownCache: record.contentMarkdownCache ?? undefined,
     contentText: record.contentText,
     changeType: record.changeType,
     actorType: record.actorType,
@@ -370,4 +427,10 @@ function removeUndefined<T extends Record<string, unknown>>(value: T): T {
   return Object.fromEntries(
     Object.entries(value).filter(([, entryValue]) => entryValue !== undefined),
   ) as T;
+}
+
+function toPlainRecord(value: unknown): Record<string, unknown> | undefined {
+  return typeof value === "object" && value !== null && !Array.isArray(value)
+    ? (value as Record<string, unknown>)
+    : undefined;
 }

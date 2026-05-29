@@ -1,5 +1,6 @@
 import type {
   ListRequirementsResponse,
+  DocumentStatus,
   Priority,
   RequirementContentFormat,
   RequirementStatus,
@@ -22,7 +23,7 @@ export type RequirementListInput = {
   query?: string;
   sortBy?: string;
   sortOrder?: "asc" | "desc";
-  status?: RequirementStatus;
+  status?: DocumentStatus | RequirementStatus;
   tagIds?: string;
   tagMatch?: TagMatch;
   versionId?: string;
@@ -42,10 +43,11 @@ export type CreateRequirementDraftInput = {
 };
 
 type SaveRequirementBaseInput = {
+  baseRevision: number;
   requirementId: string;
   title: string;
   summary?: string;
-  contentText?: string;
+  contentText: string;
   versionId?: string | null;
   cascadeVersionChange?: boolean;
   priority?: Priority;
@@ -76,6 +78,7 @@ export type RequirementVersionCascadeImpact = TraceVersionCascadeImpact & {
 };
 
 export type ArchiveRequirementInput = {
+  baseRevision: number;
   requirementId: string;
   updatedById: string;
 };

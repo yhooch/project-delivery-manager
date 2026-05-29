@@ -112,7 +112,7 @@ export function throwTraceVersionConflict(details?: unknown): never {
 }
 
 export function throwTraceVersionChangeRequiresCascade(details: {
-  targetType: "REQUIREMENT" | "INTAKE_ITEM" | "TASK";
+  targetType: "DOCUMENT" | "INTAKE_ITEM" | "TASK";
   targetId: string;
   fromVersionId?: string;
   toVersionId: string | null;

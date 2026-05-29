@@ -76,4 +76,19 @@ describe("timeline event writer", () => {
       targetWorkItemType: "BUG",
     });
   });
+
+  it("adds document canonical metadata for legacy requirement events", () => {
+    expect(
+      normalizeTimelineMetadata({
+        metadata: {
+          operation: "COMMENTED",
+        },
+        targetType: "REQUIREMENT",
+      }),
+    ).toEqual({
+      canonicalTargetType: "DOCUMENT",
+      operation: "COMMENTED",
+      targetKind: "REQUIREMENT",
+    });
+  });
 });

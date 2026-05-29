@@ -12,7 +12,10 @@ import {
   type CreateIntakeItemRequest,
   type CreateWorkItemRequest,
   type ExecuteActionRequest,
+  type Document,
   type McpAppendDocumentContentRequest,
+  type McpCancelRequirementRequest,
+  type McpConvertDocumentToRequirementRequest,
   type McpCreateDocumentFolderRequest,
   type McpCreateDocumentFromMarkdownRequest,
   type McpCreateRequirementRequest,
@@ -30,6 +33,7 @@ import {
   type ReplaceTagAssignmentsRequest,
   type SpaceRole,
   type TargetType,
+  type UpdateDocumentContentRequest,
   type UpdateWorkItemRequest,
 } from "@project-delivery/shared";
 import { createHash } from "node:crypto";
@@ -69,10 +73,7 @@ type WriteTargetSelectionValidation =
       organizationName?: string;
       reason: string;
       spaceName?: string;
-      source: Exclude<
-        McpWriteTargetSelectionSource,
-        "MCP_CONTEXT_FALLBACK"
-      >;
+      source: Exclude<McpWriteTargetSelectionSource, "MCP_CONTEXT_FALLBACK">;
     }
   | {
       accepted: false;
@@ -92,8 +93,7 @@ type CreateDocumentFolderArgs = McpCreateDocumentFolderRequest;
 type DeleteDocumentFolderArgs = McpDeleteDocumentFolderRequest;
 type MoveDocumentFolderArgs = McpMoveDocumentFolderRequest;
 type MoveDocumentToFolderArgs = McpMoveDocumentToFolderRequest;
-type ReplaceTagAssignmentsArgs = McpWriteContext &
-  ReplaceTagAssignmentsRequest;
+type ReplaceTagAssignmentsArgs = McpWriteContext & ReplaceTagAssignmentsRequest;
 type UpdateDocumentFolderArgs = McpUpdateDocumentFolderRequest;
 type UpdateWorkItemArgs = McpWriteContext &
   UpdateWorkItemRequest & {
@@ -123,7 +123,16 @@ const WRITE_TOOL_NAMES = new Set<McpToolName>([
   "pdm.document.update_metadata",
   "pdm.document.link_resources",
   "pdm.document.move_to_folder",
+  "pdm.document.convert_to_requirement",
+  "pdm.document.cancel_requirement",
   "pdm.tag.replace_assignments",
+]);
+const REQUIREMENT_DOCUMENT_WRITE_TOOL_NAMES = new Set<McpToolName>([
+  "pdm.document.append_content",
+  "pdm.document.replace_content",
+  "pdm.document.update_metadata",
+  "pdm.document.link_resources",
+  "pdm.document.move_to_folder",
 ]);
 
 const MCP_AUTO_WRITABLE_SPACE_ROLES = new Set<SpaceRole>([
@@ -370,31 +379,37 @@ export class McpWriteToolExecutor {
     args: unknown,
     principal: McpOAuthPrincipalContext,
     writeContext: McpWriteContext,
-    targetSelection: Extract<WriteTargetSelectionValidation, { accepted: true }>,
+    targetSelection: Extract<
+      WriteTargetSelectionValidation,
+      { accepted: true }
+    >,
   ): Promise<McpToolResult> {
-    const validationResult = await this.invokeAsToolResult(contract, async () => {
-      await this.validateContextOnly(contract.name, args, principal);
+    const validationResult = await this.invokeAsToolResult(
+      contract,
+      async () => {
+        await this.validateContextOnly(contract.name, args, principal);
 
-      return {
-        message: "Dry run validated. No business changes were committed.",
-        output: McpDryRunResultSchema.parse({
-          canWrite: true,
-          committed: false,
-          dryRun: true,
-          message:
-            "Input schema, target selection and accessible organization/space context validated.",
-          organizationId: writeContext.organizationId,
-          reason: targetSelection.reason,
-          requiresConfirmation: false,
-          spaceId: writeContext.spaceId,
-          targetOrganizationName: targetSelection.organizationName,
-          targetSelectionSource: targetSelection.source,
-          targetSpaceName: targetSelection.spaceName,
-          toolName: contract.name,
-          validated: ["inputSchema", "targetSelection", "spaceContext"],
-        }),
-      };
-    });
+        return {
+          message: "Dry run validated. No business changes were committed.",
+          output: McpDryRunResultSchema.parse({
+            canWrite: true,
+            committed: false,
+            dryRun: true,
+            message:
+              "Input schema, target selection and accessible organization/space context validated.",
+            organizationId: writeContext.organizationId,
+            reason: targetSelection.reason,
+            requiresConfirmation: false,
+            spaceId: writeContext.spaceId,
+            targetOrganizationName: targetSelection.organizationName,
+            targetSelectionSource: targetSelection.source,
+            targetSpaceName: targetSelection.spaceName,
+            toolName: contract.name,
+            validated: ["inputSchema", "targetSelection", "spaceContext"],
+          }),
+        };
+      },
+    );
 
     return validationResult;
   }
@@ -405,7 +420,10 @@ export class McpWriteToolExecutor {
     principal: McpOAuthPrincipalContext,
     requestMetadata: RequestMetadata,
     inputSummary: Record<string, unknown>,
-    targetSelection: Extract<WriteTargetSelectionValidation, { accepted: true }>,
+    targetSelection: Extract<
+      WriteTargetSelectionValidation,
+      { accepted: true }
+    >,
   ): Promise<McpToolResult> {
     return this.invokeAsToolResult(contract, async () => {
       await this.validateContextOnly(contract.name, args, principal);
@@ -422,7 +440,12 @@ export class McpWriteToolExecutor {
         userId: principal.userId,
       });
 
-      return this.executeBusinessWrite(contract.name, args, principal, metadata);
+      return this.executeBusinessWrite(
+        contract.name,
+        args,
+        principal,
+        metadata,
+      );
     });
   }
 
@@ -496,20 +519,30 @@ export class McpWriteToolExecutor {
         const input = args as
           | McpAppendDocumentContentRequest
           | McpReplaceDocumentContentRequest;
-        await this.validateDocumentContext(
+        const document = await this.validateDocumentContext(
           principal.userId,
           input.documentId,
           context,
           input.baseRevision,
         );
+        this.requireRequirementScopeForDocumentWrite(
+          toolName,
+          principal,
+          document,
+        );
         return;
       }
       case "pdm.document.update_metadata": {
         const input = args as McpUpdateDocumentMetadataRequest;
-        await this.validateDocumentContext(
+        const document = await this.validateDocumentContext(
           principal.userId,
           input.documentId,
           context,
+        );
+        this.requireRequirementScopeForDocumentWrite(
+          toolName,
+          principal,
+          document,
         );
         await this.validateDocumentLinkTargets(
           principal.userId,
@@ -521,11 +554,16 @@ export class McpWriteToolExecutor {
       }
       case "pdm.document.link_resources": {
         const input = args as McpLinkDocumentResourcesRequest;
-        await this.validateDocumentContext(
+        const document = await this.validateDocumentContext(
           principal.userId,
           input.documentId,
           context,
           input.baseRevision,
+        );
+        this.requireRequirementScopeForDocumentWrite(
+          toolName,
+          principal,
+          document,
         );
         await this.validateDocumentLinkTargets(
           principal.userId,
@@ -537,27 +575,20 @@ export class McpWriteToolExecutor {
       }
       case "pdm.document_folder.create": {
         const input = args as CreateDocumentFolderArgs;
-        await this.validateDocumentFolderContext(
-          input.parentId,
-          context,
-        );
+        await this.validateDocumentFolderContext(input.parentId, context);
         return;
       }
       case "pdm.document_folder.update":
       case "pdm.document_folder.delete": {
-        const input = args as UpdateDocumentFolderArgs | DeleteDocumentFolderArgs;
-        await this.validateDocumentFolderContext(
-          input.folderId,
-          context,
-        );
+        const input = args as
+          | UpdateDocumentFolderArgs
+          | DeleteDocumentFolderArgs;
+        await this.validateDocumentFolderContext(input.folderId, context);
         return;
       }
       case "pdm.document_folder.move": {
         const input = args as MoveDocumentFolderArgs;
-        await this.validateDocumentFolderContext(
-          input.folderId,
-          context,
-        );
+        await this.validateDocumentFolderContext(input.folderId, context);
         await this.validateDocumentFolderContext(
           input.parentId ?? undefined,
           context,
@@ -566,11 +597,16 @@ export class McpWriteToolExecutor {
       }
       case "pdm.document.move_to_folder": {
         const input = args as MoveDocumentToFolderArgs;
-        await this.validateDocumentContext(
+        const document = await this.validateDocumentContext(
           principal.userId,
           input.documentId,
           context,
           input.baseRevision,
+        );
+        this.requireRequirementScopeForDocumentWrite(
+          toolName,
+          principal,
+          document,
         );
         await this.validateDocumentFolderContext(
           input.folderId ?? undefined,
@@ -578,13 +614,30 @@ export class McpWriteToolExecutor {
         );
         return;
       }
+      case "pdm.document.convert_to_requirement": {
+        const input = args as McpConvertDocumentToRequirementRequest;
+        await this.validateDocumentContext(
+          principal.userId,
+          input.documentId,
+          context,
+          input.baseRevision,
+        );
+        return;
+      }
+      case "pdm.document.cancel_requirement": {
+        const input = args as McpCancelRequirementRequest;
+        await this.validateDocumentContext(
+          principal.userId,
+          input.documentId,
+          context,
+          input.baseRevision,
+        );
+        return;
+      }
       case "pdm.document.create_from_markdown": {
         const input = args as McpCreateDocumentFromMarkdownRequest;
         if (input.folderId) {
-          await this.validateDocumentFolderContext(
-            input.folderId,
-            context,
-          );
+          await this.validateDocumentFolderContext(input.folderId, context);
         }
         await this.validateDocumentLinkTargets(
           principal.userId,
@@ -605,7 +658,11 @@ export class McpWriteToolExecutor {
     targetId: string,
     context: McpWriteContext,
   ): Promise<void> {
-    const target = await this.targets.resolve(actorUserId, targetType, targetId);
+    const target = await this.targets.resolve(
+      actorUserId,
+      targetType,
+      targetId,
+    );
 
     if (
       target.organizationId !== context.organizationId ||
@@ -624,7 +681,7 @@ export class McpWriteToolExecutor {
     documentId: string,
     context: McpWriteContext,
     baseRevision?: number,
-  ): Promise<void> {
+  ): Promise<Document> {
     const document = await this.documents.get(actorUserId, documentId);
 
     if (
@@ -645,6 +702,33 @@ export class McpWriteToolExecutor {
         HttpStatus.CONFLICT,
       );
     }
+
+    return document;
+  }
+
+  private requireRequirementScopeForDocumentWrite(
+    toolName: McpToolName,
+    principal: McpOAuthPrincipalContext,
+    document: Pick<Document, "id" | "kind">,
+  ): void {
+    if (
+      document.kind !== "REQUIREMENT" ||
+      !REQUIREMENT_DOCUMENT_WRITE_TOOL_NAMES.has(toolName) ||
+      principal.scopes.includes("mcp:write:requirement")
+    ) {
+      return;
+    }
+
+    throw new ApiException(
+      "MCP_INSUFFICIENT_SCOPE",
+      "Requirement documents require mcp:write:requirement in addition to document write scope.",
+      HttpStatus.FORBIDDEN,
+      {
+        documentId: document.id,
+        requiredScope: "mcp:write:requirement",
+        toolName,
+      },
+    );
   }
 
   private async validateDocumentFolderContext(
@@ -736,6 +820,7 @@ export class McpWriteToolExecutor {
           principal.userId,
           draft.id,
           {
+            baseRevision: draft.revision ?? 1,
             contentFormat: "MARKDOWN",
             contentMarkdown: input.contentMarkdown,
             ownerId: input.ownerId,
@@ -898,7 +983,9 @@ export class McpWriteToolExecutor {
       }
       case "pdm.document.replace_content": {
         const input = args as McpReplaceDocumentContentRequest;
-        const { documentId, ...replaceInput } = omitWriteContext(input);
+        const { documentId, ...replaceInput } = omitWriteContext(
+          input,
+        ) as UpdateDocumentContentRequest & { documentId: string };
         const document = await this.documents.updateContent(
           principal.userId,
           documentId,
@@ -957,6 +1044,36 @@ export class McpWriteToolExecutor {
 
         return {
           message: "Document moved to folder.",
+          output: document,
+        };
+      }
+      case "pdm.document.convert_to_requirement": {
+        const input = args as McpConvertDocumentToRequirementRequest;
+        const { documentId, ...convertInput } = omitWriteContext(input);
+        const document = await this.documents.convertToRequirement(
+          principal.userId,
+          documentId,
+          convertInput,
+          metadata,
+        );
+
+        return {
+          message: "Document converted to requirement.",
+          output: document,
+        };
+      }
+      case "pdm.document.cancel_requirement": {
+        const input = args as McpCancelRequirementRequest;
+        const { documentId, ...cancelInput } = omitWriteContext(input);
+        const document = await this.documents.cancelRequirement(
+          principal.userId,
+          documentId,
+          cancelInput,
+          metadata,
+        );
+
+        return {
+          message: "Requirement semantics cancelled.",
           output: document,
         };
       }
@@ -1118,10 +1235,7 @@ function summarizeInput(
   const textSummary = Object.fromEntries(
     textFields
       .filter((key) => typeof record[key] === "string")
-      .map((key) => [
-        key,
-        summarizeTextField(record[key] as string),
-      ]),
+      .map((key) => [key, summarizeTextField(record[key] as string)]),
   );
 
   return removeUndefined({

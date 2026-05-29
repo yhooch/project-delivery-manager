@@ -114,7 +114,7 @@ export async function uploadRequirementImage(
       file: input.file,
       imageOnly: true,
       targetId: input.requirementId,
-      targetType: "REQUIREMENT",
+      targetType: "DOCUMENT",
     },
     api,
   );
@@ -179,7 +179,7 @@ export function validateRequirementImageFile(
     file: input.file,
     imageOnly: true,
     targetId: input.requirementId,
-    targetType: "REQUIREMENT",
+    targetType: "DOCUMENT",
   });
 }
 

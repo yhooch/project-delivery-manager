@@ -228,6 +228,27 @@ describe("WorkItemService", () => {
     });
   });
 
+  it("rejects TASK requirement links that are not active and numbered", async () => {
+    const subject = createSubject("PM");
+
+    subject.workItems.requirementRefs.set(REQUIREMENT_ID, {
+      requirementSequence: undefined,
+      requirementStatus: "DRAFT",
+    });
+
+    await expect(
+      subject.service.create(ACTOR_ID, SPACE_ID, {
+        priority: "MEDIUM",
+        requirementId: REQUIREMENT_ID,
+        title: "Draft requirement task",
+        type: "TASK",
+      }),
+    ).rejects.toMatchObject({
+      code: "REQUIREMENT_REFERENCE_INVALID",
+    });
+    expect(subject.workItems.createdInput).toBeUndefined();
+  });
+
   it("uses scoped visibility for TESTER and participant visibility for other roles", async () => {
     const pmSubject = createSubject("PM");
 
@@ -766,7 +787,15 @@ class FakeWorkItemRepository implements WorkItemRepository {
   }
 
   async findRequirementInSpace(_spaceId: string, requirementId: string) {
-    return this.requirementRefs.get(requirementId);
+    const reference = this.requirementRefs.get(requirementId);
+
+    return reference
+      ? {
+          requirementSequence: 1,
+          requirementStatus: "ACTIVE" as const,
+          ...reference,
+        }
+      : undefined;
   }
 
   async findIntakeItemInSpace(_spaceId: string, intakeItemId: string) {

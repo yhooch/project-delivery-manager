@@ -2,10 +2,11 @@
 
 import type {
   AttachmentRef,
+  DocumentStatus,
   Priority,
   Requirement,
   RequirementRelatedWorkItemSummary,
-  RequirementStatus,
+  SaveRequirementRequest,
   SpaceMemberWithUser,
   UpdateRequirementRequest,
   Version,
@@ -107,15 +108,15 @@ const REQUIREMENT_DETAIL_REALTIME_KEYS = [
   "attachments",
   "timeline",
 ] as const;
-const STATUS_VARIANT: Record<RequirementStatus, BadgeProps["variant"]> = {
+const STATUS_VARIANT: Record<DocumentStatus, BadgeProps["variant"]> = {
   DRAFT: "outline",
-  CONFIRMED: "primary",
+  ACTIVE: "primary",
   ARCHIVED: "default",
 };
 
-const STATUS_DOT: Record<RequirementStatus, string> = {
+const STATUS_DOT: Record<DocumentStatus, string> = {
   DRAFT: "bg-muted-foreground/50",
-  CONFIRMED: "bg-primary",
+  ACTIVE: "bg-primary",
   ARCHIVED: "bg-muted-foreground/30",
 };
 
@@ -316,7 +317,7 @@ export function RequirementDetailWorkspace({
     if (
       realtimeContextIncludesTarget(context, {
         id: requirementId,
-        type: "REQUIREMENT",
+        type: "DOCUMENT",
       })
     ) {
       void loadRequirement({ mode: "realtime" });
@@ -498,7 +499,10 @@ export function RequirementDetailWorkspace({
       requirementId: requirement.id,
       spaceId: requirement.spaceId,
     };
-    const request = formStateToSaveRequest(form);
+    const request = {
+      ...formStateToSaveRequest(form),
+      baseRevision: requirement.revision ?? 1,
+    };
 
     try {
       const nextRequirement = await updateRequirement(context, request);
@@ -545,6 +549,7 @@ export function RequirementDetailWorkspace({
         },
         {
           ...pendingCascadeConfirm.request,
+          baseRevision: requirement.revision ?? 1,
           cascadeVersionChange: true,
         },
       );
@@ -571,6 +576,7 @@ export function RequirementDetailWorkspace({
     try {
       const nextRequirement = await archiveRequirement({
         organizationId: requirement.organizationId,
+        baseRevision: requirement.revision ?? 1,
         requirementId: requirement.id,
         spaceId: requirement.spaceId,
       });
@@ -914,7 +920,7 @@ export function RequirementDetailWorkspace({
                 spaceId={requirement.spaceId}
                 tags={requirement.tags}
                 targetId={requirement.id}
-                targetType="REQUIREMENT"
+                targetType="DOCUMENT"
                 testId="requirement-tags"
               />
             </PropertyItem>
@@ -1223,7 +1229,7 @@ function resizeTitleInput(element: HTMLTextAreaElement | null) {
   element.style.height = `${Math.max(element.scrollHeight, 48)}px`;
 }
 
-function StatusDot({ status }: { status: RequirementStatus }) {
+function StatusDot({ status }: { status: DocumentStatus }) {
   return (
     <span
       aria-hidden="true"
@@ -1355,7 +1361,7 @@ function requirementToFormState(
 
 function formStateToSaveRequest(
   form: RequirementFormState,
-): UpdateRequirementRequest {
+): Omit<SaveRequirementRequest, "baseRevision"> {
   const common = {
     ownerId: optionalText(form.ownerId),
     priority: form.priority || undefined,

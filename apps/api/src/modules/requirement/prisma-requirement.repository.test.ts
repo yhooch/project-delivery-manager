@@ -18,7 +18,7 @@ describe("PrismaRequirementRepository", () => {
         bugDetail: {
           findMany: bugDetailFindMany,
         },
-        requirement: {
+        document: {
           findFirst: vi.fn(async () => requirement),
         },
         tagAssignment: {
@@ -45,7 +45,7 @@ describe("PrismaRequirementRepository", () => {
         organizationId: requirement.organizationId,
         spaceId: requirement.spaceId,
         targetId: requirement.id,
-        targetType: "REQUIREMENT",
+        targetType: "DOCUMENT",
       },
     });
     expect(workItemFindMany).toHaveBeenCalledWith({
@@ -86,11 +86,12 @@ describe("PrismaRequirementRepository", () => {
       async (_args: { data: Record<string, unknown> }) => requirement,
     );
     const tx = {
+      ...makeDocumentMutationStores(),
       objectParticipant: {
         create: vi.fn(async () => undefined),
         findFirst: vi.fn(async () => undefined),
       },
-      requirement: {
+      document: {
         create: requirementCreate,
       },
       tagAssignment: {
@@ -125,6 +126,9 @@ describe("PrismaRequirementRepository", () => {
     expect(createArgs?.data).not.toHaveProperty("sequence");
     expect(createArgs?.data).toMatchObject({
       contentFormat: "TIPTAP_JSON",
+      kind: "REQUIREMENT",
+      sourceType: "USER_CREATED",
+      status: "DRAFT",
     });
     expect(created.sequence).toBeUndefined();
   });
@@ -141,11 +145,12 @@ describe("PrismaRequirementRepository", () => {
       async (_args: { data: Record<string, unknown> }) => requirement,
     );
     const tx = {
+      ...makeDocumentMutationStores(),
       objectParticipant: {
         create: vi.fn(async () => undefined),
         findFirst: vi.fn(async () => undefined),
       },
-      requirement: {
+      document: {
         create: requirementCreate,
       },
       tagAssignment: {
@@ -179,6 +184,8 @@ describe("PrismaRequirementRepository", () => {
     expect(createArgs?.data).toMatchObject({
       contentFormat: "MARKDOWN",
       contentMarkdown: "",
+      kind: "REQUIREMENT",
+      sourceType: "USER_CREATED",
     });
     expect(created).toMatchObject({
       contentFormat: "MARKDOWN",
@@ -194,13 +201,14 @@ describe("PrismaRequirementRepository", () => {
     const saved = makeRequirement({
       ...previous,
       sequence: 12,
-      status: "CONFIRMED",
+      status: "ACTIVE",
       title: "已保存需求",
     });
     const objectCodeAllocator = makeObjectCodeAllocator({ nextSequence: 12 });
     const requirementUpdateMany = vi.fn(async () => ({ count: 1 }));
     const tx = {
-      requirement: {
+      ...makeDocumentMutationStores(),
+      document: {
         findFirst: vi
           .fn()
           .mockResolvedValueOnce(previous)
@@ -234,10 +242,12 @@ describe("PrismaRequirementRepository", () => {
     );
 
     const result = await repository.save({
+      baseRevision: previous.revision,
       requirementId: previous.id,
       title: saved.title,
       contentFormat: "TIPTAP_JSON",
       contentJson: { type: "doc" },
+      contentText: "已保存需求",
       shouldUpdateOwner: false,
       updatedById: previous.authorId,
     });
@@ -248,16 +258,30 @@ describe("PrismaRequirementRepository", () => {
       organizationId: previous.organizationId,
       spaceId: previous.spaceId,
     });
-    expect(requirementUpdateMany).toHaveBeenNthCalledWith(
-      2,
+    expect(requirementUpdateMany).toHaveBeenCalledWith(
       expect.objectContaining({
-        data: { sequence: 12 },
+        data: expect.objectContaining({ sequence: 12 }),
         where: expect.objectContaining({
           id: previous.id,
-          sequence: null,
+          revision: previous.revision,
         }),
       }),
     );
+    expect(tx.documentCodeHistory.createMany).toHaveBeenCalledWith({
+      data: [
+        expect.objectContaining({
+          codePrefix: "REQ",
+          codeStatus: "ASSIGNED",
+          displayCode: "REQ-12",
+          documentId: previous.id,
+          kind: "REQUIREMENT",
+          organizationId: previous.organizationId,
+          sequence: 12,
+          spaceId: previous.spaceId,
+        }),
+      ],
+      skipDuplicates: true,
+    });
     expect(result).toMatchObject({
       sequence: 12,
       displayCode: "REQ-12",
@@ -267,7 +291,7 @@ describe("PrismaRequirementRepository", () => {
   it("keeps an existing requirement sequence unchanged on later saves", async () => {
     const previous = makeRequirement({
       sequence: 12,
-      status: "CONFIRMED",
+      status: "ACTIVE",
     });
     const saved = makeRequirement({
       ...previous,
@@ -276,7 +300,8 @@ describe("PrismaRequirementRepository", () => {
     const objectCodeAllocator = makeObjectCodeAllocator();
     const requirementUpdateMany = vi.fn(async () => ({ count: 1 }));
     const tx = {
-      requirement: {
+      ...makeDocumentMutationStores(),
+      document: {
         findFirst: vi
           .fn()
           .mockResolvedValueOnce(previous)
@@ -310,16 +335,19 @@ describe("PrismaRequirementRepository", () => {
     );
 
     const result = await repository.save({
+      baseRevision: previous.revision,
       requirementId: previous.id,
       title: saved.title,
       contentFormat: "TIPTAP_JSON",
       contentJson: { type: "doc" },
+      contentText: "再次保存需求",
       shouldUpdateOwner: false,
       updatedById: previous.authorId,
     });
 
     expect(objectCodeAllocator.allocateOne).not.toHaveBeenCalled();
     expect(requirementUpdateMany).toHaveBeenCalledTimes(1);
+    expect(tx.documentCodeHistory.createMany).not.toHaveBeenCalled();
     expect(result).toMatchObject({
       sequence: 12,
       displayCode: "REQ-12",
@@ -348,7 +376,7 @@ describe("PrismaRequirementRepository", () => {
         objectParticipant: {
           findMany: vi.fn(async () => []),
         },
-        requirement: {
+        document: {
           count: vi.fn(async () => 2),
           findMany: vi.fn(async () => [first, second]),
           groupBy: vi.fn(async () => []),
@@ -391,7 +419,7 @@ describe("PrismaRequirementRepository", () => {
             targetId: second.id,
           },
         ],
-        targetType: "REQUIREMENT",
+        targetType: "DOCUMENT",
       },
     });
     expect(workItemFindMany).toHaveBeenCalledWith({
@@ -446,7 +474,7 @@ describe("PrismaRequirementRepository", () => {
     const requirementGroupBy = vi.fn(async (_args: unknown) => [
       {
         _count: { _all: 1 },
-        status: "CONFIRMED",
+        status: "ACTIVE",
       },
     ]);
     const prisma = {
@@ -455,7 +483,7 @@ describe("PrismaRequirementRepository", () => {
         objectParticipant: {
           findMany: vi.fn(async () => []),
         },
-        requirement: {
+        document: {
           count: requirementCount,
           findMany: requirementFindMany,
           groupBy: requirementGroupBy,
@@ -483,7 +511,7 @@ describe("PrismaRequirementRepository", () => {
     expect(result.statusCounts).toEqual([
       {
         count: 1,
-        status: "CONFIRMED",
+        status: "ACTIVE",
       },
     ]);
     expect(tagAssignmentFindMany).toHaveBeenCalledWith({
@@ -501,7 +529,7 @@ describe("PrismaRequirementRepository", () => {
         tagId: {
           in: [tagId],
         },
-        targetType: "REQUIREMENT",
+        targetType: "DOCUMENT",
       },
     });
     expect(requirementFindMany).toHaveBeenCalledWith(
@@ -514,6 +542,7 @@ describe("PrismaRequirementRepository", () => {
               },
             },
           ],
+          kind: "REQUIREMENT",
           spaceId: requirement.spaceId,
           status: "ARCHIVED",
         }),
@@ -528,6 +557,7 @@ describe("PrismaRequirementRepository", () => {
             },
           },
         ],
+        kind: "REQUIREMENT",
         status: "ARCHIVED",
       }),
     });
@@ -545,6 +575,7 @@ describe("PrismaRequirementRepository", () => {
             },
           },
         ]),
+        kind: "REQUIREMENT",
         spaceId: requirement.spaceId,
       }),
     );
@@ -552,18 +583,71 @@ describe("PrismaRequirementRepository", () => {
     expect(JSON.stringify(statusCountWhere)).not.toContain("ARCHIVED");
   });
 
+  it("checks requirement cascade impact against requirement documents", async () => {
+    const requirement = makeRequirement();
+    const documentFindFirst = vi.fn(async () => undefined);
+    const intakeFindMany = vi.fn(async () => []);
+    const workItemFindMany = vi.fn(async () => []);
+    const prisma = {
+      client: {
+        document: {
+          findFirst: documentFindFirst,
+        },
+        intakeItem: {
+          findMany: intakeFindMany,
+        },
+        workItem: {
+          findMany: workItemFindMany,
+        },
+      },
+    } as unknown as PrismaService;
+    const repository = new PrismaRequirementRepository(
+      prisma,
+      makeObjectCodeAllocator(),
+    );
+
+    await expect(
+      repository.countVersionCascadeImpact({
+        requirementId: requirement.id,
+        nextVersionId: requirement.versionId,
+      }),
+    ).resolves.toEqual({
+      bugCount: 0,
+      bugIds: [],
+      intakeItemCount: 0,
+      intakeItemIds: [],
+      relatedBugCount: 0,
+      relatedBugIds: [],
+      workItemCount: 0,
+      workItemIds: [],
+    });
+    expect(documentFindFirst).toHaveBeenCalledWith({
+      select: {
+        id: true,
+      },
+      where: {
+        deletedAt: null,
+        id: requirement.id,
+        kind: "REQUIREMENT",
+      },
+    });
+    expect(intakeFindMany).not.toHaveBeenCalled();
+    expect(workItemFindMany).not.toHaveBeenCalled();
+  });
+
   it("scopes post-save aggregate queries by the saved requirement tenant", async () => {
     const requirement = makeRequirement();
     const saved = {
       ...requirement,
-      status: "CONFIRMED" as const,
+      status: "ACTIVE" as const,
       title: "已保存需求",
     };
     const attachmentFindMany = vi.fn(async () => []);
     const workItemFindMany = vi.fn(async () => []);
     const bugDetailFindMany = vi.fn(async () => []);
     const tx = {
-      requirement: {
+      ...makeDocumentMutationStores(),
+      document: {
         findFirst: vi
           .fn()
           .mockResolvedValueOnce(requirement)
@@ -597,6 +681,7 @@ describe("PrismaRequirementRepository", () => {
     );
 
     await repository.save({
+      baseRevision: requirement.revision,
       requirementId: requirement.id,
       title: saved.title,
       contentFormat: "TIPTAP_JSON",
@@ -612,7 +697,7 @@ describe("PrismaRequirementRepository", () => {
           organizationId: saved.organizationId,
           spaceId: saved.spaceId,
           targetId: saved.id,
-          targetType: "REQUIREMENT",
+          targetType: "DOCUMENT",
         }),
       }),
     );
@@ -643,12 +728,13 @@ describe("PrismaRequirementRepository", () => {
       contentMarkdown: "# 范围\n\n交付 Markdown 需求。",
       contentMarkdownCache: null,
       contentText: "范围\n\n交付 Markdown 需求。",
-      status: "CONFIRMED",
+      status: "ACTIVE",
       title: "Markdown 需求",
     });
     const requirementUpdateMany = vi.fn(async () => ({ count: 1 }));
     const tx = {
-      requirement: {
+      ...makeDocumentMutationStores(),
+      document: {
         findFirst: vi
           .fn()
           .mockResolvedValueOnce(previous)
@@ -682,6 +768,7 @@ describe("PrismaRequirementRepository", () => {
     );
 
     const result = await repository.save({
+      baseRevision: previous.revision,
       requirementId: previous.id,
       title: "Markdown 需求",
       contentFormat: "MARKDOWN",
@@ -696,13 +783,32 @@ describe("PrismaRequirementRepository", () => {
       expect.objectContaining({
         data: expect.objectContaining({
           contentFormat: "MARKDOWN",
-          contentJson: {},
+          contentJson: expect.anything(),
           contentMarkdown: "# 范围\n\n交付 Markdown 需求。",
           contentMarkdownCache: null,
           contentText: "范围\n\n交付 Markdown 需求。",
         }),
       }),
     );
+    expect(tx.documentRevision.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        changeType: "CONTENT_EDITED",
+        contentFormat: "MARKDOWN",
+        contentMarkdown: "# 范围\n\n交付 Markdown 需求。",
+        contentText: "范围\n\n交付 Markdown 需求。",
+        documentId: previous.id,
+        kind: "REQUIREMENT",
+      }),
+    });
+    expect(tx.documentChunk.createMany).toHaveBeenCalledWith({
+      data: expect.arrayContaining([
+        expect.objectContaining({
+          contentText: "交付 Markdown 需求。",
+          documentId: previous.id,
+          headingPath: "范围",
+        }),
+      ]),
+    });
     expect(result).toMatchObject({
       contentFormat: "MARKDOWN",
       contentMarkdown: "# 范围\n\n交付 Markdown 需求。",
@@ -762,7 +868,7 @@ describe("PrismaRequirementRepository", () => {
         bugDetail: {
           findMany: bugDetailFindMany,
         },
-        requirement: {
+        document: {
           findFirst: vi.fn(async () => requirement),
         },
         tagAssignment: {
@@ -809,12 +915,13 @@ describe("PrismaRequirementRepository", () => {
     const requirement = makeRequirement();
     const timelineEventCreate = vi.fn(async () => undefined);
     const tx = {
+      ...makeDocumentMutationStores(),
       objectParticipant: {
         create: vi.fn(async () => undefined),
         findFirst: vi.fn(async () => undefined),
         updateMany: vi.fn(async () => undefined),
       },
-      requirement: {
+      document: {
         create: vi.fn(async () => requirement),
         findFirst: vi
           .fn()
@@ -822,12 +929,12 @@ describe("PrismaRequirementRepository", () => {
           .mockResolvedValueOnce({
             ...requirement,
             title: "已保存需求",
-            status: "CONFIRMED",
+            status: "ACTIVE",
           })
           .mockResolvedValueOnce({
             ...requirement,
             title: "已保存需求",
-            status: "CONFIRMED",
+            status: "ACTIVE",
           })
           .mockResolvedValueOnce({
             ...requirement,
@@ -870,6 +977,7 @@ describe("PrismaRequirementRepository", () => {
       createdById: requirement.authorId,
     });
     await repository.save({
+      baseRevision: requirement.revision,
       requirementId: requirement.id,
       title: "已保存需求",
       contentFormat: "TIPTAP_JSON",
@@ -879,6 +987,7 @@ describe("PrismaRequirementRepository", () => {
       updatedById: requirement.authorId,
     });
     await repository.archive({
+      baseRevision: requirement.revision + 1,
       requirementId: requirement.id,
       updatedById: requirement.authorId,
     });
@@ -889,7 +998,7 @@ describe("PrismaRequirementRepository", () => {
         actorId: requirement.authorId,
         eventType: "CREATED",
         targetId: requirement.id,
-        targetType: "REQUIREMENT",
+        targetType: "DOCUMENT",
         title: "创建需求草稿",
       }),
     });
@@ -898,7 +1007,7 @@ describe("PrismaRequirementRepository", () => {
         actorId: requirement.authorId,
         eventType: "UPDATED",
         targetId: requirement.id,
-        targetType: "REQUIREMENT",
+        targetType: "DOCUMENT",
         title: "保存需求",
       }),
     });
@@ -907,7 +1016,7 @@ describe("PrismaRequirementRepository", () => {
         actorId: requirement.authorId,
         eventType: "STATUS_CHANGED",
         targetId: requirement.id,
-        targetType: "REQUIREMENT",
+        targetType: "DOCUMENT",
         title: "归档需求",
       }),
     });
@@ -916,7 +1025,7 @@ describe("PrismaRequirementRepository", () => {
   it("writes assignee change timeline and syncs assignee participant when owner changes", async () => {
     const ownerId = "01H00000000000000000000006";
     const nextOwnerId = "01H00000000000000000000007";
-    const previous = makeRequirement({ ownerId, status: "CONFIRMED" });
+    const previous = makeRequirement({ ownerId, status: "ACTIVE" });
     const saved = {
       ...previous,
       ownerId: nextOwnerId,
@@ -926,12 +1035,13 @@ describe("PrismaRequirementRepository", () => {
     const objectParticipantCreate = vi.fn(async () => undefined);
     const objectParticipantUpdateMany = vi.fn(async () => ({ count: 1 }));
     const tx = {
+      ...makeDocumentMutationStores(),
       objectParticipant: {
         create: objectParticipantCreate,
         findFirst: vi.fn(async () => undefined),
         updateMany: objectParticipantUpdateMany,
       },
-      requirement: {
+      document: {
         findFirst: vi
           .fn()
           .mockResolvedValueOnce(previous)
@@ -962,6 +1072,7 @@ describe("PrismaRequirementRepository", () => {
     );
 
     await repository.save({
+      baseRevision: previous.revision,
       requirementId: previous.id,
       title: "已保存需求",
       contentFormat: "TIPTAP_JSON",
@@ -977,7 +1088,7 @@ describe("PrismaRequirementRepository", () => {
         where: expect.objectContaining({
           relationType: "ASSIGNEE",
           targetId: previous.id,
-          targetType: "REQUIREMENT",
+          targetType: "DOCUMENT",
           userId: {
             not: nextOwnerId,
           },
@@ -988,7 +1099,7 @@ describe("PrismaRequirementRepository", () => {
       data: expect.objectContaining({
         relationType: "ASSIGNEE",
         targetId: previous.id,
-        targetType: "REQUIREMENT",
+        targetType: "DOCUMENT",
         userId: nextOwnerId,
       }),
     });
@@ -998,7 +1109,7 @@ describe("PrismaRequirementRepository", () => {
         before: { ownerId },
         eventType: "ASSIGNEE_CHANGED",
         targetId: previous.id,
-        targetType: "REQUIREMENT",
+        targetType: "DOCUMENT",
       }),
     });
   });
@@ -1018,13 +1129,14 @@ describe("PrismaRequirementRepository", () => {
     };
     const saved = {
       ...previous,
-      status: "CONFIRMED" as const,
+      status: "ACTIVE" as const,
       updatedById: actorUserId,
       versionId: newVersionId,
     };
     const objectParticipantUpdateMany = vi.fn(async () => ({ count: 1 }));
     const objectParticipantCreate = vi.fn(async () => undefined);
     const tx = {
+      ...makeDocumentMutationStores(),
       bugDetail: {
         findMany: vi.fn(async () => [{ workItemId: bugId }]),
       },
@@ -1036,11 +1148,15 @@ describe("PrismaRequirementRepository", () => {
         findFirst: vi.fn(async () => undefined),
         updateMany: objectParticipantUpdateMany,
       },
-      requirement: {
+      document: {
         findFirst: vi
           .fn()
           .mockResolvedValueOnce(previous)
           .mockResolvedValueOnce(saved),
+        findMany: vi
+          .fn()
+          .mockResolvedValueOnce([{ id: previous.id, versionId: newVersionId }])
+          .mockResolvedValueOnce([{ id: previous.id, ownerId: null }]),
         updateMany: vi.fn(async () => ({ count: 1 })),
       },
       timelineEvent: {
@@ -1070,7 +1186,6 @@ describe("PrismaRequirementRepository", () => {
               id: taskId,
               intakeItem: null,
               intakeItemId: null,
-              requirement: { versionId: newVersionId },
               requirementId: previous.id,
             },
             {
@@ -1081,7 +1196,6 @@ describe("PrismaRequirementRepository", () => {
               id: bugId,
               intakeItem: null,
               intakeItemId: null,
-              requirement: null,
               requirementId: null,
             },
           ])
@@ -1091,7 +1205,7 @@ describe("PrismaRequirementRepository", () => {
               id: taskId,
               intakeItem: null,
               organizationId: previous.organizationId,
-              requirement: { ownerId: null },
+              requirementId: previous.id,
               spaceId: previous.spaceId,
               version: { ownerId: newVersionOwnerId },
             },
@@ -1108,7 +1222,7 @@ describe("PrismaRequirementRepository", () => {
               id: bugId,
               intakeItem: null,
               organizationId: previous.organizationId,
-              requirement: null,
+              requirementId: null,
               spaceId: previous.spaceId,
               version: { ownerId: newVersionOwnerId },
             },
@@ -1136,6 +1250,7 @@ describe("PrismaRequirementRepository", () => {
     );
 
     await repository.save({
+      baseRevision: previous.revision,
       cascadeVersionChange: true,
       contentFormat: "TIPTAP_JSON",
       contentJson: { type: "doc" },
@@ -1221,6 +1336,21 @@ function makeObjectCodeAllocator(
   };
 }
 
+function makeDocumentMutationStores() {
+  return {
+    documentChunk: {
+      createMany: vi.fn(async () => ({ count: 0 })),
+      deleteMany: vi.fn(async () => ({ count: 0 })),
+    },
+    documentCodeHistory: {
+      createMany: vi.fn(async () => ({ count: 1 })),
+    },
+    documentRevision: {
+      create: vi.fn(async () => undefined),
+    },
+  };
+}
+
 function makeBaseRequirement() {
   const now = new Date("2026-05-14T12:00:00.000Z");
 
@@ -1228,19 +1358,21 @@ function makeBaseRequirement() {
     id: "01H00000000000000000000001",
     organizationId: "01H00000000000000000000002",
     spaceId: "01H00000000000000000000003",
+    kind: "REQUIREMENT" as const,
     versionId: "01H00000000000000000000004",
     title: "",
     summary: null,
     contentJson: {},
     contentMarkdown: null as string | null,
-    contentText: null as string | null,
+    contentText: "",
     contentMarkdownCache: null as string | null,
     contentFormat: "TIPTAP_JSON" as "TIPTAP_JSON" | "MARKDOWN",
-    status: "DRAFT" as "DRAFT" | "CONFIRMED" | "ARCHIVED",
+    status: "DRAFT" as "DRAFT" | "ACTIVE" | "ARCHIVED",
     priority: null,
     ownerId: null as string | null,
     authorId: "01H00000000000000000000005",
     sequence: null as number | null,
+    revision: 1,
     createdAt: now,
     updatedAt: now,
   };

@@ -83,11 +83,6 @@ export type SpaceMember = Prisma.SpaceMemberModel
  */
 export type Version = Prisma.VersionModel
 /**
- * Model Requirement
- *
- */
-export type Requirement = Prisma.RequirementModel
-/**
  * Model IntakeItem
  *
  */
@@ -127,6 +122,11 @@ export type DocumentFolder = Prisma.DocumentFolderModel
  *
  */
 export type DocumentRevision = Prisma.DocumentRevisionModel
+/**
+ * Model DocumentCodeHistory
+ *
+ */
+export type DocumentCodeHistory = Prisma.DocumentCodeHistoryModel
 /**
  * Model DocumentLink
  *

@@ -115,6 +115,61 @@ describe("CommentService", () => {
     expect(audit.record).not.toHaveBeenCalled();
     expect(realtime.publish).not.toHaveBeenCalled();
   });
+
+  it("publishes requirement document hints for requirement comments", async () => {
+    const actorUserId = ulid();
+    const organizationId = ulid();
+    const spaceId = ulid();
+    const requirementId = ulid();
+    const comments = {
+      create: vi.fn(async (input) => fakeComment(input.id, requirementId)),
+      listByTarget: vi.fn(),
+    } as unknown as CommentRepository;
+    const targets = {
+      resolve: vi.fn(async () => ({
+        organizationId,
+        spaceId,
+        targetId: requirementId,
+        targetKind: "REQUIREMENT" as const,
+        targetType: "DOCUMENT" as const,
+        role: "PM" as const,
+        canWrite: true,
+      })),
+    } as unknown as TargetResolverService;
+    const audit = createAuditService();
+    const realtime = createRealtimePublisher();
+    const service = new CommentService(comments, targets, audit, realtime);
+
+    await service.create(actorUserId, {
+      targetType: "DOCUMENT",
+      targetId: requirementId,
+      body: "Looks good",
+    });
+
+    expect(comments.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        targetId: requirementId,
+        targetType: "DOCUMENT",
+      }),
+    );
+    expect(realtime.publish).toHaveBeenCalledWith(
+      expect.objectContaining({
+        target: { type: "DOCUMENT", id: requirementId },
+        invalidates: expect.arrayContaining([
+          "requirement-detail",
+          "document-comments",
+          "document-timeline",
+        ]),
+        hints: expect.objectContaining({
+          canonicalTargetType: "DOCUMENT",
+          requirementId,
+          targetId: requirementId,
+          targetKind: "REQUIREMENT",
+          targetType: "DOCUMENT",
+        }),
+      }),
+    );
+  });
 });
 
 function createAuditService() {

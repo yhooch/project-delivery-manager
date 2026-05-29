@@ -185,6 +185,51 @@ describe("PrismaBugRepository", () => {
     );
   });
 
+  it("looks up linked requirements from requirement documents", async () => {
+    const documentFindFirst = vi.fn(async () => ({
+      ownerId: "01H00000000000000000000004",
+      sequence: 12,
+      status: "ACTIVE",
+      versionId: "01H00000000000000000000002",
+    }));
+    const repository = new PrismaBugRepository(
+      {
+        client: {
+          document: {
+            findFirst: documentFindFirst,
+          },
+        },
+      } as unknown as PrismaService,
+      makeObjectCodeAllocator(),
+    );
+
+    await expect(
+      repository.findRequirementInSpace(
+        "01H00000000000000000000001",
+        "01H00000000000000000000009",
+      ),
+    ).resolves.toEqual({
+      requirementOwnerId: "01H00000000000000000000004",
+      requirementSequence: 12,
+      requirementStatus: "ACTIVE",
+      requirementVersionId: "01H00000000000000000000002",
+    });
+    expect(documentFindFirst).toHaveBeenCalledWith({
+      select: {
+        ownerId: true,
+        sequence: true,
+        status: true,
+        versionId: true,
+      },
+      where: {
+        deletedAt: null,
+        id: "01H00000000000000000000009",
+        kind: "REQUIREMENT",
+        spaceId: "01H00000000000000000000001",
+      },
+    });
+  });
+
   it("allocates a BUG sequence while keeping bug detail keyed by work item id", async () => {
     const objectCodeAllocator = makeObjectCodeAllocator({ nextSequence: 51 });
     const workItemCreate = vi.fn(async (args: { data: BugWorkItemCreateData }) =>

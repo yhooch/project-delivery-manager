@@ -6,7 +6,10 @@ import {
   ChevronRight,
   Clock3,
   Download,
+  ExternalLink,
+  FileCheck2,
   FileText,
+  FileX2,
   FolderInput,
   Link2,
   Loader2,
@@ -39,6 +42,7 @@ import {
 import type {
   Attachment,
   Comment,
+  SpaceRole,
   TimelineEvent,
 } from "@project-delivery/shared";
 
@@ -56,11 +60,15 @@ import type {
   DocumentDetail,
   DocumentFolder,
   DocumentLinkSummary,
+  DocumentLinkWriteTargetType,
   DocumentSummary,
 } from "../../lib/document-service";
 import {
   archiveDocument,
+  cancelRequirement as cancelRequirementDocument,
+  convertDocumentToRequirement,
   deleteDocument,
+  getCancelRequirementPreflight,
   getDocument,
   listDocumentFolders,
   listDocuments,
@@ -77,22 +85,27 @@ import {
   type DocumentEditForm,
 } from "../../lib/document-forms";
 import {
+  canRenderDocumentMarkdownContent,
   formatDocumentRelativeTimestamp,
+  getDocumentDisplayCode,
   getDocumentLinkDisplayCode,
   getDocumentLinkHref,
   getDocumentSourceKey,
   getLookupTargetType,
+  isRequirementDocument,
 } from "../../lib/document-view-model";
 import { lookupObjectCode } from "../../lib/object-code-service";
 import {
   realtimeContextIncludesTarget,
   useRealtimeInvalidation,
 } from "../../lib/realtime";
+import { createTiptapDocumentFromText } from "../../lib/requirement-editor-content";
 import { listTimeline } from "../../lib/timeline-service";
 import { cn } from "../../lib/utils";
 import { useSession } from "../providers/session-provider";
 import { TagBadgeList, TagSelectionField } from "../tag";
 import { recordRecentOpen } from "../shell/recent-opens";
+import { Badge } from "../ui/badge";
 import { Button } from "../ui/button";
 import {
   Dialog,
@@ -137,6 +150,12 @@ const DOCUMENT_DETAIL_REALTIME_KEYS = [
   "document-timeline",
 ] as const;
 const DOCUMENT_LINK_SEARCH_PAGE_SIZE = 8;
+const REQUIREMENT_WRITER_ROLES = new Set<SpaceRole>([
+  "SPACE_ADMIN",
+  "PM",
+  "REQUIREMENT",
+]);
+const REQUIREMENT_MANAGER_ROLES = new Set<SpaceRole>(["SPACE_ADMIN", "PM"]);
 
 function isValidDocumentListHref(href: string | null): href is string {
   return href === "/documents" || href?.startsWith("/documents?") === true;
@@ -170,6 +189,34 @@ function getDocumentBackToListFallbackHref(document: DocumentDetail | null) {
   return "/documents";
 }
 
+function canConvertDocumentToRequirement(
+  document: DocumentDetail,
+  role: SpaceRole | undefined,
+) {
+  return (
+    document.kind === "GENERAL" &&
+    document.status !== "ARCHIVED" &&
+    Boolean(role && REQUIREMENT_WRITER_ROLES.has(role))
+  );
+}
+
+function canCancelRequirementDocument(
+  document: DocumentDetail,
+  role: SpaceRole | undefined,
+  userId: string | undefined,
+) {
+  if (document.kind !== "REQUIREMENT" || !role) {
+    return false;
+  }
+  if (document.status === "DRAFT" && document.sequence == null) {
+    return (
+      REQUIREMENT_WRITER_ROLES.has(role) ||
+      (Boolean(userId) && document.createdById === userId)
+    );
+  }
+  return REQUIREMENT_MANAGER_ROLES.has(role);
+}
+
 export function DocumentDetailPage({ documentId }: DocumentDetailPageProps) {
   const t = useTranslations("documents");
   const tRoot = useTranslations();
@@ -186,7 +233,23 @@ export function DocumentDetailPage({ documentId }: DocumentDetailPageProps) {
   const [isArchiving, setIsArchiving] = useState(false);
   const [isRestoring, setIsRestoring] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [isConvertingToRequirement, setIsConvertingToRequirement] =
+    useState(false);
+  const [isCancellingRequirement, setIsCancellingRequirement] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [cancelRequirementDialogOpen, setCancelRequirementDialogOpen] =
+    useState(false);
+  const [cancelRequirementReferenceMode, setCancelRequirementReferenceMode] =
+    useState<"REJECT_IF_REFERENCED" | "UNLINK_REFERENCES">(
+      "REJECT_IF_REFERENCED",
+    );
+  const [cancelRequirementReferenceCount, setCancelRequirementReferenceCount] =
+    useState<number | null>(null);
+  const [cancelRequirementReason, setCancelRequirementReason] = useState("");
+  const [
+    isLoadingCancelRequirementPreflight,
+    setIsLoadingCancelRequirementPreflight,
+  ] = useState(false);
   const [moveFolderDialogOpen, setMoveFolderDialogOpen] = useState(false);
   const [errorKey, setErrorKey] = useState<string | null>(null);
   const [conflict, setConflict] = useState(false);
@@ -218,10 +281,37 @@ export function DocumentDetailPage({ documentId }: DocumentDetailPageProps) {
     () => storedListHref ?? getDocumentBackToListFallbackHref(document),
     [document, storedListHref],
   );
+  const canRenderMarkdownContent = document
+    ? canRenderDocumentMarkdownContent(document)
+    : true;
+  const canEditTiptapContent =
+    document?.kind === "GENERAL" && document.contentFormat === "TIPTAP_JSON";
+  const isRequirement = document ? isRequirementDocument(document) : false;
+  const canEditDocumentContent =
+    !isRequirement && (canRenderMarkdownContent || canEditTiptapContent);
+  const documentDisplayCode = document
+    ? getDocumentDisplayCode(document)
+    : null;
+  const showContentEditMode = editMode && canEditDocumentContent;
+  const currentSpaceRole = currentSpace?.role;
+  const currentUserId = session?.user.id;
+  const canConvertDocument = document
+    ? canConvertDocumentToRequirement(document, currentSpaceRole)
+    : false;
+  const canCancelRequirement = document
+    ? canCancelRequirementDocument(document, currentSpaceRole, currentUserId)
+    : false;
 
   useEffect(() => {
     setStoredListHref(readStoredDocumentListHref());
   }, [documentId]);
+
+  useEffect(() => {
+    if (document && !canEditDocumentContent) {
+      setEditMode(false);
+      setContentPreview(false);
+    }
+  }, [canEditDocumentContent, document]);
 
   useEffect(() => {
     setActiveDocumentFolderId(document?.folderId);
@@ -369,7 +459,13 @@ export function DocumentDetailPage({ documentId }: DocumentDetailPageProps) {
   }, [document, documentSearch, editMode]);
 
   const headingsSource =
-    editMode && form ? form.contentMarkdown : (document?.contentMarkdown ?? "");
+    editMode && form
+      ? canRenderMarkdownContent
+        ? form.contentMarkdown
+        : form.contentText
+      : canRenderMarkdownContent
+        ? (document?.contentMarkdown ?? "")
+        : (document?.contentMarkdownCache ?? document?.contentText ?? "");
   const headings = useMemo<MarkdownHeading[]>(
     () => getDocumentMarkdownHeadings(headingsSource),
     [headingsSource],
@@ -394,10 +490,27 @@ export function DocumentDetailPage({ documentId }: DocumentDetailPageProps) {
         targetId: link.targetId,
         targetType: "DOCUMENT" as const,
       }));
+      const contentMarkdown =
+        canRenderDocumentMarkdownContent(document) &&
+        form.contentMarkdown !== document.contentMarkdown
+          ? form.contentMarkdown
+          : undefined;
+      const contentText =
+        canEditTiptapContent &&
+        form.contentText !==
+          (document.contentMarkdownCache ?? document.contentText ?? "")
+          ? form.contentText
+          : undefined;
       const next = await updateDocument({
         baseRevision: form.baseRevision,
-        ...(form.contentMarkdown !== document.contentMarkdown
-          ? { contentMarkdown: form.contentMarkdown }
+        ...(contentMarkdown !== undefined ? { contentMarkdown } : {}),
+        ...(contentText !== undefined
+          ? {
+              contentFormat: "TIPTAP_JSON" as const,
+              contentJson: createTiptapDocumentFromText(contentText),
+              contentMarkdownCache: contentText,
+              contentText,
+            }
           : {}),
         documentId: document.id,
         linkTargets: dedupeLinkTargets([
@@ -449,6 +562,84 @@ export function DocumentDetailPage({ documentId }: DocumentDetailPageProps) {
       }
     } finally {
       setIsSaving(false);
+    }
+  };
+
+  const convertCurrentDocumentToRequirement = async () => {
+    if (!document || !canConvertDocument) {
+      return;
+    }
+
+    setIsConvertingToRequirement(true);
+    setErrorKey(null);
+    try {
+      const next = await convertDocumentToRequirement({
+        activate: true,
+        baseRevision: document.revision,
+        documentId: document.id,
+        title: document.title,
+      });
+      setDocument(next);
+      setForm(createDocumentEditForm(next));
+      setHasRealtimeRevision(false);
+      router.push(`/requirements/${next.id}`);
+    } catch (error) {
+      setErrorKey(getApiErrorMessageKey(error));
+    } finally {
+      setIsConvertingToRequirement(false);
+    }
+  };
+
+  const openCancelRequirementDialog = async () => {
+    if (!document || !canCancelRequirement) {
+      return;
+    }
+
+    setCancelRequirementDialogOpen(true);
+    setCancelRequirementReason("");
+    setCancelRequirementReferenceCount(null);
+    setCancelRequirementReferenceMode("REJECT_IF_REFERENCED");
+    setIsLoadingCancelRequirementPreflight(true);
+    setErrorKey(null);
+    try {
+      const preflight = await getCancelRequirementPreflight({
+        documentId: document.id,
+      });
+      setCancelRequirementReferenceCount(preflight.referenceCount);
+      setCancelRequirementReferenceMode(
+        preflight.modeRequired ?? "REJECT_IF_REFERENCED",
+      );
+    } catch (error) {
+      setErrorKey(getApiErrorMessageKey(error));
+      setCancelRequirementDialogOpen(false);
+    } finally {
+      setIsLoadingCancelRequirementPreflight(false);
+    }
+  };
+
+  const cancelCurrentRequirement = async () => {
+    if (!document || !canCancelRequirement) {
+      return;
+    }
+
+    setIsCancellingRequirement(true);
+    setErrorKey(null);
+    try {
+      const next = await cancelRequirementDocument({
+        baseRevision: document.revision,
+        documentId: document.id,
+        reason: cancelRequirementReason.trim() || undefined,
+        referenceMode: cancelRequirementReferenceMode,
+      });
+      setDocument(next);
+      setForm(createDocumentEditForm(next));
+      setHasRealtimeRevision(false);
+      setCancelRequirementDialogOpen(false);
+      setCancelRequirementReason("");
+    } catch (error) {
+      setErrorKey(getApiErrorMessageKey(error));
+    } finally {
+      setIsCancellingRequirement(false);
     }
   };
 
@@ -641,7 +832,12 @@ export function DocumentDetailPage({ documentId }: DocumentDetailPageProps) {
               className="sticky top-12 z-20 mb-3 bg-background/80 py-1.5 backdrop-blur-md supports-[backdrop-filter]:bg-background/70"
               data-testid="document-back-to-list-bar"
             >
-              <Button asChild size="sm" variant="ghost" className="-ml-2 text-muted-foreground hover:text-foreground">
+              <Button
+                asChild
+                size="sm"
+                variant="ghost"
+                className="-ml-2 text-muted-foreground hover:text-foreground"
+              >
                 <Link href={backToListHref} data-testid="document-back-to-list">
                   <ChevronLeft className="h-4 w-4" aria-hidden="true" />
                   {t("actions.backToList")}
@@ -666,7 +862,7 @@ export function DocumentDetailPage({ documentId }: DocumentDetailPageProps) {
             <section className="pb-5">
               <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
                 <div className="min-w-0 flex-1">
-                  {editMode ? (
+                  {showContentEditMode ? (
                     <Input
                       aria-label={t("edit.titleLabel")}
                       className="h-auto border-0 px-0 py-1 text-2xl font-semibold tracking-tight shadow-none focus-visible:ring-0 md:text-3xl"
@@ -697,18 +893,30 @@ export function DocumentDetailPage({ documentId }: DocumentDetailPageProps) {
                       actorType={document.lastEditedVia}
                       mcpClientName={document.lastEditedMcpClientName}
                     />
-                    <span aria-hidden="true" className="hidden h-3 w-px bg-border/60 sm:block" />
+                    {isRequirement ? (
+                      <RequirementIdentityBadge
+                        displayCode={documentDisplayCode}
+                        status={document.status}
+                      />
+                    ) : null}
+                    <span
+                      aria-hidden="true"
+                      className="hidden h-3 w-px bg-border/60 sm:block"
+                    />
                     <span className="truncate">
                       {formatDocumentCreatedMeta(document, locale, t)}
                     </span>
-                    <span aria-hidden="true" className="hidden h-3 w-px bg-border/60 sm:block" />
+                    <span
+                      aria-hidden="true"
+                      className="hidden h-3 w-px bg-border/60 sm:block"
+                    />
                     <span className="truncate">
                       {formatDocumentEditedMeta(document, locale, t)}
                     </span>
                   </div>
                 </div>
                 <div className="flex shrink-0 flex-wrap gap-2">
-                  {editMode ? (
+                  {showContentEditMode ? (
                     <Fragment key="document-edit-actions">
                       <Button
                         key="document-cancel-button"
@@ -754,21 +962,93 @@ export function DocumentDetailPage({ documentId }: DocumentDetailPageProps) {
                         <FolderInput className="h-4 w-4" aria-hidden="true" />
                         {t("actions.moveToFolder")}
                       </Button>
-                      <Button
-                        key="document-edit-button"
-                        type="button"
-                        variant="outline"
-                        onClick={(event) => {
-                          event.preventDefault();
-                          setContentPreview(false);
-                          setEditMode(true);
-                        }}
-                        data-testid="document-edit-button"
-                      >
-                        <Pencil className="h-4 w-4" aria-hidden="true" />
-                        {t("actions.edit")}
-                      </Button>
-                      {document.status === "ARCHIVED" ? (
+                      {canConvertDocument ? (
+                        <Button
+                          key="document-convert-requirement-button"
+                          type="button"
+                          variant="outline"
+                          disabled={isConvertingToRequirement}
+                          onClick={() =>
+                            void convertCurrentDocumentToRequirement()
+                          }
+                          data-testid="document-convert-requirement-button"
+                        >
+                          {isConvertingToRequirement ? (
+                            <Loader2
+                              className="h-4 w-4 animate-spin"
+                              aria-hidden="true"
+                            />
+                          ) : (
+                            <FileCheck2
+                              className="h-4 w-4"
+                              aria-hidden="true"
+                            />
+                          )}
+                          {t("actions.convertToRequirement")}
+                        </Button>
+                      ) : null}
+                      {canEditDocumentContent ? (
+                        <Button
+                          key="document-edit-button"
+                          type="button"
+                          variant="outline"
+                          onClick={(event) => {
+                            event.preventDefault();
+                            setContentPreview(false);
+                            setEditMode(true);
+                          }}
+                          data-testid="document-edit-button"
+                        >
+                          <Pencil className="h-4 w-4" aria-hidden="true" />
+                          {t("actions.edit")}
+                        </Button>
+                      ) : null}
+                      {isRequirement ? (
+                        <>
+                          <Button
+                            asChild
+                            key="document-open-requirement-button"
+                            variant="outline"
+                            data-testid="document-open-requirement-button"
+                          >
+                            <Link href={`/requirements/${document.id}`}>
+                              <ExternalLink
+                                className="h-4 w-4"
+                                aria-hidden="true"
+                              />
+                              {t("actions.openRequirementView")}
+                            </Link>
+                          </Button>
+                          {canCancelRequirement ? (
+                            <Button
+                              key="document-cancel-requirement-button"
+                              type="button"
+                              variant="outline"
+                              disabled={
+                                isLoadingCancelRequirementPreflight ||
+                                isCancellingRequirement
+                              }
+                              onClick={() => void openCancelRequirementDialog()}
+                              data-testid="document-cancel-requirement-button"
+                            >
+                              {isLoadingCancelRequirementPreflight ||
+                              isCancellingRequirement ? (
+                                <Loader2
+                                  className="h-4 w-4 animate-spin"
+                                  aria-hidden="true"
+                                />
+                              ) : (
+                                <FileX2
+                                  className="h-4 w-4"
+                                  aria-hidden="true"
+                                />
+                              )}
+                              {t("actions.cancelRequirement")}
+                            </Button>
+                          ) : null}
+                        </>
+                      ) : null}
+                      {!isRequirement && document.status === "ARCHIVED" ? (
                         <>
                           <Button
                             key="document-restore-button"
@@ -803,13 +1083,14 @@ export function DocumentDetailPage({ documentId }: DocumentDetailPageProps) {
                             {t("actions.delete")}
                           </Button>
                         </>
-                      ) : (
+                      ) : !isRequirement ? (
                         <Button
                           key="document-archive-button"
                           type="button"
                           variant="ghost"
                           disabled={isArchiving}
                           onClick={() => void archive()}
+                          data-testid="document-archive-button"
                         >
                           {isArchiving ? (
                             <Loader2
@@ -821,7 +1102,7 @@ export function DocumentDetailPage({ documentId }: DocumentDetailPageProps) {
                           )}
                           {t("actions.archive")}
                         </Button>
-                      )}
+                      ) : null}
                     </Fragment>
                   )}
                 </div>
@@ -879,7 +1160,7 @@ export function DocumentDetailPage({ documentId }: DocumentDetailPageProps) {
               </div>
             ) : null}
 
-            {editMode ? (
+            {showContentEditMode ? (
               <section
                 className="mt-5 grid gap-5"
                 data-testid="document-edit-panel"
@@ -920,7 +1201,11 @@ export function DocumentDetailPage({ documentId }: DocumentDetailPageProps) {
                   {contentPreview ? (
                     <DocumentMarkdownViewer
                       className="min-h-[28rem] rounded-lg bg-muted/30 p-4"
-                      markdown={form.contentMarkdown}
+                      markdown={
+                        canRenderMarkdownContent
+                          ? form.contentMarkdown
+                          : form.contentText
+                      }
                       organizationId={document.organizationId}
                       spaceId={document.spaceId}
                     />
@@ -929,14 +1214,23 @@ export function DocumentDetailPage({ documentId }: DocumentDetailPageProps) {
                       aria-labelledby="document-content-label"
                       className="min-h-[28rem] font-mono text-xs leading-5"
                       data-testid="document-content-input"
-                      value={form.contentMarkdown}
+                      value={
+                        canRenderMarkdownContent
+                          ? form.contentMarkdown
+                          : form.contentText
+                      }
                       onChange={(event) =>
                         setForm((current) =>
                           current
-                            ? {
-                                ...current,
-                                contentMarkdown: event.target.value,
-                              }
+                            ? canRenderMarkdownContent
+                              ? {
+                                  ...current,
+                                  contentMarkdown: event.target.value,
+                                }
+                              : {
+                                  ...current,
+                                  contentText: event.target.value,
+                                }
                             : current,
                         )
                       }
@@ -989,44 +1283,41 @@ export function DocumentDetailPage({ documentId }: DocumentDetailPageProps) {
                   results={documentSearchResults}
                   selectedDocuments={form.linkedDocuments}
                 />
-                <div className="grid gap-2 rounded-lg bg-muted/40 p-3">
-                  <label className="grid gap-1.5 text-sm">
-                    <span className="font-medium">
-                      {t("edit.reimportLabel")}
-                    </span>
-                    <Input
-                      accept=".md,.markdown,.docx"
-                      data-testid="document-reimport-input"
-                      type="file"
-                      onChange={(event: ChangeEvent<HTMLInputElement>) =>
-                        setReimportFile(event.target.files?.[0] ?? null)
-                      }
-                    />
-                  </label>
-                  <div>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      disabled={
-                        !reimportFile ||
-                        !getImportKind(reimportFile) ||
-                        isSaving
-                      }
-                      onClick={() => void reimport()}
-                    >
-                      <RefreshCw className="h-4 w-4" aria-hidden="true" />
-                      {t("actions.reimport")}
-                    </Button>
+                {canRenderMarkdownContent ? (
+                  <div className="grid gap-2 rounded-lg bg-muted/40 p-3">
+                    <label className="grid gap-1.5 text-sm">
+                      <span className="font-medium">
+                        {t("edit.reimportLabel")}
+                      </span>
+                      <Input
+                        accept=".md,.markdown,.docx"
+                        data-testid="document-reimport-input"
+                        type="file"
+                        onChange={(event: ChangeEvent<HTMLInputElement>) =>
+                          setReimportFile(event.target.files?.[0] ?? null)
+                        }
+                      />
+                    </label>
+                    <div>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        disabled={
+                          !reimportFile ||
+                          !getImportKind(reimportFile) ||
+                          isSaving
+                        }
+                        onClick={() => void reimport()}
+                      >
+                        <RefreshCw className="h-4 w-4" aria-hidden="true" />
+                        {t("actions.reimport")}
+                      </Button>
+                    </div>
                   </div>
-                </div>
+                ) : null}
               </section>
             ) : (
-              <DocumentMarkdownViewer
-                className="mt-6"
-                markdown={document.contentMarkdown}
-                organizationId={document.organizationId}
-                spaceId={document.spaceId}
-              />
+              <DocumentContentReadView document={document} />
             )}
           </form>
 
@@ -1053,6 +1344,18 @@ export function DocumentDetailPage({ documentId }: DocumentDetailPageProps) {
         onOpenChange={setDeleteDialogOpen}
         open={deleteDialogOpen}
       />
+      <RequirementCancelDialog
+        isCancelling={isCancellingRequirement}
+        isLoading={isLoadingCancelRequirementPreflight}
+        onConfirm={() => void cancelCurrentRequirement()}
+        onOpenChange={setCancelRequirementDialogOpen}
+        onReasonChange={setCancelRequirementReason}
+        onReferenceModeChange={setCancelRequirementReferenceMode}
+        open={cancelRequirementDialogOpen}
+        reason={cancelRequirementReason}
+        referenceCount={cancelRequirementReferenceCount}
+        referenceMode={cancelRequirementReferenceMode}
+      />
       <DocumentMoveFolderDialog
         baseRevision={document.revision}
         currentFolderId={document.folderId ?? null}
@@ -1070,6 +1373,119 @@ export function DocumentDetailPage({ documentId }: DocumentDetailPageProps) {
       />
     </>
   );
+}
+
+function RequirementIdentityBadge({
+  displayCode,
+  status,
+}: {
+  displayCode: string | null;
+  status: DocumentDetail["status"];
+}) {
+  const t = useTranslations("documents");
+  return (
+    <Badge
+      variant="outline"
+      className="border-primary/30 bg-primary/10 text-primary"
+      data-testid="document-requirement-identity"
+    >
+      <span className="font-mono">{displayCode ?? t("kind.REQUIREMENT")}</span>
+      <span className="text-primary/70">{t(`status.${status}`)}</span>
+    </Badge>
+  );
+}
+
+function DocumentContentReadView({ document }: { document: DocumentDetail }) {
+  if (canRenderDocumentMarkdownContent(document)) {
+    return (
+      <DocumentMarkdownViewer
+        className="mt-6"
+        markdown={document.contentMarkdown}
+        organizationId={document.organizationId}
+        spaceId={document.spaceId}
+      />
+    );
+  }
+
+  if (document.kind === "GENERAL" && document.contentFormat === "TIPTAP_JSON") {
+    return (
+      <DocumentMarkdownViewer
+        className="mt-6"
+        markdown={document.contentMarkdownCache ?? document.contentText ?? ""}
+        organizationId={document.organizationId}
+        spaceId={document.spaceId}
+      />
+    );
+  }
+
+  return <ManagedDocumentContentPanel document={document} />;
+}
+
+function ManagedDocumentContentPanel({
+  document,
+}: {
+  document: DocumentDetail;
+}) {
+  const t = useTranslations("documents");
+  const preview = getManagedContentPreview(document);
+  const isRequirement = isRequirementDocument(document);
+  const displayCode = getDocumentDisplayCode(document);
+
+  return (
+    <section
+      className="mt-6 grid gap-3 rounded-lg border border-border bg-muted/30 p-4"
+      data-testid="document-managed-content-panel"
+    >
+      <div className="flex flex-wrap items-center gap-2">
+        <Badge
+          variant={isRequirement ? "default" : "outline"}
+          data-testid="document-managed-content-kind"
+        >
+          {isRequirement
+            ? t("kind.REQUIREMENT")
+            : t(`contentFormat.${document.contentFormat}`)}
+        </Badge>
+        {displayCode ? (
+          <span
+            className="rounded bg-background px-1.5 py-0.5 font-mono text-xs text-foreground"
+            data-testid="document-managed-content-code"
+          >
+            {displayCode}
+          </span>
+        ) : null}
+      </div>
+      <p className="text-sm text-muted-foreground">
+        {isRequirement
+          ? t("detail.requirementManaged")
+          : t("detail.richTextReadOnly")}
+      </p>
+      {preview ? (
+        <pre
+          className="max-h-[28rem] overflow-auto whitespace-pre-wrap rounded-md bg-background px-3 py-2 font-mono text-xs leading-5 text-foreground"
+          data-testid="document-managed-content-preview"
+        >
+          {preview}
+        </pre>
+      ) : (
+        <p className="rounded-md bg-background px-3 py-2 text-sm text-muted-foreground">
+          {t("detail.noManagedPreview")}
+        </p>
+      )}
+    </section>
+  );
+}
+
+function getManagedContentPreview(document: DocumentDetail): string {
+  if (document.contentFormat === "TIPTAP_JSON") {
+    return (
+      document.contentMarkdownCache?.trim() ||
+      document.contentText?.trim() ||
+      document.summary?.trim() ||
+      ""
+    );
+  }
+
+  return document.contentMarkdown.trim() || document.summary?.trim() || "";
 }
 
 function LinkedResourceChips({
@@ -1477,6 +1893,108 @@ function DocumentDeleteDialog({
   );
 }
 
+function RequirementCancelDialog({
+  isCancelling,
+  isLoading,
+  onConfirm,
+  onOpenChange,
+  onReasonChange,
+  onReferenceModeChange,
+  open,
+  reason,
+  referenceCount,
+  referenceMode,
+}: {
+  isCancelling: boolean;
+  isLoading: boolean;
+  onConfirm: () => void;
+  onOpenChange: (open: boolean) => void;
+  onReasonChange: (reason: string) => void;
+  onReferenceModeChange: (
+    mode: "REJECT_IF_REFERENCED" | "UNLINK_REFERENCES",
+  ) => void;
+  open: boolean;
+  reason: string;
+  referenceCount: number | null;
+  referenceMode: "REJECT_IF_REFERENCED" | "UNLINK_REFERENCES";
+}) {
+  const t = useTranslations("documents.cancelRequirementDialog");
+  const hasReferences = (referenceCount ?? 0) > 0;
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent data-testid="document-cancel-requirement-dialog">
+        <DialogHeader>
+          <DialogTitle>{t("title")}</DialogTitle>
+          <DialogDescription>
+            {hasReferences
+              ? t("descriptionWithReferences", { count: referenceCount ?? 0 })
+              : t("description")}
+          </DialogDescription>
+        </DialogHeader>
+        <div className="grid gap-3">
+          {hasReferences ? (
+            <label className="grid gap-1.5 text-sm">
+              <span className="font-medium">{t("referenceModeLabel")}</span>
+              <SelectMenu
+                aria-label={t("referenceModeLabel")}
+                value={referenceMode}
+                onChange={(event) =>
+                  onReferenceModeChange(
+                    event.target.value as
+                      | "REJECT_IF_REFERENCED"
+                      | "UNLINK_REFERENCES",
+                  )
+                }
+              >
+                <option value="REJECT_IF_REFERENCED">
+                  {t("referenceModeReject")}
+                </option>
+                <option value="UNLINK_REFERENCES">
+                  {t("referenceModeUnlink")}
+                </option>
+              </SelectMenu>
+            </label>
+          ) : null}
+          <label className="grid gap-1.5 text-sm">
+            <span className="font-medium">{t("reasonLabel")}</span>
+            <Textarea
+              value={reason}
+              onChange={(event) => onReasonChange(event.target.value)}
+              placeholder={t("reasonPlaceholder")}
+              rows={3}
+            />
+          </label>
+        </div>
+        <DialogFooter>
+          <Button
+            type="button"
+            variant="outline"
+            disabled={isCancelling}
+            onClick={() => onOpenChange(false)}
+          >
+            {t("cancel")}
+          </Button>
+          <Button
+            type="button"
+            variant="destructive"
+            disabled={isLoading || isCancelling}
+            onClick={onConfirm}
+            data-testid="document-cancel-requirement-confirm"
+          >
+            {isCancelling ? (
+              <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
+            ) : (
+              <FileX2 className="h-4 w-4" aria-hidden="true" />
+            )}
+            {t("confirm")}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 function DocumentMoveFolderDialog({
   baseRevision,
   currentFolderId,
@@ -1650,7 +2168,9 @@ function DocumentTocRail({ headings }: { headings: MarkdownHeading[] }) {
               ))}
             </nav>
           ) : (
-            <p className="px-2 text-xs text-muted-foreground">{t("rail.noToc")}</p>
+            <p className="px-2 text-xs text-muted-foreground">
+              {t("rail.noToc")}
+            </p>
           )}
         </RailSection>
       </div>
@@ -1674,17 +2194,17 @@ function DocumentContextRail({
 
   return (
     <aside className="min-w-0 lg:col-span-2 xl:col-span-1 xl:sticky xl:top-16 xl:max-h-[calc(100vh-5rem)] xl:overflow-y-auto">
-      <div
-        className="grid gap-5 px-1"
-        data-testid="document-context-rail"
-      >
+      <div className="grid gap-5 px-1" data-testid="document-context-rail">
         <RailSection
           icon={<Link2 className="h-3.5 w-3.5" />}
           title={t("rail.resources")}
         >
           <DocumentLinksSummary links={document.links ?? []} />
         </RailSection>
-        <RailSection icon={<Tags className="h-3.5 w-3.5" />} title={t("rail.tags")}>
+        <RailSection
+          icon={<Tags className="h-3.5 w-3.5" />}
+          title={t("rail.tags")}
+        >
           <TagBadgeList
             tags={document.tags ?? []}
             emptyLabel={t("rail.noTags")}
@@ -1918,7 +2438,10 @@ async function resolveLinkTargets({
   organizationId: string;
   spaceId: string;
 }) {
-  const targets = [];
+  const targets: Array<{
+    targetId: string;
+    targetType: DocumentLinkWriteTargetType;
+  }> = [];
   for (const code of codes) {
     const result = await lookupObjectCode({ code, organizationId, spaceId });
     targets.push({
@@ -1932,7 +2455,7 @@ async function resolveLinkTargets({
 function dedupeLinkTargets(
   targets: Array<{
     targetId: string;
-    targetType: DocumentLinkSummary["targetType"];
+    targetType: DocumentLinkWriteTargetType;
   }>,
 ) {
   const seen = new Set<string>();

@@ -7,6 +7,8 @@ import {
   pageResultSchema,
 } from "./common.ts";
 import {
+  DocumentContentFormatSchema,
+  DocumentStatusSchema,
   PrioritySchema,
   RequirementStatusSchema,
   StatusCategorySchema,
@@ -19,8 +21,13 @@ import {
 } from "./tag.ts";
 import { DisplayIdentitySchema } from "./object-code.ts";
 import { PermissionSnapshotSchema } from "./workflow.ts";
+import {
+  containsBase64ImageData,
+  TiptapJsonSchema,
+} from "./document.ts";
+export { containsBase64ImageData, TiptapJsonSchema } from "./document.ts";
 
-const TiptapJsonRecordSchema = z.record(z.string(), z.unknown());
+const BaseRevisionSchema = z.coerce.number().int().positive();
 const RequirementContentTextSchema = z
   .string()
   .max(20000)
@@ -28,34 +35,10 @@ const RequirementContentTextSchema = z
     message: "content text must not contain base64 image data",
   });
 
-export const RequirementContentFormatSchema = z.enum([
-  "TIPTAP_JSON",
-  "MARKDOWN",
-]);
+export const RequirementContentFormatSchema = DocumentContentFormatSchema;
 export type RequirementContentFormat = z.infer<
   typeof RequirementContentFormatSchema
 >;
-
-export const TiptapJsonSchema = TiptapJsonRecordSchema.superRefine(
-  (value, context) => {
-    if (containsBase64ImageData(value)) {
-      context.addIssue({
-        code: "custom",
-        message: "contentJson must not contain base64 image data",
-      });
-      return;
-    }
-
-    if (isEmptyRecord(value) || isValidTiptapNode(value, true)) {
-      return;
-    }
-
-    context.addIssue({
-      code: "custom",
-      message: "contentJson must be a Tiptap JSON document",
-    });
-  },
-);
 
 export const AttachmentRefSchema = z
   .object({
@@ -106,11 +89,13 @@ const RequirementBaseSchema = z.object({
   spaceId: UlidSchema,
   sequence: DisplayIdentitySchema.shape.sequence,
   displayCode: DisplayIdentitySchema.shape.displayCode,
+  revision: z.number().int().positive().optional(),
   versionId: UlidSchema.optional(),
+  kind: z.literal("REQUIREMENT").default("REQUIREMENT"),
   title: z.string().max(200),
   summary: z.string().max(2000).optional(),
   contentText: RequirementContentTextSchema.optional(),
-  status: RequirementStatusSchema,
+  status: DocumentStatusSchema,
   priority: PrioritySchema.optional(),
   ownerId: UlidSchema.optional(),
   authorId: UlidSchema.optional(),
@@ -145,6 +130,7 @@ export type Requirement = z.infer<typeof RequirementSchema>;
 
 const SaveRequirementBaseSchema = z
   .object({
+    baseRevision: BaseRevisionSchema,
     title: z.string().min(1).max(200),
     summary: z.string().max(2000).optional(),
     contentFormat: RequirementContentFormatSchema.optional(),
@@ -240,6 +226,7 @@ export type CreateRequirementDraftRequest = z.infer<
 
 export const ArchiveRequirementRequestSchema = z
   .object({
+    baseRevision: BaseRevisionSchema,
     status: z.literal("ARCHIVED"),
   })
   .strict();
@@ -261,14 +248,14 @@ export const RequirementListQuerySchema = PageQuerySchema.merge(
 ).extend({
   query: z.string().trim().min(1).max(200).optional(),
   versionId: UlidSchema.optional(),
-  status: RequirementStatusSchema.optional(),
+  status: z.union([DocumentStatusSchema, RequirementStatusSchema]).optional(),
   ownerId: UlidSchema.optional(),
   includeDrafts: z.coerce.boolean().optional(),
 });
 
 export const RequirementStatusCountSchema = z
   .object({
-    status: RequirementStatusSchema,
+    status: DocumentStatusSchema,
     count: z.number().int().min(0),
   })
   .strict();
@@ -287,136 +274,18 @@ export type ListRequirementsResponse = z.infer<
   typeof ListRequirementsResponseSchema
 >;
 export const CreateRequirementDraftResponseSchema = RequirementSchema;
+export type CreateRequirementDraftResponse = z.infer<
+  typeof CreateRequirementDraftResponseSchema
+>;
 export const GetRequirementResponseSchema = RequirementSchema;
+export type GetRequirementResponse = z.infer<
+  typeof GetRequirementResponseSchema
+>;
 export const UpdateRequirementResponseSchema = RequirementSchema;
+export type UpdateRequirementResponse = z.infer<
+  typeof UpdateRequirementResponseSchema
+>;
 export const DeleteRequirementDraftResponseSchema = EmptyObjectSchema;
-
-function isValidTiptapNode(
-  value: unknown,
-  isRoot = false,
-): value is Record<string, unknown> {
-  if (!isPlainRecord(value)) {
-    return false;
-  }
-
-  if (
-    !Object.keys(value).every((key) =>
-      ["attrs", "content", "marks", "text", "type"].includes(key),
-    )
-  ) {
-    return false;
-  }
-
-  if (typeof value.type !== "string" || value.type.trim().length === 0) {
-    return false;
-  }
-
-  if (isRoot && value.type !== "doc") {
-    return false;
-  }
-
-  if ("text" in value && typeof value.text !== "string") {
-    return false;
-  }
-
-  if (value.type === "text" && typeof value.text !== "string") {
-    return false;
-  }
-
-  if ("attrs" in value && !isJsonCompatibleObject(value.attrs)) {
-    return false;
-  }
-
-  if (
-    "content" in value &&
-    (!Array.isArray(value.content) ||
-      !value.content.every((item) => isValidTiptapNode(item)))
-  ) {
-    return false;
-  }
-
-  if (
-    "marks" in value &&
-    (!Array.isArray(value.marks) ||
-      !value.marks.every((item) => isValidTiptapMark(item)))
-  ) {
-    return false;
-  }
-
-  return true;
-}
-
-function isValidTiptapMark(value: unknown): value is Record<string, unknown> {
-  if (!isPlainRecord(value)) {
-    return false;
-  }
-
-  if (!Object.keys(value).every((key) => ["attrs", "type"].includes(key))) {
-    return false;
-  }
-
-  return (
-    typeof value.type === "string" &&
-    value.type.trim().length > 0 &&
-    (!("attrs" in value) || isJsonCompatibleObject(value.attrs))
-  );
-}
-
-export function containsBase64ImageData(value: unknown): boolean {
-  if (typeof value === "string") {
-    return /data:image\/[a-z0-9.+-]+(?:;[a-z0-9=.+-]+)*;base64(?:,|$)/iu.test(
-      value,
-    );
-  }
-
-  if (Array.isArray(value)) {
-    return value.some((item) => containsBase64ImageData(item));
-  }
-
-  if (!isPlainRecord(value)) {
-    return false;
-  }
-
-  return Object.values(value).some((item) => containsBase64ImageData(item));
-}
-
-function isJsonCompatibleObject(value: unknown): boolean {
-  return isPlainRecord(value) && isJsonCompatible(value);
-}
-
-function isJsonCompatible(value: unknown): boolean {
-  if (value === null) {
-    return true;
-  }
-
-  if (typeof value === "string" || typeof value === "boolean") {
-    return true;
-  }
-
-  if (typeof value === "number") {
-    return Number.isFinite(value);
-  }
-
-  if (Array.isArray(value)) {
-    return value.every((item) => isJsonCompatible(item));
-  }
-
-  if (isPlainRecord(value)) {
-    return Object.values(value).every((item) => isJsonCompatible(item));
-  }
-
-  return false;
-}
-
-function isEmptyRecord(value: Record<string, unknown>): boolean {
-  return Object.keys(value).length === 0;
-}
-
-function isPlainRecord(value: unknown): value is Record<string, unknown> {
-  return (
-    typeof value === "object" &&
-    value !== null &&
-    !Array.isArray(value) &&
-    Object.getPrototypeOf(value) === Object.prototype
-  );
-}
+export type DeleteRequirementDraftResponse = z.infer<
+  typeof DeleteRequirementDraftResponseSchema
+>;

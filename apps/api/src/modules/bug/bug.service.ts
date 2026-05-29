@@ -15,6 +15,7 @@ import {
   type OrganizationRepository,
 } from "../organization/organization.repository";
 import { RealtimePublisherService } from "../realtime/realtime-publisher.service";
+import { isReferenceableRequirementDocument } from "../requirement/requirement-reference-policy";
 import {
   SPACE_REPOSITORY,
   type SpaceRepository,
@@ -603,6 +604,19 @@ export class BugService {
         "REQUIREMENT_NOT_FOUND",
         "Requirement not found",
         HttpStatus.NOT_FOUND,
+      );
+    }
+
+    if (
+      !isReferenceableRequirementDocument({
+        sequence: requirement.requirementSequence,
+        status: requirement.requirementStatus,
+      })
+    ) {
+      throw new ApiException(
+        "REQUIREMENT_REFERENCE_INVALID",
+        "Requirement must be active before it can be linked",
+        HttpStatus.BAD_REQUEST,
       );
     }
 

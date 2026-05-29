@@ -116,7 +116,7 @@ const REQUIREMENT_STATUS_VARIANT: Record<
   "default" | "info" | "success"
 > = {
   DRAFT: "default",
-  CONFIRMED: "success",
+  ACTIVE: "success",
   ARCHIVED: "info",
 };
 

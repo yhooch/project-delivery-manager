@@ -23,6 +23,10 @@ import {
   REQUIREMENT_REPOSITORY,
   type RequirementRepository,
 } from "../requirement/requirement.repository";
+import {
+  legacyRequirementRealtimeHints,
+  withDocumentRequirementInvalidates,
+} from "../target/legacy-target-normalizer";
 import { TargetResolverService } from "../target/target-resolver.service";
 import {
   AttachmentLimitExceededError,
@@ -91,8 +95,8 @@ export class AttachmentService {
     await this.assertAttachmentCountLimit(target);
 
     const fileKey = createFileKey(
-      input.targetType,
-      input.targetId,
+      target.targetType,
+      target.targetId,
       file.fileName,
     );
 
@@ -107,8 +111,8 @@ export class AttachmentService {
       id: ulid(),
       organizationId: target.organizationId,
       spaceId: target.spaceId,
-      targetType: input.targetType,
-      targetId: input.targetId,
+      targetType: target.targetType,
+      targetId: target.targetId,
       targetWorkItemType: target.targetWorkItemType,
       fileName: file.fileName,
       fileKey,
@@ -139,20 +143,20 @@ export class AttachmentService {
       actorId: actorUserId,
       organizationId: target.organizationId,
       spaceId: target.spaceId,
-      target: { type: input.targetType, id: target.targetId },
+      target: { type: target.targetType, id: target.targetId },
       operation: "ATTACHMENT_CHANGED",
       invalidates: attachmentInvalidates(
-        input.targetType,
+        target.targetType,
         target.targetWorkItemType,
+        target.targetKind,
       ),
-      hints: {
-        targetType: input.targetType,
+      hints: legacyRequirementRealtimeHints({
+        targetType: target.targetType,
         targetId: target.targetId,
+        targetKind: target.targetKind,
         spaceId: target.spaceId,
-        ...(target.targetWorkItemType
-          ? { workItemType: target.targetWorkItemType }
-          : {}),
-      },
+        workItemType: target.targetWorkItemType,
+      }),
     });
 
     return created;
@@ -226,28 +230,11 @@ export class AttachmentService {
     };
   }
 
-  private async requireWritableDraftRequirementTarget(
+  private async assertWritableDraftRequirementTarget(
     actorUserId: string,
-    input: {
-      targetId: string;
-      targetType: "REQUIREMENT";
-    },
+    target: AttachmentTargetContext & { role: SpaceRole },
     metadata: RequestMetadata = {},
-  ): Promise<AttachmentTargetContext> {
-    const target = await this.targets.resolve(
-      actorUserId,
-      input.targetType,
-      input.targetId,
-      {
-        access: "write",
-        audit: {
-          ...metadata,
-          operation: "writeAttachment",
-        },
-        hideInaccessible: true,
-        notFoundCode: "ATTACHMENT_TARGET_NOT_FOUND",
-      },
-    );
+  ): Promise<void> {
     const requirement = await this.requirements.findById(target.targetId);
 
     if (!requirement) {
@@ -263,7 +250,7 @@ export class AttachmentService {
         reason: "ROLE_NOT_ALLOWED",
         spaceId: target.spaceId,
         targetId: target.targetId,
-        targetType: "REQUIREMENT",
+        targetType: "DOCUMENT",
       });
       throwSpaceAccessDenied();
     }
@@ -274,13 +261,6 @@ export class AttachmentService {
         HttpStatus.BAD_REQUEST,
       );
     }
-
-    return {
-      organizationId: target.organizationId,
-      spaceId: target.spaceId,
-      targetType: "REQUIREMENT",
-      targetId: target.targetId,
-    };
   }
 
   private async requireWritableAttachmentTarget(
@@ -291,17 +271,6 @@ export class AttachmentService {
     },
     metadata: RequestMetadata = {},
   ): Promise<AttachmentTargetContext> {
-    if (input.targetType === "REQUIREMENT") {
-      return this.requireWritableDraftRequirementTarget(
-        actorUserId,
-        {
-          targetId: input.targetId,
-          targetType: "REQUIREMENT",
-        },
-        metadata,
-      );
-    }
-
     if (input.targetType === "DOCUMENT") {
       return this.requireWritableResolvedAttachmentTarget(
         actorUserId,
@@ -343,6 +312,8 @@ export class AttachmentService {
     return {
       organizationId: target.organizationId,
       spaceId: target.spaceId,
+      targetKind:
+        target.targetKind === "REQUIREMENT" ? "REQUIREMENT" : undefined,
       targetType: input.targetType,
       targetId: target.targetId,
       targetWorkItemType: target.workItemType,
@@ -372,13 +343,28 @@ export class AttachmentService {
       },
     );
 
-    return {
+    const resolvedTarget: AttachmentTargetContext = {
       organizationId: target.organizationId,
       spaceId: target.spaceId,
+      targetKind:
+        target.targetKind === "REQUIREMENT" ? "REQUIREMENT" : undefined,
       targetType: input.targetType,
       targetId: target.targetId,
       targetWorkItemType: target.workItemType,
     };
+
+    if (resolvedTarget.targetKind === "REQUIREMENT") {
+      await this.assertWritableDraftRequirementTarget(
+        actorUserId,
+        {
+          ...resolvedTarget,
+          role: target.role,
+        },
+        metadata,
+      );
+    }
+
+    return resolvedTarget;
   }
 
   private async assertAttachmentCountLimit(target: AttachmentTargetContext) {
@@ -492,10 +478,37 @@ export class AttachmentService {
 function attachmentInvalidates(
   targetType: AttachmentTargetType,
   workItemType: WorkItemType | undefined,
+  targetKind?: "REQUIREMENT",
 ): RealtimeInvalidationKey[] {
   switch (targetType) {
-    case "REQUIREMENT":
-      return ["attachments", "timeline", "requirement-detail"];
+    case "DOCUMENT":
+      if (targetKind === "REQUIREMENT") {
+        return withDocumentRequirementInvalidates(
+          targetType,
+          [
+            "attachments",
+            "timeline",
+            "document-attachments",
+            "document-timeline",
+            "document-detail",
+          ],
+          ["requirement-detail"],
+          targetKind,
+        );
+      }
+
+      return withDocumentRequirementInvalidates(
+        targetType,
+        [
+          "attachments",
+          "timeline",
+          "document-attachments",
+          "document-timeline",
+          "document-detail",
+        ],
+        ["requirement-detail"],
+        targetKind,
+      );
     case "WORK_ITEM":
       return [
         "attachments",
@@ -504,14 +517,6 @@ function attachmentInvalidates(
         "version-board",
         "workbench",
         "space-overview",
-      ];
-    case "DOCUMENT":
-      return [
-        "attachments",
-        "timeline",
-        "document-attachments",
-        "document-timeline",
-        "document-detail",
       ];
   }
 }

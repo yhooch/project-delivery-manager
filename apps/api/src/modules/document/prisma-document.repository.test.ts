@@ -1,9 +1,147 @@
 import { describe, expect, it, vi } from "vitest";
 
 import type { PrismaService } from "../../prisma/prisma.service";
+import { DocumentKindTransitionService } from "./document-kind-transition.service";
 import { PrismaDocumentRepository } from "./prisma-document.repository";
 
 describe("PrismaDocumentRepository", () => {
+  it("converts a document to a requirement in place with code history and revision records", async () => {
+    const existing = makeDocumentRecord({ revision: 2 });
+    const updated = makeDocumentRecord({
+      kind: "REQUIREMENT",
+      ownerId: "01H00000000000000000000014",
+      priority: "HIGH",
+      revision: 3,
+      sequence: 17,
+      versionId: "01H00000000000000000000015",
+    });
+    const tx = makeMutationTransaction(existing, updated);
+    const prisma = {
+      client: {
+        $transaction: vi.fn(async (callback) => callback(tx)),
+      },
+    } as unknown as PrismaService;
+    const allocator = {
+      allocateOne: vi.fn(async () => 17),
+    };
+    const documents = {
+      findById: vi.fn(async () => toPublicDocument(updated)),
+    };
+    const transitions = new DocumentKindTransitionService(
+      prisma,
+      allocator as never,
+      documents as never,
+    );
+
+    await expect(
+      transitions.convertToRequirement({
+        actorType: "USER",
+        actorUserId: updated.lastEditedById,
+        baseRevision: 2,
+        documentId: updated.id,
+        ownerId: updated.ownerId ?? undefined,
+        priority: "HIGH",
+        versionId: updated.versionId,
+      }),
+    ).resolves.toMatchObject({
+      document: {
+        id: updated.id,
+        kind: "REQUIREMENT",
+        sequence: 17,
+      },
+      status: "updated",
+    });
+    expect(allocator.allocateOne).toHaveBeenCalledWith(
+      tx,
+      expect.objectContaining({
+        objectType: "REQUIREMENT",
+        spaceId: existing.spaceId,
+      }),
+    );
+    expect(tx.document.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          kind: "REQUIREMENT",
+          revision: 3,
+          sequence: 17,
+          versionId: updated.versionId,
+        }),
+        where: { id: existing.id },
+      }),
+    );
+    const updateCalls = tx.document.update.mock.calls as unknown as Array<
+      [{ data: Record<string, unknown> }]
+    >;
+    expect(updateCalls[0]?.[0].data).not.toHaveProperty("contentMarkdown");
+    expect(tx.documentCodeHistory.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        codeStatus: "ASSIGNED",
+        displayCode: "REQ-17",
+        documentId: existing.id,
+        kind: "REQUIREMENT",
+        sequence: 17,
+      }),
+    });
+    expect(tx.documentRevision.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        changeType: "CONVERTED_TO_REQUIREMENT",
+        contentMarkdown: existing.contentMarkdown,
+        documentId: existing.id,
+        kind: "REQUIREMENT",
+        revision: 3,
+      }),
+    });
+    expect(tx.timelineEvent.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        targetId: existing.id,
+        targetType: "DOCUMENT",
+        title: "Document converted to requirement",
+      }),
+    });
+  });
+
+  it("rejects requirement cancellation when active references exist in reject mode", async () => {
+    const existing = makeDocumentRecord({
+      kind: "REQUIREMENT",
+      revision: 4,
+      sequence: 18,
+    });
+    const tx = makeMutationTransaction(existing, existing, {
+      documentLinkCount: 1,
+      intakeItemCount: 1,
+      workItemCount: 0,
+    });
+    const prisma = {
+      client: {
+        $transaction: vi.fn(async (callback) => callback(tx)),
+      },
+    } as unknown as PrismaService;
+    const documents = {
+      findById: vi.fn(),
+    };
+    const transitions = new DocumentKindTransitionService(
+      prisma,
+      { allocateOne: vi.fn() } as never,
+      documents as never,
+    );
+
+    await expect(
+      transitions.cancelRequirement({
+        actorType: "USER",
+        actorUserId: existing.lastEditedById,
+        baseRevision: 4,
+        documentId: existing.id,
+        referenceMode: "REJECT_IF_REFERENCED",
+      }),
+    ).resolves.toEqual({
+      referenceCount: 1,
+      status: "referenced",
+    });
+    expect(tx.document.update).not.toHaveBeenCalled();
+    expect(tx.documentCodeHistory.updateMany).not.toHaveBeenCalled();
+    expect(tx.documentRevision.create).not.toHaveBeenCalled();
+  });
+
   it("filters unfiled documents with a null folder condition", async () => {
     const documentFindMany = vi.fn(async () => []);
     const documentCount = vi.fn(async () => 0);
@@ -286,10 +424,91 @@ describe("PrismaDocumentRepository", () => {
   });
 });
 
-function makeDocumentRecord() {
+function makeMutationTransaction(
+  existing: ReturnType<typeof makeDocumentRecord>,
+  updated: ReturnType<typeof makeDocumentRecord>,
+  counts: {
+    documentLinkCount?: number;
+    intakeItemCount?: number;
+    workItemCount?: number;
+  } = {},
+) {
+  return {
+    document: {
+      findFirst: vi.fn(async () => existing),
+      update: vi.fn(async () => updated),
+    },
+    documentCodeHistory: {
+      create: vi.fn(),
+      updateMany: vi.fn(),
+    },
+    documentLink: {
+      count: vi.fn(async () => counts.documentLinkCount ?? 0),
+      updateMany: vi.fn(),
+    },
+    documentRevision: {
+      create: vi.fn(),
+    },
+    intakeItem: {
+      count: vi.fn(async () => counts.intakeItemCount ?? 0),
+      updateMany: vi.fn(),
+    },
+    objectParticipant: {
+      create: vi.fn(),
+      findFirst: vi.fn(async () => undefined),
+    },
+    timelineEvent: {
+      create: vi.fn(),
+    },
+    workItem: {
+      count: vi.fn(async () => counts.workItemCount ?? 0),
+      updateMany: vi.fn(),
+    },
+  };
+}
+
+function toPublicDocument(record: ReturnType<typeof makeDocumentRecord>) {
+  return {
+    id: record.id,
+    organizationId: record.organizationId,
+    spaceId: record.spaceId,
+    kind: record.kind,
+    sequence: record.sequence ?? undefined,
+    title: record.title,
+    contentFormat: record.contentFormat,
+    contentMarkdown: record.contentMarkdown ?? undefined,
+    contentText: record.contentText,
+    sourceType: record.sourceType,
+    status: record.status,
+    revision: record.revision,
+    createdById: record.createdById,
+    createdVia: record.createdVia,
+    lastEditedById: record.lastEditedById,
+    lastEditedVia: record.lastEditedVia,
+    lastEditedAt: record.lastEditedAt.toISOString(),
+    createdAt: record.createdAt.toISOString(),
+    updatedAt: record.updatedAt.toISOString(),
+  };
+}
+
+function makeDocumentRecord(
+  input: Partial<{
+    contentMarkdown: string | null;
+    kind: "GENERAL" | "REQUIREMENT";
+    ownerId: string | null;
+    priority: "LOW" | "MEDIUM" | "HIGH" | "URGENT" | null;
+    revision: number;
+    sequence: number | null;
+    versionId: string | null;
+  }> = {},
+) {
   return {
     archivedAt: null,
+    authorId: null,
+    contentFormat: "MARKDOWN",
+    contentJson: null,
     contentMarkdown: "# Agent handoff",
+    contentMarkdownCache: null,
     contentText: "Agent handoff",
     createdAt: new Date("2026-05-27T00:00:00.000Z"),
     createdById: "01H00000000000000000000004",
@@ -298,18 +517,25 @@ function makeDocumentRecord() {
     deletedAt: null,
     folderId: null,
     id: "01H00000000000000000000001",
+    kind: "GENERAL",
     lastEditedAt: new Date("2026-05-27T00:00:00.000Z"),
     lastEditedById: "01H00000000000000000000004",
     lastEditedMcpClientId: "claude-code-client",
     lastEditedVia: "MCP_CLIENT",
+    ownerId: null,
     organizationId: "01H00000000000000000000002",
+    priority: null,
     revision: 1,
+    sequence: null,
     sourceAttachmentId: null,
     sourceType: "PASTE_MARKDOWN",
     spaceId: "01H00000000000000000000003",
     status: "ACTIVE",
+    summary: null,
     title: "Agent handoff",
     updatedAt: new Date("2026-05-27T00:00:00.000Z"),
+    versionId: null,
+    ...input,
   } as const;
 }
 

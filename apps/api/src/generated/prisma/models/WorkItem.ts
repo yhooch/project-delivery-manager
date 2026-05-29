@@ -395,7 +395,7 @@ export type WorkItemWhereInput = {
   organization?: Prisma.XOR<Prisma.OrganizationScalarRelationFilter, Prisma.OrganizationWhereInput>
   space?: Prisma.XOR<Prisma.SpaceScalarRelationFilter, Prisma.SpaceWhereInput>
   version?: Prisma.XOR<Prisma.VersionNullableScalarRelationFilter, Prisma.VersionWhereInput> | null
-  requirement?: Prisma.XOR<Prisma.RequirementNullableScalarRelationFilter, Prisma.RequirementWhereInput> | null
+  requirement?: Prisma.XOR<Prisma.DocumentNullableScalarRelationFilter, Prisma.DocumentWhereInput> | null
   intakeItem?: Prisma.XOR<Prisma.IntakeItemNullableScalarRelationFilter, Prisma.IntakeItemWhereInput> | null
   assignee?: Prisma.XOR<Prisma.UserNullableScalarRelationFilter, Prisma.UserWhereInput> | null
   reporter?: Prisma.XOR<Prisma.UserScalarRelationFilter, Prisma.UserWhereInput>
@@ -436,7 +436,7 @@ export type WorkItemOrderByWithRelationInput = {
   organization?: Prisma.OrganizationOrderByWithRelationInput
   space?: Prisma.SpaceOrderByWithRelationInput
   version?: Prisma.VersionOrderByWithRelationInput
-  requirement?: Prisma.RequirementOrderByWithRelationInput
+  requirement?: Prisma.DocumentOrderByWithRelationInput
   intakeItem?: Prisma.IntakeItemOrderByWithRelationInput
   assignee?: Prisma.UserOrderByWithRelationInput
   reporter?: Prisma.UserOrderByWithRelationInput
@@ -480,7 +480,7 @@ export type WorkItemWhereUniqueInput = Prisma.AtLeast<{
   organization?: Prisma.XOR<Prisma.OrganizationScalarRelationFilter, Prisma.OrganizationWhereInput>
   space?: Prisma.XOR<Prisma.SpaceScalarRelationFilter, Prisma.SpaceWhereInput>
   version?: Prisma.XOR<Prisma.VersionNullableScalarRelationFilter, Prisma.VersionWhereInput> | null
-  requirement?: Prisma.XOR<Prisma.RequirementNullableScalarRelationFilter, Prisma.RequirementWhereInput> | null
+  requirement?: Prisma.XOR<Prisma.DocumentNullableScalarRelationFilter, Prisma.DocumentWhereInput> | null
   intakeItem?: Prisma.XOR<Prisma.IntakeItemNullableScalarRelationFilter, Prisma.IntakeItemWhereInput> | null
   assignee?: Prisma.XOR<Prisma.UserNullableScalarRelationFilter, Prisma.UserWhereInput> | null
   reporter?: Prisma.XOR<Prisma.UserScalarRelationFilter, Prisma.UserWhereInput>
@@ -580,7 +580,7 @@ export type WorkItemCreateInput = {
   organization: Prisma.OrganizationCreateNestedOneWithoutWorkItemsInput
   space: Prisma.SpaceCreateNestedOneWithoutWorkItemsInput
   version?: Prisma.VersionCreateNestedOneWithoutWorkItemsInput
-  requirement?: Prisma.RequirementCreateNestedOneWithoutWorkItemsInput
+  requirement?: Prisma.DocumentCreateNestedOneWithoutRequirementWorkItemsInput
   intakeItem?: Prisma.IntakeItemCreateNestedOneWithoutWorkItemsInput
   assignee?: Prisma.UserCreateNestedOneWithoutAssignedWorkItemsInput
   reporter: Prisma.UserCreateNestedOneWithoutReportedWorkItemsInput
@@ -644,7 +644,7 @@ export type WorkItemUpdateInput = {
   organization?: Prisma.OrganizationUpdateOneRequiredWithoutWorkItemsNestedInput
   space?: Prisma.SpaceUpdateOneRequiredWithoutWorkItemsNestedInput
   version?: Prisma.VersionUpdateOneWithoutWorkItemsNestedInput
-  requirement?: Prisma.RequirementUpdateOneWithoutWorkItemsNestedInput
+  requirement?: Prisma.DocumentUpdateOneWithoutRequirementWorkItemsNestedInput
   intakeItem?: Prisma.IntakeItemUpdateOneWithoutWorkItemsNestedInput
   assignee?: Prisma.UserUpdateOneWithoutAssignedWorkItemsNestedInput
   reporter?: Prisma.UserUpdateOneRequiredWithoutReportedWorkItemsNestedInput
@@ -1095,48 +1095,6 @@ export type WorkItemUncheckedUpdateManyWithoutVersionNestedInput = {
   deleteMany?: Prisma.WorkItemScalarWhereInput | Prisma.WorkItemScalarWhereInput[]
 }
 
-export type WorkItemCreateNestedManyWithoutRequirementInput = {
-  create?: Prisma.XOR<Prisma.WorkItemCreateWithoutRequirementInput, Prisma.WorkItemUncheckedCreateWithoutRequirementInput> | Prisma.WorkItemCreateWithoutRequirementInput[] | Prisma.WorkItemUncheckedCreateWithoutRequirementInput[]
-  connectOrCreate?: Prisma.WorkItemCreateOrConnectWithoutRequirementInput | Prisma.WorkItemCreateOrConnectWithoutRequirementInput[]
-  createMany?: Prisma.WorkItemCreateManyRequirementInputEnvelope
-  connect?: Prisma.WorkItemWhereUniqueInput | Prisma.WorkItemWhereUniqueInput[]
-}
-
-export type WorkItemUncheckedCreateNestedManyWithoutRequirementInput = {
-  create?: Prisma.XOR<Prisma.WorkItemCreateWithoutRequirementInput, Prisma.WorkItemUncheckedCreateWithoutRequirementInput> | Prisma.WorkItemCreateWithoutRequirementInput[] | Prisma.WorkItemUncheckedCreateWithoutRequirementInput[]
-  connectOrCreate?: Prisma.WorkItemCreateOrConnectWithoutRequirementInput | Prisma.WorkItemCreateOrConnectWithoutRequirementInput[]
-  createMany?: Prisma.WorkItemCreateManyRequirementInputEnvelope
-  connect?: Prisma.WorkItemWhereUniqueInput | Prisma.WorkItemWhereUniqueInput[]
-}
-
-export type WorkItemUpdateManyWithoutRequirementNestedInput = {
-  create?: Prisma.XOR<Prisma.WorkItemCreateWithoutRequirementInput, Prisma.WorkItemUncheckedCreateWithoutRequirementInput> | Prisma.WorkItemCreateWithoutRequirementInput[] | Prisma.WorkItemUncheckedCreateWithoutRequirementInput[]
-  connectOrCreate?: Prisma.WorkItemCreateOrConnectWithoutRequirementInput | Prisma.WorkItemCreateOrConnectWithoutRequirementInput[]
-  upsert?: Prisma.WorkItemUpsertWithWhereUniqueWithoutRequirementInput | Prisma.WorkItemUpsertWithWhereUniqueWithoutRequirementInput[]
-  createMany?: Prisma.WorkItemCreateManyRequirementInputEnvelope
-  set?: Prisma.WorkItemWhereUniqueInput | Prisma.WorkItemWhereUniqueInput[]
-  disconnect?: Prisma.WorkItemWhereUniqueInput | Prisma.WorkItemWhereUniqueInput[]
-  delete?: Prisma.WorkItemWhereUniqueInput | Prisma.WorkItemWhereUniqueInput[]
-  connect?: Prisma.WorkItemWhereUniqueInput | Prisma.WorkItemWhereUniqueInput[]
-  update?: Prisma.WorkItemUpdateWithWhereUniqueWithoutRequirementInput | Prisma.WorkItemUpdateWithWhereUniqueWithoutRequirementInput[]
-  updateMany?: Prisma.WorkItemUpdateManyWithWhereWithoutRequirementInput | Prisma.WorkItemUpdateManyWithWhereWithoutRequirementInput[]
-  deleteMany?: Prisma.WorkItemScalarWhereInput | Prisma.WorkItemScalarWhereInput[]
-}
-
-export type WorkItemUncheckedUpdateManyWithoutRequirementNestedInput = {
-  create?: Prisma.XOR<Prisma.WorkItemCreateWithoutRequirementInput, Prisma.WorkItemUncheckedCreateWithoutRequirementInput> | Prisma.WorkItemCreateWithoutRequirementInput[] | Prisma.WorkItemUncheckedCreateWithoutRequirementInput[]
-  connectOrCreate?: Prisma.WorkItemCreateOrConnectWithoutRequirementInput | Prisma.WorkItemCreateOrConnectWithoutRequirementInput[]
-  upsert?: Prisma.WorkItemUpsertWithWhereUniqueWithoutRequirementInput | Prisma.WorkItemUpsertWithWhereUniqueWithoutRequirementInput[]
-  createMany?: Prisma.WorkItemCreateManyRequirementInputEnvelope
-  set?: Prisma.WorkItemWhereUniqueInput | Prisma.WorkItemWhereUniqueInput[]
-  disconnect?: Prisma.WorkItemWhereUniqueInput | Prisma.WorkItemWhereUniqueInput[]
-  delete?: Prisma.WorkItemWhereUniqueInput | Prisma.WorkItemWhereUniqueInput[]
-  connect?: Prisma.WorkItemWhereUniqueInput | Prisma.WorkItemWhereUniqueInput[]
-  update?: Prisma.WorkItemUpdateWithWhereUniqueWithoutRequirementInput | Prisma.WorkItemUpdateWithWhereUniqueWithoutRequirementInput[]
-  updateMany?: Prisma.WorkItemUpdateManyWithWhereWithoutRequirementInput | Prisma.WorkItemUpdateManyWithWhereWithoutRequirementInput[]
-  deleteMany?: Prisma.WorkItemScalarWhereInput | Prisma.WorkItemScalarWhereInput[]
-}
-
 export type WorkItemCreateNestedManyWithoutIntakeItemInput = {
   create?: Prisma.XOR<Prisma.WorkItemCreateWithoutIntakeItemInput, Prisma.WorkItemUncheckedCreateWithoutIntakeItemInput> | Prisma.WorkItemCreateWithoutIntakeItemInput[] | Prisma.WorkItemUncheckedCreateWithoutIntakeItemInput[]
   connectOrCreate?: Prisma.WorkItemCreateOrConnectWithoutIntakeItemInput | Prisma.WorkItemCreateOrConnectWithoutIntakeItemInput[]
@@ -1219,6 +1177,48 @@ export type WorkItemUpdateOneWithoutRelatedBugDetailsNestedInput = {
   delete?: Prisma.WorkItemWhereInput | boolean
   connect?: Prisma.WorkItemWhereUniqueInput
   update?: Prisma.XOR<Prisma.XOR<Prisma.WorkItemUpdateToOneWithWhereWithoutRelatedBugDetailsInput, Prisma.WorkItemUpdateWithoutRelatedBugDetailsInput>, Prisma.WorkItemUncheckedUpdateWithoutRelatedBugDetailsInput>
+}
+
+export type WorkItemCreateNestedManyWithoutRequirementInput = {
+  create?: Prisma.XOR<Prisma.WorkItemCreateWithoutRequirementInput, Prisma.WorkItemUncheckedCreateWithoutRequirementInput> | Prisma.WorkItemCreateWithoutRequirementInput[] | Prisma.WorkItemUncheckedCreateWithoutRequirementInput[]
+  connectOrCreate?: Prisma.WorkItemCreateOrConnectWithoutRequirementInput | Prisma.WorkItemCreateOrConnectWithoutRequirementInput[]
+  createMany?: Prisma.WorkItemCreateManyRequirementInputEnvelope
+  connect?: Prisma.WorkItemWhereUniqueInput | Prisma.WorkItemWhereUniqueInput[]
+}
+
+export type WorkItemUncheckedCreateNestedManyWithoutRequirementInput = {
+  create?: Prisma.XOR<Prisma.WorkItemCreateWithoutRequirementInput, Prisma.WorkItemUncheckedCreateWithoutRequirementInput> | Prisma.WorkItemCreateWithoutRequirementInput[] | Prisma.WorkItemUncheckedCreateWithoutRequirementInput[]
+  connectOrCreate?: Prisma.WorkItemCreateOrConnectWithoutRequirementInput | Prisma.WorkItemCreateOrConnectWithoutRequirementInput[]
+  createMany?: Prisma.WorkItemCreateManyRequirementInputEnvelope
+  connect?: Prisma.WorkItemWhereUniqueInput | Prisma.WorkItemWhereUniqueInput[]
+}
+
+export type WorkItemUpdateManyWithoutRequirementNestedInput = {
+  create?: Prisma.XOR<Prisma.WorkItemCreateWithoutRequirementInput, Prisma.WorkItemUncheckedCreateWithoutRequirementInput> | Prisma.WorkItemCreateWithoutRequirementInput[] | Prisma.WorkItemUncheckedCreateWithoutRequirementInput[]
+  connectOrCreate?: Prisma.WorkItemCreateOrConnectWithoutRequirementInput | Prisma.WorkItemCreateOrConnectWithoutRequirementInput[]
+  upsert?: Prisma.WorkItemUpsertWithWhereUniqueWithoutRequirementInput | Prisma.WorkItemUpsertWithWhereUniqueWithoutRequirementInput[]
+  createMany?: Prisma.WorkItemCreateManyRequirementInputEnvelope
+  set?: Prisma.WorkItemWhereUniqueInput | Prisma.WorkItemWhereUniqueInput[]
+  disconnect?: Prisma.WorkItemWhereUniqueInput | Prisma.WorkItemWhereUniqueInput[]
+  delete?: Prisma.WorkItemWhereUniqueInput | Prisma.WorkItemWhereUniqueInput[]
+  connect?: Prisma.WorkItemWhereUniqueInput | Prisma.WorkItemWhereUniqueInput[]
+  update?: Prisma.WorkItemUpdateWithWhereUniqueWithoutRequirementInput | Prisma.WorkItemUpdateWithWhereUniqueWithoutRequirementInput[]
+  updateMany?: Prisma.WorkItemUpdateManyWithWhereWithoutRequirementInput | Prisma.WorkItemUpdateManyWithWhereWithoutRequirementInput[]
+  deleteMany?: Prisma.WorkItemScalarWhereInput | Prisma.WorkItemScalarWhereInput[]
+}
+
+export type WorkItemUncheckedUpdateManyWithoutRequirementNestedInput = {
+  create?: Prisma.XOR<Prisma.WorkItemCreateWithoutRequirementInput, Prisma.WorkItemUncheckedCreateWithoutRequirementInput> | Prisma.WorkItemCreateWithoutRequirementInput[] | Prisma.WorkItemUncheckedCreateWithoutRequirementInput[]
+  connectOrCreate?: Prisma.WorkItemCreateOrConnectWithoutRequirementInput | Prisma.WorkItemCreateOrConnectWithoutRequirementInput[]
+  upsert?: Prisma.WorkItemUpsertWithWhereUniqueWithoutRequirementInput | Prisma.WorkItemUpsertWithWhereUniqueWithoutRequirementInput[]
+  createMany?: Prisma.WorkItemCreateManyRequirementInputEnvelope
+  set?: Prisma.WorkItemWhereUniqueInput | Prisma.WorkItemWhereUniqueInput[]
+  disconnect?: Prisma.WorkItemWhereUniqueInput | Prisma.WorkItemWhereUniqueInput[]
+  delete?: Prisma.WorkItemWhereUniqueInput | Prisma.WorkItemWhereUniqueInput[]
+  connect?: Prisma.WorkItemWhereUniqueInput | Prisma.WorkItemWhereUniqueInput[]
+  update?: Prisma.WorkItemUpdateWithWhereUniqueWithoutRequirementInput | Prisma.WorkItemUpdateWithWhereUniqueWithoutRequirementInput[]
+  updateMany?: Prisma.WorkItemUpdateManyWithWhereWithoutRequirementInput | Prisma.WorkItemUpdateManyWithWhereWithoutRequirementInput[]
+  deleteMany?: Prisma.WorkItemScalarWhereInput | Prisma.WorkItemScalarWhereInput[]
 }
 
 export type WorkItemCreateNestedManyWithoutWorkflowVersionInput = {
@@ -1327,7 +1327,7 @@ export type WorkItemCreateWithoutReporterInput = {
   organization: Prisma.OrganizationCreateNestedOneWithoutWorkItemsInput
   space: Prisma.SpaceCreateNestedOneWithoutWorkItemsInput
   version?: Prisma.VersionCreateNestedOneWithoutWorkItemsInput
-  requirement?: Prisma.RequirementCreateNestedOneWithoutWorkItemsInput
+  requirement?: Prisma.DocumentCreateNestedOneWithoutRequirementWorkItemsInput
   intakeItem?: Prisma.IntakeItemCreateNestedOneWithoutWorkItemsInput
   assignee?: Prisma.UserCreateNestedOneWithoutAssignedWorkItemsInput
   workflowVersion: Prisma.WorkflowVersionCreateNestedOneWithoutWorkItemsInput
@@ -1399,7 +1399,7 @@ export type WorkItemCreateWithoutAssigneeInput = {
   organization: Prisma.OrganizationCreateNestedOneWithoutWorkItemsInput
   space: Prisma.SpaceCreateNestedOneWithoutWorkItemsInput
   version?: Prisma.VersionCreateNestedOneWithoutWorkItemsInput
-  requirement?: Prisma.RequirementCreateNestedOneWithoutWorkItemsInput
+  requirement?: Prisma.DocumentCreateNestedOneWithoutRequirementWorkItemsInput
   intakeItem?: Prisma.IntakeItemCreateNestedOneWithoutWorkItemsInput
   reporter: Prisma.UserCreateNestedOneWithoutReportedWorkItemsInput
   workflowVersion: Prisma.WorkflowVersionCreateNestedOneWithoutWorkItemsInput
@@ -1535,7 +1535,7 @@ export type WorkItemCreateWithoutOrganizationInput = {
   deletedAt?: Date | string | null
   space: Prisma.SpaceCreateNestedOneWithoutWorkItemsInput
   version?: Prisma.VersionCreateNestedOneWithoutWorkItemsInput
-  requirement?: Prisma.RequirementCreateNestedOneWithoutWorkItemsInput
+  requirement?: Prisma.DocumentCreateNestedOneWithoutRequirementWorkItemsInput
   intakeItem?: Prisma.IntakeItemCreateNestedOneWithoutWorkItemsInput
   assignee?: Prisma.UserCreateNestedOneWithoutAssignedWorkItemsInput
   reporter: Prisma.UserCreateNestedOneWithoutReportedWorkItemsInput
@@ -1623,7 +1623,7 @@ export type WorkItemCreateWithoutSpaceInput = {
   deletedAt?: Date | string | null
   organization: Prisma.OrganizationCreateNestedOneWithoutWorkItemsInput
   version?: Prisma.VersionCreateNestedOneWithoutWorkItemsInput
-  requirement?: Prisma.RequirementCreateNestedOneWithoutWorkItemsInput
+  requirement?: Prisma.DocumentCreateNestedOneWithoutRequirementWorkItemsInput
   intakeItem?: Prisma.IntakeItemCreateNestedOneWithoutWorkItemsInput
   assignee?: Prisma.UserCreateNestedOneWithoutAssignedWorkItemsInput
   reporter: Prisma.UserCreateNestedOneWithoutReportedWorkItemsInput
@@ -1711,7 +1711,7 @@ export type WorkItemCreateWithoutVersionInput = {
   deletedAt?: Date | string | null
   organization: Prisma.OrganizationCreateNestedOneWithoutWorkItemsInput
   space: Prisma.SpaceCreateNestedOneWithoutWorkItemsInput
-  requirement?: Prisma.RequirementCreateNestedOneWithoutWorkItemsInput
+  requirement?: Prisma.DocumentCreateNestedOneWithoutRequirementWorkItemsInput
   intakeItem?: Prisma.IntakeItemCreateNestedOneWithoutWorkItemsInput
   assignee?: Prisma.UserCreateNestedOneWithoutAssignedWorkItemsInput
   reporter: Prisma.UserCreateNestedOneWithoutReportedWorkItemsInput
@@ -1776,6 +1776,374 @@ export type WorkItemUpdateWithWhereUniqueWithoutVersionInput = {
 export type WorkItemUpdateManyWithWhereWithoutVersionInput = {
   where: Prisma.WorkItemScalarWhereInput
   data: Prisma.XOR<Prisma.WorkItemUpdateManyMutationInput, Prisma.WorkItemUncheckedUpdateManyWithoutVersionInput>
+}
+
+export type WorkItemCreateWithoutIntakeItemInput = {
+  id: string
+  sequence?: number | null
+  type?: $Enums.WorkItemType
+  title: string
+  description?: string | null
+  priority?: $Enums.Priority
+  statusCategory: $Enums.StatusCategory
+  dueDate?: Date | string | null
+  lastStatusChangedAt: Date | string
+  lastActionAt?: Date | string | null
+  blockedReason?: string | null
+  blockedAt?: Date | string | null
+  closedAt?: Date | string | null
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  createdById?: string | null
+  updatedById?: string | null
+  deletedAt?: Date | string | null
+  organization: Prisma.OrganizationCreateNestedOneWithoutWorkItemsInput
+  space: Prisma.SpaceCreateNestedOneWithoutWorkItemsInput
+  version?: Prisma.VersionCreateNestedOneWithoutWorkItemsInput
+  requirement?: Prisma.DocumentCreateNestedOneWithoutRequirementWorkItemsInput
+  assignee?: Prisma.UserCreateNestedOneWithoutAssignedWorkItemsInput
+  reporter: Prisma.UserCreateNestedOneWithoutReportedWorkItemsInput
+  workflowVersion: Prisma.WorkflowVersionCreateNestedOneWithoutWorkItemsInput
+  currentState: Prisma.WorkflowStateCreateNestedOneWithoutWorkItemsInput
+  bugDetail?: Prisma.BugDetailCreateNestedOneWithoutWorkItemInput
+  relatedBugDetails?: Prisma.BugDetailCreateNestedManyWithoutRelatedTaskInput
+}
+
+export type WorkItemUncheckedCreateWithoutIntakeItemInput = {
+  id: string
+  organizationId: string
+  spaceId: string
+  sequence?: number | null
+  versionId?: string | null
+  requirementId?: string | null
+  type?: $Enums.WorkItemType
+  title: string
+  description?: string | null
+  priority?: $Enums.Priority
+  assigneeId?: string | null
+  reporterId: string
+  workflowVersionId: string
+  currentStateId: string
+  statusCategory: $Enums.StatusCategory
+  dueDate?: Date | string | null
+  lastStatusChangedAt: Date | string
+  lastActionAt?: Date | string | null
+  blockedReason?: string | null
+  blockedAt?: Date | string | null
+  closedAt?: Date | string | null
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  createdById?: string | null
+  updatedById?: string | null
+  deletedAt?: Date | string | null
+  bugDetail?: Prisma.BugDetailUncheckedCreateNestedOneWithoutWorkItemInput
+  relatedBugDetails?: Prisma.BugDetailUncheckedCreateNestedManyWithoutRelatedTaskInput
+}
+
+export type WorkItemCreateOrConnectWithoutIntakeItemInput = {
+  where: Prisma.WorkItemWhereUniqueInput
+  create: Prisma.XOR<Prisma.WorkItemCreateWithoutIntakeItemInput, Prisma.WorkItemUncheckedCreateWithoutIntakeItemInput>
+}
+
+export type WorkItemCreateManyIntakeItemInputEnvelope = {
+  data: Prisma.WorkItemCreateManyIntakeItemInput | Prisma.WorkItemCreateManyIntakeItemInput[]
+  skipDuplicates?: boolean
+}
+
+export type WorkItemUpsertWithWhereUniqueWithoutIntakeItemInput = {
+  where: Prisma.WorkItemWhereUniqueInput
+  update: Prisma.XOR<Prisma.WorkItemUpdateWithoutIntakeItemInput, Prisma.WorkItemUncheckedUpdateWithoutIntakeItemInput>
+  create: Prisma.XOR<Prisma.WorkItemCreateWithoutIntakeItemInput, Prisma.WorkItemUncheckedCreateWithoutIntakeItemInput>
+}
+
+export type WorkItemUpdateWithWhereUniqueWithoutIntakeItemInput = {
+  where: Prisma.WorkItemWhereUniqueInput
+  data: Prisma.XOR<Prisma.WorkItemUpdateWithoutIntakeItemInput, Prisma.WorkItemUncheckedUpdateWithoutIntakeItemInput>
+}
+
+export type WorkItemUpdateManyWithWhereWithoutIntakeItemInput = {
+  where: Prisma.WorkItemScalarWhereInput
+  data: Prisma.XOR<Prisma.WorkItemUpdateManyMutationInput, Prisma.WorkItemUncheckedUpdateManyWithoutIntakeItemInput>
+}
+
+export type WorkItemCreateWithoutBugDetailInput = {
+  id: string
+  sequence?: number | null
+  type?: $Enums.WorkItemType
+  title: string
+  description?: string | null
+  priority?: $Enums.Priority
+  statusCategory: $Enums.StatusCategory
+  dueDate?: Date | string | null
+  lastStatusChangedAt: Date | string
+  lastActionAt?: Date | string | null
+  blockedReason?: string | null
+  blockedAt?: Date | string | null
+  closedAt?: Date | string | null
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  createdById?: string | null
+  updatedById?: string | null
+  deletedAt?: Date | string | null
+  organization: Prisma.OrganizationCreateNestedOneWithoutWorkItemsInput
+  space: Prisma.SpaceCreateNestedOneWithoutWorkItemsInput
+  version?: Prisma.VersionCreateNestedOneWithoutWorkItemsInput
+  requirement?: Prisma.DocumentCreateNestedOneWithoutRequirementWorkItemsInput
+  intakeItem?: Prisma.IntakeItemCreateNestedOneWithoutWorkItemsInput
+  assignee?: Prisma.UserCreateNestedOneWithoutAssignedWorkItemsInput
+  reporter: Prisma.UserCreateNestedOneWithoutReportedWorkItemsInput
+  workflowVersion: Prisma.WorkflowVersionCreateNestedOneWithoutWorkItemsInput
+  currentState: Prisma.WorkflowStateCreateNestedOneWithoutWorkItemsInput
+  relatedBugDetails?: Prisma.BugDetailCreateNestedManyWithoutRelatedTaskInput
+}
+
+export type WorkItemUncheckedCreateWithoutBugDetailInput = {
+  id: string
+  organizationId: string
+  spaceId: string
+  sequence?: number | null
+  versionId?: string | null
+  requirementId?: string | null
+  intakeItemId?: string | null
+  type?: $Enums.WorkItemType
+  title: string
+  description?: string | null
+  priority?: $Enums.Priority
+  assigneeId?: string | null
+  reporterId: string
+  workflowVersionId: string
+  currentStateId: string
+  statusCategory: $Enums.StatusCategory
+  dueDate?: Date | string | null
+  lastStatusChangedAt: Date | string
+  lastActionAt?: Date | string | null
+  blockedReason?: string | null
+  blockedAt?: Date | string | null
+  closedAt?: Date | string | null
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  createdById?: string | null
+  updatedById?: string | null
+  deletedAt?: Date | string | null
+  relatedBugDetails?: Prisma.BugDetailUncheckedCreateNestedManyWithoutRelatedTaskInput
+}
+
+export type WorkItemCreateOrConnectWithoutBugDetailInput = {
+  where: Prisma.WorkItemWhereUniqueInput
+  create: Prisma.XOR<Prisma.WorkItemCreateWithoutBugDetailInput, Prisma.WorkItemUncheckedCreateWithoutBugDetailInput>
+}
+
+export type WorkItemCreateWithoutRelatedBugDetailsInput = {
+  id: string
+  sequence?: number | null
+  type?: $Enums.WorkItemType
+  title: string
+  description?: string | null
+  priority?: $Enums.Priority
+  statusCategory: $Enums.StatusCategory
+  dueDate?: Date | string | null
+  lastStatusChangedAt: Date | string
+  lastActionAt?: Date | string | null
+  blockedReason?: string | null
+  blockedAt?: Date | string | null
+  closedAt?: Date | string | null
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  createdById?: string | null
+  updatedById?: string | null
+  deletedAt?: Date | string | null
+  organization: Prisma.OrganizationCreateNestedOneWithoutWorkItemsInput
+  space: Prisma.SpaceCreateNestedOneWithoutWorkItemsInput
+  version?: Prisma.VersionCreateNestedOneWithoutWorkItemsInput
+  requirement?: Prisma.DocumentCreateNestedOneWithoutRequirementWorkItemsInput
+  intakeItem?: Prisma.IntakeItemCreateNestedOneWithoutWorkItemsInput
+  assignee?: Prisma.UserCreateNestedOneWithoutAssignedWorkItemsInput
+  reporter: Prisma.UserCreateNestedOneWithoutReportedWorkItemsInput
+  workflowVersion: Prisma.WorkflowVersionCreateNestedOneWithoutWorkItemsInput
+  currentState: Prisma.WorkflowStateCreateNestedOneWithoutWorkItemsInput
+  bugDetail?: Prisma.BugDetailCreateNestedOneWithoutWorkItemInput
+}
+
+export type WorkItemUncheckedCreateWithoutRelatedBugDetailsInput = {
+  id: string
+  organizationId: string
+  spaceId: string
+  sequence?: number | null
+  versionId?: string | null
+  requirementId?: string | null
+  intakeItemId?: string | null
+  type?: $Enums.WorkItemType
+  title: string
+  description?: string | null
+  priority?: $Enums.Priority
+  assigneeId?: string | null
+  reporterId: string
+  workflowVersionId: string
+  currentStateId: string
+  statusCategory: $Enums.StatusCategory
+  dueDate?: Date | string | null
+  lastStatusChangedAt: Date | string
+  lastActionAt?: Date | string | null
+  blockedReason?: string | null
+  blockedAt?: Date | string | null
+  closedAt?: Date | string | null
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  createdById?: string | null
+  updatedById?: string | null
+  deletedAt?: Date | string | null
+  bugDetail?: Prisma.BugDetailUncheckedCreateNestedOneWithoutWorkItemInput
+}
+
+export type WorkItemCreateOrConnectWithoutRelatedBugDetailsInput = {
+  where: Prisma.WorkItemWhereUniqueInput
+  create: Prisma.XOR<Prisma.WorkItemCreateWithoutRelatedBugDetailsInput, Prisma.WorkItemUncheckedCreateWithoutRelatedBugDetailsInput>
+}
+
+export type WorkItemUpsertWithoutBugDetailInput = {
+  update: Prisma.XOR<Prisma.WorkItemUpdateWithoutBugDetailInput, Prisma.WorkItemUncheckedUpdateWithoutBugDetailInput>
+  create: Prisma.XOR<Prisma.WorkItemCreateWithoutBugDetailInput, Prisma.WorkItemUncheckedCreateWithoutBugDetailInput>
+  where?: Prisma.WorkItemWhereInput
+}
+
+export type WorkItemUpdateToOneWithWhereWithoutBugDetailInput = {
+  where?: Prisma.WorkItemWhereInput
+  data: Prisma.XOR<Prisma.WorkItemUpdateWithoutBugDetailInput, Prisma.WorkItemUncheckedUpdateWithoutBugDetailInput>
+}
+
+export type WorkItemUpdateWithoutBugDetailInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  sequence?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  type?: Prisma.EnumWorkItemTypeFieldUpdateOperationsInput | $Enums.WorkItemType
+  title?: Prisma.StringFieldUpdateOperationsInput | string
+  description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  priority?: Prisma.EnumPriorityFieldUpdateOperationsInput | $Enums.Priority
+  statusCategory?: Prisma.EnumStatusCategoryFieldUpdateOperationsInput | $Enums.StatusCategory
+  dueDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  lastStatusChangedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  lastActionAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  blockedReason?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  blockedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  closedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  createdById?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  updatedById?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  deletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  organization?: Prisma.OrganizationUpdateOneRequiredWithoutWorkItemsNestedInput
+  space?: Prisma.SpaceUpdateOneRequiredWithoutWorkItemsNestedInput
+  version?: Prisma.VersionUpdateOneWithoutWorkItemsNestedInput
+  requirement?: Prisma.DocumentUpdateOneWithoutRequirementWorkItemsNestedInput
+  intakeItem?: Prisma.IntakeItemUpdateOneWithoutWorkItemsNestedInput
+  assignee?: Prisma.UserUpdateOneWithoutAssignedWorkItemsNestedInput
+  reporter?: Prisma.UserUpdateOneRequiredWithoutReportedWorkItemsNestedInput
+  workflowVersion?: Prisma.WorkflowVersionUpdateOneRequiredWithoutWorkItemsNestedInput
+  currentState?: Prisma.WorkflowStateUpdateOneRequiredWithoutWorkItemsNestedInput
+  relatedBugDetails?: Prisma.BugDetailUpdateManyWithoutRelatedTaskNestedInput
+}
+
+export type WorkItemUncheckedUpdateWithoutBugDetailInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  organizationId?: Prisma.StringFieldUpdateOperationsInput | string
+  spaceId?: Prisma.StringFieldUpdateOperationsInput | string
+  sequence?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  versionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  requirementId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  intakeItemId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  type?: Prisma.EnumWorkItemTypeFieldUpdateOperationsInput | $Enums.WorkItemType
+  title?: Prisma.StringFieldUpdateOperationsInput | string
+  description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  priority?: Prisma.EnumPriorityFieldUpdateOperationsInput | $Enums.Priority
+  assigneeId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  reporterId?: Prisma.StringFieldUpdateOperationsInput | string
+  workflowVersionId?: Prisma.StringFieldUpdateOperationsInput | string
+  currentStateId?: Prisma.StringFieldUpdateOperationsInput | string
+  statusCategory?: Prisma.EnumStatusCategoryFieldUpdateOperationsInput | $Enums.StatusCategory
+  dueDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  lastStatusChangedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  lastActionAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  blockedReason?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  blockedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  closedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  createdById?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  updatedById?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  deletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  relatedBugDetails?: Prisma.BugDetailUncheckedUpdateManyWithoutRelatedTaskNestedInput
+}
+
+export type WorkItemUpsertWithoutRelatedBugDetailsInput = {
+  update: Prisma.XOR<Prisma.WorkItemUpdateWithoutRelatedBugDetailsInput, Prisma.WorkItemUncheckedUpdateWithoutRelatedBugDetailsInput>
+  create: Prisma.XOR<Prisma.WorkItemCreateWithoutRelatedBugDetailsInput, Prisma.WorkItemUncheckedCreateWithoutRelatedBugDetailsInput>
+  where?: Prisma.WorkItemWhereInput
+}
+
+export type WorkItemUpdateToOneWithWhereWithoutRelatedBugDetailsInput = {
+  where?: Prisma.WorkItemWhereInput
+  data: Prisma.XOR<Prisma.WorkItemUpdateWithoutRelatedBugDetailsInput, Prisma.WorkItemUncheckedUpdateWithoutRelatedBugDetailsInput>
+}
+
+export type WorkItemUpdateWithoutRelatedBugDetailsInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  sequence?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  type?: Prisma.EnumWorkItemTypeFieldUpdateOperationsInput | $Enums.WorkItemType
+  title?: Prisma.StringFieldUpdateOperationsInput | string
+  description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  priority?: Prisma.EnumPriorityFieldUpdateOperationsInput | $Enums.Priority
+  statusCategory?: Prisma.EnumStatusCategoryFieldUpdateOperationsInput | $Enums.StatusCategory
+  dueDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  lastStatusChangedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  lastActionAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  blockedReason?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  blockedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  closedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  createdById?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  updatedById?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  deletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  organization?: Prisma.OrganizationUpdateOneRequiredWithoutWorkItemsNestedInput
+  space?: Prisma.SpaceUpdateOneRequiredWithoutWorkItemsNestedInput
+  version?: Prisma.VersionUpdateOneWithoutWorkItemsNestedInput
+  requirement?: Prisma.DocumentUpdateOneWithoutRequirementWorkItemsNestedInput
+  intakeItem?: Prisma.IntakeItemUpdateOneWithoutWorkItemsNestedInput
+  assignee?: Prisma.UserUpdateOneWithoutAssignedWorkItemsNestedInput
+  reporter?: Prisma.UserUpdateOneRequiredWithoutReportedWorkItemsNestedInput
+  workflowVersion?: Prisma.WorkflowVersionUpdateOneRequiredWithoutWorkItemsNestedInput
+  currentState?: Prisma.WorkflowStateUpdateOneRequiredWithoutWorkItemsNestedInput
+  bugDetail?: Prisma.BugDetailUpdateOneWithoutWorkItemNestedInput
+}
+
+export type WorkItemUncheckedUpdateWithoutRelatedBugDetailsInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  organizationId?: Prisma.StringFieldUpdateOperationsInput | string
+  spaceId?: Prisma.StringFieldUpdateOperationsInput | string
+  sequence?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  versionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  requirementId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  intakeItemId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  type?: Prisma.EnumWorkItemTypeFieldUpdateOperationsInput | $Enums.WorkItemType
+  title?: Prisma.StringFieldUpdateOperationsInput | string
+  description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  priority?: Prisma.EnumPriorityFieldUpdateOperationsInput | $Enums.Priority
+  assigneeId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  reporterId?: Prisma.StringFieldUpdateOperationsInput | string
+  workflowVersionId?: Prisma.StringFieldUpdateOperationsInput | string
+  currentStateId?: Prisma.StringFieldUpdateOperationsInput | string
+  statusCategory?: Prisma.EnumStatusCategoryFieldUpdateOperationsInput | $Enums.StatusCategory
+  dueDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  lastStatusChangedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  lastActionAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  blockedReason?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  blockedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  closedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  createdById?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  updatedById?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  deletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  bugDetail?: Prisma.BugDetailUncheckedUpdateOneWithoutWorkItemNestedInput
 }
 
 export type WorkItemCreateWithoutRequirementInput = {
@@ -1866,374 +2234,6 @@ export type WorkItemUpdateManyWithWhereWithoutRequirementInput = {
   data: Prisma.XOR<Prisma.WorkItemUpdateManyMutationInput, Prisma.WorkItemUncheckedUpdateManyWithoutRequirementInput>
 }
 
-export type WorkItemCreateWithoutIntakeItemInput = {
-  id: string
-  sequence?: number | null
-  type?: $Enums.WorkItemType
-  title: string
-  description?: string | null
-  priority?: $Enums.Priority
-  statusCategory: $Enums.StatusCategory
-  dueDate?: Date | string | null
-  lastStatusChangedAt: Date | string
-  lastActionAt?: Date | string | null
-  blockedReason?: string | null
-  blockedAt?: Date | string | null
-  closedAt?: Date | string | null
-  createdAt?: Date | string
-  updatedAt?: Date | string
-  createdById?: string | null
-  updatedById?: string | null
-  deletedAt?: Date | string | null
-  organization: Prisma.OrganizationCreateNestedOneWithoutWorkItemsInput
-  space: Prisma.SpaceCreateNestedOneWithoutWorkItemsInput
-  version?: Prisma.VersionCreateNestedOneWithoutWorkItemsInput
-  requirement?: Prisma.RequirementCreateNestedOneWithoutWorkItemsInput
-  assignee?: Prisma.UserCreateNestedOneWithoutAssignedWorkItemsInput
-  reporter: Prisma.UserCreateNestedOneWithoutReportedWorkItemsInput
-  workflowVersion: Prisma.WorkflowVersionCreateNestedOneWithoutWorkItemsInput
-  currentState: Prisma.WorkflowStateCreateNestedOneWithoutWorkItemsInput
-  bugDetail?: Prisma.BugDetailCreateNestedOneWithoutWorkItemInput
-  relatedBugDetails?: Prisma.BugDetailCreateNestedManyWithoutRelatedTaskInput
-}
-
-export type WorkItemUncheckedCreateWithoutIntakeItemInput = {
-  id: string
-  organizationId: string
-  spaceId: string
-  sequence?: number | null
-  versionId?: string | null
-  requirementId?: string | null
-  type?: $Enums.WorkItemType
-  title: string
-  description?: string | null
-  priority?: $Enums.Priority
-  assigneeId?: string | null
-  reporterId: string
-  workflowVersionId: string
-  currentStateId: string
-  statusCategory: $Enums.StatusCategory
-  dueDate?: Date | string | null
-  lastStatusChangedAt: Date | string
-  lastActionAt?: Date | string | null
-  blockedReason?: string | null
-  blockedAt?: Date | string | null
-  closedAt?: Date | string | null
-  createdAt?: Date | string
-  updatedAt?: Date | string
-  createdById?: string | null
-  updatedById?: string | null
-  deletedAt?: Date | string | null
-  bugDetail?: Prisma.BugDetailUncheckedCreateNestedOneWithoutWorkItemInput
-  relatedBugDetails?: Prisma.BugDetailUncheckedCreateNestedManyWithoutRelatedTaskInput
-}
-
-export type WorkItemCreateOrConnectWithoutIntakeItemInput = {
-  where: Prisma.WorkItemWhereUniqueInput
-  create: Prisma.XOR<Prisma.WorkItemCreateWithoutIntakeItemInput, Prisma.WorkItemUncheckedCreateWithoutIntakeItemInput>
-}
-
-export type WorkItemCreateManyIntakeItemInputEnvelope = {
-  data: Prisma.WorkItemCreateManyIntakeItemInput | Prisma.WorkItemCreateManyIntakeItemInput[]
-  skipDuplicates?: boolean
-}
-
-export type WorkItemUpsertWithWhereUniqueWithoutIntakeItemInput = {
-  where: Prisma.WorkItemWhereUniqueInput
-  update: Prisma.XOR<Prisma.WorkItemUpdateWithoutIntakeItemInput, Prisma.WorkItemUncheckedUpdateWithoutIntakeItemInput>
-  create: Prisma.XOR<Prisma.WorkItemCreateWithoutIntakeItemInput, Prisma.WorkItemUncheckedCreateWithoutIntakeItemInput>
-}
-
-export type WorkItemUpdateWithWhereUniqueWithoutIntakeItemInput = {
-  where: Prisma.WorkItemWhereUniqueInput
-  data: Prisma.XOR<Prisma.WorkItemUpdateWithoutIntakeItemInput, Prisma.WorkItemUncheckedUpdateWithoutIntakeItemInput>
-}
-
-export type WorkItemUpdateManyWithWhereWithoutIntakeItemInput = {
-  where: Prisma.WorkItemScalarWhereInput
-  data: Prisma.XOR<Prisma.WorkItemUpdateManyMutationInput, Prisma.WorkItemUncheckedUpdateManyWithoutIntakeItemInput>
-}
-
-export type WorkItemCreateWithoutBugDetailInput = {
-  id: string
-  sequence?: number | null
-  type?: $Enums.WorkItemType
-  title: string
-  description?: string | null
-  priority?: $Enums.Priority
-  statusCategory: $Enums.StatusCategory
-  dueDate?: Date | string | null
-  lastStatusChangedAt: Date | string
-  lastActionAt?: Date | string | null
-  blockedReason?: string | null
-  blockedAt?: Date | string | null
-  closedAt?: Date | string | null
-  createdAt?: Date | string
-  updatedAt?: Date | string
-  createdById?: string | null
-  updatedById?: string | null
-  deletedAt?: Date | string | null
-  organization: Prisma.OrganizationCreateNestedOneWithoutWorkItemsInput
-  space: Prisma.SpaceCreateNestedOneWithoutWorkItemsInput
-  version?: Prisma.VersionCreateNestedOneWithoutWorkItemsInput
-  requirement?: Prisma.RequirementCreateNestedOneWithoutWorkItemsInput
-  intakeItem?: Prisma.IntakeItemCreateNestedOneWithoutWorkItemsInput
-  assignee?: Prisma.UserCreateNestedOneWithoutAssignedWorkItemsInput
-  reporter: Prisma.UserCreateNestedOneWithoutReportedWorkItemsInput
-  workflowVersion: Prisma.WorkflowVersionCreateNestedOneWithoutWorkItemsInput
-  currentState: Prisma.WorkflowStateCreateNestedOneWithoutWorkItemsInput
-  relatedBugDetails?: Prisma.BugDetailCreateNestedManyWithoutRelatedTaskInput
-}
-
-export type WorkItemUncheckedCreateWithoutBugDetailInput = {
-  id: string
-  organizationId: string
-  spaceId: string
-  sequence?: number | null
-  versionId?: string | null
-  requirementId?: string | null
-  intakeItemId?: string | null
-  type?: $Enums.WorkItemType
-  title: string
-  description?: string | null
-  priority?: $Enums.Priority
-  assigneeId?: string | null
-  reporterId: string
-  workflowVersionId: string
-  currentStateId: string
-  statusCategory: $Enums.StatusCategory
-  dueDate?: Date | string | null
-  lastStatusChangedAt: Date | string
-  lastActionAt?: Date | string | null
-  blockedReason?: string | null
-  blockedAt?: Date | string | null
-  closedAt?: Date | string | null
-  createdAt?: Date | string
-  updatedAt?: Date | string
-  createdById?: string | null
-  updatedById?: string | null
-  deletedAt?: Date | string | null
-  relatedBugDetails?: Prisma.BugDetailUncheckedCreateNestedManyWithoutRelatedTaskInput
-}
-
-export type WorkItemCreateOrConnectWithoutBugDetailInput = {
-  where: Prisma.WorkItemWhereUniqueInput
-  create: Prisma.XOR<Prisma.WorkItemCreateWithoutBugDetailInput, Prisma.WorkItemUncheckedCreateWithoutBugDetailInput>
-}
-
-export type WorkItemCreateWithoutRelatedBugDetailsInput = {
-  id: string
-  sequence?: number | null
-  type?: $Enums.WorkItemType
-  title: string
-  description?: string | null
-  priority?: $Enums.Priority
-  statusCategory: $Enums.StatusCategory
-  dueDate?: Date | string | null
-  lastStatusChangedAt: Date | string
-  lastActionAt?: Date | string | null
-  blockedReason?: string | null
-  blockedAt?: Date | string | null
-  closedAt?: Date | string | null
-  createdAt?: Date | string
-  updatedAt?: Date | string
-  createdById?: string | null
-  updatedById?: string | null
-  deletedAt?: Date | string | null
-  organization: Prisma.OrganizationCreateNestedOneWithoutWorkItemsInput
-  space: Prisma.SpaceCreateNestedOneWithoutWorkItemsInput
-  version?: Prisma.VersionCreateNestedOneWithoutWorkItemsInput
-  requirement?: Prisma.RequirementCreateNestedOneWithoutWorkItemsInput
-  intakeItem?: Prisma.IntakeItemCreateNestedOneWithoutWorkItemsInput
-  assignee?: Prisma.UserCreateNestedOneWithoutAssignedWorkItemsInput
-  reporter: Prisma.UserCreateNestedOneWithoutReportedWorkItemsInput
-  workflowVersion: Prisma.WorkflowVersionCreateNestedOneWithoutWorkItemsInput
-  currentState: Prisma.WorkflowStateCreateNestedOneWithoutWorkItemsInput
-  bugDetail?: Prisma.BugDetailCreateNestedOneWithoutWorkItemInput
-}
-
-export type WorkItemUncheckedCreateWithoutRelatedBugDetailsInput = {
-  id: string
-  organizationId: string
-  spaceId: string
-  sequence?: number | null
-  versionId?: string | null
-  requirementId?: string | null
-  intakeItemId?: string | null
-  type?: $Enums.WorkItemType
-  title: string
-  description?: string | null
-  priority?: $Enums.Priority
-  assigneeId?: string | null
-  reporterId: string
-  workflowVersionId: string
-  currentStateId: string
-  statusCategory: $Enums.StatusCategory
-  dueDate?: Date | string | null
-  lastStatusChangedAt: Date | string
-  lastActionAt?: Date | string | null
-  blockedReason?: string | null
-  blockedAt?: Date | string | null
-  closedAt?: Date | string | null
-  createdAt?: Date | string
-  updatedAt?: Date | string
-  createdById?: string | null
-  updatedById?: string | null
-  deletedAt?: Date | string | null
-  bugDetail?: Prisma.BugDetailUncheckedCreateNestedOneWithoutWorkItemInput
-}
-
-export type WorkItemCreateOrConnectWithoutRelatedBugDetailsInput = {
-  where: Prisma.WorkItemWhereUniqueInput
-  create: Prisma.XOR<Prisma.WorkItemCreateWithoutRelatedBugDetailsInput, Prisma.WorkItemUncheckedCreateWithoutRelatedBugDetailsInput>
-}
-
-export type WorkItemUpsertWithoutBugDetailInput = {
-  update: Prisma.XOR<Prisma.WorkItemUpdateWithoutBugDetailInput, Prisma.WorkItemUncheckedUpdateWithoutBugDetailInput>
-  create: Prisma.XOR<Prisma.WorkItemCreateWithoutBugDetailInput, Prisma.WorkItemUncheckedCreateWithoutBugDetailInput>
-  where?: Prisma.WorkItemWhereInput
-}
-
-export type WorkItemUpdateToOneWithWhereWithoutBugDetailInput = {
-  where?: Prisma.WorkItemWhereInput
-  data: Prisma.XOR<Prisma.WorkItemUpdateWithoutBugDetailInput, Prisma.WorkItemUncheckedUpdateWithoutBugDetailInput>
-}
-
-export type WorkItemUpdateWithoutBugDetailInput = {
-  id?: Prisma.StringFieldUpdateOperationsInput | string
-  sequence?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
-  type?: Prisma.EnumWorkItemTypeFieldUpdateOperationsInput | $Enums.WorkItemType
-  title?: Prisma.StringFieldUpdateOperationsInput | string
-  description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  priority?: Prisma.EnumPriorityFieldUpdateOperationsInput | $Enums.Priority
-  statusCategory?: Prisma.EnumStatusCategoryFieldUpdateOperationsInput | $Enums.StatusCategory
-  dueDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
-  lastStatusChangedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
-  lastActionAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
-  blockedReason?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  blockedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
-  closedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
-  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
-  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
-  createdById?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  updatedById?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  deletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
-  organization?: Prisma.OrganizationUpdateOneRequiredWithoutWorkItemsNestedInput
-  space?: Prisma.SpaceUpdateOneRequiredWithoutWorkItemsNestedInput
-  version?: Prisma.VersionUpdateOneWithoutWorkItemsNestedInput
-  requirement?: Prisma.RequirementUpdateOneWithoutWorkItemsNestedInput
-  intakeItem?: Prisma.IntakeItemUpdateOneWithoutWorkItemsNestedInput
-  assignee?: Prisma.UserUpdateOneWithoutAssignedWorkItemsNestedInput
-  reporter?: Prisma.UserUpdateOneRequiredWithoutReportedWorkItemsNestedInput
-  workflowVersion?: Prisma.WorkflowVersionUpdateOneRequiredWithoutWorkItemsNestedInput
-  currentState?: Prisma.WorkflowStateUpdateOneRequiredWithoutWorkItemsNestedInput
-  relatedBugDetails?: Prisma.BugDetailUpdateManyWithoutRelatedTaskNestedInput
-}
-
-export type WorkItemUncheckedUpdateWithoutBugDetailInput = {
-  id?: Prisma.StringFieldUpdateOperationsInput | string
-  organizationId?: Prisma.StringFieldUpdateOperationsInput | string
-  spaceId?: Prisma.StringFieldUpdateOperationsInput | string
-  sequence?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
-  versionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  requirementId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  intakeItemId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  type?: Prisma.EnumWorkItemTypeFieldUpdateOperationsInput | $Enums.WorkItemType
-  title?: Prisma.StringFieldUpdateOperationsInput | string
-  description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  priority?: Prisma.EnumPriorityFieldUpdateOperationsInput | $Enums.Priority
-  assigneeId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  reporterId?: Prisma.StringFieldUpdateOperationsInput | string
-  workflowVersionId?: Prisma.StringFieldUpdateOperationsInput | string
-  currentStateId?: Prisma.StringFieldUpdateOperationsInput | string
-  statusCategory?: Prisma.EnumStatusCategoryFieldUpdateOperationsInput | $Enums.StatusCategory
-  dueDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
-  lastStatusChangedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
-  lastActionAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
-  blockedReason?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  blockedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
-  closedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
-  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
-  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
-  createdById?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  updatedById?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  deletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
-  relatedBugDetails?: Prisma.BugDetailUncheckedUpdateManyWithoutRelatedTaskNestedInput
-}
-
-export type WorkItemUpsertWithoutRelatedBugDetailsInput = {
-  update: Prisma.XOR<Prisma.WorkItemUpdateWithoutRelatedBugDetailsInput, Prisma.WorkItemUncheckedUpdateWithoutRelatedBugDetailsInput>
-  create: Prisma.XOR<Prisma.WorkItemCreateWithoutRelatedBugDetailsInput, Prisma.WorkItemUncheckedCreateWithoutRelatedBugDetailsInput>
-  where?: Prisma.WorkItemWhereInput
-}
-
-export type WorkItemUpdateToOneWithWhereWithoutRelatedBugDetailsInput = {
-  where?: Prisma.WorkItemWhereInput
-  data: Prisma.XOR<Prisma.WorkItemUpdateWithoutRelatedBugDetailsInput, Prisma.WorkItemUncheckedUpdateWithoutRelatedBugDetailsInput>
-}
-
-export type WorkItemUpdateWithoutRelatedBugDetailsInput = {
-  id?: Prisma.StringFieldUpdateOperationsInput | string
-  sequence?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
-  type?: Prisma.EnumWorkItemTypeFieldUpdateOperationsInput | $Enums.WorkItemType
-  title?: Prisma.StringFieldUpdateOperationsInput | string
-  description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  priority?: Prisma.EnumPriorityFieldUpdateOperationsInput | $Enums.Priority
-  statusCategory?: Prisma.EnumStatusCategoryFieldUpdateOperationsInput | $Enums.StatusCategory
-  dueDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
-  lastStatusChangedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
-  lastActionAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
-  blockedReason?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  blockedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
-  closedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
-  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
-  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
-  createdById?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  updatedById?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  deletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
-  organization?: Prisma.OrganizationUpdateOneRequiredWithoutWorkItemsNestedInput
-  space?: Prisma.SpaceUpdateOneRequiredWithoutWorkItemsNestedInput
-  version?: Prisma.VersionUpdateOneWithoutWorkItemsNestedInput
-  requirement?: Prisma.RequirementUpdateOneWithoutWorkItemsNestedInput
-  intakeItem?: Prisma.IntakeItemUpdateOneWithoutWorkItemsNestedInput
-  assignee?: Prisma.UserUpdateOneWithoutAssignedWorkItemsNestedInput
-  reporter?: Prisma.UserUpdateOneRequiredWithoutReportedWorkItemsNestedInput
-  workflowVersion?: Prisma.WorkflowVersionUpdateOneRequiredWithoutWorkItemsNestedInput
-  currentState?: Prisma.WorkflowStateUpdateOneRequiredWithoutWorkItemsNestedInput
-  bugDetail?: Prisma.BugDetailUpdateOneWithoutWorkItemNestedInput
-}
-
-export type WorkItemUncheckedUpdateWithoutRelatedBugDetailsInput = {
-  id?: Prisma.StringFieldUpdateOperationsInput | string
-  organizationId?: Prisma.StringFieldUpdateOperationsInput | string
-  spaceId?: Prisma.StringFieldUpdateOperationsInput | string
-  sequence?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
-  versionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  requirementId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  intakeItemId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  type?: Prisma.EnumWorkItemTypeFieldUpdateOperationsInput | $Enums.WorkItemType
-  title?: Prisma.StringFieldUpdateOperationsInput | string
-  description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  priority?: Prisma.EnumPriorityFieldUpdateOperationsInput | $Enums.Priority
-  assigneeId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  reporterId?: Prisma.StringFieldUpdateOperationsInput | string
-  workflowVersionId?: Prisma.StringFieldUpdateOperationsInput | string
-  currentStateId?: Prisma.StringFieldUpdateOperationsInput | string
-  statusCategory?: Prisma.EnumStatusCategoryFieldUpdateOperationsInput | $Enums.StatusCategory
-  dueDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
-  lastStatusChangedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
-  lastActionAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
-  blockedReason?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  blockedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
-  closedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
-  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
-  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
-  createdById?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  updatedById?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  deletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
-  bugDetail?: Prisma.BugDetailUncheckedUpdateOneWithoutWorkItemNestedInput
-}
-
 export type WorkItemCreateWithoutWorkflowVersionInput = {
   id: string
   sequence?: number | null
@@ -2256,7 +2256,7 @@ export type WorkItemCreateWithoutWorkflowVersionInput = {
   organization: Prisma.OrganizationCreateNestedOneWithoutWorkItemsInput
   space: Prisma.SpaceCreateNestedOneWithoutWorkItemsInput
   version?: Prisma.VersionCreateNestedOneWithoutWorkItemsInput
-  requirement?: Prisma.RequirementCreateNestedOneWithoutWorkItemsInput
+  requirement?: Prisma.DocumentCreateNestedOneWithoutRequirementWorkItemsInput
   intakeItem?: Prisma.IntakeItemCreateNestedOneWithoutWorkItemsInput
   assignee?: Prisma.UserCreateNestedOneWithoutAssignedWorkItemsInput
   reporter: Prisma.UserCreateNestedOneWithoutReportedWorkItemsInput
@@ -2344,7 +2344,7 @@ export type WorkItemCreateWithoutCurrentStateInput = {
   organization: Prisma.OrganizationCreateNestedOneWithoutWorkItemsInput
   space: Prisma.SpaceCreateNestedOneWithoutWorkItemsInput
   version?: Prisma.VersionCreateNestedOneWithoutWorkItemsInput
-  requirement?: Prisma.RequirementCreateNestedOneWithoutWorkItemsInput
+  requirement?: Prisma.DocumentCreateNestedOneWithoutRequirementWorkItemsInput
   intakeItem?: Prisma.IntakeItemCreateNestedOneWithoutWorkItemsInput
   assignee?: Prisma.UserCreateNestedOneWithoutAssignedWorkItemsInput
   reporter: Prisma.UserCreateNestedOneWithoutReportedWorkItemsInput
@@ -2490,7 +2490,7 @@ export type WorkItemUpdateWithoutReporterInput = {
   organization?: Prisma.OrganizationUpdateOneRequiredWithoutWorkItemsNestedInput
   space?: Prisma.SpaceUpdateOneRequiredWithoutWorkItemsNestedInput
   version?: Prisma.VersionUpdateOneWithoutWorkItemsNestedInput
-  requirement?: Prisma.RequirementUpdateOneWithoutWorkItemsNestedInput
+  requirement?: Prisma.DocumentUpdateOneWithoutRequirementWorkItemsNestedInput
   intakeItem?: Prisma.IntakeItemUpdateOneWithoutWorkItemsNestedInput
   assignee?: Prisma.UserUpdateOneWithoutAssignedWorkItemsNestedInput
   workflowVersion?: Prisma.WorkflowVersionUpdateOneRequiredWithoutWorkItemsNestedInput
@@ -2581,7 +2581,7 @@ export type WorkItemUpdateWithoutAssigneeInput = {
   organization?: Prisma.OrganizationUpdateOneRequiredWithoutWorkItemsNestedInput
   space?: Prisma.SpaceUpdateOneRequiredWithoutWorkItemsNestedInput
   version?: Prisma.VersionUpdateOneWithoutWorkItemsNestedInput
-  requirement?: Prisma.RequirementUpdateOneWithoutWorkItemsNestedInput
+  requirement?: Prisma.DocumentUpdateOneWithoutRequirementWorkItemsNestedInput
   intakeItem?: Prisma.IntakeItemUpdateOneWithoutWorkItemsNestedInput
   reporter?: Prisma.UserUpdateOneRequiredWithoutReportedWorkItemsNestedInput
   workflowVersion?: Prisma.WorkflowVersionUpdateOneRequiredWithoutWorkItemsNestedInput
@@ -2700,7 +2700,7 @@ export type WorkItemUpdateWithoutOrganizationInput = {
   deletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   space?: Prisma.SpaceUpdateOneRequiredWithoutWorkItemsNestedInput
   version?: Prisma.VersionUpdateOneWithoutWorkItemsNestedInput
-  requirement?: Prisma.RequirementUpdateOneWithoutWorkItemsNestedInput
+  requirement?: Prisma.DocumentUpdateOneWithoutRequirementWorkItemsNestedInput
   intakeItem?: Prisma.IntakeItemUpdateOneWithoutWorkItemsNestedInput
   assignee?: Prisma.UserUpdateOneWithoutAssignedWorkItemsNestedInput
   reporter?: Prisma.UserUpdateOneRequiredWithoutReportedWorkItemsNestedInput
@@ -2820,7 +2820,7 @@ export type WorkItemUpdateWithoutSpaceInput = {
   deletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   organization?: Prisma.OrganizationUpdateOneRequiredWithoutWorkItemsNestedInput
   version?: Prisma.VersionUpdateOneWithoutWorkItemsNestedInput
-  requirement?: Prisma.RequirementUpdateOneWithoutWorkItemsNestedInput
+  requirement?: Prisma.DocumentUpdateOneWithoutRequirementWorkItemsNestedInput
   intakeItem?: Prisma.IntakeItemUpdateOneWithoutWorkItemsNestedInput
   assignee?: Prisma.UserUpdateOneWithoutAssignedWorkItemsNestedInput
   reporter?: Prisma.UserUpdateOneRequiredWithoutReportedWorkItemsNestedInput
@@ -2940,7 +2940,7 @@ export type WorkItemUpdateWithoutVersionInput = {
   deletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   organization?: Prisma.OrganizationUpdateOneRequiredWithoutWorkItemsNestedInput
   space?: Prisma.SpaceUpdateOneRequiredWithoutWorkItemsNestedInput
-  requirement?: Prisma.RequirementUpdateOneWithoutWorkItemsNestedInput
+  requirement?: Prisma.DocumentUpdateOneWithoutRequirementWorkItemsNestedInput
   intakeItem?: Prisma.IntakeItemUpdateOneWithoutWorkItemsNestedInput
   assignee?: Prisma.UserUpdateOneWithoutAssignedWorkItemsNestedInput
   reporter?: Prisma.UserUpdateOneRequiredWithoutReportedWorkItemsNestedInput
@@ -2988,6 +2988,126 @@ export type WorkItemUncheckedUpdateManyWithoutVersionInput = {
   sequence?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   requirementId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   intakeItemId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  type?: Prisma.EnumWorkItemTypeFieldUpdateOperationsInput | $Enums.WorkItemType
+  title?: Prisma.StringFieldUpdateOperationsInput | string
+  description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  priority?: Prisma.EnumPriorityFieldUpdateOperationsInput | $Enums.Priority
+  assigneeId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  reporterId?: Prisma.StringFieldUpdateOperationsInput | string
+  workflowVersionId?: Prisma.StringFieldUpdateOperationsInput | string
+  currentStateId?: Prisma.StringFieldUpdateOperationsInput | string
+  statusCategory?: Prisma.EnumStatusCategoryFieldUpdateOperationsInput | $Enums.StatusCategory
+  dueDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  lastStatusChangedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  lastActionAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  blockedReason?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  blockedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  closedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  createdById?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  updatedById?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  deletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+}
+
+export type WorkItemCreateManyIntakeItemInput = {
+  id: string
+  organizationId: string
+  spaceId: string
+  sequence?: number | null
+  versionId?: string | null
+  requirementId?: string | null
+  type?: $Enums.WorkItemType
+  title: string
+  description?: string | null
+  priority?: $Enums.Priority
+  assigneeId?: string | null
+  reporterId: string
+  workflowVersionId: string
+  currentStateId: string
+  statusCategory: $Enums.StatusCategory
+  dueDate?: Date | string | null
+  lastStatusChangedAt: Date | string
+  lastActionAt?: Date | string | null
+  blockedReason?: string | null
+  blockedAt?: Date | string | null
+  closedAt?: Date | string | null
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  createdById?: string | null
+  updatedById?: string | null
+  deletedAt?: Date | string | null
+}
+
+export type WorkItemUpdateWithoutIntakeItemInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  sequence?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  type?: Prisma.EnumWorkItemTypeFieldUpdateOperationsInput | $Enums.WorkItemType
+  title?: Prisma.StringFieldUpdateOperationsInput | string
+  description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  priority?: Prisma.EnumPriorityFieldUpdateOperationsInput | $Enums.Priority
+  statusCategory?: Prisma.EnumStatusCategoryFieldUpdateOperationsInput | $Enums.StatusCategory
+  dueDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  lastStatusChangedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  lastActionAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  blockedReason?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  blockedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  closedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  createdById?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  updatedById?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  deletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  organization?: Prisma.OrganizationUpdateOneRequiredWithoutWorkItemsNestedInput
+  space?: Prisma.SpaceUpdateOneRequiredWithoutWorkItemsNestedInput
+  version?: Prisma.VersionUpdateOneWithoutWorkItemsNestedInput
+  requirement?: Prisma.DocumentUpdateOneWithoutRequirementWorkItemsNestedInput
+  assignee?: Prisma.UserUpdateOneWithoutAssignedWorkItemsNestedInput
+  reporter?: Prisma.UserUpdateOneRequiredWithoutReportedWorkItemsNestedInput
+  workflowVersion?: Prisma.WorkflowVersionUpdateOneRequiredWithoutWorkItemsNestedInput
+  currentState?: Prisma.WorkflowStateUpdateOneRequiredWithoutWorkItemsNestedInput
+  bugDetail?: Prisma.BugDetailUpdateOneWithoutWorkItemNestedInput
+  relatedBugDetails?: Prisma.BugDetailUpdateManyWithoutRelatedTaskNestedInput
+}
+
+export type WorkItemUncheckedUpdateWithoutIntakeItemInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  organizationId?: Prisma.StringFieldUpdateOperationsInput | string
+  spaceId?: Prisma.StringFieldUpdateOperationsInput | string
+  sequence?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  versionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  requirementId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  type?: Prisma.EnumWorkItemTypeFieldUpdateOperationsInput | $Enums.WorkItemType
+  title?: Prisma.StringFieldUpdateOperationsInput | string
+  description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  priority?: Prisma.EnumPriorityFieldUpdateOperationsInput | $Enums.Priority
+  assigneeId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  reporterId?: Prisma.StringFieldUpdateOperationsInput | string
+  workflowVersionId?: Prisma.StringFieldUpdateOperationsInput | string
+  currentStateId?: Prisma.StringFieldUpdateOperationsInput | string
+  statusCategory?: Prisma.EnumStatusCategoryFieldUpdateOperationsInput | $Enums.StatusCategory
+  dueDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  lastStatusChangedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  lastActionAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  blockedReason?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  blockedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  closedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  createdById?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  updatedById?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  deletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  bugDetail?: Prisma.BugDetailUncheckedUpdateOneWithoutWorkItemNestedInput
+  relatedBugDetails?: Prisma.BugDetailUncheckedUpdateManyWithoutRelatedTaskNestedInput
+}
+
+export type WorkItemUncheckedUpdateManyWithoutIntakeItemInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  organizationId?: Prisma.StringFieldUpdateOperationsInput | string
+  spaceId?: Prisma.StringFieldUpdateOperationsInput | string
+  sequence?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  versionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  requirementId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   type?: Prisma.EnumWorkItemTypeFieldUpdateOperationsInput | $Enums.WorkItemType
   title?: Prisma.StringFieldUpdateOperationsInput | string
   description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -3130,126 +3250,6 @@ export type WorkItemUncheckedUpdateManyWithoutRequirementInput = {
   deletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
 }
 
-export type WorkItemCreateManyIntakeItemInput = {
-  id: string
-  organizationId: string
-  spaceId: string
-  sequence?: number | null
-  versionId?: string | null
-  requirementId?: string | null
-  type?: $Enums.WorkItemType
-  title: string
-  description?: string | null
-  priority?: $Enums.Priority
-  assigneeId?: string | null
-  reporterId: string
-  workflowVersionId: string
-  currentStateId: string
-  statusCategory: $Enums.StatusCategory
-  dueDate?: Date | string | null
-  lastStatusChangedAt: Date | string
-  lastActionAt?: Date | string | null
-  blockedReason?: string | null
-  blockedAt?: Date | string | null
-  closedAt?: Date | string | null
-  createdAt?: Date | string
-  updatedAt?: Date | string
-  createdById?: string | null
-  updatedById?: string | null
-  deletedAt?: Date | string | null
-}
-
-export type WorkItemUpdateWithoutIntakeItemInput = {
-  id?: Prisma.StringFieldUpdateOperationsInput | string
-  sequence?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
-  type?: Prisma.EnumWorkItemTypeFieldUpdateOperationsInput | $Enums.WorkItemType
-  title?: Prisma.StringFieldUpdateOperationsInput | string
-  description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  priority?: Prisma.EnumPriorityFieldUpdateOperationsInput | $Enums.Priority
-  statusCategory?: Prisma.EnumStatusCategoryFieldUpdateOperationsInput | $Enums.StatusCategory
-  dueDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
-  lastStatusChangedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
-  lastActionAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
-  blockedReason?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  blockedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
-  closedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
-  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
-  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
-  createdById?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  updatedById?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  deletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
-  organization?: Prisma.OrganizationUpdateOneRequiredWithoutWorkItemsNestedInput
-  space?: Prisma.SpaceUpdateOneRequiredWithoutWorkItemsNestedInput
-  version?: Prisma.VersionUpdateOneWithoutWorkItemsNestedInput
-  requirement?: Prisma.RequirementUpdateOneWithoutWorkItemsNestedInput
-  assignee?: Prisma.UserUpdateOneWithoutAssignedWorkItemsNestedInput
-  reporter?: Prisma.UserUpdateOneRequiredWithoutReportedWorkItemsNestedInput
-  workflowVersion?: Prisma.WorkflowVersionUpdateOneRequiredWithoutWorkItemsNestedInput
-  currentState?: Prisma.WorkflowStateUpdateOneRequiredWithoutWorkItemsNestedInput
-  bugDetail?: Prisma.BugDetailUpdateOneWithoutWorkItemNestedInput
-  relatedBugDetails?: Prisma.BugDetailUpdateManyWithoutRelatedTaskNestedInput
-}
-
-export type WorkItemUncheckedUpdateWithoutIntakeItemInput = {
-  id?: Prisma.StringFieldUpdateOperationsInput | string
-  organizationId?: Prisma.StringFieldUpdateOperationsInput | string
-  spaceId?: Prisma.StringFieldUpdateOperationsInput | string
-  sequence?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
-  versionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  requirementId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  type?: Prisma.EnumWorkItemTypeFieldUpdateOperationsInput | $Enums.WorkItemType
-  title?: Prisma.StringFieldUpdateOperationsInput | string
-  description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  priority?: Prisma.EnumPriorityFieldUpdateOperationsInput | $Enums.Priority
-  assigneeId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  reporterId?: Prisma.StringFieldUpdateOperationsInput | string
-  workflowVersionId?: Prisma.StringFieldUpdateOperationsInput | string
-  currentStateId?: Prisma.StringFieldUpdateOperationsInput | string
-  statusCategory?: Prisma.EnumStatusCategoryFieldUpdateOperationsInput | $Enums.StatusCategory
-  dueDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
-  lastStatusChangedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
-  lastActionAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
-  blockedReason?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  blockedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
-  closedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
-  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
-  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
-  createdById?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  updatedById?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  deletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
-  bugDetail?: Prisma.BugDetailUncheckedUpdateOneWithoutWorkItemNestedInput
-  relatedBugDetails?: Prisma.BugDetailUncheckedUpdateManyWithoutRelatedTaskNestedInput
-}
-
-export type WorkItemUncheckedUpdateManyWithoutIntakeItemInput = {
-  id?: Prisma.StringFieldUpdateOperationsInput | string
-  organizationId?: Prisma.StringFieldUpdateOperationsInput | string
-  spaceId?: Prisma.StringFieldUpdateOperationsInput | string
-  sequence?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
-  versionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  requirementId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  type?: Prisma.EnumWorkItemTypeFieldUpdateOperationsInput | $Enums.WorkItemType
-  title?: Prisma.StringFieldUpdateOperationsInput | string
-  description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  priority?: Prisma.EnumPriorityFieldUpdateOperationsInput | $Enums.Priority
-  assigneeId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  reporterId?: Prisma.StringFieldUpdateOperationsInput | string
-  workflowVersionId?: Prisma.StringFieldUpdateOperationsInput | string
-  currentStateId?: Prisma.StringFieldUpdateOperationsInput | string
-  statusCategory?: Prisma.EnumStatusCategoryFieldUpdateOperationsInput | $Enums.StatusCategory
-  dueDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
-  lastStatusChangedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
-  lastActionAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
-  blockedReason?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  blockedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
-  closedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
-  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
-  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
-  createdById?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  updatedById?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  deletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
-}
-
 export type WorkItemCreateManyWorkflowVersionInput = {
   id: string
   organizationId: string
@@ -3301,7 +3301,7 @@ export type WorkItemUpdateWithoutWorkflowVersionInput = {
   organization?: Prisma.OrganizationUpdateOneRequiredWithoutWorkItemsNestedInput
   space?: Prisma.SpaceUpdateOneRequiredWithoutWorkItemsNestedInput
   version?: Prisma.VersionUpdateOneWithoutWorkItemsNestedInput
-  requirement?: Prisma.RequirementUpdateOneWithoutWorkItemsNestedInput
+  requirement?: Prisma.DocumentUpdateOneWithoutRequirementWorkItemsNestedInput
   intakeItem?: Prisma.IntakeItemUpdateOneWithoutWorkItemsNestedInput
   assignee?: Prisma.UserUpdateOneWithoutAssignedWorkItemsNestedInput
   reporter?: Prisma.UserUpdateOneRequiredWithoutReportedWorkItemsNestedInput
@@ -3421,7 +3421,7 @@ export type WorkItemUpdateWithoutCurrentStateInput = {
   organization?: Prisma.OrganizationUpdateOneRequiredWithoutWorkItemsNestedInput
   space?: Prisma.SpaceUpdateOneRequiredWithoutWorkItemsNestedInput
   version?: Prisma.VersionUpdateOneWithoutWorkItemsNestedInput
-  requirement?: Prisma.RequirementUpdateOneWithoutWorkItemsNestedInput
+  requirement?: Prisma.DocumentUpdateOneWithoutRequirementWorkItemsNestedInput
   intakeItem?: Prisma.IntakeItemUpdateOneWithoutWorkItemsNestedInput
   assignee?: Prisma.UserUpdateOneWithoutAssignedWorkItemsNestedInput
   reporter?: Prisma.UserUpdateOneRequiredWithoutReportedWorkItemsNestedInput
@@ -3715,7 +3715,7 @@ export type $WorkItemPayload<ExtArgs extends runtime.Types.Extensions.InternalAr
     organization: Prisma.$OrganizationPayload<ExtArgs>
     space: Prisma.$SpacePayload<ExtArgs>
     version: Prisma.$VersionPayload<ExtArgs> | null
-    requirement: Prisma.$RequirementPayload<ExtArgs> | null
+    requirement: Prisma.$DocumentPayload<ExtArgs> | null
     intakeItem: Prisma.$IntakeItemPayload<ExtArgs> | null
     assignee: Prisma.$UserPayload<ExtArgs> | null
     reporter: Prisma.$UserPayload<ExtArgs>
@@ -4149,7 +4149,7 @@ export interface Prisma__WorkItemClient<T, Null = never, ExtArgs extends runtime
   organization<T extends Prisma.OrganizationDefaultArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.OrganizationDefaultArgs<ExtArgs>>): Prisma.Prisma__OrganizationClient<runtime.Types.Result.GetResult<Prisma.$OrganizationPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | Null, Null, ExtArgs, GlobalOmitOptions>
   space<T extends Prisma.SpaceDefaultArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.SpaceDefaultArgs<ExtArgs>>): Prisma.Prisma__SpaceClient<runtime.Types.Result.GetResult<Prisma.$SpacePayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | Null, Null, ExtArgs, GlobalOmitOptions>
   version<T extends Prisma.WorkItem$versionArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.WorkItem$versionArgs<ExtArgs>>): Prisma.Prisma__VersionClient<runtime.Types.Result.GetResult<Prisma.$VersionPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
-  requirement<T extends Prisma.WorkItem$requirementArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.WorkItem$requirementArgs<ExtArgs>>): Prisma.Prisma__RequirementClient<runtime.Types.Result.GetResult<Prisma.$RequirementPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
+  requirement<T extends Prisma.WorkItem$requirementArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.WorkItem$requirementArgs<ExtArgs>>): Prisma.Prisma__DocumentClient<runtime.Types.Result.GetResult<Prisma.$DocumentPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
   intakeItem<T extends Prisma.WorkItem$intakeItemArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.WorkItem$intakeItemArgs<ExtArgs>>): Prisma.Prisma__IntakeItemClient<runtime.Types.Result.GetResult<Prisma.$IntakeItemPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
   assignee<T extends Prisma.WorkItem$assigneeArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.WorkItem$assigneeArgs<ExtArgs>>): Prisma.Prisma__UserClient<runtime.Types.Result.GetResult<Prisma.$UserPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
   reporter<T extends Prisma.UserDefaultArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.UserDefaultArgs<ExtArgs>>): Prisma.Prisma__UserClient<runtime.Types.Result.GetResult<Prisma.$UserPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | Null, Null, ExtArgs, GlobalOmitOptions>
@@ -4637,18 +4637,18 @@ export type WorkItem$versionArgs<ExtArgs extends runtime.Types.Extensions.Intern
  */
 export type WorkItem$requirementArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   /**
-   * Select specific fields to fetch from the Requirement
+   * Select specific fields to fetch from the Document
    */
-  select?: Prisma.RequirementSelect<ExtArgs> | null
+  select?: Prisma.DocumentSelect<ExtArgs> | null
   /**
-   * Omit specific fields from the Requirement
+   * Omit specific fields from the Document
    */
-  omit?: Prisma.RequirementOmit<ExtArgs> | null
+  omit?: Prisma.DocumentOmit<ExtArgs> | null
   /**
    * Choose, which related nodes to fetch as well
    */
-  include?: Prisma.RequirementInclude<ExtArgs> | null
-  where?: Prisma.RequirementWhereInput
+  include?: Prisma.DocumentInclude<ExtArgs> | null
+  where?: Prisma.DocumentWhereInput
 }
 
 /**

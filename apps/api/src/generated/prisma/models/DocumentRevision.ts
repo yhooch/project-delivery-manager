@@ -40,9 +40,13 @@ export type DocumentRevisionMinAggregateOutputType = {
   spaceId: string | null
   documentId: string | null
   revision: number | null
+  kind: $Enums.DocumentKind | null
   title: string | null
+  summary: string | null
+  contentFormat: $Enums.ContentFormat | null
   contentMarkdown: string | null
   contentText: string | null
+  contentMarkdownCache: string | null
   changeType: $Enums.DocumentChangeType | null
   actorType: $Enums.DocumentActorType | null
   actorUserId: string | null
@@ -57,9 +61,13 @@ export type DocumentRevisionMaxAggregateOutputType = {
   spaceId: string | null
   documentId: string | null
   revision: number | null
+  kind: $Enums.DocumentKind | null
   title: string | null
+  summary: string | null
+  contentFormat: $Enums.ContentFormat | null
   contentMarkdown: string | null
   contentText: string | null
+  contentMarkdownCache: string | null
   changeType: $Enums.DocumentChangeType | null
   actorType: $Enums.DocumentActorType | null
   actorUserId: string | null
@@ -74,14 +82,20 @@ export type DocumentRevisionCountAggregateOutputType = {
   spaceId: number
   documentId: number
   revision: number
+  kind: number
   title: number
+  summary: number
+  contentFormat: number
+  contentJson: number
   contentMarkdown: number
   contentText: number
+  contentMarkdownCache: number
   changeType: number
   actorType: number
   actorUserId: number
   mcpClientId: number
   requestId: number
+  metadata: number
   createdAt: number
   _all: number
 }
@@ -101,9 +115,13 @@ export type DocumentRevisionMinAggregateInputType = {
   spaceId?: true
   documentId?: true
   revision?: true
+  kind?: true
   title?: true
+  summary?: true
+  contentFormat?: true
   contentMarkdown?: true
   contentText?: true
+  contentMarkdownCache?: true
   changeType?: true
   actorType?: true
   actorUserId?: true
@@ -118,9 +136,13 @@ export type DocumentRevisionMaxAggregateInputType = {
   spaceId?: true
   documentId?: true
   revision?: true
+  kind?: true
   title?: true
+  summary?: true
+  contentFormat?: true
   contentMarkdown?: true
   contentText?: true
+  contentMarkdownCache?: true
   changeType?: true
   actorType?: true
   actorUserId?: true
@@ -135,14 +157,20 @@ export type DocumentRevisionCountAggregateInputType = {
   spaceId?: true
   documentId?: true
   revision?: true
+  kind?: true
   title?: true
+  summary?: true
+  contentFormat?: true
+  contentJson?: true
   contentMarkdown?: true
   contentText?: true
+  contentMarkdownCache?: true
   changeType?: true
   actorType?: true
   actorUserId?: true
   mcpClientId?: true
   requestId?: true
+  metadata?: true
   createdAt?: true
   _all?: true
 }
@@ -239,14 +267,20 @@ export type DocumentRevisionGroupByOutputType = {
   spaceId: string
   documentId: string
   revision: number
+  kind: $Enums.DocumentKind
   title: string
-  contentMarkdown: string
+  summary: string | null
+  contentFormat: $Enums.ContentFormat
+  contentJson: runtime.JsonValue | null
+  contentMarkdown: string | null
   contentText: string
+  contentMarkdownCache: string | null
   changeType: $Enums.DocumentChangeType
   actorType: $Enums.DocumentActorType
   actorUserId: string
   mcpClientId: string | null
   requestId: string | null
+  metadata: runtime.JsonValue | null
   createdAt: Date
   _count: DocumentRevisionCountAggregateOutputType | null
   _avg: DocumentRevisionAvgAggregateOutputType | null
@@ -279,14 +313,20 @@ export type DocumentRevisionWhereInput = {
   spaceId?: Prisma.StringFilter<"DocumentRevision"> | string
   documentId?: Prisma.StringFilter<"DocumentRevision"> | string
   revision?: Prisma.IntFilter<"DocumentRevision"> | number
+  kind?: Prisma.EnumDocumentKindFilter<"DocumentRevision"> | $Enums.DocumentKind
   title?: Prisma.StringFilter<"DocumentRevision"> | string
-  contentMarkdown?: Prisma.StringFilter<"DocumentRevision"> | string
+  summary?: Prisma.StringNullableFilter<"DocumentRevision"> | string | null
+  contentFormat?: Prisma.EnumContentFormatFilter<"DocumentRevision"> | $Enums.ContentFormat
+  contentJson?: Prisma.JsonNullableFilter<"DocumentRevision">
+  contentMarkdown?: Prisma.StringNullableFilter<"DocumentRevision"> | string | null
   contentText?: Prisma.StringFilter<"DocumentRevision"> | string
+  contentMarkdownCache?: Prisma.StringNullableFilter<"DocumentRevision"> | string | null
   changeType?: Prisma.EnumDocumentChangeTypeFilter<"DocumentRevision"> | $Enums.DocumentChangeType
   actorType?: Prisma.EnumDocumentActorTypeFilter<"DocumentRevision"> | $Enums.DocumentActorType
   actorUserId?: Prisma.StringFilter<"DocumentRevision"> | string
   mcpClientId?: Prisma.StringNullableFilter<"DocumentRevision"> | string | null
   requestId?: Prisma.StringNullableFilter<"DocumentRevision"> | string | null
+  metadata?: Prisma.JsonNullableFilter<"DocumentRevision">
   createdAt?: Prisma.DateTimeFilter<"DocumentRevision"> | Date | string
   organization?: Prisma.XOR<Prisma.OrganizationScalarRelationFilter, Prisma.OrganizationWhereInput>
   space?: Prisma.XOR<Prisma.SpaceScalarRelationFilter, Prisma.SpaceWhereInput>
@@ -299,14 +339,20 @@ export type DocumentRevisionOrderByWithRelationInput = {
   spaceId?: Prisma.SortOrder
   documentId?: Prisma.SortOrder
   revision?: Prisma.SortOrder
+  kind?: Prisma.SortOrder
   title?: Prisma.SortOrder
-  contentMarkdown?: Prisma.SortOrder
+  summary?: Prisma.SortOrderInput | Prisma.SortOrder
+  contentFormat?: Prisma.SortOrder
+  contentJson?: Prisma.SortOrderInput | Prisma.SortOrder
+  contentMarkdown?: Prisma.SortOrderInput | Prisma.SortOrder
   contentText?: Prisma.SortOrder
+  contentMarkdownCache?: Prisma.SortOrderInput | Prisma.SortOrder
   changeType?: Prisma.SortOrder
   actorType?: Prisma.SortOrder
   actorUserId?: Prisma.SortOrder
   mcpClientId?: Prisma.SortOrderInput | Prisma.SortOrder
   requestId?: Prisma.SortOrderInput | Prisma.SortOrder
+  metadata?: Prisma.SortOrderInput | Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   organization?: Prisma.OrganizationOrderByWithRelationInput
   space?: Prisma.SpaceOrderByWithRelationInput
@@ -323,14 +369,20 @@ export type DocumentRevisionWhereUniqueInput = Prisma.AtLeast<{
   spaceId?: Prisma.StringFilter<"DocumentRevision"> | string
   documentId?: Prisma.StringFilter<"DocumentRevision"> | string
   revision?: Prisma.IntFilter<"DocumentRevision"> | number
+  kind?: Prisma.EnumDocumentKindFilter<"DocumentRevision"> | $Enums.DocumentKind
   title?: Prisma.StringFilter<"DocumentRevision"> | string
-  contentMarkdown?: Prisma.StringFilter<"DocumentRevision"> | string
+  summary?: Prisma.StringNullableFilter<"DocumentRevision"> | string | null
+  contentFormat?: Prisma.EnumContentFormatFilter<"DocumentRevision"> | $Enums.ContentFormat
+  contentJson?: Prisma.JsonNullableFilter<"DocumentRevision">
+  contentMarkdown?: Prisma.StringNullableFilter<"DocumentRevision"> | string | null
   contentText?: Prisma.StringFilter<"DocumentRevision"> | string
+  contentMarkdownCache?: Prisma.StringNullableFilter<"DocumentRevision"> | string | null
   changeType?: Prisma.EnumDocumentChangeTypeFilter<"DocumentRevision"> | $Enums.DocumentChangeType
   actorType?: Prisma.EnumDocumentActorTypeFilter<"DocumentRevision"> | $Enums.DocumentActorType
   actorUserId?: Prisma.StringFilter<"DocumentRevision"> | string
   mcpClientId?: Prisma.StringNullableFilter<"DocumentRevision"> | string | null
   requestId?: Prisma.StringNullableFilter<"DocumentRevision"> | string | null
+  metadata?: Prisma.JsonNullableFilter<"DocumentRevision">
   createdAt?: Prisma.DateTimeFilter<"DocumentRevision"> | Date | string
   organization?: Prisma.XOR<Prisma.OrganizationScalarRelationFilter, Prisma.OrganizationWhereInput>
   space?: Prisma.XOR<Prisma.SpaceScalarRelationFilter, Prisma.SpaceWhereInput>
@@ -343,14 +395,20 @@ export type DocumentRevisionOrderByWithAggregationInput = {
   spaceId?: Prisma.SortOrder
   documentId?: Prisma.SortOrder
   revision?: Prisma.SortOrder
+  kind?: Prisma.SortOrder
   title?: Prisma.SortOrder
-  contentMarkdown?: Prisma.SortOrder
+  summary?: Prisma.SortOrderInput | Prisma.SortOrder
+  contentFormat?: Prisma.SortOrder
+  contentJson?: Prisma.SortOrderInput | Prisma.SortOrder
+  contentMarkdown?: Prisma.SortOrderInput | Prisma.SortOrder
   contentText?: Prisma.SortOrder
+  contentMarkdownCache?: Prisma.SortOrderInput | Prisma.SortOrder
   changeType?: Prisma.SortOrder
   actorType?: Prisma.SortOrder
   actorUserId?: Prisma.SortOrder
   mcpClientId?: Prisma.SortOrderInput | Prisma.SortOrder
   requestId?: Prisma.SortOrderInput | Prisma.SortOrder
+  metadata?: Prisma.SortOrderInput | Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   _count?: Prisma.DocumentRevisionCountOrderByAggregateInput
   _avg?: Prisma.DocumentRevisionAvgOrderByAggregateInput
@@ -368,28 +426,40 @@ export type DocumentRevisionScalarWhereWithAggregatesInput = {
   spaceId?: Prisma.StringWithAggregatesFilter<"DocumentRevision"> | string
   documentId?: Prisma.StringWithAggregatesFilter<"DocumentRevision"> | string
   revision?: Prisma.IntWithAggregatesFilter<"DocumentRevision"> | number
+  kind?: Prisma.EnumDocumentKindWithAggregatesFilter<"DocumentRevision"> | $Enums.DocumentKind
   title?: Prisma.StringWithAggregatesFilter<"DocumentRevision"> | string
-  contentMarkdown?: Prisma.StringWithAggregatesFilter<"DocumentRevision"> | string
+  summary?: Prisma.StringNullableWithAggregatesFilter<"DocumentRevision"> | string | null
+  contentFormat?: Prisma.EnumContentFormatWithAggregatesFilter<"DocumentRevision"> | $Enums.ContentFormat
+  contentJson?: Prisma.JsonNullableWithAggregatesFilter<"DocumentRevision">
+  contentMarkdown?: Prisma.StringNullableWithAggregatesFilter<"DocumentRevision"> | string | null
   contentText?: Prisma.StringWithAggregatesFilter<"DocumentRevision"> | string
+  contentMarkdownCache?: Prisma.StringNullableWithAggregatesFilter<"DocumentRevision"> | string | null
   changeType?: Prisma.EnumDocumentChangeTypeWithAggregatesFilter<"DocumentRevision"> | $Enums.DocumentChangeType
   actorType?: Prisma.EnumDocumentActorTypeWithAggregatesFilter<"DocumentRevision"> | $Enums.DocumentActorType
   actorUserId?: Prisma.StringWithAggregatesFilter<"DocumentRevision"> | string
   mcpClientId?: Prisma.StringNullableWithAggregatesFilter<"DocumentRevision"> | string | null
   requestId?: Prisma.StringNullableWithAggregatesFilter<"DocumentRevision"> | string | null
+  metadata?: Prisma.JsonNullableWithAggregatesFilter<"DocumentRevision">
   createdAt?: Prisma.DateTimeWithAggregatesFilter<"DocumentRevision"> | Date | string
 }
 
 export type DocumentRevisionCreateInput = {
   id: string
   revision: number
+  kind?: $Enums.DocumentKind
   title: string
-  contentMarkdown: string
+  summary?: string | null
+  contentFormat?: $Enums.ContentFormat
+  contentJson?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  contentMarkdown?: string | null
   contentText: string
+  contentMarkdownCache?: string | null
   changeType: $Enums.DocumentChangeType
   actorType: $Enums.DocumentActorType
   actorUserId: string
   mcpClientId?: string | null
   requestId?: string | null
+  metadata?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   createdAt?: Date | string
   organization: Prisma.OrganizationCreateNestedOneWithoutDocumentRevisionsInput
   space: Prisma.SpaceCreateNestedOneWithoutDocumentRevisionsInput
@@ -402,28 +472,40 @@ export type DocumentRevisionUncheckedCreateInput = {
   spaceId: string
   documentId: string
   revision: number
+  kind?: $Enums.DocumentKind
   title: string
-  contentMarkdown: string
+  summary?: string | null
+  contentFormat?: $Enums.ContentFormat
+  contentJson?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  contentMarkdown?: string | null
   contentText: string
+  contentMarkdownCache?: string | null
   changeType: $Enums.DocumentChangeType
   actorType: $Enums.DocumentActorType
   actorUserId: string
   mcpClientId?: string | null
   requestId?: string | null
+  metadata?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   createdAt?: Date | string
 }
 
 export type DocumentRevisionUpdateInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   revision?: Prisma.IntFieldUpdateOperationsInput | number
+  kind?: Prisma.EnumDocumentKindFieldUpdateOperationsInput | $Enums.DocumentKind
   title?: Prisma.StringFieldUpdateOperationsInput | string
-  contentMarkdown?: Prisma.StringFieldUpdateOperationsInput | string
+  summary?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  contentFormat?: Prisma.EnumContentFormatFieldUpdateOperationsInput | $Enums.ContentFormat
+  contentJson?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  contentMarkdown?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   contentText?: Prisma.StringFieldUpdateOperationsInput | string
+  contentMarkdownCache?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   changeType?: Prisma.EnumDocumentChangeTypeFieldUpdateOperationsInput | $Enums.DocumentChangeType
   actorType?: Prisma.EnumDocumentActorTypeFieldUpdateOperationsInput | $Enums.DocumentActorType
   actorUserId?: Prisma.StringFieldUpdateOperationsInput | string
   mcpClientId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   requestId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  metadata?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   organization?: Prisma.OrganizationUpdateOneRequiredWithoutDocumentRevisionsNestedInput
   space?: Prisma.SpaceUpdateOneRequiredWithoutDocumentRevisionsNestedInput
@@ -436,14 +518,20 @@ export type DocumentRevisionUncheckedUpdateInput = {
   spaceId?: Prisma.StringFieldUpdateOperationsInput | string
   documentId?: Prisma.StringFieldUpdateOperationsInput | string
   revision?: Prisma.IntFieldUpdateOperationsInput | number
+  kind?: Prisma.EnumDocumentKindFieldUpdateOperationsInput | $Enums.DocumentKind
   title?: Prisma.StringFieldUpdateOperationsInput | string
-  contentMarkdown?: Prisma.StringFieldUpdateOperationsInput | string
+  summary?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  contentFormat?: Prisma.EnumContentFormatFieldUpdateOperationsInput | $Enums.ContentFormat
+  contentJson?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  contentMarkdown?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   contentText?: Prisma.StringFieldUpdateOperationsInput | string
+  contentMarkdownCache?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   changeType?: Prisma.EnumDocumentChangeTypeFieldUpdateOperationsInput | $Enums.DocumentChangeType
   actorType?: Prisma.EnumDocumentActorTypeFieldUpdateOperationsInput | $Enums.DocumentActorType
   actorUserId?: Prisma.StringFieldUpdateOperationsInput | string
   mcpClientId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   requestId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  metadata?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
 
@@ -453,28 +541,40 @@ export type DocumentRevisionCreateManyInput = {
   spaceId: string
   documentId: string
   revision: number
+  kind?: $Enums.DocumentKind
   title: string
-  contentMarkdown: string
+  summary?: string | null
+  contentFormat?: $Enums.ContentFormat
+  contentJson?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  contentMarkdown?: string | null
   contentText: string
+  contentMarkdownCache?: string | null
   changeType: $Enums.DocumentChangeType
   actorType: $Enums.DocumentActorType
   actorUserId: string
   mcpClientId?: string | null
   requestId?: string | null
+  metadata?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   createdAt?: Date | string
 }
 
 export type DocumentRevisionUpdateManyMutationInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   revision?: Prisma.IntFieldUpdateOperationsInput | number
+  kind?: Prisma.EnumDocumentKindFieldUpdateOperationsInput | $Enums.DocumentKind
   title?: Prisma.StringFieldUpdateOperationsInput | string
-  contentMarkdown?: Prisma.StringFieldUpdateOperationsInput | string
+  summary?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  contentFormat?: Prisma.EnumContentFormatFieldUpdateOperationsInput | $Enums.ContentFormat
+  contentJson?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  contentMarkdown?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   contentText?: Prisma.StringFieldUpdateOperationsInput | string
+  contentMarkdownCache?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   changeType?: Prisma.EnumDocumentChangeTypeFieldUpdateOperationsInput | $Enums.DocumentChangeType
   actorType?: Prisma.EnumDocumentActorTypeFieldUpdateOperationsInput | $Enums.DocumentActorType
   actorUserId?: Prisma.StringFieldUpdateOperationsInput | string
   mcpClientId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   requestId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  metadata?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
 
@@ -484,14 +584,20 @@ export type DocumentRevisionUncheckedUpdateManyInput = {
   spaceId?: Prisma.StringFieldUpdateOperationsInput | string
   documentId?: Prisma.StringFieldUpdateOperationsInput | string
   revision?: Prisma.IntFieldUpdateOperationsInput | number
+  kind?: Prisma.EnumDocumentKindFieldUpdateOperationsInput | $Enums.DocumentKind
   title?: Prisma.StringFieldUpdateOperationsInput | string
-  contentMarkdown?: Prisma.StringFieldUpdateOperationsInput | string
+  summary?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  contentFormat?: Prisma.EnumContentFormatFieldUpdateOperationsInput | $Enums.ContentFormat
+  contentJson?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  contentMarkdown?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   contentText?: Prisma.StringFieldUpdateOperationsInput | string
+  contentMarkdownCache?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   changeType?: Prisma.EnumDocumentChangeTypeFieldUpdateOperationsInput | $Enums.DocumentChangeType
   actorType?: Prisma.EnumDocumentActorTypeFieldUpdateOperationsInput | $Enums.DocumentActorType
   actorUserId?: Prisma.StringFieldUpdateOperationsInput | string
   mcpClientId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   requestId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  metadata?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
 
@@ -516,14 +622,20 @@ export type DocumentRevisionCountOrderByAggregateInput = {
   spaceId?: Prisma.SortOrder
   documentId?: Prisma.SortOrder
   revision?: Prisma.SortOrder
+  kind?: Prisma.SortOrder
   title?: Prisma.SortOrder
+  summary?: Prisma.SortOrder
+  contentFormat?: Prisma.SortOrder
+  contentJson?: Prisma.SortOrder
   contentMarkdown?: Prisma.SortOrder
   contentText?: Prisma.SortOrder
+  contentMarkdownCache?: Prisma.SortOrder
   changeType?: Prisma.SortOrder
   actorType?: Prisma.SortOrder
   actorUserId?: Prisma.SortOrder
   mcpClientId?: Prisma.SortOrder
   requestId?: Prisma.SortOrder
+  metadata?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
 }
 
@@ -537,9 +649,13 @@ export type DocumentRevisionMaxOrderByAggregateInput = {
   spaceId?: Prisma.SortOrder
   documentId?: Prisma.SortOrder
   revision?: Prisma.SortOrder
+  kind?: Prisma.SortOrder
   title?: Prisma.SortOrder
+  summary?: Prisma.SortOrder
+  contentFormat?: Prisma.SortOrder
   contentMarkdown?: Prisma.SortOrder
   contentText?: Prisma.SortOrder
+  contentMarkdownCache?: Prisma.SortOrder
   changeType?: Prisma.SortOrder
   actorType?: Prisma.SortOrder
   actorUserId?: Prisma.SortOrder
@@ -554,9 +670,13 @@ export type DocumentRevisionMinOrderByAggregateInput = {
   spaceId?: Prisma.SortOrder
   documentId?: Prisma.SortOrder
   revision?: Prisma.SortOrder
+  kind?: Prisma.SortOrder
   title?: Prisma.SortOrder
+  summary?: Prisma.SortOrder
+  contentFormat?: Prisma.SortOrder
   contentMarkdown?: Prisma.SortOrder
   contentText?: Prisma.SortOrder
+  contentMarkdownCache?: Prisma.SortOrder
   changeType?: Prisma.SortOrder
   actorType?: Prisma.SortOrder
   actorUserId?: Prisma.SortOrder
@@ -702,14 +822,20 @@ export type EnumDocumentChangeTypeFieldUpdateOperationsInput = {
 export type DocumentRevisionCreateWithoutOrganizationInput = {
   id: string
   revision: number
+  kind?: $Enums.DocumentKind
   title: string
-  contentMarkdown: string
+  summary?: string | null
+  contentFormat?: $Enums.ContentFormat
+  contentJson?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  contentMarkdown?: string | null
   contentText: string
+  contentMarkdownCache?: string | null
   changeType: $Enums.DocumentChangeType
   actorType: $Enums.DocumentActorType
   actorUserId: string
   mcpClientId?: string | null
   requestId?: string | null
+  metadata?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   createdAt?: Date | string
   space: Prisma.SpaceCreateNestedOneWithoutDocumentRevisionsInput
   document: Prisma.DocumentCreateNestedOneWithoutRevisionsInput
@@ -720,14 +846,20 @@ export type DocumentRevisionUncheckedCreateWithoutOrganizationInput = {
   spaceId: string
   documentId: string
   revision: number
+  kind?: $Enums.DocumentKind
   title: string
-  contentMarkdown: string
+  summary?: string | null
+  contentFormat?: $Enums.ContentFormat
+  contentJson?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  contentMarkdown?: string | null
   contentText: string
+  contentMarkdownCache?: string | null
   changeType: $Enums.DocumentChangeType
   actorType: $Enums.DocumentActorType
   actorUserId: string
   mcpClientId?: string | null
   requestId?: string | null
+  metadata?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   createdAt?: Date | string
 }
 
@@ -766,28 +898,40 @@ export type DocumentRevisionScalarWhereInput = {
   spaceId?: Prisma.StringFilter<"DocumentRevision"> | string
   documentId?: Prisma.StringFilter<"DocumentRevision"> | string
   revision?: Prisma.IntFilter<"DocumentRevision"> | number
+  kind?: Prisma.EnumDocumentKindFilter<"DocumentRevision"> | $Enums.DocumentKind
   title?: Prisma.StringFilter<"DocumentRevision"> | string
-  contentMarkdown?: Prisma.StringFilter<"DocumentRevision"> | string
+  summary?: Prisma.StringNullableFilter<"DocumentRevision"> | string | null
+  contentFormat?: Prisma.EnumContentFormatFilter<"DocumentRevision"> | $Enums.ContentFormat
+  contentJson?: Prisma.JsonNullableFilter<"DocumentRevision">
+  contentMarkdown?: Prisma.StringNullableFilter<"DocumentRevision"> | string | null
   contentText?: Prisma.StringFilter<"DocumentRevision"> | string
+  contentMarkdownCache?: Prisma.StringNullableFilter<"DocumentRevision"> | string | null
   changeType?: Prisma.EnumDocumentChangeTypeFilter<"DocumentRevision"> | $Enums.DocumentChangeType
   actorType?: Prisma.EnumDocumentActorTypeFilter<"DocumentRevision"> | $Enums.DocumentActorType
   actorUserId?: Prisma.StringFilter<"DocumentRevision"> | string
   mcpClientId?: Prisma.StringNullableFilter<"DocumentRevision"> | string | null
   requestId?: Prisma.StringNullableFilter<"DocumentRevision"> | string | null
+  metadata?: Prisma.JsonNullableFilter<"DocumentRevision">
   createdAt?: Prisma.DateTimeFilter<"DocumentRevision"> | Date | string
 }
 
 export type DocumentRevisionCreateWithoutSpaceInput = {
   id: string
   revision: number
+  kind?: $Enums.DocumentKind
   title: string
-  contentMarkdown: string
+  summary?: string | null
+  contentFormat?: $Enums.ContentFormat
+  contentJson?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  contentMarkdown?: string | null
   contentText: string
+  contentMarkdownCache?: string | null
   changeType: $Enums.DocumentChangeType
   actorType: $Enums.DocumentActorType
   actorUserId: string
   mcpClientId?: string | null
   requestId?: string | null
+  metadata?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   createdAt?: Date | string
   organization: Prisma.OrganizationCreateNestedOneWithoutDocumentRevisionsInput
   document: Prisma.DocumentCreateNestedOneWithoutRevisionsInput
@@ -798,14 +942,20 @@ export type DocumentRevisionUncheckedCreateWithoutSpaceInput = {
   organizationId: string
   documentId: string
   revision: number
+  kind?: $Enums.DocumentKind
   title: string
-  contentMarkdown: string
+  summary?: string | null
+  contentFormat?: $Enums.ContentFormat
+  contentJson?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  contentMarkdown?: string | null
   contentText: string
+  contentMarkdownCache?: string | null
   changeType: $Enums.DocumentChangeType
   actorType: $Enums.DocumentActorType
   actorUserId: string
   mcpClientId?: string | null
   requestId?: string | null
+  metadata?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   createdAt?: Date | string
 }
 
@@ -838,14 +988,20 @@ export type DocumentRevisionUpdateManyWithWhereWithoutSpaceInput = {
 export type DocumentRevisionCreateWithoutDocumentInput = {
   id: string
   revision: number
+  kind?: $Enums.DocumentKind
   title: string
-  contentMarkdown: string
+  summary?: string | null
+  contentFormat?: $Enums.ContentFormat
+  contentJson?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  contentMarkdown?: string | null
   contentText: string
+  contentMarkdownCache?: string | null
   changeType: $Enums.DocumentChangeType
   actorType: $Enums.DocumentActorType
   actorUserId: string
   mcpClientId?: string | null
   requestId?: string | null
+  metadata?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   createdAt?: Date | string
   organization: Prisma.OrganizationCreateNestedOneWithoutDocumentRevisionsInput
   space: Prisma.SpaceCreateNestedOneWithoutDocumentRevisionsInput
@@ -856,14 +1012,20 @@ export type DocumentRevisionUncheckedCreateWithoutDocumentInput = {
   organizationId: string
   spaceId: string
   revision: number
+  kind?: $Enums.DocumentKind
   title: string
-  contentMarkdown: string
+  summary?: string | null
+  contentFormat?: $Enums.ContentFormat
+  contentJson?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  contentMarkdown?: string | null
   contentText: string
+  contentMarkdownCache?: string | null
   changeType: $Enums.DocumentChangeType
   actorType: $Enums.DocumentActorType
   actorUserId: string
   mcpClientId?: string | null
   requestId?: string | null
+  metadata?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   createdAt?: Date | string
 }
 
@@ -898,28 +1060,40 @@ export type DocumentRevisionCreateManyOrganizationInput = {
   spaceId: string
   documentId: string
   revision: number
+  kind?: $Enums.DocumentKind
   title: string
-  contentMarkdown: string
+  summary?: string | null
+  contentFormat?: $Enums.ContentFormat
+  contentJson?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  contentMarkdown?: string | null
   contentText: string
+  contentMarkdownCache?: string | null
   changeType: $Enums.DocumentChangeType
   actorType: $Enums.DocumentActorType
   actorUserId: string
   mcpClientId?: string | null
   requestId?: string | null
+  metadata?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   createdAt?: Date | string
 }
 
 export type DocumentRevisionUpdateWithoutOrganizationInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   revision?: Prisma.IntFieldUpdateOperationsInput | number
+  kind?: Prisma.EnumDocumentKindFieldUpdateOperationsInput | $Enums.DocumentKind
   title?: Prisma.StringFieldUpdateOperationsInput | string
-  contentMarkdown?: Prisma.StringFieldUpdateOperationsInput | string
+  summary?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  contentFormat?: Prisma.EnumContentFormatFieldUpdateOperationsInput | $Enums.ContentFormat
+  contentJson?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  contentMarkdown?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   contentText?: Prisma.StringFieldUpdateOperationsInput | string
+  contentMarkdownCache?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   changeType?: Prisma.EnumDocumentChangeTypeFieldUpdateOperationsInput | $Enums.DocumentChangeType
   actorType?: Prisma.EnumDocumentActorTypeFieldUpdateOperationsInput | $Enums.DocumentActorType
   actorUserId?: Prisma.StringFieldUpdateOperationsInput | string
   mcpClientId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   requestId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  metadata?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   space?: Prisma.SpaceUpdateOneRequiredWithoutDocumentRevisionsNestedInput
   document?: Prisma.DocumentUpdateOneRequiredWithoutRevisionsNestedInput
@@ -930,14 +1104,20 @@ export type DocumentRevisionUncheckedUpdateWithoutOrganizationInput = {
   spaceId?: Prisma.StringFieldUpdateOperationsInput | string
   documentId?: Prisma.StringFieldUpdateOperationsInput | string
   revision?: Prisma.IntFieldUpdateOperationsInput | number
+  kind?: Prisma.EnumDocumentKindFieldUpdateOperationsInput | $Enums.DocumentKind
   title?: Prisma.StringFieldUpdateOperationsInput | string
-  contentMarkdown?: Prisma.StringFieldUpdateOperationsInput | string
+  summary?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  contentFormat?: Prisma.EnumContentFormatFieldUpdateOperationsInput | $Enums.ContentFormat
+  contentJson?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  contentMarkdown?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   contentText?: Prisma.StringFieldUpdateOperationsInput | string
+  contentMarkdownCache?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   changeType?: Prisma.EnumDocumentChangeTypeFieldUpdateOperationsInput | $Enums.DocumentChangeType
   actorType?: Prisma.EnumDocumentActorTypeFieldUpdateOperationsInput | $Enums.DocumentActorType
   actorUserId?: Prisma.StringFieldUpdateOperationsInput | string
   mcpClientId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   requestId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  metadata?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
 
@@ -946,14 +1126,20 @@ export type DocumentRevisionUncheckedUpdateManyWithoutOrganizationInput = {
   spaceId?: Prisma.StringFieldUpdateOperationsInput | string
   documentId?: Prisma.StringFieldUpdateOperationsInput | string
   revision?: Prisma.IntFieldUpdateOperationsInput | number
+  kind?: Prisma.EnumDocumentKindFieldUpdateOperationsInput | $Enums.DocumentKind
   title?: Prisma.StringFieldUpdateOperationsInput | string
-  contentMarkdown?: Prisma.StringFieldUpdateOperationsInput | string
+  summary?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  contentFormat?: Prisma.EnumContentFormatFieldUpdateOperationsInput | $Enums.ContentFormat
+  contentJson?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  contentMarkdown?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   contentText?: Prisma.StringFieldUpdateOperationsInput | string
+  contentMarkdownCache?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   changeType?: Prisma.EnumDocumentChangeTypeFieldUpdateOperationsInput | $Enums.DocumentChangeType
   actorType?: Prisma.EnumDocumentActorTypeFieldUpdateOperationsInput | $Enums.DocumentActorType
   actorUserId?: Prisma.StringFieldUpdateOperationsInput | string
   mcpClientId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   requestId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  metadata?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
 
@@ -962,28 +1148,40 @@ export type DocumentRevisionCreateManySpaceInput = {
   organizationId: string
   documentId: string
   revision: number
+  kind?: $Enums.DocumentKind
   title: string
-  contentMarkdown: string
+  summary?: string | null
+  contentFormat?: $Enums.ContentFormat
+  contentJson?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  contentMarkdown?: string | null
   contentText: string
+  contentMarkdownCache?: string | null
   changeType: $Enums.DocumentChangeType
   actorType: $Enums.DocumentActorType
   actorUserId: string
   mcpClientId?: string | null
   requestId?: string | null
+  metadata?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   createdAt?: Date | string
 }
 
 export type DocumentRevisionUpdateWithoutSpaceInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   revision?: Prisma.IntFieldUpdateOperationsInput | number
+  kind?: Prisma.EnumDocumentKindFieldUpdateOperationsInput | $Enums.DocumentKind
   title?: Prisma.StringFieldUpdateOperationsInput | string
-  contentMarkdown?: Prisma.StringFieldUpdateOperationsInput | string
+  summary?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  contentFormat?: Prisma.EnumContentFormatFieldUpdateOperationsInput | $Enums.ContentFormat
+  contentJson?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  contentMarkdown?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   contentText?: Prisma.StringFieldUpdateOperationsInput | string
+  contentMarkdownCache?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   changeType?: Prisma.EnumDocumentChangeTypeFieldUpdateOperationsInput | $Enums.DocumentChangeType
   actorType?: Prisma.EnumDocumentActorTypeFieldUpdateOperationsInput | $Enums.DocumentActorType
   actorUserId?: Prisma.StringFieldUpdateOperationsInput | string
   mcpClientId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   requestId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  metadata?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   organization?: Prisma.OrganizationUpdateOneRequiredWithoutDocumentRevisionsNestedInput
   document?: Prisma.DocumentUpdateOneRequiredWithoutRevisionsNestedInput
@@ -994,14 +1192,20 @@ export type DocumentRevisionUncheckedUpdateWithoutSpaceInput = {
   organizationId?: Prisma.StringFieldUpdateOperationsInput | string
   documentId?: Prisma.StringFieldUpdateOperationsInput | string
   revision?: Prisma.IntFieldUpdateOperationsInput | number
+  kind?: Prisma.EnumDocumentKindFieldUpdateOperationsInput | $Enums.DocumentKind
   title?: Prisma.StringFieldUpdateOperationsInput | string
-  contentMarkdown?: Prisma.StringFieldUpdateOperationsInput | string
+  summary?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  contentFormat?: Prisma.EnumContentFormatFieldUpdateOperationsInput | $Enums.ContentFormat
+  contentJson?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  contentMarkdown?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   contentText?: Prisma.StringFieldUpdateOperationsInput | string
+  contentMarkdownCache?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   changeType?: Prisma.EnumDocumentChangeTypeFieldUpdateOperationsInput | $Enums.DocumentChangeType
   actorType?: Prisma.EnumDocumentActorTypeFieldUpdateOperationsInput | $Enums.DocumentActorType
   actorUserId?: Prisma.StringFieldUpdateOperationsInput | string
   mcpClientId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   requestId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  metadata?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
 
@@ -1010,14 +1214,20 @@ export type DocumentRevisionUncheckedUpdateManyWithoutSpaceInput = {
   organizationId?: Prisma.StringFieldUpdateOperationsInput | string
   documentId?: Prisma.StringFieldUpdateOperationsInput | string
   revision?: Prisma.IntFieldUpdateOperationsInput | number
+  kind?: Prisma.EnumDocumentKindFieldUpdateOperationsInput | $Enums.DocumentKind
   title?: Prisma.StringFieldUpdateOperationsInput | string
-  contentMarkdown?: Prisma.StringFieldUpdateOperationsInput | string
+  summary?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  contentFormat?: Prisma.EnumContentFormatFieldUpdateOperationsInput | $Enums.ContentFormat
+  contentJson?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  contentMarkdown?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   contentText?: Prisma.StringFieldUpdateOperationsInput | string
+  contentMarkdownCache?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   changeType?: Prisma.EnumDocumentChangeTypeFieldUpdateOperationsInput | $Enums.DocumentChangeType
   actorType?: Prisma.EnumDocumentActorTypeFieldUpdateOperationsInput | $Enums.DocumentActorType
   actorUserId?: Prisma.StringFieldUpdateOperationsInput | string
   mcpClientId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   requestId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  metadata?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
 
@@ -1026,28 +1236,40 @@ export type DocumentRevisionCreateManyDocumentInput = {
   organizationId: string
   spaceId: string
   revision: number
+  kind?: $Enums.DocumentKind
   title: string
-  contentMarkdown: string
+  summary?: string | null
+  contentFormat?: $Enums.ContentFormat
+  contentJson?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  contentMarkdown?: string | null
   contentText: string
+  contentMarkdownCache?: string | null
   changeType: $Enums.DocumentChangeType
   actorType: $Enums.DocumentActorType
   actorUserId: string
   mcpClientId?: string | null
   requestId?: string | null
+  metadata?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   createdAt?: Date | string
 }
 
 export type DocumentRevisionUpdateWithoutDocumentInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   revision?: Prisma.IntFieldUpdateOperationsInput | number
+  kind?: Prisma.EnumDocumentKindFieldUpdateOperationsInput | $Enums.DocumentKind
   title?: Prisma.StringFieldUpdateOperationsInput | string
-  contentMarkdown?: Prisma.StringFieldUpdateOperationsInput | string
+  summary?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  contentFormat?: Prisma.EnumContentFormatFieldUpdateOperationsInput | $Enums.ContentFormat
+  contentJson?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  contentMarkdown?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   contentText?: Prisma.StringFieldUpdateOperationsInput | string
+  contentMarkdownCache?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   changeType?: Prisma.EnumDocumentChangeTypeFieldUpdateOperationsInput | $Enums.DocumentChangeType
   actorType?: Prisma.EnumDocumentActorTypeFieldUpdateOperationsInput | $Enums.DocumentActorType
   actorUserId?: Prisma.StringFieldUpdateOperationsInput | string
   mcpClientId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   requestId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  metadata?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   organization?: Prisma.OrganizationUpdateOneRequiredWithoutDocumentRevisionsNestedInput
   space?: Prisma.SpaceUpdateOneRequiredWithoutDocumentRevisionsNestedInput
@@ -1058,14 +1280,20 @@ export type DocumentRevisionUncheckedUpdateWithoutDocumentInput = {
   organizationId?: Prisma.StringFieldUpdateOperationsInput | string
   spaceId?: Prisma.StringFieldUpdateOperationsInput | string
   revision?: Prisma.IntFieldUpdateOperationsInput | number
+  kind?: Prisma.EnumDocumentKindFieldUpdateOperationsInput | $Enums.DocumentKind
   title?: Prisma.StringFieldUpdateOperationsInput | string
-  contentMarkdown?: Prisma.StringFieldUpdateOperationsInput | string
+  summary?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  contentFormat?: Prisma.EnumContentFormatFieldUpdateOperationsInput | $Enums.ContentFormat
+  contentJson?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  contentMarkdown?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   contentText?: Prisma.StringFieldUpdateOperationsInput | string
+  contentMarkdownCache?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   changeType?: Prisma.EnumDocumentChangeTypeFieldUpdateOperationsInput | $Enums.DocumentChangeType
   actorType?: Prisma.EnumDocumentActorTypeFieldUpdateOperationsInput | $Enums.DocumentActorType
   actorUserId?: Prisma.StringFieldUpdateOperationsInput | string
   mcpClientId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   requestId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  metadata?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
 
@@ -1074,14 +1302,20 @@ export type DocumentRevisionUncheckedUpdateManyWithoutDocumentInput = {
   organizationId?: Prisma.StringFieldUpdateOperationsInput | string
   spaceId?: Prisma.StringFieldUpdateOperationsInput | string
   revision?: Prisma.IntFieldUpdateOperationsInput | number
+  kind?: Prisma.EnumDocumentKindFieldUpdateOperationsInput | $Enums.DocumentKind
   title?: Prisma.StringFieldUpdateOperationsInput | string
-  contentMarkdown?: Prisma.StringFieldUpdateOperationsInput | string
+  summary?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  contentFormat?: Prisma.EnumContentFormatFieldUpdateOperationsInput | $Enums.ContentFormat
+  contentJson?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  contentMarkdown?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   contentText?: Prisma.StringFieldUpdateOperationsInput | string
+  contentMarkdownCache?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   changeType?: Prisma.EnumDocumentChangeTypeFieldUpdateOperationsInput | $Enums.DocumentChangeType
   actorType?: Prisma.EnumDocumentActorTypeFieldUpdateOperationsInput | $Enums.DocumentActorType
   actorUserId?: Prisma.StringFieldUpdateOperationsInput | string
   mcpClientId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   requestId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  metadata?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
 
@@ -1093,14 +1327,20 @@ export type DocumentRevisionSelect<ExtArgs extends runtime.Types.Extensions.Inte
   spaceId?: boolean
   documentId?: boolean
   revision?: boolean
+  kind?: boolean
   title?: boolean
+  summary?: boolean
+  contentFormat?: boolean
+  contentJson?: boolean
   contentMarkdown?: boolean
   contentText?: boolean
+  contentMarkdownCache?: boolean
   changeType?: boolean
   actorType?: boolean
   actorUserId?: boolean
   mcpClientId?: boolean
   requestId?: boolean
+  metadata?: boolean
   createdAt?: boolean
   organization?: boolean | Prisma.OrganizationDefaultArgs<ExtArgs>
   space?: boolean | Prisma.SpaceDefaultArgs<ExtArgs>
@@ -1113,14 +1353,20 @@ export type DocumentRevisionSelectCreateManyAndReturn<ExtArgs extends runtime.Ty
   spaceId?: boolean
   documentId?: boolean
   revision?: boolean
+  kind?: boolean
   title?: boolean
+  summary?: boolean
+  contentFormat?: boolean
+  contentJson?: boolean
   contentMarkdown?: boolean
   contentText?: boolean
+  contentMarkdownCache?: boolean
   changeType?: boolean
   actorType?: boolean
   actorUserId?: boolean
   mcpClientId?: boolean
   requestId?: boolean
+  metadata?: boolean
   createdAt?: boolean
   organization?: boolean | Prisma.OrganizationDefaultArgs<ExtArgs>
   space?: boolean | Prisma.SpaceDefaultArgs<ExtArgs>
@@ -1133,14 +1379,20 @@ export type DocumentRevisionSelectUpdateManyAndReturn<ExtArgs extends runtime.Ty
   spaceId?: boolean
   documentId?: boolean
   revision?: boolean
+  kind?: boolean
   title?: boolean
+  summary?: boolean
+  contentFormat?: boolean
+  contentJson?: boolean
   contentMarkdown?: boolean
   contentText?: boolean
+  contentMarkdownCache?: boolean
   changeType?: boolean
   actorType?: boolean
   actorUserId?: boolean
   mcpClientId?: boolean
   requestId?: boolean
+  metadata?: boolean
   createdAt?: boolean
   organization?: boolean | Prisma.OrganizationDefaultArgs<ExtArgs>
   space?: boolean | Prisma.SpaceDefaultArgs<ExtArgs>
@@ -1153,18 +1405,24 @@ export type DocumentRevisionSelectScalar = {
   spaceId?: boolean
   documentId?: boolean
   revision?: boolean
+  kind?: boolean
   title?: boolean
+  summary?: boolean
+  contentFormat?: boolean
+  contentJson?: boolean
   contentMarkdown?: boolean
   contentText?: boolean
+  contentMarkdownCache?: boolean
   changeType?: boolean
   actorType?: boolean
   actorUserId?: boolean
   mcpClientId?: boolean
   requestId?: boolean
+  metadata?: boolean
   createdAt?: boolean
 }
 
-export type DocumentRevisionOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "organizationId" | "spaceId" | "documentId" | "revision" | "title" | "contentMarkdown" | "contentText" | "changeType" | "actorType" | "actorUserId" | "mcpClientId" | "requestId" | "createdAt", ExtArgs["result"]["documentRevision"]>
+export type DocumentRevisionOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "organizationId" | "spaceId" | "documentId" | "revision" | "kind" | "title" | "summary" | "contentFormat" | "contentJson" | "contentMarkdown" | "contentText" | "contentMarkdownCache" | "changeType" | "actorType" | "actorUserId" | "mcpClientId" | "requestId" | "metadata" | "createdAt", ExtArgs["result"]["documentRevision"]>
 export type DocumentRevisionInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   organization?: boolean | Prisma.OrganizationDefaultArgs<ExtArgs>
   space?: boolean | Prisma.SpaceDefaultArgs<ExtArgs>
@@ -1194,14 +1452,20 @@ export type $DocumentRevisionPayload<ExtArgs extends runtime.Types.Extensions.In
     spaceId: string
     documentId: string
     revision: number
+    kind: $Enums.DocumentKind
     title: string
-    contentMarkdown: string
+    summary: string | null
+    contentFormat: $Enums.ContentFormat
+    contentJson: runtime.JsonValue | null
+    contentMarkdown: string | null
     contentText: string
+    contentMarkdownCache: string | null
     changeType: $Enums.DocumentChangeType
     actorType: $Enums.DocumentActorType
     actorUserId: string
     mcpClientId: string | null
     requestId: string | null
+    metadata: runtime.JsonValue | null
     createdAt: Date
   }, ExtArgs["result"]["documentRevision"]>
   composites: {}
@@ -1634,14 +1898,20 @@ export interface DocumentRevisionFieldRefs {
   readonly spaceId: Prisma.FieldRef<"DocumentRevision", 'String'>
   readonly documentId: Prisma.FieldRef<"DocumentRevision", 'String'>
   readonly revision: Prisma.FieldRef<"DocumentRevision", 'Int'>
+  readonly kind: Prisma.FieldRef<"DocumentRevision", 'DocumentKind'>
   readonly title: Prisma.FieldRef<"DocumentRevision", 'String'>
+  readonly summary: Prisma.FieldRef<"DocumentRevision", 'String'>
+  readonly contentFormat: Prisma.FieldRef<"DocumentRevision", 'ContentFormat'>
+  readonly contentJson: Prisma.FieldRef<"DocumentRevision", 'Json'>
   readonly contentMarkdown: Prisma.FieldRef<"DocumentRevision", 'String'>
   readonly contentText: Prisma.FieldRef<"DocumentRevision", 'String'>
+  readonly contentMarkdownCache: Prisma.FieldRef<"DocumentRevision", 'String'>
   readonly changeType: Prisma.FieldRef<"DocumentRevision", 'DocumentChangeType'>
   readonly actorType: Prisma.FieldRef<"DocumentRevision", 'DocumentActorType'>
   readonly actorUserId: Prisma.FieldRef<"DocumentRevision", 'String'>
   readonly mcpClientId: Prisma.FieldRef<"DocumentRevision", 'String'>
   readonly requestId: Prisma.FieldRef<"DocumentRevision", 'String'>
+  readonly metadata: Prisma.FieldRef<"DocumentRevision", 'Json'>
   readonly createdAt: Prisma.FieldRef<"DocumentRevision", 'DateTime'>
 }
     

@@ -176,6 +176,61 @@ describe("AttachmentService", () => {
     });
   });
 
+  it("publishes requirement document hints for requirement attachments", async () => {
+    const actorUserId = ulid();
+    const organizationId = ulid();
+    const spaceId = ulid();
+    const requirementId = ulid();
+    const { service, attachments, realtime, targets } = createServiceFixture({
+      organizationId,
+      spaceId,
+      targetId: requirementId,
+    });
+    vi.mocked(targets.resolve).mockResolvedValueOnce({
+      organizationId,
+      spaceId,
+      targetId: requirementId,
+      targetKind: "REQUIREMENT",
+      targetType: "DOCUMENT",
+      role: "PM",
+      canWrite: true,
+    });
+
+    await service.upload(
+      actorUserId,
+      {
+        targetType: "DOCUMENT",
+        targetId: requirementId,
+      },
+      uploadFile(),
+    );
+
+    expect(attachments.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        targetId: requirementId,
+        targetType: "DOCUMENT",
+      }),
+    );
+    expect(realtime.publish).toHaveBeenCalledWith(
+      expect.objectContaining({
+        target: { type: "DOCUMENT", id: requirementId },
+        invalidates: expect.arrayContaining([
+          "requirement-detail",
+          "document-attachments",
+          "document-timeline",
+          "document-detail",
+        ]),
+        hints: expect.objectContaining({
+          canonicalTargetType: "DOCUMENT",
+          requirementId,
+          targetId: requirementId,
+          targetKind: "REQUIREMENT",
+          targetType: "DOCUMENT",
+        }),
+      }),
+    );
+  });
+
   it("does not download files when the attachment row does not match the resolved target context", async () => {
     const actorUserId = ulid();
     const organizationId = ulid();
@@ -454,7 +509,14 @@ function createServiceFixture(
   const realtime = createRealtimePublisher();
   const service = new AttachmentService(
     attachments,
-    {} as RequirementRepository,
+    {
+      findById: vi.fn(async () => ({
+        id: targetId,
+        organizationId,
+        spaceId,
+        status: "DRAFT",
+      })),
+    } as unknown as RequirementRepository,
     targets,
     audit,
     objectStorage,
@@ -504,7 +566,7 @@ function uploadFile(overrides: Partial<AttachmentUploadFile> = {}) {
 }
 
 function validFileKey(
-  targetType: "REQUIREMENT" | "WORK_ITEM",
+  targetType: "DOCUMENT" | "WORK_ITEM",
   targetId: string,
 ): string {
   return `attachments/${targetType.toLowerCase()}/${targetId}/${ulid()}-spec.pdf`;

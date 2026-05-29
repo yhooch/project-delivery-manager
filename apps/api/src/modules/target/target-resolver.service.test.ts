@@ -2,7 +2,6 @@ import { HttpStatus } from "@nestjs/common";
 import { ulid } from "ulid";
 import { describe, expect, it, vi } from "vitest";
 
-import { ApiException } from "../../http/api-exception";
 import type { PrismaService } from "../../prisma/prisma.service";
 import type { RequirementRepository } from "../requirement/requirement.repository";
 import type { SpaceRepository } from "../space/space.repository";
@@ -371,7 +370,7 @@ describe("TargetResolverService", () => {
   });
 
   it.each(["SPACE_ADMIN", "PM", "REQUIREMENT"] as const)(
-    "hides DRAFT REQUIREMENT targets from %s non-participants across attachment, comment, and timeline resolution",
+    "allows %s members to read and write DRAFT REQUIREMENT targets",
     async (role) => {
       const actorUserId = ulid();
       const requirementId = ulid();
@@ -394,31 +393,29 @@ describe("TargetResolverService", () => {
           hideInaccessible: true,
           notFoundCode: "ATTACHMENT_TARGET_NOT_FOUND",
         }),
-      ).rejects.toMatchObject({
-        code: "ATTACHMENT_TARGET_NOT_FOUND",
-        status: HttpStatus.NOT_FOUND,
+      ).resolves.toMatchObject({
+        canWrite: true,
+        targetId: requirementId,
       });
 
       await expect(
         resolver.resolve(actorUserId, "REQUIREMENT", requirementId, {
           access: "write",
         }),
-      ).rejects.toMatchObject({
-        code: "REQUIREMENT_NOT_FOUND",
-        status: HttpStatus.NOT_FOUND,
+      ).resolves.toMatchObject({
+        canWrite: true,
+        targetId: requirementId,
       });
 
       await expect(
         resolver.resolve(actorUserId, "REQUIREMENT", requirementId),
-      ).rejects.toMatchObject({
-        code: "REQUIREMENT_NOT_FOUND",
-        status: HttpStatus.NOT_FOUND,
+      ).resolves.toMatchObject({
+        canWrite: true,
+        targetId: requirementId,
+        targetKind: "REQUIREMENT",
+        targetType: "DOCUMENT",
       });
-      expect(requirements.isParticipant).toHaveBeenCalledWith(
-        spaceId,
-        requirementId,
-        actorUserId,
-      );
+      expect(requirements.isParticipant).not.toHaveBeenCalled();
     },
   );
 
@@ -444,7 +441,8 @@ describe("TargetResolverService", () => {
       canWrite: true,
       role: "PM",
       targetId: requirementId,
-      targetType: "REQUIREMENT",
+      targetKind: "REQUIREMENT",
+      targetType: "DOCUMENT",
     });
 
     await expect(
@@ -456,11 +454,12 @@ describe("TargetResolverService", () => {
     ).resolves.toMatchObject({
       canWrite: true,
       targetId: requirementId,
-      targetType: "REQUIREMENT",
+      targetKind: "REQUIREMENT",
+      targetType: "DOCUMENT",
     });
   });
 
-  it("hides REQUIREMENT targets from same-space non-participants without requirement read-all roles", async () => {
+  it("allows same-space non-participants to read non-deleted REQUIREMENT targets", async () => {
     const actorUserId = ulid();
     const requirementId = ulid();
     const spaceId = ulid();
@@ -478,8 +477,11 @@ describe("TargetResolverService", () => {
 
     await expect(
       resolver.resolve(actorUserId, "REQUIREMENT", requirementId),
-    ).rejects.toMatchObject({
-      code: "REQUIREMENT_NOT_FOUND",
+    ).resolves.toMatchObject({
+      canWrite: false,
+      targetId: requirementId,
+      targetKind: "REQUIREMENT",
+      targetType: "DOCUMENT",
     });
 
     vi.mocked(requirements.isParticipant).mockResolvedValue(true);
@@ -488,7 +490,8 @@ describe("TargetResolverService", () => {
       resolver.resolve(actorUserId, "REQUIREMENT", requirementId),
     ).resolves.toMatchObject({
       targetId: requirementId,
-      targetType: "REQUIREMENT",
+      targetKind: "REQUIREMENT",
+      targetType: "DOCUMENT",
     });
   });
 
@@ -536,7 +539,7 @@ describe("TargetResolverService", () => {
     });
   });
 
-  it("requires draft requirement participation for tag writes under object update policy", async () => {
+  it("allows requirement writers to update draft requirement targets without participant membership", async () => {
     const actorUserId = ulid();
     const requirementId = ulid();
     const spaceId = ulid();
@@ -557,23 +560,12 @@ describe("TargetResolverService", () => {
         access: "write",
         writePolicy: "objectUpdate",
       }),
-    ).rejects.toMatchObject({
-      code: "REQUIREMENT_NOT_FOUND",
-      status: HttpStatus.NOT_FOUND,
-    });
-
-    vi.mocked(requirements.isParticipant).mockResolvedValue(true);
-
-    await expect(
-      resolver.resolve(actorUserId, "REQUIREMENT", requirementId, {
-        access: "write",
-        writePolicy: "objectUpdate",
-      }),
     ).resolves.toMatchObject({
       canWrite: true,
       role: "PM",
       targetId: requirementId,
     });
+    expect(requirements.isParticipant).not.toHaveBeenCalled();
   });
 
   it("rejects VIEWER writes to non-draft REQUIREMENT targets even as participant", async () => {
@@ -678,7 +670,7 @@ describe("TargetResolverService", () => {
     });
   });
 
-  it("hides draft requirements from read-only roles", async () => {
+  it("allows read-only roles to read draft requirements", async () => {
     const requirementId = ulid();
     const spaceId = ulid();
     const organizationId = ulid();
@@ -695,7 +687,13 @@ describe("TargetResolverService", () => {
 
     await expect(
       resolver.resolve(ulid(), "REQUIREMENT", requirementId),
-    ).rejects.toBeInstanceOf(ApiException);
+    ).resolves.toMatchObject({
+      canWrite: false,
+      role: "VIEWER",
+      targetId: requirementId,
+      targetKind: "REQUIREMENT",
+      targetType: "DOCUMENT",
+    });
   });
 });
 
@@ -775,14 +773,18 @@ function makeRequirement(
   organizationId: string,
   status: "CONFIRMED" | "DRAFT",
 ) {
+  const currentStatus: "ACTIVE" | "DRAFT" =
+    status === "CONFIRMED" ? "ACTIVE" : status;
+
   return {
     id: requirementId,
     organizationId,
     spaceId,
+    kind: "REQUIREMENT" as const,
     title: status === "DRAFT" ? "" : "Requirement",
     contentJson: {},
     contentFormat: "TIPTAP_JSON" as const,
-    status,
+    status: currentStatus,
     relatedWorkItems: {
       taskCount: 0,
       bugCount: 0,

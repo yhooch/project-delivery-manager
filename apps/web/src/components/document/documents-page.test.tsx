@@ -11,11 +11,13 @@ import {
 import type { ReactNode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { routerPushMock, routerReplaceMock, searchParamsMock } = vi.hoisted(() => ({
-  routerPushMock: vi.fn(),
-  routerReplaceMock: vi.fn(),
-  searchParamsMock: { current: new URLSearchParams() },
-}));
+const { routerPushMock, routerReplaceMock, searchParamsMock } = vi.hoisted(
+  () => ({
+    routerPushMock: vi.fn(),
+    routerReplaceMock: vi.fn(),
+    searchParamsMock: { current: new URLSearchParams() },
+  }),
+);
 vi.mock("../../i18n/routing", () => ({
   Link: ({
     children,
@@ -72,9 +74,9 @@ const { listDocumentsMock } = vi.hoisted(() => ({
   listDocumentsMock: vi.fn(),
 }));
 vi.mock("../../lib/document-service", async () => {
-  const actual = await vi.importActual<typeof import("../../lib/document-service")>(
-    "../../lib/document-service",
-  );
+  const actual = await vi.importActual<
+    typeof import("../../lib/document-service")
+  >("../../lib/document-service");
   return {
     ...actual,
     importDocxDocument: vi.fn(),
@@ -332,6 +334,49 @@ describe("DocumentsPage", () => {
     ).not.toBeInTheDocument();
   });
 
+  it("marks requirement documents with their REQ code and status", async () => {
+    listDocumentsMock.mockResolvedValue({
+      items: [
+        {
+          contentFormat: "TIPTAP_JSON",
+          contentJson: { content: [], type: "doc" },
+          contentMarkdownCache: "Requirement preview",
+          createdAt: "2026-05-27T10:00:00.000Z",
+          displayCode: "REQ-12",
+          id: "REQ_01",
+          kind: "REQUIREMENT",
+          lastEditedAt: "2026-05-27T11:00:00.000Z",
+          lastEditedVia: "USER",
+          organizationId: "ORG_01",
+          revision: 2,
+          sequence: 12,
+          sourceType: "MIGRATED_REQUIREMENT",
+          spaceId: "SPC_01",
+          status: "ACTIVE",
+          title: "Requirement document",
+          updatedAt: "2026-05-27T11:00:00.000Z",
+        },
+      ],
+      total: 1,
+    });
+
+    renderDocumentsPage();
+
+    await waitFor(() =>
+      expect(screen.getByTestId("documents-list")).toBeVisible(),
+    );
+
+    expect(screen.getByTestId("document-requirement-badge")).toHaveTextContent(
+      "REQ-12",
+    );
+    expect(screen.getByTestId("document-requirement-badge")).toHaveTextContent(
+      "documents.status.ACTIVE",
+    );
+    expect(screen.getByTestId("document-display-code")).toHaveTextContent(
+      "REQ-12",
+    );
+  });
+
   it("supports selecting multiple documents while keeping detail links", async () => {
     listDocumentsMock.mockResolvedValue({
       items: [
@@ -377,7 +422,9 @@ describe("DocumentsPage", () => {
     expect(links[0]).toHaveAttribute("href", "/documents/DOC_01");
     expect(links[1]).toHaveAttribute("href", "/documents/DOC_02");
     expect(screen.getAllByTestId("documents-list-drag-handle")).toHaveLength(2);
-    expect(screen.queryByTestId("documents-list-select")).not.toBeInTheDocument();
+    expect(
+      screen.queryByTestId("documents-list-select"),
+    ).not.toBeInTheDocument();
     expect(
       screen.getByRole("button", {
         name: "documents.list.dragDocument Launch plan",
@@ -405,7 +452,9 @@ describe("DocumentsPage", () => {
       screen.getByRole("button", { name: "documents.selection.done" }),
     );
 
-    expect(screen.queryByTestId("documents-list-select")).not.toBeInTheDocument();
+    expect(
+      screen.queryByTestId("documents-list-select"),
+    ).not.toBeInTheDocument();
     expect(
       screen.queryByTestId("documents-selection-toolbar"),
     ).not.toBeInTheDocument();

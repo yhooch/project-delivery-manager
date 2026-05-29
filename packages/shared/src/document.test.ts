@@ -2,6 +2,9 @@ import { describe, expect, it } from "vitest";
 
 import {
   AppendDocumentContentRequestSchema,
+  CancelRequirementPreflightResponseSchema,
+  CancelRequirementRequestSchema,
+  ConvertDocumentToRequirementRequestSchema,
   DocumentDetailSchema,
   DocumentFolderTreeNodeSchema,
   DocumentLinkTargetSchema,
@@ -16,12 +19,21 @@ import {
 } from "./document.ts";
 import {
   AttachmentTargetTypeSchema,
+  CanonicalTargetTypeSchema,
   CommentTargetTypeSchema,
   DocumentActorTypeSchema,
   DocumentChangeTypeSchema,
+  DocumentContentFormatSchema,
+  DocumentKindSchema,
   DocumentLinkTargetTypeSchema,
   DocumentSourceTypeSchema,
   DocumentStatusSchema,
+  LegacyAttachmentTargetTypeInputSchema,
+  LegacyCommentTargetTypeInputSchema,
+  LegacyDocumentLinkTargetTypeInputSchema,
+  LegacyObjectParticipantTargetTypeInputSchema,
+  LegacyTagTargetTypeInputSchema,
+  LegacyTargetTypeInputSchema,
   ObjectParticipantTargetTypeSchema,
   TagTargetTypeSchema,
   TargetTypeSchema,
@@ -34,35 +46,98 @@ const THIRD_ID = "01H00000000000000000000003";
 describe("document contracts", () => {
   it("freezes document enum values and target integration", () => {
     expect(DocumentSourceTypeSchema.options).toEqual([
+      "USER_CREATED",
       "UPLOAD_DOCX",
       "UPLOAD_MARKDOWN",
       "PASTE_MARKDOWN",
       "PASTE_TEXT",
       "MCP_CREATED",
+      "MIGRATED_DOCUMENT",
+      "MIGRATED_REQUIREMENT",
     ]);
     expect(DocumentActorTypeSchema.options).toEqual(["USER", "MCP_CLIENT"]);
-    expect(DocumentStatusSchema.options).toEqual(["ACTIVE", "ARCHIVED"]);
+    expect(DocumentKindSchema.options).toEqual(["GENERAL", "REQUIREMENT"]);
+    expect(DocumentContentFormatSchema.options).toEqual([
+      "TIPTAP_JSON",
+      "MARKDOWN",
+    ]);
+    expect(DocumentStatusSchema.options).toEqual([
+      "DRAFT",
+      "ACTIVE",
+      "ARCHIVED",
+    ]);
     expect(DocumentChangeTypeSchema.options).toEqual(
       expect.arrayContaining([
         "CREATED",
         "REIMPORTED",
         "CONTENT_APPENDED",
         "DELETED",
+        "CONVERTED_TO_REQUIREMENT",
+        "CANCELLED_REQUIREMENT",
       ]),
     );
     expect(DocumentLinkTargetTypeSchema.options).toEqual([
       "DOCUMENT",
       "VERSION",
-      "REQUIREMENT",
       "INTAKE_ITEM",
       "WORK_ITEM",
     ]);
 
-    expect(TargetTypeSchema.options).toContain("DOCUMENT");
-    expect(CommentTargetTypeSchema.options).toContain("DOCUMENT");
-    expect(AttachmentTargetTypeSchema.options).toContain("DOCUMENT");
-    expect(TagTargetTypeSchema.options).toContain("DOCUMENT");
-    expect(ObjectParticipantTargetTypeSchema.options).toContain("DOCUMENT");
+    expect(TargetTypeSchema.options).toEqual([
+      "SPACE",
+      "VERSION",
+      "DOCUMENT",
+      "INTAKE_ITEM",
+      "WORK_ITEM",
+    ]);
+    expect(TargetTypeSchema.safeParse("REQUIREMENT").success).toBe(false);
+    expect(CanonicalTargetTypeSchema.options).toEqual([
+      "SPACE",
+      "VERSION",
+      "DOCUMENT",
+      "INTAKE_ITEM",
+      "WORK_ITEM",
+    ]);
+    expect(CanonicalTargetTypeSchema.safeParse("REQUIREMENT").success).toBe(
+      false,
+    );
+    expect(LegacyTargetTypeInputSchema.parse("REQUIREMENT")).toBe(
+      "REQUIREMENT",
+    );
+    expect(CommentTargetTypeSchema.options).toEqual([
+      "INTAKE_ITEM",
+      "WORK_ITEM",
+      "DOCUMENT",
+    ]);
+    expect(AttachmentTargetTypeSchema.options).toEqual([
+      "WORK_ITEM",
+      "DOCUMENT",
+    ]);
+    expect(TagTargetTypeSchema.options).toEqual([
+      "INTAKE_ITEM",
+      "WORK_ITEM",
+      "DOCUMENT",
+    ]);
+    expect(ObjectParticipantTargetTypeSchema.options).toEqual([
+      "INTAKE_ITEM",
+      "WORK_ITEM",
+      "DOCUMENT",
+    ]);
+    expect(LegacyAttachmentTargetTypeInputSchema.parse("REQUIREMENT")).toBe(
+      "REQUIREMENT",
+    );
+    expect(LegacyCommentTargetTypeInputSchema.parse("REQUIREMENT")).toBe(
+      "REQUIREMENT",
+    );
+    expect(LegacyTagTargetTypeInputSchema.parse("REQUIREMENT")).toBe(
+      "REQUIREMENT",
+    );
+    expect(
+      LegacyObjectParticipantTargetTypeInputSchema.parse("REQUIREMENT"),
+    ).toBe("REQUIREMENT");
+    expect(LegacyDocumentLinkTargetTypeInputSchema.parse("REQUIREMENT")).toBe(
+      "REQUIREMENT",
+    );
   });
 
   it("accepts paste creation and base revision content updates", () => {
@@ -146,8 +221,99 @@ describe("document contracts", () => {
       ],
     });
 
+    expect(document.kind).toBe("GENERAL");
+    expect(document.contentFormat).toBe("MARKDOWN");
     expect(document.links?.[0]?.targetType).toBe("WORK_ITEM");
     expect(document.folderPath?.[0]?.name).toBe("Research");
+  });
+
+  it("validates requirement-shaped and Tiptap document DTOs", () => {
+    expect(
+      DocumentSchema.parse({
+        id: ID,
+        organizationId: SECOND_ID,
+        spaceId: THIRD_ID,
+        kind: "REQUIREMENT",
+        sequence: 8,
+        displayCode: "REQ-8",
+        versionId: SECOND_ID,
+        title: "Requirement doc",
+        summary: "Release scope",
+        contentFormat: "MARKDOWN",
+        contentMarkdown: "# Scope",
+        contentText: "Scope",
+        sourceType: "MIGRATED_REQUIREMENT",
+        status: "ACTIVE",
+        revision: 3,
+        priority: "HIGH",
+        ownerId: ID,
+        authorId: SECOND_ID,
+        createdById: ID,
+        createdVia: "USER",
+        lastEditedById: ID,
+        lastEditedVia: "USER",
+        lastEditedAt: "2026-05-27T00:00:00.000Z",
+        createdAt: "2026-05-27T00:00:00.000Z",
+        updatedAt: "2026-05-27T00:00:00.000Z",
+      }),
+    ).toMatchObject({
+      kind: "REQUIREMENT",
+      status: "ACTIVE",
+      displayCode: "REQ-8",
+    });
+
+    expect(
+      DocumentSchema.parse({
+        id: ID,
+        organizationId: SECOND_ID,
+        spaceId: THIRD_ID,
+        kind: "GENERAL",
+        title: "Rich plan",
+        contentFormat: "TIPTAP_JSON",
+        contentJson: {
+          type: "doc",
+          content: [{ type: "paragraph" }],
+        },
+        contentMarkdownCache: "# Rich plan",
+        contentText: "Rich plan",
+        sourceType: "USER_CREATED",
+        status: "DRAFT",
+        revision: 1,
+        createdById: ID,
+        createdVia: "USER",
+        lastEditedById: ID,
+        lastEditedVia: "USER",
+        lastEditedAt: "2026-05-27T00:00:00.000Z",
+        createdAt: "2026-05-27T00:00:00.000Z",
+        updatedAt: "2026-05-27T00:00:00.000Z",
+      }),
+    ).toMatchObject({
+      contentFormat: "TIPTAP_JSON",
+      contentMarkdownCache: "# Rich plan",
+    });
+
+    expect(
+      DocumentSchema.safeParse({
+        id: ID,
+        organizationId: SECOND_ID,
+        spaceId: THIRD_ID,
+        title: "Mixed",
+        contentFormat: "MARKDOWN",
+        contentJson: { type: "doc", content: [] },
+        contentMarkdown: "# Mixed",
+        contentText: "Mixed",
+        sourceType: "USER_CREATED",
+        status: "ACTIVE",
+        revision: 1,
+        createdById: ID,
+        createdVia: "USER",
+        lastEditedById: ID,
+        lastEditedVia: "USER",
+        lastEditedAt: "2026-05-27T00:00:00.000Z",
+        createdAt: "2026-05-27T00:00:00.000Z",
+        updatedAt: "2026-05-27T00:00:00.000Z",
+      }).success,
+    ).toBe(false);
   });
 
   it("validates document folders and folder-aware document inputs", () => {
@@ -351,6 +517,52 @@ describe("document contracts", () => {
     ).toEqual({
       baseRevision: 1,
       links: [{ targetType: "DOCUMENT", targetId: ID }],
+    });
+  });
+
+  it("validates requirement conversion and cancellation requests", () => {
+    expect(
+      ConvertDocumentToRequirementRequestSchema.parse({
+        baseRevision: 2,
+        versionId: null,
+        priority: "MEDIUM",
+        ownerId: ID,
+      }),
+    ).toEqual({
+      baseRevision: 2,
+      versionId: null,
+      priority: "MEDIUM",
+      ownerId: ID,
+    });
+    expect(
+      ConvertDocumentToRequirementRequestSchema.safeParse({}).success,
+    ).toBe(false);
+
+    expect(
+      CancelRequirementRequestSchema.parse({
+        baseRevision: 4,
+        referenceMode: "UNLINK_REFERENCES",
+      }),
+    ).toEqual({
+      baseRevision: 4,
+      referenceMode: "UNLINK_REFERENCES",
+    });
+    expect(
+      CancelRequirementRequestSchema.safeParse({
+        baseRevision: 4,
+        referenceMode: "DELETE_REFERENCES",
+      }).success,
+    ).toBe(false);
+
+    expect(
+      CancelRequirementPreflightResponseSchema.parse({
+        canCancel: false,
+        referenceCount: 2,
+        modeRequired: "UNLINK_REFERENCES",
+      }),
+    ).toMatchObject({
+      canCancel: false,
+      referenceCount: 2,
     });
   });
 });

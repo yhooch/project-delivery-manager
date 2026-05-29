@@ -1,9 +1,9 @@
 "use client";
 
 import type {
+  DocumentStatus,
   Requirement,
   RequirementStatusCount,
-  RequirementStatus,
   SpaceMemberWithUser,
   Version,
 } from "@project-delivery/shared";
@@ -67,7 +67,7 @@ import {
   LoadingState,
 } from "../v2/states";
 
-type FilterKey = "active" | "DRAFT" | "CONFIRMED" | "ARCHIVED" | "all";
+type FilterKey = "active" | "DRAFT" | "ACTIVE" | "ARCHIVED" | "all";
 type RequirementListDisplayItem = {
   requirement: Requirement;
   summary: string | undefined;
@@ -77,7 +77,7 @@ type RequirementListDisplayItem = {
 
 const statusVariant: Record<Requirement["status"], BadgeProps["variant"]> = {
   DRAFT: "default",
-  CONFIRMED: "success",
+  ACTIVE: "success",
   ARCHIVED: "default",
 };
 const LIST_PAGE_SIZE = 100;
@@ -418,9 +418,9 @@ export function RequirementsPage() {
       key: "DRAFT",
     },
     {
-      count: getRequirementStatusCount(statusCounts, "CONFIRMED"),
+      count: getRequirementStatusCount(statusCounts, "ACTIVE"),
       label: t("filters.confirmed"),
-      key: "CONFIRMED",
+      key: "ACTIVE",
     },
     {
       count: getRequirementStatusCount(statusCounts, "ARCHIVED"),
@@ -999,7 +999,7 @@ function normalizeDisplayText(value: string | undefined): string | undefined {
 
 function toRequirementListQuery(filter: FilterKey): {
   includeDrafts?: boolean;
-  status?: RequirementStatus;
+  status?: DocumentStatus;
 } {
   if (filter === "DRAFT") {
     return {
@@ -1008,7 +1008,7 @@ function toRequirementListQuery(filter: FilterKey): {
     };
   }
 
-  if (filter === "CONFIRMED" || filter === "ARCHIVED") {
+  if (filter === "ACTIVE" || filter === "ARCHIVED") {
     return {
       status: filter,
     };
@@ -1021,7 +1021,7 @@ function toRequirementListQuery(filter: FilterKey): {
   }
 
   return {
-    status: "CONFIRMED",
+    status: "ACTIVE",
   };
 }
 
@@ -1031,7 +1031,7 @@ function optionalFilterValue(value: string): string | undefined {
 
 function getRequirementStatusCount(
   counts: RequirementStatusCount[],
-  status: RequirementStatus,
+  status: DocumentStatus,
 ): number {
   return counts.find((entry) => entry.status === status)?.count ?? 0;
 }
@@ -1044,7 +1044,7 @@ function getActiveRequirementCount(
     return fallback;
   }
 
-  return getRequirementStatusCount(counts, "CONFIRMED");
+  return getRequirementStatusCount(counts, "ACTIVE");
 }
 
 function getAllRequirementStatusCount(

@@ -11,6 +11,7 @@ import { getTagIds } from "./tag-ui";
 export type DocumentEditForm = {
   baseRevision: number;
   contentMarkdown: string;
+  contentText: string;
   linkedDocuments: DocumentLinkSummary[];
   linkedResourceCodes: string;
   selectedTags: TagDto[];
@@ -29,6 +30,8 @@ export function createDocumentEditForm(
   return {
     baseRevision: document.revision,
     contentMarkdown: document.contentMarkdown,
+    contentText:
+      document.contentMarkdownCache ?? document.contentText ?? document.contentMarkdown,
     linkedDocuments:
       document.links?.filter((link) => link.targetType === "DOCUMENT") ?? [],
     linkedResourceCodes:

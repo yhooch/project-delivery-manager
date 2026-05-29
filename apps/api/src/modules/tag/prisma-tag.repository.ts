@@ -22,6 +22,8 @@ import type {
 } from "./tag.types";
 
 const TERMINAL_STATUS_CATEGORIES = ["DONE", "TERMINATED"] as const;
+const REQUIREMENT_DOCUMENT_KIND = "REQUIREMENT" as const;
+const REQUIREMENT_TAG_TARGET_TYPE = "DOCUMENT" as const;
 
 @Injectable()
 export class PrismaTagRepository implements TagRepository {
@@ -248,7 +250,7 @@ export class PrismaTagRepository implements TagRepository {
       case "REQUIREMENT":
         return {
           targetIds: await this.listRequirementTargetIds(input),
-          targetType: "REQUIREMENT",
+          targetType: REQUIREMENT_TAG_TARGET_TYPE,
         };
       case "INTAKE_ITEM":
         return {
@@ -291,13 +293,14 @@ export class PrismaTagRepository implements TagRepository {
   private async listRequirementTargetIds(
     input: Pick<TagFilterOptionsInput, "organizationId" | "spaceId">,
   ): Promise<string[]> {
-    const requirements = await this.prisma.client.requirement.findMany({
+    const requirements = await this.prisma.client.document.findMany({
       distinct: ["id"],
       select: {
         id: true,
       },
       where: {
         deletedAt: null,
+        kind: REQUIREMENT_DOCUMENT_KIND,
         organizationId: input.organizationId,
         spaceId: input.spaceId,
       },

@@ -32,8 +32,12 @@ export function getTimelineEventHref(
     return options.unknownWorkItemHref ?? null;
   }
 
-  if (event.target.type === "REQUIREMENT") {
-    return `/requirements/${id}`;
+  if (event.target.type === "DOCUMENT") {
+    if (isRequirementDocumentTimelineEvent(event)) {
+      return `/requirements/${id}`;
+    }
+
+    return `/documents/${id}`;
   }
 
   if (event.target.type === "INTAKE_ITEM") {
@@ -45,6 +49,13 @@ export function getTimelineEventHref(
   }
 
   return null;
+}
+
+function isRequirementDocumentTimelineEvent(event: TimelineEvent): boolean {
+  return (
+    event.metadata?.["targetKind"] === "REQUIREMENT" ||
+    event.target.displayCode?.startsWith("REQ-") === true
+  );
 }
 
 export function getTimelineWorkItemType(

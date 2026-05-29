@@ -351,7 +351,7 @@ export type VersionWhereInput = {
   organization?: Prisma.XOR<Prisma.OrganizationScalarRelationFilter, Prisma.OrganizationWhereInput>
   space?: Prisma.XOR<Prisma.SpaceScalarRelationFilter, Prisma.SpaceWhereInput>
   owner?: Prisma.XOR<Prisma.UserNullableScalarRelationFilter, Prisma.UserWhereInput> | null
-  requirements?: Prisma.RequirementListRelationFilter
+  documents?: Prisma.DocumentListRelationFilter
   intakeItems?: Prisma.IntakeItemListRelationFilter
   workItems?: Prisma.WorkItemListRelationFilter
 }
@@ -380,7 +380,7 @@ export type VersionOrderByWithRelationInput = {
   organization?: Prisma.OrganizationOrderByWithRelationInput
   space?: Prisma.SpaceOrderByWithRelationInput
   owner?: Prisma.UserOrderByWithRelationInput
-  requirements?: Prisma.RequirementOrderByRelationAggregateInput
+  documents?: Prisma.DocumentOrderByRelationAggregateInput
   intakeItems?: Prisma.IntakeItemOrderByRelationAggregateInput
   workItems?: Prisma.WorkItemOrderByRelationAggregateInput
 }
@@ -412,7 +412,7 @@ export type VersionWhereUniqueInput = Prisma.AtLeast<{
   organization?: Prisma.XOR<Prisma.OrganizationScalarRelationFilter, Prisma.OrganizationWhereInput>
   space?: Prisma.XOR<Prisma.SpaceScalarRelationFilter, Prisma.SpaceWhereInput>
   owner?: Prisma.XOR<Prisma.UserNullableScalarRelationFilter, Prisma.UserWhereInput> | null
-  requirements?: Prisma.RequirementListRelationFilter
+  documents?: Prisma.DocumentListRelationFilter
   intakeItems?: Prisma.IntakeItemListRelationFilter
   workItems?: Prisma.WorkItemListRelationFilter
 }, "id">
@@ -492,7 +492,7 @@ export type VersionCreateInput = {
   organization: Prisma.OrganizationCreateNestedOneWithoutVersionsInput
   space: Prisma.SpaceCreateNestedOneWithoutVersionsInput
   owner?: Prisma.UserCreateNestedOneWithoutOwnedVersionsInput
-  requirements?: Prisma.RequirementCreateNestedManyWithoutVersionInput
+  documents?: Prisma.DocumentCreateNestedManyWithoutVersionInput
   intakeItems?: Prisma.IntakeItemCreateNestedManyWithoutVersionInput
   workItems?: Prisma.WorkItemCreateNestedManyWithoutVersionInput
 }
@@ -518,7 +518,7 @@ export type VersionUncheckedCreateInput = {
   createdById?: string | null
   updatedById?: string | null
   deletedAt?: Date | string | null
-  requirements?: Prisma.RequirementUncheckedCreateNestedManyWithoutVersionInput
+  documents?: Prisma.DocumentUncheckedCreateNestedManyWithoutVersionInput
   intakeItems?: Prisma.IntakeItemUncheckedCreateNestedManyWithoutVersionInput
   workItems?: Prisma.WorkItemUncheckedCreateNestedManyWithoutVersionInput
 }
@@ -544,7 +544,7 @@ export type VersionUpdateInput = {
   organization?: Prisma.OrganizationUpdateOneRequiredWithoutVersionsNestedInput
   space?: Prisma.SpaceUpdateOneRequiredWithoutVersionsNestedInput
   owner?: Prisma.UserUpdateOneWithoutOwnedVersionsNestedInput
-  requirements?: Prisma.RequirementUpdateManyWithoutVersionNestedInput
+  documents?: Prisma.DocumentUpdateManyWithoutVersionNestedInput
   intakeItems?: Prisma.IntakeItemUpdateManyWithoutVersionNestedInput
   workItems?: Prisma.WorkItemUpdateManyWithoutVersionNestedInput
 }
@@ -570,7 +570,7 @@ export type VersionUncheckedUpdateInput = {
   createdById?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   updatedById?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   deletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
-  requirements?: Prisma.RequirementUncheckedUpdateManyWithoutVersionNestedInput
+  documents?: Prisma.DocumentUncheckedUpdateManyWithoutVersionNestedInput
   intakeItems?: Prisma.IntakeItemUncheckedUpdateManyWithoutVersionNestedInput
   workItems?: Prisma.WorkItemUncheckedUpdateManyWithoutVersionNestedInput
 }
@@ -869,22 +869,6 @@ export type EnumVersionStatusFieldUpdateOperationsInput = {
   set?: $Enums.VersionStatus
 }
 
-export type VersionCreateNestedOneWithoutRequirementsInput = {
-  create?: Prisma.XOR<Prisma.VersionCreateWithoutRequirementsInput, Prisma.VersionUncheckedCreateWithoutRequirementsInput>
-  connectOrCreate?: Prisma.VersionCreateOrConnectWithoutRequirementsInput
-  connect?: Prisma.VersionWhereUniqueInput
-}
-
-export type VersionUpdateOneWithoutRequirementsNestedInput = {
-  create?: Prisma.XOR<Prisma.VersionCreateWithoutRequirementsInput, Prisma.VersionUncheckedCreateWithoutRequirementsInput>
-  connectOrCreate?: Prisma.VersionCreateOrConnectWithoutRequirementsInput
-  upsert?: Prisma.VersionUpsertWithoutRequirementsInput
-  disconnect?: Prisma.VersionWhereInput | boolean
-  delete?: Prisma.VersionWhereInput | boolean
-  connect?: Prisma.VersionWhereUniqueInput
-  update?: Prisma.XOR<Prisma.XOR<Prisma.VersionUpdateToOneWithWhereWithoutRequirementsInput, Prisma.VersionUpdateWithoutRequirementsInput>, Prisma.VersionUncheckedUpdateWithoutRequirementsInput>
-}
-
 export type VersionCreateNestedOneWithoutIntakeItemsInput = {
   create?: Prisma.XOR<Prisma.VersionCreateWithoutIntakeItemsInput, Prisma.VersionUncheckedCreateWithoutIntakeItemsInput>
   connectOrCreate?: Prisma.VersionCreateOrConnectWithoutIntakeItemsInput
@@ -917,6 +901,22 @@ export type VersionUpdateOneWithoutWorkItemsNestedInput = {
   update?: Prisma.XOR<Prisma.XOR<Prisma.VersionUpdateToOneWithWhereWithoutWorkItemsInput, Prisma.VersionUpdateWithoutWorkItemsInput>, Prisma.VersionUncheckedUpdateWithoutWorkItemsInput>
 }
 
+export type VersionCreateNestedOneWithoutDocumentsInput = {
+  create?: Prisma.XOR<Prisma.VersionCreateWithoutDocumentsInput, Prisma.VersionUncheckedCreateWithoutDocumentsInput>
+  connectOrCreate?: Prisma.VersionCreateOrConnectWithoutDocumentsInput
+  connect?: Prisma.VersionWhereUniqueInput
+}
+
+export type VersionUpdateOneWithoutDocumentsNestedInput = {
+  create?: Prisma.XOR<Prisma.VersionCreateWithoutDocumentsInput, Prisma.VersionUncheckedCreateWithoutDocumentsInput>
+  connectOrCreate?: Prisma.VersionCreateOrConnectWithoutDocumentsInput
+  upsert?: Prisma.VersionUpsertWithoutDocumentsInput
+  disconnect?: Prisma.VersionWhereInput | boolean
+  delete?: Prisma.VersionWhereInput | boolean
+  connect?: Prisma.VersionWhereUniqueInput
+  update?: Prisma.XOR<Prisma.XOR<Prisma.VersionUpdateToOneWithWhereWithoutDocumentsInput, Prisma.VersionUpdateWithoutDocumentsInput>, Prisma.VersionUncheckedUpdateWithoutDocumentsInput>
+}
+
 export type VersionCreateWithoutOwnerInput = {
   id: string
   name: string
@@ -937,7 +937,7 @@ export type VersionCreateWithoutOwnerInput = {
   deletedAt?: Date | string | null
   organization: Prisma.OrganizationCreateNestedOneWithoutVersionsInput
   space: Prisma.SpaceCreateNestedOneWithoutVersionsInput
-  requirements?: Prisma.RequirementCreateNestedManyWithoutVersionInput
+  documents?: Prisma.DocumentCreateNestedManyWithoutVersionInput
   intakeItems?: Prisma.IntakeItemCreateNestedManyWithoutVersionInput
   workItems?: Prisma.WorkItemCreateNestedManyWithoutVersionInput
 }
@@ -962,7 +962,7 @@ export type VersionUncheckedCreateWithoutOwnerInput = {
   createdById?: string | null
   updatedById?: string | null
   deletedAt?: Date | string | null
-  requirements?: Prisma.RequirementUncheckedCreateNestedManyWithoutVersionInput
+  documents?: Prisma.DocumentUncheckedCreateNestedManyWithoutVersionInput
   intakeItems?: Prisma.IntakeItemUncheckedCreateNestedManyWithoutVersionInput
   workItems?: Prisma.WorkItemUncheckedCreateNestedManyWithoutVersionInput
 }
@@ -1039,7 +1039,7 @@ export type VersionCreateWithoutOrganizationInput = {
   deletedAt?: Date | string | null
   space: Prisma.SpaceCreateNestedOneWithoutVersionsInput
   owner?: Prisma.UserCreateNestedOneWithoutOwnedVersionsInput
-  requirements?: Prisma.RequirementCreateNestedManyWithoutVersionInput
+  documents?: Prisma.DocumentCreateNestedManyWithoutVersionInput
   intakeItems?: Prisma.IntakeItemCreateNestedManyWithoutVersionInput
   workItems?: Prisma.WorkItemCreateNestedManyWithoutVersionInput
 }
@@ -1064,7 +1064,7 @@ export type VersionUncheckedCreateWithoutOrganizationInput = {
   createdById?: string | null
   updatedById?: string | null
   deletedAt?: Date | string | null
-  requirements?: Prisma.RequirementUncheckedCreateNestedManyWithoutVersionInput
+  documents?: Prisma.DocumentUncheckedCreateNestedManyWithoutVersionInput
   intakeItems?: Prisma.IntakeItemUncheckedCreateNestedManyWithoutVersionInput
   workItems?: Prisma.WorkItemUncheckedCreateNestedManyWithoutVersionInput
 }
@@ -1115,7 +1115,7 @@ export type VersionCreateWithoutSpaceInput = {
   deletedAt?: Date | string | null
   organization: Prisma.OrganizationCreateNestedOneWithoutVersionsInput
   owner?: Prisma.UserCreateNestedOneWithoutOwnedVersionsInput
-  requirements?: Prisma.RequirementCreateNestedManyWithoutVersionInput
+  documents?: Prisma.DocumentCreateNestedManyWithoutVersionInput
   intakeItems?: Prisma.IntakeItemCreateNestedManyWithoutVersionInput
   workItems?: Prisma.WorkItemCreateNestedManyWithoutVersionInput
 }
@@ -1140,7 +1140,7 @@ export type VersionUncheckedCreateWithoutSpaceInput = {
   createdById?: string | null
   updatedById?: string | null
   deletedAt?: Date | string | null
-  requirements?: Prisma.RequirementUncheckedCreateNestedManyWithoutVersionInput
+  documents?: Prisma.DocumentUncheckedCreateNestedManyWithoutVersionInput
   intakeItems?: Prisma.IntakeItemUncheckedCreateNestedManyWithoutVersionInput
   workItems?: Prisma.WorkItemUncheckedCreateNestedManyWithoutVersionInput
 }
@@ -1171,122 +1171,6 @@ export type VersionUpdateManyWithWhereWithoutSpaceInput = {
   data: Prisma.XOR<Prisma.VersionUpdateManyMutationInput, Prisma.VersionUncheckedUpdateManyWithoutSpaceInput>
 }
 
-export type VersionCreateWithoutRequirementsInput = {
-  id: string
-  name: string
-  target?: string | null
-  description?: string | null
-  status?: $Enums.VersionStatus
-  startDate?: Date | string | null
-  targetDate?: Date | string | null
-  releaseDate?: Date | string | null
-  requirementCount?: number
-  taskCount?: number
-  bugCount?: number
-  blockedCount?: number
-  createdAt?: Date | string
-  updatedAt?: Date | string
-  createdById?: string | null
-  updatedById?: string | null
-  deletedAt?: Date | string | null
-  organization: Prisma.OrganizationCreateNestedOneWithoutVersionsInput
-  space: Prisma.SpaceCreateNestedOneWithoutVersionsInput
-  owner?: Prisma.UserCreateNestedOneWithoutOwnedVersionsInput
-  intakeItems?: Prisma.IntakeItemCreateNestedManyWithoutVersionInput
-  workItems?: Prisma.WorkItemCreateNestedManyWithoutVersionInput
-}
-
-export type VersionUncheckedCreateWithoutRequirementsInput = {
-  id: string
-  organizationId: string
-  spaceId: string
-  name: string
-  target?: string | null
-  description?: string | null
-  ownerId?: string | null
-  status?: $Enums.VersionStatus
-  startDate?: Date | string | null
-  targetDate?: Date | string | null
-  releaseDate?: Date | string | null
-  requirementCount?: number
-  taskCount?: number
-  bugCount?: number
-  blockedCount?: number
-  createdAt?: Date | string
-  updatedAt?: Date | string
-  createdById?: string | null
-  updatedById?: string | null
-  deletedAt?: Date | string | null
-  intakeItems?: Prisma.IntakeItemUncheckedCreateNestedManyWithoutVersionInput
-  workItems?: Prisma.WorkItemUncheckedCreateNestedManyWithoutVersionInput
-}
-
-export type VersionCreateOrConnectWithoutRequirementsInput = {
-  where: Prisma.VersionWhereUniqueInput
-  create: Prisma.XOR<Prisma.VersionCreateWithoutRequirementsInput, Prisma.VersionUncheckedCreateWithoutRequirementsInput>
-}
-
-export type VersionUpsertWithoutRequirementsInput = {
-  update: Prisma.XOR<Prisma.VersionUpdateWithoutRequirementsInput, Prisma.VersionUncheckedUpdateWithoutRequirementsInput>
-  create: Prisma.XOR<Prisma.VersionCreateWithoutRequirementsInput, Prisma.VersionUncheckedCreateWithoutRequirementsInput>
-  where?: Prisma.VersionWhereInput
-}
-
-export type VersionUpdateToOneWithWhereWithoutRequirementsInput = {
-  where?: Prisma.VersionWhereInput
-  data: Prisma.XOR<Prisma.VersionUpdateWithoutRequirementsInput, Prisma.VersionUncheckedUpdateWithoutRequirementsInput>
-}
-
-export type VersionUpdateWithoutRequirementsInput = {
-  id?: Prisma.StringFieldUpdateOperationsInput | string
-  name?: Prisma.StringFieldUpdateOperationsInput | string
-  target?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  status?: Prisma.EnumVersionStatusFieldUpdateOperationsInput | $Enums.VersionStatus
-  startDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
-  targetDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
-  releaseDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
-  requirementCount?: Prisma.IntFieldUpdateOperationsInput | number
-  taskCount?: Prisma.IntFieldUpdateOperationsInput | number
-  bugCount?: Prisma.IntFieldUpdateOperationsInput | number
-  blockedCount?: Prisma.IntFieldUpdateOperationsInput | number
-  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
-  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
-  createdById?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  updatedById?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  deletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
-  organization?: Prisma.OrganizationUpdateOneRequiredWithoutVersionsNestedInput
-  space?: Prisma.SpaceUpdateOneRequiredWithoutVersionsNestedInput
-  owner?: Prisma.UserUpdateOneWithoutOwnedVersionsNestedInput
-  intakeItems?: Prisma.IntakeItemUpdateManyWithoutVersionNestedInput
-  workItems?: Prisma.WorkItemUpdateManyWithoutVersionNestedInput
-}
-
-export type VersionUncheckedUpdateWithoutRequirementsInput = {
-  id?: Prisma.StringFieldUpdateOperationsInput | string
-  organizationId?: Prisma.StringFieldUpdateOperationsInput | string
-  spaceId?: Prisma.StringFieldUpdateOperationsInput | string
-  name?: Prisma.StringFieldUpdateOperationsInput | string
-  target?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  ownerId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  status?: Prisma.EnumVersionStatusFieldUpdateOperationsInput | $Enums.VersionStatus
-  startDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
-  targetDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
-  releaseDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
-  requirementCount?: Prisma.IntFieldUpdateOperationsInput | number
-  taskCount?: Prisma.IntFieldUpdateOperationsInput | number
-  bugCount?: Prisma.IntFieldUpdateOperationsInput | number
-  blockedCount?: Prisma.IntFieldUpdateOperationsInput | number
-  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
-  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
-  createdById?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  updatedById?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  deletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
-  intakeItems?: Prisma.IntakeItemUncheckedUpdateManyWithoutVersionNestedInput
-  workItems?: Prisma.WorkItemUncheckedUpdateManyWithoutVersionNestedInput
-}
-
 export type VersionCreateWithoutIntakeItemsInput = {
   id: string
   name: string
@@ -1308,7 +1192,7 @@ export type VersionCreateWithoutIntakeItemsInput = {
   organization: Prisma.OrganizationCreateNestedOneWithoutVersionsInput
   space: Prisma.SpaceCreateNestedOneWithoutVersionsInput
   owner?: Prisma.UserCreateNestedOneWithoutOwnedVersionsInput
-  requirements?: Prisma.RequirementCreateNestedManyWithoutVersionInput
+  documents?: Prisma.DocumentCreateNestedManyWithoutVersionInput
   workItems?: Prisma.WorkItemCreateNestedManyWithoutVersionInput
 }
 
@@ -1333,7 +1217,7 @@ export type VersionUncheckedCreateWithoutIntakeItemsInput = {
   createdById?: string | null
   updatedById?: string | null
   deletedAt?: Date | string | null
-  requirements?: Prisma.RequirementUncheckedCreateNestedManyWithoutVersionInput
+  documents?: Prisma.DocumentUncheckedCreateNestedManyWithoutVersionInput
   workItems?: Prisma.WorkItemUncheckedCreateNestedManyWithoutVersionInput
 }
 
@@ -1374,7 +1258,7 @@ export type VersionUpdateWithoutIntakeItemsInput = {
   organization?: Prisma.OrganizationUpdateOneRequiredWithoutVersionsNestedInput
   space?: Prisma.SpaceUpdateOneRequiredWithoutVersionsNestedInput
   owner?: Prisma.UserUpdateOneWithoutOwnedVersionsNestedInput
-  requirements?: Prisma.RequirementUpdateManyWithoutVersionNestedInput
+  documents?: Prisma.DocumentUpdateManyWithoutVersionNestedInput
   workItems?: Prisma.WorkItemUpdateManyWithoutVersionNestedInput
 }
 
@@ -1399,7 +1283,7 @@ export type VersionUncheckedUpdateWithoutIntakeItemsInput = {
   createdById?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   updatedById?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   deletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
-  requirements?: Prisma.RequirementUncheckedUpdateManyWithoutVersionNestedInput
+  documents?: Prisma.DocumentUncheckedUpdateManyWithoutVersionNestedInput
   workItems?: Prisma.WorkItemUncheckedUpdateManyWithoutVersionNestedInput
 }
 
@@ -1424,7 +1308,7 @@ export type VersionCreateWithoutWorkItemsInput = {
   organization: Prisma.OrganizationCreateNestedOneWithoutVersionsInput
   space: Prisma.SpaceCreateNestedOneWithoutVersionsInput
   owner?: Prisma.UserCreateNestedOneWithoutOwnedVersionsInput
-  requirements?: Prisma.RequirementCreateNestedManyWithoutVersionInput
+  documents?: Prisma.DocumentCreateNestedManyWithoutVersionInput
   intakeItems?: Prisma.IntakeItemCreateNestedManyWithoutVersionInput
 }
 
@@ -1449,7 +1333,7 @@ export type VersionUncheckedCreateWithoutWorkItemsInput = {
   createdById?: string | null
   updatedById?: string | null
   deletedAt?: Date | string | null
-  requirements?: Prisma.RequirementUncheckedCreateNestedManyWithoutVersionInput
+  documents?: Prisma.DocumentUncheckedCreateNestedManyWithoutVersionInput
   intakeItems?: Prisma.IntakeItemUncheckedCreateNestedManyWithoutVersionInput
 }
 
@@ -1490,7 +1374,7 @@ export type VersionUpdateWithoutWorkItemsInput = {
   organization?: Prisma.OrganizationUpdateOneRequiredWithoutVersionsNestedInput
   space?: Prisma.SpaceUpdateOneRequiredWithoutVersionsNestedInput
   owner?: Prisma.UserUpdateOneWithoutOwnedVersionsNestedInput
-  requirements?: Prisma.RequirementUpdateManyWithoutVersionNestedInput
+  documents?: Prisma.DocumentUpdateManyWithoutVersionNestedInput
   intakeItems?: Prisma.IntakeItemUpdateManyWithoutVersionNestedInput
 }
 
@@ -1515,8 +1399,124 @@ export type VersionUncheckedUpdateWithoutWorkItemsInput = {
   createdById?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   updatedById?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   deletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
-  requirements?: Prisma.RequirementUncheckedUpdateManyWithoutVersionNestedInput
+  documents?: Prisma.DocumentUncheckedUpdateManyWithoutVersionNestedInput
   intakeItems?: Prisma.IntakeItemUncheckedUpdateManyWithoutVersionNestedInput
+}
+
+export type VersionCreateWithoutDocumentsInput = {
+  id: string
+  name: string
+  target?: string | null
+  description?: string | null
+  status?: $Enums.VersionStatus
+  startDate?: Date | string | null
+  targetDate?: Date | string | null
+  releaseDate?: Date | string | null
+  requirementCount?: number
+  taskCount?: number
+  bugCount?: number
+  blockedCount?: number
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  createdById?: string | null
+  updatedById?: string | null
+  deletedAt?: Date | string | null
+  organization: Prisma.OrganizationCreateNestedOneWithoutVersionsInput
+  space: Prisma.SpaceCreateNestedOneWithoutVersionsInput
+  owner?: Prisma.UserCreateNestedOneWithoutOwnedVersionsInput
+  intakeItems?: Prisma.IntakeItemCreateNestedManyWithoutVersionInput
+  workItems?: Prisma.WorkItemCreateNestedManyWithoutVersionInput
+}
+
+export type VersionUncheckedCreateWithoutDocumentsInput = {
+  id: string
+  organizationId: string
+  spaceId: string
+  name: string
+  target?: string | null
+  description?: string | null
+  ownerId?: string | null
+  status?: $Enums.VersionStatus
+  startDate?: Date | string | null
+  targetDate?: Date | string | null
+  releaseDate?: Date | string | null
+  requirementCount?: number
+  taskCount?: number
+  bugCount?: number
+  blockedCount?: number
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  createdById?: string | null
+  updatedById?: string | null
+  deletedAt?: Date | string | null
+  intakeItems?: Prisma.IntakeItemUncheckedCreateNestedManyWithoutVersionInput
+  workItems?: Prisma.WorkItemUncheckedCreateNestedManyWithoutVersionInput
+}
+
+export type VersionCreateOrConnectWithoutDocumentsInput = {
+  where: Prisma.VersionWhereUniqueInput
+  create: Prisma.XOR<Prisma.VersionCreateWithoutDocumentsInput, Prisma.VersionUncheckedCreateWithoutDocumentsInput>
+}
+
+export type VersionUpsertWithoutDocumentsInput = {
+  update: Prisma.XOR<Prisma.VersionUpdateWithoutDocumentsInput, Prisma.VersionUncheckedUpdateWithoutDocumentsInput>
+  create: Prisma.XOR<Prisma.VersionCreateWithoutDocumentsInput, Prisma.VersionUncheckedCreateWithoutDocumentsInput>
+  where?: Prisma.VersionWhereInput
+}
+
+export type VersionUpdateToOneWithWhereWithoutDocumentsInput = {
+  where?: Prisma.VersionWhereInput
+  data: Prisma.XOR<Prisma.VersionUpdateWithoutDocumentsInput, Prisma.VersionUncheckedUpdateWithoutDocumentsInput>
+}
+
+export type VersionUpdateWithoutDocumentsInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  name?: Prisma.StringFieldUpdateOperationsInput | string
+  target?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  status?: Prisma.EnumVersionStatusFieldUpdateOperationsInput | $Enums.VersionStatus
+  startDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  targetDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  releaseDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  requirementCount?: Prisma.IntFieldUpdateOperationsInput | number
+  taskCount?: Prisma.IntFieldUpdateOperationsInput | number
+  bugCount?: Prisma.IntFieldUpdateOperationsInput | number
+  blockedCount?: Prisma.IntFieldUpdateOperationsInput | number
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  createdById?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  updatedById?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  deletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  organization?: Prisma.OrganizationUpdateOneRequiredWithoutVersionsNestedInput
+  space?: Prisma.SpaceUpdateOneRequiredWithoutVersionsNestedInput
+  owner?: Prisma.UserUpdateOneWithoutOwnedVersionsNestedInput
+  intakeItems?: Prisma.IntakeItemUpdateManyWithoutVersionNestedInput
+  workItems?: Prisma.WorkItemUpdateManyWithoutVersionNestedInput
+}
+
+export type VersionUncheckedUpdateWithoutDocumentsInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  organizationId?: Prisma.StringFieldUpdateOperationsInput | string
+  spaceId?: Prisma.StringFieldUpdateOperationsInput | string
+  name?: Prisma.StringFieldUpdateOperationsInput | string
+  target?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  ownerId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  status?: Prisma.EnumVersionStatusFieldUpdateOperationsInput | $Enums.VersionStatus
+  startDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  targetDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  releaseDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  requirementCount?: Prisma.IntFieldUpdateOperationsInput | number
+  taskCount?: Prisma.IntFieldUpdateOperationsInput | number
+  bugCount?: Prisma.IntFieldUpdateOperationsInput | number
+  blockedCount?: Prisma.IntFieldUpdateOperationsInput | number
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  createdById?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  updatedById?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  deletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  intakeItems?: Prisma.IntakeItemUncheckedUpdateManyWithoutVersionNestedInput
+  workItems?: Prisma.WorkItemUncheckedUpdateManyWithoutVersionNestedInput
 }
 
 export type VersionCreateManyOwnerInput = {
@@ -1561,7 +1561,7 @@ export type VersionUpdateWithoutOwnerInput = {
   deletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   organization?: Prisma.OrganizationUpdateOneRequiredWithoutVersionsNestedInput
   space?: Prisma.SpaceUpdateOneRequiredWithoutVersionsNestedInput
-  requirements?: Prisma.RequirementUpdateManyWithoutVersionNestedInput
+  documents?: Prisma.DocumentUpdateManyWithoutVersionNestedInput
   intakeItems?: Prisma.IntakeItemUpdateManyWithoutVersionNestedInput
   workItems?: Prisma.WorkItemUpdateManyWithoutVersionNestedInput
 }
@@ -1586,7 +1586,7 @@ export type VersionUncheckedUpdateWithoutOwnerInput = {
   createdById?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   updatedById?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   deletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
-  requirements?: Prisma.RequirementUncheckedUpdateManyWithoutVersionNestedInput
+  documents?: Prisma.DocumentUncheckedUpdateManyWithoutVersionNestedInput
   intakeItems?: Prisma.IntakeItemUncheckedUpdateManyWithoutVersionNestedInput
   workItems?: Prisma.WorkItemUncheckedUpdateManyWithoutVersionNestedInput
 }
@@ -1655,7 +1655,7 @@ export type VersionUpdateWithoutOrganizationInput = {
   deletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   space?: Prisma.SpaceUpdateOneRequiredWithoutVersionsNestedInput
   owner?: Prisma.UserUpdateOneWithoutOwnedVersionsNestedInput
-  requirements?: Prisma.RequirementUpdateManyWithoutVersionNestedInput
+  documents?: Prisma.DocumentUpdateManyWithoutVersionNestedInput
   intakeItems?: Prisma.IntakeItemUpdateManyWithoutVersionNestedInput
   workItems?: Prisma.WorkItemUpdateManyWithoutVersionNestedInput
 }
@@ -1680,7 +1680,7 @@ export type VersionUncheckedUpdateWithoutOrganizationInput = {
   createdById?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   updatedById?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   deletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
-  requirements?: Prisma.RequirementUncheckedUpdateManyWithoutVersionNestedInput
+  documents?: Prisma.DocumentUncheckedUpdateManyWithoutVersionNestedInput
   intakeItems?: Prisma.IntakeItemUncheckedUpdateManyWithoutVersionNestedInput
   workItems?: Prisma.WorkItemUncheckedUpdateManyWithoutVersionNestedInput
 }
@@ -1749,7 +1749,7 @@ export type VersionUpdateWithoutSpaceInput = {
   deletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   organization?: Prisma.OrganizationUpdateOneRequiredWithoutVersionsNestedInput
   owner?: Prisma.UserUpdateOneWithoutOwnedVersionsNestedInput
-  requirements?: Prisma.RequirementUpdateManyWithoutVersionNestedInput
+  documents?: Prisma.DocumentUpdateManyWithoutVersionNestedInput
   intakeItems?: Prisma.IntakeItemUpdateManyWithoutVersionNestedInput
   workItems?: Prisma.WorkItemUpdateManyWithoutVersionNestedInput
 }
@@ -1774,7 +1774,7 @@ export type VersionUncheckedUpdateWithoutSpaceInput = {
   createdById?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   updatedById?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   deletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
-  requirements?: Prisma.RequirementUncheckedUpdateManyWithoutVersionNestedInput
+  documents?: Prisma.DocumentUncheckedUpdateManyWithoutVersionNestedInput
   intakeItems?: Prisma.IntakeItemUncheckedUpdateManyWithoutVersionNestedInput
   workItems?: Prisma.WorkItemUncheckedUpdateManyWithoutVersionNestedInput
 }
@@ -1807,13 +1807,13 @@ export type VersionUncheckedUpdateManyWithoutSpaceInput = {
  */
 
 export type VersionCountOutputType = {
-  requirements: number
+  documents: number
   intakeItems: number
   workItems: number
 }
 
 export type VersionCountOutputTypeSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
-  requirements?: boolean | VersionCountOutputTypeCountRequirementsArgs
+  documents?: boolean | VersionCountOutputTypeCountDocumentsArgs
   intakeItems?: boolean | VersionCountOutputTypeCountIntakeItemsArgs
   workItems?: boolean | VersionCountOutputTypeCountWorkItemsArgs
 }
@@ -1831,8 +1831,8 @@ export type VersionCountOutputTypeDefaultArgs<ExtArgs extends runtime.Types.Exte
 /**
  * VersionCountOutputType without action
  */
-export type VersionCountOutputTypeCountRequirementsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
-  where?: Prisma.RequirementWhereInput
+export type VersionCountOutputTypeCountDocumentsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  where?: Prisma.DocumentWhereInput
 }
 
 /**
@@ -1874,7 +1874,7 @@ export type VersionSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs 
   organization?: boolean | Prisma.OrganizationDefaultArgs<ExtArgs>
   space?: boolean | Prisma.SpaceDefaultArgs<ExtArgs>
   owner?: boolean | Prisma.Version$ownerArgs<ExtArgs>
-  requirements?: boolean | Prisma.Version$requirementsArgs<ExtArgs>
+  documents?: boolean | Prisma.Version$documentsArgs<ExtArgs>
   intakeItems?: boolean | Prisma.Version$intakeItemsArgs<ExtArgs>
   workItems?: boolean | Prisma.Version$workItemsArgs<ExtArgs>
   _count?: boolean | Prisma.VersionCountOutputTypeDefaultArgs<ExtArgs>
@@ -1960,7 +1960,7 @@ export type VersionInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs
   organization?: boolean | Prisma.OrganizationDefaultArgs<ExtArgs>
   space?: boolean | Prisma.SpaceDefaultArgs<ExtArgs>
   owner?: boolean | Prisma.Version$ownerArgs<ExtArgs>
-  requirements?: boolean | Prisma.Version$requirementsArgs<ExtArgs>
+  documents?: boolean | Prisma.Version$documentsArgs<ExtArgs>
   intakeItems?: boolean | Prisma.Version$intakeItemsArgs<ExtArgs>
   workItems?: boolean | Prisma.Version$workItemsArgs<ExtArgs>
   _count?: boolean | Prisma.VersionCountOutputTypeDefaultArgs<ExtArgs>
@@ -1982,7 +1982,7 @@ export type $VersionPayload<ExtArgs extends runtime.Types.Extensions.InternalArg
     organization: Prisma.$OrganizationPayload<ExtArgs>
     space: Prisma.$SpacePayload<ExtArgs>
     owner: Prisma.$UserPayload<ExtArgs> | null
-    requirements: Prisma.$RequirementPayload<ExtArgs>[]
+    documents: Prisma.$DocumentPayload<ExtArgs>[]
     intakeItems: Prisma.$IntakeItemPayload<ExtArgs>[]
     workItems: Prisma.$WorkItemPayload<ExtArgs>[]
   }
@@ -2404,7 +2404,7 @@ export interface Prisma__VersionClient<T, Null = never, ExtArgs extends runtime.
   organization<T extends Prisma.OrganizationDefaultArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.OrganizationDefaultArgs<ExtArgs>>): Prisma.Prisma__OrganizationClient<runtime.Types.Result.GetResult<Prisma.$OrganizationPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | Null, Null, ExtArgs, GlobalOmitOptions>
   space<T extends Prisma.SpaceDefaultArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.SpaceDefaultArgs<ExtArgs>>): Prisma.Prisma__SpaceClient<runtime.Types.Result.GetResult<Prisma.$SpacePayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | Null, Null, ExtArgs, GlobalOmitOptions>
   owner<T extends Prisma.Version$ownerArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Version$ownerArgs<ExtArgs>>): Prisma.Prisma__UserClient<runtime.Types.Result.GetResult<Prisma.$UserPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
-  requirements<T extends Prisma.Version$requirementsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Version$requirementsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$RequirementPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
+  documents<T extends Prisma.Version$documentsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Version$documentsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$DocumentPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   intakeItems<T extends Prisma.Version$intakeItemsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Version$intakeItemsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$IntakeItemPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   workItems<T extends Prisma.Version$workItemsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Version$workItemsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$WorkItemPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   /**
@@ -2876,27 +2876,27 @@ export type Version$ownerArgs<ExtArgs extends runtime.Types.Extensions.InternalA
 }
 
 /**
- * Version.requirements
+ * Version.documents
  */
-export type Version$requirementsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+export type Version$documentsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   /**
-   * Select specific fields to fetch from the Requirement
+   * Select specific fields to fetch from the Document
    */
-  select?: Prisma.RequirementSelect<ExtArgs> | null
+  select?: Prisma.DocumentSelect<ExtArgs> | null
   /**
-   * Omit specific fields from the Requirement
+   * Omit specific fields from the Document
    */
-  omit?: Prisma.RequirementOmit<ExtArgs> | null
+  omit?: Prisma.DocumentOmit<ExtArgs> | null
   /**
    * Choose, which related nodes to fetch as well
    */
-  include?: Prisma.RequirementInclude<ExtArgs> | null
-  where?: Prisma.RequirementWhereInput
-  orderBy?: Prisma.RequirementOrderByWithRelationInput | Prisma.RequirementOrderByWithRelationInput[]
-  cursor?: Prisma.RequirementWhereUniqueInput
+  include?: Prisma.DocumentInclude<ExtArgs> | null
+  where?: Prisma.DocumentWhereInput
+  orderBy?: Prisma.DocumentOrderByWithRelationInput | Prisma.DocumentOrderByWithRelationInput[]
+  cursor?: Prisma.DocumentWhereUniqueInput
   take?: number
   skip?: number
-  distinct?: Prisma.RequirementScalarFieldEnum | Prisma.RequirementScalarFieldEnum[]
+  distinct?: Prisma.DocumentScalarFieldEnum | Prisma.DocumentScalarFieldEnum[]
 }
 
 /**

@@ -45,6 +45,7 @@ import {
   canCreateTaskDeliveryObject,
   canManageDeliveryObject,
 } from "./delivery-object-permissions";
+import { isReferenceableRequirementDocument } from "../requirement/requirement-reference-policy";
 
 @Injectable()
 export class WorkItemService {
@@ -551,6 +552,19 @@ export class WorkItemService {
         "REQUIREMENT_NOT_FOUND",
         "Requirement not found",
         HttpStatus.NOT_FOUND,
+      );
+    }
+
+    if (
+      !isReferenceableRequirementDocument({
+        sequence: requirement.requirementSequence,
+        status: requirement.requirementStatus,
+      })
+    ) {
+      throw new ApiException(
+        "REQUIREMENT_REFERENCE_INVALID",
+        "Requirement must be active before it can be linked",
+        HttpStatus.BAD_REQUEST,
       );
     }
 

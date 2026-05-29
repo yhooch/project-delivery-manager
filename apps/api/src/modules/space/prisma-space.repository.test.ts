@@ -28,12 +28,9 @@ type RepositoryInternals = {
     accessBySpaceId: Map<string, unknown>;
     accesses: unknown[];
     participantIntakeItemIds: string[];
-    participantRequirementIds: string[];
     participantSpaceIds: string[];
     participantWorkItemIds: string[];
     readAllSpaceIds: string[];
-    requirementNonDraftReadAllSpaceIds: string[];
-    requirementReadAllSpaceIds: string[];
     intakeItemReadAllSpaceIds: string[];
     spaceIds: string[];
     testerSpaceIds: string[];
@@ -177,12 +174,9 @@ describe("PrismaSpaceRepository", () => {
       accessBySpaceId: new Map([[spaceId, access]]),
       accesses: [access],
       participantIntakeItemIds: [],
-      participantRequirementIds: [],
       participantSpaceIds: [spaceId],
       participantWorkItemIds: [visibleWorkItemId],
       readAllSpaceIds: [],
-      requirementNonDraftReadAllSpaceIds: [],
-      requirementReadAllSpaceIds: [],
       intakeItemReadAllSpaceIds: [],
       spaceIds: [spaceId],
       testerSpaceIds: [],
@@ -278,7 +272,7 @@ describe("PrismaSpaceRepository", () => {
     const requirementCount = vi.fn(async () => 0);
     const prisma = {
       client: {
-        requirement: {
+        document: {
           count: requirementCount,
         },
         version: {
@@ -302,12 +296,9 @@ describe("PrismaSpaceRepository", () => {
       accessBySpaceId: new Map([[spaceId, access]]),
       accesses: [access],
       participantIntakeItemIds: [],
-      participantRequirementIds: [],
       participantSpaceIds: [],
       participantWorkItemIds: [],
       readAllSpaceIds: [spaceId],
-      requirementNonDraftReadAllSpaceIds: [spaceId],
-      requirementReadAllSpaceIds: [spaceId],
       intakeItemReadAllSpaceIds: [spaceId],
       spaceIds: [spaceId],
       testerSpaceIds: [],
@@ -380,17 +371,8 @@ describe("PrismaSpaceRepository", () => {
     expect(requirementCount).toHaveBeenCalledWith({
       where: {
         deletedAt: null,
+        kind: "REQUIREMENT",
         organizationId,
-        OR: [
-          {
-            spaceId: {
-              in: [spaceId],
-            },
-            status: {
-              not: "DRAFT",
-            },
-          },
-        ],
         spaceId: {
           in: [spaceId],
         },
@@ -455,7 +437,6 @@ describe("PrismaSpaceRepository", () => {
     const spaceId = "01BRZ3NDEKTSV4RRFFQ69G5FS1";
     const versionId = "01BRZ3NDEKTSV4RRFFQ69G5FV1";
     const actorUserId = "01BRZ3NDEKTSV4RRFFQ69G5FU1";
-    const visibleRequirementId = "01BRZ3NDEKTSV4RRFFQ69G5FR1";
     const space: Space = {
       id: spaceId,
       code: "restricted",
@@ -469,7 +450,7 @@ describe("PrismaSpaceRepository", () => {
     const requirementCount = vi.fn(async () => 1);
     const prisma = {
       client: {
-        requirement: {
+        document: {
           count: requirementCount,
         },
         version: {
@@ -493,12 +474,9 @@ describe("PrismaSpaceRepository", () => {
       accessBySpaceId: new Map([[spaceId, access]]),
       accesses: [access],
       participantIntakeItemIds: [],
-      participantRequirementIds: [visibleRequirementId],
       participantSpaceIds: [spaceId],
       participantWorkItemIds: [],
       readAllSpaceIds: [],
-      requirementNonDraftReadAllSpaceIds: [],
-      requirementReadAllSpaceIds: [],
       intakeItemReadAllSpaceIds: [],
       spaceIds: [spaceId],
       testerSpaceIds: [],
@@ -526,14 +504,8 @@ describe("PrismaSpaceRepository", () => {
     expect(requirementCount).toHaveBeenCalledWith({
       where: {
         deletedAt: null,
+        kind: "REQUIREMENT",
         organizationId,
-        OR: [
-          {
-            id: {
-              in: [visibleRequirementId],
-            },
-          },
-        ],
         spaceId: {
           in: [spaceId],
         },
@@ -575,7 +547,7 @@ describe("PrismaSpaceRepository", () => {
     const workItemCount = vi.fn(async () => 0);
     const prisma = {
       client: {
-        requirement: {
+        document: {
           count: requirementCount,
         },
         version: {
@@ -600,12 +572,9 @@ describe("PrismaSpaceRepository", () => {
       accessBySpaceId: new Map([[spaceId, access]]),
       accesses: [access],
       participantIntakeItemIds: [],
-      participantRequirementIds: [],
       participantSpaceIds: [spaceId],
       participantWorkItemIds: [],
       readAllSpaceIds: [],
-      requirementNonDraftReadAllSpaceIds: [spaceId],
-      requirementReadAllSpaceIds: [spaceId],
       intakeItemReadAllSpaceIds: [],
       spaceIds: [spaceId],
       testerSpaceIds: [],
@@ -633,17 +602,8 @@ describe("PrismaSpaceRepository", () => {
     expect(requirementCount).toHaveBeenCalledWith({
       where: {
         deletedAt: null,
+        kind: "REQUIREMENT",
         organizationId,
-        OR: [
-          {
-            spaceId: {
-              in: [spaceId],
-            },
-            status: {
-              not: "DRAFT",
-            },
-          },
-        ],
         spaceId: {
           in: [spaceId],
         },
@@ -662,7 +622,6 @@ describe("PrismaSpaceRepository", () => {
     const spaceId = "01CRZ3NDEKTSV4RRFFQ69G5FS1";
     const versionId = "01CRZ3NDEKTSV4RRFFQ69G5FV1";
     const actorUserId = "01CRZ3NDEKTSV4RRFFQ69G5FU1";
-    const visibleRequirementId = "01CRZ3NDEKTSV4RRFFQ69G5FR1";
     const space: Space = {
       id: spaceId,
       code: "current-version",
@@ -690,7 +649,7 @@ describe("PrismaSpaceRepository", () => {
     const workItemCount = vi.fn(async () => 0);
     const prisma = {
       client: {
-        requirement: {
+        document: {
           count: requirementCount,
         },
         version: {
@@ -714,12 +673,9 @@ describe("PrismaSpaceRepository", () => {
       accessBySpaceId: new Map([[spaceId, access]]),
       accesses: [access],
       participantIntakeItemIds: [],
-      participantRequirementIds: [visibleRequirementId],
       participantSpaceIds: [spaceId],
       participantWorkItemIds: [],
       readAllSpaceIds: [],
-      requirementNonDraftReadAllSpaceIds: [],
-      requirementReadAllSpaceIds: [],
       intakeItemReadAllSpaceIds: [],
       spaceIds: [spaceId],
       testerSpaceIds: [],
@@ -751,14 +707,8 @@ describe("PrismaSpaceRepository", () => {
     expect(requirementCount).toHaveBeenNthCalledWith(2, {
       where: {
         deletedAt: null,
+        kind: "REQUIREMENT",
         organizationId,
-        OR: [
-          {
-            id: {
-              in: [visibleRequirementId],
-            },
-          },
-        ],
         spaceId: {
           in: [spaceId],
         },
@@ -767,7 +717,7 @@ describe("PrismaSpaceRepository", () => {
     });
   });
 
-  it("excludes hidden draft requirements from current version stats for read-all roles", async () => {
+  it("includes draft requirements in current version stats for space members", async () => {
     const organizationId = "01CRZ3NDEKTSV4RRFFQ69G5FO2";
     const spaceId = "01CRZ3NDEKTSV4RRFFQ69G5FS2";
     const versionId = "01CRZ3NDEKTSV4RRFFQ69G5FV2";
@@ -798,7 +748,7 @@ describe("PrismaSpaceRepository", () => {
     const requirementCount = vi.fn(async () => 2);
     const prisma = {
       client: {
-        requirement: {
+        document: {
           count: requirementCount,
         },
         version: {
@@ -822,12 +772,9 @@ describe("PrismaSpaceRepository", () => {
       accessBySpaceId: new Map([[spaceId, access]]),
       accesses: [access],
       participantIntakeItemIds: [],
-      participantRequirementIds: [],
       participantSpaceIds: [spaceId],
       participantWorkItemIds: [],
       readAllSpaceIds: [spaceId],
-      requirementNonDraftReadAllSpaceIds: [spaceId],
-      requirementReadAllSpaceIds: [spaceId],
       intakeItemReadAllSpaceIds: [spaceId],
       spaceIds: [spaceId],
       testerSpaceIds: [],
@@ -854,17 +801,8 @@ describe("PrismaSpaceRepository", () => {
     expect(requirementCount).toHaveBeenNthCalledWith(2, {
       where: {
         deletedAt: null,
+        kind: "REQUIREMENT",
         organizationId,
-        OR: [
-          {
-            spaceId: {
-              in: [spaceId],
-            },
-            status: {
-              not: "DRAFT",
-            },
-          },
-        ],
         spaceId: {
           in: [spaceId],
         },
@@ -916,12 +854,9 @@ describe("PrismaSpaceRepository", () => {
       accessBySpaceId: new Map([[spaceId, access]]),
       accesses: [access],
       participantIntakeItemIds: [],
-      participantRequirementIds: [],
       participantSpaceIds: [],
       participantWorkItemIds: [],
       readAllSpaceIds: [spaceId],
-      requirementNonDraftReadAllSpaceIds: [spaceId],
-      requirementReadAllSpaceIds: [spaceId],
       intakeItemReadAllSpaceIds: [spaceId],
       spaceIds: [spaceId],
       testerSpaceIds: [],
@@ -1077,12 +1012,9 @@ describe("PrismaSpaceRepository", () => {
         accessBySpaceId: new Map(),
         accesses: [{ spaceId, staleThresholdDays: 3 }],
         participantIntakeItemIds: [],
-        participantRequirementIds: [],
         participantSpaceIds: [],
         participantWorkItemIds: [],
         readAllSpaceIds: [spaceId],
-        requirementNonDraftReadAllSpaceIds: [],
-        requirementReadAllSpaceIds: [],
         intakeItemReadAllSpaceIds: [],
         spaceIds: [spaceId],
         testerSpaceIds: [],
@@ -1109,7 +1041,7 @@ describe("PrismaSpaceRepository", () => {
       ),
       timelineEvent(
         "01TRZ3NDEKTSV4RRFFQ69G5EV2",
-        "REQUIREMENT",
+        "DOCUMENT",
         "01TRZ3NDEKTSV4RRFFQ69G5RQ1",
       ),
       timelineEvent(
@@ -1138,10 +1070,11 @@ describe("PrismaSpaceRepository", () => {
             },
           ]),
         },
-        requirement: {
+        document: {
           findMany: vi.fn(async () => [
             {
               id: "01TRZ3NDEKTSV4RRFFQ69G5RQ1",
+              kind: "REQUIREMENT",
               sequence: 2,
               title: "Requirement A",
             },
@@ -1176,12 +1109,9 @@ describe("PrismaSpaceRepository", () => {
         accessBySpaceId: new Map(),
         accesses: [],
         participantIntakeItemIds: [],
-        participantRequirementIds: [],
         participantSpaceIds: [],
         participantWorkItemIds: [],
         readAllSpaceIds: [spaceId],
-        requirementNonDraftReadAllSpaceIds: [spaceId],
-        requirementReadAllSpaceIds: [spaceId],
         intakeItemReadAllSpaceIds: [spaceId],
         spaceIds: [spaceId],
         testerSpaceIds: [],
@@ -1208,7 +1138,7 @@ describe("PrismaSpaceRepository", () => {
                 },
                 {
                   targetId: "01TRZ3NDEKTSV4RRFFQ69G5RQ1",
-                  targetType: "REQUIREMENT",
+                  targetType: "DOCUMENT",
                 },
                 {
                   targetId: "01TRZ3NDEKTSV4RRFFQ69G5IN1",
@@ -1225,7 +1155,7 @@ describe("PrismaSpaceRepository", () => {
             in: [spaceId],
           },
           targetType: {
-            in: ["WORK_ITEM", "REQUIREMENT", "INTAKE_ITEM", "VERSION"],
+            in: ["WORK_ITEM", "DOCUMENT", "INTAKE_ITEM", "VERSION"],
           },
         }),
       }),
@@ -1243,7 +1173,7 @@ describe("PrismaSpaceRepository", () => {
         sequence: 2,
         displayCode: "REQ-2",
         title: "Requirement A",
-        type: "REQUIREMENT",
+        type: "DOCUMENT",
       },
       {
         id: "01TRZ3NDEKTSV4RRFFQ69G5IN1",
@@ -1256,7 +1186,7 @@ describe("PrismaSpaceRepository", () => {
     ]);
   });
 
-  it("does not use work-item read-all access to expose draft requirement activity", async () => {
+  it("uses space membership to expose requirement document activity", async () => {
     const organizationId = "01TRZ3NDEKTSV4RRFFQ69G5ORG";
     const spaceId = "01TRZ3NDEKTSV4RRFFQ69G5SPC";
     const requirementFindMany = vi.fn(async () => [
@@ -1271,7 +1201,7 @@ describe("PrismaSpaceRepository", () => {
         intakeItem: {
           findMany: vi.fn(async () => []),
         },
-        requirement: {
+        document: {
           findMany: requirementFindMany,
         },
         timelineEvent: {
@@ -1294,12 +1224,9 @@ describe("PrismaSpaceRepository", () => {
         accessBySpaceId: new Map(),
         accesses: [],
         participantIntakeItemIds: [],
-        participantRequirementIds: [],
         participantSpaceIds: [],
         participantWorkItemIds: [],
         readAllSpaceIds: [spaceId],
-        requirementNonDraftReadAllSpaceIds: [spaceId],
-        requirementReadAllSpaceIds: [],
         intakeItemReadAllSpaceIds: [],
         spaceIds: [spaceId],
         testerSpaceIds: [],
@@ -1318,16 +1245,10 @@ describe("PrismaSpaceRepository", () => {
       1,
       expect.objectContaining({
         where: expect.objectContaining({
-          OR: [
-            {
-              spaceId: {
-                in: [spaceId],
-              },
-              status: {
-                not: "DRAFT",
-              },
-            },
-          ],
+          kind: "REQUIREMENT",
+          spaceId: {
+            in: [spaceId],
+          },
         }),
       }),
     );
@@ -1339,7 +1260,7 @@ describe("PrismaSpaceRepository", () => {
               OR: [
                 {
                   targetId: "01TRZ3NDEKTSV4RRFFQ69G5RQ1",
-                  targetType: "REQUIREMENT",
+                  targetType: "DOCUMENT",
                 },
               ],
             },
@@ -1418,12 +1339,9 @@ describe("PrismaSpaceRepository", () => {
         ]),
         accesses: [],
         participantIntakeItemIds: [],
-        participantRequirementIds: [],
         participantSpaceIds: [],
         participantWorkItemIds: [],
         readAllSpaceIds: [spaceId],
-        requirementNonDraftReadAllSpaceIds: [],
-        requirementReadAllSpaceIds: [],
         intakeItemReadAllSpaceIds: [],
         spaceIds: [spaceId],
         testerSpaceIds: [],

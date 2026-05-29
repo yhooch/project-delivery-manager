@@ -482,23 +482,28 @@ export class PrismaBugRepository implements BugRepository {
   }
 
   async findRequirementInSpace(spaceId: string, requirementId: string) {
-    const requirement = await this.prisma.client.requirement.findFirst({
+    const requirement = await this.prisma.client.document.findFirst({
       select: {
         ownerId: true,
+        sequence: true,
+        status: true,
         versionId: true,
       },
       where: {
         deletedAt: null,
         id: requirementId,
+        kind: "REQUIREMENT",
         spaceId,
       },
     });
 
     return requirement
-      ? {
-          requirementOwnerId: requirement.ownerId ?? undefined,
-          requirementVersionId: requirement.versionId ?? undefined,
-        }
+        ? {
+            requirementOwnerId: requirement.ownerId ?? undefined,
+            requirementSequence: requirement.sequence ?? undefined,
+            requirementStatus: requirement.status,
+            requirementVersionId: requirement.versionId ?? undefined,
+          }
       : undefined;
   }
 

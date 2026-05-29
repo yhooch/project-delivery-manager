@@ -133,7 +133,7 @@ describe("requirement and attachment API", () => {
     await app.close();
   });
 
-  it("creates an empty DRAFT, saves content as CONFIRMED, returns permission snapshots, and archives it", async () => {
+  it("creates an empty DRAFT, saves content as ACTIVE, returns permission snapshots, and archives it", async () => {
     const { agent, requirementUser, assignee, space, version } =
       await setupRequirementSpace("m1g_lifecycle", "REQUIREMENT");
 
@@ -200,7 +200,7 @@ describe("requirement and attachment API", () => {
       contentJson,
       contentText: "确定首版范围",
       contentMarkdownCache: "## 确定首版范围",
-      status: "CONFIRMED",
+      status: "ACTIVE",
       ownerId: assignee.id,
       priority: "HIGH",
       permissions: {
@@ -483,7 +483,7 @@ describe("requirement and attachment API", () => {
     await viewerAgent.get(`/api/v1/requirements/${requirement.id}`).expect(200);
   });
 
-  it("does not leak titled DRAFT requirements to non-participant space members", async () => {
+  it("shows titled DRAFT requirements to space members without granting writes", async () => {
     const { agent, assigneeAgent, developerAgent, space } =
       await setupRequirementSpace("m1g_draft_visibility", "PM");
     const draft = (await createRequirement(agent, space.id, {}).expect(200))
@@ -497,24 +497,28 @@ describe("requirement and attachment API", () => {
     await listRequirements(agent, space.id, { status: "DRAFT" })
       .expect(200)
       .expect(({ body }) => {
-        expect(body.data.items.map((item: Requirement) => item.id)).toEqual([
-          draft.id,
-        ]);
+        expect(body.data.items.map((item: Requirement) => item.id)).toEqual(
+          expect.arrayContaining([draft.id, otherDraft.id]),
+        );
       });
-    await agent.get(`/api/v1/requirements/${otherDraft.id}`).expect(404);
+    await agent.get(`/api/v1/requirements/${otherDraft.id}`).expect(200);
     await listRequirements(developerAgent, space.id, { status: "DRAFT" })
       .expect(200)
       .expect(({ body }) => {
-        expect(body.data.total).toBe(0);
+        expect(body.data.total).toBe(2);
       });
     await listRequirements(developerAgent, space.id, { includeDrafts: true })
       .expect(200)
       .expect(({ body }) => {
         expect(
           body.data.items.some((item: Requirement) => item.id === draft.id),
-        ).toBe(false);
+        ).toBe(true);
       });
-    await developerAgent.get(`/api/v1/requirements/${draft.id}`).expect(404);
+    await developerAgent.get(`/api/v1/requirements/${draft.id}`).expect(200);
+    await patchRequirement(developerAgent, draft.id, {
+      title: "开发者不可写草稿",
+      contentJson: tiptapDoc("开发者不可写草稿"),
+    }).expect(403);
   });
 
   it("uploads and downloads requirement attachments through the API", async () => {
@@ -525,7 +529,7 @@ describe("requirement and attachment API", () => {
 
     const attachment = (
       await uploadAttachment(agent, {
-        targetType: "REQUIREMENT",
+        targetType: "DOCUMENT",
         targetId: draft.id,
         fileName: "设计图.png",
         mimeType: "image/png",
@@ -534,10 +538,10 @@ describe("requirement and attachment API", () => {
     ).body.data as Attachment;
 
     expect(attachment).toMatchObject({
-      targetType: "REQUIREMENT",
+      targetType: "DOCUMENT",
       targetId: draft.id,
       fileName: "设计图.png",
-      fileKey: expect.stringContaining(`attachments/requirement/${draft.id}/`),
+      fileKey: expect.stringContaining(`attachments/document/${draft.id}/`),
       mimeType: "image/png",
       size: 1024,
       uploadedById: requirementUser.id,
@@ -553,9 +557,10 @@ describe("requirement and attachment API", () => {
       });
     await viewerAgent
       .get(`/api/v1/attachments/${attachment.id}/download`)
-      .expect(404)
-      .expect(({ body }) => {
-        expect(body.code).toBe("ATTACHMENT_TARGET_NOT_FOUND");
+      .expect(200)
+      .expect(({ body, headers }) => {
+        expect(headers["content-type"]).toContain("image/png");
+        expect((body as Buffer).toString()).toBe("x".repeat(1024));
       });
   });
 
@@ -568,7 +573,7 @@ describe("requirement and attachment API", () => {
       .body.data as Requirement;
     const visible = (
       await uploadAttachment(agent, {
-        targetType: "REQUIREMENT",
+        targetType: "DOCUMENT",
         targetId: draft.id,
         fileName: "visible.png",
         mimeType: "image/png",
@@ -578,20 +583,20 @@ describe("requirement and attachment API", () => {
     const dirtyOrganizationAttachment = attachments.seedAttachment({
       organizationId: ulid(),
       spaceId: draft.spaceId,
-      targetType: "REQUIREMENT",
+      targetType: "DOCUMENT",
       targetId: draft.id,
     });
     const dirtySpaceAttachment = attachments.seedAttachment({
       organizationId: draft.organizationId,
       spaceId: ulid(),
-      targetType: "REQUIREMENT",
+      targetType: "DOCUMENT",
       targetId: draft.id,
     });
 
     await listAttachments(agent, {
       page: 1,
       pageSize: 20,
-      targetType: "REQUIREMENT",
+      targetType: "DOCUMENT",
       targetId: draft.id,
     })
       .expect(200)
@@ -622,12 +627,12 @@ describe("requirement and attachment API", () => {
     attachments.seedTarget(
       ulid(),
       ulid(),
-      "REQUIREMENT",
+      "DOCUMENT",
       countDraft.id,
       AttachmentMaxCountPerTarget,
     );
     await uploadAttachment(agent, {
-      targetType: "REQUIREMENT",
+      targetType: "DOCUMENT",
       targetId: countDraft.id,
       fileName: "not-blocked-by-dirty.png",
       mimeType: "image/png",
@@ -644,7 +649,7 @@ describe("requirement and attachment API", () => {
       .body.data as Requirement;
 
     await uploadAttachment(agent, {
-      targetType: "REQUIREMENT",
+      targetType: "DOCUMENT",
       targetId: ulid(),
       fileName: "missing.png",
       mimeType: "image/png",
@@ -655,7 +660,7 @@ describe("requirement and attachment API", () => {
         expect(body.code).toBe("ATTACHMENT_TARGET_NOT_FOUND");
       });
     await uploadAttachment(outsiderAgent, {
-      targetType: "REQUIREMENT",
+      targetType: "DOCUMENT",
       targetId: draft.id,
       fileName: "denied.png",
       mimeType: "image/png",
@@ -666,7 +671,7 @@ describe("requirement and attachment API", () => {
         expect(body.code).toBe("ATTACHMENT_TARGET_NOT_FOUND");
       });
     await uploadAttachment(agent, {
-      targetType: "REQUIREMENT",
+      targetType: "DOCUMENT",
       targetId: draft.id,
       fileName: "large.png",
       mimeType: "image/png",
@@ -677,7 +682,7 @@ describe("requirement and attachment API", () => {
         expect(body.code).toBe("FILE_TOO_LARGE");
       });
     await uploadAttachment(agent, {
-      targetType: "REQUIREMENT",
+      targetType: "DOCUMENT",
       targetId: draft.id,
       fileName: "bad.exe",
       mimeType: "application/x-msdownload",
@@ -693,7 +698,7 @@ describe("requirement and attachment API", () => {
       contentJson: tiptapDoc("已确认需求"),
     }).expect(200);
     await uploadAttachment(agent, {
-      targetType: "REQUIREMENT",
+      targetType: "DOCUMENT",
       targetId: draft.id,
       fileName: "confirmed.png",
       mimeType: "image/png",
@@ -710,12 +715,12 @@ describe("requirement and attachment API", () => {
     attachments.seedTarget(
       limitedDraft.organizationId,
       limitedDraft.spaceId,
-      "REQUIREMENT",
+      "DOCUMENT",
       limitedDraft.id,
       AttachmentMaxCountPerTarget,
     );
     await uploadAttachment(agent, {
-      targetType: "REQUIREMENT",
+      targetType: "DOCUMENT",
       targetId: limitedDraft.id,
       fileName: "overflow.png",
       mimeType: "image/png",
@@ -882,7 +887,7 @@ describe("requirement and attachment API", () => {
     return agent
       .patch(`/api/v1/requirements/${requirementId}`)
       .set("Origin", ORIGIN)
-      .send(body);
+      .send({ baseRevision: 1, ...body });
   }
 
   function deleteRequirement(agent: request.Agent, requirementId: string) {
@@ -1465,6 +1470,7 @@ class InMemoryRequirementRepository implements RequirementRepository {
       id: input.id,
       organizationId: input.organizationId,
       spaceId: input.spaceId,
+      kind: "REQUIREMENT",
       versionId: input.versionId,
       title: "",
       contentJson: {},
@@ -1473,6 +1479,7 @@ class InMemoryRequirementRepository implements RequirementRepository {
       attachments: [],
       tags: [],
       relatedWorkItems: emptyRelatedWorkItems(),
+      revision: 1,
       createdById: input.createdById,
       authorId: input.createdById,
       createdAt: now,
@@ -1570,7 +1577,7 @@ class InMemoryRequirementRepository implements RequirementRepository {
       updated.versionId = input.versionId ?? undefined;
     }
     updated.priority = input.priority ?? requirement.priority;
-    updated.status = "CONFIRMED";
+    updated.status = "ACTIVE";
     updated.updatedAt = new Date().toISOString();
     if (input.shouldUpdateOwner) {
       updated.ownerId = input.ownerId;
@@ -1646,7 +1653,7 @@ class InMemoryRequirementRepository implements RequirementRepository {
     input: RequirementListInput,
   ): boolean {
     if (input.status) {
-      return requirement.status === input.status;
+      return requirement.status === mapRequirementStatusFilter(input.status);
     }
     if (input.includeDrafts) {
       return true;
@@ -1665,7 +1672,7 @@ class InMemoryRequirementRepository implements RequirementRepository {
     );
 
     if (input.visibility === "ALL") {
-      return requirement.status !== "DRAFT" || isParticipant;
+      return true;
     }
 
     if (input.visibility === "PARTICIPANT") {
@@ -1734,6 +1741,12 @@ class InMemoryRequirementRepository implements RequirementRepository {
   }
 }
 
+function mapRequirementStatusFilter(
+  status: NonNullable<RequirementListInput["status"]>,
+) {
+  return status === "CONFIRMED" ? "ACTIVE" : status;
+}
+
 function createAttachmentObjectStorage(): AttachmentObjectStorage {
   const objects = new Map<
     string,
@@ -1799,7 +1812,10 @@ class InMemoryAttachmentRepository implements AttachmentRepository {
           organizationId: attachment.organizationId,
           spaceId: attachment.spaceId,
           targetId: attachment.targetId,
-          targetType: attachment.targetType,
+          targetType:
+            attachment.targetType === "DOCUMENT"
+              ? "DOCUMENT"
+              : attachment.targetType,
         }
       : undefined;
   }

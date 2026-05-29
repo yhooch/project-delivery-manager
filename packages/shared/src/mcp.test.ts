@@ -201,14 +201,16 @@ describe("MCP and OAuth shared contracts", () => {
   });
 
   it("freezes tools/list registry schemas, scopes and annotations", () => {
-    expect(McpToolRegistrySchema.parse(mcpToolRegistry)).toHaveLength(32);
+    expect(McpToolRegistrySchema.parse(mcpToolRegistry)).toHaveLength(34);
     expect(mcpToolContracts).toHaveLength(McpToolNameSchema.options.length);
     expect(new Set(mcpToolRegistry.map((tool) => tool.name)).size).toBe(
       mcpToolRegistry.length,
     );
 
     for (const tool of mcpToolRegistry) {
-      expect(tool.inputSchema).toHaveProperty("type");
+      expect(
+        "type" in tool.inputSchema || "allOf" in tool.inputSchema,
+      ).toBe(true);
       expect(Object.keys(tool.outputSchema).length).toBeGreaterThan(0);
       expect(tool.scopes.length).toBeGreaterThan(0);
     }
@@ -234,13 +236,21 @@ describe("MCP and OAuth shared contracts", () => {
       "pdm.document.update_metadata",
       "pdm.document.link_resources",
       "pdm.document.move_to_folder",
+      "pdm.document.convert_to_requirement",
+      "pdm.document.cancel_requirement",
       "pdm.tag.replace_assignments",
     ]);
 
     for (const tool of writeTools) {
       expect(tool.annotations.idempotentHint).toBe(true);
       expect(tool.annotations.openWorldHint).toBe(false);
-      expect(tool.inputSchema).toMatchObject({
+      const contextSchema =
+        "allOf" in tool.inputSchema &&
+        Array.isArray(tool.inputSchema.allOf) &&
+        tool.inputSchema.allOf[0]
+          ? tool.inputSchema.allOf[0]
+          : tool.inputSchema;
+      expect(contextSchema).toMatchObject({
         required: expect.arrayContaining([
           "organizationId",
           "spaceId",

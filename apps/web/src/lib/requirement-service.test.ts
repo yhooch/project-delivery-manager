@@ -27,6 +27,7 @@ function createRequirementFixture(
     },
     createdAt: "2026-05-13T00:00:00.000Z",
     id: requirementId,
+    kind: "REQUIREMENT",
     organizationId,
     relatedWorkItems: {
       bugCount: 0,
@@ -70,7 +71,7 @@ describe("requirement service", () => {
     const page = createPage([
       createRequirementFixture({
         ownerId,
-        status: "CONFIRMED",
+        status: "ACTIVE",
         title: "Checkout scope",
       }),
     ]);
@@ -87,7 +88,7 @@ describe("requirement service", () => {
           page: 1,
           pageSize: 100,
           spaceId,
-          status: "CONFIRMED",
+          status: "ACTIVE",
           versionId,
         },
         api,
@@ -100,7 +101,7 @@ describe("requirement service", () => {
         ownerId,
         page: 1,
         pageSize: 100,
-        status: "CONFIRMED",
+        status: "ACTIVE",
         versionId,
       },
     });
@@ -110,7 +111,7 @@ describe("requirement service", () => {
     const draft = createRequirementFixture();
     const saved = createRequirementFixture({
       ownerId,
-      status: "CONFIRMED",
+      status: "ACTIVE",
       title: "Checkout scope",
     });
     const archived = createRequirementFixture({
@@ -145,6 +146,7 @@ describe("requirement service", () => {
           spaceId,
         },
         {
+          baseRevision: 1,
           contentJson: saved.contentJson,
           contentText: "Checkout scope",
           ownerId,
@@ -157,6 +159,7 @@ describe("requirement service", () => {
     await expect(
       archiveRequirement(
         {
+          baseRevision: 2,
           organizationId,
           requirementId,
           spaceId,
@@ -181,6 +184,7 @@ describe("requirement service", () => {
     expect(api.patch).toHaveBeenLastCalledWith(
       `/requirements/${requirementId}`,
       {
+        baseRevision: 2,
         status: "ARCHIVED",
       },
     );

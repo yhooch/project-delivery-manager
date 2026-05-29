@@ -99,12 +99,6 @@ enum VersionStatus {
   ARCHIVED
 }
 
-enum RequirementStatus {
-  DRAFT
-  CONFIRMED
-  ARCHIVED
-}
-
 enum IntakeStatus {
   PENDING
   ACCEPTED
@@ -149,34 +143,29 @@ enum StatusCategory {
 enum TargetType {
   SPACE
   VERSION
-  REQUIREMENT
+  DOCUMENT
   INTAKE_ITEM
   WORK_ITEM
-  DOCUMENT
 }
 
 enum AttachmentTargetType {
-  REQUIREMENT
   WORK_ITEM
   DOCUMENT
 }
 
 enum CommentTargetType {
-  REQUIREMENT
   INTAKE_ITEM
   WORK_ITEM
   DOCUMENT
 }
 
 enum ObjectParticipantTargetType {
-  REQUIREMENT
   INTAKE_ITEM
   WORK_ITEM
   DOCUMENT
 }
 
 enum TagTargetType {
-  REQUIREMENT
   INTAKE_ITEM
   WORK_ITEM
   DOCUMENT
@@ -230,11 +219,14 @@ enum BugSeverity {
 }
 
 enum DocumentSourceType {
+  USER_CREATED
   UPLOAD_DOCX
   UPLOAD_MARKDOWN
   PASTE_MARKDOWN
   PASTE_TEXT
   MCP_CREATED
+  MIGRATED_DOCUMENT
+  MIGRATED_REQUIREMENT
 }
 
 enum DocumentActorType {
@@ -243,8 +235,14 @@ enum DocumentActorType {
 }
 
 enum DocumentStatus {
+  DRAFT
   ACTIVE
   ARCHIVED
+}
+
+enum DocumentKind {
+  GENERAL
+  REQUIREMENT
 }
 
 enum DocumentChangeType {
@@ -258,12 +256,19 @@ enum DocumentChangeType {
   ARCHIVED
   RESTORED
   DELETED
+  CONVERTED_TO_REQUIREMENT
+  CANCELLED_REQUIREMENT
+}
+
+enum DocumentCodeStatus {
+  ASSIGNED
+  CANCELLED
+  DELETED
 }
 
 enum DocumentLinkTargetType {
   DOCUMENT
   VERSION
-  REQUIREMENT
   INTAKE_ITEM
   WORK_ITEM
 }
@@ -311,8 +316,9 @@ model User {
   ownedSpaces               Space[]              @relation("SpaceOwner")
   spaceMemberships          SpaceMember[]
   ownedVersions             Version[]            @relation("VersionOwner")
-  ownedRequirements         Requirement[]        @relation("RequirementOwner")
-  authoredRequirements      Requirement[]        @relation("RequirementAuthor")
+  ownedDocuments            Document[]           @relation("DocumentOwner")
+  authoredDocuments         Document[]           @relation("DocumentAuthor")
+  changedDocumentCodeHistory DocumentCodeHistory[] @relation("DocumentCodeHistoryChangedBy")
   uploadedAttachments       Attachment[]         @relation("AttachmentUploader")
   publishedWorkflowVersions WorkflowVersion[]    @relation("WorkflowVersionPublisher")
   objectParticipants        ObjectParticipant[]
@@ -531,7 +537,6 @@ model Organization {
   spaces              Space[]
   spaceMembers        SpaceMember[]
   versions            Version[]
-  requirements        Requirement[]
   attachments         Attachment[]
   workflowDefinitions WorkflowDefinition[]
   workflowBindings    WorkflowBinding[]
@@ -548,6 +553,7 @@ model Organization {
   documentRevisions   DocumentRevision[]
   documentLinks       DocumentLink[]
   documentChunks      DocumentChunk[]
+  documentCodeHistory DocumentCodeHistory[]
   objectSequenceCounters ObjectSequenceCounter[]
 
   @@index([ownerId])
@@ -594,7 +600,6 @@ model Space {
   owner               User?                @relation("SpaceOwner", fields: [ownerId], references: [id], onDelete: SetNull)
   members             SpaceMember[]
   versions            Version[]
-  requirements        Requirement[]
   attachments         Attachment[]
   workflowDefinitions WorkflowDefinition[]
   workflowBindings    WorkflowBinding[]
@@ -611,6 +616,7 @@ model Space {
   documentRevisions   DocumentRevision[]
   documentLinks       DocumentLink[]
   documentChunks      DocumentChunk[]
+  documentCodeHistory DocumentCodeHistory[]
   objectSequenceCounters ObjectSequenceCounter[]
 
   @@index([organizationId])
@@ -667,7 +673,7 @@ model Version {
   organization Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   space        Space         @relation(fields: [spaceId], references: [id], onDelete: Cascade)
   owner        User?         @relation("VersionOwner", fields: [ownerId], references: [id], onDelete: SetNull)
-  requirements Requirement[]
+  documents    Document[]
   intakeItems  IntakeItem[]
   workItems    WorkItem[]
 
@@ -676,46 +682,6 @@ model Version {
   @@index([ownerId])
   @@index([status])
   @@map("versions")
-}
-
-model Requirement {
-  id                   String            @id @db.Char(26)
-  organizationId       String            @map("organization_id") @db.Char(26)
-  spaceId              String            @map("space_id") @db.Char(26)
-  sequence             Int?
-  versionId            String?           @map("version_id") @db.Char(26)
-  title                String            @default("") @db.VarChar(200)
-  summary              String?           @db.VarChar(2000)
-  contentJson          Json              @default("{}") @map("content_json")
-  contentMarkdown      String?           @map("content_markdown") @db.Text
-  contentText          String?           @map("content_text") @db.Text
-  contentMarkdownCache String?           @map("content_markdown_cache") @db.Text
-  contentFormat        ContentFormat     @default(TIPTAP_JSON) @map("content_format")
-  status               RequirementStatus @default(DRAFT)
-  priority             Priority?
-  ownerId              String?           @map("owner_id") @db.Char(26)
-  authorId             String?           @map("author_id") @db.Char(26)
-  createdAt            DateTime @db.Timestamptz(3)          @default(now()) @map("created_at")
-  updatedAt            DateTime @db.Timestamptz(3)          @updatedAt @map("updated_at")
-  createdById          String?           @map("created_by_id") @db.Char(26)
-  updatedById          String?           @map("updated_by_id") @db.Char(26)
-  deletedAt            DateTime? @db.Timestamptz(3)         @map("deleted_at")
-
-  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  space        Space        @relation(fields: [spaceId], references: [id], onDelete: Cascade)
-  version      Version?     @relation(fields: [versionId], references: [id], onDelete: SetNull)
-  owner        User?        @relation("RequirementOwner", fields: [ownerId], references: [id], onDelete: SetNull)
-  author       User?        @relation("RequirementAuthor", fields: [authorId], references: [id], onDelete: SetNull)
-  intakeItems  IntakeItem[]
-  workItems    WorkItem[]
-
-  @@index([organizationId])
-  @@index([spaceId])
-  @@index([versionId])
-  @@index([ownerId])
-  @@index([authorId])
-  @@index([status])
-  @@map("requirements")
 }
 
 model IntakeItem {
@@ -744,7 +710,7 @@ model IntakeItem {
   organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   space        Space        @relation(fields: [spaceId], references: [id], onDelete: Cascade)
   version      Version?     @relation(fields: [versionId], references: [id], onDelete: SetNull)
-  requirement  Requirement? @relation(fields: [requirementId], references: [id], onDelete: SetNull)
+  requirement  Document?    @relation("DocumentRequirementIntakeItems", fields: [requirementId], references: [id], onDelete: SetNull)
   reporter     User         @relation("IntakeItemReporter", fields: [reporterId], references: [id], onDelete: Restrict)
   assignee     User?        @relation("IntakeItemAssignee", fields: [assigneeId], references: [id], onDelete: SetNull)
   workItems    WorkItem[]
@@ -795,7 +761,7 @@ model WorkItem {
   organization      Organization    @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   space             Space           @relation(fields: [spaceId], references: [id], onDelete: Cascade)
   version           Version?        @relation(fields: [versionId], references: [id], onDelete: SetNull)
-  requirement       Requirement?    @relation(fields: [requirementId], references: [id], onDelete: SetNull)
+  requirement       Document?       @relation("DocumentRequirementWorkItems", fields: [requirementId], references: [id], onDelete: SetNull)
   intakeItem        IntakeItem?     @relation(fields: [intakeItemId], references: [id], onDelete: SetNull)
   assignee          User?           @relation("WorkItemAssignee", fields: [assigneeId], references: [id], onDelete: SetNull)
   reporter          User            @relation("WorkItemReporter", fields: [reporterId], references: [id], onDelete: Restrict)
@@ -911,12 +877,22 @@ model Document {
   organizationId        String             @map("organization_id") @db.Char(26)
   spaceId               String             @map("space_id") @db.Char(26)
   folderId              String?            @map("folder_id") @db.Char(26)
+  kind                  DocumentKind       @default(GENERAL)
   title                 String             @db.VarChar(200)
-  contentMarkdown       String             @map("content_markdown") @db.Text
+  summary               String?            @db.VarChar(2000)
+  contentFormat         ContentFormat      @default(MARKDOWN) @map("content_format")
+  contentJson           Json?              @map("content_json")
+  contentMarkdown       String?            @map("content_markdown") @db.Text
   contentText           String             @map("content_text") @db.Text
+  contentMarkdownCache  String?            @map("content_markdown_cache") @db.Text
   sourceType            DocumentSourceType @map("source_type")
   sourceAttachmentId    String?            @map("source_attachment_id") @db.Char(26)
   status                DocumentStatus     @default(ACTIVE)
+  sequence              Int?
+  versionId             String?            @map("version_id") @db.Char(26)
+  priority              Priority?
+  ownerId               String?            @map("owner_id") @db.Char(26)
+  authorId              String?            @map("author_id") @db.Char(26)
   revision              Int                @default(1)
   createdVia            DocumentActorType  @default(USER) @map("created_via")
   createdMcpClientId    String?            @map("created_mcp_client_id") @db.VarChar(200)
@@ -934,18 +910,30 @@ model Document {
   organization Organization       @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   space        Space              @relation(fields: [spaceId], references: [id], onDelete: Cascade)
   folder       DocumentFolder?    @relation(fields: [folderId], references: [id], onDelete: SetNull)
+  version      Version?           @relation(fields: [versionId], references: [id], onDelete: SetNull)
+  owner        User?              @relation("DocumentOwner", fields: [ownerId], references: [id], onDelete: SetNull)
+  author       User?              @relation("DocumentAuthor", fields: [authorId], references: [id], onDelete: SetNull)
   revisions    DocumentRevision[]
   links        DocumentLink[]
   chunks       DocumentChunk[]
+  codeHistory  DocumentCodeHistory[]
+  requirementIntakeItems IntakeItem[] @relation("DocumentRequirementIntakeItems")
+  requirementWorkItems   WorkItem[]   @relation("DocumentRequirementWorkItems")
 
   @@index([organizationId])
   @@index([spaceId])
+  @@index([kind])
   @@index([status])
   @@index([folderId])
+  @@index([versionId])
+  @@index([ownerId])
+  @@index([authorId])
   @@index([sourceType])
   @@index([createdById])
   @@index([lastEditedById])
   @@index([sourceAttachmentId])
+  @@index([spaceId, kind, status, updatedAt])
+  @@index([spaceId, kind, sequence])
   @@index([spaceId, status, updatedAt])
   @@index([spaceId, folderId, deletedAt, lastEditedAt])
   @@index([spaceId, deletedAt, updatedAt])
@@ -989,14 +977,20 @@ model DocumentRevision {
   spaceId               String             @map("space_id") @db.Char(26)
   documentId            String             @map("document_id") @db.Char(26)
   revision              Int
+  kind                  DocumentKind       @default(GENERAL)
   title                 String             @db.VarChar(200)
-  contentMarkdown       String             @map("content_markdown") @db.Text
+  summary               String?            @db.VarChar(2000)
+  contentFormat         ContentFormat      @default(MARKDOWN) @map("content_format")
+  contentJson           Json?              @map("content_json")
+  contentMarkdown       String?            @map("content_markdown") @db.Text
   contentText           String             @map("content_text") @db.Text
+  contentMarkdownCache  String?            @map("content_markdown_cache") @db.Text
   changeType            DocumentChangeType @map("change_type")
   actorType             DocumentActorType  @map("actor_type")
   actorUserId           String             @map("actor_user_id") @db.Char(26)
   mcpClientId           String?            @map("mcp_client_id") @db.VarChar(200)
   requestId             String?            @map("request_id") @db.VarChar(128)
+  metadata              Json?
   createdAt             DateTime @db.Timestamptz(3) @default(now()) @map("created_at")
 
   organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
@@ -1011,6 +1005,41 @@ model DocumentRevision {
   @@index([actorUserId])
   @@index([createdAt])
   @@map("document_revisions")
+}
+
+model DocumentCodeHistory {
+  id              String             @id @db.Char(26)
+  organizationId  String             @map("organization_id") @db.Char(26)
+  spaceId         String             @map("space_id") @db.Char(26)
+  documentId      String             @map("document_id") @db.Char(26)
+  kind            DocumentKind
+  codePrefix      String             @default("REQ") @map("code_prefix") @db.VarChar(16)
+  sequence        Int
+  displayCode     String             @map("display_code") @db.VarChar(64)
+  codeStatus      DocumentCodeStatus @default(ASSIGNED) @map("code_status")
+  assignedAt      DateTime           @default(now()) @map("assigned_at") @db.Timestamptz(3)
+  statusChangedAt DateTime           @default(now()) @map("status_changed_at") @db.Timestamptz(3)
+  changedById     String             @map("changed_by_id") @db.Char(26)
+  requestId       String?            @map("request_id") @db.VarChar(128)
+  reason          String?            @db.VarChar(1000)
+  createdAt       DateTime           @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt       DateTime           @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  space        Space        @relation(fields: [spaceId], references: [id], onDelete: Cascade)
+  document     Document     @relation(fields: [documentId], references: [id], onDelete: Restrict)
+  changedBy    User         @relation("DocumentCodeHistoryChangedBy", fields: [changedById], references: [id], onDelete: Restrict)
+
+  @@unique([organizationId, spaceId, kind, sequence], map: "document_code_history_org_space_kind_sequence_key")
+  @@unique([organizationId, documentId, kind, sequence], map: "document_code_history_org_document_kind_sequence_key")
+  @@index([organizationId])
+  @@index([spaceId])
+  @@index([documentId])
+  @@index([changedById])
+  @@index([codeStatus])
+  @@index([displayCode])
+  @@index([requestId])
+  @@map("document_code_history")
 }
 
 model DocumentLink {

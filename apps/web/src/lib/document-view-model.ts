@@ -4,7 +4,7 @@ import type {
   DocumentActorType,
   DocumentFilterKey,
   DocumentLinkSummary,
-  DocumentLinkTargetType,
+  DocumentLinkWriteTargetType,
   DocumentSourceType,
   DocumentStatus,
   DocumentSummary,
@@ -28,6 +28,36 @@ export function getDocumentFilterKeys(): DocumentFilterKey[] {
 
 export function isDocumentArchived(document: Pick<DocumentSummary, "status">) {
   return document.status === "ARCHIVED";
+}
+
+export function isRequirementDocument(
+  document: Pick<DocumentSummary, "kind">,
+): boolean {
+  return document.kind === "REQUIREMENT";
+}
+
+export function canRenderDocumentMarkdownContent(
+  document: Pick<DocumentSummary, "contentFormat" | "kind">,
+): boolean {
+  return document.contentFormat === "MARKDOWN";
+}
+
+export function getDocumentDisplayCode(
+  document: Pick<DocumentSummary, "displayCode" | "kind" | "sequence">,
+): string | null {
+  const displayCode = document.displayCode?.trim();
+  if (displayCode) {
+    return displayCode;
+  }
+
+  if (
+    document.kind === "REQUIREMENT" &&
+    typeof document.sequence === "number"
+  ) {
+    return `REQ-${document.sequence}`;
+  }
+
+  return null;
 }
 
 export function formatDocumentRelativeTimestamp(
@@ -81,11 +111,17 @@ export function getDocumentLinkHref(link: DocumentLinkSummary): string {
   return `/work-items?workItemId=${id}`;
 }
 
-export function getObjectCodeLookupHref(result: ObjectCodeLookupResult): string {
+export function getObjectCodeLookupHref(
+  result: ObjectCodeLookupResult,
+): string {
   const id = encodeURIComponent(result.id);
 
   if (result.type === "REQUIREMENT") {
-    return `/requirements/${id}`;
+    return result.kind === "REQUIREMENT" &&
+      result.codeStatus !== "CANCELLED" &&
+      result.codeStatus !== "DELETED"
+      ? `/requirements/${id}`
+      : `/documents/${id}`;
   }
   if (result.type === "INTAKE_ITEM") {
     return `/intake-items?id=${id}`;
@@ -99,9 +135,9 @@ export function getObjectCodeLookupHref(result: ObjectCodeLookupResult): string 
 
 export function getLookupTargetType(
   result: ObjectCodeLookupResult,
-): DocumentLinkTargetType {
+): DocumentLinkWriteTargetType {
   if (result.type === "REQUIREMENT") {
-    return "REQUIREMENT";
+    return "DOCUMENT";
   }
   if (result.type === "INTAKE_ITEM") {
     return "INTAKE_ITEM";

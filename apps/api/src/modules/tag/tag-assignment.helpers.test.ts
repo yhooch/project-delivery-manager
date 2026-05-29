@@ -111,7 +111,7 @@ describe("tag assignment helpers", () => {
         spaceId: SPACE_ID,
         tagIds: [TAG_ID, SECOND_TAG_ID],
         targetId: TARGET_ID,
-        targetType: "REQUIREMENT",
+        targetType: "DOCUMENT",
       }),
     ).rejects.toMatchObject({
       code: "TAG_NOT_FOUND",

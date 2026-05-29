@@ -61,8 +61,11 @@ type PrismaDocumentRecord = Parameters<typeof toDocument>[0];
 type PrismaDocumentListRecord = Parameters<typeof toDocumentListItem>[0];
 
 const DOCUMENT_DETAIL_OVERVIEW_LIMIT = 5;
+const REQUIREMENT_DOCUMENT_KIND = "REQUIREMENT" as const;
 const documentListSelect = {
   archivedAt: true,
+  authorId: true,
+  contentFormat: true,
   createdAt: true,
   createdById: true,
   createdMcpClientId: true,
@@ -70,18 +73,24 @@ const documentListSelect = {
   deletedAt: true,
   folderId: true,
   id: true,
+  kind: true,
   lastEditedAt: true,
   lastEditedById: true,
   lastEditedMcpClientId: true,
   lastEditedVia: true,
+  ownerId: true,
   organizationId: true,
+  priority: true,
   revision: true,
+  sequence: true,
   sourceAttachmentId: true,
   sourceType: true,
   spaceId: true,
   status: true,
+  summary: true,
   title: true,
   updatedAt: true,
+  versionId: true,
 } satisfies Prisma.DocumentSelect;
 
 @Injectable()
@@ -143,16 +152,14 @@ export class PrismaDocumentRepository implements DocumentRepository {
           })
         : created;
 
-      await createRevision(tx, input, {
-        changeType: input.sourceType === "MCP_CREATED" ? "CREATED" : "IMPORTED",
-        documentId: created.id,
-        organizationId: input.organizationId,
-        revision: withSource.revision,
-        spaceId: input.spaceId,
-        title: withSource.title,
-        contentMarkdown: withSource.contentMarkdown,
-        contentText: withSource.contentText,
-      });
+      await createRevision(
+        tx,
+        input,
+        toRevisionInput(
+          withSource,
+          input.sourceType === "MCP_CREATED" ? "CREATED" : "IMPORTED",
+        ),
+      );
       await replaceChunks(tx, {
         chunks: input.chunks,
         document: withSource,
@@ -316,7 +323,7 @@ export class PrismaDocumentRepository implements DocumentRepository {
       this.loadDocumentFolderPaths([document]),
     ]);
     const hydratedLinks = await this.hydrateLinks(
-      links,
+      links as DocumentLinkRecord[],
       document.organizationId,
       document.spaceId,
     );
@@ -616,16 +623,11 @@ export class PrismaDocumentRepository implements DocumentRepository {
         },
       });
 
-      await createRevision(tx, input, {
-        changeType: "METADATA_UPDATED",
-        documentId: updated.id,
-        organizationId: updated.organizationId,
-        revision: updated.revision,
-        spaceId: updated.spaceId,
-        title: updated.title,
-        contentMarkdown: updated.contentMarkdown,
-        contentText: updated.contentText,
-      });
+      await createRevision(
+        tx,
+        input,
+        toRevisionInput(updated, "METADATA_UPDATED"),
+      );
       if (input.tagIds) {
         await replaceTagAssignmentsInTransaction(tx, {
           assignedById: input.actorUserId,
@@ -715,7 +717,16 @@ export class PrismaDocumentRepository implements DocumentRepository {
         : undefined;
       const updated = await tx.document.update({
         data: {
+          contentFormat: input.contentFormat,
+          contentJson:
+            input.contentFormat === "TIPTAP_JSON"
+              ? toPrismaJson(input.contentJson ?? {})
+              : Prisma.DbNull,
           contentMarkdown: input.contentMarkdown,
+          contentMarkdownCache:
+            input.contentFormat === "TIPTAP_JSON"
+              ? input.contentMarkdownCache
+              : null,
           contentText: input.contentText,
           ...(sourceAttachment
             ? { sourceAttachmentId: sourceAttachment.id }
@@ -732,16 +743,11 @@ export class PrismaDocumentRepository implements DocumentRepository {
         },
       });
 
-      await createRevision(tx, input, {
-        changeType: input.changeType,
-        documentId: updated.id,
-        organizationId: updated.organizationId,
-        revision: updated.revision,
-        spaceId: updated.spaceId,
-        title: updated.title,
-        contentMarkdown: updated.contentMarkdown,
-        contentText: updated.contentText,
-      });
+      await createRevision(
+        tx,
+        input,
+        toRevisionInput(updated, input.changeType),
+      );
       await replaceChunks(tx, {
         chunks: input.chunks,
         document: updated,
@@ -822,16 +828,29 @@ export class PrismaDocumentRepository implements DocumentRepository {
         },
       });
 
-      await createRevision(tx, input, {
-        changeType: input.changeType,
-        documentId: updated.id,
-        organizationId: updated.organizationId,
-        revision: updated.revision,
-        spaceId: updated.spaceId,
-        title: updated.title,
-        contentMarkdown: updated.contentMarkdown,
-        contentText: updated.contentText,
-      });
+      if (input.changeType === "DELETED" && existing.kind === "REQUIREMENT") {
+        await tx.documentCodeHistory.updateMany({
+          data: {
+            changedById: input.actorUserId,
+            codeStatus: "DELETED",
+            reason: "Requirement document deleted",
+            requestId: input.requestId,
+            statusChangedAt: now,
+          },
+          where: {
+            codeStatus: "ASSIGNED",
+            documentId: existing.id,
+            kind: "REQUIREMENT",
+            organizationId: existing.organizationId,
+            spaceId: existing.spaceId,
+          },
+        });
+      }
+      await createRevision(
+        tx,
+        input,
+        toRevisionInput(updated, input.changeType),
+      );
       await createTimelineEventRecord(tx, {
         actorUserId: input.actorUserId,
         after: {
@@ -902,7 +921,11 @@ export class PrismaDocumentRepository implements DocumentRepository {
 
     const first = links[0];
     const hydratedLinks = first
-      ? await this.hydrateLinks(links, first.organizationId, first.spaceId)
+      ? await this.hydrateLinks(
+          links as DocumentLinkRecord[],
+          first.organizationId,
+          first.spaceId,
+        )
       : [];
 
     return hydratedLinks.map(toDocumentLink);
@@ -944,16 +967,11 @@ export class PrismaDocumentRepository implements DocumentRepository {
         },
       });
 
-      await createRevision(tx, input, {
-        changeType: "METADATA_UPDATED",
-        documentId: updated.id,
-        organizationId: updated.organizationId,
-        revision: updated.revision,
-        spaceId: updated.spaceId,
-        title: updated.title,
-        contentMarkdown: updated.contentMarkdown,
-        contentText: updated.contentText,
-      });
+      await createRevision(
+        tx,
+        input,
+        toRevisionInput(updated, "METADATA_UPDATED"),
+      );
       await createTimelineEventRecord(tx, {
         actorUserId: input.actorUserId,
         after: {
@@ -1039,16 +1057,11 @@ export class PrismaDocumentRepository implements DocumentRepository {
           },
         });
 
-        await createRevision(tx, input, {
-          changeType: "METADATA_UPDATED",
-          documentId: updated.id,
-          organizationId: updated.organizationId,
-          revision: updated.revision,
-          spaceId: updated.spaceId,
-          title: updated.title,
-          contentMarkdown: updated.contentMarkdown,
-          contentText: updated.contentText,
-        });
+        await createRevision(
+          tx,
+          input,
+          toRevisionInput(updated, "METADATA_UPDATED"),
+        );
         await createTimelineEventRecord(tx, {
           actorUserId: input.actorUserId,
           after: {
@@ -1122,16 +1135,11 @@ export class PrismaDocumentRepository implements DocumentRepository {
         organizationId: updated.organizationId,
         spaceId: updated.spaceId,
       });
-      await createRevision(tx, input, {
-        changeType: "METADATA_UPDATED",
-        documentId: updated.id,
-        organizationId: updated.organizationId,
-        revision: updated.revision,
-        spaceId: updated.spaceId,
-        title: updated.title,
-        contentMarkdown: updated.contentMarkdown,
-        contentText: updated.contentText,
-      });
+      await createRevision(
+        tx,
+        input,
+        toRevisionInput(updated, "METADATA_UPDATED"),
+      );
       await createTimelineEventRecord(tx, {
         actorUserId: input.actorUserId,
         after: {
@@ -1277,7 +1285,11 @@ export class PrismaDocumentRepository implements DocumentRepository {
 
     return {
       items: (
-        await this.hydrateLinks(links, input.organizationId, input.spaceId)
+        await this.hydrateLinks(
+          links as DocumentLinkRecord[],
+          input.organizationId,
+          input.spaceId,
+        )
       ).map(toDocumentLink),
       page: input.page,
       pageSize: input.pageSize,
@@ -1288,6 +1300,7 @@ export class PrismaDocumentRepository implements DocumentRepository {
   private async buildListWhere(input: DocumentListInput) {
     const where: Prisma.DocumentWhereInput = {
       deletedAt: null,
+      kind: input.kind,
       organizationId: input.organizationId,
       spaceId: input.spaceId,
       ...(input.status ? { status: input.status } : {}),
@@ -1353,7 +1366,7 @@ export class PrismaDocumentRepository implements DocumentRepository {
       },
     });
     const hydratedLinks = await this.hydrateLinks(
-      links,
+      links as DocumentLinkRecord[],
       input.organizationId,
       input.spaceId,
     );
@@ -1441,10 +1454,10 @@ export class PrismaDocumentRepository implements DocumentRepository {
       string,
       { displayCode?: string; title?: string; workItemType?: WorkItemType }
     >();
-    const [documents, versions, requirements, intakeItems, workItems] =
+    const [documents, versions, intakeItems, workItems] =
       await Promise.all([
         this.prisma.client.document.findMany({
-          select: { id: true, title: true },
+          select: { id: true, kind: true, sequence: true, title: true },
           where: targetWhere(targetIdsByType.get("DOCUMENT"), {
             organizationId,
             spaceId,
@@ -1453,13 +1466,6 @@ export class PrismaDocumentRepository implements DocumentRepository {
         this.prisma.client.version.findMany({
           select: { id: true, name: true },
           where: targetWhere(targetIdsByType.get("VERSION"), {
-            organizationId,
-            spaceId,
-          }),
-        }),
-        this.prisma.client.requirement.findMany({
-          select: { id: true, sequence: true, title: true },
-          where: targetWhere(targetIdsByType.get("REQUIREMENT"), {
             organizationId,
             spaceId,
           }),
@@ -1482,6 +1488,10 @@ export class PrismaDocumentRepository implements DocumentRepository {
 
     for (const target of documents) {
       summaries.set(linkKey({ targetId: target.id, targetType: "DOCUMENT" }), {
+        displayCode:
+          target.kind === REQUIREMENT_DOCUMENT_KIND
+            ? formatDisplayCode("REQ", target.sequence)
+            : undefined,
         title: target.title,
       });
     }
@@ -1489,15 +1499,6 @@ export class PrismaDocumentRepository implements DocumentRepository {
       summaries.set(linkKey({ targetId: target.id, targetType: "VERSION" }), {
         title: target.name,
       });
-    }
-    for (const target of requirements) {
-      summaries.set(
-        linkKey({ targetId: target.id, targetType: "REQUIREMENT" }),
-        {
-          displayCode: formatDisplayCode("REQ", target.sequence),
-          title: target.title,
-        },
-      );
     }
     for (const target of intakeItems) {
       summaries.set(
@@ -1545,12 +1546,17 @@ async function createRevision(
   },
   input: {
     changeType: Prisma.DocumentRevisionCreateInput["changeType"];
-    contentMarkdown: string;
+    contentFormat: Prisma.DocumentRevisionCreateInput["contentFormat"];
+    contentJson: unknown;
+    contentMarkdown: string | null;
+    contentMarkdownCache: string | null;
     contentText: string;
     documentId: string;
+    kind: Prisma.DocumentRevisionCreateInput["kind"];
     organizationId: string;
     revision: number;
     spaceId: string;
+    summary: string | null;
     title: string;
   },
 ) {
@@ -1561,8 +1567,19 @@ async function createRevision(
       spaceId: input.spaceId,
       documentId: input.documentId,
       revision: input.revision,
+      kind: input.kind,
       title: input.title,
+      summary: input.summary,
+      contentFormat: input.contentFormat,
+      contentJson:
+        input.contentFormat === "TIPTAP_JSON"
+          ? toPrismaJson(input.contentJson)
+          : Prisma.DbNull,
       contentMarkdown: input.contentMarkdown,
+      contentMarkdownCache:
+        input.contentFormat === "TIPTAP_JSON"
+          ? input.contentMarkdownCache
+          : null,
       contentText: input.contentText,
       changeType: input.changeType,
       actorType: actor.actorType,
@@ -1571,6 +1588,31 @@ async function createRevision(
       requestId: actor.requestId,
     },
   });
+}
+
+function toRevisionInput(
+  document: PrismaDocumentRecord,
+  changeType: Prisma.DocumentRevisionCreateInput["changeType"],
+) {
+  return {
+    changeType,
+    contentFormat: document.contentFormat,
+    contentJson: document.contentJson,
+    contentMarkdown: document.contentMarkdown,
+    contentMarkdownCache: document.contentMarkdownCache,
+    contentText: document.contentText,
+    documentId: document.id,
+    kind: document.kind,
+    organizationId: document.organizationId,
+    revision: document.revision,
+    spaceId: document.spaceId,
+    summary: document.summary,
+    title: document.title,
+  };
+}
+
+function toPrismaJson(value: unknown) {
+  return value === null ? Prisma.JsonNull : (value as Prisma.InputJsonValue);
 }
 
 async function replaceChunks(

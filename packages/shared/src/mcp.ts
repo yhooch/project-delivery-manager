@@ -8,6 +8,10 @@ import {
 } from "./common.ts";
 import {
   AppendDocumentContentRequestSchema,
+  CancelRequirementRequestSchema,
+  CancelRequirementResponseSchema,
+  ConvertDocumentToRequirementRequestSchema,
+  ConvertDocumentToRequirementResponseSchema,
   CreateDocumentFolderRequestSchema,
   CreateDocumentFolderResponseSchema,
   DocumentListQuerySchema,
@@ -31,6 +35,8 @@ import {
   UpdateDocumentContentResponseSchema,
   CreateDocumentResponseSchema,
   type AppendDocumentContentRequest,
+  type CancelRequirementRequest,
+  type ConvertDocumentToRequirementRequest,
   type DocumentListQuery,
   type DocumentFolder,
   type PasteDocumentRequest,
@@ -850,10 +856,10 @@ export type McpAppendDocumentContentRequest = McpWriteContext &
     documentId: string;
   };
 
-export const McpReplaceDocumentContentRequestSchema =
-  McpWriteContextSchema.merge(DocumentIdToolInputSchema).merge(
-    UpdateDocumentContentRequestSchema,
-  );
+export const McpReplaceDocumentContentRequestSchema = z.intersection(
+  McpWriteContextSchema.merge(DocumentIdToolInputSchema),
+  UpdateDocumentContentRequestSchema,
+);
 
 export type McpReplaceDocumentContentRequest = McpWriteContext &
   UpdateDocumentContentRequest & {
@@ -890,6 +896,25 @@ export type McpMoveDocumentToFolderRequest = McpWriteContext & {
   folderId?: string | null;
 };
 
+export const McpConvertDocumentToRequirementRequestSchema =
+  McpWriteContextSchema.merge(DocumentIdToolInputSchema).merge(
+    ConvertDocumentToRequirementRequestSchema,
+  );
+
+export type McpConvertDocumentToRequirementRequest = McpWriteContext &
+  ConvertDocumentToRequirementRequest & {
+    documentId: string;
+  };
+
+export const McpCancelRequirementRequestSchema = McpWriteContextSchema.merge(
+  DocumentIdToolInputSchema,
+).merge(CancelRequirementRequestSchema);
+
+export type McpCancelRequirementRequest = McpWriteContext &
+  CancelRequirementRequest & {
+    documentId: string;
+  };
+
 const McpReplaceTagAssignmentsRequestSchema = McpWriteContextSchema.merge(
   ReplaceTagAssignmentsRequestSchema,
 );
@@ -925,6 +950,8 @@ export const McpToolNameSchema = z.enum([
   "pdm.document.update_metadata",
   "pdm.document.link_resources",
   "pdm.document.move_to_folder",
+  "pdm.document.convert_to_requirement",
+  "pdm.document.cancel_requirement",
   "pdm.tag.replace_assignments",
   "pdm.timeline.list",
 ]);
@@ -1237,7 +1264,7 @@ export const mcpToolContracts = [
   tool({
     name: "pdm.document.append_content",
     title: "Append document content",
-    description: `Append Markdown content to a document. Requires baseRevision.${WriteTargetPolicyDescription}`,
+    description: `Append Markdown content to a document. Requires baseRevision. Requirement documents also require mcp:write:requirement.${WriteTargetPolicyDescription}`,
     scopes: ["mcp:write:document"],
     annotations: UpdateToolAnnotations,
     inputSchema: McpAppendDocumentContentRequestSchema,
@@ -1246,7 +1273,7 @@ export const mcpToolContracts = [
   tool({
     name: "pdm.document.replace_content",
     title: "Replace document content",
-    description: `Replace a document's full Markdown content. Requires baseRevision.${WriteTargetPolicyDescription}`,
+    description: `Replace a document's full Markdown content. Requires baseRevision. Requirement documents also require mcp:write:requirement.${WriteTargetPolicyDescription}`,
     scopes: ["mcp:write:document"],
     annotations: UpdateToolAnnotations,
     inputSchema: McpReplaceDocumentContentRequestSchema,
@@ -1255,7 +1282,7 @@ export const mcpToolContracts = [
   tool({
     name: "pdm.document.update_metadata",
     title: "Update document metadata",
-    description: `Update document title, tags or linked resources.${WriteTargetPolicyDescription}`,
+    description: `Update document title, tags or linked resources. Requirement documents also require mcp:write:requirement.${WriteTargetPolicyDescription}`,
     scopes: ["mcp:write:document"],
     annotations: UpdateToolAnnotations,
     inputSchema: McpUpdateDocumentMetadataRequestSchema,
@@ -1264,7 +1291,7 @@ export const mcpToolContracts = [
   tool({
     name: "pdm.document.link_resources",
     title: "Link document resources",
-    description: `Replace the resources linked to a document. Requires baseRevision.${WriteTargetPolicyDescription}`,
+    description: `Replace the resources linked to a document. Requires baseRevision. Requirement documents also require mcp:write:requirement.${WriteTargetPolicyDescription}`,
     scopes: ["mcp:write:document"],
     annotations: UpdateToolAnnotations,
     inputSchema: McpLinkDocumentResourcesRequestSchema,
@@ -1273,11 +1300,29 @@ export const mcpToolContracts = [
   tool({
     name: "pdm.document.move_to_folder",
     title: "Move document to folder",
-    description: `Move a document into a shared folder, or pass folderId=null to move it to Unfiled.${WriteTargetPolicyDescription}`,
+    description: `Move a document into a shared folder, or pass folderId=null to move it to Unfiled. Requirement documents also require mcp:write:requirement.${WriteTargetPolicyDescription}`,
     scopes: ["mcp:write:document"],
     annotations: UpdateToolAnnotations,
     inputSchema: McpMoveDocumentToFolderRequestSchema,
     outputSchema: writeOutputSchema(MoveDocumentToFolderResponseSchema),
+  }),
+  tool({
+    name: "pdm.document.convert_to_requirement",
+    title: "Convert document to requirement",
+    description: `Convert a general document into a requirement. Requires baseRevision and document plus requirement write scopes.${WriteTargetPolicyDescription}`,
+    scopes: ["mcp:write:document", "mcp:write:requirement"],
+    annotations: UpdateToolAnnotations,
+    inputSchema: McpConvertDocumentToRequirementRequestSchema,
+    outputSchema: writeOutputSchema(ConvertDocumentToRequirementResponseSchema),
+  }),
+  tool({
+    name: "pdm.document.cancel_requirement",
+    title: "Cancel requirement semantics",
+    description: `Remove requirement semantics from a requirement document while keeping the document. Requires baseRevision and document plus requirement write scopes.${WriteTargetPolicyDescription}`,
+    scopes: ["mcp:write:document", "mcp:write:requirement"],
+    annotations: UpdateToolAnnotations,
+    inputSchema: McpCancelRequirementRequestSchema,
+    outputSchema: writeOutputSchema(CancelRequirementResponseSchema),
   }),
   tool({
     name: "pdm.tag.replace_assignments",

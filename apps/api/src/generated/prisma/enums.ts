@@ -145,15 +145,6 @@ export const VersionStatus = {
 export type VersionStatus = (typeof VersionStatus)[keyof typeof VersionStatus]
 
 
-export const RequirementStatus = {
-  DRAFT: 'DRAFT',
-  CONFIRMED: 'CONFIRMED',
-  ARCHIVED: 'ARCHIVED'
-} as const
-
-export type RequirementStatus = (typeof RequirementStatus)[keyof typeof RequirementStatus]
-
-
 export const IntakeStatus = {
   PENDING: 'PENDING',
   ACCEPTED: 'ACCEPTED',
@@ -213,17 +204,15 @@ export type StatusCategory = (typeof StatusCategory)[keyof typeof StatusCategory
 export const TargetType = {
   SPACE: 'SPACE',
   VERSION: 'VERSION',
-  REQUIREMENT: 'REQUIREMENT',
+  DOCUMENT: 'DOCUMENT',
   INTAKE_ITEM: 'INTAKE_ITEM',
-  WORK_ITEM: 'WORK_ITEM',
-  DOCUMENT: 'DOCUMENT'
+  WORK_ITEM: 'WORK_ITEM'
 } as const
 
 export type TargetType = (typeof TargetType)[keyof typeof TargetType]
 
 
 export const AttachmentTargetType = {
-  REQUIREMENT: 'REQUIREMENT',
   WORK_ITEM: 'WORK_ITEM',
   DOCUMENT: 'DOCUMENT'
 } as const
@@ -232,7 +221,6 @@ export type AttachmentTargetType = (typeof AttachmentTargetType)[keyof typeof At
 
 
 export const CommentTargetType = {
-  REQUIREMENT: 'REQUIREMENT',
   INTAKE_ITEM: 'INTAKE_ITEM',
   WORK_ITEM: 'WORK_ITEM',
   DOCUMENT: 'DOCUMENT'
@@ -242,7 +230,6 @@ export type CommentTargetType = (typeof CommentTargetType)[keyof typeof CommentT
 
 
 export const ObjectParticipantTargetType = {
-  REQUIREMENT: 'REQUIREMENT',
   INTAKE_ITEM: 'INTAKE_ITEM',
   WORK_ITEM: 'WORK_ITEM',
   DOCUMENT: 'DOCUMENT'
@@ -252,7 +239,6 @@ export type ObjectParticipantTargetType = (typeof ObjectParticipantTargetType)[k
 
 
 export const TagTargetType = {
-  REQUIREMENT: 'REQUIREMENT',
   INTAKE_ITEM: 'INTAKE_ITEM',
   WORK_ITEM: 'WORK_ITEM',
   DOCUMENT: 'DOCUMENT'
@@ -330,11 +316,14 @@ export type BugSeverity = (typeof BugSeverity)[keyof typeof BugSeverity]
 
 
 export const DocumentSourceType = {
+  USER_CREATED: 'USER_CREATED',
   UPLOAD_DOCX: 'UPLOAD_DOCX',
   UPLOAD_MARKDOWN: 'UPLOAD_MARKDOWN',
   PASTE_MARKDOWN: 'PASTE_MARKDOWN',
   PASTE_TEXT: 'PASTE_TEXT',
-  MCP_CREATED: 'MCP_CREATED'
+  MCP_CREATED: 'MCP_CREATED',
+  MIGRATED_DOCUMENT: 'MIGRATED_DOCUMENT',
+  MIGRATED_REQUIREMENT: 'MIGRATED_REQUIREMENT'
 } as const
 
 export type DocumentSourceType = (typeof DocumentSourceType)[keyof typeof DocumentSourceType]
@@ -349,11 +338,20 @@ export type DocumentActorType = (typeof DocumentActorType)[keyof typeof Document
 
 
 export const DocumentStatus = {
+  DRAFT: 'DRAFT',
   ACTIVE: 'ACTIVE',
   ARCHIVED: 'ARCHIVED'
 } as const
 
 export type DocumentStatus = (typeof DocumentStatus)[keyof typeof DocumentStatus]
+
+
+export const DocumentKind = {
+  GENERAL: 'GENERAL',
+  REQUIREMENT: 'REQUIREMENT'
+} as const
+
+export type DocumentKind = (typeof DocumentKind)[keyof typeof DocumentKind]
 
 
 export const DocumentChangeType = {
@@ -366,16 +364,26 @@ export const DocumentChangeType = {
   CONTENT_REPLACED: 'CONTENT_REPLACED',
   ARCHIVED: 'ARCHIVED',
   RESTORED: 'RESTORED',
-  DELETED: 'DELETED'
+  DELETED: 'DELETED',
+  CONVERTED_TO_REQUIREMENT: 'CONVERTED_TO_REQUIREMENT',
+  CANCELLED_REQUIREMENT: 'CANCELLED_REQUIREMENT'
 } as const
 
 export type DocumentChangeType = (typeof DocumentChangeType)[keyof typeof DocumentChangeType]
 
 
+export const DocumentCodeStatus = {
+  ASSIGNED: 'ASSIGNED',
+  CANCELLED: 'CANCELLED',
+  DELETED: 'DELETED'
+} as const
+
+export type DocumentCodeStatus = (typeof DocumentCodeStatus)[keyof typeof DocumentCodeStatus]
+
+
 export const DocumentLinkTargetType = {
   DOCUMENT: 'DOCUMENT',
   VERSION: 'VERSION',
-  REQUIREMENT: 'REQUIREMENT',
   INTAKE_ITEM: 'INTAKE_ITEM',
   WORK_ITEM: 'WORK_ITEM'
 } as const

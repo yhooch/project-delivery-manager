@@ -82,6 +82,7 @@
           },
           "status": {
             "DRAFT": "草稿",
+            "ACTIVE": "已确认",
             "CONFIRMED": "已确认",
             "ARCHIVED": "已归档",
             "PENDING": "待处理",
@@ -578,6 +579,7 @@
       "SPACE_MEMBER_INVALID": "所选空间成员无效或已不可用。",
       "WORK_ITEM_NOT_FOUND": "工作项不存在、已不可用或当前账号无权访问。",
       "REQUIREMENT_NOT_FOUND": "需求不存在、已不可用或当前账号无权访问。",
+      "REQUIREMENT_REFERENCE_INVALID": "只能关联已生效且已编号的需求。",
       "DOCUMENT_NOT_FOUND": "文档不存在、已不可用或不在当前空间。",
       "DOCUMENT_EDIT_CONFLICT": "文档已有新版本，请刷新后重试。",
       "DOCUMENT_FOLDER_ACCESS_DENIED": "当前账号没有执行该文档目录操作的权限。",
@@ -981,15 +983,27 @@
       "archived": "已归档"
     },
     "status": {
+      "DRAFT": "草稿",
       "ACTIVE": "活跃",
       "ARCHIVED": "已归档"
     },
+    "kind": {
+      "GENERAL": "文档",
+      "REQUIREMENT": "需求"
+    },
+    "contentFormat": {
+      "MARKDOWN": "Markdown",
+      "TIPTAP_JSON": "富文本"
+    },
     "source": {
+      "USER_CREATED": "手动创建",
       "UPLOAD_DOCX": "Word 导入",
       "UPLOAD_MARKDOWN": "Markdown 导入",
       "PASTE_MARKDOWN": "粘贴 Markdown",
       "PASTE_TEXT": "粘贴文本",
-      "MCP_CREATED": "模型生成"
+      "MCP_CREATED": "模型生成",
+      "MIGRATED_DOCUMENT": "历史文档",
+      "MIGRATED_REQUIREMENT": "历史需求"
     },
     "actor": {
       "user": "手动编辑",
@@ -1004,11 +1018,14 @@
       "editedViaClient": "{actor} 通过 {client} 修改 · {time}",
       "editedByUser": "{actor} 手动编辑 · {time}",
       "sourceAction": {
+        "USER_CREATED": "手动创建",
         "UPLOAD_DOCX": "上传 Word",
         "UPLOAD_MARKDOWN": "上传 Markdown",
         "PASTE_MARKDOWN": "粘贴 Markdown",
         "PASTE_TEXT": "粘贴文本",
-        "MCP_CREATED": "通过模型"
+        "MCP_CREATED": "通过模型",
+        "MIGRATED_DOCUMENT": "历史迁移",
+        "MIGRATED_REQUIREMENT": "需求迁移"
       }
     },
     "list": {
@@ -1054,10 +1071,16 @@
       "lastEdited": "最近编辑：{time}",
       "noLinks": "暂无关联资源",
       "conflict": "文档已有新版本，请刷新后再编辑。",
-      "newVersion": "文档已有新版本，当前编辑内容尚未被覆盖。"
+      "newVersion": "文档已有新版本，当前编辑内容尚未被覆盖。",
+      "requirementManaged": "需求正文由需求工作流管理。请打开需求视图，在正确权限下查看或编辑。",
+      "richTextReadOnly": "这篇文档使用富文本正文。此处禁用 Markdown 编辑器，避免以有损转换保存。",
+      "noManagedPreview": "暂无可用的文本预览。"
     },
     "actions": {
       "backToList": "返回文档列表",
+      "openRequirementView": "打开需求视图",
+      "convertToRequirement": "转为需求",
+      "cancelRequirement": "取消需求化",
       "edit": "编辑",
       "save": "保存",
       "cancel": "取消",
@@ -1103,6 +1126,18 @@
       "description": "确认删除“{title}”？删除后将返回文档列表。",
       "cancel": "取消",
       "confirm": "删除"
+    },
+    "cancelRequirementDialog": {
+      "title": "取消需求化",
+      "description": "取消后将保留正文、附件、评论、标签和目录归属，文档不再出现在需求列表中。",
+      "descriptionWithReferences": "当前有 {count} 个交付引用。取消前需要选择拒绝本次操作，或解除引用后继续。",
+      "referenceModeLabel": "引用处理",
+      "referenceModeReject": "有引用时拒绝",
+      "referenceModeUnlink": "解除引用并取消",
+      "reasonLabel": "原因",
+      "reasonPlaceholder": "可选",
+      "cancel": "取消",
+      "confirm": "取消需求化"
     },
     "moveDialog": {
       "title": "移动文档",
@@ -1417,6 +1452,7 @@
     },
     "status": {
       "DRAFT": "草稿",
+      "ACTIVE": "已确认",
       "CONFIRMED": "已确认",
       "ARCHIVED": "已归档"
     },

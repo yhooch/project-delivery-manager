@@ -808,6 +808,25 @@ describe("IntakeService", () => {
       code: "REQUIREMENT_NOT_FOUND",
     });
   });
+
+  it("rejects intake requirement links that are not active and numbered", async () => {
+    const { intakeItems, requirements, service } = createSubject({ role: "PM" });
+
+    vi.mocked(requirements.findById).mockResolvedValueOnce(
+      requirement({ sequence: undefined, status: "DRAFT" }),
+    );
+
+    await expect(
+      service.create(ACTOR_USER_ID, SPACE_ID, {
+        requirementId: REQUIREMENT_ID,
+        sourceType: "REQUIREMENT_CHANGE",
+        title: "Draft requirement intake",
+      }),
+    ).rejects.toMatchObject({
+      code: "REQUIREMENT_REFERENCE_INVALID",
+    });
+    expect(intakeItems.create).not.toHaveBeenCalled();
+  });
 });
 
 function createSubject(input: {
@@ -1106,7 +1125,12 @@ function version(overrides: { spaceId?: string } = {}) {
 }
 
 function requirement(
-  overrides: { spaceId?: string; versionId?: string | null } = {},
+  overrides: {
+    sequence?: number;
+    spaceId?: string;
+    status?: "DRAFT" | "ACTIVE" | "ARCHIVED";
+    versionId?: string | null;
+  } = {},
 ) {
   return {
     attachments: [],
@@ -1121,8 +1145,9 @@ function requirement(
       taskCount: 0,
       tasks: [],
     },
+    sequence: overrides.sequence ?? 1,
     spaceId: overrides.spaceId ?? SPACE_ID,
-    status: "CONFIRMED" as const,
+    status: overrides.status ?? "ACTIVE",
     tags: [],
     title: "Requirement",
     updatedAt: "2026-05-13T00:00:00.000Z",

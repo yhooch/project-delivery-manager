@@ -3,8 +3,10 @@ import type {
   DocumentActorType,
   DocumentChangeType,
   DocumentChunk,
+  DocumentContentFormat,
   DocumentFolder,
   DocumentFolderTreeNode,
+  DocumentKind,
   DocumentListItem,
   DocumentLink,
   DocumentLinkTarget,
@@ -12,6 +14,8 @@ import type {
   DocumentSourceType,
   DocumentStatus,
   PageResult,
+  Priority,
+  CancelRequirementReferenceMode,
   TagDto,
 } from "@project-delivery/shared";
 
@@ -52,6 +56,7 @@ export type DocumentListInput = {
   page: number;
   pageSize: number;
   query?: string;
+  kind?: DocumentKind;
   status?: DocumentStatus;
   sourceType?: DocumentSourceType;
   lastEditedVia?: DocumentActorType;
@@ -89,7 +94,10 @@ export type UpdateDocumentMetadataInput = DocumentActorInput & {
 export type UpdateDocumentContentInput = DocumentActorInput & {
   documentId: string;
   baseRevision: number;
-  contentMarkdown: string;
+  contentFormat: DocumentContentFormat;
+  contentJson?: Record<string, unknown>;
+  contentMarkdown: string | null;
+  contentMarkdownCache?: string | null;
   contentText: string;
   changeType: Extract<
     DocumentChangeType,
@@ -123,6 +131,33 @@ export type ReplaceDocumentLinksInput = DocumentActorInput & {
   links: DocumentLinkTarget[];
 };
 
+export type ConvertDocumentToRequirementInput = DocumentActorInput & {
+  activate?: boolean;
+  baseRevision: number;
+  documentId: string;
+  ownerId?: string;
+  priority?: Priority;
+  summary?: string;
+  title?: string;
+  versionId?: string | null;
+};
+
+export type CancelRequirementPreflightResult =
+  | {
+      referenceCount: number;
+      status: "ok";
+    }
+  | {
+      status: "invalid_kind" | "not_found";
+    };
+
+export type CancelRequirementInput = DocumentActorInput & {
+  baseRevision: number;
+  documentId: string;
+  reason?: string;
+  referenceMode: CancelRequirementReferenceMode;
+};
+
 export type DocumentMutationResult =
   | {
       status: "updated";
@@ -133,6 +168,22 @@ export type DocumentMutationResult =
     }
   | {
       status: "not_found";
+    };
+
+export type ConvertDocumentToRequirementResult =
+  | DocumentMutationResult
+  | {
+      status: "invalid_kind";
+    };
+
+export type CancelRequirementResult =
+  | DocumentMutationResult
+  | {
+      status: "invalid_kind";
+    }
+  | {
+      referenceCount: number;
+      status: "referenced";
     };
 
 export type DocumentListResult = PageResult<DocumentListItem>;

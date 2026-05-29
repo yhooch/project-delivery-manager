@@ -3,6 +3,7 @@ import {
   type CreateRequirementDraftRequest,
   type ListRequirementsResponse,
   type PermissionSnapshot,
+  type RealtimePayloadHints,
   type Requirement,
   type SaveRequirementRequest,
   type SpaceRole,
@@ -46,14 +47,14 @@ const REQUIREMENT_WRITER_ROLES = new Set<SpaceRole>([
   "PM",
   "REQUIREMENT",
 ]);
-const REQUIREMENT_NON_DRAFT_READ_ALL_ROLES = new Set<SpaceRole>([
-  "SPACE_ADMIN",
-  "PM",
-  "REQUIREMENT",
-  "VIEWER",
-]);
+const REQUIREMENT_DOCUMENT_TARGET_TYPE = "DOCUMENT" as const;
+const REQUIREMENT_DOCUMENT_KIND = "REQUIREMENT" as const;
 type ValidateRequirementCreationInput = CreateRequirementDraftRequest &
-  SaveRequirementRequest;
+  Omit<SaveRequirementRequest, "baseRevision">;
+type RequirementSaveContentSource = Omit<
+  SaveRequirementRequest,
+  "baseRevision"
+>;
 
 @Injectable()
 export class RequirementService {
@@ -137,26 +138,24 @@ export class RequirementService {
       actionType: "CREATE",
       actorId: actorUserId,
       after: created,
+      metadata: requirementAuditMetadata("CREATE_DRAFT"),
       ...metadata,
       organizationId: access.space.organizationId,
       spaceId,
       targetId: created.id,
-      targetType: "REQUIREMENT",
+      targetType: REQUIREMENT_DOCUMENT_TARGET_TYPE,
     });
 
     this.safePublishRealtime({
       actorId: actorUserId,
       organizationId: created.organizationId,
       spaceId: created.spaceId,
-      target: { type: "REQUIREMENT", id: created.id },
+      target: requirementRealtimeTarget(created.id),
       operation: "CREATED",
       invalidates: ["requirement-list", "requirement-detail", "version-board"],
-      hints: {
-        targetType: "REQUIREMENT",
-        targetId: created.id,
-        spaceId: created.spaceId,
+      hints: requirementRealtimeHints(created, {
         ...(created.versionId ? { versionId: created.versionId } : {}),
-      },
+      }),
     });
 
     return withPermissions(created, access.role);
@@ -212,6 +211,7 @@ export class RequirementService {
     metadata: RequestMetadata = {},
   ): Promise<Requirement> {
     const existing = await this.requireExistingRequirement(requirementId);
+    this.assertBaseRevision(input.baseRevision, existing.revision);
     const access = await this.requireRequirementWriter(
       actorUserId,
       existing.spaceId,
@@ -219,21 +219,22 @@ export class RequirementService {
         metadata,
         operation: "updateRequirement",
         targetId: requirementId,
-        targetType: "REQUIREMENT",
+        targetType: REQUIREMENT_DOCUMENT_TARGET_TYPE,
       },
     );
-    await this.requireDraftParticipant(actorUserId, existing, {
-      metadata,
-      operation: "updateRequirement",
-    });
 
     if (isArchiveRequest(input)) {
       const archived = await this.requirements.archive({
+        baseRevision: input.baseRevision,
         requirementId,
         updatedById: actorUserId,
       });
 
       if (!archived) {
+        await this.throwIfRequirementRevisionConflict(
+          requirementId,
+          input.baseRevision,
+        );
         throwRequirementNotFound();
       }
 
@@ -242,32 +243,29 @@ export class RequirementService {
         actorId: actorUserId,
         after: archived,
         before: existing,
-        metadata: { operation: "ARCHIVE" },
+        metadata: requirementAuditMetadata("ARCHIVE"),
         ...metadata,
         organizationId: existing.organizationId,
         spaceId: existing.spaceId,
         targetId: requirementId,
-        targetType: "REQUIREMENT",
+        targetType: REQUIREMENT_DOCUMENT_TARGET_TYPE,
       });
 
       this.safePublishRealtime({
         actorId: actorUserId,
         organizationId: archived.organizationId,
         spaceId: archived.spaceId,
-        target: { type: "REQUIREMENT", id: archived.id },
+        target: requirementRealtimeTarget(archived.id),
         operation: "STATUS_CHANGED",
         invalidates: [
           "requirement-list",
           "requirement-detail",
           "version-board",
         ],
-        hints: {
-          targetType: "REQUIREMENT",
-          targetId: archived.id,
-          spaceId: archived.spaceId,
+        hints: requirementRealtimeHints(archived, {
           ...(archived.versionId ? { versionId: archived.versionId } : {}),
           changedFields: ["status"],
-        },
+        }),
       });
 
       return withPermissions(archived, access.role);
@@ -311,12 +309,13 @@ export class RequirementService {
         fromVersionId: existing.versionId,
         impact: versionCascadeImpact,
         targetId: requirementId,
-        targetType: "REQUIREMENT",
+        targetType: REQUIREMENT_DOCUMENT_TARGET_TYPE,
         toVersionId: versionId ?? null,
       });
     }
 
     const saveBase = {
+      baseRevision: input.baseRevision,
       requirementId,
       title: input.title,
       summary: input.summary,
@@ -333,6 +332,10 @@ export class RequirementService {
     });
 
     if (!saved) {
+      await this.throwIfRequirementRevisionConflict(
+        requirementId,
+        input.baseRevision,
+      );
       throwRequirementNotFound();
     }
 
@@ -342,6 +345,7 @@ export class RequirementService {
       after: saved,
       before: existing,
       metadata: {
+        targetKind: REQUIREMENT_DOCUMENT_KIND,
         operation: "SAVE",
         ...(input.cascadeVersionChange === true && versionCascadeImpact
           ? { versionCascade: toCascadeAuditMetadata(versionCascadeImpact) }
@@ -351,14 +355,14 @@ export class RequirementService {
       organizationId: existing.organizationId,
       spaceId: existing.spaceId,
       targetId: requirementId,
-      targetType: "REQUIREMENT",
+      targetType: REQUIREMENT_DOCUMENT_TARGET_TYPE,
     });
 
     this.safePublishRealtime({
       actorId: actorUserId,
       organizationId: saved.organizationId,
       spaceId: saved.spaceId,
-      target: { type: "REQUIREMENT", id: saved.id },
+      target: requirementRealtimeTarget(saved.id),
       operation: "UPDATED",
       invalidates: [
         "requirement-list",
@@ -376,16 +380,13 @@ export class RequirementService {
             ]
           : []),
       ],
-      hints: {
-        targetType: "REQUIREMENT",
-        targetId: saved.id,
-        spaceId: saved.spaceId,
+      hints: requirementRealtimeHints(saved, {
         ...(saved.versionId ? { versionId: saved.versionId } : {}),
         changedFields: changedFieldsFromRequirementUpdate(input),
         ...(input.cascadeVersionChange === true
           ? { suggestFullRefresh: true }
           : {}),
-      },
+      }),
     });
 
     return withPermissions(saved, access.role);
@@ -414,27 +415,24 @@ export class RequirementService {
       actionType: "DELETE",
       actorId: actorUserId,
       before: existing,
-      metadata: { operation: "DELETE_EMPTY_DRAFT" },
+      metadata: requirementAuditMetadata("DELETE_EMPTY_DRAFT"),
       ...metadata,
       organizationId: existing.organizationId,
       spaceId: existing.spaceId,
       targetId: requirementId,
-      targetType: "REQUIREMENT",
+      targetType: REQUIREMENT_DOCUMENT_TARGET_TYPE,
     });
 
     this.safePublishRealtime({
       actorId: actorUserId,
       organizationId: existing.organizationId,
       spaceId: existing.spaceId,
-      target: { type: "REQUIREMENT", id: requirementId },
+      target: requirementRealtimeTarget(requirementId),
       operation: "DELETED",
       invalidates: ["requirement-list", "requirement-detail", "version-board"],
-      hints: {
-        targetType: "REQUIREMENT",
-        targetId: requirementId,
-        spaceId: existing.spaceId,
+      hints: requirementRealtimeHints(existing, {
         ...(existing.versionId ? { versionId: existing.versionId } : {}),
-      },
+      }),
     });
   }
 
@@ -488,7 +486,12 @@ export class RequirementService {
         await auditAccessDenied(this.audit, {
           ...auditContext.metadata,
           actorId: userId,
-          metadata: { role: access.role },
+          metadata: {
+            role: access.role,
+            ...(auditContext.targetType === REQUIREMENT_DOCUMENT_TARGET_TYPE
+              ? { targetKind: REQUIREMENT_DOCUMENT_KIND }
+              : {}),
+          },
           operation: auditContext.operation,
           organizationId: access.space.organizationId,
           reason: "ROLE_NOT_ALLOWED",
@@ -504,23 +507,11 @@ export class RequirementService {
   }
 
   private async canReadRequirement(
-    actorUserId: string,
-    requirement: Requirement,
-    role: SpaceRole,
+    _actorUserId: string,
+    _requirement: Requirement,
+    _role: SpaceRole,
   ) {
-    if (
-      requirement.status !== "DRAFT" &&
-      (REQUIREMENT_WRITER_ROLES.has(role) ||
-        REQUIREMENT_NON_DRAFT_READ_ALL_ROLES.has(role))
-    ) {
-      return true;
-    }
-
-    return this.requirements.isParticipant(
-      requirement.spaceId,
-      requirement.id,
-      actorUserId,
-    );
+    return true;
   }
 
   private async requireVersionInSpace(spaceId: string, versionId: string) {
@@ -535,43 +526,6 @@ export class RequirementService {
     }
 
     return version;
-  }
-
-  private async requireDraftParticipant(
-    actorUserId: string,
-    requirement: Requirement,
-    auditContext?: {
-      metadata: RequestMetadata;
-      operation: string;
-    },
-  ) {
-    if (requirement.status !== "DRAFT") {
-      return;
-    }
-
-    if (
-      await this.requirements.isParticipant(
-        requirement.spaceId,
-        requirement.id,
-        actorUserId,
-      )
-    ) {
-      return;
-    }
-
-    if (auditContext) {
-      await auditAccessDenied(this.audit, {
-        ...auditContext.metadata,
-        actorId: actorUserId,
-        operation: auditContext.operation,
-        organizationId: requirement.organizationId,
-        reason: "DRAFT_REQUIREMENT_PARTICIPANT_REQUIRED",
-        spaceId: requirement.spaceId,
-        targetId: requirement.id,
-        targetType: "REQUIREMENT",
-      });
-    }
-    throwRequirementNotFound();
   }
 
   private async requireActiveSpaceOwner(
@@ -615,8 +569,35 @@ export class RequirementService {
     }
   }
 
+  private assertBaseRevision(baseRevision: number, currentRevision?: number) {
+    if (currentRevision === undefined || currentRevision === baseRevision) {
+      return;
+    }
+
+    throw new ApiException(
+      "DOCUMENT_EDIT_CONFLICT",
+      "Requirement revision conflict",
+      HttpStatus.CONFLICT,
+    );
+  }
+
+  private async throwIfRequirementRevisionConflict(
+    requirementId: string,
+    baseRevision: number,
+  ) {
+    const current = await this.requirements.findById(requirementId);
+
+    if (current?.revision !== undefined && current.revision !== baseRevision) {
+      throw new ApiException(
+        "DOCUMENT_EDIT_CONFLICT",
+        "Requirement revision conflict",
+        HttpStatus.CONFLICT,
+      );
+    }
+  }
+
   private assertValidContent(
-    input: SaveRequirementRequest,
+    input: RequirementSaveContentSource,
     requirement?: Requirement,
   ) {
     if (
@@ -692,12 +673,15 @@ export class RequirementService {
       await auditAccessDenied(this.audit, {
         ...metadata,
         actorId: actorUserId,
+        metadata: {
+          targetKind: REQUIREMENT_DOCUMENT_KIND,
+        },
         operation: "deleteRequirementDraft",
         organizationId: requirement.organizationId,
         reason: "DRAFT_REQUIREMENT_AUTHOR_REQUIRED",
         spaceId: requirement.spaceId,
         targetId: requirement.id,
-        targetType: "REQUIREMENT",
+        targetType: REQUIREMENT_DOCUMENT_TARGET_TYPE,
       });
       throwRequirementNotFound();
     }
@@ -765,17 +749,9 @@ function isArchiveRequest(
 }
 
 function resolveRequirementListVisibility(
-  role: SpaceRole,
+  _role: SpaceRole,
 ): RequirementListVisibility {
-  if (REQUIREMENT_WRITER_ROLES.has(role)) {
-    return "ALL";
-  }
-
-  if (REQUIREMENT_NON_DRAFT_READ_ALL_ROLES.has(role)) {
-    return "NON_DRAFT_OR_PARTICIPANT_DRAFT";
-  }
-
-  return "PARTICIPANT";
+  return "ALL";
 }
 
 function toCascadeAuditMetadata(
@@ -865,16 +841,16 @@ type SaveRequirementContentInput =
       contentFormat: "TIPTAP_JSON";
       contentJson: NonNullable<SaveRequirementRequest["contentJson"]>;
       contentMarkdownCache?: string;
-      contentText?: string;
+      contentText: string;
     }
   | {
       contentFormat: "MARKDOWN";
       contentMarkdown: string;
-      contentText?: string;
+      contentText: string;
     };
 
 function toSaveRequirementContent(
-  input: SaveRequirementRequest,
+  input: RequirementSaveContentSource,
 ): SaveRequirementContentInput {
   if (resolveSaveContentFormat(input) === "MARKDOWN") {
     const contentMarkdown = input.contentMarkdown ?? "";
@@ -883,20 +859,28 @@ function toSaveRequirementContent(
       contentFormat: "MARKDOWN",
       contentMarkdown,
       contentText:
-        input.contentText ?? extractTextFromMarkdown(contentMarkdown),
+        input.contentText ?? extractTextFromMarkdown(contentMarkdown) ?? "",
     };
   }
 
+  const contentJson = input.contentJson ?? {};
+
   return {
     contentFormat: "TIPTAP_JSON",
-    contentJson: input.contentJson ?? {},
+    contentJson,
     contentMarkdownCache: input.contentMarkdownCache,
-    contentText: input.contentText,
+    contentText:
+      input.contentText ??
+      (input.contentMarkdownCache
+        ? extractTextFromMarkdown(input.contentMarkdownCache)
+        : undefined) ??
+      extractTextFromTiptapContent(contentJson) ??
+      "",
   };
 }
 
 function resolveSaveContentFormat(
-  input: SaveRequirementRequest,
+  input: RequirementSaveContentSource,
 ): "TIPTAP_JSON" | "MARKDOWN" {
   return (
     input.contentFormat ??
@@ -953,6 +937,67 @@ function extractTextFromMarkdown(markdown: string): string | undefined {
     .join("\n\n");
 
   return text.length > 0 ? text : undefined;
+}
+
+function extractTextFromTiptapContent(value: unknown): string | undefined {
+  const lines: string[] = [];
+
+  collectTiptapText(value, lines);
+
+  const text = lines
+    .join("\n")
+    .replace(/[ \t]+/gu, " ")
+    .replace(/\n{3,}/gu, "\n\n")
+    .trim();
+
+  return text.length > 0 ? text : undefined;
+}
+
+function collectTiptapText(value: unknown, lines: string[]) {
+  if (Array.isArray(value)) {
+    for (const item of value) {
+      collectTiptapText(item, lines);
+    }
+    return;
+  }
+
+  if (!isPlainRecord(value)) {
+    return;
+  }
+
+  if (typeof value.text === "string") {
+    lines.push(value.text);
+  }
+
+  collectTiptapText(value.content, lines);
+}
+
+function requirementAuditMetadata(operation: string) {
+  return {
+    operation,
+    targetKind: REQUIREMENT_DOCUMENT_KIND,
+  };
+}
+
+function requirementRealtimeTarget(id: string) {
+  return {
+    type: REQUIREMENT_DOCUMENT_TARGET_TYPE,
+    id,
+  };
+}
+
+function requirementRealtimeHints(
+  requirement: Pick<Requirement, "id" | "spaceId">,
+  extra: Partial<RealtimePayloadHints> = {},
+): RealtimePayloadHints {
+  return {
+    targetType: REQUIREMENT_DOCUMENT_TARGET_TYPE,
+    targetKind: REQUIREMENT_DOCUMENT_KIND,
+    targetId: requirement.id,
+    requirementId: requirement.id,
+    spaceId: requirement.spaceId,
+    ...extra,
+  };
 }
 
 function hasMeaningfulTiptapContent(value: unknown): boolean {

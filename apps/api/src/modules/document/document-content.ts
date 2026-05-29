@@ -126,6 +126,39 @@ export function buildDocumentChunks(markdown: string): DocumentContentChunkInput
   return chunks;
 }
 
+export function buildDocumentChunksFromText(
+  text: string,
+): DocumentContentChunkInput[] {
+  return text
+    .replace(/\r\n?/gu, "\n")
+    .split(/\n{2,}/u)
+    .map((chunk) => chunk.trim())
+    .filter(Boolean)
+    .map((contentText, ordinal) => ({
+      ordinal,
+      contentText,
+    }));
+}
+
+export function normalizeTiptapSource(input: {
+  contentJson: Record<string, unknown>;
+  contentMarkdownCache?: string;
+}) {
+  const contentText = extractTextFromTiptapJson(input.contentJson);
+  const contentMarkdownCache = stripBase64Images(
+    input.contentMarkdownCache ?? contentText,
+  ).trim();
+
+  assertMarkdownSize(contentText);
+  assertMarkdownSize(contentMarkdownCache);
+
+  return {
+    contentJson: input.contentJson,
+    contentMarkdownCache,
+    contentText,
+  };
+}
+
 export function assertMarkdownImportFile(file: UploadedDocumentFile): void {
   assertImportSize(file);
   if (
@@ -227,6 +260,36 @@ function normalizeTitle(title: string): string {
   const trimmed = title.trim().replace(/\s+/gu, " ");
 
   return trimmed ? trimmed.slice(0, 200) : "Untitled document";
+}
+
+function extractTextFromTiptapJson(value: unknown): string {
+  const text: string[] = [];
+
+  collectTiptapText(value, text);
+
+  return text.join(" ").replace(/\s+/gu, " ").trim();
+}
+
+function collectTiptapText(value: unknown, output: string[]): void {
+  if (Array.isArray(value)) {
+    for (const item of value) {
+      collectTiptapText(item, output);
+    }
+    return;
+  }
+
+  if (!value || typeof value !== "object") {
+    return;
+  }
+
+  const record = value as Record<string, unknown>;
+  if (typeof record.text === "string") {
+    output.push(record.text);
+  }
+
+  if (Array.isArray(record.content)) {
+    collectTiptapText(record.content, output);
+  }
 }
 
 function assertImportSize(file: UploadedDocumentFile): void {

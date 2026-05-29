@@ -1,5 +1,6 @@
 import type {
   BugSeverity,
+  DocumentStatus,
   ListBugsResponse,
   Priority,
   SpaceRole,
@@ -41,6 +42,8 @@ export type BugWorkflowSelection = {
 export type BugLinkedUsers = {
   versionOwnerId?: string;
   requirementOwnerId?: string;
+  requirementSequence?: number;
+  requirementStatus?: DocumentStatus;
   requirementVersionId?: string;
   intakeReporterId?: string;
   intakeAssigneeId?: string;

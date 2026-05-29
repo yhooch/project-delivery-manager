@@ -30,6 +30,7 @@ describe("requirement schemas", () => {
   it("accepts valid Tiptap documents and rejects malformed content", () => {
     expect(
       UpdateRequirementRequestSchema.parse({
+        baseRevision: 1,
         cascadeVersionChange: true,
         title: "Requirement",
         contentJson: {
@@ -51,6 +52,7 @@ describe("requirement schemas", () => {
 
     expect(() =>
       UpdateRequirementRequestSchema.parse({
+        baseRevision: 1,
         title: "Invalid",
         contentJson: { foo: "bar" },
       }),
@@ -67,7 +69,7 @@ describe("requirement schemas", () => {
         contentFormat: "MARKDOWN",
         contentMarkdown: "# Scope\n\nShip the MCP contract.",
         contentText: "Scope\n\nShip the MCP contract.",
-        status: "CONFIRMED",
+        status: "ACTIVE",
         tags: [],
         relatedWorkItems: {
           taskCount: 0,
@@ -79,12 +81,15 @@ describe("requirement schemas", () => {
         updatedAt: "2026-05-22T00:00:00.000Z",
       }),
     ).toMatchObject({
+      kind: "REQUIREMENT",
+      status: "ACTIVE",
       contentFormat: "MARKDOWN",
       contentMarkdown: "# Scope\n\nShip the MCP contract.",
     });
 
     expect(
       UpdateRequirementRequestSchema.parse({
+        baseRevision: 1,
         title: "Markdown requirement",
         contentFormat: "MARKDOWN",
         contentMarkdown: "# Scope",
@@ -96,6 +101,7 @@ describe("requirement schemas", () => {
 
     expect(() =>
       UpdateRequirementRequestSchema.parse({
+        baseRevision: 1,
         title: "Mixed content",
         contentFormat: "MARKDOWN",
         contentJson: { type: "doc", content: [] },
@@ -105,6 +111,7 @@ describe("requirement schemas", () => {
 
     expect(() =>
       UpdateRequirementRequestSchema.parse({
+        baseRevision: 1,
         title: "Wrong cache",
         contentFormat: "MARKDOWN",
         contentMarkdown: "# Scope",
@@ -116,6 +123,7 @@ describe("requirement schemas", () => {
   it("rejects base64 image data anywhere in requirement content", () => {
     expect(() =>
       UpdateRequirementRequestSchema.parse({
+        baseRevision: 1,
         title: "Inline image",
         contentJson: {
           type: "doc",
@@ -133,6 +141,7 @@ describe("requirement schemas", () => {
 
     expect(() =>
       UpdateRequirementRequestSchema.parse({
+        baseRevision: 1,
         title: "Text cache",
         contentJson: { type: "doc", content: [] },
         contentText: "before data:image/png;name=inline;base64,AAAA after",
@@ -141,6 +150,7 @@ describe("requirement schemas", () => {
 
     expect(() =>
       UpdateRequirementRequestSchema.parse({
+        baseRevision: 1,
         title: "Markdown cache",
         contentJson: { type: "doc", content: [] },
         contentMarkdownCache: "![inline](data:image/jpeg;base64,AAAA)",
@@ -149,6 +159,7 @@ describe("requirement schemas", () => {
 
     expect(() =>
       UpdateRequirementRequestSchema.parse({
+        baseRevision: 1,
         title: "Markdown source",
         contentFormat: "MARKDOWN",
         contentMarkdown: "![inline](data:image/gif;base64,AAAA)",

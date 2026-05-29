@@ -9,6 +9,7 @@ export type AttachmentTargetContext = {
   organizationId: string;
   spaceId: string;
   targetId: string;
+  targetKind?: "REQUIREMENT";
   targetType: AttachmentTargetType;
   targetWorkItemType?: WorkItemType;
 };

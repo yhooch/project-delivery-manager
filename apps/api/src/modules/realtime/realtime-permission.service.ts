@@ -14,12 +14,6 @@ const WORK_ITEM_READ_ALL_ROLES = new Set<SpaceRole>([
   "PM",
   "VIEWER",
 ]);
-const REQUIREMENT_NON_DRAFT_READ_ALL_ROLES = new Set<SpaceRole>([
-  "SPACE_ADMIN",
-  "PM",
-  "REQUIREMENT",
-  "VIEWER",
-]);
 const INTAKE_ITEM_READ_ALL_ROLES = new Set<SpaceRole>([
   "SPACE_ADMIN",
   "PM",
@@ -76,8 +70,6 @@ export class RealtimePermissionService {
         return this.canReadVersionTarget(event);
       case "WORK_ITEM":
         return this.canReadWorkItemTarget(userId, event, role);
-      case "REQUIREMENT":
-        return this.canReadRequirementTarget(userId, event, role);
       case "INTAKE_ITEM":
         return this.canReadIntakeItemTarget(userId, event, role);
       case "DOCUMENT":
@@ -154,50 +146,6 @@ export class RealtimePermissionService {
     }
 
     return this.isObjectParticipant(userId, event, "WORK_ITEM", {
-      includeRecentlyRemoved: true,
-    });
-  }
-
-  private async canReadRequirementTarget(
-    userId: string,
-    event: RealtimeEvent,
-    role: SpaceRole,
-  ): Promise<boolean> {
-    const includeDeletedTarget = event.operation === "DELETED";
-    const requirement = await this.prisma.client.requirement.findFirst({
-      select: {
-        deletedAt: true,
-        id: true,
-        status: true,
-      },
-      where: {
-        id: event.target.id,
-        organizationId: event.organizationId,
-        spaceId: event.spaceId,
-        ...(includeDeletedTarget ? {} : { deletedAt: null }),
-      },
-    });
-
-    if (!requirement) {
-      return false;
-    }
-
-    if (
-      requirement.status !== "DRAFT" &&
-      REQUIREMENT_NON_DRAFT_READ_ALL_ROLES.has(role)
-    ) {
-      return true;
-    }
-
-    if (includeDeletedTarget) {
-      return requirement.deletedAt
-        ? this.isObjectParticipant(userId, event, "REQUIREMENT", {
-            deletedAt: requirement.deletedAt,
-          })
-        : false;
-    }
-
-    return this.isObjectParticipant(userId, event, "REQUIREMENT", {
       includeRecentlyRemoved: true,
     });
   }

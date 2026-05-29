@@ -59,9 +59,10 @@ describe("timeline links", () => {
       getTimelineEventHref(
         makeEvent({
           target: {
+            displayCode: "REQ-12",
             id: "01ARZ3NDEKTSV4RRFFQ69G5FA6",
             title: "Requirement",
-            type: "REQUIREMENT",
+            type: "DOCUMENT",
           },
         }),
       ),

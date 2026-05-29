@@ -1113,11 +1113,12 @@ async function assertNoIntakeCascadeConflicts(
   },
 ) {
   const nextRequirement = input.nextRequirementId
-    ? await tx.requirement.findFirst({
+    ? await tx.document.findFirst({
         select: { versionId: true },
         where: {
           deletedAt: null,
           id: input.nextRequirementId,
+          kind: "REQUIREMENT",
         },
       })
     : undefined;
@@ -1137,7 +1138,11 @@ async function assertNoIntakeCascadeConflicts(
       },
       intakeItemId: true,
       requirement: {
-        select: { versionId: true },
+        select: {
+          deletedAt: true,
+          kind: true,
+          versionId: true,
+        },
       },
       requirementId: true,
     },
@@ -1161,7 +1166,7 @@ async function assertNoIntakeCascadeConflicts(
             item.intakeItemId === input.intakeItemId &&
             input.nextRequirementId !== undefined
               ? nextRequirement?.versionId
-              : item.requirement?.versionId,
+              : requirementDocumentVersionId(item.requirement),
         },
         {
           label: "intakeItem",
@@ -1182,6 +1187,18 @@ async function assertNoIntakeCascadeConflicts(
       versionId: input.nextVersionId,
     });
   }
+}
+
+function requirementDocumentVersionId(
+  requirement: {
+    deletedAt: Date | null;
+    kind: string;
+    versionId: string | null;
+  } | null,
+) {
+  return requirement?.kind === "REQUIREMENT" && requirement.deletedAt === null
+    ? requirement.versionId
+    : undefined;
 }
 
 function intakeSnapshot(item: IntakeItemRecord): Prisma.InputJsonObject {

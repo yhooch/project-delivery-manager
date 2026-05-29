@@ -25,16 +25,6 @@ import type {
   VersionStatsScope,
 } from "./version.types";
 
-type RequirementStatsVisibility = "SPACE";
-
-type VersionStatsScopeWithRequirementVisibility = VersionStatsScope & {
-  requirementStatsVisibility?: RequirementStatsVisibility;
-};
-
-type VersionListInputWithRequirementVisibility = VersionListInput & {
-  requirementStatsVisibility?: RequirementStatsVisibility;
-};
-
 const ORGANIZATION_ID = "01H00000000000000000000000";
 const OTHER_ORGANIZATION_ID = "01H0000000000000000000000Z";
 const SPACE_ID = "01H00000000000000000000001";
@@ -223,7 +213,6 @@ describe("VersionService board view", () => {
 
     expect(subject.versions.listInput).toMatchObject({
       actorUserId: ACTOR_ID,
-      requirementStatsVisibility: "SPACE",
       visibility: "PARTICIPANT",
     });
 
@@ -233,7 +222,6 @@ describe("VersionService board view", () => {
       undefined,
       {
         actorUserId: ACTOR_ID,
-        requirementStatsVisibility: "SPACE",
         spaceId: SPACE_ID,
         visibility: "PARTICIPANT",
       },
@@ -253,7 +241,7 @@ describe("VersionService board view", () => {
     expect(subject.versions.boardInput?.visibility).toBe("PARTICIPANT");
   });
 
-  it("returns participant-scoped stats for restricted version reads", async () => {
+  it("keeps requirement stats space-wide for restricted version reads", async () => {
     const subject = createSubject("DEVELOPER");
 
     subject.versions.items.set(
@@ -281,7 +269,7 @@ describe("VersionService board view", () => {
     expect(result.stats).toEqual({
       blockedCount: 0,
       bugCount: 1,
-      requirementCount: 1,
+      requirementCount: 2,
       taskCount: 1,
     });
   });
@@ -355,10 +343,8 @@ function createRealtimePublisher() {
 class FakeVersionRepository implements VersionRepository {
   readonly items = new Map<string, Version>();
   boardInput?: VersionBoardInput;
-  readonly findStatsScopes: Array<
-    VersionStatsScopeWithRequirementVisibility | undefined
-  > = [];
-  listInput?: VersionListInputWithRequirementVisibility;
+  readonly findStatsScopes: Array<VersionStatsScope | undefined> = [];
+  listInput?: VersionListInput;
 
   async create(input: CreateVersionInput): Promise<Version> {
     const version = makeVersion({
@@ -375,7 +361,7 @@ class FakeVersionRepository implements VersionRepository {
 
   async findById(
     versionId: string,
-    statsScope?: VersionStatsScopeWithRequirementVisibility,
+    statsScope?: VersionStatsScope,
   ): Promise<Version | undefined> {
     this.findStatsScopes.push(statsScope);
     const version = this.items.get(versionId);
@@ -384,24 +370,12 @@ class FakeVersionRepository implements VersionRepository {
       return version;
     }
 
-    if (statsScope.requirementStatsVisibility === "SPACE") {
-      return {
-        ...version,
-        stats: {
-          blockedCount: 0,
-          bugCount: 1,
-          requirementCount: version.stats.requirementCount,
-          taskCount: 1,
-        },
-      };
-    }
-
     return {
       ...version,
       stats: {
         blockedCount: 0,
         bugCount: 1,
-        requirementCount: 1,
+        requirementCount: version.stats.requirementCount,
         taskCount: 1,
       },
     };
@@ -422,7 +396,7 @@ class FakeVersionRepository implements VersionRepository {
     spaceId: string,
     input: VersionListInput,
   ): Promise<VersionListResult> {
-    this.listInput = input as VersionListInputWithRequirementVisibility;
+    this.listInput = input;
     const items = [...this.items.values()].filter(
       (item) => item.spaceId === spaceId,
     );

@@ -111,14 +111,11 @@ describe("RealtimePermissionService", () => {
     });
   });
 
-  it("requires participant visibility for draft requirements even for privileged roles", async () => {
+  it("allows space members to read requirement document events", async () => {
     const { client, service } = createSubject("PM");
-    client.requirement.findFirst.mockResolvedValue({
-      deletedAt: null,
+    client.document.findFirst.mockResolvedValue({
       id: "requirement",
-      status: "DRAFT",
     });
-    client.objectParticipant.findFirst.mockResolvedValueOnce(undefined);
 
     await expect(
       service.canReadEvent(
@@ -126,38 +123,18 @@ describe("RealtimePermissionService", () => {
         createRealtimeEventFixture(1, {
           target: {
             id: "01H00000000000000000000004",
-            type: "REQUIREMENT",
-          },
-        }),
-      ),
-    ).resolves.toBe(false);
-
-    client.objectParticipant.findFirst.mockResolvedValueOnce({
-      id: "participant",
-    });
-
-    await expect(
-      service.canReadEvent(
-        REALTIME_ACTOR_ID,
-        createRealtimeEventFixture(2, {
-          target: {
-            id: "01H00000000000000000000004",
-            type: "REQUIREMENT",
+            type: "DOCUMENT",
           },
         }),
       ),
     ).resolves.toBe(true);
+    expect(client.objectParticipant.findFirst).not.toHaveBeenCalled();
   });
 
-  it("allows recently removed draft requirement participants to receive the invalidation", async () => {
+  it("does not require participant visibility for requirement document events", async () => {
     const { client, service } = createSubject("PM");
-    client.requirement.findFirst.mockResolvedValue({
-      deletedAt: null,
+    client.document.findFirst.mockResolvedValue({
       id: "requirement",
-      status: "DRAFT",
-    });
-    client.objectParticipant.findFirst.mockResolvedValueOnce({
-      id: "removed-participant",
     });
 
     await expect(
@@ -166,28 +143,12 @@ describe("RealtimePermissionService", () => {
         createRealtimeEventFixture(1, {
           target: {
             id: "01H00000000000000000000004",
-            type: "REQUIREMENT",
+            type: "DOCUMENT",
           },
         }),
       ),
     ).resolves.toBe(true);
-
-    expect(client.objectParticipant.findFirst).toHaveBeenCalledWith({
-      select: { id: true },
-      where: expect.objectContaining({
-        OR: [
-          { deletedAt: null },
-          {
-            deletedAt: {
-              gte: new Date("2026-05-21T11:55:00.000Z"),
-              lte: new Date("2026-05-21T12:00:00.000Z"),
-            },
-            updatedById: REALTIME_ACTOR_ID,
-          },
-        ],
-        targetType: "REQUIREMENT",
-      }),
-    });
+    expect(client.objectParticipant.findFirst).not.toHaveBeenCalled();
   });
 
   it("allows recently removed intake participants to receive the invalidation", async () => {
@@ -232,7 +193,7 @@ describe("RealtimePermissionService", () => {
   it("allows deleted draft requirement events for participants removed by the same soft delete", async () => {
     const deletedAt = new Date("2026-05-21T12:30:00.000Z");
     const { client, service } = createSubject("PM");
-    client.requirement.findFirst.mockResolvedValue({
+    client.document.findFirst.mockResolvedValue({
       deletedAt,
       id: "requirement",
       status: "DRAFT",
@@ -248,29 +209,21 @@ describe("RealtimePermissionService", () => {
           operation: "DELETED",
           target: {
             id: "01H00000000000000000000004",
-            type: "REQUIREMENT",
+            type: "DOCUMENT",
           },
         }),
       ),
     ).resolves.toBe(true);
 
-    expect(client.requirement.findFirst).toHaveBeenCalledWith({
+    expect(client.document.findFirst).toHaveBeenCalledWith({
       select: {
-        deletedAt: true,
         id: true,
-        status: true,
       },
-      where: expect.not.objectContaining({
-        deletedAt: null,
-      }),
-    });
-    expect(client.objectParticipant.findFirst).toHaveBeenCalledWith({
-      select: { id: true },
       where: expect.objectContaining({
-        deletedAt,
-        targetType: "REQUIREMENT",
+        deletedAt: { not: null },
       }),
     });
+    expect(client.objectParticipant.findFirst).not.toHaveBeenCalled();
   });
 });
 
@@ -285,7 +238,7 @@ function createSubject(role: SpaceRole = "DEVELOPER") {
     organizationMember: {
       findFirst: vi.fn().mockResolvedValue({ id: "organization-member" }),
     },
-    requirement: {
+    document: {
       findFirst: vi.fn(),
     },
     space: {

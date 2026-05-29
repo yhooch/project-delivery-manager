@@ -115,6 +115,60 @@ describe("TagAssignmentService", () => {
     expect(realtime.publish).not.toHaveBeenCalled();
   });
 
+  it("publishes requirement document hints for requirement tag assignments", async () => {
+    const beforeTag = makeTag({ id: TAG_ID, name: "Before" });
+    const afterTags = [makeTag({ id: SECOND_TAG_ID, name: "After" })];
+    const { realtime, service, tags, targets } = createSubject({
+      beforeTags: [beforeTag],
+      replacedTags: afterTags,
+    });
+    vi.mocked(targets.resolve).mockResolvedValueOnce({
+      canWrite: true,
+      organizationId: ORGANIZATION_ID,
+      role: "PM",
+      spaceId: SPACE_ID,
+      targetId: TARGET_ID,
+      targetKind: "REQUIREMENT",
+      targetType: "DOCUMENT",
+    });
+
+    await expect(
+      service.replace(ACTOR_ID, {
+        targetId: TARGET_ID,
+        targetType: "DOCUMENT",
+        tagIds: [SECOND_TAG_ID],
+      }),
+    ).resolves.toEqual({
+      targetId: TARGET_ID,
+      targetType: "DOCUMENT",
+      tags: afterTags,
+    });
+
+    expect(tags.replaceAssignments).toHaveBeenCalledWith(
+      expect.objectContaining({
+        targetId: TARGET_ID,
+        targetType: "DOCUMENT",
+      }),
+    );
+    expect(realtime.publish).toHaveBeenCalledWith(
+      expect.objectContaining({
+        target: { type: "DOCUMENT", id: TARGET_ID },
+        invalidates: expect.arrayContaining([
+          "requirement-detail",
+          "document-list",
+          "document-detail",
+        ]),
+        hints: expect.objectContaining({
+          canonicalTargetType: "DOCUMENT",
+          requirementId: TARGET_ID,
+          targetId: TARGET_ID,
+          targetKind: "REQUIREMENT",
+          targetType: "DOCUMENT",
+        }),
+      }),
+    );
+  });
+
   it("does not swallow assignment replacement errors", async () => {
     const error = new Error("replace failed");
     const { audit, service, tags } = createSubject({

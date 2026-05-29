@@ -8,12 +8,16 @@ import {
 import {
   DocumentActorTypeSchema,
   DocumentChangeTypeSchema,
+  DocumentContentFormatSchema,
+  DocumentKindSchema,
   DocumentLinkTargetTypeSchema,
   DocumentSourceTypeSchema,
   DocumentStatusSchema,
+  PrioritySchema,
   TimelineEventTypeSchema,
   WorkItemTypeSchema,
 } from "./enums.ts";
+import { DisplayIdentitySchema } from "./object-code.ts";
 import { TagFilterQuerySchema, TagIdListSchema, TagListSchema } from "./tag.ts";
 
 export const DocumentMaxImportSizeBytes = 20 * 1024 * 1024;
@@ -40,8 +44,30 @@ const DocumentMarkdownSchema = z
   });
 const DocumentTextSchema = z.string().max(DocumentMaxMarkdownBytes);
 const BaseRevisionSchema = z.coerce.number().int().positive();
+const TiptapJsonRecordSchema = z.record(z.string(), z.unknown());
 
 export const DocumentFolderMaxDepth = 6;
+
+export const TiptapJsonSchema = TiptapJsonRecordSchema.superRefine(
+  (value, context) => {
+    if (containsBase64ImageData(value)) {
+      context.addIssue({
+        code: "custom",
+        message: "contentJson must not contain base64 image data",
+      });
+      return;
+    }
+
+    if (isEmptyRecord(value) || isValidTiptapNode(value, true)) {
+      return;
+    }
+
+    context.addIssue({
+      code: "custom",
+      message: "contentJson must be a Tiptap JSON document",
+    });
+  },
+);
 
 export const DocumentFolderPathItemSchema = z
   .object({
@@ -129,8 +155,13 @@ export const DocumentRevisionSchema = z
     spaceId: UlidSchema,
     documentId: UlidSchema,
     revision: z.number().int().positive(),
+    kind: DocumentKindSchema.default("GENERAL"),
     title: DocumentTitleSchema,
-    contentMarkdown: DocumentMarkdownSchema,
+    summary: z.string().max(2000).optional(),
+    contentFormat: DocumentContentFormatSchema.default("MARKDOWN"),
+    contentJson: TiptapJsonSchema.optional(),
+    contentMarkdown: DocumentMarkdownSchema.optional(),
+    contentMarkdownCache: DocumentTextSchema.optional(),
     contentText: DocumentTextSchema,
     changeType: DocumentChangeTypeSchema,
     actorType: DocumentActorTypeSchema,
@@ -142,20 +173,31 @@ export const DocumentRevisionSchema = z
   .strict();
 export type DocumentRevision = z.infer<typeof DocumentRevisionSchema>;
 
-export const DocumentSchema = z
+const DocumentBaseSchema = z
   .object({
     id: UlidSchema,
     organizationId: UlidSchema,
     spaceId: UlidSchema,
     folderId: UlidSchema.optional(),
     folderPath: z.array(DocumentFolderPathItemSchema).optional(),
+    kind: DocumentKindSchema.default("GENERAL"),
+    sequence: DisplayIdentitySchema.shape.sequence,
+    displayCode: DisplayIdentitySchema.shape.displayCode,
+    versionId: UlidSchema.optional(),
     title: DocumentTitleSchema,
-    contentMarkdown: DocumentMarkdownSchema,
+    summary: z.string().max(2000).optional(),
+    contentFormat: DocumentContentFormatSchema.default("MARKDOWN"),
+    contentJson: TiptapJsonSchema.optional(),
+    contentMarkdown: DocumentMarkdownSchema.optional(),
+    contentMarkdownCache: DocumentTextSchema.optional(),
     contentText: DocumentTextSchema,
     sourceType: DocumentSourceTypeSchema,
     sourceAttachmentId: UlidSchema.optional(),
     status: DocumentStatusSchema,
     revision: z.number().int().positive(),
+    priority: PrioritySchema.optional(),
+    ownerId: UlidSchema.optional(),
+    authorId: UlidSchema.optional(),
     createdById: UlidSchema,
     createdByName: z.string().min(1).max(200).optional(),
     createdVia: DocumentActorTypeSchema,
@@ -176,11 +218,65 @@ export const DocumentSchema = z
     updatedAt: IsoDateTimeSchema,
   })
   .strict();
+
+export const DocumentSchema = DocumentBaseSchema.superRefine(
+  (value, context) => {
+    if (value.contentFormat === "TIPTAP_JSON") {
+      if (value.contentJson === undefined) {
+        context.addIssue({
+          code: "custom",
+          message: "contentJson is required for TIPTAP_JSON documents",
+          path: ["contentJson"],
+        });
+      }
+
+      if (value.contentMarkdown !== undefined) {
+        context.addIssue({
+          code: "custom",
+          message: "contentMarkdown is only valid for MARKDOWN documents",
+          path: ["contentMarkdown"],
+        });
+      }
+
+      return;
+    }
+
+    if (
+      value.contentMarkdown === undefined ||
+      value.contentMarkdown.trim().length === 0
+    ) {
+      context.addIssue({
+        code: "custom",
+        message: "contentMarkdown is required for MARKDOWN documents",
+        path: ["contentMarkdown"],
+      });
+    }
+
+    if (value.contentJson !== undefined) {
+      context.addIssue({
+        code: "custom",
+        message: "contentJson is only valid for TIPTAP_JSON documents",
+        path: ["contentJson"],
+      });
+    }
+
+    if (value.contentMarkdownCache !== undefined) {
+      context.addIssue({
+        code: "custom",
+        message:
+          "contentMarkdownCache is only a TIPTAP_JSON export cache, not MARKDOWN source",
+        path: ["contentMarkdownCache"],
+      });
+    }
+  },
+);
 export type Document = z.infer<typeof DocumentSchema>;
 
-export const DocumentListItemSchema = DocumentSchema.omit({
+export const DocumentListItemSchema = DocumentBaseSchema.omit({
   chunks: true,
   contentMarkdown: true,
+  contentJson: true,
+  contentMarkdownCache: true,
   contentText: true,
 })
   .extend({
@@ -240,6 +336,7 @@ export const DocumentListQuerySchema = PageQuerySchema.merge(
 )
   .extend({
     query: z.string().trim().min(1).max(200).optional(),
+    kind: DocumentKindSchema.optional(),
     status: DocumentStatusSchema.optional(),
     sourceType: DocumentSourceTypeSchema.optional(),
     lastEditedVia: DocumentActorTypeSchema.optional(),
@@ -307,11 +404,24 @@ export type UpdateDocumentMetadataRequest = z.infer<
 >;
 
 export const UpdateDocumentContentRequestSchema = z
-  .object({
-    baseRevision: BaseRevisionSchema,
-    contentMarkdown: DocumentMarkdownSchema,
-  })
-  .strict();
+  .union([
+    z
+      .object({
+        baseRevision: BaseRevisionSchema,
+        contentFormat: z.literal("MARKDOWN").optional(),
+        contentMarkdown: DocumentMarkdownSchema,
+      })
+      .strict(),
+    z
+      .object({
+        baseRevision: BaseRevisionSchema,
+        contentFormat: z.literal("TIPTAP_JSON"),
+        contentJson: TiptapJsonSchema,
+        contentMarkdownCache: DocumentTextSchema.optional(),
+        contentText: DocumentTextSchema.optional(),
+      })
+      .strict(),
+  ]);
 export type UpdateDocumentContentRequest = z.infer<
   typeof UpdateDocumentContentRequestSchema
 >;
@@ -333,6 +443,51 @@ export const ReimportDocumentRequestSchema = z
   .strict();
 export type ReimportDocumentRequest = z.infer<
   typeof ReimportDocumentRequestSchema
+>;
+
+export const ConvertDocumentToRequirementRequestSchema = z
+  .object({
+    activate: z.boolean().optional(),
+    baseRevision: BaseRevisionSchema,
+    summary: z.string().max(2000).optional(),
+    title: DocumentTitleSchema.optional(),
+    versionId: UlidSchema.nullable().optional(),
+    priority: PrioritySchema.optional(),
+    ownerId: UlidSchema.optional(),
+  })
+  .strict();
+export type ConvertDocumentToRequirementRequest = z.infer<
+  typeof ConvertDocumentToRequirementRequestSchema
+>;
+
+export const CancelRequirementReferenceModeSchema = z.enum([
+  "REJECT_IF_REFERENCED",
+  "UNLINK_REFERENCES",
+]);
+export type CancelRequirementReferenceMode = z.infer<
+  typeof CancelRequirementReferenceModeSchema
+>;
+
+export const CancelRequirementRequestSchema = z
+  .object({
+    baseRevision: BaseRevisionSchema,
+    reason: z.string().trim().min(1).max(2000).optional(),
+    referenceMode: CancelRequirementReferenceModeSchema,
+  })
+  .strict();
+export type CancelRequirementRequest = z.infer<
+  typeof CancelRequirementRequestSchema
+>;
+
+export const CancelRequirementPreflightResponseSchema = z
+  .object({
+    canCancel: z.boolean(),
+    referenceCount: z.number().int().min(0),
+    modeRequired: CancelRequirementReferenceModeSchema.optional(),
+  })
+  .strict();
+export type CancelRequirementPreflightResponse = z.infer<
+  typeof CancelRequirementPreflightResponseSchema
 >;
 
 export const ReplaceDocumentLinksRequestSchema = z
@@ -449,46 +604,242 @@ export type DocumentLinksByTargetQuery = z.infer<
 export const ListDocumentsResponseSchema = pageResultSchema(
   DocumentListItemSchema,
 );
+export type ListDocumentsResponse = z.infer<typeof ListDocumentsResponseSchema>;
 export const ListDocumentFoldersResponseSchema = z
   .object({
     items: z.array(DocumentFolderTreeNodeSchema),
   })
   .strict();
+export type ListDocumentFoldersResponse = z.infer<
+  typeof ListDocumentFoldersResponseSchema
+>;
 export const CreateDocumentFolderResponseSchema = DocumentFolderSchema;
+export type CreateDocumentFolderResponse = z.infer<
+  typeof CreateDocumentFolderResponseSchema
+>;
 export const UpdateDocumentFolderResponseSchema = DocumentFolderSchema;
+export type UpdateDocumentFolderResponse = z.infer<
+  typeof UpdateDocumentFolderResponseSchema
+>;
 export const MoveDocumentFolderResponseSchema = DocumentFolderSchema;
+export type MoveDocumentFolderResponse = z.infer<
+  typeof MoveDocumentFolderResponseSchema
+>;
 export const ReorderDocumentFolderResponseSchema = DocumentFolderSchema;
+export type ReorderDocumentFolderResponse = z.infer<
+  typeof ReorderDocumentFolderResponseSchema
+>;
 export const ReorderDocumentFoldersResponseSchema =
   ListDocumentFoldersResponseSchema;
+export type ReorderDocumentFoldersResponse = z.infer<
+  typeof ReorderDocumentFoldersResponseSchema
+>;
 export const DeleteDocumentFolderResponseSchema = z.object({}).strict();
+export type DeleteDocumentFolderResponse = z.infer<
+  typeof DeleteDocumentFolderResponseSchema
+>;
 export const CreateDocumentResponseSchema = DocumentSchema;
+export type CreateDocumentResponse = z.infer<
+  typeof CreateDocumentResponseSchema
+>;
 export const GetDocumentResponseSchema = DocumentDetailSchema;
+export type GetDocumentResponse = z.infer<typeof GetDocumentResponseSchema>;
 export const UpdateDocumentMetadataResponseSchema = DocumentSchema;
+export type UpdateDocumentMetadataResponse = z.infer<
+  typeof UpdateDocumentMetadataResponseSchema
+>;
 export const UpdateDocumentContentResponseSchema = DocumentSchema;
+export type UpdateDocumentContentResponse = z.infer<
+  typeof UpdateDocumentContentResponseSchema
+>;
 export const MoveDocumentToFolderResponseSchema = DocumentSchema;
+export type MoveDocumentToFolderResponse = z.infer<
+  typeof MoveDocumentToFolderResponseSchema
+>;
 export const MoveDocumentsToFolderResponseSchema = z
   .object({
     items: z.array(DocumentSchema),
   })
   .strict();
+export type MoveDocumentsToFolderResponse = z.infer<
+  typeof MoveDocumentsToFolderResponseSchema
+>;
 export const ArchiveDocumentResponseSchema = DocumentSchema;
+export type ArchiveDocumentResponse = z.infer<
+  typeof ArchiveDocumentResponseSchema
+>;
 export const RestoreDocumentResponseSchema = DocumentSchema;
+export type RestoreDocumentResponse = z.infer<
+  typeof RestoreDocumentResponseSchema
+>;
 export const DeleteDocumentResponseSchema = z.object({}).strict();
+export type DeleteDocumentResponse = z.infer<
+  typeof DeleteDocumentResponseSchema
+>;
+export const ConvertDocumentToRequirementResponseSchema = DocumentSchema;
+export type ConvertDocumentToRequirementResponse = z.infer<
+  typeof ConvertDocumentToRequirementResponseSchema
+>;
+export const CancelRequirementResponseSchema = DocumentSchema;
+export type CancelRequirementResponse = z.infer<
+  typeof CancelRequirementResponseSchema
+>;
 export const ListDocumentRevisionsResponseSchema = pageResultSchema(
   DocumentRevisionSchema,
 );
+export type ListDocumentRevisionsResponse = z.infer<
+  typeof ListDocumentRevisionsResponseSchema
+>;
 export const ListDocumentLinksResponseSchema = z
   .object({
     items: z.array(DocumentLinkSchema),
   })
   .strict();
+export type ListDocumentLinksResponse = z.infer<
+  typeof ListDocumentLinksResponseSchema
+>;
 export const ReplaceDocumentLinksResponseSchema =
   ListDocumentLinksResponseSchema;
+export type ReplaceDocumentLinksResponse = z.infer<
+  typeof ReplaceDocumentLinksResponseSchema
+>;
 export const ListDocumentChunksResponseSchema =
   pageResultSchema(DocumentChunkSchema);
+export type ListDocumentChunksResponse = z.infer<
+  typeof ListDocumentChunksResponseSchema
+>;
 export const ListDocumentLinksByTargetResponseSchema =
   pageResultSchema(DocumentLinkSchema);
+export type ListDocumentLinksByTargetResponse = z.infer<
+  typeof ListDocumentLinksByTargetResponseSchema
+>;
 
-function containsBase64ImageData(value: string): boolean {
-  return /data:image\/[a-z0-9.+-]+;base64,/iu.test(value);
+export function containsBase64ImageData(value: unknown): boolean {
+  if (typeof value === "string") {
+    return /data:image\/[a-z0-9.+-]+(?:;[a-z0-9=.+-]+)*;base64(?:,|$)/iu.test(
+      value,
+    );
+  }
+
+  if (Array.isArray(value)) {
+    return value.some((item) => containsBase64ImageData(item));
+  }
+
+  if (!isPlainRecord(value)) {
+    return false;
+  }
+
+  return Object.values(value).some((item) => containsBase64ImageData(item));
+}
+
+function isValidTiptapNode(
+  value: unknown,
+  isRoot = false,
+): value is Record<string, unknown> {
+  if (!isPlainRecord(value)) {
+    return false;
+  }
+
+  if (
+    !Object.keys(value).every((key) =>
+      ["attrs", "content", "marks", "text", "type"].includes(key),
+    )
+  ) {
+    return false;
+  }
+
+  if (typeof value.type !== "string" || value.type.trim().length === 0) {
+    return false;
+  }
+
+  if (isRoot && value.type !== "doc") {
+    return false;
+  }
+
+  if ("text" in value && typeof value.text !== "string") {
+    return false;
+  }
+
+  if (value.type === "text" && typeof value.text !== "string") {
+    return false;
+  }
+
+  if ("attrs" in value && !isJsonCompatibleObject(value.attrs)) {
+    return false;
+  }
+
+  if (
+    "content" in value &&
+    (!Array.isArray(value.content) ||
+      !value.content.every((item) => isValidTiptapNode(item)))
+  ) {
+    return false;
+  }
+
+  if (
+    "marks" in value &&
+    (!Array.isArray(value.marks) ||
+      !value.marks.every((item) => isValidTiptapMark(item)))
+  ) {
+    return false;
+  }
+
+  return true;
+}
+
+function isValidTiptapMark(value: unknown): value is Record<string, unknown> {
+  if (!isPlainRecord(value)) {
+    return false;
+  }
+
+  if (!Object.keys(value).every((key) => ["attrs", "type"].includes(key))) {
+    return false;
+  }
+
+  return (
+    typeof value.type === "string" &&
+    value.type.trim().length > 0 &&
+    (!("attrs" in value) || isJsonCompatibleObject(value.attrs))
+  );
+}
+
+function isJsonCompatibleObject(value: unknown): boolean {
+  return isPlainRecord(value) && isJsonCompatible(value);
+}
+
+function isJsonCompatible(value: unknown): boolean {
+  if (value === null) {
+    return true;
+  }
+
+  if (typeof value === "string" || typeof value === "boolean") {
+    return true;
+  }
+
+  if (typeof value === "number") {
+    return Number.isFinite(value);
+  }
+
+  if (Array.isArray(value)) {
+    return value.every((item) => isJsonCompatible(item));
+  }
+
+  if (isPlainRecord(value)) {
+    return Object.values(value).every((item) => isJsonCompatible(item));
+  }
+
+  return false;
+}
+
+function isEmptyRecord(value: Record<string, unknown>): boolean {
+  return Object.keys(value).length === 0;
+}
+
+function isPlainRecord(value: unknown): value is Record<string, unknown> {
+  return (
+    typeof value === "object" &&
+    value !== null &&
+    !Array.isArray(value) &&
+    Object.getPrototypeOf(value) === Object.prototype
+  );
 }

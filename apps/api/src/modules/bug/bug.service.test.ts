@@ -291,6 +291,27 @@ describe("BugService", () => {
     });
   });
 
+  it("rejects BUG requirement links that are not active and numbered", async () => {
+    const subject = createSubject("TESTER");
+
+    subject.bugs.requirementRefs.set(REQUIREMENT_ID, {
+      requirementSequence: undefined,
+      requirementStatus: "ARCHIVED",
+    });
+
+    await expect(
+      subject.service.create(ACTOR_ID, SPACE_ID, {
+        priority: "MEDIUM",
+        requirementId: REQUIREMENT_ID,
+        severity: "MAJOR",
+        title: "Archived requirement bug",
+      }),
+    ).rejects.toMatchObject({
+      code: "REQUIREMENT_REFERENCE_INVALID",
+    });
+    expect(subject.bugs.createdInput).toBeUndefined();
+  });
+
   it("inherits related task version when creating a BUG and rejects version conflicts", async () => {
     const subject = createSubject("TESTER");
 
@@ -811,7 +832,15 @@ class FakeBugRepository implements BugRepository {
   }
 
   async findRequirementInSpace(_spaceId: string, requirementId: string) {
-    return this.requirementRefs.get(requirementId);
+    const reference = this.requirementRefs.get(requirementId);
+
+    return reference
+      ? {
+          requirementSequence: 1,
+          requirementStatus: "ACTIVE" as const,
+          ...reference,
+        }
+      : undefined;
   }
 
   async findIntakeItemInSpace(_spaceId: string, intakeItemId: string) {

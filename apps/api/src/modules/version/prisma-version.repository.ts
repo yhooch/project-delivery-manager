@@ -23,16 +23,6 @@ import type {
   VersionStatsScope,
 } from "./version.types";
 
-type RequirementStatsVisibility = "SPACE";
-
-type VersionStatsScopeWithRequirementVisibility = VersionStatsScope & {
-  requirementStatsVisibility?: RequirementStatsVisibility;
-};
-
-type VersionListInputWithRequirementVisibility = VersionListInput & {
-  requirementStatsVisibility?: RequirementStatsVisibility;
-};
-
 const BOARD_STATUS_CATEGORIES = [
   "NOT_STARTED",
   "IN_PROGRESS",
@@ -51,6 +41,7 @@ const BOARD_STATUS_TITLES = {
   WAITING: "Waiting",
 } as const;
 const TERMINAL_STATUS_CATEGORIES: StatusCategory[] = ["DONE", "TERMINATED"];
+const REQUIREMENT_DOCUMENT_KIND = "REQUIREMENT" as const;
 
 @Injectable()
 export class PrismaVersionRepository implements VersionRepository {
@@ -125,7 +116,6 @@ export class PrismaVersionRepository implements VersionRepository {
     spaceId: string,
     input: VersionListInput,
   ): Promise<VersionListResult> {
-    const statsInput = input as VersionListInputWithRequirementVisibility;
     const where = {
       deletedAt: null,
       ownerId: input.ownerId,
@@ -149,7 +139,6 @@ export class PrismaVersionRepository implements VersionRepository {
       versions.map((version) => version.id),
       {
         actorUserId: input.actorUserId,
-        requirementStatsVisibility: statsInput.requirementStatsVisibility,
         spaceId,
         visibility: input.visibility,
       },
@@ -353,7 +342,7 @@ export class PrismaVersionRepository implements VersionRepository {
 
   private async toVersionWithStats(
     version: Parameters<typeof toVersion>[0],
-    statsScope?: VersionStatsScopeWithRequirementVisibility,
+    statsScope?: VersionStatsScope,
   ) {
     const stats = await this.countStatsByVersionIds([version.id], statsScope);
 
@@ -362,7 +351,7 @@ export class PrismaVersionRepository implements VersionRepository {
 
   private async countStatsByVersionIds(
     versionIds: string[],
-    statsScope?: VersionStatsScopeWithRequirementVisibility,
+    statsScope?: VersionStatsScope,
   ) {
     const stats = new Map<
       string,
@@ -392,17 +381,14 @@ export class PrismaVersionRepository implements VersionRepository {
         ? await this.listParticipantTargetIds(
             statsScope.spaceId,
             statsScope.actorUserId,
-            ["WORK_ITEM", "REQUIREMENT"],
+            ["WORK_ITEM"],
           )
         : new Map<ObjectParticipantTargetType, string[]>();
-    const participantRequirementIds =
-      participantTargetIdsByType.get("REQUIREMENT") ?? [];
     const participantWorkItemIds =
       participantTargetIdsByType.get("WORK_ITEM") ?? [];
     const requirementWhere = versionStatsRequirementWhere(
       versionIds,
       statsScope,
-      participantRequirementIds,
     );
     const workItemWhere = versionStatsWorkItemWhere(
       versionIds,
@@ -412,7 +398,7 @@ export class PrismaVersionRepository implements VersionRepository {
 
     const [requirementGroups, workItemGroups, blockedGroups] =
       await Promise.all([
-        this.prisma.client.requirement.groupBy({
+        this.prisma.client.document.groupBy({
           by: ["versionId"],
           _count: {
             _all: true,
@@ -686,29 +672,14 @@ function versionStatsWorkItemWhere(
 
 function versionStatsRequirementWhere(
   versionIds: string[],
-  statsScope?: VersionStatsScopeWithRequirementVisibility,
-  participantRequirementIds: string[] = [],
-): Prisma.RequirementWhereInput {
-  const baseWhere: Prisma.RequirementWhereInput = {
+  statsScope?: VersionStatsScope,
+): Prisma.DocumentWhereInput {
+  return {
     deletedAt: null,
+    kind: REQUIREMENT_DOCUMENT_KIND,
     ...(statsScope ? { spaceId: statsScope.spaceId } : {}),
     versionId: {
       in: versionIds,
-    },
-  };
-
-  if (
-    !statsScope ||
-    statsScope.visibility === "SPACE" ||
-    statsScope.requirementStatsVisibility === "SPACE"
-  ) {
-    return baseWhere;
-  }
-
-  return {
-    ...baseWhere,
-    id: {
-      in: participantRequirementIds,
     },
   };
 }

@@ -25,6 +25,7 @@ import {
   REQUIREMENT_REPOSITORY,
   type RequirementRepository,
 } from "../requirement/requirement.repository";
+import { isReferenceableRequirementDocument } from "../requirement/requirement-reference-policy";
 import {
   SPACE_REPOSITORY,
   type SpaceRepository,
@@ -90,7 +91,11 @@ export class IntakeService {
       await this.requireVersionInSpace(spaceId, input.versionId);
     }
     if (input.requirementId) {
-      await this.requireRequirementInSpace(spaceId, input.requirementId);
+      await this.requireRequirementInSpace(
+        access.space.organizationId,
+        spaceId,
+        input.requirementId,
+      );
     }
 
     return this.intakeItems.listBySpaceId(spaceId, {
@@ -551,7 +556,11 @@ export class IntakeService {
     },
   ) {
     const requirement = input.requirementId
-      ? await this.requireRequirementInSpace(spaceId, input.requirementId)
+      ? await this.requireRequirementInSpace(
+          organizationId,
+          spaceId,
+          input.requirementId,
+        )
       : undefined;
 
     const versionId = resolveTraceVersion({
@@ -631,7 +640,11 @@ export class IntakeService {
     const requirementId = task.requirementId ?? item.requirementId;
     const assigneeId = task.assigneeId ?? item.assigneeId;
     const requirement = requirementId
-      ? await this.requireRequirementInSpace(item.spaceId, requirementId)
+      ? await this.requireRequirementInSpace(
+          item.organizationId,
+          item.spaceId,
+          requirementId,
+        )
       : undefined;
     const versionId =
       resolveTraceVersion({
@@ -815,16 +828,34 @@ export class IntakeService {
   }
 
   private async requireRequirementInSpace(
+    organizationId: string,
     spaceId: string,
     requirementId: string,
   ) {
     const requirement = await this.requirements.findById(requirementId);
 
-    if (!requirement || requirement.spaceId !== spaceId) {
+    if (
+      !requirement ||
+      requirement.organizationId !== organizationId ||
+      requirement.spaceId !== spaceId
+    ) {
       throw new ApiException(
         "REQUIREMENT_NOT_FOUND",
         "Requirement not found",
         HttpStatus.NOT_FOUND,
+      );
+    }
+
+    if (
+      !isReferenceableRequirementDocument({
+        sequence: requirement.sequence,
+        status: requirement.status,
+      })
+    ) {
+      throw new ApiException(
+        "REQUIREMENT_REFERENCE_INVALID",
+        "Requirement must be active before it can be linked",
+        HttpStatus.BAD_REQUEST,
       );
     }
 

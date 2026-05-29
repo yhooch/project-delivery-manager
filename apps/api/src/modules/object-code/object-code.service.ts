@@ -25,12 +25,6 @@ import {
 import type { ObjectCodeLookupRecord } from "./object-code.types";
 import { parseObjectCode } from "./object-code.types";
 
-const REQUIREMENT_NON_DRAFT_READ_ALL_ROLES = new Set<SpaceRole>([
-  "SPACE_ADMIN",
-  "PM",
-  "REQUIREMENT",
-  "VIEWER",
-]);
 const FULL_SPACE_INTAKE_READER_ROLES = new Set<SpaceRole>([
   "SPACE_ADMIN",
   "PM",
@@ -76,6 +70,7 @@ export class ObjectCodeService {
 
     const records = await this.objectCodes.findByCode({
       actorUserId,
+      includeHistorical: query.includeHistorical,
       organizationId: query.organizationId,
       objectType: parsed.objectType,
       sequence: parsed.sequence,
@@ -98,7 +93,12 @@ export class ObjectCodeService {
     return {
       id: record.id,
       type: record.type,
-      workItemType: record.workItemType,
+      targetType: record.targetType,
+      targetId: record.targetId,
+      ...(record.kind ? { kind: record.kind } : {}),
+      ...(record.previousKind ? { previousKind: record.previousKind } : {}),
+      ...(record.codeStatus ? { codeStatus: record.codeStatus } : {}),
+      ...(record.workItemType ? { workItemType: record.workItemType } : {}),
       organizationId: record.organizationId,
       sequence: record.sequence,
       displayCode: record.displayCode,
@@ -149,10 +149,7 @@ export class ObjectCodeService {
 function canReadLookupRecord(record: ObjectCodeLookupRecord): boolean {
   switch (record.objectType) {
     case "REQUIREMENT":
-      return (
-        REQUIREMENT_NON_DRAFT_READ_ALL_ROLES.has(record.role) ||
-        record.isParticipant
-      );
+      return true;
     case "INTAKE_ITEM":
       return (
         FULL_SPACE_INTAKE_READER_ROLES.has(record.role) || record.isParticipant

@@ -5,6 +5,7 @@ import {
   createDocumentFolder,
   deleteDocument,
   deleteDocumentFolder,
+  getCancelRequirementPreflight,
   getDocument,
   importDocxDocument,
   importMarkdownDocument,
@@ -29,9 +30,11 @@ function createDocumentFixture(
   patch: Partial<DocumentDetail> = {},
 ): DocumentDetail {
   return {
+    contentFormat: "MARKDOWN",
     contentMarkdown: "# Plan",
     createdAt: "2026-05-27T10:00:00.000Z",
     id: documentId,
+    kind: "GENERAL",
     lastEditedAt: "2026-05-27T11:00:00.000Z",
     lastEditedVia: "USER",
     organizationId: "ORG_01",
@@ -82,10 +85,10 @@ describe("document service", () => {
           currentUserId: "USER_01",
           tagIds: ["TAG_01"],
           tagMatch: "ANY",
-        folderId: "FLD_01",
-        includeDescendants: true,
-        unfiled: false,
-      },
+          folderId: "FLD_01",
+          includeDescendants: true,
+          unfiled: false,
+        },
         api,
       ),
     ).resolves.toMatchObject({
@@ -130,6 +133,51 @@ describe("document service", () => {
     });
   });
 
+  it("parses unified document and requirement model fields", async () => {
+    const api = {
+      ...createApi(),
+      get: vi.fn(async () => ({
+        data: {
+          items: [
+            createDocumentFixture({
+              authorId: "USER_AUTHOR",
+              contentFormat: "TIPTAP_JSON",
+              contentJson: { content: [], type: "doc" },
+              contentMarkdownCache: "# Cached requirement",
+              displayCode: "REQ-12",
+              kind: "REQUIREMENT",
+              ownerId: "USER_OWNER",
+              priority: "HIGH",
+              sequence: 12,
+              summary: "Requirement summary",
+              versionId: "VER_01",
+            }),
+          ],
+          total: 1,
+        },
+      })),
+    } as DocumentApiTransport;
+
+    await expect(listDocuments({ spaceId }, api)).resolves.toMatchObject({
+      items: [
+        {
+          authorId: "USER_AUTHOR",
+          contentFormat: "TIPTAP_JSON",
+          contentJson: { content: [], type: "doc" },
+          contentMarkdownCache: "# Cached requirement",
+          displayCode: "REQ-12",
+          kind: "REQUIREMENT",
+          ownerId: "USER_OWNER",
+          priority: "HIGH",
+          sequence: 12,
+          summary: "Requirement summary",
+          versionId: "VER_01",
+        },
+      ],
+      total: 1,
+    });
+  });
+
   it("imports markdown and docx files with FormData and no JSON body", async () => {
     const api = createApi();
     const md = new File(["# Plan"], "plan.md", { type: "text/markdown" });
@@ -138,7 +186,11 @@ describe("document service", () => {
     });
 
     await importMarkdownDocument({ spaceId }, { file: md, title: "Plan" }, api);
-    await importDocxDocument({ spaceId }, { file: docx, folderId: "FLD_01" }, api);
+    await importDocxDocument(
+      { spaceId },
+      { file: docx, folderId: "FLD_01" },
+      api,
+    );
 
     const markdownBody = vi.mocked(api.post).mock.calls[0]?.[1];
     const docxBody = vi.mocked(api.post).mock.calls[1]?.[1];
@@ -185,7 +237,7 @@ describe("document service", () => {
         baseRevision: 3,
         contentMarkdown: "# Updated",
         documentId,
-        linkTargets: [{ targetId: "REQ_01", targetType: "REQUIREMENT" }],
+        linkTargets: [{ targetId: "REQ_01", targetType: "DOCUMENT" }],
         tagIds: ["TAG_01"],
         title: "Updated",
       },
@@ -197,7 +249,7 @@ describe("document service", () => {
       `/documents/${documentId}/metadata`,
       {
         baseRevision: 3,
-        links: [{ targetId: "REQ_01", targetType: "REQUIREMENT" }],
+        links: [{ targetId: "REQ_01", targetType: "DOCUMENT" }],
         tagIds: ["TAG_01"],
         title: "Updated",
       },
@@ -224,6 +276,30 @@ describe("document service", () => {
     });
 
     expect(api.get).toHaveBeenCalledWith(`/documents/${documentId}`);
+  });
+
+  it("gets requirement cancellation preflight", async () => {
+    const api = {
+      ...createApi(),
+      get: vi.fn(async () => ({
+        data: {
+          canCancel: false,
+          modeRequired: "UNLINK_REFERENCES",
+          referenceCount: 2,
+        },
+      })),
+    } as DocumentApiTransport;
+
+    await expect(
+      getCancelRequirementPreflight({ documentId }, api),
+    ).resolves.toEqual({
+      canCancel: false,
+      modeRequired: "UNLINK_REFERENCES",
+      referenceCount: 2,
+    });
+    expect(api.get).toHaveBeenCalledWith(
+      `/documents/${documentId}/cancel-requirement`,
+    );
   });
 
   it("archives, restores, and deletes a document", async () => {
@@ -331,11 +407,10 @@ describe("document service", () => {
       `/spaces/${spaceId}/document-folders`,
       { name: "Archive" },
     );
-    expect(api.patch).toHaveBeenNthCalledWith(
-      1,
-      "/document-folders/FLD_01",
-      { name: "Renamed", version: 1 },
-    );
+    expect(api.patch).toHaveBeenNthCalledWith(1, "/document-folders/FLD_01", {
+      name: "Renamed",
+      version: 1,
+    });
     expect(api.post).toHaveBeenNthCalledWith(
       2,
       "/document-folders/FLD_01/move",

@@ -74,32 +74,16 @@ const TERMINAL_STATUS_CATEGORIES: StatusCategory[] = ["DONE", "TERMINATED"];
 const DUE_SOON_DAYS = 7;
 const RECENT_ACTIVITY_TARGET_TYPES = [
   "WORK_ITEM",
-  "REQUIREMENT",
+  "DOCUMENT",
   "INTAKE_ITEM",
   "VERSION",
 ] as const satisfies readonly TargetType[];
-const REQUIREMENT_READ_ALL_ROLES = new Set<SpaceRole>([
-  "SPACE_ADMIN",
-  "PM",
-  "REQUIREMENT",
-]);
-const REQUIREMENT_NON_DRAFT_READ_ALL_ROLES = new Set<SpaceRole>([
-  "SPACE_ADMIN",
-  "PM",
-  "VIEWER",
-  "REQUIREMENT",
-]);
 const INTAKE_ITEM_READ_ALL_ROLES = new Set<SpaceRole>([
   "SPACE_ADMIN",
   "PM",
   "VIEWER",
 ]);
-const REQUIREMENT_AGGREGATE_STATS_READ_ALL_ROLES = new Set<SpaceRole>([
-  "SPACE_ADMIN",
-  "PM",
-  "VIEWER",
-  "REQUIREMENT",
-]);
+const REQUIREMENT_DOCUMENT_KIND = "REQUIREMENT" as const;
 
 @Injectable()
 export class PrismaSpaceRepository implements SpaceRepository {
@@ -434,10 +418,13 @@ export class PrismaSpaceRepository implements SpaceRepository {
     context: ViewAccessContext,
   ) {
     const entries = await Promise.all(
-      [...versionsBySpaceId.entries()].map(async ([spaceId, version]) => [
-        spaceId,
-        await this.withVisibleVersionSummaryStats(version, context),
-      ] as const),
+      [...versionsBySpaceId.entries()].map(
+        async ([spaceId, version]) =>
+          [
+            spaceId,
+            await this.withVisibleVersionSummaryStats(version, context),
+          ] as const,
+      ),
     );
 
     return new Map(entries);
@@ -771,7 +758,7 @@ export class PrismaSpaceRepository implements SpaceRepository {
           spaceId: input.space.id,
         },
       }),
-      this.prisma.client.requirement.count({
+      this.prisma.client.document.count({
         where: visibleRequirementWhere,
       }),
       input.versionId
@@ -1065,12 +1052,6 @@ export class PrismaSpaceRepository implements SpaceRepository {
     const readAllSpaceIds = accesses
       .filter((access) => canReadAllSpaceWorkItems(access.role))
       .map((access) => access.spaceId);
-    const requirementReadAllSpaceIds = accesses
-      .filter((access) => REQUIREMENT_READ_ALL_ROLES.has(access.role))
-      .map((access) => access.spaceId);
-    const requirementNonDraftReadAllSpaceIds = accesses
-      .filter((access) => REQUIREMENT_NON_DRAFT_READ_ALL_ROLES.has(access.role))
-      .map((access) => access.spaceId);
     const intakeItemReadAllSpaceIds = accesses
       .filter((access) => INTAKE_ITEM_READ_ALL_ROLES.has(access.role))
       .map((access) => access.spaceId);
@@ -1086,12 +1067,10 @@ export class PrismaSpaceRepository implements SpaceRepository {
         : await this.listParticipantTargetIds(
             input.actorUserId,
             participantSpaceIds,
-            ["WORK_ITEM", "REQUIREMENT", "INTAKE_ITEM"],
+            ["WORK_ITEM", "INTAKE_ITEM"],
           );
     const participantWorkItemIds =
       participantTargetIdsByType.get("WORK_ITEM") ?? [];
-    const participantRequirementIds =
-      participantTargetIdsByType.get("REQUIREMENT") ?? [];
     const participantIntakeItemIds =
       participantTargetIdsByType.get("INTAKE_ITEM") ?? [];
     const testerWorkItemIds =
@@ -1105,12 +1084,9 @@ export class PrismaSpaceRepository implements SpaceRepository {
       ),
       accesses,
       participantIntakeItemIds,
-      participantRequirementIds,
       participantSpaceIds,
       participantWorkItemIds,
       readAllSpaceIds,
-      requirementNonDraftReadAllSpaceIds,
-      requirementReadAllSpaceIds,
       intakeItemReadAllSpaceIds,
       spaceIds: accesses.map((access) => access.spaceId),
       testerSpaceIds,
@@ -1446,10 +1422,7 @@ export class PrismaSpaceRepository implements SpaceRepository {
 
     return {
       items: events.map((event) =>
-        toTimelineEvent(
-          event,
-          targetIdentities.get(timelineTargetKey(event)),
-        ),
+        toTimelineEvent(event, targetIdentities.get(timelineTargetKey(event))),
       ),
       page: input.page,
       pageSize: input.pageSize,
@@ -1476,10 +1449,10 @@ export class PrismaSpaceRepository implements SpaceRepository {
 
     const spaceIds = unique(idsByType.get("SPACE") ?? []);
     const workItemIds = unique(idsByType.get("WORK_ITEM") ?? []);
-    const requirementIds = unique(idsByType.get("REQUIREMENT") ?? []);
+    const documentIds = unique(idsByType.get("DOCUMENT") ?? []);
     const intakeItemIds = unique(idsByType.get("INTAKE_ITEM") ?? []);
     const versionIds = unique(idsByType.get("VERSION") ?? []);
-    const [spaces, workItems, requirements, intakeItems, versions] =
+    const [spaces, workItems, documents, intakeItems, versions] =
       await Promise.all([
         spaceIds.length > 0
           ? this.prisma.client.space.findMany({
@@ -1511,17 +1484,18 @@ export class PrismaSpaceRepository implements SpaceRepository {
               },
             })
           : Promise.resolve([]),
-        requirementIds.length > 0
-          ? this.prisma.client.requirement.findMany({
+        documentIds.length > 0
+          ? this.prisma.client.document.findMany({
               select: {
                 id: true,
+                kind: true,
                 sequence: true,
                 title: true,
               },
               where: {
                 deletedAt: null,
                 id: {
-                  in: requirementIds,
+                  in: documentIds,
                 },
               },
             })
@@ -1571,9 +1545,13 @@ export class PrismaSpaceRepository implements SpaceRepository {
       });
     }
 
-    for (const item of requirements) {
-      setTimelineTargetIdentity(identities, "REQUIREMENT", item.id, {
+    for (const item of documents) {
+      setTimelineTargetIdentity(identities, "DOCUMENT", item.id, {
         sequence: item.sequence,
+        targetKind:
+          item.kind === REQUIREMENT_DOCUMENT_KIND
+            ? REQUIREMENT_DOCUMENT_KIND
+            : undefined,
         title: item.title,
       });
     }
@@ -1633,41 +1611,6 @@ export class PrismaSpaceRepository implements SpaceRepository {
       versionId?: string;
     },
   ): Promise<Array<{ id: string; type: TargetType }>> {
-    const requirementVisibilityOr = [
-      ...(context.requirementReadAllSpaceIds.length > 0
-        ? [
-            {
-              spaceId: {
-                in: context.requirementReadAllSpaceIds,
-              },
-              status: {
-                not: "DRAFT" as const,
-              },
-            },
-          ]
-        : []),
-      ...(context.requirementNonDraftReadAllSpaceIds.length > 0
-        ? [
-            {
-              spaceId: {
-                in: context.requirementNonDraftReadAllSpaceIds,
-              },
-              status: {
-                not: "DRAFT" as const,
-              },
-            },
-          ]
-        : []),
-      ...(context.participantRequirementIds.length > 0
-        ? [
-            {
-              id: {
-                in: context.participantRequirementIds,
-              },
-            },
-          ]
-        : []),
-    ];
     const intakeVisibilityOr = [
       ...(context.intakeItemReadAllSpaceIds.length > 0
         ? [
@@ -1704,16 +1647,19 @@ export class PrismaSpaceRepository implements SpaceRepository {
             },
           })
         : Promise.resolve([]),
-      requirementVisibilityOr.length > 0
-        ? this.prisma.client.requirement.findMany({
+      context.spaceIds.length > 0
+        ? this.prisma.client.document.findMany({
             select: {
               id: true,
             },
             where: {
               deletedAt: null,
+              kind: REQUIREMENT_DOCUMENT_KIND,
               organizationId: filters.organizationId,
+              spaceId: {
+                in: context.spaceIds,
+              },
               versionId: filters.versionId,
-              OR: requirementVisibilityOr,
             },
           })
         : Promise.resolve([]),
@@ -1739,7 +1685,7 @@ export class PrismaSpaceRepository implements SpaceRepository {
       })),
       ...requirements.map((requirement) => ({
         id: requirement.id,
-        type: "REQUIREMENT" as const,
+        type: "DOCUMENT" as const,
       })),
       ...intakeItems.map((item) => ({
         id: item.id,
@@ -1935,7 +1881,7 @@ export class PrismaSpaceRepository implements SpaceRepository {
     });
     const [requirementCount, taskCount, bugCount, blockedCount] =
       await Promise.all([
-        this.prisma.client.requirement.count({
+        this.prisma.client.document.count({
           where: visibleRequirementWhere,
         }),
         this.prisma.client.workItem.count({
@@ -1979,12 +1925,9 @@ type ViewAccessContext = {
   accesses: ViewSpaceAccess[];
   intakeItemReadAllSpaceIds: string[];
   participantIntakeItemIds: string[];
-  participantRequirementIds: string[];
   participantSpaceIds: string[];
   participantWorkItemIds: string[];
   readAllSpaceIds: string[];
-  requirementNonDraftReadAllSpaceIds: string[];
-  requirementReadAllSpaceIds: string[];
   spaceIds: string[];
   testerSpaceIds: string[];
   testerWorkItemIds: string[];
@@ -2113,49 +2056,15 @@ function buildVisibleRequirementWhere(
     organizationId: string;
     versionId?: string;
   },
-): Prisma.RequirementWhereInput {
-  const nonDraftReadAllSpaceIds = context.accesses
-    .filter((access) =>
-      REQUIREMENT_AGGREGATE_STATS_READ_ALL_ROLES.has(access.role),
-    )
-    .map((access) => access.spaceId);
-  const visibilityOr: Prisma.RequirementWhereInput[] = [];
-
-  if (nonDraftReadAllSpaceIds.length > 0) {
-    visibilityOr.push({
-      spaceId: {
-        in: nonDraftReadAllSpaceIds,
-      },
-      status: {
-        not: "DRAFT",
-      },
-    });
-  }
-
-  if (context.participantRequirementIds.length > 0) {
-    visibilityOr.push({
-      id: {
-        in: context.participantRequirementIds,
-      },
-    });
-  }
-
+): Prisma.DocumentWhereInput {
   return {
     deletedAt: null,
+    kind: REQUIREMENT_DOCUMENT_KIND,
     organizationId: filters.organizationId,
     spaceId: {
       in: context.spaceIds,
     },
     versionId: filters.versionId,
-    ...(visibilityOr.length > 0
-      ? {
-          OR: visibilityOr,
-        }
-      : {
-          id: {
-            in: [],
-          },
-        }),
   };
 }
 

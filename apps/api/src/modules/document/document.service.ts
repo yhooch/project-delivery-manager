@@ -1,6 +1,9 @@
 import { HttpStatus, Inject, Injectable, Logger } from "@nestjs/common";
 import type {
   AppendDocumentContentRequest,
+  CancelRequirementPreflightResponse,
+  CancelRequirementRequest,
+  ConvertDocumentToRequirementRequest,
   Document,
   DocumentActorType,
   DocumentDetail,
@@ -44,8 +47,10 @@ import {
   assertMarkdownSize,
   assertSafeDocxZip,
   buildDocumentChunks,
+  buildDocumentChunksFromText,
   normalizeDocumentLinks,
   normalizeMarkdownSource,
+  normalizeTiptapSource,
   stripBase64Images,
   type UploadedDocumentFile,
 } from "./document-content";
@@ -54,9 +59,18 @@ import {
   type DocumentRepository,
 } from "./document.repository";
 import { DocumentFolderService } from "./document-folder.service";
+import { DocumentKindTransitionService } from "./document-kind-transition.service";
 
 const DOCUMENT_WRITER_DENIED_ROLES = new Set<SpaceRole>(["VIEWER"]);
 const DOCUMENT_MANAGER_ROLES = new Set<SpaceRole>(["SPACE_ADMIN", "PM"]);
+const REQUIREMENT_WRITER_ROLES = new Set<SpaceRole>([
+  "SPACE_ADMIN",
+  "PM",
+  "REQUIREMENT",
+]);
+const REQUIREMENT_TARGET_TYPE = "REQUIREMENT" as unknown as Parameters<
+  TargetResolverService["resolve"]
+>[1];
 const MCP_DOCUMENT_SEARCH_MAX_HITS_PER_DOCUMENT = 3;
 const MCP_DOCUMENT_SEARCH_SNIPPET_MAX_LENGTH = 320;
 export const DocumentDocxConversionTimeoutMs = 10_000;
@@ -96,6 +110,8 @@ export class DocumentService {
     private readonly objectStorage: AttachmentObjectStorage,
     @Inject(DocumentFolderService)
     private readonly folders: DocumentFolderService,
+    @Inject(DocumentKindTransitionService)
+    private readonly kindTransitions: DocumentKindTransitionService,
   ) {}
 
   async list(
@@ -362,6 +378,9 @@ export class DocumentService {
       actorUserId,
       documentId,
     );
+    if (existing.kind === "REQUIREMENT" && input.title !== undefined) {
+      throwRequirementDocumentContentBypass();
+    }
     const links =
       input.links === undefined
         ? undefined
@@ -407,11 +426,19 @@ export class DocumentService {
       actorUserId,
       documentId,
     );
-    const normalized = normalizeMarkdownSource({
-      contentMarkdown: input.contentMarkdown,
-      fallbackTitle: existing.title,
-      title: existing.title,
-    });
+    this.assertGeneralDocumentContentEditable(existing);
+    const contentFormat = input.contentFormat ?? "MARKDOWN";
+    if (contentFormat !== existing.contentFormat) {
+      throw new ApiException(
+        "VALIDATION_ERROR",
+        "Document content format cannot be changed by content update",
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+    const contentUpdate =
+      input.contentFormat === "TIPTAP_JSON"
+        ? buildTiptapContentUpdate(input)
+        : buildMarkdownContentUpdate(input, existing.title);
     const result = await this.documents.updateContent({
       actorType: actor.actorType,
       actorUserId,
@@ -420,9 +447,12 @@ export class DocumentService {
         actor.actorType === "MCP_CLIENT"
           ? "CONTENT_REPLACED"
           : "CONTENT_EDITED",
-      chunks: buildDocumentChunks(normalized.contentMarkdown),
-      contentMarkdown: normalized.contentMarkdown,
-      contentText: normalized.contentText,
+      chunks: contentUpdate.chunks,
+      contentFormat,
+      contentJson: contentUpdate.contentJson,
+      contentMarkdown: contentUpdate.contentMarkdown,
+      contentMarkdownCache: contentUpdate.contentMarkdownCache,
+      contentText: contentUpdate.contentText,
       documentId,
       mcpClientId: actor.mcpClientId,
       requestId: metadata.requestId,
@@ -439,6 +469,136 @@ export class DocumentService {
     return updated;
   }
 
+  async convertToRequirement(
+    actorUserId: string,
+    documentId: string,
+    input: ConvertDocumentToRequirementRequest,
+    metadata: RequestMetadata = {},
+  ): Promise<Document> {
+    const existing = await this.requireEditableDocument(
+      actorUserId,
+      documentId,
+    );
+
+    if (existing.kind !== "GENERAL") {
+      throwInvalidDocumentKind("Only general documents can be converted");
+    }
+
+    await this.requireRequirementWriter(actorUserId, existing.spaceId);
+    await this.validateRequirementVersion(
+      actorUserId,
+      existing,
+      input.versionId,
+    );
+    await this.validateRequirementOwner(existing, input.ownerId);
+
+    const result = await this.kindTransitions.convertToRequirement({
+      activate: input.activate,
+      actorType: "USER",
+      actorUserId,
+      baseRevision: input.baseRevision,
+      documentId,
+      ownerId: input.ownerId,
+      priority: input.priority,
+      requestId: metadata.requestId,
+      summary: input.summary,
+      title: input.title,
+      versionId: input.versionId,
+    });
+    const updated = this.requireConvertToRequirementResult(result);
+
+    await this.recordAudit("UPDATE", actorUserId, updated, existing, metadata);
+    this.publishDocumentRealtime(actorUserId, updated, "UPDATED", [
+      "document-list",
+      "document-detail",
+      "document-timeline",
+      "resource-documents",
+      "requirement-list",
+      "requirement-detail",
+      "version-board",
+    ]);
+
+    return updated;
+  }
+
+  async cancelRequirementPreflight(
+    actorUserId: string,
+    documentId: string,
+  ): Promise<CancelRequirementPreflightResponse> {
+    const existing = await this.requireReadableDocument(
+      actorUserId,
+      documentId,
+    );
+
+    if (existing.kind !== "REQUIREMENT") {
+      throwInvalidDocumentKind("Only requirement documents can be cancelled");
+    }
+    await this.requireRequirementCancellationAccess(actorUserId, existing);
+
+    const result =
+      await this.kindTransitions.cancelRequirementPreflight(documentId);
+
+    if (result.status !== "ok") {
+      if (result.status === "not_found") {
+        throwDocumentNotFound();
+      }
+      throwInvalidDocumentKind("Only requirement documents can be cancelled");
+    }
+
+    return {
+      canCancel: result.referenceCount === 0,
+      referenceCount: result.referenceCount,
+      ...(result.referenceCount > 0
+        ? { modeRequired: "UNLINK_REFERENCES" as const }
+        : {}),
+    };
+  }
+
+  async cancelRequirement(
+    actorUserId: string,
+    documentId: string,
+    input: CancelRequirementRequest,
+    metadata: RequestMetadata = {},
+  ): Promise<Document> {
+    const existing = await this.requireReadableDocument(
+      actorUserId,
+      documentId,
+    );
+
+    if (existing.kind !== "REQUIREMENT") {
+      throwInvalidDocumentKind("Only requirement documents can be cancelled");
+    }
+    await this.requireRequirementCancellationAccess(actorUserId, existing);
+
+    const result = await this.kindTransitions.cancelRequirement({
+      actorType: "USER",
+      actorUserId,
+      baseRevision: input.baseRevision,
+      documentId,
+      reason: input.reason,
+      referenceMode: input.referenceMode,
+      requestId: metadata.requestId,
+    });
+    const updated = this.requireCancelRequirementResult(result);
+
+    await this.recordAudit("UPDATE", actorUserId, updated, existing, metadata);
+    this.publishDocumentRealtime(actorUserId, updated, "UPDATED", [
+      "document-list",
+      "document-detail",
+      "document-links",
+      "document-timeline",
+      "resource-documents",
+      "requirement-list",
+      "requirement-detail",
+      "version-board",
+      "intake-list",
+      "work-item-list",
+      "bug-list",
+    ]);
+
+    return updated;
+  }
+
   async appendContent(
     actorUserId: string,
     documentId: string,
@@ -450,6 +610,17 @@ export class DocumentService {
       actorUserId,
       documentId,
     );
+    this.assertGeneralDocumentContentEditable(existing);
+    if (
+      existing.contentFormat !== "MARKDOWN" ||
+      existing.contentMarkdown === undefined
+    ) {
+      throw new ApiException(
+        "VALIDATION_ERROR",
+        "Only Markdown documents can append Markdown content",
+        HttpStatus.BAD_REQUEST,
+      );
+    }
     const contentMarkdown = `${existing.contentMarkdown.trimEnd()}\n\n${input.appendMarkdown.trim()}`;
     assertDocumentFile(() => assertMarkdownSize(contentMarkdown));
     const normalized = normalizeMarkdownSource({
@@ -463,7 +634,10 @@ export class DocumentService {
       baseRevision: input.baseRevision,
       changeType: "CONTENT_APPENDED",
       chunks: buildDocumentChunks(normalized.contentMarkdown),
+      contentFormat: "MARKDOWN",
+      contentJson: undefined,
       contentMarkdown: normalized.contentMarkdown,
+      contentMarkdownCache: null,
       contentText: normalized.contentText,
       documentId,
       mcpClientId: actor.mcpClientId,
@@ -492,6 +666,7 @@ export class DocumentService {
       actorUserId,
       documentId,
     );
+    this.assertMarkdownContentEditable(existing);
     const markdown = file.fileName.toLowerCase().endsWith(".docx")
       ? await this.convertDocxToMarkdown(
           assertAndReturn(file, assertDocxImportFile),
@@ -518,7 +693,10 @@ export class DocumentService {
         baseRevision: input.baseRevision,
         changeType: "REIMPORTED",
         chunks: buildDocumentChunks(normalized.contentMarkdown),
+        contentFormat: "MARKDOWN",
+        contentJson: undefined,
         contentMarkdown: normalized.contentMarkdown,
+        contentMarkdownCache: null,
         contentText: normalized.contentText,
         documentId,
         requestId: metadata.requestId,
@@ -937,6 +1115,20 @@ export class DocumentService {
     );
     const access = await this.requireSpaceReader(actorUserId, document.spaceId);
 
+    if (document.kind === "REQUIREMENT") {
+      await this.targets.resolve(
+        actorUserId,
+        REQUIREMENT_TARGET_TYPE,
+        document.id,
+        {
+          access: "write",
+          writePolicy: "objectUpdate",
+        },
+      );
+
+      return document;
+    }
+
     if (
       DOCUMENT_WRITER_DENIED_ROLES.has(access.role) ||
       (!DOCUMENT_MANAGER_ROLES.has(access.role) &&
@@ -946,6 +1138,40 @@ export class DocumentService {
     }
 
     return document;
+  }
+
+  private async requireRequirementWriter(actorUserId: string, spaceId: string) {
+    const access = await this.requireSpaceReader(actorUserId, spaceId);
+
+    if (!REQUIREMENT_WRITER_ROLES.has(access.role)) {
+      throwSpaceAccessDenied();
+    }
+
+    return access;
+  }
+
+  private async requireRequirementCancellationAccess(
+    actorUserId: string,
+    document: Document,
+  ) {
+    const access = await this.requireSpaceReader(actorUserId, document.spaceId);
+
+    if (document.status === "DRAFT" && document.sequence == null) {
+      if (
+        REQUIREMENT_WRITER_ROLES.has(access.role) ||
+        document.createdById === actorUserId
+      ) {
+        return access;
+      }
+
+      throwSpaceAccessDenied();
+    }
+
+    if (!DOCUMENT_MANAGER_ROLES.has(access.role)) {
+      throwSpaceAccessDenied();
+    }
+
+    return access;
   }
 
   private async requireSpaceReader(actorUserId: string, spaceId: string) {
@@ -1017,6 +1243,84 @@ export class DocumentService {
     await this.folders.requireFolderInSpace(folderId, input);
   }
 
+  private async validateRequirementVersion(
+    actorUserId: string,
+    document: Document,
+    versionId: string | null | undefined,
+  ) {
+    if (!versionId) {
+      return;
+    }
+
+    const target = await this.targets.resolve(
+      actorUserId,
+      "VERSION",
+      versionId,
+      {
+        hideInaccessible: true,
+        notFoundCode: "NOT_FOUND",
+      },
+    );
+
+    if (
+      target.organizationId !== document.organizationId ||
+      target.spaceId !== document.spaceId
+    ) {
+      throw new ApiException(
+        "VALIDATION_ERROR",
+        "Requirement version must belong to the same space",
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+  }
+
+  private async validateRequirementOwner(
+    document: Document,
+    ownerId: string | undefined,
+  ) {
+    if (!ownerId) {
+      return;
+    }
+
+    const member = await this.spaces.findMemberByUserId(
+      document.spaceId,
+      ownerId,
+    );
+
+    if (!member || member.status !== "ACTIVE") {
+      throw new ApiException(
+        "SPACE_MEMBER_NOT_FOUND",
+        "Requirement owner must be an active space member",
+        HttpStatus.NOT_FOUND,
+      );
+    }
+  }
+
+  private assertGeneralDocumentContentEditable(document: Document) {
+    if (document.kind !== "REQUIREMENT") {
+      return;
+    }
+
+    throwRequirementDocumentContentBypass();
+  }
+
+  private assertMarkdownContentEditable(document: Document) {
+    this.assertGeneralDocumentContentEditable(document);
+
+    if (
+      document.contentFormat === "MARKDOWN" &&
+      document.contentMarkdown !== undefined
+    ) {
+      return;
+    }
+
+    throw new ApiException(
+      "VALIDATION_ERROR",
+      "Only Markdown documents can be updated with Markdown content",
+      HttpStatus.BAD_REQUEST,
+    );
+  }
+
   private requireUpdatedResult(
     result: Awaited<ReturnType<DocumentRepository["updateContent"]>>,
   ): Document {
@@ -1044,6 +1348,41 @@ export class DocumentService {
     return result;
   }
 
+  private requireConvertToRequirementResult(
+    result: Awaited<
+      ReturnType<DocumentKindTransitionService["convertToRequirement"]>
+    >,
+  ): Document {
+    if (result.status === "invalid_kind") {
+      throwInvalidDocumentKind("Only general documents can be converted");
+    }
+
+    return this.requireUpdatedResult(result);
+  }
+
+  private requireCancelRequirementResult(
+    result: Awaited<
+      ReturnType<DocumentKindTransitionService["cancelRequirement"]>
+    >,
+  ): Document {
+    if (result.status === "invalid_kind") {
+      throwInvalidDocumentKind("Only requirement documents can be cancelled");
+    }
+    if (result.status === "referenced") {
+      throw new ApiException(
+        "CONFLICT",
+        "Requirement has active references",
+        HttpStatus.CONFLICT,
+        {
+          modeRequired: "UNLINK_REFERENCES",
+          referenceCount: result.referenceCount,
+        },
+      );
+    }
+
+    return this.requireUpdatedResult(result);
+  }
+
   private async updateState(
     actorUserId: string,
     documentId: string,
@@ -1054,6 +1393,9 @@ export class DocumentService {
       actorUserId,
       documentId,
     );
+    if (existing.kind === "REQUIREMENT") {
+      throwRequirementDocumentStateBypass();
+    }
     const result = await this.documents.updateState({
       actorType: "USER",
       actorUserId,
@@ -1193,6 +1535,47 @@ function readMarkdownFile(file: UploadedDocumentFile): string {
   assertDocumentFile(() => assertMarkdownSize(markdown));
 
   return markdown;
+}
+
+function buildMarkdownContentUpdate(
+  input: Extract<UpdateDocumentContentRequest, { contentMarkdown: string }>,
+  title: string,
+) {
+  const normalized = normalizeMarkdownSource({
+    contentMarkdown: input.contentMarkdown,
+    fallbackTitle: title,
+    title,
+  });
+
+  return {
+    chunks: buildDocumentChunks(normalized.contentMarkdown),
+    contentJson: undefined,
+    contentMarkdown: normalized.contentMarkdown,
+    contentMarkdownCache: null,
+    contentText: normalized.contentText,
+  };
+}
+
+function buildTiptapContentUpdate(
+  input: Extract<
+    UpdateDocumentContentRequest,
+    { contentFormat: "TIPTAP_JSON" }
+  >,
+) {
+  const normalized = normalizeTiptapSource({
+    contentJson: input.contentJson,
+    contentMarkdownCache: input.contentMarkdownCache,
+  });
+
+  return {
+    chunks: buildDocumentChunksFromText(
+      normalized.contentMarkdownCache || normalized.contentText,
+    ),
+    contentJson: normalized.contentJson,
+    contentMarkdown: null,
+    contentMarkdownCache: normalized.contentMarkdownCache,
+    contentText: normalized.contentText,
+  };
 }
 
 function userDocumentActor(): DocumentActorContext {
@@ -1346,4 +1729,24 @@ function throwDocumentLinkTargetInvalid(): never {
     "Document link target is invalid",
     HttpStatus.BAD_REQUEST,
   );
+}
+
+function throwRequirementDocumentContentBypass(): never {
+  throw new ApiException(
+    "VALIDATION_ERROR",
+    "Requirement content and title must be updated through requirement APIs",
+    HttpStatus.BAD_REQUEST,
+  );
+}
+
+function throwRequirementDocumentStateBypass(): never {
+  throw new ApiException(
+    "VALIDATION_ERROR",
+    "Requirement documents must be archived, deleted or cancelled through requirement APIs",
+    HttpStatus.BAD_REQUEST,
+  );
+}
+
+function throwInvalidDocumentKind(message: string): never {
+  throw new ApiException("VALIDATION_ERROR", message, HttpStatus.BAD_REQUEST);
 }

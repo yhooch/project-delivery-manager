@@ -35,13 +35,6 @@ import type {
 import { canReadAllSpaceWorkItems } from "../workitem/workitem-visibility";
 
 const SPACE_MANAGER_ROLES = new Set<SpaceRole>(["SPACE_ADMIN", "PM"]);
-const REQUIREMENT_STATS_READ_ALL_ROLES = new Set<SpaceRole>(["REQUIREMENT"]);
-
-type RequirementStatsVisibility = "SPACE";
-
-type WithRequirementStatsVisibility<T> = T & {
-  requirementStatsVisibility?: RequirementStatsVisibility;
-};
 
 @Injectable()
 export class VersionService {
@@ -67,17 +60,11 @@ export class VersionService {
   ): Promise<PageResult<Version>> {
     const access = await this.requireSpaceAccess(actorUserId, spaceId);
 
-    return this.versions.listBySpaceId(
-      spaceId,
-      withRequirementStatsVisibility(
-        {
-          ...input,
-          actorUserId,
-          visibility: resolveVersionStatsVisibility(access.role),
-        },
-        access.role,
-      ),
-    );
+    return this.versions.listBySpaceId(spaceId, {
+      ...input,
+      actorUserId,
+      visibility: resolveVersionStatsVisibility(access.role),
+    });
   }
 
   async create(
@@ -379,7 +366,10 @@ export class VersionService {
   }
 
   private assertBoardScope(version: Version, input: VersionBoardViewQuery) {
-    if (input.organizationId && input.organizationId !== version.organizationId) {
+    if (
+      input.organizationId &&
+      input.organizationId !== version.organizationId
+    ) {
       throw new ApiException(
         "CROSS_ORGANIZATION_ACCESS_DENIED",
         "Version belongs to a different organization",
@@ -404,57 +394,41 @@ export class VersionService {
     }
 
     return (
-      (await this.versions.findById(
-        version.id,
-        withRequirementStatsVisibility(
-          {
-            actorUserId,
-            spaceId: version.spaceId,
-            visibility,
-          },
-          role,
-        ),
-      )) ?? version
+      (await this.versions.findById(version.id, {
+        actorUserId,
+        spaceId: version.spaceId,
+        visibility,
+      })) ?? version
     );
   }
 }
 
-function resolveVersionBoardVisibility(role: SpaceRole): VersionBoardVisibility {
-  if (canReadAllSpaceWorkItems(role)) {
-    return "SPACE";
-  }
-
-  if (role === "TESTER") {
-    return "TESTER";
-  }
-
-  return "PARTICIPANT";
-}
-
-function resolveVersionStatsVisibility(role: SpaceRole): VersionStatsVisibility {
-  if (canReadAllSpaceWorkItems(role)) {
-    return "SPACE";
-  }
-
-  if (role === "TESTER") {
-    return "TESTER";
-  }
-
-  return "PARTICIPANT";
-}
-
-function withRequirementStatsVisibility<T>(
-  input: T,
+function resolveVersionBoardVisibility(
   role: SpaceRole,
-): WithRequirementStatsVisibility<T> {
-  if (!REQUIREMENT_STATS_READ_ALL_ROLES.has(role)) {
-    return input as WithRequirementStatsVisibility<T>;
+): VersionBoardVisibility {
+  if (canReadAllSpaceWorkItems(role)) {
+    return "SPACE";
   }
 
-  return {
-    ...input,
-    requirementStatsVisibility: "SPACE",
-  };
+  if (role === "TESTER") {
+    return "TESTER";
+  }
+
+  return "PARTICIPANT";
+}
+
+function resolveVersionStatsVisibility(
+  role: SpaceRole,
+): VersionStatsVisibility {
+  if (canReadAllSpaceWorkItems(role)) {
+    return "SPACE";
+  }
+
+  if (role === "TESTER") {
+    return "TESTER";
+  }
+
+  return "PARTICIPANT";
 }
 
 function changedFieldsFromVersionUpdate(input: UpdateVersionRequest) {
@@ -488,5 +462,9 @@ function throwSpaceAccessDenied(): never {
 }
 
 function throwVersionNotFound(): never {
-  throw new ApiException("NOT_FOUND", "Version not found", HttpStatus.NOT_FOUND);
+  throw new ApiException(
+    "NOT_FOUND",
+    "Version not found",
+    HttpStatus.NOT_FOUND,
+  );
 }

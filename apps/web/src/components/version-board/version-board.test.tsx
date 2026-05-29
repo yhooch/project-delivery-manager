@@ -459,7 +459,7 @@ function makeRequirement(overrides: Record<string, unknown> = {}) {
     versionId: "01ARZ3NDEKTSV4RRFFQ69G5FV1",
     title: "Login requirement",
     summary: "Login flow spec",
-    status: "CONFIRMED",
+    status: "ACTIVE",
     ownerId: "USR_ALICE",
     updatedAt: "2026-05-02T00:00:00.000Z",
     ...overrides,
