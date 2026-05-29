@@ -201,6 +201,71 @@ describe("PrismaDocumentRepository", () => {
     });
   });
 
+  it("excludes draft documents from the default document list", async () => {
+    const documentFindMany = vi.fn(async () => []);
+    const documentCount = vi.fn(async () => 0);
+    const prisma = makeDocumentListPrisma(documentFindMany, documentCount);
+    const repository = new PrismaDocumentRepository(prisma);
+
+    await expect(
+      repository.list({
+        organizationId: "01H00000000000000000000002",
+        page: 1,
+        pageSize: 20,
+        spaceId: "01H00000000000000000000003",
+      }),
+    ).resolves.toMatchObject({
+      items: [],
+      total: 0,
+    });
+
+    expect(documentFindMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          status: { not: "DRAFT" },
+        }),
+      }),
+    );
+    expect(documentCount).toHaveBeenCalledWith({
+      where: expect.objectContaining({
+        status: { not: "DRAFT" },
+      }),
+    });
+  });
+
+  it("keeps explicit draft status searches available", async () => {
+    const documentFindMany = vi.fn(async () => []);
+    const documentCount = vi.fn(async () => 0);
+    const prisma = makeDocumentListPrisma(documentFindMany, documentCount);
+    const repository = new PrismaDocumentRepository(prisma);
+
+    await expect(
+      repository.list({
+        organizationId: "01H00000000000000000000002",
+        page: 1,
+        pageSize: 20,
+        spaceId: "01H00000000000000000000003",
+        status: "DRAFT",
+      }),
+    ).resolves.toMatchObject({
+      items: [],
+      total: 0,
+    });
+
+    expect(documentFindMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          status: "DRAFT",
+        }),
+      }),
+    );
+    expect(documentCount).toHaveBeenCalledWith({
+      where: expect.objectContaining({
+        status: "DRAFT",
+      }),
+    });
+  });
+
   it("loads document detail overviews through tenant-scoped DOCUMENT target queries", async () => {
     const document = makeDocumentRecord();
     const attachmentFindMany = vi.fn(async () => [
@@ -423,6 +488,36 @@ describe("PrismaDocumentRepository", () => {
     });
   });
 });
+
+function makeDocumentListPrisma(
+  documentFindMany: ReturnType<typeof vi.fn>,
+  documentCount: ReturnType<typeof vi.fn>,
+) {
+  return {
+    client: {
+      $transaction: vi.fn(async (queries) => Promise.all(queries)),
+      document: {
+        count: documentCount,
+        findMany: documentFindMany,
+      },
+      documentLink: {
+        findMany: vi.fn(async () => []),
+      },
+      documentFolder: {
+        findMany: vi.fn(async () => []),
+      },
+      mcpOAuthClient: {
+        findMany: vi.fn(async () => []),
+      },
+      tagAssignment: {
+        findMany: vi.fn(async () => []),
+      },
+      user: {
+        findMany: vi.fn(async () => []),
+      },
+    },
+  } as unknown as PrismaService;
+}
 
 function makeMutationTransaction(
   existing: ReturnType<typeof makeDocumentRecord>,

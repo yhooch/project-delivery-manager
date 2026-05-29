@@ -15,8 +15,8 @@
 
 此前 DOC 方案把这两者定义为不同对象，并通过 `document_links` 支持文档关联需求。这个模型能满足“普通文档关联需求”的第一版范围，但不能自然满足以下新产品判断：
 
-- 文档库里的所有需求对空间成员可见。
-- 需求应直接出现在文档库。
+- 文档库里的非草稿需求对空间成员可见。
+- 非草稿需求应直接出现在文档库，需求草稿保留在需求工作台草稿入口。
 - 文档库中的普通文档可以转成需求。
 - 后续不能靠“把需求同步成文档副本”来补洞。
 
@@ -85,7 +85,7 @@
 - 但当前 Notion 事实源尚未支持“需求属于文档，只是有一个标记”。现有事实源仍把 `需求文档` 和 `文档` 作为两个核心对象，后端表为 `requirements` 与 `documents`，契约中 `TargetType` 同时存在 `REQUIREMENT` 和 `DOCUMENT`。
 - 当前 `DocumentLinkTargetType` 表达的是“文档关联需求”，不是“需求存为文档加标记”。
 - 未在当前 Notion 中找到“文档转需求”与“取消需求化”作为已确认能力。
-- “文档库里的所有需求对空间成员可见”与当前需求可见性事实源冲突；当前需求不是所有空间成员全量可见，而是按角色和参与关系过滤。
+- “文档库里的非草稿需求对空间成员可见”与当前需求可见性事实源冲突；当前需求不是所有空间成员全量可见，而是按角色和参与关系过滤。
 
 因此，本文件不是对当前 Notion 方案的普通补充，而是一份目标架构决策草案。实施前必须先把该决策回写 Notion，并明确 supersede 当前“需求和文档双对象”的 DOC/需求方案。否则根据项目规则“以 Notion 中的原始需求和实施计划为准”，后续 agent 或开发者应当以当前 Notion 为准并拒绝直接按本地方案实现。
 
@@ -107,7 +107,7 @@
 - 一条需求只有一条 `documents` 记录。
 - `requirementId === documentId`。
 - 需求正文就是文档正文。
-- `/documents` 展示所有文档，包括普通文档和需求文档。
+- `/documents` 默认展示普通文档和非草稿需求文档；需求草稿是需求工作台的临时编辑状态，不进入文档库默认列表。
 - `/requirements` 是 `kind = REQUIREMENT` 的专用工作视图，不是另一套对象来源。
 - 普通文档转需求是修改同一条文档的 `kind` 和补齐需求字段，不复制正文，不创建第二条文档。
 - 需求取消需求化是把同一条文档的 `kind` 改回 `GENERAL` 并清理需求字段，不复制正文，不创建第二条文档。
@@ -645,17 +645,17 @@ type DocumentLinkTargetType =
 
 新需求：
 
-> 文档库里的所有需求对空间成员可见。
+> 文档库里的非草稿需求对空间成员可见；需求草稿不进入文档库默认列表。
 
 统一后读权限：
 
 - 所有有效空间成员可读 `status=ACTIVE|ARCHIVED` 的普通文档。
-- 所有有效空间成员可读非删除的 `kind=REQUIREMENT` 文档，包括 `DRAFT`、`ACTIVE`、`ARCHIVED`。这是“文档库里的所有需求对空间成员可见”的第一版明确口径。
+- 所有有效空间成员可读非删除的 `kind=REQUIREMENT` 文档，包括 `DRAFT`、`ACTIVE`、`ARCHIVED`。这是“需求对象空间级可读”的第一版明确口径。
 - `VIEWER` 可读，不可写。
-- 未保存到服务端的本地空草稿不是文档，不进入公共文档库；一旦创建为 `DRAFT + REQUIREMENT` 文档，就必须在 `/documents` 和 `/requirements` 中对空间成员可见。
+- 未保存到服务端的本地空草稿不是文档，不进入公共文档库；一旦创建为 `DRAFT + REQUIREMENT` 文档，可以在 `/requirements` 的草稿入口中对有权限用户可见，但不得进入 `/documents` 默认列表。
 - 需求草稿可见不等于可引用或可编辑；工作项/事项/Bug 关联仍只能指向满足业务规则的需求，写权限仍按需求规则判断。
 
-这意味着需求读权限正式升级为空间级可读，而不是只在文档库里绕路展示。
+这意味着需求读权限正式升级为空间级可读，但文档库默认列表仍要过滤草稿，避免空草稿污染公共文档库。
 
 ### 7.2 写权限
 
@@ -698,10 +698,11 @@ type DocumentLinkTargetType =
 
 ### 8.1 /documents 文档库
 
-`/documents` 是统一文档库，展示所有 `documents`：
+`/documents` 是统一文档库，默认展示所有非草稿 `documents`：
 
 - 普通文档。
-- 需求文档。
+- 非草稿需求文档。
+- 需求草稿默认不展示；只有显式 `status=DRAFT` 查询或专用草稿入口才允许读取。
 
 列表筛选：
 
@@ -875,6 +876,7 @@ documents.kind: REQUIREMENT -> GENERAL
 - 新建空需求创建 `DRAFT` 文档，不分配 `REQ-n`。
 - 首次保存为有效需求并进入 `ACTIVE` 时分配 `REQ-n`。
 - 图片粘贴、附件上传、评论、时间线目标均使用 `DOCUMENT`。
+- 创建空需求草稿不写用户可见时间线；保存为有效需求、内容更新、发布、归档、取消需求化等业务动作才写时间线。
 - 需求正文编辑使用统一文档正文字段。
 
 ### 8.6 普通文档创建
@@ -895,7 +897,7 @@ documents.kind: REQUIREMENT -> GENERAL
 
 - `POST /documents`、`pdm.document.create_from_markdown`、导入文档等通用入口默认只能创建 `kind=GENERAL`。
 - 通用入口不得接受或信任客户端传入的 `kind=REQUIREMENT`、`sequence`、`versionId`、`priority`、`ownerId` 等需求字段。
-- 创建需求必须走 `RequirementService.create*` 或 `DocumentKindTransitionService.convertToRequirement`，由服务端补齐需求字段、权限、编号和 revision/timeline/audit。
+- 创建需求必须走 `RequirementService.create*` 或 `DocumentKindTransitionService.convertToRequirement`，由服务端补齐需求字段、权限、编号和 revision/audit；用户可见 timeline 只在有效业务动作发生时写入，空草稿创建不写 timeline。
 - 更新文档时同理，`kind`、`sequence`、`document_code_history` 不能由普通 metadata 更新接口直接改。
 
 ## 9. API 契约整改
@@ -1177,7 +1179,7 @@ type Requirement = Document & {
 - 编号历史状态更新。
 - 需求字段清理。
 - 下游 `requirement_id` 引用预检和解除。
-- revision、timeline、audit、realtime 一致写入。
+- revision、timeline、audit、realtime 按动作语义一致写入；空需求草稿创建保留 revision/audit/realtime，不写用户可见 timeline。
 - 转换后的 DTO 投影。
 
 禁止任何 controller、repository、MCP executor 直接修改 `documents.kind`、`documents.sequence` 或 `document_code_history`。这些写入必须经过 `DocumentKindTransitionService`，否则会破坏编号不可复用和取消需求化的一致性。
@@ -1204,6 +1206,7 @@ type Requirement = Document & {
 - 版本、优先级、负责人。
 - 需求状态。
 - 打开需求视图的入口。
+- 默认排除 `status=DRAFT`；显式草稿状态查询可用于专用入口或内部工具。
 
 列表必须避免两个问题：
 
@@ -1629,7 +1632,7 @@ pdm.document.cancel_requirement
 
 验收：
 
-- `/documents` 能看到普通文档和需求。
+- `/documents` 能看到普通文档和非草稿需求。
 - `/requirements` 只看到需求。
 - 从文档转需求后两个入口都能看到同一 ID。
 - 取消需求化后同一 ID 仍在 `/documents` 可见，并从 `/requirements` 移除。
@@ -1722,8 +1725,8 @@ pdm.document.cancel_requirement
 
 必须覆盖：
 
-- `/documents` 同时展示普通文档和需求。
-- `/documents` 和 `/requirements` 对空间成员展示已持久化的需求草稿，并以草稿状态标识。
+- `/documents` 默认展示普通文档和非草稿需求，不能展示需求草稿。
+- `/requirements` 的草稿入口展示已持久化的需求草稿，并以草稿状态标识。
 - kind 筛选。
 - `linkedTargetType=DOCUMENT` 能筛出关联需求文档的普通文档。
 - 文件夹筛选。
@@ -1760,8 +1763,8 @@ pdm.document.cancel_requirement
 发布前 E2E 必须覆盖：
 
 1. 创建普通文档，在 `/documents` 可见。
-2. 创建需求，在 `/requirements` 和 `/documents` 均可见。
-3. 创建需求草稿，普通空间成员可在 `/requirements` 和 `/documents` 看到但不可编辑。
+2. 创建有效需求，在 `/requirements` 和 `/documents` 均可见。
+3. 创建需求草稿，可在 `/requirements` 草稿入口看到但不会出现在 `/documents` 默认列表，也不会产生用户可见时间线。
 4. 普通空间成员可读已确认需求。
 5. `VIEWER` 可读需求但不可编辑。
 6. 需求所在文件夹的 `documentCount/descendantDocumentCount` 包含该需求，文件夹删除保护也包含需求文档。
@@ -1942,13 +1945,14 @@ pdm.document.cancel_requirement
 - 系统中不存在独立需求正文事实源。
 - 一条需求只有一条 `documents` 记录。
 - `requirementId === documentId`。
-- `/documents` 展示需求和普通文档。
+- `/documents` 默认展示普通文档和非草稿需求。
 - `/requirements` 是需求专用视图，底层读取 `documents.kind=REQUIREMENT`。
 - 普通文档可以转为需求，转换不复制正文，不创建第二个对象。
 - 需求可以取消需求化，转换回普通文档不复制正文，不创建第二个对象。
 - 取消需求化不会破坏事项、任务、Bug 的需求引用约束；有引用时必须拒绝或显式解除引用。
 - 已取消或删除的旧 `REQ-n` 通过 `document_code_history` 保证不复用且可审计追溯。
 - 所有空间成员可读非删除需求文档，包括需求草稿、正式需求和归档需求。
+- 需求草稿不进入 `/documents` 默认列表，且空草稿创建不写用户可见时间线。
 - 需求写权限仍受需求规则控制。
 - 评论、附件、标签、时间线 canonical target 为 `DOCUMENT`。
 - 审计日志、参与关系、文档链接也不再新写入独立 `REQUIREMENT` target。

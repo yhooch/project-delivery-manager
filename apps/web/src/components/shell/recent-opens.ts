@@ -1,6 +1,8 @@
 // localStorage-backed "recently opened" helper for the command palette.
 // Kept intentionally framework-agnostic so it can be unit-tested in isolation.
 
+import { isLocale } from "../../i18n/locales";
+
 export type RecentEntryType =
   | "TASK"
   | "BUG"
@@ -57,7 +59,7 @@ function normalizeRecentEntry(value: unknown): RecentEntry | null {
       type: entry.type,
       displayCode,
       title: entry.title,
-      href: entry.href,
+      href: normalizeRecentHref(entry.href),
       organizationId:
         typeof entry.organizationId === "string"
           ? entry.organizationId
@@ -134,7 +136,7 @@ export function writeRecent(
       type: entry.type,
       displayCode: entry.displayCode,
       title: entry.title,
-      href: entry.href,
+      href: normalizeRecentHref(entry.href),
       organizationId: entry.organizationId,
       spaceId: entry.spaceId,
     };
@@ -201,4 +203,30 @@ export function pruneStaleRecent(
 
 export function buildLiveKey(type: RecentEntryType, id: string): string {
   return `${type}:${id}`;
+}
+
+function normalizeRecentHref(href: string): string {
+  if (!href.startsWith("/") || href.startsWith("//")) {
+    return href;
+  }
+
+  try {
+    const url = new URL(href, "http://pdm.local");
+
+    return `${stripLocalePathPrefix(url.pathname)}${url.search}${url.hash}`;
+  } catch {
+    return href;
+  }
+}
+
+function stripLocalePathPrefix(pathname: string): string {
+  const segments = pathname.split("/");
+
+  if (!isLocale(segments[1])) {
+    return pathname;
+  }
+
+  const pathWithoutLocale = segments.slice(2).join("/");
+
+  return pathWithoutLocale ? `/${pathWithoutLocale}` : "/";
 }

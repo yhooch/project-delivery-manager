@@ -1303,7 +1303,7 @@ export class PrismaDocumentRepository implements DocumentRepository {
       kind: input.kind,
       organizationId: input.organizationId,
       spaceId: input.spaceId,
-      ...(input.status ? { status: input.status } : {}),
+      status: input.status ?? { not: "DRAFT" },
       ...(input.sourceType ? { sourceType: input.sourceType } : {}),
       ...(input.lastEditedVia ? { lastEditedVia: input.lastEditedVia } : {}),
       ...(input.createdById ? { createdById: input.createdById } : {}),

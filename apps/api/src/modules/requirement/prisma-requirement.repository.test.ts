@@ -131,6 +131,7 @@ describe("PrismaRequirementRepository", () => {
       status: "DRAFT",
     });
     expect(created.sequence).toBeUndefined();
+    expect(tx.timelineEvent.create).not.toHaveBeenCalled();
   });
 
   it("persists and maps Markdown draft content format", async () => {
@@ -911,7 +912,7 @@ describe("PrismaRequirementRepository", () => {
     );
   });
 
-  it("writes visible timeline events when creating, saving, and archiving requirements", async () => {
+  it("writes visible timeline events when saving and archiving requirements", async () => {
     const requirement = makeRequirement();
     const timelineEventCreate = vi.fn(async () => undefined);
     const tx = {
@@ -992,17 +993,8 @@ describe("PrismaRequirementRepository", () => {
       updatedById: requirement.authorId,
     });
 
-    expect(timelineEventCreate).toHaveBeenCalledTimes(3);
+    expect(timelineEventCreate).toHaveBeenCalledTimes(2);
     expect(timelineEventCreate).toHaveBeenNthCalledWith(1, {
-      data: expect.objectContaining({
-        actorId: requirement.authorId,
-        eventType: "CREATED",
-        targetId: requirement.id,
-        targetType: "DOCUMENT",
-        title: "创建需求草稿",
-      }),
-    });
-    expect(timelineEventCreate).toHaveBeenNthCalledWith(2, {
       data: expect.objectContaining({
         actorId: requirement.authorId,
         eventType: "UPDATED",
@@ -1011,7 +1003,7 @@ describe("PrismaRequirementRepository", () => {
         title: "保存需求",
       }),
     });
-    expect(timelineEventCreate).toHaveBeenNthCalledWith(3, {
+    expect(timelineEventCreate).toHaveBeenNthCalledWith(2, {
       data: expect.objectContaining({
         actorId: requirement.authorId,
         eventType: "STATUS_CHANGED",

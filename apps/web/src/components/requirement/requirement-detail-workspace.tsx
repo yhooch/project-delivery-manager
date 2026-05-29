@@ -78,6 +78,7 @@ import {
   isTraceVersionCascadeRequiredError,
   traceVersionCascadeConfirmMessage,
 } from "../../lib/versioned-trace-linking";
+import { isLocale } from "../../i18n/locales";
 import { useRouter } from "../../i18n/routing";
 import { useSession } from "../providers/session-provider";
 import { TraceVersionCascadeConfirmDialog } from "../trace-version-cascade-confirm-dialog";
@@ -454,9 +455,7 @@ export function RequirementDetailWorkspace({
       event.preventDefault();
       event.stopPropagation();
       requestEmptyDraftLeaveDecision(
-        nextUrl.origin === currentUrl.origin
-          ? `${nextUrl.pathname}${nextUrl.search}${nextUrl.hash}`
-          : nextUrl.href,
+        toRouterNavigationTarget(nextUrl, currentUrl),
       );
     }
 
@@ -1426,6 +1425,26 @@ function isEmptyDraftRequirement(
       : !hasMeaningfulTiptapContent(form.content.contentJson)) &&
     (requirement.attachments?.length ?? 0) === 0
   );
+}
+
+function toRouterNavigationTarget(nextUrl: URL, currentUrl: URL): string {
+  if (nextUrl.origin !== currentUrl.origin) {
+    return nextUrl.href;
+  }
+
+  return `${stripLocalePathPrefix(nextUrl.pathname)}${nextUrl.search}${nextUrl.hash}`;
+}
+
+function stripLocalePathPrefix(pathname: string): string {
+  const segments = pathname.split("/");
+
+  if (!isLocale(segments[1])) {
+    return pathname;
+  }
+
+  const pathWithoutLocale = segments.slice(2).join("/");
+
+  return pathWithoutLocale ? `/${pathWithoutLocale}` : "/";
 }
 
 function hasMeaningfulTiptapContent(value: unknown): boolean {

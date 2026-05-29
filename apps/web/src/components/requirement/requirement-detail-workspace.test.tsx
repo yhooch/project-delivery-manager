@@ -703,7 +703,7 @@ describe("RequirementDetailWorkspace", () => {
     confirmSpy.mockRestore();
   });
 
-  it("keeps an empty draft when leaving and choosing keep", async () => {
+  it("keeps an empty draft and normalizes localized list navigation", async () => {
     getRequirementMock.mockResolvedValueOnce(
       makeRequirement({
         title: "",
@@ -718,7 +718,7 @@ describe("RequirementDetailWorkspace", () => {
     render(
       <>
         <RequirementDetailWorkspace requirementId="01ARZ3NDEKTSV4RRFFQ69G5FA1" />
-        <a data-testid="leave-requirement-detail" href="/requirements">
+        <a data-testid="leave-requirement-detail" href="/zh-CN/requirements">
           leave
         </a>
       </>,
@@ -753,7 +753,7 @@ describe("RequirementDetailWorkspace", () => {
     render(
       <>
         <RequirementDetailWorkspace requirementId="01ARZ3NDEKTSV4RRFFQ69G5FA1" />
-        <a data-testid="leave-requirement-detail" href="/requirements">
+        <a data-testid="leave-requirement-detail" href="/zh-CN/requirements">
           leave
         </a>
       </>,

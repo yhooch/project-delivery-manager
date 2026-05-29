@@ -70,6 +70,50 @@ describe("recent opens", () => {
     });
   });
 
+  it("normalizes localized internal hrefs when reading legacy entries", () => {
+    window.localStorage.setItem(
+      storageKey,
+      JSON.stringify([
+        {
+          id: "REQ_01",
+          type: "REQUIREMENT",
+          displayCode: "REQ-7",
+          title: "Legacy requirement",
+          href: "/zh-CN/requirements/REQ_01?tab=detail#summary",
+        },
+      ]),
+    );
+
+    expect(readRecent(scope)[0]).toMatchObject({
+      id: "REQ_01",
+      type: "REQUIREMENT",
+      displayCode: "REQ-7",
+      title: "Legacy requirement",
+      href: "/requirements/REQ_01?tab=detail#summary",
+    });
+  });
+
+  it("normalizes localized internal hrefs before writing", () => {
+    writeRecent(
+      {
+        id: "DOC_01",
+        type: "DOCUMENT",
+        displayCode: "Document",
+        title: "Document",
+        href: "/en-US/documents/DOC_01",
+        organizationId: "ORG_01",
+        spaceId: "SPC_01",
+      },
+      scope,
+    );
+
+    const stored = JSON.parse(
+      window.localStorage.getItem(storageKey) ?? "[]",
+    ) as Array<Record<string, unknown>>;
+
+    expect(stored[0]?.href).toBe("/documents/DOC_01");
+  });
+
   it("dispatches scoped recent change events when recording an open", () => {
     const listener = vi.fn();
     window.addEventListener("pdm:command-palette:recent-changed", listener);

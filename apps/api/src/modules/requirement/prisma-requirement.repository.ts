@@ -122,20 +122,6 @@ export class PrismaRequirementRepository implements RequirementRepository {
         actorUserId: input.createdById,
       });
 
-      await createTimelineEvent(tx, {
-        actorUserId: input.createdById,
-        after: {
-          revision: created.revision,
-          status: created.status,
-          title: created.title,
-          versionId: created.versionId ?? null,
-        },
-        eventType: "CREATED",
-        organizationId: input.organizationId,
-        spaceId: input.spaceId,
-        targetId: created.id,
-        title: "创建需求草稿",
-      });
       await createRequirementRevision(tx, input.createdById, created, {
         changeType: "CREATED",
         metadata: { operation: "REQUIREMENT_DRAFT_CREATED" },
