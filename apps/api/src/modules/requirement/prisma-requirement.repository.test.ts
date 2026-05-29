@@ -1014,7 +1014,7 @@ describe("PrismaRequirementRepository", () => {
     });
   });
 
-  it("writes assignee change timeline and syncs assignee participant when owner changes", async () => {
+  it("records owner changes in the save timeline and syncs assignee participant", async () => {
     const ownerId = "01H00000000000000000000006";
     const nextOwnerId = "01H00000000000000000000007";
     const previous = makeRequirement({ ownerId, status: "ACTIVE" });
@@ -1097,9 +1097,9 @@ describe("PrismaRequirementRepository", () => {
     });
     expect(timelineEventCreate).toHaveBeenCalledWith({
       data: expect.objectContaining({
-        after: { ownerId: nextOwnerId },
-        before: { ownerId },
-        eventType: "ASSIGNEE_CHANGED",
+        after: expect.objectContaining({ ownerId: nextOwnerId }),
+        before: expect.objectContaining({ ownerId }),
+        eventType: "UPDATED",
         targetId: previous.id,
         targetType: "DOCUMENT",
       }),

@@ -774,7 +774,21 @@ describe("WorkflowActionExecutionService", () => {
     ).toBe(true);
     expect(
       subject.repository.timelineEvents.map((event) => event.eventType),
-    ).toEqual(["ASSIGNEE_CHANGED", "ACTION_EXECUTED"]);
+    ).toEqual(["ACTION_EXECUTED"]);
+    expect(subject.repository.timelineEvents[0]).toMatchObject({
+      after: {
+        assigneeId: ASSIGNEE_ID,
+        currentStateId: IN_PROGRESS_STATE_ID,
+        statusCategory: "WAITING",
+      },
+      before: {
+        assigneeId: null,
+      },
+      metadata: {
+        actionCode: "CONFIRM_DEFECT",
+        actionId: USER_FIELD_ACTION_ID,
+      },
+    });
   });
 
   it("updates Bug regression details from default action field keys", async () => {
@@ -887,7 +901,21 @@ describe("WorkflowActionExecutionService", () => {
     ).toBeDefined();
     expect(
       subject.repository.timelineEvents.map((event) => event.eventType),
-    ).toEqual(["ACTION_EXECUTED", "CLOSED"]);
+    ).toEqual(["ACTION_EXECUTED"]);
+    expect(subject.repository.timelineEvents[0]).toMatchObject({
+      after: {
+        closedAt: expect.any(String),
+        currentStateId: DONE_STATE_ID,
+        statusCategory: "DONE",
+      },
+      before: {
+        closedAt: null,
+      },
+      metadata: {
+        actionCode: "CLOSE_DEFECT",
+        lifecycleEvent: "CLOSED",
+      },
+    });
 
     await subject.service.executeAction(
       ACTOR_ID,
@@ -911,7 +939,21 @@ describe("WorkflowActionExecutionService", () => {
     });
     expect(
       subject.repository.timelineEvents.map((event) => event.eventType),
-    ).toEqual(["ACTION_EXECUTED", "CLOSED", "ACTION_EXECUTED", "REOPENED"]);
+    ).toEqual(["ACTION_EXECUTED", "ACTION_EXECUTED"]);
+    expect(subject.repository.timelineEvents[1]).toMatchObject({
+      after: {
+        closedAt: null,
+        currentStateId: IN_PROGRESS_STATE_ID,
+        statusCategory: "WAITING",
+      },
+      before: {
+        closedAt: expect.any(String),
+      },
+      metadata: {
+        actionCode: "REOPEN_DEFECT",
+        lifecycleEvent: "REOPENED",
+      },
+    });
   });
 });
 

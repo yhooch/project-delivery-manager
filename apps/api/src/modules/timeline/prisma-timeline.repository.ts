@@ -11,6 +11,7 @@ import type {
   CreateTimelineEventInput,
   TimelineListInput,
 } from "./timeline.types";
+import { excludeRedundantWorkflowActionEvents } from "./timeline-event-filters";
 
 const REQUIREMENT_DOCUMENT_KIND = "REQUIREMENT" as const;
 
@@ -22,13 +23,13 @@ export class PrismaTimelineRepository implements TimelineRepository {
   ) {}
 
   async listByTarget(input: TimelineListInput) {
-    const where: Prisma.TimelineEventWhereInput = {
+    const where = excludeRedundantWorkflowActionEvents({
       deletedAt: null,
       organizationId: input.organizationId,
       spaceId: input.spaceId,
       targetId: input.targetId,
       targetType: input.targetType,
-    };
+    });
     const [events, total] = await this.prisma.client.$transaction([
       this.prisma.client.timelineEvent.findMany({
         include: {

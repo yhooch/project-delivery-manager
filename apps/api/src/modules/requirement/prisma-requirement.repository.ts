@@ -524,23 +524,6 @@ export class PrismaRequirementRepository implements RequirementRepository {
         });
       }
 
-      if (ownerChanged) {
-        await createTimelineEvent(tx, {
-          actorUserId: input.updatedById,
-          after: {
-            ownerId: requirement.ownerId ?? null,
-          },
-          before: {
-            ownerId: previous.ownerId ?? null,
-          },
-          eventType: "ASSIGNEE_CHANGED",
-          organizationId: requirement.organizationId,
-          spaceId: requirement.spaceId,
-          targetId: requirement.id,
-          title: "负责人变更",
-        });
-      }
-
       await createTimelineEvent(tx, {
         actorUserId: input.updatedById,
         after: requirementTimelineSnapshot(requirement),
@@ -1250,7 +1233,7 @@ async function createTimelineEvent(
     actorUserId: string;
     after?: Record<string, unknown>;
     before?: Record<string, unknown>;
-    eventType: "ASSIGNEE_CHANGED" | "CREATED" | "STATUS_CHANGED" | "UPDATED";
+    eventType: "CREATED" | "STATUS_CHANGED" | "UPDATED";
     organizationId: string;
     spaceId: string;
     targetId: string;

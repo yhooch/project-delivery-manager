@@ -4,7 +4,6 @@ import type {
   ApiErrorCode,
   ExecuteActionRequest,
   PermissionSnapshot,
-  TimelineEventType,
   WorkflowActionSummary,
   WorkItemDetail,
 } from "@project-delivery/shared";
@@ -298,22 +297,6 @@ export class WorkflowActionExecutionService {
             targetId: updated.id,
             userIds: [assigneeId],
           });
-          await tx.createTimelineEvent({
-            actorUserId,
-            after: {
-              assigneeId,
-            },
-            before: {
-              assigneeId: workItem.assigneeId ?? null,
-            },
-            eventType: "ASSIGNEE_CHANGED",
-            metadata: buildTimelineMetadata(action, formValues, comment),
-            organizationId: updated.organizationId,
-            spaceId: updated.spaceId,
-            targetId: updated.id,
-            targetWorkItemType: updated.type,
-            title: "变更负责人",
-          });
         }
 
         const timelineMetadata = buildTimelineMetadata(
@@ -334,25 +317,6 @@ export class WorkflowActionExecutionService {
           targetWorkItemType: updated.type,
           title: `执行动作：${action.name}`,
         });
-
-        const lifecycleEvent = resolveLifecycleTimelineEvent(action);
-
-        if (lifecycleEvent) {
-          await tx.createTimelineEvent({
-            actorUserId,
-            after: buildTimelineAfter(updated),
-            before,
-            detail: comment,
-            eventType: lifecycleEvent,
-            metadata: timelineMetadata,
-            organizationId: updated.organizationId,
-            spaceId: updated.spaceId,
-            targetId: updated.id,
-            targetWorkItemType: updated.type,
-            title:
-              lifecycleEvent === "CLOSED" ? "关闭工作项" : "重新打开工作项",
-          });
-        }
 
         const availableActions = await resolveAvailableActions(
           tx,
@@ -960,24 +924,6 @@ function resolveLifecycleEvent(action: ExecutableWorkflowAction) {
   }
   if (action.toState.category === "DONE" || action.toState.isEnd) {
     return "COMPLETED";
-  }
-
-  return undefined;
-}
-
-function resolveLifecycleTimelineEvent(
-  action: ExecutableWorkflowAction,
-): Extract<TimelineEventType, "CLOSED" | "REOPENED"> | undefined {
-  if (isReopenAction(action)) {
-    return "REOPENED";
-  }
-
-  if (
-    action.code.includes("CLOSE") ||
-    action.toState.code.includes("CLOSE") ||
-    action.toState.isEnd
-  ) {
-    return "CLOSED";
   }
 
   return undefined;

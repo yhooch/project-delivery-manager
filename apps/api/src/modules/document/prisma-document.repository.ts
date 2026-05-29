@@ -14,6 +14,7 @@ import {
   listTagsByTargets,
   replaceTagAssignmentsInTransaction,
 } from "../tag/tag-assignment.helpers";
+import { excludeRedundantWorkflowActionEvents } from "../timeline/timeline-event-filters";
 import { createTimelineEventRecord } from "../timeline/timeline-event-writer";
 import {
   toDocument,
@@ -223,6 +224,7 @@ export class PrismaDocumentRepository implements DocumentRepository {
     }
 
     const targetWhere = documentTargetWhere(document);
+    const timelineWhere = excludeRedundantWorkflowActionEvents(targetWhere);
     const [
       context,
       attachments,
@@ -264,10 +266,10 @@ export class PrismaDocumentRepository implements DocumentRepository {
           createdAt: "desc",
         },
         take: DOCUMENT_DETAIL_OVERVIEW_LIMIT,
-        where: targetWhere,
+        where: timelineWhere,
       }),
       this.prisma.client.timelineEvent.count({
-        where: targetWhere,
+        where: timelineWhere,
       }),
     ]);
 

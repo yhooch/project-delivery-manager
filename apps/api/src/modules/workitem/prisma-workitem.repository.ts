@@ -411,24 +411,6 @@ export class PrismaWorkItemRepository implements WorkItemRepository {
         });
       }
 
-      if (hasOwn(input.timelineAfter, "assigneeId")) {
-        await createTimelineEvent(tx, {
-          actorUserId: input.updatedById,
-          after: {
-            assigneeId: workItem.assigneeId ?? null,
-          },
-          before: {
-            assigneeId: input.timelineBefore.assigneeId ?? null,
-          },
-          eventType: "ASSIGNEE_CHANGED",
-          organizationId: workItem.organizationId,
-          spaceId: workItem.spaceId,
-          targetId: workItem.id,
-          targetWorkItemType: "TASK",
-          title: "负责人变更",
-        });
-      }
-
       return workItem;
     });
 
@@ -1026,7 +1008,7 @@ async function createTimelineEvent(
     actorUserId: string;
     after?: Record<string, unknown>;
     before?: Record<string, unknown>;
-    eventType: "ASSIGNEE_CHANGED" | "CREATED" | "UPDATED";
+    eventType: "CREATED" | "UPDATED";
     organizationId: string;
     spaceId: string;
     targetId: string;

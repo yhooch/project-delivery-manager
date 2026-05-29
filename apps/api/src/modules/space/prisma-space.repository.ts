@@ -30,6 +30,7 @@ import {
   toTimelineEvent,
   type TimelineTargetIdentityRecord,
 } from "../timeline/timeline.mappers";
+import { excludeRedundantWorkflowActionEvents } from "../timeline/timeline-event-filters";
 import {
   canReadAllSpaceWorkItems,
   testerVisibleWorkItemWhere,
@@ -2083,7 +2084,7 @@ function buildTimelineWhere(
     return undefined;
   }
 
-  return {
+  return excludeRedundantWorkflowActionEvents({
     deletedAt: null,
     organizationId,
     spaceId: {
@@ -2092,7 +2093,7 @@ function buildTimelineWhere(
     targetType: {
       in: [...RECENT_ACTIVITY_TARGET_TYPES],
     },
-  };
+  });
 }
 
 function andWorkItemWhere(

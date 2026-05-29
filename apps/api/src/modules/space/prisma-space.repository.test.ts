@@ -1129,7 +1129,7 @@ describe("PrismaSpaceRepository", () => {
     expect(timelineFindMany).toHaveBeenCalledWith(
       expect.objectContaining({
         where: expect.objectContaining({
-          AND: [
+          AND: expect.arrayContaining([
             {
               OR: expect.arrayContaining([
                 {
@@ -1150,7 +1150,7 @@ describe("PrismaSpaceRepository", () => {
                 },
               ]),
             },
-          ],
+          ]),
           spaceId: {
             in: [spaceId],
           },
@@ -1255,7 +1255,7 @@ describe("PrismaSpaceRepository", () => {
     expect(timelineFindMany).toHaveBeenCalledWith(
       expect.objectContaining({
         where: expect.objectContaining({
-          AND: [
+          AND: expect.arrayContaining([
             {
               OR: [
                 {
@@ -1264,7 +1264,7 @@ describe("PrismaSpaceRepository", () => {
                 },
               ],
             },
-          ],
+          ]),
         }),
       }),
     );

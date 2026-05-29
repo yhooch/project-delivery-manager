@@ -397,14 +397,16 @@ describe("PrismaDocumentRepository", () => {
     expect(commentCount).toHaveBeenCalledWith({
       where: scopedDocumentTargetWhere,
     });
-    expect(timelineEventFindMany).toHaveBeenCalledWith({
-      include: { actor: true },
-      orderBy: { createdAt: "desc" },
-      take: 5,
-      where: scopedDocumentTargetWhere,
-    });
+    expect(timelineEventFindMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        include: { actor: true },
+        orderBy: { createdAt: "desc" },
+        take: 5,
+        where: expect.objectContaining(scopedDocumentTargetWhere),
+      }),
+    );
     expect(timelineEventCount).toHaveBeenCalledWith({
-      where: scopedDocumentTargetWhere,
+      where: expect.objectContaining(scopedDocumentTargetWhere),
     });
   });
 

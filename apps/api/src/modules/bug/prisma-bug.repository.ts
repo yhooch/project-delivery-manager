@@ -406,24 +406,6 @@ export class PrismaBugRepository implements BugRepository {
         });
       }
 
-      if (input.assigneeChanged) {
-        await createTimelineEvent(tx, {
-          actorUserId: input.updatedById,
-          after: {
-            assigneeId: bug.assigneeId ?? null,
-          },
-          before: {
-            assigneeId: input.timelineBefore.assigneeId ?? null,
-          },
-          eventType: "ASSIGNEE_CHANGED",
-          organizationId: bug.organizationId,
-          spaceId: bug.spaceId,
-          targetId: bug.id,
-          targetWorkItemType: "BUG",
-          title: "负责人变更",
-        });
-      }
-
       return bug;
     });
 
@@ -942,7 +924,7 @@ async function createTimelineEvent(
     actorUserId: string;
     after?: Record<string, unknown>;
     before?: Record<string, unknown>;
-    eventType: "ASSIGNEE_CHANGED" | "CREATED" | "UPDATED";
+    eventType: "CREATED" | "UPDATED";
     organizationId: string;
     spaceId: string;
     targetId: string;
