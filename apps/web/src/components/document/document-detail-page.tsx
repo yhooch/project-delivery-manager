@@ -28,6 +28,7 @@ import {
   X,
 } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
+import { useSearchParams } from "next/navigation";
 import {
   Fragment,
   useCallback,
@@ -100,6 +101,7 @@ import {
   useRealtimeInvalidation,
 } from "../../lib/realtime";
 import { createTiptapDocumentFromText } from "../../lib/requirement-editor-content";
+import { useFocusedListItem } from "../../lib/hooks/use-focused-list-item";
 import { listTimeline } from "../../lib/timeline-service";
 import { cn } from "../../lib/utils";
 import { useSession } from "../providers/session-provider";
@@ -218,15 +220,25 @@ function canCancelRequirementDocument(
   return REQUIREMENT_MANAGER_ROLES.has(role);
 }
 
+function normalizeSearchParam(value: string | null): string | undefined {
+  const trimmed = value?.trim();
+  return trimmed ? trimmed : undefined;
+}
+
 export function DocumentDetailPage({ documentId }: DocumentDetailPageProps) {
   const t = useTranslations("documents");
   const tRoot = useTranslations();
   const locale = useLocale();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { currentOrganization, currentSpace, session, status } = useSession();
   const { setActiveDocumentFolderId } = useDocumentDirectory();
   const organizationId =
     currentOrganization?.id ?? session?.defaultOrganizationId;
+  const focusedCommentId = normalizeSearchParam(searchParams.get("commentId"));
+  const focusedAttachmentId = normalizeSearchParam(
+    searchParams.get("attachmentId"),
+  );
   const [document, setDocument] = useState<DocumentDetail | null>(null);
   const [form, setForm] = useState<DocumentEditForm | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -342,6 +354,8 @@ export function DocumentDetailPage({ documentId }: DocumentDetailPageProps) {
       try {
         const next = await getDocumentWithSubresources({
           documentId,
+          focusedAttachmentId,
+          focusedCommentId,
           organizationId,
           spaceId,
         });
@@ -385,7 +399,15 @@ export function DocumentDetailPage({ documentId }: DocumentDetailPageProps) {
         }
       }
     },
-    [documentId, organizationId, spaceId, documentLabel, untitledLabel],
+    [
+      documentId,
+      focusedAttachmentId,
+      focusedCommentId,
+      organizationId,
+      spaceId,
+      documentLabel,
+      untitledLabel,
+    ],
   );
 
   useEffect(() => {
@@ -1327,6 +1349,8 @@ export function DocumentDetailPage({ documentId }: DocumentDetailPageProps) {
             commentBody={commentBody}
             commentErrorKey={commentErrorKey}
             document={document}
+            focusedAttachmentId={focusedAttachmentId}
+            focusedCommentId={focusedCommentId}
             isCommenting={isCommenting}
             isUploadingAttachment={isUploadingAttachment}
             locale={locale}
@@ -1650,6 +1674,8 @@ function DocumentManagementSections({
   commentBody,
   commentErrorKey,
   document,
+  focusedAttachmentId,
+  focusedCommentId,
   isCommenting,
   isUploadingAttachment,
   locale,
@@ -1661,6 +1687,8 @@ function DocumentManagementSections({
   commentBody: string;
   commentErrorKey: string | null;
   document: DocumentDetail;
+  focusedAttachmentId?: string;
+  focusedCommentId?: string;
   isCommenting: boolean;
   isUploadingAttachment: boolean;
   locale: string;
@@ -1673,6 +1701,18 @@ function DocumentManagementSections({
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const comments = document.comments ?? [];
   const attachments = document.attachments ?? [];
+  const { highlightedId: highlightedCommentId, registerItem: registerComment } =
+    useFocusedListItem<HTMLElement>({
+      focusedId: focusedCommentId,
+      resetKey: document.id,
+    });
+  const {
+    highlightedId: highlightedAttachmentId,
+    registerItem: registerAttachment,
+  } = useFocusedListItem<HTMLLIElement>({
+    focusedId: focusedAttachmentId,
+    resetKey: document.id,
+  });
 
   return (
     <div className="mt-10 grid gap-8">
@@ -1729,7 +1769,14 @@ function DocumentManagementSections({
             {comments.map((comment) => (
               <article
                 key={comment.id}
-                className="rounded-lg px-3 py-2 transition-colors hover:bg-muted/30"
+                id={`comment-${comment.id}`}
+                ref={registerComment(comment.id)}
+                data-comment-id={comment.id}
+                className={cn(
+                  "rounded-lg px-3 py-2 transition-colors hover:bg-muted/30",
+                  highlightedCommentId === comment.id &&
+                    "bg-primary/5 ring-2 ring-primary/30 ring-offset-2 ring-offset-background",
+                )}
               >
                 <div className="flex flex-wrap items-baseline gap-2 text-xs text-muted-foreground">
                   <span className="font-medium text-foreground">
@@ -1801,7 +1848,14 @@ function DocumentManagementSections({
             {attachments.map((attachment) => (
               <li
                 key={attachment.id}
-                className="flex flex-wrap items-center justify-between gap-3 rounded-lg px-3 py-2 transition-colors hover:bg-muted/40"
+                id={`attachment-${attachment.id}`}
+                ref={registerAttachment(attachment.id)}
+                data-attachment-id={attachment.id}
+                className={cn(
+                  "flex flex-wrap items-center justify-between gap-3 rounded-lg px-3 py-2 transition-colors hover:bg-muted/40",
+                  highlightedAttachmentId === attachment.id &&
+                    "bg-primary/5 ring-2 ring-primary/30 ring-offset-2 ring-offset-background",
+                )}
               >
                 <div className="flex min-w-0 items-center gap-2.5">
                   <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-muted text-muted-foreground">
@@ -2356,6 +2410,8 @@ function RailJumpLink({
 
 async function getDocumentWithSubresources(input: {
   documentId: string;
+  focusedAttachmentId?: string;
+  focusedCommentId?: string;
   organizationId?: string;
   spaceId?: string;
 }): Promise<DocumentDetail> {
@@ -2364,7 +2420,7 @@ async function getDocumentWithSubresources(input: {
     listComments({
       organizationId: document.organizationId,
       page: 1,
-      pageSize: 20,
+      pageSize: input.focusedCommentId ? 200 : 20,
       spaceId: document.spaceId,
       targetId: document.id,
       targetType: "DOCUMENT",
@@ -2372,7 +2428,7 @@ async function getDocumentWithSubresources(input: {
     listAttachments({
       organizationId: document.organizationId,
       page: 1,
-      pageSize: 20,
+      pageSize: input.focusedAttachmentId ? 200 : 20,
       spaceId: document.spaceId,
       targetId: document.id,
       targetType: "DOCUMENT",

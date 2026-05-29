@@ -38,6 +38,7 @@ type TimelineEventItemProps = {
   density?: "compact" | "full";
   event: TimelineEvent;
   href?: string | null;
+  itemRef?: Ref<HTMLLIElement>;
   justNowLabel?: string;
   locale: string;
   testId?: string;
@@ -52,6 +53,7 @@ export function TimelineEventItem({
   density = "full",
   event,
   href,
+  itemRef,
   justNowLabel = "",
   locale,
   testId,
@@ -195,7 +197,7 @@ export function TimelineEventItem({
   );
 
   return (
-    <li data-testid={testId} className={className}>
+    <li data-testid={testId} ref={itemRef} className={className}>
       {display.href ? (
         <Link
           href={display.href as never}

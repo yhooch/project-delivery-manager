@@ -142,6 +142,10 @@ export function IntakePage() {
   const router = useRouter();
   const pathname = usePathname();
   const requestedIntakeItemId = normalizeSearchParam(searchParams.get("id"));
+  const requestedCommentId = normalizeSearchParam(searchParams.get("commentId"));
+  const requestedTimelineEventId = normalizeSearchParam(
+    searchParams.get("eventId"),
+  );
   const [tagFilter, setTagFilter] = useUrlTagFilter({
     fixedTagMatch: "ANY",
     pathname,
@@ -591,7 +595,13 @@ export function IntakePage() {
       return;
     }
 
-    const key = `intake:${spaceId}:${requestedIntakeItemId}`;
+    const key = [
+      "intake",
+      spaceId,
+      requestedIntakeItemId,
+      requestedCommentId ?? "",
+      requestedTimelineEventId ?? "",
+    ].join(":");
     if (handledDeepLinkKey === key) {
       return;
     }
@@ -635,7 +645,9 @@ export function IntakePage() {
     items,
     openItem,
     organizationId,
+    requestedCommentId,
     requestedIntakeItemId,
+    requestedTimelineEventId,
     spaceId,
   ]);
 
@@ -1239,6 +1251,14 @@ export function IntakePage() {
         actionErrorMessage={actionErrorKey ? tRoot(actionErrorKey) : null}
         canComment={canCreateOrCommentIntake}
         canEditTags={canManageIntake}
+        focusedCommentId={
+          active?.id === requestedIntakeItemId ? requestedCommentId : undefined
+        }
+        focusedTimelineEventId={
+          active?.id === requestedIntakeItemId
+            ? requestedTimelineEventId
+            : undefined
+        }
         intakeItem={active}
         onItemChange={handleUpdatedIntakeItem}
         onOpenChange={handleCloseDrawer}

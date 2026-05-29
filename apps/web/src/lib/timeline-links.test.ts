@@ -29,13 +29,17 @@ describe("timeline links", () => {
   it("routes work item events to bugs when metadata identifies a bug", () => {
     expect(
       getTimelineEventHref(makeEvent({ metadata: { workItemType: "BUG" } })),
-    ).toBe("/bugs?bugId=01ARZ3NDEKTSV4RRFFQ69G5FA5");
+    ).toBe(
+      "/bugs?bugId=01ARZ3NDEKTSV4RRFFQ69G5FA5&eventId=01ARZ3NDEKTSV4RRFFQ69G5FA2&panel=timeline",
+    );
   });
 
   it("routes work item events to tasks when metadata identifies a task", () => {
     expect(
       getTimelineEventHref(makeEvent({ metadata: { workItemType: "TASK" } })),
-    ).toBe("/work-items?workItemId=01ARZ3NDEKTSV4RRFFQ69G5FA5");
+    ).toBe(
+      "/work-items?workItemId=01ARZ3NDEKTSV4RRFFQ69G5FA5&eventId=01ARZ3NDEKTSV4RRFFQ69G5FA2&panel=timeline",
+    );
   });
 
   it("infers bug events from bug-only timeline fields", () => {
@@ -43,7 +47,39 @@ describe("timeline links", () => {
 
     expect(getTimelineWorkItemType(event)).toBe("BUG");
     expect(getTimelineEventHref(event)).toBe(
-      "/bugs?bugId=01ARZ3NDEKTSV4RRFFQ69G5FA5",
+      "/bugs?bugId=01ARZ3NDEKTSV4RRFFQ69G5FA5&eventId=01ARZ3NDEKTSV4RRFFQ69G5FA2&panel=timeline",
+    );
+  });
+
+  it("routes comment events to the comments panel and target comment", () => {
+    expect(
+      getTimelineEventHref(
+        makeEvent({
+          eventType: "COMMENTED",
+          metadata: {
+            commentId: "01ARZ3NDEKTSV4RRFFQ69G5FCM1",
+            workItemType: "TASK",
+          },
+        }),
+      ),
+    ).toBe(
+      "/work-items?workItemId=01ARZ3NDEKTSV4RRFFQ69G5FA5&commentId=01ARZ3NDEKTSV4RRFFQ69G5FCM1&panel=comments",
+    );
+  });
+
+  it("routes attachment events to the attachments panel and target attachment", () => {
+    expect(
+      getTimelineEventHref(
+        makeEvent({
+          eventType: "ATTACHMENT_ADDED",
+          metadata: {
+            attachmentId: "01ARZ3NDEKTSV4RRFFQ69G5FAT1",
+            workItemType: "BUG",
+          },
+        }),
+      ),
+    ).toBe(
+      "/bugs?bugId=01ARZ3NDEKTSV4RRFFQ69G5FA5&attachmentId=01ARZ3NDEKTSV4RRFFQ69G5FAT1&panel=attachments",
     );
   });
 
@@ -67,5 +103,57 @@ describe("timeline links", () => {
         }),
       ),
     ).toBe("/requirements/01ARZ3NDEKTSV4RRFFQ69G5FA6");
+  });
+
+  it("routes requirement document comments to document comments", () => {
+    expect(
+      getTimelineEventHref(
+        makeEvent({
+          eventType: "COMMENTED",
+          metadata: {
+            commentId: "01ARZ3NDEKTSV4RRFFQ69G5FCM1",
+            targetKind: "REQUIREMENT",
+          },
+          target: {
+            displayCode: "REQ-12",
+            id: "01ARZ3NDEKTSV4RRFFQ69G5FA6",
+            title: "Requirement",
+            type: "DOCUMENT",
+          },
+        }),
+      ),
+    ).toBe(
+      "/documents/01ARZ3NDEKTSV4RRFFQ69G5FA6?commentId=01ARZ3NDEKTSV4RRFFQ69G5FCM1&panel=comments",
+    );
+  });
+
+  it("routes intake and version events to their timeline event", () => {
+    expect(
+      getTimelineEventHref(
+        makeEvent({
+          target: {
+            id: "01ARZ3NDEKTSV4RRFFQ69G5FA7",
+            title: "Intake",
+            type: "INTAKE_ITEM",
+          },
+        }),
+      ),
+    ).toBe(
+      "/intake-items?id=01ARZ3NDEKTSV4RRFFQ69G5FA7&eventId=01ARZ3NDEKTSV4RRFFQ69G5FA2&panel=timeline",
+    );
+
+    expect(
+      getTimelineEventHref(
+        makeEvent({
+          target: {
+            id: "01ARZ3NDEKTSV4RRFFQ69G5FA8",
+            title: "Version",
+            type: "VERSION",
+          },
+        }),
+      ),
+    ).toBe(
+      "/versions?versionId=01ARZ3NDEKTSV4RRFFQ69G5FA8&eventId=01ARZ3NDEKTSV4RRFFQ69G5FA2&panel=timeline",
+    );
   });
 });

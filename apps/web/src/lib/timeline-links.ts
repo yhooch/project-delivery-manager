@@ -17,16 +17,17 @@ export function getTimelineEventHref(
   options: TimelineLinkOptions = {},
 ): string | null {
   const id = encodeURIComponent(event.target.id);
+  const focusParams = getTimelineFocusParams(event);
 
   if (event.target.type === "WORK_ITEM") {
     const workItemType = getTimelineWorkItemType(event);
 
     if (workItemType === "BUG") {
-      return `/bugs?bugId=${id}`;
+      return withQuery(`/bugs?bugId=${id}`, focusParams);
     }
 
     if (workItemType === "TASK") {
-      return `/work-items?workItemId=${id}`;
+      return withQuery(`/work-items?workItemId=${id}`, focusParams);
     }
 
     return options.unknownWorkItemHref ?? null;
@@ -34,21 +35,88 @@ export function getTimelineEventHref(
 
   if (event.target.type === "DOCUMENT") {
     if (isRequirementDocumentTimelineEvent(event)) {
+      if (focusParams.commentId || focusParams.attachmentId) {
+        return withQuery(`/documents/${id}`, focusParams);
+      }
+
       return `/requirements/${id}`;
     }
 
-    return `/documents/${id}`;
+    return withQuery(`/documents/${id}`, focusParams);
   }
 
   if (event.target.type === "INTAKE_ITEM") {
-    return `/intake-items?id=${id}`;
+    return withQuery(`/intake-items?id=${id}`, focusParams);
   }
 
   if (event.target.type === "VERSION") {
-    return `/versions?versionId=${id}`;
+    return withQuery(`/versions?versionId=${id}`, {
+      eventId: event.id,
+      panel: "timeline",
+    });
   }
 
   return null;
+}
+
+function getTimelineFocusParams(
+  event: TimelineEvent,
+): Record<string, string | undefined> {
+  const commentId = readMetadataString(event, "commentId");
+  if (event.eventType === "COMMENTED" && commentId) {
+    return {
+      commentId,
+      panel: "comments",
+    };
+  }
+
+  const attachmentId = readMetadataString(event, "attachmentId");
+  if (event.eventType === "ATTACHMENT_ADDED" && attachmentId) {
+    return {
+      attachmentId,
+      panel: "attachments",
+    };
+  }
+
+  if (
+    event.target.type === "WORK_ITEM" ||
+    event.target.type === "INTAKE_ITEM"
+  ) {
+    return {
+      eventId: event.id,
+      panel: "timeline",
+    };
+  }
+
+  return {};
+}
+
+function readMetadataString(
+  event: TimelineEvent,
+  key: "attachmentId" | "commentId",
+) {
+  const value = event.metadata?.[key];
+  return typeof value === "string" && value.length > 0 ? value : undefined;
+}
+
+function withQuery(
+  href: string,
+  params: Record<string, string | undefined>,
+): string {
+  const query = new URLSearchParams();
+
+  for (const [key, value] of Object.entries(params)) {
+    if (value) {
+      query.set(key, value);
+    }
+  }
+
+  const queryString = query.toString();
+  if (!queryString) {
+    return href;
+  }
+
+  return `${href}${href.includes("?") ? "&" : "?"}${queryString}`;
 }
 
 function isRequirementDocumentTimelineEvent(event: TimelineEvent): boolean {

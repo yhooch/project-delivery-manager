@@ -48,6 +48,7 @@ import {
   type WorkItemViewModel,
 } from "../../lib/v2/work-item-view-model";
 import { cn } from "../../lib/utils";
+import { useFocusedListItem } from "../../lib/hooks/use-focused-list-item";
 import { useSession } from "../providers/session-provider";
 import { recordRecentOpen } from "../shell/recent-opens";
 import { TimelineEventItem } from "../timeline/timeline-event-item";
@@ -471,6 +472,10 @@ export function VersionPage() {
     currentSpace?.status,
   );
   const versionIdParam = normalizeSearchParam(searchParams.get("versionId"));
+  const requestedPanel = normalizeSearchParam(searchParams.get("panel"));
+  const requestedTimelineEventId = normalizeSearchParam(
+    searchParams.get("eventId"),
+  );
 
   const { members, getMember } = useSpaceMembers(spaceId, organizationId);
 
@@ -660,6 +665,19 @@ export function VersionPage() {
     }
   }, [commitVersionId, versionIdParam, versions]);
 
+  useEffect(() => {
+    if (
+      requestedPanel !== "timeline" ||
+      !versionIdParam ||
+      versionId !== versionIdParam
+    ) {
+      return;
+    }
+
+    setActiveTab("timeline");
+    setFilterOpen(false);
+  }, [requestedPanel, versionId, versionIdParam]);
+
   const fetchBoard = useCallback(async (options?: RefreshModeOptions) => {
     const mode = resolveRefreshMode(options);
     if (!versionId) {
@@ -803,7 +821,7 @@ export function VersionPage() {
         targetType: "VERSION",
         targetId: versionId,
         page: 1,
-        pageSize: 50,
+        pageSize: requestedTimelineEventId ? 200 : 50,
       });
       if (timelineRequestSeq.current !== requestId) return;
       setTimeline(page.items);
@@ -818,7 +836,7 @@ export function VersionPage() {
         setIsLoadingTimeline(false);
       }
     }
-  }, [organizationId, spaceId, versionId]);
+  }, [organizationId, requestedTimelineEventId, spaceId, versionId]);
 
   // Trigger requirement / timeline loads when version changes — board has
   // its own effect via fetchBoard's dep array.
@@ -1502,6 +1520,11 @@ export function VersionPage() {
               loading={isLoadingTimeline}
               errorKey={timelineErrorKey}
               events={timeline}
+              focusedEventId={
+                versionId === versionIdParam
+                  ? requestedTimelineEventId
+                  : undefined
+              }
               locale={locale}
               tRoot={tRoot}
               tTimelineEvent={tTimelineEvent}
@@ -2281,6 +2304,7 @@ function TimelineTab({
   loading,
   errorKey,
   events,
+  focusedEventId,
   locale,
   tRoot,
   tTimelineEvent,
@@ -2290,12 +2314,19 @@ function TimelineTab({
   loading: boolean;
   errorKey: string | null;
   events: TimelineEvent[];
+  focusedEventId?: string;
   locale: string;
   tRoot: ReturnType<typeof useTranslations>;
   tTimelineEvent: ReturnType<typeof useTranslations<"common.timeline.event">>;
   t: ReturnType<typeof useTranslations<"versionBoard">>;
   onRetry: () => void;
 }) {
+  const { highlightedId: highlightedEventId, registerItem: registerEvent } =
+    useFocusedListItem<HTMLLIElement>({
+      focusedId: focusedEventId,
+      isLoading: loading,
+    });
+
   if (loading) {
     return <LoadingState label={t("timeline.loading")} />;
   }
@@ -2324,7 +2355,13 @@ function TimelineTab({
       {events.map((event) => (
         <TimelineEventItem
           key={event.id}
+          className={cn(
+            "rounded-md transition-colors",
+            highlightedEventId === event.id &&
+              "bg-primary/5 ring-2 ring-primary/30 ring-offset-2 ring-offset-background",
+          )}
           event={event}
+          itemRef={registerEvent(event.id)}
           locale={locale}
           testId={`version-timeline-row-${event.id}`}
           translateEventType={tTimelineEvent}

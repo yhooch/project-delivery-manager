@@ -39,6 +39,7 @@ import {
   useRealtimeInvalidation,
   type RefreshModeOptions,
 } from "../../lib/realtime";
+import { useFocusedListItem } from "../../lib/hooks/use-focused-list-item";
 import { cn } from "../../lib/utils";
 import { listTimeline } from "../../lib/timeline-service";
 import {
@@ -91,6 +92,8 @@ export type IntakeDetailSheetProps = {
   actionErrorMessage?: string | null;
   canComment?: boolean;
   canEditTags?: boolean;
+  focusedCommentId?: string;
+  focusedTimelineEventId?: string;
   intakeItem?: IntakeItem | null;
   intakeItemId?: string;
   onItemChange?: (item: IntakeItem) => void;
@@ -109,6 +112,8 @@ export function IntakeDetailSheet({
   actionErrorMessage,
   canComment = false,
   canEditTags = false,
+  focusedCommentId,
+  focusedTimelineEventId,
   intakeItem,
   intakeItemId,
   onItemChange,
@@ -265,6 +270,8 @@ export function IntakeDetailSheet({
             actionErrorMessage={actionErrorMessage}
             canComment={canComment}
             canEditTags={canEditTags}
+            focusedCommentId={focusedCommentId}
+            focusedTimelineEventId={focusedTimelineEventId}
             getMember={getMember}
             getVersion={getVersion}
             intakeItem={effectiveItem}
@@ -294,6 +301,8 @@ function IntakeDetailContent({
   actionErrorMessage,
   canComment,
   canEditTags,
+  focusedCommentId,
+  focusedTimelineEventId,
   getMember,
   getVersion,
   intakeItem,
@@ -314,6 +323,8 @@ function IntakeDetailContent({
   actionErrorMessage?: string | null;
   canComment: boolean;
   canEditTags: boolean;
+  focusedCommentId?: string;
+  focusedTimelineEventId?: string;
   getMember: (userId: string) => SpaceMemberWithUser | undefined;
   getVersion: (versionId: string) => Version | undefined;
   intakeItem: IntakeItem;
@@ -455,6 +466,7 @@ function IntakeDetailContent({
         />
         <IntakeCommentsSection
           canComment={canComment}
+          focusedCommentId={focusedCommentId}
           getMember={getMember}
           intakeItem={intakeItem}
           locale={locale}
@@ -469,6 +481,7 @@ function IntakeDetailContent({
           intakeItem={intakeItem}
           locale={locale}
           organizationId={organizationId}
+          focusedEventId={focusedTimelineEventId}
           refreshVersion={timelineRefreshVersion}
           spaceId={spaceId}
           t={t}
@@ -813,6 +826,7 @@ function RelatedTasksSection({
 
 function IntakeCommentsSection({
   canComment,
+  focusedCommentId,
   getMember,
   intakeItem,
   locale,
@@ -824,6 +838,7 @@ function IntakeCommentsSection({
   tRoot,
 }: {
   canComment: boolean;
+  focusedCommentId?: string;
   getMember: (userId: string) => SpaceMemberWithUser | undefined;
   intakeItem: IntakeItem;
   locale: string;
@@ -840,6 +855,12 @@ function IntakeCommentsSection({
   const [draft, setDraft] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [submitErrorKey, setSubmitErrorKey] = useState<string | null>(null);
+  const { highlightedId: highlightedCommentId, registerItem: registerComment } =
+    useFocusedListItem<HTMLLIElement>({
+      focusedId: focusedCommentId,
+      isLoading: loading,
+      resetKey: intakeItem.id,
+    });
 
   const fetchComments = useCallback(async (options?: RefreshModeOptions) => {
     const refreshMode = resolveRefreshMode(options, "initial");
@@ -857,6 +878,7 @@ function IntakeCommentsSection({
     try {
       const result = await listComments({
         organizationId,
+        ...(focusedCommentId ? { pageSize: 200 } : {}),
         spaceId,
         targetId: intakeItem.id,
         targetType: "INTAKE_ITEM",
@@ -869,7 +891,7 @@ function IntakeCommentsSection({
     } finally {
       setLoading(false);
     }
-  }, [intakeItem.id, organizationId, spaceId]);
+  }, [focusedCommentId, intakeItem.id, organizationId, spaceId]);
 
   useEffect(() => {
     void fetchComments({ mode: "initial" });
@@ -955,8 +977,15 @@ function IntakeCommentsSection({
               return (
                 <li
                   key={comment.id}
+                  id={`comment-${comment.id}`}
+                  ref={registerComment(comment.id)}
+                  data-comment-id={comment.id}
                   data-testid="intake-comment-item"
-                  className="flex gap-3 rounded-lg px-3 py-2 transition-colors hover:bg-muted/40"
+                  className={cn(
+                    "flex gap-3 rounded-lg px-3 py-2 transition-colors hover:bg-muted/40",
+                    highlightedCommentId === comment.id &&
+                      "bg-primary/5 ring-2 ring-primary/30 ring-offset-2 ring-offset-background",
+                  )}
                 >
                   <Avatar className="h-7 w-7">
                     <AvatarFallback>{initial}</AvatarFallback>
@@ -1034,6 +1063,7 @@ function IntakeCommentsSection({
 }
 
 function IntakeTimelineSection({
+  focusedEventId,
   intakeItem,
   locale,
   organizationId,
@@ -1043,6 +1073,7 @@ function IntakeTimelineSection({
   tIntakeItems,
   tRoot,
 }: {
+  focusedEventId?: string;
   intakeItem: IntakeItem;
   locale: string;
   organizationId?: string;
@@ -1055,6 +1086,12 @@ function IntakeTimelineSection({
   const [events, setEvents] = useState<TimelineEvent[]>([]);
   const [loading, setLoading] = useState(false);
   const [errorKey, setErrorKey] = useState<string | null>(null);
+  const { highlightedId: highlightedEventId, registerItem: registerEvent } =
+    useFocusedListItem<HTMLLIElement>({
+      focusedId: focusedEventId,
+      isLoading: loading,
+      resetKey: intakeItem.id,
+    });
   const tTimelineEvent = useTranslations("common.timeline.event");
 
   const fetchEvents = useCallback(async (options?: RefreshModeOptions) => {
@@ -1073,6 +1110,7 @@ function IntakeTimelineSection({
     try {
       const result = await listTimeline({
         organizationId,
+        ...(focusedEventId ? { pageSize: 200 } : {}),
         spaceId,
         targetId: intakeItem.id,
         targetType: "INTAKE_ITEM",
@@ -1085,7 +1123,7 @@ function IntakeTimelineSection({
     } finally {
       setLoading(false);
     }
-  }, [intakeItem.id, organizationId, spaceId]);
+  }, [focusedEventId, intakeItem.id, organizationId, spaceId]);
 
   useEffect(() => {
     void fetchEvents({ mode: refreshVersion > 0 ? "realtime" : "initial" });
@@ -1137,8 +1175,13 @@ function IntakeTimelineSection({
             {events.map((event) => (
               <TimelineEventItem
                 key={event.id}
-                className="rounded-lg px-3 py-2 transition-colors hover:bg-muted/40"
+                className={cn(
+                  "rounded-lg px-3 py-2 transition-colors hover:bg-muted/40",
+                  highlightedEventId === event.id &&
+                    "bg-primary/5 ring-2 ring-primary/30 ring-offset-2 ring-offset-background",
+                )}
                 event={event}
+                itemRef={registerEvent(event.id)}
                 locale={locale}
                 testId="intake-timeline-item"
                 translateEventType={tTimelineEvent}

@@ -46,6 +46,13 @@ vi.mock("../../i18n/routing", () => ({
   useRouter: () => ({ push: routerPushMock }),
 }));
 
+const searchParamsMock = vi.hoisted(() => ({
+  current: new URLSearchParams(),
+}));
+vi.mock("next/navigation", () => ({
+  useSearchParams: () => searchParamsMock.current,
+}));
+
 const sessionMock = vi.hoisted(() => ({
   current: {
     currentOrganization: { id: "ORG_01", name: "Org A" },
@@ -260,6 +267,7 @@ function createDocument() {
 
 beforeEach(() => {
   window.sessionStorage.clear();
+  searchParamsMock.current = new URLSearchParams();
   routerPushMock.mockReset();
   archiveDocumentMock.mockReset();
   cancelRequirementMock.mockReset();
@@ -440,7 +448,7 @@ describe("DocumentDetailPage", () => {
     const references = await screen.findByTestId(
       "referencing-documents-section",
     );
-    expect(references).toHaveTextContent("Referencing note");
+    await within(references).findByText("Referencing note");
     expect(
       within(references).getByTestId("referencing-document-link"),
     ).toHaveAttribute("href", "/documents/DOC_REF");

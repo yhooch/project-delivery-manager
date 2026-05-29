@@ -1187,7 +1187,7 @@ describe("MyWorkbench", () => {
     const title = await screen.findByText("Workbench bug");
     expect(title.closest("a")).toHaveAttribute(
       "href",
-      "/bugs?bugId=01ARZ3NDEKTSV4RRFFQ69G5FBU",
+      "/bugs?bugId=01ARZ3NDEKTSV4RRFFQ69G5FBU&eventId=01ARZ3NDEKTSV4RRFFQ69G5FE2&panel=timeline",
     );
   });
 

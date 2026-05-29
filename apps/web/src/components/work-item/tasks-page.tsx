@@ -67,6 +67,7 @@ import { TagFilter } from "../tag";
 
 import { CreateTaskDialog } from "./create-task-dialog";
 import { TaskDetailSheet } from "./task-detail-sheet";
+import { normalizeWorkItemDetailPanel } from "./work-item-detail-panel";
 
 type StatusFilterKey = "all" | StatusCategory;
 
@@ -108,6 +109,22 @@ export function TasksPage() {
   const requestedWorkItemId = normalizeSearchParam(
     searchParams.get("workItemId"),
   );
+  const requestedCommentId = normalizeSearchParam(searchParams.get("commentId"));
+  const requestedAttachmentId = normalizeSearchParam(
+    searchParams.get("attachmentId"),
+  );
+  const requestedTimelineEventId = normalizeSearchParam(
+    searchParams.get("eventId"),
+  );
+  const requestedDetailPanel =
+    normalizeWorkItemDetailPanel(searchParams.get("panel")) ??
+    (requestedCommentId
+      ? "comments"
+      : requestedAttachmentId
+        ? "attachments"
+        : requestedTimelineEventId
+          ? "timeline"
+          : undefined);
   const requestedIntakeItemId = normalizeSearchParam(
     searchParams.get("intakeItemId"),
   );
@@ -539,7 +556,15 @@ export function TasksPage() {
       return;
     }
 
-    const key = `workItem:${spaceId}:${requestedWorkItemId}`;
+    const key = [
+      "workItem",
+      spaceId,
+      requestedWorkItemId,
+      requestedDetailPanel ?? "",
+      requestedCommentId ?? "",
+      requestedAttachmentId ?? "",
+      requestedTimelineEventId ?? "",
+    ].join(":");
     if (handledDeepLinkKey === key) {
       return;
     }
@@ -598,6 +623,10 @@ export function TasksPage() {
     loading,
     open,
     organizationId,
+    requestedAttachmentId,
+    requestedCommentId,
+    requestedDetailPanel,
+    requestedTimelineEventId,
     requestedWorkItemId,
     spaceId,
     taskViewModels,
@@ -915,6 +944,24 @@ export function TasksPage() {
 
       <TaskDetailSheet
         actionFocusRequest={actionFocusRequest}
+        focusedAttachmentId={
+          activeItem?.id === requestedWorkItemId
+            ? requestedAttachmentId
+            : undefined
+        }
+        focusedCommentId={
+          activeItem?.id === requestedWorkItemId ? requestedCommentId : undefined
+        }
+        focusedTimelineEventId={
+          activeItem?.id === requestedWorkItemId
+            ? requestedTimelineEventId
+            : undefined
+        }
+        initialPanel={
+          activeItem?.id === requestedWorkItemId
+            ? requestedDetailPanel
+            : undefined
+        }
         item={activeItem}
         open={sheetOpen}
         onOpenChange={handleSheetOpenChange}

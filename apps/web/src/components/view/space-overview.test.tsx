@@ -377,11 +377,11 @@ describe("SpaceOverview", () => {
 
     expect(bugTitle.closest("a")).toHaveAttribute(
       "href",
-      "/bugs?bugId=BUG_01",
+      "/bugs?bugId=BUG_01&eventId=01ARZ3NDEKTSV4RRFFQ69G5FE2&panel=timeline",
     );
     expect(taskTitle.closest("a")).toHaveAttribute(
       "href",
-      "/work-items?workItemId=TASK_01",
+      "/work-items?workItemId=TASK_01&eventId=01ARZ3NDEKTSV4RRFFQ69G5FE3&panel=timeline",
     );
     expect(unknownTitle.closest("a")).toBeNull();
   });

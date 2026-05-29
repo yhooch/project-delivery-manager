@@ -59,6 +59,7 @@ import {
   useRealtimeInvalidation,
   type RefreshModeOptions,
 } from "../../lib/realtime";
+import { useFocusedListItem } from "../../lib/hooks/use-focused-list-item";
 import { listTimeline } from "../../lib/timeline-service";
 import { cn } from "../../lib/utils";
 import {
@@ -116,6 +117,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "../ui/tabs";
 import { Textarea } from "../ui/textarea";
 import { SelectMenu } from "../ui/select-menu";
 import { EmptyState, ErrorState, LoadingState } from "../v2/states";
+import type { WorkItemDetailPanel } from "./work-item-detail-panel";
 
 const priorityColor: Record<WorkItemViewModel["priority"], string> = {
   LOW: "text-muted-foreground",
@@ -159,6 +161,10 @@ type Props = {
   organizationId?: string;
   /** Optional override; falls back to current session user id. */
   currentUserId?: string;
+  focusedAttachmentId?: string;
+  focusedCommentId?: string;
+  focusedTimelineEventId?: string;
+  initialPanel?: WorkItemDetailPanel;
   /**
    * Fired after the user mutates the item (executes a workflow action or
    * posts a comment). Callers use this to refresh upstream lists/board
@@ -301,6 +307,10 @@ async function loadSheetDetail({
 
 export function TaskDetailSheet({
   actionFocusRequest,
+  focusedAttachmentId,
+  focusedCommentId,
+  focusedTimelineEventId,
+  initialPanel,
   item,
   open,
   onOpenChange,
@@ -345,6 +355,10 @@ export function TaskDetailSheet({
         item={item}
         open={open}
         actionFocusRequest={actionFocusRequest}
+        focusedAttachmentId={focusedAttachmentId}
+        focusedCommentId={focusedCommentId}
+        focusedTimelineEventId={focusedTimelineEventId}
+        initialPanel={initialPanel}
         preferredActionId={preferredActionId}
         spaceId={spaceId}
         organizationId={organizationId}
@@ -361,6 +375,10 @@ type BodyProps = {
   item: WorkItemViewModel;
   open: boolean;
   actionFocusRequest?: number;
+  focusedAttachmentId?: string;
+  focusedCommentId?: string;
+  focusedTimelineEventId?: string;
+  initialPanel?: WorkItemDetailPanel;
   preferredActionId?: string;
   spaceId?: string;
   organizationId?: string;
@@ -372,6 +390,10 @@ type BodyProps = {
 
 function TaskDetailSheetBody({
   actionFocusRequest,
+  focusedAttachmentId,
+  focusedCommentId,
+  focusedTimelineEventId,
+  initialPanel,
   item,
   open,
   preferredActionId,
@@ -442,6 +464,10 @@ function TaskDetailSheetBody({
     spaceId,
   });
   const [timelineRefreshVersion, setTimelineRefreshVersion] = useState(0);
+  const [activePanel, setActivePanel] = useState<WorkItemDetailPanel>(
+    initialPanel ?? "detail",
+  );
+  const wasOpenRef = useRef(open);
   const [nestedIntakeItemId, setNestedIntakeItemId] = useState<string | null>(
     null,
   );
@@ -454,6 +480,24 @@ function TaskDetailSheetBody({
   const refreshTimeline = useCallback(() => {
     setTimelineRefreshVersion((version) => version + 1);
   }, []);
+  useEffect(() => {
+    if (!open) {
+      wasOpenRef.current = false;
+      return;
+    }
+
+    const wasOpen = wasOpenRef.current;
+    wasOpenRef.current = true;
+
+    if (initialPanel) {
+      setActivePanel(initialPanel);
+      return;
+    }
+
+    if (!wasOpen) {
+      setActivePanel("detail");
+    }
+  }, [initialPanel, open]);
   useEffect(() => {
     setNestedIntakeItemId(null);
     setNestedTask(null);
@@ -844,7 +888,10 @@ function TaskDetailSheetBody({
         )}
 
         <Tabs
-          defaultValue="detail"
+          value={activePanel}
+          onValueChange={(value) =>
+            setActivePanel(value as WorkItemDetailPanel)
+          }
           className="flex flex-1 flex-col overflow-hidden"
         >
           <TabsList className="w-full overflow-x-auto px-5">
@@ -914,6 +961,7 @@ function TaskDetailSheetBody({
               organizationId={organizationId}
               lookup={lookup}
               canComment={permissionState.permissions?.canComment === true}
+              focusedCommentId={focusedCommentId}
               t={t}
               tApiError={tApiError}
               onCountChange={setCommentsCount}
@@ -938,6 +986,7 @@ function TaskDetailSheetBody({
               canUploadAttachment={
                 permissionState.permissions?.canUploadAttachment === true
               }
+              focusedAttachmentId={focusedAttachmentId}
               t={t}
               tApiError={tApiError}
               onCountChange={setAttachmentsCount}
@@ -956,6 +1005,7 @@ function TaskDetailSheetBody({
               organizationId={organizationId}
               t={t}
               tApiError={tApiError}
+              focusedEventId={focusedTimelineEventId}
               refreshVersion={timelineRefreshVersion}
             />
           </TabsContent>
@@ -2846,6 +2896,7 @@ function CommentsTab({
   organizationId,
   lookup,
   canComment,
+  focusedCommentId,
   t,
   tApiError,
   onCountChange,
@@ -2856,6 +2907,7 @@ function CommentsTab({
   organizationId?: string;
   lookup: ReturnType<typeof useSpaceMembers>;
   canComment: boolean;
+  focusedCommentId?: string;
   t: ReturnType<typeof useTranslations<"taskDetail">>;
   tApiError: ReturnType<typeof useTranslations>;
   onCountChange?: (count: number) => void;
@@ -2892,6 +2944,12 @@ function CommentsTab({
   const comments = currentCommentsState.comments;
   const loading = currentCommentsState.loading;
   const error = currentCommentsState.error;
+  const { highlightedId: highlightedCommentId, registerItem: registerComment } =
+    useFocusedListItem<HTMLLIElement>({
+      focusedId: focusedCommentId,
+      isLoading: loading,
+      resetKey: requestKey,
+    });
 
   const fetchComments = useCallback(async (options?: RefreshModeOptions) => {
     const refreshMode = resolveRefreshMode(options, "initial");
@@ -2927,6 +2985,7 @@ function CommentsTab({
     try {
       const result = await listComments({
         organizationId,
+        ...(focusedCommentId ? { pageSize: 200 } : {}),
         spaceId,
         targetId: item.id,
         targetType: "WORK_ITEM",
@@ -2959,7 +3018,15 @@ function CommentsTab({
         );
       }
     }
-  }, [item.id, onCountChange, organizationId, requestKey, spaceId, tApiError]);
+  }, [
+    focusedCommentId,
+    item.id,
+    onCountChange,
+    organizationId,
+    requestKey,
+    spaceId,
+    tApiError,
+  ]);
 
   useEffect(() => {
     void fetchComments({ mode: "initial" });
@@ -3049,8 +3116,15 @@ function CommentsTab({
               return (
                 <li
                   key={comment.id}
+                  id={`comment-${comment.id}`}
+                  ref={registerComment(comment.id)}
+                  data-comment-id={comment.id}
                   data-testid="task-comments-item"
-                  className="flex gap-3"
+                  className={cn(
+                    "flex gap-3 rounded-md transition-colors",
+                    highlightedCommentId === comment.id &&
+                      "bg-primary/5 ring-2 ring-primary/30 ring-offset-2 ring-offset-background",
+                  )}
                 >
                   <Avatar className="h-7 w-7">
                     {avatar && <AvatarImage src={avatar} alt={name} />}
@@ -3138,6 +3212,7 @@ function AttachmentsTab({
   organizationId,
   lookup,
   canUploadAttachment,
+  focusedAttachmentId,
   t,
   tApiError,
   onCountChange,
@@ -3148,6 +3223,7 @@ function AttachmentsTab({
   organizationId?: string;
   lookup: ReturnType<typeof useSpaceMembers>;
   canUploadAttachment: boolean;
+  focusedAttachmentId?: string;
   t: ReturnType<typeof useTranslations<"taskDetail">>;
   tApiError: ReturnType<typeof useTranslations>;
   onCountChange?: (count: number) => void;
@@ -3193,6 +3269,14 @@ function AttachmentsTab({
   const attachments = currentAttachmentsState.attachments;
   const loading = currentAttachmentsState.loading;
   const error = currentAttachmentsState.error;
+  const {
+    highlightedId: highlightedAttachmentId,
+    registerItem: registerAttachment,
+  } = useFocusedListItem<HTMLLIElement>({
+    focusedId: focusedAttachmentId,
+    isLoading: loading,
+    resetKey: requestKey,
+  });
 
   const fetchAttachments = useCallback(async (options?: RefreshModeOptions) => {
     const refreshMode = resolveRefreshMode(options, "initial");
@@ -3228,6 +3312,7 @@ function AttachmentsTab({
     try {
       const result = await listAttachments({
         organizationId,
+        ...(focusedAttachmentId ? { pageSize: 200 } : {}),
         spaceId,
         targetId: item.id,
         targetType: "WORK_ITEM",
@@ -3260,7 +3345,15 @@ function AttachmentsTab({
         );
       }
     }
-  }, [item.id, onCountChange, organizationId, requestKey, spaceId, tApiError]);
+  }, [
+    focusedAttachmentId,
+    item.id,
+    onCountChange,
+    organizationId,
+    requestKey,
+    spaceId,
+    tApiError,
+  ]);
 
   useEffect(() => {
     void fetchAttachments({ mode: "initial" });
@@ -3625,8 +3718,15 @@ function AttachmentsTab({
               return (
                 <li
                   key={attachment.id}
+                  id={`attachment-${attachment.id}`}
+                  ref={registerAttachment(attachment.id)}
+                  data-attachment-id={attachment.id}
                   data-testid="task-attachments-item"
-                  className="flex items-center gap-3 px-5 py-2.5"
+                  className={cn(
+                    "flex items-center gap-3 px-5 py-2.5 transition-colors",
+                    highlightedAttachmentId === attachment.id &&
+                      "bg-primary/5 ring-2 ring-inset ring-primary/30",
+                  )}
                 >
                   <Paperclip className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
                   <div className="flex-1 min-w-0">
@@ -3745,6 +3845,7 @@ function TimelineTab({
   organizationId,
   t,
   tApiError,
+  focusedEventId,
   refreshVersion,
 }: {
   item: WorkItemViewModel;
@@ -3752,6 +3853,7 @@ function TimelineTab({
   organizationId?: string;
   t: ReturnType<typeof useTranslations<"taskDetail">>;
   tApiError: ReturnType<typeof useTranslations>;
+  focusedEventId?: string;
   refreshVersion: number;
 }) {
   const locale = useLocale();
@@ -3783,6 +3885,12 @@ function TimelineTab({
   const events = currentTimelineState.events;
   const loading = currentTimelineState.loading;
   const error = currentTimelineState.error;
+  const { highlightedId: highlightedEventId, registerItem: registerEvent } =
+    useFocusedListItem<HTMLLIElement>({
+      focusedId: focusedEventId,
+      isLoading: loading,
+      resetKey: requestKey,
+    });
 
   const fetchEvents = useCallback(async (options?: RefreshModeOptions) => {
     const refreshMode = resolveRefreshMode(options, "initial");
@@ -3818,6 +3926,7 @@ function TimelineTab({
     try {
       const result = await listTimeline({
         organizationId,
+        ...(focusedEventId ? { pageSize: 200 } : {}),
         spaceId,
         targetId: item.id,
         targetType: "WORK_ITEM",
@@ -3849,7 +3958,14 @@ function TimelineTab({
         );
       }
     }
-  }, [item.id, organizationId, requestKey, spaceId, tApiError]);
+  }, [
+    focusedEventId,
+    item.id,
+    organizationId,
+    requestKey,
+    spaceId,
+    tApiError,
+  ]);
 
   useEffect(() => {
     void fetchEvents({ mode: refreshVersion > 0 ? "realtime" : "initial" });
@@ -3887,7 +4003,13 @@ function TimelineTab({
       {events.map((event) => (
         <TimelineEventItem
           key={event.id}
+          className={cn(
+            "rounded-md transition-colors",
+            highlightedEventId === event.id &&
+              "bg-primary/5 ring-2 ring-primary/30 ring-offset-2 ring-offset-background",
+          )}
           event={event}
+          itemRef={registerEvent(event.id)}
           locale={locale}
           testId="task-timeline-item"
           translateEventType={tTimelineEvent}

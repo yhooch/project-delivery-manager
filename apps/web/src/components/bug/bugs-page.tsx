@@ -77,6 +77,7 @@ import { PageHeader } from "../v2/page-header";
 import { ListItemMetaRow } from "../v2/list-item-meta-row";
 
 import { TaskDetailSheet } from "../work-item/task-detail-sheet";
+import { normalizeWorkItemDetailPanel } from "../work-item/work-item-detail-panel";
 import { TagFilter } from "../tag";
 
 import { CreateBugDialog } from "./create-bug-dialog";
@@ -173,6 +174,22 @@ export function BugsPage() {
   const requestedBugId =
     normalizeSearchParam(searchParams.get("bugId")) ??
     normalizeSearchParam(searchParams.get("workItemId"));
+  const requestedCommentId = normalizeSearchParam(searchParams.get("commentId"));
+  const requestedAttachmentId = normalizeSearchParam(
+    searchParams.get("attachmentId"),
+  );
+  const requestedTimelineEventId = normalizeSearchParam(
+    searchParams.get("eventId"),
+  );
+  const requestedDetailPanel =
+    normalizeWorkItemDetailPanel(searchParams.get("panel")) ??
+    (requestedCommentId
+      ? "comments"
+      : requestedAttachmentId
+        ? "attachments"
+        : requestedTimelineEventId
+          ? "timeline"
+          : undefined);
   const [tagFilter, setTagFilter] = useUrlTagFilter({
     fixedTagMatch: "ANY",
     pathname,
@@ -695,7 +712,15 @@ export function BugsPage() {
       return;
     }
 
-    const key = `bug:${spaceId}:${requestedBugId}`;
+    const key = [
+      "bug",
+      spaceId,
+      requestedBugId,
+      requestedDetailPanel ?? "",
+      requestedCommentId ?? "",
+      requestedAttachmentId ?? "",
+      requestedTimelineEventId ?? "",
+    ].join(":");
     if (handledDeepLinkKey === key) {
       return;
     }
@@ -749,7 +774,11 @@ export function BugsPage() {
     locale,
     openBug,
     organizationId,
+    requestedAttachmentId,
     requestedBugId,
+    requestedCommentId,
+    requestedDetailPanel,
+    requestedTimelineEventId,
     spaceId,
     tApiError,
     tStatus,
@@ -1246,6 +1275,20 @@ export function BugsPage() {
       <TaskDetailSheet
         key={`${activeItem?.id ?? "empty"}:${detailRevision}`}
         actionFocusRequest={actionFocusRequest}
+        focusedAttachmentId={
+          activeItem?.id === requestedBugId ? requestedAttachmentId : undefined
+        }
+        focusedCommentId={
+          activeItem?.id === requestedBugId ? requestedCommentId : undefined
+        }
+        focusedTimelineEventId={
+          activeItem?.id === requestedBugId
+            ? requestedTimelineEventId
+            : undefined
+        }
+        initialPanel={
+          activeItem?.id === requestedBugId ? requestedDetailPanel : undefined
+        }
         item={activeItem}
         open={sheetOpen}
         onOpenChange={handleSheetOpenChange}
