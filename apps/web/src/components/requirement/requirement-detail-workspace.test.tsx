@@ -733,14 +733,25 @@ describe("RequirementDetailWorkspace", () => {
     expect(window.localStorage.getItem(localDraftCacheKey())).toBeNull();
   });
 
-  it("lets the owner discard an empty draft through the safe delete action", async () => {
+  it("lets the owner discard a non-empty draft through the safe delete action", async () => {
     getRequirementMock.mockResolvedValueOnce(
       makeRequirement({
-        title: "",
-        summary: undefined,
-        contentJson: {},
-        contentText: "",
-        contentMarkdownCache: "",
+        attachments: [
+          {
+            fileKey: "attachments/document/ATT_01.png",
+            fileName: "draft-image.png",
+            id: "ATT_01",
+            mimeType: "image/png",
+            size: 1024,
+          },
+        ],
+        title: "已有内容草稿",
+        summary: "已有摘要",
+        contentJson: {
+          content: [{ text: "已有正文", type: "text" }],
+          type: "doc",
+        },
+        contentText: "已有正文",
         status: "DRAFT",
       }),
     );
@@ -758,6 +769,9 @@ describe("RequirementDetailWorkspace", () => {
     expect(
       await screen.findByTestId("requirement-discard-draft-dialog"),
     ).toBeInTheDocument();
+    expect(
+      screen.getByTestId("requirement-discard-draft-dialog"),
+    ).toHaveTextContent("requirements.detail.discardDraftConfirm");
     fireEvent.click(screen.getByTestId("requirement-discard-draft-confirm"));
 
     await waitFor(() =>

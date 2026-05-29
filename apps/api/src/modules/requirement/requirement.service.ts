@@ -415,7 +415,7 @@ export class RequirementService {
       actionType: "DELETE",
       actorId: actorUserId,
       before: existing,
-      metadata: requirementAuditMetadata("DELETE_EMPTY_DRAFT"),
+      metadata: requirementAuditMetadata("DELETE_DRAFT"),
       ...metadata,
       organizationId: existing.organizationId,
       spaceId: existing.spaceId,
@@ -685,14 +685,6 @@ export class RequirementService {
       });
       throwRequirementNotFound();
     }
-
-    if (!isEmptyDraftRequirement(requirement)) {
-      throw new ApiException(
-        "VALIDATION_ERROR",
-        "Only empty draft requirements can be deleted",
-        HttpStatus.BAD_REQUEST,
-      );
-    }
   }
 
   private assertValidMarkdownAttachmentImages(
@@ -817,22 +809,6 @@ function throwRequirementNotFound(): never {
     "REQUIREMENT_NOT_FOUND",
     "Requirement not found",
     HttpStatus.NOT_FOUND,
-  );
-}
-
-function isEmptyDraftRequirement(requirement: Requirement): boolean {
-  const hasContent =
-    requirement.contentFormat === "MARKDOWN"
-      ? hasText(requirement.contentMarkdown)
-      : hasText(requirement.contentMarkdownCache) ||
-        hasMeaningfulTiptapContent(requirement.contentJson);
-
-  return (
-    requirement.title.trim().length === 0 &&
-    !hasText(requirement.summary) &&
-    !hasText(requirement.contentText) &&
-    !hasContent &&
-    (requirement.attachments?.length ?? 0) === 0
   );
 }
 
@@ -998,29 +974,6 @@ function requirementRealtimeHints(
     spaceId: requirement.spaceId,
     ...extra,
   };
-}
-
-function hasMeaningfulTiptapContent(value: unknown): boolean {
-  if (Array.isArray(value)) {
-    return value.some((item) => hasMeaningfulTiptapContent(item));
-  }
-
-  if (!isPlainRecord(value)) {
-    return false;
-  }
-
-  if (typeof value.text === "string" && value.text.trim().length > 0) {
-    return true;
-  }
-
-  if (
-    typeof value.type === "string" &&
-    !["doc", "paragraph", "text"].includes(value.type)
-  ) {
-    return true;
-  }
-
-  return hasMeaningfulTiptapContent(value.content);
 }
 
 function hasText(value: string | undefined): value is string {

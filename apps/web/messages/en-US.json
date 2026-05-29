@@ -1543,7 +1543,7 @@
       "archiving": "Archiving",
       "discardDraft": "Discard draft",
       "discardingDraft": "Deleting",
-      "discardDraftConfirm": "Delete this empty draft? This cannot be undone.",
+      "discardDraftConfirm": "Delete this draft? Draft content and uploaded attachments will be deleted. This cannot be undone.",
       "emptyDraftLeave": {
         "title": "Keep or delete this empty draft?",
         "description": "This requirement draft is still empty. Before leaving, you can keep it or delete it.",

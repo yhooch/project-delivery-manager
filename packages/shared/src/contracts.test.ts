@@ -1470,6 +1470,9 @@ describe("shared contracts", () => {
       document.paths["/requirements/{requirementId}"]?.delete?.operationId,
     ).toBe("deleteRequirementDraft");
     expect(
+      document.paths["/requirements/{requirementId}"]?.delete?.summary,
+    ).toBe("Delete requirement draft");
+    expect(
       document.paths["/requirements/{requirementId}"]?.delete?.requestBody,
     ).toBeUndefined();
     expect(document.paths["/spaces/{spaceId}/bugs"]?.post?.operationId).toBe(

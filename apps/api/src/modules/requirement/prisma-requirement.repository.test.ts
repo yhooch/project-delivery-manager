@@ -197,6 +197,61 @@ describe("PrismaRequirementRepository", () => {
     expect(created).not.toHaveProperty("contentMarkdownCache");
   });
 
+  it("soft deletes draft attachments when deleting a requirement draft", async () => {
+    const previous = makeRequirement({
+      contentText: "Draft content",
+      status: "DRAFT",
+      title: "Draft with attachment",
+    });
+    const attachmentUpdateMany = vi.fn(async () => ({ count: 1 }));
+    const tx = {
+      ...makeDocumentMutationStores(),
+      attachment: {
+        updateMany: attachmentUpdateMany,
+      },
+      document: {
+        findFirst: vi.fn(async () => previous),
+        updateMany: vi.fn(async () => ({ count: 1 })),
+      },
+      objectParticipant: {
+        updateMany: vi.fn(async () => ({ count: 1 })),
+      },
+      tagAssignment: {
+        updateMany: vi.fn(async () => ({ count: 1 })),
+      },
+    };
+    const prisma = {
+      client: {
+        $transaction: vi.fn(async (handler) => handler(tx)),
+      },
+    } as unknown as PrismaService;
+    const repository = new PrismaRequirementRepository(
+      prisma,
+      makeObjectCodeAllocator(),
+    );
+
+    await expect(
+      repository.deleteDraft({
+        deletedById: previous.authorId,
+        requirementId: previous.id,
+      }),
+    ).resolves.toBe(true);
+
+    expect(attachmentUpdateMany).toHaveBeenCalledWith({
+      data: {
+        deletedAt: expect.any(Date),
+        updatedById: previous.authorId,
+      },
+      where: {
+        deletedAt: null,
+        organizationId: previous.organizationId,
+        spaceId: previous.spaceId,
+        targetId: previous.id,
+        targetType: "DOCUMENT",
+      },
+    });
+  });
+
   it("allocates a requirement sequence on first save only", async () => {
     const previous = makeRequirement({ sequence: null, status: "DRAFT" });
     const saved = makeRequirement({

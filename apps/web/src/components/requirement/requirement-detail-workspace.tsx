@@ -595,7 +595,8 @@ export function RequirementDetailWorkspace({
     if (
       !requirement ||
       !canEditRequirement ||
-      !isEmptyDraftRequirement(requirement, form)
+      requirement.status !== "DRAFT" ||
+      requirement.authorId !== session?.user.id
     ) {
       return;
     }
@@ -707,7 +708,7 @@ export function RequirementDetailWorkspace({
   const canDiscardDraft =
     canEditRequirement &&
     requirement.authorId === session.user.id &&
-    isEmptyDraftRequirement(requirement, form);
+    requirement.status === "DRAFT";
 
   return (
     <>

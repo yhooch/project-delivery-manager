@@ -971,7 +971,7 @@ export const apiContracts = [
     method: "delete",
     path: "/requirements/{requirementId}",
     tags: ["requirements"],
-    summary: "Delete an empty requirement draft",
+    summary: "Delete requirement draft",
     pathSchema: RequirementIdPathParamsSchema,
     querySchema: EmptyObjectSchema,
     requestSchema: EmptyObjectSchema,

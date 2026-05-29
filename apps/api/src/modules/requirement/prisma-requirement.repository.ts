@@ -733,6 +733,20 @@ export class PrismaRequirementRepository implements RequirementRepository {
         },
       });
 
+      await tx.attachment.updateMany({
+        data: {
+          deletedAt: now,
+          updatedById: input.deletedById,
+        },
+        where: {
+          deletedAt: null,
+          organizationId: previous.organizationId,
+          spaceId: previous.spaceId,
+          targetId: input.requirementId,
+          targetType: REQUIREMENT_TARGET_TYPE,
+        },
+      });
+
       return true;
     });
   }
@@ -941,7 +955,6 @@ export class PrismaRequirementRepository implements RequirementRepository {
 
     return participants.map((participant) => participant.targetId);
   }
-
 }
 
 function buildListWhere(
@@ -1080,9 +1093,7 @@ function toDocumentRequirementStatus(
   return status === "CONFIRMED" ? "ACTIVE" : status;
 }
 
-function isKnownEmptyIdFilter(
-  value: Prisma.DocumentWhereInput["id"],
-): boolean {
+function isKnownEmptyIdFilter(value: Prisma.DocumentWhereInput["id"]): boolean {
   return (
     typeof value === "object" &&
     value !== null &&

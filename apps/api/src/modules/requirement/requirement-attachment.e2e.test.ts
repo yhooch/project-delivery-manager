@@ -293,7 +293,7 @@ describe("requirement and attachment API", () => {
       });
   });
 
-  it("deletes only empty DRAFT requirements created by the current user", async () => {
+  it("deletes only DRAFT requirements created by the current user", async () => {
     const { agent, assigneeAgent, space } = await setupRequirementSpace(
       "m1g_discard_draft",
       "REQUIREMENT",
@@ -320,9 +320,44 @@ describe("requirement and attachment API", () => {
     requirements.setDraftTitle(titledDraft.id, "已有标题");
 
     await deleteRequirement(agent, titledDraft.id)
+      .expect(200)
+      .expect(({ body }) => {
+        expect(body.data).toEqual({});
+      });
+    await agent.get(`/api/v1/requirements/${titledDraft.id}`).expect(404);
+
+    const attachedDraft = (
+      await createRequirement(agent, space.id, {}).expect(200)
+    ).body.data as Requirement;
+    const attachment = (
+      await uploadAttachment(agent, {
+        targetType: "DOCUMENT",
+        targetId: attachedDraft.id,
+        fileName: "draft.png",
+        mimeType: "image/png",
+        size: 1024,
+      }).expect(200)
+    ).body.data as Attachment;
+
+    await deleteRequirement(agent, attachedDraft.id).expect(200);
+    await listAttachments(agent, {
+      page: 1,
+      pageSize: 20,
+      targetId: attachedDraft.id,
+      targetType: "DOCUMENT",
+    }).expect(404);
+    await agent
+      .get(`/api/v1/attachments/${attachment.id}/download`)
+      .expect(404);
+
+    const confirmed = await createSavedRequirement(agent, space.id, {
+      title: "已确认需求",
+    });
+
+    await deleteRequirement(agent, confirmed.id)
       .expect(400)
       .expect(({ body }) => {
-        expect(body.code).toBe("VALIDATION_ERROR");
+        expect(body.code).toBe("DRAFT_REQUIREMENT_REQUIRED");
       });
   });
 

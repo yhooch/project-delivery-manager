@@ -1543,7 +1543,7 @@
       "archiving": "归档中",
       "discardDraft": "放弃草稿",
       "discardingDraft": "正在删除",
-      "discardDraftConfirm": "确认删除这个空草稿？删除后无法恢复。",
+      "discardDraftConfirm": "确认删除这个草稿？草稿内容和已上传附件会一并删除，删除后无法恢复。",
       "emptyDraftLeave": {
         "title": "保留还是删除空草稿？",
         "description": "这个需求草稿仍为空。离开详情页前，可以保留草稿，也可以删除它。",

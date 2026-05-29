@@ -113,7 +113,7 @@ describe("RequirementService audit logging", () => {
     );
   });
 
-  it("writes audit logs for archiving and deleting empty drafts", async () => {
+  it("writes audit logs for archiving and deleting drafts", async () => {
     const subject = createSubject({
       current: makeRequirement({ status: "ACTIVE", title: "Archived req" }),
     });
@@ -155,10 +155,15 @@ describe("RequirementService audit logging", () => {
     );
 
     subject.requirements.current = makeRequirement({
+      attachments: [makeAttachmentRef({ id: IMAGE_ATTACHMENT_ID })],
       authorId: ACTOR_ID,
-      contentJson: {},
+      contentJson: {
+        content: [{ text: "Draft scope", type: "text" }],
+        type: "doc",
+      },
+      contentText: "Draft scope",
       status: "DRAFT",
-      title: "",
+      title: "Draft with content",
     });
 
     await subject.service.deleteDraft(ACTOR_ID, REQUIREMENT_ID, {
@@ -169,9 +174,12 @@ describe("RequirementService audit logging", () => {
       expect.objectContaining({
         actionType: "DELETE",
         actorId: ACTOR_ID,
-        before: expect.objectContaining({ status: "DRAFT", title: "" }),
+        before: expect.objectContaining({
+          status: "DRAFT",
+          title: "Draft with content",
+        }),
         metadata: expect.objectContaining({
-          operation: "DELETE_EMPTY_DRAFT",
+          operation: "DELETE_DRAFT",
           targetKind: "REQUIREMENT",
         }),
         organizationId: ORGANIZATION_ID,
