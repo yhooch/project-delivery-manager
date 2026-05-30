@@ -2,7 +2,7 @@
 
 import { FileText, Loader2 } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { useCallback, useEffect, useId, useState } from "react";
+import { useCallback, useEffect, useId, useRef, useState } from "react";
 
 import {
   listReferencingDocuments,
@@ -19,6 +19,8 @@ import { cn } from "../../lib/utils";
 import { Badge } from "../ui/badge";
 
 const REFERENCING_DOCUMENTS_PAGE_SIZE = 5;
+// 后端 pageSize 上限为 100，逐页展开时据此封顶。
+const MAX_REFERENCING_PAGE_SIZE = 100;
 
 type ReferencingDocumentsSectionProps = {
   className?: string;
@@ -46,24 +48,35 @@ export function ReferencingDocumentsSection({
   const [items, setItems] = useState<DocumentSummary[]>([]);
   const [total, setTotal] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [errorKey, setErrorKey] = useState<string | null>(null);
+  // 已展开的页数；实时刷新时据此重新拉取，避免把已展开内容缩回首屏。
+  const loadedPagesRef = useRef(1);
 
   const loadReferences = useCallback(
-    async (options?: { realtime?: boolean }) => {
+    async (
+      targetPageCount: number,
+      options?: { realtime?: boolean; more?: boolean },
+    ) => {
       if (!spaceId || !targetDocumentId) {
         return;
       }
 
-      if (!options?.realtime) {
+      const isBackground = Boolean(options?.realtime || options?.more);
+      if (!isBackground) {
         setIsLoading(true);
         setErrorKey(null);
       }
 
       try {
+        const pageSize = Math.min(
+          targetPageCount * REFERENCING_DOCUMENTS_PAGE_SIZE,
+          MAX_REFERENCING_PAGE_SIZE,
+        );
         const page = await listReferencingDocuments({
           organizationId,
           page: 1,
-          pageSize: REFERENCING_DOCUMENTS_PAGE_SIZE,
+          pageSize,
           spaceId,
           targetDocumentId,
         });
@@ -71,11 +84,12 @@ export function ReferencingDocumentsSection({
         setItems(page.items);
         setTotal(page.total);
       } catch (error) {
-        if (!options?.realtime) {
+        // 后台刷新/加载更多失败时静默保留已有列表，仅首屏加载失败才提示。
+        if (!isBackground) {
           setErrorKey(getApiErrorMessageKey(error));
         }
       } finally {
-        if (!options?.realtime) {
+        if (!isBackground) {
           setIsLoading(false);
         }
       }
@@ -84,14 +98,29 @@ export function ReferencingDocumentsSection({
   );
 
   useEffect(() => {
-    void loadReferences();
+    loadedPagesRef.current = 1;
+    void loadReferences(1);
   }, [loadReferences]);
 
   useRealtimeInvalidation(["resource-documents"], () => {
-    void loadReferences({ realtime: true });
+    void loadReferences(loadedPagesRef.current, { realtime: true });
   });
 
+  const handleLoadMore = useCallback(async () => {
+    const next = loadedPagesRef.current + 1;
+    setIsLoadingMore(true);
+    try {
+      await loadReferences(next, { more: true });
+      loadedPagesRef.current = next;
+    } finally {
+      setIsLoadingMore(false);
+    }
+  }, [loadReferences]);
+
   const remainingCount = Math.max(total - items.length, 0);
+  // 后端 pageSize 封顶 100，到顶后不再展示「加载更多」以免按钮失效。
+  const canLoadMore =
+    remainingCount > 0 && items.length < MAX_REFERENCING_PAGE_SIZE;
 
   return (
     <section
@@ -152,10 +181,18 @@ export function ReferencingDocumentsSection({
         </ul>
       )}
 
-      {remainingCount > 0 ? (
-        <p className="text-[11px] text-muted-foreground">
+      {canLoadMore ? (
+        <button
+          type="button"
+          onClick={() => void handleLoadMore()}
+          disabled={isLoadingMore}
+          className="flex w-fit items-center gap-1.5 rounded text-[11px] text-muted-foreground underline-offset-2 transition-colors hover:text-foreground hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-60"
+        >
+          {isLoadingMore ? (
+            <Loader2 className="h-3 w-3 animate-spin" aria-hidden="true" />
+          ) : null}
           {t("more", { count: remainingCount })}
-        </p>
+        </button>
       ) : null}
     </section>
   );

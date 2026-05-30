@@ -52,6 +52,7 @@ import {
   getDocumentDisplayCode,
   getDocumentFilterKeys,
   getDocumentLinkDisplayCode,
+  getDocumentLinkHref,
   getDocumentSourceKey,
   isRequirementDocument,
 } from "../../lib/document-view-model";
@@ -1031,10 +1032,12 @@ function DocumentRowLinks({ links }: { links: DocumentSummary["links"] }) {
 
 function DocumentLinksSummary({ links }: { links: DocumentSummary["links"] }) {
   const t = useTranslations("documents");
-  const visible = (links ?? []).slice(0, 3);
-  const overflow = Math.max((links ?? []).length - visible.length, 0);
+  const [expanded, setExpanded] = useState(false);
+  const allLinks = links ?? [];
+  const visible = expanded ? allLinks : allLinks.slice(0, 3);
+  const overflow = Math.max(allLinks.length - 3, 0);
 
-  if (visible.length === 0) {
+  if (allLinks.length === 0) {
     return (
       <span className="text-xs text-muted-foreground">
         {t("list.noResources")}
@@ -1045,21 +1048,28 @@ function DocumentLinksSummary({ links }: { links: DocumentSummary["links"] }) {
   return (
     <div className="flex min-w-0 flex-wrap content-start items-start gap-1">
       {visible.map((link) => (
-        <span
+        <Link
           key={link.id}
-          className="inline-flex max-w-full items-center gap-1 rounded-md border border-border bg-background px-1.5 py-0.5 text-[11px] text-muted-foreground"
+          href={getDocumentLinkHref(link)}
+          className="inline-flex max-w-full items-center gap-1 rounded-md border border-border bg-background px-1.5 py-0.5 text-[11px] text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           title={link.title}
         >
           <span className="font-mono text-foreground">
             {getDocumentLinkDisplayCode(link)}
           </span>
           <span className="truncate">{link.title}</span>
-        </span>
+        </Link>
       ))}
       {overflow > 0 ? (
-        <span className="text-[11px] text-muted-foreground">
-          {t("list.moreResources", { count: overflow })}
-        </span>
+        <button
+          type="button"
+          onClick={() => setExpanded((value) => !value)}
+          className="rounded text-[11px] text-muted-foreground underline-offset-2 transition-colors hover:text-foreground hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        >
+          {expanded
+            ? t("list.collapseResources")
+            : t("list.moreResources", { count: overflow })}
+        </button>
       ) : null}
     </div>
   );

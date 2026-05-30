@@ -1034,7 +1034,8 @@
       "dragDocument": "Drag document {title}",
       "dragSelected": "Drag {count} selected documents",
       "noResources": "No linked resources",
-      "moreResources": "+{count} more"
+      "moreResources": "+{count} more",
+      "collapseResources": "Collapse"
     },
     "references": {
       "documentTitle": "Referenced by",
@@ -1234,7 +1235,8 @@
       "edited": "Recent edit",
       "source": "Source",
       "revision": "Revision",
-      "viewAll": "View all ({count})"
+      "viewAll": "View all ({count})",
+      "openInNewTabHint": "Hold ⌘/Ctrl and click to open in a new tab"
     },
     "markdown": {
       "empty": "No body content",

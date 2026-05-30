@@ -1034,7 +1034,8 @@
       "dragDocument": "拖拽文档 {title}",
       "dragSelected": "拖拽已选的 {count} 个文档",
       "noResources": "暂无关联资源",
-      "moreResources": "+{count} 个"
+      "moreResources": "+{count} 个",
+      "collapseResources": "收起"
     },
     "references": {
       "documentTitle": "引用此文档",
@@ -1234,7 +1235,8 @@
       "edited": "最近编辑",
       "source": "来源",
       "revision": "修订号",
-      "viewAll": "查看全部（{count}）"
+      "viewAll": "查看全部（{count}）",
+      "openInNewTabHint": "按住 ⌘/Ctrl 点击可在新标签打开"
     },
     "markdown": {
       "empty": "暂无正文",

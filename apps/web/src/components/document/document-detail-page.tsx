@@ -11,6 +11,7 @@ import {
   FileText,
   FileX2,
   FolderInput,
+  Info,
   Link2,
   Loader2,
   MessageSquare,
@@ -120,6 +121,7 @@ import {
 import { Input } from "../ui/input";
 import { SelectMenu } from "../ui/select-menu";
 import { Textarea } from "../ui/textarea";
+import { Tip } from "../ui/tooltip";
 import { useDocumentDirectory } from "./document-directory-context";
 import {
   createDocumentDirectoryHref,
@@ -2253,12 +2255,14 @@ function DocumentContextRail({
         <RailSection
           icon={<Link2 className="h-3.5 w-3.5" />}
           title={t("rail.resources")}
+          hint={<OpenInNewTabHint label={t("rail.openInNewTabHint")} />}
         >
           <DocumentLinksSummary links={document.links ?? []} />
         </RailSection>
         <RailSection
           icon={<FileText className="h-3.5 w-3.5" />}
           title={t("references.documentTitle")}
+          hint={<OpenInNewTabHint label={t("rail.openInNewTabHint")} />}
         >
           <ReferencingDocumentsSection
             compact
@@ -2364,10 +2368,12 @@ function DocumentContextRail({
 
 function RailSection({
   children,
+  hint,
   icon,
   title,
 }: {
   children: ReactNode;
+  hint?: ReactNode;
   icon: ReactNode;
   title: string;
 }) {
@@ -2376,9 +2382,21 @@ function RailSection({
       <h2 className="flex items-center gap-1.5 px-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-muted-foreground/80">
         {icon}
         {title}
+        {hint}
       </h2>
       {children}
     </section>
+  );
+}
+
+function OpenInNewTabHint({ label }: { label: string }) {
+  return (
+    <Tip content={label} side="top">
+      <span className="ml-auto inline-flex cursor-help text-muted-foreground/70 transition-colors hover:text-foreground">
+        <Info className="h-3 w-3" aria-hidden="true" />
+        <span className="sr-only">{label}</span>
+      </span>
+    </Tip>
   );
 }
 
