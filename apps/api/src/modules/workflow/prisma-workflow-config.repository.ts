@@ -1,6 +1,7 @@
 import { Inject, Injectable } from "@nestjs/common";
 import { ulid } from "ulid";
 
+import { removeUndefined } from "../../common/object";
 import { Prisma } from "../../generated/prisma/client";
 import { PrismaService } from "../../prisma/prisma.service";
 import type {
@@ -1199,12 +1200,6 @@ function workflowBindingOrderBy(
     default:
       return { createdAt: order };
   }
-}
-
-function removeUndefined<T extends Record<string, unknown>>(value: T): T {
-  return Object.fromEntries(
-    Object.entries(value).filter(([, entryValue]) => entryValue !== undefined),
-  ) as T;
 }
 
 function toJson(

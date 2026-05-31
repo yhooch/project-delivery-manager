@@ -39,6 +39,7 @@ import {
 import { createHash } from "node:crypto";
 import { z } from "zod";
 
+import { removeUndefined } from "../../common/object";
 import { ApiException } from "../../http/api-exception";
 import type { McpOAuthPrincipalContext } from "../../http/request-context";
 import type { RequestMetadata } from "../auth/auth-session.types";
@@ -1360,14 +1361,6 @@ function toStructuredContent(value: unknown): Record<string, unknown> {
 
 function truncateContentText(value: string): string {
   return value.length <= 4000 ? value : `${value.slice(0, 3997)}...`;
-}
-
-function removeUndefined<TValue extends Record<string, unknown>>(
-  value: TValue,
-): TValue {
-  return Object.fromEntries(
-    Object.entries(value).filter((entry) => entry[1] !== undefined),
-  ) as TValue;
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

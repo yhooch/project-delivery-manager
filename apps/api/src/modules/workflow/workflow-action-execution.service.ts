@@ -8,6 +8,7 @@ import type {
   WorkItemDetail,
 } from "@project-delivery/shared";
 
+import { removeUndefined } from "../../common/object";
 import { ApiException } from "../../http/api-exception";
 import { RealtimePublisherService } from "../realtime/realtime-publisher.service";
 import { toWorkItemDetail } from "../workitem/workitem.mappers";
@@ -1038,10 +1039,4 @@ function getApiExceptionCode(error: unknown): ApiErrorCode | undefined {
 
 function getErrorMessage(error: unknown) {
   return error instanceof Error ? error.message : undefined;
-}
-
-function removeUndefined<T extends Record<string, unknown>>(value: T) {
-  return Object.fromEntries(
-    Object.entries(value).filter(([, entryValue]) => entryValue !== undefined),
-  );
 }

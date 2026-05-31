@@ -95,6 +95,7 @@ import {
   getDocumentSourceKey,
   getLookupTargetType,
   isRequirementDocument,
+  isRequirementDocumentLink,
 } from "../../lib/document-view-model";
 import { lookupObjectCode } from "../../lib/object-code-service";
 import {
@@ -511,10 +512,12 @@ export function DocumentDetailPage({ documentId }: DocumentDetailPageProps) {
         organizationId: document.organizationId,
         spaceId: document.spaceId,
       });
-      const linkedDocumentTargets = form.linkedDocuments.map((link) => ({
-        targetId: link.targetId,
-        targetType: "DOCUMENT" as const,
-      }));
+      const linkedDocumentTargets = form.linkedDocuments
+        .filter((link) => !isRequirementDocumentLink(link))
+        .map((link) => ({
+          targetId: link.targetId,
+          targetType: "DOCUMENT" as const,
+        }));
       const contentMarkdown =
         canRenderDocumentMarkdownContent(document) &&
         form.contentMarkdown !== document.contentMarkdown

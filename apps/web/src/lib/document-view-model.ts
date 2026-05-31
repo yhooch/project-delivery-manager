@@ -93,10 +93,11 @@ export function getDocumentLinkHref(link: DocumentLinkSummary): string {
   const id = encodeURIComponent(link.targetId);
 
   if (link.targetType === "DOCUMENT") {
+    if (isRequirementDocumentLink(link)) {
+      return `/requirements/${id}`;
+    }
+
     return `/documents/${id}`;
-  }
-  if (link.targetType === "REQUIREMENT") {
-    return `/requirements/${id}`;
   }
   if (link.targetType === "INTAKE_ITEM") {
     return `/intake-items?id=${id}`;
@@ -109,6 +110,15 @@ export function getDocumentLinkHref(link: DocumentLinkSummary): string {
   }
 
   return `/work-items?workItemId=${id}`;
+}
+
+export function isRequirementDocumentLink(
+  link: Pick<DocumentLinkSummary, "displayCode" | "targetType">,
+): boolean {
+  return (
+    link.targetType === "DOCUMENT" &&
+    link.displayCode?.trim().startsWith("REQ-") === true
+  );
 }
 
 export function getObjectCodeLookupHref(

@@ -23,6 +23,7 @@ import type {
   WorkItemType,
 } from "@project-delivery/shared";
 
+import { removeUndefined } from "../../common/object";
 import { formatDisplayCode } from "../object-code/object-code.types";
 
 type PrismaDocumentRecord = {
@@ -421,12 +422,6 @@ function nonEmptyString(value: string | undefined): string | undefined {
   const trimmed = value?.trim();
 
   return trimmed ? trimmed : undefined;
-}
-
-function removeUndefined<T extends Record<string, unknown>>(value: T): T {
-  return Object.fromEntries(
-    Object.entries(value).filter(([, entryValue]) => entryValue !== undefined),
-  ) as T;
 }
 
 function toPlainRecord(value: unknown): Record<string, unknown> | undefined {

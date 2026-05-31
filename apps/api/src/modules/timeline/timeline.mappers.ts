@@ -6,6 +6,7 @@ import type {
   WorkItemType,
 } from "@project-delivery/shared";
 
+import { removeUndefined } from "../../common/object";
 import { formatDisplayCode } from "../object-code/object-code.types";
 
 type TimelineActorRecord = {
@@ -123,10 +124,4 @@ function toOptionalRecord(value: unknown): Record<string, unknown> | undefined {
   }
 
   return value as Record<string, unknown>;
-}
-
-function removeUndefined<T extends Record<string, unknown>>(value: T): T {
-  return Object.fromEntries(
-    Object.entries(value).filter(([, entryValue]) => entryValue !== undefined),
-  ) as T;
 }

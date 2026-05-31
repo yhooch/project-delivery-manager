@@ -54,6 +54,7 @@ import {
   getDocumentLinkDisplayCode,
   getDocumentLinkHref,
   getDocumentSourceKey,
+  isRequirementDocumentLink,
   isRequirementDocument,
 } from "../../lib/document-view-model";
 import { useRealtimeInvalidation } from "../../lib/realtime";
@@ -963,7 +964,8 @@ function DocumentRow({
           </span>
         </div>
         {(document.links ?? []).some(
-          (link) => link.targetType !== "DOCUMENT",
+          (link) =>
+            link.targetType !== "DOCUMENT" || isRequirementDocumentLink(link),
         ) || (document.tags ?? []).length > 0 ? (
           <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
             <DocumentRowLinks links={document.links ?? []} />
@@ -1003,7 +1005,9 @@ function RequirementDocumentBadge({
 
 function DocumentRowLinks({ links }: { links: DocumentSummary["links"] }) {
   const t = useTranslations("documents");
-  const all = (links ?? []).filter((link) => link.targetType !== "DOCUMENT");
+  const all = (links ?? []).filter(
+    (link) => link.targetType !== "DOCUMENT" || isRequirementDocumentLink(link),
+  );
   if (all.length === 0) {
     return null;
   }

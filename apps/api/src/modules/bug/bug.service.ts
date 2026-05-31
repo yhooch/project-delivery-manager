@@ -9,6 +9,7 @@ import {
 } from "@project-delivery/shared";
 import { ulid } from "ulid";
 
+import { removeUndefined } from "../../common/object";
 import { ApiException } from "../../http/api-exception";
 import {
   ORGANIZATION_REPOSITORY,
@@ -1028,12 +1029,6 @@ function toAuditRecord(bug: BugView): Record<string, unknown> {
       relatedTaskId: bug.bugDetail.relatedTaskId,
     }),
   });
-}
-
-function removeUndefined(value: Record<string, unknown>) {
-  return Object.fromEntries(
-    Object.entries(value).filter(([, entryValue]) => entryValue !== undefined),
-  );
 }
 
 function throwSpaceAccessDenied(): never {

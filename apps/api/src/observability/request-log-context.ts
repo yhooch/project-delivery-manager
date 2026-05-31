@@ -1,5 +1,7 @@
 import { AsyncLocalStorage } from "node:async_hooks";
 
+import { removeUndefined } from "../common/object";
+
 export type RequestLogContext = {
   method?: string;
   organizationId?: string;
@@ -32,13 +34,5 @@ export function updateRequestLogContext(
     return;
   }
 
-  Object.assign(context, compactContextPatch(patch));
-}
-
-function compactContextPatch(
-  patch: Partial<RequestLogContext>,
-): Partial<RequestLogContext> {
-  return Object.fromEntries(
-    Object.entries(patch).filter(([, value]) => value !== undefined),
-  ) as Partial<RequestLogContext>;
+  Object.assign(context, removeUndefined(patch));
 }

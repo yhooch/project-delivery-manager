@@ -4,6 +4,7 @@ import type {
   ViewWorkItemSummary,
 } from "@project-delivery/shared";
 
+import { removeUndefined } from "../../common/object";
 import {
   buildSpaceExceptionSignals,
   isBlockedRecord,
@@ -120,10 +121,4 @@ function toWorkItemDisplayIdentity(
         sequence,
         displayCode: formatDisplayCode(type, sequence),
       };
-}
-
-function removeUndefined<T extends Record<string, unknown>>(value: T): T {
-  return Object.fromEntries(
-    Object.entries(value).filter(([, entryValue]) => entryValue !== undefined),
-  ) as T;
 }

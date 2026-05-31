@@ -1,6 +1,7 @@
 import type {
   DocumentContentFormat,
   DocumentKind,
+  DocumentLinkTargetType as SharedDocumentLinkTargetType,
   Priority,
   TagDto,
   TimelineEventType,
@@ -28,16 +29,8 @@ export type DocumentFilterKey =
   | "mcpCreated"
   | "recentMcpEdited"
   | "archived";
-export type DocumentLinkTargetType =
-  | "DOCUMENT"
-  | "VERSION"
-  | "REQUIREMENT"
-  | "INTAKE_ITEM"
-  | "WORK_ITEM";
-export type DocumentLinkWriteTargetType = Exclude<
-  DocumentLinkTargetType,
-  "REQUIREMENT"
->;
+export type DocumentLinkTargetType = SharedDocumentLinkTargetType;
+export type DocumentLinkWriteTargetType = DocumentLinkTargetType;
 
 export type DocumentLinkSummary = {
   displayCode?: string | null;
@@ -264,7 +257,6 @@ const prioritySchema = z.enum(["LOW", "MEDIUM", "HIGH", "URGENT"]);
 const linkTargetSchema = z.enum([
   "DOCUMENT",
   "VERSION",
-  "REQUIREMENT",
   "INTAKE_ITEM",
   "WORK_ITEM",
 ]);

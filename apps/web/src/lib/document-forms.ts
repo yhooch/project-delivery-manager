@@ -6,6 +6,7 @@ import type {
   DocumentSourceType,
 } from "./document-service";
 import { extractFirstHeading } from "./document-markdown";
+import { isRequirementDocumentLink } from "./document-view-model";
 import { getTagIds } from "./tag-ui";
 
 export type DocumentEditForm = {
@@ -33,10 +34,16 @@ export function createDocumentEditForm(
     contentText:
       document.contentMarkdownCache ?? document.contentText ?? document.contentMarkdown,
     linkedDocuments:
-      document.links?.filter((link) => link.targetType === "DOCUMENT") ?? [],
+      document.links?.filter(
+        (link) =>
+          link.targetType === "DOCUMENT" && !isRequirementDocumentLink(link),
+      ) ?? [],
     linkedResourceCodes:
       document.links
-        ?.filter((link) => link.targetType !== "DOCUMENT")
+        ?.filter(
+          (link) =>
+            link.targetType !== "DOCUMENT" || isRequirementDocumentLink(link),
+        )
         .map(formatDocumentLinkCode)
         .join(", ") ?? "",
     selectedTags: document.tags ?? [],

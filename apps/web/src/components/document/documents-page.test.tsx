@@ -303,7 +303,7 @@ describe("DocumentsPage", () => {
               displayCode: "REQ-12",
               id: "LNK_01",
               targetId: "REQ_01",
-              targetType: "REQUIREMENT",
+              targetType: "DOCUMENT",
               title: "Requirement",
             },
           ],

@@ -19,6 +19,7 @@ import type {
   WorkflowActionSummary,
 } from "@project-delivery/shared";
 
+import { removeUndefined } from "../../common/object";
 import { Prisma } from "../../generated/prisma/client";
 import { PrismaService } from "../../prisma/prisma.service";
 import { formatDisplayCode } from "../object-code/object-code.types";
@@ -2683,12 +2684,6 @@ function isStale(
     elapsedDays(lastStatusChangedAt, now) >=
     staleThresholdForSpace(spaceId, context)
   );
-}
-
-function removeUndefined<T extends Record<string, unknown>>(value: T): T {
-  return Object.fromEntries(
-    Object.entries(value).filter(([, entryValue]) => entryValue !== undefined),
-  ) as T;
 }
 
 function addDays(date: Date, days: number) {

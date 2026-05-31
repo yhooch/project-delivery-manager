@@ -242,7 +242,7 @@ function createDocument() {
         displayCode: "REQ-12",
         id: "LNK_01",
         targetId: "REQ_01",
-        targetType: "REQUIREMENT",
+        targetType: "DOCUMENT",
         title: "Requirement",
       },
     ],
@@ -388,6 +388,12 @@ describe("DocumentDetailPage", () => {
     expect(markdownHeading).toHaveAttribute("id", "launch-plan");
     expect(markdownHeading).toHaveClass("scroll-mt-28");
     expect(screen.getByTestId("document-linked-resources")).toBeVisible();
+    expect(
+      within(screen.getByTestId("document-linked-resources")).getByRole(
+        "link",
+        { name: /REQ-12Requirement/u },
+      ),
+    ).toHaveAttribute("href", "/requirements/REQ_01");
     expect(screen.getByTestId("document-toc-rail")).toBeVisible();
     expect(screen.getByTestId("document-context-rail")).toBeVisible();
     expect(
@@ -761,6 +767,25 @@ describe("DocumentDetailPage", () => {
         }),
       ),
     );
+  });
+
+  it("removes requirement document links when resource codes are cleared", async () => {
+    render(<DocumentDetailPage documentId="DOC_01" />);
+
+    fireEvent.click(await screen.findByTestId("document-edit-button"));
+    expect(screen.getByTestId("document-links-input")).toHaveValue("REQ-12");
+    fireEvent.change(screen.getByTestId("document-links-input"), {
+      target: { value: "" },
+    });
+    fireEvent.click(screen.getByTestId("document-save-button"));
+
+    await waitFor(() => expect(updateDocumentMock).toHaveBeenCalled());
+    expect(updateDocumentMock.mock.calls[0]?.[0]).toEqual(
+      expect.objectContaining({
+        linkTargets: [],
+      }),
+    );
+    expect(lookupObjectCodeMock).not.toHaveBeenCalled();
   });
 
   it("enters edit mode without submitting the update form", async () => {

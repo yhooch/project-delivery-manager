@@ -1,5 +1,7 @@
 import type { TagDto } from "@project-delivery/shared";
 
+import { removeUndefined } from "../../common/object";
+
 type PrismaTagRecord = {
   colorKey: string;
   createdAt: Date;
@@ -33,10 +35,4 @@ export function toTagDto(
     createdAt: record.createdAt.toISOString(),
     updatedAt: record.updatedAt.toISOString(),
   });
-}
-
-function removeUndefined<T extends Record<string, unknown>>(value: T): T {
-  return Object.fromEntries(
-    Object.entries(value).filter(([, entryValue]) => entryValue !== undefined),
-  ) as T;
 }

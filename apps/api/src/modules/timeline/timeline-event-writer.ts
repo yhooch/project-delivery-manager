@@ -6,6 +6,7 @@ import type {
 } from "@project-delivery/shared";
 import { ulid } from "ulid";
 
+import { removeUndefined } from "../../common/object";
 import { Prisma } from "../../generated/prisma/client";
 import { canonicalizeTargetForDocumentRequirement } from "../target/legacy-target-normalizer";
 
@@ -117,10 +118,4 @@ function resolveChangedFields(
 
 function isTimelineValueEqual(left: unknown, right: unknown) {
   return JSON.stringify(left) === JSON.stringify(right);
-}
-
-function removeUndefined<T extends Record<string, unknown>>(value: T): T {
-  return Object.fromEntries(
-    Object.entries(value).filter(([, entry]) => entry !== undefined),
-  ) as T;
 }

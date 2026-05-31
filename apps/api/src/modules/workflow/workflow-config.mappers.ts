@@ -7,6 +7,8 @@ import type {
   WorkflowVersion,
 } from "@project-delivery/shared";
 
+import { removeUndefined } from "../../common/object";
+
 export type WorkflowDefinitionRecord = {
   id: string;
   organizationId: string;
@@ -160,10 +162,4 @@ export function toWorkflowBinding(record: WorkflowBindingRecord): WorkflowBindin
     workflowVersionId: record.workflowVersionId,
     workItemType: record.workItemType,
   });
-}
-
-function removeUndefined<T extends Record<string, unknown>>(value: T): T {
-  return Object.fromEntries(
-    Object.entries(value).filter(([, entryValue]) => entryValue !== undefined),
-  ) as T;
 }
