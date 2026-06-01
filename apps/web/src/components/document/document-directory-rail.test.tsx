@@ -108,6 +108,36 @@ beforeEach(() => {
 });
 
 describe("DocumentDirectoryRail", () => {
+  it("keeps the inline directory rail desktop-only while preserving the mobile sheet rail", async () => {
+    const { rerender } = renderRail();
+
+    const desktopRail = await screen.findByTestId("document-directory-rail");
+    expect(desktopRail).toHaveClass("hidden", "lg:flex", "lg:w-72");
+
+    rerender(
+      <DocumentDirectoryProvider
+        value={{
+          activeDocumentFolderId: "FLD_01",
+          setActiveDocumentFolderId: vi.fn(),
+        }}
+      >
+        <DocumentDirectoryRail
+          mobile
+          organizationId="ORG_01"
+          spaceId="SPC_01"
+        />
+      </DocumentDirectoryProvider>,
+    );
+
+    expect(screen.getByTestId("document-directory-rail")).toHaveClass(
+      "flex",
+      "w-full",
+    );
+    expect(screen.getByTestId("document-directory-rail")).not.toHaveClass(
+      "hidden",
+    );
+  });
+
   it("renders virtual views and navigates to a selected folder", async () => {
     renderRail();
 

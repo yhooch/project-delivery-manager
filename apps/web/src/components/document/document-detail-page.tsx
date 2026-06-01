@@ -855,7 +855,7 @@ export function DocumentDetailPage({ documentId }: DocumentDetailPageProps) {
 
   return (
     <>
-      <div className="mx-auto grid w-full max-w-[88rem] gap-6 px-4 py-5 lg:grid-cols-[12rem_minmax(0,1fr)] lg:px-6 xl:grid-cols-[13rem_minmax(0,1fr)_18rem]">
+      <div className="mx-auto grid w-full max-w-[88rem] gap-4 px-3 py-4 sm:gap-6 sm:px-4 sm:py-5 lg:grid-cols-[12rem_minmax(0,1fr)] lg:px-6 xl:grid-cols-[13rem_minmax(0,1fr)_18rem]">
         <DocumentTocRail headings={headings} />
         <div className="min-w-0 max-w-[52rem]">
           <form onSubmit={(event) => void save(event)}>
@@ -934,19 +934,22 @@ export function DocumentDetailPage({ documentId }: DocumentDetailPageProps) {
                       aria-hidden="true"
                       className="hidden h-3 w-px bg-border/60 sm:block"
                     />
-                    <span className="truncate">
+                    <span className="min-w-0 max-w-full truncate">
                       {formatDocumentCreatedMeta(document, locale, t)}
                     </span>
                     <span
                       aria-hidden="true"
                       className="hidden h-3 w-px bg-border/60 sm:block"
                     />
-                    <span className="truncate">
+                    <span className="min-w-0 max-w-full truncate">
                       {formatDocumentEditedMeta(document, locale, t)}
                     </span>
                   </div>
                 </div>
-                <div className="flex shrink-0 flex-wrap gap-2">
+                <div
+                  className="flex w-full shrink-0 flex-wrap gap-2 sm:w-auto sm:justify-end [&>*]:w-full sm:[&>*]:w-auto"
+                  data-testid="document-detail-actions"
+                >
                   {showContentEditMode ? (
                     <Fragment key="document-edit-actions">
                       <Button
@@ -2280,7 +2283,7 @@ function DocumentTocRail({ headings }: { headings: MarkdownHeading[] }) {
   const t = useTranslations("documents");
 
   return (
-    <aside className="min-w-0 lg:sticky lg:top-16 lg:max-h-[calc(100vh-5rem)] lg:overflow-y-auto">
+    <aside className="hidden min-w-0 lg:sticky lg:top-16 lg:block lg:max-h-[calc(100vh-5rem)] lg:overflow-y-auto">
       <div className="px-1" data-testid="document-toc-rail">
         <RailSection
           icon={<FileText className="h-3.5 w-3.5" />}

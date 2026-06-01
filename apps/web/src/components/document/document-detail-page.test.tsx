@@ -395,6 +395,10 @@ describe("DocumentDetailPage", () => {
       ),
     ).toHaveAttribute("href", "/requirements/REQ_01");
     expect(screen.getByTestId("document-toc-rail")).toBeVisible();
+    expect(screen.getByTestId("document-toc-rail").parentElement).toHaveClass(
+      "hidden",
+      "lg:block",
+    );
     expect(screen.getByTestId("document-context-rail")).toBeVisible();
     expect(
       within(screen.getByTestId("document-toc-rail")).getByRole("link", {
@@ -443,6 +447,19 @@ describe("DocumentDetailPage", () => {
     expect(
       await within(tocRail).findByRole("link", { name: "Section 13" }),
     ).toHaveAttribute("href", "#section-13");
+  });
+
+  it("stacks document detail actions on narrow screens", async () => {
+    render(<DocumentDetailPage documentId="DOC_01" />);
+
+    const actions = await screen.findByTestId("document-detail-actions");
+
+    expect(actions).toHaveClass(
+      "w-full",
+      "sm:w-auto",
+      "[&>*]:w-full",
+      "sm:[&>*]:w-auto",
+    );
   });
 
   it("shows documents that reference the current document", async () => {
