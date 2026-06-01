@@ -1128,7 +1128,12 @@
     "attachments": {
       "title": "Attachments",
       "upload": "Upload attachment",
+      "preview": "Preview",
       "download": "Download",
+      "previewFile": "Preview {fileName} in a new tab",
+      "downloadFile": "Download {fileName}",
+      "showAll": "Show all {count} attachments",
+      "collapse": "Collapse attachments",
       "empty": "No attachments"
     },
     "deleteDialog": {

@@ -1128,7 +1128,12 @@
     "attachments": {
       "title": "附件",
       "upload": "上传附件",
+      "preview": "预览",
       "download": "下载",
+      "previewFile": "在新标签页预览 {fileName}",
+      "downloadFile": "下载 {fileName}",
+      "showAll": "显示全部 {count} 个附件",
+      "collapse": "收起附件",
       "empty": "暂无附件"
     },
     "deleteDialog": {

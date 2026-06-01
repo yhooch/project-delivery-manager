@@ -671,6 +671,111 @@ describe("DocumentDetailPage", () => {
     ).toHaveAttribute("href", "#document-attachments");
   });
 
+  it("collapses imported document attachments after the first five", async () => {
+    const importedAttachments = Array.from({ length: 25 }, (_, index) => ({
+      fileName: `inline-image-${index + 1}.png`,
+      id: `ATT_${index + 1}`,
+      size: 1024,
+    }));
+    listAttachmentsMock.mockResolvedValueOnce({
+      items: importedAttachments,
+      total: importedAttachments.length,
+    });
+
+    render(<DocumentDetailPage documentId="DOC_01" />);
+
+    expect(await screen.findByText("inline-image-5.png")).toBeVisible();
+    expect(screen.queryByText("inline-image-6.png")).not.toBeInTheDocument();
+    await waitFor(() =>
+      expect(listAttachmentsMock).toHaveBeenCalledWith(
+        expect.objectContaining({
+          page: 1,
+          pageSize: 200,
+          targetId: "DOC_01",
+          targetType: "DOCUMENT",
+        }),
+      ),
+    );
+    expect(
+      screen.getAllByTestId("document-attachment-download-link"),
+    ).toHaveLength(5);
+
+    const toggle = screen.getByTestId("document-attachments-toggle");
+    expect(toggle).toHaveAttribute("aria-expanded", "false");
+    fireEvent.click(toggle);
+
+    expect(await screen.findByText("inline-image-25.png")).toBeVisible();
+    expect(
+      screen.getAllByTestId("document-attachment-download-link"),
+    ).toHaveLength(25);
+    expect(toggle).toHaveAttribute("aria-expanded", "true");
+  });
+
+  it("expands collapsed attachments when a focused attachment is present", async () => {
+    const importedAttachments = Array.from({ length: 8 }, (_, index) => ({
+      fileName: `inline-image-${index + 1}.png`,
+      id: `ATT_${index + 1}`,
+      size: 1024,
+    }));
+    searchParamsMock.current = new URLSearchParams("attachmentId=ATT_8");
+    listAttachmentsMock.mockResolvedValueOnce({
+      items: importedAttachments,
+      total: importedAttachments.length,
+    });
+
+    render(<DocumentDetailPage documentId="DOC_01" />);
+
+    expect(await screen.findByText("inline-image-8.png")).toBeVisible();
+    expect(screen.getByTestId("document-attachments-toggle")).toHaveAttribute(
+      "aria-expanded",
+      "true",
+    );
+  });
+
+  it("opens document attachments in a new tab for preview and keeps download separate", async () => {
+    listAttachmentsMock.mockResolvedValueOnce({
+      items: [{ fileName: "notes.md", id: "ATT_01", size: 1024 }],
+      total: 1,
+    });
+
+    render(<DocumentDetailPage documentId="DOC_01" />);
+
+    const previewLink = await screen.findByTestId(
+      "document-attachment-preview-link",
+    );
+    const downloadLink = screen.getByTestId("document-attachment-download-link");
+
+    expect(previewLink).toHaveAttribute(
+      "href",
+      "/api/v1/attachments/ATT_01/download",
+    );
+    expect(previewLink).toHaveAttribute("target", "_blank");
+    expect(previewLink).toHaveAttribute("rel", "noopener noreferrer");
+    expect(downloadLink).toHaveAttribute(
+      "href",
+      "/api/v1/attachments/ATT_01/download",
+    );
+    expect(downloadLink).toHaveAttribute("download", "notes.md");
+    expect(downloadLink).not.toHaveAttribute("target");
+  });
+
+  it("hides preview for Word document attachments", async () => {
+    listAttachmentsMock.mockResolvedValueOnce({
+      items: [{ fileName: "source.docx", id: "ATT_01", size: 1024 }],
+      total: 1,
+    });
+
+    render(<DocumentDetailPage documentId="DOC_01" />);
+
+    expect(await screen.findByText("source.docx")).toBeVisible();
+    expect(
+      screen.queryByTestId("document-attachment-preview-link"),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.getByTestId("document-attachment-download-link"),
+    ).toHaveAttribute("download", "source.docx");
+  });
+
   it("uses the stored document list href for the back-to-list action", async () => {
     window.sessionStorage.setItem(
       "documents.lastListHref",

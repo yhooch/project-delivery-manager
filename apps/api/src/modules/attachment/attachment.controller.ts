@@ -111,7 +111,10 @@ export class AttachmentController {
     );
 
     response.status(HttpStatus.OK);
-    response.setHeader("Content-Type", download.mimeType);
+    response.setHeader(
+      "Content-Type",
+      formatAttachmentDownloadContentType(download.mimeType),
+    );
     response.setHeader("Content-Length", download.size);
     response.setHeader(
       "Content-Disposition",
@@ -147,4 +150,12 @@ function normalizeUploadedFileName(fileName: string): string {
   const decoded = Buffer.from(fileName, "latin1").toString("utf8");
 
   return decoded.includes("\uFFFD") ? fileName : decoded;
+}
+
+export function formatAttachmentDownloadContentType(mimeType: string): string {
+  if (!/^text\//iu.test(mimeType) || /;\s*charset=/iu.test(mimeType)) {
+    return mimeType;
+  }
+
+  return `${mimeType}; charset=utf-8`;
 }

@@ -6,6 +6,7 @@ import {
   ChevronRight,
   Clock3,
   Download,
+  Eye,
   ExternalLink,
   FileCheck2,
   FileText,
@@ -156,6 +157,8 @@ const DOCUMENT_DETAIL_REALTIME_KEYS = [
   "document-timeline",
 ] as const;
 const DOCUMENT_LINK_SEARCH_PAGE_SIZE = 8;
+const DOCUMENT_ATTACHMENT_LIST_PAGE_SIZE = 200;
+const DOCUMENT_ATTACHMENT_VISIBLE_LIMIT = 5;
 const REQUIREMENT_WRITER_ROLES = new Set<SpaceRole>([
   "SPACE_ADMIN",
   "PM",
@@ -1706,6 +1709,13 @@ function DocumentManagementSections({
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const comments = document.comments ?? [];
   const attachments = document.attachments ?? [];
+  const [showAllAttachments, setShowAllAttachments] = useState(false);
+  const shouldCollapseAttachments =
+    attachments.length > DOCUMENT_ATTACHMENT_VISIBLE_LIMIT;
+  const visibleAttachments =
+    shouldCollapseAttachments && !showAllAttachments
+      ? attachments.slice(0, DOCUMENT_ATTACHMENT_VISIBLE_LIMIT)
+      : attachments;
   const { highlightedId: highlightedCommentId, registerItem: registerComment } =
     useFocusedListItem<HTMLElement>({
       focusedId: focusedCommentId,
@@ -1718,6 +1728,19 @@ function DocumentManagementSections({
     focusedId: focusedAttachmentId,
     resetKey: document.id,
   });
+
+  useEffect(() => {
+    setShowAllAttachments(false);
+  }, [document.id]);
+
+  useEffect(() => {
+    if (
+      focusedAttachmentId &&
+      attachments.some((attachment) => attachment.id === focusedAttachmentId)
+    ) {
+      setShowAllAttachments(true);
+    }
+  }, [attachments, focusedAttachmentId]);
 
   return (
     <div className="mt-10 grid gap-8">
@@ -1850,51 +1873,102 @@ function DocumentManagementSections({
         ) : null}
         {attachments.length > 0 ? (
           <ul className="grid gap-0.5">
-            {attachments.map((attachment) => (
-              <li
-                key={attachment.id}
-                id={`attachment-${attachment.id}`}
-                ref={registerAttachment(attachment.id)}
-                data-attachment-id={attachment.id}
-                className={cn(
-                  "flex flex-wrap items-center justify-between gap-3 rounded-lg px-3 py-2 transition-colors hover:bg-muted/40",
-                  highlightedAttachmentId === attachment.id &&
-                    "bg-primary/5 ring-2 ring-primary/30 ring-offset-2 ring-offset-background",
-                )}
-              >
-                <div className="flex min-w-0 items-center gap-2.5">
-                  <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-muted text-muted-foreground">
-                    <Paperclip className="h-3.5 w-3.5" aria-hidden="true" />
-                  </div>
-                  <div className="min-w-0">
-                    <div className="truncate text-sm font-medium text-foreground">
-                      {attachment.fileName}
+            {visibleAttachments.map((attachment) => {
+              const downloadUrl = createAttachmentDownloadUrl(attachment.id);
+              const canPreview = canPreviewDocumentAttachment(attachment);
+
+              return (
+                <li
+                  key={attachment.id}
+                  id={`attachment-${attachment.id}`}
+                  ref={registerAttachment(attachment.id)}
+                  data-attachment-id={attachment.id}
+                  className={cn(
+                    "flex flex-wrap items-center justify-between gap-3 rounded-lg px-3 py-2 transition-colors hover:bg-muted/40",
+                    highlightedAttachmentId === attachment.id &&
+                      "bg-primary/5 ring-2 ring-primary/30 ring-offset-2 ring-offset-background",
+                  )}
+                >
+                  <div className="flex min-w-0 items-center gap-2.5">
+                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-muted text-muted-foreground">
+                      <Paperclip className="h-3.5 w-3.5" aria-hidden="true" />
                     </div>
-                    {attachment.size ? (
-                      <div className="text-xs text-muted-foreground">
-                        {formatBytes(attachment.size)}
+                    <div className="min-w-0">
+                      <div className="truncate text-sm font-medium text-foreground">
+                        {attachment.fileName}
                       </div>
-                    ) : null}
+                      {attachment.size ? (
+                        <div className="text-xs text-muted-foreground">
+                          {formatBytes(attachment.size)}
+                        </div>
+                      ) : null}
+                    </div>
                   </div>
-                </div>
-                <Button asChild variant="ghost" size="sm">
-                  <a
-                    href={createAttachmentDownloadUrl(attachment.id)}
-                    target="_blank"
-                    rel="noreferrer"
-                  >
-                    <Download className="h-3.5 w-3.5" aria-hidden="true" />
-                    {t("attachments.download")}
-                  </a>
-                </Button>
-              </li>
-            ))}
+                  <div className="flex shrink-0 items-center gap-1">
+                    {canPreview ? (
+                      <Button asChild variant="ghost" size="sm">
+                        <a
+                          href={downloadUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          data-testid="document-attachment-preview-link"
+                          aria-label={t("attachments.previewFile", {
+                            fileName: attachment.fileName,
+                          })}
+                          title={t("attachments.previewFile", {
+                            fileName: attachment.fileName,
+                          })}
+                        >
+                          <Eye className="h-3.5 w-3.5" aria-hidden="true" />
+                          {t("attachments.preview")}
+                        </a>
+                      </Button>
+                    ) : null}
+                    <Button asChild variant="ghost" size="sm">
+                      <a
+                        href={downloadUrl}
+                        download={attachment.fileName}
+                        rel="noopener noreferrer"
+                        data-testid="document-attachment-download-link"
+                        aria-label={t("attachments.downloadFile", {
+                          fileName: attachment.fileName,
+                        })}
+                        title={t("attachments.downloadFile", {
+                          fileName: attachment.fileName,
+                        })}
+                      >
+                        <Download className="h-3.5 w-3.5" aria-hidden="true" />
+                        {t("attachments.download")}
+                      </a>
+                    </Button>
+                  </div>
+                </li>
+              );
+            })}
           </ul>
         ) : (
           <p className="text-sm text-muted-foreground">
             {t("attachments.empty")}
           </p>
         )}
+        {shouldCollapseAttachments ? (
+          <div className="flex justify-center border-t border-border/60 pt-2">
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              aria-expanded={showAllAttachments}
+              data-testid="document-attachments-toggle"
+              onClick={() => setShowAllAttachments((current) => !current)}
+            >
+              {showAllAttachments
+                ? t("attachments.collapse")
+                : t("attachments.showAll", {
+                    count: attachments.length,
+                  })}
+            </Button>
+          </div>
+        ) : null}
       </section>
     </div>
   );
@@ -2449,7 +2523,7 @@ async function getDocumentWithSubresources(input: {
     listAttachments({
       organizationId: document.organizationId,
       page: 1,
-      pageSize: input.focusedAttachmentId ? 200 : 20,
+      pageSize: DOCUMENT_ATTACHMENT_LIST_PAGE_SIZE,
       spaceId: document.spaceId,
       targetId: document.id,
       targetType: "DOCUMENT",
@@ -2499,6 +2573,10 @@ function toDocumentAttachmentSummary(attachment: Attachment) {
     id: attachment.id,
     size: attachment.size,
   };
+}
+
+function canPreviewDocumentAttachment(attachment: { fileName: string }) {
+  return !/\.(?:doc|docx)$/iu.test(attachment.fileName.trim());
 }
 
 function toDocumentCommentSummary(comment: Comment) {
