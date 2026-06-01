@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   CreateTagRequestSchema,
+  MergeTagsRequestSchema,
   TagDtoSchema,
   TagNameMaxLength,
   normalizeTagNameInput,
@@ -22,6 +23,41 @@ describe("tag contracts", () => {
     expect(CreateTagRequestSchema.parse({ name: "#Release Blocker" })).toEqual({
       name: "#Release Blocker",
     });
+  });
+
+  it("validates tag merge source and target ids", () => {
+    const sourceTagId = "01VRZ3NDEKTSV4RRFFQ69G5FAV";
+    const targetTagId = "01WRZ3NDEKTSV4RRFFQ69G5FAW";
+
+    expect(
+      MergeTagsRequestSchema.parse({
+        sourceTagIds: [sourceTagId],
+        targetTagId,
+        dryRun: true,
+      }),
+    ).toEqual({
+      sourceTagIds: [sourceTagId],
+      targetTagId,
+      dryRun: true,
+    });
+    expect(() =>
+      MergeTagsRequestSchema.parse({
+        sourceTagIds: [],
+        targetTagId,
+      }),
+    ).toThrow();
+    expect(() =>
+      MergeTagsRequestSchema.parse({
+        sourceTagIds: [sourceTagId, sourceTagId],
+        targetTagId,
+      }),
+    ).toThrow();
+    expect(() =>
+      MergeTagsRequestSchema.parse({
+        sourceTagIds: [targetTagId],
+        targetTagId,
+      }),
+    ).toThrow();
   });
 
   it("rejects empty, symbol-only, embedded shortcut, and overlong tag names", () => {

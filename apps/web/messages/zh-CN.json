@@ -3686,6 +3686,8 @@
         "inUse": "使用中"
       },
       "actions": {
+        "merge": "合并到",
+        "mergeAria": "将标签 {name} 合并到其他标签",
         "delete": "删除孤儿标签 {name}"
       }
     },
@@ -3748,6 +3750,38 @@
         "cancel": "取消",
         "submit": "删除",
         "submitting": "删除中…"
+      },
+      "mergeTag": {
+        "title": "合并标签",
+        "description": "选择源标签和目标标签，先预览影响范围，再确认执行合并。",
+        "sourceLabel": "源标签",
+        "sourcePlaceholder": "搜索源标签",
+        "sourceEmpty": "尚未选择源标签",
+        "sourceLimit": "源标签数量已达上限",
+        "targetLabel": "目标标签",
+        "targetPlaceholder": "搜索目标标签",
+        "selectedTarget": "已选择",
+        "warning": "确认后，源标签会被删除；已有对象会改为目标标签；使用源标签 ID 的旧筛选链接不会继续生效。",
+        "previewTitle": "影响预览",
+        "previewEmpty": "请选择目标标签以生成 dryRun 预览。",
+        "previewLoading": "正在生成 dryRun 预览…",
+        "noAffectedTargets": "没有受影响的对象。",
+        "metrics": {
+          "removed": "移除源关联",
+          "created": "新增目标关联",
+          "duplicates": "跳过重复关联",
+          "deletedTags": "删除源标签"
+        },
+        "targetTypes": {
+          "BUG": "Bug",
+          "DOCUMENT": "文档",
+          "INTAKE_ITEM": "事项",
+          "REQUIREMENT": "需求",
+          "WORK_ITEM": "工作项"
+        },
+        "cancel": "取消",
+        "submit": "确认合并",
+        "submitting": "合并中…"
       }
     }
   },

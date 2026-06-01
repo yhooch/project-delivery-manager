@@ -204,6 +204,8 @@ import {
   ListTagFilterOptionsResponseSchema,
   ListTagsQuerySchema,
   ListTagsResponseSchema,
+  MergeTagsRequestSchema,
+  MergeTagsResponseSchema,
   ReplaceTagAssignmentsRequestSchema,
   ReplaceTagAssignmentsResponseSchema,
 } from "./tag.ts";
@@ -749,6 +751,18 @@ export const apiContracts = [
     requestSchema: CreateTagRequestSchema,
     responseSchema: CreateTagResponseSchema,
     errorCodes: [...spaceErrors, "VALIDATION_ERROR", "TAG_NAME_CONFLICT"],
+  }),
+  endpoint({
+    operationId: "mergeTags",
+    method: "post",
+    path: "/spaces/{spaceId}/tags/merge",
+    tags: ["tags"],
+    summary: "Merge tags in a space",
+    pathSchema: SpaceIdPathParamsSchema,
+    querySchema: EmptyObjectSchema,
+    requestSchema: MergeTagsRequestSchema,
+    responseSchema: MergeTagsResponseSchema,
+    errorCodes: [...spaceErrors, "TAG_NOT_FOUND", "VALIDATION_ERROR"],
   }),
   endpoint({
     operationId: "deleteTag",

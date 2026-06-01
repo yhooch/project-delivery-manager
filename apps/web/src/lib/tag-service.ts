@@ -8,15 +8,18 @@ import {
   ListTagFilterOptionsResponseSchema,
   ListTagsQuerySchema,
   ListTagsResponseSchema,
+  MergeTagsRequestSchema,
+  MergeTagsResponseSchema,
   ReplaceTagAssignmentsRequestSchema,
   ReplaceTagAssignmentsResponseSchema,
   type CreateTagRequest,
   type ListTagFilterOptionsResponse,
+  type MergeTagsResponse as SharedMergeTagsResponse,
   type ReplaceTagAssignmentsRequest,
   type TagAssignmentsResponse,
   type TagDto,
 } from "@project-delivery/shared";
-import type { z } from "zod";
+import { z } from "zod";
 
 import { apiClient, type ApiRequestInit } from "./api-client";
 
@@ -53,6 +56,11 @@ export type GetTagAssignmentsInput = z.input<
   typeof GetTagAssignmentsQuerySchema
 >;
 export type ReplaceTagAssignmentsInput = ReplaceTagAssignmentsRequest;
+export type MergeTagsInput = z.input<typeof MergeTagsRequestSchema> & {
+  organizationId?: string;
+  spaceId: string;
+};
+export type MergeTagsResponse = SharedMergeTagsResponse;
 
 const defaultApi: TagApiTransport = apiClient;
 
@@ -124,4 +132,18 @@ export async function replaceTagAssignments(
   const response = await api.patch<unknown>("/tag-assignments", body);
 
   return ReplaceTagAssignmentsResponseSchema.parse(response.data);
+}
+
+export async function mergeTags(
+  input: MergeTagsInput,
+  api: TagApiTransport = defaultApi,
+): Promise<MergeTagsResponse> {
+  const { organizationId: _organizationId, spaceId, ...request } = input;
+  const body = MergeTagsRequestSchema.parse(request);
+  const response = await api.post<unknown>(
+    `/spaces/${spaceId}/tags/merge`,
+    body,
+  );
+
+  return MergeTagsResponseSchema.parse(response.data);
 }

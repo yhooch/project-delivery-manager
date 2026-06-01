@@ -3686,6 +3686,8 @@
         "inUse": "In use"
       },
       "actions": {
+        "merge": "Merge into",
+        "mergeAria": "Merge tag {name} into another tag",
         "delete": "Delete orphan tag {name}"
       }
     },
@@ -3748,6 +3750,38 @@
         "cancel": "Cancel",
         "submit": "Delete",
         "submitting": "Deleting…"
+      },
+      "mergeTag": {
+        "title": "Merge tag",
+        "description": "Choose source tags and a target tag, preview the impact, then confirm the merge.",
+        "sourceLabel": "Source tags",
+        "sourcePlaceholder": "Search source tags",
+        "sourceEmpty": "No source tags selected",
+        "sourceLimit": "Source tag limit reached",
+        "targetLabel": "Target tag",
+        "targetPlaceholder": "Search target tags",
+        "selectedTarget": "Selected",
+        "warning": "After confirmation, the source tags will be deleted, existing objects will move to the target tag, and old filter links using source tag IDs will stop working.",
+        "previewTitle": "Impact preview",
+        "previewEmpty": "Choose a target tag to generate a dry-run preview.",
+        "previewLoading": "Generating dry-run preview…",
+        "noAffectedTargets": "No affected objects.",
+        "metrics": {
+          "removed": "Source links removed",
+          "created": "Target links created",
+          "duplicates": "Duplicates skipped",
+          "deletedTags": "Source tags deleted"
+        },
+        "targetTypes": {
+          "BUG": "Bugs",
+          "DOCUMENT": "Documents",
+          "INTAKE_ITEM": "Intake items",
+          "REQUIREMENT": "Requirements",
+          "WORK_ITEM": "Work items"
+        },
+        "cancel": "Cancel",
+        "submit": "Confirm merge",
+        "submitting": "Merging…"
       }
     }
   },

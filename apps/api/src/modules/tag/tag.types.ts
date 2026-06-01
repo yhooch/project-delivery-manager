@@ -2,6 +2,8 @@ import type {
   GetTagAssignmentsQuery,
   ListTagFilterOptionsQuery,
   ListTagsQuery,
+  MergeTagsRequest,
+  MergeTagsResponse,
   PageResult,
   ReplaceTagAssignmentsRequest,
   TagDto,
@@ -48,6 +50,17 @@ export type SoftDeleteTagResult =
   | {
       status: "not_found";
     };
+
+export type MergeTagsInput = Pick<
+  MergeTagsRequest,
+  "sourceTagIds" | "targetTagId" | "dryRun"
+> & {
+  organizationId: string;
+  spaceId: string;
+  updatedById: string;
+};
+
+export type MergeTagsResult = MergeTagsResponse;
 
 export type TagListResult = PageResult<TagDto>;
 

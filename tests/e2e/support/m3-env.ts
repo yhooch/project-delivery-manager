@@ -275,6 +275,7 @@ export async function createConfirmedRequirement(
     "POST /spaces/:spaceId/requirements",
   );
   const response = await patch(actor, `/requirements/${draft.id}`, {
+    baseRevision: draft.revision ?? 1,
     contentJson: {
       type: "doc",
       content: [{ type: "paragraph" }],

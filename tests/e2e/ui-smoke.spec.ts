@@ -21,9 +21,8 @@ test.describe("UI smoke 主链路", () => {
     await page.getByTestId("register-submit").click();
 
     // After register the app shell loads (no organization → onboarding empty state).
-    // `localePrefix: "as-needed"` strips /zh-CN for the default locale, so the
-    // final URL is just the site root.
-    await expect(page).toHaveURL(`${e2eEnv.webBaseURL}/`, {
+    // `localePrefix: "always"` keeps the /zh-CN prefix for the default locale.
+    await expect(page).toHaveURL(`${e2eEnv.webBaseURL}/zh-CN`, {
       timeout: 10_000,
     });
     // Theme/language toggles are part of the shell top bar.

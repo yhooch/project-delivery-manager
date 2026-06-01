@@ -1,18 +1,26 @@
 import { Inject, Injectable } from "@nestjs/common";
-import type { TagDto, TagTargetType } from "@project-delivery/shared";
+import type {
+  TagDto,
+  TagTargetType,
+  TimelineEventMetadata,
+} from "@project-delivery/shared";
+import { ulid } from "ulid";
 
 import { Prisma } from "../../generated/prisma/client";
 import { PrismaService } from "../../prisma/prisma.service";
 import { buildSpaceExceptionSignals } from "../space/space-exception.helpers";
+import { createTimelineEventRecord } from "../timeline/timeline-event-writer";
 import {
   listTagsByTarget,
   listTagsByTargets,
+  lockActiveTagsInTransaction,
   replaceTagAssignmentsInTransaction,
 } from "./tag-assignment.helpers";
 import { toTagDto } from "./tag.mappers";
 import type { TagRepository } from "./tag.repository";
 import type {
   CreateTagInput,
+  MergeTagsInput,
   TagFilterOptionsInput,
   ListTagsByTargetsInput,
   ReplaceTagAssignmentsInput,
@@ -24,6 +32,16 @@ import type {
 const TERMINAL_STATUS_CATEGORIES = ["DONE", "TERMINATED"] as const;
 const REQUIREMENT_DOCUMENT_KIND = "REQUIREMENT" as const;
 const REQUIREMENT_TAG_TARGET_TYPE = "DOCUMENT" as const;
+const TAG_TARGET_TYPES: TagTargetType[] = [
+  "INTAKE_ITEM",
+  "WORK_ITEM",
+  "DOCUMENT",
+];
+
+type TagAssignmentTargetFields = {
+  targetId: string;
+  targetType: TagTargetType;
+};
 
 @Injectable()
 export class PrismaTagRepository implements TagRepository {
@@ -140,6 +158,211 @@ export class PrismaTagRepository implements TagRepository {
     return this.prisma.client.$transaction((tx) =>
       replaceTagAssignmentsInTransaction(tx, input),
     );
+  }
+
+  async merge(input: MergeTagsInput) {
+    const sourceTagIds = unique(input.sourceTagIds);
+    const tagIdsToLock = unique([input.targetTagId, ...sourceTagIds]).sort();
+
+    return this.prisma.client.$transaction(async (tx) => {
+      const lockedTags = await lockActiveTagsInTransaction(tx, {
+        organizationId: input.organizationId,
+        spaceId: input.spaceId,
+        tagIds: tagIdsToLock,
+      });
+
+      if (lockedTags.length !== tagIdsToLock.length) {
+        return undefined;
+      }
+
+      const tagsById = new Map(lockedTags.map((tag) => [tag.id, tag]));
+      const targetTag = tagsById.get(input.targetTagId);
+      const sourceTags = sourceTagIds.map((tagId) => tagsById.get(tagId));
+      const resolvedSourceTags = sourceTags.filter(
+        (tag): tag is TagDto => Boolean(tag),
+      );
+
+      if (!targetTag || resolvedSourceTags.length !== sourceTagIds.length) {
+        return undefined;
+      }
+
+      const activeSourceAssignments = await tx.tagAssignment.findMany({
+        orderBy: [{ targetType: "asc" }, { targetId: "asc" }, { tagId: "asc" }],
+        where: {
+          deletedAt: null,
+          organizationId: input.organizationId,
+          spaceId: input.spaceId,
+          tagId: {
+            in: sourceTagIds,
+          },
+        },
+      });
+      const affectedTargetsByType = countAffectedTargetsByType(
+        activeSourceAssignments,
+      );
+      const affectedTargetIds = unique(
+        activeSourceAssignments.map((assignment) => assignment.targetId),
+      );
+      const targetAssignments =
+        affectedTargetIds.length === 0
+          ? []
+          : await tx.tagAssignment.findMany({
+              orderBy: {
+                updatedAt: "desc",
+              },
+              where: {
+                organizationId: input.organizationId,
+                spaceId: input.spaceId,
+                tagId: input.targetTagId,
+                targetId: {
+                  in: affectedTargetIds,
+                },
+              },
+            });
+      const targetAssignmentByTargetKey = new Map<
+        string,
+        (typeof targetAssignments)[number]
+      >();
+
+      for (const assignment of targetAssignments) {
+        const key = tagTargetKey(assignment);
+
+        if (!targetAssignmentByTargetKey.has(key)) {
+          targetAssignmentByTargetKey.set(key, assignment);
+        }
+      }
+
+      const targetAssignmentsToMaterialize = new Map<
+        string,
+        Pick<(typeof activeSourceAssignments)[number], "targetId" | "targetType">
+      >();
+      const targetAlreadyMaterialized = new Set(
+        targetAssignments
+          .filter((assignment) => assignment.deletedAt === null)
+          .map((assignment) => tagTargetKey(assignment)),
+      );
+      let duplicateAssignmentsSkipped = 0;
+
+      for (const assignment of activeSourceAssignments) {
+        const key = tagTargetKey(assignment);
+
+        if (targetAlreadyMaterialized.has(key)) {
+          duplicateAssignmentsSkipped += 1;
+          continue;
+        }
+
+        targetAlreadyMaterialized.add(key);
+        targetAssignmentsToMaterialize.set(key, {
+          targetId: assignment.targetId,
+          targetType: assignment.targetType,
+        });
+      }
+
+      const targetAssignmentsCreated = targetAssignmentsToMaterialize.size;
+      const sourceAssignmentsRemoved = activeSourceAssignments.length;
+      const deletedSourceTags = sourceTagIds.length;
+      const mergeMetadata = buildTagMergeTimelineMetadata({
+        affectedTargetsByType,
+        deletedSourceTags,
+        duplicateAssignmentsSkipped,
+        sourceAssignmentsRemoved,
+        sourceTagIds,
+        targetAssignmentsCreated,
+        targetTagId: input.targetTagId,
+      });
+
+      if (!input.dryRun) {
+        for (const [key, target] of targetAssignmentsToMaterialize) {
+          const existing = targetAssignmentByTargetKey.get(key);
+
+          if (existing) {
+            await tx.tagAssignment.update({
+              data: {
+                assignedById: input.updatedById,
+                deletedAt: null,
+              },
+              where: {
+                id: existing.id,
+              },
+            });
+            continue;
+          }
+
+          await tx.tagAssignment.create({
+            data: {
+              id: ulid(),
+              assignedById: input.updatedById,
+              organizationId: input.organizationId,
+              spaceId: input.spaceId,
+              tagId: input.targetTagId,
+              targetId: target.targetId,
+              targetType: target.targetType,
+            },
+          });
+        }
+
+        const deletedAt = new Date();
+
+        if (activeSourceAssignments.length > 0) {
+          await tx.tagAssignment.updateMany({
+            data: {
+              deletedAt,
+            },
+            where: {
+              deletedAt: null,
+              id: {
+                in: activeSourceAssignments.map((assignment) => assignment.id),
+              },
+            },
+          });
+        }
+
+        await tx.tag.updateMany({
+          data: {
+            deletedAt,
+            updatedById: input.updatedById,
+          },
+          where: {
+            deletedAt: null,
+            id: {
+              in: sourceTagIds,
+            },
+            organizationId: input.organizationId,
+            spaceId: input.spaceId,
+          },
+        });
+
+        await createTimelineEventRecord(tx, {
+          actorUserId: input.updatedById,
+          after: {
+            ...mergeMetadata,
+          },
+          before: {
+            sourceTags: resolvedSourceTags,
+            targetTag,
+          },
+          detail: formatTagMergeTimelineDetail(resolvedSourceTags, targetTag),
+          eventType: "UPDATED",
+          metadata: mergeMetadata,
+          organizationId: input.organizationId,
+          spaceId: input.spaceId,
+          targetId: input.spaceId,
+          targetType: "SPACE",
+          title: "合并标签",
+        });
+      }
+
+      return {
+        targetTag,
+        sourceTags: resolvedSourceTags,
+        dryRun: input.dryRun,
+        sourceAssignmentsRemoved,
+        targetAssignmentsCreated,
+        duplicateAssignmentsSkipped,
+        deletedSourceTags,
+        affectedTargetsByType,
+      };
+    });
   }
 
   async softDeleteOrphan(input: SoftDeleteTagInput) {
@@ -441,6 +664,38 @@ export class PrismaTagRepository implements TagRepository {
   }
 }
 
+function buildTagMergeTimelineMetadata(input: {
+  affectedTargetsByType: Array<{ targetType: TagTargetType; count: number }>;
+  deletedSourceTags: number;
+  duplicateAssignmentsSkipped: number;
+  sourceAssignmentsRemoved: number;
+  sourceTagIds: string[];
+  targetAssignmentsCreated: number;
+  targetTagId: string;
+}): TimelineEventMetadata {
+  return {
+    operation: "MERGE_TAGS",
+    sourceTagIds: input.sourceTagIds,
+    targetTagId: input.targetTagId,
+    sourceAssignmentsRemoved: input.sourceAssignmentsRemoved,
+    targetAssignmentsCreated: input.targetAssignmentsCreated,
+    duplicateAssignmentsSkipped: input.duplicateAssignmentsSkipped,
+    deletedSourceTags: input.deletedSourceTags,
+    affectedTargetsByType: input.affectedTargetsByType,
+  };
+}
+
+function formatTagMergeTimelineDetail(
+  sourceTags: TagDto[],
+  targetTag: TagDto,
+) {
+  const sourceNames = sourceTags.map((tag) => tag.displayName).join(", ");
+
+  return sourceNames
+    ? `将 ${sourceNames} 合并到 ${targetTag.displayName}`
+    : `合并到 ${targetTag.displayName}`;
+}
+
 function toTagOrderBy(
   input: Pick<TagListInput, "sortBy" | "sortOrder">,
 ): Prisma.TagOrderByWithRelationInput[] {
@@ -459,4 +714,23 @@ function toTagOrderBy(
 
 function unique(values: string[]) {
   return Array.from(new Set(values.filter(Boolean)));
+}
+
+function tagTargetKey(input: TagAssignmentTargetFields) {
+  return `${input.targetType}:${input.targetId}`;
+}
+
+function countAffectedTargetsByType(assignments: TagAssignmentTargetFields[]) {
+  const targetsByType = new Map<TagTargetType, Set<string>>(
+    TAG_TARGET_TYPES.map((targetType) => [targetType, new Set<string>()]),
+  );
+
+  for (const assignment of assignments) {
+    targetsByType.get(assignment.targetType)?.add(assignment.targetId);
+  }
+
+  return TAG_TARGET_TYPES.map((targetType) => ({
+    targetType,
+    count: targetsByType.get(targetType)?.size ?? 0,
+  })).filter((item) => item.count > 0);
 }

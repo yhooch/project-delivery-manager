@@ -7,7 +7,7 @@ import type {
   TagDto,
   UpdateSpaceRequest,
 } from "@project-delivery/shared";
-import { Plus, ShieldCheck, Trash2 } from "lucide-react";
+import { Merge, Plus, ShieldCheck, Trash2 } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
 import {
   useCallback,
@@ -32,9 +32,14 @@ import {
   updateSpace,
   updateSpaceMember,
 } from "../../lib/space-service";
-import { deleteTag, listTags } from "../../lib/tag-service";
+import {
+  deleteTag,
+  listTags,
+  mergeTags,
+  type MergeTagsResponse,
+} from "../../lib/tag-service";
 import { cn } from "../../lib/utils";
-import { TagBadge } from "../tag";
+import { TagBadge, TagPicker } from "../tag";
 import { useSession } from "../providers/session-provider";
 
 import { Avatar, AvatarFallback } from "../ui/avatar";
@@ -68,6 +73,8 @@ const SPACE_ROLES: readonly SpaceRole[] = [
   "MEMBER",
   "VIEWER",
 ];
+
+const TAG_MERGE_SOURCE_LIMIT = 20;
 
 const roleVariant: Record<string, "primary" | "info" | "warning" | "default"> =
   {
@@ -136,8 +143,18 @@ export function SpaceSettingsPage() {
   const [tagDeleteCandidate, setTagDeleteCandidate] = useState<TagDto | null>(
     null,
   );
+  const [isTagMergeDialogOpen, setIsTagMergeDialogOpen] = useState(false);
+  const [tagMergeSources, setTagMergeSources] = useState<TagDto[]>([]);
+  const [tagMergeTarget, setTagMergeTarget] = useState<TagDto | null>(null);
+  const [tagMergePreview, setTagMergePreview] =
+    useState<MergeTagsResponse | null>(null);
+  const [tagMergeErrorKey, setTagMergeErrorKey] = useState<string | null>(null);
+  const [isLoadingTagMergePreview, setIsLoadingTagMergePreview] =
+    useState(false);
+  const [isMergingTag, setIsMergingTag] = useState(false);
   const loadSequenceRef = useRef(0);
   const tagLoadSequenceRef = useRef(0);
+  const tagMergeRequestSequenceRef = useRef(0);
 
   const organizationId =
     space?.organizationId ??
@@ -287,6 +304,14 @@ export function SpaceSettingsPage() {
     setTagActionErrorKey(null);
     setPendingTagId(null);
     setTagDeleteCandidate(null);
+    setIsTagMergeDialogOpen(false);
+    setTagMergeSources([]);
+    setTagMergeTarget(null);
+    setTagMergePreview(null);
+    setTagMergeErrorKey(null);
+    setIsLoadingTagMergePreview(false);
+    setIsMergingTag(false);
+    tagMergeRequestSequenceRef.current += 1;
   }, [spaceId]);
 
   useEffect(() => {
@@ -477,6 +502,149 @@ export function SpaceSettingsPage() {
     setTagDeleteCandidate(null);
   }
 
+  function openTagMergeDialog(tag: TagDto) {
+    tagMergeRequestSequenceRef.current += 1;
+    setIsTagMergeDialogOpen(true);
+    setTagMergeSources([tag]);
+    setTagMergeTarget(null);
+    setTagMergePreview(null);
+    setTagMergeErrorKey(null);
+    setIsLoadingTagMergePreview(false);
+    setIsMergingTag(false);
+  }
+
+  function onTagMergeDialogOpenChange(open: boolean) {
+    if (open || isMergingTag) {
+      return;
+    }
+
+    tagMergeRequestSequenceRef.current += 1;
+    setIsTagMergeDialogOpen(false);
+    setTagMergeSources([]);
+    setTagMergeTarget(null);
+    setTagMergePreview(null);
+    setTagMergeErrorKey(null);
+    setIsLoadingTagMergePreview(false);
+  }
+
+  function addTagMergeSource(tag: TagDto) {
+    if (
+      tagMergeSources.length >= TAG_MERGE_SOURCE_LIMIT ||
+      tagMergeSources.some((item) => item.id === tag.id) ||
+      tagMergeTarget?.id === tag.id
+    ) {
+      return;
+    }
+
+    const nextSources = [...tagMergeSources, tag];
+    setTagMergeSources(nextSources);
+
+    if (tagMergeTarget) {
+      void previewTagMerge(tagMergeTarget, nextSources);
+      return;
+    }
+
+    tagMergeRequestSequenceRef.current += 1;
+    setTagMergePreview(null);
+    setTagMergeErrorKey(null);
+    setIsLoadingTagMergePreview(false);
+  }
+
+  function removeTagMergeSource(tagId: string) {
+    const nextSources = tagMergeSources.filter((tag) => tag.id !== tagId);
+    setTagMergeSources(nextSources);
+
+    if (nextSources.length === 0) {
+      tagMergeRequestSequenceRef.current += 1;
+      setTagMergePreview(null);
+      setTagMergeErrorKey(null);
+      setIsLoadingTagMergePreview(false);
+      return;
+    }
+
+    if (tagMergeTarget) {
+      void previewTagMerge(tagMergeTarget, nextSources);
+      return;
+    }
+
+    tagMergeRequestSequenceRef.current += 1;
+    setTagMergePreview(null);
+    setTagMergeErrorKey(null);
+    setIsLoadingTagMergePreview(false);
+  }
+
+  async function previewTagMerge(
+    targetTag: TagDto,
+    sourceTags = tagMergeSources,
+  ) {
+    const sourceTagIds = sourceTags.map((tag) => tag.id);
+    if (!spaceId) {
+      return;
+    }
+
+    const sequence = ++tagMergeRequestSequenceRef.current;
+    setTagMergeTarget(targetTag);
+    setTagMergePreview(null);
+    setTagMergeErrorKey(null);
+
+    if (sourceTagIds.length === 0) {
+      setIsLoadingTagMergePreview(false);
+      return;
+    }
+
+    setIsLoadingTagMergePreview(true);
+
+    try {
+      const preview = await mergeTags({
+        dryRun: true,
+        organizationId,
+        sourceTagIds,
+        targetTagId: targetTag.id,
+        spaceId,
+      });
+      if (tagMergeRequestSequenceRef.current !== sequence) return;
+      setTagMergePreview(preview);
+    } catch (error) {
+      if (tagMergeRequestSequenceRef.current !== sequence) return;
+      setTagMergeErrorKey(getApiErrorMessageKey(error));
+    } finally {
+      if (tagMergeRequestSequenceRef.current === sequence) {
+        setIsLoadingTagMergePreview(false);
+      }
+    }
+  }
+
+  async function onConfirmMergeTag() {
+    const targetTag = tagMergeTarget;
+    const sourceTagIds = tagMergeSources.map((tag) => tag.id);
+    if (sourceTagIds.length === 0 || !targetTag || !spaceId) {
+      return;
+    }
+
+    setIsMergingTag(true);
+    setTagMergeErrorKey(null);
+
+    try {
+      await mergeTags({
+        dryRun: false,
+        organizationId,
+        sourceTagIds,
+        targetTagId: targetTag.id,
+        spaceId,
+      });
+      await loadTags();
+      tagMergeRequestSequenceRef.current += 1;
+      setIsTagMergeDialogOpen(false);
+      setTagMergeSources([]);
+      setTagMergeTarget(null);
+      setTagMergePreview(null);
+    } catch (error) {
+      setTagMergeErrorKey(getApiErrorMessageKey(error));
+    } finally {
+      setIsMergingTag(false);
+    }
+  }
+
   const headerNode = (
     <PageHeader
       eyebrow={currentSpace?.name ?? tShell("group.configure")}
@@ -545,6 +713,7 @@ export function SpaceSettingsPage() {
   }
 
   const spaceStatus = space.status ?? currentSpace?.status ?? "ACTIVE";
+  const canMergeTags = writeAllowed;
   const activeMemberCount = members.filter(
     (member) => member.status === "ACTIVE",
   ).length;
@@ -552,6 +721,22 @@ export function SpaceSettingsPage() {
     ? members.find((member) => member.userId === space.ownerId)
     : undefined;
   const emptyValue = tRoot("common.emptyValue");
+  const tagMergeSourceIds = tagMergeSources.map((tag) => tag.id);
+  const canAddTagMergeSource =
+    tagMergeSources.length < TAG_MERGE_SOURCE_LIMIT && !isMergingTag;
+  const canSubmitTagMerge =
+    tagMergeSources.length > 0 &&
+    tagMergeTarget !== null &&
+    tagMergePreview !== null &&
+    !isLoadingTagMergePreview &&
+    !isMergingTag;
+  const tagMergeTargetTypeLabels: Record<string, string> = {
+    BUG: t("dialog.mergeTag.targetTypes.BUG"),
+    DOCUMENT: t("dialog.mergeTag.targetTypes.DOCUMENT"),
+    INTAKE_ITEM: t("dialog.mergeTag.targetTypes.INTAKE_ITEM"),
+    REQUIREMENT: t("dialog.mergeTag.targetTypes.REQUIREMENT"),
+    WORK_ITEM: t("dialog.mergeTag.targetTypes.WORK_ITEM"),
+  };
 
   return (
     <div
@@ -984,6 +1169,21 @@ export function SpaceSettingsPage() {
                               ? t("tags.status.orphan")
                               : t("tags.status.inUse")}
                           </Badge>
+                          {canMergeTags ? (
+                            <Button
+                              variant="secondary"
+                              size="sm"
+                              data-testid={`space-settings-tag-merge-${tag.id}`}
+                              disabled={pendingTagId === tag.id}
+                              onClick={() => openTagMergeDialog(tag)}
+                              aria-label={t("tags.actions.mergeAria", {
+                                name: tag.displayName,
+                              })}
+                            >
+                              <Merge className="h-4 w-4" />
+                              {t("tags.actions.merge")}
+                            </Button>
+                          ) : null}
                           {canDeleteOrphanTags && isOrphan ? (
                             <Button
                               variant="ghost"
@@ -1233,6 +1433,182 @@ export function SpaceSettingsPage() {
       />
 
       <Dialog
+        onOpenChange={onTagMergeDialogOpenChange}
+        open={isTagMergeDialogOpen}
+      >
+        <DialogContent className="max-w-xl">
+          <DialogHeader>
+            <DialogTitle>{t("dialog.mergeTag.title")}</DialogTitle>
+            <DialogDescription>
+              {t("dialog.mergeTag.description")}
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="flex min-w-0 flex-col gap-5">
+            <div className="flex min-w-0 flex-col gap-2 rounded-md border border-border bg-muted/20 px-4 py-3">
+              <Label
+                htmlFor="space-tag-merge-source"
+                className="text-xs font-medium text-muted-foreground"
+              >
+                {t("dialog.mergeTag.sourceLabel")}
+              </Label>
+              <div className="flex min-h-7 flex-wrap items-center gap-2">
+                {tagMergeSources.length > 0 ? (
+                  tagMergeSources.map((tag) => (
+                    <TagBadge
+                      key={tag.id}
+                      data-testid={`space-settings-tag-merge-source-${tag.id}`}
+                      disabled={isMergingTag}
+                      onRemove={() => removeTagMergeSource(tag.id)}
+                      tag={tag}
+                    />
+                  ))
+                ) : (
+                  <span className="text-sm text-muted-foreground">
+                    {t("dialog.mergeTag.sourceEmpty")}
+                  </span>
+                )}
+              </div>
+              <TagPicker
+                allowCreate={false}
+                data-testid="space-settings-tag-merge-source-picker"
+                disabled={!canAddTagMergeSource}
+                excludeTagIds={tagMergeTarget ? [tagMergeTarget.id] : []}
+                inputId="space-tag-merge-source"
+                onSelect={addTagMergeSource}
+                organizationId={organizationId}
+                placeholder={
+                  canAddTagMergeSource
+                    ? t("dialog.mergeTag.sourcePlaceholder")
+                    : t("dialog.mergeTag.sourceLimit")
+                }
+                selectedTags={tagMergeSources}
+                spaceId={spaceId}
+              />
+            </div>
+
+            <p className="rounded-md bg-warning/10 px-4 py-3 text-sm leading-6 text-foreground">
+              {t("dialog.mergeTag.warning")}
+            </p>
+
+            <div className="flex min-w-0 flex-col gap-2">
+              <Label
+                htmlFor="space-tag-merge-target"
+                className="text-sm font-medium"
+              >
+                {t("dialog.mergeTag.targetLabel")}
+              </Label>
+              {tagMergeTarget ? (
+                <div className="flex min-w-0 items-center gap-2 text-xs text-muted-foreground">
+                  <span>{t("dialog.mergeTag.selectedTarget")}</span>
+                  <TagBadge tag={tagMergeTarget} />
+                </div>
+              ) : null}
+              <TagPicker
+                allowCreate={false}
+                data-testid="space-settings-tag-merge-target-picker"
+                excludeTagIds={tagMergeSourceIds}
+                inputId="space-tag-merge-target"
+                onSelect={(tag) => void previewTagMerge(tag)}
+                organizationId={organizationId}
+                placeholder={t("dialog.mergeTag.targetPlaceholder")}
+                selectedTags={tagMergeTarget ? [tagMergeTarget] : []}
+                spaceId={spaceId}
+              />
+            </div>
+
+            {tagMergeErrorKey ? (
+              <div
+                className="rounded-md bg-destructive/10 px-4 py-3 text-sm text-destructive"
+                role="alert"
+              >
+                {tRoot(tagMergeErrorKey)}
+              </div>
+            ) : null}
+
+            <div
+              className="rounded-md border border-border px-4 py-3"
+              data-testid="space-settings-tag-merge-preview"
+            >
+              <div className="text-sm font-medium text-foreground">
+                {t("dialog.mergeTag.previewTitle")}
+              </div>
+              {isLoadingTagMergePreview ? (
+                <p className="mt-2 text-sm text-muted-foreground">
+                  {t("dialog.mergeTag.previewLoading")}
+                </p>
+              ) : tagMergePreview ? (
+                <div className="mt-3 flex flex-col gap-3">
+                  <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+                    <TagMergePreviewMetric
+                      label={t("dialog.mergeTag.metrics.removed")}
+                      value={tagMergePreview.sourceAssignmentsRemoved}
+                    />
+                    <TagMergePreviewMetric
+                      label={t("dialog.mergeTag.metrics.created")}
+                      value={tagMergePreview.targetAssignmentsCreated}
+                    />
+                    <TagMergePreviewMetric
+                      label={t("dialog.mergeTag.metrics.duplicates")}
+                      value={tagMergePreview.duplicateAssignmentsSkipped}
+                    />
+                    <TagMergePreviewMetric
+                      label={t("dialog.mergeTag.metrics.deletedTags")}
+                      value={tagMergePreview.deletedSourceTags}
+                    />
+                  </div>
+                  {tagMergePreview.affectedTargetsByType.length > 0 ? (
+                    <div className="flex flex-wrap gap-2">
+                      {tagMergePreview.affectedTargetsByType.map((item) => (
+                        <Badge
+                          key={item.targetType}
+                          variant="outline"
+                          className="font-normal"
+                        >
+                          {tagMergeTargetTypeLabels[item.targetType] ??
+                            item.targetType}
+                          : {item.count}
+                        </Badge>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-sm text-muted-foreground">
+                      {t("dialog.mergeTag.noAffectedTargets")}
+                    </p>
+                  )}
+                </div>
+              ) : (
+                <p className="mt-2 text-sm text-muted-foreground">
+                  {t("dialog.mergeTag.previewEmpty")}
+                </p>
+              )}
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button
+              disabled={isMergingTag}
+              onClick={() => onTagMergeDialogOpenChange(false)}
+              type="button"
+              variant="secondary"
+            >
+              {t("dialog.mergeTag.cancel")}
+            </Button>
+            <Button
+              disabled={!canSubmitTagMerge}
+              onClick={() => void onConfirmMergeTag()}
+              type="button"
+              data-testid="space-settings-tag-merge-submit"
+            >
+              {isMergingTag
+                ? t("dialog.mergeTag.submitting")
+                : t("dialog.mergeTag.submit")}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
         onOpenChange={onTagDeleteDialogOpenChange}
         open={tagDeleteCandidate !== null}
       >
@@ -1267,6 +1643,25 @@ export function SpaceSettingsPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+    </div>
+  );
+}
+
+function TagMergePreviewMetric({
+  label,
+  value,
+}: {
+  label: string;
+  value: number;
+}) {
+  return (
+    <div className="rounded-md bg-muted/30 px-3 py-2">
+      <div className="text-lg font-semibold tabular-nums text-foreground">
+        {value}
+      </div>
+      <div className="mt-0.5 text-[11px] leading-4 text-muted-foreground">
+        {label}
+      </div>
     </div>
   );
 }

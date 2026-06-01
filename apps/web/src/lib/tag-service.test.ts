@@ -7,6 +7,7 @@ import {
   getTagAssignments,
   listTagFilterOptions,
   listTags,
+  mergeTags,
   replaceTagAssignments,
   type TagApiTransport,
 } from "./tag-service";
@@ -151,6 +152,44 @@ describe("tag service", () => {
       targetId,
       targetType: "WORK_ITEM",
       tagIds: [tagId, secondTagId],
+    });
+  });
+
+  it("merges source tags into a target tag through the space endpoint", async () => {
+    const response = {
+      targetTag: makeTag({
+        id: secondTagId,
+        name: "frontend",
+        displayName: "#frontend",
+        normalizedName: "frontend",
+      }),
+      sourceTags: [makeTag()],
+      dryRun: true,
+      sourceAssignmentsRemoved: 3,
+      targetAssignmentsCreated: 2,
+      duplicateAssignmentsSkipped: 1,
+      deletedSourceTags: 0,
+      affectedTargetsByType: [{ targetType: "WORK_ITEM", count: 3 }],
+    };
+    const api = createApi(response);
+
+    await expect(
+      mergeTags(
+        {
+          organizationId,
+          sourceTagIds: [tagId],
+          targetTagId: secondTagId,
+          dryRun: true,
+          spaceId,
+        },
+        api,
+      ),
+    ).resolves.toEqual(response);
+
+    expect(api.post).toHaveBeenCalledWith(`/spaces/${spaceId}/tags/merge`, {
+      sourceTagIds: [tagId],
+      targetTagId: secondTagId,
+      dryRun: true,
     });
   });
 });

@@ -10,6 +10,8 @@ import type { TagRepository } from "./tag.repository";
 import { TagService } from "./tag.service";
 import type {
   CreateTagInput,
+  MergeTagsInput,
+  MergeTagsResult,
   SoftDeleteTagInput,
   SoftDeleteTagResult,
   TagFilterOptionsInput,
@@ -21,6 +23,7 @@ const ORGANIZATION_ID = "01H00000000000000000000000";
 const SPACE_ID = "01H00000000000000000000001";
 const ACTOR_ID = "01H00000000000000000000002";
 const TAG_ID = "01H00000000000000000000003";
+const SOURCE_TAG_ID = "01H00000000000000000000004";
 
 describe("TagService", () => {
   it("lists visible space tags with normalized query and usage flag", async () => {
@@ -205,6 +208,134 @@ describe("TagService", () => {
     );
   });
 
+  it("merges source tags for PM and publishes full refresh realtime hints", async () => {
+    const subject = createSubject("PM");
+    const targetTag = makeTag({ id: TAG_ID, name: "Backend" });
+    const sourceTag = makeTag({ id: SOURCE_TAG_ID, name: "Old Backend" });
+
+    subject.tags.mergeResult = {
+      targetTag,
+      sourceTags: [sourceTag],
+      dryRun: false,
+      sourceAssignmentsRemoved: 2,
+      targetAssignmentsCreated: 1,
+      duplicateAssignmentsSkipped: 1,
+      deletedSourceTags: 1,
+      affectedTargetsByType: [{ targetType: "WORK_ITEM", count: 1 }],
+    };
+
+    await expect(
+      subject.service.merge(
+        ACTOR_ID,
+        SPACE_ID,
+        {
+          sourceTagIds: [SOURCE_TAG_ID],
+          targetTagId: TAG_ID,
+          dryRun: false,
+        },
+        { requestId: "req-merge-tags" },
+      ),
+    ).resolves.toEqual(subject.tags.mergeResult);
+    expect(subject.tags.mergeInput).toEqual({
+      dryRun: false,
+      organizationId: ORGANIZATION_ID,
+      spaceId: SPACE_ID,
+      sourceTagIds: [SOURCE_TAG_ID],
+      targetTagId: TAG_ID,
+      updatedById: ACTOR_ID,
+    });
+    expect(subject.audit.record).toHaveBeenCalledWith(
+      expect.objectContaining({
+        actionType: "UPDATE",
+        actorId: ACTOR_ID,
+        metadata: expect.objectContaining({
+          affectedTargetsByType: [{ targetType: "WORK_ITEM", count: 1 }],
+          deletedSourceTags: 1,
+          duplicateAssignmentsSkipped: 1,
+          operation: "MERGE_TAGS",
+          sourceTagIds: [SOURCE_TAG_ID],
+          sourceAssignmentsRemoved: 2,
+          targetAssignmentsCreated: 1,
+          targetTagId: TAG_ID,
+        }),
+        organizationId: ORGANIZATION_ID,
+        requestId: "req-merge-tags",
+        spaceId: SPACE_ID,
+        targetId: SPACE_ID,
+        targetType: "SPACE",
+      }),
+    );
+    expect(subject.realtime.publish).toHaveBeenCalledWith(
+      expect.objectContaining({
+        operation: "TAG_CHANGED",
+        target: { type: "SPACE", id: SPACE_ID },
+        invalidates: expect.arrayContaining([
+          "work-item-list",
+          "bug-list",
+          "requirement-list",
+          "requirement-detail",
+          "document-list",
+          "document-detail",
+          "resource-documents",
+          "version-board",
+          "workbench",
+          "space-overview",
+          "timeline",
+          "exception-view",
+        ]),
+        hints: expect.objectContaining({
+          sourceTagIds: [SOURCE_TAG_ID],
+          targetTagId: TAG_ID,
+          changedFields: ["tags", "tagIds"],
+          suggestFullRefresh: true,
+          targetId: SPACE_ID,
+          targetType: "SPACE",
+        }),
+      }),
+    );
+  });
+
+  it("returns dry-run merge statistics without audit or realtime writes", async () => {
+    const subject = createSubject("SPACE_ADMIN");
+
+    subject.tags.mergeResult = {
+      targetTag: makeTag({ id: TAG_ID }),
+      sourceTags: [makeTag({ id: SOURCE_TAG_ID })],
+      dryRun: true,
+      sourceAssignmentsRemoved: 1,
+      targetAssignmentsCreated: 1,
+      duplicateAssignmentsSkipped: 0,
+      deletedSourceTags: 1,
+      affectedTargetsByType: [{ targetType: "INTAKE_ITEM", count: 1 }],
+    };
+
+    await expect(
+      subject.service.merge(ACTOR_ID, SPACE_ID, {
+        sourceTagIds: [SOURCE_TAG_ID],
+        targetTagId: TAG_ID,
+        dryRun: true,
+      }),
+    ).resolves.toEqual(subject.tags.mergeResult);
+    expect(subject.audit.record).not.toHaveBeenCalled();
+    expect(subject.realtime.publish).not.toHaveBeenCalled();
+  });
+
+  it("rejects merging tags for non-manager roles", async () => {
+    const subject = createSubject("DEVELOPER");
+
+    await expect(
+      subject.service.merge(ACTOR_ID, SPACE_ID, {
+        sourceTagIds: [SOURCE_TAG_ID],
+        targetTagId: TAG_ID,
+        dryRun: false,
+      }),
+    ).rejects.toMatchObject({
+      code: "SPACE_ACCESS_DENIED",
+      status: HttpStatus.FORBIDDEN,
+    });
+    expect(subject.tags.mergeInput).toBeUndefined();
+  });
+
   it("rejects deleting tags that still have active assignments", async () => {
     const subject = createSubject("SPACE_ADMIN");
 
@@ -293,6 +424,8 @@ class FakeTagRepository implements TagRepository {
   filterOptionsInput?: TagFilterOptionsInput;
   readonly items = new Map<string, TagDto>();
   listInput?: TagListInput;
+  mergeInput?: MergeTagsInput;
+  mergeResult?: MergeTagsResult;
   softDeleteInput?: SoftDeleteTagInput;
 
   async listBySpace(input: TagListInput): Promise<TagListResult> {
@@ -322,6 +455,12 @@ class FakeTagRepository implements TagRepository {
 
   async replaceAssignments(): Promise<TagDto[]> {
     return [];
+  }
+
+  async merge(input: MergeTagsInput): Promise<MergeTagsResult | undefined> {
+    this.mergeInput = input;
+
+    return this.mergeResult;
   }
 
   async findActiveById(tagId: string): Promise<TagDto | undefined> {

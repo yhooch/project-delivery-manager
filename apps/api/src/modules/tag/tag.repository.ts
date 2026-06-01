@@ -2,6 +2,8 @@ import type { TagDto } from "@project-delivery/shared";
 
 import type {
   CreateTagInput,
+  MergeTagsInput,
+  MergeTagsResult,
   TagFilterOptionsInput,
   ListTagsByTargetsInput,
   ReplaceTagAssignmentsInput,
@@ -27,6 +29,7 @@ export type TagRepository = {
   ): Promise<Map<string, TagDto[]>>;
   listBySpace(input: TagListInput): Promise<TagListResult>;
   listFilterOptions(input: TagFilterOptionsInput): Promise<TagDto[]>;
+  merge(input: MergeTagsInput): Promise<MergeTagsResult | undefined>;
   replaceAssignments(input: ReplaceTagAssignmentsInput): Promise<TagDto[]>;
   softDeleteOrphan(input: SoftDeleteTagInput): Promise<SoftDeleteTagResult>;
 };

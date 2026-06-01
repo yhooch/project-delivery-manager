@@ -3,6 +3,8 @@ import type {
   CreateTagRequest,
   ListTagFilterOptionsQuery,
   ListTagsQuery,
+  MergeTagsRequest,
+  MergeTagsResponse,
   PageResult,
   RealtimeInvalidationKey,
   SpaceRole,
@@ -27,7 +29,7 @@ import {
 import { TAG_REPOSITORY, type TagRepository } from "./tag.repository";
 
 const TAG_CREATOR_DENIED_ROLES = new Set<SpaceRole>(["VIEWER"]);
-const TAG_DELETE_ROLES = new Set<SpaceRole>(["SPACE_ADMIN", "PM"]);
+const TAG_GOVERNANCE_ROLES = new Set<SpaceRole>(["SPACE_ADMIN", "PM"]);
 
 @Injectable()
 export class TagService {
@@ -204,6 +206,83 @@ export class TagService {
     return {};
   }
 
+  async merge(
+    actorUserId: string,
+    spaceId: string,
+    input: MergeTagsRequest,
+    metadata: RequestMetadata = {},
+  ): Promise<MergeTagsResponse> {
+    const access = await this.requireTagGovernanceBySpace(actorUserId, spaceId, {
+      metadata,
+      operation: "mergeTags",
+      targetId: spaceId,
+      targetType: "SPACE",
+    });
+    const result = await this.tags.merge({
+      dryRun: input.dryRun,
+      organizationId: access.space.organizationId,
+      spaceId,
+      sourceTagIds: input.sourceTagIds,
+      targetTagId: input.targetTagId,
+      updatedById: actorUserId,
+    });
+
+    if (!result) {
+      throwTagNotFound();
+    }
+
+    if (input.dryRun) {
+      return result;
+    }
+
+    const auditMetadata = {
+      operation: "MERGE_TAGS",
+      sourceTagIds: input.sourceTagIds,
+      targetTagId: input.targetTagId,
+      sourceAssignmentsRemoved: result.sourceAssignmentsRemoved,
+      targetAssignmentsCreated: result.targetAssignmentsCreated,
+      duplicateAssignmentsSkipped: result.duplicateAssignmentsSkipped,
+      deletedSourceTags: result.deletedSourceTags,
+      affectedTargetsByType: result.affectedTargetsByType,
+    };
+
+    await this.audit.record({
+      actionType: "UPDATE",
+      actorId: actorUserId,
+      after: result,
+      before: {
+        sourceTags: result.sourceTags,
+        targetTag: result.targetTag,
+      },
+      metadata: auditMetadata,
+      ...metadata,
+      organizationId: access.space.organizationId,
+      spaceId,
+      targetId: spaceId,
+      targetType: "SPACE",
+    });
+
+    this.safePublishRealtime({
+      actorId: actorUserId,
+      organizationId: access.space.organizationId,
+      spaceId,
+      target: { type: "SPACE", id: spaceId },
+      operation: "TAG_CHANGED",
+      invalidates: tagMergeInvalidates(),
+      hints: {
+        targetType: "SPACE",
+        targetId: spaceId,
+        spaceId,
+        sourceTagIds: input.sourceTagIds,
+        targetTagId: input.targetTagId,
+        changedFields: ["tags", "tagIds"],
+        suggestFullRefresh: true,
+      },
+    });
+
+    return result;
+  }
+
   private safePublishRealtime(
     input: Parameters<RealtimePublisherService["publish"]>[0],
   ) {
@@ -257,6 +336,36 @@ export class TagService {
     return access;
   }
 
+  private async requireTagGovernanceBySpace(
+    userId: string,
+    spaceId: string,
+    auditContext: {
+      metadata: RequestMetadata;
+      operation: string;
+      targetId: string;
+      targetType: string;
+    },
+  ) {
+    const access = await this.requireSpaceAccess(userId, spaceId);
+
+    if (!TAG_GOVERNANCE_ROLES.has(access.role)) {
+      await auditAccessDenied(this.audit, {
+        ...auditContext.metadata,
+        actorId: userId,
+        metadata: { role: access.role },
+        operation: auditContext.operation,
+        organizationId: access.space.organizationId,
+        reason: "ROLE_NOT_ALLOWED",
+        spaceId,
+        targetId: auditContext.targetId,
+        targetType: auditContext.targetType,
+      });
+      throwSpaceAccessDenied();
+    }
+
+    return access;
+  }
+
   private async requireTagDeleter(
     userId: string,
     tag: TagDto,
@@ -267,24 +376,7 @@ export class TagService {
       targetType: string;
     },
   ) {
-    const access = await this.requireSpaceAccess(userId, tag.spaceId);
-
-    if (!TAG_DELETE_ROLES.has(access.role)) {
-      await auditAccessDenied(this.audit, {
-        ...auditContext.metadata,
-        actorId: userId,
-        metadata: { role: access.role },
-        operation: auditContext.operation,
-        organizationId: tag.organizationId,
-        reason: "ROLE_NOT_ALLOWED",
-        spaceId: tag.spaceId,
-        targetId: auditContext.targetId,
-        targetType: auditContext.targetType,
-      });
-      throwSpaceAccessDenied();
-    }
-
-    return access;
+    return this.requireTagGovernanceBySpace(userId, tag.spaceId, auditContext);
   }
 }
 
@@ -305,6 +397,24 @@ function tagInvalidates(): RealtimeInvalidationKey[] {
     "version-board",
     "workbench",
     "space-overview",
+    "exception-view",
+  ];
+}
+
+function tagMergeInvalidates(): RealtimeInvalidationKey[] {
+  return [
+    "work-item-list",
+    "bug-list",
+    "requirement-list",
+    "requirement-detail",
+    "intake-list",
+    "document-list",
+    "document-detail",
+    "resource-documents",
+    "version-board",
+    "workbench",
+    "space-overview",
+    "timeline",
     "exception-view",
   ];
 }

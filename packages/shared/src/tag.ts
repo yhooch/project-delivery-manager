@@ -70,6 +70,20 @@ export const TagColorKeySchema = z
   .regex(/^[a-z][a-z0-9_-]*$/u, "Expected a controlled color key");
 
 export const TagIdListSchema = z.array(UlidSchema).max(100);
+export const MergeSourceTagIdListSchema = z
+  .array(UlidSchema)
+  .min(1)
+  .max(20)
+  .superRefine((value, context) => {
+    if (new Set(value).size === value.length) {
+      return;
+    }
+
+    context.addIssue({
+      code: "custom",
+      message: "sourceTagIds must be unique",
+    });
+  });
 
 export const TagMatchSchema = z.enum(["ANY", "ALL"]);
 export type TagMatch = z.infer<typeof TagMatchSchema>;
@@ -201,6 +215,27 @@ export type ReplaceTagAssignmentsRequest = z.infer<
   typeof ReplaceTagAssignmentsRequestSchema
 >;
 
+export const MergeTagsRequestSchema = z
+  .object({
+    sourceTagIds: MergeSourceTagIdListSchema,
+    targetTagId: UlidSchema,
+    dryRun: z.boolean().default(false),
+  })
+  .strict()
+  .superRefine((value, context) => {
+    if (!value.sourceTagIds.includes(value.targetTagId)) {
+      return;
+    }
+
+    context.addIssue({
+      code: "custom",
+      message: "sourceTagIds must not include targetTagId",
+      path: ["sourceTagIds"],
+    });
+  });
+
+export type MergeTagsRequest = z.infer<typeof MergeTagsRequestSchema>;
+
 export const TagAssignmentsResponseSchema = z
   .object({
     targetType: TagTargetTypeSchema,
@@ -212,6 +247,36 @@ export const TagAssignmentsResponseSchema = z
 export type TagAssignmentsResponse = z.infer<
   typeof TagAssignmentsResponseSchema
 >;
+
+export const MergeTagsAffectedTargetsByTypeSchema = z
+  .array(
+    z
+      .object({
+        targetType: TagTargetTypeSchema,
+        count: z.number().int().min(0),
+      })
+      .strict(),
+  )
+  .max(3);
+
+export type MergeTagsAffectedTargetsByType = z.infer<
+  typeof MergeTagsAffectedTargetsByTypeSchema
+>;
+
+export const MergeTagsResponseSchema = z
+  .object({
+    targetTag: TagDtoSchema,
+    sourceTags: TagListSchema,
+    dryRun: z.boolean(),
+    sourceAssignmentsRemoved: z.number().int().min(0),
+    targetAssignmentsCreated: z.number().int().min(0),
+    duplicateAssignmentsSkipped: z.number().int().min(0),
+    deletedSourceTags: z.number().int().min(0),
+    affectedTargetsByType: MergeTagsAffectedTargetsByTypeSchema,
+  })
+  .strict();
+
+export type MergeTagsResponse = z.infer<typeof MergeTagsResponseSchema>;
 
 export const ListTagsResponseSchema = pageResultSchema(TagDtoSchema);
 export const ListTagFilterOptionsResponseSchema = z

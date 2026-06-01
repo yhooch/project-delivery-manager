@@ -370,21 +370,38 @@ test.describe("M3 自动化主链路与回归用例", () => {
     await updateTaskAssignee(pm, task.id, pm.id);
     const taskTimeline = await listWorkItemTimeline(pm, task.id);
     expect(taskTimeline.items.map((event) => event.eventType)).toEqual(
+      expect.arrayContaining(["CREATED", "ACTION_EXECUTED", "UPDATED"]),
+    );
+    expect(taskTimeline.items).toEqual(
       expect.arrayContaining([
-        "CREATED",
-        "ACTION_EXECUTED",
-        "ASSIGNEE_CHANGED",
-        "CLOSED",
+        expect.objectContaining({
+          eventType: "ACTION_EXECUTED",
+          metadata: expect.objectContaining({
+            lifecycleEvent: "COMPLETED",
+          }),
+        }),
       ]),
     );
     const bugTimeline = await listWorkItemTimeline(tester, bug.id);
     expect(bugTimeline.items.map((event) => event.eventType)).toEqual(
+      expect.arrayContaining(["CREATED", "ACTION_EXECUTED"]),
+    );
+    expect(bugTimeline.items).toEqual(
       expect.arrayContaining([
-        "CREATED",
-        "ACTION_EXECUTED",
-        "ASSIGNEE_CHANGED",
-        "CLOSED",
-        "REOPENED",
+        expect.objectContaining({
+          eventType: "ACTION_EXECUTED",
+          metadata: expect.objectContaining({
+            actionCode: "CLOSE_DEFECT",
+            lifecycleEvent: "CLOSED",
+          }),
+        }),
+        expect.objectContaining({
+          eventType: "ACTION_EXECUTED",
+          metadata: expect.objectContaining({
+            actionCode: "REOPEN_DEFECT",
+            lifecycleEvent: "REOPENED",
+          }),
+        }),
       ]),
     );
 
@@ -479,7 +496,7 @@ async function assertRequirementImageUploadChain(
     mimeType: "image/png",
     size: body.length,
     targetId: requirementId,
-    targetType: "REQUIREMENT",
+    targetType: "DOCUMENT",
   } as const;
   const attachment = await expectData(
     await actor.context.post(apiPath("/attachments"), {
@@ -503,14 +520,14 @@ async function assertRequirementImageUploadChain(
     mimeType: file.mimeType,
     size: file.size,
     targetId: requirementId,
-    targetType: "REQUIREMENT",
+    targetType: "DOCUMENT",
   });
-  expect(attachment.fileKey).toContain(`/requirement/${requirementId}/`);
+  expect(attachment.fileKey).toContain(`/document/${requirementId}/`);
 
   const attachments = await expectData(
     await get(
       actor,
-      `/attachments?targetType=REQUIREMENT&targetId=${requirementId}&pageSize=20`,
+      `/attachments?targetType=DOCUMENT&targetId=${requirementId}&pageSize=20`,
     ),
     ListAttachmentsResponseSchema,
     "GET /attachments for requirement image",

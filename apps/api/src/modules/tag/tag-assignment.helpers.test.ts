@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from "vitest";
 
 import {
   findTaggedTargetIds,
+  lockActiveTagsInTransaction,
   replaceTagAssignmentsInTransaction,
 } from "./tag-assignment.helpers";
 
@@ -20,21 +21,19 @@ describe("tag assignment helpers", () => {
     const tagAssignmentUpdate = vi.fn(async () => undefined);
     const tagAssignmentCreate = vi.fn(async () => undefined);
     const tx = {
-      tag: {
-        findMany: vi.fn(async () => [
-          makeTag({ id: TAG_ID, name: "Zulu", normalizedName: "zulu" }),
-          makeTag({
-            id: SECOND_TAG_ID,
-            name: "Alpha",
-            normalizedName: "alpha",
-          }),
-          makeTag({
-            id: THIRD_TAG_ID,
-            name: "Middle",
-            normalizedName: "middle",
-          }),
-        ]),
-      },
+      $queryRaw: vi.fn(async () => [
+        makeTag({ id: TAG_ID, name: "Zulu", normalizedName: "zulu" }),
+        makeTag({
+          id: SECOND_TAG_ID,
+          name: "Alpha",
+          normalizedName: "alpha",
+        }),
+        makeTag({
+          id: THIRD_TAG_ID,
+          name: "Middle",
+          normalizedName: "middle",
+        }),
+      ]),
       tagAssignment: {
         create: tagAssignmentCreate,
         findMany: vi.fn(async () => [
@@ -50,7 +49,7 @@ describe("tag assignment helpers", () => {
       assignedById: ACTOR_ID,
       organizationId: ORGANIZATION_ID,
       spaceId: SPACE_ID,
-      tagIds: [TAG_ID, SECOND_TAG_ID, THIRD_TAG_ID],
+      tagIds: [THIRD_TAG_ID, TAG_ID, SECOND_TAG_ID, TAG_ID],
       targetId: TARGET_ID,
       targetType: "WORK_ITEM",
     });
@@ -72,6 +71,18 @@ describe("tag assignment helpers", () => {
         targetType: "WORK_ITEM",
       }),
     });
+    const [, , , joinedTagIds] = tx.$queryRaw.mock.calls[0] as unknown as [
+      TemplateStringsArray,
+      string,
+      string,
+      { values: string[] },
+    ];
+
+    expect(joinedTagIds.values).toEqual([
+      TAG_ID,
+      SECOND_TAG_ID,
+      THIRD_TAG_ID,
+    ]);
     expect(tagAssignmentUpdate).toHaveBeenCalledWith({
       data: {
         assignedById: ACTOR_ID,
@@ -96,9 +107,7 @@ describe("tag assignment helpers", () => {
   it("rejects missing, deleted, or cross-space tags before changing assignments", async () => {
     const tagAssignmentUpdateMany = vi.fn();
     const tx = {
-      tag: {
-        findMany: vi.fn(async () => [makeTag({ id: TAG_ID })]),
-      },
+      $queryRaw: vi.fn(async () => [makeTag({ id: TAG_ID })]),
       tagAssignment: {
         updateMany: tagAssignmentUpdateMany,
       },
@@ -118,6 +127,39 @@ describe("tag assignment helpers", () => {
       status: HttpStatus.NOT_FOUND,
     });
     expect(tagAssignmentUpdateMany).not.toHaveBeenCalled();
+  });
+
+  it("locks active tags in deterministic id order", async () => {
+    const queryRaw = vi.fn(async () => [
+      makeTag({ id: TAG_ID }),
+      makeTag({ id: SECOND_TAG_ID }),
+    ]);
+
+    const result = await lockActiveTagsInTransaction(
+      { $queryRaw: queryRaw } as never,
+      {
+        organizationId: ORGANIZATION_ID,
+        spaceId: SPACE_ID,
+        tagIds: [SECOND_TAG_ID, TAG_ID, SECOND_TAG_ID],
+      },
+    );
+
+    const [strings, organizationId, spaceId, joinedTagIds] =
+      queryRaw.mock.calls[0] as unknown as [
+        TemplateStringsArray,
+        string,
+        string,
+        { values: string[] },
+      ];
+    const sql = Array.from(strings as TemplateStringsArray)
+      .join("?")
+      .replace(/\s+/g, " ");
+
+    expect(result.map((tag) => tag.id)).toEqual([TAG_ID, SECOND_TAG_ID]);
+    expect(organizationId).toBe(ORGANIZATION_ID);
+    expect(spaceId).toBe(SPACE_ID);
+    expect(sql).toContain("ORDER BY id FOR UPDATE");
+    expect(joinedTagIds.values).toEqual([TAG_ID, SECOND_TAG_ID]);
   });
 
   it("finds tagged target ids with ANY and ALL semantics", async () => {

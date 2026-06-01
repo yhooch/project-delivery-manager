@@ -8,12 +8,24 @@ import type { PrismaService } from "../../prisma/prisma.service";
 import { toTagDto } from "./tag.mappers";
 
 type TagAssignmentClient = Prisma.TransactionClient | PrismaService["client"];
+type TagLockClient = Pick<Prisma.TransactionClient, "$queryRaw">;
 
 type TargetScope = {
   organizationId: string;
   spaceId: string;
   targetId: string;
   targetType: TagTargetType;
+};
+
+type PrismaTagRecord = {
+  colorKey: string;
+  createdAt: Date;
+  id: string;
+  name: string;
+  normalizedName: string;
+  organizationId: string;
+  spaceId: string;
+  updatedAt: Date;
 };
 
 export type ReplaceTagAssignmentsInTransactionInput = TargetScope & {
@@ -39,7 +51,7 @@ export async function replaceTagAssignmentsInTransaction(
   tx: Prisma.TransactionClient,
   input: ReplaceTagAssignmentsInTransactionInput,
 ): Promise<TagDto[]> {
-  const tagIds = unique(input.tagIds ?? []);
+  const tagIds = unique(input.tagIds ?? []).sort();
   const tags = await findActiveTagsOrThrow(tx, {
     organizationId: input.organizationId,
     spaceId: input.spaceId,
@@ -130,6 +142,42 @@ export async function replaceTagAssignmentsInTransaction(
   }
 
   return sortTags(tags);
+}
+
+export async function lockActiveTagsInTransaction(
+  tx: TagLockClient,
+  input: {
+    organizationId: string;
+    spaceId: string;
+    tagIds: string[];
+  },
+): Promise<TagDto[]> {
+  const tagIds = unique(input.tagIds).sort();
+
+  if (tagIds.length === 0) {
+    return [];
+  }
+
+  const rows = await tx.$queryRaw<PrismaTagRecord[]>`
+    SELECT
+      id,
+      organization_id AS "organizationId",
+      space_id AS "spaceId",
+      name,
+      normalized_name AS "normalizedName",
+      color_key AS "colorKey",
+      created_at AS "createdAt",
+      updated_at AS "updatedAt"
+    FROM tags
+    WHERE deleted_at IS NULL
+      AND organization_id = ${input.organizationId}
+      AND space_id = ${input.spaceId}
+      AND id IN (${Prisma.join(tagIds)})
+    ORDER BY id
+    FOR UPDATE
+  `;
+
+  return rows.map((tag) => toTagDto(tag));
 }
 
 export async function listTagsByTarget(
@@ -284,26 +332,23 @@ async function findActiveTagsOrThrow(
     tagIds: string[];
   },
 ) {
-  if (input.tagIds.length === 0) {
+  const tagIds = unique(input.tagIds).sort();
+
+  if (tagIds.length === 0) {
     return [];
   }
 
-  const tags = await client.tag.findMany({
-    where: {
-      deletedAt: null,
-      id: {
-        in: input.tagIds,
-      },
-      organizationId: input.organizationId,
-      spaceId: input.spaceId,
-    },
+  const tags = await lockActiveTagsInTransaction(client, {
+    organizationId: input.organizationId,
+    spaceId: input.spaceId,
+    tagIds,
   });
 
-  if (tags.length !== input.tagIds.length) {
+  if (tags.length !== tagIds.length) {
     throwTagNotFound();
   }
 
-  return tags.map((tag) => toTagDto(tag));
+  return tags;
 }
 
 function sortTags(tags: TagDto[]) {

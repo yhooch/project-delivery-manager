@@ -18,6 +18,7 @@ import {
   GetTagAssignmentsQuerySchema,
   ListTagFilterOptionsQuerySchema,
   ListTagsQuerySchema,
+  MergeTagsRequestSchema,
   ReplaceTagAssignmentsRequestSchema,
   SpaceIdPathParamsSchema,
   type GetTagAssignmentsQuery,
@@ -25,6 +26,8 @@ import {
   type ReplaceTagAssignmentsRequest,
   type TagAssignmentsResponse,
   type CreateTagRequest,
+  type MergeTagsRequest,
+  type MergeTagsResponse,
   type ListTagsQuery,
   type ListTagFilterOptionsQuery,
   type ListTagFilterOptionsResponse,
@@ -92,6 +95,26 @@ export class TagController {
     const session = this.currentUser.requireSession(request);
 
     return this.tags.create(
+      session.userId,
+      params.spaceId,
+      body,
+      getRequestMetadata(request),
+    );
+  }
+
+  @Post("spaces/:spaceId/tags/merge")
+  @HttpCode(HttpStatus.OK)
+  @UseGuards(WriteOriginGuard)
+  async merge(
+    @Param(new ZodValidationPipe(SpaceIdPathParamsSchema))
+    params: { spaceId: string },
+    @Body(new ZodValidationPipe(MergeTagsRequestSchema))
+    body: MergeTagsRequest,
+    @Req() request: RequestWithContext,
+  ): Promise<MergeTagsResponse> {
+    const session = this.currentUser.requireSession(request);
+
+    return this.tags.merge(
       session.userId,
       params.spaceId,
       body,

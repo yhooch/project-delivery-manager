@@ -75,15 +75,19 @@ const {
   listSpaceMembersMock,
   updateSpaceMock,
   updateSpaceMemberMock,
+  createTagMock,
   listTagsMock,
   deleteTagMock,
+  mergeTagsMock,
 } = vi.hoisted(() => ({
   getSpaceMock: vi.fn(),
   listSpaceMembersMock: vi.fn(),
   updateSpaceMock: vi.fn(),
   updateSpaceMemberMock: vi.fn(),
+  createTagMock: vi.fn(),
   listTagsMock: vi.fn(),
   deleteTagMock: vi.fn(),
+  mergeTagsMock: vi.fn(),
 }));
 vi.mock("../../lib/space-service", () => ({
   getSpace: getSpaceMock,
@@ -92,8 +96,10 @@ vi.mock("../../lib/space-service", () => ({
   updateSpaceMember: updateSpaceMemberMock,
 }));
 vi.mock("../../lib/tag-service", () => ({
+  createTag: createTagMock,
   deleteTag: deleteTagMock,
   listTags: listTagsMock,
+  mergeTags: mergeTagsMock,
 }));
 
 const { FakeApiClientError } = vi.hoisted(() => {
@@ -198,8 +204,10 @@ beforeEach(() => {
   listSpaceMembersMock.mockReset();
   updateSpaceMock.mockReset();
   updateSpaceMemberMock.mockReset();
+  createTagMock.mockReset();
   listTagsMock.mockReset();
   deleteTagMock.mockReset();
+  mergeTagsMock.mockReset();
   refreshSessionMock.mockReset();
   listTagsMock.mockResolvedValue({
     items: [],
@@ -208,6 +216,21 @@ beforeEach(() => {
     total: 0,
   });
   deleteTagMock.mockResolvedValue({});
+  mergeTagsMock.mockResolvedValue({
+    targetTag: makeTag({
+      id: "01ARZ3NDEKTSV4RRFFQ69G5F99",
+      name: "frontend",
+      displayName: "#frontend",
+      normalizedName: "frontend",
+    }),
+    sourceTags: [makeTag()],
+    dryRun: true,
+    sourceAssignmentsRemoved: 0,
+    targetAssignmentsCreated: 0,
+    duplicateAssignmentsSkipped: 0,
+    deletedSourceTags: 0,
+    affectedTargetsByType: [],
+  });
   sessionMock.current = {
     session: {
       defaultOrganizationId: "ORG_01",
@@ -713,6 +736,192 @@ describe("SpaceSettingsPage", () => {
     await waitFor(() => expect(listTagsMock).toHaveBeenCalledTimes(2));
   });
 
+  it("previews and confirms merging multiple source tags into a target tag", async () => {
+    const user = userEvent.setup();
+    const sourceTag = makeTag({
+      id: "01ARZ3NDEKTSV4RRFFQ69G5F00",
+      name: "backend",
+      displayName: "#backend",
+      normalizedName: "backend",
+      usageCount: 3,
+    });
+    const secondSourceTag = makeTag({
+      id: "01ARZ3NDEKTSV4RRFFQ69G5F01",
+      name: "api",
+      displayName: "#api",
+      normalizedName: "api",
+      usageCount: 4,
+    });
+    const targetTag = makeTag({
+      id: "01ARZ3NDEKTSV4RRFFQ69G5F99",
+      name: "frontend",
+      displayName: "#frontend",
+      normalizedName: "frontend",
+      usageCount: 5,
+    });
+    listTagsMock
+      .mockResolvedValueOnce({
+        items: [sourceTag, secondSourceTag, targetTag],
+        page: 1,
+        pageSize: 100,
+        total: 3,
+      })
+      .mockResolvedValue({
+        items: [sourceTag, secondSourceTag, targetTag],
+        page: 1,
+        pageSize: 20,
+        total: 3,
+      });
+    mergeTagsMock
+      .mockResolvedValueOnce({
+        targetTag,
+        sourceTags: [sourceTag, secondSourceTag],
+        dryRun: true,
+        sourceAssignmentsRemoved: 7,
+        targetAssignmentsCreated: 5,
+        duplicateAssignmentsSkipped: 1,
+        deletedSourceTags: 0,
+        affectedTargetsByType: [{ targetType: "WORK_ITEM", count: 3 }],
+      })
+      .mockResolvedValueOnce({
+        targetTag,
+        sourceTags: [sourceTag, secondSourceTag],
+        dryRun: false,
+        sourceAssignmentsRemoved: 7,
+        targetAssignmentsCreated: 5,
+        duplicateAssignmentsSkipped: 1,
+        deletedSourceTags: 2,
+        affectedTargetsByType: [{ targetType: "WORK_ITEM", count: 3 }],
+      });
+    getSpaceMock.mockResolvedValueOnce(makeSpace());
+    listSpaceMembersMock.mockResolvedValueOnce({ items: [], total: 0 });
+
+    render(<SpaceSettingsPage />);
+
+    await user.click(
+      await screen.findByTestId(
+        "space-settings-tag-merge-01ARZ3NDEKTSV4RRFFQ69G5F00",
+      ),
+    );
+
+    const dialog = await screen.findByRole("dialog", {
+      name: "spaceSettings.dialog.mergeTag.title",
+    });
+    expect(
+      within(dialog).getByText("spaceSettings.dialog.mergeTag.warning"),
+    ).toBeInTheDocument();
+    expect(
+      within(dialog).getByTestId(
+        "space-settings-tag-merge-source-01ARZ3NDEKTSV4RRFFQ69G5F00",
+      ),
+    ).toBeInTheDocument();
+
+    await user.click(
+      within(dialog).getByTestId(
+        "space-settings-tag-merge-source-picker-input",
+      ),
+    );
+    await user.click(
+      within(
+        await screen.findByTestId(
+          "space-settings-tag-merge-source-picker-panel",
+        ),
+      ).getByText("#api"),
+    );
+    expect(
+      within(dialog).getByTestId(
+        "space-settings-tag-merge-source-01ARZ3NDEKTSV4RRFFQ69G5F01",
+      ),
+    ).toBeInTheDocument();
+
+    await user.click(
+      within(
+        within(dialog).getByTestId(
+          "space-settings-tag-merge-source-01ARZ3NDEKTSV4RRFFQ69G5F01",
+        ),
+      ).getByRole("button", { name: "tags.badge.remove" }),
+    );
+    expect(
+      within(dialog).queryByTestId(
+        "space-settings-tag-merge-source-01ARZ3NDEKTSV4RRFFQ69G5F01",
+      ),
+    ).not.toBeInTheDocument();
+
+    await user.click(
+      within(dialog).getByTestId(
+        "space-settings-tag-merge-source-picker-input",
+      ),
+    );
+    await user.click(
+      within(
+        await screen.findByTestId(
+          "space-settings-tag-merge-source-picker-panel",
+        ),
+      ).getByText("#api"),
+    );
+
+    await user.click(
+      within(dialog).getByTestId(
+        "space-settings-tag-merge-target-picker-input",
+      ),
+    );
+    const targetPanel = await screen.findByTestId(
+      "space-settings-tag-merge-target-picker-panel",
+    );
+    expect(within(targetPanel).queryByText("#backend")).not.toBeInTheDocument();
+    expect(within(targetPanel).queryByText("#api")).not.toBeInTheDocument();
+    await user.click(within(targetPanel).getByText("#frontend"));
+
+    await waitFor(() =>
+      expect(mergeTagsMock).toHaveBeenCalledWith({
+        dryRun: true,
+        organizationId: "ORG_01",
+        sourceTagIds: [
+          "01ARZ3NDEKTSV4RRFFQ69G5F00",
+          "01ARZ3NDEKTSV4RRFFQ69G5F01",
+        ],
+        targetTagId: "01ARZ3NDEKTSV4RRFFQ69G5F99",
+        spaceId: "SPC_01",
+      }),
+    );
+    expect(
+      within(screen.getByTestId("space-settings-tag-merge-preview")).getByText(
+        "spaceSettings.dialog.mergeTag.metrics.created",
+      ),
+    ).toBeInTheDocument();
+
+    await user.click(
+      within(dialog).getByRole("button", {
+        name: "spaceSettings.dialog.mergeTag.submit",
+      }),
+    );
+
+    await waitFor(() =>
+      expect(mergeTagsMock).toHaveBeenLastCalledWith({
+        dryRun: false,
+        organizationId: "ORG_01",
+        sourceTagIds: [
+          "01ARZ3NDEKTSV4RRFFQ69G5F00",
+          "01ARZ3NDEKTSV4RRFFQ69G5F01",
+        ],
+        targetTagId: "01ARZ3NDEKTSV4RRFFQ69G5F99",
+        spaceId: "SPC_01",
+      }),
+    );
+    await waitFor(() =>
+      expect(
+        screen.queryByRole("dialog", {
+          name: "spaceSettings.dialog.mergeTag.title",
+        }),
+      ).not.toBeInTheDocument(),
+    );
+    await waitFor(() =>
+      expect(
+        listTagsMock.mock.calls.filter(([input]) => input.pageSize === 100),
+      ).toHaveLength(2),
+    );
+  });
+
   it("disables the orphan tag delete confirmation while deletion is pending", async () => {
     const tag = makeTag({
       usageCount: 0,
@@ -790,6 +999,11 @@ describe("SpaceSettingsPage", () => {
     expect(
       screen.queryByTestId(
         "space-settings-tag-delete-01ARZ3NDEKTSV4RRFFQ69G5FTG",
+      ),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByTestId(
+        "space-settings-tag-merge-01ARZ3NDEKTSV4RRFFQ69G5FTG",
       ),
     ).not.toBeInTheDocument();
   });

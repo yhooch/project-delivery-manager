@@ -33,6 +33,8 @@ import {
   ListSpacesResponseSchema,
   ListDocumentsResponseSchema,
   ListTagsQuerySchema,
+  MergeTagsRequestSchema,
+  MergeTagsResponseSchema,
   RequirementSchema,
   ReplaceTagAssignmentsRequestSchema,
   TagAssignmentsResponseSchema,
@@ -296,6 +298,9 @@ describe("shared contracts", () => {
     expect(errorCodesFor("deleteTag")).toEqual(
       expect.arrayContaining(["TAG_NOT_FOUND", "TAG_IN_USE"]),
     );
+    expect(errorCodesFor("mergeTags")).toEqual(
+      expect.arrayContaining(["TAG_NOT_FOUND", "VALIDATION_ERROR"]),
+    );
     expect(errorCodesFor("replaceTagAssignments")).toEqual(
       expect.arrayContaining([
         "TAG_NOT_FOUND",
@@ -484,6 +489,22 @@ describe("shared contracts", () => {
       targetId,
       tagIds: [tagId, secondTagId],
     });
+    expect(
+      MergeTagsRequestSchema.parse({
+        sourceTagIds: [secondTagId],
+        targetTagId: tagId,
+      }),
+    ).toEqual({
+      sourceTagIds: [secondTagId],
+      targetTagId: tagId,
+      dryRun: false,
+    });
+    expect(() =>
+      MergeTagsRequestSchema.parse({
+        sourceTagIds: [tagId],
+        targetTagId: tagId,
+      }),
+    ).toThrow();
     expect(() =>
       TagDtoSchema.parse({
         ...tag,
@@ -501,7 +522,23 @@ describe("shared contracts", () => {
       name: "backend",
       displayName: "#backend",
       normalizedName: "backend",
-      colorKey: "blue",
+        colorKey: "blue",
+      });
+    expect(
+      MergeTagsResponseSchema.parse({
+        targetTag: tag,
+        sourceTags: [{ ...tag, id: secondTagId }],
+        dryRun: true,
+        sourceAssignmentsRemoved: 3,
+        targetAssignmentsCreated: 1,
+        duplicateAssignmentsSkipped: 2,
+        deletedSourceTags: 1,
+        affectedTargetsByType: [{ targetType: "WORK_ITEM", count: 1 }],
+      }),
+    ).toMatchObject({
+      dryRun: true,
+      sourceAssignmentsRemoved: 3,
+      duplicateAssignmentsSkipped: 2,
     });
   });
 
