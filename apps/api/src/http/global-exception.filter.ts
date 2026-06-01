@@ -3,6 +3,7 @@ import {
   Catch,
   HttpException,
   HttpStatus,
+  Logger,
   type ExceptionFilter,
 } from "@nestjs/common";
 import {
@@ -29,6 +30,8 @@ type ExceptionResponse = {
 
 @Catch()
 export class GlobalExceptionFilter implements ExceptionFilter {
+  private readonly logger = new Logger(GlobalExceptionFilter.name);
+
   catch(exception: unknown, host: ArgumentsHost): void {
     const http = host.switchToHttp();
     const request = http.getRequest<RequestWithContext>();
@@ -37,8 +40,45 @@ export class GlobalExceptionFilter implements ExceptionFilter {
     const requestId = getRequestId(request);
     const error = toApiError(exception, status, requestId);
 
+    if (status >= HttpStatus.INTERNAL_SERVER_ERROR) {
+      this.logServerError(exception, request, requestId, status);
+    }
+
     response.setHeader?.("x-request-id", requestId);
     response.status(status).json(error);
+  }
+
+  private logServerError(
+    exception: unknown,
+    request: RequestWithContext,
+    requestId: string,
+    status: number,
+  ): void {
+    if (process.env.NODE_ENV === "test") {
+      return;
+    }
+
+    const httpRequest = request as RequestWithContext & {
+      method?: unknown;
+      originalUrl?: unknown;
+      url?: unknown;
+    };
+    const method =
+      typeof httpRequest.method === "string" ? httpRequest.method : "UNKNOWN";
+    const path =
+      typeof httpRequest.originalUrl === "string"
+        ? httpRequest.originalUrl
+        : typeof httpRequest.url === "string"
+          ? httpRequest.url
+          : "UNKNOWN";
+    const message = `Unhandled HTTP exception ${status} ${method} ${path} requestId=${requestId}`;
+
+    if (exception instanceof Error) {
+      this.logger.error(message, exception.stack);
+      return;
+    }
+
+    this.logger.error(message, JSON.stringify(exception));
   }
 }
 

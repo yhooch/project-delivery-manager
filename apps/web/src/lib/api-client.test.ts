@@ -144,4 +144,24 @@ describe("api client", () => {
       });
     }
   });
+
+  it("maps unstructured 413 responses to FILE_TOO_LARGE", async () => {
+    const fetchMock = vi.fn<typeof fetch>(async () => {
+      return new Response("<html>too large</html>", {
+        status: 413,
+        statusText: "Request Entity Too Large",
+      });
+    });
+
+    vi.stubGlobal("fetch", fetchMock);
+
+    await expect(apiClient.post("/documents/import", new FormData())).rejects
+      .toMatchObject({
+        error: {
+          code: "FILE_TOO_LARGE",
+          message: "Request Entity Too Large",
+        },
+        status: 413,
+      });
+  });
 });

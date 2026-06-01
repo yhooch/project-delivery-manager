@@ -1,5 +1,6 @@
 import { HttpStatus, Inject, Injectable, Logger } from "@nestjs/common";
 import type {
+  AttachmentMimeType,
   AppendDocumentContentRequest,
   CancelRequirementPreflightResponse,
   CancelRequirementRequest,
@@ -24,6 +25,10 @@ import type {
   SpaceRole,
   UpdateDocumentContentRequest,
   UpdateDocumentMetadataRequest,
+} from "@project-delivery/shared";
+import {
+  AttachmentMaxSizeBytes,
+  AttachmentMimeTypeSchema,
 } from "@project-delivery/shared";
 import mammoth from "mammoth";
 import { ulid } from "ulid";
@@ -78,6 +83,14 @@ const REQUIREMENT_TARGET_TYPE = "REQUIREMENT" as unknown as Parameters<
 const MCP_DOCUMENT_SEARCH_MAX_HITS_PER_DOCUMENT = 3;
 const MCP_DOCUMENT_SEARCH_SNIPPET_MAX_LENGTH = 320;
 export const DocumentDocxConversionTimeoutMs = 10_000;
+const documentAttachmentDownloadPathPrefix = "/api/v1/attachments";
+const supportedDocxImageExtensions = {
+  "image/gif": ".gif",
+  "image/jpeg": ".jpg",
+  "image/png": ".png",
+  "image/svg+xml": ".svg",
+  "image/webp": ".webp",
+} satisfies Partial<Record<AttachmentMimeType, string>>;
 
 type DocumentActorContext = {
   actorType: DocumentActorType;
@@ -94,6 +107,24 @@ type ConvertToMarkdown = (
   value: string;
   messages: Array<{ type: string; message: string }>;
 }>;
+
+type MammothImage = {
+  contentType?: string;
+  read?: () => Promise<Buffer | string>;
+  readAsBuffer?: () => Promise<Buffer>;
+};
+
+type ConvertedDocxMarkdown = {
+  inlineAttachments: Array<{
+    fileKey: string;
+    fileName: string;
+    id: string;
+    mimeType: string;
+    size: number;
+  }>;
+  markdown: string;
+  uploadedObjectKeys: string[];
+};
 
 @Injectable()
 export class DocumentService {
@@ -358,7 +389,9 @@ export class DocumentService {
     metadata: RequestMetadata = {},
   ): Promise<Document> {
     assertDocumentFile(() => assertDocxImportFile(file));
-    const markdown = await this.convertDocxToMarkdown(file);
+    await this.requireSpaceCreator(actorUserId, spaceId);
+    const documentId = ulid();
+    const converted = await this.convertDocxToMarkdown(file, documentId);
 
     return this.createFromUploadedMarkdown(
       actorUserId,
@@ -366,8 +399,13 @@ export class DocumentService {
       input,
       file,
       metadata,
-      markdown,
+      converted.markdown,
       "UPLOAD_DOCX",
+      {
+        documentId,
+        inlineAttachments: converted.inlineAttachments,
+        uploadedObjectKeys: converted.uploadedObjectKeys,
+      },
     );
   }
 
@@ -671,26 +709,33 @@ export class DocumentService {
       documentId,
     );
     this.assertMarkdownContentEditable(existing);
-    const markdown = file.fileName.toLowerCase().endsWith(".docx")
+    const convertedDocx = file.fileName.toLowerCase().endsWith(".docx")
       ? await this.convertDocxToMarkdown(
           assertAndReturn(file, assertDocxImportFile),
+          documentId,
         )
-      : readMarkdownFile(assertAndReturn(file, assertMarkdownImportFile));
-    const normalized = normalizeMarkdownSource({
-      contentMarkdown: markdown,
-      fallbackTitle: existing.title,
-      title: existing.title,
-    });
-    const fileKey = createSourceFileKey(documentId, file.fileName);
-
-    await this.objectStorage.putObject({
-      body: file.buffer,
-      key: fileKey,
-      mimeType: file.mimeType,
-      size: file.size,
-    });
+      : undefined;
+    const uploadedObjectKeys = [...(convertedDocx?.uploadedObjectKeys ?? [])];
 
     try {
+      const markdown = convertedDocx
+        ? convertedDocx.markdown
+        : readMarkdownFile(assertAndReturn(file, assertMarkdownImportFile));
+      const normalized = normalizeMarkdownSource({
+        contentMarkdown: markdown,
+        fallbackTitle: existing.title,
+        title: existing.title,
+      });
+      const fileKey = createSourceFileKey(documentId, file.fileName);
+
+      await this.objectStorage.putObject({
+        body: file.buffer,
+        key: fileKey,
+        mimeType: file.mimeType,
+        size: file.size,
+      });
+      uploadedObjectKeys.push(fileKey);
+
       const result = await this.documents.updateContent({
         actorType: "USER",
         actorUserId,
@@ -703,6 +748,7 @@ export class DocumentService {
         contentMarkdownCache: null,
         contentText: normalized.contentText,
         documentId,
+        inlineAttachments: convertedDocx?.inlineAttachments,
         requestId: metadata.requestId,
         sourceAttachment: {
           fileKey,
@@ -729,7 +775,7 @@ export class DocumentService {
 
       return updated;
     } catch (error) {
-      await this.deleteUploadedObject(fileKey);
+      await this.deleteUploadedObjects(uploadedObjectKeys);
       throw error;
     }
   }
@@ -961,39 +1007,47 @@ export class DocumentService {
     metadata: RequestMetadata,
     providedMarkdown?: string,
     sourceType: "UPLOAD_MARKDOWN" | "UPLOAD_DOCX" = "UPLOAD_MARKDOWN",
+    options: {
+      documentId?: string;
+      inlineAttachments?: ConvertedDocxMarkdown["inlineAttachments"];
+      uploadedObjectKeys?: string[];
+    } = {},
   ): Promise<Document> {
-    assertDocumentFile(() =>
-      sourceType === "UPLOAD_DOCX"
-        ? assertDocxImportFile(file)
-        : assertMarkdownImportFile(file),
-    );
-    const access = await this.requireSpaceCreator(actorUserId, spaceId);
-    const documentId = ulid();
-    const markdown = providedMarkdown ?? readMarkdownFile(file);
-    const normalized = normalizeMarkdownSource({
-      contentMarkdown: markdown,
-      fallbackTitle: titleFromFileName(file.fileName),
-      title: input.title,
-    });
-    const links = await this.validateLinks(actorUserId, {
-      links: normalizeDocumentLinks(input.links),
-      organizationId: access.space.organizationId,
-      spaceId,
-    });
-    await this.validateFolder(input.folderId, {
-      organizationId: access.space.organizationId,
-      spaceId,
-    });
-    const fileKey = createSourceFileKey(documentId, file.fileName);
-
-    await this.objectStorage.putObject({
-      body: file.buffer,
-      key: fileKey,
-      mimeType: file.mimeType,
-      size: file.size,
-    });
+    const documentId = options.documentId ?? ulid();
+    const uploadedObjectKeys = [...(options.uploadedObjectKeys ?? [])];
 
     try {
+      assertDocumentFile(() =>
+        sourceType === "UPLOAD_DOCX"
+          ? assertDocxImportFile(file)
+          : assertMarkdownImportFile(file),
+      );
+      const access = await this.requireSpaceCreator(actorUserId, spaceId);
+      const markdown = providedMarkdown ?? readMarkdownFile(file);
+      const normalized = normalizeMarkdownSource({
+        contentMarkdown: markdown,
+        fallbackTitle: titleFromFileName(file.fileName),
+        title: input.title,
+      });
+      const links = await this.validateLinks(actorUserId, {
+        links: normalizeDocumentLinks(input.links),
+        organizationId: access.space.organizationId,
+        spaceId,
+      });
+      await this.validateFolder(input.folderId, {
+        organizationId: access.space.organizationId,
+        spaceId,
+      });
+      const fileKey = createSourceFileKey(documentId, file.fileName);
+
+      await this.objectStorage.putObject({
+        body: file.buffer,
+        key: fileKey,
+        mimeType: file.mimeType,
+        size: file.size,
+      });
+      uploadedObjectKeys.push(fileKey);
+
       const document = await this.documents.create({
         ...normalized,
         actorType: "USER",
@@ -1001,6 +1055,7 @@ export class DocumentService {
         chunks: buildDocumentChunks(normalized.contentMarkdown),
         folderId: input.folderId,
         id: documentId,
+        inlineAttachments: options.inlineAttachments,
         links,
         organizationId: access.space.organizationId,
         requestId: metadata.requestId,
@@ -1033,15 +1088,20 @@ export class DocumentService {
 
       return document;
     } catch (error) {
-      await this.deleteUploadedObject(fileKey);
+      await this.deleteUploadedObjects(uploadedObjectKeys);
       throw error;
     }
   }
 
   private async convertDocxToMarkdown(
     file: UploadedDocumentFile,
-  ): Promise<string> {
+    documentId: string,
+  ): Promise<ConvertedDocxMarkdown> {
     assertDocumentFile(() => assertDocxImportFile(file));
+    const inlineAttachments: ConvertedDocxMarkdown["inlineAttachments"] = [];
+    const uploadedObjectKeys: string[] = [];
+    let imageOrdinal = 0;
+
     try {
       assertSafeDocxZip(file);
       const convertToMarkdown = (
@@ -1051,9 +1111,25 @@ export class DocumentService {
         convertToMarkdown(
           { buffer: file.buffer },
           {
-            convertImage: mammoth.images.imgElement(async () => ({
-              src: "image omitted",
-            })),
+            convertImage: mammoth.images.imgElement(async (image: MammothImage) => {
+              imageOrdinal += 1;
+              const attachment = await this.uploadDocxInlineImage({
+                documentId,
+                image,
+                ordinal: imageOrdinal,
+              });
+
+              if (!attachment) {
+                return { src: "image omitted" };
+              }
+
+              inlineAttachments.push(attachment);
+              uploadedObjectKeys.push(attachment.fileKey);
+
+              return {
+                src: createAttachmentDownloadPath(attachment.id),
+              };
+            }),
             externalFileAccess: false,
           },
         ),
@@ -1074,8 +1150,13 @@ export class DocumentService {
         throw new Error("DOCX conversion produced empty markdown");
       }
 
-      return markdown;
+      return {
+        inlineAttachments,
+        markdown,
+        uploadedObjectKeys,
+      };
     } catch (error) {
+      await this.deleteUploadedObjects(uploadedObjectKeys);
       if (error instanceof ApiException) {
         throw error;
       }
@@ -1524,6 +1605,55 @@ export class DocumentService {
     }
   }
 
+  private async uploadDocxInlineImage(input: {
+    documentId: string;
+    image: MammothImage;
+    ordinal: number;
+  }): Promise<ConvertedDocxMarkdown["inlineAttachments"][number] | undefined> {
+    const mimeType = getSupportedDocxImageMimeType(input.image.contentType);
+
+    if (!mimeType) {
+      return undefined;
+    }
+
+    const body = await readDocxImageBuffer(input.image);
+    if (body.length <= 0) {
+      return undefined;
+    }
+    if (body.length > AttachmentMaxSizeBytes) {
+      throw new ApiException(
+        "FILE_TOO_LARGE",
+        "Embedded DOCX image is too large",
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+
+    const id = ulid();
+    const fileName = createDocxImageFileName(input.ordinal, mimeType);
+    const fileKey = createInlineImageFileKey(input.documentId, fileName);
+
+    await this.objectStorage.putObject({
+      body,
+      key: fileKey,
+      mimeType,
+      size: body.length,
+    });
+
+    return {
+      fileKey,
+      fileName,
+      id,
+      mimeType,
+      size: body.length,
+    };
+  }
+
+  private async deleteUploadedObjects(fileKeys: string[]) {
+    for (const fileKey of fileKeys) {
+      await this.deleteUploadedObject(fileKey);
+    }
+  }
+
   private async deleteUploadedObject(fileKey: string) {
     try {
       await this.objectStorage.deleteObjectIfExists(fileKey);
@@ -1668,8 +1798,52 @@ function createSourceFileKey(documentId: string, fileName: string) {
   return `attachments/document/${documentId}/${ulid()}-${sanitizeFileName(fileName)}`;
 }
 
+function createInlineImageFileKey(documentId: string, fileName: string) {
+  return `attachments/document/${documentId}/images/${ulid()}-${sanitizeFileName(fileName)}`;
+}
+
 function sanitizeFileName(fileName: string) {
   return fileName.replace(/[^\w.\-() ]+/gu, "_").slice(0, 200) || "document";
+}
+
+function createAttachmentDownloadPath(attachmentId: string) {
+  return `${documentAttachmentDownloadPathPrefix}/${encodeURIComponent(attachmentId)}/download`;
+}
+
+function createDocxImageFileName(
+  ordinal: number,
+  mimeType: keyof typeof supportedDocxImageExtensions,
+) {
+  const sequence = ordinal.toString().padStart(3, "0");
+
+  return `image-${sequence}${supportedDocxImageExtensions[mimeType]}`;
+}
+
+function getSupportedDocxImageMimeType(
+  contentType: string | undefined,
+): keyof typeof supportedDocxImageExtensions | undefined {
+  const parsed = AttachmentMimeTypeSchema.safeParse(
+    contentType?.trim().toLowerCase(),
+  );
+
+  if (!parsed.success || !(parsed.data in supportedDocxImageExtensions)) {
+    return undefined;
+  }
+
+  return parsed.data as keyof typeof supportedDocxImageExtensions;
+}
+
+async function readDocxImageBuffer(image: MammothImage): Promise<Buffer> {
+  if (typeof image.readAsBuffer === "function") {
+    return image.readAsBuffer();
+  }
+  if (typeof image.read === "function") {
+    const body = await image.read();
+
+    return Buffer.isBuffer(body) ? body : Buffer.from(body);
+  }
+
+  throw new Error("DOCX image reader is unavailable");
 }
 
 function titleFromFileName(fileName: string) {

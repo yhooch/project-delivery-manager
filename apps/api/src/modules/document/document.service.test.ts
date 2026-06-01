@@ -697,6 +697,51 @@ describe("DocumentService", () => {
     expect(objectStorage.putObject).not.toHaveBeenCalled();
   });
 
+  it("uploads DOCX images as document attachments and writes download URLs", async () => {
+    convertToMarkdownMock.mockImplementation(
+      async (
+        _input: unknown,
+        options?: {
+          convertImage?: (image: unknown) => Promise<{ src: string }>;
+        },
+      ) => {
+        const image = await options?.convertImage?.({
+          contentType: "image/png",
+          read: async () => Buffer.from("image-bytes"),
+        });
+
+        return {
+          messages: [],
+          value: `# Converted\n\n![Diagram](${image?.src ?? ""})`,
+        };
+      },
+    );
+    const { documents, objectStorage, service } = createSubject({ role: "PM" });
+
+    await service.importDocx(ACTOR_ID, SPACE_ID, {}, docxUploadFile());
+
+    const createInput = (documents.create as ReturnType<typeof vi.fn>).mock
+      .calls[0]?.[0];
+    const inlineAttachment = createInput.inlineAttachments?.[0];
+
+    expect(inlineAttachment).toMatchObject({
+      fileName: "image-001.png",
+      mimeType: "image/png",
+      size: Buffer.byteLength("image-bytes"),
+    });
+    expect(createInput.contentMarkdown).toContain(
+      `/api/v1/attachments/${inlineAttachment?.id}/download`,
+    );
+    expect(objectStorage.putObject).toHaveBeenCalledWith(
+      expect.objectContaining({
+        body: Buffer.from("image-bytes"),
+        key: expect.stringContaining("/images/"),
+        mimeType: "image/png",
+        size: Buffer.byteLength("image-bytes"),
+      }),
+    );
+  });
+
   it("does not create a document or store an object when DOCX conversion times out", async () => {
     vi.useFakeTimers();
     convertToMarkdownMock.mockReturnValue(new Promise(() => undefined));

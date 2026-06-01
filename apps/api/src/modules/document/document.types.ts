@@ -35,6 +35,10 @@ export type DocumentSourceAttachmentInput = {
   size: number;
 };
 
+export type DocumentInlineAttachmentInput = DocumentSourceAttachmentInput & {
+  id: string;
+};
+
 export type CreateDocumentInput = DocumentActorInput & {
   id: string;
   organizationId: string;
@@ -45,6 +49,7 @@ export type CreateDocumentInput = DocumentActorInput & {
   contentText: string;
   sourceType: DocumentSourceType;
   sourceAttachment?: DocumentSourceAttachmentInput;
+  inlineAttachments?: DocumentInlineAttachmentInput[];
   tagIds?: string[];
   links?: DocumentLinkTarget[];
   chunks: DocumentContentChunkInput[];
@@ -105,6 +110,7 @@ export type UpdateDocumentContentInput = DocumentActorInput & {
   >;
   chunks: DocumentContentChunkInput[];
   sourceAttachment?: DocumentSourceAttachmentInput;
+  inlineAttachments?: DocumentInlineAttachmentInput[];
 };
 
 export type UpdateDocumentStateInput = DocumentActorInput & {

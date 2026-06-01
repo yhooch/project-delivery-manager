@@ -1058,7 +1058,7 @@
     },
     "importDialog": {
       "title": "Import document",
-      "description": "Supports .md, .markdown, and .docx. Word conversion is handled by the backend.",
+      "description": "Supports .md, .markdown, and .docx up to 100MB. Word conversion is handled by the backend.",
       "titleLabel": "Title",
       "titlePlaceholder": "Optional. Uses the file or body heading when empty.",
       "fileLabel": "File",

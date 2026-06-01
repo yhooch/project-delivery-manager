@@ -142,6 +142,25 @@ export class PrismaDocumentRepository implements DocumentRepository {
           })
         : undefined;
 
+      if (input.inlineAttachments?.length) {
+        await tx.attachment.createMany({
+          data: input.inlineAttachments.map((attachment) => ({
+            id: attachment.id,
+            organizationId: input.organizationId,
+            spaceId: input.spaceId,
+            targetType: "DOCUMENT",
+            targetId: created.id,
+            fileName: attachment.fileName,
+            fileKey: attachment.fileKey,
+            mimeType: attachment.mimeType,
+            size: attachment.size,
+            uploadedById: input.actorUserId,
+            createdById: input.actorUserId,
+            updatedById: input.actorUserId,
+          })),
+        });
+      }
+
       const withSource = sourceAttachment
         ? await tx.document.update({
             data: {
@@ -717,6 +736,24 @@ export class PrismaDocumentRepository implements DocumentRepository {
             },
           })
         : undefined;
+      if (input.inlineAttachments?.length) {
+        await tx.attachment.createMany({
+          data: input.inlineAttachments.map((attachment) => ({
+            id: attachment.id,
+            organizationId: existing.organizationId,
+            spaceId: existing.spaceId,
+            targetType: "DOCUMENT",
+            targetId: existing.id,
+            fileName: attachment.fileName,
+            fileKey: attachment.fileKey,
+            mimeType: attachment.mimeType,
+            size: attachment.size,
+            uploadedById: input.actorUserId,
+            createdById: input.actorUserId,
+            updatedById: input.actorUserId,
+          })),
+        });
+      }
       const updated = await tx.document.update({
         data: {
           contentFormat: input.contentFormat,

@@ -8,6 +8,7 @@ import {
 import { AttachmentTargetTypeSchema } from "./enums.ts";
 
 export const AttachmentMaxSizeBytes = 20 * 1024 * 1024;
+export const AttachmentStoredMaxSizeBytes = 100 * 1024 * 1024;
 export const AttachmentMaxCountPerTarget = 20;
 
 export const AttachmentMimeTypeSchema = z.enum([
@@ -36,7 +37,7 @@ const AttachmentSizeSchema = z
   .number()
   .int()
   .positive()
-  .max(AttachmentMaxSizeBytes);
+  .max(AttachmentStoredMaxSizeBytes);
 const AttachmentStoredMetadataSchema = z.object({
   mimeType: AttachmentMimeTypeSchema,
   size: AttachmentSizeSchema,

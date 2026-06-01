@@ -219,6 +219,10 @@ function fallbackErrorCode(status: number): ApiErrorCode {
     return "NOT_FOUND";
   }
 
+  if (status === 413) {
+    return "FILE_TOO_LARGE";
+  }
+
   if (status === 409) {
     return "CONFLICT";
   }

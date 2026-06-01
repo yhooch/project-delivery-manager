@@ -1058,7 +1058,7 @@
     },
     "importDialog": {
       "title": "导入文档",
-      "description": "支持 .md、.markdown 和 .docx；Word 转换由后端处理。",
+      "description": "支持最大 100MB 的 .md、.markdown 和 .docx；Word 转换由后端处理。",
       "titleLabel": "标题",
       "titlePlaceholder": "可选，留空时使用文件或正文标题",
       "fileLabel": "文件",

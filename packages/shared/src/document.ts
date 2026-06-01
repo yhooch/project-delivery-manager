@@ -20,7 +20,7 @@ import {
 import { DisplayIdentitySchema } from "./object-code.ts";
 import { TagFilterQuerySchema, TagIdListSchema, TagListSchema } from "./tag.ts";
 
-export const DocumentMaxImportSizeBytes = 20 * 1024 * 1024;
+export const DocumentMaxImportSizeBytes = 100 * 1024 * 1024;
 export const DocumentMaxMarkdownBytes = 2 * 1024 * 1024;
 export const DocumentSupportedMarkdownMimeTypes = [
   "text/markdown",

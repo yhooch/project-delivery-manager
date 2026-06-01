@@ -290,6 +290,19 @@ function InlineToken({
     );
   }
   if (token.kind === "imageLink") {
+    if (isAttachmentDownloadHref(token.href)) {
+      return (
+        <span className="my-4 block max-w-full">
+          <img
+            alt={token.alt || t("image")}
+            className="max-h-[70vh] max-w-full rounded-md border border-border bg-muted object-contain"
+            loading="lazy"
+            src={token.href}
+          />
+        </span>
+      );
+    }
+
     return (
       <span className="mx-0.5 inline-flex max-w-full items-center gap-1 rounded-md border border-border bg-muted/40 px-1.5 py-0.5 text-xs text-muted-foreground">
         <ImageOff className="h-3 w-3 shrink-0" aria-hidden="true" />
@@ -316,6 +329,10 @@ function InlineToken({
       spaceId={spaceId}
     />
   );
+}
+
+function isAttachmentDownloadHref(href: string): boolean {
+  return /^\/api\/v1\/attachments\/[^/]+\/download$/u.test(href);
 }
 
 function ObjectCodeButton({
