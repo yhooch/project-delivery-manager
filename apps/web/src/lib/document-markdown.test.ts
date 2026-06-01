@@ -38,6 +38,12 @@ describe("document markdown helpers", () => {
       ]);
   });
 
+  it("tokenizes underscore strong text", () => {
+    expect(tokenizeInline("__进入页面__")).toEqual([
+      { kind: "strong", text: "进入页面" },
+    ]);
+  });
+
   it("rejects unsafe links", () => {
     expect(sanitizeHref("javascript:alert(1)")).toBeNull();
     expect(sanitizeHref("https://example.com")).toBe("https://example.com");
@@ -52,6 +58,38 @@ describe("document markdown helpers", () => {
     expect(headings).toMatchObject([
       { id: "intro", text: "Intro" },
       { id: "intro-2", text: "Intro" },
+    ]);
+  });
+
+  it("parses standalone strong lines as compact subheadings", () => {
+    expect(parseMarkdown("# 机场列表\n\n__设备小窗__\n\n正文")).toMatchObject([
+      { kind: "heading", text: "机场列表" },
+      { kind: "subheading", text: "设备小窗" },
+      { kind: "paragraph" },
+    ]);
+  });
+
+  it("preserves nested list structure from indented markdown", () => {
+    expect(
+      parseMarkdown("- 飞行记录详情\n\t- 任务详情\n\t- 飞行状态"),
+    ).toMatchObject([
+      {
+        items: [
+          {
+            children: [
+              {
+                items: [
+                  { tokens: [{ kind: "text", text: "任务详情" }] },
+                  { tokens: [{ kind: "text", text: "飞行状态" }] },
+                ],
+              },
+            ],
+            tokens: [{ kind: "text", text: "飞行记录详情" }],
+          },
+        ],
+        kind: "list",
+        ordered: false,
+      },
     ]);
   });
 });

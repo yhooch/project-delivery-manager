@@ -60,6 +60,7 @@ import {
   normalizeDocumentLinks,
   normalizeMarkdownSource,
   normalizeTiptapSource,
+  readDocxUtf8Entry,
   stripBase64Images,
   type UploadedDocumentFile,
 } from "./document-content";
@@ -84,6 +85,25 @@ const MCP_DOCUMENT_SEARCH_MAX_HITS_PER_DOCUMENT = 3;
 const MCP_DOCUMENT_SEARCH_SNIPPET_MAX_LENGTH = 320;
 export const DocumentDocxConversionTimeoutMs = 10_000;
 const documentAttachmentDownloadPathPrefix = "/api/v1/attachments";
+const markdownEscapableCharacters = new Set([
+  "\\",
+  "`",
+  "*",
+  "_",
+  "{",
+  "}",
+  "[",
+  "]",
+  "(",
+  ")",
+  "#",
+  "+",
+  "-",
+  ".",
+  "!",
+  "|",
+  ">",
+]);
 const supportedDocxImageExtensions = {
   "image/gif": ".gif",
   "image/jpeg": ".jpg",
@@ -123,6 +143,7 @@ type ConvertedDocxMarkdown = {
     size: number;
   }>;
   markdown: string;
+  title?: string;
   uploadedObjectKeys: string[];
 };
 
@@ -403,6 +424,7 @@ export class DocumentService {
       "UPLOAD_DOCX",
       {
         documentId,
+        extractedTitle: converted.title,
         inlineAttachments: converted.inlineAttachments,
         uploadedObjectKeys: converted.uploadedObjectKeys,
       },
@@ -1009,6 +1031,7 @@ export class DocumentService {
     sourceType: "UPLOAD_MARKDOWN" | "UPLOAD_DOCX" = "UPLOAD_MARKDOWN",
     options: {
       documentId?: string;
+      extractedTitle?: string;
       inlineAttachments?: ConvertedDocxMarkdown["inlineAttachments"];
       uploadedObjectKeys?: string[];
     } = {},
@@ -1027,7 +1050,7 @@ export class DocumentService {
       const normalized = normalizeMarkdownSource({
         contentMarkdown: markdown,
         fallbackTitle: titleFromFileName(file.fileName),
-        title: input.title,
+        title: input.title ?? options.extractedTitle,
       });
       const links = await this.validateLinks(actorUserId, {
         links: normalizeDocumentLinks(input.links),
@@ -1104,6 +1127,7 @@ export class DocumentService {
 
     try {
       assertSafeDocxZip(file);
+      const docxHints = extractDocxImportHints(file);
       const convertToMarkdown = (
         mammoth as unknown as { convertToMarkdown: ConvertToMarkdown }
       ).convertToMarkdown;
@@ -1143,7 +1167,10 @@ export class DocumentService {
         );
       }
 
-      const markdown = stripBase64Images(result.value).trim();
+      const markdown = normalizeConvertedDocxMarkdown(
+        stripBase64Images(result.value).trim(),
+        docxHints,
+      );
       assertMarkdownSize(markdown);
 
       if (!markdown) {
@@ -1153,6 +1180,7 @@ export class DocumentService {
       return {
         inlineAttachments,
         markdown,
+        title: docxHints.title,
         uploadedObjectKeys,
       };
     } catch (error) {
@@ -1844,6 +1872,168 @@ async function readDocxImageBuffer(image: MammothImage): Promise<Buffer> {
   }
 
   throw new Error("DOCX image reader is unavailable");
+}
+
+type DocxImportHints = {
+  outlineHeadingTexts: Set<string>;
+  title?: string;
+};
+
+function extractDocxImportHints(file: UploadedDocumentFile): DocxImportHints {
+  const hints: DocxImportHints = { outlineHeadingTexts: new Set() };
+  const documentXml = readDocxUtf8Entry(file, "word/document.xml");
+
+  if (!documentXml) {
+    return hints;
+  }
+
+  const paragraphPattern = /<w:p\b[\s\S]*?<\/w:p>/gu;
+  let match: RegExpExecArray | null;
+  let seenStructuralHeading = false;
+
+  while ((match = paragraphPattern.exec(documentXml))) {
+    const paragraphXml = match[0];
+    const text = extractDocxParagraphText(paragraphXml);
+
+    if (!text) {
+      continue;
+    }
+
+    const styleId = extractWordXmlAttribute(paragraphXml, "w:pStyle", "w:val");
+    const outlineLevel = Number(
+      extractWordXmlAttribute(paragraphXml, "w:outlineLvl", "w:val") ?? NaN,
+    );
+    const hasParagraphStyle = Boolean(styleId);
+
+    if (
+      hints.title === undefined &&
+      !seenStructuralHeading &&
+      !hasParagraphStyle &&
+      Number.isNaN(outlineLevel) &&
+      isLikelyDocxCoverTitle(text)
+    ) {
+      hints.title = text;
+    }
+
+    if (
+      !hasParagraphStyle &&
+      Number.isInteger(outlineLevel) &&
+      outlineLevel >= 0 &&
+      outlineLevel <= 5 &&
+      isLikelyDocxOutlineHeading(text)
+    ) {
+      hints.outlineHeadingTexts.add(normalizeDocxHeadingComparisonText(text));
+    }
+
+    if (hasParagraphStyle || Number.isInteger(outlineLevel)) {
+      seenStructuralHeading = true;
+    }
+  }
+
+  return hints;
+}
+
+function normalizeConvertedDocxMarkdown(
+  markdown: string,
+  hints: DocxImportHints,
+): string {
+  if (hints.outlineHeadingTexts.size === 0) {
+    return markdown;
+  }
+
+  const lines = markdown.split("\n");
+  let currentHeadingLevel = 0;
+
+  return lines
+    .map((line) => {
+      const heading = /^(#{1,6})\s+(.+)$/u.exec(line.trim());
+
+      if (heading?.[1]) {
+        currentHeadingLevel = heading[1].length;
+        return line;
+      }
+
+      const listHeading = /^(\s*)\d+[.)]\s+(.+?)\s*$/u.exec(line);
+      const text = listHeading?.[2];
+
+      if (
+        !text ||
+        !hints.outlineHeadingTexts.has(normalizeDocxHeadingComparisonText(text))
+      ) {
+        return line;
+      }
+
+      const level = Math.min(Math.max(currentHeadingLevel + 1, 2), 6);
+      currentHeadingLevel = level;
+
+      return `${"#".repeat(level)} ${text}`;
+    })
+    .join("\n");
+}
+
+function extractDocxParagraphText(paragraphXml: string): string {
+  const textRuns: string[] = [];
+  const textPattern = /<w:t\b[^>]*>([\s\S]*?)<\/w:t>/gu;
+  let match: RegExpExecArray | null;
+
+  while ((match = textPattern.exec(paragraphXml))) {
+    textRuns.push(decodeXmlText(match[1] ?? ""));
+  }
+
+  return textRuns.join("").replace(/\s+/gu, " ").trim();
+}
+
+function extractWordXmlAttribute(
+  xml: string,
+  tagName: string,
+  attributeName: string,
+): string | undefined {
+  const tag = new RegExp(`<${tagName}\\b[^>]*>`, "u").exec(xml)?.[0];
+
+  if (!tag) {
+    return undefined;
+  }
+
+  const escapedAttributeName = attributeName.replace(
+    /[.*+?^${}()|[\]\\]/gu,
+    "\\$&",
+  );
+  const attribute = new RegExp(
+    `${escapedAttributeName}="([^"]+)"`,
+    "u",
+  ).exec(tag);
+
+  return attribute?.[1];
+}
+
+function decodeXmlText(value: string): string {
+  return value
+    .replace(/&lt;/gu, "<")
+    .replace(/&gt;/gu, ">")
+    .replace(/&quot;/gu, '"')
+    .replace(/&apos;/gu, "'")
+    .replace(/&amp;/gu, "&");
+}
+
+function isLikelyDocxCoverTitle(text: string): boolean {
+  return (
+    text.length > 0 &&
+    text.length <= 80 &&
+    !/[。；;：:]$/u.test(text)
+  );
+}
+
+function isLikelyDocxOutlineHeading(text: string): boolean {
+  return text.length > 0 && text.length <= 80;
+}
+
+function normalizeDocxHeadingComparisonText(text: string): string {
+  return text
+    .replace(/\\(.)/gu, (escaped, character: string) =>
+      markdownEscapableCharacters.has(character) ? character : escaped,
+    )
+    .replace(/\s+/gu, " ")
+    .trim();
 }
 
 function titleFromFileName(fileName: string) {

@@ -2288,12 +2288,13 @@ function DocumentTocRail({ headings }: { headings: MarkdownHeading[] }) {
         >
           {headings.length > 0 ? (
             <nav aria-label={t("rail.toc")} className="grid gap-px">
-              {headings.slice(0, 12).map((heading) => (
+              {headings.map((heading) => (
                 <a
                   key={heading.id}
                   className={cn(
                     "truncate rounded px-2 py-1 text-xs text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
-                    heading.level > 2 && "pl-4",
+                    heading.level === 2 && "pl-4",
+                    heading.level >= 3 && "pl-6",
                   )}
                   href={`#${heading.id}`}
                 >

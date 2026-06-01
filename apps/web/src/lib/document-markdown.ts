@@ -6,12 +6,24 @@ export type MarkdownInlineToken =
   | { kind: "objectCode"; code: string }
   | { alt: string; href: string; kind: "imageLink"; remote: boolean };
 
+export type MarkdownListItem = {
+  children: MarkdownListBlock[];
+  tokens: MarkdownInlineToken[];
+};
+
+export type MarkdownListBlock = {
+  items: MarkdownListItem[];
+  kind: "list";
+  ordered: boolean;
+};
+
 export type MarkdownBlock =
   | { id: string; inlines: MarkdownInlineToken[]; kind: "heading"; level: number; text: string }
   | { inlines: MarkdownInlineToken[]; kind: "paragraph" }
+  | { inlines: MarkdownInlineToken[]; kind: "subheading"; text: string }
   | { kind: "code"; code: string; language?: string }
   | { inlines: MarkdownInlineToken[]; kind: "quote" }
-  | { items: MarkdownInlineToken[][]; kind: "list"; ordered: boolean }
+  | MarkdownListBlock
   | {
       header: MarkdownInlineToken[][];
       kind: "table";
@@ -48,14 +60,18 @@ export function markdownToPlainText(markdown: string): string {
         return block.text;
       }
       if (block.kind === "list") {
-        return block.items.map(tokensToText).join("\n");
+        return listItemsToText(block.items);
       }
       if (block.kind === "table") {
         return [block.header, ...block.rows]
           .map((row) => row.map(tokensToText).join(" "))
           .join("\n");
       }
-      if (block.kind === "paragraph" || block.kind === "quote") {
+      if (
+        block.kind === "paragraph" ||
+        block.kind === "quote" ||
+        block.kind === "subheading"
+      ) {
         return tokensToText(block.inlines);
       }
       return "";
@@ -132,6 +148,17 @@ export function parseMarkdown(markdown: string): MarkdownBlock[] {
       continue;
     }
 
+    const standaloneStrong = parseStandaloneStrongLine(trimmed);
+    if (standaloneStrong) {
+      blocks.push({
+        inlines: tokenizeInline(standaloneStrong),
+        kind: "subheading",
+        text: stripInlineMarkdown(standaloneStrong).trim(),
+      });
+      i += 1;
+      continue;
+    }
+
     const list = parseList(lines, i);
     if (list) {
       blocks.push(list.block);
@@ -187,7 +214,7 @@ export function tokenizeInline(input: string): MarkdownInlineToken[] {
   const tokens: MarkdownInlineToken[] = [];
   let cursor = 0;
   const pattern =
-    /!\[([^\]]*)\]\(([^)\s]+)(?:\s+"[^"]*")?\)|\[([^\]]+)\]\(([^)\s]+)(?:\s+"[^"]*")?\)|`([^`]+)`|\*\*([^*]+)\*\*|\b(?:REQ|INTAKE|TASK|BUG)-[1-9]\d*\b/giu;
+    /!\[([^\]]*)\]\(([^)\s]+)(?:\s+"[^"]*")?\)|\[([^\]]+)\]\(([^)\s]+)(?:\s+"[^"]*")?\)|`([^`]+)`|(?:\*\*([^*]+)\*\*|__([^_]+)__)|\b(?:REQ|INTAKE|TASK|BUG)-[1-9]\d*\b/giu;
   let match: RegExpExecArray | null;
 
   while ((match = pattern.exec(input))) {
@@ -212,8 +239,8 @@ export function tokenizeInline(input: string): MarkdownInlineToken[] {
       );
     } else if (match[5] !== undefined) {
       tokens.push({ kind: "code", text: match[5] });
-    } else if (match[6] !== undefined) {
-      tokens.push({ kind: "strong", text: match[6] });
+    } else if (match[6] !== undefined || match[7] !== undefined) {
+      tokens.push({ kind: "strong", text: match[6] ?? match[7] ?? "" });
     } else if (/^(?:REQ|INTAKE|TASK|BUG)-[1-9]\d*$/iu.test(raw)) {
       tokens.push({ code: raw.toUpperCase(), kind: "objectCode" });
     } else {
@@ -251,27 +278,13 @@ function parseList(
   lines: string[],
   startIndex: number,
 ): { block: MarkdownBlock; nextIndex: number } | null {
-  const first = /^(\s*)([-*+]|\d+[.)])\s+(.+)$/u.exec(
-    lines[startIndex] ?? "",
-  );
-  if (!first?.[2] || !first[3]) {
+  const first = parseListLine(lines[startIndex] ?? "");
+
+  if (!first) {
     return null;
   }
 
-  const ordered = /\d+[.)]/u.test(first[2]);
-  const items: MarkdownInlineToken[][] = [];
-  let i = startIndex;
-
-  while (i < lines.length) {
-    const match = /^(\s*)([-*+]|\d+[.)])\s+(.+)$/u.exec(lines[i] ?? "");
-    if (!match?.[2] || !match[3] || /\d+[.)]/u.test(match[2]) !== ordered) {
-      break;
-    }
-    items.push(tokenizeInline(match[3]));
-    i += 1;
-  }
-
-  return { block: { items, kind: "list", ordered }, nextIndex: i };
+  return parseListBlock(lines, startIndex, first.indent, first.ordered);
 }
 
 function shouldContinueParagraph(line: string): boolean {
@@ -289,6 +302,76 @@ function splitTableRow(line: string): string[] {
     .replace(/\|$/u, "")
     .split("|")
     .map((cell) => cell.trim());
+}
+
+function parseStandaloneStrongLine(line: string): string | null {
+  const match = /^(?:\*\*([^*]+)\*\*|__([^_]+)__)\s*$/u.exec(line);
+  const text = match?.[1] ?? match?.[2];
+
+  return text?.trim() || null;
+}
+
+function parseListBlock(
+  lines: string[],
+  startIndex: number,
+  indent: number,
+  ordered: boolean,
+): { block: MarkdownListBlock; nextIndex: number } {
+  const items: MarkdownListItem[] = [];
+  let i = startIndex;
+
+  while (i < lines.length) {
+    const line = parseListLine(lines[i] ?? "");
+
+    if (!line || line.indent < indent) {
+      break;
+    }
+
+    if (line.indent > indent) {
+      const parent = items.at(-1);
+
+      if (!parent) {
+        break;
+      }
+
+      const nested = parseListBlock(lines, i, line.indent, line.ordered);
+      parent.children.push(nested.block);
+      i = nested.nextIndex;
+      continue;
+    }
+
+    if (line.ordered !== ordered) {
+      break;
+    }
+
+    items.push({ children: [], tokens: tokenizeInline(line.text) });
+    i += 1;
+  }
+
+  return {
+    block: { items, kind: "list", ordered },
+    nextIndex: i,
+  };
+}
+
+function parseListLine(
+  line: string,
+): { indent: number; ordered: boolean; text: string } | null {
+  const match = /^(\s*)([-*+]|\d+[.)])\s+(.+)$/u.exec(line);
+
+  if (!match?.[2] || !match[3]) {
+    return null;
+  }
+
+  return {
+    indent: countMarkdownIndent(match[1] ?? ""),
+    ordered: /\d+[.)]/u.test(match[2]),
+    text: match[3],
+  };
+}
+
+function countMarkdownIndent(value: string): number {
+  return value.replace(/\t/gu, "    ").length;
 }
 
 function stripInlineMarkdown(input: string): string {
@@ -311,6 +394,16 @@ function tokensToText(tokens: MarkdownInlineToken[]): string {
       return token.text;
     })
     .join("");
+}
+
+function listItemsToText(items: MarkdownListItem[]): string {
+  return items
+    .flatMap((item) => [
+      tokensToText(item.tokens),
+      ...item.children.map((child) => listItemsToText(child.items)),
+    ])
+    .filter(Boolean)
+    .join("\n");
 }
 
 function createUniqueHeadingId(text: string, used: Map<string, number>): string {

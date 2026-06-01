@@ -10,6 +10,7 @@ import {
   parseMarkdown,
   type MarkdownHeading,
   type MarkdownInlineToken,
+  type MarkdownListBlock,
 } from "../../lib/document-markdown";
 import { getObjectCodeLookupHref } from "../../lib/document-view-model";
 import { lookupObjectCode } from "../../lib/object-code-service";
@@ -91,12 +92,37 @@ export function DocumentMarkdownViewer({
         }
 
         if (block.kind === "paragraph") {
+          const imageDisplay = isImageOnlyTokens(block.inlines)
+            ? "block"
+            : "inline";
+          const ParagraphTag = imageDisplay === "block" ? "div" : "p";
+
           return (
-            <p
+            <ParagraphTag
               key={index}
               className={cn("my-3", DOCUMENT_MARKDOWN_PROSE_WIDTH_CLASS)}
             >
               <InlineTokens
+                imageDisplay={imageDisplay}
+                organizationId={organizationId}
+                spaceId={spaceId}
+                tokens={block.inlines}
+              />
+            </ParagraphTag>
+          );
+        }
+
+        if (block.kind === "subheading") {
+          return (
+            <p
+              key={index}
+              className={cn(
+                "mb-1 mt-5 text-sm font-semibold leading-6 text-foreground",
+                DOCUMENT_MARKDOWN_PROSE_WIDTH_CLASS,
+              )}
+            >
+              <InlineTokens
+                imageDisplay="inline"
                 organizationId={organizationId}
                 spaceId={spaceId}
                 tokens={block.inlines}
@@ -135,26 +161,13 @@ export function DocumentMarkdownViewer({
         }
 
         if (block.kind === "list") {
-          const ListTag = block.ordered ? "ol" : "ul";
           return (
-            <ListTag
+            <DocumentMarkdownList
               key={index}
-              className={cn(
-                "my-3 space-y-1 pl-5",
-                DOCUMENT_MARKDOWN_PROSE_WIDTH_CLASS,
-                block.ordered ? "list-decimal" : "list-disc",
-              )}
-            >
-              {block.items.map((item, itemIndex) => (
-                <li key={itemIndex}>
-                  <InlineTokens
-                    organizationId={organizationId}
-                    spaceId={spaceId}
-                    tokens={item}
-                  />
-                </li>
-              ))}
-            </ListTag>
+              block={block}
+              organizationId={organizationId}
+              spaceId={spaceId}
+            />
           );
         }
 
@@ -224,10 +237,12 @@ export function getDocumentMarkdownHeadings(markdown: string) {
 }
 
 function InlineTokens({
+  imageDisplay = "inline",
   organizationId,
   spaceId,
   tokens,
 }: {
+  imageDisplay?: "block" | "inline";
   organizationId?: string;
   spaceId?: string;
   tokens: MarkdownInlineToken[];
@@ -236,6 +251,7 @@ function InlineTokens({
     <>
       {tokens.map((token, index) => (
         <InlineToken
+          imageDisplay={imageDisplay}
           key={index}
           organizationId={organizationId}
           spaceId={spaceId}
@@ -247,10 +263,12 @@ function InlineTokens({
 }
 
 function InlineToken({
+  imageDisplay,
   organizationId,
   spaceId,
   token,
 }: {
+  imageDisplay: "block" | "inline";
   organizationId?: string;
   spaceId?: string;
   token: MarkdownInlineToken;
@@ -291,6 +309,17 @@ function InlineToken({
   }
   if (token.kind === "imageLink") {
     if (isAttachmentDownloadHref(token.href)) {
+      if (imageDisplay === "inline") {
+        return (
+          <img
+            alt={token.alt || t("image")}
+            className="mx-1 inline-block max-h-6 max-w-[8rem] align-middle rounded border border-border bg-muted object-contain"
+            loading="lazy"
+            src={token.href}
+          />
+        );
+      }
+
       return (
         <span className="my-4 block max-w-full">
           <img
@@ -329,6 +358,54 @@ function InlineToken({
       spaceId={spaceId}
     />
   );
+}
+
+function DocumentMarkdownList({
+  block,
+  nested = false,
+  organizationId,
+  spaceId,
+}: {
+  block: MarkdownListBlock;
+  nested?: boolean;
+  organizationId?: string;
+  spaceId?: string;
+}) {
+  const ListTag = block.ordered ? "ol" : "ul";
+
+  return (
+    <ListTag
+      className={cn(
+        nested ? "mt-1 space-y-1 pl-5" : "my-3 space-y-1 pl-5",
+        !nested && DOCUMENT_MARKDOWN_PROSE_WIDTH_CLASS,
+        block.ordered ? "list-decimal" : "list-disc",
+      )}
+    >
+      {block.items.map((item, itemIndex) => (
+        <li key={itemIndex}>
+          <InlineTokens
+            imageDisplay="inline"
+            organizationId={organizationId}
+            spaceId={spaceId}
+            tokens={item.tokens}
+          />
+          {item.children.map((child, childIndex) => (
+            <DocumentMarkdownList
+              key={childIndex}
+              block={child}
+              nested
+              organizationId={organizationId}
+              spaceId={spaceId}
+            />
+          ))}
+        </li>
+      ))}
+    </ListTag>
+  );
+}
+
+function isImageOnlyTokens(tokens: MarkdownInlineToken[]): boolean {
+  return tokens.length === 1 && tokens[0]?.kind === "imageLink";
 }
 
 function isAttachmentDownloadHref(href: string): boolean {

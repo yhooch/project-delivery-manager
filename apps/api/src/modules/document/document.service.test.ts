@@ -742,6 +742,59 @@ describe("DocumentService", () => {
     );
   });
 
+  it("uses the DOCX cover title before the first heading as the document title", async () => {
+    const { documents, service } = createSubject({ role: "PM" });
+
+    await service.importDocx(
+      ACTOR_ID,
+      SPACE_ID,
+      {},
+      docxUploadFileWithDocumentXml(`
+        <w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+          <w:body>
+            <w:p><w:r><w:t>域见-天巡智控系统产品操作手册</w:t></w:r></w:p>
+            <w:p><w:pPr><w:pStyle w:val="2"/></w:pPr><w:r><w:t>简介</w:t></w:r></w:p>
+          </w:body>
+        </w:document>
+      `),
+    );
+
+    expect((documents.create as ReturnType<typeof vi.fn>).mock.calls[0]?.[0])
+      .toMatchObject({
+        title: "域见-天巡智控系统产品操作手册",
+      });
+  });
+
+  it("promotes DOCX outline-only paragraphs into markdown subheadings", async () => {
+    convertToMarkdownMock.mockResolvedValue({
+      messages: [],
+      value: "# 低空警务\n\n## 机场列表\n\n1. 设备小窗\n\n正文",
+    });
+    const { documents, service } = createSubject({ role: "PM" });
+
+    await service.importDocx(
+      ACTOR_ID,
+      SPACE_ID,
+      {},
+      docxUploadFileWithDocumentXml(`
+        <w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+          <w:body>
+            <w:p>
+              <w:pPr><w:outlineLvl w:val="1"/></w:pPr>
+              <w:r><w:t>设备小窗</w:t></w:r>
+            </w:p>
+          </w:body>
+        </w:document>
+      `),
+    );
+
+    const createInput = (documents.create as ReturnType<typeof vi.fn>).mock
+      .calls[0]?.[0];
+
+    expect(createInput.contentMarkdown).toContain("### 设备小窗");
+    expect(createInput.contentMarkdown).not.toContain("1. 设备小窗");
+  });
+
   it("does not create a document or store an object when DOCX conversion times out", async () => {
     vi.useFakeTimers();
     convertToMarkdownMock.mockReturnValue(new Promise(() => undefined));
@@ -1075,6 +1128,21 @@ function normalizeForTest(value: string) {
 
 function docxUploadFile() {
   const buffer = createMinimalDocxZipBuffer();
+
+  return {
+    buffer,
+    fileName: "document.docx",
+    mimeType:
+      "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    size: buffer.length,
+  };
+}
+
+function docxUploadFileWithDocumentXml(documentXml: string) {
+  const buffer = createZipBuffer([
+    { fileName: "[Content_Types].xml", content: Buffer.from("types") },
+    { fileName: "word/document.xml", content: Buffer.from(documentXml) },
+  ]);
 
   return {
     buffer,

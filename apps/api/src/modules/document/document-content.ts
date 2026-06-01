@@ -1,3 +1,5 @@
+import { inflateRawSync } from "node:zlib";
+
 import {
   DocumentMaxImportSizeBytes,
   DocumentMaxMarkdownBytes,
@@ -22,14 +24,24 @@ export type UploadedDocumentFile = {
 const base64ImagePattern = /data:image\/[a-z0-9.+-]+;base64,[a-z0-9+/=\s]+/giu;
 const zipEndOfCentralDirectorySignature = 0x06054b50;
 const zipCentralDirectoryFileHeaderSignature = 0x02014b50;
+const zipLocalFileHeaderSignature = 0x04034b50;
 const zipMaxCommentBytes = 0xffff;
 const zipEndOfCentralDirectoryMinBytes = 22;
 const zipCentralDirectoryFileHeaderBytes = 46;
+const zipLocalFileHeaderBytes = 30;
 const docxMaxZipEntries = 2_048;
 const docxMaxDeclaredCompressedBytes = DocumentMaxImportSizeBytes;
 const docxMaxDeclaredUncompressedBytes = DocumentMaxImportSizeBytes * 5;
 const docxMaxCompressionRatio = 100;
 const docxRequiredEntries = new Set(["[Content_Types].xml", "word/document.xml"]);
+
+type ZipCentralDirectoryEntry = {
+  compressedSize: number;
+  compressionMethod: number;
+  fileName: string;
+  localHeaderOffset: number;
+  uncompressedSize: number;
+};
 
 export function normalizeMarkdownSource(input: {
   contentMarkdown: string;
@@ -216,6 +228,21 @@ export function assertSafeDocxZip(file: UploadedDocumentFile): void {
   }
 }
 
+export function readDocxUtf8Entry(
+  file: UploadedDocumentFile,
+  fileName: string,
+): string | undefined {
+  const entry = readZipCentralDirectory(file.buffer).find(
+    (candidate) => candidate.fileName === fileName,
+  );
+
+  if (!entry) {
+    return undefined;
+  }
+
+  return readZipEntryData(file.buffer, entry).toString("utf8");
+}
+
 export function assertMarkdownSize(markdown: string): void {
   if (Buffer.byteLength(markdown, "utf8") > DocumentMaxMarkdownBytes) {
     throwFileTooLarge();
@@ -298,9 +325,7 @@ function assertImportSize(file: UploadedDocumentFile): void {
   }
 }
 
-function readZipCentralDirectory(
-  buffer: Buffer,
-): Array<{ compressedSize: number; fileName: string; uncompressedSize: number }> {
+function readZipCentralDirectory(buffer: Buffer): ZipCentralDirectoryEntry[] {
   const endOfCentralDirectoryOffset = findEndOfCentralDirectory(buffer);
   const entryCountOnDisk = buffer.readUInt16LE(endOfCentralDirectoryOffset + 8);
   const entryCount = buffer.readUInt16LE(endOfCentralDirectoryOffset + 10);
@@ -320,11 +345,7 @@ function readZipCentralDirectory(
     throwDocxImportFailed("DOCX archive central directory is out of bounds");
   }
 
-  const entries: Array<{
-    compressedSize: number;
-    fileName: string;
-    uncompressedSize: number;
-  }> = [];
+  const entries: ZipCentralDirectoryEntry[] = [];
   const centralDirectoryEnd = centralDirectoryOffset + centralDirectorySize;
   let position = centralDirectoryOffset;
 
@@ -377,7 +398,13 @@ function readZipCentralDirectory(
       throwDocxImportFailed("DOCX archive entry path is invalid");
     }
 
-    entries.push({ compressedSize, fileName, uncompressedSize });
+    entries.push({
+      compressedSize,
+      compressionMethod,
+      fileName,
+      localHeaderOffset,
+      uncompressedSize,
+    });
     position = entryEnd;
   }
 
@@ -386,6 +413,42 @@ function readZipCentralDirectory(
   }
 
   return entries;
+}
+
+function readZipEntryData(
+  buffer: Buffer,
+  entry: ZipCentralDirectoryEntry,
+): Buffer {
+  const position = entry.localHeaderOffset;
+
+  if (
+    position + zipLocalFileHeaderBytes > buffer.length ||
+    buffer.readUInt32LE(position) !== zipLocalFileHeaderSignature
+  ) {
+    throwDocxImportFailed("DOCX archive local file header is invalid");
+  }
+
+  const fileNameLength = buffer.readUInt16LE(position + 26);
+  const extraFieldLength = buffer.readUInt16LE(position + 28);
+  const dataStart =
+    position + zipLocalFileHeaderBytes + fileNameLength + extraFieldLength;
+  const dataEnd = dataStart + entry.compressedSize;
+
+  if (dataStart > buffer.length || dataEnd > buffer.length) {
+    throwDocxImportFailed("DOCX archive entry data is out of bounds");
+  }
+
+  const compressed = buffer.subarray(dataStart, dataEnd);
+
+  if (entry.compressionMethod === 0) {
+    return compressed;
+  }
+
+  try {
+    return inflateRawSync(compressed);
+  } catch {
+    throwDocxImportFailed("DOCX archive entry data cannot be decompressed");
+  }
 }
 
 function findEndOfCentralDirectory(buffer: Buffer): number {

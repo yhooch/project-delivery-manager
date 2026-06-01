@@ -427,6 +427,24 @@ describe("DocumentDetailPage", () => {
     );
   });
 
+  it("renders all markdown headings in the table of contents", async () => {
+    getDocumentMock.mockResolvedValueOnce({
+      ...createDocument(),
+      contentMarkdown: Array.from(
+        { length: 13 },
+        (_, index) => `## Section ${index + 1}`,
+      ).join("\n\n"),
+    });
+
+    render(<DocumentDetailPage documentId="DOC_01" />);
+
+    const tocRail = await screen.findByTestId("document-toc-rail");
+
+    expect(
+      await within(tocRail).findByRole("link", { name: "Section 13" }),
+    ).toHaveAttribute("href", "#section-13");
+  });
+
   it("shows documents that reference the current document", async () => {
     listReferencingDocumentsMock.mockResolvedValueOnce({
       items: [
