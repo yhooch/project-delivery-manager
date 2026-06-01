@@ -60,7 +60,8 @@ export class OAuthConfigService {
 
   getAccessTokenTtlSeconds(): number {
     return (
-      this.config.get<number>("MCP_OAUTH_ACCESS_TOKEN_TTL_SECONDS") ?? 3600
+      this.config.get<number>("MCP_OAUTH_ACCESS_TOKEN_TTL_SECONDS") ??
+      60 * 60 * 24
     );
   }
 

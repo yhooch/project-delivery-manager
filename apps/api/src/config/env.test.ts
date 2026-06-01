@@ -19,4 +19,12 @@ describe("environment validation", () => {
 
     expect(env.QUERY_LOG_INCLUDE_PARAMS).toBe(true);
   });
+
+  it("defaults MCP access tokens to 24 hours", () => {
+    const env = validateEnv({
+      DATABASE_URL: "postgresql://postgres:postgres@localhost:5432/test",
+    });
+
+    expect(env.MCP_OAUTH_ACCESS_TOKEN_TTL_SECONDS).toBe(60 * 60 * 24);
+  });
 });
