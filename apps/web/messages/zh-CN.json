@@ -1455,6 +1455,7 @@
       "status": "状态",
       "allStatuses": "全部状态",
       "includeDrafts": "包含本人草稿",
+      "clear": "清空筛选",
       "active": "活跃",
       "draft": "草稿",
       "confirmed": "已确认",
@@ -1946,7 +1947,8 @@
       "priority": "优先级",
       "allPriorities": "全部优先级",
       "severity": "严重程度",
-      "allSeverities": "全部严重程度"
+      "allSeverities": "全部严重程度",
+      "clear": "清空筛选"
     },
     "priority": {
       "LOW": "低",
@@ -2283,7 +2285,8 @@
       "sourceType": "来源类型",
       "allSourceTypes": "全部来源",
       "assignee": "负责人",
-      "allAssignees": "全部负责人"
+      "allAssignees": "全部负责人",
+      "clear": "清空筛选"
     },
     "actions": {
       "filter": "筛选",
@@ -2400,7 +2403,8 @@
       "statusCategory": "状态归类",
       "allStatusCategories": "全部状态归类",
       "priority": "优先级",
-      "allPriorities": "全部优先级"
+      "allPriorities": "全部优先级",
+      "clear": "清空筛选"
     },
     "priority": {
       "LOW": "低",

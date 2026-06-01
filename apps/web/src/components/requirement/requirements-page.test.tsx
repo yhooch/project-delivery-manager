@@ -745,6 +745,67 @@ describe("RequirementsPage", () => {
     );
   });
 
+  it("clears requirement panel filters without changing the status bucket", async () => {
+    const versionId = "01ARZ3NDEKTSV4RRFFQ69G5FD1";
+    const ownerId = "01ARZ3NDEKTSV4RRFFQ69G5FU1";
+
+    listRequirementVersionsMock.mockResolvedValueOnce({
+      items: [{ id: versionId, name: "M1" }],
+      total: 1,
+    });
+    listRequirementAssignableMembersMock.mockResolvedValueOnce({
+      items: [
+        {
+          id: "MEMBER_01",
+          organizationId: "ORG_01",
+          spaceId: "SPC_01",
+          userId: ownerId,
+          role: "PM",
+          status: "ACTIVE",
+          user: {
+            id: ownerId,
+            username: "pm",
+            name: "PM User",
+            status: "ACTIVE",
+          },
+        },
+      ],
+      total: 1,
+    });
+    listRequirementsMock.mockResolvedValue({ items: [], total: 0 });
+
+    render(<RequirementsPage />);
+
+    await waitFor(() => expect(listRequirementVersionsMock).toHaveBeenCalled());
+    fireEvent.click(
+      screen.getByRole("button", { name: "requirements.page.filter" }),
+    );
+    fireEvent.change(screen.getByTestId("requirements-filter-version"), {
+      target: { value: versionId },
+    });
+    fireEvent.change(screen.getByTestId("requirements-filter-owner"), {
+      target: { value: ownerId },
+    });
+    await waitFor(() =>
+      expect(listRequirementsMock).toHaveBeenLastCalledWith(
+        expect.objectContaining({ ownerId, versionId }),
+      ),
+    );
+
+    fireEvent.click(screen.getByTestId("requirements-filter-clear"));
+
+    await waitFor(() => {
+      const [query] =
+        listRequirementsMock.mock.calls[
+          listRequirementsMock.mock.calls.length - 1
+        ];
+      expect(query.ownerId).toBeUndefined();
+      expect(query.versionId).toBeUndefined();
+      expect(query.status).toBe("ACTIVE");
+      expect(query.includeDrafts).toBeUndefined();
+    });
+  });
+
   it("clears version and owner filters when the organization or space changes", async () => {
     const oldVersionId = "01ARZ3NDEKTSV4RRFFQ69G5FD1";
     const oldOwnerId = "01ARZ3NDEKTSV4RRFFQ69G5FU1";

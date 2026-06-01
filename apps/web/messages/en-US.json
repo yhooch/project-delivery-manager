@@ -1455,6 +1455,7 @@
       "status": "Status",
       "allStatuses": "All statuses",
       "includeDrafts": "Include my drafts",
+      "clear": "Clear filters",
       "active": "Active",
       "draft": "Draft",
       "confirmed": "Confirmed",
@@ -1946,7 +1947,8 @@
       "priority": "Priority",
       "allPriorities": "All priorities",
       "severity": "Severity",
-      "allSeverities": "All severities"
+      "allSeverities": "All severities",
+      "clear": "Clear filters"
     },
     "priority": {
       "LOW": "Low",
@@ -2283,7 +2285,8 @@
       "sourceType": "Source type",
       "allSourceTypes": "All source types",
       "assignee": "Owner",
-      "allAssignees": "All owners"
+      "allAssignees": "All owners",
+      "clear": "Clear filters"
     },
     "actions": {
       "filter": "Filter",
@@ -2400,7 +2403,8 @@
       "statusCategory": "Status category",
       "allStatusCategories": "All status categories",
       "priority": "Priority",
-      "allPriorities": "All priorities"
+      "allPriorities": "All priorities",
+      "clear": "Clear filters"
     },
     "priority": {
       "LOW": "Low",

@@ -523,6 +523,62 @@ describe("BugsPage", () => {
     );
   });
 
+  it("clears the previous bug header bucket when switching dimensions", async () => {
+    listBugsMock.mockResolvedValue({
+      dimensionCounts: [
+        {
+          dimension: "severity",
+          total: 9,
+          buckets: [{ value: "CRITICAL", count: 3 }],
+        },
+        {
+          dimension: "assigneeId",
+          total: 9,
+          buckets: [{ value: ASSIGNEE_ID, count: 4 }],
+        },
+      ],
+      items: [makeBug({ title: "Dimension scoped bug" })],
+      total: 9,
+    });
+
+    render(<BugsPage />);
+
+    expect(await screen.findByText("Dimension scoped bug")).toBeInTheDocument();
+    fireEvent.change(screen.getByTestId("bugs-dimension-filter-dimension"), {
+      target: { value: "severity" },
+    });
+    fireEvent.click(screen.getByTestId("bugs-filter-button"));
+    expect(screen.getByTestId("bugs-filter-version")).toBeInTheDocument();
+    expect(screen.queryByTestId("bugs-filter-severity")).not.toBeInTheDocument();
+
+    fireEvent.change(screen.getByTestId("bugs-filter-status"), {
+      target: { value: "DONE" },
+    });
+    await waitFor(() =>
+      expect(listBugsMock).toHaveBeenLastCalledWith(
+        expect.objectContaining({ statusCategory: "DONE" }),
+      ),
+    );
+
+    fireEvent.click(getBugFilterOption("CRITICAL"));
+    await waitFor(() =>
+      expect(listBugsMock).toHaveBeenLastCalledWith(
+        expect.objectContaining({ severity: "CRITICAL" }),
+      ),
+    );
+
+    fireEvent.change(screen.getByTestId("bugs-dimension-filter-dimension"), {
+      target: { value: "assigneeId" },
+    });
+
+    await waitFor(() => {
+      const [query] = listBugsMock.mock.calls[listBugsMock.mock.calls.length - 1];
+      expect(query.severity).toBeUndefined();
+      expect(query.assigneeId).toBeUndefined();
+      expect(query.statusCategory).toBe("DONE");
+    });
+  });
+
   it("filters by empty bug dimension buckets", async () => {
     listBugsMock
       .mockResolvedValueOnce({
@@ -975,6 +1031,57 @@ describe("BugsPage", () => {
         }),
       ),
     );
+  });
+
+  it("clears bug filter panel fields without changing the header bucket", async () => {
+    versionMap.set(VERSION_ID, { name: "v2.0 beta" });
+    listBugsMock.mockResolvedValue({
+      dimensionCounts: [
+        {
+          dimension: "severity",
+          total: 6,
+          buckets: [{ value: "CRITICAL", count: 2 }],
+        },
+      ],
+      items: [makeBug({ title: "Clearable bug" })],
+      total: 6,
+    });
+
+    render(<BugsPage />);
+
+    await screen.findByText("Clearable bug");
+    fireEvent.change(screen.getByTestId("bugs-dimension-filter-dimension"), {
+      target: { value: "severity" },
+    });
+    fireEvent.click(getBugFilterOption("CRITICAL"));
+    await waitFor(() =>
+      expect(listBugsMock).toHaveBeenLastCalledWith(
+        expect.objectContaining({ severity: "CRITICAL" }),
+      ),
+    );
+
+    fireEvent.click(screen.getByTestId("bugs-filter-button"));
+    fireEvent.change(screen.getByTestId("bugs-filter-version"), {
+      target: { value: VERSION_ID },
+    });
+    await waitFor(() =>
+      expect(listBugsMock).toHaveBeenLastCalledWith(
+        expect.objectContaining({
+          severity: "CRITICAL",
+          versionId: VERSION_ID,
+        }),
+      ),
+    );
+
+    fireEvent.click(screen.getByTestId("bugs-filter-clear"));
+
+    await waitFor(() => {
+      const [query] = listBugsMock.mock.calls[listBugsMock.mock.calls.length - 1];
+      expect(query.severity).toBe("CRITICAL");
+      expect(query.versionId).toBeUndefined();
+      expect(query.statusCategory).toBeUndefined();
+      expect(query.tagIds).toBeUndefined();
+    });
   });
 
   it("hydrates URL tag filters into the bug query and filter chip", async () => {

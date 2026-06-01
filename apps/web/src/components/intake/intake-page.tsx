@@ -19,6 +19,7 @@ import {
   Pencil,
   Plus,
   Target,
+  XCircle,
 } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
 import { useSearchParams } from "next/navigation";
@@ -296,6 +297,13 @@ export function IntakePage() {
     },
     [requirements],
   );
+  const hasActiveFilters =
+    hasActiveIntakeFilterState(listFilters) || tagFilter.tagIds.length > 0;
+  const clearFilters = useCallback(() => {
+    setListFilters({});
+    setSelectedTags([]);
+    setTagFilter({ tagIds: [], tagMatch: tagFilter.tagMatch });
+  }, [setSelectedTags, setTagFilter, tagFilter.tagMatch]);
 
   const loadItems = useCallback(
     async (
@@ -1165,6 +1173,21 @@ export function IntakePage() {
               data-testid="intake-filter-tags"
             />
           </FilterField>
+          {hasActiveFilters ? (
+            <div className="flex h-8 items-center">
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-8 text-xs"
+                data-testid="intake-filter-clear"
+                onClick={clearFilters}
+                type="button"
+              >
+                <XCircle className="h-3 w-3" />
+                {t("filters.clear")}
+              </Button>
+            </div>
+          ) : null}
         </FilterPanel>
       )}
 
@@ -1354,6 +1377,10 @@ function createIntakeListScopeKey({
     tagIds.join(","),
     tagIds.length > 0 ? tagMatch : "",
   ].join("\u001f");
+}
+
+function hasActiveIntakeFilterState(filters: IntakeListFilterState): boolean {
+  return Object.values(filters).some(Boolean);
 }
 
 function displayUserName(

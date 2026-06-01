@@ -14,6 +14,7 @@ import {
   GitBranch,
   Link2,
   Plus,
+  XCircle,
 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useSearchParams } from "next/navigation";
@@ -194,6 +195,16 @@ export function RequirementsPage() {
       spaceId,
       tagIds: tagFilter.tagIds,
     });
+  const hasActiveFilters =
+    effectiveSelectedOwnerId !== "" ||
+    effectiveSelectedVersionId !== "" ||
+    tagFilter.tagIds.length > 0;
+  const clearFilters = useCallback(() => {
+    setSelectedOwnerId("");
+    setSelectedVersionId("");
+    setSelectedTags([]);
+    setTagFilter({ tagIds: [], tagMatch: tagFilter.tagMatch });
+  }, [setSelectedTags, setTagFilter, tagFilter.tagMatch]);
 
   const loadItems = useCallback(
     async (
@@ -911,6 +922,21 @@ export function RequirementsPage() {
                   data-testid="requirements-filter-tags"
                 />
               </FilterField>
+              {hasActiveFilters ? (
+                <div className="flex h-8 items-center">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-8 text-xs"
+                    data-testid="requirements-filter-clear"
+                    onClick={clearFilters}
+                    type="button"
+                  >
+                    <XCircle className="h-3 w-3" />
+                    {t("filters.clear")}
+                  </Button>
+                </div>
+              ) : null}
             </div>
           ) : null}
         </div>

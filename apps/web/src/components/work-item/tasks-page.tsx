@@ -11,7 +11,7 @@ import type {
   WorkItemStatusCategoryCount,
   TagMatch,
 } from "@project-delivery/shared";
-import { Filter, Plus, Search } from "lucide-react";
+import { Filter, Plus, Search, XCircle } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
 import { useSearchParams } from "next/navigation";
 import {
@@ -85,6 +85,11 @@ type TaskDimensionKey =
   | "statusCategory"
   | "tagId"
   | "versionId";
+
+type TaskDimensionSelection = {
+  dimension: TaskDimensionKey;
+  value?: string | null;
+};
 
 const STATUS_FILTERS: StatusCategory[] = [
   "NOT_STARTED",
@@ -176,7 +181,6 @@ export function TasksPage() {
   const [query, setQuery] = useState("");
   const [filters, setFilters] = useState<TaskListFilterState>(() => ({
     intakeItemId: requestedIntakeItemId,
-    statusCategory: requestedStatusCategory,
     versionId: requestedVersionId,
   }));
   const [filterOpen, setFilterOpen] = useState(false);
@@ -185,8 +189,12 @@ export function TasksPage() {
   const [dimensionCounts, setDimensionCounts] = useState<
     WorkItemDimensionCount[]
   >([]);
-  const [activeDimension, setActiveDimension] =
-    useState<TaskDimensionKey>("statusCategory");
+  const [dimensionSelection, setDimensionSelection] =
+    useState<TaskDimensionSelection>(() => ({
+      dimension: "statusCategory",
+      value: requestedStatusCategory,
+    }));
+  const activeDimension = dimensionSelection.dimension;
   const [createOpen, setCreateOpen] = useState(false);
   const [hasLoadedItems, setHasLoadedItems] = useState(false);
   const [handledDeepLinkKey, setHandledDeepLinkKey] = useState<string | null>(
@@ -197,16 +205,24 @@ export function TasksPage() {
     currentSpace?.role,
     currentSpace?.status,
   );
+  const effectiveFilters = useMemo(
+    () => buildTaskListFilters(filters, dimensionSelection),
+    [dimensionSelection, filters],
+  );
+  const effectiveTagFilter = useMemo(
+    () => buildTaskTagFilter(tagFilter, dimensionSelection),
+    [dimensionSelection, tagFilter],
+  );
   const listScopeKey = useMemo(
     () =>
       createTaskListScopeKey({
-        filters,
+        filters: effectiveFilters,
         organizationId,
         spaceId,
-        tagIds: tagFilter.tagIds,
-        tagMatch: tagFilter.tagMatch,
+        tagIds: effectiveTagFilter.tagIds,
+        tagMatch: effectiveTagFilter.tagMatch,
       }),
-    [filters, organizationId, spaceId, tagFilter],
+    [effectiveFilters, effectiveTagFilter, organizationId, spaceId],
   );
   const contextKey = useMemo(
     () => `${organizationId ?? ""}:${spaceId ?? ""}`,
@@ -217,8 +233,10 @@ export function TasksPage() {
   const itemsLengthRef = useRef(0);
   const pageInfoRef = useRef(pageInfo);
   const previousContextKeyRef = useRef(contextKey);
+  const activeDimensionRef = useRef(activeDimension);
   const rowRefs = useRef(new Map<string, HTMLLIElement>());
   const searchQuery = useMemo(() => normalizeSearchQuery(query), [query]);
+  activeDimensionRef.current = activeDimension;
   latestListScopeKeyRef.current = listScopeKey;
   itemsLengthRef.current = items.length;
   pageInfoRef.current = pageInfo;
@@ -251,12 +269,52 @@ export function TasksPage() {
 
   const setDimensionFilter = useCallback(
     (dimension: TaskDimensionKey, value: string | null | undefined) => {
-      setFilters((current) =>
-        applyTaskDimensionFilter(current, dimension, value),
-      );
+      setDimensionSelection({ dimension, value });
     },
     [],
   );
+
+  const clearFilterQuery = useCallback(() => {
+    const params = new URLSearchParams(searchParams.toString());
+    if (activeDimension !== "statusCategory") {
+      params.delete("statusCategory");
+    }
+    params.delete("tagIds");
+    params.delete("tagMatch");
+    if (activeDimension !== "versionId") {
+      params.delete("versionId");
+    }
+    const query = params.toString();
+
+    router.replace((query ? `${pathname}?${query}` : pathname) as never, {
+      scroll: false,
+    });
+  }, [activeDimension, pathname, router, searchParams]);
+
+  const clearFilters = useCallback(() => {
+    setFilters({});
+    setSelectedTags([]);
+    setTagFilter({ tagIds: [], tagMatch: tagFilter.tagMatch });
+    clearFilterQuery();
+  }, [clearFilterQuery, setSelectedTags, setTagFilter, tagFilter.tagMatch]);
+
+  const handleDimensionChange = useCallback(
+    (dimension: string) => {
+      const nextDimension = dimension as TaskDimensionKey;
+
+      setDimensionSelection({ dimension: nextDimension });
+      setFilters((current) => clearTaskDimensionFilter(current, nextDimension));
+
+      if (nextDimension === "tagId" && tagFilter.tagIds.length > 0) {
+        setSelectedTags([]);
+        setTagFilter({ tagIds: [], tagMatch: tagFilter.tagMatch });
+      }
+    },
+    [setSelectedTags, setTagFilter, tagFilter],
+  );
+
+  const hasActiveFilters =
+    hasActiveTaskFilterState(filters) || tagFilter.tagIds.length > 0;
 
   const fetchTasks = useCallback(
     async (
@@ -303,8 +361,8 @@ export function TasksPage() {
           spaceId,
           type: "TASK",
           ...(searchQuery ? { query: searchQuery } : {}),
-          ...filters,
-          ...serializeTagFilterQuery(tagFilter),
+          ...effectiveFilters,
+          ...serializeTagFilterQuery(effectiveTagFilter),
         });
         if (
           listRequestIdRef.current !== requestId ||
@@ -346,13 +404,13 @@ export function TasksPage() {
       }
     },
     [
-      filters,
+      effectiveFilters,
+      effectiveTagFilter,
       listScopeKey,
       organizationId,
       searchQuery,
       spaceId,
       tApiError,
-      tagFilter,
     ],
   );
 
@@ -441,40 +499,32 @@ export function TasksPage() {
       createTaskDimensionBuckets({
         activeDimension,
         dimensionCounts,
-        filters,
         getMember,
         getVersion,
         onSelect: (dimension, value) => {
           selectTaskDimensionBucket({
             dimension,
             setDimensionFilter,
-            setSelectedTags,
-            setTagFilter,
-            tagFilterOptions,
-            tagMatch: tagFilter.tagMatch,
             value,
           });
         },
         pageTotal: pageInfo.total,
         requirements,
-        tagFilter,
         tagFilterOptions,
         t,
         tPriority,
         tStatus,
+        value: dimensionSelection.value,
       }),
     [
       activeDimension,
       dimensionCounts,
-      filters,
+      dimensionSelection.value,
       getMember,
       getVersion,
       pageInfo.total,
       requirements,
       setDimensionFilter,
-      setSelectedTags,
-      setTagFilter,
-      tagFilter,
       tagFilterOptions,
       t,
       tPriority,
@@ -585,18 +635,44 @@ export function TasksPage() {
   }, [requestedIntakeItemId]);
 
   useEffect(() => {
+    const currentActiveDimension = activeDimensionRef.current;
+
     setFilters((current) => {
+      const nextStatusCategory =
+        currentActiveDimension === "statusCategory"
+          ? undefined
+          : requestedStatusCategory;
+      const nextVersionId =
+        currentActiveDimension === "versionId" ? undefined : requestedVersionId;
+
       if (
-        current.versionId === requestedVersionId &&
-        current.statusCategory === requestedStatusCategory
+        current.statusCategory === nextStatusCategory &&
+        current.versionId === nextVersionId
       ) {
         return current;
       }
       return {
         ...current,
-        statusCategory: requestedStatusCategory,
-        versionId: requestedVersionId,
+        statusCategory: nextStatusCategory,
+        versionId: nextVersionId,
       };
+    });
+    setDimensionSelection((current) => {
+      if (
+        current.dimension !== "statusCategory" &&
+        current.dimension !== "versionId"
+      ) {
+        return current;
+      }
+
+      const nextValue =
+        current.dimension === "statusCategory"
+          ? requestedStatusCategory
+          : requestedVersionId;
+
+      return current.value === nextValue
+        ? current
+        : { ...current, value: nextValue };
     });
   }, [requestedStatusCategory, requestedVersionId]);
 
@@ -818,9 +894,7 @@ export function TasksPage() {
             />
           </div>
         }
-        onDimensionChange={(dimension) =>
-          setActiveDimension(dimension as TaskDimensionKey)
-        }
+        onDimensionChange={handleDimensionChange}
         testId="tasks-dimension-filter"
       />
 
@@ -828,100 +902,128 @@ export function TasksPage() {
         <FilterPanel
           data-testid="tasks-filter-panel"
         >
-          <FilterField label={tFilters("version")}>
-            <SelectMenu
-              data-testid="tasks-filter-version"
-              value={filters.versionId ?? ""}
-              onChange={(event) => setFilter("versionId", event.target.value)}
-              className="h-8 w-full rounded-md border border-input bg-background px-2 text-sm"
-            >
-              <option value="">{tFilters("allVersions")}</option>
-              {versions.map((version) => (
-                <option key={version.id} value={version.id}>
-                  {version.name}
-                </option>
-              ))}
-            </SelectMenu>
-          </FilterField>
-          <FilterField label={tFilters("assignee")}>
-            <SelectMenu
-              data-testid="tasks-filter-assignee"
-              value={filters.assigneeId ?? ""}
-              onChange={(event) => setFilter("assigneeId", event.target.value)}
-              className="h-8 w-full rounded-md border border-input bg-background px-2 text-sm"
-            >
-              <option value="">{tFilters("allAssignees")}</option>
-              {members.map((member) => (
-                <option key={member.userId} value={member.userId}>
-                  {member.user.name || member.user.username}
-                </option>
-              ))}
-            </SelectMenu>
-          </FilterField>
-          <FilterField label={tFilters("statusCategory")} width="sm">
-            <SelectMenu
-              data-testid="tasks-filter-status"
-              value={filters.statusCategory ?? ""}
-              onChange={(event) =>
-                setFilter("statusCategory", event.target.value)
-              }
-              className="h-8 w-full rounded-md border border-input bg-background px-2 text-sm"
-            >
-              <option value="">{tFilters("allStatusCategories")}</option>
-              {STATUS_FILTERS.map((status) => (
-                <option key={status} value={status}>
-                  {tStatus(status)}
-                </option>
-              ))}
-            </SelectMenu>
-          </FilterField>
-          <FilterField label={tFilters("priority")} width="sm">
-            <SelectMenu
-              data-testid="tasks-filter-priority"
-              value={filters.priority ?? ""}
-              onChange={(event) => setFilter("priority", event.target.value)}
-              className="h-8 w-full rounded-md border border-input bg-background px-2 text-sm"
-            >
-              <option value="">{tFilters("allPriorities")}</option>
-              {PRIORITY_FILTERS.map((priority) => (
-                <option key={priority} value={priority}>
-                  {tPriority(priority)}
-                </option>
-              ))}
-            </SelectMenu>
-          </FilterField>
-          <FilterField label={tFilters("requirement")} width="lg">
-            <SelectMenu
-              data-testid="tasks-filter-requirement"
-              value={filters.requirementId ?? ""}
-              onChange={(event) =>
-                setFilter("requirementId", event.target.value)
-              }
-              className="h-8 w-full rounded-md border border-input bg-background px-2 text-sm"
-              contentClassName="w-72"
-            >
-              <option value="">{tFilters("allRequirements")}</option>
-              {requirements.map((requirement) => (
-                <option key={requirement.id} value={requirement.id}>
-                  {requirement.title || requirement.id}
-                </option>
-              ))}
-            </SelectMenu>
-          </FilterField>
-          <FilterField label={tTags("label")} width="tag">
-            <TagFilter
-              availableTags={tagFilterOptions}
-              onChange={(value, selectedTags) => {
-                setSelectedTags(selectedTags);
-                setTagFilter(value);
-                setDimensionFilter("tagId", undefined);
-              }}
-              selectedTags={selectedFilterTags}
-              showMatchMode={false}
-              value={tagFilter}
-              data-testid="tasks-filter-tags"
-            />
-          </FilterField>
+          {activeDimension !== "versionId" ? (
+            <FilterField label={tFilters("version")}>
+              <SelectMenu
+                data-testid="tasks-filter-version"
+                value={filters.versionId ?? ""}
+                onChange={(event) => setFilter("versionId", event.target.value)}
+                className="h-8 w-full rounded-md border border-input bg-background px-2 text-sm"
+              >
+                <option value="">{tFilters("allVersions")}</option>
+                {versions.map((version) => (
+                  <option key={version.id} value={version.id}>
+                    {version.name}
+                  </option>
+                ))}
+              </SelectMenu>
+            </FilterField>
+          ) : null}
+          {activeDimension !== "assigneeId" ? (
+            <FilterField label={tFilters("assignee")}>
+              <SelectMenu
+                data-testid="tasks-filter-assignee"
+                value={filters.assigneeId ?? ""}
+                onChange={(event) =>
+                  setFilter("assigneeId", event.target.value)
+                }
+                className="h-8 w-full rounded-md border border-input bg-background px-2 text-sm"
+              >
+                <option value="">{tFilters("allAssignees")}</option>
+                {members.map((member) => (
+                  <option key={member.userId} value={member.userId}>
+                    {member.user.name || member.user.username}
+                  </option>
+                ))}
+              </SelectMenu>
+            </FilterField>
+          ) : null}
+          {activeDimension !== "statusCategory" ? (
+            <FilterField label={tFilters("statusCategory")} width="sm">
+              <SelectMenu
+                data-testid="tasks-filter-status"
+                value={filters.statusCategory ?? ""}
+                onChange={(event) =>
+                  setFilter("statusCategory", event.target.value)
+                }
+                className="h-8 w-full rounded-md border border-input bg-background px-2 text-sm"
+              >
+                <option value="">{tFilters("allStatusCategories")}</option>
+                {STATUS_FILTERS.map((status) => (
+                  <option key={status} value={status}>
+                    {tStatus(status)}
+                  </option>
+                ))}
+              </SelectMenu>
+            </FilterField>
+          ) : null}
+          {activeDimension !== "priority" ? (
+            <FilterField label={tFilters("priority")} width="sm">
+              <SelectMenu
+                data-testid="tasks-filter-priority"
+                value={filters.priority ?? ""}
+                onChange={(event) => setFilter("priority", event.target.value)}
+                className="h-8 w-full rounded-md border border-input bg-background px-2 text-sm"
+              >
+                <option value="">{tFilters("allPriorities")}</option>
+                {PRIORITY_FILTERS.map((priority) => (
+                  <option key={priority} value={priority}>
+                    {tPriority(priority)}
+                  </option>
+                ))}
+              </SelectMenu>
+            </FilterField>
+          ) : null}
+          {activeDimension !== "requirementId" ? (
+            <FilterField label={tFilters("requirement")} width="lg">
+              <SelectMenu
+                data-testid="tasks-filter-requirement"
+                value={filters.requirementId ?? ""}
+                onChange={(event) =>
+                  setFilter("requirementId", event.target.value)
+                }
+                className="h-8 w-full rounded-md border border-input bg-background px-2 text-sm"
+                contentClassName="w-72"
+              >
+                <option value="">{tFilters("allRequirements")}</option>
+                {requirements.map((requirement) => (
+                  <option key={requirement.id} value={requirement.id}>
+                    {requirement.title || requirement.id}
+                  </option>
+                ))}
+              </SelectMenu>
+            </FilterField>
+          ) : null}
+          {activeDimension !== "tagId" ? (
+            <FilterField label={tTags("label")} width="tag">
+              <TagFilter
+                availableTags={tagFilterOptions}
+                onChange={(value, selectedTags) => {
+                  setSelectedTags(selectedTags);
+                  setTagFilter(value);
+                }}
+                selectedTags={selectedFilterTags}
+                showMatchMode={false}
+                value={tagFilter}
+                data-testid="tasks-filter-tags"
+              />
+            </FilterField>
+          ) : null}
+          {hasActiveFilters ? (
+            <div className="flex h-8 items-center">
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-8 text-xs"
+                data-testid="tasks-filter-clear"
+                onClick={clearFilters}
+                type="button"
+              >
+                <XCircle className="h-3 w-3" />
+                {tFilters("clear")}
+              </Button>
+            </div>
+          ) : null}
         </FilterPanel>
       )}
 
@@ -1073,21 +1175,19 @@ function resolveDimensionCounts(
 function createTaskDimensionBuckets({
   activeDimension,
   dimensionCounts,
-  filters,
   getMember,
   getVersion,
   onSelect,
   pageTotal,
   requirements,
-  tagFilter,
   tagFilterOptions,
   t,
   tPriority,
   tStatus,
+  value,
 }: {
   activeDimension: TaskDimensionKey;
   dimensionCounts: readonly WorkItemDimensionCount[];
-  filters: TaskListFilterState;
   getMember: (id: string) =>
     | { user: { name?: string | null; username?: string | null } }
     | undefined;
@@ -1098,19 +1198,15 @@ function createTaskDimensionBuckets({
   ) => void;
   pageTotal: number;
   requirements: readonly Requirement[];
-  tagFilter: { tagIds: readonly string[] };
   tagFilterOptions: readonly TagDto[];
   t: (key: string) => string;
   tPriority: (key: Priority) => string;
   tStatus: (key: StatusCategory) => string;
+  value?: string | null;
 }): DimensionFilterBucket[] {
   const countSet = getDimensionCountSet(dimensionCounts, activeDimension);
   const allCount = countSet?.total ?? pageTotal;
-  const selectedValue = getTaskDimensionSelectedValue(
-    activeDimension,
-    filters,
-    tagFilter.tagIds,
-  );
+  const selectedValue = value;
   const buckets: DimensionFilterBucket[] = [
     {
       active: selectedValue === undefined,
@@ -1156,10 +1252,6 @@ function createTaskDimensionBuckets({
 function selectTaskDimensionBucket({
   dimension,
   setDimensionFilter,
-  setSelectedTags,
-  setTagFilter,
-  tagFilterOptions,
-  tagMatch,
   value,
 }: {
   dimension: TaskDimensionKey;
@@ -1167,52 +1259,9 @@ function selectTaskDimensionBucket({
     dimension: TaskDimensionKey,
     value: string | null | undefined,
   ) => void;
-  setSelectedTags: (value: TagDto[]) => void;
-  setTagFilter: (value: { tagIds: string[]; tagMatch: TagMatch }) => void;
-  tagFilterOptions: readonly TagDto[];
-  tagMatch: TagMatch;
   value: string | null | undefined;
 }) {
-  if (dimension === "tagId") {
-    const nextTags = value
-      ? tagFilterOptions.filter((tag) => tag.id === value)
-      : [];
-    setSelectedTags(nextTags);
-    setTagFilter({
-      tagIds: value ? [value] : [],
-      tagMatch,
-    });
-    setDimensionFilter("tagId", value);
-    return;
-  }
-
   setDimensionFilter(dimension, value);
-}
-
-function getTaskDimensionSelectedValue(
-  dimension: TaskDimensionKey,
-  filters: TaskListFilterState,
-  tagIds: readonly string[],
-): string | null | undefined {
-  if (dimension === "tagId") {
-    if (filters.noTags) {
-      return null;
-    }
-
-    return tagIds.length === 1 ? tagIds[0] : undefined;
-  }
-
-  if (dimension === "assigneeId" && filters.unassigned) {
-    return null;
-  }
-  if (dimension === "versionId" && filters.noVersion) {
-    return null;
-  }
-  if (dimension === "requirementId" && filters.noRequirement) {
-    return null;
-  }
-
-  return filters[dimension];
 }
 
 function getDimensionCountSet(
@@ -1346,6 +1395,81 @@ function applyTaskDimensionFilter(
   }
 
   return next;
+}
+
+function buildTaskListFilters(
+  filters: TaskListFilterState,
+  selection: TaskDimensionSelection,
+): TaskListFilterState {
+  const cleared = clearTaskDimensionFilter(filters, selection.dimension);
+
+  if (selection.value === undefined) {
+    return cleared;
+  }
+
+  return applyTaskDimensionFilter(
+    cleared,
+    selection.dimension,
+    selection.value,
+  );
+}
+
+function buildTaskTagFilter(
+  tagFilter: { tagIds: string[]; tagMatch: TagMatch },
+  selection: TaskDimensionSelection,
+) {
+  if (selection.dimension !== "tagId") {
+    return tagFilter;
+  }
+
+  return {
+    tagIds: typeof selection.value === "string" ? [selection.value] : [],
+    tagMatch: tagFilter.tagMatch,
+  };
+}
+
+function clearTaskDimensionFilter(
+  current: TaskListFilterState,
+  dimension: TaskDimensionKey,
+): TaskListFilterState {
+  const next: TaskListFilterState = { ...current };
+  let changed = false;
+  const clear = (key: keyof TaskListFilterState) => {
+    if (next[key] !== undefined) {
+      changed = true;
+    }
+    next[key] = undefined as never;
+  };
+
+  switch (dimension) {
+    case "assigneeId":
+      clear("assigneeId");
+      clear("unassigned");
+      break;
+    case "priority":
+      clear("priority");
+      break;
+    case "requirementId":
+      clear("requirementId");
+      clear("noRequirement");
+      break;
+    case "statusCategory":
+      clear("statusCategory");
+      break;
+    case "tagId":
+      clear("noTags");
+      break;
+    case "versionId":
+      clear("versionId");
+      clear("noVersion");
+      break;
+  }
+
+  return changed ? next : current;
+}
+
+function hasActiveTaskFilterState(filters: TaskListFilterState): boolean {
+  return Object.values(filters).some(Boolean);
 }
 
 function getAllStatusCategoryCount(

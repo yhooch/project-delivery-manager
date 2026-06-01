@@ -783,6 +783,82 @@ describe("IntakePage", () => {
     );
   });
 
+  it("clears intake panel filters without changing the status bucket", async () => {
+    const versionId = "01ARZ3NDEKTSV4RRFFQ69G5FV1";
+    const requirementId = "01ARZ3NDEKTSV4RRFFQ69G5FR1";
+    const assigneeId = "01ARZ3NDEKTSV4RRFFQ69G5FA1";
+    versionMap.set(versionId, { name: "M2" });
+    memberMap.set(assigneeId, {
+      user: { name: "Alice", username: "alice" },
+    });
+    listRequirementsMock.mockResolvedValueOnce({
+      items: [{ id: requirementId, title: "Requirement A", versionId }],
+      total: 1,
+    });
+    listIntakeItemsMock.mockResolvedValue({
+      items: [makeIntake({ title: "Clearable intake" })],
+      total: 1,
+    });
+
+    render(<IntakePage />);
+
+    await screen.findByText("Clearable intake");
+    fireEvent.click(
+      screen.getByRole("button", { name: /intake\.filters\.accepted/ }),
+    );
+    await waitFor(() =>
+      expect(listIntakeItemsMock).toHaveBeenLastCalledWith(
+        expect.objectContaining({ status: "ACCEPTED" }),
+      ),
+    );
+
+    fireEvent.click(screen.getByTestId("intake-filter-button"));
+    expect(await screen.findByText("Requirement A")).toBeInTheDocument();
+    fireEvent.change(screen.getByTestId("intake-filter-version"), {
+      target: { value: versionId },
+    });
+    fireEvent.change(screen.getByTestId("intake-filter-requirement"), {
+      target: { value: requirementId },
+    });
+    fireEvent.change(screen.getByTestId("intake-filter-priority"), {
+      target: { value: "HIGH" },
+    });
+    fireEvent.change(screen.getByTestId("intake-filter-source"), {
+      target: { value: "MEETING_DECISION" },
+    });
+    fireEvent.change(screen.getByTestId("intake-filter-assignee"), {
+      target: { value: assigneeId },
+    });
+    await waitFor(() =>
+      expect(listIntakeItemsMock).toHaveBeenLastCalledWith(
+        expect.objectContaining({
+          assigneeId,
+          priority: "HIGH",
+          requirementId,
+          sourceType: "MEETING_DECISION",
+          status: "ACCEPTED",
+          versionId,
+        }),
+      ),
+    );
+
+    fireEvent.click(screen.getByTestId("intake-filter-clear"));
+
+    await waitFor(() => {
+      const [query] =
+        listIntakeItemsMock.mock.calls[
+          listIntakeItemsMock.mock.calls.length - 1
+        ];
+      expect(query.assigneeId).toBeUndefined();
+      expect(query.priority).toBeUndefined();
+      expect(query.requirementId).toBeUndefined();
+      expect(query.sourceType).toBeUndefined();
+      expect(query.status).toBe("ACCEPTED");
+      expect(query.versionId).toBeUndefined();
+      expect(query.tagIds).toBeUndefined();
+    });
+  });
+
   it("links version and requirement filters", async () => {
     const versionId = "01ARZ3NDEKTSV4RRFFQ69G5FV1";
     const versionTwoId = "01ARZ3NDEKTSV4RRFFQ69G5FV2";

@@ -449,6 +449,65 @@ describe("TasksPage", () => {
     );
   });
 
+  it("clears the previous task header bucket when switching dimensions", async () => {
+    listWorkItemsMock.mockResolvedValue({
+      dimensionCounts: [
+        {
+          dimension: "priority",
+          total: 8,
+          buckets: [{ value: "URGENT", count: 3 }],
+        },
+        {
+          dimension: "assigneeId",
+          total: 8,
+          buckets: [{ value: ASSIGNEE_ID, count: 4 }],
+        },
+      ],
+      items: [makeTask({ title: "Dimension scoped task" })],
+      total: 8,
+    });
+
+    render(<TasksPage />);
+
+    expect(await screen.findByText("Dimension scoped task")).toBeInTheDocument();
+    fireEvent.change(screen.getByTestId("tasks-dimension-filter-dimension"), {
+      target: { value: "priority" },
+    });
+    fireEvent.click(screen.getByTestId("tasks-filter-button"));
+    expect(screen.getByTestId("tasks-filter-version")).toBeInTheDocument();
+    expect(screen.queryByTestId("tasks-filter-priority")).not.toBeInTheDocument();
+
+    fireEvent.change(screen.getByTestId("tasks-filter-status"), {
+      target: { value: "DONE" },
+    });
+    await waitFor(() =>
+      expect(listWorkItemsMock).toHaveBeenLastCalledWith(
+        expect.objectContaining({ statusCategory: "DONE" }),
+      ),
+    );
+
+    fireEvent.click(
+      screen.getByRole("button", { name: /workItems\.priority\.URGENT/ }),
+    );
+    await waitFor(() =>
+      expect(listWorkItemsMock).toHaveBeenLastCalledWith(
+        expect.objectContaining({ priority: "URGENT" }),
+      ),
+    );
+
+    fireEvent.change(screen.getByTestId("tasks-dimension-filter-dimension"), {
+      target: { value: "assigneeId" },
+    });
+
+    await waitFor(() => {
+      const [query] =
+        listWorkItemsMock.mock.calls[listWorkItemsMock.mock.calls.length - 1];
+      expect(query.priority).toBeUndefined();
+      expect(query.assigneeId).toBeUndefined();
+      expect(query.statusCategory).toBe("DONE");
+    });
+  });
+
   it("filters by empty task dimension buckets", async () => {
     listWorkItemsMock
       .mockResolvedValueOnce({
@@ -934,6 +993,60 @@ describe("TasksPage", () => {
         }),
       ),
     );
+  });
+
+  it("clears task filter panel fields without changing the header bucket", async () => {
+    versionMap.set(VERSION_ID, { name: "v1.0.0 release" });
+    listWorkItemsMock.mockResolvedValue({
+      dimensionCounts: [
+        {
+          dimension: "priority",
+          total: 5,
+          buckets: [{ value: "URGENT", count: 2 }],
+        },
+      ],
+      items: [makeTask({ title: "Clearable task" })],
+      total: 5,
+    });
+
+    render(<TasksPage />);
+
+    await screen.findByText("Clearable task");
+    fireEvent.change(screen.getByTestId("tasks-dimension-filter-dimension"), {
+      target: { value: "priority" },
+    });
+    fireEvent.click(
+      screen.getByRole("button", { name: /workItems\.priority\.URGENT/ }),
+    );
+    await waitFor(() =>
+      expect(listWorkItemsMock).toHaveBeenLastCalledWith(
+        expect.objectContaining({ priority: "URGENT" }),
+      ),
+    );
+
+    fireEvent.click(screen.getByTestId("tasks-filter-button"));
+    fireEvent.change(screen.getByTestId("tasks-filter-version"), {
+      target: { value: VERSION_ID },
+    });
+    await waitFor(() =>
+      expect(listWorkItemsMock).toHaveBeenLastCalledWith(
+        expect.objectContaining({
+          priority: "URGENT",
+          versionId: VERSION_ID,
+        }),
+      ),
+    );
+
+    fireEvent.click(screen.getByTestId("tasks-filter-clear"));
+
+    await waitFor(() => {
+      const [query] =
+        listWorkItemsMock.mock.calls[listWorkItemsMock.mock.calls.length - 1];
+      expect(query.priority).toBe("URGENT");
+      expect(query.versionId).toBeUndefined();
+      expect(query.statusCategory).toBeUndefined();
+      expect(query.tagIds).toBeUndefined();
+    });
   });
 
   it("opens the task detail sheet when a row is clicked", async () => {
