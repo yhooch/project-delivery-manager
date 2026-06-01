@@ -52,10 +52,14 @@ export type UpdateTaskInput = UpdateWorkItemRequest;
 export type TaskListFilterState = {
   assigneeId?: string;
   intakeItemId?: string;
+  noRequirement?: boolean;
+  noTags?: boolean;
+  noVersion?: boolean;
   priority?: Priority;
   reporterId?: string;
   requirementId?: string;
   statusCategory?: StatusCategory;
+  unassigned?: boolean;
   versionId?: string;
 };
 

@@ -50,12 +50,17 @@ export type UpdateBugInput = UpdateBugRequest;
 export type BugListFilterState = {
   assigneeId?: string;
   createdById?: string;
+  noRelatedTask?: boolean;
+  noRequirement?: boolean;
+  noTags?: boolean;
+  noVersion?: boolean;
   priority?: Priority;
   relatedTaskId?: string;
   reporterId?: string;
   requirementId?: string;
   severity?: BugSeverity;
   statusCategory?: StatusCategory;
+  unassigned?: boolean;
   versionId?: string;
 };
 

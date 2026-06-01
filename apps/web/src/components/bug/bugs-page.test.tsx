@@ -467,6 +467,111 @@ describe("BugsPage", () => {
     ).toBeInTheDocument();
   });
 
+  it("switches bug header dimensions and filters by severity with exact counts", async () => {
+    listBugsMock
+      .mockResolvedValueOnce({
+        dimensionCounts: [
+          {
+            dimension: "severity",
+            total: 9,
+            buckets: [
+              { value: "BLOCKER", count: 2 },
+              { value: "CRITICAL", count: 3 },
+              { value: "MAJOR", count: 4 },
+            ],
+          },
+        ],
+        items: [makeBug({ title: "Severity bucket bug" })],
+        total: 9,
+      })
+      .mockResolvedValueOnce({
+        dimensionCounts: [
+          {
+            dimension: "severity",
+            total: 9,
+            buckets: [{ value: "CRITICAL", count: 3 }],
+          },
+        ],
+        items: [
+          makeBug({
+            bugDetail: { severity: "CRITICAL" },
+            title: "Critical bug",
+          }),
+        ],
+        total: 3,
+      });
+
+    render(<BugsPage />);
+
+    expect(await screen.findByText("Severity bucket bug")).toBeInTheDocument();
+    fireEvent.change(screen.getByTestId("bugs-dimension-filter-dimension"), {
+      target: { value: "severity" },
+    });
+
+    const criticalBucket = getBugFilterOption("CRITICAL");
+    expect(within(criticalBucket).getByText("3")).toBeInTheDocument();
+
+    fireEvent.click(criticalBucket);
+    await waitFor(() =>
+      expect(listBugsMock).toHaveBeenLastCalledWith(
+        expect.objectContaining({
+          severity: "CRITICAL",
+          spaceId: "SPC_01",
+          type: "BUG",
+        }),
+      ),
+    );
+  });
+
+  it("filters by empty bug dimension buckets", async () => {
+    listBugsMock
+      .mockResolvedValueOnce({
+        dimensionCounts: [
+          {
+            dimension: "relatedTaskId",
+            total: 6,
+            buckets: [{ value: null, count: 4 }],
+          },
+        ],
+        items: [makeBug({ title: "No related task summary bug" })],
+        total: 6,
+      })
+      .mockResolvedValueOnce({
+        dimensionCounts: [
+          {
+            dimension: "relatedTaskId",
+            total: 6,
+            buckets: [{ value: null, count: 4 }],
+          },
+        ],
+        items: [makeBug({ title: "No related task bug" })],
+        total: 4,
+      });
+
+    render(<BugsPage />);
+
+    expect(
+      await screen.findByText("No related task summary bug"),
+    ).toBeInTheDocument();
+    fireEvent.change(screen.getByTestId("bugs-dimension-filter-dimension"), {
+      target: { value: "relatedTaskId" },
+    });
+
+    const noRelatedTaskBucket = getBugFilterOption("none");
+    expect(within(noRelatedTaskBucket).getByText("4")).toBeInTheDocument();
+
+    fireEvent.click(noRelatedTaskBucket);
+    await waitFor(() =>
+      expect(listBugsMock).toHaveBeenLastCalledWith(
+        expect.objectContaining({
+          noRelatedTask: true,
+          spaceId: "SPC_01",
+          type: "BUG",
+        }),
+      ),
+    );
+  });
+
   it("filters by status category through the backend query", async () => {
     listBugsMock
       .mockResolvedValueOnce({
@@ -521,6 +626,124 @@ describe("BugsPage", () => {
       expect(screen.queryByText("Closed bug")).not.toBeInTheDocument(),
     );
     expect(screen.queryByText("Terminated bug")).not.toBeInTheDocument();
+  });
+
+  it("sends the search query to the backend and renders returned bugs", async () => {
+    listBugsMock
+      .mockResolvedValueOnce({
+        items: [
+          makeBug({
+            id: "01ARZ3NDEKTSV4RRFFQ69G5F01",
+            title: "Refactor auth bug",
+          }),
+          makeBug({
+            id: "01ARZ3NDEKTSV4RRFFQ69G5F02",
+            title: "Polish header bug",
+          }),
+        ],
+        total: 2,
+      })
+      .mockResolvedValue({
+        items: [
+          makeBug({
+            id: "01ARZ3NDEKTSV4RRFFQ69G5F01",
+            title: "Refactor auth bug",
+          }),
+        ],
+        total: 1,
+      });
+
+    render(<BugsPage />);
+
+    expect(await screen.findByText("Refactor auth bug")).toBeInTheDocument();
+    const search = screen.getByPlaceholderText("bugs.search.placeholder");
+    fireEvent.change(search, { target: { value: "refactor" } });
+
+    await waitFor(() =>
+      expect(listBugsMock).toHaveBeenLastCalledWith(
+        expect.objectContaining({
+          query: "refactor",
+          spaceId: "SPC_01",
+          type: "BUG",
+        }),
+      ),
+    );
+    expect(await screen.findByText("Refactor auth bug")).toBeInTheDocument();
+    expect(screen.queryByText("Polish header bug")).not.toBeInTheDocument();
+  });
+
+  it("keeps backend search matches that only match the description", async () => {
+    listBugsMock
+      .mockResolvedValueOnce({
+        items: [
+          makeBug({
+            id: "01ARZ3NDEKTSV4RRFFQ69G5F01",
+            title: "Initial bug",
+          }),
+        ],
+        total: 1,
+      })
+      .mockResolvedValueOnce({
+        items: [
+          makeBug({
+            description: "Only this field mentions invoice reconciliation",
+            id: "01ARZ3NDEKTSV4RRFFQ69G5F02",
+            title: "Opaque title",
+          }),
+        ],
+        total: 1,
+      });
+
+    render(<BugsPage />);
+
+    expect(await screen.findByText("Initial bug")).toBeInTheDocument();
+    fireEvent.change(screen.getByPlaceholderText("bugs.search.placeholder"), {
+      target: { value: "invoice reconciliation" },
+    });
+
+    await waitFor(() => expect(listBugsMock).toHaveBeenCalledTimes(2));
+    expect(await screen.findByText("Opaque title")).toBeInTheDocument();
+  });
+
+  it("refetches the first bug page when the search query changes", async () => {
+    listBugsMock
+      .mockResolvedValueOnce({
+        items: [
+          makeBug({
+            id: "01ARZ3NDEKTSV4RRFFQ69G5F01",
+            title: "Loaded first page bug",
+          }),
+        ],
+        total: 1,
+      })
+      .mockResolvedValueOnce({
+        items: [
+          makeBug({
+            displayCode: "BUG-42",
+            id: "01ARZ3NDEKTSV4RRFFQ69G5F42",
+            title: "Loaded BUG-42",
+          }),
+        ],
+        total: 1,
+      });
+
+    render(<BugsPage />);
+
+    expect(await screen.findByText("Loaded first page bug")).toBeInTheDocument();
+    fireEvent.change(screen.getByPlaceholderText("bugs.search.placeholder"), {
+      target: { value: "BUG-42" },
+    });
+
+    await waitFor(() => expect(listBugsMock).toHaveBeenCalledTimes(2));
+    expect(listBugsMock).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        page: 1,
+        query: "BUG-42",
+        spaceId: "SPC_01",
+        type: "BUG",
+      }),
+    );
+    expect(await screen.findByText("Loaded BUG-42")).toBeInTheDocument();
   });
 
   it("highlights the status category bucket from the URL", async () => {
@@ -886,6 +1109,125 @@ describe("BugsPage", () => {
     const [query] = listBugsMock.mock.calls[listBugsMock.mock.calls.length - 1];
     expect(query.requirementId).toBeUndefined();
     expect(query.relatedTaskId).toBeUndefined();
+  });
+
+  it("clears noVersion when a selected requirement inherits a version", async () => {
+    versionMap.set(NEXT_VERSION_ID, { name: "v2" });
+    listRequirementsMock.mockResolvedValueOnce({
+      items: [
+        {
+          id: NEXT_REQUIREMENT_ID,
+          title: "Requirement v2",
+          versionId: NEXT_VERSION_ID,
+        },
+      ],
+      total: 1,
+    });
+    listWorkItemsMock.mockResolvedValueOnce({ items: [], total: 0 });
+    listBugsMock.mockResolvedValue({
+      dimensionCounts: [
+        {
+          dimension: "versionId",
+          total: 5,
+          buckets: [{ value: null, count: 2 }],
+        },
+      ],
+      items: [makeBug({ title: "No version requirement filter bug" })],
+      total: 5,
+    });
+
+    render(<BugsPage />);
+
+    expect(
+      await screen.findByText("No version requirement filter bug"),
+    ).toBeInTheDocument();
+    fireEvent.change(screen.getByTestId("bugs-dimension-filter-dimension"), {
+      target: { value: "versionId" },
+    });
+    fireEvent.click(getBugFilterOption("none"));
+
+    await waitFor(() =>
+      expect(listBugsMock).toHaveBeenLastCalledWith(
+        expect.objectContaining({ noVersion: true }),
+      ),
+    );
+
+    fireEvent.click(screen.getByTestId("bugs-filter-button"));
+    await screen.findByText("Requirement v2");
+    fireEvent.change(screen.getByTestId("bugs-filter-requirement"), {
+      target: { value: NEXT_REQUIREMENT_ID },
+    });
+
+    await waitFor(() =>
+      expect(listBugsMock).toHaveBeenLastCalledWith(
+        expect.objectContaining({
+          requirementId: NEXT_REQUIREMENT_ID,
+          versionId: NEXT_VERSION_ID,
+        }),
+      ),
+    );
+    const [query] = listBugsMock.mock.calls[listBugsMock.mock.calls.length - 1];
+    expect(query.noVersion).toBeUndefined();
+  });
+
+  it("clears noVersion when a selected related task inherits a version", async () => {
+    versionMap.set(NEXT_VERSION_ID, { name: "v2" });
+    listRequirementsMock.mockResolvedValueOnce({ items: [], total: 0 });
+    listWorkItemsMock.mockResolvedValueOnce({
+      items: [
+        makeBug({
+          id: NEXT_RELATED_TASK_ID,
+          title: "Task v2",
+          type: "TASK",
+          versionId: NEXT_VERSION_ID,
+        }),
+      ],
+      total: 1,
+    });
+    listBugsMock.mockResolvedValue({
+      dimensionCounts: [
+        {
+          dimension: "versionId",
+          total: 5,
+          buckets: [{ value: null, count: 2 }],
+        },
+      ],
+      items: [makeBug({ title: "No version related task filter bug" })],
+      total: 5,
+    });
+
+    render(<BugsPage />);
+
+    expect(
+      await screen.findByText("No version related task filter bug"),
+    ).toBeInTheDocument();
+    fireEvent.change(screen.getByTestId("bugs-dimension-filter-dimension"), {
+      target: { value: "versionId" },
+    });
+    fireEvent.click(getBugFilterOption("none"));
+
+    await waitFor(() =>
+      expect(listBugsMock).toHaveBeenLastCalledWith(
+        expect.objectContaining({ noVersion: true }),
+      ),
+    );
+
+    fireEvent.click(screen.getByTestId("bugs-filter-button"));
+    await screen.findByText("Task v2");
+    fireEvent.change(screen.getByTestId("bugs-filter-related-task"), {
+      target: { value: NEXT_RELATED_TASK_ID },
+    });
+
+    await waitFor(() =>
+      expect(listBugsMock).toHaveBeenLastCalledWith(
+        expect.objectContaining({
+          relatedTaskId: NEXT_RELATED_TASK_ID,
+          versionId: NEXT_VERSION_ID,
+        }),
+      ),
+    );
+    const [query] = listBugsMock.mock.calls[listBugsMock.mock.calls.length - 1];
+    expect(query.noVersion).toBeUndefined();
   });
 
   it("initializes supported filters from overview query params and ignores task-only workItemType", async () => {

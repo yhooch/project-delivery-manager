@@ -73,6 +73,11 @@ export class BugController {
       relatedTaskId?: string;
       tagIds?: string;
       tagMatch?: TagMatch;
+      unassigned?: boolean;
+      noVersion?: boolean;
+      noRequirement?: boolean;
+      noRelatedTask?: boolean;
+      noTags?: boolean;
     },
     @Req() request: RequestWithContext,
   ): Promise<ListBugsResponse> {

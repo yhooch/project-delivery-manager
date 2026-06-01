@@ -145,6 +145,17 @@ export const UpdateBugRequestSchema = UpdateWorkItemRequestSchema.extend({
 
 export type UpdateBugRequest = z.infer<typeof UpdateBugRequestSchema>;
 
+const BooleanQuerySchema = z.preprocess((value) => {
+  if (value === "true") {
+    return true;
+  }
+  if (value === "false") {
+    return false;
+  }
+
+  return value;
+}, z.boolean());
+
 export const WorkItemListQuerySchema = PageQuerySchema.merge(
   TagFilterQuerySchema,
 ).extend({
@@ -157,6 +168,10 @@ export const WorkItemListQuerySchema = PageQuerySchema.merge(
   assigneeId: UlidSchema.optional(),
   statusCategory: StatusCategorySchema.optional(),
   priority: PrioritySchema.optional(),
+  unassigned: BooleanQuerySchema.optional(),
+  noVersion: BooleanQuerySchema.optional(),
+  noRequirement: BooleanQuerySchema.optional(),
+  noTags: BooleanQuerySchema.optional(),
 });
 
 export const CreateWorkItemResponseSchema = WorkItemSchema;
@@ -178,6 +193,11 @@ export const BugListQuerySchema = PageQuerySchema.merge(
   priority: PrioritySchema.optional(),
   severity: BugSeveritySchema.optional(),
   relatedTaskId: UlidSchema.optional(),
+  unassigned: BooleanQuerySchema.optional(),
+  noVersion: BooleanQuerySchema.optional(),
+  noRequirement: BooleanQuerySchema.optional(),
+  noRelatedTask: BooleanQuerySchema.optional(),
+  noTags: BooleanQuerySchema.optional(),
 });
 
 export const WorkItemStatusCategoryCountSchema = z
@@ -191,15 +211,50 @@ export type WorkItemStatusCategoryCount = z.infer<
   typeof WorkItemStatusCategoryCountSchema
 >;
 
+const WorkItemCountSchema = z.number().int().min(0);
+
+export const WorkItemDimensionCountBucketSchema = z
+  .object({
+    value: z.string().nullable(),
+    count: WorkItemCountSchema,
+  })
+  .strict();
+
+export type WorkItemDimensionCountBucket = z.infer<
+  typeof WorkItemDimensionCountBucketSchema
+>;
+
+export const WorkItemDimensionCountSchema = z
+  .object({
+    dimension: z.string().min(1),
+    total: WorkItemCountSchema,
+    buckets: z.array(WorkItemDimensionCountBucketSchema),
+  })
+  .strict();
+
+export type WorkItemDimensionCount = z.infer<
+  typeof WorkItemDimensionCountSchema
+>;
+
+export const WorkItemDimensionCountsSchema = z.array(
+  WorkItemDimensionCountSchema,
+);
+
+export type WorkItemDimensionCounts = z.infer<
+  typeof WorkItemDimensionCountsSchema
+>;
+
 export const ListWorkItemsResponseSchema = pageResultSchema(
   WorkItemSchema,
 ).extend({
+  dimensionCounts: WorkItemDimensionCountsSchema.optional(),
   statusCategoryCounts: z.array(WorkItemStatusCategoryCountSchema).optional(),
 });
 
 export type ListWorkItemsResponse = z.infer<typeof ListWorkItemsResponseSchema>;
 
 export const ListBugsResponseSchema = pageResultSchema(BugViewSchema).extend({
+  dimensionCounts: WorkItemDimensionCountsSchema.optional(),
   statusCategoryCounts: z.array(WorkItemStatusCategoryCountSchema).optional(),
 });
 

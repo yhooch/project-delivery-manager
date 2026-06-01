@@ -1892,6 +1892,9 @@
       "edit": "Edit bug",
       "retry": "Retry"
     },
+    "search": {
+      "placeholder": "Search by title or code"
+    },
     "buckets": {
       "all": "All",
       "open": "Open",
@@ -1902,6 +1905,29 @@
       "pendingRegression": "Pending regression",
       "regressionPassed": "Regression passed",
       "closed": "Closed"
+    },
+    "dimensionFilter": {
+      "label": "By",
+      "ariaLabel": "Switch bug count dimension",
+      "dimensions": {
+        "statusCategory": "Status",
+        "assigneeId": "Assignee",
+        "createdById": "Creator",
+        "priority": "Priority",
+        "severity": "Severity",
+        "versionId": "Version",
+        "requirementId": "Requirement",
+        "relatedTaskId": "Related task",
+        "tagId": "Tag"
+      },
+      "buckets": {
+        "unassigned": "Unassigned",
+        "unknownCreator": "Unknown creator",
+        "noVersion": "No version",
+        "noRequirement": "No requirement",
+        "noRelatedTask": "No related task",
+        "noTag": "No tag"
+      }
     },
     "filters": {
       "label": "Bug filters",
@@ -2176,6 +2202,24 @@
     },
     "buckets": {
       "all": "All"
+    },
+    "dimensionFilter": {
+      "label": "By",
+      "ariaLabel": "Switch task count dimension",
+      "dimensions": {
+        "statusCategory": "Status",
+        "assigneeId": "Assignee",
+        "priority": "Priority",
+        "versionId": "Version",
+        "requirementId": "Requirement",
+        "tagId": "Tag"
+      },
+      "buckets": {
+        "unassigned": "Unassigned",
+        "noVersion": "No version",
+        "noRequirement": "No requirement",
+        "noTag": "No tag"
+      }
     },
     "states": {
       "noSpace": {

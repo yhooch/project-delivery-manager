@@ -2,8 +2,10 @@ import { describe, expect, it } from "vitest";
 
 import {
   BugViewSchema,
+  BugListQuerySchema,
   GetBugResponseSchema,
   ListBugsResponseSchema,
+  WorkItemListQuerySchema,
   UpdateBugRequestSchema,
 } from "./work-item.ts";
 
@@ -78,5 +80,80 @@ describe("work item contracts", () => {
         }),
       ).toThrow();
     }
+  });
+
+  it("accepts list dimension counts with explicit totals", () => {
+    expect(
+      ListBugsResponseSchema.parse({
+        dimensionCounts: [
+          {
+            dimension: "tagId",
+            total: 2,
+            buckets: [
+              {
+                value: "01TRZ3NDEKTSV4RRFFQ69G5TAG",
+                count: 2,
+              },
+              {
+                value: null,
+                count: 1,
+              },
+            ],
+          },
+        ],
+        items: [bug],
+        page: 1,
+        pageSize: 20,
+        total: 1,
+      }).dimensionCounts?.[0],
+    ).toEqual({
+      dimension: "tagId",
+      total: 2,
+      buckets: [
+        {
+          value: "01TRZ3NDEKTSV4RRFFQ69G5TAG",
+          count: 2,
+        },
+        {
+          value: null,
+          count: 1,
+        },
+      ],
+    });
+  });
+
+  it("parses empty bucket list query filters", () => {
+    expect(
+      WorkItemListQuerySchema.parse({
+        noRequirement: "true",
+        noTags: "true",
+        noVersion: "false",
+        page: "1",
+        pageSize: "20",
+        unassigned: "true",
+      }),
+    ).toMatchObject({
+      noRequirement: true,
+      noTags: true,
+      noVersion: false,
+      unassigned: true,
+    });
+    expect(
+      BugListQuerySchema.parse({
+        noRelatedTask: "true",
+        noRequirement: "true",
+        noTags: "true",
+        noVersion: "true",
+        page: "1",
+        pageSize: "20",
+        unassigned: "true",
+      }),
+    ).toMatchObject({
+      noRelatedTask: true,
+      noRequirement: true,
+      noTags: true,
+      noVersion: true,
+      unassigned: true,
+    });
   });
 });

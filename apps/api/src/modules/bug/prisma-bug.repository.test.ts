@@ -18,10 +18,14 @@ function createRepositoryMock(
   const workflowVersionFindFirst = vi.fn(
     async () => input.workflowVersion,
   );
-  const workItemFindMany = vi.fn((args: PrismaCallArgs) => ({
-    args,
-    kind: "findMany",
-  }));
+  const workItemFindMany = vi.fn((args: PrismaCallArgs & { select?: unknown }) =>
+    args.select
+      ? []
+      : {
+          args,
+          kind: "findMany",
+        },
+  );
   const workItemCount = vi.fn((args: PrismaCallArgs) => ({
     args,
     kind: "count",
@@ -30,12 +34,30 @@ function createRepositoryMock(
     args,
     kind: "groupBy",
   }));
+  const bugDetailGroupBy = vi.fn((args: PrismaCallArgs) => ({
+    args,
+    kind: "bugDetailGroupBy",
+  }));
   const transaction = vi.fn(
-    async (_queries: unknown[]) => input.transactionResult ?? [[], 0, []],
+    async (_queries: unknown[]) =>
+      input.transactionResult
+        ? [
+            ...input.transactionResult,
+            ...[[], 0, [], [], [], [], [], [], [], []].slice(
+              input.transactionResult.length,
+            ),
+          ]
+        : [[], 0, [], [], [], [], [], [], [], []],
   );
   const prisma = {
     client: {
       $transaction: transaction,
+      bugDetail: {
+        groupBy: bugDetailGroupBy,
+      },
+      tagAssignment: {
+        findMany: vi.fn(async () => []),
+      },
       workItem: {
         count: workItemCount,
         findMany: workItemFindMany,
@@ -52,6 +74,7 @@ function createRepositoryMock(
 
   return {
     repository: new PrismaBugRepository(prisma, makeObjectCodeAllocator()),
+    bugDetailGroupBy,
     transaction,
     workItemCount,
     workItemFindMany,
@@ -139,8 +162,20 @@ describe("PrismaBugRepository", () => {
       { count: 3, statusCategory: "DONE" },
       { count: 2, statusCategory: "VERIFYING" },
     ]);
-    expect(transaction.mock.calls[0]?.[0]).toHaveLength(3);
-    expect(workItemGroupBy).toHaveBeenCalledTimes(1);
+    expect(result.dimensionCounts).toEqual(
+      expect.arrayContaining([
+        {
+          buckets: [
+            { count: 3, value: "DONE" },
+            { count: 2, value: "VERIFYING" },
+          ],
+          dimension: "statusCategory",
+          total: 5,
+        },
+      ]),
+    );
+    expect(transaction.mock.calls[0]?.[0]).toHaveLength(10);
+    expect(workItemGroupBy).toHaveBeenCalledTimes(6);
   });
 
   it("filters bugs by creator with reporter fallback for legacy rows", async () => {
@@ -180,6 +215,41 @@ describe("PrismaBugRepository", () => {
         where: expect.objectContaining({
           OR: expectedCreatorWhere,
           statusCategory: undefined,
+        }),
+      }),
+    );
+  });
+
+  it("filters bugs with no related task", async () => {
+    const { repository, workItemFindMany, bugDetailGroupBy } =
+      createRepositoryMock();
+
+    await repository.listBySpaceId("01ARZ3NDEKTSV4RRFFQ69G5SPC", {
+      actorUserId: "01ARZ3NDEKTSV4RRFFQ69G5USR",
+      noRelatedTask: true,
+      page: 1,
+      pageSize: 20,
+      visibility: "SPACE",
+    });
+
+    expect(workItemFindMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          bugDetail: {
+            is: expect.objectContaining({
+              relatedTaskId: null,
+            }),
+          },
+        }),
+      }),
+    );
+    expect(bugDetailGroupBy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          relatedTaskId: undefined,
+          workItem: expect.objectContaining({
+            type: "BUG",
+          }),
         }),
       }),
     );

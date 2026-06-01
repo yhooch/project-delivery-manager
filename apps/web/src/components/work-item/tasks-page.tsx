@@ -3,9 +3,13 @@
 import type {
   Priority,
   Requirement,
+  TagDto,
   StatusCategory,
   WorkItem,
+  ListWorkItemsResponse,
+  WorkItemDimensionCount,
   WorkItemStatusCategoryCount,
+  TagMatch,
 } from "@project-delivery/shared";
 import { Filter, Plus, Search } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
@@ -59,17 +63,28 @@ import { Input } from "../ui/input";
 import { SelectMenu } from "../ui/select-menu";
 import { useSession } from "../providers/session-provider";
 import { EmptyState, ErrorState, ListSkeleton } from "../v2/states";
+import {
+  DimensionFilterHeader,
+  type DimensionFilterBucket,
+  type DimensionFilterOption,
+} from "../v2/dimension-filter-header";
 import { FilterField, FilterPanel } from "../v2/filter-controls";
 import { PageHeader } from "../v2/page-header";
 import { WorkItemRow } from "../v2/work-item-row";
 import { recordRecentOpen } from "../shell/recent-opens";
-import { TagFilter } from "../tag";
+import { formatTagDisplayName, TagFilter } from "../tag";
 
 import { CreateTaskDialog } from "./create-task-dialog";
 import { TaskDetailSheet } from "./task-detail-sheet";
 import { normalizeWorkItemDetailPanel } from "./work-item-detail-panel";
 
-type StatusFilterKey = "all" | StatusCategory;
+type TaskDimensionKey =
+  | "assigneeId"
+  | "priority"
+  | "requirementId"
+  | "statusCategory"
+  | "tagId"
+  | "versionId";
 
 const STATUS_FILTERS: StatusCategory[] = [
   "NOT_STARTED",
@@ -80,6 +95,14 @@ const STATUS_FILTERS: StatusCategory[] = [
   "TERMINATED",
 ];
 const PRIORITY_FILTERS: Priority[] = ["LOW", "MEDIUM", "HIGH", "URGENT"];
+const TASK_DIMENSIONS: TaskDimensionKey[] = [
+  "statusCategory",
+  "assigneeId",
+  "priority",
+  "versionId",
+  "requirementId",
+  "tagId",
+];
 const LIST_PAGE_SIZE = 100;
 const INITIAL_PAGE_INFO = { page: 1, pageSize: LIST_PAGE_SIZE, total: 0 };
 const TASKS_REALTIME_KEYS = [
@@ -159,9 +182,11 @@ export function TasksPage() {
   const [filterOpen, setFilterOpen] = useState(false);
   const [requirements, setRequirements] = useState<Requirement[]>([]);
   const [pageInfo, setPageInfo] = useState(INITIAL_PAGE_INFO);
-  const [statusCategoryCounts, setStatusCategoryCounts] = useState<
-    WorkItemStatusCategoryCount[]
+  const [dimensionCounts, setDimensionCounts] = useState<
+    WorkItemDimensionCount[]
   >([]);
+  const [activeDimension, setActiveDimension] =
+    useState<TaskDimensionKey>("statusCategory");
   const [createOpen, setCreateOpen] = useState(false);
   const [hasLoadedItems, setHasLoadedItems] = useState(false);
   const [handledDeepLinkKey, setHandledDeepLinkKey] = useState<string | null>(
@@ -217,7 +242,18 @@ export function TasksPage() {
 
   const setFilter = useCallback(
     (key: keyof TaskListFilterState, value: string) => {
-      setFilters((current) => ({ ...current, [key]: value || undefined }));
+      setFilters((current) =>
+        applyTaskDimensionFilter(current, key, value || undefined),
+      );
+    },
+    [],
+  );
+
+  const setDimensionFilter = useCallback(
+    (dimension: TaskDimensionKey, value: string | null | undefined) => {
+      setFilters((current) =>
+        applyTaskDimensionFilter(current, dimension, value),
+      );
     },
     [],
   );
@@ -284,7 +320,7 @@ export function TasksPage() {
           pageSize: result.pageSize ?? pageSize,
           total: result.total ?? result.items.length,
         });
-        setStatusCategoryCounts(result.statusCategoryCounts ?? []);
+        setDimensionCounts(resolveDimensionCounts(result));
       } catch (error) {
         if (
           listRequestIdRef.current === requestId &&
@@ -327,7 +363,7 @@ export function TasksPage() {
       listRequestIdRef.current += 1;
       setItems([]);
       setPageInfo(INITIAL_PAGE_INFO);
-      setStatusCategoryCounts([]);
+      setDimensionCounts([]);
       setLoading(false);
       setLoadingMore(false);
       setHasLoadedItems(false);
@@ -353,7 +389,7 @@ export function TasksPage() {
   }, [contextKey]);
 
   useEffect(() => {
-    if (!filterOpen || !spaceId) {
+    if ((!filterOpen && activeDimension !== "requirementId") || !spaceId) {
       return;
     }
 
@@ -379,7 +415,7 @@ export function TasksPage() {
     return () => {
       cancelled = true;
     };
-  }, [filterOpen, organizationId, spaceId]);
+  }, [activeDimension, filterOpen, organizationId, spaceId]);
 
   const workflowVersionIds = useMemo(
     () => items.map((item) => item.workflowVersionId),
@@ -391,47 +427,60 @@ export function TasksPage() {
     organizationId,
   );
 
-  const buckets: { count: number; label: string; key: StatusFilterKey }[] =
-    useMemo(
-      () => [
-        {
-          count: getAllStatusCategoryCount(statusCategoryCounts, items.length),
-          label: t("buckets.all"),
-          key: "all",
+  const dimensionOptions: DimensionFilterOption[] = useMemo(
+    () =>
+      TASK_DIMENSIONS.map((dimension) => ({
+        key: dimension,
+        label: t(`dimensionFilter.dimensions.${dimension}`),
+      })),
+    [t],
+  );
+
+  const dimensionBuckets = useMemo(
+    () =>
+      createTaskDimensionBuckets({
+        activeDimension,
+        dimensionCounts,
+        filters,
+        getMember,
+        getVersion,
+        onSelect: (dimension, value) => {
+          selectTaskDimensionBucket({
+            dimension,
+            setDimensionFilter,
+            setSelectedTags,
+            setTagFilter,
+            tagFilterOptions,
+            tagMatch: tagFilter.tagMatch,
+            value,
+          });
         },
-        {
-          count: getStatusCategoryCount(statusCategoryCounts, "NOT_STARTED"),
-          label: tStatus("NOT_STARTED"),
-          key: "NOT_STARTED",
-        },
-        {
-          count: getStatusCategoryCount(statusCategoryCounts, "IN_PROGRESS"),
-          label: tStatus("IN_PROGRESS"),
-          key: "IN_PROGRESS",
-        },
-        {
-          count: getStatusCategoryCount(statusCategoryCounts, "WAITING"),
-          label: tStatus("WAITING"),
-          key: "WAITING",
-        },
-        {
-          count: getStatusCategoryCount(statusCategoryCounts, "VERIFYING"),
-          label: tStatus("VERIFYING"),
-          key: "VERIFYING",
-        },
-        {
-          count: getStatusCategoryCount(statusCategoryCounts, "DONE"),
-          label: tStatus("DONE"),
-          key: "DONE",
-        },
-        {
-          count: getStatusCategoryCount(statusCategoryCounts, "TERMINATED"),
-          label: tStatus("TERMINATED"),
-          key: "TERMINATED",
-        },
-      ],
-      [items.length, statusCategoryCounts, t, tStatus],
-    );
+        pageTotal: pageInfo.total,
+        requirements,
+        tagFilter,
+        tagFilterOptions,
+        t,
+        tPriority,
+        tStatus,
+      }),
+    [
+      activeDimension,
+      dimensionCounts,
+      filters,
+      getMember,
+      getVersion,
+      pageInfo.total,
+      requirements,
+      setDimensionFilter,
+      setSelectedTags,
+      setTagFilter,
+      tagFilter,
+      tagFilterOptions,
+      t,
+      tPriority,
+      tStatus,
+    ],
+  );
 
   const taskViewModels = useMemo(
     () =>
@@ -752,40 +801,28 @@ export function TasksPage() {
     <div data-testid="tasks-page" className="flex h-full min-w-0 flex-col">
       {header}
 
-      <div className="flex min-w-0 flex-col gap-3 border-b border-border px-4 py-3 sm:px-6 md:flex-row md:items-center">
-        <div className="relative min-w-0 flex-1 md:max-w-md">
-          <Search className="absolute left-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            placeholder={t("search.placeholder")}
-            value={query}
-            onChange={(event) => setQuery(event.target.value)}
-            className="pl-7"
-          />
-        </div>
-        <div className="-mx-1 overflow-x-auto px-1">
-          <div className="flex min-w-max items-center gap-1">
-            {buckets.map((b) => (
-              <button
-                key={b.key}
-                type="button"
-                onClick={() =>
-                  setFilter("statusCategory", b.key === "all" ? "" : b.key)
-                }
-                className={`h-7 rounded-md px-2.5 text-[12px] transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/70 focus-visible:ring-offset-2 focus-visible:ring-offset-background ${
-                  (filters.statusCategory ?? "all") === b.key
-                    ? "bg-muted font-medium text-foreground"
-                    : "text-muted-foreground hover:bg-muted/50 hover:text-foreground"
-                }`}
-              >
-                {b.label}
-                <span className="rounded bg-background px-1 font-mono text-[10px]">
-                  {b.count}
-                </span>
-              </button>
-            ))}
+      <DimensionFilterHeader
+        activeDimension={activeDimension}
+        buckets={dimensionBuckets}
+        dimensionAriaLabel={t("dimensionFilter.ariaLabel")}
+        dimensionLabel={t("dimensionFilter.label")}
+        dimensions={dimensionOptions}
+        leadingContent={
+          <div className="relative min-w-0">
+            <Search className="absolute left-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              placeholder={t("search.placeholder")}
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+              className="h-8 pl-7"
+            />
           </div>
-        </div>
-      </div>
+        }
+        onDimensionChange={(dimension) =>
+          setActiveDimension(dimension as TaskDimensionKey)
+        }
+        testId="tasks-dimension-filter"
+      />
 
       {filterOpen && (
         <FilterPanel
@@ -877,6 +914,7 @@ export function TasksPage() {
               onChange={(value, selectedTags) => {
                 setSelectedTags(selectedTags);
                 setTagFilter(value);
+                setDimensionFilter("tagId", undefined);
               }}
               selectedTags={selectedFilterTags}
               showMatchMode={false}
@@ -1008,13 +1046,306 @@ function normalizeStatusCategory(
     : undefined;
 }
 
-function getStatusCategoryCount(
-  counts: WorkItemStatusCategoryCount[],
-  statusCategory: StatusCategory,
-): number {
-  return (
-    counts.find((entry) => entry.statusCategory === statusCategory)?.count ?? 0
+function resolveDimensionCounts(
+  result: ListWorkItemsResponse,
+): WorkItemDimensionCount[] {
+  const dimensionCounts = result.dimensionCounts;
+
+  if (dimensionCounts) {
+    return dimensionCounts;
+  }
+
+  return [
+    {
+      buckets: (result.statusCategoryCounts ?? []).map((entry) => ({
+        count: entry.count,
+        value: entry.statusCategory,
+      })),
+      dimension: "statusCategory",
+      total: getAllStatusCategoryCount(
+        result.statusCategoryCounts ?? [],
+        result.total ?? result.items.length,
+      ),
+    },
+  ];
+}
+
+function createTaskDimensionBuckets({
+  activeDimension,
+  dimensionCounts,
+  filters,
+  getMember,
+  getVersion,
+  onSelect,
+  pageTotal,
+  requirements,
+  tagFilter,
+  tagFilterOptions,
+  t,
+  tPriority,
+  tStatus,
+}: {
+  activeDimension: TaskDimensionKey;
+  dimensionCounts: readonly WorkItemDimensionCount[];
+  filters: TaskListFilterState;
+  getMember: (id: string) =>
+    | { user: { name?: string | null; username?: string | null } }
+    | undefined;
+  getVersion: (id: string) => { name?: string | null } | undefined;
+  onSelect: (
+    dimension: TaskDimensionKey,
+    value: string | null | undefined,
+  ) => void;
+  pageTotal: number;
+  requirements: readonly Requirement[];
+  tagFilter: { tagIds: readonly string[] };
+  tagFilterOptions: readonly TagDto[];
+  t: (key: string) => string;
+  tPriority: (key: Priority) => string;
+  tStatus: (key: StatusCategory) => string;
+}): DimensionFilterBucket[] {
+  const countSet = getDimensionCountSet(dimensionCounts, activeDimension);
+  const allCount = countSet?.total ?? pageTotal;
+  const selectedValue = getTaskDimensionSelectedValue(
+    activeDimension,
+    filters,
+    tagFilter.tagIds,
   );
+  const buckets: DimensionFilterBucket[] = [
+    {
+      active: selectedValue === undefined,
+      count: allCount,
+      key: "__all",
+      label: t("buckets.all"),
+      onSelect: () => onSelect(activeDimension, undefined),
+      testKey: "all",
+    },
+  ];
+
+  for (const bucket of createOrderedTaskCountBuckets(
+    activeDimension,
+    countSet?.buckets ?? [],
+  )) {
+    const key = bucket.value ?? "__none";
+    const label = getTaskDimensionBucketLabel({
+      dimension: activeDimension,
+      getMember,
+      getVersion,
+      requirements,
+      tagFilterOptions,
+      t,
+      tPriority,
+      tStatus,
+      value: bucket.value,
+    });
+
+    buckets.push({
+      active: selectedValue === bucket.value,
+      count: bucket.count,
+      key,
+      label,
+      onSelect: () => onSelect(activeDimension, bucket.value),
+      testKey: bucket.value ?? "none",
+      title: label,
+    });
+  }
+
+  return buckets;
+}
+
+function selectTaskDimensionBucket({
+  dimension,
+  setDimensionFilter,
+  setSelectedTags,
+  setTagFilter,
+  tagFilterOptions,
+  tagMatch,
+  value,
+}: {
+  dimension: TaskDimensionKey;
+  setDimensionFilter: (
+    dimension: TaskDimensionKey,
+    value: string | null | undefined,
+  ) => void;
+  setSelectedTags: (value: TagDto[]) => void;
+  setTagFilter: (value: { tagIds: string[]; tagMatch: TagMatch }) => void;
+  tagFilterOptions: readonly TagDto[];
+  tagMatch: TagMatch;
+  value: string | null | undefined;
+}) {
+  if (dimension === "tagId") {
+    const nextTags = value
+      ? tagFilterOptions.filter((tag) => tag.id === value)
+      : [];
+    setSelectedTags(nextTags);
+    setTagFilter({
+      tagIds: value ? [value] : [],
+      tagMatch,
+    });
+    setDimensionFilter("tagId", value);
+    return;
+  }
+
+  setDimensionFilter(dimension, value);
+}
+
+function getTaskDimensionSelectedValue(
+  dimension: TaskDimensionKey,
+  filters: TaskListFilterState,
+  tagIds: readonly string[],
+): string | null | undefined {
+  if (dimension === "tagId") {
+    if (filters.noTags) {
+      return null;
+    }
+
+    return tagIds.length === 1 ? tagIds[0] : undefined;
+  }
+
+  if (dimension === "assigneeId" && filters.unassigned) {
+    return null;
+  }
+  if (dimension === "versionId" && filters.noVersion) {
+    return null;
+  }
+  if (dimension === "requirementId" && filters.noRequirement) {
+    return null;
+  }
+
+  return filters[dimension];
+}
+
+function getDimensionCountSet(
+  counts: readonly WorkItemDimensionCount[],
+  dimension: string,
+) {
+  return counts.find((entry) => entry.dimension === dimension);
+}
+
+function createOrderedTaskCountBuckets(
+  dimension: TaskDimensionKey,
+  buckets: readonly WorkItemDimensionCount["buckets"][number][],
+): WorkItemDimensionCount["buckets"][number][] {
+  const byValue = new Map(buckets.map((bucket) => [bucket.value, bucket]));
+
+  if (dimension === "statusCategory") {
+    return STATUS_FILTERS.map((status) => ({
+      count: byValue.get(status)?.count ?? 0,
+      value: status,
+    }));
+  }
+
+  if (dimension === "priority") {
+    return PRIORITY_FILTERS.map((priority) => ({
+      count: byValue.get(priority)?.count ?? 0,
+      value: priority,
+    }));
+  }
+
+  return [...buckets].sort((left, right) => {
+    if (left.value === null) {
+      return -1;
+    }
+    if (right.value === null) {
+      return 1;
+    }
+
+    return right.count - left.count;
+  });
+}
+
+function getTaskDimensionBucketLabel({
+  dimension,
+  getMember,
+  getVersion,
+  requirements,
+  tagFilterOptions,
+  t,
+  tPriority,
+  tStatus,
+  value,
+}: {
+  dimension: TaskDimensionKey;
+  getMember: (id: string) =>
+    | { user: { name?: string | null; username?: string | null } }
+    | undefined;
+  getVersion: (id: string) => { name?: string | null } | undefined;
+  requirements: readonly Requirement[];
+  tagFilterOptions: readonly TagDto[];
+  t: (key: string) => string;
+  tPriority: (key: Priority) => string;
+  tStatus: (key: StatusCategory) => string;
+  value: string | null;
+}): string {
+  if (value === null) {
+    switch (dimension) {
+      case "assigneeId":
+        return t("dimensionFilter.buckets.unassigned");
+      case "versionId":
+        return t("dimensionFilter.buckets.noVersion");
+      case "requirementId":
+        return t("dimensionFilter.buckets.noRequirement");
+      case "tagId":
+        return t("dimensionFilter.buckets.noTag");
+      case "priority":
+      case "statusCategory":
+        return "";
+    }
+  }
+
+  switch (dimension) {
+    case "assigneeId": {
+      const member = getMember(value);
+      return member?.user.name || member?.user.username || value;
+    }
+    case "priority":
+      return tPriority(value as Priority);
+    case "requirementId":
+      return (
+        requirements.find((requirement) => requirement.id === value)?.title ||
+        value
+      );
+    case "statusCategory":
+      return tStatus(value as StatusCategory);
+    case "tagId": {
+      const tag = tagFilterOptions.find((item) => item.id === value);
+      return tag ? formatTagDisplayName(tag) : value;
+    }
+    case "versionId":
+      return getVersion(value)?.name || value;
+  }
+}
+
+function applyTaskDimensionFilter(
+  current: TaskListFilterState,
+  dimension: keyof TaskListFilterState | "tagId",
+  value: string | null | undefined,
+): TaskListFilterState {
+  const next: TaskListFilterState = { ...current };
+
+  switch (dimension) {
+    case "assigneeId":
+      next.assigneeId = typeof value === "string" ? value : undefined;
+      next.unassigned = value === null ? true : undefined;
+      break;
+    case "versionId":
+      next.versionId = typeof value === "string" ? value : undefined;
+      next.noVersion = value === null ? true : undefined;
+      break;
+    case "requirementId":
+      next.requirementId = typeof value === "string" ? value : undefined;
+      next.noRequirement = value === null ? true : undefined;
+      break;
+    case "noTags":
+    case "tagId":
+      next.noTags = value === null ? true : undefined;
+      break;
+    default:
+      next[dimension] = (value ?? undefined) as never;
+      break;
+  }
+
+  return next;
 }
 
 function getAllStatusCategoryCount(
@@ -1046,10 +1377,14 @@ function createTaskListScopeKey({
     spaceId ?? "",
     filters.assigneeId ?? "",
     filters.intakeItemId ?? "",
+    filters.noRequirement ? "noRequirement" : "",
+    filters.noTags ? "noTags" : "",
+    filters.noVersion ? "noVersion" : "",
     filters.priority ?? "",
     filters.reporterId ?? "",
     filters.requirementId ?? "",
     filters.statusCategory ?? "",
+    filters.unassigned ? "unassigned" : "",
     filters.versionId ?? "",
     tagIds.join(","),
     tagIds.length > 0 ? tagMatch : "",

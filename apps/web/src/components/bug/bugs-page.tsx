@@ -3,16 +3,19 @@
 import {
   BugSeverity,
   BugView,
+  ListBugsResponse,
   Priority,
   Requirement,
   SpaceMemberWithUser,
   StatusCategory,
   TagDto,
+  TagMatch,
   Version,
   WorkItem,
+  WorkItemDimensionCount,
   WorkItemStatusCategoryCount,
 } from "@project-delivery/shared";
-import { Bug, Filter, GitBranch, Pencil, Plus } from "lucide-react";
+import { Bug, Filter, GitBranch, Pencil, Plus, Search } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
 import { useSearchParams } from "next/navigation";
 import {
@@ -66,19 +69,25 @@ import { listWorkItems } from "../../lib/work-item-service";
 import { Avatar, AvatarFallback } from "../ui/avatar";
 import { Badge } from "../ui/badge";
 import { Button } from "../ui/button";
+import { Input } from "../ui/input";
 import { StatusBadge } from "../ui/status-badge";
 import { SelectMenu } from "../ui/select-menu";
 import { Tip } from "../ui/tooltip";
 import { useSession } from "../providers/session-provider";
 import { recordRecentOpen } from "../shell/recent-opens";
 import { EmptyState, ErrorState, ListSkeleton } from "../v2/states";
+import {
+  DimensionFilterHeader,
+  type DimensionFilterBucket,
+  type DimensionFilterOption,
+} from "../v2/dimension-filter-header";
 import { FilterField, FilterPanel } from "../v2/filter-controls";
 import { PageHeader } from "../v2/page-header";
 import { ListItemMetaRow } from "../v2/list-item-meta-row";
 
 import { TaskDetailSheet } from "../work-item/task-detail-sheet";
 import { normalizeWorkItemDetailPanel } from "../work-item/work-item-detail-panel";
-import { TagFilter } from "../tag";
+import { formatTagDisplayName, TagFilter } from "../tag";
 
 import { CreateBugDialog } from "./create-bug-dialog";
 import { EditBugDialog } from "./edit-bug-dialog";
@@ -91,7 +100,16 @@ const severityColor: Record<BugSeverity, string> = {
   TRIVIAL: "bg-muted text-muted-foreground",
 };
 
-type StatusFilterKey = "all" | StatusCategory;
+type BugDimensionKey =
+  | "assigneeId"
+  | "createdById"
+  | "priority"
+  | "relatedTaskId"
+  | "requirementId"
+  | "severity"
+  | "statusCategory"
+  | "tagId"
+  | "versionId";
 
 const STATUS_FILTERS: StatusCategory[] = [
   "NOT_STARTED",
@@ -108,6 +126,17 @@ const SEVERITY_FILTERS: BugSeverity[] = [
   "MAJOR",
   "MINOR",
   "TRIVIAL",
+];
+const BUG_DIMENSIONS: BugDimensionKey[] = [
+  "statusCategory",
+  "assigneeId",
+  "createdById",
+  "priority",
+  "severity",
+  "versionId",
+  "requirementId",
+  "relatedTaskId",
+  "tagId",
 ];
 const LIST_PAGE_SIZE = 100;
 const INITIAL_PAGE_INFO = { page: 1, pageSize: LIST_PAGE_SIZE, total: 0 };
@@ -145,6 +174,7 @@ export function BugsPage() {
   const [activeItem, setActiveItem] = useState<WorkItemViewModel | null>(null);
   const [sheetOpen, setSheetOpen] = useState(false);
   const [actionFocusRequest, setActionFocusRequest] = useState(0);
+  const [query, setQuery] = useState("");
   const [filters, setFilters] = useState<BugListFilterState>(() =>
     createInitialFilters(searchParams),
   );
@@ -152,9 +182,11 @@ export function BugsPage() {
   const [requirements, setRequirements] = useState<Requirement[]>([]);
   const [relatedTasks, setRelatedTasks] = useState<WorkItem[]>([]);
   const [pageInfo, setPageInfo] = useState(INITIAL_PAGE_INFO);
-  const [statusCategoryCounts, setStatusCategoryCounts] = useState<
-    WorkItemStatusCategoryCount[]
+  const [dimensionCounts, setDimensionCounts] = useState<
+    WorkItemDimensionCount[]
   >([]);
+  const [activeDimension, setActiveDimension] =
+    useState<BugDimensionKey>("statusCategory");
   const [createOpen, setCreateOpen] = useState(false);
   const [editingBug, setEditingBug] = useState<BugView | null>(null);
   const [detailRevision, setDetailRevision] = useState(0);
@@ -213,10 +245,13 @@ export function BugsPage() {
   );
   const latestListScopeKeyRef = useRef(listScopeKey);
   const listRequestIdRef = useRef(0);
+  const itemsLengthRef = useRef(0);
   const pageInfoRef = useRef(pageInfo);
   const previousContextKeyRef = useRef(contextKey);
   const rowRefs = useRef(new Map<string, HTMLLIElement>());
+  const searchQuery = useMemo(() => normalizeSearchQuery(query), [query]);
   latestListScopeKeyRef.current = listScopeKey;
+  itemsLengthRef.current = items.length;
   pageInfoRef.current = pageInfo;
   const loadedCount = items.length;
   const paginationFrom = loadedCount > 0 ? 1 : 0;
@@ -246,7 +281,17 @@ export function BugsPage() {
 
   const setFilter = useCallback(
     (key: keyof BugListFilterState, value: string) => {
-      setFilters((current) => ({ ...current, [key]: value || undefined }));
+      setFilters((current) =>
+        applyBugDimensionFilter(current, key, value || undefined),
+      );
+    },
+    [],
+  );
+  const setDimensionFilter = useCallback(
+    (dimension: BugDimensionKey, value: string | null | undefined) => {
+      setFilters((current) =>
+        applyBugDimensionFilter(current, dimension, value),
+      );
     },
     [],
   );
@@ -274,6 +319,7 @@ export function BugsPage() {
 
         return {
           ...current,
+          noVersion: undefined,
           relatedTaskId: nextRelatedTaskId,
           requirementId: nextRequirementId,
           versionId: nextVersionId || undefined,
@@ -296,6 +342,8 @@ export function BugsPage() {
 
         return {
           ...current,
+          noRequirement: undefined,
+          noVersion: nextVersionId ? undefined : current.noVersion,
           relatedTaskId: isTraceOptionCompatibleWithVersion(
             selectedRelatedTask,
             nextVersionId,
@@ -323,6 +371,8 @@ export function BugsPage() {
 
         return {
           ...current,
+          noRelatedTask: undefined,
+          noVersion: nextVersionId ? undefined : current.noVersion,
           relatedTaskId: nextRelatedTaskId || undefined,
           requirementId: isTraceOptionCompatibleWithVersion(
             selectedRequirement,
@@ -357,12 +407,18 @@ export function BugsPage() {
         !append && realtimeRefresh
           ? Math.max(LIST_PAGE_SIZE, pageInfoRef.current.page * LIST_PAGE_SIZE)
           : LIST_PAGE_SIZE;
+      const keepCurrentItems =
+        !append &&
+        (realtimeRefresh || Boolean(searchQuery)) &&
+        itemsLengthRef.current > 0;
 
       if (append) {
         setLoadingMore(true);
       } else if (shouldShowBlockingRefreshState(refreshMode)) {
-        setLoading(true);
-        setHasLoadedItems(false);
+        setLoading(!keepCurrentItems);
+        if (!keepCurrentItems) {
+          setHasLoadedItems(false);
+        }
       }
       if (shouldSurfaceRefreshError(refreshMode)) {
         setErrorMessage(null);
@@ -375,6 +431,7 @@ export function BugsPage() {
           pageSize,
           spaceId,
           type: "BUG",
+          ...(searchQuery ? { query: searchQuery } : {}),
           ...filters,
           ...(tagFilter.tagIds.length > 0
             ? serializeTagFilterQuery(tagFilter)
@@ -394,13 +451,13 @@ export function BugsPage() {
           pageSize: result.pageSize ?? pageSize,
           total: result.total ?? result.items.length,
         });
-        setStatusCategoryCounts(result.statusCategoryCounts ?? []);
+        setDimensionCounts(resolveBugDimensionCounts(result));
       } catch (error) {
         if (
           listRequestIdRef.current === requestId &&
           latestListScopeKeyRef.current === requestScopeKey
         ) {
-          if (shouldSurfaceRefreshError(refreshMode)) {
+          if (shouldSurfaceRefreshError(refreshMode) && !keepCurrentItems) {
             const key = getApiErrorMessageKey(error);
             setErrorMessage(tApiError(key));
           }
@@ -419,7 +476,15 @@ export function BugsPage() {
         }
       }
     },
-    [filters, listScopeKey, organizationId, spaceId, tApiError, tagFilter],
+    [
+      filters,
+      listScopeKey,
+      organizationId,
+      searchQuery,
+      spaceId,
+      tApiError,
+      tagFilter,
+    ],
   );
 
   useEffect(() => {
@@ -429,7 +494,7 @@ export function BugsPage() {
       listRequestIdRef.current += 1;
       setItems([]);
       setPageInfo(INITIAL_PAGE_INFO);
-      setStatusCategoryCounts([]);
+      setDimensionCounts([]);
       setLoading(false);
       setLoadingMore(false);
       setHasLoadedItems(false);
@@ -458,7 +523,12 @@ export function BugsPage() {
   }, [contextKey]);
 
   useEffect(() => {
-    if (!filterOpen || !spaceId) {
+    if (
+      (!filterOpen &&
+        activeDimension !== "requirementId" &&
+        activeDimension !== "relatedTaskId") ||
+      !spaceId
+    ) {
       return;
     }
 
@@ -490,7 +560,7 @@ export function BugsPage() {
     return () => {
       cancelled = true;
     };
-  }, [filterOpen, organizationId, spaceId]);
+  }, [activeDimension, filterOpen, organizationId, spaceId]);
 
   useEffect(() => {
     if (!filterOpen) {
@@ -807,50 +877,70 @@ export function BugsPage() {
     onClose: sheetOpen ? () => handleSheetOpenChange(false) : undefined,
   });
 
-  const buckets: { count: number; label: string; key: StatusFilterKey }[] =
-    useMemo(
-      () => [
-        {
-          label: t("buckets.all"),
-          key: "all",
-          count: getAllStatusCategoryCount(
-            statusCategoryCounts,
-            bugViewModels.length,
-          ),
+  const dimensionOptions: DimensionFilterOption[] = useMemo(
+    () =>
+      BUG_DIMENSIONS.map((dimension) => ({
+        key: dimension,
+        label: t(`dimensionFilter.dimensions.${dimension}`),
+      })),
+    [t],
+  );
+
+  const dimensionBuckets = useMemo(
+    () =>
+      createBugDimensionBuckets({
+        activeDimension,
+        dimensionCounts,
+        filters,
+        getMember,
+        getVersion,
+        onSelect: (dimension, value) => {
+          selectBugDimensionBucket({
+            dimension,
+            setDimensionFilter,
+            setRelatedTaskFilter,
+            setRequirementFilter,
+            setSelectedTags,
+            setTagFilter,
+            setVersionFilter,
+            tagFilterOptions,
+            tagMatch: tagFilter.tagMatch,
+            value,
+          });
         },
-        {
-          count: getStatusCategoryCount(statusCategoryCounts, "NOT_STARTED"),
-          label: tStatus("NOT_STARTED"),
-          key: "NOT_STARTED",
-        },
-        {
-          count: getStatusCategoryCount(statusCategoryCounts, "IN_PROGRESS"),
-          label: tStatus("IN_PROGRESS"),
-          key: "IN_PROGRESS",
-        },
-        {
-          count: getStatusCategoryCount(statusCategoryCounts, "WAITING"),
-          label: tStatus("WAITING"),
-          key: "WAITING",
-        },
-        {
-          count: getStatusCategoryCount(statusCategoryCounts, "VERIFYING"),
-          label: tStatus("VERIFYING"),
-          key: "VERIFYING",
-        },
-        {
-          count: getStatusCategoryCount(statusCategoryCounts, "DONE"),
-          label: tStatus("DONE"),
-          key: "DONE",
-        },
-        {
-          count: getStatusCategoryCount(statusCategoryCounts, "TERMINATED"),
-          label: tStatus("TERMINATED"),
-          key: "TERMINATED",
-        },
-      ],
-      [bugViewModels.length, statusCategoryCounts, t, tStatus],
-    );
+        pageTotal: pageInfo.total,
+        relatedTasks,
+        requirements,
+        tagFilter,
+        tagFilterOptions,
+        t,
+        tPriority,
+        tSeverity,
+        tStatus,
+      }),
+    [
+      activeDimension,
+      dimensionCounts,
+      filters,
+      getMember,
+      getVersion,
+      pageInfo.total,
+      relatedTasks,
+      requirements,
+      setDimensionFilter,
+      setRelatedTaskFilter,
+      setRequirementFilter,
+      setSelectedTags,
+      setTagFilter,
+      setVersionFilter,
+      tagFilter,
+      tagFilterOptions,
+      t,
+      tPriority,
+      tSeverity,
+      tStatus,
+    ],
+  );
 
   const header = (
     <PageHeader
@@ -942,34 +1032,29 @@ export function BugsPage() {
     <div data-testid="bugs-page" className="flex h-full min-w-0 flex-col">
       {header}
 
-      <div className="border-b border-border px-4 py-3 sm:px-6">
-        <div className="-mx-1 overflow-x-auto px-1">
-          <div className="flex min-w-max items-center gap-1">
-            {buckets.map((b) => (
-              <button
-                key={b.key}
-                type="button"
-                data-testid="bugs-filter-option"
-                data-filter-key={b.key}
-                onClick={() => {
-                  setFilter("statusCategory", b.key === "all" ? "" : b.key);
-                }}
-                className={cn(
-                  "flex h-7 items-center gap-1.5 rounded-md px-2.5 text-[12px] transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/70 focus-visible:ring-offset-2 focus-visible:ring-offset-background",
-                  (filters.statusCategory ?? "all") === b.key
-                    ? "bg-muted font-medium text-foreground"
-                    : "text-muted-foreground hover:bg-muted/50 hover:text-foreground",
-                )}
-              >
-                {b.label}
-                <span className="rounded bg-background px-1 font-mono text-[10px]">
-                  {b.count}
-                </span>
-              </button>
-            ))}
+      <DimensionFilterHeader
+        activeDimension={activeDimension}
+        buckets={dimensionBuckets}
+        dimensionAriaLabel={t("dimensionFilter.ariaLabel")}
+        dimensionLabel={t("dimensionFilter.label")}
+        dimensions={dimensionOptions}
+        leadingContent={
+          <div className="relative min-w-0">
+            <Search className="absolute left-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              placeholder={t("search.placeholder")}
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+              className="h-8 pl-7"
+            />
           </div>
-        </div>
-      </div>
+        }
+        onDimensionChange={(dimension) =>
+          setActiveDimension(dimension as BugDimensionKey)
+        }
+        optionTestId="bugs-filter-option"
+        testId="bugs-dimension-filter"
+      />
 
       {filterOpen && (
         <FilterPanel
@@ -1105,6 +1190,7 @@ export function BugsPage() {
               onChange={(value, selectedTags) => {
                 setSelectedTags(selectedTags);
                 setTagFilter(value);
+                setDimensionFilter("tagId", undefined);
               }}
               selectedTags={selectedFilterTags}
               showMatchMode={false}
@@ -1445,6 +1531,11 @@ function normalizeSearchParam(value: string | null): string | undefined {
   return normalized ? normalized : undefined;
 }
 
+function normalizeSearchQuery(value: string): string | undefined {
+  const normalized = value.trim();
+  return normalized ? normalized : undefined;
+}
+
 function createInitialFilters(
   searchParams: URLSearchParams,
 ): BugListFilterState {
@@ -1468,13 +1559,369 @@ function normalizeStatusCategory(
     : undefined;
 }
 
-function getStatusCategoryCount(
-  counts: WorkItemStatusCategoryCount[],
-  statusCategory: StatusCategory,
-): number {
-  return (
-    counts.find((entry) => entry.statusCategory === statusCategory)?.count ?? 0
+function resolveBugDimensionCounts(
+  result: ListBugsResponse,
+): WorkItemDimensionCount[] {
+  const dimensionCounts = result.dimensionCounts;
+
+  if (dimensionCounts) {
+    return dimensionCounts;
+  }
+
+  return [
+    {
+      buckets: (result.statusCategoryCounts ?? []).map((entry) => ({
+        count: entry.count,
+        value: entry.statusCategory,
+      })),
+      dimension: "statusCategory",
+      total: getAllStatusCategoryCount(
+        result.statusCategoryCounts ?? [],
+        result.total ?? result.items.length,
+      ),
+    },
+  ];
+}
+
+function createBugDimensionBuckets({
+  activeDimension,
+  dimensionCounts,
+  filters,
+  getMember,
+  getVersion,
+  onSelect,
+  pageTotal,
+  relatedTasks,
+  requirements,
+  tagFilter,
+  tagFilterOptions,
+  t,
+  tPriority,
+  tSeverity,
+  tStatus,
+}: {
+  activeDimension: BugDimensionKey;
+  dimensionCounts: readonly WorkItemDimensionCount[];
+  filters: BugListFilterState;
+  getMember: (id: string) => SpaceMemberWithUser | undefined;
+  getVersion: (id: string) => Version | undefined;
+  onSelect: (
+    dimension: BugDimensionKey,
+    value: string | null | undefined,
+  ) => void;
+  pageTotal: number;
+  relatedTasks: readonly WorkItem[];
+  requirements: readonly Requirement[];
+  tagFilter: { tagIds: readonly string[] };
+  tagFilterOptions: readonly TagDto[];
+  t: (key: string) => string;
+  tPriority: (key: Priority) => string;
+  tSeverity: (key: BugSeverity) => string;
+  tStatus: (key: StatusCategory) => string;
+}): DimensionFilterBucket[] {
+  const countSet = getDimensionCountSet(dimensionCounts, activeDimension);
+  const allCount = countSet?.total ?? pageTotal;
+  const selectedValue = getBugDimensionSelectedValue(
+    activeDimension,
+    filters,
+    tagFilter.tagIds,
   );
+  const buckets: DimensionFilterBucket[] = [
+    {
+      active: selectedValue === undefined,
+      count: allCount,
+      key: "__all",
+      label: t("buckets.all"),
+      onSelect: () => onSelect(activeDimension, undefined),
+      testKey: "all",
+    },
+  ];
+
+  for (const bucket of createOrderedBugCountBuckets(
+    activeDimension,
+    countSet?.buckets ?? [],
+  )) {
+    const key = bucket.value ?? "__none";
+    const label = getBugDimensionBucketLabel({
+      dimension: activeDimension,
+      getMember,
+      getVersion,
+      relatedTasks,
+      requirements,
+      tagFilterOptions,
+      t,
+      tPriority,
+      tSeverity,
+      tStatus,
+      value: bucket.value,
+    });
+
+    buckets.push({
+      active: selectedValue === bucket.value,
+      count: bucket.count,
+      key,
+      label,
+      onSelect: () => onSelect(activeDimension, bucket.value),
+      testKey: bucket.value ?? "none",
+      title: label,
+    });
+  }
+
+  return buckets;
+}
+
+function selectBugDimensionBucket({
+  dimension,
+  setDimensionFilter,
+  setRelatedTaskFilter,
+  setRequirementFilter,
+  setSelectedTags,
+  setTagFilter,
+  setVersionFilter,
+  tagFilterOptions,
+  tagMatch,
+  value,
+}: {
+  dimension: BugDimensionKey;
+  setDimensionFilter: (
+    dimension: BugDimensionKey,
+    value: string | null | undefined,
+  ) => void;
+  setRelatedTaskFilter: (value: string) => void;
+  setRequirementFilter: (value: string) => void;
+  setSelectedTags: (value: TagDto[]) => void;
+  setTagFilter: (value: { tagIds: string[]; tagMatch: TagMatch }) => void;
+  setVersionFilter: (value: string) => void;
+  tagFilterOptions: readonly TagDto[];
+  tagMatch: TagMatch;
+  value: string | null | undefined;
+}) {
+  if (dimension === "tagId") {
+    const nextTags = value
+      ? tagFilterOptions.filter((tag) => tag.id === value)
+      : [];
+    setSelectedTags(nextTags);
+    setTagFilter({
+      tagIds: value ? [value] : [],
+      tagMatch,
+    });
+    setDimensionFilter("tagId", value);
+    return;
+  }
+
+  if (dimension === "versionId") {
+    if (value === null) {
+      setDimensionFilter("versionId", null);
+    } else {
+      setVersionFilter(value ?? "");
+    }
+    return;
+  }
+
+  if (dimension === "requirementId") {
+    if (value === null) {
+      setDimensionFilter("requirementId", null);
+    } else {
+      setRequirementFilter(value ?? "");
+    }
+    return;
+  }
+
+  if (dimension === "relatedTaskId") {
+    if (value === null) {
+      setDimensionFilter("relatedTaskId", null);
+    } else {
+      setRelatedTaskFilter(value ?? "");
+    }
+    return;
+  }
+
+  setDimensionFilter(dimension, value);
+}
+
+function getBugDimensionSelectedValue(
+  dimension: BugDimensionKey,
+  filters: BugListFilterState,
+  tagIds: readonly string[],
+): string | null | undefined {
+  if (dimension === "tagId") {
+    if (filters.noTags) {
+      return null;
+    }
+
+    return tagIds.length === 1 ? tagIds[0] : undefined;
+  }
+
+  if (dimension === "assigneeId" && filters.unassigned) {
+    return null;
+  }
+  if (dimension === "versionId" && filters.noVersion) {
+    return null;
+  }
+  if (dimension === "requirementId" && filters.noRequirement) {
+    return null;
+  }
+  if (dimension === "relatedTaskId" && filters.noRelatedTask) {
+    return null;
+  }
+
+  return filters[dimension];
+}
+
+function getDimensionCountSet(
+  counts: readonly WorkItemDimensionCount[],
+  dimension: string,
+) {
+  return counts.find((entry) => entry.dimension === dimension);
+}
+
+function createOrderedBugCountBuckets(
+  dimension: BugDimensionKey,
+  buckets: readonly WorkItemDimensionCount["buckets"][number][],
+): WorkItemDimensionCount["buckets"][number][] {
+  const byValue = new Map(buckets.map((bucket) => [bucket.value, bucket]));
+
+  if (dimension === "statusCategory") {
+    return STATUS_FILTERS.map((status) => ({
+      count: byValue.get(status)?.count ?? 0,
+      value: status,
+    }));
+  }
+
+  if (dimension === "priority") {
+    return PRIORITY_FILTERS.map((priority) => ({
+      count: byValue.get(priority)?.count ?? 0,
+      value: priority,
+    }));
+  }
+
+  if (dimension === "severity") {
+    return SEVERITY_FILTERS.map((severity) => ({
+      count: byValue.get(severity)?.count ?? 0,
+      value: severity,
+    }));
+  }
+
+  return [...buckets].sort((left, right) => {
+    if (left.value === null) {
+      return -1;
+    }
+    if (right.value === null) {
+      return 1;
+    }
+
+    return right.count - left.count;
+  });
+}
+
+function getBugDimensionBucketLabel({
+  dimension,
+  getMember,
+  getVersion,
+  relatedTasks,
+  requirements,
+  tagFilterOptions,
+  t,
+  tPriority,
+  tSeverity,
+  tStatus,
+  value,
+}: {
+  dimension: BugDimensionKey;
+  getMember: (id: string) => SpaceMemberWithUser | undefined;
+  getVersion: (id: string) => Version | undefined;
+  relatedTasks: readonly WorkItem[];
+  requirements: readonly Requirement[];
+  tagFilterOptions: readonly TagDto[];
+  t: (key: string) => string;
+  tPriority: (key: Priority) => string;
+  tSeverity: (key: BugSeverity) => string;
+  tStatus: (key: StatusCategory) => string;
+  value: string | null;
+}): string {
+  if (value === null) {
+    switch (dimension) {
+      case "assigneeId":
+        return t("dimensionFilter.buckets.unassigned");
+      case "createdById":
+        return t("dimensionFilter.buckets.unknownCreator");
+      case "relatedTaskId":
+        return t("dimensionFilter.buckets.noRelatedTask");
+      case "versionId":
+        return t("dimensionFilter.buckets.noVersion");
+      case "requirementId":
+        return t("dimensionFilter.buckets.noRequirement");
+      case "tagId":
+        return t("dimensionFilter.buckets.noTag");
+      case "priority":
+      case "severity":
+      case "statusCategory":
+        return "";
+    }
+  }
+
+  switch (dimension) {
+    case "assigneeId":
+    case "createdById": {
+      const member = getMember(value);
+      return member?.user.name || member?.user.username || value;
+    }
+    case "priority":
+      return tPriority(value as Priority);
+    case "relatedTaskId":
+      return relatedTasks.find((task) => task.id === value)?.title || value;
+    case "requirementId":
+      return (
+        requirements.find((requirement) => requirement.id === value)?.title ||
+        value
+      );
+    case "severity":
+      return tSeverity(value as BugSeverity);
+    case "statusCategory":
+      return tStatus(value as StatusCategory);
+    case "tagId": {
+      const tag = tagFilterOptions.find((item) => item.id === value);
+      return tag ? formatTagDisplayName(tag) : value;
+    }
+    case "versionId":
+      return getVersion(value)?.name || value;
+  }
+}
+
+function applyBugDimensionFilter(
+  current: BugListFilterState,
+  dimension: keyof BugListFilterState | "tagId",
+  value: string | null | undefined,
+): BugListFilterState {
+  const next: BugListFilterState = { ...current };
+
+  switch (dimension) {
+    case "assigneeId":
+      next.assigneeId = typeof value === "string" ? value : undefined;
+      next.unassigned = value === null ? true : undefined;
+      break;
+    case "versionId":
+      next.versionId = typeof value === "string" ? value : undefined;
+      next.noVersion = value === null ? true : undefined;
+      break;
+    case "requirementId":
+      next.requirementId = typeof value === "string" ? value : undefined;
+      next.noRequirement = value === null ? true : undefined;
+      break;
+    case "relatedTaskId":
+      next.relatedTaskId = typeof value === "string" ? value : undefined;
+      next.noRelatedTask = value === null ? true : undefined;
+      break;
+    case "noTags":
+    case "tagId":
+      next.noTags = value === null ? true : undefined;
+      break;
+    default:
+      next[dimension] = (value ?? undefined) as never;
+      break;
+  }
+
+  return next;
 }
 
 function getAllStatusCategoryCount(
@@ -1506,12 +1953,17 @@ function createBugListScopeKey({
     spaceId ?? "",
     filters.assigneeId ?? "",
     filters.createdById ?? "",
+    filters.noRelatedTask ? "noRelatedTask" : "",
+    filters.noRequirement ? "noRequirement" : "",
+    filters.noTags ? "noTags" : "",
+    filters.noVersion ? "noVersion" : "",
     filters.priority ?? "",
     filters.relatedTaskId ?? "",
     filters.reporterId ?? "",
     filters.requirementId ?? "",
     filters.severity ?? "",
     filters.statusCategory ?? "",
+    filters.unassigned ? "unassigned" : "",
     filters.versionId ?? "",
     tagIds.join(","),
     tagIds.length > 0 ? tagMatch : "",

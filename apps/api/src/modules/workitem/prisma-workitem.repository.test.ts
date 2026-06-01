@@ -182,6 +182,66 @@ describe("PrismaWorkItemRepository", () => {
     );
   });
 
+  it("filters tasks with no tags", async () => {
+    const tagAssignmentFindMany = vi.fn(async () => [
+      { targetId: FIRST_TAGGED_TASK_ID },
+    ]);
+    const workItemFindMany = vi.fn(async () => []);
+    const workItemCount = vi.fn(async () => 0);
+    const workItemGroupBy = vi.fn(async () => []);
+    const repository = new PrismaWorkItemRepository(
+      {
+        client: {
+          $transaction: vi.fn(async (operations) => Promise.all(operations)),
+          tagAssignment: {
+            findMany: tagAssignmentFindMany,
+          },
+          workItem: {
+            count: workItemCount,
+            findMany: workItemFindMany,
+            groupBy: workItemGroupBy,
+          },
+        },
+      } as unknown as PrismaService,
+      makeObjectCodeAllocator(),
+    );
+
+    await repository.listBySpaceId(SPACE_ID, {
+      actorUserId: ACTOR_ID,
+      noTags: true,
+      page: 1,
+      pageSize: 20,
+      visibility: "SPACE",
+    });
+
+    expect(workItemFindMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          AND: expect.arrayContaining([
+            {
+              id: {
+                notIn: [FIRST_TAGGED_TASK_ID],
+              },
+            },
+          ]),
+          spaceId: SPACE_ID,
+          type: "TASK",
+        }),
+      }),
+    );
+    expect(workItemCount).toHaveBeenCalledWith({
+      where: expect.objectContaining({
+        AND: expect.arrayContaining([
+          {
+            id: {
+              notIn: [FIRST_TAGGED_TASK_ID],
+            },
+          },
+        ]),
+      }),
+    });
+  });
+
   it("looks up linked requirements from requirement documents", async () => {
     const documentFindFirst = vi.fn(async () => ({
       ownerId: ACTOR_ID,

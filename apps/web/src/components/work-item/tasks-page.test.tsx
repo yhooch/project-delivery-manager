@@ -397,6 +397,109 @@ describe("TasksPage", () => {
     ).toBeInTheDocument();
   });
 
+  it("switches task header dimensions and filters by bucket with exact counts", async () => {
+    listWorkItemsMock
+      .mockResolvedValueOnce({
+        dimensionCounts: [
+          {
+            dimension: "priority",
+            total: 12,
+            buckets: [
+              { value: "URGENT", count: 5 },
+              { value: "HIGH", count: 7 },
+            ],
+          },
+        ],
+        items: [makeTask({ title: "Prioritized task" })],
+        total: 12,
+      })
+      .mockResolvedValueOnce({
+        dimensionCounts: [
+          {
+            dimension: "priority",
+            total: 12,
+            buckets: [{ value: "URGENT", count: 5 }],
+          },
+        ],
+        items: [makeTask({ priority: "URGENT", title: "Urgent task" })],
+        total: 5,
+      });
+
+    render(<TasksPage />);
+
+    expect(await screen.findByText("Prioritized task")).toBeInTheDocument();
+    fireEvent.change(screen.getByTestId("tasks-dimension-filter-dimension"), {
+      target: { value: "priority" },
+    });
+
+    const urgentBucket = screen.getByRole("button", {
+      name: /workItems\.priority\.URGENT/,
+    });
+    expect(within(urgentBucket).getByText("5")).toBeInTheDocument();
+
+    fireEvent.click(urgentBucket);
+    await waitFor(() =>
+      expect(listWorkItemsMock).toHaveBeenLastCalledWith(
+        expect.objectContaining({
+          priority: "URGENT",
+          spaceId: "SPC_01",
+          type: "TASK",
+        }),
+      ),
+    );
+  });
+
+  it("filters by empty task dimension buckets", async () => {
+    listWorkItemsMock
+      .mockResolvedValueOnce({
+        dimensionCounts: [
+          {
+            dimension: "assigneeId",
+            total: 4,
+            buckets: [{ value: null, count: 3 }],
+          },
+        ],
+        items: [makeTask({ title: "Unassigned summary task" })],
+        total: 4,
+      })
+      .mockResolvedValueOnce({
+        dimensionCounts: [
+          {
+            dimension: "assigneeId",
+            total: 4,
+            buckets: [{ value: null, count: 3 }],
+          },
+        ],
+        items: [makeTask({ assigneeId: undefined, title: "Unassigned task" })],
+        total: 3,
+      });
+
+    render(<TasksPage />);
+
+    expect(
+      await screen.findByText("Unassigned summary task"),
+    ).toBeInTheDocument();
+    fireEvent.change(screen.getByTestId("tasks-dimension-filter-dimension"), {
+      target: { value: "assigneeId" },
+    });
+
+    const unassignedBucket = screen.getByRole("button", {
+      name: /tasks\.dimensionFilter\.buckets\.unassigned/,
+    });
+    expect(within(unassignedBucket).getByText("3")).toBeInTheDocument();
+
+    fireEvent.click(unassignedBucket);
+    await waitFor(() =>
+      expect(listWorkItemsMock).toHaveBeenLastCalledWith(
+        expect.objectContaining({
+          spaceId: "SPC_01",
+          type: "TASK",
+          unassigned: true,
+        }),
+      ),
+    );
+  });
+
   it("opens a work item detail sheet from a workItemId deep link", async () => {
     searchParamsMock.current = new URLSearchParams(
       "workItemId=01ARZ3NDEKTSV4RRFFQ69G5FDL",

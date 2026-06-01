@@ -1,4 +1,5 @@
 import { Inject, Injectable } from "@nestjs/common";
+import type { WorkItemDimensionCounts } from "@project-delivery/shared";
 import { ulid } from "ulid";
 
 import { Prisma } from "../../generated/prisma/client";
@@ -6,6 +7,7 @@ import { PrismaService } from "../../prisma/prisma.service";
 import { ObjectCodeAllocator } from "../object-code/object-code.allocator";
 import { parseObjectCode } from "../object-code/object-code.types";
 import {
+  findAnyTaggedTargetIds,
   findTaggedTargetIds,
   listTagsByTargets,
   replaceTagAssignmentsInTransaction,
@@ -32,45 +34,60 @@ export class PrismaBugRepository implements BugRepository {
 
   async listBySpaceId(spaceId: string, input: BugListInput) {
     const where = buildListWhere(spaceId, input);
-    const countWhere = buildListWhere(spaceId, {
-      ...input,
-      statusCategory: undefined,
-    });
     const taggedTargetIds = await findTaggedTargetIds(this.prisma.client, {
       spaceId,
       tagIds: input.tagIds,
       tagMatch: input.tagMatch,
       targetType: "WORK_ITEM",
     });
+    const anyTaggedTargetIds = input.noTags
+      ? await findAnyTaggedTargetIds(this.prisma.client, {
+          spaceId,
+          targetType: "WORK_ITEM",
+        })
+      : undefined;
+    const visibilityScope = await this.resolveListVisibilityScope(
+      spaceId,
+      input,
+    );
 
-    if (input.visibility === "PARTICIPANT") {
-      const visibleIds = await this.listParticipantBugIds(
-        spaceId,
-        input.actorUserId,
-      );
-
-      if (visibleIds.length === 0) {
-        return {
-          items: [],
-          page: input.page,
-          pageSize: input.pageSize,
-          statusCategoryCounts: [],
-          total: 0,
-        };
-      }
-
-      where.id = {
-        in: visibleIds,
-      };
-      countWhere.id = {
-        in: visibleIds,
+    if (visibilityScope?.kind === "empty") {
+      return {
+        dimensionCounts: emptyBugDimensionCounts(),
+        items: [],
+        page: input.page,
+        pageSize: input.pageSize,
+        statusCategoryCounts: [],
+        total: 0,
       };
     }
 
-    applyTaggedTargetIds(where, taggedTargetIds);
-    applyTaggedTargetIds(countWhere, taggedTargetIds);
+    applyVisibilityScope(where, visibilityScope);
+    applyTagListFilter(where, {
+      anyTaggedTargetIds,
+      taggedTargetIds,
+      untagged: input.noTags,
+    });
 
-    const [items, total, statusCategoryGroups] =
+    const countWheres = buildBugDimensionWheres(
+      spaceId,
+      input,
+      taggedTargetIds,
+      anyTaggedTargetIds,
+      visibilityScope,
+    );
+    const [
+      items,
+      total,
+      statusCategoryGroups,
+      assigneeIdGroups,
+      createdByGroups,
+      priorityGroups,
+      versionIdGroups,
+      requirementIdGroups,
+      severityGroups,
+      relatedTaskIdGroups,
+    ] =
       await this.prisma.client.$transaction([
         this.prisma.client.workItem.findMany({
           include: {
@@ -89,9 +106,116 @@ export class PrismaBugRepository implements BugRepository {
           _count: {
             _all: true,
           },
-          where: countWhere,
+          where: countWheres.statusCategory,
+        }),
+        this.prisma.client.workItem.groupBy({
+          by: ["assigneeId"],
+          _count: {
+            _all: true,
+          },
+          where: countWheres.assigneeId,
+        }),
+        this.prisma.client.workItem.groupBy({
+          by: ["createdById", "reporterId"],
+          _count: {
+            _all: true,
+          },
+          where: countWheres.createdById,
+        }),
+        this.prisma.client.workItem.groupBy({
+          by: ["priority"],
+          _count: {
+            _all: true,
+          },
+          where: countWheres.priority,
+        }),
+        this.prisma.client.workItem.groupBy({
+          by: ["versionId"],
+          _count: {
+            _all: true,
+          },
+          where: countWheres.versionId,
+        }),
+        this.prisma.client.workItem.groupBy({
+          by: ["requirementId"],
+          _count: {
+            _all: true,
+          },
+          where: countWheres.requirementId,
+        }),
+        this.prisma.client.bugDetail.groupBy({
+          by: ["severity"],
+          _count: {
+            _all: true,
+          },
+          where: countWheres.severity,
+        }),
+        this.prisma.client.bugDetail.groupBy({
+          by: ["relatedTaskId"],
+          _count: {
+            _all: true,
+          },
+          where: countWheres.relatedTaskId,
         }),
       ]);
+    const tagIdDimension = await countTagDimension(this.prisma.client, {
+      baseWhere: countWheres.tagId,
+      spaceId,
+    });
+    const statusCategoryBuckets = statusCategoryGroups.map((group) => ({
+      count: group._count._all,
+      value: group.statusCategory,
+    }));
+    const dimensionCounts: WorkItemDimensionCounts = [
+      makeDimensionCount("statusCategory", statusCategoryBuckets),
+      makeNullableDimensionCount(
+        "assigneeId",
+        assigneeIdGroups.map((group) => ({
+          count: group._count._all,
+          value: group.assigneeId,
+        })),
+      ),
+      makeNullableDimensionCount(
+        "createdById",
+        mergeCreatedByGroups(createdByGroups),
+      ),
+      makeDimensionCount(
+        "priority",
+        priorityGroups.map((group) => ({
+          count: group._count._all,
+          value: group.priority,
+        })),
+      ),
+      makeDimensionCount(
+        "severity",
+        severityGroups.map((group) => ({
+          count: group._count._all,
+          value: group.severity,
+        })),
+      ),
+      makeNullableDimensionCount(
+        "versionId",
+        versionIdGroups.map((group) => ({
+          count: group._count._all,
+          value: group.versionId,
+        })),
+      ),
+      makeNullableDimensionCount(
+        "requirementId",
+        requirementIdGroups.map((group) => ({
+          count: group._count._all,
+          value: group.requirementId,
+        })),
+      ),
+      makeNullableDimensionCount(
+        "relatedTaskId",
+        relatedTaskIdGroups.map((group) => ({
+          count: group._count._all,
+          value: group.relatedTaskId,
+        })),
+      ),
+      tagIdDimension,
+    ];
     const tagsByBugId = await listTagsByTargets(this.prisma.client, {
       organizationId: items[0]?.organizationId ?? "",
       spaceId,
@@ -113,9 +237,10 @@ export class PrismaBugRepository implements BugRepository {
       ),
       page: input.page,
       pageSize: input.pageSize,
-      statusCategoryCounts: statusCategoryGroups.map((group) => ({
-        count: group._count._all,
-        statusCategory: group.statusCategory,
+      dimensionCounts,
+      statusCategoryCounts: statusCategoryBuckets.map((bucket) => ({
+        count: bucket.count,
+        statusCategory: bucket.value,
       })),
       total,
     };
@@ -686,9 +811,56 @@ export class PrismaBugRepository implements BugRepository {
 
     return unique(participants.map((participant) => participant.targetId));
   }
+
+  private async resolveListVisibilityScope(
+    spaceId: string,
+    input: BugListInput,
+  ): Promise<ListVisibilityScope | undefined> {
+    if (input.visibility !== "PARTICIPANT") {
+      return undefined;
+    }
+
+    const visibleIds = await this.listParticipantBugIds(
+      spaceId,
+      input.actorUserId,
+    );
+
+    return visibleIds.length > 0
+      ? {
+          ids: visibleIds,
+          kind: "ids",
+        }
+      : {
+          kind: "empty",
+        };
+  }
 }
 
 type BugRecordClient = Prisma.TransactionClient | PrismaService["client"];
+
+type ListVisibilityScope =
+  | {
+      kind: "empty";
+    }
+  | {
+      ids: string[];
+      kind: "ids";
+    };
+
+type BugDimension =
+  | "statusCategory"
+  | "assigneeId"
+  | "createdById"
+  | "priority"
+  | "severity"
+  | "versionId"
+  | "requirementId"
+  | "relatedTaskId"
+  | "tagId";
+
+type BugWorkItemDimension = Exclude<BugDimension, "severity" | "relatedTaskId">;
+
+type WorkItemDimensionBucket = WorkItemDimensionCounts[number]["buckets"][number];
 
 function findBugRecord(tx: BugRecordClient, bugId: string) {
   return tx.workItem.findFirst({
@@ -713,11 +885,11 @@ function buildListWhere(
   input: BugListInput,
 ): Prisma.WorkItemWhereInput {
   const where: Prisma.WorkItemWhereInput = {
-    assigneeId: input.assigneeId,
+    assigneeId: input.unassigned ? null : input.assigneeId,
     bugDetail: {
       is: {
         deletedAt: null,
-        relatedTaskId: input.relatedTaskId,
+        relatedTaskId: input.noRelatedTask ? null : input.relatedTaskId,
         severity: input.severity,
       },
     },
@@ -725,17 +897,234 @@ function buildListWhere(
     intakeItemId: input.intakeItemId,
     priority: input.priority,
     reporterId: input.reporterId,
-    requirementId: input.requirementId,
+    requirementId: input.noRequirement ? null : input.requirementId,
     spaceId,
     statusCategory: input.statusCategory,
     type: "BUG",
-    versionId: input.versionId,
+    versionId: input.noVersion ? null : input.versionId,
   };
 
   applyCreatedByFilter(where, input.createdById);
   applyListQuery(where, input.query);
 
   return where;
+}
+
+function buildBugDimensionWheres(
+  spaceId: string,
+  input: BugListInput,
+  taggedTargetIds: string[] | undefined,
+  anyTaggedTargetIds: string[] | undefined,
+  visibilityScope: ListVisibilityScope | undefined,
+) {
+  return {
+    statusCategory: buildBugWorkItemDimensionWhere(
+      spaceId,
+      input,
+      "statusCategory",
+      taggedTargetIds,
+      anyTaggedTargetIds,
+      visibilityScope,
+    ),
+    assigneeId: buildBugWorkItemDimensionWhere(
+      spaceId,
+      input,
+      "assigneeId",
+      taggedTargetIds,
+      anyTaggedTargetIds,
+      visibilityScope,
+    ),
+    createdById: buildBugWorkItemDimensionWhere(
+      spaceId,
+      input,
+      "createdById",
+      taggedTargetIds,
+      anyTaggedTargetIds,
+      visibilityScope,
+    ),
+    priority: buildBugWorkItemDimensionWhere(
+      spaceId,
+      input,
+      "priority",
+      taggedTargetIds,
+      anyTaggedTargetIds,
+      visibilityScope,
+    ),
+    severity: buildBugDetailDimensionWhere(
+      spaceId,
+      input,
+      "severity",
+      taggedTargetIds,
+      anyTaggedTargetIds,
+      visibilityScope,
+    ),
+    versionId: buildBugWorkItemDimensionWhere(
+      spaceId,
+      input,
+      "versionId",
+      taggedTargetIds,
+      anyTaggedTargetIds,
+      visibilityScope,
+    ),
+    requirementId: buildBugWorkItemDimensionWhere(
+      spaceId,
+      input,
+      "requirementId",
+      taggedTargetIds,
+      anyTaggedTargetIds,
+      visibilityScope,
+    ),
+    relatedTaskId: buildBugDetailDimensionWhere(
+      spaceId,
+      input,
+      "relatedTaskId",
+      taggedTargetIds,
+      anyTaggedTargetIds,
+      visibilityScope,
+    ),
+    tagId: buildBugWorkItemDimensionWhere(
+      spaceId,
+      input,
+      "tagId",
+      taggedTargetIds,
+      anyTaggedTargetIds,
+      visibilityScope,
+    ),
+  };
+}
+
+function buildBugWorkItemDimensionWhere(
+  spaceId: string,
+  input: BugListInput,
+  dimension: BugWorkItemDimension,
+  taggedTargetIds: string[] | undefined,
+  anyTaggedTargetIds: string[] | undefined,
+  visibilityScope: ListVisibilityScope | undefined,
+): Prisma.WorkItemWhereInput {
+  const where = buildListWhere(spaceId, omitBugDimensionFilter(input, dimension));
+
+  applyVisibilityScope(where, visibilityScope);
+
+  if (dimension !== "tagId") {
+    applyTagListFilter(where, {
+      anyTaggedTargetIds,
+      taggedTargetIds,
+      untagged: input.noTags,
+    });
+  }
+
+  return where;
+}
+
+function buildBugDetailDimensionWhere(
+  spaceId: string,
+  input: BugListInput,
+  dimension: "severity" | "relatedTaskId",
+  taggedTargetIds: string[] | undefined,
+  anyTaggedTargetIds: string[] | undefined,
+  visibilityScope: ListVisibilityScope | undefined,
+): Prisma.BugDetailWhereInput {
+  const workItemWhere = buildListWhere(
+    spaceId,
+    omitBugDimensionFilter(input, dimension),
+  );
+
+  applyVisibilityScope(workItemWhere, visibilityScope);
+  applyTagListFilter(workItemWhere, {
+    anyTaggedTargetIds,
+    taggedTargetIds,
+    untagged: input.noTags,
+  });
+
+  const bugDetail = workItemWhere.bugDetail;
+
+  delete workItemWhere.bugDetail;
+
+  return {
+    ...getBugDetailWhere(bugDetail),
+    workItem: workItemWhere,
+  };
+}
+
+function omitBugDimensionFilter(
+  input: BugListInput,
+  dimension: BugDimension,
+): BugListInput {
+  const next: BugListInput = { ...input };
+
+  switch (dimension) {
+    case "statusCategory":
+      next.statusCategory = undefined;
+      break;
+    case "assigneeId":
+      next.assigneeId = undefined;
+      next.unassigned = undefined;
+      break;
+    case "createdById":
+      next.createdById = undefined;
+      break;
+    case "priority":
+      next.priority = undefined;
+      break;
+    case "severity":
+      next.severity = undefined;
+      break;
+    case "versionId":
+      next.versionId = undefined;
+      next.noVersion = undefined;
+      break;
+    case "requirementId":
+      next.requirementId = undefined;
+      next.noRequirement = undefined;
+      break;
+    case "relatedTaskId":
+      next.relatedTaskId = undefined;
+      next.noRelatedTask = undefined;
+      break;
+    case "tagId":
+      next.tagIds = undefined;
+      next.tagMatch = undefined;
+      next.noTags = undefined;
+      break;
+  }
+
+  return next;
+}
+
+function getBugDetailWhere(
+  bugDetail: Prisma.WorkItemWhereInput["bugDetail"],
+): Prisma.BugDetailWhereInput {
+  if (
+    bugDetail &&
+    typeof bugDetail === "object" &&
+    "is" in bugDetail &&
+    bugDetail.is &&
+    typeof bugDetail.is === "object"
+  ) {
+    return bugDetail.is;
+  }
+
+  return {
+    deletedAt: null,
+  };
+}
+
+function applyVisibilityScope(
+  where: Prisma.WorkItemWhereInput,
+  visibilityScope: ListVisibilityScope | undefined,
+) {
+  if (!visibilityScope || visibilityScope.kind === "empty") {
+    return;
+  }
+
+  where.AND = [
+    ...toArray(where.AND),
+    {
+      id: {
+        in: visibilityScope.ids,
+      },
+    },
+  ];
 }
 
 function applyListQuery(
@@ -806,6 +1195,183 @@ function applyTaggedTargetIds(
       },
     },
   ];
+}
+
+function applyUntaggedTargetIds(
+  where: Prisma.WorkItemWhereInput,
+  taggedTargetIds: string[] | undefined,
+) {
+  if (!taggedTargetIds || taggedTargetIds.length === 0) {
+    return;
+  }
+
+  where.AND = [
+    ...toArray(where.AND),
+    {
+      id: {
+        notIn: taggedTargetIds,
+      },
+    },
+  ];
+}
+
+function applyTagListFilter(
+  where: Prisma.WorkItemWhereInput,
+  input: {
+    anyTaggedTargetIds?: string[];
+    taggedTargetIds?: string[];
+    untagged?: boolean;
+  },
+) {
+  if (input.untagged) {
+    applyUntaggedTargetIds(where, input.anyTaggedTargetIds);
+    return;
+  }
+
+  applyTaggedTargetIds(where, input.taggedTargetIds);
+}
+
+function makeDimensionCount(
+  dimension: BugDimension,
+  buckets: WorkItemDimensionBucket[],
+  total = sumBuckets(buckets),
+): WorkItemDimensionCounts[number] {
+  return {
+    buckets,
+    dimension,
+    total,
+  };
+}
+
+function makeNullableDimensionCount(
+  dimension: BugDimension,
+  buckets: WorkItemDimensionBucket[],
+): WorkItemDimensionCounts[number] {
+  return makeDimensionCount(dimension, ensureNullBucket(buckets));
+}
+
+async function countTagDimension(
+  client: BugRecordClient,
+  input: {
+    baseWhere: Prisma.WorkItemWhereInput;
+    spaceId: string;
+  },
+): Promise<WorkItemDimensionCounts[number]> {
+  const targets = await client.workItem.findMany({
+    select: {
+      id: true,
+    },
+    where: input.baseWhere,
+  });
+  const targetIds = targets.map((target) => target.id);
+
+  if (targetIds.length === 0) {
+    return makeDimensionCount("tagId", [{ count: 0, value: null }], 0);
+  }
+
+  const assignments = await client.tagAssignment.findMany({
+    select: {
+      tagId: true,
+      targetId: true,
+    },
+    where: {
+      deletedAt: null,
+      spaceId: input.spaceId,
+      tag: {
+        deletedAt: null,
+        spaceId: input.spaceId,
+      },
+      targetId: {
+        in: targetIds,
+      },
+      targetType: "WORK_ITEM",
+    },
+  });
+  const targetIdsByTagId = new Map<string, Set<string>>();
+  const taggedTargetIds = new Set<string>();
+
+  for (const assignment of assignments) {
+    const current = targetIdsByTagId.get(assignment.tagId) ?? new Set<string>();
+    current.add(assignment.targetId);
+    targetIdsByTagId.set(assignment.tagId, current);
+    taggedTargetIds.add(assignment.targetId);
+  }
+
+  const buckets: WorkItemDimensionBucket[] = [...targetIdsByTagId.entries()].map(
+    ([tagId, ids]) => ({
+      count: ids.size,
+      value: tagId,
+    }),
+  );
+  buckets.push({
+    count: targetIds.filter((targetId) => !taggedTargetIds.has(targetId))
+      .length,
+    value: null,
+  });
+
+  return makeDimensionCount("tagId", buckets, targetIds.length);
+}
+
+function mergeCreatedByGroups(
+  groups: Array<{
+    _count: {
+      _all: number;
+    };
+    createdById: string | null;
+    reporterId: string;
+  }>,
+): WorkItemDimensionBucket[] {
+  const countsByUserId = new Map<string, number>();
+  let nullCount = 0;
+
+  for (const group of groups) {
+    const userId = group.createdById ?? group.reporterId;
+
+    if (!userId) {
+      nullCount += group._count._all;
+      continue;
+    }
+
+    countsByUserId.set(
+      userId,
+      (countsByUserId.get(userId) ?? 0) + group._count._all,
+    );
+  }
+
+  return [
+    ...[...countsByUserId.entries()].map(([value, count]) => ({
+      count,
+      value,
+    })),
+    {
+      count: nullCount,
+      value: null,
+    },
+  ];
+}
+
+function ensureNullBucket(buckets: WorkItemDimensionBucket[]) {
+  return buckets.some((bucket) => bucket.value === null)
+    ? buckets
+    : [...buckets, { count: 0, value: null }];
+}
+
+function emptyBugDimensionCounts(): WorkItemDimensionCounts {
+  return [
+    makeDimensionCount("statusCategory", []),
+    makeNullableDimensionCount("assigneeId", []),
+    makeNullableDimensionCount("createdById", []),
+    makeDimensionCount("priority", []),
+    makeDimensionCount("severity", []),
+    makeNullableDimensionCount("versionId", []),
+    makeNullableDimensionCount("requirementId", []),
+    makeNullableDimensionCount("relatedTaskId", []),
+    makeDimensionCount("tagId", [{ count: 0, value: null }], 0),
+  ];
+}
+
+function sumBuckets(buckets: WorkItemDimensionBucket[]) {
+  return buckets.reduce((sum, bucket) => sum + bucket.count, 0);
 }
 
 function buildOrderBy(

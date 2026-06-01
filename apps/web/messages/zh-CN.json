@@ -1892,6 +1892,9 @@
       "edit": "编辑 Bug",
       "retry": "重试"
     },
+    "search": {
+      "placeholder": "按标题或编号搜索"
+    },
     "buckets": {
       "all": "全部",
       "open": "未关闭",
@@ -1902,6 +1905,29 @@
       "pendingRegression": "待回归",
       "regressionPassed": "回归通过",
       "closed": "已关闭"
+    },
+    "dimensionFilter": {
+      "label": "按",
+      "ariaLabel": "切换 Bug 统计维度",
+      "dimensions": {
+        "statusCategory": "状态",
+        "assigneeId": "负责人",
+        "createdById": "创建人",
+        "priority": "优先级",
+        "severity": "严重程度",
+        "versionId": "版本",
+        "requirementId": "需求",
+        "relatedTaskId": "关联任务",
+        "tagId": "标签"
+      },
+      "buckets": {
+        "unassigned": "未分配",
+        "unknownCreator": "未知创建人",
+        "noVersion": "未关联版本",
+        "noRequirement": "未关联需求",
+        "noRelatedTask": "未关联任务",
+        "noTag": "无标签"
+      }
     },
     "filters": {
       "label": "Bug 筛选",
@@ -2176,6 +2202,24 @@
     },
     "buckets": {
       "all": "全部"
+    },
+    "dimensionFilter": {
+      "label": "按",
+      "ariaLabel": "切换任务统计维度",
+      "dimensions": {
+        "statusCategory": "状态",
+        "assigneeId": "负责人",
+        "priority": "优先级",
+        "versionId": "版本",
+        "requirementId": "需求",
+        "tagId": "标签"
+      },
+      "buckets": {
+        "unassigned": "未分配",
+        "noVersion": "未关联版本",
+        "noRequirement": "未关联需求",
+        "noTag": "无标签"
+      }
     },
     "states": {
       "noSpace": {

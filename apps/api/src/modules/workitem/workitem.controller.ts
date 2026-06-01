@@ -67,6 +67,10 @@ export class WorkItemController {
       query?: string;
       tagIds?: string;
       tagMatch?: TagMatch;
+      unassigned?: boolean;
+      noVersion?: boolean;
+      noRequirement?: boolean;
+      noTags?: boolean;
     },
     @Req() request: RequestWithContext,
   ): Promise<ListWorkItemsResponse> {

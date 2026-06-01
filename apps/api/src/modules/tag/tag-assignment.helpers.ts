@@ -238,6 +238,31 @@ export async function findTaggedTargetIds(
     .map(([targetId]) => targetId);
 }
 
+export async function findAnyTaggedTargetIds(
+  client: TagAssignmentClient,
+  input: {
+    spaceId: string;
+    targetType: TagTargetType;
+  },
+): Promise<string[]> {
+  const assignments = await client.tagAssignment.findMany({
+    select: {
+      targetId: true,
+    },
+    where: {
+      deletedAt: null,
+      spaceId: input.spaceId,
+      tag: {
+        deletedAt: null,
+        spaceId: input.spaceId,
+      },
+      targetType: input.targetType,
+    },
+  });
+
+  return unique(assignments.map((assignment) => assignment.targetId));
+}
+
 function parseTagIds(value: string | undefined) {
   if (!value) {
     return [];

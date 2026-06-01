@@ -26,6 +26,10 @@ export type WorkItemListInput = {
   query?: string;
   tagIds?: string;
   tagMatch?: TagMatch;
+  unassigned?: boolean;
+  noVersion?: boolean;
+  noRequirement?: boolean;
+  noTags?: boolean;
 };
 
 export type WorkItemListResult = ListWorkItemsResponse;

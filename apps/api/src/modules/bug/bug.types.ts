@@ -29,6 +29,11 @@ export type BugListInput = {
   relatedTaskId?: string;
   tagIds?: string;
   tagMatch?: TagMatch;
+  unassigned?: boolean;
+  noVersion?: boolean;
+  noRequirement?: boolean;
+  noRelatedTask?: boolean;
+  noTags?: boolean;
 };
 
 export type BugListResult = ListBugsResponse;
