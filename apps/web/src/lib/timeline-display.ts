@@ -41,6 +41,7 @@ type TimelineChangeValueSide = "after" | "before";
 
 const CHANGE_FIELD_MESSAGE_PREFIX = "common.timeline.change.field";
 const CHANGE_VALUE_MESSAGE_PREFIX = "common.timeline.change.value";
+const DOCUMENT_OPERATION_MESSAGE_PREFIX = "common.timeline.documentOperation";
 
 type FormatValueOptions = {
   truncate?: boolean;
@@ -89,10 +90,14 @@ export function formatTimelineEvent(
     event.eventType,
     options.translateEventType,
   );
+  const operationLabel = resolveDocumentOperationLabel(
+    event,
+    options.translateMessage,
+  );
   const actionLabel = resolveActionLabel({
     actionCode,
     actionName,
-    eventLabel,
+    eventLabel: operationLabel ?? eventLabel,
     translateMessage: options.translateMessage,
   });
   const targetTitle = formatTimelineTargetTitle(event.target);
@@ -163,6 +168,25 @@ function resolveActionLabel({
   }
 
   return actionName ?? actionCode ?? eventLabel;
+}
+
+function resolveDocumentOperationLabel(
+  event: TimelineEvent,
+  translateMessage: TimelineMessageTranslator | undefined,
+): string | undefined {
+  if (event.target.type !== "DOCUMENT") {
+    return undefined;
+  }
+
+  const operation = readString(event.metadata, "operation");
+  if (!operation) {
+    return undefined;
+  }
+
+  return translateOptional(
+    translateMessage,
+    `${DOCUMENT_OPERATION_MESSAGE_PREFIX}.${operation}`,
+  );
 }
 
 function formatTimelineTargetTitle(eventTarget: TimelineEvent["target"]) {

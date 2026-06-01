@@ -36,6 +36,9 @@ const timelineMessages = new Map<string, string>(
     "common.timeline.change.value.priority.HIGH": "高",
     "common.timeline.change.value.status.CONFIRMED": "已确认",
     "common.timeline.change.value.status.ARCHIVED": "已归档",
+    "common.timeline.documentOperation.ARCHIVED": "归档",
+    "common.timeline.documentOperation.DELETED": "删除",
+    "common.timeline.documentOperation.RESTORED": "恢复",
     "common.timeline.change.value.statusCategory.NOT_STARTED": "未开始",
     "common.timeline.change.value.statusCategory.WAITING": "等待中",
     "common.timeline.change.value.severity.BLOCKER": "阻断",
@@ -140,6 +143,48 @@ describe("timeline display", () => {
     expect(display.actionLabel).toBe("timeline.UPDATED");
     expect(display.summary).toBe("");
     expect(display.summary).not.toBe("保存需求");
+  });
+
+  it("uses document lifecycle operation labels before generic event labels", () => {
+    const archived = formatTimelineEvent(
+      makeEvent({
+        eventType: "STATUS_CHANGED",
+        metadata: {
+          operation: "ARCHIVED",
+        },
+        target: {
+          id: "01ARZ3NDEKTSV4RRFFQ69G5FA5",
+          title: "方案文档",
+          type: "DOCUMENT",
+        },
+      }),
+      {
+        translateEventType: (key) => `timeline.${key}`,
+        translateMessage,
+      },
+    );
+    const deleted = formatTimelineEvent(
+      makeEvent({
+        eventType: "UPDATED",
+        metadata: {
+          operation: "DELETED",
+        },
+        target: {
+          id: "01ARZ3NDEKTSV4RRFFQ69G5FA5",
+          title: "方案文档",
+          type: "DOCUMENT",
+        },
+      }),
+      {
+        translateEventType: (key) => `timeline.${key}`,
+        translateMessage,
+      },
+    );
+
+    expect(archived.actionLabel).toBe("归档");
+    expect(deleted.actionLabel).toBe("删除");
+    expect(archived.summary).toBe("方案文档");
+    expect(deleted.summary).toBe("方案文档");
   });
 
   it("prefers workflow action metadata and surfaces form values", () => {

@@ -1372,16 +1372,28 @@ export class PrismaSpaceRepository implements SpaceRepository {
       };
     }
 
-    const visibleTargets = await this.listVisibleTimelineTargetRefs(
-      context,
-      {
-        organizationId,
-        versionId: input.versionId,
-      },
-      scopedWorkItemWhere,
+    const [visibleTargets, deletedDocumentIds] = await Promise.all([
+      this.listVisibleTimelineTargetRefs(
+        context,
+        {
+          organizationId,
+          versionId: input.versionId,
+        },
+        scopedWorkItemWhere,
+      ),
+      scopedWorkItemWhere
+        ? Promise.resolve([])
+        : this.listVisibleDeletedDocumentTimelineTargetIds(context, {
+            organizationId,
+            versionId: input.versionId,
+          }),
+    ]);
+    const visibleTargetWheres = buildRecentActivityTargetWheres(
+      visibleTargets,
+      deletedDocumentIds,
     );
 
-    if (visibleTargets.length === 0) {
+    if (visibleTargetWheres.length === 0) {
       return {
         items: [],
         page: input.page,
@@ -1393,10 +1405,7 @@ export class PrismaSpaceRepository implements SpaceRepository {
     where.AND = [
       ...(Array.isArray(where.AND) ? where.AND : where.AND ? [where.AND] : []),
       {
-        OR: visibleTargets.map((target) => ({
-          targetId: target.id,
-          targetType: target.type,
-        })),
+        OR: visibleTargetWheres,
       },
     ];
 
@@ -1496,7 +1505,6 @@ export class PrismaSpaceRepository implements SpaceRepository {
                 title: true,
               },
               where: {
-                deletedAt: null,
                 id: {
                   in: documentIds,
                 },
@@ -1721,6 +1729,39 @@ export class PrismaSpaceRepository implements SpaceRepository {
     });
 
     return items.map((item) => item.id);
+  }
+
+  private async listVisibleDeletedDocumentTimelineTargetIds(
+    context: ViewAccessContext,
+    filters: {
+      organizationId: string;
+      versionId?: string;
+    },
+  ) {
+    if (context.spaceIds.length === 0) {
+      return [];
+    }
+
+    const documents = await this.prisma.client.document.findMany({
+      select: {
+        id: true,
+      },
+      where: {
+        deletedAt: {
+          not: null,
+        },
+        organizationId: filters.organizationId,
+        spaceId: {
+          in: context.spaceIds,
+        },
+        status: {
+          not: "DRAFT",
+        },
+        versionId: filters.versionId,
+      },
+    });
+
+    return documents.map((document) => document.id);
   }
 
   private async getWorkbenchStats(
@@ -2104,6 +2145,34 @@ function buildTimelineWhere(
       in: [...RECENT_ACTIVITY_TARGET_TYPES],
     },
   });
+}
+
+function buildRecentActivityTargetWheres(
+  visibleTargets: Array<{ id: string; type: TargetType }>,
+  deletedDocumentIds: string[],
+): Prisma.TimelineEventWhereInput[] {
+  const targetWheres: Prisma.TimelineEventWhereInput[] = visibleTargets.map(
+    (target) => ({
+      targetId: target.id,
+      targetType: target.type,
+    }),
+  );
+  const deletedIds = unique(deletedDocumentIds);
+
+  if (deletedIds.length > 0) {
+    targetWheres.push({
+      metadata: {
+        equals: "DELETED",
+        path: ["operation"],
+      },
+      targetId: {
+        in: deletedIds,
+      },
+      targetType: "DOCUMENT",
+    });
+  }
+
+  return targetWheres;
 }
 
 function andWorkItemWhere(

@@ -1300,6 +1300,130 @@ describe("PrismaSpaceRepository", () => {
     );
   });
 
+  it("includes deleted non-draft document deletion events in recent activity", async () => {
+    const organizationId = "01TRZ3NDEKTSV4RRFFQ69G5ORG";
+    const spaceId = "01TRZ3NDEKTSV4RRFFQ69G5SPC";
+    const deletedDocumentId = "01TRZ3NDEKTSV4RRFFQ69G5DLD";
+    const deletionEvent = {
+      ...timelineEvent(
+        "01TRZ3NDEKTSV4RRFFQ69G5DEL",
+        "DOCUMENT",
+        deletedDocumentId,
+      ),
+      metadata: { operation: "DELETED" },
+      title: "Document deleted",
+    };
+    const documentFindMany = vi.fn(async (args: {
+      select?: { kind?: boolean };
+      where?: { deletedAt?: { not: null } | null };
+    }) => {
+      if (args.select?.kind) {
+        return [
+          {
+            id: deletedDocumentId,
+            kind: "GENERAL",
+            sequence: null,
+            title: "Deleted Document",
+          },
+        ];
+      }
+
+      if (args.where?.deletedAt && "not" in args.where.deletedAt) {
+        return [{ id: deletedDocumentId }];
+      }
+
+      return [];
+    });
+    const timelineFindMany = vi.fn(async () => [deletionEvent]);
+    const prisma = {
+      client: {
+        $transaction: vi.fn(async (operations: Promise<unknown>[]) =>
+          Promise.all(operations),
+        ),
+        intakeItem: {
+          findMany: vi.fn(async () => []),
+        },
+        document: {
+          findMany: documentFindMany,
+        },
+        timelineEvent: {
+          count: vi.fn(async () => 1),
+          findMany: timelineFindMany,
+        },
+        version: {
+          findMany: vi.fn(async () => []),
+        },
+        workItem: {
+          findMany: vi.fn(async () => []),
+        },
+      },
+    } as unknown as PrismaService;
+    const repository = new PrismaSpaceRepository(prisma);
+    const internals = repository as unknown as RepositoryInternals;
+
+    const result = (await internals.pageRecentActivities(
+      {
+        accessBySpaceId: new Map(),
+        accesses: [],
+        participantIntakeItemIds: [],
+        participantSpaceIds: [],
+        participantWorkItemIds: [],
+        readAllSpaceIds: [spaceId],
+        intakeItemReadAllSpaceIds: [],
+        spaceIds: [spaceId],
+        testerSpaceIds: [],
+        testerWorkItemIds: [],
+      },
+      {
+        actorUserId: "01TRZ3NDEKTSV4RRFFQ69G5USR",
+        organizationId,
+        page: 1,
+        pageSize: 20,
+      },
+      organizationId,
+    )) as PageResult<{ target: { id: string; title?: string; type: string } }>;
+
+    expect(documentFindMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          deletedAt: {
+            not: null,
+          },
+          status: {
+            not: "DRAFT",
+          },
+        }),
+      }),
+    );
+    expect(timelineFindMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          AND: expect.arrayContaining([
+            {
+              OR: expect.arrayContaining([
+                {
+                  metadata: {
+                    equals: "DELETED",
+                    path: ["operation"],
+                  },
+                  targetId: {
+                    in: [deletedDocumentId],
+                  },
+                  targetType: "DOCUMENT",
+                },
+              ]),
+            },
+          ]),
+        }),
+      }),
+    );
+    expect(result.items[0]?.target).toMatchObject({
+      id: deletedDocumentId,
+      title: "Deleted Document",
+      type: "DOCUMENT",
+    });
+  });
+
   it("does not expose action todos to VIEWER even when they are creator or assignee", async () => {
     const actorUserId = "01HRZ3NDEKTSV4RRFFQ69G5FVIEW";
     const organizationId = "01HRZ3NDEKTSV4RRFFQ69G5FORG1";

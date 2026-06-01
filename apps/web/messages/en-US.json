@@ -33,6 +33,11 @@
         "CLOSED": "Closed",
         "REOPENED": "Reopened"
       },
+      "documentOperation": {
+        "ARCHIVED": "Archived",
+        "DELETED": "Deleted",
+        "RESTORED": "Restored"
+      },
       "change": {
         "field": {
           "title": "Title",

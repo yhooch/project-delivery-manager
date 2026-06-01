@@ -33,6 +33,11 @@
         "CLOSED": "关闭",
         "REOPENED": "重新打开"
       },
+      "documentOperation": {
+        "ARCHIVED": "归档",
+        "DELETED": "删除",
+        "RESTORED": "恢复"
+      },
       "change": {
         "field": {
           "title": "标题",
