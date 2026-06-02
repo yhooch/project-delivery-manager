@@ -70,7 +70,8 @@ vi.mock("../providers/session-provider", () => ({
   useSession: () => sessionMock.current,
 }));
 
-const { listDocumentsMock } = vi.hoisted(() => ({
+const { listDocumentFoldersMock, listDocumentsMock } = vi.hoisted(() => ({
+  listDocumentFoldersMock: vi.fn(),
   listDocumentsMock: vi.fn(),
 }));
 vi.mock("../../lib/document-service", async () => {
@@ -81,6 +82,7 @@ vi.mock("../../lib/document-service", async () => {
     ...actual,
     importDocxDocument: vi.fn(),
     importMarkdownDocument: vi.fn(),
+    listDocumentFolders: listDocumentFoldersMock,
     listDocuments: listDocumentsMock,
     pasteDocument: vi.fn(),
   };
@@ -125,6 +127,8 @@ beforeEach(() => {
   routerPushMock.mockReset();
   routerReplaceMock.mockReset();
   searchParamsMock.current = new URLSearchParams();
+  listDocumentFoldersMock.mockReset();
+  listDocumentFoldersMock.mockResolvedValue([]);
   listDocumentsMock.mockReset();
   realtimeCallbacks.clear();
   sessionMock.current = {
@@ -264,6 +268,206 @@ describe("DocumentsPage", () => {
         includeDescendants: true,
         spaceId: "SPC_01",
       }),
+    );
+  });
+
+  it("renders direct child folders above document rows for the selected folder", async () => {
+    searchParamsMock.current = new URLSearchParams(
+      "directoryView=folder&folderId=FLD_PARENT",
+    );
+    listDocumentFoldersMock.mockResolvedValue([
+      {
+        depth: 0,
+        descendantDocumentCount: 2,
+        documentCount: 0,
+        id: "FLD_PARENT",
+        name: "Parent",
+        parentId: null,
+        sortOrder: 0,
+        spaceId: "SPC_01",
+        version: 1,
+      },
+      {
+        depth: 1,
+        descendantDocumentCount: 1,
+        documentCount: 1,
+        id: "FLD_CHILD",
+        name: "Planning",
+        parentId: "FLD_PARENT",
+        sortOrder: 0,
+        spaceId: "SPC_01",
+        version: 1,
+      },
+      {
+        depth: 2,
+        descendantDocumentCount: 0,
+        documentCount: 0,
+        id: "FLD_GRANDCHILD",
+        name: "Roadmap",
+        parentId: "FLD_CHILD",
+        sortOrder: 0,
+        spaceId: "SPC_01",
+        version: 1,
+      },
+    ]);
+    listDocumentsMock.mockResolvedValue({
+      items: [
+        {
+          contentSnippet: "Parent folder note",
+          createdAt: "2026-05-27T10:00:00.000Z",
+          id: "DOC_01",
+          lastEditedAt: "2026-05-27T11:00:00.000Z",
+          lastEditedVia: "USER",
+          organizationId: "ORG_01",
+          revision: 1,
+          sourceType: "USER_CREATED",
+          spaceId: "SPC_01",
+          status: "ACTIVE",
+          title: "Parent note",
+          updatedAt: "2026-05-27T11:00:00.000Z",
+        },
+      ],
+      total: 1,
+    });
+
+    renderDocumentsPage();
+
+    const childFolders = await screen.findByTestId("documents-child-folders");
+    const list = await screen.findByTestId("documents-list");
+
+    expect(within(childFolders).getByText("Planning")).toBeVisible();
+    expect(within(childFolders).queryByText("Roadmap")).not.toBeInTheDocument();
+    expect(
+      (childFolders.compareDocumentPosition(list) &
+        Node.DOCUMENT_POSITION_FOLLOWING) !==
+        0,
+    ).toBe(true);
+    expect(screen.getAllByTestId("documents-list-item")).toHaveLength(1);
+  });
+
+  it("navigates to a child folder while preserving includeDescendants", async () => {
+    searchParamsMock.current = new URLSearchParams(
+      "directoryView=folder&folderId=FLD_PARENT&includeDescendants=true",
+    );
+    listDocumentFoldersMock.mockResolvedValue([
+      {
+        depth: 0,
+        descendantDocumentCount: 1,
+        documentCount: 0,
+        id: "FLD_PARENT",
+        name: "Parent",
+        parentId: null,
+        sortOrder: 0,
+        spaceId: "SPC_01",
+        version: 1,
+      },
+      {
+        depth: 1,
+        descendantDocumentCount: 0,
+        documentCount: 0,
+        id: "FLD_CHILD",
+        name: "Planning",
+        parentId: "FLD_PARENT",
+        sortOrder: 0,
+        spaceId: "SPC_01",
+        version: 1,
+      },
+    ]);
+    listDocumentsMock.mockResolvedValue({ items: [], total: 0 });
+
+    renderDocumentsPage();
+
+    fireEvent.click(
+      await screen.findByRole("button", {
+        name: "documents.directory.openFolder Planning",
+      }),
+    );
+
+    expect(routerPushMock).toHaveBeenCalledWith(
+      "/documents?directoryView=folder&folderId=FLD_CHILD&includeDescendants=true",
+    );
+  });
+
+  it("does not render the global empty state when a selected folder only has child folders", async () => {
+    searchParamsMock.current = new URLSearchParams(
+      "directoryView=folder&folderId=FLD_PARENT",
+    );
+    listDocumentFoldersMock.mockResolvedValue([
+      {
+        depth: 0,
+        descendantDocumentCount: 0,
+        documentCount: 0,
+        id: "FLD_PARENT",
+        name: "Parent",
+        parentId: null,
+        sortOrder: 0,
+        spaceId: "SPC_01",
+        version: 1,
+      },
+      {
+        depth: 1,
+        descendantDocumentCount: 0,
+        documentCount: 0,
+        id: "FLD_CHILD",
+        name: "Planning",
+        parentId: "FLD_PARENT",
+        sortOrder: 0,
+        spaceId: "SPC_01",
+        version: 1,
+      },
+    ]);
+    listDocumentsMock.mockResolvedValue({ items: [], total: 0 });
+
+    renderDocumentsPage();
+
+    expect(await screen.findByTestId("documents-child-folders")).toBeVisible();
+    expect(
+      screen.queryByTestId("documents-empty-state"),
+    ).not.toBeInTheDocument();
+  });
+
+  it("hides child folders while searching documents", async () => {
+    searchParamsMock.current = new URLSearchParams(
+      "directoryView=folder&folderId=FLD_PARENT",
+    );
+    listDocumentFoldersMock.mockResolvedValue([
+      {
+        depth: 0,
+        descendantDocumentCount: 0,
+        documentCount: 0,
+        id: "FLD_PARENT",
+        name: "Parent",
+        parentId: null,
+        sortOrder: 0,
+        spaceId: "SPC_01",
+        version: 1,
+      },
+      {
+        depth: 1,
+        descendantDocumentCount: 0,
+        documentCount: 0,
+        id: "FLD_CHILD",
+        name: "Planning",
+        parentId: "FLD_PARENT",
+        sortOrder: 0,
+        spaceId: "SPC_01",
+        version: 1,
+      },
+    ]);
+    listDocumentsMock.mockResolvedValue({ items: [], total: 0 });
+
+    renderDocumentsPage();
+
+    expect(await screen.findByTestId("documents-child-folders")).toBeVisible();
+
+    fireEvent.change(screen.getByTestId("documents-search-input"), {
+      target: { value: "plan" },
+    });
+
+    await waitFor(() =>
+      expect(
+        screen.queryByTestId("documents-child-folders"),
+      ).not.toBeInTheDocument(),
     );
   });
 

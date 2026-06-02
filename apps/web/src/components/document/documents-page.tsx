@@ -7,6 +7,7 @@ import {
   Bot,
   FilePlus2,
   FileText,
+  Folder,
   GripVertical,
   ListChecks,
   List,
@@ -30,6 +31,7 @@ import { Link, useRouter } from "../../i18n/routing";
 import { getApiErrorMessageKey } from "../../lib/api-error-messages";
 import type {
   DocumentFilterKey,
+  DocumentFolder,
   DocumentSortBy,
   DocumentStatus,
   DocumentSummary,
@@ -37,6 +39,7 @@ import type {
 import {
   importDocxDocument,
   importMarkdownDocument,
+  listDocumentFolders,
   listDocuments,
   pasteDocument,
 } from "../../lib/document-service";
@@ -61,10 +64,13 @@ import { useRealtimeInvalidation } from "../../lib/realtime";
 import { cn } from "../../lib/utils";
 import { useDocumentCreate } from "./document-create-context";
 import {
+  DOCUMENT_DIRECTORY_REFRESH_EVENT,
   DOCUMENT_LIST_REFRESH_EVENT,
   createDocumentDirectoryHref,
+  findFolderNode,
   getDocumentDirectorySelection,
   getDocumentFilterForDirectoryView,
+  normalizeDocumentFolderTree,
   type DocumentDragDataPayload,
   type DocumentDirectoryView,
 } from "./document-directory-model";
@@ -89,6 +95,7 @@ const DOCUMENTS_REALTIME_KEYS = [
   "document-list",
   "resource-documents",
 ] as const;
+const DOCUMENT_CHILD_FOLDER_REALTIME_KEYS = ["document-directory"] as const;
 const DENSITY_STORAGE_KEY = "documents.list.density";
 export const DOCUMENTS_LAST_LIST_HREF_STORAGE_KEY = "documents.lastListHref";
 
@@ -140,6 +147,9 @@ export function DocumentsPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [errorKey, setErrorKey] = useState<string | null>(null);
+  const [folders, setFolders] = useState<DocumentFolder[]>([]);
+  const [isLoadingFolders, setIsLoadingFolders] = useState(false);
+  const [folderErrorKey, setFolderErrorKey] = useState<string | null>(null);
   const [sort, setSort] = useState<DocumentSortKey>("recentEdited");
   const [density, setDensity] = useState<DocumentDensity>("comfortable");
   const [isSelectionMode, setIsSelectionMode] = useState(false);
@@ -161,6 +171,26 @@ export function DocumentsPage() {
     () => items.filter((item) => selectedDocumentIds.has(item.id)),
     [items, selectedDocumentIds],
   );
+  const hasActiveSearch =
+    query.trim().length > 0 || debouncedQuery.trim().length > 0;
+  const shouldShowChildFolders =
+    directorySelection.view === "folder" &&
+    Boolean(directorySelection.folderId) &&
+    !hasActiveSearch;
+  const folderTree = useMemo(
+    () => normalizeDocumentFolderTree(folders),
+    [folders],
+  );
+  const childFolders = useMemo(() => {
+    if (!shouldShowChildFolders || !directorySelection.folderId) {
+      return [];
+    }
+
+    return (
+      findFolderNode(folderTree, directorySelection.folderId)?.children ?? []
+    );
+  }, [directorySelection.folderId, folderTree, shouldShowChildFolders]);
+  const hasChildFolders = childFolders.length > 0;
   const { openImport, openPaste } = useDocumentCreate();
 
   useEffect(() => {
@@ -236,6 +266,38 @@ export function DocumentsPage() {
     ],
   );
 
+  const loadChildFolders = useCallback(
+    async (options?: { realtime?: boolean }) => {
+      if (!spaceId || !shouldShowChildFolders) {
+        setFolders([]);
+        setFolderErrorKey(null);
+        setIsLoadingFolders(false);
+        return;
+      }
+
+      const isRealtime = options?.realtime === true;
+      if (!isRealtime) {
+        setIsLoadingFolders(true);
+        setFolderErrorKey(null);
+      }
+
+      try {
+        const next = await listDocumentFolders({ organizationId, spaceId });
+        setFolders(next);
+      } catch (error) {
+        if (!isRealtime) {
+          setFolderErrorKey(getApiErrorMessageKey(error));
+          setFolders([]);
+        }
+      } finally {
+        if (!isRealtime) {
+          setIsLoadingFolders(false);
+        }
+      }
+    },
+    [organizationId, shouldShowChildFolders, spaceId],
+  );
+
   const loadMore = useCallback(async () => {
     if (!spaceId || isLoadingMore) {
       return;
@@ -294,11 +356,25 @@ export function DocumentsPage() {
     void loadDocuments();
   }, [loadDocuments, status]);
 
+  useEffect(() => {
+    if (status !== "authenticated") {
+      return;
+    }
+    void loadChildFolders();
+  }, [loadChildFolders, status]);
+
   useRealtimeInvalidation(DOCUMENTS_REALTIME_KEYS, () => {
     if (status !== "authenticated") {
       return;
     }
     void loadDocuments({ realtime: true });
+  });
+
+  useRealtimeInvalidation(DOCUMENT_CHILD_FOLDER_REALTIME_KEYS, () => {
+    if (status !== "authenticated") {
+      return;
+    }
+    void loadChildFolders({ realtime: true });
   });
 
   useEffect(() => {
@@ -322,6 +398,25 @@ export function DocumentsPage() {
         handleDragRefresh,
       );
   }, [loadDocuments, status]);
+
+  useEffect(() => {
+    const handleDirectoryRefresh = () => {
+      if (status !== "authenticated") {
+        return;
+      }
+      void loadChildFolders({ realtime: true });
+    };
+
+    window.addEventListener(
+      DOCUMENT_DIRECTORY_REFRESH_EVENT,
+      handleDirectoryRefresh,
+    );
+    return () =>
+      window.removeEventListener(
+        DOCUMENT_DIRECTORY_REFRESH_EVENT,
+        handleDirectoryRefresh,
+      );
+  }, [loadChildFolders, status]);
 
   useEffect(() => {
     const visibleIds = new Set(items.map((item) => item.id));
@@ -366,7 +461,26 @@ export function DocumentsPage() {
     setIsSelectionMode(!isSelectionMode);
   }, [isSelectionMode]);
 
-  const showEmpty = !isLoading && !errorKey && items.length === 0;
+  const openChildFolder = useCallback(
+    (folderId: string) => {
+      router.push(
+        createDocumentDirectoryHref({
+          folderId,
+          includeDescendants: directorySelection.includeDescendants,
+          view: "folder",
+        }) as never,
+      );
+    },
+    [directorySelection.includeDescendants, router],
+  );
+
+  const showEmpty =
+    !isLoading &&
+    !isLoadingFolders &&
+    !errorKey &&
+    !folderErrorKey &&
+    !hasChildFolders &&
+    items.length === 0;
   const filterKeys = getDocumentFilterKeys();
 
   return (
@@ -547,11 +661,38 @@ export function DocumentsPage() {
         </div>
       ) : null}
 
+      {shouldShowChildFolders && folderErrorKey ? (
+        <div
+          role="alert"
+          className="rounded-md border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive"
+          data-testid="documents-child-folders-error"
+        >
+          {tRoot(folderErrorKey)}
+        </div>
+      ) : null}
+
       {isLoading ? (
         <div className="flex min-h-64 items-center justify-center gap-2 text-sm text-muted-foreground">
           <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
           {t("home.loading")}
         </div>
+      ) : null}
+
+      {shouldShowChildFolders && isLoadingFolders && !isLoading ? (
+        <div
+          className="flex h-11 items-center gap-2 px-1 text-sm text-muted-foreground"
+          data-testid="documents-child-folders-loading"
+        >
+          <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
+          {t("directory.loadingChildFolders")}
+        </div>
+      ) : null}
+
+      {hasChildFolders ? (
+        <DocumentChildFolderList
+          folders={childFolders}
+          onOpenFolder={openChildFolder}
+        />
       ) : null}
 
       {showEmpty ? <DocumentsEmptyState /> : null}
@@ -586,6 +727,57 @@ export function DocumentsPage() {
         </div>
       ) : null}
     </div>
+  );
+}
+
+function DocumentChildFolderList({
+  folders,
+  onOpenFolder,
+}: {
+  folders: DocumentFolder[];
+  onOpenFolder: (folderId: string) => void;
+}) {
+  const t = useTranslations("documents");
+
+  return (
+    <section
+      className="flex flex-col gap-1.5"
+      data-testid="documents-child-folders"
+    >
+      <header className="flex items-baseline gap-2 px-1">
+        <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+          {t("directory.childFolders")}
+        </h2>
+        <span className="text-[11px] tabular-nums text-muted-foreground/70">
+          {folders.length}
+        </span>
+      </header>
+      <ul className="grid gap-1">
+        {folders.map((folder) => (
+          <li key={folder.id}>
+            <button
+              type="button"
+              aria-label={t("directory.openFolder", { name: folder.name })}
+              className="group flex min-h-11 w-full min-w-0 cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-left transition-colors hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              data-testid="documents-child-folder"
+              onClick={() => onOpenFolder(folder.id)}
+            >
+              <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary">
+                <Folder className="h-4 w-4" aria-hidden="true" />
+              </span>
+              <span className="min-w-0 flex-1 truncate text-sm font-medium text-foreground">
+                {folder.name}
+              </span>
+              <span className="shrink-0 rounded bg-muted/60 px-1.5 py-0.5 text-[11px] tabular-nums text-muted-foreground">
+                {t("directory.folderDocumentCount", {
+                  count: folder.documentCount,
+                })}
+              </span>
+            </button>
+          </li>
+        ))}
+      </ul>
+    </section>
   );
 }
 
