@@ -345,6 +345,47 @@ describe("DocumentsPage", () => {
     expect(screen.getAllByTestId("documents-list-item")).toHaveLength(1);
   });
 
+  it("applies compact density to child folder rows", async () => {
+    searchParamsMock.current = new URLSearchParams(
+      "directoryView=folder&folderId=FLD_PARENT",
+    );
+    listDocumentFoldersMock.mockResolvedValue([
+      {
+        depth: 0,
+        descendantDocumentCount: 1,
+        documentCount: 0,
+        id: "FLD_PARENT",
+        name: "Parent",
+        parentId: null,
+        sortOrder: 0,
+        spaceId: "SPC_01",
+        version: 1,
+      },
+      {
+        depth: 1,
+        descendantDocumentCount: 0,
+        documentCount: 0,
+        id: "FLD_CHILD",
+        name: "Planning",
+        parentId: "FLD_PARENT",
+        sortOrder: 0,
+        spaceId: "SPC_01",
+        version: 1,
+      },
+    ]);
+    listDocumentsMock.mockResolvedValue({ items: [], total: 0 });
+
+    renderDocumentsPage();
+
+    const childFolder = await screen.findByTestId("documents-child-folder");
+    expect(childFolder).toHaveClass("min-h-11");
+
+    fireEvent.click(screen.getByTestId("documents-density-compact"));
+
+    expect(childFolder).toHaveClass("min-h-8");
+    expect(childFolder).not.toHaveClass("min-h-11");
+  });
+
   it("navigates to a child folder while preserving includeDescendants", async () => {
     searchParamsMock.current = new URLSearchParams(
       "directoryView=folder&folderId=FLD_PARENT&includeDescendants=true",

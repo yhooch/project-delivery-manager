@@ -690,6 +690,7 @@ export function DocumentsPage() {
 
       {hasChildFolders ? (
         <DocumentChildFolderList
+          density={density}
           folders={childFolders}
           onOpenFolder={openChildFolder}
         />
@@ -731,13 +732,16 @@ export function DocumentsPage() {
 }
 
 function DocumentChildFolderList({
+  density,
   folders,
   onOpenFolder,
 }: {
+  density: DocumentDensity;
   folders: DocumentFolder[];
   onOpenFolder: (folderId: string) => void;
 }) {
   const t = useTranslations("documents");
+  const isCompact = density === "compact";
 
   return (
     <section
@@ -752,23 +756,48 @@ function DocumentChildFolderList({
           {folders.length}
         </span>
       </header>
-      <ul className="grid gap-1">
+      <ul className={cn("grid", isCompact ? "gap-0.5" : "gap-1")}>
         {folders.map((folder) => (
           <li key={folder.id}>
             <button
               type="button"
               aria-label={t("directory.openFolder", { name: folder.name })}
-              className="group flex min-h-11 w-full min-w-0 cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-left transition-colors hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              className={cn(
+                "group flex w-full min-w-0 cursor-pointer items-center rounded-md text-left transition-colors hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                isCompact
+                  ? "min-h-8 gap-1.5 px-1.5 py-1"
+                  : "min-h-11 gap-2 px-2 py-1.5",
+              )}
               data-testid="documents-child-folder"
               onClick={() => onOpenFolder(folder.id)}
             >
-              <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary">
-                <Folder className="h-4 w-4" aria-hidden="true" />
+              <span
+                className={cn(
+                  "flex shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary",
+                  isCompact ? "h-6 w-6" : "h-8 w-8",
+                )}
+              >
+                <Folder
+                  className={cn(isCompact ? "h-3.5 w-3.5" : "h-4 w-4")}
+                  aria-hidden="true"
+                />
               </span>
-              <span className="min-w-0 flex-1 truncate text-sm font-medium text-foreground">
+              <span
+                className={cn(
+                  "min-w-0 flex-1 truncate font-medium text-foreground",
+                  isCompact ? "text-[13px]" : "text-sm",
+                )}
+              >
                 {folder.name}
               </span>
-              <span className="shrink-0 rounded bg-muted/60 px-1.5 py-0.5 text-[11px] tabular-nums text-muted-foreground">
+              <span
+                className={cn(
+                  "shrink-0 rounded bg-muted/60 tabular-nums text-muted-foreground",
+                  isCompact
+                    ? "px-1 py-0 text-[10px]"
+                    : "px-1.5 py-0.5 text-[11px]",
+                )}
+              >
                 {t("directory.folderDocumentCount", {
                   count: folder.documentCount,
                 })}
