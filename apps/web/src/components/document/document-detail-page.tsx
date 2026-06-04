@@ -858,23 +858,23 @@ export function DocumentDetailPage({ documentId }: DocumentDetailPageProps) {
       <div className="mx-auto grid w-full max-w-[88rem] gap-4 px-3 py-4 sm:gap-6 sm:px-4 sm:py-5 lg:grid-cols-[12rem_minmax(0,1fr)] lg:px-6 xl:grid-cols-[13rem_minmax(0,1fr)_18rem]">
         <DocumentTocRail headings={headings} />
         <div className="min-w-0 max-w-[52rem]">
-          <form onSubmit={(event) => void save(event)}>
-            <div
-              className="sticky top-12 z-20 mb-3 bg-background/80 py-1.5 backdrop-blur-md supports-[backdrop-filter]:bg-background/70"
-              data-testid="document-back-to-list-bar"
+          <div
+            className="sticky top-12 z-20 mb-3 bg-background/80 py-1.5 backdrop-blur-md supports-[backdrop-filter]:bg-background/70"
+            data-testid="document-back-to-list-bar"
+          >
+            <Button
+              asChild
+              size="sm"
+              variant="ghost"
+              className="-ml-2 text-muted-foreground hover:text-foreground"
             >
-              <Button
-                asChild
-                size="sm"
-                variant="ghost"
-                className="-ml-2 text-muted-foreground hover:text-foreground"
-              >
-                <Link href={backToListHref} data-testid="document-back-to-list">
-                  <ChevronLeft className="h-4 w-4" aria-hidden="true" />
-                  {t("actions.backToList")}
-                </Link>
-              </Button>
-            </div>
+              <Link href={backToListHref} data-testid="document-back-to-list">
+                <ChevronLeft className="h-4 w-4" aria-hidden="true" />
+                {t("actions.backToList")}
+              </Link>
+            </Button>
+          </div>
+          <form onSubmit={(event) => void save(event)}>
             <div className="mb-3 flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground">
               <Link className="hover:text-foreground hover:underline" href="/">
                 {currentOrganization?.name ?? t("unknownOrganization")}

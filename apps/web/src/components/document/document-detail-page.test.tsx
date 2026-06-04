@@ -824,6 +824,7 @@ describe("DocumentDetailPage", () => {
 
     expect(backLinkBar).toContainElement(backLink);
     expect(backLinkBar).toHaveClass("sticky", "top-12", "z-20");
+    expect(backLinkBar.closest("form")).toBeNull();
     await waitFor(() =>
       expect(backLink).toHaveAttribute(
         "href",
