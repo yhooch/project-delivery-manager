@@ -523,7 +523,7 @@ export function RequirementsPage() {
       try {
         const draft = await createRequirementDraft({ organizationId, spaceId });
         rememberRequirement(draft);
-        router.push(`/requirements/${draft.id}`);
+        router.push(`/requirements/${draft.id}?mode=edit`);
       } catch (error) {
         setErrorKey(getApiErrorMessageKey(error));
         setIsCreating(false);

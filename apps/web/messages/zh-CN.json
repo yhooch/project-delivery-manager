@@ -1556,6 +1556,8 @@
       "formDescription": "保存后草稿会进入已确认状态；归档后不可继续编辑。",
       "save": "保存需求",
       "saving": "保存中",
+      "edit": "编辑",
+      "cancelEdit": "取消编辑",
       "archive": "归档",
       "archiving": "归档中",
       "discardDraft": "放弃草稿",

@@ -13,6 +13,9 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 const { translatorCache } = vi.hoisted(() => ({
   translatorCache: new Map<string, (key: string) => string>(),
 }));
+const { searchParamsMock } = vi.hoisted(() => ({
+  searchParamsMock: { current: new URLSearchParams() },
+}));
 vi.mock("next-intl", () => ({
   useTranslations: (namespace?: string) => {
     const key = namespace ?? "__root__";
@@ -24,6 +27,9 @@ vi.mock("next-intl", () => ({
     return fn;
   },
   useLocale: () => "zh-CN",
+}));
+vi.mock("next/navigation", () => ({
+  useSearchParams: () => searchParamsMock.current,
 }));
 
 const { routerPushMock } = vi.hoisted(() => ({
@@ -236,6 +242,7 @@ beforeEach(() => {
   });
   listReferencingDocumentsMock.mockResolvedValue({ items: [], total: 0 });
   updateRequirementMock.mockResolvedValue(makeRequirement());
+  searchParamsMock.current = new URLSearchParams();
   window.localStorage.clear();
 });
 
@@ -312,6 +319,110 @@ describe("RequirementDetailWorkspace", () => {
     );
   });
 
+  it("renders an ACTIVE requirement in view mode by default", async () => {
+    getRequirementMock.mockResolvedValueOnce(
+      makeRequirement({
+        contentFormat: "MARKDOWN",
+        contentJson: undefined,
+        contentMarkdown: "# Scope\n\nRead-only requirement body.",
+        contentMarkdownCache: undefined,
+        contentText: "Scope\n\nRead-only requirement body.",
+        status: "ACTIVE",
+      }),
+    );
+
+    render(
+      <RequirementDetailWorkspace requirementId="01ARZ3NDEKTSV4RRFFQ69G5FA1" />,
+    );
+
+    expect(
+      await screen.findByRole("heading", {
+        name: "Permissioned requirement",
+      }),
+    ).toBeInTheDocument();
+    expect(screen.getByTestId("document-markdown-viewer")).toHaveTextContent(
+      "Read-only requirement body.",
+    );
+    expect(
+      screen.getByRole("button", { name: "requirements.detail.edit" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByLabelText("requirements.form.title"),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "requirements.form.priority" }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "requirements.detail.save" }),
+    ).not.toBeInTheDocument();
+    expect(screen.queryByTestId("requirement-editor-slot")).toBeNull();
+  });
+
+  it("enters edit mode when the edit action is clicked", async () => {
+    getRequirementMock.mockResolvedValueOnce(
+      makeRequirement({
+        status: "ACTIVE",
+      }),
+    );
+
+    render(
+      <RequirementDetailWorkspace requirementId="01ARZ3NDEKTSV4RRFFQ69G5FA1" />,
+    );
+
+    fireEvent.click(
+      await screen.findByRole("button", {
+        name: "requirements.detail.edit",
+      }),
+    );
+
+    expect(
+      await screen.findByDisplayValue("Permissioned requirement"),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "requirements.form.priority" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "requirements.detail.save" }),
+    ).toBeInTheDocument();
+    expect(screen.getByTestId("requirement-editor-slot")).toHaveAttribute(
+      "data-disabled",
+      "false",
+    );
+  });
+
+  it("enters edit mode from the URL and cancels back to server values", async () => {
+    searchParamsMock.current = new URLSearchParams("mode=edit");
+    getRequirementMock.mockResolvedValueOnce(
+      makeRequirement({
+        status: "ACTIVE",
+      }),
+    );
+
+    render(
+      <RequirementDetailWorkspace requirementId="01ARZ3NDEKTSV4RRFFQ69G5FA1" />,
+    );
+
+    const titleInput = await screen.findByDisplayValue(
+      "Permissioned requirement",
+    );
+    fireEvent.change(titleInput, {
+      target: { value: "Unsaved title" },
+    });
+    fireEvent.click(
+      screen.getByRole("button", {
+        name: "requirements.detail.cancelEdit",
+      }),
+    );
+
+    expect(
+      screen.getByRole("heading", { name: "Permissioned requirement" }),
+    ).toBeInTheDocument();
+    expect(screen.queryByDisplayValue("Unsaved title")).not.toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "requirements.detail.edit" }),
+    ).toBeInTheDocument();
+  });
+
   it("does not let a writer role override explicit canEdit=false", async () => {
     getRequirementMock.mockResolvedValueOnce(
       makeRequirement({
@@ -329,26 +440,18 @@ describe("RequirementDetailWorkspace", () => {
     );
 
     expect(
-      await screen.findByDisplayValue("Permissioned requirement"),
-    ).toBeDisabled();
+      await screen.findByRole("heading", {
+        name: "Permissioned requirement",
+      }),
+    ).toBeInTheDocument();
     expect(
-      screen.getByRole("button", { name: "requirements.detail.save" }),
-    ).toBeDisabled();
+      screen.queryByRole("button", { name: "requirements.detail.edit" }),
+    ).not.toBeInTheDocument();
     expect(
-      screen.getByRole("button", { name: "requirements.detail.archive" }),
-    ).toBeDisabled();
-    expect(screen.getByTestId("requirement-editor-slot")).toHaveAttribute(
-      "data-disabled",
-      "true",
-    );
-    expect(screen.getByTestId("requirement-editor-slot")).toHaveAttribute(
-      "data-can-upload-images",
-      "false",
-    );
+      screen.queryByRole("button", { name: "requirements.detail.save" }),
+    ).not.toBeInTheDocument();
+    expect(screen.queryByTestId("requirement-editor-slot")).toBeNull();
 
-    fireEvent.click(
-      screen.getByRole("button", { name: "requirements.detail.save" }),
-    );
     expect(updateRequirementMock).not.toHaveBeenCalled();
   });
 
@@ -362,23 +465,14 @@ describe("RequirementDetailWorkspace", () => {
     );
 
     expect(
-      await screen.findByDisplayValue("Permissioned requirement"),
-    ).toBeDisabled();
+      await screen.findByRole("heading", {
+        name: "Permissioned requirement",
+      }),
+    ).toBeInTheDocument();
     expect(
-      screen.getByRole("button", { name: "requirements.detail.save" }),
-    ).toBeDisabled();
-    expect(screen.getByTestId("requirement-editor-slot")).toHaveAttribute(
-      "data-disabled",
-      "true",
-    );
-    expect(screen.getByTestId("requirement-editor-slot")).toHaveAttribute(
-      "data-can-upload-images",
-      "false",
-    );
-
-    fireEvent.click(
-      screen.getByRole("button", { name: "requirements.detail.save" }),
-    );
+      screen.queryByRole("button", { name: "requirements.detail.edit" }),
+    ).not.toBeInTheDocument();
+    expect(screen.queryByTestId("requirement-editor-slot")).toBeNull();
 
     expect(updateRequirementMock).not.toHaveBeenCalled();
   });

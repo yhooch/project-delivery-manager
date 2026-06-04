@@ -237,7 +237,7 @@ describe("RequirementsPage", () => {
       ),
     );
     expect(routerPushMock).toHaveBeenCalledWith(
-      "/requirements/01ARZ3NDEKTSV4RRFFQ69G5FCMD",
+      "/requirements/01ARZ3NDEKTSV4RRFFQ69G5FCMD?mode=edit",
     );
     expect(routerReplaceMock).toHaveBeenCalledWith("/requirements", {
       scroll: false,
@@ -951,7 +951,7 @@ describe("RequirementsPage", () => {
     );
     await waitFor(() =>
       expect(routerPushMock).toHaveBeenCalledWith(
-        "/requirements/01ARZ3NDEKTSV4RRFFQ69G5FNEW",
+        "/requirements/01ARZ3NDEKTSV4RRFFQ69G5FNEW?mode=edit",
       ),
     );
     const stored = JSON.parse(

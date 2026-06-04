@@ -1556,6 +1556,8 @@
       "formDescription": "Saving moves a draft to confirmed. Archived requirements cannot be edited.",
       "save": "Save requirement",
       "saving": "Saving",
+      "edit": "Edit",
+      "cancelEdit": "Cancel edit",
       "archive": "Archive",
       "archiving": "Archiving",
       "discardDraft": "Discard draft",

@@ -25,6 +25,7 @@ import {
   Save,
   Split,
   Trash2,
+  X,
   User2,
   Flag,
   GitBranch as GitBranchIcon,
@@ -32,6 +33,7 @@ import {
   Tag as TagIcon,
 } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
+import { useSearchParams } from "next/navigation";
 import {
   useEffect,
   useCallback,
@@ -81,6 +83,7 @@ import {
 import { isLocale } from "../../i18n/locales";
 import { useRouter } from "../../i18n/routing";
 import { useSession } from "../providers/session-provider";
+import { DocumentMarkdownViewer } from "../document/document-markdown-viewer";
 import { ReferencingDocumentsSection } from "../document/referencing-documents-section";
 import { TraceVersionCascadeConfirmDialog } from "../trace-version-cascade-confirm-dialog";
 import { ObjectTagAssignmentField } from "../tag";
@@ -143,6 +146,7 @@ export function RequirementDetailWorkspace({
   const tRoot = useTranslations();
   const locale = useLocale();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { session, status } = useSession();
   const [requirement, setRequirement] = useState<Requirement | null>(null);
   const [versions, setVersions] = useState<Version[]>([]);
@@ -167,6 +171,7 @@ export function RequirementDetailWorkspace({
   } | null>(null);
   const [didRestoreLocalDraftCache, setDidRestoreLocalDraftCache] =
     useState(false);
+  const [isEditing, setIsEditing] = useState(false);
   const titleInputRef = useRef<HTMLTextAreaElement>(null);
   const localDraftCacheSnapshotRef = useRef<RequirementDraftLocalCacheSnapshot>(
     {
@@ -179,6 +184,7 @@ export function RequirementDetailWorkspace({
   const loadRequestSeqRef = useRef(0);
   const latestRequestKeyRef = useRef("");
   const formDirtyRef = useRef(false);
+  const editModeInitializationKeyRef = useRef("");
 
   const currentSpace = useMemo(
     () =>
@@ -195,6 +201,16 @@ export function RequirementDetailWorkspace({
   const canUploadRequirementImages =
     requirement?.permissions?.canUploadAttachment === true;
   const canEditRequirement = requirement?.permissions?.canEdit === true;
+  const isEditingRequirement = isEditing && canEditRequirement;
+  const requestedEditMode = searchParams.get("mode") === "edit";
+  const editModeInitializationKey = requirement
+    ? [
+        requirement.id,
+        requirement.status,
+        canEditRequirement ? "editable" : "readonly",
+        requestedEditMode ? "edit" : "view",
+      ].join(":")
+    : "";
   const localDraftCacheKey = useMemo(
     () =>
       requirement && session
@@ -315,6 +331,29 @@ export function RequirementDetailWorkspace({
       loadRequestSeqRef.current += 1;
     };
   }, [loadRequirement, status]);
+
+  useEffect(() => {
+    if (!requirement) {
+      editModeInitializationKeyRef.current = "";
+      setIsEditing(false);
+      return;
+    }
+
+    if (editModeInitializationKeyRef.current === editModeInitializationKey) {
+      return;
+    }
+
+    editModeInitializationKeyRef.current = editModeInitializationKey;
+    setIsEditing(
+      canEditRequirement &&
+        (requirement.status === "DRAFT" || requestedEditMode),
+    );
+  }, [
+    canEditRequirement,
+    editModeInitializationKey,
+    requirement,
+    requestedEditMode,
+  ]);
 
   useRealtimeInvalidation(REQUIREMENT_DETAIL_REALTIME_KEYS, (context) => {
     if (
@@ -488,7 +527,7 @@ export function RequirementDetailWorkspace({
   async function onSave(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
-    if (!requirement || !canEditRequirement) {
+    if (!requirement || !isEditingRequirement) {
       return;
     }
 
@@ -534,7 +573,7 @@ export function RequirementDetailWorkspace({
   }
 
   async function handleConfirmCascadeVersionChange() {
-    if (!requirement || !canEditRequirement || !pendingCascadeConfirm) {
+    if (!requirement || !isEditingRequirement || !pendingCascadeConfirm) {
       return;
     }
 
@@ -567,7 +606,7 @@ export function RequirementDetailWorkspace({
   }
 
   async function onArchive() {
-    if (!requirement || !canEditRequirement) {
+    if (!requirement || !isEditingRequirement) {
       return;
     }
 
@@ -594,7 +633,7 @@ export function RequirementDetailWorkspace({
   async function onDiscardDraft() {
     if (
       !requirement ||
-      !canEditRequirement ||
+      !isEditingRequirement ||
       requirement.status !== "DRAFT" ||
       requirement.authorId !== session?.user.id
     ) {
@@ -618,6 +657,29 @@ export function RequirementDetailWorkspace({
     } finally {
       setIsDiscardingDraft(false);
     }
+  }
+
+  function onStartEdit() {
+    if (!requirement || !canEditRequirement) {
+      return;
+    }
+
+    setForm(requirementToFormState(requirement));
+    setDidRestoreLocalDraftCache(false);
+    setIsEditing(true);
+  }
+
+  function onCancelEdit() {
+    if (!requirement) {
+      setIsEditing(false);
+      return;
+    }
+
+    clearLocalDraftCacheForCurrentRequirement();
+    setForm(requirementToFormState(requirement));
+    setDidRestoreLocalDraftCache(false);
+    setErrorKey(null);
+    setIsEditing(false);
   }
 
   function onKeepEmptyDraftAndLeave() {
@@ -701,14 +763,19 @@ export function RequirementDetailWorkspace({
   const ownerLabel = formatOwnerName(form.ownerId, members);
   const authorLabel = formatOwnerName(requirement.authorId, members);
   const versionLabel = formatVersionName(form.versionId, versions);
+  const viewOwnerLabel = formatOwnerName(requirement.ownerId, members);
+  const viewVersionLabel = formatVersionName(requirement.versionId, versions);
   const displayCode = resolveRequirementDisplayCode(requirement, {
     draftLabel: t("status.DRAFT"),
   });
   const lastModifiedLabel = formatTimestamp(requirement.updatedAt, locale);
   const canDiscardDraft =
-    canEditRequirement &&
+    isEditingRequirement &&
     requirement.authorId === session.user.id &&
     requirement.status === "DRAFT";
+  const viewTitle =
+    normalizeDisplayText(requirement.title) ?? t("detail.untitledDraft");
+  const viewSummary = normalizeDisplayText(requirement.summary);
 
   return (
     <>
@@ -724,39 +791,64 @@ export function RequirementDetailWorkspace({
                 {t("form.readonly")}
               </span>
             ) : null}
-            {canDiscardDraft ? (
+            {isEditingRequirement ? (
+              <>
+                {canDiscardDraft ? (
+                  <Button
+                    disabled={isDiscardingDraft}
+                    data-testid="requirement-discard-draft-button"
+                    onClick={() => setDiscardDraftConfirmOpen(true)}
+                    size="sm"
+                    type="button"
+                    variant="destructive"
+                  >
+                    <Trash2 aria-hidden="true" />
+                    {isDiscardingDraft
+                      ? t("detail.discardingDraft")
+                      : t("detail.discardDraft")}
+                  </Button>
+                ) : null}
+                <Button
+                  disabled={isArchiving || isDiscardingDraft}
+                  onClick={() => void onArchive()}
+                  size="sm"
+                  type="button"
+                  variant="ghost"
+                >
+                  <Archive aria-hidden="true" />
+                  {isArchiving ? t("detail.archiving") : t("detail.archive")}
+                </Button>
+                <Button
+                  disabled={isSaving || isDiscardingDraft}
+                  onClick={onCancelEdit}
+                  size="sm"
+                  type="button"
+                  variant="outline"
+                >
+                  <X aria-hidden="true" />
+                  {t("detail.cancelEdit")}
+                </Button>
+                <Button
+                  disabled={isSaving || isDiscardingDraft}
+                  size="sm"
+                  type="submit"
+                >
+                  <Save aria-hidden="true" />
+                  {isSaving ? t("detail.saving") : t("detail.save")}
+                </Button>
+              </>
+            ) : canEditRequirement ? (
               <Button
-                disabled={isDiscardingDraft}
-                data-testid="requirement-discard-draft-button"
-                onClick={() => setDiscardDraftConfirmOpen(true)}
+                data-testid="requirement-edit-button"
+                onClick={onStartEdit}
                 size="sm"
                 type="button"
-                variant="destructive"
+                variant="outline"
               >
-                <Trash2 aria-hidden="true" />
-                {isDiscardingDraft
-                  ? t("detail.discardingDraft")
-                  : t("detail.discardDraft")}
+                <PenLine aria-hidden="true" />
+                {t("detail.edit")}
               </Button>
             ) : null}
-            <Button
-              disabled={!canEditRequirement || isArchiving || isDiscardingDraft}
-              onClick={() => void onArchive()}
-              size="sm"
-              type="button"
-              variant="ghost"
-            >
-              <Archive aria-hidden="true" />
-              {isArchiving ? t("detail.archiving") : t("detail.archive")}
-            </Button>
-            <Button
-              disabled={!canEditRequirement || isSaving || isDiscardingDraft}
-              size="sm"
-              type="submit"
-            >
-              <Save aria-hidden="true" />
-              {isSaving ? t("detail.saving") : t("detail.save")}
-            </Button>
           </div>
         </div>
 
@@ -781,30 +873,36 @@ export function RequirementDetailWorkspace({
 
         {/* Big Notion-style title */}
         <div className="flex flex-col gap-2 pt-2">
-          <textarea
-            aria-label={t("form.title")}
-            className={cn(
-              "w-full resize-none overflow-hidden border-0 bg-transparent p-0 text-4xl font-bold tracking-tight text-foreground outline-none",
-              "placeholder:text-muted-foreground/40",
-              "focus-visible:outline-none focus-visible:ring-0",
-              "disabled:cursor-not-allowed disabled:opacity-70",
-              "md:text-[2.5rem] md:leading-[1.15]",
-            )}
-            disabled={!canEditRequirement}
-            maxLength={200}
-            onChange={(event) => {
-              resizeTitleInput(event.currentTarget);
-              setForm((current) => ({
-                ...current,
-                title: event.target.value,
-              }));
-            }}
-            placeholder={titlePlaceholder}
-            ref={titleInputRef}
-            required
-            rows={1}
-            value={titleValue}
-          />
+          {isEditingRequirement ? (
+            <textarea
+              aria-label={t("form.title")}
+              className={cn(
+                "w-full resize-none overflow-hidden border-0 bg-transparent p-0 text-4xl font-bold tracking-tight text-foreground outline-none",
+                "placeholder:text-muted-foreground/40",
+                "focus-visible:outline-none focus-visible:ring-0",
+                "disabled:cursor-not-allowed disabled:opacity-70",
+                "md:text-[2.5rem] md:leading-[1.15]",
+              )}
+              disabled={!isEditingRequirement}
+              maxLength={200}
+              onChange={(event) => {
+                resizeTitleInput(event.currentTarget);
+                setForm((current) => ({
+                  ...current,
+                  title: event.target.value,
+                }));
+              }}
+              placeholder={titlePlaceholder}
+              ref={titleInputRef}
+              required
+              rows={1}
+              value={titleValue}
+            />
+          ) : (
+            <h1 className="break-words text-4xl font-bold tracking-tight text-foreground md:text-[2.5rem] md:leading-[1.15]">
+              {viewTitle}
+            </h1>
+          )}
 
           {/* Notion-style property strip */}
           <div className="flex flex-wrap items-center gap-x-4 gap-y-2 pt-1 text-xs">
@@ -830,78 +928,100 @@ export function RequirementDetailWorkspace({
               icon={<GitBranchIcon className="h-3.5 w-3.5" />}
               label={t("form.version")}
             >
-              <PropertySelect
-                ariaLabel={t("form.version")}
-                disabled={!canEditRequirement}
-                onChange={(value) =>
-                  setForm((current) => ({ ...current, versionId: value }))
-                }
-                placeholder={t("form.noVersion")}
-                value={form.versionId}
-                displayValue={versionLabel ?? null}
-                options={[
-                  { label: t("form.noVersion"), value: "" },
-                  ...versions.map((version) => ({
-                    label: version.name,
-                    value: version.id,
-                  })),
-                ]}
-              />
+              {isEditingRequirement ? (
+                <PropertySelect
+                  ariaLabel={t("form.version")}
+                  disabled={!isEditingRequirement}
+                  onChange={(value) =>
+                    setForm((current) => ({ ...current, versionId: value }))
+                  }
+                  placeholder={t("form.noVersion")}
+                  value={form.versionId}
+                  displayValue={versionLabel ?? null}
+                  options={[
+                    { label: t("form.noVersion"), value: "" },
+                    ...versions.map((version) => ({
+                      label: version.name,
+                      value: version.id,
+                    })),
+                  ]}
+                />
+              ) : (
+                <span className="text-foreground/80">
+                  {viewVersionLabel ?? t("list.noVersion")}
+                </span>
+              )}
             </PropertyItem>
 
             <PropertyItem
               icon={<User2 className="h-3.5 w-3.5" />}
               label={t("form.owner")}
             >
-              <PropertySelect
-                ariaLabel={t("form.owner")}
-                disabled={!canEditRequirement}
-                onChange={(value) =>
-                  setForm((current) => ({ ...current, ownerId: value }))
-                }
-                placeholder={t("form.noOwner")}
-                value={form.ownerId}
-                displayValue={ownerLabel ?? null}
-                options={[
-                  { label: t("form.noOwner"), value: "" },
-                  ...members.map((member) => ({
-                    label: formatMember(member),
-                    value: member.userId,
-                  })),
-                ]}
-              />
+              {isEditingRequirement ? (
+                <PropertySelect
+                  ariaLabel={t("form.owner")}
+                  disabled={!isEditingRequirement}
+                  onChange={(value) =>
+                    setForm((current) => ({ ...current, ownerId: value }))
+                  }
+                  placeholder={t("form.noOwner")}
+                  value={form.ownerId}
+                  displayValue={ownerLabel ?? null}
+                  options={[
+                    { label: t("form.noOwner"), value: "" },
+                    ...members.map((member) => ({
+                      label: formatMember(member),
+                      value: member.userId,
+                    })),
+                  ]}
+                />
+              ) : (
+                <span className="text-foreground/80">
+                  {viewOwnerLabel ?? t("list.noOwner")}
+                </span>
+              )}
             </PropertyItem>
 
             <PropertyItem
               icon={<Flag className="h-3.5 w-3.5" />}
               label={t("form.priority")}
             >
-              <PropertySelect
-                ariaLabel={t("form.priority")}
-                disabled={!canEditRequirement}
-                onChange={(value) =>
-                  setForm((current) => ({
-                    ...current,
-                    priority: value as Priority | "",
-                  }))
-                }
-                placeholder={t("form.noPriority")}
-                value={form.priority}
-                displayValue={
-                  form.priority ? (
-                    <Badge variant={PRIORITY_VARIANT[form.priority]}>
-                      {t(`priority.${form.priority}`)}
-                    </Badge>
-                  ) : null
-                }
-                options={[
-                  { label: t("form.noPriority"), value: "" },
-                  ...PRIORITIES.map((priority) => ({
-                    label: t(`priority.${priority}`),
-                    value: priority,
-                  })),
-                ]}
-              />
+              {isEditingRequirement ? (
+                <PropertySelect
+                  ariaLabel={t("form.priority")}
+                  disabled={!isEditingRequirement}
+                  onChange={(value) =>
+                    setForm((current) => ({
+                      ...current,
+                      priority: value as Priority | "",
+                    }))
+                  }
+                  placeholder={t("form.noPriority")}
+                  value={form.priority}
+                  displayValue={
+                    form.priority ? (
+                      <Badge variant={PRIORITY_VARIANT[form.priority]}>
+                        {t(`priority.${form.priority}`)}
+                      </Badge>
+                    ) : null
+                  }
+                  options={[
+                    { label: t("form.noPriority"), value: "" },
+                    ...PRIORITIES.map((priority) => ({
+                      label: t(`priority.${priority}`),
+                      value: priority,
+                    })),
+                  ]}
+                />
+              ) : requirement.priority ? (
+                <Badge variant={PRIORITY_VARIANT[requirement.priority]}>
+                  {t(`priority.${requirement.priority}`)}
+                </Badge>
+              ) : (
+                <span className="text-foreground/80">
+                  {t("list.noPriority")}
+                </span>
+              )}
             </PropertyItem>
 
             <PropertyItem
@@ -911,7 +1031,7 @@ export function RequirementDetailWorkspace({
               contentClassName="flex-1"
             >
               <ObjectTagAssignmentField
-                canEdit={canEditRequirement}
+                canEdit={isEditingRequirement}
                 className="w-full"
                 onTagsChange={(tags) =>
                   setRequirement((current) =>
@@ -956,58 +1076,70 @@ export function RequirementDetailWorkspace({
 
         {/* Summary as an inline textarea — soft hairline, no panel */}
         <div className="border-t border-border/60 pt-4">
-          <label className="block">
-            <span className="sr-only">{t("form.summary")}</span>
-            <textarea
-              className={cn(
-                "w-full resize-y border-0 bg-transparent p-0 text-base leading-relaxed text-foreground/90 outline-none",
-                "placeholder:text-muted-foreground/50",
-                "focus-visible:outline-none focus-visible:ring-0",
-                "disabled:cursor-not-allowed disabled:opacity-70",
-              )}
-              disabled={!canEditRequirement}
-              maxLength={2000}
-              onChange={(event) =>
-                setForm((current) => ({
-                  ...current,
-                  summary: event.target.value,
-                }))
-              }
-              placeholder={t("detail.summaryPlaceholder")}
-              rows={2}
-              value={form.summary}
-            />
-          </label>
+          {isEditingRequirement ? (
+            <label className="block">
+              <span className="sr-only">{t("form.summary")}</span>
+              <textarea
+                className={cn(
+                  "w-full resize-y border-0 bg-transparent p-0 text-base leading-relaxed text-foreground/90 outline-none",
+                  "placeholder:text-muted-foreground/50",
+                  "focus-visible:outline-none focus-visible:ring-0",
+                  "disabled:cursor-not-allowed disabled:opacity-70",
+                )}
+                disabled={!isEditingRequirement}
+                maxLength={2000}
+                onChange={(event) =>
+                  setForm((current) => ({
+                    ...current,
+                    summary: event.target.value,
+                  }))
+                }
+                placeholder={t("detail.summaryPlaceholder")}
+                rows={2}
+                value={form.summary}
+              />
+            </label>
+          ) : viewSummary ? (
+            <p className="text-base leading-relaxed text-foreground/90">
+              {viewSummary}
+            </p>
+          ) : null}
         </div>
 
         {/* Block-level editor — no card, no border around it */}
         <div className="pt-1">
-          <RequirementContentEditorSlot
-            attachmentCount={requirement.attachments?.length ?? 0}
-            canUploadImages={canEditRequirement && canUploadRequirementImages}
-            disabled={!canEditRequirement}
-            onAttachmentUploaded={(attachment) =>
-              setRequirement((current) =>
-                current
-                  ? {
-                      ...current,
-                      attachments: appendAttachmentRef(
-                        current.attachments,
-                        attachment,
-                      ),
-                    }
-                  : current,
-              )
-            }
-            onChange={(content) =>
-              setForm((current) => ({
-                ...current,
-                content,
-              }))
-            }
-            requirementId={requirement.id}
-            value={form.content}
-          />
+          {isEditingRequirement ? (
+            <RequirementContentEditorSlot
+              attachmentCount={requirement.attachments?.length ?? 0}
+              canUploadImages={
+                isEditingRequirement && canUploadRequirementImages
+              }
+              disabled={!isEditingRequirement}
+              onAttachmentUploaded={(attachment) =>
+                setRequirement((current) =>
+                  current
+                    ? {
+                        ...current,
+                        attachments: appendAttachmentRef(
+                          current.attachments,
+                          attachment,
+                        ),
+                      }
+                    : current,
+                )
+              }
+              onChange={(content) =>
+                setForm((current) => ({
+                  ...current,
+                  content,
+                }))
+              }
+              requirementId={requirement.id}
+              value={form.content}
+            />
+          ) : (
+            <RequirementContentReadView requirement={requirement} />
+          )}
         </div>
 
         {/* Related work items — minimal, flat section */}
@@ -1148,6 +1280,36 @@ function PropertyItem({
       </div>
     </div>
   );
+}
+
+function RequirementContentReadView({
+  requirement,
+}: {
+  requirement: Requirement;
+}) {
+  return (
+    <DocumentMarkdownViewer
+      className="mt-2"
+      markdown={getRequirementReadMarkdown(requirement)}
+      organizationId={requirement.organizationId}
+      spaceId={requirement.spaceId}
+    />
+  );
+}
+
+function getRequirementReadMarkdown(requirement: Requirement): string {
+  const content = requirement as {
+    contentFormat?: string;
+    contentMarkdown?: string;
+    contentMarkdownCache?: string;
+    contentText?: string;
+  };
+
+  if (content.contentFormat === "MARKDOWN") {
+    return content.contentMarkdown ?? content.contentText ?? "";
+  }
+
+  return content.contentMarkdownCache ?? content.contentText ?? "";
 }
 
 type PropertySelectOption = {
@@ -1497,6 +1659,12 @@ function optionalText(value: string): string | undefined {
   const trimmed = value.trim();
 
   return trimmed.length > 0 ? trimmed : undefined;
+}
+
+function normalizeDisplayText(value: string | undefined): string | undefined {
+  const trimmed = value?.trim();
+
+  return trimmed ? trimmed : undefined;
 }
 
 function isPlainRecord(value: unknown): value is Record<string, unknown> {
