@@ -284,14 +284,38 @@ function wantsJson(request: RequestWithContext): boolean {
 }
 
 function withDefaultResource(input: unknown, resource: string): unknown {
-  if (!isRecord(input) || input.resource !== undefined) {
+  if (!isRecord(input)) {
+    return input;
+  }
+
+  const normalizedResource = normalizeResource(input.resource, resource);
+
+  if (normalizedResource === input.resource) {
     return input;
   }
 
   return {
     ...input,
-    resource,
+    resource: normalizedResource,
   };
+}
+
+function normalizeResource(value: unknown, defaultResource: string): unknown {
+  if (value === undefined) {
+    return defaultResource;
+  }
+
+  if (!Array.isArray(value)) {
+    return value;
+  }
+
+  const [first, ...rest] = value;
+
+  if (typeof first === "string" && rest.every((item) => item === first)) {
+    return first;
+  }
+
+  return value;
 }
 
 function buildWebAuthorizeUrl(

@@ -174,6 +174,49 @@ describe("OAuthController", () => {
     expect(response.statusCode).toBe(HttpStatus.OK);
   });
 
+  it("folds repeated identical authorize resources from query parsing", async () => {
+    const { controller, oauth } = createSubject();
+    const response = new MockResponse();
+
+    await controller.authorize(
+      {
+        ...authorizeQuery(),
+        resource: [resource, resource],
+      },
+      request({ accept: "application/json", withSession: true }),
+      response,
+    );
+
+    expect(oauth.prepareAuthorization).toHaveBeenCalledWith(
+      authorizeQuery(),
+      userId,
+      expect.objectContaining({
+        headers: expect.objectContaining({ host: "localhost:3001" }),
+      }),
+    );
+    expect(response.statusCode).toBe(HttpStatus.OK);
+  });
+
+  it("rejects conflicting repeated authorize resources", async () => {
+    const { controller, oauth } = createSubject();
+    const response = new MockResponse();
+
+    await controller.authorize(
+      {
+        ...authorizeQuery(),
+        resource: [resource, "http://localhost:3001/api/v1/other-mcp"],
+      },
+      request({ accept: "application/json", withSession: true }),
+      response,
+    );
+
+    expect(oauth.prepareAuthorization).not.toHaveBeenCalled();
+    expect(response.statusCode).toBe(HttpStatus.BAD_REQUEST);
+    expect(response.body).toMatchObject({
+      error: "invalid_request",
+    });
+  });
+
   it("does not grant a code from an approval consent query parameter", async () => {
     const { controller, grant } = createSubject();
     const response = new MockResponse();
