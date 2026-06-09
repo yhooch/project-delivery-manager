@@ -1257,6 +1257,8 @@
       "remoteImage": "远程图片已降级为链接",
       "image": "图片",
       "openImage": "打开图片链接",
+      "mermaidLoading": "正在渲染图表",
+      "mermaidError": "图表渲染失败，已显示源码",
       "objectLookupFailed": "当前上下文无法解析该编号"
     },
     "sort": {

@@ -1257,6 +1257,8 @@
       "remoteImage": "Remote image downgraded to a link",
       "image": "Image",
       "openImage": "Open image link",
+      "mermaidLoading": "Rendering diagram",
+      "mermaidError": "Diagram rendering failed; source is shown",
       "objectLookupFailed": "This code cannot be resolved in the current context"
     },
     "sort": {

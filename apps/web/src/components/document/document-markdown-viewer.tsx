@@ -15,6 +15,7 @@ import {
 import { getObjectCodeLookupHref } from "../../lib/document-view-model";
 import { lookupObjectCode } from "../../lib/object-code-service";
 import { cn } from "../../lib/utils";
+import { DocumentMermaidDiagram } from "./document-mermaid-diagram";
 
 export type { MarkdownHeading };
 
@@ -150,6 +151,10 @@ export function DocumentMarkdownViewer({
         }
 
         if (block.kind === "code") {
+          if (isMermaidCodeBlock(block.language)) {
+            return <DocumentMermaidDiagram key={index} source={block.code} />;
+          }
+
           return (
             <pre
               key={index}
@@ -410,6 +415,10 @@ function isImageOnlyTokens(tokens: MarkdownInlineToken[]): boolean {
 
 function isAttachmentDownloadHref(href: string): boolean {
   return /^\/api\/v1\/attachments\/[^/]+\/download$/u.test(href);
+}
+
+function isMermaidCodeBlock(language: string | undefined): boolean {
+  return language?.trim().toLowerCase() === "mermaid";
 }
 
 function ObjectCodeButton({
