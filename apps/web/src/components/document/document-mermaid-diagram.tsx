@@ -15,6 +15,7 @@ type MermaidRenderState =
   | { status: "loading" }
   | { status: "rendered"; svg: string }
   | { status: "error" };
+type MermaidThemeMode = "dark" | "light";
 
 const MERMAID_MAX_SOURCE_LENGTH = 100_000;
 const MERMAID_SECURE_CONFIG_KEYS = [
@@ -25,6 +26,46 @@ const MERMAID_SECURE_CONFIG_KEYS = [
   "suppressErrorRendering",
   "maxEdges",
 ];
+const MERMAID_LIGHT_THEME = {
+  background: "#ffffff",
+  clusterBkg: "#f8fafc",
+  clusterBorder: "#cbd5e1",
+  edgeLabelBackground: "#ffffff",
+  fontFamily:
+    'Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
+  fontSize: "15px",
+  lineColor: "#64748b",
+  mainBkg: "#f8fafc",
+  nodeBorder: "#64748b",
+  primaryBorderColor: "#6366f1",
+  primaryColor: "#f8fafc",
+  primaryTextColor: "#0f172a",
+  secondaryBorderColor: "#94a3b8",
+  secondaryColor: "#eef2ff",
+  tertiaryBorderColor: "#cbd5e1",
+  tertiaryColor: "#ffffff",
+  textColor: "#0f172a",
+} as const;
+const MERMAID_DARK_THEME = {
+  background: "#0b1020",
+  clusterBkg: "#111827",
+  clusterBorder: "#475569",
+  edgeLabelBackground: "#0b1020",
+  fontFamily:
+    'Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
+  fontSize: "15px",
+  lineColor: "#94a3b8",
+  mainBkg: "#111827",
+  nodeBorder: "#64748b",
+  primaryBorderColor: "#818cf8",
+  primaryColor: "#111827",
+  primaryTextColor: "#f8fafc",
+  secondaryBorderColor: "#38bdf8",
+  secondaryColor: "#0f2437",
+  tertiaryBorderColor: "#64748b",
+  tertiaryColor: "#161f2f",
+  textColor: "#f8fafc",
+} as const;
 
 export function DocumentMermaidDiagram({
   className,
@@ -33,9 +74,10 @@ export function DocumentMermaidDiagram({
   const t = useTranslations("documents.markdown");
   const reactId = useId();
   const diagramSource = useMemo(() => source.trim(), [source]);
+  const themeMode = useMermaidThemeMode();
   const renderId = useMemo(
-    () => createMermaidRenderId(reactId, diagramSource),
-    [diagramSource, reactId],
+    () => createMermaidRenderId(reactId, diagramSource, themeMode),
+    [diagramSource, reactId, themeMode],
   );
   const [state, setState] = useState<MermaidRenderState>({ status: "loading" });
 
@@ -62,7 +104,8 @@ export function DocumentMermaidDiagram({
           securityLevel: "strict",
           startOnLoad: false,
           suppressErrorRendering: true,
-          theme: getMermaidTheme(),
+          theme: "base",
+          themeVariables: getMermaidThemeVariables(themeMode),
         });
 
         const { svg } = await mermaid.render(renderId, diagramSource);
@@ -82,14 +125,16 @@ export function DocumentMermaidDiagram({
     return () => {
       cancelled = true;
     };
-  }, [diagramSource, renderId]);
+  }, [diagramSource, renderId, themeMode]);
 
   if (state.status === "rendered") {
     return (
       <figure
         className={cn(
-          "my-4 w-full overflow-x-auto rounded-md border border-border bg-background p-3",
-          "[&_svg]:h-auto [&_svg]:max-w-none",
+          "my-4 flex w-full overflow-x-auto rounded-md border border-border bg-muted/20 p-4 shadow-sm",
+          "[&_svg]:h-auto [&_svg]:max-w-none [&_svg]:shrink-0",
+          "[&_svg_.edge-thickness-normal]:stroke-[1.6px]",
+          "[&_svg_.nodeLabel]:font-medium",
           className,
         )}
         data-testid="document-mermaid-diagram"
@@ -132,8 +177,12 @@ export function DocumentMermaidDiagram({
   );
 }
 
-function createMermaidRenderId(reactId: string, source: string): string {
-  return `document-mermaid-${reactId.replaceAll(/[^A-Za-z0-9_-]/gu, "")}-${hashString(source)}`;
+function createMermaidRenderId(
+  reactId: string,
+  source: string,
+  themeMode: MermaidThemeMode,
+): string {
+  return `document-mermaid-${themeMode}-${reactId.replaceAll(/[^A-Za-z0-9_-]/gu, "")}-${hashString(source)}`;
 }
 
 function hashString(value: string): string {
@@ -146,12 +195,43 @@ function hashString(value: string): string {
   return Math.abs(hash).toString(36);
 }
 
-function getMermaidTheme(): "dark" | "neutral" {
+function getMermaidThemeVariables(themeMode: MermaidThemeMode) {
+  return themeMode === "dark" ? MERMAID_DARK_THEME : MERMAID_LIGHT_THEME;
+}
+
+function getCurrentMermaidThemeMode(): MermaidThemeMode {
   if (typeof document === "undefined") {
-    return "neutral";
+    return "light";
   }
 
-  return document.documentElement.classList.contains("dark")
-    ? "dark"
-    : "neutral";
+  return document.documentElement.classList.contains("dark") ? "dark" : "light";
+}
+
+function useMermaidThemeMode(): MermaidThemeMode {
+  const [themeMode, setThemeMode] = useState<MermaidThemeMode>(
+    getCurrentMermaidThemeMode,
+  );
+
+  useEffect(() => {
+    if (typeof document === "undefined") {
+      return;
+    }
+
+    const updateThemeMode = () => {
+      setThemeMode(getCurrentMermaidThemeMode());
+    };
+    const observer = new MutationObserver(updateThemeMode);
+
+    updateThemeMode();
+    observer.observe(document.documentElement, {
+      attributeFilter: ["class"],
+      attributes: true,
+    });
+
+    return () => {
+      observer.disconnect();
+    };
+  }, []);
+
+  return themeMode;
 }

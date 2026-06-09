@@ -25,6 +25,7 @@ vi.mock("mermaid", () => ({
 
 describe("DocumentMarkdownViewer", () => {
   beforeEach(() => {
+    document.documentElement.classList.remove("dark");
     mermaidMock.initialize.mockClear();
     mermaidMock.render.mockReset();
     mermaidMock.render.mockResolvedValue({
@@ -86,6 +87,38 @@ describe("DocumentMarkdownViewer", () => {
       expect(mermaidMock.render).toHaveBeenCalledWith(
         expect.stringMatching(/^document-mermaid-/u),
         "graph TD\nA-->B",
+      ),
+    );
+  });
+
+  it("updates mermaid theme variables when the app theme changes", async () => {
+    render(
+      <DocumentMarkdownViewer markdown={"```mermaid\ngraph TD\nA-->B\n```"} />,
+    );
+
+    await waitFor(() =>
+      expect(mermaidMock.initialize).toHaveBeenCalledWith(
+        expect.objectContaining({
+          theme: "base",
+          themeVariables: expect.objectContaining({
+            primaryColor: "#f8fafc",
+            primaryTextColor: "#0f172a",
+          }),
+        }),
+      ),
+    );
+
+    document.documentElement.classList.add("dark");
+
+    await waitFor(() =>
+      expect(mermaidMock.initialize).toHaveBeenCalledWith(
+        expect.objectContaining({
+          theme: "base",
+          themeVariables: expect.objectContaining({
+            primaryColor: "#111827",
+            primaryTextColor: "#f8fafc",
+          }),
+        }),
       ),
     );
   });
