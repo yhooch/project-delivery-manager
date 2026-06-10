@@ -7,14 +7,14 @@ import type {
 import { ulid } from "ulid";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-const convertToMarkdownMock = vi.hoisted(() => vi.fn());
+const convertToHtmlMock = vi.hoisted(() => vi.fn());
 const imgElementMock = vi.hoisted(() =>
   vi.fn((converter: unknown) => converter),
 );
 
 vi.mock("mammoth", () => ({
   default: {
-    convertToMarkdown: convertToMarkdownMock,
+    convertToHtml: convertToHtmlMock,
     images: {
       imgElement: imgElementMock,
     },
@@ -44,10 +44,10 @@ const SECOND_DOCUMENT_ID = "01H00000000000000000000007";
 
 describe("DocumentService", () => {
   beforeEach(() => {
-    convertToMarkdownMock.mockReset();
-    convertToMarkdownMock.mockResolvedValue({
+    convertToHtmlMock.mockReset();
+    convertToHtmlMock.mockResolvedValue({
       messages: [],
-      value: "# Converted",
+      value: "<h1>Converted</h1>",
     });
     imgElementMock.mockClear();
   });
@@ -698,7 +698,7 @@ describe("DocumentService", () => {
   });
 
   it("uploads DOCX images as document attachments and writes download URLs", async () => {
-    convertToMarkdownMock.mockImplementation(
+    convertToHtmlMock.mockImplementation(
       async (
         _input: unknown,
         options?: {
@@ -712,7 +712,7 @@ describe("DocumentService", () => {
 
         return {
           messages: [],
-          value: `# Converted\n\n![Diagram](${image?.src ?? ""})`,
+          value: `<h1>Converted</h1><p><img alt="Diagram" src="${image?.src ?? ""}" /></p>`,
         };
       },
     );
@@ -742,6 +742,32 @@ describe("DocumentService", () => {
     );
   });
 
+  it("preserves DOCX tables as markdown tables", async () => {
+    convertToHtmlMock.mockResolvedValue({
+      messages: [],
+      value: [
+        "<h1>版本基本信息</h1>",
+        "<table>",
+        "<tr><td><p>项目</p></td><td><p>内容</p></td></tr>",
+        "<tr><td><p>版本号</p></td><td><p>SkyX-SS-AS-V2.0.0</p></td></tr>",
+        "<tr><td><p>发布日期</p></td><td><p>2026-05-15</p></td></tr>",
+        "</table>",
+      ].join(""),
+    });
+    const { documents, service } = createSubject({ role: "PM" });
+
+    await service.importDocx(ACTOR_ID, SPACE_ID, {}, docxUploadFile());
+
+    const createInput = (documents.create as ReturnType<typeof vi.fn>).mock
+      .calls[0]?.[0];
+
+    expect(createInput.contentMarkdown).toContain("| 项目 | 内容 |");
+    expect(createInput.contentMarkdown).toContain("| --- | --- |");
+    expect(createInput.contentMarkdown).toContain(
+      "| 版本号 | SkyX-SS-AS-V2.0.0 |",
+    );
+  });
+
   it("uses the DOCX cover title before the first heading as the document title", async () => {
     const { documents, service } = createSubject({ role: "PM" });
 
@@ -759,16 +785,70 @@ describe("DocumentService", () => {
       `),
     );
 
-    expect((documents.create as ReturnType<typeof vi.fn>).mock.calls[0]?.[0])
-      .toMatchObject({
-        title: "域见-天巡智控系统产品操作手册",
-      });
+    expect(
+      (documents.create as ReturnType<typeof vi.fn>).mock.calls[0]?.[0],
+    ).toMatchObject({
+      title: "域见-天巡智控系统产品操作手册",
+    });
+  });
+
+  it("uses styled DOCX cover title and strips generated table of contents", async () => {
+    convertToHtmlMock.mockResolvedValue({
+      messages: [],
+      value: [
+        "<p><strong>具身算法版本发布文档</strong></p>",
+        "<p><strong>V2.0.0</strong></p>",
+        "<p>目录</p>",
+        '<p><a href="#_Toc229762713">1. 版本基本信息 3</a></p>',
+        '<p><a href="#_Toc229762714">2. 版本概述 3</a></p>',
+        '<h1><a id="_Toc229762713"></a>版本基本信息</h1>',
+        "<p>正文</p>",
+      ].join(""),
+    });
+    const { documents, service } = createSubject({ role: "PM" });
+
+    await service.importDocx(
+      ACTOR_ID,
+      SPACE_ID,
+      {},
+      docxUploadFileWithDocumentXml(
+        `
+          <w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+            <w:body>
+              <w:p><w:pPr><w:pStyle w:val="ab"/></w:pPr><w:r><w:t>具身算法版本发布文档</w:t></w:r></w:p>
+              <w:p><w:pPr><w:pStyle w:val="ab"/></w:pPr><w:r><w:t>V2.0.0</w:t></w:r></w:p>
+              <w:p><w:r><w:t>目录</w:t></w:r></w:p>
+              <w:p><w:pPr><w:pStyle w:val="10"/></w:pPr><w:r><w:t>1.版本基本信息3</w:t></w:r></w:p>
+              <w:p><w:pPr><w:pStyle w:val="1"/></w:pPr><w:r><w:t>版本基本信息</w:t></w:r></w:p>
+            </w:body>
+          </w:document>
+        `,
+        `
+          <w:styles xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+            <w:style w:type="paragraph" w:styleId="ab"><w:name w:val="Normal (Web)"/></w:style>
+            <w:style w:type="paragraph" w:styleId="10"><w:name w:val="toc 1"/></w:style>
+            <w:style w:type="paragraph" w:styleId="1"><w:name w:val="heading 1"/><w:pPr><w:outlineLvl w:val="0"/></w:pPr></w:style>
+          </w:styles>
+        `,
+      ),
+    );
+
+    const createInput = (documents.create as ReturnType<typeof vi.fn>).mock
+      .calls[0]?.[0];
+
+    expect(createInput).toMatchObject({
+      title: "具身算法版本发布文档",
+    });
+    expect(createInput.contentMarkdown).not.toContain("目录");
+    expect(createInput.contentMarkdown).not.toContain("#_Toc229762713");
+    expect(createInput.contentMarkdown).toContain("# 版本基本信息");
   });
 
   it("promotes DOCX outline-only paragraphs into markdown subheadings", async () => {
-    convertToMarkdownMock.mockResolvedValue({
+    convertToHtmlMock.mockResolvedValue({
       messages: [],
-      value: "# 低空警务\n\n## 机场列表\n\n1. 设备小窗\n\n正文",
+      value:
+        "<h1>低空警务</h1><h2>机场列表</h2><ol><li>设备小窗</li></ol><p>正文</p>",
     });
     const { documents, service } = createSubject({ role: "PM" });
 
@@ -797,7 +877,7 @@ describe("DocumentService", () => {
 
   it("does not create a document or store an object when DOCX conversion times out", async () => {
     vi.useFakeTimers();
-    convertToMarkdownMock.mockReturnValue(new Promise(() => undefined));
+    convertToHtmlMock.mockReturnValue(new Promise(() => undefined));
     const { documents, objectStorage, service } = createSubject({ role: "PM" });
     const importPromise = service.importDocx(
       ACTOR_ID,
@@ -1138,11 +1218,23 @@ function docxUploadFile() {
   };
 }
 
-function docxUploadFileWithDocumentXml(documentXml: string) {
-  const buffer = createZipBuffer([
+function docxUploadFileWithDocumentXml(
+  documentXml: string,
+  stylesXml?: string,
+) {
+  const entries = [
     { fileName: "[Content_Types].xml", content: Buffer.from("types") },
     { fileName: "word/document.xml", content: Buffer.from(documentXml) },
-  ]);
+  ];
+
+  if (stylesXml) {
+    entries.push({
+      fileName: "word/styles.xml",
+      content: Buffer.from(stylesXml),
+    });
+  }
+
+  const buffer = createZipBuffer(entries);
 
   return {
     buffer,

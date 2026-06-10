@@ -86,7 +86,10 @@ type UploadedFileInput = {
 
 export const documentImportMulterOptions = {
   limits: {
-    fileSize: DocumentMaxImportSizeBytes,
+    // Busboy reports the file-size limit as soon as the threshold is reached.
+    // Keep the middleware threshold one byte above the business limit; the
+    // document service still rejects files larger than DocumentMaxImportSizeBytes.
+    fileSize: DocumentMaxImportSizeBytes + 1,
     files: 1,
   },
 };

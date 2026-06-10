@@ -1,7 +1,4 @@
-import {
-  BadRequestException,
-  PayloadTooLargeException,
-} from "@nestjs/common";
+import { BadRequestException, PayloadTooLargeException } from "@nestjs/common";
 import { DocumentMaxImportSizeBytes } from "@project-delivery/shared";
 import { describe, expect, it } from "vitest";
 
@@ -15,7 +12,7 @@ describe("DocumentController upload safeguards", () => {
   it("configures multer file size and file count limits for imports", () => {
     expect(documentImportMulterOptions).toEqual({
       limits: {
-        fileSize: DocumentMaxImportSizeBytes,
+        fileSize: DocumentMaxImportSizeBytes + 1,
         files: 1,
       },
     });

@@ -117,7 +117,7 @@ type DocumentActorContext = {
   mcpClientId?: string;
 };
 
-type ConvertToMarkdown = (
+type ConvertToHtml = (
   input: { buffer: Buffer },
   options?: {
     convertImage?: unknown;
@@ -1128,32 +1128,34 @@ export class DocumentService {
     try {
       assertSafeDocxZip(file);
       const docxHints = extractDocxImportHints(file);
-      const convertToMarkdown = (
-        mammoth as unknown as { convertToMarkdown: ConvertToMarkdown }
-      ).convertToMarkdown;
+      const convertToHtml = (
+        mammoth as unknown as { convertToHtml: ConvertToHtml }
+      ).convertToHtml;
       const result = await withTimeout(
-        convertToMarkdown(
+        convertToHtml(
           { buffer: file.buffer },
           {
-            convertImage: mammoth.images.imgElement(async (image: MammothImage) => {
-              imageOrdinal += 1;
-              const attachment = await this.uploadDocxInlineImage({
-                documentId,
-                image,
-                ordinal: imageOrdinal,
-              });
+            convertImage: mammoth.images.imgElement(
+              async (image: MammothImage) => {
+                imageOrdinal += 1;
+                const attachment = await this.uploadDocxInlineImage({
+                  documentId,
+                  image,
+                  ordinal: imageOrdinal,
+                });
 
-              if (!attachment) {
-                return { src: "image omitted" };
-              }
+                if (!attachment) {
+                  return { src: "image omitted" };
+                }
 
-              inlineAttachments.push(attachment);
-              uploadedObjectKeys.push(attachment.fileKey);
+                inlineAttachments.push(attachment);
+                uploadedObjectKeys.push(attachment.fileKey);
 
-              return {
-                src: createAttachmentDownloadPath(attachment.id),
-              };
-            }),
+                return {
+                  src: createAttachmentDownloadPath(attachment.id),
+                };
+              },
+            ),
             externalFileAccess: false,
           },
         ),
@@ -1168,7 +1170,9 @@ export class DocumentService {
       }
 
       const markdown = normalizeConvertedDocxMarkdown(
-        stripBase64Images(result.value).trim(),
+        stripGeneratedDocxTableOfContents(
+          convertMammothHtmlToMarkdown(stripBase64Images(result.value)),
+        ).trim(),
         docxHints,
       );
       assertMarkdownSize(markdown);
@@ -1879,6 +1883,42 @@ type DocxImportHints = {
   title?: string;
 };
 
+type DocxStyleInfo = {
+  name?: string;
+  outlineLevel?: number;
+};
+
+type HtmlNode = HtmlElementNode | HtmlTextNode;
+
+type HtmlElementNode = {
+  attrs: Record<string, string>;
+  children: HtmlNode[];
+  tagName: string;
+  type: "element";
+};
+
+type HtmlTextNode = {
+  type: "text";
+  value: string;
+};
+
+const htmlBlockTags = new Set([
+  "blockquote",
+  "div",
+  "h1",
+  "h2",
+  "h3",
+  "h4",
+  "h5",
+  "h6",
+  "hr",
+  "ol",
+  "p",
+  "table",
+  "ul",
+]);
+const htmlVoidTags = new Set(["br", "hr", "img", "input", "meta"]);
+
 function extractDocxImportHints(file: UploadedDocumentFile): DocxImportHints {
   const hints: DocxImportHints = { outlineHeadingTexts: new Set() };
   const documentXml = readDocxUtf8Entry(file, "word/document.xml");
@@ -1887,6 +1927,7 @@ function extractDocxImportHints(file: UploadedDocumentFile): DocxImportHints {
     return hints;
   }
 
+  const styles = extractDocxStyleInfo(file);
   const paragraphPattern = /<w:p\b[\s\S]*?<\/w:p>/gu;
   let match: RegExpExecArray | null;
   let seenStructuralHeading = false;
@@ -1900,32 +1941,35 @@ function extractDocxImportHints(file: UploadedDocumentFile): DocxImportHints {
     }
 
     const styleId = extractWordXmlAttribute(paragraphXml, "w:pStyle", "w:val");
-    const outlineLevel = Number(
-      extractWordXmlAttribute(paragraphXml, "w:outlineLvl", "w:val") ?? NaN,
+    const styleInfo = styleId ? styles.get(styleId) : undefined;
+    const directOutlineLevel = parseDocxOutlineLevel(
+      extractWordXmlAttribute(paragraphXml, "w:outlineLvl", "w:val"),
     );
-    const hasParagraphStyle = Boolean(styleId);
+    const outlineLevel = directOutlineLevel ?? styleInfo?.outlineLevel;
+    const isTocStyle = isDocxTocStyle(styleId, styleInfo);
+    const isStructuralHeading = isDocxStructuralHeading(
+      styleId,
+      styleInfo,
+      outlineLevel,
+    );
 
     if (
       hints.title === undefined &&
       !seenStructuralHeading &&
-      !hasParagraphStyle &&
-      Number.isNaN(outlineLevel) &&
+      !isTocStyle &&
       isLikelyDocxCoverTitle(text)
     ) {
       hints.title = text;
     }
 
     if (
-      !hasParagraphStyle &&
-      Number.isInteger(outlineLevel) &&
-      outlineLevel >= 0 &&
-      outlineLevel <= 5 &&
+      isSupportedDocxOutlineLevel(outlineLevel) &&
       isLikelyDocxOutlineHeading(text)
     ) {
       hints.outlineHeadingTexts.add(normalizeDocxHeadingComparisonText(text));
     }
 
-    if (hasParagraphStyle || Number.isInteger(outlineLevel)) {
+    if (isStructuralHeading) {
       seenStructuralHeading = true;
     }
   }
@@ -1971,6 +2015,353 @@ function normalizeConvertedDocxMarkdown(
     .join("\n");
 }
 
+function convertMammothHtmlToMarkdown(html: string): string {
+  const root = parseHtmlFragment(html);
+
+  return renderHtmlBlockChildren(root.children)
+    .replace(/[ \t]+\n/gu, "\n")
+    .replace(/\n{3,}/gu, "\n\n")
+    .trim();
+}
+
+function parseHtmlFragment(html: string): HtmlElementNode {
+  const root: HtmlElementNode = {
+    attrs: {},
+    children: [],
+    tagName: "root",
+    type: "element",
+  };
+  const stack: HtmlElementNode[] = [root];
+  const tagPattern =
+    /<!--[\s\S]*?-->|<![^>]*>|<\/?([a-zA-Z][a-zA-Z0-9:-]*)([^>]*)>/gu;
+  let cursor = 0;
+  let match: RegExpExecArray | null;
+
+  while ((match = tagPattern.exec(html))) {
+    if (match.index > cursor) {
+      stack.at(-1)?.children.push({
+        type: "text",
+        value: html.slice(cursor, match.index),
+      });
+    }
+    cursor = match.index + match[0].length;
+
+    const rawTag = match[0];
+    const tagName = match[1]?.toLowerCase();
+
+    if (!tagName || rawTag.startsWith("<!")) {
+      continue;
+    }
+
+    if (rawTag.startsWith("</")) {
+      const openIndex = findOpenHtmlElementIndex(stack, tagName);
+
+      if (openIndex > 0) {
+        stack.length = openIndex;
+      }
+      continue;
+    }
+
+    const node: HtmlElementNode = {
+      attrs: parseHtmlAttributes(match[2] ?? ""),
+      children: [],
+      tagName,
+      type: "element",
+    };
+    stack.at(-1)?.children.push(node);
+
+    if (!htmlVoidTags.has(tagName) && !/\/\s*$/u.test(match[2] ?? "")) {
+      stack.push(node);
+    }
+  }
+
+  if (cursor < html.length) {
+    stack.at(-1)?.children.push({
+      type: "text",
+      value: html.slice(cursor),
+    });
+  }
+
+  return root;
+}
+
+function parseHtmlAttributes(value: string): Record<string, string> {
+  const attrs: Record<string, string> = {};
+  const attributePattern =
+    /([a-zA-Z_:][\w:.-]*)(?:\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s"'>/]+)))?/gu;
+  let match: RegExpExecArray | null;
+
+  while ((match = attributePattern.exec(value))) {
+    const name = match[1]?.toLowerCase();
+
+    if (!name) {
+      continue;
+    }
+    attrs[name] = decodeHtmlText(match[2] ?? match[3] ?? match[4] ?? "");
+  }
+
+  return attrs;
+}
+
+function findOpenHtmlElementIndex(
+  stack: HtmlElementNode[],
+  tagName: string,
+): number {
+  for (let index = stack.length - 1; index >= 0; index -= 1) {
+    if (stack[index]?.tagName === tagName) {
+      return index;
+    }
+  }
+
+  return -1;
+}
+
+function renderHtmlBlockChildren(children: HtmlNode[]): string {
+  return children
+    .map(renderHtmlBlock)
+    .map((block) => block.trim())
+    .filter(Boolean)
+    .join("\n\n");
+}
+
+function renderHtmlBlock(node: HtmlNode): string {
+  if (node.type === "text") {
+    return renderHtmlText(node.value).trim();
+  }
+
+  if (/^h[1-6]$/u.test(node.tagName)) {
+    const level = Number(node.tagName.slice(1));
+    const text = renderHtmlInlineChildren(node.children);
+
+    return text ? `${"#".repeat(level)} ${text}` : "";
+  }
+
+  switch (node.tagName) {
+    case "blockquote": {
+      return renderHtmlBlockChildren(node.children)
+        .split("\n")
+        .map((line) => `> ${line}`)
+        .join("\n");
+    }
+    case "br":
+      return "";
+    case "hr":
+      return "---";
+    case "ol":
+    case "ul":
+      return renderHtmlList(node);
+    case "p":
+      return renderHtmlInlineChildren(node.children);
+    case "table":
+      return renderHtmlTable(node);
+    default:
+      if (node.children.some(isHtmlBlockElement)) {
+        return renderHtmlBlockChildren(node.children);
+      }
+
+      return renderHtmlInline(node).trim();
+  }
+}
+
+function renderHtmlInlineChildren(children: HtmlNode[]): string {
+  return children
+    .map(renderHtmlInline)
+    .join("")
+    .replace(/[ \t\r\n]+/gu, " ")
+    .trim();
+}
+
+function renderHtmlInline(node: HtmlNode): string {
+  if (node.type === "text") {
+    return renderHtmlText(node.value);
+  }
+
+  switch (node.tagName) {
+    case "a": {
+      const text = renderHtmlInlineChildren(node.children);
+      const href = node.attrs.href?.trim();
+
+      if (!text) {
+        return "";
+      }
+
+      return href ? `[${text}](${href})` : text;
+    }
+    case "br":
+      return "\n";
+    case "code": {
+      const text = renderHtmlInlineChildren(node.children);
+
+      return text ? `\`${text.replace(/`/gu, "'")}\`` : "";
+    }
+    case "em":
+    case "i": {
+      const text = renderHtmlInlineChildren(node.children);
+
+      return text ? `_${text}_` : "";
+    }
+    case "img": {
+      const src = node.attrs.src?.trim();
+      const alt = node.attrs.alt?.trim() ?? "image";
+
+      return src ? `![${alt}](${src})` : "[image omitted]";
+    }
+    case "strong":
+    case "b": {
+      const text = renderHtmlInlineChildren(node.children);
+
+      return text ? `**${text}**` : "";
+    }
+    default:
+      return renderHtmlInlineChildren(node.children);
+  }
+}
+
+function renderHtmlList(node: HtmlElementNode, depth = 0): string {
+  const ordered = node.tagName === "ol";
+  const items = node.children.filter(
+    (child): child is HtmlElementNode =>
+      child.type === "element" && child.tagName === "li",
+  );
+
+  return items
+    .map((item, index) => {
+      const nestedLists = item.children.filter(
+        (child): child is HtmlElementNode =>
+          child.type === "element" &&
+          (child.tagName === "ol" || child.tagName === "ul"),
+      );
+      const mainChildren = item.children.filter(
+        (child) =>
+          !(
+            child.type === "element" &&
+            (child.tagName === "ol" || child.tagName === "ul")
+          ),
+      );
+      const marker = ordered ? `${index + 1}.` : "-";
+      const indent = "  ".repeat(depth);
+      const text = renderHtmlInlineChildren(mainChildren);
+      const nested = nestedLists
+        .map((list) => renderHtmlList(list, depth + 1))
+        .filter(Boolean)
+        .join("\n");
+      const line = `${indent}${marker} ${text}`.trimEnd();
+
+      return nested ? `${line}\n${nested}` : line;
+    })
+    .join("\n");
+}
+
+function renderHtmlTable(node: HtmlElementNode): string {
+  const rows = collectHtmlTableRows(node)
+    .map((row) =>
+      row.children
+        .filter(
+          (child): child is HtmlElementNode =>
+            child.type === "element" &&
+            (child.tagName === "td" || child.tagName === "th"),
+        )
+        .map(renderHtmlTableCell),
+    )
+    .filter((row) => row.some((cell) => cell.trim()));
+
+  while (rows.at(-1)?.every((cell) => !cell.trim())) {
+    rows.pop();
+  }
+
+  if (rows.length === 0) {
+    return "";
+  }
+
+  const columnCount = Math.max(...rows.map((row) => row.length));
+  const normalizedRows = rows.map((row) =>
+    Array.from({ length: columnCount }, (_, index) => row[index] ?? ""),
+  );
+  const [header = [], ...bodyRows] = normalizedRows;
+  const delimiter = Array.from({ length: columnCount }, () => "---");
+
+  return [header, delimiter, ...bodyRows]
+    .map(renderMarkdownTableRow)
+    .join("\n");
+}
+
+function collectHtmlTableRows(node: HtmlElementNode): HtmlElementNode[] {
+  if (node.tagName === "tr") {
+    return [node];
+  }
+
+  return node.children.flatMap((child) =>
+    child.type === "element" ? collectHtmlTableRows(child) : [],
+  );
+}
+
+function renderHtmlTableCell(node: HtmlElementNode): string {
+  const blockContent = renderHtmlBlockChildren(node.children);
+  const inlineContent = blockContent || renderHtmlInlineChildren(node.children);
+
+  return inlineContent
+    .replace(/[ \t\r\n]+/gu, " ")
+    .replace(/\|/gu, "｜")
+    .trim();
+}
+
+function renderMarkdownTableRow(cells: string[]): string {
+  return `| ${cells.map((cell) => cell || " ").join(" | ")} |`;
+}
+
+function stripGeneratedDocxTableOfContents(markdown: string): string {
+  const lines = markdown.replace(/\r\n?/gu, "\n").split("\n");
+  const firstHeadingIndex = lines.findIndex((line) =>
+    /^#{1,6}\s+/u.test(line.trim()),
+  );
+  const searchEnd = firstHeadingIndex >= 0 ? firstHeadingIndex : lines.length;
+  const tocIndex = lines.findIndex(
+    (line, index) => index < searchEnd && line.trim() === "目录",
+  );
+
+  if (tocIndex < 0) {
+    return markdown;
+  }
+
+  let cursor = tocIndex + 1;
+  let tocLinkCount = 0;
+
+  while (cursor < searchEnd) {
+    const line = lines[cursor]?.trim() ?? "";
+
+    if (!line) {
+      cursor += 1;
+      continue;
+    }
+    if (!isGeneratedDocxTocLink(line)) {
+      break;
+    }
+    tocLinkCount += 1;
+    cursor += 1;
+  }
+
+  if (tocLinkCount < 2) {
+    return markdown;
+  }
+
+  return [...lines.slice(0, tocIndex), ...lines.slice(searchEnd)]
+    .join("\n")
+    .replace(/\n{3,}/gu, "\n\n")
+    .trim();
+}
+
+function isGeneratedDocxTocLink(line: string): boolean {
+  return /^\[[\s\S]+\]\(#_Toc\d+\)$/u.test(line);
+}
+
+function isHtmlBlockElement(node: HtmlNode): boolean {
+  return node.type === "element" && htmlBlockTags.has(node.tagName);
+}
+
+function renderHtmlText(value: string): string {
+  return decodeHtmlText(value).replace(/\s+/gu, " ");
+}
+
 function extractDocxParagraphText(paragraphXml: string): string {
   const textRuns: string[] = [];
   const textPattern = /<w:t\b[^>]*>([\s\S]*?)<\/w:t>/gu;
@@ -1998,12 +2389,101 @@ function extractWordXmlAttribute(
     /[.*+?^${}()|[\]\\]/gu,
     "\\$&",
   );
-  const attribute = new RegExp(
-    `${escapedAttributeName}="([^"]+)"`,
-    "u",
-  ).exec(tag);
+  const attribute = new RegExp(`${escapedAttributeName}="([^"]+)"`, "u").exec(
+    tag,
+  );
 
   return attribute?.[1];
+}
+
+function extractDocxStyleInfo(
+  file: UploadedDocumentFile,
+): Map<string, DocxStyleInfo> {
+  const styles = new Map<string, DocxStyleInfo>();
+  const stylesXml = readDocxUtf8Entry(file, "word/styles.xml");
+
+  if (!stylesXml) {
+    return styles;
+  }
+
+  const stylePattern = /<w:style\b[\s\S]*?<\/w:style>/gu;
+  let match: RegExpExecArray | null;
+
+  while ((match = stylePattern.exec(stylesXml))) {
+    const styleXml = match[0];
+    const styleId = /w:styleId="([^"]+)"/u.exec(styleXml)?.[1];
+
+    if (!styleId) {
+      continue;
+    }
+
+    const name = extractWordXmlAttribute(styleXml, "w:name", "w:val");
+    const outlineLevel = parseDocxOutlineLevel(
+      extractWordXmlAttribute(styleXml, "w:outlineLvl", "w:val"),
+    );
+
+    styles.set(styleId, {
+      name: name ? decodeXmlText(name) : undefined,
+      outlineLevel,
+    });
+  }
+
+  return styles;
+}
+
+function parseDocxOutlineLevel(value: string | undefined): number | undefined {
+  if (value === undefined) {
+    return undefined;
+  }
+
+  const parsed = Number(value);
+
+  return Number.isInteger(parsed) ? parsed : undefined;
+}
+
+function isDocxStructuralHeading(
+  styleId: string | undefined,
+  styleInfo: DocxStyleInfo | undefined,
+  outlineLevel: number | undefined,
+): boolean {
+  const styleName = styleInfo?.name?.trim().toLowerCase();
+
+  return (
+    isSupportedDocxOutlineLevel(outlineLevel) ||
+    Boolean(styleId && /^[1-6]$/u.test(styleId)) ||
+    Boolean(styleName && /^heading\s+[1-6]$/u.test(styleName))
+  );
+}
+
+function isSupportedDocxOutlineLevel(
+  value: number | undefined,
+): value is number {
+  return (
+    value !== undefined && Number.isInteger(value) && value >= 0 && value <= 5
+  );
+}
+
+function isDocxTocStyle(
+  styleId: string | undefined,
+  styleInfo: DocxStyleInfo | undefined,
+): boolean {
+  const styleName = styleInfo?.name?.trim().toLowerCase();
+
+  return (
+    Boolean(styleName && /^toc\s+\d+$/u.test(styleName)) ||
+    Boolean(styleId && /^(?:toc)?[1-9]0$/iu.test(styleId))
+  );
+}
+
+function decodeHtmlText(value: string): string {
+  return decodeXmlText(value)
+    .replace(/&nbsp;/giu, " ")
+    .replace(/&#(\d+);/gu, (_, codePoint: string) =>
+      String.fromCodePoint(Number(codePoint)),
+    )
+    .replace(/&#x([a-f0-9]+);/giu, (_, codePoint: string) =>
+      String.fromCodePoint(Number.parseInt(codePoint, 16)),
+    );
 }
 
 function decodeXmlText(value: string): string {
@@ -2016,11 +2496,7 @@ function decodeXmlText(value: string): string {
 }
 
 function isLikelyDocxCoverTitle(text: string): boolean {
-  return (
-    text.length > 0 &&
-    text.length <= 80 &&
-    !/[。；;：:]$/u.test(text)
-  );
+  return text.length > 0 && text.length <= 80 && !/[。；;：:]$/u.test(text);
 }
 
 function isLikelyDocxOutlineHeading(text: string): boolean {
