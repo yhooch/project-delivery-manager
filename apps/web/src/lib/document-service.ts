@@ -1,5 +1,6 @@
 import type {
   DocumentContentFormat,
+  DocumentFolderPathItem,
   DocumentKind,
   DocumentLinkTargetType as SharedDocumentLinkTargetType,
   Priority,
@@ -56,6 +57,7 @@ export type DocumentSummary = {
   createdVia?: DocumentActorType;
   displayCode?: string | null;
   folderId?: string | null;
+  folderPath?: DocumentFolderPathItem[];
   id: string;
   kind: DocumentKind;
   lastEditedAt: string;
@@ -320,6 +322,13 @@ const documentFolderListSchema = z
   ])
   .transform((folders) => folders);
 
+const documentFolderPathItemSchema = z
+  .object({
+    id: z.string(),
+    name: z.string().catch(""),
+  })
+  .passthrough();
+
 const documentSummaryBaseSchema = z
   .object({
     archivedAt: z.string().nullish(),
@@ -336,6 +345,7 @@ const documentSummaryBaseSchema = z
     createdVia: documentActorSchema.optional(),
     displayCode: z.string().nullish(),
     folderId: z.string().nullish(),
+    folderPath: z.array(documentFolderPathItemSchema).optional(),
     id: z.string(),
     kind: documentKindSchema.default("GENERAL"),
     lastEditedAt: z.string(),

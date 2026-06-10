@@ -338,12 +338,18 @@ function DocumentDragDropLayer({
 
   const handleDocumentDrop = useCallback(
     async (drag: DocumentDragData, drop: DocumentDropDataPayload) => {
-      if (!spaceId || drop.type !== "document-folder-drop") {
+      if (
+        !spaceId ||
+        (drop.type !== "document-folder-drop" &&
+          drop.type !== "document-folder-root")
+      ) {
         return;
       }
 
+      const targetFolderId =
+        drop.type === "document-folder-root" ? null : drop.folderId;
       const documentsToMove = drag.documents.filter(
-        (document) => document.folderId !== drop.folderId,
+        (document) => (document.folderId ?? null) !== targetFolderId,
       );
       if (documentsToMove.length === 0) {
         return;
@@ -351,7 +357,7 @@ function DocumentDragDropLayer({
 
       await moveDocumentsToFolder({
         documentIds: documentsToMove.map((document) => document.id),
-        folderId: drop.folderId,
+        folderId: targetFolderId,
         organizationId,
         spaceId,
       });

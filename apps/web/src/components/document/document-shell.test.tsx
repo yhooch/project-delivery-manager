@@ -1,6 +1,12 @@
 // @vitest-environment jsdom
 
-import { fireEvent, render, screen, within } from "@testing-library/react";
+import {
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from "@testing-library/react";
 import type { ReactNode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -8,6 +14,45 @@ const { pathnameMock, routerPushMock, searchParamsMock } = vi.hoisted(() => ({
   pathnameMock: { current: "/documents" },
   routerPushMock: vi.fn(),
   searchParamsMock: { current: new URLSearchParams() },
+}));
+const { dndHandlersMock } = vi.hoisted(() => ({
+  dndHandlersMock: {
+    current: null as null | {
+      onDragEnd?: (event: unknown) => void;
+      onDragStart?: (event: unknown) => void;
+    },
+  },
+}));
+const {
+  moveDocumentFolderMock,
+  moveDocumentsToFolderMock,
+  reorderDocumentFoldersMock,
+} = vi.hoisted(() => ({
+  moveDocumentFolderMock: vi.fn(),
+  moveDocumentsToFolderMock: vi.fn(),
+  reorderDocumentFoldersMock: vi.fn(),
+}));
+
+vi.mock("@dnd-kit/core", () => ({
+  DndContext: ({
+    children,
+    onDragEnd,
+    onDragStart,
+  }: {
+    children: ReactNode;
+    onDragEnd?: (event: unknown) => void;
+    onDragStart?: (event: unknown) => void;
+  }) => {
+    dndHandlersMock.current = { onDragEnd, onDragStart };
+    return <div data-testid="dnd-context">{children}</div>;
+  },
+  DragOverlay: ({ children }: { children: ReactNode }) => (
+    <div data-testid="drag-overlay">{children}</div>
+  ),
+  PointerSensor: vi.fn(),
+  pointerWithin: vi.fn(),
+  useSensor: vi.fn((sensor, options) => ({ options, sensor })),
+  useSensors: vi.fn((...sensors) => sensors),
 }));
 
 vi.mock("../../i18n/routing", () => ({
@@ -67,6 +112,18 @@ vi.mock("../providers/session-provider", () => ({
 vi.mock("../../lib/realtime", () => ({
   RealtimeProvider: ({ children }: { children: ReactNode }) => <>{children}</>,
 }));
+
+vi.mock("../../lib/document-service", async () => {
+  const actual = await vi.importActual<
+    typeof import("../../lib/document-service")
+  >("../../lib/document-service");
+  return {
+    ...actual,
+    moveDocumentFolder: moveDocumentFolderMock,
+    moveDocumentsToFolder: moveDocumentsToFolderMock,
+    reorderDocumentFolders: reorderDocumentFoldersMock,
+  };
+});
 
 vi.mock("../shell/command-palette", () => ({
   CommandPalette: () => <div data-testid="command-palette" />,
@@ -131,6 +188,13 @@ beforeEach(() => {
   pathnameMock.current = "/documents";
   searchParamsMock.current = new URLSearchParams();
   routerPushMock.mockReset();
+  dndHandlersMock.current = null;
+  moveDocumentFolderMock.mockReset();
+  moveDocumentsToFolderMock.mockReset();
+  reorderDocumentFoldersMock.mockReset();
+  moveDocumentFolderMock.mockResolvedValue(undefined);
+  moveDocumentsToFolderMock.mockResolvedValue([]);
+  reorderDocumentFoldersMock.mockResolvedValue(undefined);
   window.localStorage.clear();
 });
 
@@ -186,6 +250,46 @@ describe("DocumentShell", () => {
     expect(screen.getByTestId("document-paste-dialog")).toHaveAttribute(
       "data-open",
       "true",
+    );
+  });
+
+  it("moves dragged documents to the root directory", async () => {
+    renderShell();
+
+    dndHandlersMock.current?.onDragEnd?.({
+      active: {
+        data: {
+          current: {
+            documents: [
+              {
+                folderId: "FLD_01",
+                id: "DOC_01",
+                revision: 1,
+                title: "Launch plan",
+              },
+            ],
+            type: "document",
+          },
+        },
+      },
+      over: {
+        data: {
+          current: {
+            siblingIds: [],
+            type: "document-folder-root",
+          },
+        },
+      },
+    });
+
+    await waitFor(() =>
+      expect(moveDocumentsToFolderMock).toHaveBeenCalledWith(
+        expect.objectContaining({
+          documentIds: ["DOC_01"],
+          folderId: null,
+          spaceId: "SPC_01",
+        }),
+      ),
     );
   });
 });

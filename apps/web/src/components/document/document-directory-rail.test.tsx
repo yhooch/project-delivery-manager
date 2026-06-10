@@ -165,6 +165,9 @@ describe("DocumentDirectoryRail", () => {
     expect(
       screen.getByText("documents.directory.views.all").closest("button"),
     ).not.toHaveAttribute("data-document-drop-target");
+    expect(
+      await screen.findByText("documents.directory.rootFolder"),
+    ).toBeVisible();
 
     expect(
       Array.from(
@@ -183,6 +186,11 @@ describe("DocumentDirectoryRail", () => {
       "/documents?directoryView=createdByMe",
     );
 
+    fireEvent.click(screen.getByText("documents.directory.rootFolder"));
+    expect(routerPushMock).toHaveBeenCalledWith(
+      "/documents?directoryView=root",
+    );
+
     fireEvent.click(await screen.findByText("Plans"));
 
     expect(routerPushMock).toHaveBeenCalledWith(
@@ -190,7 +198,7 @@ describe("DocumentDirectoryRail", () => {
     );
   });
 
-  it("renders folder drag handles and the root drop target", async () => {
+  it("renders folder drag handles and the root directory node", async () => {
     renderRail();
 
     expect(await screen.findByText("Plans")).toBeVisible();
@@ -202,9 +210,22 @@ describe("DocumentDirectoryRail", () => {
     expect(
       screen.getByTestId("document-folder-root-drop-target"),
     ).toBeVisible();
+    expect(screen.getByTestId("document-folder-root-node")).toHaveTextContent(
+      "documents.directory.rootFolder",
+    );
     expect(
       screen.getByTestId("document-folder-root-drop-target"),
     ).toHaveAttribute("data-document-folder-root-drop-target", "true");
+  });
+
+  it("marks the root directory node as active from the URL", async () => {
+    searchParamsMock.current = new URLSearchParams("directoryView=root");
+
+    renderRail();
+
+    expect(
+      await screen.findByTestId("document-folder-root-node"),
+    ).toHaveAttribute("aria-current", "page");
   });
 
   it("keeps nested folder rows aligned when controls and counts are optional", async () => {
@@ -452,80 +473,6 @@ describe("DocumentDirectoryRail", () => {
       expect(screen.queryByText("Archive Child")).not.toBeInTheDocument(),
     );
     expect(screen.getByText("Roadmap")).toBeVisible();
-  });
-
-  it("shows the include-descendants toggle for a selected folder and turns it on", async () => {
-    searchParamsMock.current = new URLSearchParams(
-      "directoryView=folder&folderId=FLD_01",
-    );
-
-    renderRail();
-
-    const toggle = await screen.findByRole("button", {
-      name: "documents.directory.includeDescendants",
-    });
-    expect(toggle).toHaveAttribute("aria-pressed", "false");
-    expect(toggle).toHaveAttribute(
-      "title",
-      "documents.directory.includeDescendants",
-    );
-
-    fireEvent.click(toggle);
-
-    expect(routerPushMock).toHaveBeenCalledWith(
-      "/documents?directoryView=folder&folderId=FLD_01&includeDescendants=true",
-    );
-  });
-
-  it("shows the active include-descendants toggle state and turns it off", async () => {
-    searchParamsMock.current = new URLSearchParams(
-      "directoryView=folder&folderId=FLD_01&includeDescendants=true",
-    );
-
-    renderRail();
-
-    const toggle = await screen.findByRole("button", {
-      name: "documents.directory.includeDescendantsActive",
-    });
-    expect(toggle).toHaveAttribute("aria-pressed", "true");
-    expect(toggle).toHaveAttribute(
-      "title",
-      "documents.directory.includeDescendantsActive",
-    );
-
-    fireEvent.click(toggle);
-
-    expect(routerPushMock).toHaveBeenCalledWith(
-      "/documents?directoryView=folder&folderId=FLD_01",
-    );
-  });
-
-  it("shows the disabled include-descendants toggle without a selected folder", async () => {
-    renderRail();
-
-    expect(
-      await screen.findByText("documents.directory.views.all"),
-    ).toBeVisible();
-    const toggle = screen.getByRole("button", {
-      name: "documents.directory.includeDescendantsDisabled",
-    });
-    expect(toggle).toBeDisabled();
-    expect(toggle).not.toHaveAttribute("aria-pressed");
-  });
-
-  it("shows the disabled include-descendants toggle for virtual views", async () => {
-    searchParamsMock.current = new URLSearchParams("directoryView=archived");
-
-    renderRail();
-
-    expect(
-      await screen.findByText("documents.directory.views.archived"),
-    ).toBeVisible();
-    expect(
-      screen.getByRole("button", {
-        name: "documents.directory.includeDescendantsDisabled",
-      }),
-    ).toBeDisabled();
   });
 
   it("creates a root folder from the compact directory dialog", async () => {

@@ -11,6 +11,8 @@ import {
 import type { ReactNode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+import type { DocumentSummary } from "../../lib/document-service";
+
 const { routerPushMock, routerReplaceMock, searchParamsMock } = vi.hoisted(
   () => ({
     routerPushMock: vi.fn(),
@@ -108,6 +110,21 @@ type CreateActions = {
   openPaste: () => void;
 };
 
+type DocumentListResult = {
+  items: DocumentSummary[];
+  total: number;
+};
+
+function createDeferred<T>() {
+  let resolve!: (value: T | PromiseLike<T>) => void;
+  let reject!: (reason?: unknown) => void;
+  const promise = new Promise<T>((promiseResolve, promiseReject) => {
+    resolve = promiseResolve;
+    reject = promiseReject;
+  });
+  return { promise, reject, resolve };
+}
+
 function renderDocumentsPage(
   actions: CreateActions = {
     openImport: vi.fn(),
@@ -119,6 +136,29 @@ function renderDocumentsPage(
       <DocumentsPage />
     </DocumentCreateProvider>,
   );
+}
+
+function createDocumentSummary(
+  overrides: Pick<DocumentSummary, "id" | "title"> & Partial<DocumentSummary>,
+): DocumentSummary {
+  const { id, title, ...rest } = overrides;
+  return {
+    contentSnippet: "",
+    contentFormat: "MARKDOWN",
+    createdAt: "2026-05-27T10:00:00.000Z",
+    id,
+    kind: "GENERAL",
+    lastEditedAt: "2026-05-27T11:00:00.000Z",
+    lastEditedVia: "USER",
+    organizationId: "ORG_01",
+    revision: 1,
+    sourceType: "USER_CREATED",
+    spaceId: "SPC_01",
+    status: "ACTIVE",
+    title,
+    updatedAt: "2026-05-27T11:00:00.000Z",
+    ...rest,
+  };
 }
 
 beforeEach(() => {
@@ -265,13 +305,53 @@ describe("DocumentsPage", () => {
       expect.objectContaining({
         filter: "all",
         folderId: "FLD_01",
-        includeDescendants: true,
+        includeDescendants: false,
         spaceId: "SPC_01",
       }),
     );
   });
 
-  it("renders direct child folders above document rows for the selected folder", async () => {
+  it("reads the root directory view from the document directory URL", async () => {
+    searchParamsMock.current = new URLSearchParams("directoryView=root");
+    listDocumentFoldersMock.mockResolvedValue([
+      {
+        depth: 0,
+        descendantDocumentCount: 1,
+        documentCount: 0,
+        id: "FLD_CHILD",
+        name: "Planning",
+        parentId: null,
+        sortOrder: 0,
+        spaceId: "SPC_01",
+        version: 1,
+      },
+    ]);
+    listDocumentsMock.mockResolvedValue({
+      items: [
+        createDocumentSummary({
+          id: "DOC_ROOT",
+          title: "Root note",
+        }),
+      ],
+      total: 1,
+    });
+
+    renderDocumentsPage();
+
+    const tree = await screen.findByTestId("documents-resource-tree");
+
+    expect(within(tree).getByText("Planning")).toBeVisible();
+    expect(within(tree).getByText("Root note")).toBeVisible();
+    expect(listDocumentsMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        folderId: undefined,
+        includeDescendants: false,
+        unfiled: true,
+      }),
+    );
+  });
+
+  it("renders child folders and direct documents in one resource tree", async () => {
     searchParamsMock.current = new URLSearchParams(
       "directoryView=folder&folderId=FLD_PARENT",
     );
@@ -332,20 +412,21 @@ describe("DocumentsPage", () => {
 
     renderDocumentsPage();
 
-    const childFolders = await screen.findByTestId("documents-child-folders");
-    const list = await screen.findByTestId("documents-list");
+    const tree = await screen.findByTestId("documents-resource-tree");
+    const folder = within(tree).getByTestId("documents-resource-folder");
+    const document = within(tree).getByTestId("documents-list-item");
 
-    expect(within(childFolders).getByText("Planning")).toBeVisible();
-    expect(within(childFolders).queryByText("Roadmap")).not.toBeInTheDocument();
+    expect(within(folder).getByText("Planning")).toBeVisible();
+    expect(within(tree).queryByText("Roadmap")).not.toBeInTheDocument();
     expect(
-      (childFolders.compareDocumentPosition(list) &
+      (folder.compareDocumentPosition(document) &
         Node.DOCUMENT_POSITION_FOLLOWING) !==
         0,
     ).toBe(true);
     expect(screen.getAllByTestId("documents-list-item")).toHaveLength(1);
   });
 
-  it("applies compact density to child folder rows", async () => {
+  it("applies compact density to resource folder rows", async () => {
     searchParamsMock.current = new URLSearchParams(
       "directoryView=folder&folderId=FLD_PARENT",
     );
@@ -377,16 +458,16 @@ describe("DocumentsPage", () => {
 
     renderDocumentsPage();
 
-    const childFolder = await screen.findByTestId("documents-child-folder");
-    expect(childFolder).toHaveClass("min-h-11");
+    const folderRow = await screen.findByTestId("documents-resource-folder-row");
+    expect(folderRow).toHaveClass("min-h-11");
 
     fireEvent.click(screen.getByTestId("documents-density-compact"));
 
-    expect(childFolder).toHaveClass("min-h-8");
-    expect(childFolder).not.toHaveClass("min-h-11");
+    expect(folderRow).toHaveClass("min-h-8");
+    expect(folderRow).not.toHaveClass("min-h-11");
   });
 
-  it("navigates to a child folder while preserving includeDescendants", async () => {
+  it("links to a child folder from the resource tree", async () => {
     searchParamsMock.current = new URLSearchParams(
       "directoryView=folder&folderId=FLD_PARENT&includeDescendants=true",
     );
@@ -418,14 +499,11 @@ describe("DocumentsPage", () => {
 
     renderDocumentsPage();
 
-    fireEvent.click(
-      await screen.findByRole("button", {
-        name: "documents.directory.openFolder Planning",
-      }),
-    );
+    const link = await screen.findByTestId("documents-resource-folder-link");
 
-    expect(routerPushMock).toHaveBeenCalledWith(
-      "/documents?directoryView=folder&folderId=FLD_CHILD&includeDescendants=true",
+    expect(link).toHaveAttribute(
+      "href",
+      "/documents?directoryView=folder&folderId=FLD_CHILD",
     );
   });
 
@@ -461,13 +539,13 @@ describe("DocumentsPage", () => {
 
     renderDocumentsPage();
 
-    expect(await screen.findByTestId("documents-child-folders")).toBeVisible();
+    expect(await screen.findByTestId("documents-resource-tree")).toBeVisible();
     expect(
       screen.queryByTestId("documents-empty-state"),
     ).not.toBeInTheDocument();
   });
 
-  it("hides child folders while searching documents", async () => {
+  it("switches from resource tree to flat results while searching documents", async () => {
     searchParamsMock.current = new URLSearchParams(
       "directoryView=folder&folderId=FLD_PARENT",
     );
@@ -499,7 +577,7 @@ describe("DocumentsPage", () => {
 
     renderDocumentsPage();
 
-    expect(await screen.findByTestId("documents-child-folders")).toBeVisible();
+    expect(await screen.findByTestId("documents-resource-tree")).toBeVisible();
 
     fireEvent.change(screen.getByTestId("documents-search-input"), {
       target: { value: "plan" },
@@ -507,7 +585,7 @@ describe("DocumentsPage", () => {
 
     await waitFor(() =>
       expect(
-        screen.queryByTestId("documents-child-folders"),
+        screen.queryByTestId("documents-resource-tree"),
       ).not.toBeInTheDocument(),
     );
   });
@@ -569,6 +647,7 @@ describe("DocumentsPage", () => {
     await waitFor(() =>
       expect(screen.getByTestId("documents-list")).toBeVisible(),
     );
+    expect(screen.queryByTestId("documents-resource-tree")).not.toBeInTheDocument();
     expect(screen.getByText("Launch plan")).toBeVisible();
     expect(screen.getByText("REQ-12")).toBeVisible();
     expect(
@@ -705,50 +784,122 @@ describe("DocumentsPage", () => {
     ).not.toBeInTheDocument();
   });
 
-  it("refreshes the list after document realtime invalidation", async () => {
-    listDocumentsMock
-      .mockResolvedValueOnce({
-        items: [
-          {
-            contentSnippet: "Before realtime",
-            createdAt: "2026-05-27T10:00:00.000Z",
-            id: "DOC_01",
-            lastEditedAt: "2026-05-27T11:00:00.000Z",
-            lastEditedVia: "USER",
-            organizationId: "ORG_01",
-            revision: 1,
-            sourceType: "UPLOAD_MARKDOWN",
-            spaceId: "SPC_01",
-            status: "ACTIVE",
-            title: "Before realtime",
-            updatedAt: "2026-05-27T11:00:00.000Z",
-          },
-        ],
-        total: 1,
-      })
-      .mockResolvedValueOnce({
-        items: [
-          {
-            contentSnippet: "After realtime",
-            createdAt: "2026-05-27T10:00:00.000Z",
-            id: "DOC_02",
-            lastEditedAt: "2026-05-27T12:00:00.000Z",
-            lastEditedVia: "MCP_CLIENT",
-            organizationId: "ORG_01",
-            revision: 2,
-            sourceType: "MCP_CREATED",
-            spaceId: "SPC_01",
-            status: "ACTIVE",
-            title: "After realtime",
-            updatedAt: "2026-05-27T12:00:00.000Z",
-          },
-        ],
-        total: 1,
-      });
+  it("includes expanded folder documents in selection operations", async () => {
+    searchParamsMock.current = new URLSearchParams("directoryView=root");
+    listDocumentFoldersMock.mockResolvedValue([
+      {
+        depth: 0,
+        descendantDocumentCount: 1,
+        documentCount: 1,
+        id: "FLD_CHILD",
+        name: "Planning",
+        parentId: null,
+        sortOrder: 0,
+        spaceId: "SPC_01",
+        version: 1,
+      },
+    ]);
+    const rootDocument = createDocumentSummary({
+      id: "DOC_ROOT",
+      title: "Root note",
+    });
+    const folderDocument = createDocumentSummary({
+      folderId: "FLD_CHILD",
+      id: "DOC_CHILD",
+      title: "Planning note",
+    });
+    listDocumentsMock.mockImplementation(
+      (params: { folderId?: string }) =>
+        Promise.resolve(
+          params.folderId === "FLD_CHILD"
+            ? { items: [folderDocument], total: 1 }
+            : { items: [rootDocument], total: 1 },
+        ),
+    );
 
     renderDocumentsPage();
 
-    expect((await screen.findAllByText("Before realtime"))[0]).toBeVisible();
+    expect(await screen.findByText("Root note")).toBeVisible();
+
+    fireEvent.click(
+      screen.getByRole("button", {
+        name: "documents.directory.toggleFolder Planning",
+      }),
+    );
+
+    expect(await screen.findByText("Planning note")).toBeVisible();
+
+    fireEvent.click(
+      screen.getByRole("button", { name: "documents.selection.select" }),
+    );
+
+    const checkboxes = screen.getAllByTestId("documents-list-select");
+    expect(checkboxes).toHaveLength(2);
+    checkboxes.forEach((checkbox) => fireEvent.click(checkbox));
+
+    expect(screen.getByTestId("documents-selection-toolbar")).toHaveTextContent(
+      "documents.selection.count 2",
+    );
+    expect(
+      screen.getAllByRole("button", {
+        name: "documents.list.dragSelected 2",
+      }),
+    ).toHaveLength(2);
+  });
+
+  it("refreshes expanded folder documents after document realtime invalidation", async () => {
+    searchParamsMock.current = new URLSearchParams("directoryView=root");
+    listDocumentFoldersMock.mockResolvedValue([
+      {
+        depth: 0,
+        descendantDocumentCount: 1,
+        documentCount: 1,
+        id: "FLD_CHILD",
+        name: "Planning",
+        parentId: null,
+        sortOrder: 0,
+        spaceId: "SPC_01",
+        version: 1,
+      },
+    ]);
+    const beforeDocument = createDocumentSummary({
+      folderId: "FLD_CHILD",
+      id: "DOC_BEFORE",
+      title: "Before folder realtime",
+    });
+    const afterDocument = createDocumentSummary({
+      folderId: "FLD_CHILD",
+      id: "DOC_AFTER",
+      title: "After folder realtime",
+    });
+    let folderRequestCount = 0;
+    let realtimeFolderRequest: ReturnType<
+      typeof createDeferred<DocumentListResult>
+    > | null = null;
+    listDocumentsMock.mockImplementation(
+      (params: { folderId?: string }) => {
+        if (params.folderId !== "FLD_CHILD") {
+          return Promise.resolve({ items: [], total: 0 });
+        }
+        folderRequestCount += 1;
+        if (folderRequestCount === 1) {
+          return Promise.resolve({ items: [beforeDocument], total: 1 });
+        }
+        realtimeFolderRequest = createDeferred<DocumentListResult>();
+        return realtimeFolderRequest.promise;
+      },
+    );
+
+    renderDocumentsPage();
+
+    await screen.findByTestId("documents-resource-tree");
+    fireEvent.click(
+      screen.getByRole("button", {
+        name: "documents.directory.toggleFolder Planning",
+      }),
+    );
+    expect(await screen.findByText("Before folder realtime")).toBeVisible();
+
     const callback = realtimeCallbacks.get("document-list");
     expect(callback).toBeDefined();
 
@@ -756,7 +907,68 @@ describe("DocumentsPage", () => {
       callback?.({ events: [], mode: "realtime", resyncs: [] });
     });
 
+    expect(realtimeFolderRequest).not.toBeNull();
+    expect(screen.getByText("Before folder realtime")).toBeVisible();
+    expect(
+      screen.queryByText("documents.directory.loadingFolderDocuments"),
+    ).not.toBeInTheDocument();
+    expect(screen.queryByText("After folder realtime")).not.toBeInTheDocument();
+
+    await act(async () => {
+      realtimeFolderRequest?.resolve({ items: [afterDocument], total: 1 });
+      await realtimeFolderRequest?.promise;
+    });
+
+    expect(await screen.findByText("After folder realtime")).toBeVisible();
+    await waitFor(() =>
+      expect(
+        listDocumentsMock.mock.calls.filter(([params]) => {
+          return (params as { folderId?: string }).folderId === "FLD_CHILD";
+        }),
+      ).toHaveLength(2),
+    );
+  });
+
+  it("refreshes the list after document realtime invalidation", async () => {
+    const beforeDocument = createDocumentSummary({
+      contentSnippet: "Before realtime",
+      id: "DOC_01",
+      sourceType: "UPLOAD_MARKDOWN",
+      title: "Before realtime",
+    });
+    const afterDocument = createDocumentSummary({
+      contentSnippet: "After realtime",
+      id: "DOC_02",
+      lastEditedAt: "2026-05-27T12:00:00.000Z",
+      lastEditedVia: "MCP_CLIENT",
+      revision: 2,
+      sourceType: "MCP_CREATED",
+      title: "After realtime",
+      updatedAt: "2026-05-27T12:00:00.000Z",
+    });
+    let shouldReturnRealtimeResult = false;
+    listDocumentsMock.mockImplementation(() =>
+      Promise.resolve({
+        items: shouldReturnRealtimeResult ? [afterDocument] : [beforeDocument],
+        total: 1,
+      }),
+    );
+
+    renderDocumentsPage();
+
+    expect((await screen.findAllByText("Before realtime"))[0]).toBeVisible();
+    const callsBeforeRealtime = listDocumentsMock.mock.calls.length;
+    const callback = realtimeCallbacks.get("document-list");
+    expect(callback).toBeDefined();
+    shouldReturnRealtimeResult = true;
+
+    await act(async () => {
+      callback?.({ events: [], mode: "realtime", resyncs: [] });
+    });
+
     expect((await screen.findAllByText("After realtime"))[0]).toBeVisible();
-    expect(listDocumentsMock).toHaveBeenCalledTimes(2);
+    expect(listDocumentsMock.mock.calls.length).toBeGreaterThan(
+      callsBeforeRealtime,
+    );
   });
 });

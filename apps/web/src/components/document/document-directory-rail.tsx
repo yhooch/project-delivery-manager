@@ -13,7 +13,6 @@ import {
   Folder,
   FolderInput,
   FolderOpen,
-  FolderTree,
   GripVertical,
   Loader2,
   MoreHorizontal,
@@ -156,6 +155,8 @@ export function DocumentDirectoryRail({
     : selection.view === "folder"
       ? selection.folderId
       : undefined;
+  const rootFolderActive =
+    !isDocumentDetailPath(pathname) && selection.view === "root";
   const activeFolderAncestorIds = useMemo(
     () => getFolderAncestorIds(tree, activeFolderId),
     [activeFolderId, tree],
@@ -187,14 +188,6 @@ export function DocumentDirectoryRail({
     collapsibleFolderIds.every(
       (folderId) => !effectiveCollapsedFolderIds.has(folderId),
     );
-  const canToggleIncludeDescendants =
-    selection.view === "folder" && Boolean(selection.folderId);
-  const includeDescendantsLabel = selection.includeDescendants
-    ? t("includeDescendantsActive")
-    : t("includeDescendants");
-  const includeDescendantsActionLabel = canToggleIncludeDescendants
-    ? includeDescendantsLabel
-    : t("includeDescendantsDisabled");
   const folderTreeToggleLabel = !hasCollapsibleFolders
     ? t("toggleAllFoldersDisabled")
     : allFoldersExpanded
@@ -485,39 +478,6 @@ export function DocumentDirectoryRail({
           </h2>
           <div className="flex shrink-0 items-center gap-0.5">
             <HeaderIconTip
-              content={includeDescendantsActionLabel}
-              disabled={!canToggleIncludeDescendants}
-            >
-              <Button
-                aria-label={includeDescendantsActionLabel}
-                aria-pressed={
-                  canToggleIncludeDescendants
-                    ? selection.includeDescendants
-                    : undefined
-                }
-                className={cn(
-                  "h-6 w-6",
-                  selection.includeDescendants
-                    ? "bg-primary/15 text-primary hover:bg-primary/15 hover:text-primary"
-                    : "text-muted-foreground hover:text-foreground",
-                )}
-                disabled={!canToggleIncludeDescendants}
-                size="icon-sm"
-                title={includeDescendantsActionLabel}
-                type="button"
-                variant="ghost"
-                onClick={() =>
-                  navigateToSelection({
-                    folderId: selection.folderId,
-                    includeDescendants: !selection.includeDescendants,
-                    view: "folder",
-                  })
-                }
-              >
-                <FolderTree className="h-3.5 w-3.5" aria-hidden="true" />
-              </Button>
-            </HeaderIconTip>
-            <HeaderIconTip
               content={folderTreeToggleLabel}
               disabled={!hasCollapsibleFolders}
             >
@@ -550,48 +510,52 @@ export function DocumentDirectoryRail({
           </p>
         ) : null}
 
-        {!isLoading && !errorKey && tree.length === 0 ? (
-          <div className="mt-3 flex flex-col items-start gap-1 rounded-lg border border-dashed border-border/60 bg-card/60 px-3 py-2.5">
-            <p className="text-xs text-muted-foreground">{t("emptyFolders")}</p>
-          </div>
-        ) : null}
-
-        {tree.length > 0 ? (
+        {!isLoading && !errorKey ? (
           <div className="mt-2 grid gap-0.5">
-            <FolderRootDropTarget
+            <FolderRootNode
+              active={rootFolderActive}
+              onSelect={() => navigateToSelection({ view: "root" })}
               siblingIds={tree.map((folder) => folder.id)}
             />
-            {tree.map((folder) => (
-              <FolderTreeNode
-                key={folder.id}
-                activeFolderId={activeFolderId}
-                ancestorIds={[]}
-                collapsedFolderIds={effectiveCollapsedFolderIds}
-                folder={folder}
-                level={0}
-                onCreateChild={(parent) =>
-                  setOperation({ parent, type: "create" })
-                }
-                onDelete={(nextFolder) =>
-                  setOperation({ folder: nextFolder, type: "delete" })
-                }
-                onMove={(nextFolder) =>
-                  setOperation({ folder: nextFolder, type: "move" })
-                }
-                onRename={(nextFolder) =>
-                  setOperation({ folder: nextFolder, type: "rename" })
-                }
-                onSelect={(folderId) =>
-                  navigateToSelection({
-                    folderId,
-                    includeDescendants: selection.includeDescendants,
-                    view: "folder",
-                  })
-                }
-                siblingIds={tree.map((sibling) => sibling.id)}
-                onToggle={toggleFolder}
-              />
-            ))}
+            {tree.length === 0 ? (
+              <div className="mt-1 flex flex-col items-start gap-1 rounded-lg border border-dashed border-border/60 bg-card/60 px-3 py-2.5">
+                <p className="text-xs text-muted-foreground">
+                  {t("emptyFolders")}
+                </p>
+              </div>
+            ) : (
+              tree.map((folder) => (
+                <FolderTreeNode
+                  key={folder.id}
+                  activeFolderId={activeFolderId}
+                  ancestorIds={[]}
+                  collapsedFolderIds={effectiveCollapsedFolderIds}
+                  folder={folder}
+                  level={0}
+                  onCreateChild={(parent) =>
+                    setOperation({ parent, type: "create" })
+                  }
+                  onDelete={(nextFolder) =>
+                    setOperation({ folder: nextFolder, type: "delete" })
+                  }
+                  onMove={(nextFolder) =>
+                    setOperation({ folder: nextFolder, type: "move" })
+                  }
+                  onRename={(nextFolder) =>
+                    setOperation({ folder: nextFolder, type: "rename" })
+                  }
+                  onSelect={(folderId) =>
+                    navigateToSelection({
+                      folderId,
+                      includeDescendants: selection.includeDescendants,
+                      view: "folder",
+                    })
+                  }
+                  siblingIds={tree.map((sibling) => sibling.id)}
+                  onToggle={toggleFolder}
+                />
+              ))
+            )}
           </div>
         ) : null}
       </div>
@@ -956,7 +920,15 @@ function FolderTreeNode({
   );
 }
 
-function FolderRootDropTarget({ siblingIds }: { siblingIds: string[] }) {
+function FolderRootNode({
+  active,
+  onSelect,
+  siblingIds,
+}: {
+  active: boolean;
+  onSelect: () => void;
+  siblingIds: string[];
+}) {
   const t = useTranslations("documents.directory");
   const rootDrop = useDroppable({
     id: "document-folder-root-drop",
@@ -967,22 +939,47 @@ function FolderRootDropTarget({ siblingIds }: { siblingIds: string[] }) {
   });
   const activeDrag = useActiveDocumentDragData();
   const canDropToRoot =
-    activeDrag?.type === "document-folder" && activeDrag.parentId !== null;
+    activeDrag?.type === "document"
+      ? activeDrag.documents.some((document) => document.folderId != null)
+      : activeDrag?.type === "document-folder" && activeDrag.parentId !== null;
 
   return (
     <div
       ref={rootDrop.setNodeRef}
       className={cn(
-        "mb-1 flex min-h-7 items-center rounded-lg border border-dashed border-border/60 bg-card/40 px-2 text-[11px] text-muted-foreground transition-all",
-        canDropToRoot && "border-border",
+        "relative min-w-0 rounded-lg transition-all",
+        active
+          ? "bg-primary/12 text-primary shadow-sm ring-1 ring-primary/20"
+          : "text-foreground/80 hover:bg-muted/70 hover:text-foreground",
+        canDropToRoot && "ring-1 ring-border/80",
         rootDrop.isOver &&
           canDropToRoot &&
-          "border-primary/60 bg-primary/10 text-primary shadow-sm",
+          "bg-primary/15 text-primary ring-1 ring-primary/40",
       )}
       data-document-folder-root-drop-target="true"
       data-testid="document-folder-root-drop-target"
+      title={t("drag.rootDrop")}
     >
-      {t("drag.rootDrop")}
+      <button
+        type="button"
+        aria-current={active ? "page" : undefined}
+        className="flex min-h-8 w-full min-w-0 cursor-pointer items-center gap-1.5 rounded-lg px-2 text-left text-[13px] font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        data-testid="document-folder-root-node"
+        onClick={onSelect}
+      >
+        {active ? (
+          <FolderOpen
+            className="h-3.5 w-3.5 shrink-0 text-primary"
+            aria-hidden="true"
+          />
+        ) : (
+          <Folder
+            className="h-3.5 w-3.5 shrink-0 text-muted-foreground"
+            aria-hidden="true"
+          />
+        )}
+        <span className="min-w-0 flex-1 truncate">{t("rootFolder")}</span>
+      </button>
     </div>
   );
 }

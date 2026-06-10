@@ -9,6 +9,7 @@ export const DOCUMENT_FOLDER_MAX_DEPTH = 6;
 
 export type DocumentDirectoryView =
   | "all"
+  | "root"
   | "recent"
   | "unfiled"
   | "createdByMe"
@@ -78,6 +79,7 @@ export type DocumentDropDataPayload = DocumentFolderDropData;
 
 const DIRECTORY_VIEWS = new Set<DocumentDirectoryView>([
   "all",
+  "root",
   "recent",
   "unfiled",
   "createdByMe",

@@ -1,13 +1,16 @@
 "use client";
 
-import { useDraggable } from "@dnd-kit/core";
+import { useDndContext, useDraggable, useDroppable } from "@dnd-kit/core";
 import {
   AlignJustify,
   Archive,
   Bot,
+  ChevronDown,
+  ChevronRight,
   FilePlus2,
   FileText,
   Folder,
+  FolderOpen,
   GripVertical,
   ListChecks,
   List,
@@ -65,14 +68,18 @@ import { cn } from "../../lib/utils";
 import { useDocumentCreate } from "./document-create-context";
 import {
   DOCUMENT_DIRECTORY_REFRESH_EVENT,
+  DOCUMENT_FOLDER_MAX_DEPTH,
   DOCUMENT_LIST_REFRESH_EVENT,
   createDocumentDirectoryHref,
   findFolderNode,
+  getFolderMaxDescendantRelativeDepth,
   getDocumentDirectorySelection,
   getDocumentFilterForDirectoryView,
   normalizeDocumentFolderTree,
   type DocumentDragDataPayload,
   type DocumentDirectoryView,
+  type DocumentFolderDropData,
+  type DocumentFolderNode,
 } from "./document-directory-model";
 import { useSession } from "../providers/session-provider";
 import { TagBadgeList } from "../tag";
@@ -91,6 +98,7 @@ import { SelectMenu } from "../ui/select-menu";
 import { Textarea } from "../ui/textarea";
 
 const PAGE_SIZE = 50;
+const RESOURCE_TREE_INDENT_PX = 20;
 const DOCUMENTS_REALTIME_KEYS = [
   "document-list",
   "resource-documents",
@@ -122,6 +130,14 @@ const SORT_OPTIONS = {
 
 type DocumentSortKey = keyof typeof SORT_OPTIONS;
 type DocumentDensity = "comfortable" | "compact";
+type FolderDocumentState = {
+  errorKey: string | null;
+  isLoading: boolean;
+  isLoadingMore: boolean;
+  items: DocumentSummary[];
+  page: number;
+  total: number;
+};
 
 type DocumentTranslator = (
   key: string,
@@ -156,6 +172,12 @@ export function DocumentsPage() {
   const [selectedDocumentIds, setSelectedDocumentIds] = useState<Set<string>>(
     () => new Set(),
   );
+  const [expandedFolderIds, setExpandedFolderIds] = useState<Set<string>>(
+    () => new Set(),
+  );
+  const [folderDocumentStates, setFolderDocumentStates] = useState<
+    Record<string, FolderDocumentState>
+  >({});
   const directorySelection = useMemo(
     () =>
       getDocumentDirectorySelection(new URLSearchParams(searchParamsString)),
@@ -167,30 +189,67 @@ export function DocumentsPage() {
     [searchParamsString],
   );
   const filter = getDocumentFilterForDirectoryView(directorySelection.view);
-  const selectedDocuments = useMemo(
-    () => items.filter((item) => selectedDocumentIds.has(item.id)),
-    [items, selectedDocumentIds],
-  );
   const hasActiveSearch =
     query.trim().length > 0 || debouncedQuery.trim().length > 0;
-  const shouldShowChildFolders =
-    directorySelection.view === "folder" &&
-    Boolean(directorySelection.folderId) &&
-    !hasActiveSearch;
+  const shouldUseResourceTree =
+    !hasActiveSearch &&
+    (directorySelection.view === "root" ||
+      (directorySelection.view === "folder" &&
+        Boolean(directorySelection.folderId)));
   const folderTree = useMemo(
     () => normalizeDocumentFolderTree(folders),
     [folders],
   );
-  const childFolders = useMemo(() => {
-    if (!shouldShowChildFolders || !directorySelection.folderId) {
+  const visibleTreeFolders = useMemo(() => {
+    if (!shouldUseResourceTree) {
+      return [];
+    }
+    if (directorySelection.view === "root") {
+      return folderTree;
+    }
+    if (directorySelection.view !== "folder" || !directorySelection.folderId) {
       return [];
     }
 
     return (
       findFolderNode(folderTree, directorySelection.folderId)?.children ?? []
     );
-  }, [directorySelection.folderId, folderTree, shouldShowChildFolders]);
-  const hasChildFolders = childFolders.length > 0;
+  }, [
+    directorySelection.folderId,
+    directorySelection.view,
+    folderTree,
+    shouldUseResourceTree,
+  ]);
+  const visibleTreeAncestorIds = useMemo(
+    () =>
+      shouldUseResourceTree && directorySelection.folderId
+        ? [directorySelection.folderId]
+        : [],
+    [directorySelection.folderId, shouldUseResourceTree],
+  );
+  const visibleDocuments = useMemo(
+    () =>
+      shouldUseResourceTree
+        ? collectVisibleResourceDocuments({
+            documents: items,
+            expandedFolderIds,
+            folderDocumentStates,
+            folders: visibleTreeFolders,
+          })
+        : items,
+    [
+      expandedFolderIds,
+      folderDocumentStates,
+      items,
+      shouldUseResourceTree,
+      visibleTreeFolders,
+    ],
+  );
+  const selectedDocuments = useMemo(
+    () => visibleDocuments.filter((item) => selectedDocumentIds.has(item.id)),
+    [selectedDocumentIds, visibleDocuments],
+  );
+  const hasVisibleTreeFolders = visibleTreeFolders.length > 0;
   const { openImport, openPaste } = useDocumentCreate();
 
   useEffect(() => {
@@ -224,11 +283,19 @@ export function DocumentsPage() {
         setErrorKey(null);
       }
       try {
+        const treeFolderId =
+          shouldUseResourceTree && directorySelection.view === "folder"
+            ? directorySelection.folderId
+            : undefined;
         const result = await listDocuments({
           currentUserId: session?.user?.id,
           filter,
-          folderId: directorySelection.folderId,
-          includeDescendants: directorySelection.includeDescendants,
+          folderId: shouldUseResourceTree
+            ? treeFolderId
+            : directorySelection.folderId,
+          includeDescendants: shouldUseResourceTree
+            ? false
+            : directorySelection.includeDescendants,
           organizationId,
           page: 1,
           pageSize: PAGE_SIZE,
@@ -236,7 +303,9 @@ export function DocumentsPage() {
           sortBy: SORT_OPTIONS[sort].sortBy,
           sortOrder: SORT_OPTIONS[sort].sortOrder,
           spaceId,
-          unfiled: directorySelection.view === "unfiled",
+          unfiled: shouldUseResourceTree
+            ? directorySelection.view === "root"
+            : directorySelection.view === "unfiled",
         });
         setItems(result.items);
         setTotal(result.total);
@@ -261,6 +330,7 @@ export function DocumentsPage() {
       filter,
       organizationId,
       session?.user?.id,
+      shouldUseResourceTree,
       sort,
       spaceId,
     ],
@@ -268,7 +338,7 @@ export function DocumentsPage() {
 
   const loadChildFolders = useCallback(
     async (options?: { realtime?: boolean }) => {
-      if (!spaceId || !shouldShowChildFolders) {
+      if (!spaceId || !shouldUseResourceTree) {
         setFolders([]);
         setFolderErrorKey(null);
         setIsLoadingFolders(false);
@@ -295,7 +365,7 @@ export function DocumentsPage() {
         }
       }
     },
-    [organizationId, shouldShowChildFolders, spaceId],
+    [organizationId, shouldUseResourceTree, spaceId],
   );
 
   const loadMore = useCallback(async () => {
@@ -306,11 +376,19 @@ export function DocumentsPage() {
     const nextPage = page + 1;
     setIsLoadingMore(true);
     try {
+      const treeFolderId =
+        shouldUseResourceTree && directorySelection.view === "folder"
+          ? directorySelection.folderId
+          : undefined;
       const result = await listDocuments({
         currentUserId: session?.user?.id,
         filter,
-        folderId: directorySelection.folderId,
-        includeDescendants: directorySelection.includeDescendants,
+        folderId: shouldUseResourceTree
+          ? treeFolderId
+          : directorySelection.folderId,
+        includeDescendants: shouldUseResourceTree
+          ? false
+          : directorySelection.includeDescendants,
         organizationId,
         page: nextPage,
         pageSize: PAGE_SIZE,
@@ -318,7 +396,9 @@ export function DocumentsPage() {
         sortBy: SORT_OPTIONS[sort].sortBy,
         sortOrder: SORT_OPTIONS[sort].sortOrder,
         spaceId,
-        unfiled: directorySelection.view === "unfiled",
+        unfiled: shouldUseResourceTree
+          ? directorySelection.view === "root"
+          : directorySelection.view === "unfiled",
       });
       setItems((current) => [...current, ...result.items]);
       setTotal(result.total);
@@ -338,9 +418,129 @@ export function DocumentsPage() {
     organizationId,
     page,
     session?.user?.id,
+    shouldUseResourceTree,
     sort,
     spaceId,
   ]);
+
+  const loadFolderDocuments = useCallback(
+    async (folderId: string, options?: { page?: number; realtime?: boolean }) => {
+      if (!spaceId) {
+        return;
+      }
+
+      const pageToLoad = options?.page ?? 1;
+      const isRealtime = options?.realtime === true;
+      setFolderDocumentStates((current) => {
+        const previous = current[folderId];
+        return {
+          ...current,
+          [folderId]: {
+            errorKey: isRealtime ? (previous?.errorKey ?? null) : null,
+            isLoading: isRealtime
+              ? (previous?.isLoading ?? false)
+              : pageToLoad === 1,
+            isLoadingMore: isRealtime
+              ? (previous?.isLoadingMore ?? false)
+              : pageToLoad > 1,
+            items:
+              isRealtime || pageToLoad > 1 ? (previous?.items ?? []) : [],
+            page: previous?.page ?? 1,
+            total: previous?.total ?? 0,
+          },
+        };
+      });
+
+      try {
+        const result = await listDocuments({
+          currentUserId: session?.user?.id,
+          filter: "all",
+          folderId,
+          includeDescendants: false,
+          organizationId,
+          page: pageToLoad,
+          pageSize: PAGE_SIZE,
+          sortBy: SORT_OPTIONS[sort].sortBy,
+          sortOrder: SORT_OPTIONS[sort].sortOrder,
+          spaceId,
+        });
+        setFolderDocumentStates((current) => {
+          const previous = current[folderId];
+          return {
+            ...current,
+            [folderId]: {
+              errorKey: null,
+              isLoading: false,
+              isLoadingMore: false,
+              items:
+                pageToLoad === 1
+                  ? result.items
+                  : [...(previous?.items ?? []), ...result.items],
+              page: pageToLoad,
+              total: result.total,
+            },
+          };
+        });
+      } catch (error) {
+        setFolderDocumentStates((current) => {
+          const previous = current[folderId];
+          return {
+            ...current,
+            [folderId]: {
+              errorKey: isRealtime
+                ? (previous?.errorKey ?? null)
+                : getApiErrorMessageKey(error),
+              isLoading: isRealtime ? (previous?.isLoading ?? false) : false,
+              isLoadingMore: isRealtime
+                ? (previous?.isLoadingMore ?? false)
+                : false,
+              items: previous?.items ?? [],
+              page: previous?.page ?? 1,
+              total: previous?.total ?? 0,
+            },
+          };
+        });
+      }
+    },
+    [organizationId, session?.user?.id, sort, spaceId],
+  );
+
+  const loadMoreFolderDocuments = useCallback(
+    (folderId: string) => {
+      const state = folderDocumentStates[folderId];
+      if (!state || state.isLoading || state.isLoadingMore) {
+        return;
+      }
+      void loadFolderDocuments(folderId, { page: state.page + 1 });
+    },
+    [folderDocumentStates, loadFolderDocuments],
+  );
+
+  const refreshExpandedFolderDocuments = useCallback(() => {
+    expandedFolderIds.forEach((folderId) => {
+      void loadFolderDocuments(folderId, { realtime: true });
+    });
+  }, [expandedFolderIds, loadFolderDocuments]);
+
+  const toggleResourceFolder = useCallback(
+    (folderId: string) => {
+      const isExpanded = expandedFolderIds.has(folderId);
+      const shouldLoad = !isExpanded && !folderDocumentStates[folderId];
+      setExpandedFolderIds((current) => {
+        const next = new Set(current);
+        if (next.has(folderId)) {
+          next.delete(folderId);
+        } else {
+          next.add(folderId);
+        }
+        return next;
+      });
+      if (shouldLoad) {
+        void loadFolderDocuments(folderId);
+      }
+    },
+    [expandedFolderIds, folderDocumentStates, loadFolderDocuments],
+  );
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -348,6 +548,17 @@ export function DocumentsPage() {
     }, 300);
     return () => clearTimeout(timer);
   }, [query]);
+
+  useEffect(() => {
+    setExpandedFolderIds(new Set());
+    setFolderDocumentStates({});
+  }, [
+    directorySelection.folderId,
+    directorySelection.view,
+    debouncedQuery,
+    sort,
+    spaceId,
+  ]);
 
   useEffect(() => {
     if (status !== "authenticated") {
@@ -368,6 +579,7 @@ export function DocumentsPage() {
       return;
     }
     void loadDocuments({ realtime: true });
+    refreshExpandedFolderDocuments();
   });
 
   useRealtimeInvalidation(DOCUMENT_CHILD_FOLDER_REALTIME_KEYS, () => {
@@ -389,6 +601,7 @@ export function DocumentsPage() {
         return;
       }
       void loadDocuments({ realtime: true });
+      refreshExpandedFolderDocuments();
     };
 
     window.addEventListener(DOCUMENT_LIST_REFRESH_EVENT, handleDragRefresh);
@@ -397,7 +610,7 @@ export function DocumentsPage() {
         DOCUMENT_LIST_REFRESH_EVENT,
         handleDragRefresh,
       );
-  }, [loadDocuments, status]);
+  }, [loadDocuments, refreshExpandedFolderDocuments, status]);
 
   useEffect(() => {
     const handleDirectoryRefresh = () => {
@@ -419,14 +632,14 @@ export function DocumentsPage() {
   }, [loadChildFolders, status]);
 
   useEffect(() => {
-    const visibleIds = new Set(items.map((item) => item.id));
+    const visibleIds = new Set(visibleDocuments.map((item) => item.id));
     setSelectedDocumentIds((current) => {
       const next = new Set(
         [...current].filter((documentId) => visibleIds.has(documentId)),
       );
       return next.size === current.size ? current : next;
     });
-  }, [items]);
+  }, [visibleDocuments]);
 
   const updateFilter = useCallback(
     (key: DocumentFilterKey) => {
@@ -461,25 +674,12 @@ export function DocumentsPage() {
     setIsSelectionMode(!isSelectionMode);
   }, [isSelectionMode]);
 
-  const openChildFolder = useCallback(
-    (folderId: string) => {
-      router.push(
-        createDocumentDirectoryHref({
-          folderId,
-          includeDescendants: directorySelection.includeDescendants,
-          view: "folder",
-        }) as never,
-      );
-    },
-    [directorySelection.includeDescendants, router],
-  );
-
   const showEmpty =
     !isLoading &&
     !isLoadingFolders &&
     !errorKey &&
     !folderErrorKey &&
-    !hasChildFolders &&
+    !hasVisibleTreeFolders &&
     items.length === 0;
   const filterKeys = getDocumentFilterKeys();
 
@@ -661,7 +861,7 @@ export function DocumentsPage() {
         </div>
       ) : null}
 
-      {shouldShowChildFolders && folderErrorKey ? (
+      {shouldUseResourceTree && folderErrorKey ? (
         <div
           role="alert"
           className="rounded-md border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive"
@@ -678,7 +878,7 @@ export function DocumentsPage() {
         </div>
       ) : null}
 
-      {shouldShowChildFolders && isLoadingFolders && !isLoading ? (
+      {shouldUseResourceTree && isLoadingFolders && !isLoading ? (
         <div
           className="flex h-11 items-center gap-2 px-1 text-sm text-muted-foreground"
           data-testid="documents-child-folders-loading"
@@ -688,22 +888,33 @@ export function DocumentsPage() {
         </div>
       ) : null}
 
-      {hasChildFolders ? (
-        <DocumentChildFolderList
+      {shouldUseResourceTree && !isLoading ? (
+        <DocumentResourceTree
+          ancestorIds={visibleTreeAncestorIds}
           density={density}
-          folders={childFolders}
-          onOpenFolder={openChildFolder}
+          documents={items}
+          expandedFolderIds={expandedFolderIds}
+          folderDocumentStates={folderDocumentStates}
+          folders={visibleTreeFolders}
+          locale={locale}
+          selectedDocumentIds={selectedDocumentIds}
+          selectedDocuments={selectedDocuments}
+          selectionMode={isSelectionMode}
+          onLoadMoreFolderDocuments={loadMoreFolderDocuments}
+          onToggleDocumentSelection={toggleDocumentSelection}
+          onToggleFolder={toggleResourceFolder}
         />
       ) : null}
 
       {showEmpty ? <DocumentsEmptyState /> : null}
 
-      {!isLoading && items.length > 0 ? (
+      {!shouldUseResourceTree && !isLoading && items.length > 0 ? (
         <DocumentList
           dateField={SORT_OPTIONS[sort].dateField}
           density={density}
           items={items}
           locale={locale}
+          showFolderPath
           selectionMode={isSelectionMode}
           selectedDocumentIds={selectedDocumentIds}
           selectedDocuments={selectedDocuments}
@@ -731,83 +942,386 @@ export function DocumentsPage() {
   );
 }
 
-function DocumentChildFolderList({
+function DocumentResourceTree({
+  ancestorIds,
   density,
+  documents,
+  expandedFolderIds,
+  folderDocumentStates,
   folders,
-  onOpenFolder,
+  level = 0,
+  locale,
+  onLoadMoreFolderDocuments,
+  onToggleDocumentSelection,
+  onToggleFolder,
+  selectedDocumentIds,
+  selectedDocuments,
+  selectionMode,
 }: {
+  ancestorIds: string[];
   density: DocumentDensity;
-  folders: DocumentFolder[];
-  onOpenFolder: (folderId: string) => void;
+  documents: DocumentSummary[];
+  expandedFolderIds: Set<string>;
+  folderDocumentStates: Record<string, FolderDocumentState>;
+  folders: DocumentFolderNode[];
+  level?: number;
+  locale: string;
+  onLoadMoreFolderDocuments: (folderId: string) => void;
+  onToggleDocumentSelection: (documentId: string) => void;
+  onToggleFolder: (folderId: string) => void;
+  selectedDocumentIds: Set<string>;
+  selectedDocuments: DocumentSummary[];
+  selectionMode: boolean;
+}) {
+  const t = useTranslations("documents");
+
+  if (folders.length === 0 && documents.length === 0) {
+    return null;
+  }
+
+  return (
+    <div className="grid gap-0.5" data-testid="documents-resource-tree">
+      {folders.map((folder) => {
+        const state = folderDocumentStates[folder.id];
+        const expanded = expandedFolderIds.has(folder.id);
+        const nextAncestorIds = [...ancestorIds, folder.id];
+
+        return (
+          <div key={folder.id} className="grid gap-0.5">
+            <DocumentResourceFolderRow
+              ancestorIds={ancestorIds}
+              density={density}
+              expanded={expanded}
+              folder={folder}
+              level={level}
+              onToggle={() => onToggleFolder(folder.id)}
+            />
+            {expanded ? (
+              <div className="grid gap-0.5">
+                {state?.isLoading ? (
+                  <DocumentTreeStatusRow
+                    level={level + 1}
+                    messageKey="directory.loadingFolderDocuments"
+                  />
+                ) : null}
+                {state?.errorKey ? (
+                  <DocumentTreeStatusRow
+                    errorKey={state.errorKey}
+                    level={level + 1}
+                  />
+                ) : null}
+                {!state?.isLoading ? (
+                  <DocumentResourceTree
+                    ancestorIds={nextAncestorIds}
+                    density={density}
+                    documents={state?.items ?? []}
+                    expandedFolderIds={expandedFolderIds}
+                    folderDocumentStates={folderDocumentStates}
+                    folders={folder.children}
+                    level={level + 1}
+                    locale={locale}
+                    selectedDocumentIds={selectedDocumentIds}
+                    selectedDocuments={selectedDocuments}
+                    selectionMode={selectionMode}
+                    onLoadMoreFolderDocuments={onLoadMoreFolderDocuments}
+                    onToggleDocumentSelection={onToggleDocumentSelection}
+                    onToggleFolder={onToggleFolder}
+                  />
+                ) : null}
+                {state && state.items.length < state.total ? (
+                  <div
+                    className="flex pt-1"
+                    style={{
+                      paddingLeft: `${(level + 1) * RESOURCE_TREE_INDENT_PX}px`,
+                    }}
+                  >
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="ghost"
+                      disabled={state.isLoadingMore}
+                      onClick={() => onLoadMoreFolderDocuments(folder.id)}
+                    >
+                      {state.isLoadingMore ? (
+                        <Loader2
+                          className="h-4 w-4 animate-spin"
+                          aria-hidden="true"
+                        />
+                      ) : null}
+                      {t("directory.loadMoreFolderDocuments", {
+                        count: state.total - state.items.length,
+                      })}
+                    </Button>
+                  </div>
+                ) : null}
+              </div>
+            ) : null}
+          </div>
+        );
+      })}
+      {documents.map((document) => (
+        <div
+          key={document.id}
+          style={{ paddingLeft: `${level * RESOURCE_TREE_INDENT_PX}px` }}
+        >
+          <DocumentRow
+            density={density}
+            document={document}
+            locale={locale}
+            selected={selectedDocumentIds.has(document.id)}
+            selectedDocuments={selectedDocuments}
+            selectionMode={selectionMode}
+            showFolderPath={false}
+            onToggleSelection={onToggleDocumentSelection}
+          />
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function collectVisibleResourceDocuments({
+  documents,
+  expandedFolderIds,
+  folderDocumentStates,
+  folders,
+}: {
+  documents: DocumentSummary[];
+  expandedFolderIds: Set<string>;
+  folderDocumentStates: Record<string, FolderDocumentState>;
+  folders: DocumentFolderNode[];
+}): DocumentSummary[] {
+  const result = [...documents];
+
+  folders.forEach((folder) => {
+    if (!expandedFolderIds.has(folder.id)) {
+      return;
+    }
+
+    const state = folderDocumentStates[folder.id];
+    result.push(
+      ...collectVisibleResourceDocuments({
+        documents: state?.items ?? [],
+        expandedFolderIds,
+        folderDocumentStates,
+        folders: folder.children,
+      }),
+    );
+  });
+
+  return result;
+}
+
+function DocumentResourceFolderRow({
+  ancestorIds,
+  density,
+  expanded,
+  folder,
+  level,
+  onToggle,
+}: {
+  ancestorIds: string[];
+  density: DocumentDensity;
+  expanded: boolean;
+  folder: DocumentFolderNode;
+  level: number;
+  onToggle: () => void;
 }) {
   const t = useTranslations("documents");
   const isCompact = density === "compact";
+  const hasExpandableContent =
+    folder.children.length > 0 || folder.documentCount > 0;
+  const activeDrag = useActiveDocumentDragData();
+  const draggable = useDraggable({
+    id: `document-resource-folder:${folder.id}`,
+    data: {
+      folderId: folder.id,
+      maxDescendantRelativeDepth: getFolderMaxDescendantRelativeDepth(folder),
+      name: folder.name,
+      parentId: folder.parentId ?? null,
+      type: "document-folder",
+      version: folder.version,
+    } satisfies DocumentDragDataPayload,
+  });
+  const droppable = useDroppable({
+    id: `document-resource-folder-drop:${folder.id}`,
+    data: {
+      ancestorIds,
+      depth: folder.depth,
+      folderId: folder.id,
+      type: "document-folder-drop",
+    } satisfies DocumentFolderDropData,
+  });
+  const canDropIntoFolder =
+    activeDrag?.type === "document" ||
+    (activeDrag?.type === "document-folder" &&
+      activeDrag.folderId !== folder.id &&
+      !ancestorIds.includes(activeDrag.folderId) &&
+      folder.depth + 1 + activeDrag.maxDescendantRelativeDepth <=
+        DOCUMENT_FOLDER_MAX_DEPTH);
+  const href = createDocumentDirectoryHref({
+    folderId: folder.id,
+    view: "folder",
+  });
 
   return (
-    <section
-      className="flex flex-col gap-1.5"
-      data-testid="documents-child-folders"
+    <div
+      ref={draggable.setNodeRef}
+      className={cn(draggable.isDragging && "opacity-50")}
+      data-testid="documents-resource-folder"
+      style={{ paddingLeft: `${level * RESOURCE_TREE_INDENT_PX}px` }}
     >
-      <header className="flex items-baseline gap-2 px-1">
-        <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-          {t("directory.childFolders")}
-        </h2>
-        <span className="text-[11px] tabular-nums text-muted-foreground/70">
-          {folders.length}
+      <div
+        ref={droppable.setNodeRef}
+        data-document-drop-target="folder"
+        data-testid="documents-resource-folder-row"
+        className={cn(
+          "group grid min-w-0 grid-cols-[1.5rem_1.75rem_minmax(0,1fr)_auto] items-center rounded-md transition-colors",
+          isCompact
+            ? "min-h-8 gap-1 px-1 py-1"
+            : "min-h-11 gap-1.5 px-1.5 py-1.5",
+          droppable.isOver && canDropIntoFolder
+            ? "bg-primary/15 text-primary ring-1 ring-primary/40"
+            : "hover:bg-muted/50",
+        )}
+      >
+        <Button
+          aria-label={t("directory.drag.folderHandle", { name: folder.name })}
+          className="h-6 w-6 cursor-grab text-muted-foreground opacity-0 transition-opacity active:cursor-grabbing group-focus-within:opacity-100 group-hover:opacity-100"
+          data-testid="documents-resource-folder-drag-handle"
+          size="icon-sm"
+          type="button"
+          variant="ghost"
+          ref={draggable.setActivatorNodeRef}
+          style={{ touchAction: "none" }}
+          {...draggable.attributes}
+          {...draggable.listeners}
+        >
+          <GripVertical className="h-3.5 w-3.5" aria-hidden="true" />
+        </Button>
+        {hasExpandableContent ? (
+          <button
+            type="button"
+            aria-expanded={expanded}
+            aria-label={t("directory.toggleFolder", { name: folder.name })}
+            className="flex h-7 w-7 items-center justify-center rounded text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            onClick={onToggle}
+          >
+            {expanded ? (
+              <ChevronDown className="h-4 w-4" aria-hidden="true" />
+            ) : (
+              <ChevronRight className="h-4 w-4" aria-hidden="true" />
+            )}
+          </button>
+        ) : (
+          <span className="h-7 w-7" aria-hidden="true" />
+        )}
+        <Link
+          href={href}
+          draggable={false}
+          className="flex min-w-0 items-center gap-2 rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          data-testid="documents-resource-folder-link"
+        >
+          <span
+            className={cn(
+              "flex shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary",
+              isCompact ? "h-6 w-6" : "h-8 w-8",
+            )}
+          >
+            {expanded ? (
+              <FolderOpen
+                className={cn(isCompact ? "h-3.5 w-3.5" : "h-4 w-4")}
+                aria-hidden="true"
+              />
+            ) : (
+              <Folder
+                className={cn(isCompact ? "h-3.5 w-3.5" : "h-4 w-4")}
+                aria-hidden="true"
+              />
+            )}
+          </span>
+          <span
+            className={cn(
+              "min-w-0 flex-1 truncate font-medium text-foreground",
+              isCompact ? "text-[13px]" : "text-sm",
+            )}
+          >
+            {folder.name}
+          </span>
+        </Link>
+        <span
+          className={cn(
+            "shrink-0 rounded bg-muted/60 tabular-nums text-muted-foreground",
+            isCompact ? "px-1 py-0 text-[10px]" : "px-1.5 py-0.5 text-[11px]",
+          )}
+        >
+          {formatFolderDocumentCount(folder, t)}
         </span>
-      </header>
-      <ul className={cn("grid", isCompact ? "gap-0.5" : "gap-1")}>
-        {folders.map((folder) => (
-          <li key={folder.id}>
-            <button
-              type="button"
-              aria-label={t("directory.openFolder", { name: folder.name })}
-              className={cn(
-                "group flex w-full min-w-0 cursor-pointer items-center rounded-md text-left transition-colors hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
-                isCompact
-                  ? "min-h-8 gap-1.5 px-1.5 py-1"
-                  : "min-h-11 gap-2 px-2 py-1.5",
-              )}
-              data-testid="documents-child-folder"
-              onClick={() => onOpenFolder(folder.id)}
-            >
-              <span
-                className={cn(
-                  "flex shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary",
-                  isCompact ? "h-6 w-6" : "h-8 w-8",
-                )}
-              >
-                <Folder
-                  className={cn(isCompact ? "h-3.5 w-3.5" : "h-4 w-4")}
-                  aria-hidden="true"
-                />
-              </span>
-              <span
-                className={cn(
-                  "min-w-0 flex-1 truncate font-medium text-foreground",
-                  isCompact ? "text-[13px]" : "text-sm",
-                )}
-              >
-                {folder.name}
-              </span>
-              <span
-                className={cn(
-                  "shrink-0 rounded bg-muted/60 tabular-nums text-muted-foreground",
-                  isCompact
-                    ? "px-1 py-0 text-[10px]"
-                    : "px-1.5 py-0.5 text-[11px]",
-                )}
-              >
-                {t("directory.folderDocumentCount", {
-                  count: folder.documentCount,
-                })}
-              </span>
-            </button>
-          </li>
-        ))}
-      </ul>
-    </section>
+      </div>
+    </div>
   );
+}
+
+function DocumentTreeStatusRow({
+  errorKey,
+  level,
+  messageKey,
+}: {
+  errorKey?: string;
+  level: number;
+  messageKey?: string;
+}) {
+  const t = useTranslations("documents");
+  const tRoot = useTranslations();
+  return (
+    <div
+      className={cn(
+        "flex h-9 items-center gap-2 rounded-md px-2 text-sm",
+        errorKey
+          ? "border border-destructive/30 bg-destructive/10 text-destructive"
+          : "text-muted-foreground",
+      )}
+      role={errorKey ? "alert" : undefined}
+      style={{ marginLeft: `${level * RESOURCE_TREE_INDENT_PX}px` }}
+    >
+      {!errorKey ? (
+        <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
+      ) : null}
+      {errorKey
+        ? tRoot(errorKey)
+        : t(messageKey ?? "directory.loadingFolderDocuments")}
+    </div>
+  );
+}
+
+function useActiveDocumentDragData() {
+  const { active } = useDndContext();
+  const data = active?.data.current;
+
+  if (!data || typeof data !== "object") {
+    return null;
+  }
+
+  const payload = data as Partial<DocumentDragDataPayload>;
+  return payload.type === "document" || payload.type === "document-folder"
+    ? (payload as DocumentDragDataPayload)
+    : null;
+}
+
+function formatFolderDocumentCount(
+  folder: Pick<DocumentFolder, "descendantDocumentCount" | "documentCount">,
+  t: DocumentTranslator,
+) {
+  if (folder.descendantDocumentCount > folder.documentCount) {
+    return t("directory.folderDocumentCountWithDescendants", {
+      count: folder.documentCount,
+      total: folder.descendantDocumentCount,
+    });
+  }
+
+  return t("directory.folderDocumentCount", {
+    count: folder.documentCount,
+  });
 }
 
 function getDirectoryViewForFilter(
@@ -890,6 +1404,7 @@ function DocumentList({
   selectionMode,
   selectedDocumentIds,
   selectedDocuments,
+  showFolderPath,
 }: {
   dateField: "lastEditedAt" | "createdAt" | null;
   density: DocumentDensity;
@@ -899,6 +1414,7 @@ function DocumentList({
   selectionMode: boolean;
   selectedDocumentIds: Set<string>;
   selectedDocuments: DocumentSummary[];
+  showFolderPath: boolean;
 }) {
   const t = useTranslations("documents");
   const groups = groupDocumentsByDate(items, dateField);
@@ -931,6 +1447,7 @@ function DocumentList({
                   selectionMode={selectionMode}
                   selected={selectedDocumentIds.has(document.id)}
                   selectedDocuments={selectedDocuments}
+                  showFolderPath={showFolderPath}
                 />
               </li>
             ))}
@@ -949,6 +1466,7 @@ function DocumentRow({
   selectionMode,
   selected,
   selectedDocuments,
+  showFolderPath,
 }: {
   density: DocumentDensity;
   document: DocumentSummary;
@@ -957,6 +1475,7 @@ function DocumentRow({
   selectionMode: boolean;
   selected: boolean;
   selectedDocuments: DocumentSummary[];
+  showFolderPath: boolean;
 }) {
   const t = useTranslations("documents");
   const isAi =
@@ -1059,6 +1578,11 @@ function DocumentRow({
           >
             {document.title || t("untitled")}
           </span>
+          {showFolderPath ? (
+            <span className="hidden max-w-40 shrink truncate text-[11px] text-muted-foreground sm:inline">
+              {formatDocumentFolderPath(document, t)}
+            </span>
+          ) : null}
           {isRequirement ? (
             <RequirementDocumentBadge
               displayCode={displayCode}
@@ -1183,6 +1707,11 @@ function DocumentRow({
           <span className="block truncate">
             {formatDocumentCreatedMeta(document, locale, t)}
           </span>
+          {showFolderPath ? (
+            <span className="mt-0.5 block truncate">
+              {formatDocumentFolderPath(document, t)}
+            </span>
+          ) : null}
         </div>
         {(document.links ?? []).some(
           (link) =>
@@ -1384,6 +1913,18 @@ export function formatDocumentEditedMeta(
     actor,
     time,
   });
+}
+
+function formatDocumentFolderPath(
+  document: Pick<DocumentSummary, "folderPath">,
+  t: DocumentTranslator,
+) {
+  const path = document.folderPath
+    ?.map((folder) => folder.name.trim())
+    .filter(Boolean)
+    .join(" / ");
+
+  return path || t("list.unfiled");
 }
 
 function getUserDisplayName(
