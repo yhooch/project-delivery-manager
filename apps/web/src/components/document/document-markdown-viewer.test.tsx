@@ -1,6 +1,12 @@
 // @vitest-environment jsdom
 
-import { render, screen, waitFor } from "@testing-library/react";
+import {
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { DocumentMarkdownViewer } from "./document-markdown-viewer";
@@ -77,6 +83,11 @@ describe("DocumentMarkdownViewer", () => {
 
     expect(await screen.findByTestId("document-mermaid-diagram")).toBeVisible();
     expect(screen.getByTestId("rendered-mermaid-svg")).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", {
+        name: "documents.markdown.mermaidPreviewOpen",
+      }),
+    ).toBeVisible();
     expect(mermaidMock.initialize).toHaveBeenCalledWith(
       expect.objectContaining({
         securityLevel: "strict",
@@ -89,6 +100,71 @@ describe("DocumentMarkdownViewer", () => {
         "graph TD\nA-->B",
       ),
     );
+  });
+
+  it("opens rendered mermaid diagrams in a fullscreen preview with the same svg", async () => {
+    render(
+      <DocumentMarkdownViewer markdown={"```mermaid\ngraph TD\nA-->B\n```"} />,
+    );
+
+    fireEvent.click(
+      await screen.findByRole("button", {
+        name: "documents.markdown.mermaidPreviewOpen",
+      }),
+    );
+
+    const dialog = await screen.findByRole("dialog", {
+      name: "documents.markdown.mermaidPreviewTitle",
+    });
+
+    expect(dialog).toBeVisible();
+    expect(screen.getAllByTestId("rendered-mermaid-svg")).toHaveLength(2);
+    expect(
+      within(dialog).getByTestId("rendered-mermaid-svg"),
+    ).toBeInTheDocument();
+  });
+
+  it("updates mermaid fullscreen preview transform when zooming and resetting", async () => {
+    render(
+      <DocumentMarkdownViewer markdown={"```mermaid\ngraph TD\nA-->B\n```"} />,
+    );
+
+    fireEvent.click(
+      await screen.findByRole("button", {
+        name: "documents.markdown.mermaidPreviewOpen",
+      }),
+    );
+
+    const dialog = await screen.findByRole("dialog", {
+      name: "documents.markdown.mermaidPreviewTitle",
+    });
+    const transform = within(dialog).getByTestId(
+      "document-mermaid-preview-transform",
+    );
+
+    expect(transform).toHaveStyle({
+      transform: "translate3d(0px, 0px, 0) scale(1)",
+    });
+
+    fireEvent.click(
+      within(dialog).getByRole("button", {
+        name: "documents.markdown.mermaidZoomIn",
+      }),
+    );
+
+    expect(transform).toHaveStyle({
+      transform: "translate3d(0px, 0px, 0) scale(1.2)",
+    });
+
+    fireEvent.click(
+      within(dialog).getByRole("button", {
+        name: "documents.markdown.mermaidReset",
+      }),
+    );
+
+    expect(transform).toHaveStyle({
+      transform: "translate3d(0px, 0px, 0) scale(1)",
+    });
   });
 
   it("updates mermaid theme variables when the app theme changes", async () => {
@@ -135,5 +211,10 @@ describe("DocumentMarkdownViewer", () => {
     expect(fallback).toHaveTextContent("documents.markdown.mermaidError");
     expect(fallback).toHaveTextContent("graph TD");
     expect(fallback).toHaveTextContent("A-->");
+    expect(
+      screen.queryByRole("button", {
+        name: "documents.markdown.mermaidPreviewOpen",
+      }),
+    ).not.toBeInTheDocument();
   });
 });

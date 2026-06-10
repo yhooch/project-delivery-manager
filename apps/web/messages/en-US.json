@@ -1259,6 +1259,14 @@
       "openImage": "Open image link",
       "mermaidLoading": "Rendering diagram",
       "mermaidError": "Diagram rendering failed; source is shown",
+      "mermaidPreviewOpen": "Open diagram fullscreen",
+      "mermaidPreviewTitle": "Diagram preview",
+      "mermaidPreviewDescription": "Zoom and drag to inspect diagram details",
+      "mermaidZoomOut": "Zoom out",
+      "mermaidZoomIn": "Zoom in",
+      "mermaidReset": "Reset view",
+      "mermaidFit": "Fit to window",
+      "mermaidClose": "Close preview",
       "objectLookupFailed": "This code cannot be resolved in the current context"
     },
     "sort": {

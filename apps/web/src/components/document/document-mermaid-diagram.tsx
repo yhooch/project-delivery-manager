@@ -1,10 +1,39 @@
 "use client";
 
-import { AlertTriangle, Loader2 } from "lucide-react";
+import * as DialogPrimitive from "@radix-ui/react-dialog";
+import {
+  AlertTriangle,
+  Expand,
+  Loader2,
+  Maximize2,
+  RotateCcw,
+  X,
+  ZoomIn,
+  ZoomOut,
+} from "lucide-react";
 import { useTranslations } from "next-intl";
-import { useEffect, useId, useMemo, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useId,
+  useMemo,
+  useRef,
+  useState,
+  type ReactNode,
+  type PointerEvent as ReactPointerEvent,
+  type WheelEvent as ReactWheelEvent,
+} from "react";
 
 import { cn } from "../../lib/utils";
+import { Button } from "../ui/button";
+import {
+  Dialog,
+  DialogClose,
+  DialogDescription,
+  DialogOverlay,
+  DialogPortal,
+  DialogTitle,
+} from "../ui/dialog";
 
 type DocumentMermaidDiagramProps = {
   className?: string;
@@ -16,8 +45,28 @@ type MermaidRenderState =
   | { status: "rendered"; svg: string }
   | { status: "error" };
 type MermaidThemeMode = "dark" | "light";
+type MermaidPreviewTransform = {
+  scale: number;
+  x: number;
+  y: number;
+};
+type MermaidPreviewDragState = {
+  originX: number;
+  originY: number;
+  pointerId: number;
+  startX: number;
+  startY: number;
+};
 
 const MERMAID_MAX_SOURCE_LENGTH = 100_000;
+const MERMAID_PREVIEW_DEFAULT_TRANSFORM: MermaidPreviewTransform = {
+  scale: 1,
+  x: 0,
+  y: 0,
+};
+const MERMAID_PREVIEW_MAX_SCALE = 4;
+const MERMAID_PREVIEW_MIN_SCALE = 0.25;
+const MERMAID_PREVIEW_ZOOM_STEP = 0.2;
 const MERMAID_SECURE_CONFIG_KEYS = [
   "secure",
   "securityLevel",
@@ -80,6 +129,7 @@ export function DocumentMermaidDiagram({
     [diagramSource, reactId, themeMode],
   );
   const [state, setState] = useState<MermaidRenderState>({ status: "loading" });
+  const [previewOpen, setPreviewOpen] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -129,17 +179,37 @@ export function DocumentMermaidDiagram({
 
   if (state.status === "rendered") {
     return (
-      <figure
-        className={cn(
-          "my-4 flex w-full overflow-x-auto rounded-md border border-border bg-muted/20 p-4 shadow-sm",
-          "[&_svg]:h-auto [&_svg]:max-w-none [&_svg]:shrink-0",
-          "[&_svg_.edge-thickness-normal]:stroke-[1.6px]",
-          "[&_svg_.nodeLabel]:font-medium",
-          className,
-        )}
-        data-testid="document-mermaid-diagram"
-        dangerouslySetInnerHTML={{ __html: state.svg }}
-      />
+      <div className={cn("group relative my-4 w-full", className)}>
+        <figure
+          className={cn(
+            "flex w-full overflow-x-auto rounded-md border border-border bg-muted/20 p-4 shadow-sm",
+            "[&_svg]:h-auto [&_svg]:max-w-none [&_svg]:shrink-0",
+            "[&_svg_.edge-thickness-normal]:stroke-[1.6px]",
+            "[&_svg_.nodeLabel]:font-medium",
+          )}
+          data-testid="document-mermaid-diagram"
+          dangerouslySetInnerHTML={{ __html: state.svg }}
+        />
+        <Button
+          aria-label={t("mermaidPreviewOpen")}
+          className="absolute right-2 top-2 z-10 bg-background/90 shadow-sm backdrop-blur hover:bg-background"
+          data-testid="document-mermaid-fullscreen-open"
+          onClick={() => {
+            setPreviewOpen(true);
+          }}
+          size="icon"
+          title={t("mermaidPreviewOpen")}
+          type="button"
+          variant="secondary"
+        >
+          <Expand className="h-4 w-4" aria-hidden="true" />
+        </Button>
+        <MermaidPreviewDialog
+          onOpenChange={setPreviewOpen}
+          open={previewOpen}
+          svg={state.svg}
+        />
+      </div>
     );
   }
 
@@ -175,6 +245,241 @@ export function DocumentMermaidDiagram({
       </pre>
     </div>
   );
+}
+
+function MermaidPreviewDialog({
+  onOpenChange,
+  open,
+  svg,
+}: {
+  onOpenChange: (open: boolean) => void;
+  open: boolean;
+  svg: string;
+}) {
+  const t = useTranslations("documents.markdown");
+  const dragStateRef = useRef<MermaidPreviewDragState | null>(null);
+  const [isDragging, setIsDragging] = useState(false);
+  const [transform, setTransform] = useState<MermaidPreviewTransform>(
+    MERMAID_PREVIEW_DEFAULT_TRANSFORM,
+  );
+
+  const fitToViewport = useCallback(() => {
+    dragStateRef.current = null;
+    setIsDragging(false);
+    setTransform(MERMAID_PREVIEW_DEFAULT_TRANSFORM);
+  }, []);
+
+  useEffect(() => {
+    if (open) {
+      fitToViewport();
+    }
+  }, [fitToViewport, open]);
+
+  const updateScale = useCallback((delta: number) => {
+    setTransform((currentTransform) => ({
+      ...currentTransform,
+      scale: clampMermaidPreviewScale(currentTransform.scale + delta),
+    }));
+  }, []);
+
+  const handlePointerDown = useCallback(
+    (event: ReactPointerEvent<HTMLDivElement>) => {
+      if (event.button !== 0) {
+        return;
+      }
+
+      dragStateRef.current = {
+        originX: transform.x,
+        originY: transform.y,
+        pointerId: event.pointerId,
+        startX: event.clientX,
+        startY: event.clientY,
+      };
+      setIsDragging(true);
+
+      try {
+        event.currentTarget.setPointerCapture(event.pointerId);
+      } catch {
+        // Pointer capture is not available in some test environments.
+      }
+    },
+    [transform.x, transform.y],
+  );
+
+  const handlePointerMove = useCallback(
+    (event: ReactPointerEvent<HTMLDivElement>) => {
+      const currentDragState = dragStateRef.current;
+
+      if (!currentDragState || currentDragState.pointerId !== event.pointerId) {
+        return;
+      }
+
+      setTransform((currentTransform) => ({
+        ...currentTransform,
+        x: currentDragState.originX + event.clientX - currentDragState.startX,
+        y: currentDragState.originY + event.clientY - currentDragState.startY,
+      }));
+    },
+    [],
+  );
+
+  const stopDragging = useCallback(
+    (event: ReactPointerEvent<HTMLDivElement>) => {
+      const currentDragState = dragStateRef.current;
+
+      if (!currentDragState || currentDragState.pointerId !== event.pointerId) {
+        return;
+      }
+
+      dragStateRef.current = null;
+      setIsDragging(false);
+
+      try {
+        event.currentTarget.releasePointerCapture(event.pointerId);
+      } catch {
+        // Pointer capture is not available in some test environments.
+      }
+    },
+    [],
+  );
+
+  const handleWheel = useCallback(
+    (event: ReactWheelEvent<HTMLDivElement>) => {
+      event.preventDefault();
+      updateScale(
+        event.deltaY < 0
+          ? MERMAID_PREVIEW_ZOOM_STEP
+          : -MERMAID_PREVIEW_ZOOM_STEP,
+      );
+    },
+    [updateScale],
+  );
+
+  return (
+    <Dialog onOpenChange={onOpenChange} open={open}>
+      <DialogPortal>
+        <DialogOverlay />
+        <DialogPrimitive.Content
+          className={cn(
+            "fixed inset-0 z-50 flex h-dvh w-dvw max-w-none flex-col overflow-hidden border border-border bg-card text-foreground shadow-2xl outline-none duration-200",
+            "data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95",
+          )}
+          data-testid="document-mermaid-preview-dialog"
+        >
+          <div className="flex min-h-12 items-center gap-2 border-b border-border bg-muted/30 px-2 py-2 sm:px-3">
+            <DialogTitle className="min-w-0 flex-1 truncate text-sm leading-6">
+              {t("mermaidPreviewTitle")}
+            </DialogTitle>
+            <DialogDescription className="sr-only">
+              {t("mermaidPreviewDescription")}
+            </DialogDescription>
+            <div className="flex shrink-0 items-center gap-1">
+              <MermaidPreviewToolbarButton
+                label={t("mermaidZoomOut")}
+                onClick={() => {
+                  updateScale(-MERMAID_PREVIEW_ZOOM_STEP);
+                }}
+              >
+                <ZoomOut className="h-4 w-4" aria-hidden="true" />
+              </MermaidPreviewToolbarButton>
+              <MermaidPreviewToolbarButton
+                label={t("mermaidZoomIn")}
+                onClick={() => {
+                  updateScale(MERMAID_PREVIEW_ZOOM_STEP);
+                }}
+              >
+                <ZoomIn className="h-4 w-4" aria-hidden="true" />
+              </MermaidPreviewToolbarButton>
+              <MermaidPreviewToolbarButton
+                label={t("mermaidReset")}
+                onClick={fitToViewport}
+              >
+                <RotateCcw className="h-4 w-4" aria-hidden="true" />
+              </MermaidPreviewToolbarButton>
+              <MermaidPreviewToolbarButton
+                label={t("mermaidFit")}
+                onClick={fitToViewport}
+              >
+                <Maximize2 className="h-4 w-4" aria-hidden="true" />
+              </MermaidPreviewToolbarButton>
+              <DialogClose asChild>
+                <Button
+                  aria-label={t("mermaidClose")}
+                  className="h-8 w-8 shrink-0"
+                  size="icon"
+                  title={t("mermaidClose")}
+                  type="button"
+                  variant="ghost"
+                >
+                  <X className="h-4 w-4" aria-hidden="true" />
+                </Button>
+              </DialogClose>
+            </div>
+          </div>
+          <div className="relative min-h-0 flex-1 overflow-hidden bg-background">
+            <div
+              className={cn(
+                "absolute inset-0 flex touch-none items-center justify-center overflow-hidden p-3 sm:p-6",
+                isDragging ? "cursor-grabbing" : "cursor-grab",
+              )}
+              data-testid="document-mermaid-preview-viewport"
+              onPointerCancel={stopDragging}
+              onPointerDown={handlePointerDown}
+              onPointerMove={handlePointerMove}
+              onPointerUp={stopDragging}
+              onWheel={handleWheel}
+            >
+              <div
+                className={cn(
+                  "will-change-transform",
+                  "[&_svg]:block [&_svg]:h-auto [&_svg]:max-h-[calc(100dvh-7rem)] [&_svg]:max-w-[calc(100vw-2rem)] [&_svg]:select-none",
+                )}
+                data-testid="document-mermaid-preview-transform"
+                dangerouslySetInnerHTML={{ __html: svg }}
+                style={{
+                  transform: `translate3d(${transform.x}px, ${transform.y}px, 0) scale(${transform.scale})`,
+                  transformOrigin: "center",
+                }}
+              />
+            </div>
+          </div>
+        </DialogPrimitive.Content>
+      </DialogPortal>
+    </Dialog>
+  );
+}
+
+function MermaidPreviewToolbarButton({
+  children,
+  label,
+  onClick,
+}: {
+  children: ReactNode;
+  label: string;
+  onClick: () => void;
+}) {
+  return (
+    <Button
+      aria-label={label}
+      className="h-8 w-8 shrink-0"
+      onClick={onClick}
+      size="icon"
+      title={label}
+      type="button"
+      variant="ghost"
+    >
+      {children}
+    </Button>
+  );
+}
+
+function clampMermaidPreviewScale(scale: number): number {
+  const clampedScale = Math.min(
+    MERMAID_PREVIEW_MAX_SCALE,
+    Math.max(MERMAID_PREVIEW_MIN_SCALE, scale),
+  );
+
+  return Math.round(clampedScale * 100) / 100;
 }
 
 function createMermaidRenderId(

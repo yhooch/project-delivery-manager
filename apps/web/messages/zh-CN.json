@@ -1259,6 +1259,14 @@
       "openImage": "打开图片链接",
       "mermaidLoading": "正在渲染图表",
       "mermaidError": "图表渲染失败，已显示源码",
+      "mermaidPreviewOpen": "全屏预览图表",
+      "mermaidPreviewTitle": "图表预览",
+      "mermaidPreviewDescription": "可缩放和拖拽查看图表细节",
+      "mermaidZoomOut": "缩小",
+      "mermaidZoomIn": "放大",
+      "mermaidReset": "重置视图",
+      "mermaidFit": "适配窗口",
+      "mermaidClose": "关闭预览",
       "objectLookupFailed": "当前上下文无法解析该编号"
     },
     "sort": {
