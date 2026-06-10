@@ -13,6 +13,7 @@ import {
   Folder,
   FolderInput,
   FolderOpen,
+  FolderTree,
   GripVertical,
   Loader2,
   MoreHorizontal,
@@ -188,11 +189,10 @@ export function DocumentDirectoryRail({
     collapsibleFolderIds.every(
       (folderId) => !effectiveCollapsedFolderIds.has(folderId),
     );
-  const folderTreeToggleLabel = !hasCollapsibleFolders
+  const folderTreeActionsLabel = !hasCollapsibleFolders
     ? t("toggleAllFoldersDisabled")
-    : allFoldersExpanded
-      ? t("collapseAllFolders")
-      : t("expandAllFolders");
+    : t("folderTreeActions");
+  const canFocusCurrentFolder = rootFolderActive || Boolean(activeFolderId);
 
   const loadFolders = useCallback(
     async (options?: { realtime?: boolean }) => {
@@ -313,24 +313,46 @@ export function DocumentDirectoryRail({
     });
   };
 
-  const toggleAllFolders = () => {
+  const expandAllFolders = () => {
     if (!hasCollapsibleFolders) {
       return;
     }
 
-    if (allFoldersExpanded) {
-      const activeAncestors = new Set(activeFolderAncestorIds);
-      setCollapsedFolderIds(
-        new Set(
-          collapsibleFolderIds.filter(
-            (folderId) => !activeAncestors.has(folderId),
-          ),
-        ),
-      );
+    setCollapsedFolderIds(new Set());
+  };
+
+  const collapseAllFolders = () => {
+    if (!hasCollapsibleFolders) {
       return;
     }
 
-    setCollapsedFolderIds(new Set());
+    const activeAncestors = new Set(activeFolderAncestorIds);
+    setCollapsedFolderIds(
+      new Set(
+        collapsibleFolderIds.filter(
+          (folderId) => !activeAncestors.has(folderId),
+        ),
+      ),
+    );
+  };
+
+  const focusCurrentFolder = () => {
+    if (!hasCollapsibleFolders || !canFocusCurrentFolder) {
+      return;
+    }
+
+    const expandedFolderIds = new Set(activeFolderAncestorIds);
+    if (activeFolderId) {
+      expandedFolderIds.add(activeFolderId);
+    }
+
+    setCollapsedFolderIds(
+      new Set(
+        collapsibleFolderIds.filter(
+          (folderId) => !expandedFolderIds.has(folderId),
+        ),
+      ),
+    );
   };
 
   const handleOperationDone = async (deletedFolderId?: string) => {
@@ -478,25 +500,45 @@ export function DocumentDirectoryRail({
           </h2>
           <div className="flex shrink-0 items-center gap-0.5">
             <HeaderIconTip
-              content={folderTreeToggleLabel}
+              content={folderTreeActionsLabel}
               disabled={!hasCollapsibleFolders}
             >
-              <Button
-                aria-label={folderTreeToggleLabel}
-                className="h-6 w-6 text-muted-foreground hover:text-foreground"
-                disabled={!hasCollapsibleFolders}
-                size="icon-sm"
-                title={folderTreeToggleLabel}
-                type="button"
-                variant="ghost"
-                onClick={toggleAllFolders}
-              >
-                {allFoldersExpanded ? (
-                  <ChevronsUp className="h-3.5 w-3.5" aria-hidden="true" />
-                ) : (
-                  <ChevronsDown className="h-3.5 w-3.5" aria-hidden="true" />
-                )}
-              </Button>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    aria-label={folderTreeActionsLabel}
+                    className="h-6 w-6 text-muted-foreground hover:text-foreground"
+                    disabled={!hasCollapsibleFolders}
+                    size="icon-sm"
+                    title={folderTreeActionsLabel}
+                    type="button"
+                    variant="ghost"
+                  >
+                    <FolderTree className="h-3.5 w-3.5" aria-hidden="true" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-44">
+                  <DropdownMenuItem
+                    disabled={allFoldersExpanded}
+                    onSelect={expandAllFolders}
+                  >
+                    <ChevronsDown className="h-4 w-4" aria-hidden="true" />
+                    {t("expandAllFolders")}
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onSelect={collapseAllFolders}>
+                    <ChevronsUp className="h-4 w-4" aria-hidden="true" />
+                    {t("collapseAllFolders")}
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem
+                    disabled={!canFocusCurrentFolder}
+                    onSelect={focusCurrentFolder}
+                  >
+                    <FolderOpen className="h-4 w-4" aria-hidden="true" />
+                    {t("focusCurrentFolder")}
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             </HeaderIconTip>
             {isLoading ? (
               <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground" />

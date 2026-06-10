@@ -396,7 +396,7 @@ describe("DocumentDirectoryRail", () => {
     ).toHaveAttribute("aria-expanded", "true");
   });
 
-  it("expands and collapses all folders from the folder header", async () => {
+  it("expands, focuses, and collapses folders from the folder header menu", async () => {
     searchParamsMock.current = new URLSearchParams(
       "directoryView=folder&folderId=FLD_02",
     );
@@ -455,16 +455,47 @@ describe("DocumentDirectoryRail", () => {
       expect(screen.queryByText("Archive Child")).not.toBeInTheDocument(),
     );
 
+    const openFolderTreeActions = () => {
+      fireEvent.pointerDown(
+        screen.getByRole("button", {
+          name: "documents.directory.folderTreeActions",
+        }),
+      );
+    };
+
+    openFolderTreeActions();
     fireEvent.click(
-      screen.getByRole("button", {
+      await screen.findByRole("menuitem", {
         name: "documents.directory.expandAllFolders",
       }),
     );
 
     expect(await screen.findByText("Archive Child")).toBeVisible();
 
+    openFolderTreeActions();
     fireEvent.click(
-      screen.getByRole("button", {
+      await screen.findByRole("menuitem", {
+        name: "documents.directory.focusCurrentFolder",
+      }),
+    );
+
+    await waitFor(() =>
+      expect(screen.queryByText("Archive Child")).not.toBeInTheDocument(),
+    );
+    expect(screen.getByText("Roadmap")).toBeVisible();
+
+    openFolderTreeActions();
+    fireEvent.click(
+      await screen.findByRole("menuitem", {
+        name: "documents.directory.expandAllFolders",
+      }),
+    );
+
+    expect(await screen.findByText("Archive Child")).toBeVisible();
+
+    openFolderTreeActions();
+    fireEvent.click(
+      await screen.findByRole("menuitem", {
         name: "documents.directory.collapseAllFolders",
       }),
     );
