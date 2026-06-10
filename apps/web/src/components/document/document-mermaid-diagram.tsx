@@ -3,7 +3,6 @@
 import * as DialogPrimitive from "@radix-ui/react-dialog";
 import {
   AlertTriangle,
-  Expand,
   Loader2,
   Maximize2,
   RotateCcw,
@@ -195,7 +194,7 @@ export function DocumentMermaidDiagram({
         />
         <Button
           aria-label={t("mermaidPreviewOpen")}
-          className="absolute right-2 top-2 z-10 bg-background/90 shadow-sm backdrop-blur hover:bg-background"
+          className="pointer-events-none absolute right-2 top-2 z-10 bg-background/90 opacity-0 shadow-sm backdrop-blur transition-opacity hover:bg-background focus-visible:pointer-events-auto focus-visible:opacity-100 group-hover:pointer-events-auto group-hover:opacity-100 [@media(pointer:coarse)]:pointer-events-auto [@media(pointer:coarse)]:opacity-100"
           data-testid="document-mermaid-fullscreen-open"
           onClick={() => {
             setPreviewOpen(true);
@@ -205,7 +204,7 @@ export function DocumentMermaidDiagram({
           type="button"
           variant="secondary"
         >
-          <Expand className="h-4 w-4" aria-hidden="true" />
+          <ZoomIn className="h-4 w-4" aria-hidden="true" />
         </Button>
         <MermaidPreviewDialog
           onOpenChange={setPreviewOpen}
