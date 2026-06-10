@@ -352,9 +352,9 @@ function MermaidPreviewDialog({
 
     const animationFrame = window.requestAnimationFrame(updateViewportSize);
 
-    if (typeof ResizeObserver === "undefined") {
-      window.addEventListener("resize", updateViewportSize);
+    window.addEventListener("resize", updateViewportSize);
 
+    if (typeof ResizeObserver === "undefined") {
       return () => {
         window.cancelAnimationFrame(animationFrame);
         window.removeEventListener("resize", updateViewportSize);
@@ -367,6 +367,7 @@ function MermaidPreviewDialog({
 
     return () => {
       window.cancelAnimationFrame(animationFrame);
+      window.removeEventListener("resize", updateViewportSize);
       resizeObserver.disconnect();
     };
   }, [open, viewportElement]);
