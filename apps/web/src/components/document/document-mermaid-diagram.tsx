@@ -19,6 +19,7 @@ import {
   useMemo,
   useRef,
   useState,
+  type KeyboardEvent as ReactKeyboardEvent,
   type ReactNode,
   type PointerEvent as ReactPointerEvent,
   type WheelEvent as ReactWheelEvent,
@@ -132,6 +133,20 @@ export function DocumentMermaidDiagram({
   );
   const [state, setState] = useState<MermaidRenderState>({ status: "loading" });
   const [previewOpen, setPreviewOpen] = useState(false);
+  const openPreview = useCallback(() => {
+    setPreviewOpen(true);
+  }, []);
+  const handlePreviewKeyDown = useCallback(
+    (event: ReactKeyboardEvent<HTMLElement>) => {
+      if (event.key !== "Enter" && event.key !== " ") {
+        return;
+      }
+
+      event.preventDefault();
+      openPreview();
+    },
+    [openPreview],
+  );
 
   useEffect(() => {
     let cancelled = false;
@@ -181,31 +196,24 @@ export function DocumentMermaidDiagram({
 
   if (state.status === "rendered") {
     return (
-      <div className={cn("group relative my-4 w-full", className)}>
+      <div className={cn("relative my-4 w-full", className)}>
         <figure
+          aria-label={t("mermaidPreviewOpen")}
           className={cn(
-            "flex w-full overflow-x-auto rounded-md border border-border bg-muted/20 p-4 shadow-sm",
+            "flex w-full cursor-zoom-in overflow-x-auto rounded-md border border-border bg-muted/20 p-4 shadow-sm",
+            "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
             "[&_svg]:h-auto [&_svg]:max-w-none [&_svg]:shrink-0",
             "[&_svg_.edge-thickness-normal]:stroke-[1.6px]",
             "[&_svg_.nodeLabel]:font-medium",
           )}
           data-testid="document-mermaid-diagram"
           dangerouslySetInnerHTML={{ __html: state.svg }}
-        />
-        <Button
-          aria-label={t("mermaidPreviewOpen")}
-          className="pointer-events-none absolute right-2 top-2 z-10 bg-background/90 opacity-0 shadow-sm backdrop-blur transition-opacity hover:bg-background focus-visible:pointer-events-auto focus-visible:opacity-100 group-hover:pointer-events-auto group-hover:opacity-100 [@media(pointer:coarse)]:pointer-events-auto [@media(pointer:coarse)]:opacity-100"
-          data-testid="document-mermaid-fullscreen-open"
-          onClick={() => {
-            setPreviewOpen(true);
-          }}
-          size="icon"
+          onClick={openPreview}
+          onKeyDown={handlePreviewKeyDown}
+          role="button"
+          tabIndex={0}
           title={t("mermaidPreviewOpen")}
-          type="button"
-          variant="secondary"
-        >
-          <ZoomIn className="h-4 w-4" aria-hidden="true" />
-        </Button>
+        />
         <MermaidPreviewDialog
           onOpenChange={setPreviewOpen}
           open={previewOpen}

@@ -81,13 +81,19 @@ describe("DocumentMarkdownViewer", () => {
       <DocumentMarkdownViewer markdown={"```mermaid\ngraph TD\nA-->B\n```"} />,
     );
 
-    expect(await screen.findByTestId("document-mermaid-diagram")).toBeVisible();
+    const diagram = await screen.findByTestId("document-mermaid-diagram");
+
+    expect(diagram).toBeVisible();
+    expect(diagram).toHaveClass("cursor-zoom-in");
     expect(screen.getByTestId("rendered-mermaid-svg")).toBeInTheDocument();
     expect(
       screen.getByRole("button", {
         name: "documents.markdown.mermaidPreviewOpen",
       }),
     ).toBeVisible();
+    expect(
+      screen.queryByTestId("document-mermaid-fullscreen-open"),
+    ).not.toBeInTheDocument();
     expect(mermaidMock.initialize).toHaveBeenCalledWith(
       expect.objectContaining({
         securityLevel: "strict",
