@@ -268,6 +268,7 @@ function MermaidPreviewDialog({
 }) {
   const t = useTranslations("documents.markdown");
   const dragStateRef = useRef<MermaidPreviewDragState | null>(null);
+  const previousOpenRef = useRef(open);
   const pendingScrollAnchorRef = useRef<MermaidPreviewScrollAnchor | null>(
     null,
   );
@@ -318,9 +319,11 @@ function MermaidPreviewDialog({
   }, []);
 
   useEffect(() => {
-    if (open) {
+    if (open && !previousOpenRef.current) {
       fitToViewport();
     }
+
+    previousOpenRef.current = open;
   }, [fitToViewport, open]);
 
   useEffect(() => {

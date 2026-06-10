@@ -147,6 +147,9 @@ describe("DocumentMarkdownViewer", () => {
     const preview = within(dialog).getByTestId(
       "document-mermaid-preview-transform",
     );
+    const viewport = within(dialog).getByTestId(
+      "document-mermaid-preview-viewport",
+    );
 
     expect(preview).toHaveStyle({
       height: "50px",
@@ -166,6 +169,19 @@ describe("DocumentMarkdownViewer", () => {
     });
     expect(preview.getAttribute("style") ?? "").not.toContain("scale(");
 
+    Object.defineProperties(viewport, {
+      clientHeight: { configurable: true, value: 25 },
+      clientWidth: { configurable: true, value: 50 },
+    });
+    fireEvent(window, new Event("resize"));
+
+    await waitFor(() =>
+      expect(preview).toHaveStyle({
+        height: "60px",
+        width: "120px",
+      }),
+    );
+
     fireEvent.click(
       within(dialog).getByRole("button", {
         name: "documents.markdown.mermaidReset",
@@ -173,8 +189,8 @@ describe("DocumentMarkdownViewer", () => {
     );
 
     expect(preview).toHaveStyle({
-      height: "50px",
-      width: "100px",
+      height: "25px",
+      width: "50px",
     });
   });
 
