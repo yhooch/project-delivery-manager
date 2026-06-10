@@ -35,7 +35,7 @@ describe("DocumentMarkdownViewer", () => {
     mermaidMock.initialize.mockClear();
     mermaidMock.render.mockReset();
     mermaidMock.render.mockResolvedValue({
-      svg: '<svg data-testid="rendered-mermaid-svg" role="img"></svg>',
+      svg: '<svg data-testid="rendered-mermaid-svg" role="img" viewBox="0 0 100 50"></svg>',
     });
   });
 
@@ -124,7 +124,7 @@ describe("DocumentMarkdownViewer", () => {
     ).toBeInTheDocument();
   });
 
-  it("updates mermaid fullscreen preview transform when zooming and resetting", async () => {
+  it("updates mermaid fullscreen preview svg size when zooming and resetting", async () => {
     render(
       <DocumentMarkdownViewer markdown={"```mermaid\ngraph TD\nA-->B\n```"} />,
     );
@@ -138,13 +138,15 @@ describe("DocumentMarkdownViewer", () => {
     const dialog = await screen.findByRole("dialog", {
       name: "documents.markdown.mermaidPreviewTitle",
     });
-    const transform = within(dialog).getByTestId(
+    const preview = within(dialog).getByTestId(
       "document-mermaid-preview-transform",
     );
 
-    expect(transform).toHaveStyle({
-      transform: "translate3d(0px, 0px, 0) scale(1)",
+    expect(preview).toHaveStyle({
+      height: "50px",
+      width: "100px",
     });
+    expect(preview.getAttribute("style") ?? "").not.toContain("scale(");
 
     fireEvent.click(
       within(dialog).getByRole("button", {
@@ -152,9 +154,11 @@ describe("DocumentMarkdownViewer", () => {
       }),
     );
 
-    expect(transform).toHaveStyle({
-      transform: "translate3d(0px, 0px, 0) scale(1.2)",
+    expect(preview).toHaveStyle({
+      height: "60px",
+      width: "120px",
     });
+    expect(preview.getAttribute("style") ?? "").not.toContain("scale(");
 
     fireEvent.click(
       within(dialog).getByRole("button", {
@@ -162,8 +166,9 @@ describe("DocumentMarkdownViewer", () => {
       }),
     );
 
-    expect(transform).toHaveStyle({
-      transform: "translate3d(0px, 0px, 0) scale(1)",
+    expect(preview).toHaveStyle({
+      height: "50px",
+      width: "100px",
     });
   });
 

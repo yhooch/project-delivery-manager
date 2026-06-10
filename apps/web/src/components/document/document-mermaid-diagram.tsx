@@ -16,6 +16,7 @@ import {
   useCallback,
   useEffect,
   useId,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -45,28 +46,30 @@ type MermaidRenderState =
   | { status: "rendered"; svg: string }
   | { status: "error" };
 type MermaidThemeMode = "dark" | "light";
-type MermaidPreviewTransform = {
-  scale: number;
-  x: number;
-  y: number;
+type MermaidPreviewMetrics = {
+  height: number;
+  width: number;
 };
 type MermaidPreviewDragState = {
-  originX: number;
-  originY: number;
   pointerId: number;
+  scrollLeft: number;
+  scrollTop: number;
   startX: number;
   startY: number;
 };
+type MermaidPreviewViewportSize = {
+  height: number;
+  width: number;
+};
+type MermaidPreviewScrollAnchor = {
+  viewportX: number;
+  viewportY: number;
+};
 
 const MERMAID_MAX_SOURCE_LENGTH = 100_000;
-const MERMAID_PREVIEW_DEFAULT_TRANSFORM: MermaidPreviewTransform = {
-  scale: 1,
-  x: 0,
-  y: 0,
-};
 const MERMAID_PREVIEW_MAX_SCALE = 4;
-const MERMAID_PREVIEW_MIN_SCALE = 0.25;
-const MERMAID_PREVIEW_ZOOM_STEP = 0.2;
+const MERMAID_PREVIEW_MIN_SCALE = 0.05;
+const MERMAID_PREVIEW_ZOOM_FACTOR = 1.2;
 const MERMAID_SECURE_CONFIG_KEYS = [
   "secure",
   "securityLevel",
@@ -258,15 +261,53 @@ function MermaidPreviewDialog({
 }) {
   const t = useTranslations("documents.markdown");
   const dragStateRef = useRef<MermaidPreviewDragState | null>(null);
+  const pendingScrollAnchorRef = useRef<MermaidPreviewScrollAnchor | null>(
+    null,
+  );
+  const viewportRef = useRef<HTMLDivElement>(null);
   const [isDragging, setIsDragging] = useState(false);
-  const [transform, setTransform] = useState<MermaidPreviewTransform>(
-    MERMAID_PREVIEW_DEFAULT_TRANSFORM,
+  const [isFitMode, setIsFitMode] = useState(true);
+  const [scale, setScale] = useState(1);
+  const [viewportElement, setViewportElement] = useState<HTMLDivElement | null>(
+    null,
+  );
+  const [viewportSize, setViewportSize] = useState<MermaidPreviewViewportSize>({
+    height: 0,
+    width: 0,
+  });
+  const svgMetrics = useMemo(() => getMermaidPreviewMetrics(svg), [svg]);
+  const fitScale = useMemo(
+    () => getMermaidPreviewFitScale(svgMetrics, viewportSize),
+    [svgMetrics, viewportSize],
+  );
+  const previewSize = useMemo(
+    () =>
+      svgMetrics
+        ? {
+            height: Math.round(svgMetrics.height * scale * 100) / 100,
+            width: Math.round(svgMetrics.width * scale * 100) / 100,
+          }
+        : null,
+    [scale, svgMetrics],
   );
 
   const fitToViewport = useCallback(() => {
     dragStateRef.current = null;
     setIsDragging(false);
-    setTransform(MERMAID_PREVIEW_DEFAULT_TRANSFORM);
+    setIsFitMode(true);
+    setScale(fitScale);
+
+    const viewport = viewportRef.current;
+
+    if (viewport) {
+      viewport.scrollLeft = 0;
+      viewport.scrollTop = 0;
+    }
+  }, [fitScale]);
+
+  const setViewportRef = useCallback((element: HTMLDivElement | null) => {
+    viewportRef.current = element;
+    setViewportElement(element);
   }, []);
 
   useEffect(() => {
@@ -275,12 +316,100 @@ function MermaidPreviewDialog({
     }
   }, [fitToViewport, open]);
 
-  const updateScale = useCallback((delta: number) => {
-    setTransform((currentTransform) => ({
-      ...currentTransform,
-      scale: clampMermaidPreviewScale(currentTransform.scale + delta),
-    }));
-  }, []);
+  useEffect(() => {
+    if (!open || !isFitMode) {
+      return;
+    }
+
+    setScale(fitScale);
+  }, [fitScale, isFitMode, open]);
+
+  useEffect(() => {
+    if (!open) {
+      return;
+    }
+
+    if (!viewportElement) {
+      return;
+    }
+
+    const updateViewportSize = () => {
+      setViewportSize({
+        height: viewportElement.clientHeight,
+        width: viewportElement.clientWidth,
+      });
+    };
+
+    const animationFrame = window.requestAnimationFrame(updateViewportSize);
+
+    if (typeof ResizeObserver === "undefined") {
+      window.addEventListener("resize", updateViewportSize);
+
+      return () => {
+        window.cancelAnimationFrame(animationFrame);
+        window.removeEventListener("resize", updateViewportSize);
+      };
+    }
+
+    const resizeObserver = new ResizeObserver(updateViewportSize);
+
+    resizeObserver.observe(viewportElement);
+
+    return () => {
+      window.cancelAnimationFrame(animationFrame);
+      resizeObserver.disconnect();
+    };
+  }, [open, viewportElement]);
+
+  useLayoutEffect(() => {
+    const viewport = viewportRef.current;
+    const anchor = pendingScrollAnchorRef.current;
+
+    if (!viewport || !anchor) {
+      return;
+    }
+
+    pendingScrollAnchorRef.current = null;
+    viewport.scrollLeft = Math.max(
+      0,
+      anchor.viewportX - viewport.clientWidth / 2,
+    );
+    viewport.scrollTop = Math.max(
+      0,
+      anchor.viewportY - viewport.clientHeight / 2,
+    );
+  }, [scale]);
+
+  const updateScale = useCallback(
+    (nextScale: number, anchor?: MermaidPreviewScrollAnchor) => {
+      const clampedScale = clampMermaidPreviewScale(nextScale);
+
+      setIsFitMode(false);
+
+      if (anchor && scale > 0) {
+        pendingScrollAnchorRef.current = {
+          viewportX: (anchor.viewportX * clampedScale) / scale,
+          viewportY: (anchor.viewportY * clampedScale) / scale,
+        };
+      } else {
+        const viewport = viewportRef.current;
+
+        pendingScrollAnchorRef.current = viewport
+          ? {
+              viewportX:
+                (viewport.scrollLeft + viewport.clientWidth / 2) *
+                (clampedScale / scale),
+              viewportY:
+                (viewport.scrollTop + viewport.clientHeight / 2) *
+                (clampedScale / scale),
+            }
+          : null;
+      }
+
+      setScale(clampedScale);
+    },
+    [scale],
+  );
 
   const handlePointerDown = useCallback(
     (event: ReactPointerEvent<HTMLDivElement>) => {
@@ -289,9 +418,9 @@ function MermaidPreviewDialog({
       }
 
       dragStateRef.current = {
-        originX: transform.x,
-        originY: transform.y,
         pointerId: event.pointerId,
+        scrollLeft: event.currentTarget.scrollLeft,
+        scrollTop: event.currentTarget.scrollTop,
         startX: event.clientX,
         startY: event.clientY,
       };
@@ -303,7 +432,7 @@ function MermaidPreviewDialog({
         // Pointer capture is not available in some test environments.
       }
     },
-    [transform.x, transform.y],
+    [],
   );
 
   const handlePointerMove = useCallback(
@@ -314,11 +443,10 @@ function MermaidPreviewDialog({
         return;
       }
 
-      setTransform((currentTransform) => ({
-        ...currentTransform,
-        x: currentDragState.originX + event.clientX - currentDragState.startX,
-        y: currentDragState.originY + event.clientY - currentDragState.startY,
-      }));
+      event.currentTarget.scrollLeft =
+        currentDragState.scrollLeft + currentDragState.startX - event.clientX;
+      event.currentTarget.scrollTop =
+        currentDragState.scrollTop + currentDragState.startY - event.clientY;
     },
     [],
   );
@@ -346,13 +474,21 @@ function MermaidPreviewDialog({
   const handleWheel = useCallback(
     (event: ReactWheelEvent<HTMLDivElement>) => {
       event.preventDefault();
-      updateScale(
+      const viewportRect = event.currentTarget.getBoundingClientRect();
+      const anchor = {
+        viewportX:
+          event.currentTarget.scrollLeft + event.clientX - viewportRect.left,
+        viewportY:
+          event.currentTarget.scrollTop + event.clientY - viewportRect.top,
+      };
+      const nextScale =
         event.deltaY < 0
-          ? MERMAID_PREVIEW_ZOOM_STEP
-          : -MERMAID_PREVIEW_ZOOM_STEP,
-      );
+          ? scale * MERMAID_PREVIEW_ZOOM_FACTOR
+          : scale / MERMAID_PREVIEW_ZOOM_FACTOR;
+
+      updateScale(nextScale, anchor);
     },
-    [updateScale],
+    [scale, updateScale],
   );
 
   return (
@@ -377,7 +513,7 @@ function MermaidPreviewDialog({
               <MermaidPreviewToolbarButton
                 label={t("mermaidZoomOut")}
                 onClick={() => {
-                  updateScale(-MERMAID_PREVIEW_ZOOM_STEP);
+                  updateScale(scale / MERMAID_PREVIEW_ZOOM_FACTOR);
                 }}
               >
                 <ZoomOut className="h-4 w-4" aria-hidden="true" />
@@ -385,7 +521,7 @@ function MermaidPreviewDialog({
               <MermaidPreviewToolbarButton
                 label={t("mermaidZoomIn")}
                 onClick={() => {
-                  updateScale(MERMAID_PREVIEW_ZOOM_STEP);
+                  updateScale(scale * MERMAID_PREVIEW_ZOOM_FACTOR);
                 }}
               >
                 <ZoomIn className="h-4 w-4" aria-hidden="true" />
@@ -419,7 +555,7 @@ function MermaidPreviewDialog({
           <div className="relative min-h-0 flex-1 overflow-hidden bg-background">
             <div
               className={cn(
-                "absolute inset-0 flex touch-none items-center justify-center overflow-hidden p-3 sm:p-6",
+                "absolute inset-0 touch-none overflow-auto p-3 sm:p-6",
                 isDragging ? "cursor-grabbing" : "cursor-grab",
               )}
               data-testid="document-mermaid-preview-viewport"
@@ -428,18 +564,23 @@ function MermaidPreviewDialog({
               onPointerMove={handlePointerMove}
               onPointerUp={stopDragging}
               onWheel={handleWheel}
+              ref={setViewportRef}
             >
               <div
                 className={cn(
-                  "will-change-transform",
-                  "[&_svg]:block [&_svg]:h-auto [&_svg]:max-h-[calc(100dvh-7rem)] [&_svg]:max-w-[calc(100vw-2rem)] [&_svg]:select-none",
+                  "mx-auto",
+                  "[&_svg]:!block [&_svg]:!h-full [&_svg]:!max-h-none [&_svg]:!max-w-none [&_svg]:!select-none [&_svg]:!w-full",
                 )}
                 data-testid="document-mermaid-preview-transform"
                 dangerouslySetInnerHTML={{ __html: svg }}
-                style={{
-                  transform: `translate3d(${transform.x}px, ${transform.y}px, 0) scale(${transform.scale})`,
-                  transformOrigin: "center",
-                }}
+                style={
+                  previewSize
+                    ? {
+                        height: `${previewSize.height}px`,
+                        width: `${previewSize.width}px`,
+                      }
+                    : undefined
+                }
               />
             </div>
           </div>
@@ -480,6 +621,79 @@ function clampMermaidPreviewScale(scale: number): number {
   );
 
   return Math.round(clampedScale * 100) / 100;
+}
+
+function getMermaidPreviewFitScale(
+  metrics: MermaidPreviewMetrics | null,
+  viewportSize: MermaidPreviewViewportSize,
+): number {
+  if (
+    !metrics ||
+    viewportSize.height <= 0 ||
+    viewportSize.width <= 0 ||
+    metrics.height <= 0 ||
+    metrics.width <= 0
+  ) {
+    return 1;
+  }
+
+  const scale = Math.min(
+    viewportSize.width / metrics.width,
+    viewportSize.height / metrics.height,
+  );
+
+  return clampMermaidPreviewScale(scale);
+}
+
+function getMermaidPreviewMetrics(svg: string): MermaidPreviewMetrics | null {
+  if (typeof DOMParser === "undefined") {
+    return null;
+  }
+
+  const document = new DOMParser().parseFromString(svg, "image/svg+xml");
+  const svgElement = document.querySelector("svg");
+
+  if (!svgElement) {
+    return null;
+  }
+
+  const viewBox = svgElement.getAttribute("viewBox");
+
+  if (viewBox) {
+    const [, , width, height] = viewBox
+      .trim()
+      .split(/[\s,]+/u)
+      .map(Number);
+
+    if (isPositiveFiniteNumber(width) && isPositiveFiniteNumber(height)) {
+      return { height, width };
+    }
+  }
+
+  const width = parseSvgLength(svgElement.getAttribute("width"));
+  const height = parseSvgLength(svgElement.getAttribute("height"));
+
+  if (isPositiveFiniteNumber(width) && isPositiveFiniteNumber(height)) {
+    return { height, width };
+  }
+
+  return null;
+}
+
+function parseSvgLength(value: string | null): number | null {
+  if (!value) {
+    return null;
+  }
+
+  const parsedValue = Number.parseFloat(value);
+
+  return Number.isFinite(parsedValue) ? parsedValue : null;
+}
+
+function isPositiveFiniteNumber(
+  value: number | null | undefined,
+): value is number {
+  return typeof value === "number" && Number.isFinite(value) && value > 0;
 }
 
 function createMermaidRenderId(
