@@ -13,6 +13,7 @@ import {
 } from "@project-delivery/shared";
 
 import { ApiException } from "./api-exception";
+import { Prisma } from "../generated/prisma/client";
 import { getRequestId, type RequestWithContext } from "./request-context";
 
 type HttpResponse = {
@@ -110,6 +111,14 @@ function toApiError(
     });
   }
 
+  if (isPrismaUniqueConstraintError(exception)) {
+    return compactApiError({
+      code: "CONFLICT",
+      message: "Unique constraint conflict",
+      requestId,
+    });
+  }
+
   return {
     code: "INTERNAL_SERVER_ERROR",
     message: "Internal server error",
@@ -133,9 +142,15 @@ function compactApiError(error: {
 }
 
 function getHttpStatus(exception: unknown): number {
-  return exception instanceof HttpException
-    ? exception.getStatus()
-    : HttpStatus.INTERNAL_SERVER_ERROR;
+  if (exception instanceof HttpException) {
+    return exception.getStatus();
+  }
+
+  if (isPrismaUniqueConstraintError(exception)) {
+    return HttpStatus.CONFLICT;
+  }
+
+  return HttpStatus.INTERNAL_SERVER_ERROR;
 }
 
 function getApiErrorCode(code: unknown, status: number): ApiErrorCode {
@@ -177,4 +192,11 @@ function getExceptionMessage(message: unknown, fallback: string): string {
 
 function isObject(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null;
+}
+
+function isPrismaUniqueConstraintError(exception: unknown): boolean {
+  return (
+    exception instanceof Prisma.PrismaClientKnownRequestError &&
+    exception.code === "P2002"
+  );
 }

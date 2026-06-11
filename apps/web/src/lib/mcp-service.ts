@@ -8,7 +8,9 @@ import {
   McpProtectedResourceMetadataSchema,
   RevokeAuthorizedMcpClientRequestSchema,
   RevokeAuthorizedMcpClientResponseSchema,
+  ApiErrorCodeSchema,
   type ApiError,
+  type ApiErrorCode,
   type ListAuthorizedMcpClientsResponse,
   type McpOAuthAuthorizeContext,
   type McpProtectedResourceMetadata,
@@ -32,6 +34,7 @@ export type McpOAuthAuthorizeFetch = (
 ) => Promise<Response>;
 
 export type McpOAuthAuthorizeErrorInput = {
+  apiError?: ApiError;
   code: string;
   message: string;
   status: number;
@@ -42,12 +45,14 @@ const apiPrefixSuffix = "/api/v1";
 const accessDeniedDescription = "The user denied the authorization request.";
 
 export class McpOAuthAuthorizeError extends Error {
+  readonly apiError?: ApiError;
   readonly code: string;
   readonly status: number;
 
-  constructor({ code, message, status }: McpOAuthAuthorizeErrorInput) {
+  constructor({ apiError, code, message, status }: McpOAuthAuthorizeErrorInput) {
     super(message);
     this.name = "McpOAuthAuthorizeError";
+    this.apiError = apiError;
     this.code = code;
     this.status = status;
   }
@@ -263,6 +268,7 @@ function toMcpOAuthAuthorizeError(
 ): McpOAuthAuthorizeError {
   if (isApiError(payload)) {
     return new McpOAuthAuthorizeError({
+      apiError: payload,
       code: payload.code,
       message: payload.message,
       status: response.status,
@@ -270,18 +276,58 @@ function toMcpOAuthAuthorizeError(
   }
 
   if (isOAuthProtocolError(payload)) {
+    const message = payload.error_description ?? payload.error;
     return new McpOAuthAuthorizeError({
+      apiError: createMcpOAuthApiError(response, message, payload.error),
       code: payload.error,
-      message: payload.error_description ?? payload.error,
+      message,
       status: response.status,
     });
   }
 
+  const message = response.statusText || "Authorization request failed";
   return new McpOAuthAuthorizeError({
+    apiError: createMcpOAuthApiError(response, message),
     code: response.status === 401 ? "UNAUTHORIZED" : "BAD_REQUEST",
-    message: response.statusText || "Authorization request failed",
+    message,
     status: response.status,
   });
+}
+
+function createMcpOAuthApiError(
+  response: Response,
+  message: string,
+  code?: string,
+): ApiError {
+  return {
+    code: toApiErrorCode(code, response.status),
+    message,
+    requestId: response.headers.get("x-request-id") || "unknown",
+  };
+}
+
+function toApiErrorCode(code: string | undefined, status: number): ApiErrorCode {
+  if (ApiErrorCodeSchema.safeParse(code).success) {
+    return code as ApiErrorCode;
+  }
+
+  if (status === 401) {
+    return "UNAUTHORIZED";
+  }
+
+  if (status === 403) {
+    return "FORBIDDEN";
+  }
+
+  if (status === 404) {
+    return "NOT_FOUND";
+  }
+
+  if (status === 409) {
+    return "CONFLICT";
+  }
+
+  return status >= 500 ? "INTERNAL_SERVER_ERROR" : "BAD_REQUEST";
 }
 
 function isApiError(payload: unknown): payload is ApiError {

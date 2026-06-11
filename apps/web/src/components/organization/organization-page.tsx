@@ -8,7 +8,6 @@ import { Ban, Crown, Plus, ShieldCheck } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
-import { getApiErrorMessageKey } from "../../lib/api-error-messages";
 import {
   canManageOrganization,
   disableOrganizationMember,
@@ -17,6 +16,11 @@ import {
 } from "../../lib/space-service";
 import { cn } from "../../lib/utils";
 import { useSession } from "../providers/session-provider";
+import {
+  formatApiErrorDisplayMessage,
+  getApiErrorDisplay,
+  type ApiErrorDisplayState,
+} from "../shell/api-error-display";
 
 import { Avatar, AvatarFallback } from "../ui/avatar";
 import { Badge } from "../ui/badge";
@@ -53,6 +57,7 @@ export function OrganizationPage() {
   const t = useTranslations("organization");
   const tShell = useTranslations("shell.nav");
   const tRoot = useTranslations();
+  const requestIdLabel = tRoot("errors.apiDetails.requestId");
   const { currentOrganization, currentSpace, refreshSession, session, status } =
     useSession();
   const organizationId =
@@ -63,19 +68,19 @@ export function OrganizationPage() {
   const [orgCode, setOrgCode] = useState("");
   const [orgStatus, setOrgStatus] = useState<RecordStatus>("ACTIVE");
   const [isProfileSubmitting, setIsProfileSubmitting] = useState(false);
-  const [profileErrorKey, setProfileErrorKey] = useState<string | null>(null);
+  const [profileError, setProfileError] =
+    useState<ApiErrorDisplayState | null>(null);
   const [members, setMembers] = useState<OrganizationMemberWithUser[]>([]);
   const [isLoading, setIsLoading] = useState(false);
-  const [errorKey, setErrorKey] = useState<string | null>(null);
+  const [error, setError] = useState<ApiErrorDisplayState | null>(null);
   const [isAddMemberOpen, setIsAddMemberOpen] = useState(false);
   const [disableMember, setDisableMember] =
     useState<OrganizationMemberWithUser | null>(null);
   const [editRoleMember, setEditRoleMember] =
     useState<OrganizationMemberWithUser | null>(null);
   const [pendingMemberId, setPendingMemberId] = useState<string | null>(null);
-  const [memberActionErrorKey, setMemberActionErrorKey] = useState<
-    string | null
-  >(null);
+  const [memberActionError, setMemberActionError] =
+    useState<ApiErrorDisplayState | null>(null);
   const loadSequenceRef = useRef(0);
 
   const activeOwnerCount = useMemo(
@@ -99,7 +104,7 @@ export function OrganizationPage() {
       member.status === "ACTIVE" ? currentSpace?.id : undefined;
 
     void refreshSession(recentOrganizationId, recentSpaceId).catch((error) => {
-      setMemberActionErrorKey(getApiErrorMessageKey(error));
+      setMemberActionError(getApiErrorDisplay(error, requestIdLabel));
     });
   }
 
@@ -115,14 +120,14 @@ export function OrganizationPage() {
       setOrgName("");
       setOrgCode("");
       setOrgStatus("ACTIVE");
-      setProfileErrorKey(null);
+      setProfileError(null);
       return;
     }
 
     setOrgName(currentOrganization.name);
     setOrgCode(currentOrganization.code);
     setOrgStatus(currentOrganization.status);
-    setProfileErrorKey(null);
+    setProfileError(null);
   }, [
     currentOrganization?.code,
     currentOrganization?.id,
@@ -136,12 +141,12 @@ export function OrganizationPage() {
     if (!organizationId || !canManageMembers) {
       setMembers([]);
       setIsLoading(false);
-      setErrorKey(null);
+      setError(null);
       return;
     }
 
     setIsLoading(true);
-    setErrorKey(null);
+    setError(null);
 
     try {
       const page = await listOrganizationMembers(organizationId);
@@ -149,24 +154,24 @@ export function OrganizationPage() {
       setMembers(page.items);
     } catch (error) {
       if (loadSequenceRef.current !== sequence) return;
-      setErrorKey(getApiErrorMessageKey(error));
+      setError(getApiErrorDisplay(error, requestIdLabel));
     } finally {
       if (loadSequenceRef.current === sequence) {
         setIsLoading(false);
       }
     }
-  }, [canManageMembers, organizationId]);
+  }, [canManageMembers, organizationId, requestIdLabel]);
 
   useEffect(() => {
     loadSequenceRef.current += 1;
     setMembers([]);
     setIsLoading(false);
-    setErrorKey(null);
+    setError(null);
     setIsAddMemberOpen(false);
     setDisableMember(null);
     setEditRoleMember(null);
     setPendingMemberId(null);
-    setMemberActionErrorKey(null);
+    setMemberActionError(null);
   }, [organizationId]);
 
   useEffect(() => {
@@ -177,12 +182,12 @@ export function OrganizationPage() {
     loadSequenceRef.current += 1;
     setMembers([]);
     setIsLoading(false);
-    setErrorKey(null);
+    setError(null);
     setIsAddMemberOpen(false);
     setDisableMember(null);
     setEditRoleMember(null);
     setPendingMemberId(null);
-    setMemberActionErrorKey(null);
+    setMemberActionError(null);
   }, [canManageMembers]);
 
   useEffect(() => {
@@ -198,7 +203,7 @@ export function OrganizationPage() {
     }
 
     setPendingMemberId(disableMember.id);
-    setMemberActionErrorKey(null);
+    setMemberActionError(null);
 
     try {
       const updated = await disableOrganizationMember(
@@ -211,7 +216,7 @@ export function OrganizationPage() {
       refreshAfterCurrentUserMemberChange(updated);
       setDisableMember(null);
     } catch (error) {
-      setMemberActionErrorKey(getApiErrorMessageKey(error));
+      setMemberActionError(getApiErrorDisplay(error, requestIdLabel));
     } finally {
       setPendingMemberId(null);
     }
@@ -230,7 +235,7 @@ export function OrganizationPage() {
     }
 
     setIsProfileSubmitting(true);
-    setProfileErrorKey(null);
+    setProfileError(null);
 
     try {
       const updated = await updateOrganization(organizationId, {
@@ -242,7 +247,7 @@ export function OrganizationPage() {
       });
       await refreshSession(updated.id, currentSpace?.id);
     } catch (error) {
-      setProfileErrorKey(getApiErrorMessageKey(error));
+      setProfileError(getApiErrorDisplay(error, requestIdLabel));
     } finally {
       setIsProfileSubmitting(false);
     }
@@ -256,7 +261,7 @@ export function OrganizationPage() {
     setOrgName(currentOrganization.name);
     setOrgCode(currentOrganization.code);
     setOrgStatus(currentOrganization.status);
-    setProfileErrorKey(null);
+    setProfileError(null);
   }
 
   const isEditRoleMemberLastActiveOwner =
@@ -312,9 +317,16 @@ export function OrganizationPage() {
   }
 
   let membersBody;
-  if (errorKey) {
+  if (error) {
     membersBody = (
-      <ErrorState message={tRoot(errorKey)} onRetry={() => void load()} />
+      <ErrorState
+        message={formatApiErrorDisplayMessage(
+          tRoot(error.messageKey),
+          error.detailLines,
+          " · ",
+        )}
+        onRetry={() => void load()}
+      />
     );
   } else if (isLoading) {
     membersBody = <ListSkeleton rows={4} />;
@@ -453,12 +465,15 @@ export function OrganizationPage() {
               </p>
             </div>
             <div className="flex flex-col gap-6">
-              {profileErrorKey ? (
+              {profileError ? (
                 <div
-                  className="rounded-md bg-destructive/10 px-4 py-3 text-sm text-destructive"
+                  className="whitespace-pre-wrap rounded-md bg-destructive/10 px-4 py-3 text-sm text-destructive"
                   role="alert"
                 >
-                  {tRoot(profileErrorKey)}
+                  {formatApiErrorDisplayMessage(
+                    tRoot(profileError.messageKey),
+                    profileError.detailLines,
+                  )}
                 </div>
               ) : null}
               <div className="grid gap-5 md:grid-cols-2">
@@ -584,12 +599,15 @@ export function OrganizationPage() {
                   {t("members.readOnly")}
                 </div>
               )}
-              {memberActionErrorKey && (
+              {memberActionError && (
                 <div
-                  className="rounded-md bg-destructive/10 px-4 py-3 text-sm text-destructive w-fit"
+                  className="w-fit whitespace-pre-wrap rounded-md bg-destructive/10 px-4 py-3 text-sm text-destructive"
                   role="alert"
                 >
-                  {tRoot(memberActionErrorKey)}
+                  {formatApiErrorDisplayMessage(
+                    tRoot(memberActionError.messageKey),
+                    memberActionError.detailLines,
+                  )}
                 </div>
               )}
               <div className="w-full">{membersBody}</div>

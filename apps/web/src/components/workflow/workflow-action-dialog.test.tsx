@@ -1,4 +1,10 @@
-import { cleanup, render } from "@testing-library/react";
+import {
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from "@testing-library/react";
 import type {
   WorkflowActionConfigSummary,
   WorkflowState,
@@ -37,6 +43,7 @@ vi.mock("../../lib/workflow-service", () => ({
   updateWorkflowAction: updateWorkflowActionMock,
 }));
 
+import { ApiClientError } from "../../lib/api-client";
 import { WorkflowActionDialog } from "./workflow-action-dialog";
 
 const organizationId = "01ARZ3NDEKTSV4RRFFQ69G5FO1";
@@ -93,7 +100,10 @@ describe("WorkflowActionDialog", () => {
       "common.workflowDefaults.states.PENDING_CONFIRMATION",
       "Pending confirmation",
     );
-    rootMessages.set("common.workflowDefaults.states.PENDING_FIX", "Pending fix");
+    rootMessages.set(
+      "common.workflowDefaults.states.PENDING_FIX",
+      "Pending fix",
+    );
 
     render(
       <WorkflowActionDialog
@@ -139,5 +149,64 @@ describe("WorkflowActionDialog", () => {
     expect(toLabels).toEqual(["Pending confirmation", "Pending fix"]);
     expect(fromLabels).not.toContain("待修复");
     expect(toLabels).not.toContain("待修复");
+  });
+
+  it("renders backend action config error details without replacing the error key", async () => {
+    updateWorkflowActionMock.mockRejectedValueOnce(
+      new ApiClientError(
+        {
+          code: "VALIDATION_ERROR",
+          details: {
+            field: "code",
+            issues: [{ message: "Code already exists.", path: ["code"] }],
+            reason: "Duplicate workflow action code.",
+            referenceCount: 2,
+            requestId: "REQ_ACTION_DETAILS",
+            target: "workflowAction",
+          },
+          message: "The action configuration is invalid.",
+          requestId: "",
+        },
+        { status: 400 } as Response,
+      ),
+    );
+
+    render(
+      <WorkflowActionDialog
+        context={{ organizationId, spaceId }}
+        mode={{ action: makeAction(), kind: "edit" }}
+        onClose={() => {}}
+        onSuccess={() => {}}
+        open
+        states={[makeState(), makeState({ id: toStateId, isStart: false })]}
+        workflowVersionId={workflowVersionId}
+      />,
+    );
+
+    fireEvent.click(
+      screen.getByRole("button", {
+        name: "workflow.config.actionDialog.submit",
+      }),
+    );
+
+    await waitFor(() =>
+      expect(updateWorkflowActionMock).toHaveBeenCalledTimes(1),
+    );
+    expect(
+      await screen.findByText("errors.api.VALIDATION_ERROR"),
+    ).toBeVisible();
+    expect(
+      screen.getByText("The action configuration is invalid."),
+    ).toBeVisible();
+    expect(
+      screen.getByText("reason: Duplicate workflow action code."),
+    ).toBeVisible();
+    expect(screen.getByText("field: code")).toBeVisible();
+    expect(screen.getByText("code: Code already exists.")).toBeVisible();
+    expect(screen.getByText("referenceCount: 2")).toBeVisible();
+    expect(screen.getByText("target: workflowAction")).toBeVisible();
+    expect(
+      screen.getByText("errors.apiDetails.requestId: REQ_ACTION_DETAILS"),
+    ).toBeVisible();
   });
 });

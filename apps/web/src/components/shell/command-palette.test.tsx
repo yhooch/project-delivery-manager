@@ -795,6 +795,43 @@ describe("CommandPalette", () => {
     expect(
       await screen.findByTestId("command-palette-lookup-error"),
     ).toHaveTextContent("shell.command.lookup.notFound");
+    expect(
+      screen.getByTestId("command-palette-lookup-error"),
+    ).toHaveTextContent("not found");
+    expect(
+      screen.getByTestId("command-palette-lookup-error"),
+    ).toHaveTextContent("errors.apiDetails.requestId: REQ_404");
+  });
+
+  it("shows backend details when one normal search endpoint fails", async () => {
+    render(<CommandPalette />);
+    openCommandPalette();
+
+    await waitFor(() => expect(listWorkItemsMock).toHaveBeenCalled());
+    listWorkItemsMock.mockRejectedValueOnce(
+      new ApiClientError(
+        {
+          code: "FORBIDDEN",
+          details: { reason: "Tasks are hidden in this space." },
+          message: "Cannot search tasks.",
+          requestId: "REQ_TASK_SEARCH",
+        },
+        new Response(null, { status: 403 }),
+      ),
+    );
+
+    const input = await screen.findByPlaceholderText(
+      "shell.command.placeholder",
+    );
+    fireEvent.change(input, { target: { value: "alpha" } });
+
+    const alert = await screen.findByTestId("command-palette-search-error");
+    expect(alert).toHaveTextContent("errors.api.FORBIDDEN");
+    expect(alert).toHaveTextContent("Cannot search tasks.");
+    expect(alert).toHaveTextContent("reason: Tasks are hidden in this space.");
+    expect(alert).toHaveTextContent(
+      "errors.apiDetails.requestId: REQ_TASK_SEARCH",
+    );
   });
 
   it("uses INTAKE display codes for intake search results", async () => {
@@ -839,6 +876,36 @@ describe("CommandPalette", () => {
 
     expect(routerPushMock).toHaveBeenCalledWith(
       "/bugs?tagIds=01ARZ3NDEKTSV4RRFFQ69G5F03&tagMatch=ANY",
+    );
+  });
+
+  it("shows backend details when tag search fails", async () => {
+    listTagsMock.mockRejectedValueOnce(
+      new ApiClientError(
+        {
+          code: "FORBIDDEN",
+          details: { reason: "Tags are not readable." },
+          message: "Cannot search tags.",
+          requestId: "REQ_TAG_SEARCH",
+        },
+        new Response(null, { status: 403 }),
+      ),
+    );
+
+    render(<CommandPalette />);
+    openCommandPalette();
+
+    const input = await screen.findByPlaceholderText(
+      "shell.command.placeholder",
+    );
+    fireEvent.change(input, { target: { value: "#backend" } });
+
+    const alert = await screen.findByTestId("command-palette-tag-search-error");
+    expect(alert).toHaveTextContent("tags.commandPalette.error");
+    expect(alert).toHaveTextContent("Cannot search tags.");
+    expect(alert).toHaveTextContent("reason: Tags are not readable.");
+    expect(alert).toHaveTextContent(
+      "errors.apiDetails.requestId: REQ_TAG_SEARCH",
     );
   });
 

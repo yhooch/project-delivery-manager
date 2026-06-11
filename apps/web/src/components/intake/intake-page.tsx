@@ -84,6 +84,7 @@ import {
   LoadingState,
 } from "../v2/states";
 import { TaskDetailSheet } from "../work-item/task-detail-sheet";
+import { getApiErrorDetailLines } from "../work-item/api-error-details";
 
 import { ConvertIntakeDialog } from "./convert-intake-dialog";
 import { CreateIntakeDialog } from "./create-intake-dialog";
@@ -138,6 +139,9 @@ export function IntakePage() {
   const tIntakeItems = useTranslations("intakeItems");
   const tTags = useTranslations("tags.field");
   const tRoot = useTranslations();
+  const requestIdLabel = tRoot("errors.apiDetails.requestId");
+  const optionsLoadFailedMessage = tRoot("common.states.optionsLoadFailed");
+  const pageErrorTitle = t("states.error.title");
   const locale = useLocale();
   const searchParams = useSearchParams();
   const router = useRouter();
@@ -174,6 +178,10 @@ export function IntakePage() {
   const [isLoading, setIsLoading] = useState(false);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [errorKey, setErrorKey] = useState<string | null>(null);
+  const [errorDetails, setErrorDetails] = useState<string[]>([]);
+  const [auxiliaryErrorMessage, setAuxiliaryErrorMessage] = useState<
+    string | null
+  >(null);
   const [filter, setFilter] = useState<FilterKey>("all");
   const [listFilters, setListFilters] = useState<IntakeListFilterState>({});
   const [filterOpen, setFilterOpen] = useState(false);
@@ -183,6 +191,7 @@ export function IntakePage() {
     null,
   );
   const [actionErrorKey, setActionErrorKey] = useState<string | null>(null);
+  const [actionErrorDetails, setActionErrorDetails] = useState<string[]>([]);
   const [createOpen, setCreateOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
   const [pageInfo, setPageInfo] = useState(INITIAL_PAGE_INFO);
@@ -334,6 +343,7 @@ export function IntakePage() {
       }
       if (shouldSurfaceRefreshError(refreshMode)) {
         setErrorKey(null);
+        setErrorDetails([]);
       }
 
       try {
@@ -355,6 +365,7 @@ export function IntakePage() {
         setItems((current) =>
           append ? [...current, ...result.items] : result.items,
         );
+        setAuxiliaryErrorMessage(null);
         setPageInfo({
           page: realtimeRefresh ? pageInfoRef.current.page : (result.page ?? page),
           pageSize: result.pageSize ?? pageSize,
@@ -368,6 +379,11 @@ export function IntakePage() {
         ) {
           if (shouldSurfaceRefreshError(refreshMode)) {
             setErrorKey(getApiErrorMessageKey(error));
+            setErrorDetails(
+              getApiErrorDetailLines(error, {
+                requestIdLabel,
+              }),
+            );
           }
         }
       } finally {
@@ -384,7 +400,15 @@ export function IntakePage() {
         }
       }
     },
-    [filter, listFilters, listScopeKey, organizationId, spaceId, tagFilter],
+    [
+      filter,
+      listFilters,
+      listScopeKey,
+      organizationId,
+      spaceId,
+      tagFilter,
+      requestIdLabel,
+    ],
   );
 
   useEffect(() => {
@@ -433,10 +457,15 @@ export function IntakePage() {
         const refreshMode = resolveRefreshMode(options);
         if (shouldSurfaceRefreshError(refreshMode)) {
           setActionErrorKey(getApiErrorMessageKey(error));
+          setActionErrorDetails(
+            getApiErrorDetailLines(error, {
+              requestIdLabel,
+            }),
+          );
         }
       }
     },
-    [active, organizationId, reloadTagFilterOptions, spaceId],
+    [active, organizationId, reloadTagFilterOptions, requestIdLabel, spaceId],
   );
 
   useRealtimeInvalidation(INTAKE_REALTIME_KEYS, (context) => {
@@ -462,6 +491,10 @@ export function IntakePage() {
     setActive(null);
     setActionInFlight(null);
     setActionErrorKey(null);
+    setActionErrorDetails([]);
+    setErrorKey(null);
+    setErrorDetails([]);
+    setAuxiliaryErrorMessage(null);
     setCreateOpen(false);
     setEditOpen(false);
     setConvertOpen(false);
@@ -485,6 +518,7 @@ export function IntakePage() {
     }
 
     let cancelled = false;
+    setAuxiliaryErrorMessage(null);
 
     void listRequirements({
       organizationId,
@@ -497,16 +531,30 @@ export function IntakePage() {
           setRequirements(result.items);
         }
       })
-      .catch(() => {
+      .catch((error) => {
         if (!cancelled) {
           setRequirements([]);
+          setAuxiliaryErrorMessage(
+            formatApiErrorMessage(
+              optionsLoadFailedMessage,
+              getApiErrorDetailLines(error, {
+                requestIdLabel,
+              }),
+            ),
+          );
         }
       });
 
     return () => {
       cancelled = true;
     };
-  }, [filterOpen, organizationId, spaceId]);
+  }, [
+    filterOpen,
+    optionsLoadFailedMessage,
+    organizationId,
+    requestIdLabel,
+    spaceId,
+  ]);
 
   const filtered = items;
 
@@ -566,6 +614,7 @@ export function IntakePage() {
       );
       setActive(item);
       setSelectedItem(item);
+      setAuxiliaryErrorMessage(null);
     },
     [captureFocus, organizationId, spaceId],
   );
@@ -637,8 +686,16 @@ export function IntakePage() {
           setHandledDeepLinkKey(key);
         }
       })
-      .catch(() => {
+      .catch((error) => {
         if (!cancelled) {
+          setAuxiliaryErrorMessage(
+            formatApiErrorMessage(
+              pageErrorTitle,
+              getApiErrorDetailLines(error, {
+                requestIdLabel,
+              }),
+            ),
+          );
           setHandledDeepLinkKey(key);
         }
       });
@@ -657,6 +714,8 @@ export function IntakePage() {
     requestedIntakeItemId,
     requestedTimelineEventId,
     spaceId,
+    pageErrorTitle,
+    requestIdLabel,
   ]);
 
   useListKeyboardNav<IntakeItem>({
@@ -681,6 +740,7 @@ export function IntakePage() {
     onClose: () => {
       setActive(null);
       setActionErrorKey(null);
+      setActionErrorDetails([]);
     },
   });
 
@@ -688,6 +748,7 @@ export function IntakePage() {
     if (!open) {
       setActive(null);
       setActionErrorKey(null);
+      setActionErrorDetails([]);
       setEditOpen(false);
       setSelectedTask(null);
       setTaskSheetOpen(false);
@@ -708,6 +769,7 @@ export function IntakePage() {
 
     setActionInFlight(action);
     setActionErrorKey(null);
+    setActionErrorDetails([]);
 
     const original = items;
     const optimisticStatus: IntakeStatus =
@@ -752,6 +814,11 @@ export function IntakePage() {
       );
       setActive((current) => (current?.id === target.id ? target : current));
       setActionErrorKey(getApiErrorMessageKey(error));
+      setActionErrorDetails(
+        getApiErrorDetailLines(error, {
+          requestIdLabel,
+        }),
+      );
     } finally {
       setActionInFlight(null);
     }
@@ -903,7 +970,7 @@ export function IntakePage() {
     body = (
       <ErrorState
         title={t("states.error.title")}
-        message={tRoot(errorKey)}
+        message={formatApiErrorMessage(tRoot(errorKey), errorDetails)}
         onRetry={() => void loadItems(1, "replace")}
         retryLabel={t("actions.retry")}
       />
@@ -1191,6 +1258,10 @@ export function IntakePage() {
         </FilterPanel>
       )}
 
+      {auxiliaryErrorMessage && (
+        <AuxiliaryErrorNotice message={auxiliaryErrorMessage} />
+      )}
+
       <div className="min-w-0 flex-1 overflow-y-auto">{body}</div>
 
       <IntakeDetailSheet
@@ -1271,7 +1342,11 @@ export function IntakePage() {
             </>
           ) : null
         }
-        actionErrorMessage={actionErrorKey ? tRoot(actionErrorKey) : null}
+        actionErrorMessage={
+          actionErrorKey
+            ? formatApiErrorMessage(tRoot(actionErrorKey), actionErrorDetails)
+            : null
+        }
         canComment={canCreateOrCommentIntake}
         canEditTags={canManageIntake}
         focusedCommentId={
@@ -1435,6 +1510,21 @@ function canManageIntakeItem(
 function normalizeSearchParam(value: string | null): string | undefined {
   const normalized = value?.trim();
   return normalized ? normalized : undefined;
+}
+
+function formatApiErrorMessage(message: string, details: string[]): string {
+  return [message, ...details].join(" ");
+}
+
+function AuxiliaryErrorNotice({ message }: { message: string }) {
+  return (
+    <div
+      role="alert"
+      className="border-b border-destructive/20 bg-destructive/10 px-4 py-2 text-xs text-destructive sm:px-6"
+    >
+      {message}
+    </div>
+  );
 }
 
 function getIntakeStatusCount(

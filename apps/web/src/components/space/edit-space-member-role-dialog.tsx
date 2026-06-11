@@ -4,9 +4,13 @@ import type { SpaceMemberWithUser, SpaceRole } from "@project-delivery/shared";
 import { useTranslations } from "next-intl";
 import { useEffect, useState, type FormEvent } from "react";
 
-import { getApiErrorMessageKey } from "../../lib/api-error-messages";
 import { updateSpaceMember } from "../../lib/space-service";
 
+import {
+  formatApiErrorDisplayMessage,
+  getApiErrorDisplay,
+  type ApiErrorDisplayState,
+} from "../shell/api-error-display";
 import { Button } from "../ui/button";
 import {
   Dialog,
@@ -50,7 +54,7 @@ export function EditSpaceMemberRoleDialog({
 
   const [role, setRole] = useState<SpaceRole>("DEVELOPER");
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [errorKey, setErrorKey] = useState<string | null>(null);
+  const [error, setError] = useState<ApiErrorDisplayState | null>(null);
 
   useEffect(() => {
     if (!open || !member) {
@@ -58,7 +62,7 @@ export function EditSpaceMemberRoleDialog({
     }
 
     setRole(member.role);
-    setErrorKey(null);
+    setError(null);
     setIsSubmitting(false);
   }, [member, open]);
 
@@ -76,13 +80,15 @@ export function EditSpaceMemberRoleDialog({
     }
 
     setIsSubmitting(true);
-    setErrorKey(null);
+    setError(null);
 
     try {
       const updated = await updateSpaceMember(spaceId, member.id, { role });
       onSuccess(updated);
     } catch (error) {
-      setErrorKey(getApiErrorMessageKey(error));
+      setError(
+        getApiErrorDisplay(error, tRoot("errors.apiDetails.requestId")),
+      );
     } finally {
       setIsSubmitting(false);
     }
@@ -120,12 +126,15 @@ export function EditSpaceMemberRoleDialog({
             </SelectMenu>
           </div>
 
-          {errorKey ? (
+          {error ? (
             <div
-              className="rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-xs text-destructive"
+              className="whitespace-pre-wrap rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-xs text-destructive"
               role="alert"
             >
-              {tRoot(errorKey)}
+              {formatApiErrorDisplayMessage(
+                tRoot(error.messageKey),
+                error.detailLines,
+              )}
             </div>
           ) : null}
 

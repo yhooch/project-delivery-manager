@@ -11,6 +11,7 @@ import {
 import type { ReactNode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+import { ApiClientError } from "../../lib/api-client";
 import type { DocumentSummary } from "../../lib/document-service";
 
 const { routerPushMock, routerReplaceMock, searchParamsMock } = vi.hoisted(
@@ -78,12 +79,14 @@ const {
   importMarkdownDocumentMock,
   listDocumentFoldersMock,
   listDocumentsMock,
+  pasteDocumentMock,
 } = vi.hoisted(() => ({
   importDocxDocumentMock: vi.fn(),
   importHtmlDocumentMock: vi.fn(),
   importMarkdownDocumentMock: vi.fn(),
   listDocumentFoldersMock: vi.fn(),
   listDocumentsMock: vi.fn(),
+  pasteDocumentMock: vi.fn(),
 }));
 vi.mock("../../lib/document-service", async () => {
   const actual = await vi.importActual<
@@ -96,7 +99,7 @@ vi.mock("../../lib/document-service", async () => {
     importMarkdownDocument: importMarkdownDocumentMock,
     listDocumentFolders: listDocumentFoldersMock,
     listDocuments: listDocumentsMock,
-    pasteDocument: vi.fn(),
+    pasteDocument: pasteDocumentMock,
   };
 });
 
@@ -115,6 +118,7 @@ vi.mock("../../lib/realtime", () => ({
 import { DocumentCreateProvider } from "./document-create-context";
 import {
   DocumentImportDialog,
+  DocumentPasteDialog,
   DocumentsPage,
   SourceBadge,
 } from "./documents-page";
@@ -187,6 +191,7 @@ beforeEach(() => {
   listDocumentFoldersMock.mockReset();
   listDocumentFoldersMock.mockResolvedValue([]);
   listDocumentsMock.mockReset();
+  pasteDocumentMock.mockReset();
   realtimeCallbacks.clear();
   sessionMock.current = {
     currentOrganization: { id: "ORG_01", name: "Org A" },
@@ -238,6 +243,45 @@ describe("DocumentsPage", () => {
         sortOrder: "desc",
         spaceId: "SPC_01",
       }),
+    );
+  });
+
+  it("shows backend details when the main document list fails to load", async () => {
+    listDocumentsMock.mockRejectedValueOnce(
+      new ApiClientError(
+        {
+          code: "VALIDATION_ERROR",
+          details: {
+            field: "query",
+            issues: [
+              {
+                message: "Query cannot contain control characters.",
+                path: ["query"],
+              },
+            ],
+            reason: "Invalid document list filter.",
+            source: "document-list",
+          },
+          message: "The document list request was rejected.",
+          requestId: "REQ_DOC_LIST",
+        },
+        { status: 400 } as Response,
+      ),
+    );
+
+    renderDocumentsPage();
+
+    const alert = await screen.findByTestId("documents-error");
+    expect(alert).toHaveTextContent("errors.api.VALIDATION_ERROR");
+    expect(alert).toHaveTextContent("The document list request was rejected.");
+    expect(alert).toHaveTextContent("reason: Invalid document list filter.");
+    expect(alert).toHaveTextContent("field: query");
+    expect(alert).toHaveTextContent(
+      "query: Query cannot contain control characters.",
+    );
+    expect(alert).toHaveTextContent("source: document-list");
+    expect(alert).toHaveTextContent(
+      "errors.apiDetails.requestId: REQ_DOC_LIST",
     );
   });
 
@@ -323,6 +367,125 @@ describe("DocumentsPage", () => {
     expect(importDocxDocumentMock).not.toHaveBeenCalled();
     expect(onOpenChange).toHaveBeenCalledWith(false);
     expect(onCreated).toHaveBeenCalledWith("DOC_HTML");
+  });
+
+  it("shows backend document import failure details", async () => {
+    const onCreated = vi.fn();
+    const onOpenChange = vi.fn();
+    const file = new File(["zip"], "guide.zip", { type: "application/zip" });
+    importHtmlDocumentMock.mockRejectedValueOnce(
+      new ApiClientError(
+        {
+          code: "DOCUMENT_IMPORT_FAILED",
+          details: {
+            allowedSources: ["markdown", "html"],
+            field: "file",
+            issues: [
+              {
+                message: "Missing referenced asset.",
+                path: ["resources", 0],
+              },
+            ],
+            reason: "Missing entry HTML file.",
+            source: "html-import",
+          },
+          message: "The uploaded HTML package could not be imported.",
+          requestId: "REQ_IMPORT",
+        },
+        { status: 400 } as Response,
+      ),
+    );
+
+    render(
+      <DocumentImportDialog
+        folderId="FLD_01"
+        onCreated={onCreated}
+        onOpenChange={onOpenChange}
+        open
+        organizationId="ORG_01"
+        spaceId="SPC_01"
+      />,
+    );
+
+    fireEvent.change(screen.getByTestId("document-import-file-input"), {
+      target: { files: [file] },
+    });
+    fireEvent.click(
+      screen.getByRole("button", { name: "documents.importDialog.submit" }),
+    );
+
+    const alert = await screen.findByRole("alert");
+    expect(alert).toHaveTextContent("errors.api.DOCUMENT_IMPORT_FAILED");
+    expect(alert).toHaveTextContent(
+      "The uploaded HTML package could not be imported.",
+    );
+    expect(alert).toHaveTextContent("reason: Missing entry HTML file.");
+    expect(alert).toHaveTextContent("field: file");
+    expect(alert).toHaveTextContent("resources.0: Missing referenced asset.");
+    expect(alert).toHaveTextContent("source: html-import");
+    expect(alert).toHaveTextContent("allowedSources: markdown, html");
+    expect(alert).toHaveTextContent("errors.apiDetails.requestId: REQ_IMPORT");
+    expect(onCreated).not.toHaveBeenCalled();
+    expect(onOpenChange).not.toHaveBeenCalledWith(false);
+  });
+
+  it("shows backend details when pasting a document fails", async () => {
+    const onCreated = vi.fn();
+    const onOpenChange = vi.fn();
+    pasteDocumentMock.mockRejectedValueOnce(
+      new ApiClientError(
+        {
+          code: "VALIDATION_ERROR",
+          details: {
+            field: "contentMarkdown",
+            issues: [
+              {
+                message: "Content is too long.",
+                path: ["contentMarkdown"],
+              },
+            ],
+            reason: "The pasted content exceeds the limit.",
+            source: "paste-document",
+          },
+          message: "The pasted document could not be created.",
+          requestId: "REQ_PASTE",
+        },
+        { status: 400 } as Response,
+      ),
+    );
+
+    render(
+      <DocumentPasteDialog
+        folderId="FLD_01"
+        onCreated={onCreated}
+        onOpenChange={onOpenChange}
+        open
+        organizationId="ORG_01"
+        spaceId="SPC_01"
+      />,
+    );
+
+    fireEvent.change(screen.getByTestId("document-paste-content-input"), {
+      target: { value: "# Launch plan" },
+    });
+    fireEvent.click(
+      screen.getByRole("button", { name: "documents.pasteDialog.submit" }),
+    );
+
+    const alert = await screen.findByRole("alert");
+    expect(alert).toHaveTextContent("errors.api.VALIDATION_ERROR");
+    expect(alert).toHaveTextContent(
+      "The pasted document could not be created.",
+    );
+    expect(alert).toHaveTextContent(
+      "reason: The pasted content exceeds the limit.",
+    );
+    expect(alert).toHaveTextContent("field: contentMarkdown");
+    expect(alert).toHaveTextContent("contentMarkdown: Content is too long.");
+    expect(alert).toHaveTextContent("source: paste-document");
+    expect(alert).toHaveTextContent("errors.apiDetails.requestId: REQ_PASTE");
+    expect(onCreated).not.toHaveBeenCalled();
+    expect(onOpenChange).not.toHaveBeenCalledWith(false);
   });
 
   it("does not expose model-generated document filters", async () => {
@@ -422,6 +585,40 @@ describe("DocumentsPage", () => {
         includeDescendants: false,
         unfiled: true,
       }),
+    );
+  });
+
+  it("shows backend details when child folders fail to load", async () => {
+    searchParamsMock.current = new URLSearchParams("directoryView=root");
+    listDocumentsMock.mockResolvedValue({ items: [], total: 0 });
+    listDocumentFoldersMock.mockRejectedValueOnce(
+      new ApiClientError(
+        {
+          code: "DOCUMENT_FOLDER_NOT_FOUND",
+          details: {
+            field: "folderId",
+            reason: "The folder tree root is unavailable.",
+            targetType: "DOCUMENT_FOLDER",
+          },
+          message: "The child folders could not be loaded.",
+          requestId: "REQ_CHILD_FOLDERS",
+        },
+        { status: 404 } as Response,
+      ),
+    );
+
+    renderDocumentsPage();
+
+    const alert = await screen.findByTestId("documents-child-folders-error");
+    expect(alert).toHaveTextContent("errors.api.DOCUMENT_FOLDER_NOT_FOUND");
+    expect(alert).toHaveTextContent("The child folders could not be loaded.");
+    expect(alert).toHaveTextContent(
+      "reason: The folder tree root is unavailable.",
+    );
+    expect(alert).toHaveTextContent("field: folderId");
+    expect(alert).toHaveTextContent("targetType: DOCUMENT_FOLDER");
+    expect(alert).toHaveTextContent(
+      "errors.apiDetails.requestId: REQ_CHILD_FOLDERS",
     );
   });
 
@@ -922,6 +1119,72 @@ describe("DocumentsPage", () => {
         name: "documents.list.dragSelected 2",
       }),
     ).toHaveLength(2);
+  });
+
+  it("shows backend details when expanded folder documents fail to load", async () => {
+    searchParamsMock.current = new URLSearchParams("directoryView=root");
+    listDocumentFoldersMock.mockResolvedValue([
+      {
+        depth: 0,
+        descendantDocumentCount: 1,
+        documentCount: 1,
+        id: "FLD_CHILD",
+        name: "Planning",
+        parentId: null,
+        sortOrder: 0,
+        spaceId: "SPC_01",
+        version: 1,
+      },
+    ]);
+    listDocumentsMock.mockImplementation((params: { folderId?: string }) => {
+      if (params.folderId === "FLD_CHILD") {
+        return Promise.reject(
+          new ApiClientError(
+            {
+              code: "VALIDATION_ERROR",
+              details: {
+                field: "folderId",
+                issues: [
+                  {
+                    code: "invalid_folder",
+                    path: ["folderId"],
+                  },
+                ],
+                reason: "Folder expansion is not allowed.",
+                source: "resource-tree",
+              },
+              message: "The folder documents could not be loaded.",
+              requestId: "REQ_FOLDER_DOCS",
+            },
+            { status: 400 } as Response,
+          ),
+        );
+      }
+
+      return Promise.resolve({ items: [], total: 0 });
+    });
+
+    renderDocumentsPage();
+
+    await screen.findByTestId("documents-resource-tree");
+    fireEvent.click(
+      screen.getByRole("button", {
+        name: "documents.directory.toggleFolder Planning",
+      }),
+    );
+
+    const alert = await screen.findByRole("alert");
+    expect(alert).toHaveTextContent("errors.api.VALIDATION_ERROR");
+    expect(alert).toHaveTextContent(
+      "The folder documents could not be loaded.",
+    );
+    expect(alert).toHaveTextContent("reason: Folder expansion is not allowed.");
+    expect(alert).toHaveTextContent("field: folderId");
+    expect(alert).toHaveTextContent("folderId: invalid_folder");
+    expect(alert).toHaveTextContent("source: resource-tree");
+    expect(alert).toHaveTextContent(
+      "errors.apiDetails.requestId: REQ_FOLDER_DOCS",
+    );
   });
 
   it("refreshes expanded folder documents after document realtime invalidation", async () => {

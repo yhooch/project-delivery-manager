@@ -50,7 +50,6 @@ import type {
 } from "@project-delivery/shared";
 
 import { Link, useRouter } from "../../i18n/routing";
-import { getApiErrorMessageKey } from "../../lib/api-error-messages";
 import { ApiClientError } from "../../lib/api-client";
 import {
   AttachmentUploadError,
@@ -108,6 +107,7 @@ import { useFocusedListItem } from "../../lib/hooks/use-focused-list-item";
 import { listTimeline } from "../../lib/timeline-service";
 import { cn } from "../../lib/utils";
 import { useSession } from "../providers/session-provider";
+import { getApiErrorDisplay } from "../shell/api-error-display";
 import { TagBadgeList, TagSelectionField } from "../tag";
 import { recordRecentOpen } from "../shell/recent-opens";
 import { Badge } from "../ui/badge";
@@ -271,6 +271,7 @@ export function DocumentDetailPage({ documentId }: DocumentDetailPageProps) {
   ] = useState(false);
   const [moveFolderDialogOpen, setMoveFolderDialogOpen] = useState(false);
   const [errorKey, setErrorKey] = useState<string | null>(null);
+  const [errorDetailLines, setErrorDetailLines] = useState<string[]>([]);
   const [conflict, setConflict] = useState(false);
   const [hasRealtimeRevision, setHasRealtimeRevision] = useState(false);
   const [editMode, setEditMode] = useState(false);
@@ -279,10 +280,16 @@ export function DocumentDetailPage({ documentId }: DocumentDetailPageProps) {
   const [commentBody, setCommentBody] = useState("");
   const [isCommenting, setIsCommenting] = useState(false);
   const [commentErrorKey, setCommentErrorKey] = useState<string | null>(null);
+  const [commentErrorDetailLines, setCommentErrorDetailLines] = useState<
+    string[]
+  >([]);
   const [isUploadingAttachment, setIsUploadingAttachment] = useState(false);
   const [attachmentErrorKey, setAttachmentErrorKey] = useState<string | null>(
     null,
   );
+  const [attachmentErrorDetailLines, setAttachmentErrorDetailLines] = useState<
+    string[]
+  >([]);
   const [documentSearch, setDocumentSearch] = useState("");
   const [documentSearchResults, setDocumentSearchResults] = useState<
     DocumentSummary[]
@@ -291,6 +298,8 @@ export function DocumentDetailPage({ documentId }: DocumentDetailPageProps) {
   const [documentSearchErrorKey, setDocumentSearchErrorKey] = useState<
     string | null
   >(null);
+  const [documentSearchErrorDetailLines, setDocumentSearchErrorDetailLines] =
+    useState<string[]>([]);
   const formRef = useRef<DocumentEditForm | null>(null);
   const editModeRef = useRef(false);
   const spaceId =
@@ -347,6 +356,7 @@ export function DocumentDetailPage({ documentId }: DocumentDetailPageProps) {
 
   const documentLabel = tRoot("shell.command.documentLabel");
   const untitledLabel = t("untitled");
+  const requestIdLabel = tRoot("errors.apiDetails.requestId");
   const loadDocument = useCallback(
     async (options?: { realtime?: boolean; preserveForm?: boolean }) => {
       const isRealtime = options?.realtime === true;
@@ -356,6 +366,7 @@ export function DocumentDetailPage({ documentId }: DocumentDetailPageProps) {
       if (!isRealtime) {
         setIsLoading(true);
         setErrorKey(null);
+        setErrorDetailLines([]);
       }
       try {
         const next = await getDocumentWithSubresources({
@@ -397,7 +408,9 @@ export function DocumentDetailPage({ documentId }: DocumentDetailPageProps) {
         }
       } catch (error) {
         if (!isRealtime) {
-          setErrorKey(getApiErrorMessageKey(error));
+          const errorDisplay = getApiErrorDisplay(error, requestIdLabel);
+          setErrorKey(errorDisplay.messageKey);
+          setErrorDetailLines(errorDisplay.detailLines);
         }
       } finally {
         if (!isRealtime) {
@@ -413,6 +426,7 @@ export function DocumentDetailPage({ documentId }: DocumentDetailPageProps) {
       spaceId,
       documentLabel,
       untitledLabel,
+      requestIdLabel,
     ],
   );
 
@@ -443,12 +457,14 @@ export function DocumentDetailPage({ documentId }: DocumentDetailPageProps) {
       setDocumentSearchResults([]);
       setIsSearchingDocuments(false);
       setDocumentSearchErrorKey(null);
+      setDocumentSearchErrorDetailLines([]);
       return;
     }
 
     let cancelled = false;
     setIsSearchingDocuments(true);
     setDocumentSearchErrorKey(null);
+    setDocumentSearchErrorDetailLines([]);
 
     void listDocuments({
       organizationId: document.organizationId,
@@ -473,7 +489,9 @@ export function DocumentDetailPage({ documentId }: DocumentDetailPageProps) {
       })
       .catch((error) => {
         if (!cancelled) {
-          setDocumentSearchErrorKey(getApiErrorMessageKey(error));
+          const errorDisplay = getApiErrorDisplay(error, requestIdLabel);
+          setDocumentSearchErrorKey(errorDisplay.messageKey);
+          setDocumentSearchErrorDetailLines(errorDisplay.detailLines);
         }
       })
       .finally(() => {
@@ -485,7 +503,7 @@ export function DocumentDetailPage({ documentId }: DocumentDetailPageProps) {
     return () => {
       cancelled = true;
     };
-  }, [document, documentSearch, editMode]);
+  }, [document, documentSearch, editMode, requestIdLabel]);
 
   const headingsSource =
     editMode && form
@@ -508,6 +526,7 @@ export function DocumentDetailPage({ documentId }: DocumentDetailPageProps) {
 
     setIsSaving(true);
     setErrorKey(null);
+    setErrorDetailLines([]);
     setConflict(false);
     try {
       const linkTargets = await resolveLinkTargets({
@@ -559,7 +578,9 @@ export function DocumentDetailPage({ documentId }: DocumentDetailPageProps) {
       if (isConflictError(error)) {
         setConflict(true);
       } else {
-        setErrorKey(getApiErrorMessageKey(error));
+        const errorDisplay = getApiErrorDisplay(error, requestIdLabel);
+        setErrorKey(errorDisplay.messageKey);
+        setErrorDetailLines(errorDisplay.detailLines);
       }
     } finally {
       setIsSaving(false);
@@ -573,6 +594,7 @@ export function DocumentDetailPage({ documentId }: DocumentDetailPageProps) {
 
     setIsSaving(true);
     setErrorKey(null);
+    setErrorDetailLines([]);
     setConflict(false);
     try {
       const next = await reimportDocument({
@@ -589,7 +611,9 @@ export function DocumentDetailPage({ documentId }: DocumentDetailPageProps) {
       if (isConflictError(error)) {
         setConflict(true);
       } else {
-        setErrorKey(getApiErrorMessageKey(error));
+        const errorDisplay = getApiErrorDisplay(error, requestIdLabel);
+        setErrorKey(errorDisplay.messageKey);
+        setErrorDetailLines(errorDisplay.detailLines);
       }
     } finally {
       setIsSaving(false);
@@ -603,6 +627,7 @@ export function DocumentDetailPage({ documentId }: DocumentDetailPageProps) {
 
     setIsConvertingToRequirement(true);
     setErrorKey(null);
+    setErrorDetailLines([]);
     try {
       const next = await convertDocumentToRequirement({
         activate: true,
@@ -615,7 +640,9 @@ export function DocumentDetailPage({ documentId }: DocumentDetailPageProps) {
       setHasRealtimeRevision(false);
       router.push(`/requirements/${next.id}`);
     } catch (error) {
-      setErrorKey(getApiErrorMessageKey(error));
+      const errorDisplay = getApiErrorDisplay(error, requestIdLabel);
+      setErrorKey(errorDisplay.messageKey);
+      setErrorDetailLines(errorDisplay.detailLines);
     } finally {
       setIsConvertingToRequirement(false);
     }
@@ -632,6 +659,7 @@ export function DocumentDetailPage({ documentId }: DocumentDetailPageProps) {
     setCancelRequirementReferenceMode("REJECT_IF_REFERENCED");
     setIsLoadingCancelRequirementPreflight(true);
     setErrorKey(null);
+    setErrorDetailLines([]);
     try {
       const preflight = await getCancelRequirementPreflight({
         documentId: document.id,
@@ -641,7 +669,9 @@ export function DocumentDetailPage({ documentId }: DocumentDetailPageProps) {
         preflight.modeRequired ?? "REJECT_IF_REFERENCED",
       );
     } catch (error) {
-      setErrorKey(getApiErrorMessageKey(error));
+      const errorDisplay = getApiErrorDisplay(error, requestIdLabel);
+      setErrorKey(errorDisplay.messageKey);
+      setErrorDetailLines(errorDisplay.detailLines);
       setCancelRequirementDialogOpen(false);
     } finally {
       setIsLoadingCancelRequirementPreflight(false);
@@ -655,6 +685,7 @@ export function DocumentDetailPage({ documentId }: DocumentDetailPageProps) {
 
     setIsCancellingRequirement(true);
     setErrorKey(null);
+    setErrorDetailLines([]);
     try {
       const next = await cancelRequirementDocument({
         baseRevision: document.revision,
@@ -668,7 +699,10 @@ export function DocumentDetailPage({ documentId }: DocumentDetailPageProps) {
       setCancelRequirementDialogOpen(false);
       setCancelRequirementReason("");
     } catch (error) {
-      setErrorKey(getApiErrorMessageKey(error));
+      const errorDisplay = getApiErrorDisplay(error, requestIdLabel);
+      setErrorKey(errorDisplay.messageKey);
+      setErrorDetailLines(errorDisplay.detailLines);
+      setCancelRequirementDialogOpen(false);
     } finally {
       setIsCancellingRequirement(false);
     }
@@ -681,13 +715,16 @@ export function DocumentDetailPage({ documentId }: DocumentDetailPageProps) {
 
     setIsArchiving(true);
     setErrorKey(null);
+    setErrorDetailLines([]);
     try {
       const next = await archiveDocument(document.id);
       setDocument(next);
       setForm(createDocumentEditForm(next));
       setHasRealtimeRevision(false);
     } catch (error) {
-      setErrorKey(getApiErrorMessageKey(error));
+      const errorDisplay = getApiErrorDisplay(error, requestIdLabel);
+      setErrorKey(errorDisplay.messageKey);
+      setErrorDetailLines(errorDisplay.detailLines);
     } finally {
       setIsArchiving(false);
     }
@@ -700,13 +737,16 @@ export function DocumentDetailPage({ documentId }: DocumentDetailPageProps) {
 
     setIsRestoring(true);
     setErrorKey(null);
+    setErrorDetailLines([]);
     try {
       const next = await restoreDocument(document.id);
       setDocument(next);
       setForm(createDocumentEditForm(next));
       setHasRealtimeRevision(false);
     } catch (error) {
-      setErrorKey(getApiErrorMessageKey(error));
+      const errorDisplay = getApiErrorDisplay(error, requestIdLabel);
+      setErrorKey(errorDisplay.messageKey);
+      setErrorDetailLines(errorDisplay.detailLines);
     } finally {
       setIsRestoring(false);
     }
@@ -719,12 +759,16 @@ export function DocumentDetailPage({ documentId }: DocumentDetailPageProps) {
 
     setIsDeleting(true);
     setErrorKey(null);
+    setErrorDetailLines([]);
     try {
       await deleteDocument(document.id);
       setDeleteDialogOpen(false);
       router.push("/documents");
     } catch (error) {
-      setErrorKey(getApiErrorMessageKey(error));
+      const errorDisplay = getApiErrorDisplay(error, requestIdLabel);
+      setErrorKey(errorDisplay.messageKey);
+      setErrorDetailLines(errorDisplay.detailLines);
+      setDeleteDialogOpen(false);
     } finally {
       setIsDeleting(false);
     }
@@ -737,6 +781,7 @@ export function DocumentDetailPage({ documentId }: DocumentDetailPageProps) {
 
     setIsCommenting(true);
     setCommentErrorKey(null);
+    setCommentErrorDetailLines([]);
     try {
       await createComment({
         body: commentBody.trim(),
@@ -751,7 +796,9 @@ export function DocumentDetailPage({ documentId }: DocumentDetailPageProps) {
         realtime: true,
       });
     } catch (error) {
-      setCommentErrorKey(getApiErrorMessageKey(error));
+      const errorDisplay = getApiErrorDisplay(error, requestIdLabel);
+      setCommentErrorKey(errorDisplay.messageKey);
+      setCommentErrorDetailLines(errorDisplay.detailLines);
     } finally {
       setIsCommenting(false);
     }
@@ -768,6 +815,7 @@ export function DocumentDetailPage({ documentId }: DocumentDetailPageProps) {
 
     setIsUploadingAttachment(true);
     setAttachmentErrorKey(null);
+    setAttachmentErrorDetailLines([]);
     try {
       await uploadAttachment({
         existingAttachmentCount:
@@ -781,11 +829,17 @@ export function DocumentDetailPage({ documentId }: DocumentDetailPageProps) {
         realtime: true,
       });
     } catch (error) {
-      setAttachmentErrorKey(
-        error instanceof AttachmentUploadError
-          ? `forms.attachments.uploadErrors.${error.code}`
-          : getApiErrorMessageKey(error),
-      );
+      if (error instanceof AttachmentUploadError) {
+        setAttachmentErrorKey(`forms.attachments.uploadErrors.${error.code}`);
+        setAttachmentErrorDetailLines(
+          getApiErrorDisplay(error.sourceError ?? error, requestIdLabel)
+            .detailLines,
+        );
+      } else {
+        const errorDisplay = getApiErrorDisplay(error, requestIdLabel);
+        setAttachmentErrorKey(errorDisplay.messageKey);
+        setAttachmentErrorDetailLines(errorDisplay.detailLines);
+      }
     } finally {
       setIsUploadingAttachment(false);
     }
@@ -843,7 +897,10 @@ export function DocumentDetailPage({ documentId }: DocumentDetailPageProps) {
           role="alert"
           className="rounded-md border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive"
         >
-          {tRoot(errorKey)}
+          <ApiErrorDisplayContent
+            detailLines={errorDetailLines}
+            messageKey={errorKey}
+          />
         </div>
       </div>
     );
@@ -1188,9 +1245,12 @@ export function DocumentDetailPage({ documentId }: DocumentDetailPageProps) {
             {errorKey ? (
               <div
                 role="alert"
-                className="mt-4 rounded-lg bg-destructive/10 px-4 py-2.5 text-sm text-destructive"
+                className="mt-4 grid gap-1 rounded-lg bg-destructive/10 px-4 py-2.5 text-sm text-destructive"
               >
-                {tRoot(errorKey)}
+                <ApiErrorDisplayContent
+                  detailLines={errorDetailLines}
+                  messageKey={errorKey}
+                />
               </div>
             ) : null}
 
@@ -1308,6 +1368,7 @@ export function DocumentDetailPage({ documentId }: DocumentDetailPageProps) {
                   />
                 </label>
                 <LinkedDocumentSelector
+                  errorDetailLines={documentSearchErrorDetailLines}
                   errorKey={documentSearchErrorKey}
                   isLoading={isSearchingDocuments}
                   onAddDocument={addLinkedDocument}
@@ -1356,8 +1417,10 @@ export function DocumentDetailPage({ documentId }: DocumentDetailPageProps) {
           </form>
 
           <DocumentManagementSections
+            attachmentErrorDetailLines={attachmentErrorDetailLines}
             attachmentErrorKey={attachmentErrorKey}
             commentBody={commentBody}
+            commentErrorDetailLines={commentErrorDetailLines}
             commentErrorKey={commentErrorKey}
             document={document}
             focusedAttachmentId={focusedAttachmentId}
@@ -1407,6 +1470,27 @@ export function DocumentDetailPage({ documentId }: DocumentDetailPageProps) {
         organizationId={document.organizationId}
         spaceId={document.spaceId}
       />
+    </>
+  );
+}
+
+function ApiErrorDisplayContent({
+  detailLines,
+  messageKey,
+}: {
+  detailLines: string[];
+  messageKey: string;
+}) {
+  const tRoot = useTranslations();
+
+  return (
+    <>
+      <p>{tRoot(messageKey)}</p>
+      {detailLines.map((detail) => (
+        <p key={detail} className="text-xs">
+          {detail}
+        </p>
+      ))}
     </>
   );
 }
@@ -1560,6 +1644,7 @@ function LinkedResourceChips({
 }
 
 function LinkedDocumentSelector({
+  errorDetailLines,
   errorKey,
   isLoading,
   onAddDocument,
@@ -1569,6 +1654,7 @@ function LinkedDocumentSelector({
   results,
   selectedDocuments,
 }: {
+  errorDetailLines: string[];
   errorKey: string | null;
   isLoading: boolean;
   onAddDocument: (document: DocumentSummary) => void;
@@ -1579,7 +1665,6 @@ function LinkedDocumentSelector({
   selectedDocuments: DocumentLinkSummary[];
 }) {
   const t = useTranslations("documents");
-  const tRoot = useTranslations();
   const hasQuery = query.trim().length > 0;
 
   return (
@@ -1639,9 +1724,12 @@ function LinkedDocumentSelector({
         </div>
       ) : null}
       {errorKey ? (
-        <p className="text-xs text-destructive" role="alert">
-          {tRoot(errorKey)}
-        </p>
+        <div className="grid gap-1 text-xs text-destructive" role="alert">
+          <ApiErrorDisplayContent
+            detailLines={errorDetailLines}
+            messageKey={errorKey}
+          />
+        </div>
       ) : null}
       {hasQuery && !isLoading && !errorKey && results.length === 0 ? (
         <p className="text-xs text-muted-foreground">
@@ -1681,8 +1769,10 @@ function LinkedDocumentSelector({
 }
 
 function DocumentManagementSections({
+  attachmentErrorDetailLines,
   attachmentErrorKey,
   commentBody,
+  commentErrorDetailLines,
   commentErrorKey,
   document,
   focusedAttachmentId,
@@ -1694,8 +1784,10 @@ function DocumentManagementSections({
   onCommentBodyChange,
   onSubmitComment,
 }: {
+  attachmentErrorDetailLines: string[];
   attachmentErrorKey: string | null;
   commentBody: string;
+  commentErrorDetailLines: string[];
   commentErrorKey: string | null;
   document: DocumentDetail;
   focusedAttachmentId?: string;
@@ -1708,7 +1800,6 @@ function DocumentManagementSections({
   onSubmitComment: () => void;
 }) {
   const t = useTranslations("documents");
-  const tRoot = useTranslations();
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const comments = document.comments ?? [];
   const attachments = document.attachments ?? [];
@@ -1791,9 +1882,12 @@ function DocumentManagementSections({
           </div>
         </div>
         {commentErrorKey ? (
-          <p className="text-sm text-destructive" role="alert">
-            {tRoot(commentErrorKey)}
-          </p>
+          <div className="grid gap-1 text-sm text-destructive" role="alert">
+            <ApiErrorDisplayContent
+              detailLines={commentErrorDetailLines}
+              messageKey={commentErrorKey}
+            />
+          </div>
         ) : null}
         {comments.length > 0 ? (
           <div className="grid gap-1.5">
@@ -1870,9 +1964,12 @@ function DocumentManagementSections({
           </Button>
         </div>
         {attachmentErrorKey ? (
-          <p className="text-sm text-destructive" role="alert">
-            {tRoot(attachmentErrorKey)}
-          </p>
+          <div className="grid gap-1 text-sm text-destructive" role="alert">
+            <ApiErrorDisplayContent
+              detailLines={attachmentErrorDetailLines}
+              messageKey={attachmentErrorKey}
+            />
+          </div>
         ) : null}
         {attachments.length > 0 ? (
           <ul className="grid gap-0.5">
@@ -2153,6 +2250,7 @@ function DocumentMoveFolderDialog({
 }) {
   const t = useTranslations("documents.moveDialog");
   const tRoot = useTranslations();
+  const requestIdLabel = tRoot("errors.apiDetails.requestId");
   const [folders, setFolders] = useState<DocumentFolder[]>([]);
   const [selectedFolderId, setSelectedFolderId] = useState(
     currentFolderId ?? "",
@@ -2160,6 +2258,7 @@ function DocumentMoveFolderDialog({
   const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [errorKey, setErrorKey] = useState<string | null>(null);
+  const [errorDetailLines, setErrorDetailLines] = useState<string[]>([]);
 
   useEffect(() => {
     if (!open) {
@@ -2170,6 +2269,7 @@ function DocumentMoveFolderDialog({
     setSelectedFolderId(currentFolderId ?? "");
     setIsLoading(true);
     setErrorKey(null);
+    setErrorDetailLines([]);
     void listDocumentFolders({ organizationId, spaceId })
       .then((next) => {
         if (!cancelled) {
@@ -2178,7 +2278,9 @@ function DocumentMoveFolderDialog({
       })
       .catch((error) => {
         if (!cancelled) {
-          setErrorKey(getApiErrorMessageKey(error));
+          const errorDisplay = getApiErrorDisplay(error, requestIdLabel);
+          setErrorKey(errorDisplay.messageKey);
+          setErrorDetailLines(errorDisplay.detailLines);
         }
       })
       .finally(() => {
@@ -2190,7 +2292,7 @@ function DocumentMoveFolderDialog({
     return () => {
       cancelled = true;
     };
-  }, [currentFolderId, open, organizationId, spaceId]);
+  }, [currentFolderId, open, organizationId, requestIdLabel, spaceId]);
 
   const flatFolders = useMemo(
     () => flattenDocumentFolders(normalizeDocumentFolderTree(folders)),
@@ -2201,6 +2303,7 @@ function DocumentMoveFolderDialog({
     event.preventDefault();
     setIsSaving(true);
     setErrorKey(null);
+    setErrorDetailLines([]);
     try {
       const next = await moveDocumentToFolder({
         baseRevision,
@@ -2212,7 +2315,9 @@ function DocumentMoveFolderDialog({
       onMoved(next);
       onOpenChange(false);
     } catch (error) {
-      setErrorKey(getApiErrorMessageKey(error));
+      const errorDisplay = getApiErrorDisplay(error, requestIdLabel);
+      setErrorKey(errorDisplay.messageKey);
+      setErrorDetailLines(errorDisplay.detailLines);
     } finally {
       setIsSaving(false);
     }
@@ -2252,9 +2357,12 @@ function DocumentMoveFolderDialog({
           ) : null}
 
           {errorKey ? (
-            <p className="text-sm text-destructive" role="alert">
-              {tRoot(errorKey)}
-            </p>
+            <div className="grid gap-1 text-sm text-destructive" role="alert">
+              <ApiErrorDisplayContent
+                detailLines={errorDetailLines}
+                messageKey={errorKey}
+              />
+            </div>
           ) : null}
 
           <DialogFooter>

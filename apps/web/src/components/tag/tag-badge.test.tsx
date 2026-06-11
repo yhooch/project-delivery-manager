@@ -1,14 +1,31 @@
-import { cleanup, render, screen } from "@testing-library/react";
+import {
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from "@testing-library/react";
 import type { TagDto } from "@project-delivery/shared";
 import { afterEach, describe, expect, it, vi } from "vitest";
+
+const { replaceTagAssignmentsMock } = vi.hoisted(() => ({
+  replaceTagAssignmentsMock: vi.fn(),
+}));
 
 vi.mock("next-intl", () => ({
   useTranslations: (namespace?: string) => (key: string) =>
     namespace ? `${namespace}.${key}` : key,
 }));
 
+vi.mock("../../lib/tag-service", () => ({
+  createTag: vi.fn(),
+  listTags: vi.fn(),
+  replaceTagAssignments: replaceTagAssignmentsMock,
+}));
+
+import { ApiClientError } from "../../lib/api-client";
 import { TagBadge } from "./tag-badge";
-import { TagBadgeList } from "./tag-assignment-field";
+import { ObjectTagAssignmentField, TagBadgeList } from "./tag-assignment-field";
 import { TAG_COLOR_CLASS_NAMES } from "./tag-colors";
 
 function makeTag(name: string, colorKey: string): TagDto {
@@ -27,6 +44,7 @@ function makeTag(name: string, colorKey: string): TagDto {
 
 afterEach(() => {
   cleanup();
+  replaceTagAssignmentsMock.mockReset();
 });
 
 describe("TagBadge", () => {
@@ -93,5 +111,58 @@ describe("TagBadge", () => {
 
     expect(screen.getByText("+1")).toHaveAttribute("title", "#four");
     expect(screen.getByText("+1")).toHaveAttribute("aria-label", "#four");
+  });
+
+  it("shows API server message and request id when tag assignment fails", async () => {
+    replaceTagAssignmentsMock.mockRejectedValueOnce(
+      new ApiClientError(
+        {
+          code: "FORBIDDEN",
+          details: {
+            field: "tagIds",
+            issues: [
+              {
+                code: "custom",
+                message: "Tag cannot be removed",
+                path: ["tagIds", 0],
+              },
+            ],
+            reason: "space_locked",
+          },
+          message: "Tag assignment denied",
+          requestId: "REQ_TAG_ASSIGN",
+        },
+        new Response(null, { status: 403 }),
+      ),
+    );
+
+    render(
+      <ObjectTagAssignmentField
+        canEdit
+        spaceId="01VRZ3NDEKTSV4RRFFQ69G5F11"
+        tags={[makeTag("backend", "blue")]}
+        targetId="01VRZ3NDEKTSV4RRFFQ69G5FWI"
+        targetType="WORK_ITEM"
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "tags.badge.remove" }));
+
+    const alert = await screen.findByRole("alert");
+    await waitFor(() =>
+      expect(replaceTagAssignmentsMock).toHaveBeenCalledWith({
+        tagIds: [],
+        targetId: "01VRZ3NDEKTSV4RRFFQ69G5FWI",
+        targetType: "WORK_ITEM",
+      }),
+    );
+    expect(alert).toHaveTextContent("errors.api.FORBIDDEN");
+    expect(alert).toHaveTextContent("Tag assignment denied");
+    expect(alert).toHaveTextContent(
+      "errors.apiDetails.requestId: REQ_TAG_ASSIGN",
+    );
+    expect(alert).toHaveTextContent("reason: space_locked");
+    expect(alert).toHaveTextContent("field: tagIds");
+    expect(alert).toHaveTextContent("tagIds.0: Tag cannot be removed");
   });
 });

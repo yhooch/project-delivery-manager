@@ -1,10 +1,14 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
-import { getApiErrorMessageKey } from "../../lib/api-error-messages";
 import { useSession } from "../providers/session-provider";
+import {
+  getApiErrorDisplay,
+  type ApiErrorDisplayState,
+} from "./api-error-display";
 
 export type RequestedSpaceSwitchNotice = {
   id: string;
@@ -13,10 +17,12 @@ export type RequestedSpaceSwitchNotice = {
 
 export function useRequestedSpaceSwitch(): {
   dismissNotice: () => void;
+  error: ApiErrorDisplayState | null;
   errorKey: string | null;
   isSwitching: boolean;
   notice: RequestedSpaceSwitchNotice | null;
 } {
+  const tRoot = useTranslations();
   const searchParams = useSearchParams();
   const {
     currentSpace,
@@ -37,24 +43,25 @@ export function useRequestedSpaceSwitch(): {
     string | null
   >(null);
   const [requestedSpaceSwitchError, setRequestedSpaceSwitchError] = useState<{
-    key: string;
+    error: ApiErrorDisplayState;
     spaceId: string;
   } | null>(null);
   const [notice, setNotice] = useState<RequestedSpaceSwitchNotice | null>(null);
   const dismissNotice = useCallback(() => {
     setNotice(null);
   }, []);
+  const requestIdLabel = tRoot("errors.apiDetails.requestId");
 
-  const activeErrorKey =
+  const activeError =
     requestedSpaceSwitchError &&
     requestedSpaceSwitchError.spaceId === requestedSpaceId
-      ? requestedSpaceSwitchError.key
+      ? requestedSpaceSwitchError.error
       : null;
   const needsSwitch = Boolean(
     requestedSpace && requestedSpace.id !== currentSpace?.id,
   );
   const isSwitching = Boolean(
-    (needsSwitch || requestedSpaceSwitchId) && !activeErrorKey,
+    (needsSwitch || requestedSpaceSwitchId) && !activeError,
   );
 
   useEffect(() => {
@@ -99,7 +106,7 @@ export function useRequestedSpaceSwitch(): {
         if (!cancelled) {
           setRequestedSpaceSwitchId(null);
           setRequestedSpaceSwitchError({
-            key: getApiErrorMessageKey(error),
+            error: getApiErrorDisplay(error, requestIdLabel),
             spaceId: requestedSpace.id,
           });
         }
@@ -113,12 +120,14 @@ export function useRequestedSpaceSwitch(): {
     requestedSpace,
     requestedSpaceId,
     requestedSpaceSwitchId,
+    requestIdLabel,
     switchSpace,
   ]);
 
   return {
     dismissNotice,
-    errorKey: activeErrorKey,
+    error: activeError,
+    errorKey: activeError?.messageKey ?? null,
     isSwitching,
     notice,
   };

@@ -4,7 +4,6 @@ import type { StatusCategory, WorkflowState } from "@project-delivery/shared";
 import { useTranslations } from "next-intl";
 import { useEffect, useState, type FormEvent } from "react";
 
-import { getApiErrorMessageKey } from "../../lib/api-error-messages";
 import {
   createWorkflowState,
   updateWorkflowState,
@@ -23,6 +22,7 @@ import {
 import { Input } from "../ui/input";
 import { Label } from "../ui/label";
 import { SelectMenu } from "../ui/select-menu";
+import { getApiErrorDisplay } from "../shell/api-error-display";
 
 const CATEGORY_OPTIONS: StatusCategory[] = [
   "NOT_STARTED",
@@ -66,12 +66,14 @@ export function WorkflowStateDialog({
   const [isEnd, setIsEnd] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorKey, setErrorKey] = useState<string | null>(null);
+  const [errorDetails, setErrorDetails] = useState<string[]>([]);
 
   useEffect(() => {
     if (!open) {
       return;
     }
     setErrorKey(null);
+    setErrorDetails([]);
     setIsSubmitting(false);
     if (mode.kind === "edit") {
       setName(mode.state.name);
@@ -102,6 +104,7 @@ export function WorkflowStateDialog({
     event.preventDefault();
     setIsSubmitting(true);
     setErrorKey(null);
+    setErrorDetails([]);
     try {
       const trimmedName = name.trim();
       const trimmedCode = code.trim();
@@ -144,7 +147,12 @@ export function WorkflowStateDialog({
       }
       onSuccess();
     } catch (error) {
-      setErrorKey(getApiErrorMessageKey(error));
+      const display = getApiErrorDisplay(
+        error,
+        tRoot("errors.apiDetails.requestId"),
+      );
+      setErrorKey(display.messageKey);
+      setErrorDetails(display.detailLines);
     } finally {
       setIsSubmitting(false);
     }
@@ -251,10 +259,13 @@ export function WorkflowStateDialog({
 
           {errorKey ? (
             <div
-              className="rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-xs text-destructive"
+              className="grid gap-1 rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-xs text-destructive"
               role="alert"
             >
-              {tRoot(errorKey)}
+              <p>{tRoot(errorKey)}</p>
+              {errorDetails.map((detail) => (
+                <p key={detail}>{detail}</p>
+              ))}
             </div>
           ) : null}
 

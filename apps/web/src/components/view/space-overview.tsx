@@ -25,7 +25,6 @@ import { useLocale, useTranslations } from "next-intl";
 import { useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
-import { getApiErrorMessageKey } from "../../lib/api-error-messages";
 import {
   resolveRefreshMode,
   shouldClearDataForRefresh,
@@ -39,6 +38,11 @@ import { useVersions } from "../../lib/v2/lookups";
 import { getSpaceOverviewView } from "../../lib/view-service";
 import { Link, usePathname, useRouter } from "../../i18n/routing";
 import { useSession } from "../providers/session-provider";
+import {
+  formatApiErrorDisplayMessage,
+  getApiErrorDisplay,
+  type ApiErrorDisplayState,
+} from "../shell/api-error-display";
 
 import { TimelineEventItem } from "../timeline/timeline-event-item";
 import { Button } from "../ui/button";
@@ -94,6 +98,7 @@ export function SpaceOverview() {
   const tNav = useTranslations("shell.nav");
   const tTimelineEvent = useTranslations("common.timeline.event");
   const tRoot = useTranslations();
+  const requestIdLabel = tRoot("errors.apiDetails.requestId");
   const locale = useLocale();
   const router = useRouter();
   const pathname = usePathname();
@@ -106,7 +111,9 @@ export function SpaceOverview() {
 
   const [view, setView] = useState<GetSpaceOverviewViewResponse | null>(null);
   const [isLoading, setIsLoading] = useState(false);
-  const [errorKey, setErrorKey] = useState<string | null>(null);
+  const [errorDisplay, setErrorDisplay] = useState<ApiErrorDisplayState | null>(
+    null,
+  );
   const requestSeq = useRef(0);
 
   const { versions, loading: versionsLoading } = useVersions(
@@ -146,40 +153,43 @@ export function SpaceOverview() {
     versionsLoading,
   ]);
 
-  const fetchView = useCallback(async (options?: RefreshModeOptions) => {
-    if (!spaceId) {
-      return;
-    }
-    const mode = resolveRefreshMode(options);
-    const requestId = requestSeq.current + 1;
-    requestSeq.current = requestId;
-    if (shouldClearDataForRefresh(mode)) {
-      setView(null);
-    }
-    if (shouldShowBlockingRefreshState(mode)) {
-      setIsLoading(true);
-    }
-    if (shouldSurfaceRefreshError(mode)) {
-      setErrorKey(null);
-    }
-    try {
-      const next = await getSpaceOverviewView({
-        spaceId,
-        organizationId,
-        versionId: activeVersionId,
-      });
-      if (requestSeq.current !== requestId) return;
-      setView(next);
-      setErrorKey(null);
-    } catch (error) {
-      if (requestSeq.current !== requestId) return;
-      if (shouldSurfaceRefreshError(mode)) {
-        setErrorKey(getApiErrorMessageKey(error));
+  const fetchView = useCallback(
+    async (options?: RefreshModeOptions) => {
+      if (!spaceId) {
+        return;
       }
-    } finally {
-      if (requestSeq.current === requestId) setIsLoading(false);
-    }
-  }, [activeVersionId, organizationId, spaceId]);
+      const mode = resolveRefreshMode(options);
+      const requestId = requestSeq.current + 1;
+      requestSeq.current = requestId;
+      if (shouldClearDataForRefresh(mode)) {
+        setView(null);
+      }
+      if (shouldShowBlockingRefreshState(mode)) {
+        setIsLoading(true);
+      }
+      if (shouldSurfaceRefreshError(mode)) {
+        setErrorDisplay(null);
+      }
+      try {
+        const next = await getSpaceOverviewView({
+          spaceId,
+          organizationId,
+          versionId: activeVersionId,
+        });
+        if (requestSeq.current !== requestId) return;
+        setView(next);
+        setErrorDisplay(null);
+      } catch (error) {
+        if (requestSeq.current !== requestId) return;
+        if (shouldSurfaceRefreshError(mode)) {
+          setErrorDisplay(getApiErrorDisplay(error, requestIdLabel));
+        }
+      } finally {
+        if (requestSeq.current === requestId) setIsLoading(false);
+      }
+    },
+    [activeVersionId, organizationId, requestIdLabel, spaceId],
+  );
 
   useEffect(() => {
     if (!spaceId) {
@@ -338,10 +348,14 @@ export function SpaceOverview() {
       <div className="flex-1 overflow-y-auto px-6 py-8 lg:px-8">
         {isLoading && !view ? (
           <LoadingState label={t("states.loading.title")} />
-        ) : errorKey ? (
+        ) : errorDisplay ? (
           <ErrorState
             title={t("errorTitle")}
-            message={tRoot(errorKey)}
+            message={formatApiErrorDisplayMessage(
+              tRoot(errorDisplay.messageKey),
+              errorDisplay.detailLines,
+              " · ",
+            )}
             onRetry={() => void fetchView({ mode: "manual" })}
           />
         ) : (

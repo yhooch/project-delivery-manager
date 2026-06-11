@@ -30,7 +30,6 @@ import { useLocale, useTranslations } from "next-intl";
 import { useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
-import { getApiErrorMessageKey } from "../../lib/api-error-messages";
 import {
   useFocusReturn,
   useListKeyboardNav,
@@ -69,6 +68,11 @@ import {
 } from "../../lib/view-forms";
 import { getSpaceExceptionsView } from "../../lib/view-service";
 import { useSession } from "../providers/session-provider";
+import {
+  formatApiErrorDisplayMessage,
+  getApiErrorDisplay,
+  type ApiErrorDisplayState,
+} from "../shell/api-error-display";
 import { recordRecentOpen } from "../shell/recent-opens";
 
 import { Avatar, AvatarFallback } from "../ui/avatar";
@@ -187,7 +191,7 @@ export function ExceptionsPage() {
   });
   const [view, setView] = useState<GetSpaceExceptionsViewResponse | null>(null);
   const [isLoading, setIsLoading] = useState(false);
-  const [errorKey, setErrorKey] = useState<string | null>(null);
+  const [error, setError] = useState<ApiErrorDisplayState | null>(null);
   const [active, setActive] = useState<WorkItemViewModel | null>(null);
   const [activeContext, setActiveContext] = useState<{
     contextKey: string;
@@ -204,9 +208,8 @@ export function ExceptionsPage() {
   const [isFilterPanelOpen, setIsFilterPanelOpen] = useState(false);
   const [page, setPage] = useState(1);
   const [thresholdValue, setThresholdValue] = useState<number | null>(null);
-  const [thresholdErrorKey, setThresholdErrorKey] = useState<string | null>(
-    null,
-  );
+  const [thresholdError, setThresholdError] =
+    useState<ApiErrorDisplayState | null>(null);
   const [thresholdOpen, setThresholdOpen] = useState(false);
   const requestSeq = useRef(0);
   const rowRefs = useRef(new Map<string, HTMLLIElement>());
@@ -302,7 +305,7 @@ export function ExceptionsPage() {
       setView(null);
       setIsLoading(false);
       if (shouldSurfaceRefreshError(mode)) {
-        setErrorKey(null);
+        setError(null);
       }
       return;
     }
@@ -313,7 +316,7 @@ export function ExceptionsPage() {
       setIsLoading(true);
     }
     if (shouldSurfaceRefreshError(mode)) {
-      setErrorKey(null);
+      setError(null);
     }
 
     try {
@@ -333,13 +336,15 @@ export function ExceptionsPage() {
         return;
       }
       setView(next);
-      setErrorKey(null);
+      setError(null);
     } catch (error) {
       if (requestSeq.current !== requestId) {
         return;
       }
       if (shouldSurfaceRefreshError(mode)) {
-        setErrorKey(getApiErrorMessageKey(error));
+        setError(
+          getApiErrorDisplay(error, tRoot("errors.apiDetails.requestId")),
+        );
       }
     } finally {
       if (requestSeq.current === requestId) {
@@ -356,18 +361,19 @@ export function ExceptionsPage() {
     spaceId,
     tabValue,
     tagFilter,
+    tRoot,
   ]);
 
   useEffect(() => {
     if (!spaceId) {
       setThresholdValue(null);
-      setThresholdErrorKey(null);
+      setThresholdError(null);
       return;
     }
 
     let isActive = true;
     void (async () => {
-      setThresholdErrorKey(null);
+      setThresholdError(null);
       try {
         const nextSpace = await getSpace(spaceId);
         if (isActive) {
@@ -376,7 +382,9 @@ export function ExceptionsPage() {
       } catch (error) {
         if (isActive) {
           setThresholdValue(null);
-          setThresholdErrorKey(getApiErrorMessageKey(error));
+          setThresholdError(
+            getApiErrorDisplay(error, tRoot("errors.apiDetails.requestId")),
+          );
           setThresholdOpen(false);
         }
       }
@@ -385,7 +393,7 @@ export function ExceptionsPage() {
     return () => {
       isActive = false;
     };
-  }, [spaceId]);
+  }, [spaceId, tRoot]);
 
   useEffect(() => {
     void fetchView({ mode: "initial" });
@@ -586,8 +594,14 @@ export function ExceptionsPage() {
     onClose: detailSheetOpen ? () => handleSheetOpenChange(false) : undefined,
   });
 
+  const thresholdErrorMessage = thresholdError
+    ? formatApiErrorDisplayMessage(
+        tRoot(thresholdError.messageKey),
+        thresholdError.detailLines,
+      )
+    : null;
   const thresholdButtonDisabled =
-    !canEditThreshold || Boolean(thresholdErrorKey);
+    !canEditThreshold || Boolean(thresholdError);
   const headerActions = (
     <div className="flex min-w-0 flex-wrap items-center gap-2">
       <Button
@@ -610,8 +624,8 @@ export function ExceptionsPage() {
         disabled={thresholdButtonDisabled}
         aria-disabled={thresholdButtonDisabled}
         title={
-          thresholdErrorKey
-            ? tRoot(thresholdErrorKey)
+          thresholdErrorMessage
+            ? thresholdErrorMessage
             : canEditThreshold
               ? undefined
               : t("threshold.readonly")
@@ -626,12 +640,12 @@ export function ExceptionsPage() {
           </span>
         )}
       </Button>
-      {thresholdErrorKey ? (
+      {thresholdErrorMessage ? (
         <span
           data-testid="exceptions-threshold-error"
           className="max-w-[220px] truncate text-[11px] text-destructive"
         >
-          {tRoot(thresholdErrorKey)}
+          {thresholdErrorMessage}
         </span>
       ) : null}
     </div>
@@ -762,7 +776,7 @@ export function ExceptionsPage() {
     );
   }
 
-  if (errorKey && !view) {
+  if (error && !view) {
     return (
       <div
         data-testid="exceptions-page"
@@ -777,7 +791,10 @@ export function ExceptionsPage() {
         <div className="flex-1 px-6 py-6">
           <ErrorState
             title={t("errorTitle")}
-            message={tRoot(errorKey)}
+            message={formatApiErrorDisplayMessage(
+              tRoot(error.messageKey),
+              error.detailLines,
+            )}
             onRetry={() => void fetchView()}
           />
         </div>
@@ -860,10 +877,13 @@ export function ExceptionsPage() {
           >
             {tab.key === tabValue && isLoading && !viewMatchesRequest ? (
               <LoadingState label={t("states.loadingList")} />
-            ) : tab.key === tabValue && errorKey ? (
+            ) : tab.key === tabValue && error ? (
               <ErrorState
                 title={t("errorTitle")}
-                message={tRoot(errorKey)}
+                message={formatApiErrorDisplayMessage(
+                  tRoot(error.messageKey),
+                  error.detailLines,
+                )}
                 onRetry={() => void fetchView()}
               />
             ) : tab.items.length === 0 ? (
@@ -1034,7 +1054,7 @@ export function ExceptionsPage() {
         }}
       />
 
-      {spaceId && !thresholdErrorKey && (
+      {spaceId && !thresholdError && (
         <ThresholdEditorDialog
           initialValue={thresholdValue ?? 3}
           onClose={() => setThresholdOpen(false)}

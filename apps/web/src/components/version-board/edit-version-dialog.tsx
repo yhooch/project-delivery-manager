@@ -9,9 +9,13 @@ import type {
 import { useTranslations } from "next-intl";
 import { useEffect, useState } from "react";
 
-import { getApiErrorMessageKey } from "../../lib/api-error-messages";
 import { isActiveStatus, listSpaceMembers } from "../../lib/space-service";
 import { updateVersion } from "../../lib/version-service";
+import {
+  formatApiErrorDisplayMessage,
+  getApiErrorDisplay,
+  type ApiErrorDisplayState,
+} from "../shell/api-error-display";
 
 import {
   Dialog,
@@ -69,6 +73,7 @@ export function EditVersionDialog({
   const tCreate = useTranslations("versionBoard.create");
   const tStatus = useTranslations("versionBoard.status");
   const tRoot = useTranslations();
+  const requestIdLabel = tRoot("errors.apiDetails.requestId");
 
   const [name, setName] = useState("");
   const [target, setTarget] = useState("");
@@ -81,7 +86,9 @@ export function EditVersionDialog({
 
   const [nameError, setNameError] = useState(false);
   const [submitting, setSubmitting] = useState(false);
-  const [errorKey, setErrorKey] = useState<string | null>(null);
+  const [error, setError] = useState<ApiErrorDisplayState | null>(null);
+  const [ownerLoadError, setOwnerLoadError] =
+    useState<ApiErrorDisplayState | null>(null);
   const [members, setMembers] = useState<SpaceMemberWithUser[]>([]);
 
   // Reset form state every time the dialog opens or the target version
@@ -97,7 +104,8 @@ export function EditVersionDialog({
     setTargetDate(isoToDate(version.targetDate));
     setReleaseDate(isoToDate(version.releaseDate));
     setNameError(false);
-    setErrorKey(null);
+    setError(null);
+    setOwnerLoadError(null);
     setSubmitting(false);
   }, [open, version]);
 
@@ -107,6 +115,7 @@ export function EditVersionDialog({
     }
 
     let cancelled = false;
+    setOwnerLoadError(null);
     void (async () => {
       try {
         const page = await listSpaceMembers(spaceId, { status: "ACTIVE" });
@@ -114,15 +123,17 @@ export function EditVersionDialog({
         setMembers(
           page.items.filter((member) => isActiveStatus(member.status)),
         );
-      } catch {
-        // swallow — owner select stays empty
+      } catch (error) {
+        if (cancelled) return;
+        setMembers([]);
+        setOwnerLoadError(getApiErrorDisplay(error, requestIdLabel));
       }
     })();
 
     return () => {
       cancelled = true;
     };
-  }, [open, spaceId]);
+  }, [open, requestIdLabel, spaceId]);
 
   function reset() {
     setName("");
@@ -134,7 +145,8 @@ export function EditVersionDialog({
     setTargetDate("");
     setReleaseDate("");
     setNameError(false);
-    setErrorKey(null);
+    setError(null);
+    setOwnerLoadError(null);
     setSubmitting(false);
   }
 
@@ -155,7 +167,7 @@ export function EditVersionDialog({
     }
 
     setSubmitting(true);
-    setErrorKey(null);
+    setError(null);
 
     const request: UpdateVersionRequest = {
       name: trimmed,
@@ -176,7 +188,7 @@ export function EditVersionDialog({
       onUpdated?.(updated);
       handleOpenChange(false);
     } catch (error) {
-      setErrorKey(getApiErrorMessageKey(error));
+      setError(getApiErrorDisplay(error, requestIdLabel));
     } finally {
       setSubmitting(false);
     }
@@ -197,12 +209,17 @@ export function EditVersionDialog({
           className="flex flex-col gap-3"
           noValidate
         >
-          {errorKey && (
+          {error && (
             <div
               role="alert"
               className="rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-xs text-destructive"
             >
-              {tRoot(errorKey)}
+              <p className="whitespace-pre-line">
+                {formatApiErrorDisplayMessage(
+                  tRoot(error.messageKey),
+                  error.detailLines,
+                )}
+              </p>
             </div>
           )}
 
@@ -277,6 +294,15 @@ export function EditVersionDialog({
                   </option>
                 ))}
               </SelectMenu>
+              {ownerLoadError ? (
+                <p className="text-[11px] text-destructive" role="alert">
+                  {formatApiErrorDisplayMessage(
+                    tRoot(ownerLoadError.messageKey),
+                    ownerLoadError.detailLines,
+                    " · ",
+                  )}
+                </p>
+              ) : null}
             </div>
 
             <div className="flex flex-col gap-1.5">

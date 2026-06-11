@@ -32,6 +32,7 @@ vi.mock("../../lib/version-service", () => ({
 }));
 
 import { EditVersionDialog } from "./edit-version-dialog";
+import { ApiClientError } from "../../lib/api-client";
 
 const organizationId = "01ARZ3NDEKTSV4RRFFQ69G5FO1";
 const spaceId = "01ARZ3NDEKTSV4RRFFQ69G5FS1";
@@ -164,6 +165,30 @@ describe("EditVersionDialog", () => {
     expect(listSpaceMembersMock).toHaveBeenCalledWith(spaceId, {
       status: "ACTIVE",
     });
+  });
+
+  it("shows backend details when owner candidates fail to load", async () => {
+    listSpaceMembersMock.mockRejectedValueOnce(
+      new ApiClientError(
+        {
+          code: "FORBIDDEN",
+          details: { reason: "Members are not readable." },
+          message: "Cannot load members.",
+          requestId: "REQ_EDIT_VERSION_OWNER",
+        },
+        new Response(null, { status: 403 }),
+      ),
+    );
+
+    renderDialog();
+
+    const alert = await screen.findByRole("alert");
+    expect(alert).toHaveTextContent("errors.api.FORBIDDEN");
+    expect(alert).toHaveTextContent("Cannot load members.");
+    expect(alert).toHaveTextContent("reason: Members are not readable.");
+    expect(alert).toHaveTextContent(
+      "errors.apiDetails.requestId: REQ_EDIT_VERSION_OWNER",
+    );
   });
 
   it("submits the update payload with ISO dates and undefined optional dates", async () => {

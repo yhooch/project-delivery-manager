@@ -67,6 +67,7 @@ import {
   ListSkeleton,
   LoadingState,
 } from "../v2/states";
+import { getApiErrorDetailLines } from "../work-item/api-error-details";
 
 type FilterKey = "active" | "DRAFT" | "ACTIVE" | "ARCHIVED" | "all";
 type RequirementListDisplayItem = {
@@ -122,6 +123,7 @@ export function RequirementsPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [errorKey, setErrorKey] = useState<string | null>(null);
+  const [errorDetails, setErrorDetails] = useState<string[]>([]);
   const [filter, setFilter] = useState<FilterKey>("active");
   const [isFilterPanelOpen, setIsFilterPanelOpen] = useState(false);
   const [selectedVersionId, setSelectedVersionId] = useState("");
@@ -234,6 +236,7 @@ export function RequirementsPage() {
       }
       if (shouldSurfaceRefreshError(refreshMode)) {
         setErrorKey(null);
+        setErrorDetails([]);
       }
 
       try {
@@ -271,6 +274,11 @@ export function RequirementsPage() {
         ) {
           if (shouldSurfaceRefreshError(refreshMode)) {
             setErrorKey(getApiErrorMessageKey(error));
+            setErrorDetails(
+              getApiErrorDetailLines(error, {
+                requestIdLabel: tRoot("errors.apiDetails.requestId"),
+              }),
+            );
           }
         }
       } finally {
@@ -294,6 +302,7 @@ export function RequirementsPage() {
       organizationId,
       spaceId,
       tagFilter,
+      tRoot,
     ],
   );
 
@@ -325,9 +334,14 @@ export function RequirementsPage() {
         latestFilterOptionsScopeKeyRef.current === requestScopeKey
       ) {
         setErrorKey(getApiErrorMessageKey(error));
+        setErrorDetails(
+          getApiErrorDetailLines(error, {
+            requestIdLabel: tRoot("errors.apiDetails.requestId"),
+          }),
+        );
       }
     }
-  }, [contextKey, organizationId, spaceId]);
+  }, [contextKey, organizationId, spaceId, tRoot]);
 
   useEffect(() => {
     if (sessionStatus !== "authenticated" || !spaceId) {
@@ -338,6 +352,8 @@ export function RequirementsPage() {
         setStatusCounts([]);
         setIsLoading(false);
         setIsLoadingMore(false);
+        setErrorKey(null);
+        setErrorDetails([]);
       }
       return;
     }
@@ -365,6 +381,8 @@ export function RequirementsPage() {
     setCreateDenied(false);
     setVersions([]);
     setMembers([]);
+    setErrorKey(null);
+    setErrorDetails([]);
     setSelectedVersionId("");
     setSelectedOwnerId("");
     setHandledCreateLinkKey(null);
@@ -518,6 +536,7 @@ export function RequirementsPage() {
       }
       setIsCreating(true);
       setErrorKey(null);
+      setErrorDetails([]);
       setCreateDenied(false);
 
       try {
@@ -526,6 +545,11 @@ export function RequirementsPage() {
         router.push(`/requirements/${draft.id}?mode=edit`);
       } catch (error) {
         setErrorKey(getApiErrorMessageKey(error));
+        setErrorDetails(
+          getApiErrorDetailLines(error, {
+            requestIdLabel: tRoot("errors.apiDetails.requestId"),
+          }),
+        );
         setIsCreating(false);
       }
     },
@@ -536,6 +560,7 @@ export function RequirementsPage() {
       rememberRequirement,
       router,
       spaceId,
+      tRoot,
     ],
   );
 
@@ -674,7 +699,7 @@ export function RequirementsPage() {
     body = (
       <ErrorState
         title={t("states.errorTitle")}
-        message={tRoot(errorKey)}
+        message={formatApiErrorMessage(tRoot(errorKey), errorDetails)}
         onRetry={() => void loadItems(1, "replace")}
         retryLabel={t("actions.retry")}
       />
@@ -1115,6 +1140,10 @@ function createRequirementListScopeKey({
 function normalizeSearchParam(value: string | null): string | undefined {
   const normalized = value?.trim();
   return normalized ? normalized : undefined;
+}
+
+function formatApiErrorMessage(message: string, details: string[]): string {
+  return [message, ...details].join(" ");
 }
 
 function toAttributeSelectorValue(value: string): string {

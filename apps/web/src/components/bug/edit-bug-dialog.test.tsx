@@ -413,6 +413,10 @@ describe("EditBugDialog", () => {
       new ApiClientError(
         {
           code: "TRACE_VERSION_CONFLICT",
+          details: {
+            field: "versionId",
+            reason: "linked task version differs",
+          },
           message: "Version differs from linked trace object",
           requestId: "REQ_TRACE",
         },
@@ -441,9 +445,12 @@ describe("EditBugDialog", () => {
     );
     fireEvent.click(screen.getByTestId("edit-bug-submit"));
 
-    expect(await screen.findByRole("alert")).toHaveTextContent(
-      "errors.api.TRACE_VERSION_CONFLICT",
-    );
+    const alert = await screen.findByRole("alert");
+    expect(alert).toHaveTextContent("errors.api.TRACE_VERSION_CONFLICT");
+    expect(alert).toHaveTextContent("Version differs from linked trace object");
+    expect(alert).toHaveTextContent("reason: linked task version differs");
+    expect(alert).toHaveTextContent("field: versionId");
+    expect(alert).toHaveTextContent("errors.apiDetails.requestId: REQ_TRACE");
   });
 
   it("confirms and retries bug save when version cascade is required", async () => {

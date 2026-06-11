@@ -20,7 +20,6 @@ import {
 import type { ZodIssue } from "zod";
 
 import { ApiClientError } from "../../lib/api-client";
-import { getApiErrorMessageKey } from "../../lib/api-error-messages";
 import { canManageSpace } from "../../lib/permission-gates";
 import {
   toUpdateSpaceRequest,
@@ -41,6 +40,11 @@ import {
 import { cn } from "../../lib/utils";
 import { TagBadge, TagPicker } from "../tag";
 import { useSession } from "../providers/session-provider";
+import {
+  formatApiErrorDisplayMessage,
+  getApiErrorDisplay,
+  type ApiErrorDisplayState,
+} from "../shell/api-error-display";
 
 import { Avatar, AvatarFallback } from "../ui/avatar";
 import { Badge } from "../ui/badge";
@@ -95,6 +99,7 @@ export function SpaceSettingsPage() {
   const tShell = useTranslations("shell.nav");
   const tRoot = useTranslations();
   const locale = useLocale();
+  const requestIdLabel = tRoot("errors.apiDetails.requestId");
   const { currentOrganization, currentSpace, refreshSession, session, status } =
     useSession();
   const spaceId = session?.defaultSpaceId ?? currentSpace?.id;
@@ -112,10 +117,10 @@ export function SpaceSettingsPage() {
   const [ownerId, setOwnerId] = useState<string>("");
   const [threshold, setThreshold] = useState("3");
   const [isLoading, setIsLoading] = useState(false);
-  const [errorKey, setErrorKey] = useState<string | null>(null);
+  const [error, setError] = useState<ApiErrorDisplayState | null>(null);
   const [isSavingBasic, setIsSavingBasic] = useState(false);
   const [isSavingThreshold, setIsSavingThreshold] = useState(false);
-  const [saveErrorKey, setSaveErrorKey] = useState<string | null>(null);
+  const [saveError, setSaveError] = useState<ApiErrorDisplayState | null>(null);
   const [nameError, setNameError] = useState<string | null>(null);
   const [codeError, setCodeError] = useState<string | null>(null);
   const [descriptionError, setDescriptionError] = useState<string | null>(null);
@@ -125,9 +130,8 @@ export function SpaceSettingsPage() {
   const [editRoleMember, setEditRoleMember] =
     useState<SpaceMemberWithUser | null>(null);
   const [pendingMemberId, setPendingMemberId] = useState<string | null>(null);
-  const [memberActionErrorKey, setMemberActionErrorKey] = useState<
-    string | null
-  >(null);
+  const [memberActionError, setMemberActionError] =
+    useState<ApiErrorDisplayState | null>(null);
   const [memberSearch, setMemberSearch] = useState("");
   const [memberRoleFilter, setMemberRoleFilter] = useState<SpaceRole | "ALL">(
     "ALL",
@@ -135,10 +139,9 @@ export function SpaceSettingsPage() {
   const [tags, setTags] = useState<TagDto[]>([]);
   const [tagSearch, setTagSearch] = useState("");
   const [isLoadingTags, setIsLoadingTags] = useState(false);
-  const [tagErrorKey, setTagErrorKey] = useState<string | null>(null);
-  const [tagActionErrorKey, setTagActionErrorKey] = useState<string | null>(
-    null,
-  );
+  const [tagError, setTagError] = useState<ApiErrorDisplayState | null>(null);
+  const [tagActionError, setTagActionError] =
+    useState<ApiErrorDisplayState | null>(null);
   const [pendingTagId, setPendingTagId] = useState<string | null>(null);
   const [tagDeleteCandidate, setTagDeleteCandidate] = useState<TagDto | null>(
     null,
@@ -148,7 +151,8 @@ export function SpaceSettingsPage() {
   const [tagMergeTarget, setTagMergeTarget] = useState<TagDto | null>(null);
   const [tagMergePreview, setTagMergePreview] =
     useState<MergeTagsResponse | null>(null);
-  const [tagMergeErrorKey, setTagMergeErrorKey] = useState<string | null>(null);
+  const [tagMergeError, setTagMergeError] =
+    useState<ApiErrorDisplayState | null>(null);
   const [isLoadingTagMergePreview, setIsLoadingTagMergePreview] =
     useState(false);
   const [isMergingTag, setIsMergingTag] = useState(false);
@@ -180,7 +184,7 @@ export function SpaceSettingsPage() {
       member.status === "ACTIVE" ? member.spaceId : undefined;
 
     void refreshSession(member.organizationId, recentSpaceId).catch((error) => {
-      setMemberActionErrorKey(getApiErrorMessageKey(error));
+      setMemberActionError(getApiErrorDisplay(error, requestIdLabel));
     });
   }
 
@@ -207,12 +211,12 @@ export function SpaceSettingsPage() {
     if (!spaceId) {
       setTags([]);
       setIsLoadingTags(false);
-      setTagErrorKey(null);
+      setTagError(null);
       return;
     }
 
     setIsLoadingTags(true);
-    setTagErrorKey(null);
+    setTagError(null);
 
     try {
       const page = await listTags({
@@ -227,13 +231,13 @@ export function SpaceSettingsPage() {
       setTags(page.items);
     } catch (error) {
       if (tagLoadSequenceRef.current !== sequence) return;
-      setTagErrorKey(getApiErrorMessageKey(error));
+      setTagError(getApiErrorDisplay(error, requestIdLabel));
     } finally {
       if (tagLoadSequenceRef.current === sequence) {
         setIsLoadingTags(false);
       }
     }
-  }, [organizationId, spaceId, tagSearch]);
+  }, [organizationId, requestIdLabel, spaceId, tagSearch]);
 
   const load = useCallback(async () => {
     const sequence = ++loadSequenceRef.current;
@@ -242,12 +246,12 @@ export function SpaceSettingsPage() {
       setSpace(null);
       setMembers([]);
       setIsLoading(false);
-      setErrorKey(null);
+      setError(null);
       return;
     }
 
     setIsLoading(true);
-    setErrorKey(null);
+    setError(null);
 
     try {
       const [nextSpace, memberPage] = await Promise.all([
@@ -265,13 +269,13 @@ export function SpaceSettingsPage() {
       setMembers(memberPage.items);
     } catch (error) {
       if (loadSequenceRef.current !== sequence) return;
-      setErrorKey(getApiErrorMessageKey(error));
+      setError(getApiErrorDisplay(error, requestIdLabel));
     } finally {
       if (loadSequenceRef.current === sequence) {
         setIsLoading(false);
       }
     }
-  }, [spaceId]);
+  }, [requestIdLabel, spaceId]);
 
   useEffect(() => {
     loadSequenceRef.current += 1;
@@ -285,8 +289,8 @@ export function SpaceSettingsPage() {
     setOwnerId("");
     setThreshold("3");
     setIsLoading(false);
-    setErrorKey(null);
-    setSaveErrorKey(null);
+    setError(null);
+    setSaveError(null);
     setNameError(null);
     setCodeError(null);
     setDescriptionError(null);
@@ -295,20 +299,20 @@ export function SpaceSettingsPage() {
     setIsAddMemberOpen(false);
     setEditRoleMember(null);
     setPendingMemberId(null);
-    setMemberActionErrorKey(null);
+    setMemberActionError(null);
     setMemberSearch("");
     setMemberRoleFilter("ALL");
     setTagSearch("");
     setIsLoadingTags(false);
-    setTagErrorKey(null);
-    setTagActionErrorKey(null);
+    setTagError(null);
+    setTagActionError(null);
     setPendingTagId(null);
     setTagDeleteCandidate(null);
     setIsTagMergeDialogOpen(false);
     setTagMergeSources([]);
     setTagMergeTarget(null);
     setTagMergePreview(null);
-    setTagMergeErrorKey(null);
+    setTagMergeError(null);
     setIsLoadingTagMergePreview(false);
     setIsMergingTag(false);
     tagMergeRequestSequenceRef.current += 1;
@@ -335,7 +339,7 @@ export function SpaceSettingsPage() {
     }
 
     setIsSavingBasic(true);
-    setSaveErrorKey(null);
+    setSaveError(null);
     setNameError(null);
     setCodeError(null);
     setDescriptionError(null);
@@ -360,7 +364,7 @@ export function SpaceSettingsPage() {
     try {
       request = toUpdateSpaceRequest({ code, description, name, ownerId });
     } catch (error) {
-      setSaveErrorKey(getApiErrorMessageKey(error));
+      setSaveError(getApiErrorDisplay(error, requestIdLabel));
       setIsSavingBasic(false);
       return;
     }
@@ -385,7 +389,7 @@ export function SpaceSettingsPage() {
       try {
         await refreshSession(updated.organizationId, updated.id);
       } catch (error) {
-        setSaveErrorKey(getApiErrorMessageKey(error));
+        setSaveError(getApiErrorDisplay(error, requestIdLabel));
       }
     } catch (error) {
       setSpace(previous);
@@ -395,8 +399,9 @@ export function SpaceSettingsPage() {
       setOwnerId(previous.ownerId ?? "");
       if (error instanceof ApiClientError && error.error.code === "CONFLICT") {
         setCodeError("spaceSettings.basic.codeConflict");
+        setSaveError(getApiErrorDisplay(error, requestIdLabel));
       } else {
-        setSaveErrorKey(getApiErrorMessageKey(error));
+        setSaveError(getApiErrorDisplay(error, requestIdLabel));
       }
     } finally {
       setIsSavingBasic(false);
@@ -421,7 +426,7 @@ export function SpaceSettingsPage() {
     }
 
     setIsSavingThreshold(true);
-    setSaveErrorKey(null);
+    setSaveError(null);
     setThresholdError(null);
     const previous = space;
     const optimistic: Space = {
@@ -437,7 +442,7 @@ export function SpaceSettingsPage() {
     } catch (error) {
       setSpace(previous);
       setThreshold(String(previous.settings.staleThresholdDays));
-      setSaveErrorKey(getApiErrorMessageKey(error));
+      setSaveError(getApiErrorDisplay(error, requestIdLabel));
     } finally {
       setIsSavingThreshold(false);
     }
@@ -450,7 +455,7 @@ export function SpaceSettingsPage() {
 
     const previous = members;
     setPendingMemberId(member.id);
-    setMemberActionErrorKey(null);
+    setMemberActionError(null);
     setMembers((current) =>
       current.map((item) =>
         item.id === member.id ? { ...item, status: "DISABLED" } : item,
@@ -467,7 +472,7 @@ export function SpaceSettingsPage() {
       refreshAfterCurrentUserMemberChange(updated);
     } catch (error) {
       setMembers(previous);
-      setMemberActionErrorKey(getApiErrorMessageKey(error));
+      setMemberActionError(getApiErrorDisplay(error, requestIdLabel));
     } finally {
       setPendingMemberId(null);
     }
@@ -480,13 +485,13 @@ export function SpaceSettingsPage() {
     }
 
     setPendingTagId(tag.id);
-    setTagActionErrorKey(null);
+    setTagActionError(null);
 
     try {
       await deleteTag(tag.id);
       await loadTags();
     } catch (error) {
-      setTagActionErrorKey(getApiErrorMessageKey(error));
+      setTagActionError(getApiErrorDisplay(error, requestIdLabel));
       await loadTags();
     } finally {
       setPendingTagId(null);
@@ -508,7 +513,7 @@ export function SpaceSettingsPage() {
     setTagMergeSources([tag]);
     setTagMergeTarget(null);
     setTagMergePreview(null);
-    setTagMergeErrorKey(null);
+    setTagMergeError(null);
     setIsLoadingTagMergePreview(false);
     setIsMergingTag(false);
   }
@@ -523,7 +528,7 @@ export function SpaceSettingsPage() {
     setTagMergeSources([]);
     setTagMergeTarget(null);
     setTagMergePreview(null);
-    setTagMergeErrorKey(null);
+    setTagMergeError(null);
     setIsLoadingTagMergePreview(false);
   }
 
@@ -546,7 +551,7 @@ export function SpaceSettingsPage() {
 
     tagMergeRequestSequenceRef.current += 1;
     setTagMergePreview(null);
-    setTagMergeErrorKey(null);
+    setTagMergeError(null);
     setIsLoadingTagMergePreview(false);
   }
 
@@ -557,7 +562,7 @@ export function SpaceSettingsPage() {
     if (nextSources.length === 0) {
       tagMergeRequestSequenceRef.current += 1;
       setTagMergePreview(null);
-      setTagMergeErrorKey(null);
+      setTagMergeError(null);
       setIsLoadingTagMergePreview(false);
       return;
     }
@@ -569,7 +574,7 @@ export function SpaceSettingsPage() {
 
     tagMergeRequestSequenceRef.current += 1;
     setTagMergePreview(null);
-    setTagMergeErrorKey(null);
+    setTagMergeError(null);
     setIsLoadingTagMergePreview(false);
   }
 
@@ -585,7 +590,7 @@ export function SpaceSettingsPage() {
     const sequence = ++tagMergeRequestSequenceRef.current;
     setTagMergeTarget(targetTag);
     setTagMergePreview(null);
-    setTagMergeErrorKey(null);
+    setTagMergeError(null);
 
     if (sourceTagIds.length === 0) {
       setIsLoadingTagMergePreview(false);
@@ -606,7 +611,7 @@ export function SpaceSettingsPage() {
       setTagMergePreview(preview);
     } catch (error) {
       if (tagMergeRequestSequenceRef.current !== sequence) return;
-      setTagMergeErrorKey(getApiErrorMessageKey(error));
+      setTagMergeError(getApiErrorDisplay(error, requestIdLabel));
     } finally {
       if (tagMergeRequestSequenceRef.current === sequence) {
         setIsLoadingTagMergePreview(false);
@@ -622,7 +627,7 @@ export function SpaceSettingsPage() {
     }
 
     setIsMergingTag(true);
-    setTagMergeErrorKey(null);
+    setTagMergeError(null);
 
     try {
       await mergeTags({
@@ -639,7 +644,7 @@ export function SpaceSettingsPage() {
       setTagMergeTarget(null);
       setTagMergePreview(null);
     } catch (error) {
-      setTagMergeErrorKey(getApiErrorMessageKey(error));
+      setTagMergeError(getApiErrorDisplay(error, requestIdLabel));
     } finally {
       setIsMergingTag(false);
     }
@@ -684,7 +689,7 @@ export function SpaceSettingsPage() {
     );
   }
 
-  if (errorKey) {
+  if (error) {
     return (
       <div
         data-testid="space-settings-page"
@@ -692,7 +697,14 @@ export function SpaceSettingsPage() {
       >
         {headerNode}
         <div className="flex-1 overflow-y-auto px-6 py-6">
-          <ErrorState message={tRoot(errorKey)} onRetry={() => void load()} />
+          <ErrorState
+            message={formatApiErrorDisplayMessage(
+              tRoot(error.messageKey),
+              error.detailLines,
+              " · ",
+            )}
+            onRetry={() => void load()}
+          />
         </div>
       </div>
     );
@@ -747,12 +759,15 @@ export function SpaceSettingsPage() {
 
       <div className="min-w-0 flex-1 overflow-y-auto px-6 py-10">
         <div className="mx-auto flex max-w-5xl min-w-0 flex-col gap-12">
-          {saveErrorKey ? (
+          {saveError ? (
             <div
               role="alert"
-              className="rounded-md bg-destructive/10 px-4 py-3 text-sm text-destructive"
+              className="whitespace-pre-wrap rounded-md bg-destructive/10 px-4 py-3 text-sm text-destructive"
             >
-              {tRoot(saveErrorKey)}
+              {formatApiErrorDisplayMessage(
+                tRoot(saveError.messageKey),
+                saveError.detailLines,
+              )}
             </div>
           ) : null}
 
@@ -1100,19 +1115,26 @@ export function SpaceSettingsPage() {
                 />
               </div>
 
-              {tagActionErrorKey ? (
+              {tagActionError ? (
                 <div
-                  className="rounded-md bg-destructive/10 px-4 py-3 text-sm text-destructive"
+                  className="whitespace-pre-wrap rounded-md bg-destructive/10 px-4 py-3 text-sm text-destructive"
                   role="alert"
                 >
-                  {tRoot(tagActionErrorKey)}
+                  {formatApiErrorDisplayMessage(
+                    tRoot(tagActionError.messageKey),
+                    tagActionError.detailLines,
+                  )}
                 </div>
               ) : null}
 
-              {tagErrorKey ? (
+              {tagError ? (
                 <ErrorState
                   className="h-48"
-                  message={tRoot(tagErrorKey)}
+                  message={formatApiErrorDisplayMessage(
+                    tRoot(tagError.messageKey),
+                    tagError.detailLines,
+                    " · ",
+                  )}
                   onRetry={() => void loadTags()}
                 />
               ) : isLoadingTags && tags.length === 0 ? (
@@ -1191,7 +1213,7 @@ export function SpaceSettingsPage() {
                               data-testid={`space-settings-tag-delete-${tag.id}`}
                               disabled={pendingTagId === tag.id}
                               onClick={() => {
-                                setTagActionErrorKey(null);
+                                setTagActionError(null);
                                 setTagDeleteCandidate(tag);
                               }}
                               aria-label={t("tags.actions.delete", {
@@ -1267,12 +1289,15 @@ export function SpaceSettingsPage() {
                   ))}
                 </SelectMenu>
               </div>
-              {memberActionErrorKey && (
+              {memberActionError && (
                 <div
-                  className="rounded-md bg-destructive/10 px-4 py-3 text-sm text-destructive"
+                  className="whitespace-pre-wrap rounded-md bg-destructive/10 px-4 py-3 text-sm text-destructive"
                   role="alert"
                 >
-                  {tRoot(memberActionErrorKey)}
+                  {formatApiErrorDisplayMessage(
+                    tRoot(memberActionError.messageKey),
+                    memberActionError.detailLines,
+                  )}
                 </div>
               )}
               <div className="w-full pt-2">
@@ -1517,12 +1542,15 @@ export function SpaceSettingsPage() {
               />
             </div>
 
-            {tagMergeErrorKey ? (
+            {tagMergeError ? (
               <div
-                className="rounded-md bg-destructive/10 px-4 py-3 text-sm text-destructive"
+                className="whitespace-pre-wrap rounded-md bg-destructive/10 px-4 py-3 text-sm text-destructive"
                 role="alert"
               >
-                {tRoot(tagMergeErrorKey)}
+                {formatApiErrorDisplayMessage(
+                  tRoot(tagMergeError.messageKey),
+                  tagMergeError.detailLines,
+                )}
               </div>
             ) : null}
 

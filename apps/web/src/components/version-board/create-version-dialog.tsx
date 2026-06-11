@@ -9,9 +9,13 @@ import type {
 import { useTranslations } from "next-intl";
 import { useEffect, useState } from "react";
 
-import { getApiErrorMessageKey } from "../../lib/api-error-messages";
 import { isActiveStatus, listSpaceMembers } from "../../lib/space-service";
 import { createVersion } from "../../lib/version-service";
+import {
+  formatApiErrorDisplayMessage,
+  getApiErrorDisplay,
+  type ApiErrorDisplayState,
+} from "../shell/api-error-display";
 
 import {
   Dialog,
@@ -64,6 +68,7 @@ export function CreateVersionDialog({
   const t = useTranslations("versionBoard.create");
   const tStatus = useTranslations("versionBoard.status");
   const tRoot = useTranslations();
+  const requestIdLabel = tRoot("errors.apiDetails.requestId");
 
   const [name, setName] = useState("");
   const [target, setTarget] = useState("");
@@ -76,7 +81,9 @@ export function CreateVersionDialog({
 
   const [nameError, setNameError] = useState(false);
   const [submitting, setSubmitting] = useState(false);
-  const [errorKey, setErrorKey] = useState<string | null>(null);
+  const [error, setError] = useState<ApiErrorDisplayState | null>(null);
+  const [ownerLoadError, setOwnerLoadError] =
+    useState<ApiErrorDisplayState | null>(null);
   const [members, setMembers] = useState<SpaceMemberWithUser[]>([]);
 
   useEffect(() => {
@@ -85,6 +92,7 @@ export function CreateVersionDialog({
     }
 
     let cancelled = false;
+    setOwnerLoadError(null);
     void (async () => {
       try {
         const page = await listSpaceMembers(spaceId, { status: "ACTIVE" });
@@ -92,15 +100,17 @@ export function CreateVersionDialog({
         setMembers(
           page.items.filter((member) => isActiveStatus(member.status)),
         );
-      } catch {
-        // swallow — owner select stays empty
+      } catch (error) {
+        if (cancelled) return;
+        setMembers([]);
+        setOwnerLoadError(getApiErrorDisplay(error, requestIdLabel));
       }
     })();
 
     return () => {
       cancelled = true;
     };
-  }, [open, spaceId]);
+  }, [open, requestIdLabel, spaceId]);
 
   function reset() {
     setName("");
@@ -112,7 +122,8 @@ export function CreateVersionDialog({
     setTargetDate("");
     setReleaseDate("");
     setNameError(false);
-    setErrorKey(null);
+    setError(null);
+    setOwnerLoadError(null);
     setSubmitting(false);
   }
 
@@ -132,7 +143,7 @@ export function CreateVersionDialog({
     }
 
     setSubmitting(true);
-    setErrorKey(null);
+    setError(null);
 
     const request: CreateVersionRequest = {
       name: trimmed,
@@ -150,7 +161,7 @@ export function CreateVersionDialog({
       onCreated?.(version);
       handleOpenChange(false);
     } catch (error) {
-      setErrorKey(getApiErrorMessageKey(error));
+      setError(getApiErrorDisplay(error, requestIdLabel));
     } finally {
       setSubmitting(false);
     }
@@ -171,12 +182,17 @@ export function CreateVersionDialog({
           className="flex flex-col gap-3"
           noValidate
         >
-          {errorKey && (
+          {error && (
             <div
               role="alert"
               className="rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-xs text-destructive"
             >
-              {tRoot(errorKey)}
+              <p className="whitespace-pre-line">
+                {formatApiErrorDisplayMessage(
+                  tRoot(error.messageKey),
+                  error.detailLines,
+                )}
+              </p>
             </div>
           )}
 
@@ -247,6 +263,15 @@ export function CreateVersionDialog({
                   </option>
                 ))}
               </SelectMenu>
+              {ownerLoadError ? (
+                <p className="text-[11px] text-destructive" role="alert">
+                  {formatApiErrorDisplayMessage(
+                    tRoot(ownerLoadError.messageKey),
+                    ownerLoadError.detailLines,
+                    " · ",
+                  )}
+                </p>
+              ) : null}
             </div>
 
             <div className="flex flex-col gap-1.5">

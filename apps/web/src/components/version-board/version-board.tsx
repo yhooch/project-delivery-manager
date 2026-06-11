@@ -40,7 +40,6 @@ import {
   type ReactNode,
 } from "react";
 
-import { getApiErrorMessageKey } from "../../lib/api-error-messages";
 import { resolveRequirementDisplayCode } from "../../lib/display-code";
 import { Link, usePathname, useRouter } from "../../i18n/routing";
 import {
@@ -50,6 +49,11 @@ import {
 import { cn } from "../../lib/utils";
 import { useFocusedListItem } from "../../lib/hooks/use-focused-list-item";
 import { useSession } from "../providers/session-provider";
+import {
+  formatApiErrorDisplayMessage,
+  getApiErrorDisplay,
+  type ApiErrorDisplayState,
+} from "../shell/api-error-display";
 import { recordRecentOpen } from "../shell/recent-opens";
 import { TimelineEventItem } from "../timeline/timeline-event-item";
 import { listRequirements } from "../../lib/requirement-service";
@@ -484,7 +488,7 @@ export function VersionPage() {
   const [versionId, setVersionId] = useState<string | null>(null);
   const versionIdRef = useRef<string | null>(null);
   const [isLoadingVersions, setIsLoadingVersions] = useState(false);
-  const [errorKey, setErrorKey] = useState<string | null>(null);
+  const [error, setError] = useState<ApiErrorDisplayState | null>(null);
 
   // ----- board -----
   const [board, setBoard] = useState<GetVersionBoardViewResponse | null>(null);
@@ -501,14 +505,14 @@ export function VersionPage() {
   const [requirements, setRequirements] = useState<Requirement[]>([]);
   const [requirementsTotal, setRequirementsTotal] = useState(0);
   const [isLoadingRequirements, setIsLoadingRequirements] = useState(false);
-  const [requirementsErrorKey, setRequirementsErrorKey] = useState<
-    string | null
-  >(null);
+  const [requirementsError, setRequirementsError] =
+    useState<ApiErrorDisplayState | null>(null);
 
   // ----- timeline tab -----
   const [timeline, setTimeline] = useState<TimelineEvent[]>([]);
   const [isLoadingTimeline, setIsLoadingTimeline] = useState(false);
-  const [timelineErrorKey, setTimelineErrorKey] = useState<string | null>(null);
+  const [timelineError, setTimelineError] =
+    useState<ApiErrorDisplayState | null>(null);
   const versionsRequestSeq = useRef(0);
   const boardRequestSeq = useRef(0);
   const requirementsRequestSeq = useRef(0);
@@ -551,9 +555,9 @@ export function VersionPage() {
     setRequirementsTotal(0);
     setTimeline([]);
     setFilterOpen(false);
-    setErrorKey(null);
-    setRequirementsErrorKey(null);
-    setTimelineErrorKey(null);
+    setError(null);
+    setRequirementsError(null);
+    setTimelineError(null);
     setActiveItem(null);
     setActiveItemContext(null);
     setSheetOpen(false);
@@ -609,7 +613,7 @@ export function VersionPage() {
       setIsLoadingVersions(true);
     }
     if (shouldSurfaceRefreshError(mode)) {
-      setErrorKey(null);
+      setError(null);
     }
     try {
       const page = await listVersions({
@@ -632,11 +636,13 @@ export function VersionPage() {
         replaceVersionParam(nextVersionId ?? undefined);
       }
       commitVersionId(nextVersionId ?? null);
-      setErrorKey(null);
+      setError(null);
     } catch (error) {
       if (versionsRequestSeq.current !== requestId) return;
       if (shouldSurfaceRefreshError(mode)) {
-        setErrorKey(getApiErrorMessageKey(error));
+        setError(
+          getApiErrorDisplay(error, tRoot("errors.apiDetails.requestId")),
+        );
       }
     } finally {
       if (versionsRequestSeq.current === requestId) {
@@ -648,6 +654,7 @@ export function VersionPage() {
     organizationId,
     replaceVersionParam,
     spaceId,
+    tRoot,
     versionIdParam,
   ]);
 
@@ -697,7 +704,7 @@ export function VersionPage() {
       setIsLoadingBoard(true);
     }
     if (shouldSurfaceRefreshError(mode)) {
-      setErrorKey(null);
+      setError(null);
     }
     try {
       const next = await getVersionBoardView({
@@ -712,11 +719,13 @@ export function VersionPage() {
       });
       if (boardRequestSeq.current !== requestId) return;
       setBoard(next);
-      setErrorKey(null);
+      setError(null);
     } catch (error) {
       if (boardRequestSeq.current !== requestId) return;
       if (shouldSurfaceRefreshError(mode)) {
-        setErrorKey(getApiErrorMessageKey(error));
+        setError(
+          getApiErrorDisplay(error, tRoot("errors.apiDetails.requestId")),
+        );
       }
     } finally {
       if (boardRequestSeq.current === requestId) {
@@ -729,6 +738,7 @@ export function VersionPage() {
     filters.workItemType,
     organizationId,
     spaceId,
+    tRoot,
     versionId,
   ]);
 
@@ -766,7 +776,7 @@ export function VersionPage() {
       setIsLoadingRequirements(true);
     }
     if (shouldSurfaceRefreshError(mode)) {
-      setRequirementsErrorKey(null);
+      setRequirementsError(null);
     }
     try {
       const page = await listRequirements({
@@ -779,19 +789,21 @@ export function VersionPage() {
       if (requirementsRequestSeq.current !== requestId) return;
       setRequirements(page.items);
       setRequirementsTotal(page.total ?? page.items.length);
-      setRequirementsErrorKey(null);
+      setRequirementsError(null);
     } catch (error) {
       if (requirementsRequestSeq.current !== requestId) return;
       if (shouldSurfaceRefreshError(mode)) {
         setRequirementsTotal(0);
-        setRequirementsErrorKey(getApiErrorMessageKey(error));
+        setRequirementsError(
+          getApiErrorDisplay(error, tRoot("errors.apiDetails.requestId")),
+        );
       }
     } finally {
       if (requirementsRequestSeq.current === requestId) {
         setIsLoadingRequirements(false);
       }
     }
-  }, [organizationId, spaceId, versionId]);
+  }, [organizationId, spaceId, tRoot, versionId]);
 
   const fetchTimeline = useCallback(async (options?: RefreshModeOptions) => {
     const mode = resolveRefreshMode(options);
@@ -812,7 +824,7 @@ export function VersionPage() {
       setIsLoadingTimeline(true);
     }
     if (shouldSurfaceRefreshError(mode)) {
-      setTimelineErrorKey(null);
+      setTimelineError(null);
     }
     try {
       const page = await listTimeline({
@@ -825,18 +837,20 @@ export function VersionPage() {
       });
       if (timelineRequestSeq.current !== requestId) return;
       setTimeline(page.items);
-      setTimelineErrorKey(null);
+      setTimelineError(null);
     } catch (error) {
       if (timelineRequestSeq.current !== requestId) return;
       if (shouldSurfaceRefreshError(mode)) {
-        setTimelineErrorKey(getApiErrorMessageKey(error));
+        setTimelineError(
+          getApiErrorDisplay(error, tRoot("errors.apiDetails.requestId")),
+        );
       }
     } finally {
       if (timelineRequestSeq.current === requestId) {
         setIsLoadingTimeline(false);
       }
     }
-  }, [organizationId, requestedTimelineEventId, spaceId, versionId]);
+  }, [organizationId, requestedTimelineEventId, spaceId, tRoot, versionId]);
 
   // Trigger requirement / timeline loads when version changes — board has
   // its own effect via fetchBoard's dep array.
@@ -1085,7 +1099,7 @@ export function VersionPage() {
       const requestId = boardRequestSeq.current + 1;
       boardRequestSeq.current = requestId;
       setLoadingColumnCategory(category);
-      setErrorKey(null);
+      setError(null);
 
       try {
         const next = await getVersionBoardView({
@@ -1105,7 +1119,9 @@ export function VersionPage() {
         );
       } catch (error) {
         if (boardRequestSeq.current !== requestId) return;
-        setErrorKey(getApiErrorMessageKey(error));
+        setError(
+          getApiErrorDisplay(error, tRoot("errors.apiDetails.requestId")),
+        );
       } finally {
         if (boardRequestSeq.current === requestId) {
           setLoadingColumnCategory(null);
@@ -1120,6 +1136,7 @@ export function VersionPage() {
       loadingColumnCategory,
       organizationId,
       spaceId,
+      tRoot,
       versionId,
     ],
   );
@@ -1375,11 +1392,14 @@ export function VersionPage() {
         description={t("states.noSpace.description")}
       />
     );
-  } else if (errorKey && !board) {
+  } else if (error && !board) {
     body = (
       <ErrorState
         title={t("states.error.title")}
-        message={tRoot(errorKey)}
+        message={formatApiErrorDisplayMessage(
+          tRoot(error.messageKey),
+          error.detailLines,
+        )}
         onRetry={() => {
           if (!versionId) void fetchVersions({ mode: "manual" });
           else void fetchBoard({ mode: "manual" });
@@ -1502,7 +1522,7 @@ export function VersionPage() {
           >
             <RequirementsTab
               loading={isLoadingRequirements}
-              errorKey={requirementsErrorKey}
+              error={requirementsError}
               requirements={requirements}
               locale={locale}
               getMember={getMember}
@@ -1518,7 +1538,7 @@ export function VersionPage() {
           <TabsContent value="timeline" className="mt-0 flex-1 overflow-y-auto">
             <TimelineTab
               loading={isLoadingTimeline}
-              errorKey={timelineErrorKey}
+              error={timelineError}
               events={timeline}
               focusedEventId={
                 versionId === versionIdParam
@@ -2199,7 +2219,7 @@ function BoardColumns({
 
 function RequirementsTab({
   loading,
-  errorKey,
+  error,
   requirements,
   locale,
   getMember,
@@ -2209,7 +2229,7 @@ function RequirementsTab({
   onRetry,
 }: {
   loading: boolean;
-  errorKey: string | null;
+  error: ApiErrorDisplayState | null;
   requirements: Requirement[];
   locale: string;
   getMember: ReturnType<typeof useSpaceMembers>["getMember"];
@@ -2221,11 +2241,14 @@ function RequirementsTab({
   if (loading) {
     return <LoadingState label={t("requirements.loading")} />;
   }
-  if (errorKey) {
+  if (error) {
     return (
       <ErrorState
         title={t("requirements.errorTitle")}
-        message={tRoot(errorKey)}
+        message={formatApiErrorDisplayMessage(
+          tRoot(error.messageKey),
+          error.detailLines,
+        )}
         onRetry={onRetry}
       />
     );
@@ -2302,7 +2325,7 @@ function RequirementsTab({
 
 function TimelineTab({
   loading,
-  errorKey,
+  error,
   events,
   focusedEventId,
   locale,
@@ -2312,7 +2335,7 @@ function TimelineTab({
   onRetry,
 }: {
   loading: boolean;
-  errorKey: string | null;
+  error: ApiErrorDisplayState | null;
   events: TimelineEvent[];
   focusedEventId?: string;
   locale: string;
@@ -2330,11 +2353,14 @@ function TimelineTab({
   if (loading) {
     return <LoadingState label={t("timeline.loading")} />;
   }
-  if (errorKey) {
+  if (error) {
     return (
       <ErrorState
         title={t("timeline.errorTitle")}
-        message={tRoot(errorKey)}
+        message={formatApiErrorDisplayMessage(
+          tRoot(error.messageKey),
+          error.detailLines,
+        )}
         onRetry={onRetry}
       />
     );

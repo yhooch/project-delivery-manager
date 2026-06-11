@@ -628,6 +628,9 @@
       "MCP_CONSENT_REQUIRED": "Authorize this MCP client before continuing.",
       "MCP_CONSENT_REVOKED": "This MCP client authorization has been revoked.",
       "UNKNOWN": "The operation failed. Try again later."
+    },
+    "apiDetails": {
+      "requestId": "Request ID"
     }
   },
   "mcp": {

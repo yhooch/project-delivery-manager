@@ -31,6 +31,10 @@ import {
   isUnauthorizedMcpOAuthAuthorizeError,
 } from "../../lib/mcp-service";
 import { useSession } from "../providers/session-provider";
+import {
+  formatApiErrorDisplayMessage,
+  getApiErrorDisplay,
+} from "../shell/api-error-display";
 import { Badge } from "../ui/badge";
 import { Button } from "../ui/button";
 import { ErrorState, LoadingState } from "../v2/states";
@@ -133,7 +137,11 @@ export function McpAuthorizePage() {
       <AuthorizeShell>
         <ErrorState
           title={t("states.error.title")}
-          message={getErrorMessage(error, tRoot)}
+          message={getErrorMessage(
+            error,
+            tRoot,
+            tRoot("errors.apiDetails.requestId"),
+          )}
           onRetry={() => void load()}
           retryLabel={t("actions.retry")}
         />
@@ -358,10 +366,26 @@ function getUrlOrUndefined(value: string): string | undefined {
   }
 }
 
-function getErrorMessage(error: unknown, tRoot: TranslationFn): string {
-  if (error instanceof McpOAuthAuthorizeError) {
-    return error.message;
+function getErrorMessage(
+  error: unknown,
+  tRoot: TranslationFn,
+  requestIdLabel: string,
+): string {
+  const errorDisplay = getApiErrorDisplay(error, requestIdLabel);
+
+  if (
+    error instanceof McpOAuthAuthorizeError &&
+    errorDisplay.messageKey === "errors.api.UNKNOWN" &&
+    errorDisplay.detailLines.length === 0
+  ) {
+    return formatApiErrorDisplayMessage(
+      tRoot(errorDisplay.messageKey),
+      [error.message],
+    );
   }
 
-  return tRoot("errors.api.UNKNOWN");
+  return formatApiErrorDisplayMessage(
+    tRoot(errorDisplay.messageKey),
+    errorDisplay.detailLines,
+  );
 }

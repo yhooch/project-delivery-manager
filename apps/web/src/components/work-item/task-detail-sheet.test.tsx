@@ -795,6 +795,74 @@ describe("TaskDetailSheet", () => {
     expect(executeActionMock).not.toHaveBeenCalled();
   });
 
+  it("shows backend workflow action messages alongside field errors", async () => {
+    const action = makeAction({
+      formFields: [
+        {
+          fieldType: "TEXT",
+          id: "01ARZ3NDEKTSV4RRFFQ69G5FC2",
+          key: "resolution",
+          label: "Resolution",
+          order: 1,
+          required: true,
+        },
+      ],
+      id: "01ARZ3NDEKTSV4RRFFQ69G5FC1",
+      name: "Resolve",
+      requiresComment: false,
+    });
+    getWorkItemMock.mockResolvedValueOnce(
+      makeDetailResponse({
+        permissions: {
+          canEdit: true,
+          canComment: true,
+          canUploadAttachment: true,
+          availableActions: [action],
+        },
+      }),
+    );
+    executeActionMock.mockRejectedValueOnce(
+      new ApiClientError(
+        {
+          code: "WORKFLOW_ACTION_FORM_INVALID",
+          details: { field: "resolution" },
+          message: "Resolution is no longer valid.",
+          requestId: "REQ_ACTION",
+        },
+        { status: 400 } as Response,
+      ),
+    );
+
+    render(
+      <TaskDetailSheet
+        item={makeViewModel()}
+        open
+        onOpenChange={() => {}}
+        onChanged={() => {}}
+      />,
+    );
+
+    fireEvent.click(await screen.findByRole("button", { name: "Resolve" }));
+    const resolutionField = screen.getByTestId("task-action-field");
+    fireEvent.change(resolutionField, {
+      target: { value: "fixed" },
+    });
+    const form = screen.getByTestId("task-action-form");
+    fireEvent.click(within(form).getByRole("button", { name: "Resolve" }));
+
+    await waitFor(() => expect(executeActionMock).toHaveBeenCalledTimes(1));
+    expect(resolutionField).toHaveAttribute("aria-invalid", "true");
+    expect(
+      screen.getByText(
+        /taskDetail\.actions\.errorTitle: errors\.api\.WORKFLOW_ACTION_FORM_INVALID/u,
+      ),
+    ).toBeInTheDocument();
+    expect(screen.getByText("Resolution is no longer valid.")).toBeVisible();
+    expect(
+      screen.getByText("errors.apiDetails.requestId: REQ_ACTION"),
+    ).toBeVisible();
+  });
+
   it("renders select action field options with display labels instead of raw enum values", async () => {
     rootMessages.set(
       "common.workflowDefaults.states.REGRESSION_PASSED",

@@ -29,7 +29,6 @@ import {
 } from "react";
 
 import { Link, usePathname, useRouter } from "../../i18n/routing";
-import { getApiErrorMessageKey } from "../../lib/api-error-messages";
 import {
   moveDocumentFolder,
   moveDocumentsToFolder,
@@ -43,6 +42,10 @@ import {
   CommandPalette,
   useCommandPaletteShortcut,
 } from "../shell/command-palette";
+import {
+  formatApiErrorDisplayMessage,
+  getApiErrorDisplay,
+} from "../shell/api-error-display";
 import { RequestedSpaceSwitchNotice } from "../shell/requested-space-switch-notice";
 import { useRequestedSpaceSwitch } from "../shell/use-requested-space-switch";
 import { DocumentCreateProvider } from "./document-create-context";
@@ -79,12 +82,13 @@ export function DocumentShell({ children }: DocumentShellProps) {
     currentSpace,
     initializeSession,
     session,
+    sessionErrorDetailLines,
     sessionErrorKey,
     status,
   } = useSession();
   const {
     dismissNotice: dismissRequestedSpaceSwitchNotice,
-    errorKey: requestedSpaceSwitchError,
+    error: requestedSpaceSwitchError,
     isSwitching: isSwitchingRequestedSpace,
     notice: requestedSpaceSwitchNotice,
   } = useRequestedSpaceSwitch();
@@ -161,8 +165,11 @@ export function DocumentShell({ children }: DocumentShellProps) {
           <p className="mt-2 text-sm text-muted-foreground">
             {tShell("sessionError.description")}
           </p>
-          <p className="mt-2 text-sm text-destructive">
-            {tRoot(sessionErrorKey ?? "errors.api.UNKNOWN")}
+          <p className="mt-2 whitespace-pre-wrap text-sm text-destructive">
+            {formatApiErrorDisplayMessage(
+              tRoot(sessionErrorKey ?? "errors.api.UNKNOWN"),
+              sessionErrorDetailLines ?? [],
+            )}
           </p>
           <Button
             className="mt-4"
@@ -202,8 +209,11 @@ export function DocumentShell({ children }: DocumentShellProps) {
           <h1 className="text-base font-semibold text-foreground">
             {tShell("sessionError.title")}
           </h1>
-          <p className="mt-2 text-sm text-muted-foreground">
-            {tRoot(requestedSpaceSwitchError)}
+          <p className="mt-2 whitespace-pre-wrap text-sm text-muted-foreground">
+            {formatApiErrorDisplayMessage(
+              tRoot(requestedSpaceSwitchError.messageKey),
+              requestedSpaceSwitchError.detailLines,
+            )}
           </p>
         </section>
       </div>
@@ -345,6 +355,7 @@ function DocumentDragDropLayer({
 }) {
   const t = useTranslations("documents.directory.drag");
   const tRoot = useTranslations();
+  const requestIdLabel = tRoot("errors.apiDetails.requestId");
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
   );
@@ -497,12 +508,18 @@ function DocumentDragDropLayer({
           await handleFolderDrop(drag, drop);
         }
       } catch (error) {
+        const errorDisplay = getApiErrorDisplay(error, requestIdLabel);
         setDragError(
-          t("moveFailed", { message: tRoot(getApiErrorMessageKey(error)) }),
+          t("moveFailed", {
+            message: formatApiErrorDisplayMessage(
+              tRoot(errorDisplay.messageKey),
+              errorDisplay.detailLines,
+            ),
+          }),
         );
       }
     },
-    [handleDocumentDrop, handleFolderDrop, t, tRoot],
+    [handleDocumentDrop, handleFolderDrop, requestIdLabel, t, tRoot],
   );
 
   if (!enabled) {
@@ -520,7 +537,7 @@ function DocumentDragDropLayer({
       {children}
       {dragError ? (
         <div
-          className="fixed bottom-4 right-4 z-50 max-w-sm rounded-md border border-destructive/30 bg-background px-3 py-2 text-sm text-destructive shadow-lg"
+          className="fixed bottom-4 right-4 z-50 max-w-sm whitespace-pre-wrap rounded-md border border-destructive/30 bg-background px-3 py-2 text-sm text-destructive shadow-lg"
           role="alert"
         >
           {dragError}

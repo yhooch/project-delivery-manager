@@ -10,10 +10,6 @@ import {
 import { useTranslations } from "next-intl";
 import { useState } from "react";
 
-import {
-  getApiErrorMessageKey,
-  type ApiErrorMessageKey,
-} from "../../lib/api-error-messages";
 import { canCreateSpaceInOrganization } from "../../lib/space-service";
 import { useSession } from "../providers/session-provider";
 import { Badge } from "../ui/badge";
@@ -27,6 +23,11 @@ import {
   DropdownMenuTrigger,
 } from "../ui/dropdown-menu";
 
+import {
+  formatApiErrorDisplayMessage,
+  getApiErrorDisplay,
+  type ApiErrorDisplayState,
+} from "./api-error-display";
 import { CreateOrganizationDialog } from "./create-organization-dialog";
 import { CreateSpaceDialog } from "./create-space-dialog";
 
@@ -48,8 +49,9 @@ export function OrganizationSwitcher() {
     switchSpace,
   } = useSession();
   const [pending, setPending] = useState<PendingState>({ kind: "idle" });
-  const [switchErrorKey, setSwitchErrorKey] =
-    useState<ApiErrorMessageKey | null>(null);
+  const [switchError, setSwitchError] = useState<ApiErrorDisplayState | null>(
+    null,
+  );
   const [createOrgOpen, setCreateOrgOpen] = useState(false);
   const [createSpaceOpen, setCreateSpaceOpen] = useState(false);
 
@@ -112,11 +114,13 @@ export function OrganizationSwitcher() {
   async function onSwitchOrganization(organizationId: string) {
     if (organizationId === currentOrganization?.id) return;
     setPending({ kind: "switchingOrg" });
-    setSwitchErrorKey(null);
+    setSwitchError(null);
     try {
       await switchOrganization(organizationId);
     } catch (error) {
-      setSwitchErrorKey(getApiErrorMessageKey(error));
+      setSwitchError(
+        getApiErrorDisplay(error, tRoot("errors.apiDetails.requestId")),
+      );
     } finally {
       setPending({ kind: "idle" });
     }
@@ -125,11 +129,13 @@ export function OrganizationSwitcher() {
   async function onSwitchSpace(spaceId: string) {
     if (spaceId === currentSpace?.id) return;
     setPending({ kind: "switchingSpace" });
-    setSwitchErrorKey(null);
+    setSwitchError(null);
     try {
       await switchSpace(spaceId);
     } catch (error) {
-      setSwitchErrorKey(getApiErrorMessageKey(error));
+      setSwitchError(
+        getApiErrorDisplay(error, tRoot("errors.apiDetails.requestId")),
+      );
     } finally {
       setPending({ kind: "idle" });
     }
@@ -181,13 +187,16 @@ export function OrganizationSwitcher() {
           className="w-[320px]"
           data-testid="org-switcher-menu"
         >
-          {switchErrorKey ? (
+          {switchError ? (
             <div
-              className="mx-1 mb-1 rounded-md bg-destructive/10 px-2 py-1.5 text-xs text-destructive"
+              className="mx-1 mb-1 whitespace-pre-wrap rounded-md bg-destructive/10 px-2 py-1.5 text-xs text-destructive"
               data-testid="org-switcher-error"
               role="alert"
             >
-              {tRoot(switchErrorKey)}
+              {formatApiErrorDisplayMessage(
+                tRoot(switchError.messageKey),
+                switchError.detailLines,
+              )}
             </div>
           ) : null}
 

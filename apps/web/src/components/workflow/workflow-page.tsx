@@ -15,7 +15,6 @@ import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { Link, useRouter } from "../../i18n/routing";
-import { getApiErrorMessageKey } from "../../lib/api-error-messages";
 import { canManageWorkflow as canManageWorkflowForRole } from "../../lib/permission-gates";
 import {
   translateWorkflowDefinitionDescription,
@@ -28,6 +27,11 @@ import {
 } from "../../lib/workflow-service";
 import { cn } from "../../lib/utils";
 import { useSession } from "../providers/session-provider";
+import {
+  formatApiErrorDisplayMessage,
+  getApiErrorDisplay,
+  type ApiErrorDisplayState,
+} from "../shell/api-error-display";
 
 import { Badge } from "../ui/badge";
 import { Button } from "../ui/button";
@@ -170,7 +174,7 @@ export function WorkflowPage() {
     Record<string, WorkflowCardMetadata>
   >({});
   const [isLoading, setIsLoading] = useState(false);
-  const [errorKey, setErrorKey] = useState<string | null>(null);
+  const [error, setError] = useState<ApiErrorDisplayState | null>(null);
   const [dialog, setDialog] = useState<WorkflowDialogState>({ kind: "closed" });
   const [actionErrorKey, setActionErrorKey] = useState<string | null>(null);
 
@@ -186,7 +190,7 @@ export function WorkflowPage() {
       workflowContextKeyRef.current === requestContextKey;
 
     setIsLoading(true);
-    setErrorKey(null);
+    setError(null);
 
     try {
       const page = await listWorkflows({
@@ -212,20 +216,22 @@ export function WorkflowPage() {
       if (!isCurrentRequest()) {
         return;
       }
-      setErrorKey(getApiErrorMessageKey(error));
+      setError(
+        getApiErrorDisplay(error, tRoot("errors.apiDetails.requestId")),
+      );
     } finally {
       if (isCurrentRequest()) {
         setIsLoading(false);
       }
     }
-  }, [organizationId, spaceId, workflowContextKey]);
+  }, [organizationId, spaceId, tRoot, workflowContextKey]);
 
   useEffect(() => {
     workflowRequestRef.current += 1;
     setWorkflows([]);
     setWorkflowMetadata({});
     setIsLoading(false);
-    setErrorKey(null);
+    setError(null);
     setActionErrorKey(null);
     setDialog({ kind: "closed" });
   }, [workflowContextKey]);
@@ -272,10 +278,13 @@ export function WorkflowPage() {
         description={t("page.noSpace.description")}
       />
     );
-  } else if (errorKey) {
+  } else if (error) {
     body = (
       <ErrorState
-        message={tRoot(errorKey)}
+        message={formatApiErrorDisplayMessage(
+          tRoot(error.messageKey),
+          error.detailLines,
+        )}
         onRetry={() => void loadWorkflows()}
       />
     );

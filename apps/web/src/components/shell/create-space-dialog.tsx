@@ -5,13 +5,17 @@ import { useState, type FormEvent } from "react";
 import type { ZodIssue } from "zod";
 
 import { useSession } from "../providers/session-provider";
-import { getApiErrorMessageKey } from "../../lib/api-error-messages";
 import {
   createSpaceFormSchema,
   toCreateSpaceRequest,
 } from "../../lib/space-forms";
 import { createSpace } from "../../lib/space-service";
 
+import {
+  formatApiErrorDisplayMessage,
+  getApiErrorDisplay,
+  type ApiErrorDisplayState,
+} from "./api-error-display";
 import { Button } from "../ui/button";
 import {
   Dialog,
@@ -42,7 +46,7 @@ export function CreateSpaceDialog({ open, onOpenChange, organizationId }: Props)
   const [code, setCode] = useState("");
   const [description, setDescription] = useState("");
   const [submitting, setSubmitting] = useState(false);
-  const [errorKey, setErrorKey] = useState<string | null>(null);
+  const [error, setError] = useState<ApiErrorDisplayState | null>(null);
   const [fieldErrorKeys, setFieldErrorKeys] =
     useState<CreateSpaceFieldErrors>({});
 
@@ -50,7 +54,7 @@ export function CreateSpaceDialog({ open, onOpenChange, organizationId }: Props)
     setName("");
     setCode("");
     setDescription("");
-    setErrorKey(null);
+    setError(null);
     setFieldErrorKeys({});
   };
 
@@ -67,7 +71,7 @@ export function CreateSpaceDialog({ open, onOpenChange, organizationId }: Props)
     event.preventDefault();
     const trimmedName = name.trim();
     if (trimmedName.length < 1) {
-      setErrorKey(null);
+      setError(null);
       setFieldErrorKeys({ name: "errors.nameRequired" });
       return;
     }
@@ -78,13 +82,13 @@ export function CreateSpaceDialog({ open, onOpenChange, organizationId }: Props)
       name,
     });
     if (!formResult.success) {
-      setErrorKey(null);
+      setError(null);
       setFieldErrorKeys(mapCreateSpaceFormErrors(formResult.error.issues));
       return;
     }
 
     setSubmitting(true);
-    setErrorKey(null);
+    setError(null);
     setFieldErrorKeys({});
     try {
       const space = await createSpace(
@@ -95,7 +99,7 @@ export function CreateSpaceDialog({ open, onOpenChange, organizationId }: Props)
       resetForm();
       onOpenChange(false);
     } catch (err) {
-      setErrorKey(getApiErrorMessageKey(err));
+      setError(getApiErrorDisplay(err, tRoot("errors.apiDetails.requestId")));
     } finally {
       setSubmitting(false);
     }
@@ -206,12 +210,15 @@ export function CreateSpaceDialog({ open, onOpenChange, organizationId }: Props)
               </p>
             ) : null}
           </div>
-          {errorKey && (
+          {error && (
             <div
               data-testid="create-space-error"
-              className="rounded-md border border-destructive/40 bg-destructive/10 px-2.5 py-1.5 text-xs text-destructive"
+              className="whitespace-pre-wrap rounded-md border border-destructive/40 bg-destructive/10 px-2.5 py-1.5 text-xs text-destructive"
             >
-              {tRoot(errorKey)}
+              {formatApiErrorDisplayMessage(
+                tRoot(error.messageKey),
+                error.detailLines,
+              )}
             </div>
           )}
           <DialogFooter>

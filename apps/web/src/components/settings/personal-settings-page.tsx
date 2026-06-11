@@ -25,9 +25,10 @@ import {
 } from "react";
 
 import {
-  getApiErrorMessageKey,
-  type ApiErrorMessageKey,
-} from "../../lib/api-error-messages";
+  formatApiErrorDisplayMessage,
+  getApiErrorDisplay,
+  type ApiErrorDisplayState,
+} from "../shell/api-error-display";
 import {
   getMcpProtectedResourceMetadata,
   listAuthorizedMcpClients,
@@ -62,18 +63,21 @@ export function PersonalSettingsPage() {
   const t = useTranslations("personalSettings");
   const tRoot = useTranslations();
   const tScopes = useTranslations("mcp.scopes");
+  const requestIdLabel = tRoot("errors.apiDetails.requestId");
   const locale = useLocale();
   const { session, status } = useSession();
   const [clients, setClients] = useState<AuthorizedMcpClient[]>([]);
   const [isLoading, setIsLoading] = useState(false);
-  const [errorKey, setErrorKey] = useState<ApiErrorMessageKey | null>(null);
-  const [actionErrorKey, setActionErrorKey] =
-    useState<ApiErrorMessageKey | null>(null);
+  const [error, setError] = useState<ApiErrorDisplayState | null>(null);
+  const [actionError, setActionError] = useState<ApiErrorDisplayState | null>(
+    null,
+  );
   const [metadata, setMetadata] = useState<McpProtectedResourceMetadata | null>(
     null,
   );
   const [metadataLoading, setMetadataLoading] = useState(false);
-  const [metadataError, setMetadataError] = useState(false);
+  const [metadataError, setMetadataError] =
+    useState<ApiErrorDisplayState | null>(null);
   const [pendingClientId, setPendingClientId] = useState<string | null>(null);
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
   const loadSequenceRef = useRef(0);
@@ -86,7 +90,7 @@ export function PersonalSettingsPage() {
 
       if (status !== "authenticated" || !session) {
         setClients([]);
-        setErrorKey(null);
+        setError(null);
         if (!silent) {
           setIsLoading(false);
         }
@@ -96,7 +100,7 @@ export function PersonalSettingsPage() {
       if (!silent) {
         setIsLoading(true);
       }
-      setErrorKey(null);
+      setError(null);
 
       try {
         const nextClients = await listAuthorizedMcpClients();
@@ -104,34 +108,34 @@ export function PersonalSettingsPage() {
         setClients(nextClients);
       } catch (error) {
         if (loadSequenceRef.current !== sequence) return;
-        setErrorKey(getApiErrorMessageKey(error));
+        setError(getApiErrorDisplay(error, requestIdLabel));
       } finally {
         if (!silent && loadSequenceRef.current === sequence) {
           setIsLoading(false);
         }
       }
     },
-    [session, status],
+    [requestIdLabel, session, status],
   );
 
   const loadMetadata = useCallback(async () => {
     const sequence = ++metadataSequenceRef.current;
     setMetadataLoading(true);
-    setMetadataError(false);
+    setMetadataError(null);
 
     try {
       const nextMetadata = await getMcpProtectedResourceMetadata();
       if (metadataSequenceRef.current !== sequence) return;
       setMetadata(nextMetadata);
-    } catch {
+    } catch (error) {
       if (metadataSequenceRef.current !== sequence) return;
-      setMetadataError(true);
+      setMetadataError(getApiErrorDisplay(error, requestIdLabel));
     } finally {
       if (metadataSequenceRef.current === sequence) {
         setMetadataLoading(false);
       }
     }
-  }, []);
+  }, [requestIdLabel]);
 
   useEffect(() => {
     void load();
@@ -153,13 +157,13 @@ export function PersonalSettingsPage() {
 
   async function handleRevoke(client: AuthorizedMcpClient) {
     setPendingClientId(client.clientId);
-    setActionErrorKey(null);
+    setActionError(null);
 
     try {
       await revokeAuthorizedMcpClient(client.clientId);
       await load({ silent: true });
     } catch (error) {
-      setActionErrorKey(getApiErrorMessageKey(error));
+      setActionError(getApiErrorDisplay(error, requestIdLabel));
     } finally {
       setPendingClientId(null);
     }
@@ -215,12 +219,15 @@ export function PersonalSettingsPage() {
       />
 
       <div className="flex-1 overflow-auto p-4 sm:p-6">
-        {actionErrorKey && (
+        {actionError && (
           <div
             role="alert"
-            className="mb-4 rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-xs text-destructive"
+            className="mb-4 whitespace-pre-wrap rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-xs text-destructive"
           >
-            {tRoot(actionErrorKey)}
+            {formatApiErrorDisplayMessage(
+              tRoot(actionError.messageKey),
+              actionError.detailLines,
+            )}
           </div>
         )}
 
@@ -236,11 +243,12 @@ export function PersonalSettingsPage() {
             <McpConnectionGuide
               metadata={metadata}
               loading={metadataLoading}
-              hasError={metadataError}
+              error={metadataError}
               copiedKey={copiedKey}
               onCopy={(key, value) => void handleCopy(key, value)}
               onRetry={() => void loadMetadata()}
               t={t}
+              tRoot={tRoot}
               tScopes={tScopes}
             />
 
@@ -261,10 +269,14 @@ export function PersonalSettingsPage() {
                 <div className="overflow-hidden rounded-md border border-border bg-card">
                   <ListSkeleton rows={5} />
                 </div>
-              ) : errorKey ? (
+              ) : error ? (
                 <ErrorState
                   title={t("states.error.title")}
-                  message={tRoot(errorKey)}
+                  message={formatApiErrorDisplayMessage(
+                    tRoot(error.messageKey),
+                    error.detailLines,
+                    " · ",
+                  )}
                   onRetry={() => void load()}
                   retryLabel={t("actions.retry")}
                 />
@@ -299,24 +311,27 @@ export function PersonalSettingsPage() {
 
 function McpConnectionGuide({
   copiedKey,
-  hasError,
+  error,
   loading,
   metadata,
   onCopy,
   onRetry,
   t,
+  tRoot,
   tScopes,
 }: {
   copiedKey: string | null;
-  hasError: boolean;
+  error: ApiErrorDisplayState | null;
   loading: boolean;
   metadata: McpProtectedResourceMetadata | null;
   onCopy: (key: string, value: string) => void;
   onRetry: () => void;
   t: TranslationFn;
+  tRoot: TranslationFn;
   tScopes: TranslationFn;
 }) {
   const resourceUrl = metadata?.resource;
+  const hasError = Boolean(error);
   const showLoading = loading || (!metadata && !hasError);
 
   return (
@@ -358,7 +373,13 @@ function McpConnectionGuide({
           role="status"
           className="mt-4 rounded-md border border-dashed border-border bg-muted/30 px-3 py-2 text-xs leading-5 text-muted-foreground"
         >
-          {t("guide.states.error")}
+          {error
+            ? formatApiErrorDisplayMessage(
+                tRoot(error.messageKey),
+                error.detailLines,
+                " · ",
+              )
+            : t("guide.states.error")}
         </div>
       ) : (
         <div className="mt-4 grid gap-4">

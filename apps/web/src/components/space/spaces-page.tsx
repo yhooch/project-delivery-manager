@@ -28,13 +28,17 @@ import {
   type ReactNode,
 } from "react";
 
-import { getApiErrorMessageKey } from "../../lib/api-error-messages";
 import {
   canCreateSpaceInOrganization,
   listSpaces,
 } from "../../lib/space-service";
 import { cn } from "../../lib/utils";
 import { useSession } from "../providers/session-provider";
+import {
+  formatApiErrorDisplayMessage,
+  getApiErrorDisplay,
+  type ApiErrorDisplayState,
+} from "../shell/api-error-display";
 import { Badge } from "../ui/badge";
 import { Button } from "../ui/button";
 import { CreateSpaceDialog } from "../shell/create-space-dialog";
@@ -73,6 +77,7 @@ export function SpacesPage() {
   const tShell = useTranslations("shell");
   const tVersionStatus = useTranslations("versionBoard.status");
   const tRoot = useTranslations();
+  const requestIdLabel = tRoot("errors.apiDetails.requestId");
   const {
     currentOrganization,
     currentSpace,
@@ -94,8 +99,9 @@ export function SpacesPage() {
 
   const [spaces, setSpaces] = useState<SpaceSummary[]>([]);
   const [isLoading, setIsLoading] = useState(false);
-  const [errorKey, setErrorKey] = useState<string | null>(null);
-  const [switchErrorKey, setSwitchErrorKey] = useState<string | null>(null);
+  const [error, setError] = useState<ApiErrorDisplayState | null>(null);
+  const [switchError, setSwitchError] =
+    useState<ApiErrorDisplayState | null>(null);
   const [pendingSpaceId, setPendingSpaceId] = useState<string | null>(null);
   const [createOpen, setCreateOpen] = useState(false);
   const loadSequenceRef = useRef(0);
@@ -112,12 +118,12 @@ export function SpacesPage() {
     if (!organizationId) {
       setSpaces([]);
       setIsLoading(false);
-      setErrorKey(null);
+      setError(null);
       return;
     }
 
     setIsLoading(true);
-    setErrorKey(null);
+    setError(null);
 
     try {
       const page = await listSpaces(organizationId);
@@ -125,20 +131,20 @@ export function SpacesPage() {
       setSpaces(page.items);
     } catch (error) {
       if (loadSequenceRef.current !== sequence) return;
-      setErrorKey(getApiErrorMessageKey(error));
+      setError(getApiErrorDisplay(error, requestIdLabel));
     } finally {
       if (loadSequenceRef.current === sequence) {
         setIsLoading(false);
       }
     }
-  }, [organizationId]);
+  }, [organizationId, requestIdLabel]);
 
   useEffect(() => {
     loadSequenceRef.current += 1;
     setSpaces([]);
     setIsLoading(false);
-    setErrorKey(null);
-    setSwitchErrorKey(null);
+    setError(null);
+    setSwitchError(null);
     setPendingSpaceId(null);
   }, [organizationId]);
 
@@ -157,12 +163,12 @@ export function SpacesPage() {
     }
 
     setPendingSpaceId(spaceId);
-    setSwitchErrorKey(null);
+    setSwitchError(null);
 
     try {
       await switchSpace(spaceId);
     } catch (error) {
-      setSwitchErrorKey(getApiErrorMessageKey(error));
+      setSwitchError(getApiErrorDisplay(error, requestIdLabel));
     } finally {
       setPendingSpaceId(null);
     }
@@ -260,11 +266,15 @@ export function SpacesPage() {
   }
 
   let body;
-  if (errorKey) {
+  if (error) {
     body = (
       <ErrorState
         title={t("list.errorTitle")}
-        message={tRoot(errorKey)}
+        message={formatApiErrorDisplayMessage(
+          tRoot(error.messageKey),
+          error.detailLines,
+          " · ",
+        )}
         onRetry={() => void load()}
       />
     );
@@ -533,13 +543,18 @@ export function SpacesPage() {
               {t("list.readOnly")}
             </div>
           ) : null}
-          {switchErrorKey ? (
+          {switchError ? (
             <div
               role="alert"
-              className="rounded-lg border border-destructive/20 bg-destructive/5 px-4 py-3 text-xs text-destructive flex items-center gap-2"
+              className="flex items-center gap-2 whitespace-pre-wrap rounded-lg border border-destructive/20 bg-destructive/5 px-4 py-3 text-xs text-destructive"
             >
               <CircleAlert className="h-4 w-4" />
-              {tRoot(switchErrorKey)}
+              <span>
+                {formatApiErrorDisplayMessage(
+                  tRoot(switchError.messageKey),
+                  switchError.detailLines,
+                )}
+              </span>
             </div>
           ) : null}
 

@@ -89,6 +89,7 @@ import {
   DialogTitle,
 } from "../ui/dialog";
 import { Input } from "../ui/input";
+import { getApiErrorDetailLines } from "../work-item/api-error-details";
 
 export {
   createContentEditorValue,
@@ -108,6 +109,7 @@ export type RequirementContentEditorSlotProps = {
 
 type UploadItem = {
   errorCode?: AttachmentUploadErrorCode;
+  errorDetails?: string[];
   file: File;
   id: string;
   retryable: boolean;
@@ -180,6 +182,7 @@ export function RequirementContentEditorSlot({
   value,
 }: RequirementContentEditorSlotProps) {
   const t = useTranslations("requirements.editor");
+  const tRoot = useTranslations();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const valueRef = useRef(value);
   const [localAttachmentCount, setLocalAttachmentCount] =
@@ -463,6 +466,10 @@ export function RequirementContentEditorSlot({
               ? {
                   ...upload,
                   errorCode: mapped.code,
+                  errorDetails: getUploadErrorDetailLines(
+                    mapped,
+                    tRoot("errors.apiDetails.requestId"),
+                  ),
                   retryable: mapped.retryable,
                   status: "failed",
                 }
@@ -483,6 +490,7 @@ export function RequirementContentEditorSlot({
           ? {
               ...upload,
               errorCode: undefined,
+              errorDetails: undefined,
               retryable: false,
               status: "uploading",
             }
@@ -497,6 +505,7 @@ export function RequirementContentEditorSlot({
             ? {
                 ...upload,
                 errorCode: "DRAFT_REQUIRED",
+                errorDetails: undefined,
                 retryable: false,
                 status: "failed",
               }
@@ -530,6 +539,10 @@ export function RequirementContentEditorSlot({
             ? {
                 ...upload,
                 errorCode: mapped.code,
+                errorDetails: getUploadErrorDetailLines(
+                  mapped,
+                  tRoot("errors.apiDetails.requestId"),
+                ),
                 retryable: mapped.retryable,
                 status: "failed",
               }
@@ -1348,6 +1361,15 @@ function UploadList({
                 ? t("uploading")
                 : t(`uploadErrors.${item.errorCode ?? "UPLOAD_FAILED"}`)}
             </span>
+            {item.status === "failed" &&
+              item.errorDetails?.map((detail) => (
+                <span
+                  key={detail}
+                  className="break-words text-[11px] text-muted-foreground"
+                >
+                  {detail}
+                </span>
+              ))}
           </div>
           {item.status === "failed" && item.retryable ? (
             <Button
@@ -1651,6 +1673,7 @@ function createFailedUpload(
   return {
     file,
     errorCode: code,
+    errorDetails: undefined,
     id: `${file.name}-${file.size}-${Date.now()}-${Math.random()}`,
     retryable: false,
     status: "failed",
@@ -1665,7 +1688,17 @@ function isUploading(uploads: UploadItem[]): boolean {
 function toUploadError(error: unknown): AttachmentUploadError {
   return error instanceof AttachmentUploadError
     ? error
-    : new AttachmentUploadError("UPLOAD_FAILED", true);
+    : new AttachmentUploadError("UPLOAD_FAILED", {
+        retryable: true,
+        sourceError: error,
+      });
+}
+
+function getUploadErrorDetailLines(
+  error: AttachmentUploadError,
+  requestIdLabel: string,
+): string[] {
+  return getApiErrorDetailLines(error.sourceError ?? error, { requestIdLabel });
 }
 
 function toAttachmentRef(attachment: Attachment): AttachmentRef {

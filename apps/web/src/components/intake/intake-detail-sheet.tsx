@@ -52,6 +52,7 @@ import { Link } from "../../i18n/routing";
 
 import { ObjectTagAssignmentField } from "../tag";
 import { TimelineEventItem } from "../timeline/timeline-event-item";
+import { getApiErrorDetailLines } from "../work-item/api-error-details";
 import { Avatar, AvatarFallback } from "../ui/avatar";
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
@@ -135,6 +136,7 @@ export function IntakeDetailSheet({
   const [loadedItem, setLoadedItem] = useState<IntakeItem | null>(null);
   const [loading, setLoading] = useState(false);
   const [loadFailed, setLoadFailed] = useState(false);
+  const [loadErrorDetails, setLoadErrorDetails] = useState<string[]>([]);
   const [timelineRefreshVersion, setTimelineRefreshVersion] = useState(0);
   const effectiveItem = intakeItem ?? loadedItem;
   const effectiveItemId = intakeItem?.id ?? intakeItemId;
@@ -172,6 +174,7 @@ export function IntakeDetailSheet({
       if (!intakeItem && shouldShowBlockingRefreshState(refreshMode)) {
         setLoading(true);
         setLoadFailed(false);
+        setLoadErrorDetails([]);
         setLoadedItem(null);
       }
 
@@ -194,11 +197,17 @@ export function IntakeDetailSheet({
           setLoadedItem(item);
         }
         setLoadFailed(false);
-      } catch {
+        setLoadErrorDetails([]);
+      } catch (error) {
         if (!isLatestRequest() || !shouldSurfaceRefreshError(refreshMode)) {
           return;
         }
         setLoadFailed(true);
+        setLoadErrorDetails(
+          getApiErrorDetailLines(error, {
+            requestIdLabel: tRoot("errors.apiDetails.requestId"),
+          }),
+        );
       } finally {
         if (isLatestRequest() && !intakeItem) {
           setLoading(false);
@@ -213,6 +222,7 @@ export function IntakeDetailSheet({
       open,
       organizationId,
       spaceId,
+      tRoot,
     ],
   );
 
@@ -222,6 +232,7 @@ export function IntakeDetailSheet({
       setLoadedItem(null);
       setLoading(false);
       setLoadFailed(false);
+      setLoadErrorDetails([]);
       return;
     }
 
@@ -261,8 +272,8 @@ export function IntakeDetailSheet({
         {loading ? (
           <LoadingState className="h-full" label={t("states.loading")} />
         ) : loadFailed || !effectiveItem ? (
-          <div className="flex h-full items-center justify-center px-6 text-center text-sm text-muted-foreground">
-            {t("detail.unavailable")}
+          <div className="flex h-full items-center justify-center whitespace-pre-line px-6 text-center text-sm text-muted-foreground">
+            {formatApiErrorMessage(t("detail.unavailable"), loadErrorDetails)}
           </div>
         ) : (
           <IntakeDetailContent
@@ -615,7 +626,11 @@ function RelatedTasksSection({
   const [loading, setLoading] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
   const [errorKey, setErrorKey] = useState<string | null>(null);
+  const [errorDetails, setErrorDetails] = useState<string[]>([]);
   const [loadMoreErrorKey, setLoadMoreErrorKey] = useState<string | null>(null);
+  const [loadMoreErrorDetails, setLoadMoreErrorDetails] = useState<string[]>(
+    [],
+  );
   const [pageInfo, setPageInfo] = useState(INITIAL_RELATED_TASKS_PAGE_INFO);
   const taskScopeKey = useMemo(
     () => `${organizationId ?? ""}:${spaceId ?? ""}:${intakeItem.id}`,
@@ -632,7 +647,9 @@ function RelatedTasksSection({
         setLoading(false);
         setLoadingMore(false);
         setErrorKey(null);
+        setErrorDetails([]);
         setLoadMoreErrorKey(null);
+        setLoadMoreErrorDetails([]);
         setPageInfo(INITIAL_RELATED_TASKS_PAGE_INFO);
         return;
       }
@@ -645,11 +662,14 @@ function RelatedTasksSection({
       if (append) {
         setLoadingMore(true);
         setLoadMoreErrorKey(null);
+        setLoadMoreErrorDetails([]);
       } else {
         setLoading(true);
         setLoadingMore(false);
         setErrorKey(null);
+        setErrorDetails([]);
         setLoadMoreErrorKey(null);
+        setLoadMoreErrorDetails([]);
       }
 
       try {
@@ -681,8 +701,18 @@ function RelatedTasksSection({
         ) {
           if (append) {
             setLoadMoreErrorKey(getApiErrorMessageKey(error));
+            setLoadMoreErrorDetails(
+              getApiErrorDetailLines(error, {
+                requestIdLabel: tRoot("errors.apiDetails.requestId"),
+              }),
+            );
           } else {
             setErrorKey(getApiErrorMessageKey(error));
+            setErrorDetails(
+              getApiErrorDetailLines(error, {
+                requestIdLabel: tRoot("errors.apiDetails.requestId"),
+              }),
+            );
           }
         }
       } finally {
@@ -698,7 +728,7 @@ function RelatedTasksSection({
         }
       }
     },
-    [intakeItem.id, organizationId, spaceId, taskScopeKey],
+    [intakeItem.id, organizationId, spaceId, taskScopeKey, tRoot],
   );
 
   useEffect(() => {
@@ -732,7 +762,7 @@ function RelatedTasksSection({
       ) : errorKey ? (
         <ErrorState
           className="h-28"
-          message={tRoot(errorKey)}
+          message={formatApiErrorMessage(tRoot(errorKey), errorDetails)}
           onRetry={() => {
             void fetchTasks();
           }}
@@ -811,12 +841,17 @@ function RelatedTasksSection({
             )}
           </div>
           {loadMoreErrorKey && (
-            <p
+            <div
               className="mt-2 text-[11px] text-destructive"
               data-testid="intake-related-tasks-load-more-error"
             >
-              {tRoot(loadMoreErrorKey)}
-            </p>
+              <p>{tRoot(loadMoreErrorKey)}</p>
+              {loadMoreErrorDetails.map((detail) => (
+                <p key={detail} className="mt-1 break-words">
+                  {detail}
+                </p>
+              ))}
+            </div>
           )}
         </>
       )}
@@ -852,9 +887,11 @@ function IntakeCommentsSection({
   const [comments, setComments] = useState<Comment[]>([]);
   const [loading, setLoading] = useState(false);
   const [errorKey, setErrorKey] = useState<string | null>(null);
+  const [errorDetails, setErrorDetails] = useState<string[]>([]);
   const [draft, setDraft] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [submitErrorKey, setSubmitErrorKey] = useState<string | null>(null);
+  const [submitErrorDetails, setSubmitErrorDetails] = useState<string[]>([]);
   const { highlightedId: highlightedCommentId, registerItem: registerComment } =
     useFocusedListItem<HTMLLIElement>({
       focusedId: focusedCommentId,
@@ -873,6 +910,7 @@ function IntakeCommentsSection({
     }
     if (shouldSurfaceRefreshError(refreshMode)) {
       setErrorKey(null);
+      setErrorDetails([]);
     }
 
     try {
@@ -887,11 +925,16 @@ function IntakeCommentsSection({
     } catch (error) {
       if (shouldSurfaceRefreshError(refreshMode)) {
         setErrorKey(getApiErrorMessageKey(error));
+        setErrorDetails(
+          getApiErrorDetailLines(error, {
+            requestIdLabel: tRoot("errors.apiDetails.requestId"),
+          }),
+        );
       }
     } finally {
       setLoading(false);
     }
-  }, [focusedCommentId, intakeItem.id, organizationId, spaceId]);
+  }, [focusedCommentId, intakeItem.id, organizationId, spaceId, tRoot]);
 
   useEffect(() => {
     void fetchComments({ mode: "initial" });
@@ -915,6 +958,7 @@ function IntakeCommentsSection({
 
     setSubmitting(true);
     setSubmitErrorKey(null);
+    setSubmitErrorDetails([]);
 
     try {
       const request = toCreateCommentRequest({
@@ -932,6 +976,11 @@ function IntakeCommentsSection({
       onTimelineRefresh?.();
     } catch (error) {
       setSubmitErrorKey(getApiErrorMessageKey(error));
+      setSubmitErrorDetails(
+        getApiErrorDetailLines(error, {
+          requestIdLabel: tRoot("errors.apiDetails.requestId"),
+        }),
+      );
     } finally {
       setSubmitting(false);
     }
@@ -951,7 +1000,7 @@ function IntakeCommentsSection({
         ) : errorKey ? (
           <ErrorState
             className="h-28"
-            message={tRoot(errorKey)}
+            message={formatApiErrorMessage(tRoot(errorKey), errorDetails)}
             onRetry={() => {
               void fetchComments();
             }}
@@ -1011,9 +1060,14 @@ function IntakeCommentsSection({
           </ul>
         )}
         {submitErrorKey && (
-          <p className="mt-2 rounded-md bg-destructive/10 px-3 py-2 text-[11px] text-destructive">
-            {tRoot(submitErrorKey)}
-          </p>
+          <div className="mt-2 rounded-md bg-destructive/10 px-3 py-2 text-[11px] text-destructive">
+            <p>{tRoot(submitErrorKey)}</p>
+            {submitErrorDetails.map((detail) => (
+              <p key={detail} className="mt-1 break-words">
+                {detail}
+              </p>
+            ))}
+          </div>
         )}
         {canComment ? (
           <div className="mt-3 flex gap-2 rounded-lg bg-muted/40 p-3">
@@ -1086,6 +1140,7 @@ function IntakeTimelineSection({
   const [events, setEvents] = useState<TimelineEvent[]>([]);
   const [loading, setLoading] = useState(false);
   const [errorKey, setErrorKey] = useState<string | null>(null);
+  const [errorDetails, setErrorDetails] = useState<string[]>([]);
   const { highlightedId: highlightedEventId, registerItem: registerEvent } =
     useFocusedListItem<HTMLLIElement>({
       focusedId: focusedEventId,
@@ -1105,6 +1160,7 @@ function IntakeTimelineSection({
     }
     if (shouldSurfaceRefreshError(refreshMode)) {
       setErrorKey(null);
+      setErrorDetails([]);
     }
 
     try {
@@ -1119,11 +1175,16 @@ function IntakeTimelineSection({
     } catch (error) {
       if (shouldSurfaceRefreshError(refreshMode)) {
         setErrorKey(getApiErrorMessageKey(error));
+        setErrorDetails(
+          getApiErrorDetailLines(error, {
+            requestIdLabel: tRoot("errors.apiDetails.requestId"),
+          }),
+        );
       }
     } finally {
       setLoading(false);
     }
-  }, [focusedEventId, intakeItem.id, organizationId, spaceId]);
+  }, [focusedEventId, intakeItem.id, organizationId, spaceId, tRoot]);
 
   useEffect(() => {
     void fetchEvents({ mode: refreshVersion > 0 ? "realtime" : "initial" });
@@ -1154,7 +1215,7 @@ function IntakeTimelineSection({
         ) : errorKey ? (
           <ErrorState
             className="h-28"
-            message={tRoot(errorKey)}
+            message={formatApiErrorMessage(tRoot(errorKey), errorDetails)}
             onRetry={() => {
               void fetchEvents();
             }}
@@ -1303,6 +1364,10 @@ function formatItemCode(intakeItem: IntakeItem): string {
 
 function initialOf(id: string): string {
   return id.trim().charAt(0).toUpperCase() || "?";
+}
+
+function formatApiErrorMessage(message: string, details: string[]): string {
+  return [message, ...details].join(" ");
 }
 
 function buildWorkItemsHref(

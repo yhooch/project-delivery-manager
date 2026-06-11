@@ -16,6 +16,7 @@ const searchParamsMock = vi.hoisted(() => ({
 
 vi.mock("next-intl", () => ({
   useLocale: () => localeMock.current,
+  useTranslations: () => (key: string) => key,
 }));
 
 vi.mock("../../i18n/routing", () => ({
@@ -95,7 +96,7 @@ function makeSession({
 }
 
 function SessionProbe() {
-  const { sessionErrorKey, status } = useSession();
+  const { sessionErrorDetailLines, sessionErrorKey, status } = useSession();
 
   return (
     <>
@@ -103,6 +104,11 @@ function SessionProbe() {
       {sessionErrorKey ? (
         <div data-testid="session-error-key">{sessionErrorKey}</div>
       ) : null}
+      {sessionErrorDetailLines.map((line) => (
+        <div data-testid="session-error-detail" key={line}>
+          {line}
+        </div>
+      ))}
     </>
   );
 }
@@ -226,5 +232,13 @@ describe("SessionProvider", () => {
     expect(screen.getByTestId("session-error-key")).toHaveTextContent(
       "errors.api.INTERNAL_SERVER_ERROR",
     );
+    expect(
+      screen
+        .getAllByTestId("session-error-detail")
+        .map((node) => node.textContent),
+    ).toEqual([
+      "Session failed",
+      "errors.apiDetails.requestId: req_session_failed",
+    ]);
   });
 });

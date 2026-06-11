@@ -31,7 +31,6 @@ import {
 } from "react";
 
 import { Link, useRouter } from "../../i18n/routing";
-import { getApiErrorMessageKey } from "../../lib/api-error-messages";
 import type {
   DocumentFilterKey,
   DocumentFolder,
@@ -67,6 +66,11 @@ import {
 import { useRealtimeInvalidation } from "../../lib/realtime";
 import { cn } from "../../lib/utils";
 import { useDocumentCreate } from "./document-create-context";
+import {
+  formatApiErrorDisplayMessage,
+  getApiErrorDisplay,
+  type ApiErrorDisplayState,
+} from "../shell/api-error-display";
 import {
   DOCUMENT_DIRECTORY_REFRESH_EVENT,
   DOCUMENT_FOLDER_MAX_DEPTH,
@@ -132,7 +136,7 @@ const SORT_OPTIONS = {
 type DocumentSortKey = keyof typeof SORT_OPTIONS;
 type DocumentDensity = "comfortable" | "compact";
 type FolderDocumentState = {
-  errorKey: string | null;
+  errorDisplay: ApiErrorDisplayState | null;
   isLoading: boolean;
   isLoadingMore: boolean;
   items: DocumentSummary[];
@@ -148,6 +152,7 @@ type DocumentTranslator = (
 export function DocumentsPage() {
   const t = useTranslations("documents");
   const tRoot = useTranslations();
+  const requestIdLabel = tRoot("errors.apiDetails.requestId");
   const locale = useLocale();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -163,10 +168,13 @@ export function DocumentsPage() {
   const [debouncedQuery, setDebouncedQuery] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
-  const [errorKey, setErrorKey] = useState<string | null>(null);
+  const [errorDisplay, setErrorDisplay] = useState<ApiErrorDisplayState | null>(
+    null,
+  );
   const [folders, setFolders] = useState<DocumentFolder[]>([]);
   const [isLoadingFolders, setIsLoadingFolders] = useState(false);
-  const [folderErrorKey, setFolderErrorKey] = useState<string | null>(null);
+  const [folderErrorDisplay, setFolderErrorDisplay] =
+    useState<ApiErrorDisplayState | null>(null);
   const [sort, setSort] = useState<DocumentSortKey>("recentEdited");
   const [density, setDensity] = useState<DocumentDensity>("comfortable");
   const [isSelectionMode, setIsSelectionMode] = useState(false);
@@ -281,7 +289,7 @@ export function DocumentsPage() {
       const isRealtime = options?.realtime === true;
       if (!isRealtime) {
         setIsLoading(true);
-        setErrorKey(null);
+        setErrorDisplay(null);
       }
       try {
         const treeFolderId =
@@ -313,7 +321,7 @@ export function DocumentsPage() {
         setPage(1);
       } catch (error) {
         if (!isRealtime) {
-          setErrorKey(getApiErrorMessageKey(error));
+          setErrorDisplay(getApiErrorDisplay(error, requestIdLabel));
           setItems([]);
           setTotal(0);
         }
@@ -330,6 +338,7 @@ export function DocumentsPage() {
       directorySelection.view,
       filter,
       organizationId,
+      requestIdLabel,
       session?.user?.id,
       shouldUseResourceTree,
       sort,
@@ -341,7 +350,7 @@ export function DocumentsPage() {
     async (options?: { realtime?: boolean }) => {
       if (!spaceId || !shouldUseResourceTree) {
         setFolders([]);
-        setFolderErrorKey(null);
+        setFolderErrorDisplay(null);
         setIsLoadingFolders(false);
         return;
       }
@@ -349,7 +358,7 @@ export function DocumentsPage() {
       const isRealtime = options?.realtime === true;
       if (!isRealtime) {
         setIsLoadingFolders(true);
-        setFolderErrorKey(null);
+        setFolderErrorDisplay(null);
       }
 
       try {
@@ -357,7 +366,7 @@ export function DocumentsPage() {
         setFolders(next);
       } catch (error) {
         if (!isRealtime) {
-          setFolderErrorKey(getApiErrorMessageKey(error));
+          setFolderErrorDisplay(getApiErrorDisplay(error, requestIdLabel));
           setFolders([]);
         }
       } finally {
@@ -366,7 +375,7 @@ export function DocumentsPage() {
         }
       }
     },
-    [organizationId, shouldUseResourceTree, spaceId],
+    [organizationId, requestIdLabel, shouldUseResourceTree, spaceId],
   );
 
   const loadMore = useCallback(async () => {
@@ -405,7 +414,7 @@ export function DocumentsPage() {
       setTotal(result.total);
       setPage(nextPage);
     } catch (error) {
-      setErrorKey(getApiErrorMessageKey(error));
+      setErrorDisplay(getApiErrorDisplay(error, requestIdLabel));
     } finally {
       setIsLoadingMore(false);
     }
@@ -418,6 +427,7 @@ export function DocumentsPage() {
     isLoadingMore,
     organizationId,
     page,
+    requestIdLabel,
     session?.user?.id,
     shouldUseResourceTree,
     sort,
@@ -440,7 +450,7 @@ export function DocumentsPage() {
         return {
           ...current,
           [folderId]: {
-            errorKey: isRealtime ? (previous?.errorKey ?? null) : null,
+            errorDisplay: isRealtime ? (previous?.errorDisplay ?? null) : null,
             isLoading: isRealtime
               ? (previous?.isLoading ?? false)
               : pageToLoad === 1,
@@ -472,7 +482,7 @@ export function DocumentsPage() {
           return {
             ...current,
             [folderId]: {
-              errorKey: null,
+              errorDisplay: null,
               isLoading: false,
               isLoadingMore: false,
               items:
@@ -490,9 +500,9 @@ export function DocumentsPage() {
           return {
             ...current,
             [folderId]: {
-              errorKey: isRealtime
-                ? (previous?.errorKey ?? null)
-                : getApiErrorMessageKey(error),
+              errorDisplay: isRealtime
+                ? (previous?.errorDisplay ?? null)
+                : getApiErrorDisplay(error, requestIdLabel),
               isLoading: isRealtime ? (previous?.isLoading ?? false) : false,
               isLoadingMore: isRealtime
                 ? (previous?.isLoadingMore ?? false)
@@ -505,7 +515,7 @@ export function DocumentsPage() {
         });
       }
     },
-    [organizationId, session?.user?.id, sort, spaceId],
+    [organizationId, requestIdLabel, session?.user?.id, sort, spaceId],
   );
 
   const loadMoreFolderDocuments = useCallback(
@@ -680,8 +690,8 @@ export function DocumentsPage() {
   const showEmpty =
     !isLoading &&
     !isLoadingFolders &&
-    !errorKey &&
-    !folderErrorKey &&
+    !errorDisplay &&
+    !folderErrorDisplay &&
     !hasVisibleTreeFolders &&
     items.length === 0;
   const filterKeys = getDocumentFilterKeys();
@@ -854,23 +864,29 @@ export function DocumentsPage() {
         </div>
       ) : null}
 
-      {errorKey ? (
+      {errorDisplay ? (
         <div
           role="alert"
-          className="rounded-md border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive"
+          className="whitespace-pre-wrap rounded-md border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive"
           data-testid="documents-error"
         >
-          {tRoot(errorKey)}
+          {formatApiErrorDisplayMessage(
+            tRoot(errorDisplay.messageKey),
+            errorDisplay.detailLines,
+          )}
         </div>
       ) : null}
 
-      {shouldUseResourceTree && folderErrorKey ? (
+      {shouldUseResourceTree && folderErrorDisplay ? (
         <div
           role="alert"
-          className="rounded-md border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive"
+          className="whitespace-pre-wrap rounded-md border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive"
           data-testid="documents-child-folders-error"
         >
-          {tRoot(folderErrorKey)}
+          {formatApiErrorDisplayMessage(
+            tRoot(folderErrorDisplay.messageKey),
+            folderErrorDisplay.detailLines,
+          )}
         </div>
       ) : null}
 
@@ -1007,9 +1023,9 @@ function DocumentResourceTree({
                     messageKey="directory.loadingFolderDocuments"
                   />
                 ) : null}
-                {state?.errorKey ? (
+                {state?.errorDisplay ? (
                   <DocumentTreeStatusRow
-                    errorKey={state.errorKey}
+                    errorDisplay={state.errorDisplay}
                     level={level + 1}
                   />
                 ) : null}
@@ -1266,32 +1282,40 @@ function DocumentResourceFolderRow({
 }
 
 function DocumentTreeStatusRow({
-  errorKey,
+  errorDisplay,
   level,
   messageKey,
 }: {
-  errorKey?: string;
+  errorDisplay?: ApiErrorDisplayState | null;
   level: number;
   messageKey?: string;
 }) {
   const t = useTranslations("documents");
   const tRoot = useTranslations();
+  const hasError = Boolean(errorDisplay);
+
   return (
     <div
       className={cn(
-        "flex h-9 items-center gap-2 rounded-md px-2 text-sm",
-        errorKey
+        "rounded-md px-2 text-sm",
+        hasError
+          ? "grid min-h-9 content-center gap-0.5 whitespace-pre-wrap py-2"
+          : "flex h-9 items-center gap-2",
+        hasError
           ? "border border-destructive/30 bg-destructive/10 text-destructive"
           : "text-muted-foreground",
       )}
-      role={errorKey ? "alert" : undefined}
+      role={hasError ? "alert" : undefined}
       style={{ marginLeft: `${level * RESOURCE_TREE_INDENT_PX}px` }}
     >
-      {!errorKey ? (
+      {!hasError ? (
         <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
       ) : null}
-      {errorKey
-        ? tRoot(errorKey)
+      {errorDisplay
+        ? formatApiErrorDisplayMessage(
+            tRoot(errorDisplay.messageKey),
+            errorDisplay.detailLines,
+          )
         : t(messageKey ?? "directory.loadingFolderDocuments")}
     </div>
   );
@@ -1995,17 +2019,22 @@ function DocumentImportDialog({
   const [title, setTitle] = useState("");
   const [isSaving, setIsSaving] = useState(false);
   const [errorKey, setErrorKey] = useState<string | null>(null);
+  const [errorDisplay, setErrorDisplay] = useState<ApiErrorDisplayState | null>(
+    null,
+  );
   const canSubmit = Boolean(spaceId && file && getImportKind(file));
 
   const submit = async (event: FormEvent) => {
     event.preventDefault();
     if (!spaceId || !file || !getImportKind(file)) {
       setErrorKey("documents.importDialog.unsupported");
+      setErrorDisplay(null);
       return;
     }
 
     setIsSaving(true);
     setErrorKey(null);
+    setErrorDisplay(null);
     try {
       const kind = getImportKind(file);
       let document: { id: string };
@@ -2028,7 +2057,10 @@ function DocumentImportDialog({
       onOpenChange(false);
       onCreated(document.id);
     } catch (error) {
-      setErrorKey(getApiErrorMessageKey(error));
+      setErrorKey(null);
+      setErrorDisplay(
+        getApiErrorDisplay(error, tRoot("errors.apiDetails.requestId")),
+      );
     } finally {
       setIsSaving(false);
     }
@@ -2062,12 +2094,20 @@ function DocumentImportDialog({
               }
             />
           </label>
-          {errorKey ? (
-            <p className="text-sm text-destructive" role="alert">
-              {errorKey.startsWith("documents.")
+          {errorKey || errorDisplay ? (
+            <div
+              className="whitespace-pre-wrap text-sm text-destructive"
+              role="alert"
+            >
+              {errorKey
                 ? tRoot(errorKey)
-                : tRoot(errorKey)}
-            </p>
+                : errorDisplay
+                  ? formatApiErrorDisplayMessage(
+                      tRoot(errorDisplay.messageKey),
+                      errorDisplay.detailLines,
+                    )
+                  : null}
+            </div>
           ) : null}
           <DialogFooter>
             <Button
@@ -2111,7 +2151,9 @@ function DocumentPasteDialog({
     createDocumentPasteForm(),
   );
   const [isSaving, setIsSaving] = useState(false);
-  const [errorKey, setErrorKey] = useState<string | null>(null);
+  const [errorDisplay, setErrorDisplay] = useState<ApiErrorDisplayState | null>(
+    null,
+  );
 
   const submit = async (event: FormEvent) => {
     event.preventDefault();
@@ -2120,7 +2162,7 @@ function DocumentPasteDialog({
     }
 
     setIsSaving(true);
-    setErrorKey(null);
+    setErrorDisplay(null);
     try {
       const document = await pasteDocument(
         { organizationId, spaceId },
@@ -2134,7 +2176,9 @@ function DocumentPasteDialog({
       onOpenChange(false);
       onCreated(document.id);
     } catch (error) {
-      setErrorKey(getApiErrorMessageKey(error));
+      setErrorDisplay(
+        getApiErrorDisplay(error, tRoot("errors.apiDetails.requestId")),
+      );
     } finally {
       setIsSaving(false);
     }
@@ -2177,10 +2221,16 @@ function DocumentPasteDialog({
               placeholder={t("contentPlaceholder")}
             />
           </label>
-          {errorKey ? (
-            <p className="text-sm text-destructive" role="alert">
-              {tRoot(errorKey)}
-            </p>
+          {errorDisplay ? (
+            <div
+              className="whitespace-pre-wrap text-sm text-destructive"
+              role="alert"
+            >
+              {formatApiErrorDisplayMessage(
+                tRoot(errorDisplay.messageKey),
+                errorDisplay.detailLines,
+              )}
+            </div>
           ) : null}
           <DialogFooter>
             <Button

@@ -12,6 +12,8 @@ import userEvent from "@testing-library/user-event";
 import type { ReactNode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+import { ApiClientError } from "../../lib/api-client";
+
 vi.mock("next-intl", () => ({
   useLocale: () => "en-US",
   useTranslations: (namespace?: string) => {
@@ -135,12 +137,24 @@ vi.mock("../../lib/document-service", async () => {
 });
 
 const {
+  AttachmentUploadErrorMock,
   createCommentMock,
   listCommentsMock,
   listAttachmentsMock,
   listTimelineMock,
   uploadAttachmentMock,
 } = vi.hoisted(() => ({
+  AttachmentUploadErrorMock: class AttachmentUploadError extends Error {
+    readonly code: string;
+    readonly sourceError?: unknown;
+
+    constructor(code: string, options?: { sourceError?: unknown }) {
+      super(code);
+      this.name = "AttachmentUploadError";
+      this.code = code;
+      this.sourceError = options?.sourceError;
+    }
+  },
   createCommentMock: vi.fn(),
   listCommentsMock: vi.fn(),
   listAttachmentsMock: vi.fn(),
@@ -152,18 +166,8 @@ vi.mock("../../lib/comment-service", () => ({
   listComments: listCommentsMock,
 }));
 vi.mock("../../lib/attachment-service", () => {
-  class AttachmentUploadError extends Error {
-    readonly code: string;
-
-    constructor(code: string) {
-      super(code);
-      this.name = "AttachmentUploadError";
-      this.code = code;
-    }
-  }
-
   return {
-    AttachmentUploadError,
+    AttachmentUploadError: AttachmentUploadErrorMock,
     createAttachmentDownloadUrl: (attachmentId: string) =>
       `/api/v1/attachments/${attachmentId}/download`,
     listAttachments: listAttachmentsMock,
@@ -263,6 +267,30 @@ function createDocument() {
     title: "Launch plan",
     updatedAt: "2026-05-27T11:00:00.000Z",
   };
+}
+
+function createApiClientError({
+  code = "VALIDATION_ERROR",
+  details,
+  message = "Backend validation failed.",
+  requestId = "REQ_TEST",
+  status = 400,
+}: {
+  code?: "DOCUMENT_IMPORT_FAILED" | "VALIDATION_ERROR";
+  details?: Record<string, unknown>;
+  message?: string;
+  requestId?: string;
+  status?: number;
+}) {
+  return new ApiClientError(
+    {
+      code,
+      details,
+      message,
+      requestId,
+    },
+    { status } as Response,
+  );
 }
 
 beforeEach(() => {
@@ -373,6 +401,32 @@ beforeEach(() => {
 });
 
 describe("DocumentDetailPage", () => {
+  it("shows backend details when the document detail load fails", async () => {
+    getDocumentMock.mockRejectedValueOnce(
+      createApiClientError({
+        details: {
+          field: "documentId",
+          issues: [{ message: "Invalid document id.", path: ["documentId"] }],
+          reason: "The document id is malformed.",
+          targetId: "DOC_BAD",
+        },
+        message: "Document lookup failed.",
+        requestId: "REQ_LOAD",
+      }),
+    );
+
+    render(<DocumentDetailPage documentId="DOC_BAD" />);
+
+    const alert = await screen.findByRole("alert");
+    expect(alert).toHaveTextContent("errors.api.VALIDATION_ERROR");
+    expect(alert).toHaveTextContent("Document lookup failed.");
+    expect(alert).toHaveTextContent("reason: The document id is malformed.");
+    expect(alert).toHaveTextContent("field: documentId");
+    expect(alert).toHaveTextContent("documentId: Invalid document id.");
+    expect(alert).toHaveTextContent("targetId: DOC_BAD");
+    expect(alert).toHaveTextContent("errors.apiDetails.requestId: REQ_LOAD");
+  });
+
   it("renders the reading view with markdown, linked resources, and context rail", async () => {
     render(<DocumentDetailPage documentId="DOC_01" />);
 
@@ -627,6 +681,32 @@ describe("DocumentDetailPage", () => {
     expect(routerPushMock).toHaveBeenCalledWith("/requirements/DOC_01");
   });
 
+  it("shows backend details when converting a document to a requirement fails", async () => {
+    convertDocumentToRequirementMock.mockRejectedValueOnce(
+      createApiClientError({
+        details: {
+          reason: "Only Markdown documents can be converted.",
+        },
+        message: "Conversion failed.",
+        requestId: "REQ_CONVERT",
+      }),
+    );
+
+    render(<DocumentDetailPage documentId="DOC_01" />);
+
+    fireEvent.click(
+      await screen.findByTestId("document-convert-requirement-button"),
+    );
+
+    const alert = await screen.findByRole("alert");
+    expect(alert).toHaveTextContent("errors.api.VALIDATION_ERROR");
+    expect(alert).toHaveTextContent("Conversion failed.");
+    expect(alert).toHaveTextContent(
+      "reason: Only Markdown documents can be converted.",
+    );
+    expect(alert).toHaveTextContent("errors.apiDetails.requestId: REQ_CONVERT");
+  });
+
   it("cancels requirement semantics through the controlled dialog", async () => {
     getDocumentMock.mockResolvedValueOnce({
       ...createDocument(),
@@ -666,6 +746,83 @@ describe("DocumentDetailPage", () => {
         referenceMode: "UNLINK_REFERENCES",
       }),
     );
+  });
+
+  it("shows backend details when cancel requirement preflight fails", async () => {
+    getDocumentMock.mockResolvedValueOnce({
+      ...createDocument(),
+      displayCode: "REQ-12",
+      id: "REQ_01",
+      kind: "REQUIREMENT",
+      sequence: 12,
+      title: "Requirement document",
+    });
+    getCancelRequirementPreflightMock.mockRejectedValueOnce(
+      createApiClientError({
+        details: {
+          reason: "Requirement has locked downstream references.",
+        },
+        message: "Cancel preflight failed.",
+        requestId: "REQ_PREFLIGHT",
+      }),
+    );
+
+    render(<DocumentDetailPage documentId="REQ_01" />);
+
+    fireEvent.click(
+      await screen.findByTestId("document-cancel-requirement-button"),
+    );
+
+    const alert = await screen.findByRole("alert");
+    expect(alert).toHaveTextContent("errors.api.VALIDATION_ERROR");
+    expect(alert).toHaveTextContent("Cancel preflight failed.");
+    expect(alert).toHaveTextContent(
+      "reason: Requirement has locked downstream references.",
+    );
+    expect(alert).toHaveTextContent(
+      "errors.apiDetails.requestId: REQ_PREFLIGHT",
+    );
+  });
+
+  it("shows backend details when cancelling requirement semantics fails", async () => {
+    getDocumentMock.mockResolvedValueOnce({
+      ...createDocument(),
+      displayCode: "REQ-12",
+      id: "REQ_01",
+      kind: "REQUIREMENT",
+      sequence: 12,
+      title: "Requirement document",
+    });
+    cancelRequirementMock.mockRejectedValueOnce(
+      createApiClientError({
+        details: {
+          field: "referenceMode",
+          reason: "References must be unlinked first.",
+        },
+        message: "Cancel requirement failed.",
+        requestId: "REQ_CANCEL",
+      }),
+    );
+
+    render(<DocumentDetailPage documentId="REQ_01" />);
+
+    fireEvent.click(
+      await screen.findByTestId("document-cancel-requirement-button"),
+    );
+    const confirmButton = await screen.findByTestId(
+      "document-cancel-requirement-confirm",
+    );
+    await waitFor(() => expect(confirmButton).not.toBeDisabled());
+    fireEvent.click(confirmButton);
+
+    const alert = await screen.findByRole("alert");
+    expect(alert).toHaveTextContent("errors.api.VALIDATION_ERROR");
+    expect(alert).toHaveTextContent("Cancel requirement failed.");
+    expect(alert).toHaveTextContent(
+      "reason: References must be unlinked first.",
+    );
+    expect(alert).toHaveTextContent("field: referenceMode");
+    expect(alert).toHaveTextContent("errors.apiDetails.requestId: REQ_CANCEL");
   });
 
   it("renders rich-text document exports in the reader while keeping edit mode closed", async () => {
@@ -912,6 +1069,33 @@ describe("DocumentDetailPage", () => {
     );
   });
 
+  it("shows backend details when saving a document fails", async () => {
+    updateDocumentMock.mockRejectedValueOnce(
+      createApiClientError({
+        details: {
+          field: "title",
+          issues: [{ message: "Title is required.", path: ["title"] }],
+          reason: "Document title cannot be empty.",
+        },
+        message: "Document save failed.",
+        requestId: "REQ_SAVE",
+      }),
+    );
+
+    render(<DocumentDetailPage documentId="DOC_01" />);
+
+    fireEvent.click(await screen.findByTestId("document-edit-button"));
+    fireEvent.click(screen.getByTestId("document-save-button"));
+
+    const alert = await screen.findByRole("alert");
+    expect(alert).toHaveTextContent("errors.api.VALIDATION_ERROR");
+    expect(alert).toHaveTextContent("Document save failed.");
+    expect(alert).toHaveTextContent("reason: Document title cannot be empty.");
+    expect(alert).toHaveTextContent("field: title");
+    expect(alert).toHaveTextContent("title: Title is required.");
+    expect(alert).toHaveTextContent("errors.apiDetails.requestId: REQ_SAVE");
+  });
+
   it("writes requirement resource codes as document link targets", async () => {
     render(<DocumentDetailPage documentId="DOC_01" />);
 
@@ -1014,6 +1198,64 @@ describe("DocumentDetailPage", () => {
     );
   });
 
+  it("shows backend document reimport failure details", async () => {
+    const file = new File(["<h1>Broken</h1>"], "guide.html", {
+      type: "text/html",
+    });
+    reimportDocumentMock.mockRejectedValueOnce(
+      createApiClientError({
+        code: "DOCUMENT_IMPORT_FAILED",
+        details: {
+          allowedSources: ["UPLOAD_HTML", "UPLOAD_MARKDOWN"],
+          field: "content",
+          issues: [
+            {
+              message: "Missing inline image.",
+              path: ["assets", 0],
+            },
+          ],
+          reason: "Referenced image asset is missing.",
+          targetId: "DOC_01",
+        },
+        message: "The document could not be reimported.",
+        requestId: "REQ_REIMPORT",
+      }),
+    );
+
+    render(<DocumentDetailPage documentId="DOC_01" />);
+
+    fireEvent.click(await screen.findByTestId("document-edit-button"));
+    fireEvent.change(screen.getByTestId("document-reimport-input"), {
+      target: { files: [file] },
+    });
+    fireEvent.click(
+      screen.getByRole("button", {
+        name: "documents.actions.reimport",
+      }),
+    );
+
+    expect(
+      await screen.findByText("errors.api.DOCUMENT_IMPORT_FAILED"),
+    ).toBeVisible();
+    expect(
+      await screen.findByText("The document could not be reimported."),
+    ).toBeVisible();
+    expect(
+      await screen.findByText("reason: Referenced image asset is missing."),
+    ).toBeVisible();
+    expect(await screen.findByText("field: content")).toBeVisible();
+    expect(
+      await screen.findByText("assets.0: Missing inline image."),
+    ).toBeVisible();
+    expect(await screen.findByText("targetId: DOC_01")).toBeVisible();
+    expect(
+      await screen.findByText("allowedSources: UPLOAD_HTML, UPLOAD_MARKDOWN"),
+    ).toBeVisible();
+    expect(
+      await screen.findByText("errors.apiDetails.requestId: REQ_REIMPORT"),
+    ).toBeVisible();
+  });
+
   it("keeps dirty edit input and shows a new-version notice after realtime refresh", async () => {
     render(<DocumentDetailPage documentId="DOC_01" />);
 
@@ -1092,6 +1334,36 @@ describe("DocumentDetailPage", () => {
     );
   });
 
+  it("shows backend details when linked document search fails", async () => {
+    listDocumentsMock.mockRejectedValueOnce(
+      createApiClientError({
+        details: {
+          field: "query",
+          reason: "Search query is too broad.",
+        },
+        message: "Document search failed.",
+        requestId: "REQ_SEARCH",
+      }),
+    );
+
+    render(<DocumentDetailPage documentId="DOC_01" />);
+
+    fireEvent.click(await screen.findByTestId("document-edit-button"));
+    fireEvent.change(
+      screen.getByTestId("document-linked-document-search-input"),
+      {
+        target: { value: "related" },
+      },
+    );
+
+    const alert = await screen.findByRole("alert");
+    expect(alert).toHaveTextContent("errors.api.VALIDATION_ERROR");
+    expect(alert).toHaveTextContent("Document search failed.");
+    expect(alert).toHaveTextContent("reason: Search query is too broad.");
+    expect(alert).toHaveTextContent("field: query");
+    expect(alert).toHaveTextContent("errors.apiDetails.requestId: REQ_SEARCH");
+  });
+
   it("moves a document to another folder", async () => {
     render(<DocumentDetailPage documentId="DOC_01" />);
 
@@ -1111,6 +1383,59 @@ describe("DocumentDetailPage", () => {
         }),
       ),
     );
+  });
+
+  it("shows backend details when the move dialog fails to load folders", async () => {
+    listDocumentFoldersMock.mockRejectedValueOnce(
+      createApiClientError({
+        details: {
+          reason: "Folder tree is unavailable.",
+          targetId: "SPC_01",
+        },
+        message: "Folder loading failed.",
+        requestId: "REQ_FOLDERS",
+      }),
+    );
+
+    render(<DocumentDetailPage documentId="DOC_01" />);
+
+    fireEvent.click(await screen.findByTestId("document-move-folder-button"));
+
+    const alert = await screen.findByRole("alert");
+    expect(alert).toHaveTextContent("errors.api.VALIDATION_ERROR");
+    expect(alert).toHaveTextContent("Folder loading failed.");
+    expect(alert).toHaveTextContent("reason: Folder tree is unavailable.");
+    expect(alert).toHaveTextContent("targetId: SPC_01");
+    expect(alert).toHaveTextContent("errors.apiDetails.requestId: REQ_FOLDERS");
+  });
+
+  it("shows backend details when moving a document fails", async () => {
+    moveDocumentToFolderMock.mockRejectedValueOnce(
+      createApiClientError({
+        details: {
+          field: "folderId",
+          reason: "The target folder was archived.",
+        },
+        message: "Move failed.",
+        requestId: "REQ_MOVE",
+      }),
+    );
+
+    render(<DocumentDetailPage documentId="DOC_01" />);
+
+    fireEvent.click(await screen.findByTestId("document-move-folder-button"));
+    await screen.findByTestId("document-move-folder-dialog");
+    fireEvent.change(screen.getByTestId("document-move-folder-select"), {
+      target: { value: "FLD_02" },
+    });
+    fireEvent.click(screen.getByText("documents.moveDialog.submit"));
+
+    const alert = await screen.findByRole("alert");
+    expect(alert).toHaveTextContent("errors.api.VALIDATION_ERROR");
+    expect(alert).toHaveTextContent("Move failed.");
+    expect(alert).toHaveTextContent("reason: The target folder was archived.");
+    expect(alert).toHaveTextContent("field: folderId");
+    expect(alert).toHaveTextContent("errors.apiDetails.requestId: REQ_MOVE");
   });
 
   it("creates comments and uploads attachments for the document target", async () => {
@@ -1145,6 +1470,180 @@ describe("DocumentDetailPage", () => {
         }),
       ),
     );
+  });
+
+  it("shows backend details for comment creation and attachment upload failures", async () => {
+    createCommentMock.mockRejectedValueOnce(
+      createApiClientError({
+        details: {
+          field: "body",
+          reason: "Comment body contains unsupported content.",
+        },
+        message: "Comment creation failed.",
+        requestId: "REQ_COMMENT",
+      }),
+    );
+    uploadAttachmentMock.mockRejectedValueOnce(
+      createApiClientError({
+        details: {
+          issues: [{ message: "File is empty.", path: ["file"] }],
+          reason: "Attachment validation failed.",
+        },
+        message: "Attachment upload failed.",
+        requestId: "REQ_ATTACHMENT",
+      }),
+    );
+
+    render(<DocumentDetailPage documentId="DOC_01" />);
+
+    fireEvent.change(await screen.findByTestId("document-comment-input"), {
+      target: { value: "New document comment" },
+    });
+    fireEvent.click(screen.getByTestId("document-comment-submit"));
+
+    expect(await screen.findByText("Comment creation failed.")).toBeVisible();
+    expect(
+      await screen.findByText(
+        "reason: Comment body contains unsupported content.",
+      ),
+    ).toBeVisible();
+    expect(await screen.findByText("field: body")).toBeVisible();
+    expect(
+      await screen.findByText("errors.apiDetails.requestId: REQ_COMMENT"),
+    ).toBeVisible();
+
+    const file = new File([""], "empty.txt", { type: "text/plain" });
+    fireEvent.change(screen.getByTestId("document-attachment-input"), {
+      target: { files: [file] },
+    });
+
+    expect(await screen.findByText("Attachment upload failed.")).toBeVisible();
+    expect(
+      await screen.findByText("reason: Attachment validation failed."),
+    ).toBeVisible();
+    expect(await screen.findByText("file: File is empty.")).toBeVisible();
+    expect(
+      await screen.findByText("errors.apiDetails.requestId: REQ_ATTACHMENT"),
+    ).toBeVisible();
+  });
+
+  it("shows backend details from wrapped attachment upload failures", async () => {
+    uploadAttachmentMock.mockRejectedValueOnce(
+      new AttachmentUploadErrorMock("VALIDATION_FAILED", {
+        sourceError: createApiClientError({
+          details: {
+            field: "file",
+            reason: "Attachment validation failed.",
+          },
+          message: "Attachment upload failed.",
+          requestId: "REQ_ATTACHMENT_WRAPPED",
+        }),
+      }),
+    );
+
+    render(<DocumentDetailPage documentId="DOC_01" />);
+
+    const file = new File(["hello"], "hello.txt", { type: "text/plain" });
+    fireEvent.change(await screen.findByTestId("document-attachment-input"), {
+      target: { files: [file] },
+    });
+
+    expect(
+      await screen.findByText("forms.attachments.uploadErrors.VALIDATION_FAILED"),
+    ).toBeVisible();
+    expect(await screen.findByText("Attachment upload failed.")).toBeVisible();
+    expect(
+      await screen.findByText("reason: Attachment validation failed."),
+    ).toBeVisible();
+    expect(await screen.findByText("field: file")).toBeVisible();
+    expect(
+      await screen.findByText(
+        "errors.apiDetails.requestId: REQ_ATTACHMENT_WRAPPED",
+      ),
+    ).toBeVisible();
+  });
+
+  it("shows backend details when archiving a document fails", async () => {
+    archiveDocumentMock.mockRejectedValueOnce(
+      createApiClientError({
+        details: {
+          reason: "Document is referenced by an active requirement.",
+          targetId: "DOC_01",
+        },
+        message: "Archive failed.",
+        requestId: "REQ_ARCHIVE",
+      }),
+    );
+
+    render(<DocumentDetailPage documentId="DOC_01" />);
+
+    fireEvent.click(await screen.findByTestId("document-archive-button"));
+
+    const alert = await screen.findByRole("alert");
+    expect(alert).toHaveTextContent("errors.api.VALIDATION_ERROR");
+    expect(alert).toHaveTextContent("Archive failed.");
+    expect(alert).toHaveTextContent(
+      "reason: Document is referenced by an active requirement.",
+    );
+    expect(alert).toHaveTextContent("targetId: DOC_01");
+    expect(alert).toHaveTextContent("errors.apiDetails.requestId: REQ_ARCHIVE");
+  });
+
+  it("shows backend details when restoring or deleting an archived document fails", async () => {
+    getDocumentMock.mockResolvedValueOnce({
+      ...createDocument(),
+      status: "ARCHIVED",
+    });
+    restoreDocumentMock.mockRejectedValueOnce(
+      createApiClientError({
+        details: {
+          reason: "The original folder no longer exists.",
+        },
+        message: "Restore failed.",
+        requestId: "REQ_RESTORE",
+      }),
+    );
+
+    const { unmount } = render(<DocumentDetailPage documentId="DOC_01" />);
+
+    fireEvent.click(await screen.findByTestId("document-restore-button"));
+    expect(await screen.findByText("Restore failed.")).toBeVisible();
+    expect(
+      await screen.findByText("reason: The original folder no longer exists."),
+    ).toBeVisible();
+    expect(
+      await screen.findByText("errors.apiDetails.requestId: REQ_RESTORE"),
+    ).toBeVisible();
+    unmount();
+
+    getDocumentMock.mockResolvedValueOnce({
+      ...createDocument(),
+      status: "ARCHIVED",
+    });
+    deleteDocumentMock.mockRejectedValueOnce(
+      createApiClientError({
+        details: {
+          reason: "Document still has retained attachments.",
+        },
+        message: "Delete failed.",
+        requestId: "REQ_DELETE",
+      }),
+    );
+
+    render(<DocumentDetailPage documentId="DOC_01" />);
+
+    fireEvent.click(await screen.findByTestId("document-delete-button"));
+    fireEvent.click(await screen.findByTestId("document-delete-confirm"));
+
+    expect(await screen.findByText("Delete failed.")).toBeVisible();
+    expect(
+      await screen.findByText(
+        "reason: Document still has retained attachments.",
+      ),
+    ).toBeVisible();
+    expect(
+      await screen.findByText("errors.apiDetails.requestId: REQ_DELETE"),
+    ).toBeVisible();
   });
 
   it("restores archived documents and deletes after confirmation", async () => {

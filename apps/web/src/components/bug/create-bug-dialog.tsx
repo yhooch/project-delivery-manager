@@ -47,6 +47,7 @@ import { Textarea } from "../ui/textarea";
 import { SelectMenu } from "../ui/select-menu";
 import { useSession } from "../providers/session-provider";
 import { TagSelectionField } from "../tag";
+import { getApiErrorDetailLines } from "../work-item/api-error-details";
 
 type CreateBugDialogProps = {
   open: boolean;
@@ -78,6 +79,7 @@ export function CreateBugDialog({
   const tSeverity = useTranslations("bugs.severity");
   const tTags = useTranslations("tags.field");
   const tRoot = useTranslations();
+  const requestIdLabel = tRoot("errors.apiDetails.requestId");
   const { currentOrganization, session } = useSession();
   const organizationId =
     explicitOrganizationId ??
@@ -100,8 +102,10 @@ export function CreateBugDialog({
   const [titleError, setTitleError] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [errorKey, setErrorKey] = useState<string | null>(null);
+  const [errorDetails, setErrorDetails] = useState<string[]>([]);
   const [optionsLoadState, setOptionsLoadState] =
     useState<OptionsLoadState>("idle");
+  const [optionsErrorDetails, setOptionsErrorDetails] = useState<string[]>([]);
   const [optionsReloadKey, setOptionsReloadKey] = useState(0);
 
   const [versions, setVersions] = useState<Version[]>([]);
@@ -131,6 +135,7 @@ export function CreateBugDialog({
 
     let cancelled = false;
     setOptionsLoadState("loading");
+    setOptionsErrorDetails([]);
 
     void (async () => {
       try {
@@ -174,9 +179,14 @@ export function CreateBugDialog({
           "",
         );
         setOptionsLoadState("ready");
-      } catch {
+      } catch (error) {
         if (!cancelled) {
           setOptionsLoadState("failed");
+          setOptionsErrorDetails(
+            getApiErrorDetailLines(error, {
+              requestIdLabel,
+            }),
+          );
         }
       }
     })();
@@ -184,7 +194,7 @@ export function CreateBugDialog({
     return () => {
       cancelled = true;
     };
-  }, [open, organizationId, optionsReloadKey, spaceId]);
+  }, [open, organizationId, optionsReloadKey, requestIdLabel, spaceId]);
 
   function reset() {
     setTitle("");
@@ -204,13 +214,16 @@ export function CreateBugDialog({
     setSelectedTags([]);
     setTitleError(false);
     setErrorKey(null);
+    setErrorDetails([]);
     setOptionsLoadState("idle");
+    setOptionsErrorDetails([]);
     setOptionsReloadKey(0);
     setSubmitting(false);
   }
 
   function retryOptionsLoad() {
     setOptionsLoadState("loading");
+    setOptionsErrorDetails([]);
     setOptionsReloadKey((value) => value + 1);
   }
 
@@ -268,6 +281,7 @@ export function CreateBugDialog({
 
     setSubmitting(true);
     setErrorKey(null);
+    setErrorDetails([]);
 
     try {
       await createBug(
@@ -293,6 +307,11 @@ export function CreateBugDialog({
       handleOpenChange(false);
     } catch (error) {
       setErrorKey(getApiErrorMessageKey(error));
+      setErrorDetails(
+        getApiErrorDetailLines(error, {
+          requestIdLabel,
+        }),
+      );
     } finally {
       setSubmitting(false);
     }
@@ -319,7 +338,15 @@ export function CreateBugDialog({
               role="alert"
               className="rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-xs text-destructive"
             >
-              {tRoot(errorKey)}
+              <p>{tRoot(errorKey)}</p>
+              {errorDetails.map((detail) => (
+                <p
+                  key={detail}
+                  className="mt-1 break-words text-[11px] text-destructive/90"
+                >
+                  {detail}
+                </p>
+              ))}
             </div>
           )}
 
@@ -404,6 +431,7 @@ export function CreateBugDialog({
           <div className="grid grid-cols-2 gap-3">
             <OptionsLoadNotice
               status={optionsLoadState}
+              errorDetails={optionsErrorDetails}
               onRetry={retryOptionsLoad}
               t={tRoot}
               errorTestId="create-bug-options-error"
@@ -608,12 +636,14 @@ export function CreateBugDialog({
 }
 
 function OptionsLoadNotice({
+  errorDetails,
   errorTestId,
   onRetry,
   retryTestId,
   status,
   t,
 }: {
+  errorDetails: string[];
   errorTestId: string;
   onRetry: () => void;
   retryTestId: string;
@@ -641,7 +671,17 @@ function OptionsLoadNotice({
       data-testid={errorTestId}
       className="col-span-2 flex items-center justify-between gap-3 rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-xs text-destructive"
     >
-      <span>{t("common.states.optionsLoadFailed")}</span>
+      <div className="min-w-0">
+        <p>{t("common.states.optionsLoadFailed")}</p>
+        {errorDetails.map((detail) => (
+          <p
+            key={detail}
+            className="mt-1 break-words text-[11px] text-destructive/90"
+          >
+            {detail}
+          </p>
+        ))}
+      </div>
       <Button
         type="button"
         variant="outline"

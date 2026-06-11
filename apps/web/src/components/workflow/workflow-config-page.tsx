@@ -14,7 +14,6 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { Link } from "../../i18n/routing";
 import { ApiClientError } from "../../lib/api-client";
-import { getApiErrorMessageKey } from "../../lib/api-error-messages";
 import { canManageWorkflow as canManageWorkflowForRole } from "../../lib/permission-gates";
 import {
   translateWorkflowActionName,
@@ -36,6 +35,11 @@ import {
   updateWorkflowVersion,
 } from "../../lib/workflow-service";
 import { useSession } from "../providers/session-provider";
+import {
+  formatApiErrorDisplayMessage,
+  getApiErrorDisplay,
+  type ApiErrorDisplayState,
+} from "../shell/api-error-display";
 
 import { Badge } from "../ui/badge";
 import { Button } from "../ui/button";
@@ -240,9 +244,13 @@ export function WorkflowConfigPage({ workflowId }: WorkflowConfigPageProps) {
   const [version, setVersion] = useState<WorkflowVersion | null>(null);
   const [isLoadingShell, setIsLoadingShell] = useState(false);
   const [isLoadingVersion, setIsLoadingVersion] = useState(false);
-  const [shellErrorKey, setShellErrorKey] = useState<string | null>(null);
-  const [versionErrorKey, setVersionErrorKey] = useState<string | null>(null);
-  const [actionErrorKey, setActionErrorKey] = useState<string | null>(null);
+  const [shellError, setShellError] = useState<ApiErrorDisplayState | null>(
+    null,
+  );
+  const [versionError, setVersionError] =
+    useState<ApiErrorDisplayState | null>(null);
+  const [actionError, setActionError] =
+    useState<ApiErrorDisplayState | null>(null);
   const [publishIssues, setPublishIssues] = useState<PublishIssue[]>([]);
   const [publishServerIssues, setPublishServerIssues] = useState<
     BackendPublishIssue[]
@@ -266,7 +274,7 @@ export function WorkflowConfigPage({ workflowId }: WorkflowConfigPageProps) {
       workflowConfigContextKeyRef.current === requestContextKey;
 
     setIsLoadingShell(true);
-    setShellErrorKey(null);
+    setShellError(null);
     try {
       const [definition, versionPage, bindingPage] = await Promise.all([
         getWorkflow({ organizationId, spaceId, workflowId }),
@@ -310,13 +318,15 @@ export function WorkflowConfigPage({ workflowId }: WorkflowConfigPageProps) {
       if (!isCurrentRequest()) {
         return;
       }
-      setShellErrorKey(getApiErrorMessageKey(error));
+      setShellError(
+        getApiErrorDisplay(error, tRoot("errors.apiDetails.requestId")),
+      );
     } finally {
       if (isCurrentRequest()) {
         setIsLoadingShell(false);
       }
     }
-  }, [organizationId, spaceId, workflowConfigContextKey, workflowId]);
+  }, [organizationId, spaceId, tRoot, workflowConfigContextKey, workflowId]);
 
   const loadVersion = useCallback(
     async (versionId: string) => {
@@ -330,7 +340,7 @@ export function WorkflowConfigPage({ workflowId }: WorkflowConfigPageProps) {
         workflowConfigContextKeyRef.current === requestContextKey;
 
       setIsLoadingVersion(true);
-      setVersionErrorKey(null);
+      setVersionError(null);
       try {
         const result = await getWorkflowVersion({
           organizationId,
@@ -345,14 +355,16 @@ export function WorkflowConfigPage({ workflowId }: WorkflowConfigPageProps) {
         if (!isCurrentRequest()) {
           return;
         }
-        setVersionErrorKey(getApiErrorMessageKey(error));
+        setVersionError(
+          getApiErrorDisplay(error, tRoot("errors.apiDetails.requestId")),
+        );
       } finally {
         if (isCurrentRequest()) {
           setIsLoadingVersion(false);
         }
       }
     },
-    [organizationId, spaceId, workflowConfigContextKey],
+    [organizationId, spaceId, tRoot, workflowConfigContextKey],
   );
 
   useEffect(() => {
@@ -368,9 +380,9 @@ export function WorkflowConfigPage({ workflowId }: WorkflowConfigPageProps) {
     setVersion(null);
     setIsLoadingShell(false);
     setIsLoadingVersion(false);
-    setShellErrorKey(null);
-    setVersionErrorKey(null);
-    setActionErrorKey(null);
+    setShellError(null);
+    setVersionError(null);
+    setActionError(null);
     setPublishIssues([]);
     setPublishServerIssues([]);
     setBusy("none");
@@ -388,14 +400,14 @@ export function WorkflowConfigPage({ workflowId }: WorkflowConfigPageProps) {
     actionRequestRef.current += 1;
     setBusy("none");
     setDialog({ kind: "closed" });
-    setActionErrorKey(null);
+    setActionError(null);
     if (
       !selectedVersionId ||
       selectedVersionContextRef.current !== workflowConfigContextKey
     ) {
       versionRequestRef.current += 1;
       setVersion(null);
-      setVersionErrorKey(null);
+      setVersionError(null);
       setIsLoadingVersion(false);
       return;
     }
@@ -446,7 +458,7 @@ export function WorkflowConfigPage({ workflowId }: WorkflowConfigPageProps) {
       bindingRequestRef.current === requestId &&
       workflowConfigContextKeyRef.current === requestContextKey;
 
-    setActionErrorKey(null);
+    setActionError(null);
     try {
       const bindingPage = await listWorkflowBindings({
         organizationId,
@@ -463,9 +475,11 @@ export function WorkflowConfigPage({ workflowId }: WorkflowConfigPageProps) {
       if (!isCurrentRequest()) {
         return;
       }
-      setActionErrorKey(getApiErrorMessageKey(error));
+      setActionError(
+        getApiErrorDisplay(error, tRoot("errors.apiDetails.requestId")),
+      );
     }
-  }, [organizationId, spaceId, workflowConfigContextKey, workflowId]);
+  }, [organizationId, spaceId, tRoot, workflowConfigContextKey, workflowId]);
 
   async function handlePublish() {
     if (!version || !spaceId) {
@@ -479,7 +493,7 @@ export function WorkflowConfigPage({ workflowId }: WorkflowConfigPageProps) {
     }
     setPublishIssues([]);
     setPublishServerIssues([]);
-    setActionErrorKey(null);
+    setActionError(null);
     setBusy("publish");
     const requestId = ++actionRequestRef.current;
     const requestContextKey = workflowConfigContextKey;
@@ -501,7 +515,9 @@ export function WorkflowConfigPage({ workflowId }: WorkflowConfigPageProps) {
       if (!isCurrentRequest()) {
         return;
       }
-      setActionErrorKey(getApiErrorMessageKey(error));
+      setActionError(
+        getApiErrorDisplay(error, tRoot("errors.apiDetails.requestId")),
+      );
       setPublishServerIssues(extractPublishIssueDetails(error));
     } finally {
       if (isCurrentRequest()) {
@@ -514,7 +530,7 @@ export function WorkflowConfigPage({ workflowId }: WorkflowConfigPageProps) {
     if (!version || !spaceId) {
       return;
     }
-    setActionErrorKey(null);
+    setActionError(null);
     setBusy("disable");
     const requestId = ++actionRequestRef.current;
     const requestContextKey = workflowConfigContextKey;
@@ -539,7 +555,9 @@ export function WorkflowConfigPage({ workflowId }: WorkflowConfigPageProps) {
       if (!isCurrentRequest()) {
         return;
       }
-      setActionErrorKey(getApiErrorMessageKey(error));
+      setActionError(
+        getApiErrorDisplay(error, tRoot("errors.apiDetails.requestId")),
+      );
     } finally {
       if (isCurrentRequest()) {
         setBusy("none");
@@ -551,7 +569,7 @@ export function WorkflowConfigPage({ workflowId }: WorkflowConfigPageProps) {
     if (!spaceId || !version || version.status !== "PUBLISHED") {
       return;
     }
-    setActionErrorKey(null);
+    setActionError(null);
     setBusy("copy");
     const requestId = ++actionRequestRef.current;
     const requestContextKey = workflowConfigContextKey;
@@ -573,7 +591,9 @@ export function WorkflowConfigPage({ workflowId }: WorkflowConfigPageProps) {
       if (!isCurrentRequest()) {
         return;
       }
-      setActionErrorKey(getApiErrorMessageKey(error));
+      setActionError(
+        getApiErrorDisplay(error, tRoot("errors.apiDetails.requestId")),
+      );
     } finally {
       if (isCurrentRequest()) {
         setBusy("none");
@@ -626,7 +646,7 @@ export function WorkflowConfigPage({ workflowId }: WorkflowConfigPageProps) {
     }
     const pending = deleteConfirm;
     setDeleteConfirm(null);
-    setActionErrorKey(null);
+    setActionError(null);
     const requestId = ++actionRequestRef.current;
     const requestContextKey = workflowConfigContextKey;
     const isCurrentRequest = () =>
@@ -660,7 +680,9 @@ export function WorkflowConfigPage({ workflowId }: WorkflowConfigPageProps) {
       if (!isCurrentRequest()) {
         return;
       }
-      setActionErrorKey(getApiErrorMessageKey(error));
+      setActionError(
+        getApiErrorDisplay(error, tRoot("errors.apiDetails.requestId")),
+      );
     }
   }
 
@@ -700,13 +722,16 @@ export function WorkflowConfigPage({ workflowId }: WorkflowConfigPageProps) {
     );
   }
 
-  if (shellErrorKey) {
+  if (shellError) {
     return (
       <div data-testid="workflow-config-page" className="flex h-full flex-col">
         {headerNode}
         <div className="flex-1 px-6 py-5">
           <ErrorState
-            message={tRoot(shellErrorKey)}
+            message={formatApiErrorDisplayMessage(
+              tRoot(shellError.messageKey),
+              shellError.detailLines,
+            )}
             onRetry={() => void loadShell()}
           />
         </div>
@@ -864,12 +889,17 @@ export function WorkflowConfigPage({ workflowId }: WorkflowConfigPageProps) {
           </div>
         ) : null}
 
-        {actionErrorKey ? (
+        {actionError ? (
           <div
             className="mb-3 rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-xs text-destructive"
             role="alert"
           >
-            <p>{tRoot(actionErrorKey)}</p>
+            <p className="whitespace-pre-line">
+              {formatApiErrorDisplayMessage(
+                tRoot(actionError.messageKey),
+                actionError.detailLines,
+              )}
+            </p>
             {publishServerIssues.length > 0 ? (
               <ul
                 className="mt-1 list-inside list-disc"
@@ -885,9 +915,12 @@ export function WorkflowConfigPage({ workflowId }: WorkflowConfigPageProps) {
           </div>
         ) : null}
 
-        {versionErrorKey ? (
+        {versionError ? (
           <ErrorState
-            message={tRoot(versionErrorKey)}
+            message={formatApiErrorDisplayMessage(
+              tRoot(versionError.messageKey),
+              versionError.detailLines,
+            )}
             onRetry={() => loadVersion(selectedVersionId)}
           />
         ) : isLoadingVersion ? (

@@ -937,9 +937,12 @@ describe("WorkflowConfigPage", () => {
 
     fireEvent.click(publish);
 
-    expect(
-      await screen.findByText("errors.api.WORKFLOW_PUBLISH_VALIDATION_FAILED"),
-    ).toBeInTheDocument();
+    const alert = await screen.findByRole("alert");
+    expect(alert).toHaveTextContent(
+      "errors.api.WORKFLOW_PUBLISH_VALIDATION_FAILED",
+    );
+    expect(alert).toHaveTextContent("Workflow publish validation failed");
+    expect(alert).toHaveTextContent("errors.apiDetails.requestId: REQ_01");
     expect(
       await screen.findByTestId("workflow-config-publish-server-issues"),
     ).toHaveTextContent(

@@ -8,7 +8,6 @@ import {
   listReferencingDocuments,
   type DocumentSummary,
 } from "../../lib/document-service";
-import { getApiErrorMessageKey } from "../../lib/api-error-messages";
 import { Link } from "../../i18n/routing";
 import {
   getDocumentDisplayCode,
@@ -16,6 +15,11 @@ import {
 } from "../../lib/document-view-model";
 import { useRealtimeInvalidation } from "../../lib/realtime";
 import { cn } from "../../lib/utils";
+import {
+  formatApiErrorDisplayMessage,
+  getApiErrorDisplay,
+  type ApiErrorDisplayState,
+} from "../shell/api-error-display";
 import { Badge } from "../ui/badge";
 
 const REFERENCING_DOCUMENTS_PAGE_SIZE = 5;
@@ -44,12 +48,15 @@ export function ReferencingDocumentsSection({
   const t = useTranslations("documents.references");
   const tDocuments = useTranslations("documents");
   const tRoot = useTranslations();
+  const requestIdLabel = tRoot("errors.apiDetails.requestId");
   const titleId = useId();
   const [items, setItems] = useState<DocumentSummary[]>([]);
   const [total, setTotal] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
-  const [errorKey, setErrorKey] = useState<string | null>(null);
+  const [errorDisplay, setErrorDisplay] = useState<ApiErrorDisplayState | null>(
+    null,
+  );
   // 已展开的页数；实时刷新时据此重新拉取，避免把已展开内容缩回首屏。
   const loadedPagesRef = useRef(1);
 
@@ -65,7 +72,7 @@ export function ReferencingDocumentsSection({
       const isBackground = Boolean(options?.realtime || options?.more);
       if (!isBackground) {
         setIsLoading(true);
-        setErrorKey(null);
+        setErrorDisplay(null);
       }
 
       try {
@@ -86,7 +93,7 @@ export function ReferencingDocumentsSection({
       } catch (error) {
         // 后台刷新/加载更多失败时静默保留已有列表，仅首屏加载失败才提示。
         if (!isBackground) {
-          setErrorKey(getApiErrorMessageKey(error));
+          setErrorDisplay(getApiErrorDisplay(error, requestIdLabel));
         }
       } finally {
         if (!isBackground) {
@@ -94,7 +101,7 @@ export function ReferencingDocumentsSection({
         }
       }
     },
-    [organizationId, spaceId, targetDocumentId],
+    [organizationId, requestIdLabel, spaceId, targetDocumentId],
   );
 
   useEffect(() => {
@@ -161,9 +168,15 @@ export function ReferencingDocumentsSection({
           <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />
           {t("loading")}
         </div>
-      ) : errorKey ? (
-        <p className="text-xs text-destructive" role="alert">
-          {tRoot(errorKey)}
+      ) : errorDisplay ? (
+        <p
+          className="whitespace-pre-wrap text-xs text-destructive"
+          role="alert"
+        >
+          {formatApiErrorDisplayMessage(
+            tRoot(errorDisplay.messageKey),
+            errorDisplay.detailLines,
+          )}
         </p>
       ) : items.length === 0 ? (
         <p className="text-xs text-muted-foreground">{t("empty")}</p>

@@ -6,7 +6,7 @@ import type {
   SessionSpaceSummary,
   UpdateUserPreferencesRequest,
 } from "@project-delivery/shared";
-import { useLocale } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { useSearchParams } from "next/navigation";
 import {
   createContext,
@@ -36,7 +36,6 @@ import {
   type NextThemeMode,
 } from "../../lib/preferences";
 import {
-  getApiErrorMessageKey,
   isUnauthorizedApiError,
   type ApiErrorMessageKey,
 } from "../../lib/api-error-messages";
@@ -47,6 +46,7 @@ import type {
 } from "../../lib/auth-forms";
 import { isLocale } from "../../i18n/locales";
 import { usePathname, useRouter } from "../../i18n/routing";
+import { getApiErrorDisplay } from "../shell/api-error-display";
 import { useTheme } from "./theme-provider";
 
 type SessionStatus = "loading" | "authenticated" | "unauthenticated" | "error";
@@ -69,6 +69,7 @@ type SessionContextValue = {
   ) => Promise<AppSession>;
   register: (input: RegisterFormValues) => Promise<AppSession>;
   session: AppSession | null;
+  sessionErrorDetailLines: string[];
   sessionErrorKey: ApiErrorMessageKey | null;
   spacesForCurrentOrganization: SessionSpaceSummary[];
   status: SessionStatus;
@@ -87,28 +88,38 @@ export function SessionProvider({ children }: SessionProviderProps) {
   const [status, setStatus] = useState<SessionStatus>("loading");
   const [sessionErrorKey, setSessionErrorKey] =
     useState<ApiErrorMessageKey | null>(null);
+  const [sessionErrorDetailLines, setSessionErrorDetailLines] = useState<
+    string[]
+  >([]);
+  const tRoot = useTranslations();
+  const requestIdLabel = tRoot("errors.apiDetails.requestId");
 
   const initializeSession = useCallback(async () => {
     setStatus("loading");
     setSessionErrorKey(null);
+    setSessionErrorDetailLines([]);
 
     try {
       const nextSession = await getPersistedAppSession();
       setSession(nextSession);
       setSessionErrorKey(null);
+      setSessionErrorDetailLines([]);
       setStatus("authenticated");
     } catch (error) {
       setSession(null);
       if (isUnauthorizedApiError(error)) {
         setSessionErrorKey(null);
+        setSessionErrorDetailLines([]);
         setStatus("unauthenticated");
         return;
       }
 
-      setSessionErrorKey(getApiErrorMessageKey(error));
+      const errorDisplay = getApiErrorDisplay(error, requestIdLabel);
+      setSessionErrorKey(errorDisplay.messageKey);
+      setSessionErrorDetailLines(errorDisplay.detailLines);
       setStatus("error");
     }
-  }, []);
+  }, [requestIdLabel]);
 
   useEffect(() => {
     void initializeSession();
@@ -122,6 +133,7 @@ export function SessionProvider({ children }: SessionProviderProps) {
       );
       setSession(nextSession);
       setSessionErrorKey(null);
+      setSessionErrorDetailLines([]);
       setStatus("authenticated");
 
       return nextSession;
@@ -133,6 +145,7 @@ export function SessionProvider({ children }: SessionProviderProps) {
     const nextSession = await registerAccount(input);
     setSession(nextSession);
     setSessionErrorKey(null);
+    setSessionErrorDetailLines([]);
     setStatus("authenticated");
 
     return nextSession;
@@ -142,6 +155,7 @@ export function SessionProvider({ children }: SessionProviderProps) {
     const nextSession = await loginAccount(input);
     setSession(nextSession);
     setSessionErrorKey(null);
+    setSessionErrorDetailLines([]);
     setStatus("authenticated");
 
     return nextSession;
@@ -152,6 +166,7 @@ export function SessionProvider({ children }: SessionProviderProps) {
       const nextSession = await createOrganizationAndRefreshSession(input);
       setSession(nextSession);
       setSessionErrorKey(null);
+      setSessionErrorDetailLines([]);
       setStatus("authenticated");
 
       return nextSession;
@@ -163,6 +178,7 @@ export function SessionProvider({ children }: SessionProviderProps) {
     const nextSession = await switchOrganization(organizationId);
     setSession(nextSession);
     setSessionErrorKey(null);
+    setSessionErrorDetailLines([]);
     setStatus("authenticated");
 
     return nextSession;
@@ -181,6 +197,7 @@ export function SessionProvider({ children }: SessionProviderProps) {
       const nextSession = await switchSpace(organizationId, spaceId);
       setSession(nextSession);
       setSessionErrorKey(null);
+      setSessionErrorDetailLines([]);
       setStatus("authenticated");
 
       return nextSession;
@@ -221,6 +238,7 @@ export function SessionProvider({ children }: SessionProviderProps) {
     } finally {
       setSession(null);
       setSessionErrorKey(null);
+      setSessionErrorDetailLines([]);
       setStatus("unauthenticated");
     }
   }, []);
@@ -267,6 +285,7 @@ export function SessionProvider({ children }: SessionProviderProps) {
       refreshSession,
       register,
       session,
+      sessionErrorDetailLines,
       sessionErrorKey,
       spacesForCurrentOrganization,
       status,
@@ -286,6 +305,7 @@ export function SessionProvider({ children }: SessionProviderProps) {
       refreshSession,
       register,
       session,
+      sessionErrorDetailLines,
       sessionErrorKey,
       spacesForCurrentOrganization,
       status,

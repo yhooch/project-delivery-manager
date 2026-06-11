@@ -7,13 +7,16 @@ import type {
 import { useTranslations } from "next-intl";
 import { useEffect, useState, type FormEvent } from "react";
 
-import { getApiErrorMessageKey } from "../../lib/api-error-messages";
 import {
   createWorkflow,
   createWorkflowVersion,
   listWorkflowVersions,
   updateWorkflow,
 } from "../../lib/workflow-service";
+import {
+  formatApiErrorDisplayMessage,
+  getApiErrorDisplay,
+} from "../shell/api-error-display";
 
 import { Button } from "../ui/button";
 import {
@@ -32,6 +35,11 @@ import { SelectMenu } from "../ui/select-menu";
 type WorkflowSpaceContext = {
   organizationId?: string;
   spaceId: string;
+};
+
+type ErrorDisplayState = {
+  detailLines: string[];
+  messageKey: string;
 };
 
 type Mode =
@@ -63,7 +71,7 @@ export function CreateWorkflowDialog({
   const [code, setCode] = useState("");
   const [description, setDescription] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [errorKey, setErrorKey] = useState<string | null>(null);
+  const [error, setError] = useState<ErrorDisplayState | null>(null);
   const [versions, setVersions] = useState<WorkflowVersion[]>([]);
   const [sourceVersionId, setSourceVersionId] = useState<string>("");
   const [isLoadingVersions, setIsLoadingVersions] = useState(false);
@@ -73,7 +81,7 @@ export function CreateWorkflowDialog({
       return;
     }
 
-    setErrorKey(null);
+    setError(null);
     setIsSubmitting(false);
 
     if (mode.kind === "edit") {
@@ -108,7 +116,9 @@ export function CreateWorkflowDialog({
           setSourceVersionId(latestPublishedVersion?.id ?? "");
         })
         .catch((error) => {
-          setErrorKey(getApiErrorMessageKey(error));
+          setError(
+            getApiErrorDisplay(error, tRoot("errors.apiDetails.requestId")),
+          );
         })
         .finally(() => {
           setIsLoadingVersions(false);
@@ -139,12 +149,15 @@ export function CreateWorkflowDialog({
     event.preventDefault();
 
     setIsSubmitting(true);
-    setErrorKey(null);
+    setError(null);
 
     try {
       if (mode.kind === "copyVersion") {
         if (!sourceVersionId) {
-          setErrorKey("errors.api.WORKFLOW_VERSION_NOT_FOUND");
+          setError({
+            detailLines: [],
+            messageKey: "errors.api.WORKFLOW_VERSION_NOT_FOUND",
+          });
           setIsSubmitting(false);
           return;
         }
@@ -186,13 +199,19 @@ export function CreateWorkflowDialog({
             : generateWorkflowCodeFromName(trimmedName);
 
         if (!finalCode) {
-          setErrorKey("workflow.dialog.create.errors.codeRequired");
+          setError({
+            detailLines: [],
+            messageKey: "workflow.dialog.create.errors.codeRequired",
+          });
           setIsSubmitting(false);
           return;
         }
 
         if (!WORKFLOW_CODE_PATTERN.test(finalCode)) {
-          setErrorKey("workflow.dialog.create.errors.codeInvalid");
+          setError({
+            detailLines: [],
+            messageKey: "workflow.dialog.create.errors.codeInvalid",
+          });
           setIsSubmitting(false);
           return;
         }
@@ -221,7 +240,9 @@ export function CreateWorkflowDialog({
 
       onSuccess(result);
     } catch (error) {
-      setErrorKey(getApiErrorMessageKey(error));
+      setError(
+        getApiErrorDisplay(error, tRoot("errors.apiDetails.requestId")),
+      );
     } finally {
       setIsSubmitting(false);
     }
@@ -331,12 +352,17 @@ export function CreateWorkflowDialog({
             </div>
           ) : null}
 
-          {errorKey ? (
+          {error ? (
             <div
               className="rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-xs text-destructive"
               role="alert"
             >
-              {tRoot(errorKey)}
+              <p className="whitespace-pre-line">
+                {formatApiErrorDisplayMessage(
+                  tRoot(error.messageKey),
+                  error.detailLines,
+                )}
+              </p>
             </div>
           ) : null}
 

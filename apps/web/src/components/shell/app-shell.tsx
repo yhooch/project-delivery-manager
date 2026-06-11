@@ -12,6 +12,7 @@ import { Button } from "../ui/button";
 import { Sheet, SheetContent, SheetDescription, SheetTitle } from "../ui/sheet";
 
 import { CommandPalette, useCommandPaletteShortcut } from "./command-palette";
+import { formatApiErrorDisplayMessage } from "./api-error-display";
 import { Sidebar } from "./sidebar";
 import { TopBar } from "./top-bar";
 import { OnboardingEmpty } from "./onboarding-empty";
@@ -29,6 +30,7 @@ export function AppShell({ children }: AppShellProps) {
     currentSpace,
     initializeSession,
     session,
+    sessionErrorDetailLines,
     sessionErrorKey,
     spacesForCurrentOrganization,
     status,
@@ -55,7 +57,7 @@ export function AppShell({ children }: AppShellProps) {
     : currentSpace?.id;
   const {
     dismissNotice: dismissRequestedSpaceSwitchNotice,
-    errorKey: activeRequestedSpaceSwitchError,
+    error: activeRequestedSpaceSwitchError,
     isSwitching: isSwitchingRequestedSpace,
     notice: requestedSpaceSwitchNotice,
   } = useRequestedSpaceSwitch();
@@ -87,8 +89,11 @@ export function AppShell({ children }: AppShellProps) {
           <p className="text-sm text-muted-foreground">
             {t("sessionError.description")}
           </p>
-          <p className="text-sm text-destructive">
-            {tRoot(sessionErrorKey ?? "errors.api.UNKNOWN")}
+          <p className="whitespace-pre-wrap text-sm text-destructive">
+            {formatApiErrorDisplayMessage(
+              tRoot(sessionErrorKey ?? "errors.api.UNKNOWN"),
+              sessionErrorDetailLines ?? [],
+            )}
           </p>
           <Button
             size="sm"
@@ -166,8 +171,11 @@ export function AppShell({ children }: AppShellProps) {
                 <h1 className="text-base font-semibold text-foreground">
                   {t("sessionError.title")}
                 </h1>
-                <p className="text-sm text-muted-foreground">
-                  {tRoot(activeRequestedSpaceSwitchError)}
+                <p className="whitespace-pre-wrap text-sm text-muted-foreground">
+                  {formatApiErrorDisplayMessage(
+                    tRoot(activeRequestedSpaceSwitchError.messageKey),
+                    activeRequestedSpaceSwitchError.detailLines,
+                  )}
                 </p>
               </section>
             </div>

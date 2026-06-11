@@ -5,10 +5,14 @@ import { Loader2, Plus } from "lucide-react";
 import { useTranslations } from "next-intl";
 import * as React from "react";
 
-import { getApiErrorMessageKey } from "../../lib/api-error-messages";
 import { replaceTagAssignments } from "../../lib/tag-service";
 import { getTagIds } from "../../lib/tag-ui";
 import { cn } from "../../lib/utils";
+import {
+  formatApiErrorDisplayMessage,
+  getApiErrorDisplay,
+  type ApiErrorDisplayState,
+} from "../shell/api-error-display";
 import { Button } from "../ui/button";
 import { Tip } from "../ui/tooltip";
 
@@ -381,16 +385,18 @@ export function ObjectTagAssignmentField({
 }) {
   const t = useTranslations("tags.field");
   const tRoot = useTranslations();
+  const requestIdLabel = tRoot("errors.apiDetails.requestId");
   const safeTags = tags ?? [];
   const [selectedTags, setSelectedTags] = React.useState<TagDto[]>(() => [
     ...safeTags,
   ]);
   const [saving, setSaving] = React.useState(false);
-  const [errorKey, setErrorKey] = React.useState<string | null>(null);
+  const [errorDisplay, setErrorDisplay] =
+    React.useState<ApiErrorDisplayState | null>(null);
 
   React.useEffect(() => {
     setSelectedTags([...(tags ?? [])]);
-    setErrorKey(null);
+    setErrorDisplay(null);
   }, [tags, targetId]);
 
   async function handleSelectedTagsChange(nextTags: TagDto[]) {
@@ -401,7 +407,7 @@ export function ObjectTagAssignmentField({
     const previousTags = selectedTags;
     setSelectedTags(nextTags);
     setSaving(true);
-    setErrorKey(null);
+    setErrorDisplay(null);
 
     try {
       const result = await replaceTagAssignments({
@@ -413,7 +419,7 @@ export function ObjectTagAssignmentField({
       onTagsChange?.(result.tags);
     } catch (error) {
       setSelectedTags(previousTags);
-      setErrorKey(getApiErrorMessageKey(error));
+      setErrorDisplay(getApiErrorDisplay(error, requestIdLabel));
     } finally {
       setSaving(false);
     }
@@ -439,9 +445,15 @@ export function ObjectTagAssignmentField({
           ) : null
         }
       />
-      {errorKey ? (
-        <span className="text-[11px] text-destructive" role="alert">
-          {tRoot(errorKey)}
+      {errorDisplay ? (
+        <span
+          className="whitespace-pre-wrap text-[11px] text-destructive"
+          role="alert"
+        >
+          {formatApiErrorDisplayMessage(
+            tRoot(errorDisplay.messageKey),
+            errorDisplay.detailLines,
+          )}
         </span>
       ) : null}
     </div>

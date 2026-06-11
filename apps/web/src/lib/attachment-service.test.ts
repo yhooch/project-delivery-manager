@@ -11,6 +11,7 @@ import {
   AttachmentUploadError,
   createAttachmentDownloadUrl,
   createAttachmentUploadFailure,
+  getAttachmentUploadErrorDetails,
   listAttachments,
   uploadAttachment,
   uploadRequirementImage,
@@ -269,6 +270,90 @@ describe("attachment service", () => {
       code: "UPLOAD_FAILED",
       retryable: true,
     } satisfies Partial<AttachmentUploadError>);
+  });
+
+  it("preserves server-side FILE_TOO_LARGE upload errors", async () => {
+    const file = createImageFile();
+    const apiError = new ApiClientError(
+      {
+        code: "FILE_TOO_LARGE",
+        details: {
+          field: "file",
+          issues: [
+            {
+              code: "too_big",
+              message: "Max 10 MB",
+              path: ["file"],
+            },
+          ],
+          reason: "backend-limit",
+          requestId: "req_attachment_details",
+        },
+        message: "File exceeds backend limit",
+        requestId: "req_attachment",
+      },
+      new Response(null, { status: 413 }),
+    );
+    const api = {
+      ...createApi(),
+      post: vi.fn(async () => {
+        throw apiError;
+      }) as AttachmentApiTransport["post"],
+    };
+
+    let caught: unknown;
+    try {
+      await uploadAttachment(
+        {
+          existingAttachmentCount: 0,
+          file,
+          targetId: requirementId,
+          targetType: "WORK_ITEM",
+        },
+        api,
+      );
+    } catch (error) {
+      caught = error;
+    }
+
+    expect(caught).toBeInstanceOf(AttachmentUploadError);
+    expect(caught).toMatchObject({
+      code: "FILE_TOO_LARGE",
+      retryable: false,
+    } satisfies Partial<AttachmentUploadError>);
+    expect(caught).toHaveProperty("sourceError", apiError);
+    expect(caught).toHaveProperty("cause", apiError);
+    expect(getAttachmentUploadErrorDetails(caught)).toEqual({
+      details: {
+        field: "file",
+        issues: [
+          {
+            code: "too_big",
+            message: "Max 10 MB",
+            path: "file",
+          },
+        ],
+        reason: "backend-limit",
+        requestId: "req_attachment_details",
+        summary: [
+          {
+            key: "field",
+            value: "file",
+          },
+          {
+            key: "reason",
+            value: "backend-limit",
+          },
+          {
+            key: "requestId",
+            value: "req_attachment_details",
+          },
+        ],
+      },
+      messageKey: "errors.api.FILE_TOO_LARGE",
+      requestId: "req_attachment",
+      serverMessage: "File exceeds backend limit",
+    });
   });
 
   it("maps upload failures into retryable localized form state", () => {

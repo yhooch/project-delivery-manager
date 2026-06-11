@@ -104,6 +104,7 @@ import {
   DropdownMenuTrigger,
 } from "../ui/dropdown-menu";
 import { RequirementContentEditorSlot } from "./requirement-content-editor-slot";
+import { getApiErrorDetailLines } from "../work-item/api-error-details";
 
 const PRIORITIES: Priority[] = ["LOW", "MEDIUM", "HIGH", "URGENT"];
 const REQUIREMENT_DETAIL_REALTIME_KEYS = [
@@ -165,6 +166,7 @@ export function RequirementDetailWorkspace({
     string | null
   >(null);
   const [errorKey, setErrorKey] = useState<string | null>(null);
+  const [errorDetails, setErrorDetails] = useState<string[]>([]);
   const [pendingCascadeConfirm, setPendingCascadeConfirm] = useState<{
     request: UpdateRequirementRequest;
     message: string;
@@ -264,6 +266,7 @@ export function RequirementDetailWorkspace({
       }
       if (shouldSurfaceRefreshError(refreshMode)) {
         setErrorKey(null);
+        setErrorDetails([]);
       }
 
       const isLatestRequest = () =>
@@ -310,6 +313,11 @@ export function RequirementDetailWorkspace({
       } catch (error) {
         if (isLatestRequest() && shouldSurfaceRefreshError(refreshMode)) {
           setErrorKey(getApiErrorMessageKey(error));
+          setErrorDetails(
+            getApiErrorDetailLines(error, {
+              requestIdLabel: tRoot("errors.apiDetails.requestId"),
+            }),
+          );
         }
       } finally {
         if (isLatestRequest()) {
@@ -317,7 +325,14 @@ export function RequirementDetailWorkspace({
         }
       }
     },
-    [organizationId, requestKey, requirementId, session?.user.id, spaceId],
+    [
+      organizationId,
+      requestKey,
+      requirementId,
+      session?.user.id,
+      spaceId,
+      tRoot,
+    ],
   );
 
   useEffect(() => {
@@ -533,6 +548,7 @@ export function RequirementDetailWorkspace({
 
     setIsSaving(true);
     setErrorKey(null);
+    setErrorDetails([]);
 
     const context = {
       organizationId: requirement.organizationId,
@@ -567,6 +583,11 @@ export function RequirementDetailWorkspace({
         return;
       }
       setErrorKey(getApiErrorMessageKey(error));
+      setErrorDetails(
+        getApiErrorDetailLines(error, {
+          requestIdLabel: tRoot("errors.apiDetails.requestId"),
+        }),
+      );
     } finally {
       setIsSaving(false);
     }
@@ -579,6 +600,7 @@ export function RequirementDetailWorkspace({
 
     setIsSaving(true);
     setErrorKey(null);
+    setErrorDetails([]);
 
     try {
       const nextRequirement = await updateRequirement(
@@ -600,6 +622,11 @@ export function RequirementDetailWorkspace({
     } catch (error) {
       setPendingCascadeConfirm(null);
       setErrorKey(getApiErrorMessageKey(error));
+      setErrorDetails(
+        getApiErrorDetailLines(error, {
+          requestIdLabel: tRoot("errors.apiDetails.requestId"),
+        }),
+      );
     } finally {
       setIsSaving(false);
     }
@@ -612,6 +639,7 @@ export function RequirementDetailWorkspace({
 
     setIsArchiving(true);
     setErrorKey(null);
+    setErrorDetails([]);
 
     try {
       const nextRequirement = await archiveRequirement({
@@ -625,6 +653,11 @@ export function RequirementDetailWorkspace({
       setForm(requirementToFormState(nextRequirement));
     } catch (error) {
       setErrorKey(getApiErrorMessageKey(error));
+      setErrorDetails(
+        getApiErrorDetailLines(error, {
+          requestIdLabel: tRoot("errors.apiDetails.requestId"),
+        }),
+      );
     } finally {
       setIsArchiving(false);
     }
@@ -642,6 +675,7 @@ export function RequirementDetailWorkspace({
 
     setIsDiscardingDraft(true);
     setErrorKey(null);
+    setErrorDetails([]);
 
     try {
       await deleteRequirementDraft({
@@ -654,6 +688,11 @@ export function RequirementDetailWorkspace({
       router.push("/requirements");
     } catch (error) {
       setErrorKey(getApiErrorMessageKey(error));
+      setErrorDetails(
+        getApiErrorDetailLines(error, {
+          requestIdLabel: tRoot("errors.apiDetails.requestId"),
+        }),
+      );
     } finally {
       setIsDiscardingDraft(false);
     }
@@ -679,6 +718,7 @@ export function RequirementDetailWorkspace({
     setForm(requirementToFormState(requirement));
     setDidRestoreLocalDraftCache(false);
     setErrorKey(null);
+    setErrorDetails([]);
     setIsEditing(false);
   }
 
@@ -700,6 +740,7 @@ export function RequirementDetailWorkspace({
     const target = pendingNavigationHref ?? "/requirements";
     setIsDeletingDraftOnLeave(true);
     setErrorKey(null);
+    setErrorDetails([]);
 
     try {
       await deleteRequirementDraft({
@@ -713,6 +754,11 @@ export function RequirementDetailWorkspace({
       router.push(target);
     } catch (error) {
       setErrorKey(getApiErrorMessageKey(error));
+      setErrorDetails(
+        getApiErrorDetailLines(error, {
+          requestIdLabel: tRoot("errors.apiDetails.requestId"),
+        }),
+      );
     } finally {
       setIsDeletingDraftOnLeave(false);
     }
@@ -743,7 +789,7 @@ export function RequirementDetailWorkspace({
       <StatePanel
         icon="warning"
         title={t("states.loadFailed.title")}
-        description={tRoot(errorKey)}
+        description={formatApiErrorMessage(tRoot(errorKey), errorDetails)}
       />
     );
   }
@@ -857,7 +903,15 @@ export function RequirementDetailWorkspace({
             className="rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive"
             role="alert"
           >
-            {tRoot(errorKey)}
+            <p>{tRoot(errorKey)}</p>
+            {errorDetails.map((detail) => (
+              <p
+                key={detail}
+                className="mt-1 break-words text-xs text-destructive/90"
+              >
+                {detail}
+              </p>
+            ))}
           </div>
         ) : null}
 
@@ -1518,6 +1572,10 @@ function StatePanel({
       <p className="max-w-md text-xs text-muted-foreground">{description}</p>
     </section>
   );
+}
+
+function formatApiErrorMessage(message: string, details: string[]): string {
+  return [message, ...details].join(" ");
 }
 
 function createEmptyRequirementForm(): RequirementFormState {

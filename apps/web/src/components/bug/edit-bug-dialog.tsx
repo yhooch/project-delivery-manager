@@ -42,6 +42,7 @@ import { Input } from "../ui/input";
 import { Label } from "../ui/label";
 import { Textarea } from "../ui/textarea";
 import { SelectMenu } from "../ui/select-menu";
+import { getApiErrorDetailLines } from "../work-item/api-error-details";
 
 type EditBugDialogProps = {
   bug: BugView | null;
@@ -80,6 +81,7 @@ export function EditBugDialog({
   const tPriority = useTranslations("bugs.priority");
   const tSeverity = useTranslations("bugs.severity");
   const tRoot = useTranslations();
+  const requestIdLabel = tRoot("errors.apiDetails.requestId");
 
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
@@ -100,11 +102,13 @@ export function EditBugDialog({
   const [titleError, setTitleError] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [errorKey, setErrorKey] = useState<string | null>(null);
+  const [errorDetails, setErrorDetails] = useState<string[]>([]);
   const [pendingCascadeConfirm, setPendingCascadeConfirm] =
     useState<PendingBugCascadeConfirm | null>(null);
   const [versionManuallyChanged, setVersionManuallyChanged] = useState(false);
   const [optionsLoadState, setOptionsLoadState] =
     useState<OptionsLoadState>("idle");
+  const [optionsErrorDetails, setOptionsErrorDetails] = useState<string[]>([]);
   const [optionsReloadKey, setOptionsReloadKey] = useState(0);
 
   const [versions, setVersions] = useState<Version[]>([]);
@@ -154,6 +158,7 @@ export function EditBugDialog({
     setDueDate(toDateInputValue(bug.dueDate));
     setTitleError(false);
     setErrorKey(null);
+    setErrorDetails([]);
     setPendingCascadeConfirm(null);
     setSubmitting(false);
     setVersionManuallyChanged(false);
@@ -166,6 +171,7 @@ export function EditBugDialog({
 
     let cancelled = false;
     setOptionsLoadState("loading");
+    setOptionsErrorDetails([]);
 
     void (async () => {
       try {
@@ -195,9 +201,14 @@ export function EditBugDialog({
         setTasks(taskPage.items);
         setMembers(memberPage.items);
         setOptionsLoadState("ready");
-      } catch {
+      } catch (error) {
         if (!cancelled) {
           setOptionsLoadState("failed");
+          setOptionsErrorDetails(
+            getApiErrorDetailLines(error, {
+              requestIdLabel,
+            }),
+          );
         }
       }
     })();
@@ -205,7 +216,7 @@ export function EditBugDialog({
     return () => {
       cancelled = true;
     };
-  }, [open, organizationId, optionsReloadKey, spaceId]);
+  }, [open, organizationId, optionsReloadKey, requestIdLabel, spaceId]);
 
   useEffect(() => {
     if (optionsLoadState !== "ready" || versionManuallyChanged) {
@@ -232,8 +243,10 @@ export function EditBugDialog({
   function handleOpenChange(next: boolean) {
     if (!next) {
       setErrorKey(null);
+      setErrorDetails([]);
       setTitleError(false);
       setOptionsLoadState("idle");
+      setOptionsErrorDetails([]);
       setOptionsReloadKey(0);
       setSubmitting(false);
       setPendingCascadeConfirm(null);
@@ -244,6 +257,7 @@ export function EditBugDialog({
 
   function retryOptionsLoad() {
     setOptionsLoadState("loading");
+    setOptionsErrorDetails([]);
     setOptionsReloadKey((value) => value + 1);
   }
 
@@ -300,6 +314,7 @@ export function EditBugDialog({
 
     setSubmitting(true);
     setErrorKey(null);
+    setErrorDetails([]);
 
     const request = toUpdateBugRequest({
       title: trimmedTitle,
@@ -341,6 +356,11 @@ export function EditBugDialog({
         return;
       }
       setErrorKey(getApiErrorMessageKey(error));
+      setErrorDetails(
+        getApiErrorDetailLines(error, {
+          requestIdLabel,
+        }),
+      );
     } finally {
       setSubmitting(false);
     }
@@ -353,6 +373,7 @@ export function EditBugDialog({
 
     setSubmitting(true);
     setErrorKey(null);
+    setErrorDetails([]);
 
     try {
       const updated = await updateBug(
@@ -368,6 +389,11 @@ export function EditBugDialog({
     } catch (error) {
       setPendingCascadeConfirm(null);
       setErrorKey(getApiErrorMessageKey(error));
+      setErrorDetails(
+        getApiErrorDetailLines(error, {
+          requestIdLabel,
+        }),
+      );
     } finally {
       setSubmitting(false);
     }
@@ -395,7 +421,15 @@ export function EditBugDialog({
                 role="alert"
                 className="rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-xs text-destructive"
               >
-                {tRoot(errorKey)}
+                <p>{tRoot(errorKey)}</p>
+                {errorDetails.map((detail) => (
+                  <p
+                    key={detail}
+                    className="mt-1 break-words text-[11px] text-destructive/90"
+                  >
+                    {detail}
+                  </p>
+                ))}
               </div>
             )}
 
@@ -479,6 +513,7 @@ export function EditBugDialog({
 
             <OptionsLoadNotice
               status={optionsLoadState}
+              errorDetails={optionsErrorDetails}
               onRetry={retryOptionsLoad}
               t={tRoot}
               errorTestId="edit-bug-options-error"
@@ -715,12 +750,14 @@ export function EditBugDialog({
 }
 
 function OptionsLoadNotice({
+  errorDetails,
   errorTestId,
   onRetry,
   retryTestId,
   status,
   t,
 }: {
+  errorDetails: string[];
   errorTestId: string;
   onRetry: () => void;
   retryTestId: string;
@@ -748,7 +785,17 @@ function OptionsLoadNotice({
       data-testid={errorTestId}
       className="col-span-2 flex items-center justify-between gap-3 rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-xs text-destructive"
     >
-      <span>{t("common.states.optionsLoadFailed")}</span>
+      <div className="min-w-0">
+        <p>{t("common.states.optionsLoadFailed")}</p>
+        {errorDetails.map((detail) => (
+          <p
+            key={detail}
+            className="mt-1 break-words text-[11px] text-destructive/90"
+          >
+            {detail}
+          </p>
+        ))}
+      </div>
       <Button
         type="button"
         variant="outline"

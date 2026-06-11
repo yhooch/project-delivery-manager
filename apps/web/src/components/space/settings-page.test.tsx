@@ -104,12 +104,26 @@ vi.mock("../../lib/tag-service", () => ({
 
 const { FakeApiClientError } = vi.hoisted(() => {
   class FakeApiClientError extends Error {
-    readonly error: { code: string; message: string };
+    readonly error: {
+      code: string;
+      details?: unknown;
+      message: string;
+      requestId: string;
+    };
     readonly status: number;
-    constructor(code: string, status: number) {
+    constructor(
+      code: string,
+      status: number,
+      options: { details?: unknown; message?: string; requestId?: string } = {},
+    ) {
       super(code);
       this.name = "ApiClientError";
-      this.error = { code, message: code };
+      this.error = {
+        code,
+        details: options.details,
+        message: options.message ?? code,
+        requestId: options.requestId ?? "",
+      };
       this.status = status;
     }
   }
@@ -522,7 +536,11 @@ describe("SpaceSettingsPage", () => {
     getSpaceMock.mockResolvedValueOnce(makeSpace());
     listSpaceMembersMock.mockResolvedValueOnce({ items: [], total: 0 });
     updateSpaceMock.mockRejectedValueOnce(
-      new FakeApiClientError("CONFLICT", 409),
+      new FakeApiClientError("CONFLICT", 409, {
+        details: { field: "code", reason: "Space code already exists." },
+        message: "The space code is already in use.",
+        requestId: "REQ_SPACE_CONFLICT",
+      }),
     );
 
     render(<SpaceSettingsPage />);
@@ -534,6 +552,14 @@ describe("SpaceSettingsPage", () => {
     expect(
       await screen.findByTestId("space-settings-code-error"),
     ).toHaveTextContent("spaceSettings.basic.codeConflict");
+    const alert = await screen.findByRole("alert");
+    expect(alert).toHaveTextContent("errors.api.CONFLICT");
+    expect(alert).toHaveTextContent("The space code is already in use.");
+    expect(alert).toHaveTextContent("reason: Space code already exists.");
+    expect(alert).toHaveTextContent("field: code");
+    expect(alert).toHaveTextContent(
+      "errors.apiDetails.requestId: REQ_SPACE_CONFLICT",
+    );
   });
 
   it("maps local basic form validation to a field-level message", async () => {
@@ -1042,9 +1068,8 @@ describe("SpaceSettingsPage", () => {
       }),
     );
 
-    expect(
-      await screen.findByText("errors.api.TAG_IN_USE"),
-    ).toBeInTheDocument();
+    const alert = await screen.findByRole("alert");
+    expect(alert).toHaveTextContent("errors.api.TAG_IN_USE");
     await waitFor(() => expect(listTagsMock).toHaveBeenCalledTimes(2));
   });
 

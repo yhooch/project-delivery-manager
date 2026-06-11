@@ -628,6 +628,9 @@
       "MCP_CONSENT_REQUIRED": "需要先授权该 MCP 客户端。",
       "MCP_CONSENT_REVOKED": "该 MCP 客户端授权已撤销。",
       "UNKNOWN": "操作失败，请稍后重试。"
+    },
+    "apiDetails": {
+      "requestId": "请求 ID"
     }
   },
   "mcp": {

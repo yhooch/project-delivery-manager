@@ -26,7 +26,6 @@ import type { ObjectCodeLookupResult, TagDto } from "@project-delivery/shared";
 import { useTranslations } from "next-intl";
 import { useEffect, useMemo, useState } from "react";
 
-import { getApiErrorMessageKey } from "../../lib/api-error-messages";
 import { ApiClientError } from "../../lib/api-client";
 import { listBugs } from "../../lib/bug-service";
 import { listDocuments } from "../../lib/document-service";
@@ -66,6 +65,12 @@ import { useSession } from "../providers/session-provider";
 import { useTheme } from "../providers/theme-provider";
 import { usePathname, useRouter } from "../../i18n/routing";
 import { TagBadge, formatTagDisplayName, normalizeTagInput } from "../tag";
+import {
+  formatApiErrorDisplayMessage,
+  getApiErrorDisplay,
+  getApiErrorDetailLines,
+  type ApiErrorDisplayState,
+} from "./api-error-display";
 import {
   buildLiveKey,
   createRecentStorageKey,
@@ -185,6 +190,10 @@ type SearchResult = RecentEntry & {
   spaceLabel?: string;
 };
 type TagSearchResult = TagDto;
+type LookupErrorState = {
+  detailLines: string[];
+  messageKey: string;
+};
 
 const typeIcon: Record<SearchResult["type"], typeof CheckCircle2> = {
   TASK: CheckCircle2,
@@ -272,6 +281,7 @@ export function CommandPalette({ enabled = true }: CommandPaletteProps) {
   const t = useTranslations("shell.command");
   const tTags = useTranslations("tags.commandPalette");
   const tRoot = useTranslations();
+  const requestIdLabel = tRoot("errors.apiDetails.requestId");
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<SearchResult[]>([]);
@@ -280,14 +290,17 @@ export function CommandPalette({ enabled = true }: CommandPaletteProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [isTagLoading, setIsTagLoading] = useState(false);
   const [isLookupLoading, setIsLookupLoading] = useState(false);
-  const [tagSearchFailed, setTagSearchFailed] = useState(false);
-  const [lookupErrorKey, setLookupErrorKey] = useState<string | null>(null);
+  const [searchError, setSearchError] = useState<ApiErrorDisplayState | null>(
+    null,
+  );
+  const [tagSearchError, setTagSearchError] =
+    useState<ApiErrorDisplayState | null>(null);
+  const [lookupError, setLookupError] = useState<LookupErrorState | null>(null);
   const [hasFetched, setHasFetched] = useState(false);
   const [canPruneRecent, setCanPruneRecent] = useState(false);
   const [recent, setRecent] = useState<SearchResult[]>([]);
-  const [switchSpaceErrorKey, setSwitchSpaceErrorKey] = useState<string | null>(
-    null,
-  );
+  const [switchSpaceError, setSwitchSpaceError] =
+    useState<ApiErrorDisplayState | null>(null);
   const router = useRouter();
   const pathname = usePathname();
   const { setTheme } = useTheme();
@@ -377,10 +390,12 @@ export function CommandPalette({ enabled = true }: CommandPaletteProps) {
     if (!open) {
       setQuery("");
       setLookupResult(null);
-      setLookupErrorKey(null);
+      setLookupError(null);
       setIsLookupLoading(false);
+      setSearchError(null);
+      setTagSearchError(null);
     } else {
-      setSwitchSpaceErrorKey(null);
+      setSwitchSpaceError(null);
       setRecent(readRecent(recentScope).map(withDetailHref));
     }
   }, [enabled, open, recentScope]);
@@ -416,6 +431,7 @@ export function CommandPalette({ enabled = true }: CommandPaletteProps) {
     setHasFetched(false);
     setCanPruneRecent(false);
     setResults([]);
+    setSearchError(null);
 
     void (async () => {
       try {
@@ -462,6 +478,7 @@ export function CommandPalette({ enabled = true }: CommandPaletteProps) {
         if (cancelled) return;
 
         const merged: SearchResult[] = [];
+        const failures: unknown[] = [];
         let canPrune = !listSearchQuery;
         if (tasks.status === "fulfilled") {
           canPrune = canPrune && tasks.value.items.length >= tasks.value.total;
@@ -487,6 +504,7 @@ export function CommandPalette({ enabled = true }: CommandPaletteProps) {
           }
         } else {
           canPrune = false;
+          failures.push(tasks.reason);
         }
         if (bugs.status === "fulfilled") {
           canPrune = canPrune && bugs.value.items.length >= bugs.value.total;
@@ -513,6 +531,7 @@ export function CommandPalette({ enabled = true }: CommandPaletteProps) {
           }
         } else {
           canPrune = false;
+          failures.push(bugs.reason);
         }
         if (requirements.status === "fulfilled") {
           canPrune =
@@ -539,6 +558,7 @@ export function CommandPalette({ enabled = true }: CommandPaletteProps) {
           }
         } else {
           canPrune = false;
+          failures.push(requirements.reason);
         }
         if (intake.status === "fulfilled") {
           canPrune =
@@ -562,6 +582,7 @@ export function CommandPalette({ enabled = true }: CommandPaletteProps) {
           }
         } else {
           canPrune = false;
+          failures.push(intake.reason);
         }
         if (documents.status === "fulfilled") {
           canPrune =
@@ -585,9 +606,21 @@ export function CommandPalette({ enabled = true }: CommandPaletteProps) {
           }
         } else {
           canPrune = false;
+          failures.push(documents.reason);
         }
 
         setResults(merged);
+        if (failures.length > 0) {
+          const firstFailure = getApiErrorDisplay(failures[0], requestIdLabel);
+          setSearchError({
+            ...firstFailure,
+            detailLines: failures.flatMap((failure) =>
+              getApiErrorDetailLines(failure, requestIdLabel),
+            ),
+          });
+        } else {
+          setSearchError(null);
+        }
         setCanPruneRecent(canPrune);
         setHasFetched(true);
       } finally {
@@ -598,19 +631,27 @@ export function CommandPalette({ enabled = true }: CommandPaletteProps) {
     return () => {
       cancelled = true;
     };
-  }, [enabled, listSearchQuery, open, spaceId, organizationId, t]);
+  }, [
+    enabled,
+    listSearchQuery,
+    open,
+    organizationId,
+    requestIdLabel,
+    spaceId,
+    t,
+  ]);
 
   useEffect(() => {
     if (!canSearchTags || !effectiveSpaceId) {
       setTagResults([]);
       setIsTagLoading(false);
-      setTagSearchFailed(false);
+      setTagSearchError(null);
       return;
     }
 
     let cancelled = false;
     setIsTagLoading(true);
-    setTagSearchFailed(false);
+    setTagSearchError(null);
 
     void listTags({
       includeUsage: true,
@@ -625,10 +666,10 @@ export function CommandPalette({ enabled = true }: CommandPaletteProps) {
           setTagResults(response.items);
         }
       })
-      .catch(() => {
+      .catch((error) => {
         if (!cancelled) {
           setTagResults([]);
-          setTagSearchFailed(true);
+          setTagSearchError(getApiErrorDisplay(error, requestIdLabel));
         }
       })
       .finally(() => {
@@ -640,40 +681,49 @@ export function CommandPalette({ enabled = true }: CommandPaletteProps) {
     return () => {
       cancelled = true;
     };
-  }, [canSearchTags, effectiveSpaceId, organizationId, tagSearchTerm]);
+  }, [
+    canSearchTags,
+    effectiveSpaceId,
+    organizationId,
+    requestIdLabel,
+    tagSearchTerm,
+  ]);
 
   useEffect(() => {
     if (!enabled || !open || isTagQuery || trimmedQuery.length < 2) {
       setLookupResult(null);
-      setLookupErrorKey(null);
+      setLookupError(null);
       setIsLookupLoading(false);
       return;
     }
 
     if (!isObjectCodeLikeQuery) {
       setLookupResult(null);
-      setLookupErrorKey(null);
+      setLookupError(null);
       setIsLookupLoading(false);
       return;
     }
 
     if (!normalizedObjectCodeQuery) {
       setLookupResult(null);
-      setLookupErrorKey("lookup.invalid");
+      setLookupError({ detailLines: [], messageKey: "lookup.invalid" });
       setIsLookupLoading(false);
       return;
     }
 
     if (!organizationId) {
       setLookupResult(null);
-      setLookupErrorKey("lookup.missingOrganization");
+      setLookupError({
+        detailLines: [],
+        messageKey: "lookup.missingOrganization",
+      });
       setIsLookupLoading(false);
       return;
     }
 
     let cancelled = false;
     setIsLookupLoading(true);
-    setLookupErrorKey(null);
+    setLookupError(null);
 
     void lookupObjectCode({
       code: normalizedObjectCodeQuery,
@@ -694,7 +744,7 @@ export function CommandPalette({ enabled = true }: CommandPaletteProps) {
       .catch((error) => {
         if (!cancelled) {
           setLookupResult(null);
-          setLookupErrorKey(getObjectCodeLookupErrorKey(error));
+          setLookupError(getObjectCodeLookupError(error, requestIdLabel));
         }
       })
       .finally(() => {
@@ -715,6 +765,7 @@ export function CommandPalette({ enabled = true }: CommandPaletteProps) {
     normalizedObjectCodeQuery,
     open,
     organizationId,
+    requestIdLabel,
     spacesForCurrentOrganization,
     trimmedQuery.length,
   ]);
@@ -726,7 +777,9 @@ export function CommandPalette({ enabled = true }: CommandPaletteProps) {
     setResults([]);
     setRecent([]);
     setLookupResult(null);
-    setLookupErrorKey(null);
+    setLookupError(null);
+    setSearchError(null);
+    setTagSearchError(null);
     setIsLookupLoading(false);
   }, [enabled, organizationId, spaceId]);
 
@@ -761,12 +814,12 @@ export function CommandPalette({ enabled = true }: CommandPaletteProps) {
   };
 
   const selectSpace = async (spaceId: string) => {
-    setSwitchSpaceErrorKey(null);
+    setSwitchSpaceError(null);
     try {
       await switchSpace(spaceId);
       setOpen(false);
     } catch (error) {
-      setSwitchSpaceErrorKey(getApiErrorMessageKey(error));
+      setSwitchSpaceError(getApiErrorDisplay(error, requestIdLabel));
     }
   };
 
@@ -845,21 +898,40 @@ export function CommandPalette({ enabled = true }: CommandPaletteProps) {
             ) : (
               <>
                 <CommandEmpty>{t("empty")}</CommandEmpty>
-                {tagSearchFailed ? (
+                {searchError ? (
                   <div
                     role="alert"
-                    className="mx-2 mb-1 rounded-md border border-destructive/40 bg-destructive/10 px-2.5 py-1.5 text-xs text-destructive"
+                    data-testid="command-palette-search-error"
+                    className="mx-2 mb-1 whitespace-pre-wrap rounded-md border border-destructive/40 bg-destructive/10 px-2.5 py-1.5 text-xs text-destructive"
                   >
-                    {tTags("error")}
+                    {formatApiErrorDisplayMessage(
+                      tRoot(searchError.messageKey),
+                      searchError.detailLines,
+                    )}
                   </div>
                 ) : null}
-                {lookupErrorKey ? (
+                {tagSearchError ? (
+                  <div
+                    role="alert"
+                    data-testid="command-palette-tag-search-error"
+                    className="mx-2 mb-1 whitespace-pre-wrap rounded-md border border-destructive/40 bg-destructive/10 px-2.5 py-1.5 text-xs text-destructive"
+                  >
+                    {formatApiErrorDisplayMessage(
+                      tTags("error"),
+                      tagSearchError.detailLines,
+                    )}
+                  </div>
+                ) : null}
+                {lookupError ? (
                   <div
                     role="alert"
                     data-testid="command-palette-lookup-error"
-                    className="mx-2 mb-1 rounded-md border border-destructive/40 bg-destructive/10 px-2.5 py-1.5 text-xs text-destructive"
+                    className="mx-2 mb-1 whitespace-pre-wrap rounded-md border border-destructive/40 bg-destructive/10 px-2.5 py-1.5 text-xs text-destructive"
                   >
-                    {t(lookupErrorKey)}
+                    {formatApiErrorDisplayMessage(
+                      t(lookupError.messageKey),
+                      lookupError.detailLines,
+                    )}
                   </div>
                 ) : null}
                 {showTagResults && (
@@ -1022,13 +1094,16 @@ export function CommandPalette({ enabled = true }: CommandPaletteProps) {
               <>
                 <CommandSeparator />
                 <CommandGroup heading={t("switchSpace")}>
-                  {switchSpaceErrorKey ? (
+                  {switchSpaceError ? (
                     <div
                       role="alert"
                       data-testid="command-palette-switch-space-error"
-                      className="mx-2 mb-1 rounded-md border border-destructive/40 bg-destructive/10 px-2.5 py-1.5 text-xs text-destructive"
+                      className="mx-2 mb-1 whitespace-pre-wrap rounded-md border border-destructive/40 bg-destructive/10 px-2.5 py-1.5 text-xs text-destructive"
                     >
-                      {tRoot(switchSpaceErrorKey)}
+                      {formatApiErrorDisplayMessage(
+                        tRoot(switchSpaceError.messageKey),
+                        switchSpaceError.detailLines,
+                      )}
                     </div>
                   ) : null}
                   {spacesForCurrentOrganization.map((space) => (
@@ -1234,6 +1309,16 @@ function getObjectCodeLookupErrorKey(error: unknown): string {
   }
 
   return "lookup.failed";
+}
+
+function getObjectCodeLookupError(
+  error: unknown,
+  requestIdLabel: string,
+): LookupErrorState {
+  return {
+    detailLines: getApiErrorDetailLines(error, requestIdLabel),
+    messageKey: getObjectCodeLookupErrorKey(error),
+  };
 }
 
 function buildTagFilterHref(tagId: string, pathname: string) {

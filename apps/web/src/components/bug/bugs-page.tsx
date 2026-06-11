@@ -94,6 +94,7 @@ import { PageHeader } from "../v2/page-header";
 import { ListItemMetaRow } from "../v2/list-item-meta-row";
 
 import { TaskDetailSheet } from "../work-item/task-detail-sheet";
+import { getApiErrorDetailLines } from "../work-item/api-error-details";
 import { normalizeWorkItemDetailPanel } from "../work-item/work-item-detail-panel";
 import { formatTagDisplayName, TagFilter } from "../tag";
 
@@ -169,6 +170,9 @@ export function BugsPage() {
   const tFilters = useTranslations("bugs.filters");
   const tTags = useTranslations("tags.field");
   const tApiError = useTranslations();
+  const apiRequestIdLabel = tApiError("errors.apiDetails.requestId");
+  const optionsLoadFailedMessage = tApiError("common.states.optionsLoadFailed");
+  const pageErrorTitle = t("states.error.title");
   const locale = useLocale();
   const searchParams = useSearchParams();
   const router = useRouter();
@@ -210,6 +214,9 @@ export function BugsPage() {
   const [loading, setLoading] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [auxiliaryErrorMessage, setAuxiliaryErrorMessage] = useState<
+    string | null
+  >(null);
   const [activeItem, setActiveItem] = useState<WorkItemViewModel | null>(null);
   const [sheetOpen, setSheetOpen] = useState(false);
   const [actionFocusRequest, setActionFocusRequest] = useState(0);
@@ -543,6 +550,7 @@ export function BugsPage() {
         setItems((current) =>
           append ? [...current, ...result.items] : result.items,
         );
+        setAuxiliaryErrorMessage(null);
         setPageInfo({
           page: realtimeRefresh ? pageInfoRef.current.page : (result.page ?? page),
           pageSize: result.pageSize ?? pageSize,
@@ -556,7 +564,14 @@ export function BugsPage() {
         ) {
           if (shouldSurfaceRefreshError(refreshMode) && !keepCurrentItems) {
             const key = getApiErrorMessageKey(error);
-            setErrorMessage(tApiError(key));
+            setErrorMessage(
+              formatApiErrorMessage(
+                tApiError(key),
+                getApiErrorDetailLines(error, {
+                  requestIdLabel: apiRequestIdLabel,
+                }),
+              ),
+            );
           }
         }
       } finally {
@@ -574,6 +589,7 @@ export function BugsPage() {
       }
     },
     [
+      apiRequestIdLabel,
       effectiveFilters,
       effectiveTagFilter,
       listScopeKey,
@@ -615,6 +631,7 @@ export function BugsPage() {
     setFilterOpen(false);
     setRequirements([]);
     setRelatedTasks([]);
+    setAuxiliaryErrorMessage(null);
     setDetailRevision((revision) => revision + 1);
     setHandledDeepLinkKey(null);
   }, [contextKey]);
@@ -630,6 +647,7 @@ export function BugsPage() {
     }
 
     let cancelled = false;
+    setAuxiliaryErrorMessage(null);
 
     void Promise.all([
       listRequirements({ organizationId, page: 1, pageSize: 100, spaceId }),
@@ -647,17 +665,32 @@ export function BugsPage() {
           setRelatedTasks(taskPage.items);
         }
       })
-      .catch(() => {
+      .catch((error) => {
         if (!cancelled) {
           setRequirements([]);
           setRelatedTasks([]);
+          setAuxiliaryErrorMessage(
+            formatApiErrorMessage(
+              optionsLoadFailedMessage,
+              getApiErrorDetailLines(error, {
+                requestIdLabel: apiRequestIdLabel,
+              }),
+            ),
+          );
         }
       });
 
     return () => {
       cancelled = true;
     };
-  }, [activeDimension, filterOpen, organizationId, spaceId]);
+  }, [
+    activeDimension,
+    apiRequestIdLabel,
+    filterOpen,
+    optionsLoadFailedMessage,
+    organizationId,
+    spaceId,
+  ]);
 
   useEffect(() => {
     if (!filterOpen) {
@@ -763,6 +796,7 @@ export function BugsPage() {
         { organizationId: itemOrganizationId, spaceId: itemSpaceId },
       );
       setActiveItem(bug);
+      setAuxiliaryErrorMessage(null);
       setActionFocusRequest((current) =>
         options.focusActions ? current + 1 : 0,
       );
@@ -949,8 +983,16 @@ export function BugsPage() {
           setHandledDeepLinkKey(key);
         }
       })
-      .catch(() => {
+      .catch((error) => {
         if (!cancelled) {
+          setAuxiliaryErrorMessage(
+            formatApiErrorMessage(
+              pageErrorTitle,
+              getApiErrorDetailLines(error, {
+                requestIdLabel: apiRequestIdLabel,
+              }),
+            ),
+          );
           setHandledDeepLinkKey(key);
         }
       });
@@ -973,6 +1015,8 @@ export function BugsPage() {
     requestedDetailPanel,
     requestedTimelineEventId,
     spaceId,
+    apiRequestIdLabel,
+    pageErrorTitle,
     tApiError,
     tStatus,
     bugViewModels,
@@ -1342,6 +1386,10 @@ export function BugsPage() {
             </div>
           ) : null}
         </FilterPanel>
+      )}
+
+      {auxiliaryErrorMessage && (
+        <AuxiliaryErrorNotice message={auxiliaryErrorMessage} />
       )}
 
       <div className="min-w-0 flex-1 overflow-y-auto">
@@ -2064,6 +2112,21 @@ function getAllStatusCategoryCount(
   }
 
   return counts.reduce((sum, entry) => sum + entry.count, 0);
+}
+
+function AuxiliaryErrorNotice({ message }: { message: string }) {
+  return (
+    <div
+      role="alert"
+      className="border-b border-destructive/20 bg-destructive/10 px-4 py-2 text-xs text-destructive sm:px-6"
+    >
+      {message}
+    </div>
+  );
+}
+
+function formatApiErrorMessage(message: string, details: string[]): string {
+  return [message, ...details].join(" ");
 }
 
 function createBugListScopeKey({

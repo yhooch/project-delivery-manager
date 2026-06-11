@@ -24,6 +24,11 @@ import {
 import { Input } from "../ui/input";
 import { Label } from "../ui/label";
 
+import {
+  formatApiErrorDisplayMessage,
+  getApiErrorDetailLines,
+} from "./api-error-display";
+
 type Props = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -36,6 +41,10 @@ type FieldErrorKey =
   | "required";
 
 type FormErrorKey = "invalidCredentials" | "generic";
+type FormErrorState = {
+  detailLines: string[];
+  key: FormErrorKey;
+};
 
 const DEFAULT_VALUES: ChangePasswordFormValues = {
   oldPassword: "",
@@ -55,7 +64,8 @@ function toFieldErrorKey(message: string | undefined): FieldErrorKey | null {
 
 export function ChangePasswordDialog({ open, onOpenChange }: Props) {
   const t = useTranslations("shell.changePassword");
-  const [errorKey, setErrorKey] = useState<FormErrorKey | null>(null);
+  const tRoot = useTranslations();
+  const [error, setError] = useState<FormErrorState | null>(null);
   const [success, setSuccess] = useState(false);
 
   const {
@@ -71,13 +81,13 @@ export function ChangePasswordDialog({ open, onOpenChange }: Props) {
   useEffect(() => {
     if (!open) {
       reset(DEFAULT_VALUES);
-      setErrorKey(null);
+      setError(null);
       setSuccess(false);
     }
   }, [open, reset]);
 
   async function onSubmit(values: ChangePasswordFormValues) {
-    setErrorKey(null);
+    setError(null);
     setSuccess(false);
     try {
       await changePassword(values);
@@ -88,9 +98,21 @@ export function ChangePasswordDialog({ open, onOpenChange }: Props) {
         error instanceof ApiClientError &&
         error.error.code === "INVALID_CREDENTIALS"
       ) {
-        setErrorKey("invalidCredentials");
+        setError({
+          detailLines: getApiErrorDetailLines(
+            error,
+            tRoot("errors.apiDetails.requestId"),
+          ),
+          key: "invalidCredentials",
+        });
       } else {
-        setErrorKey("generic");
+        setError({
+          detailLines: getApiErrorDetailLines(
+            error,
+            tRoot("errors.apiDetails.requestId"),
+          ),
+          key: "generic",
+        });
       }
     }
   }
@@ -112,13 +134,16 @@ export function ChangePasswordDialog({ open, onOpenChange }: Props) {
           onSubmit={handleSubmit(onSubmit)}
           className="flex flex-col gap-3"
         >
-          {errorKey && (
+          {error && (
             <div
               role="alert"
               data-testid="change-password-error"
-              className="rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-xs text-destructive"
+              className="whitespace-pre-wrap rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-xs text-destructive"
             >
-              {t(`errors.${errorKey}`)}
+              {formatApiErrorDisplayMessage(
+                t(`errors.${error.key}`),
+                error.detailLines,
+              )}
             </div>
           )}
 

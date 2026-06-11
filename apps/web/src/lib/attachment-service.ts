@@ -18,6 +18,10 @@ import {
   apiClient,
   type ApiRequestInit,
 } from "./api-client";
+import {
+  getApiErrorMessageDetails,
+  type ApiErrorMessageDetails,
+} from "./api-error-messages";
 
 export type AttachmentApiTransport = {
   get<TData>(path: string, init?: ApiRequestInit): Promise<{ data: TData }>;
@@ -41,14 +45,37 @@ export type AttachmentUploadErrorCode =
 export class AttachmentUploadError extends Error {
   readonly code: AttachmentUploadErrorCode;
   readonly retryable: boolean;
+  readonly sourceError?: unknown;
 
-  constructor(code: AttachmentUploadErrorCode, retryable = false) {
-    super(code);
+  constructor(
+    code: AttachmentUploadErrorCode,
+    retryableOrOptions: boolean | AttachmentUploadErrorOptions = false,
+    sourceError?: unknown,
+  ) {
+    const options =
+      typeof retryableOrOptions === "boolean"
+        ? { retryable: retryableOrOptions, sourceError }
+        : retryableOrOptions;
+
+    super(
+      code,
+      options.sourceError === undefined
+        ? undefined
+        : { cause: options.sourceError },
+    );
     this.name = "AttachmentUploadError";
     this.code = code;
-    this.retryable = retryable;
+    this.retryable = options.retryable ?? false;
+    if (options.sourceError !== undefined) {
+      this.sourceError = options.sourceError;
+    }
   }
 }
+
+export type AttachmentUploadErrorOptions = {
+  retryable?: boolean;
+  sourceError?: unknown;
+};
 
 export type UploadRequirementImageInput = {
   existingAttachmentCount: number;
@@ -219,6 +246,20 @@ export function createAttachmentUploadFailure(
   });
 }
 
+export function getAttachmentUploadErrorDetails(
+  error: unknown,
+): ApiErrorMessageDetails | undefined {
+  if (!(error instanceof AttachmentUploadError)) {
+    return undefined;
+  }
+
+  const sourceError = error.sourceError ?? error.cause;
+
+  return sourceError instanceof ApiClientError
+    ? getApiErrorMessageDetails(sourceError)
+    : undefined;
+}
+
 function isImageMimeType(mimeType: AttachmentMimeType): boolean {
   return mimeType.startsWith("image/");
 }
@@ -234,21 +275,41 @@ function mapAttachmentUploadError(error: unknown): AttachmentUploadError {
 
   if (error instanceof ApiClientError) {
     if (
+      error.error.code === "ATTACHMENT_LIMIT_EXCEEDED" ||
+      error.error.code === "FILE_TOO_LARGE" ||
+      error.error.code === "UNSUPPORTED_MIME_TYPE"
+    ) {
+      return new AttachmentUploadError(error.error.code, {
+        sourceError: error,
+      });
+    }
+    if (
       error.error.code === "FORBIDDEN" ||
       error.error.code === "SPACE_ACCESS_DENIED"
     ) {
-      return new AttachmentUploadError("ACCESS_DENIED");
+      return new AttachmentUploadError("ACCESS_DENIED", {
+        sourceError: error,
+      });
     }
     if (error.error.code === "DRAFT_REQUIREMENT_REQUIRED") {
-      return new AttachmentUploadError("DRAFT_REQUIRED");
+      return new AttachmentUploadError("DRAFT_REQUIRED", {
+        sourceError: error,
+      });
     }
     if (error.error.code === "ATTACHMENT_TARGET_NOT_FOUND") {
-      return new AttachmentUploadError("TARGET_NOT_FOUND");
+      return new AttachmentUploadError("TARGET_NOT_FOUND", {
+        sourceError: error,
+      });
     }
     if (error.error.code === "VALIDATION_ERROR") {
-      return new AttachmentUploadError("VALIDATION_FAILED");
+      return new AttachmentUploadError("VALIDATION_FAILED", {
+        sourceError: error,
+      });
     }
   }
 
-  return new AttachmentUploadError("UPLOAD_FAILED", true);
+  return new AttachmentUploadError("UPLOAD_FAILED", {
+    retryable: true,
+    sourceError: error,
+  });
 }

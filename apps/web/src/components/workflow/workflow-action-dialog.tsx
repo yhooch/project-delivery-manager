@@ -9,7 +9,6 @@ import type {
 import { useTranslations } from "next-intl";
 import { useEffect, useState, type FormEvent } from "react";
 
-import { getApiErrorMessageKey } from "../../lib/api-error-messages";
 import { translateWorkflowStateName } from "../../lib/workflow-display";
 import {
   createWorkflowAction,
@@ -29,6 +28,7 @@ import {
 import { Input } from "../ui/input";
 import { Label } from "../ui/label";
 import { SelectMenu } from "../ui/select-menu";
+import { getApiErrorDisplay } from "../shell/api-error-display";
 
 const SPACE_ROLE_OPTIONS = [
   "SPACE_ADMIN",
@@ -97,12 +97,14 @@ export function WorkflowActionDialog({
   );
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorKey, setErrorKey] = useState<string | null>(null);
+  const [errorDetails, setErrorDetails] = useState<string[]>([]);
 
   useEffect(() => {
     if (!open) {
       return;
     }
     setErrorKey(null);
+    setErrorDetails([]);
     setIsSubmitting(false);
     if (mode.kind === "edit") {
       setName(mode.action.name);
@@ -142,6 +144,7 @@ export function WorkflowActionDialog({
     event.preventDefault();
     setIsSubmitting(true);
     setErrorKey(null);
+    setErrorDetails([]);
     try {
       const trimmedName = name.trim();
       const trimmedCode = code.trim();
@@ -189,7 +192,12 @@ export function WorkflowActionDialog({
       }
       onSuccess();
     } catch (error) {
-      setErrorKey(getApiErrorMessageKey(error));
+      const display = getApiErrorDisplay(
+        error,
+        tRoot("errors.apiDetails.requestId"),
+      );
+      setErrorKey(display.messageKey);
+      setErrorDetails(display.detailLines);
     } finally {
       setIsSubmitting(false);
     }
@@ -362,10 +370,13 @@ export function WorkflowActionDialog({
 
           {errorKey ? (
             <div
-              className="rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-xs text-destructive"
+              className="grid gap-1 rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-xs text-destructive"
               role="alert"
             >
-              {tRoot(errorKey)}
+              <p>{tRoot(errorKey)}</p>
+              {errorDetails.map((detail) => (
+                <p key={detail}>{detail}</p>
+              ))}
             </div>
           ) : null}
 

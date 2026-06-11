@@ -34,6 +34,7 @@ vi.mock("../../lib/mcp-service", () => ({
 }));
 
 import { PersonalSettingsPage } from "./personal-settings-page";
+import { ApiClientError } from "../../lib/api-client";
 
 const clientId = "https://mcp-client.example.com/metadata.json";
 const resourceUrl = "https://pdm.example.com/api/v1/mcp";
@@ -98,6 +99,31 @@ describe("PersonalSettingsPage", () => {
       screen.queryByText("https://pdm.example.com"),
     ).not.toBeInTheDocument();
     expect(getMcpProtectedResourceMetadataMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("shows backend details when protected resource metadata fails to load", async () => {
+    listAuthorizedMcpClientsMock.mockResolvedValueOnce([]);
+    getMcpProtectedResourceMetadataMock.mockRejectedValueOnce(
+      new ApiClientError(
+        {
+          code: "FORBIDDEN",
+          details: { reason: "Metadata access denied." },
+          message: "Cannot load metadata.",
+          requestId: "REQ_MCP_METADATA",
+        },
+        new Response(null, { status: 403 }),
+      ),
+    );
+
+    render(<PersonalSettingsPage />);
+
+    const status = await screen.findByRole("status");
+    expect(status).toHaveTextContent("errors.api.FORBIDDEN");
+    expect(status).toHaveTextContent("Cannot load metadata.");
+    expect(status).toHaveTextContent("reason: Metadata access denied.");
+    expect(status).toHaveTextContent(
+      "errors.apiDetails.requestId: REQ_MCP_METADATA",
+    );
   });
 
   it("renders authorized MCP client details", async () => {

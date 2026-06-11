@@ -36,7 +36,6 @@ import {
 } from "react";
 
 import { usePathname, useRouter } from "../../i18n/routing";
-import { getApiErrorMessageKey } from "../../lib/api-error-messages";
 import type { DocumentFolder } from "../../lib/document-service";
 import {
   createDocumentFolder,
@@ -66,6 +65,11 @@ import {
 import { Input } from "../ui/input";
 import { SelectMenu } from "../ui/select-menu";
 import { Tip } from "../ui/tooltip";
+import {
+  formatApiErrorDisplayMessage,
+  getApiErrorDisplay,
+  type ApiErrorDisplayState,
+} from "../shell/api-error-display";
 import { useDocumentDirectory } from "./document-directory-context";
 import {
   DOCUMENT_DIRECTORY_REFRESH_EVENT,
@@ -129,6 +133,7 @@ export function DocumentDirectoryRail({
 }: DocumentDirectoryRailProps) {
   const t = useTranslations("documents.directory");
   const tRoot = useTranslations();
+  const requestIdLabel = tRoot("errors.apiDetails.requestId");
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -138,7 +143,9 @@ export function DocumentDirectoryRail({
     () => new Set(),
   );
   const [isLoading, setIsLoading] = useState(false);
-  const [errorKey, setErrorKey] = useState<string | null>(null);
+  const [errorDisplay, setErrorDisplay] = useState<ApiErrorDisplayState | null>(
+    null,
+  );
   const [operation, setOperation] = useState<FolderOperation | null>(null);
   const initializedCollapseSpaceIdRef = useRef<string | undefined>(undefined);
 
@@ -204,7 +211,7 @@ export function DocumentDirectoryRail({
       const isRealtime = options?.realtime === true;
       if (!isRealtime) {
         setIsLoading(true);
-        setErrorKey(null);
+        setErrorDisplay(null);
       }
 
       try {
@@ -212,7 +219,7 @@ export function DocumentDirectoryRail({
         setFolders(next);
       } catch (error) {
         if (!isRealtime) {
-          setErrorKey(getApiErrorMessageKey(error));
+          setErrorDisplay(getApiErrorDisplay(error, requestIdLabel));
         }
       } finally {
         if (!isRealtime) {
@@ -220,7 +227,7 @@ export function DocumentDirectoryRail({
         }
       }
     },
-    [organizationId, spaceId],
+    [organizationId, requestIdLabel, spaceId],
   );
 
   useEffect(() => {
@@ -546,13 +553,16 @@ export function DocumentDirectoryRail({
           </div>
         </div>
 
-        {errorKey ? (
-          <p className="mt-3 rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-xs text-destructive">
-            {tRoot(errorKey)}
+        {errorDisplay ? (
+          <p className="mt-3 whitespace-pre-wrap rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-xs text-destructive">
+            {formatApiErrorDisplayMessage(
+              tRoot(errorDisplay.messageKey),
+              errorDisplay.detailLines,
+            )}
           </p>
         ) : null}
 
-        {!isLoading && !errorKey ? (
+        {!isLoading && !errorDisplay ? (
           <div className="mt-2 grid gap-0.5">
             <FolderRootNode
               active={rootFolderActive}
@@ -839,9 +849,7 @@ function FolderTreeNode({
               aria-expanded={!isCollapsed}
               className={cn(
                 "flex h-6 w-6 items-center justify-center rounded transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
-                isActive
-                  ? "hover:bg-primary/10"
-                  : "hover:bg-background",
+                isActive ? "hover:bg-primary/10" : "hover:bg-background",
               )}
               onClick={() => onToggle(folder.id)}
             >
@@ -1080,10 +1088,13 @@ function DocumentFolderOperationDialog({
 }) {
   const t = useTranslations("documents.directory.dialog");
   const tRoot = useTranslations();
+  const requestIdLabel = tRoot("errors.apiDetails.requestId");
   const [name, setName] = useState("");
   const [parentId, setParentId] = useState("");
   const [isSaving, setIsSaving] = useState(false);
-  const [errorKey, setErrorKey] = useState<string | null>(null);
+  const [errorDisplay, setErrorDisplay] = useState<ApiErrorDisplayState | null>(
+    null,
+  );
   const folder =
     operation && "folder" in operation ? operation.folder : undefined;
   const mode = operation?.type;
@@ -1091,7 +1102,7 @@ function DocumentFolderOperationDialog({
   useEffect(() => {
     setName(folder?.name ?? "");
     setParentId(folder?.parentId ?? "");
-    setErrorKey(null);
+    setErrorDisplay(null);
   }, [folder?.id, folder?.name, folder?.parentId, mode]);
 
   if (!operation) {
@@ -1117,7 +1128,7 @@ function DocumentFolderOperationDialog({
     }
 
     setIsSaving(true);
-    setErrorKey(null);
+    setErrorDisplay(null);
     try {
       if (operation.type === "create") {
         await createDocumentFolder({
@@ -1154,7 +1165,7 @@ function DocumentFolderOperationDialog({
         onDone(folder.id);
       }
     } catch (error) {
-      setErrorKey(getApiErrorMessageKey(error));
+      setErrorDisplay(getApiErrorDisplay(error, requestIdLabel));
     } finally {
       setIsSaving(false);
     }
@@ -1204,9 +1215,15 @@ function DocumentFolderOperationDialog({
             </label>
           ) : null}
 
-          {errorKey ? (
-            <p className="text-sm text-destructive" role="alert">
-              {tRoot(errorKey)}
+          {errorDisplay ? (
+            <p
+              className="whitespace-pre-wrap text-sm text-destructive"
+              role="alert"
+            >
+              {formatApiErrorDisplayMessage(
+                tRoot(errorDisplay.messageKey),
+                errorDisplay.detailLines,
+              )}
             </p>
           ) : null}
 

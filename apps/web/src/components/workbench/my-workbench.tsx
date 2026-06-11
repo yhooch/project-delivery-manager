@@ -19,7 +19,6 @@ import {
 import { useLocale, useTranslations } from "next-intl";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
-import { getApiErrorMessageKey } from "../../lib/api-error-messages";
 import { useListKeyboardNav } from "../../lib/hooks/use-list-keyboard-nav";
 import {
   resolveRefreshMode,
@@ -54,6 +53,11 @@ import {
 import { getMyWorkbenchView } from "../../lib/view-service";
 import { Link, useRouter } from "../../i18n/routing";
 import { useSession } from "../providers/session-provider";
+import {
+  formatApiErrorDisplayMessage,
+  getApiErrorDisplay,
+  type ApiErrorDisplayState,
+} from "../shell/api-error-display";
 import { recordRecentOpen } from "../shell/recent-opens";
 
 import { Avatar, AvatarFallback } from "../ui/avatar";
@@ -88,6 +92,7 @@ export function MyWorkbench() {
   const t = useTranslations("workbench");
   const tTimelineEvent = useTranslations("common.timeline.event");
   const tRoot = useTranslations();
+  const requestIdLabel = tRoot("errors.apiDetails.requestId");
   const locale = useLocale();
   const router = useRouter();
   const {
@@ -97,7 +102,11 @@ export function MyWorkbench() {
   } = useSession();
   const [view, setView] = useState<GetMyWorkbenchViewResponse | null>(null);
   const [isLoading, setIsLoading] = useState(false);
-  const [errorKey, setErrorKey] = useState<string | null>(null);
+  const [errorDisplay, setErrorDisplay] = useState<ApiErrorDisplayState | null>(
+    null,
+  );
+  const [lookupErrorDisplay, setLookupErrorDisplay] =
+    useState<ApiErrorDisplayState | null>(null);
   const requestSeq = useRef(0);
   const [activeWorkbenchItemKey, setActiveWorkbenchItemKey] = useState<
     string | undefined
@@ -154,6 +163,7 @@ export function MyWorkbench() {
         membersBySpaceId: new Map(),
         versionsBySpaceId: new Map(),
       });
+      setLookupErrorDisplay(null);
       return;
     }
 
@@ -188,20 +198,22 @@ export function MyWorkbench() {
             entries.map((entry) => [entry.spaceId, entry.versions]),
           ),
         });
+        setLookupErrorDisplay(null);
       })
-      .catch(() => {
+      .catch((error) => {
         if (active) {
           setOrganizationLookups({
             membersBySpaceId: new Map(),
             versionsBySpaceId: new Map(),
           });
+          setLookupErrorDisplay(getApiErrorDisplay(error, requestIdLabel));
         }
       });
 
     return () => {
       active = false;
     };
-  }, [organizationId, selectedSpaceId, workItemSummaries]);
+  }, [organizationId, requestIdLabel, selectedSpaceId, workItemSummaries]);
 
   const lookupHelpers = useMemo<WorkbenchLookupHelpers>(
     () => ({
@@ -334,7 +346,7 @@ export function MyWorkbench() {
         requestSeq.current += 1;
         setView(null);
         setIsLoading(false);
-        setErrorKey(null);
+        setErrorDisplay(null);
         return;
       }
 
@@ -347,7 +359,7 @@ export function MyWorkbench() {
         setIsLoading(true);
       }
       if (shouldSurfaceRefreshError(mode)) {
-        setErrorKey(null);
+        setErrorDisplay(null);
       }
 
       try {
@@ -360,13 +372,13 @@ export function MyWorkbench() {
           return;
         }
         setView(next);
-        setErrorKey(null);
+        setErrorDisplay(null);
       } catch (error) {
         if (requestSeq.current !== requestId) {
           return;
         }
         if (shouldSurfaceRefreshError(mode)) {
-          setErrorKey(getApiErrorMessageKey(error));
+          setErrorDisplay(getApiErrorDisplay(error, requestIdLabel));
         }
       } finally {
         if (requestSeq.current === requestId) {
@@ -374,7 +386,7 @@ export function MyWorkbench() {
         }
       }
     },
-    [filters, organizationId, selectedSpaceId],
+    [filters, organizationId, requestIdLabel, selectedSpaceId],
   );
 
   useEffect(() => {
@@ -661,7 +673,7 @@ export function MyWorkbench() {
     );
   }
 
-  if (errorKey) {
+  if (errorDisplay) {
     return (
       <div
         data-testid="workbench-page"
@@ -669,7 +681,11 @@ export function MyWorkbench() {
       >
         <ErrorState
           title={t("errorTitle")}
-          message={tRoot(errorKey)}
+          message={formatApiErrorDisplayMessage(
+            tRoot(errorDisplay.messageKey),
+            errorDisplay.detailLines,
+            " · ",
+          )}
           onRetry={() => void fetchView({ mode: "manual" })}
         />
       </div>
@@ -738,6 +754,19 @@ export function MyWorkbench() {
           </Button>
         </div>
       </div>
+
+      {lookupErrorDisplay && (
+        <div
+          className="rounded-md bg-warning/10 px-3 py-2 text-xs text-warning"
+          role="alert"
+        >
+          {formatApiErrorDisplayMessage(
+            tRoot("common.states.optionsLoadFailed"),
+            lookupErrorDisplay.detailLines,
+            " · ",
+          )}
+        </div>
+      )}
 
       {/* Summary chips */}
       <div

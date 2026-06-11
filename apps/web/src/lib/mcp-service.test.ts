@@ -207,6 +207,11 @@ describe("mcp service", () => {
     await expect(
       getMcpOAuthAuthorizeContext(authorizeQuery, fetcher),
     ).rejects.toMatchObject({
+      apiError: {
+        code: "BAD_REQUEST",
+        message: "Requested scope is not registered",
+        requestId: "unknown",
+      },
       code: "invalid_scope",
       message: "Requested scope is not registered",
       status: 400,

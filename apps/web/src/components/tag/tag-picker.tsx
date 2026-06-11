@@ -12,6 +12,10 @@ import {
   type ListTagsInput,
 } from "../../lib/tag-service";
 import { cn } from "../../lib/utils";
+import {
+  formatApiErrorDisplayMessage,
+  getApiErrorDetailLines,
+} from "../shell/api-error-display";
 import { Input } from "../ui/input";
 
 import { TagBadge, formatTagDisplayName } from "./tag-badge";
@@ -79,6 +83,10 @@ export function TagPicker({
   "data-testid": testId,
 }: TagPickerProps) {
   const t = useTranslations("tags.picker");
+  const tRoot = useTranslations();
+  const requestIdLabel = tRoot("errors.apiDetails.requestId");
+  const listErrorMessage = t("error");
+  const createErrorMessage = t("createError");
   const rootRef = React.useRef<HTMLDivElement | null>(null);
   const requestIdRef = React.useRef(0);
   const listboxId = React.useId();
@@ -128,10 +136,16 @@ export function TagPicker({
           setItems(result.items);
         }
       })
-      .catch(() => {
+      .catch((error) => {
         if (requestIdRef.current === requestId) {
           setItems([]);
-          setErrorMessage(t("error"));
+          setErrorMessage(
+            formatTagPickerErrorMessage(
+              listErrorMessage,
+              error,
+              requestIdLabel,
+            ),
+          );
         }
       })
       .finally(() => {
@@ -141,12 +155,13 @@ export function TagPicker({
       });
   }, [
     listTagsAction,
+    listErrorMessage,
     organizationId,
     pageSize,
+    requestIdLabel,
     searchTerm,
     showPanel,
     spaceId,
-    t,
   ]);
 
   function handleBlur(event: React.FocusEvent<HTMLDivElement>) {
@@ -180,8 +195,10 @@ export function TagPicker({
       await onSelect(tag);
       setInputValue("");
       setOpen(false);
-    } catch {
-      setErrorMessage(t("createError"));
+    } catch (error) {
+      setErrorMessage(
+        formatTagPickerErrorMessage(createErrorMessage, error, requestIdLabel),
+      );
     } finally {
       setIsCreating(false);
     }
@@ -362,6 +379,18 @@ function TagPickerMessage({ children }: { children: React.ReactNode }) {
     <div className="px-2 py-3 text-center text-sm text-muted-foreground">
       {children}
     </div>
+  );
+}
+
+function formatTagPickerErrorMessage(
+  message: string,
+  error: unknown,
+  requestIdLabel: string,
+): string {
+  return formatApiErrorDisplayMessage(
+    message,
+    getApiErrorDetailLines(error, requestIdLabel),
+    " · ",
   );
 }
 

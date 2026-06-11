@@ -11,11 +11,12 @@ import {
   registerFormSchema,
   type RegisterFormValues,
 } from "../../lib/auth-forms";
-import {
-  getApiErrorMessageKey,
-  type ApiErrorMessageKey,
-} from "../../lib/api-error-messages";
 import { useSession } from "../providers/session-provider";
+import {
+  formatApiErrorDisplayMessage,
+  getApiErrorDisplay,
+  type ApiErrorDisplayState,
+} from "../shell/api-error-display";
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
 import { Label } from "../ui/label";
@@ -26,7 +27,7 @@ export function RegisterForm() {
   const errorT = useTranslations();
   const router = useRouter();
   const { register: registerAccount } = useSession();
-  const [errorKey, setErrorKey] = useState<ApiErrorMessageKey | null>(null);
+  const [error, setError] = useState<ApiErrorDisplayState | null>(null);
   const {
     formState: { errors, isSubmitting },
     handleSubmit,
@@ -37,12 +38,14 @@ export function RegisterForm() {
   });
 
   async function onSubmit(values: RegisterFormValues) {
-    setErrorKey(null);
+    setError(null);
     try {
       await registerAccount(values);
       router.replace("/");
     } catch (error) {
-      setErrorKey(getApiErrorMessageKey(error));
+      setError(
+        getApiErrorDisplay(error, errorT("errors.apiDetails.requestId")),
+      );
     }
   }
 
@@ -61,12 +64,15 @@ export function RegisterForm() {
         onSubmit={handleSubmit(onSubmit)}
         className="flex flex-col gap-3"
       >
-        {errorKey && (
+        {error && (
           <div
             role="alert"
-            className="rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-xs text-destructive"
+            className="whitespace-pre-wrap rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-xs text-destructive"
           >
-            {errorT(errorKey)}
+            {formatApiErrorDisplayMessage(
+              errorT(error.messageKey),
+              error.detailLines,
+            )}
           </div>
         )}
 

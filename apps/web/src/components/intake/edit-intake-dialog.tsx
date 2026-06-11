@@ -47,6 +47,7 @@ import { Textarea } from "../ui/textarea";
 import { SelectMenu } from "../ui/select-menu";
 import { useSession } from "../providers/session-provider";
 import { TagSelectionField } from "../tag";
+import { getApiErrorDetailLines } from "../work-item/api-error-details";
 type EditIntakeDialogProps = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -59,6 +60,7 @@ type EditIntakeDialogProps = {
 const SOURCE_TYPES: IntakeSourceType[] = IntakeSourceTypeSchema.options;
 
 const PRIORITIES: Priority[] = ["LOW", "MEDIUM", "HIGH", "URGENT"];
+type OptionsLoadState = "idle" | "loading" | "ready" | "failed";
 
 export function EditIntakeDialog({
   open,
@@ -73,6 +75,7 @@ export function EditIntakeDialog({
   const tPriority = useTranslations("intakeItems.priority");
   const tTags = useTranslations("tags.field");
   const tRoot = useTranslations();
+  const requestIdLabel = tRoot("errors.apiDetails.requestId");
   const { currentOrganization, session } = useSession();
   const organizationId =
     explicitOrganizationId ??
@@ -91,10 +94,15 @@ export function EditIntakeDialog({
   const [titleError, setTitleError] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [errorKey, setErrorKey] = useState<string | null>(null);
+  const [errorDetails, setErrorDetails] = useState<string[]>([]);
   const [pendingCascadeConfirm, setPendingCascadeConfirm] = useState<{
     request: UpdateIntakeItemRequest;
     message: string;
   } | null>(null);
+  const [optionsLoadState, setOptionsLoadState] =
+    useState<OptionsLoadState>("idle");
+  const [optionsErrorDetails, setOptionsErrorDetails] = useState<string[]>([]);
+  const [optionsReloadKey, setOptionsReloadKey] = useState(0);
 
   const [versions, setVersions] = useState<Version[]>([]);
   const [requirements, setRequirements] = useState<Requirement[]>([]);
@@ -124,6 +132,7 @@ export function EditIntakeDialog({
     setSelectedTags(intakeItem.tags ?? []);
     setTitleError(false);
     setErrorKey(null);
+    setErrorDetails([]);
     setSubmitting(false);
   }, [intakeItem, open]);
 
@@ -133,6 +142,8 @@ export function EditIntakeDialog({
     }
 
     let cancelled = false;
+    setOptionsLoadState("loading");
+    setOptionsErrorDetails([]);
 
     void (async () => {
       try {
@@ -147,15 +158,23 @@ export function EditIntakeDialog({
         setVersions(versionPage.items);
         setRequirements(requirementPage.items);
         setMembers(memberPage.items);
-      } catch {
-        // Option load failures should not block editing the base fields.
+        setOptionsLoadState("ready");
+      } catch (error) {
+        if (!cancelled) {
+          setOptionsLoadState("failed");
+          setOptionsErrorDetails(
+            getApiErrorDetailLines(error, {
+              requestIdLabel,
+            }),
+          );
+        }
       }
     })();
 
     return () => {
       cancelled = true;
     };
-  }, [open, organizationId, spaceId]);
+  }, [open, optionsReloadKey, organizationId, requestIdLabel, spaceId]);
 
   function reset() {
     setTitle("");
@@ -169,8 +188,18 @@ export function EditIntakeDialog({
     setSelectedTags([]);
     setTitleError(false);
     setErrorKey(null);
+    setErrorDetails([]);
+    setOptionsLoadState("idle");
+    setOptionsErrorDetails([]);
+    setOptionsReloadKey(0);
     setSubmitting(false);
     setPendingCascadeConfirm(null);
+  }
+
+  function retryOptionsLoad() {
+    setOptionsLoadState("loading");
+    setOptionsErrorDetails([]);
+    setOptionsReloadKey((value) => value + 1);
   }
 
   function handleOpenChange(next: boolean) {
@@ -238,6 +267,7 @@ export function EditIntakeDialog({
 
     setSubmitting(true);
     setErrorKey(null);
+    setErrorDetails([]);
 
     const request = toUpdateIntakeItemRequest({
       title: trimmed,
@@ -275,6 +305,11 @@ export function EditIntakeDialog({
         return;
       }
       setErrorKey(getApiErrorMessageKey(error));
+      setErrorDetails(
+        getApiErrorDetailLines(error, {
+          requestIdLabel,
+        }),
+      );
     } finally {
       setSubmitting(false);
     }
@@ -287,6 +322,7 @@ export function EditIntakeDialog({
 
     setSubmitting(true);
     setErrorKey(null);
+    setErrorDetails([]);
 
     try {
       const updated = await updateIntakeItem(
@@ -302,6 +338,11 @@ export function EditIntakeDialog({
     } catch (error) {
       setPendingCascadeConfirm(null);
       setErrorKey(getApiErrorMessageKey(error));
+      setErrorDetails(
+        getApiErrorDetailLines(error, {
+          requestIdLabel,
+        }),
+      );
     } finally {
       setSubmitting(false);
     }
@@ -326,7 +367,15 @@ export function EditIntakeDialog({
                 role="alert"
                 className="rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-xs text-destructive"
               >
-                {tRoot(errorKey)}
+                <p>{tRoot(errorKey)}</p>
+                {errorDetails.map((detail) => (
+                  <p
+                    key={detail}
+                    className="mt-1 break-words text-[11px] text-destructive/90"
+                  >
+                    {detail}
+                  </p>
+                ))}
               </div>
             )}
 
@@ -368,6 +417,14 @@ export function EditIntakeDialog({
             </div>
 
             <div className="grid grid-cols-2 gap-3">
+              <OptionsLoadNotice
+                status={optionsLoadState}
+                errorDetails={optionsErrorDetails}
+                onRetry={retryOptionsLoad}
+                t={tRoot}
+                errorTestId="edit-intake-options-error"
+                retryTestId="edit-intake-options-retry"
+              />
               <div className="flex flex-col gap-1.5">
                 <Label htmlFor="edit-intake-source">
                   {t("fields.sourceType")}
@@ -530,5 +587,65 @@ export function EditIntakeDialog({
         submitting={submitting}
       />
     </>
+  );
+}
+
+function OptionsLoadNotice({
+  errorDetails,
+  errorTestId,
+  onRetry,
+  retryTestId,
+  status,
+  t,
+}: {
+  errorDetails: string[];
+  errorTestId: string;
+  onRetry: () => void;
+  retryTestId: string;
+  status: OptionsLoadState;
+  t: (key: string) => string;
+}) {
+  if (status === "idle" || status === "ready") {
+    return null;
+  }
+
+  if (status === "loading") {
+    return (
+      <div
+        role="status"
+        className="col-span-2 rounded-md border border-border bg-muted/40 px-3 py-2 text-xs text-muted-foreground"
+      >
+        {t("common.states.optionsLoading")}
+      </div>
+    );
+  }
+
+  return (
+    <div
+      role="alert"
+      data-testid={errorTestId}
+      className="col-span-2 flex items-center justify-between gap-3 rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-xs text-destructive"
+    >
+      <div className="min-w-0">
+        <p>{t("common.states.optionsLoadFailed")}</p>
+        {errorDetails.map((detail) => (
+          <p
+            key={detail}
+            className="mt-1 break-words text-[11px] text-destructive/90"
+          >
+            {detail}
+          </p>
+        ))}
+      </div>
+      <Button
+        type="button"
+        variant="outline"
+        size="sm"
+        onClick={onRetry}
+        data-testid={retryTestId}
+      >
+        {t("common.states.retry")}
+      </Button>
+    </div>
   );
 }

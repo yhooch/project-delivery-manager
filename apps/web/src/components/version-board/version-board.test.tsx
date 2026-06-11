@@ -1905,7 +1905,15 @@ describe("VersionPage", () => {
     getVersionBoardViewMock.mockResolvedValueOnce(makeBoardResponse([]));
     listTimelineMock.mockRejectedValueOnce(
       new ApiClientError(
-        { code: "NOT_FOUND", message: "not found", requestId: "REQ_404" },
+        {
+          code: "NOT_FOUND",
+          message: "not found",
+          requestId: "REQ_404",
+          details: {
+            field: "targetId",
+            reason: "timeline target missing",
+          },
+        },
         new Response(null, { status: 404, statusText: "Not Found" }),
       ),
     );
@@ -1918,6 +1926,12 @@ describe("VersionPage", () => {
     expect(
       await screen.findByText("versionBoard.timeline.errorTitle"),
     ).toBeInTheDocument();
+    const alert = screen.getByRole("alert");
+    expect(alert).toHaveTextContent("errors.api.NOT_FOUND");
+    expect(alert).toHaveTextContent("not found");
+    expect(alert).toHaveTextContent("reason: timeline target missing");
+    expect(alert).toHaveTextContent("field: targetId");
+    expect(alert).toHaveTextContent("errors.apiDetails.requestId: REQ_404");
     expect(
       screen.queryByTestId("version-tab-timeline-empty"),
     ).not.toBeInTheDocument();

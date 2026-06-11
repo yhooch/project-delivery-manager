@@ -10,12 +10,16 @@ import { Pencil, Plus } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useEffect, useState, type FormEvent } from "react";
 
-import { getApiErrorMessageKey } from "../../lib/api-error-messages";
 import {
   createWorkflowBinding,
   updateWorkflowBinding,
   type WorkflowSpaceContext,
 } from "../../lib/workflow-service";
+import {
+  formatApiErrorDisplayMessage,
+  getApiErrorDisplay,
+  type ApiErrorDisplayState,
+} from "../shell/api-error-display";
 
 import { Badge } from "../ui/badge";
 import { Button } from "../ui/button";
@@ -212,13 +216,13 @@ export function WorkflowBindingDialog({
   const [priority, setPriority] = useState<Priority | "">("");
   const [isDefault, setIsDefault] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [errorKey, setErrorKey] = useState<string | null>(null);
+  const [error, setError] = useState<ApiErrorDisplayState | null>(null);
 
   useEffect(() => {
     if (!open) {
       return;
     }
-    setErrorKey(null);
+    setError(null);
     setIsSubmitting(false);
     if (mode.kind === "edit") {
       setWorkItemType(mode.binding.workItemType);
@@ -242,7 +246,7 @@ export function WorkflowBindingDialog({
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setIsSubmitting(true);
-    setErrorKey(null);
+    setError(null);
     try {
       const input = {
         workflowId,
@@ -265,7 +269,9 @@ export function WorkflowBindingDialog({
       }
       onSuccess();
     } catch (error) {
-      setErrorKey(getApiErrorMessageKey(error));
+      setError(
+        getApiErrorDisplay(error, tRoot("errors.apiDetails.requestId")),
+      );
     } finally {
       setIsSubmitting(false);
     }
@@ -340,12 +346,17 @@ export function WorkflowBindingDialog({
             {t("fields.isDefault")}
           </label>
 
-          {errorKey ? (
+          {error ? (
             <div
               className="rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-xs text-destructive"
               role="alert"
             >
-              {tRoot(errorKey)}
+              <p className="whitespace-pre-line">
+                {formatApiErrorDisplayMessage(
+                  tRoot(error.messageKey),
+                  error.detailLines,
+                )}
+              </p>
             </div>
           ) : null}
 

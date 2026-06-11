@@ -3,9 +3,13 @@
 import { useTranslations } from "next-intl";
 import { useEffect, useState, type FormEvent } from "react";
 
-import { getApiErrorMessageKey } from "../../lib/api-error-messages";
 import { updateSpace } from "../../lib/space-service";
 import { parseThresholdDays } from "../../lib/threshold-normalizer";
+import {
+  formatApiErrorDisplayMessage,
+  getApiErrorDisplay,
+  type ApiErrorDisplayState,
+} from "../shell/api-error-display";
 
 import { Button } from "../ui/button";
 import {
@@ -39,7 +43,7 @@ export function ThresholdEditorDialog({
 
   const [value, setValue] = useState<string>(String(initialValue));
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [errorKey, setErrorKey] = useState<string | null>(null);
+  const [error, setError] = useState<ApiErrorDisplayState | null>(null);
   const [validationError, setValidationError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -48,7 +52,7 @@ export function ThresholdEditorDialog({
     }
     setValue(String(initialValue));
     setIsSubmitting(false);
-    setErrorKey(null);
+    setError(null);
     setValidationError(null);
   }, [initialValue, open]);
 
@@ -67,7 +71,7 @@ export function ThresholdEditorDialog({
       return;
     }
     setValidationError(null);
-    setErrorKey(null);
+    setError(null);
     setIsSubmitting(true);
 
     try {
@@ -76,7 +80,9 @@ export function ThresholdEditorDialog({
       });
       onSaved(updated.settings.staleThresholdDays);
     } catch (error) {
-      setErrorKey(getApiErrorMessageKey(error));
+      setError(
+        getApiErrorDisplay(error, tRoot("errors.apiDetails.requestId")),
+      );
     } finally {
       setIsSubmitting(false);
     }
@@ -123,12 +129,17 @@ export function ThresholdEditorDialog({
             )}
           </div>
 
-          {errorKey ? (
+          {error ? (
             <div
               className="rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-xs text-destructive"
               role="alert"
             >
-              {tRoot(errorKey)}
+              <p className="whitespace-pre-line">
+                {formatApiErrorDisplayMessage(
+                  tRoot(error.messageKey),
+                  error.detailLines,
+                )}
+              </p>
             </div>
           ) : null}
 

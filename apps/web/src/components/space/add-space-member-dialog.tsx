@@ -14,13 +14,17 @@ import {
   type KeyboardEvent,
 } from "react";
 
-import { getApiErrorMessageKey } from "../../lib/api-error-messages";
 import { toAddSpaceMemberRequest } from "../../lib/space-forms";
 import {
   addSpaceMember,
   listOrganizationMembers,
 } from "../../lib/space-service";
 
+import {
+  formatApiErrorDisplayMessage,
+  getApiErrorDisplay,
+  type ApiErrorDisplayState,
+} from "../shell/api-error-display";
 import { Button } from "../ui/button";
 import {
   Dialog,
@@ -64,6 +68,7 @@ export function AddSpaceMemberDialog({
   const t = useTranslations("spaceSettings.dialog.addMember");
   const tRoles = useTranslations("spaceSettings.members.roles");
   const tRoot = useTranslations();
+  const requestIdLabel = tRoot("errors.apiDetails.requestId");
 
   const [orgMembers, setOrgMembers] = useState<OrganizationMemberWithUser[]>(
     [],
@@ -72,7 +77,7 @@ export function AddSpaceMemberDialog({
   const [selectedUserId, setSelectedUserId] = useState<string>("");
   const [role, setRole] = useState<SpaceRole>("DEVELOPER");
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [errorKey, setErrorKey] = useState<string | null>(null);
+  const [error, setError] = useState<ApiErrorDisplayState | null>(null);
 
   useEffect(() => {
     if (!open) {
@@ -82,7 +87,7 @@ export function AddSpaceMemberDialog({
     setSearch("");
     setSelectedUserId("");
     setRole("DEVELOPER");
-    setErrorKey(null);
+    setError(null);
     setIsSubmitting(false);
 
     let cancelled = false;
@@ -94,7 +99,9 @@ export function AddSpaceMemberDialog({
         }
       } catch (error) {
         if (!cancelled) {
-          setErrorKey(getApiErrorMessageKey(error));
+          setError(
+            getApiErrorDisplay(error, requestIdLabel),
+          );
         }
       }
     })();
@@ -102,7 +109,7 @@ export function AddSpaceMemberDialog({
     return () => {
       cancelled = true;
     };
-  }, [open, organizationId]);
+  }, [open, organizationId, requestIdLabel]);
 
   const candidates = useMemo(() => {
     const query = search.trim().toLowerCase();
@@ -170,7 +177,7 @@ export function AddSpaceMemberDialog({
     }
 
     setIsSubmitting(true);
-    setErrorKey(null);
+    setError(null);
 
     try {
       const member = await addSpaceMember(
@@ -179,7 +186,9 @@ export function AddSpaceMemberDialog({
       );
       onSuccess(member);
     } catch (error) {
-      setErrorKey(getApiErrorMessageKey(error));
+      setError(
+        getApiErrorDisplay(error, requestIdLabel),
+      );
     } finally {
       setIsSubmitting(false);
     }
@@ -278,12 +287,15 @@ export function AddSpaceMemberDialog({
             </SelectMenu>
           </div>
 
-          {errorKey ? (
+          {error ? (
             <div
-              className="rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-xs text-destructive"
+              className="whitespace-pre-wrap rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-xs text-destructive"
               role="alert"
             >
-              {tRoot(errorKey)}
+              {formatApiErrorDisplayMessage(
+                tRoot(error.messageKey),
+                error.detailLines,
+              )}
             </div>
           ) : null}
 

@@ -15,6 +15,10 @@ import {
 import { getObjectCodeLookupHref } from "../../lib/document-view-model";
 import { lookupObjectCode } from "../../lib/object-code-service";
 import { cn } from "../../lib/utils";
+import {
+  formatApiErrorDisplayMessage,
+  getApiErrorDisplay,
+} from "../shell/api-error-display";
 import { DocumentMermaidDiagram } from "./document-mermaid-diagram";
 
 export type { MarkdownHeading };
@@ -432,7 +436,9 @@ function ObjectCodeButton({
 }) {
   const router = useRouter();
   const t = useTranslations("documents.markdown");
+  const tRoot = useTranslations();
   const [state, setState] = useState<"idle" | "loading" | "error">("idle");
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const openCode = async () => {
     if (!organizationId || state === "loading") {
@@ -440,6 +446,7 @@ function ObjectCodeButton({
     }
 
     setState("loading");
+    setErrorMessage(null);
     try {
       const result = await lookupObjectCode({
         code,
@@ -447,8 +454,18 @@ function ObjectCodeButton({
         ...(spaceId ? { spaceId } : {}),
       });
       router.push(getObjectCodeLookupHref(result));
-    } catch {
+    } catch (error) {
+      const errorDisplay = getApiErrorDisplay(
+        error,
+        tRoot("errors.apiDetails.requestId"),
+      );
       setState("error");
+      setErrorMessage(
+        formatApiErrorDisplayMessage(
+          tRoot(errorDisplay.messageKey),
+          errorDisplay.detailLines,
+        ),
+      );
     }
   };
 
@@ -460,7 +477,8 @@ function ObjectCodeButton({
         state === "error" && "text-destructive hover:bg-destructive/10",
       )}
       data-testid="document-object-code-link"
-      title={state === "error" ? t("objectLookupFailed") : code}
+      aria-label={state === "error" ? (errorMessage ?? t("objectLookupFailed")) : code}
+      title={state === "error" ? (errorMessage ?? t("objectLookupFailed")) : code}
       onClick={() => void openCode()}
     >
       {state === "loading" ? (

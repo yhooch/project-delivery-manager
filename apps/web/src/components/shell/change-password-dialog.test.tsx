@@ -91,6 +91,12 @@ describe("ChangePasswordDialog", () => {
         screen.getByTestId("change-password-error"),
       ).toHaveTextContent("shell.changePassword.errors.invalidCredentials");
     });
+    expect(screen.getByTestId("change-password-error")).toHaveTextContent(
+      "Invalid current password",
+    );
+    expect(screen.getByTestId("change-password-error")).toHaveTextContent(
+      "errors.apiDetails.requestId: req_test",
+    );
     expect(onOpenChange).not.toHaveBeenCalled();
   });
 

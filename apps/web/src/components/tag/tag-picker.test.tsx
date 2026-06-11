@@ -20,6 +20,7 @@ vi.mock("next-intl", () => ({
 }));
 
 import { TagPicker } from "./tag-picker";
+import { ApiClientError } from "../../lib/api-client";
 
 const organizationId = "01VRZ3NDEKTSV4RRFFQ69G5F10";
 const spaceId = "01VRZ3NDEKTSV4RRFFQ69G5F11";
@@ -123,6 +124,88 @@ describe("TagPicker", () => {
       ),
     );
     expect(onSelect).toHaveBeenCalledWith(tag);
+  });
+
+  it("shows backend details when tag search fails", async () => {
+    const listTagsAction = vi.fn(async () => {
+      throw new ApiClientError(
+        {
+          code: "FORBIDDEN",
+          details: { reason: "Tag search is not allowed." },
+          message: "Cannot list tags.",
+          requestId: "REQ_TAG_LIST",
+        },
+        new Response(null, { status: 403 }),
+      );
+    });
+
+    render(
+      <TagPicker
+        data-testid="tag-picker"
+        listTagsAction={listTagsAction}
+        onSelect={vi.fn()}
+        organizationId={organizationId}
+        spaceId={spaceId}
+      />,
+    );
+
+    fireEvent.focus(screen.getByTestId("tag-picker-input"));
+
+    expect(await screen.findByText(/tags\.picker\.error/u)).toHaveTextContent(
+      "Cannot list tags.",
+    );
+    expect(screen.getByText(/tags\.picker\.error/u)).toHaveTextContent(
+      "reason: Tag search is not allowed.",
+    );
+    expect(screen.getByText(/tags\.picker\.error/u)).toHaveTextContent(
+      "errors.apiDetails.requestId: REQ_TAG_LIST",
+    );
+  });
+
+  it("shows backend details when tag creation fails", async () => {
+    const listTagsAction = vi.fn(async () => ({ items: [] }));
+    const createTagAction = vi.fn(async () => {
+      throw new ApiClientError(
+        {
+          code: "CONFLICT",
+          details: { field: "name" },
+          message: "Tag already exists.",
+          requestId: "REQ_TAG_CREATE",
+        },
+        new Response(null, { status: 409 }),
+      );
+    });
+
+    render(
+      <TagPicker
+        data-testid="tag-picker"
+        createTagAction={createTagAction}
+        listTagsAction={listTagsAction}
+        onSelect={vi.fn()}
+        organizationId={organizationId}
+        spaceId={spaceId}
+      />,
+    );
+
+    const input = screen.getByTestId("tag-picker-input");
+    fireEvent.focus(input);
+    fireEvent.change(input, { target: { value: "#release" } });
+
+    fireEvent.click(
+      await screen.findByRole("option", {
+        name: "tags.picker.create(name=#release)",
+      }),
+    );
+
+    expect(
+      await screen.findByText(/tags\.picker\.createError/u),
+    ).toHaveTextContent("Tag already exists.");
+    expect(screen.getByText(/tags\.picker\.createError/u)).toHaveTextContent(
+      "field: name",
+    );
+    expect(screen.getByText(/tags\.picker\.createError/u)).toHaveTextContent(
+      "errors.apiDetails.requestId: REQ_TAG_CREATE",
+    );
   });
 
   it("keeps disabled pickers closed", () => {

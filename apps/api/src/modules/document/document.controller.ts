@@ -64,6 +64,7 @@ import {
   type UpdateDocumentMetadataRequest,
 } from "@project-delivery/shared";
 import { catchError, throwError, type Observable } from "rxjs";
+import type { z } from "zod";
 
 import { ApiException } from "../../http/api-exception";
 import type { RequestWithContext } from "../../http/request-context";
@@ -95,7 +96,7 @@ export const documentImportMulterOptions = {
   },
 };
 
-type MultipartDocumentMetadata = {
+export type MultipartDocumentMetadata = {
   folderId?: string;
   links?: string;
   tagIds?: string;
@@ -586,10 +587,27 @@ export class DocumentController {
 }
 
 export function mapDocumentImportUploadException(error: unknown): unknown {
-  if (isMulterDocumentFileLimitError(error)) {
+  const message =
+    error instanceof HttpException ? getHttpExceptionMessage(error) : undefined;
+
+  if (
+    error instanceof PayloadTooLargeException ||
+    message === "File too large"
+  ) {
     return new ApiException(
       "FILE_TOO_LARGE",
       "File is too large",
+      HttpStatus.BAD_REQUEST,
+    );
+  }
+
+  if (
+    error instanceof BadRequestException &&
+    isMulterDocumentValidationError(message)
+  ) {
+    return new ApiException(
+      "VALIDATION_ERROR",
+      message,
       HttpStatus.BAD_REQUEST,
     );
   }
@@ -621,19 +639,36 @@ function requireUploadedFile(
   };
 }
 
-function parseMultipartMetadata<T>(
+export function parseMultipartMetadata<T>(
   body: MultipartDocumentMetadata,
-  schema: { parse(value: unknown): T },
+  schema: z.ZodType<T>,
 ): T {
-  return schema.parse({
+  const result = schema.safeParse({
     folderId: body.folderId,
     title: body.title,
-    tagIds: parseJsonField(body.tagIds),
-    links: parseJsonField(body.links),
+    tagIds: parseJsonField(body.tagIds, "tagIds"),
+    links: parseJsonField(body.links, "links"),
   });
+
+  if (result.success) {
+    return result.data;
+  }
+
+  throw new ApiException(
+    "VALIDATION_ERROR",
+    "Validation failed",
+    HttpStatus.BAD_REQUEST,
+    {
+      issues: result.error.issues.map((issue) => ({
+        code: issue.code,
+        message: issue.message,
+        path: issue.path,
+      })),
+    },
+  );
 }
 
-function parseJsonField(value: string | undefined): unknown {
+function parseJsonField(value: string | undefined, field: string): unknown {
   if (value === undefined || value === "") {
     return undefined;
   }
@@ -645,24 +680,30 @@ function parseJsonField(value: string | undefined): unknown {
       "VALIDATION_ERROR",
       "Multipart JSON field is invalid",
       HttpStatus.BAD_REQUEST,
+      {
+        issues: [
+          {
+            code: "invalid_json",
+            message: "Multipart JSON field is invalid",
+            path: [field],
+          },
+        ],
+      },
     );
   }
 }
 
-function isMulterDocumentFileLimitError(error: unknown): boolean {
-  if (error instanceof PayloadTooLargeException) {
-    return true;
-  }
-  if (!(error instanceof BadRequestException)) {
+function isMulterDocumentValidationError(
+  message: string | undefined,
+): message is string {
+  if (message === undefined) {
     return false;
   }
 
-  const message = getHttpExceptionMessage(error);
-
   return (
     message === "Too many files" ||
-    message === "Unexpected field - file" ||
-    message === "File too large"
+    message === "Unexpected field" ||
+    message.startsWith("Unexpected field - ")
   );
 }
 

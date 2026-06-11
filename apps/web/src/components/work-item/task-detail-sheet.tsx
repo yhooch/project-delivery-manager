@@ -36,8 +36,10 @@ import { useLocale, useTranslations } from "next-intl";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type React from "react";
 
-import { getApiErrorMessageKey } from "../../lib/api-error-messages";
-import { ApiClientError } from "../../lib/api-client";
+import {
+  getApiErrorMessageDetails,
+  getApiErrorMessageKey,
+} from "../../lib/api-error-messages";
 import { toExecuteActionRequest } from "../../lib/action-forms";
 import {
   AttachmentUploadError,
@@ -117,6 +119,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "../ui/tabs";
 import { Textarea } from "../ui/textarea";
 import { SelectMenu } from "../ui/select-menu";
 import { EmptyState, ErrorState, LoadingState } from "../v2/states";
+import { getApiErrorDetailLines } from "./api-error-details";
 import type { WorkItemDetailPanel } from "./work-item-detail-panel";
 
 const priorityColor: Record<WorkItemViewModel["priority"], string> = {
@@ -405,6 +408,10 @@ function TaskDetailSheetBody({
   onChanged,
 }: BodyProps) {
   const locale = useLocale();
+  const requestIdLabel = tApiError("errors.apiDetails.requestId");
+  const nestedTaskLoadErrorMessage = tApiError(
+    "common.states.optionsLoadFailed",
+  );
   const isBug = item.type === "BUG";
   const itemTypeLabel = tApiError(`workflow.workItemType.${item.type}`);
   const lookup = useSpaceMembers(spaceId, organizationId);
@@ -473,6 +480,7 @@ function TaskDetailSheetBody({
   );
   const [nestedTask, setNestedTask] = useState<WorkItemViewModel | null>(null);
   const [nestedTaskOpen, setNestedTaskOpen] = useState(false);
+  const [nestedTaskError, setNestedTaskError] = useState<string | null>(null);
   const latestDetailRequestKeyRef = useRef(detailRequestKey);
   const latestOpenRef = useRef(open);
   latestDetailRequestKeyRef.current = detailRequestKey;
@@ -502,6 +510,7 @@ function TaskDetailSheetBody({
     setNestedIntakeItemId(null);
     setNestedTask(null);
     setNestedTaskOpen(false);
+    setNestedTaskError(null);
   }, [detailRequestKey, open]);
   const openNestedIntakeItem = useCallback((intakeItemId: string) => {
     if (!latestOpenRef.current) {
@@ -521,6 +530,7 @@ function TaskDetailSheetBody({
       }
 
       const requestKey = detailRequestKey;
+      setNestedTaskError(null);
       try {
         const workItem = await getWorkItem({
           organizationId,
@@ -548,7 +558,7 @@ function TaskDetailSheetBody({
           }),
         );
         setNestedTaskOpen(true);
-      } catch {
+      } catch (err) {
         if (
           latestDetailRequestKeyRef.current !== requestKey ||
           !latestOpenRef.current
@@ -557,6 +567,12 @@ function TaskDetailSheetBody({
         }
         setNestedTask(null);
         setNestedTaskOpen(false);
+        setNestedTaskError(
+          formatApiErrorMessage(
+            nestedTaskLoadErrorMessage,
+            getApiErrorDetailLines(err, { requestIdLabel }),
+          ),
+        );
       }
     },
     [
@@ -564,7 +580,9 @@ function TaskDetailSheetBody({
       getVersion,
       locale,
       lookup.getMember,
+      nestedTaskLoadErrorMessage,
       organizationId,
+      requestIdLabel,
       spaceId,
       tApiError,
       workflowStateLookup.getState,
@@ -887,6 +905,15 @@ function TaskDetailSheetBody({
           </div>
         )}
 
+        {nestedTaskError && (
+          <div
+            className="mx-5 mt-2 whitespace-pre-line rounded-md bg-destructive/10 px-3 py-2 text-xs text-destructive"
+            role="alert"
+          >
+            {nestedTaskError}
+          </div>
+        )}
+
         <Tabs
           value={activePanel}
           onValueChange={(value) =>
@@ -1157,7 +1184,12 @@ function useWorkItemPermissions({
       setState((current) => ({
         detail: shouldSurfaceRefreshError(refreshMode) ? null : current.detail,
         error: shouldSurfaceRefreshError(refreshMode)
-          ? tApiError(key)
+          ? formatApiErrorMessage(
+              tApiError(key),
+              getApiErrorDetailLines(err, {
+                requestIdLabel: tApiError("errors.apiDetails.requestId"),
+              }),
+            )
           : current.error,
         loading: false,
         permissions: shouldSurfaceRefreshError(refreshMode)
@@ -1223,6 +1255,7 @@ function ActionBar({
 }) {
   const [executingId, setExecutingId] = useState<string | null>(null);
   const [executeError, setExecuteError] = useState<string | null>(null);
+  const [executeErrorDetails, setExecuteErrorDetails] = useState<string[]>([]);
   const [selectedAction, setSelectedAction] =
     useState<WorkflowActionSummary | null>(null);
   const [commentDraft, setCommentDraft] = useState("");
@@ -1243,6 +1276,7 @@ function ActionBar({
   const prepareActionForConfirmation = useCallback(
     (action: WorkflowActionSummary) => {
       setExecuteError(null);
+      setExecuteErrorDetails([]);
       setFormErrors(createEmptyActionFormErrors());
       setSelectedAction(action);
       setCommentDraft("");
@@ -1255,6 +1289,7 @@ function ActionBar({
 
   const beginAction = (action: WorkflowActionSummary) => {
     setExecuteError(null);
+    setExecuteErrorDetails([]);
     setFormErrors(createEmptyActionFormErrors());
 
     if (!action.requiresComment && action.formFields.length === 0) {
@@ -1275,6 +1310,7 @@ function ActionBar({
     if (hasActionFormErrors(nextFormErrors)) {
       setFormErrors(nextFormErrors);
       setExecuteError(tApiError("errors.api.WORKFLOW_ACTION_FORM_INVALID"));
+      setExecuteErrorDetails([]);
       return;
     }
 
@@ -1283,11 +1319,13 @@ function ActionBar({
       payload = toExecuteActionRequest(action, input);
     } catch {
       setExecuteError(tApiError("errors.api.WORKFLOW_ACTION_FORM_INVALID"));
+      setExecuteErrorDetails([]);
       return;
     }
 
     setExecutingId(action.id);
     setExecuteError(null);
+    setExecuteErrorDetails([]);
 
     try {
       const detail = await executeAction(
@@ -1311,6 +1349,12 @@ function ActionBar({
         setFormErrors(markActionFormFieldError(action, fieldKey));
       }
       setExecuteError(tApiError(key));
+      setExecuteErrorDetails(
+        getWorkflowActionErrorDetails({
+          error: err,
+          requestIdLabel: tApiError("errors.apiDetails.requestId"),
+        }),
+      );
     } finally {
       setExecutingId(null);
     }
@@ -1469,9 +1513,14 @@ function ActionBar({
         </p>
       )}
       {executeError && (
-        <p className="text-[11px] text-destructive">
-          {t("actions.errorTitle")}: {executeError}
-        </p>
+        <div className="grid gap-1 text-[11px] text-destructive">
+          <p>
+            {t("actions.errorTitle")}: {executeError}
+          </p>
+          {executeErrorDetails.map((detail) => (
+            <p key={detail}>{detail}</p>
+          ))}
+        </div>
       )}
     </div>
   );
@@ -1806,23 +1855,18 @@ function isBlankActionFormValue(value: unknown): boolean {
   );
 }
 
+function getWorkflowActionErrorDetails({
+  error,
+  requestIdLabel,
+}: {
+  error: unknown;
+  requestIdLabel: string;
+}): string[] {
+  return getApiErrorDetailLines(error, { requestIdLabel });
+}
+
 function getApiErrorField(error: unknown): string | undefined {
-  if (!(error instanceof ApiClientError)) {
-    return undefined;
-  }
-
-  const details = error.error.details;
-
-  if (
-    details &&
-    typeof details === "object" &&
-    "field" in details &&
-    typeof details.field === "string"
-  ) {
-    return details.field;
-  }
-
-  return undefined;
+  return getApiErrorMessageDetails(error).details.field;
 }
 
 // ---------------------------------------------------------------------------
@@ -1857,6 +1901,8 @@ function DetailTab({
   versionName?: string;
 }) {
   const locale = useLocale();
+  const requestIdLabel = tRoot("errors.apiDetails.requestId");
+  const optionsLoadFailedMessage = tRoot("common.states.optionsLoadFailed");
   const assigneeId = detail?.assigneeId || undefined;
   const assignee = displayUser(assigneeId, lookup.getMember);
   const reporter = displayUser(detail?.reporterId, lookup.getMember);
@@ -1883,6 +1929,7 @@ function DetailTab({
   const [titleError, setTitleError] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
+  const [editOptionsError, setEditOptionsError] = useState<string | null>(null);
   const [pendingCascadeConfirm, setPendingCascadeConfirm] =
     useState<PendingTraceCascadeConfirm | null>(null);
   const editTargetKey = `${item.id}:${detail?.id ?? ""}`;
@@ -1904,6 +1951,7 @@ function DetailTab({
     setDueDate(toDateInputValue(detail?.dueDate));
     setTitleError(false);
     setSaveError(null);
+    setEditOptionsError(null);
     setPendingCascadeConfirm(null);
   }, [
     bugDetail?.actualResult,
@@ -1955,6 +2003,7 @@ function DetailTab({
     }
 
     let cancelled = false;
+    setEditOptionsError(null);
 
     void Promise.all([
       listRequirements({
@@ -1985,18 +2034,33 @@ function DetailTab({
           setRelatedTasks(taskResult.items);
         }
       })
-      .catch(() => {
+      .catch((err) => {
         if (!cancelled) {
           setRequirements([]);
           setIntakeItems([]);
           setRelatedTasks([]);
+          setEditOptionsError(
+            formatApiErrorMessage(
+              optionsLoadFailedMessage,
+              getApiErrorDetailLines(err, {
+                requestIdLabel,
+              }),
+            ),
+          );
         }
       });
 
     return () => {
       cancelled = true;
     };
-  }, [detail, editing, organizationId, spaceId]);
+  }, [
+    detail,
+    editing,
+    optionsLoadFailedMessage,
+    organizationId,
+    requestIdLabel,
+    spaceId,
+  ]);
 
   const filteredRequirements = useMemo(
     () =>
@@ -2191,7 +2255,14 @@ function DetailTab({
         return;
       }
       const key = getApiErrorMessageKey(err);
-      setSaveError(tRoot(key));
+      setSaveError(
+        formatApiErrorMessage(
+          tRoot(key),
+          getApiErrorDetailLines(err, {
+            requestIdLabel,
+          }),
+        ),
+      );
     } finally {
       setSaving(false);
     }
@@ -2241,7 +2312,14 @@ function DetailTab({
     } catch (err) {
       setPendingCascadeConfirm(null);
       const key = getApiErrorMessageKey(err);
-      setSaveError(tRoot(key));
+      setSaveError(
+        formatApiErrorMessage(
+          tRoot(key),
+          getApiErrorDetailLines(err, {
+            requestIdLabel,
+          }),
+        ),
+      );
     } finally {
       setSaving(false);
     }
@@ -2493,6 +2571,11 @@ function DetailTab({
               </>
             ) : null}
           </div>
+          {editOptionsError && (
+            <p className="mt-3 text-[11px] text-destructive" role="alert">
+              {editOptionsError}
+            </p>
+          )}
           {saveError && (
             <p className="mt-3 text-[11px] text-destructive" role="alert">
               {saveError}
@@ -3004,7 +3087,12 @@ function CommentsTab({
       if (shouldSurfaceRefreshError(refreshMode)) {
         setCommentsState({
           comments: [],
-          error: tApiError(key),
+          error: formatApiErrorMessage(
+            tApiError(key),
+            getApiErrorDetailLines(err, {
+              requestIdLabel: tApiError("errors.apiDetails.requestId"),
+            }),
+          ),
           loading: false,
           requestKey: nextRequestKey,
         });
@@ -3077,7 +3165,14 @@ function CommentsTab({
     } catch (err) {
       if (latestRequestKeyRef.current !== submitRequestKey) return;
       const key = getApiErrorMessageKey(err);
-      setSubmitError(tApiError(key));
+      setSubmitError(
+        formatApiErrorMessage(
+          tApiError(key),
+          getApiErrorDetailLines(err, {
+            requestIdLabel: tApiError("errors.apiDetails.requestId"),
+          }),
+        ),
+      );
     } finally {
       if (latestRequestKeyRef.current === submitRequestKey) {
         setSubmitting(false);
@@ -3331,7 +3426,12 @@ function AttachmentsTab({
       if (shouldSurfaceRefreshError(refreshMode)) {
         setAttachmentsState({
           attachments: [],
-          error: tApiError(key),
+          error: formatApiErrorMessage(
+            tApiError(key),
+            getApiErrorDetailLines(err, {
+              requestIdLabel: tApiError("errors.apiDetails.requestId"),
+            }),
+          ),
           loading: false,
           requestKey: nextRequestKey,
         });
@@ -3423,14 +3523,21 @@ function AttachmentsTab({
               return;
             }
             if (err instanceof AttachmentUploadError) {
-              latestError = tApiError(
-                `forms.attachments.uploadErrors.${err.code}`,
+              latestError = formatAttachmentUploadError(
+                err,
+                tApiError,
               );
               if (err.code === "ATTACHMENT_LIMIT_EXCEEDED") {
                 break;
               }
             } else {
-              latestError = tApiError(getApiErrorMessageKey(err));
+              const key = getApiErrorMessageKey(err);
+              latestError = formatApiErrorMessage(
+                tApiError(key),
+                getApiErrorDetailLines(err, {
+                  requestIdLabel: tApiError("errors.apiDetails.requestId"),
+                }),
+              );
             }
           }
         }
@@ -3602,7 +3709,14 @@ function AttachmentsTab({
           return;
         }
         const key = getApiErrorMessageKey(err);
-        setAttachmentActionError(tApiError(key));
+        setAttachmentActionError(
+          formatApiErrorMessage(
+            tApiError(key),
+            getApiErrorDetailLines(err, {
+              requestIdLabel: tApiError("errors.apiDetails.requestId"),
+            }),
+          ),
+        );
       } finally {
         if (latestRequestKeyRef.current === actionRequestKey) {
           setOpeningAttachmentId(null);
@@ -3943,7 +4057,12 @@ function TimelineTab({
       const key = getApiErrorMessageKey(err);
       if (shouldSurfaceRefreshError(refreshMode)) {
         setTimelineState({
-          error: tApiError(key),
+          error: formatApiErrorMessage(
+            tApiError(key),
+            getApiErrorDetailLines(err, {
+              requestIdLabel: tApiError("errors.apiDetails.requestId"),
+            }),
+          ),
           events: [],
           loading: false,
           requestKey: nextRequestKey,
@@ -4020,6 +4139,22 @@ function TimelineTab({
 }
 
 // ---------------------------------------------------------------------------
+
+function formatApiErrorMessage(message: string, details: string[]): string {
+  return [message, ...details].join(" ");
+}
+
+function formatAttachmentUploadError(
+  error: AttachmentUploadError,
+  tApiError: ReturnType<typeof useTranslations>,
+): string {
+  return formatApiErrorMessage(
+    tApiError(`forms.attachments.uploadErrors.${error.code}`),
+    getApiErrorDetailLines(error.sourceError ?? error, {
+      requestIdLabel: tApiError("errors.apiDetails.requestId"),
+    }),
+  );
+}
 
 function FieldRow({
   contentClassName,

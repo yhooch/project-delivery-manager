@@ -26,7 +26,7 @@ afterEach(() => {
 });
 
 describe("CreateOrganizationDialog", () => {
-  it("renders localized API error keys instead of backend messages", async () => {
+  it("preserves the localized API error and shows backend details", async () => {
     createOrganizationMock.mockRejectedValueOnce(
       new ApiClientError(
         {
@@ -53,7 +53,13 @@ describe("CreateOrganizationDialog", () => {
       );
     });
     expect(screen.getByTestId("create-org-error")).not.toHaveTextContent(
+      "errors.api.UNKNOWN",
+    );
+    expect(screen.getByTestId("create-org-error")).toHaveTextContent(
       "Organization code already exists",
+    );
+    expect(screen.getByTestId("create-org-error")).toHaveTextContent(
+      "errors.apiDetails.requestId: req_create_org",
     );
   });
 });

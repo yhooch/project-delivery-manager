@@ -3,9 +3,13 @@
 import { useTranslations } from "next-intl";
 import { useState, type FormEvent } from "react";
 
-import { getApiErrorMessageKey } from "../../lib/api-error-messages";
 import { useSession } from "../providers/session-provider";
 
+import {
+  formatApiErrorDisplayMessage,
+  getApiErrorDisplay,
+  type ApiErrorDisplayState,
+} from "./api-error-display";
 import { Button } from "../ui/button";
 import {
   Dialog,
@@ -30,19 +34,19 @@ export function CreateOrganizationDialog({ open, onOpenChange }: Props) {
   const [name, setName] = useState("");
   const [code, setCode] = useState("");
   const [submitting, setSubmitting] = useState(false);
-  const [errorKey, setErrorKey] = useState<string | null>(null);
+  const [error, setError] = useState<ApiErrorDisplayState | null>(null);
 
   const handleSubmit = async (event: FormEvent) => {
     event.preventDefault();
     setSubmitting(true);
-    setErrorKey(null);
+    setError(null);
     try {
       await createOrganization({ name: name.trim(), code: code.trim() || undefined });
       setName("");
       setCode("");
       onOpenChange(false);
     } catch (err) {
-      setErrorKey(getApiErrorMessageKey(err));
+      setError(getApiErrorDisplay(err, tRoot("errors.apiDetails.requestId")));
     } finally {
       setSubmitting(false);
     }
@@ -80,12 +84,15 @@ export function CreateOrganizationDialog({ open, onOpenChange }: Props) {
               disabled={submitting}
             />
           </div>
-          {errorKey && (
+          {error && (
             <div
               data-testid="create-org-error"
-              className="rounded-md border border-destructive/40 bg-destructive/10 px-2.5 py-1.5 text-xs text-destructive"
+              className="whitespace-pre-wrap rounded-md border border-destructive/40 bg-destructive/10 px-2.5 py-1.5 text-xs text-destructive"
             >
-              {tRoot(errorKey)}
+              {formatApiErrorDisplayMessage(
+                tRoot(error.messageKey),
+                error.detailLines,
+              )}
             </div>
           )}
           <DialogFooter>

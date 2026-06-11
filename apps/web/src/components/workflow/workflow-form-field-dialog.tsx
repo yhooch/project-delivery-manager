@@ -7,7 +7,6 @@ import type {
 import { useTranslations } from "next-intl";
 import { useEffect, useState, type FormEvent } from "react";
 
-import { getApiErrorMessageKey } from "../../lib/api-error-messages";
 import {
   createActionFormField,
   updateActionFormField,
@@ -27,6 +26,7 @@ import { Input } from "../ui/input";
 import { Label } from "../ui/label";
 import { Textarea } from "../ui/textarea";
 import { SelectMenu } from "../ui/select-menu";
+import { getApiErrorDisplay } from "../shell/api-error-display";
 
 const FIELD_TYPE_OPTIONS: ActionFormFieldType[] = [
   "TEXT",
@@ -74,12 +74,14 @@ export function WorkflowFormFieldDialog({
   const [optionsText, setOptionsText] = useState<string>("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorKey, setErrorKey] = useState<string | null>(null);
+  const [errorDetails, setErrorDetails] = useState<string[]>([]);
 
   useEffect(() => {
     if (!open) {
       return;
     }
     setErrorKey(null);
+    setErrorDetails([]);
     setIsSubmitting(false);
     if (mode.kind === "edit") {
       setLabel(mode.field.label);
@@ -113,6 +115,7 @@ export function WorkflowFormFieldDialog({
     event.preventDefault();
     setIsSubmitting(true);
     setErrorKey(null);
+    setErrorDetails([]);
     try {
       const trimmedLabel = label.trim();
       const trimmedKey = keyValue.trim();
@@ -161,7 +164,12 @@ export function WorkflowFormFieldDialog({
       }
       onSuccess();
     } catch (error) {
-      setErrorKey(getApiErrorMessageKey(error));
+      const display = getApiErrorDisplay(
+        error,
+        tRoot("errors.apiDetails.requestId"),
+      );
+      setErrorKey(display.messageKey);
+      setErrorDetails(display.detailLines);
     } finally {
       setIsSubmitting(false);
     }
@@ -286,10 +294,13 @@ export function WorkflowFormFieldDialog({
 
           {errorKey ? (
             <div
-              className="rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-xs text-destructive"
+              className="grid gap-1 rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-xs text-destructive"
               role="alert"
             >
-              {tRoot(errorKey)}
+              <p>{tRoot(errorKey)}</p>
+              {errorDetails.map((detail) => (
+                <p key={detail}>{detail}</p>
+              ))}
             </div>
           ) : null}
 
