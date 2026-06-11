@@ -72,7 +72,16 @@ vi.mock("../providers/session-provider", () => ({
   useSession: () => sessionMock.current,
 }));
 
-const { listDocumentFoldersMock, listDocumentsMock } = vi.hoisted(() => ({
+const {
+  importDocxDocumentMock,
+  importHtmlDocumentMock,
+  importMarkdownDocumentMock,
+  listDocumentFoldersMock,
+  listDocumentsMock,
+} = vi.hoisted(() => ({
+  importDocxDocumentMock: vi.fn(),
+  importHtmlDocumentMock: vi.fn(),
+  importMarkdownDocumentMock: vi.fn(),
   listDocumentFoldersMock: vi.fn(),
   listDocumentsMock: vi.fn(),
 }));
@@ -82,8 +91,9 @@ vi.mock("../../lib/document-service", async () => {
   >("../../lib/document-service");
   return {
     ...actual,
-    importDocxDocument: vi.fn(),
-    importMarkdownDocument: vi.fn(),
+    importDocxDocument: importDocxDocumentMock,
+    importHtmlDocument: importHtmlDocumentMock,
+    importMarkdownDocument: importMarkdownDocumentMock,
     listDocumentFolders: listDocumentFoldersMock,
     listDocuments: listDocumentsMock,
     pasteDocument: vi.fn(),
@@ -103,7 +113,11 @@ vi.mock("../../lib/realtime", () => ({
 }));
 
 import { DocumentCreateProvider } from "./document-create-context";
-import { DocumentsPage } from "./documents-page";
+import {
+  DocumentImportDialog,
+  DocumentsPage,
+  SourceBadge,
+} from "./documents-page";
 
 type CreateActions = {
   openImport: () => void;
@@ -167,6 +181,9 @@ beforeEach(() => {
   routerPushMock.mockReset();
   routerReplaceMock.mockReset();
   searchParamsMock.current = new URLSearchParams();
+  importDocxDocumentMock.mockReset();
+  importHtmlDocumentMock.mockReset();
+  importMarkdownDocumentMock.mockReset();
   listDocumentFoldersMock.mockReset();
   listDocumentFoldersMock.mockResolvedValue([]);
   listDocumentsMock.mockReset();
@@ -249,6 +266,63 @@ describe("DocumentsPage", () => {
 
     fireEvent.click(importButton);
     expect(openImport).toHaveBeenCalledTimes(1);
+  });
+
+  it("shows html import source labels", () => {
+    render(<SourceBadge sourceType="UPLOAD_HTML" />);
+
+    expect(screen.getByText("documents.source.UPLOAD_HTML")).toBeVisible();
+  });
+
+  it("imports html zip packages from the import dialog", async () => {
+    const onCreated = vi.fn();
+    const onOpenChange = vi.fn();
+    const file = new File(["zip"], "guide.zip", { type: "application/zip" });
+    importHtmlDocumentMock.mockResolvedValue({
+      ...createDocumentSummary({
+        id: "DOC_HTML",
+        sourceType: "UPLOAD_HTML",
+        title: "HTML Plan",
+      }),
+      contentMarkdown: "# HTML Plan",
+    });
+
+    render(
+      <DocumentImportDialog
+        folderId="FLD_01"
+        onCreated={onCreated}
+        onOpenChange={onOpenChange}
+        open
+        organizationId="ORG_01"
+        spaceId="SPC_01"
+      />,
+    );
+
+    const fileInput = screen.getByTestId("document-import-file-input");
+    expect(fileInput).toHaveAttribute(
+      "accept",
+      ".md,.markdown,.docx,.html,.htm,.zip",
+    );
+    fireEvent.change(screen.getByTestId("document-import-title-input"), {
+      target: { value: "HTML Plan" },
+    });
+    fireEvent.change(fileInput, {
+      target: { files: [file] },
+    });
+    fireEvent.click(
+      screen.getByRole("button", { name: "documents.importDialog.submit" }),
+    );
+
+    await waitFor(() =>
+      expect(importHtmlDocumentMock).toHaveBeenCalledWith(
+        { organizationId: "ORG_01", spaceId: "SPC_01" },
+        { file, folderId: "FLD_01", title: "HTML Plan" },
+      ),
+    );
+    expect(importMarkdownDocumentMock).not.toHaveBeenCalled();
+    expect(importDocxDocumentMock).not.toHaveBeenCalled();
+    expect(onOpenChange).toHaveBeenCalledWith(false);
+    expect(onCreated).toHaveBeenCalledWith("DOC_HTML");
   });
 
   it("does not expose model-generated document filters", async () => {
@@ -458,7 +532,9 @@ describe("DocumentsPage", () => {
 
     renderDocumentsPage();
 
-    const folderRow = await screen.findByTestId("documents-resource-folder-row");
+    const folderRow = await screen.findByTestId(
+      "documents-resource-folder-row",
+    );
     expect(folderRow).toHaveClass("min-h-11");
 
     fireEvent.click(screen.getByTestId("documents-density-compact"));
@@ -647,7 +723,9 @@ describe("DocumentsPage", () => {
     await waitFor(() =>
       expect(screen.getByTestId("documents-list")).toBeVisible(),
     );
-    expect(screen.queryByTestId("documents-resource-tree")).not.toBeInTheDocument();
+    expect(
+      screen.queryByTestId("documents-resource-tree"),
+    ).not.toBeInTheDocument();
     expect(screen.getByText("Launch plan")).toBeVisible();
     expect(screen.getByText("REQ-12")).toBeVisible();
     expect(
@@ -808,13 +886,12 @@ describe("DocumentsPage", () => {
       id: "DOC_CHILD",
       title: "Planning note",
     });
-    listDocumentsMock.mockImplementation(
-      (params: { folderId?: string }) =>
-        Promise.resolve(
-          params.folderId === "FLD_CHILD"
-            ? { items: [folderDocument], total: 1 }
-            : { items: [rootDocument], total: 1 },
-        ),
+    listDocumentsMock.mockImplementation((params: { folderId?: string }) =>
+      Promise.resolve(
+        params.folderId === "FLD_CHILD"
+          ? { items: [folderDocument], total: 1 }
+          : { items: [rootDocument], total: 1 },
+      ),
     );
 
     renderDocumentsPage();
@@ -876,19 +953,17 @@ describe("DocumentsPage", () => {
     let realtimeFolderRequest: ReturnType<
       typeof createDeferred<DocumentListResult>
     > | null = null;
-    listDocumentsMock.mockImplementation(
-      (params: { folderId?: string }) => {
-        if (params.folderId !== "FLD_CHILD") {
-          return Promise.resolve({ items: [], total: 0 });
-        }
-        folderRequestCount += 1;
-        if (folderRequestCount === 1) {
-          return Promise.resolve({ items: [beforeDocument], total: 1 });
-        }
-        realtimeFolderRequest = createDeferred<DocumentListResult>();
-        return realtimeFolderRequest.promise;
-      },
-    );
+    listDocumentsMock.mockImplementation((params: { folderId?: string }) => {
+      if (params.folderId !== "FLD_CHILD") {
+        return Promise.resolve({ items: [], total: 0 });
+      }
+      folderRequestCount += 1;
+      if (folderRequestCount === 1) {
+        return Promise.resolve({ items: [beforeDocument], total: 1 });
+      }
+      realtimeFolderRequest = createDeferred<DocumentListResult>();
+      return realtimeFolderRequest.promise;
+    });
 
     renderDocumentsPage();
 

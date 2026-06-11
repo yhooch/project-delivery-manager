@@ -8,6 +8,7 @@ import {
   getCancelRequirementPreflight,
   getDocument,
   importDocxDocument,
+  importHtmlDocument,
   importMarkdownDocument,
   listDocumentFolders,
   listDocuments,
@@ -208,12 +209,30 @@ describe("document service", () => {
     });
   });
 
-  it("imports markdown and docx files with FormData and no JSON body", async () => {
+  it("parses html import source types from document responses", async () => {
+    const api = {
+      ...createApi(),
+      get: vi.fn(async () => ({
+        data: {
+          items: [createDocumentFixture({ sourceType: "UPLOAD_HTML" })],
+          total: 1,
+        },
+      })),
+    } as DocumentApiTransport;
+
+    await expect(listDocuments({ spaceId }, api)).resolves.toMatchObject({
+      items: [{ sourceType: "UPLOAD_HTML" }],
+      total: 1,
+    });
+  });
+
+  it("imports markdown, docx, and html files with FormData and no JSON body", async () => {
     const api = createApi();
     const md = new File(["# Plan"], "plan.md", { type: "text/markdown" });
     const docx = new File(["docx"], "plan.docx", {
       type: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
     });
+    const htmlZip = new File(["zip"], "plan.zip", { type: "application/zip" });
 
     await importMarkdownDocument({ spaceId }, { file: md, title: "Plan" }, api);
     await importDocxDocument(
@@ -221,9 +240,15 @@ describe("document service", () => {
       { file: docx, folderId: "FLD_01" },
       api,
     );
+    await importHtmlDocument(
+      { spaceId },
+      { file: htmlZip, folderId: "FLD_02", title: "HTML Plan" },
+      api,
+    );
 
     const markdownBody = vi.mocked(api.post).mock.calls[0]?.[1];
     const docxBody = vi.mocked(api.post).mock.calls[1]?.[1];
+    const htmlBody = vi.mocked(api.post).mock.calls[2]?.[1];
 
     expect(api.post).toHaveBeenNthCalledWith(
       1,
@@ -242,6 +267,17 @@ describe("document service", () => {
     );
     expect(docxBody).toBeInstanceOf(FormData);
     expect((docxBody as FormData).get("folderId")).toBe("FLD_01");
+    expect(api.post).toHaveBeenNthCalledWith(
+      3,
+      `/spaces/${spaceId}/documents/import-html`,
+      expect.any(FormData),
+    );
+    expect(htmlBody).toBeInstanceOf(FormData);
+    expect((htmlBody as FormData).get("file")).toMatchObject({
+      name: "plan.zip",
+    });
+    expect((htmlBody as FormData).get("folderId")).toBe("FLD_02");
+    expect((htmlBody as FormData).get("title")).toBe("HTML Plan");
   });
 
   it("sends baseRevision in reimport FormData", async () => {

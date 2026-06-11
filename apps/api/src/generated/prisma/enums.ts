@@ -318,6 +318,7 @@ export type BugSeverity = (typeof BugSeverity)[keyof typeof BugSeverity]
 export const DocumentSourceType = {
   USER_CREATED: 'USER_CREATED',
   UPLOAD_DOCX: 'UPLOAD_DOCX',
+  UPLOAD_HTML: 'UPLOAD_HTML',
   UPLOAD_MARKDOWN: 'UPLOAD_MARKDOWN',
   PASTE_MARKDOWN: 'PASTE_MARKDOWN',
   PASTE_TEXT: 'PASTE_TEXT',

@@ -48,6 +48,7 @@ describe("document contracts", () => {
     expect(DocumentSourceTypeSchema.options).toEqual([
       "USER_CREATED",
       "UPLOAD_DOCX",
+      "UPLOAD_HTML",
       "UPLOAD_MARKDOWN",
       "PASTE_MARKDOWN",
       "PASTE_TEXT",

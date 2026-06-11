@@ -277,6 +277,13 @@ describe("shared contracts", () => {
         "FILE_TOO_LARGE",
       ]),
     );
+    expect(errorCodesFor("importHtmlDocument")).toEqual(
+      expect.arrayContaining([
+        "DOCUMENT_IMPORT_FAILED",
+        "DOCUMENT_IMPORT_UNSUPPORTED_TYPE",
+        "FILE_TOO_LARGE",
+      ]),
+    );
     expect(errorCodesFor("listAttachments")).toEqual(
       expect.arrayContaining([
         "ATTACHMENT_TARGET_NOT_FOUND",
@@ -522,8 +529,8 @@ describe("shared contracts", () => {
       name: "backend",
       displayName: "#backend",
       normalizedName: "backend",
-        colorKey: "blue",
-      });
+      colorKey: "blue",
+    });
     expect(
       MergeTagsResponseSchema.parse({
         targetTag: tag,

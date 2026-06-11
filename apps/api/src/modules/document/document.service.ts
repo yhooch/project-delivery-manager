@@ -15,6 +15,7 @@ import type {
   McpDocumentSearchHit,
   McpDocumentSearchResponse,
   ImportDocxDocumentRequest,
+  ImportHtmlDocumentRequest,
   ImportMarkdownDocumentRequest,
   MoveDocumentsToFolderRequest,
   MoveDocumentToFolderRequest,
@@ -52,6 +53,7 @@ import {
 } from "../attachment/storage/attachment-object-storage";
 import {
   assertDocxImportFile,
+  assertHtmlImportFile,
   assertMarkdownImportFile,
   assertMarkdownSize,
   assertSafeDocxZip,
@@ -61,7 +63,11 @@ import {
   normalizeMarkdownSource,
   normalizeTiptapSource,
   readDocxUtf8Entry,
+  readHtmlZipEntryData,
+  readSafeHtmlZipEntries,
+  selectHtmlZipEntry,
   stripBase64Images,
+  type HtmlZipEntry,
   type UploadedDocumentFile,
 } from "./document-content";
 import {
@@ -111,6 +117,15 @@ const supportedDocxImageExtensions = {
   "image/svg+xml": ".svg",
   "image/webp": ".webp",
 } satisfies Partial<Record<AttachmentMimeType, string>>;
+const supportedHtmlImageMimeTypesByExtension = {
+  ".gif": "image/gif",
+  ".jpeg": "image/jpeg",
+  ".jpg": "image/jpeg",
+  ".png": "image/png",
+  ".svg": "image/svg+xml",
+  ".webp": "image/webp",
+} satisfies Record<string, keyof typeof supportedDocxImageExtensions>;
+const htmlSourceAttachmentMimeType = "text/plain";
 
 type DocumentActorContext = {
   actorType: DocumentActorType;
@@ -145,6 +160,13 @@ type ConvertedDocxMarkdown = {
   markdown: string;
   title?: string;
   uploadedObjectKeys: string[];
+};
+type ConvertedHtmlMarkdown = ConvertedDocxMarkdown;
+
+type HtmlImportResourcePackage = {
+  entriesByPath: Map<string, HtmlZipEntry>;
+  file: UploadedDocumentFile;
+  htmlEntryPath: string;
 };
 
 @Injectable()
@@ -426,6 +448,36 @@ export class DocumentService {
         documentId,
         extractedTitle: converted.title,
         inlineAttachments: converted.inlineAttachments,
+        uploadedObjectKeys: converted.uploadedObjectKeys,
+      },
+    );
+  }
+
+  async importHtml(
+    actorUserId: string,
+    spaceId: string,
+    input: ImportHtmlDocumentRequest,
+    file: UploadedDocumentFile,
+    metadata: RequestMetadata = {},
+  ): Promise<Document> {
+    assertDocumentFile(() => assertHtmlImportFile(file));
+    await this.requireSpaceCreator(actorUserId, spaceId);
+    const documentId = ulid();
+    const converted = await this.convertHtmlToMarkdown(file, documentId);
+
+    return this.createFromUploadedMarkdown(
+      actorUserId,
+      spaceId,
+      input,
+      file,
+      metadata,
+      converted.markdown,
+      "UPLOAD_HTML",
+      {
+        documentId,
+        extractedTitle: converted.title,
+        inlineAttachments: converted.inlineAttachments,
+        sourceMimeType: getHtmlSourceAttachmentMimeType(file),
         uploadedObjectKeys: converted.uploadedObjectKeys,
       },
     );
@@ -731,17 +783,15 @@ export class DocumentService {
       documentId,
     );
     this.assertMarkdownContentEditable(existing);
-    const convertedDocx = file.fileName.toLowerCase().endsWith(".docx")
-      ? await this.convertDocxToMarkdown(
-          assertAndReturn(file, assertDocxImportFile),
-          documentId,
-        )
-      : undefined;
-    const uploadedObjectKeys = [...(convertedDocx?.uploadedObjectKeys ?? [])];
+    const converted = await this.convertReimportFileToMarkdown(
+      file,
+      documentId,
+    );
+    const uploadedObjectKeys = [...(converted?.uploadedObjectKeys ?? [])];
 
     try {
-      const markdown = convertedDocx
-        ? convertedDocx.markdown
+      const markdown = converted
+        ? converted.markdown
         : readMarkdownFile(assertAndReturn(file, assertMarkdownImportFile));
       const normalized = normalizeMarkdownSource({
         contentMarkdown: markdown,
@@ -749,11 +799,14 @@ export class DocumentService {
         title: existing.title,
       });
       const fileKey = createSourceFileKey(documentId, file.fileName);
+      const sourceMimeType = converted
+        ? getUploadedSourceAttachmentMimeType(file, converted.sourceType)
+        : file.mimeType;
 
       await this.objectStorage.putObject({
         body: file.buffer,
         key: fileKey,
-        mimeType: file.mimeType,
+        mimeType: sourceMimeType,
         size: file.size,
       });
       uploadedObjectKeys.push(fileKey);
@@ -770,12 +823,12 @@ export class DocumentService {
         contentMarkdownCache: null,
         contentText: normalized.contentText,
         documentId,
-        inlineAttachments: convertedDocx?.inlineAttachments,
+        inlineAttachments: converted?.inlineAttachments,
         requestId: metadata.requestId,
         sourceAttachment: {
           fileKey,
           fileName: file.fileName,
-          mimeType: file.mimeType,
+          mimeType: sourceMimeType,
           size: file.size,
         },
       });
@@ -1028,11 +1081,15 @@ export class DocumentService {
     file: UploadedDocumentFile,
     metadata: RequestMetadata,
     providedMarkdown?: string,
-    sourceType: "UPLOAD_MARKDOWN" | "UPLOAD_DOCX" = "UPLOAD_MARKDOWN",
+    sourceType:
+      | "UPLOAD_MARKDOWN"
+      | "UPLOAD_DOCX"
+      | "UPLOAD_HTML" = "UPLOAD_MARKDOWN",
     options: {
       documentId?: string;
       extractedTitle?: string;
       inlineAttachments?: ConvertedDocxMarkdown["inlineAttachments"];
+      sourceMimeType?: string;
       uploadedObjectKeys?: string[];
     } = {},
   ): Promise<Document> {
@@ -1040,11 +1097,7 @@ export class DocumentService {
     const uploadedObjectKeys = [...(options.uploadedObjectKeys ?? [])];
 
     try {
-      assertDocumentFile(() =>
-        sourceType === "UPLOAD_DOCX"
-          ? assertDocxImportFile(file)
-          : assertMarkdownImportFile(file),
-      );
+      assertDocumentFile(() => getUploadedDocumentAssertion(sourceType)(file));
       const access = await this.requireSpaceCreator(actorUserId, spaceId);
       const markdown = providedMarkdown ?? readMarkdownFile(file);
       const normalized = normalizeMarkdownSource({
@@ -1066,7 +1119,7 @@ export class DocumentService {
       await this.objectStorage.putObject({
         body: file.buffer,
         key: fileKey,
-        mimeType: file.mimeType,
+        mimeType: options.sourceMimeType ?? file.mimeType,
         size: file.size,
       });
       uploadedObjectKeys.push(fileKey);
@@ -1085,7 +1138,7 @@ export class DocumentService {
         sourceAttachment: {
           fileKey,
           fileName: file.fileName,
-          mimeType: file.mimeType,
+          mimeType: options.sourceMimeType ?? file.mimeType,
           size: file.size,
         },
         sourceType,
@@ -1206,6 +1259,224 @@ export class DocumentService {
         error instanceof Error ? { reason: error.message } : undefined,
       );
     }
+  }
+
+  private async convertHtmlToMarkdown(
+    file: UploadedDocumentFile,
+    documentId: string,
+  ): Promise<ConvertedHtmlMarkdown> {
+    assertDocumentFile(() => assertHtmlImportFile(file));
+    const inlineAttachments: ConvertedHtmlMarkdown["inlineAttachments"] = [];
+    const uploadedObjectKeys: string[] = [];
+    let imageOrdinal = 0;
+
+    try {
+      const htmlSource = readHtmlImportSource(file);
+      const root = parseHtmlFragment(htmlSource.html);
+      const title = extractHtmlDocumentTitle(root);
+
+      await this.replaceHtmlImageSources(root, {
+        documentId,
+        inlineAttachments,
+        nextImageOrdinal: () => {
+          imageOrdinal += 1;
+          return imageOrdinal;
+        },
+        resources: htmlSource.resources,
+        uploadedObjectKeys,
+      });
+
+      const markdown = convertParsedHtmlToMarkdown(root);
+      assertMarkdownSize(markdown);
+
+      if (!markdown) {
+        throw new Error("HTML conversion produced empty markdown");
+      }
+
+      return {
+        inlineAttachments,
+        markdown,
+        title,
+        uploadedObjectKeys,
+      };
+    } catch (error) {
+      await this.deleteUploadedObjects(uploadedObjectKeys);
+      if (error instanceof ApiException) {
+        throw error;
+      }
+      if (isCodedError(error, "FILE_TOO_LARGE")) {
+        throw new ApiException(
+          "FILE_TOO_LARGE",
+          "File is too large",
+          HttpStatus.BAD_REQUEST,
+        );
+      }
+      if (isCodedError(error, "DOCUMENT_IMPORT_UNSUPPORTED_TYPE")) {
+        throw new ApiException(
+          "DOCUMENT_IMPORT_UNSUPPORTED_TYPE",
+          "Unsupported document file type",
+          HttpStatus.BAD_REQUEST,
+        );
+      }
+      if (isCodedError(error, "DOCUMENT_IMPORT_FAILED")) {
+        throw new ApiException(
+          "DOCUMENT_IMPORT_FAILED",
+          "HTML import failed",
+          HttpStatus.BAD_REQUEST,
+          error instanceof Error ? { reason: error.message } : undefined,
+        );
+      }
+      throw new ApiException(
+        "DOCUMENT_IMPORT_FAILED",
+        "HTML import failed",
+        HttpStatus.BAD_REQUEST,
+        error instanceof Error ? { reason: error.message } : undefined,
+      );
+    }
+  }
+
+  private async convertReimportFileToMarkdown(
+    file: UploadedDocumentFile,
+    documentId: string,
+  ): Promise<
+    | (ConvertedDocxMarkdown & { sourceType: "UPLOAD_DOCX" })
+    | (ConvertedHtmlMarkdown & { sourceType: "UPLOAD_HTML" })
+    | undefined
+  > {
+    const lowerFileName = file.fileName.toLowerCase();
+
+    if (lowerFileName.endsWith(".docx")) {
+      return {
+        ...(await this.convertDocxToMarkdown(
+          assertAndReturn(file, assertDocxImportFile),
+          documentId,
+        )),
+        sourceType: "UPLOAD_DOCX",
+      };
+    }
+    if (
+      lowerFileName.endsWith(".html") ||
+      lowerFileName.endsWith(".htm") ||
+      lowerFileName.endsWith(".zip")
+    ) {
+      return {
+        ...(await this.convertHtmlToMarkdown(
+          assertAndReturn(file, assertHtmlImportFile),
+          documentId,
+        )),
+        sourceType: "UPLOAD_HTML",
+      };
+    }
+
+    return undefined;
+  }
+
+  private async replaceHtmlImageSources(
+    root: HtmlElementNode,
+    input: {
+      documentId: string;
+      inlineAttachments: ConvertedHtmlMarkdown["inlineAttachments"];
+      nextImageOrdinal: () => number;
+      resources?: HtmlImportResourcePackage;
+      uploadedObjectKeys: string[];
+    },
+  ): Promise<void> {
+    const images = collectHtmlElements(root, "img");
+
+    for (const image of images) {
+      const source = image.attrs.src?.trim();
+
+      if (!source) {
+        continue;
+      }
+
+      const replacement = await this.resolveHtmlImageSource(source, input);
+
+      if (replacement) {
+        image.attrs.src = replacement;
+      } else {
+        delete image.attrs.src;
+      }
+    }
+  }
+
+  private async resolveHtmlImageSource(
+    source: string,
+    input: {
+      documentId: string;
+      inlineAttachments: ConvertedHtmlMarkdown["inlineAttachments"];
+      nextImageOrdinal: () => number;
+      resources?: HtmlImportResourcePackage;
+      uploadedObjectKeys: string[];
+    },
+  ): Promise<string | undefined> {
+    const dataImage = parseHtmlDataImage(source);
+
+    if (dataImage) {
+      const attachment = await this.uploadHtmlInlineImage({
+        body: dataImage.body,
+        documentId: input.documentId,
+        mimeType: dataImage.mimeType,
+        ordinal: input.nextImageOrdinal(),
+      });
+
+      input.inlineAttachments.push(attachment);
+      input.uploadedObjectKeys.push(attachment.fileKey);
+
+      return createAttachmentDownloadPath(attachment.id);
+    }
+
+    const sanitizedRemote = sanitizeHtmlImageSource(source);
+
+    if (sanitizedRemote.kind === "safe") {
+      return sanitizedRemote.value;
+    }
+    if (sanitizedRemote.kind === "unsafe") {
+      return undefined;
+    }
+    if (!input.resources) {
+      throwHtmlImportFailed(`HTML image resource is missing: ${source}`);
+    }
+
+    const resourcePath = resolveHtmlZipResourcePath(
+      input.resources.htmlEntryPath,
+      sanitizedRemote.value,
+    );
+
+    if (!resourcePath) {
+      throwHtmlImportFailed(`HTML image resource path is invalid: ${source}`);
+    }
+
+    const resourceEntry = input.resources.entriesByPath.get(resourcePath);
+
+    if (!resourceEntry) {
+      throwHtmlImportFailed(`HTML image resource is missing: ${source}`);
+    }
+
+    const mimeType = getSupportedHtmlImageMimeType(resourcePath);
+
+    if (!mimeType) {
+      throwHtmlImportFailed(`HTML image MIME type is unsupported: ${source}`);
+    }
+
+    const body = readHtmlZipEntryData(input.resources.file, resourceEntry);
+
+    if (body.length <= 0) {
+      throwHtmlImportFailed(`HTML image resource is empty: ${source}`);
+    }
+
+    const attachment = await this.uploadHtmlInlineImage({
+      body,
+      documentId: input.documentId,
+      fileName: fileNameFromPath(resourcePath),
+      mimeType,
+      ordinal: input.nextImageOrdinal(),
+    });
+
+    input.inlineAttachments.push(attachment);
+    input.uploadedObjectKeys.push(attachment.fileKey);
+
+    return createAttachmentDownloadPath(attachment.id);
   }
 
   private async requireReadableDocument(
@@ -1660,23 +1931,64 @@ export class DocumentService {
       );
     }
 
+    return this.uploadDocumentInlineImage({
+      body,
+      documentId: input.documentId,
+      fileName: createDocxImageFileName(input.ordinal, mimeType),
+      mimeType,
+    });
+  }
+
+  private async uploadHtmlInlineImage(input: {
+    body: Buffer;
+    documentId: string;
+    fileName?: string;
+    mimeType: keyof typeof supportedDocxImageExtensions;
+    ordinal: number;
+  }): Promise<ConvertedHtmlMarkdown["inlineAttachments"][number]> {
+    if (input.body.length <= 0) {
+      throwHtmlImportFailed("HTML image resource is empty");
+    }
+    if (input.body.length > AttachmentMaxSizeBytes) {
+      throw new ApiException(
+        "FILE_TOO_LARGE",
+        "HTML image is too large",
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+
+    return this.uploadDocumentInlineImage({
+      body: input.body,
+      documentId: input.documentId,
+      fileName:
+        input.fileName ??
+        createHtmlImageFileName(input.ordinal, input.mimeType),
+      mimeType: input.mimeType,
+    });
+  }
+
+  private async uploadDocumentInlineImage(input: {
+    body: Buffer;
+    documentId: string;
+    fileName: string;
+    mimeType: keyof typeof supportedDocxImageExtensions;
+  }): Promise<ConvertedDocxMarkdown["inlineAttachments"][number]> {
     const id = ulid();
-    const fileName = createDocxImageFileName(input.ordinal, mimeType);
-    const fileKey = createInlineImageFileKey(input.documentId, fileName);
+    const fileKey = createInlineImageFileKey(input.documentId, input.fileName);
 
     await this.objectStorage.putObject({
-      body,
+      body: input.body,
       key: fileKey,
-      mimeType,
-      size: body.length,
+      mimeType: input.mimeType,
+      size: input.body.length,
     });
 
     return {
       fileKey,
-      fileName,
+      fileName: input.fileName,
       id,
-      mimeType,
-      size: body.length,
+      mimeType: input.mimeType,
+      size: input.body.length,
     };
   }
 
@@ -1795,6 +2107,48 @@ function assertDocumentFile(assertion: () => void): void {
   }
 }
 
+function getUploadedDocumentAssertion(
+  sourceType: "UPLOAD_MARKDOWN" | "UPLOAD_DOCX" | "UPLOAD_HTML",
+): (file: UploadedDocumentFile) => void {
+  if (sourceType === "UPLOAD_DOCX") {
+    return assertDocxImportFile;
+  }
+  if (sourceType === "UPLOAD_HTML") {
+    return assertHtmlImportFile;
+  }
+
+  return assertMarkdownImportFile;
+}
+
+function readHtmlImportSource(file: UploadedDocumentFile): {
+  html: string;
+  resources?: HtmlImportResourcePackage;
+} {
+  if (!file.fileName.toLowerCase().endsWith(".zip")) {
+    return { html: file.buffer.toString("utf8") };
+  }
+
+  const entries = readSafeHtmlZipEntries(file);
+  const htmlEntry = selectHtmlZipEntry(entries);
+  const entriesByPath = new Map<string, HtmlZipEntry>();
+
+  for (const entry of entries) {
+    if (entry.fileName.endsWith("/")) {
+      continue;
+    }
+    entriesByPath.set(normalizeHtmlZipEntryPath(entry.fileName), entry);
+  }
+
+  return {
+    html: readHtmlZipEntryData(file, htmlEntry).toString("utf8"),
+    resources: {
+      entriesByPath,
+      file,
+      htmlEntryPath: normalizeHtmlZipEntryPath(htmlEntry.fileName),
+    },
+  };
+}
+
 async function withTimeout<T>(
   promise: Promise<T>,
   timeoutMs: number,
@@ -1826,6 +2180,82 @@ function isCodedError(error: unknown, code: string) {
   );
 }
 
+function normalizeHtmlZipEntryPath(fileName: string): string {
+  return fileName.replace(/\\/gu, "/");
+}
+
+function resolveHtmlZipResourcePath(
+  htmlEntryPath: string,
+  source: string,
+): string | undefined {
+  const sourcePath = stripUrlSuffix(source).replace(/\\/gu, "/");
+
+  if (
+    !sourcePath ||
+    sourcePath.startsWith("/") ||
+    sourcePath.startsWith("//") ||
+    /^[a-z][a-z0-9+.-]*:/iu.test(sourcePath) ||
+    /^[a-z]:[\\/]/iu.test(sourcePath)
+  ) {
+    return undefined;
+  }
+
+  let decoded: string;
+
+  try {
+    decoded = decodeURI(sourcePath);
+  } catch {
+    return undefined;
+  }
+
+  const segments = [
+    ...htmlEntryPath.split("/").slice(0, -1),
+    ...decoded.split("/"),
+  ];
+  const normalized: string[] = [];
+
+  for (const segment of segments) {
+    if (!segment || segment === ".") {
+      continue;
+    }
+    if (segment === "..") {
+      if (normalized.length === 0) {
+        return undefined;
+      }
+      normalized.pop();
+      continue;
+    }
+    normalized.push(segment);
+  }
+
+  return normalized.length > 0 ? normalized.join("/") : undefined;
+}
+
+function stripUrlSuffix(value: string): string {
+  const suffixIndex = value.search(/[?#]/u);
+
+  return suffixIndex >= 0 ? value.slice(0, suffixIndex) : value;
+}
+
+function getUploadedSourceAttachmentMimeType(
+  file: UploadedDocumentFile,
+  sourceType: "UPLOAD_DOCX" | "UPLOAD_HTML",
+): string {
+  return sourceType === "UPLOAD_HTML"
+    ? getHtmlSourceAttachmentMimeType(file)
+    : file.mimeType;
+}
+
+function getHtmlSourceAttachmentMimeType(file: UploadedDocumentFile): string {
+  if (!file.fileName.toLowerCase().endsWith(".zip")) {
+    return htmlSourceAttachmentMimeType;
+  }
+
+  return file.mimeType === "application/octet-stream"
+    ? "application/zip"
+    : file.mimeType;
+}
+
 function createSourceFileKey(documentId: string, fileName: string) {
   return `attachments/document/${documentId}/${ulid()}-${sanitizeFileName(fileName)}`;
 }
@@ -1851,6 +2281,21 @@ function createDocxImageFileName(
   return `image-${sequence}${supportedDocxImageExtensions[mimeType]}`;
 }
 
+function createHtmlImageFileName(
+  ordinal: number,
+  mimeType: keyof typeof supportedDocxImageExtensions,
+) {
+  const sequence = ordinal.toString().padStart(3, "0");
+
+  return `html-image-${sequence}${supportedDocxImageExtensions[mimeType]}`;
+}
+
+function fileNameFromPath(filePath: string): string {
+  return sanitizeFileName(
+    filePath.split("/").filter(Boolean).at(-1) ?? "image",
+  );
+}
+
 function getSupportedDocxImageMimeType(
   contentType: string | undefined,
 ): keyof typeof supportedDocxImageExtensions | undefined {
@@ -1863,6 +2308,55 @@ function getSupportedDocxImageMimeType(
   }
 
   return parsed.data as keyof typeof supportedDocxImageExtensions;
+}
+
+function getSupportedHtmlImageMimeType(
+  filePath: string,
+): keyof typeof supportedDocxImageExtensions | undefined {
+  const lowerPath = stripUrlSuffix(filePath).toLowerCase();
+  const extension = (
+    Object.keys(supportedHtmlImageMimeTypesByExtension) as Array<
+      keyof typeof supportedHtmlImageMimeTypesByExtension
+    >
+  ).find((candidate) => lowerPath.endsWith(candidate));
+
+  return extension
+    ? supportedHtmlImageMimeTypesByExtension[extension]
+    : undefined;
+}
+
+function parseHtmlDataImage(source: string):
+  | {
+      body: Buffer;
+      mimeType: keyof typeof supportedDocxImageExtensions;
+    }
+  | undefined {
+  const match = /^data:([^;,]+)(?:;[a-z0-9_.=-]+)*;base64,([\s\S]+)$/iu.exec(
+    source,
+  );
+
+  if (!match) {
+    return undefined;
+  }
+
+  const mimeType = getSupportedDocxImageMimeType(match[1]);
+
+  if (!mimeType) {
+    throwHtmlImportFailed(
+      `HTML data image MIME type is unsupported: ${match[1]}`,
+    );
+  }
+
+  const base64 = (match[2] ?? "").replace(/\s+/gu, "");
+
+  if (!base64 || !/^[a-z0-9+/]+={0,2}$/iu.test(base64)) {
+    throwHtmlImportFailed("HTML data image base64 payload is invalid");
+  }
+
+  return {
+    body: Buffer.from(base64, "base64"),
+    mimeType,
+  };
 }
 
 async function readDocxImageBuffer(image: MammothImage): Promise<Buffer> {
@@ -1903,6 +2397,7 @@ type HtmlTextNode = {
 };
 
 const htmlBlockTags = new Set([
+  "article",
   "blockquote",
   "div",
   "h1",
@@ -1911,13 +2406,34 @@ const htmlBlockTags = new Set([
   "h4",
   "h5",
   "h6",
+  "html",
   "hr",
+  "body",
+  "main",
   "ol",
   "p",
+  "pre",
+  "section",
   "table",
   "ul",
 ]);
 const htmlVoidTags = new Set(["br", "hr", "img", "input", "meta"]);
+const htmlIgnoredTags = new Set([
+  "applet",
+  "base",
+  "embed",
+  "form",
+  "frame",
+  "frameset",
+  "head",
+  "iframe",
+  "link",
+  "noscript",
+  "object",
+  "script",
+  "style",
+  "template",
+]);
 
 function extractDocxImportHints(file: UploadedDocumentFile): DocxImportHints {
   const hints: DocxImportHints = { outlineHeadingTexts: new Set() };
@@ -2016,8 +2532,10 @@ function normalizeConvertedDocxMarkdown(
 }
 
 function convertMammothHtmlToMarkdown(html: string): string {
-  const root = parseHtmlFragment(html);
+  return convertParsedHtmlToMarkdown(parseHtmlFragment(html));
+}
 
+function convertParsedHtmlToMarkdown(root: HtmlElementNode): string {
   return renderHtmlBlockChildren(root.children)
     .replace(/[ \t]+\n/gu, "\n")
     .replace(/\n{3,}/gu, "\n\n")
@@ -2128,6 +2646,9 @@ function renderHtmlBlock(node: HtmlNode): string {
   if (node.type === "text") {
     return renderHtmlText(node.value).trim();
   }
+  if (htmlIgnoredTags.has(node.tagName)) {
+    return "";
+  }
 
   if (/^h[1-6]$/u.test(node.tagName)) {
     const level = Number(node.tagName.slice(1));
@@ -2175,11 +2696,14 @@ function renderHtmlInline(node: HtmlNode): string {
   if (node.type === "text") {
     return renderHtmlText(node.value);
   }
+  if (htmlIgnoredTags.has(node.tagName)) {
+    return "";
+  }
 
   switch (node.tagName) {
     case "a": {
       const text = renderHtmlInlineChildren(node.children);
-      const href = node.attrs.href?.trim();
+      const href = sanitizeHtmlHref(node.attrs.href?.trim());
 
       if (!text) {
         return "";
@@ -2201,7 +2725,7 @@ function renderHtmlInline(node: HtmlNode): string {
       return text ? `_${text}_` : "";
     }
     case "img": {
-      const src = node.attrs.src?.trim();
+      const src = sanitizeHtmlImageMarkdownSource(node.attrs.src?.trim());
       const alt = node.attrs.alt?.trim() ?? "image";
 
       return src ? `![${alt}](${src})` : "[image omitted]";
@@ -2355,11 +2879,111 @@ function isGeneratedDocxTocLink(line: string): boolean {
 }
 
 function isHtmlBlockElement(node: HtmlNode): boolean {
-  return node.type === "element" && htmlBlockTags.has(node.tagName);
+  return (
+    node.type === "element" &&
+    !htmlIgnoredTags.has(node.tagName) &&
+    htmlBlockTags.has(node.tagName)
+  );
 }
 
 function renderHtmlText(value: string): string {
   return decodeHtmlText(value).replace(/\s+/gu, " ");
+}
+
+function collectHtmlElements(
+  node: HtmlElementNode,
+  tagName: string,
+): HtmlElementNode[] {
+  const result: HtmlElementNode[] = [];
+
+  for (const child of node.children) {
+    if (child.type !== "element") {
+      continue;
+    }
+    if (child.tagName === tagName) {
+      result.push(child);
+    }
+    result.push(...collectHtmlElements(child, tagName));
+  }
+
+  return result;
+}
+
+function extractHtmlDocumentTitle(root: HtmlElementNode): string | undefined {
+  const title = collectHtmlElements(root, "title")
+    .map((node) => renderHtmlInlineChildren(node.children))
+    .find(Boolean);
+
+  return title?.slice(0, 200);
+}
+
+function sanitizeHtmlHref(value: string | undefined): string | undefined {
+  if (!value) {
+    return undefined;
+  }
+  if (
+    isSafeHttpUrl(value) ||
+    isSafeMailtoUrl(value) ||
+    isSafeAttachmentPath(value)
+  ) {
+    return value;
+  }
+  if (isUnsafeUrl(value)) {
+    return undefined;
+  }
+
+  return value;
+}
+
+function sanitizeHtmlImageMarkdownSource(
+  value: string | undefined,
+): string | undefined {
+  if (!value) {
+    return undefined;
+  }
+  if (isSafeHttpUrl(value) || isSafeAttachmentPath(value)) {
+    return value;
+  }
+
+  return undefined;
+}
+
+function sanitizeHtmlImageSource(
+  value: string,
+):
+  | { kind: "relative"; value: string }
+  | { kind: "safe"; value: string }
+  | { kind: "unsafe" } {
+  if (isSafeHttpUrl(value) || isSafeAttachmentPath(value)) {
+    return { kind: "safe", value };
+  }
+  if (isUnsafeUrl(value) || value.startsWith("/")) {
+    return { kind: "unsafe" };
+  }
+
+  return { kind: "relative", value };
+}
+
+function isSafeHttpUrl(value: string): boolean {
+  return /^https?:\/\//iu.test(value);
+}
+
+function isSafeMailtoUrl(value: string): boolean {
+  return /^mailto:/iu.test(value);
+}
+
+function isSafeAttachmentPath(value: string): boolean {
+  return /^\/api\/v1\/attachments\/[0-9A-HJKMNP-TV-Z]{26}\/download(?:[?#].*)?$/u.test(
+    value,
+  );
+}
+
+function isUnsafeUrl(value: string): boolean {
+  return (
+    value.startsWith("//") ||
+    /^[a-z][a-z0-9+.-]*:/iu.test(value) ||
+    /^[a-z]:[\\/]/iu.test(value)
+  );
 }
 
 function extractDocxParagraphText(paragraphXml: string): string {
@@ -2596,4 +3220,13 @@ function throwRequirementDocumentStateBypass(): never {
 
 function throwInvalidDocumentKind(message: string): never {
   throw new ApiException("VALIDATION_ERROR", message, HttpStatus.BAD_REQUEST);
+}
+
+function throwHtmlImportFailed(reason: string): never {
+  throw new ApiException(
+    "DOCUMENT_IMPORT_FAILED",
+    "HTML import failed",
+    HttpStatus.BAD_REQUEST,
+    { reason },
+  );
 }

@@ -596,8 +596,8 @@
       "DOCUMENT_FOLDER_NOT_FOUND": "The document folder is unavailable.",
       "DOCUMENT_FOLDER_VERSION_CONFLICT": "The folder has a newer version. Refresh and try again.",
       "DOCUMENT_LINK_TARGET_INVALID": "The linked document resource is invalid, unavailable, or inaccessible to this account.",
-      "DOCUMENT_IMPORT_FAILED": "Document import failed. Check the file and try again.",
-      "DOCUMENT_IMPORT_UNSUPPORTED_TYPE": "This document file type is not supported.",
+      "DOCUMENT_IMPORT_FAILED": "Document import failed. Check the file and try again. HTML ZIP files must include an entry HTML file and reference images or other resources with relative paths.",
+      "DOCUMENT_IMPORT_UNSUPPORTED_TYPE": "This document file type is not supported. Use Markdown, Word, HTML, or an HTML ZIP resource package.",
       "TARGET_REQUIRED_FOR_ATTACHMENT": "An attachment must be linked to a target.",
       "ATTACHMENT_TARGET_NOT_FOUND": "The attachment or linked target is unavailable or this account cannot access it.",
       "ATTACHMENT_LIMIT_EXCEEDED": "The attachment limit has been reached. Remove some attachments and try again.",
@@ -1006,6 +1006,7 @@
     "source": {
       "USER_CREATED": "Manual",
       "UPLOAD_DOCX": "Word import",
+      "UPLOAD_HTML": "HTML import",
       "UPLOAD_MARKDOWN": "Markdown import",
       "PASTE_MARKDOWN": "Pasted Markdown",
       "PASTE_TEXT": "Pasted text",
@@ -1028,6 +1029,7 @@
       "sourceAction": {
         "USER_CREATED": "manual create",
         "UPLOAD_DOCX": "Word upload",
+        "UPLOAD_HTML": "HTML upload",
         "UPLOAD_MARKDOWN": "Markdown upload",
         "PASTE_MARKDOWN": "Markdown paste",
         "PASTE_TEXT": "text paste",
@@ -1063,15 +1065,15 @@
     },
     "empty": {
       "title": "No documents yet",
-      "description": "Import Markdown or Word, or paste model output to build this space's context library."
+      "description": "Import Markdown, Word, HTML, or HTML ZIP, or paste model output to build this space's context library."
     },
     "importDialog": {
       "title": "Import document",
-      "description": "Supports .md, .markdown, and .docx up to 100MB. Word conversion is handled by the backend.",
+      "description": "Supports .md, .markdown, .docx, .html, .htm, and .zip up to 100MB. ZIP is only for HTML resource packages and must include an entry HTML file with images or other resources referenced by relative paths.",
       "titleLabel": "Title",
       "titlePlaceholder": "Optional. Uses the file or body heading when empty.",
       "fileLabel": "File",
-      "unsupported": "Only Markdown or .docx files are supported.",
+      "unsupported": "Only Markdown, Word, HTML, or HTML ZIP resource packages are supported. HTML ZIP files must include an entry HTML file and reference images or other resources with relative paths.",
       "cancel": "Cancel",
       "submit": "Import"
     },
@@ -1126,7 +1128,7 @@
       "documentsSearching": "Searching documents…",
       "documentsNoResults": "No matching documents",
       "removeLinkedDocument": "Remove linked document {title}",
-      "reimportLabel": "Upload .md or .docx to replace the body"
+      "reimportLabel": "Upload .md, .docx, .html, .htm, or HTML ZIP to replace the body"
     },
     "comments": {
       "title": "Comments",

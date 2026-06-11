@@ -31,6 +31,7 @@ import {
   DocumentListQuerySchema,
   ConvertDocumentToRequirementRequestSchema,
   ImportDocxDocumentRequestSchema,
+  ImportHtmlDocumentRequestSchema,
   ImportMarkdownDocumentRequestSchema,
   MoveDocumentsToFolderRequestSchema,
   MoveDocumentToFolderRequestSchema,
@@ -225,6 +226,31 @@ export class DocumentController {
       session.userId,
       params.spaceId,
       parseMultipartMetadata(body, ImportDocxDocumentRequestSchema),
+      requireUploadedFile(file),
+      getRequestMetadata(request),
+    );
+  }
+
+  @Post("spaces/:spaceId/documents/import-html")
+  @HttpCode(HttpStatus.OK)
+  @UseGuards(WriteOriginGuard)
+  @UseInterceptors(
+    DocumentImportUploadErrorInterceptor,
+    FileInterceptor("file", documentImportMulterOptions),
+  )
+  async importHtml(
+    @Param(new ZodValidationPipe(SpaceIdPathParamsSchema))
+    params: { spaceId: string },
+    @Body() body: MultipartDocumentMetadata,
+    @UploadedFile() file: UploadedFileInput | undefined,
+    @Req() request: RequestWithContext,
+  ): Promise<Document> {
+    const session = this.currentUser.requireSession(request);
+
+    return this.documents.importHtml(
+      session.userId,
+      params.spaceId,
+      parseMultipartMetadata(body, ImportHtmlDocumentRequestSchema),
       requireUploadedFile(file),
       getRequestMetadata(request),
     );

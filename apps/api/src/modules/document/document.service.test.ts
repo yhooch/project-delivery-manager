@@ -895,6 +895,163 @@ describe("DocumentService", () => {
     expect(documents.create).not.toHaveBeenCalled();
     expect(objectStorage.putObject).not.toHaveBeenCalled();
   });
+
+  it("imports single HTML, uploads base64 images and filters unsafe links", async () => {
+    const dataImage = Buffer.from("html-image").toString("base64");
+    const { documents, objectStorage, service } = createSubject({ role: "PM" });
+
+    await service.importHtml(
+      ACTOR_ID,
+      SPACE_ID,
+      {},
+      htmlUploadFile(`
+        <html>
+          <head><title>HTML Title</title><script>alert("bad")</script></head>
+          <body>
+            <h1>Imported</h1>
+            <p><a href="javascript:alert(1)">unsafe</a></p>
+            <p><a href="https://example.com/path">safe</a></p>
+            <img alt="Logo" src="data:image/png;base64,${dataImage}" />
+          </body>
+        </html>
+      `),
+    );
+
+    const createInput = (documents.create as ReturnType<typeof vi.fn>).mock
+      .calls[0]?.[0];
+    const inlineAttachment = createInput.inlineAttachments?.[0];
+
+    expect(createInput).toMatchObject({
+      sourceType: "UPLOAD_HTML",
+      title: "HTML Title",
+      sourceAttachment: {
+        fileName: "document.html",
+        mimeType: "text/plain",
+      },
+    });
+    expect(inlineAttachment).toMatchObject({
+      fileName: "html-image-001.png",
+      mimeType: "image/png",
+      size: Buffer.byteLength("html-image"),
+    });
+    expect(createInput.contentMarkdown).toContain("# Imported");
+    expect(createInput.contentMarkdown).toContain(
+      `/api/v1/attachments/${inlineAttachment?.id}/download`,
+    );
+    expect(createInput.contentMarkdown).toContain(
+      "[safe](https://example.com/path)",
+    );
+    expect(createInput.contentMarkdown).toContain("unsafe");
+    expect(createInput.contentMarkdown).not.toContain("javascript:");
+    expect(createInput.contentMarkdown).not.toContain("data:image");
+    expect(createInput.contentMarkdown).not.toContain('alert("bad")');
+    expect(objectStorage.putObject).toHaveBeenCalledWith(
+      expect.objectContaining({
+        body: Buffer.from("html-image"),
+        mimeType: "image/png",
+      }),
+    );
+    expect(objectStorage.putObject).toHaveBeenCalledWith(
+      expect.objectContaining({
+        body: expect.any(Buffer),
+        mimeType: "text/plain",
+      }),
+    );
+  });
+
+  it("imports HTML ZIP images from package-relative paths", async () => {
+    const { documents, objectStorage, service } = createSubject({ role: "PM" });
+
+    await service.importHtml(
+      ACTOR_ID,
+      SPACE_ID,
+      {},
+      htmlZipUploadFile([
+        {
+          fileName: "index.html",
+          content: Buffer.from(
+            '<h1>Package</h1><p><img alt="Diagram" src="assets/diagram.webp"></p>',
+          ),
+        },
+        {
+          fileName: "assets/diagram.webp",
+          content: Buffer.from("webp-image"),
+        },
+      ]),
+    );
+
+    const createInput = (documents.create as ReturnType<typeof vi.fn>).mock
+      .calls[0]?.[0];
+    const inlineAttachment = createInput.inlineAttachments?.[0];
+
+    expect(createInput).toMatchObject({
+      sourceType: "UPLOAD_HTML",
+      sourceAttachment: {
+        fileName: "document.zip",
+        mimeType: "application/zip",
+      },
+    });
+    expect(inlineAttachment).toMatchObject({
+      fileName: "diagram.webp",
+      mimeType: "image/webp",
+      size: Buffer.byteLength("webp-image"),
+    });
+    expect(createInput.contentMarkdown).toContain(
+      `/api/v1/attachments/${inlineAttachment?.id}/download`,
+    );
+    expect(objectStorage.putObject).toHaveBeenCalledWith(
+      expect.objectContaining({
+        body: Buffer.from("webp-image"),
+        mimeType: "image/webp",
+      }),
+    );
+  });
+
+  it("does not create a document when single HTML references a missing relative image", async () => {
+    const { documents, objectStorage, service } = createSubject({ role: "PM" });
+
+    await expect(
+      service.importHtml(
+        ACTOR_ID,
+        SPACE_ID,
+        {},
+        htmlUploadFile('<h1>Broken</h1><img src="images/missing.png">'),
+      ),
+    ).rejects.toMatchObject({
+      code: "DOCUMENT_IMPORT_FAILED",
+      details: {
+        reason: "HTML image resource is missing: images/missing.png",
+      },
+    });
+    expect(documents.create).not.toHaveBeenCalled();
+    expect(objectStorage.putObject).not.toHaveBeenCalled();
+  });
+
+  it("reimports HTML files as markdown content", async () => {
+    const existing = fakeDocument({ createdById: ACTOR_ID, revision: 1 });
+    const { documents, service } = createSubject({
+      document: existing,
+      role: "PM",
+    });
+
+    await service.reimport(
+      ACTOR_ID,
+      DOCUMENT_ID,
+      { baseRevision: 1 },
+      htmlUploadFile("<h1>Updated HTML</h1><p>Body</p>"),
+    );
+
+    expect(documents.updateContent).toHaveBeenCalledWith(
+      expect.objectContaining({
+        baseRevision: 1,
+        contentMarkdown: "# Updated HTML\n\nBody",
+        sourceAttachment: expect.objectContaining({
+          fileName: "document.html",
+          mimeType: "text/plain",
+        }),
+      }),
+    );
+  });
 });
 
 function createSubject(
@@ -1241,6 +1398,30 @@ function docxUploadFileWithDocumentXml(
     fileName: "document.docx",
     mimeType:
       "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    size: buffer.length,
+  };
+}
+
+function htmlUploadFile(html: string) {
+  const buffer = Buffer.from(html);
+
+  return {
+    buffer,
+    fileName: "document.html",
+    mimeType: "text/html",
+    size: buffer.length,
+  };
+}
+
+function htmlZipUploadFile(
+  entries: Array<{ content: Buffer; fileName: string }>,
+) {
+  const buffer = createZipBuffer(entries);
+
+  return {
+    buffer,
+    fileName: "document.zip",
+    mimeType: "application/zip",
     size: buffer.length,
   };
 }

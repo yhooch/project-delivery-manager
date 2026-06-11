@@ -41,6 +41,7 @@ import type {
 } from "../../lib/document-service";
 import {
   importDocxDocument,
+  importHtmlDocument,
   importMarkdownDocument,
   listDocumentFolders,
   listDocuments,
@@ -424,7 +425,10 @@ export function DocumentsPage() {
   ]);
 
   const loadFolderDocuments = useCallback(
-    async (folderId: string, options?: { page?: number; realtime?: boolean }) => {
+    async (
+      folderId: string,
+      options?: { page?: number; realtime?: boolean },
+    ) => {
       if (!spaceId) {
         return;
       }
@@ -443,8 +447,7 @@ export function DocumentsPage() {
             isLoadingMore: isRealtime
               ? (previous?.isLoadingMore ?? false)
               : pageToLoad > 1,
-            items:
-              isRealtime || pageToLoad > 1 ? (previous?.items ?? []) : [],
+            items: isRealtime || pageToLoad > 1 ? (previous?.items ?? []) : [],
             page: previous?.page ?? 1,
             total: previous?.total ?? 0,
           },
@@ -2005,16 +2008,23 @@ function DocumentImportDialog({
     setErrorKey(null);
     try {
       const kind = getImportKind(file);
-      const document =
-        kind === "docx"
-          ? await importDocxDocument(
-              { organizationId, spaceId },
-              { file, folderId, title },
-            )
-          : await importMarkdownDocument(
-              { organizationId, spaceId },
-              { file, folderId, title },
-            );
+      let document: { id: string };
+      if (kind === "docx") {
+        document = await importDocxDocument(
+          { organizationId, spaceId },
+          { file, folderId, title },
+        );
+      } else if (kind === "html") {
+        document = await importHtmlDocument(
+          { organizationId, spaceId },
+          { file, folderId, title },
+        );
+      } else {
+        document = await importMarkdownDocument(
+          { organizationId, spaceId },
+          { file, folderId, title },
+        );
+      }
       onOpenChange(false);
       onCreated(document.id);
     } catch (error) {
@@ -2044,7 +2054,7 @@ function DocumentImportDialog({
           <label className="grid gap-1.5 text-sm">
             <span className="font-medium">{t("fileLabel")}</span>
             <Input
-              accept=".md,.markdown,.docx"
+              accept=".md,.markdown,.docx,.html,.htm,.zip"
               data-testid="document-import-file-input"
               type="file"
               onChange={(event: ChangeEvent<HTMLInputElement>) =>

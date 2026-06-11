@@ -31,6 +31,13 @@ export const DocumentSupportedDocxMimeTypes = [
   "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
   "application/octet-stream",
 ] as const;
+export const DocumentSupportedHtmlMimeTypes = [
+  "text/html",
+  "application/xhtml+xml",
+  "application/zip",
+  "application/x-zip-compressed",
+  "application/octet-stream",
+] as const;
 
 const DocumentTitleSchema = z.string().trim().min(1).max(200);
 const DocumentFolderNameSchema = z.string().trim().min(1).max(120);
@@ -384,6 +391,12 @@ export type ImportDocxDocumentRequest = z.infer<
   typeof ImportDocxDocumentRequestSchema
 >;
 
+export const ImportHtmlDocumentRequestSchema =
+  ImportMarkdownDocumentRequestSchema;
+export type ImportHtmlDocumentRequest = z.infer<
+  typeof ImportHtmlDocumentRequestSchema
+>;
+
 export const UpdateDocumentMetadataRequestSchema = z
   .object({
     baseRevision: BaseRevisionSchema.optional(),
@@ -403,25 +416,24 @@ export type UpdateDocumentMetadataRequest = z.infer<
   typeof UpdateDocumentMetadataRequestSchema
 >;
 
-export const UpdateDocumentContentRequestSchema = z
-  .union([
-    z
-      .object({
-        baseRevision: BaseRevisionSchema,
-        contentFormat: z.literal("MARKDOWN").optional(),
-        contentMarkdown: DocumentMarkdownSchema,
-      })
-      .strict(),
-    z
-      .object({
-        baseRevision: BaseRevisionSchema,
-        contentFormat: z.literal("TIPTAP_JSON"),
-        contentJson: TiptapJsonSchema,
-        contentMarkdownCache: DocumentTextSchema.optional(),
-        contentText: DocumentTextSchema.optional(),
-      })
-      .strict(),
-  ]);
+export const UpdateDocumentContentRequestSchema = z.union([
+  z
+    .object({
+      baseRevision: BaseRevisionSchema,
+      contentFormat: z.literal("MARKDOWN").optional(),
+      contentMarkdown: DocumentMarkdownSchema,
+    })
+    .strict(),
+  z
+    .object({
+      baseRevision: BaseRevisionSchema,
+      contentFormat: z.literal("TIPTAP_JSON"),
+      contentJson: TiptapJsonSchema,
+      contentMarkdownCache: DocumentTextSchema.optional(),
+      contentText: DocumentTextSchema.optional(),
+    })
+    .strict(),
+]);
 export type UpdateDocumentContentRequest = z.infer<
   typeof UpdateDocumentContentRequestSchema
 >;

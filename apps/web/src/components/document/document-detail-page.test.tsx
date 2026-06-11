@@ -449,6 +449,21 @@ describe("DocumentDetailPage", () => {
     ).toHaveAttribute("href", "#section-13");
   });
 
+  it("shows html import source in the context rail", async () => {
+    getDocumentMock.mockResolvedValueOnce({
+      ...createDocument(),
+      createdVia: "USER",
+      sourceType: "UPLOAD_HTML",
+    });
+
+    render(<DocumentDetailPage documentId="DOC_01" />);
+
+    const rail = await screen.findByTestId("document-context-rail");
+    expect(
+      within(rail).getByText("documents.source.UPLOAD_HTML"),
+    ).toBeVisible();
+  });
+
   it("stacks document detail actions on narrow screens", async () => {
     render(<DocumentDetailPage documentId="DOC_01" />);
 
@@ -778,7 +793,9 @@ describe("DocumentDetailPage", () => {
     const previewLink = await screen.findByTestId(
       "document-attachment-preview-link",
     );
-    const downloadLink = screen.getByTestId("document-attachment-download-link");
+    const downloadLink = screen.getByTestId(
+      "document-attachment-download-link",
+    );
 
     expect(previewLink).toHaveAttribute(
       "href",
@@ -957,6 +974,43 @@ describe("DocumentDetailPage", () => {
           documentId: "DOC_01",
         }),
       ),
+    );
+  });
+
+  it("accepts html files for reimporting markdown content", async () => {
+    const file = new File(["<h1>Imported</h1>"], "guide.html", {
+      type: "text/html",
+    });
+    reimportDocumentMock.mockResolvedValue({
+      ...createDocument(),
+      contentMarkdown: "# Imported",
+      revision: 4,
+      sourceType: "UPLOAD_HTML",
+    });
+
+    render(<DocumentDetailPage documentId="DOC_01" />);
+
+    fireEvent.click(await screen.findByTestId("document-edit-button"));
+    const input = screen.getByTestId("document-reimport-input");
+    expect(input).toHaveAttribute(
+      "accept",
+      ".md,.markdown,.docx,.html,.htm,.zip",
+    );
+    fireEvent.change(input, {
+      target: { files: [file] },
+    });
+    const reimportButton = screen.getByRole("button", {
+      name: "documents.actions.reimport",
+    });
+    expect(reimportButton).not.toBeDisabled();
+    fireEvent.click(reimportButton);
+
+    await waitFor(() =>
+      expect(reimportDocumentMock).toHaveBeenCalledWith({
+        baseRevision: 3,
+        documentId: "DOC_01",
+        file,
+      }),
     );
   });
 

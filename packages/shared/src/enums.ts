@@ -29,9 +29,7 @@ export const LegacyTargetTypeInputSchema = z.enum([
   "WORK_ITEM",
   "DOCUMENT",
 ]);
-export type LegacyTargetTypeInput = z.infer<
-  typeof LegacyTargetTypeInputSchema
->;
+export type LegacyTargetTypeInput = z.infer<typeof LegacyTargetTypeInputSchema>;
 
 export const TargetTypeSchema = CanonicalTargetTypeSchema;
 export type TargetType = z.infer<typeof TargetTypeSchema>;
@@ -118,9 +116,7 @@ export const WorkflowActorRelationSchema = z.enum([
   "CREATOR",
   "SPACE_OWNER",
 ]);
-export type WorkflowActorRelation = z.infer<
-  typeof WorkflowActorRelationSchema
->;
+export type WorkflowActorRelation = z.infer<typeof WorkflowActorRelationSchema>;
 
 export const SpaceRoleSchema = z.enum([
   "SPACE_ADMIN",
@@ -241,17 +237,13 @@ export type BugSeverity = z.infer<typeof BugSeveritySchema>;
 export const DocumentKindSchema = z.enum(["GENERAL", "REQUIREMENT"]);
 export type DocumentKind = z.infer<typeof DocumentKindSchema>;
 
-export const DocumentContentFormatSchema = z.enum([
-  "TIPTAP_JSON",
-  "MARKDOWN",
-]);
-export type DocumentContentFormat = z.infer<
-  typeof DocumentContentFormatSchema
->;
+export const DocumentContentFormatSchema = z.enum(["TIPTAP_JSON", "MARKDOWN"]);
+export type DocumentContentFormat = z.infer<typeof DocumentContentFormatSchema>;
 
 export const DocumentSourceTypeSchema = z.enum([
   "USER_CREATED",
   "UPLOAD_DOCX",
+  "UPLOAD_HTML",
   "UPLOAD_MARKDOWN",
   "PASTE_MARKDOWN",
   "PASTE_TEXT",

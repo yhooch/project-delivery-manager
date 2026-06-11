@@ -596,8 +596,8 @@
       "DOCUMENT_FOLDER_NOT_FOUND": "文档文件夹不存在或已不可用。",
       "DOCUMENT_FOLDER_VERSION_CONFLICT": "文件夹已有新版本，请刷新后重试。",
       "DOCUMENT_LINK_TARGET_INVALID": "文档关联资源无效、已不可用或当前账号无权访问。",
-      "DOCUMENT_IMPORT_FAILED": "文档导入失败，请检查文件后重试。",
-      "DOCUMENT_IMPORT_UNSUPPORTED_TYPE": "不支持该文档文件类型。",
+      "DOCUMENT_IMPORT_FAILED": "文档导入失败，请检查文件后重试。HTML ZIP 需要包含入口 HTML，图片等资源请使用相对路径引用。",
+      "DOCUMENT_IMPORT_UNSUPPORTED_TYPE": "不支持该文档文件类型。仅支持 Markdown、Word、HTML 或 HTML ZIP 资源包。",
       "TARGET_REQUIRED_FOR_ATTACHMENT": "附件必须关联目标对象。",
       "ATTACHMENT_TARGET_NOT_FOUND": "附件或关联目标不存在、已不可用或当前账号无权访问。",
       "ATTACHMENT_LIMIT_EXCEEDED": "附件数量已达到上限，请删除部分附件后重试。",
@@ -1006,6 +1006,7 @@
     "source": {
       "USER_CREATED": "手动创建",
       "UPLOAD_DOCX": "Word 导入",
+      "UPLOAD_HTML": "HTML 导入",
       "UPLOAD_MARKDOWN": "Markdown 导入",
       "PASTE_MARKDOWN": "粘贴 Markdown",
       "PASTE_TEXT": "粘贴文本",
@@ -1028,6 +1029,7 @@
       "sourceAction": {
         "USER_CREATED": "手动创建",
         "UPLOAD_DOCX": "上传 Word",
+        "UPLOAD_HTML": "上传 HTML",
         "UPLOAD_MARKDOWN": "上传 Markdown",
         "PASTE_MARKDOWN": "粘贴 Markdown",
         "PASTE_TEXT": "粘贴文本",
@@ -1063,15 +1065,15 @@
     },
     "empty": {
       "title": "还没有文档",
-      "description": "导入 Markdown、Word，或直接粘贴大模型输出，建立当前空间的上下文库。"
+      "description": "导入 Markdown、Word、HTML 或 HTML ZIP，或直接粘贴大模型输出，建立当前空间的上下文库。"
     },
     "importDialog": {
       "title": "导入文档",
-      "description": "支持最大 100MB 的 .md、.markdown 和 .docx；Word 转换由后端处理。",
+      "description": "支持最大 100MB 的 .md、.markdown、.docx、.html、.htm 和 .zip。ZIP 仅用于 HTML 资源包，需包含入口 HTML，图片等资源请使用相对路径引用。",
       "titleLabel": "标题",
       "titlePlaceholder": "可选，留空时使用文件或正文标题",
       "fileLabel": "文件",
-      "unsupported": "仅支持 Markdown 或 .docx 文件。",
+      "unsupported": "仅支持 Markdown、Word、HTML 或 HTML ZIP 资源包。HTML ZIP 需要包含入口 HTML，图片等资源请使用相对路径引用。",
       "cancel": "取消",
       "submit": "导入"
     },
@@ -1126,7 +1128,7 @@
       "documentsSearching": "正在搜索文档…",
       "documentsNoResults": "没有匹配的文档",
       "removeLinkedDocument": "移除关联文档 {title}",
-      "reimportLabel": "上传 .md 或 .docx 替换正文"
+      "reimportLabel": "上传 .md、.docx、.html、.htm 或 HTML ZIP 替换正文"
     },
     "comments": {
       "title": "评论",

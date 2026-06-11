@@ -32,7 +32,9 @@ export function createDocumentEditForm(
     baseRevision: document.revision,
     contentMarkdown: document.contentMarkdown,
     contentText:
-      document.contentMarkdownCache ?? document.contentText ?? document.contentMarkdown,
+      document.contentMarkdownCache ??
+      document.contentText ??
+      document.contentMarkdown,
     linkedDocuments:
       document.links?.filter(
         (link) =>
@@ -90,13 +92,22 @@ export function getDocumentTagIds(tags: readonly TagDto[]): string[] {
   return getTagIds(tags);
 }
 
-export function getImportKind(file: File): "markdown" | "docx" | null {
+export type DocumentImportKind = "markdown" | "docx" | "html";
+
+export function getImportKind(file: File): DocumentImportKind | null {
   const name = file.name.toLowerCase();
   if (name.endsWith(".md") || name.endsWith(".markdown")) {
     return "markdown";
   }
   if (name.endsWith(".docx")) {
     return "docx";
+  }
+  if (
+    name.endsWith(".html") ||
+    name.endsWith(".htm") ||
+    name.endsWith(".zip")
+  ) {
+    return "html";
   }
   return null;
 }

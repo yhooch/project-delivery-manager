@@ -15,6 +15,7 @@ import { normalizeTagApiQuery } from "./tag-query";
 export type DocumentSourceType =
   | "USER_CREATED"
   | "UPLOAD_DOCX"
+  | "UPLOAD_HTML"
   | "UPLOAD_MARKDOWN"
   | "PASTE_MARKDOWN"
   | "PASTE_TEXT"
@@ -243,6 +244,7 @@ const documentActorSchema = z.enum(["USER", "MCP_CLIENT"]);
 const documentSourceSchema = z.enum([
   "USER_CREATED",
   "UPLOAD_DOCX",
+  "UPLOAD_HTML",
   "UPLOAD_MARKDOWN",
   "PASTE_MARKDOWN",
   "PASTE_TEXT",
@@ -607,6 +609,18 @@ export async function importDocxDocument(
 ): Promise<DocumentDetail> {
   return importDocumentFile(
     `/spaces/${context.spaceId}/documents/import-docx`,
+    input,
+    api,
+  );
+}
+
+export async function importHtmlDocument(
+  context: { organizationId?: string; spaceId: string },
+  input: ImportDocumentInput,
+  api: DocumentApiTransport = defaultApi,
+): Promise<DocumentDetail> {
+  return importDocumentFile(
+    `/spaces/${context.spaceId}/documents/import-html`,
     input,
     api,
   );

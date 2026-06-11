@@ -221,6 +221,7 @@ enum BugSeverity {
 enum DocumentSourceType {
   USER_CREATED
   UPLOAD_DOCX
+  UPLOAD_HTML
   UPLOAD_MARKDOWN
   PASTE_MARKDOWN
   PASTE_TEXT

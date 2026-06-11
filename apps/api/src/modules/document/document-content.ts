@@ -4,6 +4,7 @@ import {
   DocumentMaxImportSizeBytes,
   DocumentMaxMarkdownBytes,
   DocumentSupportedDocxMimeTypes,
+  DocumentSupportedHtmlMimeTypes,
   DocumentSupportedMarkdownMimeTypes,
   type DocumentLinkTarget,
 } from "@project-delivery/shared";
@@ -33,7 +34,33 @@ const docxMaxZipEntries = 2_048;
 const docxMaxDeclaredCompressedBytes = DocumentMaxImportSizeBytes;
 const docxMaxDeclaredUncompressedBytes = DocumentMaxImportSizeBytes * 5;
 const docxMaxCompressionRatio = 100;
-const docxRequiredEntries = new Set(["[Content_Types].xml", "word/document.xml"]);
+const docxRequiredEntries = new Set([
+  "[Content_Types].xml",
+  "word/document.xml",
+]);
+const htmlMaxZipEntries = 2_048;
+const htmlMaxDeclaredCompressedBytes = DocumentMaxImportSizeBytes;
+const htmlMaxDeclaredUncompressedBytes = DocumentMaxImportSizeBytes;
+const htmlMaxCompressionRatio = 100;
+const htmlRootIndexFileNames = new Set(["index.html", "index.htm"]);
+const htmlFileMimeTypes = new Set([
+  "text/html",
+  "application/xhtml+xml",
+  "application/octet-stream",
+]);
+const htmlZipMimeTypes = new Set([
+  "application/zip",
+  "application/x-zip-compressed",
+  "application/octet-stream",
+]);
+const docxZipContext = {
+  label: "DOCX",
+  maxEntries: docxMaxZipEntries,
+} as const;
+const htmlZipContext = {
+  label: "HTML ZIP",
+  maxEntries: htmlMaxZipEntries,
+} as const;
 
 type ZipCentralDirectoryEntry = {
   compressedSize: number;
@@ -42,6 +69,12 @@ type ZipCentralDirectoryEntry = {
   localHeaderOffset: number;
   uncompressedSize: number;
 };
+type ZipReadContext = {
+  label: string;
+  maxEntries: number;
+};
+
+export type HtmlZipEntry = ZipCentralDirectoryEntry;
 
 export function normalizeMarkdownSource(input: {
   contentMarkdown: string;
@@ -51,7 +84,9 @@ export function normalizeMarkdownSource(input: {
   const contentMarkdown = stripBase64Images(input.contentMarkdown).trim();
   const contentText = markdownToText(contentMarkdown);
   const title = normalizeTitle(
-    input.title ?? extractTitleFromMarkdown(contentMarkdown) ?? input.fallbackTitle,
+    input.title ??
+      extractTitleFromMarkdown(contentMarkdown) ??
+      input.fallbackTitle,
   );
 
   return {
@@ -81,7 +116,9 @@ export function markdownToText(markdown: string): string {
     .trim();
 }
 
-export function buildDocumentChunks(markdown: string): DocumentContentChunkInput[] {
+export function buildDocumentChunks(
+  markdown: string,
+): DocumentContentChunkInput[] {
   const chunks: DocumentContentChunkInput[] = [];
   const headingStack: string[] = [];
   let buffer: string[] = [];
@@ -96,7 +133,8 @@ export function buildDocumentChunks(markdown: string): DocumentContentChunkInput
 
     chunks.push({
       ordinal: chunks.length,
-      headingPath: headingStack.length > 0 ? headingStack.join(" / ") : undefined,
+      headingPath:
+        headingStack.length > 0 ? headingStack.join(" / ") : undefined,
       contentText,
     });
   };
@@ -195,8 +233,41 @@ export function assertDocxImportFile(file: UploadedDocumentFile): void {
   }
 }
 
+export function assertHtmlImportFile(file: UploadedDocumentFile): void {
+  assertImportSize(file);
+  if (isSingleHtmlImportFile(file) || isHtmlZipImportFile(file)) {
+    return;
+  }
+
+  throwUnsupportedFileType();
+}
+
+export function isSingleHtmlImportFile(file: UploadedDocumentFile): boolean {
+  const mimeType = file.mimeType.toLowerCase();
+
+  return (
+    hasExtension(file.fileName, [".html", ".htm"]) &&
+    htmlFileMimeTypes.has(mimeType) &&
+    DocumentSupportedHtmlMimeTypes.includes(
+      mimeType as (typeof DocumentSupportedHtmlMimeTypes)[number],
+    )
+  );
+}
+
+export function isHtmlZipImportFile(file: UploadedDocumentFile): boolean {
+  const mimeType = file.mimeType.toLowerCase();
+
+  return (
+    hasExtension(file.fileName, [".zip"]) &&
+    htmlZipMimeTypes.has(mimeType) &&
+    DocumentSupportedHtmlMimeTypes.includes(
+      mimeType as (typeof DocumentSupportedHtmlMimeTypes)[number],
+    )
+  );
+}
+
 export function assertSafeDocxZip(file: UploadedDocumentFile): void {
-  const entries = readZipCentralDirectory(file.buffer);
+  const entries = readZipCentralDirectory(file.buffer, docxZipContext);
   const requiredEntries = new Set(docxRequiredEntries);
   let totalCompressedBytes = 0;
   let totalUncompressedBytes = 0;
@@ -228,11 +299,84 @@ export function assertSafeDocxZip(file: UploadedDocumentFile): void {
   }
 }
 
+export function readSafeHtmlZipEntries(
+  file: UploadedDocumentFile,
+): HtmlZipEntry[] {
+  assertHtmlImportFile(file);
+  if (!isHtmlZipImportFile(file)) {
+    throwHtmlImportFailed("HTML import file is not a ZIP archive");
+  }
+
+  const entries = readZipCentralDirectory(file.buffer, htmlZipContext);
+  let totalCompressedBytes = 0;
+  let totalUncompressedBytes = 0;
+
+  for (const entry of entries) {
+    totalCompressedBytes += entry.compressedSize;
+    totalUncompressedBytes += entry.uncompressedSize;
+
+    if (
+      entry.compressedSize > htmlMaxDeclaredCompressedBytes ||
+      entry.uncompressedSize > htmlMaxDeclaredUncompressedBytes ||
+      totalCompressedBytes > htmlMaxDeclaredCompressedBytes ||
+      totalUncompressedBytes > htmlMaxDeclaredUncompressedBytes
+    ) {
+      throwFileTooLarge("HTML ZIP archive declares too much content");
+    }
+
+    if (
+      entry.compressedSize > 0 &&
+      entry.uncompressedSize / entry.compressedSize > htmlMaxCompressionRatio
+    ) {
+      throwHtmlImportFailed("HTML ZIP archive compression ratio is too high");
+    }
+  }
+
+  return entries;
+}
+
+export function selectHtmlZipEntry(entries: HtmlZipEntry[]): HtmlZipEntry {
+  const htmlEntries = entries.filter(
+    (entry) =>
+      !isZipDirectoryEntry(entry) &&
+      hasExtension(entry.fileName, [".html", ".htm"]),
+  );
+  const rootIndexEntries = htmlEntries.filter((entry) =>
+    htmlRootIndexFileNames.has(entry.fileName.toLowerCase()),
+  );
+
+  if (rootIndexEntries.length === 1) {
+    return rootIndexEntries[0];
+  }
+  if (rootIndexEntries.length > 1) {
+    throwHtmlImportFailed(
+      "HTML ZIP archive has multiple root index HTML entries",
+    );
+  }
+  if (htmlEntries.length === 1) {
+    return htmlEntries[0];
+  }
+  if (htmlEntries.length === 0) {
+    throwHtmlImportFailed("HTML ZIP archive is missing an HTML entry");
+  }
+
+  throwHtmlImportFailed(
+    "HTML ZIP archive has multiple HTML entries and no root index.html",
+  );
+}
+
+export function readHtmlZipEntryData(
+  file: UploadedDocumentFile,
+  entry: HtmlZipEntry,
+): Buffer {
+  return readZipEntryData(file.buffer, entry, htmlZipContext);
+}
+
 export function readDocxUtf8Entry(
   file: UploadedDocumentFile,
   fileName: string,
 ): string | undefined {
-  const entry = readZipCentralDirectory(file.buffer).find(
+  const entry = readZipCentralDirectory(file.buffer, docxZipContext).find(
     (candidate) => candidate.fileName === fileName,
   );
 
@@ -240,7 +384,7 @@ export function readDocxUtf8Entry(
     return undefined;
   }
 
-  return readZipEntryData(file.buffer, entry).toString("utf8");
+  return readZipEntryData(file.buffer, entry, docxZipContext).toString("utf8");
 }
 
 export function assertMarkdownSize(markdown: string): void {
@@ -325,24 +469,40 @@ function assertImportSize(file: UploadedDocumentFile): void {
   }
 }
 
-function readZipCentralDirectory(buffer: Buffer): ZipCentralDirectoryEntry[] {
-  const endOfCentralDirectoryOffset = findEndOfCentralDirectory(buffer);
+function readZipCentralDirectory(
+  buffer: Buffer,
+  context: ZipReadContext,
+): ZipCentralDirectoryEntry[] {
+  const endOfCentralDirectoryOffset = findEndOfCentralDirectory(
+    buffer,
+    context,
+  );
   const entryCountOnDisk = buffer.readUInt16LE(endOfCentralDirectoryOffset + 8);
   const entryCount = buffer.readUInt16LE(endOfCentralDirectoryOffset + 10);
-  const centralDirectorySize = buffer.readUInt32LE(endOfCentralDirectoryOffset + 12);
-  const centralDirectoryOffset = buffer.readUInt32LE(endOfCentralDirectoryOffset + 16);
+  const centralDirectorySize = buffer.readUInt32LE(
+    endOfCentralDirectoryOffset + 12,
+  );
+  const centralDirectoryOffset = buffer.readUInt32LE(
+    endOfCentralDirectoryOffset + 16,
+  );
 
   if (entryCount === 0 || entryCount !== entryCountOnDisk) {
-    throwDocxImportFailed("DOCX archive central directory is invalid");
+    throwZipImportFailed(
+      context,
+      `${context.label} archive central directory is invalid`,
+    );
   }
-  if (entryCount > docxMaxZipEntries) {
-    throwFileTooLarge("DOCX archive contains too many entries");
+  if (entryCount > context.maxEntries) {
+    throwFileTooLarge(`${context.label} archive contains too many entries`);
   }
   if (
     centralDirectoryOffset >= endOfCentralDirectoryOffset ||
     centralDirectorySize > endOfCentralDirectoryOffset - centralDirectoryOffset
   ) {
-    throwDocxImportFailed("DOCX archive central directory is out of bounds");
+    throwZipImportFailed(
+      context,
+      `${context.label} archive central directory is out of bounds`,
+    );
   }
 
   const entries: ZipCentralDirectoryEntry[] = [];
@@ -354,7 +514,10 @@ function readZipCentralDirectory(buffer: Buffer): ZipCentralDirectoryEntry[] {
       position + zipCentralDirectoryFileHeaderBytes > centralDirectoryEnd ||
       buffer.readUInt32LE(position) !== zipCentralDirectoryFileHeaderSignature
     ) {
-      throwDocxImportFailed("DOCX archive central directory entry is invalid");
+      throwZipImportFailed(
+        context,
+        `${context.label} archive central directory entry is invalid`,
+      );
     }
 
     const flags = buffer.readUInt16LE(position + 8);
@@ -373,19 +536,34 @@ function readZipCentralDirectory(buffer: Buffer): ZipCentralDirectoryEntry[] {
     const entryEnd = position + entryLength;
 
     if (entryEnd > centralDirectoryEnd) {
-      throwDocxImportFailed("DOCX archive central directory entry is out of bounds");
+      throwZipImportFailed(
+        context,
+        `${context.label} archive central directory entry is out of bounds`,
+      );
     }
     if ((flags & 0x0001) !== 0) {
-      throwDocxImportFailed("Encrypted DOCX archives are not supported");
+      throwZipImportFailed(
+        context,
+        `Encrypted ${context.label} archives are not supported`,
+      );
     }
     if (compressionMethod !== 0 && compressionMethod !== 8) {
-      throwDocxImportFailed("DOCX archive uses an unsupported compression method");
+      throwZipImportFailed(
+        context,
+        `${context.label} archive uses an unsupported compression method`,
+      );
     }
     if (compressedSize === 0xffffffff || uncompressedSize === 0xffffffff) {
-      throwDocxImportFailed("ZIP64 DOCX archives are not supported");
+      throwZipImportFailed(
+        context,
+        `ZIP64 ${context.label} archives are not supported`,
+      );
     }
     if (localHeaderOffset >= centralDirectoryOffset) {
-      throwDocxImportFailed("DOCX archive local header offset is invalid");
+      throwZipImportFailed(
+        context,
+        `${context.label} archive local header offset is invalid`,
+      );
     }
 
     const fileName = buffer
@@ -395,7 +573,10 @@ function readZipCentralDirectory(buffer: Buffer): ZipCentralDirectoryEntry[] {
       )
       .toString("utf8");
     if (isUnsafeZipPath(fileName)) {
-      throwDocxImportFailed("DOCX archive entry path is invalid");
+      throwZipImportFailed(
+        context,
+        `${context.label} archive entry path is invalid`,
+      );
     }
 
     entries.push({
@@ -409,7 +590,10 @@ function readZipCentralDirectory(buffer: Buffer): ZipCentralDirectoryEntry[] {
   }
 
   if (position !== centralDirectoryEnd) {
-    throwDocxImportFailed("DOCX archive central directory has trailing data");
+    throwZipImportFailed(
+      context,
+      `${context.label} archive central directory has trailing data`,
+    );
   }
 
   return entries;
@@ -418,6 +602,7 @@ function readZipCentralDirectory(buffer: Buffer): ZipCentralDirectoryEntry[] {
 function readZipEntryData(
   buffer: Buffer,
   entry: ZipCentralDirectoryEntry,
+  context: ZipReadContext,
 ): Buffer {
   const position = entry.localHeaderOffset;
 
@@ -425,7 +610,10 @@ function readZipEntryData(
     position + zipLocalFileHeaderBytes > buffer.length ||
     buffer.readUInt32LE(position) !== zipLocalFileHeaderSignature
   ) {
-    throwDocxImportFailed("DOCX archive local file header is invalid");
+    throwZipImportFailed(
+      context,
+      `${context.label} archive local file header is invalid`,
+    );
   }
 
   const fileNameLength = buffer.readUInt16LE(position + 26);
@@ -435,25 +623,52 @@ function readZipEntryData(
   const dataEnd = dataStart + entry.compressedSize;
 
   if (dataStart > buffer.length || dataEnd > buffer.length) {
-    throwDocxImportFailed("DOCX archive entry data is out of bounds");
+    throwZipImportFailed(
+      context,
+      `${context.label} archive entry data is out of bounds`,
+    );
   }
 
   const compressed = buffer.subarray(dataStart, dataEnd);
 
   if (entry.compressionMethod === 0) {
+    if (compressed.length !== entry.uncompressedSize) {
+      throwZipImportFailed(
+        context,
+        `${context.label} archive entry size is invalid`,
+      );
+    }
+
     return compressed;
   }
 
+  let decompressed: Buffer;
+
   try {
-    return inflateRawSync(compressed);
+    decompressed = inflateRawSync(compressed);
   } catch {
-    throwDocxImportFailed("DOCX archive entry data cannot be decompressed");
+    throwZipImportFailed(
+      context,
+      `${context.label} archive entry data cannot be decompressed`,
+    );
   }
+
+  if (decompressed.length !== entry.uncompressedSize) {
+    throwZipImportFailed(
+      context,
+      `${context.label} archive entry size is invalid`,
+    );
+  }
+
+  return decompressed;
 }
 
-function findEndOfCentralDirectory(buffer: Buffer): number {
+function findEndOfCentralDirectory(
+  buffer: Buffer,
+  context: ZipReadContext,
+): number {
   if (buffer.length < zipEndOfCentralDirectoryMinBytes) {
-    throwDocxImportFailed("DOCX archive is too small");
+    throwZipImportFailed(context, `${context.label} archive is too small`);
   }
 
   const minOffset = Math.max(
@@ -471,7 +686,10 @@ function findEndOfCentralDirectory(buffer: Buffer): number {
     }
   }
 
-  throwDocxImportFailed("DOCX archive end record is missing");
+  throwZipImportFailed(
+    context,
+    `${context.label} archive end record is missing`,
+  );
 }
 
 function isUnsafeZipPath(fileName: string): boolean {
@@ -479,8 +697,15 @@ function isUnsafeZipPath(fileName: string): boolean {
     fileName.length === 0 ||
     fileName.startsWith("/") ||
     fileName.startsWith("\\") ||
+    /^[a-z]:[\\/]/iu.test(fileName) ||
     fileName.split(/[\\/]+/u).includes("..")
   );
+}
+
+function isZipDirectoryEntry(
+  entry: Pick<ZipCentralDirectoryEntry, "fileName">,
+) {
+  return entry.fileName.endsWith("/");
 }
 
 function hasExtension(fileName: string, extensions: string[]) {
@@ -505,4 +730,18 @@ function throwDocxImportFailed(message: string): never {
   const error = new Error(message);
   Object.assign(error, { code: "DOCUMENT_IMPORT_FAILED" });
   throw error;
+}
+
+function throwHtmlImportFailed(message: string): never {
+  const error = new Error(message);
+  Object.assign(error, { code: "DOCUMENT_IMPORT_FAILED" });
+  throw error;
+}
+
+function throwZipImportFailed(context: ZipReadContext, message: string): never {
+  if (context.label === "HTML ZIP") {
+    throwHtmlImportFailed(message);
+  }
+
+  throwDocxImportFailed(message);
 }

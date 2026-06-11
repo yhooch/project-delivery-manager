@@ -1324,7 +1324,7 @@ export function DocumentDetailPage({ documentId }: DocumentDetailPageProps) {
                         {t("edit.reimportLabel")}
                       </span>
                       <Input
-                        accept=".md,.markdown,.docx"
+                        accept=".md,.markdown,.docx,.html,.htm,.zip"
                         data-testid="document-reimport-input"
                         type="file"
                         onChange={(event: ChangeEvent<HTMLInputElement>) =>
