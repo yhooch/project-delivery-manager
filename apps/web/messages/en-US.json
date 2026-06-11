@@ -3591,7 +3591,7 @@
       "loading": "Loading attachments…",
       "errorTitle": "Failed to load attachments",
       "emptyTitle": "No attachments",
-      "emptyDescription": "No attachments yet. Members with upload permission can add files here.",
+      "emptyDescription": "Members with upload permission can click Upload, or drag and paste files here.",
       "uploadAction": "Upload",
       "uploadHint": "Choose files, or drag and paste into the attachment area",
       "dropZoneLabel": "Attachment upload area",

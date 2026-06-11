@@ -3591,7 +3591,7 @@
       "loading": "加载附件中…",
       "errorTitle": "加载附件失败",
       "emptyTitle": "暂无附件",
-      "emptyDescription": "暂无附件；有上传权限的成员可在这里补充文件。",
+      "emptyDescription": "有上传权限的成员可点击“上传附件”，也可将文件拖拽或粘贴到这里。",
       "uploadAction": "上传附件",
       "uploadHint": "选择文件，也可拖拽或粘贴到附件区域",
       "dropZoneLabel": "附件上传区域",
