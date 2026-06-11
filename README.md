@@ -4,12 +4,12 @@ English | [简体中文](README.zh-CN.md)
 
 Project Delivery Manager, or PDM, is a SaaS-ready product delivery management
 platform for small software teams. It brings requirements, intake, tasks, bugs,
-custom workflows, version boards, realtime refresh, and MCP-based AI agent access
-into one TypeScript monorepo.
+project context documents, custom workflows, version boards, realtime refresh,
+and MCP-based AI agent access into one TypeScript monorepo.
 
 Keywords: product delivery management, project management, requirements
-management, issue tracking, bug tracking, workflow management, SaaS, MCP, OAuth,
-Next.js, NestJS, Prisma, PostgreSQL.
+management, document context library, issue tracking, bug tracking, workflow
+management, SaaS, MCP, OAuth, Next.js, NestJS, Prisma, PostgreSQL.
 
 ## What It Solves
 
@@ -34,6 +34,11 @@ Register/login -> Organization -> Project space -> Version
 - Version management for delivery scope and progress tracking.
 - Requirement documents with Tiptap rich text, Markdown support, image uploads,
   comments, attachments, and timeline history.
+- Space-level document context library for project knowledge capture, with
+  Markdown/plain text paste, Markdown/Word/HTML import, document list, search,
+  filters, shared folders, detail reading, lightweight editing, re-import,
+  archive/restore/delete, linked resources, tags, comments, attachments,
+  timeline history, Mermaid diagram rendering, and fullscreen Mermaid preview.
 - Intake pool for collecting work sources and splitting accepted items into one
   or more tasks.
 - Unified work item model for `TASK` and `BUG`, with separate user-facing pages.
@@ -42,13 +47,13 @@ Register/login -> Organization -> Project space -> Version
 - My workbench, project overview, version board, and exception views.
 - Exception tracking for overdue, blocked, pending confirmation, pending
   regression, and stale work items.
-- Tags for requirements, intake items, tasks, and bugs.
+- Tags for requirements, intake items, tasks, bugs, and documents.
 - Human-readable object codes such as `REQ-12`, `INTAKE-8`, `TASK-42`, and
   `BUG-17`.
 - Realtime local refresh through SSE invalidation events.
 - Chinese and English UI with light, dark, and system themes.
 - MCP server integration for AI agents, protected by OAuth 2.1 + PKCE and scoped
-  Bearer tokens.
+  Bearer tokens, including document and folder tools.
 
 ## Screenshots
 
@@ -59,6 +64,10 @@ Register/login -> Organization -> Project space -> Version
 | Workflow configuration | Task list |
 | --- | --- |
 | ![Configurable task and bug workflows](docs/assets/screenshots/workflow-config.png) | ![Task list with status filters and version metadata](docs/assets/screenshots/task-list.png) |
+
+| Document context library |
+| --- |
+| ![Document library with folders, search, import actions, and project context documents](docs/assets/screenshots/documents.png) |
 
 | MCP client authorizations | Organization settings |
 | --- | --- |
@@ -71,9 +80,10 @@ Register/login -> Organization -> Project space -> Version
 ## MCP And AI Agent Access
 
 PDM exposes selected product delivery capabilities through Model Context
-Protocol tools. The first-phase MCP surface includes context lookup, object code
-lookup, workbench, space overview, version board, exceptions, requirements,
-intake items, tasks, bugs, comments, tags, and timelines.
+Protocol tools. The MCP surface includes context lookup, object code lookup,
+workbench, space overview, version board, exceptions, requirements, intake
+items, tasks, bugs, documents, shared document folders, comments, tags, and
+timelines.
 
 Current tool names use the `pdm.*` namespace, for example:
 
@@ -82,6 +92,8 @@ Current tool names use the `pdm.*` namespace, for example:
 - `pdm.requirement.create`
 - `pdm.work_item.execute_action`
 - `pdm.bug.create`
+- `pdm.document.create_from_markdown`
+- `pdm.document_folder.create`
 - `pdm.tag.replace_assignments`
 
 MCP requests do not reuse the web session cookie. They require OAuth access
@@ -221,11 +233,11 @@ internal MinIO service. Production only needs the Nginx port exposed.
 
 ## Current Status
 
-The MVP product workflow, tags, human-readable object codes, realtime refresh,
-and the main MCP implementation are present in the codebase. The remaining
-release-sensitive checks are full API/UI E2E in a complete PostgreSQL + MinIO +
-API + Web environment, plus OAuth/MCP Inspector or equivalent end-to-end
-verification for the MCP surface.
+The completed and accepted scope includes the core MVP workflow, TAG tagging,
+SEQ human-readable object codes, RT realtime local refresh, MCP AI agent system
+access, and the DOC document context library. Remaining release gates are full
+API/UI E2E against real dependencies, plus target-environment review for RT,
+MCP, and DOC behavior.
 
 ## License
 

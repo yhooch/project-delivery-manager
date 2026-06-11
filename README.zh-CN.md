@@ -3,11 +3,11 @@
 [English](README.md) | 简体中文
 
 Project Delivery Manager，简称 PDM，是一个面向小型软件团队的 SaaS Ready
-产品交付管理平台。它把需求、事项池、任务、Bug、自定义流程、版本看板、实时刷新
-和基于 MCP 的 AI Agent 接入能力放在同一个 TypeScript monorepo 中。
+产品交付管理平台。它把需求、事项池、任务、Bug、项目上下文文档、自定义流程、
+版本看板、实时刷新和基于 MCP 的 AI Agent 接入能力放在同一个 TypeScript monorepo 中。
 
 关键词：产品交付管理、项目管理、需求管理、事项跟踪、Bug 跟踪、流程管理、SaaS、
-MCP、OAuth、Next.js、NestJS、Prisma、PostgreSQL。
+文档上下文库、MCP、OAuth、Next.js、NestJS、Prisma、PostgreSQL。
 
 ## 解决什么问题
 
@@ -30,16 +30,21 @@ MCP、OAuth、Next.js、NestJS、Prisma、PostgreSQL。
 - 组织成员、项目空间成员和基于角色的权限控制。
 - 用版本管理交付范围、目标和进度。
 - 需求文档支持 Tiptap 富文本、Markdown、图片上传、评论、附件和时间线。
+- DOC 文档上下文库是空间级项目上下文沉淀库，支持 Markdown/纯文本粘贴、
+  Markdown/Word/HTML 导入、文档列表、搜索、筛选、共享文件夹、详情阅读、轻量编辑、
+  重新导入、归档/恢复/删除、关联资源、标签、评论、附件、时间线、Mermaid 图表渲染和
+  全屏预览。
 - 事项池用于收集工作来源，并将已纳入事项拆解为一个或多个任务。
 - `TASK` 和 `BUG` 复用统一工作项模型，同时提供独立用户入口。
 - 轻量可配置流程引擎，支持状态、动作、权限、动作表单和流程版本。
 - 我的工作台、项目总览、版本看板和异常视图。
 - 异常跟踪覆盖延期、阻塞、待确认、待回归和长时间未流转。
-- 需求、事项、任务和 Bug 支持标签。
+- 标签覆盖需求、事项、任务、Bug 和文档。
 - 用户可读业务编号，例如 `REQ-12`、`INTAKE-8`、`TASK-42`、`BUG-17`。
 - 基于 SSE invalidation events 的实时本地刷新。
 - 中英文界面，支持浅色、深色和跟随系统主题。
-- 面向 AI Agent 的 MCP Server 接入，使用 OAuth 2.1 + PKCE 和 scoped Bearer token 保护。
+- 面向 AI Agent 的 MCP Server 接入，使用 OAuth 2.1 + PKCE 和 scoped Bearer token 保护，
+  并包含文档和文件夹工具。
 
 ## 界面截图
 
@@ -51,6 +56,10 @@ MCP、OAuth、Next.js、NestJS、Prisma、PostgreSQL。
 | --- | --- |
 | ![可配置的任务和 Bug 流程](docs/assets/screenshots/workflow-config.png) | ![包含状态筛选和版本信息的任务列表](docs/assets/screenshots/task-list.png) |
 
+| 文档上下文库 |
+| --- |
+| ![包含文件夹、搜索、导入操作和项目上下文文档的文档库](docs/assets/screenshots/documents.png) |
+
 | MCP 客户端授权 | 组织设置 |
 | --- | --- |
 | ![带作用域权限的 MCP 客户端授权列表](docs/assets/screenshots/mcp-clients.png) | ![组织资料和成员管理](docs/assets/screenshots/organization-settings.png) |
@@ -61,9 +70,9 @@ MCP、OAuth、Next.js、NestJS、Prisma、PostgreSQL。
 
 ## MCP 与 AI Agent 接入
 
-PDM 通过 Model Context Protocol 暴露一组受控的产品交付能力。第一阶段 MCP 能力包括
-上下文读取、业务编号定位、工作台、空间总览、版本看板、异常视图、需求、事项、任务、
-Bug、评论、标签和时间线。
+PDM 通过 Model Context Protocol 暴露一组受控的产品交付能力。MCP 能力包括上下文读取、
+业务编号定位、工作台、空间总览、版本看板、异常视图、需求、事项、任务、Bug、文档、
+共享文档文件夹、评论、标签和时间线。
 
 当前工具名使用 `pdm.*` 命名空间，例如：
 
@@ -72,6 +81,8 @@ Bug、评论、标签和时间线。
 - `pdm.requirement.create`
 - `pdm.work_item.execute_action`
 - `pdm.bug.create`
+- `pdm.document.create_from_markdown`
+- `pdm.document_folder.create`
 - `pdm.tag.replace_assignments`
 
 MCP 请求不复用 Web Session Cookie。调用方必须使用绑定到 MCP resource 的 OAuth
@@ -207,9 +218,9 @@ HTTP 部署时，`SESSION_COOKIE_SECURE=false` 必须和实际访问 origin 匹�
 
 ## 当前状态
 
-MVP 主产品链路、标签、用户可读业务编号、实时刷新和主要 MCP 实现已经存在于代码库中。
-发布相关的剩余检查包括：在完整 PostgreSQL + MinIO + API + Web 环境中运行完整 API/UI
-E2E，以及使用 MCP Inspector 或等价客户端完成 OAuth/MCP 端到端验证。
+已完成并验收通过的范围包括 MVP 主体、TAG 标签、SEQ 用户可读编号、RT 实时本地刷新、
+MCP 大模型系统接入和 DOC 文档上下文库。剩余发布门禁包括：完整真实依赖环境下的 API/UI
+E2E，以及目标环境中 RT、MCP、DOC 行为复核。
 
 ## License
 
