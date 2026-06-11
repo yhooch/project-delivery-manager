@@ -20,10 +20,7 @@ import { useLocale, useTranslations } from "next-intl";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { getApiErrorMessageKey } from "../../lib/api-error-messages";
-import {
-  useFocusReturn,
-  useListKeyboardNav,
-} from "../../lib/hooks/use-list-keyboard-nav";
+import { useListKeyboardNav } from "../../lib/hooks/use-list-keyboard-nav";
 import {
   resolveRefreshMode,
   shouldClearDataForRefresh,
@@ -55,7 +52,7 @@ import {
   type WorkItemViewModelLookupHelpers,
 } from "../../lib/v2/work-item-view-model";
 import { getMyWorkbenchView } from "../../lib/view-service";
-import { Link } from "../../i18n/routing";
+import { Link, useRouter } from "../../i18n/routing";
 import { useSession } from "../providers/session-provider";
 import { recordRecentOpen } from "../shell/recent-opens";
 
@@ -68,7 +65,6 @@ import { Tip } from "../ui/tooltip";
 import { TimelineEventItem } from "../timeline/timeline-event-item";
 
 import { EmptyState, ErrorState, ListSkeleton } from "../v2/states";
-import { TaskDetailSheet } from "../work-item/task-detail-sheet";
 
 type WorkbenchItemViewModel = WorkItemViewModel & {
   listKey?: string;
@@ -93,6 +89,7 @@ export function MyWorkbench() {
   const tTimelineEvent = useTranslations("common.timeline.event");
   const tRoot = useTranslations();
   const locale = useLocale();
+  const router = useRouter();
   const {
     session,
     currentOrganization,
@@ -102,20 +99,7 @@ export function MyWorkbench() {
   const [isLoading, setIsLoading] = useState(false);
   const [errorKey, setErrorKey] = useState<string | null>(null);
   const requestSeq = useRef(0);
-  const [activeItem, setActiveItem] = useState<WorkItemViewModel | null>(null);
-  const [activeItemContext, setActiveItemContext] = useState<{
-    organizationId?: string;
-    spaceId?: string;
-  } | null>(null);
   const [activeWorkbenchItemKey, setActiveWorkbenchItemKey] = useState<
-    string | undefined
-  >(undefined);
-  const [activeWorkbenchContextKey, setActiveWorkbenchContextKey] = useState<
-    string | undefined
-  >(undefined);
-  const [sheetOpen, setSheetOpen] = useState(false);
-  const [actionFocusRequest, setActionFocusRequest] = useState(0);
-  const [preferredActionId, setPreferredActionId] = useState<
     string | undefined
   >(undefined);
   const [selectedSpaceId, setSelectedSpaceId] = useState<string | undefined>(
@@ -132,10 +116,8 @@ export function MyWorkbench() {
     versionsBySpaceId: new Map(),
   });
   const itemButtonRefs = useRef(new Map<string, HTMLButtonElement>());
-  const { captureFocus, restoreFocus } = useFocusReturn();
 
   const organizationId = session?.defaultOrganizationId;
-  const workbenchContextKey = `${organizationId ?? ""}:${selectedSpaceId ?? ""}`;
   const selectedSpace = spacesForCurrentOrganization.find(
     (space) => space.id === selectedSpaceId,
   );
@@ -281,13 +263,7 @@ export function MyWorkbench() {
   }, [filterOpen]);
 
   useEffect(() => {
-    setSheetOpen(false);
-    setActiveItem(null);
-    setActiveItemContext(null);
     setActiveWorkbenchItemKey(undefined);
-    setActiveWorkbenchContextKey(undefined);
-    setActionFocusRequest(0);
-    setPreferredActionId(undefined);
   }, [organizationId, selectedSpaceId]);
 
   const availableMembers = useMemo(() => {
@@ -351,52 +327,55 @@ export function MyWorkbench() {
     setFilters({});
   }, []);
 
-  const fetchView = useCallback(async (options?: RefreshModeOptions) => {
-    const mode = resolveRefreshMode(options);
-    if (!organizationId) {
-      requestSeq.current += 1;
-      setView(null);
-      setIsLoading(false);
-      setErrorKey(null);
-      return;
-    }
-
-    const requestId = requestSeq.current + 1;
-    requestSeq.current = requestId;
-    if (shouldClearDataForRefresh(mode)) {
-      setView(null);
-    }
-    if (shouldShowBlockingRefreshState(mode)) {
-      setIsLoading(true);
-    }
-    if (shouldSurfaceRefreshError(mode)) {
-      setErrorKey(null);
-    }
-
-    try {
-      const next = await getMyWorkbenchView({
-        ...filters,
-        organizationId,
-        spaceId: selectedSpaceId,
-      });
-      if (requestSeq.current !== requestId) {
+  const fetchView = useCallback(
+    async (options?: RefreshModeOptions) => {
+      const mode = resolveRefreshMode(options);
+      if (!organizationId) {
+        requestSeq.current += 1;
+        setView(null);
+        setIsLoading(false);
+        setErrorKey(null);
         return;
       }
-      setView(next);
-      setErrorKey(null);
-    } catch (error) {
-      if (requestSeq.current !== requestId) {
-        return;
+
+      const requestId = requestSeq.current + 1;
+      requestSeq.current = requestId;
+      if (shouldClearDataForRefresh(mode)) {
+        setView(null);
+      }
+      if (shouldShowBlockingRefreshState(mode)) {
+        setIsLoading(true);
       }
       if (shouldSurfaceRefreshError(mode)) {
-        setErrorKey(getApiErrorMessageKey(error));
+        setErrorKey(null);
       }
-    } finally {
-      if (requestSeq.current === requestId) {
-        setIsLoading(false);
+
+      try {
+        const next = await getMyWorkbenchView({
+          ...filters,
+          organizationId,
+          spaceId: selectedSpaceId,
+        });
+        if (requestSeq.current !== requestId) {
+          return;
+        }
+        setView(next);
+        setErrorKey(null);
+      } catch (error) {
+        if (requestSeq.current !== requestId) {
+          return;
+        }
+        if (shouldSurfaceRefreshError(mode)) {
+          setErrorKey(getApiErrorMessageKey(error));
+        }
+      } finally {
+        if (requestSeq.current === requestId) {
+          setIsLoading(false);
+        }
       }
-    }
-  }, [filters, organizationId, selectedSpaceId]);
+    },
+    [filters, organizationId, selectedSpaceId],
+  );
 
   useEffect(() => {
     void fetchView({ mode: "initial" });
@@ -449,12 +428,14 @@ export function MyWorkbench() {
   const openItem = useCallback(
     (
       item: WorkbenchItemViewModel,
-      trigger?: HTMLElement | null,
+      _trigger?: HTMLElement | null,
       options: { focusActions?: boolean } = {},
     ) => {
-      captureFocus(trigger);
       const itemOrganizationId = item.organizationId ?? organizationId;
       const itemSpaceId = item.spaceId ?? selectedSpaceId;
+      const href = getWorkbenchItemHref(item, {
+        focusActions: options.focusActions,
+      });
 
       recordRecentOpen(
         {
@@ -462,50 +443,16 @@ export function MyWorkbench() {
           type: item.type,
           displayCode: item.code,
           title: item.title,
-          href:
-            item.type === "BUG"
-              ? `/bugs?bugId=${encodeURIComponent(item.id)}`
-              : `/work-items?workItemId=${encodeURIComponent(item.id)}`,
+          href,
           organizationId: itemOrganizationId,
           spaceId: itemSpaceId,
         },
         { organizationId: itemOrganizationId, spaceId: itemSpaceId },
       );
       setActiveWorkbenchItemKey(getWorkbenchItemKey(item));
-      setActiveWorkbenchContextKey(workbenchContextKey);
-      setActiveItem(item);
-      setActiveItemContext({
-        organizationId: itemOrganizationId,
-        spaceId: itemSpaceId,
-      });
-      setActionFocusRequest((current) =>
-        options.focusActions ? current + 1 : 0,
-      );
-      setPreferredActionId(
-        options.focusActions ? item.preferredActionId : undefined,
-      );
-      setSheetOpen(true);
+      router.push(href as never);
     },
-    [captureFocus, organizationId, selectedSpaceId, workbenchContextKey],
-  );
-
-  const closeDetailSheet = useCallback(() => {
-    setSheetOpen(false);
-    setActionFocusRequest(0);
-    setPreferredActionId(undefined);
-    restoreFocus();
-  }, [restoreFocus]);
-
-  const handleDetailSheetOpenChange = useCallback(
-    (nextOpen: boolean) => {
-      setSheetOpen(nextOpen);
-      if (!nextOpen) {
-        setActionFocusRequest(0);
-        setPreferredActionId(undefined);
-        restoreFocus();
-      }
-    },
-    [restoreFocus],
+    [organizationId, router, selectedSpaceId],
   );
 
   const openItemActionArea = useCallback(
@@ -674,7 +621,6 @@ export function MyWorkbench() {
     onOpen: openItem,
     onEdit: openItem,
     onSubmit: openItemActionArea,
-    onClose: sheetOpen ? closeDetailSheet : undefined,
     enabled: Boolean(session && organizationId),
   });
 
@@ -687,10 +633,6 @@ export function MyWorkbench() {
     view?.sections.blocked?.total ?? blockedItems.length;
   const blockedCount = stats?.blockedCount ?? blockedSectionCount;
   const pendingConfirmCount = stats?.pendingConfirmCount;
-  const detailSheetOpen =
-    sheetOpen && activeWorkbenchContextKey === workbenchContextKey;
-  const detailSheetItem = detailSheetOpen ? activeItem : null;
-
   if (!session) {
     return (
       <div
@@ -789,7 +731,7 @@ export function MyWorkbench() {
             )}
           </div>
           <Button asChild variant="ghost" size="sm" className="text-xs">
-            <Link href="/work-items?workItemType=TASK">
+            <Link href={getWorkbenchTaskListHref(selectedSpaceId) as never}>
               {t("viewAll")}
               <ArrowUpRight className="h-3 w-3" />
             </Link>
@@ -982,19 +924,6 @@ export function MyWorkbench() {
           )}
         </aside>
       </div>
-
-      <TaskDetailSheet
-        actionFocusRequest={actionFocusRequest}
-        item={detailSheetItem}
-        open={detailSheetOpen}
-        onOpenChange={handleDetailSheetOpenChange}
-        preferredActionId={preferredActionId}
-        spaceId={activeItemContext?.spaceId ?? selectedSpaceId}
-        organizationId={activeItemContext?.organizationId ?? organizationId}
-        onChanged={() => {
-          void fetchView({ mode: "manual" });
-        }}
-      />
     </div>
   );
 }
@@ -1379,6 +1308,45 @@ function getWorkbenchItemKey(
   },
 ) {
   return item.listKey ?? item.id;
+}
+
+function getWorkbenchItemHref(
+  item: Pick<
+    WorkbenchItemViewModel,
+    "id" | "preferredActionId" | "spaceId" | "type"
+  >,
+  options: { focusActions?: boolean } = {},
+): string {
+  const params = new URLSearchParams();
+
+  if (item.spaceId) {
+    params.set("spaceId", item.spaceId);
+  }
+
+  if (item.type === "BUG") {
+    params.set("bugId", item.id);
+  } else {
+    params.set("workItemId", item.id);
+  }
+
+  if (options.focusActions) {
+    params.set("focusActions", "1");
+    if (item.preferredActionId) {
+      params.set("actionId", item.preferredActionId);
+    }
+  }
+
+  return `${item.type === "BUG" ? "/bugs" : "/work-items"}?${params.toString()}`;
+}
+
+function getWorkbenchTaskListHref(spaceId: string | undefined): string {
+  const params = new URLSearchParams({ workItemType: "TASK" });
+
+  if (spaceId) {
+    params.set("spaceId", spaceId);
+  }
+
+  return `/work-items?${params.toString()}`;
 }
 
 function withWorkbenchListKey(prefix: string) {

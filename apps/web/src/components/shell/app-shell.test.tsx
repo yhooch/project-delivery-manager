@@ -1,14 +1,25 @@
-import { cleanup, render, screen } from "@testing-library/react";
+import { act, cleanup, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("next-intl", () => ({
-  useTranslations: (namespace?: string) => (key: string) =>
-    namespace ? `${namespace}.${key}` : key,
+  useTranslations:
+    (namespace?: string) => (key: string, values?: Record<string, unknown>) => {
+      const renderedValues = values
+        ? Object.values(values)
+            .filter((value) => value !== undefined && value !== null)
+            .join(" ")
+        : "";
+
+      return `${namespace ? `${namespace}.` : ""}${key}${
+        renderedValues ? ` ${renderedValues}` : ""
+      }`;
+    },
 }));
 
 const {
   pathnameMock,
   realtimeProviderProps,
+  searchParamsMock,
   sessionMock,
   useCommandPaletteShortcutMock,
 } = vi.hoisted(() => ({
@@ -48,8 +59,10 @@ const {
         | "authenticated"
         | "unauthenticated"
         | "error",
+      switchSpace: vi.fn(),
     },
   },
+  searchParamsMock: { current: new URLSearchParams() },
   useCommandPaletteShortcutMock: vi.fn(),
 }));
 
@@ -58,6 +71,9 @@ vi.mock("../../i18n/routing", () => ({
     <a href={href}>{children}</a>
   ),
   usePathname: () => pathnameMock.current,
+}));
+vi.mock("next/navigation", () => ({
+  useSearchParams: () => searchParamsMock.current,
 }));
 vi.mock("../../lib/realtime", () => ({
   RealtimeProvider: ({
@@ -110,6 +126,7 @@ import { AppShell } from "./app-shell";
 
 beforeEach(() => {
   pathnameMock.current = "/";
+  searchParamsMock.current = new URLSearchParams();
   realtimeProviderProps.current = [];
   sessionMock.current = {
     currentOrganization: undefined,
@@ -119,6 +136,7 @@ beforeEach(() => {
     sessionErrorKey: null,
     spacesForCurrentOrganization: [],
     status: "unauthenticated",
+    switchSpace: vi.fn(),
   };
   useCommandPaletteShortcutMock.mockReset();
 });
@@ -148,6 +166,7 @@ describe("AppShell", () => {
       sessionErrorKey: "errors.api.INTERNAL_SERVER_ERROR",
       spacesForCurrentOrganization: [],
       status: "error",
+      switchSpace: vi.fn(),
     };
 
     render(<AppShell>Workspace</AppShell>);
@@ -172,6 +191,7 @@ describe("AppShell", () => {
       sessionErrorKey: null,
       spacesForCurrentOrganization: [],
       status: "authenticated",
+      switchSpace: vi.fn(),
     };
 
     render(<AppShell>Workspace</AppShell>);
@@ -223,6 +243,7 @@ describe("AppShell", () => {
         { id: "SPC_01", name: "Space A", organizationId: "ORG_01" },
       ],
       status: "authenticated",
+      switchSpace: vi.fn(),
     };
 
     render(<AppShell>Workspace</AppShell>);
@@ -274,6 +295,7 @@ describe("AppShell", () => {
         { id: "SPC_01", name: "Space A", organizationId: "ORG_01" },
       ],
       status: "authenticated",
+      switchSpace: vi.fn(),
     };
 
     render(<AppShell>Workspace</AppShell>);
@@ -315,6 +337,7 @@ describe("AppShell", () => {
         { id: "SPC_01", name: "Space A", organizationId: "ORG_01" },
       ],
       status: "authenticated",
+      switchSpace: vi.fn(),
     };
 
     render(<AppShell>Workspace</AppShell>);
@@ -322,6 +345,75 @@ describe("AppShell", () => {
     expect(realtimeProviderProps.current).toContainEqual({
       organizationId: "ORG_01",
       spaceId: "SPC_01",
+    });
+  });
+
+  it("switches to the requested space and explains the automatic context change", async () => {
+    let resolveSwitch: () => void = () => {};
+    const switchSpace = vi.fn().mockImplementation(
+      () =>
+        new Promise<void>((resolve) => {
+          resolveSwitch = resolve;
+        }),
+    );
+    pathnameMock.current = "/work-items";
+    searchParamsMock.current = new URLSearchParams({ spaceId: "SPC_02" });
+    sessionMock.current = {
+      currentOrganization: {
+        id: "ORG_01",
+        name: "Org A",
+        role: "OWNER",
+        status: "ACTIVE",
+      },
+      currentSpace: {
+        id: "SPC_01",
+        name: "Space A",
+        organizationId: "ORG_01",
+        status: "ACTIVE",
+      },
+      initializeSession: vi.fn(),
+      session: {
+        organizations: [
+          {
+            id: "ORG_01",
+            name: "Org A",
+            role: "OWNER",
+            status: "ACTIVE",
+          },
+        ],
+      },
+      sessionErrorKey: null,
+      spacesForCurrentOrganization: [
+        { id: "SPC_01", name: "Space A", organizationId: "ORG_01" },
+        { id: "SPC_02", name: "Space B", organizationId: "ORG_01" },
+      ],
+      status: "authenticated",
+      switchSpace,
+    };
+
+    const { rerender } = render(<AppShell>Workspace</AppShell>);
+
+    await waitFor(() => expect(switchSpace).toHaveBeenCalledWith("SPC_02"));
+    expect(screen.queryByText("Workspace")).not.toBeInTheDocument();
+
+    sessionMock.current = {
+      ...sessionMock.current,
+      currentSpace: {
+        id: "SPC_02",
+        name: "Space B",
+        organizationId: "ORG_01",
+        status: "ACTIVE",
+      },
+    };
+    rerender(<AppShell>Workspace</AppShell>);
+
+    const notice = await screen.findByRole("status");
+    expect(notice).toHaveTextContent("shell.requestedSpaceSwitchNotice.title");
+    expect(notice).toHaveTextContent("Space B");
+    expect(screen.getByText("Workspace")).toBeInTheDocument();
+
+    await act(async () => {
+      resolveSwitch();
     });
   });
 
@@ -349,14 +441,13 @@ describe("AppShell", () => {
       sessionErrorKey: null,
       spacesForCurrentOrganization: [],
       status: "authenticated",
+      switchSpace: vi.fn(),
     };
 
     render(<AppShell>Workspace</AppShell>);
 
     expect(screen.getByTestId("app-shell-no-spaces-empty")).toBeInTheDocument();
-    expect(
-      screen.getByTestId("app-shell-create-space-button"),
-    ).toBeEnabled();
+    expect(screen.getByTestId("app-shell-create-space-button")).toBeEnabled();
     expect(screen.queryByTestId("onboarding-empty")).not.toBeInTheDocument();
     expect(screen.queryByText("Workspace")).not.toBeInTheDocument();
   });
@@ -385,6 +476,7 @@ describe("AppShell", () => {
       sessionErrorKey: null,
       spacesForCurrentOrganization: [],
       status: "authenticated",
+      switchSpace: vi.fn(),
     };
 
     render(<AppShell>Workspace</AppShell>);
@@ -421,6 +513,7 @@ describe("AppShell", () => {
         sessionErrorKey: null,
         spacesForCurrentOrganization: [],
         status: "authenticated",
+        switchSpace: vi.fn(),
       };
 
       render(<AppShell>Workspace</AppShell>);

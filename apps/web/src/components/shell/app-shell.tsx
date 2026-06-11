@@ -16,6 +16,8 @@ import { Sidebar } from "./sidebar";
 import { TopBar } from "./top-bar";
 import { OnboardingEmpty } from "./onboarding-empty";
 import { CreateSpaceDialog } from "./create-space-dialog";
+import { RequestedSpaceSwitchNotice } from "./requested-space-switch-notice";
+import { useRequestedSpaceSwitch } from "./use-requested-space-switch";
 
 type AppShellProps = {
   children: ReactNode;
@@ -43,14 +45,20 @@ export function AppShell({ children }: AppShellProps) {
     !currentSpace;
   const canCreateSpace = Boolean(
     session?.capabilities?.canCreateSpace &&
-      canCreateSpaceInOrganization(
-        currentOrganization?.role,
-        currentOrganization?.status,
-      ),
+    canCreateSpaceInOrganization(
+      currentOrganization?.role,
+      currentOrganization?.status,
+    ),
   );
   const realtimeSpaceId = isOrganizationWideRealtimePath(pathname)
     ? undefined
     : currentSpace?.id;
+  const {
+    dismissNotice: dismissRequestedSpaceSwitchNotice,
+    errorKey: activeRequestedSpaceSwitchError,
+    isSwitching: isSwitchingRequestedSpace,
+    notice: requestedSpaceSwitchNotice,
+  } = useRequestedSpaceSwitch();
   useCommandPaletteShortcut({ enabled: hasOrganization });
 
   useEffect(() => {
@@ -141,9 +149,32 @@ export function AppShell({ children }: AppShellProps) {
             hasOrganization ? () => setSidebarOpen(true) : undefined
           }
         />
+        <RequestedSpaceSwitchNotice
+          notice={requestedSpaceSwitchNotice}
+          onDismiss={dismissRequestedSpaceSwitchNotice}
+        />
         <main className="flex-1 overflow-auto bg-background">
           {!hasOrganization ? (
             <OnboardingEmpty />
+          ) : activeRequestedSpaceSwitchError ? (
+            <div className="flex h-full items-center justify-center px-4">
+              <section
+                aria-live="assertive"
+                className="flex max-w-sm flex-col items-center gap-3 text-center"
+                role="alert"
+              >
+                <h1 className="text-base font-semibold text-foreground">
+                  {t("sessionError.title")}
+                </h1>
+                <p className="text-sm text-muted-foreground">
+                  {tRoot(activeRequestedSpaceSwitchError)}
+                </p>
+              </section>
+            </div>
+          ) : isSwitchingRequestedSpace ? (
+            <div className="flex h-full items-center justify-center">
+              <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+            </div>
           ) : hasNoSpacesInCurrentOrganization ? (
             <div
               data-testid="app-shell-no-spaces-empty"

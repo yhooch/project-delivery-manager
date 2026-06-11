@@ -43,6 +43,8 @@ import {
   CommandPalette,
   useCommandPaletteShortcut,
 } from "../shell/command-palette";
+import { RequestedSpaceSwitchNotice } from "../shell/requested-space-switch-notice";
+import { useRequestedSpaceSwitch } from "../shell/use-requested-space-switch";
 import { DocumentCreateProvider } from "./document-create-context";
 import { DocumentDirectoryProvider } from "./document-directory-context";
 import {
@@ -80,6 +82,12 @@ export function DocumentShell({ children }: DocumentShellProps) {
     sessionErrorKey,
     status,
   } = useSession();
+  const {
+    dismissNotice: dismissRequestedSpaceSwitchNotice,
+    errorKey: requestedSpaceSwitchError,
+    isSwitching: isSwitchingRequestedSpace,
+    notice: requestedSpaceSwitchNotice,
+  } = useRequestedSpaceSwitch();
   const hasOrganization = Boolean(currentOrganization);
   const isDocumentDetailRoute = DOCUMENT_DETAIL_PATHNAME_PATTERN.test(pathname);
   const showDocumentDirectory = hasOrganization && !isDocumentDetailRoute;
@@ -187,6 +195,29 @@ export function DocumentShell({ children }: DocumentShellProps) {
     );
   }
 
+  if (requestedSpaceSwitchError) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-background px-4">
+        <section className="max-w-sm text-center" role="alert">
+          <h1 className="text-base font-semibold text-foreground">
+            {tShell("sessionError.title")}
+          </h1>
+          <p className="mt-2 text-sm text-muted-foreground">
+            {tRoot(requestedSpaceSwitchError)}
+          </p>
+        </section>
+      </div>
+    );
+  }
+
+  if (isSwitchingRequestedSpace) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-background">
+        <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
+
   const organizationId =
     currentOrganization?.id ?? session.defaultOrganizationId;
   const spaceId = currentSpace?.id ?? session.defaultSpaceId;
@@ -234,6 +265,10 @@ export function DocumentShell({ children }: DocumentShellProps) {
               </Button>
             </div>
           </header>
+          <RequestedSpaceSwitchNotice
+            notice={requestedSpaceSwitchNotice}
+            onDismiss={dismissRequestedSpaceSwitchNotice}
+          />
           <main className="min-h-[calc(100vh-3rem)]">
             <RealtimeProvider organizationId={organizationId} spaceId={spaceId}>
               <DocumentDragDropLayer

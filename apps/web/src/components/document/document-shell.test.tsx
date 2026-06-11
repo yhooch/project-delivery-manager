@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 
 import {
+  act,
   fireEvent,
   render,
   screen,
@@ -102,7 +103,12 @@ const sessionMock = vi.hoisted(() => ({
       defaultSpaceId: "SPC_01",
     },
     sessionErrorKey: null,
+    spacesForCurrentOrganization: [
+      { id: "SPC_01", organizationId: "ORG_01", name: "Space A" },
+      { id: "SPC_02", organizationId: "ORG_01", name: "Space B" },
+    ],
     status: "authenticated",
+    switchSpace: vi.fn(),
   },
 }));
 vi.mock("../providers/session-provider", () => ({
@@ -166,7 +172,11 @@ function CreateActionProbe() {
 
   return (
     <div>
-      <button type="button" data-testid="probe-open-import" onClick={openImport}>
+      <button
+        type="button"
+        data-testid="probe-open-import"
+        onClick={openImport}
+      >
         Open import
       </button>
       <button type="button" data-testid="probe-open-paste" onClick={openPaste}>
@@ -179,14 +189,28 @@ function CreateActionProbe() {
 function renderShell(
   children: ReactNode = <div data-testid="document-shell-content" />,
 ) {
-  return render(
-    <DocumentShell>{children}</DocumentShell>,
-  );
+  return render(<DocumentShell>{children}</DocumentShell>);
 }
 
 beforeEach(() => {
   pathnameMock.current = "/documents";
   searchParamsMock.current = new URLSearchParams();
+  sessionMock.current = {
+    currentOrganization: { id: "ORG_01", name: "Org A" },
+    currentSpace: { id: "SPC_01", name: "Space A" },
+    initializeSession: vi.fn(),
+    session: {
+      defaultOrganizationId: "ORG_01",
+      defaultSpaceId: "SPC_01",
+    },
+    sessionErrorKey: null,
+    spacesForCurrentOrganization: [
+      { id: "SPC_01", organizationId: "ORG_01", name: "Space A" },
+      { id: "SPC_02", organizationId: "ORG_01", name: "Space B" },
+    ],
+    status: "authenticated",
+    switchSpace: vi.fn(),
+  };
   routerPushMock.mockReset();
   dndHandlersMock.current = null;
   moveDocumentFolderMock.mockReset();
@@ -219,6 +243,47 @@ describe("DocumentShell", () => {
       screen.queryByLabelText("shell.documents.directory"),
     ).not.toBeInTheDocument();
     expect(screen.getByTestId("document-shell-content")).toBeVisible();
+  });
+
+  it("switches to the requested document space and explains the automatic context change", async () => {
+    let resolveSwitch: () => void = () => {};
+    const switchSpace = vi.fn().mockImplementation(
+      () =>
+        new Promise<void>((resolve) => {
+          resolveSwitch = resolve;
+        }),
+    );
+    searchParamsMock.current = new URLSearchParams({ spaceId: "SPC_02" });
+    sessionMock.current = {
+      ...sessionMock.current,
+      switchSpace,
+    };
+
+    const { rerender } = renderShell();
+
+    expect(
+      screen.queryByTestId("document-shell-content"),
+    ).not.toBeInTheDocument();
+    await waitFor(() => expect(switchSpace).toHaveBeenCalledWith("SPC_02"));
+
+    sessionMock.current = {
+      ...sessionMock.current,
+      currentSpace: { id: "SPC_02", name: "Space B" },
+    };
+    rerender(
+      <DocumentShell>
+        <div data-testid="document-shell-content" />
+      </DocumentShell>,
+    );
+
+    const notice = await screen.findByRole("status");
+    expect(notice).toHaveTextContent("shell.requestedSpaceSwitchNotice.title");
+    expect(notice).toHaveTextContent("Space B");
+    expect(screen.getByTestId("document-shell-content")).toBeVisible();
+
+    await act(async () => {
+      resolveSwitch();
+    });
   });
 
   it("keeps creation dialogs available through context without header buttons", () => {

@@ -377,11 +377,11 @@ describe("SpaceOverview", () => {
 
     expect(bugTitle.closest("a")).toHaveAttribute(
       "href",
-      "/bugs?bugId=BUG_01&eventId=01ARZ3NDEKTSV4RRFFQ69G5FE2&panel=timeline",
+      "/bugs?bugId=BUG_01&spaceId=SPC_01&eventId=01ARZ3NDEKTSV4RRFFQ69G5FE2&panel=timeline",
     );
     expect(taskTitle.closest("a")).toHaveAttribute(
       "href",
-      "/work-items?workItemId=TASK_01&eventId=01ARZ3NDEKTSV4RRFFQ69G5FE3&panel=timeline",
+      "/work-items?workItemId=TASK_01&spaceId=SPC_01&eventId=01ARZ3NDEKTSV4RRFFQ69G5FE3&panel=timeline",
     );
     expect(unknownTitle.closest("a")).toBeNull();
   });
@@ -478,8 +478,9 @@ describe("SpaceOverview", () => {
   });
 
   it("keeps the current overview DOM while realtime refresh is pending", async () => {
-    let resolveRealtime: (value: ReturnType<typeof makeOverview>) => void =
-      () => {};
+    let resolveRealtime: (
+      value: ReturnType<typeof makeOverview>,
+    ) => void = () => {};
     getSpaceOverviewViewMock
       .mockResolvedValueOnce(
         makeOverview({

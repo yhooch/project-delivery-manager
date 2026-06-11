@@ -18,16 +18,20 @@ export function getTimelineEventHref(
 ): string | null {
   const id = encodeURIComponent(event.target.id);
   const focusParams = getTimelineFocusParams(event);
+  const scopedParams = {
+    spaceId: event.spaceId,
+    ...focusParams,
+  };
 
   if (event.target.type === "WORK_ITEM") {
     const workItemType = getTimelineWorkItemType(event);
 
     if (workItemType === "BUG") {
-      return withQuery(`/bugs?bugId=${id}`, focusParams);
+      return withQuery(`/bugs?bugId=${id}`, scopedParams);
     }
 
     if (workItemType === "TASK") {
-      return withQuery(`/work-items?workItemId=${id}`, focusParams);
+      return withQuery(`/work-items?workItemId=${id}`, scopedParams);
     }
 
     return options.unknownWorkItemHref ?? null;
@@ -36,23 +40,24 @@ export function getTimelineEventHref(
   if (event.target.type === "DOCUMENT") {
     if (isRequirementDocumentTimelineEvent(event)) {
       if (focusParams.commentId || focusParams.attachmentId) {
-        return withQuery(`/documents/${id}`, focusParams);
+        return withQuery(`/documents/${id}`, scopedParams);
       }
 
-      return `/requirements/${id}`;
+      return withQuery(`/requirements/${id}`, { spaceId: event.spaceId });
     }
 
-    return withQuery(`/documents/${id}`, focusParams);
+    return withQuery(`/documents/${id}`, scopedParams);
   }
 
   if (event.target.type === "INTAKE_ITEM") {
-    return withQuery(`/intake-items?id=${id}`, focusParams);
+    return withQuery(`/intake-items?id=${id}`, scopedParams);
   }
 
   if (event.target.type === "VERSION") {
     return withQuery(`/versions?versionId=${id}`, {
       eventId: event.id,
       panel: "timeline",
+      spaceId: event.spaceId,
     });
   }
 

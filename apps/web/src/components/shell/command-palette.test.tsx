@@ -657,7 +657,7 @@ describe("CommandPalette", () => {
     expect(stored.length).toBeLessThanOrEqual(RECENT_MAX);
     expect((stored[0] as { title: string }).title).toBe("Task A");
     expect((stored[0] as { href: string }).href).toBe(
-      "/work-items?workItemId=01ARZ3NDEKTSV4RRFFQ69G5FT1",
+      "/work-items?workItemId=01ARZ3NDEKTSV4RRFFQ69G5FT1&spaceId=SPC_01",
     );
   });
 
@@ -714,7 +714,7 @@ describe("CommandPalette", () => {
     fireEvent.click(await screen.findByText("Lookup task"));
 
     expect(routerPushMock).toHaveBeenCalledWith(
-      "/work-items?workItemId=01ARZ3NDEKTSV4RRFFQ69G5FLK",
+      "/work-items?workItemId=01ARZ3NDEKTSV4RRFFQ69G5FLK&spaceId=SPC_01",
     );
     const stored = JSON.parse(
       window.localStorage.getItem(RECENT_KEY) ?? "[]",
@@ -766,8 +766,9 @@ describe("CommandPalette", () => {
     );
     fireEvent.change(input, { target: { value: "REQ-0" } });
 
-    expect(await screen.findByTestId("command-palette-lookup-error"))
-      .toHaveTextContent("shell.command.lookup.invalid");
+    expect(
+      await screen.findByTestId("command-palette-lookup-error"),
+    ).toHaveTextContent("shell.command.lookup.invalid");
     expect(lookupObjectCodeMock).not.toHaveBeenCalled();
   });
 
@@ -791,8 +792,9 @@ describe("CommandPalette", () => {
     );
     fireEvent.change(input, { target: { value: "BUG-404" } });
 
-    expect(await screen.findByTestId("command-palette-lookup-error"))
-      .toHaveTextContent("shell.command.lookup.notFound");
+    expect(
+      await screen.findByTestId("command-palette-lookup-error"),
+    ).toHaveTextContent("shell.command.lookup.notFound");
   });
 
   it("uses INTAKE display codes for intake search results", async () => {
@@ -898,7 +900,7 @@ describe("CommandPalette", () => {
     fireEvent.click(await screen.findByText("Bug Alpha"));
 
     expect(routerPushMock).toHaveBeenCalledWith(
-      "/bugs?bugId=01ARZ3NDEKTSV4RRFFQ69G5FB1",
+      "/bugs?bugId=01ARZ3NDEKTSV4RRFFQ69G5FB1&spaceId=SPC_01",
     );
   });
 

@@ -817,6 +817,9 @@
       "description": "当前组织暂无可进入的项目空间；有权限的成员可创建空间，或等待管理员加入已有空间。",
       "waitingHint": "访问权限准备好后，刷新会话即可进入对应空间。"
     },
+    "requestedSpaceSwitchNotice": {
+      "title": "进入项目：{spaceName}"
+    },
     "organizationSwitcher": {
       "label": "切换组织",
       "empty": "暂无组织",

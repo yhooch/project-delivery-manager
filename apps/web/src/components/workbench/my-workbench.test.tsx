@@ -9,16 +9,19 @@ import {
 } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-const { rootTranslations, translatorCache } = vi.hoisted(() => ({
-  rootTranslations: {
-    "common.workflowDefaults.actions.START_PROGRESS": "开始处理",
-    "common.workflowDefaults.states.IN_PROGRESS": "处理中",
-  } as Record<string, string>,
-  translatorCache: new Map<
-    string,
-    ((key: string) => string) & { has?: (key: string) => boolean }
-  >(),
-}));
+const { rootTranslations, routerPushMock, translatorCache } = vi.hoisted(
+  () => ({
+    rootTranslations: {
+      "common.workflowDefaults.actions.START_PROGRESS": "开始处理",
+      "common.workflowDefaults.states.IN_PROGRESS": "处理中",
+    } as Record<string, string>,
+    routerPushMock: vi.fn(),
+    translatorCache: new Map<
+      string,
+      ((key: string) => string) & { has?: (key: string) => boolean }
+    >(),
+  }),
+);
 vi.mock("next-intl", () => ({
   useTranslations: (namespace?: string) => {
     const key = namespace ?? "__root__";
@@ -82,7 +85,7 @@ vi.mock("../../i18n/routing", () => ({
   getPathname: () => "/",
   redirect: () => undefined,
   usePathname: () => "/",
-  useRouter: () => ({ push: vi.fn(), replace: vi.fn() }),
+  useRouter: () => ({ push: routerPushMock, replace: vi.fn() }),
 }));
 
 const sessionMock = vi.hoisted(() => ({
@@ -161,44 +164,6 @@ vi.mock("../../lib/v2/lookups", () => ({
     error: null,
     getVersion: () => undefined,
   }),
-}));
-
-// Mock the task-detail-sheet so it doesn't render full Radix tree.
-vi.mock("../work-item/task-detail-sheet", () => ({
-  TaskDetailSheet: ({
-    actionFocusRequest,
-    item,
-    onChanged,
-    onOpenChange,
-    open,
-    preferredActionId,
-  }: {
-    actionFocusRequest?: number;
-    item: { id: string; title: string } | null;
-    onChanged?: () => void;
-    onOpenChange?: (open: boolean) => void;
-    open: boolean;
-    preferredActionId?: string;
-  }) =>
-    open && item ? (
-      <div data-testid="task-detail-sheet-open">
-        <span>{item.title}</span>
-        <span data-testid="task-detail-sheet-action-focus-request">
-          {actionFocusRequest ?? 0}
-        </span>
-        {preferredActionId ? (
-          <span data-testid="task-detail-sheet-preferred-action-id">
-            {preferredActionId}
-          </span>
-        ) : null}
-        <button type="button" onClick={onChanged}>
-          detail changed
-        </button>
-        <button type="button" onClick={() => onOpenChange?.(false)}>
-          close detail
-        </button>
-      </div>
-    ) : null,
 }));
 
 import { MyWorkbench } from "./my-workbench";
@@ -349,6 +314,7 @@ function makeWorkbenchResponse(
 
 beforeEach(() => {
   realtimeCallbacks.clear();
+  routerPushMock.mockReset();
   getMyWorkbenchViewMock.mockReset();
   getMembersMock.mockReset();
   getMembersMock.mockResolvedValue([]);
@@ -750,7 +716,9 @@ describe("MyWorkbench", () => {
 
     expect(item).not.toBeNull();
     expect(within(item as HTMLElement).getByText("TASK-1")).toBeInTheDocument();
-    expect(within(item as HTMLElement).getByText("Space B")).toBeInTheDocument();
+    expect(
+      within(item as HTMLElement).getByText("Space B"),
+    ).toBeInTheDocument();
   });
 
   it("uses a readable version fallback instead of a raw ID tail when lookups miss", async () => {
@@ -878,18 +846,15 @@ describe("MyWorkbench", () => {
     expect(oldItem).toBeInTheDocument();
 
     fireEvent.click(oldItem);
-    expect(
-      await screen.findByTestId("task-detail-sheet-open"),
-    ).toHaveTextContent("Old space item");
+    expect(routerPushMock).toHaveBeenCalledWith(
+      "/work-items?spaceId=SPC_01&workItemId=01ARZ3NDEKTSV4RRFFQ69G5FS1",
+    );
 
     fireEvent.click(screen.getByTestId("workbench-space-filter-option-SPC_02"));
 
     await waitFor(() =>
       expect(screen.queryByText("Old space item")).not.toBeInTheDocument(),
     );
-    expect(
-      screen.queryByTestId("task-detail-sheet-open"),
-    ).not.toBeInTheDocument();
 
     resolveSecond(
       makeWorkbenchResponse({
@@ -905,23 +870,24 @@ describe("MyWorkbench", () => {
     expect(await screen.findByText("New space item")).toBeInTheDocument();
   });
 
-  it("records direct workbench opens and refetches after detail changes", async () => {
-    getMyWorkbenchViewMock
-      .mockResolvedValueOnce(
-        makeWorkbenchResponse({
-          todos: [
-            makeWorkItemSummary({
-              id: "01ARZ3NDEKTSV4RRFFQ69G5FRC",
-              title: "Remember workbench item",
-            }),
-          ],
-        }),
-      )
-      .mockResolvedValueOnce(makeWorkbenchResponse());
+  it("records direct workbench opens and routes to the item space", async () => {
+    getMyWorkbenchViewMock.mockResolvedValueOnce(
+      makeWorkbenchResponse({
+        todos: [
+          makeWorkItemSummary({
+            id: "01ARZ3NDEKTSV4RRFFQ69G5FRC",
+            title: "Remember workbench item",
+          }),
+        ],
+      }),
+    );
 
     render(<MyWorkbench />);
 
     fireEvent.click(await screen.findByText("Remember workbench item"));
+    expect(routerPushMock).toHaveBeenCalledWith(
+      "/work-items?spaceId=SPC_01&workItemId=01ARZ3NDEKTSV4RRFFQ69G5FRC",
+    );
 
     const stored = JSON.parse(
       window.localStorage.getItem(
@@ -939,17 +905,11 @@ describe("MyWorkbench", () => {
     }>;
     expect(stored[0]).toMatchObject({
       displayCode: "TASK-9G5FRC",
-      href: "/work-items?workItemId=01ARZ3NDEKTSV4RRFFQ69G5FRC",
+      href: "/work-items?spaceId=SPC_01&workItemId=01ARZ3NDEKTSV4RRFFQ69G5FRC",
       spaceId: "SPC_01",
       title: "Remember workbench item",
       type: "TASK",
     });
-
-    fireEvent.click(screen.getByRole("button", { name: "detail changed" }));
-
-    await waitFor(() =>
-      expect(getMyWorkbenchViewMock).toHaveBeenCalledTimes(2),
-    );
   });
 
   it("keeps the current workbench DOM while realtime refresh is pending", async () => {
@@ -1022,7 +982,7 @@ describe("MyWorkbench", () => {
     ).not.toBeInTheDocument();
   });
 
-  it("supports J/K/Enter/E/Escape keyboard paths and restores focus after closing detail", async () => {
+  it("supports J/K/Enter/E keyboard paths and routes the active item", async () => {
     getMyWorkbenchViewMock.mockResolvedValueOnce(
       makeWorkbenchResponse({
         todos: [
@@ -1058,22 +1018,14 @@ describe("MyWorkbench", () => {
     await waitFor(() => expect(firstButton).toHaveFocus());
 
     fireEvent.keyDown(window, { key: "Enter" });
-    expect(
-      await screen.findByTestId("task-detail-sheet-open"),
-    ).toHaveTextContent("Keyboard first item");
-
-    fireEvent.keyDown(window, { key: "Escape" });
-    await waitFor(() =>
-      expect(
-        screen.queryByTestId("task-detail-sheet-open"),
-      ).not.toBeInTheDocument(),
+    expect(routerPushMock).toHaveBeenCalledWith(
+      "/work-items?spaceId=SPC_01&workItemId=01ARZ3NDEKTSV4RRFFQ69G5FK1",
     );
-    await waitFor(() => expect(firstButton).toHaveFocus());
 
     fireEvent.keyDown(window, { key: "e" });
-    expect(
-      await screen.findByTestId("task-detail-sheet-open"),
-    ).toHaveTextContent("Keyboard first item");
+    expect(routerPushMock).toHaveBeenLastCalledWith(
+      "/work-items?spaceId=SPC_01&workItemId=01ARZ3NDEKTSV4RRFFQ69G5FK1",
+    );
   });
 
   it("uses S on an action todo to open detail with the preferred action selected", async () => {
@@ -1099,15 +1051,9 @@ describe("MyWorkbench", () => {
     window.dispatchEvent(submitEvent);
 
     expect(submitEvent.defaultPrevented).toBe(true);
-    expect(
-      await screen.findByTestId("task-detail-sheet-open"),
-    ).toHaveTextContent("Action shortcut item");
-    expect(
-      screen.getByTestId("task-detail-sheet-action-focus-request"),
-    ).toHaveTextContent("1");
-    expect(
-      screen.getByTestId("task-detail-sheet-preferred-action-id"),
-    ).toHaveTextContent("ACT_APPROVE");
+    expect(routerPushMock).toHaveBeenCalledWith(
+      "/work-items?spaceId=SPC_01&workItemId=01ARZ3NDEKTSV4RRFFQ69G5FA7&focusActions=1&actionId=ACT_APPROVE",
+    );
   });
 
   it("renders recent activities in the side panel", async () => {
@@ -1116,6 +1062,7 @@ describe("MyWorkbench", () => {
         recent: [
           makeRecentActivity({
             id: "01ARZ3NDEKTSV4RRFFQ69G5FE1",
+            metadata: { workItemType: "TASK" },
             title: "edited the description",
           }),
         ],
@@ -1137,7 +1084,10 @@ describe("MyWorkbench", () => {
     expect(
       screen.queryByText("edited the description"),
     ).not.toBeInTheDocument();
-    expect(screen.getByText("Workbench task").closest("a")).toBeNull();
+    expect(screen.getByText("Workbench task").closest("a")).toHaveAttribute(
+      "href",
+      "/work-items?workItemId=01ARZ3NDEKTSV4RRFFQ69G5FA1&spaceId=SPC_01&eventId=01ARZ3NDEKTSV4RRFFQ69G5FE1&panel=timeline",
+    );
   });
 
   it("shows space context for organization-level recent activities", async () => {
@@ -1147,6 +1097,7 @@ describe("MyWorkbench", () => {
           makeRecentActivity({
             id: "01ARZ3NDEKTSV4RRFFQ69G5FE3",
             spaceId: "SPC_02",
+            metadata: { workItemType: "TASK" },
             target: {
               type: "WORK_ITEM",
               id: "01ARZ3NDEKTSV4RRFFQ69G5FBU",
@@ -1163,6 +1114,12 @@ describe("MyWorkbench", () => {
       await screen.findByText("Cross-space recent task"),
     ).toBeInTheDocument();
     expect(screen.getByText(/· Space B/u)).toBeInTheDocument();
+    expect(
+      screen.getByText("Cross-space recent task").closest("a"),
+    ).toHaveAttribute(
+      "href",
+      "/work-items?workItemId=01ARZ3NDEKTSV4RRFFQ69G5FBU&spaceId=SPC_02&eventId=01ARZ3NDEKTSV4RRFFQ69G5FE3&panel=timeline",
+    );
   });
 
   it("links recent activities when the timeline helper can resolve the target", async () => {
@@ -1187,7 +1144,7 @@ describe("MyWorkbench", () => {
     const title = await screen.findByText("Workbench bug");
     expect(title.closest("a")).toHaveAttribute(
       "href",
-      "/bugs?bugId=01ARZ3NDEKTSV4RRFFQ69G5FBU&eventId=01ARZ3NDEKTSV4RRFFQ69G5FE2&panel=timeline",
+      "/bugs?bugId=01ARZ3NDEKTSV4RRFFQ69G5FBU&spaceId=SPC_01&eventId=01ARZ3NDEKTSV4RRFFQ69G5FE2&panel=timeline",
     );
   });
 

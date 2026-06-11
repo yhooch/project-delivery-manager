@@ -202,24 +202,57 @@ const typeIconColor: Record<SearchResult["type"], string> = {
   DOCUMENT: "text-primary/80",
 };
 
-function getDetailHref(item: Pick<SearchResult, "id" | "href" | "type">) {
+function getDetailHref(
+  item: Pick<SearchResult, "id" | "href" | "spaceId" | "type">,
+) {
   if (item.type === "TASK") {
-    return `/work-items?workItemId=${encodeURIComponent(item.id)}`;
+    return withQuery("/work-items", {
+      workItemId: item.id,
+      spaceId: item.spaceId,
+    });
   }
   if (item.type === "BUG") {
-    return `/bugs?bugId=${encodeURIComponent(item.id)}`;
+    return withQuery("/bugs", {
+      bugId: item.id,
+      spaceId: item.spaceId,
+    });
   }
   if (item.type === "INTAKE") {
-    return `/intake-items?id=${encodeURIComponent(item.id)}`;
+    return withQuery("/intake-items", {
+      id: item.id,
+      spaceId: item.spaceId,
+    });
   }
   if (item.type === "DOCUMENT") {
-    return `/documents/${encodeURIComponent(item.id)}`;
+    return withQuery(`/documents/${encodeURIComponent(item.id)}`, {
+      spaceId: item.spaceId,
+    });
   }
-  return item.href;
+  return withQuery(item.href, { spaceId: item.spaceId });
 }
 
 function withDetailHref(item: SearchResult): SearchResult {
   return { ...item, href: getDetailHref(item) };
+}
+
+function withQuery(
+  href: string,
+  params: Record<string, string | undefined>,
+): string {
+  const query = new URLSearchParams();
+
+  for (const [key, value] of Object.entries(params)) {
+    if (value) {
+      query.set(key, value);
+    }
+  }
+
+  const queryString = query.toString();
+  if (!queryString) {
+    return href;
+  }
+
+  return `${href}${href.includes("?") ? "&" : "?"}${queryString}`;
 }
 
 const PAGE_SIZE = 25;
@@ -433,6 +466,7 @@ export function CommandPalette({ enabled = true }: CommandPaletteProps) {
         if (tasks.status === "fulfilled") {
           canPrune = canPrune && tasks.value.items.length >= tasks.value.total;
           for (const item of tasks.value.items) {
+            const itemSpaceId = item.spaceId ?? spaceId;
             merged.push({
               id: item.id,
               type: "TASK",
@@ -442,11 +476,12 @@ export function CommandPalette({ enabled = true }: CommandPaletteProps) {
               }),
               title: item.title,
               organizationId: item.organizationId,
-              spaceId: item.spaceId,
+              spaceId: itemSpaceId,
               href: getDetailHref({
                 id: item.id,
                 type: "TASK",
                 href: "/work-items",
+                spaceId: itemSpaceId,
               }),
             });
           }
@@ -456,6 +491,7 @@ export function CommandPalette({ enabled = true }: CommandPaletteProps) {
         if (bugs.status === "fulfilled") {
           canPrune = canPrune && bugs.value.items.length >= bugs.value.total;
           for (const item of bugs.value.items) {
+            const itemSpaceId = item.spaceId ?? spaceId;
             // Per design: bugId === workItemId
             merged.push({
               id: item.id,
@@ -466,8 +502,13 @@ export function CommandPalette({ enabled = true }: CommandPaletteProps) {
               }),
               title: item.title,
               organizationId: item.organizationId,
-              spaceId: item.spaceId,
-              href: getDetailHref({ id: item.id, type: "BUG", href: "/bugs" }),
+              spaceId: itemSpaceId,
+              href: getDetailHref({
+                id: item.id,
+                type: "BUG",
+                href: "/bugs",
+                spaceId: itemSpaceId,
+              }),
             });
           }
         } else {
@@ -478,6 +519,7 @@ export function CommandPalette({ enabled = true }: CommandPaletteProps) {
             canPrune &&
             requirements.value.items.length >= requirements.value.total;
           for (const item of requirements.value.items) {
+            const itemSpaceId = item.spaceId ?? spaceId;
             merged.push({
               id: item.id,
               type: "REQUIREMENT",
@@ -486,8 +528,13 @@ export function CommandPalette({ enabled = true }: CommandPaletteProps) {
               }),
               title: item.title || t("untitled"),
               organizationId: item.organizationId,
-              spaceId: item.spaceId,
-              href: `/requirements/${item.id}`,
+              spaceId: itemSpaceId,
+              href: getDetailHref({
+                id: item.id,
+                type: "REQUIREMENT",
+                href: `/requirements/${item.id}`,
+                spaceId: itemSpaceId,
+              }),
             });
           }
         } else {
@@ -497,17 +544,19 @@ export function CommandPalette({ enabled = true }: CommandPaletteProps) {
           canPrune =
             canPrune && intake.value.items.length >= intake.value.total;
           for (const item of intake.value.items) {
+            const itemSpaceId = item.spaceId ?? spaceId;
             merged.push({
               id: item.id,
               type: "INTAKE",
               displayCode: resolveIntakeDisplayCode(item),
               title: item.title,
               organizationId: item.organizationId,
-              spaceId: item.spaceId,
+              spaceId: itemSpaceId,
               href: getDetailHref({
                 id: item.id,
                 type: "INTAKE",
                 href: "/intake-items",
+                spaceId: itemSpaceId,
               }),
             });
           }
@@ -518,14 +567,20 @@ export function CommandPalette({ enabled = true }: CommandPaletteProps) {
           canPrune =
             canPrune && documents.value.items.length >= documents.value.total;
           for (const item of documents.value.items) {
+            const itemSpaceId = item.spaceId ?? spaceId;
             merged.push({
               id: item.id,
               type: "DOCUMENT",
               displayCode: t("documentLabel"),
               title: item.title || t("untitled"),
               organizationId: item.organizationId,
-              spaceId: item.spaceId,
-              href: `/documents/${item.id}`,
+              spaceId: itemSpaceId,
+              href: getDetailHref({
+                id: item.id,
+                type: "DOCUMENT",
+                href: `/documents/${item.id}`,
+                spaceId: itemSpaceId,
+              }),
             });
           }
         } else {
@@ -723,7 +778,9 @@ export function CommandPalette({ enabled = true }: CommandPaletteProps) {
     const lookupKey = buildLiveKey(lookupResult.type, lookupResult.id);
     return [
       lookupResult,
-      ...results.filter((item) => buildLiveKey(item.type, item.id) !== lookupKey),
+      ...results.filter(
+        (item) => buildLiveKey(item.type, item.id) !== lookupKey,
+      ),
     ];
   }, [lookupResult, results]);
 
@@ -1124,7 +1181,9 @@ function toSearchResultFromObjectCodeLookup(
   const space = spaces.find((item) => item.id === result.spaceId);
   const showSpace = !currentSpaceId || currentSpaceId !== result.spaceId;
   const spaceLabel = showSpace
-    ? (space?.code ? `${space.name} · ${space.code}` : space?.name)
+    ? space?.code
+      ? `${space.name} · ${space.code}`
+      : space?.name
     : undefined;
 
   return {
@@ -1136,6 +1195,7 @@ function toSearchResultFromObjectCodeLookup(
       id: result.id,
       type,
       href: type === "REQUIREMENT" ? `/requirements/${result.id}` : "/",
+      spaceId: result.spaceId,
     }),
     organizationId: result.organizationId,
     spaceId: result.spaceId,
@@ -1223,7 +1283,5 @@ function shouldUseSpaceScopedObjectLookup(pathname: string): boolean {
 function normalizeAppPathname(pathname: string): string {
   const normalized = pathname.replace(/\/+$/u, "") || "/";
 
-  return (
-    normalized.replace(/^\/[a-z]{2}(?:-[A-Z]{2})?(?=\/)/u, "") || "/"
-  );
+  return normalized.replace(/^\/[a-z]{2}(?:-[A-Z]{2})?(?=\/)/u, "") || "/";
 }

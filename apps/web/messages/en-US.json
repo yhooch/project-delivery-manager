@@ -817,6 +817,9 @@
       "description": "There are no project spaces available in this organization. Members with permission can create one, or wait for an administrator to add them to an existing space.",
       "waitingHint": "You can stay signed in while access is being prepared."
     },
+    "requestedSpaceSwitchNotice": {
+      "title": "Project: {spaceName}"
+    },
     "organizationSwitcher": {
       "label": "Switch organization",
       "empty": "No organization",

@@ -1,7 +1,10 @@
 import type { TimelineEvent } from "@project-delivery/shared";
 import { describe, expect, it } from "vitest";
 
-import { getTimelineEventHref, getTimelineWorkItemType } from "./timeline-links";
+import {
+  getTimelineEventHref,
+  getTimelineWorkItemType,
+} from "./timeline-links";
 
 function makeEvent(overrides: Partial<TimelineEvent> = {}): TimelineEvent {
   return {
@@ -30,7 +33,7 @@ describe("timeline links", () => {
     expect(
       getTimelineEventHref(makeEvent({ metadata: { workItemType: "BUG" } })),
     ).toBe(
-      "/bugs?bugId=01ARZ3NDEKTSV4RRFFQ69G5FA5&eventId=01ARZ3NDEKTSV4RRFFQ69G5FA2&panel=timeline",
+      "/bugs?bugId=01ARZ3NDEKTSV4RRFFQ69G5FA5&spaceId=01ARZ3NDEKTSV4RRFFQ69G5FA4&eventId=01ARZ3NDEKTSV4RRFFQ69G5FA2&panel=timeline",
     );
   });
 
@@ -38,7 +41,7 @@ describe("timeline links", () => {
     expect(
       getTimelineEventHref(makeEvent({ metadata: { workItemType: "TASK" } })),
     ).toBe(
-      "/work-items?workItemId=01ARZ3NDEKTSV4RRFFQ69G5FA5&eventId=01ARZ3NDEKTSV4RRFFQ69G5FA2&panel=timeline",
+      "/work-items?workItemId=01ARZ3NDEKTSV4RRFFQ69G5FA5&spaceId=01ARZ3NDEKTSV4RRFFQ69G5FA4&eventId=01ARZ3NDEKTSV4RRFFQ69G5FA2&panel=timeline",
     );
   });
 
@@ -47,7 +50,7 @@ describe("timeline links", () => {
 
     expect(getTimelineWorkItemType(event)).toBe("BUG");
     expect(getTimelineEventHref(event)).toBe(
-      "/bugs?bugId=01ARZ3NDEKTSV4RRFFQ69G5FA5&eventId=01ARZ3NDEKTSV4RRFFQ69G5FA2&panel=timeline",
+      "/bugs?bugId=01ARZ3NDEKTSV4RRFFQ69G5FA5&spaceId=01ARZ3NDEKTSV4RRFFQ69G5FA4&eventId=01ARZ3NDEKTSV4RRFFQ69G5FA2&panel=timeline",
     );
   });
 
@@ -63,7 +66,7 @@ describe("timeline links", () => {
         }),
       ),
     ).toBe(
-      "/work-items?workItemId=01ARZ3NDEKTSV4RRFFQ69G5FA5&commentId=01ARZ3NDEKTSV4RRFFQ69G5FCM1&panel=comments",
+      "/work-items?workItemId=01ARZ3NDEKTSV4RRFFQ69G5FA5&spaceId=01ARZ3NDEKTSV4RRFFQ69G5FA4&commentId=01ARZ3NDEKTSV4RRFFQ69G5FCM1&panel=comments",
     );
   });
 
@@ -79,7 +82,7 @@ describe("timeline links", () => {
         }),
       ),
     ).toBe(
-      "/bugs?bugId=01ARZ3NDEKTSV4RRFFQ69G5FA5&attachmentId=01ARZ3NDEKTSV4RRFFQ69G5FAT1&panel=attachments",
+      "/bugs?bugId=01ARZ3NDEKTSV4RRFFQ69G5FA5&spaceId=01ARZ3NDEKTSV4RRFFQ69G5FA4&attachmentId=01ARZ3NDEKTSV4RRFFQ69G5FAT1&panel=attachments",
     );
   });
 
@@ -102,7 +105,9 @@ describe("timeline links", () => {
           },
         }),
       ),
-    ).toBe("/requirements/01ARZ3NDEKTSV4RRFFQ69G5FA6");
+    ).toBe(
+      "/requirements/01ARZ3NDEKTSV4RRFFQ69G5FA6?spaceId=01ARZ3NDEKTSV4RRFFQ69G5FA4",
+    );
   });
 
   it("routes requirement document comments to document comments", () => {
@@ -123,7 +128,7 @@ describe("timeline links", () => {
         }),
       ),
     ).toBe(
-      "/documents/01ARZ3NDEKTSV4RRFFQ69G5FA6?commentId=01ARZ3NDEKTSV4RRFFQ69G5FCM1&panel=comments",
+      "/documents/01ARZ3NDEKTSV4RRFFQ69G5FA6?spaceId=01ARZ3NDEKTSV4RRFFQ69G5FA4&commentId=01ARZ3NDEKTSV4RRFFQ69G5FCM1&panel=comments",
     );
   });
 
@@ -139,7 +144,7 @@ describe("timeline links", () => {
         }),
       ),
     ).toBe(
-      "/intake-items?id=01ARZ3NDEKTSV4RRFFQ69G5FA7&eventId=01ARZ3NDEKTSV4RRFFQ69G5FA2&panel=timeline",
+      "/intake-items?id=01ARZ3NDEKTSV4RRFFQ69G5FA7&spaceId=01ARZ3NDEKTSV4RRFFQ69G5FA4&eventId=01ARZ3NDEKTSV4RRFFQ69G5FA2&panel=timeline",
     );
 
     expect(
@@ -153,7 +158,7 @@ describe("timeline links", () => {
         }),
       ),
     ).toBe(
-      "/versions?versionId=01ARZ3NDEKTSV4RRFFQ69G5FA8&eventId=01ARZ3NDEKTSV4RRFFQ69G5FA2&panel=timeline",
+      "/versions?versionId=01ARZ3NDEKTSV4RRFFQ69G5FA8&eventId=01ARZ3NDEKTSV4RRFFQ69G5FA2&panel=timeline&spaceId=01ARZ3NDEKTSV4RRFFQ69G5FA4",
     );
   });
 });
