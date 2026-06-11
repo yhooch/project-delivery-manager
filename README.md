@@ -67,7 +67,7 @@ Register/login -> Organization -> Project space -> Version
 
 | Document context library |
 | --- |
-| ![Document library with folders, search, import actions, and project context documents](docs/assets/screenshots/documents.png) |
+| ![Document library with folders, search, import actions, and project context documents](docs/assets/screenshots/documents-en.png) |
 
 | MCP client authorizations | Organization settings |
 | --- | --- |
