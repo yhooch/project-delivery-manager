@@ -172,6 +172,210 @@ describe("CommentService", () => {
       }),
     );
   });
+
+  it("updates comments owned by the current user", async () => {
+    const actorUserId = ulid();
+    const organizationId = ulid();
+    const spaceId = ulid();
+    const commentId = ulid();
+    const workItemId = ulid();
+    const existing = fakeComment(commentId, workItemId, {
+      authorId: actorUserId,
+      organizationId,
+      spaceId,
+    });
+    const updated = { ...existing, body: "Updated" };
+    const comments = {
+      create: vi.fn(),
+      delete: vi.fn(),
+      findById: vi.fn(async () => existing),
+      listByTarget: vi.fn(),
+      update: vi.fn(async () => updated),
+    } as unknown as CommentRepository;
+    const targets = {
+      resolve: vi.fn(async () => ({
+        organizationId,
+        spaceId,
+        targetId: workItemId,
+        targetType: "WORK_ITEM" as const,
+        role: "DEVELOPER" as const,
+        canWrite: true,
+      })),
+    } as unknown as TargetResolverService;
+    const audit = createAuditService();
+    const realtime = createRealtimePublisher();
+    const service = new CommentService(comments, targets, audit, realtime);
+
+    await service.update(
+      actorUserId,
+      commentId,
+      { body: "Updated" },
+      { requestId: "req-comment-update" },
+    );
+
+    expect(comments.update).toHaveBeenCalledWith({
+      body: "Updated",
+      commentId,
+      updatedById: actorUserId,
+    });
+    expect(audit.record).toHaveBeenCalledWith(
+      expect.objectContaining({
+        actionType: "UPDATE",
+        actorId: actorUserId,
+        after: updated,
+        before: existing,
+        requestId: "req-comment-update",
+        targetId: commentId,
+        targetType: "COMMENT",
+      }),
+    );
+    expect(realtime.publish).toHaveBeenCalledWith(
+      expect.objectContaining({
+        operation: "UPDATED",
+        target: { type: "WORK_ITEM", id: workItemId },
+        invalidates: expect.arrayContaining(["comments", "timeline"]),
+      }),
+    );
+  });
+
+  it("deletes comments owned by the current user", async () => {
+    const actorUserId = ulid();
+    const organizationId = ulid();
+    const spaceId = ulid();
+    const commentId = ulid();
+    const workItemId = ulid();
+    const existing = fakeComment(commentId, workItemId, {
+      authorId: actorUserId,
+      organizationId,
+      spaceId,
+    });
+    const comments = {
+      create: vi.fn(),
+      delete: vi.fn(async () => existing),
+      findById: vi.fn(async () => existing),
+      listByTarget: vi.fn(),
+      update: vi.fn(),
+    } as unknown as CommentRepository;
+    const targets = {
+      resolve: vi.fn(async () => ({
+        organizationId,
+        spaceId,
+        targetId: workItemId,
+        targetType: "WORK_ITEM" as const,
+        role: "DEVELOPER" as const,
+        canWrite: true,
+      })),
+    } as unknown as TargetResolverService;
+    const audit = createAuditService();
+    const realtime = createRealtimePublisher();
+    const service = new CommentService(comments, targets, audit, realtime);
+
+    await expect(
+      service.delete(actorUserId, commentId, {
+        requestId: "req-comment-delete",
+      }),
+    ).resolves.toEqual({});
+
+    expect(comments.delete).toHaveBeenCalledWith({
+      commentId,
+      deletedById: actorUserId,
+    });
+    expect(audit.record).toHaveBeenCalledWith(
+      expect.objectContaining({
+        actionType: "DELETE",
+        actorId: actorUserId,
+        before: existing,
+        requestId: "req-comment-delete",
+        targetId: commentId,
+        targetType: "COMMENT",
+      }),
+    );
+    expect(realtime.publish).toHaveBeenCalledWith(
+      expect.objectContaining({
+        operation: "DELETED",
+        target: { type: "WORK_ITEM", id: workItemId },
+      }),
+    );
+  });
+
+  it("rejects comment mutations from non-authors", async () => {
+    const actorUserId = ulid();
+    const commentId = ulid();
+    const workItemId = ulid();
+    const existing = fakeComment(commentId, workItemId, {
+      authorId: ulid(),
+    });
+    const comments = {
+      create: vi.fn(),
+      delete: vi.fn(),
+      findById: vi.fn(async () => existing),
+      listByTarget: vi.fn(),
+      update: vi.fn(),
+    } as unknown as CommentRepository;
+    const targets = {
+      resolve: vi.fn(async () => ({
+        organizationId: existing.organizationId,
+        spaceId: existing.spaceId,
+        targetId: workItemId,
+        targetType: "WORK_ITEM" as const,
+        role: "DEVELOPER" as const,
+        canWrite: true,
+      })),
+    } as unknown as TargetResolverService;
+    const audit = createAuditService();
+    const realtime = createRealtimePublisher();
+    const service = new CommentService(comments, targets, audit, realtime);
+
+    await expect(
+      service.update(actorUserId, commentId, { body: "Updated" }),
+    ).rejects.toMatchObject({
+      code: "FORBIDDEN",
+    });
+    expect(comments.update).not.toHaveBeenCalled();
+    expect(comments.delete).not.toHaveBeenCalled();
+    expect(audit.record).not.toHaveBeenCalled();
+    expect(realtime.publish).not.toHaveBeenCalled();
+  });
+
+  it("rejects comment mutations from viewer authors", async () => {
+    const actorUserId = ulid();
+    const commentId = ulid();
+    const workItemId = ulid();
+    const existing = fakeComment(commentId, workItemId, {
+      authorId: actorUserId,
+    });
+    const comments = {
+      create: vi.fn(),
+      delete: vi.fn(),
+      findById: vi.fn(async () => existing),
+      listByTarget: vi.fn(),
+      update: vi.fn(),
+    } as unknown as CommentRepository;
+    const targets = {
+      resolve: vi.fn(async () => ({
+        organizationId: existing.organizationId,
+        spaceId: existing.spaceId,
+        targetId: workItemId,
+        targetType: "WORK_ITEM" as const,
+        role: "VIEWER" as const,
+        canWrite: false,
+      })),
+    } as unknown as TargetResolverService;
+    const audit = createAuditService();
+    const realtime = createRealtimePublisher();
+    const service = new CommentService(comments, targets, audit, realtime);
+
+    await expect(
+      service.delete(actorUserId, commentId),
+    ).rejects.toMatchObject({
+      code: "SPACE_ACCESS_DENIED",
+      details: { role: "VIEWER" },
+    });
+    expect(comments.update).not.toHaveBeenCalled();
+    expect(comments.delete).not.toHaveBeenCalled();
+    expect(audit.record).not.toHaveBeenCalled();
+    expect(realtime.publish).not.toHaveBeenCalled();
+  });
 });
 
 function createAuditService() {
@@ -190,15 +394,23 @@ function createRealtimePublisher() {
   };
 }
 
-function fakeComment(id: string, targetId: string): Comment {
+function fakeComment(
+  id: string,
+  targetId: string,
+  overrides: {
+    authorId?: string;
+    organizationId?: string;
+    spaceId?: string;
+  } = {},
+): Comment {
   return {
     id,
-    organizationId: ulid(),
-    spaceId: ulid(),
+    organizationId: overrides.organizationId ?? ulid(),
+    spaceId: overrides.spaceId ?? ulid(),
     targetType: "WORK_ITEM",
     targetId,
     author: {
-      id: ulid(),
+      id: overrides.authorId ?? ulid(),
       username: "author",
       name: "Author",
     },

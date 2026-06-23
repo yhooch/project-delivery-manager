@@ -859,8 +859,17 @@ export class DocumentService {
     actorUserId: string,
     documentId: string,
     metadata: RequestMetadata = {},
+    actor: DocumentActorContext = userDocumentActor(),
+    baseRevision?: number,
   ): Promise<Document> {
-    return this.updateState(actorUserId, documentId, "ARCHIVED", metadata);
+    return this.updateState(
+      actorUserId,
+      documentId,
+      "ARCHIVED",
+      metadata,
+      actor,
+      baseRevision,
+    );
   }
 
   async restore(
@@ -868,15 +877,30 @@ export class DocumentService {
     documentId: string,
     metadata: RequestMetadata = {},
   ): Promise<Document> {
-    return this.updateState(actorUserId, documentId, "RESTORED", metadata);
+    return this.updateState(
+      actorUserId,
+      documentId,
+      "RESTORED",
+      metadata,
+      userDocumentActor(),
+    );
   }
 
   async delete(
     actorUserId: string,
     documentId: string,
     metadata: RequestMetadata = {},
+    actor: DocumentActorContext = userDocumentActor(),
+    baseRevision?: number,
   ): Promise<Record<string, never>> {
-    await this.updateState(actorUserId, documentId, "DELETED", metadata);
+    await this.updateState(
+      actorUserId,
+      documentId,
+      "DELETED",
+      metadata,
+      actor,
+      baseRevision,
+    );
 
     return {};
   }
@@ -1776,6 +1800,8 @@ export class DocumentService {
     documentId: string,
     changeType: "ARCHIVED" | "RESTORED" | "DELETED",
     metadata: RequestMetadata,
+    actor: DocumentActorContext,
+    baseRevision?: number,
   ): Promise<Document> {
     const existing = await this.requireEditableDocument(
       actorUserId,
@@ -1784,11 +1810,19 @@ export class DocumentService {
     if (existing.kind === "REQUIREMENT") {
       throwRequirementDocumentStateBypass();
     }
+    if (baseRevision !== undefined && existing.revision !== baseRevision) {
+      throw new ApiException(
+        "DOCUMENT_EDIT_CONFLICT",
+        "Document revision conflict",
+        HttpStatus.CONFLICT,
+      );
+    }
     const result = await this.documents.updateState({
-      actorType: "USER",
+      actorType: actor.actorType,
       actorUserId,
       changeType,
       documentId,
+      mcpClientId: actor.mcpClientId,
       requestId: metadata.requestId,
     });
     const updated = this.requireUpdatedResult(result);

@@ -144,5 +144,13 @@ export const CreateCommentRequestSchema = z
   })
   .strict();
 
+export const UpdateCommentRequestSchema = z
+  .object({
+    body: z.string().min(1).max(8000),
+  })
+  .strict();
+
 export const ListCommentsResponseSchema = pageResultSchema(CommentSchema);
 export const CreateCommentResponseSchema = CommentSchema;
+export const UpdateCommentResponseSchema = CommentSchema;
+export const DeleteCommentResponseSchema = z.object({}).strict();

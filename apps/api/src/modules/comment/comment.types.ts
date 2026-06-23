@@ -27,3 +27,14 @@ export type CreateCommentInput = {
   targetWorkItemType?: WorkItemType;
   timelineEventId: string;
 };
+
+export type UpdateCommentInput = {
+  body: string;
+  commentId: string;
+  updatedById: string;
+};
+
+export type DeleteCommentInput = {
+  commentId: string;
+  deletedById: string;
+};

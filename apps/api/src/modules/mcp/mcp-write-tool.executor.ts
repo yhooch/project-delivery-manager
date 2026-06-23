@@ -13,12 +13,15 @@ import {
   type CreateWorkItemRequest,
   type ExecuteActionRequest,
   type Document,
+  type McpArchiveDocumentRequest,
   type McpAppendDocumentContentRequest,
   type McpCancelRequirementRequest,
   type McpConvertDocumentToRequirementRequest,
   type McpCreateDocumentFolderRequest,
   type McpCreateDocumentFromMarkdownRequest,
   type McpCreateRequirementRequest,
+  type McpDeleteCommentRequest,
+  type McpDeleteDocumentRequest,
   type McpDeleteDocumentFolderRequest,
   type McpLinkDocumentResourcesRequest,
   type McpMoveDocumentFolderRequest,
@@ -26,6 +29,7 @@ import {
   type McpReplaceDocumentContentRequest,
   type McpToolName,
   type McpToolResult,
+  type McpUpdateCommentRequest,
   type McpUpdateDocumentFolderRequest,
   type McpUpdateDocumentMetadataRequest,
   type McpWriteContext,
@@ -90,7 +94,11 @@ type CreateIntakeArgs = McpWriteContext & CreateIntakeItemRequest;
 type CreateTaskArgs = McpWriteContext & CreateWorkItemRequest;
 type CreateBugArgs = McpWriteContext & CreateBugRequest;
 type CreateCommentArgs = McpWriteContext & CreateCommentRequest;
+type UpdateCommentArgs = McpUpdateCommentRequest;
+type DeleteCommentArgs = McpDeleteCommentRequest;
+type ArchiveDocumentArgs = McpArchiveDocumentRequest;
 type CreateDocumentFolderArgs = McpCreateDocumentFolderRequest;
+type DeleteDocumentArgs = McpDeleteDocumentRequest;
 type DeleteDocumentFolderArgs = McpDeleteDocumentFolderRequest;
 type MoveDocumentFolderArgs = McpMoveDocumentFolderRequest;
 type MoveDocumentToFolderArgs = McpMoveDocumentToFolderRequest;
@@ -114,6 +122,8 @@ const WRITE_TOOL_NAMES = new Set<McpToolName>([
   "pdm.work_item.execute_action",
   "pdm.bug.create",
   "pdm.comment.create",
+  "pdm.comment.update",
+  "pdm.comment.delete",
   "pdm.document_folder.create",
   "pdm.document_folder.update",
   "pdm.document_folder.move",
@@ -124,6 +134,8 @@ const WRITE_TOOL_NAMES = new Set<McpToolName>([
   "pdm.document.update_metadata",
   "pdm.document.link_resources",
   "pdm.document.move_to_folder",
+  "pdm.document.archive",
+  "pdm.document.delete",
   "pdm.document.convert_to_requirement",
   "pdm.document.cancel_requirement",
   "pdm.tag.replace_assignments",
@@ -486,12 +498,32 @@ export class McpWriteToolExecutor {
     switch (toolName) {
       case "pdm.comment.create": {
         const input = args as CreateCommentArgs;
-        await this.validateTargetContext(
+        const target = await this.validateTargetContext(
           principal.userId,
           input.targetType,
           input.targetId,
           context,
         );
+        this.rejectViewerWriteRole(target.role);
+        return;
+      }
+      case "pdm.comment.update":
+      case "pdm.comment.delete": {
+        const input = args as UpdateCommentArgs | DeleteCommentArgs;
+        const comment = await this.comments.validateMutation(
+          principal.userId,
+          input.commentId,
+        );
+        if (
+          comment.organizationId !== context.organizationId ||
+          comment.spaceId !== context.spaceId
+        ) {
+          throw new ApiException(
+            "SPACE_ACCESS_DENIED",
+            "Comment does not belong to the provided MCP organization and space context.",
+            HttpStatus.FORBIDDEN,
+          );
+        }
         return;
       }
       case "pdm.tag.replace_assignments": {
@@ -615,6 +647,17 @@ export class McpWriteToolExecutor {
         );
         return;
       }
+      case "pdm.document.archive":
+      case "pdm.document.delete": {
+        const input = args as ArchiveDocumentArgs | DeleteDocumentArgs;
+        await this.validateDocumentContext(
+          principal.userId,
+          input.documentId,
+          context,
+          input.baseRevision,
+        );
+        return;
+      }
       case "pdm.document.convert_to_requirement": {
         const input = args as McpConvertDocumentToRequirementRequest;
         await this.validateDocumentContext(
@@ -658,7 +701,7 @@ export class McpWriteToolExecutor {
     targetType: TargetType,
     targetId: string,
     context: McpWriteContext,
-  ): Promise<void> {
+  ) {
     const target = await this.targets.resolve(
       actorUserId,
       targetType,
@@ -675,6 +718,21 @@ export class McpWriteToolExecutor {
         HttpStatus.FORBIDDEN,
       );
     }
+
+    return target;
+  }
+
+  private rejectViewerWriteRole(role: SpaceRole): void {
+    if (role !== "VIEWER") {
+      return;
+    }
+
+    throw new ApiException(
+      "SPACE_ACCESS_DENIED",
+      "Space access denied",
+      HttpStatus.FORBIDDEN,
+      { role },
+    );
   }
 
   private async validateDocumentContext(
@@ -893,6 +951,35 @@ export class McpWriteToolExecutor {
           output: comment,
         };
       }
+      case "pdm.comment.update": {
+        const input = args as UpdateCommentArgs;
+        const { commentId, ...updateInput } = omitWriteContext(input);
+        const comment = await this.comments.update(
+          principal.userId,
+          commentId,
+          updateInput,
+          metadata,
+        );
+
+        return {
+          message: "Comment updated.",
+          output: comment,
+        };
+      }
+      case "pdm.comment.delete": {
+        const input = args as DeleteCommentArgs;
+        const { commentId } = omitWriteContext(input);
+        const output = await this.comments.delete(
+          principal.userId,
+          commentId,
+          metadata,
+        );
+
+        return {
+          message: "Comment deleted.",
+          output,
+        };
+      }
       case "pdm.document_folder.create": {
         const input = args as CreateDocumentFolderArgs;
         const folder = await this.documentFolders.create(
@@ -1046,6 +1133,38 @@ export class McpWriteToolExecutor {
         return {
           message: "Document moved to folder.",
           output: document,
+        };
+      }
+      case "pdm.document.archive": {
+        const input = args as ArchiveDocumentArgs;
+        const { baseRevision, documentId } = omitWriteContext(input);
+        const document = await this.documents.archive(
+          principal.userId,
+          documentId,
+          metadata,
+          mcpDocumentActor(principal.clientId),
+          baseRevision,
+        );
+
+        return {
+          message: "Document archived.",
+          output: document,
+        };
+      }
+      case "pdm.document.delete": {
+        const input = args as DeleteDocumentArgs;
+        const { baseRevision, documentId } = omitWriteContext(input);
+        const output = await this.documents.delete(
+          principal.userId,
+          documentId,
+          metadata,
+          mcpDocumentActor(principal.clientId),
+          baseRevision,
+        );
+
+        return {
+          message: "Document deleted.",
+          output,
         };
       }
       case "pdm.document.convert_to_requirement": {

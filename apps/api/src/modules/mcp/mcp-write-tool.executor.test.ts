@@ -30,6 +30,7 @@ const ORGANIZATION_ID = "01HRZ3NDEKTSV4RRFFQ69G5FAV";
 const SPACE_ID = "01HRZ3NDEKTSV4RRFFQ69G5FAW";
 const OTHER_SPACE_ID = "01HRZ3NDEKTSV4RRFFQ69G5FAT";
 const DOCUMENT_ID = "01HRZ3NDEKTSV4RRFFQ69G5FAY";
+const COMMENT_ID = "01HRZ3NDEKTSV4RRFFQ69G5FAX";
 const FOLDER_ID = "01HRZ3NDEKTSV4RRFFQ69G5FB5";
 const PARENT_FOLDER_ID = "01HRZ3NDEKTSV4RRFFQ69G5FB6";
 const WORK_ITEM_ID = "01HRZ3NDEKTSV4RRFFQ69G5FAZ";
@@ -39,10 +40,17 @@ const now = "2026-05-22T00:00:00.000Z";
 
 describe("McpWriteToolExecutor", () => {
   let bugs: { create: MockFn };
-  let comments: { create: MockFn };
+  let comments: {
+    create: MockFn;
+    delete: MockFn;
+    update: MockFn;
+    validateMutation: MockFn;
+  };
   let documents: {
     appendContent: MockFn;
+    archive: MockFn;
     createFromMarkdown: MockFn;
+    delete: MockFn;
     get: MockFn;
     moveToFolder: MockFn;
     replaceLinks: MockFn;
@@ -84,10 +92,15 @@ describe("McpWriteToolExecutor", () => {
     };
     comments = {
       create: vi.fn(),
+      delete: vi.fn(async () => ({})),
+      update: vi.fn(async () => ({ ...comment, body: "Updated" })),
+      validateMutation: vi.fn(async () => comment),
     };
     documents = {
       appendContent: vi.fn(async () => document),
+      archive: vi.fn(async () => ({ ...document, status: "ARCHIVED" })),
       createFromMarkdown: vi.fn(async () => document),
+      delete: vi.fn(async () => ({})),
       get: vi.fn(async () => document),
       moveToFolder: vi.fn(async () => document),
       replaceLinks: vi.fn(async () => ({ items: [] })),
@@ -488,6 +501,47 @@ describe("McpWriteToolExecutor", () => {
     });
   });
 
+  it("rejects MCP document comment creation from viewer roles", async () => {
+    targets.resolve.mockResolvedValueOnce({
+      organizationId: ORGANIZATION_ID,
+      spaceId: SPACE_ID,
+      targetId: DOCUMENT_ID,
+      targetType: "DOCUMENT",
+      role: "VIEWER",
+      canWrite: false,
+    });
+
+    const result = await executor.execute(
+      contract("pdm.comment.create"),
+      {
+        organizationId: ORGANIZATION_ID,
+        spaceId: SPACE_ID,
+        idempotencyKey: "viewer-document-comment-1",
+        targetSelectionSource: "USER_EXPLICIT",
+        targetType: "DOCUMENT",
+        targetId: DOCUMENT_ID,
+        body: "Viewer comment attempt",
+      },
+      principal(["mcp:write:comment"]),
+      {
+        requestId: "req-viewer-document-comment",
+      },
+    );
+
+    expect(result).toMatchObject({
+      isError: true,
+      structuredContent: {
+        error: {
+          code: "SPACE_ACCESS_DENIED",
+          details: {
+            role: "VIEWER",
+          },
+        },
+      },
+    });
+    expect(comments.create).not.toHaveBeenCalled();
+  });
+
   it("validates requirement create before writing a draft", async () => {
     requirements.validateCreateRequest.mockRejectedValueOnce(
       new ApiException(
@@ -574,6 +628,79 @@ describe("McpWriteToolExecutor", () => {
     expect(result).toBe(replay);
     expect(workItems.create).not.toHaveBeenCalled();
     expect(idempotency.complete).not.toHaveBeenCalled();
+  });
+
+  it("updates comments after validating ownership and MCP target context", async () => {
+    const result = await executor.execute(
+      contract("pdm.comment.update"),
+      {
+        organizationId: ORGANIZATION_ID,
+        spaceId: SPACE_ID,
+        idempotencyKey: "comment-update-1",
+        targetSelectionSource: "USER_EXPLICIT",
+        commentId: COMMENT_ID,
+        body: "Updated",
+      },
+      principal(["mcp:write:comment"]),
+      {
+        requestId: "req-comment-update",
+      },
+    );
+
+    expect(comments.validateMutation).toHaveBeenCalledWith(USER_ID, COMMENT_ID);
+    expect(comments.update).toHaveBeenCalledWith(
+      USER_ID,
+      COMMENT_ID,
+      {
+        body: "Updated",
+      },
+      expect.objectContaining({
+        metadata: expect.objectContaining({
+          source: "MCP",
+          toolName: "pdm.comment.update",
+        }),
+        requestId: "req-comment-update",
+      }),
+    );
+    expect(result).toMatchObject({
+      structuredContent: {
+        id: COMMENT_ID,
+        body: "Updated",
+      },
+    });
+  });
+
+  it("deletes comments after validating ownership and MCP target context", async () => {
+    const result = await executor.execute(
+      contract("pdm.comment.delete"),
+      {
+        organizationId: ORGANIZATION_ID,
+        spaceId: SPACE_ID,
+        idempotencyKey: "comment-delete-1",
+        targetSelectionSource: "USER_EXPLICIT",
+        commentId: COMMENT_ID,
+      },
+      principal(["mcp:write:comment"]),
+      {
+        requestId: "req-comment-delete",
+      },
+    );
+
+    expect(comments.validateMutation).toHaveBeenCalledWith(USER_ID, COMMENT_ID);
+    expect(comments.delete).toHaveBeenCalledWith(
+      USER_ID,
+      COMMENT_ID,
+      expect.objectContaining({
+        metadata: expect.objectContaining({
+          source: "MCP",
+          toolName: "pdm.comment.delete",
+        }),
+        requestId: "req-comment-delete",
+      }),
+    );
+    expect(result).toMatchObject({
+      structuredContent: {},
+    });
   });
 
   it("dry-runs document append by validating document context and baseRevision only", async () => {
@@ -832,6 +959,87 @@ describe("McpWriteToolExecutor", () => {
     });
   });
 
+  it("archives documents with MCP actor metadata after validating revision", async () => {
+    const result = await executor.execute(
+      contract("pdm.document.archive"),
+      {
+        organizationId: ORGANIZATION_ID,
+        spaceId: SPACE_ID,
+        idempotencyKey: "document-archive-1",
+        targetSelectionSource: "USER_EXPLICIT",
+        documentId: DOCUMENT_ID,
+        baseRevision: 1,
+      },
+      principal(["mcp:write:document"]),
+      {
+        requestId: "req-document-archive",
+      },
+    );
+
+    expect(documents.get).toHaveBeenCalledWith(USER_ID, DOCUMENT_ID);
+    expect(documents.archive).toHaveBeenCalledWith(
+      USER_ID,
+      DOCUMENT_ID,
+      expect.objectContaining({
+        metadata: expect.objectContaining({
+          source: "MCP",
+          toolName: "pdm.document.archive",
+        }),
+        requestId: "req-document-archive",
+      }),
+      {
+        actorType: "MCP_CLIENT",
+        mcpClientId: "test-client",
+      },
+      1,
+    );
+    expect(result).toMatchObject({
+      structuredContent: {
+        id: DOCUMENT_ID,
+        status: "ARCHIVED",
+      },
+    });
+  });
+
+  it("deletes documents with MCP actor metadata after validating revision", async () => {
+    const result = await executor.execute(
+      contract("pdm.document.delete"),
+      {
+        organizationId: ORGANIZATION_ID,
+        spaceId: SPACE_ID,
+        idempotencyKey: "document-delete-1",
+        targetSelectionSource: "USER_EXPLICIT",
+        documentId: DOCUMENT_ID,
+        baseRevision: 1,
+      },
+      principal(["mcp:write:document"]),
+      {
+        requestId: "req-document-delete",
+      },
+    );
+
+    expect(documents.get).toHaveBeenCalledWith(USER_ID, DOCUMENT_ID);
+    expect(documents.delete).toHaveBeenCalledWith(
+      USER_ID,
+      DOCUMENT_ID,
+      expect.objectContaining({
+        metadata: expect.objectContaining({
+          source: "MCP",
+          toolName: "pdm.document.delete",
+        }),
+        requestId: "req-document-delete",
+      }),
+      {
+        actorType: "MCP_CLIENT",
+        mcpClientId: "test-client",
+      },
+      1,
+    );
+    expect(result).toMatchObject({
+      structuredContent: {},
+    });
+  });
+
   it("rejects stale document content writes before invoking DocumentService mutators", async () => {
     const result = await executor.execute(
       contract("pdm.document.replace_content"),
@@ -1080,6 +1288,22 @@ const document = {
   tags: [],
   links: [],
   chunks: [],
+  createdAt: now,
+  updatedAt: now,
+};
+
+const comment = {
+  id: COMMENT_ID,
+  organizationId: ORGANIZATION_ID,
+  spaceId: SPACE_ID,
+  targetType: "WORK_ITEM",
+  targetId: WORK_ITEM_ID,
+  author: {
+    id: USER_ID,
+    username: "agent",
+    name: "Agent",
+  },
+  body: "Looks good",
   createdAt: now,
   updatedAt: now,
 };

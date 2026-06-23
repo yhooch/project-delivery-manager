@@ -9,6 +9,8 @@ import type { CommentRepository } from "./comment.repository";
 import type {
   CommentListInput,
   CreateCommentInput,
+  DeleteCommentInput,
+  UpdateCommentInput,
 } from "./comment.types";
 
 @Injectable()
@@ -51,6 +53,20 @@ export class PrismaCommentRepository implements CommentRepository {
     };
   }
 
+  async findById(commentId: string) {
+    const comment = await this.prisma.client.comment.findFirst({
+      include: {
+        author: true,
+      },
+      where: {
+        deletedAt: null,
+        id: commentId,
+      },
+    });
+
+    return comment ? toComment(comment) : undefined;
+  }
+
   async create(input: CreateCommentInput) {
     const comment = await this.prisma.client.$transaction(async (tx) => {
       const created = await tx.comment.create({
@@ -88,6 +104,68 @@ export class PrismaCommentRepository implements CommentRepository {
       });
 
       return created;
+    });
+
+    return toComment(comment);
+  }
+
+  async update(input: UpdateCommentInput) {
+    const existing = await this.prisma.client.comment.findFirst({
+      select: {
+        id: true,
+      },
+      where: {
+        deletedAt: null,
+        id: input.commentId,
+      },
+    });
+
+    if (!existing) {
+      return undefined;
+    }
+
+    const comment = await this.prisma.client.comment.update({
+      data: {
+        body: input.body,
+        updatedById: input.updatedById,
+      },
+      include: {
+        author: true,
+      },
+      where: {
+        id: existing.id,
+      },
+    });
+
+    return toComment(comment);
+  }
+
+  async delete(input: DeleteCommentInput) {
+    const existing = await this.prisma.client.comment.findFirst({
+      select: {
+        id: true,
+      },
+      where: {
+        deletedAt: null,
+        id: input.commentId,
+      },
+    });
+
+    if (!existing) {
+      return undefined;
+    }
+
+    const comment = await this.prisma.client.comment.update({
+      data: {
+        deletedAt: new Date(),
+        updatedById: input.deletedById,
+      },
+      include: {
+        author: true,
+      },
+      where: {
+        id: existing.id,
+      },
     });
 
     return toComment(comment);

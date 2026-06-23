@@ -18,6 +18,8 @@ import {
   DocumentListItemSchema,
   ListDocumentFoldersResponseSchema,
   GetDocumentResponseSchema,
+  ArchiveDocumentResponseSchema,
+  DeleteDocumentResponseSchema,
   DeleteDocumentFolderResponseSchema,
   DocumentFolderSchema,
   DocumentMaxMarkdownBytes,
@@ -58,8 +60,11 @@ import { RequirementSchema } from "./requirement.ts";
 import {
   CreateCommentRequestSchema,
   CreateCommentResponseSchema,
+  DeleteCommentResponseSchema,
   TimelineQuerySchema,
   TimelineResponseSchema,
+  UpdateCommentRequestSchema,
+  UpdateCommentResponseSchema,
 } from "./timeline.ts";
 import {
   CreateBugRequestSchema,
@@ -676,11 +681,45 @@ const DocumentIdToolInputSchema = z
   })
   .strict();
 
+const CommentIdToolInputSchema = z
+  .object({
+    commentId: UlidSchema,
+  })
+  .strict();
+
 const DocumentFolderIdToolInputSchema = z
   .object({
     folderId: UlidSchema,
   })
   .strict();
+
+const DocumentStateToolInputSchema = z
+  .object({
+    baseRevision: z.coerce.number().int().positive(),
+  })
+  .strict();
+
+export const McpUpdateCommentRequestSchema = McpWriteContextSchema.merge(
+  CommentIdToolInputSchema,
+).merge(UpdateCommentRequestSchema);
+
+export type McpUpdateCommentRequest = z.infer<
+  typeof McpUpdateCommentRequestSchema
+>;
+
+export const McpDeleteCommentRequestSchema = McpWriteContextSchema.merge(
+  CommentIdToolInputSchema,
+);
+
+export type McpDeleteCommentRequest = z.infer<
+  typeof McpDeleteCommentRequestSchema
+>;
+
+export const McpDeleteCommentResponseSchema = DeleteCommentResponseSchema;
+
+export type McpDeleteCommentResponse = z.infer<
+  typeof McpDeleteCommentResponseSchema
+>;
 
 export const McpListDocumentFoldersRequestSchema = SpaceToolContextSchema;
 
@@ -735,6 +774,34 @@ export const McpDeleteDocumentFolderResponseSchema =
 
 export type McpDeleteDocumentFolderResponse = z.infer<
   typeof McpDeleteDocumentFolderResponseSchema
+>;
+
+export const McpArchiveDocumentRequestSchema = McpWriteContextSchema.merge(
+  DocumentIdToolInputSchema,
+).merge(DocumentStateToolInputSchema);
+
+export type McpArchiveDocumentRequest = z.infer<
+  typeof McpArchiveDocumentRequestSchema
+>;
+
+export const McpArchiveDocumentResponseSchema = ArchiveDocumentResponseSchema;
+
+export type McpArchiveDocumentResponse = z.infer<
+  typeof McpArchiveDocumentResponseSchema
+>;
+
+export const McpDeleteDocumentRequestSchema = McpWriteContextSchema.merge(
+  DocumentIdToolInputSchema,
+).merge(DocumentStateToolInputSchema);
+
+export type McpDeleteDocumentRequest = z.infer<
+  typeof McpDeleteDocumentRequestSchema
+>;
+
+export const McpDeleteDocumentResponseSchema = DeleteDocumentResponseSchema;
+
+export type McpDeleteDocumentResponse = z.infer<
+  typeof McpDeleteDocumentResponseSchema
 >;
 
 export const McpDocumentSearchRequestSchema = SpaceToolContextSchema.merge(
@@ -960,6 +1027,8 @@ export const McpToolNameSchema = z.enum([
   "pdm.bug.get",
   "pdm.bug.create",
   "pdm.comment.create",
+  "pdm.comment.update",
+  "pdm.comment.delete",
   "pdm.document_folder.list",
   "pdm.document_folder.create",
   "pdm.document_folder.update",
@@ -973,6 +1042,8 @@ export const McpToolNameSchema = z.enum([
   "pdm.document.update_metadata",
   "pdm.document.link_resources",
   "pdm.document.move_to_folder",
+  "pdm.document.archive",
+  "pdm.document.delete",
   "pdm.document.convert_to_requirement",
   "pdm.document.cancel_requirement",
   "pdm.tag.replace_assignments",
@@ -1212,6 +1283,24 @@ export const mcpToolContracts = [
     outputSchema: writeOutputSchema(CreateCommentResponseSchema),
   }),
   tool({
+    name: "pdm.comment.update",
+    title: "Update comment",
+    description: `Update a comment owned by the current user.${WriteTargetPolicyDescription}`,
+    scopes: ["mcp:write:comment"],
+    annotations: UpdateToolAnnotations,
+    inputSchema: McpUpdateCommentRequestSchema,
+    outputSchema: writeOutputSchema(UpdateCommentResponseSchema),
+  }),
+  tool({
+    name: "pdm.comment.delete",
+    title: "Delete comment",
+    description: `Delete a comment owned by the current user.${WriteTargetPolicyDescription}`,
+    scopes: ["mcp:write:comment"],
+    annotations: UpdateToolAnnotations,
+    inputSchema: McpDeleteCommentRequestSchema,
+    outputSchema: writeOutputSchema(McpDeleteCommentResponseSchema),
+  }),
+  tool({
     name: "pdm.document_folder.list",
     title: "List document folders",
     description:
@@ -1328,6 +1417,24 @@ export const mcpToolContracts = [
     annotations: UpdateToolAnnotations,
     inputSchema: McpMoveDocumentToFolderRequestSchema,
     outputSchema: writeOutputSchema(MoveDocumentToFolderResponseSchema),
+  }),
+  tool({
+    name: "pdm.document.archive",
+    title: "Archive document",
+    description: `Archive a general document. Requires baseRevision.${WriteTargetPolicyDescription}`,
+    scopes: ["mcp:write:document"],
+    annotations: UpdateToolAnnotations,
+    inputSchema: McpArchiveDocumentRequestSchema,
+    outputSchema: writeOutputSchema(McpArchiveDocumentResponseSchema),
+  }),
+  tool({
+    name: "pdm.document.delete",
+    title: "Delete document",
+    description: `Delete a general document. Requires baseRevision.${WriteTargetPolicyDescription}`,
+    scopes: ["mcp:write:document"],
+    annotations: UpdateToolAnnotations,
+    inputSchema: McpDeleteDocumentRequestSchema,
+    outputSchema: writeOutputSchema(McpDeleteDocumentResponseSchema),
   }),
   tool({
     name: "pdm.document.convert_to_requirement",

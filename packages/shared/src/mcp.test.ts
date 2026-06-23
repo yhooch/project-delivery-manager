@@ -202,7 +202,7 @@ describe("MCP and OAuth shared contracts", () => {
   });
 
   it("freezes tools/list registry schemas, scopes and annotations", () => {
-    expect(McpToolRegistrySchema.parse(mcpToolRegistry)).toHaveLength(34);
+    expect(McpToolRegistrySchema.parse(mcpToolRegistry)).toHaveLength(38);
     expect(mcpToolContracts).toHaveLength(McpToolNameSchema.options.length);
     expect(new Set(mcpToolRegistry.map((tool) => tool.name)).size).toBe(
       mcpToolRegistry.length,
@@ -227,6 +227,8 @@ describe("MCP and OAuth shared contracts", () => {
       "pdm.work_item.execute_action",
       "pdm.bug.create",
       "pdm.comment.create",
+      "pdm.comment.update",
+      "pdm.comment.delete",
       "pdm.document_folder.create",
       "pdm.document_folder.update",
       "pdm.document_folder.move",
@@ -237,6 +239,8 @@ describe("MCP and OAuth shared contracts", () => {
       "pdm.document.update_metadata",
       "pdm.document.link_resources",
       "pdm.document.move_to_folder",
+      "pdm.document.archive",
+      "pdm.document.delete",
       "pdm.document.convert_to_requirement",
       "pdm.document.cancel_requirement",
       "pdm.tag.replace_assignments",
@@ -334,6 +338,28 @@ describe("MCP and OAuth shared contracts", () => {
       mcpToolRegistry.find((tool) => tool.name === "pdm.comment.create")
         ?.description,
     ).toContain("document");
+    expect(
+      mcpToolRegistry.find((tool) => tool.name === "pdm.comment.update")
+        ?.scopes,
+    ).toEqual(["mcp:write:comment"]);
+    expect(
+      mcpToolRegistry.find((tool) => tool.name === "pdm.comment.delete")
+        ?.inputSchema,
+    ).toMatchObject({
+      required: expect.arrayContaining(["commentId"]),
+    });
+    expect(
+      mcpToolRegistry.find((tool) => tool.name === "pdm.document.archive")
+        ?.inputSchema,
+    ).toMatchObject({
+      required: expect.arrayContaining(["baseRevision", "documentId"]),
+    });
+    expect(
+      mcpToolRegistry.find((tool) => tool.name === "pdm.document.delete")
+        ?.inputSchema,
+    ).toMatchObject({
+      required: expect.arrayContaining(["baseRevision", "documentId"]),
+    });
     expect(
       McpToolsListResultSchema.parse({
         tools: mcpToolRegistry,
